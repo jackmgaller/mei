@@ -102,6 +102,26 @@ class Gen:
             b = self.expr(env, ty, depth + 1)
             f = r.choice(['min', 'max'])
             return '%s(%s, %s)' % (f, a[0], b[0]), (f, a[1], b[1])
+        svars = [n for n, t in env.items() if t == 's32']
+        if k < 0.37 and svars:
+            # an untyped constant shifted by a variable count (once miscompiled to 0); the count
+            # must not be constant, or the whole shift folds exactly (and may not fit)
+            c = self.expr(env, 's32', depth + 1)
+            if is_const(c[1]):
+                n = r.choice(svars)
+                c = ('(%s + %s)' % (c[0], n), ('s32+', c[1], ('var', n)))
+            cnt = ('(%s & %d)' % (c[0], 15 if ty == 'fixed' else 31), ('s32&', c[1], ('lit', 15 if ty == 'fixed' else 31)))
+            op = r.choice(['<<', '>>'])
+            if ty == 'u32':      # constants above 0x7FFFFFFF make the shift u32
+                v = r.choice([0x80000000, 0xFFFFFFFF, r.randint(0x80000000, 0xFFFFFFFF)])
+                src = '%d' % v
+            elif ty == 's32':
+                v = r.choice([1, 3, -1, -7, 0x7FFFFFFF, -0x80000000, r.randint(-100000, 100000)])
+                src = '(%d)' % v if v < 0 else '%d' % v
+            else:                # fixed constants shift their raw 16.16 bits
+                v = r.choice([65536, 98304, -32768, r.randint(-5 << 16, 5 << 16) & ~0xFF])
+                src = '(%s%.8f)' % ('-' if v < 0 else '', abs(v) / 65536)   # exact: v is a multiple of 1/256
+            return '(%s %s %s)' % (src, op, cnt[0]), (('s32' if ty == 'fixed' else ty) + op, ('lit', v), cnt[1])
         if ty == 'fixed':
             op = r.choice(['+', '-', '*', '/', '*i', '/i'])
             a = self.expr(env, ty, depth + 1)

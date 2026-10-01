@@ -1,76 +1,241 @@
-// Very quiet generative ambient music for the shell. Three short samples from
-// tools/gen_shell_assets.py (a pad tone, a celesta-like bell, a breath of air) are pitched
-// with PITCH and shaped with VOL every frame, so the music never repeats and costs ~39 KB.
+// Quiet ambient music for the shell: a small sequencer playing composed scores with ADPCM
+// instruments through the hardware reverb. Everything musical (samples, instruments and
+// scores) comes from tools/gen_shell_music.py as mu_data.akr and one sample bank per style.
 //
-// Two pad voices hold a two-note chord that changes every 12-24 s (one voice at a time, so
-// there is always something sounding); a bell plays a note from the mode's scale every few
-// seconds with a random pan; the air loop breathes underneath. The mode follows the real
-// time of day: D lydian by day, D major pentatonic / sus at dawn and dusk, D minor and an
-// octave lower (and sparser) at night.
+// MUSIC_STYLE picks one of three candidates (all three banks are in the ROM, about 190-220 KB
+// each; once one is chosen the generator can drop the others):
+//   0 Glasshouse  electric piano and pad on a voice-led progression in A, a vibraphone theme
+//                 that comes and goes; F# minor at night
+//   1 Airports    felt piano and choir tape loops of different lengths drifting in and out of
+//                 phase over a slow bass line (Music for Airports)
+//   2 Crystal     quartal pad chords planing over a sub bass, a glass-bell arpeggio with echoes
+//                 and high sparkles in a long space reverb
 //
-// Channels 0-3 (the boot theme's, free while the shell runs); 6-7 stay with the UI sounds.
+// A score is a set of tracks. Each track plays a cycle of slots; each slot has a few
+// variant sections and a random one plays each time (never the same twice in a row). A track
+// has a day and a night version and picks one from the sky (sky_day, from SYS_TIME) whenever
+// it comes back round to its first slot. Night scores also play slower.
+//
+// Channels 0-5 and 8-15 (14 voices); 6-7 stay with the UI sounds. The reverb is global: the
+// music sets it while it plays and turns it off when it stops.
 
-const MU_CH_A = 0                // pad voice A (leans left)
-const MU_CH_B = 1                // pad voice B (leans right)
-const MU_CH_BELL = 2
-const MU_CH_AIR = 3
+import "mu_data.akr"
 
-const MU_FULL = 4096             // envelope full scale
-const MU_ATTACK = 23             // per frame: about 3 s to full
-const MU_RELEASE = 28            // per frame: about 2.5 s to silence
+const MUSIC_STYLE = 0
 
-// mood 0 night, 1 dawn/dusk, 2 day: pad notes (semitones from A3), four chords each
-const MU_PAD_A: [12]s32 = [-19, -16, -21, -23,   -7, -14, -9, -12,   -7, -5, -10, -7]
-const MU_PAD_B: [12]s32 = [-9, -12, -14, -19,    0, -10, -2, -7,     4, 2, -3, -3]
-// bell notes (semitones from A5), seven per mood
-const MU_BELLS: [21]s32 = [-7, -4, -2, 0, 3, 5, -9,   -7, -5, -3, 0, 2, 5, 7,   -7, -5, -3, -1, 0, 4, 7]
-// per mood: pad level, bell level, air level (VOL units at full gain), bell gap range (frames)
-const MU_PAD_VOL: [3]s32 = [28, 30, 30]
-const MU_BELL_VOL: [3]s32 = [24, 30, 34]
-const MU_AIR_VOL: [3]s32 = [18, 14, 12]
-const MU_GAP_MIN: [3]s32 = [360, 240, 180]
-const MU_GAP_RND: [3]s32 = [480, 300, 240]
+const MU_NV = 14
+const MU_CHANS: [14]s32 = [8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5]
+const MU_FULL = 32767            // envelope full scale
+const MU_TWO_PI = 411775         // 2 pi in fixed-point bits
+const MU_KILL = 2                // a voice below this VOL level is stopped
+const MU_PITCH: [3]fixed = [1.0, 2.0, 4.0]   // samples play at their pitch or octaves up
 
 var mu_running: bool
 var mu_gain: s32                 // 0..256 master level (fades and ducking)
 var mu_target: s32
 var mu_speed: s32 = 2            // gain change per frame
-var mu_t: s32
-var mu_mood: s32
-var mu_chord: s32
-var mu_lvl: [2]s32               // pad envelopes 0..MU_FULL
-var mu_state: [2]s32             // 0 idle, 1 attack, 2 sustain, 3 release (then retune)
-var mu_release_at: [2]s32        // frame at which a voice starts its release for a chord change
-var mu_chord_at: s32
-var mu_bell_lvl: s32
-var mu_bell_at: s32
-var mu_bell_pan: s32
+var mu_night: s32                // 0 day, 1 night: the version tracks pick next
+var mu_wet: s32                  // reverb wet level before the gain, eased toward the mood's
+var mu_wet_reg: s32 = -1
 
-fn mu_reg(ch: s32) -> *u32 { return (AUDIO_BASE + ch * 32) as *u32 }
+// voices
+var mv_on: [14]bool
+var mv_inst: [14]s32             // MU_INST row
+var mv_lvl: [14]s32              // envelope 0..MU_FULL
+var mv_state: [14]s32            // 1 attack, 2 sustain or decay, 3 release
+var mv_age: [14]s32              // frames since the note started
+var mv_hold: [14]s32             // struck: frames before the decay starts
+var mv_rel: [14]s32              // frame (age) at which the release starts, -1 none
+var mv_vol: [14]s32              // note volume 0..255
+var mv_pan: [14]s32              // 0 left .. 256 right
+var mv_ph: [14]s32               // tremolo phase (fixed-point bits)
+var mv_out: [14]s32              // the VOL level written last frame (for stealing)
 
-fn mu_vol(ch: s32, v: s32, pan: s32) {
-    // pan 0 (left) .. 256 (right); centre at 128 gives both sides v
-    let l = clamp(v * min(256, (256 - pan) * 2) >> 8, 0, 255)
-    let r = clamp(v * min(256, pan * 2) >> 8, 0, 255)
-    mu_reg(ch)[4] = (l as u32) | ((r as u32) << 8)
+// tracks (at most 12)
+var mt_count: s32
+var mt_row: [12]s32              // MU_TRACK row
+var mt_night: [12]s32
+var mt_slot: [12]s32
+var mt_last: [12]s32             // the variant played last, to avoid an immediate repeat
+var mt_sec: [12]s32              // MU_SEC row
+var mt_pos: [12]s32              // ticks x 256 into the section
+var mt_ev: [12]s32               // next event
+var mt_end: [12]s32
+var mt_tempo: [12]s32            // ticks x 256 per frame
+
+fn mu_bank() -> *u8 {
+    if MUSIC_STYLE == 1 { return MU_BANK1 }
+    if MUSIC_STYLE == 2 { return MU_BANK2 }
+    return MU_BANK0
 }
 
-fn mu_mood_now() -> s32 {
-    if sky_day < 64 { return 0 }
-    if sky_day > 200 && sky_twilight < 120 { return 2 }
-    return 1
+fn mu_style(i: s32) -> s32 { return MU_STYLE[MUSIC_STYLE * 10 + i] }
+
+fn mu_reg(ch: s32) -> *u32 {
+    if ch < 8 { return (AUDIO_BASE + ch * 32) as *u32 }
+    return (AUDIO_HI_BASE + (ch - 8) * 32) as *u32
 }
 
-fn mu_pad_note(v: s32) -> s32 {
-    if v == 0 { return MU_PAD_A[mu_mood * 4 + mu_chord] }
-    return MU_PAD_B[mu_mood * 4 + mu_chord]
+fn mu_night_now() -> s32 {
+    if sky_day < 128 { return 1 }
+    return 0
 }
 
-fn mu_pad_start(v: s32) {
-    let semi = clamp(mu_pad_note(v), -24, 24)
-    play16(MU_CH_A + v, SH_MU_PAD, len(SH_MU_PAD), SH_SEMI[semi + 24], 0, 0, true)
-    mu_state[v] = 1
+// ---- tracks
+
+// Starts the section for the track's current slot: a random variant, not the last one.
+// A score's first pass plays variant 0 (the full theme).
+fn mt_begin(k: s32) {
+    let tr = mt_row[k] * 4 + mt_night[k] * 2
+    let slot = (MU_TRACK[tr] + mt_slot[k]) * 2
+    let n = MU_SLOT[slot + 1]
+    var v = 0
+    if n > 1 && mt_last[k] >= 0 {
+        v = rnd(n - 1)
+        if v >= mt_last[k] { v += 1 }
+    }
+    mt_last[k] = v
+    let sec = (MU_SLOT[slot] + v) * 3
+    mt_sec[k] = sec
+    mt_ev[k] = MU_SEC[sec]
+    mt_end[k] = MU_SEC[sec] + MU_SEC[sec + 1]
+    mt_tempo[k] = mu_style(6 + mt_night[k])
 }
+
+fn mt_start(k: s32, row: s32) {
+    mt_row[k] = row
+    mt_night[k] = mu_night
+    mt_slot[k] = 0
+    mt_last[k] = -1
+    mt_pos[k] = 0
+    mt_begin(k)
+}
+
+fn mt_frame(k: s32) {
+    mt_pos[k] += mt_tempo[k]
+    while true {
+        let now = mt_pos[k] >> 8
+        var e = mt_ev[k]
+        while e < mt_end[k] && MU_EV[e * 2] & 0xFFFF <= now {
+            mu_note(MU_EV[e * 2 + 1], MU_EV[e * 2] >> 16, mt_tempo[k])
+            e += 1
+        }
+        mt_ev[k] = e
+        let length = MU_SEC[mt_sec[k] + 2]
+        if now < length { return }
+        // next slot; back at the first one, follow the sky
+        mt_pos[k] -= length << 8
+        let tr = mt_row[k] * 4 + mt_night[k] * 2
+        mt_slot[k] += 1
+        if mt_slot[k] >= MU_TRACK[tr + 1] {
+            mt_slot[k] = 0
+            if mt_night[k] != mu_night {
+                mt_night[k] = mu_night
+                mt_last[k] = -1
+            }
+        }
+        mt_begin(k)
+    }
+}
+
+// ---- voices
+
+// Plays one event: packed = inst | note << 4 | velocity << 11 | pan << 18.
+fn mu_note(packed: s32, dur: s32, tempo: s32) {
+    let inst = (mu_style(0) + (packed & 15)) * 12
+    let note = (packed >> 4) & 127
+    let lo = MU_INST[inst + 9]
+    if note < lo || note > MU_INST[inst + 10] { return }
+    let map = MU_NMAP[MU_INST[inst + 8] + note - lo]
+    if map < 0 { return }
+    let smp = (map & 0xFFFF) * 4
+    let shift = map >> 16
+
+    // a free voice, or the quietest one; a held note (sustained, not releasing) only if
+    // every voice is one
+    var v = -1
+    var quiet = 1 << 30
+    for i in 0..MU_NV {
+        if !mv_on[i] {
+            v = i
+            break
+        }
+        var q = mv_out[i]
+        if MU_INST[mv_inst[i]] == 2 && mv_state[i] != 3 { q += 1024 }
+        if q < quiet {
+            quiet = q
+            v = i
+        }
+    }
+    let ch = MU_CHANS[v]
+    var flags = SND_ADPCM | SND_LOOP
+    if MU_INST[inst + 5] != 0 { flags = flags | SND_REVERB }
+    play_sample(ch, mu_bank() + MU_SAMP[smp], MU_SAMP[smp + 1] as u32, MU_SAMP[smp + 2] as u32,
+                MU_PITCH[shift], 0, 0, flags as u32)
+    mv_on[v] = true
+    mv_inst[v] = inst
+    mv_age[v] = 0
+    mv_hold[v] = MU_SAMP[smp + 3] >> shift
+    mv_vol[v] = ((packed >> 11) & 127) * MU_INST[inst + 4] >> 7
+    mv_pan[v] = ((packed >> 18) & 127) * 2 + 1
+    mv_ph[v] = rnd(MU_TWO_PI)
+    mv_out[v] = 0
+    if MU_INST[inst] == 1 {
+        mv_lvl[v] = MU_FULL
+        mv_state[v] = 2
+    } else {
+        mv_lvl[v] = 0
+        mv_state[v] = 1
+    }
+    if dur > 0 { mv_rel[v] = dur * 256 / tempo } else { mv_rel[v] = -1 }
+}
+
+fn mv_frame(i: s32) {
+    let inst = mv_inst[i]
+    let age = mv_age[i] + 1
+    mv_age[i] = age
+    var l = mv_lvl[i]
+    var st = mv_state[i]
+    if mv_rel[i] >= 0 && age >= mv_rel[i] { st = 3 }
+    if st == 1 {
+        l += MU_INST[inst + 1]
+        if l >= MU_FULL {
+            l = MU_FULL
+            st = 2
+        }
+    } else if st == 2 {
+        if MU_INST[inst] == 1 && age > mv_hold[i] {
+            l = l * MU_INST[inst + 2] >> 16
+            if l < MU_FULL / 24 { l = 0 }        // -28 dB: the reverb has the rest
+        }
+    } else {
+        l = l * MU_INST[inst + 3] >> 16
+        if l < MU_FULL / 16 { l = 0 }            // -24 dB into the release: gone
+    }
+    mv_lvl[i] = l
+    mv_state[i] = st
+    var v = mv_vol[i] * l >> 15
+    let depth = MU_INST[inst + 6]
+    if depth > 0 {
+        let ph = (mv_ph[i] + MU_INST[inst + 7]) % MU_TWO_PI
+        mv_ph[i] = ph
+        let s = bits(sin(from_bits(ph))) >> 8          // -256..256
+        v = v * (256 - (depth * (256 - s) >> 9)) >> 8
+    }
+    if v < MU_KILL && st != 1 {
+        mv_on[i] = false
+        stop(MU_CHANS[i])
+        return
+    }
+    mv_out[i] = v
+    v = v * mu_gain >> 8
+    let pan = mv_pan[i]
+    let left = clamp(v * min(256, (256 - pan) * 2) >> 8, 0, 255)
+    let right = clamp(v * min(256, pan * 2) >> 8, 0, 255)
+    mu_reg(MU_CHANS[i])[4] = (left as u32) | ((right as u32) << 8)
+}
+
+// ---- control (system.akr)
 
 // Starts the music (after the boot, or back from a preview); it fades in.
 fn mu_start() {
@@ -78,26 +243,28 @@ fn mu_start() {
     mu_running = true
     mu_gain = 0
     mu_speed = 1
-    mu_t = 0
-    mu_mood = mu_mood_now()
-    mu_chord = rnd(4)
-    mu_lvl[0] = 0
-    mu_lvl[1] = 0
-    mu_pad_start(0)
-    mu_pad_start(1)
-    mu_release_at[0] = -1
-    mu_release_at[1] = -1
-    mu_chord_at = 720 + rnd(480)
-    mu_bell_lvl = 0
-    mu_bell_at = 150 + rnd(120)
-    stop(MU_CH_BELL)
-    play(MU_CH_AIR, SH_MU_AIR, len(SH_MU_AIR), 1.0, 0, 0, true)
+    sky_update()                  // the sky may not have been drawn yet
+    mu_night = mu_night_now()
+    for i in 0..MU_NV {
+        mv_on[i] = false
+        stop(MU_CHANS[i])
+    }
+    reverb(mu_style(3), 0, 0)
+    reverb_decay(mu_style(8 + mu_night))
+    mu_wet = mu_style(4 + mu_night)
+    mu_wet_reg = -1
+    mt_count = mu_style(2)
+    for k in 0..mt_count { mt_start(k, mu_style(1) + k) }
 }
 
 fn mu_stop() {
     if !mu_running { return }
     mu_running = false
-    for ch in 0..4 { stop(ch) }
+    for i in 0..MU_NV {
+        mv_on[i] = false
+        stop(MU_CHANS[i])
+    }
+    reverb(REVERB_OFF, 0, 0)
     mu_gain = 0
 }
 
@@ -112,65 +279,23 @@ fn mu_frame() {
     if !mu_running { return }
     if mu_gain < mu_target { mu_gain = min(mu_target, mu_gain + mu_speed) }
     else if mu_gain > mu_target { mu_gain = max(mu_target, mu_gain - mu_speed) }
-    let t = mu_t
-    mu_t += 1
+    mu_night = mu_night_now()
 
-    // chord changes: voice A releases now, voice B 2.5 s later; each retunes when silent
-    if t == mu_chord_at {
-        mu_mood = mu_mood_now()
-        mu_chord = (mu_chord + 1 + rnd(3)) % 4
-        mu_release_at[0] = t
-        mu_release_at[1] = t + 150
-        var gap = 720 + rnd(480)
-        if mu_mood == 0 { gap += 240 }
-        mu_chord_at = t + gap
-    }
-    let pv = MU_PAD_VOL[mu_mood] * mu_gain >> 8
-    for v in 0..2 {
-        if t == mu_release_at[v] { mu_state[v] = 3 }
-        var l = mu_lvl[v]
-        let st = mu_state[v]
-        if st == 1 {
-            l += MU_ATTACK
-            if l >= MU_FULL {
-                l = MU_FULL
-                mu_state[v] = 2
-            }
-        } else if st == 3 {
-            l -= MU_RELEASE
-            if l <= 0 {
-                l = 0
-                mu_pad_start(v)            // retune to the new chord and fade back in
-            }
+    for k in 0..mt_count { mt_frame(k) }
+
+    let active = sound_active()
+    for i in 0..MU_NV {
+        if mv_on[i] {
+            if (active >> (MU_CHANS[i] as u32)) & 1 == 0 { mv_on[i] = false } else { mv_frame(i) }
         }
-        mu_lvl[v] = l
-        // a slow swell keeps the pad alive
-        let swell = 224 + (sin(from_bits(t * 90 + v * 40000)) * 32) as s32
-        mu_vol(MU_CH_A + v, (pv * l >> 12) * swell >> 8, 72 + v * 112)
     }
 
-    // the bell: a note every few seconds, fading out by VOL
-    if t >= mu_bell_at {
-        mu_mood = mu_mood_now()
-        let m = mu_mood
-        let semi = MU_BELLS[m * 7 + rnd(7)]
-        play16(MU_CH_BELL, SH_MU_BELL, len(SH_MU_BELL), SH_SEMI[semi + 24], 0, 0, true)
-        mu_reg(MU_CH_BELL)[2] = SH_MU_BELL_LOOP
-        mu_bell_lvl = MU_FULL
-        mu_bell_pan = 64 + rnd(128)
-        mu_bell_at = t + MU_GAP_MIN[m] + rnd(MU_GAP_RND[m])
+    // the reverb follows the gain, and drifts wetter at night
+    let wet = mu_style(4 + mu_night)
+    if mu_wet < wet { mu_wet += 1 } else if mu_wet > wet { mu_wet -= 1 }
+    let w = mu_wet * mu_gain >> 8
+    if w != mu_wet_reg {
+        mu_wet_reg = w
+        REVERB_VOL = (w as u32) | ((w as u32) << 8)
     }
-    if mu_bell_lvl > 0 {
-        mu_bell_lvl = mu_bell_lvl * 61 >> 6            // about -0.4 dB a frame
-        if mu_bell_lvl < 8 {
-            mu_bell_lvl = 0
-            stop(MU_CH_BELL)
-        }
-        mu_vol(MU_CH_BELL, (MU_BELL_VOL[mu_mood] * mu_gain >> 8) * mu_bell_lvl >> 12, mu_bell_pan)
-    }
-
-    // air: slow gusts drifting across the stereo field
-    let gust = 170 + (sin(from_bits(t * 70)) * 60 + sin(from_bits(t * 23 + 9000)) * 26) as s32
-    let pan = 128 + (sin(from_bits(t * 31)) * 70) as s32
-    mu_vol(MU_CH_AIR, (MU_AIR_VOL[mu_mood] * mu_gain >> 8) * gust >> 8, pan)
 }

@@ -6,7 +6,7 @@
   tex_art.bin    texture slot 14: icons, sun, moon, the 明 mark, button glyphs, glow dot
   pal.bin        16-colour palettes from palette 192 (15-bit colours)
   glyphs.bin     glyph metrics: 3 fonts x 100 glyphs x (u, v, w, advance)
-  snd_*.raw      UI sounds, signed 8-bit PCM at 22,050 Hz
+  snd_*.raw      UI sounds, signed 8-bit PCM at 22,050 Hz (the music: gen_shell_music.py)
   assets.akr     embed declarations and atlas constants used by the shell
 
 Only the texture rows actually used are written. Fonts come from macOS (Avenir Next,
@@ -558,77 +558,6 @@ def snd_error():
     return reverb(out, tail=0.12, mix=0.15)
 
 
-# ---------------------------------------------------------------- ambient music
-# Three instrument samples for the shell's generative ambient music (system/shell/music.akr).
-# Pitch comes from the channel's PITCH register and loudness from VOL, written per frame.
-
-MU_PAD_LEN = 8000          # 80 cycles of 220.5 Hz (A3, period 100 samples): loops seamlessly
-MU_BELL_LOOP = 2200        # the bell's attack (88 cycles of 882 Hz), then a steady loop
-MU_BELL_LEN = 2600
-
-
-def to16(x, peak=0.9):
-    x = x / (np.max(np.abs(x)) + 1e-9) * peak
-    return np.clip(np.round(x * 32767), -32767, 32767).astype('<i2').tobytes()
-
-
-def music_pad():
-    """A soft, slowly beating pad tone: a fundamental with detuned neighbours (whole
-    numbers of cycles in the loop) and a few quiet upper partials. Envelopes are done at
-    run time, so this is just the sustain."""
-    L = MU_PAD_LEN
-    n = np.arange(L)
-    w = lambda cyc, ph=0.0: np.sin(2 * np.pi * cyc * n / L + ph)
-    s = (w(80) + 0.55 * w(81, 1.3) + 0.4 * w(79, 0.4) + 0.2 * w(160, 0.7) + 0.1 * w(161, 2.0)
-         + 0.05 * w(240, 1.1) + 0.025 * w(321, 0.3))
-    return to16(s)
-
-
-def music_bell():
-    """A mellow celesta-like note at 882 Hz (A5): a short inharmonic 'ting' over a pure
-    tone, then a loop of the steady tone that the sequencer fades out by VOL."""
-    n = np.arange(MU_BELL_LEN)
-    t = n / SR
-    f = SR / 25.0
-    steady = np.sin(2 * np.pi * f * t) + 0.07 * np.sin(4 * np.pi * f * t + 0.5)
-    ting = (0.45 * np.sin(2 * np.pi * 3.98 * f * t) + 0.18 * np.sin(2 * np.pi * 6.9 * f * t)
-            + 0.12 * np.sin(2 * np.pi * 2.76 * f * t)) * np.exp(-t / 0.018)
-    fade = np.ones(len(n))
-    k = np.arange(MU_BELL_LOOP - 400, MU_BELL_LOOP)
-    fade[k] = 0.5 + 0.5 * np.cos(np.pi * (k - k[0]) / 400)
-    fade[MU_BELL_LOOP:] = 0
-    s = steady + ting * fade
-    s *= np.minimum(1, t / 0.003)          # soft start: no click
-    return to16(s)
-
-
-def music_air():
-    """A breathy, filtered noise loop (crossfaded at the seam), mixed very low."""
-    rng = np.random.default_rng(11)
-    L = int(0.8 * SR)
-    X = int(0.1 * SR)
-    x = rng.standard_normal(L + X)
-    # band-limit: a two-pole low-pass around 2.2 kHz minus a slow low-pass (removes rumble)
-    def lp(sig, fc):
-        a = np.exp(-2 * np.pi * fc / SR)
-        y = np.zeros_like(sig)
-        acc = 0.0
-        for i in range(len(sig)):
-            acc = (1 - a) * sig[i] + a * acc
-            y[i] = acc
-        return y
-    y = lp(lp(x, 2200), 2200) - lp(x, 300)
-    # crossfade the tail into the head so the loop has no seam
-    head = y[:X].copy()
-    tail = y[L:L + X]
-    r = np.linspace(0, 1, X)
-    y = y[:L].copy()
-    y[:X] = head * np.sqrt(r) + tail * np.sqrt(1 - r)
-    y = y / (np.max(np.abs(y)) + 1e-9) * 0.9
-    tp = (rng.random(L) - rng.random(L)) / 127.0
-    return np.clip(np.round((y + tp) * 127), -127, 127).astype(np.int8).tobytes()
-
-
 def wavetable():
     """One 64-sample cycle of a soft tone (sine with a little 2nd/3rd harmonic), for the
     sweep and the stereo check (pitched at run time)."""
@@ -660,10 +589,6 @@ def main():
     for nm, data in sounds:
         files['snd_%s.raw' % nm] = data
     files['wave.raw'] = wavetable()
-    music = [('pad', music_pad()), ('bell', music_bell()), ('air', music_air())]
-    for nm, data in music:
-        files['mu_%s.raw' % nm] = data
-    total_mu = sum(len(d) for _, d in music)
     total_snd = sum(len(d) for _, d in sounds)
     assert total_snd <= 48 * 1024, total_snd
     for nm, data in files.items():
@@ -682,12 +607,6 @@ def main():
     for nm, _ in sounds:
         L.append('embed SH_SND_%s: s8 = "snd_%s.raw"' % (nm.upper(), nm))
     L.append('embed SH_WAVE: s8 = "wave.raw"')
-    L.append('embed SH_MU_PAD: s16 = "mu_pad.raw"      // looped, 220.5 Hz at pitch 1.0')
-    L.append('embed SH_MU_BELL: s16 = "mu_bell.raw"    // 882 Hz at pitch 1.0, loops from SH_MU_BELL_LOOP')
-    L.append('embed SH_MU_AIR: s8 = "mu_air.raw"       // looped noise')
-    L.append('const SH_MU_BELL_LOOP = %d' % MU_BELL_LOOP)
-    L.append('// pitch ratios 2^(n/12) for n = -24..24: SH_SEMI[n + 24]')
-    L.append('const SH_SEMI: [49]fixed = [%s]' % ', '.join('%.5f' % (2 ** ((k - 24) / 12.0)) for k in range(49)))
     L.append('')
     L.append('const SH_SLOT_FONT = 12')
     L.append('const SH_SLOT_BIG = 13')
@@ -717,7 +636,6 @@ def main():
         L.append('const SH_ART_%s: [5]s32 = [%d, %d, %d, %d, %d]' % (nm.upper(), u, v, w, h, p))
     with open(os.path.join(OUT, 'assets.akr'), 'w') as f:
         f.write('\n'.join(L) + '\n')
-    print('music samples: %d bytes (%s)' % (total_mu, ', '.join('%s %d' % (n, len(d)) for n, d in music)))
     print('rows used: font %d, big %d, art %d; palettes %d; sounds %d bytes (%s)' % (
         font_atlas.used_rows(), big_atlas.used_rows(), art.used_rows(), len(palettes), total_snd,
         ', '.join('%s %d' % (n, len(d)) for n, d in sounds)))

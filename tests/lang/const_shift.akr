@@ -1,0 +1,38 @@
+// Regression: a constant shifted by a variable was typed as an untyped constant and
+// compiled to 0. Also covers the other operators with a constant on the left.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+const K = 3 << 4                 // still folded at compile time
+var gs = 3
+
+fn h(s: s32) -> s32 { return 3 << s }
+fn hr(s: s32) -> s32 { return -64 >> s }
+fn hu(s: u32) -> u32 { return 0x80000000 >> s }
+fn hf(s: s32) -> fixed { return 1.5 << s }
+
+fn init() {
+    p(h(2))                                     // expect: 12
+    p(h(0))                                     // expect: 3
+    p(hr(3))                                    // expect: -8
+    p(hu(4) as s32)                             // expect: 134217728
+    p(bits(hf(1)))                              // expect: 196608
+    var s = 5
+    p(1 << s)                                   // expect: 32
+    p(1024 >> s)                                // expect: 32
+    p((0xFFFFFFFF >> s) as s32)                 // expect: 134217727
+    p(-(3 << s) + ~(1 << s))                    // expect: -129
+    let m: u32 = 1 << s
+    p(m as s32)                                 // expect: 32
+    p((1 << gs) * 10 + (40 >> gs))              // expect: 85
+    p(K)                                        // expect: 48
+    // other non-commutative operators with a constant on the left
+    p(3 - s)                                    // expect: -2
+    p(100 / s)                                  // expect: 20
+    p(102 % s)                                  // expect: 2
+    p((3 < s) as s32 * 100 + (3 > s) as s32 * 10 + (3 == s) as s32)   // expect: 100
+    p((10 <= s) as s32 * 10 + (10 >= s) as s32) // expect: 1
+    let f: fixed = 0.5
+    p(bits(1.5 - f) + bits(3.0 / f))            // expect: 458752
+    var u: u32 = 3
+    p((100 - u) as s32 + (100 / u) as s32 + (100 % u) as s32)         // expect: 131
+}

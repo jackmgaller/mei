@@ -422,6 +422,9 @@ static const char *conv_hint(Type *from, Type *to) {
 static Expr *coerce(Ctx *c, Expr *e, Type *to, const char *what) {
     (void)c;
     Type *from = e->ty;
+    /* untyped types belong to compile-time constants only (they are folded below) */
+    if ((from->k == TY_UINT || from->k == TY_UFIXED) && !e->isconst)
+        error_at(e->loc, "internal compiler error: untyped value that is not a constant");
     if (from == to) return e;
     if (to->k == TY_VOID) error_at(e->loc, "%s has no value", what);
     if (from->k == TY_UINT) {
@@ -847,6 +850,12 @@ static Expr *check_binary(Ctx *c, Expr *e) {
     if (op == B_SHL || op == B_SHR) {
         if (!is_intish(b)) error_at(e->b->loc, "shift count must be an integer");
         Type *t = a->k == TY_UINT ? ty_uint : a->k == TY_UFIXED ? ty_ufixed : a->k == TY_FIXED ? ty_fixed : a->k == TY_U32 ? ty_u32 : ty_s32;
+        if ((t == ty_uint || t == ty_ufixed) && !e->b->isconst) {
+            /* a constant shifted by a variable is not a constant: give it a real type
+               (s32, or u32 for constants above 0x7FFFFFFF; fixed for fixed constants) */
+            t = t == ty_ufixed ? ty_fixed : (e->a->cval > INT32_MAX ? ty_u32 : ty_s32);
+            e->a = coerce(c, e->a, t, "the shifted value");
+        }
         if (b->k == TY_UINT && t != ty_uint && t != ty_ufixed) {
             if (e->b->cval < 0 || e->b->cval > 31) error_at(e->b->loc, "shift count %lld is out of range (0..31)", (long long)e->b->cval);
             e->b = coerce(c, e->b, ty_s32, "shift count");

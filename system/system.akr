@@ -18,8 +18,9 @@
 //   16-25 last launched cart + 1 (0: none), so the cart list reopens on it
 //
 // Resources: texture slots 12-14, 4-bit palettes 192-254 and audio channels 6-7 (UI
-// sounds on 6, the cursor tick on 7); while the shell runs, channels 0-3 play the ambient
-// music (shell/music.akr). Assets come from tools/gen_shell_assets.py.
+// sounds on 6, the cursor tick on 7); while the shell runs, channels 0-5 and 8-15 play the
+// ambient music (shell/music.akr, with the hardware reverb). Assets come from
+// tools/gen_shell_assets.py; the music from tools/gen_shell_music.py.
 cart "Mei System"
 import "boot/themes.akr"
 import "shell/core.akr"
