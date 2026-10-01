@@ -236,7 +236,7 @@ fn draw_dust() {
         let d = &dust[i]
         if d.life > 0 {
             let t = fixed(d.life) / DUST_LIFE
-            let c = scale_col(rgb(90, 80, 70), t)
+            let c = scale_col(rgb(125, 110, 92), t)
             q_cols(c, c)
             let r = 0.16 + (1.0 - t) * 0.22
             billboard(d.pos, r, r)
