@@ -1,0 +1,945 @@
+// Guests: arrival, check-in at reception, a stay driven by needs and tastes, check-out and a
+// review. Families and honeymooners come as two: the companion follows the leader around.
+
+const GS_ARRIVE = 1          // walking to the reception desk
+const GS_QUEUE = 2           // waiting to be served at reception
+const GS_CHECKIN = 3
+const GS_IDLE = 4            // deciding what to do
+const GS_GOTO = 5            // walking to an object to use it
+const GS_USE = 6
+const GS_WAIT_FOOD = 7       // at a table or the phone, waiting for a waiter
+const GS_LEAVE = 8
+const GS_FOLLOW = 9          // a companion
+const GS_CHECKOUT = 10
+const GS_WAIT_SERVE = 11     // at a bar or spa, waiting for the staff member
+const GS_SWIM = 12
+
+// complaint and praise bits (each maps to a review quote)
+const CP_RECEPTION = 1
+const CP_NOROOM = 2
+const CP_PRICE = 4
+const CP_DIRTY = 8
+const CP_NOISE = 16
+const CP_HUNGRY = 32
+const CP_NOFOOD = 64
+const CP_NOFUN = 128
+const CP_SLOW = 256
+const CP_BROKEN = 512
+const CP_NOWIFI = 1024
+const CP_NOPOOL = 2048
+const CP_NOSPA = 4096
+const CP_NOSUITE = 8192
+const CP_LOST = 16384
+const CP_TIRED = 32768
+
+const PR_ROOM = 1
+const PR_FOOD = 2
+const PR_VIEW = 4
+const PR_POOL = 8
+const PR_BAR = 16
+const PR_SERVICE = 32
+const PR_SPA = 64
+const PR_WIFI = 128
+const PR_ROCK = 256
+
+var checkins_today: s32
+var guests_served: s32
+
+fn guest_count() -> s32 {
+    var n = 0
+    for i in 0..npeople { if people[i].used != 0 && people[i].kind as s32 == P_GUEST { n += 1 } }
+    return n
+}
+
+// The reception desk guests go to: any staffed one in a valid lobby, else any at all.
+fn find_reception() -> s32 {
+    var any = -1
+    for i in 0..nobjs {
+        let o = &objs[i]
+        if o.used == 0 || o.t as s32 != OB_RECEPTION_DESK { continue }
+        let r = o.room as s32
+        if r == 0 || rooms[r].rtype as s32 != RT_LOBBY { continue }
+        if desk_staffed(i) { return i }
+        any = i
+    }
+    return any
+}
+
+fn desk_staffed(oi: s32) -> bool {
+    let s = objs[oi].staff as s32
+    if s < 0 { return false }
+    return people[s].used != 0 && people[s].state as s32 == SS_AT_STATION && people[s].obj as s32 == oi
+}
+
+// The tile a person stands on to use object oi (spot k).
+fn spot_tile(oi: s32, k: s32) -> s32 {
+    let o = &objs[oi]
+    let t = o.t as s32
+    local_to_grid(t, o.x as s32, o.z as s32, o.rot as s32, OBJ_SPOT[(t * 5 + k) * 2] as s32, OBJ_SPOT[(t * 5 + k) * 2 + 1] as s32)
+    return tix(o.f as s32, lg_x, lg_z)
+}
+
+fn staff_tile(oi: s32) -> s32 {
+    let o = &objs[oi]
+    let t = o.t as s32
+    local_to_grid(t, o.x as s32, o.z as s32, o.rot as s32, OBJ_STAFF_X[t] as s32, OBJ_STAFF_Z[t] as s32)
+    return tix(o.f as s32, lg_x, lg_z)
+}
+
+fn spawn_guest() {
+    if find_reception() < 0 { return }
+    let gt = pick_guest_type()
+    let e = entrance_tile()
+    let i = person_new(P_GUEST, gt, 0, ptile_x(e) + rnd(3) - 1, ptile_z(e))
+    if i < 0 { return }
+    let p = &people[i]
+    p.state = GS_ARRIVE as u8
+    p.budget = (GT_BUDGET[gt] as s32 * (85 + rnd(40)) / 100) as s16
+    p.nights = (GT_NIGHTS[gt] as s32 + rnd(2)) as u8
+    p.speed = 0.055 + fixed(rnd(8)) / 1000
+    p.mood = 10
+    go_to(i, -1)
+    // families bring a kid, honeymooners come as a pair
+    if gt == GT_FAMILY || gt == GT_HONEYMOON {
+        let j = person_new(P_GUEST, gt, 0, ptile_x(e), ptile_z(e))
+        if j >= 0 {
+            let c = &people[j]
+            c.state = GS_FOLLOW as u8
+            c.party = i as s16
+            c.look = (p.look as s32 ^ 1) as u8
+            c.speed = p.speed
+            p.party = j as s16
+        }
+    }
+    arrivals_today += 1
+}
+
+fn guest_leave(i: s32) {
+    let p = &people[i]
+    release_obj(i)
+    p.state = GS_LEAVE as u8
+    p.act = 0
+    p.pose = POSE_STAND as u8
+    go_to(i, entrance_tile())
+}
+
+fn release_obj(i: s32) {
+    let p = &people[i]
+    if p.obj >= 0 {
+        let o = &objs[p.obj as s32]
+        if o.user as s32 == i { o.user = -1 }
+        p.obj = -1
+    }
+}
+
+// The first time a thing goes wrong (or right) counts fully, repeats only a little.
+fn complain(i: s32, bit: u32, m: s32) {
+    let p = &people[i]
+    if p.complaints & bit == 0 { p.mood -= m as s16 } else { p.mood -= (m / 6) as s16 }
+    p.complaints = p.complaints | bit
+}
+
+fn praise(i: s32, bit: u32, m: s32) {
+    let p = &people[i]
+    if p.praise & bit == 0 { p.mood += m as s16 } else { p.mood += (m / 6) as s16 }
+    p.praise = p.praise | bit
+}
+
+// ---- per tick
+
+fn guest_tick(i: s32) {
+    let p = &people[i]
+    match p.state as s32 {
+        1 => {   // arrive: head for reception
+            let d = find_reception()
+            if d < 0 { complain(i, CP_RECEPTION, 30); guest_leave(i); return }
+            if p.goal < 0 && p.arrived == 0 { go_to(i, spot_tile(d, 0)) }
+            if p.arrived != 0 {
+                p.state = GS_QUEUE as u8
+                p.timer = 0
+                p.obj = d as s16
+            }
+            if p.wait > 900 { complain(i, CP_LOST, 20); guest_leave(i) }
+        }
+        2 => {   // queue at the desk
+            p.timer += 1
+            let d = p.obj as s32
+            let o = &objs[d]
+            if desk_staffed(d) && o.user < 0 {
+                o.user = i as s16
+                p.state = GS_CHECKIN as u8
+                note_wait(p.timer as s32)
+                p.timer = 0
+                fx_at(FX_BELL, p.f as s32)
+            } else if p.timer > 1500 {
+                p.obj = -1
+                complain(i, CP_RECEPTION, 40)
+                guest_leave(i)
+            }
+        }
+        3 => {   // being checked in
+            p.timer += 1
+            if p.timer > 100 {
+                let d = p.obj as s32
+                objs[d].user = -1
+                p.obj = -1
+                let r = assign_room(i)
+                if r < 0 {
+                    complain(i, CP_NOROOM, 50)
+                    guest_leave(i)
+                    return
+                }
+                p.room = r as s16
+                p.timer = 0
+                checkins_today += 1
+                luggage_job(i)
+                p.state = GS_IDLE as u8
+                // first, go and see the room
+                go_room(i)
+            }
+        }
+        4 => guest_decide(i)
+        5 => {   // walking to an object
+            if p.arrived != 0 {
+                p.arrived = 0
+                start_use(i)
+            } else if p.wait > 600 {
+                release_obj(i)
+                complain(i, CP_LOST, 5)
+                p.state = GS_IDLE as u8
+            }
+        }
+        6 => {   // using
+            p.timer -= 1
+            if p.act as s32 == USE_SLEEP {
+                // sleep until morning; noise wakes light sleepers
+                let h = hour()
+                if h >= 7 && h < 21 { p.timer = 0 }
+                if tod % (MIN_FRAMES * 30) == 0 && p.room >= 0 && rooms[p.room as s32].noise > 5 && is_night_time() {
+                    if !security_near(p.room as s32) { complain(i, CP_NOISE, 12) }
+                }
+            }
+            if p.timer <= 0 { finish_use(i) }
+        }
+        7 => {   // waiting for food
+            p.timer += 1
+            if p.timer > 2400 {
+                cancel_order(i)
+                complain(i, CP_HUNGRY, 20)
+                release_obj(i)
+                p.state = GS_IDLE as u8
+            }
+        }
+        8 => {   // leaving
+            if p.arrived != 0 || p.wait > 1200 {
+                write_review(i)
+                let c = p.party as s32
+                if c >= 0 && people[c].used != 0 && people[c].party as s32 == i { person_free(c) }
+                person_free(i)
+            }
+        }
+        9 => companion_tick(i)
+        10 => {  // check-out at the desk
+            if p.arrived != 0 {
+                p.arrived = 0
+                pay_bill(i)
+                guest_leave(i)
+            } else if p.wait > 900 {
+                pay_bill(i)
+                guest_leave(i)
+            }
+        }
+        11 => {  // waiting for a bartender / therapist
+            p.timer += 1
+            let o = p.obj as s32
+            if o >= 0 && station_served(o) {
+                p.state = GS_USE as u8
+                p.timer = use_time(p.act as s32)
+                note_wait(p.timer as s32)
+            } else if p.timer > 1200 {
+                complain(i, CP_SLOW, 10)
+                release_obj(i)
+                p.state = GS_IDLE as u8
+            }
+        }
+        12 => {  // swimming
+            p.timer -= 1
+            if p.timer <= 0 {
+                place_at(i, p.sfrom as s32)
+                p.pose = POSE_STAND as u8
+                p.needs[N_FUN] = 255
+                praise(i, PR_POOL, 10)
+                p.state = GS_IDLE as u8
+            }
+        }
+        else => {}
+    }
+}
+
+fn companion_tick(i: s32) {
+    let p = &people[i]
+    let l = p.party as s32
+    if l < 0 || people[l].used == 0 {
+        person_free(i)
+        return
+    }
+    let lp = &people[l]
+    if lp.mode as s32 == M_RIDE {
+        // ride along: hide with the leader
+        if p.mode as s32 != M_RIDE { p.mode = M_RIDE as u8 }
+        return
+    }
+    if p.mode as s32 == M_RIDE {
+        place_at(i, lp.tile as s32)
+        p.mode = M_WALK as u8
+    }
+    if lp.mode as s32 == M_STAIRS {
+        p.mode = M_STAIRS as u8
+        p.sfrom = lp.sfrom
+        p.sto = lp.sto
+        p.timer = max(lp.timer as s32 - 20, 0) as s16
+        return
+    }
+    p.pose = lp.pose
+    if lp.state as s32 == GS_SWIM { p.pose = POSE_STAND as u8 }
+    if p.mode as s32 == M_STAIRS { return }
+    // walk to the tile next to the leader
+    let lt = lp.tile as s32
+    if p.goal as s32 != lt && p.tile as s32 != lt {
+        if p.f != lp.f || abs(p.x - lp.x) + abs(p.z - lp.z) > 1.2 { go_to(i, lt) }
+    }
+    if p.f != lp.f && p.mode as s32 == M_WALK && p.wait > 60 { place_at(i, lt) }
+}
+
+// ---- rooms
+
+fn assign_room(i: s32) -> s32 {
+    let p = &people[i]
+    let gt = p.type as s32
+    var best = -1
+    var bscore = -999
+    for r in 1..nrooms {
+        let rm = &rooms[r]
+        if rm.used == 0 || rm.flags & RF_VALID == 0 || rm.occupant >= 0 { continue }
+        let t = rm.rtype as s32
+        if t != RT_GUEST && t != RT_SUITE { continue }
+        if rm.state as s32 == RS_DIRTY { continue }
+        var price = price_room
+        if t == RT_SUITE { price = price_suite }
+        var sc = rm.quality as s32 + rm.view as s32
+        if t == RT_SUITE {
+            if gt == GT_HONEYMOON || gt == GT_ROCKSTAR { sc += 100 } else { sc -= 60 }
+        }
+        if gt == GT_ROCKSTAR && rm.flags & RF_PENTHOUSE != 0 { sc += 100 }
+        if price > p.budget as s32 * 3 / 2 { sc -= 200 }
+        if sc > bscore {
+            bscore = sc
+            best = r
+        }
+    }
+    if best < 0 {
+        // a dirty room is better than none: take it and complain
+        for r in 1..nrooms {
+            let rm = &rooms[r]
+            if rm.used == 0 || rm.flags & RF_VALID == 0 || rm.occupant >= 0 { continue }
+            let t = rm.rtype as s32
+            if t == RT_GUEST || t == RT_SUITE {
+                best = r
+                complain(i, CP_DIRTY, 15)
+                break
+            }
+        }
+    }
+    if best < 0 { return -1 }
+    let rm = &rooms[best]
+    var price = price_room
+    if rm.rtype as s32 == RT_SUITE { price = price_suite }
+    if price > p.budget as s32 * 3 / 2 {
+        complain(i, CP_PRICE, 30)
+        return -1
+    }
+    if price > p.budget as s32 { complain(i, CP_PRICE, 10) }
+    if (gt == GT_HONEYMOON || gt == GT_ROCKSTAR) && rm.rtype as s32 != RT_SUITE { complain(i, CP_NOSUITE, 20) }
+    if gt == GT_ROCKSTAR && rm.flags & RF_PENTHOUSE == 0 { complain(i, CP_NOSUITE, 10) }
+    if rm.state as s32 == RS_DIRTY { complain(i, CP_DIRTY, 10) }
+    rm.occupant = i as s16
+    rm.state = RS_OCCUPIED as u8
+    if rm.quality > 60 { praise(i, PR_ROOM, 8) }
+    if rm.view >= 20 { praise(i, PR_VIEW, 10) }
+    // checkout after the planned nights
+    p.timer = 0
+    p.shift = ((day + p.nights as s32) & 255) as u8
+    return best
+}
+
+// The guest's bed spot (their room's first bed).
+fn room_obj(r: s32, use: s32) -> s32 {
+    var any = -1
+    for i in 0..nobjs {
+        let o = &objs[i]
+        if o.used == 0 || o.room as s32 != r || OBJ_USE[o.t as s32] as s32 != use { continue }
+        if o.state & OS_BROKEN != 0 { any = i; continue }
+        return i
+    }
+    return any
+}
+
+fn go_room(i: s32) {
+    let p = &people[i]
+    if p.room < 0 { return }
+    let b = room_obj(p.room as s32, USE_SLEEP)
+    if b < 0 { return }
+    p.state = GS_GOTO as u8
+    p.act = USE_NONE as u8
+    p.obj = -1
+    go_to(i, spot_tile(b, 0))
+}
+
+fn checkout_due(p: *Person) -> bool {
+    return (day & 255) == p.shift as s32 && hour() >= 10
+}
+
+// ---- deciding
+
+fn guest_decide(i: s32) {
+    let p = &people[i]
+    if p.room < 0 { guest_leave(i); return }
+    if checkout_due(p) || (day & 255) == ((p.shift as s32 + 1) & 255) {
+        start_checkout(i)
+        return
+    }
+    let h = hour()
+    // bedtime
+    if (h >= 22 || h < 6) && p.needs[N_SLEEP] < 200 {
+        if try_use(i, USE_SLEEP, true) { return }
+    }
+    // evenings at the bar (grown-ups, when they aren't starving or exhausted)
+    if h >= 19 && h < 23 && p.type as s32 != GT_FAMILY && p.needs[N_HUNGER] > 80 && p.needs[N_SLEEP] > 80 && p.needs[N_FUN] < 230 && rnd(2) == 0 {
+        if try_use(i, USE_DRINK, false) { return }
+    }
+    // the lowest need
+    var need = -1
+    var low = 150
+    for k in 0..4 {
+        if (p.needs[k] as s32) < low {
+            low = p.needs[k] as s32
+            need = k
+        }
+    }
+    if need == N_SLEEP && h >= 8 && h < 20 && low > 60 { need = N_FUN }
+    if need == N_SLEEP { if try_use(i, USE_SLEEP, true) { return } }
+    if need == N_HUNGER { if want_food(i) { return } }
+    if need == N_HYGIENE {
+        if try_use(i, USE_SHOWER, true) || try_use(i, USE_BATH, true) || try_use(i, USE_WASH, true) || try_use(i, USE_TOILET, true) { return }
+        complain(i, CP_BROKEN, 5)
+    }
+    if need == N_FUN || need < 0 {
+        if want_fun(i) { return }
+    }
+    // nothing pressing: hang about in the room, the lobby or outside
+    p.timer = (300 + rnd(600)) as s16
+    if rnd(3) == 0 {
+        if try_use(i, USE_SIT, false) { return }
+    }
+    go_room(i)
+    p.act = USE_NONE as u8
+}
+
+fn want_food(i: s32) -> bool {
+    let p = &people[i]
+    let starving = p.needs[N_HUNGER] < 50
+    // breakfast and dinner at the restaurant, otherwise room service, the bar, a snack
+    if kitchen_open() {
+        if try_use(i, USE_EAT, false) { return true }
+        if try_use(i, USE_PHONE, true) { return true }
+    }
+    if try_use(i, USE_MINIBAR, true) { return true }
+    if try_use(i, USE_DRINK, false) { return true }
+    if try_use(i, USE_SNACK, false) { return true }
+    // nothing open: wait for the morning, grumbling if it gets bad
+    if starving { complain(i, CP_NOFOOD, 12) }
+    p.needs[N_HUNGER] = max(p.needs[N_HUNGER] as s32, 110) as u8
+    return false
+}
+
+fn want_fun(i: s32) -> bool {
+    let p = &people[i]
+    let gt = p.type as s32
+    let h = hour()
+    match gt {
+        0 => {   // business: work online, the gym, a drink in the evening
+            if rnd(2) == 0 {
+                if try_use(i, USE_MODEM, true) { return true }
+                complain(i, CP_NOWIFI, 10)
+            }
+            if try_use(i, USE_MEET, false) { return true }
+            if h >= 18 && try_use(i, USE_DRINK, false) { return true }
+            if try_use(i, USE_GYM, false) { return true }
+        }
+        1 => {   // family: the pool, games, TV
+            if h >= 9 && h < 19 {
+                if try_swim(i) { return true }
+                if try_use(i, USE_LOUNGE, false) { return true }
+                complain(i, CP_NOPOOL, 12)
+            }
+            if try_use(i, USE_PLAY, false) { return true }
+        }
+        2 => {   // honeymooners: the spa, the pool, the bar
+            if try_use(i, USE_MASSAGE, false) || try_use(i, USE_HOTTUB, false) || try_use(i, USE_SAUNA, false) { return true }
+            if rnd(2) == 0 { complain(i, CP_NOSPA, 8) }
+            if h >= 9 && h < 19 && try_use(i, USE_LOUNGE, false) { return true }
+            if h >= 19 && try_use(i, USE_DRINK, false) { return true }
+        }
+        else => {  // rock star: the bar, music, and the minibar
+            if try_use(i, USE_DRINK, false) { return true }
+            if try_use(i, USE_MUSIC, false) { return true }
+            if try_use(i, USE_MINIBAR, true) { return true }
+        }
+    }
+    if try_use(i, USE_TV, true) { return true }
+    if try_use(i, USE_MUSIC, false) { return true }
+    if try_use(i, USE_LOUNGE, false) { return true }
+    complain(i, CP_NOFUN, 6)
+    p.needs[N_FUN] = 160
+    return false
+}
+
+// Rooms where each kind of use is found (guests don't eat in the kitchen).
+fn use_room_ok(use: s32, rt: s32) -> bool {
+    match use {
+        6 => return rt == RT_RESTAURANT || rt == RT_OUTDOOR || rt == RT_POOL || rt == RT_BAR
+        7 => return rt == RT_BAR || rt == RT_POOL || rt == RT_OUTDOOR || rt == RT_LOBBY
+        12, 13 => return rt == RT_SPA
+        33 => return rt == RT_SPA || rt == RT_POOL || rt == RT_OUTDOOR || rt == RT_SUITE
+        14 => return rt == RT_GYM
+        15 => return rt == RT_CONFERENCE
+        11 => return rt == RT_POOL || rt == RT_OUTDOOR
+        else => return rt != RT_KITCHEN && rt != RT_LAUNDRY && rt != RT_STORAGE && rt != RT_STAFF && rt != RT_SERVICE
+    }
+}
+
+// Finds the nearest free object for a use and walks there. own: only in the guest's room.
+fn try_use(i: s32, use: s32, own: bool) -> bool {
+    let p = &people[i]
+    var best = -1
+    var bd = 0x7FFFFFFF
+    let px = p.x as s32
+    let pz = p.z as s32
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 || o.user >= 0 { continue }
+        let t = o.t as s32
+        if OBJ_USE[t] as s32 != use { continue }
+        if o.state & OS_BROKEN != 0 { continue }
+        let r = o.room as s32
+        if own {
+            if r != p.room as s32 { continue }
+        } else {
+            let rt = rooms[r].rtype as s32
+            if r == 0 || rooms[r].flags & RF_VALID == 0 { continue }
+            if rt == RT_GUEST || rt == RT_SUITE { continue }
+            if !use_room_ok(use, rt) { continue }
+        }
+        let d = abs(o.x as s32 - px) + abs(o.z as s32 - pz) + abs(o.f as s32 - p.f as s32) * 24
+        if d < bd {
+            bd = d
+            best = k
+        }
+    }
+    if best < 0 {
+        // only a broken one around?
+        return false
+    }
+    let o = &objs[best]
+    o.user = i as s16
+    p.obj = best as s16
+    p.act = use as u8
+    p.state = GS_GOTO as u8
+    go_to(i, spot_tile(best, rnd(max(OBJ_NSPOT[o.t as s32] as s32, 1))))
+    return true
+}
+
+fn try_swim(i: s32) -> bool {
+    let p = &people[i]
+    // a deck tile next to pool water, in a valid pool
+    for r in 1..nrooms {
+        let rm = &rooms[r]
+        if rm.used == 0 || rm.rtype as s32 != RT_POOL { continue }
+        let f = rm.floor as s32
+        var tries = 0
+        while tries < 12 {
+            tries += 1
+            let x = rm.x0 as s32 + rnd(rm.x1 as s32 - rm.x0 as s32 + 1)
+            let z = rm.z0 as s32 + rnd(rm.z1 as s32 - rm.z0 as s32 + 1)
+            if tflag[tix(f, x, z)] & TF_WATER == 0 { continue }
+            // a walkable neighbour
+            for d in 0..4 {
+                var nx = x
+                var nz = z
+                if d == 0 { nx = x + 1 }
+                if d == 1 { nx = x - 1 }
+                if d == 2 { nz = z + 1 }
+                if d == 3 { nz = z - 1 }
+                if walkable(f, nx, nz) && room_at(f, nx, nz) == r {
+                    p.act = 200
+                    p.obj = -1
+                    p.sto = tix(f, x, z) as s16
+                    p.state = GS_GOTO as u8
+                    go_to(i, tix(f, nx, nz))
+                    return true
+                }
+            }
+        }
+    }
+    return false
+}
+
+fn kitchen_open() -> bool {
+    // a cook at a stove and a waiter on shift
+    var cook = false
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used != 0 && o.t as s32 == OB_STOVE && station_served(k) { cook = true }
+    }
+    return cook && waiters_on_duty() > 0
+}
+
+fn use_time(use: s32) -> s16 {
+    let m = MIN_FRAMES
+    match use {
+        1 => return (m * 600) as s16
+        2 => return (m * 5) as s16
+        3 => return (m * 3) as s16
+        4 => return (m * 15) as s16
+        5 => return (m * 30) as s16
+        6 => return (m * 35) as s16
+        7 => return (m * 25) as s16
+        8 => return (m * 60) as s16
+        9 => return (m * 80) as s16
+        10 => return (m * 45) as s16
+        11 => return (m * 90) as s16
+        12 => return (m * 50) as s16
+        13 => return (m * 25) as s16
+        14 => return (m * 40) as s16
+        15 => return (m * 120) as s16
+        16 => return (m * 30) as s16
+        17 => return (m * 2) as s16
+        18 => return (m * 5) as s16
+        30 => return (m * 30) as s16
+        32 => return (m * 4) as s16
+        33 => return (m * 35) as s16
+        34 => return (m * 30) as s16
+        else => return (m * 10) as s16
+    }
+}
+
+fn start_use(i: s32) {
+    let p = &people[i]
+    let use = p.act as s32
+    if use == 200 {
+        // jump into the pool
+        p.sfrom = p.tile
+        place_at(i, p.sto as s32)
+        p.pose = POSE_SWIM as u8
+        p.state = GS_SWIM as u8
+        p.timer = (MIN_FRAMES * 40) as s16
+        fx_at(FX_SPLASH, p.f as s32)
+        return
+    }
+    if use == USE_NONE {
+        // arrived at the room: look around a while
+        p.state = GS_USE as u8
+        p.act = USE_NONE as u8
+        p.timer = (MIN_FRAMES * 20) as s16
+        if p.room >= 0 && rooms[p.room as s32].state as s32 == RS_DIRTY { complain(i, CP_DIRTY, 3) }
+        return
+    }
+    let oi = p.obj as s32
+    if oi < 0 || objs[oi].used == 0 || objs[oi].state & OS_BROKEN != 0 {
+        if oi >= 0 { complain(i, CP_BROKEN, 10) }
+        release_obj(i)
+        p.state = GS_IDLE as u8
+        return
+    }
+    // face the object
+    face_obj(i, oi)
+    p.pose = POSE_USE as u8
+    if use == USE_SLEEP || use == USE_LOUNGE || use == USE_MASSAGE { p.pose = POSE_LIE as u8 }
+    if use == USE_SIT || use == USE_EAT || use == USE_DRINK || use == USE_WORK || use == USE_MODEM || use == USE_TV ||
+       use == USE_MEET || use == USE_PHONE { p.pose = POSE_SIT as u8 }
+    if use == USE_HOTTUB || use == USE_SAUNA { p.pose = POSE_SWIM as u8 }
+    p.timer = use_time(use)
+    if use == USE_SLEEP && p.room >= 0 {
+        let h = hour()
+        if h >= 20 || h < 6 {
+            // until 7:00
+            var mins = 7 * 60 - minute()
+            if mins < 0 { mins += DAY_MIN }
+            p.timer = min(mins * MIN_FRAMES, 32000) as s16
+        }
+        // a stripped bed?
+        if objs[oi].state & OS_DIRTY != 0 { complain(i, CP_DIRTY, 10) }
+    }
+    if use == USE_EAT {
+        p.state = GS_WAIT_FOOD as u8
+        p.timer = 0
+        place_order(i, oi)
+        return
+    }
+    if use == USE_PHONE {
+        fx_at(FX_PHONE, p.f as s32)
+        p.state = GS_WAIT_FOOD as u8
+        p.timer = 0
+        place_order(i, oi)
+        return
+    }
+    if use == USE_DRINK || use == USE_MASSAGE {
+        p.state = GS_WAIT_SERVE as u8
+        p.timer = 0
+        return
+    }
+    if use == USE_MODEM { fx_at(FX_MODEM, p.f as s32) }
+    p.state = GS_USE as u8
+}
+
+fn face_obj(i: s32, oi: s32) {
+    let p = &people[i]
+    let c = obj_centre(oi)
+    let dx = c.x - p.x
+    let dz = c.z - p.z
+    if abs(dx) > abs(dz) {
+        if dx > 0.0 { p.dir = 0 } else { p.dir = 2 }
+    } else {
+        if dz > 0.0 { p.dir = 1 } else { p.dir = 3 }
+    }
+}
+
+// Is someone serving at a station object (bar counter, massage bed, stove...)?
+fn station_served(oi: s32) -> bool {
+    let o = &objs[oi]
+    if obj_flag(o.t as s32, F_STATION) { return desk_staffed(oi) }
+    // bar stools: any staffed counter in the same room
+    let r = o.room as s32
+    for k in 0..nobjs {
+        let c = &objs[k]
+        if c.used != 0 && c.room as s32 == r && c.t as s32 == OB_BAR_COUNTER && desk_staffed(k) { return true }
+    }
+    return false
+}
+
+fn finish_use(i: s32) {
+    let p = &people[i]
+    let use = p.act as s32
+    let oi = p.obj as s32
+    let gt = p.type as s32
+    match use {
+        1 => { p.needs[N_SLEEP] = 255; p.needs[N_HYGIENE] = sat_sub(p.needs[N_HYGIENE], 40) }
+        2 => p.needs[N_HYGIENE] = sat_add(p.needs[N_HYGIENE], 50)
+        3 => p.needs[N_HYGIENE] = sat_add(p.needs[N_HYGIENE], 40)
+        4, 5 => p.needs[N_HYGIENE] = 255
+        6 => {
+            p.needs[N_HUNGER] = 255
+            praise(i, PR_FOOD, 6)
+        }
+        7 => {
+            p.needs[N_FUN] = sat_add(p.needs[N_FUN], 110)
+            p.needs[N_HUNGER] = sat_add(p.needs[N_HUNGER], 40)
+            earn_from(i, LG_BAR, 9)
+            if gt == GT_ROCKSTAR { praise(i, PR_ROCK, 15) } else { praise(i, PR_BAR, 6) }
+        }
+        8, 16, 30, 34 => p.needs[N_FUN] = sat_add(p.needs[N_FUN], 100)
+        9 => p.needs[N_FUN] = sat_add(p.needs[N_FUN], 70)
+        10 => {
+            p.needs[N_FUN] = sat_add(p.needs[N_FUN], 120)
+            if gt == GT_BUSINESS { praise(i, PR_WIFI, 10) }
+        }
+        11 => {
+            p.needs[N_FUN] = sat_add(p.needs[N_FUN], 140)
+            praise(i, PR_POOL, 5)
+        }
+        12 => {
+            p.needs[N_FUN] = 255
+            p.needs[N_HYGIENE] = sat_add(p.needs[N_HYGIENE], 50)
+            earn_from(i, LG_SPA, 85)
+            praise(i, PR_SPA, 15)
+        }
+        13, 33 => {
+            p.needs[N_FUN] = sat_add(p.needs[N_FUN], 150)
+            earn_from(i, LG_SPA, 20)
+            praise(i, PR_SPA, 6)
+        }
+        14 => {
+            p.needs[N_FUN] = sat_add(p.needs[N_FUN], 100)
+            p.needs[N_HYGIENE] = sat_sub(p.needs[N_HYGIENE], 60)
+        }
+        15 => {
+            p.needs[N_FUN] = sat_add(p.needs[N_FUN], 90)
+            earn_from(i, LG_OTHER, 60)
+        }
+        17 => {
+            p.needs[N_HUNGER] = sat_add(p.needs[N_HUNGER], 80)
+            earn_from(i, LG_FOOD, 2)
+        }
+        18 => {
+            p.needs[N_HUNGER] = sat_add(p.needs[N_HUNGER], 30)
+            p.needs[N_SLEEP] = sat_add(p.needs[N_SLEEP], 40)
+        }
+        32 => {
+            p.needs[N_HUNGER] = sat_add(p.needs[N_HUNGER], 60)
+            earn_from(i, LG_FOOD, 8)
+            // rock stars trash the minibar
+            if gt == GT_ROCKSTAR && oi >= 0 && rnd(3) == 0 { break_obj(oi) }
+        }
+        else => {}
+    }
+    if oi >= 0 { wear_obj(oi, i) }
+    if use == USE_TV && gt == GT_ROCKSTAR && oi >= 0 && rnd(4) == 0 && !security_near(p.room as s32) {
+        break_obj(oi)
+        praise(i, PR_ROCK, 10)
+    }
+    release_obj(i)
+    p.pose = POSE_STAND as u8
+    p.state = GS_IDLE as u8
+    p.act = 0
+}
+
+fn sat_add(v: u8, k: s32) -> u8 { return min(v as s32 + k, 255) as u8 }
+fn sat_sub(v: u8, k: s32) -> u8 { return max(v as s32 - k, 0) as u8 }
+
+fn earn_from(i: s32, cat: s32, v: s32) {
+    let p = &people[i]
+    earn(cat, v)
+    p.spent += v as s16
+}
+
+// Wear: things break now and then; badly kept ones sooner.
+fn wear_obj(oi: s32, i: s32) {
+    let o = &objs[oi]
+    let w = o.wear as s32 + 4 + rnd(8)
+    if w >= 255 {
+        o.wear = 255
+        break_obj(oi)
+    } else {
+        o.wear = w as u8
+    }
+}
+
+fn break_obj(oi: s32) {
+    let o = &objs[oi]
+    if o.state & OS_BROKEN != 0 { return }
+    o.state = o.state | OS_BROKEN
+    fx_at(FX_BREAK, o.f as s32)
+    repair_job(oi)
+}
+
+fn start_checkout(i: s32) {
+    let p = &people[i]
+    release_obj(i)
+    let d = find_reception()
+    p.state = GS_CHECKOUT as u8
+    p.act = 0
+    p.pose = POSE_STAND as u8
+    if d < 0 {
+        pay_bill(i)
+        guest_leave(i)
+        return
+    }
+    go_to(i, spot_tile(d, 0))
+}
+
+fn pay_bill(i: s32) {
+    let p = &people[i]
+    if p.room < 0 { return }
+    let rm = &rooms[p.room as s32]
+    var price = price_room
+    if rm.rtype as s32 == RT_SUITE { price = price_suite }
+    let nights = max(p.nights as s32, 1)
+    earn_from(i, LG_ROOMS, price * nights)
+    fx_at(FX_CASH, p.f as s32)
+    // value for money
+    if price > p.budget as s32 { p.mood -= ((price - p.budget as s32) / 4) as s16 }
+    rm.occupant = -1
+    rm.state = RS_DIRTY as u8
+    // the beds need fresh linen
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used != 0 && o.room as s32 == p.room as s32 && OBJ_USE[o.t as s32] as s32 == USE_SLEEP { o.state = o.state | OS_DIRTY }
+    }
+    clean_job(p.room as s32)
+    p.room = -1
+    guests_served += 1
+}
+
+// ---- reviews
+
+fn write_review(i: s32) {
+    let p = &people[i]
+    if p.state as s32 == GS_FOLLOW { return }
+    if p.spent == 0 && p.complaints & CP_RECEPTION == 0 { return }
+    var s10 = 30 + p.mood as s32 / 3
+    // needs left unmet sour the stay
+    for k in 0..4 { if p.needs[k] < 60 { s10 -= 4 } }
+    let st = clamp((s10 + 5) / 10, 1, 5)
+    if TEST != 0 {
+        print("review: mood ")
+        print_int(p.mood as s32)
+        print(" cp ")
+        print_hex(p.complaints)
+        print(" pr ")
+        print_hex(p.praise)
+        print(" needs")
+        for k in 0..4 { print(" "); print_int(p.needs[k] as s32) }
+        print(" -> ")
+        print_int(st)
+        println("")
+    }
+    var q = RV_OK
+    let c = p.complaints
+    let pr = p.praise
+    if c & CP_RECEPTION != 0 { q = RV_NO_RECEPTION }
+    else if c & CP_NOROOM != 0 { q = RV_NO_ROOM }
+    else if c & CP_DIRTY != 0 { q = RV_DIRTY }
+    else if c & CP_NOISE != 0 { q = RV_NOISY }
+    else if c & CP_BROKEN != 0 { q = RV_BROKEN }
+    else if c & CP_HUNGRY != 0 { q = RV_HUNGRY }
+    else if c & CP_NOFOOD != 0 { q = RV_NO_FOOD }
+    else if c & CP_PRICE != 0 { q = RV_TOO_PRICEY }
+    else if c & CP_NOSUITE != 0 { q = RV_NO_SUITE }
+    else if c & CP_NOWIFI != 0 { q = RV_NO_WIFI }
+    else if c & CP_NOPOOL != 0 { q = RV_NO_POOL }
+    else if c & CP_NOSPA != 0 { q = RV_NO_SPA }
+    else if c & CP_SLOW != 0 { q = RV_SLOW }
+    else if c & CP_LOST != 0 { q = RV_LOST }
+    else if c & CP_NOFUN != 0 { q = RV_NO_FUN }
+    if st >= 4 || q == RV_OK {
+        if pr & PR_ROCK != 0 { q = RV_ROCK_TRASH }
+        else if pr & PR_VIEW != 0 { q = RV_GREAT_VIEW }
+        else if pr & PR_SPA != 0 { q = RV_GREAT_SPA }
+        else if pr & PR_FOOD != 0 { q = RV_GREAT_FOOD }
+        else if pr & PR_POOL != 0 { q = RV_GREAT_POOL }
+        else if pr & PR_SERVICE != 0 { q = RV_GREAT_SERVICE }
+        else if pr & PR_WIFI != 0 { q = RV_GREAT_WIFI }
+        else if pr & PR_BAR != 0 { q = RV_GREAT_BAR }
+        else if pr & PR_ROOM != 0 { q = RV_GREAT_ROOM }
+    }
+    add_review(p.type as s32, st, q)
+}
+
+// ---- needs
+
+fn guest_minute(i: s32) {
+    let p = &people[i]
+    let h = hour()
+    // tired slowly by day, faster late at night
+    var every = 4
+    if h >= 21 || h < 6 { every = 2 }
+    if p.act as s32 != USE_SLEEP && (tod / MIN_FRAMES + i) % every == 0 { p.needs[N_SLEEP] = sat_sub(p.needs[N_SLEEP], 1) }
+    if rnd(3) != 0 && p.act as s32 != USE_SLEEP { p.needs[N_HUNGER] = sat_sub(p.needs[N_HUNGER], 1) }
+    if rnd(3) == 0 { p.needs[N_HYGIENE] = sat_sub(p.needs[N_HYGIENE], 1) }
+    if p.act as s32 != USE_SLEEP { p.needs[N_FUN] = sat_sub(p.needs[N_FUN], 1) }
+    // grand spaces lift the mood: standing under an atrium
+    if p.f as s32 + 1 < NFL && p.state as s32 != GS_LEAVE {
+        let t = p.tile as s32 + NT
+        if t < NTT && tflag[t] & TF_VOID != 0 && p.praise & PR_VIEW == 0 { praise(i, PR_VIEW, 6) }
+    }
+}

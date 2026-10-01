@@ -1,0 +1,448 @@
+// The simulation: the clock, game speed, money and the daily ledger, the star rating with its
+// tier requirements, reviews, the architecture score, noise, and guest arrivals.
+
+const MIN_FRAMES = 16            // frames per game minute at x1
+const DAY_MIN = 1440
+
+var day: s32 = 1
+var tod: s32 = 480 * 16          // frames since midnight (starts 8:00)
+var speed: s32 = 1               // 0 paused, 1, 2, 4
+var loan: s32 = 50000
+var reputation: s32 = 50         // 0..100
+var arch_score: s32
+var score: s32                   // overall 0..100 for the stars
+var score_parts: [6]s32          // rooms, facilities, service, clean, architecture, reviews
+var star_flash: s32
+
+// room prices per night
+var price_room: s32 = 79
+var price_suite: s32 = 249
+
+// ledger: today and yesterday, by category
+const LG_ROOMS = 0
+const LG_FOOD = 1
+const LG_BAR = 2
+const LG_SPA = 3
+const LG_OTHER = 4
+const LG_WAGES = 5
+const LG_UPKEEP = 6
+const LG_SUPPLIES = 7
+const LG_BUILD = 8
+const LG_LOAN = 9
+const NLG = 10
+var ledger: [10]s32
+var ledger_y: [10]s32
+var day_report_t: s32
+
+fn minute() -> s32 { return tod / MIN_FRAMES }
+fn hour() -> s32 { return minute() / 60 }
+fn is_night_time() -> bool {
+    let h = hour()
+    return h >= 22 || h < 7
+}
+
+fn earn(cat: s32, v: s32) {
+    money += v
+    ledger[cat] += v
+}
+
+fn spend(cat: s32, v: s32) {
+    money -= v
+    ledger[cat] -= v
+}
+
+// "Tue 14:30"
+fn fmt_clock() -> *u8 {
+    let b = nb()
+    let m = minute()
+    let h = m / 60
+    let mi = m % 60
+    sappend(b, "Day ")
+    sint(b, day)
+    sappend(b, "  ")
+    if h < 10 { sappend(b, "0") }
+    sint(b, h)
+    sappend(b, ":")
+    let t = (mi / 10) * 10
+    if t < 10 { sappend(b, "0") }
+    sint(b, t)
+    return b
+}
+
+// One simulation tick (called `speed` times per frame).
+fn sim_tick() {
+    tod += 1
+    if tod >= DAY_MIN * MIN_FRAMES {
+        tod = 0
+        new_day()
+    }
+    if tod % MIN_FRAMES == 0 { sim_minute() }
+    people_tick()
+    elevs_update()
+    jobs_tick()
+}
+
+fn sim_minute() {
+    let m = minute()
+    if m % 60 == 0 { sim_hour(m / 60) }
+    spawn_guests_minute()
+    shifts_minute()
+}
+
+fn sim_hour(h: s32) {
+    if h == 6 { rate_hotel() }
+    if h == 7 { order_deliveries() }
+}
+
+fn new_day() {
+    // close the books: wages, upkeep, loan interest
+    var wages = 0
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used != 0 && p.kind as s32 == P_STAFF { wages += ROLE_WAGE[p.type as s32] as s32 }
+    }
+    spend(LG_WAGES, wages)
+    var upkeep = 0
+    for i in 0..nobjs { if objs[i].used != 0 { upkeep += 2 } }
+    for r in 1..nrooms { if rooms[r].used != 0 { upkeep += rooms[r].ntiles as s32 / 4 } }
+    spend(LG_UPKEEP, upkeep)
+    spend(LG_LOAN, loan * 6 / 36500)            // 6% a year
+    for k in 0..NLG {
+        ledger_y[k] = ledger[k]
+        ledger[k] = 0
+    }
+    day += 1
+    day_report_t = 400
+}
+
+// ---- noise: what a room hears from its neighbours (walls, and the rooms above and below)
+
+fn room_noise_src(r: s32, night: bool) -> s32 {
+    let rm = &rooms[r]
+    var n = RT_NOISE[rm.rtype as s32] as s32
+    if rm.rtype as s32 == RT_BAR && night { n += 4 }
+    for t in 0..NOBJT {
+        if rcount[r][t] > 0 && OBJ_NOISE[t] >= 4 {
+            n += 1
+            if night && obj_flag(t, F_NOISY_NIGHT) { n += 3 }
+        }
+    }
+    return n
+}
+
+var noise_src: [200]s16
+
+fn compute_noise() {
+    for r in 1..nrooms {
+        noise_src[r] = 0
+        if rooms[r].used != 0 { noise_src[r] = room_noise_src(r, true) as s16 }
+        rooms[r].noise = 0
+    }
+    // each wall edge and each vertical neighbour passes the louder room's noise on, damped
+    for f in 0..NFL {
+        for z in 0..GH {
+            for x in 0..GW {
+                let a = troom[tix(f, x, z)] as s32
+                if a == 0 { continue }
+                if x + 1 < GW { noise_pair(a, troom[tix(f, x + 1, z)] as s32) }
+                if z + 1 < GH { noise_pair(a, troom[tix(f, x, z + 1)] as s32) }
+                if f + 1 < NFL { noise_pair(a, troom[tix(f + 1, x, z)] as s32) }
+            }
+        }
+    }
+}
+
+fn noise_pair(a: s32, b: s32) {
+    if b == 0 || a == b { return }
+    let na = noise_src[a] as s32
+    let nb = noise_src[b] as s32
+    rooms[b].noise = max(rooms[b].noise as s32, na) as s16
+    rooms[a].noise = max(rooms[a].noise as s32, nb) as s16
+}
+
+// ---- architecture: voids, atriums, the elements that span floors
+
+var atrium_tiles: s32
+var atrium_height: s32
+
+fn compute_architecture() {
+    var total = 0
+    atrium_tiles = 0
+    atrium_height = 0
+    // each void tile scores by the height of the column it opens, if its bottom is a grand room
+    for z in 0..GH {
+        for x in 0..GW {
+            var f = NFL - 1
+            while f >= 1 {
+                let t = tix(f, x, z)
+                if tflag[t] & TF_VOID != 0 {
+                    // walk down to the bottom of this column
+                    var g = f
+                    while g >= 1 && tflag[tix(g, x, z)] & TF_VOID != 0 { g -= 1 }
+                    let h = f - g + 1                      // floors of open space
+                    let br = troom[tix(g, x, z)] as s32
+                    let bt = rooms[br].rtype as s32
+                    if br != 0 && (bt == RT_LOBBY || bt == RT_RESTAURANT || bt == RT_POOL || bt == RT_BAR || bt == RT_SPA) {
+                        total += 2 * h * h
+                        atrium_tiles += 1
+                        atrium_height = max(atrium_height, h)
+                    }
+                    f = g - 1
+                    continue
+                }
+                f -= 1
+            }
+        }
+    }
+    // features: skylights over voids, chandeliers in them, trees and fountains under them,
+    // glass elevators and grand staircases anywhere
+    for i in 0..nobjs {
+        let o = &objs[i]
+        if o.used == 0 { continue }
+        let t = o.t as s32
+        if t == OB_SKYLIGHT { total += 40 }
+        if t == OB_CHANDELIER { total += 25 }
+        if t == OB_INDOOR_TREE || t == OB_FOUNTAIN {
+            if o.f as s32 + 1 < NFL && tflag[tix(o.f as s32 + 1, o.x as s32, o.z as s32)] & TF_VOID != 0 { total += 25 } else { total += 6 }
+        }
+        if t == OB_GLASS_ELEVATOR { total += 30 }
+        if t == OB_GRAND_STAIRCASE { total += 35 }
+    }
+    arch_score = clamp(total / 6, 0, 100)
+    // rooms with a view of an atrium (a tile next to a void on the same floor), or of the sea
+    for r in 1..nrooms {
+        let rm = &rooms[r]
+        if rm.used == 0 { continue }
+        rm.view = 0
+        let f = rm.floor as s32
+        for z in rm.z0 as s32..rm.z1 as s32 + 1 {
+            for x in rm.x0 as s32..rm.x1 as s32 + 1 {
+                if room_at(f, x, z) != r { continue }
+                if void_at(f, x + 1, z) || void_at(f, x - 1, z) || void_at(f, x, z + 1) || void_at(f, x, z - 1) { rm.view = 20 }
+            }
+        }
+        // sea view: a window on the beach side
+        if rm.view < 10 && f > 0 && rm.windows > 0 && rm.z1 as s32 >= 12 { rm.view = 10 }
+    }
+}
+
+fn void_at(f: s32, x: s32, z: s32) -> bool {
+    if !in_lot(x, z) { return false }
+    return tflag[tix(f, x, z)] & TF_VOID != 0
+}
+
+// ---- the star rating
+
+var nguestrooms: s32
+var nsuites: s32
+var tier_missing: [6]*u8         // why the next tier isn't reached (first missing requirement)
+var reviews_avg10: s32           // average review stars x10 (last 16)
+
+fn count_type(rt: s32) -> s32 {
+    var n = 0
+    for r in 1..nrooms {
+        if rooms[r].used != 0 && rooms[r].rtype as s32 == rt { n += 1 }
+    }
+    return n
+}
+
+fn objs_of(t: s32) -> s32 {
+    var n = 0
+    for i in 0..nobjs { if objs[i].used != 0 && objs[i].t as s32 == t { n += 1 } }
+    return n
+}
+
+fn staff_of(role: s32, shift: s32) -> s32 {
+    var n = 0
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used != 0 && p.kind as s32 == P_STAFF && p.type as s32 == role && (shift < 0 || p.shift as s32 == shift) { n += 1 }
+    }
+    return n
+}
+
+// Checks tier k's requirements (1..5); sets tier_missing[k] to the first unmet one, or null.
+fn tier_ok(k: s32) -> bool {
+    tier_missing[k] = null
+    let rooms_n = nguestrooms + nsuites
+    match k {
+        1 => {
+            if count_type(RT_LOBBY) == 0 { tier_missing[k] = "A lobby with reception"; return false }
+            if rooms_n < 2 { tier_missing[k] = "2 guest rooms"; return false }
+        }
+        2 => {
+            if rooms_n < 6 { tier_missing[k] = "6 guest rooms"; return false }
+            if count_type(RT_RESTAURANT) == 0 && count_type(RT_BAR) == 0 { tier_missing[k] = "A restaurant or a bar"; return false }
+            if nelevs == 0 && top_floor() >= 2 { tier_missing[k] = "An elevator"; return false }
+            if reviews_n > 0 && reviews_avg10 < 25 { tier_missing[k] = "Reviews of 2.5 stars"; return false }
+        }
+        3 => {
+            if rooms_n < 12 { tier_missing[k] = "12 guest rooms"; return false }
+            if count_type(RT_RESTAURANT) == 0 || count_type(RT_KITCHEN) == 0 { tier_missing[k] = "Restaurant + kitchen"; return false }
+            if objs_of(OB_PHONE) * 2 < rooms_n || staff_of(ROLE_WAITER, -1) == 0 { tier_missing[k] = "Room service (phones, waiter)"; return false }
+            if count_type(RT_LAUNDRY) == 0 { tier_missing[k] = "A laundry"; return false }
+            if count_type(RT_POOL) == 0 { tier_missing[k] = "A pool"; return false }
+            if reviews_avg10 < 30 { tier_missing[k] = "Reviews of 3 stars"; return false }
+            if score < 50 { tier_missing[k] = "Hotel score 50"; return false }
+        }
+        4 => {
+            if rooms_n < 20 { tier_missing[k] = "20 guest rooms"; return false }
+            if nsuites < 2 { tier_missing[k] = "2 suites"; return false }
+            if count_type(RT_GYM) == 0 && count_type(RT_SPA) == 0 { tier_missing[k] = "A gym or a spa"; return false }
+            if count_type(RT_CONFERENCE) == 0 { tier_missing[k] = "A conference room"; return false }
+            if count_type(RT_STAFF) == 0 { tier_missing[k] = "A staff room"; return false }
+            if count_type(RT_BAR) == 0 { tier_missing[k] = "A bar"; return false }
+            if reviews_avg10 < 35 { tier_missing[k] = "Reviews of 3.5 stars"; return false }
+            if score < 62 { tier_missing[k] = "Hotel score 62"; return false }
+        }
+        else => {
+            if rooms_n < 28 { tier_missing[k] = "28 guest rooms"; return false }
+            if nsuites < 4 { tier_missing[k] = "4 suites"; return false }
+            if count_type(RT_SPA) == 0 { tier_missing[k] = "A spa"; return false }
+            if objs_of(OB_CONCIERGE_DESK) == 0 || staff_of(ROLE_BELLHOP, -1) == 0 { tier_missing[k] = "A staffed concierge desk"; return false }
+            if staff_of(ROLE_RECEPTIONIST, 1) == 0 { tier_missing[k] = "24-hour reception (night shift)"; return false }
+            if arch_score < 40 { tier_missing[k] = "Architecture 40 (an atrium!)"; return false }
+            if reviews_avg10 < 42 { tier_missing[k] = "Reviews of 4.2 stars"; return false }
+            if score < 75 { tier_missing[k] = "Hotel score 75"; return false }
+        }
+    }
+    return true
+}
+
+fn compute_score() {
+    nguestrooms = count_type(RT_GUEST)
+    nsuites = count_type(RT_SUITE)
+    // rooms: average quality of guest rooms and suites
+    var q = 0
+    var n = 0
+    var dirty = 0
+    for r in 1..nrooms {
+        let rm = &rooms[r]
+        if rm.used == 0 { continue }
+        let t = rm.rtype as s32
+        if t == RT_GUEST || t == RT_SUITE {
+            q += rm.quality as s32 + rm.view as s32
+            n += 1
+            if rm.state as s32 == RS_DIRTY { dirty += 1 }
+        }
+    }
+    score_parts[0] = clamp(q / max(n, 1), 0, 100)
+    // facilities: one point band per kind of room
+    var fac = 0
+    let kinds: [9]s32 = [RT_RESTAURANT, RT_BAR, RT_POOL, RT_SPA, RT_GYM, RT_CONFERENCE, RT_LAUNDRY, RT_KITCHEN, RT_STAFF]
+    for k in 0..9 { if count_type(kinds[k]) > 0 { fac += 11 } }
+    score_parts[1] = min(fac, 100)
+    // service: how long guests waited lately (100 = no waiting)
+    score_parts[2] = clamp(100 - service_wait_avg / 8, 0, 100)
+    score_parts[3] = clamp(100 - dirty * 100 / max(n, 1), 0, 100)
+    score_parts[4] = arch_score
+    var rv = 50
+    if reviews_n > 0 { rv = reviews_avg10 * 2 }
+    score_parts[5] = clamp(rv, 0, 100)
+    score = (score_parts[0] * 25 + score_parts[1] * 20 + score_parts[2] * 15 + score_parts[3] * 15 +
+             score_parts[4] * 10 + score_parts[5] * 15) / 100
+}
+
+fn rate_hotel() {
+    compute_noise()
+    compute_architecture()
+    compute_score()
+    var s = 0
+    while s < 5 && tier_ok(s + 1) { s += 1 }
+    // up one star a day at most; down at once
+    var ns = s
+    if s > stars + 1 { ns = stars + 1 }
+    if ns > stars {
+        star_flash = 360
+        fx(FX_STARUP)
+        say("A new star! New things unlocked.", GOLD)
+    } else if ns < stars {
+        fx(FX_STARDOWN)
+        say("The hotel lost a star...", RED)
+    }
+    stars = ns
+}
+
+// ---- reviews
+
+const NREV = 16
+struct Review { day: s16, gtype: u8, stars: u8, quote: u8, pad: u8 }
+var reviews: [16]Review
+var reviews_n: s32
+var review_new: s32              // frames to show the latest review ticker
+
+fn add_review(gtype: s32, st: s32, quote: s32) {
+    // newest first
+    var k = min(reviews_n, NREV - 1)
+    while k > 0 {
+        reviews[k] = reviews[k - 1]
+        k -= 1
+    }
+    reviews[0].day = day as s16
+    reviews[0].gtype = gtype as u8
+    reviews[0].stars = st as u8
+    reviews[0].quote = quote as u8
+    reviews_n = min(reviews_n + 1, NREV)
+    var sum = 0
+    for i in 0..reviews_n { sum += reviews[i].stars as s32 }
+    reviews_avg10 = sum * 10 / max(reviews_n, 1)
+    reputation = clamp(reputation + (st - 3) * 3, 0, 100)
+    review_new = 300
+    fx(FX_REVIEW)
+}
+
+// ---- arrivals
+
+var service_wait_avg: s32        // frames, smoothed
+var arrivals_today: s32
+
+fn note_wait(frames: s32) { service_wait_avg = (service_wait_avg * 7 + frames) / 8 }
+
+// Guests arrive between 10:00 and 21:00, more for a better hotel and fairer prices.
+fn spawn_guests_minute() {
+    let h = hour()
+    if h < 10 || h >= 21 { return }
+    let free = free_rooms()
+    if free == 0 { return }
+    // chance per minute: base on stars and reputation; busier during the check-in rush
+    var per_hour = 1 + stars + reputation / 25
+    if h >= 14 && h <= 18 { per_hour = per_hour * 2 }
+    per_hour = min(per_hour, free + 1)
+    if rnd(60) >= per_hour { return }
+    var guests = 0
+    for i in 0..npeople { if people[i].used != 0 && people[i].kind as s32 == P_GUEST { guests += 1 } }
+    if guests >= 80 { return }
+    spawn_guest()
+}
+
+fn free_rooms() -> s32 {
+    var n = 0
+    for r in 1..nrooms {
+        let rm = &rooms[r]
+        if rm.used == 0 || rm.flags & RF_VALID == 0 { continue }
+        let t = rm.rtype as s32
+        if (t == RT_GUEST || t == RT_SUITE) && rm.occupant < 0 { n += 1 }
+    }
+    return n
+}
+
+fn pick_guest_type() -> s32 {
+    var w: [4]s32
+    w[0] = 40
+    w[1] = 0
+    w[2] = 0
+    w[3] = 0
+    if stars >= GT_UNLOCK[1] as s32 { w[1] = 30 }
+    if stars >= GT_UNLOCK[2] as s32 { w[2] = 18 }
+    if stars >= GT_UNLOCK[3] as s32 { w[3] = 4 }
+    let tot = w[0] + w[1] + w[2] + w[3]
+    var r = rnd(tot)
+    for k in 0..4 {
+        if r < w[k] { return k }
+        r -= w[k]
+    }
+    return 0
+}
+
+// The entrance: where people appear from the street.
+fn entrance_tile() -> s32 { return tix(0, 16, 0) }

@@ -1,0 +1,736 @@
+// Logistics: the job queue and the things people carry.
+//
+//   cleaning   a checked-out room: the housekeeper strips each bed, carries the dirty linen to a
+//              washing machine, fetches clean linen from a linen shelf, and makes the bed
+//   laundry    a machine washes its load, then a housekeeper carries it to a linen shelf
+//   food       an order (restaurant table or room-service phone) goes to the kitchen: the cook
+//              takes food from the fridge, cooks at the stove and puts the meal on the pass;
+//              a waiter carries it to the guest. Supplies come by delivery van each morning,
+//              into storage shelves; the cook restocks the fridge from them
+//   repairs    a broken object waits for maintenance
+//   luggage    a bellhop carries a guest's bags up to the room
+
+const IT_DIRTY = 1
+const IT_CLEAN = 2
+const IT_CRATE = 3
+const IT_MEAL = 4
+const IT_BAGS = 5
+const IT_TOOLS = 6
+
+const J_CLEAN = 1
+const J_REPAIR = 2
+const J_SERVE = 3
+const J_LUGGAGE = 4
+const J_UNLOAD = 5
+
+const MAXJOB = 96
+
+struct Job {
+    kind: u8
+    step: u8
+    role: u8
+    pad: u8
+    who: s16                 // staff member doing it (-1: waiting)
+    target: s16              // room / object / order / guest
+    a: s16                   // per-job scratch (a bed, a machine...)
+    t0: s32                  // when it was queued (frames)
+}
+
+var jobs: [96]Job
+var njobs: s32
+
+fn job_add(kind: s32, role: s32, target: s32) -> s32 {
+    // no duplicates
+    for k in 0..njobs {
+        if jobs[k].kind as s32 == kind && jobs[k].target as s32 == target { return k }
+    }
+    var i = -1
+    for k in 0..njobs { if jobs[k].kind == 0 { i = k; break } }
+    if i < 0 {
+        if njobs >= MAXJOB { return -1 }
+        i = njobs
+        njobs += 1
+    }
+    let j = &jobs[i]
+    j.kind = kind as u8
+    j.role = role as u8
+    j.step = 0
+    j.who = -1
+    j.target = target as s16
+    j.a = -1
+    j.t0 = tick_count
+    return i
+}
+
+fn job_done(k: s32) {
+    jobs[k].kind = 0
+    while njobs > 0 && jobs[njobs - 1].kind == 0 { njobs -= 1 }
+}
+
+fn job_unassign(k: s32) {
+    let j = &jobs[k]
+    j.who = -1
+    // a carried meal or linen goes back to the start of its job
+    if j.kind as s32 == J_SERVE {
+        let o = j.target as s32
+        if orders[o].state as s32 == OR_CARRIED { orders[o].state = OR_READY as u8 }
+    }
+    j.step = 0
+}
+
+fn pending_job(role: s32) -> bool {
+    for k in 0..njobs {
+        if jobs[k].kind != 0 && jobs[k].role as s32 == role && jobs[k].who < 0 && job_ready(k) { return true }
+    }
+    return false
+}
+
+// Some jobs can't start yet (a meal not cooked).
+fn job_ready(k: s32) -> bool {
+    let j = &jobs[k]
+    if j.kind as s32 == J_SERVE { return orders[j.target as s32].state as s32 == OR_READY }
+    return true
+}
+
+fn take_job(i: s32) -> bool {
+    let p = &people[i]
+    let role = p.type as s32
+    var best = -1
+    var bt = 0x7FFFFFFF
+    for k in 0..njobs {
+        let j = &jobs[k]
+        if j.kind == 0 || j.who >= 0 || j.role as s32 != role { continue }
+        if !job_ready(k) { continue }
+        if j.t0 < bt { bt = j.t0; best = k }
+    }
+    if best < 0 { return false }
+    let j = &jobs[best]
+    j.who = i as s16
+    j.step = 0
+    p.job = best as s16
+    p.state = SS_JOB as u8
+    p.goal = -1
+    p.arrived = 0
+    p.timer = 0
+    return true
+}
+
+fn clean_job(r: s32) { job_add(J_CLEAN, ROLE_HOUSEKEEPER, r) }
+fn repair_job(oi: s32) { job_add(J_REPAIR, ROLE_MAINTENANCE, oi) }
+
+fn luggage_job(gi: s32) {
+    // only if someone could do it
+    if staff_of(ROLE_BELLHOP, -1) > 0 { job_add(J_LUGGAGE, ROLE_BELLHOP, gi) }
+}
+
+// ---- running a job, step by step
+
+fn job_finish(i: s32) {
+    let p = &people[i]
+    if p.job >= 0 { job_done(p.job as s32) }
+    p.job = -1
+    p.carry = 0
+    p.state = SS_IDLE as u8
+    p.pose = POSE_STAND as u8
+}
+
+fn job_abort(i: s32) {
+    let p = &people[i]
+    if p.job >= 0 { job_unassign(p.job as s32) }
+    p.job = -1
+    p.carry = 0
+    p.state = SS_IDLE as u8
+    p.timer = 120
+}
+
+// Walks toward a tile; true once there. Gives up (aborts the job) when stuck.
+fn job_walk(i: s32, t: s32) -> bool {
+    let p = &people[i]
+    if p.arrived != 0 {
+        p.arrived = 0
+        p.goal = -1
+        return true
+    }
+    if p.goal < 0 { go_to(i, t) }
+    if p.wait > 900 { job_abort(i) }
+    return false
+}
+
+// Works on the spot for n frames; true when done.
+fn job_work(i: s32, n: s32) -> bool {
+    let p = &people[i]
+    p.pose = POSE_USE as u8
+    p.timer += 1
+    if p.timer as s32 >= n {
+        p.timer = 0
+        p.pose = POSE_STAND as u8
+        return true
+    }
+    return false
+}
+
+fn job_step(i: s32) {
+    let p = &people[i]
+    let k = p.job as s32
+    if k < 0 || jobs[k].kind == 0 {
+        p.job = -1
+        p.state = SS_IDLE as u8
+        return
+    }
+    let j = &jobs[k]
+    match j.kind as s32 {
+        1 => step_clean(i, j)
+        2 => step_repair(i, j)
+        3 => step_serve(i, j)
+        4 => step_luggage(i, j)
+        5 => step_unload(i, j)
+        else => job_finish(i)
+    }
+}
+
+// A dirty bed in room r, or -1.
+fn dirty_bed(r: s32) -> s32 {
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used != 0 && o.room as s32 == r && OBJ_USE[o.t as s32] as s32 == USE_SLEEP && o.state & OS_DIRTY != 0 { return k }
+    }
+    return -1
+}
+
+fn nearest_obj_use(i: s32, use: s32, cond: s32) -> s32 {
+    // cond: 0 any, 1 washer with room for a load, 2 shelf with stock, 3 shelf with space
+    let p = &people[i]
+    var best = -1
+    var bd = 0x7FFFFFFF
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 || OBJ_USE[o.t as s32] as s32 != use || o.state & OS_BROKEN != 0 { continue }
+        if cond == 1 && o.stock >= 4 { continue }
+        if cond == 2 && o.stock == 0 { continue }
+        if cond == 3 && o.stock >= 8 { continue }
+        let r = o.room as s32
+        if r == 0 || rooms[r].flags & RF_VALID == 0 { continue }
+        let d = abs(o.x as s32 - p.x as s32) + abs(o.z as s32 - p.z as s32) + abs(o.f as s32 - p.f as s32) * 24
+        if d < bd { bd = d; best = k }
+    }
+    return best
+}
+
+fn step_clean(i: s32, j: *Job) {
+    let p = &people[i]
+    let r = j.target as s32
+    if rooms[r].used == 0 { job_finish(i); return }
+    match j.step as s32 {
+        0 => {   // to the next dirty bed
+            let b = dirty_bed(r)
+            if b < 0 {
+                if rooms[r].occupant < 0 { rooms[r].state = RS_CLEAN as u8 }
+                job_finish(i)
+                return
+            }
+            j.a = b as s16
+            if job_walk(i, spot_tile(b, 0)) { j.step = 1 }
+        }
+        1 => {   // strip it
+            if job_work(i, 120) {
+                p.carry = IT_DIRTY as u8
+                j.step = 2
+            }
+        }
+        2 => {   // dirty linen to a washing machine
+            let w = nearest_obj_use(i, USE_LAUNDRY, 1)
+            if w < 0 {
+                // no laundry: the linen is binned (and has to be bought new)
+                spend(LG_SUPPLIES, 25)
+                p.carry = 0
+                j.step = 4
+                return
+            }
+            j.a = w as s16
+            j.step = 3
+        }
+        3 => {
+            let w = j.a as s32
+            if job_walk(i, spot_tile(w, 0)) {
+                objs[w].stock = (objs[w].stock as s32 + 1) as u8
+                p.carry = 0
+                j.step = 4
+            }
+        }
+        4 => {   // clean linen from a shelf
+            let s = nearest_obj_use(i, USE_LINEN, 2)
+            if s < 0 {
+                if count_type(RT_LAUNDRY) == 0 {
+                    // no laundry at all: buy fresh linen
+                    spend(LG_SUPPLIES, 25)
+                    p.carry = IT_CLEAN as u8
+                    j.step = 6
+                    return
+                }
+                p.pose = POSE_STAND as u8
+                p.timer += 1
+                if p.timer > 600 { job_abort(i) }
+                return
+            }
+            p.timer = 0
+            j.a = s as s16
+            j.step = 5
+        }
+        5 => {
+            let s = j.a as s32
+            if objs[s].stock == 0 { j.step = 4; return }
+            if job_walk(i, spot_tile(s, 0)) {
+                objs[s].stock = (objs[s].stock as s32 - 1) as u8
+                p.carry = IT_CLEAN as u8
+                j.step = 6
+            }
+        }
+        6 => {   // back to a dirty bed and make it
+            let b = dirty_bed(r)
+            if b < 0 { job_finish(i); return }
+            j.a = b as s16
+            if job_walk(i, spot_tile(b, 0)) { j.step = 7 }
+        }
+        7 => {
+            if job_work(i, 120) {
+                let b = j.a as s32
+                objs[b].state = objs[b].state & ~OS_DIRTY
+                p.carry = 0
+                j.step = 0
+            }
+        }
+        else => job_finish(i)
+    }
+}
+
+fn step_repair(i: s32, j: *Job) {
+    let p = &people[i]
+    let oi = j.target as s32
+    if objs[oi].used == 0 || objs[oi].state & OS_BROKEN == 0 { job_finish(i); return }
+    match j.step as s32 {
+        0 => {
+            p.carry = IT_TOOLS as u8
+            if job_walk(i, obj_access_tile(oi)) { j.step = 1 }
+        }
+        1 => {
+            if job_work(i, 240) {
+                objs[oi].state = objs[oi].state & ~OS_BROKEN
+                objs[oi].wear = 0
+                cache_dirty = true
+                job_finish(i)
+            }
+        }
+        else => job_finish(i)
+    }
+}
+
+// A tile from which an object can be reached (its first spot, or the tile in front).
+fn obj_access_tile(oi: s32) -> s32 {
+    let o = &objs[oi]
+    let t = o.t as s32
+    if OBJ_NSPOT[t] > 0 { return spot_tile(oi, 0) }
+    if obj_flag(t, F_STATION) { return staff_tile(oi) }
+    local_to_grid(t, o.x as s32, o.z as s32, o.rot as s32, 0, OBJ_D[t] as s32)
+    if walkable(o.f as s32, lg_x, lg_z) { return tix(o.f as s32, lg_x, lg_z) }
+    local_to_grid(t, o.x as s32, o.z as s32, o.rot as s32, OBJ_W[t] as s32, 0)
+    if walkable(o.f as s32, lg_x, lg_z) { return tix(o.f as s32, lg_x, lg_z) }
+    local_to_grid(t, o.x as s32, o.z as s32, o.rot as s32, -1, 0)
+    if walkable(o.f as s32, lg_x, lg_z) { return tix(o.f as s32, lg_x, lg_z) }
+    local_to_grid(t, o.x as s32, o.z as s32, o.rot as s32, 0, -1)
+    return tix(o.f as s32, lg_x, lg_z)
+}
+
+fn step_luggage(i: s32, j: *Job) {
+    let p = &people[i]
+    let gi = j.target as s32
+    let g = &people[gi]
+    if g.used == 0 || g.kind as s32 != P_GUEST || g.room < 0 { job_finish(i); return }
+    match j.step as s32 {
+        0 => {
+            let d = find_reception()
+            if d < 0 { job_finish(i); return }
+            if job_walk(i, spot_tile(d, 0)) {
+                p.carry = IT_BAGS as u8
+                j.step = 1
+            }
+        }
+        1 => {
+            let b = room_obj(g.room as s32, USE_SLEEP)
+            if b < 0 { job_finish(i); return }
+            if job_walk(i, spot_tile(b, 0)) {
+                praise(gi, PR_SERVICE, 10)
+                job_finish(i)
+            }
+        }
+        else => job_finish(i)
+    }
+}
+
+fn step_unload(i: s32, j: *Job) {
+    let p = &people[i]
+    let w = j.target as s32
+    match j.step as s32 {
+        0 => {
+            if objs[w].used == 0 { job_finish(i); return }
+            if job_walk(i, spot_tile(w, 0)) {
+                j.a = objs[w].pad as s16
+                objs[w].pad = 0
+                p.carry = IT_CLEAN as u8
+                j.step = 1
+            }
+        }
+        1 => {
+            let s = nearest_obj_use(i, USE_LINEN, 3)
+            if s < 0 {
+                p.timer += 1
+                if p.timer > 600 { job_finish(i) }
+                return
+            }
+            if job_walk(i, spot_tile(s, 0)) {
+                objs[s].stock = min(objs[s].stock as s32 + j.a as s32, 12) as u8
+                job_finish(i)
+            }
+        }
+        else => job_finish(i)
+    }
+}
+
+// ---- machines: washers run their loads
+
+fn machines_tick() {
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 || o.t as s32 != OB_WASHER { continue }
+        if o.state & OS_BUSY != 0 {
+            o.timer -= 1
+            if o.timer <= 0 {
+                o.state = o.state & ~OS_BUSY
+                o.pad = (o.pad as s32 + o.stock as s32) as u8
+                o.stock = 0
+                job_add(J_UNLOAD, ROLE_HOUSEKEEPER, k)
+            }
+        } else if o.stock > 0 && o.pad == 0 && o.state & OS_BROKEN == 0 {
+            o.state = o.state | OS_BUSY
+            o.timer = (MIN_FRAMES * 50) as s16
+            wear_obj(k, -1)
+        }
+    }
+}
+
+// ---- food orders
+
+const OR_NEW = 1
+const OR_COOKING = 2
+const OR_READY = 3
+const OR_CARRIED = 4
+
+struct Order { state: u8, pad: u8, guest: s16, obj: s16, cook: s16, t0: s32 }
+const MAXORD = 48
+var orders: [48]Order
+
+fn place_order(gi: s32, oi: s32) {
+    for k in 0..MAXORD {
+        if orders[k].state == 0 {
+            let o = &orders[k]
+            o.state = OR_NEW as u8
+            o.guest = gi as s16
+            o.obj = oi as s16
+            o.cook = -1
+            o.t0 = tick_count
+            return
+        }
+    }
+}
+
+fn cancel_order(gi: s32) {
+    for k in 0..MAXORD {
+        if orders[k].state != 0 && orders[k].guest as s32 == gi {
+            orders[k].state = 0
+            for j in 0..njobs {
+                if jobs[j].kind as s32 == J_SERVE && jobs[j].target as s32 == k {
+                    let w = jobs[j].who as s32
+                    if w >= 0 {
+                        people[w].job = -1
+                        people[w].carry = 0
+                        people[w].state = SS_IDLE as u8
+                    }
+                    job_done(j)
+                }
+            }
+        }
+    }
+}
+
+// The cook, at the stove: fetch food, cook, plate up on the pass; restock the fridge.
+fn cook_tick(i: s32) {
+    let p = &people[i]
+    let stove = p.obj as s32
+    let r = objs[stove].room as s32
+    match p.act as s32 {
+        0 => {
+            // an order waiting?
+            for k in 0..MAXORD {
+                if orders[k].state as s32 == OR_NEW {
+                    let fr = kitchen_obj(r, OB_FRIDGE, true)
+                    if fr < 0 { break }
+                    orders[k].state = OR_COOKING as u8
+                    orders[k].cook = i as s16
+                    p.job = k as s16
+                    p.act = 1
+                    go_to(i, spot_tile(fr, 0))
+                    return
+                }
+            }
+            // keep the fridge stocked from storage
+            let fr = kitchen_obj(r, OB_FRIDGE, false)
+            if fr >= 0 && objs[fr].stock < 3 && tick_count % 120 == 0 {
+                let s = nearest_obj_use(i, USE_STORE, 2)
+                if s >= 0 {
+                    p.act = 10
+                    p.timer = s as s16
+                    go_to(i, spot_tile(s, 0))
+                }
+            }
+        }
+        1 => {   // at the fridge: take food
+            if p.arrived != 0 {
+                p.arrived = 0
+                let fr = kitchen_obj(r, OB_FRIDGE, true)
+                if fr < 0 { p.act = 0; go_to(i, staff_tile(stove)); order_reset(p.job as s32); return }
+                objs[fr].stock = (objs[fr].stock as s32 - 1) as u8
+                p.carry = IT_CRATE as u8
+                p.act = 2
+                go_to(i, staff_tile(stove))
+            }
+        }
+        2 => {   // back at the stove: cook
+            if p.arrived != 0 {
+                p.arrived = 0
+                p.carry = 0
+                p.act = 3
+                p.timer = (MIN_FRAMES * 8) as s16
+                p.pose = POSE_USE as u8
+                face_obj(i, stove)
+            }
+        }
+        3 => {
+            p.timer -= 1
+            if p.timer <= 0 {
+                let ps = kitchen_obj(r, OB_PREP_COUNTER, false)
+                p.carry = IT_MEAL as u8
+                p.act = 4
+                if ps >= 0 { go_to(i, staff_tile(ps)) } else { p.arrived = 1 }
+            }
+        }
+        4 => {   // meal onto the pass
+            if p.arrived != 0 {
+                p.arrived = 0
+                p.carry = 0
+                let k = p.job as s32
+                if k >= 0 && orders[k].state as s32 == OR_COOKING {
+                    orders[k].state = OR_READY as u8
+                    job_add(J_SERVE, ROLE_WAITER, k)
+                }
+                p.job = -1
+                p.act = 5
+                go_to(i, staff_tile(stove))
+            }
+        }
+        5 => {
+            if p.arrived != 0 {
+                p.arrived = 0
+                p.act = 0
+                p.pose = POSE_USE as u8
+                face_obj(i, stove)
+            }
+        }
+        10 => {  // fetch a crate from storage
+            if p.arrived != 0 {
+                p.arrived = 0
+                let s = p.timer as s32
+                if objs[s].stock > 0 {
+                    objs[s].stock = (objs[s].stock as s32 - 1) as u8
+                    p.carry = IT_CRATE as u8
+                    p.act = 11
+                    let fr = kitchen_obj(r, OB_FRIDGE, false)
+                    if fr >= 0 { go_to(i, spot_tile(fr, 0)) } else { p.act = 5; go_to(i, staff_tile(stove)) }
+                } else {
+                    p.act = 5
+                    go_to(i, staff_tile(stove))
+                }
+            }
+        }
+        11 => {
+            if p.arrived != 0 {
+                p.arrived = 0
+                let fr = kitchen_obj(r, OB_FRIDGE, false)
+                if fr >= 0 { objs[fr].stock = min(objs[fr].stock as s32 + 6, 12) as u8 }
+                p.carry = 0
+                p.act = 5
+                go_to(i, staff_tile(stove))
+            }
+        }
+        else => p.act = 0
+    }
+    if p.wait > 600 && p.act != 0 {
+        order_reset(p.job as s32)
+        p.job = -1
+        p.act = 5
+        p.carry = 0
+        p.wait = 0
+        go_to(i, staff_tile(stove))
+    }
+}
+
+fn order_reset(k: s32) {
+    if k >= 0 && k < MAXORD && orders[k].state as s32 == OR_COOKING { orders[k].state = OR_NEW as u8 }
+}
+
+// An object of a type in the kitchen room r (any kitchen if none there); stocked: with food.
+fn kitchen_obj(r: s32, t: s32, stocked: bool) -> s32 {
+    var any = -1
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 || o.t as s32 != t || o.state & OS_BROKEN != 0 { continue }
+        if stocked && o.stock == 0 { continue }
+        if o.room as s32 == r { return k }
+        any = k
+    }
+    return any
+}
+
+fn step_serve(i: s32, j: *Job) {
+    let p = &people[i]
+    let k = j.target as s32
+    let o = &orders[k]
+    let gi = o.guest as s32
+    if o.state == 0 || people[gi].used == 0 || people[gi].state as s32 != GS_WAIT_FOOD {
+        o.state = 0
+        job_finish(i)
+        return
+    }
+    match j.step as s32 {
+        0 => {   // pick up at the pass
+            let ps = kitchen_obj(-1, OB_PREP_COUNTER, false)
+            var t = -1
+            if ps >= 0 { t = spot_tile(ps, 0) } else {
+                let st = kitchen_obj(-1, OB_STOVE, false)
+                if st >= 0 { t = spot_tile_any(st) }
+            }
+            if t < 0 { job_finish(i); return }
+            if job_walk(i, t) {
+                p.carry = IT_MEAL as u8
+                o.state = OR_CARRIED as u8
+                j.step = 1
+            }
+        }
+        1 => {   // to the guest
+            let g = &people[gi]
+            if job_walk(i, g.tile as s32) || (p.f == g.f && abs(p.x - g.x) + abs(p.z - g.z) < 1.1) {
+                p.carry = 0
+                p.goal = -1
+                o.state = 0
+                // the guest eats
+                g.state = GS_USE as u8
+                g.act = USE_EAT as u8
+                g.timer = use_time(USE_EAT)
+                note_wait(tick_count - o.t0)
+                if objs[g.obj as s32].t as s32 == OB_PHONE { earn_from(gi, LG_FOOD, 30) } else { earn_from(gi, LG_FOOD, 22) }
+                job_finish(i)
+            }
+        }
+        else => job_finish(i)
+    }
+}
+
+fn spot_tile_any(oi: s32) -> s32 {
+    if OBJ_NSPOT[objs[oi].t as s32] > 0 { return spot_tile(oi, 0) }
+    return staff_tile(oi)
+}
+
+// ---- deliveries: a van at 7:00 with crates for the storage shelves and fridges
+
+var deliveries_left: s32
+
+fn order_deliveries() {
+    var want = 0
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 { continue }
+        if o.t as s32 == OB_STORAGE_SHELF { want += 4 - min(o.stock as s32, 4) }
+        if o.t as s32 == OB_FRIDGE && objs_of(OB_STORAGE_SHELF) == 0 { want += (12 - o.stock as s32) / 6 }
+    }
+    want = min(want, 12)
+    if want <= 0 { return }
+    spend(LG_SUPPLIES, want * 30)
+    deliveries_left = want
+    let e = entrance_tile()
+    let i = person_new(P_VISITOR, 0, 0, ptile_x(e) + 2, ptile_z(e))
+    if i >= 0 {
+        people[i].state = 1
+        people[i].speed = 0.06
+    }
+}
+
+fn visitor_tick(i: s32) {
+    let p = &people[i]
+    match p.state as s32 {
+        1 => {   // carry a crate in
+            if deliveries_left <= 0 {
+                p.state = 3
+                go_to(i, entrance_tile())
+                return
+            }
+            var dest = -1
+            var best = 99
+            for k in 0..nobjs {
+                let o = &objs[k]
+                if o.used == 0 { continue }
+                if o.t as s32 == OB_STORAGE_SHELF && (o.stock as s32) < 4 && (o.stock as s32) < best {
+                    best = o.stock as s32
+                    dest = k
+                }
+            }
+            if dest < 0 {
+                for k in 0..nobjs {
+                    let o = &objs[k]
+                    if o.used != 0 && o.t as s32 == OB_FRIDGE && o.stock < 7 { dest = k; break }
+                }
+            }
+            if dest < 0 {
+                p.state = 3
+                go_to(i, entrance_tile())
+                return
+            }
+            p.carry = IT_CRATE as u8
+            p.obj = dest as s16
+            p.state = 2
+            go_to(i, spot_tile(dest, 0))
+        }
+        2 => {
+            if p.arrived != 0 {
+                p.arrived = 0
+                let o = &objs[p.obj as s32]
+                if o.t as s32 == OB_FRIDGE { o.stock = min(o.stock as s32 + 6, 12) as u8 } else { o.stock = (o.stock as s32 + 1) as u8 }
+                deliveries_left -= 1
+                p.carry = 0
+                p.state = 4
+                go_to(i, entrance_tile())
+            } else if p.wait > 900 {
+                p.state = 3
+                go_to(i, entrance_tile())
+            }
+        }
+        4 => {   // back to the van for the next one
+            if p.arrived != 0 {
+                p.arrived = 0
+                p.state = 1
+            }
+        }
+        else => {
+            if p.arrived != 0 || p.wait > 900 { person_free(i) }
+        }
+    }
+}
+
+fn jobs_tick() { machines_tick() }

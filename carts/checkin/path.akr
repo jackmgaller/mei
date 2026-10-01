@@ -1,0 +1,373 @@
+// Pathfinding: flow fields over the whole building.
+//
+// pass[t] says where a person may step from tile t (bits PB_*), recomputed per floor after the
+// building changes. Stairs and elevators are links between tiles of different floors, with a
+// cost. A field is the distance from every tile to one target tile (Dijkstra with unit steps
+// and a few weighted links), computed incrementally under a per-frame budget and kept in a
+// small LRU cache. People walk downhill on the field. Guests may not cross staff-only rooms or
+// other guests' rooms; staff go anywhere.
+
+const PB_PX = 1
+const PB_NX = 2
+const PB_PZ = 4
+const PB_NZ = 8
+const PB_WALK = 16
+const PB_LINK = 32
+const PB_STAFF = 64          // staff only (service corridors, back rooms)
+const PB_PRIVATE = 128       // a guest room: only its own guests (and staff)
+
+var pass: [4608]u8
+var pass_dirty: [6]bool
+var paths_epoch: s32         // bumps when the building changes (fields go stale)
+
+// ---- links (stairs and elevators)
+
+const MAXLINK = 240
+struct Link { a: u16, b: u16, cost: u8, kind: u8, obj: s16 }
+const LK_STAIRS = 0
+const LK_ELEV = 1
+var links: [240]Link
+var nlinks: s32
+
+fn add_link(a: s32, b: s32, cost: s32, kind: s32, obj: s32) {
+    if nlinks >= MAXLINK { return }
+    let l = &links[nlinks]
+    l.a = a as u16
+    l.b = b as u16
+    l.cost = cost as u8
+    l.kind = kind as u8
+    l.obj = obj as s16
+    nlinks += 1
+}
+
+fn rebuild_links() {
+    nlinks = 0
+    for i in 0..nobjs {
+        let o = &objs[i]
+        if o.used == 0 { continue }
+        let t = o.t as s32
+        if t == OB_STAIRS || t == OB_GRAND_STAIRCASE {
+            let f = o.f as s32
+            if f + 1 >= NFL { continue }
+            let ns = OBJ_NSPOT[t] as s32
+            for s in 0..ns {
+                let lx = OBJ_SPOT[(t * 5 + s) * 2] as s32
+                local_to_grid(t, o.x as s32, o.z as s32, o.rot as s32, lx, OBJ_SPOT[(t * 5 + s) * 2 + 1] as s32)
+                let a = tix(f, lg_x, lg_z)
+                local_to_grid(t, o.x as s32, o.z as s32, o.rot as s32, lx, -1)
+                let b = tix(f + 1, lg_x, lg_z)
+                add_link(a, b, 10, LK_STAIRS, i)
+                add_link(b, a, 10, LK_STAIRS, i)
+            }
+        }
+        if t == OB_ELEVATOR || t == OB_GLASS_ELEVATOR {
+            let f0 = o.f as s32
+            let f1 = o.f1 as s32
+            local_to_grid(t, o.x as s32, o.z as s32, o.rot as s32, 0, 2)
+            let sx = lg_x
+            let sz = lg_z
+            for fa in f0..f1 + 1 {
+                for fb in f0..f1 + 1 {
+                    if fa != fb { add_link(tix(fa, sx, sz), tix(fb, sx, sz), 8 + abs(fa - fb) * 2, LK_ELEV, i) }
+                }
+            }
+        }
+    }
+}
+
+// Access class of a tile for guests.
+fn tile_access(f: s32, x: s32, z: s32) -> s32 {
+    let r = room_at(f, x, z)
+    if r == 0 { return 0 }
+    let k = rooms[r].kind as s32
+    if k == KIND_SERVICE { return PB_STAFF }
+    let rt = rooms[r].best as s32
+    if rooms[r].rtype as s32 != RT_NONE {
+        let t = rooms[r].rtype as s32
+        if t == RT_GUEST || t == RT_SUITE { return PB_PRIVATE }
+        if t == RT_KITCHEN || t == RT_LAUNDRY || t == RT_STORAGE || t == RT_STAFF { return PB_STAFF }
+    }
+    if rt == RT_GUEST || rt == RT_SUITE { return PB_PRIVATE }
+    return 0
+}
+
+fn walkable(f: s32, x: s32, z: s32) -> bool {
+    if !tile_floor(f, x, z) { return false }
+    let oi = tobj[tix(f, x, z)] as s32
+    if oi < 0 { return true }
+    return objs[oi].t as s32 == OB_BAR_STOOL
+}
+
+fn compute_pass(f: s32) {
+    for z in 0..GH {
+        for x in 0..GW {
+            let t = tix(f, x, z)
+            var b = 0
+            if walkable(f, x, z) {
+                b = PB_WALK | tile_access(f, x, z)
+                if x + 1 < GW && walkable(f, x + 1, z) && edge_open(f, x, z, 1, 0) { b = b | PB_PX }
+                if x > 0 && walkable(f, x - 1, z) && edge_open(f, x, z, -1, 0) { b = b | PB_NX }
+                if z + 1 < GH && walkable(f, x, z + 1) && edge_open(f, x, z, 0, 1) { b = b | PB_PZ }
+                if z > 0 && walkable(f, x, z - 1) && edge_open(f, x, z, 0, -1) { b = b | PB_NZ }
+            }
+            pass[t] = b as u8
+        }
+    }
+}
+
+fn mark_links() {
+    for k in 0..nlinks {
+        let a = links[k].a as s32
+        pass[a] = pass[a] | PB_LINK
+    }
+}
+
+// Called when the building changed: recompute everything over the next frames.
+fn paths_invalidate() {
+    for f in 0..NFL { pass_dirty[f] = true }
+    paths_epoch += 1
+    for i in 0..NFIELD {
+        fld_key[i] = -1
+        fld_ready[i] = false
+    }
+}
+
+// One dirty floor per frame; then fields, a few per frame.
+fn paths_update() {
+    for f in 0..NFL {
+        if pass_dirty[f] {
+            compute_pass(f)
+            pass_dirty[f] = false
+            if !pass_dirty_any(f + 1) {
+                rebuild_links()
+                mark_links()
+            }
+            return
+        }
+    }
+    let c0 = CYCLES as s32
+    var n = 0
+    while n < 4 {
+        if c0 - CYCLES as s32 > BFS_CYCLES { break }
+        if !bfs_next() { break }
+        n += 1
+    }
+}
+
+fn pass_dirty_any(from: s32) -> bool {
+    for f in from..NFL { if pass_dirty[f] { return true } }
+    return false
+}
+
+fn paths_ready() -> bool { return !pass_dirty_any(0) }
+
+// ---- the field cache: per floor, distances (in steps) to one target tile
+
+const NFIELD = 64
+const INF = 65535
+const BFS_CYCLES = 70000         // per frame for computing fields
+
+var fld: [64][768]u16
+var fld_key: [64]s32             // target (global tile) | STAFF_KEY; -1: empty
+var fld_ready: [64]bool
+var fld_used: [64]s32            // frame last used (LRU)
+const STAFF_KEY = 0x10000
+
+// The field toward a target, ready, or -1 (it is queued, or the cache is busy: ask again).
+fn field_for(target: s32, staff: bool) -> s32 {
+    var key = target
+    if staff { key = key | STAFF_KEY }
+    for i in 0..NFIELD {
+        if fld_key[i] == key {
+            fld_used[i] = tick_count
+            if fld_ready[i] { return i }
+            return -1
+        }
+    }
+    if !paths_ready() { return -1 }
+    // a free slot, or the least recently used ready one not needed lately
+    var best = -1
+    var bt = tick_count - 20
+    for i in 0..NFIELD {
+        if fld_key[i] < 0 { best = i; break }
+        if fld_ready[i] && fld_used[i] < bt {
+            bt = fld_used[i]
+            best = i
+        }
+    }
+    if best < 0 { return -1 }
+    fld_key[best] = key
+    fld_ready[best] = false
+    fld_used[best] = tick_count
+    return -1
+}
+
+var bfs_q: [768]u16
+var bfs_rooms: *u8
+var bfs_mode: s32                // bits 0-7 the target's room, bit 8 staff
+var bfs_nodes: s32               // stats
+
+// Computes the next queued field (oldest request first). False when none is waiting.
+fn bfs_next() -> bool {
+    var nxt = -1
+    var oldest = 0x7FFFFFFF
+    for i in 0..NFIELD {
+        if fld_key[i] >= 0 && !fld_ready[i] && fld_used[i] < oldest {
+            oldest = fld_used[i]
+            nxt = i
+        }
+    }
+    if nxt < 0 { return false }
+    let key = fld_key[nxt]
+    let target = key & 0xFFFF
+    let f = target / NT
+    let base = f * NT
+    bfs_rooms = &troom[base]
+    var mode = troom[target] as s32
+    if key & STAFF_KEY != 0 { mode = mode | 256 }
+    bfs_mode = mode
+    let d = &fld[nxt][0]
+    memset(d as *u8, 255, 768 * 2)
+    bfs_nodes += bfs_floor(&pass[base], d, &bfs_q[0], target - base)
+    fld_ready[nxt] = true
+    return true
+}
+
+// Breadth-first search over one floor from `start`: dist[] must be all 0xFFFF on entry.
+// A step t -> n is allowed when pass[t] has its direction bit (both tiles walkable, no wall);
+// guests (bfs_mode bit 8 clear) may not enter staff-only tiles outside the target room, nor
+// pass from a guest room into anything but the target. Returns the tiles reached.
+asm fn bfs_floor(pass: *u8, dist: *u16, q: *u16, start: s32) -> s32 {
+    addi sp, sp, -28
+    sw   r9, [sp+0]
+    sw   r10, [sp+4]
+    sw   r11, [sp+8]
+    sw   r12, [sp+12]
+    sw   r13, [sp+16]
+    sw   r15, [sp+24]
+    sw   r3, [sp+20]               ; the queue's start, for the count
+    lw   r11, [r0+{bfs_rooms}]
+    lw   r10, [r0+{bfs_mode}]
+    shli r9, r4, 1
+    add  r9, r9, r2
+    sh   r0, [r9+0]                ; dist[start] = 0
+    sh   r4, [r3+0]
+    addi r4, r3, 2                 ; r3 head, r4 tail
+.bf_loop:
+    bgeu r3, r4, .bf_done
+    lhu  r5, [r3+0]
+    addi r3, r3, 2
+    shli r9, r5, 1
+    add  r9, r9, r2
+    lhu  r6, [r9+0]
+    addi r6, r6, 1                 ; the neighbours' distance
+    add  r9, r5, r1
+    lbu  r7, [r9+0]                ; pass bits of t
+    andi r9, r7, 1
+    beq  r9, r0, .bf_a
+    addi r8, r5, 1
+    call .bf_relax
+.bf_a:
+    andi r9, r7, 2
+    beq  r9, r0, .bf_b
+    addi r8, r5, -1
+    call .bf_relax
+.bf_b:
+    andi r9, r7, 4
+    beq  r9, r0, .bf_c
+    addi r8, r5, 32
+    call .bf_relax
+.bf_c:
+    andi r9, r7, 8
+    beq  r9, r0, .bf_loop
+    addi r8, r5, -32
+    call .bf_relax
+    jmp  .bf_loop
+.bf_relax:                         ; n in r8
+    shli r9, r8, 1
+    add  r9, r9, r2
+    lhu  r13, [r9+0]
+    slti r13, r13, 65535
+    bne  r13, r0, .bf_ret          ; reached already
+    andi r13, r10, 256
+    bne  r13, r0, .bf_take         ; staff go anywhere
+    add  r13, r8, r1
+    lbu  r13, [r13+0]
+    andi r13, r13, 64
+    beq  r13, r0, .bf_priv
+    add  r13, r8, r11
+    lbu  r13, [r13+0]
+    andi r12, r10, 255
+    bne  r13, r12, .bf_ret         ; staff-only, and not the target's room
+.bf_priv:
+    andi r13, r7, 128
+    beq  r13, r0, .bf_take
+    add  r13, r5, r11
+    lbu  r13, [r13+0]              ; room of t (a guest room)
+    add  r12, r8, r11
+    lbu  r12, [r12+0]              ; room of n
+    beq  r13, r12, .bf_take
+    andi r12, r10, 255
+    bne  r13, r12, .bf_ret         ; would walk through someone else's room
+.bf_take:
+    sh   r6, [r9+0]
+    sh   r8, [r4+0]
+    addi r4, r4, 2
+.bf_ret:
+    ret
+.bf_done:
+    lw   r9, [sp+20]
+    sub  r1, r4, r9
+    shri r1, r1, 1
+    lw   r9, [sp+0]
+    lw   r10, [sp+4]
+    lw   r11, [sp+8]
+    lw   r12, [sp+12]
+    lw   r13, [sp+16]
+    lw   r15, [sp+24]
+    addi sp, sp, 28
+}
+
+// The best next tile from global tile t on field slot (-1: none: unreachable, or arrived).
+fn path_next(slot: s32, t: s32) -> s32 {
+    let d = &fld[slot][0]
+    let lt = t % NT
+    let p = pass[t] as s32
+    let here = d[lt] as s32
+    if here == INF || here == 0 { return -1 }
+    var best = -1
+    var bd = here
+    if p & PB_PX != 0 && (d[lt + 1] as s32) < bd { bd = d[lt + 1] as s32; best = t + 1 }
+    if p & PB_NX != 0 && (d[lt - 1] as s32) < bd { bd = d[lt - 1] as s32; best = t - 1 }
+    if p & PB_PZ != 0 && (d[lt + GW] as s32) < bd { bd = d[lt + GW] as s32; best = t + GW }
+    if p & PB_NZ != 0 && (d[lt - GW] as s32) < bd { bd = d[lt - GW] as s32; best = t - GW }
+    return best
+}
+
+fn field_dist(slot: s32, t: s32) -> s32 { return fld[slot][t % NT] as s32 }
+
+// ---- getting to another floor: the link to take from floor f toward floor `to`
+
+// The nearest link from a tile on floor f that gets closer to floor `to` (an elevator that
+// goes there, or stairs one floor in the right direction); -1 if none.
+fn link_toward(f: s32, to: s32, x: s32, z: s32) -> s32 {
+    var best = -1
+    var bd = 0x7FFFFFFF
+    for k in 0..nlinks {
+        let a = links[k].a as s32
+        if a / NT != f { continue }
+        let bf = links[k].b as s32 / NT
+        // useful: lands on the target floor, or closer to it (stairs)
+        if abs(to - bf) >= abs(to - f) { continue }
+        if links[k].kind as s32 == LK_ELEV && bf != to { continue }
+        let ax = (a % NT) % GW
+        let az = (a % NT) / GW
+        var d = abs(ax - x) + abs(az - z)
+        if bf != to { d += 30 }              // prefer one that goes all the way
+        if d < bd {
+            bd = d
+            best = k
+        }
+    }
+    return best
+}

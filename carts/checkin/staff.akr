@@ -1,0 +1,298 @@
+// Staff: hired per role, working day (7:00-19:00) or night (19:00-7:00) shifts. Station roles
+// man a station object (reception desk, concierge desk, stove, bar counter, massage bed); the
+// others take jobs from the queue (jobs.akr). Everyone tires, and rests in a staff room.
+
+const SS_HOME = 1
+const SS_ARRIVE = 2
+const SS_TO_STATION = 3
+const SS_AT_STATION = 4
+const SS_JOB = 5
+const SS_BREAK_GO = 6
+const SS_BREAK = 7
+const SS_IDLE = 8
+const SS_LEAVE = 9
+const SS_PATROL = 10
+
+const SHIFT_DAY = 0
+const SHIFT_NIGHT = 1
+
+fn role_station(role: s32) -> s32 {
+    match role {
+        0 => return OB_RECEPTION_DESK
+        2 => return OB_STOVE
+        4 => return OB_BAR_COUNTER
+        5 => return OB_MASSAGE_BED
+        6 => return OB_CONCIERGE_DESK
+        else => return -1
+    }
+}
+
+fn hire(role: s32, shift: s32) -> s32 {
+    let e = entrance_tile()
+    let i = person_new(P_STAFF, role, 0, ptile_x(e), ptile_z(e))
+    if i < 0 { return -1 }
+    let p = &people[i]
+    p.shift = shift as u8
+    p.speed = 0.075
+    p.state = SS_HOME as u8
+    p.mode = M_HIDDEN as u8
+    p.energy = 1000
+    if on_shift(shift, 10) { staff_arrive(i) }
+    return i
+}
+
+fn fire(i: s32) {
+    staff_release(i)
+    person_free(i)
+}
+
+// Is the shift on at the current time (minutes early: lets people arrive before it starts)?
+fn on_shift(shift: s32, early: s32) -> bool {
+    let m = (minute() + early) % DAY_MIN
+    let day_on = m >= 7 * 60 && m < 19 * 60
+    if shift == SHIFT_DAY { return day_on }
+    return !day_on
+}
+
+fn staff_arrive(i: s32) {
+    let p = &people[i]
+    place_at(i, entrance_tile())
+    p.mode = M_WALK as u8
+    p.state = SS_IDLE as u8
+    p.goal = -1
+}
+
+// Lets go of a station or a job (the job goes back to the queue).
+fn staff_release(i: s32) {
+    let p = &people[i]
+    if p.obj >= 0 {
+        let o = &objs[p.obj as s32]
+        if o.staff as s32 == i { o.staff = -1 }
+        p.obj = -1
+    }
+    if p.job >= 0 {
+        job_unassign(p.job as s32)
+        p.job = -1
+    }
+    if p.elev >= 0 { elev_forget(i) }
+    p.carry = 0
+}
+
+fn shifts_minute() {
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used == 0 || p.kind as s32 != P_STAFF { continue }
+        let sh = p.shift as s32
+        let st = p.state as s32
+        if st == SS_HOME {
+            if on_shift(sh, 10) { staff_arrive(i) }
+            // rested at home
+            p.energy = 1000
+            continue
+        }
+        if !on_shift(sh, 0) && st != SS_LEAVE && !on_shift(sh, 10) {
+            if p.job >= 0 && st == SS_JOB { continue }   // finish the job first
+            staff_release(i)
+            p.state = SS_LEAVE as u8
+            p.pose = POSE_STAND as u8
+            p.mode = M_WALK as u8
+            go_to(i, entrance_tile())
+            continue
+        }
+        // tiring work
+        if st == SS_AT_STATION || st == SS_JOB || st == SS_PATROL || st == SS_IDLE { p.energy -= 1 }
+        if st == SS_BREAK { p.energy = min(p.energy as s32 + 12, 1000) as s16 }
+    }
+}
+
+fn staff_room_spot() -> s32 {
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 { continue }
+        let r = o.room as s32
+        if r == 0 || rooms[r].rtype as s32 != RT_STAFF { continue }
+        let u = OBJ_USE[o.t as s32] as s32
+        if u == USE_REST || u == USE_COFFEE || u == USE_SNACK { return spot_tile(k, 0) }
+    }
+    return -1
+}
+
+fn staff_tick(i: s32) {
+    let p = &people[i]
+    let role = p.type as s32
+    match p.state as s32 {
+        1 => {}
+        8 => staff_idle(i)
+        3 => {
+            if p.arrived != 0 {
+                p.arrived = 0
+                p.state = SS_AT_STATION as u8
+                p.pose = POSE_USE as u8
+                face_obj(i, p.obj as s32)
+                p.act = 0
+            } else if p.wait > 900 {
+                staff_release(i)
+                p.state = SS_IDLE as u8
+            }
+        }
+        4 => {
+            let oi = p.obj as s32
+            if oi < 0 || objs[oi].used == 0 {
+                staff_release(i)
+                p.state = SS_IDLE as u8
+                return
+            }
+            if role == ROLE_COOK { cook_tick(i) }
+            if role == ROLE_BELLHOP && p.act == 0 && pending_job(role) {
+                // luggage beats waiting at the concierge desk
+                staff_release(i)
+                p.state = SS_IDLE as u8
+                return
+            }
+            if p.energy < 150 && p.act == 0 { go_break(i) }
+        }
+        5 => job_step(i)
+        6 => {
+            if p.arrived != 0 {
+                p.arrived = 0
+                p.state = SS_BREAK as u8
+                p.pose = POSE_SIT as u8
+            } else if p.wait > 900 {
+                p.state = SS_IDLE as u8
+                p.energy = 600
+            }
+        }
+        7 => {
+            if p.energy >= 950 {
+                p.state = SS_IDLE as u8
+                p.pose = POSE_STAND as u8
+            }
+        }
+        9 => {
+            if p.arrived != 0 || p.wait > 1200 {
+                p.state = SS_HOME as u8
+                p.mode = M_HIDDEN as u8
+                p.goal = -1
+            }
+        }
+        10 => {
+            if p.arrived != 0 || p.wait > 300 {
+                p.arrived = 0
+                p.state = SS_IDLE as u8
+                p.timer = (60 + rnd(120)) as s16
+                p.pose = POSE_STAND as u8
+            }
+        }
+        else => {}
+    }
+}
+
+fn go_break(i: s32) {
+    let p = &people[i]
+    let s = staff_room_spot()
+    staff_release(i)
+    if s < 0 {
+        // nowhere to rest: they slog on, slower and grumpier
+        p.energy = 400
+        p.state = SS_IDLE as u8
+        return
+    }
+    p.state = SS_BREAK_GO as u8
+    go_to(i, s)
+}
+
+fn staff_idle(i: s32) {
+    let p = &people[i]
+    let role = p.type as s32
+    if p.timer > 0 {
+        p.timer -= 1
+        return
+    }
+    if p.energy < 250 {
+        go_break(i)
+        return
+    }
+    // stations first
+    let st = role_station(role)
+    if st >= 0 {
+        if role != ROLE_BELLHOP || !pending_job(role) {
+            let oi = free_station(st, i)
+            if oi >= 0 {
+                objs[oi].staff = i as s16
+                p.obj = oi as s16
+                p.state = SS_TO_STATION as u8
+                go_to(i, staff_tile(oi))
+                return
+            }
+        }
+    }
+    // then jobs
+    if take_job(i) { return }
+    // nothing to do: security patrols, the rest wait about (staff room if there is one)
+    // (and nobody loiters on the street)
+    let outside = room_at(p.f as s32, p.x as s32, p.z as s32) == 0
+    if role == ROLE_SECURITY || outside || rnd(4) == 0 {
+        let t = random_public_tile()
+        if t >= 0 {
+            p.state = SS_PATROL as u8
+            go_to(i, t)
+            return
+        }
+    }
+    p.timer = (120 + rnd(120)) as s16
+    p.pose = POSE_STAND as u8
+}
+
+fn free_station(t: s32, i: s32) -> s32 {
+    let p = &people[i]
+    var best = -1
+    var bd = 0x7FFFFFFF
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 || o.t as s32 != t || o.staff >= 0 { continue }
+        if o.state & OS_BROKEN != 0 { continue }
+        let r = o.room as s32
+        if r == 0 || rooms[r].flags & RF_VALID == 0 { continue }
+        let d = abs(o.x as s32 - p.x as s32) + abs(o.z as s32 - p.z as s32) + abs(o.f as s32 - p.f as s32) * 24
+        if d < bd { bd = d; best = k }
+    }
+    return best
+}
+
+fn random_public_tile() -> s32 {
+    // a public room tile: lobby, bar, restaurant, corridor... (security likes the bar at night)
+    for tries in 0..10 {
+        let r = 1 + rnd(max(nrooms - 1, 1))
+        let rm = &rooms[r]
+        if rm.used == 0 { continue }
+        let t = rm.rtype as s32
+        if t == RT_GUEST || t == RT_SUITE || rm.kind as s32 == KIND_DECK && tries < 5 { continue }
+        let x = rm.x0 as s32 + rnd(rm.x1 as s32 - rm.x0 as s32 + 1)
+        let z = rm.z0 as s32 + rnd(rm.z1 as s32 - rm.z0 as s32 + 1)
+        let f = rm.floor as s32
+        if room_at(f, x, z) == r && walkable(f, x, z) { return tix(f, x, z) }
+    }
+    return -1
+}
+
+fn waiters_on_duty() -> s32 {
+    var n = 0
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used != 0 && p.kind as s32 == P_STAFF && p.type as s32 == ROLE_WAITER && p.state as s32 != SS_HOME && p.state as s32 != SS_LEAVE { n += 1 }
+    }
+    return n
+}
+
+// Is a security guard patrolling near a room (calms rock stars and loud bars)?
+fn security_near(r: s32) -> bool {
+    if r < 0 { return false }
+    let rm = &rooms[r]
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used == 0 || p.kind as s32 != P_STAFF || p.type as s32 != ROLE_SECURITY { continue }
+        if p.state as s32 == SS_HOME || p.state as s32 == SS_BREAK { continue }
+        if abs(p.f as s32 - rm.floor as s32) <= 1 { return true }
+    }
+    return false
+}

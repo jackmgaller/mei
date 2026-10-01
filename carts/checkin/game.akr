@@ -1,0 +1,273 @@
+// Check-In!: the frame loop, input, screens and the HUD.
+import "gen.akr"
+import "art_link.akr"
+import "audio_link.akr"
+import "ui.akr"
+import "world.akr"
+import "render.akr"
+import "objects.akr"
+import "build.akr"
+import "rooms.akr"
+import "path.akr"
+import "people.akr"
+import "transport.akr"
+import "sim.akr"
+import "guests.akr"
+import "staff.akr"
+import "jobs.akr"
+import "screens.akr"
+import "save.akr"
+import "lighting.akr"
+import "overlays.akr"
+import "scripted.akr"
+
+enum Screen { Title, Play, Pause }
+
+var screen = Screen.Play
+var screen_t: s32
+var tick_count: s32
+var show_debug: bool
+var stars: s32
+var info_open: bool
+
+// input, sampled once per frame through input_pad() / input_stick()
+var pad_now: u32
+var pad_prev: u32
+var stick_in: vec2
+var rep_t: [16]s32
+
+fn held_in(b: u32) -> bool { return pad_now & b != 0 }
+fn btnp_in(b: u32) -> bool { return pad_now & ~pad_prev & b != 0 }
+fn btnr_in(b: u32) -> bool { return ~pad_now & pad_prev & b != 0 }
+
+// Pressed, or held long enough to repeat (menus).
+fn rep_in(b: u32) -> bool {
+    var i = 0
+    while ((1 as u32) << (i as u32)) != b && i < 15 { i += 1 }
+    if pad_now & b == 0 {
+        rep_t[i] = 0
+        return false
+    }
+    rep_t[i] += 1
+    let t = rep_t[i]
+    return t == 1 || (t > 18 && t % 5 == 0)
+}
+
+fn init() {
+    load_texture(SLOT_UI, GEN_UI_TEX, len(GEN_UI_TEX))
+    load_texture(SLOT_HUD, GEN_HUD_TEX, len(GEN_HUD_TEX))
+    load_palette(GEN_PAL_BASE * 16, GEN_PAL, len(GEN_PAL))
+    if ART_PRESENT { art_load() }
+    mb_init()
+    world_reset()
+    audio_init()
+    seed(2001)
+    enter_title()
+    test_init()
+}
+
+// Everything back to an empty lot (new game, loading, the title backdrop).
+fn new_hotel_state() {
+    world_reset()
+    memset(&people[0] as *u8, 0, sizeof(Person) * MAXP)
+    npeople = 0
+    memset(&jobs[0] as *u8, 0, sizeof(Job) * MAXJOB)
+    njobs = 0
+    memset(&orders[0] as *u8, 0, sizeof(Order) * MAXORD)
+    memset(&objs[0] as *u8, 0, sizeof(Obj) * MAXOBJ)
+    nobjs = 0
+    nelevs = 0
+    for k in 0..MAXELEV { elevs[k].obj = -1 }
+    for k in 0..NLG { ledger[k] = 0; ledger_y[k] = 0 }
+    reviews_n = 0
+    reviews_avg10 = 0
+    day = 1
+    tod = 8 * 60 * MIN_FRAMES
+    money = 60000
+    loan = 50000
+    stars = 0
+    reputation = 50
+    price_room = 79
+    price_suite = 249
+    speed = 1
+    view_rot = 2
+    view_zoom = 1
+    view_floor = 0
+    tool = Tool.Inspect
+    menu_open = false
+    deliveries_left = 0
+    service_wait_avg = 0
+    rooms_dirty = true
+    cache_dirty = true
+    paths_invalidate()
+}
+
+fn update() {
+    pad_prev = pad_now
+    pad_now = input_pad(tick_count)
+    var st = input_stick(tick_count)
+    if held_in(LEFT) { st.x = -1.0 }
+    if held_in(RIGHT) { st.x = 1.0 }
+    if held_in(UP) { st.y = 1.0 }
+    if held_in(DOWN) { st.y = -1.0 }
+    stick_in = st
+    test_hook(tick_count)
+    tick_count += 1
+    screen_t += 1
+    if msg_t > 0 { msg_t -= 1 }
+    saving_update()
+    match screen {
+        Title => title_update()
+        Play => {
+            if menu_open { menu_update() } else { build_update() }
+            if btnp_in(START) && !menu_open { open_pause() }
+            if btnp_in(SELECT) {
+                overlay = (overlay + 1) % NOV
+                fx(FX_TAB)
+                if overlay != OV_NONE { say(overlay_name(), AQUA) } else { msg_t = 0 }
+            }
+        }
+        Pause => pause_update()
+    }
+    if rooms_dirty { rooms_update() }
+    // the simulation runs while playing (not on the pause menu)
+    if screen == Screen.Play || screen == Screen.Title {
+        for k in 0..speed { sim_tick() }
+    }
+    paths_update()
+    lighting_frame()
+    if screen == Screen.Play { ambience_update(); goal_update() } else { ambience_off() }
+    audio_update(hour(), minute() % 60)
+    if star_flash > 0 { star_flash -= 1 }
+    if review_new > 0 { review_new -= 1 }
+    if day_report_t > 0 { day_report_t -= 1 }
+}
+
+fn fx_at(id: s32, f: s32) {
+    if f == view_floor { fx(id) }
+}
+
+fn draw() {
+    ui_tris = 0
+    cls(sky_col())
+    begin_world()
+    draw_people()
+    draw_elevators()
+    draw_glows()
+    draw_lower()
+    match screen {
+        Title => draw_title()
+        Play => {
+            draw_overlay()
+            draw_build_overlay()
+            draw_hud()
+            draw_ticker()
+            if menu_open { draw_build_menu() } else { draw_info() }
+        }
+        Pause => {
+            draw_hud()
+            draw_pause()
+        }
+    }
+    draw_saving()
+    if show_debug { draw_debug() }
+    frame_words = ((__arena_ptr as s32) - ((&__arena[0]) as s32)) / 4
+    // the GPU draws 2,000 triangles a frame and the interface comes last: when zoomed in on a
+    // crowded view, fall back to the low-detail meshes (until the view changes)
+    if !cache_lo && view_zoom == 2 && tris_drawn() + lo_tris + ui_tris > 1930 {
+        cache_lo = true
+        cache_dirty = true
+    }
+}
+
+var frame_words: s32             // per-frame packet arena used (debug)
+
+// ---- the HUD
+
+fn draw_hud() {
+    // top bar
+    ui_grad(0, 0, 320, 18, rgb(40, 60, 140), rgb(16, 22, 64), 0)
+    ui_rect(0, 18, 320, 1, rgb(120, 210, 255), 1)
+    icon(3, 1, IC_COIN)
+    ftext(21, 2, money_s(money), GOLD, false)
+    // stars
+    for i in 0..5 {
+        if i < stars { icon(108 + i * 13, 1, IC_STAR) } else { icon(108 + i * 13, 1, IC_STAR_OFF) }
+    }
+    // time and speed
+    ftext(176, 2, fmt_clock(), CREAM, false)
+    if speed == 0 { icon(240, 1, IC_PAUSE) } else if speed == 1 { icon(240, 1, IC_PLAY) } else { icon(240, 1, IC_FF) }
+    // floor
+    let b = nb()
+    if view_floor == 0 { sappend(b, "G") } else {
+        sappend(b, "F")
+        sint(b, view_floor)
+    }
+    ftext_r(316, 2, b, CREAM, false)
+    // tool and hints at the bottom
+    if !menu_open {
+        let h = nb()
+        match tool {
+            Inspect => {
+                if goal_text != null && (tick_count / 360) % 2 == 1 {
+                    sappend(h, "Next: ")
+                    sappend(h, goal_text)
+                } else {
+                    sappend(h, "X: build   L/R: floor   Y: turn   Y+Up/Down: zoom")
+                }
+            }
+            Paint => {
+                sappend(h, str_of(FLOORK_NAME_OFF[tool_arg] as s32))
+                sappend(h, " - hold A and drag")
+            }
+            Object => {
+                sappend(h, obj_name(tool_arg))
+                sappend(h, " - A: place  Y: turn  B: done")
+            }
+            Door => sappend(h, "Door - A on a wall  B: done")
+            Window => sappend(h, "Window - A on an outside wall")
+            Void => sappend(h, "Void - drag to open the floor below")
+            VoidGlass => sappend(h, "Glass void - drag on an upper floor")
+            Demolish => sappend(h, "Demolish - A: object, drag: floor")
+        }
+        ui_rect(0, 226, 320, 14, rgb(10, 14, 40), 0)
+        ftext(4, 226, h, SOFT, false)
+    }
+    if msg_t > 0 && msg != null {
+        let w = text_w(msg, false)
+        ui_rect(160 - w / 2 - 8, 24, w + 16, 15, rgb(14, 14, 40), 2)
+        ftext_c(160, 24, msg, msg_col, false)
+    }
+}
+
+// The player's next goal (shown in the hint bar now and then): the first thing the next star needs.
+var goal_text: *u8
+
+fn goal_update() {
+    if tick_count % 60 != 0 { return }
+    goal_text = null
+    if count_type(RT_LOBBY) > 0 && staff_of(ROLE_RECEPTIONIST, -1) == 0 {
+        goal_text = "hire a receptionist (START > Staff)"
+        return
+    }
+    if stars < 5 {
+        if tier_ok(stars + 1) { goal_text = "another star at the 6:00 rating!" } else { goal_text = tier_missing[stars + 1] }
+    }
+}
+
+fn money_s(v: s32) -> *u8 { return smoney(nb(), v) }
+
+// CPU and triangle counters (SELECT in test builds).
+fn draw_debug() {
+    let b = nb()
+    sappend(b, "CPU ")
+    sint(b, cpu_used())
+    sappend(b, " TRI ")
+    sint(b, tris_drawn() + ui_tris)
+    sappend(b, " C ")
+    sint(b, cache_cycles)
+    ui_rect(0, 212, 200, 13, rgb(10, 10, 20), 2)
+    ftext(2, 211, b, rgb(255, 230, 120), false)
+}
+
+fn inspect_press() { info_open = !info_open }

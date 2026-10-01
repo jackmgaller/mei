@@ -1,0 +1,297 @@
+// Interface primitives: rectangles, gradients, textured quads, icons, the two baked fonts,
+// small string buffers and Y2K-style panels. Everything goes on the interface list.
+
+var ui_tris: s32
+
+const WHITE = 0xFFFFFF
+const CREAM = 0xD8F4FF       // rgb(255, 244, 216)
+const GOLD = 0x60D0FF        // rgb(255, 208, 96)
+const SOFT = 0xF0D8B0        // rgb(176, 216, 240)
+const DIM = 0xA08C80
+const RED = 0x6070FF
+const GREEN = 0x80E890
+const AQUA = 0xF0E060        // rgb(96, 224, 240)
+const PINK = 0xD070FF        // rgb(255, 112, 208)
+
+struct Icon { u: u8, v: u8, pal: u8 }
+
+fn upos(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
+
+// A flat rectangle; mode -1 is opaque, 0-3 a blend mode.
+fn ui_rect(x: s32, y: s32, w: s32, h: s32, c: u32, mode: s32) {
+    let q = packet_alloc(6)
+    if q == null { return }
+    var t: u32 = 0x24
+    var col = c
+    if mode >= 0 {
+        t = 0x2C
+        col = c | ((mode as u32) << 24)
+    }
+    q[1] = col
+    q[2] = upos(x, y)
+    q[3] = upos(x + w, y)
+    q[4] = upos(x, y + h)
+    q[5] = upos(x + w, y + h)
+    ui_insert(q, t)
+    ui_tris += 2
+}
+
+fn ui_grad(x: s32, y: s32, w: s32, h: s32, top: u32, bot: u32, mode: s32) {
+    let q = packet_alloc(9)
+    if q == null { return }
+    var t: u32 = 0x25
+    var m: u32 = 0
+    if mode >= 0 {
+        t = 0x2D
+        m = (mode as u32) << 24
+    }
+    q[1] = top | m
+    q[2] = upos(x, y)
+    q[3] = top
+    q[4] = upos(x + w, y)
+    q[5] = bot
+    q[6] = upos(x, y + h)
+    q[7] = bot
+    q[8] = upos(x + w, y + h)
+    ui_insert(q, t)
+    ui_tris += 2
+}
+
+// A horizontal gradient (left to right).
+fn ui_hgrad(x: s32, y: s32, w: s32, h: s32, left: u32, right: u32, mode: s32) {
+    let q = packet_alloc(9)
+    if q == null { return }
+    var t: u32 = 0x25
+    var m: u32 = 0
+    if mode >= 0 {
+        t = 0x2D
+        m = (mode as u32) << 24
+    }
+    q[1] = left | m
+    q[2] = upos(x, y)
+    q[3] = right
+    q[4] = upos(x + w, y)
+    q[5] = left
+    q[6] = upos(x, y + h)
+    q[7] = right
+    q[8] = upos(x + w, y + h)
+    ui_insert(q, t)
+    ui_tris += 2
+}
+
+// Texels (u, v, tw, th) of a 4-bit texture drawn at (x, y, w, h).
+fn ui_tex(x: s32, y: s32, w: s32, h: s32, slot: s32, pal: s32, u: s32, v: s32, tw: s32, th: s32, tint: u32, mode: s32) {
+    let q = packet_alloc(10)
+    if q == null { return }
+    var t: u32 = 0x26
+    var col = tint
+    if mode >= 0 {
+        t = 0x2E
+        col = tint | ((mode as u32) << 24)
+    }
+    let info = ((slot as u32 & 15) << 16) | (1 << 20) | ((pal as u32) << 24)
+    let u1 = min(u + tw, 255)
+    let v1 = min(v + th, 255)
+    q[1] = col
+    q[2] = upos(x, y)
+    q[3] = (u as u32) | ((v as u32) << 8) | info
+    q[4] = upos(x + w, y)
+    q[5] = (u1 as u32) | ((v as u32) << 8)
+    q[6] = upos(x, y + h)
+    q[7] = (u as u32) | ((v1 as u32) << 8)
+    q[8] = upos(x + w, y + h)
+    q[9] = (u1 as u32) | ((v1 as u32) << 8)
+    ui_insert(q, t)
+    ui_tris += 2
+}
+
+fn icon(x: s32, y: s32, ic: Icon) {
+    ui_tex(x, y, 16, 16, SLOT_HUD, ic.pal as s32, ic.u as s32, ic.v as s32, 16, 16, 0x808080, -1)
+}
+
+fn icon_tint(x: s32, y: s32, ic: Icon, tint: u32) {
+    ui_tex(x, y, 16, 16, SLOT_HUD, ic.pal as s32, ic.u as s32, ic.v as s32, 16, 16, tint, -1)
+}
+
+fn ui_line(x0: s32, y0: s32, x1: s32, y1: s32, c: u32) {
+    let q = packet_alloc(6)
+    if q == null { return }
+    var ox = 0
+    var oy = 0
+    if abs(x1 - x0) > abs(y1 - y0) { oy = 1 } else { ox = 1 }
+    q[1] = c
+    q[2] = upos(x0, y0)
+    q[3] = upos(x1, y1)
+    q[4] = upos(x0 + ox, y0 + oy)
+    q[5] = upos(x1 + ox, y1 + oy)
+    ui_insert(q, 0x24)
+    ui_tris += 2
+}
+
+// ---- text
+
+fn ftext(x: s32, y: s32, s: *u8, c: u32, big: bool) -> s32 {
+    let tint = (c >> 1) & 0x7F7F7F
+    let info: u32 = (SLOT_UI << 16) | (1 << 20) | ((PAL_FONT as u32) << 24)
+    var h = FS_H
+    if big { h = FB_H }
+    var cx = x
+    var cy = y
+    var p = s
+    while p[0] != 0 {
+        let ch = p[0] as s32
+        p += 1
+        if ch == '\n' {
+            cx = x
+            cy += h - 2
+            continue
+        }
+        if ch < 32 || ch > 126 { continue }
+        let gi = ch - 32
+        var u = 0
+        var v = 0
+        var w = 0
+        var adv = 0
+        if big {
+            u = FB_U[gi] as s32
+            v = FB_V[gi] as s32
+            w = FB_W[gi] as s32
+            adv = FB_A[gi] as s32
+        } else {
+            u = FS_U[gi] as s32
+            v = FS_V[gi] as s32
+            w = FS_W[gi] as s32
+            adv = FS_A[gi] as s32
+        }
+        if w > 0 {
+            let q = packet_alloc(10)
+            if q == null { return cx }
+            q[1] = tint
+            q[2] = upos(cx, cy)
+            q[3] = (u as u32) | ((v as u32) << 8) | info
+            q[4] = upos(cx + w, cy)
+            q[5] = ((u + w) as u32) | ((v as u32) << 8)
+            q[6] = upos(cx, cy + h)
+            q[7] = (u as u32) | (((v + h) as u32) << 8)
+            q[8] = upos(cx + w, cy + h)
+            q[9] = ((u + w) as u32) | (((v + h) as u32) << 8)
+            ui_insert(q, 0x26)
+            ui_tris += 2
+        }
+        cx += adv
+    }
+    return cx
+}
+
+fn text_w(s: *u8, big: bool) -> s32 {
+    var w = 0
+    var best = 0
+    var p = s
+    while p[0] != 0 {
+        let ch = p[0] as s32
+        p += 1
+        if ch == '\n' {
+            best = max(best, w)
+            w = 0
+            continue
+        }
+        if ch < 32 || ch > 126 { continue }
+        if big { w += FB_A[ch - 32] as s32 } else { w += FS_A[ch - 32] as s32 }
+    }
+    return max(best, w)
+}
+
+fn ftext_c(cx: s32, y: s32, s: *u8, c: u32, big: bool) { ftext(cx - text_w(s, big) / 2, y, s, c, big) }
+fn ftext_r(rx: s32, y: s32, s: *u8, c: u32, big: bool) -> s32 { return ftext(rx - text_w(s, big), y, s, c, big) }
+
+// ---- small string buffers (a ring of 12, 48 bytes each)
+
+var nbuf: [12][48]u8
+var nbuf_i: s32
+
+fn nb() -> *u8 {
+    nbuf_i += 1
+    if nbuf_i >= 12 { nbuf_i = 0 }
+    let b = &nbuf[nbuf_i][0]
+    b[0] = 0
+    return b
+}
+
+fn sappend(dst: *u8, s: *u8) -> *u8 {
+    var n = 0
+    while dst[n] != 0 { n += 1 }
+    var k = 0
+    while s[k] != 0 && n < 46 {
+        dst[n] = s[k]
+        n += 1
+        k += 1
+    }
+    dst[n] = 0
+    return dst
+}
+
+fn sint(dst: *u8, v: s32) -> *u8 {
+    var tmp: [12]u8
+    int_to_str(&tmp[0], v)
+    return sappend(dst, &tmp[0])
+}
+
+// "$12,345" / "-$80"
+fn smoney(dst: *u8, v: s32) -> *u8 {
+    if v < 0 { sappend(dst, "-") }
+    sappend(dst, "$")
+    let a = abs(v)
+    if a >= 1000000 {
+        sint(dst, a / 1000000)
+        sappend(dst, ",")
+        sint3(dst, (a / 1000) % 1000)
+        sappend(dst, ",")
+        return sint3(dst, a % 1000)
+    }
+    if a >= 1000 {
+        sint(dst, a / 1000)
+        sappend(dst, ",")
+        return sint3(dst, a % 1000)
+    }
+    return sint(dst, a)
+}
+
+fn sint3(dst: *u8, v: s32) -> *u8 {
+    if v < 100 { sappend(dst, "0") }
+    if v < 10 { sappend(dst, "0") }
+    return sint(dst, v)
+}
+
+
+fn num(v: s32) -> *u8 { return sint(nb(), v) }
+fn str_of(off: s32) -> *u8 { return &STRS[off] }
+
+// ---- panels (Y2K: glossy blue glass with an aqua rim)
+
+fn panel(x: s32, y: s32, w: s32, h: s32) {
+    ui_grad(x, y, w, h, rgb(40, 60, 130), rgb(14, 18, 52), -1)
+    ui_grad(x + 1, y + 1, w - 2, h / 3, rgb(120, 150, 230), rgb(40, 60, 130), 3)
+    ui_rect(x, y, w, 1, rgb(140, 220, 255), -1)
+    ui_rect(x, y + h - 1, w, 1, rgb(30, 40, 90), -1)
+    ui_rect(x, y, 1, h, rgb(90, 150, 220), -1)
+    ui_rect(x + w - 1, y, 1, h, rgb(30, 40, 90), -1)
+}
+
+fn panel_glass(x: s32, y: s32, w: s32, h: s32) {
+    ui_grad(x, y, w, h, rgb(50, 70, 140), rgb(16, 20, 60), 2)
+    ui_rect(x, y, w, 1, rgb(120, 200, 255), 1)
+}
+
+// A pill-shaped highlight bar (selection).
+fn ui_sel(x: s32, y: s32, w: s32, h: s32) {
+    ui_grad(x, y, w, h, rgb(255, 150, 230), rgb(150, 60, 170), -1)
+    ui_grad(x + 1, y + 1, w - 2, h / 2, rgb(255, 230, 250), rgb(255, 150, 230), 3)
+}
+
+// Draws the interface queued so far right now (so 3D drawn next lands on top of it).
+fn ui_flush_now() {
+    if __ui_tail != null {
+        GPU_DRAW = __ui_head
+        __ui_tail = null
+    }
+}

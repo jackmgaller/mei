@@ -1,0 +1,170 @@
+// Day and night: the light outside (sun, dusk, moon) and inside (daylight, then warm lamps),
+// applied to the art palettes (relit a few at a time), to the flat colours of the baked geometry
+// (at each rebuild), to the sky, and as additive glows around lamps after dark.
+
+var light_ext: u32 = 0xFFFFFF    // per-channel multipliers 0..255 (0xBBGGRR)
+var light_int: u32 = 0xFFFFFF
+var light_key: s32 = -1          // the hour-ish step the baked colours were made with
+var relight_next: s32            // next palette to relight
+var night_amt: s32               // 0 day .. 256 night (glows, sky)
+
+const LK_N = 7
+const LK_MIN: [7]s32 = [0, 300, 390, 480, 1050, 1140, 1230]
+const LK_EXT: [7]u32 = [0x965546, 0x965546, 0xA0AAE6, 0xFFFFFF, 0xFFFFFF, 0x78AAFF, 0x965546]
+const LK_INT: [7]u32 = [0x82AAC8, 0x82AAC8, 0xBED2EB, 0xFAFFFF, 0xFAFFFF, 0xAAD7FA, 0x82AAC8]
+const LK_NIGHT: [7]s32 = [256, 256, 128, 0, 0, 128, 256]
+
+fn lights_update() {
+    let m = minute()
+    var k = LK_N - 1
+    for i in 0..LK_N - 1 {
+        if m >= LK_MIN[i] && m < LK_MIN[i + 1] { k = i }
+    }
+    var t = 0.0
+    var k2 = k
+    if k < LK_N - 1 {
+        k2 = k + 1
+        t = fixed(m - LK_MIN[k]) / (LK_MIN[k2] - LK_MIN[k])
+    }
+    light_ext = clerp(LK_EXT[k], LK_EXT[k2], t)
+    light_int = clerp(LK_INT[k], LK_INT[k2], t)
+    night_amt = LK_NIGHT[k] + ((LK_NIGHT[k2] - LK_NIGHT[k]) * (t * 256) as s32) / 256
+    // flat colours are baked: rebuild every half hour while the light is changing
+    let key = (m / 30) * 2 + (light_ext & 1) as s32
+    let changing = (m >= 300 && m < 480) || (m >= 1050 && m < 1260)
+    if changing && key != light_key {
+        light_key = key
+        cache_dirty = true
+    }
+    if !changing && light_key != -2 - (m / 600) {
+        light_key = -2 - (m / 600)
+        cache_dirty = true
+    }
+    night_glow = night_amt > 160
+}
+
+// Colour times light.
+fn lit(c: u32, l: u32) -> u32 {
+    let r = ((c & 255) * (l & 255)) >> 8
+    let g = (((c >> 8) & 255) * ((l >> 8) & 255)) >> 8
+    let b = (((c >> 16) & 255) * ((l >> 16) & 255)) >> 8
+    return r | (g << 8) | (b << 16)
+}
+
+fn lit_ext(c: u32) -> u32 { return lit(c, light_ext) }
+fn lit_int(c: u32) -> u32 { return lit(c, light_int) }
+
+// Exterior palettes of the art (everything else is lit like the interior).
+fn pal_exterior(p: s32) -> bool {
+    for k in 0..ART_NEXT_PALS { if ART_EXT_PALS[k] as s32 == p { return true } }
+    return false
+}
+
+// Relights `count` art palettes (round robin); the glowing ones come back lit after dark.
+fn relight_some(count: s32) {
+    if !ART_PRESENT { return }
+    let pm = VRAM_PALETTE as *u16
+    let base: *u16 = ART_PAL_OBJ
+    for n in 0..count {
+        let p = relight_next
+        relight_next += 1
+        if relight_next >= ART_PAL_OBJ_COUNT { relight_next = 0 }
+        var l = light_int
+        if pal_exterior(p) { l = light_ext }
+        let lr = l & 255
+        let lg = (l >> 8) & 255
+        let lb = (l >> 16) & 255
+        let src = base + p * 16
+        let dst = pm + p * 16
+        for i in 0..16 {
+            let c = src[i] as u32
+            let r = ((c & 31) * lr) >> 8
+            let g = (((c >> 5) & 31) * lg) >> 8
+            let b = (((c >> 10) & 31) * lb) >> 8
+            dst[i] = (r | (g << 5) | (b << 10)) as u16
+        }
+    }
+}
+
+var glow_on: bool
+
+fn lighting_frame() {
+    lights_update()
+    relight_some(12)
+    let on = night_amt > 128
+    if ART_PRESENT && (on != glow_on || relight_next < 12) {
+        glow_on = on
+        art_lights(on)
+    }
+    if ART_PRESENT && tick_count % 8 == 0 { water_frame() }
+}
+
+// The pool and the sea ripple (palette frames), dimmed with the outside light.
+fn water_frame() {
+    let f = (tick_count >> 3) & 3
+    let pm = VRAM_PALETTE as *u16
+    let base: *u16 = ART_PAL_WATER
+    let l = light_ext
+    let lr = l & 255
+    let lg = (l >> 8) & 255
+    let lb = (l >> 16) & 255
+    for w in 0..ART_WATER_COUNT {
+        let src = base + (w * 4 + f) * 16
+        let dst = pm + (ART_WATER_PALS[w] as s32) * 16
+        for i in 0..16 {
+            let c = src[i] as u32
+            let r = ((c & 31) * lr) >> 8
+            let g = (((c >> 5) & 31) * lg) >> 8
+            let b = (((c >> 10) & 31) * lb) >> 8
+            dst[i] = (r | (g << 5) | (b << 10)) as u16
+        }
+    }
+}
+
+fn sky_col() -> u32 { return clerp(rgb(110, 170, 220), rgb(10, 16, 44), fixed(night_amt) / 256) }
+
+// Warm glows around lamps and lit fittings on the floors in view (after dark).
+fn draw_glows() {
+    if night_amt < 64 { return }
+    let a = min((night_amt - 64) * 2, 255)
+    let col = lit(rgb(140, 100, 50), (a as u32) * 0x010101)
+    for i in 0..nobjs {
+        let o = &objs[i]
+        if o.used == 0 { continue }
+        let t = o.t as s32
+        var h = 0.0
+        var big = false
+        if t == OB_FLOOR_LAMP { h = 1.5 }
+        if t == OB_NIGHTSTAND { h = 0.7 }
+        if t == OB_CHANDELIER { h = 1.2; big = true }
+        if t == OB_JUKEBOX || t == OB_VENDING || t == OB_ARCADE { h = 1.0 }
+        if t == OB_BAR_SHELF { h = 1.4 }
+        if h == 0.0 { continue }
+        let f = o.f as s32
+        if f > view_floor { continue }
+        if f < view_floor && !exposed(f, o.x as s32, o.z as s32) { continue }
+        var c = obj_centre(i)
+        c.y = c.y + h
+        if !project(c) { continue }
+        var r = (ppu * 1.1) as s32
+        if big { r = r * 2 }
+        if proj_x < -r || proj_x > 320 + r || proj_y < -r || proj_y > 240 + r { continue }
+        glow_quad(proj_x, proj_y, r, col, depth_bucket(proj_w) - 4, f < view_floor)
+    }
+}
+
+fn glow_quad(cx: s32, cy: s32, r: s32, col: u32, bucket: s32, lower: bool) {
+    let q = packet_alloc(10)
+    if q == null { return }
+    let info = ((SLOT_HUD as u32) << 16) | (1 << 20) | ((PAL_GLOW as u32) << 24)
+    q[1] = col | (1 << 24)
+    q[2] = upos(cx - r, cy - r)
+    q[3] = (UV_GLOW_U as u32) | ((UV_GLOW_V as u32) << 8) | info
+    q[4] = upos(cx + r, cy - r)
+    q[5] = ((UV_GLOW_U + 31) as u32) | ((UV_GLOW_V as u32) << 8)
+    q[6] = upos(cx - r, cy + r)
+    q[7] = (UV_GLOW_U as u32) | (((UV_GLOW_V + 31) as u32) << 8)
+    q[8] = upos(cx + r, cy + r)
+    q[9] = ((UV_GLOW_U + 31) as u32) | (((UV_GLOW_V + 31) as u32) << 8)
+    lo_insert(q, 0x2E, bucket, lower)
+}

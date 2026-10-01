@@ -1,0 +1,534 @@
+// People: guests, staff and visitors share one pool and one way of moving about.
+//
+// A person walks from tile centre to tile centre down a flow field toward its goal tile. A step
+// onto a link is a climb up or down stairs or a ride in an elevator (transport.akr). When the
+// goal is reached, `arrived` is set and the owner's state machine (guests.akr, staff.akr) takes
+// it from there. People are drawn as billboards (two triangles) sorted into the ordering table.
+
+const MAXP = 128
+
+const P_GUEST = 1
+const P_STAFF = 2
+const P_VISITOR = 3          // the delivery driver
+
+const M_WALK = 0
+const M_STAND = 1            // standing still (using something, waiting)
+const M_WAIT_ELEV = 2
+const M_RIDE = 3
+const M_STAIRS = 4
+const M_HIDDEN = 5           // off site (staff off shift)
+
+const POSE_STAND = 0
+const POSE_WALK = 1
+const POSE_SIT = 2
+const POSE_LIE = 3
+const POSE_SWIM = 4
+const POSE_USE = 5
+
+struct Person {
+    used: u8
+    kind: u8
+    type: u8                 // guest type or staff role
+    look: u8                 // appearance variant
+    state: u8                // owner's state
+    mode: u8                 // M_*
+    f: u8                    // floor
+    dir: u8                  // facing: 0 +x, 1 +z, 2 -x, 3 -z
+    pose: u8
+    arrived: u8              // reached the goal this frame
+    carry: u8                // item carried (IT_*)
+    shift: u8
+    x: fixed
+    z: fixed
+    y: fixed                 // height above the floor (stairs)
+    tile: s16                // global tile index
+    goal: s16                // goal tile (-1: none)
+    nxt: s16                 // tile being walked to (-1: at a centre)
+    fslot: s16               // field slot
+    timer: s16
+    wait: s16                // frames spent waiting for a path/service
+    obj: s16                 // object in use / station
+    room: s16                // guest: their room; staff: -
+    job: s16
+    elev: s16
+    link: s16
+    sfrom: s16               // stairs: tiles
+    sto: s16
+    ride_to: u8
+    nights: u8
+    act: u8                  // activity in progress (USE_*)
+    stars: u8                // a guest's review, when leaving
+    pad2: u16
+    needs: [4]u8             // sleep, hunger, hygiene, fun (255 = fine)
+    energy: s16              // staff stamina
+    mood: s16
+    budget: s16
+    spent: s16
+    complaints: u32          // CP_* bits
+    praise: u32              // PR_* bits
+    speed: fixed
+    party: s16               // family members follow the leader
+}
+
+var people: [128]Person
+var npeople: s32
+
+const N_SLEEP = 0
+const N_HUNGER = 1
+const N_HYGIENE = 2
+const N_FUN = 3
+
+fn person_new(kind: s32, type: s32, f: s32, x: s32, z: s32) -> s32 {
+    var i = -1
+    for k in 0..MAXP {
+        if people[k].used == 0 { i = k; break }
+    }
+    if i < 0 { return -1 }
+    if i >= npeople { npeople = i + 1 }
+    let p = &people[i]
+    memset(p as *u8, 0, sizeof(Person))
+    p.used = 1
+    p.kind = kind as u8
+    p.type = type as u8
+    p.look = rnd(4) as u8
+    p.f = f as u8
+    p.x = fixed(x) + 0.5
+    p.z = fixed(z) + 0.5
+    p.tile = tix(f, x, z) as s16
+    p.goal = -1
+    p.nxt = -1
+    p.fslot = -1
+    p.obj = -1
+    p.room = -1
+    p.job = -1
+    p.elev = -1
+    p.party = -1
+    p.speed = 0.045
+    p.energy = 1000
+    for k in 0..4 { p.needs[k] = (180 + rnd(70)) as u8 }
+    return i
+}
+
+fn person_free(i: s32) {
+    let p = &people[i]
+    if p.elev >= 0 { elev_forget(i) }
+    p.used = 0
+    while npeople > 0 && people[npeople - 1].used == 0 { npeople -= 1 }
+}
+
+fn ptile_x(t: s32) -> s32 { return (t % NT) % GW }
+fn ptile_z(t: s32) -> s32 { return (t % NT) / GW }
+fn ptile_f(t: s32) -> s32 { return t / NT }
+
+// Sends a person toward a tile.
+fn go_to(i: s32, goal: s32) {
+    let p = &people[i]
+    p.goal = goal as s16
+    p.fslot = -1
+    p.arrived = 0
+    p.wait = 0
+    p.mode = M_WALK as u8
+    if p.nxt < 0 && p.tile as s32 == goal { p.arrived = 1 }
+}
+
+fn stop_walk(i: s32) {
+    let p = &people[i]
+    p.goal = -1
+    p.mode = M_STAND as u8
+}
+
+// Puts a person on a tile centre (spawn, teleport after a ride).
+fn place_at(i: s32, t: s32) {
+    let p = &people[i]
+    p.tile = t as s16
+    p.f = ptile_f(t) as u8
+    p.x = fixed(ptile_x(t)) + 0.5
+    p.z = fixed(ptile_z(t)) + 0.5
+    p.y = 0.0
+    p.nxt = -1
+}
+
+// One frame of movement. Sets p.arrived when the goal is reached; p.wait counts frames stuck.
+fn person_move(i: s32) {
+    let p = &people[i]
+    match p.mode as s32 {
+        2 => { p.wait += 1; return }
+        3 => return
+        4 => { stairs_step(i); return }
+        5 => return
+        else => {}
+    }
+    if p.goal < 0 { return }
+    if p.nxt < 0 {
+        // at a tile centre: arrived, or pick the next tile
+        if p.tile == p.goal {
+            p.arrived = 1
+            p.goal = -1
+            p.pose = POSE_STAND as u8
+            return
+        }
+        let staff = p.kind as s32 != P_GUEST
+        // another floor: first to the stairs or elevator that leads there
+        var target = p.goal as s32
+        let gf = target / NT
+        if gf != p.f as s32 {
+            let lk = link_toward(p.f as s32, gf, p.x as s32, p.z as s32)
+            if lk < 0 {
+                p.wait += 1
+                p.pose = POSE_STAND as u8
+                return
+            }
+            target = links[lk].a as s32
+            if p.tile as s32 == target {
+                start_link(i, lk)
+                return
+            }
+        }
+        let fs = field_for(target, staff)
+        if fs < 0 {
+            p.wait += 1
+            p.pose = POSE_STAND as u8
+            return
+        }
+        p.fslot = fs as s16
+        let n = path_next(fs, p.tile as s32)
+        if n < 0 {
+            p.wait += 1
+            p.pose = POSE_STAND as u8
+            return
+        }
+        p.nxt = n as s16
+        p.wait = 0
+        let d = n - p.tile as s32
+        if d == 1 { p.dir = 0 }
+        if d == GW { p.dir = 1 }
+        if d == -1 { p.dir = 2 }
+        if d == -GW { p.dir = 3 }
+    }
+    // walk toward the centre of nxt
+    p.pose = POSE_WALK as u8
+    let n = p.nxt as s32
+    let tx = fixed(ptile_x(n)) + 0.5
+    let tz = fixed(ptile_z(n)) + 0.5
+    let sp = p.speed
+    let dx = tx - p.x
+    let dz = tz - p.z
+    if abs(dx) <= sp && abs(dz) <= sp {
+        p.x = tx
+        p.z = tz
+        p.tile = n as s16
+        p.nxt = -1
+    } else {
+        p.x += clamp(dx, -sp, sp)
+        p.z += clamp(dz, -sp, sp)
+    }
+}
+
+// ---- links: stairs and elevators
+
+fn start_link(i: s32, k: s32) {
+    let p = &people[i]
+    let l = &links[k]
+    if l.kind as s32 == LK_STAIRS {
+        p.mode = M_STAIRS as u8
+        p.sfrom = l.a as s16
+        p.sto = l.b as s16
+        p.timer = 0
+        p.pose = POSE_WALK as u8
+        return
+    }
+    // an elevator: wait at its door for the car
+    let e = elev_of_obj(l.obj as s32)
+    if e < 0 { return }
+    p.mode = M_WAIT_ELEV as u8
+    p.elev = e as s16
+    p.ride_to = ptile_f(l.b as s32) as u8
+    p.link = k as s16
+    p.pose = POSE_STAND as u8
+    elev_call(e, p.f as s32)
+}
+
+const STAIR_T = 150
+
+fn stairs_step(i: s32) {
+    let p = &people[i]
+    p.timer += 1
+    let a = p.sfrom as s32
+    let b = p.sto as s32
+    let t = fixed(p.timer as s32) / STAIR_T
+    let ax = fixed(ptile_x(a)) + 0.5
+    let az = fixed(ptile_z(a)) + 0.5
+    let bx = fixed(ptile_x(b)) + 0.5
+    let bz = fixed(ptile_z(b)) + 0.5
+    let fa = ptile_f(a)
+    let fb = ptile_f(b)
+    p.x = ax + (bx - ax) * t
+    p.z = az + (bz - az) * t
+    // y relative to the lower floor
+    let lowf = min(fa, fb)
+    p.f = lowf as u8
+    if fb > fa { p.y = STOREY * t } else { p.y = STOREY * (1.0 - t) }
+    let ddx = bx - ax
+    let ddz = bz - az
+    if abs(ddx) > abs(ddz) {
+        if ddx > 0.0 { p.dir = 0 } else { p.dir = 2 }
+    } else {
+        if ddz > 0.0 { p.dir = 1 } else { p.dir = 3 }
+    }
+    if p.timer as s32 >= STAIR_T {
+        place_at(i, b)
+        p.mode = M_WALK as u8
+    }
+}
+
+// ---- drawing
+
+const SKIN: [4]u32 = [0x90B8F0, 0x6890D0, 0x507098, 0xA8D0FF]
+
+fn person_col(p: *Person) -> u32 {
+    if p.kind as s32 == P_STAFF { return ROLE_COL[p.type as s32] }
+    if p.kind as s32 == P_VISITOR { return rgb(90, 120, 60) }
+    match p.type as s32 {
+        0 => return rgb(70, 80, 110)            // business: grey suit
+        1 => return rgb(240, 160, 60)           // family: bright tees
+        2 => return rgb(250, 250, 255)          // honeymooners: white
+        else => return rgb(30, 20, 30)          // rock star: black leather
+    }
+}
+
+var people_drawn: s32
+
+fn draw_people() {
+    people_drawn = 0
+    sprite_dirs()
+    let vf = view_floor
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used == 0 || p.mode as s32 == M_HIDDEN || p.mode as s32 == M_RIDE { continue }
+        let f = p.f as s32
+        if f > vf { continue }
+        let tx = clamp(p.x as s32, 0, GW - 1)
+        let tz = clamp(p.z as s32, 0, GH - 1)
+        if f < vf && !exposed(f, tx, tz) { continue }
+        draw_person(p, f < vf)
+    }
+}
+
+// Screen-relative sprite directions of the four world facings (0 +x, 1 +z, 2 -x, 3 -z), worked out
+// once per frame from the camera: toward/away from the viewer and screen left/right.
+var spr_dir: [4]u8
+
+fn sprite_dirs() {
+    let c = vec3(16.0, 0.0, 12.0)
+    if !project(c) { return }
+    let cx = proj_x
+    for d in 0..4 {
+        var dx = 0.0
+        var dz = 0.0
+        match d {
+            0 => dx = 1.0
+            1 => dz = 1.0
+            2 => dx = -1.0
+            else => dz = -1.0
+        }
+        if !project(vec3(16.0 + dx, 0.0, 12.0 + dz)) { continue }
+        let right = proj_x > cx
+        var toward = false
+        if d == 0 { toward = vis_px }
+        if d == 1 { toward = vis_pz }
+        if d == 2 { toward = !vis_px }
+        if d == 3 { toward = !vis_pz }
+        var a = ART_DIR_BACK_LEFT
+        if toward && right { a = ART_DIR_FRONT_RIGHT }
+        if toward && !right { a = ART_DIR_FRONT_LEFT }
+        if !toward && right { a = ART_DIR_BACK_RIGHT }
+        spr_dir[d] = a as u8
+    }
+}
+
+const STAFF_PK: [9]u8 = [ART_STAFF_RECEPTIONIST, ART_STAFF_HOUSEKEEPER, ART_STAFF_COOK, ART_STAFF_WAITER,
+    ART_STAFF_BARTENDER, ART_STAFF_SPA_THERAPIST, ART_STAFF_BELLHOP, ART_STAFF_MAINTENANCE, ART_STAFF_SECURITY]
+
+// The art's person kind (sprite sheet) of a person.
+fn person_kind(p: *Person) -> s32 {
+    let ty = p.type as s32
+    let lk = p.look as s32
+    if p.kind as s32 == P_STAFF {
+        if ty == ROLE_RECEPTIONIST && lk & 1 != 0 { return ART_PK_RECEPTIONIST_F }
+        return STAFF_PK[ty] as s32
+    }
+    if p.kind as s32 == P_VISITOR { return ART_STAFF_MAINTENANCE }
+    match ty {
+        1 => {
+            if lk & 1 != 0 { return ART_GUEST_CHILD + (lk >> 1) % ART_GUEST_CHILD_N }
+            return ART_GUEST_FAMILY + (lk >> 1) % ART_GUEST_FAMILY_N
+        }
+        2 => return ART_GUEST_HONEYMOONER + lk % ART_GUEST_HONEYMOONER_N
+        3 => return ART_GUEST_ROCKSTAR + lk % ART_GUEST_ROCKSTAR_N
+        else => return ART_GUEST_BUSINESS + lk % ART_GUEST_BUSINESS_N
+    }
+}
+
+// A textured screen quad (16x24-ish cell at u, v) in the world's ordering table.
+fn sprite_quad(x0: s32, y0: s32, x1: s32, y1: s32, u: s32, v: s32, w: s32, h: s32, slot: s32, pal: s32,
+               col: u32, bucket: s32, lower: bool, mode: s32) {
+    let q = packet_alloc(10)
+    if q == null { return }
+    var ty: u32 = 0x26
+    var c = col
+    if mode >= 0 { ty = 0x2E; c = col | ((mode as u32) << 24) }
+    q[1] = c
+    q[2] = upos(x0, y0)
+    q[3] = (u as u32) | ((v as u32) << 8) | ((slot as u32) << 16) | (1 << 20) | ((pal as u32) << 24)
+    q[4] = upos(x1, y0)
+    q[5] = ((u + w) as u32) | ((v as u32) << 8)
+    q[6] = upos(x0, y1)
+    q[7] = (u as u32) | (((v + h) as u32) << 8)
+    q[8] = upos(x1, y1)
+    q[9] = ((u + w) as u32) | (((v + h) as u32) << 8)
+    lo_insert(q, ty, bucket, lower)
+}
+
+fn draw_person(p: *Person, lower: bool) {
+    let base = vec3(p.x, fixed(p.f as s32) * STOREY + p.y, p.z)
+    if !project(base) { return }
+    let fx = proj_x
+    let fy = proj_y
+    if fx < -20 || fx > 340 || fy < -10 || fy > 280 { return }
+    var bucket = depth_bucket(proj_w) - 3
+    if lower { bucket += B_FLOOR * (view_floor - p.f as s32) - B_FLOOR }
+    if ART_PRESENT {
+        draw_sprite(p, fx, fy, bucket, lower)
+        return
+    }
+    let k = ppu * 0.82
+    var h = (k * 1.55) as s32
+    let ty = p.type as s32
+    if p.kind as s32 == P_GUEST && ty == 1 && p.look & 1 != 0 { h = h * 3 / 4 }   // kids
+    let w = max(h * 2 / 5, 3)
+    var top = fy - h
+    let pose = p.pose as s32
+    var lift = 0
+    if pose == POSE_SIT { top += h / 4 }
+    if pose == POSE_SWIM { top += h / 2 }
+    if pose == POSE_WALK && (tick_count / 6 + p.look as s32) % 2 == 0 { lift = 1 }
+    let body = person_col(p)
+    let head_h = max(h / 4, 2)
+    let x0 = fx - w / 2
+    // body (and legs)
+    var by1 = fy - lift
+    if pose == POSE_SWIM { by1 = fy - h / 4 }
+    world_quad(x0, top + head_h, x0 + w, by1, body, bucket, lower)
+    // head
+    let hw = max(w * 3 / 4, 2)
+    world_quad(fx - hw / 2, top - lift, fx - hw / 2 + hw, top + head_h - lift + 1, SKIN[p.look as s32 & 3], bucket - 1, lower)
+    if p.carry != 0 {
+        world_quad(fx + w / 2 - 1, top + head_h + 1, fx + w / 2 + w / 2 + 1, top + head_h + w / 2 + 2, carry_col(p.carry as s32), bucket - 2, lower)
+    }
+    people_drawn += 1
+}
+
+fn draw_sprite(p: *Person, fx: s32, fy: s32, bucket: s32, lower: bool) {
+    let k = person_kind(p)
+    let pose = p.pose as s32
+    var fr = ART_FR_STAND
+    if pose == POSE_WALK || p.mode as s32 == M_STAIRS {
+        fr = ART_FR_WALK1 + ((tick_count / 7 + p.look as s32) & 3)
+    } else if pose == POSE_SIT || pose == POSE_LIE {
+        fr = ART_FR_SIT
+    } else if pose == POSE_USE {
+        fr = ART_FR_USE
+    } else if pose == POSE_SWIM {
+        fr = ART_FR_SWIM
+    } else if p.carry != 0 {
+        fr = ART_FR_CARRY
+    }
+    let d = spr_dir[p.dir as s32 & 3] as s32
+    // 24 texels tall = 1.45 units
+    let h = (ppu * 1.45) as s32
+    let w = h * 2 / 3
+    let x0 = fx - w / 2
+    let y1 = fy + h / 24
+    let y0 = y1 - h
+    // light: outdoors with the sky, indoors with the lamps
+    var l = light_int
+    let tx = clamp(p.x as s32, 0, GW - 1)
+    let tz = clamp(p.z as s32, 0, GH - 1)
+    if !indoor(p.f as s32, tx, tz) { l = light_ext }
+    let col = lit(TINT, l)
+    if pose != POSE_SWIM && view_zoom > 0 && !lower {
+        let sw = w * 3 / 4
+        sprite_quad(fx - sw / 2, fy - sw / 4, fx + sw / 2, fy + sw / 4, ART_PROP_SHADOW_U, ART_PROP_SHADOW_V + 4, 15, 8,
+            ART_PROP_SLOT, ART_PAL_PROPS, 0x303030, bucket + 1, lower, 2)
+    }
+    sprite_quad(x0, y0, x0 + w, y1, ART_PERSON_U[k] as s32 + fr * 16, ART_PERSON_V[k] as s32 + d * 24, 15, 23,
+        ART_PERSON_SLOT[k] as s32, ART_PERSON_PAL[k] as s32, col, bucket, lower, -1)
+    if p.carry != 0 && pose != POSE_SIT {
+        var pu = ART_PROP_LINEN_U
+        var pv = ART_PROP_LINEN_V
+        let c = p.carry as s32
+        if c == IT_MEAL || c == IT_CRATE { pu = ART_PROP_TRAY_U; pv = ART_PROP_TRAY_V }
+        if c == IT_TOOLS { pu = ART_PROP_TOOLBOX_U; pv = ART_PROP_TOOLBOX_V }
+        if c == IT_BAGS { pu = ART_PROP_LUGGAGE_U; pv = ART_PROP_LUGGAGE_V }
+        let ps = h * 2 / 5
+        let py = fy - h / 2
+        var px = fx
+        if d == ART_DIR_FRONT_RIGHT || d == ART_DIR_BACK_RIGHT { px = fx + w / 5 } else { px = fx - w / 5 }
+        var pb = bucket - 1
+        if d >= ART_DIR_BACK_LEFT { pb = bucket + 1 }
+        sprite_quad(px - ps / 2, py - ps / 2, px + ps / 2, py + ps / 2, pu, pv, 15, 15, ART_PROP_SLOT, ART_PAL_PROPS,
+            col, pb, lower, -1)
+    }
+    people_drawn += 1
+}
+
+fn carry_col(c: s32) -> u32 {
+    match c {
+        1 => return rgb(170, 160, 140)          // dirty linen
+        2 => return rgb(250, 250, 255)          // clean linen
+        3 => return rgb(200, 150, 90)           // food crate
+        4 => return rgb(255, 210, 120)          // a meal
+        5 => return rgb(150, 70, 50)            // luggage
+        else => return rgb(140, 140, 160)       // toolbox
+    }
+}
+
+// A flat screen-space quad in the world's ordering table (or the lower floors' one).
+fn world_quad(x0: s32, y0: s32, x1: s32, y1: s32, c: u32, bucket: s32, lower: bool) {
+    let q = packet_alloc(6)
+    if q == null { return }
+    q[1] = c
+    q[2] = upos(x0, y0)
+    q[3] = upos(x1, y0)
+    q[4] = upos(x0, y1)
+    q[5] = upos(x1, y1)
+    lo_insert(q, 0x24, bucket, lower)
+}
+
+fn lo_insert(q: *u32, type: u32, bucket: s32, lower: bool) {
+    let b = clamp(bucket, 0, 1023)
+    if lower {
+        q[0] = (type << 24) | (lo_ot[b] & 0xFFFFFF)
+        lo_ot[b] = (lo_ot[b] & 0xFF000000) | (q as u32)
+    } else {
+        ot_insert(q, type, b)
+    }
+}
+
+// One simulation tick for everyone.
+fn people_tick() {
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used == 0 { continue }
+        person_move(i)
+        let k = p.kind as s32
+        if k == P_GUEST {
+            guest_tick(i)
+            if p.used != 0 && (tod + i) % MIN_FRAMES == 0 { guest_minute(i) }
+        } else if k == P_STAFF {
+            staff_tick(i)
+        } else {
+            visitor_tick(i)
+        }
+    }
+}

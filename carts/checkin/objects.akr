@@ -1,0 +1,401 @@
+// Placed objects: a fixed pool, footprints on the grid, placement rules, and baking their meshes
+// into the static geometry.
+//
+// An object's local frame has its front at +z; rot r turns it by r * 90 degrees (yaw), so the
+// front faces +z, +x, -z, -x for r = 0..3. (x, z) is the min corner of its footprint on the grid.
+
+const MAXOBJ = 1200
+
+struct Obj {
+    used: u8
+    t: u8                    // type (OB_*)
+    f: u8                    // floor
+    x: u8
+    z: u8
+    rot: u8
+    room: u8
+    state: u8                // OS_* bits
+    wear: u8                 // 0..255: breaks when worn out
+    stock: u8                // linen, food, laundry load...
+    f1: u8                   // elevators: the top floor of the shaft (f is the bottom)
+    pad: u8
+    user: s16                // person using it (-1: none)
+    staff: s16               // staff member manning it (-1: none)
+    timer: s16
+    job: s16                 // job queued for it (-1: none)
+}
+
+const OS_BROKEN = 1
+const OS_DIRTY = 2           // a bed with used linen
+const OS_BUSY = 4            // a machine running
+
+var objs: [1200]Obj
+var nobjs: s32
+
+fn obj_gw(t: s32, rot: s32) -> s32 {
+    if rot & 1 != 0 { return OBJ_D[t] as s32 }
+    return OBJ_W[t] as s32
+}
+fn obj_gd(t: s32, rot: s32) -> s32 {
+    if rot & 1 != 0 { return OBJ_W[t] as s32 }
+    return OBJ_D[t] as s32
+}
+
+// Grid position of the object's local tile (lx, lz) (may lie outside the footprint).
+var lg_x: s32
+var lg_z: s32
+fn local_to_grid(t: s32, x: s32, z: s32, rot: s32, lx: s32, lz: s32) {
+    let w = OBJ_W[t] as s32
+    let d = OBJ_D[t] as s32
+    match rot & 3 {
+        0 => { lg_x = x + lx; lg_z = z + lz }
+        1 => { lg_x = x + lz; lg_z = z + w - 1 - lx }
+        2 => { lg_x = x + w - 1 - lx; lg_z = z + d - 1 - lz }
+        else => { lg_x = x + d - 1 - lz; lg_z = z + lx }
+    }
+}
+
+fn obj_name(t: s32) -> *u8 { return &STRS[OBJ_NAME_OFF[t] as s32] }
+fn obj_flag(t: s32, fl: s32) -> bool { return OBJ_FLAGS[t] as s32 & fl != 0 }
+
+// ---- placement
+
+const PE_OK = 0
+const PE_OUTSIDE = 1
+const PE_BLOCKED = 2
+const PE_ROOMS = 3       // straddles two rooms
+const PE_INDOOR = 4      // must stand indoors
+const PE_OUTDOOR = 5     // must stand outdoors
+const PE_ACCESS = 6      // the spot in front is blocked
+const PE_VOID = 7        // goes in a void (chandelier) / not on a void
+const PE_ATRIUM = 8      // must stand at the bottom of an atrium
+const PE_UPPER = 9       // stairs need a floor above
+const PE_LOCKED = 10
+const PE_MONEY = 11
+const PE_ROOF = 12
+
+var pe_room: s32
+
+fn pe_text(e: s32) -> *u8 {
+    match e {
+        1 => return "Can't build there"
+        2 => return "Something's in the way"
+        3 => return "Must fit inside one room"
+        4 => return "Goes indoors"
+        5 => return "Goes outdoors"
+        6 => return "Needs free space in front"
+        7 => return "Hangs in a void (atrium)"
+        8 => return "Stands under an atrium void"
+        9 => return "Needs a floor above to reach"
+        10 => return "Unlocks at a higher star rating"
+        11 => return "Not enough money"
+        12 => return "Goes on the top floor's void"
+        else => return ""
+    }
+}
+
+// Is (x, z) on floor f a tile a person can stand on (no object, not void/water)?
+fn tile_free(f: s32, x: s32, z: s32) -> bool {
+    if !tile_floor(f, x, z) { return false }
+    return tobj[tix(f, x, z)] < 0
+}
+
+fn place_check(t: s32, f: s32, x: s32, z: s32, rot: s32) -> s32 {
+    let gw = obj_gw(t, rot)
+    let gd = obj_gd(t, rot)
+    let fl = OBJ_FLAGS[t] as s32
+    var room = -1
+    for dz in 0..gd {
+        for dx in 0..gw {
+            let tx = x + dx
+            let tz = z + dz
+            if !in_lot(tx, tz) || tz >= SEA_Z { return PE_OUTSIDE }
+            let ti = tix(f, tx, tz)
+            if tobj[ti] >= 0 { return PE_BLOCKED }
+            let r = troom[ti] as s32
+            if room < 0 { room = r }
+            if r != room { return PE_ROOMS }
+            let isvoid = tflag[ti] & TF_VOID != 0
+            if fl & F_VOID != 0 {
+                if !isvoid { return PE_VOID }
+            } else {
+                if isvoid || tflag[ti] & (TF_HOLE | TF_WATER) != 0 { return PE_BLOCKED }
+                if f > 0 && tfloor[ti] == 0 { return PE_OUTSIDE }
+            }
+            if fl & F_ATRIUM != 0 {
+                if f + 1 >= NFL || tflag[tix(f + 1, tx, tz)] & TF_VOID == 0 { return PE_ATRIUM }
+            }
+            if fl & F_ROOFTOP != 0 && f + 1 < NFL && tfloor[tix(f + 1, tx, tz)] != 0 { return PE_ROOF }
+        }
+    }
+    let k = room_kind(room)
+    let inside = kind_indoor(k)
+    if inside && fl & F_INDOOR == 0 { return PE_OUTDOOR }
+    if !inside && fl & F_OUTDOOR == 0 { return PE_INDOOR }
+    if f > 0 && !inside { return PE_OUTSIDE }
+    pe_room = room
+    // the spots where people stand must be free floor of the same room
+    let ns = OBJ_NSPOT[t] as s32
+    for i in 0..ns {
+        local_to_grid(t, x, z, rot, OBJ_SPOT[(t * 5 + i) * 2] as s32, OBJ_SPOT[(t * 5 + i) * 2 + 1] as s32)
+        if !spot_ok(t, f, lg_x, lg_z, room, fl) { return PE_ACCESS }
+    }
+    if fl & F_STATION != 0 && OBJ_USE[t] as s32 != USE_NONE {
+        local_to_grid(t, x, z, rot, OBJ_STAFF_X[t] as s32, OBJ_STAFF_Z[t] as s32)
+        if !spot_ok(t, f, lg_x, lg_z, room, fl) { return PE_ACCESS }
+    }
+    if fl & F_TRANSPORT != 0 { return transport_check(t, f, x, z, rot) }
+    return PE_OK
+}
+
+fn spot_ok(t: s32, f: s32, sx: s32, sz: s32, room: s32, fl: s32) -> bool {
+    if !in_lot(sx, sz) { return false }
+    let ti = tix(f, sx, sz)
+    let gw = 0
+    // a spot inside the footprint (bar stools, beds) is fine
+    if tobj[ti] >= 0 { return false }
+    if !tile_floor(f, sx, sz) { return false }
+    let r = troom[ti] as s32
+    if r == room { return true }
+    // transports and doors may open onto a corridor; elevators onto any indoor room
+    if fl & F_TRANSPORT != 0 { return indoor(f, sx, sz) || room_kind(r) == KIND_DECK }
+    return false
+}
+
+// Stairs need floor above the footprint (it becomes a hole) and a free tile beyond the top.
+fn transport_check(t: s32, f: s32, x: s32, z: s32, rot: s32) -> s32 {
+    let gw = obj_gw(t, rot)
+    let gd = obj_gd(t, rot)
+    if t == OB_STAIRS || t == OB_GRAND_STAIRCASE {
+        if f + 1 >= NFL { return PE_UPPER }
+        for dz in 0..gd {
+            for dx in 0..gw {
+                let ti = tix(f + 1, x + dx, z + dz)
+                if tfloor[ti] == 0 || tobj[ti] >= 0 || tflag[ti] & (TF_VOID | TF_HOLE) != 0 { return PE_UPPER }
+            }
+        }
+        // arrival: the row beyond the -z end, on the floor above
+        local_to_grid(t, x, z, rot, 0, -1)
+        if !tile_free(f + 1, lg_x, lg_z) { return PE_UPPER }
+    }
+    return PE_OK
+}
+
+fn obj_add(t: s32, f: s32, x: s32, z: s32, rot: s32) -> s32 {
+    var i = -1
+    for k in 0..nobjs {
+        if objs[k].used == 0 { i = k; break }
+    }
+    if i < 0 {
+        if nobjs >= MAXOBJ { return -1 }
+        i = nobjs
+        nobjs += 1
+    }
+    let o = &objs[i]
+    memset(o as *u8, 0, sizeof(Obj))
+    o.used = 1
+    o.t = t as u8
+    o.f = f as u8
+    o.x = x as u8
+    o.z = z as u8
+    o.rot = rot as u8
+    o.room = troom[tix(f, x, z)]
+    o.user = -1
+    o.staff = -1
+    o.job = -1
+    o.f1 = f as u8
+    if t == OB_LINEN_SHELF { o.stock = 6 }
+    if t == OB_FRIDGE { o.stock = 6 }
+    if t == OB_STORAGE_SHELF { o.stock = 2 }
+    obj_mark(i, i as s16)
+    if t == OB_STAIRS || t == OB_GRAND_STAIRCASE { stairs_hole(i, true) }
+    if t == OB_ELEVATOR || t == OB_GLASS_ELEVATOR { elevator_span(i) }
+    return i
+}
+
+fn obj_mark(i: s32, v: s16) {
+    let o = &objs[i]
+    let t = o.t as s32
+    let gw = obj_gw(t, o.rot as s32)
+    let gd = obj_gd(t, o.rot as s32)
+    for g in o.f as s32..o.f1 as s32 + 1 {
+        for dz in 0..gd {
+            for dx in 0..gw { tobj[tix(g, o.x as s32 + dx, o.z as s32 + dz)] = v }
+        }
+    }
+}
+
+fn stairs_hole(i: s32, on: bool) {
+    let o = &objs[i]
+    let gw = obj_gw(o.t as s32, o.rot as s32)
+    let gd = obj_gd(o.t as s32, o.rot as s32)
+    let f = o.f as s32 + 1
+    if f >= NFL { return }
+    for dz in 0..gd {
+        for dx in 0..gw {
+            let ti = tix(f, o.x as s32 + dx, o.z as s32 + dz)
+            if on { tflag[ti] = tflag[ti] | TF_HOLE } else { tflag[ti] = tflag[ti] & ~TF_HOLE }
+        }
+    }
+}
+
+// An elevator shaft runs up from its floor through every floor that has free indoor tiles
+// for it and a free spot in front.
+fn elevator_span(i: s32) {
+    let o = &objs[i]
+    let t = o.t as s32
+    let gw = obj_gw(t, o.rot as s32)
+    let gd = obj_gd(t, o.rot as s32)
+    obj_mark(i, -1)
+    var top = o.f as s32
+    while top + 1 < NFL {
+        let g = top + 1
+        var ok = true
+        for dz in 0..gd {
+            for dx in 0..gw {
+                let ti = tix(g, o.x as s32 + dx, o.z as s32 + dz)
+                if !indoor(g, o.x as s32 + dx, o.z as s32 + dz) || tflag[ti] & (TF_VOID | TF_HOLE | TF_WATER) != 0 { ok = false }
+                if tobj[ti] >= 0 && tobj[ti] as s32 != i { ok = false }
+            }
+        }
+        if !ok { break }
+        top = g
+    }
+    o.f1 = top as u8
+    obj_mark(i, i as s16)
+}
+
+fn obj_remove(i: s32) {
+    let o = &objs[i]
+    if o.used == 0 { return }
+    obj_mark(i, -1)
+    if o.t as s32 == OB_STAIRS || o.t as s32 == OB_GRAND_STAIRCASE { stairs_hole(i, false) }
+    o.used = 0
+    while nobjs > 0 && objs[nobjs - 1].used == 0 { nobjs -= 1 }
+}
+
+// Re-spans every elevator (after the building changed).
+fn elevators_respan() {
+    for i in 0..nobjs {
+        let t = objs[i].t as s32
+        if objs[i].used != 0 && (t == OB_ELEVATOR || t == OB_GLASS_ELEVATOR) { elevator_span(i) }
+    }
+}
+
+// Centre of the object's footprint in world space (at its floor level).
+fn obj_centre(i: s32) -> vec3 {
+    let o = &objs[i]
+    let t = o.t as s32
+    let gw = obj_gw(t, o.rot as s32)
+    let gd = obj_gd(t, o.rot as s32)
+    return vec3(fixed(o.x as s32) + fixed(gw) / 2, fixed(o.f as s32) * STOREY, fixed(o.z as s32) + fixed(gd) / 2)
+}
+
+// ---- meshes
+
+fn obj_mesh(t: s32, lo: bool) -> *Mesh {
+    let a = OBJ_ART[t] as s32
+    if a < 0 { return null }
+    if lo { return ART_MESH_LO[a] }
+    return ART_MESH[a]
+}
+
+// Copies a mesh into the batch, turned by rot * 90 degrees about +Y and moved to c.
+fn bake_mesh(m: *Mesh, c: vec3, rot: s32) {
+    let nv = m.nverts as s32
+    let nf = m.nfaces as s32
+    if nv > 2048 { return }
+    mb_need(nv, nf)
+    let base = m as u32
+    let vs = (base + m.verts) as *vec4
+    let fs = (base + m.faces) as *Face
+    let v0 = bm_nv
+    for k in 0..nv {
+        let p = vs[k]
+        var x = p.x
+        var z = p.z
+        match rot & 3 {
+            0 => {}
+            1 => { x = p.z; z = -p.x }
+            2 => { x = -p.x; z = -p.z }
+            else => { x = -p.z; z = p.x }
+        }
+        bm.v[bm_nv] = vec4(c.x + x, c.y + p.y, c.z + z, 1.0)
+        bm_nv += 1
+    }
+    for k in 0..nf {
+        let dst = &bm.f[bm_nf]
+        *dst = fs[k]
+        dst.idx[0] = (dst.idx[0] as s32 + v0) as u16
+        dst.idx[1] = (dst.idx[1] as s32 + v0) as u16
+        dst.idx[2] = (dst.idx[2] as s32 + v0) as u16
+        dst.idx[3] = (dst.idx[3] as s32 + v0) as u16
+        bm_nf += 1
+    }
+}
+
+// The placeholder: a shaded box sized from the footprint.
+fn bake_box(t: s32, c: vec3, rot: s32, col: u32) {
+    let gw = fixed(obj_gw(t, rot))
+    let gd = fixed(obj_gd(t, rot))
+    let h = fixed(OBJ_HT[t] as s32) / 16
+    let ins = 0.1
+    let x0 = c.x - gw / 2 + ins
+    let x1 = c.x + gw / 2 - ins
+    let z0 = c.z - gd / 2 + ins
+    let z1 = c.z + gd / 2 - ins
+    mb_box(x0, c.y, z0, x1, c.y + h, z1, col)
+    // a darker strip marks the front
+    let fc = shade(col, 120)
+    match rot & 3 {
+        0 => mb_hquad(x0, z1 - 0.15, x1, z1, c.y + h + 0.01, fc)
+        1 => mb_hquad(x1 - 0.15, z0, x1, z1, c.y + h + 0.01, fc)
+        2 => mb_hquad(x0, z0, x1, z0 + 0.15, c.y + h + 0.01, fc)
+        else => mb_hquad(x0, z0, x0 + 0.15, z1, c.y + h + 0.01, fc)
+    }
+}
+
+fn bake_object(i: s32, g: s32) {
+    let o = &objs[i]
+    let t = o.t as s32
+    var c = obj_centre(i)
+    c.y = fixed(g) * STOREY
+    let m = obj_mesh(t, view_zoom < 2 || cache_lo || g < view_floor)
+    if m != null {
+        bake_mesh(m, c, o.rot as s32)
+    } else {
+        var col = OBJ_COL[t]
+        if o.state & OS_BROKEN != 0 { col = shade(col, 140) }
+        bake_box(t, c, o.rot as s32, lit_int(col))
+    }
+}
+
+fn obj_exposed(i: s32, g: s32) -> bool {
+    let o = &objs[i]
+    let gw = obj_gw(o.t as s32, o.rot as s32)
+    let gd = obj_gd(o.t as s32, o.rot as s32)
+    for dz in 0..gd {
+        for dx in 0..gw { if exposed(g, o.x as s32 + dx, o.z as s32 + dz) { return true } }
+    }
+    return false
+}
+
+// Objects of floor g (elevator shafts are drawn on every floor they pass).
+fn build_objects(g: s32) {
+    for i in 0..nobjs {
+        let o = &objs[i]
+        if o.used == 0 { continue }
+        if g < o.f as s32 || g > o.f1 as s32 { continue }
+        if !obj_exposed(i, g) { continue }
+        let t = o.t as s32
+        if g > o.f as s32 && t != OB_ELEVATOR && t != OB_GLASS_ELEVATOR { continue }
+        // zoomed in, only what is near the screen (the cache is rebuilt after a long pan)
+        if view_zoom == 2 {
+            var c = obj_centre(i)
+            c.y = fixed(g) * STOREY
+            if !project(c) { continue }
+            if proj_x < -CULL_M || proj_x > 320 + CULL_M || proj_y < -CULL_M || proj_y > 240 + CULL_M + 40 { continue }
+        }
+        bake_object(i, g)
+    }
+}

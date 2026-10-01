@@ -1,0 +1,929 @@
+// Rendering: the near-orthographic camera, the static geometry cache and helpers.
+//
+// The camera is far away (CAM_DIST) with a very narrow field of view, so the view is almost
+// orthographic. It turns in 90-degree steps and has three zoom levels. Panning does not move
+// the camera: it shifts the projection on screen (an off-axis view), which moves every
+// projected vertex by the same whole number of pixels.
+//
+// Static geometry (floors, walls, objects of the visible floors) is baked into world-space
+// meshes and drawn with the stdlib mesh() ONCE, into a persistent packet arena; the ordering
+// table it produced is kept (cache_ot) and copied back every frame. When the view pans, the
+// cached packets are shifted in place. Anything that changes the picture otherwise (an edit,
+// rotation, zoom, another floor) sets cache_dirty and the cache is rebuilt.
+//
+// Depth layers (ordering-table bias, larger = drawn earlier): content of the viewed floor 0,
+// its floor surfaces +B_SLAB, each floor below one more +B_FLOOR.
+
+const CAM_DIST = 300.0
+const CAM_PITCH = -0.6109        // -35 degrees
+const B_SLAB = 40
+const B_FLOOR = 55
+const LOW_H = 0.42               // cutaway walls
+const FULL_H = 2.75
+const WALL_T = 0.07              // half the wall thickness
+
+var view_rot: s32 = 2            // 0..3 (2: the camera stands on the beach side)
+var view_zoom: s32 = 1           // 0..2
+var view_floor: s32
+var pan_x: s32                   // screen offset of the view, pixels
+var pan_y: s32
+var cam_yaw: fixed
+var ppu: fixed                   // screen pixels per world unit at the target
+var vis_px: bool                 // faces whose normal is +x are seen by the camera
+var vis_pz: bool
+
+var cache_dirty = true
+var cache_ot: [1024]u32
+var cache_arena: [40960]u32
+var cache_end: *u32
+var cache_px: s32                // pan the cache was built (or last shifted) for
+var cache_py: s32
+var cache_full: bool
+var cache_tris: s32              // stats
+var cache_cycles: s32
+var night_glow: bool
+var cache_lo: bool               // use low-detail meshes (when the full ones were too many triangles)
+var build_px: s32                // pan at the last rebuild (zoomed in, objects off screen are left out)
+var build_py: s32
+const CULL_M = 110
+
+const ZOOM_PPU: [3]fixed = [11.3137, 16.9706, 22.6274]
+
+// ---- the camera
+
+fn view_target() -> vec3 { return vec3(16.0, fixed(view_floor) * STOREY + 0.6, 12.0) }
+
+// Sets the stdlib camera for the current rotation, zoom, floor and pan.
+fn set_camera() {
+    cam_yaw = 0.7854 + fixed(view_rot) * 1.5708
+    ppu = ZOOM_PPU[view_zoom]
+    // vertical fov from pixels per unit: x_screen = 160 * fx * x / D
+    __fx = ppu * (CAM_DIST / 160)
+    __fy = __fx * 1.3333
+    let sy = sin(cam_yaw)
+    let cy = cos(cam_yaw)
+    let sp = sin(CAM_PITCH)
+    let cp = cos(CAM_PITCH)
+    let fwd = vec3(sy * cp, sp, cy * cp)
+    let pos = view_target() - fwd * CAM_DIST
+    camera_clip(CAM_DIST - 25.0, CAM_DIST + 50.0)
+    camera_look(pos, cam_yaw, CAM_PITCH)
+    vis_px = sy < 0.0
+    vis_pz = cy < 0.0
+    // pan: shift the screen by whole pixels (x' = x + px/160 * w, y' = y - py/120 * w)
+    let kx = fixed(pan_x) / 160
+    let ky = fixed(pan_y) / 120
+    __vp[0] = __vp[0] + __vp[3] * kx
+    __vp[1] = __vp[1] - __vp[3] * ky
+}
+
+// Projects a world point: proj_x, proj_y (pixels), proj_w (view depth). False when behind.
+var proj_x: s32
+var proj_y: s32
+var proj_w: fixed
+
+fn project(p: vec3) -> bool {
+    let v = vec4(p, 1.0)
+    let w = dot(__vp[3], v)
+    proj_w = w
+    if w < 1.0 { return false }
+    let x = dot(__vp[0], v)
+    let y = dot(__vp[1], v)
+    // (divide first: x * 160 overflows the fixed-point range for points ~110 px off centre)
+    proj_x = 160 + ((x / w) * 160) as s32
+    proj_y = 120 - ((y / w) * 120) as s32
+    return true
+}
+
+// Ordering-table bucket of a view depth (as the stdlib computes it for a face).
+fn depth_bucket(w: fixed) -> s32 {
+    return clamp(((w - __cam_near) * (1024.0 / (__cam_far - __cam_near))) as s32, 0, 1023)
+}
+
+// ---- the mesh builder: world-space faces are batched into one RAM mesh and drawn with mesh()
+
+struct BMesh {
+    hdr: Mesh
+    v: [2048]vec4
+    f: [1600]Face
+}
+
+var bm: BMesh
+var bm_nv: s32
+var bm_nf: s32
+var bm_bias: s32
+
+fn mb_init() {
+    bm.hdr.verts = 16
+    bm.hdr.faces = 16 + 2048 * 16
+}
+
+fn mb_flush() {
+    if bm_nf > 0 {
+        bm.hdr.nverts = bm_nv as u16
+        bm.hdr.nfaces = bm_nf as u16
+        depth_bias(bm_bias)
+        mesh(&bm.hdr)
+        depth_bias(0)
+    }
+    bm_nv = 0
+    bm_nf = 0
+}
+
+fn mb_set_bias(b: s32) {
+    if b != bm_bias {
+        mb_flush()
+        bm_bias = b
+    }
+}
+
+// Makes room for nv vertices and nf faces.
+fn mb_need(nv: s32, nf: s32) {
+    if bm_nv + nv > 2048 || bm_nf + nf > 1600 { mb_flush() }
+}
+
+fn mb_v(x: fixed, y: fixed, z: fixed) -> s32 {
+    let i = bm_nv
+    bm.v[i] = vec4(x, y, z, 1.0)
+    bm_nv = i + 1
+    return i
+}
+
+// A face (quad when i3 >= 0). look: flags | tex << 8 | pal << 16 (see surf_*); uv: 4 packed u|v<<8.
+var mb_uv: [4]u16
+var mb_flags: s32                // FACE_* bits of the next faces
+var mb_tex: s32                  // texture byte (slot | 0x10 for 4-bit)
+var mb_pal: s32
+var mb_blend: s32
+
+fn mb_face(i0: s32, i1: s32, i2: s32, i3: s32, col: u32) {
+    let f = &bm.f[bm_nf]
+    bm_nf += 1
+    var fl = mb_flags | FACE_DOUBLE
+    if i3 >= 0 { fl = fl | FACE_QUAD }
+    f.flags = fl as u8
+    f.blend = mb_blend as u8
+    f.tex = mb_tex as u8
+    f.palette = mb_pal as u8
+    f.idx[0] = i0 as u16
+    f.idx[1] = i1 as u16
+    f.idx[2] = i2 as u16
+    f.idx[3] = max(i3, 0) as u16
+    f.col[0] = col
+    f.col[1] = col
+    f.col[2] = col
+    f.col[3] = col
+    f.uv[0] = mb_uv[0]
+    f.uv[1] = mb_uv[1]
+    f.uv[2] = mb_uv[2]
+    f.uv[3] = mb_uv[3]
+}
+
+// Flat untextured look.
+fn look_flat() {
+    mb_flags = 0
+    mb_tex = 0
+    mb_pal = 0
+}
+
+// Textured look from the surface atlas.
+fn look_tex(pal: s32) {
+    mb_flags = FACE_TEXTURED
+    mb_tex = SURF_SLOT | 0x10
+    mb_pal = pal
+}
+
+fn uvp(u: s32, v: s32) -> u16 { return (min(u, 255) | (min(v, 255) << 8)) as u16 }
+
+// Texture rectangle for the next vertical quads (corners: bottom-left, bottom-right, top-left,
+// top-right).
+fn uv_vert(u: s32, v: s32, w: s32, h: s32) {
+    mb_uv[0] = uvp(u, v + h)
+    mb_uv[1] = uvp(u + w, v + h)
+    mb_uv[2] = uvp(u, v)
+    mb_uv[3] = uvp(u + w, v)
+}
+
+// ... for horizontal quads (corners: x0z0, x1z0, x0z1, x1z1).
+fn uv_horiz(u: s32, v: s32, w: s32, h: s32) {
+    mb_uv[0] = uvp(u, v)
+    mb_uv[1] = uvp(u + w, v)
+    mb_uv[2] = uvp(u, v + h)
+    mb_uv[3] = uvp(u + w, v + h)
+}
+
+const TINT = 0x808080
+
+// A horizontal quad (x0, z0)-(x1, z1) at height y.
+fn mb_hquad(x0: fixed, z0: fixed, x1: fixed, z1: fixed, y: fixed, col: u32) {
+    mb_need(4, 1)
+    let a = mb_v(x0, y, z0)
+    let b = mb_v(x1, y, z0)
+    let c = mb_v(x0, y, z1)
+    let d = mb_v(x1, y, z1)
+    mb_face(a, b, c, d, col)
+}
+
+// A vertical quad along x (constant z) from x0 to x1, y0 to y1.
+fn mb_vquad_x(x0: fixed, x1: fixed, z: fixed, y0: fixed, y1: fixed, col: u32) {
+    mb_need(4, 1)
+    let a = mb_v(x0, y0, z)
+    let b = mb_v(x1, y0, z)
+    let c = mb_v(x0, y1, z)
+    let d = mb_v(x1, y1, z)
+    mb_face(a, b, c, d, col)
+}
+
+// A vertical quad along z (constant x).
+fn mb_vquad_z(x: fixed, z0: fixed, z1: fixed, y0: fixed, y1: fixed, col: u32) {
+    mb_need(4, 1)
+    let a = mb_v(x, y0, z0)
+    let b = mb_v(x, y0, z1)
+    let c = mb_v(x, y1, z0)
+    let d = mb_v(x, y1, z1)
+    mb_face(a, b, c, d, col)
+}
+
+// The three camera-facing faces of a box (top and two sides), shaded.
+fn mb_box(x0: fixed, y0: fixed, z0: fixed, x1: fixed, y1: fixed, z1: fixed, col: u32) {
+    look_flat()
+    mb_hquad(x0, z0, x1, z1, y1, col)
+    var sx = x0
+    if vis_px { sx = x1 }
+    var sz = z0
+    if vis_pz { sz = z1 }
+    mb_vquad_z(sx, z0, z1, y0, y1, shade(col, 200))
+    mb_vquad_x(x0, x1, sz, y0, y1, shade(col, 168))
+}
+
+fn shade(c: u32, k: s32) -> u32 {
+    let r = ((c & 255) as s32 * k) >> 8
+    let g = (((c >> 8) & 255) as s32 * k) >> 8
+    let b = (((c >> 16) & 255) as s32 * k) >> 8
+    return rgb(r, g, b)
+}
+
+fn mix_col(a: u32, b: u32, t: s32) -> u32 { return clerp(a, b, fixed(t) / 256) }
+
+// ---- the static cache
+
+var top_solid: [768]u8           // per (x, z): the highest floor <= view_floor with a solid floor
+
+fn compute_top_solid() {
+    let f = view_floor
+    for t in 0..NT {
+        var top = 0
+        var g = f
+        while g > 0 {
+            let i = g * NT + t
+            if tfloor[i] != 0 && tflag[i] & (TF_VOID | TF_HOLE) == 0 { break }
+            g -= 1
+        }
+        top_solid[t] = g as u8
+    }
+}
+
+// Is floor g's content at (x, z) visible from above when viewing view_floor?
+fn exposed(g: s32, x: s32, z: s32) -> bool {
+    if !in_lot(x, z) { return g == 0 }
+    return top_solid[z * GW + x] as s32 <= g
+}
+
+var lo_ot: [1024]u32             // the floors below the viewed one: drawn first, then faded
+var lo_snap: [1024]u32
+var have_lo: bool
+var no_haze: bool
+
+fn rebuild_cache() {
+
+    let c0 = CYCLES as s32
+    // render into the persistent arena
+    let save_ptr = __arena_ptr
+    let save_end = __arena_end
+    __arena_ptr = &cache_arena[0]
+    __arena_end = &cache_arena[0] + 40960
+    compute_top_solid()
+    mb_init()
+    bm_bias = 0
+    have_lo = view_floor > 0
+    // pass 1: the floors below (and the world around), into their own ordering table
+    if have_lo {
+        for g in 0..view_floor {
+            let lower = view_floor - 1 - g
+            mb_set_bias(B_SLAB + lower * B_FLOOR)
+            build_floor_surfaces(g)
+            mb_set_bias(lower * B_FLOOR)
+            build_walls(g)
+            build_objects(g)
+            build_facades(g)
+        }
+        mb_set_bias(B_SLAB + 6 * B_FLOOR)
+        build_surroundings()
+        mb_flush()
+        memcpy(&lo_snap[0] as *u8, &__ot[0] as *u8, 4096)
+        relink_lo()
+        __ot_reset(&__ot[0])
+    }
+    // pass 2: the viewed floor
+    let g = view_floor
+    mb_set_bias(B_SLAB)
+    build_floor_surfaces(g)
+    mb_set_bias(0)
+    build_walls(g)
+    build_objects(g)
+    if !have_lo {
+        mb_set_bias(B_SLAB + 6 * B_FLOOR)
+        build_surroundings()
+    }
+    mb_flush()
+    cache_full = __arena_ptr >= __arena_end
+    cache_end = __arena_ptr
+    __arena_ptr = save_ptr
+    __arena_end = save_end
+    memcpy(&cache_ot[0] as *u8, &__ot[0] as *u8, 4096)
+    cache_px = pan_x
+    cache_py = pan_y
+    build_px = pan_x
+    build_py = pan_y
+    cache_dirty = false
+    cache_cycles = c0 - CYCLES as s32
+}
+
+// The lower pass was rendered into __ot; its chains end at __ot's entries. Point them at
+// lo_ot's entries instead, so lo_ot (restored from lo_snap each frame) is a list of its own.
+fn relink_lo() {
+    let ot0 = &__ot[0] as u32
+    let ot1 = ot0 + 4096
+    let lo0 = &lo_ot[0] as u32
+    for b in 0..1024 {
+        var w = lo_snap[b]
+        var nxt = w & 0xFFFFFF
+        if nxt >= ot0 && nxt < ot1 {
+            lo_snap[b] = (w & 0xFF000000) | (nxt - ot0 + lo0)
+            continue
+        }
+        while nxt != 0xFFFFFF {
+            let q = nxt as *u32
+            let n2 = q[0] & 0xFFFFFF
+            if n2 >= ot0 && n2 < ot1 {
+                q[0] = (q[0] & 0xFF000000) | (n2 - ot0 + lo0)
+                break
+            }
+            nxt = n2
+        }
+    }
+}
+
+// Draws the floors below now, then a haze over them (the viewed floor draws on top later).
+var lo_tris: s32                 // triangles the floors below took this frame
+
+fn draw_lower() {
+    lo_tris = 0
+    if !have_lo { return }
+    let before = GPU_STATUS & 0xFFFF
+    GPU_DRAW = &lo_ot[1023] as u32
+    lo_tris = ((GPU_STATUS & 0xFFFF) - before) as s32
+    if no_haze { return }
+    let q = packet_alloc(6)
+    if q == null { return }
+    q[0] = (0x2C << 24) | 0xFFFFFF
+    q[1] = rgb(24, 34, 70)
+    q[2] = upos(0, 0)
+    q[3] = upos(320, 0)
+    q[4] = upos(0, 240)
+    q[5] = upos(320, 240)
+    GPU_DRAW = q as u32
+}
+
+// Moves every cached packet by (dx, dy) pixels.
+fn cache_shift(dx: s32, dy: s32) {
+    var p = &cache_arena[0]
+    let end = cache_end
+    let dyw = (dy as u32) << 16
+    while p < end {
+        let ty = (p[0] >> 24) & 15
+        let nv = 3 + ((ty >> 2) & 1) as s32
+        let gour = ty & 1 != 0
+        let tex = ty & 2 != 0
+        var k = 1
+        for v in 0..nv {
+            if gour || v == 0 { k += 1 }
+            let q = p[k]
+            p[k] = ((q + dx as u32) & 0xFFFF) | ((q & 0xFFFF0000) + dyw)
+            k += 1
+            if tex { k += 1 }
+        }
+        p = p + k
+    }
+}
+
+// Called at the start of draw(): rebuilds, shifts or restores the static geometry.
+fn begin_world() {
+    set_camera()
+    if view_zoom == 2 && (abs(pan_x - build_px) > CULL_M - 30 || abs(pan_y - build_py) > CULL_M - 30) { cache_dirty = true }
+    if cache_dirty {
+        rebuild_cache()
+    } else {
+        if pan_x != cache_px || pan_y != cache_py {
+            cache_shift(pan_x - cache_px, pan_y - cache_py)
+            cache_px = pan_x
+            cache_py = pan_y
+        }
+        memcpy(&__ot[0] as *u8, &cache_ot[0] as *u8, 4096)
+    }
+    if have_lo { memcpy(&lo_ot[0] as *u8, &lo_snap[0] as *u8, 4096) }
+}
+
+// ---- building the geometry
+
+fn surf_col(fk: s32) -> u32 { return FLOORK_COL[fk] }
+
+fn ground_col(gr: s32) -> u32 {
+    match gr {
+        0 => return rgb(96, 168, 80)
+        1 => return rgb(236, 214, 150)
+        2 => return rgb(70, 72, 82)
+        3 => return rgb(196, 190, 176)
+        else => return rgb(40, 130, 200)
+    }
+}
+
+// Floor surfaces of floor g, merged into rectangles inside aligned 4x4 blocks.
+var blk_done: [16]bool
+
+fn floor_key_at(g: s32, x: s32, z: s32) -> s32 {
+    // -1: nothing to draw; otherwise a "surface code": floor key, or 100 + ground kind
+    if !exposed(g, x, z) { return -1 }
+    let t = tix(g, x, z)
+    if tflag[t] & (TF_VOID | TF_HOLE) != 0 { return -1 }
+    if tflag[t] & TF_WATER != 0 { return 200 }
+    let fk = tfloor[t] as s32
+    if fk != 0 { return fk - 1 }
+    if g == 0 { return 100 + ground_at(x, z) }
+    return -1
+}
+
+fn surf_code_col(code: s32, g: s32) -> u32 {
+    if code == 200 { return lit_ext(rgb(70, 180, 235)) }
+    if code >= 100 { return lit_ext(ground_col(code - 100)) }
+    let k = FLOORK_KIND[code] as s32
+    if k == KIND_DECK || (g == 0 && k == KIND_POOL) { return lit_ext(surf_col(code)) }
+    return lit_int(surf_col(code))
+}
+
+// The art surface of a surface code (-1: none, flat colour).
+fn surf_index(code: s32) -> s32 {
+    if !ART_PRESENT { return -1 }
+    if code == 200 { return 12 }
+    if code >= 100 { return 13 + code - 100 }
+    return code
+}
+
+fn build_floor_surfaces(g: s32) {
+    let y = fixed(g) * STOREY
+    var codes: [16]s32
+    for bz in 0..6 {
+        for bx in 0..8 {
+            for k in 0..16 {
+                codes[k] = floor_key_at(g, bx * 4 + (k & 3), bz * 4 + (k >> 2))
+                blk_done[k] = codes[k] < 0
+            }
+            for k in 0..16 {
+                if blk_done[k] { continue }
+                let c = codes[k]
+                let x0 = k & 3
+                let z0 = k >> 2
+                // grow right, then down
+                var x1 = x0
+                while x1 < 3 && !blk_done[z0 * 4 + x1 + 1] && codes[z0 * 4 + x1 + 1] == c { x1 += 1 }
+                var z1 = z0
+                var go = true
+                while go && z1 < 3 {
+                    for xx in x0..x1 + 1 {
+                        let j = (z1 + 1) * 4 + xx
+                        if blk_done[j] || codes[j] != c { go = false }
+                    }
+                    if go { z1 += 1 }
+                }
+                for zz in z0..z1 + 1 {
+                    for xx in x0..x1 + 1 { blk_done[zz * 4 + xx] = true }
+                }
+                var yy = y
+                if c == 200 { yy = y - 0.15 }
+                let si = surf_index(c)
+                var col = TINT
+                if si >= 0 && SURF_BLOCK[si] == 1 {
+                    look_tex(SURF_PAL[si] as s32)
+                    let u = SURF_U[si] as s32 + x0 * SURF_CELL
+                    let v = SURF_V[si] as s32 + z0 * SURF_CELL
+                    uv_horiz(u, v, (x1 - x0 + 1) * SURF_CELL - 1, (z1 - z0 + 1) * SURF_CELL - 1)
+                } else {
+                    look_flat()
+                    col = surf_code_col(c, g)
+                }
+                mb_hquad(fixed(bx * 4 + x0), fixed(bz * 4 + z0), fixed(bx * 4 + x1 + 1), fixed(bz * 4 + z1 + 1), yy, col)
+            }
+        }
+    }
+    if g > 0 { build_slab_edges(g) }
+}
+
+// The visible edge of the floor slab where an upper floor ends (its thickness).
+fn build_slab_edges(g: s32) {
+    let y = fixed(g) * STOREY
+    let col = rgb(150, 140, 130)
+    look_flat()
+    for z in 0..GH {
+        for x in 0..GW {
+            let t = tix(g, x, z)
+            if tfloor[t] == 0 || !exposed(g, x, z) { continue }
+            // neighbour in the visible +x / +z direction (or -x / -z)
+            var nx = x - 1
+            if vis_px { nx = x + 1 }
+            if !in_lot(nx, z) || tfloor[tix(g, nx, z)] == 0 {
+                var ex = fixed(x)
+                if vis_px { ex = fixed(x + 1) }
+                mb_vquad_z(ex, fixed(z), fixed(z + 1), y - 0.25, y, shade(col, 200))
+            }
+            var nz = z - 1
+            if vis_pz { nz = z + 1 }
+            if !in_lot(x, nz) || tfloor[tix(g, x, nz)] == 0 {
+                var ez = fixed(z)
+                if vis_pz { ez = fixed(z + 1) }
+                mb_vquad_x(fixed(x), fixed(x + 1), ez, y - 0.25, y, shade(col, 168))
+            }
+        }
+    }
+}
+
+const WALL_COL = 0xD8E4EC        // rgb(236, 228, 216)
+const WALL_IN = 0xC0D4E4         // a slightly darker face
+const CAP_COL = 0x606A78
+const FACADE_COL = 0xB4D0F0      // rgb(240, 208, 180)
+const GLASS_COL = 0xE0B890
+const DOOR_COL = 0x30507A
+
+// Walls of floor g. For each edge the camera sees one side, A; the other is B. A wall is drawn
+// full height when it is the back wall of an indoor tile (A indoor, B outdoors or open air);
+// every other wall is cut down to LOW_H. Low walls are merged into runs.
+fn build_walls(g: s32) {
+    let y = fixed(g) * STOREY
+    // edges along z (between x-1 and x): visible side is -x when the camera looks toward +x
+    for x in 1..GW {
+        var run_z0 = -1
+        var run_ax = 0
+        for z in 0..GH + 1 {
+            var low = false
+            var ax = 0
+            if z < GH && wall_between(g, x - 1, z, 1, 0) && (exposed(g, x - 1, z) || exposed(g, x, z)) {
+                // A: the tile on the camera side
+                var a = x
+                var b = x - 1
+                if !vis_px { a = x - 1; b = x }
+                ax = a
+                let feat = edge_w[tix(g, x, z)] as s32
+                let full = indoor(g, a, z) && !indoor(g, b, z)
+                if g < view_floor && (!indoor(g, a, z) || !exposed(g, a, z)) {
+                    // a lower floor's outside wall (the facade shows it), or one hidden under the
+                    // floor above (its visible side is covered)
+                } else if full {
+                    wall_piece_z(g, x, z, a < x, feat)
+                } else if feat != EF_DOOR {
+                    low = true
+                }
+            }
+            if low && run_z0 >= 0 && ax == run_ax { continue }
+            if run_z0 >= 0 {
+                low_wall_z(y, x, run_z0, z, run_ax < x)
+                run_z0 = -1
+            }
+            if low {
+                run_z0 = z
+                run_ax = ax
+            }
+        }
+    }
+    // edges along x (between z-1 and z)
+    for z in 1..GH {
+        var run_x0 = -1
+        var run_az = 0
+        for x in 0..GW + 1 {
+            var low = false
+            var az = 0
+            if x < GW && wall_between(g, x, z - 1, 0, 1) && (exposed(g, x, z - 1) || exposed(g, x, z)) {
+                var a = z
+                var b = z - 1
+                if !vis_pz { a = z - 1; b = z }
+                az = a
+                let feat = edge_n[tix(g, x, z)] as s32
+                let full = indoor(g, x, a) && !indoor(g, x, b)
+                if g < view_floor && (!indoor(g, x, a) || !exposed(g, x, a)) {
+                } else if full {
+                    wall_piece_x(g, x, z, a < z, feat)
+                } else if feat != EF_DOOR {
+                    low = true
+                }
+            }
+            if low && run_x0 >= 0 && az == run_az { continue }
+            if run_x0 >= 0 {
+                low_wall_x(y, z, run_x0, x, run_az < z)
+                run_x0 = -1
+            }
+            if low {
+                run_x0 = x
+                run_az = az
+            }
+        }
+    }
+    build_railings(g)
+}
+
+// A low wall along z at line x from z0 to z1 (exclusive). a_left: the visible side is -x.
+fn low_wall_z(y: fixed, x: s32, z0: s32, z1: s32, a_left: bool) {
+    let lx = fixed(x)
+    var fx = lx + WALL_T
+    if a_left { fx = lx - WALL_T }
+    look_flat()
+    mb_vquad_z(fx, fixed(z0), fixed(z1), y, y + LOW_H, lit_int(WALL_IN))
+    mb_hquad(lx - WALL_T, fixed(z0), lx + WALL_T, fixed(z1), y + LOW_H, lit_int(CAP_COL))
+}
+
+fn low_wall_x(y: fixed, z: s32, x0: s32, x1: s32, a_up: bool) {
+    let lz = fixed(z)
+    var fz = lz + WALL_T
+    if a_up { fz = lz - WALL_T }
+    look_flat()
+    mb_vquad_x(fixed(x0), fixed(x1), fz, y, y + LOW_H, lit_int(shade(WALL_IN, 230)))
+    mb_hquad(fixed(x0), lz - WALL_T, fixed(x1), lz + WALL_T, y + LOW_H, lit_int(CAP_COL))
+}
+
+// A full-height back wall piece (one tile edge) along z at line x.
+fn wall_piece_z(g: s32, x: s32, z: s32, a_left: bool, feat: s32) {
+    let y = fixed(g) * STOREY
+    let lx = fixed(x)
+    var fx = lx + WALL_T
+    if a_left { fx = lx - WALL_T }
+    let z0 = fixed(z)
+    let z1 = fixed(z + 1)
+    wall_look()
+    mb_vquad_z(fx, z0, z1, y, y + FULL_H, shade(TINT, 230))
+    var rot = 1
+    if a_left { rot = 3 }
+    wall_feature(feat, vec3(lx, y, z0 + 0.5), rot, a_left, true)
+    look_flat()
+    mb_hquad(lx - WALL_T, z0, lx + WALL_T, z1, y + FULL_H, CAP_COL)
+}
+
+fn wall_piece_x(g: s32, x: s32, z: s32, a_up: bool, feat: s32) {
+    let y = fixed(g) * STOREY
+    let lz = fixed(z)
+    var fz = lz + WALL_T
+    if a_up { fz = lz - WALL_T }
+    let x0 = fixed(x)
+    let x1 = fixed(x + 1)
+    wall_look()
+    mb_vquad_x(x0, x1, fz, y, y + FULL_H, shade(TINT, 210))
+    var rot = 0
+    if a_up { rot = 2 }
+    wall_feature(feat, vec3(x0 + 0.5, y, lz), rot, a_up, false)
+    look_flat()
+    mb_hquad(x0, lz - WALL_T, x1, lz + WALL_T, y + FULL_H, CAP_COL)
+}
+
+fn wall_look() {
+    if SW_WALL_OK {
+        look_tex(SW_WALL_PAL + 1)
+        uv_vert(SW_WALL_U, SW_WALL_V, SURF_CELL - 1, SW_CELL_H - 1)
+    } else {
+        look_flat()
+    }
+}
+
+// A window or door on a full wall: the art's wall piece, facing the visible side.
+fn wall_feature(feat: s32, c: vec3, rot: s32, neg: bool, along_z: bool) {
+    if feat == EF_NONE { return }
+    var t = OB_WINDOW
+    if feat == EF_DOOR { t = OB_DOOR }
+    let m = obj_mesh(t, false)
+    if m != null {
+        bake_mesh(m, c, rot)
+        return
+    }
+    look_flat()
+    var col = GLASS_COL
+    if feat == EF_DOOR { col = DOOR_COL }
+    var off = WALL_T + 0.02
+    if neg { off = -off }
+    if along_z {
+        if feat == EF_WINDOW { mb_vquad_z(c.x + off, c.z - 0.32, c.z + 0.32, c.y + 0.9, c.y + 2.2, col) }
+        else { mb_vquad_z(c.x + off, c.z - 0.35, c.z + 0.35, c.y, c.y + 2.1, col) }
+    } else {
+        if feat == EF_WINDOW { mb_vquad_x(c.x - 0.32, c.x + 0.32, c.z + off, c.y + 0.9, c.y + 2.2, col) }
+        else { mb_vquad_x(c.x - 0.35, c.x + 0.35, c.z + off, c.y, c.y + 2.1, col) }
+    }
+}
+
+// The outside of floor g's walls that face the camera (seen below the viewed floor). Plain cells
+// merge into runs (the plain facade stretches sideways unnoticed); windows and doors are one cell.
+fn build_facades(g: s32) {
+    let y = fixed(g) * STOREY
+    look_flat()
+    // faces along z (constant x)
+    for x in 0..GW {
+        var nx = x - 1
+        var ex = fixed(x) - WALL_T
+        if vis_px { nx = x + 1; ex = fixed(x + 1) + WALL_T }
+        var run0 = -1
+        for z in 0..GH + 1 {
+            var on = false
+            var feat = 0
+            if z < GH && indoor(g, x, z) && !indoor(g, nx, z) && exposed(g, nx, z) {
+                on = true
+                if vis_px { feat = edge_feat(g, x, z, 1, 0) } else { feat = edge_feat(g, x, z, -1, 0) }
+            }
+            if on && feat == EF_NONE {
+                if run0 < 0 { run0 = z }
+                continue
+            }
+            if run0 >= 0 {
+                facade_z(y, ex, run0, z, EF_NONE)
+                run0 = -1
+            }
+            if on { facade_z(y, ex, z, z + 1, feat) }
+        }
+    }
+    // faces along x (constant z)
+    for z in 0..GH {
+        var nz = z - 1
+        var ez = fixed(z) - WALL_T
+        if vis_pz { nz = z + 1; ez = fixed(z + 1) + WALL_T }
+        var run0 = -1
+        for x in 0..GW + 1 {
+            var on = false
+            var feat = 0
+            if x < GW && indoor(g, x, z) && !indoor(g, x, nz) && exposed(g, x, nz) {
+                on = true
+                if vis_pz { feat = edge_feat(g, x, z, 0, 1) } else { feat = edge_feat(g, x, z, 0, -1) }
+            }
+            if on && feat == EF_NONE {
+                if run0 < 0 { run0 = x }
+                continue
+            }
+            if run0 >= 0 {
+                facade_x(y, ez, run0, x, EF_NONE)
+                run0 = -1
+            }
+            if on { facade_x(y, ez, x, x + 1, feat) }
+        }
+    }
+}
+
+fn facade_look(feat: s32) {
+    if !SW_FACADE_OK {
+        look_flat()
+        return
+    }
+    if feat == EF_WINDOW {
+        var pal = SW_FACADE_PAL
+        if night_glow { pal = SW_FACADE_LIT_PAL }
+        look_tex(pal)
+        uv_vert(SW_FACADE_U, SW_FACADE_V, SURF_CELL - 1, SW_CELL_H - 1)
+    } else if feat == EF_DOOR {
+        look_tex(SW_FACADE_GLASS_PAL)
+        uv_vert(SW_FACADE_GLASS_U, SW_FACADE_GLASS_V, SURF_CELL - 1, SW_CELL_H - 1)
+    } else {
+        look_tex(SW_FACADE_PLAIN_PAL)
+        uv_vert(SW_FACADE_PLAIN_U, SW_FACADE_PLAIN_V, SURF_CELL - 1, SW_CELL_H - 1)
+    }
+}
+
+fn facade_z(y: fixed, ex: fixed, z0: s32, z1: s32, feat: s32) {
+    facade_look(feat)
+    var c = FACADE_COL
+    if SW_FACADE_OK { c = shade(TINT, 235) }
+    mb_vquad_z(ex, fixed(z0), fixed(z1), y - 0.25, y + STOREY - 0.25, if_flat_ext(c))
+    look_flat()
+}
+
+fn facade_x(y: fixed, ez: fixed, x0: s32, x1: s32, feat: s32) {
+    facade_look(feat)
+    var c = shade(FACADE_COL, 220)
+    if SW_FACADE_OK { c = shade(TINT, 205) }
+    mb_vquad_x(fixed(x0), fixed(x1), ez, y - 0.25, y + STOREY - 0.25, if_flat_ext(c))
+    look_flat()
+}
+
+fn win_col() -> u32 {
+    if night_glow { return rgb(255, 220, 130) }
+    return GLASS_COL
+}
+
+// Railings around void tiles (the edges of an atrium on this floor).
+fn build_railings(g: s32) {
+    let y = fixed(g) * STOREY
+    look_flat()
+    // sides facing -x / +x (rails along z), merged into runs of the same kind
+    for side in 0..2 {
+        let dx = side * 2 - 1
+        for x in 0..GW {
+            var run0 = -1
+            var rglass = false
+            for z in 0..GH + 1 {
+                var on = false
+                var glass = false
+                if z < GH {
+                    let t = tix(g, x, z)
+                    on = tflag[t] & TF_VOID != 0 && tile_floor(g, x + dx, z)
+                    glass = tflag[t] & TF_GLASS != 0
+                }
+                if run0 >= 0 && (!on || glass != rglass) {
+                    var rx = fixed(x) - 0.04
+                    if dx > 0 { rx = fixed(x + 1) + 0.04 }
+                    rail_z(y, rx, run0, z, rglass)
+                    run0 = -1
+                }
+                if on && run0 < 0 { run0 = z; rglass = glass }
+            }
+        }
+    }
+    // sides facing -z / +z (rails along x)
+    for side in 0..2 {
+        let dz = side * 2 - 1
+        for z in 0..GH {
+            var run0 = -1
+            var rglass = false
+            for x in 0..GW + 1 {
+                var on = false
+                var glass = false
+                if x < GW {
+                    let t = tix(g, x, z)
+                    on = tflag[t] & TF_VOID != 0 && tile_floor(g, x, z + dz)
+                    glass = tflag[t] & TF_GLASS != 0
+                }
+                if run0 >= 0 && (!on || glass != rglass) {
+                    var rz = fixed(z) - 0.04
+                    if dz > 0 { rz = fixed(z + 1) + 0.04 }
+                    rail_x(y, rz, run0, x, rglass)
+                    run0 = -1
+                }
+                if on && run0 < 0 { run0 = x; rglass = glass }
+            }
+        }
+    }
+}
+
+fn rail_col(glass: bool) -> u32 {
+    if glass { return rgb(150, 210, 240) }
+    return rgb(70, 70, 84)
+}
+
+// A railing run along z from z0 to z1: a top rail and a post per tile (glass: one pane).
+fn rail_z(y: fixed, x: fixed, z0: s32, z1: s32, glass: bool) {
+    let col = rail_col(glass)
+    mb_vquad_z(x, fixed(z0), fixed(z1), y + 0.85, y + 1.0, col)
+    if glass {
+        mb_blend = 0
+        mb_flags = FACE_SEMI
+        mb_vquad_z(x, fixed(z0), fixed(z1), y, y + 0.85, shade(col, 200))
+        look_flat()
+        return
+    }
+    for z in z0..z1 { mb_vquad_z(x, fixed(z) + 0.45, fixed(z) + 0.55, y, y + 0.85, shade(col, 200)) }
+}
+
+fn rail_x(y: fixed, z: fixed, x0: s32, x1: s32, glass: bool) {
+    let col = rail_col(glass)
+    mb_vquad_x(fixed(x0), fixed(x1), z, y + 0.85, y + 1.0, col)
+    if glass {
+        mb_blend = 0
+        mb_flags = FACE_SEMI
+        mb_vquad_x(fixed(x0), fixed(x1), z, y, y + 0.85, shade(col, 200))
+        look_flat()
+        return
+    }
+    for x in x0..x1 { mb_vquad_x(fixed(x) + 0.45, fixed(x) + 0.55, z, y, y + 0.85, shade(col, 200)) }
+}
+
+// The world around the lot: more sea, the beach and road running on, a town strip.
+fn build_surroundings() {
+    look_flat()
+    let sea = lit_ext(rgb(40, 130, 200))
+    mb_hquad(-40.0, 24.0, 72.0, 70.0, -0.2, sea)
+    mb_hquad(-40.0, 21.0, 0.0, 24.0, -0.2, sea)
+    mb_hquad(32.0, 21.0, 72.0, 24.0, -0.2, sea)
+    mb_hquad(-40.0, 18.0, 0.0, 21.0, 0.0, lit_ext(ground_col(GR_SAND)))
+    mb_hquad(32.0, 18.0, 72.0, 21.0, 0.0, lit_ext(ground_col(GR_SAND)))
+    mb_hquad(-40.0, 2.0, 0.0, 18.0, 0.0, lit_ext(rgb(84, 150, 74)))
+    mb_hquad(32.0, 2.0, 72.0, 18.0, 0.0, lit_ext(rgb(84, 150, 74)))
+    mb_hquad(-40.0, 1.0, 0.0, 2.0, 0.0, lit_ext(ground_col(GR_WALK)))
+    mb_hquad(32.0, 1.0, 72.0, 2.0, 0.0, lit_ext(ground_col(GR_WALK)))
+    mb_hquad(-40.0, 0.0, 0.0, 1.0, 0.0, lit_ext(ground_col(GR_ROAD)))
+    mb_hquad(32.0, 0.0, 72.0, 1.0, 0.0, lit_ext(ground_col(GR_ROAD)))
+    mb_hquad(-40.0, -1.0, 72.0, 0.0, 0.0, lit_ext(ground_col(GR_ROAD)))
+    mb_hquad(-40.0, -30.0, 72.0, -1.0, 0.0, lit_ext(rgb(150, 150, 140)))
+}
+
+fn if_flat_ext(c: u32) -> u32 {
+    if SW_FACADE_OK { return c }
+    return lit_ext(c)
+}

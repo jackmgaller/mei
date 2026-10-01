@@ -1,0 +1,203 @@
+// Elevators: a car per shaft that moves between the floors it spans, with a capacity, doors,
+// and people waiting at each floor. Collective control: the car keeps going in its direction
+// while anyone inside or waiting ahead wants that way, then turns.
+
+const MAXELEV = 16
+const ELEV_CAP = 6
+const DOOR_T = 70
+const ELEV_SPEED = 0.03          // floors per frame
+
+struct Elev {
+    obj: s16
+    f0: u8
+    f1: u8
+    pos: fixed                   // floor position (in floors)
+    dir: s32                     // -1, 0, 1
+    door: s32                    // frames left with the doors open
+    calls: u32                   // bit f: someone is waiting on floor f
+    n: s32
+    pass: [8]s16                 // people inside
+    trips: s32
+}
+
+var elevs: [16]Elev
+var nelevs: s32
+
+fn elevs_rebuild() {
+    // keep the cars of shafts that still exist; people inside are let out where they are
+    nelevs = 0
+    for i in 0..nobjs {
+        let o = &objs[i]
+        if o.used == 0 { continue }
+        let t = o.t as s32
+        if t != OB_ELEVATOR && t != OB_GLASS_ELEVATOR { continue }
+        if nelevs >= MAXELEV { break }
+        let e = &elevs[nelevs]
+        if e.obj as s32 != i {
+            memset(e as *u8, 0, sizeof(Elev))
+            e.obj = i as s16
+            e.pos = fixed(o.f as s32)
+        }
+        e.f0 = o.f
+        e.f1 = o.f1
+        e.pos = clamp(e.pos, fixed(o.f as s32), fixed(o.f1 as s32))
+        nelevs += 1
+    }
+    for k in nelevs..MAXELEV { elevs[k].obj = -1 }
+    // anyone riding or waiting is dropped back to walking (they'll re-plan)
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used == 0 { continue }
+        if p.mode as s32 == M_RIDE || p.mode as s32 == M_WAIT_ELEV {
+            p.mode = M_WALK as u8
+            p.elev = -1
+            p.fslot = -1
+            place_at(i, p.tile as s32)
+        }
+    }
+    for k in 0..nelevs { elevs[k].n = 0; elevs[k].calls = 0; elevs[k].door = 0 }
+}
+
+fn elev_of_obj(oi: s32) -> s32 {
+    for k in 0..nelevs { if elevs[k].obj as s32 == oi { return k } }
+    return -1
+}
+
+fn elev_call(e: s32, f: s32) { elevs[e].calls = elevs[e].calls | ((1 as u32) << (f as u32)) }
+
+fn elev_forget(i: s32) {
+    let p = &people[i]
+    let e = &elevs[p.elev as s32]
+    for k in 0..e.n {
+        if e.pass[k] as s32 == i {
+            e.n -= 1
+            e.pass[k] = e.pass[e.n]
+            break
+        }
+    }
+    p.elev = -1
+}
+
+// The tile in front of the shaft on floor f (where people wait and step out).
+fn elev_door_tile(e: s32, f: s32) -> s32 {
+    let o = &objs[elevs[e].obj as s32]
+    local_to_grid(o.t as s32, o.x as s32, o.z as s32, o.rot as s32, 0, 2)
+    return tix(f, lg_x, lg_z)
+}
+
+fn elev_floor(e: s32) -> s32 { return (elevs[e].pos + 0.5) as s32 }
+
+fn elevs_update() {
+    for k in 0..nelevs { elev_update(k) }
+}
+
+fn elev_update(k: s32) {
+    let e = &elevs[k]
+    let cur = elev_floor(k)
+    let at_floor = abs(e.pos - fixed(cur)) < 0.01
+    if e.door > 0 {
+        e.door -= 1
+        if e.door == DOOR_T - 1 { elev_exchange(k, cur) }
+        if e.door == 20 { elev_exchange(k, cur) }      // late arrivals
+        return
+    }
+    // where to: the nearest wanted floor ahead, else behind
+    // a full car only stops to let people out
+    var want: u32 = 0
+    if e.n < ELEV_CAP { want = e.calls }
+    for i in 0..e.n { want = want | ((1 as u32) << (people[e.pass[i] as s32].ride_to as u32)) }
+    if want == 0 {
+        e.dir = 0
+        return
+    }
+    if at_floor && want & ((1 as u32) << (cur as u32)) != 0 {
+        e.pos = fixed(cur)
+        e.door = DOOR_T
+        e.calls = e.calls & ~((1 as u32) << (cur as u32))
+        if cur == view_floor || objs[e.obj as s32].t as s32 == OB_GLASS_ELEVATOR { fx(FX_DING) }
+        return
+    }
+    var ahead = false
+    var behind = false
+    for f in e.f0 as s32..e.f1 as s32 + 1 {
+        if want & ((1 as u32) << (f as u32)) == 0 { continue }
+        if fixed(f) > e.pos + 0.01 { if e.dir >= 0 { ahead = true } else { behind = true } }
+        if fixed(f) < e.pos - 0.01 { if e.dir <= 0 { ahead = true } else { behind = true } }
+    }
+    if !ahead && behind { e.dir = -e.dir }
+    if e.dir == 0 {
+        // pick the direction of the nearest wanted floor
+        var best = 99
+        for f in e.f0 as s32..e.f1 as s32 + 1 {
+            if want & ((1 as u32) << (f as u32)) != 0 && abs(f - cur) < best {
+                best = abs(f - cur)
+                if f > cur { e.dir = 1 } else { e.dir = -1 }
+            }
+        }
+    }
+    e.pos += ELEV_SPEED * e.dir
+    e.pos = clamp(e.pos, fixed(e.f0 as s32), fixed(e.f1 as s32))
+    // stop at a wanted floor we pass through
+    let nf = elev_floor(k)
+    if want & ((1 as u32) << (nf as u32)) != 0 && abs(e.pos - fixed(nf)) < ELEV_SPEED {
+        e.pos = fixed(nf)
+    }
+}
+
+// Doors open at floor f: out go those who wanted f, in come those waiting here.
+fn elev_exchange(k: s32, f: s32) {
+    let e = &elevs[k]
+    var i = 0
+    while i < e.n {
+        let pi = e.pass[i] as s32
+        let p = &people[pi]
+        if p.ride_to as s32 == f {
+            e.n -= 1
+            e.pass[i] = e.pass[e.n]
+            p.elev = -1
+            p.mode = M_WALK as u8
+            place_at(pi, elev_door_tile(k, f))
+            continue
+        }
+        i += 1
+    }
+    let door = elev_door_tile(k, f)
+    var left = false
+    for pi in 0..npeople {
+        let p = &people[pi]
+        if p.used == 0 || p.mode as s32 != M_WAIT_ELEV || p.elev as s32 != k || p.f as s32 != f { continue }
+        if e.n >= ELEV_CAP {
+            left = true
+            continue
+        }
+        e.pass[e.n] = pi as s16
+        e.n += 1
+        p.mode = M_RIDE as u8
+        e.trips += 1
+    }
+    if left { elev_call(k, f) }
+}
+
+// The car, drawn as a box in its shaft (glass ones are what you see in an atrium).
+fn draw_elevators() {
+    bm_bias = -2
+    look_flat()
+    for k in 0..nelevs {
+        let e = &elevs[k]
+        let o = &objs[e.obj as s32]
+        let fl = elev_floor(k)
+        if fl > view_floor { continue }
+        if !exposed(fl, o.x as s32, o.z as s32) && fl < view_floor { continue }
+        let gw = fixed(obj_gw(o.t as s32, o.rot as s32))
+        let gd = fixed(obj_gd(o.t as s32, o.rot as s32))
+        let x0 = fixed(o.x as s32) + 0.2
+        let z0 = fixed(o.z as s32) + 0.2
+        let y0 = e.pos * STOREY + 0.05
+        var col = rgb(190, 170, 120)
+        if o.t as s32 == OB_GLASS_ELEVATOR { col = rgb(220, 200, 140) }
+        if e.door > 0 { col = rgb(255, 230, 160) }
+        mb_box(x0, y0, z0, x0 + gw - 0.4, y0 + 2.3, z0 + gd - 0.4, col)
+    }
+    mb_flush()
+    bm_bias = 0
+}

@@ -1,0 +1,432 @@
+// Menus over the game: the pause menu (speed, staff, prices, the hotel's rating and reviews,
+// the ledger, saving), and the title screen.
+
+enum Page { Main, Staff, Prices, Hotel, Ledger }
+
+var page = Page.Main
+var pm_sel: s32
+var st_row: s32
+var st_col: s32
+var pr_sel: s32
+var prev_speed: s32 = 1
+
+const PM_N = 8
+
+fn open_pause() {
+    prev_speed = max(speed, 1)
+    screen = Screen.Pause
+    page = Page.Main
+    pm_sel = 0
+    fx(FX_OK)
+}
+
+fn close_pause() {
+    screen = Screen.Play
+    if speed == 0 { speed = prev_speed }
+    fx(FX_BACK)
+}
+
+fn pm_label(k: s32) -> *u8 {
+    match k {
+        0 => return "Resume"
+        1 => return "Speed"
+        2 => return "Staff"
+        3 => return "Room prices"
+        4 => return "Hotel rating & reviews"
+        5 => return "Ledger"
+        6 => return "Save to memory card"
+        else => return "Quit to title"
+    }
+}
+
+fn pause_update() {
+    match page {
+        Main => pm_update()
+        Staff => staff_page_update()
+        Prices => prices_update()
+        Hotel, Ledger => {
+            if btnp_in(B) || btnp_in(A) || btnp_in(START) { page = Page.Main; fx(FX_BACK) }
+        }
+    }
+}
+
+fn pm_update() {
+    if rep_in(UP) { pm_sel = (pm_sel + PM_N - 1) % PM_N; fx(FX_CLICK) }
+    if rep_in(DOWN) { pm_sel = (pm_sel + 1) % PM_N; fx(FX_CLICK) }
+    if pm_sel == 1 {
+        if btnp_in(LEFT) { speed_step(-1) }
+        if btnp_in(RIGHT) { speed_step(1) }
+    }
+    if btnp_in(B) || btnp_in(START) { close_pause(); return }
+    if btnp_in(A) {
+        match pm_sel {
+            0 => close_pause()
+            1 => speed_step(1)
+            2 => { page = Page.Staff; fx(FX_OK) }
+            3 => { page = Page.Prices; fx(FX_OK) }
+            4 => { page = Page.Hotel; fx(FX_OK); compute_score() }
+            5 => { page = Page.Ledger; fx(FX_OK) }
+            6 => save_game()
+            else => { screen = Screen.Title; screen_t = 0; fx(FX_BACK) }
+        }
+    }
+}
+
+fn speed_step(d: s32) {
+    var k = 0
+    if speed == 1 { k = 1 }
+    if speed == 2 { k = 2 }
+    if speed == 4 { k = 3 }
+    k = clamp(k + d, 0, 3)
+    let v: [4]s32 = [0, 1, 2, 4]
+    speed = v[k]
+    prev_speed = max(speed, 1)
+    fx(FX_CLICK)
+}
+
+fn speed_name() -> *u8 {
+    if speed == 0 { return "Paused" }
+    if speed == 1 { return "x1" }
+    if speed == 2 { return "x2" }
+    return "x4"
+}
+
+fn draw_pause() {
+    ui_rect(0, 0, 320, 240, rgb(8, 10, 30), 0)
+    match page {
+        Main => draw_pm()
+        Staff => draw_staff_page()
+        Prices => draw_prices()
+        Hotel => draw_hotel_page()
+        Ledger => draw_ledger()
+    }
+}
+
+fn draw_pm() {
+    panel(80, 40, 160, 160)
+    ftext_c(160, 44, "Paused", WHITE, true)
+    for k in 0..PM_N {
+        let y = 70 + k * 15
+        if k == pm_sel { ui_sel(88, y, 144, 14) }
+        ftext(96, y, pm_label(k), CREAM, false)
+        if k == 1 {
+            let b = nb()
+            sappend(b, "< ")
+            sappend(b, speed_name())
+            sappend(b, " >")
+            ftext_r(226, y, b, GOLD, false)
+        }
+    }
+}
+
+// ---- staff: hire and fire per role and shift
+
+fn staff_page_update() {
+    if rep_in(UP) { st_row = (st_row + NROLES - 1) % NROLES; fx(FX_CLICK) }
+    if rep_in(DOWN) { st_row = (st_row + 1) % NROLES; fx(FX_CLICK) }
+    if btnp_in(LEFT) || btnp_in(RIGHT) { st_col = 1 - st_col; fx(FX_CLICK) }
+    if btnp_in(A) {
+        if staff_count() >= 30 {
+            fx(FX_ERROR)
+        } else if hire(st_row, st_col) >= 0 {
+            fx(FX_HIRE)
+        }
+    }
+    if btnp_in(Y) {
+        // let one go (one not in the middle of something, if possible)
+        var who = -1
+        for i in 0..npeople {
+            let p = &people[i]
+            if p.used != 0 && p.kind as s32 == P_STAFF && p.type as s32 == st_row && p.shift as s32 == st_col {
+                who = i
+                if p.state as s32 == SS_HOME { break }
+            }
+        }
+        if who >= 0 { fire(who); fx(FX_DEMOLISH) }
+    }
+    if btnp_in(B) || btnp_in(START) { page = Page.Main; fx(FX_BACK) }
+}
+
+fn staff_count() -> s32 {
+    var n = 0
+    for i in 0..npeople { if people[i].used != 0 && people[i].kind as s32 == P_STAFF { n += 1 } }
+    return n
+}
+
+fn role_need_note(role: s32) -> *u8 {
+    let st = role_station(role)
+    if st >= 0 {
+        let n = objs_of(st)
+        if n == 0 { return "no station built" }
+    }
+    return ""
+}
+
+fn draw_staff_page() {
+    panel(16, 16, 288, 208)
+    ftext_c(160, 20, "Staff", WHITE, true)
+    ftext(28, 44, "Role", GOLD, false)
+    ftext(150, 44, "Day", GOLD, false)
+    ftext(190, 44, "Night", GOLD, false)
+    ftext(238, 44, "Wage/day", GOLD, false)
+    for r in 0..NROLES {
+        let y = 58 + r * 15
+        if r == st_row { ui_sel(140 + st_col * 44, y, 40, 14) }
+        ftext(28, y, str_of(ROLE_NAME_OFF[r] as s32), CREAM, false)
+        ui_rect(20, y + 3, 6, 6, ROLE_COL[r], -1)
+        ftext_c(160, y, num(staff_of(r, 0)), WHITE, false)
+        ftext_c(204, y, num(staff_of(r, 1)), WHITE, false)
+        ftext(246, y, smoney(nb(), ROLE_WAGE[r] as s32), SOFT, false)
+    }
+    let note = role_need_note(st_row)
+    ftext(28, 196, note, RED, false)
+    ftext(28, 207, "A: hire   Y: let go   L/R: shift   B: back", DIM, false)
+}
+
+// ---- prices
+
+fn prices_update() {
+    if rep_in(UP) || rep_in(DOWN) { pr_sel = 1 - pr_sel; fx(FX_CLICK) }
+    var d = 0
+    if rep_in(LEFT) { d = -1 }
+    if rep_in(RIGHT) { d = 1 }
+    if d != 0 {
+        if pr_sel == 0 { price_room = clamp(price_room + d * 5, 20, 400) } else { price_suite = clamp(price_suite + d * 10, 80, 1500) }
+        fx(FX_CLICK)
+    }
+    if btnp_in(B) || btnp_in(A) || btnp_in(START) { page = Page.Main; fx(FX_BACK) }
+}
+
+fn draw_prices() {
+    panel(50, 60, 220, 110)
+    ftext_c(160, 64, "Room prices", WHITE, true)
+    for k in 0..2 {
+        let y = 96 + k * 20
+        if k == pr_sel { ui_sel(58, y, 204, 16) }
+        if k == 0 { ftext(66, y + 1, "Guest room", CREAM, false) } else { ftext(66, y + 1, "Suite", CREAM, false) }
+        var v = price_room
+        if k == 1 { v = price_suite }
+        let b = nb()
+        sappend(b, "< ")
+        smoney(b, v)
+        sappend(b, " >  a night")
+        ftext_r(256, y + 1, b, GOLD, false)
+    }
+    ftext(62, 146, "Guests pay up to their budget: business", DIM, false)
+    ftext(62, 157, "$110, families $140, couples $320...", DIM, false)
+}
+
+// ---- the hotel: stars, what the next star needs, the score, reviews
+
+fn draw_hotel_page() {
+    panel(8, 8, 304, 224)
+    ftext(16, 10, "Hotel rating", WHITE, true)
+    for i in 0..5 {
+        if i < stars { icon(190 + i * 18, 12, IC_STAR) } else { icon(190 + i * 18, 12, IC_STAR_OFF) }
+    }
+    // next tier
+    let y0 = 36
+    if stars < 5 {
+        let b = nb()
+        sappend(b, "Next star needs: ")
+        let ok = tier_ok(stars + 1)
+        if ok { sappend(b, "all done - wait for 6:00!") } else { sappend(b, tier_missing[stars + 1]) }
+        ftext(16, y0, b, GOLD, false)
+    } else {
+        ftext(16, y0, "Five stars! The finest hotel on the coast.", GOLD, false)
+    }
+    // the score's parts
+    let names: [6]*u8 = ["Rooms", "Facilities", "Service", "Cleanliness", "Architecture", "Reviews"]
+    for k in 0..6 {
+        let x = 16 + (k % 3) * 98
+        let y = y0 + 16 + (k / 3) * 22
+        ftext(x, y, names[k], SOFT, false)
+        ui_rect(x, y + 13, 90, 4, rgb(20, 24, 60), -1)
+        ui_hgrad(x, y + 13, score_parts[k] * 90 / 100, 4, rgb(90, 200, 255), rgb(255, 120, 220), -1)
+    }
+    let s = nb()
+    sappend(s, "Score ")
+    sint(s, score)
+    sappend(s, "   Reputation ")
+    sint(s, reputation)
+    if reviews_n > 0 {
+        sappend(s, "   Reviews ")
+        sint(s, reviews_avg10 / 10)
+        sappend(s, ".")
+        sint(s, reviews_avg10 % 10)
+    }
+    ftext(16, y0 + 62, s, CREAM, false)
+    // the latest reviews
+    let ry = y0 + 80
+    if reviews_n == 0 { ftext(16, ry, "No reviews yet.", DIM, false) }
+    for k in 0..min(reviews_n, 5) {
+        let rv = &reviews[k]
+        let y = ry + k * 18
+        for st in 0..5 {
+            if st < rv.stars as s32 { icon_tint(14 + st * 8, y + 1, IC_STAR, 0x606060) }
+        }
+        ftext(58, y, str_of(REVIEW_OFF[rv.quote as s32] as s32), CREAM, false)
+        let who = nb()
+        sappend(who, "- ")
+        sappend(who, str_of(GT_NAME_OFF[rv.gtype as s32] as s32))
+        sappend(who, ", day ")
+        sint(who, rv.day as s32)
+        ftext(70, y + 9, who, DIM, false)
+    }
+}
+
+fn draw_ledger() {
+    panel(30, 20, 260, 200)
+    ftext_c(160, 24, "Ledger", WHITE, true)
+    ftext(40, 48, "", CREAM, false)
+    ftext(170, 48, "Today", GOLD, false)
+    ftext(230, 48, "Yesterday", GOLD, false)
+    let names: [10]*u8 = ["Rooms", "Restaurant", "Bar", "Spa", "Other", "Wages", "Upkeep", "Supplies", "Building", "Loan interest"]
+    var tt = 0
+    var ty = 0
+    for k in 0..NLG {
+        let y = 62 + k * 12
+        ftext(40, y, names[k], CREAM, false)
+        var c = GREEN
+        if ledger[k] < 0 { c = RED }
+        ftext_r(214, y, smoney(nb(), ledger[k]), c, false)
+        var c2 = GREEN
+        if ledger_y[k] < 0 { c2 = RED }
+        ftext_r(282, y, smoney(nb(), ledger_y[k]), c2, false)
+        tt += ledger[k]
+        ty += ledger_y[k]
+    }
+    ui_rect(40, 184, 244, 1, rgb(120, 200, 255), -1)
+    ftext(40, 188, "Total", WHITE, false)
+    ftext_r(214, 188, smoney(nb(), tt), WHITE, false)
+    ftext_r(282, 188, smoney(nb(), ty), WHITE, false)
+    let l = nb()
+    sappend(l, "Bank loan: ")
+    smoney(l, loan)
+    sappend(l, " at 6%")
+    ftext(40, 202, l, SOFT, false)
+}
+
+// ---- the title screen: the demo hotel at dusk behind the logo, slowly drifting
+
+var title_sel: s32
+var title_has_save: bool
+var title_ready: bool
+
+fn enter_title() {
+    new_hotel_state()
+    s_demo_hotel(1)
+    money = 50000
+    rooms_update()
+    s_demo_staff()
+    stars = 1
+    tod = (18 * 60 + 30) * MIN_FRAMES
+    view_rot = 2
+    view_zoom = 1
+    view_floor = 0
+    cur_x = 15.0
+    cur_z = 12.0
+    view_recentre()
+    screen = Screen.Title
+    screen_t = 0
+    title_sel = 0
+    title_has_save = save_exists()
+    if title_has_save { title_sel = 1 }
+    music(Music.Title)
+}
+
+fn title_items() -> s32 {
+    if title_has_save { return 3 }
+    return 2
+}
+
+fn title_label(k: s32) -> *u8 {
+    if !title_has_save {
+        if k == 0 { return "New hotel" }
+        return "Open the demo hotel"
+    }
+    if k == 0 { return "New hotel" }
+    if k == 1 { return "Continue" }
+    return "Open the demo hotel"
+}
+
+fn title_update() {
+    // the camera drifts along the hotel
+    if screen_t % 3 == 0 {
+        pan_x -= 1
+        pan_tx = pan_x
+    }
+    if screen_t % 1400 == 0 && screen_t > 0 { pan_x += 466; pan_tx = pan_x }
+    let n = title_items()
+    if rep_in(UP) { title_sel = (title_sel + n - 1) % n; fx(FX_CLICK) }
+    if rep_in(DOWN) { title_sel = (title_sel + 1) % n; fx(FX_CLICK) }
+    if screen_t > 20 && (btnp_in(A) || btnp_in(START)) {
+        fx(FX_OK)
+        let lab = title_label(title_sel)
+        if lab[0] == 'N' {
+            new_game()
+        } else if lab[0] == 'C' {
+            if load_game() {
+                start_play()
+                say("Welcome back!", GOLD)
+            } else {
+                fx(FX_ERROR)
+                say("The save couldn't be read", RED)
+                title_has_save = false
+                title_sel = 0
+            }
+        } else {
+            demo_game()
+        }
+    }
+}
+
+fn draw_title() {
+    // dim the bottom for the menu
+    ui_grad(0, 150, 320, 90, rgb(0, 0, 0), rgb(10, 10, 40), 2)
+    let bob = (sin(fixed(screen_t) * 0.05) * 3) as s32
+    ui_tex(32, 16 + bob, LOGO_W, LOGO_H, SLOT_UI, PAL_LOGO, LOGO_U, LOGO_V, LOGO_W - 1, LOGO_H - 1, 0x808080, -1)
+    let n = title_items()
+    panel(90, 150, 140, 14 + n * 16)
+    for k in 0..n {
+        let y = 157 + k * 16
+        if k == title_sel { ui_sel(96, y - 1, 128, 15) }
+        ftext_c(160, y, title_label(k), CREAM, false)
+    }
+    if (screen_t / 30) % 2 == 0 { ftext_c(160, 214, "Press A", SOFT, false) }
+    ftext_r(316, 226, "(c) 2001 Mei Hotels Inc.", DIM, false)
+}
+
+// A fresh lot by the sea, with a bank loan.
+fn new_game() {
+    new_hotel_state()
+    start_play()
+    cur_x = 16.0
+    cur_z = 9.0
+    view_recentre()
+    say("Welcome! Press X to build a lobby.", GOLD)
+}
+
+fn demo_game() {
+    new_hotel_state()
+    s_demo_hotel(1)
+    rooms_update()
+    s_demo_staff()
+    money = 40000
+    for k in 0..NLG { ledger[k] = 0 }
+    stars = 1
+    start_play()
+    cur_x = 16.0
+    cur_z = 9.0
+    view_recentre()
+}
+
+fn start_play() {
+    screen = Screen.Play
+    screen_t = 0
+    tool = Tool.Inspect
+    menu_open = false
+    speed = 1
+    music(Music.Hotel)
+    cache_dirty = true
+}

@@ -1,0 +1,68 @@
+// The link between the game's sound calls (fx, FX_*) and the audio agent's audio.akr.
+import "audio.akr"
+
+const FX_CLICK = 0
+const FX_OK = 1
+const FX_BACK = 2
+const FX_TAB = 3
+const FX_PLACE = 4
+const FX_BUILD = 5
+const FX_DEMOLISH = 6
+const FX_ERROR = 7
+const FX_DING = 8
+const FX_BELL = 9
+const FX_CASH = 10
+const FX_PHONE = 11
+const FX_MODEM = 12
+const FX_SPLASH = 13
+const FX_STARUP = 14
+const FX_STARDOWN = 15
+const FX_REVIEW = 16
+const FX_SAVE = 17
+const FX_HIRE = 18
+const FX_BREAK = 19
+
+fn fx_id(id: s32) -> Sfx {
+    match id {
+        0 => return Sfx.Click
+        1 => return Sfx.Select
+        2 => return Sfx.Back
+        3 => return Sfx.Tab
+        4 => return Sfx.Place
+        5 => return Sfx.BuildRoom
+        6 => return Sfx.Demolish
+        7 => return Sfx.Error
+        8 => return Sfx.ElevatorDing
+        9 => return Sfx.DeskBell
+        10 => return Sfx.CashRegister
+        11 => return Sfx.PhoneRing
+        12 => return Sfx.Modem
+        13 => return Sfx.PoolSplash
+        14 => return Sfx.StarGained
+        15 => return Sfx.StarLost
+        16 => return Sfx.ReviewPosted
+        17 => return Sfx.Save
+        18 => return Sfx.Hire
+        else => return Sfx.Break
+    }
+}
+
+fn fx(id: s32) { sfx(fx_id(id)) }
+
+const AMB_LOBBY = 0
+const AMB_RESTAURANT = 1
+const AMB_BAR = 2
+const AMB_KITCHEN = 3
+const AMB_SEA = 4
+const AMB_NIGHT = 5
+
+fn amb(k: s32, level: s32) {
+    match k {
+        0 => ambience(Ambience.Lobby, level)
+        1 => ambience(Ambience.Restaurant, level)
+        2 => ambience(Ambience.Bar, level)
+        3 => ambience(Ambience.Kitchen, level)
+        4 => ambience(Ambience.Sea, level)
+        else => ambience(Ambience.Night, level)
+    }
+}

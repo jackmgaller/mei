@@ -1,0 +1,17 @@
+// Check-In! - a seaside hotel builder for the Mei console.
+//
+// Build a hotel on a beach lot: drag out rooms, furnish them (a room is what's in it), hire
+// staff, and keep guests happy enough to earn five stars. See CONTRACT.md for how the code,
+// art and audio fit together; the game itself starts in game.akr so that the test scenarios
+// (tests/) can import it with scripted input.
+cart "Check-In!", "CHECK-IN"
+
+const TEST = 0
+const TEST_CARD = false
+
+fn input_pad(f: s32) -> u32 { return PAD1 }
+fn input_stick(f: s32) -> vec2 { return stick() }
+fn test_init() {}
+fn test_hook(f: s32) {}
+
+import "game.akr"

@@ -1,0 +1,822 @@
+// Building: the cursor, the camera that follows it, the build tools and the build menu.
+//
+// The cursor is a free point on the viewed floor, moved in screen directions by the stick or
+// the d-pad (it speeds up while held); the tile under it is highlighted. Tools:
+//   paint (a floor key: rooms, corridors, decks, pool water) - drag a rectangle with A
+//   object - A places, Y turns it
+//   door / window - A on the wall edge nearest the cursor
+//   void / glass void - drag on an upper floor to open it to the floor below
+//   demolish - A on an object removes it; drag over tiles removes floors (half refunded)
+
+enum Tool { Inspect, Paint, Object, Door, Window, Void, VoidGlass, Demolish }
+
+var tool = Tool.Inspect
+var tool_arg: s32
+var tool_rot: s32
+var cur_x: fixed = 16.0          // cursor, world units on the viewed floor
+var cur_z: fixed = 10.0
+var cur_tx: s32
+var cur_tz: s32
+var cur_hold: s32                // frames the cursor has been moving (acceleration)
+var dragging: bool
+var drag_x0: s32
+var drag_z0: s32
+var msg: *u8
+var msg_t: s32
+var msg_col: u32
+var money: s32 = 30000
+var last_err: s32
+
+fn say(s: *u8, c: u32) {
+    msg = s
+    msg_t = 150
+    msg_col = c
+}
+
+// ---- the cursor and camera
+
+fn cursor_update(st: vec2) {
+    // (the cursor may have been placed directly: new game, recentring, loading)
+    cur_tx = cur_x as s32
+    cur_tz = cur_z as s32
+    let m = abs(st.x) + abs(st.y)
+    if m < 0.05 {
+        cur_hold = 0
+        return
+    }
+    cur_hold += 1
+    // pixels per frame: a slow start for precision, then faster
+    var speed = 1.0 + fixed(min(cur_hold, 45)) / 15
+    if view_zoom == 0 { speed = speed * 1.3 }
+    let s = sin(cam_yaw)
+    let c = cos(cam_yaw)
+    // screen right is the camera's right; screen up is forward along the ground, foreshortened
+    let k = speed / ppu
+    let up = st.y * 1.74
+    let dx = (st.x * c + up * s) * k
+    let dz = (-st.x * s + up * c) * k
+    let ox = cur_tx
+    let oz = cur_tz
+    cur_x = clamp(cur_x + dx, 0.02, fixed(GW) - 0.02)
+    cur_z = clamp(cur_z + dz, 0.02, fixed(GH) - 0.02)
+    cur_tx = cur_x as s32
+    cur_tz = cur_z as s32
+    if cur_tx != ox || cur_tz != oz { fx(FX_CLICK) }
+}
+
+// Keeps the cursor inside a box in the middle of the screen by panning.
+var pan_tx: s32
+var pan_ty: s32
+
+fn camera_follow() {
+    set_camera()
+    if !project(vec3(cur_x, fixed(view_floor) * STOREY, cur_z)) { return }
+    let x0 = 90
+    let x1 = 230
+    let y0 = 70
+    let y1 = 165
+    if proj_x < x0 { pan_tx += x0 - proj_x }
+    if proj_x > x1 { pan_tx -= proj_x - x1 }
+    if proj_y < y0 { pan_ty += y0 - proj_y }
+    if proj_y > y1 { pan_ty -= proj_y - y1 }
+    // ease toward the target
+    let dx = pan_tx - pan_x
+    let dy = pan_ty - pan_y
+    if dx != 0 { pan_x += clamp(dx / 3 + sgn(dx), -24, 24) }
+    if dy != 0 { pan_y += clamp(dy / 3 + sgn(dy), -24, 24) }
+}
+
+fn sgn(v: s32) -> s32 {
+    if v > 0 { return 1 }
+    if v < 0 { return -1 }
+    return 0
+}
+
+// Re-centres the view on the cursor (after a rotation or zoom).
+fn view_recentre() {
+    cache_lo = false
+    pan_x = 0
+    pan_y = 0
+    set_camera()
+    if project(vec3(cur_x, fixed(view_floor) * STOREY, cur_z)) {
+        pan_x = 160 - proj_x
+        pan_y = 120 - proj_y
+    }
+    pan_tx = pan_x
+    pan_ty = pan_y
+    cache_dirty = true
+}
+
+fn set_floor(f: s32) {
+    let nf = clamp(f, 0, NFL - 1)
+    if nf == view_floor { return }
+    view_floor = nf
+    view_recentre()
+    fx(FX_TAB)
+}
+
+// ---- the edge under the cursor (door and window tools)
+
+var edge_x: s32
+var edge_z: s32
+var edge_dx: s32
+var edge_dz: s32
+
+fn pick_edge() {
+    let fx = cur_x - fixed(cur_tx)
+    let fz = cur_z - fixed(cur_tz)
+    var best = fx
+    edge_dx = -1
+    edge_dz = 0
+    if 1.0 - fx < best { best = 1.0 - fx; edge_dx = 1; edge_dz = 0 }
+    if fz < best { best = fz; edge_dx = 0; edge_dz = -1 }
+    if 1.0 - fz < best { best = 1.0 - fz; edge_dx = 0; edge_dz = 1 }
+    edge_x = cur_tx
+    edge_z = cur_tz
+}
+
+// ---- costs and checks
+
+fn tile_cost(fk: s32) -> s32 { return FLOORK_PRICE[fk] as s32 }
+
+// Sets the drag rectangle (inclusive) from the drag start to the cursor.
+var rx0: s32
+var rz0: s32
+var rx1: s32
+var rz1: s32
+
+fn drag_rect() {
+    if dragging {
+        rx0 = min(drag_x0, cur_tx)
+        rx1 = max(drag_x0, cur_tx)
+        rz0 = min(drag_z0, cur_tz)
+        rz1 = max(drag_z0, cur_tz)
+    } else {
+        rx0 = cur_tx
+        rx1 = cur_tx
+        rz0 = cur_tz
+        rz1 = cur_tz
+    }
+}
+
+// Validity of painting floor key fk over the rectangle; returns the cost (or -1 when invalid).
+var paint_target: s32            // the room the paint extends (0: a new room)
+
+fn paint_eval(fk: s32) -> s32 {
+    let f = view_floor
+    let kind = FLOORK_KIND[fk] as s32
+    var cost = 0
+    // extend the room the drag started in, if it is of the same kind
+    paint_target = 0
+    let r0 = room_at(f, drag_x0, drag_z0)
+    if kind != KIND_POOL && r0 != 0 && rooms[r0].kind as s32 == kind && rooms[r0].fk as s32 == fk { paint_target = r0 }
+    for z in rz0..rz1 + 1 {
+        for x in rx0..rx1 + 1 {
+            if !paint_ok(f, x, z, fk) { return -1 }
+            let t = tix(f, x, z)
+            if kind == KIND_POOL {
+                if tflag[t] & TF_WATER == 0 { cost += tile_cost(fk) }
+                continue
+            }
+            // can't paint over furniture of another room
+            if tobj[t] >= 0 && troom[t] as s32 != paint_target { return -1 }
+            if troom[t] as s32 != paint_target || tfloor[t] as s32 != fk + 1 { cost += tile_cost(fk) }
+        }
+    }
+    return cost
+}
+
+fn paint_commit(fk: s32) {
+    let cost = paint_eval(fk)
+    if cost < 0 {
+        fx(FX_ERROR)
+        say("Can't build there", RED)
+        return
+    }
+    if cost > money {
+        fx(FX_ERROR)
+        say("Not enough money", RED)
+        return
+    }
+    let f = view_floor
+    let kind = FLOORK_KIND[fk] as s32
+    if kind == KIND_POOL {
+        for z in rz0..rz1 + 1 {
+            for x in rx0..rx1 + 1 {
+                let t = tix(f, x, z)
+                tflag[t] = tflag[t] | TF_WATER
+            }
+        }
+    } else {
+        var r = paint_target
+        if r == 0 {
+            r = room_alloc()
+            if r == 0 {
+                say("Too many rooms", RED)
+                return
+            }
+            rooms[r].used = 1
+            rooms[r].kind = kind as u8
+            rooms[r].fk = fk as u8
+            rooms[r].floor = f as u8
+        }
+        for z in rz0..rz1 + 1 {
+            for x in rx0..rx1 + 1 {
+                let t = tix(f, x, z)
+                let old = troom[t] as s32
+                troom[t] = r as u8
+                tfloor[t] = (fk + 1) as u8
+                tflag[t] = tflag[t] & ~(TF_WATER | TF_VOID | TF_GLASS)
+                if old != 0 && old != r { room_measure(old) }
+            }
+        }
+        room_measure(r)
+    }
+    money -= cost
+    world_changed()
+    fx(FX_BUILD)
+}
+
+// Void: open tiles of an upper floor to the floor below.
+fn void_eval() -> s32 {
+    let f = view_floor
+    if f == 0 { return -1 }
+    var n = 0
+    for z in rz0..rz1 + 1 {
+        for x in rx0..rx1 + 1 {
+            let t = tix(f, x, z)
+            if troom[t] == 0 || !kind_indoor(rooms[troom[t] as s32].kind as s32) { return -1 }
+            if tobj[t] >= 0 || tflag[t] & TF_HOLE != 0 { return -1 }
+            if tflag[t] & TF_VOID == 0 { n += 1 }
+        }
+    }
+    return n * 50
+}
+
+fn void_commit(glass: bool) {
+    let cost = void_eval()
+    if cost < 0 {
+        fx(FX_ERROR)
+        say("Voids go inside rooms on upper floors", RED)
+        return
+    }
+    if cost > money {
+        fx(FX_ERROR)
+        say("Not enough money", RED)
+        return
+    }
+    let f = view_floor
+    for z in rz0..rz1 + 1 {
+        for x in rx0..rx1 + 1 {
+            let t = tix(f, x, z)
+            tflag[t] = tflag[t] | TF_VOID
+            if glass { tflag[t] = tflag[t] | TF_GLASS } else { tflag[t] = tflag[t] & ~TF_GLASS }
+        }
+    }
+    money -= cost
+    world_changed()
+    fx(FX_BUILD)
+}
+
+// Demolish: objects under the cursor first, otherwise the floor tiles of the rectangle.
+fn demolish_commit() {
+    let f = view_floor
+    var refund = 0
+    if !dragging || (rx0 == rx1 && rz0 == rz1) {
+        let oi = tobj[tix(f, cur_tx, cur_tz)] as s32
+        if oi >= 0 {
+            refund = OBJ_PRICE[objs[oi].t as s32] as s32 / 2
+            obj_remove(oi)
+            money += refund
+            world_changed()
+            fx(FX_DEMOLISH)
+            return
+        }
+    }
+    var any = false
+    for z in rz0..rz1 + 1 {
+        for x in rx0..rx1 + 1 {
+            let t = tix(f, x, z)
+            // nothing may stand on this tile from the floor above
+            if f + 1 < NFL && tfloor[tix(f + 1, x, z)] != 0 { continue }
+            let oi = tobj[t] as s32
+            if oi >= 0 {
+                refund += OBJ_PRICE[objs[oi].t as s32] as s32 / 2
+                obj_remove(oi)
+            }
+            if tflag[t] & TF_WATER != 0 {
+                tflag[t] = tflag[t] & ~TF_WATER
+                any = true
+                continue
+            }
+            if tflag[t] & TF_VOID != 0 {
+                tflag[t] = tflag[t] & ~(TF_VOID | TF_GLASS)
+                any = true
+                continue
+            }
+            let r = troom[t] as s32
+            if r != 0 {
+                refund += tile_cost(tfloor[t] as s32 - 1) / 2
+                troom[t] = 0
+                tfloor[t] = 0
+                room_measure(r)
+                any = true
+            }
+        }
+    }
+    if any || refund > 0 {
+        money += refund
+        world_changed()
+        fx(FX_DEMOLISH)
+    } else {
+        fx(FX_ERROR)
+    }
+}
+
+fn place_commit() {
+    let t = tool_arg
+    if OBJ_UNLOCK[t] as s32 > stars {
+        fx(FX_ERROR)
+        say(pe_text(PE_LOCKED), RED)
+        return
+    }
+    let e = place_check(t, view_floor, cur_tx, cur_tz, tool_rot)
+    if e != PE_OK {
+        fx(FX_ERROR)
+        say(pe_text(e), RED)
+        return
+    }
+    let price = OBJ_PRICE[t] as s32
+    if price > money {
+        fx(FX_ERROR)
+        say(pe_text(PE_MONEY), RED)
+        return
+    }
+    if obj_add(t, view_floor, cur_tx, cur_tz, tool_rot) < 0 {
+        say("Too many objects", RED)
+        return
+    }
+    money -= price
+    world_changed()
+    fx(FX_PLACE)
+}
+
+fn edge_commit(feat: s32) {
+    pick_edge()
+    let f = view_floor
+    if !wall_between(f, edge_x, edge_z, edge_dx, edge_dz) {
+        fx(FX_ERROR)
+        say("Doors and windows go on walls", RED)
+        return
+    }
+    let cur = edge_feat(f, edge_x, edge_z, edge_dx, edge_dz)
+    if cur == feat {
+        set_edge_feat(f, edge_x, edge_z, edge_dx, edge_dz, EF_NONE)
+        world_changed()
+        fx(FX_DEMOLISH)
+        return
+    }
+    if feat == EF_WINDOW {
+        // windows only look outside
+        if indoor(f, edge_x, edge_z) && indoor(f, edge_x + edge_dx, edge_z + edge_dz) {
+            fx(FX_ERROR)
+            say("Windows go on outside walls", RED)
+            return
+        }
+    }
+    let price = OBJ_PRICE[OB_DOOR] as s32
+    if price > money {
+        fx(FX_ERROR)
+        say("Not enough money", RED)
+        return
+    }
+    money -= price
+    set_edge_feat(f, edge_x, edge_z, edge_dx, edge_dz, feat)
+    world_changed()
+    fx(FX_PLACE)
+}
+
+// Everything that depends on the building is recomputed here.
+// (the heavy part runs once, in rooms_update, however many edits a frame made)
+fn world_changed() {
+    edges_dirty = true
+    cache_dirty = true
+    rooms_dirty = true
+}
+
+var edges_dirty: bool
+
+// ---- input in build mode
+
+fn build_update() {
+    let st = stick_in
+    let yheld = held_in(Y)
+    if yheld {
+        // Y + left/right turns the view, Y + up/down zooms
+        if btnp_in(LEFT) { rotate_view(1) }
+        if btnp_in(RIGHT) { rotate_view(-1) }
+        if btnp_in(UP) { zoom_view(1) }
+        if btnp_in(DOWN) { zoom_view(-1) }
+        if pad_now & (LEFT | RIGHT | UP | DOWN) != 0 { y_chord = true }
+    } else {
+        cursor_update(st)
+    }
+    if btnp_in(Y) { y_chord = false }
+    if btnr_in(Y) && !y_chord {
+        // a plain tap: turn the object being placed, otherwise turn the view
+        if tool == Tool.Object { tool_rot = (tool_rot + 1) & 3; fx(FX_CLICK) } else { rotate_view(1) }
+    }
+    if btnp_in(L) { set_floor(view_floor - 1) }
+    if btnp_in(R) { set_floor(view_floor + 1) }
+    camera_follow()
+    drag_rect()
+    let drags = tool == Tool.Paint || tool == Tool.Void || tool == Tool.VoidGlass || tool == Tool.Demolish
+    if btnp_in(A) {
+        match tool {
+            Inspect => inspect_press()
+            Paint, Void, VoidGlass, Demolish => {
+                dragging = true
+                drag_x0 = cur_tx
+                drag_z0 = cur_tz
+            }
+            Object => place_commit()
+            Door => edge_commit(EF_DOOR)
+            Window => edge_commit(EF_WINDOW)
+        }
+    }
+    drag_rect()
+    if dragging && !held_in(A) {
+        match tool {
+            Paint => paint_commit(tool_arg)
+            Void => void_commit(false)
+            VoidGlass => void_commit(true)
+            Demolish => demolish_commit()
+            else => {}
+        }
+        dragging = false
+    }
+    if btnp_in(B) {
+        if dragging {
+            dragging = false
+            fx(FX_BACK)
+        } else if tool != Tool.Inspect {
+            tool = Tool.Inspect
+            fx(FX_BACK)
+        } else {
+            info_open = false
+        }
+    }
+    if btnp_in(X) && !dragging { open_build_menu() }
+}
+
+var y_chord: bool
+
+fn rotate_view(d: s32) {
+    view_rot = (view_rot + d) & 3
+    view_recentre()
+    fx(FX_TAB)
+}
+
+fn zoom_view(d: s32) {
+    let z = clamp(view_zoom + d, 0, 2)
+    if z == view_zoom { return }
+    view_zoom = z
+    view_recentre()
+    fx(FX_TAB)
+}
+
+// ---- drawing the cursor, the drag rectangle and the ghost
+
+fn draw_build_overlay() {
+    let y = fixed(view_floor) * STOREY + 0.03
+    bm_bias = -30
+    look_flat()
+    mb_flags = FACE_SEMI
+    match tool {
+        Paint, Void, VoidGlass, Demolish => {
+            var ok = true
+            var cost = 0
+            if tool == Tool.Paint { cost = paint_eval(tool_arg) }
+            if tool == Tool.Void || tool == Tool.VoidGlass { cost = void_eval() }
+            ok = cost >= 0
+            var col = rgb(60, 200, 90)
+            if !ok { col = rgb(220, 50, 50) }
+            if tool == Tool.Demolish { col = rgb(230, 120, 40) }
+            mb_blend = 1
+            mb_hquad(fixed(rx0), fixed(rz0), fixed(rx1 + 1), fixed(rz1 + 1), y, col)
+            if dragging {
+                let b = nb()
+                sint(b, rx1 - rx0 + 1)
+                sappend(b, " x ")
+                sint(b, rz1 - rz0 + 1)
+                if ok && tool != Tool.Demolish {
+                    sappend(b, "   ")
+                    smoney(b, cost)
+                }
+                if project(vec3(fixed(rx1) + 1.0, y, fixed(rz1) + 1.0)) {
+                    let w = text_w(b, false)
+                    panel_glass(proj_x - w / 2 - 4, proj_y + 6, w + 8, 14)
+                    var tc = CREAM
+                    if !ok { tc = RED }
+                    ftext_c(proj_x, proj_y + 6, b, tc, false)
+                }
+            }
+        }
+        Object => {
+            let t = tool_arg
+            let e = place_check(t, view_floor, cur_tx, cur_tz, tool_rot)
+            var col = rgb(70, 220, 110)
+            if e != PE_OK || OBJ_UNLOCK[t] as s32 > stars { col = rgb(230, 60, 60) }
+            let gw = obj_gw(t, tool_rot)
+            let gd = obj_gd(t, tool_rot)
+            mb_blend = 1
+            mb_hquad(fixed(cur_tx), fixed(cur_tz), fixed(cur_tx + gw), fixed(cur_tz + gd), y, shade(col, 140))
+            // the use spots
+            let ns = OBJ_NSPOT[t] as s32
+            for i in 0..ns {
+                local_to_grid(t, cur_tx, cur_tz, tool_rot, OBJ_SPOT[(t * 5 + i) * 2] as s32, OBJ_SPOT[(t * 5 + i) * 2 + 1] as s32)
+                mb_hquad(fixed(lg_x) + 0.3, fixed(lg_z) + 0.3, fixed(lg_x) + 0.7, fixed(lg_z) + 0.7, y, rgb(60, 60, 140))
+            }
+            mb_flags = FACE_SEMI
+            mb_blend = 0
+            let c = vec3(fixed(cur_tx) + fixed(gw) / 2, y - 0.03, fixed(cur_tz) + fixed(gd) / 2)
+            ghost_box(t, c, tool_rot, col)
+        }
+        Door, Window => {
+            pick_edge()
+            mb_blend = 1
+            var col = rgb(255, 220, 90)
+            if !wall_between(view_floor, edge_x, edge_z, edge_dx, edge_dz) { col = rgb(160, 70, 60) }
+            let ex = fixed(edge_x)
+            let ez = fixed(edge_z)
+            if edge_dx == -1 { mb_hquad(ex - 0.12, ez, ex + 0.12, ez + 1.0, y + 0.05, col) }
+            if edge_dx == 1 { mb_hquad(ex + 0.88, ez, ex + 1.12, ez + 1.0, y + 0.05, col) }
+            if edge_dz == -1 { mb_hquad(ex, ez - 0.12, ex + 1.0, ez + 0.12, y + 0.05, col) }
+            if edge_dz == 1 { mb_hquad(ex, ez + 0.88, ex + 1.0, ez + 1.12, y + 0.05, col) }
+            mb_hquad(fixed(cur_tx), fixed(cur_tz), fixed(cur_tx + 1), fixed(cur_tz + 1), y, rgb(40, 40, 70))
+        }
+        Inspect => {
+            mb_blend = 1
+            mb_hquad(fixed(cur_tx), fixed(cur_tz), fixed(cur_tx + 1), fixed(cur_tz + 1), y, rgb(70, 70, 110))
+        }
+    }
+    // the cursor dot itself
+    mb_blend = 1
+    let pulse = 120 + ((tick_count / 2) % 16) * 6
+    mb_hquad(cur_x - 0.12, cur_z - 0.12, cur_x + 0.12, cur_z + 0.12, y + 0.02, rgb(pulse, pulse, 60))
+    mb_flush()
+    mb_flags = 0
+    mb_blend = 0
+    bm_bias = 0
+}
+
+fn ghost_box(t: s32, c: vec3, rot: s32, col: u32) {
+    let gw = fixed(obj_gw(t, rot))
+    let gd = fixed(obj_gd(t, rot))
+    var h = fixed(OBJ_HT[t] as s32) / 16
+    let x0 = c.x - gw / 2 + 0.1
+    let x1 = c.x + gw / 2 - 0.1
+    let z0 = c.z - gd / 2 + 0.1
+    let z1 = c.z + gd / 2 - 0.1
+    mb_hquad(x0, z0, x1, z1, c.y + h, col)
+    var sx = x0
+    if vis_px { sx = x1 }
+    var sz = z0
+    if vis_pz { sz = z1 }
+    mb_vquad_z(sx, z0, z1, c.y, c.y + h, shade(col, 200))
+    mb_vquad_x(x0, x1, sz, c.y, c.y + h, shade(col, 168))
+    // front marker
+    let fc = rgb(255, 255, 255)
+    match rot & 3 {
+        0 => mb_hquad(x0, z1 - 0.12, x1, z1, c.y + h + 0.01, fc)
+        1 => mb_hquad(x1 - 0.12, z0, x1, z1, c.y + h + 0.01, fc)
+        2 => mb_hquad(x0, z0, x1, z0 + 0.12, c.y + h + 0.01, fc)
+        else => mb_hquad(x0, z0, x0 + 0.12, z1, c.y + h + 0.01, fc)
+    }
+}
+
+// ---- the build menu (X): tabs of items
+
+enum MenuKind { Floor, Obj, Special }
+
+struct MenuItem { kind: u8, arg: u8 }
+
+const SP_DOOR = 0
+const SP_WINDOW = 1
+const SP_VOID = 2
+const SP_VOIDGLASS = 3
+const SP_DEMOLISH = 4
+
+var menu_open: bool
+var menu_tab: s32
+var menu_sel: s32
+var menu_items: [48]MenuItem
+var menu_n: s32
+var menu_scroll: s32
+
+fn menu_fill() {
+    menu_n = 0
+    if menu_tab == TAB_ROOMS {
+        for k in 0..NFLOORK { menu_add(0, k) }
+        return
+    }
+    if menu_tab == TAB_BUILD {
+        menu_add(2, SP_DOOR)
+        menu_add(2, SP_WINDOW)
+        menu_add(1, OB_STAIRS)
+        menu_add(1, OB_ELEVATOR)
+        menu_add(1, OB_GLASS_ELEVATOR)
+        menu_add(1, OB_GRAND_STAIRCASE)
+        menu_add(2, SP_VOID)
+        menu_add(2, SP_VOIDGLASS)
+        menu_add(2, SP_DEMOLISH)
+        return
+    }
+    for t in 0..NOBJT {
+        let fl = OBJ_FLAGS[t] as s32
+        if fl & (F_WALLPIECE | F_TRANSPORT) != 0 { continue }
+        if OBJ_TAB[t] as s32 == menu_tab { menu_add(1, t) }
+    }
+}
+
+fn menu_add(kind: s32, arg: s32) {
+    if menu_n >= 48 { return }
+    menu_items[menu_n].kind = kind as u8
+    menu_items[menu_n].arg = arg as u8
+    menu_n += 1
+}
+
+fn open_build_menu() {
+    menu_open = true
+    menu_fill()
+    menu_sel = clamp(menu_sel, 0, max(menu_n - 1, 0))
+    fx(FX_OK)
+}
+
+const MENU_COLS = 3
+const MENU_ROWS = 3
+
+fn menu_update() {
+    if btnp_in(L) { menu_tab = (menu_tab + NTABS - 1) % NTABS; menu_fill(); menu_sel = 0; menu_scroll = 0; fx(FX_TAB) }
+    if btnp_in(R) { menu_tab = (menu_tab + 1) % NTABS; menu_fill(); menu_sel = 0; menu_scroll = 0; fx(FX_TAB) }
+    var d = 0
+    if rep_in(LEFT) { d = -1 }
+    if rep_in(RIGHT) { d = 1 }
+    if rep_in(UP) { d = -MENU_COLS }
+    if rep_in(DOWN) { d = MENU_COLS }
+    if d != 0 {
+        let n = clamp(menu_sel + d, 0, max(menu_n - 1, 0))
+        if n != menu_sel { menu_sel = n; fx(FX_CLICK) }
+    }
+    let row = menu_sel / MENU_COLS
+    if row < menu_scroll { menu_scroll = row }
+    if row >= menu_scroll + MENU_ROWS { menu_scroll = row - MENU_ROWS + 1 }
+    if btnp_in(B) || btnp_in(X) {
+        menu_open = false
+        fx(FX_BACK)
+        return
+    }
+    if btnp_in(A) && menu_n > 0 {
+        let it = menu_items[menu_sel]
+        let arg = it.arg as s32
+        if it.kind == 1 && OBJ_UNLOCK[arg] as s32 > stars {
+            fx(FX_ERROR)
+            say(pe_text(PE_LOCKED), RED)
+            return
+        }
+        match it.kind as s32 {
+            0 => { tool = Tool.Paint; tool_arg = arg }
+            1 => { tool = Tool.Object; tool_arg = arg }
+            else => {
+                match arg {
+                    0 => tool = Tool.Door
+                    1 => tool = Tool.Window
+                    2 => tool = Tool.Void
+                    3 => tool = Tool.VoidGlass
+                    else => tool = Tool.Demolish
+                }
+            }
+        }
+        menu_open = false
+        fx(FX_OK)
+    }
+}
+
+fn item_name(it: MenuItem) -> *u8 {
+    let arg = it.arg as s32
+    match it.kind as s32 {
+        0 => return str_of(FLOORK_NAME_OFF[arg] as s32)
+        1 => return obj_name(arg)
+        else => {
+            match arg {
+                0 => return "Door"
+                1 => return "Window"
+                2 => return "Void (railing)"
+                3 => return "Void (glass)"
+                else => return "Demolish"
+            }
+        }
+    }
+}
+
+fn item_price(it: MenuItem) -> s32 {
+    let arg = it.arg as s32
+    match it.kind as s32 {
+        0 => return FLOORK_PRICE[arg] as s32
+        1 => return OBJ_PRICE[arg] as s32
+        else => {
+            if arg <= 1 { return OBJ_PRICE[OB_DOOR] as s32 }
+            if arg <= 3 { return 50 }
+            return 0
+        }
+    }
+}
+
+// A 24x24 picture of a menu item: the art's icon, a patch of the floor, or a coloured swatch.
+fn menu_icon(x: s32, y: s32, it: MenuItem, tint: u32) {
+    let arg = it.arg as s32
+    var ob = -1
+    if it.kind == 1 { ob = arg }
+    if it.kind == 2 {
+        if arg == SP_DOOR { ob = OB_DOOR }
+        if arg == SP_WINDOW { ob = OB_WINDOW }
+        if arg == SP_VOID { ob = OB_RAILING }
+        if arg == SP_VOIDGLASS { ob = OB_RAILING_GLASS }
+        if arg == SP_DEMOLISH {
+            icon_tint(x + 4, y + 4, IC_TRASH, tint)
+            return
+        }
+    }
+    if ART_PRESENT && ob >= 0 && OBJ_ART[ob] >= 0 {
+        let a = OBJ_ART[ob] as s32
+        ui_tex(x, y, 24, 24, ART_ICON_SLOT, ART_ICON_PAL[a] as s32, ART_ICON_U[a] as s32, ART_ICON_V[a] as s32, 24, 24, tint, -1)
+        return
+    }
+    if ART_PRESENT && it.kind == 0 && SURF_BLOCK[arg] == 1 {
+        ui_rect(x + 1, y + 1, 22, 22, rgb(10, 16, 40), -1)
+        ui_tex(x + 3, y + 3, 18, 18, SURF_SLOT, SURF_PAL[arg] as s32, SURF_U[arg] as s32, SURF_V[arg] as s32, 24, 24, tint, -1)
+        return
+    }
+    var sc = rgb(200, 200, 200)
+    if it.kind == 0 { sc = FLOORK_COL[arg] }
+    if it.kind == 1 { sc = OBJ_COL[arg] }
+    ui_rect(x + 5, y + 5, 14, 14, sc, -1)
+}
+
+fn draw_build_menu() {
+    let x = 8
+    let y = 118
+    let w = 304
+    let h = 112
+    panel(x, y, w, h)
+    // tabs: the current one by name between L and R, the rest as dots
+    ui_sel(x + 104, y + 3, 96, 15)
+    ftext_c(x + 152, y + 3, str_of(TAB_NAME_OFF[menu_tab] as s32), WHITE, false)
+    ftext(x + 82, y + 3, "< L", SOFT, false)
+    ftext(x + 206, y + 3, "R >", SOFT, false)
+    for t in 0..NTABS {
+        var c = rgb(60, 80, 150)
+        if t == menu_tab { c = rgb(255, 160, 230) }
+        ui_rect(x + 8 + t * 7, y + 8, 5, 5, c, -1)
+    }
+        ftext(x + 4, y + h - 14, "L/R: tab   A: choose   B: close", DIM, false)
+    // items: a grid of 3 columns
+    let cw = 100
+    for k in 0..MENU_ROWS * MENU_COLS {
+        let i = menu_scroll * MENU_COLS + k
+        if i >= menu_n { break }
+        let it = menu_items[i]
+        let cx = x + 4 + (k % MENU_COLS) * cw
+        let cy = y + 19 + (k / MENU_COLS) * 26
+        let locked = it.kind == 1 && OBJ_UNLOCK[it.arg as s32] as s32 > stars
+        if i == menu_sel { ui_sel(cx, cy, cw - 2, 25) } else { ui_rect(cx, cy, cw - 2, 25, rgb(20, 30, 70), 0) }
+        var c = CREAM
+        if locked { c = DIM }
+        var tint: u32 = 0x808080
+        if locked { tint = 0x484848 }
+        menu_icon(cx + 1, cy + 1, it, tint)
+        ftext(cx + 27, cy + 6, item_name(it), c, false)
+        if locked {
+            let b = nb()
+            sint(b, OBJ_UNLOCK[it.arg as s32] as s32)
+            sappend(b, "*")
+            ftext_r(cx + cw - 5, cy + 12, b, GOLD, false)
+        }
+    }
+    // the selection's price
+    if menu_n > 0 {
+        let it = menu_items[menu_sel]
+        let p = item_price(it)
+        let b = nb()
+        if p > 0 { smoney(b, p) }
+        if it.kind == 0 && p > 0 { sappend(b, " per tile") }
+        if it.kind == 1 {
+            let t = it.arg as s32
+            sappend(b, "   ")
+            sint(b, OBJ_W[t] as s32)
+            sappend(b, "x")
+            sint(b, OBJ_D[t] as s32)
+        }
+        ftext_r(x + w - 6, y + h - 14, b, GOLD, false)
+    }
+}

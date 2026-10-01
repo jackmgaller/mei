@@ -1,0 +1,219 @@
+// Room detection: a room's type comes from what stands in it. Each type has a checklist of
+// required objects (RT_REQ_*: "one of these, n times") and bonus objects that raise its quality.
+// A room meets the first type in priority order whose checklist is complete; otherwise it is an
+// unfinished room, and the type it is closest to is kept for the checklist panel.
+
+var rooms_dirty = true
+var rcount: [200][74]u8          // objects of each type per room
+
+const PRIO: [13]u8 = [5, 4, 6, 8, 12, 7, 9, 10, 11, 14, 15, 16, 13]   // suite, guest, lobby, kitchen, bar (before restaurant: counters win), ...
+
+fn rooms_count() {
+    memset(&rcount[0][0], 0, 200 * 74)
+    for i in 0..nobjs {
+        let o = &objs[i]
+        if o.used == 0 { continue }
+        let r = troom[tix(o.f as s32, o.x as s32, o.z as s32)] as s32
+        o.room = r as u8
+        if r > 0 && rcount[r][o.t as s32] < 255 { rcount[r][o.t as s32] += 1 }
+    }
+}
+
+// How many of a type's requirements room r meets.
+fn reqs_met(r: s32, rt: s32) -> s32 {
+    let n = RT_NREQ[rt] as s32
+    var met = 0
+    for k in 0..n { if req_ok(r, rt, k) { met += 1 } }
+    return met
+}
+
+fn req_have(r: s32, rt: s32, k: s32) -> s32 {
+    var have = 0
+    for a in 0..3 {
+        let t = RT_REQ_ALT[(rt * 7 + k) * 3 + a] as s32
+        if t != 255 { have += rcount[r][t] as s32 }
+    }
+    return have
+}
+
+fn req_ok(r: s32, rt: s32, k: s32) -> bool { return req_have(r, rt, k) >= RT_REQ_CNT[rt * 7 + k] as s32 }
+
+fn type_valid(r: s32, rt: s32) -> bool {
+    let rm = &rooms[r]
+    if reqs_met(r, rt) < RT_NREQ[rt] as s32 { return false }
+    if (rm.ntiles - rm.nvoid) as s32 < RT_MIN[rt] as s32 { return false }
+    if rt == RT_LOBBY && rm.floor != 0 { return false }
+    if rt == RT_POOL && rm.nwater < 6 { return false }
+    return true
+}
+
+fn detect_room(r: s32) {
+    let rm = &rooms[r]
+    rm.flags = rm.flags & ~RF_VALID
+    rm.best = RT_NONE as u8
+    rm.missing = 0
+    let k = rm.kind as s32
+    if k == KIND_CORR { rm.rtype = RT_CORRIDOR as u8; rm.flags = rm.flags | RF_VALID; return }
+    if k == KIND_SERVICE { rm.rtype = RT_SERVICE as u8; rm.flags = rm.flags | RF_VALID; return }
+    if k == KIND_DECK {
+        if type_valid(r, RT_POOL) { rm.rtype = RT_POOL as u8 } else { rm.rtype = RT_OUTDOOR as u8 }
+        rm.best = RT_POOL as u8
+        rm.flags = rm.flags | RF_VALID
+        return
+    }
+    rm.rtype = RT_NONE as u8
+    var best = -1
+    var best_score = 0
+    for p in 0..13 {
+        let rt = PRIO[p] as s32
+        if type_valid(r, rt) {
+            rm.rtype = rt as u8
+            rm.flags = rm.flags | RF_VALID
+            rm.best = rt as u8
+            return
+        }
+        let n = RT_NREQ[rt] as s32
+        let met = reqs_met(r, rt)
+        // closeness: the share of requirements met (water counts for pools)
+        var score = met * 256 / max(n, 1)
+        if rt == RT_POOL && rm.nwater > 0 { score += 128 }
+        if score > best_score {
+            best_score = score
+            best = rt
+        }
+    }
+    if best >= 0 {
+        rm.best = best as u8
+        rm.missing = (RT_NREQ[best] as s32 - reqs_met(r, best)) as u8
+    }
+}
+
+// Quality 0..100: bonus items (each distinct type once, by appeal), windows, room to move.
+fn room_quality(r: s32) {
+    let rm = &rooms[r]
+    let rt = rm.best as s32
+    var q = 20
+    let nb = RT_NBONUS[rt] as s32
+    for k in 0..nb {
+        let t = RT_BONUS[rt * 12 + k] as s32
+        if rcount[r][t] > 0 { q += 4 + OBJ_APPEAL[t] as s32 * 3 }
+    }
+    q += min(rm.windows as s32 * 6, 18)
+    q += min(rm.view as s32, 20)
+    // crowding: few free tiles is cramped, a generous room is nicer
+    var used = 0
+    for t in 0..NOBJT { used += rcount[r][t] as s32 * OBJ_W[t] as s32 * OBJ_D[t] as s32 }
+    let free = (rm.ntiles - rm.nvoid) as s32 - used
+    if free < 3 { q -= 10 }
+    if free > 8 { q += 5 }
+    rm.quality = clamp(q, 0, 100) as s16
+}
+
+fn count_windows(r: s32) {
+    let rm = &rooms[r]
+    let f = rm.floor as s32
+    var n = 0
+    for z in rm.z0 as s32..rm.z1 as s32 + 1 {
+        for x in rm.x0 as s32..rm.x1 as s32 + 1 {
+            if room_at(f, x, z) != r { continue }
+            if edge_feat(f, x, z, -1, 0) == EF_WINDOW { n += 1 }
+            if edge_feat(f, x, z, 1, 0) == EF_WINDOW { n += 1 }
+            if edge_feat(f, x, z, 0, -1) == EF_WINDOW { n += 1 }
+            if edge_feat(f, x, z, 0, 1) == EF_WINDOW { n += 1 }
+        }
+    }
+    rm.windows = min(n, 255) as u8
+}
+
+fn rooms_update() {
+    rooms_dirty = false
+    if edges_dirty {
+        edges_dirty = false
+        for f in 0..NFL { clean_edges(f) }
+        elevators_respan()
+    }
+    rooms_count()
+    for r in 1..nrooms {
+        if rooms[r].used == 0 { continue }
+        room_measure(r)
+        if rooms[r].used == 0 { continue }
+        count_windows(r)
+        detect_room(r)
+        room_quality(r)
+        let rm = &rooms[r]
+        rm.flags = rm.flags & ~RF_PENTHOUSE
+        if rm.rtype as s32 == RT_SUITE && rm.floor as s32 == top_floor() && rm.floor > 0 { rm.flags = rm.flags | RF_PENTHOUSE }
+    }
+    rooms_after_update()
+    paths_invalidate()
+    elevs_rebuild()
+    compute_architecture()
+}
+
+fn room_type_name(rt: s32) -> *u8 { return str_of(RT_NAME_OFF[rt] as s32) }
+
+// ---- the room panel (inspect mode): the type, its checklist and the bonus items
+
+fn draw_info() {
+    if tool != Tool.Inspect && tool != Tool.Object { return }
+    if tool == Tool.Inspect {
+        let pi = person_at_cursor()
+        if pi >= 0 {
+            draw_person_info(pi)
+            return
+        }
+        let oi = tobj[tix(view_floor, cur_tx, cur_tz)] as s32
+        if oi >= 0 && info_open {
+            draw_object_info(oi)
+            return
+        }
+    }
+    let r = room_at(view_floor, cur_tx, cur_tz)
+    if r == 0 { return }
+    let rm = &rooms[r]
+    let rt = rm.rtype as s32
+    let bt = rm.best as s32
+    let x = 204
+    let y = 24
+    let w = 112
+    let nreq = RT_NREQ[bt] as s32
+    var h = 46 + nreq * 12
+    if tool == Tool.Object { h = 34 }
+    panel(x, y, w, h)
+    let b = nb()
+    if rt == RT_NONE {
+        if bt == RT_NONE { sappend(b, "Empty room") } else {
+            sappend(b, room_type_name(bt))
+            sappend(b, "?")
+        }
+    } else {
+        sappend(b, room_type_name(rt))
+    }
+    ftext(x + 4, y + 2, b, WHITE, false)
+    let s = nb()
+    sint(s, (rm.ntiles - rm.nvoid) as s32)
+    sappend(s, " tiles  quality ")
+    sint(s, rm.quality as s32)
+    ftext(x + 4, y + 15, s, SOFT, false)
+    if tool == Tool.Object { return }
+    if nreq == 0 { return }
+    ftext(x + 4, y + 28, "Needs:", GOLD, false)
+    for k in 0..nreq {
+        let yy = y + 40 + k * 12
+        let ok = req_ok(r, bt, k)
+        if ok { icon_tint(x + 3, yy - 2, IC_CHECK, 0x808080) } else { icon_tint(x + 3, yy - 2, IC_CROSS, 0x808080) }
+        let t0 = RT_REQ_ALT[(bt * 7 + k) * 3] as s32
+        let t1 = RT_REQ_ALT[(bt * 7 + k) * 3 + 1] as s32
+        let n = nb()
+        let cnt = RT_REQ_CNT[bt * 7 + k] as s32
+        if cnt > 1 {
+            sint(n, cnt)
+            sappend(n, " x ")
+        }
+        sappend(n, obj_name(t0))
+        if t1 != 255 { sappend(n, " / ...") }
+        var c = CREAM
+        if !ok { c = rgb(255, 160, 150) }
+        ftext(x + 19, yy, n, c, false)
+    }
+}
