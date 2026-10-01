@@ -91,7 +91,7 @@ fn draw() {
 ```
 
 ```bash
-./build/meic spinner.mls -o spinner.mei
+./build/meic spinner.akr -o spinner.mei
 ```
 
 Or in assembly ([`docs/ASSEMBLY.md`](ASSEMBLY.md)):
@@ -100,7 +100,7 @@ Or in assembly ([`docs/ASSEMBLY.md`](ASSEMBLY.md)):
 ./build/meiasm hello.s -o hello.mei
 ```
 
-`meiasm --disasm cart.mei` disassembles a cart. Put a cart in `carts/NAME/NAME.mls` or
+`meiasm --disasm cart.mei` disassembles a cart. Put a cart in `carts/NAME/NAME.akr` or
 `carts/asm/NAME.s` and `make` builds it into `build/carts/` (and `make web` bundles it).
 
 ## Layout
@@ -114,7 +114,7 @@ Or in assembly ([`docs/ASSEMBLY.md`](ASSEMBLY.md)):
 | `system/` | The system ROM: boot themes (`system/boot/`) and the shell, written in Akari |
 | `stdlib/` | The standard library, compiled into every cart: input, maths, camera, `mesh`, ordering table, fog, text, sprites, audio |
 | `carts/` | Example carts |
-| `tests/` | C unit tests per module and language tests (`tests/lang/*.mls` with expected output) |
+| `tests/` | C unit tests per module and language tests (`tests/lang/*.akr` with expected output) |
 | `tools/` | Asset generators, the language fuzzer, the web cart packer |
 | `web/shell.html` | The browser page |
 | `docs/` | Spec, [decisions](DECISIONS.md) on everything the spec leaves open, language and assembly references |

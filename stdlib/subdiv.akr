@@ -1,7 +1,7 @@
 // Automatic subdivision of textured faces near the camera (opt-in: subdivide(levels)).
 //
 // The GPU maps textures affinely, so a big polygon spanning a wide range of depth warps.
-// __draw_faces_sub (faces.mls) sends front-facing, on-screen textured faces that are near
+// __draw_faces_sub (faces.akr) sends front-facing, on-screen textured faces that are near
 // the camera and whose depth spreads by more than the tolerance, or that cross the near
 // plane, to __subdivide_face. It splits each edge nearer than the subdivision distance
 // whose far end is deeper than its near end by more than the tolerance (the affine error
@@ -16,7 +16,7 @@
 // other pattern goes on as the quad's two triangles, which split into four or are bisected
 // edge by edge. Every edge carries a generation (how often the mesh edge was halved) that
 // the level caps. The pieces are drawn by __draw_faces like any face (culling, near
-// plane, fog, sorting, packets). The worklist, __sub_run, is generated into faces.mls.
+// plane, fog, sorting, packets). The worklist, __sub_run, is generated into faces.akr.
 
 const __SUB_BASE = 2048         // scratch vertices: __sv[2048 ..] (offset 32768 bytes)
 const __SUB_MAX = 128           // scratch vertices per face
@@ -49,7 +49,7 @@ fn subdivide_tuning(percent: s32, distance: fixed) {
 
 fn __subdivide_face(f: *Face) {
     __sub_face = f
-    __sub_run(__sub_load(f))     // the worklist is generated assembly (faces.mls)
+    __sub_run(__sub_load(f))     // the worklist is generated assembly (faces.akr)
     __sub_flush()
 }
 

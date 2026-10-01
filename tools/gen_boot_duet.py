@@ -163,7 +163,7 @@ def make_atlas():
     put(0, 48, np.ones((72, 56, 3)) * SUN, crop(a_ri))
     put(64, 48, np.ones((72, 56, 3)) * MOON, crop(a_yue))
     split = centres[1] - centres[0]     # 月's centre is this far right of 日's (pixels)
-    assert abs(split - 24) < 1.0, split  # duet.mls places them 24 pixels apart
+    assert abs(split - 24) < 1.0, split  # duet.akr places them 24 pixels apart
     # M, E, I, each in its own box on a shared baseline
     boxes = []
     u = 128

@@ -287,7 +287,7 @@ def program(rng, nstmts=25):
 def run_one(seed, tmp):
     rng = random.Random(seed)
     src, expected = program(rng)
-    path = os.path.join(tmp, 'f%d.mls' % seed)
+    path = os.path.join(tmp, 'f%d.akr' % seed)
     open(path, 'w').write(src)
     cart = path[:-4] + '.mei'
     env = dict(os.environ, MEI_STDLIB=os.path.join(ROOT, 'stdlib'))
@@ -311,7 +311,7 @@ def main():
         if err:
             bad += 1
             print('seed %d: %s' % (s, err))
-            open(os.path.join(tmp, 'fail%d.mls' % s), 'w').write(src)
+            open(os.path.join(tmp, 'fail%d.akr' % s), 'w').write(src)
             if bad >= 5: break
     print('%d programs, %d failures (sources in %s)' % (count, bad, tmp))
     sys.exit(1 if bad else 0)

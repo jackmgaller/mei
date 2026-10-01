@@ -1,7 +1,7 @@
 // Loops the "eclipse" boot theme for development. Prints the CPU cycles (of the previous
 // frame) and the triangles queued, every 30th frame, with the peaks, to the debug console.
 cart "Preview eclipse"
-import "eclipse.mls"
+import "eclipse.akr"
 
 var preview_t: s32
 var preview_maxc: s32

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates stdlib/faces.mls: the hand-written face loop used by mesh().
+"""Generates stdlib/faces.akr: the hand-written face loop used by mesh().
 
 For every face: near-plane rejection, back-face culling, ordering-table depth, then a
 straight-line packet writer specialised for the packet layout (Gouraud x textured x quad,
@@ -11,7 +11,7 @@ Transformed vertices (__sv, 16 bytes each, written by __xform):
   +12 w (view depth, 16.16)
 __draw_faces_sub is the same loop for carts that enabled subdivide(): front-facing,
 on-screen textured faces near the camera whose depth spreads by more than the tolerance,
-or that cross the near plane, are handed to __subdivide_face (subdiv.mls), which splits
+or that cross the near plane, are handed to __subdivide_face (subdiv.akr), which splits
 them and feeds the pieces back through __draw_faces. The test is a superset of the
 per-edge test in __sub_split, so a face it skips never has an edge its neighbour splits.
 
@@ -406,7 +406,7 @@ def face_loop(name, sub):
     e('}')
 
 
-# ---- the subdivision worklist (__sub_run), used by subdiv.mls
+# ---- the subdivision worklist (__sub_run), used by subdiv.akr
 #
 # A patch is a quad (a b c d in strip order) or a triangle (a b c, d = -1) of scratch
 # vertices plus g, four 4-bit edge generations (quad: bottom a-b, right b-d, top d-c, left
@@ -502,7 +502,7 @@ def both(k1, k2, target_if_not):
 
 def subdiv_run():
     e('')
-    e('// The subdivision worklist of subdiv.mls: splits a face held in scratch vertices until')
+    e('// The subdivision worklist of subdiv.akr: splits a face held in scratch vertices until')
     e('// no edge needs splitting, queueing the pieces with __sub_emit (see gen_faces_asm.py).')
     e('var __sub_stack: [320]u32')
     e('')
@@ -644,7 +644,7 @@ e('')
 e('// The same loop for carts that called subdivide(): see the header of gen_faces_asm.py.')
 face_loop('__draw_faces_sub', True)
 subdiv_run()
-dst = sys.argv[1] if len(sys.argv) > 1 else os.path.join(root, 'stdlib', 'faces.mls')
+dst = sys.argv[1] if len(sys.argv) > 1 else os.path.join(root, 'stdlib', 'faces.akr')
 with open(dst, 'w') as f:
     f.write('\n'.join(l for l in out if l is not None) + '\n')
 print('wrote', dst)

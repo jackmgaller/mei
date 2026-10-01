@@ -44,7 +44,7 @@ var __arena_ptr: *u32
 var __arena_end: *u32
 var __ui_head: u32
 var __ui_tail: *u32
-var __sv: [2176]ivec4      // transformed vertices (see __xform); 2048.. is subdiv.mls scratch
+var __sv: [2176]ivec4      // transformed vertices (see __xform); 2048.. is subdiv.akr scratch
 var __vp: mat4             // view-projection matrix
 var __fx: fixed = 1.299
 var __fy: fixed = 1.732
@@ -195,8 +195,8 @@ fn fog_off() { __fog_on = false }
 
 // ---- meshes
 
-import "faces.mls"
-import "subdiv.mls"
+import "faces.akr"
+import "subdiv.akr"
 
 // Transforms n vertices by the matrix and projects them into __sv: lane 0 holds the packed
 // screen position (x & 0xFFFF) | (y << 16), lane 1 the fog amount 0..256, lane 3 the view

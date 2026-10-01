@@ -1,0 +1,12 @@
+// Mei standard library prelude. Imported automatically into every cart (it is
+// compiled into the cart; only functions the cart reaches are emitted).
+import "io.akr"
+import "debug.akr"
+import "math.akr"
+import "input.akr"
+import "mem.akr"
+import "gfx.akr"
+import "text.akr"
+import "audio.akr"
+import "card.akr"
+import "runtime.akr"

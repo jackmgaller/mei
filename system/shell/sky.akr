@@ -1,7 +1,7 @@
 // The shell's backdrop: a sky that follows the console's real-time clock (SYS_TIME). The
 // sun rises around 06:30 and sets around 18:30 with dawn and dusk colours; by night the
 // moon takes the same arc (明 = 日 + 月) and stars twinkle. The moving hills at the bottom
-// are in hills.mls.
+// are in hills.akr.
 
 const SKY_SUNRISE = 23400        // 06:30, in seconds since midnight; sunset 12 hours later
 

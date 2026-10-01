@@ -51,8 +51,8 @@ fn draw() {
 ## Building and running
 
 ```
-meic game.mls -o game.mei            # compile (default output: game.mei)
-meic game.mls -S game.s --sym game.sym   # also write the assembly and a symbol table
+meic game.akr -o game.mei            # compile (default output: game.mei)
+meic game.akr -S game.s --sym game.sym   # also write the assembly and a symbol table
 mei game.mei                         # run in the desktop player
 mei-headless game.mei --frames 60 --dump frame.ppm   # run without a window
 ```
@@ -60,7 +60,7 @@ mei-headless game.mei --frames 60 --dump frame.ppm   # run without a window
 Options: `--title TEXT` sets the cart title (otherwise the `cart` declaration, else the file
 name), `--no-stdlib` compiles without the standard library.
 
-The standard library (`stdlib/*.mls`) is compiled into every cart. `meic` looks for it in
+The standard library (`stdlib/*.akr`) is compiled into every cart. `meic` looks for it in
 `$MEI_STDLIB`, then in `<directory of meic>/../stdlib`. Only functions a cart can reach are
 emitted. The library API `meic_compile()` (`src/lang/lang.h`) takes a file-reader callback,
 so the compiler can run without a file system (for example in the browser).
@@ -83,7 +83,7 @@ The frame loop is: begin frame (reset the ordering table and packet memory) → 
 `draw()` → end frame (draw the ordering table, then the interface list, remember the pads
 for `btnp`) → `vsync`. Output appears on the debug console through `print*` functions.
 
-`import "other.mls"` includes another file (path relative to the importing file). Each file is
+`import "other.akr"` includes another file (path relative to the importing file). Each file is
 compiled once however often it is imported; all files share one global namespace. A cart may
 reuse a name the standard library defines (`A`, `sin`, ...): the cart sees its own
 declaration and the library keeps using its own.
@@ -111,7 +111,7 @@ declaration and the library keeps using its own.
 | Declaration | Meaning |
 |---|---|
 | `cart "Title"` / `cart "Title", "ID"` | the title in the cart header (at most 32 bytes) and the cart ID for memory cards (at most 16 printable ASCII characters; see [Saving](#saving)) |
-| `import "file.mls"` | compile another file into the program |
+| `import "file.akr"` | compile another file into the program |
 | `const NAME = expr` / `const NAME: T = expr` | a compile-time constant; with an array or struct type, read-only data in ROM |
 | `var name: T` / `var name: T = expr` / `var name = expr` | a global variable in RAM |
 | `reg NAME: T @ address` | a memory-mapped register; `T` must be 32 bits (`u32`, `s32`, `fixed`, a pointer) |
@@ -555,7 +555,7 @@ Rules: an asm block may freely use `r1`–`r8`, `r15` (after saving it) and `v0`
 registers it names through `{...}`; it must preserve `r9`–`r13` and `sp` unless it names them.
 Local labels (`.loop:`) work but must not start with `.L` (the compiler's own labels). asm
 functions may use local labels freely and must `ret` (the compiler adds a final `ret`). Errors
-in assembly are reported at the asm line in the `.mls` file. See `ASSEMBLY.md` for the syntax.
+in assembly are reported at the asm line in the `.akr` file. See `ASSEMBLY.md` for the syntax.
 
 ## Calling convention
 
@@ -606,10 +606,10 @@ A function value in a vector register is first stored to the stack (3 cycles mor
 
 ## Standard library
 
-The prelude (`stdlib/prelude.mls`) imports every module below. Colours are `u32` words
+The prelude (`stdlib/prelude.akr`) imports every module below. Colours are `u32` words
 `0xBBGGRR` (red in the low byte, as the GPU expects); `rgb(r, g, b)` builds one.
 
-### Frame and system (`runtime.mls`, `io.mls`)
+### Frame and system (`runtime.akr`, `io.akr`)
 
 | | |
 |---|---|
@@ -620,7 +620,7 @@ The prelude (`stdlib/prelude.mls`) imports every module below. Colours are `u32`
 | registers | `GPU_DRAW GPU_CLEAR GPU_CTRL GPU_STATUS GPU_BACK PAD1 PAD2 STICK1_X STICK1_Y STICK2_X STICK2_Y FRAME CYCLES RAND DEBUG` |
 | constants | `AUDIO_BASE VRAM_PALETTE VRAM_TEXTURES TEXTURE_SLOT_SIZE SCREEN_W SCREEN_H` |
 
-### Input (`input.mls`)
+### Input (`input.akr`)
 
 Buttons are bit masks: `UP DOWN LEFT RIGHT A B X Y L R START SELECT`.
 
@@ -631,7 +631,7 @@ Buttons are bit masks: `UP DOWN LEFT RIGHT A B X Y L R START SELECT`.
 | `btn2`, `btnp2` | the same for controller 2 |
 | `stick() -> vec2`, `stick2() -> vec2` | analog stick, −1.0..1.0 on each axis (y up), dead zone applied |
 
-### Maths (`math.mls`)
+### Maths (`math.akr`)
 
 | | |
 |---|---|
@@ -645,7 +645,7 @@ Buttons are bit masks: `UP DOWN LEFT RIGHT A B X Y L R START SELECT`.
 `mat4_rotate_y(a)` turns +Z toward +X (the same sense as camera yaw), `mat4_rotate_x(a)` turns +Z
 toward +Y, `mat4_rotate_z(a)` turns +X toward +Y.
 
-### Graphics (`gfx.mls`, `text.mls`)
+### Graphics (`gfx.akr`, `text.akr`)
 
 **Coordinates.** World space has +X right, +Y up and +Z forward. The camera looks along +Z at
 yaw 0; positive yaw turns right (toward +X), positive pitch looks up.
@@ -714,7 +714,7 @@ For hand-built packets: `packet_alloc(words) -> *u32` (null when full), `ot_inse
 depth)` (depth 0 nearest .. 1023), `ui_insert(p, type)`. Word 0 of a packet is filled in by the
 insert; write the rest as described in the spec (p. 14–16).
 
-### Sound (`audio.mls`)
+### Sound (`audio.akr`)
 
 | | |
 |---|---|
@@ -722,7 +722,7 @@ insert; write the rest as described in the spec (p. 14–16).
 | `play16(ch, sample: *s16, ...)` | 16-bit samples |
 | `stop(ch)`, `sound_playing(ch) -> bool`, `sound_pos(ch) -> u32` | |
 
-### Debug output and memory (`debug.mls`, `mem.mls`)
+### Debug output and memory (`debug.akr`, `mem.akr`)
 
 | | |
 |---|---|
@@ -733,7 +733,7 @@ insert; write the rest as described in the spec (p. 14–16).
 | `memcpy(dst: *u8, src: *u8, n: u32)` | 16 bytes per `vld`/`vst` when both are word aligned |
 | `memset(dst: *u8, v: u8, n: u32)` | |
 
-### Memory cards (`card.mls`)
+### Memory cards (`card.akr`)
 
 `card_save`, `card_load`, `card_busy` and the rest: see [Saving](#saving).
 
@@ -914,7 +914,7 @@ function but vectors are spilled around calls; `-S` shows exactly what was gener
 
 ## Testing the compiler
 
-`tests/run_lang_tests.sh` (run by `make test`) compiles every `tests/lang/*.mls`, runs it with
+`tests/run_lang_tests.sh` (run by `make test`) compiles every `tests/lang/*.akr`, runs it with
 `mei-headless` and compares the debug output with the file's `// expect:` lines (`// frames: N`,
 `// pad1: HEX` and `// error: TEXT` adjust a test). `tools/fuzz_lang.py [count] [seed]` compiles
 random programs and checks their output against a Python model of the CPU's arithmetic.

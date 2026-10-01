@@ -1,4 +1,4 @@
-// imported by import.mls
-import "more.mls"
+// imported by import.akr
+import "more.akr"
 struct Rect { w: s32, h: s32 }
 fn area(r: Rect) -> s32 { return r.w * r.h }

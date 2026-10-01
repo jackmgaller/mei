@@ -1950,7 +1950,7 @@ asm fn __draw_faces_sub(first: *Face, nf: s32) {
     .word .v1111
 }
 
-// The subdivision worklist of subdiv.mls: splits a face held in scratch vertices until
+// The subdivision worklist of subdiv.akr: splits a face held in scratch vertices until
 // no edge needs splitting, queueing the pieces with __sub_emit (see gen_faces_asm.py).
 var __sub_stack: [320]u32
 

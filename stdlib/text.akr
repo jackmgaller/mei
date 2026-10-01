@@ -1,7 +1,7 @@
 // 2D interface drawing: text, sprites and rectangles go on the interface list, drawn
 // after the 3D world in call order. The built-in font lives in texture slot 15 with
 // 4-bit palette 255 (colours 4080-4095); those are reserved.
-import "font_data.mls"
+import "font_data.akr"
 
 const FONT_SLOT = 15
 const FONT_PALETTE = 255

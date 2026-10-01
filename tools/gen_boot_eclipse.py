@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates the assets of the "eclipse" boot theme (system/boot/eclipse.mls) into
+"""Generates the assets of the "eclipse" boot theme (system/boot/eclipse.akr) into
 system/boot/eclipse/:
 
   tex.bin   4-bit texture for slot 0, 128 rows of 128 bytes: the character 明 (sharp and
@@ -7,7 +7,7 @@ system/boot/eclipse/:
   pal.bin   4-bit palettes 0 (grey ramp, tinted when drawn) and 1 (moon)
   snd.bin   all sound pieces: signed 8-bit block-companded (see below), or 16-bit
   vol.bin   per-frame channel volumes for every sound event (left, right)
-  gen.mls   generated constants: sun mesh, stars, texture layout, sound event table
+  gen.akr   generated constants: sun mesh, stars, texture layout, sound event table
 
 Sound: everything is synthesised here with numpy (additive, FM, filtered noise, a
 convolution reverb with a synthetic impulse response), then cut into "pieces". Each piece is
@@ -16,7 +16,7 @@ channel's VOL register every frame, so a quiet reverb tail keeps its full 8-bit 
 (block floating point, like the PlayStation's ADPCM). Long tails switch to a half-rate copy
 (played at pitch 0.5) once their high frequencies have died away. The opening bowl strike,
 which plays alone, is 16-bit. The event table says which
-piece starts on which channel at which frame; gen.mls carries it to the theme.
+piece starts on which channel at which frame; gen.akr carries it to the theme.
 
 Usage: python3 tools/gen_boot_eclipse.py [--preview DIR]   (DIR gets a wav + spectrogram)
 """
@@ -662,7 +662,7 @@ class Pieces:
 
 # ----------------------------------------------------------------------------- the score
 
-# Frames (60 per second). The theme's visuals use the same numbers (gen.mls).
+# Frames (60 per second). The theme's visuals use the same numbers (gen.akr).
 T_BOWL = 12
 T_SUN = [44, 152]                 # sun phrase: notes at +0, +18, +36
 SUN_NOTES = [0, 18, 36]
@@ -825,8 +825,8 @@ def main():
     s += 'const ECLIPSE_T_UNION = %d\n' % T_UNION
     s += 'const ECLIPSE_FRAMES = %d\n' % THEME_FRAMES
     s += '\n// sound events: piece offset/length in ECLIPSE_SND, volume table offset in ECLIPSE_VOLS\n'
-    s += P.mls('eclipse')
-    open(os.path.join(OUT, 'gen.mls'), 'w').write(s)
+    s += P.akr('eclipse')
+    open(os.path.join(OUT, 'gen.akr'), 'w').write(s)
 
     print('eclipse: sound %d bytes (%.1f%% of budget), %d events, volume tables %d bytes' %
           (len(P.data), 100 * len(P.data) / BUDGET, len(P.events), len(vols)))

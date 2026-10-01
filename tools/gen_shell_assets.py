@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates the system shell's assets in system/shell/ (see system/system.mls).
+"""Generates the system shell's assets in system/shell/ (see system/system.akr).
 
   tex_font.bin   texture slot 12: medium and small proportional fonts (4-bit)
   tex_big.bin    texture slot 13: the large title font (4-bit)
@@ -7,7 +7,7 @@
   pal.bin        16-colour palettes from palette 192 (15-bit colours)
   glyphs.bin     glyph metrics: 3 fonts x 100 glyphs x (u, v, w, advance)
   snd_*.raw      UI sounds, signed 8-bit PCM at 22,050 Hz
-  assets.mls     embed declarations and atlas constants used by the shell
+  assets.akr     embed declarations and atlas constants used by the shell
 
 Only the texture rows actually used are written. Fonts come from macOS (Avenir Next,
 Hiragino); the generated files are checked in, so other systems don't need them.
@@ -419,7 +419,7 @@ def build_textures():
         idx = (a >= 0.5).astype(np.uint8)
         u, v = art.put(idx)
         art_items[nm] = (u, v, sz, sz, p_white)
-    # rows from ICON_V down hold save icons uploaded at run time (system/shell/memcard.mls)
+    # rows from ICON_V down hold save icons uploaded at run time (system/shell/memcard.akr)
     assert art.used_rows() <= ICON_V, art.used_rows()
     return (font_atlas, big_atlas, art), (med, med_h), (small, small_h), (big, big_h)
 
@@ -559,7 +559,7 @@ def snd_error():
 
 
 # ---------------------------------------------------------------- ambient music
-# Three instrument samples for the shell's generative ambient music (system/shell/music.mls).
+# Three instrument samples for the shell's generative ambient music (system/shell/music.akr).
 # Pitch comes from the channel's PITCH register and loudness from VOL, written per frame.
 
 MU_PAD_LEN = 8000          # 80 cycles of 220.5 Hz (A3, period 100 samples): loops seamlessly
@@ -695,7 +695,7 @@ def main():
     L.append('const SH_PAL_BASE = %d' % PAL_BASE)
     L.append('const SH_PAL_COUNT = %d' % len(palettes))
     L.append('const SH_PAL_TEXT = %d' % P_TEXT)
-    L.append('const SH_ICON_V = %d          // slot 14 rows from here: save icons (memcard.mls)' % ICON_V)
+    L.append('const SH_ICON_V = %d          // slot 14 rows from here: save icons (memcard.akr)' % ICON_V)
     L.append('const SH_ICON_PAL = %d        // palettes from here to 254: save icon palettes' % ICON_PAL)
     assert PAL_BASE + len(palettes) <= ICON_PAL
     L.append('')
@@ -715,7 +715,7 @@ def main():
     L.append('// art in slot 14: u, v, w, h, palette')
     for nm, (u, v, w, h, p) in art_items.items():
         L.append('const SH_ART_%s: [5]s32 = [%d, %d, %d, %d, %d]' % (nm.upper(), u, v, w, h, p))
-    with open(os.path.join(OUT, 'assets.mls'), 'w') as f:
+    with open(os.path.join(OUT, 'assets.akr'), 'w') as f:
         f.write('\n'.join(L) + '\n')
     print('music samples: %d bytes (%s)' % (total_mu, ', '.join('%s %d' % (n, len(d)) for n, d in music)))
     print('rows used: font %d, big %d, art %d; palettes %d; sounds %d bytes (%s)' % (

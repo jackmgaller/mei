@@ -25,7 +25,7 @@ const SH_SLOT_ART = 14
 const SH_PAL_BASE = 192
 const SH_PAL_COUNT = 18
 const SH_PAL_TEXT = 192
-const SH_ICON_V = 144          // slot 14 rows from here: save icons (memcard.mls)
+const SH_ICON_V = 144          // slot 14 rows from here: save icons (memcard.akr)
 const SH_ICON_PAL = 232        // palettes from here to 254: save icon palettes
 
 // fonts: glyph table index, line height, texture slot

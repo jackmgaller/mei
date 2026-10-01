@@ -1,9 +1,9 @@
 // Sun & Moon Orbs: game states, the frame loop and asset loading.
-import "level_data.mls"
-import "player.mls"
-import "render.mls"
-import "hud.mls"
-import "sfx.mls"
+import "level_data.akr"
+import "player.akr"
+import "render.akr"
+import "hud.akr"
+import "sfx.akr"
 
 embed TEX4: u8 = "tex4.bin"           // 4-bit atlas, slot 0
 embed TEX4B: u8 = "tex4b.bin"         // 4-bit 2x2-tiled copies for the coarse LOD, slot 1

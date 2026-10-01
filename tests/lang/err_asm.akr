@@ -1,4 +1,4 @@
-// error: err_asm.mls:6:1: error: in asm: unknown instruction
+// error: err_asm.akr:6:1: error: in asm: unknown instruction
 fn init() {
     var x = 1
     asm {

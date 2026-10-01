@@ -5,7 +5,7 @@
 // L / R: turn the camera. Y: show CPU / triangle counters. START: start / restart.
 //
 // Assets come from tools/gen_orbs_assets.py. This file is the cart's entry point; the
-// game itself is in game.mls so that test entry points can import it with scripted input.
+// game itself is in game.akr so that test entry points can import it with scripted input.
 cart "Sun & Moon Orbs", "SUNMOON-ORBS"
 
 const TEST = 0
@@ -15,4 +15,4 @@ fn input_pad(f: s32) -> u32 { return PAD1 }
 fn input_stick(f: s32) -> vec2 { return stick() }
 fn test_hook(f: s32) {}
 
-import "game.mls"
+import "game.akr"

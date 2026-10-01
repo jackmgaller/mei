@@ -1,7 +1,7 @@
 // Boot theme dispatch. Each theme lives in its own file (docs/SYSTEM.md) and
 // provides <name>_start() and <name>_frame(t) -> bool.
-import "duet.mls"
-import "eclipse.mls"
+import "duet.akr"
+import "eclipse.akr"
 
 const BOOT_THEME_COUNT: s32 = 2
 

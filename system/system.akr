@@ -19,21 +19,21 @@
 //
 // Resources: texture slots 12-14, 4-bit palettes 192-254 and audio channels 6-7 (UI
 // sounds on 6, the cursor tick on 7); while the shell runs, channels 0-3 play the ambient
-// music (shell/music.mls). Assets come from tools/gen_shell_assets.py.
+// music (shell/music.akr). Assets come from tools/gen_shell_assets.py.
 cart "Mei System"
-import "boot/themes.mls"
-import "shell/core.mls"
-import "shell/sky.mls"
-import "shell/hills.mls"
-import "shell/music.mls"
-import "shell/memcard.mls"
-import "shell/chrome.mls"
-import "shell/home.mls"
-import "shell/carts.mls"
-import "shell/settings.mls"
-import "shell/pads.mls"
-import "shell/soundtest.mls"
-import "shell/info.mls"
+import "boot/themes.akr"
+import "shell/core.akr"
+import "shell/sky.akr"
+import "shell/hills.akr"
+import "shell/music.akr"
+import "shell/memcard.akr"
+import "shell/chrome.akr"
+import "shell/home.akr"
+import "shell/carts.akr"
+import "shell/settings.akr"
+import "shell/pads.akr"
+import "shell/soundtest.akr"
+import "shell/info.akr"
 
 enum Mode { Boot, BootOut, Shell, PreviewWait, Preview, PreviewOut, Launch }
 

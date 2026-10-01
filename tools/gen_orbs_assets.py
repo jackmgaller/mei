@@ -12,7 +12,7 @@
   orb_sun.bin, orb_moon.bin   orb cores
   *.raw         sounds: 8-bit sfx at 22,050 Hz, 16-bit music loops at 11,025 Hz
   save_icon.bin memory card save record (title + 2-frame sun/moon icon)
-  level_data.mls  collision boxes, orb positions and the chunk table (generated code)
+  level_data.akr  collision boxes, orb positions and the chunk table (generated code)
 
 Lighting is baked into vertex colours: a low warm sun in the west, a cool moon in the east,
 ambient sky light, ray-cast shadows from the level boxes and a little ambient occlusion."""
@@ -1130,7 +1130,7 @@ write('music_pad.raw', s16(pad))
 write('music_lead.raw', s16(lead))
 
 
-# ----------------------------------------------------------------------------- level_data.mls
+# ----------------------------------------------------------------------------- level_data.akr
 
 def fx(v):
     return ('%.4f' % v) if v != int(v) else ('%.1f' % v)
@@ -1182,7 +1182,7 @@ for ch, c, r, nv, nf, lo_, hi_, nvl, nfl in chunk_info:
         lines.append('        depth_bias(0)')
     lines.append('    }')
 lines.append('}')
-with open(os.path.join(OUT, 'level_data.mls'), 'w') as f:
+with open(os.path.join(OUT, 'level_data.akr'), 'w') as f:
     f.write('\n'.join(lines) + '\n')
 
 print('chunks (id, verts, quads, lo verts, lo quads):', [(ci[0], ci[3], ci[4], ci[7], ci[8]) for ci in chunk_info])

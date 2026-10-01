@@ -1,3 +1,0 @@
-import "shapes.mls"   // circular imports are fine: each file is compiled once
-const SIDES = 4
-fn perimeter(w: s32, h: s32) -> s32 { return 2 * (w + h) }

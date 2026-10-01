@@ -1,7 +1,7 @@
 // Shell core: catalogue, settings word, drawing helpers (tinted sprites, gradient and
 // translucent quads, the proportional fonts), input with key repeat, UI sounds and
 // string formatting. Everything here starts with sh_ / SH_.
-import "assets.mls"
+import "assets.akr"
 
 reg SYS_LAUNCH: u32 @ 0xFF0310
 reg SYS_CONFIG: u32 @ 0xFF0314
@@ -194,7 +194,7 @@ fn sh_hgrad(x: s32, y: s32, w: s32, h: s32, left: u32, right: u32, mode: s32) {
     sh_grad(x, y, w, h, left, right, left, right, mode)
 }
 
-// Draws art a (u, v, w, h, palette from assets.mls) scaled to w x h at (x, y).
+// Draws art a (u, v, w, h, palette from assets.akr) scaled to w x h at (x, y).
 // tint 0x808080 leaves it unchanged; mode -1 opaque, else a blend mode.
 fn sh_spr_wh(a: *s32, x: s32, y: s32, w: s32, h: s32, tint: u32, mode: s32) {
     if w <= 0 || h <= 0 { return }

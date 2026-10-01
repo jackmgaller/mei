@@ -1,6 +1,6 @@
 // import: relative paths, nested and circular imports.
-import "lib/shapes.mls"
-import "lib/more.mls"
+import "lib/shapes.akr"
+import "lib/more.akr"
 
 fn init() {
     let r = Rect { w: 3, h: 4 }

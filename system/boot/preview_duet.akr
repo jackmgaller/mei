@@ -1,6 +1,6 @@
 // Loops the DUET boot theme for development.
 cart "Preview DUET"
-import "duet.mls"
+import "duet.akr"
 
 var preview_t: s32
 

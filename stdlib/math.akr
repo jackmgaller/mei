@@ -1,5 +1,5 @@
 // Fixed-point maths. Angles are in radians.
-import "sin_table.mls"
+import "sin_table.akr"
 
 const PI: fixed = 3.14159265
 const TAU: fixed = 6.28318531

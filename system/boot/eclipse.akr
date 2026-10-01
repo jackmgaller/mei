@@ -7,8 +7,8 @@
 // in. The ring opens like an iris and 明 is left in its place, 日 warm and 月 cool, with the
 // MEI wordmark spelled out on the moon's last phrase. 7.5 seconds.
 //
-// Assets and the sound score come from tools/gen_boot_eclipse.py (eclipse/gen.mls).
-import "eclipse/gen.mls"
+// Assets and the sound score come from tools/gen_boot_eclipse.py (eclipse/gen.akr).
+import "eclipse/gen.akr"
 
 const ECLIPSE_CX = 160                 // where the eclipse happens
 const ECLIPSE_CY = 102
@@ -190,7 +190,7 @@ fn eclipse_angle(t: s32) -> fixed {
         0.66 * eclipse_smooth(200, ECLIPSE_T_ECLIPSE, t)
 }
 
-// ---- sound: the generated event table (gen.mls)
+// ---- sound: the generated event table (gen.akr)
 
 fn eclipse_audio(t: s32) {
     for e in 0..ECLIPSE_EV_COUNT {

@@ -1,4 +1,4 @@
-// error: err_asm_fn.mls:5:1: error: in asm:
+// error: err_asm_fn.akr:5:1: error: in asm:
 asm fn f(a: s32) -> s32 {
     addi r1, {a}, 1
 
