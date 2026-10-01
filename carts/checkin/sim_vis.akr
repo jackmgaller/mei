@@ -3,25 +3,28 @@
 // it; people_draw.akr reads it to draw smooth motion. Everything is zero until used.
 // Owner: workstream C (writer); workstream A reads it. See CONTRACT.md.
 //
-// It lives apart from Person and Elev, and is imported last, so adding it changed nothing in
-// the simulation's memory layout or timing. When the simulation starts writing it, clear an
-// entry where the person or car is created: people_vis[i] in person_new(), elev_vis[k] in
-// elevs_rebuild().
+// It lives apart from Person and Elev, and is imported last. Entries are cleared where the
+// person or car is created: people_vis[i] in person_new(), elev_vis[k] in elevs_rebuild() (a car
+// whose object survives a rebuild keeps its entry). people_frame() (called from sim_tick() once
+// per frame) eases the fades and seat offsets; nothing changes while paused.
 
 struct PersonVis {
-    anim: u8                 // walk-cycle phase, advanced by the distance walked
-    face: u8                 // smoothed facing (0..3, like Person.dir)
-    lane: s8                 // personal lane offset across the walking direction (1/64 tile)
-    fade: u8                 // 0 visible .. 255 hidden (fading in and out instead of popping)
-    vx: fixed                // velocity (tiles per tick)
+    anim: u8                 // walk-cycle phase, advanced by the distance walked: 256 a cycle
+                             // (about 1.26 tiles), the frame is anim >> 6; frozen when standing
+    face: u8                 // smoothed facing (0..3, like Person.dir), held at least 6 frames
+    lane: s8                 // personal lane offset across the walking direction (1/64 tile);
+                             // informational, it is already part of Person.x/z
+    fade: u8                 // 0 visible .. 255 hidden (street arrivals and departures, elevator
+                             // boarding and alighting, pool hops), about 11 ticks each way
+    vx: fixed                // the last tick's velocity (tiles per tick)
     vz: fixed
-    ox: fixed                // visual offset from (x, z): onto a seat or a bed, along a queue
-    oz: fixed
+    ox: fixed                // visual offset from (x, z) onto a seat, stool or bed (eased in and
+    oz: fixed                // out over a few frames); zero while walking
 }
 
 struct ElevVis {
-    vel: fixed               // car speed (floors per frame), for easing
-    door_t: s16              // door animation (0 closed .. DOOR_T open)
+    vel: fixed               // car speed (floors per tick, signed), eased: it accelerates and brakes
+    door_t: s16              // door animation (0 closed .. DOOR_T = 12 open)
 }
 
 var people_vis: [128]PersonVis

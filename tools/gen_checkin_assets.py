@@ -71,11 +71,121 @@ def pal(cols):
 
 
 # ----------------------------------------------------------------------------- fonts
-FONT_SMALL = '/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf'
-FONT_BIG = '/System/Library/Fonts/Supplemental/Arial Black.ttf'
-SHADOW = (18, 16, 40)
-FONT_PAL = pal([SHADOW] + [tuple(int(SHADOW[k] + (255 - SHADOW[k]) * (i / 13.0) ** 0.85) for k in range(3))
-                           for i in range(14)])
+# Small: a hand-made pixel font (7-px caps, 5-px x-height, 2-px descenders, 10-px line).
+# Big (titles): Silom 12 rendered without antialiasing, one glyph at a time (even spacing).
+# Both get a 1-px drop shadow (palette index 1). Characters 1..31 (except 9, 10, 13) are inline
+# icon glyphs (button prompts, arrows, star, lock...), drawn untinted from their own palette.
+FONT_BIG = '/System/Library/Fonts/Supplemental/Arial Black.ttf'      # (the logo)
+FONT_TITLE = '/System/Library/Fonts/Supplemental/Silom.ttf'
+FONT_SMALL = '/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf'   # (the logo subtitle)
+SHADOW = (14, 14, 22)
+FONT_PAL = pal([SHADOW] + [(255, 255, 255)] * 14)
+
+# Check-In! small pixel font: 7-px caps, 5-px x-height, 2-px descenders (rows 0..8).
+# Each glyph: rows of '#'/'.', all rows the same width; missing rows are blank.
+PIX = {}
+
+
+def g(ch, *rows):
+    PIX[ch] = rows
+
+
+g(' ', '..')
+g('!', '#', '#', '#', '#', '#', '.', '#')
+g('"', '#.#', '#.#')
+g('#', '.#.#.', '.#.#.', '#####', '.#.#.', '#####', '.#.#.', '.#.#.')
+g('$', '..#..', '.####', '#.#..', '.###.', '..#.#', '####.', '..#..')
+g('%', '##..#', '##.#.', '...#.', '..#..', '.#...', '.#.##', '#..##')
+g('&', '.##..', '#..#.', '#.#..', '.#...', '#.#.#', '#..#.', '.##.#')
+g("'", '#', '#')
+g('(', '.#', '#.', '#.', '#.', '#.', '#.', '.#')
+g(')', '#.', '.#', '.#', '.#', '.#', '.#', '#.')
+g('*', '.....', '..#..', '#.#.#', '.###.', '#.#.#', '..#..', '.....')
+g('+', '.....', '..#..', '..#..', '#####', '..#..', '..#..', '.....')
+g(',', '..', '..', '..', '..', '..', '.#', '.#', '#.')
+g('-', '....', '....', '....', '####', '....', '....', '....')
+g('.', '.', '.', '.', '.', '.', '.', '#')
+g('/', '....#', '...#.', '...#.', '..#..', '.#...', '.#...', '#....')
+g('0', '.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.')
+g('1', '..#..', '.##..', '..#..', '..#..', '..#..', '..#..', '.###.')
+g('2', '.###.', '#...#', '....#', '...#.', '..#..', '.#...', '#####')
+g('3', '.###.', '#...#', '....#', '..##.', '....#', '#...#', '.###.')
+g('4', '...#.', '..##.', '.#.#.', '#..#.', '#####', '...#.', '...#.')
+g('5', '#####', '#....', '####.', '....#', '....#', '#...#', '.###.')
+g('6', '..##.', '.#...', '#....', '####.', '#...#', '#...#', '.###.')
+g('7', '#####', '....#', '...#.', '..#..', '.#...', '.#...', '.#...')
+g('8', '.###.', '#...#', '#...#', '.###.', '#...#', '#...#', '.###.')
+g('9', '.###.', '#...#', '#...#', '.####', '....#', '...#.', '.##..')
+g(':', '.', '.', '#', '.', '.', '#', '.')
+g(';', '..', '..', '.#', '..', '..', '.#', '.#', '#.')
+g('<', '....', '...#', '..#.', '.#..', '..#.', '...#', '....')
+g('=', '....', '....', '####', '....', '####', '....', '....')
+g('>', '....', '#...', '.#..', '..#.', '.#..', '#...', '....')
+g('?', '.###.', '#...#', '....#', '...#.', '..#..', '.....', '..#..')
+g('@', '.###.', '#...#', '#.###', '#.#.#', '#.###', '#....', '.###.')
+g('A', '.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#')
+g('B', '####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.')
+g('C', '.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.')
+g('D', '####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.')
+g('E', '####', '#...', '#...', '###.', '#...', '#...', '####')
+g('F', '####', '#...', '#...', '###.', '#...', '#...', '#...')
+g('G', '.###.', '#...#', '#....', '#.###', '#...#', '#...#', '.###.')
+g('H', '#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#')
+g('I', '###', '.#.', '.#.', '.#.', '.#.', '.#.', '###')
+g('J', '...#', '...#', '...#', '...#', '...#', '#..#', '.##.')
+g('K', '#...#', '#..#.', '#.#..', '##...', '#.#..', '#..#.', '#...#')
+g('L', '#...', '#...', '#...', '#...', '#...', '#...', '####')
+g('M', '#...#', '##.##', '#.#.#', '#.#.#', '#...#', '#...#', '#...#')
+g('N', '#...#', '##..#', '##..#', '#.#.#', '#..##', '#..##', '#...#')
+g('O', '.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.')
+g('P', '####.', '#...#', '#...#', '####.', '#....', '#....', '#....')
+g('Q', '.###.', '#...#', '#...#', '#...#', '#.#.#', '#..#.', '.##.#')
+g('R', '####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#')
+g('S', '.###.', '#...#', '#....', '.###.', '....#', '#...#', '.###.')
+g('T', '#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..')
+g('U', '#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.')
+g('V', '#...#', '#...#', '#...#', '#...#', '.#.#.', '.#.#.', '..#..')
+g('W', '#...#', '#...#', '#...#', '#.#.#', '#.#.#', '##.##', '#...#')
+g('X', '#...#', '#...#', '.#.#.', '..#..', '.#.#.', '#...#', '#...#')
+g('Y', '#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..')
+g('Z', '#####', '....#', '...#.', '..#..', '.#...', '#....', '#####')
+g('[', '##', '#.', '#.', '#.', '#.', '#.', '##')
+g('\\', '#....', '.#...', '.#...', '..#..', '...#.', '...#.', '....#')
+g(']', '##', '.#', '.#', '.#', '.#', '.#', '##')
+g('^', '..#..', '.#.#.', '#...#')
+g('_', '.....', '.....', '.....', '.....', '.....', '.....', '.....', '#####')
+g('`', '#.', '.#')
+g('a', '.....', '.....', '.###.', '....#', '.####', '#...#', '.####')
+g('b', '#....', '#....', '####.', '#...#', '#...#', '#...#', '####.')
+g('c', '....', '....', '.###', '#...', '#...', '#...', '.###')
+g('d', '....#', '....#', '.####', '#...#', '#...#', '#...#', '.####')
+g('e', '.....', '.....', '.###.', '#...#', '#####', '#....', '.###.')
+g('f', '..##', '.#..', '####', '.#..', '.#..', '.#..', '.#..')
+g('g', '.....', '.....', '.####', '#...#', '#...#', '#...#', '.####', '....#', '.###.')
+g('h', '#....', '#....', '####.', '#...#', '#...#', '#...#', '#...#')
+g('i', '#', '.', '#', '#', '#', '#', '#')
+g('j', '..#', '...', '..#', '..#', '..#', '..#', '..#', '#.#', '.#.')
+g('k', '#...', '#...', '#..#', '#.#.', '##..', '#.#.', '#..#')
+g('l', '#.', '#.', '#.', '#.', '#.', '#.', '.#')
+g('m', '.....', '.....', '####.', '#.#.#', '#.#.#', '#.#.#', '#.#.#')
+g('n', '.....', '.....', '####.', '#...#', '#...#', '#...#', '#...#')
+g('o', '.....', '.....', '.###.', '#...#', '#...#', '#...#', '.###.')
+g('p', '.....', '.....', '####.', '#...#', '#...#', '#...#', '####.', '#....', '#....')
+g('q', '.....', '.....', '.####', '#...#', '#...#', '#...#', '.####', '....#', '....#')
+g('r', '....', '....', '#.##', '##..', '#...', '#...', '#...')
+g('s', '....', '....', '.###', '#...', '.##.', '...#', '###.')
+g('t', '.#.', '.#.', '###', '.#.', '.#.', '.#.', '..#')
+g('u', '.....', '.....', '#...#', '#...#', '#...#', '#...#', '.####')
+g('v', '.....', '.....', '#...#', '#...#', '#...#', '.#.#.', '..#..')
+g('w', '.....', '.....', '#...#', '#...#', '#.#.#', '#.#.#', '.#.#.')
+g('x', '.....', '.....', '#...#', '.#.#.', '..#..', '.#.#.', '#...#')
+g('y', '.....', '.....', '#...#', '#...#', '#...#', '#...#', '.####', '....#', '.###.')
+g('z', '.....', '.....', '#####', '...#.', '..#..', '.#...', '#####')
+g('{', '.##', '.#.', '.#.', '#..', '.#.', '.#.', '.##')
+g('|', '#', '#', '#', '#', '#', '#', '#', '#')
+g('}', '##.', '.#.', '.#.', '..#', '.#.', '.#.', '##.')
+g('~', '.....', '.....', '.#...', '#.#.#', '...#.')
+assert len(PIX) == 95, len(PIX)
 
 
 class Shelf:
@@ -97,44 +207,134 @@ class Shelf:
         return u, v
 
 
-def render_font(shelf, path, size, track=0, firm=True):
-    font = ImageFont.truetype(path, size)
-    big = ImageFont.truetype(path, size * 4)
+def shadowed(mask):
+    """mask: bool array (h, w) of ink. Returns indices (h+1, w+1): 15 ink, 1 shadow."""
+    h, w = mask.shape
+    idx = np.zeros((h + 1, w + 1), np.uint8)
+    idx[1:, 1:][mask] = 1
+    idx[:h, :w][mask] = 15
+    return idx
+
+
+def pixel_font(shelf):
+    metrics = []
+    for code in range(32, 127):
+        rows = PIX[chr(code)]
+        w = len(rows[0])
+        m = np.zeros((9, w), bool)
+        for y, r in enumerate(rows):
+            assert len(r) == w, (chr(code), r)
+            for x, c in enumerate(r):
+                m[y, x] = c == '#'
+        if not m.any():
+            metrics.append((0, 0, 0, w + 1))
+            continue
+        u, v = shelf.put(shadowed(m))
+        metrics.append((u, v, w + 1, w + 1))
+    return metrics, 10
+
+
+def title_font(shelf, size=12):
+    font = ImageFont.truetype(FONT_TITLE, size)
     asc, desc = font.getmetrics()
-    H = asc + desc + 2
+    H = asc + desc
     metrics = []
     for code in range(32, 127):
         ch = chr(code)
-        adv = font.getlength(ch)
-        cw = int(math.ceil(adv)) + 4
-        S = 4
-        img = Image.new('L', (cw * S, H * S), 0)
+        img = Image.new('1', (size * 2, H), 0)
         d = ImageDraw.Draw(img)
-        d.text((1 * S, 0), ch, font=big, fill=255)
-        a = np.asarray(img.resize((cw, H), Image.BOX), np.float32) / 255.0
-        if firm:
-            a = np.clip((a - 0.1) / 0.75, 0, 1)
-        sh = np.zeros_like(a)
-        sh[1:, 1:] = a[:-1, :-1]
-        idx = np.zeros(a.shape, np.uint8)
-        vis = (a > 0.18) | (sh > 0.4)
-        lvl = np.clip(np.round(a * 13), 0, 13).astype(np.uint8) + 2
-        idx[vis] = np.where(a[vis] > 0.18, lvl[vis], 1)
-        cols = np.where(idx.any(axis=0))[0]
+        d.fontmode = '1'
+        d.text((2, 0), ch, font=font, fill=1)
+        m = np.asarray(img, bool)
+        cols = np.where(m.any(axis=0))[0]
         if len(cols) == 0:
-            metrics.append((0, 0, 0, int(round(adv)) + track))
+            metrics.append((0, 0, 0, size // 3))
             continue
-        w = int(cols.max()) + 1
-        idx = idx[:, :w]
-        u, v = shelf.put(idx)
-        metrics.append((u, v, w, int(round(adv)) + track))
-    return metrics, H
+        m = m[:, cols.min():cols.max() + 1]
+        w = m.shape[1]
+        u, v = shelf.put(shadowed(m))
+        metrics.append((u, v, w + 1, w + 1))
+    return metrics, H + 1
 
 
 shelf = Shelf(A_UI, 0, 0, 255, 180)
-FS_METRICS, FS_H = render_font(shelf, FONT_SMALL, 9, track=0)
+FS_METRICS, FS_H = pixel_font(shelf)
 shelf.x = 0; shelf.y += shelf.rowh + 2; shelf.rowh = 0
-FB_METRICS, FB_H = render_font(shelf, FONT_BIG, 13, track=0)
+FB_METRICS, FB_H = title_font(shelf)
+shelf.x = 0; shelf.y += shelf.rowh + 2; shelf.rowh = 0
+
+# inline glyphs (codes 1..31): small pictures drawn in the text flow, 9 px tall, own palette
+GLYPH_PAL = pal([(14, 14, 22), (236, 230, 214), (40, 42, 54), (255, 216, 96), (124, 216, 146),
+                 (240, 112, 96), (168, 168, 180), (255, 232, 140), (40, 42, 54)])
+GLYPH_ART = {    # code: rows (. clear, o outline, w light, d dark, g gold, k green, r red, s grey, y yellow)
+    11: ('..ooo..', '..owo..', 'oooworo', 'owwwwwo', 'ooowooo', '..owo..', '..ooo..'),                # d-pad
+    12: ('..o..', '.owo.', 'owwwo', '.....', 'owwwo', '.owo.', '..o..'),                             # up/down
+    14: ('...o...o...', '..oo...oo..', '.owo...owo.', 'owwo...owwo', '.owo...owo.', '..oo...oo..',
+         '...o...o...'),                                                                              # left/right
+    15: ('...g...', '...g...', 'ggggggg', '.ggggg.', '..ggg..', '.gg.gg.', '.g...g.'),                # star
+    16: ('.sss.', 's...s', 's...s', 'sssss', 'ssyss', 'ssyss', 'sssss'),                              # lock
+    17: ('......k', '.....kk', 'k...kk.', 'kk.kk..', '.kkk...', '..k....'),                           # check
+    18: ('r...r', 'rr.rr', '.rrr.', '.rrr.', 'rr.rr', 'r...r'),                                       # cross
+    19: ('..w..', '.www.', 'wwwww'),                                                                  # up
+    20: ('wwwww', '.www.', '..w..'),                                                                  # down
+    21: ('...w', '..ww', '.www', 'wwww', '.www', '..ww', '...w'),                                     # left
+    22: ('w...', 'ww..', 'www.', 'wwww', 'www.', 'ww..', 'w...'),                                     # right
+    23: ('.ww.', 'wwww', 'wwww', '.ww.'),                                                             # bullet
+    24: ('w...w', '.w.w.', '..w..', '.w.w.', 'w...w'),                                                # times
+}
+
+
+def keycap(letters, wide=False):
+    """A 9-px keycap: cream with charcoal letters (5x5 each, or 3x5 for two-letter pills)."""
+    w = sum(len(l[0]) for l in letters) + len(letters) - 1
+    rows = []
+    inner = w + 2
+    rows.append('.' + 'o' * inner + '.')
+    rows.append('o' + 'w' * inner + 'o')
+    for y in range(5):
+        r = 'ow'
+        for i, l in enumerate(letters):
+            if i:
+                r += 'w'
+            r += ''.join('d' if c == '#' else 'w' for c in l[y])
+        rows.append(r + 'wo')
+    rows.append('o' + 'w' * inner + 'o')
+    rows.append('.' + 'o' * inner + '.')
+    return tuple(rows)
+
+
+K5 = {'A': ('.###.', '#...#', '#####', '#...#', '#...#'), 'B': ('####.', '#...#', '####.', '#...#', '####.'),
+      'X': ('#...#', '.#.#.', '..#..', '.#.#.', '#...#'), 'Y': ('#...#', '.#.#.', '..#..', '..#..', '..#..'),
+      'L': ('#...', '#...', '#...', '#...', '####'), 'R': ('####.', '#...#', '####.', '#..#.', '#...#')}
+K3 = {'S': ('###', '#..', '###', '..#', '###'), 'T': ('###', '.#.', '.#.', '.#.', '.#.'),
+      'E': ('###', '#..', '##.', '#..', '###'), 'L': ('#..', '#..', '#..', '#..', '###')}
+for code, ls in ((1, [K5['A']]), (2, [K5['B']]), (3, [K5['X']]), (4, [K5['Y']]), (5, [K5['L']]), (6, [K5['R']]),
+                 (7, [K3['S'], K3['T']]), (8, [K3['S'], K3['E'], K3['L']])):
+    GLYPH_ART[code] = keycap(ls)
+GLYPH_IDX = {'.': 0, 'o': 1, 'w': 2, 'd': 3, 'g': 4, 'k': 5, 'r': 6, 's': 7, 'y': 8}
+GL_METRICS = []  # per code 0..31: (u, v, w, h, dy)
+for code in range(32):
+    rows = GLYPH_ART.get(code)
+    if rows is None:
+        GL_METRICS.append((0, 0, 0, 0, 0))
+        continue
+    w = len(rows[0])
+    a = np.zeros((len(rows), w), np.uint8)
+    for y, r in enumerate(rows):
+        assert len(r) == w, (code, r)
+        for x, c in enumerate(r):
+            a[y, x] = GLYPH_IDX[c]
+    if code >= 15:     # small coloured marks get the text's drop shadow too
+        sh = np.zeros((a.shape[0] + 1, w + 1), np.uint8)
+        sh[1:, 1:][a > 0] = 9
+        sh[:a.shape[0], :w][a > 0] = a[a > 0]
+        a = sh
+    u, v = shelf.put(a)
+    # vertical placement in a 10-px line: caps sit on rows 0..6
+    h = a.shape[0]
+    dy = {1: -1, 2: -1, 3: -1, 4: -1, 5: -1, 6: -1, 7: -1, 8: -1, 11: 0, 12: 0, 14: 0, 19: 2, 20: 2, 23: 2, 24: 1,
+          17: 0, 18: 1}.get(code, 0)
+    GL_METRICS.append((u, v, a.shape[1], h, dy))
 FONT_END = shelf.y + shelf.rowh
 print('fonts: small h=%d big h=%d, rows used to %d' % (FS_H, FB_H, FONT_END))
 
@@ -596,6 +796,9 @@ for nm, met in (('FS', FS_METRICS), ('FB', FB_METRICS)):
     for k, j in (('U', 0), ('V', 1), ('W', 2), ('A', 3)):
         L.append(arr('%s_%s' % (nm, k), 'u8', [m[j] for m in met], per=95))
 L.append('const FB_H = %d' % FB_H)
+L.append('const PAL_GLYPH = %d' % GLYPH_PAL)
+for k, j in (('U', 0), ('V', 1), ('W', 2), ('H', 3), ('DY', 4)):
+    L.append(arr('GL_%s' % k, 's8' if k == 'DY' else 'u8', [m[j] for m in GL_METRICS], per=32))
 L.append('')
 
 # ---- object catalogue

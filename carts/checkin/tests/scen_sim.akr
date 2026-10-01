@@ -18,8 +18,67 @@ fn scen_sim_init() {
         91 => {}                  // the title: Continue loads the save
         95 => {}                  // the title: New hotel (no card)
         92 => { new_hotel_state(); start_play(); money = 9999999; scen_grand(0, 0, 13) }   // the grand hotel's save size
+        // ---- polish workstream C (POLISH.md section 6); parameters P1..P6 from tests/run.sh P="..."
+        // 403: people log (PP lines) on floor P1 of the busy grand hotel at P2 h (+P6 min), zoom 2,
+        //      cursor (P3, P4) (default the lobby fountain); P5 = 1 pauses at frame 300
+        403 => {
+            new_hotel_state(); start_play(); money = 9999999
+            scen_grand(P1, 60, max(P2, 1))
+            tod += P6 * MIN_FRAMES
+            view_zoom = 2
+            cur_x = 14.5
+            cur_z = 7.0
+            if P3 > 0 { cur_x = fixed(P3); cur_z = fixed(P4) }
+            view_recentre()
+        }
+        // 404: the same people log in the demo hotel (as a new player gets it) at P2 h + P6 min,
+        //      cursor (P3, P4) (default the reception desk), zoom 2, view rotation P5 - 1 (0: default)
+        404 => {
+            new_hotel_state(); start_play(); demo_game()
+            tod = max(P2, 1) * 60 * MIN_FRAMES + P6 * MIN_FRAMES
+            view_zoom = 2
+            if P5 > 0 { view_rot = P5 - 1 }
+            cur_x = 16.0
+            cur_z = 5.5
+            if P3 > 0 { cur_x = fixed(P3); cur_z = fixed(P4) }
+            view_recentre()
+        }
+        // 410: still shots: grand hotel floor P1, P2 guests, P3 h, zoom P4, rotation P5, cursor x P6
+        410 => {
+            new_hotel_state(); start_play(); money = 9999999
+            scen_grand(P1, P2, P3)
+            view_zoom = P4
+            view_rot = P5
+            if P6 > 0 { cur_x = fixed(P6); cur_z = 8.0 }
+            view_recentre()
+        }
+        // 421: the grand hotel with P1 guests from P2 h at speed P3: state histograms (HIST lines)
+        421 => { new_hotel_state(); start_play(); money = 9999999; scen_grand(0, P1, P2); speed = max(P3, 1) }
+        // 422: the demo hotel (as a new player gets it) at speed P3 for days: HIST lines + day reports
+        422 => { new_hotel_state(); start_play(); demo_game(); speed = max(P3, 1) }
+        // 423: a plant placed in the busy lobby at frame 150 (P1 = 1: no edit): MOV lines per frame
+        423 => { new_hotel_state(); start_play(); money = 9999999; scen_grand(0, 60, 15) }
+        // 424: per-frame PERF on floor P1 at P2 h, speed P3
+        424 => { new_hotel_state(); start_play(); money = 9999999; scen_grand(P1, 60, P2); speed = max(P3, 1) }
+        // 427: a well-run mid-size hotel built from the demo (P3 speed): day reports
+        427 => { new_hotel_state(); start_play(); demo_game(); s_upgrade_demo(); speed = max(P3, 1) }
+        // 405: every use spot and staff spot of the grand (P1 = 0) or demo (1) hotel can be reached
+        405 => {
+            new_hotel_state(); start_play(); money = 9999999
+            if P1 == 1 { scen_hotel(1) } else if P1 == 2 { scen_hotel(1); s_upgrade_demo() } else { scen_grand(0, 0, 13) }
+        }
+        // 499: cost probes (rooms_update, compute_pass, one field)
+        499 => { new_hotel_state(); start_play(); money = 9999999; scen_grand(0, 60, 15) }
         else => {}
     }
+}
+
+var probe_f: u32
+fn probe(name: *u8, c0: s32) {
+    print(name)
+    print(" ")
+    print_int(c0 - CYCLES as s32 + ((frame() - probe_f) as s32) * 500000)
+    println("")
 }
 
 fn scen_sim_pad(f: s32) -> u32 {
@@ -27,7 +86,644 @@ fn scen_sim_pad(f: s32) -> u32 {
     return 0
 }
 
+// ---- motion and crowd metrics (cheap per-frame counters; the PP log is analysed offline)
+var m_px: [128]fixed
+var m_pz: [128]fixed
+var m_pf: [128]s32
+var m_pvis: [128]bool
+var m_eq_max: s32                // most people waiting at one elevator since the last HIST
+var m_stall_max: s32
+var m_stall_bad: s32             // frames with more than 3 stalled walkers
+var m_tp: s32                    // jumps over 0.6 tiles while visible
+var m_tick0: s32
+var m_frame0: u32
+var m_fprev: u32
+var m_real: s32                  // the previous frame's real cost (cycles), counting overruns
+
+fn m_cost() {
+    let f = frame()
+    m_real = cpu_used()
+    if m_fprev != 0 && f - m_fprev > 1 { m_real += ((f - m_fprev - 1) as s32) * 500000 }
+    m_fprev = f
+}
+
+fn m_visible(p: *Person) -> bool { return p.used != 0 && p.mode as s32 != M_HIDDEN && p.mode as s32 != M_RIDE }
+
+// Walkers that want to move (walking with a goal, or on stairs), and how many of them did not
+// move since the previous frame. Also counts teleports and the elevator queues.
+var m_walkers: s32
+var m_stalled: s32
+var m_nofield: s32               // stalled walkers with no next tile (waiting for a field)
+var m_nofield_max: s32
+var m_nofield_bad: s32           // samples with more than 3 of them
+fn m_sample() {
+    m_walkers = 0
+    m_stalled = 0
+    m_nofield = 0
+    for i in 0..npeople {
+        let p = &people[i]
+        let vis = m_visible(p)
+        if vis && m_pvis[i] && m_pf[i] == p.f as s32 && speed > 0 {
+            let d = alen(p.x - m_px[i], p.z - m_pz[i])
+            if d > 0.6 {
+                m_tp += 1
+                if P5 == 9 {
+                    print("TP ")
+                    print_int(scen_t)
+                    print(" #")
+                    print_int(i)
+                    print(" k")
+                    print_int(p.kind as s32)
+                    print(" st")
+                    print_int(p.state as s32)
+                    print(" m")
+                    print_int(p.mode as s32)
+                    print(" ")
+                    print_fixed(m_px[i])
+                    print(",")
+                    print_fixed(m_pz[i])
+                    print(" -> ")
+                    print_fixed(p.x)
+                    print(",")
+                    print_fixed(p.z)
+                    print(" f")
+                    print_int(p.f as s32)
+                    println("")
+                }
+            }
+            let wants = (p.mode as s32 == M_WALK && p.goal >= 0) || p.mode as s32 == M_STAIRS
+            if wants {
+                m_walkers += 1
+                if d == 0.0 {
+                    m_stalled += 1
+                    if p.nxt < 0 { m_nofield += 1 }
+                }
+            }
+        }
+        m_px[i] = p.x
+        m_pz[i] = p.z
+        m_pf[i] = p.f as s32
+        m_pvis[i] = vis
+    }
+    if speed > 0 {
+        m_stall_max = max(m_stall_max, m_stalled)
+        m_nofield_max = max(m_nofield_max, m_nofield)
+        if m_nofield > 3 { m_nofield_bad += 1 }
+        if m_stalled > 3 { m_stall_bad += 1 }
+    }
+    for k in 0..nelevs {
+        var n = 0
+        for i in 0..npeople {
+            let p = &people[i]
+            if p.used != 0 && p.mode as s32 == M_WAIT_ELEV && p.elev as s32 == k { n += 1 }
+        }
+        m_eq_max = max(m_eq_max, n)
+    }
+}
+
+var hist_g: [16]s32
+var hist_s: [16]s32
+var hist_m: [8]s32
+fn hist_dump() {
+    for k in 0..16 { hist_g[k] = 0; hist_s[k] = 0 }
+    for k in 0..8 { hist_m[k] = 0 }
+    var stacked = 0
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used == 0 { continue }
+        if p.kind as s32 == P_GUEST { hist_g[p.state as s32 & 15] += 1 } else if p.kind as s32 == P_STAFF { hist_s[p.state as s32 & 15] += 1 }
+        hist_m[p.mode as s32 & 7] += 1
+        if !m_visible(p) { continue }
+        for j in 0..i {
+            let q = &people[j]
+            if !m_visible(q) || q.f != p.f { continue }
+            if abs(q.x - p.x) < 0.25 && abs(q.z - p.z) < 0.25 { stacked += 1 }
+        }
+    }
+    print("HIST ")
+    print(fmt_clock())
+    print(" money ")
+    print_int(money)
+    print(" G")
+    for k in 0..13 { print(" "); print_int(hist_g[k]) }
+    print(" | S")
+    for k in 0..11 { print(" "); print_int(hist_s[k]) }
+    print(" | M")
+    for k in 0..6 { print(" "); print_int(hist_m[k]) }
+    print(" | stacked ")
+    print_int(stacked)
+    print(" elevq ")
+    print_int(m_eq_max)
+    print(" stallmax ")
+    print_int(m_stall_max)
+    print(" nofield ")
+    print_int(m_nofield_max)
+    print("/")
+    print_int(m_nofield_bad)
+    print(" tp ")
+    print_int(m_tp)
+    print(" rev ")
+    print_int(reviews_n)
+    print(" avg10 ")
+    print_int(reviews_avg10)
+    print(" stars ")
+    print_int(stars)
+    println("")
+    m_eq_max = 0
+    m_stall_max = 0
+    m_nofield_max = 0
+    m_nofield_bad = 0
+}
+
+// Guests in view-floor rooms of one type (liveliness), and guests visible on a floor.
+fn guests_in(rt: s32) -> s32 {
+    var n = 0
+    for i in 0..npeople {
+        let p = &people[i]
+        if !m_visible(p) || p.kind as s32 != P_GUEST { continue }
+        let r = room_at(p.f as s32, p.x as s32, p.z as s32)
+        if r > 0 && rooms[r].rtype as s32 == rt { n += 1 }
+    }
+    return n
+}
+
+fn guests_on(f: s32) -> s32 {
+    var n = 0
+    for i in 0..npeople {
+        let p = &people[i]
+        if m_visible(p) && p.kind as s32 == P_GUEST && p.f as s32 == f { n += 1 }
+    }
+    return n
+}
+
+fn pp_log() {
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used == 0 || p.f as s32 != view_floor || p.mode as s32 == M_HIDDEN { continue }
+        let v = &people_vis[i]
+        project(vec3(p.x + v.ox, fixed(p.f as s32) * STOREY + p.y, p.z + v.oz))
+        print("PP ")
+        print_int(scen_t)
+        print(" ")
+        print_int(i)
+        print(" ")
+        print_int(p.kind as s32)
+        print(" ")
+        print_int(p.mode as s32)
+        print(" ")
+        print_int(p.pose as s32)
+        print(" ")
+        print_int(p.dir as s32)
+        print(" ")
+        print_fixed(p.x + v.ox)
+        print(" ")
+        print_fixed(p.z + v.oz)
+        print(" ")
+        print_int(proj_x)
+        print(" ")
+        print_int(proj_y)
+        print(" ")
+        print_int(p.state as s32)
+        print(" ")
+        print_int(v.anim as s32)
+        print(" ")
+        print_int(v.fade as s32)
+        print(" ")
+        print_int(p.party as s32)
+        print(" ")
+        print_int(speed)
+        println("")
+    }
+}
+
+fn elev_dump() {
+    for k in 0..nelevs {
+        let e = &elevs[k]
+        print("ELEV ")
+        print_int(k)
+        print(" pos ")
+        print_fixed(e.pos)
+        print(" vel ")
+        print_fixed(elev_vis[k].vel)
+        print(" ph ")
+        print_int(e.phase)
+        print(" pt ")
+        print_int(e.pt)
+        print(" tgt ")
+        print_int(e.tgt)
+        print(" dir ")
+        print_int(e.dir)
+        print(" n ")
+        print_int(e.n)
+        print(" calls ")
+        print_hex(e.calls)
+        print(" f0 ")
+        print_int(e.f0 as s32)
+        print(" f1 ")
+        print_int(e.f1 as s32)
+        print(" wait/f:")
+        for f in 0..NFL { print(" "); print_int(waiting_at(k, f)) }
+        print(" in:")
+        for j in 0..e.n { let q = &people[e.pass[j] as s32]; print(" "); print_int(e.pass[j] as s32); print("m"); print_int(q.mode as s32); print(">"); print_int(q.ride_to as s32) }
+        println("")
+    }
+}
+
+fn people_dump(kind: s32) {
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used == 0 || (kind != 0 && p.kind as s32 != kind) { continue }
+        print("  #")
+        print_int(i)
+        print(" k")
+        print_int(p.kind as s32)
+        print(" t")
+        print_int(p.type as s32)
+        print(" st")
+        print_int(p.state as s32)
+        print(" m")
+        print_int(p.mode as s32)
+        print(" f")
+        print_int(p.f as s32)
+        print(" @")
+        print_fixed(p.x)
+        print(",")
+        print_fixed(p.z)
+        print(" goal ")
+        print_int(p.goal as s32)
+        print(" nxt ")
+        print_int(p.nxt as s32)
+        print(" w")
+        print_int(p.wait as s32)
+        print(" act")
+        print_int(p.act as s32)
+        print(" obj")
+        print_int(p.obj as s32)
+        print(" job")
+        print_int(p.job as s32)
+        print(" e")
+        print_int(p.energy as s32)
+        print(" hunger")
+        print_int(p.needs[N_HUNGER] as s32)
+        print(" q")
+        print_int(p.qslot as s32)
+        println("")
+    }
+}
+
+// Walks the floors' fields from each spot back to the street (staff) or to the lobby desk
+// (guests): prints the spots nobody can reach.
+fn reach_check() {
+    var bad = 0
+    var n = 0
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 { continue }
+        let t = o.t as s32
+        let f = o.f as s32
+        var tiles: [6]s32
+        var nt = 0
+        for s in 0..OBJ_NSPOT[t] as s32 { tiles[nt] = spot_tile(k, s); nt += 1 }
+        if obj_flag(t, F_STATION) || t == OB_PREP_COUNTER { tiles[nt] = staff_tile(k); nt += 1 }
+        for j in 0..nt {
+            let tt = tiles[j]
+            // staff field toward the spot: is the floor's link tile (or the street on G) reached?
+            for q in 0..NFIELD { fld_key[q] = -1; fld_ready[q] = false }
+            bfs_spent = 0
+            let fs = field_for(tt, true)
+            if fs < 0 { continue }
+            var from = entrance_tile()
+            if f > 0 {
+                from = -1
+                for l in 0..nlinks { if links[l].b as s32 / NT == f && links[l].kind as s32 == LK_ELEV { from = links[l].b as s32 } }
+                if from < 0 { for l in 0..nlinks { if links[l].b as s32 / NT == f { from = links[l].b as s32 } } }
+            }
+            n += 1
+            if from < 0 || field_dist(fs, from) == INF {
+                bad += 1
+                print("UNREACHABLE ")
+                print(obj_name(t))
+                print(" #")
+                print_int(k)
+                print(" f")
+                print_int(f)
+                print(" spot tile ")
+                print_int(ptile_x(tt))
+                print(",")
+                print_int(ptile_z(tt))
+                println("")
+            }
+        }
+    }
+    print("reach: ")
+    print_int(n)
+    print(" spots, unreachable ")
+    print_int(bad)
+    println("")
+}
+
 fn scen_sim_hook() {
+    if SCENARIO == 405 && scen_t == 60 { reach_check() }
+    if SCENARIO == 421 && P4 == 2 && scen_t % 480 == 0 { print("DUMP "); println(fmt_clock()); people_dump(0) }
+    if SCENARIO == 421 && P4 == 3 && scen_t % 240 == 0 {
+        print("TABLES ")
+        print(fmt_clock())
+        for k in 0..nobjs {
+            let o = &objs[k]
+            if o.used == 0 || OBJ_USE[o.t as s32] as s32 != USE_EAT { continue }
+            print(" #")
+            print_int(k)
+            print("=")
+            print_int(spot_mask[k] as s32)
+            for q in 0..npeople { if people[q].used != 0 && people[q].obj as s32 == k { print("/"); print_int(q); print("s"); print_int(people[q].state as s32) } }
+        }
+        println("")
+    }
+    if SCENARIO == 421 && P4 == 1 && scen_t % 60 == 0 { elev_dump() }
+    if SCENARIO >= 400 && SCENARIO < 500 {
+        if scen_t == 2 { m_tick0 = tick_count; m_frame0 = frame() }
+        m_cost()
+        m_sample()
+    }
+    if SCENARIO == 499 && scen_t > 120 && scen_t < 130 {
+        probe_f = frame()
+        var c0 = CYCLES as s32
+        people_frame()
+        probe("people_frame", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        people_tick()
+        probe("people_tick", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        crowd_frame()
+        probe("crowd_frame", c0)
+        var nw = 0
+        var ns = 0
+        probe_f = frame()
+        c0 = CYCLES as s32
+        for i in 0..npeople {
+            let p = &people[i]
+            if p.used == 0 { continue }
+            if p.mode as s32 == M_WALK && p.goal >= 0 { nw += 1; person_move(i) }
+        }
+        probe("move walkers", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        for i in 0..npeople {
+            let p = &people[i]
+            if p.used == 0 { continue }
+            if !(p.mode as s32 == M_WALK && p.goal >= 0) { ns += 1; person_move(i) }
+        }
+        probe("move others", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        for i in 0..npeople {
+            let p = &people[i]
+            if p.used != 0 && p.kind as s32 == P_GUEST { guest_tick(i) }
+        }
+        probe("guest_tick", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        for i in 0..npeople {
+            let p = &people[i]
+            if p.used != 0 && p.kind as s32 == P_STAFF { staff_tick(i) }
+        }
+        probe("staff_tick", c0)
+        var c_st = 0
+        var c_ki = 0
+        var c_pn = 0
+        var c_al = 0
+        for i in 0..npeople {
+            let p = &people[i]
+            if p.used == 0 || p.mode as s32 != M_WALK || p.goal < 0 { continue }
+            var c1 = CYCLES as s32
+            steer(i, p.x + 0.3, p.z + 0.2, false)
+            c_st += c1 - CYCLES as s32
+            c1 = CYCLES as s32
+            keep_inside(p)
+            c_ki += c1 - CYCLES as s32
+            c1 = CYCLES as s32
+            let a = alen(p.vx, p.vz)
+            c_al += c1 - CYCLES as s32
+            let sn = p.nxt
+            p.nxt = -1
+            c1 = CYCLES as s32
+            pick_next(i)
+            c_pn += c1 - CYCLES as s32
+        }
+        print("steer ")
+        print_int(c_st)
+        print(" keep ")
+        print_int(c_ki)
+        print(" alen ")
+        print_int(c_al)
+        print(" pick_next ")
+        print_int(c_pn)
+        println("")
+        print("walkers ")
+        print_int(nw)
+        print(" others ")
+        print_int(ns)
+        println("")
+        probe_f = frame()
+        c0 = CYCLES as s32
+        paths_update()
+        probe("paths_update", c0)
+    }
+    if SCENARIO == 499 && scen_t == 140 {
+        let oi = s_obj(OB_PLANT, 0, 18, 8, 0)
+        probe_f = frame()
+        var c0 = CYCLES as s32
+        rooms_update()
+        probe("rooms_update after a plant on G", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        rooms_finish()
+        probe("rooms_finish (its second stage)", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        paths_update()
+        probe("paths_update (G pass)", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        paths_update()
+        probe("paths_update (links)", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        paths_update()
+        probe("paths_update (fields)", c0)
+    }
+    if SCENARIO == 499 && scen_t == 100 {
+        probe_f = frame()
+        var c0 = CYCLES as s32
+        rooms_update()
+        probe("rooms_update", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        for f in 0..NFL { clean_edges(f) }
+        probe("clean_edges", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        for r in 1..nrooms { if rooms[r].used != 0 { room_measure(r) } }
+        probe("room_measure", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        for r in 1..nrooms { if rooms[r].used != 0 { count_windows(r) } }
+        probe("count_windows", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        for r in 1..nrooms { if rooms[r].used != 0 { detect_room(r) } }
+        probe("detect_room", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        for r in 1..nrooms { if rooms[r].used != 0 { room_quality(r) } }
+        probe("room_quality", c0)
+        print("nrooms ")
+        print_int(nrooms)
+        print(" nobjs ")
+        print_int(nobjs)
+        println("")
+        probe_f = frame()
+        c0 = CYCLES as s32
+        let hh = floor_differs(0)
+        probe("floor_differs G", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        elevators_respan()
+        probe("elevators_respan", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        measure_floor(0)
+        probe("measure_floor G", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        clean_edges(0)
+        probe("clean_edges G", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        rooms_count(1)
+        probe("rooms_count G", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        arch_update(1)
+        probe("arch_update G", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        room_classes()
+        probe("room_classes", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        entrance_update()
+        probe("entrance_update", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        compute_pass(0)
+        probe("compute_pass G", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        compute_pass(3)
+        probe("compute_pass F3", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        paths_update()
+        probe("paths_update", c0)
+        for k in 0..NFIELD { fld_key[k] = -1; fld_ready[k] = false }
+        let ff = field_for(tix(0, 15, 10), false)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        bfs_next()
+        probe("bfs G", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        rebuild_links()
+        probe("rebuild_links", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        elevs_rebuild()
+        probe("elevs_rebuild", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        compute_architecture()
+        probe("compute_architecture", c0)
+        probe_f = frame()
+        c0 = CYCLES as s32
+        rooms_count(63)
+        probe("rooms_count", c0)
+    }
+    if SCENARIO == 403 {
+        if P5 == 1 && scen_t == 300 { speed = 0 }
+        if scen_t >= 60 { set_camera(); pp_log() }
+    }
+    if SCENARIO == 404 && scen_t >= 10 { set_camera(); pp_log() }
+    if (SCENARIO == 421 || SCENARIO == 422 || SCENARIO == 427) && scen_t % 240 == 0 { hist_dump() }
+    if (SCENARIO == 421 || SCENARIO == 422 || SCENARIO == 427) && tod < speed { report() }
+    if SCENARIO == 421 && scen_t % 60 == 0 {
+        let h = hour()
+        print("LIVE ")
+        print(fmt_clock())
+        print(" restaurant ")
+        print_int(guests_in(RT_RESTAURANT))
+        print(" bar ")
+        print_int(guests_in(RT_BAR))
+        print(" lobby ")
+        print_int(guests_in(RT_LOBBY))
+        print(" pool ")
+        print_int(guests_in(RT_POOL))
+        print(" onG ")
+        print_int(guests_on(0))
+        var hungry = 0
+        var idle = 0
+        for q in 0..npeople {
+            let pp = &people[q]
+            if pp.used != 0 && pp.kind as s32 == P_GUEST && pp.needs[N_HUNGER] < 215 { hungry += 1 }
+            if pp.used != 0 && pp.kind as s32 == P_GUEST && pp.state as s32 == GS_USE && (pp.act as s32 == 0 || pp.act as s32 == USE_TV) { idle += 1 }
+        }
+        print(" hungry ")
+        print_int(hungry)
+        print(" inroom ")
+        print_int(idle)
+        print(" kitchen ")
+        print_int(kitchen_open() as s32)
+        print(" dec")
+        for k in 0..7 { print(" "); print_int(dec_n[k]); dec_n[k] = 0 }
+        print(" orders ")
+        var no = 0
+        for k in 0..MAXORD { if orders[k].state != 0 { no += 1 } }
+        print_int(no)
+        print(" h ")
+        print_int(h)
+        println("")
+    }
+    if SCENARIO == 423 {
+        if scen_t == 150 && P1 == 0 { s_obj(OB_PLANT, 0, 18, 8, 0) }
+        if scen_t == 150 && P1 == 2 { cache_dirty = true }      // the cost of the render rebuild alone
+        if scen_t == 150 && P1 == 3 { rooms_dirty = true }      // and of the room update alone
+        print("MOV ")
+        print_int(scen_t)
+        print(" ")
+        print_int(m_walkers - m_stalled)
+        print(" ")
+        print_int(m_stalled)
+        print(" ")
+        print_int(m_real)
+        println("")
+    }
+    if SCENARIO == 424 && scen_t > 2 {
+        print("PERF ")
+        print_int(scen_t)
+        print(" ")
+        print_int(cpu_used())
+        print(" ")
+        print_int(tris_drawn() + ui_tris)
+        print(" ")
+        print_int(cache_cycles)
+        print(" ")
+        print_int(tick_count - m_tick0)
+        print(" ")
+        print_int((frame() - m_frame0) as s32)
+        println("")
+    }
     if (SCENARIO == 90 || SCENARIO == 92) && scen_t == 40 { save_game(); print("save size "); print_int(spos); println("") }
     if SCENARIO == 30 && scen_t % 2880 == 0 { report() }
     if SCENARIO == 30 && scen_t % 60 == 0 && scen_t > 360 && scen_t < 1100 && false {

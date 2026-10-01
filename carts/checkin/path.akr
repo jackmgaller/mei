@@ -1,11 +1,16 @@
 // Pathfinding: flow fields over the whole building.
 //
 // pass[t] says where a person may step from tile t (bits PB_*), recomputed per floor after the
-// building changes. Stairs and elevators are links between tiles of different floors, with a
-// cost. A field is the distance from every tile to one target tile (Dijkstra with unit steps
-// and a few weighted links), computed incrementally under a per-frame budget and kept in a
-// small LRU cache. People walk downhill on the field. Guests may not cross staff-only rooms or
-// other guests' rooms; staff go anywhere.
+// building changes (only floors that changed, one per frame). Stairs and elevators are links
+// between tiles of different floors. A field is the distance from every tile of a floor to one
+// target tile (a breadth-first search), kept in a cache of NFIELD slots. People walk downhill on
+// it. Guests may not cross staff-only rooms or other guests' rooms; staff go anywhere.
+//
+// Edits never freeze anyone: when a floor's passability changes, its fields are only marked
+// stale. A stale field stays in use (people check pass[] for every step, so they never walk
+// into a new wall) until it is rebuilt in the background, the ones in use first. A new field is
+// computed on the spot when the frame's budget allows, otherwise by the end of the frame, and
+// the fields walkers are using are never evicted.
 
 const PB_PX = 1
 const PB_NX = 2
@@ -79,6 +84,10 @@ fn rebuild_links() {
 fn tile_access(f: s32, x: s32, z: s32) -> s32 {
     let r = room_at(f, x, z)
     if r == 0 { return 0 }
+    return room_access(r)
+}
+
+fn room_access(r: s32) -> s32 {
     let k = rooms[r].kind as s32
     if k == KIND_SERVICE { return PB_STAFF }
     let rt = rooms[r].best as s32
@@ -98,21 +107,94 @@ fn walkable(f: s32, x: s32, z: s32) -> bool {
     return objs[oi].t as s32 == OB_BAR_STOOL
 }
 
-fn compute_pass(f: s32) {
-    for z in 0..GH {
-        for x in 0..GW {
-            let t = tix(f, x, z)
-            var b = 0
-            if walkable(f, x, z) {
-                b = PB_WALK | tile_access(f, x, z)
-                if x + 1 < GW && walkable(f, x + 1, z) && edge_open(f, x, z, 1, 0) { b = b | PB_PX }
-                if x > 0 && walkable(f, x - 1, z) && edge_open(f, x, z, -1, 0) { b = b | PB_NX }
-                if z + 1 < GH && walkable(f, x, z + 1) && edge_open(f, x, z, 0, 1) { b = b | PB_PZ }
-                if z > 0 && walkable(f, x, z - 1) && edge_open(f, x, z, 0, -1) { b = b | PB_NZ }
-            }
-            pass[t] = b as u8
-        }
+// Per room: its wall class (0 outdoors, 1 an indoor room, 2 a corridor) and guest access bits.
+var rclass: [200]u8
+var racc: [200]u8
+
+fn room_classes() {
+    rclass[0] = 0
+    racc[0] = 0
+    for r in 1..MAXROOM {
+        rclass[r] = 0
+        racc[r] = 0
+        if r >= nrooms || rooms[r].used == 0 { continue }
+        let k = rooms[r].kind as s32
+        if k == KIND_ROOM { rclass[r] = 1 }
+        if k == KIND_CORR || k == KIND_SERVICE { rclass[r] = 2 }
+        racc[r] = room_access(r) as u8
     }
+}
+
+// Is the edge between rooms ra and rb open (no wall, or a door)?
+fn edge_ok(ra: s32, rb: s32, feat: s32) -> bool {
+    if ra == rb { return true }
+    let ca = rclass[ra] as s32
+    let cb = rclass[rb] as s32
+    if ca == 0 && cb == 0 { return true }
+    if ca == 2 && cb == 2 { return true }
+    return feat == EF_DOOR
+}
+
+var walk_tmp: [768]u8
+var pass_tmp: [768]u8
+var troom_snap: [4608]u8
+
+// Recomputes floor f's passability; true when it changed (or its rooms were renumbered).
+fn compute_pass(f: s32) -> bool {
+    let b = f * NT
+    let tf = &tflag[b]
+    let tl = &tfloor[b]
+    let to = &tobj[b]
+    var nwalk = NT
+    if f == 0 { nwalk = SEA_Z * GW }
+    for t in 0..NT {
+        var w = 0
+        let fl = tf[t] as s32
+        if f == 0 {
+            if fl & (TF_WATER | TF_HOLE) == 0 && t < nwalk { w = 1 }
+        } else if tl[t] != 0 && fl & (TF_VOID | TF_HOLE | TF_WATER) == 0 { w = 1 }
+        if w != 0 {
+            let oi = to[t] as s32
+            if oi >= 0 && objs[oi].t as s32 != OB_BAR_STOOL { w = 0 }
+        }
+        walk_tmp[t] = w as u8
+    }
+    memset(&pass_tmp[0], 0, NT)
+    let tr = &troom[b]
+    let ew = &edge_w[b]
+    let en = &edge_n[b]
+    for t in 0..NT {
+        if walk_tmp[t] == 0 { continue }
+        let ra = tr[t] as s32
+        var pb = PB_WALK | racc[ra] as s32 | pass_tmp[t] as s32
+        if t & 31 != 31 && walk_tmp[t + 1] != 0 {
+            let rb = tr[t + 1] as s32
+            if ra == rb || edge_ok(ra, rb, ew[t + 1] as s32) {
+                pb = pb | PB_PX
+                pass_tmp[t + 1] = pass_tmp[t + 1] | PB_NX
+            }
+        }
+        if t + GW < NT && walk_tmp[t + GW] != 0 {
+            let rb = tr[t + GW] as s32
+            if ra == rb || edge_ok(ra, rb, en[t + GW] as s32) {
+                pb = pb | PB_PZ
+                pass_tmp[t + GW] = pass_tmp[t + GW] | PB_NZ
+            }
+        }
+        pass_tmp[t] = pb as u8
+    }
+    // changed? (link bits aside: they're marked separately); then copy, word by word
+    let pw = &pass[b] as *u32
+    let qw = &pass_tmp[0] as *u32
+    let rw = &troom[b] as *u32
+    let sw = &troom_snap[b] as *u32
+    var changed = false
+    for k in 0..NT / 4 {
+        if (pw[k] & 0xDFDFDFDF) != qw[k] || rw[k] != sw[k] { changed = true }
+        pw[k] = qw[k]
+        sw[k] = rw[k]
+    }
+    return changed
 }
 
 fn mark_links() {
@@ -122,36 +204,57 @@ fn mark_links() {
     }
 }
 
-// Called when the building changed: recompute everything over the next frames.
+// Everything is new (a reset or a load): drop every field.
 fn paths_invalidate() {
     for f in 0..NFL { pass_dirty[f] = true }
     paths_epoch += 1
     for i in 0..NFIELD {
         fld_key[i] = -1
         fld_ready[i] = false
+        fld_stale[i] = false
     }
+    rooms_refresh_all = true
 }
 
-// One dirty floor per frame; then fields, a few per frame.
+// The building changed on the floors in `mask`: recompute their passability over the next
+// frames; their fields go stale (still used meanwhile).
+fn paths_changed(mask: s32) {
+    for f in 0..NFL { if mask & (1 << f) != 0 { pass_dirty[f] = true } }
+    if mask != 0 { paths_epoch += 1 }
+    links_dirty = true
+}
+
+var links_dirty: bool
+var bfs_spent: s32               // cycles spent on fields this frame
+
+// Once a frame: one dirty floor, then links, then fields (queued, then stale ones in use).
 fn paths_update() {
+    // the second stage of a room update, the frame after the edit
+    if rooms_stage2 != 0 && rooms_stage2_t != tick_count {
+        rooms_finish()
+        return
+    }
     for f in 0..NFL {
         if pass_dirty[f] {
-            compute_pass(f)
             pass_dirty[f] = false
-            if !pass_dirty_any(f + 1) {
-                rebuild_links()
-                mark_links()
-            }
+            if compute_pass(f) { fields_stale(f) }
             return
         }
     }
+    if links_dirty {
+        links_dirty = false
+        rebuild_links()
+        mark_links()
+        return
+    }
     let c0 = CYCLES as s32
     var n = 0
-    while n < 4 {
-        if c0 - CYCLES as s32 > BFS_CYCLES { break }
+    while n < 6 {
+        if c0 - CYCLES as s32 + bfs_spent > BFS_CYCLES { break }
         if !bfs_next() { break }
         n += 1
     }
+    bfs_spent = 0
 }
 
 fn pass_dirty_any(from: s32) -> bool {
@@ -161,33 +264,44 @@ fn pass_dirty_any(from: s32) -> bool {
 
 fn paths_ready() -> bool { return !pass_dirty_any(0) }
 
+fn fields_stale(f: s32) {
+    for i in 0..NFIELD {
+        if fld_key[i] >= 0 && (fld_key[i] & 0xFFFF) / NT == f { fld_stale[i] = true }
+    }
+}
+
 // ---- the field cache: per floor, distances (in steps) to one target tile
 
-const NFIELD = 64
+const NFIELD = 128
 const INF = 65535
-const BFS_CYCLES = 70000         // per frame for computing fields
+const BFS_CYCLES = 90000         // per frame for computing fields
+const BFS_SYNC = 60000           // of which on the spot, as people ask
 
-var fld: [64][768]u16
-var fld_key: [64]s32             // target (global tile) | STAFF_KEY; -1: empty
-var fld_ready: [64]bool
-var fld_used: [64]s32            // frame last used (LRU)
+var fld: [128][768]u16
+var fld_key: [128]s32            // target (global tile) | STAFF_KEY; -1: empty
+var fld_ready: [128]bool         // usable (maybe stale)
+var fld_stale: [128]bool         // its floor changed: rebuild (still usable meanwhile)
+var fld_used: [128]s32           // tick last used (walkers mark theirs every tick)
 const STAFF_KEY = 0x10000
 
-// The field toward a target, ready, or -1 (it is queued, or the cache is busy: ask again).
+fn field_key(target: s32, staff: bool) -> s32 {
+    if staff { return target | STAFF_KEY }
+    return target
+}
+
+// The field toward a target, ready, or -1 (queued: ask again).
 fn field_for(target: s32, staff: bool) -> s32 {
-    var key = target
-    if staff { key = key | STAFF_KEY }
+    let key = field_key(target, staff)
     for i in 0..NFIELD {
         if fld_key[i] == key {
             fld_used[i] = tick_count
             if fld_ready[i] { return i }
-            return -1
+            return field_now(i)
         }
     }
-    if !paths_ready() { return -1 }
-    // a free slot, or the least recently used ready one not needed lately
+    // a free slot, or the least recently used ready one nobody walked on lately
     var best = -1
-    var bt = tick_count - 20
+    var bt = tick_count - 90
     for i in 0..NFIELD {
         if fld_key[i] < 0 { best = i; break }
         if fld_ready[i] && fld_used[i] < bt {
@@ -198,8 +312,35 @@ fn field_for(target: s32, staff: bool) -> s32 {
     if best < 0 { return -1 }
     fld_key[best] = key
     fld_ready[best] = false
+    fld_stale[best] = false
     fld_used[best] = tick_count
-    return -1
+    return field_now(best)
+}
+
+// Computes a queued field at once if the frame's budget allows (and its floor is up to date).
+fn field_now(i: s32) -> s32 {
+    if bfs_spent > BFS_SYNC || pass_dirty[(fld_key[i] & 0xFFFF) / NT] { return -1 }
+    let c0 = CYCLES as s32
+    bfs_slot(i)
+    bfs_spent += c0 - CYCLES as s32
+    return i
+}
+
+// Asks for the field a person will need for its next step (so it's ready in time).
+fn field_prefetch(i: s32) {
+    let p = &people[i]
+    var target = p.goal as s32
+    let gf = target / NT
+    if gf != p.f as s32 {
+        let lk = link_toward(p.f as s32, gf, p.x as s32, p.z as s32)
+        p.link = lk as s16
+        p.lt = p.goal
+        p.lf = p.f as s8
+        if lk < 0 { return }
+        target = links[lk].a as s32
+    }
+    let fs = field_for(target, p.kind as s32 != P_GUEST)
+    if fs >= 0 { p.fslot = fs as s16 }
 }
 
 var bfs_q: [768]u16
@@ -207,17 +348,39 @@ var bfs_rooms: *u8
 var bfs_mode: s32                // bits 0-7 the target's room, bit 8 staff
 var bfs_nodes: s32               // stats
 
-// Computes the next queued field (oldest request first). False when none is waiting.
+// Computes the next field: a queued one (oldest request first), else a stale one that someone
+// used lately (stale ones nobody uses are dropped). False when there is nothing to do.
 fn bfs_next() -> bool {
     var nxt = -1
     var oldest = 0x7FFFFFFF
     for i in 0..NFIELD {
-        if fld_key[i] >= 0 && !fld_ready[i] && fld_used[i] < oldest {
+        if fld_key[i] >= 0 && !fld_ready[i] && fld_used[i] < oldest && !pass_dirty[(fld_key[i] & 0xFFFF) / NT] {
             oldest = fld_used[i]
             nxt = i
         }
     }
+    if nxt < 0 {
+        var recent = tick_count - 240
+        for i in 0..NFIELD {
+            if fld_key[i] < 0 || !fld_stale[i] || pass_dirty[(fld_key[i] & 0xFFFF) / NT] { continue }
+            if fld_used[i] < tick_count - 240 {
+                fld_key[i] = -1
+                fld_ready[i] = false
+                fld_stale[i] = false
+                continue
+            }
+            if fld_used[i] > recent {
+                recent = fld_used[i]
+                nxt = i
+            }
+        }
+    }
     if nxt < 0 { return false }
+    bfs_slot(nxt)
+    return true
+}
+
+fn bfs_slot(nxt: s32) {
     let key = fld_key[nxt]
     let target = key & 0xFFFF
     let f = target / NT
@@ -230,7 +393,7 @@ fn bfs_next() -> bool {
     memset(d as *u8, 255, 768 * 2)
     bfs_nodes += bfs_floor(&pass[base], d, &bfs_q[0], target - base)
     fld_ready[nxt] = true
-    return true
+    fld_stale[nxt] = false
 }
 
 // Breadth-first search over one floor from `start`: dist[] must be all 0xFFFF on entry.
@@ -364,6 +527,8 @@ fn link_toward(f: s32, to: s32, x: s32, z: s32) -> s32 {
         let az = (a % NT) / GW
         var d = abs(ax - x) + abs(az - z)
         if bf != to { d += 30 }              // prefer one that goes all the way
+        // and a car with a short queue (a few tiles' walk per person waiting)
+        if links[k].kind as s32 == LK_ELEV { d += 3 * elev_queue_of(links[k].obj as s32) }
         if d < bd {
             bd = d
             best = k

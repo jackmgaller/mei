@@ -206,6 +206,7 @@ fn nearest_obj_use(i: s32, use: s32, cond: s32) -> s32 {
         let o = &objs[k]
         if o.used == 0 || OBJ_USE[o.t as s32] as s32 != use || o.state & OS_BROKEN != 0 { continue }
         if cond == 1 && o.stock >= 4 { continue }
+        if cond == 4 && o.stock >= 12 { continue }
         if cond == 2 && o.stock == 0 { continue }
         if cond == 3 && o.stock >= 8 { continue }
         let r = o.room as s32
@@ -237,11 +238,12 @@ fn step_clean(i: s32, j: *Job) {
                 j.step = 2
             }
         }
-        2 => {   // dirty linen to a washing machine
-            let w = nearest_obj_use(i, USE_LAUNDRY, 1)
+        2 => {   // dirty linen to a washing machine (a busy one takes it for the next load)
+            var w = nearest_obj_use(i, USE_LAUNDRY, 1)
+            if w < 0 { w = nearest_obj_use(i, USE_LAUNDRY, 4) }
             if w < 0 {
                 // no laundry: the linen is binned (and has to be bought new)
-                spend(LG_SUPPLIES, 25)
+                spend(LG_SUPPLIES, ECO_LINEN_COST)
                 p.carry = 0
                 j.step = 4
                 return
@@ -260,16 +262,17 @@ fn step_clean(i: s32, j: *Job) {
         4 => {   // clean linen from a shelf
             let s = nearest_obj_use(i, USE_LINEN, 2)
             if s < 0 {
-                if count_type(RT_LAUNDRY) == 0 {
+                // no laundry, or none clean for a good while: buy fresh linen
+                if count_type(RT_LAUNDRY) == 0 || p.timer > 240 {
                     // no laundry at all: buy fresh linen
-                    spend(LG_SUPPLIES, 25)
+                    spend(LG_SUPPLIES, ECO_LINEN_COST)
                     p.carry = IT_CLEAN as u8
+                    p.timer = 0
                     j.step = 6
                     return
                 }
                 p.pose = POSE_STAND as u8
                 p.timer += 1
-                if p.timer > 600 { job_abort(i) }
                 return
             }
             p.timer = 0
@@ -314,9 +317,10 @@ fn step_repair(i: s32, j: *Job) {
         }
         1 => {
             if job_work(i, 240) {
+                // (no cache rebuild for this: it cost a 2-10 frame hitch; the baked shading
+                // catches up at the next rebuild, as it does when things break)
                 objs[oi].state = objs[oi].state & ~OS_BROKEN
                 objs[oi].wear = 0
-                cache_dirty = true
                 job_finish(i)
             }
         }
@@ -411,7 +415,7 @@ fn machines_tick() {
             }
         } else if o.stock > 0 && o.pad == 0 && o.state & OS_BROKEN == 0 {
             o.state = o.state | OS_BUSY
-            o.timer = (MIN_FRAMES * 50) as s16
+            o.timer = (MIN_FRAMES * 40) as s16
             wear_obj(k, -1)
         }
     }
@@ -449,7 +453,7 @@ fn cancel_order(gi: s32) {
             for j in 0..njobs {
                 if jobs[j].kind as s32 == J_SERVE && jobs[j].target as s32 == k {
                     let w = jobs[j].who as s32
-                    if w >= 0 {
+                    if w >= 0 && people[w].job as s32 == j {
                         people[w].job = -1
                         people[w].carry = 0
                         people[w].state = SS_IDLE as u8
@@ -461,29 +465,53 @@ fn cancel_order(gi: s32) {
     }
 }
 
-// The cook, at the stove: fetch food, cook, plate up on the pass; restock the fridge.
+// The cook, at the stove: takes up to three orders at once, fetches the food, cooks them
+// together and plates them up on the pass; restocks the fridge between orders.
+const COOK_BATCH = 4
+
+fn cook_orders(i: s32) -> s32 {
+    var n = 0
+    for k in 0..MAXORD { if orders[k].state as s32 == OR_COOKING && orders[k].cook as s32 == i { n += 1 } }
+    return n
+}
+
+fn cook_reset(i: s32) {
+    for k in 0..MAXORD {
+        if orders[k].state as s32 == OR_COOKING && orders[k].cook as s32 == i { orders[k].state = OR_NEW as u8 }
+    }
+}
+
 fn cook_tick(i: s32) {
     let p = &people[i]
     let stove = p.obj as s32
     let r = objs[stove].room as s32
     match p.act as s32 {
         0 => {
-            // an order waiting?
-            for k in 0..MAXORD {
-                if orders[k].state as s32 == OR_NEW {
-                    let fr = kitchen_obj(r, OB_FRIDGE, true)
-                    if fr < 0 { break }
-                    orders[k].state = OR_COOKING as u8
-                    orders[k].cook = i as s16
-                    p.job = k as s16
-                    p.act = 1
-                    go_to(i, spot_tile(fr, 0))
-                    return
+            // orders waiting? (the oldest first, up to a batch)
+            let fr = kitchen_obj(r, OB_FRIDGE, true)
+            var n = 0
+            if fr >= 0 {
+                for b in 0..COOK_BATCH {
+                    var best = -1
+                    var bt = 0x7FFFFFFF
+                    for k in 0..MAXORD {
+                        if orders[k].state as s32 == OR_NEW && orders[k].t0 < bt { bt = orders[k].t0; best = k }
+                    }
+                    if best < 0 { break }
+                    orders[best].state = OR_COOKING as u8
+                    orders[best].cook = i as s16
+                    n += 1
                 }
             }
+            if n > 0 {
+                p.job = -1
+                p.act = 1
+                go_to(i, spot_tile(fr, 0))
+                return
+            }
             // keep the fridge stocked from storage
-            let fr = kitchen_obj(r, OB_FRIDGE, false)
-            if fr >= 0 && objs[fr].stock < 3 && tick_count % 120 == 0 {
+            let fs = kitchen_obj(r, OB_FRIDGE, false)
+            if fs >= 0 && objs[fs].stock as s32 <= ECO_FRIDGE_MAX - ECO_CRATE_MEALS && tick_count % 60 == 0 {
                 let s = nearest_obj_use(i, USE_STORE, 2)
                 if s >= 0 {
                     p.act = 10
@@ -492,23 +520,23 @@ fn cook_tick(i: s32) {
                 }
             }
         }
-        1 => {   // at the fridge: take food
+        1 => {   // at the fridge: take the food
             if p.arrived != 0 {
                 p.arrived = 0
                 let fr = kitchen_obj(r, OB_FRIDGE, true)
-                if fr < 0 { p.act = 0; go_to(i, staff_tile(stove)); order_reset(p.job as s32); return }
+                if fr < 0 { p.act = 5; go_to(i, staff_tile(stove)); cook_reset(i); return }
                 objs[fr].stock = (objs[fr].stock as s32 - 1) as u8
                 p.carry = IT_CRATE as u8
                 p.act = 2
                 go_to(i, staff_tile(stove))
             }
         }
-        2 => {   // back at the stove: cook
+        2 => {   // back at the stove: cook (a little longer for each plate)
             if p.arrived != 0 {
                 p.arrived = 0
                 p.carry = 0
                 p.act = 3
-                p.timer = (MIN_FRAMES * 8) as s16
+                p.timer = (MIN_FRAMES * (3 + 2 * cook_orders(i))) as s16
                 p.pose = POSE_USE as u8
                 face_obj(i, stove)
             }
@@ -522,14 +550,15 @@ fn cook_tick(i: s32) {
                 if ps >= 0 { go_to(i, staff_tile(ps)) } else { p.arrived = 1 }
             }
         }
-        4 => {   // meal onto the pass
+        4 => {   // the meals onto the pass, for the waiters
             if p.arrived != 0 {
                 p.arrived = 0
                 p.carry = 0
-                let k = p.job as s32
-                if k >= 0 && orders[k].state as s32 == OR_COOKING {
-                    orders[k].state = OR_READY as u8
-                    job_add(J_SERVE, ROLE_WAITER, k)
+                for k in 0..MAXORD {
+                    if orders[k].state as s32 == OR_COOKING && orders[k].cook as s32 == i {
+                        orders[k].state = OR_READY as u8
+                        job_add(J_SERVE, ROLE_WAITER, k)
+                    }
                 }
                 p.job = -1
                 p.act = 5
@@ -564,7 +593,7 @@ fn cook_tick(i: s32) {
             if p.arrived != 0 {
                 p.arrived = 0
                 let fr = kitchen_obj(r, OB_FRIDGE, false)
-                if fr >= 0 { objs[fr].stock = min(objs[fr].stock as s32 + 6, 12) as u8 }
+                if fr >= 0 { objs[fr].stock = min(objs[fr].stock as s32 + ECO_CRATE_MEALS, ECO_FRIDGE_MAX) as u8 }
                 p.carry = 0
                 p.act = 5
                 go_to(i, staff_tile(stove))
@@ -573,7 +602,7 @@ fn cook_tick(i: s32) {
         else => p.act = 0
     }
     if p.wait > 600 && p.act != 0 {
-        order_reset(p.job as s32)
+        cook_reset(i)
         p.job = -1
         p.act = 5
         p.carry = 0
@@ -622,6 +651,17 @@ fn step_serve(i: s32, j: *Job) {
                 p.carry = IT_MEAL as u8
                 o.state = OR_CARRIED as u8
                 j.step = 1
+                // and up to two more plates on the tray
+                var extra = 0
+                for kk in 0..njobs {
+                    let jb = &jobs[kk]
+                    if extra >= 2 { break }
+                    if jb.kind as s32 != J_SERVE || jb.who >= 0 || orders[jb.target as s32].state as s32 != OR_READY { continue }
+                    jb.who = i as s16
+                    jb.step = 1
+                    orders[jb.target as s32].state = OR_CARRIED as u8
+                    extra += 1
+                }
             }
         }
         1 => {   // to the guest
@@ -635,7 +675,18 @@ fn step_serve(i: s32, j: *Job) {
                 g.act = USE_EAT as u8
                 g.timer = use_time(USE_EAT)
                 note_wait(tick_count - o.t0)
-                if objs[g.obj as s32].t as s32 == OB_PHONE { earn_from(gi, LG_FOOD, 30) } else { earn_from(gi, LG_FOOD, 22) }
+                if objs[g.obj as s32].t as s32 == OB_PHONE { earn_from(gi, LG_FOOD, ECO_ROOM_SERVICE) } else { earn_from(gi, LG_FOOD, ECO_MEAL) }
+                // more plates on the tray: on to the next table
+                let k0 = p.job as s32
+                for kk in 0..njobs {
+                    let jb = &jobs[kk]
+                    if kk == k0 || jb.kind as s32 != J_SERVE || jb.who as s32 != i { continue }
+                    job_done(k0)
+                    p.job = kk as s16
+                    p.carry = IT_MEAL as u8
+                    p.arrived = 0
+                    return
+                }
                 job_finish(i)
             }
         }
@@ -654,21 +705,23 @@ var deliveries_left: s32
 
 fn order_deliveries() {
     var want = 0
+    let shelves = objs_of(OB_STORAGE_SHELF)
     for k in 0..nobjs {
         let o = &objs[k]
         if o.used == 0 { continue }
-        if o.t as s32 == OB_STORAGE_SHELF { want += 4 - min(o.stock as s32, 4) }
-        if o.t as s32 == OB_FRIDGE && objs_of(OB_STORAGE_SHELF) == 0 { want += (12 - o.stock as s32) / 6 }
+        if o.t as s32 == OB_STORAGE_SHELF { want += ECO_SHELF_CRATES - min(o.stock as s32, ECO_SHELF_CRATES) }
+        if o.t as s32 == OB_FRIDGE && shelves == 0 { want += (ECO_FRIDGE_MAX - o.stock as s32) / ECO_CRATE_MEALS }
     }
-    want = min(want, 12)
-    if want <= 0 { return }
-    spend(LG_SUPPLIES, want * 30)
+    want = min(want, 16)
+    if want <= 0 || deliveries_left > 0 { return }
+    spend(LG_SUPPLIES, want * ECO_CRATE_COST)
     deliveries_left = want
-    let e = entrance_tile()
-    let i = person_new(P_VISITOR, 0, 0, ptile_x(e) + 2, ptile_z(e))
+    let e = street_spot()
+    let i = person_new(P_VISITOR, 0, 0, ptile_x(e), ptile_z(e))
     if i >= 0 {
         people[i].state = 1
         people[i].speed = 0.06
+        fade_in(i)
     }
 }
 
@@ -686,7 +739,7 @@ fn visitor_tick(i: s32) {
             for k in 0..nobjs {
                 let o = &objs[k]
                 if o.used == 0 { continue }
-                if o.t as s32 == OB_STORAGE_SHELF && (o.stock as s32) < 4 && (o.stock as s32) < best {
+                if o.t as s32 == OB_STORAGE_SHELF && (o.stock as s32) < ECO_SHELF_CRATES && (o.stock as s32) < best {
                     best = o.stock as s32
                     dest = k
                 }
@@ -694,7 +747,7 @@ fn visitor_tick(i: s32) {
             if dest < 0 {
                 for k in 0..nobjs {
                     let o = &objs[k]
-                    if o.used != 0 && o.t as s32 == OB_FRIDGE && o.stock < 7 { dest = k; break }
+                    if o.used != 0 && o.t as s32 == OB_FRIDGE && o.stock as s32 <= ECO_FRIDGE_MAX - ECO_CRATE_MEALS { dest = k; break }
                 }
             }
             if dest < 0 {
@@ -711,7 +764,7 @@ fn visitor_tick(i: s32) {
             if p.arrived != 0 {
                 p.arrived = 0
                 let o = &objs[p.obj as s32]
-                if o.t as s32 == OB_FRIDGE { o.stock = min(o.stock as s32 + 6, 12) as u8 } else { o.stock = (o.stock as s32 + 1) as u8 }
+                if o.t as s32 == OB_FRIDGE { o.stock = min(o.stock as s32 + ECO_CRATE_MEALS, ECO_FRIDGE_MAX) as u8 } else { o.stock = (o.stock as s32 + 1) as u8 }
                 deliveries_left -= 1
                 p.carry = 0
                 p.state = 4

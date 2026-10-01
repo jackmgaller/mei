@@ -144,13 +144,13 @@ fn s_demo_hotel(level: s32) {
     s_obj(OB_BAR_STOOL, 0, 26, 4, 0)
     s_obj(OB_JUKEBOX, 0, 27, 8, 3)
     s_room(0, FK_CORR_CARPET, 4, 9, 27, 10)           // corridor
-    s_obj(OB_VENDING, 0, 27, 9, 3)
+    s_obj(OB_VENDING, 0, 4, 9, 1)
     for k in 0..6 { s_guest_room(0, 4 + k * 4, 11, FK_CARPET_BLUE, false) }
     if level >= 1 {
         s_room(1, FK_CORR_CARPET, 4, 9, 27, 10)
         for k in 0..6 { s_guest_room(1, 4 + k * 4, 11, FK_CARPET_RED, false) }
         for k in 1..6 { s_guest_room(1, 4 + k * 4, 5, FK_CARPET_GREEN, true) }
-        s_obj(OB_ELEVATOR, 0, 4, 9, 1)
+        s_obj(OB_ELEVATOR, 0, 26, 9, 3)                 // at the east end (doors face the corridor)
         for k in 0..6 { s_window(1, 4 + k * 4 + 2, 14, 0, 1) }
     }
 }
@@ -186,7 +186,8 @@ fn s_suite(f: s32, x0: s32, z0: s32, fk: s32) {
 }
 
 // The grand hotel: six floors around a five-storey atrium over the lobby, with a bar,
-// restaurant, kitchen, laundry, staff room, spa, gym, a pool deck, 39 rooms and 6 suites.
+// restaurant, kitchen, laundry, staff room, spa, gym, a pool deck, 36 rooms and 6 suites, and
+// two elevators.
 fn s_grand_hotel() {
     // ---- ground floor
     s_room(0, FK_MARBLE, 10, 2, 19, 9)                // lobby
@@ -206,9 +207,10 @@ fn s_grand_hotel() {
     s_door(0, 15, 9, 0, 1)
     s_room(0, FK_WOOD, 4, 2, 9, 9)                    // restaurant
     s_door(0, 7, 9, 0, 1)
-    s_obj(OB_TABLE_2, 0, 7, 3, 0)
-    s_obj(OB_TABLE_2, 0, 7, 7, 0)
-    s_obj(OB_TABLE_2, 0, 5, 3, 0)
+    s_obj(OB_TABLE_4, 0, 7, 3, 0)
+    s_obj(OB_TABLE_2, 0, 8, 8, 0)
+    s_obj(OB_TABLE_2, 0, 5, 3, 1)
+    s_obj(OB_TABLE_2, 0, 9, 6, 1)
     s_obj(OB_PLANT, 0, 9, 2, 0)
     s_obj(OB_FLOOR_LAMP, 0, 4, 2, 0)
     s_room(0, FK_WOOD, 20, 2, 27, 9)                  // bar
@@ -224,13 +226,15 @@ fn s_grand_hotel() {
     s_obj(OB_TABLE_2, 0, 25, 4, 0)
     s_obj(OB_TABLE_2, 0, 25, 7, 0)
     s_obj(OB_ARCADE, 0, 27, 2, 0)
+    s_obj(OB_LOUNGE_CHAIR, 0, 24, 9, 2)
+    s_obj(OB_LOUNGE_CHAIR, 0, 22, 9, 2)
     s_obj(OB_FLOOR_LAMP, 0, 27, 5, 0)
     s_room(0, FK_TILE, 4, 12, 9, 15)                  // kitchen
     s_door(0, 6, 12, 0, -1)
     s_obj(OB_STOVE, 0, 4, 15, 2)
     s_obj(OB_FRIDGE, 0, 5, 15, 2)
     s_obj(OB_STOVE, 0, 6, 15, 2)
-    s_obj(OB_PREP_COUNTER, 0, 7, 14, 2)
+    s_obj(OB_PREP_COUNTER, 0, 7, 13, 0)               // the pass: cooks put meals out by the door
     s_obj(OB_STORAGE_SHELF, 0, 9, 15, 2)
     s_obj(OB_STORAGE_SHELF, 0, 4, 12, 0)
     s_obj(OB_KITCHEN_SINK, 0, 9, 12, 0)
@@ -247,14 +251,14 @@ fn s_grand_hotel() {
     s_obj(OB_COFFEE_MACHINE, 0, 15, 15, 2)
     s_obj(OB_VENDING, 0, 16, 15, 2)
     s_obj(OB_COT, 0, 17, 12, 2)
-    s_room(0, FK_TILE, 18, 12, 21, 15)                // spa
+    s_room(0, FK_TILE, 18, 12, 22, 15)                // spa (the therapist stands at the bed's foot)
     s_door(0, 20, 12, 0, -1)
-    s_obj(OB_MASSAGE_BED, 0, 18, 13, 1)
-    s_obj(OB_HOT_TUB, 0, 20, 14, 2)
-    s_obj(OB_PLANT, 0, 21, 12, 0)
-    s_room(0, FK_WOOD, 22, 12, 25, 15)                // gym
-    s_door(0, 23, 12, 0, -1)
-    s_obj(OB_TREADMILL, 0, 22, 14, 2)
+    s_obj(OB_MASSAGE_BED, 0, 19, 13, 0)
+    s_obj(OB_HOT_TUB, 0, 21, 14, 2)
+    s_obj(OB_PLANT, 0, 22, 12, 0)
+    s_room(0, FK_WOOD, 23, 12, 25, 15)                // gym
+    s_door(0, 24, 12, 0, -1)
+    s_obj(OB_TREADMILL, 0, 23, 14, 2)
     s_obj(OB_WEIGHTS, 0, 24, 15, 2)
     s_room(0, FK_CORR_MARBLE, 26, 12, 27, 15)         // the way to the pool
     s_room(0, FK_DECK, 4, 16, 27, 20)                 // pool deck
@@ -279,7 +283,7 @@ fn s_grand_hotel() {
     }
     s_room(1, FK_CORR_CARPET, 4, 6, 7, 9)             // the stair hall
     for f in 1..5 {
-        if f > 1 { s_guest_room(f, 4, 6, FK_CARPET_GREEN, true) }
+        if f > 1 { s_room(f, FK_CORR_CARPET, 4, 6, 7, 9) }   // the west lift hall
         s_guest_room(f, 8, 6, FK_CARPET_GREEN, true)
         s_guest_room(f, 18, 6, FK_CARPET_BLUE, true)
         s_guest_room(f, 22, 6, FK_CARPET_BLUE, true)
@@ -306,8 +310,10 @@ fn s_grand_hotel() {
     s_obj(OB_SKYLIGHT, 5, 14, 6, 0)
     // transport: the elevator by the bar, stairs from the restaurant
     s_obj(OB_ELEVATOR, 0, 26, 8, 0)
+    s_obj(OB_ELEVATOR, 0, 6, 6, 0)                    // a second car in the west lift hall
     s_obj(OB_STAIRS, 0, 4, 6, 2)
     rooms_update()
+    rooms_finish()
 }
 
 fn s_grand_staff() {
@@ -373,4 +379,28 @@ fn s_north_suite(x0: s32) {
     s_obj(OB_LOUNGE_CHAIR, 5, x0 + 7, 9, 3)
     s_window(5, x0 + 1, 6, 0, -1)
     s_window(5, x0 + 5, 6, 0, -1)
+}
+
+// The demo hotel grown the way a player would for the third star (balance tests: see
+// tests/scen_sim.akr 427): room service phones in every room, and a pool deck by the bar.
+fn s_upgrade_demo() {
+    // a phone instead of the TV in every south room (the rooms are full)
+    for f in 0..2 {
+        for k in 0..6 {
+            let x = 4 + k * 4
+            let oi = tobj[tix(f, x, 11)] as s32
+            if oi >= 0 { obj_remove(oi); world_changed() }
+            s_obj(OB_PHONE, f, x, 11, 1)
+        }
+    }
+    s_room(0, FK_DECK, 28, 3, 30, 12)
+    s_room(0, FK_POOL_WATER, 29, 5, 30, 7)
+    s_door(0, 27, 5, 1, 0)
+    s_obj(OB_LOUNGER, 0, 28, 9, 0)
+    s_obj(OB_LOUNGER, 0, 30, 9, 2)
+    s_obj(OB_UMBRELLA, 0, 29, 11, 0)
+    s_obj(OB_PALM, 0, 30, 3, 0)
+    rooms_refresh_all = true                      // (the edits are on G and F1, whatever the view)
+    rooms_update()
+    rooms_finish()
 }

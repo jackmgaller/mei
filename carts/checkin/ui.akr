@@ -1,17 +1,18 @@
-// Interface primitives: rectangles, gradients, textured quads, icons, the two baked fonts,
-// small string buffers and Y2K-style panels. Everything goes on the interface list.
+// Interface primitives: rectangles, gradients, triangles and lines, textured quads, icons, the
+// two fonts, small string buffers and the flat "calm" panels. Everything goes on the interface
+// list. Colours come from style.akr (the older names below map onto its tokens).
 
 var ui_tris: s32
 
-const WHITE = 0xFFFFFF
-const CREAM = 0xD8F4FF       // rgb(255, 244, 216)
-const GOLD = 0x60D0FF        // rgb(255, 208, 96)
-const SOFT = 0xF0D8B0        // rgb(176, 216, 240)
-const DIM = 0xA08C80
-const RED = 0x6070FF
-const GREEN = 0x80E890
-const AQUA = 0xF0E060        // rgb(96, 224, 240)
-const PINK = 0xD070FF        // rgb(255, 112, 208)
+const WHITE = 0xF8F6F0
+const CREAM = ST_TEXT
+const GOLD = ST_GOLD
+const SOFT = ST_TEXT_DIM
+const DIM = 0x8C8484         // #848C8C: disabled / locked
+const RED = ST_BAD
+const GREEN = ST_OK
+const AQUA = 0xD8D0A0        // #A0D0D8: info accents (overlays)
+const PINK = ST_CURSOR
 
 struct Icon { u: u8, v: u8, pal: u8 }
 
@@ -129,12 +130,27 @@ fn ui_line(x0: s32, y0: s32, x1: s32, y1: s32, c: u32) {
 }
 
 // ---- text
+// Two fonts: the small pixel font (7-px caps, a 10-px line) and the title font. Characters
+// 1..31 (except \t \n \r) are inline glyphs: \x01 A, \x02 B, \x03 X, \x04 Y, \x05 L, \x06 R,
+// \x07 START, \x08 SELECT, \x0B d-pad, \x0C up/down, \x0E left/right, \x0F star, \x10 lock,
+// \x11 check, \x12 cross, \x13 up, \x14 down, \x15 left, \x16 right, \x17 bullet, \x18 times.
+
+const FS_LINE = 10
+const FB_LINE = 15
+
+fn glyph(x: s32, y: s32, code: s32) -> s32 {
+    let w = GL_W[code] as s32
+    if w == 0 { return x }
+    ui_tex(x, y + GL_DY[code] as s32, w, GL_H[code] as s32, SLOT_UI, PAL_GLYPH, GL_U[code] as s32, GL_V[code] as s32, w, GL_H[code] as s32, 0x808080, -1)
+    return x + w + 1
+}
 
 fn ftext(x: s32, y: s32, s: *u8, c: u32, big: bool) -> s32 {
     let tint = (c >> 1) & 0x7F7F7F
     let info: u32 = (SLOT_UI << 16) | (1 << 20) | ((PAL_FONT as u32) << 24)
     var h = FS_H
-    if big { h = FB_H }
+    var line = FS_LINE
+    if big { h = FB_H; line = FB_LINE }
     var cx = x
     var cy = y
     var p = s
@@ -143,10 +159,14 @@ fn ftext(x: s32, y: s32, s: *u8, c: u32, big: bool) -> s32 {
         p += 1
         if ch == '\n' {
             cx = x
-            cy += h - 2
+            cy += line
             continue
         }
-        if ch < 32 || ch > 126 { continue }
+        if ch < 32 {
+            cx = glyph(cx, cy, ch)
+            continue
+        }
+        if ch > 126 { continue }
         let gi = ch - 32
         var u = 0
         var v = 0
@@ -195,7 +215,11 @@ fn text_w(s: *u8, big: bool) -> s32 {
             w = 0
             continue
         }
-        if ch < 32 || ch > 126 { continue }
+        if ch < 32 {
+            if GL_W[ch] > 0 { w += GL_W[ch] as s32 + 1 }
+            continue
+        }
+        if ch > 126 { continue }
         if big { w += FB_A[ch - 32] as s32 } else { w += FS_A[ch - 32] as s32 }
     }
     return max(best, w)
@@ -204,14 +228,15 @@ fn text_w(s: *u8, big: bool) -> s32 {
 fn ftext_c(cx: s32, y: s32, s: *u8, c: u32, big: bool) { ftext(cx - text_w(s, big) / 2, y, s, c, big) }
 fn ftext_r(rx: s32, y: s32, s: *u8, c: u32, big: bool) -> s32 { return ftext(rx - text_w(s, big), y, s, c, big) }
 
-// ---- small string buffers (a ring of 12, 48 bytes each)
+// ---- small string buffers (a ring of 16, 96 bytes each)
 
-var nbuf: [12][48]u8
+const NB_LEN = 96
+var nbuf: [16][96]u8
 var nbuf_i: s32
 
 fn nb() -> *u8 {
     nbuf_i += 1
-    if nbuf_i >= 12 { nbuf_i = 0 }
+    if nbuf_i >= 16 { nbuf_i = 0 }
     let b = &nbuf[nbuf_i][0]
     b[0] = 0
     return b
@@ -221,7 +246,7 @@ fn sappend(dst: *u8, s: *u8) -> *u8 {
     var n = 0
     while dst[n] != 0 { n += 1 }
     var k = 0
-    while s[k] != 0 && n < 46 {
+    while s[k] != 0 && n < NB_LEN - 2 {
         dst[n] = s[k]
         n += 1
         k += 1
@@ -266,27 +291,89 @@ fn sint3(dst: *u8, v: s32) -> *u8 {
 fn num(v: s32) -> *u8 { return sint(nb(), v) }
 fn str_of(off: s32) -> *u8 { return &STRS[off] }
 
-// ---- panels (Y2K: glossy blue glass with an aqua rim)
+// ---- shapes
+
+// A flat triangle; mode -1 is opaque, 0-3 a blend mode.
+fn ui_tri(x0: s32, y0: s32, x1: s32, y1: s32, x2: s32, y2: s32, c: u32, mode: s32) {
+    let q = packet_alloc(5)
+    if q == null { return }
+    var t: u32 = 0x20
+    var col = c
+    if mode >= 0 {
+        t = 0x28
+        col = c | ((mode as u32) << 24)
+    }
+    q[1] = col
+    q[2] = upos(x0, y0)
+    q[3] = upos(x1, y1)
+    q[4] = upos(x2, y2)
+    ui_insert(q, t)
+    ui_tris += 1
+}
+
+// A flat quad from four corners in strip order (0-1-2, 1-2-3).
+fn ui_quad(x0: s32, y0: s32, x1: s32, y1: s32, x2: s32, y2: s32, x3: s32, y3: s32, c: u32, mode: s32) {
+    let q = packet_alloc(6)
+    if q == null { return }
+    var t: u32 = 0x24
+    var col = c
+    if mode >= 0 {
+        t = 0x2C
+        col = c | ((mode as u32) << 24)
+    }
+    q[1] = col
+    q[2] = upos(x0, y0)
+    q[3] = upos(x1, y1)
+    q[4] = upos(x2, y2)
+    q[5] = upos(x3, y3)
+    ui_insert(q, t)
+    ui_tris += 2
+}
+
+// A line t pixels thick (thickened across its shorter screen axis: crisp for iso diagonals).
+fn ui_thick(x0: s32, y0: s32, x1: s32, y1: s32, t: s32, c: u32, mode: s32) {
+    if abs(x1 - x0) >= abs(y1 - y0) {
+        ui_quad(x0, y0, x1, y1, x0, y0 + t, x1, y1 + t, c, mode)
+    } else {
+        ui_quad(x0, y0, x0 + t, y0, x1, y1, x1 + t, y1, c, mode)
+    }
+}
+
+// A 1-px rectangle outline.
+fn ui_frame(x: s32, y: s32, w: s32, h: s32, c: u32, mode: s32) {
+    ui_rect(x, y, w, 1, c, mode)
+    ui_rect(x, y + h - 1, w, 1, c, mode)
+    ui_rect(x, y + 1, 1, h - 2, c, mode)
+    ui_rect(x + w - 1, y + 1, 1, h - 2, c, mode)
+}
+
+// ---- panels: flat charcoal, a light top edge, 2-px cut corners
 
 fn panel(x: s32, y: s32, w: s32, h: s32) {
-    ui_grad(x, y, w, h, rgb(40, 60, 130), rgb(14, 18, 52), -1)
-    ui_grad(x + 1, y + 1, w - 2, h / 3, rgb(120, 150, 230), rgb(40, 60, 130), 3)
-    ui_rect(x, y, w, 1, rgb(140, 220, 255), -1)
-    ui_rect(x, y + h - 1, w, 1, rgb(30, 40, 90), -1)
-    ui_rect(x, y, 1, h, rgb(90, 150, 220), -1)
-    ui_rect(x + w - 1, y, 1, h, rgb(30, 40, 90), -1)
+    ui_rect(x + 2, y, w - 4, 1, ST_PANEL_EDGE, -1)
+    ui_rect(x + 1, y + 1, w - 2, 1, ST_PANEL, -1)
+    ui_rect(x, y + 2, w, h - 4, ST_PANEL, -1)
+    ui_rect(x + 1, y + h - 2, w - 2, 1, ST_PANEL, -1)
+    ui_rect(x + 2, y + h - 1, w - 4, 1, ST_PANEL, -1)
+    ui_rect(x + 1, y + 1, 1, 1, ST_PANEL_EDGE, -1)
+    ui_rect(x + w - 2, y + 1, 1, 1, ST_PANEL_EDGE, -1)
 }
 
+// A see-through chip (labels over the world).
 fn panel_glass(x: s32, y: s32, w: s32, h: s32) {
-    ui_grad(x, y, w, h, rgb(50, 70, 140), rgb(16, 20, 60), 2)
-    ui_rect(x, y, w, 1, rgb(120, 200, 255), 1)
+    ui_rect(x + 1, y, w - 2, h, ST_PANEL, 0)
+    ui_rect(x, y + 1, 1, h - 2, ST_PANEL, 0)
+    ui_rect(x + w - 1, y + 1, 1, h - 2, ST_PANEL, 0)
 }
 
-// A pill-shaped highlight bar (selection).
+// The selection: a 1-px warm outline and a faint warm fill.
 fn ui_sel(x: s32, y: s32, w: s32, h: s32) {
-    ui_grad(x, y, w, h, rgb(255, 150, 230), rgb(150, 60, 170), -1)
-    ui_grad(x + 1, y + 1, w - 2, h / 2, rgb(255, 230, 250), rgb(255, 150, 230), 3)
+    ui_rect(x + 1, y + 1, w - 2, h - 2, 0x203A40, 1)
+    ui_frame(x, y, w, h, ST_CURSOR, -1)
 }
+
+// A thin divider.
+fn ui_div(x: s32, y: s32, w: s32) { ui_rect(x, y, w, 1, ST_PANEL_EDGE, -1) }
 
 // Draws the interface queued so far right now (so 3D drawn next lands on top of it).
 fn ui_flush_now() {

@@ -89,15 +89,17 @@ fn staff_tile(oi: s32) -> s32 {
 fn spawn_guest() {
     if find_reception() < 0 { return }
     let gt = pick_guest_type()
-    let e = entrance_tile()
-    let i = person_new(P_GUEST, gt, 0, ptile_x(e) + rnd(3) - 1, ptile_z(e))
+    let e = street_spot()
+    let i = person_new(P_GUEST, gt, 0, ptile_x(e), ptile_z(e))
     if i < 0 { return }
     let p = &people[i]
     p.state = GS_ARRIVE as u8
     p.budget = (GT_BUDGET[gt] as s32 * (85 + rnd(40)) / 100) as s16
     p.nights = (GT_NIGHTS[gt] as s32 + rnd(2)) as u8
-    p.speed = 0.055 + fixed(rnd(8)) / 1000
-    p.mood = 10
+    p.speed = 0.050 + fixed(rnd(14)) / 1000
+    p.mood = ECO_MOOD0 as s16
+    p.x += fixed(rnd(5) - 2) / 8
+    fade_in(i)
     go_to(i, -1)
     // families bring a kid, honeymooners come as a pair
     if gt == GT_FAMILY || gt == GT_HONEYMOON {
@@ -107,8 +109,11 @@ fn spawn_guest() {
             c.state = GS_FOLLOW as u8
             c.party = i as s16
             c.look = (p.look as s32 ^ 1) as u8
-            c.speed = p.speed
+            c.speed = p.speed * 1.08
+            c.x = p.x + 0.3
+            c.z = p.z + 0.2
             p.party = j as s16
+            fade_in(j)
         }
     }
     arrivals_today += 1
@@ -117,18 +122,219 @@ fn spawn_guest() {
 fn guest_leave(i: s32) {
     let p = &people[i]
     release_obj(i)
+    if p.qslot >= 0 { queue_leave(i) }
     p.state = GS_LEAVE as u8
     p.act = 0
     p.pose = POSE_STAND as u8
-    go_to(i, entrance_tile())
+    p.sox = 0.0
+    p.soz = 0.0
+    go_to(i, street_spot())
 }
+
+// Use spots taken per object (bit k: spot k), so a table for two seats two.
+var spot_mask: [1200]u8
 
 fn release_obj(i: s32) {
     let p = &people[i]
     if p.obj >= 0 {
-        let o = &objs[p.obj as s32]
+        let oi = p.obj as s32
+        let o = &objs[oi]
+        if p.spot >= 0 { spot_mask[oi] = spot_mask[oi] & ~((1 << (p.spot as s32 & 7)) as u8) }
         if o.user as s32 == i { o.user = -1 }
         p.obj = -1
+    }
+    p.spot = -1
+    p.sox = 0.0
+    p.soz = 0.0
+}
+
+// A free use spot of object oi (-1: none).
+fn free_spot(oi: s32) -> s32 {
+    let o = &objs[oi]
+    let n = max(OBJ_NSPOT[o.t as s32] as s32, 1)
+    let m = spot_mask[oi] as s32
+    let k0 = rnd(n)
+    for k in 0..n {
+        let s = (k0 + k) % n
+        if m & (1 << s) == 0 { return s }
+    }
+    return -1
+}
+
+fn claim_spot(i: s32, oi: s32, s: s32) {
+    let p = &people[i]
+    spot_mask[oi] = spot_mask[oi] | ((1 << s) as u8)
+    objs[oi].user = i as s16
+    p.obj = oi as s16
+    p.spot = s as s8
+}
+
+// ---- the reception queue: a line of slots from the desk spot out into the lobby
+
+const QMAX = 8
+var q_desk: [4]s16               // desks with a computed line (-1: none)
+var q_x: [4][8]fixed
+var q_z: [4][8]fixed
+var q_t: [4][8]s16
+var q_len: [4]s8                 // slots in the line
+
+fn reception_queues_reset() {
+    for k in 0..4 { q_desk[k] = -1 }
+    // anyone in a line re-joins the line of their desk
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used != 0 && p.qslot >= 0 && p.qdesk >= 0 {
+            if objs[p.qdesk as s32].used == 0 || objs[p.qdesk as s32].t as s32 != OB_RECEPTION_DESK { p.qslot = -1; p.qdesk = -1 }
+        }
+    }
+}
+
+// The line of desk d (computing it the first time): slot 0 at the desk spot, then a path of
+// tiles leading back from it (turning where something is in the way, keeping off doorways),
+// with a slot every 0.85 tiles along it.
+var ql_t: [16]s32
+fn queue_line(d: s32) -> s32 {
+    for k in 0..4 { if q_desk[k] as s32 == d { return k } }
+    var k = -1
+    for j in 0..4 { if q_desk[j] < 0 { k = j; break } }
+    if k < 0 { k = 0 }
+    q_desk[k] = d as s16
+    let o = &objs[d]
+    let f = o.f as s32
+    let r = o.room as s32
+    let s0 = spot_tile(d, 0)
+    // "back" from the desk, in grid steps
+    obj_local_pt(d, 0.0, 0.0)
+    let x0 = lp_x
+    let z0 = lp_z
+    obj_local_pt(d, 0.0, 1.0)
+    var dx = (lp_x - x0) as s32
+    var dz = (lp_z - z0) as s32
+    // the tile path
+    var n = 1
+    ql_t[0] = s0
+    var cur = s0
+    while n < 12 {
+        var nxt = -1
+        for a in 0..3 {
+            var sx = dx
+            var sz = dz
+            if a == 1 { sx = -dz; sz = dx }
+            if a == 2 { sx = dz; sz = -dx }
+            let x = ptile_x(cur) + sx
+            let z = ptile_z(cur) + sz
+            if !in_lot(x, z) { continue }
+            let t = tix(f, x, z)
+            if troom[t] as s32 != r || pass[t] as s32 & PB_WALK == 0 || !near_open(cur, t) || door_tile(t) { continue }
+            var dup = false
+            for m in 0..n { if ql_t[m] == t { dup = true } }
+            if dup { continue }
+            nxt = t
+            dx = sx
+            dz = sz
+            break
+        }
+        if nxt < 0 { break }
+        ql_t[n] = nxt
+        cur = nxt
+        n += 1
+    }
+    // slots along it
+    var m = 0
+    var dist = 0.0
+    var seg = 0
+    while m < QMAX && seg < n {
+        // point at `dist` along segment seg (from tile seg to tile seg + 1)
+        let a = ql_t[seg]
+        var px = tile_cx(a)
+        var pz = tile_cz(a)
+        var t = a
+        if seg + 1 < n {
+            let b = ql_t[seg + 1]
+            px = px + (tile_cx(b) - px) * dist
+            pz = pz + (tile_cz(b) - pz) * dist
+            if dist >= 0.5 { t = b }
+        } else if dist > 0.0 {
+            break
+        }
+        q_x[k][m] = px
+        q_z[k][m] = pz
+        q_t[k][m] = t as s16
+        m += 1
+        dist = dist + 0.85
+        while dist >= 1.0 {
+            dist = dist - 1.0
+            seg += 1
+        }
+    }
+    q_len[k] = max(m, 1) as s8
+    return k
+}
+
+// A tile with a doorway on one of its edges (people shouldn't stand there).
+fn door_tile(t: s32) -> bool {
+    let x = ptile_x(t)
+    let z = ptile_z(t)
+    if edge_n[t] as s32 == EF_DOOR || edge_w[t] as s32 == EF_DOOR { return true }
+    if z + 1 < GH && edge_n[t + GW] as s32 == EF_DOOR { return true }
+    if x + 1 < GW && edge_w[t + 1] as s32 == EF_DOOR { return true }
+    return false
+}
+
+// Joins desk d's line at the back and walks to that slot.
+fn queue_join(i: s32, d: s32) {
+    let p = &people[i]
+    var n = 0
+    for j in 0..npeople {
+        let q = &people[j]
+        if j != i && q.used != 0 && q.qdesk as s32 == d && q.qslot >= 0 { n = max(n, q.qslot as s32 + 1) }
+    }
+    p.qdesk = d as s16
+    p.qslot = n as s8
+    queue_goto(i)
+}
+
+// In the line: face the desk at the front, else the one ahead.
+fn queue_face(i: s32) {
+    let p = &people[i]
+    let d = p.qdesk as s32
+    if d < 0 { return }
+    let s = p.qslot as s32
+    if s <= 0 { face_obj(i, d); return }
+    let k = queue_line(d)
+    let a = min(s - 1, q_len[k] as s32 - 1)
+    p.dir = dir_toward(p.x, p.z, q_x[k][a], q_z[k][a]) as u8
+    p.hold = 0
+}
+
+fn queue_goto(i: s32) {
+    let p = &people[i]
+    let k = queue_line(p.qdesk as s32)
+    let s = p.qslot as s32
+    let len = q_len[k] as s32
+    if s < len {
+        go_to_pt(i, q_t[k][s] as s32, q_x[k][s], q_z[k][s])
+    } else {
+        // past the end of the line: stand behind it, spread out
+        let e = len - 1
+        let t = q_t[k][e] as s32
+        go_to_pt(i, t, q_x[k][e] + fixed((s - e) % 3 - 1) * 0.3, q_z[k][e] + fixed(s - e) * 0.1)
+    }
+}
+
+// Leaves the line: everyone behind steps up one slot.
+fn queue_leave(i: s32) {
+    let p = &people[i]
+    let d = p.qdesk as s32
+    let s = p.qslot as s32
+    p.qslot = -1
+    p.qdesk = -1
+    if d < 0 { return }
+    for j in 0..npeople {
+        let q = &people[j]
+        if q.used == 0 || q.qdesk as s32 != d || q.qslot as s32 <= s { continue }
+        q.qslot -= 1
+        if q.mode as s32 == M_WALK || q.mode as s32 == M_STAND { queue_goto(j) }
     }
 }
 
@@ -150,28 +356,40 @@ fn praise(i: s32, bit: u32, m: s32) {
 fn guest_tick(i: s32) {
     let p = &people[i]
     match p.state as s32 {
-        1 => {   // arrive: head for reception
-            let d = find_reception()
-            if d < 0 { complain(i, CP_RECEPTION, 30); guest_leave(i); return }
-            if p.goal < 0 && p.arrived == 0 { go_to(i, spot_tile(d, 0)) }
-            if p.arrived != 0 {
-                p.state = GS_QUEUE as u8
+        1 => {   // arrive: join the line at reception
+            if p.qslot < 0 {
+                let d = find_reception()
+                if d < 0 { complain(i, CP_RECEPTION, 30); guest_leave(i); return }
+                queue_join(i, d)
                 p.timer = 0
-                p.obj = d as s16
             }
+            if p.arrived != 0 {
+                p.arrived = 0
+                p.state = GS_QUEUE as u8
+                p.obj = p.qdesk
+                queue_face(i)
+            }
+            p.timer += 1
             if p.wait > 900 { complain(i, CP_LOST, 20); guest_leave(i) }
         }
-        2 => {   // queue at the desk
+        2 => {   // in the line: the front one is served when the desk is staffed and free
             p.timer += 1
-            let d = p.obj as s32
+            let d = p.qdesk as s32
+            if d < 0 || objs[d].used == 0 { p.state = GS_ARRIVE as u8; p.qslot = -1; return }
             let o = &objs[d]
-            if desk_staffed(d) && o.user < 0 {
+            if p.arrived != 0 {
+                p.arrived = 0
+                queue_face(i)
+            }
+            if p.qslot == 0 && p.goal < 0 && desk_staffed(d) && o.user < 0 {
                 o.user = i as s16
+                p.obj = d as s16
                 p.state = GS_CHECKIN as u8
                 note_wait(p.timer as s32)
                 p.timer = 0
+                p.pose = POSE_USE as u8
                 fx_at(FX_BELL, p.f as s32)
-            } else if p.timer > 1500 {
+            } else if p.timer > 2400 {
                 p.obj = -1
                 complain(i, CP_RECEPTION, 40)
                 guest_leave(i)
@@ -183,6 +401,8 @@ fn guest_tick(i: s32) {
                 let d = p.obj as s32
                 objs[d].user = -1
                 p.obj = -1
+                p.pose = POSE_STAND as u8
+                queue_leave(i)
                 let r = assign_room(i)
                 if r < 0 {
                     complain(i, CP_NOROOM, 50)
@@ -198,7 +418,12 @@ fn guest_tick(i: s32) {
                 go_room(i)
             }
         }
-        4 => guest_decide(i)
+        4 => {
+            // (a short pause after a decision that found nothing to do)
+            if p.ht > 0 { p.ht -= 1; return }
+            guest_decide(i)
+            if p.state as s32 == GS_IDLE { p.ht = 40 }
+        }
         5 => {   // walking to an object
             if p.arrived != 0 {
                 p.arrived = 0
@@ -212,11 +437,19 @@ fn guest_tick(i: s32) {
         6 => {   // using
             p.timer -= 1
             if p.act as s32 == USE_SLEEP {
-                // sleep until morning; noise wakes light sleepers
+                // sleep until morning; noise wakes light sleepers, who sit up in bed a while
                 let h = hour()
-                if h >= 7 && h < 21 { p.timer = 0 }
+                if h >= 9 && h < 21 { p.timer = 0 }
                 if tod % (MIN_FRAMES * 30) == 0 && p.room >= 0 && rooms[p.room as s32].noise > 5 && is_night_time() {
-                    if !security_near(p.room as s32) { complain(i, CP_NOISE, 12) }
+                    if !security_near(p.room as s32) && (i + tod / (MIN_FRAMES * 30)) % 3 == 0 {
+                        complain(i, CP_NOISE, 12)
+                        p.pose = POSE_SIT as u8
+                        p.ht = (MIN_FRAMES * 12) as s16
+                    }
+                }
+                if p.ht > 0 {
+                    p.ht -= 1
+                    if p.ht == 0 { p.pose = POSE_LIE as u8 }
                 }
             }
             if p.timer <= 0 { finish_use(i) }
@@ -230,21 +463,35 @@ fn guest_tick(i: s32) {
                 p.state = GS_IDLE as u8
             }
         }
-        8 => {   // leaving
-            if p.arrived != 0 || p.wait > 1200 {
+        8 => {   // leaving: out to the street, then fade away
+            if p.leaving == 0 && (p.arrived != 0 || p.wait > 1200) {
                 write_review(i)
+                p.leaving = 1
+                let c = p.party as s32
+                if c >= 0 && people[c].used != 0 && people[c].party as s32 == i { people[c].leaving = 1 }
+            }
+            if p.leaving != 0 && people_vis[i].fade == 255 {
                 let c = p.party as s32
                 if c >= 0 && people[c].used != 0 && people[c].party as s32 == i { person_free(c) }
                 person_free(i)
             }
         }
         9 => companion_tick(i)
-        10 => {  // check-out at the desk
+        10 => {  // check-out: through the line at the desk
             if p.arrived != 0 {
                 p.arrived = 0
-                pay_bill(i)
-                guest_leave(i)
-            } else if p.wait > 900 {
+                queue_face(i)
+            }
+            p.timer += 1
+            if p.goal < 0 && p.qslot <= 0 {
+                // at the desk a moment
+                p.ht += 1
+                p.pose = POSE_USE as u8
+                if p.ht > 40 {
+                    pay_bill(i)
+                    guest_leave(i)
+                }
+            } else if p.wait > 900 || p.timer > 3000 {
                 pay_bill(i)
                 guest_leave(i)
             }
@@ -262,14 +509,22 @@ fn guest_tick(i: s32) {
                 p.state = GS_IDLE as u8
             }
         }
-        12 => {  // swimming
+        12 => {  // swimming (then a hop back out onto the deck)
+            if p.mode as s32 == M_HOP { return }
+            if p.act as s32 == 201 {
+                if p.mode as s32 == M_STAND {
+                    p.act = 0
+                    p.pose = POSE_STAND as u8
+                    p.needs[N_FUN] = 255
+                    praise(i, PR_POOL, 10)
+                    p.state = GS_IDLE as u8
+                }
+                return
+            }
             p.timer -= 1
             if p.timer <= 0 {
-                place_at(i, p.sfrom as s32)
-                p.pose = POSE_STAND as u8
-                p.needs[N_FUN] = 255
-                praise(i, PR_POOL, 10)
-                p.state = GS_IDLE as u8
+                p.act = 201
+                script_move(i, M_HOP, tile_cx(p.sfrom as s32), tile_cz(p.sfrom as s32), 14)
             }
         }
         else => {}
@@ -280,35 +535,107 @@ fn companion_tick(i: s32) {
     let p = &people[i]
     let l = p.party as s32
     if l < 0 || people[l].used == 0 {
-        person_free(i)
+        p.leaving = 1
+        if people_vis[i].fade == 255 { person_free(i) }
         return
     }
     let lp = &people[l]
-    if lp.mode as s32 == M_RIDE {
-        // ride along: hide with the leader
-        if p.mode as s32 != M_RIDE { p.mode = M_RIDE as u8 }
+    if lp.leaving != 0 { p.leaving = 1 }
+    let lm = lp.mode as s32
+    let m = p.mode as s32
+    if m == M_WAIT_ELEV || m == M_BOARD || m == M_RIDE || m == M_ALIGHT || m == M_STAIRS || m == M_HOP { return }
+    // the leader on another floor or on the way there: follow to where they're going
+    if lp.f != p.f || lm == M_RIDE || lm == M_BOARD || lm == M_STAIRS {
+        var t = lp.goal as s32
+        if lm == M_STAIRS { t = lp.sto as s32 }
+        if t < 0 { t = lp.tile as s32 }
+        if p.goal as s32 != t { go_to(i, t) }
+        // hopelessly lost: slip back in beside the leader (fading in)
+        if p.wait > 600 && lp.f != p.f && lm == M_WALK {
+            place_at(i, lp.tile as s32)
+            fade_in(i)
+            p.wait = 0
+        }
         return
     }
-    if p.mode as s32 == M_RIDE {
-        place_at(i, lp.tile as s32)
-        p.mode = M_WALK as u8
+    // the leader using something with a second spot: take it (sit together, sleep together)
+    let ls = lp.state as s32
+    let lo = lp.obj as s32
+    if lo >= 0 && (ls == GS_USE || ls == GS_WAIT_FOOD || ls == GS_WAIT_SERVE) && objs[lo].used != 0 {
+        if p.obj as s32 != lo {
+            release_obj(i)
+            let s = free_spot(lo)
+            if s >= 0 {
+                claim_spot(i, lo, s)
+                go_to(i, spot_tile(lo, s))
+                p.act = lp.act
+            }
+        }
+        if p.obj as s32 == lo {
+            if p.goal < 0 && p.arrived != 0 {
+                p.arrived = 0
+                face_obj(i, lo)
+                p.pose = lp.pose
+                seat_for(i, lo, p.spot as s32, p.act as s32)
+            }
+            if p.goal < 0 { p.pose = lp.pose }
+            return
+        }
+    } else if p.obj >= 0 {
+        release_obj(i)
+        p.pose = POSE_STAND as u8
     }
-    if lp.mode as s32 == M_STAIRS {
-        p.mode = M_STAIRS as u8
-        p.sfrom = lp.sfrom
-        p.sto = lp.sto
-        p.timer = max(lp.timer as s32 - 20, 0) as s16
-        return
+    // walk beside the leader: a little to their side (or just behind, where that's a wall)
+    formation(i, l)
+}
+
+// Moves companion i to its place beside leader l.
+fn formation(i: s32, l: s32) {
+    let p = &people[i]
+    let lp = &people[l]
+    var hx = lp.vx
+    var hz = lp.vz
+    let sp = alen(hx, hz)
+    if sp < 0.005 {
+        match lp.dir as s32 {
+            0 => { hx = 1.0; hz = 0.0 }
+            1 => { hx = 0.0; hz = 1.0 }
+            2 => { hx = -1.0; hz = 0.0 }
+            else => { hx = 0.0; hz = -1.0 }
+        }
+    } else {
+        hx = hx / sp
+        hz = hz / sp
     }
-    p.pose = lp.pose
-    if lp.state as s32 == GS_SWIM { p.pose = POSE_STAND as u8 }
-    if p.mode as s32 == M_STAIRS { return }
-    // walk to the tile next to the leader
+    // to the left of the leader (their lane keeps right), a step behind when walking
+    var back = 0.1
+    if sp >= 0.005 { back = 0.3 }
     let lt = lp.tile as s32
-    if p.goal as s32 != lt && p.tile as s32 != lt {
-        if p.f != lp.f || abs(p.x - lp.x) + abs(p.z - lp.z) > 1.2 { go_to(i, lt) }
+    var x = lp.x - hz * 0.42 - hx * back
+    var z = lp.z + hx * 0.42 - hz * back
+    var t = tix(lp.f as s32, clamp(x as s32, 0, GW - 1), clamp(z as s32, 0, GH - 1))
+    if t != lt && !near_open(lt, t) {
+        x = lp.x - hx * 0.55
+        z = lp.z - hz * 0.55
+        t = tix(lp.f as s32, clamp(x as s32, 0, GW - 1), clamp(z as s32, 0, GH - 1))
+        if t != lt && !near_open(lt, t) {
+            x = clamp(lp.x - hz * 0.3, fixed(ptile_x(lt)) + 0.12, fixed(ptile_x(lt)) + 0.88)
+            z = clamp(lp.z + hx * 0.3, fixed(ptile_z(lt)) + 0.12, fixed(ptile_z(lt)) + 0.88)
+            t = lt
+        }
     }
-    if p.f != lp.f && p.mode as s32 == M_WALK && p.wait > 60 { place_at(i, lt) }
+    // (a little slack: a companion doesn't shuffle after every small step of the leader's)
+    let d = alen(x - p.x, z - p.z)
+    if p.goal >= 0 && p.goal as s32 == t {
+        go_to_pt(i, t, x, z)
+    } else if d > 0.3 || (p.goal >= 0 && p.goal as s32 != t) || (lp.cs > 0.01 && d > 0.15) {
+        go_to_pt(i, t, x, z)
+    }
+    if p.goal < 0 {
+        p.pose = POSE_STAND as u8
+        // standing beside them a while: face the same way
+        if p.hold > 30 && p.dir != lp.dir && p.cs == 0.0 { p.dir = lp.dir; p.hold = 0 }
+    }
 }
 
 // ---- rooms
@@ -401,8 +728,11 @@ fn checkout_due(p: *Person) -> bool {
 
 // ---- deciding
 
+var dec_n: [16]s32               // stats: decisions by outcome (tests)
+
 fn guest_decide(i: s32) {
     let p = &people[i]
+    dec_n[0] += 1
     if p.room < 0 { guest_leave(i); return }
     if checkout_due(p) || (day & 255) == ((p.shift as s32 + 1) & 255) {
         start_checkout(i)
@@ -413,16 +743,27 @@ fn guest_decide(i: s32) {
     if (h >= 22 || h < 6) && p.needs[N_SLEEP] < 200 {
         if try_use(i, USE_SLEEP, true) { return }
     }
-    // evenings at the bar (grown-ups, when they aren't starving or exhausted)
-    if h >= 19 && h < 23 && p.type as s32 != GT_FAMILY && p.needs[N_HUNGER] > 80 && p.needs[N_SLEEP] > 80 && p.needs[N_FUN] < 230 && rnd(2) == 0 {
-        if try_use(i, USE_DRINK, false) { return }
+    // mealtimes: breakfast, lunch and dinner in the restaurant (room service if it's full)
+    let meal = (h >= 7 && h < 10) || (h >= 12 && h < 14) || (h >= 18 && h < 21)
+    if meal && p.needs[N_HUNGER] < 215 && kitchen_open() {
+        dec_n[1] += 1
+        if try_use(i, USE_EAT, false) { dec_n[2] += 1; return }
+        if p.needs[N_HUNGER] < 150 && try_use(i, USE_PHONE, true) { dec_n[3] += 1; return }
     }
-    // the lowest need
+    // evenings at the bar (grown-ups, when they aren't starving or exhausted)
+    if h >= 19 && h < 24 && p.type as s32 != GT_FAMILY && p.needs[N_HUNGER] > 80 && p.needs[N_SLEEP] > 80 && p.needs[N_FUN] < 235 && rnd(3) != 0 {
+        dec_n[4] += 1
+        if try_drink(i) { dec_n[5] += 1; return }
+        if rnd(2) == 0 && try_browse(i) { return }
+    }
+    // the lowest need (hunger only counts between meals when it's bad)
     var need = -1
     var low = 150
     for k in 0..4 {
-        if (p.needs[k] as s32) < low {
-            low = p.needs[k] as s32
+        var v = p.needs[k] as s32
+        if k == N_HUNGER && !meal { v = v + 60 }
+        if v < low {
+            low = v
             need = k
         }
     }
@@ -436,13 +777,69 @@ fn guest_decide(i: s32) {
     if need == N_FUN || need < 0 {
         if want_fun(i) { return }
     }
-    // nothing pressing: hang about in the room, the lobby or outside
+    // nothing pressing: by day, out and about where people can see them (the lobby, the pool,
+    // the gardens); otherwise back to the room for a while
     p.timer = (300 + rnd(600)) as s16
-    if rnd(3) == 0 {
+    if h >= 9 && h < 22 {
+        let r = rnd(10)
+        if r < 4 && try_browse(i) { return }
+        if r < 7 && try_use(i, USE_SIT, false) { return }
+        if r < 8 && h < 19 && try_use(i, USE_LOUNGE, false) { return }
+        if r < 9 && try_browse(i) { return }
+    } else if rnd(3) == 0 {
         if try_use(i, USE_SIT, false) { return }
     }
+    dec_n[6] += 1
     go_room(i)
     p.act = USE_NONE as u8
+}
+
+// Wandering over to look at something: a fountain, a tree, the piano, a palm by the pool (the
+// bar's jukebox in the evening), and standing there a few minutes. True if off they go.
+fn try_browse(i: s32) -> bool {
+    let p = &people[i]
+    if nobjs == 0 { return false }
+    let h = hour()
+    for tries in 0..10 {
+        let k = rnd(nobjs)
+        let o = &objs[k]
+        if o.used == 0 { continue }
+        let t = o.t as s32
+        if t != OB_FOUNTAIN && t != OB_INDOOR_TREE && t != OB_PLANT && t != OB_PIANO && t != OB_PALM &&
+           t != OB_JUKEBOX && t != OB_UMBRELLA && t != OB_ARCADE && t != OB_WAITING_SOFA { continue }
+        let r = o.room as s32
+        if r <= 0 || rooms[r].flags & RF_VALID == 0 { continue }
+        let rt = rooms[r].rtype as s32
+        var ok = rt == RT_LOBBY || rt == RT_OUTDOOR || rt == RT_POOL || rt == RT_CORRIDOR
+        if rt == RT_BAR { ok = h >= 18 || h < 2 }
+        if rt == RT_RESTAURANT { ok = !(h >= 12 && h < 14) && !(h >= 18 && h < 21) }
+        if (rt == RT_OUTDOOR || rt == RT_POOL) && (h < 9 || h >= 20) { ok = false }
+        if !ok { continue }
+        // a free tile beside it
+        let w = obj_gw(t, o.rot as s32)
+        let d = obj_gd(t, o.rot as s32)
+        let f = o.f as s32
+        var x = o.x as s32
+        var z = o.z as s32
+        match rnd(4) {
+            0 => { x = x + rnd(w); z = z - 1 }
+            1 => { x = x + rnd(w); z = z + d }
+            2 => { x = x - 1; z = z + rnd(d) }
+            else => { x = x + w; z = z + rnd(d) }
+        }
+        if !in_lot(x, z) { continue }
+        let tt = tix(f, x, z)
+        let pb = pass[tt] as s32
+        if pb & PB_WALK == 0 || pb & (PB_STAFF | PB_PRIVATE) != 0 || !idle_tile_free(tt) { continue }
+        if troom[tt] as s32 != r { continue }
+        p.act = 202
+        p.obj = k as s16
+        p.spot = -1
+        p.state = GS_GOTO as u8
+        go_to_pt(i, tt, tile_cx(tt) + fixed(rnd(7) - 3) / 20, tile_cz(tt) + fixed(rnd(7) - 3) / 20)
+        return true
+    }
+    return false
 }
 
 fn want_food(i: s32) -> bool {
@@ -454,7 +851,7 @@ fn want_food(i: s32) -> bool {
         if try_use(i, USE_PHONE, true) { return true }
     }
     if try_use(i, USE_MINIBAR, true) { return true }
-    if try_use(i, USE_DRINK, false) { return true }
+    if try_drink(i) { return true }
     if try_use(i, USE_SNACK, false) { return true }
     // nothing open: wait for the morning, grumbling if it gets bad
     if starving { complain(i, CP_NOFOOD, 12) }
@@ -470,17 +867,17 @@ fn want_fun(i: s32) -> bool {
         0 => {   // business: work online, the gym, a drink in the evening
             if rnd(2) == 0 {
                 if try_use(i, USE_MODEM, true) { return true }
-                complain(i, CP_NOWIFI, 10)
+                complain(i, CP_NOWIFI, 6)
             }
             if try_use(i, USE_MEET, false) { return true }
-            if h >= 18 && try_use(i, USE_DRINK, false) { return true }
+            if h >= 18 && try_drink(i) { return true }
             if try_use(i, USE_GYM, false) { return true }
         }
         1 => {   // family: the pool, games, TV
             if h >= 9 && h < 19 {
                 if try_swim(i) { return true }
                 if try_use(i, USE_LOUNGE, false) { return true }
-                complain(i, CP_NOPOOL, 12)
+                complain(i, CP_NOPOOL, 8)
             }
             if try_use(i, USE_PLAY, false) { return true }
         }
@@ -488,10 +885,10 @@ fn want_fun(i: s32) -> bool {
             if try_use(i, USE_MASSAGE, false) || try_use(i, USE_HOTTUB, false) || try_use(i, USE_SAUNA, false) { return true }
             if rnd(2) == 0 { complain(i, CP_NOSPA, 8) }
             if h >= 9 && h < 19 && try_use(i, USE_LOUNGE, false) { return true }
-            if h >= 19 && try_use(i, USE_DRINK, false) { return true }
+            if h >= 19 && try_drink(i) { return true }
         }
         else => {  // rock star: the bar, music, and the minibar
-            if try_use(i, USE_DRINK, false) { return true }
+            if try_drink(i) { return true }
             if try_use(i, USE_MUSIC, false) { return true }
             if try_use(i, USE_MINIBAR, true) { return true }
         }
@@ -519,7 +916,16 @@ fn use_room_ok(use: s32, rt: s32) -> bool {
 }
 
 // Finds the nearest free object for a use and walks there. own: only in the guest's room.
-fn try_use(i: s32, use: s32, own: bool) -> bool {
+fn try_use(i: s32, use: s32, own: bool) -> bool { return try_use_in(i, use, own, -1, use) }
+
+// A drink: at the bar (a stool), else at a table in a bar (the bartender brings it).
+fn try_drink(i: s32) -> bool {
+    if try_use(i, USE_DRINK, false) { return true }
+    return try_use_in(i, USE_EAT, false, RT_BAR, USE_DRINK)
+}
+
+// try_use, only in rooms of type `rt` (-1: any), doing `act` there.
+fn try_use_in(i: s32, use: s32, own: bool, rt_only: s32, act: s32) -> bool {
     let p = &people[i]
     var best = -1
     var bd = 0x7FFFFFFF
@@ -527,9 +933,12 @@ fn try_use(i: s32, use: s32, own: bool) -> bool {
     let pz = p.z as s32
     for k in 0..nobjs {
         let o = &objs[k]
-        if o.used == 0 || o.user >= 0 { continue }
+        if o.used == 0 { continue }
         let t = o.t as s32
         if OBJ_USE[t] as s32 != use { continue }
+        if spot_mask[k] as s32 + 1 >= (1 << max(OBJ_NSPOT[t] as s32, 1)) { continue }
+        // a bar counter's spot with a stool on it is the stool's seat
+        if t == OB_BAR_COUNTER && tobj[spot_tile(k, 0)] >= 0 { continue }
         if o.state & OS_BROKEN != 0 { continue }
         let r = o.room as s32
         if own {
@@ -539,6 +948,7 @@ fn try_use(i: s32, use: s32, own: bool) -> bool {
             if r == 0 || rooms[r].flags & RF_VALID == 0 { continue }
             if rt == RT_GUEST || rt == RT_SUITE { continue }
             if !use_room_ok(use, rt) { continue }
+            if rt_only >= 0 && rt != rt_only { continue }
         }
         let d = abs(o.x as s32 - px) + abs(o.z as s32 - pz) + abs(o.f as s32 - p.f as s32) * 24
         if d < bd {
@@ -550,12 +960,12 @@ fn try_use(i: s32, use: s32, own: bool) -> bool {
         // only a broken one around?
         return false
     }
-    let o = &objs[best]
-    o.user = i as s16
-    p.obj = best as s16
-    p.act = use as u8
+    let s = free_spot(best)
+    if s < 0 { return false }
+    claim_spot(i, best, s)
+    p.act = act as u8
     p.state = GS_GOTO as u8
-    go_to(i, spot_tile(best, rnd(max(OBJ_NSPOT[o.t as s32] as s32, 1))))
+    go_to(i, spot_tile(best, s))
     return true
 }
 
@@ -637,13 +1047,24 @@ fn start_use(i: s32) {
     let p = &people[i]
     let use = p.act as s32
     if use == 200 {
-        // jump into the pool
+        // hop into the pool
         p.sfrom = p.tile
-        place_at(i, p.sto as s32)
-        p.pose = POSE_SWIM as u8
         p.state = GS_SWIM as u8
         p.timer = (MIN_FRAMES * 40) as s16
+        script_move(i, M_HOP, tile_cx(p.sto as s32), tile_cz(p.sto as s32), 14)
+        p.dir = dir_toward(p.x, p.z, p.ex, p.ez) as u8
+        p.hold = 0
         fx_at(FX_SPLASH, p.f as s32)
+        return
+    }
+    if use == 202 {
+        // having a look at something (or people-watching), a few minutes
+        let oi = p.obj as s32
+        if oi >= 0 && objs[oi].used != 0 { face_obj(i, oi) }
+        p.obj = -1
+        p.state = GS_USE as u8
+        p.pose = POSE_STAND as u8
+        p.timer = (MIN_FRAMES * (6 + rnd(12))) as s16
         return
     }
     if use == USE_NONE {
@@ -661,19 +1082,22 @@ fn start_use(i: s32) {
         p.state = GS_IDLE as u8
         return
     }
-    // face the object
+    // face the object (or, on a seat, away from it), and settle onto it
     face_obj(i, oi)
     p.pose = POSE_USE as u8
     if use == USE_SLEEP || use == USE_LOUNGE || use == USE_MASSAGE { p.pose = POSE_LIE as u8 }
     if use == USE_SIT || use == USE_EAT || use == USE_DRINK || use == USE_WORK || use == USE_MODEM || use == USE_TV ||
        use == USE_MEET || use == USE_PHONE { p.pose = POSE_SIT as u8 }
     if use == USE_HOTTUB || use == USE_SAUNA { p.pose = POSE_SWIM as u8 }
+    if use == USE_DRINK && objs[oi].t as s32 == OB_BAR_COUNTER { p.pose = POSE_STAND as u8 }
+    if use == USE_SIT { face_front(i, oi) }
+    seat_for(i, oi, max(p.spot as s32, 0), use)
     p.timer = use_time(use)
     if use == USE_SLEEP && p.room >= 0 {
         let h = hour()
         if h >= 20 || h < 6 {
-            // until 7:00
-            var mins = 7 * 60 - minute()
+            // until morning (some are early birds, some lie in)
+            var mins = 6 * 60 + 15 + (i * 37 + day * 11) % 135 - minute()
             if mins < 0 { mins += DAY_MIN }
             p.timer = min(mins * MIN_FRAMES, 32000) as s16
         }
@@ -702,8 +1126,58 @@ fn start_use(i: s32) {
     p.state = GS_USE as u8
 }
 
+// Where a person using spot s of object oi sits or lies: people_vis (ox, oz) eases there.
+// Lying: along the middle of the bed (lounger, massage bed) column beside the spot. Sitting: part
+// of the way from the spot onto the object (a sofa seat, a chair at a table).
+fn seat_for(i: s32, oi: s32, s: s32, use: s32) {
+    let p = &people[i]
+    let o = &objs[oi]
+    let t = o.t as s32
+    let lx = OBJ_SPOT[(t * 5 + s) * 2] as s32
+    let lz = OBJ_SPOT[(t * 5 + s) * 2 + 1] as s32
+    let w = OBJ_W[t] as s32
+    let d = OBJ_D[t] as s32
+    let u = clamp(lx, 0, w - 1)
+    let v = clamp(lz, 0, d - 1)
+    var su = fixed(lx)
+    var sv = fixed(lz)
+    var pull = 0.0
+    var lie = p.pose as s32 == POSE_LIE
+    match use {
+        1, 11, 12 => lie = true
+        30 => pull = 0.62
+        6 => pull = 0.28
+        33, 13 => pull = 0.7
+        7 => { if t == OB_BAR_COUNTER { pull = 0.1 } else if OBJ_USE[t] as s32 == USE_EAT { pull = 0.28 } }
+        9, 10, 31, 8 => pull = 0.2
+        else => pull = 0.0
+    }
+    if lie {
+        su = fixed(u)
+        sv = fixed(d - 1) / 2
+    } else {
+        su = su + (fixed(u) - su) * pull
+        sv = sv + (fixed(v) - sv) * pull
+    }
+    obj_local_pt(oi, su, sv)
+    p.sox = lp_x - p.x
+    p.soz = lp_z - p.z
+}
+
+// Faces the way object oi faces (sitting on it).
+fn face_front(i: s32, oi: s32) {
+    let p = &people[i]
+    obj_local_pt(oi, 0.0, 0.0)
+    let x0 = lp_x
+    let z0 = lp_z
+    obj_local_pt(oi, 0.0, 1.0)
+    p.dir = dir_toward(x0, z0, lp_x, lp_z) as u8
+    p.hold = 0
+}
+
 fn face_obj(i: s32, oi: s32) {
     let p = &people[i]
+    p.hold = 0
     let c = obj_centre(oi)
     let dx = c.x - p.x
     let dz = c.z - p.z
@@ -733,7 +1207,12 @@ fn finish_use(i: s32) {
     let oi = p.obj as s32
     let gt = p.type as s32
     match use {
-        1 => { p.needs[N_SLEEP] = 255; p.needs[N_HYGIENE] = sat_sub(p.needs[N_HYGIENE], 40) }
+        1 => {
+            p.needs[N_SLEEP] = 255
+            p.needs[N_HYGIENE] = sat_sub(p.needs[N_HYGIENE], 40)
+            // a good night's sleep in a clean, quiet room
+            if hour() >= 6 && hour() < 11 && p.complaints & (CP_NOISE | CP_DIRTY) == 0 { praise(i, PR_ROOM, 5) }
+        }
         2 => p.needs[N_HYGIENE] = sat_add(p.needs[N_HYGIENE], 50)
         3 => p.needs[N_HYGIENE] = sat_add(p.needs[N_HYGIENE], 40)
         4, 5 => p.needs[N_HYGIENE] = 255
@@ -744,10 +1223,11 @@ fn finish_use(i: s32) {
         7 => {
             p.needs[N_FUN] = sat_add(p.needs[N_FUN], 110)
             p.needs[N_HUNGER] = sat_add(p.needs[N_HUNGER], 40)
-            earn_from(i, LG_BAR, 9)
+            earn_from(i, LG_BAR, ECO_DRINK)
             if gt == GT_ROCKSTAR { praise(i, PR_ROCK, 15) } else { praise(i, PR_BAR, 6) }
         }
         8, 16, 30, 34 => p.needs[N_FUN] = sat_add(p.needs[N_FUN], 100)
+        202 => p.needs[N_FUN] = sat_add(p.needs[N_FUN], 45)
         9 => p.needs[N_FUN] = sat_add(p.needs[N_FUN], 70)
         10 => {
             p.needs[N_FUN] = sat_add(p.needs[N_FUN], 120)
@@ -760,12 +1240,12 @@ fn finish_use(i: s32) {
         12 => {
             p.needs[N_FUN] = 255
             p.needs[N_HYGIENE] = sat_add(p.needs[N_HYGIENE], 50)
-            earn_from(i, LG_SPA, 85)
+            earn_from(i, LG_SPA, ECO_MASSAGE)
             praise(i, PR_SPA, 15)
         }
         13, 33 => {
             p.needs[N_FUN] = sat_add(p.needs[N_FUN], 150)
-            earn_from(i, LG_SPA, 20)
+            earn_from(i, LG_SPA, ECO_HOTTUB)
             praise(i, PR_SPA, 6)
         }
         14 => {
@@ -774,11 +1254,11 @@ fn finish_use(i: s32) {
         }
         15 => {
             p.needs[N_FUN] = sat_add(p.needs[N_FUN], 90)
-            earn_from(i, LG_OTHER, 60)
+            earn_from(i, LG_OTHER, ECO_MEETING)
         }
         17 => {
             p.needs[N_HUNGER] = sat_add(p.needs[N_HUNGER], 80)
-            earn_from(i, LG_FOOD, 2)
+            earn_from(i, LG_FOOD, ECO_SNACK)
         }
         18 => {
             p.needs[N_HUNGER] = sat_add(p.needs[N_HUNGER], 30)
@@ -786,7 +1266,7 @@ fn finish_use(i: s32) {
         }
         32 => {
             p.needs[N_HUNGER] = sat_add(p.needs[N_HUNGER], 60)
-            earn_from(i, LG_FOOD, 8)
+            earn_from(i, LG_FOOD, ECO_MINIBAR)
             // rock stars trash the minibar
             if gt == GT_ROCKSTAR && oi >= 0 && rnd(3) == 0 { break_obj(oi) }
         }
@@ -801,6 +1281,12 @@ fn finish_use(i: s32) {
     p.pose = POSE_STAND as u8
     p.state = GS_IDLE as u8
     p.act = 0
+    // the companion gets up too
+    let c = p.party as s32
+    if c >= 0 && people[c].used != 0 && people[c].party as s32 == i && people[c].obj as s32 == oi {
+        release_obj(c)
+        people[c].pose = POSE_STAND as u8
+    }
 }
 
 fn sat_add(v: u8, k: s32) -> u8 { return min(v as s32 + k, 255) as u8 }
@@ -839,12 +1325,14 @@ fn start_checkout(i: s32) {
     p.state = GS_CHECKOUT as u8
     p.act = 0
     p.pose = POSE_STAND as u8
+    p.timer = 0
+    p.ht = 0
     if d < 0 {
         pay_bill(i)
         guest_leave(i)
         return
     }
-    go_to(i, spot_tile(d, 0))
+    queue_join(i, d)
 }
 
 fn pay_bill(i: s32) {
@@ -876,7 +1364,7 @@ fn write_review(i: s32) {
     let p = &people[i]
     if p.state as s32 == GS_FOLLOW { return }
     if p.spent == 0 && p.complaints & CP_RECEPTION == 0 { return }
-    var s10 = 30 + p.mood as s32 / 3
+    var s10 = ECO_REVIEW_BASE + p.mood as s32 / 3
     // needs left unmet sour the stay
     for k in 0..4 { if p.needs[k] < 60 { s10 -= 4 } }
     let st = clamp((s10 + 5) / 10, 1, 5)
@@ -936,7 +1424,7 @@ fn guest_minute(i: s32) {
     if p.act as s32 != USE_SLEEP && (tod / MIN_FRAMES + i) % every == 0 { p.needs[N_SLEEP] = sat_sub(p.needs[N_SLEEP], 1) }
     if rnd(3) != 0 && p.act as s32 != USE_SLEEP { p.needs[N_HUNGER] = sat_sub(p.needs[N_HUNGER], 1) }
     if rnd(3) == 0 { p.needs[N_HYGIENE] = sat_sub(p.needs[N_HYGIENE], 1) }
-    if p.act as s32 != USE_SLEEP { p.needs[N_FUN] = sat_sub(p.needs[N_FUN], 1) }
+    if p.act as s32 != USE_SLEEP && (tod / MIN_FRAMES + i) % 3 != 0 { p.needs[N_FUN] = sat_sub(p.needs[N_FUN], 1) }
     // grand spaces lift the mood: standing under an atrium
     if p.f as s32 + 1 < NFL && p.state as s32 != GS_LEAVE {
         let t = p.tile as s32 + NT

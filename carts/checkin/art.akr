@@ -9,31 +9,32 @@ embed ART_TEX2: u8 = "art/tex2.bin"
 embed ART_TEX3: u8 = "art/tex3.bin"
 embed ART_TEX4: u8 = "art/tex4.bin"
 embed ART_TEX5: u8 = "art/tex5.bin"
+embed ART_TEX6: u8 = "art/tex6.bin"
 embed ART_TEX7: u8 = "art/tex7.bin"
 embed ART_TEX8: u8 = "art/tex8.bin"
 embed ART_TEX9: u8 = "art/tex9.bin"
 embed ART_TEX10: u8 = "art/tex10.bin"
-const ART_NTEX = 10
-const ART_TEX_SLOTS: [10]u8 = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10]   // the slots of ART_TEX<n>
-// slot 0 surfaces; 2, 3, 4, 5 baked objects; 7..9 people; 10 build-menu icons and UI
+const ART_NTEX = 11
+const ART_TEX_SLOTS: [11]u8 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]   // the slots of ART_TEX<n>
+// slot 0 surfaces; 2, 3, 4, 5, 6 baked objects; 7..9 people; 10 build-menu icons and UI
 
 // ---- palettes (16 15-bit colours each)
 embed ART_PAL: u16 = "art/palettes.bin"       // palettes 0..159 contiguous (unused ones black)
-embed ART_PAL_OBJ: u16 = "art/pal_obj.bin"     // palettes 0..82: objects and surfaces
+embed ART_PAL_OBJ: u16 = "art/pal_obj.bin"     // palettes 0..84: objects and surfaces
 embed ART_PAL_PPL: u16 = "art/pal_ppl.bin"     // palettes 96..119: people
 embed ART_PAL_UI: u16 = "art/pal_ui.bin"       // palettes 128..141: icons and UI
 embed ART_PAL_NIGHT: u16 = "art/pal_night.bin" // night versions of ART_GLOW_PALS (16 colours each)
 embed ART_PAL_DAY: u16 = "art/pal_day.bin"     // day versions of ART_GLOW_PALS
 embed ART_PAL_WATER: u16 = "art/pal_water.bin" // ART_WATER_PALS x 4 animation frames x 16 colours
-const ART_PAL_OBJ_COUNT = 83
+const ART_PAL_OBJ_COUNT = 85
 const ART_PAL_PPL_COUNT = 24
 const ART_PAL_UI_COUNT = 14
-const ART_GLOW_COUNT = 18
-const ART_GLOW_PALS: [18]u8 = [56, 57, 58, 60, 61, 62, 63, 66, 67, 69, 70, 71, 74, 75, 76, 79, 80, 81]   // palettes with colours that glow at night
+const ART_GLOW_COUNT = 21
+const ART_GLOW_PALS: [21]u8 = [48, 50, 52, 56, 57, 58, 60, 61, 62, 63, 66, 67, 69, 70, 71, 74, 75, 76, 79, 80, 81]   // palettes with colours that glow at night
 const ART_WATER_COUNT = 2
 const ART_WATER_PALS: [2]u8 = [29, 30]
 // relighting class of palettes 0..127: 0 interior, 1 exterior, 2 water (cycled), 3 never relit
-const ART_PAL_CLASS: [128]u8 = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+const ART_PAL_CLASS: [128]u8 = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 // bit i set: colour i of the palette glows at night (window glass, lamp shades, screens)
 const ART_PAL_EMIT: [128]u16 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15872, 15872, 15872, 15872, 15872, 15872, 0, 0, 61440, 61440, 61440, 0, 61440, 61440, 61440, 61440, 0, 0, 49152, 61440, 0, 61440, 61440, 32768, 0, 0, 61440, 61440, 61440, 0, 0, 61440, 61440, 61440, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
@@ -121,6 +122,8 @@ const ART_PAL_GRP_LIFT = 79
 const ART_PAL_GRP_GRAND = 80
 const ART_PAL_GRP_ATRIUM = 81
 const ART_PAL_GRP_TREE = 82
+const ART_PAL_FLAT_IN = 83
+const ART_PAL_FLAT_OUT = 84
 const ART_PAL_PPL_RECEPTIONIST = 96
 const ART_PAL_PPL_RECEPTIONIST_F = 97
 const ART_PAL_PPL_HOUSEKEEPER = 98
@@ -948,6 +951,12 @@ const ART_PERSON_SLOT: [23]u8 = [7, 7, 7, 8, 7, 7, 7, 8, 8, 8, 7, 7, 7, 7, 7, 7,
 const ART_PERSON_U: [23]u8 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 const ART_PERSON_V: [23]u8 = [0, 96, 96, 96, 0, 0, 96, 0, 0, 0, 0, 0, 96, 0, 96, 0, 0, 0, 0, 96, 0, 96, 96]
 const ART_PERSON_PAL: [23]u8 = [96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118]
+// the zoomed-out frames: 12x16, same frames and directions, same slot and palette, at
+//   u = ART_PERSON_MU[k] + f * 12, v = ART_PERSON_MV[k] + d * 16 (drawn 1:1 at zoom 0)
+const ART_MINI_W = 12
+const ART_MINI_H = 16
+const ART_PERSON_MU: [23]u8 = [144, 144, 144, 144, 144, 144, 144, 144, 144, 144, 144, 144, 144, 144, 144, 144, 144, 144, 144, 144, 144, 144, 144]
+const ART_PERSON_MV: [23]u8 = [0, 64, 64, 64, 0, 0, 64, 0, 0, 0, 0, 0, 64, 0, 64, 0, 0, 0, 0, 64, 0, 64, 64]
 // staff roles -> person kind, and per role: sheet slot, U0/V0 (frame 0, direction 0), palette
 const ART_STAFF_RECEPTIONIST = 0
 const ART_PPL_RECEPTIONIST_SLOT = 7
@@ -1242,3 +1251,41 @@ const ART_UI_FAST_PAL = 139
 
 // ---- memory card title and icon (3 frames: the hotel's neon sign blinks)
 embed ART_SAVE_ICON: SaveMeta = "art/save_icon.bin"
+
+// ---- flat colours: solid 8x8 cells in slot 6 (ART_SOLID_U + index * 8, ART_SOLID_V), drawn
+// with ART_PAL_FLAT_IN (lit like the interior) or ART_PAL_FLAT_OUT (lit by the sky)
+const ART_SOLID_SLOT = 6
+const ART_SOLID_U = 128
+const ART_SOLID_V = 192
+const ART_FLAT_WALL_FACE = 1
+const ART_FLAT_WALL_SIDE = 2
+const ART_FLAT_CAP = 3
+const ART_FLAT_THRESHOLD = 4
+const ART_FLAT_JAMB = 5
+const ART_FLAT_RAIL = 6
+const ART_FLAT_RAIL_POST = 7
+const ART_FLAT_RAIL_GLASS = 8
+const ART_FLAT_RAIL_GLASS_DK = 9
+const ART_FLAT_CAB = 10
+const ART_FLAT_CAB_SIDE = 11
+const ART_FLAT_CAB_DARK = 12
+const ART_FLAT_BACK_CAP = 13
+const ART_FLAT_GLOW = 14
+const ART_FLAT_SPARE = 15
+const ART_FLAT_SEA = 1
+const ART_FLAT_SAND = 2
+const ART_FLAT_GRASS = 3
+const ART_FLAT_PAVEMENT = 4
+const ART_FLAT_ROAD = 5
+const ART_FLAT_TOWN = 6
+const ART_FLAT_SLAB = 7
+const ART_FLAT_SLAB_SIDE = 8
+const ART_FLAT_HEDGE = 9
+const ART_FLAT_HEDGE_TOP = 10
+const ART_FLAT_CURB = 11
+const ART_FLAT_CURB_SIDE = 12
+const ART_FLAT_MARKING = 13
+const ART_FLAT_TOWN_DK = 14
+const ART_FLAT_SPARE2 = 15
+// the zoomed-out floor blocks: slot 6, at the same u, v as the ART_FLOOR4_* blocks in slot 0
+const ART_FLOOR4_LO_SLOT = 6

@@ -74,6 +74,7 @@ fn script_from(tab: *s32, n: s32, f: s32) -> u32 {
 fn scen_hotel(level: s32) {
     s_demo_hotel(level)
     rooms_update()
+    rooms_finish()
     tod = 13 * 60 * MIN_FRAMES
     s_demo_staff()
     stars = 1
@@ -89,6 +90,7 @@ fn scen_grand(f: s32, guests: s32, h: s32) {
     stars = 5
     reputation = 100
     rooms_update()
+    rooms_finish()
     s_fill_guests(guests)
     view_floor = f
     cur_x = 15.0
@@ -113,7 +115,7 @@ fn test_hook(f: s32) {
         cpu_sum += u / 10
         cpu_n += 1
     }
-    if scen_t % 120 == 0 {
+    if scen_t % 120 == 0 && SCENARIO != 424 {
         print("t=")
         print_int(scen_t)
         print(" cpu ")

@@ -870,142 +870,229 @@ def floor_block(name, i, img):
     FLOOR4[name] = cell(0, 'f4_' + name, u, v, img)
 
 
-# carpet: cut-pile weave, a diamond lattice every 2 tiles, medallions and dots (base 1..9, motif 10..13)
-n = pnoise(301, ((8, 0.4), (16, 0.35), (32, 0.25)))
-img = quant(n * 0.5 + 0.25 + 0.10 * (((xb + yb) % 2) == 0), 1, 9)
+# "Calm & clean" (POLISH.md section 3): every floor block is a quiet, low-contrast pattern. Each
+# palette index has a fixed brightness factor (FLOOR_FACTORS) and the floor palettes are built in
+# finish() as base colour x factor (CALM_FLOORS), so a pattern stays within about +-8% of one hue,
+# motifs are tone-on-tone and grout or plank lines are at most 12% darker. No single-texel speckle:
+# the structure only uses smooth noise (the old per-texel grit is gone; the shared RNG is still
+# advanced as before, so everything generated after the floors stays the same).
+_rng_floors = RNG.bit_generator.state
+FR = np.random.default_rng(4321)
+FLOOR_FACTORS = {}  # block name -> 16 brightness factors (index 0 unused)
+
+
+def factors(spec):
+    """{index or (lo, hi) range: factor or (f_lo, f_hi)} -> 16 factors (unlisted: 1.0)."""
+    f = [1.0] * 16
+    for k, v in spec.items():
+        if isinstance(k, tuple):
+            lo, hi = k
+            for i in range(lo, hi + 1):
+                t = (i - lo) / max(1, hi - lo)
+                f[i] = v[0] + (v[1] - v[0]) * t if isinstance(v, tuple) else v
+        else:
+            f[k] = v
+    return f
+
+
+# carpet: a soft cut-pile mottle (1..9) and a tone-on-tone diamond lattice every 2 tiles (10, 11)
+n = pnoise(301, ((4, 0.45), (8, 0.35), (16, 0.2)))
+img = quant(n * 0.9 + 0.05, 1, 9)
 dx, dy = (xb % 32) - 15.5, (yb % 32) - 15.5
 d = np.abs(dx) + np.abs(dy)
 img[(d > 14.4) & (d < 15.6)] = 10
-img[(d > 5.4) & (d < 6.6)] = 11
-img[d < 2.2] = 12
-cdist = np.abs(((xb + 16) % 32) - 15.5) + np.abs(((yb + 16) % 32) - 15.5)
-img[cdist < 1.6] = 13
+img[(d > 5.5) & (d < 6.5)] = 11
 floor_block('carpet', 0, img)
+FLOOR_FACTORS['carpet'] = factors({(1, 9): (0.955, 1.035), 10: 0.94, 11: 1.03})
 
-# tile: one 16x16 tile per world tile; A/B ranges alternate (a palette can make a checkerboard)
+# tile: one 16x16 tile per world tile, a soft bevel (light top-left, shade bottom-right) and grout.
+# The A (2..7) and B (8..13) ranges alternate; the calm palettes make them almost equal.
 img = np.zeros((B4, B4), np.uint8)
-n = pnoise(302, ((4, 0.6), (16, 0.4)))
+n = pnoise(302, ((4, 0.6), (8, 0.4)))
 for ty in range(4):
     for tx in range(4):
         bse = 2 if (tx + ty) % 2 == 0 else 8
         sl = (slice(ty * 16, ty * 16 + 16), slice(tx * 16, tx * 16 + 16))
-        img[sl] = quant(n[sl] * 0.6 + 0.2, bse + 1, bse + 4)
+        img[sl] = quant(n[sl] * 0.8 + 0.1, bse + 1, bse + 4)
         img[ty * 16 + 1, tx * 16 + 1:tx * 16 + 15] = bse + 5
         img[ty * 16 + 1:ty * 16 + 15, tx * 16 + 1] = bse + 5
-        img[ty * 16 + 14, tx * 16 + 2:tx * 16 + 15] = bse
-        img[ty * 16 + 2:ty * 16 + 15, tx * 16 + 14] = bse
+        img[ty * 16 + 15, tx * 16 + 1:tx * 16 + 16] = bse
+        img[ty * 16 + 1:ty * 16 + 16, tx * 16 + 15] = bse
 img[0::16, :] = 1
 img[:, 0::16] = 1
 floor_block('tile', 1, img)
+FLOOR_FACTORS['tile'] = factors({1: 0.885, 2: 0.955, (3, 6): (0.98, 1.02), 7: 1.03,
+                                 8: 0.95, (9, 12): (0.975, 1.015), 13: 1.025})
 
-# wood: planks along x, 4 texels wide (4 per tile), staggered butt joints
+# wood: planks along x, 4 texels wide (4 per tile), a slight tone per plank, dark joints and
+# staggered butt joints
 img = np.zeros((B4, B4), np.uint8)
-g = pnoise(303, ((2, 0.25), (32, 0.75)))
+g = pnoise(303, ((2, 0.3), (16, 0.7)))
 for b in range(16):
-    shade = ((b * 7) % 5) * 0.06
+    shade = ((b * 7) % 5) * 0.07
     for y in range(b * 4, b * 4 + 4):
-        row = g[y] * 0.45 + 0.2 + shade + 0.06 * np.sin(np.arange(B4) * 2 * np.pi / 32 * 3 + b * 1.7)
+        row = g[y] * 0.5 + 0.12 + shade + 0.05 * np.sin(np.arange(B4) * 2 * np.pi / 32 * 3 + b * 1.7)
         img[y] = quant(row, 3, 12)
     img[b * 4 + 3, :] = 2
-    img[b * 4, :] = np.maximum(img[b * 4, :], 11)
     for j in ((b * 23) % B4, (b * 23 + 37) % B4):
         img[b * 4:b * 4 + 3, j] = 2
 floor_block('wood', 2, img)
+FLOOR_FACTORS['wood'] = factors({2: 0.89, (3, 12): (0.92, 1.08)})
 
-# marble: one slab per tile, clouding and thin veins crossing slabs, thin joints
+# marble: one slab per tile, faint clouding, soft veins crossing slabs, thin joints
 n = pnoise(304, ((4, 0.5), (8, 0.3), (16, 0.2)))
 w = pnoise(305, ((4, 0.6), (8, 0.4)))
 vv = np.abs(((w * 2.4 + xb * 0.008 + yb * 0.012) % 1.0) - 0.5)
-img = quant(0.5 + 0.4 * n, 6, 13)
+img = quant(n * 0.9 + 0.05, 6, 12)
 img[vv < 0.03] = 5
 img[vv < 0.012] = 4
 img[0::16, :] = 2
 img[:, 0::16] = 2
-img[1::16, :] = np.maximum(img[1::16, :], 13)
+img[1::16, 1:] = np.maximum(img[1::16, 1:], 13)
 floor_block('marble', 3, img)
+FLOOR_FACTORS['marble'] = factors({2: 0.92, 4: 0.93, 5: 0.96, (6, 12): (0.975, 1.02), 13: 1.03})
 
-# terrazzo
+# terrazzo: a smooth ground with sparse soft chips (+-4%) and a divider every 2 tiles
 n = pnoise(306, ((8, 0.5), (16, 0.5)))
-img = quant(n * 0.3 + 0.55, 8, 12)
-ch = RNG.random((B4, B4))
-img[ch > 0.93] = 3
-img[(ch > 0.88) & (ch <= 0.93)] = 14
-img[(ch > 0.86) & (ch <= 0.88)] = 5
+img = quant(n * 0.8 + 0.1, 8, 12)
+ch = FR.random((B4, B4))
+img[ch > 0.975] = 3
+img[(ch > 0.955) & (ch <= 0.975)] = 14
 img[0::32, :] = 4
 img[:, 0::32] = 4
 floor_block('terrazzo', 4, img)
+FLOOR_FACTORS['terrazzo'] = factors({3: 0.965, 4: 0.92, (8, 12): (0.98, 1.02), 14: 1.035})
 
-# concrete: smooth, a few stains, joints every 2 tiles
-n = pnoise(307, ((4, 0.5), (16, 0.3), (32, 0.2)))
-img = quant(n * 0.35 + 0.45 + RNG.random((B4, B4)) * 0.06, 4, 11)
+# concrete: smooth, faint clouding, joints every 2 tiles
+n = pnoise(307, ((4, 0.5), (8, 0.3), (16, 0.2)))
+img = quant(n * 0.9 + 0.05, 4, 11)
 img[0::32, :] = 2
 img[:, 0::32] = 2
-img[1::32, :] = np.maximum(img[1::32, :], 12)
+img[1::32, 1:] = np.maximum(img[1::32, 1:], 12)
 floor_block('concrete', 5, img)
+FLOOR_FACTORS['concrete'] = factors({2: 0.9, (4, 11): (0.955, 1.035), 12: 1.035})
 
-# deck: boards along x, 3 texels + gap, screws
+# deck: boards along x, 3 texels + gap, a tone per board, screws
 img = np.zeros((B4, B4), np.uint8)
-g = pnoise(308, ((2, 0.3), (32, 0.7)))
+g = pnoise(308, ((2, 0.3), (16, 0.7)))
 for b in range(16):
     y0 = b * 4
     for y in range(y0, y0 + 3):
-        img[y] = quant(g[y] * 0.5 + 0.25 + 0.05 * ((b * 3) % 4), 4, 13)
+        img[y] = quant(g[y] * 0.5 + 0.2 + 0.07 * ((b * 3) % 4), 4, 13)
     img[y0 + 3, :] = 1
     for j in ((b * 29) % B4, (b * 29 + 32) % B4):
         img[y0:y0 + 3, j] = 2
 floor_block('deck', 6, img)
+FLOOR_FACTORS['deck'] = factors({1: 0.86, 2: 0.9, (4, 13): (0.93, 1.07)})
 
-# sand: grain, ripples, the odd shell
-n = pnoise(309, ((8, 0.5), (32, 0.5)))
-rip = 0.07 * np.sin((yb + 4 * np.sin(xb * 2 * np.pi / 64)) * 2 * np.pi / 16)
-img = quant(n * 0.5 + 0.25 + rip + RNG.random((B4, B4)) * 0.14, 3, 13)
-img[RNG.random((B4, B4)) > 0.995] = 15
+# sand: soft grain clouds and faint ripples (no shells)
+n = pnoise(309, ((4, 0.4), (8, 0.35), (16, 0.25)))
+rip = 0.06 * np.sin((yb + 4 * np.sin(xb * 2 * np.pi / 64)) * 2 * np.pi / 16)
+img = quant(n * 0.8 + 0.1 + rip, 3, 13)
 floor_block('sand', 7, img)
+FLOOR_FACTORS['sand'] = factors({(3, 13): (0.95, 1.05)})
 
-# grass: tufts and a few daisies
-n = pnoise(310, ((8, 0.5), (16, 0.3), (32, 0.2)))
-img = quant(n * 0.7 + RNG.random((B4, B4)) * 0.25, 2, 12)
-img[RNG.random((B4, B4)) > 0.985] = 14
+# grass: soft tufts (no daisies)
+n = pnoise(310, ((4, 0.4), (8, 0.35), (16, 0.25)))
+img = quant(n * 0.85 + 0.05 + FR.random((B4, B4)) * 0.1, 2, 12)
 floor_block('grass', 8, img)
+FLOOR_FACTORS['grass'] = factors({(2, 12): (0.93, 1.06)})
 
-# road: asphalt with fine grit and tar seams
-n = pnoise(311, ((8, 0.4), (32, 0.6)))
-img = quant(n * 0.3 + 0.35 + RNG.random((B4, B4)) * 0.2, 2, 11)
+# road: smooth asphalt and a tar seam
+n = pnoise(311, ((4, 0.4), (16, 0.6)))
+img = quant(n * 0.85 + 0.05, 2, 11)
 img[(np.abs(xb - 20 - 6 * np.sin(yb * 2 * np.pi / 64)) < 0.6)] = 1
 floor_block('road', 9, img)
+FLOOR_FACTORS['road'] = factors({1: 0.88, (2, 11): (0.95, 1.05)})
 
-# sidewalk / pavement: slabs (one per tile), slight per-slab tone
+# sidewalk / pavement: slabs (one per tile), a faint tone per slab, joints
 img = np.zeros((B4, B4), np.uint8)
-n = pnoise(312, ((8, 0.5), (32, 0.5)))
+n = pnoise(312, ((8, 0.5), (16, 0.5)))
 for ty in range(4):
     for tx in range(4):
         sl = (slice(ty * 16, ty * 16 + 16), slice(tx * 16, tx * 16 + 16))
-        img[sl] = quant(n[sl] * 0.35 + 0.42 + ((tx * 3 + ty * 5) % 4) * 0.03, 5, 11)
+        img[sl] = quant(n[sl] * 0.6 + 0.2 + ((tx * 3 + ty * 5) % 4) * 0.05, 5, 11)
 img[0::16, :] = 2
 img[:, 0::16] = 2
-img[1::16, :] = np.maximum(img[1::16, :], 13)
+img[1::16, 1:] = np.maximum(img[1::16, 1:], 13)
 floor_block('pavement', 10, img)
+FLOOR_FACTORS['pavement'] = factors({2: 0.9, (5, 11): (0.965, 1.03), 13: 1.035})
 
-# water: indices 1..12 hold a phase (palette cycling animates them), 13..15 highlights
+# water: indices 1..12 hold a phase (palette cycling animates them), 13 rare soft caustic lines
 wave = (np.sin(xb * 2 * np.pi / 64 * 2) * 0.12 + np.sin(yb * 2 * np.pi / 64 * 3 + xb * 0.1) * 0.1)
-n = pnoise(313, ((4, 0.4), (8, 0.4), (16, 0.2)))
-img = (1 + np.floor(((n * 2.0 + wave) % 1.0) * 12)).astype(np.uint8)
-cn = pnoise(314, ((8, 0.6), (16, 0.4)))
-img[np.abs(cn - 0.5) < 0.03] = 14
-img[np.abs(cn - 0.5) < 0.01] = 15
+n = pnoise(313, ((4, 0.5), (8, 0.5)))
+img = (1 + np.floor(((n * 1.6 + wave) % 1.0) * 12)).astype(np.uint8)
+cn = pnoise(314, ((4, 0.6), (8, 0.4)))
+img[np.abs(cn - 0.5) < 0.012] = 13
 floor_block('pool_water', 11, img)
 
-n = pnoise(315, ((4, 0.4), (8, 0.4), (16, 0.2)))
-img = (1 + np.floor(((n * 1.5 + (yb / 64.0) * 2 + 0.1 * np.sin(xb * 2 * np.pi / 32)) % 1.0) * 12)).astype(np.uint8)
-crest = np.sin((yb * 2 * np.pi / 16) + np.sin(xb * 2 * np.pi / 64) * 1.5) > 0.94
-img[crest] = 14
-img[crest & (RNG.random((B4, B4)) > 0.5)] = 15
+n = pnoise(315, ((4, 0.5), (8, 0.5)))
+img = (1 + np.floor(((n * 1.2 + (yb / 64.0) * 2 + 0.1 * np.sin(xb * 2 * np.pi / 32)) % 1.0) * 12)).astype(np.uint8)
+crest = np.sin((yb * 2 * np.pi / 16) + np.sin(xb * 2 * np.pi / 64) * 1.5) > 0.975
+img[crest] = 13
 floor_block('sea', 12, img)
 
-# roof: gravel
-n = pnoise(316, ((16, 0.4), (32, 0.6)))
-img = quant(n * 0.5 + RNG.random((B4, B4)) * 0.5, 3, 12)
+# roof: smooth gravel clouds
+n = pnoise(316, ((8, 0.5), (16, 0.5)))
+img = quant(n * 0.8 + 0.1, 3, 12)
 floor_block('roof', 13, img)
+FLOOR_FACTORS['roof'] = factors({(3, 12): (0.94, 1.06)})
+
+# ---- the zoomed-out (and ghosted lower floor) versions: slot 6, at the same place as in slot 0,
+# same palettes. At zoom 0 a tile is 11 px for 16 texels, so these hold only an even tone plus at
+# most a two-texel-wide joint or plank hint: nothing that can alias into speckle.
+LO_BLOCKS = {}
+
+
+def lo_block(name, img):
+    c = FLOOR4[name]
+    LO_BLOCKS[name] = cell(6, 'f4lo_' + name, c.u, c.v, img)
+
+
+def lo_mottle(seed, lo, hi):
+    return quant(pnoise(seed, ((2, 0.6), (4, 0.4))) * 0.9 + 0.05, lo, hi)
+
+
+def lo_grid(base, line, step=16, w=2):
+    img = base.copy()
+    for k in range(0, B4, step):
+        for j in range(w):
+            img[(k + j - w // 2) % B4, :] = line
+            img[:, (k + j - w // 2) % B4] = line
+    return img
+
+
+lo_block('carpet', lo_mottle(401, 4, 6))
+lo_block('tile', lo_grid(np.full((B4, B4), 4, np.uint8), 2))
+img = np.full((B4, B4), 7, np.uint8)
+img[(yb // 8) % 2 == 1] = 8
+lo_block('wood', img)
+lo_block('marble', lo_grid(np.full((B4, B4), 9, np.uint8), 5))
+lo_block('terrazzo', lo_grid(np.full((B4, B4), 10, np.uint8), 8, step=32))
+lo_block('concrete', lo_grid(lo_mottle(402, 7, 8), 4, step=32))
+img = np.full((B4, B4), 8, np.uint8)
+img[(yb // 8) % 2 == 1] = 10
+lo_block('deck', img)
+lo_block('sand', lo_mottle(403, 7, 9))
+lo_block('grass', lo_mottle(404, 6, 8))
+lo_block('road', lo_mottle(405, 6, 7))
+lo_block('pavement', lo_grid(np.full((B4, B4), 8, np.uint8), 6))
+lo_block('roof', lo_mottle(406, 7, 8))
+n = pnoise(407, ((2, 0.6), (4, 0.4)))
+lo_block('pool_water', (1 + np.floor(((n * 1.0 + yb / 128.0) % 1.0) * 12)).astype(np.uint8))
+n = pnoise(408, ((2, 0.6), (4, 0.4)))
+lo_block('sea', (1 + np.floor(((n * 0.8 + yb / 64.0) % 1.0) * 12)).astype(np.uint8))
+
+# ---- solid cells (slot 6, row 192): 8x8 texels of one index each, for the flat-coloured parts of
+# the baked geometry (cut-away walls, caps, slab edges, railings, the ground around the lot). They
+# are drawn with the FLAT_IN / FLAT_OUT palettes, so the time of day relights them through the
+# palette and the static geometry never needs a rebuild for it.
+SOLID_U, SOLID_V = 128, 192
+for i in range(16):
+    cell(6, 'solid_%d' % i, SOLID_U + i * 8, SOLID_V, np.full((8, 8), i, np.uint8))
+
+RNG.bit_generator.state = _rng_floors
+RNG.random(9 * B4 * B4)          # what the old floors took
 
 FLOOR4_ALIAS = {'sidewalk': 'pavement', 'terracotta': 'tile'}
 
@@ -1026,11 +1113,16 @@ def base16(img):
     return img
 
 
-# paint (4..11 wall, 13 ceiling shadow, 14 baseboard, 15 baseboard edge)
+# paint (4..11 wall, 12 wainscot, 13 ceiling shadow and dado line, 14 baseboard, 15 its top edge):
+# a quiet wall over a slightly darker wainscot and a baseboard (POLISH.md A14)
 n = fbm(16, WH16, 321, ((2, 0.4), (4, 0.6)))
 img = quant(n * 0.25 + 0.55, 4, 11)
 img[0, :] = 13
-wall_cell('paint', 0, base16(img))
+img[29, :] = 13
+img[30:41, :] = 12
+img[41, :] = 15
+img[42:, :] = 14
+wall_cell('paint', 0, img)
 
 # wallpaper: stripes above a dado rail at 0.9, wainscot below (3..5 wood, 6 pin, 7..10, 13 rail)
 img = np.zeros((WH16, 16), np.uint8)
@@ -1179,7 +1271,7 @@ RAMPS = {
     'palm':     rp('061206', '1a4a1a', '4a8a2a', 'c8e880'),
     'terracotta': rp('2a0e06', '7a3418', 'c06a3a', 'f0b088'),
     'rubber':   rp('050506', '18181c', '34343c', '60606a'),
-    'glass':    rp('203040', '5a8098', 'a0d0e0', 'f0ffff'),
+    'glass':    rp('3a4a52', '7a949c', 'b8ccd0', 'f4fbfc'),     # pale, barely tinted (A6)
     'sand':     rp('6a5434', 'b49a6a', 'e0cc9a', 'fff4d8'),
     'grass':    rp('0e2a0a', '2a5a1a', '5a8e2e', 'b4d870'),
     'pavement': rp('3a3834', '7a7670', 'b0aca4', 'e8e4dc'),
@@ -1279,8 +1371,9 @@ def water_frames(name, deep, light, hi, frames=4):
     return n
 
 
-water_frames('pool_water', '1a7ab8', '5ad8f0', 'c8fcff')
-water_frames('sea', '0a3a7a', '2a7ac0', 'a8e0f8')
+# calm water (A16): a narrow, less saturated phase ramp; index 13 (the rare caustic lines) is the light
+water_frames('pool_water', '54a6ba', '74c2d2', 'a8dce6')
+water_frames('sea', '346f98', '4a8ab2', '8cbcd4')
 
 # paint (index 4..11 wall, 13 ceiling shadow, 14 baseboard, 15 baseboard edge)
 PAINTS = [('paint_white', 'e8e4dc'), ('paint_cream', 'f0dcb0'), ('paint_peach', 'f4b894'),
@@ -1336,7 +1429,7 @@ def facade_pals(name, stucco, frame, trim):
     nl = lambda c, k=0.42: (c[0] * k * 0.8, c[1] * k * 0.85, c[2] * k * 1.1)
     lit = [nl(c) for c in day[:8]] + ramp(['fff0b0', 'ffd070', 'f0a040', 'c87828'], 4) + [(255, 250, 220), nl(T), nl(T, 0.55)]
     dark = [nl(c) for c in day[:8]] + ramp(['2a3a5a', '1a2848', '101a34', '0a1028'], 4) + [(60, 80, 120), nl(T), nl(T, 0.55)]
-    bespoke(name, day, group='obj')
+    bespoke(name, day, night=lit, group='obj')       # windows glow at night (ART_PAL_EMIT, relit in-game)
     bespoke(name + '_lit', lit, group='obj')
 
 
@@ -1978,9 +2071,10 @@ def _():
 @obj('wardrobe', 1, 1)
 def _():
     b = B()
-    b.box(-0.45, 0.0, -0.32, 0.45, 0.10, 0.22, C('2a1a10'), skip='bt')
-    b.box(-0.46, 0.10, -0.34, 0.46, 1.96, 0.24, WAL, mats={'f': T('door', 'walnut', fit=True)}, skip='bt')
-    b.box(-0.49, 1.96, -0.36, 0.49, 2.04, 0.27, WAL)
+    # light oak and no taller than 1.5, so it does not wall the room in (POLISH.md A6)
+    b.box(-0.45, 0.0, -0.32, 0.45, 0.08, 0.22, C('6a5038'), skip='bt')
+    b.box(-0.46, 0.08, -0.34, 0.46, 1.40, 0.24, OAK, mats={'f': T('door', 'oak', fit=True)}, skip='bt')
+    b.box(-0.49, 1.40, -0.36, 0.49, 1.46, 0.27, OAK)
     return b.faces
 
 
@@ -2097,16 +2191,17 @@ def _():
 @obj('shower', 1, 1)
 def _():
     b = B()
+    # a pale tiled back, a thin light frame and pale glass, 1.55 tall (POLISH.md A6)
     b.box(-0.48, 0.0, -0.48, 0.48, 0.10, 0.48, PORC)
     b.flat(-0.42, -0.42, 0.42, 0.42, 0.101, C('c8d4dc'))
-    b.box(-0.48, 0.10, -0.48, 0.48, 2.2, -0.42, T('smalltile', 'aqua', dens=24), skip='b')
-    b.box(-0.03, 1.0, -0.42, 0.03, 1.95, -0.38, CHROME, skip='b')
-    b.box(-0.10, 1.90, -0.42, 0.10, 1.96, -0.22, CHROME)
-    b.panel(-0.48, 0.10, 0.48, 2.0, 0.47, GLASS)
-    b.panel_x(-0.42, 0.10, 0.48, 2.0, 0.47, GLASS)
-    b.box(-0.49, 2.0, 0.45, 0.49, 2.04, 0.49, CHROME)
-    b.box(0.45, 2.0, -0.42, 0.49, 2.04, 0.49, CHROME)
-    b.box(0.45, 0.10, 0.45, 0.49, 2.0, 0.49, CHROME, skip='bt')
+    b.box(-0.48, 0.10, -0.48, 0.48, 1.55, -0.42, T('smalltile', 'white', dens=24), skip='b')
+    b.box(-0.03, 0.9, -0.42, 0.03, 1.40, -0.38, CHROME, skip='b')
+    b.box(-0.10, 1.36, -0.42, 0.10, 1.41, -0.22, CHROME)
+    b.panel(-0.48, 0.10, 0.48, 1.50, 0.47, GLASS)
+    b.panel_x(-0.42, 0.10, 0.48, 1.50, 0.47, GLASS)
+    b.box(-0.49, 1.50, 0.46, 0.49, 1.53, 0.49, CHROME)
+    b.box(0.46, 1.50, -0.42, 0.49, 1.53, 0.49, CHROME)
+    b.box(0.46, 0.10, 0.46, 0.49, 1.50, 0.49, CHROME, skip='bt')
     return b.faces
 
 
@@ -3555,6 +3650,57 @@ for body, slot, u, v in (('man', 7, 0, 0), ('woman', 7, 0, 96), ('cap', 8, 0, 0)
     cell(slot, 'body_' + body, u, v, body_sheet(body))
     SHEETS[body] = (slot, u, v)
 
+# ---- the zoomed-out people: 12x16 frames drawn 1:1 at zoom 0 (POLISH.md A11), made from the 16x24
+# ones by a weighted vote per pixel (2/3 scale; eyes, accents and shoes count extra so faces and
+# uniforms survive), then outlined again. Same layout (9 frames x 4 directions), at u = 144.
+MF_W, MF_H = 12, 16
+_MINI_BOOST = {14: 2.2, 13: 1.4, 10: 1.3, 11: 1.3, 4: 1.15, 2: 1.1}
+
+
+def mini_frame(fr):
+    sw, sh = PF_W, PF_H
+    tw, th = 10, 16
+    out = np.zeros((MF_H, MF_W), np.uint8)
+    for ty in range(th):
+        y0, y1 = ty * sh / th, (ty + 1) * sh / th
+        for tx in range(tw):
+            x0, x1 = tx * sw / tw, (tx + 1) * sw / tw
+            wts = {}
+            cover = 0.0
+            for sy in range(int(y0), min(sh, int(math.ceil(y1)))):
+                oy = min(y1, sy + 1) - max(y0, sy)
+                for sx in range(int(x0), min(sw, int(math.ceil(x1)))):
+                    ox = min(x1, sx + 1) - max(x0, sx)
+                    w = ox * oy
+                    c = int(fr[sy, sx])
+                    if c:
+                        cover += w
+                        wts[c] = wts.get(c, 0.0) + w * _MINI_BOOST.get(c, 1.0)
+            if wts and cover >= 0.42 * (x1 - x0) * (y1 - y0):
+                out[ty, tx + 1] = max(wts, key=wts.get)
+    return out
+
+
+def mini_sheet(body):
+    sheet = np.zeros((4 * MF_H, MF_W * len(FRAMES)), np.uint8)
+    for d in range(4):
+        back = d >= 2
+        mirror = d in (1, 2)
+        for f, pose in enumerate(FRAMES):
+            fr = _person(body, back, pose, 0)
+            if mirror:
+                fr = fr[:, ::-1]
+            m = outline(mini_frame(fr))
+            sheet[d * MF_H:(d + 1) * MF_H, f * MF_W:(f + 1) * MF_W] = m
+    return sheet
+
+
+MINIS = {}
+for body, (slot, u, v) in SHEETS.items():
+    mv = 0 if v == 0 else 64
+    cell(slot, 'mini_' + body, 144, mv, mini_sheet(body))
+    MINIS[body] = (144, mv)
+
 # ---- carry props (16 x 16) and a shadow blob, slot 7 from row 192; one shared palette
 # indices: 1 outline, 2..4 white linen, 5..7 steel, 8 red, 9 dark red, 10 brown, 11 dark brown,
 # 12 food yellow, 13 food green, 14 gold, 15 white highlight
@@ -3732,6 +3878,12 @@ def people_decls(L):
     A('const ART_PERSON_U: [%d]u8 = [%s]' % (len(kinds), ', '.join(str(SHEETS[PERSON[k][0]][1]) for k in kinds)))
     A('const ART_PERSON_V: [%d]u8 = [%s]' % (len(kinds), ', '.join(str(SHEETS[PERSON[k][0]][2]) for k in kinds)))
     A('const ART_PERSON_PAL: [%d]u8 = [%s]' % (len(kinds), ', '.join(str(PERSON[k][1]) for k in kinds)))
+    A('// the zoomed-out frames: 12x16, same frames and directions, same slot and palette, at')
+    A('//   u = ART_PERSON_MU[k] + f * 12, v = ART_PERSON_MV[k] + d * 16 (drawn 1:1 at zoom 0)')
+    A('const ART_MINI_W = %d' % MF_W)
+    A('const ART_MINI_H = %d' % MF_H)
+    A('const ART_PERSON_MU: [%d]u8 = [%s]' % (len(kinds), ', '.join(str(MINIS[PERSON[k][0]][0]) for k in kinds)))
+    A('const ART_PERSON_MV: [%d]u8 = [%s]' % (len(kinds), ', '.join(str(MINIS[PERSON[k][0]][1]) for k in kinds)))
     A('// staff roles -> person kind, and per role: sheet slot, U0/V0 (frame 0, direction 0), palette')
     roles = ('receptionist', 'housekeeper', 'cook', 'waiter', 'bartender', 'spa_therapist', 'bellhop', 'maintenance', 'security')
     for role in roles:
@@ -3777,7 +3929,7 @@ FINISHERS.append(people_decls)
 
 HI_D, LO_D = 16.0, 8.0          # texels per unit for the full and the low-detail meshes
 BAKE_MAX = 48                   # largest baked texture side
-BAKE_SLOTS = [1, 2, 3, 4, 5, 6]
+BAKE_SLOTS = [1, 2, 3, 4, 5]          # (slot 6: the zoomed-out floors and solid cells)
 
 
 def BK(src=None, behind=True, double=False, D=None, glow=None):
@@ -4206,7 +4358,7 @@ def _(s):
 def _(s):
     p = PX(s)
     p.bx(-0.48, 0.0, -0.48, 0.48, 0.10, 0.48)
-    p.card(-0.48, -0.44, 0.48, -0.44, 0.10, 2.2, behind=True)
+    p.card(-0.48, -0.44, 0.48, -0.44, 0.10, 1.55, behind=True)
     p.keep_glass()
     return p.faces, None
 
@@ -4854,25 +5006,65 @@ ICON_GROUPS = [
 ]
 EXTRA_OBJS = {'glass_elevator_cab', 'door_frame', 'door_leaf'}
 
+# ---- "Calm & clean" floor palettes (POLISH.md section 3): base colour x the block's index factors.
+# Applied in finish(), after the objects are baked, so the bake sources keep their own colours.
+CALM_FLOORS = {     # palette: (floor block, base colour)
+    'carpet_crimson': ('carpet', 'b88c84'),     # guest rooms (red carpet key): dusty rose
+    'carpet_royal': ('carpet', '8a9bb0'),       # guest rooms (blue): slate
+    'carpet_emerald': ('carpet', '9aab8c'),     # guest rooms (green): sage
+    'carpet_plum': ('carpet', 'b4a898'),        # corridors: greige
+    'carpet_teal': ('carpet', '5e8a86'),        # suites: deep teal
+    'carpet_sand': ('carpet', 'b8a488'),
+    'oak': ('wood', 'b48e64'),                  # restaurant wood
+    'walnut': ('wood', '8c6a4e'),               # bar / suites
+    'cherry': ('wood', 'a2725a'),
+    'teak': ('wood', 'a8845e'),
+    'white': ('wood', 'd8d0c2'),
+    'ebony': ('wood', '5a5048'),
+    'tile_white': ('tile', 'd6dadb'),           # kitchens, laundries, baths
+    'tile_check': ('tile', 'cfcfca'),
+    'tile_terracotta': ('tile', 'b98a72'),      # terracotta dining
+    'tile_aqua': ('tile', 'b7d3cf'),            # spa
+    'marble_white': ('marble', 'e0d9cc'),       # the lobby: cream with soft veins
+    'marble_black': ('marble', '5a5650'),
+    'marble_rose': ('marble', 'd8c0b4'),
+    'marble_green': ('marble', '7e9a8a'),
+    'terrazzo': ('terrazzo', 'd4cec4'),         # public corridors
+    'concrete': ('concrete', 'aeaca6'),         # service rooms
+    'pavement': ('pavement', 'bdb7ab'),         # sidewalk, service corridors
+    'deck': ('deck', 'a8845e'),
+    'sand': ('sand', 'dcc89e'),
+    'grass': ('grass', '76935e'),
+    'road': ('road', '5e5e64'),
+    'grey': ('roof', '9a9890'),
+}
+
+
+# the build menu's room icons show the floors in their calm colours (bake-only copies; the game's
+# own floor palettes become calm in finish(), after the objects are baked from the old ones)
+for _nm, (_blk, _base) in CALM_FLOORS.items():
+    _f = FLOOR_FACTORS[_blk]
+    palette('calm_' + _nm, [tuple(c * _f[_i] for c in hexc(_base)) for _i in range(1, 16)], 'src')
+
 # room types (the main agent's room keys): (name, floor block, palette, [(object, x, z, rot)])
 ROOM_ICONS = [
-    ('corridor', 'carpet', 'carpet_crimson', [('plant', 0.0, 0.0, 0), ('door', 0.0, -0.5, 0)]),
-    ('service', 'concrete', 'concrete', [('storage_shelf', -0.5, 0.0, 0), ('linen_shelf', 0.5, 0.0, 0)]),
-    ('outdoor', 'deck', 'deck', [('palm', -0.4, -0.3, 0), ('umbrella', 0.6, 0.4, 0)]),
-    ('guest', 'carpet', 'carpet_royal', [('bed_double', 0.0, 0.0, 0), ('nightstand', 1.4, -0.6, 0)]),
-    ('suite', 'carpet', 'carpet_plum', [('bed_king', 0.0, 0.0, 0), ('nightstand', 1.4, -0.6, 0)]),
-    ('lobby', 'marble', 'marble_white', [('reception_desk', 0.0, 0.0, 0), ('plant', 1.6, 0.2, 0)]),
-    ('restaurant', 'wood', 'cherry', [('table_4', 0.0, 0.0, 0)]),
-    ('kitchen', 'tile', 'tile_check', [('stove', -0.5, 0.0, 0), ('fridge', 0.5, 0.0, 0)]),
-    ('laundry', 'tile', 'tile_aqua', [('washer', -0.5, 0.0, 0), ('dryer', 0.5, 0.0, 0)]),
-    ('storage', 'concrete', 'concrete', [('storage_shelf', -0.5, 0.0, 0), ('storage_shelf', 0.5, 0.0, 0)]),
-    ('staff', 'wood', 'oak', [('staff_table', 0.0, 0.0, 0), ('vending', 1.2, -0.6, 0)]),
-    ('bar', 'wood', 'walnut', [('bar_counter', -0.5, 0.0, 0), ('bar_counter', 0.5, 0.0, 0), ('bar_stool', -0.5, 0.8, 0),
+    ('corridor', 'carpet', 'calm_carpet_plum', [('plant', 0.0, 0.0, 0), ('door', 0.0, -0.5, 0)]),
+    ('service', 'concrete', 'calm_concrete', [('storage_shelf', -0.5, 0.0, 0), ('linen_shelf', 0.5, 0.0, 0)]),
+    ('outdoor', 'deck', 'calm_deck', [('palm', -0.4, -0.3, 0), ('umbrella', 0.6, 0.4, 0)]),
+    ('guest', 'carpet', 'calm_carpet_royal', [('bed_double', 0.0, 0.0, 0), ('nightstand', 1.4, -0.6, 0)]),
+    ('suite', 'carpet', 'calm_carpet_teal', [('bed_king', 0.0, 0.0, 0), ('nightstand', 1.4, -0.6, 0)]),
+    ('lobby', 'marble', 'calm_marble_white', [('reception_desk', 0.0, 0.0, 0), ('plant', 1.6, 0.2, 0)]),
+    ('restaurant', 'wood', 'calm_oak', [('table_4', 0.0, 0.0, 0)]),
+    ('kitchen', 'tile', 'calm_tile_white', [('stove', -0.5, 0.0, 0), ('fridge', 0.5, 0.0, 0)]),
+    ('laundry', 'tile', 'calm_tile_white', [('washer', -0.5, 0.0, 0), ('dryer', 0.5, 0.0, 0)]),
+    ('storage', 'concrete', 'calm_concrete', [('storage_shelf', -0.5, 0.0, 0), ('storage_shelf', 0.5, 0.0, 0)]),
+    ('staff', 'wood', 'calm_teak', [('staff_table', 0.0, 0.0, 0), ('vending', 1.2, -0.6, 0)]),
+    ('bar', 'wood', 'calm_walnut', [('bar_counter', -0.5, 0.0, 0), ('bar_counter', 0.5, 0.0, 0), ('bar_stool', -0.5, 0.8, 0),
                                ('bar_stool', 0.5, 0.8, 0)]),
     ('pool', 'pool_water', 'pool_water', [('lounger', 0.0, 0.0, 0), ('umbrella', 0.9, -0.4, 0)]),
-    ('spa', 'tile', 'tile_aqua', [('massage_bed', 0.0, 0.0, 1), ('towel_rack', 0.0, -1.0, 0)]),
-    ('gym', 'wood', 'teak', [('treadmill', -0.5, 0.0, 0), ('weights', 0.8, 0.4, 1)]),
-    ('conference', 'carpet', 'carpet_sand', [('conf_table', 0.0, 0.0, 0)]),
+    ('spa', 'tile', 'calm_tile_aqua', [('massage_bed', 0.0, 0.0, 1), ('towel_rack', 0.0, -1.0, 0)]),
+    ('gym', 'wood', 'calm_teak', [('treadmill', -0.5, 0.0, 0), ('weights', 0.8, 0.4, 1)]),
+    ('conference', 'carpet', 'calm_carpet_sand', [('conf_table', 0.0, 0.0, 0)]),
 ]
 
 OBJFN = {}
@@ -5296,6 +5488,35 @@ PAL_CLASS = {}      # palette number -> 0 interior, 1 exterior, 2 water, 3 never
 BUILT = {}          # key -> dict(src, prox, lo, w, d, h)
 
 
+# Furniture in the "Calm & clean" look (POLISH.md A6): object colours are lifted a little (the
+# darkest to at least 18% luminance) and their saturation capped, so the floor plan stays quiet and
+# people are the most saturated things in view. Glowing colours (lamps, screens) are kept, and a
+# few groups whose colour is a signal (the reception's bell and screen, the bar's lights, machines)
+# keep more of it.
+ACCENT_GROUPS = {'reception': 0.6, 'bar': 0.55, 'barback': 0.6, 'machines': 0.6, 'tree': 0.55, 'outdoor': 0.55}
+
+
+def calm_object_cols(cols, bits, smax):
+    import colorsys
+    out = []
+    for i, c in enumerate(cols):
+        if bits >> (i + 1) & 1:
+            out.append(c)
+            continue
+        h, s_, v = colorsys.rgb_to_hsv(*(min(255.0, max(0.0, x)) / 255.0 for x in c))
+        s_ = min(s_, smax)
+        v = v + (1.0 - v) * 0.06
+        r, g, b = colorsys.hsv_to_rgb(h, s_, v)
+        L = 0.30 * r + 0.59 * g + 0.11 * b
+        if 0.0 < L < 0.18:
+            k = 0.18 / L
+            r, g, b = min(1.0, r * k), min(1.0, g * k), min(1.0, b * k)
+        elif L == 0.0:
+            r = g = b = 0.18
+        out.append((r * 255, g * 255, b * 255))
+    return out
+
+
 def build_objects():
     by_key = {k: (w, d, h, fn) for k, w, d, h, fn in OBJS}
     order = [k for k in CATALOGUE_ORDER + EXTRA_ORDER if k in by_key]
@@ -5327,6 +5548,7 @@ def build_objects():
         if not gj:
             continue
         idxs, cols, bits = quantize_bakes([(j[2], j[3]) for j in gj])
+        cols = calm_object_cols(cols, bits, ACCENT_GROUPS.get(g, 0.45))
         pn = palette('grp_' + g, cols)
         PAL_CLASS[pn] = cls
         if bits:
@@ -5398,7 +5620,7 @@ WALL_PALS = {
     'glass': ['glass'],
     'wall_top': ['wall_top'],
 }
-EXTERIOR_PALS = ['facade_cream', 'facade_coral', 'facade_aqua', 'facade_cream_lit', 'facade_coral_lit',
+EXTERIOR_PALS = ['flat_out', 'facade_cream', 'facade_coral', 'facade_aqua', 'facade_cream_lit', 'facade_coral_lit',
                  'facade_aqua_lit', 'grass', 'sand', 'pavement', 'road', 'deck', 'grey']
 WATER_PALS_N = ['pool_water', 'sea']
 
@@ -5412,8 +5634,70 @@ def pal_bytes(lo, hi, src=None):
     return bytes(b)
 
 
+FLAT = {}           # name -> index in the FLAT_IN / FLAT_OUT palettes
+# back-wall paints (the 'paint' cell): wall, wainscot, ceiling shadow / dado, baseboard, its edge
+CALM_PAINTS = {'paint_white': ('e6ddce', 'd6cbb9', 'b8a890'), 'paint_cream': ('e2d6c4', 'd2c4ae', 'b8a890'),
+               'paint_peach': ('e8d2c0', 'd8bfab', 'b49c88'), 'paint_sage': ('d4dacb', 'c2c9b8', 'a4a890'),
+               'paint_sky': ('d2dade', 'c0c9ce', 'a0a8ac'), 'paint_lilac': ('dcd4de', 'cbc2cd', 'aaa0ac'),
+               'paint_coral': ('e8d0c4', 'd8bcae', 'b89c8c'), 'paint_mint': ('d2e0d8', 'c0cfc6', 'a0b0a6')}
+
+
+def calm_palettes():
+    for name, (block, base) in CALM_FLOORS.items():
+        f = FLOOR_FACTORS[block]
+        b = hexc(base)
+        PAL[PALNAME[name]] = [(0, 0, 0)] + [tuple(clamp8(c * f[i]) for c in b) for i in range(1, 16)]
+
+    for name, (wall, wain, base) in CALM_PAINTS.items():
+        w, wn, b = hexc(wall), hexc(wain), hexc(base)
+        cols = [mul3(w, 0.6)] * 3 + [mul3(w, 0.98 + 0.04 * i / 7) for i in range(8)]
+        cols += [wn, mul3(w, 0.9), b, lerp3(b, (255, 255, 255), 0.25)]
+        PAL[PALNAME[name]] = [(0, 0, 0)] + [tuple(clamp8(v) for v in c) for c in cols]
+
+    def avg(block, pal):
+        img = LO_BLOCKS[block] if block in LO_BLOCKS else FLOOR4[block]
+        a = ATL[6 if block in LO_BLOCKS else 0].idx[img.v:img.v + img.h, img.u:img.u + img.w]
+        P = np.array(PAL[PALNAME[pal]], float)
+        return tuple(P[a].reshape(-1, 3).mean(0))
+    # flat colours of the baked geometry, as palettes drawn through the solid cells (slot 6), so the
+    # time of day relights them like everything else (interior and exterior light)
+    flat_in = [('wall_face', 'e6ded2'), ('wall_side', 'cfc6b9'), ('cap', '4a4038'), ('threshold', 'b4a48e'),
+               ('jamb', '7a6250'), ('rail', '5c5a60'), ('rail_post', '4a4850'), ('rail_glass', 'b4d4de'),
+               ('rail_glass_dk', '90b0bc'), ('cab', 'f0e2c4'), ('cab_side', 'a89a84'), ('cab_dark', '5e554e'),
+               ('back_cap', '4a4038'), ('glow', 'f8e4c0'), ('spare', '808080')]
+    sea = WATER_FRAMES[PALNAME['sea']][0]
+    flat_out = [('sea', tuple(np.array(sea[1:13], float).mean(0))), ('sand', avg('sand', 'sand')),
+                ('grass', avg('grass', 'grass')), ('pavement', avg('pavement', 'pavement')),
+                ('road', avg('road', 'road')), ('town', 'a8a49a'), ('slab', 'b8ae9e'), ('slab_side', '988e80'),
+                ('hedge', '5e7a4c'), ('hedge_top', '6f8c5a'), ('curb', 'b4ac9c'), ('curb_side', '8a8272'),
+                ('marking', 'dcd8cc'), ('town_dk', '8c897f'), ('spare2', '808080')]
+    for pal, lst in (('flat_in', flat_in), ('flat_out', flat_out)):
+        palette(pal, [hexc(c) if isinstance(c, str) else c for _, c in lst])
+        for i, (nm, _) in enumerate(lst):
+            FLAT[nm] = i + 1
+    PAL_CLASS[PALNAME['flat_in']] = 0
+    PAL_CLASS[PALNAME['flat_out']] = 1
+
+
+def flat_decls(L):
+    L.append('')
+    L.append('// ---- flat colours: solid 8x8 cells in slot 6 (ART_SOLID_U + index * 8, ART_SOLID_V), drawn')
+    L.append('// with ART_PAL_FLAT_IN (lit like the interior) or ART_PAL_FLAT_OUT (lit by the sky)')
+    L.append('const ART_SOLID_SLOT = 6')
+    L.append('const ART_SOLID_U = %d' % SOLID_U)
+    L.append('const ART_SOLID_V = %d' % SOLID_V)
+    for nm, i in FLAT.items():
+        L.append('const ART_FLAT_%s = %d' % (nm.upper(), i))
+    L.append('// the zoomed-out floor blocks: slot 6, at the same u, v as the ART_FLOOR4_* blocks in slot 0')
+    L.append('const ART_FLOOR4_LO_SLOT = 6')
+
+
+FINISHERS.append(flat_decls)
+
+
 def finish():
     objs = build_objects()
+    calm_palettes()
     save_icon()
     for nm in EXTERIOR_PALS:
         PAL_CLASS[PALNAME[nm]] = 1

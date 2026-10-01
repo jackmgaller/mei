@@ -158,12 +158,14 @@ fn edge_open(f: s32, x: s32, z: s32, dx: s32, dz: s32) -> bool {
 
 // Removes doors and windows from edges that no longer have a wall.
 fn clean_edges(f: s32) {
-    for z in 0..GH {
-        for x in 0..GW {
-            let t = tix(f, x, z)
-            if edge_n[t] != 0 && !wall_between(f, x, z, 0, -1) { edge_n[t] = 0 }
-            if edge_w[t] != 0 && !wall_between(f, x, z, -1, 0) { edge_w[t] = 0 }
-        }
+    let b = f * NT
+    for t in 0..NT {
+        let g = b + t
+        if edge_n[g] == 0 && edge_w[g] == 0 { continue }
+        let x = t & 31
+        let z = t >> 5
+        if edge_n[g] != 0 && !wall_between(f, x, z, 0, -1) { edge_n[g] = 0 }
+        if edge_w[g] != 0 && !wall_between(f, x, z, -1, 0) { edge_w[g] = 0 }
     }
 }
 

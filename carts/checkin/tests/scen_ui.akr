@@ -1,10 +1,56 @@
 // Workstream B (UI, controls) test scenarios: existing 1-7, 40, 48; new ones 300-399.
-// See harness.akr for the fixtures and how scenarios are wired.
+// See harness.akr for the fixtures and how scenarios are wired. Parameters P1..P6 come from
+// tests/run.sh P="...". Pad bits: UP 1, DOWN 2, LEFT 4, RIGHT 8, A 16, B 32, X 64, Y 128, L 256,
+// R 512, START 1024, SELECT 2048.
+//
+//  300  grid stepping: new lot, Paint (marble), view_rot P1. P2 = 0: A, RIGHT x3, DOWN x3, release
+//       (expect 4x4); 1: RIGHT x5, DOWN x2 (6x3); 2: a 4x6 drag with direction changes (motion).
+//       Prints "RECT w h" at the release and "ROOM w h" after.
+//  310  camera: new lot, view_rot P1, zoom P2; hold RIGHT 20-80, UP+RIGHT 80-140, DOWN+LEFT
+//       200-260. Prints "CAM t screen_x screen_y pan_x pan_y cam_fx cam_fy" every frame.
+//  315  the stick: diagonal (0.7, 0.7) 20-60, released, right 80-100; "STK t x z tx tz" per frame.
+//  320  placement: a marble room, Object = reception desk at 12.5, 5.5, zoom P1. Y at 30/50/70,
+//       RIGHT 80-96, A 110, DOWN 120-136. Prints "GH t rot cx cz ox oz state" (state: -1 hidden,
+//       0 red, 1 green) and "PLACED" lines; "REDOVER n" counts red ghost frames over the new desk.
+//  330  the default screen: the busy grand hotel at zoom P2 (Inspect). P1 = 1: A on the lobby at
+//       frame 60. Prints "INFO changes n" (the card's subject changing) at the end.
+//  340  strings: every UI string measured against its box. Prints overflows and "OVERFLOW n".
+//  345  the cursor on tile (P1, P2) of the demo hotel at zoom P3 (cursor visibility).
+//  350  the drawer open on tab P1 (0 Needs .. 9 Decor) on the demo hotel, cursor in the lobby,
+//       item P2 selected.
+//  355  the drawer in motion: X, tabs, items, finish change, close (sequence).
+//  360  view transitions on the demo hotel: Y+LEFT at 32, Y+UP at 62, R at 90, L at 120.
+//       "PERF t cpu tris cache" per frame.
+//  370  SELECT: taps at 20, 50, 80, 110; prints "SPEED t speed hud" each frame the speed changes.
+//  375  SELECT held with the overlay picker: hold 20-70, UP at 40. P1 > 0: overlay P1 shown.
+//  380  a new game (the first-time flow), cursor moved a little.
+//  385  build a lobby from scratch: X, Lobby, drag 4x4, then the drawer's Needs: reception desk
+//       and key rack placed. Prints the room's state at the end.
+//  390  the pause menu page P1 (0 main, 1 staff, 2 prices, 3 rating, 4 ledger, 5 controls).
+//  395  info cards on the grand hotel at zoom 2: P1 0 room, 1 person, 2 object.
+//  396  toasts, the day report and a review card.
 
 const SCRIPT6: [24]s32 = [10, 64, 12, 0, 20, 512, 22, 0, 30, 512, 32, 0, 40, 8, 42, 0, 60, 16, 62, 0, 70, 2, 90, 0]
 const SCRIPT7: [22]s32 = [10, 64, 12, 0, 20, 8, 22, 0, 30, 16, 32, 0, 40, 16, 50, 16 | 8, 75, 16 | 2, 95, 16, 100, 0]
 
 const SCRIPT48: [12]s32 = [10, 64, 12, 0, 20, 512, 22, 0, 30, 512, 32, 0]
+
+const S310: [12]s32 = [20, 8, 80, 9, 140, 0, 200, 6, 260, 0, 999, 0]
+const S320: [24]s32 = [30, 128, 32, 0, 50, 128, 52, 0, 70, 128, 72, 0, 80, 8, 96, 0, 110, 16, 112, 0, 120, 2, 136, 0]
+const S355: [32]s32 = [10, 64, 12, 0, 30, 512, 32, 0, 50, 512, 52, 0, 70, 8, 72, 0, 76, 8, 78, 0, 90, 2, 92, 0, 100, 2, 102, 0, 120, 32, 122, 0]
+const S360: [24]s32 = [30, 128, 32, 132, 34, 128, 40, 0, 60, 128, 62, 129, 64, 128, 70, 0, 90, 512, 92, 0, 120, 256, 122, 0]
+const S370: [16]s32 = [20, 2048, 22, 0, 50, 2048, 52, 0, 80, 2048, 82, 0, 110, 2048, 112, 0]
+const S375: [8]s32 = [20, 2048, 40, 2049, 42, 2048, 70, 0]
+const S380: [8]s32 = [40, 8, 42, 0, 50, 2, 52, 0]
+
+fn scen_new_lot() {
+    new_hotel_state()
+    start_play()
+    money = 9999999
+    cur_x = 16.0
+    cur_z = 9.0
+    view_recentre()
+}
 
 fn scen_ui_init() {
     match SCENARIO {
@@ -17,8 +63,119 @@ fn scen_ui_init() {
         7 => { scen_basic() }     // pick a floor and drag a room
         40 => { scen_hotel(1); tool = Tool.Paint; tool_arg = FK_DECK; cur_x = 8.5; cur_z = 15.5; view_recentre() }
         48 => { scen_hotel(1); view_floor = 1; view_recentre() }   // the build menu (Bedroom tab)
+        300 => {
+            scen_new_lot()
+            view_rot = P1
+            tool = Tool.Paint
+            tool_arg = FK_MARBLE
+            tool_rt = RT_LOBBY
+            cur_x = 14.5
+            cur_z = 8.5
+            view_recentre()
+        }
+        310 => { scen_new_lot(); view_rot = P1; view_zoom = P2; cur_x = 12.5; cur_z = 8.5; view_recentre() }
+        315 => { scen_new_lot(); cur_x = 12.5; cur_z = 8.5; view_recentre() }
+        320 => {
+            scen_new_lot()
+            s_room(0, FK_MARBLE, 10, 3, 17, 8)
+            s_door(0, 13, 3, 0, -1)
+            rooms_update()
+            tool = Tool.Object
+            tool_arg = OB_RECEPTION_DESK
+            cur_x = 12.5
+            cur_z = 5.5
+            view_zoom = P1
+            view_recentre()
+        }
+        330 => {
+            new_hotel_state(); start_play(); money = 9999999
+            scen_grand(0, 60, 15)
+            view_zoom = P2
+            cur_x = 12.5
+            cur_z = 7.5
+            view_recentre()
+        }
+        340 => { new_hotel_state(); start_play(); money = 9999999; scen_hotel(1) }
+        345 => {
+            new_hotel_state(); start_play(); money = 9999999
+            scen_hotel(1)
+            view_zoom = P3
+            cur_x = fixed(P1) + 0.5
+            cur_z = fixed(P2) + 0.5
+            view_recentre()
+        }
+        350 => {
+            new_hotel_state(); start_play(); money = 9999999
+            scen_hotel(1)
+            cur_x = 12.5
+            cur_z = 6.5
+            view_recentre()
+        }
+        355 => { new_hotel_state(); start_play(); money = 9999999; scen_hotel(1); cur_x = 12.5; cur_z = 6.5; view_recentre() }
+        360 => { new_hotel_state(); start_play(); money = 9999999; scen_hotel(1) }
+        370, 375 => { new_hotel_state(); start_play(); money = 9999999; scen_hotel(1); if P1 > 0 { overlay = P1 } }
+        380 => { new_hotel_state(); new_game() }
+        385 => { new_hotel_state(); new_game(); money = 60000 }
+        390 => { new_hotel_state(); start_play(); money = 9999999; scen_grand(0, 60, 15) }
+        395 => {
+            new_hotel_state(); start_play(); money = 9999999
+            scen_grand(0, 60, 15)
+            view_zoom = 2
+            cur_x = 12.5
+            cur_z = 7.5
+            if P1 == 2 { cur_x = 11.5; cur_z = 4.5 }
+            view_recentre()
+        }
+        396 => { new_hotel_state(); start_play(); money = 9999999; scen_hotel(1) }
         else => {}
     }
+}
+
+// Scripted taps: the n-th of k taps of button b from frame f0, one every 6 frames (held 2).
+fn taps(f: s32, f0: s32, n: s32, b: u32) -> u32 {
+    if f < f0 || f >= f0 + n * 6 { return 0 }
+    if (f - f0) % 6 < 2 { return b }
+    return 0
+}
+
+fn pad300(f: s32) -> u32 {
+    var p: u32 = 0
+    var nr = 3
+    var nd = 3
+    if P2 == 1 { nr = 5; nd = 2 }
+    if P2 == 2 { nr = 3; nd = 5 }
+    let f1 = 20 + nr * 6
+    let f2 = f1 + nd * 6
+    var end = f2 + 6
+    if P2 == 2 {
+        // change direction: back one, on again, and a step up and down
+        p = p | taps(f, f2, 1, LEFT) | taps(f, f2 + 6, 1, RIGHT) | taps(f, f2 + 12, 1, UP) | taps(f, f2 + 18, 1, DOWN)
+        end = f2 + 30
+    }
+    if f >= 14 && f < end { p = p | A }
+    return p | taps(f, 20, nr, RIGHT) | taps(f, f1, nd, DOWN)
+}
+
+fn pad385(f: s32) -> u32 {
+    // X: the Rooms tab opens (the cursor is outside any room); Lobby is the first item
+    if f >= 10 && f < 12 { return X }
+    if f >= 30 && f < 32 { return A }
+    // drag a 4x4 room
+    if f >= 50 && f < 92 {
+        return A | taps(f, 56, 3, RIGHT) | taps(f, 74, 3, DOWN)
+    }
+    // the drawer opens on its Needs: the reception desk is selected; pick it
+    if f >= 130 && f < 132 { return A }
+    // move up-left into the room's middle (the cursor is at its far corner) and place it
+    if f >= 140 && f < 158 { return taps(f, 140, 2, UP) | taps(f, 152, 1, LEFT) }
+    if f >= 164 && f < 166 { return A }
+    // done; open the drawer again (Needs: the key rack)
+    if f >= 200 && f < 202 { return B }
+    if f >= 210 && f < 212 { return X }
+    if f >= 230 && f < 232 { return A }
+    if f >= 240 && f < 252 { return taps(f, 240, 2, LEFT) }
+    if f >= 260 && f < 262 { return A }
+    return 0
 }
 
 fn scen_ui_pad(f: s32) -> u32 {
@@ -26,10 +183,335 @@ fn scen_ui_pad(f: s32) -> u32 {
     if SCENARIO == 48 { return script_from(&SCRIPT48[0], len(SCRIPT48), f) }
     if SCENARIO == 6 { return script_from(&SCRIPT6[0], len(SCRIPT6), f) }
     if SCENARIO == 7 { return script_from(&SCRIPT7[0], len(SCRIPT7), f) }
+    if SCENARIO == 300 { return pad300(f) }
+    if SCENARIO == 310 { return script_from(&S310[0], len(S310), f) }
+    if SCENARIO == 320 { return script_from(&S320[0], len(S320), f) }
+    if SCENARIO == 330 && P1 == 1 && f >= 60 && f < 62 { return A }
+    if SCENARIO == 355 { return script_from(&S355[0], len(S355), f) }
+    if SCENARIO == 360 { return script_from(&S360[0], len(S360), f) }
+    if SCENARIO == 370 { return script_from(&S370[0], len(S370), f) }
+    if SCENARIO == 375 && P1 == 0 { return script_from(&S375[0], len(S375), f) }
+    if SCENARIO == 380 { return script_from(&S380[0], len(S380), f) }
+    if SCENARIO == 385 { return pad385(f) }
     return 0
 }
+
+var t_was_drag: bool
+var t_info_k: s32
+var t_info_id: s32
+var t_changes: s32
+var t_red_over: s32
+var t_speed: s32 = -1
 
 fn scen_ui_hook() {
     if SCENARIO == 40 && scen_t == 12 { cur_x = 14.5; cur_z = 17.5 }
     if SCENARIO == 40 && scen_t == 30 { print("drag "); print_int(dragging as s32); print(" "); print_int(rx0); print(","); print_int(rz0); print(" "); print_int(rx1); print(","); print_int(rz1); print(" tool "); print_int(tool as s32); println("") }
+    if SCENARIO == 300 {
+        if dragging { t_was_drag = true }
+        if t_was_drag && !dragging {
+            t_was_drag = false
+            print("RECT ")
+            print_int(rx1 - rx0 + 1)
+            print(" ")
+            print_int(rz1 - rz0 + 1)
+            print(" at ")
+            print_int(scen_t)
+            print(" tick ")
+            println(num(tick_count))
+        }
+        if scen_t == 140 { print("LAST "); println(num(last_room)) }
+        if scen_t == 140 && last_room != 0 {
+            let rm = &rooms[last_room]
+            print("ROOM ")
+            print_int(rm.x1 as s32 - rm.x0 as s32 + 1)
+            print(" ")
+            print_int(rm.z1 as s32 - rm.z0 as s32 + 1)
+            print(" tiles ")
+            println(num(rm.ntiles as s32))
+        }
+    }
+    if SCENARIO == 310 {
+        set_camera()
+        project(vec3(cu_vx, fixed(view_floor) * STOREY, cu_vz))
+        print("CAM ")
+        print_int(scen_t)
+        print(" ")
+        print_int(proj_x)
+        print(" ")
+        print_int(proj_y)
+        print(" ")
+        print_int(pan_x)
+        print(" ")
+        print_int(pan_y)
+        print(" ")
+        print_fixed(cam_fx)
+        print(" ")
+        print_fixed(cam_fy)
+        print(" ")
+        print_int(cur_tx)
+        print(" ")
+        println(num(cur_tz))
+    }
+    if SCENARIO == 315 {
+        if scen_t >= 20 && scen_t < 60 { stick_in = vec2(0.7, 0.7) }
+        if scen_t >= 80 && scen_t < 100 { stick_in = vec2(1.0, 0.0) }
+        print("STK ")
+        print_int(scen_t)
+        print(" ")
+        print_fixed(cur_x)
+        print(" ")
+        print_fixed(cur_z)
+        print(" ")
+        print_int(cur_tx)
+        print(" ")
+        println(num(cur_tz))
+    }
+    if SCENARIO == 320 {
+        let t = tool_arg
+        obj_origin(t, tool_rot)
+        var st = -1
+        if ghost_hide == 0 && drop_t == 0 {
+            st = 0
+            if place_check(t, view_floor, ob_x, ob_z, tool_rot) == PE_OK { st = 1 }
+        }
+        print("GH ")
+        print_int(scen_t)
+        print(" ")
+        print_int(tool_rot)
+        print(" ")
+        print_int(cur_tx)
+        print(" ")
+        print_int(cur_tz)
+        print(" ")
+        print_int(ob_x)
+        print(" ")
+        print_int(ob_z)
+        print(" ")
+        print_int(st)
+        print(" cpu ")
+        println(num(cpu_used()))
+        // a red ghost overlapping the desk just placed
+        if st == 0 && land_obj >= 0 && objs[land_obj].used != 0 && nobjs > 0 {
+            let o = &objs[land_obj]
+            let gw = obj_gw(t, tool_rot)
+            let gd = obj_gd(t, tool_rot)
+            let ow = obj_gw(o.t as s32, o.rot as s32)
+            let od = obj_gd(o.t as s32, o.rot as s32)
+            if ob_x < o.x as s32 + ow && o.x as s32 < ob_x + gw && ob_z < o.z as s32 + od && o.z as s32 < ob_z + gd && scen_t < 130 { t_red_over += 1 }
+        }
+        if land_t == 3 {
+            print("PLACED ")
+            print_int(scen_t)
+            print(" at ")
+            print_int(objs[land_obj].x as s32)
+            print(",")
+            println(num(objs[land_obj].z as s32))
+        }
+        if scen_t == 179 { print("REDOVER "); println(num(t_red_over)) }
+    }
+    if SCENARIO == 330 {
+        if info_kind != t_info_k || info_id != t_info_id {
+            if t_info_k != 0 || scen_t > 62 { t_changes += 1 }
+            print("INFO ")
+            print_int(scen_t)
+            print(" kind ")
+            print_int(info_kind)
+            print(" id ")
+            println(num(info_id))
+            t_info_k = info_kind
+            t_info_id = info_id
+        }
+        if scen_t == 659 { print("INFO changes "); println(num(t_changes)) }
+    }
+    if SCENARIO == 340 && scen_t == 5 { check_strings() }
+    if SCENARIO == 350 && scen_t == 4 {
+        open_build_menu()
+        menu_tab = P1
+        if P1 == DT_NEEDS { menu_room = needs_room() }
+        menu_fill()
+        menu_sel = min(P2, max(menu_n - 1, 0))
+        menu_keep_visible()
+    }
+    if SCENARIO == 360 && scen_t > 2 {
+        print("PERF ")
+        print_int(scen_t)
+        print(" ")
+        print_int(cpu_used())
+        print(" ")
+        print_int(tris_drawn() + ui_tris)
+        print(" ")
+        print_int(cache_cycles)
+        print(" tr ")
+        print_int(tr_t)
+        print(" ready ")
+        print_int(view_ready() as s32)
+        print(" tick ")
+        println(num(tick_count))
+    }
+    if SCENARIO == 370 && speed != t_speed {
+        print("SPEED ")
+        print_int(scen_t)
+        print(" ")
+        print_int(speed)
+        print(" hud ")
+        println(num(hud_speed))
+        t_speed = speed
+    }
+    if SCENARIO == 375 && scen_t == 60 { print("OVERLAY "); println(num(overlay)) }
+    if SCENARIO == 385 && scen_t % 10 == 0 && scen_t >= 120 && scen_t <= 300 {
+        print("T ")
+        print_int(scen_t)
+        print(" tool ")
+        print_int(tool as s32)
+        print(" arg ")
+        print_int(tool_arg)
+        print(" menu ")
+        print_int(menu_open as s32)
+        print(" sel ")
+        print_int(menu_sel)
+        print(" cur ")
+        print_int(cur_tx)
+        print(",")
+        print_int(cur_tz)
+        print(" objs ")
+        println(num(nobjs))
+    }
+    if SCENARIO == 385 && (scen_t == 120 || scen_t == 340) {
+        let r = room_at(0, cur_tx, cur_tz)
+        print("LOBBY t ")
+        print_int(scen_t)
+        print(" room ")
+        print_int(r)
+        print(" type ")
+        print_int(rooms[r].rtype as s32)
+        print(" valid ")
+        print_int((rooms[r].flags & RF_VALID) as s32)
+        print(" tiles ")
+        print_int(rooms[r].ntiles as s32)
+        print(" menu ")
+        print_int(menu_open as s32)
+        print(" tab ")
+        println(num(menu_tab))
+    }
+    if SCENARIO == 390 && scen_t == 30 {
+        open_pause()
+        match P1 {
+            0 => page = Page.Main
+            1 => page = Page.Staff
+            2 => page = Page.Prices
+            3 => { add_review(GT_BUSINESS, 4, RV_GREAT_ROOM); add_review(GT_FAMILY, 3, RV_NO_FUN); add_review(GT_ROCKSTAR, 2, RV_NOISY); compute_score(); page = Page.Hotel }
+            4 => page = Page.Ledger
+            else => page = Page.Controls
+        }
+    }
+    if SCENARIO == 395 && scen_t == 100 {
+        if P1 == 1 {
+            for i in 0..npeople {
+                let p = &people[i]
+                if p.used != 0 && p.f == 0 && p.mode as s32 != M_HIDDEN && p.mode as s32 != M_RIDE && abs(p.x - 13.0) < 4.0 {
+                    cur_x = p.x
+                    cur_z = p.z
+                    cursor_set_tile(cur_x as s32, cur_z as s32)
+                    print("PERSON ")
+                    print_int(i)
+                    print(" ")
+                    println(num(person_on_tile(cur_tx, cur_tz)))
+                    break
+                }
+            }
+        }
+        inspect_press()
+    }
+    if SCENARIO == 396 && scen_t == 20 {
+        say("Can't build on the road", RED)
+        add_review(GT_FAMILY, 5, RV_GREAT_POOL)
+        day_report_t = 300
+        day = 2
+    }
+    if SCENARIO == 396 && scen_t == 40 { say("A new star! New things unlocked.", GOLD) }
+}
+
+// ---- 340: every UI string against its box
+
+var ov_n: s32
+
+fn ov_check(what: *u8, s: *u8, box: s32) {
+    let w = text_w(s, false)
+    if w > box {
+        print("OVERFLOW ")
+        print(what)
+        print(" ")
+        print_int(w)
+        print(">")
+        print_int(box)
+        print(": ")
+        println(s)
+        ov_n += 1
+    }
+}
+
+fn check_strings() {
+    // drawer: item names + price on the detail line, and the purpose line
+    for tb in 0..NDT {
+        menu_tab = tb
+        menu_room = needs_room()
+        if tb == DT_NEEDS && menu_room == 0 { continue }
+        menu_fill()
+        for i in 0..menu_n {
+            menu_sel = i
+            let it = menu_items[i]
+            let b = nb()
+            sappend(b, item_name(it))
+            sappend(b, "  $12,345  3\x183")
+            ov_check("drawer name", b, 300)
+            let d = nb()
+            if it.kind == 1 { item_purpose(d, it.arg as s32) }
+            if it.kind == 3 { sappend(d, "Floor: "); sappend(d, finish_name(rt_fk_of(it.arg as s32))); sappend(d, "   \x0C finish") }
+            sappend(d, "  \x01 choose  \x02 close")
+            ov_check("drawer detail", d, 300)
+        }
+    }
+    // tool strips
+    for k in 0..NFLOORK {
+        tool = Tool.Paint
+        tool_rt = -1
+        tool_arg = k
+        ov_check("strip", strip_text(), 312)
+    }
+    for k in 0..NRT_MENU {
+        tool = Tool.Paint
+        tool_rt = RTM[k] as s32
+        tool_arg = rt_fk_of(tool_rt)
+        ov_check("strip", strip_text(), 312)
+    }
+    for t in 0..NOBJT {
+        tool = Tool.Object
+        tool_arg = t
+        ov_check("strip", strip_text(), 312)
+        // cards: object names and checklist rows
+        ov_check("card title", obj_name(t), CARD_W - 18)
+    }
+    tool = Tool.Inspect
+    for rt in 0..NROOMT {
+        ov_check("room title", room_type_name(rt), CARD_W - 18)
+        let n = RT_NREQ[rt] as s32
+        for k in 0..n { ov_check("checklist", req_text(rt, k), CARD_W - 20) }
+        let c = nb()
+        sappend(c, "\x11 ")
+        sappend(c, room_type_name(rt))
+        sappend(c, " complete")
+        ov_check("complete chip", c, CARD_W - 10)
+        var u = nb()
+        sappend(u, "Unfinished  \x17  999 tiles")
+        ov_check("room line", u, CARD_W - 10)
+        u = nb()
+        sappend(u, "999 tiles  \x17  quality 100")
+        ov_check("room line", u, CARD_W - 10)
+    }
+    for e in 1..13 { ov_check("toast", pe_text(e), 290) }
+    for g in 0..NGUESTT { ov_check("guest", str_of(GT_NAME_OFF[g] as s32), CARD_W - 10) }
+    for k in 0..NREVIEW { ov_check("review", str_of(REVIEW_OFF[k] as s32), 312 - 12) }
+    for k in 0..PM_N { ov_check("pause item", pm_label(k), 120) }
+    print("OVERFLOW ")
+    println(num(ov_n))
 }

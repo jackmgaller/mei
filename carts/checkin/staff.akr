@@ -33,12 +33,25 @@ fn hire(role: s32, shift: s32) -> s32 {
     if i < 0 { return -1 }
     let p = &people[i]
     p.shift = shift as u8
-    p.speed = 0.075
+    // everyone walks at their own pace (+-10%)
+    p.speed = 0.068 + fixed(rnd(15)) / 1000
     p.state = SS_HOME as u8
     p.mode = M_HIDDEN as u8
     p.energy = 1000
-    if on_shift(shift, 10) { staff_arrive(i) }
+    p.stagger = rnd(21) as u8
+    people_vis[i].fade = 255
+    if staff_due(i) { staff_arrive(i) }
     return i
+}
+
+// Should this staff member be at work now? They turn up 0-20 minutes before the shift (their
+// own stagger), and go home 0-20 minutes after it ends.
+fn staff_due(i: s32) -> bool {
+    let p = &people[i]
+    let st = p.stagger as s32
+    let sh = p.shift as s32
+    if p.state as s32 == SS_HOME { return on_shift(sh, 20 - st) }
+    return on_shift(sh, 20 - st) || on_shift(sh, -(st))
 }
 
 fn fire(i: s32) {
@@ -46,9 +59,10 @@ fn fire(i: s32) {
     person_free(i)
 }
 
-// Is the shift on at the current time (minutes early: lets people arrive before it starts)?
+// Is the shift on at the current time (minutes early: lets people arrive before it starts;
+// negative: minutes late, for leaving after it ends)?
 fn on_shift(shift: s32, early: s32) -> bool {
-    let m = (minute() + early) % DAY_MIN
+    let m = (minute() + early + DAY_MIN) % DAY_MIN
     let day_on = m >= 7 * 60 && m < 19 * 60
     if shift == SHIFT_DAY { return day_on }
     return !day_on
@@ -56,25 +70,37 @@ fn on_shift(shift: s32, early: s32) -> bool {
 
 fn staff_arrive(i: s32) {
     let p = &people[i]
-    place_at(i, entrance_tile())
+    place_at(i, street_spot())
+    p.x += fixed(rnd(5) - 2) / 8
     p.mode = M_WALK as u8
     p.state = SS_IDLE as u8
     p.goal = -1
+    p.leaving = 0
+    p.timer = 0
+    fade_in(i)
 }
 
-// Lets go of a station or a job (the job goes back to the queue).
+// Lets go of a station or a job (the job goes back to the queue), or a seat in the staff room.
 fn staff_release(i: s32) {
     let p = &people[i]
     if p.obj >= 0 {
-        let o = &objs[p.obj as s32]
+        let oi = p.obj as s32
+        let o = &objs[oi]
         if o.staff as s32 == i { o.staff = -1 }
+        if p.spot >= 0 { spot_mask[oi] = spot_mask[oi] & ~((1 << (p.spot as s32 & 7)) as u8) }
         p.obj = -1
     }
+    p.spot = -1
+    p.sox = 0.0
+    p.soz = 0.0
     if p.job >= 0 {
         job_unassign(p.job as s32)
         p.job = -1
     }
+    // plates still on the tray go back to the pass
+    for k in 0..njobs { if jobs[k].kind != 0 && jobs[k].who as s32 == i { job_unassign(k) } }
     if p.elev >= 0 { elev_forget(i) }
+    if p.type as s32 == ROLE_COOK { cook_reset(i) }
     p.carry = 0
 }
 
@@ -82,21 +108,24 @@ fn shifts_minute() {
     for i in 0..npeople {
         let p = &people[i]
         if p.used == 0 || p.kind as s32 != P_STAFF { continue }
-        let sh = p.shift as s32
         let st = p.state as s32
         if st == SS_HOME {
-            if on_shift(sh, 10) { staff_arrive(i) }
+            if staff_due(i) { staff_arrive(i) }
             // rested at home
             p.energy = 1000
             continue
         }
-        if !on_shift(sh, 0) && st != SS_LEAVE && !on_shift(sh, 10) {
+        if !staff_due(i) && st != SS_LEAVE {
             if p.job >= 0 && st == SS_JOB { continue }   // finish the job first
+            let m = p.mode as s32
+            if m != M_WALK && m != M_STAND { continue }  // off the stairs or out of the lift first
             staff_release(i)
             p.state = SS_LEAVE as u8
             p.pose = POSE_STAND as u8
+            p.sox = 0.0
+            p.soz = 0.0
             p.mode = M_WALK as u8
-            go_to(i, entrance_tile())
+            go_to(i, street_spot())
             continue
         }
         // tiring work
@@ -105,14 +134,55 @@ fn shifts_minute() {
     }
 }
 
+// A free spot at a staff-room table, cot, coffee machine or vending machine (ss_obj, ss_spot),
+// nearest first; the tile, or -1.
+var ss_obj: s32
+var ss_spot: s32
 fn staff_room_spot() -> s32 {
+    var best = -1
+    var bd = 0x7FFFFFFF
+    ss_obj = -1
     for k in 0..nobjs {
         let o = &objs[k]
         if o.used == 0 { continue }
         let r = o.room as s32
         if r == 0 || rooms[r].rtype as s32 != RT_STAFF { continue }
         let u = OBJ_USE[o.t as s32] as s32
-        if u == USE_REST || u == USE_COFFEE || u == USE_SNACK { return spot_tile(k, 0) }
+        if u != USE_REST && u != USE_COFFEE && u != USE_SNACK { continue }
+        let s = free_spot(k)
+        if s < 0 { continue }
+        let d = rnd(4) + abs(o.f as s32) * 10
+        if d < bd { bd = d; best = k; ss_spot = s }
+    }
+    if best < 0 { return -1 }
+    ss_obj = best
+    return spot_tile(best, ss_spot)
+}
+
+// Where each role waits when there's nothing to do (a room type), or -1 (the staff room).
+fn role_home(role: s32) -> s32 {
+    match role {
+        1 => return RT_LAUNDRY       // housekeepers: folding linen
+        3 => return RT_KITCHEN       // waiters: by the pass
+        6 => return RT_LOBBY         // bellhops: by the door
+        7 => return RT_STORAGE       // maintenance: the store room
+        else => return -1
+    }
+}
+
+fn staff_room_tile(f: s32) -> s32 { return room_type_tile(f, RT_STAFF) }
+
+// Somewhere to wait in a room of type rt on floor f (a free floor tile, spread out), or -1.
+fn room_type_tile(f: s32, rt: s32) -> s32 {
+    for r in 1..nrooms {
+        let rm = &rooms[r]
+        if rm.used == 0 || rm.rtype as s32 != rt || rm.floor as s32 != f { continue }
+        for tries in 0..8 {
+            let x = rm.x0 as s32 + rnd(rm.x1 as s32 - rm.x0 as s32 + 1)
+            let z = rm.z0 as s32 + rnd(rm.z1 as s32 - rm.z0 as s32 + 1)
+            let t = tix(f, x, z)
+            if room_at(f, x, z) == r && pass[t] as s32 & PB_WALK != 0 && idle_tile_free(t) { return t }
+        }
     }
     return -1
 }
@@ -157,6 +227,10 @@ fn staff_tick(i: s32) {
                 p.arrived = 0
                 p.state = SS_BREAK as u8
                 p.pose = POSE_SIT as u8
+                if p.obj >= 0 {
+                    face_obj(i, p.obj as s32)
+                    seat_for(i, p.obj as s32, max(p.spot as s32, 0), OBJ_USE[objs[p.obj as s32].t as s32] as s32)
+                }
             } else if p.wait > 900 {
                 p.state = SS_IDLE as u8
                 p.energy = 600
@@ -164,22 +238,34 @@ fn staff_tick(i: s32) {
         }
         7 => {
             if p.energy >= 950 {
+                staff_release(i)
                 p.state = SS_IDLE as u8
                 p.pose = POSE_STAND as u8
+                p.timer = 0
             }
         }
-        9 => {
-            if p.arrived != 0 || p.wait > 1200 {
+        9 => {   // going home: out to the street and fade away
+            if p.arrived != 0 || p.wait > 1200 { p.leaving = 1 }
+            if p.leaving != 0 && people_vis[i].fade == 255 {
                 p.state = SS_HOME as u8
                 p.mode = M_HIDDEN as u8
                 p.goal = -1
+                p.leaving = 0
+                p.arrived = 0
             }
         }
-        10 => {
+        10 => {  // walking somewhere to wait (or on patrol): stations and jobs come first
+            if (tod + i) % 30 == 0 && staff_has_work(i) {
+                p.goal = -1
+                p.state = SS_IDLE as u8
+                p.timer = 0
+                return
+            }
             if p.arrived != 0 || p.wait > 300 {
                 p.arrived = 0
                 p.state = SS_IDLE as u8
-                p.timer = (60 + rnd(120)) as s16
+                p.timer = (90 + rnd(150)) as s16
+                if p.type as s32 == ROLE_SECURITY { p.timer = (60 + rnd(120)) as s16 }
                 p.pose = POSE_STAND as u8
             }
         }
@@ -189,14 +275,17 @@ fn staff_tick(i: s32) {
 
 fn go_break(i: s32) {
     let p = &people[i]
-    let s = staff_room_spot()
     staff_release(i)
+    let s = staff_room_spot()
     if s < 0 {
         // nowhere to rest: they slog on, slower and grumpier
         p.energy = 400
         p.state = SS_IDLE as u8
         return
     }
+    spot_mask[ss_obj] = spot_mask[ss_obj] | ((1 << ss_spot) as u8)
+    p.obj = ss_obj as s16
+    p.spot = ss_spot as s8
     p.state = SS_BREAK_GO as u8
     go_to(i, s)
 }
@@ -206,6 +295,8 @@ fn staff_idle(i: s32) {
     let role = p.type as s32
     if p.timer > 0 {
         p.timer -= 1
+        // something to do? (checked now and then while waiting)
+        if (tod + i) % 30 == 0 && staff_has_work(i) { p.timer = 0 }
         return
     }
     if p.energy < 250 {
@@ -228,10 +319,12 @@ fn staff_idle(i: s32) {
     }
     // then jobs
     if take_job(i) { return }
-    // nothing to do: security patrols, the rest wait about (staff room if there is one)
-    // (and nobody loiters on the street)
-    let outside = room_at(p.f as s32, p.x as s32, p.z as s32) == 0
-    if role == ROLE_SECURITY || outside || rnd(4) == 0 {
+    // nothing to do. Security patrols; the rest wait in the staff room when it's on their floor,
+    // else somewhere out of the way on the floor they're on (no trips upstairs and down for
+    // nothing: that's what used to jam the elevator), and nobody loiters on the street.
+    let f = p.f as s32
+    let r = room_at(f, p.x as s32, p.z as s32)
+    if role == ROLE_SECURITY {
         let t = random_public_tile()
         if t >= 0 {
             p.state = SS_PATROL as u8
@@ -239,8 +332,70 @@ fn staff_idle(i: s32) {
             return
         }
     }
-    p.timer = (120 + rnd(120)) as s16
+    if r == 0 || rooms[r].rtype as s32 != RT_STAFF {
+        // a home in their own department (on this floor), else the staff room
+        var t = -1
+        let home = role_home(role)
+        if home >= 0 && rnd(3) != 0 {
+            if r > 0 && rooms[r].rtype as s32 == home {
+                p.timer = (60 + rnd(90)) as s16
+                p.pose = POSE_STAND as u8
+                return
+            }
+            t = room_type_tile(f, home)
+        }
+        if t < 0 { t = staff_room_tile(f) }
+        if t < 0 && (r == 0 || rooms[r].kind as s32 == KIND_DECK) { t = quiet_tile(i) }
+        if t < 0 && role == ROLE_BELLHOP { t = quiet_tile(i) }
+        if t >= 0 {
+            p.state = SS_PATROL as u8
+            go_to_pt(i, t, tile_cx(t) + fixed(rnd(5) - 2) / 10, tile_cz(t) + fixed(rnd(5) - 2) / 10)
+            return
+        }
+    }
+    p.timer = (40 + rnd(60)) as s16
     p.pose = POSE_STAND as u8
+}
+
+// Has a station or a job turned up for an idle staff member?
+fn staff_has_work(i: s32) -> bool {
+    let p = &people[i]
+    let role = p.type as s32
+    if pending_job(role) { return true }
+    let st = role_station(role)
+    if st < 0 { return false }
+    return free_station(st, i) >= 0
+}
+
+// Somewhere near on the same floor, indoors and out of the way (a corridor or the lobby
+// edge), for waiting about.
+fn quiet_tile(i: s32) -> s32 {
+    let p = &people[i]
+    let f = p.f as s32
+    let tx = p.x as s32
+    let tz = p.z as s32
+    for tries in 0..12 {
+        let x = clamp(tx + rnd(9) - 4, 0, GW - 1)
+        let z = clamp(tz + rnd(9) - 4, 0, GH - 1)
+        let r = room_at(f, x, z)
+        if r == 0 { continue }
+        let k = rooms[r].kind as s32
+        let rt = rooms[r].rtype as s32
+        if k != KIND_CORR && rt != RT_LOBBY && rt != RT_STAFF { continue }
+        let t = tix(f, x, z)
+        if pass[t] as s32 & PB_WALK != 0 && idle_tile_free(t) { return t }
+    }
+    return -1
+}
+
+// Nobody standing on tile t, or heading for it.
+fn idle_tile_free(t: s32) -> bool {
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used == 0 || p.mode as s32 == M_HIDDEN { continue }
+        if p.goal as s32 == t || (p.goal < 0 && p.tile as s32 == t) { return false }
+    }
+    return true
 }
 
 fn free_station(t: s32, i: s32) -> s32 {

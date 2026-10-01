@@ -300,7 +300,9 @@ fn obj_mesh(t: s32, lo: bool) -> *Mesh {
     return ART_MESH[a]
 }
 
-// Copies a mesh into the batch, turned by rot * 90 degrees about +Y and moved to c.
+// Copies a mesh into the batch, turned by rot * 90 degrees about +Y and moved to c. Faces are
+// copied as nine words, their vertex indices moved in one add per pair (and their colours ghosted
+// for the floors below, see render.akr mb_ghost).
 fn bake_mesh(m: *Mesh, c: vec3, rot: s32) {
     let nv = m.nverts as s32
     let nf = m.nfaces as s32
@@ -308,30 +310,43 @@ fn bake_mesh(m: *Mesh, c: vec3, rot: s32) {
     mb_need(nv, nf)
     let base = m as u32
     let vs = (base + m.verts) as *vec4
-    let fs = (base + m.faces) as *Face
     let v0 = bm_nv
-    for k in 0..nv {
-        let p = vs[k]
-        var x = p.x
-        var z = p.z
-        match rot & 3 {
-            0 => {}
-            1 => { x = p.z; z = -p.x }
-            2 => { x = -p.x; z = -p.z }
-            else => { x = -p.z; z = p.x }
-        }
-        bm.v[bm_nv] = vec4(c.x + x, c.y + p.y, c.z + z, 1.0)
-        bm_nv += 1
+    let dv = &bm.v[v0]
+    let cx = c.x
+    let cy = c.y
+    let cz = c.z
+    match rot & 3 {
+        0 => { for k in 0..nv { let p = vs[k]; dv[k] = vec4(cx + p.x, cy + p.y, cz + p.z, 1.0) } }
+        1 => { for k in 0..nv { let p = vs[k]; dv[k] = vec4(cx + p.z, cy + p.y, cz - p.x, 1.0) } }
+        2 => { for k in 0..nv { let p = vs[k]; dv[k] = vec4(cx - p.x, cy + p.y, cz - p.z, 1.0) } }
+        else => { for k in 0..nv { let p = vs[k]; dv[k] = vec4(cx - p.z, cy + p.y, cz + p.x, 1.0) } }
     }
+    bm_nv = v0 + nv
+    let add = (v0 as u32) | ((v0 as u32) << 16)
+    var sw = (base + m.faces) as *u32
+    var d = (&bm.f[bm_nf]) as *u32
+    let gh = mb_ghost
     for k in 0..nf {
-        let dst = &bm.f[bm_nf]
-        *dst = fs[k]
-        dst.idx[0] = (dst.idx[0] as s32 + v0) as u16
-        dst.idx[1] = (dst.idx[1] as s32 + v0) as u16
-        dst.idx[2] = (dst.idx[2] as s32 + v0) as u16
-        dst.idx[3] = (dst.idx[3] as s32 + v0) as u16
-        bm_nf += 1
+        d[0] = sw[0]
+        d[1] = sw[1] + add
+        d[2] = sw[2] + add
+        if gh {
+            d[3] = ghost_col(sw[3])
+            d[4] = ghost_col(sw[4])
+            d[5] = ghost_col(sw[5])
+            d[6] = ghost_col(sw[6])
+        } else {
+            d[3] = sw[3]
+            d[4] = sw[4]
+            d[5] = sw[5]
+            d[6] = sw[6]
+        }
+        d[7] = sw[7]
+        d[8] = sw[8]
+        d = d + 9
+        sw = sw + 9
     }
+    bm_nf += nf
 }
 
 // The placeholder: a shaded box sized from the footprint.
@@ -360,7 +375,7 @@ fn bake_object(i: s32, g: s32) {
     let t = o.t as s32
     var c = obj_centre(i)
     c.y = fixed(g) * STOREY
-    let m = obj_mesh(t, view_zoom < 2 || cache_lo || g < view_floor)
+    let m = obj_mesh(t, view_zoom < 2 || cache_lo || g < view_floor || obj_far)
     if m != null {
         bake_mesh(m, c, o.rot as s32)
     } else {
@@ -375,27 +390,48 @@ fn obj_exposed(i: s32, g: s32) -> bool {
     let gw = obj_gw(o.t as s32, o.rot as s32)
     let gd = obj_gd(o.t as s32, o.rot as s32)
     for dz in 0..gd {
-        for dx in 0..gw { if exposed(g, o.x as s32 + dx, o.z as s32 + dz) { return true } }
+        var l = (o.z as s32 + dz) * GW + o.x as s32
+        for dx in 0..gw {
+            if top_solid[l] as s32 <= g { return true }
+            l += 1
+        }
     }
     return false
 }
 
-// Objects of floor g (elevator shafts are drawn on every floor they pass).
+// Objects of floor g (elevator shafts are drawn on every floor they pass). The objects come
+// listed per floor from render.akr's compute_tables().
 fn build_objects(g: s32) {
-    for i in 0..nobjs {
+    var i = ob_head[g]
+    while i >= 0 {
+        build_object(i, g)
+        i = ob_next[i] as s32
+    }
+    for k in 0..nlifts {
+        let i = lifts[k] as s32
         let o = &objs[i]
-        if o.used == 0 { continue }
-        if g < o.f as s32 || g > o.f1 as s32 { continue }
-        if !obj_exposed(i, g) { continue }
-        let t = o.t as s32
-        if g > o.f as s32 && t != OB_ELEVATOR && t != OB_GLASS_ELEVATOR { continue }
-        // zoomed in, only what is near the screen (the cache is rebuilt after a long pan)
-        if view_zoom == 2 {
-            var c = obj_centre(i)
-            c.y = fixed(g) * STOREY
-            if !project(c) { continue }
-            if proj_x < -CULL_M || proj_x > 320 + CULL_M || proj_y < -CULL_M || proj_y > 240 + CULL_M + 40 { continue }
-        }
-        bake_object(i, g)
+        if g >= o.f as s32 && g <= o.f1 as s32 { build_object(i, g) }
     }
 }
+
+fn build_object(i: s32, g: s32) {
+    let o = &objs[i]
+    // a skylight is part of the roof, which the cut-away view leaves out (it would float there)
+    if o.t as s32 == OB_SKYLIGHT && g == view_floor { return }
+    if !obj_exposed(i, g) { return }
+    // zoomed in, only what is near the screen (the cache is rebuilt after a long pan), and the
+    // full meshes only near the middle of it: the edges take the low-detail ones (A15)
+    obj_far = false
+    if view_zoom == 2 {
+        var c = obj_centre(i)
+        c.y = fixed(g) * STOREY
+        if !project(c) { return }
+        if proj_x < -CULL_M || proj_x > 320 + CULL_M || proj_y < -CULL_M || proj_y > 240 + CULL_M + 40 { return }
+        obj_far = abs(proj_x - 160) > FULL_R_X || abs(proj_y - 120) > FULL_R_Y
+    }
+    bake_object(i, g)
+}
+
+var obj_far: bool                // the object is zoomed in but far from the middle of the screen
+const FULL_R_X = 190
+const FULL_R_Y = 150

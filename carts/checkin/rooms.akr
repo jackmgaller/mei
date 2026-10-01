@@ -8,17 +8,6 @@ var rcount: [200][74]u8          // objects of each type per room
 
 const PRIO: [13]u8 = [5, 4, 6, 8, 12, 7, 9, 10, 11, 14, 15, 16, 13]   // suite, guest, lobby, kitchen, bar (before restaurant: counters win), ...
 
-fn rooms_count() {
-    memset(&rcount[0][0], 0, 200 * 74)
-    for i in 0..nobjs {
-        let o = &objs[i]
-        if o.used == 0 { continue }
-        let r = troom[tix(o.f as s32, o.x as s32, o.z as s32)] as s32
-        o.room = r as u8
-        if r > 0 && rcount[r][o.t as s32] < 255 { rcount[r][o.t as s32] += 1 }
-    }
-}
-
 // How many of a type's requirements room r meets.
 fn reqs_met(r: s32, rt: s32) -> s32 {
     let n = RT_NREQ[rt] as s32
@@ -39,8 +28,13 @@ fn req_have(r: s32, rt: s32, k: s32) -> s32 {
 fn req_ok(r: s32, rt: s32, k: s32) -> bool { return req_have(r, rt, k) >= RT_REQ_CNT[rt * 7 + k] as s32 }
 
 fn type_valid(r: s32, rt: s32) -> bool {
-    let rm = &rooms[r]
     if reqs_met(r, rt) < RT_NREQ[rt] as s32 { return false }
+    return type_fits(r, rt)
+}
+
+// A room's size, floor and water fit type rt (its requirements aside).
+fn type_fits(r: s32, rt: s32) -> bool {
+    let rm = &rooms[r]
     if (rm.ntiles - rm.nvoid) as s32 < RT_MIN[rt] as s32 { return false }
     if rt == RT_LOBBY && rm.floor != 0 { return false }
     if rt == RT_POOL && rm.nwater < 6 { return false }
@@ -64,27 +58,29 @@ fn detect_room(r: s32) {
     rm.rtype = RT_NONE as u8
     var best = -1
     var best_score = 0
+    var best_met = 0
     for p in 0..13 {
         let rt = PRIO[p] as s32
-        if type_valid(r, rt) {
+        let n = RT_NREQ[rt] as s32
+        let met = reqs_met(r, rt)
+        if met >= n && type_fits(r, rt) {
             rm.rtype = rt as u8
             rm.flags = rm.flags | RF_VALID
             rm.best = rt as u8
             return
         }
-        let n = RT_NREQ[rt] as s32
-        let met = reqs_met(r, rt)
         // closeness: the share of requirements met (water counts for pools)
         var score = met * 256 / max(n, 1)
         if rt == RT_POOL && rm.nwater > 0 { score += 128 }
         if score > best_score {
             best_score = score
             best = rt
+            best_met = met
         }
     }
     if best >= 0 {
         rm.best = best as u8
-        rm.missing = (RT_NREQ[best] as s32 - reqs_met(r, best)) as u8
+        rm.missing = (RT_NREQ[best] as s32 - best_met) as u8
     }
 }
 
@@ -125,29 +121,228 @@ fn count_windows(r: s32) {
     rm.windows = min(n, 255) as u8
 }
 
+// ---- the update after an edit
+//
+// Only the floors whose tiles, rooms, walls or objects changed are measured again (a snapshot of
+// each floor's state tells them apart), in single passes over their tiles; a full refresh happens after
+// a reset or a load (rooms_refresh_all). The grand hotel's update costs about 100k cycles for a
+// one-floor edit (it was about 3M, a ~6-frame freeze), and part of it waits for the next frame.
+
+var rooms_refresh_all = true
+var floors_changed: s32          // bits: floors that changed in the last rooms_update
+
+// Each floor's state as of the last update (tiles, rooms, flags, edges, objects), compared
+// word by word to find the floors an edit changed.
+var snap_fl: [4608]u8
+var snap_rm: [4608]u8
+var snap_tf: [4608]u8
+var snap_en: [4608]u8
+var snap_ew: [4608]u8
+var snap_ob: [4608]s16
+var snap_oh: [6]u32
+
+fn floor_differs(f: s32) -> bool {
+    if snap_oh[f] != obj_hash[f] { return true }
+    let b = f * NT
+    if words_differ(&tfloor[b] as *u32, &snap_fl[b] as *u32, NT / 4) { return true }
+    if words_differ(&troom[b] as *u32, &snap_rm[b] as *u32, NT / 4) { return true }
+    if words_differ(&tflag[b] as *u32, &snap_tf[b] as *u32, NT / 4) { return true }
+    if words_differ(&edge_n[b] as *u32, &snap_en[b] as *u32, NT / 4) { return true }
+    if words_differ(&edge_w[b] as *u32, &snap_ew[b] as *u32, NT / 4) { return true }
+    return words_differ(&tobj[b] as *u32, &snap_ob[b] as *u32, NT / 2)
+}
+
+fn words_differ(a: *u32, b: *u32, n: s32) -> bool {
+    for k in 0..n { if a[k] != b[k] { return true } }
+    return false
+}
+
+fn floor_snap(f: s32) {
+    let b = f * NT
+    memcpy(&snap_fl[b], &tfloor[b], NT)
+    memcpy(&snap_rm[b], &troom[b], NT)
+    memcpy(&snap_tf[b], &tflag[b], NT)
+    memcpy(&snap_en[b], &edge_n[b], NT)
+    memcpy(&snap_ew[b], &edge_w[b], NT)
+    memcpy(&snap_ob[b] as *u8, &tobj[b] as *u8, NT * 2)
+    snap_oh[f] = obj_hash[f]
+}
+
+// The objects' types, places and turns, hashed per floor (one pass over the objects).
+var obj_hash: [6]u32
+var shaft_hash: u32              // the elevators' places and the floors their shafts reach
+var snap_shaft: u32
+fn objs_hash() {
+    for f in 0..NFL { obj_hash[f] = 2166136261 }
+    var sh: u32 = 2166136261
+    for i in 0..nobjs {
+        let o = &objs[i]
+        if o.used == 0 { continue }
+        let f = o.f as s32
+        obj_hash[f] = (obj_hash[f] ^ ((o.t as u32) | ((o.x as u32) << 8) | ((o.z as u32) << 16) | ((o.rot as u32) << 24))) * 16777619
+        if o.f1 != o.f { sh = (sh ^ ((i as u32) | ((o.f as u32) << 12) | ((o.f1 as u32) << 16))) * 16777619 }
+    }
+    shaft_hash = sh
+}
+
+// Fills n bytes (a multiple of 16, word aligned) with the word w, 16 bytes a store.
+fn fill16(dst: *u8, w: s32, n: s32) {
+    let q = dst as *ivec4
+    let v = ivec4(w, w, w, w)
+    for k in 0..n / 16 { q[k] = v }
+}
+
+// The objects of each room on the floors in `mask`, by type.
+fn rooms_count(mask: s32) {
+    if mask == (1 << NFL) - 1 {
+        fill16(&rcount[0][0], 0, 200 * 74)
+    } else {
+        for r in 1..nrooms {
+            if rooms[r].used == 0 || mask & (1 << rooms[r].floor as s32) == 0 { continue }
+            let row = &rcount[r][0]
+            for t in 0..74 { row[t] = 0 }
+        }
+    }
+    for i in 0..nobjs {
+        let o = &objs[i]
+        if o.used == 0 || mask & (1 << o.f as s32) == 0 { continue }
+        let r = troom[o.f as s32 * NT + o.z as s32 * GW + o.x as s32] as s32
+        o.room = r as u8
+        if r > 0 && rcount[r][o.t as s32] < 255 { rcount[r][o.t as s32] += 1 }
+    }
+}
+
+// Tiles, voids, water, bounding box and windows of every room on floor f, in one pass.
+var mf_n: [200]s32
+var mf_v: [200]s32
+var mf_w: [200]s32
+var mf_win: [200]s32
+var mf_x0: [208]u8
+var mf_z0: [208]u8
+var mf_x1: [208]u8
+var mf_z1: [208]u8
+fn measure_floor(f: s32) {
+    fill16(&mf_n[0] as *u8, 0, 800)
+    fill16(&mf_v[0] as *u8, 0, 800)
+    fill16(&mf_w[0] as *u8, 0, 800)
+    fill16(&mf_win[0] as *u8, 0, 800)
+    fill16(&mf_x0[0], 0x63636363, 208)
+    fill16(&mf_z0[0], 0x63636363, 208)
+    fill16(&mf_x1[0], 0, 208)
+    fill16(&mf_z1[0], 0, 208)
+    let b = f * NT
+    let tr = &troom[b]
+    let tf = &tflag[b]
+    let ew = &edge_w[b]
+    let en = &edge_n[b]
+    for t in 0..NT {
+        let r = tr[t] as s32
+        let x = t & 31
+        let z = ROWZ[t >> 5] as s32
+        if ew[t] as s32 == EF_WINDOW {
+            mf_win[r] += 1
+            if x > 0 { mf_win[tr[t - 1] as s32] += 1 }
+        }
+        if en[t] as s32 == EF_WINDOW {
+            mf_win[r] += 1
+            if z > 0 { mf_win[tr[t - GW] as s32] += 1 }
+        }
+        if r == 0 { continue }
+        mf_n[r] += 1
+        let fl = tf[t] as s32
+        if fl & TF_VOID != 0 { mf_v[r] += 1 }
+        if fl & TF_WATER != 0 { mf_w[r] += 1 }
+        if x < mf_x0[r] as s32 { mf_x0[r] = x as u8 }
+        if x > mf_x1[r] as s32 { mf_x1[r] = x as u8 }
+        if z < mf_z0[r] as s32 { mf_z0[r] = z as u8 }
+        if z > mf_z1[r] as s32 { mf_z1[r] = z as u8 }
+    }
+    for r in 1..nrooms {
+        let rm = &rooms[r]
+        if rm.used == 0 || rm.floor as s32 != f { continue }
+        rm.ntiles = mf_n[r] as s16
+        rm.nvoid = mf_v[r] as s16
+        rm.nwater = mf_w[r] as s16
+        rm.windows = min(mf_win[r], 255) as u8
+        rm.x0 = mf_x0[r]
+        rm.z0 = mf_z0[r]
+        rm.x1 = mf_x1[r]
+        rm.z1 = mf_z1[r]
+        if rm.ntiles == 0 { rm.used = 0 }
+    }
+}
+
 fn rooms_update() {
     rooms_dirty = false
-    if edges_dirty {
-        edges_dirty = false
-        for f in 0..NFL { clean_edges(f) }
-        elevators_respan()
+    edges_dirty = false
+    elevators_respan()
+    objs_hash()
+    // edits happen on the floor in view (stairs cut into the one above, shafts run up from it)
+    let all = rooms_refresh_all
+    var f0 = 0
+    if !all { f0 = max(view_floor - 1, 0) }
+    // floors above the next one change only with their objects, or when a shaft grows or shrinks
+    let far = !all && screen == Screen.Play && shaft_hash == snap_shaft
+    snap_shaft = shaft_hash
+    var mask = 0
+    for f in f0..NFL {
+        if far && f > view_floor + 1 && snap_oh[f] == obj_hash[f] { continue }
+        if all || floor_differs(f) {
+            mask = mask | (1 << f)
+            clean_edges(f)
+            floor_snap(f)
+        }
     }
-    rooms_count()
+    rooms_refresh_all = false
+    floors_changed = mask
+    if mask == 0 { return }
+    for f in 0..NFL { if mask & (1 << f) != 0 { measure_floor(f) } }
+    rooms_count(mask)
     for r in 1..nrooms {
-        if rooms[r].used == 0 { continue }
-        room_measure(r)
-        if rooms[r].used == 0 { continue }
-        count_windows(r)
-        detect_room(r)
-        room_quality(r)
         let rm = &rooms[r]
+        if rm.used == 0 || mask & (1 << rm.floor as s32) == 0 { continue }
+        detect_room(r)
+    }
+    room_classes()
+    elevs_rebuild()
+    reception_queues_reset()
+    // who sits where (objects may have gone)
+    fill16(&spot_mask[0], 0, MAXOBJ)
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used == 0 || p.obj < 0 || p.spot < 0 { continue }
+        let oi = p.obj as s32
+        if objs[oi].used == 0 { continue }
+        spot_mask[oi] = spot_mask[oi] | ((1 << (p.spot as s32 & 7)) as u8)
+    }
+    // the rest (views, qualities, the entrance, paths) waits for the next frame after an edit
+    // in play, whose frame is busy enough (anything else, a reset, a load, a setup, finishes now)
+    rooms_stage2 = rooms_stage2 | mask
+    rooms_stage2_t = tick_count
+    if all || screen != Screen.Play { rooms_finish() }
+}
+
+var rooms_stage2: s32            // floors whose second stage is still to do
+var rooms_stage2_t: s32          // the frame the first stage ran
+
+// The second stage of an update (from paths_update, the frame after the edit; or now).
+fn rooms_finish() {
+    let mask = rooms_stage2
+    if mask == 0 { return }
+    rooms_stage2 = 0
+    arch_update(mask)
+    let top = top_floor()
+    for r in 1..nrooms {
+        let rm = &rooms[r]
+        if rm.used == 0 { continue }
+        let was = rm.flags & RF_PENTHOUSE
         rm.flags = rm.flags & ~RF_PENTHOUSE
-        if rm.rtype as s32 == RT_SUITE && rm.floor as s32 == top_floor() && rm.floor > 0 { rm.flags = rm.flags | RF_PENTHOUSE }
+        if rm.rtype as s32 == RT_SUITE && rm.floor as s32 == top && rm.floor > 0 { rm.flags = rm.flags | RF_PENTHOUSE }
+        if mask & (1 << rm.floor as s32) != 0 || was != rm.flags & RF_PENTHOUSE { room_quality(r) }
     }
     rooms_after_update()
-    paths_invalidate()
-    elevs_rebuild()
-    compute_architecture()
+    if mask & 1 != 0 { entrance_update() }
+    paths_changed(mask)
 }
 
 fn room_type_name(rt: s32) -> *u8 { return str_of(RT_NAME_OFF[rt] as s32) }

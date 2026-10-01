@@ -1,5 +1,7 @@
 // The simulation: the clock, game speed, money and the daily ledger, the star rating with its
 // tier requirements, reviews, the architecture score, noise, and guest arrivals.
+// The balance numbers (ECO_*) come from tools/checkin_data.py (ECONOMY), generated into gen_sim.akr.
+import "gen_sim.akr"
 
 const MIN_FRAMES = 16            // frames per game minute at x1
 const DAY_MIN = 1440
@@ -69,8 +71,44 @@ fn fmt_clock() -> *u8 {
     return b
 }
 
-// One simulation tick (called `speed` times per frame).
+// One simulation tick (called `speed` times per frame). The simulation keeps to a budget: a tick
+// that would start after SIM_BUDGET cycles of the frame are used is carried over to the next
+// frame (up to SIM_DEBT_MAX ticks), so x4 never drops a frame; the time catches up when it can.
+const SIM_BUDGET = 300000
+const SIM_DEBT_MAX = 12
+var sim_seen: s32 = -1
+var sim_debt: s32
+var sim_deferred: s32            // stats: ticks carried over
+var sim_ran: s32 = -1            // the frame (tick_count) that has run a tick
+
 fn sim_tick() {
+    if sim_seen != tick_count {
+        // the first tick of a frame: the per-frame work, then the ticks owed
+        sim_seen = tick_count
+        people_frame()
+        // (at most two extra a frame, so nobody visibly speeds up while time catches up)
+        var owed = min(sim_debt, 2)
+        sim_debt -= owed
+        while owed > 0 {
+            if sim_over_budget() { sim_debt += owed; break }
+            sim_ran = tick_count
+            sim_step()
+            owed -= 1
+        }
+    }
+    // (the frame's first tick always runs, so nobody ever stops dead for a frame)
+    if sim_ran == tick_count && sim_over_budget() && sim_debt < SIM_DEBT_MAX {
+        sim_debt += 1
+        sim_deferred += 1
+        return
+    }
+    sim_ran = tick_count
+    sim_step()
+}
+
+fn sim_over_budget() -> bool { return 500000 - CYCLES as s32 > SIM_BUDGET }
+
+fn sim_step() {
     tod += 1
     if tod >= DAY_MIN * MIN_FRAMES {
         tod = 0
@@ -91,7 +129,7 @@ fn sim_minute() {
 
 fn sim_hour(h: s32) {
     if h == 6 { rate_hotel() }
-    if h == 7 { order_deliveries() }
+    if h == ECO_DELIVERY_H1 || h == ECO_DELIVERY_H2 { order_deliveries() }
 }
 
 fn new_day() {
@@ -103,10 +141,10 @@ fn new_day() {
     }
     spend(LG_WAGES, wages)
     var upkeep = 0
-    for i in 0..nobjs { if objs[i].used != 0 { upkeep += 2 } }
-    for r in 1..nrooms { if rooms[r].used != 0 { upkeep += rooms[r].ntiles as s32 / 4 } }
+    for i in 0..nobjs { if objs[i].used != 0 { upkeep += ECO_UPKEEP_OBJ } }
+    for r in 1..nrooms { if rooms[r].used != 0 { upkeep += rooms[r].ntiles as s32 / ECO_UPKEEP_TILES } }
     spend(LG_UPKEEP, upkeep)
-    spend(LG_LOAN, loan * 6 / 36500)            // 6% a year
+    spend(LG_LOAN, loan * ECO_LOAN_RATE / 36500)
     for k in 0..NLG {
         ledger_y[k] = ledger[k]
         ledger[k] = 0
@@ -165,33 +203,34 @@ fn noise_pair(a: s32, b: s32) {
 var atrium_tiles: s32
 var atrium_height: s32
 
-fn compute_architecture() {
+fn compute_architecture() { arch_update(-1) }
+
+// The architecture score, and the atrium views of the rooms on the floors in `mask`.
+fn arch_update(mask: s32) {
     var total = 0
     atrium_tiles = 0
     atrium_height = 0
     // each void tile scores by the height of the column it opens, if its bottom is a grand room
-    for z in 0..GH {
-        for x in 0..GW {
-            var f = NFL - 1
-            while f >= 1 {
-                let t = tix(f, x, z)
-                if tflag[t] & TF_VOID != 0 {
-                    // walk down to the bottom of this column
-                    var g = f
-                    while g >= 1 && tflag[tix(g, x, z)] & TF_VOID != 0 { g -= 1 }
-                    let h = f - g + 1                      // floors of open space
-                    let br = troom[tix(g, x, z)] as s32
-                    let bt = rooms[br].rtype as s32
-                    if br != 0 && (bt == RT_LOBBY || bt == RT_RESTAURANT || bt == RT_POOL || bt == RT_BAR || bt == RT_SPA) {
-                        total += 2 * h * h
-                        atrium_tiles += 1
-                        atrium_height = max(atrium_height, h)
-                    }
-                    f = g - 1
-                    continue
+    for c in 0..NT {
+        if (tflag[NT + c] | tflag[2 * NT + c] | tflag[3 * NT + c] | tflag[4 * NT + c] | tflag[5 * NT + c]) & TF_VOID == 0 { continue }
+        var f = NFL - 1
+        while f >= 1 {
+            if tflag[f * NT + c] & TF_VOID != 0 {
+                // walk down to the bottom of this column
+                var g = f
+                while g >= 1 && tflag[g * NT + c] & TF_VOID != 0 { g -= 1 }
+                let h = f - g + 1                          // floors of open space
+                let br = troom[g * NT + c] as s32
+                let bt = rooms[br].rtype as s32
+                if br != 0 && (bt == RT_LOBBY || bt == RT_RESTAURANT || bt == RT_POOL || bt == RT_BAR || bt == RT_SPA) {
+                    total += 2 * h * h
+                    atrium_tiles += 1
+                    atrium_height = max(atrium_height, h)
                 }
-                f -= 1
+                f = g - 1
+                continue
             }
+            f -= 1
         }
     }
     // features: skylights over voids, chandeliers in them, trees and fountains under them,
@@ -210,19 +249,26 @@ fn compute_architecture() {
     }
     arch_score = clamp(total / 6, 0, 100)
     // rooms with a view of an atrium (a tile next to a void on the same floor), or of the sea
-    for r in 1..nrooms {
-        let rm = &rooms[r]
-        if rm.used == 0 { continue }
-        rm.view = 0
-        let f = rm.floor as s32
-        for z in rm.z0 as s32..rm.z1 as s32 + 1 {
-            for x in rm.x0 as s32..rm.x1 as s32 + 1 {
-                if room_at(f, x, z) != r { continue }
-                if void_at(f, x + 1, z) || void_at(f, x - 1, z) || void_at(f, x, z + 1) || void_at(f, x, z - 1) { rm.view = 20 }
+    for r in 1..nrooms { if mask & (1 << rooms[r].floor as s32) != 0 { rooms[r].view = 0 } }
+    for f in 1..NFL {
+        if mask & (1 << f) == 0 { continue }
+        let b = f * NT
+        for t in 0..NT {
+            let r = troom[b + t] as s32
+            if r == 0 { continue }
+            let x = t % GW
+            let z = t / GW
+            if (x + 1 < GW && tflag[b + t + 1] & TF_VOID != 0) || (x > 0 && tflag[b + t - 1] & TF_VOID != 0) ||
+               (z + 1 < GH && tflag[b + t + GW] & TF_VOID != 0) || (z > 0 && tflag[b + t - GW] & TF_VOID != 0) {
+                rooms[r].view = 20
             }
         }
+    }
+    for r in 1..nrooms {
+        let rm = &rooms[r]
+        if rm.used == 0 || mask & (1 << rm.floor as s32) == 0 { continue }
         // sea view: a window on the beach side
-        if rm.view < 10 && f > 0 && rm.windows > 0 && rm.z1 as s32 >= 12 { rm.view = 10 }
+        if rm.view < 10 && rm.floor > 0 && rm.windows > 0 && rm.z1 as s32 >= 12 { rm.view = 10 }
     }
 }
 
@@ -398,15 +444,16 @@ var arrivals_today: s32
 
 fn note_wait(frames: s32) { service_wait_avg = (service_wait_avg * 7 + frames) / 8 }
 
-// Guests arrive between 10:00 and 21:00, more for a better hotel and fairer prices.
+// Guests arrive between ECO_CHECKIN_H0 and _H1 (after the rooms are cleaned), more for a better
+// hotel and fairer prices.
 fn spawn_guests_minute() {
     let h = hour()
-    if h < 10 || h >= 21 { return }
+    if h < ECO_CHECKIN_H0 || h >= ECO_CHECKIN_H1 { return }
     let free = free_rooms()
     if free == 0 { return }
     // chance per minute: base on stars and reputation; busier during the check-in rush
-    var per_hour = 1 + stars + reputation / 25
-    if h >= 14 && h <= 18 { per_hour = per_hour * 2 }
+    var per_hour = ECO_ARRIVALS + stars + reputation / 25
+    if h >= ECO_RUSH_H0 && h < ECO_RUSH_H1 { per_hour = per_hour * 2 }
     per_hour = min(per_hour, free + 1)
     if rnd(60) >= per_hour { return }
     var guests = 0
@@ -415,15 +462,23 @@ fn spawn_guests_minute() {
     spawn_guest()
 }
 
+// Guest rooms ready for a new arrival: free and made up, less the guests already on their way
+// to the desk (so arrivals wait for housekeeping instead of being handed a dirty room).
 fn free_rooms() -> s32 {
     var n = 0
     for r in 1..nrooms {
         let rm = &rooms[r]
-        if rm.used == 0 || rm.flags & RF_VALID == 0 { continue }
+        if rm.used == 0 || rm.flags & RF_VALID == 0 || rm.state as s32 == RS_DIRTY { continue }
         let t = rm.rtype as s32
         if (t == RT_GUEST || t == RT_SUITE) && rm.occupant < 0 { n += 1 }
     }
-    return n
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used == 0 || p.kind as s32 != P_GUEST || p.room >= 0 { continue }
+        let st = p.state as s32
+        if st == GS_ARRIVE || st == GS_QUEUE || st == GS_CHECKIN { n -= 1 }
+    }
+    return max(n, 0)
 }
 
 fn pick_guest_type() -> s32 {
@@ -444,5 +499,33 @@ fn pick_guest_type() -> s32 {
     return 0
 }
 
-// The entrance: where people appear from the street.
-fn entrance_tile() -> s32 { return tix(0, 16, 0) }
+// The entrance: the street in front of the lobby's outside door, where people appear and leave.
+var street_x: s32 = 16
+
+fn entrance_tile() -> s32 { return tix(0, street_x, 0) }
+
+// A street tile near the entrance (people spread along the kerb), on the road or the pavement.
+fn street_spot() -> s32 {
+    let x = clamp(street_x + rnd(3) - 1, 1, GW - 2)
+    return tix(0, x, rnd(2))
+}
+
+// After the building changed: finds the lobby's door to the outside, nearest the road.
+fn entrance_update() {
+    var best = 99
+    for r in 1..nrooms {
+        let rm = &rooms[r]
+        if rm.used == 0 || rm.rtype as s32 != RT_LOBBY || rm.floor != 0 { continue }
+        for z in rm.z0 as s32..rm.z1 as s32 + 1 {
+            for x in rm.x0 as s32..rm.x1 as s32 + 1 {
+                let t = z * GW + x
+                if troom[t] as s32 != r { continue }
+                // a door on an edge to the outside
+                if z > 0 && edge_n[t] as s32 == EF_DOOR && rclass[troom[t - GW] as s32] == 0 && z < best { best = z; street_x = x }
+                if x > 0 && edge_w[t] as s32 == EF_DOOR && rclass[troom[t - 1] as s32] == 0 && z < best { best = z; street_x = x - 1 }
+                if x + 1 < GW && edge_w[t + 1] as s32 == EF_DOOR && rclass[troom[t + 1] as s32] == 0 && z < best { best = z; street_x = x + 1 }
+                if z + 1 < GH && edge_n[t + GW] as s32 == EF_DOOR && rclass[troom[t + GW] as s32] == 0 && z + 20 < best { best = z + 20; street_x = x }
+            }
+        }
+    }
+}

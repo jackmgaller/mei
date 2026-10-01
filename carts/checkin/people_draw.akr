@@ -1,6 +1,12 @@
 // Drawing people (billboard sprites, shadows, carried props) and the elevator cars. The
-// simulation (people.akr, transport.akr) moves them; this file only reads their state.
+// simulation (people.akr, transport.akr) moves them; this file only reads their state, and the
+// visual state it keeps for us in sim_vis.akr: people_vis (walk phase, fade, seat offset) and
+// elev_vis (door opening), when it writes them.
 // Owner: workstream A (art and rendering). See CONTRACT.md.
+//
+// People are drawn 1:1, never scaled (crisp at every zoom): the 16x24 frames at zoom 1 and 2, the
+// 12x16 ones at zoom 0. Each has a soft shadow, and sorts from a point half a tile in front of its
+// feet, so the furniture in front does not slice it.
 
 // ---- people
 
@@ -19,6 +25,8 @@ fn person_col(p: *Person) -> u32 {
 
 var people_drawn: s32
 
+var vis_anim: bool               // the simulation writes people_vis[].anim (walk by distance)
+
 fn draw_people() {
     people_drawn = 0
     sprite_dirs()
@@ -26,14 +34,20 @@ fn draw_people() {
     for i in 0..npeople {
         let p = &people[i]
         if p.used == 0 || p.mode as s32 == M_HIDDEN || p.mode as s32 == M_RIDE { continue }
+        if people_vis[i].anim != 0 { vis_anim = true }
+        if people_vis[i].fade >= FADE_GONE { continue }
         let f = p.f as s32
         if f > vf { continue }
         let tx = clamp(p.x as s32, 0, GW - 1)
         let tz = clamp(p.z as s32, 0, GH - 1)
         if f < vf && !exposed(f, tx, tz) { continue }
-        draw_person(p, f < vf)
+        draw_person(p, i, f < vf)
     }
 }
+
+const FADE_GONE = 224            // people_vis fade: from here on not drawn
+const FADE_HALF = 64             // from here on drawn half transparent
+const PULL = 6                   // ordering-table buckets: half a tile toward the camera
 
 // Screen-relative sprite directions of the four world facings (0 +x, 1 +z, 2 -x, 3 -z), worked out
 // once per frame from the camera: toward/away from the viewer and screen left/right.
@@ -110,16 +124,17 @@ fn sprite_quad(x0: s32, y0: s32, x1: s32, y1: s32, u: s32, v: s32, w: s32, h: s3
     lo_insert(q, ty, bucket, lower)
 }
 
-fn draw_person(p: *Person, lower: bool) {
-    let base = vec3(p.x, fixed(p.f as s32) * STOREY + p.y, p.z)
+fn draw_person(p: *Person, i: s32, lower: bool) {
+    let v = &people_vis[i]
+    let base = vec3(p.x + v.ox, fixed(p.f as s32) * STOREY + p.y, p.z + v.oz)
     if !project(base) { return }
     let fx = proj_x
     let fy = proj_y
     if fx < -20 || fx > 340 || fy < -10 || fy > 280 { return }
-    var bucket = depth_bucket(proj_w) - 3
+    var bucket = depth_bucket(proj_w) - PULL
     if lower { bucket += B_FLOOR * (view_floor - p.f as s32) - B_FLOOR }
     if ART_PRESENT {
-        draw_sprite(p, fx, fy, bucket, lower)
+        draw_sprite(p, i, fx, fy, bucket, lower)
         return
     }
     let k = ppu * 0.82
@@ -149,12 +164,15 @@ fn draw_person(p: *Person, lower: bool) {
     people_drawn += 1
 }
 
-fn draw_sprite(p: *Person, fx: s32, fy: s32, bucket: s32, lower: bool) {
+fn draw_sprite(p: *Person, i: s32, fx: s32, fy: s32, bucket: s32, lower: bool) {
     let k = person_kind(p)
     let pose = p.pose as s32
     var fr = ART_FR_STAND
     if pose == POSE_WALK || p.mode as s32 == M_STAIRS {
-        fr = ART_FR_WALK1 + ((tick_count / 7 + p.look as s32) & 3)
+        // the walk cycle follows the distance walked when the simulation keeps it (people_vis
+        // anim, 256 a cycle), so feet do not slide and a paused game stands still
+        if vis_anim { fr = ART_FR_WALK1 + ((people_vis[i].anim as s32 >> 6) & 3) }
+        else { fr = ART_FR_WALK1 + ((tick_count / 7 + p.look as s32) & 3) }
     } else if pose == POSE_SIT || pose == POSE_LIE {
         fr = ART_FR_SIT
     } else if pose == POSE_USE {
@@ -164,42 +182,87 @@ fn draw_sprite(p: *Person, fx: s32, fy: s32, bucket: s32, lower: bool) {
     } else if p.carry != 0 {
         fr = ART_FR_CARRY
     }
-    let d = spr_dir[p.dir as s32 & 3] as s32
-    // 24 texels tall = 1.45 units
-    let h = (ppu * 1.45) as s32
-    let w = h * 2 / 3
+    var d = spr_dir[p.dir as s32 & 3] as s32
+    if pose == POSE_LIE && (people_vis[i].ox != 0.0 || people_vis[i].oz != 0.0) {
+        // asleep in bed (moved onto it by people_vis ox, oz): the head on the pillow, the bed's
+        // blanket over the rest (A17)
+        if d >= ART_DIR_BACK_LEFT { d = d - 2 }
+        draw_sleeper(p, i, k, d, bucket, lower)
+        return
+    }
+    // 1:1: the 16x24 frames, or the 12x16 ones zoomed out
+    var w = ART_PERSON_W
+    var h = ART_PERSON_H
+    var u = ART_PERSON_U[k] as s32 + fr * ART_PERSON_W
+    var v = ART_PERSON_V[k] as s32 + d * ART_PERSON_H
+    if view_zoom == 0 {
+        w = ART_MINI_W
+        h = ART_MINI_H
+        u = ART_PERSON_MU[k] as s32 + fr * ART_MINI_W
+        v = ART_PERSON_MV[k] as s32 + d * ART_MINI_H
+    }
     let x0 = fx - w / 2
-    let y1 = fy + h / 24
+    let y1 = fy + 1
     let y0 = y1 - h
-    // light: outdoors with the sky, indoors with the lamps
+    // light: outdoors with the sky, indoors with the lamps; the floors below are ghosted
     var l = light_int
     let tx = clamp(p.x as s32, 0, GW - 1)
     let tz = clamp(p.z as s32, 0, GH - 1)
     if !indoor(p.f as s32, tx, tz) { l = light_ext }
-    let col = lit(TINT, l)
-    if pose != POSE_SWIM && view_zoom > 0 && !lower {
+    var col = lit(TINT, l)
+    if lower { col = ghost_col(col) }
+    // fading in or out (elevators, arriving, leaving): half transparent
+    var mode = -1
+    if people_vis[i].fade >= FADE_HALF { mode = 0 }
+    if pose != POSE_SWIM && !lower {
+        // a soft shadow (subtracted) under the feet
         let sw = w * 3 / 4
-        sprite_quad(fx - sw / 2, fy - sw / 4, fx + sw / 2, fy + sw / 4, ART_PROP_SHADOW_U, ART_PROP_SHADOW_V + 4, 15, 8,
-            ART_PROP_SLOT, ART_PAL_PROPS, 0x303030, bucket + 1, lower, 2)
+        let sh = max(sw / 3, 3)
+        sprite_quad(fx - sw / 2, fy - sh / 2, fx - sw / 2 + sw, fy - sh / 2 + sh, ART_PROP_SHADOW_U + 2, ART_PROP_SHADOW_V + 6, 12, 4,
+            ART_PROP_SLOT, ART_PAL_PROPS, 0x2C2C2C, bucket + 2, lower, 2)
     }
-    sprite_quad(x0, y0, x0 + w, y1, ART_PERSON_U[k] as s32 + fr * 16, ART_PERSON_V[k] as s32 + d * 24, 15, 23,
-        ART_PERSON_SLOT[k] as s32, ART_PERSON_PAL[k] as s32, col, bucket, lower, -1)
-    if p.carry != 0 && pose != POSE_SIT {
+    sprite_quad(x0, y0, x0 + w, y1, u, v, w, h, ART_PERSON_SLOT[k] as s32, ART_PERSON_PAL[k] as s32, col, bucket, lower, mode)
+    if p.carry != 0 && pose != POSE_SIT && view_zoom > 0 {
+        // carried things at half size (every other texel of the 16x16 prop: still crisp)
         var pu = ART_PROP_LINEN_U
         var pv = ART_PROP_LINEN_V
         let c = p.carry as s32
         if c == IT_MEAL || c == IT_CRATE { pu = ART_PROP_TRAY_U; pv = ART_PROP_TRAY_V }
         if c == IT_TOOLS { pu = ART_PROP_TOOLBOX_U; pv = ART_PROP_TOOLBOX_V }
         if c == IT_BAGS { pu = ART_PROP_LUGGAGE_U; pv = ART_PROP_LUGGAGE_V }
-        let ps = h * 2 / 5
         let py = fy - h / 2
-        var px = fx
-        if d == ART_DIR_FRONT_RIGHT || d == ART_DIR_BACK_RIGHT { px = fx + w / 5 } else { px = fx - w / 5 }
+        var px = fx - 4
+        if d == ART_DIR_FRONT_RIGHT || d == ART_DIR_BACK_RIGHT { px = fx + 3 - 4 } else { px = fx - 3 - 4 }
         var pb = bucket - 1
         if d >= ART_DIR_BACK_LEFT { pb = bucket + 1 }
-        sprite_quad(px - ps / 2, py - ps / 2, px + ps / 2, py + ps / 2, pu, pv, 15, 15, ART_PROP_SLOT, ART_PAL_PROPS,
-            col, pb, lower, -1)
+        sprite_quad(px, py - 4, px + 8, py + 4, pu, pv, 16, 16, ART_PROP_SLOT, ART_PAL_PROPS, col, pb, lower, mode)
     }
+    people_drawn += 1
+}
+
+// The head (and hair or hat) of person kind k, facing d, resting on a bed top.
+fn draw_sleeper(p: *Person, i: s32, k: s32, d: s32, bucket: s32, lower: bool) {
+    let v = &people_vis[i]
+    if !project(vec3(p.x + v.ox, fixed(p.f as s32) * STOREY + 0.56, p.z + v.oz)) { return }
+    let child = k >= ART_GUEST_CHILD && k < ART_GUEST_CHILD + ART_GUEST_CHILD_N
+    var w = ART_PERSON_W
+    var r0 = 0
+    var rh = 10
+    if child { r0 = 6 }
+    var u = ART_PERSON_U[k] as s32 + ART_FR_STAND * ART_PERSON_W
+    var vv = ART_PERSON_V[k] as s32 + d * ART_PERSON_H
+    if view_zoom == 0 {
+        w = ART_MINI_W
+        r0 = r0 * 2 / 3
+        rh = 7
+        u = ART_PERSON_MU[k] as s32 + ART_FR_STAND * ART_MINI_W
+        vv = ART_PERSON_MV[k] as s32 + d * ART_MINI_H
+    }
+    var col = lit(TINT, light_int)
+    if lower { col = ghost_col(col) }
+    let x0 = proj_x - w / 2
+    sprite_quad(x0, proj_y - rh, x0 + w, proj_y, u, vv + r0, w, rh, ART_PERSON_SLOT[k] as s32, ART_PERSON_PAL[k] as s32,
+        col, bucket - 2, lower, -1)
     people_drawn += 1
 }
 
@@ -236,28 +299,123 @@ fn lo_insert(q: *u32, type: u32, bucket: s32, lower: bool) {
     }
 }
 
-// ---- elevator cars
+// ---- elevator cars (A10)
+//
+// A glass shaft shows its car: the art's textured cab (glass_elevator_cab), moving smoothly with
+// e.pos. A walled shaft shows nothing of it until its doors open: then the opening between the
+// sliding doors shows the lit car inside, widening from the middle as they part. How far the
+// doors are open comes from elev_vis[k].door_t when the simulation writes it, else from the
+// car's door timer.
+var vis_doors: bool              // the simulation writes elev_vis[].door_t
+const DOOR_X = 0.48              // half the width of a shaft's door opening (local x)
+const DOOR_Y = 2.20              // its height
+const DOOR_Z = 0.985             // just in front of the shaft's door face (local z)
 
-// The car, drawn as a box in its shaft (glass ones are what you see in an atrium).
+// How far car k's doors are open (0 shut .. 1.0 open).
+fn elev_open(k: s32) -> fixed {
+    let t = elev_vis[k].door_t as s32
+    if t != 0 { vis_doors = true }
+    if vis_doors { return fixed(clamp(t, 0, DOOR_T)) / DOOR_T }
+    let e = &elevs[k]
+    if e.door <= 0 { return 0.0 }
+    return fixed(clamp(min(DOOR_T - e.door, e.door), 0, 12)) / 12
+}
+
 fn draw_elevators() {
     bm_bias = -2
-    look_flat()
+    var lower_cabs = false
     for k in 0..nelevs {
         let e = &elevs[k]
         let o = &objs[e.obj as s32]
         let fl = elev_floor(k)
         if fl > view_floor { continue }
-        if !exposed(fl, o.x as s32, o.z as s32) && fl < view_floor { continue }
-        let gw = fixed(obj_gw(o.t as s32, o.rot as s32))
-        let gd = fixed(obj_gd(o.t as s32, o.rot as s32))
-        let x0 = fixed(o.x as s32) + 0.2
-        let z0 = fixed(o.z as s32) + 0.2
-        let y0 = e.pos * STOREY + 0.05
-        var col = rgb(190, 170, 120)
-        if o.t as s32 == OB_GLASS_ELEVATOR { col = rgb(220, 200, 140) }
-        if e.door > 0 { col = rgb(255, 230, 160) }
-        mb_box(x0, y0, z0, x0 + gw - 0.4, y0 + 2.3, z0 + gd - 0.4, col)
+        let glass = o.t as s32 == OB_GLASS_ELEVATOR
+        if fl < view_floor {
+            if glass && exposed(fl, o.x as s32, o.z as s32) { lower_cabs = true }
+            continue
+        }
+        var c = obj_centre(e.obj as s32)
+        c.y = e.pos * STOREY
+        if glass {
+            if e.pos > fixed(view_floor) + 0.3 { continue }
+            let m = obj_mesh_art(ART_OBJ_GLASS_ELEVATOR_CAB)
+            if m != null { bake_mesh(m, c, o.rot as s32) }
+            continue
+        }
+        let a = elev_open(k)
+        if a <= 0.0 { continue }
+        // (sorted well in front: the shaft's face is taller, so its centre is nearer the camera)
+        bm_bias = -8
+        door_gap(c, o.rot as s32, DOOR_X * a)
+        mb_flush()
+        bm_bias = -2
     }
     mb_flush()
+    // glass cars seen through an atrium below: into the lower floors' table, ghosted like them
+    if lower_cabs && have_lo {
+        memcpy(&elev_ot_save[0] as *u8, &__ot[0] as *u8, 4096)
+        memcpy(&__ot[0] as *u8, &lo_ot[0] as *u8, 4096)
+        mb_ghost = true
+        for k in 0..nelevs {
+            let e = &elevs[k]
+            let o = &objs[e.obj as s32]
+            let fl = elev_floor(k)
+            if fl >= view_floor || o.t as s32 != OB_GLASS_ELEVATOR || !exposed(fl, o.x as s32, o.z as s32) { continue }
+            var c = obj_centre(e.obj as s32)
+            c.y = e.pos * STOREY
+            bm_bias = (view_floor - 1 - fl) * B_FLOOR - 2
+            let m = obj_mesh_art(ART_OBJ_GLASS_ELEVATOR_CAB)
+            if m != null { bake_mesh(m, c, o.rot as s32) }
+            mb_flush()
+        }
+        mb_ghost = false
+        memcpy(&lo_ot[0] as *u8, &__ot[0] as *u8, 4096)
+        memcpy(&__ot[0] as *u8, &elev_ot_save[0] as *u8, 4096)
+    }
     bm_bias = 0
+}
+
+var elev_ot_save: [1024]u32
+
+fn obj_mesh_art(a: s32) -> *Mesh {
+    if !ART_PRESENT { return null }
+    return ART_MESH[a]
+}
+
+// The lit inside of a car between doors parted by half-width hw, on the shaft's front (local +z),
+// if that side faces the camera.
+fn door_gap(c: vec3, rot: s32, hw: fixed) {
+    // the front's normal in the world, and whether the camera sees it
+    var nx = 0
+    var nz = 1
+    match rot & 3 {
+        0 => {}
+        1 => { nx = 1; nz = 0 }
+        2 => { nz = -1 }
+        else => { nx = -1; nz = 0 }
+    }
+    if nx > 0 && !vis_px { return }
+    if nx < 0 && vis_px { return }
+    if nz > 0 && !vis_pz { return }
+    if nz < 0 && vis_pz { return }
+    // the car's back wall, its floor and its ceiling light
+    let y0 = c.y + 0.02
+    let y1 = c.y + DOOR_Y
+    if nx == 0 {
+        let z = c.z + fixed(nz) * DOOR_Z
+        look_in(ART_FLAT_CAB_SIDE)
+        mb_vquad_x(c.x - hw, c.x + hw, z, y0 + 0.12, y1 - 0.14, TINT)
+        look_in(ART_FLAT_CAB_DARK)
+        mb_vquad_x(c.x - hw, c.x + hw, z, y0, y0 + 0.12, TINT)
+        look_in(ART_FLAT_CAB)
+        mb_vquad_x(c.x - hw, c.x + hw, z, y1 - 0.14, y1, TINT)
+    } else {
+        let x = c.x + fixed(nx) * DOOR_Z
+        look_in(ART_FLAT_CAB_SIDE)
+        mb_vquad_z(x, c.z - hw, c.z + hw, y0 + 0.12, y1 - 0.14, TINT)
+        look_in(ART_FLAT_CAB_DARK)
+        mb_vquad_z(x, c.z - hw, c.z + hw, y0, y0 + 0.12, TINT)
+        look_in(ART_FLAT_CAB)
+        mb_vquad_z(x, c.z - hw, c.z + hw, y1 - 0.14, y1, TINT)
+    }
 }

@@ -32,7 +32,6 @@ var screen_t: s32
 var tick_count: s32
 var show_debug: bool
 var stars: s32
-var info_open: bool
 
 // input, sampled once per frame through input_pad() / input_stick()
 var pad_now: u32
@@ -109,12 +108,7 @@ fn new_hotel_state() {
 fn update() {
     pad_prev = pad_now
     pad_now = input_pad(tick_count)
-    var st = input_stick(tick_count)
-    if held_in(LEFT) { st.x = -1.0 }
-    if held_in(RIGHT) { st.x = 1.0 }
-    if held_in(UP) { st.y = 1.0 }
-    if held_in(DOWN) { st.y = -1.0 }
-    stick_in = st
+    stick_in = input_stick(tick_count)
     test_hook(tick_count)
     tick_count += 1
     screen_t += 1
@@ -124,16 +118,20 @@ fn update() {
         Title => title_update()
         Play => {
             if menu_open { menu_update() } else { build_update() }
+            select_update()
             if btnp_in(START) && !menu_open { open_pause() }
-            if btnp_in(SELECT) {
-                overlay = (overlay + 1) % NOV
-                fx(FX_TAB)
-                if overlay != OV_NONE { say(overlay_name(), AQUA) } else { msg_t = 0 }
-            }
+            transition_update()
+            cursor_anim()
+            camera_follow()
+            drop_update()
+            info_update()
         }
         Pause => pause_update()
     }
-    if rooms_dirty { rooms_update() }
+    if rooms_dirty {
+        rooms_update()
+        rooms_watch()
+    }
     // the simulation runs while playing (not on the pause menu)
     if screen == Screen.Play || screen == Screen.Title {
         for k in 0..speed { sim_tick() }
@@ -145,6 +143,39 @@ fn update() {
     if star_flash > 0 { star_flash -= 1 }
     if review_new > 0 { review_new -= 1 }
     if day_report_t > 0 { day_report_t -= 1 }
+    hud_update()
+    toasts_update()
+}
+
+// SELECT: a tap cycles the speed (x1, x2, x4, paused); held, the d-pad picks an overlay.
+var sel_used: bool
+
+fn select_update() {
+    if btnp_in(SELECT) {
+        sel_used = false
+        sel_held = 0
+    }
+    if held_in(SELECT) {
+        sel_held += 1
+        var ov = -1
+        if btnp_in(UP) { ov = OV_ROOMS }
+        if btnp_in(RIGHT) { ov = OV_NOISE }
+        if btnp_in(DOWN) { ov = OV_STAFF }
+        if btnp_in(LEFT) { ov = OV_MOOD }
+        if ov >= 0 {
+            if overlay == ov { overlay = OV_NONE } else { overlay = ov }
+            ov_fade = 0
+            sel_used = true
+            fx(FX_TAB)
+        }
+    }
+    if btnr_in(SELECT) && !sel_used && sel_held < 30 && !menu_open {
+        if speed == 0 { speed = 1 } else if speed == 1 { speed = 2 } else if speed == 2 { speed = 4 } else { speed = 0 }
+        prev_speed = max(speed, 1)
+        hud_speed = -1
+        hud_update()
+        fx(FX_CLICK)
+    }
 }
 
 fn fx_at(id: s32, f: s32) {
@@ -164,9 +195,12 @@ fn draw() {
         Play => {
             draw_overlay()
             draw_build_overlay()
-            draw_hud()
+            draw_effects()
+            draw_transition()
+            draw_info()
             draw_ticker()
-            if menu_open { draw_build_menu() } else { draw_info() }
+            draw_hud()
+            draw_build_menu()
         }
         Pause => {
             draw_hud()
@@ -186,4 +220,3 @@ fn draw() {
 
 var frame_words: s32             // per-frame packet arena used (debug)
 
-fn inspect_press() { info_open = !info_open }

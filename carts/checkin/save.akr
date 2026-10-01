@@ -167,14 +167,15 @@ fn saving_update() {
     if save_ok_t > 0 { save_ok_t -= 1 }
 }
 
+// A small chip under the top bar, right side (the bottom edge has the hint chip and tool strip).
 fn draw_saving() {
     if saving_t > 0 {
-        panel_glass(222, 206, 94, 16)
+        panel_glass(238, 18, 78, 14)
         let dots = (saving_t / 12) % 4
         let b = nb()
         sappend(b, "Saving")
         for k in 0..dots { sappend(b, ".") }
-        ftext(230, 207, b, CREAM, false)
+        ftext(244, 19, b, CREAM, false)
     }
 }
 
@@ -256,6 +257,7 @@ fn load_game() -> bool {
     for f in 0..NFL { clean_edges(f) }
     elevators_respan()
     rooms_dirty = true
+    rooms_refresh_all = true          // every floor is new: measure them all
     cache_dirty = true
     for i in 0..nobjs { if objs[i].used != 0 && objs[i].state & OS_BROKEN != 0 { repair_job(i) } }
     return true

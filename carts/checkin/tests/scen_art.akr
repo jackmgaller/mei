@@ -12,13 +12,160 @@ fn scen_art_init() {
         45 => { scen_grand(1, 30, 11); view_zoom = 2; cur_x = 15.0; cur_z = 7.0; view_recentre() }
         46 => { scen_grand(0, 60, 15); view_zoom = 2; cur_x = 15.0; cur_z = 5.5; view_recentre() }
         47 => { scen_grand(5, 60, 15); view_zoom = 2; cur_x = 14.0; cur_z = 13.0; view_recentre() }
-        else => {}
+        else => { if SCENARIO >= 200 && SCENARIO < 300 { scen_a_init() } }
     }
 }
 
 fn scen_art_pad(f: s32) -> u32 { return 0 }
 
+// ---- workstream A scenarios (200-299). Static shots run ~90 frames with SHOT=1; the PERF ones
+// print "PERF t cpu tris cache_cycles" every frame.
+//   200 demo hotel G zoom 1 13h        201 grand F2 zoom 1 13h        202 grand lobby zoom 2 15h
+//   203 grand G zoom 0 15h             204 showcase lot zoom 2 (tall walls, audit_10)
+//   205-208 grand G zoom 1 at 6, 13, 19, 22 h (time of day)
+//   209 floor up G..F5 then down, zoom 0 (PERF)    210 the same at zoom 2
+//   211 the elevator (zoom 2 at 26, 9)             212-214 busy lobby people at zoom 0, 1, 2
+//   215 grand F3 at x4 from 17:00 (PERF: cache_cycles must not change)
+//   216 rotate and zoom through every view (PERF)  217 demo hotel F1 zoom 1 (upper floor)
+//   218 grand F3 zoom 1 (atrium, lower floors)     219 new game: empty lot zoom 1
+//   220-223 demo hotel G zoom 1 at 6, 13, 19, 22 h 224 grand G zoom 2 at 22 h (night interior)
+//   225 the elevator at 26, 9 with its car called to G at frame 100 (doors, SEQ="2 100")
+//   226 a glass elevator in the grand lobby, its car called down from F2 at frame 100
+var a_perf: bool
+
+fn scen_a_new() {
+    new_hotel_state()
+    start_play()
+    money = 9999999
+}
+
+fn scen_a_grand(f: s32, guests: s32, h: s32, zoom: s32) {
+    scen_a_new()
+    scen_grand(f, guests, h)
+    view_zoom = zoom
+    view_recentre()
+}
+
+fn scen_a_init() {
+    match SCENARIO {
+        200 => { scen_a_new(); scen_hotel(1); view_zoom = 1; view_recentre() }
+        201 => scen_a_grand(2, 60, 13, 1)
+        202 => { scen_a_grand(0, 60, 15, 2); cur_x = 13.0; cur_z = 6.0; view_recentre() }
+        203 => scen_a_grand(0, 60, 15, 0)
+        204 => {
+            scen_a_new()
+            s_room(0, FK_CORR_CARPET, 4, 9, 27, 10)
+            s_room(0, FK_WOOD, 4, 3, 11, 8)
+            s_door(0, 7, 8, 0, 1)
+            s_obj(OB_CONF_TABLE, 0, 6, 5, 0)
+            s_obj(OB_PROJECTOR, 0, 9, 5, 3)
+            s_obj(OB_LECTERN, 0, 9, 7, 3)
+            s_obj(OB_PLANT, 0, 4, 3, 0)
+            s_room(0, FK_CONCRETE, 12, 3, 15, 8)
+            s_door(0, 13, 8, 0, 1)
+            s_obj(OB_STORAGE_SHELF, 0, 12, 3, 0)
+            s_obj(OB_STORAGE_SHELF, 0, 13, 3, 0)
+            s_obj(OB_STORAGE_SHELF, 0, 14, 3, 0)
+            s_suite(0, 16, 3, FK_CARPET_GREEN)
+            s_obj(OB_JACUZZI, 0, 18, 4, 0)
+            s_room(0, FK_TERRACOTTA, 23, 3, 27, 8)
+            s_door(0, 25, 8, 0, 1)
+            s_obj(OB_PIANO, 0, 23, 3, 0)
+            s_obj(OB_TABLE_4, 0, 25, 5, 0)
+            s_obj(OB_BUFFET, 0, 24, 8, 2)
+            s_guest_room(0, 4, 11, FK_CARPET_BLUE, false)
+            s_guest_room(0, 8, 11, FK_CARPET_RED, false)
+            rooms_update()
+            tod = 13 * 60 * MIN_FRAMES
+            view_zoom = 2
+            cur_x = 15.0
+            cur_z = 7.0
+            view_recentre()
+        }
+        205 => scen_a_grand(0, 30, 6, 1)
+        206 => scen_a_grand(0, 30, 13, 1)
+        207 => scen_a_grand(0, 30, 19, 1)
+        208 => scen_a_grand(0, 30, 22, 1)
+        209 => { scen_a_grand(0, 60, 15, 0); a_perf = true }
+        210 => { scen_a_grand(0, 60, 15, 2); a_perf = true }
+        211 => { scen_a_grand(0, 60, 15, 2); cur_x = 26.0; cur_z = 9.0; view_recentre() }
+        212 => { scen_a_grand(0, 60, 15, 0); cur_x = 13.0; cur_z = 6.0; view_recentre() }
+        213 => { scen_a_grand(0, 60, 15, 1); cur_x = 13.0; cur_z = 6.0; view_recentre() }
+        214 => { scen_a_grand(0, 60, 15, 2); cur_x = 13.0; cur_z = 6.0; view_recentre() }
+        215 => { scen_a_grand(3, 60, 17, 1); speed = 4; a_perf = true }
+        216 => { scen_a_grand(0, 60, 15, 1); a_perf = true }
+        217 => { scen_a_new(); scen_hotel(1); view_floor = 1; view_zoom = 1; view_recentre() }
+        218 => scen_a_grand(3, 30, 13, 1)
+        219 => { scen_a_new(); cur_x = 16.0; cur_z = 9.0; view_recentre() }
+        220 => { scen_a_new(); scen_hotel(1); tod = 6 * 60 * MIN_FRAMES }
+        221 => { scen_a_new(); scen_hotel(1); tod = 13 * 60 * MIN_FRAMES }
+        222 => { scen_a_new(); scen_hotel(1); tod = 19 * 60 * MIN_FRAMES }
+        223 => { scen_a_new(); scen_hotel(1); tod = 22 * 60 * MIN_FRAMES }
+        224 => { scen_a_grand(0, 60, 22, 2); cur_x = 13.0; cur_z = 6.0; view_recentre() }
+        225 => { scen_a_grand(0, 60, 15, 2); cur_x = 26.0; cur_z = 9.0; view_recentre() }
+        226 => {
+            scen_a_grand(0, 30, 15, 2)
+            s_obj(OB_GLASS_ELEVATOR, 0, 11, 6, 0)
+            rooms_update()
+            cur_x = 12.0
+            cur_z = 7.0
+            view_recentre()
+        }
+        else => {}
+    }
+}
+
+// The view changes of the PERF scenarios, made directly (not through the controls).
+fn scen_a_hook() {
+    let t = scen_t
+    if SCENARIO == 209 || SCENARIO == 210 {
+        // up one floor every 20 frames from 60 (G..F5), then back down
+        if t >= 60 && t % 20 == 0 {
+            let k = (t - 60) / 20
+            var f = k
+            if k > 5 { f = 10 - k }
+            if k <= 10 && f != view_floor { view_floor = f; view_recentre() }
+        }
+    }
+    if SCENARIO == 216 && t >= 60 && t % 20 == 0 && t <= 300 {
+        let k = (t - 60) / 20
+        if k % 3 == 2 { view_zoom = (view_zoom + 1) % 3 } else { view_rot = (view_rot + 1) & 3 }
+        view_recentre()
+    }
+    if SCENARIO == 226 && t == 60 {
+        for k in 0..nelevs { if objs[elevs[k].obj as s32].t as s32 == OB_GLASS_ELEVATOR { elevs[k].pos = 2.0 } }
+    }
+    if SCENARIO == 226 && t == 100 {
+        for k in 0..nelevs { if objs[elevs[k].obj as s32].t as s32 == OB_GLASS_ELEVATOR { elev_call(k, 0) } }
+    }
+    if SCENARIO == 225 && t == 100 {
+        for k in 0..nelevs { elevs[k].pos = 0.0; elev_call(k, 0) }
+    }
+    if a_perf && t > 2 {
+        print("PERF ")
+        print_int(t)
+        print(" ")
+        print_int(cpu_used())
+        print(" ")
+        print_int(tris_drawn() + ui_tris)
+        print(" ")
+        print_int(cache_cycles)
+        print(" ")
+        print_int(cache_builds)
+        print(" ")
+        print_int(view_floor)
+        print(" step ")
+        print_int(rb_step)
+        print(" rbf ")
+        print_int(rb_frame)
+        rb_frame = 0
+        print(" ")
+        println(fmt_clock())
+    }
+}
+
 fn scen_art_hook() {
+    if SCENARIO >= 200 && SCENARIO < 300 { scen_a_hook() }
     if SCENARIO == 43 && scen_t == 30 {
         for r in 1..nrooms {
             let rm = &rooms[r]

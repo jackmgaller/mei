@@ -1,46 +1,38 @@
-// Day and night: the light outside (sun, dusk, moon) and inside (daylight, then warm lamps),
-// applied to the art palettes (relit a few at a time), to the flat colours of the baked geometry
-// (at each rebuild), to the sky, and as additive glows around lamps after dark.
+// Day and night: the light outside (sun, dawn, golden hour, dusk, moon) and inside (daylight,
+// then warm lamps). Everything baked in the static cache is textured (flat colours through solid
+// palette cells), so the time of day is applied to the art palettes only, a few per frame: the
+// cache is never rebuilt because the clock moved. Colours that glow (window glass, lamp shades,
+// screens: ART_PAL_EMIT) switch to their night versions while the lamps are on. Lamps get a
+// small, soft additive glow after dark.
+// Owner: workstream A (art and rendering). See CONTRACT.md and POLISH.md (A8, A12).
 
 var light_ext: u32 = 0xFFFFFF    // per-channel multipliers 0..255 (0xBBGGRR)
 var light_int: u32 = 0xFFFFFF
-var light_key: s32 = -1          // the hour-ish step the baked colours were made with
 var relight_next: s32            // next palette to relight
 var night_amt: s32               // 0 day .. 256 night (glows, sky)
+var lamps_on: bool               // interior lamps and lit windows (dusk to dawn)
 
-const LK_N = 7
-const LK_MIN: [7]s32 = [0, 300, 390, 480, 1050, 1140, 1230]
-const LK_EXT: [7]u32 = [0x965546, 0x965546, 0xA0AAE6, 0xFFFFFF, 0xFFFFFF, 0x78AAFF, 0x965546]
-const LK_INT: [7]u32 = [0x82AAC8, 0x82AAC8, 0xBED2EB, 0xFAFFFF, 0xFAFFFF, 0xAAD7FA, 0x82AAC8]
-const LK_NIGHT: [7]s32 = [256, 256, 128, 0, 0, 128, 256]
+// Key times (minutes) and lights. Dawn is peach, the golden hour amber, dusk violet; the night
+// outside is a dark blue, the night inside warm lamplight.
+const LK_N = 9
+const LK_MIN: [9]s32 = [0, 300, 360, 450, 1020, 1080, 1170, 1245, 1440]
+//                         night     night     dawn      day       day       golden    dusk      night     night
+const LK_EXT: [9]u32 = [0x78483A, 0x78483A, 0xA8C4F8, 0xFFFFFF, 0xFFFFFF, 0xA8D8FF, 0xC88C90, 0x78483A, 0x78483A]
+const LK_INT: [9]u32 = [0xA7CDE4, 0xA7CDE4, 0xD8E4EC, 0xFAFEFF, 0xFAFEFF, 0xE8F6FF, 0xB8DCF8, 0xA7CDE4, 0xA7CDE4]
+const LK_NIGHT: [9]s32 = [256, 256, 140, 0, 0, 40, 170, 256, 256]
 
 fn lights_update() {
-    let m = minute()
-    var k = LK_N - 1
+    let m = minute() % 1440
+    var k = LK_N - 2
     for i in 0..LK_N - 1 {
         if m >= LK_MIN[i] && m < LK_MIN[i + 1] { k = i }
     }
-    var t = 0.0
-    var k2 = k
-    if k < LK_N - 1 {
-        k2 = k + 1
-        t = fixed(m - LK_MIN[k]) / (LK_MIN[k2] - LK_MIN[k])
-    }
-    light_ext = clerp(LK_EXT[k], LK_EXT[k2], t)
-    light_int = clerp(LK_INT[k], LK_INT[k2], t)
-    night_amt = LK_NIGHT[k] + ((LK_NIGHT[k2] - LK_NIGHT[k]) * (t * 256) as s32) / 256
-    // flat colours are baked: rebuild every half hour while the light is changing
-    let key = (m / 30) * 2 + (light_ext & 1) as s32
-    let changing = (m >= 300 && m < 480) || (m >= 1050 && m < 1260)
-    if changing && key != light_key {
-        light_key = key
-        cache_dirty = true
-    }
-    if !changing && light_key != -2 - (m / 600) {
-        light_key = -2 - (m / 600)
-        cache_dirty = true
-    }
-    night_glow = night_amt > 160
+    let t = fixed(m - LK_MIN[k]) / (LK_MIN[k + 1] - LK_MIN[k])
+    light_ext = clerp(LK_EXT[k], LK_EXT[k + 1], t)
+    light_int = clerp(LK_INT[k], LK_INT[k + 1], t)
+    night_amt = LK_NIGHT[k] + ((LK_NIGHT[k + 1] - LK_NIGHT[k]) * (t * 256) as s32) / 256
+    lamps_on = night_amt > 100
+    night_glow = lamps_on
 }
 
 // Colour times light.
@@ -54,29 +46,45 @@ fn lit(c: u32, l: u32) -> u32 {
 fn lit_ext(c: u32) -> u32 { return lit(c, light_ext) }
 fn lit_int(c: u32) -> u32 { return lit(c, light_int) }
 
-// Exterior palettes of the art (everything else is lit like the interior).
-fn pal_exterior(p: s32) -> bool {
-    for k in 0..ART_NEXT_PALS { if ART_EXT_PALS[k] as s32 == p { return true } }
-    return false
+// Per palette (0..127): its index in ART_GLOW_PALS (the night versions), or -1.
+var glow_of: [128]s8
+var glow_ready: bool
+
+fn glow_table() {
+    for p in 0..128 { glow_of[p] = -1 }
+    for i in 0..ART_GLOW_COUNT { glow_of[ART_GLOW_PALS[i] as s32] = i as s8 }
+    glow_ready = true
 }
 
-// Relights `count` art palettes (round robin); the glowing ones come back lit after dark.
+// Relights `count` art palettes (round robin) from their stored colours: exterior ones with the
+// sky, interior ones with the lamps; glowing colours use their night version while lamps are on.
 fn relight_some(count: s32) {
     if !ART_PRESENT { return }
+    if !glow_ready { glow_table() }
     let pm = VRAM_PALETTE as *u16
     let base: *u16 = ART_PAL_OBJ
+    let night: *u16 = ART_PAL_NIGHT
     for n in 0..count {
         let p = relight_next
         relight_next += 1
         if relight_next >= ART_PAL_OBJ_COUNT { relight_next = 0 }
+        let cls = ART_PAL_CLASS[p] as s32
+        if cls == 2 { continue }                // water: water_frame()
         var l = light_int
-        if pal_exterior(p) { l = light_ext }
+        if cls == 1 { l = light_ext }
         let lr = l & 255
         let lg = (l >> 8) & 255
         let lb = (l >> 16) & 255
+        var emit: u32 = 0
+        let gi = glow_of[p] as s32
+        if lamps_on && gi >= 0 { emit = ART_PAL_EMIT[p] as u32 }
         let src = base + p * 16
         let dst = pm + p * 16
         for i in 0..16 {
+            if (emit >> (i as u32)) & 1 != 0 {
+                dst[i] = night[gi * 16 + i]
+                continue
+            }
             let c = src[i] as u32
             let r = ((c & 31) * lr) >> 8
             let g = (((c >> 5) & 31) * lg) >> 8
@@ -86,16 +94,9 @@ fn relight_some(count: s32) {
     }
 }
 
-var glow_on: bool
-
 fn lighting_frame() {
     lights_update()
     relight_some(12)
-    let on = night_amt > 128
-    if ART_PRESENT && (on != glow_on || relight_next < 12) {
-        glow_on = on
-        art_lights(on)
-    }
     if ART_PRESENT && tick_count % 8 == 0 { water_frame() }
 }
 
@@ -121,35 +122,38 @@ fn water_frame() {
     }
 }
 
-fn sky_col() -> u32 { return clerp(rgb(110, 170, 220), rgb(10, 16, 44), fixed(night_amt) / 256) }
+// The sky behind everything: the day blue in the outside light, deepening at night. Viewing an
+// upper floor, the floors below are ghosted (render.akr draw_lower), and so is the sky.
+fn sky_col() -> u32 {
+    var c = clerp(lit(rgb(168, 204, 232), light_ext), rgb(14, 20, 46), fixed(night_amt) / 384)
+    if c_lo[cur] && !no_haze { c = ghost_col(c) }
+    return c
+}
 
-// Warm glows around lamps and lit fittings on the floors in view (after dark).
+// Small, soft warm glows around the lamps on the viewed floor while they are on.
 fn draw_glows() {
-    if night_amt < 64 { return }
-    let a = min((night_amt - 64) * 2, 255)
-    let col = lit(rgb(140, 100, 50), (a as u32) * 0x010101)
+    if !lamps_on { return }
+    let a = min((night_amt - 100) * 2, 256)
+    let col = lit(rgb(92, 70, 40), (a as u32) * 0x010101)
     for i in 0..nobjs {
         let o = &objs[i]
-        if o.used == 0 { continue }
+        if o.used == 0 || o.f as s32 != view_floor || o.state & OS_BROKEN != 0 { continue }
         let t = o.t as s32
         var h = 0.0
         var big = false
-        if t == OB_FLOOR_LAMP { h = 1.5 }
+        if t == OB_FLOOR_LAMP { h = 1.4 }
         if t == OB_NIGHTSTAND { h = 0.7 }
         if t == OB_CHANDELIER { h = 1.2; big = true }
         if t == OB_JUKEBOX || t == OB_VENDING || t == OB_ARCADE { h = 1.0 }
         if t == OB_BAR_SHELF { h = 1.4 }
         if h == 0.0 { continue }
-        let f = o.f as s32
-        if f > view_floor { continue }
-        if f < view_floor && !exposed(f, o.x as s32, o.z as s32) { continue }
         var c = obj_centre(i)
         c.y = c.y + h
         if !project(c) { continue }
-        var r = (ppu * 1.1) as s32
+        var r = (ppu * 0.8) as s32
         if big { r = r * 2 }
         if proj_x < -r || proj_x > 320 + r || proj_y < -r || proj_y > 240 + r { continue }
-        glow_quad(proj_x, proj_y, r, col, depth_bucket(proj_w) - 4, f < view_floor)
+        glow_quad(proj_x, proj_y, r, col, depth_bucket(proj_w) - 4, false)
     }
 }
 

@@ -21,6 +21,7 @@ const FX_REVIEW = 16
 const FX_SAVE = 17
 const FX_HIRE = 18
 const FX_BREAK = 19
+const FX_NOTIFY = 20
 
 fn fx_id(id: s32) -> Sfx {
     match id {
@@ -43,11 +44,15 @@ fn fx_id(id: s32) -> Sfx {
         16 => return Sfx.ReviewPosted
         17 => return Sfx.Save
         18 => return Sfx.Hire
+        20 => return Sfx.Notification
         else => return Sfx.Break
     }
 }
 
 fn fx(id: s32) { sfx(fx_id(id)) }
+
+// A sound from a point on screen (panned by its x).
+fn fx_pan(id: s32, sx: s32) { sfx_at(fx_id(id), clamp((sx - 160) * 128 / 200, -100, 100), 256) }
 
 const AMB_LOBBY = 0
 const AMB_RESTAURANT = 1
