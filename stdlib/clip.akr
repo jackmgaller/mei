@@ -4,7 +4,7 @@
 // vertex projected further out than that is moved, which bends the polygon's edges and its
 // texture and can flip its winding, so the face would warp or vanish in a way that has
 // nothing to do with affine mapping. __xform therefore marks every vertex outside the guard
-// band, screen x and y in -1000..999 (lane 2 of __sv is 1 inside it, 0 outside). The face loops
+// band, screen x and y in -1000..999 (lane 0 of __sv is 1 inside it, 0 outside). The face loops
 // of mesh() send any face with a marked vertex here instead of culling it: the face is clipped
 // in clip space against the four edges of the guard band, which leaves the part that can be
 // seen exactly where it was. Texture coordinates and colours of the new corners are
@@ -90,7 +90,7 @@ fn __clip_plane(src: *__ClipV, n: s32, dst: *__ClipV, p: s32) -> s32 {
 }
 
 // Projects a clipped corner into clip scratch vertex k (like __xform: packed position,
-// fog amount; lane 2 is 1, so the pieces are never clipped again).
+// fog amount; lane 0 is 1, so the pieces are never clipped again).
 asm fn __clip_put(c: vec4, k: s32) {
     vproj v2, {c}
     vget r5, v2, 0
@@ -98,9 +98,9 @@ asm fn __clip_put(c: vec4, k: s32) {
     andi r5, r5, 0xFFFF
     shli r6, r6, 16
     or   r5, r5, r6
-    vset v2, r5, 0
-    addi r5, r0, 1
     vset v2, r5, 2
+    addi r5, r0, 1
+    vset v2, r5, 0
     lbu  r5, [r0+{__fog_on}]
     beq  r5, r0, .store
     vget r5, {c}, 3
@@ -116,6 +116,7 @@ asm fn __clip_put(c: vec4, k: s32) {
     bne  r6, r0, .f2
     addi r5, r0, 256
 .f2:
+    shli r5, r5, 8              ; 16.16
     vset v2, r5, 1
 .store:
     la   r5, {__sv}
@@ -161,7 +162,7 @@ fn __clip_face(f: *Face) {
     // of the screen were dropped by the face loop.
     var planes = 0
     for k in 0..n {
-        let p = __sv[f.idx[k]].x
+        let p = __sv[f.idx[k]].z            // the packed screen position
         let x = (p << 16) >> 16
         let y = p >> 16
         if x > 999 { planes = planes | 1 } else if x < -1000 { planes = planes | 2 }

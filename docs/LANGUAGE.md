@@ -919,13 +919,13 @@ Measured with the `CYCLES` register (500,000 cycles per frame):
 
 | Operation | Cycles |
 |---|---|
-| frame overhead (ordering-table reset, submit) | about 3,700 |
-| vertex transform in `mesh()` | 46 per vertex (58 with fog), including the guard-band mark |
+| frame overhead (ordering-table reset, submit) | about 1,500 |
+| vertex transform in `mesh()` | 26 per vertex (40 with fog), including the guard-band mark |
 | guard-band test, in a mesh with a vertex outside the band | about 9 more per face |
 | a face clipped to the guard band | about 3,000, including drawing its pieces |
-| face in `mesh()`, back-facing | about 65 |
-| visible flat quad / Gouraud textured quad | about 150 / 185 (triangles a little less) |
-| fog | about 45 more per visible face vertex |
+| face in `mesh()`, back-facing | about 48 |
+| visible flat quad / Gouraud textured quad | about 130 / 163 (triangles a little less) |
+| fog | about 8–11 more per visible face vertex |
 | `text()` | about 105 per character |
 | `sin`, `cos` | about 50 |
 | `sqrt` | about 300 |
@@ -937,8 +937,12 @@ Measured with the `CYCLES` register (500,000 cycles per frame):
 | a face split by `subdivide()` | about 1,000 per piece drawn (a quad cut in two: about 2,000 more than drawing it whole) |
 
 The demo cart (a fogged 16×16 ground and a textured cube, about 370 triangles, plus a HUD)
-uses about 83,000 cycles per frame, or about 95,000–116,000 with `subdivide(2)` at a 10 %
-tolerance.
+uses about 78,000 cycles per frame with `subdivide(2)` at a 10 % tolerance.
+
+`mesh()` uses the geometry instructions (`DECISIONS.md`): `vxp3` transforms and projects three
+vertices at a time, `nclip` is the back-face test, `otz` the ordering-table bucket and `clerp`
+the fog blend. Before them, a vertex cost 46 cycles (58 with fog), a visible Gouraud textured
+quad 187 (364 with fog) and a frame's ordering-table reset 3,600.
 
 Guidelines: integer `*` by a constant power of two and `fixed * int` are cheaper than `fmul`;
 `fdiv`/`div` cost 20 cycles; accessing a global costs one load or store; locals are in

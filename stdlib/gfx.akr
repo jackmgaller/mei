@@ -77,28 +77,40 @@ fn dither(on: bool) { GPU_CTRL = on as u32 }
 // ---- packets
 
 asm fn __ot_reset(ot: *u32) {
-    ; entry i links to entry i-1; entry 0 ends the list. 3.5 cycles per entry.
+    ; entry i links to entry i-1; entry 0 ends the list. v0 holds the links of four entries
+    ; and v1 steps them on: 1.4 cycles per entry.
     addi r2, {ot}, -4
+    vset v0, r2, 0
+    vset v0, {ot}, 1
+    addi r2, {ot}, 4
+    vset v0, r2, 2
+    addi r2, {ot}, 8
+    vset v0, r2, 3
+    addi r2, r0, 16
+    vset v1, r2, 0
+    vset v1, r2, 1
+    vset v1, r2, 2
+    vset v1, r2, 3
     mov  r3, {ot}
-    addi r4, r0, 128
+    addi r4, r0, 32
 .loop:
-    sw   r2, [r3+0]
-    addi r2, r2, 4
-    sw   r2, [r3+4]
-    addi r2, r2, 4
-    sw   r2, [r3+8]
-    addi r2, r2, 4
-    sw   r2, [r3+12]
-    addi r2, r2, 4
-    sw   r2, [r3+16]
-    addi r2, r2, 4
-    sw   r2, [r3+20]
-    addi r2, r2, 4
-    sw   r2, [r3+24]
-    addi r2, r2, 4
-    sw   r2, [r3+28]
-    addi r2, r2, 4
-    addi r3, r3, 32
+    vst  v0, [r3+0]
+    vadd v0, v0, v1
+    vst  v0, [r3+16]
+    vadd v0, v0, v1
+    vst  v0, [r3+32]
+    vadd v0, v0, v1
+    vst  v0, [r3+48]
+    vadd v0, v0, v1
+    vst  v0, [r3+64]
+    vadd v0, v0, v1
+    vst  v0, [r3+80]
+    vadd v0, v0, v1
+    vst  v0, [r3+96]
+    vadd v0, v0, v1
+    vst  v0, [r3+112]
+    vadd v0, v0, v1
+    addi r3, r3, 128
     addi r4, r4, -1
     bne  r4, r0, .loop
     li   r2, 0xFFFFFF
@@ -183,11 +195,8 @@ fn camera_matrix(m: mat4) { __vp = m }
 // can only darken (their colour is a tint), so they fade toward half the fog colour.
 fn fog(colour: u32, near: fixed, far: fixed) {
     __fog_on = true
-    __fog_rb = colour & 0xFF00FF
-    __fog_g = colour & 0x00FF00
-    let tex = (colour >> 1) & 0x7F7F7F
-    __fogt_rb = tex & 0xFF00FF
-    __fogt_g = tex & 0x00FF00
+    __fog_col = colour & 0xFFFFFF
+    __fogt_col = (colour >> 1) & 0x7F7F7F
     __fog_near = near
     __fog_scale = 256.0 / (far - near)
 }
@@ -200,11 +209,11 @@ import "faces.akr"
 import "subdiv.akr"
 import "clip.akr"
 
-// Transforms n vertices by the matrix and projects them into __sv: lane 0 holds the packed
-// screen position (x & 0xFFFF) | (y << 16), lane 1 the fog amount 0..256, lane 2 is 1 when x
-// and y are both within -1000..999 (the guard band, see clip.akr) and 0 otherwise, lane 3
-// the view depth w. Returns 1 when every vertex is inside the guard band. 46 cycles per
-// vertex, 58 with fog.
+// Transforms n vertices by the matrix and projects them into __sv, three at a time (vxp3):
+// lane 0 is 1 when screen x and y are both within -1000..999 (the guard band, see clip.akr)
+// and 0 otherwise, lane 1 the fog amount 0..1.0 (16.16; unused without fog), lane 2 the
+// packed screen position (x & 0xFFFF) | (y << 16), lane 3 the view depth w. Returns 1 when
+// every vertex is inside the guard band. 26 cycles per vertex, 40 with fog.
 asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) -> s32 {
     vld  v4, [{m}+0]
     vld  v5, [{m}+16]
@@ -214,79 +223,177 @@ asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) -> s32 {
     addi r1, r0, 1
     ret
 .go:
-    addi sp, sp, -8
+    addi sp, sp, -16
     sw   r9, [sp+0]
     sw   r10, [sp+4]
+    sw   r11, [sp+8]
+    sw   r12, [sp+12]
     addi r9, r0, 2000           ; x + 1000 < 2000 unsigned: -1000 <= x <= 999
     addi r10, r0, 1             ; all inside so far
-    lbu  r5, [r0+{__fog_on}]
-    bne  r5, r0, .fog
+    vsub v3, v3, v3
+    addi r7, r0, 1000
+    vset v3, r7, 0
+    vset v3, r7, 1              ; v3 = (1000, 1000, 0, 0)
+    shli r5, {n}, 4
+    add  r5, r5, {src}          ; the end of the vertices
+    addi r6, r5, -32            ; three or more are left while src < end - 32
+    lbu  r7, [r0+{__fog_on}]
+    bne  r7, r0, .fog
+    bgeu {src}, r6, .tail
 .loop:
-    vld  v0, [{src}]
-    vxfm v1, v0
-    vproj v2, v1
-    vget r5, v2, 0
-    vget r6, v2, 1
-    addi r7, r5, 1000
+    vld  v0, [{src}+0]
+    vld  v1, [{src}+16]
+    vld  v2, [{src}+32]
+.x:
+    vxp3 v0, v0
+    vadd v0, v0, v3           ; x + 1000, y + 1000
+    vget r7, v0, 0
     sltu r7, r7, r9             ; x in the guard band
-    addi r8, r6, 1000
+    vget r8, v0, 1
     sltu r8, r8, r9             ; y in the guard band
     and  r7, r7, r8
-    vset v2, r7, 2
+    vset v0, r7, 0
     and  r10, r10, r7
-    andi r5, r5, 0xFFFF
-    shli r6, r6, 16
-    or   r5, r5, r6
-    vset v2, r5, 0
-    vst  v2, [{dst}]
-    addi {src}, {src}, 16
-    addi {dst}, {dst}, 16
-    addi {n}, {n}, -1
-    bne  {n}, r0, .loop
+    vadd v1, v1, v3           ; x + 1000, y + 1000
+    vget r7, v1, 0
+    sltu r7, r7, r9             ; x in the guard band
+    vget r8, v1, 1
+    sltu r8, r8, r9             ; y in the guard band
+    and  r7, r7, r8
+    vset v1, r7, 0
+    and  r10, r10, r7
+    vadd v2, v2, v3           ; x + 1000, y + 1000
+    vget r7, v2, 0
+    sltu r7, r7, r9             ; x in the guard band
+    vget r8, v2, 1
+    sltu r8, r8, r9             ; y in the guard band
+    and  r7, r7, r8
+    vset v2, r7, 0
+    and  r10, r10, r7
+    vst  v0, [{dst}+0]
+    bgeu {src}, r6, .part     ; (only the last one or two)
+    vst  v1, [{dst}+16]
+    vst  v2, [{dst}+32]
+    addi {src}, {src}, 48
+    addi {dst}, {dst}, 48
+    bltu {src}, r6, .loop
+.tail:
+    ; one or two left: through the same code, padded with copies that are not stored
+    beq  {src}, r5, .end
+    vld  v0, [{src}+0]
+    vmov v1, v0
+    vmov v2, v0
+    addi r7, {src}, 16
+    beq  r7, r5, .x
+    vld  v1, [{src}+16]
+    jmp  .x
+.part:
+    addi r7, {src}, 16
+    beq  r7, r5, .end
+    vst  v1, [{dst}+16]
     jmp  .end
 .fog:
-    lw   r7, [r0+{__fog_near}]
-    lw   r8, [r0+{__fog_scale}]
+    lw   r11, [r0+{__fog_near}]
+    lw   r12, [r0+{__fog_scale}]
+    bgeu {src}, r6, .ftail
 .floop:
-    vld  v0, [{src}]
-    vxfm v1, v0
-    vproj v2, v1
-    vget r5, v2, 0
-    vget r6, v2, 1
-    addi r4, r5, 1000
-    sltu r4, r4, r9             ; x in the guard band
-    andi r5, r5, 0xFFFF
-    shli r6, r6, 16
-    or   r5, r5, r6
-    vset v2, r5, 0
-    sari r6, r6, 16
-    addi r6, r6, 1000
-    sltu r6, r6, r9             ; y in the guard band
-    and  r4, r4, r6
-    vset v2, r4, 2
-    and  r10, r10, r4
-    vget r5, v1, 3
-    sub  r5, r5, r7
-    fmul r5, r5, r8
-    sari r5, r5, 16
-    bge  r5, r0, .f1
-    mov  r5, r0
-.f1:
-    slti r6, r5, 257
-    bne  r6, r0, .f2
-    addi r5, r0, 256
-.f2:
-    vset v2, r5, 1
-    vst  v2, [{dst}]
-    addi {src}, {src}, 16
-    addi {dst}, {dst}, 16
-    addi {n}, {n}, -1
-    bne  {n}, r0, .floop
+    vld  v0, [{src}+0]
+    vld  v1, [{src}+16]
+    vld  v2, [{src}+32]
+.fx:
+    vxp3 v0, v0
+    vadd v0, v0, v3           ; x + 1000, y + 1000
+    vget r7, v0, 0
+    sltu r7, r7, r9             ; x in the guard band
+    vget r8, v0, 1
+    sltu r8, r8, r9             ; y in the guard band
+    and  r7, r7, r8
+    vset v0, r7, 0
+    and  r10, r10, r7
+    vget r7, v0, 3
+    sub  r7, r7, r11
+    fmul r7, r7, r12
+    sari r7, r7, 16
+    bge  r7, r0, .a0
+    mov  r7, r0
+.a0:
+    slti r8, r7, 257
+    bne  r8, r0, .b0
+    addi r7, r0, 256
+.b0:
+    shli r7, r7, 8              ; 0..256 as 16.16
+    vset v0, r7, 1
+    vadd v1, v1, v3           ; x + 1000, y + 1000
+    vget r7, v1, 0
+    sltu r7, r7, r9             ; x in the guard band
+    vget r8, v1, 1
+    sltu r8, r8, r9             ; y in the guard band
+    and  r7, r7, r8
+    vset v1, r7, 0
+    and  r10, r10, r7
+    vget r7, v1, 3
+    sub  r7, r7, r11
+    fmul r7, r7, r12
+    sari r7, r7, 16
+    bge  r7, r0, .a1
+    mov  r7, r0
+.a1:
+    slti r8, r7, 257
+    bne  r8, r0, .b1
+    addi r7, r0, 256
+.b1:
+    shli r7, r7, 8              ; 0..256 as 16.16
+    vset v1, r7, 1
+    vadd v2, v2, v3           ; x + 1000, y + 1000
+    vget r7, v2, 0
+    sltu r7, r7, r9             ; x in the guard band
+    vget r8, v2, 1
+    sltu r8, r8, r9             ; y in the guard band
+    and  r7, r7, r8
+    vset v2, r7, 0
+    and  r10, r10, r7
+    vget r7, v2, 3
+    sub  r7, r7, r11
+    fmul r7, r7, r12
+    sari r7, r7, 16
+    bge  r7, r0, .a2
+    mov  r7, r0
+.a2:
+    slti r8, r7, 257
+    bne  r8, r0, .b2
+    addi r7, r0, 256
+.b2:
+    shli r7, r7, 8              ; 0..256 as 16.16
+    vset v2, r7, 1
+    vst  v0, [{dst}+0]
+    bgeu {src}, r6, .fpart     ; (only the last one or two)
+    vst  v1, [{dst}+16]
+    vst  v2, [{dst}+32]
+    addi {src}, {src}, 48
+    addi {dst}, {dst}, 48
+    bltu {src}, r6, .floop
+.ftail:
+    ; one or two left: through the same code, padded with copies that are not stored
+    beq  {src}, r5, .end
+    vld  v0, [{src}+0]
+    vmov v1, v0
+    vmov v2, v0
+    addi r7, {src}, 16
+    beq  r7, r5, .fx
+    vld  v1, [{src}+16]
+    jmp  .fx
+.fpart:
+    addi r7, {src}, 16
+    beq  r7, r5, .end
+    vst  v1, [{dst}+16]
+    jmp  .end
 .end:
     mov  r1, r10
     lw   r9, [sp+0]
     lw   r10, [sp+4]
-    addi sp, sp, 8
+    lw   r11, [sp+8]
+    lw   r12, [sp+12]
+    addi sp, sp, 16
 }
 
 // Shifts the ordering-table buckets of the following mesh() calls: negative values draw
