@@ -69,7 +69,7 @@ fn draw_lake() {
     draw_garlands_day()
     bt_flush()
     if phase == Phase.Wait || phase == Phase.Bite || phase == Phase.Fly {
-        if screen == Screen.Fish { mesh_at(BOBBER, lure, 0.0) }
+        if screen == Screen.Fish || screen == Screen.Menu { mesh_at(BOBBER, lure, 0.0) }
     }
     draw_leaping_fish()
     depth_bias(-6)

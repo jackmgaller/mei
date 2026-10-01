@@ -102,6 +102,26 @@ fn test_init() {
             open_journal(Screen.Fish)
             jr_sel = 13
         }
+        50 => { start_at(0, 12, 0); force_fish = SEEDV; g.total = 5 }
+        37 => {                                // a fight for the guide's legibility: dock BOT / 100 at hour BOT % 100, view SEED / 100 - 1
+            start_at(BOTV / 100, BOTV % 100, 0)
+            view_off = fixed(SEEDV) / 100 - 1.0
+            force_fish = 2
+            g.total = 5
+            g.journal[2].caught = 1
+        }   // pattern test: species SEED, stick BOT (0 keys, 1 analog straight, 8 analog round the rim, 2-7 circling)
+        // pause tests: START at a moment, hold the pause PAUSE_LEN frames, carry on
+        60 => { start_at(0, 23, 0); force_fish = 2; g.total = 5 }       // mid-fight, at night
+        61 => { start_at(0, 10, 0); g.total = 5 }                       // mid-cast: winding up
+        62 => { start_at(0, 10, 0); g.total = 5 }                       // mid-cast: the lure in flight
+        63 => {                                                         // the festival
+            start_at(0, 18, 50)
+            g.fest = 1
+            g.village = 1
+            g.points = 400
+            g.fest_day = 1
+        }
+        64 => { start_at(1, 11, 0); g.total = 5 }                       // the menu with the lure in the water
         // koi bots: cast into the moon's path (40-45) or near the golden koi (46-47) and wait
         40 => koi_start(0, 21, 0)
         41 => koi_start(0, 0, 0)
@@ -123,6 +143,28 @@ fn test_init() {
     }
 }
 
+// ---- the pattern test
+var pt_frames: s32
+var pt_was_fight: bool
+var pt_done: bool
+
+fn pt_report(caught: bool) {
+    print("PATTERN fish ")
+    print_int(SEEDV)
+    print(" bot ")
+    print_int(BOTV)
+    if caught { print(" caught") } else if phase == Phase.Fight { print(" timeout") } else { print(" lost") }
+    print(" frames ")
+    print_int(pt_frames)
+    print(" steps ")
+    print_int(f_steps)
+    print(" breaks ")
+    print_int(pt_breaks())
+    print(" dist ")
+    print_fixed(f_dist)
+    println("")
+}
+
 // ---- the koi bots
 var koi_casts: s32
 var koi_wait: s32           // frames spent waiting with the lure in the water
@@ -140,6 +182,7 @@ fn koi_start(dock: s32, h: s32, m: s32) {
 }
 
 fn koi_scen() -> bool { return SCENARIO >= 40 && SCENARIO <= 47 }
+fn pt_breaks() -> s32 { return f_breaks }
 
 // Where the bot wants to cast: along the moon's path, or ~5.5 short of the golden koi.
 var koi_yaw: fixed
@@ -222,7 +265,106 @@ fn koi_report() {
     println("")
 }
 
+// ---- the pause tests
+const PAUSE_LEN = 300
+var pz_at: s32 = -1         // scen_t when START was pressed
+var pz_done: bool
+
+fn pause_moment() -> bool {
+    match SCENARIO {
+        60 => return phase == Phase.Fight && phase_t == 150
+        61 => return phase == Phase.Aim && aim_hold == 20
+        62 => return phase == Phase.Fly && fly_t == 9
+        63 => return screen == Screen.Festival && screen_t == 380
+        64 => return phase == Phase.Wait && phase_t == 60
+        else => return false
+    }
+}
+
+fn pause_pad() -> u32 {
+    if pz_at < 0 {
+        if pause_moment() && pz_at < 0 {
+            pz_at = scen_t
+            snapshot("before")
+            return START
+        }
+        return 0
+    }
+    if pz_done && scen_t == pz_at + PAUSE_LEN + 2 { snapshot("resumed") }
+    if !pz_done {
+        if scen_t == pz_at + 2 { snapshot("paused") }
+        if scen_t == pz_at + PAUSE_LEN - 1 { snapshot("held") }
+        if scen_t == pz_at + PAUSE_LEN {
+            pz_done = true
+            if SCENARIO == 64 { return B }
+            return START
+        }
+    }
+    return 0
+}
+
+// Everything that would move if the world weren't frozen.
+fn snapshot(label: *u8) {
+    print("SNAP ")
+    print(label)
+    print(" tick ")
+    print_int(tick_count)
+    print(" clock ")
+    print_int(g.clock)
+    print(" screen ")
+    print_int(screen as s32)
+    print(" screen_t ")
+    print_int(screen_t)
+    print(" phase ")
+    print_int(phase as s32)
+    print(" phase_t ")
+    print_int(phase_t)
+    print(" aim ")
+    print_int(aim_hold)
+    print(" fly ")
+    print_int(fly_t)
+    print(" lure ")
+    print_fixed(lure.x)
+    print(",")
+    print_fixed(lure.y)
+    print(",")
+    print_fixed(lure.z)
+    print(" fish ")
+    print_fixed(f_dist)
+    print("/")
+    print_fixed(f_tension)
+    print("/")
+    print_int(f_k)
+    print(" sw0 ")
+    print_fixed(sw[0].pos.x)
+    print(",")
+    print_fixed(sw[0].pos.z)
+    print(" firefly ")
+    print_fixed(fly_pos[0].x)
+    print(" splash ")
+    print_int(sp_age[0])
+    print(" lanterns ")
+    print_int(fl_n)
+    print(" lantern0 ")
+    print_fixed(fl_pos[0].y)
+    print(" water ")
+    print_int(water_rot)
+    print(" duck ")
+    print_int(pause_duck)
+    print(" sfx ")
+    print_int(sound_playing(CH_SFX) as s32)
+    println("")
+}
+
 fn script_pad(f: s32) -> u32 {
+    if SCENARIO >= 60 && SCENARIO <= 64 {
+        let p = pause_pad()
+        if p != 0 { return p }
+        if pz_at >= 0 && !pz_done { return 0 }
+        if SCENARIO == 63 && f > 900 && f % 60 == 0 { return A }
+        if phase == Phase.Catch && phase_t > 60 { return A }
+        return 0
+    }
     if koi_scen() && phase == Phase.Wait && phase_t > 900 { return B }    // nothing for 15 s: reel in, cast again
     if koi_scen() && SHOT != 0 && phase == Phase.Catch && f_id >= 12 { return 0 }   // screenshots: stay on the koi
     if SCENARIO == 7 || SCENARIO == 11 || SCENARIO == 21 {
@@ -244,6 +386,7 @@ fn bot_stick() -> vec2 {
         Idle => {
             if SCENARIO >= 24 && SCENARIO <= 28 { return vec2(0.0, 0.0) }
             if SCENARIO >= 29 && SCENARIO <= 31 { return vec2(0.25, 0.0) }   // pan right, 0.0055 rad a frame
+            if SCENARIO == 37 && t > 40 { return vec2(0.0, -1.0) }
             if SCENARIO == 10 {
                 // sweep the view left and right
                 if (t / 200) % 2 == 0 { return vec2(1.0, 0.0) }
@@ -286,11 +429,51 @@ fn force_bite() {
 var bot_dir: s32 = -1
 var bot_hold: s32
 
+var pt_ang: fixed           // the circling cheat's stick angle
+var pt_stick: vec2          // the analog bot's stick
+
 fn fight_bot() -> vec2 {
+    if SCENARIO == 50 && BOTV != 0 && f_surge != 1 && f_surge != 3 && f_surge != 4 && f_surge != 5 {
+        let tempo = FISH[f_id].tempo as s32
+        if BOTV >= 2 && BOTV <= 7 {
+            // the cheat: circle the stick whatever the pattern, clockwise (even BOT) or not,
+            // at one (2-3), two (4-5) or four (6-7) octants per beat
+            var oct = 1
+            if BOTV >= 4 { oct = 2 }
+            if BOTV >= 6 { oct = 4 }
+            let step = 0.785398 * fixed(oct) / fixed(tempo)
+            if BOTV % 2 == 0 { pt_ang += step } else { pt_ang -= step }
+            return vec2(sin(pt_ang), cos(pt_ang))
+        }
+        // analog: glide in a straight line toward the wanted direction (through the centre
+        // for opposite directions), arriving over about five frames; BOT 8 swings round the
+        // rim instead (the shorter way) whenever the step is less than 180 degrees
+        let k = keys_bot()
+        if BOTV == 8 && sqrt(dot(k, k)) > 0.5 && sqrt(dot(pt_stick, pt_stick)) > 0.5 {
+            let a0 = atan2(pt_stick.x, pt_stick.y)
+            let a1 = atan2(k.x, k.y)
+            let da = angle_diff(a1, a0)
+            if abs(da) < 2.8 {
+                let a = a0 + da * 0.38
+                pt_stick = vec2(sin(a), cos(a))
+                return pt_stick
+            }
+        }
+        pt_stick = pt_stick + (k - pt_stick) * 0.38
+        return pt_stick
+    }
+    return keys_bot()
+}
+
+fn keys_bot() -> vec2 {
     if f_surge == 1 || f_surge == 3 {
+        bot_dir = -1          // after the lean, go straight on to the next step
         return vec2(sin(f_lean_ang), cos(f_lean_ang))
     }
-    if f_surge == 4 || f_surge == 5 { return vec2(0.0, 0.0) }
+    if f_surge == 4 || f_surge == 5 {
+        bot_dir = -1
+        return vec2(0.0, 0.0)
+    }
     let info = &FISH[f_id]
     let tempo = info.tempo as s32
     let want = info.pat[f_k] as s32
@@ -338,6 +521,18 @@ fn test_hook(f: s32) {
             print_int(prof[k])
         }
         println("")
+    }
+    if SCENARIO == 50 {
+        if phase == Phase.Fight { pt_frames += 1 }
+        if pt_was_fight && phase != Phase.Fight && !pt_done {
+            pt_done = true
+            pt_report(phase == Phase.Catch)
+        }
+        pt_was_fight = phase == Phase.Fight
+        if !pt_done && phase == Phase.Fight && pt_frames == 2400 {
+            pt_done = true
+            pt_report(false)
+        }
     }
     if koi_scen() {
         if phase == Phase.Bite && phase_t == 1 {

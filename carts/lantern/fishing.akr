@@ -71,6 +71,9 @@ var f_cur: s32                // the snapped stick direction this frame (-1 betw
 var f_prev: s32
 var f_dwell: s32
 var f_centre_t: s32
+var f_from: s32               // the direction of the step just made (DIR_C after a pause, -1: none yet)
+var f_route_bad: bool         // the stick left the route toward the next step: it must come back first
+var f_breaks: s32             // route breaks this fight
 var f_hit_fx: s32             // frames of the "hit" flash on the guide
 var f_hit_dir: s32
 var f_miss_fx: s32
@@ -812,6 +815,9 @@ fn start_fight() {
     f_step_t = 0
     f_last_dir = -1
     f_prev = -1
+    f_from = -1
+    f_route_bad = false
+    f_breaks = 0
     f_dwell = 0
     f_centre_t = 0
     f_combo = 0
@@ -880,6 +886,9 @@ fn update_fight(st: vec2) {
                 }
                 f_surge = 0
                 f_next = surge_gap()
+                // after leaning against it the stick comes back from anywhere: a free step
+                f_from = -1
+                f_route_bad = false
             }
         }
     }
@@ -932,16 +941,66 @@ fn fish_pos() -> vec3 {
     return vec3(s.x + sin(f_ang) * f_dist, 0.0, s.z + cos(f_ang) * f_dist)
 }
 
+// Steps apart around the ring of eight directions (0..4).
+fn oct_dist(a: s32, b: s32) -> s32 { return min((a - b) & 7, (b - a) & 7) }
+
+// May the stick pass through direction d on its way from one step (`from`) to the next
+// (`want`)? The motion is the pattern, not just the end points:
+//   - on the shorter way round between them (N -> NE -> E; for 135 degrees the two between);
+//     for opposite directions (180 degrees) there is no way round: only through the centre
+//     (or a direct jump, as the keys do), so circling via N between W and E is wrong;
+//   - a neighbour of either end is a wobble, not a wrong turn (stick paths are not exact);
+//   - out of a pause at the centre: straight out, give or take a neighbour of the target.
+// The centre and the between zone (-1) are always fine.
+fn route_ok(from: s32, want: s32, d: s32) -> bool {
+    if from < 0 || d < 0 || d == DIR_C { return true }
+    if from == DIR_C { return oct_dist(d, want) <= 1 }
+    if oct_dist(d, from) <= 1 || oct_dist(d, want) <= 1 { return true }
+    let span = oct_dist(from, want)
+    return span < 4 && oct_dist(from, d) + oct_dist(d, want) == span
+}
+
 fn trace_pattern(info: *Fish, tempo: s32, lf: fixed) {
     let want = info.pat[f_k] as s32
     let cur = f_cur
     var hit = false
+    // leaving the route (circling the long way round, swinging around instead of across):
+    // a small strain, and the step won't count until the stick comes back to where the
+    // step starts, or to the centre
+    if cur != f_prev && !f_route_bad && want != DIR_C && !route_ok(f_from, want, cur) {
+        f_route_bad = true
+        f_breaks += 1
+        if TEST != 0 {
+            print("BREAK from ")
+            print_int(f_from)
+            print(" want ")
+            print_int(want)
+            print(" cur ")
+            print_int(cur)
+            print(" prev ")
+            print_int(f_prev)
+            print(" surge ")
+            print_int(f_surge)
+            println("")
+        }
+        f_tension += 0.04 * info.pull * lf
+        f_miss_fx = 20
+        f_miss_dir = cur
+        f_combo = 0
+        sfx_miss()
+        // teach it while the fish is new to you
+        if msg_t == 0 && g.journal[f_id].caught < 3 {
+            if f_from >= 0 && f_from < 8 && oct_dist(f_from, want) == 4 { say("Straight across, through the middle!", 70) }
+            else { say("Not that way round! Back, and try again.", 70) }
+        }
+    }
+    if f_route_bad && (cur == DIR_C || cur == f_from) { f_route_bad = false }
     if want == DIR_C {
         if cur == DIR_C { f_centre_t += 1 } else { f_centre_t = 0 }
         if f_centre_t >= max(tempo * 6 / 10, 6) { hit = true }
-    } else if cur == want && f_prev != want {
+    } else if cur == want && f_prev != want && !f_route_bad {
         hit = true
-    } else if cur >= 0 && cur < 8 && cur != want && cur != f_last_dir {
+    } else if cur >= 0 && cur < 8 && cur != want && cur != f_last_dir && !f_route_bad {
         // off the pattern: only counts if the stick stays there
         if cur == f_prev { f_dwell += 1 } else { f_dwell = 0 }
         if f_dwell == 10 {
@@ -976,6 +1035,8 @@ fn trace_pattern(info: *Fish, tempo: s32, lf: fixed) {
     f_dist -= 0.36 * amount / info.heft
     reel_ang += 1.2
     f_last_dir = want
+    f_from = want
+    f_route_bad = false
     f_hit_fx = 14
     f_hit_dir = want
     f_steps += 1

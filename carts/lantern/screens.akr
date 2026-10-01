@@ -2,6 +2,13 @@
 // the Lantern Festival and the ending.
 
 // Darkens the whole screen (k: 0 none .. 255 black), with a subtractive rectangle.
+// Dims everything drawn so far to a little under half (a half blend with black, then a
+// small subtraction): unlike fade(), the darks stay readable and the brights come down too.
+fn dim_scene() {
+    ui_rect(-1, -1, 322, 242, 0, 0)
+    ui_rect(-1, -1, 322, 242, rgb(14, 14, 12), 2)
+}
+
 fn fade(k: s32) {
     if k <= 0 { return }
     let v = clamp(k, 0, 255)
@@ -228,7 +235,7 @@ fn draw_travel() {
 fn draw_menu() {
     camera_first_person()
     draw_lake()
-    fade(110)
+    dim_scene()
     panel(6, 22, 196, 168)
     ftext(14, 26, "Lantern Lake", GOLD, true)
     // the map, 1.5x
@@ -242,7 +249,7 @@ fn draw_menu() {
             var c = rgb(255, 240, 200)
             if d == menu_sel { c = rgb(255, 210, 80) }
             if d == g.dock {
-                let p = 3 + (tick_count / 8) % 3
+                let p = 3 + (screen_t / 8) % 3
                 ui_dot(x, y, p + 2, rgb(255, 200, 90))
             }
             ui_dot(x, y, 4, c)
@@ -604,6 +611,10 @@ fn fest_origin(i: s32) -> vec3 {
 }
 
 fn update_festival() {
+    if btnp_in(START) {
+        pause_game()
+        return
+    }
     tod_force = 1170 + min(screen_t / 8, 60)
     let t = screen_t
     if t == 50 { sfx_festival() }
@@ -688,6 +699,10 @@ fn draw_festival() {
 // ---- the ending: credits over the night lake, then free play
 
 fn update_ending() {
+    if btnp_in(START) {
+        pause_game()
+        return
+    }
     tod_force = 1300
     if screen_t % 9 == 0 && fl_n < NFL { fest_lantern_spawn(fest_origin(fl_n)) }
     fest_lanterns_update()

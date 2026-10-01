@@ -452,8 +452,8 @@ fn draw_guide() {
         // ease off: the centre glows
         let pul = 3 + (tick_count / 4) % 3
         ui_dot(GX, GY, 6 + pul, rgb(120, 230, 255))
-        if f_surge == 5 { ftext_c(GX, GY + 30, "EASE OFF!", rgb(140, 230, 255), false) }
-        else { ftext_c(GX, GY + 30, "It's leaping!", rgb(140, 230, 255), false) }
+        if f_surge == 5 { guide_caption("EASE OFF!", rgb(140, 230, 255)) }
+        else { guide_caption("It's leaping!", rgb(140, 230, 255)) }
         draw_cursor()
         return
     }
@@ -477,14 +477,31 @@ fn draw_guide() {
     ui_dot(mx, my, 3, rgb(180, 200, 255))
     draw_cursor()
     if f_surge == 2 {
-        if (tick_count / 8) % 2 == 0 { ftext_c(GX, GY + 30, "REEL FAST!", rgb(255, 160, 120), false) }
+        if (tick_count / 8) % 2 == 0 { guide_caption("REEL FAST!", rgb(255, 160, 120)) }
     } else if f_combo >= 4 {
         let b = nb()
         b[0] = 0
         sint(b, f_combo)
         sappend(b, " in rhythm!")
-        ftext_c(GX, GY + 30, b, rgb(255, 230, 140), false)
+        guide_caption(b, rgb(255, 230, 140))
     }
+}
+
+fn guide_caption(s: *u8, c: u32) {
+    text_backing(GX, GY + 30, s)
+    ftext_c(GX, GY + 30, s, c, false)
+}
+
+fn guide_backing() {
+    for k in 0..2 {
+        ui_tex(GX - 52, GY - 50, 104, 104, SLOT_WORLD, PAL_GREY, UV_HALO_U, UV_HALO_V, 64, 64, rgb(255, 255, 255), 2)
+    }
+}
+
+// A dark pill behind a line of small text (subtractive: it darkens whatever is behind).
+fn text_backing(cx: s32, y: s32, s: *u8) {
+    let w = text_w(s, false)
+    ui_rect(cx - w / 2 - 4, y + 1, w + 8, 13, rgb(160, 160, 160), 2)
 }
 
 fn draw_cursor() {
@@ -508,7 +525,7 @@ fn draw_lean_arrow() {
     var col = rgb(255, 170, 90)
     if pulse { col = rgb(255, 220, 140) }
     ui_tri(tipx, tipy, bx + px, by + py, bx - px, by - py, col)
-    ftext_c(GX, GY + 30, "LEAN!", col, false)
+    guide_caption("LEAN!", col)
     draw_cursor()
 }
 
@@ -528,24 +545,33 @@ fn draw_tension() {
     if f_tension > 0.8 { c = rgb(255, 170, 60) }
     if f_tension > 0.92 { c = rgb(255, 80, 70) }
     ui_grad(x, y0 + h - fill, 7, fill, mix_col(c, WHITE, 80), c, -1)
+    text_backing(x + 3, y0 + h + 3, "LINE")
     ftext_c(x + 3, y0 + h + 3, "LINE", DIM, false)
     // distance
     let b = nb()
     b[0] = 0
     sint(b, (f_dist * 10) as s32 / 10)
     sappend(b, "m")
+    text_backing(x + 3, y0 - 14, b)
     ftext_c(x + 3, y0 - 14, b, CREAM, false)
 }
 
 fn draw_fight_ui() {
+    // a dark backing first, so the guide reads over anything (a lantern's glow, the bright
+    // sky, the moon's glitter, the pale deck): two soft subtractive discs, black under the
+    // ring of dots and fading out past the caption
+    guide_backing()
     draw_tension()
     draw_guide()
     // the fish's name once you know it
+    var nm = "Something big?"
+    var nc = DIM
     if g.journal[f_id].caught > 0 {
-        ftext_c(GX - 20, 112, fish_name(f_id), SOFT, false)
-    } else {
-        ftext_c(GX - 20, 112, "Something big?", DIM, false)
+        nm = fish_name(f_id)
+        nc = SOFT
     }
+    text_backing(GX - 20, 112, nm)
+    ftext_c(GX - 20, 112, nm, nc, false)
     if f_tension > 0.85 && (tick_count / 6) % 2 == 0 {
         ftext_c(160, 60, "Easy! The line is straining!", rgb(255, 150, 110), false)
     }

@@ -53,6 +53,8 @@ var music_fade: s32         // 0..256 current music level
 var music_want: s32         // target level
 var music_switch: bool      // fading out to change arrangement
 var duck: s32
+var pause_duck: s32 = 256   // 256 normal, down to PAUSE_DUCK while the world is paused
+const PAUSE_DUCK = 64
 var nature_t: s32
 var tension_on: bool
 
@@ -82,6 +84,9 @@ fn ambience_start() {
 // Called every frame: crossfades day and night music, ducks under jingles, plays the
 // birds, crickets and frogs.
 fn sound_update(want_night: bool, ambience: bool) {
+    // paused (or behind the menus): duck to a quarter, the melody further than the pad,
+    // which sounds muffled rather than just quieter; back up smoothly
+    if world_frozen() { pause_duck = max(pause_duck - 8, PAUSE_DUCK) } else { pause_duck = min(pause_duck + 6, 256) }
     if music_on {
         if want_night != music_night && !music_switch {
             music_switch = true
@@ -93,16 +98,20 @@ fn sound_update(want_night: bool, ambience: bool) {
         }
         if music_fade < music_want { music_fade = min(music_fade + 2, music_want) }
         if music_fade > music_want { music_fade = max(music_fade - 2, music_want) }
-        var k = music_fade
+        var k = music_fade * pause_duck / 256
         if duck > 0 {
             duck -= 1
             var d = 80
             if duck < 60 { d = 256 - duck * 176 / 60 }
             k = k * d / 256
         }
+        let km = k * pause_duck / 256
         set_vol(CH_PAD, PAD_VOL * k / 256, PAD_VOL * k * 9 / 2560)
-        set_vol(CH_MEL, MEL_VOL * k * 8 / 2560, MEL_VOL * k / 256)
+        set_vol(CH_MEL, MEL_VOL * km * 8 / 2560, MEL_VOL * km / 256)
     }
+    // the water and the crickets follow the pause duck too
+    set_vol(CH_WATER, WATER_VOL * pause_duck / 256, WATER_VOL * pause_duck / 256)
+    if want_night && sound_playing(CH_NATURE) { set_vol(CH_NATURE, 26 * pause_duck / 256, 22 * pause_duck / 256) }
     if !ambience { return }
     nature_t += 1
     if want_night {
@@ -127,6 +136,15 @@ fn sound_update(want_night: bool, ambience: bool) {
             }
         }
     }
+}
+
+// Pausing: effects stop (the tension creak goes quiet until the fight resumes and sets it
+// again); music and ambience duck in sound_update().
+fn sound_pause() {
+    stop(CH_SFX)
+    stop(CH_CHIME)
+    if tension_on { set_vol(CH_EXTRA, 0, 0) } else { stop(CH_EXTRA) }
+    if !music_night { stop(CH_NATURE) }      // a bird mid-song
 }
 
 fn nature_reset() {

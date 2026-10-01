@@ -13,8 +13,39 @@ enum Screen { Title, Intro, Fish, Menu, Shop, Journal, Festival, Ending, Travel 
 
 var screen = Screen.Title
 var screen_t: s32
-var tick_count: s32
+var tick_count: s32          // world time: frozen while paused (and behind the menus)
 var show_debug: bool
+
+// ---- pausing: START stops the world. From Idle or Wait it opens the lake menu; anywhere
+// else (a cast, a bite, a fight, the catch, the festival) a small "Paused" card. Either
+// way nothing moves behind it: no world time (tick_count drives the water, clouds, glitter,
+// sway and flicker), no clock, no fish, no particles; the scene is dimmed and the sound
+// ducks (sfx.akr).
+var paused: bool
+var pause_t: s32
+
+fn world_frozen() -> bool {
+    return paused || screen == Screen.Menu || screen == Screen.Shop || screen == Screen.Journal
+}
+
+fn pause_game() {
+    paused = true
+    pause_t = 0
+    sound_pause()
+    sfx_blip()
+}
+
+fn resume_game() {
+    paused = false
+    sfx_back()
+}
+
+fn draw_pause() {
+    dim_scene()
+    panel_glass(100, 92, 120, 48)
+    ftext_c(160, 96, "Paused", CREAM, true)
+    ftext_c(160, 120, "START: carry on", SOFT, false)
+}
 
 // input, sampled once per frame through input_pad() / input_stick()
 var pad_now: u32
@@ -175,8 +206,17 @@ fn update() {
     if m > 1.5 { st = st * 0.7071 }
     stick_in = st
     test_hook(tick_count)
-    tick_count += 1
-    screen_t += 1
+    if paused {
+        pause_t += 1
+        if pause_t > 6 && (btnp_in(START) || btnp_in(A) || btnp_in(B)) { resume_game() }
+        saving_update()
+        sound_update(is_night_tod(), false)
+        return
+    }
+    // START on these screens always pauses (or opens the menu): not even this frame moves
+    let pause_press = btnp_in(START) && tut_text == null && (screen == Screen.Fish || screen == Screen.Festival || screen == Screen.Ending)
+    if !world_frozen() && !pause_press { tick_count += 1 }
+    if !pause_press { screen_t += 1 }
     if btnp_in(Y) && TEST != 0 { show_debug = !show_debug }
 
     if tut_text != null {
@@ -198,6 +238,12 @@ fn update() {
             Travel => update_travel()
         }
     }
+    // behind the menus the world holds still (the menu entered this frame included)
+    if world_frozen() {
+        saving_update()
+        sound_update(is_night_tod(), false)
+        return
+    }
     // the rod's pose (the line and casts start at its tip)
     camera_first_person()
     begin_camera()
@@ -218,6 +264,12 @@ fn update() {
 fn is_night_tod() -> bool { return night > 0.5 }
 
 fn update_fish() {
+    // START: the lake menu from Idle or Wait (the lure stays where it is: the menu is a
+    // pause too); mid-cast, mid-bite, mid-fight or on the catch, a pause right here
+    if btnp_in(START) {
+        if phase == Phase.Idle || phase == Phase.Wait { open_menu() } else { pause_game() }
+        return
+    }
     // time passes while you fish (but not during a fight or the catch)
     if phase != Phase.Fight && phase != Phase.Catch && phase != Phase.Bite {
         g.clock += 1
@@ -235,11 +287,6 @@ fn update_fish() {
         }
     }
     if phase == Phase.Idle || phase == Phase.Wait {
-        if btnp_in(START) {
-            if phase == Phase.Wait { reel_in() }
-            open_menu()
-            return
-        }
         if btnp_in(SELECT) {
             open_journal(Screen.Fish)
             return
@@ -254,7 +301,7 @@ fn update_fish() {
 
 fn draw() {
     ui_tris = 0
-    show_rod = screen == Screen.Fish || screen == Screen.Travel
+    show_rod = screen == Screen.Fish || screen == Screen.Travel || screen == Screen.Menu
     match screen {
         Title => draw_title()
         Intro => draw_intro()
@@ -266,6 +313,7 @@ fn draw() {
         Ending => draw_ending()
         Travel => draw_travel()
     }
+    if paused { draw_pause() }
     draw_tutorial()
     draw_saving()
     if show_debug { draw_debug() }
