@@ -167,6 +167,7 @@ static int g_loop_n;
 static Expr *check(Ctx *c, Expr *e, Type *want);
 static Expr *coerce(Ctx *c, Expr *e, Type *to, const char *what);
 static void resolve_const(Sym *s);
+static void resolve_embed(Sym *s);
 static Program *g_prog;
 
 static void note_call(Ctx *c, Func *f) {
@@ -661,6 +662,7 @@ static Expr *check_name(Ctx *c, Expr *e) {
         e->ty = s->ty;
         return e;
     case SY_GLOBAL:
+        if (!c->fn) error_at(e->loc, "a constant cannot use the variable '%s' (constants are fixed when the cart is built)", s->name);
         if (!s->ty) error_at(e->loc, "'%s' is used in its own initialiser", s->name);
         e->ty = s->ty;
         return e;
@@ -669,6 +671,7 @@ static Expr *check_name(Ctx *c, Expr *e) {
         if (c->fn) c->fn->uses_io += 1 << (2 * (c->loop_depth > 6 ? 6 : c->loop_depth));
         return e;
     case SY_EMBED:
+        resolve_embed(s);
         note_ref(c, s);
         e->ty = s->ty;
         return e;
@@ -1156,6 +1159,7 @@ static Expr *check_call(Ctx *c, Expr *e) {
             if (x->k == E_NAME) {
                 Sym *xs = sym_lookup(x->name, x->loc.file);
                 if (xs && xs->k == SY_EMBED && !(c->fn && lookup_local(c, x->name))) {
+                    resolve_embed(xs);
                     note_ref(c, xs);
                     e->ty = ty_uint; e->isconst = 1;
                     e->cval = (int64_t)(xs->datalen / (size_t)(xs->ty->elem->size ? xs->ty->elem->size : 1));
@@ -1553,12 +1557,46 @@ static Expr *check(Ctx *c, Expr *e, Type *want) {
 
 /* ------------------------------------------------------------ constants */
 
+const char *const_addr_label(Expr *e) {
+    if (e->isconst) return NULL;
+    switch (e->k) {
+    case E_NAME:
+        if (!e->sym) return NULL;
+        if (e->sym->k == SY_EMBED) return e->sym->label;
+        if (e->sym->k == SY_FUNC) return e->sym->fn->label;
+        return NULL;
+    case E_STR: return e->sym ? e->sym->label : NULL;
+    case E_UNARY:   /* an array constant decayed to a pointer */
+        return e->op == U_ADDR && e->a->k == E_NAME && e->a->sym && e->a->sym->k == SY_DATA ? e->a->sym->label : NULL;
+    case E_CONV: {
+        /* address-preserving conversions: to a pointer, u32 or s32 (a function: its code address) */
+        Type *to = e->ty, *from = e->a->ty;
+        int to_ok = to->k == TY_PTR || to->k == TY_U32 || to->k == TY_S32;
+        int from_ok = from->k == TY_PTR || from->k == TY_FUNC;
+        return to_ok && from_ok ? const_addr_label(e->a) : NULL;
+    }
+    default: return NULL;
+    }
+}
+
 static int is_const_data(Expr *e) {
     if (e->k == E_ARRAY || e->k == E_STRUCT) {
         for (int i = 0; i < e->nargs; i++) if (!is_const_data(e->args[i])) return 0;
         return 1;
     }
-    return e->isconst;
+    return e->isconst || const_addr_label(e) != NULL;
+}
+
+/* Functions named in const data must be emitted when the data is. */
+static void collect_data_funcs(Sym *s, Expr *e) {
+    if (!e) return;
+    if (e->k == E_NAME && e->sym && e->sym->k == SY_FUNC) {
+        for (int i = 0; i < s->ndfuncs; i++) if (s->dfuncs[i] == e->sym->fn) return;
+        PUSH(s->dfuncs, s->ndfuncs, s->capdfuncs, e->sym->fn);
+        return;
+    }
+    if (e->k == E_CONV) collect_data_funcs(s, e->a);
+    if (e->k == E_ARRAY || e->k == E_STRUCT) for (int i = 0; i < e->nargs; i++) collect_data_funcs(s, e->args[i]);
 }
 
 static void resolve_const(Sym *s) {
@@ -1581,7 +1619,10 @@ static void resolve_const(Sym *s) {
     if (!t) t = e->ty;   /* untyped constants stay untyped */
     if (ty_is_aggr(t)) {
         if (e->ty != t) error_at(e->loc, "type mismatch: '%s' is %s, initialiser is %s", s->name, ty_str(t), ty_str(e->ty));
-        if (!is_const_data(e)) error_at(e->loc, "the initialiser of constant '%s' must be built from constants", s->name);
+        if (!is_const_data(e))
+            error_at(e->loc, "the initialiser of constant '%s' must be built from constants (numbers, and the addresses "
+                     "of embeds, strings, const data and functions)", s->name);
+        collect_data_funcs(s, e);
         s->k = SY_DATA;
         s->ty = t;
         s->init = e;
@@ -1592,6 +1633,9 @@ static void resolve_const(Sym *s) {
     }
     if (t->k == TY_VOID || t->k == TY_NULL) error_at(e->loc, "cannot infer a type for constant '%s'", s->name);
     e = coerce(&c, e, t, ar_printf("the value of '%s'", s->name));
+    if (!e->isconst && const_addr_label(e))
+        error_at(e->loc, "a single constant cannot hold an address; use the name directly, or put the addresses "
+                 "in a const array or struct (const TABLE: [2]*Mesh = [A, B])");
     if (!e->isconst) error_at(e->loc, "the value of constant '%s' must be known at compile time", s->name);
     s->ty = t;
     s->cval = e->cval;
@@ -1961,6 +2005,25 @@ static void check_func(Program *P, Func *f) {
     check_func_body(P, f, NULL);
 }
 
+/* An embed's type and byte range; resolved on first use (constants may refer to it). */
+static void resolve_embed(Sym *s) {
+    if (s->state == 2) return;
+    if (s->state == 1) error_at(s->loc, "the offset or length of embed '%s' depends on itself", s->name);
+    s->state = 1;
+    Type *t = s->texpr ? complete(resolve_type(s->texpr), s->loc) : ty_u8;
+    if (t->size == 0) error_at(s->loc, "cannot embed data as a zero-sized type");
+    s->ty = ty_ptr(t);
+    s->label = ar_printf("E_%s%s", s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
+    Ctx c = {.P = g_prog};
+    int64_t off = s->off_e ? const_int(&c, s->off_e, "embed offset") : 0;
+    int64_t len = s->len_e ? const_int(&c, s->len_e, "embed length") : (int64_t)s->datalen - off;
+    if (off < 0 || off > (int64_t)s->datalen || len < 0 || off + len > (int64_t)s->datalen)
+        error_at(s->loc, "embed range %lld+%lld is outside '%s' (%zu bytes)", (long long)off, (long long)len, s->path, s->datalen);
+    s->data += off;
+    s->datalen = (size_t)len;
+    s->state = 2;
+}
+
 void check_program(Program *P) {
     g_prog = P;
     g_loop_n = 0;
@@ -1977,22 +2040,7 @@ void check_program(Program *P) {
         if (a < 0 || a > 0xFFFFFF || (a & 3)) error_at(s->init->loc, "register address must be a word-aligned 24-bit address");
         s->addr = (uint32_t)a;
     }
-    for (int i = 0; i < P->ndatas; i++) {
-        Sym *s = P->datas[i];
-        if (s->k != SY_EMBED) continue;
-        Type *t = s->texpr ? complete(resolve_type(s->texpr), s->loc) : ty_u8;
-        if (t->size == 0) error_at(s->loc, "cannot embed data as a zero-sized type");
-        s->ty = ty_ptr(t);
-        s->label = ar_printf("E_%s%s", s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
-        Ctx c = {.P = P};
-        int64_t off = s->off_e ? const_int(&c, s->off_e, "embed offset") : 0;
-        int64_t len = s->len_e ? const_int(&c, s->len_e, "embed length") : (int64_t)s->datalen - off;
-        if (off < 0 || off > (int64_t)s->datalen || len < 0 || off + len > (int64_t)s->datalen)
-            error_at(s->loc, "embed range %lld+%lld is outside '%s' (%zu bytes)", (long long)off, (long long)len, s->path, s->datalen);
-        s->data += off;
-        s->datalen = (size_t)len;
-        s->state = 2;
-    }
+    for (int i = 0; i < P->ndatas; i++) if (P->datas[i]->k == SY_EMBED) resolve_embed(P->datas[i]);
     for (int i = 0; i < P->nfuncs; i++) check_signature(P->funcs[i]);
     for (int i = 0; i < P->nglobals; i++) {
         Sym *s = P->globals[i];

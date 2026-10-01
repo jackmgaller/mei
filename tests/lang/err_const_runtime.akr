@@ -1,0 +1,4 @@
+// error: a constant cannot use the variable 'g'
+var g: u8
+const T: [1]*u8 = [&g]
+fn init() {}

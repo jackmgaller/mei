@@ -1,0 +1,4 @@
+// error: a single constant cannot hold an address; use the name directly, or put the addresses in a const array or struct
+embed CUBE: Mesh = "data/cube.bin"
+const M: *Mesh = CUBE
+fn init() {}

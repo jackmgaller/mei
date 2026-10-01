@@ -1,0 +1,61 @@
+// Const data holding link-time addresses: embeds, strings, const data and functions.
+// (These used to crash the compiler: consts were resolved before embeds had a type.)
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+embed CUBE: Mesh = "data/cube.bin"
+embed BYTES: u8 = "data/bytes.bin"
+embed HALF: u8 = "data/bytes.bin", 8          // offset 8: bytes 8..15
+embed WORDS: u32 = "data/bytes.bin"
+
+const MESHES: [2]*Mesh = [CUBE, CUBE]
+const BLOBS: [3]*u8 = [BYTES, HALF, null]
+const ADDRS: [2]u32 = [BYTES as u32, HALF as u32]
+const COUNT = len(WORDS)                        // len() of an embed in a constant
+const GREETING = "hello"
+const NAMES: [3]*u8 = ["zero", "one", GREETING]
+
+struct Level { name: *u8, data: *u8, words: *u32, id: s32 }
+const LEVELS: [2]Level = [
+    Level { name: "first", data: BYTES, words: WORDS, id: 10 },
+    Level { name: "second", data: HALF, words: null, id: 20 },
+]
+
+fn add(a: s32, b: s32) -> s32 { return a + b }
+fn sub(a: s32, b: s32) -> s32 { return a - b }
+fn only_in_table(a: s32, b: s32) -> s32 { return a * b }   // reachable only through OPS
+const OPS: [3]fn(s32, s32) -> s32 = [add, sub, only_in_table]
+const CODE: [2]u32 = [add as u32, sub as u32]
+
+fn init() {
+    if MESHES[1] == CUBE { p(1) } else { p(0) }       // expect: 1
+    p(MESHES[0].nverts as s32 * 0 + 7)                // expect: 7
+    var i = 1
+    p(BLOBS[i][0] as s32)                             // expect: 8
+    p(BLOBS[0][3] as s32)                             // expect: 3
+    if BLOBS[2] == null { p(1) } else { p(0) }        // expect: 1
+    if ADDRS[1] == HALF as u32 { p(1) } else { p(0) }     // expect: 1
+    if ADDRS[0] == BYTES as u32 { p(1) } else { p(0) }    // expect: 1
+    p(COUNT)                                          // expect: 4
+    for k in 0..3 { println(NAMES[k]) }
+    // expect: zero
+    // expect: one
+    // expect: hello
+    for k in 0..2 {
+        print(LEVELS[k].name)
+        print_char(' ')
+        p(LEVELS[k].id + LEVELS[k].data[1] as s32)
+    }
+    // expect: first 11
+    // expect: second 29
+    p(LEVELS[0].words[1] as s32)                      // expect: 117835012
+    if LEVELS[1].words == null { p(1) } else { p(0) } // expect: 1
+    for k in 0..3 { p(OPS[k](6, 3)) }
+    // expect: 9
+    // expect: 3
+    // expect: 18
+    let f = OPS[0]
+    p(f(1, 2))                                        // expect: 3
+    if f == add && OPS[1] != add { p(1) } else { p(0) }   // expect: 1
+    if CODE[1] == sub as u32 { p(1) } else { p(0) }   // expect: 1
+    p(sizeof(Level))                                  // expect: 16
+}

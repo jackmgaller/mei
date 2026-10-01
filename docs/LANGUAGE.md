@@ -136,7 +136,25 @@ embed MUSIC: s8 = "music.raw", 0, 22050
 
 Globals are zero at reset. A global's initialiser may be any expression, including calls;
 initialisers run at start-up in declaration order (imports first). Constants must be known at
-compile time and may refer to other constants.
+compile time and may refer to other constants (but not to variables).
+
+Const arrays and structs may also hold **addresses that are fixed when the cart is built**: embeds,
+strings, other const data, and named functions, as they are or converted to a pointer, `u32` or
+`s32`. They are written into ROM as `.word label`, which makes ROM tables of assets cheap:
+
+```
+embed FERN: Mesh = "fern.bin"
+embed ROCK: Mesh = "rock.bin"
+const PROPS: [2]*Mesh = [FERN, ROCK]                 // PROPS[i] is one load
+const ADDRS: [2]u32 = [FERN as u32, ROCK as u32]
+struct Level { name: *u8, mesh: *Mesh, music: *s8 }
+const LEVELS: [2]Level = [Level { name: "Shore", mesh: ROCK, music: null }, ...]
+const ACTIONS: [3]fn(s32) = [walk, swim, fish]       // function values: [code, 0, 0, 0]
+```
+
+A function named only in const data is still compiled in (when the data is used). Function
+literals, addresses of variables (`&g`) and single constants holding an address
+(`const M: *Mesh = FERN`; use `FERN` itself) are not allowed.
 
 Everything at the top level is visible everywhere (declaration order does not matter, except
 for initialisers that read other globals).
@@ -392,8 +410,9 @@ fn chooser(fast: bool) -> fn(s32) -> s32 {
 - `null` (all zeros) converts to any function type. `f == g` and `f != g` compare all four
   words: two closures are equal when they run the same code with the same captured values.
   `f as u32` gives the code address alone; `n as fn(s32)` makes a value with no captures.
-- Function values cannot appear in `const` data; fill a `var` array at start-up instead
-  (`var table: [3]fn() = ...` or assignments in `init()`).
+- Const arrays and structs may hold named functions (`const OPS: [2]fn(s32) -> s32 = [inc, dec]`,
+  stored as `[code, 0, 0, 0]`); function literals and closures cannot be `const` data, so put
+  those in a `var` array at start-up instead.
 
 ### Closures
 
@@ -963,8 +982,9 @@ function but vectors are spilled around calls; `-S` shows exactly what was gener
 
 - No generics (except the built-ins above), unions, slices, methods or operator overloading.
 - Closures capture at most 3 one-word values, by copy, read-only (no vectors, structs, arrays or
-  function values). `match` is a statement, not an expression. Function values cannot be
-  `const` data.
+  function values). `match` is a statement, not an expression. Const data may hold named
+  functions and the addresses of embeds, strings and const data, but not function literals or
+  addresses of variables.
 - No local `const` declarations (declare constants at the top level).
 - Multi-lane swizzles cannot be assigned; vectors cannot be compared with `==`.
 - `for` loops count up by one; there is no `..=` or step.

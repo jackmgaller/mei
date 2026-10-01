@@ -1,0 +1,3 @@
+// error: function literals cannot be used in constant expressions
+const OPS: [1]fn(s32) -> s32 = [fn(x: s32) => x + 1]
+fn init() {}

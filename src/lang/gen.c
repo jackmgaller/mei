@@ -2689,15 +2689,35 @@ static void gen_func(Func *f, Buf *out) {
 
 /* ------------------------------------------------------------- data */
 
-static void serialize(Expr *e, Type *t, uint8_t *buf) {
+/* Link-time addresses in const data: `.word label` at a byte offset. */
+typedef struct { int off; const char *label; } Reloc;
+static Reloc *g_relocs;
+static int g_nrelocs, g_caprelocs;
+
+static void serialize(Expr *e, Type *t, uint8_t *buf, uint8_t *base) {
     if (e->k == E_ARRAY) {
-        for (int i = 0; i < e->nargs; i++) serialize(e->args[i], t->elem, buf + i * t->elem->size);
+        for (int i = 0; i < e->nargs; i++) serialize(e->args[i], t->elem, buf + i * t->elem->size, base);
         return;
     }
     if (e->k == E_STRUCT) {
         for (int i = 0; i < e->nargs; i++)
             for (int j = 0; j < t->nfields; j++)
-                if (!strcmp(t->fields[j].name, e->fnames[i])) serialize(e->args[i], t->fields[j].type, buf + t->fields[j].offset);
+                if (!strcmp(t->fields[j].name, e->fnames[i])) serialize(e->args[i], t->fields[j].type, buf + t->fields[j].offset, base);
+        return;
+    }
+    const char *label = const_addr_label(e);
+    if (label) {
+        /* an address (a function value: [code, 0, 0, 0]); the bytes stay zero */
+        int off = (int)(buf - base);
+        if (off & 3) ice("unaligned address in const data");
+        if (g_nrelocs == g_caprelocs) {
+            int nc = g_caprelocs ? g_caprelocs * 2 : 16;
+            Reloc *nr = ar_alloc(sizeof *nr * (size_t)nc);
+            if (g_nrelocs) memcpy(nr, g_relocs, sizeof *nr * (size_t)g_nrelocs);
+            g_relocs = nr;
+            g_caprelocs = nc;
+        }
+        g_relocs[g_nrelocs++] = (Reloc){off, label};
         return;
     }
     if (is_v(t)) {
@@ -2711,11 +2731,19 @@ static void serialize(Expr *e, Type *t, uint8_t *buf) {
     for (int k = 0; k < t->size; k++) buf[k] = (uint8_t)(v >> (8 * k));
 }
 
+/* Emits bytes as .word/.byte lines; the words at g_relocs offsets become `.word label`. */
+static const char *reloc_at(size_t off) {
+    for (int r = 0; r < g_nrelocs; r++) if ((size_t)g_relocs[r].off == off) return g_relocs[r].label;
+    return NULL;
+}
+
 static void emit_bytes(Buf *out, const uint8_t *p, size_t n) {
     size_t i = 0;
     while (i + 4 <= n) {
+        const char *lab = reloc_at(i);
+        if (lab) { buf_printf(out, "    .word %s\n", lab); i += 4; continue; }
         buf_puts(out, "    .word ");
-        for (int k = 0; k < 8 && i + 4 <= n; k++, i += 4) {
+        for (int k = 0; k < 8 && i + 4 <= n && (k == 0 || !reloc_at(i)); k++, i += 4) {
             uint32_t w = p[i] | (p[i + 1] << 8) | (p[i + 2] << 16) | ((uint32_t)p[i + 3] << 24);
             buf_printf(out, k ? ",0x%08X" : "0x%08X", w);
         }
@@ -2780,6 +2808,16 @@ void gen_program(Program *P, Buf *out) {
     Func *roots[] = {P->init_fn, find_fn("__rt_init"), find_fn("init"), find_fn("__rt_frame_begin"),
                      find_fn("update"), find_fn("draw"), find_fn("__rt_frame_end")};
     for (size_t i = 0; i < sizeof roots / sizeof roots[0]; i++) if (roots[i]) mark_reachable(roots[i]);
+    /* functions named in reachable const data (which may make more data reachable) */
+    for (int changed = 1; changed;) {
+        changed = 0;
+        for (int i = 0; i < P->ndatas; i++) {
+            Sym *d = P->datas[i];
+            if (!d->reachable) continue;
+            for (int k = 0; k < d->ndfuncs; k++)
+                if (!d->dfuncs[k]->reachable) { mark_reachable(d->dfuncs[k]); changed = 1; }
+        }
+    }
 
     /* entry point and frame loop */
     buf_puts(out, "\n__start:\n");
@@ -2817,8 +2855,10 @@ void gen_program(Program *P, Buf *out) {
         } else {
             buf_printf(out, "%s:    ; %s\n", s->label, ty_str(s->ty));
             uint8_t *tmp = ar_alloc((size_t)s->ty->size);
-            serialize(s->init, s->ty, tmp);
+            g_nrelocs = 0;
+            serialize(s->init, s->ty, tmp, tmp);
             emit_bytes(out, tmp, (size_t)s->ty->size);
+            g_nrelocs = 0;
         }
     }
     buf_free(&g_body);

@@ -288,6 +288,7 @@ struct Sym {
     int is_str;            /* SY_DATA string literal */
     const char *str; size_t slen;
     int user;              /* declared by the cart (not the standard library) */
+    struct Func **dfuncs; int ndfuncs, capdfuncs;   /* SY_DATA: functions named in the data */
 };
 
 typedef struct EnumDecl {
@@ -345,6 +346,9 @@ void symtab_reset(void);
 
 void check_program(Program *P);
 int fits_s18(int64_t v);
+/* For a link-time address constant in const data (an embed, a string or other const data, a
+   function, or one of these converted to a pointer / u32 / s32): its label; else NULL. */
+const char *const_addr_label(Expr *e);
 
 /* ---------------------------------------------------------------- gen.c */
 
