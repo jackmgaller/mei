@@ -1,0 +1,148 @@
+// mesh(): faces crossing the near plane are clipped to it (stdlib/clip.akr), so the part in
+// front of the camera is drawn instead of the whole face being dropped. The faces sharing an
+// edge across the plane clip it alike (no crack); faces behind the camera, beside the view
+// or facing away draw nothing.
+// frames: 10
+
+struct TestMesh { hdr: Mesh, v: [6]vec4, f: [2]Face }
+var floor2: TestMesh                    // two floor quads sharing the edge x = 0
+var tfloor: TestMesh                    // one textured floor quad (one white texel)
+var wall: TestMesh                      // a wall beside the camera
+var tri: TestMesh                       // a floor triangle
+var back: TestMesh                      // the floor quad seen from below (facing away)
+var aside: TestMesh                     // crosses the near plane, but left of the view
+
+fn quad_face(f: *Face, a: u16, b: u16, c: u16, d: u16) {
+    f.flags = FACE_QUAD as u8
+    f.col[0] = 0xFFFFFF
+    f.idx[0] = a
+    f.idx[1] = b
+    f.idx[2] = c
+    f.idx[3] = d
+}
+
+fn setup(m: *TestMesh, nv: s32, nf: s32) {
+    m.hdr.nverts = nv as u16
+    m.hdr.nfaces = nf as u16
+    m.hdr.verts = 16
+    m.hdr.faces = 16 + 16 * 6
+}
+
+fn init() {
+    dither(false)
+    // the camera is at (0, 1, 0) looking along +z; the near plane is at z = 0.1
+    setup(&floor2, 6, 2)
+    floor2.v[0] = vec4(-3.0, 0.0, -4.0, 1.0)
+    floor2.v[1] = vec4(0.0, 0.0, -4.0, 1.0)
+    floor2.v[2] = vec4(3.0, 0.0, -4.0, 1.0)
+    floor2.v[3] = vec4(-3.0, 0.0, 10.0, 1.0)
+    floor2.v[4] = vec4(0.0, 0.0, 10.0, 1.0)
+    floor2.v[5] = vec4(3.0, 0.0, 10.0, 1.0)
+    quad_face(&floor2.f[0], 0, 1, 3, 4)
+    quad_face(&floor2.f[1], 1, 2, 4, 5)
+    setup(&tfloor, 4, 1)
+    tfloor.v[0] = floor2.v[0]
+    tfloor.v[1] = floor2.v[2]
+    tfloor.v[2] = floor2.v[3]
+    tfloor.v[3] = floor2.v[5]
+    quad_face(&tfloor.f[0], 0, 1, 2, 3)
+    tfloor.f[0].flags = (FACE_QUAD | FACE_TEXTURED) as u8
+    tfloor.f[0].tex = 1                 // slot 1, 8-bit, palette 0; every corner at texel 0, 0
+    tfloor.f[0].col[0] = 0x808080
+    let texel = VRAM_TEXTURES as *u8
+    texel[TEXTURE_SLOT_SIZE] = 1
+    let pal = VRAM_PALETTE as *u16
+    pal[1] = 0x7FFF
+    // a wall in the plane x = 0.5 from behind the camera to z = 6 (double-sided)
+    setup(&wall, 4, 1)
+    wall.v[0] = vec4(0.5, 0.0, -3.0, 1.0)
+    wall.v[1] = vec4(0.5, 0.0, 6.0, 1.0)
+    wall.v[2] = vec4(0.5, 2.0, -3.0, 1.0)
+    wall.v[3] = vec4(0.5, 2.0, 6.0, 1.0)
+    quad_face(&wall.f[0], 0, 1, 2, 3)
+    wall.f[0].flags = (FACE_QUAD | FACE_DOUBLE) as u8
+    setup(&tri, 3, 1)
+    tri.v[0] = vec4(-3.0, 0.0, -4.0, 1.0)
+    tri.v[1] = vec4(3.0, 0.0, -4.0, 1.0)
+    tri.v[2] = vec4(0.0, 0.0, 10.0, 1.0)
+    tri.f[0].col[0] = 0xFFFFFF
+    tri.f[0].idx[1] = 1
+    tri.f[0].idx[2] = 2
+    setup(&back, 4, 1)
+    back.v = tfloor.v
+    quad_face(&back.f[0], 1, 0, 3, 2)
+    // left of the view: x from -9 to -5 with z from -1 to 2 (at z = 2 the view's left edge
+    // is at x = -2.6)
+    setup(&aside, 4, 1)
+    aside.v[0] = vec4(-9.0, 0.0, -1.0, 1.0)
+    aside.v[1] = vec4(-5.0, 0.0, -1.0, 1.0)
+    aside.v[2] = vec4(-9.0, 0.0, 2.0, 1.0)
+    aside.v[3] = vec4(-5.0, 0.0, 2.0, 1.0)
+    quad_face(&aside.f[0], 0, 1, 2, 3)
+}
+
+// A pixel of the picture drawn last frame (now the front buffer).
+fn shown(x: s32, y: s32) -> u32 {
+    var front = 0x400000
+    if GPU_BACK == 0x400000 { front = 0x425800 }
+    let p = (front + (y * 320 + x) * 2) as *u16
+    return p[0] as u32
+}
+
+fn draw() {
+    cls(0)
+    camera(vec3(0.0, 1.0, 0.0), 0.0)
+    let f = frame()
+    if f == 1 { mesh(&floor2.hdr) }
+    if f == 2 { mesh(&wall.hdr) }
+    if f == 3 { mesh(&tri.hdr) }
+    if f == 4 || f == 5 {                // with subdivide(): split, and the pieces clipped
+        subdivide(2)
+        if f == 4 { mesh(&tfloor.hdr) } else { mesh(&floor2.hdr) }
+        subdivide(0)
+    }
+    if f == 6 { mesh(&back.hdr) }
+    if f == 7 { mesh(&aside.hdr) }
+    if f == 8 {                          // wholly behind the camera
+        camera_look(vec3(0.0, 1.0, 12.0), 0.0, 0.0)
+        mesh(&floor2.hdr)
+    }
+}
+
+// Pixels of the last picture in the rectangle that are not white.
+fn holes(x0: s32, y0: s32, x1: s32, y1: s32) -> s32 {
+    var n = 0
+    for y in y0..y1 {
+        for x in x0..x1 {
+            if shown(x, y) != 32767 { n += 1 }
+        }
+    }
+    return n
+}
+
+fn update() {
+    let f = frame() as s32
+    if f < 2 { return }
+    // the floor fills the screen below the horizon (row 120); the wall its right side
+    print_int(f - 1)
+    print_char(':')
+    print_char(' ')
+    print_int(shown(160, 200) as s32)
+    print_char(' ')
+    print_int(shown(300, 100) as s32)
+    print_char(' ')
+    print_int(shown(20, 100) as s32)
+    print_char(' ')
+    print_int(holes(150, 150, 170, 240))     // across the edge the two floor quads share
+    print_char(' ')
+    print_int(tris_drawn())
+    print_char('\n')
+}
+// expect: 1: 32767 0 0 0 6
+// expect: 2: 0 32767 0 1800 4
+// expect: 3: 32767 0 0 0 3
+// expect: 4: 32767 0 0 0 8
+// expect: 5: 32767 0 0 0 6
+// expect: 6: 0 0 0 1800 0
+// expect: 7: 0 0 0 1800 0
+// expect: 8: 0 0 0 1800 0

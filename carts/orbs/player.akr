@@ -21,6 +21,7 @@ const CAM_H: fixed = 2.7
 const CAM_PITCH: fixed = -0.29
 const CAM_LIMIT: fixed = 13.4
 const CAM_CLEAR: fixed = 2.4     // least height of the camera above the floor under it
+const CAM_PAD: fixed = 0.35      // least distance of the camera from the side of a box
 
 var ppos: vec3
 var pvel: vec3
@@ -235,12 +236,12 @@ fn place_camera(height: fixed, follow: fixed) {
     if c > 0.01 { limit = min(limit, (ppos.z + CAM_LIMIT) / c) }
     if c < -0.01 { limit = min(limit, (ppos.z - CAM_LIMIT) / c) }
     limit = max(limit, 1.6)
+    let room = limit
     // pull in front of a box that blocks the view from further back (closer ones are left
     // alone: pulling in that far would look straight down; the player shows as a ghost)
     let hit = sight_blocked(s, c, 3.5, limit, ppos.y + height)
     if hit < limit { limit = hit - 0.5 }
     cam_dist = min(cam_dist + (limit - cam_dist) * 0.15, limit)
-    player_hidden = sight_blocked(s, c, 0.6, cam_dist, ppos.y + height) < cam_dist
     let squeeze = CAM_DIST - cam_dist
     cam_pos.x = ppos.x - s * cam_dist
     cam_pos.z = ppos.z - c * cam_dist
@@ -251,7 +252,62 @@ fn place_camera(height: fixed, follow: fixed) {
     if want_y < floor + CAM_CLEAR { want_y = floor + CAM_CLEAR }
     cam_pos.y += (want_y - cam_pos.y) * follow
     if cam_pos.y < floor + 1.2 { cam_pos.y = floor + 1.2 }
+    clear_camera(s, c, room)
+    player_hidden = sight_blocked(s, c, 0.6, cam_dist, ppos.y + height) < cam_dist
     cam_pitch = -atan2(cam_pos.y - ppos.y - 0.75, cam_dist)
+}
+
+// Keeps the camera CAM_PAD away from the sides of the boxes. The line of sight is only
+// checked from 3.5 out (nearer boxes are left between, with the player shown as a ghost), so
+// the camera itself could otherwise end up beside a box, with the near plane cutting into
+// it, or inside one, where the box would vanish (its faces all face away). It moves along
+// its line to the player, in front of the box or past it, whichever is nearer (so it keeps
+// its direction and does not swing about) and within 1.6..room; with no room either way it
+// goes over the box if that is not far up (else it is left: the arena walls collide up to
+// 40, and a camera pushed against one by the player is no worse than before).
+fn clear_camera(s: fixed, c: fixed, room: fixed) {
+    for pass in 0..3 {
+        var hit = -1
+        for i in 0..NUM_BOXES {
+            let b = &BOXES[i]
+            if cam_pos.y < b.y1 + CAM_PAD && cam_pos.y > b.y0 - CAM_PAD &&
+               cam_pos.x > b.x0 - CAM_PAD && cam_pos.x < b.x1 + CAM_PAD &&
+               cam_pos.z > b.z0 - CAM_PAD && cam_pos.z < b.z1 + CAM_PAD {
+                hit = i
+            }
+        }
+        if hit < 0 { return }
+        // where the line ppos - (s, c) t enters and leaves the padded box
+        let b = &BOXES[hit]
+        var t_in: fixed = 0.0
+        var t_out: fixed = 100.0
+        if abs(s) > 0.001 {
+            let ta = (ppos.x - (b.x0 - CAM_PAD)) / s
+            let tb = (ppos.x - (b.x1 + CAM_PAD)) / s
+            t_in = max(t_in, min(ta, tb))
+            t_out = min(t_out, max(ta, tb))
+        }
+        if abs(c) > 0.001 {
+            let ta = (ppos.z - (b.z0 - CAM_PAD)) / c
+            let tb = (ppos.z - (b.z1 + CAM_PAD)) / c
+            t_in = max(t_in, min(ta, tb))
+            t_out = min(t_out, max(ta, tb))
+        }
+        let front = t_in - 0.02
+        let back = t_out + 0.02
+        var t = -1.0
+        if front >= 1.6 { t = front }
+        if back <= room && (t < 0.0 || back - cam_dist < cam_dist - front) { t = back }
+        if t < 0.0 {
+            // no room in front or behind: go over it
+            if b.y1 + CAM_PAD - cam_pos.y > 2.0 { return }
+            cam_pos.y = b.y1 + CAM_PAD + 0.02
+        } else {
+            cam_dist = t
+            cam_pos.x = ppos.x - s * t
+            cam_pos.z = ppos.z - c * t
+        }
+    }
 }
 
 // Walks the line of sight from the player's eyes back toward the camera, from distance t0

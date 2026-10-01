@@ -1,0 +1,66 @@
+// Sun & Moon Orbs level data: no floor polygon runs on under a box standing on it. (Such a
+// hidden tile sorts in front of the box's sides in the ordering table and paints over their
+// bottom corners; tools/gen_orbs_assets.py cuts the floors around the boxes.) Checks every
+// horizontal face of every level chunk: its centre and the middles of its edges must not lie
+// inside the footprint of a box standing at its height. (The pool's floor, under the water,
+// is left whole under the stepping stones.)
+// frames: 60
+
+struct Box { x0: fixed, y0: fixed, z0: fixed, x1: fixed, y1: fixed, z1: fixed }
+fn chunk_visible(c: vec3, r: fixed) -> bool { return false }
+fn chunk_near(x0: fixed, z0: fixed, x1: fixed, z1: fixed) -> bool { return false }
+import "../../carts/orbs/level_data.akr"
+
+var checked: s32
+var hidden: s32
+
+fn under_box(p: vec4) -> bool {
+    for i in 0..NUM_BOXES {
+        let b = &BOXES[i]
+        if b.y0 == p.y && b.y1 > p.y && p.x > b.x0 && p.x < b.x1 && p.z > b.z0 && p.z < b.z1 {
+            return true
+        }
+    }
+    return false
+}
+
+fn check(m: *Mesh) {
+    let base = m as u32
+    let v = (base + m.verts) as *vec4
+    let faces = (base + m.faces) as *Face
+    for i in 0..(m.nfaces as s32) {
+        let f = &faces[i]
+        var n = 3
+        if (f.flags & FACE_QUAD) != 0 { n = 4 }
+        var c: [4]vec4
+        for k in 0..n {
+            var j = k
+            if n == 4 && k >= 2 { j = 5 - k }          // strip order -> around
+            c[k] = v[f.idx[j]]
+        }
+        var flat = true
+        for k in 1..n { if c[k].y != c[0].y { flat = false } }
+        if !flat || c[0].y < 0.0 { continue }
+        checked += 1
+        var centre = c[0]
+        for k in 1..n { centre = centre + c[k] }
+        centre = centre / fixed(n)
+        var bad = under_box(centre)
+        for k in 0..n {
+            if under_box((c[k] + c[(k + 1) % n]) * 0.5) { bad = true }
+        }
+        if bad { hidden += 1 }
+    }
+}
+
+fn init() {
+    let chunks: [20]*Mesh = [CHUNK0, CHUNK1, CHUNK2, CHUNK3, CHUNK4, CHUNK5, CHUNK6, CHUNK7, CHUNK8, CHUNK9,
+        CHUNK0_LO, CHUNK1_LO, CHUNK2_LO, CHUNK3_LO, CHUNK4_LO, CHUNK5_LO, CHUNK6_LO, CHUNK7_LO,
+        CHUNK8_LO, CHUNK9_LO]
+    for i in 0..20 { check(chunks[i]) }
+    print_int((checked > 400) as s32)
+    print_char(' ')
+    print_int(hidden)
+    print_char('\n')
+}
+// expect: 1 0

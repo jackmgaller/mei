@@ -154,7 +154,7 @@ fn camera_fov(fov: fixed) {
     __fx = __fy * 0.75          // 4:3 screen
 }
 
-// Near plane (triangles with a vertex closer than this are dropped) and the far depth
+// Near plane (geometry closer than this is clipped away, see clip.akr) and the far depth
 // that maps to the last ordering-table bucket.
 fn camera_clip(near: fixed, far: fixed) {
     __cam_near = near

@@ -57,26 +57,26 @@ const POOL_Z1: fixed = 6.0
 const SHRINE_X: fixed = 0.0
 const SHRINE_Z: fixed = 10.5000
 
-embed CHUNK0: Mesh = "chunk0.bin"         // 116 vertices, 86 quads
-embed CHUNK0_LO: Mesh = "chunk0_lo.bin"   // 59 vertices, 38 quads
-embed CHUNK1: Mesh = "chunk1.bin"         // 45 vertices, 32 quads
-embed CHUNK1_LO: Mesh = "chunk1_lo.bin"   // 18 vertices, 10 quads
-embed CHUNK2: Mesh = "chunk2.bin"         // 113 vertices, 85 quads
-embed CHUNK2_LO: Mesh = "chunk2_lo.bin"   // 59 vertices, 39 quads
-embed CHUNK3: Mesh = "chunk3.bin"         // 86 vertices, 62 quads
-embed CHUNK3_LO: Mesh = "chunk3_lo.bin"   // 42 vertices, 25 quads
-embed CHUNK4: Mesh = "chunk4.bin"         // 55 vertices, 34 quads
-embed CHUNK4_LO: Mesh = "chunk4_lo.bin"   // 38 vertices, 22 quads
-embed CHUNK5: Mesh = "chunk5.bin"         // 93 vertices, 65 quads
-embed CHUNK5_LO: Mesh = "chunk5_lo.bin"   // 44 vertices, 25 quads
-embed CHUNK6: Mesh = "chunk6.bin"         // 168 vertices, 137 quads
-embed CHUNK6_LO: Mesh = "chunk6_lo.bin"   // 95 vertices, 70 quads
-embed CHUNK7: Mesh = "chunk7.bin"         // 94 vertices, 70 quads
-embed CHUNK7_LO: Mesh = "chunk7_lo.bin"   // 55 vertices, 34 quads
-embed CHUNK8: Mesh = "chunk8.bin"         // 119 vertices, 95 quads
-embed CHUNK8_LO: Mesh = "chunk8_lo.bin"   // 63 vertices, 42 quads
-embed CHUNK9: Mesh = "chunk9.bin"         // 41 vertices, 32 quads
-embed CHUNK9_LO: Mesh = "chunk9_lo.bin"   // 23 vertices, 14 quads
+embed CHUNK0: Mesh = "chunk0.bin"         // 114 vertices, 98 faces
+embed CHUNK0_LO: Mesh = "chunk0_lo.bin"   // 59 vertices, 49 faces
+embed CHUNK1: Mesh = "chunk1.bin"         // 45 vertices, 32 faces
+embed CHUNK1_LO: Mesh = "chunk1_lo.bin"   // 18 vertices, 10 faces
+embed CHUNK2: Mesh = "chunk2.bin"         // 107 vertices, 90 faces
+embed CHUNK2_LO: Mesh = "chunk2_lo.bin"   // 57 vertices, 45 faces
+embed CHUNK3: Mesh = "chunk3.bin"         // 84 vertices, 68 faces
+embed CHUNK3_LO: Mesh = "chunk3_lo.bin"   // 43 vertices, 31 faces
+embed CHUNK4: Mesh = "chunk4.bin"         // 55 vertices, 34 faces
+embed CHUNK4_LO: Mesh = "chunk4_lo.bin"   // 38 vertices, 22 faces
+embed CHUNK5: Mesh = "chunk5.bin"         // 85 vertices, 67 faces
+embed CHUNK5_LO: Mesh = "chunk5_lo.bin"   // 43 vertices, 29 faces
+embed CHUNK6: Mesh = "chunk6.bin"         // 167 vertices, 152 faces
+embed CHUNK6_LO: Mesh = "chunk6_lo.bin"   // 95 vertices, 84 faces
+embed CHUNK7: Mesh = "chunk7.bin"         // 91 vertices, 76 faces
+embed CHUNK7_LO: Mesh = "chunk7_lo.bin"   // 54 vertices, 42 faces
+embed CHUNK8: Mesh = "chunk8.bin"         // 115 vertices, 99 faces
+embed CHUNK8_LO: Mesh = "chunk8_lo.bin"   // 61 vertices, 48 faces
+embed CHUNK9: Mesh = "chunk9.bin"         // 41 vertices, 32 faces
+embed CHUNK9_LO: Mesh = "chunk9_lo.bin"   // 23 vertices, 14 faces
 
 // Draws the level chunks that may be visible (sphere test against the view), with the
 // fine version near the camera and the coarse one further away.

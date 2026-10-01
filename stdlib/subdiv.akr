@@ -3,11 +3,12 @@
 // The GPU maps textures affinely, so a big polygon spanning a wide range of depth warps.
 // __draw_faces_sub (faces.akr) sends front-facing, on-screen textured faces that are near
 // the camera and whose depth spreads by more than the tolerance, or that cross the near
-// plane, to __subdivide_face. It splits each edge nearer than the subdivision distance
-// whose far end is deeper than its near end by more than the tolerance (the affine error
-// grows with that ratio), or that crosses the near plane. Opposite edges of a floor tile
-// or a wall seen from the front span the same depths, so they split together and the
-// pieces stay quads, which keeps lines parallel to the edges (bricks, tiles) straight.
+// plane (through __clip_face_sub, clip.akr), to __subdivide_face. It splits each edge
+// nearer than the subdivision distance whose far end is deeper than its near end by more
+// than the tolerance (the affine error grows with that ratio), or that crosses the near
+// plane (once; pieces that still cross it are clipped). Opposite edges of a floor tile or a
+// wall seen from the front span the same depths, so they split together and the pieces
+// stay quads, which keeps lines parallel to the edges (bricks, tiles) straight.
 // The decision depends only on the edge's two ends, so the faces sharing an edge split it
 // the same way. Midpoints
 // are made in object space and transformed exactly, with averaged texture coordinates and
@@ -108,7 +109,7 @@ asm fn __sub_load(f: *Face) -> s32 {
 }
 
 // Should the edge between scratch vertices a and b be split? 1: yes, its depth spreads
-// too much; 2: it crosses the near plane (split once, to save the part in front); 0: no.
+// too much; 2: it crosses the near plane (split once; the pieces are clipped); 0: no.
 // Symmetric in a and b.
 asm fn __sub_split(a: s32, b: s32) -> bool {
     la   r5, {__sv}

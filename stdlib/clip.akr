@@ -1,24 +1,37 @@
-// Guard-band clipping of faces with a vertex far off the screen.
+// Clipping in clip space: faces that cross the near plane, and faces with a vertex far off
+// the screen.
 //
-// vproj clamps screen x and y to -1024..1023 (spec p. 9), like the PlayStation's GTE. A
-// vertex projected further out than that is moved, which bends the polygon's edges and its
-// texture and can flip its winding, so the face would warp or vanish in a way that has
-// nothing to do with affine mapping. __xform therefore marks every vertex outside the guard
-// band, screen x and y in -1000..999 (lane 0 of __sv is 1 inside it, 0 outside). The face loops
-// of mesh() send any face with a marked vertex here instead of culling it: the face is clipped
-// in clip space against the four edges of the guard band, which leaves the part that can be
-// seen exactly where it was. Texture coordinates and colours of the new corners are
-// interpolated along the 3D edge. The pieces (a fan, paired into quads) go back through
-// __draw_faces with their own culling, fog and sorting.
+// Near plane. A face with a corner closer than the near plane (camera_clip) cannot be
+// projected as it is: that corner may be beside or behind the camera. The face loops of
+// mesh() drop a face whose corners are all behind the plane and send one that crosses it
+// here, where it is clipped to the plane, so the part in front is drawn (a wall or a pillar
+// the camera stands beside, the floor under it) instead of vanishing whole.
 //
-// A vertex inside the guard band is inside every plane, so a face is only clipped along an
-// edge that has a marked end, and the faces that share that edge are clipped too, from the
-// same two ends in the same way: no cracks open between clipped and unclipped faces. The
-// crossing point is interpolated from the end inside the plane, so both faces compute it
-// alike.
+// Guard band. vproj clamps screen x and y to -1024..1023 (spec p. 9), like the
+// PlayStation's GTE. A vertex projected further out than that is moved, which bends the
+// polygon's edges and its texture and can flip its winding, so the face would warp or vanish
+// in a way that has nothing to do with affine mapping. __xform therefore marks every vertex
+// outside the guard band, screen x and y in -1000..999 (lane 0 of __sv is 1 inside it, 0
+// outside). The face loops send any face with a marked vertex here instead of culling it:
+// the face is clipped in clip space against the four edges of the guard band, which leaves
+// the part that can be seen exactly where it was.
+//
+// Both work alike. The face loops have already dropped faces wholly beyond one side of the
+// view. Here the face's corners are transformed again into clip space (where the planes are
+// linear, behind the camera too), back faces are dropped (from the clip-space winding), the
+// polygon is clipped against the near plane and then the guard planes, and the pieces (a
+// fan, paired into quads) go back through __draw_faces with their own culling, fog and
+// sorting. Texture coordinates and colours of the new corners are interpolated along the
+// 3D edge.
+//
+// A vertex in front of the near plane and inside the guard band is inside every plane, so
+// a face is only clipped along an edge with an end outside, and the faces that share that
+// edge are clipped too, from the same two ends in the same way: no cracks open between
+// clipped and unclipped faces. The crossing point is interpolated from the end inside the
+// plane, so both faces compute it alike.
 
 const __CLIP_BASE = 2176        // clip scratch vertices: __sv[2176 ..] (offset 34816 bytes)
-const __CLIP_MAX = 9            // a quad clipped by four planes has at most 8 corners
+const __CLIP_MAX = 9            // a quad clipped by five planes has at most 9 corners
 
 struct __ClipV {
     c: vec4                     // clip-space position (x, y, z, w), as vxfm gives it
@@ -32,26 +45,31 @@ var __clip_p: [9]__ClipV        // the polygon being clipped, and the output of 
 var __clip_q: [9]__ClipV        // (the two take turns)
 var __clip_v: *__ClipV          // the clipped polygon
 var __clip_out: [4]Face
+var __clip_n: s32               // corners of the face in __clip_p (__clip_load)
+var __clip_planes: s32          // guard planes it may cross, and 16 for the near plane
 
-// Distance of a clip-space point inside guard plane `p` (negative: outside). The planes are
-// where vproj gives x = 1000, x = -1001, y = 1000 and y = -1001 (160 x / w = 840 is
-// x = 5.25 w, and so on), so a vertex __xform did not mark is inside all four.
-fn __clip_d(c: vec4, p: s32) -> fixed {
-    match p {
-        0 => return c.w * 5.25 - c.x            // right: x < 1000
-        1 => return c.w * 7.25 + c.x            // left: x > -1001
-        2 => return c.w * 7.3333333 + c.y       // bottom: y < 1000
-        else => return c.w * 9.3333333 - c.y    // top: y > -1001
-    }
-}
+// The planes, as the distance of a clip-space point c inside plane p (negative: outside):
+// dot(c, __CLIP_PLANE[p]), less the near distance for plane 4. Planes 0-3 are where vproj
+// gives x = 1000, x = -1001, y = 1000 and y = -1001 (160 x / w = 840 is x = 5.25 w, and so
+// on), so a vertex __xform did not mark is inside all four; plane 4 is the near plane.
+const __CLIP_PLANE: [5]vec4 = [
+    vec4(-1.0, 0.0, 0.0, 5.25),         // right: x < 1000
+    vec4(1.0, 0.0, 0.0, 7.25),          // left: x > -1001
+    vec4(0.0, 1.0, 0.0, 7.3333333),     // bottom: y < 1000
+    vec4(0.0, -1.0, 0.0, 9.3333333),    // top: y > -1001
+    vec4(0.0, 0.0, 0.0, 1.0),           // near: w >= near
+]
 
 // Clips the n corners in `src` against plane p into `dst`; returns the corner count, or
 // -1 when every corner is inside (nothing to do).
 fn __clip_plane(src: *__ClipV, n: s32, dst: *__ClipV, p: s32) -> s32 {
     var d: [9]fixed
     var out = false
+    let pv = __CLIP_PLANE[p]
+    var k: fixed = 0.0
+    if p == 4 { k = __cam_near }
     for i in 0..n {
-        d[i] = __clip_d(src[i].c, p)
+        d[i] = dot(src[i].c, pv) - k
         if d[i] < 0.0 { out = true }
     }
     if !out { return -1 }
@@ -76,6 +94,7 @@ fn __clip_plane(src: *__ClipV, n: s32, dst: *__ClipV, p: s32) -> s32 {
             let t = da / (da - db)
             let o = &dst[m]
             o.c = a.c + (b.c - a.c) * t
+            if p == 4 { o.c.w = __cam_near }    // on the plane exactly (not a step behind it)
             o.a = a.a + (b.a - a.a) * t
             o.k = a.k + (b.k - a.k) * t
             m += 1
@@ -90,7 +109,8 @@ fn __clip_plane(src: *__ClipV, n: s32, dst: *__ClipV, p: s32) -> s32 {
 }
 
 // Projects a clipped corner into clip scratch vertex k (like __xform: packed position,
-// fog amount; lane 0 is 1, so the pieces are never clipped again).
+// fog amount; lane 0 is 1 and w at least the near plane, so the pieces are never clipped
+// again).
 asm fn __clip_put(c: vec4, k: s32) {
     vproj v2, {c}
     vget r5, v2, 0
@@ -101,6 +121,11 @@ asm fn __clip_put(c: vec4, k: s32) {
     vset v2, r5, 2
     addi r5, r0, 1
     vset v2, r5, 0
+    vget r5, v2, 3
+    lw   r6, [r0+{__cam_near}]
+    bge  r5, r6, .w
+    vset v2, r6, 3              ; (rounding may leave a corner on the near plane a step behind)
+.w:
     lbu  r5, [r0+{__fog_on}]
     beq  r5, r0, .store
     vget r5, {c}, 3
@@ -152,23 +177,13 @@ fn __clip_unit(c: vec4) -> vec3 {
     return v / max(max(abs(c.x), abs(c.y)), abs(c.w))
 }
 
-// Clips face f (a mesh face, or a piece of one from subdivide()) to the guard band and draws
-// what is left. A face with a corner behind the near plane is dropped, as __draw_faces does.
-fn __clip_face(f: *Face) {
+// Loads the corners of face f into __clip_p in clip space, around the face (a b d c for a
+// quad), and works out which planes can clip it. Returns false for a back face.
+fn __clip_load(f: *Face) -> bool {
     var n = 3
     if (f.flags & FACE_QUAD) != 0 { n = 4 }
-    // which guard planes does a corner cross? (Only those can clip anything: the corners
-    // made by one plane lie between corners inside the others.) Faces wholly off one side
-    // of the screen were dropped by the face loop.
-    var planes = 0
-    for k in 0..n {
-        let p = __sv[f.idx[k]].z            // the packed screen position
-        let x = (p << 16) >> 16
-        let y = p >> 16
-        if x > 999 { planes = planes | 1 } else if x < -1000 { planes = planes | 2 }
-        if y > 999 { planes = planes | 4 } else if y < -1000 { planes = planes | 8 }
-    }
     let m = __clip_m
+    var behind = 0
     for k in 0..n {
         var j = k
         if n == 4 && k >= 2 { j = 5 - k }        // strip order a b c d -> around: a b d c
@@ -177,32 +192,86 @@ fn __clip_face(f: *Face) {
         if i >= __SUB_BASE { p = &__sub_pos[i - __SUB_BASE] }
         let v = &__clip_p[k]
         v.c = *m * *p
-        if v.c.w < __cam_near { return }
+        if v.c.w < __cam_near { behind += 1 }
+    }
+    // back faces, from the clip-space winding of corners a b c: the determinant of their
+    // (x, y, w) is the 3D winding as seen from the camera, valid behind it too (the screen
+    // positions may have been clamped, or projected from behind the camera)
+    if (f.flags & FACE_DOUBLE) == 0 {
+        var c2 = __clip_p[2].c
+        if n == 4 { c2 = __clip_p[3].c }
+        let det = dot(__clip_unit(__clip_p[0].c), cross(__clip_unit(__clip_p[1].c), __clip_unit(c2)))
+        if det <= 0.0 { return false }
+    }
+    // texture coordinates and colours, to be interpolated with the position
+    for k in 0..n {
+        var j = k
+        if n == 4 && k >= 2 { j = 5 - k }
+        let v = &__clip_p[k]
         let t = f.uv[j] as s32
         v.a = vec4(fixed(t & 255), fixed(t >> 8), 0.0, 0.0)
         var col = f.col[0]
         if (f.flags & FACE_GOURAUD) != 0 { col = f.col[j] }
         v.k = vec4(fixed((col & 255) as s32), fixed(((col >> 8) & 255) as s32), fixed(((col >> 16) & 255) as s32), 0.0)
     }
-    // back faces, from the clip-space winding of corners a b c (the screen positions may
-    // have been clamped, which can flip it)
-    if (f.flags & FACE_DOUBLE) == 0 {
-        var c2 = __clip_p[2].c
-        if n == 4 { c2 = __clip_p[3].c }
-        let det = dot(__clip_unit(__clip_p[0].c), cross(__clip_unit(__clip_p[1].c), __clip_unit(c2)))
-        if det <= 0.0 { return }
+    __clip_n = n
+    if behind > 0 {
+        // the near plane first; the guard planes the result crosses are not known yet
+        __clip_planes = 31
+        return true
     }
+    // which guard planes does a corner cross? (Only those can clip anything: the corners
+    // made by one plane lie between corners inside the others.)
+    var planes = 0
+    for k in 0..n {
+        let p = __sv[f.idx[k]].z            // the packed screen position
+        let x = (p << 16) >> 16
+        let y = p >> 16
+        if x > 999 { planes = planes | 1 } else if x < -1000 { planes = planes | 2 }
+        if y > 999 { planes = planes | 4 } else if y < -1000 { planes = planes | 8 }
+    }
+    __clip_planes = planes
+    return true
+}
+
+// Is the polygon (all in front of the camera) wholly beyond one side of the view? The face
+// loops test the corners of a face crossing the near plane before it comes here, but a
+// corner behind the camera says little: most such faces turn out to be off the screen only
+// once clipped to the near plane.
+fn __clip_offview(v: *__ClipV, n: s32) -> bool {
+    var out = 15
+    for k in 0..n {
+        let c = v[k].c
+        var o = 0
+        if c.x > c.w { o = 1 }
+        if c.x < -c.w { o = o | 2 }
+        if c.y > c.w { o = o | 4 }
+        if c.y < -c.w { o = o | 8 }
+        out = out & o
+        if out == 0 { return false }
+    }
+    return true
+}
+
+// Clips the polygon __clip_load left in __clip_p and draws the pieces, with the flags,
+// texture and blend mode of face f.
+fn __clip_draw(f: *Face) {
+    var n = __clip_n
+    let planes = __clip_planes
     var src = &__clip_p[0]
     var dst = &__clip_q[0]
-    for p in 0..4 {
-        if (planes >> p) & 1 == 0 { continue }
-        let r = __clip_plane(src, n, dst, p)
-        if r >= 0 {
-            if r < 3 { return }                   // wholly outside: off the screen
-            n = r
-            let t = src
-            src = dst
-            dst = t
+    for q in 0..5 {
+        let p = (q + 4) % 5                       // the near plane (4) first
+        if (planes >> p) & 1 != 0 {
+            let r = __clip_plane(src, n, dst, p)
+            if r >= 0 {
+                if r < 3 { return }               // wholly outside
+                n = r
+                let t = src
+                src = dst
+                dst = t
+            }
+            if p == 4 && __clip_offview(src, n) { return }
         }
     }
     __clip_v = src
@@ -222,4 +291,23 @@ fn __clip_face(f: *Face) {
         np += 1
     }
     __draw_faces(&__clip_out[0], np)
+}
+
+// Clips face f to the near plane and the guard band and draws what is left. The face loops
+// call it for a face with a corner outside the guard band or behind the near plane (but not
+// all of them).
+fn __clip_face(f: *Face) {
+    if __clip_load(f) { __clip_draw(f) }
+}
+
+// The same for a face crossing the near plane in __draw_faces_sub: a textured one that can
+// be seen is subdivided (its pieces come back through __draw_faces and are clipped there),
+// any other is clipped.
+fn __clip_face_sub(f: *Face) {
+    if !__clip_load(f) { return }
+    if (f.flags & FACE_TEXTURED) != 0 {
+        __subdivide_face(f)
+    } else {
+        __clip_draw(f)
+    }
 }

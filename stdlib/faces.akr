@@ -22,18 +22,18 @@ asm fn __draw_faces(first: *Face, nf: s32) {
     shli r5, r5, 4
     add  r5, r5, r3
     lw   r10, [r5+12]
-    blt  r10, r9, .next
+    blt  r10, r9, .nb
     lhu  r6, [r1+6]
     shli r6, r6, 4
     add  r6, r6, r3
     lw   r11, [r6+12]
-    blt  r11, r9, .next
+    blt  r11, r9, .near
     add  r10, r10, r11
     lhu  r7, [r1+8]
     shli r7, r7, 4
     add  r7, r7, r3
     lw   r11, [r7+12]
-    blt  r11, r9, .next
+    blt  r11, r9, .near
     add  r10, r10, r11          ; w0 + w1 + w2
     lw   r11, [r5]
     lw   r12, [r6]
@@ -63,7 +63,7 @@ asm fn __draw_faces(first: *Face, nf: s32) {
     shli r8, r8, 4
     add  r8, r8, r3
     lw   r11, [r8+12]
-    blt  r11, r9, .next
+    blt  r11, r9, .near
     lw   r12, [r8]
     beq  r12, r0, .clip         ; the fourth corner is outside the guard band
     add  r10, r10, r11
@@ -467,6 +467,134 @@ asm fn __draw_faces(first: *Face, nf: s32) {
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
     jmp  .next
+.nb:
+    ; corner 0 is behind the near plane: clip the face, unless they all are
+    lhu  r5, [r1+6]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r11, [r5+12]
+    bge  r11, r9, .near
+    lhu  r5, [r1+8]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r11, [r5+12]
+    bge  r11, r9, .near
+    andi r11, r4, 4
+    beq  r11, r0, .next
+    lhu  r5, [r1+10]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r11, [r5+12]
+    blt  r11, r9, .next
+.near:
+    addi r11, r0, 15
+    lhu  r5, [r1+4]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r12, [r5+12]           ; w
+    lw   r5, [r5+8]
+    shli r6, r5, 16
+    sari r6, r6, 16             ; x
+    sari r5, r5, 16             ; y
+    slt  r7, r6, r0
+    slti r8, r6, 320
+    xori r8, r8, 1
+    shli r8, r8, 1
+    or   r7, r7, r8
+    slt  r8, r5, r0
+    shli r8, r8, 2
+    or   r7, r7, r8
+    slti r8, r5, 240
+    xori r8, r8, 1
+    shli r8, r8, 3
+    or   r7, r7, r8
+    bge  r12, r0, .ow0
+    xori r7, r7, 15             ; behind the camera
+.ow0:
+    and  r11, r11, r7
+    lhu  r5, [r1+6]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r12, [r5+12]           ; w
+    lw   r5, [r5+8]
+    shli r6, r5, 16
+    sari r6, r6, 16             ; x
+    sari r5, r5, 16             ; y
+    slt  r7, r6, r0
+    slti r8, r6, 320
+    xori r8, r8, 1
+    shli r8, r8, 1
+    or   r7, r7, r8
+    slt  r8, r5, r0
+    shli r8, r8, 2
+    or   r7, r7, r8
+    slti r8, r5, 240
+    xori r8, r8, 1
+    shli r8, r8, 3
+    or   r7, r7, r8
+    bge  r12, r0, .ow1
+    xori r7, r7, 15             ; behind the camera
+.ow1:
+    and  r11, r11, r7
+    lhu  r5, [r1+8]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r12, [r5+12]           ; w
+    lw   r5, [r5+8]
+    shli r6, r5, 16
+    sari r6, r6, 16             ; x
+    sari r5, r5, 16             ; y
+    slt  r7, r6, r0
+    slti r8, r6, 320
+    xori r8, r8, 1
+    shli r8, r8, 1
+    or   r7, r7, r8
+    slt  r8, r5, r0
+    shli r8, r8, 2
+    or   r7, r7, r8
+    slti r8, r5, 240
+    xori r8, r8, 1
+    shli r8, r8, 3
+    or   r7, r7, r8
+    bge  r12, r0, .ow2
+    xori r7, r7, 15             ; behind the camera
+.ow2:
+    and  r11, r11, r7
+    andi r12, r4, 4
+    beq  r12, r0, .near3
+    lhu  r5, [r1+10]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r12, [r5+12]           ; w
+    lw   r5, [r5+8]
+    shli r6, r5, 16
+    sari r6, r6, 16             ; x
+    sari r5, r5, 16             ; y
+    slt  r7, r6, r0
+    slti r8, r6, 320
+    xori r8, r8, 1
+    shli r8, r8, 1
+    or   r7, r7, r8
+    slt  r8, r5, r0
+    shli r8, r8, 2
+    or   r7, r7, r8
+    slti r8, r5, 240
+    xori r8, r8, 1
+    shli r8, r8, 3
+    or   r7, r7, r8
+    bge  r12, r0, .ow3
+    xori r7, r7, 15             ; behind the camera
+.ow3:
+    and  r11, r11, r7
+.near3:
+    bne  r11, r0, .next         ; wholly beyond one side of the view
+    sw   r1, [sp+24]
+    sw   r2, [sp+28]
+    call {__clip_face}     ; r1 = the face
+    lw   r1, [sp+24]
+    lw   r2, [sp+28]
+    la   r3, {__sv}
+    jmp  .next
 .clip:
     addi r11, r0, 15
     lhu  r5, [r1+4]
@@ -594,7 +722,7 @@ asm fn __draw_faces(first: *Face, nf: s32) {
 
 // The same loop without the guard-band test, for meshes wholly inside the band.
 asm fn __draw_faces_in(first: *Face, nf: s32) {
-    addi sp, sp, -24
+    addi sp, sp, -32
     sw   r9, [sp+0]
     sw   r10, [sp+4]
     sw   r11, [sp+8]
@@ -610,18 +738,18 @@ asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r5, r5, 4
     add  r5, r5, r3
     lw   r10, [r5+12]
-    blt  r10, r9, .next
+    blt  r10, r9, .nb
     lhu  r6, [r1+6]
     shli r6, r6, 4
     add  r6, r6, r3
     lw   r11, [r6+12]
-    blt  r11, r9, .next
+    blt  r11, r9, .near
     add  r10, r10, r11
     lhu  r7, [r1+8]
     shli r7, r7, 4
     add  r7, r7, r3
     lw   r11, [r7+12]
-    blt  r11, r9, .next
+    blt  r11, r9, .near
     add  r10, r10, r11          ; w0 + w1 + w2
     ; back faces: nclip >= 0 (front faces are counter-clockwise on screen). The positions
     ; are exact here: a corner outside the guard band went to .clip first.
@@ -645,7 +773,7 @@ asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r8, r8, 4
     add  r8, r8, r3
     lw   r11, [r8+12]
-    blt  r11, r9, .next
+    blt  r11, r9, .near
     add  r10, r10, r11
     shli r11, r9, 2
     sub  r12, r10, r11          ; w0 + w1 + w2 + w3 - 4 near
@@ -1047,6 +1175,134 @@ asm fn __draw_faces_in(first: *Face, nf: s32) {
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
     jmp  .next
+.nb:
+    ; corner 0 is behind the near plane: clip the face, unless they all are
+    lhu  r5, [r1+6]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r11, [r5+12]
+    bge  r11, r9, .near
+    lhu  r5, [r1+8]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r11, [r5+12]
+    bge  r11, r9, .near
+    andi r11, r4, 4
+    beq  r11, r0, .next
+    lhu  r5, [r1+10]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r11, [r5+12]
+    blt  r11, r9, .next
+.near:
+    addi r11, r0, 15
+    lhu  r5, [r1+4]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r12, [r5+12]           ; w
+    lw   r5, [r5+8]
+    shli r6, r5, 16
+    sari r6, r6, 16             ; x
+    sari r5, r5, 16             ; y
+    slt  r7, r6, r0
+    slti r8, r6, 320
+    xori r8, r8, 1
+    shli r8, r8, 1
+    or   r7, r7, r8
+    slt  r8, r5, r0
+    shli r8, r8, 2
+    or   r7, r7, r8
+    slti r8, r5, 240
+    xori r8, r8, 1
+    shli r8, r8, 3
+    or   r7, r7, r8
+    bge  r12, r0, .ow0
+    xori r7, r7, 15             ; behind the camera
+.ow0:
+    and  r11, r11, r7
+    lhu  r5, [r1+6]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r12, [r5+12]           ; w
+    lw   r5, [r5+8]
+    shli r6, r5, 16
+    sari r6, r6, 16             ; x
+    sari r5, r5, 16             ; y
+    slt  r7, r6, r0
+    slti r8, r6, 320
+    xori r8, r8, 1
+    shli r8, r8, 1
+    or   r7, r7, r8
+    slt  r8, r5, r0
+    shli r8, r8, 2
+    or   r7, r7, r8
+    slti r8, r5, 240
+    xori r8, r8, 1
+    shli r8, r8, 3
+    or   r7, r7, r8
+    bge  r12, r0, .ow1
+    xori r7, r7, 15             ; behind the camera
+.ow1:
+    and  r11, r11, r7
+    lhu  r5, [r1+8]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r12, [r5+12]           ; w
+    lw   r5, [r5+8]
+    shli r6, r5, 16
+    sari r6, r6, 16             ; x
+    sari r5, r5, 16             ; y
+    slt  r7, r6, r0
+    slti r8, r6, 320
+    xori r8, r8, 1
+    shli r8, r8, 1
+    or   r7, r7, r8
+    slt  r8, r5, r0
+    shli r8, r8, 2
+    or   r7, r7, r8
+    slti r8, r5, 240
+    xori r8, r8, 1
+    shli r8, r8, 3
+    or   r7, r7, r8
+    bge  r12, r0, .ow2
+    xori r7, r7, 15             ; behind the camera
+.ow2:
+    and  r11, r11, r7
+    andi r12, r4, 4
+    beq  r12, r0, .near3
+    lhu  r5, [r1+10]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r12, [r5+12]           ; w
+    lw   r5, [r5+8]
+    shli r6, r5, 16
+    sari r6, r6, 16             ; x
+    sari r5, r5, 16             ; y
+    slt  r7, r6, r0
+    slti r8, r6, 320
+    xori r8, r8, 1
+    shli r8, r8, 1
+    or   r7, r7, r8
+    slt  r8, r5, r0
+    shli r8, r8, 2
+    or   r7, r7, r8
+    slti r8, r5, 240
+    xori r8, r8, 1
+    shli r8, r8, 3
+    or   r7, r7, r8
+    bge  r12, r0, .ow3
+    xori r7, r7, 15             ; behind the camera
+.ow3:
+    and  r11, r11, r7
+.near3:
+    bne  r11, r0, .next         ; wholly beyond one side of the view
+    sw   r1, [sp+24]
+    sw   r2, [sp+28]
+    call {__clip_face}     ; r1 = the face
+    lw   r1, [sp+24]
+    lw   r2, [sp+28]
+    la   r3, {__sv}
+    jmp  .next
 .next:
     addi r1, r1, 36
     addi r2, r2, -1
@@ -1058,7 +1314,7 @@ asm fn __draw_faces_in(first: *Face, nf: s32) {
     lw   r12, [sp+12]
     lw   r13, [sp+16]
     lw   ra, [sp+20]
-    addi sp, sp, 24
+    addi sp, sp, 32
     ret
     .align 4
 .table:
@@ -1135,25 +1391,22 @@ asm fn __draw_faces_sub(first: *Face, nf: s32) {
     mov  r13, r11
 .mm:
     blt  r13, r9, .next         ; wholly behind the near plane
+    blt  r12, r9, .nearsub      ; crosses it
     andi r11, r4, 2
     beq  r11, r0, .plain        ; untextured faces are never split
-    blt  r12, r9, .test         ; crosses the near plane
     lw   r11, [r0+{__sub_dist}]
     bge  r12, r11, .nosub       ; nearest vertex beyond the subdivision distance
     lw   r11, [r0+{__sub_q}]
     fmul r11, r12, r11
     add  r11, r11, r12
     bge  r11, r13, .nosub       ; depth spread within the tolerance: no edge can split
-.test:
-    ; screen bounding box of the vertices in front of the near plane
+    ; screen bounding box
     addi r11, r0, 32767
     sw   r11, [sp+36]
     sw   r11, [sp+44]
     addi r11, r0, -32768
     sw   r11, [sp+40]
     sw   r11, [sp+48]
-    lw   r11, [r5+12]
-    blt  r11, r9, .bb0
     lw   r11, [r5+8]
     shli r15, r11, 16
     sari r15, r15, 16
@@ -1174,8 +1427,6 @@ asm fn __draw_faces_sub(first: *Face, nf: s32) {
     bge  r3, r11, .bb0
     sw   r11, [sp+48]
 .bb0:
-    lw   r11, [r6+12]
-    blt  r11, r9, .bb1
     lw   r11, [r6+8]
     shli r15, r11, 16
     sari r15, r15, 16
@@ -1196,8 +1447,6 @@ asm fn __draw_faces_sub(first: *Face, nf: s32) {
     bge  r3, r11, .bb1
     sw   r11, [sp+48]
 .bb1:
-    lw   r11, [r7+12]
-    blt  r11, r9, .bb2
     lw   r11, [r7+8]
     shli r15, r11, 16
     sari r15, r15, 16
@@ -1220,8 +1469,6 @@ asm fn __draw_faces_sub(first: *Face, nf: s32) {
 .bb2:
     andi r11, r4, 4
     beq  r11, r0, .bbq
-    lw   r11, [r8+12]
-    blt  r11, r9, .bb3
     lw   r11, [r8+8]
     shli r15, r11, 16
     sari r15, r15, 16
@@ -1254,7 +1501,6 @@ asm fn __draw_faces_sub(first: *Face, nf: s32) {
     lw   r11, [sp+44]
     slti r11, r11, 241
     beq  r11, r0, .next         ; all below
-    blt  r12, r9, .sub          ; crosses the near plane and may be seen: split it
     addi r11, r0, 1             ; a candidate (if front-facing)
     sw   r11, [sp+24]
     jmp  .cull
@@ -1262,7 +1508,6 @@ asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r0, [sp+24]
     jmp  .cull
 .plain:
-    blt  r12, r9, .next
     sw   r0, [sp+24]
 .cull:
     lw   r11, [r5]
@@ -1707,6 +1952,115 @@ asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r1, [sp+28]
     sw   r2, [sp+32]
     call {__subdivide_face}     ; r1 = the face
+    lw   r1, [sp+28]
+    lw   r2, [sp+32]
+    la   r3, {__sv}
+    jmp  .next
+.nearsub:
+    addi r11, r0, 15
+    lhu  r5, [r1+4]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r12, [r5+12]           ; w
+    lw   r5, [r5+8]
+    shli r6, r5, 16
+    sari r6, r6, 16             ; x
+    sari r5, r5, 16             ; y
+    slt  r7, r6, r0
+    slti r8, r6, 320
+    xori r8, r8, 1
+    shli r8, r8, 1
+    or   r7, r7, r8
+    slt  r8, r5, r0
+    shli r8, r8, 2
+    or   r7, r7, r8
+    slti r8, r5, 240
+    xori r8, r8, 1
+    shli r8, r8, 3
+    or   r7, r7, r8
+    bge  r12, r0, .ow0
+    xori r7, r7, 15             ; behind the camera
+.ow0:
+    and  r11, r11, r7
+    lhu  r5, [r1+6]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r12, [r5+12]           ; w
+    lw   r5, [r5+8]
+    shli r6, r5, 16
+    sari r6, r6, 16             ; x
+    sari r5, r5, 16             ; y
+    slt  r7, r6, r0
+    slti r8, r6, 320
+    xori r8, r8, 1
+    shli r8, r8, 1
+    or   r7, r7, r8
+    slt  r8, r5, r0
+    shli r8, r8, 2
+    or   r7, r7, r8
+    slti r8, r5, 240
+    xori r8, r8, 1
+    shli r8, r8, 3
+    or   r7, r7, r8
+    bge  r12, r0, .ow1
+    xori r7, r7, 15             ; behind the camera
+.ow1:
+    and  r11, r11, r7
+    lhu  r5, [r1+8]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r12, [r5+12]           ; w
+    lw   r5, [r5+8]
+    shli r6, r5, 16
+    sari r6, r6, 16             ; x
+    sari r5, r5, 16             ; y
+    slt  r7, r6, r0
+    slti r8, r6, 320
+    xori r8, r8, 1
+    shli r8, r8, 1
+    or   r7, r7, r8
+    slt  r8, r5, r0
+    shli r8, r8, 2
+    or   r7, r7, r8
+    slti r8, r5, 240
+    xori r8, r8, 1
+    shli r8, r8, 3
+    or   r7, r7, r8
+    bge  r12, r0, .ow2
+    xori r7, r7, 15             ; behind the camera
+.ow2:
+    and  r11, r11, r7
+    andi r12, r4, 4
+    beq  r12, r0, .near3
+    lhu  r5, [r1+10]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r12, [r5+12]           ; w
+    lw   r5, [r5+8]
+    shli r6, r5, 16
+    sari r6, r6, 16             ; x
+    sari r5, r5, 16             ; y
+    slt  r7, r6, r0
+    slti r8, r6, 320
+    xori r8, r8, 1
+    shli r8, r8, 1
+    or   r7, r7, r8
+    slt  r8, r5, r0
+    shli r8, r8, 2
+    or   r7, r7, r8
+    slti r8, r5, 240
+    xori r8, r8, 1
+    shli r8, r8, 3
+    or   r7, r7, r8
+    bge  r12, r0, .ow3
+    xori r7, r7, 15             ; behind the camera
+.ow3:
+    and  r11, r11, r7
+.near3:
+    bne  r11, r0, .next         ; wholly beyond one side of the view
+    sw   r1, [sp+28]
+    sw   r2, [sp+32]
+    call {__clip_face_sub}     ; r1 = the face
     lw   r1, [sp+28]
     lw   r2, [sp+32]
     la   r3, {__sv}

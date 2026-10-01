@@ -662,9 +662,212 @@ def axis_offset(origin, ax, step):
     return (a0 % step) if sgn > 0 else ((-a0) % step)
 
 
-def emit_rect(origin, uax, vax, ulen, vlen, normal, mat, chunk=None, absolute_v=False):
+# ---- floors with boxes standing on them
+#
+# The ordering table sorts whole polygons by their average depth, so a floor tile that runs
+# on under a box standing on it (hidden there) can sort in front of the box's sides and
+# paint over their bottom corners. Floors are therefore cut around the footprints of the
+# boxes standing on them: a tile a box covers is left out, and one it overlaps is replaced
+# by pieces around the footprint. The pieces use only the tile's corners and the points
+# where footprint edges meet the tile's edges (which the neighbouring tile shares), so no
+# T-junctions open cracks between tiles.
+
+def standing_on(y):
+    """Footprints (x0, z0, x1, z1) of the boxes standing on height y."""
+    return [(b[0], b[2], b[3], b[5]) for b in boxes if abs(b[1] - y) < 1e-6 and b[4] > y]
+
+
+def _poly_area(p):
+    return sum(p[i - 1][0] * p[i][1] - p[i][0] * p[i - 1][1] for i in range(len(p))) / 2
+
+
+def _cross(o, a, b):
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+
+def _in_tri(p, a, b, c):
+    d1, d2, d3 = _cross(a, b, p), _cross(b, c, p), _cross(c, a, p)
+    return d1 > 1e-9 and d2 > 1e-9 and d3 > 1e-9
+
+
+def _ear_clip(poly):
+    """Triangulates a simple counter-clockwise polygon (collinear vertices allowed) using
+    only its own vertices."""
+    v = list(poly)
+    tris = []
+    guard = 0
+    while len(v) > 3 and guard < 1000:
+        guard += 1
+        for i in range(len(v)):
+            a, b, c = v[i - 1], v[i], v[(i + 1) % len(v)]
+            if _cross(a, b, c) <= 1e-9:
+                continue
+            if any(_in_tri(q, a, b, c) for q in v if q not in (a, b, c)):
+                continue
+            # a collinear point on the new edge a-c would be left as a T-junction
+            if any(abs(_cross(a, c, q)) < 1e-9 and min(a[0], c[0]) - 1e-9 <= q[0] <= max(a[0], c[0]) + 1e-9
+                   and min(a[1], c[1]) - 1e-9 <= q[1] <= max(a[1], c[1]) + 1e-9 for q in v if q not in (a, b, c)):
+                continue
+            tris.append((a, b, c))
+            del v[i]
+            break
+        else:
+            raise ValueError('cannot triangulate %r' % (v,))
+    if len(v) == 3 and _cross(*v) > 1e-9:
+        tris.append(tuple(v))
+    return tris
+
+
+def _merge_quads(tris):
+    """Pairs triangles sharing an edge into convex quads; returns polygons (3 or 4 points,
+    counter-clockwise)."""
+    out, used = [], [False] * len(tris)
+    for i, t in enumerate(tris):
+        if used[i]:
+            continue
+        for j in range(i + 1, len(tris)):
+            if used[j]:
+                continue
+            u = tris[j]
+            for k in range(3):
+                a, b = t[k], t[(k + 1) % 3]          # edge a-b of t, b-a of u
+                for m in range(3):
+                    if u[m] == b and u[(m + 1) % 3] == a:
+                        q = [t[(k + 2) % 3], a, u[(m + 2) % 3], b]   # around: c a d b
+                        if all(_cross(q[n - 1], q[n], q[(n + 1) % 4]) > 1e-9 for n in range(4)):
+                            out.append(q)
+                            used[i] = used[j] = True
+                        break
+                if used[i]:
+                    break
+            if used[i]:
+                break
+        if not used[i]:
+            out.append(list(t))
+            used[i] = True
+    return out
+
+
+def cut_tile(T, footprints):
+    """The pieces of floor tile T = (x0, z0, x1, z1) around the footprints: None when the
+    tile is unchanged, else a list of counter-clockwise polygons of (x, z) points."""
+    X0, Z0, X1, Z1 = T
+    eps = 1e-6
+    holes = []
+    for F in footprints:
+        h = (max(F[0], X0), max(F[1], Z0), min(F[2], X1), min(F[3], Z1))
+        if h[2] - h[0] > eps and h[3] - h[1] > eps:
+            if h == (X0, Z0, X1, Z1):
+                return []                           # covered
+            holes.append(h)
+    # points on the tile's edges (not its corners) where a footprint's edge meets them:
+    # the neighbouring tile has a corner there
+    req = set()
+    for F in footprints:
+        for x in (F[0], F[2]):
+            for z in (Z0, Z1):
+                if X0 + eps < x < X1 - eps and F[1] - eps <= z <= F[3] + eps:
+                    req.add((x, z))
+        for z in (F[1], F[3]):
+            for x in (X0, X1):
+                if Z0 + eps < z < Z1 - eps and F[0] - eps <= x <= F[2] + eps:
+                    req.add((x, z))
+    if not holes and not req:
+        return None
+    corners = {c for h in holes for c in ((h[0], h[1]), (h[2], h[1]), (h[2], h[3]), (h[0], h[3]))}
+    if len(holes) == 1 and req <= corners:
+        # a frame of four trapezoids between the tile's edges and the hole's
+        h = holes[0]
+        t = [(X0, Z0), (X1, Z0), (X1, Z1), (X0, Z1)]
+        o = [(h[0], h[1]), (h[2], h[1]), (h[2], h[3]), (h[0], h[3])]
+        out = []
+        for k in range(4):
+            q = [t[k], t[(k + 1) % 4], o[(k + 1) % 4], o[k]]
+            q = [p for n, p in enumerate(q) if p != q[n - 1]]
+            if len(q) >= 3 and abs(_poly_area(q)) > eps:
+                q = [p for n, p in enumerate(q) if abs(_cross(q[n - 1], p, q[(n + 1) % len(q)])) > eps]
+                out.append(q)
+        return out
+    # general case: the free cells of the grid through every hole edge and required point,
+    # their boundary traced into loops, triangulated (holes bridged in) and paired into quads
+    xs = sorted({X0, X1} | {c for h in holes for c in (h[0], h[2])} | {p[0] for p in req})
+    zs = sorted({Z0, Z1} | {c for h in holes for c in (h[1], h[3])} | {p[1] for p in req})
+    def free(i, j):
+        if not (0 <= i < len(xs) - 1 and 0 <= j < len(zs) - 1):
+            return False
+        cx, cz = (xs[i] + xs[i + 1]) / 2, (zs[j] + zs[j + 1]) / 2
+        return not any(h[0] < cx < h[2] and h[1] < cz < h[3] for h in holes)
+    edges = {}
+    for i in range(len(xs) - 1):
+        for j in range(len(zs) - 1):
+            if not free(i, j):
+                continue
+            a, b, c, d = (xs[i], zs[j]), (xs[i + 1], zs[j]), (xs[i + 1], zs[j + 1]), (xs[i], zs[j + 1])
+            for (p, q), (di, dj) in (((a, b), (0, -1)), ((b, c), (1, 0)), ((c, d), (0, 1)), ((d, a), (-1, 0))):
+                if not free(i + di, j + dj):
+                    edges.setdefault(p, []).append(q)
+    loops = []
+    while edges:
+        start = next(iter(edges))
+        loop, p, prev = [start], start, None
+        while True:
+            outs = edges[p]
+            if prev is not None and len(outs) > 1:   # a pinch: take the sharpest left turn
+                din = (p[0] - prev[0], p[1] - prev[1])
+                outs.sort(key=lambda q: -(din[0] * (q[1] - p[1]) - din[1] * (q[0] - p[0])))
+            q = outs.pop(0)
+            if not outs:
+                del edges[p]
+            prev, p = p, q
+            if p == start:
+                break
+            loop.append(p)
+        keep = [v for n, v in enumerate(loop)
+                if v in req or abs(_cross(loop[n - 1], v, loop[(n + 1) % len(loop)])) > eps]
+        loops.append(keep)
+    outer = [l for l in loops if _poly_area(l) > 0]
+    inner = [l for l in loops if _poly_area(l) < 0]
+    out = []
+    for poly in outer:
+        for hole in sorted([h for h in inner if _point_in(h[0], poly)], key=lambda h: -max(p[0] for p in h)):
+            poly = _bridge(poly, hole)
+        out += _merge_quads(_ear_clip(poly))
+    return out
+
+
+def _point_in(p, poly):
+    inside = False
+    for i in range(len(poly)):
+        a, b = poly[i - 1], poly[i]
+        if (a[1] > p[1]) != (b[1] > p[1]) and p[0] < a[0] + (p[1] - a[1]) * (b[0] - a[0]) / (b[1] - a[1]):
+            inside = not inside
+    return inside
+
+
+def _segments_cross(a, b, c, d):
+    d1, d2, d3, d4 = _cross(c, d, a), _cross(c, d, b), _cross(a, b, c), _cross(a, b, d)
+    return ((d1 > 1e-9 and d2 < -1e-9) or (d1 < -1e-9 and d2 > 1e-9)) and \
+           ((d3 > 1e-9 and d4 < -1e-9) or (d3 < -1e-9 and d4 > 1e-9))
+
+
+def _bridge(poly, hole):
+    """Joins a clockwise hole into a counter-clockwise polygon by a two-way cut from the
+    hole's rightmost vertex to a vertex of the polygon it can see."""
+    hi = max(range(len(hole)), key=lambda i: (hole[i][0], hole[i][1]))
+    h = hole[hi]
+    edges = [(poly[i - 1], poly[i]) for i in range(len(poly))] + [(hole[i - 1], hole[i]) for i in range(len(hole))]
+    for pi in sorted(range(len(poly)), key=lambda i: (poly[i][0] - h[0]) ** 2 + (poly[i][1] - h[1]) ** 2):
+        p = poly[pi]
+        if not any(_segments_cross(h, p, a, b) for a, b in edges):
+            ring = hole[hi:] + hole[:hi + 1]
+            return poly[:pi + 1] + ring + poly[pi:]
+    raise ValueError('no bridge')
+
+
+def emit_rect(origin, uax, vax, ulen, vlen, normal, mat, chunk=None, absolute_v=False, holes=()):
     """Emits a rectangle cut into tiles. uax/vax: unit vectors (right and up as seen from
-    the front). Texture coordinates follow world distance along the axes."""
+    the front). Texture coordinates follow world distance along the axes. holes: footprints
+    of boxes standing on a floor (uax X, vax Z), which the tiles are cut around."""
     u0, v0, slot, four, pal, _ = MATS[mat]
     step = STEP
     cell = 32                       # texels per tile edge (the tile is `step` units)
@@ -685,10 +888,10 @@ def emit_rect(origin, uax, vax, ulen, vlen, normal, mat, chunk=None, absolute_v=
             cz = sum(p[2] for p in pts) / 4
             ch = chunk if chunk is not None else chunk_of(cx, cz)
             bld = chunks.setdefault(ch, Builder())
-            idx = [bld.v(p) for p in pts]
-            cols = [lit(p, normal) for p in pts]
-            if mat == 'mosaic':   # the emblem glows a little so it reads through the water
-                cols = [rgb(*[min(255, int(((c >> sh) & 255) * 1.7) + 12) for sh in (0, 8, 16)]) for c in cols]
+            pieces = None
+            if holes:
+                assert uax == X and vax == Z
+                pieces = cut_tile((pts[0][0], pts[0][2], pts[3][0], pts[3][2]), holes)
             uvs = []
             if mat == 'mosaic':
                 for s, t in corners:
@@ -702,7 +905,36 @@ def emit_rect(origin, uax, vax, ulen, vlen, normal, mat, chunk=None, absolute_v=
                     uu = min(cell - 1, int(round((s + uoff - base_s) * tpu)))
                     vv = min(cell - 1, int(round((t + voff - base_t) * tpu)))
                     uvs.append((u0 + uu, v0 + cell - 1 - vv))
+            if pieces is not None:
+                # texture coordinates and colours of the piece corners: the tile's mapping
+                # (u follows x, v follows z)
+                y = pts[0][1]
+                for poly in pieces:
+                    pp = [(x, y, z) for x, z in poly]
+                    pidx = [bld.v(p) for p in pp]
+                    pcols = [glow(lit(p, normal)) if mat == 'mosaic' else lit(p, normal) for p in pp]
+                    puvs = []
+                    for x, z in poly:
+                        fu = (x - pts[0][0]) / (pts[3][0] - pts[0][0])
+                        fv = (z - pts[0][2]) / (pts[3][2] - pts[0][2])
+                        puvs.append((int(round(uvs[0][0] + (uvs[1][0] - uvs[0][0]) * fu)),
+                                     int(round(uvs[0][1] + (uvs[2][1] - uvs[0][1]) * fv))))
+                    if len(poly) == 4:               # around -> strip order
+                        o = (0, 1, 3, 2)
+                        bld.mesh.quad([pidx[k] for k in o], [pcols[k] for k in o], [puvs[k] for k in o],
+                                      slot=slot, four_bit=four, palette=pal)
+                    else:
+                        bld.mesh.tri(pidx, pcols, puvs, slot=slot, four_bit=four, palette=pal)
+                continue
+            idx = [bld.v(p) for p in pts]
+            cols = [lit(p, normal) for p in pts]
+            if mat == 'mosaic':   # the emblem glows a little so it reads through the water
+                cols = [glow(c) for c in cols]
             bld.mesh.quad(idx, cols, uvs, slot=slot, four_bit=four, palette=pal)
+
+
+def glow(c):
+    return rgb(*[min(255, int(((c >> sh) & 255) * 1.7) + 12) for sh in (0, 8, 16)])
 
 
 X, Y, Z = (1, 0, 0), (0, 1, 0), (0, 0, 1)
@@ -710,7 +942,7 @@ NX, NZ = (-1, 0, 0), (0, 0, -1)
 
 
 def top(x0, z0, x1, z1, y, mat, **kw):
-    emit_rect((x0, y, z0), X, Z, x1 - x0, z1 - z0, Y, mat, absolute_v=True, **kw)
+    emit_rect((x0, y, z0), X, Z, x1 - x0, z1 - z0, Y, mat, absolute_v=True, holes=standing_on(y), **kw)
 
 
 def side(face, x0, z0, x1, z1, yb, yt, mat, **kw):
@@ -757,6 +989,8 @@ def build_level():
     ground_area(4, -2, 14, 6)
     # pool: mosaic floor and tiled walls
     px0, pz0, px1, pz1 = POOL
+    # (not cut around the stepping stones like the other floors: under the water it does
+    # not show, and it would cost a dozen faces)
     emit_rect((px0, POOL_FLOOR, pz0), X, Z, px1 - px0, pz1 - pz0, Y, 'mosaic', chunk=9)
     side('+z', px0, pz0 - 1, px1, pz0, POOL_FLOOR, 0, 'pooltile', chunk=9)   # south wall faces +z
     side('-z', px0, pz1, px1, pz1 + 1, POOL_FLOOR, 0, 'pooltile', chunk=9)   # north wall faces -z
@@ -1165,8 +1399,8 @@ lines.append('const SHRINE_X: fixed = %s' % fx(SHRINE[0]))
 lines.append('const SHRINE_Z: fixed = %s' % fx(SHRINE[1]))
 lines.append('')
 for ch, c, r, nv, nf, lo_, hi_, nvl, nfl in chunk_info:
-    lines.append('embed CHUNK%d: Mesh = "chunk%d.bin"         // %d vertices, %d quads' % (ch, ch, nv, nf))
-    lines.append('embed CHUNK%d_LO: Mesh = "chunk%d_lo.bin"   // %d vertices, %d quads' % (ch, ch, nvl, nfl))
+    lines.append('embed CHUNK%d: Mesh = "chunk%d.bin"         // %d vertices, %d faces' % (ch, ch, nv, nf))
+    lines.append('embed CHUNK%d_LO: Mesh = "chunk%d_lo.bin"   // %d vertices, %d faces' % (ch, ch, nvl, nfl))
 lines.append('')
 lines.append('// Draws the level chunks that may be visible (sphere test against the view), with the')
 lines.append('// fine version near the camera and the coarse one further away.')
@@ -1185,8 +1419,8 @@ lines.append('}')
 with open(os.path.join(OUT, 'level_data.akr'), 'w') as f:
     f.write('\n'.join(lines) + '\n')
 
-print('chunks (id, verts, quads, lo verts, lo quads):', [(ci[0], ci[3], ci[4], ci[7], ci[8]) for ci in chunk_info])
-print('total quads', sum(ci[4] for ci in chunk_info), 'coarse', sum(ci[8] for ci in chunk_info))
+print('chunks (id, verts, faces, lo verts, lo faces):', [(ci[0], ci[3], ci[4], ci[7], ci[8]) for ci in chunk_info])
+print('total faces', sum(ci[4] for ci in chunk_info), 'coarse', sum(ci[8] for ci in chunk_info))
 print('player faces', len(player.faces), 'ring', len(ring.faces), 'water', len(wm.faces))
 print('music %d samples (%.1f s), %d KB per channel' % (L, L / MSR, L * 2 // 1024))
 print('wrote assets to', OUT)

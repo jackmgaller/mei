@@ -665,7 +665,7 @@ yaw 0; positive yaw turns right (toward +X), positive pitch looks up.
 | `camera(pos: vec3, yaw)` | set the view (no pitch) |
 | `camera_look(pos: vec3, yaw, pitch)` | set the view with pitch |
 | `camera_fov(fov)` | vertical field of view in radians (default 1.047, 60°); the 4:3 aspect is built in |
-| `camera_clip(near, far)` | near plane (default 0.1) and the depth that maps to the farthest ordering-table bucket (default 100) |
+| `camera_clip(near, far)` | near plane (default 0.1; geometry closer than it is clipped away) and the depth that maps to the farthest ordering-table bucket (default 100) |
 | `camera_matrix(m: mat4)` | use your own view-projection matrix (row 3 must produce view depth in w) |
 | `mesh(m: *Mesh)` | draw a mesh whose vertices are in world space |
 | `mesh_at(m: *Mesh, pos: vec3, yaw)` | draw a mesh placed at `pos`, turned by `yaw` |
@@ -682,12 +682,21 @@ yaw 0; positive yaw turns right (toward +X), positive pitch looks up.
 | `load_texture(slot, src: *u8, bytes)` | copy texture data (in the GPU's layout, spec p. 11) into a slot |
 | `load_palette(index, src: *u16, count)` | copy 15-bit colours into palette memory from colour `index` |
 
-`mesh*()` transform vertices with the vector unit, drop triangles with a vertex closer than the
-near plane, cull back faces (front faces are counter-clockwise on screen), fog vertex colours,
+`mesh*()` transform vertices with the vector unit, clip faces that cross the near plane (and
+drop those wholly behind it), cull back faces (front faces are counter-clockwise on screen), fog vertex colours,
 build packets into a per-frame packet arena (160 KB) and insert them into the 1,024-bucket
 ordering table by average view depth. At the end of the frame the table is drawn farthest
 bucket first, then the **interface list** (text, sprites, rectangles) in call order on top.
 When the arena is full, further polygons are dropped.
+
+**Near plane.** A face with some corners closer than the near plane (`camera_clip`) and some
+beyond it, such as a wall or pillar the camera stands beside or the floor under it, is clipped
+to the plane in clip space, so the part in front of the camera is drawn (`stdlib/clip.akr`,
+with the guard-band clipping below). Faces sharing an edge across the plane clip it at the
+same point, so no cracks open. A face wholly behind the plane is dropped, and so is a crossing
+face that lies wholly beyond one side of the view or faces away. The camera itself should
+still keep a little more than the near distance away from walls it looks at: geometry nearer
+than the near plane is cut away, so a wall closer than that shows what is behind it.
 
 **Guard band.** `vproj` clamps screen coordinates to −1024..1023 (spec p. 9), so a vertex that
 projects further out, typically a corner of a big floor or wall polygon right beside or below
@@ -708,8 +717,7 @@ nearer than the subdivision distance and its depth spreads by more than the tole
 when it crosses the near plane; faces that are back-facing or entirely off screen are
 skipped. Each edge of such a face is split when its far end is deeper than its near end by
 more than the tolerance (the affine error grows with that ratio); edges crossing the near
-plane are split once, which saves the part of the face in front of it (without subdivision
-the whole face is dropped). A quad whose
+plane are split once, and pieces that still cross it are clipped like any face. A quad whose
 opposite edges both split is cut in two along them (so texture lines parallel to its edges,
 such as bricks and tiles, stay straight); any other quad continues as its two triangles, which
 split into four or are bisected one edge at a time, up to `levels` halvings per edge.
@@ -923,6 +931,8 @@ Measured with the `CYCLES` register (500,000 cycles per frame):
 | vertex transform in `mesh()` | 26 per vertex (40 with fog), including the guard-band mark |
 | guard-band test, in a mesh with a vertex outside the band | about 9 more per face |
 | a face clipped to the guard band | about 3,000, including drawing its pieces |
+| face in `mesh()`, wholly behind the near plane | about 40 (every corner is checked: one in front makes it a crossing face) |
+| face crossing the near plane | about 100 when its corners show it lies beyond one side of the view; about 1,000 when that only shows once it is clipped to the plane (or it faces away); about 4,000 when it is clipped and drawn, including its pieces |
 | face in `mesh()`, back-facing | about 48 |
 | visible flat quad / Gouraud textured quad | about 130 / 163 (triangles a little less) |
 | fog | about 8–11 more per visible face vertex |
@@ -962,9 +972,9 @@ function but vectors are spilled around calls; `-S` shows exactly what was gener
   120 KB of stack (make large arrays global).
 - One error is reported per compilation.
 - Struct, array and matrix parameters are read-only (passed by reference).
-- `mesh()` draws at most 2,048 vertices per mesh; there is no polygon clipping against the
-  near plane (triangles with a vertex closer than it are dropped; with `subdivide()` on, a
-  textured face crossing it is split once and the pieces in front are kept).
+- `mesh()` draws at most 2,048 vertices per mesh. Faces crossing the near plane are clipped in
+  clip space (see Near plane), which costs far more than drawing a face whole: keep the camera
+  clear of walls where it can.
 
 ## Testing the compiler
 

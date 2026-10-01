@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Generates stdlib/faces.akr: the hand-written face loop used by mesh().
 
-For every face: near-plane rejection, the guard-band test, back-face culling, ordering-table
+For every face: the near-plane test, the guard-band test, back-face culling, ordering-table
 depth, then a straight-line packet writer specialised for the packet layout (Gouraud x
-textured x quad, with and without fog), reached through a jump table. A face with a vertex
-outside the guard band (where vproj would clamp it, or nearly) is handed to __clip_face
-(clip.akr) before culling, since clamped positions can flip its winding; the pieces come back
-through __draw_faces.
+textured x quad, with and without fog), reached through a jump table. A face with every
+corner behind the near plane is dropped; one with only some of them behind it, or with a
+vertex outside the guard band (where vproj would clamp it, or nearly), is handed to
+__clip_face (clip.akr) before culling, since its screen positions cannot be trusted; the
+pieces come back through __draw_faces.
 
 Transformed vertices (__sv, 16 bytes each, written by __xform with vxp3):
   +0 1 when the vertex is inside the guard band (screen x and y in -1000..999), else 0
@@ -14,10 +15,12 @@ Transformed vertices (__sv, 16 bytes each, written by __xform with vxp3):
   +8 packed screen position (x & 0xFFFF) | (y << 16), as vxp3 leaves it
   +12 w (view depth, 16.16)
 __draw_faces_sub is the same loop for carts that enabled subdivide(): front-facing,
-on-screen textured faces near the camera whose depth spreads by more than the tolerance,
-or that cross the near plane, are handed to __subdivide_face (subdiv.akr), which splits
-them and feeds the pieces back through __draw_faces. The test is a superset of the
-per-edge test in __sub_split, so a face it skips never has an edge its neighbour splits.
+on-screen textured faces near the camera whose depth spreads by more than the tolerance
+are handed to __subdivide_face (subdiv.akr), which splits them and feeds the pieces back
+through __draw_faces. The test is a superset of the per-edge test in __sub_split, so a face
+it skips never has an edge its neighbour splits. A face crossing the near plane goes to
+__clip_face_sub, which drops it if it cannot be seen and otherwise subdivides it (textured)
+or clips it.
 
 Run from the repository root: python3 tools/gen_faces_asm.py [output path]"""
 import os, sys
@@ -99,18 +102,18 @@ HEAD_PLAIN = """    addi sp, sp, -32
     shli r5, r5, 4
     add  r5, r5, r3
     lw   r10, [r5+12]
-    blt  r10, r9, .next
+    blt  r10, r9, .nb
     lhu  r6, [r1+6]
     shli r6, r6, 4
     add  r6, r6, r3
     lw   r11, [r6+12]
-    blt  r11, r9, .next
+    blt  r11, r9, .near
     add  r10, r10, r11
     lhu  r7, [r1+8]
     shli r7, r7, 4
     add  r7, r7, r3
     lw   r11, [r7+12]
-    blt  r11, r9, .next
+    blt  r11, r9, .near
     add  r10, r10, r11          ; w0 + w1 + w2"""
 
 # The guard-band test for the first three corners, before culling (the fourth corner of a quad
@@ -159,6 +162,58 @@ def OUTCODE(k):
     and  r11, r11, r7""" % (4 + 2 * k)
 
 
+def OUTCODE_W(k):
+    """ANDs into r11 the side of the view that corner k is beyond (as OUTCODE), for a corner
+    that may be behind the camera: there x > w (right of the view, in clip space) means
+    screen x < 320 and so on (the projection is mirrored through the centre, and vproj's
+    clamping keeps the side), so the bits flip."""
+    return OUTCODE(k).replace("""    lw   r5, [r5+8]""", """    lw   r12, [r5+12]           ; w
+    lw   r5, [r5+8]""").replace("""    and  r11, r11, r7""", """    bge  r12, r0, .ow%d
+    xori r7, r7, 15             ; behind the camera
+.ow%d:
+    and  r11, r11, r7""" % (k, k))
+
+
+def NEAR(slot, sub):
+    """Faces crossing the near plane (r9 = near, r3 = __sv). The plain loops come to .nb when
+    corner 0 is behind the plane (the face is dropped if every corner is) and to .near when
+    a later corner is; the subdividing loop's head comes to .nearsub. A face wholly beyond
+    one side of the view is dropped here; any other is clipped (or, with subdivide(),
+    split first)."""
+    out = []
+    if not sub:
+        out.append(""".nb:
+    ; corner 0 is behind the near plane: clip the face, unless they all are""")
+        for k in range(1, 3):
+            out.append("""    lhu  r5, [r1+%d]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r11, [r5+12]
+    bge  r11, r9, .near""" % (4 + 2 * k))
+        out.append("""    andi r11, r4, 4
+    beq  r11, r0, .next
+    lhu  r5, [r1+10]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r11, [r5+12]
+    blt  r11, r9, .next""")
+    out.append('%s:\n    addi r11, r0, 15' % ('.nearsub' if sub else '.near'))
+    out += [OUTCODE_W(k) for k in range(3)]
+    out.append("""    andi r12, r4, 4
+    beq  r12, r0, .near3""")
+    out.append(OUTCODE_W(3))
+    out.append(""".near3:
+    bne  r11, r0, .next         ; wholly beyond one side of the view
+    sw   r1, [sp+%d]
+    sw   r2, [sp+%d]
+    call {%s}     ; r1 = the face
+    lw   r1, [sp+%d]
+    lw   r2, [sp+%d]
+    la   r3, {__sv}
+    jmp  .next""" % (slot, slot + 4, '__clip_face_sub' if sub else '__clip_face', slot, slot + 4))
+    return '\n'.join(out)
+
+
 # A face with a corner outside the guard band: drop it if it lies wholly off one side of the
 # screen (vproj's clamping keeps every vertex on its side), else hand it to __clip_face.
 CLIP_OFFSCREEN = """.clip:
@@ -172,10 +227,8 @@ CLIP_OFFSCREEN = """.clip:
 
 
 def BBOX(reg, k):
-    """Grows the bounding box at [sp+36..48] by the vertex at reg if it is in front."""
-    return """    lw   r11, [{r}+12]
-    blt  r11, r9, .bb{k}
-    lw   r11, [{r}+8]
+    """Grows the bounding box at [sp+36..48] by the vertex at reg."""
+    return """    lw   r11, [{r}+8]
     shli r15, r11, 16
     sari r15, r15, 16
     sari r11, r11, 16
@@ -254,17 +307,16 @@ HEAD_SUB = """    addi sp, sp, -56
     mov  r13, r11
 .mm:
     blt  r13, r9, .next         ; wholly behind the near plane
+    blt  r12, r9, .nearsub      ; crosses it
     andi r11, r4, 2
     beq  r11, r0, .plain        ; untextured faces are never split
-    blt  r12, r9, .test         ; crosses the near plane
     lw   r11, [r0+{__sub_dist}]
     bge  r12, r11, .nosub       ; nearest vertex beyond the subdivision distance
     lw   r11, [r0+{__sub_q}]
     fmul r11, r12, r11
     add  r11, r11, r12
     bge  r11, r13, .nosub       ; depth spread within the tolerance: no edge can split
-.test:
-    ; screen bounding box of the vertices in front of the near plane
+    ; screen bounding box
     addi r11, r0, 32767
     sw   r11, [sp+36]
     sw   r11, [sp+44]
@@ -285,7 +337,6 @@ HEAD_SUB = """    addi sp, sp, -56
     lw   r11, [sp+44]
     slti r11, r11, 241
     beq  r11, r0, .next         ; all below
-    blt  r12, r9, .sub          ; crosses the near plane and may be seen: split it
     addi r11, r0, 1             ; a candidate (if front-facing)
     sw   r11, [sp+24]
     jmp  .cull
@@ -293,7 +344,6 @@ HEAD_SUB = """    addi sp, sp, -56
     sw   r0, [sp+24]
     jmp  .cull
 .plain:
-    blt  r12, r9, .next
     sw   r0, [sp+24]
 .cull:"""
 
@@ -323,7 +373,7 @@ REST = """    andi r11, r4, 4
     shli r8, r8, 4
     add  r8, r8, r3
     lw   r11, [r8+12]
-    blt  r11, r9, .next
+    blt  r11, r9, .near
 @GUARD4@    add  r10, r10, r11
     shli r11, r9, 2
     sub  r12, r10, r11          ; w0 + w1 + w2 + w3 - 4 near
@@ -369,7 +419,7 @@ SUB_CALL = """.sub:
 
 def face_loop(name, sub, guard=True):
     """guard: test the guard-band marks (a loop without the test serves meshes that __xform
-    found wholly inside the band)."""
+    found wholly inside the band; it still clips faces crossing the near plane)."""
     e('asm fn %s(first: *Face, nf: s32) {' % name)
     if sub:
         e(HEAD_SUB)
@@ -377,11 +427,12 @@ def face_loop(name, sub, guard=True):
         e(CULL)
         e(SUB_GO)
     else:
-        e(HEAD_PLAIN if guard else HEAD_PLAIN.replace('-32', '-24'))
+        e(HEAD_PLAIN)
         if guard:
             e(GUARD_PLAIN)
         e(CULL)
-    e(REST.replace('@GUARD4@', GUARD4 if guard else ''))
+    # (the subdividing loop has checked every corner against the near plane already)
+    e(REST.replace('@GUARD4@', GUARD4 if guard else '').replace('.near', '.next' if sub else '.near'))
     labels = {}
     for fog in (0, 1):
         for q in (0, 1):
@@ -395,6 +446,7 @@ def face_loop(name, sub, guard=True):
         e(SUB_CALL)
         e('    jmp  .next')
     slot = 28 if sub else 24
+    e(NEAR(slot, sub))
     if guard:
         e(CLIP_OFFSCREEN)
         e("""    sw   r1, [sp+%d]
@@ -403,7 +455,7 @@ def face_loop(name, sub, guard=True):
     lw   r1, [sp+%d]
     lw   r2, [sp+%d]
     la   r3, {__sv}""" % (slot, slot + 4, slot, slot + 4))
-    frame = 56 if sub else 32 if guard else 24
+    frame = 56 if sub else 32
     e(""".next:
     addi r1, r1, 36
     addi r2, r2, -1
