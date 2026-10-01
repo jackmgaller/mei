@@ -10,6 +10,14 @@ embed TEX4B: u8 = "tex4b.bin"         // 4-bit 2x2-tiled copies for the coarse L
 embed PAL4: u16 = "pal4.bin"          // 4-bit palettes 0-15
 embed TEX8: u8 = "tex8.bin"           // 8-bit texture, slots 2-3
 embed PAL8: u16 = "pal8.bin"          // 8-bit palettes 1-3
+embed SAVE_ICON: SaveMeta = "save_icon.bin"   // memory card title and sun/moon icon
+
+// The best time is kept on the memory card (save 0).
+struct SaveData { version: u32, best: s32 }
+const SAVE_VERSION = 1
+var save: SaveData
+var saving: bool            // a card write is in progress
+var save_pending: bool      // a new best is waiting for the card to be free
 
 struct Box { x0: fixed, y0: fixed, z0: fixed, x1: fixed, y1: fixed, z1: fixed }
 
@@ -50,6 +58,26 @@ fn init() {
     reset_game()
     enter(ST_TITLE)
     music_start()
+    load_best()
+}
+
+// Start-up: the blocking load is fine here (the title screen is not running yet).
+fn load_best() {
+    if card_load(0, &save, sizeof(SaveData)) == sizeof(SaveData) && save.version == SAVE_VERSION {
+        if save.best > 0 { best_time = save.best }
+    }
+}
+
+// Writes the best time without stopping the game: the card stays busy for a few frames.
+fn update_saving() {
+    if saving {
+        if !card_busy() { saving = false }
+    } else if save_pending && !card_busy() {
+        save.version = SAVE_VERSION
+        save.best = best_time
+        save_pending = false
+        if card_save(0, &save, sizeof(SaveData), SAVE_ICON) == CARD_OK { saving = true }
+    }
 }
 
 fn enter(s: s32) {
@@ -90,7 +118,10 @@ fn update() {
         update_camera()
         check_orbs()
         if collected == NUM_ORBS {
-            if best_time == 0 || timer < best_time { best_time = timer }
+            if best_time == 0 || timer < best_time {
+                best_time = timer
+                save_pending = true
+            }
             enter(ST_WIN)
             sfx_fanfare()
         }
@@ -113,6 +144,7 @@ fn update() {
     }
     if msg_t > 0 { msg_t -= 1 }
     music_update()
+    update_saving()
     animate_water()
     update_dust()
 }
@@ -151,5 +183,6 @@ fn draw() {
     } else {
         draw_win()
     }
+    if saving { text(232, 216, "SAVING...", rgb(255, 255, 255)) }
     if show_debug { draw_debug() }
 }

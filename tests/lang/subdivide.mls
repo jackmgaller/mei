@@ -10,7 +10,7 @@ fn draw() {
     if f == 1 { mesh(CUBE) }                        // default: off
     if f == 2 { subdivide(2); mesh(CUBE) }
     if f == 3 { subdivide(1); mesh(CUBE) }
-    if f == 4 { subdivide(2); subdivide_tuning(4, 1.0); mesh(CUBE) }   // nothing that near
+    if f == 4 { subdivide(2); subdivide_tuning(25, 1.0); mesh(CUBE) }   // nothing that near
     subdivide(0)
 }
 
@@ -22,6 +22,6 @@ fn update() {
     }
 }
 // expect: 4
-// expect: 21
-// expect: 11
+// expect: 12
+// expect: 8
 // expect: 4

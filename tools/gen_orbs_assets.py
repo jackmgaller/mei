@@ -11,6 +11,7 @@
   player.bin    the player's body, foot.bin a foot
   orb_sun.bin, orb_moon.bin   orb cores
   *.raw         sounds: 8-bit sfx at 22,050 Hz, 16-bit music loops at 11,025 Hz
+  save_icon.bin memory card save record (title + 2-frame sun/moon icon)
   level_data.mls  collision boxes, orb positions and the chunk table (generated code)
 
 Lighting is baked into vertex colours: a low warm sun in the west, a cool moon in the east,
@@ -254,6 +255,10 @@ pal4[13] = [(0, 0, 0), (0, 0, 0), (200, 90, 30), (250, 160, 50), (255, 210, 80),
             (120, 140, 200), (210, 225, 255), (170, 185, 230)] + [(0, 0, 0)] * 7
 CELLS['icon_sun'] = (0, 224, 13)
 CELLS['icon_moon'] = (16, 224, 13)
+
+# memory card save icon: the same sun and moon as two animation frames
+from mei_icon import make_meta
+write('save_icon.bin', make_meta([sun, moon], title='Sun & Moon Orbs', palette=pal4[13][:9]))
 
 # pack: two texels per byte, the low nibble is the left texel; 128-byte rows
 tex4 = (atlas4[:, 0::2] & 15) | ((atlas4[:, 1::2] & 15) << 4)

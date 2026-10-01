@@ -9,9 +9,11 @@ Transformed vertices (__sv, 16 bytes each, written by __xform):
   +0 packed screen position (x & 0xFFFF) | (y << 16)
   +4 fog amount 0..256
   +12 w (view depth, 16.16)
-__draw_faces_sub is the same loop for carts that enabled subdivide(): textured faces that
-span a large range of depth, or cross the near plane, are handed to __subdivide_face
-(subdiv.mls), which splits them and feeds the pieces back through __draw_faces.
+__draw_faces_sub is the same loop for carts that enabled subdivide(): front-facing,
+on-screen textured faces near the camera whose depth spreads by more than the tolerance,
+or that cross the near plane, are handed to __subdivide_face (subdiv.mls), which splits
+them and feeds the pieces back through __draw_faces. The test is a superset of the
+per-edge test in __sub_split, so a face it skips never has an edge its neighbour splits.
 
 Run from the repository root: python3 tools/gen_faces_asm.py [output path]"""
 import os, sys
@@ -228,9 +230,10 @@ HEAD_SUB = """    addi sp, sp, -56
     blt  r12, r9, .test         ; crosses the near plane
     lw   r11, [r0+{__sub_dist}]
     bge  r12, r11, .nosub       ; nearest vertex beyond the subdivision distance
-    sari r11, r12, 3
+    lw   r11, [r0+{__sub_q}]
+    fmul r11, r12, r11
     add  r11, r11, r12
-    bge  r11, r13, .nosub       ; depth spread under 12.5%: hardly any warping
+    bge  r11, r13, .nosub       ; depth spread within the tolerance: no edge can split
 .test:
     ; screen bounding box of the vertices in front of the near plane
     addi r11, r0, 32767
@@ -254,21 +257,7 @@ HEAD_SUB = """    addi sp, sp, -56
     slti r11, r11, 241
     beq  r11, r0, .next         ; all below
     blt  r12, r9, .sub          ; crosses the near plane and may be seen: split it
-    ; affine error estimate: (far w - near w) * (width + height) > near w * __sub_k
-    lw   r11, [sp+40]
-    lw   r15, [sp+36]
-    sub  r11, r11, r15
-    lw   r15, [sp+48]
-    add  r11, r11, r15
-    lw   r15, [sp+44]
-    sub  r11, r11, r15
-    sub  r15, r13, r12
-    sari r15, r15, 8
-    mul  r11, r11, r15
-    sari r15, r12, 8
-    lw   r13, [r0+{__sub_k}]
-    mul  r15, r15, r13
-    slt  r11, r15, r11
+    addi r11, r0, 1             ; a candidate (if front-facing)
     sw   r11, [sp+24]
     jmp  .cull
 .nosub:
@@ -421,9 +410,10 @@ def face_loop(name, sub):
 #
 # A patch is a quad (a b c d in strip order) or a triangle (a b c, d = -1) of scratch
 # vertices plus g, four 4-bit edge generations (quad: bottom a-b, right b-d, top d-c, left
-# c-a; triangle: a-b, b-c, c-a) and, in bits 16-19, the patch's depth, used as the
-# generation of a quad's diagonal. An edge's generation counts how often the mesh edge was
-# halved to make it; 15 marks an edge already found not to need splitting. Both faces of
+# c-a; triangle: a-b, b-c, c-a) and, in bits 16-19, the patch's depth (the generation
+# given to a quad's diagonal when it continues as two triangles). An edge's generation
+# counts how often the mesh edge was halved to make it; 15 marks an edge already found not
+# to need splitting. Both faces of
 # a shared edge see the same generation and the same test, so they split it alike.
 # Patches wait on __sub_stack (5 words each). Frame slots:
 SUB_FRAME = 108
@@ -578,18 +568,15 @@ def subdiv_run():
     e(push(['a', 'b', 'm1', 'm0'], [('G', 0, 0), ('G', 1, 1), ('G', 1, 1), ('G', 3, 1), ('G', 4, 1)]))
     e('    jmp  .pop')
     e('.q3:')
-    e('    ; otherwise go on with its two triangles (a b c) and (b d c), as the GPU draws it,')
-    e('    ; if any edge splits, or if the diagonal b-c (inside the face, generation = depth)')
-    e('    ; does: that is where the two affine halves of a quad meet in a kink')
+    e('    ; no edge to split: draw it. Otherwise go on with its two triangles (a b c) and')
+    e('    ; (b d c), as the GPU draws it. (Quads are only ever cut into quads or into their')
+    e('    ; own two triangles: fanning around a new inner point would bend texture lines')
+    e('    ; that run parallel to the edges, such as bricks and floor tiles.)')
     e('    lw   r5, [sp+%d]' % SL['W0'])
     for k in (1, 2, 3):
         e('    lw   r6, [sp+%d]' % SL['W%d' % k])
         e('    or   r5, r5, r6')
-    e('    bne  r5, r0, .q4')
-    e(test('b', 'c', 4))
-    e('    lw   r5, [sp+%d]' % SL['W4'])
     e('    beq  r5, r0, .emit')
-    e('.q4:')
     e(push(['b', 'd', 'c', -1], [('G', 1, 0), ('G', 2, 0), ('G', 4, 0), ('C', 0)]))
     e(push(['a', 'b', 'c', -1], [('G', 0, 0), ('G', 4, 0), ('G', 3, 0), ('C', 0)]))
     e('    jmp  .pop')

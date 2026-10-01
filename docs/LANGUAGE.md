@@ -666,7 +666,7 @@ yaw 0; positive yaw turns right (toward +X), positive pitch looks up.
 | `fog(colour, near, far)`, `fog_off()` | blend vertex colours toward `colour` between view depths `near` and `far` |
 | `depth_bias(buckets)` | shift the ordering-table bucket of following `mesh*()` polygons (negative: drawn later, in front); reset each frame |
 | `subdivide(levels)` | split big textured faces near the camera, up to `levels` times (0 = off, the default; at most 3); see below |
-| `subdivide_tuning(pixels, distance)` | the texture error `subdivide()` tolerates before splitting an edge (default 4 pixels) and the view depth beyond which faces are never split (default 8.0) |
+| `subdivide_tuning(percent, distance)` | how much deeper the far end of an edge may be than its near end before `subdivide()` splits it (default 25 %; smaller is straighter and costs more), and the view depth beyond which nothing is split (default 8.0) |
 | `text(x, y, s: *u8, colour)` | 8×8 font, ASCII 32–126; `\n` starts a new line |
 | `text_int(x, y, n, colour) -> s32` | draw a number; returns the x after it |
 | `int_to_str(buf: *u8, n) -> *u8` | format a number (buf needs 12 bytes) |
@@ -687,14 +687,15 @@ depth warps, and it swims as the camera moves (the PlayStation's look; whole-pix
 snapping adds a wobble of its own). PlayStation games tamed it near the camera by splitting
 polygons, and `subdivide(levels)` does the same for the following `mesh*()` calls (it stays
 set until changed, like `fog`). A textured face is considered when its nearest vertex is
-nearer than the subdivision distance and its depth spreads by more than 12.5%, or when it
-crosses the near plane; faces that are back-facing or entirely off screen are skipped. Each
-edge of such a face is split when its estimated affine error (depth spread times length on
-screen) exceeds the tolerance; edges crossing the near plane are split once, which saves the
-part of the face in front of it (without subdivision the whole face is dropped). A quad's
-diagonal, where its two affine halves meet in a kink, is tested too. A quad whose opposite
-edges both split is cut in two along them; any other quad continues as its two triangles,
-which split into four or are bisected one edge at a time, up to `levels` halvings per edge.
+nearer than the subdivision distance and its depth spreads by more than the tolerance, or
+when it crosses the near plane; faces that are back-facing or entirely off screen are
+skipped. Each edge of such a face is split when its far end is deeper than its near end by
+more than the tolerance (the affine error grows with that ratio); edges crossing the near
+plane are split once, which saves the part of the face in front of it (without subdivision
+the whole face is dropped). A quad whose
+opposite edges both split is cut in two along them (so texture lines parallel to its edges,
+such as bricks and tiles, stay straight); any other quad continues as its two triangles, which
+split into four or are bisected one edge at a time, up to `levels` halvings per edge.
 Midpoints are made in object space and transformed exactly, with averaged texture
 coordinates and colours. The decision for an edge depends only on its two ends and on how
 often it has been halved, so the faces sharing an edge always split it alike and no cracks
@@ -702,6 +703,7 @@ open between them, whatever their own pattern. The pieces are culled, fogged, so
 drawn like any face, and count against the 2,000-triangle limit. Untextured faces are never
 split. Splitting is not free (see Performance notes): a cart can enable it only for the
 meshes that need it, raise the tolerance, or adjust it from frame to frame from `cpu_used()`
+(Sun & Moon Orbs does)
 (keep the settings the same for all the meshes of a frame that share edges, or they may
 disagree about a shared edge).
 
@@ -885,8 +887,8 @@ Measured with the `CYCLES` register (500,000 cycles per frame):
 | a face split by `subdivide()` | about 1,000 per piece drawn (a quad cut in two: about 2,000 more than drawing it whole) |
 
 The demo cart (a fogged 16×16 ground and a textured cube, about 370 triangles, plus a HUD)
-uses about 83,000 cycles per frame, or about 95,000–107,000 with `subdivide(2)` at a
-2-pixel tolerance.
+uses about 83,000 cycles per frame, or about 95,000–116,000 with `subdivide(2)` at a 10 %
+tolerance.
 
 Guidelines: integer `*` by a constant power of two and `fixed * int` are cheaper than `fmul`;
 `fdiv`/`div` cost 20 cycles; accessing a global costs one load or store; locals are in

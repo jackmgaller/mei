@@ -2,10 +2,14 @@
 //
 // The GPU maps textures affinely, so a big polygon spanning a wide range of depth warps.
 // __draw_faces_sub (faces.mls) sends front-facing, on-screen textured faces that are near
-// the camera and whose estimated affine error is large, or that cross the near plane, to
-// __subdivide_face. It splits each edge whose estimated error (depth spread x length on
-// screen) exceeds the tolerance, or that crosses the near plane. The decision depends only
-// on the edge's two ends, so the faces sharing an edge split it the same way. Midpoints
+// the camera and whose depth spreads by more than the tolerance, or that cross the near
+// plane, to __subdivide_face. It splits each edge nearer than the subdivision distance
+// whose far end is deeper than its near end by more than the tolerance (the affine error
+// grows with that ratio), or that crosses the near plane. Opposite edges of a floor tile
+// or a wall seen from the front span the same depths, so they split together and the
+// pieces stay quads, which keeps lines parallel to the edges (bricks, tiles) straight.
+// The decision depends only on the edge's two ends, so the faces sharing an edge split it
+// the same way. Midpoints
 // are made in object space and transformed exactly, with averaged texture coordinates and
 // colours, so a shared edge gets bitwise-identical vertices on both sides: no cracks.
 // A quad whose opposite edges both split is cut in two along them, again and again; any
@@ -19,8 +23,8 @@ const __SUB_MAX = 128           // scratch vertices per face
 const __SUB_OUT = 32            // pieces buffered before they are drawn
 
 var __subdiv: s32               // levels (0 = off)
-var __sub_k: s32 = 16           // 4 x the tolerated affine error in pixels
-var __sub_dist: fixed = 8.0     // only faces with a vertex nearer than this are split
+var __sub_q: fixed = 0.25       // an edge splits when far w > near w x (1 + this)
+var __sub_dist: fixed = 8.0     // only edges with an end nearer than this split
 var __sub_src: *vec4            // object-space vertices of the mesh being drawn
 var __sub_mvp: mat4             // and its matrix
 var __sub_pos: [128]vec4        // scratch vertices: object-space position,
@@ -35,10 +39,11 @@ var __sub_nout: s32
 // default; at most 3). Each level splits a face into up to four, so textures warp less.
 fn subdivide(levels: s32) { __subdiv = clamp(levels, 0, 3) }
 
-// Tuning for subdivide(): the affine texture error in pixels tolerated before an edge is
-// split (default 4), and the view depth beyond which faces are never split (default 8.0).
-fn subdivide_tuning(pixels: s32, distance: fixed) {
-    __sub_k = clamp(pixels, 1, 64) * 4
+// Tuning for subdivide(): how much deeper the far end of an edge may be than its near
+// end, in percent, before the edge is split (default 25; smaller is straighter and costs
+// more), and the view depth beyond which nothing is split (default 8.0).
+fn subdivide_tuning(percent: s32, distance: fixed) {
+    __sub_q = fixed(clamp(percent, 5, 1000)) / 100
     __sub_dist = distance
 }
 
@@ -102,8 +107,8 @@ asm fn __sub_load(f: *Face) -> s32 {
     mov  r1, r3
 }
 
-// Should the edge between scratch vertices a and b be split? 1: yes, for its affine
-// error; 2: it crosses the near plane (split once, to save the part in front); 0: no.
+// Should the edge between scratch vertices a and b be split? 1: yes, its depth spreads
+// too much; 2: it crosses the near plane (split once, to save the part in front); 0: no.
 // Symmetric in a and b.
 asm fn __sub_split(a: s32, b: s32) -> bool {
     la   r5, {__sv}
@@ -121,39 +126,14 @@ asm fn __sub_split(a: s32, b: s32) -> bool {
     mov  r3, r4
     mov  r4, r5                 ; r3 = nearer w, r4 = farther w
 .ordered:
-    ; the gate in __draw_faces_sub only passes faces nearer than __sub_dist with a depth
-    ; spread over 12.5%: an edge outside those limits never splits, so a face the gate
-    ; skips never leaves a neighbour's split edge unmatched
+    ; the same limits as the face test in __draw_faces_sub, so a face it skips never has
+    ; an edge that its neighbour splits
     lw   r5, [r0+{__sub_dist}]
     bge  r3, r5, .no
-    sari r5, r3, 3
+    lw   r5, [r0+{__sub_q}]
+    fmul r5, r3, r5
     add  r5, r5, r3
-    bge  r5, r4, .no
-    lw   r5, [r6+32768]         ; packed screen positions
-    lw   r6, [r7+32768]
-    shli r7, r5, 16
-    sari r7, r7, 16
-    shli r1, r6, 16
-    sari r1, r1, 16
-    sub  r7, r7, r1
-    sari r1, r7, 31
-    xor  r7, r7, r1
-    sub  r7, r7, r1             ; |dx|
-    sari r5, r5, 16
-    sari r6, r6, 16
-    sub  r5, r5, r6
-    sari r1, r5, 31
-    xor  r5, r5, r1
-    sub  r5, r5, r1             ; |dy|
-    add  r7, r7, r5
-    ; the affine error along the edge is about len * (far - near) / (4 near) pixels
-    sub  r4, r4, r3
-    sari r4, r4, 8
-    mul  r4, r4, r7
-    sari r3, r3, 8
-    lw   r5, [r0+{__sub_k}]
-    mul  r3, r3, r5
-    slt  r1, r3, r4
+    slt  r1, r5, r4             ; far w > near w x (1 + q)
     ret
 .behind:
     slt  r1, r4, r8

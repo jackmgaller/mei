@@ -6,7 +6,7 @@
 //
 // Assets come from tools/gen_orbs_assets.py. This file is the cart's entry point; the
 // game itself is in game.mls so that test entry points can import it with scripted input.
-cart "Sun & Moon Orbs"
+cart "Sun & Moon Orbs", "SUNMOON-ORBS"
 
 const TEST = 0
 

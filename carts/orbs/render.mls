@@ -15,8 +15,8 @@ const FOG_NEAR: fixed = 9.0
 const FOG_FAR: fixed = 32.0
 const LOD_DIST: fixed = 6.0      // chunks nearer than this use their fine version
 const SUBDIV_LEVELS = 2          // subdivision levels for the near chunks
-const SUB_PX_MIN = 3             // best texture straightness the governor aims for (pixels)
-const SUB_PX_MAX = 40
+const SUB_TOL_MIN = 12           // best: split edges whose depth spreads by over 12%
+const SUB_TOL_MAX = 200
 const SUB_CPU_HIGH = 280000      // cycles per frame: above this, subdivide less
 const SUB_CPU_LOW = 255000       // below this, subdivide more
 const SUN_AZ: fixed = -1.75     // directions in the sky (yaw), matching the baked lighting
@@ -174,16 +174,16 @@ fn chunk_near(x0: fixed, z0: fixed, x1: fixed, z1: fixed) -> bool {
 }
 
 // Subdivision quality governor. Splitting costs CPU, so when the last frame came close to
-// the budget the tolerated texture error (pixels) rises quickly, and once it is at its
+// the budget the tolerated depth spread (percent) rises quickly, and once it is at its
 // limit the subdivision levels drop; with room to spare it eases back, levels first. It
 // only changes between frames, so the faces sharing an edge always agree.
-var sub_px: s32 = 6
+var sub_tol: s32 = 25
 var sub_levels: s32 = SUBDIV_LEVELS
 fn govern_subdivision() {
     let used = cpu_used()
     if used > SUB_CPU_HIGH {
-        if sub_px < SUB_PX_MAX {
-            sub_px = min(sub_px + 2 + (used - SUB_CPU_HIGH) / 4000, SUB_PX_MAX)
+        if sub_tol < SUB_TOL_MAX {
+            sub_tol = min(sub_tol + 8 + (used - SUB_CPU_HIGH) / 2000, SUB_TOL_MAX)
         } else if sub_levels > 0 {
             sub_levels -= 1
         }
@@ -191,10 +191,10 @@ fn govern_subdivision() {
         if sub_levels < SUBDIV_LEVELS {
             sub_levels += 1
         } else {
-            sub_px = max(sub_px - 1, SUB_PX_MIN)
+            sub_tol = max(sub_tol - 2, SUB_TOL_MIN)
         }
     }
-    subdivide_tuning(sub_px, 8.0)
+    subdivide_tuning(sub_tol, 8.0)
 }
 
 // ---- dust puffs (take-off and landing): soft additive discs that drift out and fade

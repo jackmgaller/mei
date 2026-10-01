@@ -19,7 +19,7 @@ fn init() {
     load_texture(0, BRICKS, len(BRICKS))
     load_palette(0, BRICK_PAL, len(BRICK_PAL))
     subdivide(2)                // split the cube's faces when they span a lot of depth
-    subdivide_tuning(2, 12.0)   // (less affine warping of the bricks)
+    subdivide_tuning(10, 12.0)  // (less affine warping of the bricks)
 }
 
 fn update() {
