@@ -1,0 +1,743 @@
+// Screens: the title, the welcome, the lake map (pause menu), the shop, the fish journal,
+// the Lantern Festival and the ending.
+
+// Darkens the whole screen (k: 0 none .. 255 black), with a subtractive rectangle.
+fn fade(k: s32) {
+    if k <= 0 { return }
+    let v = clamp(k, 0, 255)
+    ui_rect(-1, -1, 322, 242, rgb(v, v, v), 2)
+}
+
+// ---- menu navigation with the stick (or the d-pad), with auto-repeat
+var nav_hold: s32
+
+fn nav_dir() -> s32 {
+    let y = stick_in.y
+    let x = stick_in.x
+    var d = 0
+    if y > 0.5 { d = -1 }
+    if y < -0.5 { d = 1 }
+    if d == 0 && x > 0.5 { d = 2 }
+    if d == 0 && x < -0.5 { d = -2 }
+    if d == 0 {
+        nav_hold = 0
+        return 0
+    }
+    nav_hold += 1
+    if nav_hold == 1 || (nav_hold > 18 && nav_hold % 6 == 0) { return d }
+    return 0
+}
+
+// ---- title
+
+var title_sel: s32
+
+fn update_title() {
+    tod_force = 1085
+    g.dock = 0
+    view_off = -0.85 + sin(fixed(screen_t) * 0.004) * 0.12
+    let n = nav_dir()
+    if have_save && (n == 1 || n == -1) {
+        title_sel = 1 - title_sel
+        sfx_blip()
+    }
+    if screen_t > 30 && (btnp_in(A) || btnp_in(START)) {
+        sfx_ok()
+        if have_save && title_sel == 0 {
+            if load_game() {
+                tod_force = -1
+                begin_fishing()
+                say("Welcome back to Lantern Lake.", 150)
+                return
+            }
+            have_save = false
+        }
+        new_game()
+        tod_force = -1
+        enter(Screen.Intro)
+    }
+}
+
+fn draw_title() {
+    cam_pos = vec3(5.0, 2.4, -11.5)
+    cam_yaw = -1.45 + sin(fixed(screen_t) * 0.004) * 0.1
+    cam_pitch = -0.1
+    show_angler = false
+    draw_lake()
+    show_angler = true
+    let k = clamp(256 - screen_t * 4, 0, 256)
+    ui_grad(0, 0, 320, 110, rgb(30, 20, 60), rgb(0, 0, 0), 2)
+    ui_tex(32, 22, 255, 72, SLOT_FONT, PAL_LOGO, LOGO_U, LOGO_V, 255, 72, 0x808080, -1)
+    if have_save {
+        let y = 150
+        panel_glass(110, y - 6, 100, 44)
+        var c0 = DIM
+        var c1 = DIM
+        if title_sel == 0 { c0 = GOLD } else { c1 = GOLD }
+        ftext_c(160, y, "Continue", c0, false)
+        ftext_c(160, y + 18, "New Game", c1, false)
+        icon(114, y - 2 + title_sel * 18, IC_ARROW, 0x808080)
+    } else if (screen_t / 30) % 2 == 0 {
+        ftext_c(160, 160, "Press A", CREAM, true)
+    }
+    ftext_c(160, 214, "a cozy fishing game for the Mei console", rgb(170, 160, 200), false)
+    fade(k)
+}
+
+// ---- the welcome (two pages)
+
+fn update_intro() {
+    if screen_t > 20 && btnp_in(A) {
+        sfx_ok()
+        if screen_t >= 1000 {
+            begin_fishing()
+            g.tutorial = g.tutorial | TUT_CAST
+            return
+        }
+        screen_t = 1000
+    }
+}
+
+fn draw_intro() {
+    camera_at_dock()
+    draw_lake()
+    fade(90)
+    panel(34, 40, 252, 160)
+    if screen_t < 1000 {
+        ftext_c(160, 48, "Welcome to Lantern Lake!", GOLD, true)
+        ftext(48, 76, "Every other evening the lakeside village\nholds a Lantern Festival, and the village\nneeds fish to celebrate.\n\nCatch enough lantern points by the next\nfestival and the village will grow, new\ndocks will open... and the lake will shine.", CREAM, false)
+    } else {
+        ftext_c(160, 48, "How to fish", GOLD, true)
+        ftext(48, 74, "Cast:   pull the stick back, flick forward\nAim:    lean sideways as you flick\nTurn:   stick left/right before casting\nReel:   circle the stick\nHook:   pull the stick down on a bite\nFight:  trace the fish's pattern\n\nSELECT: journal     START: lake map", CREAM, false)
+    }
+    if (screen_t / 20) % 2 == 0 { ftext_r(278, 182, "A", GOLD, false) }
+}
+
+// ---- the lake map and menu
+
+var menu_sel: s32
+const MENU_N = 9
+
+fn open_menu() {
+    menu_sel = g.dock
+    sfx_ok()
+    enter(Screen.Menu)
+}
+
+fn rest_label() -> *u8 {
+    let m = minutes()
+    if m >= 1080 || m < 300 { return "Rest until morning" }
+    return "Rest until evening"
+}
+
+fn update_menu() {
+    let n = nav_dir()
+    if n == 1 || n == 2 {
+        menu_sel = (menu_sel + 1) % MENU_N
+        sfx_blip()
+    }
+    if n == -1 || n == -2 {
+        menu_sel = (menu_sel + MENU_N - 1) % MENU_N
+        sfx_blip()
+    }
+    if btnp_in(B) || btnp_in(START) {
+        sfx_back()
+        enter(Screen.Fish)
+        return
+    }
+    if !btnp_in(A) { return }
+    if menu_sel < 4 {
+        if !dock_open(menu_sel) {
+            sfx_back()
+            say("This dock opens after a festival.", 100)
+            return
+        }
+        if menu_sel == g.dock {
+            sfx_ok()
+            enter(Screen.Fish)
+            return
+        }
+        travel_to = menu_sel
+        sfx_ok()
+        enter(Screen.Travel)
+    } else if menu_sel == 4 {
+        sfx_ok()
+        shop_sel = 0
+        enter(Screen.Shop)
+    } else if menu_sel == 5 {
+        // the next lure you own
+        var l = g.lure
+        for k in 0..3 {
+            l = (l + 1) % 3
+            if lure_owned(l) { break }
+        }
+        if l != g.lure { sfx_ok() } else { sfx_back() }
+        g.lure = l
+    } else if menu_sel == 6 {
+        rest()
+    } else if menu_sel == 7 {
+        save_game()
+    } else {
+        sfx_back()
+        enter(Screen.Fish)
+    }
+}
+
+fn rest() {
+    let m = minutes()
+    if m >= 1080 || m < 300 {
+        if m >= 1080 { g.day += 1 }
+        g.clock = DAWN_CLOCK
+        say("You rest until morning. Good morning!", 150)
+    } else {
+        g.clock = DUSK_CLOCK
+        say("You rest in the shade until evening.", 150)
+    }
+    sfx_ok()
+    begin_fishing()
+    save_game()
+}
+
+var travel_to: s32
+
+fn update_travel() {
+    if screen_t == 30 {
+        g.dock = travel_to
+        g.clock += 375          // the walk takes half an hour
+        if g.clock >= DAY_FRAMES {
+            g.clock -= DAY_FRAMES
+            g.day += 1
+        }
+        begin_fishing()
+        screen = Screen.Travel
+        screen_t = 31
+        say(dock_name(g.dock), 120)
+    }
+    if screen_t >= 60 { enter(Screen.Fish) }
+}
+
+fn draw_travel() {
+    camera_at_dock()
+    draw_lake()
+    draw_hud()
+    var k = screen_t * 9
+    if screen_t > 30 { k = (60 - screen_t) * 9 }
+    fade(k)
+}
+
+fn draw_menu() {
+    camera_at_dock()
+    draw_lake()
+    fade(110)
+    panel(6, 22, 196, 168)
+    ftext(14, 26, "Lantern Lake", GOLD, true)
+    // the map, 1.5x
+    let mx = 10
+    let my = 46
+    ui_tex(mx, my, 188, 140, SLOT_FISH, PAL_MAP, MAP_U, MAP_V, MAP_W - 1, MAP_H - 1, 0x808080, -1)
+    for d in 0..NDOCK {
+        let x = mx + DOCK_MAPX[d] * 188 / MAP_W
+        let y = my + DOCK_MAPY[d] * 140 / MAP_H
+        if dock_open(d) {
+            var c = rgb(255, 240, 200)
+            if d == menu_sel { c = rgb(255, 210, 80) }
+            if d == g.dock {
+                let p = 3 + (tick_count / 8) % 3
+                ui_dot(x, y, p + 2, rgb(255, 200, 90))
+            }
+            ui_dot(x, y, 4, c)
+        } else {
+            icon(x - 8, y - 8, IC_LOCK, 0x606060)
+        }
+    }
+    let vx = mx + VILLAGE_MAPX * 188 / MAP_W
+    let vy = my + VILLAGE_MAPY * 140 / MAP_H
+    ftext(vx - 4, vy + 6, "Village", rgb(255, 230, 200), false)
+    // the list
+    panel(206, 22, 110, 168)
+    for i in 0..MENU_N {
+        let y = 28 + i * 18
+        var c = CREAM
+        var s: *u8 = ""
+        if i < 4 {
+            s = dock_name(i)
+            if !dock_open(i) { c = DIM }
+        } else if i == 4 { s = "Shop" }
+        else if i == 5 {
+            let b = nb()
+            b[0] = 0
+            sappend(b, "Lure: ")
+            sappend(b, lure_name(g.lure))
+            s = b
+        } else if i == 6 { s = rest_label() }
+        else if i == 7 { s = "Save game" }
+        else { s = "Back to fishing" }
+        if i == menu_sel {
+            ui_rect(208, y - 2, 106, 16, rgb(70, 60, 30), 1)
+            c = GOLD
+        }
+        ftext(214, y, s, c, false)
+        if i < 4 && i == g.dock { icon(296, y - 2, IC_DOCK, 0x808080) }
+    }
+    // info line
+    var info: *u8 = ""
+    if menu_sel < 4 {
+        if dock_open(menu_sel) { info = dock_info(menu_sel) } else { info = "Opens after the next festival." }
+    } else if menu_sel == 4 { info = "Rods, reels, line, lures and bait." }
+    else if menu_sel == 5 { info = "Change the lure tied on your line." }
+    else if menu_sel == 6 { info = "Pass the time (and save the game)." }
+    else if menu_sel == 7 { info = "Save to the memory card." }
+    else { info = "Back to the water." }
+    panel_glass(6, 194, 310, 18)
+    ftext(12, 196, info, SOFT, false)
+    draw_hud_mini()
+    draw_messages()
+}
+
+fn dock_info(d: s32) -> *u8 {
+    match d {
+        0 => return "The village pier. Perch and bream gather here."
+        1 => return "Lily pads and carp. Patience pays."
+        2 => return "Deep, cool water under the old stones."
+        3 => return "Reeds and a river mouth. Pike and trout."
+        else => return ""
+    }
+}
+
+fn draw_hud_mini() {
+    panel_glass(6, 4, 310, 16)
+    icon(8, 4, IC_COIN, 0x808080)
+    ftext(26, 6, num(g.coins), GOLD, false)
+    let b = nb()
+    b[0] = 0
+    sappend(b, "Day ")
+    sint(b, g.day)
+    sappend(b, "   ")
+    sappend(b, fmt_clock())
+    ftext_r(312, 6, b, CREAM, false)
+    let j = nb()
+    j[0] = 0
+    sappend(j, "Journal ")
+    sint(j, journal_count())
+    sappend(j, "/14")
+    ftext(100, 6, j, SOFT, false)
+}
+
+fn journal_count() -> s32 {
+    var n = 0
+    for f in 0..NFISH { if g.journal[f].caught > 0 { n += 1 } }
+    return n
+}
+
+// ---- the shop
+
+var shop_sel: s32
+const SHOP_N = 7
+
+fn shop_icon(k: s32) -> Icon {
+    match k {
+        0 => return IC_ROD
+        1 => return IC_REEL
+        2 => return IC_LINE
+        3 => return IC_BAIT
+        4 => return IC_GLOW
+        5 => return IC_FLOAT
+        else => return IC_LANTERN
+    }
+}
+
+fn update_shop() {
+    let n = nav_dir()
+    if n == 1 || n == 2 {
+        shop_sel = (shop_sel + 1) % SHOP_N
+        sfx_blip()
+    }
+    if n == -1 || n == -2 {
+        shop_sel = (shop_sel + SHOP_N - 1) % SHOP_N
+        sfx_blip()
+    }
+    if btnp_in(B) || btnp_in(START) {
+        sfx_back()
+        enter(Screen.Menu)
+        return
+    }
+    if btnp_in(A) {
+        let k = shop_sel
+        let tier = g.up[k] as s32
+        if tier >= UP_MAX[k] as s32 {
+            sfx_back()
+            return
+        }
+        let price = UP_PRICE[k][tier + 1] as s32
+        if g.coins < price {
+            sfx_back()
+            say("Not enough coins yet.", 90)
+            return
+        }
+        g.coins -= price
+        g.up[k] = (tier + 1) as u8
+        sfx_coin()
+        if k == UP_GLOW { g.lure = LURE_GLOW }
+        if k == UP_FLOAT { g.lure = LURE_FLOAT }
+        say("Thank you! Come again.", 90)
+    }
+}
+
+fn draw_shop() {
+    camera_at_dock()
+    draw_lake()
+    fade(120)
+    panel(20, 22, 280, 186)
+    ftext(30, 26, "Village Shop", GOLD, true)
+    icon(232, 28, IC_COIN, 0x808080)
+    ftext(252, 31, num(g.coins), GOLD, false)
+    for k in 0..SHOP_N {
+        let y = 52 + k * 20
+        let tier = g.up[k] as s32
+        let maxed = tier >= UP_MAX[k] as s32
+        var nm: *u8 = ""
+        var price = 0
+        if maxed { nm = up_name(k, tier) } else {
+            nm = up_name(k, tier + 1)
+            price = UP_PRICE[k][tier + 1] as s32
+        }
+        var c = CREAM
+        if k == shop_sel {
+            ui_rect(24, y - 3, 272, 19, rgb(70, 60, 30), 1)
+            c = GOLD
+        }
+        icon(30, y - 2, shop_icon(k), 0x808080)
+        ftext(52, y, nm, c, false)
+        if maxed {
+            icon(266, y - 2, IC_CHECK, 0x808080)
+            ftext_r(262, y, "owned", DIM, false)
+        } else {
+            var pc = CREAM
+            if g.coins < price { pc = rgb(200, 120, 120) }
+            ftext_r(286, y, num(price), pc, false)
+        }
+    }
+    let tier = g.up[shop_sel] as s32
+    var desc: *u8 = ""
+    if tier < UP_MAX[shop_sel] as s32 { desc = up_desc(shop_sel, tier + 1) } else { desc = "You have the best there is." }
+    panel_glass(24, 194, 272, 30)
+    ftext(30, 196, desc, SOFT, false)
+    draw_messages()
+}
+
+// ---- the journal
+
+var jr_sel: s32
+var jr_back: Screen
+
+fn open_journal(back: Screen) {
+    jr_back = back
+    jr_sel = 0
+    sfx_ok()
+    enter(Screen.Journal)
+}
+
+fn update_journal() {
+    let n = nav_dir()
+    if n == 1 { jr_sel = (jr_sel + 2) % NFISH }
+    if n == -1 { jr_sel = (jr_sel + NFISH - 2) % NFISH }
+    if n == 2 || n == -2 { jr_sel = jr_sel ^ 1 }
+    if n != 0 { sfx_blip() }
+    if btnp_in(B) || btnp_in(SELECT) || btnp_in(START) {
+        sfx_back()
+        enter(jr_back)
+    }
+}
+
+fn draw_journal() {
+    camera_at_dock()
+    draw_lake()
+    fade(130)
+    // left: the pairs
+    panel(4, 4, 152, 232)
+    ftext(10, 6, "Fish Journal", GOLD, true)
+    let cnt = nb()
+    cnt[0] = 0
+    sint(cnt, journal_count())
+    sappend(cnt, "/14")
+    ftext_r(150, 10, cnt, SOFT, false)
+    icon(30, 26, IC_SUN, 0x808080)
+    icon(104, 26, IC_MOON, 0x808080)
+    for f in 0..NFISH {
+        let col = f & 1
+        let row = f / 2
+        let x = 8 + col * 74
+        let y = 44 + row * 27
+        if f == jr_sel { ui_rect(x - 2, y - 2, 72, 26, rgb(70, 60, 30), 1) }
+        let caught = g.journal[f].caught > 0
+        var pal = PAL_SIL
+        if caught { pal = fish_pal(f) }
+        draw_fish_sprite(f, x + 22, y + 10, 44, 22, 0.0, pal, 0x808080)
+        if caught { ftext_r(x + 68, y + 9, num(g.journal[f].caught as s32), CREAM, false) }
+    }
+    // right: the selected fish
+    panel(160, 4, 156, 232)
+    let f = jr_sel
+    let e = &g.journal[f]
+    let caught = e.caught > 0
+    ui_tex(166, 22, 144, 72, SLOT_WORLD, PAL_GREY, UV_HALO_U, UV_HALO_V, 64, 64, rgb(40, 40, 60), 1)
+    var pal = PAL_SIL2
+    if caught { pal = fish_pal(f) }
+    draw_fish_sprite(f, 238, 52, 128, 64, 0.0, pal, 0x808080)
+    if f & 1 != 0 { icon(294, 8, IC_MOON, 0x808080) } else { icon(294, 8, IC_SUN, 0x808080) }
+    if caught {
+        ftext_c(238, 86, fish_name(f), CREAM, true)
+        let b = nb()
+        b[0] = 0
+        sappend(b, "Caught ")
+        sint(b, e.caught as s32)
+        sappend(b, "   Best ")
+        sappend(b, fmt_cm(e.best_mm as s32))
+        ftext_c(238, 106, b, GOLD, false)
+        ftext(166, 122, fish_flavour(f), SOFT, false)
+        ftext(166, 150, fish_tip(f), rgb(170, 220, 170), false)
+        draw_pattern(f, 238, 204)
+    } else {
+        ftext_c(238, 86, "???", DIM, true)
+        ftext_c(238, 110, "Not caught yet.", DIM, false)
+        let twin = f ^ 1
+        if g.journal[twin].caught > 0 {
+            if f & 1 != 0 { ftext(166, 130, "The night twin of the\n", SOFT, false) } else { ftext(166, 130, "The day twin of the\n", SOFT, false) }
+            ftext(166, 143, fish_name(twin), CREAM, false)
+            ftext(166, 162, "Its pattern: like its twin's,\nbut a little different...", SOFT, false)
+            draw_pattern_ghost(twin, 238, 208)
+        } else {
+            ftext(166, 130, "A shadow in the water...\nwhere could it be?", SOFT, false)
+        }
+    }
+}
+
+// A diagram of a fish's reeling pattern: lines from step to step, fading as they go, and
+// a ring at the centre for a pause.
+fn draw_pattern(f: s32, cx: s32, cy: s32) {
+    let info = &FISH[f]
+    let n = info.plen as s32
+    ui_tex(cx - 26, cy - 26, 52, 52, SLOT_FISH, PAL_UI, 0, 192, 64, 64, rgb(60, 70, 110), 1)
+    for d in 0..8 { ui_dot(pdx(cx, d, 20), pdy(cy, d, 20), 3, rgb(60, 70, 110)) }
+    // the path spirals inward as it goes, so repeated and reversed passes stay readable
+    for i in 0..n {
+        let a = info.pat[i] as s32
+        let b = info.pat[(i + 1) % n] as s32
+        let ra = 21 - i * 9 / n
+        let rb = 21 - (i + 1) * 9 / n
+        let k = 255 - i * 150 / n
+        let c0 = rgb(k, k * 7 / 8, k / 3)
+        let c1 = rgb(k * 3 / 4, k * 5 / 8, k / 4)
+        if i < n - 1 { ui_line(pdx(cx, a, ra), pdy(cy, a, ra), pdx(cx, b, rb), pdy(cy, b, rb), c0, c1) }
+        if a == DIR_C { ui_tex(cx - 7, cy - 7, 14, 14, SLOT_WORLD, PAL_GREY, UV_RING_U, UV_RING_V, 64, 64, rgb(255, 220, 120), 1) }
+    }
+    let s0 = info.pat[0] as s32
+    ui_dot(pdx(cx, s0, 21), pdy(cy, s0, 21), 5, rgb(255, 230, 140))
+    let t = nb()
+    t[0] = 0
+    sint(t, n)
+    sappend(t, " steps")
+    ftext(cx + 30, cy - 4, t, DIM, false)
+}
+
+fn draw_pattern_ghost(f: s32, cx: s32, cy: s32) {
+    let info = &FISH[f]
+    let n = info.plen as s32
+    for i in 0..n {
+        let a = info.pat[i] as s32
+        let b = info.pat[(i + 1) % n] as s32
+        if i < n - 1 { ui_line(pdx(cx, a, 20), pdy(cy, a, 20), pdx(cx, b, 20), pdy(cy, b, 20), rgb(70, 70, 100), rgb(40, 40, 60)) }
+    }
+}
+
+fn pdx(cx: s32, d: s32, r: s32) -> s32 {
+    if d == DIR_C { return cx }
+    return cx + (sin(fixed(d) * 0.785398) * r) as s32
+}
+
+fn pdy(cy: s32, d: s32, r: s32) -> s32 {
+    if d == DIR_C { return cy }
+    return cy - (cos(fixed(d) * 0.785398) * r) as s32
+}
+
+// ---- the Lantern Festival
+
+var fest_ok: bool
+var fest_grand: bool
+var fest_target: s32
+var fest_count: s32
+
+const FEST_CAM: vec3 = vec3(6.0, 3.0, -5.0)
+const FEST_YAW: fixed = 2.98
+
+fn start_festival() {
+    if phase == Phase.Wait { reel_in() }
+    phase = Phase.Idle
+    tension_sound(false)
+    fest_target = FEST_TARGET[min(g.fest, NFEST - 1)]
+    fest_ok = g.points >= fest_target
+    fest_grand = fest_ok && g.fest == NFEST - 1
+    fest_count = 14
+    if fest_ok { fest_count = 24 + g.fest * 2 }
+    if fest_grand { fest_count = NFL }
+    fest_lanterns_reset()
+    fest_lanterns_on = true
+    for i in 0..NFW { fw_age[i] = 0 }
+    enter(Screen.Festival)
+}
+
+fn fest_origin(i: s32) -> vec3 {
+    // along the village shore, from the pier toward the houses
+    let a = 2.42 + fixed((i * 5) % 9) / 9 * 0.68
+    let x = sin(a)
+    let z = cos(a)
+    let r = shore_at(x * 20.0, z * 20.0) - 2.2
+    return vec3(x * r, 0.0, z * r)
+}
+
+fn update_festival() {
+    tod_force = 1170 + min(screen_t / 8, 60)
+    let t = screen_t
+    if t == 50 { sfx_festival() }
+    if t > 40 && t % 7 == 0 && fl_n < fest_count { fest_lantern_spawn(fest_origin(fl_n)) }
+    fest_lanterns_update()
+    fireworks_update()
+    if fest_grand && t > 200 && t % 45 == 0 {
+        let a = FEST_YAW + fixed(rnd(100) - 50) / 100
+        var c = rgb(255, 160, 80)
+        if rnd(3) == 0 { c = rgb(140, 200, 255) }
+        if rnd(3) == 1 { c = rgb(255, 120, 180) }
+        firework(vec3(FEST_CAM.x + sin(a) * 40.0, 9.0 + fixed(rnd(6)), FEST_CAM.z + cos(a) * 40.0), c)
+    }
+    if t > 420 && btnp_in(A) { finish_festival() }
+}
+
+fn finish_festival() {
+    sfx_ok()
+    fest_lanterns_on = false
+    if fest_ok {
+        g.fest += 1
+        g.village = g.fest
+        g.points = 0
+    } else {
+        g.missed += 1
+    }
+    g.fest_day = g.day + FEST_EVERY
+    g.clock = FEST_END_CLOCK
+    tod_force = -1
+    village_palettes()
+    if fest_grand {
+        g.free_play = 1
+        enter(Screen.Ending)
+        save_game()
+        return
+    }
+    begin_fishing()
+    save_game()
+}
+
+fn draw_festival() {
+    cam_pos = FEST_CAM
+    cam_yaw = FEST_YAW
+    cam_pitch = -0.08
+    show_angler = false
+    draw_lake()
+    show_angler = true
+    let t = screen_t
+    fade(clamp(255 - t * 6, 0, 255))
+    if t > 30 {
+        let title = "The Lantern Festival"
+        ftext_c(160, 18, title, rgb(255, 220, 150), true)
+        let b = nb()
+        b[0] = 0
+        if fest_grand { sappend(b, "The Grand Festival") } else {
+            sappend(b, "Festival ")
+            sint(b, g.fest + 1)
+            sappend(b, " of 5")
+        }
+        ftext_c(160, 38, b, SOFT, false)
+    }
+    if t > 300 {
+        panel(50, 150, 220, 74)
+        let b = nb()
+        b[0] = 0
+        sint(b, g.points)
+        sappend(b, " / ")
+        sint(b, fest_target)
+        sappend(b, " lanterns")
+        ftext_c(160, 154, b, GOLD, false)
+        if fest_ok {
+            ftext_c(160, 170, "The village is overjoyed!", CREAM, false)
+            ftext_c(160, 186, fest_unlock_text(g.fest), rgb(160, 230, 160), false)
+        } else {
+            ftext_c(160, 170, "A small festival, but a sweet one.", CREAM, false)
+            ftext_c(160, 186, "We'll try again in two days.", SOFT, false)
+        }
+        if t > 420 && (t / 20) % 2 == 0 { ftext_r(264, 208, "A", GOLD, false) }
+    }
+}
+
+// ---- the ending: credits over the night lake, then free play
+
+fn update_ending() {
+    tod_force = 1300
+    if screen_t % 9 == 0 && fl_n < NFL { fest_lantern_spawn(fest_origin(fl_n)) }
+    fest_lanterns_update()
+    if screen_t > 900 && btnp_in(A) {
+        tod_force = -1
+        fest_lanterns_on = false
+        begin_fishing()
+        say("Free play: the lake is yours. Happy fishing!", 200)
+    }
+}
+
+fn draw_ending() {
+    cam_pos = vec3(FEST_CAM.x, 3.0, FEST_CAM.z)
+    cam_yaw = 0.4 + fixed(screen_t / 16) * 0.0096
+    cam_pitch = -0.05
+    fest_lanterns_on = true
+    show_angler = false
+    draw_lake()
+    show_angler = true
+    let y0 = 240 - screen_t / 2
+    let lines = 12
+    for i in 0..lines {
+        let y = y0 + i * 34
+        if y < -20 || y > 240 { continue }
+        var s: *u8 = ""
+        var big = false
+        var c = CREAM
+        match i {
+            0 => { s = "Lantern Lake"; big = true; c = GOLD }
+            1 => s = "a lakeside fishing tale"
+            2 => { s = "Thank you for fishing with us!"; c = SOFT }
+            3 => { s = "The village shines all night."; c = SOFT }
+            4 => s = credits_line(0)
+            5 => s = credits_line(1)
+            6 => s = credits_line(2)
+            7 => { s = "Made for the Mei console"; c = SOFT }
+            8 => { s = "Design, code, art and sound by Claude"; c = SOFT }
+            9 => { s = "Music: day and night loops in C pentatonic"; c = SOFT }
+            10 => { s = "The lake is yours now: free play."; c = GOLD }
+            else => { s = "Press A"; big = true }
+        }
+        ftext_c(160, y, s, c, big)
+    }
+}
+
+fn credits_line(k: s32) -> *u8 {
+    let b = nb()
+    b[0] = 0
+    if k == 0 {
+        sappend(b, "Fish caught: ")
+        sint(b, g.total)
+    } else if k == 1 {
+        sappend(b, "Journal: ")
+        sint(b, journal_count())
+        sappend(b, " of 14")
+    } else {
+        sappend(b, "Days by the lake: ")
+        sint(b, g.day)
+    }
+    return b
+}

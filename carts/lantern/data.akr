@@ -1,0 +1,247 @@
+// Fish species, their reeling patterns, upgrades and the festival arc.
+//
+// There are seven species, each with a day form and a night form (fish id = species * 2 +
+// night). The night form is the same texture drawn with another palette, and its rules are
+// a little remixed: it bites differently, fights differently and has a reeling pattern that
+// is recognisably the day pattern with one or two changes.
+
+enum Bite: u8 {
+    Any,        // bites after a short wait
+    Moving,     // only a lure that is being reeled (moving)
+    Still,      // only a lure that has rested still for a while
+    Nibbler,    // nibbles a few times first: wait for the bobber to sink fully
+    Shy,        // takes at once, but spooks if the lure lands close to it
+    Deep,       // only a lure resting long enough to sink to the bottom
+    Far,        // only far from the dock
+    Near,       // only close to the dock
+    Light,      // only where light touches the water (lantern, glow lure, the lit pier)
+    Moonpath,   // only in the moon's glittering path
+}
+
+enum Fight: u8 {
+    Normal,     // occasional pulls
+    Darter,     // quick, light pulls in any direction
+    SideRuns,   // hard runs to the left and right
+    Charger,    // swims toward you: the line goes slack, reel fast
+    Steady,     // few pulls, long and even
+    Heavy,      // dives deep and heavy
+    Circler,    // pulls in circles: circle the stick the other way
+    Leaper,     // leaps out of the water: ease off the stick
+}
+
+struct Fish {
+    bite: Bite
+    fight: Fight
+    docks: u8           // bit per dock where it lives (1 pier, 2 lily, 4 bridge, 8 reeds)
+    home: u8            // the dock where it is most common
+    min_mm: s16
+    max_mm: s16
+    points: s16         // lantern points (and coins) for an average-sized fish
+    weight: s16         // how common (relative)
+    pull: fixed         // how hard it pulls (tension gain)
+    heft: fixed         // how much it resists reeling
+    tempo: s16          // frames per pattern step
+    plen: u8            // pattern length
+    pat: [16]u8         // pattern: 0 N, 1 NE, 2 E, 3 SE, 4 S, 5 SW, 6 W, 7 NW, 8 centre (pause)
+}
+
+const DIR_C = 8
+const NFISH = 14
+
+const FISH: [14]Fish = [
+    // Sunperch: smooth clockwise circles
+    Fish { bite: Bite.Moving, fight: Fight.Darter, docks: 7, home: 0, min_mm: 120, max_mm: 260, points: 8,
+           weight: 10, pull: 0.6, heft: 1.0, tempo: 12, plen: 8, pat: [0, 1, 2, 3, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0] },
+    // Moonperch: clockwise circles with a pause at the top of each loop
+    Fish { bite: Bite.Still, fight: Fight.Darter, docks: 15, home: 0, min_mm: 120, max_mm: 260, points: 12,
+           weight: 10, pull: 0.6, heft: 1.0, tempo: 13, plen: 9, pat: [0, 8, 1, 2, 3, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0] },
+    // Reed Pike: a left-right zig-zag
+    Fish { bite: Bite.Moving, fight: Fight.SideRuns, docks: 12, home: 3, min_mm: 450, max_mm: 900, points: 35,
+           weight: 6, pull: 1.2, heft: 1.6, tempo: 14, plen: 4, pat: [6, 2, 6, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    // Ghost Pike: the same zig-zag, but every third swing dips down
+    Fish { bite: Bite.Any, fight: Fight.Charger, docks: 12, home: 3, min_mm: 450, max_mm: 900, points: 46,
+           weight: 6, pull: 1.1, heft: 1.6, tempo: 14, plen: 4, pat: [6, 2, 5, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    // Lily Carp: half circles over the top, back and forth
+    Fish { bite: Bite.Nibbler, fight: Fight.Steady, docks: 3, home: 1, min_mm: 300, max_mm: 600, points: 20,
+           weight: 8, pull: 0.9, heft: 1.3, tempo: 12, plen: 8, pat: [6, 7, 0, 1, 2, 1, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0] },
+    // Dusk Carp: the same half circles, but the turn drifts one step further round
+    Fish { bite: Bite.Shy, fight: Fight.Steady, docks: 3, home: 1, min_mm: 300, max_mm: 600, points: 28,
+           weight: 8, pull: 0.9, heft: 1.3, tempo: 12, plen: 10, pat: [6, 7, 0, 1, 2, 3, 2, 1, 0, 7, 0, 0, 0, 0, 0, 0] },
+    // Bridge Catfish: slow, big counter-clockwise circles
+    Fish { bite: Bite.Deep, fight: Fight.Heavy, docks: 12, home: 2, min_mm: 500, max_mm: 1100, points: 50,
+           weight: 7, pull: 1.3, heft: 1.5, tempo: 17, plen: 8, pat: [0, 7, 6, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0] },
+    // Lantern Catfish: a figure of eight (the circles alternate direction)
+    Fish { bite: Bite.Light, fight: Fight.Circler, docks: 12, home: 2, min_mm: 500, max_mm: 1100, points: 62,
+           weight: 7, pull: 1.2, heft: 1.45, tempo: 15, plen: 16, pat: [0, 7, 6, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 6, 7] },
+    // Dawn Trout: up and down swings
+    Fish { bite: Bite.Far, fight: Fight.Leaper, docks: 12, home: 3, min_mm: 250, max_mm: 500, points: 25,
+           weight: 7, pull: 0.9, heft: 1.2, tempo: 11, plen: 4, pat: [0, 4, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    // Frost Trout: up and down, but the down-stroke alternates left and right
+    Fish { bite: Bite.Near, fight: Fight.Leaper, docks: 12, home: 2, min_mm: 250, max_mm: 500, points: 32,
+           weight: 7, pull: 0.9, heft: 1.2, tempo: 11, plen: 4, pat: [0, 3, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    // Village Bream: a diamond, clockwise (up, right, down, left)
+    Fish { bite: Bite.Any, fight: Fight.Normal, docks: 3, home: 0, min_mm: 180, max_mm: 350, points: 10,
+           weight: 9, pull: 0.7, heft: 1.0, tempo: 13, plen: 4, pat: [0, 2, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    // Lamp Bream: the diamond mirrored (counter-clockwise)
+    Fish { bite: Bite.Light, fight: Fight.Normal, docks: 3, home: 0, min_mm: 180, max_mm: 350, points: 16,
+           weight: 8, pull: 0.7, heft: 1.0, tempo: 13, plen: 4, pat: [0, 6, 4, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    // Golden Koi: a five-pointed star
+    Fish { bite: Bite.Shy, fight: Fight.Steady, docks: 15, home: 1, min_mm: 400, max_mm: 750, points: 160,
+           weight: 1, pull: 1.1, heft: 1.5, tempo: 14, plen: 5, pat: [0, 5, 2, 6, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    // Silver Moon Koi: the same star, mirrored
+    Fish { bite: Bite.Moonpath, fight: Fight.Steady, docks: 15, home: 1, min_mm: 400, max_mm: 750, points: 200,
+           weight: 1, pull: 1.1, heft: 1.5, tempo: 14, plen: 5, pat: [0, 3, 6, 2, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+]
+
+fn fish_name(f: s32) -> *u8 {
+    match f {
+        0 => return "Sunperch"
+        1 => return "Moonperch"
+        2 => return "Reed Pike"
+        3 => return "Ghost Pike"
+        4 => return "Lily Carp"
+        5 => return "Dusk Carp"
+        6 => return "Bridge Catfish"
+        7 => return "Lantern Catfish"
+        8 => return "Dawn Trout"
+        9 => return "Frost Trout"
+        10 => return "Village Bream"
+        11 => return "Lamp Bream"
+        12 => return "Golden Koi"
+        13 => return "Silver Moon Koi"
+        else => return "???"
+    }
+}
+
+fn fish_flavour(f: s32) -> *u8 {
+    match f {
+        0 => return "A cheerful little fish that\nchases anything that moves."
+        1 => return "Sunperch's quiet twin. It only\ntrusts a lure that rests."
+        2 => return "Lurks in the reeds and runs\nhard left and right."
+        3 => return "A pale pike that swims straight\nat you. The line goes slack!"
+        4 => return "Nibbles politely before it\nbites. Wait for the full sink."
+        5 => return "Bites at once, but a splash\nclose by sends it fleeing."
+        6 => return "Old, heavy and wise. Likes a\nbait that has sunk and settled."
+        7 => return "Its spots glow like lanterns.\nIt circles when it pulls."
+        8 => return "A morning jumper that keeps\nto the open water, far out."
+        9 => return "Glitters like frost. Comes\nclose to the dock at night."
+        10 => return "A friendly fish that schools\nunder the village pier."
+        11 => return "Gathers wherever lantern\nlight touches the water."
+        12 => return "The lake's legend. Shy: cast\nnear it, but not too near."
+        13 => return "Swims only where the moon\nlays its path on the water."
+        else => return ""
+    }
+}
+
+// A short tip shown in the journal once the fish has been caught.
+fn fish_tip(f: s32) -> *u8 {
+    match f {
+        0 => return "Bite: a moving lure.\nFight: quick little darts."
+        1 => return "Bite: a lure left still.\nPattern: pause at the top."
+        2 => return "Bite: a moving lure.\nFight: lean on side runs."
+        3 => return "Fight: it charges at you.\nTrace fast on the slack."
+        4 => return "Bite: ignore the nibbles,\nhook when it sinks fully."
+        5 => return "Bite: land the lure a\nlittle way away from it."
+        6 => return "Bite: let the bait settle.\nFight: slow, heavy dives."
+        7 => return "Bite: needs light. Fight:\ncircle against its pull."
+        8 => return "Bite: long casts only.\nFight: ease off on leaps."
+        9 => return "Bite: short casts only.\nFight: ease off on leaps."
+        10 => return "Bite: almost anything.\nA fine first catch."
+        11 => return "Bite: lantern light, a glow\nlure, or the lit pier."
+        12 => return "Bite: cast near it, but\nnot on top. Daytime only."
+        13 => return "Bite: in the moon's path\non the water."
+        else => return ""
+    }
+}
+
+fn dock_name(d: s32) -> *u8 {
+    match d {
+        0 => return "Village Pier"
+        1 => return "Lily Dock"
+        2 => return "Old Bridge"
+        3 => return "Reedy Cove"
+        else => return ""
+    }
+}
+
+// ---- the festival arc: lantern points needed, and what each festival opens
+const NFEST = 5
+const FEST_TARGET: [5]s32 = [100, 260, 480, 750, 1100]
+const FEST_DAY0 = 2            // the first festival is on the evening of day 2
+const FEST_EVERY = 2           // then every other day
+
+fn fest_unlock_text(n: s32) -> *u8 {
+    match n {
+        0 => return "The Lily Dock is open!"
+        1 => return "The Old Bridge is open!"
+        2 => return "The Reedy Cove is open!\nRumour: a golden koi..."
+        3 => return "The Festival Hall is built!"
+        else => return "The lake shines for you."
+    }
+}
+
+// ---- upgrades (tier 0 is what you start with)
+const UP_ROD = 0
+const UP_REEL = 1
+const UP_LINE = 2
+const UP_BAIT = 3
+const UP_GLOW = 4
+const UP_FLOAT = 5
+const UP_LANTERN = 6
+const NUP = 7
+
+fn up_name(k: s32, tier: s32) -> *u8 {
+    match k * 4 + tier {
+        0 => return "Bamboo Rod"
+        1 => return "Willow Rod"
+        2 => return "Carbon Rod"
+        4 => return "Tin Reel"
+        5 => return "Brass Reel"
+        6 => return "Silver Reel"
+        8 => return "Cotton Line"
+        9 => return "Silk Line"
+        10 => return "Moonthread"
+        12 => return "Bread Bait"
+        13 => return "Worms"
+        14 => return "Golden Dough"
+        17 => return "Glow Lure"
+        21 => return "Still Float"
+        25 => return "Lantern"
+        else => return ""
+    }
+}
+
+fn up_desc(k: s32, tier: s32) -> *u8 {
+    match k * 4 + tier {
+        1 => return "Casts further and steadier."
+        2 => return "The longest, truest casts."
+        5 => return "Wider timing when reeling."
+        6 => return "Widest timing; less strain."
+        9 => return "Stronger line; forgives slips."
+        10 => return "Very strong, very forgiving."
+        13 => return "Fish bite sooner."
+        14 => return "Koi find it irresistible."
+        17 => return "Glows at night: draws fish."
+        21 => return "Still-water biters bite sooner."
+        25 => return "Lights the water around\nyour bobber at night."
+        else => return ""
+    }
+}
+
+const UP_MAX: [7]u8 = [2, 2, 2, 2, 1, 1, 1]
+const UP_PRICE: [7][3]s16 = [[0, 120, 380], [0, 140, 420], [0, 100, 320], [0, 80, 400], [0, 180, 0], [0, 140, 0],
+                             [0, 220, 0]]
+
+// the lures you can tie on
+const LURE_SPOON = 0
+const LURE_GLOW = 1
+const LURE_FLOAT = 2
+
+fn lure_name(l: s32) -> *u8 {
+    match l {
+        0 => return "Spoon"
+        1 => return "Glow Lure"
+        2 => return "Still Float"
+        else => return ""
+    }
+}

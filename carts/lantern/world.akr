@@ -1,0 +1,1010 @@
+// Rendering the lake. A frame is drawn in three passes, each flushed through the ordering
+// table before the next starts, so the layers stack without depth sorting between them:
+//
+//   A  the sky, then everything mirrored under the water line (the reflection): hills,
+//      shore, docks, houses, reeds, sun and moon, clouds, stars, lantern glows
+//   B  the water surface (semi-transparent, half background and half water), then what lies
+//      in or on it: fish shadows (subtractive), ripple rings, the moon's glittering path and
+//      lantern light on the water (additive)
+//   C  the world above the water: shore, docks, village, reeds, lily pads, the angler, the
+//      bobber, rod and line, lantern glows, fireflies, festival lanterns
+//
+// Lighting by time of day is done with palettes: every world material has four keyframe
+// palettes (night, dawn, day, dusk) and two are blended into the live palettes every few
+// frames. The reflection uses darker, bluer copies of the same palettes.
+
+import "assets.akr"
+
+const SLOT_WORLD = 0
+const SLOT_FISH = 1
+const SLOT_FONT = 2
+const SLOT_WATER = 3
+
+const F_GOURAUD = 1
+const F_TEX = 2
+const F_QUAD = 4
+const F_SEMI = 8
+const F_DOUBLE = 16
+
+const KEY_NIGHT = 0
+const KEY_DAWN = 1
+const KEY_DAY = 2
+const KEY_DUSK = 3
+
+// ---- camera
+var cam_pos: vec3
+var cam_yaw: fixed
+var cam_pitch: fixed = -0.14
+var cam_s: fixed
+var cam_c: fixed
+
+// ---- live time-of-day values (set by tod_update)
+var tod_a: s32           // the two keyframes and the blend between them (0..256)
+var tod_b: s32
+var tod_t: s32
+var sky_top: u32
+var sky_mid: u32
+var sky_hor: u32
+var sky_warm: u32
+var light: fixed         // 0 night .. 1 day
+var night: fixed         // 1 - light (smoothed nightness)
+var sun_az: fixed
+var sun_el: fixed
+var moon_az: fixed
+var moon_el: fixed
+var water_rot: s32       // palette rotation of the water shimmer
+var pal_tick: s32
+var dest_src: [24]u8     // the source material of each live palette
+var tod_force: s32       // tests and scenes: -1 = follow the clock, else minutes
+
+const SKY_TOP: [4]u32 = [0x2A120A, 0x6E4A3C, 0xC08848, 0x5A2C30]
+const SKY_MID: [4]u32 = [0x40200F, 0x9070A0, 0xDCAA70, 0x7C4C8C]
+const SKY_HOR: [4]u32 = [0x603418, 0xB0A0E8, 0xF0D0A0, 0x9070D0]
+const SKY_WARM: [4]u32 = [0x603418, 0x80B0FF, 0xF0D8B0, 0x4C8CFF]
+
+// ---- colour helpers (colours are 0xBBGGRR words)
+
+fn mix_col(a: u32, b: u32, k: s32) -> u32 {
+    let kk = clamp(k, 0, 256) as u32
+    let rb = ((a & 0xFF00FF) * (256 - kk) + (b & 0xFF00FF) * kk) >> 8
+    let gg = ((a & 0x00FF00) * (256 - kk) + (b & 0x00FF00) * kk) >> 8
+    return (rb & 0xFF00FF) | (gg & 0x00FF00)
+}
+
+fn scale_col(c: u32, k: s32) -> u32 {
+    let kk = clamp(k, 0, 256) as u32
+    return ((((c & 0xFF00FF) * kk) >> 8) & 0xFF00FF) | ((((c & 0x00FF00) * kk) >> 8) & 0x00FF00)
+}
+
+fn key_col(tbl: *u32) -> u32 { return mix_col(tbl[tod_a], tbl[tod_b], tod_t) }
+
+// ---- time of day
+
+const TOD_MIN: [9]s16 = [0, 300, 370, 450, 1050, 1110, 1170, 1230, 1440]
+const TOD_KEY: [9]u8 = [0, 0, 1, 2, 2, 3, 3, 0, 0]
+
+fn tod_update() {
+    var m = minutes()
+    if tod_force >= 0 { m = tod_force }
+    var k = 0
+    while k < 7 && m >= TOD_MIN[k + 1] as s32 { k += 1 }
+    let m0 = TOD_MIN[k] as s32
+    let m1 = TOD_MIN[k + 1] as s32
+    tod_a = TOD_KEY[k] as s32
+    tod_b = TOD_KEY[k + 1] as s32
+    tod_t = (m - m0) * 256 / max(m1 - m0, 1)
+    sky_top = key_col(&SKY_TOP[0])
+    sky_mid = key_col(&SKY_MID[0])
+    sky_hor = key_col(&SKY_HOR[0])
+    sky_warm = key_col(&SKY_WARM[0])
+    // night: 1 at night, 0 by day, smooth at dusk and dawn
+    var n = 0.0
+    if m < 300 || m >= 1230 { n = 1.0 }
+    else if m < 450 { n = 1.0 - fixed(m - 300) / 150 }
+    else if m >= 1080 { n = fixed(m - 1080) / 150 }
+    night = n
+    light = 1.0 - n
+    // the sun crosses the northern sky from east to west between 6:00 and 18:30
+    let ts = fixed(m - 350) / 790
+    sun_az = 1.3 - ts * 3.1
+    sun_el = sin(ts * 3.14159) * 0.45 - 0.05
+    // the moon: 19:00 - 5:00
+    let tm = fixed((m - 1140 + 1440) % 1440) / 600
+    moon_az = 1.0 - tm * 2.0
+    moon_el = sin(tm * 3.14159) * 0.30 - 0.04
+    if tm > 1.0 { moon_el = -1.0 }
+}
+
+// Blends the keyframe palettes into palette memory: every live world palette and its
+// reflection. One palette per frame (all of them when `all`), round robin; the water
+// palette is rotated every few frames for the shimmer.
+var pal_rr: s32
+var water_base: [16]u16
+
+fn palettes_update(all: bool) {
+    pal_tick += 1
+    if all {
+        for d in 0..NDEST { palette_blend(d) }
+    } else {
+        palette_blend(pal_rr)
+        pal_rr = (pal_rr + 1) % NDEST
+    }
+    if all || pal_tick % 5 == 0 {
+        water_rot = (water_rot + 1) % 15
+        let dst = VRAM_PALETTE as *u16
+        let o = PAL_WATER * 16
+        for i in 1..16 { dst[o + i] = water_base[(i - 1 + water_rot) % 15 + 1] }
+    }
+}
+
+fn palette_blend(d: s32) {
+    let ka = tod_a * NSRC * 16
+    let kb = tod_b * NSRC * 16
+    let t = tod_t
+    let refl = 4 * NSRC * 16
+    let dst = VRAM_PALETTE as *u16
+    let src = dest_src[d] as s32 * 16
+    if d == PAL_WATER {
+        for i in 1..16 { water_base[i] = lerp15(KEYPAL[ka + src + i] as s32, KEYPAL[kb + src + i] as s32, t) as u16 }
+        return
+    }
+    for i in 1..16 {
+        let o = src + i
+        dst[d * 16 + i] = lerp15(KEYPAL[ka + o] as s32, KEYPAL[kb + o] as s32, t) as u16
+        dst[(d + REFL_OFF) * 16 + i] = lerp15(KEYPAL[refl + ka + o] as s32, KEYPAL[refl + kb + o] as s32, t) as u16
+    }
+}
+
+// Blends two 15-bit colours: t = 0..256.
+fn lerp15(a: s32, b: s32, t: s32) -> s32 {
+    if a == b { return a }
+    let r = (a & 31) + (((b & 31) - (a & 31)) * t >> 8)
+    let gg = ((a >> 5) & 31) + ((((b >> 5) & 31) - ((a >> 5) & 31)) * t >> 8)
+    let bb = ((a >> 10) & 31) + ((((b >> 10) & 31) - ((a >> 10) & 31)) * t >> 8)
+    return r | (gg << 5) | (bb << 10)
+}
+
+// Which houses have lit windows: called when the village grows.
+fn village_palettes() {
+    for d in 0..NDEST { dest_src[d] = DEST_SRC[d] }
+    let lit = 2 + g.village
+    for i in 0..NHOUSE {
+        let timber = HOUSE_TIMBER[i] != 0
+        var on = i < lit
+        if i == 7 { on = g.village >= 4 }
+        if timber {
+            if on { dest_src[PAL_HOUSE0 + i] = SRC_TIMBER_LIT as u8 } else { dest_src[PAL_HOUSE0 + i] = SRC_TIMBER_DARK as u8 }
+        } else {
+            if on { dest_src[PAL_HOUSE0 + i] = SRC_WALL_LIT as u8 } else { dest_src[PAL_HOUSE0 + i] = SRC_WALL_DARK as u8 }
+        }
+    }
+}
+
+// ---- a batch of quads in RAM, drawn with one mesh() call
+
+struct Batch { hdr: Mesh, v: [128]vec4, f: [32]Face }
+var bt: Batch
+var bt_n: s32
+var bt_flags: u8
+var bt_blend: u8
+var bt_tex: u8
+var bt_pal: u8
+var bt_uv: [4]u16
+
+fn batch_init() {
+    bt.hdr.verts = 16
+    bt.hdr.faces = 16 + 128 * 16
+    for i in 0..32 {
+        for k in 0..4 { bt.f[i].idx[k] = (i * 4 + k) as u16 }
+    }
+}
+
+fn bt_flush() {
+    if bt_n == 0 { return }
+    bt.hdr.nverts = (bt_n * 4) as u16
+    bt.hdr.nfaces = bt_n as u16
+    mesh(&bt.hdr)
+    bt_n = 0
+}
+
+// The look of the following quads: flags (F_*), blend mode, texture slot, palette, and a
+// texture rectangle (u0, v0) - (u1, v1).
+fn bt_look(flags: u32, blend: u32, slot: u32, pal: u32, u0: s32, v0: s32, u1: s32, v1: s32) {
+    bt_flags = (flags | F_QUAD | F_DOUBLE | F_GOURAUD) as u8
+    bt_blend = blend as u8
+    bt_tex = (slot | 0x10) as u8
+    bt_pal = pal as u8
+    bt_uv[0] = (u0 | (v1 << 8)) as u16
+    bt_uv[1] = (u1 | (v1 << 8)) as u16
+    bt_uv[2] = (u0 | (v0 << 8)) as u16
+    bt_uv[3] = (u1 | (v0 << 8)) as u16
+}
+
+fn glow_look(mode: u32) { bt_look(F_TEX | F_SEMI, mode, SLOT_WORLD, PAL_GREY, UV_HALO_U, UV_HALO_V, UV_HALO_U + 63, UV_HALO_V + 63) }
+fn dot_look(mode: u32) { bt_look(F_TEX | F_SEMI, mode, SLOT_WORLD, PAL_GREY, UV_DOT_U, UV_DOT_V, UV_DOT_U + 15, UV_DOT_V + 15) }
+fn ring_look(mode: u32) { bt_look(F_TEX | F_SEMI, mode, SLOT_WORLD, PAL_GREY, UV_RING_U, UV_RING_V, UV_RING_U + 63, UV_RING_V + 63) }
+fn spark_look(mode: u32) { bt_look(F_TEX | F_SEMI, mode, SLOT_WORLD, PAL_GREY, UV_SPARK_U, UV_SPARK_V, UV_SPARK_U + 15, UV_SPARK_V + 15) }
+
+fn bt_quad(p0: vec4, p1: vec4, p2: vec4, p3: vec4, cb: u32, ct: u32) {
+    if bt_n >= 32 { bt_flush() }
+    let i = bt_n
+    let vb = i * 4
+    bt.v[vb] = p0
+    bt.v[vb + 1] = p1
+    bt.v[vb + 2] = p2
+    bt.v[vb + 3] = p3
+    let f = &bt.f[i]
+    f.flags = bt_flags
+    f.blend = bt_blend
+    f.tex = bt_tex
+    f.palette = bt_pal
+    f.col[0] = cb
+    f.col[1] = cb
+    f.col[2] = ct
+    f.col[3] = ct
+    for k in 0..4 { f.uv[k] = bt_uv[k] }
+    bt_n = i + 1
+}
+
+// A camera-facing quad of half-size hw x hh centred at pos.
+fn billboard(pos: vec3, hw: fixed, hh: fixed, cb: u32, ct: u32) {
+    let p = vec4(pos, 1.0)
+    let r = vec4(cam_c * hw, 0.0, -cam_s * hw, 0.0)
+    let u = vec4(0.0, hh, 0.0, 0.0)
+    bt_quad(p - r - u, p + r - u, p - r + u, p + r + u, cb, ct)
+}
+
+// A horizontal square of half-size r centred at pos, turned by angle a.
+fn flat_quad(pos: vec3, rx: fixed, rz: fixed, a: fixed, c: u32) {
+    let s = sin(a)
+    let co = cos(a)
+    let ax = vec4(co * rx, 0.0, -s * rx, 0.0)
+    let az = vec4(s * rz, 0.0, co * rz, 0.0)
+    let p = vec4(pos, 1.0)
+    bt_quad(p - ax - az, p + ax - az, p - ax + az, p + ax + az, c, c)
+}
+
+// ---- screen-space sprites: project the centre, size by distance, one packet. Much cheaper
+// than a mesh billboard; used for glows, dots, sparkles and things lying flat on the water.
+
+var ss_info: u32
+var ss_u0: s32
+var ss_v0: s32
+var ss_u1: s32
+var ss_v1: s32
+const SS_HALO = 0
+const SS_DOT = 1
+const SS_SPARK = 2
+const SS_RING = 3
+const SS_GLINT = 4
+const SS_PAPER = 5
+
+fn ss_look(kind: s32) {
+    var pal = PAL_GREY
+    match kind {
+        0 => { ss_u0 = UV_HALO_U; ss_v0 = UV_HALO_V; ss_u1 = UV_HALO_U + 63; ss_v1 = UV_HALO_V + 63 }
+        1 => { ss_u0 = UV_DOT_U; ss_v0 = UV_DOT_V; ss_u1 = UV_DOT_U + 15; ss_v1 = UV_DOT_V + 15 }
+        2 => { ss_u0 = UV_SPARK_U; ss_v0 = UV_SPARK_V; ss_u1 = UV_SPARK_U + 15; ss_v1 = UV_SPARK_V + 15 }
+        3 => { ss_u0 = UV_RING_U; ss_v0 = UV_RING_V; ss_u1 = UV_RING_U + 63; ss_v1 = UV_RING_V + 63 }
+        4 => { ss_u0 = UV_GLINT_U; ss_v0 = UV_GLINT_V; ss_u1 = UV_GLINT_U + 15; ss_v1 = UV_GLINT_V + 7 }
+        else => {
+            ss_u0 = UV_PAPER_U
+            ss_v0 = UV_PAPER_V
+            ss_u1 = UV_PAPER_U + 15
+            ss_v1 = UV_PAPER_V + 23
+            pal = PAL_PAPER
+        }
+    }
+    ss_info = (SLOT_WORLD << 16) | (1 << 20) | ((pal as u32) << 24)
+}
+
+// A sprite of half-size rw x rh (world units) centred on p. mode: blend mode, or -1 opaque.
+// bias: added to the ordering-table bucket (-1024: in front of everything).
+fn ssprite(p: vec3, rw: fixed, rh: fixed, c: u32, mode: s32, bias: s32) {
+    if !project(p) { return }
+    let k = (__fx * 160) * proj_iw
+    let hw = clamp((rw * k) as s32, 1, 56)
+    let hh = clamp((rh * k) as s32, 1, 56)
+    let x = proj_x
+    let y = proj_y
+    if x + hw < 0 || x - hw > 320 || y + hh < 0 || y - hh > 240 { return }
+    let q = packet_alloc(10)
+    if q == null { return }
+    var t: u32 = 0x26
+    var col = c
+    if mode >= 0 {
+        t = 0x2E
+        col = c | ((mode as u32) << 24)
+    }
+    q[1] = col
+    q[2] = spos(x - hw, y - hh)
+    q[3] = (ss_u0 as u32) | ((ss_v0 as u32) << 8) | ss_info
+    q[4] = spos(x + hw, y - hh)
+    q[5] = (ss_u1 as u32) | ((ss_v0 as u32) << 8)
+    q[6] = spos(x - hw, y + hh)
+    q[7] = (ss_u0 as u32) | ((ss_v1 as u32) << 8)
+    q[8] = spos(x + hw, y + hh)
+    q[9] = (ss_u1 as u32) | ((ss_v1 as u32) << 8)
+    ot_insert(q, t, depth_bucket(proj_w) + bias)
+}
+
+// Something lying flat on the water: squashed by the viewing angle.
+fn sflat(p: vec3, rw: fixed, rl: fixed, c: u32, mode: s32, bias: s32) {
+    let dx = p.x - cam_pos.x
+    let dz = p.z - cam_pos.z
+    let d = abs(dx) + abs(dz) * 0.8 + 0.5
+    let aspect = clamp((cam_pos.y - p.y) / d, 0.06, 1.0)
+    ssprite(p, rw, rl * aspect, c, mode, bias)
+}
+
+// ---- passes
+
+fn flush_pass() {
+    bt_flush()
+    GPU_DRAW = &__ot[OT_SIZE - 1] as u32
+    __ot_reset(&__ot[0])
+}
+
+fn spos(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
+
+fn sky_band(y0: s32, y1: s32, l0: u32, r0: u32, l1: u32, r1: u32) {
+    let q = packet_alloc(9)
+    if q == null { return }
+    q[1] = l0
+    q[2] = spos(-1, y0)
+    q[3] = r0
+    q[4] = spos(321, y0)
+    q[5] = l1
+    q[6] = spos(-1, y1)
+    q[7] = r1
+    q[8] = spos(321, y1)
+    ot_insert(q, 0x25, 1023)
+}
+
+// How much the view direction yaw faces the low sun (warm sky): 0..256.
+fn warmth(yaw: fixed) -> s32 {
+    var w = (cos(yaw - sun_az) + 1.0) * 0.5
+    w = w * w
+    // only when the sun is low
+    let low = clamp(1.0 - abs(sun_el - 0.05) * 4, 0.0, 1.0)
+    return (w * low * 256) as s32
+}
+
+// The horizon's screen row for the current pitch.
+fn horizon_y() -> s32 { return 120 - ((tan(-cam_pitch) * 207.8) as s32) }
+
+// The sky gradient above the horizon and its mirror image below it. Inserted last into the
+// farthest bucket, so it draws first.
+fn draw_sky() {
+    let yh = horizon_y()
+    let wl = warmth(cam_yaw - 0.6)
+    let wr = warmth(cam_yaw + 0.6)
+    let hl = mix_col(sky_hor, sky_warm, wl)
+    let hr = mix_col(sky_hor, sky_warm, wr)
+    let ml = mix_col(sky_mid, sky_warm, wl / 3)
+    let mr = mix_col(sky_mid, sky_warm, wr / 3)
+    sky_band(yh - 60, yh, ml, mr, hl, hr)
+    sky_band(yh - 300, yh - 60, sky_top, sky_top, ml, mr)
+    // reflection: a little darker
+    let k = 200
+    sky_band(yh, yh + 60, scale_col(hl, k), scale_col(hr, k), scale_col(ml, k), scale_col(mr, k))
+    sky_band(yh + 60, yh + 300, scale_col(ml, k), scale_col(mr, k), scale_col(sky_top, k), scale_col(sky_top, k))
+}
+
+fn sky_point(az: fixed, el: fixed, dist: fixed) -> vec3 {
+    let ce = cos(el) * dist
+    return vec3(cam_pos.x + sin(az) * ce, cam_pos.y + sin(el) * dist, cam_pos.z + cos(az) * ce)
+}
+
+// Mirror a point in the water plane.
+fn mirror(p: vec3) -> vec3 { return vec3(p.x, -p.y, p.z) }
+
+// Is a sphere possibly in view (horizontal test)?
+fn in_view(c: vec3, r: fixed) -> bool {
+    let dx = c.x - cam_pos.x
+    let dz = c.z - cam_pos.z
+    let z = dx * cam_s + dz * cam_c
+    if z < -r { return false }
+    let x = dx * cam_c - dz * cam_s
+    return abs(x) < z * 0.82 + r * 1.3
+}
+
+// Stars: fixed directions, shown at night.
+const NSTARS = 28
+var star_az: [28]fixed
+var star_el: [28]fixed
+
+fn stars_init() {
+    seed(1234)
+    for i in 0..NSTARS {
+        star_az[i] = rndf() * 6.28318 - 3.14159
+        star_el[i] = 0.06 + rndf() * rndf() * 0.6
+    }
+}
+
+fn draw_sky_objects(refl: bool) {
+    // stars: projected directly to the screen (cheaper than billboards)
+    if night > 0.3 {
+        let k = ((night - 0.3) * 360) as s32
+        for i in 0..NSTARS {
+            if refl && i % 2 == 1 { continue }
+            let az = star_az[i]
+            if abs(angle_diff(az, cam_yaw)) > 0.75 { continue }
+            var p = sky_point(az, star_el[i], 180.0)
+            if refl { p = mirror_about_cam(p) }
+            if !project(p) { continue }
+            let tw = 140 + ((i * 37 + tick_count / 6) & 63)
+            var c = scale_col(rgb(220, 230, 255), k * tw / 256)
+            if refl { c = scale_col(c, 150) }
+            var sz = 1
+            if i % 5 == 0 { sz = 2 }
+            star_quad(proj_x, proj_y, sz, c)
+        }
+    }
+    // the sun: a disc inside a wide warm glow
+    if sun_el > -0.12 {
+        let sp0 = sky_point(sun_az, sun_el, 160.0)
+        var sp = sp0
+        if refl { sp = mirror_about_cam(sp0) }
+        let low = clamp(1.0 - sun_el * 2, 0.0, 1.0)
+        glow_look(1)
+        let core = mix_col(rgb(255, 250, 220), rgb(255, 170, 90), (low * 256) as s32)
+        billboard(sp, 4.5, 4.5, core, core)
+        let halo = mix_col(rgb(120, 110, 70), rgb(170, 80, 40), (low * 256) as s32)
+        billboard(sp, 22.0, 22.0, halo, halo)
+        if !refl {
+            glow_look(3)
+            billboard(sp, 3.0, 3.0, rgb(255, 255, 255), rgb(255, 255, 255))
+        }
+    }
+    // the moon: a textured disc with a cool halo
+    if moon_el > -0.1 {
+        var mp = sky_point(moon_az, moon_el, 150.0)
+        if refl { mp = mirror_about_cam(mp) }
+        bt_look(F_TEX | F_SEMI, 1, SLOT_WORLD, PAL_MOON, UV_MOON_U, UV_MOON_V, UV_MOON_U + 31, UV_MOON_V + 31)
+        let mc = scale_col(rgb(150, 150, 150), (night * 256) as s32 + 60)
+        billboard(mp, 3.4, 3.4, mc, mc)
+        glow_look(3)
+        let hc = scale_col(rgb(110, 130, 190), (night * 256) as s32)
+        billboard(mp, 14.0, 14.0, hc, hc)
+    }
+}
+
+fn star_quad(x: s32, y: s32, sz: s32, c: u32) {
+    if x < 0 || x > 320 || y < 0 || y > 240 { return }
+    let q = packet_alloc(6)
+    if q == null { return }
+    q[1] = c | (1 << 24)
+    q[2] = spos(x, y)
+    q[3] = spos(x + sz, y)
+    q[4] = spos(x, y + sz)
+    q[5] = spos(x + sz, y + sz)
+    ot_insert(q, 0x2C, 1022)
+}
+
+// A sky point mirrored in the water plane as seen from the camera (for far objects whose
+// mirror image must stay at the same distance).
+fn mirror_about_cam(p: vec3) -> vec3 { return vec3(p.x, -p.y, p.z) }
+
+fn angle_diff(a: fixed, b: fixed) -> fixed {
+    var d = a - b
+    while d > 3.14159 { d -= 6.28318 }
+    while d < -3.14159 { d += 6.28318 }
+    return d
+}
+
+// Clouds: drifting tinted billboards high in the sky.
+const NCLOUD = 7
+const CLOUD_AZ: [7]fixed = [-1.2, -0.5, 0.15, 0.7, 1.4, 2.4, -2.5]
+const CLOUD_EL: [7]fixed = [0.16, 0.24, 0.12, 0.2, 0.14, 0.18, 0.22]
+
+fn draw_clouds(refl: bool) {
+    if night > 0.75 { return }
+    let drift = fixed(tick_count % 36000) / 6000
+    bt_look(F_TEX, 0, SLOT_WORLD, PAL_GREY, UV_CLOUD_U, UV_CLOUD_V, UV_CLOUD_U + 63, UV_CLOUD_V + 31)
+    // cloud colour: lit from the sky, warm at dusk, dark at night
+    var ct = mix_col(sky_hor, rgb(255, 255, 255), (light * 180) as s32)
+    ct = scale_col(ct, 150)
+    var cb = mix_col(ct, sky_mid, 100)
+    if refl {
+        ct = scale_col(ct, 190)
+        cb = scale_col(cb, 190)
+    }
+    for i in 0..NCLOUD {
+        let az = CLOUD_AZ[i] + drift * 0.1
+        if abs(angle_diff(az, cam_yaw)) > 1.2 { continue }
+        var p = sky_point(az, CLOUD_EL[i], 170.0)
+        if refl { p = mirror_about_cam(p) }
+        let w = 18.0 + fixed(i % 3) * 5
+        if refl {
+            billboard(p, w, w * 0.45, ct, cb)
+        } else {
+            billboard(p, w, w * 0.45, cb, ct)
+        }
+    }
+}
+
+// ---- scenery
+
+fn draw_scenery(refl: bool) {
+    // far hills
+    if refl { mesh(HILLS_R) } else { mesh(HILLS) }
+    // the shore, in chunks: the full version near the camera, a coarse one further away
+    for i in 0..NCHUNK {
+        let c = CHUNK_C[i]
+        if in_view(c, CHUNK_R[i]) {
+            let dx = c.x - cam_pos.x
+            let dz = c.z - cam_pos.z
+            let far = dx * dx + dz * dz > (CHUNK_R[i] + 8.0) * (CHUNK_R[i] + 8.0)
+            mesh(terr_mesh(i, refl, far))
+        }
+    }
+    // docks
+    for d in 0..NDOCK {
+        if d == g.dock && !refl && d != 2 {
+            // the deck right under the camera: split its planks so they do not warp (not on
+            // the high bridge, whose deck is mostly out of view, to save cycles)
+            subdivide(1)
+            mesh(dock_mesh(d, false, false))
+            subdivide(0)
+        } else if d == g.dock || (!refl && in_view(DOCK_STAND[d], 9.0)) {
+            mesh(dock_mesh(d, refl, d != g.dock))
+        }
+    }
+    // houses (the new house and the festival hall appear as the village grows)
+    for i in 0..NHOUSE {
+        if i == 6 && g.village < 2 { continue }
+        if i == 7 && g.village < 4 { continue }
+        if in_view(HOUSE_POS[i], 5.0) {
+            let dx = HOUSE_POS[i].x - cam_pos.x
+            let dz = HOUSE_POS[i].z - cam_pos.z
+            let d2 = dx * dx + dz * dz
+            if refl && d2 > 900.0 { continue }
+            mesh(house_mesh(i, refl, d2 > 400.0))
+        }
+    }
+    // reeds (only the nearby ones are reflected)
+    for i in 0..4 {
+        if !in_view(REED_C[i], REED_R[i]) { continue }
+        if i != g.dock {
+            if refl { continue }
+            let dx = REED_C[i].x - cam_pos.x
+            let dz = REED_C[i].z - cam_pos.z
+            if dx * dx + dz * dz > 900.0 { continue }
+        }
+        mesh(reed_mesh(i, refl))
+    }
+}
+
+// Lantern glows: posts on the docks (the pier lights more of them as the village grows),
+// the festival hall, and the garlands strung between houses.
+fn lantern_lit(i: s32) -> bool {
+    let d = LANTERN_DOCK[i] as s32
+    if d == 0 {
+        // pier lanterns: count how many pier lanterns come before this one
+        var k = 0
+        for j in 0..i { if LANTERN_DOCK[j] == 0 { k += 1 } }
+        return k < 2 + g.village * 2
+    }
+    if d == 9 { return g.village >= 4 }
+    return true
+}
+
+var lantern_on: [24]u8
+
+fn lanterns_prepare() {
+    for i in 0..NLANTERN { lantern_on[i] = lantern_lit(i) as u8 }
+}
+
+fn draw_lantern_glows(refl: bool) {
+    if night < 0.15 { return }
+    let k = (night * 256) as s32
+    let flick = (tick_count / 3) & 7
+    ss_look(SS_HALO)
+    for i in 0..NLANTERN {
+        if lantern_on[i] == 0 { continue }
+        var p = LANTERN_POS[i]
+        if !in_view(p, 3.0) { continue }
+        if refl { p = mirror(p) }
+        let f = 220 + ((flick + i * 3) & 7) * 5
+        let c = scale_col(rgb(200, 130, 60), k * f / 256)
+        ssprite(p, 1.1, 1.1, c, 1, -3)
+    }
+    // garlands
+    if g.village > 0 {
+        ss_look(SS_DOT)
+        for i in 0..NGARLAND {
+            if GARLAND_LVL[i] as s32 > g.village { continue }
+            var p = GARLAND_POS[i]
+            if refl {
+                if i % 2 == 1 { continue }
+                p = mirror(p)
+            }
+            var c = rgb(255, 120, 60)
+            if i % 3 == 1 { c = rgb(255, 200, 80) }
+            if i % 3 == 2 { c = rgb(120, 160, 255) }
+            ssprite(p, 0.22, 0.22, scale_col(c, k), 1, -3)
+        }
+    }
+}
+
+// Paper garland lanterns by day (small red quads), with no glow.
+fn draw_garlands_day() {
+    if g.village == 0 || night > 0.6 { return }
+    ss_look(SS_PAPER)
+    let c = rgb(128, 128, 128)
+    for i in 0..NGARLAND {
+        if GARLAND_LVL[i] as s32 > g.village { continue }
+        ssprite(GARLAND_POS[i], 0.12, 0.17, c, -1, -2)
+    }
+}
+
+// Lantern light on the water under the lanterns (pass B).
+fn draw_lantern_pools() {
+    if night < 0.2 { return }
+    let k = (night * 200) as s32
+    ss_look(SS_HALO)
+    for i in 0..NLANTERN {
+        if lantern_on[i] == 0 { continue }
+        let p = LANTERN_POS[i]
+        if !in_view(p, 4.0) { continue }
+        sflat(vec3(p.x, 0.02, p.z), 2.2, 2.2, scale_col(rgb(255, 170, 80), k), 3, -1024)
+    }
+}
+
+// ---- the water: a fan of quads around the camera, rebuilt every frame
+
+const FAN_COLS = 8
+const FAN_RINGS = 9
+const FAN_W = 9                 // vertices per ring
+const FAN_NV = 90               // (FAN_COLS + 1) * (FAN_RINGS + 1)
+const FAN_DA: fixed = 0.2
+const FAN_R: [10]fixed = [1.8, 3.0, 4.6, 7.0, 10.5, 16.0, 24.0, 36.0, 52.0, 76.0]
+struct Fan { hdr: Mesh, v: [90]vec4, f: [72]Face }
+var fan: Fan
+var fan_u: [90]s32
+var fan_v: [90]s32
+var fan_c: [90]u32
+var wave_tbl: [64]s32
+var water_tint: s32 = 128
+
+fn fan_init() {
+    fan.hdr.nverts = FAN_NV as u16
+    fan.hdr.nfaces = (FAN_COLS * FAN_RINGS) as u16
+    fan.hdr.verts = 16
+    fan.hdr.faces = 16 + FAN_NV * 16
+    for j in 0..FAN_RINGS {
+        for i in 0..FAN_COLS {
+            let f = &fan.f[j * FAN_COLS + i]
+            let a = j * FAN_W + i
+            f.idx[0] = a as u16
+            f.idx[1] = (a + 1) as u16
+            f.idx[2] = (a + FAN_W) as u16
+            f.idx[3] = (a + FAN_W + 1) as u16
+            f.flags = (F_GOURAUD | F_TEX | F_QUAD | F_SEMI | F_DOUBLE) as u8
+            f.blend = 0
+            f.tex = (SLOT_WATER | 0x10) as u8
+            f.palette = PAL_WATER as u8
+        }
+    }
+    for i in 0..64 { wave_tbl[i] = (sin(fixed(i) * 0.09817) * 14) as s32 }
+    fan_shades()
+}
+
+var fan_ia: [90]s32
+var fan_ib: [90]s32
+var fan_shade: [640]u32     // 10 rings x 64: vertex colour by wave height
+var fan_last: vec4
+var fan_valid: bool
+
+fn fan_shades() {
+    for j in 0..FAN_RINGS + 1 {
+        let amp = max(12 - j, 3)
+        let base = water_tint + 6 - j * 3
+        for w in 0..64 {
+            let sh = clamp(base + (w - 32) * amp / 14, 40, 250)
+            fan_shade[j * 64 + w] = rgb(sh, sh, min(sh + 8, 255))
+        }
+    }
+}
+
+// The fan's vertices and texture coordinates: only when the camera moves.
+fn fan_positions() {
+    let cx = cam_pos.x
+    let cz = cam_pos.z
+    var cs: [9]fixed
+    var cc: [9]fixed
+    for i in 0..FAN_W {
+        let a = cam_yaw + fixed(i - FAN_COLS / 2) * FAN_DA
+        cs[i] = sin(a)
+        cc[i] = cos(a)
+    }
+    var k = 0
+    for j in 0..FAN_RINGS + 1 {
+        let r = FAN_R[j]
+        for i in 0..FAN_W {
+            let x = cx + cs[i] * r
+            let z = cz + cc[i] * r
+            fan.v[k] = vec4(x, 0.0, z, 1.0)
+            let bx = bits(x)
+            let bz = bits(z)
+            fan_u[k] = bx >> 13                 // 8 texels per unit
+            fan_v[k] = bz >> 13
+            fan_ia[k] = (bx * 3) >> 16
+            fan_ib[k] = (bz >> 15) + 21
+            k += 1
+        }
+    }
+    var fi = 0
+    var a = 0
+    for j in 0..FAN_RINGS {
+        for i in 0..FAN_COLS {
+            let f = &fan.f[fi]
+            let u0 = fan_u[a]
+            let u1 = fan_u[a + 1]
+            let u2 = fan_u[a + FAN_W]
+            let u3 = fan_u[a + FAN_W + 1]
+            let v0 = fan_v[a]
+            let v1 = fan_v[a + 1]
+            let v2 = fan_v[a + FAN_W]
+            let v3 = fan_v[a + FAN_W + 1]
+            let bu = min(min(u0, u1), min(u2, u3)) & ~63
+            let bv = min(min(v0, v1), min(v2, v3)) & ~63
+            f.uv[0] = (min(u0 - bu, 255) | (min(v0 - bv, 255) << 8)) as u16
+            f.uv[1] = (min(u1 - bu, 255) | (min(v1 - bv, 255) << 8)) as u16
+            f.uv[2] = (min(u2 - bu, 255) | (min(v2 - bv, 255) << 8)) as u16
+            f.uv[3] = (min(u3 - bu, 255) | (min(v3 - bv, 255) << 8)) as u16
+            fi += 1
+            a += 1
+        }
+        a += 1
+    }
+}
+
+fn fan_build() {
+    let key = vec4(cam_pos.x, cam_pos.z, cam_yaw, 0.0)
+    if !fan_valid || key.x != fan_last.x || key.y != fan_last.y || key.z != fan_last.z {
+        fan_positions()
+        fan_last = key
+        fan_valid = true
+    }
+    // the waves: vertex colours from two travelling ripples
+    let t3 = tick_count / 3
+    let t4 = tick_count / 4
+    var k = 0
+    for j in 0..FAN_RINGS + 1 {
+        let sb = j * 64 + 32
+        for i in 0..FAN_W {
+            let w = wave_tbl[(fan_ia[k] + t3) & 63] + wave_tbl[(fan_ib[k] - t4) & 63]
+            fan_c[k] = fan_shade[sb + w]
+            k += 1
+        }
+    }
+    var a = 0
+    var fi = 0
+    for j in 0..FAN_RINGS {
+        for i in 0..FAN_COLS {
+            let f = &fan.f[fi]
+            f.col[0] = fan_c[a]
+            f.col[1] = fan_c[a + 1]
+            f.col[2] = fan_c[a + FAN_W]
+            f.col[3] = fan_c[a + FAN_W + 1]
+            a += 1
+            fi += 1
+        }
+        a += 1
+    }
+}
+
+// ---- ripples and splashes
+
+const NRIPPLE = 16
+var rip_pos: [16]vec3
+var rip_age: [16]s32
+var rip_life: [16]s32
+var rip_size: [16]fixed
+var rip_next: s32
+
+fn ripple(p: vec3, size: fixed, life: s32) {
+    let i = rip_next
+    rip_next = (rip_next + 1) % NRIPPLE
+    rip_pos[i] = vec3(p.x, 0.03, p.z)
+    rip_age[i] = 1
+    rip_life[i] = life
+    rip_size[i] = size
+}
+
+fn ripples_update() {
+    for i in 0..NRIPPLE {
+        if rip_age[i] > 0 {
+            rip_age[i] += 1
+            if rip_age[i] > rip_life[i] { rip_age[i] = 0 }
+        }
+    }
+}
+
+fn draw_ripples() {
+    ss_look(SS_RING)
+    let base = mix_col(rgb(70, 80, 90), rgb(110, 120, 120), (light * 256) as s32)
+    for i in 0..NRIPPLE {
+        if rip_age[i] == 0 { continue }
+        let t = fixed(rip_age[i]) / rip_life[i]
+        let r = rip_size[i] * (0.25 + t)
+        let c = scale_col(base, ((1.0 - t) * 256) as s32)
+        sflat(rip_pos[i], r, r, c, 1, -1024)
+    }
+}
+
+// Splash particles: short-lived sparkles thrown up from the water.
+const NSPLASH = 24
+var sp_pos: [24]vec3
+var sp_vel: [24]vec3
+var sp_age: [24]s32
+var sp_next: s32
+
+fn splash(p: vec3, n: s32, power: fixed) {
+    for k in 0..n {
+        let i = sp_next
+        sp_next = (sp_next + 1) % NSPLASH
+        let a = rndf() * 6.28
+        let s = (0.02 + rndf() * 0.04) * power
+        sp_pos[i] = vec3(p.x, 0.05, p.z)
+        sp_vel[i] = vec3(cos(a) * s, (0.08 + rndf() * 0.08) * power, sin(a) * s)
+        sp_age[i] = 1
+    }
+}
+
+fn splashes_update() {
+    for i in 0..NSPLASH {
+        if sp_age[i] == 0 { continue }
+        sp_pos[i] = sp_pos[i] + sp_vel[i]
+        sp_vel[i].y -= 0.012
+        sp_age[i] += 1
+        if sp_pos[i].y < 0.0 || sp_age[i] > 60 { sp_age[i] = 0 }
+    }
+}
+
+fn draw_splashes() {
+    ss_look(SS_SPARK)
+    let c = mix_col(rgb(120, 140, 170), rgb(220, 230, 240), (light * 256) as s32)
+    for i in 0..NSPLASH {
+        if sp_age[i] == 0 { continue }
+        ssprite(sp_pos[i], 0.12, 0.12, c, 1, -20)
+    }
+}
+
+// The moon's (or the low sun's) glittering path on the water toward the camera.
+fn draw_glitter() {
+    var az = moon_az
+    var el = moon_el
+    var col = rgb(170, 180, 220)
+    var amt = night
+    if night < 0.5 {
+        az = sun_az
+        el = sun_el
+        col = rgb(255, 190, 110)
+        amt = clamp(1.0 - sun_el * 3, 0.0, 1.0) * light
+    }
+    if el < -0.02 || amt < 0.1 { return }
+    if abs(angle_diff(az, cam_yaw)) > 1.0 { return }
+    ss_look(SS_GLINT)
+    let s = sin(az)
+    let c = cos(az)
+    let k = (amt * 256) as s32
+    for i in 0..22 {
+        // distance grows along the path; the path widens with distance
+        let h = (i * 2654435761) as u32
+        let d = 3.0 + fixed(i) * fixed(i) * 0.09
+        let lat = (fixed(((h >> 8) & 255) as s32) / 256 - 0.5) * (0.6 + d * 0.12)
+        let ph = ((h >> 16) as s32 + tick_count * (2 + i % 3)) & 63
+        if ph > 40 { continue }
+        let tw = 256 - abs(ph - 20) * 12
+        let x = cam_pos.x + s * d + c * lat
+        let z = cam_pos.z + c * d - s * lat
+        if !is_water(x, z) { continue }
+        let cc = scale_col(col, k * tw / 256)
+        let w = 0.3 + d * 0.025
+        ssprite(vec3(x, 0.03, z), w * 2.2, w * 0.3, cc, 1, -1024)
+    }
+}
+
+// Is (x, z) on the lake (inside the shore)?
+fn shore_at(x: fixed, z: fixed) -> fixed {
+    let a = atan2(x, z)
+    let f = (a + 3.14159) * 10.1859      // 64 / TAU
+    var i = f as s32
+    if i < 0 { i = 0 }
+    if i > 63 { i = 63 }
+    let t = f - fixed(i)
+    return SHORE_R[i] + (SHORE_R[i + 1] - SHORE_R[i]) * t
+}
+
+fn is_water(x: fixed, z: fixed) -> bool {
+    let r = sqrt(x * x + z * z)
+    return r < shore_at(x, z) - 0.6
+}
+
+// ---- fireflies (night, near the shore by the current dock)
+const NFLY = 10
+var fly_pos: [10]vec3
+var fly_vel: [10]vec3
+
+fn fireflies_reset() {
+    let s = DOCK_STAND[g.dock]
+    for i in 0..NFLY {
+        fly_pos[i] = vec3(s.x + (rndf() - 0.5) * 16, 0.5 + rndf() * 1.5, s.z + (rndf() - 0.5) * 16)
+        fly_vel[i] = vec3(0.0, 0.0, 0.0)
+    }
+}
+
+fn fireflies_update() {
+    let s = DOCK_STAND[g.dock]
+    for i in 0..NFLY {
+        var v = fly_vel[i]
+        v.x += (rndf() - 0.5) * 0.004
+        v.y += (rndf() - 0.5) * 0.003
+        v.z += (rndf() - 0.5) * 0.004
+        v = v * 0.97
+        var p = fly_pos[i] + v
+        // stay near the dock, above the water
+        if p.y < 0.3 { v.y += 0.004 }
+        if p.y > 2.4 { v.y -= 0.004 }
+        if p.x < s.x - 10.0 { v.x += 0.003 }
+        if p.x > s.x + 10.0 { v.x -= 0.003 }
+        if p.z < s.z - 10.0 { v.z += 0.003 }
+        if p.z > s.z + 10.0 { v.z -= 0.003 }
+        fly_vel[i] = v
+        fly_pos[i] = p
+    }
+}
+
+fn draw_fireflies() {
+    if night < 0.5 { return }
+    ss_look(SS_HALO)
+    for i in 0..NFLY {
+        let ph = (tick_count + i * 23) % 120
+        if ph > 70 { continue }
+        let b = 256 - abs(ph - 35) * 7
+        let c = scale_col(rgb(200, 255, 120), b * ((night - 0.5) * 512) as s32 / 256)
+        ssprite(fly_pos[i], 0.3, 0.3, c, 1, -20)
+    }
+}
+
+// ---- screen projection (for the rod, the line and markers)
+
+var proj_x: s32
+var proj_y: s32
+var proj_w: fixed
+var proj_iw: fixed
+
+// Projects p; false when it is behind the camera.
+fn project(p: vec3) -> bool {
+    let v = __vp * vec4(p, 1.0)
+    proj_w = v.w
+    if v.w < 0.12 { return false }
+    let iw = 1.0 / v.w
+    proj_iw = iw
+    proj_x = 160 + ((v.x * iw) * 160) as s32
+    proj_y = 120 - ((v.y * iw) * 120) as s32
+    return true
+}
+
+// The ordering-table bucket of a view depth.
+fn depth_bucket(w: fixed) -> s32 { return clamp(((w - 0.1) * 5.1226) as s32, 0, 1023) }
+
+// A screen-space segment from (x0, y0) to (x1, y1), w pixels wide, sorted at bucket b.
+fn seg2d(x0: s32, y0: s32, x1: s32, y1: s32, w: s32, c: u32, b: s32) {
+    let q = packet_alloc(6)
+    if q == null { return }
+    let dx = x1 - x0
+    let dy = y1 - y0
+    var ox = 0
+    var oy = 0
+    if abs(dx) > abs(dy) { oy = w } else { ox = w }
+    q[1] = c
+    q[2] = spos(x0, y0)
+    q[3] = spos(x1, y1)
+    q[4] = spos(x0 + ox, y0 + oy)
+    q[5] = spos(x1 + ox, y1 + oy)
+    ot_insert(q, 0x24, b)
+}

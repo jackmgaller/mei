@@ -1,0 +1,1121 @@
+// Fishing: casting with a pull-back-and-flick of the stick, the fish swimming about the
+// dock, bites by each species' rules, and the fight, where you reel by tracing the fish's
+// stick pattern and lean against its pulls.
+
+enum Phase { Idle, Aim, Fly, Wait, Bite, Fight, Catch, Lost }
+
+var phase = Phase.Idle
+var phase_t: s32
+var view_off: fixed           // turn of the view from the dock's yaw (-1.1 .. 1.1)
+
+// casting
+var pull_max: fixed
+var aim_hold: s32
+var aim_x: fixed
+var fwd_t: s32               // frames since the stick left the pulled-back zone
+var cast_power: fixed
+var cast_yaw: fixed
+var cast_dist: fixed
+var lure: vec3
+var lure_from: vec3
+var lure_to: vec3
+var fly_t: s32
+var fly_n: s32
+var lure_dist: fixed          // from the angler, along the water
+var moving_t: s32 = 999       // frames since the lure last moved
+var reel_prev: fixed
+var reel_has: bool
+var reel_acc: fixed           // retrieve angle accumulated (for the click sound)
+var wait_t: s32               // frames since the lure landed
+var bob_dip: fixed            // how far the bobber is pulled under (0..1)
+var prev_sy: fixed
+
+// the fish around the dock
+const NSWIM = 5
+const SW_NONE = 0
+const SW_WANDER = 1
+const SW_APPROACH = 2
+const SW_AT_LURE = 3
+const SW_BITE = 4
+const SW_HOOKED = 5
+const SW_FLEE = 6
+
+struct Swimmer {
+    id: s32
+    state: s32
+    pos: vec3
+    heading: fixed
+    speed: fixed
+    t: s32
+    n: s32               // nibbles left (Nibbler) or a countdown
+    size_mm: s32
+    target: vec3
+}
+
+var sw: [5]Swimmer
+var hooked: s32 = -1        // the swimmer on the line
+var spawn_t: s32
+var nobite_t: s32
+
+// the fight
+var f_id: s32
+var f_size: s32
+var f_dist: fixed
+var f_ang: fixed              // world yaw from the angler to the fish
+var f_tension: fixed
+var f_slack_t: s32
+var f_k: s32                  // index of the next pattern step
+var f_step_t: s32             // frames since the last step hit
+var f_last_dir: s32           // the last direction hit
+var f_cur: s32                // the snapped stick direction this frame (-1 between zones)
+var f_prev: s32
+var f_dwell: s32
+var f_centre_t: s32
+var f_hit_fx: s32             // frames of the "hit" flash on the guide
+var f_hit_dir: s32
+var f_miss_fx: s32
+var f_miss_dir: s32
+var f_combo: s32
+var f_surge: s32              // 0 none, 1 pull, 2 charge, 3 circle, 4 leap warning, 5 leap
+var f_surge_t: s32
+var f_surge_ang: fixed        // screen direction of the pull (0 = up/away, + clockwise)
+var f_lean_ang: fixed         // where the stick should lean
+var f_next: s32               // frames until the next surge
+var f_leap_h: fixed
+var f_guide_t: s32            // the metronome
+var f_steps: s32
+var f_rush: s32
+
+// messages
+var msg: *u8
+var msg_t: s32
+var msg2: *u8
+
+// the catch
+var c_id: s32
+var c_size: s32
+var c_points: s32
+var c_new: bool
+var c_record: bool
+
+fn say(s: *u8, frames: s32) {
+    msg = s
+    msg2 = null
+    msg_t = frames
+}
+
+fn stand_pos() -> vec3 { return DOCK_STAND[g.dock] }
+fn view_yaw() -> fixed { return DOCK_YAW[g.dock] + view_off }
+
+// Light on the water near the lure at night (lantern, glow lure, the pier's lanterns).
+fn light_here() -> bool {
+    if g.up[UP_LANTERN] != 0 { return true }
+    if g.lure == LURE_GLOW { return true }
+    return g.dock == 0
+}
+
+fn in_moon_path(p: vec3) -> bool {
+    if moon_el < 0.0 || night < 0.5 { return false }
+    let s = sin(moon_az)
+    let c = cos(moon_az)
+    let dx = p.x - cam_pos.x
+    let dz = p.z - cam_pos.z
+    let along = dx * s + dz * c
+    let lat = dx * c - dz * s
+    return along > 2.0 && abs(lat) < 1.2 + along * 0.08
+}
+
+// ---- species selection
+
+fn fish_eligible(f: s32) -> bool {
+    let info = &FISH[f]
+    if (f & 1) != (is_night() as s32) { return false }
+    if (info.docks as s32 >> g.dock) & 1 == 0 { return false }
+    if f >= 12 && g.fest < 3 { return false }
+    return true
+}
+
+fn pick_species() -> s32 {
+    var total = 0
+    var w: [14]s32
+    for f in 0..NFISH {
+        w[f] = 0
+        if fish_eligible(f) {
+            var k = FISH[f].weight as s32 * 4
+            if FISH[f].home as s32 == g.dock { k = k * 3 }
+            if f >= 12 && g.up[UP_BAIT] >= 2 { k = k * 3 }
+            // Light biters are rarer without light
+            if FISH[f].bite == Bite.Light && !light_here() { k = k / 3 }
+            w[f] = k
+            total += k
+        }
+    }
+    if total == 0 { return is_night() as s32 }
+    var r = rnd(total)
+    for f in 0..NFISH {
+        if r < w[f] { return f }
+        r -= w[f]
+    }
+    return 0
+}
+
+fn random_size(f: s32) -> s32 {
+    let info = &FISH[f]
+    let lo = info.min_mm as s32
+    let hi = info.max_mm as s32
+    let r = rndf()
+    return lo + ((r * r * 0.7 + r * 0.3) * (hi - lo)) as s32
+}
+
+// A random point on the water in front of the dock, d0..d1 away.
+fn water_point(d0: fixed, d1: fixed, spread: fixed) -> vec3 {
+    let s = stand_pos()
+    for tries in 0..12 {
+        let a = DOCK_YAW[g.dock] + (rndf() - 0.5) * spread
+        let d = d0 + rndf() * (d1 - d0)
+        let x = s.x + sin(a) * d
+        let z = s.z + cos(a) * d
+        if is_water(x, z) { return vec3(x, 0.0, z) }
+    }
+    let a = DOCK_YAW[g.dock]
+    return vec3(s.x + sin(a) * 6.0, 0.0, s.z + cos(a) * 6.0)
+}
+
+fn spawn_fish(i: s32, near: bool) {
+    let f = pick_species()
+    sw[i].id = f
+    sw[i].state = SW_WANDER
+    if near && phase == Phase.Wait {
+        // arrives from out of sight, toward the lure
+        let a = rndf() * 6.28
+        sw[i].pos = vec3(lure.x + sin(a) * 9.0, 0.0, lure.z + cos(a) * 9.0)
+        if !is_water(sw[i].pos.x, sw[i].pos.z) { sw[i].pos = water_point(8.0, 18.0, 1.4) }
+    } else {
+        sw[i].pos = water_point(5.0, 22.0, 1.9)
+    }
+    sw[i].heading = rndf() * 6.28
+    sw[i].speed = 0.02 + rndf() * 0.02
+    sw[i].t = rnd(120)
+    sw[i].size_mm = random_size(f)
+    sw[i].n = 0
+    sw[i].target = water_point(4.0, 22.0, 1.9)
+}
+
+fn swimmers_reset() {
+    for i in 0..NSWIM {
+        sw[i].id = -1
+        sw[i].state = SW_NONE
+    }
+    for i in 0..4 { spawn_fish(i, false) }
+    hooked = -1
+    spawn_t = 0
+}
+
+// Re-roll the fish when day turns to night or back.
+var swim_night: bool
+
+fn swimmers_update() {
+    if is_night() != swim_night {
+        swim_night = is_night()
+        if phase != Phase.Fight && phase != Phase.Bite && phase != Phase.Catch {
+            for i in 0..NSWIM {
+                if sw[i].state == SW_WANDER { sw[i].state = SW_FLEE }
+            }
+        }
+    }
+    var alive = 0
+    for i in 0..NSWIM {
+        let s = &sw[i]
+        if s.state == SW_NONE { continue }
+        alive += 1
+        s.t += 1
+        if s.state == SW_WANDER {
+            let d = s.target - s.pos
+            if dot(d, d) < 1.0 || s.t > 600 {
+                s.target = water_point(4.0, 22.0, 1.9)
+                s.t = 0
+            }
+            steer(s, s.target, s.speed)
+            if phase == Phase.Wait { consider_lure(i) }
+        } else if s.state == SW_APPROACH {
+            steer(s, lure, 0.045)
+            let d = lure - s.pos
+            if dot(d, d) < 0.5 {
+                s.state = SW_AT_LURE
+                s.t = 0
+                s.n = 2 + rnd(3)
+            }
+            if phase != Phase.Wait { s.state = SW_WANDER }
+        } else if s.state == SW_AT_LURE {
+            s.pos = lerp(s.pos, lure, 0.1)
+            if phase != Phase.Wait { s.state = SW_WANDER } else { at_lure(i) }
+        } else if s.state == SW_BITE {
+            s.pos = lerp(s.pos, lure, 0.2)
+        } else if s.state == SW_FLEE {
+            let dir = vec3(sin(s.heading), 0.0, cos(s.heading))
+            s.pos = s.pos + dir * 0.14
+            if s.t > 90 || !is_water(s.pos.x, s.pos.z) {
+                s.state = SW_NONE
+                s.id = -1
+            }
+        }
+    }
+    // keep a few fish around
+    spawn_t += 1
+    if alive < 4 && spawn_t > 240 {
+        for i in 0..NSWIM {
+            if sw[i].state == SW_NONE {
+                spawn_fish(i, false)
+                spawn_t = 0
+                break
+            }
+        }
+    }
+    // nobody interested for a while: someone swims over to look
+    if phase == Phase.Wait {
+        nobite_t += 1
+        if nobite_t > 540 {
+            nobite_t = 0
+            var free = -1
+            for i in 0..NSWIM {
+                if sw[i].state == SW_NONE || sw[i].state == SW_WANDER { free = i }
+            }
+            if free >= 0 {
+                spawn_fish(free, true)
+                consider_lure(free)
+            }
+        }
+    }
+}
+
+fn steer(s: *Swimmer, target: vec3, speed: fixed) {
+    let d = target - s.pos
+    let want = atan2(d.x, d.z)
+    let da = angle_diff(want, s.heading)
+    s.heading += clamp(da, -0.06, 0.06)
+    let wob = sin(fixed(s.t) * 0.15) * 0.3
+    let dir = vec3(sin(s.heading + wob * 0.2), 0.0, cos(s.heading + wob * 0.2))
+    var np = s.pos + dir * speed
+    if is_water(np.x, np.z) { s.pos = np } else { s.heading += 1.5 }
+}
+
+// Does this fish notice the lure, and does it want it?
+fn consider_lure(i: s32) {
+    let s = &sw[i]
+    let info = &FISH[s.id]
+    let d = lure - s.pos
+    let dist = sqrt(dot(d, d))
+    var reach = 7.0
+    if night > 0.5 && g.lure == LURE_GLOW { reach = 10.0 }
+    if g.up[UP_BAIT] >= 1 { reach += 1.5 }
+    if dist > reach { return }
+    match info.bite {
+        Far => { if lure_dist < 14.0 { return } }
+        Near => { if lure_dist > 8.5 { return } }
+        Light => { if !light_here() { return } }
+        Moonpath => { if !in_moon_path(lure) { return } }
+        else => {}
+    }
+    s.state = SW_APPROACH
+    s.t = 0
+    nobite_t = 0
+}
+
+// The lure has just landed: fish right under it scatter.
+fn lure_landed() {
+    for i in 0..NSWIM {
+        let s = &sw[i]
+        if s.state == SW_NONE || s.state == SW_FLEE { continue }
+        let d = lure - s.pos
+        let dist2 = dot(d, d)
+        var spook = 1.6
+        if FISH[s.id].bite == Bite.Shy { spook = 4.2 }
+        if dist2 < spook * spook {
+            s.state = SW_FLEE
+            s.heading = atan2(-d.x, -d.z)
+            s.t = 0
+            if FISH[s.id].bite == Bite.Shy { say("Splash! Something darted away...", 120) }
+        } else {
+            consider_lure(i)
+        }
+    }
+}
+
+fn bite_wait(base: s32) -> s32 {
+    var w = base
+    if g.up[UP_BAIT] >= 1 { w = w * 7 / 10 }
+    return w
+}
+
+// A fish is at the lure: bite by its species' rules.
+fn at_lure(i: s32) {
+    let s = &sw[i]
+    let info = &FISH[s.id]
+    let moving = moving_t < 24
+    match info.bite {
+        Any, Far, Near, Light, Moonpath => {
+            if s.t > bite_wait(50 + (i * 37) % 70) { start_bite(i) }
+        }
+        Moving => {
+            if moving && s.t > bite_wait(14) { start_bite(i) }
+            if moving_t > 200 { give_up(i) }
+        }
+        Still => {
+            if moving { s.t = 0 }
+            var need = 110
+            if g.lure == LURE_FLOAT { need = 55 }
+            if moving_t > bite_wait(need) { start_bite(i) }
+        }
+        Deep => {
+            if moving { s.t = 0 }
+            var need = 260
+            if g.lure == LURE_FLOAT { need = 150 }
+            if moving_t > bite_wait(need) { start_bite(i) }
+        }
+        Nibbler => {
+            // a few nibbles, then the real bite
+            if s.t > 55 {
+                s.t = 0
+                if s.n > 0 {
+                    s.n -= 1
+                    bob_dip = 0.35
+                    sfx_nibble(lure)
+                    ripple(lure, 0.6, 30)
+                } else {
+                    start_bite(i)
+                }
+            }
+        }
+        Shy => {
+            if s.t > 8 { start_bite(i) }
+        }
+    }
+}
+
+fn give_up(i: s32) {
+    sw[i].state = SW_WANDER
+    sw[i].target = water_point(4.0, 22.0, 1.9)
+    sw[i].t = 0
+}
+
+fn start_bite(i: s32) {
+    if TEST != 0 {
+        print("BITE ")
+        print_int(sw[i].id)
+        print(" at ")
+        print_int(tick_count)
+        print(" wait ")
+        print_int(wait_t)
+        print(" lure dist ")
+        print_fixed(lure_dist)
+        println("")
+    }
+    sw[i].state = SW_BITE
+    sw[i].t = 0
+    hooked = i
+    phase = Phase.Bite
+    phase_t = 0
+    bob_dip = 1.0
+    sfx_bite(lure)
+    ripple(lure, 1.1, 40)
+    splash(lure, 4, 0.7)
+}
+
+// ---- casting
+
+fn cast_range() -> fixed {
+    match g.up[UP_ROD] as s32 {
+        0 => return 15.0
+        1 => return 19.0
+        else => return 23.0
+    }
+}
+
+// Where a cast of this power and aim would land (shortened to stay on the water).
+fn cast_target(power: fixed, yaw: fixed) -> vec3 {
+    let s = stand_pos()
+    var d = 3.0 + power * cast_range()
+    while d > 2.5 {
+        let x = s.x + sin(yaw) * d
+        let z = s.z + cos(yaw) * d
+        if is_water(x, z) { return vec3(x, 0.0, z) }
+        d -= 0.5
+    }
+    return vec3(s.x + sin(yaw) * 2.5, 0.0, s.z + cos(yaw) * 2.5)
+}
+
+fn charge_power() -> fixed {
+    let charge = min(fixed(aim_hold) / 45, 1.0)
+    return clamp(pull_max, 0.0, 1.0) * (0.35 + 0.65 * charge)
+}
+
+fn aim_spread() -> fixed {
+    match g.up[UP_ROD] as s32 {
+        0 => return 0.42
+        1 => return 0.5
+        else => return 0.56
+    }
+}
+
+fn rod_tip() -> vec3 {
+    let s = stand_pos()
+    let y = view_yaw()
+    let sn = sin(y)
+    let cs = cos(y)
+    // the rod points forward and up; pulled back while aiming, bent toward a fighting fish
+    var fwd = 1.9
+    var up = 1.6
+    var side = 0.25
+    match phase {
+        Aim => {
+            let k = min(fixed(aim_hold) / 20, 1.0)
+            fwd = 1.9 - k * 2.6
+            up = 1.6 + k * 0.7
+        }
+        Fly => {
+            let k = min(fixed(phase_t) / 6, 1.0)
+            fwd = -0.7 + k * 2.9
+            up = 2.3 - k * 1.0
+        }
+        Fight => {
+            let pull = f_tension
+            fwd = 1.6 + pull * 0.4
+            up = 1.5 - pull * 0.6
+            side = 0.25 + sin(f_ang - y) * 1.2
+        }
+        Bite => {
+            fwd = 2.0
+            up = 1.3
+        }
+        else => {}
+    }
+    return vec3(s.x + sn * (0.45 + fwd) + cs * side, s.y + 0.95 + up, s.z + cs * (0.45 + fwd) - sn * side)
+}
+
+fn rod_root() -> vec3 {
+    let s = stand_pos()
+    let y = view_yaw()
+    return vec3(s.x + sin(y) * 0.45 + cos(y) * 0.05, s.y + 0.92, s.z + cos(y) * 0.45 - sin(y) * 0.05)
+}
+
+// ---- the update for each phase
+
+fn fishing_update() {
+    phase_t += 1
+    if msg_t > 0 { msg_t -= 1 }
+    let st = stick_in
+    match phase {
+        Idle => update_idle(st)
+        Aim => update_aim(st)
+        Fly => update_fly()
+        Wait => update_wait(st)
+        Bite => update_bite(st)
+        Fight => update_fight(st)
+        Catch => update_catch()
+        Lost => update_lost()
+    }
+    prev_sy = st.y
+    if bob_dip > 0.0 && phase != Phase.Bite { bob_dip = max(bob_dip - 0.03, 0.0) }
+    swimmers_update()
+}
+
+fn update_idle(st: vec2) {
+    lure = rod_tip()
+    // sideways (without pulling back): turn along the shore
+    if st.y > -0.35 {
+        view_off = clamp(view_off + st.x * 0.022, -1.1, 1.1)
+    }
+    if st.y < -0.45 {
+        phase = Phase.Aim
+        phase_t = 0
+        pull_max = -st.y
+        aim_hold = 0
+        aim_x = 0.0
+        fwd_t = 0
+    }
+}
+
+fn update_aim(st: vec2) {
+    lure = rod_tip()
+    if st.y < -0.3 {
+        aim_hold += 1
+        pull_max = max(pull_max, -st.y)
+        aim_x = clamp(st.x, -1.0, 1.0)
+        fwd_t = 0
+    } else {
+        fwd_t += 1
+        if st.y > 0.35 {
+            // the flick: faster flicks keep more power
+            let flick = 1.0 - fixed(min(fwd_t - 1, 8)) * 0.03
+            cast_power = charge_power() * flick
+            cast_yaw = view_yaw() + aim_x * aim_spread()
+            do_cast()
+            return
+        }
+        if fwd_t > 14 {
+            phase = Phase.Idle     // let go without flicking: no cast
+            phase_t = 0
+        }
+    }
+}
+
+fn do_cast() {
+    lure_from = rod_tip()
+    lure_to = cast_target(cast_power, cast_yaw)
+    let s = stand_pos()
+    let d = lure_to - s
+    cast_dist = sqrt(d.x * d.x + d.z * d.z)
+    fly_n = 22 + (cast_dist * 1.4) as s32
+    fly_t = 0
+    phase = Phase.Fly
+    phase_t = 0
+    sfx_cast()
+    if g.tutorial & TUT_CAST == 0 { g.tutorial = g.tutorial | TUT_CAST }
+}
+
+fn update_fly() {
+    fly_t += 1
+    let t = fixed(fly_t) / fly_n
+    var p = lerp(lure_from, lure_to, t)
+    p.y = lure_from.y * (1.0 - t) + (t * (1.0 - t)) * (2.0 + cast_dist * 0.25)
+    lure = p
+    if fly_t >= fly_n {
+        lure = lure_to
+        phase = Phase.Wait
+        phase_t = 0
+        wait_t = 0
+        moving_t = 999
+        reel_has = false
+        nobite_t = 0
+        update_lure_dist()
+        sfx_plop(lure)
+        ripple(lure, 1.0, 50)
+        ripple(lure, 0.6, 36)
+        splash(lure, 3, 0.5)
+        lure_landed()
+    }
+}
+
+fn update_lure_dist() {
+    let s = stand_pos()
+    let d = lure - s
+    lure_dist = sqrt(d.x * d.x + d.z * d.z)
+}
+
+// Circling the stick: the angle turned this frame (radians, either way), with wrap-around.
+fn circle_delta(st: vec2) -> fixed {
+    let m = abs(st.x) + abs(st.y)
+    if m < 0.6 {
+        reel_has = false
+        return 0.0
+    }
+    let a = atan2(st.x, st.y)
+    var d = 0.0
+    if reel_has { d = angle_diff(a, reel_prev) }
+    reel_prev = a
+    reel_has = true
+    // 8-way input jumps 45 degrees at a time; anything over 135 is a jump, not a turn
+    if abs(d) > 2.4 { d = 0.0 }
+    return abs(d)
+}
+
+fn update_wait(st: vec2) {
+    wait_t += 1
+    moving_t += 1
+    // retrieve: circle the stick; the lure creeps toward the dock
+    let d = circle_delta(st)
+    if d > 0.0 {
+        let s = stand_pos()
+        var dir = s - lure
+        dir.y = 0.0
+        let len = sqrt(dot(dir, dir))
+        if len > 0.01 {
+            let step = d * 0.32
+            lure = lure + dir * (step / len)
+            moving_t = 0
+        }
+        reel_acc += d
+        if reel_acc > 0.8 {
+            reel_acc = 0.0
+            sfx_click()
+        }
+        if wait_t % 12 == 0 { ripple(lure, 0.4, 24) }
+    }
+    // a sharp pull back twitches the lure
+    if st.y < -0.6 && prev_sy > -0.4 {
+        let s = stand_pos()
+        var dir = s - lure
+        dir.y = 0.0
+        let len = sqrt(dot(dir, dir))
+        if len > 0.01 { lure = lure + dir * (0.6 / len) }
+        moving_t = 0
+        ripple(lure, 0.5, 24)
+        sfx_click()
+    }
+    update_lure_dist()
+    lure.y = sin(fixed(wait_t) * 0.08) * 0.02 - bob_dip * 0.15
+    if lure_dist < 2.6 || btnp_in(B) {
+        reel_in()
+        return
+    }
+    // a pull during a nibble spooks the nibbler
+    if st.y < -0.6 && prev_sy > -0.4 {
+        for i in 0..NSWIM {
+            if sw[i].state == SW_AT_LURE && FISH[sw[i].id].bite == Bite.Nibbler {
+                sw[i].state = SW_FLEE
+                sw[i].t = 0
+                say("Too soon! It only nibbled...", 120)
+            }
+        }
+    }
+    if g.tutorial & TUT_HOOK == 0 && wait_t == 30 { g.tutorial = g.tutorial | TUT_HOOK }
+}
+
+fn reel_in() {
+    phase = Phase.Idle
+    phase_t = 0
+    for i in 0..NSWIM {
+        if sw[i].state == SW_APPROACH || sw[i].state == SW_AT_LURE || sw[i].state == SW_BITE { give_up(i) }
+    }
+    hooked = -1
+}
+
+fn update_bite(st: vec2) {
+    lure.y = -0.18 - sin(fixed(phase_t) * 0.6) * 0.04
+    // set the hook: pull the stick down (back)
+    if st.y < -0.55 && prev_sy > -0.45 {
+        start_fight()
+        return
+    }
+    var window = 50
+    if FISH[sw[hooked].id].bite == Bite.Nibbler { window = 60 }
+    if phase_t > window {
+        let s = &sw[hooked]
+        s.state = SW_FLEE
+        s.t = 0
+        s.heading = rndf() * 6.28
+        hooked = -1
+        phase = Phase.Wait
+        phase_t = 0
+        bob_dip = 0.0
+        say("It got away... pull back on a bite!", 140)
+    }
+}
+
+// ---- the fight
+
+fn reel_window() -> s32 {
+    let tempo = FISH[f_id].tempo as s32
+    var w = tempo * 45 / 100 + 2
+    if g.up[UP_REEL] == 1 { w = w * 135 / 100 }
+    if g.up[UP_REEL] >= 2 { w = w * 170 / 100 }
+    return w
+}
+
+fn line_factor() -> fixed {
+    match g.up[UP_LINE] as s32 {
+        0 => return 1.0
+        1 => return 0.8
+        else => return 0.64
+    }
+}
+
+fn reel_strain() -> fixed {
+    match g.up[UP_REEL] as s32 {
+        0 => return 1.0
+        1 => return 0.85
+        else => return 0.72
+    }
+}
+
+fn slack_limit() -> s32 {
+    match g.up[UP_LINE] as s32 {
+        0 => return 150
+        1 => return 200
+        else => return 260
+    }
+}
+
+fn start_fight() {
+    if TEST != 0 {
+        print("HOOKED ")
+        print_int(sw[hooked].id)
+        print(" at ")
+        print_int(tick_count)
+        println("")
+    }
+    let s = &sw[hooked]
+    s.state = SW_HOOKED
+    f_id = s.id
+    f_size = s.size_mm
+    let st = stand_pos()
+    let d = lure - st
+    f_dist = sqrt(d.x * d.x + d.z * d.z)
+    f_ang = atan2(d.x, d.z)
+    f_tension = 0.45
+    f_slack_t = 0
+    f_k = 0
+    f_step_t = 0
+    f_last_dir = -1
+    f_prev = -1
+    f_dwell = 0
+    f_centre_t = 0
+    f_combo = 0
+    f_surge = 0
+    f_surge_t = 0
+    f_next = 150 + rnd(90)
+    f_guide_t = 0
+    f_steps = 0
+    f_rush = 0
+    phase = Phase.Fight
+    phase_t = 0
+    sfx_splash(lure)
+    splash(lure, 8, 1.0)
+    ripple(lure, 1.4, 50)
+    tension_sound(true)
+    if g.tutorial & TUT_REEL == 0 {
+        g.tutorial = g.tutorial | TUT_REEL
+        tutorial("Hooked! Now reel it in by tracing\nthe fish's pattern with the stick.\n\nFollow the glowing dot around the\ncircle, in rhythm. When the fish\npulls, lean the stick against it.")
+    }
+}
+
+// Snaps the stick to one of 8 directions (0 = N, clockwise), 8 = centred, -1 = between.
+fn snap_dir(st: vec2) -> s32 {
+    let m = sqrt(st.x * st.x + st.y * st.y)
+    if m < 0.3 { return DIR_C }
+    if m < 0.6 { return -1 }
+    let a = atan2(st.x, st.y)
+    var k = ((a + 3.14159 * 2 + 0.3927) * 1.27324) as s32     // / (PI / 4)
+    return k & 7
+}
+
+fn dir_vec(d: s32) -> vec2 {
+    let a = fixed(d) * 0.785398
+    return vec2(sin(a), cos(a))
+}
+
+fn update_fight(st: vec2) {
+    let info = &FISH[f_id]
+    let tempo = info.tempo as s32
+    let lf = line_factor()
+    f_guide_t += 1
+    f_step_t += 1
+    if f_hit_fx > 0 { f_hit_fx -= 1 }
+    if f_miss_fx > 0 { f_miss_fx -= 1 }
+    f_cur = snap_dir(st)
+
+    // surges: the fish pulls (lean against it), charges, circles or leaps
+    if f_surge == 0 {
+        f_next -= 1
+        if f_next <= 0 { start_surge() }
+    } else {
+        f_surge_t -= 1
+        surge_update(st)
+        if f_surge_t <= 0 {
+            if f_surge == 4 {
+                // the warning is over: the leap itself
+                f_surge = 5
+                f_surge_t = 40
+                splash(fish_pos(), 10, 1.4)
+                sfx_splash(fish_pos())
+            } else {
+                if f_surge == 5 {
+                    splash(fish_pos(), 10, 1.2)
+                    ripple(fish_pos(), 1.6, 50)
+                    sfx_splash(fish_pos())
+                }
+                f_surge = 0
+                f_next = surge_gap()
+            }
+        }
+    }
+
+    // tracing the pattern (paused while the fish pulls, circles or leaps)
+    if f_surge == 0 || f_surge == 2 { trace_pattern(info, tempo, lf) }
+
+    // the fish takes line back when you stop reeling
+    if f_surge == 0 && f_step_t > tempo * 3 {
+        f_dist += 0.006 * info.pull
+        f_tension += (0.22 - f_tension) * 0.01
+    }
+    // tension relaxes toward its resting level
+    if f_surge == 0 { f_tension += (0.42 - f_tension) * 0.012 }
+    if f_tension < 0.14 { f_slack_t += 1 } else { f_slack_t = max(f_slack_t - 2, 0) }
+    f_tension = max(f_tension, 0.0)
+
+    // the fish swims about at the end of the line
+    let wob = sin(fixed(phase_t) * 0.05) * 0.004
+    f_ang += wob
+    let lim = 1.0
+    f_ang = clamp(f_ang, view_yaw() - lim, view_yaw() + lim)
+    keep_on_water()
+    lure = fish_pos()
+    if phase_t % 20 == 0 { ripple(lure, 0.7, 30) }
+    tension_sound_level()
+
+    if f_tension >= 1.0 {
+        lose_fish("The line snapped! The fish swam off.")
+        sfx_snap()
+    } else if f_slack_t > slack_limit() {
+        lose_fish("The line went slack... it slipped away.")
+    } else if f_dist < 1.7 {
+        catch_fish()
+    }
+}
+
+fn keep_on_water() {
+    for k in 0..8 {
+        let p = fish_pos()
+        if is_water(p.x, p.z) { return }
+        f_dist -= 0.3
+        f_ang = lerp(f_ang, view_yaw(), 0.2)
+    }
+    f_dist = max(f_dist, 1.0)
+}
+
+fn fish_pos() -> vec3 {
+    let s = stand_pos()
+    return vec3(s.x + sin(f_ang) * f_dist, 0.0, s.z + cos(f_ang) * f_dist)
+}
+
+fn trace_pattern(info: *Fish, tempo: s32, lf: fixed) {
+    let want = info.pat[f_k] as s32
+    let cur = f_cur
+    var hit = false
+    if want == DIR_C {
+        if cur == DIR_C { f_centre_t += 1 } else { f_centre_t = 0 }
+        if f_centre_t >= max(tempo * 6 / 10, 6) { hit = true }
+    } else if cur == want && f_prev != want {
+        hit = true
+    } else if cur >= 0 && cur < 8 && cur != want && cur != f_last_dir {
+        // off the pattern: only counts if the stick stays there
+        if cur == f_prev { f_dwell += 1 } else { f_dwell = 0 }
+        if f_dwell == 10 {
+            f_tension += 0.05 * info.pull * lf
+            f_miss_fx = 20
+            f_miss_dir = cur
+            f_combo = 0
+            sfx_miss()
+        }
+    }
+    if cur >= 0 { f_prev = cur }
+    if !hit { return }
+    // timing
+    let w = reel_window()
+    var amount = 1.0
+    if f_surge == 2 {
+        // taking up slack while it charges: fast is good
+        amount = 1.5
+        f_tension += 0.09
+    } else if f_step_t < tempo - w {
+        amount = 0.5                         // rushing strains the line
+        f_tension += 0.06 * info.pull * lf * reel_strain()
+        f_rush += 1
+        f_combo = 0
+    } else if f_step_t > tempo + w * 2 {
+        amount = 0.6                         // late: slower progress
+        f_combo = 0
+    } else {
+        f_combo += 1
+        f_tension += (0.4 - f_tension) * 0.15
+    }
+    f_dist -= 0.36 * amount / info.heft
+    f_last_dir = want
+    f_hit_fx = 14
+    f_hit_dir = want
+    f_steps += 1
+    sfx_step(f_k, f_combo)
+    f_k = (f_k + 1) % (info.plen as s32)
+    f_step_t = 0
+    f_centre_t = 0
+    f_dwell = 0
+    f_guide_t = 0
+}
+
+fn surge_gap() -> s32 {
+    match FISH[f_id].fight {
+        Normal => return 260 + rnd(160)
+        Darter => return 130 + rnd(100)
+        SideRuns => return 160 + rnd(110)
+        Charger => return 210 + rnd(110)
+        Steady => return 320 + rnd(160)
+        Heavy => return 210 + rnd(110)
+        Circler => return 230 + rnd(100)
+        Leaper => return 190 + rnd(110)
+    }
+}
+
+fn start_surge() {
+    if TEST != 0 {
+        print("SURGE at ")
+        print_int(tick_count)
+        println("")
+    }
+    let fight = FISH[f_id].fight
+    f_surge = 1
+    match fight {
+        Normal => {
+            f_surge_t = 50 + rnd(30)
+            f_surge_ang = fixed(rnd(3) - 1) * 0.785398
+        }
+        Darter => {
+            f_surge_t = 26 + rnd(14)
+            f_surge_ang = fixed(rnd(8)) * 0.785398
+        }
+        SideRuns => {
+            f_surge_t = 60 + rnd(30)
+            if rnd(2) == 0 { f_surge_ang = 1.5708 } else { f_surge_ang = -1.5708 }
+        }
+        Steady => {
+            f_surge_t = 70 + rnd(30)
+            f_surge_ang = fixed(rnd(3) - 1) * 0.6
+        }
+        Heavy => {
+            f_surge_t = 80 + rnd(40)
+            f_surge_ang = 0.0
+        }
+        Charger => {
+            f_surge = 2
+            f_surge_t = 80 + rnd(30)
+            f_surge_ang = 3.14159
+            say("It's charging! Reel fast!", 80)
+        }
+        Circler => {
+            f_surge = 3
+            f_surge_t = 130 + rnd(40)
+            f_surge_ang = fixed(rnd(8)) * 0.785398
+        }
+        Leaper => {
+            f_surge = 4
+            f_surge_t = 30
+            ripple(fish_pos(), 1.0, 30)
+        }
+    }
+    f_lean_ang = f_surge_ang + 3.14159
+}
+
+fn surge_update(st: vec2) {
+    let info = &FISH[f_id]
+    let lf = line_factor()
+    let rs = reel_strain()
+    if f_surge == 1 || f_surge == 3 {
+        if f_surge == 3 {
+            // the pull circles one way; counter by circling the stick the other way
+            f_surge_ang += 0.042
+            f_lean_ang -= 0.042
+        }
+        let lv = vec2(sin(f_lean_ang), cos(f_lean_ang))
+        let lean = st.x * lv.x + st.y * lv.y
+        if lean > 0.5 {
+            f_tension += (0.5 - f_tension) * 0.04
+        } else {
+            f_tension += 0.0105 * info.pull * lf * rs
+            f_dist += 0.025
+        }
+        // the fish moves with its pull: sideways pulls swing the line
+        f_ang += sin(f_surge_ang) * 0.007
+        if f_surge_t % 6 == 0 { ripple(fish_pos(), 0.9, 30) }
+    } else if f_surge == 2 {
+        // charging toward you: the line goes slack
+        f_dist -= 0.03
+        f_tension -= 0.012
+        if f_surge_t % 8 == 0 { ripple(fish_pos(), 0.8, 30) }
+    } else if f_surge == 4 {
+        if f_surge_t % 10 == 0 { ripple(fish_pos(), 0.7, 25) }
+    } else if f_surge == 5 {
+        // leaping: ease off (stick centred) or the line takes the shock
+        let m = abs(st.x) + abs(st.y)
+        if m > 0.35 {
+            f_tension += 0.03 * lf * rs
+        } else {
+            f_tension += (0.35 - f_tension) * 0.08
+        }
+        let t = fixed(40 - f_surge_t) / 40
+        f_leap_h = t * (1.0 - t) * 6.0
+    }
+}
+
+fn lose_fish(why: *u8) {
+    if TEST != 0 {
+        print("LOST ")
+        print_int(f_id)
+        print(" at ")
+        print_int(tick_count)
+        print(" steps ")
+        print_int(f_steps)
+        print(" ")
+        println(why)
+    }
+    say(why, 150)
+    phase = Phase.Lost
+    phase_t = 0
+    if hooked >= 0 {
+        sw[hooked].state = SW_FLEE
+        sw[hooked].t = 0
+        sw[hooked].heading = f_ang
+    }
+    hooked = -1
+    tension_sound(false)
+}
+
+fn update_lost() {
+    // the line drifts back in
+    let r = rod_tip()
+    lure = lerp(lure, r, 0.08)
+    if phase_t > 50 {
+        phase = Phase.Idle
+        phase_t = 0
+    }
+}
+
+fn catch_fish() {
+    if TEST != 0 {
+        print("CAUGHT ")
+        print_int(f_id)
+        print(" at ")
+        print_int(tick_count)
+        print(" after ")
+        print_int(phase_t)
+        print(" frames, steps ")
+        print_int(f_steps)
+        print(" rush ")
+        print_int(f_rush)
+        println("")
+    }
+    tension_sound(false)
+    c_id = f_id
+    c_size = f_size
+    let info = &FISH[f_id]
+    let avg = (info.min_mm as s32 + info.max_mm as s32) / 2
+    c_points = max(info.points as s32 * c_size / avg, 1)
+    let e = &g.journal[f_id]
+    c_new = e.caught == 0
+    c_record = !c_new && c_size > e.best_mm as s32
+    e.caught += 1
+    if c_size > e.best_mm as s32 { e.best_mm = c_size as u16 }
+    g.total += 1
+    g.coins += c_points
+    if g.free_play == 0 { g.points += c_points }
+    if hooked >= 0 {
+        sw[hooked].state = SW_NONE
+        sw[hooked].id = -1
+    }
+    hooked = -1
+    phase = Phase.Catch
+    phase_t = 0
+    splash(fish_pos(), 12, 1.3)
+    sfx_splash(fish_pos())
+    sfx_catch(c_new)
+}
+
+fn update_catch() {
+    lure = rod_tip()
+    if phase_t > 45 && btnp_in(A) {
+        phase = Phase.Idle
+        phase_t = 0
+        if c_new && g.tutorial & TUT_CATCH == 0 {
+            g.tutorial = g.tutorial | TUT_CATCH
+            tutorial("Your first catch! It's in your\njournal now (SELECT).\n\nEvery fish has its own pattern,\nand its night twin's pattern is\nthe same... but a little different.")
+        }
+    }
+}

@@ -23,17 +23,16 @@ The two music layers have different loop lengths (pad 16 s vs melody 13 s / 11 s
 against each other (the full pattern repeats only every 208 s by day and 176 s by night). Both
 arrangements use the same five pitch classes (C D E G A), so the reeling chime is always in key.
 
-A preview mix (22,050 Hz stereo WAV, resampled nearest-sample like the console) is written to
-the scratchpad directory below (override with LANTERN_PREVIEW_DIR)."""
+With `--review DIR`, preview mixes (22,050 Hz stereo WAV, resampled nearest-sample like the
+console) are also written to DIR."""
 import math, os, sys, wave
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'carts', 'lantern')
-PREVIEW = os.environ.get(
-    'LANTERN_PREVIEW_DIR',
-    '/private/tmp/claude-501/-Users-gallerdude-Documents-Projects/'
-    '4d21ea8c-cfb2-4140-856f-98718c97d94d/scratchpad/audio_preview')
+PREVIEW = None
+if '--review' in sys.argv:
+    PREVIEW = sys.argv[sys.argv.index('--review') + 1]
 os.makedirs(OUT, exist_ok=True)
 rng = np.random.default_rng(20260930)
 
@@ -725,6 +724,8 @@ def mix_preview(fname, stems, events, dur_s=60.0):
 
 
 try:
+    if PREVIEW is None:
+        raise SystemExit(0)
     os.makedirs(PREVIEW, exist_ok=True)
     prv = np.random.default_rng(7)
     birds = [('sfx_bird%d.raw' % prv.integers(1, 4), float(t), float(prv.uniform(0.85, 1.2)), 0.18,

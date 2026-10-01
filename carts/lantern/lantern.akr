@@ -1,0 +1,23 @@
+// Lantern Lake - a cozy Y2K-era fishing game for the Mei console.
+//
+// Fish from four docks around one lake, by day and by night, and catch enough lantern
+// points for the village's Lantern Festival every other evening. Every species has a night
+// twin: the same fish in another palette, with its own habits and its own reeling pattern.
+//
+// Stick: cast (pull back, flick), aim, turn, reel (circle), hook (pull down), fight (trace
+// the pattern, lean against pulls). A/B: menus. SELECT: journal. START: lake map.
+//
+// Assets come from tools/gen_lantern_assets.py (and gen_lantern_audio.py). This file is the
+// cart's entry point; the game is in game.akr so test entry points can import it with
+// scripted input (see tests/).
+cart "Lantern Lake", "LANTERN-LAKE"
+
+const TEST = 0
+
+// Input sources (test entry points replace these with scripted input).
+fn input_pad(f: s32) -> u32 { return PAD1 }
+fn input_stick(f: s32) -> vec2 { return stick() }
+fn test_init() {}
+fn test_hook(f: s32) {}
+
+import "game.akr"

@@ -1,0 +1,621 @@
+// The interface: the two baked fonts, panels, icons, the HUD, the reeling guide (a stick
+// diagram with a metronome dot), the tension gauge, the catch card and tutorial boxes.
+// Everything here goes on the interface list, drawn over the world in call order.
+
+var ui_tris: s32             // triangles queued on the interface list this frame
+
+const WHITE = 0xFFFFFF
+const CREAM = 0xD8F4FF       // rgb(255, 244, 216)
+const GOLD = 0x60D0FF        // rgb(255, 208, 96)
+const SOFT = 0xF0D0B0        // rgb(176, 208, 240)
+const DIM = 0xA08C80         // rgb(128, 140, 160)
+const RED = 0x6070FF
+const GREEN = 0x80E890
+
+fn upos(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
+
+// A flat rectangle; mode -1 is opaque, 0-3 a blend mode.
+fn ui_rect(x: s32, y: s32, w: s32, h: s32, c: u32, mode: s32) {
+    let q = packet_alloc(6)
+    if q == null { return }
+    var t: u32 = 0x24
+    var col = c
+    if mode >= 0 {
+        t = 0x2C
+        col = c | ((mode as u32) << 24)
+    }
+    q[1] = col
+    q[2] = upos(x, y)
+    q[3] = upos(x + w, y)
+    q[4] = upos(x, y + h)
+    q[5] = upos(x + w, y + h)
+    ui_insert(q, t)
+    ui_tris += 2
+}
+
+// A vertical gradient rectangle.
+fn ui_grad(x: s32, y: s32, w: s32, h: s32, top: u32, bot: u32, mode: s32) {
+    let q = packet_alloc(9)
+    if q == null { return }
+    var t: u32 = 0x25
+    var m: u32 = 0
+    if mode >= 0 {
+        t = 0x2D
+        m = (mode as u32) << 24
+    }
+    q[1] = top | m
+    q[2] = upos(x, y)
+    q[3] = top
+    q[4] = upos(x + w, y)
+    q[5] = bot
+    q[6] = upos(x, y + h)
+    q[7] = bot
+    q[8] = upos(x + w, y + h)
+    ui_insert(q, t)
+    ui_tris += 2
+}
+
+// A textured rectangle: texels (u, v, tw, th) of a 4-bit texture drawn at (x, y, w, h).
+fn ui_tex(x: s32, y: s32, w: s32, h: s32, slot: s32, pal: s32, u: s32, v: s32, tw: s32, th: s32, tint: u32, mode: s32) {
+    let q = packet_alloc(10)
+    if q == null { return }
+    var t: u32 = 0x26
+    var col = tint
+    if mode >= 0 {
+        t = 0x2E
+        col = tint | ((mode as u32) << 24)
+    }
+    let info = ((slot as u32 & 15) << 16) | (1 << 20) | ((pal as u32) << 24)
+    let u1 = min(u + tw, 255)
+    let v1 = min(v + th, 255)
+    q[1] = col
+    q[2] = upos(x, y)
+    q[3] = (u as u32) | ((v as u32) << 8) | info
+    q[4] = upos(x + w, y)
+    q[5] = (u1 as u32) | ((v as u32) << 8)
+    q[6] = upos(x, y + h)
+    q[7] = (u as u32) | ((v1 as u32) << 8)
+    q[8] = upos(x + w, y + h)
+    q[9] = (u1 as u32) | ((v1 as u32) << 8)
+    ui_insert(q, t)
+    ui_tris += 2
+}
+
+// A textured quad with free corners (x0, y0) top-left, (x1, y1) top-right, (x2, y2)
+// bottom-left, (x3, y3) bottom-right.
+fn ui_tex4(xs: *s32, ys: *s32, slot: s32, pal: s32, u: s32, v: s32, tw: s32, th: s32, tint: u32) {
+    let q = packet_alloc(10)
+    if q == null { return }
+    let info = ((slot as u32 & 15) << 16) | (1 << 20) | ((pal as u32) << 24)
+    let u1 = min(u + tw, 255)
+    let v1 = min(v + th, 255)
+    q[1] = tint
+    q[2] = upos(xs[0], ys[0])
+    q[3] = (u as u32) | ((v as u32) << 8) | info
+    q[4] = upos(xs[1], ys[1])
+    q[5] = (u1 as u32) | ((v as u32) << 8)
+    q[6] = upos(xs[2], ys[2])
+    q[7] = (u as u32) | ((v1 as u32) << 8)
+    q[8] = upos(xs[3], ys[3])
+    q[9] = (u1 as u32) | ((v1 as u32) << 8)
+    ui_insert(q, 0x26)
+    ui_tris += 2
+}
+
+struct Icon { u: u8, v: u8, pal: u8 }
+
+fn icon(x: s32, y: s32, ic: Icon, tint: u32) {
+    ui_tex(x, y, 16, 16, SLOT_FISH, ic.pal as s32, ic.u as s32, ic.v as s32, 16, 16, tint, -1)
+}
+
+// A soft dot (the guide's dots), additive.
+fn ui_dot(cx: s32, cy: s32, r: s32, c: u32) {
+    ui_tex(cx - r, cy - r, r * 2, r * 2, SLOT_FISH, PAL_UI, 64, 192, 16, 16, c, 1)
+}
+
+// ---- text
+
+// Draws s with the small (big = false) or big font; returns the x after it. The colour is a
+// tint: texels are white, so the colour is halved (128 shows a texel as it is).
+fn ftext(x: s32, y: s32, s: *u8, c: u32, big: bool) -> s32 {
+    let tint = (c >> 1) & 0x7F7F7F
+    let info: u32 = (SLOT_FONT << 16) | (1 << 20) | ((PAL_FONT as u32) << 24)
+    var h = FS_H
+    if big { h = FB_H }
+    var cx = x
+    var cy = y
+    var p = s
+    while p[0] != 0 {
+        let ch = p[0] as s32
+        p += 1
+        if ch == '\n' {
+            cx = x
+            cy += h - 2
+            continue
+        }
+        if ch < 32 || ch > 126 { continue }
+        let gi = ch - 32
+        var u = 0
+        var v = 0
+        var w = 0
+        var adv = 0
+        if big {
+            u = FB_U[gi] as s32
+            v = FB_V[gi] as s32
+            w = FB_W[gi] as s32
+            adv = FB_A[gi] as s32
+        } else {
+            u = FS_U[gi] as s32
+            v = FS_V[gi] as s32
+            w = FS_W[gi] as s32
+            adv = FS_A[gi] as s32
+        }
+        if w > 0 {
+            let q = packet_alloc(10)
+            if q == null { return cx }
+            q[1] = tint
+            q[2] = upos(cx, cy)
+            q[3] = (u as u32) | ((v as u32) << 8) | info
+            q[4] = upos(cx + w, cy)
+            q[5] = ((u + w) as u32) | ((v as u32) << 8)
+            q[6] = upos(cx, cy + h)
+            q[7] = (u as u32) | (((v + h) as u32) << 8)
+            q[8] = upos(cx + w, cy + h)
+            q[9] = ((u + w) as u32) | (((v + h) as u32) << 8)
+            ui_insert(q, 0x26)
+            ui_tris += 2
+        }
+        cx += adv
+    }
+    return cx
+}
+
+fn text_w(s: *u8, big: bool) -> s32 {
+    var w = 0
+    var best = 0
+    var p = s
+    while p[0] != 0 {
+        let ch = p[0] as s32
+        p += 1
+        if ch == '\n' {
+            best = max(best, w)
+            w = 0
+            continue
+        }
+        if ch < 32 || ch > 126 { continue }
+        if big { w += FB_A[ch - 32] as s32 } else { w += FS_A[ch - 32] as s32 }
+    }
+    return max(best, w)
+}
+
+fn ftext_c(cx: s32, y: s32, s: *u8, c: u32, big: bool) { ftext(cx - text_w(s, big) / 2, y, s, c, big) }
+fn ftext_r(rx: s32, y: s32, s: *u8, c: u32, big: bool) -> s32 { return ftext(rx - text_w(s, big), y, s, c, big) }
+
+// ---- number formatting into small buffers
+
+var nbuf: [8][32]u8
+var nbuf_i: s32
+
+fn nb() -> *u8 {
+    nbuf_i = (nbuf_i + 1) & 7
+    return &nbuf[nbuf_i][0]
+}
+
+fn sappend(dst: *u8, s: *u8) -> *u8 {
+    var n = 0
+    while dst[n] != 0 { n += 1 }
+    var k = 0
+    while s[k] != 0 && n < 30 {
+        dst[n] = s[k]
+        n += 1
+        k += 1
+    }
+    dst[n] = 0
+    return dst
+}
+
+fn sint(dst: *u8, v: s32) -> *u8 {
+    var tmp: [12]u8
+    int_to_str(&tmp[0], v)
+    return sappend(dst, &tmp[0])
+}
+
+fn str1(a: *u8) -> *u8 {
+    let b = nb()
+    b[0] = 0
+    return sappend(b, a)
+}
+
+fn num(v: s32) -> *u8 {
+    let b = nb()
+    b[0] = 0
+    return sint(b, v)
+}
+
+// "34.2 cm" from millimetres.
+fn fmt_cm(mm: s32) -> *u8 {
+    let b = nb()
+    b[0] = 0
+    sint(b, mm / 10)
+    sappend(b, ".")
+    sint(b, mm % 10)
+    return sappend(b, " cm")
+}
+
+// "6:40 AM"
+fn fmt_clock() -> *u8 {
+    let m = minutes()
+    var h = m / 60
+    let mi = m % 60
+    let pm = h >= 12
+    h = h % 12
+    if h == 0 { h = 12 }
+    let b = nb()
+    b[0] = 0
+    sint(b, h)
+    sappend(b, ":")
+    let t = (mi / 10) * 10
+    if t < 10 { sappend(b, "0") }
+    sint(b, t)
+    if pm { sappend(b, " PM") } else { sappend(b, " AM") }
+    return b
+}
+
+// ---- panels
+
+fn panel(x: s32, y: s32, w: s32, h: s32) {
+    ui_grad(x, y, w, h, rgb(36, 44, 96), rgb(14, 16, 40), 0)
+    ui_rect(x, y, w, 1, rgb(150, 170, 230), -1)
+    ui_rect(x, y + h - 1, w, 1, rgb(60, 70, 120), -1)
+}
+
+fn panel_glass(x: s32, y: s32, w: s32, h: s32) {
+    ui_grad(x, y, w, h, rgb(60, 70, 120), rgb(20, 24, 60), 2)
+    ui_rect(x, y, w, 1, rgb(120, 140, 200), 1)
+}
+
+// ---- the HUD
+
+fn days_to_festival() -> s32 { return g.fest_day - g.day }
+
+fn draw_hud() {
+    // clock with the sun or the moon
+    panel_glass(4, 4, 112, 22)
+    if is_night() { icon(7, 7, IC_MOON, 0x808080) } else { icon(7, 7, IC_SUN, 0x808080) }
+    let b = nb()
+    b[0] = 0
+    sappend(b, "Day ")
+    sint(b, g.day)
+    ftext(27, 8, b, CREAM, false)
+    ftext_r(112, 8, fmt_clock(), CREAM, false)
+    // the festival countdown and progress
+    panel_glass(186, 4, 130, 30)
+    icon(189, 7, IC_LANTERN, 0x808080)
+    if g.free_play != 0 {
+        ftext(208, 8, "Free play", GOLD, false)
+        ftext(208, 19, "The lake is yours", SOFT, false)
+    } else {
+        let dd = days_to_festival()
+        let c = nb()
+        c[0] = 0
+        if dd <= 0 { sappend(c, "Festival tonight!") }
+        else if dd == 1 { sappend(c, "Festival tomorrow") }
+        else {
+            sappend(c, "Festival in ")
+            sint(c, dd)
+            sappend(c, " days")
+        }
+        ftext(208, 7, c, GOLD, false)
+        let target = FEST_TARGET[min(g.fest, NFEST - 1)]
+        let w = 66
+        let fill = clamp(g.points * w / max(target, 1), 0, w)
+        ui_rect(208, 22, w, 7, rgb(20, 20, 40), -1)
+        var bc = rgb(250, 170, 70)
+        if g.points >= target { bc = rgb(140, 230, 120) }
+        ui_grad(208, 22, fill, 7, mix_col(bc, WHITE, 90), bc, -1)
+        let p = nb()
+        p[0] = 0
+        sint(p, g.points)
+        sappend(p, "/")
+        sint(p, target)
+        ftext(277, 18, p, CREAM, false)
+    }
+    // coins and the lure
+    if phase != Phase.Fight && phase != Phase.Catch {
+        panel_glass(4, 214, 70, 22)
+        icon(7, 217, IC_COIN, 0x808080)
+        ftext(26, 218, num(g.coins), GOLD, false)
+        panel_glass(226, 214, 90, 22)
+        var li = IC_SPOON
+        if g.lure == LURE_GLOW { li = IC_GLOW }
+        if g.lure == LURE_FLOAT { li = IC_FLOAT }
+        icon(229, 217, li, 0x808080)
+        ftext(248, 218, lure_name(g.lure), CREAM, false)
+    }
+}
+
+// The hint line for the current phase.
+fn draw_hints() {
+    var h: *u8 = null
+    match phase {
+        Idle => { if g.total < 3 { h = "Pull the stick back, then flick it forward to cast" } }
+        Aim => h = "Flick forward to cast  -  sideways to aim"
+        Wait => {
+            if wait_t < 600 { h = "Circle the stick to reel  -  rest to let it sit  -  B: reel in" }
+        }
+        Bite => h = "A bite! Pull the stick down to hook it!"
+        else => {}
+    }
+    if h != null && msg_t == 0 {
+        let w = text_w(h, false)
+        ui_rect(160 - w / 2 - 6, 196, w + 12, 14, rgb(10, 10, 30), 2)
+        ftext_c(160, 196, h, SOFT, false)
+    }
+    draw_messages()
+}
+
+fn draw_messages() {
+    if msg_t > 0 && msg != null {
+        let w = text_w(msg, false)
+        ui_rect(160 - w / 2 - 8, 40, w + 16, 16, rgb(14, 14, 40), 2)
+        ftext_c(160, 41, msg, CREAM, false)
+    }
+}
+
+// ---- the reeling guide: a stick diagram with the pattern
+
+const GX = 268
+const GY = 168
+const GR = 22
+
+fn gdx(d: s32) -> s32 {
+    if d == DIR_C { return GX }
+    return GX + (sin(fixed(d) * 0.785398) * GR) as s32
+}
+
+fn gdy(d: s32) -> s32 {
+    if d == DIR_C { return GY }
+    return GY - (cos(fixed(d) * 0.785398) * GR) as s32
+}
+
+fn ui_line(x0: s32, y0: s32, x1: s32, y1: s32, c0: u32, c1: u32) {
+    let q = packet_alloc(9)
+    if q == null { return }
+    let dx = x1 - x0
+    let dy = y1 - y0
+    var ox = 0
+    var oy = 0
+    if abs(dx) > abs(dy) { oy = 2 } else { ox = 2 }
+    q[1] = c0 | (1 << 24)
+    q[2] = upos(x0, y0)
+    q[3] = c1
+    q[4] = upos(x1, y1)
+    q[5] = c0
+    q[6] = upos(x0 + ox, y0 + oy)
+    q[7] = c1
+    q[8] = upos(x1 + ox, y1 + oy)
+    ui_insert(q, 0x2D)
+    ui_tris += 2
+}
+
+// A filled triangle (the lean arrow).
+fn ui_tri(x0: s32, y0: s32, x1: s32, y1: s32, x2: s32, y2: s32, c: u32) {
+    let q = packet_alloc(5)
+    if q == null { return }
+    q[1] = c
+    q[2] = upos(x0, y0)
+    q[3] = upos(x1, y1)
+    q[4] = upos(x2, y2)
+    ui_insert(q, 0x20)
+    ui_tris += 1
+}
+
+fn mastery(f: s32) -> s32 { return g.journal[f].caught as s32 }
+
+fn draw_guide() {
+    let info = &FISH[f_id]
+    let tempo = info.tempo as s32
+    let plen = info.plen as s32
+    let mast = mastery(f_id)
+    // backdrop: a glassy ring
+    ui_tex(GX - 32, GY - 32, 64, 64, SLOT_FISH, PAL_UI, 0, 192, 64, 64, rgb(60, 70, 110), 2)
+    ui_tex(GX - 32, GY - 32, 64, 64, SLOT_FISH, PAL_UI, 0, 192, 64, 64, rgb(70, 90, 150), 1)
+    // the eight dots and the centre
+    for d in 0..9 {
+        var c = rgb(70, 80, 120)
+        if d == f_hit_dir && f_hit_fx > 0 { c = mix_col(c, rgb(255, 240, 160), f_hit_fx * 18) }
+        if d == f_miss_dir && f_miss_fx > 0 { c = mix_col(c, rgb(255, 90, 80), f_miss_fx * 12) }
+        ui_dot(gdx(d), gdy(d), 4, c)
+    }
+    if f_surge == 1 || f_surge == 3 {
+        draw_lean_arrow()
+        return
+    }
+    if f_surge == 4 || f_surge == 5 {
+        // ease off: the centre glows
+        let pul = 3 + (tick_count / 4) % 3
+        ui_dot(GX, GY, 6 + pul, rgb(120, 230, 255))
+        if f_surge == 5 { ftext_c(GX, GY + 30, "EASE OFF!", rgb(140, 230, 255), false) }
+        else { ftext_c(GX, GY + 30, "It's leaping!", rgb(140, 230, 255), false) }
+        draw_cursor()
+        return
+    }
+    let want = info.pat[f_k] as s32
+    let prev = info.pat[(f_k + plen - 1) % plen] as s32
+    let next2 = info.pat[(f_k + 1) % plen] as s32
+    // the path ahead (hidden as you master the fish)
+    if mast < 3 {
+        ui_line(gdx(prev), gdy(prev), gdx(want), gdy(want), rgb(60, 70, 110), rgb(200, 200, 120))
+        ui_line(gdx(want), gdy(want), gdx(next2), gdy(next2), rgb(110, 110, 80), rgb(40, 40, 60))
+    }
+    // the next step
+    if mast < 6 {
+        let pulse = 5 + ((tick_count / 3) & 3)
+        ui_dot(gdx(want), gdy(want), pulse, rgb(255, 220, 110))
+    }
+    // the metronome: a ghost dot gliding along the pattern in rhythm
+    let t = min(f_guide_t * 256 / max(tempo, 1), 256)
+    let mx = gdx(prev) + (gdx(want) - gdx(prev)) * t / 256
+    let my = gdy(prev) + (gdy(want) - gdy(prev)) * t / 256
+    ui_dot(mx, my, 3, rgb(180, 200, 255))
+    draw_cursor()
+    if f_surge == 2 {
+        if (tick_count / 8) % 2 == 0 { ftext_c(GX, GY + 30, "REEL FAST!", rgb(255, 160, 120), false) }
+    } else if f_combo >= 4 {
+        let b = nb()
+        b[0] = 0
+        sint(b, f_combo)
+        sappend(b, " in rhythm!")
+        ftext_c(GX, GY + 30, b, rgb(255, 230, 140), false)
+    }
+}
+
+fn draw_cursor() {
+    let st = stick_in
+    let x = GX + (st.x * GR) as s32
+    let y = GY - (st.y * GR) as s32
+    ui_dot(x, y, 3, rgb(255, 255, 255))
+}
+
+fn draw_lean_arrow() {
+    let a = f_lean_ang
+    let s = sin(a)
+    let c = cos(a)
+    let tipx = GX + (s * 26) as s32
+    let tipy = GY - (c * 26) as s32
+    let bx = GX + (s * 6) as s32
+    let by = GY - (c * 6) as s32
+    let px = (c * 9) as s32
+    let py = (s * 9) as s32
+    let pulse = (tick_count / 4) % 2 == 0
+    var col = rgb(255, 170, 90)
+    if pulse { col = rgb(255, 220, 140) }
+    ui_tri(tipx, tipy, bx + px, by + py, bx - px, by - py, col)
+    ftext_c(GX, GY + 30, "LEAN!", col, false)
+    draw_cursor()
+}
+
+fn draw_tension() {
+    let x = 222
+    let y0 = 140
+    let h = 60
+    ui_rect(x - 1, y0 - 1, 9, h + 2, rgb(200, 210, 240), -1)
+    ui_rect(x, y0, 7, h, rgb(16, 18, 40), -1)
+    // the safe band
+    let lo = y0 + h - (h * 15 / 100)
+    let hi = y0 + h - (h * 80 / 100)
+    ui_rect(x, hi, 7, lo - hi, rgb(30, 70, 40), -1)
+    let fill = clamp((f_tension * h) as s32, 0, h)
+    var c = rgb(120, 220, 120)
+    if f_tension < 0.15 { c = rgb(110, 160, 255) }
+    if f_tension > 0.8 { c = rgb(255, 170, 60) }
+    if f_tension > 0.92 { c = rgb(255, 80, 70) }
+    ui_grad(x, y0 + h - fill, 7, fill, mix_col(c, WHITE, 80), c, -1)
+    ftext_c(x + 3, y0 + h + 3, "LINE", DIM, false)
+    // distance
+    let b = nb()
+    b[0] = 0
+    sint(b, (f_dist * 10) as s32 / 10)
+    sappend(b, "m")
+    ftext_c(x + 3, y0 - 14, b, CREAM, false)
+}
+
+fn draw_fight_ui() {
+    draw_tension()
+    draw_guide()
+    // the fish's name once you know it
+    if g.journal[f_id].caught > 0 {
+        ftext_c(GX - 20, 112, fish_name(f_id), SOFT, false)
+    } else {
+        ftext_c(GX - 20, 112, "Something big?", DIM, false)
+    }
+    if f_tension > 0.85 && (tick_count / 6) % 2 == 0 {
+        ftext_c(160, 60, "Easy! The line is straining!", rgb(255, 150, 110), false)
+    }
+    if f_tension < 0.14 && f_slack_t > 30 {
+        ftext_c(160, 60, "Slack line! Keep reeling!", rgb(140, 190, 255), false)
+    }
+}
+
+// ---- the catch card
+
+fn fish_pal(f: s32) -> s32 {
+    if f & 1 != 0 { return FISH_PNIGHT[f / 2] as s32 }
+    return FISH_PDAY[f / 2] as s32
+}
+
+// A fish sprite (facing left in the texture) scaled to w x h centred at (cx, cy), tilted.
+fn draw_fish_sprite(f: s32, cx: s32, cy: s32, w: s32, h: s32, tilt: fixed, pal: s32, tint: u32) {
+    let sp = f / 2
+    let s = sin(tilt)
+    let c = cos(tilt)
+    var xs: [4]s32
+    var ys: [4]s32
+    let hw = fixed(w / 2)
+    let hh = fixed(h / 2)
+    // corners: TL, TR, BL, BR
+    let cxs = [-hw, hw, -hw, hw]
+    let cys = [-hh, -hh, hh, hh]
+    for k in 0..4 {
+        xs[k] = cx + (cxs[k] * c - cys[k] * s) as s32
+        ys[k] = cy + (cxs[k] * s + cys[k] * c) as s32
+    }
+    ui_tex4(&xs[0], &ys[0], SLOT_FISH, pal, FISH_U[sp] as s32, FISH_V[sp] as s32, 64, 32, tint)
+}
+
+fn draw_catch_card() {
+    let t = phase_t
+    let k = min(t * 12, 256)
+    panel(30, 50, 260, 150)
+    // a glow behind the fish
+    ui_tex(84, 60, 152, 100, SLOT_WORLD, PAL_GREY, UV_HALO_U, UV_HALO_V, 64, 64, scale_col(rgb(140, 120, 80), k), 1)
+    let wob = sin(fixed(t) * 0.12) * 0.08
+    let sc = 2 + min(t, 12) / 12
+    draw_fish_sprite(c_id, 160, 104, 64 * sc, 32 * sc, wob, fish_pal(c_id), 0x808080)
+    ftext_c(160, 146, fish_name(c_id), CREAM, true)
+    let b = nb()
+    b[0] = 0
+    sappend(b, fmt_cm(c_size))
+    sappend(b, "   +")
+    sint(b, c_points)
+    if g.free_play == 0 { sappend(b, " lanterns") } else { sappend(b, " coins") }
+    ftext_c(160, 166, b, GOLD, false)
+    if c_new {
+        if (t / 10) % 2 == 0 { ftext(40, 56, "NEW!", rgb(255, 230, 90), true) }
+        ftext_c(160, 181, first_line(fish_flavour(c_id)), SOFT, false)
+    } else if c_record {
+        if (t / 10) % 2 == 0 { ftext(40, 56, "RECORD!", rgb(140, 230, 255), true) }
+    }
+    if t > 45 && (t / 20) % 2 == 0 { ftext_r(284, 186, "A", DIM, false) }
+}
+
+var line_buf: [64]u8
+
+fn first_line(s: *u8) -> *u8 {
+    var n = 0
+    while s[n] != 0 && s[n] != '\n' && n < 62 {
+        line_buf[n] = s[n]
+        n += 1
+    }
+    line_buf[n] = 0
+    return &line_buf[0]
+}
+
+// ---- tutorial boxes (pause the game until A)
+
+var tut_text: *u8
+var tut_t: s32
+
+fn tutorial(s: *u8) {
+    tut_text = s
+    tut_t = 0
+}
+
+fn draw_tutorial() {
+    if tut_text == null { return }
+    ui_grad(40, 64, 240, 112, rgb(40, 50, 104), rgb(16, 18, 46), -1)
+    ui_rect(40, 64, 240, 1, rgb(150, 170, 230), -1)
+    icon(48, 70, IC_STAR, 0x808080)
+    ftext(70, 72, tut_text, CREAM, false)
+    if tut_t > 30 && (tut_t / 20) % 2 == 0 { ftext_r(272, 160, "A: OK", GOLD, false) }
+}

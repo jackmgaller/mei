@@ -1,0 +1,83 @@
+// The game state: everything a save needs lives in one struct, `g`.
+
+const SAVE_VERSION = 1
+const DAY_FRAMES = 18000          // a full day is 5 minutes
+const START_CLOCK = 4500          // 6:00
+const FEST_CLOCK = 14250          // 19:00
+const FEST_END_CLOCK = 15000      // 20:00, when play resumes after a festival
+const DUSK_CLOCK = 13500          // 18:00 (resting "until evening")
+const DAWN_CLOCK = 4500           // 6:00
+
+struct Entry {
+    caught: u16
+    best_mm: u16
+}
+
+struct Game {
+    version: s32
+    day: s32
+    clock: s32            // frames into the day (0 = midnight)
+    coins: s32
+    points: s32           // lantern points toward the next festival
+    fest: s32             // festivals held successfully (0..5)
+    fest_day: s32         // the day of the next festival
+    missed: s32           // festivals that came up short
+    village: s32          // how far the village has grown (0..5)
+    up: [8]u8             // upgrade tiers, UP_*
+    lure: s32             // the lure tied on, LURE_*
+    dock: s32             // where the angler stands
+    total: s32            // fish caught
+    tutorial: s32         // bit flags of tutorial messages seen
+    free_play: s32        // 1 after the grand festival
+    journal: [14]Entry
+    play_frames: s32
+}
+
+var g: Game
+
+const TUT_CAST = 1
+const TUT_HOOK = 2
+const TUT_REEL = 4
+const TUT_CATCH = 8
+const TUT_NIGHT = 16
+
+fn new_game() {
+    memset(&g as *u8, 0, sizeof(Game))
+    g.version = SAVE_VERSION
+    g.day = 1
+    g.clock = START_CLOCK
+    g.coins = 20
+    g.fest_day = FEST_DAY0
+    g.dock = 0
+    g.lure = LURE_SPOON
+}
+
+fn has_up(k: s32) -> s32 { return g.up[k] as s32 }
+
+fn dock_open(d: s32) -> bool {
+    if d == 0 { return true }
+    return g.fest >= d
+}
+
+fn lure_owned(l: s32) -> bool {
+    if l == LURE_SPOON { return true }
+    if l == LURE_GLOW { return g.up[UP_GLOW] != 0 }
+    return g.up[UP_FLOAT] != 0
+}
+
+// ---- time of day
+
+// Minutes since midnight.
+fn minutes() -> s32 { return g.clock * 2 / 25 }
+
+// How much of night it is: 0 by day, 1 at night (smooth through dusk and dawn).
+fn nightness() -> fixed {
+    let m = minutes()
+    if m < 300 { return 1.0 }                                   // before 5:00
+    if m < 420 { return 1.0 - fixed(m - 300) / 120 }            // 5:00-7:00
+    if m < 1080 { return 0.0 }                                  // until 18:00
+    if m < 1200 { return fixed(m - 1080) / 120 }                // 18:00-20:00
+    return 1.0
+}
+
+fn is_night() -> bool { return nightness() > 0.5 }

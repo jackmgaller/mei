@@ -1,0 +1,220 @@
+// Test scenarios for Lantern Lake (run with tests/run.sh SCENARIO FRAMES OUT).
+// The scenario number comes from a generated file that defines SCENARIO and imports this.
+// The hooks drive the game with simulated stick input: casts, circular reeling and a bot
+// that traces each species' pattern (and leans against pulls, eases off leaps).
+
+const TEST = 1
+
+var bot_on: bool
+var bot_miss: s32          // every Nth step goes wrong on purpose (0: never)
+var force_fish: s32 = -1
+var scen_t: s32
+var report_at: s32 = 0
+var cpu_max: s32
+var tri_max: s32
+var cpu_sum: s32
+var cpu_n: s32
+
+fn input_pad(f: s32) -> u32 { return script_pad(f) }
+fn input_stick(f: s32) -> vec2 { return vec2(0.0, 0.0) }
+
+fn clock_at(h: s32, m: s32) -> s32 { return (h * 60 + m) * 25 / 2 }
+
+fn start_at(dock: s32, h: s32, m: s32) {
+    new_game()
+    g.dock = dock
+    g.clock = clock_at(h, m)
+    g.tutorial = 0xFF
+    g.fest = 3
+    g.village = 2
+    begin_fishing()
+}
+
+fn test_init() {
+    show_debug = SHOT == 0
+    match SCENARIO {
+        1 => start_at(0, 10, 0)               // day at the pier
+        2 => start_at(0, 18, 20)              // dusk at the pier
+        3 => start_at(0, 22, 0)               // night at the pier: the moon on the water
+        4 => { start_at(1, 11, 0); force_fish = 4 }    // a fight: Lily Carp
+        5 => { start_at(3, 23, 0); force_fish = 3 }    // a fight: Ghost Pike at night
+        6 => {                                // the journal with some catches
+            start_at(0, 12, 0)
+            for f in 0..14 {
+                if f % 3 != 2 {
+                    g.journal[f].caught = (1 + f % 4) as u16
+                    g.journal[f].best_mm = (FISH[f].min_mm + 37) as u16
+                }
+            }
+            open_journal(Screen.Fish)
+            jr_sel = 7
+        }
+        7 => {                                // the festival (target met)
+            start_at(0, 18, 50)
+            g.fest = 1
+            g.village = 1
+            g.points = 400
+            g.fest_day = 1
+        }
+        8 => { start_at(0, 12, 0); g.coins = 500; open_menu(); enter(Screen.Shop); shop_sel = 1 }
+        9 => { start_at(0, 12, 0); open_menu(); menu_sel = 2 }
+        10 => { start_at(2, 21, 30) }          // night at the bridge, a perf sweep
+        11 => {                                // the grand festival and the ending
+            start_at(0, 18, 50)
+            g.fest = 4
+            g.village = 4
+            g.points = 2000
+            g.fest_day = 1
+        }
+        12 => { start_at(2, 14, 0); force_fish = 6 }   // Bridge Catfish (heavy)
+        13 => { start_at(2, 23, 0); force_fish = 7; g.up[UP_LANTERN] = 1 }  // Lantern Catfish (circles)
+        14 => { start_at(3, 9, 0); force_fish = 8 }    // Dawn Trout (leaps)
+        15 => { start_at(0, 9, 0) }                     // a full cast-and-wait at the pier, natural bites
+        16 => { start_at(0, 6, 30) }                    // dawn
+        17 => { new_game(); enter(Screen.Title) }        // the title (with no save)
+        18 => { start_at(1, 20, 30); force_fish = 5 }   // Dusk Carp
+        19 => { start_at(0, 23, 0); force_fish = 1 }    // Moonperch (pause step)
+        20 => { start_at(1, 13, 0); force_fish = 12 }   // Golden Koi
+        23 => { start_at(0, 21, 30); view_off = 0.12; g.total = 5 }   // facing the moon
+        22 => { start_at(0, 10, 0); g.tutorial = TUT_CAST; force_fish = 0 }   // the first hook's tutorial
+        21 => {                                // a festival that comes up short
+            start_at(0, 18, 50)
+            g.fest = 0
+            g.village = 0
+            g.points = 60
+            g.fest_day = 1
+        }
+        else => {}
+    }
+}
+
+fn script_pad(f: s32) -> u32 {
+    if SCENARIO == 7 || SCENARIO == 11 || SCENARIO == 21 {
+        if f > 500 && f % 60 == 0 { return A }
+    }
+    if (SCENARIO >= 4 && SCENARIO <= 5) || SCENARIO >= 12 {
+        if phase == Phase.Catch && phase_t > 60 { return A }
+    }
+    if SCENARIO == 11 && screen == Screen.Ending && screen_t > 950 { return A }
+    return 0
+}
+
+// Simulated stick for this frame.
+fn bot_stick() -> vec2 {
+    let t = scen_t
+    if screen != Screen.Fish { return vec2(0.0, 0.0) }
+    match phase {
+        Idle => {
+            if SCENARIO == 10 {
+                // sweep the view left and right
+                if (t / 200) % 2 == 0 { return vec2(1.0, 0.0) }
+                return vec2(-1.0, 0.0)
+            }
+            if t > 40 { return vec2(0.0, -1.0) }          // pull back
+            return vec2(0.0, 0.0)
+        }
+        Aim => {
+            if aim_hold < 40 { return vec2(0.25, -1.0) }
+            return vec2(0.0, 1.0)                         // flick
+        }
+        Wait => {
+            if force_fish >= 0 && phase_t == 5 { force_bite() }
+            // circle the stick slowly now and then (8-way, like a keyboard)
+            if SCENARIO == 15 && (phase_t / 120) % 2 == 1 {
+                return dir_vec((phase_t / 5) % 8)
+            }
+            return vec2(0.0, 0.0)
+        }
+        Bite => {
+            if phase_t > 6 { return vec2(0.0, -1.0) }      // hook!
+            return vec2(0.0, 0.0)
+        }
+        Fight => return fight_bot()
+        else => return vec2(0.0, 0.0)
+    }
+}
+
+fn force_bite() {
+    let i = 0
+    sw[i].id = force_fish
+    sw[i].state = SW_AT_LURE
+    sw[i].pos = lure
+    sw[i].size_mm = random_size(force_fish)
+    sw[i].t = 0
+    start_bite(i)
+}
+
+var bot_dir: s32 = -1
+var bot_hold: s32
+
+fn fight_bot() -> vec2 {
+    if f_surge == 1 || f_surge == 3 {
+        return vec2(sin(f_lean_ang), cos(f_lean_ang))
+    }
+    if f_surge == 4 || f_surge == 5 { return vec2(0.0, 0.0) }
+    let info = &FISH[f_id]
+    let tempo = info.tempo as s32
+    let want = info.pat[f_k] as s32
+    // move to the next step on the beat (faster while it charges)
+    var due = tempo
+    if f_surge == 2 { due = tempo / 2 }
+    if f_step_t >= due - 1 || bot_dir < 0 {
+        bot_dir = want
+    }
+    if bot_dir == DIR_C { return vec2(0.0, 0.0) }
+    if want == DIR_C && f_step_t > 1 { return vec2(0.0, 0.0) }
+    return dir_vec(bot_dir)
+}
+
+fn test_hook(f: s32) {
+    scen_t += 1
+    stick_in = bot_stick()
+    if SCENARIO == 10 {
+        // hop between docks every 400 frames for the perf sweep
+        if scen_t % 400 == 0 {
+            g.dock = (g.dock + 1) % 4
+            begin_fishing()
+        }
+    }
+    // statistics
+    if scen_t > 30 {
+        let u = cpu_used()
+        cpu_max = max(cpu_max, u)
+        tri_max = max(tri_max, world_tris + ui_tris)
+        cpu_sum += u / 10
+        cpu_n += 1
+    }
+    if scen_t % 100 == 0 {
+        print("passes ")
+        print_int(tris_a)
+        print(" ")
+        print_int(tris_b)
+        print(" ")
+        print_int(world_tris)
+        print(" cpu ")
+        print_int(cpu_used())
+        print(" prof")
+        for k in 0..8 {
+            print(" ")
+            print_int(prof[k])
+        }
+        println("")
+    }
+    if scen_t % 300 == 0 {
+        print("t=")
+        print_int(scen_t)
+        print(" cpu max ")
+        print_int(cpu_max)
+        print(" avg ")
+        print_int(cpu_sum / max(cpu_n, 1) * 10)
+        print(" tris max ")
+        print_int(tri_max)
+        print(" phase ")
+        print_int(phase as s32)
+        print(" dist ")
+        print_fixed(f_dist)
+        print(" tens ")
+        print_fixed(f_tension)
+        println("")
+    }
+}

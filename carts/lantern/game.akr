@@ -1,0 +1,309 @@
+// Lantern Lake: screens, the frame loop, asset loading and saving.
+import "data.akr"
+import "state.akr"
+import "world.akr"
+import "fishing.akr"
+import "scene.akr"
+import "ui.akr"
+import "sfx.akr"
+import "screens.akr"
+
+enum Screen { Title, Intro, Fish, Menu, Shop, Journal, Festival, Ending, Travel }
+
+var screen = Screen.Title
+var screen_t: s32
+var tick_count: s32
+var show_debug: bool
+
+// input, sampled once per frame through input_pad() / input_stick()
+var pad_now: u32
+var pad_prev: u32
+var stick_in: vec2
+var stick_raw: vec2
+
+fn held_in(b: u32) -> bool { return pad_now & b != 0 }
+fn btnp_in(b: u32) -> bool { return pad_now & ~pad_prev & b != 0 }
+
+// ---- saving
+
+var save_buf: Game
+var meta: SaveMeta
+var saving: s32              // frames of the "Saving..." indicator (0 = not saving)
+var have_save: bool
+var save_msg: *u8
+var save_msg_t: s32
+
+fn save_game() {
+    if card_busy() {
+        save_msg = "The memory card is busy..."
+        save_msg_t = 120
+        return
+    }
+    save_buf = g
+    meta = *SAVE_ICON
+    let t = nb()
+    t[0] = 0
+    sappend(t, "Lantern Lake - ")
+    if g.free_play != 0 { sappend(t, "Free play") } else {
+        sappend(t, "Fest ")
+        sint(t, g.fest + 1)
+    }
+    sappend(t, " - Day ")
+    sint(t, g.day)
+    card_set_title(&meta, t)
+    let err = card_save(0, &save_buf as *u8, sizeof(Game), &meta)
+    if err == CARD_OK {
+        saving = 1
+        have_save = true
+    } else if err == CARD_NO_CARD {
+        save_msg = "No memory card - your progress wasn't saved."
+        save_msg_t = 200
+    } else if err == CARD_FULL {
+        save_msg = "The memory card is full - not saved."
+        save_msg_t = 200
+    } else {
+        save_msg = "Couldn't save just now."
+        save_msg_t = 160
+    }
+}
+
+fn saving_update() {
+    if saving > 0 {
+        saving += 1
+        if !card_busy() && saving > 40 {
+            saving = 0
+            save_msg = "Saved."
+            save_msg_t = 60
+        }
+    }
+    if save_msg_t > 0 { save_msg_t -= 1 }
+}
+
+fn draw_saving() {
+    if saving > 0 {
+        panel_glass(226, 190, 90, 18)
+        icon(229, 191, IC_LANTERN, 0x808080)
+        let dots = (saving / 12) % 4
+        var s = "Saving"
+        if dots == 1 { s = "Saving." }
+        if dots == 2 { s = "Saving.." }
+        if dots == 3 { s = "Saving..." }
+        ftext(249, 193, s, CREAM, false)
+    } else if save_msg_t > 0 && save_msg != null {
+        let w = text_w(save_msg, false)
+        ui_rect(160 - w / 2 - 8, 178, w + 16, 16, rgb(14, 14, 40), 2)
+        ftext_c(160, 179, save_msg, CREAM, false)
+    }
+}
+
+// Reads the save in slot 0 into g. False if there is none (or it is from another version).
+fn load_game() -> bool {
+    let n = card_load(0, &save_buf as *u8, sizeof(Game))
+    if n != sizeof(Game) as s32 { return false }
+    if save_buf.version != SAVE_VERSION { return false }
+    g = save_buf
+    return true
+}
+
+// ---- start-up
+
+fn init() {
+    load_texture(SLOT_WORLD, TEX0, len(TEX0))
+    load_texture(SLOT_FISH, TEX1, len(TEX1))
+    load_texture(SLOT_FONT, TEX2, len(TEX2))
+    load_texture(SLOT_WATER, TEX3, len(TEX3))
+    load_palette(STAT_BASE * 16, STATPAL, len(STATPAL))
+    camera_fov(1.0)
+    camera_clip(0.1, 200.0)
+    batch_init()
+    fan_init()
+    stars_init()
+    new_game()
+    tod_force = -1
+    village_palettes()
+    tod_update()
+    palettes_update(true)
+    have_save = false
+    if TEST == 0 {
+        if card_exists(0) {
+            have_save = card_size(0) == sizeof(Game) as s32
+        }
+    }
+    seed(77)
+    swimmers_reset()
+    fireflies_reset()
+    ambience_start()
+    music_start(false)
+    enter(Screen.Title)
+    test_init()
+}
+
+fn enter(s: Screen) {
+    screen = s
+    screen_t = 0
+}
+
+// Starts fishing at the current dock.
+fn begin_fishing() {
+    view_off = 0.0
+    phase = Phase.Idle
+    phase_t = 0
+    swim_night = is_night()
+    swimmers_reset()
+    fireflies_reset()
+    tod_force = -1
+    village_palettes()
+    palettes_update(true)
+    nature_reset()
+    enter(Screen.Fish)
+}
+
+// ---- the frame loop
+
+fn update() {
+    pad_prev = pad_now
+    pad_now = input_pad(tick_count)
+    stick_raw = input_stick(tick_count)
+    // the d-pad also works as a (digital) stick
+    var st = stick_raw
+    if held_in(LEFT) { st.x = -1.0 }
+    if held_in(RIGHT) { st.x = 1.0 }
+    if held_in(UP) { st.y = 1.0 }
+    if held_in(DOWN) { st.y = -1.0 }
+    let m = abs(st.x) + abs(st.y)
+    if m > 1.5 { st = st * 0.7071 }
+    stick_in = st
+    test_hook(tick_count)
+    tick_count += 1
+    screen_t += 1
+    if btnp_in(Y) && TEST != 0 { show_debug = !show_debug }
+
+    if tut_text != null {
+        tut_t += 1
+        if tut_t > 20 && btnp_in(A) {
+            tut_text = null
+            sfx_ok()
+        }
+    } else {
+        match screen {
+            Title => update_title()
+            Intro => update_intro()
+            Fish => update_fish()
+            Menu => update_menu()
+            Shop => update_shop()
+            Journal => update_journal()
+            Festival => update_festival()
+            Ending => update_ending()
+            Travel => update_travel()
+        }
+    }
+    let c0 = CYCLES as s32
+    tod_update()
+    palettes_update(false)
+    prof[7] = c0 - CYCLES as s32
+    ripples_update()
+    splashes_update()
+    fireflies_update()
+    saving_update()
+    let amb = screen == Screen.Fish || screen == Screen.Title || screen == Screen.Travel
+    sound_update(is_night_tod(), amb)
+}
+
+// Night as the screen shows it (the title and the festival force their own time).
+fn is_night_tod() -> bool { return night > 0.5 }
+
+fn update_fish() {
+    // time passes while you fish (but not during a fight or the catch)
+    if phase != Phase.Fight && phase != Phase.Catch && phase != Phase.Bite {
+        g.clock += 1
+        g.play_frames += 1
+        if g.clock >= DAY_FRAMES {
+            g.clock -= DAY_FRAMES
+            g.day += 1
+        }
+    }
+    // the festival starts at 19:00 on its day
+    if g.free_play == 0 && (g.day > g.fest_day || (g.day == g.fest_day && g.clock >= FEST_CLOCK)) {
+        if phase == Phase.Idle || phase == Phase.Wait || phase == Phase.Aim {
+            start_festival()
+            return
+        }
+    }
+    if phase == Phase.Idle || phase == Phase.Wait {
+        if btnp_in(START) {
+            if phase == Phase.Wait { reel_in() }
+            open_menu()
+            return
+        }
+        if btnp_in(SELECT) {
+            open_journal(Screen.Fish)
+            return
+        }
+    }
+    fishing_update()
+    if night > 0.6 && g.tutorial & TUT_NIGHT == 0 && phase == Phase.Idle {
+        g.tutorial = g.tutorial | TUT_NIGHT
+        tutorial("Night has fallen. The fish you\nknow have night twins now: the\nsame shape in other colours, with\ntheir own habits and patterns.\nLanterns and glow lures help.")
+    }
+}
+
+fn draw() {
+    ui_tris = 0
+    match screen {
+        Title => draw_title()
+        Intro => draw_intro()
+        Fish => draw_fish()
+        Menu => draw_menu()
+        Shop => draw_shop()
+        Journal => draw_journal()
+        Festival => draw_festival()
+        Ending => draw_ending()
+        Travel => draw_travel()
+    }
+    draw_tutorial()
+    draw_saving()
+    if show_debug { draw_debug() }
+}
+
+fn draw_fish() {
+    camera_at_dock()
+    draw_lake()
+    if phase == Phase.Aim { draw_aim_arc() }
+    if phase == Phase.Fight && tut_text == null { draw_fight_ui() }
+    if phase == Phase.Catch {
+        draw_catch_card()
+    } else {
+        draw_hud()
+        draw_hints()
+    }
+    if phase == Phase.Bite && (phase_t / 6) % 2 == 0 {
+        if project(vec3(lure.x, 0.9, lure.z)) { ftext_c(proj_x, proj_y - 10, "!", rgb(255, 240, 120), true) }
+    }
+}
+
+// CPU and triangle counters (Y in test builds).
+var stat_cpu_max: s32
+var stat_tri_max: s32
+var stat_cpu_sum: s32
+var stat_n: s32
+
+fn draw_debug() {
+    let used = cpu_used()
+    let tris = world_tris + ui_tris
+    if tick_count > 10 {
+        stat_cpu_max = max(stat_cpu_max, used)
+        stat_tri_max = max(stat_tri_max, tris)
+        stat_cpu_sum += used / 100
+        stat_n += 1
+    }
+    ui_rect(0, 228, 320, 12, rgb(10, 10, 20), 2)
+    let b = nb()
+    b[0] = 0
+    sappend(b, "CPU ")
+    sint(b, used)
+    sappend(b, " (")
+    sint(b, used / 5000)
+    sappend(b, "%) TRIS ")
+    sint(b, tris)
+    ftext(4, 227, b, rgb(255, 230, 120), false)
+}
