@@ -1,0 +1,197 @@
+// Workstream C (simulation, people) test scenarios: existing 10-15, 20, 22-24, 30, 90-95; new
+// ones 400-499. See harness.akr for the fixtures.
+
+fn scen_sim_init() {
+    match SCENARIO {
+        10 => scen_hotel(0)       // the demo hotel, staffed, from 13:00
+        11 => scen_hotel(1)       // with a first floor and an elevator
+        12 => { scen_hotel(1); view_floor = 1; view_recentre() }
+        13 => { scen_hotel(1); s_obj(OB_FLOOR_LAMP, 0, 11, 3, 0); s_obj(OB_FLOOR_LAMP, 0, 19, 8, 0); tod = 21 * 60 * MIN_FRAMES }
+        14 => { scen_hotel(1); tod = 19 * 60 * MIN_FRAMES }
+        15 => { scen_hotel(1); view_floor = 1; view_zoom = 2; cur_x = 14.0; cur_z = 15.0; view_recentre() }
+        20 => scen_grand(0, 0, 13)           // the grand hotel, ground floor, afternoon
+        22 => scen_grand(0, 60, 15)          // busy: 60 guests checked in
+        23 => scen_grand(0, 60, 22)          // busy at night (the bar)
+        24 => scen_grand(5, 60, 15)          // the top floor
+        30 => { scen_hotel(1); speed = 4 }   // two days at x4: reviews and money
+        90 => { new_hotel_state(); start_play(); scen_hotel(1); day = 7; money = 123456; view_floor = 1; view_recentre() }
+        91 => {}                  // the title: Continue loads the save
+        95 => {}                  // the title: New hotel (no card)
+        92 => { new_hotel_state(); start_play(); money = 9999999; scen_grand(0, 0, 13) }   // the grand hotel's save size
+        else => {}
+    }
+}
+
+fn scen_sim_pad(f: s32) -> u32 {
+    if (SCENARIO == 91 || SCENARIO == 95) && (f == 60 || f == 61) { return A }
+    return 0
+}
+
+fn scen_sim_hook() {
+    if (SCENARIO == 90 || SCENARIO == 92) && scen_t == 40 { save_game(); print("save size "); print_int(spos); println("") }
+    if SCENARIO == 30 && scen_t % 2880 == 0 { report() }
+    if SCENARIO == 30 && scen_t % 60 == 0 && scen_t > 360 && scen_t < 1100 && false {
+        print("orders:")
+        for k in 0..MAXORD { if orders[k].state != 0 { print(" #"); print_int(k); print("="); print_int(orders[k].state as s32); print(" g"); print_int(orders[k].guest as s32); print(" gs"); print_int(people[orders[k].guest as s32].state as s32) } }
+        let c = &people[4]
+        print(" cook st ")
+        print_int(c.state as s32)
+        print(" act ")
+        print_int(c.act as s32)
+        print(" @")
+        print_int(ptile_x(c.tile as s32))
+        print(",")
+        print_int(ptile_z(c.tile as s32))
+        print(" wait ")
+        print_int(c.wait as s32)
+        let w = &people[5]
+        print(" | waiter st ")
+        print_int(w.state as s32)
+        print(" job ")
+        print_int(w.job as s32)
+        print(" @")
+        print_int(ptile_x(w.tile as s32))
+        print(",")
+        print_int(ptile_z(w.tile as s32))
+        print(" wait ")
+        print_int(w.wait as s32)
+        print(" ")
+        println(fmt_clock())
+        for k in 0..njobs {
+            let j = &jobs[k]
+            if j.kind == 0 { continue }
+            print("   job kind ")
+            print_int(j.kind as s32)
+            print(" role ")
+            print_int(j.role as s32)
+            print(" who ")
+            print_int(j.who as s32)
+            print(" target ")
+            println(num(j.target as s32))
+        }
+    }
+    if SCENARIO == 30 && scen_t % 720 == 0 && scen_t > 5000 && scen_t < 9000 {
+        for k in 0..njobs {
+            let j = &jobs[k]
+            if j.kind == 0 { continue }
+            print("  job ")
+            print_int(k)
+            print(" kind ")
+            print_int(j.kind as s32)
+            print(" step ")
+            print_int(j.step as s32)
+            print(" who ")
+            print_int(j.who as s32)
+            print(" target ")
+            println(num(j.target as s32))
+        }
+        for k in 0..nelevs {
+            let e = &elevs[k]
+            print("  elev ")
+            print_int(k)
+            print(" obj ")
+            print_int(e.obj as s32)
+            print(" pos ")
+            print_fixed(e.pos)
+            print(" dir ")
+            print_int(e.dir)
+            print(" door ")
+            print_int(e.door)
+            print(" calls ")
+            print_int(e.calls as s32)
+            print(" n ")
+            print_int(e.n)
+            print(" f0 ")
+            print_int(e.f0 as s32)
+            print(" f1 ")
+            println(num(e.f1 as s32))
+        }
+        for i in 0..npeople {
+            let p = &people[i]
+            if p.used == 0 || p.kind as s32 != P_STAFF { continue }
+            print("  staff ")
+            print_int(i)
+            print(" role ")
+            print_int(p.type as s32)
+            print(" st ")
+            print_int(p.state as s32)
+            print(" job ")
+            print_int(p.job as s32)
+            print(" @")
+            print_int(ptile_f(p.tile as s32))
+            print(":")
+            print_int(ptile_x(p.tile as s32))
+            print(",")
+            print_int(ptile_z(p.tile as s32))
+            print(" goal ")
+            print_int(p.goal as s32)
+            print(" wait ")
+            print_int(p.wait as s32)
+            print(" carry ")
+            print_int(p.carry as s32)
+            print(" mode ")
+            print_int(p.mode as s32)
+            print(" elev ")
+            print_int(p.elev as s32)
+            print(" energy ")
+            println(num(p.energy as s32))
+        }
+    }
+    if SCENARIO == 91 && scen_t == 100 {
+        print("loaded: day ")
+        print_int(day)
+        print(" money ")
+        print_int(money)
+        print(" objs ")
+        print_int(nobjs)
+        print(" staff ")
+        print_int(staff_count())
+        print(" rooms ")
+        print_int(nrooms)
+        println("")
+    }
+}
+
+fn report() {
+    print("== ")
+    println(fmt_clock())
+    print("money ")
+    print_int(money)
+    print(" stars ")
+    print_int(stars)
+    print(" score ")
+    print_int(score)
+    print(" rep ")
+    print_int(reputation)
+    print(" guests ")
+    print_int(guest_count())
+    print(" served ")
+    print_int(guests_served)
+    print(" svc wait ")
+    print_int(service_wait_avg)
+    println("")
+    print("ledger y:")
+    for k in 0..NLG { print(" "); print_int(ledger_y[k]) }
+    print("  today:")
+    for k in 0..NLG { print(" "); print_int(ledger[k]) }
+    println("")
+    for k in 0..reviews_n {
+        print("  ")
+        print_int(reviews[k].stars as s32)
+        print("* ")
+        println(str_of(REVIEW_OFF[reviews[k].quote as s32] as s32))
+    }
+    print("jobs ")
+    print_int(njobs)
+    print(" dirty rooms ")
+    var d = 0
+    for r in 1..nrooms { if rooms[r].used != 0 && rooms[r].state as s32 == RS_DIRTY { d += 1 } }
+    print_int(d)
+    print(" linen ")
+    for i in 0..nobjs { if objs[i].used != 0 && objs[i].t as s32 == OB_LINEN_SHELF { print_int(objs[i].stock as s32); print(" ") } }
+    print(" washer ")
+    for i in 0..nobjs { if objs[i].used != 0 && objs[i].t as s32 == OB_WASHER { print_int(objs[i].stock as s32); print("/"); print_int(objs[i].pad as s32); print(" ") } }
+    print(" fridge ")
+    for i in 0..nobjs { if objs[i].used != 0 && objs[i].t as s32 == OB_FRIDGE { print_int(objs[i].stock as s32); print(" ") } }
+    println("")
+}

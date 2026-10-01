@@ -1,0 +1,263 @@
+// Drawing people (billboard sprites, shadows, carried props) and the elevator cars. The
+// simulation (people.akr, transport.akr) moves them; this file only reads their state.
+// Owner: workstream A (art and rendering). See CONTRACT.md.
+
+// ---- people
+
+const SKIN: [4]u32 = [0x90B8F0, 0x6890D0, 0x507098, 0xA8D0FF]
+
+fn person_col(p: *Person) -> u32 {
+    if p.kind as s32 == P_STAFF { return ROLE_COL[p.type as s32] }
+    if p.kind as s32 == P_VISITOR { return rgb(90, 120, 60) }
+    match p.type as s32 {
+        0 => return rgb(70, 80, 110)            // business: grey suit
+        1 => return rgb(240, 160, 60)           // family: bright tees
+        2 => return rgb(250, 250, 255)          // honeymooners: white
+        else => return rgb(30, 20, 30)          // rock star: black leather
+    }
+}
+
+var people_drawn: s32
+
+fn draw_people() {
+    people_drawn = 0
+    sprite_dirs()
+    let vf = view_floor
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used == 0 || p.mode as s32 == M_HIDDEN || p.mode as s32 == M_RIDE { continue }
+        let f = p.f as s32
+        if f > vf { continue }
+        let tx = clamp(p.x as s32, 0, GW - 1)
+        let tz = clamp(p.z as s32, 0, GH - 1)
+        if f < vf && !exposed(f, tx, tz) { continue }
+        draw_person(p, f < vf)
+    }
+}
+
+// Screen-relative sprite directions of the four world facings (0 +x, 1 +z, 2 -x, 3 -z), worked out
+// once per frame from the camera: toward/away from the viewer and screen left/right.
+var spr_dir: [4]u8
+
+fn sprite_dirs() {
+    let c = vec3(16.0, 0.0, 12.0)
+    if !project(c) { return }
+    let cx = proj_x
+    for d in 0..4 {
+        var dx = 0.0
+        var dz = 0.0
+        match d {
+            0 => dx = 1.0
+            1 => dz = 1.0
+            2 => dx = -1.0
+            else => dz = -1.0
+        }
+        if !project(vec3(16.0 + dx, 0.0, 12.0 + dz)) { continue }
+        let right = proj_x > cx
+        var toward = false
+        if d == 0 { toward = vis_px }
+        if d == 1 { toward = vis_pz }
+        if d == 2 { toward = !vis_px }
+        if d == 3 { toward = !vis_pz }
+        var a = ART_DIR_BACK_LEFT
+        if toward && right { a = ART_DIR_FRONT_RIGHT }
+        if toward && !right { a = ART_DIR_FRONT_LEFT }
+        if !toward && right { a = ART_DIR_BACK_RIGHT }
+        spr_dir[d] = a as u8
+    }
+}
+
+const STAFF_PK: [9]u8 = [ART_STAFF_RECEPTIONIST, ART_STAFF_HOUSEKEEPER, ART_STAFF_COOK, ART_STAFF_WAITER,
+    ART_STAFF_BARTENDER, ART_STAFF_SPA_THERAPIST, ART_STAFF_BELLHOP, ART_STAFF_MAINTENANCE, ART_STAFF_SECURITY]
+
+// The art's person kind (sprite sheet) of a person.
+fn person_kind(p: *Person) -> s32 {
+    let ty = p.type as s32
+    let lk = p.look as s32
+    if p.kind as s32 == P_STAFF {
+        if ty == ROLE_RECEPTIONIST && lk & 1 != 0 { return ART_PK_RECEPTIONIST_F }
+        return STAFF_PK[ty] as s32
+    }
+    if p.kind as s32 == P_VISITOR { return ART_STAFF_MAINTENANCE }
+    match ty {
+        1 => {
+            if lk & 1 != 0 { return ART_GUEST_CHILD + (lk >> 1) % ART_GUEST_CHILD_N }
+            return ART_GUEST_FAMILY + (lk >> 1) % ART_GUEST_FAMILY_N
+        }
+        2 => return ART_GUEST_HONEYMOONER + lk % ART_GUEST_HONEYMOONER_N
+        3 => return ART_GUEST_ROCKSTAR + lk % ART_GUEST_ROCKSTAR_N
+        else => return ART_GUEST_BUSINESS + lk % ART_GUEST_BUSINESS_N
+    }
+}
+
+// A textured screen quad (16x24-ish cell at u, v) in the world's ordering table.
+fn sprite_quad(x0: s32, y0: s32, x1: s32, y1: s32, u: s32, v: s32, w: s32, h: s32, slot: s32, pal: s32,
+               col: u32, bucket: s32, lower: bool, mode: s32) {
+    let q = packet_alloc(10)
+    if q == null { return }
+    var ty: u32 = 0x26
+    var c = col
+    if mode >= 0 { ty = 0x2E; c = col | ((mode as u32) << 24) }
+    q[1] = c
+    q[2] = upos(x0, y0)
+    q[3] = (u as u32) | ((v as u32) << 8) | ((slot as u32) << 16) | (1 << 20) | ((pal as u32) << 24)
+    q[4] = upos(x1, y0)
+    q[5] = ((u + w) as u32) | ((v as u32) << 8)
+    q[6] = upos(x0, y1)
+    q[7] = (u as u32) | (((v + h) as u32) << 8)
+    q[8] = upos(x1, y1)
+    q[9] = ((u + w) as u32) | (((v + h) as u32) << 8)
+    lo_insert(q, ty, bucket, lower)
+}
+
+fn draw_person(p: *Person, lower: bool) {
+    let base = vec3(p.x, fixed(p.f as s32) * STOREY + p.y, p.z)
+    if !project(base) { return }
+    let fx = proj_x
+    let fy = proj_y
+    if fx < -20 || fx > 340 || fy < -10 || fy > 280 { return }
+    var bucket = depth_bucket(proj_w) - 3
+    if lower { bucket += B_FLOOR * (view_floor - p.f as s32) - B_FLOOR }
+    if ART_PRESENT {
+        draw_sprite(p, fx, fy, bucket, lower)
+        return
+    }
+    let k = ppu * 0.82
+    var h = (k * 1.55) as s32
+    let ty = p.type as s32
+    if p.kind as s32 == P_GUEST && ty == 1 && p.look & 1 != 0 { h = h * 3 / 4 }   // kids
+    let w = max(h * 2 / 5, 3)
+    var top = fy - h
+    let pose = p.pose as s32
+    var lift = 0
+    if pose == POSE_SIT { top += h / 4 }
+    if pose == POSE_SWIM { top += h / 2 }
+    if pose == POSE_WALK && (tick_count / 6 + p.look as s32) % 2 == 0 { lift = 1 }
+    let body = person_col(p)
+    let head_h = max(h / 4, 2)
+    let x0 = fx - w / 2
+    // body (and legs)
+    var by1 = fy - lift
+    if pose == POSE_SWIM { by1 = fy - h / 4 }
+    world_quad(x0, top + head_h, x0 + w, by1, body, bucket, lower)
+    // head
+    let hw = max(w * 3 / 4, 2)
+    world_quad(fx - hw / 2, top - lift, fx - hw / 2 + hw, top + head_h - lift + 1, SKIN[p.look as s32 & 3], bucket - 1, lower)
+    if p.carry != 0 {
+        world_quad(fx + w / 2 - 1, top + head_h + 1, fx + w / 2 + w / 2 + 1, top + head_h + w / 2 + 2, carry_col(p.carry as s32), bucket - 2, lower)
+    }
+    people_drawn += 1
+}
+
+fn draw_sprite(p: *Person, fx: s32, fy: s32, bucket: s32, lower: bool) {
+    let k = person_kind(p)
+    let pose = p.pose as s32
+    var fr = ART_FR_STAND
+    if pose == POSE_WALK || p.mode as s32 == M_STAIRS {
+        fr = ART_FR_WALK1 + ((tick_count / 7 + p.look as s32) & 3)
+    } else if pose == POSE_SIT || pose == POSE_LIE {
+        fr = ART_FR_SIT
+    } else if pose == POSE_USE {
+        fr = ART_FR_USE
+    } else if pose == POSE_SWIM {
+        fr = ART_FR_SWIM
+    } else if p.carry != 0 {
+        fr = ART_FR_CARRY
+    }
+    let d = spr_dir[p.dir as s32 & 3] as s32
+    // 24 texels tall = 1.45 units
+    let h = (ppu * 1.45) as s32
+    let w = h * 2 / 3
+    let x0 = fx - w / 2
+    let y1 = fy + h / 24
+    let y0 = y1 - h
+    // light: outdoors with the sky, indoors with the lamps
+    var l = light_int
+    let tx = clamp(p.x as s32, 0, GW - 1)
+    let tz = clamp(p.z as s32, 0, GH - 1)
+    if !indoor(p.f as s32, tx, tz) { l = light_ext }
+    let col = lit(TINT, l)
+    if pose != POSE_SWIM && view_zoom > 0 && !lower {
+        let sw = w * 3 / 4
+        sprite_quad(fx - sw / 2, fy - sw / 4, fx + sw / 2, fy + sw / 4, ART_PROP_SHADOW_U, ART_PROP_SHADOW_V + 4, 15, 8,
+            ART_PROP_SLOT, ART_PAL_PROPS, 0x303030, bucket + 1, lower, 2)
+    }
+    sprite_quad(x0, y0, x0 + w, y1, ART_PERSON_U[k] as s32 + fr * 16, ART_PERSON_V[k] as s32 + d * 24, 15, 23,
+        ART_PERSON_SLOT[k] as s32, ART_PERSON_PAL[k] as s32, col, bucket, lower, -1)
+    if p.carry != 0 && pose != POSE_SIT {
+        var pu = ART_PROP_LINEN_U
+        var pv = ART_PROP_LINEN_V
+        let c = p.carry as s32
+        if c == IT_MEAL || c == IT_CRATE { pu = ART_PROP_TRAY_U; pv = ART_PROP_TRAY_V }
+        if c == IT_TOOLS { pu = ART_PROP_TOOLBOX_U; pv = ART_PROP_TOOLBOX_V }
+        if c == IT_BAGS { pu = ART_PROP_LUGGAGE_U; pv = ART_PROP_LUGGAGE_V }
+        let ps = h * 2 / 5
+        let py = fy - h / 2
+        var px = fx
+        if d == ART_DIR_FRONT_RIGHT || d == ART_DIR_BACK_RIGHT { px = fx + w / 5 } else { px = fx - w / 5 }
+        var pb = bucket - 1
+        if d >= ART_DIR_BACK_LEFT { pb = bucket + 1 }
+        sprite_quad(px - ps / 2, py - ps / 2, px + ps / 2, py + ps / 2, pu, pv, 15, 15, ART_PROP_SLOT, ART_PAL_PROPS,
+            col, pb, lower, -1)
+    }
+    people_drawn += 1
+}
+
+fn carry_col(c: s32) -> u32 {
+    match c {
+        1 => return rgb(170, 160, 140)          // dirty linen
+        2 => return rgb(250, 250, 255)          // clean linen
+        3 => return rgb(200, 150, 90)           // food crate
+        4 => return rgb(255, 210, 120)          // a meal
+        5 => return rgb(150, 70, 50)            // luggage
+        else => return rgb(140, 140, 160)       // toolbox
+    }
+}
+
+// A flat screen-space quad in the world's ordering table (or the lower floors' one).
+fn world_quad(x0: s32, y0: s32, x1: s32, y1: s32, c: u32, bucket: s32, lower: bool) {
+    let q = packet_alloc(6)
+    if q == null { return }
+    q[1] = c
+    q[2] = upos(x0, y0)
+    q[3] = upos(x1, y0)
+    q[4] = upos(x0, y1)
+    q[5] = upos(x1, y1)
+    lo_insert(q, 0x24, bucket, lower)
+}
+
+fn lo_insert(q: *u32, type: u32, bucket: s32, lower: bool) {
+    let b = clamp(bucket, 0, 1023)
+    if lower {
+        q[0] = (type << 24) | (lo_ot[b] & 0xFFFFFF)
+        lo_ot[b] = (lo_ot[b] & 0xFF000000) | (q as u32)
+    } else {
+        ot_insert(q, type, b)
+    }
+}
+
+// ---- elevator cars
+
+// The car, drawn as a box in its shaft (glass ones are what you see in an atrium).
+fn draw_elevators() {
+    bm_bias = -2
+    look_flat()
+    for k in 0..nelevs {
+        let e = &elevs[k]
+        let o = &objs[e.obj as s32]
+        let fl = elev_floor(k)
+        if fl > view_floor { continue }
+        if !exposed(fl, o.x as s32, o.z as s32) && fl < view_floor { continue }
+        let gw = fixed(obj_gw(o.t as s32, o.rot as s32))
+        let gd = fixed(obj_gd(o.t as s32, o.rot as s32))
+        let x0 = fixed(o.x as s32) + 0.2
+        let z0 = fixed(o.z as s32) + 0.2
+        let y0 = e.pos * STOREY + 0.05
+        var col = rgb(190, 170, 120)
+        if o.t as s32 == OB_GLASS_ELEVATOR { col = rgb(220, 200, 140) }
+        if e.door > 0 { col = rgb(255, 230, 160) }
+        mb_box(x0, y0, z0, x0 + gw - 0.4, y0 + 2.3, z0 + gd - 0.4, col)
+    }
+    mb_flush()
+    bm_bias = 0
+}

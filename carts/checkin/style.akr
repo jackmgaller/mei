@@ -1,0 +1,19 @@
+// Shared style tokens: the colours the interface and the in-world feedback (cursor, ghosts,
+// overlays) use, so UI and rendering stay consistent. Values follow POLISH.md, sections 3 and 4.
+// Owner: workstream B (UI). Workstream A reads them for in-world tints. Existing code still uses
+// its own colours; switch over as each piece is reworked.
+// Colours are 0xBBGGRR like rgb(); the comment gives the #RRGGBB value.
+
+const ST_CURSOR = 0x8CE8FF       // #FFE88C: the cursor outline, selection outlines, drag rectangle edges
+const ST_OK = 0x92D87C           // #7CD892: valid placement, met requirements, money in
+const ST_BAD = 0x6070F0          // #F07060: invalid placement, missing requirements, money out, errors
+const ST_WARN = 0x5AB4FF         // #FFB45A: demolish, warnings
+const ST_GOLD = 0x60D8FF         // #FFD860: money, stars, highlights in text
+const ST_TEXT = 0xDCEEF4         // #F4EEDC: body text
+const ST_TEXT_DIM = 0xB4A8A8     // #A8A8B4: secondary text, hints, locked items
+const ST_PANEL = 0x2C2220        // #20222C: panel background (draw at about 90% opacity)
+const ST_PANEL_EDGE = 0x705E5A   // #5A5E70: panel top edge and dividers
+const ST_HUD_BAR = 0x281E1C      // #1C1E28: the top bar
+const ST_HUD_LINE = 0x50403C     // #3C4050: the line under the top bar
+const ST_SELECT_FILL = 0x8CE8FF  // #FFE88C: selection fill (draw at about 15%)
+const ST_GHOST = 0xD4CCC8        // #C8CCD4: the floors below the viewed one are mixed toward this (ghosting)

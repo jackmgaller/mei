@@ -1,0 +1,28 @@
+// The simulation's visual state: per person and per elevator car, by the same index as
+// people[] and elevs[]. The simulation (people.akr, guests.akr, staff.akr, transport.akr) writes
+// it; people_draw.akr reads it to draw smooth motion. Everything is zero until used.
+// Owner: workstream C (writer); workstream A reads it. See CONTRACT.md.
+//
+// It lives apart from Person and Elev, and is imported last, so adding it changed nothing in
+// the simulation's memory layout or timing. When the simulation starts writing it, clear an
+// entry where the person or car is created: people_vis[i] in person_new(), elev_vis[k] in
+// elevs_rebuild().
+
+struct PersonVis {
+    anim: u8                 // walk-cycle phase, advanced by the distance walked
+    face: u8                 // smoothed facing (0..3, like Person.dir)
+    lane: s8                 // personal lane offset across the walking direction (1/64 tile)
+    fade: u8                 // 0 visible .. 255 hidden (fading in and out instead of popping)
+    vx: fixed                // velocity (tiles per tick)
+    vz: fixed
+    ox: fixed                // visual offset from (x, z): onto a seat or a bed, along a queue
+    oz: fixed
+}
+
+struct ElevVis {
+    vel: fixed               // car speed (floors per frame), for easing
+    door_t: s16              // door animation (0 closed .. DOOR_T open)
+}
+
+var people_vis: [128]PersonVis
+var elev_vis: [16]ElevVis

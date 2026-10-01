@@ -67,6 +67,8 @@ open it. The page lists the bundled carts and accepts dropped or opened `.mei` f
 
 `build/mei-headless cart.mei --frames N --dump out.ppm [--pad1 HEX]` runs a cart without
 a window, prints its debug console and saves the last frame. It's useful for tests.
+`--dump-every N PREFIX` (optionally with `--dump-from F`) also saves every Nth frame as
+`PREFIX_00012.ppm` and so on, for checking motion frame by frame.
 
 ## Write a cart
 

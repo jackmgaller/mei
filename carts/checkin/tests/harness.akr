@@ -1,4 +1,17 @@
-// Test scenarios for Check-In! (run with tests/run.sh SCENARIO FRAMES OUT).
+// Test harness for Check-In! (run with tests/run.sh SCENARIO FRAMES OUT [mei-headless args]).
+// This file is the infrastructure: scripted input, the shared fixtures (scen_basic, scen_hotel,
+// scen_grand) and the periodic logs. The scenarios themselves live per workstream:
+//   scen_ui.akr  (B, UI and controls)   existing 1-7, 40, 48;  new ones 300-399
+//   scen_art.akr (A, art and rendering) existing 21, 25, 41-47; new ones 200-299
+//   scen_sim.akr (C, simulation)        existing 10-15, 20, 22-24, 30, 90-95; new ones 400-499
+// Each file provides scen_<ws>_init(), scen_<ws>_pad(f) (0 unless it scripts SCENARIO) and
+// scen_<ws>_hook(), which only act on their own scenario numbers.
+// Frame sequences: tests/run.sh 22 600 out --dump-every 4 out_seq --dump-from 100
+// Owner: workstream C (infrastructure); add scenarios in your own scen_ file.
+import "scen_ui.akr"
+import "scen_art.akr"
+import "scen_sim.akr"
+
 const TEST = 1
 const TEST_CARD = SCENARIO >= 90
 
@@ -18,43 +31,9 @@ fn test_init() {
         start_play()
     }
     money = 9999999
-    match SCENARIO {
-        1 => scen_basic()
-        2 => { scen_basic(); view_zoom = 2; view_recentre() }
-        3 => { scen_basic(); view_rot = 0; view_recentre() }
-        4 => { scen_basic(); view_floor = 1; view_recentre() }
-        5 => { scen_basic(); view_zoom = 0; view_rot = 1; view_recentre() }
-        6 => { scen_basic() }     // open the menu, pick a bed, place it
-        7 => { scen_basic() }     // pick a floor and drag a room
-        10 => scen_hotel(0)       // the demo hotel, staffed, from 13:00
-        11 => scen_hotel(1)       // with a first floor and an elevator
-        12 => { scen_hotel(1); view_floor = 1; view_recentre() }
-        13 => { scen_hotel(1); s_obj(OB_FLOOR_LAMP, 0, 11, 3, 0); s_obj(OB_FLOOR_LAMP, 0, 19, 8, 0); tod = 21 * 60 * MIN_FRAMES }
-        14 => { scen_hotel(1); tod = 19 * 60 * MIN_FRAMES }
-        15 => { scen_hotel(1); view_floor = 1; view_zoom = 2; cur_x = 14.0; cur_z = 15.0; view_recentre() }
-        20 => scen_grand(0, 0, 13)           // the grand hotel, ground floor, afternoon
-        21 => scen_grand(3, 0, 13)           // the atrium from above
-        22 => scen_grand(0, 60, 15)          // busy: 60 guests checked in
-        23 => scen_grand(0, 60, 22)          // busy at night (the bar)
-        24 => scen_grand(5, 60, 15)          // the top floor
-        30 => { scen_hotel(1); speed = 4 }   // two days at x4: reviews and money
-        25 => { scen_grand(3, 0, 13); no_haze = true; view_zoom = 0; view_recentre() }
-        // screenshot set (run with SHOT=1)
-        40 => { scen_hotel(1); tool = Tool.Paint; tool_arg = FK_DECK; cur_x = 8.5; cur_z = 15.5; view_recentre() }
-        41 => { scen_grand(0, 60, 15); overlay = OV_ROOMS }
-        42 => { scen_grand(0, 60, 15) }                   // the rating page (opened by the hook)
-        43 => { scen_grand(0, 60, 20); tod = tod + 30 * MIN_FRAMES; view_zoom = 2; view_rot = 0; cur_x = 23.0; cur_z = 5.0; view_recentre() }
-        44 => { scen_grand(3, 30, 13); view_zoom = 2; cur_x = 14.5; cur_z = 7.0; view_recentre() }
-        45 => { scen_grand(1, 30, 11); view_zoom = 2; cur_x = 15.0; cur_z = 7.0; view_recentre() }
-        46 => { scen_grand(0, 60, 15); view_zoom = 2; cur_x = 15.0; cur_z = 5.5; view_recentre() }
-        47 => { scen_grand(5, 60, 15); view_zoom = 2; cur_x = 14.0; cur_z = 13.0; view_recentre() }
-        48 => { scen_hotel(1); view_floor = 1; view_recentre() }   // the build menu (Bedroom tab)
-        90 => { new_hotel_state(); start_play(); scen_hotel(1); day = 7; money = 123456; view_floor = 1; view_recentre() }
-        91 => {}                  // the title: Continue loads the save
-        95 => {}                  // the title: New hotel (no card)
-        92 => { new_hotel_state(); start_play(); money = 9999999; scen_grand(0, 0, 13) }   // the grand hotel's save size
-        else => {}
-    }
+    scen_ui_init()
+    scen_art_init()
+    scen_sim_init()
 }
 
 fn scen_basic() {
@@ -80,12 +59,6 @@ fn scen_basic() {
     cur_z = 10.0
     view_recentre()
 }
-
-// Scripted input: (frame, pad) pairs; the pad holds until the next pair.
-const SCRIPT6: [24]s32 = [10, 64, 12, 0, 20, 512, 22, 0, 30, 512, 32, 0, 40, 8, 42, 0, 60, 16, 62, 0, 70, 2, 90, 0]
-const SCRIPT7: [22]s32 = [10, 64, 12, 0, 20, 8, 22, 0, 30, 16, 32, 0, 40, 16, 50, 16 | 8, 75, 16 | 2, 95, 16, 100, 0]
-
-const SCRIPT48: [12]s32 = [10, 64, 12, 0, 20, 512, 22, 0, 30, 512, 32, 0]
 
 fn script_from(tab: *s32, n: s32, f: s32) -> u32 {
     var pad: u32 = 0
@@ -123,191 +96,16 @@ fn scen_grand(f: s32, guests: s32, h: s32) {
     view_recentre()
 }
 
+// Scripted input: (frame, pad) pairs; the pad holds until the next pair (see script_from).
 fn script_pad(f: s32) -> u32 {
-    if (SCENARIO == 91 || SCENARIO == 95) && (f == 60 || f == 61) { return A }
-    if SCENARIO == 40 && f >= 3 { return A }
-    if SCENARIO == 48 { return script_from(&SCRIPT48[0], len(SCRIPT48), f) }
-    if SCENARIO == 6 { return script_from(&SCRIPT6[0], len(SCRIPT6), f) }
-    if SCENARIO == 7 { return script_from(&SCRIPT7[0], len(SCRIPT7), f) }
-    return 0
+    return scen_ui_pad(f) | scen_art_pad(f) | scen_sim_pad(f)
 }
 
 fn test_hook(f: s32) {
     scen_t += 1
-    if (SCENARIO == 90 || SCENARIO == 92) && scen_t == 40 { save_game(); print("save size "); print_int(spos); println("") }
-    if SCENARIO == 40 && scen_t == 12 { cur_x = 14.5; cur_z = 17.5 }
-    if SCENARIO == 40 && scen_t == 30 { print("drag "); print_int(dragging as s32); print(" "); print_int(rx0); print(","); print_int(rz0); print(" "); print_int(rx1); print(","); print_int(rz1); print(" tool "); print_int(tool as s32); println("") }
-    if SCENARIO == 43 && scen_t == 30 {
-        for r in 1..nrooms {
-            let rm = &rooms[r]
-            if rm.used == 0 || rm.floor != 0 { continue }
-            print("room "); print_int(r); print(" rt "); print_int(rm.rtype as s32); print(" kind "); print_int(rm.kind as s32); print(" @"); print_int(rm.x0 as s32); print(","); print_int(rm.z0 as s32); print(" missing "); print_int(rm.missing as s32); println("")
-        }
-    }
-    if SCENARIO == 42 && scen_t == 150 {
-        add_review(GT_BUSINESS, 4, RV_GREAT_ROOM)
-        add_review(GT_FAMILY, 3, RV_NO_FUN)
-        add_review(GT_HONEYMOON, 5, RV_GREAT_VIEW)
-        add_review(GT_ROCKSTAR, 2, RV_NOISY)
-        add_review(GT_BUSINESS, 4, RV_GREAT_WIFI)
-        add_review(GT_FAMILY, 5, RV_GREAT_POOL)
-        stars = 4
-        compute_score()
-        screen = Screen.Pause
-        page = Page.Hotel
-    }
-    if (SCENARIO == 25 && scen_t == 240) || (SCENARIO == 44 && scen_t == 300) {
-        set_camera()
-        for k in 0..4 {
-            var v = vec3(16.5, 0.0, 0.5)
-            if k == 1 { v = vec3(15.0, 9.0, 8.0) }
-            if k == 2 { v = vec3(15.0, 0.0, 3.0) }
-            if k == 3 { v = vec3(15.0, 9.0, 6.0) }
-            project(v)
-            print("proj ")
-            print_int(proj_x)
-            print(",")
-            print_int(proj_y)
-            print(" w ")
-            print_fixed(proj_w)
-            println("")
-        }
-        for i in 0..npeople {
-            let p = &people[i]
-            if p.used == 0 || p.mode as s32 == M_HIDDEN { continue }
-            project(vec3(p.x, fixed(p.f as s32) * STOREY + p.y, p.z))
-            print("person ")
-            print_int(i)
-            print(" at ")
-            print_int(proj_x)
-            print(",")
-            print_int(proj_y)
-            print(" exposed ")
-            print_int(exposed(p.f as s32, p.x as s32, p.z as s32) as s32)
-            println("")
-        }
-    }
-    if SCENARIO == 30 && scen_t % 2880 == 0 { report() }
-    if SCENARIO == 30 && scen_t % 60 == 0 && scen_t > 360 && scen_t < 1100 && false {
-        print("orders:")
-        for k in 0..MAXORD { if orders[k].state != 0 { print(" #"); print_int(k); print("="); print_int(orders[k].state as s32); print(" g"); print_int(orders[k].guest as s32); print(" gs"); print_int(people[orders[k].guest as s32].state as s32) } }
-        let c = &people[4]
-        print(" cook st ")
-        print_int(c.state as s32)
-        print(" act ")
-        print_int(c.act as s32)
-        print(" @")
-        print_int(ptile_x(c.tile as s32))
-        print(",")
-        print_int(ptile_z(c.tile as s32))
-        print(" wait ")
-        print_int(c.wait as s32)
-        let w = &people[5]
-        print(" | waiter st ")
-        print_int(w.state as s32)
-        print(" job ")
-        print_int(w.job as s32)
-        print(" @")
-        print_int(ptile_x(w.tile as s32))
-        print(",")
-        print_int(ptile_z(w.tile as s32))
-        print(" wait ")
-        print_int(w.wait as s32)
-        print(" ")
-        println(fmt_clock())
-        for k in 0..njobs {
-            let j = &jobs[k]
-            if j.kind == 0 { continue }
-            print("   job kind ")
-            print_int(j.kind as s32)
-            print(" role ")
-            print_int(j.role as s32)
-            print(" who ")
-            print_int(j.who as s32)
-            print(" target ")
-            println(num(j.target as s32))
-        }
-    }
-    if SCENARIO == 30 && scen_t % 720 == 0 && scen_t > 5000 && scen_t < 9000 {
-        for k in 0..njobs {
-            let j = &jobs[k]
-            if j.kind == 0 { continue }
-            print("  job ")
-            print_int(k)
-            print(" kind ")
-            print_int(j.kind as s32)
-            print(" step ")
-            print_int(j.step as s32)
-            print(" who ")
-            print_int(j.who as s32)
-            print(" target ")
-            println(num(j.target as s32))
-        }
-        for k in 0..nelevs {
-            let e = &elevs[k]
-            print("  elev ")
-            print_int(k)
-            print(" obj ")
-            print_int(e.obj as s32)
-            print(" pos ")
-            print_fixed(e.pos)
-            print(" dir ")
-            print_int(e.dir)
-            print(" door ")
-            print_int(e.door)
-            print(" calls ")
-            print_int(e.calls as s32)
-            print(" n ")
-            print_int(e.n)
-            print(" f0 ")
-            print_int(e.f0 as s32)
-            print(" f1 ")
-            println(num(e.f1 as s32))
-        }
-        for i in 0..npeople {
-            let p = &people[i]
-            if p.used == 0 || p.kind as s32 != P_STAFF { continue }
-            print("  staff ")
-            print_int(i)
-            print(" role ")
-            print_int(p.type as s32)
-            print(" st ")
-            print_int(p.state as s32)
-            print(" job ")
-            print_int(p.job as s32)
-            print(" @")
-            print_int(ptile_f(p.tile as s32))
-            print(":")
-            print_int(ptile_x(p.tile as s32))
-            print(",")
-            print_int(ptile_z(p.tile as s32))
-            print(" goal ")
-            print_int(p.goal as s32)
-            print(" wait ")
-            print_int(p.wait as s32)
-            print(" carry ")
-            print_int(p.carry as s32)
-            print(" mode ")
-            print_int(p.mode as s32)
-            print(" elev ")
-            print_int(p.elev as s32)
-            print(" energy ")
-            println(num(p.energy as s32))
-        }
-    }
-    if SCENARIO == 91 && scen_t == 100 {
-        print("loaded: day ")
-        print_int(day)
-        print(" money ")
-        print_int(money)
-        print(" objs ")
-        print_int(nobjs)
-        print(" staff ")
-        print_int(staff_count())
-        print(" rooms ")
-        print_int(nrooms)
-        println("")
-    }
+    scen_ui_hook()
+    scen_art_hook()
+    scen_sim_hook()
     if scen_t > 30 {
         let u = cpu_used()
         cpu_max = max(cpu_max, u)
@@ -391,48 +189,4 @@ fn dump_people() {
         print(" room")
         println(num(p.room as s32))
     }
-}
-
-fn report() {
-    print("== ")
-    println(fmt_clock())
-    print("money ")
-    print_int(money)
-    print(" stars ")
-    print_int(stars)
-    print(" score ")
-    print_int(score)
-    print(" rep ")
-    print_int(reputation)
-    print(" guests ")
-    print_int(guest_count())
-    print(" served ")
-    print_int(guests_served)
-    print(" svc wait ")
-    print_int(service_wait_avg)
-    println("")
-    print("ledger y:")
-    for k in 0..NLG { print(" "); print_int(ledger_y[k]) }
-    print("  today:")
-    for k in 0..NLG { print(" "); print_int(ledger[k]) }
-    println("")
-    for k in 0..reviews_n {
-        print("  ")
-        print_int(reviews[k].stars as s32)
-        print("* ")
-        println(str_of(REVIEW_OFF[reviews[k].quote as s32] as s32))
-    }
-    print("jobs ")
-    print_int(njobs)
-    print(" dirty rooms ")
-    var d = 0
-    for r in 1..nrooms { if rooms[r].used != 0 && rooms[r].state as s32 == RS_DIRTY { d += 1 } }
-    print_int(d)
-    print(" linen ")
-    for i in 0..nobjs { if objs[i].used != 0 && objs[i].t as s32 == OB_LINEN_SHELF { print_int(objs[i].stock as s32); print(" ") } }
-    print(" washer ")
-    for i in 0..nobjs { if objs[i].used != 0 && objs[i].t as s32 == OB_WASHER { print_int(objs[i].stock as s32); print("/"); print_int(objs[i].pad as s32); print(" ") } }
-    print(" fridge ")
-    for i in 0..nobjs { if objs[i].used != 0 && objs[i].t as s32 == OB_FRIDGE { print_int(objs[i].stock as s32); print(" ") } }
-    println("")
 }

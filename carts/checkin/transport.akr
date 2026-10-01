@@ -177,27 +177,3 @@ fn elev_exchange(k: s32, f: s32) {
     }
     if left { elev_call(k, f) }
 }
-
-// The car, drawn as a box in its shaft (glass ones are what you see in an atrium).
-fn draw_elevators() {
-    bm_bias = -2
-    look_flat()
-    for k in 0..nelevs {
-        let e = &elevs[k]
-        let o = &objs[e.obj as s32]
-        let fl = elev_floor(k)
-        if fl > view_floor { continue }
-        if !exposed(fl, o.x as s32, o.z as s32) && fl < view_floor { continue }
-        let gw = fixed(obj_gw(o.t as s32, o.rot as s32))
-        let gd = fixed(obj_gd(o.t as s32, o.rot as s32))
-        let x0 = fixed(o.x as s32) + 0.2
-        let z0 = fixed(o.z as s32) + 0.2
-        let y0 = e.pos * STOREY + 0.05
-        var col = rgb(190, 170, 120)
-        if o.t as s32 == OB_GLASS_ELEVATOR { col = rgb(220, 200, 140) }
-        if e.door > 0 { col = rgb(255, 230, 160) }
-        mb_box(x0, y0, z0, x0 + gw - 0.4, y0 + 2.3, z0 + gd - 0.4, col)
-    }
-    mb_flush()
-    bm_bias = 0
-}

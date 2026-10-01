@@ -1,0 +1,157 @@
+// The HUD: the top bar, the hint bar, messages, the player's next goal, the debug counters, and
+// the inspect panel for rooms (the person and object panels are in overlays.akr).
+// Owner: workstream B (UI). See CONTRACT.md.
+
+// ---- the HUD
+
+fn draw_hud() {
+    // top bar
+    ui_grad(0, 0, 320, 18, rgb(40, 60, 140), rgb(16, 22, 64), 0)
+    ui_rect(0, 18, 320, 1, rgb(120, 210, 255), 1)
+    icon(3, 1, IC_COIN)
+    ftext(21, 2, money_s(money), GOLD, false)
+    // stars
+    for i in 0..5 {
+        if i < stars { icon(108 + i * 13, 1, IC_STAR) } else { icon(108 + i * 13, 1, IC_STAR_OFF) }
+    }
+    // time and speed
+    ftext(176, 2, fmt_clock(), CREAM, false)
+    if speed == 0 { icon(240, 1, IC_PAUSE) } else if speed == 1 { icon(240, 1, IC_PLAY) } else { icon(240, 1, IC_FF) }
+    // floor
+    let b = nb()
+    if view_floor == 0 { sappend(b, "G") } else {
+        sappend(b, "F")
+        sint(b, view_floor)
+    }
+    ftext_r(316, 2, b, CREAM, false)
+    // tool and hints at the bottom
+    if !menu_open {
+        let h = nb()
+        match tool {
+            Inspect => {
+                if goal_text != null && (tick_count / 360) % 2 == 1 {
+                    sappend(h, "Next: ")
+                    sappend(h, goal_text)
+                } else {
+                    sappend(h, "X: build   L/R: floor   Y: turn   Y+Up/Down: zoom")
+                }
+            }
+            Paint => {
+                sappend(h, str_of(FLOORK_NAME_OFF[tool_arg] as s32))
+                sappend(h, " - hold A and drag")
+            }
+            Object => {
+                sappend(h, obj_name(tool_arg))
+                sappend(h, " - A: place  Y: turn  B: done")
+            }
+            Door => sappend(h, "Door - A on a wall  B: done")
+            Window => sappend(h, "Window - A on an outside wall")
+            Void => sappend(h, "Void - drag to open the floor below")
+            VoidGlass => sappend(h, "Glass void - drag on an upper floor")
+            Demolish => sappend(h, "Demolish - A: object, drag: floor")
+        }
+        ui_rect(0, 226, 320, 14, rgb(10, 14, 40), 0)
+        ftext(4, 226, h, SOFT, false)
+    }
+    if msg_t > 0 && msg != null {
+        let w = text_w(msg, false)
+        ui_rect(160 - w / 2 - 8, 24, w + 16, 15, rgb(14, 14, 40), 2)
+        ftext_c(160, 24, msg, msg_col, false)
+    }
+}
+
+// The player's next goal (shown in the hint bar now and then): the first thing the next star needs.
+var goal_text: *u8
+
+fn goal_update() {
+    if tick_count % 60 != 0 { return }
+    goal_text = null
+    if count_type(RT_LOBBY) > 0 && staff_of(ROLE_RECEPTIONIST, -1) == 0 {
+        goal_text = "hire a receptionist (START > Staff)"
+        return
+    }
+    if stars < 5 {
+        if tier_ok(stars + 1) { goal_text = "another star at the 6:00 rating!" } else { goal_text = tier_missing[stars + 1] }
+    }
+}
+
+fn money_s(v: s32) -> *u8 { return smoney(nb(), v) }
+
+// CPU and triangle counters (SELECT in test builds).
+fn draw_debug() {
+    let b = nb()
+    sappend(b, "CPU ")
+    sint(b, cpu_used())
+    sappend(b, " TRI ")
+    sint(b, tris_drawn() + ui_tris)
+    sappend(b, " C ")
+    sint(b, cache_cycles)
+    ui_rect(0, 212, 200, 13, rgb(10, 10, 20), 2)
+    ftext(2, 211, b, rgb(255, 230, 120), false)
+}
+
+// ---- the room panel (inspect mode): the type, its checklist and the bonus items
+
+fn draw_info() {
+    if tool != Tool.Inspect && tool != Tool.Object { return }
+    if tool == Tool.Inspect {
+        let pi = person_at_cursor()
+        if pi >= 0 {
+            draw_person_info(pi)
+            return
+        }
+        let oi = tobj[tix(view_floor, cur_tx, cur_tz)] as s32
+        if oi >= 0 && info_open {
+            draw_object_info(oi)
+            return
+        }
+    }
+    let r = room_at(view_floor, cur_tx, cur_tz)
+    if r == 0 { return }
+    let rm = &rooms[r]
+    let rt = rm.rtype as s32
+    let bt = rm.best as s32
+    let x = 204
+    let y = 24
+    let w = 112
+    let nreq = RT_NREQ[bt] as s32
+    var h = 46 + nreq * 12
+    if tool == Tool.Object { h = 34 }
+    panel(x, y, w, h)
+    let b = nb()
+    if rt == RT_NONE {
+        if bt == RT_NONE { sappend(b, "Empty room") } else {
+            sappend(b, room_type_name(bt))
+            sappend(b, "?")
+        }
+    } else {
+        sappend(b, room_type_name(rt))
+    }
+    ftext(x + 4, y + 2, b, WHITE, false)
+    let s = nb()
+    sint(s, (rm.ntiles - rm.nvoid) as s32)
+    sappend(s, " tiles  quality ")
+    sint(s, rm.quality as s32)
+    ftext(x + 4, y + 15, s, SOFT, false)
+    if tool == Tool.Object { return }
+    if nreq == 0 { return }
+    ftext(x + 4, y + 28, "Needs:", GOLD, false)
+    for k in 0..nreq {
+        let yy = y + 40 + k * 12
+        let ok = req_ok(r, bt, k)
+        if ok { icon_tint(x + 3, yy - 2, IC_CHECK, 0x808080) } else { icon_tint(x + 3, yy - 2, IC_CROSS, 0x808080) }
+        let t0 = RT_REQ_ALT[(bt * 7 + k) * 3] as s32
+        let t1 = RT_REQ_ALT[(bt * 7 + k) * 3 + 1] as s32
+        let n = nb()
+        let cnt = RT_REQ_CNT[bt * 7 + k] as s32
+        if cnt > 1 {
+            sint(n, cnt)
+            sappend(n, " x ")
+        }
+        sappend(n, obj_name(t0))
+        if t1 != 255 { sappend(n, " / ...") }
+        var c = CREAM
+        if !ok { c = rgb(255, 160, 150) }
+        ftext(x + 19, yy, n, c, false)
+    }
+}

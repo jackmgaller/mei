@@ -1,0 +1,35 @@
+// Workstream B (UI, controls) test scenarios: existing 1-7, 40, 48; new ones 300-399.
+// See harness.akr for the fixtures and how scenarios are wired.
+
+const SCRIPT6: [24]s32 = [10, 64, 12, 0, 20, 512, 22, 0, 30, 512, 32, 0, 40, 8, 42, 0, 60, 16, 62, 0, 70, 2, 90, 0]
+const SCRIPT7: [22]s32 = [10, 64, 12, 0, 20, 8, 22, 0, 30, 16, 32, 0, 40, 16, 50, 16 | 8, 75, 16 | 2, 95, 16, 100, 0]
+
+const SCRIPT48: [12]s32 = [10, 64, 12, 0, 20, 512, 22, 0, 30, 512, 32, 0]
+
+fn scen_ui_init() {
+    match SCENARIO {
+        1 => scen_basic()
+        2 => { scen_basic(); view_zoom = 2; view_recentre() }
+        3 => { scen_basic(); view_rot = 0; view_recentre() }
+        4 => { scen_basic(); view_floor = 1; view_recentre() }
+        5 => { scen_basic(); view_zoom = 0; view_rot = 1; view_recentre() }
+        6 => { scen_basic() }     // open the menu, pick a bed, place it
+        7 => { scen_basic() }     // pick a floor and drag a room
+        40 => { scen_hotel(1); tool = Tool.Paint; tool_arg = FK_DECK; cur_x = 8.5; cur_z = 15.5; view_recentre() }
+        48 => { scen_hotel(1); view_floor = 1; view_recentre() }   // the build menu (Bedroom tab)
+        else => {}
+    }
+}
+
+fn scen_ui_pad(f: s32) -> u32 {
+    if SCENARIO == 40 && f >= 3 { return A }
+    if SCENARIO == 48 { return script_from(&SCRIPT48[0], len(SCRIPT48), f) }
+    if SCENARIO == 6 { return script_from(&SCRIPT6[0], len(SCRIPT6), f) }
+    if SCENARIO == 7 { return script_from(&SCRIPT7[0], len(SCRIPT7), f) }
+    return 0
+}
+
+fn scen_ui_hook() {
+    if SCENARIO == 40 && scen_t == 12 { cur_x = 14.5; cur_z = 17.5 }
+    if SCENARIO == 40 && scen_t == 30 { print("drag "); print_int(dragging as s32); print(" "); print_int(rx0); print(","); print_int(rz0); print(" "); print_int(rx1); print(","); print_int(rz1); print(" tool "); print_int(tool as s32); println("") }
+}

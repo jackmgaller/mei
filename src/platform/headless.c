@@ -2,6 +2,7 @@
  *   mei-headless cart.mei [--frames N] [--dump out.ppm] [--pad1 HEX] [--input F:HEX,F:HEX...]
  *                [--wav out.wav] [--system-carts DIR] [--config HEX] [--time HH:MM[:SS]]
  *                [--date YYYY-MM-DD] [--card1 FILE] [--card2 FILE] [--quiet]
+ *                [--dump-every N PREFIX] [--dump-from F]
  * Prints the cart's debug console to stdout. Exit status: 0 ok, 2 fault, 1 usage/IO error.
  * --input changes controller 1's buttons from frame F on (e.g. 0:0,120:400,124:0).
  * --system-carts treats the cart as the system ROM and appends a catalogue of the .mei files in DIR;
@@ -9,7 +10,9 @@
  * The clock is simulated for determinism: it starts at --time/--date (default 12:00:00 on
  * 2026-01-01) and advances one second every 60 ticks (wrapping at midnight, date fixed).
  * --card1/--card2 insert memory card files (blank if missing), saved back at exit if changed.
- * With --system-carts the system ROM gets the system card commands until a cart launches. */
+ * With --system-carts the system ROM gets the system card commands until a cart launches.
+ * --dump-every N PREFIX also writes the screen every N ticks (from tick --dump-from F, default 0)
+ * to PREFIX_00012.ppm etc. (the tick number), for frame sequences and contact sheets. */
 #include "mei.h"
 #include "sysboot.h"
 
@@ -64,8 +67,8 @@ static int weekday(int y, int m, int d) {   /* 0 = Sunday (Sakamoto) */
 }
 
 int main(int argc, char **argv) {
-    const char *cart = NULL, *dump = NULL, *wav = NULL, *sysdir = NULL;
-    long frames = 1;
+    const char *cart = NULL, *dump = NULL, *wav = NULL, *sysdir = NULL, *seq = NULL;
+    long frames = 1, seq_every = 0, seq_from = 0;
     unsigned pad1 = 0, config = 0;
     int quiet = 0, have_config = 0, nev = 0;
     int year = 2026, month = 1, day = 1, hh = 12, mm = 0, ss = 0;
@@ -92,6 +95,8 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--card1") && i + 1 < argc) card_path[0] = argv[++i];
         else if (!strcmp(argv[i], "--card2") && i + 1 < argc) card_path[1] = argv[++i];
         else if (!strcmp(argv[i], "--quiet")) quiet = 1;
+        else if (!strcmp(argv[i], "--dump-every") && i + 2 < argc) { seq_every = strtol(argv[++i], NULL, 0); seq = argv[++i]; }
+        else if (!strcmp(argv[i], "--dump-from") && i + 1 < argc) seq_from = strtol(argv[++i], NULL, 0);
         else if (argv[i][0] != '-' && !cart) cart = argv[i];
         else { cart = NULL; break; }
     }
@@ -99,7 +104,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "usage: mei-headless cart.mei [--frames N] [--dump out.ppm] [--pad1 HEX] [--input F:HEX,...]\n"
                         "                    [--wav out.wav] [--system-carts DIR] [--config HEX]\n"
                         "                    [--time HH:MM[:SS]] [--date YYYY-MM-DD] [--card1 FILE] [--card2 FILE]\n"
-                        "                    [--quiet]\n");
+                        "                    [--quiet] [--dump-every N PREFIX] [--dump-from F]\n");
         return 1;
     }
 
@@ -155,6 +160,11 @@ int main(int argc, char **argv) {
             int n = mei_audio(m, &s);
             for (int k = 0; k < n * 2; k++) put16(wf, (uint16_t)s[k]);
             wav_frames += (uint32_t)n;
+        }
+        if (seq && seq_every > 0 && i >= seq_from && (i - seq_from) % seq_every == 0) {
+            char fn[1024];
+            snprintf(fn, sizeof fn, "%s_%05ld.ppm", seq, i);
+            if (write_ppm(fn, mei_display(m)) != 0) { perror(fn); return 1; }
         }
         if (mei_fault(m)->kind) break;
         uint32_t idx;

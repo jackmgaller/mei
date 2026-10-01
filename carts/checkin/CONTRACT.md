@@ -1,20 +1,41 @@
 # Check-In! — shared conventions
 
-Three agents build Check-In! in parallel: the **main** agent (code: world, building, simulation,
-rendering, UI), the **art** agent (meshes, textures, sprites, icons) and the **audio** agent
-(music, sound effects, ambience). The main agent owns this file and may amend it; the others
-re-read it before each work session and follow it.
+Check-In! was built by three agents in parallel: the **main** agent (code), the **art** agent
+(meshes, textures, sprites, icons) and the **audio** agent (music, sound effects, ambience). The
+polish pass (`POLISH.md`) splits the work into three workstreams instead, **A** (art direction
+and rendering), **B** (UI, UX and controls) and **C** (simulation, people movement and balance),
+with the audio files unchanged. Everyone re-reads this file before each work session and
+follows it; the owner of a file is the only one who edits it (ask the owner for changes).
 
 ## Files
 
-| Owner | Files |
+| Owner | Files (in `carts/checkin/` unless they start with `tools/` or `src/`) |
 |---|---|
-| main | `carts/checkin/*.akr` except the generated files below, `carts/checkin/tests/`, `tools/gen_checkin_assets.py` (fonts, logo, UI panels, save icon) and its outputs `carts/checkin/gen/` + generated `carts/checkin/gen.akr` |
-| art | `tools/gen_checkin_art.py`, `carts/checkin/art/`, generated `carts/checkin/art.akr` |
-| audio | `tools/gen_checkin_audio.py`, `carts/checkin/audio/`, generated `carts/checkin/audio_data.akr`, hand-written `carts/checkin/audio.akr` |
+| **A: art and rendering** | `tools/gen_checkin_art.py`; `art/` and the generated `art.akr`, `art_load.akr`; `render.akr` (camera projection, static geometry cache, floors, walls, facades); `lighting.akr`; `objects.akr` (the others call its footprint and bake functions but don't edit them); `people_draw.akr` (people sprites, shadows, carried props, elevator cars); `tests/scen_art.akr` |
+| **B: UI, UX and controls** | `build.akr` (cursor, camera follow, build tools, placement ghost, build menu); `ui.akr`; `style.akr` (shared colour tokens); `hud.akr` (top bar, hint bar, messages, goal, debug counters, room panel); `screens.akr`; `overlays.akr`; `game.akr` (frame loop and input; A and C ask B for changes); `audio_link.akr` (sound hooks); `tools/gen_checkin_assets.py` (fonts, icons, logo, panels, save icon, and the writer of the generated `gen.akr`, `gen/`, `art_link.akr`); `tests/scen_ui.akr`; `src/platform/headless.c` (the `--dump-every` option) |
+| **C: simulation and people** | `people.akr` (people and their movement); `sim_vis.akr` (the visual state the simulation writes and `people_draw.akr` reads: `people_vis[]`, `elev_vis[]`); `path.akr`; `transport.akr` (elevator logic); `guests.akr`; `staff.akr`; `jobs.akr`; `sim.akr`; `rooms.akr`; `world.akr`; `save.akr`; `scripted.akr`; `tools/checkin_data.py` (the object catalogue, floor finishes, room types, guest types, staff roles, reviews: every number the game is balanced with); `tests/harness.akr` (test infrastructure and fixtures) and `tests/run.sh`; `tests/scen_sim.akr` |
+| audio | `tools/gen_checkin_audio.py`, `audio/`, generated `audio_data.akr`, hand-written `audio.akr` |
+| lead | this file, `POLISH.md` |
 
-Generated `.akr` files only declare things (`embed`, `const`); they never define game logic.
-Everything an asset file declares is prefixed `ART_` or `SND_`/`MUS_`.
+- **Generated files** (`gen.akr`, `gen/`, `art_link.akr`, `art.akr`, `art_load.akr`,
+  `audio_data.akr`) are never edited by hand. Whoever changes `tools/checkin_data.py` or
+  `tools/gen_checkin_assets.py` re-runs `python3 tools/gen_checkin_assets.py` and keeps the
+  regenerated files with the change. The art agent's generator writes `art/`, `art.akr` and
+  `art_load.akr`; run `gen_checkin_assets.py` afterwards so that `art_link.akr` follows.
+- Generated `.akr` files only declare things (`embed`, `const`); they never define game logic.
+  Everything an asset file declares is prefixed `ART_` or `SND_`/`MUS_`.
+- **Stable interfaces between the workstreams:** A keeps the mesh-builder and camera functions
+  (`mb_*`, `bake_mesh`, `project`, `set_camera`, `depth_bucket`, `lo_insert`) stable, because B
+  draws the cursor and placement ghost with them. B owns how the camera *feels*
+  (`camera_follow`, `view_recentre`, view transitions). A owns what a rebuild *costs*. C writes
+  `people_vis[]` and `elev_vis[]` (`sim_vis.akr`), and A only reads them. B's build menu reads
+  room requirements from C's data and doesn't change them. The colour tokens in `style.akr`
+  (B) are shared by the UI and the in-world feedback (A).
+- **Tests:** scenario numbers are reserved per workstream: A 200–299, B 300–399, C 400–499. The
+  existing scenarios keep their numbers (listed at the top of `tests/harness.akr`). Run with
+  `tests/run.sh SCENARIO FRAMES OUT`. `SHOT=1` hides the debug counters, and `SEQ="N FROM"`
+  also saves every Nth frame for checking motion. Any refactor must leave `SHOT=1` frames
+  bit-identical.
 
 ## World units
 
