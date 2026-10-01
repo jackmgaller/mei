@@ -1,0 +1,84 @@
+// Enums: values, underlying types, distinct typing, storage, and match.
+// frames: 4
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+enum State { Title, Playing, Paused, Won }
+enum Dir: u8 { Up = 1, Down = 2, Left = 4, Right = 8 }
+enum Temp: s8 { Cold = -10, Mild, Hot = 30 }
+
+struct Actor { state: State, facing: Dir, hp: u8 }
+
+const START = State.Title
+var state = START
+var actors: [3]Actor
+var history: [4]State
+
+fn name(s: State) -> *u8 {
+    match s {
+        Title => return "title"
+        Playing => return "playing"
+        Paused => return "paused"
+        Won => return "won"
+    }
+}
+
+fn next(s: State) -> State {
+    match s {
+        State.Title => return State.Playing
+        State.Playing, State.Paused => return State.Won
+        else => return State.Title
+    }
+}
+
+fn classify(n: s32) -> s32 {
+    var r = 0
+    match n {
+        0 => r = 100
+        1, 2, 3 => { r = 200 }
+        -1 => r = 300,
+        _ => r = 400
+    }
+    return r
+}
+
+fn init() {
+    p(State.Won as s32)             // expect: 3
+    p(Dir.Right as s32)             // expect: 8
+    p(Temp.Mild as s32)             // expect: -9
+    p(sizeof(Dir))                  // expect: 1
+    p(sizeof(Actor))                // expect: 8
+    let t = Temp.Cold
+    p(t as s32)                     // expect: -10
+    actors[1] = Actor { state: State.Paused, facing: Dir.Left, hp: 9 }
+    if actors[1].state == State.Paused { p(1) }   // expect: 1
+    if actors[1].facing != Dir.Up { p(2) }        // expect: 2
+    p(actors[0].state as s32)       // expect: 0
+    let d = 2 as Dir
+    if d == Dir.Down { p(3) }       // expect: 3
+    println(name(next(State.Title)))   // expect: playing
+    println(name(next(State.Paused)))  // expect: won
+    println(name(next(State.Won)))     // expect: title
+    p(classify(0))                  // expect: 100
+    p(classify(2))                  // expect: 200
+    p(classify(-1))                 // expect: 300
+    p(classify(7))                  // expect: 400
+    if State.Playing < State.Won { p(4) }  // expect: 4
+    var count = 0
+    for i in 0..4 {
+        match i as State {
+            Title, Won => count += 1
+            else => count += 10
+        }
+    }
+    p(count)                        // expect: 22
+}
+
+fn update() {
+    history[frame() as s32 & 3] = state
+    println(name(state))
+    state = next(state)
+}
+// expect: title
+// expect: playing
+// expect: won
+// expect: title

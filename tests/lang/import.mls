@@ -1,0 +1,9 @@
+// import: relative paths, nested and circular imports.
+import "lib/shapes.mls"
+import "lib/more.mls"
+
+fn init() {
+    let r = Rect { w: 3, h: 4 }
+    print_int(area(r) + perimeter(r.w, r.h) + SIDES)
+    print_char('\n')    // expect: 30
+}

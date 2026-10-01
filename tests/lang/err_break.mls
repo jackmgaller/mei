@@ -1,0 +1,2 @@
+// error: 'break' outside a loop
+fn init() { break }

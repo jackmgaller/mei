@@ -1,0 +1,16 @@
+// Loops the DUET boot theme for development.
+cart "Preview DUET"
+import "duet.mls"
+
+var preview_t: s32
+
+fn init() { duet_start() }
+
+fn draw() {
+    if duet_frame(preview_t) {
+        preview_t = 0
+        duet_start()
+    } else {
+        preview_t += 1
+    }
+}

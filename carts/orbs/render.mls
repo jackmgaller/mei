@@ -1,0 +1,506 @@
+// World rendering: sky, mountain ring, sun and moon, the level, the player, orbs and their
+// effects. Transparent effects use all four blend modes: water (0, half and half), glows
+// (1, additive), blob shadows (2, subtractive) and light beams (3, quarter additive).
+
+embed RING: Mesh = "ring.bin"
+embed WATER: Mesh = "water.bin"
+embed PLAYER: Mesh = "player.bin"
+embed FOOT: Mesh = "foot.bin"
+embed ORB_SUN: Mesh = "orb_sun.bin"
+embed ORB_MOON: Mesh = "orb_moon.bin"
+
+const FOG_TEX = 0xDC96C8        // rgb(200, 150, 220): textured faces fade toward half of it
+const FOG_FLAT = 0x6E4B64       // rgb(100, 75, 110): the same look for untextured faces
+const FOG_NEAR: fixed = 9.0
+const FOG_FAR: fixed = 32.0
+const LOD_DIST: fixed = 6.0      // chunks nearer than this use their fine version
+const SUBDIV_LEVELS = 2          // subdivision levels for the near chunks
+const SUB_PX_MIN = 3             // best texture straightness the governor aims for (pixels)
+const SUB_PX_MAX = 40
+const SUB_CPU_HIGH = 280000      // cycles per frame: above this, subdivide less
+const SUB_CPU_LOW = 255000       // below this, subdivide more
+const SUN_AZ: fixed = -1.75     // directions in the sky (yaw), matching the baked lighting
+const MOON_AZ: fixed = 1.25
+
+// texture atlas locations (see gen_orbs_assets.py)
+const HALO_U = 192
+const HALO_V = 192
+const HALO_PAL = 12
+const SPARK_U = 160
+const SPARK_V = 224
+const BLOB_U = 64
+const BLOB_V = 224
+const WATER_PAL = 7
+
+// face flags
+const F_GOURAUD = 1
+const F_TEX = 2
+const F_QUAD = 4
+const F_SEMI = 8
+const F_DOUBLE = 16
+
+// A one-quad mesh in RAM, rewritten for every billboard, shadow and sparkle.
+struct QuadMesh { hdr: Mesh, v: [4]vec4, f: Face }
+var qm: QuadMesh
+
+var cam_s: fixed            // sin and cos of the camera yaw this frame
+var cam_c: fixed
+var water_pal: [16]u16      // the water palette, rotated a step every few frames
+var orb_ground: [10]fixed   // height of the ground under each orb
+var ghost: [4096]u8         // a RAM copy of the player mesh made semi-transparent (x-ray)
+
+fn render_init() {
+    qm.hdr.nverts = 4
+    qm.hdr.nfaces = 1
+    qm.hdr.verts = 16
+    qm.hdr.faces = 80
+    for i in 0..4 { qm.f.idx[i] = i as u16 }
+    let src = (VRAM_PALETTE + WATER_PAL * 32) as *u16
+    for i in 0..16 { water_pal[i] = src[i] }
+    for i in 0..NUM_ORBS {
+        let p = ORB_POS[i]
+        orb_ground[i] = ground_at(p.x, p.z, p.y - 0.4)
+    }
+    // the x-ray ghost: every face quarter-additive (blend mode 3) with a cool tint
+    let bytes = PLAYER.faces + (PLAYER.nfaces as u32) * sizeof(Face)
+    memcpy(&ghost[0], PLAYER as *u8, bytes)
+    let gm = &ghost[0] as *Mesh
+    let faces = (&ghost[0] + gm.faces) as *Face
+    for i in 0..(gm.nfaces as s32) {
+        let f = &faces[i]
+        f.flags = f.flags | F_SEMI | F_GOURAUD
+        f.blend = 3
+        for k in 0..4 { f.col[k] = rgb(150, 190, 255) }
+    }
+}
+
+fn animate_water() {
+    if tick % 5 != 0 { return }
+    let dst = (VRAM_PALETTE + WATER_PAL * 32) as *u16
+    let first = water_pal[1]
+    for i in 1..15 { water_pal[i] = water_pal[i + 1] }
+    water_pal[15] = first
+    for i in 1..16 { dst[i] = water_pal[i] }
+}
+
+// ---- quad helpers
+
+fn q_look(flags: u32, blend: u32, tex: u32, pal: u32, u0: s32, v0: s32, u1: s32, v1: s32) {
+    qm.f.flags = (flags | F_QUAD | F_DOUBLE) as u8
+    qm.f.blend = blend as u8
+    qm.f.tex = tex as u8
+    qm.f.palette = pal as u8
+    qm.f.uv[0] = (u0 | (v1 << 8)) as u16
+    qm.f.uv[1] = (u1 | (v1 << 8)) as u16
+    qm.f.uv[2] = (u0 | (v0 << 8)) as u16
+    qm.f.uv[3] = (u1 | (v0 << 8)) as u16
+}
+
+// Colours: bottom pair and top pair.
+fn q_cols(bottom: u32, top: u32) {
+    qm.f.col[0] = bottom
+    qm.f.col[1] = bottom
+    qm.f.col[2] = top
+    qm.f.col[3] = top
+}
+
+// A vertical quad facing the camera, half-size hw x hh, centred at pos. The corners are
+// written in world space and drawn with mesh(), so no model matrix is needed.
+fn billboard(pos: vec3, hw: fixed, hh: fixed) {
+    let p = vec4(pos, 1.0)
+    let r = vec4(cam_c * hw, 0.0, -cam_s * hw, 0.0)
+    let u = vec4(0.0, hh, 0.0, 0.0)
+    qm.v[0] = p - r - u
+    qm.v[1] = p + r - u
+    qm.v[2] = p - r + u
+    qm.v[3] = p + r + u
+    mesh(&qm.hdr)
+}
+
+// A horizontal square of half-size r centred at pos.
+fn flat_quad(pos: vec3, r: fixed) {
+    qm.v[0] = vec4(pos.x - r, pos.y, pos.z - r, 1.0)
+    qm.v[1] = vec4(pos.x + r, pos.y, pos.z - r, 1.0)
+    qm.v[2] = vec4(pos.x - r, pos.y, pos.z + r, 1.0)
+    qm.v[3] = vec4(pos.x + r, pos.y, pos.z + r, 1.0)
+    mesh(&qm.hdr)
+}
+
+fn halo_look(mode: u32) {
+    q_look(F_GOURAUD | F_TEX | F_SEMI, mode, 0x10, HALO_PAL, HALO_U, HALO_V, 255, 255)
+}
+
+// Scales a colour's channels by t (0..1).
+fn scale_col(c: u32, t: fixed) -> u32 {
+    let k = clamp(bits(t) >> 8, 0, 256) as u32
+    return ((((c & 0xFF00FF) * k) >> 8) & 0xFF00FF) | ((((c & 0x00FF00) * k) >> 8) & 0x00FF00)
+}
+
+// Blends two colours: t = 0 gives a, 1 gives b.
+fn mix_col(a: u32, b: u32, t: fixed) -> u32 {
+    let k = clamp(bits(t) >> 8, 0, 256) as u32
+    let rb = ((a & 0xFF00FF) * (256 - k) + (b & 0xFF00FF) * k) >> 8
+    let g = ((a & 0x00FF00) * (256 - k) + (b & 0x00FF00) * k) >> 8
+    return (rb & 0xFF00FF) | (g & 0x00FF00)
+}
+
+// ---- view
+
+fn begin_view() {
+    govern_subdivision()
+    camera_look(cam_pos, cam_yaw, cam_pitch)
+    cam_s = sin(cam_yaw)
+    cam_c = cos(cam_yaw)
+}
+
+// Could a sphere be on screen? (horizontal test only: behind the camera or beside the view)
+fn chunk_visible(c: vec3, r: fixed) -> bool {
+    let dx = c.x - cam_pos.x
+    let dz = c.z - cam_pos.z
+    let z = dx * cam_s + dz * cam_c
+    if z < -r { return false }
+    let x = dx * cam_c - dz * cam_s
+    return abs(x) < z * 0.78 + r * 1.27
+}
+
+// Is the chunk with this xz extent close enough to need the fine version? Measured from a
+// point a little ahead of the camera (toward the player).
+fn chunk_near(x0: fixed, z0: fixed, x1: fixed, z1: fixed) -> bool {
+    let px = cam_pos.x + cam_s * 3.0
+    let pz = cam_pos.z + cam_c * 3.0
+    let dx = max(max(x0 - px, px - x1), 0.0)
+    let dz = max(max(z0 - pz, pz - z1), 0.0)
+    return dx + dz < LOD_DIST
+}
+
+// Subdivision quality governor. Splitting costs CPU, so when the last frame came close to
+// the budget the tolerated texture error (pixels) rises quickly, and once it is at its
+// limit the subdivision levels drop; with room to spare it eases back, levels first. It
+// only changes between frames, so the faces sharing an edge always agree.
+var sub_px: s32 = 6
+var sub_levels: s32 = SUBDIV_LEVELS
+fn govern_subdivision() {
+    let used = cpu_used()
+    if used > SUB_CPU_HIGH {
+        if sub_px < SUB_PX_MAX {
+            sub_px = min(sub_px + 2 + (used - SUB_CPU_HIGH) / 4000, SUB_PX_MAX)
+        } else if sub_levels > 0 {
+            sub_levels -= 1
+        }
+    } else if used < SUB_CPU_LOW && tick % 2 == 0 {
+        if sub_levels < SUBDIV_LEVELS {
+            sub_levels += 1
+        } else {
+            sub_px = max(sub_px - 1, SUB_PX_MIN)
+        }
+    }
+    subdivide_tuning(sub_px, 8.0)
+}
+
+// ---- dust puffs (take-off and landing): soft additive discs that drift out and fade
+
+struct Dust { pos: vec3, vel: vec3, life: s32 }
+const DUST_N = 10
+const DUST_LIFE = 24
+var dust: [10]Dust
+var dust_next: s32
+
+fn spawn_dust(p: vec3, strength: fixed) {
+    let n = clamp((strength * 10) as s32 + 4, 4, 8)
+    let speed = 0.02 + strength * 0.05
+    let a0 = fixed(rnd(628)) / 100
+    for k in 0..n {
+        let a = a0 + fixed(k) * TAU / n
+        let d = &dust[dust_next]
+        dust_next = (dust_next + 1) % DUST_N
+        d.pos = vec3(p.x + sin(a) * 0.25, p.y + 0.06, p.z + cos(a) * 0.25)
+        d.vel = vec3(sin(a) * speed, 0.012 + strength * 0.01, cos(a) * speed)
+        d.life = DUST_LIFE
+    }
+}
+
+fn update_dust() {
+    for i in 0..DUST_N {
+        let d = &dust[i]
+        if d.life > 0 {
+            d.pos = d.pos + d.vel
+            d.vel = vec3(d.vel.x * 0.86, d.vel.y * 0.9, d.vel.z * 0.86)
+            d.life -= 1
+        }
+    }
+}
+
+fn draw_dust() {
+    q_look(F_GOURAUD | F_TEX | F_SEMI, 1, 0x10, HALO_PAL, BLOB_U, BLOB_V, BLOB_U + 31, BLOB_V + 31)
+    for i in 0..DUST_N {
+        let d = &dust[i]
+        if d.life > 0 {
+            let t = fixed(d.life) / DUST_LIFE
+            let c = scale_col(rgb(90, 80, 70), t)
+            q_cols(c, c)
+            let r = 0.16 + (1.0 - t) * 0.22
+            billboard(d.pos, r, r)
+        }
+    }
+}
+
+// ---- sky
+
+fn spos(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
+
+fn sky_band(y0: s32, y1: s32, l0: u32, r0: u32, l1: u32, r1: u32) {
+    let q = packet_alloc(9)
+    if q == null { return }
+    q[1] = l0
+    q[2] = spos(-1, y0)
+    q[3] = r0
+    q[4] = spos(321, y0)
+    q[5] = l1
+    q[6] = spos(-1, y1)
+    q[7] = r1
+    q[8] = spos(321, y1)
+    ot_insert(q, 0x25, 1023)     // Gouraud quad in the farthest bucket
+}
+
+// How much a direction (yaw) faces the setting sun: 0..1.
+fn sun_warmth(yaw: fixed) -> fixed {
+    let w = (cos(yaw - SUN_AZ) + 1.0) * 0.5
+    return w * w
+}
+
+// The sky: screen-space gradients, warmer toward the sun. Inserted last into the farthest
+// bucket, so it draws first.
+fn draw_sky() {
+    // screen row of the horizon for this pitch (fy = 1.732 at 60 degrees)
+    let yh = 120 - ((tan(-cam_pitch) * 207.8) as s32)
+    let wl = sun_warmth(cam_yaw - 0.65)
+    let wr = sun_warmth(cam_yaw + 0.65)
+    let top = rgb(14, 16, 50)
+    let mid_l = mix_col(rgb(52, 44, 104), rgb(110, 60, 110), wl)
+    let mid_r = mix_col(rgb(52, 44, 104), rgb(110, 60, 110), wr)
+    let hor_l = mix_col(rgb(120, 96, 150), rgb(250, 150, 110), wl)
+    let hor_r = mix_col(rgb(120, 96, 150), rgb(250, 150, 110), wr)
+    let low = rgb(40, 46, 38)        // only seen through cracks in the ground: grass-dark
+    sky_band(yh, 260, low, low, low, low)
+    sky_band(yh - 70, yh, mid_l, mid_r, hor_l, hor_r)
+    sky_band(yh - 260, yh - 70, top, top, mid_l, mid_r)
+}
+
+fn sky_dir(az: fixed, el: fixed, dist: fixed) -> vec3 {
+    let ce = cos(el) * dist
+    return vec3(cam_pos.x + sin(az) * ce, cam_pos.y + sin(el) * dist, cam_pos.z + cos(az) * ce)
+}
+
+fn draw_sun_moon() {
+    // the sun: an 8-bit disc behind a wide additive glow
+    let sp = sky_dir(SUN_AZ, 0.07, 56.0)
+    q_look(F_TEX, 0, 2, 3, 128, 64, 191, 127)
+    q_cols(0x808080, 0x808080)
+    billboard(sp, 3.6, 3.6)
+    halo_look(1)
+    q_cols(rgb(150, 70, 40), rgb(170, 90, 50))
+    billboard(sp, 15.0, 15.0)
+    // the moon: an 8-bit crescent with a faint quarter-additive halo
+    // (nearer than the mountain ring, so it is never hidden behind the peaks)
+    let mp = sky_dir(MOON_AZ, 0.1, 46.0)
+    q_look(F_TEX, 0, 2, 3, 192, 64, 255, 127)
+    q_cols(0x808080, 0x808080)
+    billboard(mp, 2.6, 2.6)
+    halo_look(3)
+    q_cols(rgb(110, 130, 200), rgb(110, 130, 200))
+    billboard(mp, 7.5, 7.5)
+}
+
+// ---- world
+
+fn draw_world() {
+    // far away: mountains, sun and moon (no fog, pushed toward the back of the table)
+    fog_off()
+    depth_bias(150)
+    mesh_at(RING, cam_pos, 0.0)
+    draw_sun_moon()
+    depth_bias(0)
+
+    fog(FOG_TEX, FOG_NEAR, FOG_FAR)
+    // the level's big textured faces near the camera are split so they warp less
+    subdivide(sub_levels)
+    draw_level()
+    subdivide(0)
+    // the player sorts in front of the ground it stands on (and its own shadow), but
+    // behind the water when in it
+    if ppos.y < WATER_Y { depth_bias(12) } else { depth_bias(ground_bias(ppos, 0.45) - 4) }
+    draw_player()
+    depth_bias(0)
+    if player_hidden && state == ST_PLAY {
+        // seen through whatever hides the player: drawn in front of everything
+        fog_off()
+        depth_bias(-1024)
+        mesh_xf(&ghost[0] as *Mesh, player_matrix())
+        depth_bias(0)
+        fog(FOG_TEX, FOG_NEAR, FOG_FAR)
+    }
+    fog(FOG_FLAT, FOG_NEAR, FOG_FAR)
+    draw_orb_cores()
+    fog(FOG_TEX, FOG_NEAR, FOG_FAR)
+    mesh(WATER)
+
+    // glows and shadows fade to nothing with distance: fog toward black
+    fog(0, FOG_NEAR, FOG_FAR)
+    draw_shadows()
+    draw_orb_glows()
+    draw_dust()
+    fog_off()
+    draw_sky()
+}
+
+// The player's model matrix: turned by pyaw, squashed/stretched, bobbing while walking.
+fn player_matrix() -> mat4 {
+    let s = sin(pyaw)
+    let c = cos(pyaw)
+    let sy = 1.0 + squash
+    let sxz = 1.0 - squash * 0.5
+    let bob = abs(sin(walk_phase)) * 0.07 * walk_amt
+    var m: mat4
+    m[0] = vec4(c * sxz, 0.0, s * sxz, ppos.x)
+    m[1] = vec4(0.0, sy, 0.0, ppos.y + bob)
+    m[2] = vec4(-s * sxz, 0.0, c * sxz, ppos.z)
+    m[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    return m
+}
+
+fn draw_player() {
+    let s = sin(pyaw)
+    let c = cos(pyaw)
+    mesh_xf(PLAYER, player_matrix())
+    // feet swing forward and back, lifting on the forward swing
+    let swing = sin(walk_phase) * 0.17 * walk_amt
+    let lift = max(cos(walk_phase), 0.0) * 0.09 * walk_amt
+    let lift2 = max(-cos(walk_phase), 0.0) * 0.09 * walk_amt
+    draw_foot(-0.13, swing, lift, s, c)
+    draw_foot(0.13, -swing, lift2, s, c)
+}
+
+fn draw_foot(lx: fixed, lz: fixed, ly: fixed, s: fixed, c: fixed) {
+    let p = vec3(ppos.x + c * lx + s * lz, ppos.y + ly, ppos.z - s * lx + c * lz)
+    mesh_at(FOOT, p, pyaw)
+}
+
+fn draw_orb_cores() {
+    let spin = fixed(tick) * 0.04
+    for i in 0..NUM_ORBS {
+        if orb_taken[i] == 0 {
+            let p = orb_pos(i)
+            if chunk_visible(p, 1.0) {
+                if p.y < WATER_Y { depth_bias(12) }
+                if ORB_KIND[i] == 0 { mesh_at(ORB_SUN, p, spin) } else { mesh_at(ORB_MOON, p, -spin) }
+                depth_bias(0)
+            }
+        }
+    }
+    // the shrine: a sun and a moon circling above the obelisk
+    let a = fixed(tick) * 0.03
+    let sp = vec3(SHRINE_X + sin(a) * 0.6, 4.0 + sin(a * 2) * 0.1, SHRINE_Z + cos(a) * 0.6)
+    let mp = vec3(SHRINE_X - sin(a) * 0.6, 4.0 - sin(a * 2) * 0.1, SHRINE_Z - cos(a) * 0.6)
+    if chunk_visible(sp, 2.0) {
+        mesh_at(ORB_SUN, sp, spin)
+        mesh_at(ORB_MOON, mp, -spin)
+    }
+}
+
+fn orb_tint(kind: u8) -> u32 {
+    if kind == 0 { return rgb(230, 150, 60) }
+    return rgb(90, 140, 240)
+}
+
+fn draw_orb_glows() {
+    let pulse = 1.0 + sin(fixed(tick) * 0.09) * 0.08
+    for i in 0..NUM_ORBS {
+        let p = orb_pos(i)
+        if !chunk_visible(p, 7.0) { continue }
+        let tint = orb_tint(ORB_KIND[i])
+        if orb_taken[i] == 0 {
+            // halo
+            halo_look(1)
+            q_cols(tint, tint)
+            billboard(p, 0.8 * pulse, 0.8 * pulse)
+            // a faint beam into the sky so orbs can be found from afar (not on the title)
+            if state == ST_TITLE { continue }
+            q_look(F_GOURAUD | F_TEX | F_SEMI, 3, 0x10, HALO_PAL, HALO_U, 224, 255, 224)
+            q_cols(tint, 0)
+            billboard(vec3(p.x, p.y + 6.0, p.z), 0.32, 6.0)
+        } else if orb_fx[i] > 0 && orb_fx[i] < 32 {
+            // collection burst: an expanding, fading halo and a ring of sparkles
+            let t = fixed(orb_fx[i]) / 32
+            let fade = scale_col(tint, 1.0 - t)
+            halo_look(1)
+            q_cols(fade, fade)
+            billboard(p, 0.8 + t * 2.4, 0.8 + t * 2.4)
+            q_look(F_GOURAUD | F_TEX | F_SEMI, 1, 0x10, HALO_PAL, SPARK_U, SPARK_V, SPARK_U + 31, SPARK_V + 31)
+            let white = scale_col(rgb(255, 240, 200), 1.0 - t)
+            q_cols(white, white)
+            for k in 0..6 {
+                let a = fixed(k) * 1.0472 + t * 2.0
+                let r = t * 1.8
+                billboard(vec3(p.x + sin(a) * r, p.y + t * 1.2 + cos(a * 3) * 0.2, p.z + cos(a) * r), 0.25, 0.25)
+            }
+        }
+    }
+    // the shrine glows brighter with every orb; when all are found it sends up a beam
+    let g = 0.6 + fixed(collected) * 0.14
+    let sc = vec3(SHRINE_X, 4.0, SHRINE_Z)
+    if chunk_visible(sc, 8.0) {
+        halo_look(1)
+        q_cols(rgb(150, 110, 110), rgb(150, 110, 110))
+        billboard(sc, g * pulse, g * pulse)
+        if collected == NUM_ORBS {
+            q_look(F_GOURAUD | F_TEX | F_SEMI, 1, 0x10, HALO_PAL, HALO_U, 224, 255, 224)
+            q_cols(rgb(255, 200, 150), 0)
+            billboard(vec3(SHRINE_X, 14.0, SHRINE_Z), 0.9 * pulse, 10.0)
+        }
+    }
+}
+
+// Shadows sort in front of the surface they lie on; under water they must stay behind the
+// water surface (the pool chunk itself is pushed back by 30 buckets).
+fn shadow_bias(p: vec3, r: fixed) {
+    if p.y < WATER_Y { depth_bias(16) } else { depth_bias(ground_bias(p, r)) }
+}
+
+// The ordering-table bias that sorts something with footprint radius r at p in front of
+// the ground tiles under it: the nearest such tile is the 2x2 tile holding the point of the
+// footprint closest to the camera. Only as much bias as needed, so the object does not
+// jump in front of walls and pillars standing nearby.
+fn ground_bias(p: vec3, r: fixed) -> s32 {
+    let nx = p.x - cam_s * r
+    let nz = p.z - cam_c * r
+    let tx = fixed(((nx * 0.5) as s32) * 2) + 1.0
+    let tz = fixed(((nz * 0.5) as s32) * 2) + 1.0
+    // horizontal depth of the tile centre relative to p, in buckets (1024 / 70 * cos pitch)
+    let dd = (tx - p.x) * cam_s + (tz - p.z) * cam_c
+    return min((dd * 14) as s32, 0) - 5
+}
+
+fn draw_shadows() {
+    q_look(F_GOURAUD | F_TEX | F_SEMI, 2, 0x10, HALO_PAL, BLOB_U, BLOB_V, BLOB_U + 31, BLOB_V + 31)
+    // the player's blob shadow shrinks and fades with height
+    let gy = ground_at(ppos.x, ppos.z, ppos.y)
+    let h = clamp(ppos.y - gy, 0.0, 4.0)
+    let k = 1.0 - h * 0.18
+    let sc = scale_col(rgb(84, 84, 76), k)
+    q_cols(sc, sc)
+    shadow_bias(vec3(ppos.x, gy, ppos.z), 0.68 * k)
+    flat_quad(vec3(ppos.x, gy + 0.03, ppos.z), 0.68 * k)
+    // small shadows under the orbs
+    let os = rgb(52, 52, 46)
+    q_cols(os, os)
+    for i in 0..NUM_ORBS {
+        if orb_taken[i] == 0 {
+            let p = ORB_POS[i]
+            if chunk_visible(p, 1.0) {
+                shadow_bias(vec3(p.x, orb_ground[i], p.z), 0.35)
+                flat_quad(vec3(p.x, orb_ground[i] + 0.03, p.z), 0.35)
+            }
+        }
+    }
+    depth_bias(0)
+}

@@ -1,0 +1,66 @@
+// Fixed-point arithmetic, conversions and the maths library.
+fn pf(f: fixed) { print_fixed(f); print_char('\n') }
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+fn init() {
+    let a: fixed = 1.5
+    let b: fixed = 2.25
+    pf(a + b)       // expect: 3.75
+    pf(a - b)       // expect: -0.75
+    pf(a * b)       // expect: 3.375
+    pf(b / a)       // expect: 1.5
+    pf(a * 2)       // expect: 3.0
+    pf(a * 0.5)     // expect: 0.75
+    let n = 3
+    pf(a * n)       // expect: 4.5
+    pf(n * a)       // expect: 4.5
+    pf(b / n)       // expect: 0.75
+    p(a as s32)     // expect: 1
+    p((-a) as s32)  // expect: -2
+    pf(n as fixed)  // expect: 3.0
+    pf(fixed(7))    // expect: 7.0
+    p(s32(2.75))    // expect: 2
+    p(bits(1.0))    // expect: 65536
+    pf(from_bits(32768)) // expect: 0.5
+    pf(sqrt(16.0))  // expect: 4.0
+    pf(sqrt(2.0))   // expect: 1.4142
+    pf(sqrt(0.25))  // expect: 0.5
+    pf(sqrt(10000.0)) // expect: 100.0
+    pf(sin(0.0))    // expect: 0.0
+    pf(sin(0.5))    // expect: 0.4794
+    pf(cos(1.0))    // expect: 0.5403
+    pf(sin(-0.5))   // expect: -0.4794
+    pf(cos(0.0))    // expect: 1.0
+    pf(sin(HALF_PI)) // expect: 1.0
+    pf(abs(-2.5))   // expect: 2.5
+    pf(min(a, b))   // expect: 1.5
+    pf(max(a, b))   // expect: 2.25
+    pf(clamp(5.0, 0.0, 1.0)) // expect: 1.0
+    var x: fixed = 5.0
+    pf(clamp(x, 0.0, 1.0))   // expect: 1.0
+    pf(clamp(-x, 0.0, 1.0))  // expect: 0.0
+    pf(clamp(0.25, 0.0, x))  // expect: 0.25
+    pf(lerp(1.0, 3.0, 0.25)) // expect: 1.5
+    pf(atan2(1.0, 1.0))      // expect: 0.7854
+    pf(atan2(1.0, -1.0))     // expect: 2.3562
+    pf(atan2(-2.0, 0.0))     // expect: -1.5708
+    p(abs(-7))      // expect: 7
+    p(min(3, -4))   // expect: -4
+    p(max(n, 10))   // expect: 10
+    if a < b { p(1) } // expect: 1
+    var zero: fixed = 0.0
+    pf(a / zero)    // expect: 0.0
+    pf(-0.25)       // expect: -0.25
+    pf(0.1 + 0.2)   // expect: 0.3
+    pf(1.0 / 3.0)   // expect: 0.3333
+    pf(PI)          // expect: 3.1416
+    let big: fixed = 30000.0
+    pf(big + 2767.5) // expect: 32767.5
+    var acc: fixed = 0.0
+    for i in 0..10 { acc += 0.1 }
+    pf(acc)         // expect: 1.0001
+    acc *= 4
+    pf(acc)         // expect: 4.0002
+    acc /= 8.0
+    pf(acc)         // expect: 0.5
+}

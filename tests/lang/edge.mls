@@ -1,0 +1,67 @@
+// Edge cases: far globals, odd-sized copies, vector-heavy leaf code, matrices in loops.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+struct Odd { a: u8, b: u8, c: u8 }
+struct Mixed { tag: u8, v: vec3, n: s16 }
+
+var huge: [300000]u8
+var after: s32 = 77
+var odds: [5]Odd
+
+fn odd_sum(o: Odd) -> s32 { return o.a as s32 + o.b as s32 + o.c as s32 }
+
+// leaf function with many vector values and a matrix transform in a loop
+fn spin(m: mat4, n: s32) -> vec4 {
+    var v = vec4(1.0, 0.0, 0.0, 1.0)
+    let a = vec4(0.0, 0.0, 0.0, 0.0)
+    let b = vec4(0.5, 0.5, 0.5, 0.0)
+    for i in 0..n {
+        v = m * v
+        v = v + a * 2.0 - b + b
+    }
+    return v
+}
+
+fn vstack(a: vec4, b: vec4, c: vec4, d: vec4, e: vec4, f: vec4) -> vec4 { return a + b + c + d + e + f }
+
+fn init() {
+    huge[0] = 1
+    huge[150000] = 2
+    huge[299999] = 3
+    var k = 299998
+    huge[k] = 4
+    p(huge[0] as s32 + huge[150000] as s32 + huge[299999] as s32 + huge[k] as s32)  // expect: 10
+    p(after)                // expect: 77
+    let ph = &huge[200000]
+    ph[1] = 9
+    p(huge[200001] as s32)  // expect: 9
+    odds[3] = Odd { a: 1, b: 2, c: 250 }
+    odds[4] = odds[3]
+    odds[4].c += 10
+    p(odd_sum(odds[3]))     // expect: 253
+    p(odds[4].c as s32)     // expect: 4
+    p(sizeof(Odd))          // expect: 3
+    p(sizeof(Mixed))        // expect: 24
+    var mx = Mixed { tag: 5, v: vec3(1.0, 2.0, 3.0), n: -2 }
+    var my = mx
+    my.n *= 100
+    p(my.n as s32 + my.tag as s32)   // expect: -195
+    print_fixed(my.v.z)
+    print_char('\n')        // expect: 3.0
+    let r = mat4_translate(vec3(1.0, 0.0, 0.0))
+    print_vec(spin(r, 5))
+    print_char('\n')        // expect: (6.0, 0.0, 0.0, 1.0)
+    let one = vec4(1.0, 1.0, 1.0, 1.0)
+    print_vec(vstack(one, one, one, one, one * 2.0, one * 3.0))
+    print_char('\n')        // expect: (9.0, 9.0, 9.0, 9.0)
+    var big: [64]vec4
+    for i in 0..64 { big[i] = one * fixed(i) }
+    var acc = vec4(0.0, 0.0, 0.0, 0.0)
+    for i in 0..64 { acc += big[i] }
+    print_fixed(acc.y)
+    print_char('\n')        // expect: 2016.0
+    p(-(-2147483648))       // expect: -2147483648
+    let s8v: s8 = -128
+    p(abs(s8v as s32))      // expect: 128
+    p(max(-5, min(10, 7)))  // expect: 7
+}

@@ -1,0 +1,4 @@
+// error: type mismatch: argument 1 of apply() is fn(s32) -> s32, expected fn(fixed) -> fixed
+fn apply(f: fn(fixed) -> fixed) -> fixed { return f(1.0) }
+fn id(x: s32) -> s32 { return x }
+fn init() { apply(id) }

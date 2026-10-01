@@ -1,0 +1,12 @@
+// Mei standard library prelude. Imported automatically into every cart (it is
+// compiled into the cart; only functions the cart reaches are emitted).
+import "io.mls"
+import "debug.mls"
+import "math.mls"
+import "input.mls"
+import "mem.mls"
+import "gfx.mls"
+import "text.mls"
+import "audio.mls"
+import "card.mls"
+import "runtime.mls"

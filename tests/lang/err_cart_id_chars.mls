@@ -1,0 +1,3 @@
+// error: the cart ID must be printable ASCII
+cart "Lantern Lake", "LANTERN\tLAKE"
+fn init() {}

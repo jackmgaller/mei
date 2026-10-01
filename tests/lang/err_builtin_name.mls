@@ -1,0 +1,2 @@
+// error: 'vec3' is a built-in name
+struct vec3 { x: s32 }

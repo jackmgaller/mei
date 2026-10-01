@@ -1,0 +1,23 @@
+// Named registers: reads and writes compile to single loads/stores.
+// frames: 3
+reg MY_FRAME: u32 @ 0xFF0300
+reg DBG: u32 @ 0xFF030C
+reg CLEAR: u32 @ 0xFF0004
+reg SEED: u32 @ 0xFF0308
+
+fn update() {
+    CLEAR = 0x1F
+    DBG = 'A' + MY_FRAME
+    DBG = '\n'
+}
+
+fn init() {
+    SEED = 1234
+    let a = SEED
+    SEED = 1234
+    let b = SEED
+    if a == b { println("seeded") }   // expect: seeded
+}
+// expect: A
+// expect: B
+// expect: C

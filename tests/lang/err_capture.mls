@@ -1,0 +1,5 @@
+// error: a function literal cannot capture 'grid': arrays cannot be captured
+fn init() {
+    var grid: [4]s32
+    let f = fn(i: s32) => grid[i]
+}

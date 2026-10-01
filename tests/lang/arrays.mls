@@ -1,0 +1,50 @@
+// Arrays: globals, locals, multi-dimensional, ROM constants, len, decay to pointers.
+fn p(n: s32) { print_int(n); print_char('\n') }
+fn pf(f: fixed) { print_fixed(f); print_char('\n') }
+
+const TABLE: [4]fixed = [0.0, 0.5, 1.0, 1.5]
+const PRIMES: [6]u16 = [2, 3, 5, 7, 11, 13]
+const GRID: [2][3]s8 = [[1, -2, 3], [-4, 5, -6]]
+var buf: [10]s32
+var mat: [3][3]s32
+var big: [40000]u8
+
+fn sum(a: *s32, n: s32) -> s32 { var s = 0; for i in 0..n { s += a[i] }; return s }
+
+fn init() {
+    for i in 0..10 { buf[i] = i * i }
+    p(sum(&buf[0], 10))     // expect: 285
+    p(sum(buf, 10))         // expect: 285
+    pf(TABLE[3])            // expect: 1.5
+    var k = 2
+    pf(TABLE[k])            // expect: 1.0
+    p(PRIMES[5] as s32)     // expect: 13
+    p(len(PRIMES))          // expect: 6
+    p(GRID[1][2] as s32)    // expect: -6
+    var tot = 0
+    for r in 0..2 {
+        for c in 0..3 { tot += GRID[r][c] }
+    }
+    p(tot)                  // expect: -3
+    for r in 0..3 {
+        for c in 0..3 { mat[r][c] = r * 3 + c }
+    }
+    p(mat[2][1])            // expect: 7
+    var local: [5]u8
+    local[4] = 255
+    local[4] += 1
+    p(local[4] as s32)      // expect: 0
+    let words = [10, 20, 30]
+    p(words[0] + words[2])  // expect: 40
+    p(len(words))           // expect: 3
+    var copy = words
+    copy[1] = 99
+    p(words[1] + copy[1])   // expect: 119
+    big[39999] = 7
+    big[k * 10000] = 3
+    p(big[39999] as s32 + big[20000] as s32)  // expect: 10
+    var lbig: [100]s32
+    for i in 0..100 { lbig[i] = i }
+    var lcopy = lbig
+    p(lcopy[99] + lcopy[50])  // expect: 149
+}

@@ -1,0 +1,6 @@
+// error: a function literal cannot capture 'p': Pt values cannot be captured; copy the fields you need
+struct Pt { x: s32, y: s32 }
+fn init() {
+    let p = Pt { x: 1, y: 2 }
+    let f = fn() => p.x
+}

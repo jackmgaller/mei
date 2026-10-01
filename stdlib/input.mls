@@ -1,0 +1,28 @@
+// Controller input. Buttons are bit masks: btn(LEFT | A) is true if either is held.
+// Input is sampled once per frame at vsync, so it is stable for the whole frame.
+
+const UP = 1
+const DOWN = 2
+const LEFT = 4
+const RIGHT = 8
+const A = 16
+const B = 32
+const X = 64
+const Y = 128
+const L = 256
+const R = 512
+const START = 1024
+const SELECT = 2048
+
+var __pad_prev: u32
+var __pad2_prev: u32
+
+fn btn(b: u32) -> bool { return PAD1 & b != 0 }
+// Just pressed: held now but not on the previous frame.
+fn btnp(b: u32) -> bool { return PAD1 & ~__pad_prev & b != 0 }
+fn btn2(b: u32) -> bool { return PAD2 & b != 0 }
+fn btnp2(b: u32) -> bool { return PAD2 & ~__pad2_prev & b != 0 }
+
+// Analog sticks: x -1.0 (left) .. 1.0 (right), y -1.0 (down) .. 1.0 (up).
+fn stick() -> vec2 { return vec2(STICK1_X, STICK1_Y) }
+fn stick2() -> vec2 { return vec2(STICK2_X, STICK2_Y) }

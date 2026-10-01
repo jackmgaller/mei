@@ -1,0 +1,7 @@
+// error: this function literal captures the pointer 'p', which points into a local variable of the function around it
+fn make() -> fn() -> s32 {
+    var buf: [8]s32
+    let p = &buf[2]
+    return fn() => *p
+}
+fn init() {}

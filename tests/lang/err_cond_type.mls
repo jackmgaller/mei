@@ -1,0 +1,5 @@
+// error: condition must be bool, found s32
+fn init() {
+    var x = 1
+    if x { x = 2 }
+}

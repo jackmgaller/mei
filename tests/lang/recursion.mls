@@ -1,0 +1,52 @@
+// Recursion: plain, mutual, deep, with struct and vector values.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+struct Pair { a: s32, b: s32 }
+
+fn fib(n: s32) -> s32 {
+    if n < 2 { return n }
+    return fib(n - 1) + fib(n - 2)
+}
+fn ack(m: s32, n: s32) -> s32 {
+    if m == 0 { return n + 1 }
+    if n == 0 { return ack(m - 1, 1) }
+    return ack(m - 1, ack(m, n - 1))
+}
+fn is_even(n: s32) -> bool {
+    if n == 0 { return true }
+    return is_odd(n - 1)
+}
+fn is_odd(n: s32) -> bool {
+    if n == 0 { return false }
+    return is_even(n - 1)
+}
+fn fact(n: s32) -> s32 {
+    if n <= 1 { return 1 }
+    return n * fact(n - 1)
+}
+fn fibpair(n: s32) -> Pair {
+    if n == 0 { return Pair { a: 0, b: 1 } }
+    let q = fibpair(n - 1)
+    return Pair { a: q.b, b: q.a + q.b }
+}
+fn vsum(n: s32) -> vec3 {
+    if n == 0 { return vec3(0.0, 0.0, 0.0) }
+    return vsum(n - 1) + vec3(1.0, 0.5, 0.25)
+}
+fn depth(n: s32) -> s32 {
+    var pad: [8]s32
+    pad[n & 7] = n
+    if n == 0 { return 0 }
+    return depth(n - 1) + pad[n & 7] - n + 1
+}
+
+fn init() {
+    p(fib(20))          // expect: 6765
+    p(ack(2, 3))        // expect: 9
+    if is_even(15) { p(1) } else { p(0) }  // expect: 0
+    p(fact(12))         // expect: 479001600
+    p(fibpair(30).a)    // expect: 832040
+    print_fixed(vsum(8).y)
+    print_char('\n')    // expect: 4.0
+    p(depth(2000))      // expect: 2000
+}

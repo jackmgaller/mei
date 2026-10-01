@@ -1,0 +1,4 @@
+// error: expected s32
+fn init() {
+    var x: s32 = 1.5
+}

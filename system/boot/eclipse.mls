@@ -1,0 +1,620 @@
+// Boot theme "eclipse" (docs/SYSTEM.md, theme 2).
+//
+// 明, "bright", is the sun 日 beside the moon 月. A warm low-poly sun rises with a singing-
+// bowl strike and calls out a rising phrase; a cool pale moon answers in glass bells. They
+// circle each other across an indigo sky, hesitate, then slide together: the light dims, a
+// diamond ring flares, and the corona burns around the black disc as a gong and choir come
+// in. The ring opens like an iris and 明 is left in its place, 日 warm and 月 cool, with the
+// MEI wordmark spelled out on the moon's last phrase. 7.5 seconds.
+//
+// Assets and the sound score come from tools/gen_boot_eclipse.py (eclipse/gen.mls).
+import "eclipse/gen.mls"
+
+const ECLIPSE_CX = 160                 // where the eclipse happens
+const ECLIPSE_CY = 102
+const ECLIPSE_SUN_R = 24
+const ECLIPSE_MOON_R = 28
+
+// texture atlas (slot 0, 4-bit)
+const ECLIPSE_SLOT = 0
+const ECLIPSE_PAL_GREY = 0
+const ECLIPSE_PAL_MOON = 1
+
+var eclipse_vx: [42]s32                // projected sun vertices
+var eclipse_vy: [42]s32
+var eclipse_vz: [42]fixed
+var eclipse_vc: [42]u32
+
+// per-frame state shared by the drawing functions
+var eclipse_sunx: s32
+var eclipse_suny: s32
+var eclipse_moonx: s32
+var eclipse_moony: s32
+var eclipse_light: s32                 // sunlight 0..256 (falls as the moon covers the sun)
+var eclipse_dark: s32                  // sky darkness 0..256
+
+// ---- packets (all on the interface list, drawn in call order)
+
+fn eclipse_xy(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
+
+// Scales a colour by k/256 (k may exceed 256; channels clamp at 255).
+fn eclipse_mul(c: u32, k: s32) -> u32 {
+    if k <= 0 { return 0 }
+    let r = min((((c & 255) as s32) * k) >> 8, 255)
+    let g = min(((((c >> 8) & 255) as s32) * k) >> 8, 255)
+    let b = min(((((c >> 16) & 255) as s32) * k) >> 8, 255)
+    return rgb(r, g, b)
+}
+
+// Gouraud triangle; mode -1 is opaque, 0..3 a blend mode.
+fn eclipse_tri(x0: s32, y0: s32, c0: u32, x1: s32, y1: s32, c1: u32, x2: s32, y2: s32, c2: u32, mode: s32) {
+    let q = packet_alloc(7)
+    if q == null { return }
+    var ty: u32 = 0x21
+    var m: u32 = 0
+    if mode >= 0 {
+        ty = 0x29
+        m = (mode as u32) << 24
+    }
+    q[1] = c0 | m
+    q[2] = eclipse_xy(x0, y0)
+    q[3] = c1
+    q[4] = eclipse_xy(x1, y1)
+    q[5] = c2
+    q[6] = eclipse_xy(x2, y2)
+    ui_insert(q, ty)
+}
+
+// Gouraud quad in strip order (0-1-2, 1-2-3).
+fn eclipse_quad(x0: s32, y0: s32, c0: u32, x1: s32, y1: s32, c1: u32, x2: s32, y2: s32, c2: u32,
+                x3: s32, y3: s32, c3: u32, mode: s32) {
+    let q = packet_alloc(9)
+    if q == null { return }
+    var ty: u32 = 0x25
+    var m: u32 = 0
+    if mode >= 0 {
+        ty = 0x2D
+        m = (mode as u32) << 24
+    }
+    q[1] = c0 | m
+    q[2] = eclipse_xy(x0, y0)
+    q[3] = c1
+    q[4] = eclipse_xy(x1, y1)
+    q[5] = c2
+    q[6] = eclipse_xy(x2, y2)
+    q[7] = c3
+    q[8] = eclipse_xy(x3, y3)
+    ui_insert(q, ty)
+}
+
+// A w x h texel rectangle of the atlas drawn into dw x dh pixels at (x, y), tinted
+// (0x808080 = as is). mode -1 opaque, else a blend mode.
+fn eclipse_spr(u: s32, v: s32, w: s32, h: s32, x: s32, y: s32, dw: s32, dh: s32, tint: u32, pal: u32, mode: s32) {
+    if dw <= 0 || dh <= 0 { return }
+    let q = packet_alloc(10)
+    if q == null { return }
+    var ty: u32 = 0x26
+    var m: u32 = 0
+    if mode >= 0 {
+        ty = 0x2E
+        m = (mode as u32) << 24
+    }
+    let info = ((ECLIPSE_SLOT as u32) << 16) | (1 << 20) | (pal << 24)
+    q[1] = tint | m
+    q[2] = eclipse_xy(x, y)
+    q[3] = (u as u32) | ((v as u32) << 8) | info
+    q[4] = eclipse_xy(x + dw, y)
+    q[5] = ((u + w) as u32) | ((v as u32) << 8)
+    q[6] = eclipse_xy(x, y + dh)
+    q[7] = (u as u32) | (((v + h) as u32) << 8)
+    q[8] = eclipse_xy(x + dw, y + dh)
+    q[9] = ((u + w) as u32) | (((v + h) as u32) << 8)
+    ui_insert(q, ty)
+}
+
+// Soft additive glow of radius r centred on (x, y).
+fn eclipse_glow(x: s32, y: s32, r: s32, c: u32) {
+    if r <= 0 || c == 0 { return }
+    eclipse_spr(186, 64, 64, 64, x - r, y - r, 2 * r, 2 * r, (c >> 1) & 0x7F7F7F, ECLIPSE_PAL_GREY, 1)
+}
+
+// Four-point sparkle of radius r.
+fn eclipse_sparkle(x: s32, y: s32, r: s32, c: u32) {
+    if r <= 0 || c == 0 { return }
+    eclipse_spr(128, 96, 32, 32, x - r, y - r, 2 * r, 2 * r, (c >> 1) & 0x7F7F7F, ECLIPSE_PAL_GREY, 1)
+}
+
+// ---- timing helpers
+
+// 0.0 .. 1.0 between frames a and b, smoothed.
+fn eclipse_smooth(a: s32, b: s32, t: s32) -> fixed {
+    if t <= a { return 0.0 }
+    if t >= b { return 1.0 }
+    let u = fixed(t - a) / (b - a)
+    return u * u * (3.0 - u * 2)
+}
+
+fn eclipse_lin(a: s32, b: s32, t: s32) -> fixed {
+    if t <= a { return 0.0 }
+    if t >= b { return 1.0 }
+    return fixed(t - a) / (b - a)
+}
+
+// A note's flash: 256 on the frame it sounds, decaying over about `len` frames.
+fn eclipse_ping(t: s32, at: s32, len: s32) -> s32 {
+    let d = t - at
+    if d < 0 || d >= len { return 0 }
+    let k = len - d
+    return (k * k * 256) / (len * len)
+}
+
+fn eclipse_sun_pulse(t: s32) -> s32 {
+    var p = max(eclipse_ping(t, ECLIPSE_T_BOWL, 50), eclipse_ping(t, ECLIPSE_T_UNION, 50))
+    for i in 0..len(ECLIPSE_T_SUN) {
+        for j in 0..len(ECLIPSE_SUN_NOTES) {
+            p = max(p, eclipse_ping(t, ECLIPSE_T_SUN[i] + ECLIPSE_SUN_NOTES[j], 26))
+        }
+    }
+    return p
+}
+
+fn eclipse_moon_pulse(t: s32) -> s32 {
+    var p = 0
+    for i in 0..len(ECLIPSE_T_MOON) - 1 {
+        for j in 0..len(ECLIPSE_MOON_NOTES) {
+            p = max(p, eclipse_ping(t, ECLIPSE_T_MOON[i] + ECLIPSE_MOON_NOTES[j], 18))
+        }
+    }
+    return p
+}
+
+fn eclipse_hash(n: s32) -> s32 {
+    var x = (n as u32) * 2654435761
+    x = x ^ (x >> 15)
+    x = x * 2246822519
+    x = x ^ (x >> 13)
+    return (x & 0x7FFFFFFF) as s32
+}
+
+// Piecewise smooth keyframes: half the distance between sun and moon, in pixels.
+fn eclipse_sep(t: s32) -> s32 {
+    if t < 150 { return 140 - ((82.0 * eclipse_smooth(0, 150, t)) as s32) }       // 140 -> 58
+    if t < 178 { return 58 - ((10.0 * eclipse_smooth(150, 178, t)) as s32) }       // a near touch
+    if t < 200 { return 48 + ((12.0 * eclipse_smooth(178, 200, t)) as s32) }       // and back
+    return 60 - ((60.0 * eclipse_smooth(200, ECLIPSE_T_ECLIPSE, t)) as s32)       // the eclipse
+}
+
+// The angle of the sun around the moon (radians, screen y down).
+fn eclipse_angle(t: s32) -> fixed {
+    return 2.75 + 0.55 * eclipse_smooth(0, 150, t) + 0.75 * eclipse_smooth(150, 200, t) +
+        0.66 * eclipse_smooth(200, ECLIPSE_T_ECLIPSE, t)
+}
+
+// ---- sound: the generated event table (gen.mls)
+
+fn eclipse_audio(t: s32) {
+    for e in 0..ECLIPSE_EV_COUNT {
+        let k = t - ECLIPSE_EV_START[e]
+        if k < 0 || k > ECLIPSE_EV_FRAMES[e] { continue }
+        let r = (AUDIO_BASE + ECLIPSE_EV_CH[e] * 32) as *u32
+        if k == ECLIPSE_EV_FRAMES[e] {
+            r[5] = 0        // the event is over (a loop, or a piece cut short by a fade)
+            continue
+        }
+        if k == 0 {
+            r[0] = (ECLIPSE_SND as u32) + (ECLIPSE_EV_OFF[e] as u32)
+            r[1] = ECLIPSE_EV_LEN[e] as u32
+            r[2] = 0
+            r[3] = ECLIPSE_EV_PITCH[e] as u32
+            r[5] = ECLIPSE_EV_CTRL[e] as u32
+        }
+        let v = ECLIPSE_EV_VOFF[e] + k * 2
+        r[4] = (ECLIPSE_VOLS[v] as u32) | ((ECLIPSE_VOLS[v + 1] as u32) << 8)
+    }
+}
+
+fn eclipse_silence() {
+    for ch in 0..6 { stop(ch) }
+}
+
+// ---- the sky
+
+// The sky colour at height y (0..240) for the current darkness.
+fn eclipse_sky(y: s32) -> u32 {
+    let d = eclipse_dark
+    let top = rgb(7 - (5 * d >> 8), 6 - (4 * d >> 8), 30 - (18 * d >> 8))
+    let mid = rgb(26 - (18 * d >> 8), 18 - (12 * d >> 8), 66 - (38 * d >> 8))
+    let low = rgb(60 - (40 * d >> 8), 32 - (22 * d >> 8), 82 - (46 * d >> 8))
+    if y < 120 { return eclipse_blend(top, mid, y * 256 / 120) }
+    return eclipse_blend(mid, low, (y - 120) * 256 / 120)
+}
+
+fn eclipse_blend(a: u32, b: u32, k: s32) -> u32 {
+    let ra = (a & 255) as s32
+    let ga = ((a >> 8) & 255) as s32
+    let ba = ((a >> 16) & 255) as s32
+    let rb = (b & 255) as s32
+    let gb = ((b >> 8) & 255) as s32
+    let bb = ((b >> 16) & 255) as s32
+    return rgb(ra + ((rb - ra) * k >> 8), ga + ((gb - ga) * k >> 8), ba + ((bb - ba) * k >> 8))
+}
+
+fn eclipse_draw_sky(fade: s32) {
+    let c0 = eclipse_mul(eclipse_sky(0), fade)
+    let c1 = eclipse_mul(eclipse_sky(120), fade)
+    let c2 = eclipse_mul(eclipse_sky(240), fade)
+    eclipse_quad(0, 0, c0, 320, 0, c0, 0, 120, c1, 320, 120, c1, -1)
+    eclipse_quad(0, 120, c1, 320, 120, c1, 0, 240, c2, 320, 240, c2, -1)
+}
+
+fn eclipse_draw_stars(t: s32, fade: s32, moon_ping: s32) {
+    let boost = 160 + (eclipse_dark * 180 >> 8)
+    for i in 0..ECLIPSE_STAR_N {
+        let x = ECLIPSE_STAR[i * 5]
+        let y = ECLIPSE_STAR[i * 5 + 1]
+        let b = ECLIPSE_STAR[i * 5 + 2]
+        let ph = ECLIPSE_STAR[i * 5 + 3]
+        let sp = ECLIPSE_STAR[i * 5 + 4]
+        let tw = sin(fixed(ph + t * sp / 256) * 0.0061)          // -1..1
+        var k = b * (190 + ((tw * 66) as s32)) >> 8
+        k = k * boost >> 8
+        k = k * fade >> 8
+        // the moon's notes make the brightest stars glint
+        if b > 170 { k += (moon_ping * (b - 150)) >> 8 }
+        if k <= 4 { continue }
+        let c = eclipse_mul(rgb(200, 210, 255), k)
+        if b > 200 && k > 120 {
+            eclipse_sparkle(x, y, 3 + (k >> 6), eclipse_mul(c, 200))
+        } else {
+            let s = 1 + (b >> 7)
+            eclipse_quad(x, y, c, x + s, y, c, x, y + s, c, x + s, y + s, c, 1)
+        }
+    }
+}
+
+// ---- the sun: a rotating icosphere, Gouraud-shaded from its facing, with rays and glow
+
+fn eclipse_draw_sun(t: s32, cx: s32, cy: s32, alpha: s32, pulse: s32) {
+    if alpha <= 0 { return }
+    let light = eclipse_light * alpha >> 8
+    // sky glow and corona glow behind the disc
+    eclipse_glow(cx, cy, 120 + (pulse >> 4), eclipse_mul(rgb(60, 26, 8), light))
+    eclipse_glow(cx, cy, 58 + (pulse >> 3), eclipse_mul(rgb(255, 140, 40), light * (150 + (pulse >> 1)) >> 8))
+    // rays: two counter-rotating sets of additive spikes, longer on every note
+    let a0 = fixed(t) * 0.004
+    for k in 0..14 {
+        let th = a0 + fixed(k) * 0.4488
+        let wob = sin(fixed(t) * 0.031 + fixed(k) * 2.1)
+        var len = ECLIPSE_SUN_R * 2 + ((wob * 12) as s32) + (k & 1) * 10
+        len += (pulse * 20) >> 8
+        let r0: fixed = fixed(ECLIPSE_SUN_R) * 0.9
+        let bx0 = cx + ((cos(th - 0.11) * r0) as s32)
+        let by0 = cy + ((sin(th - 0.11) * r0) as s32)
+        let bx1 = cx + ((cos(th + 0.11) * r0) as s32)
+        let by1 = cy + ((sin(th + 0.11) * r0) as s32)
+        let tx = cx + ((cos(th) * len) as s32)
+        let ty = cy + ((sin(th) * len) as s32)
+        let c = eclipse_mul(rgb(255, 150, 50), light * (120 + (pulse >> 2)) >> 8)
+        eclipse_tri(bx0, by0, c, bx1, by1, c, tx, ty, 0, 1)
+    }
+    for k in 0..9 {
+        let th = 0.3 - a0 * 2 + fixed(k) * 0.698
+        let len = ECLIPSE_SUN_R * 3 + ((sin(fixed(t) * 0.023 + fixed(k) * 1.3) * 16) as s32) + ((pulse * 30) >> 8)
+        let r0: fixed = fixed(ECLIPSE_SUN_R) * 0.8
+        let bx0 = cx + ((cos(th - 0.05) * r0) as s32)
+        let by0 = cy + ((sin(th - 0.05) * r0) as s32)
+        let bx1 = cx + ((cos(th + 0.05) * r0) as s32)
+        let by1 = cy + ((sin(th + 0.05) * r0) as s32)
+        let tx = cx + ((cos(th) * len) as s32)
+        let ty = cy + ((sin(th) * len) as s32)
+        let c = eclipse_mul(rgb(255, 210, 120), light * (70 + (pulse >> 2)) >> 8)
+        eclipse_tri(bx0, by0, c, bx1, by1, c, tx, ty, 0, 1)
+    }
+    // the disc
+    let sa = sin(fixed(t) * 0.011)
+    let ca = cos(fixed(t) * 0.011)
+    let st: fixed = 0.389
+    let ct: fixed = 0.921
+    let bright = (light * (230 + (pulse >> 3))) >> 8
+    for i in 0..ECLIPSE_SUN_NV {
+        let x = from_bits(ECLIPSE_SUN_V[i * 3])
+        let y = from_bits(ECLIPSE_SUN_V[i * 3 + 1])
+        let z = from_bits(ECLIPSE_SUN_V[i * 3 + 2])
+        let x1 = x * ca + z * sa
+        let z1 = z * ca - x * sa
+        let y2 = y * ct - z1 * st
+        let z2 = y * st + z1 * ct
+        eclipse_vx[i] = cx + ((x1 * ECLIPSE_SUN_R) as s32)
+        eclipse_vy[i] = cy - ((y2 * ECLIPSE_SUN_R) as s32)
+        eclipse_vz[i] = z2
+        // facing -> colour: deep orange at the limb, white-gold at the centre, boiling a little
+        var f = z2 + sin(fixed(t) * 0.07 + fixed(i) * 1.7) * 0.13
+        f = clamp(f, 0.0, 1.0)
+        let k = (f * 256) as s32
+        var c: u32
+        if k < 128 {
+            c = eclipse_blend(rgb(190, 52, 10), rgb(255, 140, 34), k * 2)
+        } else {
+            c = eclipse_blend(rgb(255, 140, 34), rgb(255, 244, 196), (k - 128) * 2)
+        }
+        eclipse_vc[i] = eclipse_mul(c, bright)
+    }
+    for f in 0..ECLIPSE_SUN_NF {
+        let a = ECLIPSE_SUN_F[f * 3] as s32
+        let b = ECLIPSE_SUN_F[f * 3 + 1] as s32
+        let c = ECLIPSE_SUN_F[f * 3 + 2] as s32
+        if eclipse_vz[a] + eclipse_vz[b] + eclipse_vz[c] <= 0.0 { continue }
+        eclipse_tri(eclipse_vx[a], eclipse_vy[a], eclipse_vc[a], eclipse_vx[b], eclipse_vy[b], eclipse_vc[b],
+                    eclipse_vx[c], eclipse_vy[c], eclipse_vc[c], -1)
+    }
+}
+
+// ---- the moon: a textured disc that turns to a silhouette as it crosses the sun
+
+fn eclipse_draw_moon(t: s32, x: s32, y: s32, alpha: s32, night: s32, pulse: s32) {
+    if alpha <= 0 { return }
+    let lit = (256 - night) * alpha >> 8
+    eclipse_glow(x, y, 64 + (pulse >> 4), eclipse_mul(rgb(40, 60, 110), lit * (180 + (pulse >> 1)) >> 8))
+    // tint: pale blue when lit, nearly black (with a little indigo) when it hides the sun;
+    // while it first appears it is drawn additively, so it fades in from the sky
+    let k = (256 - night) * 128 >> 8
+    let tint = rgb(k + (8 * night >> 8), k + (8 * night >> 8), k + (14 * night >> 8))
+    // a thin crescent of sunlight on the limb that faces the sun
+    if night > 0 {
+        let rx = clamp((eclipse_sunx - x) / 12, -2, 2)
+        let ry = clamp((eclipse_suny - y) / 12, -2, 2)
+        let rim = eclipse_mul(rgb(255, 190, 120), night * eclipse_light >> 9)
+        eclipse_spr(186, 0, 64, 64, x - 32 + rx, y - 32 + ry, 64, 64, rim, ECLIPSE_PAL_MOON, 1)
+    }
+    if alpha < 256 {
+        eclipse_spr(186, 0, 64, 64, x - 32, y - 32, 64, 64, eclipse_mul(tint, alpha), ECLIPSE_PAL_MOON, 1)
+    } else {
+        eclipse_spr(186, 0, 64, 64, x - 32, y - 32, 64, 64, tint, ECLIPSE_PAL_MOON, -1)
+    }
+    if pulse > 0 && night < 128 {
+        eclipse_sparkle(x - 17, y - 19, 4 + (pulse >> 5), eclipse_mul(rgb(210, 230, 255), pulse))
+    }
+}
+
+// A filled disc (a fan of 24 Gouraud triangles), opaque.
+fn eclipse_disc(x: s32, y: s32, r: s32, centre: u32, edge: u32) {
+    var px = x + r
+    var py = y
+    for s in 1..25 {
+        let th = fixed(s) * 0.2618
+        let nx = x + ((cos(th) * r) as s32)
+        let ny = y + ((sin(th) * r) as s32)
+        eclipse_tri(x, y, centre, px, py, edge, nx, ny, edge, -1)
+        px = nx
+        py = ny
+    }
+}
+
+// ---- the corona: a bright ring and soft streamers around the black disc
+
+fn eclipse_draw_corona(t: s32, x: s32, y: s32, r: s32, k: s32, width: s32) {
+    if k <= 0 { return }
+    let inner = eclipse_mul(rgb(255, 248, 230), k)
+    let soft = eclipse_mul(rgb(130, 160, 230), k)
+    let rot = fixed(t) * 0.006
+    var px0 = 0
+    var py0 = 0
+    var px1 = 0
+    var py1 = 0
+    var px2 = 0
+    var py2 = 0
+    for s in 0..33 {
+        let th = rot + fixed(s) * 0.19635                 // 32 segments
+        let c = cos(th)
+        let sn = sin(th)
+        let n = sin(fixed(s * 7 % 32) * 0.8 + fixed(t) * 0.02) * 6 + sin(fixed(s) * 1.9 - fixed(t) * 0.013) * 5
+        let ro: fixed = fixed(r + width) + n
+        let x0 = x + ((c * r) as s32)
+        let y0 = y + ((sn * r) as s32)
+        let x1 = x + ((c * (r + 3)) as s32)
+        let y1 = y + ((sn * (r + 3)) as s32)
+        let x2 = x + ((c * ro) as s32)
+        let y2 = y + ((sn * ro) as s32)
+        if s > 0 {
+            eclipse_quad(px0, py0, inner, x0, y0, inner, px1, py1, 0, x1, y1, 0, 1)
+            eclipse_quad(px0, py0, soft, x0, y0, soft, px2, py2, 0, x2, y2, 0, 1)
+        }
+        px0 = x0
+        py0 = y0
+        px1 = x1
+        py1 = y1
+        px2 = x2
+        py2 = y2
+    }
+    // streamers
+    for s in 0..10 {
+        let th = rot * 2 + fixed(s) * 0.628 + sin(fixed(s) * 3.1) * 0.2
+        let len = r + width + 14 + (eclipse_hash(s) & 31) + ((sin(fixed(t) * 0.017 + fixed(s)) * 8) as s32)
+        let c = eclipse_mul(rgb(120, 140, 200), k * 3 >> 2)
+        let bx0 = x + ((cos(th - 0.07) * r) as s32)
+        let by0 = y + ((sin(th - 0.07) * r) as s32)
+        let bx1 = x + ((cos(th + 0.07) * r) as s32)
+        let by1 = y + ((sin(th + 0.07) * r) as s32)
+        eclipse_tri(bx0, by0, c, bx1, by1, c, x + ((cos(th) * len) as s32), y + ((sin(th) * len) as s32), 0, 1)
+    }
+}
+
+// ---- 明 and the wordmark
+
+fn eclipse_draw_glyph(t: s32, k: s32, spread: s32, glow: s32) {
+    let x = ECLIPSE_CX - 46
+    let y = ECLIPSE_CY - 46
+    let s = ECLIPSE_GLYPH_SPLIT
+    let warm = rgb(255, 196, 100)
+    let cool = rgb(176, 206, 255)
+    // bloom behind: the blurred glyph, a little larger
+    if glow > 0 {
+        let gw = eclipse_mul(warm, glow)
+        let gc = eclipse_mul(cool, glow)
+        eclipse_spr(92, 0, s, 92, x - 4 - spread, y - 4, s + 4, 100, (gw >> 1) & 0x7F7F7F, ECLIPSE_PAL_GREY, 1)
+        eclipse_spr(92 + s, 0, 92 - s, 92, x + s + spread, y - 4, 96 - s, 100, (gc >> 1) & 0x7F7F7F, ECLIPSE_PAL_GREY, 1)
+    }
+    if k > 0 {
+        let cw = eclipse_mul(warm, k)
+        let cc = eclipse_mul(cool, k)
+        eclipse_spr(0, 0, s, 92, x - spread, y, s, 92, (cw >> 1) & 0x7F7F7F, ECLIPSE_PAL_GREY, 1)
+        eclipse_spr(s, 0, 92 - s, 92, x + s + spread, y, 92 - s, 92, (cc >> 1) & 0x7F7F7F, ECLIPSE_PAL_GREY, 1)
+    }
+}
+
+fn eclipse_draw_wordmark(t: s32) {
+    let x0 = ECLIPSE_CX - 64
+    let y0 = ECLIPSE_CY + 68
+    for i in 0..3 {
+        let at = ECLIPSE_T_UNION + ECLIPSE_MOON_NOTES[i]
+        if t < at { continue }
+        let k = (eclipse_lin(at, at + 16, t) * 256) as s32
+        let rise = 3 - ((eclipse_smooth(at, at + 20, t) * 3) as s32)
+        let u0 = ECLIPSE_WM_U0[i]
+        let u1 = ECLIPSE_WM_U1[i]
+        let c = eclipse_mul(rgb(236, 232, 255), k + (eclipse_ping(t, at, 20) >> 1))
+        eclipse_spr(u0, 96, u1 - u0, 30, x0 + u0, y0 + rise, u1 - u0, 30, (c >> 1) & 0x7F7F7F, ECLIPSE_PAL_GREY, 1)
+    }
+    // the last note glints across the letters
+    let at = ECLIPSE_T_UNION + ECLIPSE_MOON_NOTES[3]
+    let g = eclipse_ping(t, at, 34)
+    if g > 0 {
+        let gx = x0 + ECLIPSE_WM_U0[0] + (ECLIPSE_WM_U1[2] - ECLIPSE_WM_U0[0]) * (t - at) / 34
+        eclipse_sparkle(gx, y0 + 14, 5 + (g >> 6), eclipse_mul(rgb(230, 240, 255), g))
+    }
+}
+
+// Motes of light drifting out of the ring after the union.
+fn eclipse_draw_motes(t: s32, t0: s32) {
+    if t < t0 { return }
+    let age = t - t0
+    for i in 0..28 {
+        let h = eclipse_hash(i + 17)
+        let life = 70 + (h & 63)
+        let born = (h >> 8) & 31
+        let a = age - born
+        if a < 0 || a >= life { continue }
+        let th = fixed((h >> 13) & 1023) * 0.00614
+        let sp = fixed(28 + ((h >> 3) & 31)) / 60
+        let r = 64 + ((sp * a) as s32)
+        let x = ECLIPSE_CX + ((cos(th) * r) as s32)
+        let y = ECLIPSE_CY + ((sin(th) * r) as s32) - a / 4
+        let k = (life - a) * 256 / life
+        var c = rgb(255, 210, 140)
+        if i & 1 == 1 { c = rgb(170, 200, 255) }
+        c = eclipse_mul(c, k * (160 + ((sin(fixed(t) * 0.3 + fixed(i)) * 90) as s32)) >> 8)
+        eclipse_quad(x, y, c, x + 2, y, c, x, y + 2, c, x + 2, y + 2, c, 1)
+    }
+}
+
+// ---- the theme
+
+fn eclipse_start() {
+    load_texture(ECLIPSE_SLOT, ECLIPSE_TEX, len(ECLIPSE_TEX))
+    load_palette(0, ECLIPSE_PAL, 32)
+    dither(true)
+    eclipse_silence()
+}
+
+fn eclipse_frame(t: s32) -> bool {
+    eclipse_audio(t)
+
+    // where everything is
+    let sep = eclipse_sep(t)
+    let ang = eclipse_angle(t)
+    let bob = (sin(fixed(t) * 0.02) * 3) as s32
+    eclipse_sunx = ECLIPSE_CX + ((cos(ang) * sep) as s32)
+    eclipse_suny = ECLIPSE_CY + ((sin(ang) * sep * 7 / 10) as s32) + bob
+    // the moon glides in from beyond the right edge just before its first answer
+    let slide = 256 - ((eclipse_smooth(ECLIPSE_T_MOON[0] - 50, ECLIPSE_T_MOON[0] + 6, t) * 256) as s32)
+    eclipse_moonx = ECLIPSE_CX - ((cos(ang) * sep) as s32) + (slide * 110 >> 8)
+    eclipse_moony = ECLIPSE_CY - ((sin(ang) * sep * 7 / 10) as s32) - bob
+    let dx = eclipse_sunx - eclipse_moonx
+    let dy = eclipse_suny - eclipse_moony
+    let d = (sqrt(fixed((dx * dx + dy * dy) / 16)) * 4) as s32      // /16 keeps it in fixed range
+    // how much of the sun is hidden: 0 apart .. 256 total
+    let cover = clamp((ECLIPSE_SUN_R + ECLIPSE_MOON_R - d) * 256 / (ECLIPSE_SUN_R + ECLIPSE_MOON_R - 3), 0, 256)
+    let union = (eclipse_smooth(286, 330, t) * 256) as s32
+    eclipse_light = 256 - (cover * 235 >> 8)
+    eclipse_dark = max(cover, (eclipse_smooth(150, 230, t) * 70) as s32)
+    eclipse_dark = eclipse_dark * (256 - (union * 3 >> 2)) >> 8
+    let fade = (eclipse_smooth(0, 36, t) * 256) as s32
+    let sun_pulse = eclipse_sun_pulse(t)
+    let moon_pulse = eclipse_moon_pulse(t)
+
+    cls(0)
+    eclipse_draw_sky(fade)
+    eclipse_draw_stars(t, fade, moon_pulse)
+
+    let te = ECLIPSE_T_ECLIPSE
+    if t < te + 40 {
+        // the sun ignites with the bowl and fades out under the moon at totality
+        let sun_a = (eclipse_smooth(ECLIPSE_T_BOWL - 6, ECLIPSE_T_BOWL + 26, t) * 256) as s32
+        eclipse_draw_sun(t, eclipse_sunx, eclipse_suny, sun_a, sun_pulse)
+        if t < ECLIPSE_T_BOWL + 30 {
+            eclipse_glow(eclipse_sunx, eclipse_suny, 30 + (t - ECLIPSE_T_BOWL), eclipse_mul(rgb(255, 200, 120), eclipse_ping(t, ECLIPSE_T_BOWL, 30)))
+        }
+    }
+    // the pearly light of the corona, behind the black disc
+    let pearl = (eclipse_smooth(te - 6, te + 4, t) * 256) as s32 - (eclipse_smooth(300, 360, t) * 120) as s32
+    if pearl > 0 {
+        eclipse_glow(ECLIPSE_CX, ECLIPSE_CY, 74, eclipse_mul(rgb(70, 90, 150), pearl))
+    }
+    // the moon darkens to a silhouette as it nears the sun; after totality its black disc
+    // opens with the ring into the deep medallion that 明 sits on
+    let night = clamp((86 - d) * 256 / 34, 0, 256)
+    let open = eclipse_smooth(288, 326, t)
+    let ring_r = ECLIPSE_MOON_R + ((open * 34) as s32)
+    if t < 288 {
+        eclipse_draw_moon(t, eclipse_moonx, eclipse_moony, 256, night, moon_pulse)
+    } else {
+        eclipse_disc(ECLIPSE_CX, ECLIPSE_CY, ring_r, rgb(9, 8, 20), rgb(20, 16, 44))
+    }
+
+    // the diamond ring, then the corona
+    let ring_t = te - 6
+    let flare = eclipse_ping(t, ring_t, 40) + (eclipse_lin(te - 30, ring_t, t) * eclipse_lin(te - 30, ring_t + 1, t) * 120) as s32
+    if t >= te - 30 && t < te + 40 {
+        let fx = ECLIPSE_CX + ((cos(ang) * ECLIPSE_MOON_R) as s32)
+        let fy = ECLIPSE_CY + ((sin(ang) * ECLIPSE_MOON_R) as s32)
+        let k = min(flare, 256)
+        eclipse_glow(fx, fy, 22 + (k >> 3), eclipse_mul(rgb(255, 250, 230), k))
+        eclipse_sparkle(fx, fy, 6 + (k * 30 >> 8), eclipse_mul(rgb(255, 255, 240), k))
+        // an anamorphic streak across the screen
+        let sc = eclipse_mul(rgb(150, 170, 255), k * 3 >> 2)
+        eclipse_quad(fx - 150, fy - 1, 0, fx, fy - 1, sc, fx - 150, fy + 1, 0, fx, fy + 1, sc, 1)
+        eclipse_quad(fx, fy - 1, sc, fx + 150, fy - 1, 0, fx, fy + 1, sc, fx + 150, fy + 1, 0, 1)
+    }
+    if t >= te - 4 {
+        let on = (eclipse_smooth(te - 4, te + 6, t) * 256) as s32
+        let breathe = (sin(fixed(t - te) * 0.09) * 26) as s32
+        var k = on * (215 + breathe) >> 8
+        let r = ring_r
+        k = k * (256 - ((open * 150) as s32)) >> 8
+        k = k * (256 - ((eclipse_smooth(390, 448, t) * 120) as s32)) >> 8
+        eclipse_draw_corona(t, ECLIPSE_CX, ECLIPSE_CY, r, k, 12 + ((open * 6) as s32))
+    }
+
+    // the union: 明, warm sun-half and cool moon-half closing together
+    if t >= 292 {
+        let k = (eclipse_smooth(292, 326, t) * 256) as s32
+        let spread = 8 - ((eclipse_smooth(292, 320, t) * 8) as s32)
+        let glow = (eclipse_smooth(292, 312, t) * 200) as s32 - (eclipse_smooth(312, 360, t) * 110) as s32
+        eclipse_draw_glyph(t, k + (eclipse_ping(t, ECLIPSE_T_UNION, 40) >> 2), spread, glow + (eclipse_ping(t, ECLIPSE_T_UNION, 50) >> 2))
+        eclipse_draw_motes(t, 300)
+    }
+    eclipse_draw_wordmark(t)
+
+    // white bloom over everything at totality and at the union
+    let flash = (eclipse_ping(t, te, 16) * 3 >> 3) + (eclipse_ping(t, 300, 30) >> 2)
+    if flash > 0 {
+        let c = eclipse_mul(rgb(110, 100, 130), flash)
+        eclipse_quad(0, 0, c, 320, 0, c, 0, 240, c, 320, 240, c, 1)
+    }
+
+    if t >= ECLIPSE_FRAMES - 1 {
+        eclipse_silence()
+        return true
+    }
+    return false
+}

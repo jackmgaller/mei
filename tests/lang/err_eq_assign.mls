@@ -1,0 +1,5 @@
+// error: '==' compares; use '=' to assign
+fn init() {
+    var x = 1
+    x == 2
+}

@@ -1,0 +1,7 @@
+// error: the else arm must come last
+fn f(n: s32) {
+    match n {
+        else => print_int(0)
+        1 => print_int(1)
+    }
+}

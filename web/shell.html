@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mei</title>
+<style>
+  :root {
+    --bg: #0d0e14; --panel: #161823; --ink: #e8e6df; --dim: #8a8b96; --line: #2a2c3a;
+    --sun: #f2b544; --moon: #9fb4ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  main { max-width: 1000px; margin: 0 auto; padding: 20px 16px 40px; }
+  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  h1 { margin: 0; font-size: 22px; letter-spacing: 0.04em; }
+  h1 .sun { color: var(--sun); } h1 .moon { color: var(--moon); }
+  header .sub { color: var(--dim); }
+  .screen { position: relative; background: #000; border: 1px solid var(--line); border-radius: 6px;
+    aspect-ratio: 4 / 3; width: 100%; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; outline: none; }
+  .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.6); color: var(--ink); cursor: pointer; font-size: 16px; }
+  .overlay[hidden] { display: none; }
+  .screen.drag { outline: 2px dashed var(--sun); outline-offset: -8px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+  select, button, label.file { background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 4px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  button:hover, select:hover, label.file:hover { border-color: var(--dim); }
+  label.file input { display: none; }
+  .status { color: var(--dim); margin-left: auto; }
+  .help { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px 20px;
+    color: var(--dim); font-size: 13px; }
+  .help b { color: var(--ink); font-weight: normal; }
+  pre#console { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px;
+    height: 120px; overflow: auto; margin: 12px 0 0; color: var(--ink); font-size: 12px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span class="sun">M</span><span class="moon">ei</span></h1>
+    <span class="sub">3D fantasy console · 320×240 · 30 MHz RISC · 2 MB</span>
+  </header>
+
+  <div class="screen" id="screen">
+    <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+    <div class="overlay" id="overlay">Loading…</div>
+  </div>
+
+  <div class="bar">
+    <select id="carts" aria-label="Cart"></select>
+    <label class="file">Open .mei…<input type="file" id="file" accept=".mei"></label>
+    <button id="home" title="F2">Home</button>
+    <button id="reset" title="F5">Reset</button>
+    <button id="full">Fullscreen</button>
+    <span class="status" id="status"></span>
+  </div>
+
+  <div class="help">
+    <div><b>Arrows</b> d-pad</div>
+    <div><b>W A S D</b> analog stick</div>
+    <div><b>J K U I</b> A B X Y</div>
+    <div><b>Q E</b> L R &nbsp; <b>Enter</b> start &nbsp; <b>⌫</b> select</div>
+    <div><b>F2</b> home &nbsp; <b>F5</b> reset</div>
+    <div>Gamepads work too. Drop a .mei file on the screen.</div>
+  </div>
+
+  <pre id="console" aria-label="Debug console"></pre>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const canvas = $("canvas"), overlay = $("overlay"), consoleEl = $("console");
+  let ready = false;
+
+  function log(text) {
+    consoleEl.textContent += text + "\n";
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  var Module = {
+    canvas,
+    print: log,
+    printErr: (t) => console.warn(t),
+    onRuntimeInitialized() {
+      ready = true;
+      overlay.textContent = "Click to power on";
+      loadCartList();
+    },
+  };
+
+  function loadBytes(bytes, name) {
+    if (!ready) return;
+    const p = Module._malloc(bytes.length);
+    Module.HEAPU8.set(bytes, p);
+    const r = Module._web_load_cart(p, bytes.length);
+    Module._free(p);
+    consoleEl.textContent = "";
+    $("status").textContent = r === 0 ? name : name + ": not a valid cart";
+    canvas.focus();
+  }
+
+  async function loadUrl(url, name) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(res.status);
+      loadBytes(new Uint8Array(await res.arrayBuffer()), name);
+    } catch (e) { $("status").textContent = "couldn't load " + name; }
+  }
+
+  // The system ROM's shell launches carts by URL through this hook.
+  Module.meiFetchCart = (url) => {
+    const c = cartList.find((c) => "carts/" + c.file === url);
+    loadUrl(url, c ? c.title : url);
+  };
+
+  let cartList = [];
+  async function loadCartList() {
+    const sel = $("carts");
+    try {
+      cartList = await (await fetch("carts/carts.json")).json();
+    } catch (e) { cartList = []; }
+    const home = document.createElement("option");
+    home.value = ""; home.textContent = "System";
+    sel.appendChild(home);
+    for (const c of cartList) {
+      const o = document.createElement("option");
+      o.value = c.file; o.textContent = c.title;
+      sel.appendChild(o);
+      const t = Module.stringToNewUTF8(c.title), u = Module.stringToNewUTF8("carts/" + c.file);
+      Module._web_catalogue_add(t, c.size || 0, u);
+      Module._free(t); Module._free(u);
+    }
+    sel.onchange = () => {
+      if (!sel.value) { Module._web_home(); $("status").textContent = "System"; canvas.focus(); }
+      else loadUrl("carts/" + sel.value, sel.selectedOptions[0].textContent);
+    };
+  }
+
+  async function bootSystem() {
+    try {
+      const res = await fetch("system.mei");
+      if (!res.ok) throw new Error(res.status);
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      const p = Module._malloc(bytes.length);
+      Module.HEAPU8.set(bytes, p);
+      Module._web_boot_system(p, bytes.length, -1);
+      Module._free(p);
+      $("status").textContent = "System";
+    } catch (e) {
+      // No system ROM: fall back to the first cart.
+      if (cartList.length) loadUrl("carts/" + cartList[0].file, cartList[0].title);
+    }
+  }
+
+  overlay.onclick = () => {
+    if (!ready) return;
+    overlay.hidden = true;
+    canvas.focus();
+    bootSystem();   // power on now, so the boot animation and its sound are seen and heard
+    // Browsers only start audio after a user gesture.
+    const ctx = Module.SDL3 && Module.SDL3.audioContext;
+    if (ctx && ctx.state !== "running") ctx.resume();
+  };
+
+  $("file").onchange = async (e) => {
+    const f = e.target.files[0];
+    if (f) loadBytes(new Uint8Array(await f.arrayBuffer()), f.name);
+    e.target.value = "";
+  };
+  $("home").onclick = () => { if (ready) { Module._web_home(); $("carts").value = ""; $("status").textContent = "System"; canvas.focus(); } };
+  $("reset").onclick = () => { if (ready) { Module._web_reset(); canvas.focus(); } };
+  $("full").onclick = () => $("screen").requestFullscreen && $("screen").requestFullscreen();
+
+  const screen = $("screen");
+  screen.addEventListener("dragover", (e) => { e.preventDefault(); screen.classList.add("drag"); });
+  screen.addEventListener("dragleave", () => screen.classList.remove("drag"));
+  screen.addEventListener("drop", async (e) => {
+    e.preventDefault(); e.stopPropagation();
+    screen.classList.remove("drag");
+    const f = e.dataTransfer.files[0];
+    if (f) loadBytes(new Uint8Array(await f.arrayBuffer()), f.name);
+  }, true);
+
+  // Keep arrow keys and space from scrolling the page while playing.
+  window.addEventListener("keydown", (e) => {
+    if (document.activeElement === canvas && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key))
+      e.preventDefault();
+  });
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

@@ -1,0 +1,5 @@
+// error: cannot convert fn(s32) -> s32 to fixed
+fn id(x: s32) -> s32 { return x }
+fn init() {
+    let f = id as fixed
+}

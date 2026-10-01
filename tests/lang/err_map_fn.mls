@@ -1,0 +1,6 @@
+// error: type mismatch: map() needs a function of type fn(s32) -> ... here, found fn(fixed) -> fixed
+fn h(x: fixed) -> fixed { return x }
+fn init() {
+    let a = [1, 2]
+    let b = map(a, h)
+}

@@ -1,0 +1,4 @@
+// error: unknown name 'y'
+fn init() {
+    y = 3
+}

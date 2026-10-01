@@ -1,0 +1,29 @@
+// Sound: eight channels of signed mono samples at 22,050 Hz (pitch 1.0).
+
+fn __chan(ch: s32) -> *u32 { return (AUDIO_BASE + (ch & 7) * 32) as *u32 }
+
+// Plays 8-bit samples. len is in samples; volumes are 0..255.
+fn play(ch: s32, sample: *s8, len: u32, pitch: fixed, vol_l: s32, vol_r: s32, looping: bool) {
+    let r = __chan(ch)
+    r[0] = sample as u32
+    r[1] = len
+    r[2] = 0
+    r[3] = bits(pitch) as u32
+    r[4] = (vol_l as u32 & 255) | ((vol_r as u32 & 255) << 8)
+    r[5] = 1 | ((looping as u32) << 1)
+}
+
+// Plays 16-bit little-endian samples.
+fn play16(ch: s32, sample: *s16, len: u32, pitch: fixed, vol_l: s32, vol_r: s32, looping: bool) {
+    let r = __chan(ch)
+    r[0] = sample as u32
+    r[1] = len
+    r[2] = 0
+    r[3] = bits(pitch) as u32
+    r[4] = (vol_l as u32 & 255) | ((vol_r as u32 & 255) << 8)
+    r[5] = 5 | ((looping as u32) << 1)
+}
+
+fn stop(ch: s32) { __chan(ch)[5] = 0 }
+fn sound_playing(ch: s32) -> bool { return __chan(ch)[5] & 1 != 0 }
+fn sound_pos(ch: s32) -> u32 { return __chan(ch)[6] }

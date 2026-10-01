@@ -1,0 +1,194 @@
+// The interface: HUD, title and win screens. Big letters are the built-in 8x8 font drawn
+// as scaled, Gouraud-tinted quads (a vertical gradient per glyph); panels are
+// semi-transparent quads that darken what is behind them.
+
+const ICON_PAL = 13
+
+// A semi-transparent filled rectangle on the interface list.
+fn panel(x: s32, y: s32, w: s32, h: s32, colour: u32, mode: u32) {
+    let q = packet_alloc(6)
+    if q == null { return }
+    q[1] = colour | (mode << 24)
+    q[2] = spos(x, y)
+    q[3] = spos(x + w, y)
+    q[4] = spos(x, y + h)
+    q[5] = spos(x + w, y + h)
+    ui_insert(q, 0x2C)
+}
+
+// A 16x16 icon from the 4-bit atlas, tinted (0x808080 = as is).
+fn icon(x: s32, y: s32, u: s32, v: s32, tint: u32) {
+    let q = packet_alloc(10)
+    if q == null { return }
+    let info: u32 = (1 << 20) | (ICON_PAL << 24)
+    let uv = (u | (v << 8)) as u32
+    q[1] = tint
+    q[2] = spos(x, y)
+    q[3] = uv | info
+    q[4] = spos(x + 16, y)
+    q[5] = uv + 16
+    q[6] = spos(x, y + 16)
+    q[7] = uv + 0x1000
+    q[8] = spos(x + 16, y + 16)
+    q[9] = uv + 0x1010
+    ui_insert(q, 0x26)
+}
+
+fn str_len(s: *u8) -> s32 {
+    var n = 0
+    while s[n] != 0 { n += 1 }
+    return n
+}
+
+// Text scaled up `sc` times with a vertical colour gradient and a drop shadow.
+fn big_text(x: s32, y: s32, s: *u8, sc: s32, top: u32, bottom: u32) {
+    glyphs(x + sc, y + sc, s, sc, rgb(10, 8, 20), rgb(10, 8, 20))
+    glyphs(x, y, s, sc, top, bottom)
+}
+
+fn glyphs(x: s32, y: s32, s: *u8, sc: s32, top: u32, bottom: u32) {
+    // a texel of 255 times the tint / 128: halve the colour so it shows as given
+    let ct = (top >> 1) & 0x7F7F7F
+    let cb = (bottom >> 1) & 0x7F7F7F
+    let info: u32 = (FONT_SLOT << 16) | (1 << 20) | (FONT_PALETTE << 24)
+    let w = 8 * sc
+    var cx = x
+    var p = s
+    while p[0] != 0 {
+        let ch = p[0] as s32
+        p += 1
+        if ch > 32 && ch < 127 {
+            let q = packet_alloc(13)
+            if q == null { return }
+            let g = ch - 32
+            let u = ((g & 15) << 3) as u32
+            let v = ((g >> 4) << 11) as u32
+            q[1] = ct
+            q[2] = spos(cx, y)
+            q[3] = u | v | info
+            q[4] = ct
+            q[5] = spos(cx + w, y)
+            q[6] = (u + 8) | v
+            q[7] = cb
+            q[8] = spos(cx, y + w)
+            q[9] = u | (v + 0x800)
+            q[10] = cb
+            q[11] = spos(cx + w, y + w)
+            q[12] = (u + 8) | (v + 0x800)
+            ui_insert(q, 0x27)
+        }
+        cx += w
+    }
+}
+
+fn big_centred(y: s32, s: *u8, sc: s32, top: u32, bottom: u32) {
+    big_text(160 - str_len(s) * 4 * sc, y, s, sc, top, bottom)
+}
+
+fn text_centred(y: s32, s: *u8, colour: u32) {
+    text(161 - str_len(s) * 4, y + 1, s, rgb(10, 8, 20))
+    text(160 - str_len(s) * 4, y, s, colour)
+}
+
+var time_buf: [16]u8
+
+// Formats frames as m:ss.cc into time_buf.
+fn fmt_time(frames: s32) -> *u8 {
+    let total_s = frames / 60
+    let cs = (frames % 60) * 100 / 60
+    let m = total_s / 60
+    let s = total_s % 60
+    int_to_str(&time_buf[0], m)
+    var n = str_len(&time_buf[0])
+    time_buf[n] = ':'
+    time_buf[n + 1] = ('0' + s / 10) as u8
+    time_buf[n + 2] = ('0' + s % 10) as u8
+    time_buf[n + 3] = '.'
+    time_buf[n + 4] = ('0' + cs / 10) as u8
+    time_buf[n + 5] = ('0' + cs % 10) as u8
+    time_buf[n + 6] = 0
+    return &time_buf[0]
+}
+
+fn draw_hud() {
+    panel(0, 4, 320, 24, rgb(60, 60, 64), 2)
+    // one icon per orb: lit once collected
+    for i in 0..NUM_ORBS {
+        let u = (ORB_KIND[i] as s32) * 16
+        var tint: u32 = rgb(36, 36, 56)
+        if orb_taken[i] != 0 { tint = 0x808080 }
+        if orb_taken[i] != 0 && orb_fx[i] > 0 && orb_fx[i] < 20 && (orb_fx[i] & 4) != 0 { tint = 0xFFFFFF }
+        icon(6 + i * 17, 8, u, 224, tint)
+    }
+    let x = text_int(184, 13, collected, rgb(255, 230, 150))
+    text(x, 13, "/", rgb(255, 230, 150))
+    text_int(x + 8, 13, NUM_ORBS, rgb(255, 230, 150))
+    let t = fmt_time(timer)
+    text(314 - str_len(t) * 8, 13, t, rgb(220, 230, 255))
+    if msg_t > 0 {
+        let y = 52 - max(msg_t - 60, 0) * 2
+        if msg_kind == 0 {
+            big_centred(y, "SUN ORB!", 2, rgb(255, 250, 200), rgb(255, 140, 40))
+        } else {
+            big_centred(y, "MOON ORB!", 2, rgb(240, 250, 255), rgb(110, 150, 255))
+        }
+        let left = NUM_ORBS - collected
+        if left > 0 {
+            var buf: [24]u8
+            int_to_str(&buf[0], left)
+            var n = str_len(&buf[0])
+            let tail = " TO GO"
+            for k in 0..7 { buf[n + k] = tail[k] }
+            text_centred(y + 20, &buf[0], rgb(230, 220, 255))
+        }
+    }
+}
+
+fn draw_title() {
+    panel(0, 30, 320, 96, rgb(80, 80, 70), 2)
+    sprite(2, 3, false, 128, 64, 64, 64, 18, 58)
+    sprite(2, 3, false, 192, 64, 63, 64, 240, 58)
+    big_centred(38, "SUN & MOON", 3, rgb(255, 250, 210), rgb(250, 140, 50))
+    big_centred(70, "ORBS", 4, rgb(255, 255, 255), rgb(120, 160, 255))
+    if (state_t / 30) % 2 == 0 {
+        big_centred(146, "PRESS START", 2, rgb(255, 255, 255), rgb(200, 200, 230))
+    }
+    text_centred(176, "FIND ALL 10 ORBS!", rgb(255, 230, 150))
+    text_centred(196, "STICK/D-PAD MOVE  A JUMP  L/R CAMERA", rgb(200, 205, 230))
+    if best_time > 0 {
+        let s = fmt_time(best_time)
+        text(112, 214, "BEST", rgb(255, 230, 150))
+        text(152, 214, s, rgb(255, 230, 150))
+    }
+}
+
+fn draw_win() {
+    panel(0, 10, 320, 86, rgb(80, 80, 70), 2)
+    big_centred(16, "ALL ORBS FOUND!", 2, rgb(255, 250, 210), rgb(250, 150, 60))
+    let t = fmt_time(timer)
+    text(112, 44, "TIME", rgb(220, 230, 255))
+    big_text(150, 40, t, 2, rgb(255, 255, 255), rgb(140, 180, 255))
+    if timer == best_time {
+        if (state_t / 15) % 2 == 0 { text_centred(66, "NEW BEST TIME!", rgb(255, 230, 120)) }
+    } else {
+        text(112, 66, "BEST", rgb(255, 230, 150))
+        text(152, 66, fmt_time(best_time), rgb(255, 230, 150))
+    }
+    if state_t > 60 && (state_t / 30) % 2 == 0 {
+        text_centred(80, "PRESS START TO PLAY AGAIN", rgb(255, 255, 255))
+    }
+    for i in 0..NUM_ORBS {
+        icon(76 + i * 17, 214, (ORB_KIND[i] as s32) * 16, 224, 0x808080)
+    }
+}
+
+fn draw_debug() {
+    panel(0, 228, 320, 12, rgb(70, 70, 70), 2)
+    let used = cpu_used()
+    text(4, 230, "CPU", rgb(255, 230, 120))
+    var x = text_int(36, 230, used, rgb(255, 230, 120))
+    x = text_int(x + 8, 230, used / 5000, rgb(255, 230, 120))
+    text(x, 230, "%", rgb(255, 230, 120))
+    text_int(200, 230, tris_drawn(), rgb(160, 220, 255))
+    text(240, 230, "TRIS", rgb(160, 220, 255))
+}

@@ -1,0 +1,155 @@
+// Sun & Moon Orbs: game states, the frame loop and asset loading.
+import "level_data.mls"
+import "player.mls"
+import "render.mls"
+import "hud.mls"
+import "sfx.mls"
+
+embed TEX4: u8 = "tex4.bin"           // 4-bit atlas, slot 0
+embed TEX4B: u8 = "tex4b.bin"         // 4-bit 2x2-tiled copies for the coarse LOD, slot 1
+embed PAL4: u16 = "pal4.bin"          // 4-bit palettes 0-15
+embed TEX8: u8 = "tex8.bin"           // 8-bit texture, slots 2-3
+embed PAL8: u16 = "pal8.bin"          // 8-bit palettes 1-3
+
+struct Box { x0: fixed, y0: fixed, z0: fixed, x1: fixed, y1: fixed, z1: fixed }
+
+const ST_TITLE = 0
+const ST_PLAY = 1
+const ST_WIN = 2
+
+var state: s32
+var state_t: s32            // frames since entering the state
+var timer: s32              // frames of play
+var best_time: s32          // 0: none yet
+var collected: s32
+var orb_taken: [10]u8
+var orb_fx: [10]s32         // frames since collected (burst effect), 0 = none
+var msg_t: s32              // frames left of the "orb collected" message
+var msg_kind: s32
+var show_debug: bool
+var tick: s32               // frames since reset (animation clock)
+
+// input, sampled once per frame through input_pad()/input_stick()
+var pad_now: u32
+var pad_prev: u32
+var stick_in: vec2
+
+fn held(b: u32) -> bool { return pad_now & b != 0 }
+fn pressed(b: u32) -> bool { return pad_now & ~pad_prev & b != 0 }
+
+fn init() {
+    load_texture(0, TEX4, len(TEX4))
+    load_texture(1, TEX4B, len(TEX4B))
+    // the 8-bit texture spans slots 2 and 3
+    memcpy((VRAM_TEXTURES + 2 * TEXTURE_SLOT_SIZE) as *u8, TEX8, len(TEX8))
+    load_palette(0, PAL4, len(PAL4))
+    load_palette(256, PAL8, len(PAL8))
+    render_init()
+    camera_clip(0.1, 70.0)
+    show_debug = TEST != 0
+    reset_game()
+    enter(ST_TITLE)
+    music_start()
+}
+
+fn enter(s: s32) {
+    state = s
+    state_t = 0
+}
+
+fn reset_game() {
+    collected = 0
+    timer = 0
+    msg_t = 0
+    for i in 0..NUM_ORBS {
+        orb_taken[i] = 0
+        orb_fx[i] = 0
+    }
+    player_reset()
+}
+
+fn update() {
+    pad_prev = pad_now
+    pad_now = input_pad(tick)
+    stick_in = input_stick(tick)
+    test_hook(tick)
+    tick += 1
+    state_t += 1
+    if pressed(Y) { show_debug = !show_debug }
+
+    if state == ST_TITLE {
+        title_camera()
+        if pressed(START) {
+            reset_game()
+            enter(ST_PLAY)
+            sfx_start()
+        }
+    } else if state == ST_PLAY {
+        timer += 1
+        update_player()
+        update_camera()
+        check_orbs()
+        if collected == NUM_ORBS {
+            if best_time == 0 || timer < best_time { best_time = timer }
+            enter(ST_WIN)
+            sfx_fanfare()
+        }
+        if pressed(START) {
+            reset_game()
+            sfx_start()
+            state_t = 0
+        }
+    } else {
+        win_camera()
+        player_idle()
+        if pressed(START) && state_t > 30 {
+            reset_game()
+            enter(ST_PLAY)
+            sfx_start()
+        }
+    }
+    for i in 0..NUM_ORBS {
+        if orb_fx[i] > 0 { orb_fx[i] += 1 }
+    }
+    if msg_t > 0 { msg_t -= 1 }
+    music_update()
+    animate_water()
+    update_dust()
+}
+
+fn check_orbs() {
+    let centre = vec3(ppos.x, ppos.y + 0.6, ppos.z)
+    for i in 0..NUM_ORBS {
+        if orb_taken[i] == 0 {
+            let d = orb_pos(i) - centre
+            if dot(d, d) < 0.72 {
+                orb_taken[i] = 1
+                orb_fx[i] = 1
+                collected += 1
+                msg_t = 70
+                msg_kind = ORB_KIND[i] as s32
+                sfx_collect(collected, orb_pos(i))
+            }
+        }
+    }
+}
+
+// The orb's current position (they bob up and down).
+fn orb_pos(i: s32) -> vec3 {
+    var p = ORB_POS[i]
+    p.y += sin(fixed(tick) * 0.05 + fixed(i)) * 0.12
+    return p
+}
+
+fn draw() {
+    begin_view()
+    draw_world()
+    if state == ST_TITLE {
+        draw_title()
+    } else if state == ST_PLAY {
+        draw_hud()
+    } else {
+        draw_win()
+    }
+    if show_debug { draw_debug() }
+}

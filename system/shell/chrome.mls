@@ -1,0 +1,174 @@
+// Shell chrome: screen transitions, the header (logo mark, title, clock), the footer with
+// button hints, list highlights and the sun cursor.
+
+const SH_TR = 14                // frames of a screen transition
+var sh_tr: s32 = 14
+var sh_tr_dir: s32 = 1
+
+fn sh_trans_begin(dir: s32) {
+    sh_tr = 0
+    sh_tr_dir = dir
+}
+
+// Sets sh_ox / sh_alpha for this frame's screen content and advances the transition.
+fn sh_trans_step() {
+    let k = SH_TR - sh_tr
+    sh_ox = sh_tr_dir * k * k * 40 / (SH_TR * SH_TR)
+    sh_alpha = 256
+    sh_blend = sh_dissolve(sh_tr * 256 / SH_TR)
+    if sh_tr < SH_TR { sh_tr += 1 }
+}
+
+// Blend mode for content that is a (0..256) of the way in: faint, half, then solid.
+fn sh_dissolve(a: s32) -> s32 {
+    if a < 80 { return 3 }
+    if a < 170 { return 0 }
+    return -1
+}
+
+// The more transparent of two dissolve modes.
+fn sh_fainter(a: s32, b: s32) -> s32 {
+    if a == 3 || b == 3 { return 3 }
+    if a == 0 || b == 0 { return 0 }
+    return -1
+}
+
+// Eases a value kept in 1/16 units toward target (whole units).
+fn sh_ease(cur16: s32, target: s32) -> s32 {
+    let d = target * 16 - cur16
+    if abs(d) < 4 { return target * 16 }
+    return cur16 + d / 2
+}
+
+// ---- header
+
+// ---- clock and date (the console's real-time clock)
+
+// Uptime since power-on from FRAME: h:mm:ss.
+fn sb_uptime() -> *u8 {
+    let secs = (FRAME / 60) as s32
+    sb_int(secs / 3600, false, 0)
+    sb_char(':')
+    sb_int((secs / 60) % 60, false, 2)
+    sb_char(':')
+    return sb_int(secs % 60, false, 2)
+}
+
+// "Wed 30 Sep"
+fn sh_date() -> *u8 {
+    let d = SYS_DATE
+    let day = (d & 31) as s32
+    let month = clamp(((d >> 5) & 15) as s32, 1, 12)
+    let wd = ((d >> 9) & 7) as s32
+    let wds = "SunMonTueWedThuFriSat"
+    let ms = "JanFebMarAprMayJunJulAugSepOctNovDec"
+    sb_begin()
+    for k in 0..3 { sb_char(wds[min(wd, 6) * 3 + k] as s32) }
+    sb_char(' ')
+    sb_int(day, false, 0)
+    sb_char(' ')
+    for k in 0..3 { sb_char(ms[(month - 1) * 3 + k] as s32) }
+    return &sh_sb[0]
+}
+
+// Real local time HH:MM in the medium font, right-aligned at `right`, with a colon that
+// blinks once a second. Returns the x where it starts.
+fn sh_clock_at(right: s32, y: s32) -> s32 {
+    let t = SYS_TIME as s32
+    let h = (t / 3600) % 24
+    let m = (t / 60) % 60
+    let g = SH_GLYPHS + SH_FONT_MED * SH_NCHARS * 4
+    let dw = g[('0' - SH_FIRST_CHAR) * 4 + 3] as s32
+    let cw = g[(':' - SH_FIRST_CHAR) * 4 + 3] as s32
+    let x = right - dw * 4 - cw
+    sb_begin()
+    sh_text(SH_FONT_MED, x, y, sb_int(h, false, 2), SH_WHITE)
+    if FRAME % 60 < 36 { sh_text(SH_FONT_MED, x + dw * 2, y, ":", SH_WHITE) }
+    sb_begin()
+    sh_text(SH_FONT_MED, x + dw * 2 + cw, y, sb_int(m, false, 2), SH_WHITE)
+    return x
+}
+
+fn sh_clock_icon(x: s32, y: s32) {
+    if sky_day >= 128 { sh_spr(SH_ART_SUN_S, x - 19, y + 3) } else { sh_spr(SH_ART_MOON_S, x - 17, y + 4) }
+}
+
+// On the home screen the clock and date sit at the right of the footer, leaving the top
+// right of the sky to the sun and moon.
+fn sh_footer_clock() {
+    let saved = sh_alpha
+    let saved_b = sh_blend
+    sh_alpha = 256
+    sh_blend = -1
+    let x = sh_clock_at(304, 218)
+    sh_clock_icon(x, 218)
+    sh_text_r(SH_FONT_SMALL, x - 26, 222, sh_date(), SH_COOL)
+    sh_alpha = saved
+    sh_blend = saved_b
+}
+
+fn sh_header_clock() {
+    let saved = sh_alpha
+    let saved_b = sh_blend
+    sh_alpha = 256
+    sh_blend = -1
+    let x = sh_clock_at(304, 12)
+    sh_clock_icon(x, 12)
+    sh_alpha = saved
+    sh_blend = saved_b
+}
+
+// Logo mark (a small sun and moon) and a screen title.
+fn sh_header(title: *u8) {
+    sh_vgrad(0, 0, 320, 40, rgb(26, 26, 26), rgb(0, 0, 0), 2)
+    sh_spr(SH_ART_SUN_S, 14 + sh_ox, 12)
+    sh_spr(SH_ART_MOON_S, 23 + sh_ox, 19)
+    sh_text(SH_FONT_BIG, 42 + sh_ox, 2, title, SH_WHITE)
+    sh_header_clock()
+}
+
+// ---- footer: button hints
+
+fn sh_hint(x: s32, art: *s32, label: *u8) -> s32 {
+    sh_spr(art, x, 225)
+    return sh_text(SH_FONT_SMALL, x + art[2] + 4, 223, label, SH_COOL) + 12
+}
+
+fn sh_footer_bg() {
+    sh_vgrad(0, 214, 320, 26, rgb(0, 0, 0), rgb(40, 40, 40), 2)
+}
+
+// Hints for A and B ("" leaves one out).
+fn sh_footer(a_label: *u8, b_label: *u8) {
+    let saved = sh_alpha
+    let saved_b = sh_blend
+    sh_alpha = 256
+    sh_blend = -1
+    sh_footer_bg()
+    var x = 16
+    if a_label[0] != 0 { x = sh_hint(x, SH_ART_BTN_A, a_label) }
+    if b_label[0] != 0 { x = sh_hint(x, SH_ART_BTN_B, b_label) }
+    sh_alpha = saved
+    sh_blend = saved_b
+}
+
+// ---- lists
+
+// A translucent dark panel that keeps text readable over the sky.
+fn sh_panel(x: s32, y: s32, w: s32, h: s32) {
+    sh_rect(x + sh_ox, y, w, h, rgb(14, 14, 36), 0)
+    sh_rect(x + sh_ox, y, w, 1, rgb(40, 36, 30), 1)
+}
+
+// The selection: a warm glow fading to the right, and the sun as the cursor.
+fn sh_highlight(x: s32, y: s32, w: s32, h: s32) {
+    let xx = x + sh_ox
+    let pulse = (sin(from_bits((FRAME as s32) * 1200)) * 20) as s32
+    sh_hgrad(xx, y, w, h, rgb(120 + pulse, 66 + pulse / 2, 18), rgb(0, 0, 0), 1)
+    sh_hgrad(xx, y, w, 1, rgb(150, 100, 40), rgb(0, 0, 0), 1)
+    sh_hgrad(xx, y + h - 1, w, 1, rgb(90, 60, 20), rgb(0, 0, 0), 1)
+    let bob = (sin(from_bits((FRAME as s32) * 2400)) * 2) as s32
+    // the cursor is the sun by day and the moon by night
+    if sky_day >= 128 { sh_spr(SH_ART_SUN_S, xx - 17 + bob, y + (h - 14) / 2) }
+    else { sh_spr(SH_ART_MOON_S, xx - 16 + bob, y + (h - 12) / 2) }
+}

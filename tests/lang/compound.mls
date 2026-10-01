@@ -1,0 +1,49 @@
+// Compound assignment evaluates the target once; works on memory, lanes and registers.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+var hits = 0
+var arr: [4]s32
+fn next() -> s32 {
+    hits += 1
+    return hits
+}
+
+struct S { v: vec3, n: u16 }
+
+fn init() {
+    arr[next()] += 10
+    p(hits)                 // expect: 1
+    p(arr[1])               // expect: 10
+    arr[next()] -= 3
+    p(arr[2])               // expect: -3
+    var s: S
+    s.n += 70000
+    p(s.n as s32)           // expect: 4464
+    s.v.y += 1.5
+    s.v.y *= 2.0
+    print_fixed(s.v.y)
+    print_char('\n')        // expect: 3.0
+    let ps = &s
+    ps.v.x -= 0.25
+    print_fixed(s.v.x)
+    print_char('\n')        // expect: -0.25
+    var v = vec3(1.0, 2.0, 3.0)
+    v += vec3(1.0, 1.0, 1.0)
+    v *= 2.0
+    v.z -= 0.5
+    print_vec(v as vec4)
+    print_char('\n')        // expect: (4.0, 6.0, 7.5, 0.0)
+    var u: u32 = 1
+    u <<= 31
+    u >>= 30
+    p(u as s32)             // expect: 2
+    var i = -64
+    i >>= 3
+    p(i)                    // expect: -8
+    i %= 3
+    p(i)                    // expect: -2
+    i |= 0x100
+    i &= 0x1FF
+    i ^= 1
+    p(i)                    // expect: 511
+}

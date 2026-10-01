@@ -1,0 +1,27 @@
+// subdivide(): big textured faces near the camera are split into exact pieces; it is off
+// by default, and level 0 behaves exactly like plain mesh().
+// frames: 6
+embed CUBE: Mesh = "data/cube.bin"
+
+fn draw() {
+    let f = frame()
+    // close to the cube and looking along one side, so its faces span a lot of depth
+    camera_look(vec3(1.3, 0.5, -2.6), -0.35, -0.15)
+    if f == 1 { mesh(CUBE) }                        // default: off
+    if f == 2 { subdivide(2); mesh(CUBE) }
+    if f == 3 { subdivide(1); mesh(CUBE) }
+    if f == 4 { subdivide(2); subdivide_tuning(4, 1.0); mesh(CUBE) }   // nothing that near
+    subdivide(0)
+}
+
+fn update() {
+    let f = frame()
+    if f >= 2 && f <= 5 {
+        print_int(tris_drawn())
+        print_char('\n')
+    }
+}
+// expect: 4
+// expect: 21
+// expect: 11
+// expect: 4

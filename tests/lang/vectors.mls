@@ -1,0 +1,53 @@
+// Vector types, operators, swizzles, matrices.
+fn pv(v: vec4) { print_vec(v); print_char('\n') }
+fn pf(f: fixed) { print_fixed(f); print_char('\n') }
+fn p(n: s32) { print_int(n); print_char('\n') }
+const K: vec3 = vec3(1.0, 0.0, -1.0)
+
+fn addv(a: vec3, b: vec3, c: vec3, d: vec3, e: vec3) -> vec3 { return a + b + c + d + e }
+
+fn init() {
+    let a = vec3(1.0, 2.0, 3.0)
+    let b = vec3(0.5, -1.0, 2.0)
+    pv((a + b) as vec4)     // expect: (1.5, 1.0, 5.0, 0.0)
+    pv((a - b) as vec4)     // expect: (0.5, 3.0, 1.0, 0.0)
+    pv((a * 2.0) as vec4)   // expect: (2.0, 4.0, 6.0, 0.0)
+    pv((0.5 * a) as vec4)   // expect: (0.5, 1.0, 1.5, 0.0)
+    pv((a * b) as vec4)     // expect: (0.5, -2.0, 6.0, 0.0)
+    pv((a / 2.0) as vec4)   // expect: (0.5, 1.0, 1.5, 0.0)
+    let two: fixed = 2.0
+    pv((a / two) as vec4)   // expect: (0.5, 1.0, 1.5, 0.0)
+    pv((-a) as vec4)        // expect: (-1.0, -2.0, -3.0, 0.0)
+    pf(dot(a, b))           // expect: 4.5
+    pv(cross(a, b) as vec4) // expect: (7.0, -0.5, -2.0, 0.0)
+    pf(a.y)                 // expect: 2.0
+    var c = a
+    c.x = 10.0
+    c.z += 1.0
+    pv(c as vec4)           // expect: (10.0, 2.0, 4.0, 0.0)
+    pv(a.zyx as vec4)       // expect: (3.0, 2.0, 1.0, 0.0)
+    pv(a.xy as vec4)        // expect: (1.0, 2.0, 0.0, 0.0)
+    pv(vec4(a, 1.0))        // expect: (1.0, 2.0, 3.0, 1.0)
+    pf(length(vec3(3.0, 4.0, 0.0)))  // expect: 5.0
+    pv(normalize(vec3(0.0, 0.0, 2.0)) as vec4)  // expect: (0.0, 0.0, 1.0, 0.0)
+    let t = mat4_translate(vec3(1.0, 2.0, 3.0))
+    pv(t * vec4(1.0, 1.0, 1.0, 1.0))           // expect: (2.0, 3.0, 4.0, 1.0)
+    pv((t * vec3(1.0, 1.0, 1.0)) as vec4)      // expect: (1.0, 1.0, 1.0, 0.0)
+    let r = mat4_rotate_y(0.0) * mat4_scale(vec3(2.0, 3.0, 4.0))
+    pv(r * vec4(1.0, 1.0, 1.0, 1.0))           // expect: (2.0, 3.0, 4.0, 1.0)
+    let iv = ivec4(1, 2, 3, 4) + ivec4(10, 20, 30, 40)
+    p(iv.w)                 // expect: 44
+    pv(iv as vec4)          // expect: (11.0, 22.0, 33.0, 44.0)
+    let back = vec4(1.5, -2.5, 3.0, 0.0) as ivec4
+    p(back.y)               // expect: -3
+    pv(lerp(vec4(0.0, 0.0, 0.0, 0.0), vec4(2.0, 4.0, 6.0, 8.0), 0.5)) // expect: (1.0, 2.0, 3.0, 4.0)
+    var arr: [3]vec3
+    arr[1] = a
+    arr[2].y = 7.0
+    pv((arr[1] + arr[2]) as vec4)   // expect: (1.0, 9.0, 3.0, 0.0)
+    pv(addv(a, b, a, b, a) as vec4) // expect: (4.0, 4.0, 13.0, 0.0)
+    pv((K * 3.0) as vec4)   // expect: (3.0, 0.0, -3.0, 0.0)
+    let v2 = vec2(3.0, 4.0)
+    pf(length(v2))          // expect: 5.0
+    pv(vec4(1.0, 2.0, 3.0, 4.0).wzyx)  // expect: (4.0, 3.0, 2.0, 1.0)
+}

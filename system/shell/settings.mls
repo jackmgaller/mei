@@ -1,0 +1,124 @@
+// Settings: boot theme (with a live preview), boot animation, dither and UI sounds.
+// Every change is written to SYS_CONFIG at once.
+
+const SET_N = 6
+const SET_TOP = 50
+const SET_ROW = 23
+var set_sel: s32
+var set_hl: s32 = SET_TOP * 16
+var set_flash: s32             // brightens the value that just changed
+
+fn set_label(i: s32) -> *u8 {
+    if i == 0 { return "Boot theme" }
+    if i == 1 { return "Preview theme" }
+    if i == 2 { return "Boot animation" }
+    if i == 3 { return "Dither" }
+    if i == 4 { return "UI sounds" }
+    return "Music"
+}
+
+fn set_help(i: s32) -> *u8 {
+    if i == 0 { return "The animation played at power-on" }
+    if i == 1 { return "Plays it now. A, B or Start stops it" }
+    if i == 2 { return "Off goes straight to the menu" }
+    if i == 3 { return "The 4x4 ordered dither of the shell" }
+    if i == 4 { return "Ticks and chimes in the menus" }
+    return "Quiet ambient music that follows the time of day"
+}
+
+fn set_on_off(on: bool) -> *u8 {
+    if on { return "On" }
+    return "Off"
+}
+
+fn set_change(i: s32, dir: s32) {
+    if i == 0 {
+        let n = BOOT_THEME_COUNT
+        let t = (sh_cfg_theme() + n + dir) % n
+        sh_cfg_set(CFG_THEME_MASK, t as u32)
+        sh_sfx(SFX_TICK)
+    } else if i == 2 {
+        sh_cfg_set(CFG_BOOT_OFF, SYS_CONFIG ^ CFG_BOOT_OFF)
+        sh_sfx(SFX_SELECT)
+    } else if i == 3 {
+        sh_cfg_set(CFG_DITHER_OFF, SYS_CONFIG ^ CFG_DITHER_OFF)
+        sh_sfx(SFX_SELECT)
+    } else if i == 4 {
+        sh_cfg_set(CFG_SOUND_OFF, SYS_CONFIG ^ CFG_SOUND_OFF)
+        sh_sfx(SFX_SELECT)
+    } else if i == 5 {
+        sh_cfg_set(CFG_MUSIC_OFF, SYS_CONFIG ^ CFG_MUSIC_OFF)
+        sh_sfx(SFX_SELECT)
+    }
+    set_flash = 256
+}
+
+fn set_update() {
+    if sh_nav == UP {
+        set_sel = (set_sel + SET_N - 1) % SET_N
+        sh_sfx(SFX_TICK)
+    } else if sh_nav == DOWN {
+        set_sel = (set_sel + 1) % SET_N
+        sh_sfx(SFX_TICK)
+    } else if sh_nav == LEFT {
+        if set_sel != 1 { set_change(set_sel, -1) }
+    } else if sh_nav == RIGHT {
+        if set_sel != 1 { set_change(set_sel, 1) }
+    }
+    if sh_ok() {
+        if set_sel == 1 { shell_preview(sh_cfg_theme()) } else { set_change(set_sel, 1) }
+    }
+    if sh_back() {
+        sh_sfx(SFX_BACK)
+        shell_go(SCR_HOME, -1)
+    }
+}
+
+fn set_value(i: s32) -> *u8 {
+    if i == 0 { return boot_theme_name(sh_cfg_theme()) }
+    if i == 1 { return "Play" }
+    if i == 2 { return set_on_off(!sh_cfg_on(CFG_BOOT_OFF)) }
+    if i == 3 { return set_on_off(!sh_cfg_on(CFG_DITHER_OFF)) }
+    if i == 4 { return set_on_off(!sh_cfg_on(CFG_SOUND_OFF)) }
+    return set_on_off(!sh_cfg_on(CFG_MUSIC_OFF))
+}
+
+fn set_draw() {
+    let ox = sh_ox
+    sh_header("Settings")
+    sh_panel(0, SET_TOP - 6, 320, SET_N * SET_ROW + 24)
+    set_hl = sh_ease(set_hl, SET_TOP + set_sel * SET_ROW)
+    sh_highlight(28, set_hl >> 4, 276, SET_ROW - 3)
+    if set_flash > 0 { set_flash -= 24 }
+    for i in 0..SET_N {
+        let y = SET_TOP + i * SET_ROW
+        let sel = i == set_sel
+        var dx = 0
+        if sel { dx = 3 }
+        var col = SH_WHITE
+        if !sel { col = sh_scale(SH_WHITE, 200) }
+        sh_text(SH_FONT_MED, 36 + dx + ox, y + 1, set_label(i), col)
+        var vc = SH_COOL
+        if sel { vc = sh_mix(SH_WARM_HI, SH_WHITE, max(0, set_flash)) }
+        let v = set_value(i)
+        var right = 296 + ox
+        if i == 0 || i == 1 {
+            // arrows around the theme; a play mark after "Play"
+            if i == 0 {
+                let ac = sh_scale(vc, 170)
+                sh_text(SH_FONT_MED, right - 10, y + 1, SH_CH_RIGHT, ac)
+                right -= 16
+                let w = sh_text_w(SH_FONT_MED, v)
+                sh_text(SH_FONT_MED, right - w, y + 1, v, vc)
+                sh_text(SH_FONT_MED, right - w - 16, y + 1, SH_CH_LEFT, ac)
+            } else {
+                sh_text(SH_FONT_MED, right - 10, y + 1, SH_CH_RIGHT, vc)
+                sh_text_r(SH_FONT_MED, right - 16, y + 1, v, vc)
+            }
+        } else {
+            sh_text_r(SH_FONT_MED, right, y + 1, v, vc)
+        }
+    }
+    sh_text_c(SH_FONT_SMALL, 160 + ox, SET_TOP + SET_N * SET_ROW + 1, set_help(set_sel), SH_COOL)
+    if set_sel == 1 { sh_footer("Play", "Back") } else { sh_footer("Change", "Back") }
+}

@@ -1,0 +1,492 @@
+// Shell core: catalogue, settings word, drawing helpers (tinted sprites, gradient and
+// translucent quads, the proportional fonts), input with key repeat, UI sounds and
+// string formatting. Everything here starts with sh_ / SH_.
+import "assets.mls"
+
+reg SYS_LAUNCH: u32 @ 0xFF0310
+reg SYS_CONFIG: u32 @ 0xFF0314
+reg SYS_TIME: u32 @ 0xFF0318     // seconds since local midnight
+reg SYS_DATE: u32 @ 0xFF031C     // day 0-4, month 5-8, weekday 9-11, year 16-31
+
+// ---- SYS_CONFIG (docs/SYSTEM.md; bits 5-31 belong to the shell)
+const CFG_THEME_MASK: u32 = 0xF        // bits 0-3: boot theme
+const CFG_BOOT_OFF: u32 = 0x10         // bit 4: boot animation off
+const CFG_DITHER_OFF: u32 = 0x20       // bit 5: shell drawn without dither
+const CFG_SOUND_OFF: u32 = 0x40        // bit 6: UI sounds muted
+const CFG_MUSIC_OFF: u32 = 0x80        // bit 7: ambient music off
+const SH_SELECT: u32 = 0x800           // the Select button (PAD bit 11; stdlib SELECT)
+const CFG_LAST_SHIFT = 16              // bits 16-25: last launched cart + 1 (0: none)
+const CFG_LAST_MASK: u32 = 0x3FF0000
+
+// ---- colours: warm for the sun, cool for the moon
+const SH_WHITE: u32 = 0xF4F2F6         // rgb(246, 242, 244)
+const SH_WARM: u32 = 0x4AB2FF          // rgb(255, 178, 74)
+const SH_WARM_HI: u32 = 0x8CE2FF       // rgb(255, 226, 140)
+const SH_COOL: u32 = 0xFFD6C4          // rgb(196, 214, 255)
+const SH_COOL_DIM: u32 = 0xC8A090      // rgb(144, 160, 200)
+const SH_DIM: u32 = 0x9A8C88           // rgb(136, 140, 154)
+
+// ---- catalogue (0x3F0000)
+
+const SH_CAT = 0x3F0000
+const SH_MAX_CARTS = 512
+
+var sh_ncarts: s32
+var sh_autoboot: s32 = -1
+var sh_flags: u32
+var sh_platform: *u8 = "unknown"
+
+fn sh_cat_read() {
+    let p = SH_CAT as *u32
+    if p[0] != 0x4C544143 { return }      // "CATL"
+    sh_ncarts = min(p[1] as s32, SH_MAX_CARTS)
+    if sh_ncarts < 0 { sh_ncarts = 0 }
+    let ab = p[2]
+    if ab < sh_ncarts as u32 { sh_autoboot = ab as s32 }
+    sh_flags = p[3]
+    let name = (SH_CAT + 16) as *u8
+    if name[0] != 0 { sh_platform = name }
+}
+
+fn sh_cart_title(i: s32) -> *u8 { return (SH_CAT + 32 + i * 64) as *u8 }
+fn sh_cart_size(i: s32) -> u32 { return ((SH_CAT + 64 + i * 64) as *u32)[0] }
+
+// ---- settings word
+
+fn sh_cfg_theme() -> s32 {
+    let t = (SYS_CONFIG & CFG_THEME_MASK) as s32
+    if t >= BOOT_THEME_COUNT { return 0 }
+    return t
+}
+
+// The cart launched last (kept across the reset), or -1.
+fn sh_cfg_last_cart() -> s32 {
+    let v = ((SYS_CONFIG & CFG_LAST_MASK) >> CFG_LAST_SHIFT) as s32
+    if v == 0 || v > sh_ncarts { return -1 }
+    return v - 1
+}
+
+fn sh_cfg_set_last_cart(i: s32) { sh_cfg_set(CFG_LAST_MASK, ((i + 1) as u32) << CFG_LAST_SHIFT) }
+
+fn sh_cfg_set(mask: u32, value: u32) { SYS_CONFIG = (SYS_CONFIG & ~mask) | (value & mask) }
+fn sh_cfg_on(bit: u32) -> bool { return SYS_CONFIG & bit != 0 }
+
+// ---- resources
+
+fn sh_load_assets() {
+    load_texture(SH_SLOT_FONT, SH_TEX_FONT, len(SH_TEX_FONT))
+    load_texture(SH_SLOT_BIG, SH_TEX_BIG, len(SH_TEX_BIG))
+    load_texture(SH_SLOT_ART, SH_TEX_ART, len(SH_TEX_ART))
+    load_palette(SH_PAL_BASE * 16, SH_PAL, len(SH_PAL))
+}
+
+// ---- drawing
+
+var sh_alpha: s32 = 256      // fades tints and translucent colours (0..256)
+var sh_ox: s32               // horizontal offset of the sliding screen content
+var sh_blend: s32 = -1       // >= 0: "opaque" text, sprites and rects use this blend mode
+                             // instead (a dissolve: 3 faint, 0 half, -1 solid)
+
+// Scales a colour by sh_alpha.
+fn sh_fade(c: u32) -> u32 {
+    let a = sh_alpha as u32
+    if a >= 256 { return c }
+    return ((((c & 0xFF00FF) * a) >> 8) & 0xFF00FF) | ((((c & 0x00FF00) * a) >> 8) & 0x00FF00)
+}
+
+fn sh_scale(c: u32, k: s32) -> u32 {
+    let a = clamp(k, 0, 256) as u32
+    return ((((c & 0xFF00FF) * a) >> 8) & 0xFF00FF) | ((((c & 0x00FF00) * a) >> 8) & 0x00FF00)
+}
+
+// Mixes two colours, t = 0..256.
+fn sh_mix(a: u32, b: u32, t: s32) -> u32 {
+    let k = clamp(t, 0, 256)
+    let r = ((a & 255) as s32 * (256 - k) + (b & 255) as s32 * k) >> 8
+    let g = (((a >> 8) & 255) as s32 * (256 - k) + ((b >> 8) & 255) as s32 * k) >> 8
+    let bl = (((a >> 16) & 255) as s32 * (256 - k) + ((b >> 16) & 255) as s32 * k) >> 8
+    return rgb(r, g, bl)
+}
+
+fn sh_pos(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
+
+// A flat rectangle; mode -1 is opaque, 0-3 a blend mode (0 half, 1 add, 2 subtract, 3 add 1/4).
+fn sh_rect(x: s32, y: s32, w: s32, h: s32, c: u32, mode: s32) {
+    if w <= 0 || h <= 0 { return }
+    let q = packet_alloc(6)
+    if q == null { return }
+    var type: u32 = 0x24
+    var col = c
+    var m = mode
+    if m < 0 { m = sh_blend }
+    if m >= 0 {
+        type = 0x2C
+        col = sh_fade(c) | ((m as u32) << 24)
+    }
+    let xa = x as u32 & 0xFFFF
+    let xb = (x + w) as u32 & 0xFFFF
+    let ya = (y as u32) << 16
+    let yb = ((y + h) as u32) << 16
+    q[1] = col
+    q[2] = xa | ya
+    q[3] = xb | ya
+    q[4] = xa | yb
+    q[5] = xb | yb
+    ui_insert(q, type)
+}
+
+// A flat triangle (opaque, or a blend mode).
+fn sh_tri(x0: s32, y0: s32, x1: s32, y1: s32, x2: s32, y2: s32, c: u32, mode: s32) {
+    let q = packet_alloc(5)
+    if q == null { return }
+    var type: u32 = 0x20
+    var col = c
+    if mode >= 0 {
+        type = 0x28
+        col = c | ((mode as u32) << 24)
+    }
+    q[1] = col
+    q[2] = (x0 as u32 & 0xFFFF) | ((y0 as u32) << 16)
+    q[3] = (x1 as u32 & 0xFFFF) | ((y1 as u32) << 16)
+    q[4] = (x2 as u32 & 0xFFFF) | ((y2 as u32) << 16)
+    ui_insert(q, type)
+}
+
+// A Gouraud rectangle with corner colours top-left, top-right, bottom-left, bottom-right.
+fn sh_grad(x: s32, y: s32, w: s32, h: s32, tl: u32, tr: u32, bl: u32, br: u32, mode: s32) {
+    if w <= 0 || h <= 0 { return }
+    let q = packet_alloc(9)
+    if q == null { return }
+    var type: u32 = 0x25
+    var m: u32 = 0
+    var c0 = tl
+    var c1 = tr
+    var c2 = bl
+    var c3 = br
+    if mode >= 0 {
+        type = 0x2D
+        m = (mode as u32) << 24
+        c0 = sh_fade(tl)
+        c1 = sh_fade(tr)
+        c2 = sh_fade(bl)
+        c3 = sh_fade(br)
+    }
+    let xa = x as u32 & 0xFFFF
+    let xb = (x + w) as u32 & 0xFFFF
+    let ya = (y as u32) << 16
+    let yb = ((y + h) as u32) << 16
+    q[1] = c0 | m
+    q[2] = xa | ya
+    q[3] = c1
+    q[4] = xb | ya
+    q[5] = c2
+    q[6] = xa | yb
+    q[7] = c3
+    q[8] = xb | yb
+    ui_insert(q, type)
+}
+
+fn sh_vgrad(x: s32, y: s32, w: s32, h: s32, top: u32, bot: u32, mode: s32) {
+    sh_grad(x, y, w, h, top, top, bot, bot, mode)
+}
+
+fn sh_hgrad(x: s32, y: s32, w: s32, h: s32, left: u32, right: u32, mode: s32) {
+    sh_grad(x, y, w, h, left, right, left, right, mode)
+}
+
+// Draws art a (u, v, w, h, palette from assets.mls) scaled to w x h at (x, y).
+// tint 0x808080 leaves it unchanged; mode -1 opaque, else a blend mode.
+fn sh_spr_wh(a: *s32, x: s32, y: s32, w: s32, h: s32, tint: u32, mode: s32) {
+    if w <= 0 || h <= 0 { return }
+    let q = packet_alloc(10)
+    if q == null { return }
+    let u = a[0] as u32
+    let v = a[1] as u32
+    let tw = a[2] as u32
+    let th = a[3] as u32
+    var type: u32 = 0x26
+    var col = sh_fade(tint)
+    var m = mode
+    if m < 0 { m = sh_blend }
+    if m >= 0 {
+        type = 0x2E
+        col = col | ((m as u32) << 24)
+    }
+    let info = (SH_SLOT_ART << 16) | (1 << 20) | ((a[4] as u32) << 24)
+    let xa = x as u32 & 0xFFFF
+    let xb = (x + w) as u32 & 0xFFFF
+    let ya = (y as u32) << 16
+    let yb = ((y + h) as u32) << 16
+    q[1] = col
+    q[2] = xa | ya
+    q[3] = u | (v << 8) | info
+    q[4] = xb | ya
+    q[5] = (u + tw) | (v << 8)
+    q[6] = xa | yb
+    q[7] = u | ((v + th) << 8)
+    q[8] = xb | yb
+    q[9] = (u + tw) | ((v + th) << 8)
+    ui_insert(q, type)
+}
+
+fn sh_spr(a: *s32, x: s32, y: s32) { sh_spr_wh(a, x, y, a[2], a[3], 0x808080, -1) }
+fn sh_spr_tint(a: *s32, x: s32, y: s32, tint: u32) { sh_spr_wh(a, x, y, a[2], a[3], tint, -1) }
+
+// Additive glow centred on (cx, cy) with radius r.
+fn sh_glow(cx: s32, cy: s32, r: s32, c: u32) {
+    sh_spr_wh(SH_ART_GLOW, cx - r, cy - r, r * 2, r * 2, c, 1)
+}
+
+// ---- text
+
+// Draws s in font f at (x, y) (top of the line); returns the x after it.
+fn sh_text(f: s32, x: s32, y: s32, s: *u8, colour: u32) -> s32 {
+    let c = sh_fade(colour)
+    var tint = ((c >> 1) & 0x7F7F7F) + (c & 0x010101)
+    var type: u32 = 0x26
+    if sh_blend >= 0 {
+        type = 0x2E
+        tint = tint | ((sh_blend as u32) << 24)
+    }
+    let info: u32 = (SH_FONT_SLOT[f] << 16) | (1 << 20) | ((SH_PAL_TEXT as u32) << 24)
+    let h = SH_FONT_H[f] as u32
+    let g = SH_GLYPHS + f * SH_NCHARS * 4
+    let yy = (y as u32) << 16
+    var cx = x
+    var p = s
+    while true {
+        let ch = p[0] as s32
+        if ch == 0 { break }
+        p += 1
+        var k = ch - SH_FIRST_CHAR
+        if k < 0 || k >= SH_NCHARS { k = 0 }
+        let m = g + k * 4
+        if k != 0 {
+            let q = packet_alloc(10)
+            if q == null { return cx }
+            let u = m[0] as u32
+            let v = m[1] as u32
+            let w = m[2] as u32
+            let p0 = ((cx - 1) as u32 & 0xFFFF) | yy
+            let p1 = ((cx - 1 + w as s32) as u32 & 0xFFFF) | yy
+            q[1] = tint
+            q[2] = p0
+            q[3] = u | (v << 8) | info
+            q[4] = p1
+            q[5] = (u + w) | (v << 8)
+            q[6] = p0 + (h << 16)
+            q[7] = u | ((v + h) << 8)
+            q[8] = p1 + (h << 16)
+            q[9] = (u + w) | ((v + h) << 8)
+            ui_insert(q, type)
+        }
+        cx += m[3] as s32
+    }
+    return cx
+}
+
+fn sh_text_w(f: s32, s: *u8) -> s32 {
+    let g = SH_GLYPHS + f * SH_NCHARS * 4
+    var w = 0
+    var p = s
+    while p[0] != 0 {
+        var k = p[0] as s32 - SH_FIRST_CHAR
+        if k < 0 || k >= SH_NCHARS { k = 0 }
+        w += g[k * 4 + 3] as s32
+        p += 1
+    }
+    return w
+}
+
+fn sh_text_r(f: s32, right: s32, y: s32, s: *u8, colour: u32) -> s32 {
+    return sh_text(f, right - sh_text_w(f, s), y, s, colour)
+}
+
+fn sh_text_c(f: s32, cx: s32, y: s32, s: *u8, colour: u32) -> s32 {
+    return sh_text(f, cx - sh_text_w(f, s) / 2, y, s, colour)
+}
+
+var sh_fit_buf: [40]u8
+
+// Draws s, shortened with an ellipsis if it would be wider than maxw.
+fn sh_text_fit(f: s32, x: s32, y: s32, s: *u8, colour: u32, maxw: s32) -> s32 {
+    if sh_text_w(f, s) <= maxw { return sh_text(f, x, y, s, colour) }
+    let g = SH_GLYPHS + f * SH_NCHARS * 4
+    let ell = g[(130 - SH_FIRST_CHAR) * 4 + 3] as s32
+    var w = 0
+    var n = 0
+    while s[n] != 0 && n < 36 {
+        var k = s[n] as s32 - SH_FIRST_CHAR
+        if k < 0 || k >= SH_NCHARS { k = 0 }
+        let a = g[k * 4 + 3] as s32
+        if w + a + ell > maxw { break }
+        sh_fit_buf[n] = s[n]
+        w += a
+        n += 1
+    }
+    while n > 0 && sh_fit_buf[n - 1] == ' ' { n -= 1 }
+    sh_fit_buf[n] = 130
+    sh_fit_buf[n + 1] = 0
+    return sh_text(f, x, y, &sh_fit_buf[0], colour)
+}
+
+// ---- strings: a small builder for formatted lines
+
+var sh_sb: [64]u8
+var sh_sbn: s32
+
+fn sb_begin() -> *u8 {
+    sh_sbn = 0
+    sh_sb[0] = 0
+    return &sh_sb[0]
+}
+
+fn sb_str(s: *u8) -> *u8 {
+    var p = s
+    while p[0] != 0 && sh_sbn < 62 {
+        sh_sb[sh_sbn] = p[0]
+        sh_sbn += 1
+        p += 1
+    }
+    sh_sb[sh_sbn] = 0
+    return &sh_sb[0]
+}
+
+fn sb_char(c: s32) -> *u8 {
+    if sh_sbn < 62 {
+        sh_sb[sh_sbn] = c as u8
+        sh_sbn += 1
+    }
+    sh_sb[sh_sbn] = 0
+    return &sh_sb[0]
+}
+
+// Appends n in decimal; commas: thousands separators; digits: zero-pad to this many.
+fn sb_int(n: s32, commas: bool, digits: s32) -> *u8 {
+    var tmp: [16]u8
+    var u = n as u32
+    if n < 0 {
+        u = (0 - n) as u32
+        sb_char('-')
+    }
+    var i = 0
+    var g = 0
+    var nd = 0
+    while true {
+        if commas && g == 3 {
+            tmp[i] = ','
+            i += 1
+            g = 0
+        }
+        tmp[i] = (u % 10 + '0') as u8
+        i += 1
+        g += 1
+        nd += 1
+        u /= 10
+        if u == 0 && nd >= digits { break }
+    }
+    while i > 0 {
+        i -= 1
+        sb_char(tmp[i] as s32)
+    }
+    return &sh_sb[0]
+}
+
+// "12 KB", "1.5 MB" or "900 B"
+fn sb_size(bytes: u32) -> *u8 {
+    if bytes < 1024 {
+        sb_int(bytes as s32, false, 0)
+        return sb_str(" B")
+    }
+    if bytes < 1024 * 1024 {
+        sb_int(((bytes + 1023) / 1024) as s32, true, 0)
+        return sb_str(" KB")
+    }
+    let tenths = (bytes * 10 / (1024 * 1024)) as s32
+    sb_int(tenths / 10, false, 0)
+    sb_char('.')
+    sb_int(tenths % 10, false, 0)
+    return sb_str(" MB")
+}
+
+// ---- input: d-pad or stick, with key repeat (18 frames, then every 5)
+
+const SH_REPEAT_DELAY = 18
+const SH_REPEAT_EVERY = 5
+
+var sh_nav: u32           // direction events this frame
+var sh_dir_prev: u32
+var sh_rep_t: s32
+var sh_pad_prev: u32      // previous PAD1 for our own edge detection
+
+fn sh_dirs() -> u32 {
+    var d = PAD1 & 15
+    if STICK1_Y > 0.5 { d = d | UP }
+    if STICK1_Y < -0.5 { d = d | DOWN }
+    if STICK1_X < -0.5 { d = d | LEFT }
+    if STICK1_X > 0.5 { d = d | RIGHT }
+    return d
+}
+
+fn sh_input() {
+    let d = sh_dirs()
+    var ev = d & ~sh_dir_prev
+    if d != 0 && d == sh_dir_prev {
+        sh_rep_t += 1
+        if sh_rep_t >= SH_REPEAT_DELAY && (sh_rep_t - SH_REPEAT_DELAY) % SH_REPEAT_EVERY == 0 { ev = d }
+    } else {
+        sh_rep_t = 0
+    }
+    // one direction per event, vertical first
+    if ev & UP != 0 { ev = UP }
+    else if ev & DOWN != 0 { ev = DOWN }
+    else if ev & LEFT != 0 { ev = LEFT }
+    else if ev & RIGHT != 0 { ev = RIGHT }
+    sh_nav = ev
+    sh_dir_prev = d
+}
+
+fn sh_pressed(b: u32) -> bool { return PAD1 & ~sh_pad_prev & b != 0 }
+fn sh_ok() -> bool { return sh_pressed(A | START) }
+fn sh_back() -> bool { return sh_pressed(B) }
+
+// ---- UI sounds on channels 6 and 7
+
+const SFX_TICK = 0
+const SFX_SELECT = 1
+const SFX_BACK = 2
+const SFX_LAUNCH = 3
+const SFX_ERROR = 4
+
+fn sh_chan(ch: s32) -> *u32 { return (AUDIO_BASE + (ch & 7) * 32) as *u32 }
+
+fn sh_play_sfx(id: s32, vol_l: s32, vol_r: s32) {
+    if id == SFX_TICK { play(7, SH_SND_TICK, len(SH_SND_TICK), 1.0, vol_l, vol_r, false) }
+    else if id == SFX_SELECT { play(6, SH_SND_SELECT, len(SH_SND_SELECT), 1.0, vol_l, vol_r, false) }
+    else if id == SFX_BACK { play(6, SH_SND_BACK, len(SH_SND_BACK), 1.0, vol_l, vol_r, false) }
+    else if id == SFX_LAUNCH { play(6, SH_SND_LAUNCH, len(SH_SND_LAUNCH), 1.0, vol_l, vol_r, false) }
+    else { play(6, SH_SND_ERROR, len(SH_SND_ERROR), 1.0, vol_l, vol_r, false) }
+}
+
+// Plays a UI sound unless UI sounds are switched off.
+fn sh_sfx(id: s32) {
+    if sh_cfg_on(CFG_SOUND_OFF) { return }
+    var v = 150
+    if id == SFX_TICK { v = 110 }
+    sh_play_sfx(id, v, v)
+}
+
+// Fades channels 0-5 (the boot theme's) a step toward silence; stops them when quiet.
+fn sh_fade_theme_audio(stop_now: bool) {
+    for ch in 0..6 {
+        let r = sh_chan(ch)
+        if stop_now {
+            r[5] = 0
+            continue
+        }
+        let v = r[4]
+        let l = ((v & 255) * 13) >> 4
+        let rr = (((v >> 8) & 255) * 13) >> 4
+        r[4] = l | (rr << 8)
+    }
+}

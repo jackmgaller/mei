@@ -1,0 +1,51 @@
+// Mei demo cart: a spinning textured, Gouraud-shaded cube over a fogged checkerboard,
+// with a HUD. Assets come from tools/gen_demo_assets.py. D-pad left/right orbits the
+// camera, up/down tilts it, A toggles fog.
+cart "Mei Demo"
+
+embed CUBE: Mesh = "cube.bin"
+embed GROUND: Mesh = "ground.bin"
+embed BRICKS: u8 = "tex.bin"
+embed BRICK_PAL: u16 = "pal.bin"
+
+const SKY = 0x5A3C28            // rgb(40, 60, 90)
+
+var spin: fixed
+var orbit: fixed = 0.6
+var tilt: fixed = -0.25
+var fog_enabled = true
+
+fn init() {
+    load_texture(0, BRICKS, len(BRICKS))
+    load_palette(0, BRICK_PAL, len(BRICK_PAL))
+    subdivide(2)                // split the cube's faces when they span a lot of depth
+    subdivide_tuning(2, 12.0)   // (less affine warping of the bricks)
+}
+
+fn update() {
+    spin += 0.025
+    if btn(LEFT) { orbit -= 0.03 }
+    if btn(RIGHT) { orbit += 0.03 }
+    if btn(UP) { tilt = min(tilt + 0.02, 0.5) }
+    if btn(DOWN) { tilt = max(tilt - 0.02, -1.2) }
+    if btnp(A) { fog_enabled = !fog_enabled }
+}
+
+fn draw() {
+    cls(SKY)
+    if fog_enabled { fog(SKY, 6.0, 22.0) } else { fog_off() }
+    // orbit the camera around the cube, always looking at it
+    let dist: fixed = 7.0
+    let eye = vec3(-sin(orbit) * dist * cos(tilt), 1.0 - sin(tilt) * dist, -cos(orbit) * dist * cos(tilt))
+    camera_look(eye, orbit, tilt)
+    mesh(GROUND)
+    depth_bias(-60)     // keep the cube in front of the big ground tiles under it
+    mesh_at(CUBE, vec3(0.0, 0.2 + sin(spin * 2) * 0.3, 0.0), spin)
+    depth_bias(0)
+    text(8, 8, "MEI DEMO", rgb(255, 255, 255))
+    text(8, 224, "CPU", rgb(255, 230, 120))
+    let x = text_int(40, 224, cpu_used(), rgb(255, 230, 120))
+    text(x, 224, " CYCLES", rgb(255, 230, 120))
+    text_int(200, 224, tris_drawn(), rgb(160, 220, 255))
+    text(232, 224, "TRIS", rgb(160, 220, 255))
+}

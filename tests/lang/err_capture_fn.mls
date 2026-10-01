@@ -1,0 +1,5 @@
+// error: a function literal cannot capture 'g': it is a function value (4 words)
+fn twice(g: fn(s32) -> s32) -> fn(s32) -> s32 {
+    return fn(x: s32) => g(g(x))
+}
+fn init() {}

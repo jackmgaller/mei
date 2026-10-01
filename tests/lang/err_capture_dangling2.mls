@@ -1,0 +1,8 @@
+// error: captures the pointer 'q', which points into a local variable
+fn make() -> fn() -> s32 {
+    var n = 5
+    var q: *s32 = null
+    q = &n
+    return fn() => *q
+}
+fn init() {}

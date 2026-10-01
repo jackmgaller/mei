@@ -1,0 +1,44 @@
+// asm functions and inline asm blocks that name locals, globals, constants and functions.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+var counter: s32 = 10
+const K = 32
+
+asm fn add3(a: s32, b: s32, c: s32) -> s32 {
+    add r1, {a}, {b}
+    add r1, r1, {c}
+}
+
+asm fn vsum(v: vec4) -> fixed {
+    vget r1, {v}, 0
+    vget r5, {v}, 1
+    add  r1, r1, r5
+}
+
+asm fn twice(x: s32) -> s32 {
+    push ra
+    call {double}
+    pop  ra
+}
+fn double(x: s32) -> s32 { return x * 2 }
+
+fn init() {
+    p(add3(1, 2, 3))        // expect: 6
+    var x = 5
+    var y = 0
+    asm {
+        shli {y}, {x}, 3
+        addi {y}, {y}, 1    ; y = x * 8 + 1
+    }
+    p(y)                    // expect: 41
+    print_fixed(vsum(vec4(1.5, 2.0, 0.0, 0.0)))
+    print_char('\n')        // expect: 3.5
+    asm {
+        lw   r5, [r0+{counter}]
+        addi r5, r5, {K}
+        sw   r5, [r0+{counter}]
+    }
+    p(counter)              // expect: 42
+    p(twice(21))            // expect: 42
+    p(x + y)                // expect: 46
+}

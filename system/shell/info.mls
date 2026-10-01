@@ -1,0 +1,51 @@
+// System: hardware facts from the spec, the platform from the catalogue, and live
+// counters (frames since boot, cycles the shell used last frame).
+
+const INFO_TOP = 50
+const INFO_ROW = 16
+
+fn info_row(i: s32, label: *u8, value: *u8) {
+    let y = INFO_TOP + i * INFO_ROW
+    sh_text(SH_FONT_SMALL, 30 + sh_ox, y + 2, label, SH_COOL_DIM)
+    sh_text(SH_FONT_MED, 112 + sh_ox, y, value, SH_WHITE)
+}
+
+fn info_update() {
+    if sh_back() {
+        sh_sfx(SFX_BACK)
+        shell_go(SCR_HOME, -1)
+    }
+}
+
+fn info_draw() {
+    sh_header("System")
+    sh_panel(0, INFO_TOP - 6, 320, 10 * INFO_ROW + 10)
+    info_row(0, "CPU", "32-bit RISC, 30 MHz")
+    info_row(1, "Budget", "500,000 cycles a frame")
+    info_row(2, "RAM", "2 MB")
+    info_row(3, "VRAM", "1 MB, 16 texture slots")
+    info_row(4, "GPU", "2,000 triangles a frame")
+    info_row(5, "Audio", "8 channels, 22,050 Hz")
+    info_row(6, "Platform", sh_platform)
+    sb_begin()
+    sb_int(sh_ncarts, true, 0)
+    info_row(7, "Carts", &sh_sb[0])
+    sb_begin()
+    sb_uptime()
+    sb_str(", ")
+    sb_int(FRAME as s32, true, 0)
+    info_row(8, "Uptime", sb_str(" frames"))
+    // shell load, with a bar
+    let used = cpu_used()
+    sb_begin()
+    sb_int(used, true, 0)
+    info_row(9, "Shell", sb_str(" cycles"))
+    let y = INFO_TOP + 9 * INFO_ROW + 7
+    let bx = 248 + sh_ox
+    sh_rect(bx, y, 52, 5, rgb(60, 64, 100), -1)
+    let w = clamp(used * 52 / 500000, 1, 52)
+    var bc = SH_COOL
+    if used > 150000 { bc = SH_WARM }
+    sh_rect(bx, y, w, 5, bc, -1)
+    sh_footer("", "Back")
+}

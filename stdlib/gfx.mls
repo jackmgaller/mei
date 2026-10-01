@@ -1,0 +1,302 @@
+// 3D and 2D drawing: ordering table, packet arena, camera, meshes, fog.
+//
+// Each frame the runtime resets a 1,024-bucket ordering table (OT) and a packet arena.
+// mesh() transforms vertices on the vector unit, culls, fogs and builds GPU packets into
+// the arena and inserts them into the OT by depth. 2D calls (text, sprite, rect) append to
+// an interface list. At the end of the frame the OT is drawn (farthest first), then the
+// interface list on top.
+
+// ---- mesh format (see docs/LANGUAGE.md)
+
+struct Mesh {
+    nverts: u16      // vertex count (at most MAX_MESH_VERTS)
+    nfaces: u16      // face count
+    verts: u32       // byte offset of the vertices from the start of the mesh
+    faces: u32       // byte offset of the faces
+    reserved: u32
+}
+
+struct Face {
+    flags: u8        // FACE_* bits; bits 0-3 match the GPU packet type bits
+    blend: u8        // blend mode 0-3 for semi-transparent faces
+    tex: u8          // bits 0-3 texture slot, bit 4 set for a 4-bit texture
+    palette: u8      // palette number
+    idx: [4]u16      // vertex indices (quads use all four, in strip order)
+    col: [4]u32      // colours 0xBBGGRR; flat faces use col[0]; 0x808080 leaves textures unchanged
+    uv: [4]u16       // texture coordinates u | v << 8
+}
+
+const FACE_GOURAUD = 1
+const FACE_TEXTURED = 2
+const FACE_QUAD = 4
+const FACE_SEMI = 8
+const FACE_DOUBLE = 16     // never culled
+
+const OT_SIZE = 1024
+const MAX_MESH_VERTS = 2048
+const ARENA_WORDS = 40960  // 160 KB of packets per frame
+
+// ---- state
+
+var __ot: [1024]u32
+var __arena: [40960]u32
+var __arena_ptr: *u32
+var __arena_end: *u32
+var __ui_head: u32
+var __ui_tail: *u32
+var __sv: [2176]ivec4      // transformed vertices (see __xform); 2048.. is subdiv.mls scratch
+var __vp: mat4             // view-projection matrix
+var __fx: fixed = 1.299
+var __fy: fixed = 1.732
+var __cam_near: fixed = 0.1
+var __cam_far: fixed = 100.0
+var __ot_k3: fixed
+var __ot_k4: fixed
+var __fog_on: bool
+var __fog_near: fixed
+var __fog_scale: fixed
+
+// ---- colours
+
+// Packs 0-255 channels into a GPU colour word (red in the low byte).
+fn rgb(r: s32, g: s32, b: s32) -> u32 {
+    return (r as u32 & 255) | ((g as u32 & 255) << 8) | ((b as u32 & 255) << 16)
+}
+
+// Converts a colour word to the 15-bit framebuffer format.
+fn rgb15(c: u32) -> u32 {
+    return ((c >> 3) & 31) | (((c >> 11) & 31) << 5) | (((c >> 19) & 31) << 10)
+}
+
+// Clears the back buffer now.
+fn cls(c: u32) { GPU_CLEAR = rgb15(c) }
+
+fn dither(on: bool) { GPU_CTRL = on as u32 }
+
+// ---- packets
+
+asm fn __ot_reset(ot: *u32) {
+    ; entry i links to entry i-1; entry 0 ends the list. 3.5 cycles per entry.
+    addi r2, {ot}, -4
+    mov  r3, {ot}
+    addi r4, r0, 128
+.loop:
+    sw   r2, [r3+0]
+    addi r2, r2, 4
+    sw   r2, [r3+4]
+    addi r2, r2, 4
+    sw   r2, [r3+8]
+    addi r2, r2, 4
+    sw   r2, [r3+12]
+    addi r2, r2, 4
+    sw   r2, [r3+16]
+    addi r2, r2, 4
+    sw   r2, [r3+20]
+    addi r2, r2, 4
+    sw   r2, [r3+24]
+    addi r2, r2, 4
+    sw   r2, [r3+28]
+    addi r2, r2, 4
+    addi r3, r3, 32
+    addi r4, r4, -1
+    bne  r4, r0, .loop
+    li   r2, 0xFFFFFF
+    sw   r2, [{ot}]
+}
+
+// Allocates n words of packet memory for this frame, or returns null when full.
+fn packet_alloc(n: s32) -> *u32 {
+    let p = __arena_ptr
+    if p + n > __arena_end { return null }
+    __arena_ptr = p + n
+    return p
+}
+
+// Inserts a packet into the ordering table. depth: 0 nearest .. 1023 farthest.
+fn ot_insert(p: *u32, type: u32, depth: s32) {
+    let b = clamp(depth, 0, 1023)
+    p[0] = (type << 24) | __ot[b]
+    __ot[b] = p as u32
+}
+
+// Appends a packet to the interface list (drawn after the world, in call order).
+fn ui_insert(p: *u32, type: u32) {
+    p[0] = (type << 24) | 0xFFFFFF
+    if __ui_tail == null {
+        __ui_head = p as u32
+    } else {
+        __ui_tail[0] = (__ui_tail[0] & 0xFF000000) | (p as u32)
+    }
+    __ui_tail = p
+}
+
+fn __pos(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
+
+// ---- camera
+
+// Vertical field of view in radians (default 60 degrees, about 1.047).
+fn camera_fov(fov: fixed) {
+    let h = fov * 0.5
+    __fy = cos(h) / sin(h)
+    __fx = __fy * 0.75          // 4:3 screen
+}
+
+// Near plane (triangles with a vertex closer than this are dropped) and the far depth
+// that maps to the last ordering-table bucket.
+fn camera_clip(near: fixed, far: fixed) {
+    __cam_near = near
+    __cam_far = far
+    let scale = 1024.0 / (far - near)
+    __ot_k3 = scale / 3
+    __ot_k4 = scale / 4
+}
+
+// Camera at pos looking along yaw (0 looks down +Z; positive turns right, toward +X).
+fn camera(pos: vec3, yaw: fixed) { camera_look(pos, yaw, 0.0) }
+
+// Camera with pitch (positive looks up).
+fn camera_look(pos: vec3, yaw: fixed, pitch: fixed) {
+    let sy = sin(yaw)
+    let cy = cos(yaw)
+    let sp = sin(pitch)
+    let cp = cos(pitch)
+    let p = vec4(pos, 0.0)
+    var right = vec4(cy, 0.0, -sy, 0.0)
+    var up = vec4(-sy * sp, cp, -cy * sp, 0.0)
+    var fwd = vec4(sy * cp, sp, cy * cp, 0.0)
+    right.w = -dot(right, p)
+    up.w = -dot(up, p)
+    fwd.w = -dot(fwd, p)
+    __vp[0] = right * __fx
+    __vp[1] = up * __fy
+    __vp[2] = fwd
+    __vp[3] = fwd
+}
+
+// Sets the view-projection matrix directly (rows: x, y, z, w; w must be view depth).
+fn camera_matrix(m: mat4) { __vp = m }
+
+// ---- fog
+
+// Blends vertex colours toward `colour` between view depths near and far. Textured faces
+// can only darken (their colour is a tint), so they fade toward half the fog colour.
+fn fog(colour: u32, near: fixed, far: fixed) {
+    __fog_on = true
+    __fog_rb = colour & 0xFF00FF
+    __fog_g = colour & 0x00FF00
+    let tex = (colour >> 1) & 0x7F7F7F
+    __fogt_rb = tex & 0xFF00FF
+    __fogt_g = tex & 0x00FF00
+    __fog_near = near
+    __fog_scale = 256.0 / (far - near)
+}
+
+fn fog_off() { __fog_on = false }
+
+// ---- meshes
+
+import "faces.mls"
+import "subdiv.mls"
+
+// Transforms n vertices by the matrix and projects them into __sv: lane 0 holds the packed
+// screen position (x & 0xFFFF) | (y << 16), lane 1 the fog amount 0..256, lane 3 the view
+// depth w. 39 cycles per vertex, 50 with fog.
+asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) {
+    vld  v4, [{m}+0]
+    vld  v5, [{m}+16]
+    vld  v6, [{m}+32]
+    vld  v7, [{m}+48]
+    beq  {n}, r0, .done
+    lbu  r5, [r0+{__fog_on}]
+    bne  r5, r0, .fog
+.loop:
+    vld  v0, [{src}]
+    vxfm v1, v0
+    vproj v2, v1
+    vget r5, v2, 0
+    vget r6, v2, 1
+    andi r5, r5, 0xFFFF
+    shli r6, r6, 16
+    or   r5, r5, r6
+    vset v2, r5, 0
+    vst  v2, [{dst}]
+    addi {src}, {src}, 16
+    addi {dst}, {dst}, 16
+    addi {n}, {n}, -1
+    bne  {n}, r0, .loop
+    ret
+.fog:
+    lw   r7, [r0+{__fog_near}]
+    lw   r8, [r0+{__fog_scale}]
+.floop:
+    vld  v0, [{src}]
+    vxfm v1, v0
+    vproj v2, v1
+    vget r5, v2, 0
+    vget r6, v2, 1
+    andi r5, r5, 0xFFFF
+    shli r6, r6, 16
+    or   r5, r5, r6
+    vset v2, r5, 0
+    vget r5, v1, 3
+    sub  r5, r5, r7
+    fmul r5, r5, r8
+    sari r5, r5, 16
+    bge  r5, r0, .f1
+    mov  r5, r0
+.f1:
+    slti r6, r5, 257
+    bne  r6, r0, .f2
+    addi r5, r0, 256
+.f2:
+    vset v2, r5, 1
+    vst  v2, [{dst}]
+    addi {src}, {src}, 16
+    addi {dst}, {dst}, 16
+    addi {n}, {n}, -1
+    bne  {n}, r0, .floop
+.done:
+}
+
+// Shifts the ordering-table buckets of the following mesh() calls: negative values draw
+// later (nearer). Use it to keep an object in front of large polygons it stands on.
+fn depth_bias(buckets: s32) { __ot_bias = buckets }
+
+// Draws a mesh whose vertices are in world space.
+fn mesh(m: *Mesh) { __draw_mesh(m, __vp) }
+
+// Draws a mesh placed at pos and turned by yaw about +Y.
+fn mesh_at(m: *Mesh, pos: vec3, yaw: fixed) {
+    let s = sin(yaw)
+    let c = cos(yaw)
+    var model: mat4
+    model[0] = vec4(c, 0.0, s, pos.x)
+    model[1] = vec4(0.0, 1.0, 0.0, pos.y)
+    model[2] = vec4(-s, 0.0, c, pos.z)
+    model[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    let mvp = __vp * model
+    __draw_mesh(m, mvp)
+}
+
+// Draws a mesh with a full model matrix.
+fn mesh_xf(m: *Mesh, model: mat4) {
+    let mvp = __vp * model
+    __draw_mesh(m, mvp)
+}
+
+fn __draw_mesh(m: *Mesh, mvp: mat4) {
+    let nv = m.nverts as s32
+    if nv > MAX_MESH_VERTS {
+        println("mesh(): too many vertices")
+        return
+    }
+    let base = m as u32
+    __xform((base + m.verts) as *vec4, nv, &__sv[0], &mvp)
+    if __subdiv > 0 {
+        __sub_src = (base + m.verts) as *vec4
+        __sub_mvp = mvp
+        __draw_faces_sub((base + m.faces) as *Face, m.nfaces as s32)
+    } else {
+        __draw_faces((base + m.faces) as *Face, m.nfaces as s32)
+    }
+}

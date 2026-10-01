@@ -1,0 +1,5 @@
+// error: 'n' is a s32, not a function
+fn init() {
+    let n = 3
+    n(2)
+}

@@ -1,0 +1,2 @@
+// error: cannot read
+import "does_not_exist.mls"

@@ -1,0 +1,6 @@
+// error: match on s32 needs an else arm
+fn f(n: s32) {
+    match n {
+        1 => print_int(1)
+    }
+}

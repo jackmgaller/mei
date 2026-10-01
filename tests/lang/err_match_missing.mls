@@ -1,0 +1,8 @@
+// error: match on State does not handle State.Won (add it or an else arm)
+enum State { Title, Playing, Won }
+fn f(s: State) {
+    match s {
+        Title => print_int(1)
+        Playing => print_int(2)
+    }
+}

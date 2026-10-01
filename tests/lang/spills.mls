@@ -1,0 +1,69 @@
+// Register pressure: many live locals across calls, deep expressions, vector spills.
+fn p(n: s32) { print_int(n); print_char('\n') }
+fn id(x: s32) -> s32 { return x }
+fn vid(v: vec3) -> vec3 { return v }
+
+fn leafy(a: s32, b: s32) -> s32 {
+    // more simultaneously live locals than registers, no calls
+    let c = a + b
+    let d = a - b
+    let e = a * b
+    let f = c + d
+    let g = c - e
+    let h = d * 2
+    let i = e + 1
+    let j = f + g
+    let k = h - i
+    let l = j * k
+    let m = l + a
+    let n = m - b
+    let o = c + d + e + f + g + h + i + j + k + l + m + n
+    return o + a + b + c + d + e + f + g + h + i + j + k + l + m + n
+}
+
+fn init() {
+    var a0 = id(1)
+    var a1 = id(2)
+    var a2 = id(3)
+    var a3 = id(4)
+    var a4 = id(5)
+    var a5 = id(6)
+    var a6 = id(7)
+    var a7 = id(8)
+    var a8 = id(9)
+    var a9 = id(10)
+    var a10 = id(11)
+    var a11 = id(12)
+    var a12 = id(13)
+    var a13 = id(14)
+    var a14 = id(15)
+    var a15 = id(16)
+    var a16 = id(17)
+    var a17 = id(18)
+    var a18 = id(19)
+    var a19 = id(20)
+    let s = a0 + a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9 + a10 + a11 + a12 + a13 + a14 + a15 + a16 + a17 + a18 + a19
+    p(s)                    // expect: 210
+    id(0)
+    p(a0 * a19 + a10)       // expect: 31
+    let x = 3
+    p(((x + 1) * (x + 2) + (x + 3) * (x + 4)) * ((x + 5) * (x + 6) - (x + 7) * (x + 8)) + id(x) * (id(x + 1) + id(x + 2) * (id(x + 3) + 1)))  // expect: -2239
+    p(id(1) + id(2) * (id(3) + id(4) * (id(5) + id(6) * (id(7) + id(8) * (id(9) + id(10))))))  // expect: 7679
+    p(leafy(7, 3))          // expect: -106
+    let v0 = vec3(1.0, 0.0, 0.0)
+    let v1 = vec3(0.0, 1.0, 0.0)
+    let v2 = vec3(0.0, 0.0, 1.0)
+    let v3 = vec3(1.0, 1.0, 0.0)
+    let v4 = vec3(0.0, 1.0, 1.0)
+    let v5 = vec3(1.0, 0.0, 1.0)
+    let v6 = vec3(2.0, 0.0, 0.0)
+    let v7 = vec3(0.0, 2.0, 0.0)
+    let v8 = vec3(0.0, 0.0, 2.0)
+    let v9 = vec3(1.0, 1.0, 1.0)
+    let vs = vid(v0) + v1 + v2 + v3 + v4 + vid(v5) + v6 + v7 + v8 + v9
+    print_vec(vs as vec4)
+    print_char('\n')        // expect: (6.0, 6.0, 6.0, 0.0)
+    let deep = (v0 + (v1 + (v2 + (v3 + (v4 + (v5 + (v6 + (v7 + (v8 + v9)))))))))
+    print_vec((deep - vs) as vec4)
+    print_char('\n')        // expect: (0.0, 0.0, 0.0, 0.0)
+}

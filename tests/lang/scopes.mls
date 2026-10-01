@@ -1,0 +1,24 @@
+// Block scoping and shadowing.
+fn p(n: s32) { print_int(n); print_char('\n') }
+var x = 1
+
+fn init() {
+    p(x)                // expect: 1
+    var x = 2
+    p(x)                // expect: 2
+    {
+        var x = 3
+        p(x)            // expect: 3
+        x += 1
+        p(x)            // expect: 4
+    }
+    p(x)                // expect: 2
+    for x in 10..12 { p(x) }
+    // expect: 10
+    // expect: 11
+    let len = 5
+    p(len)              // expect: 5
+    p(arr().a[2])       // expect: 3
+}
+fn arr() -> Three { return Three { a: [1, 2, 3] } }
+struct Three { a: [3]s32 }

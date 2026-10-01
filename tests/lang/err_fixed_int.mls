@@ -1,0 +1,2 @@
+// error: cannot mix fixed and integer
+fn f(a: fixed, b: s32) -> fixed { return a + b }

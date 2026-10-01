@@ -1,0 +1,124 @@
+// Closures: function literals capture locals of the function around them by copy.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+enum Mode { Add, Mul }
+struct Btn { id: u8, on_press: fn(s32) -> s32, tag: u8 }
+struct Pt { x: s32, y: s32 }
+
+var table: [4]s32
+var saved: fn(s32) -> s32
+var btns: [3]Btn
+
+fn make_adder(n: s32) -> fn(s32) -> s32 { return fn(x: s32) => x + n }
+fn make_op(m: Mode, k: s32) -> fn(s32) -> s32 {
+    return fn(x: s32) -> s32 {
+        match m {
+            Add => return x + k
+            Mul => return x * k
+        }
+    }
+}
+fn apply(f: fn(s32) -> s32, x: s32) -> s32 { return f(x) }
+fn apply_v(f: fn(vec2) -> fixed, v: vec2) -> fixed { return f(v) }
+fn twice(f: fn(s32) -> s32, x: s32) -> s32 { return f(f(x)) }
+fn sq(x: s32) -> s32 { return x * x }
+fn many(a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) -> s32 { return a + b + c + d + e + f }
+
+fn init() {
+    // basic capture; copies are taken when the literal is evaluated
+    var k = 10
+    let add_k = fn(x: s32) => x + k
+    k = 99
+    p(add_k(1))                                     // expect: 11
+    p(make_adder(5)(1))                             // expect: 6
+    let a3 = make_adder(3)
+    let a4 = make_adder(4)
+    p(a3(0) * 10 + a4(0))                           // expect: 34
+
+    // three captured words of different types
+    let scale: fixed = 1.5
+    let neg = true
+    let off: u8 = 200
+    let mix = fn(x: s32) -> s32 {
+        var r = (x as fixed * scale) as s32 + off as s32
+        if neg { r = -r }
+        return r
+    }
+    p(mix(4))                                       // expect: -206
+
+    // enum capture, match inside the closure
+    p(make_op(Mode.Add, 7)(5))                      // expect: 12
+    p(make_op(Mode.Mul, 7)(5))                      // expect: 35
+
+    // closures as arguments, results, struct fields, array elements and globals
+    p(apply(a3, 100))                               // expect: 103
+    p(twice(a4, 1))                                 // expect: 9
+    p(twice(sq, 3))                                 // expect: 81
+    let base: fixed = 0.25
+    p(bits(apply_v(fn(v: vec2) => v.x + v.y + base, vec2(1.0, 2.0))))   // expect: 212992
+    for i in 0..3 {
+        let id = i * 10
+        btns[i] = Btn { id: i as u8, on_press: fn(x: s32) => x + id, tag: 7 }
+    }
+    for i in 0..3 { p(btns[i].on_press(1) + btns[i].tag as s32 * 1000 + btns[i].id as s32 * 100) }
+    // expect: 7001
+    // expect: 7111
+    // expect: 7221
+    p(sizeof(Btn))                                  // expect: 24
+    var fs: [4]fn(s32) -> s32
+    for i in 0..4 { fs[i] = fn(x: s32) => x * i }
+    p(fs[0](5) + fs[1](5) * 10 + fs[3](5) * 100)    // expect: 1550
+    saved = make_adder(1000)
+    call_saved()                                    // expect: 1001
+
+    // a closure that makes calls keeps its captures across them
+    let c1 = 3
+    let c2 = 4
+    let c3 = 5
+    let busy = fn(x: s32) => sq(x) + c1 + sq(c2) + c3 + many(x, c1, c2, c3, 1, 2)
+    p(busy(2))                                      // expect: 45
+    p(apply(busy, 2))                               // expect: 45
+    // many arguments plus captures (r1-r4, the stack and r6-r8 at once)
+    let six = fn(a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) => a + b * 2 + c * 3 + d * 4 + e * 5 + f * 6 + c1 * c2 * c3
+    p(six(1, 2, 3, 4, 5, 6))                        // expect: 151
+
+    // nested literals capture through each level
+    let outer_n = 2
+    let mk = fn(m: s32) -> fn(s32) -> s32 {
+        return fn(x: s32) => x * m + outer_n
+    }
+    p(mk(10)(4))                                    // expect: 42
+
+    // pointers to globals may be captured (and written through)
+    let tp = &table[0]
+    let poke = fn(i: s32, v: s32) { tp[i] = v }
+    poke(2, 77)
+    p(table[2])                                     // expect: 77
+
+    // equality compares the code address and every captured word
+    let b3 = make_adder(3)
+    if a3 == b3 { p(1) } else { p(0) }              // expect: 1
+    if a3 != a4 { p(1) } else { p(0) }              // expect: 1
+    if (a3 as u32) == (a4 as u32) { p(1) } else { p(0) }   // expect: 1
+    var none: fn(s32) -> s32 = null
+    if none == null && a3 != null { p(1) } else { p(0) }   // expect: 1
+    let eq = a3 == a4
+    let ne = a3 != b3
+    p(eq as s32 * 10 + ne as s32)                   // expect: 0
+    none = a3
+    p(none(1))                                      // expect: 4
+
+    // capture in a loop body: each evaluation copies the current value
+    var acc = 0
+    for i in 1..4 {
+        let f = fn(x: s32) => x + i * 100
+        acc += f(i)
+    }
+    p(acc)                                          // expect: 606
+    let pt = Pt { x: 3, y: 4 }
+    let px = pt.x
+    let py = pt.y
+    p((fn() -> s32 { return px * py })())           // expect: 12
+}
+
+fn call_saved() { p(saved(1)) }

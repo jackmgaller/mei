@@ -1,0 +1,303 @@
+// The Mei system ROM (docs/SYSTEM.md): the boot animation, then the shell.
+//
+// Boot flow. The catalogue at 0x3F0000 lists the carts (no "CATL" magic: zero carts, no
+// flags). Unless catalogue flag bit 0, flag bit 1 or SYS_CONFIG bit 4 says otherwise, the
+// boot theme chosen by SYS_CONFIG bits 0-3 plays (A or Start skips), then the picture fades
+// to black and the shell fades in. With an autoboot index the cart launches after the
+// animation instead. Flag bit 1 (back from a cart) opens the cart list directly.
+//
+// Screens: Home, Carts, Memory Card, Settings, Controllers, Sound test, System. D-pad or stick moves
+// (with key repeat), A or Start selects, B goes back.
+//
+// SYS_CONFIG bits used by the shell (bits 5-31 are the shell's):
+//   0-3  boot theme (a value >= BOOT_THEME_COUNT means theme 0)
+//   4    boot animation off
+//   5    shell dither off
+//   6    UI sounds off
+//   7    ambient music off
+//   16-25 last launched cart + 1 (0: none), so the cart list reopens on it
+//
+// Resources: texture slots 12-14, 4-bit palettes 192-254 and audio channels 6-7 (UI
+// sounds on 6, the cursor tick on 7); while the shell runs, channels 0-3 play the ambient
+// music (shell/music.mls). Assets come from tools/gen_shell_assets.py.
+cart "Mei System"
+import "boot/themes.mls"
+import "shell/core.mls"
+import "shell/sky.mls"
+import "shell/hills.mls"
+import "shell/music.mls"
+import "shell/memcard.mls"
+import "shell/chrome.mls"
+import "shell/home.mls"
+import "shell/carts.mls"
+import "shell/settings.mls"
+import "shell/pads.mls"
+import "shell/soundtest.mls"
+import "shell/info.mls"
+
+enum Mode { Boot, BootOut, Shell, PreviewWait, Preview, PreviewOut, Launch }
+
+const SCR_HOME = 0
+const SCR_CARTS = 1
+const SCR_SETTINGS = 2
+const SCR_PADS = 3
+const SCR_SOUND = 4
+const SCR_INFO = 5
+const SCR_CARD = 6
+
+const FADE_OUT_FRAMES = 22     // boot picture to black
+const LAUNCH_FRAMES = 36       // launch transition until SYS_LAUNCH is written
+const LAUNCH_TIMEOUT = 150     // back to the shell if the platform ignored the launch
+
+var mode = Mode.Boot
+var screen = SCR_HOME
+var theme_i: s32               // the theme playing (boot or preview)
+var theme_t: s32
+var out_t: s32
+var black: s32                 // 0..256: how far the shell is faded to black
+var launch_i: s32
+var launch_t: s32
+var launch_y: s32              // screen y of the row that was launched
+
+fn init() {
+    sh_cat_read()
+    sh_load_assets()
+    mc_init()
+    sky_init()
+    seed(0)                    // give the boot theme the reset random seed
+    if sh_flags & 2 != 0 {
+        shell_enter(SCR_CARTS)
+        let last = sh_cfg_last_cart()
+        if last >= 0 { carts_jump(last) }
+    } else if sh_flags & 1 != 0 || sh_cfg_on(CFG_BOOT_OFF) {
+        if sh_autoboot >= 0 { launch_now(sh_autoboot) } else { shell_enter(SCR_HOME) }
+    } else {
+        theme_i = sh_cfg_theme()
+        theme_t = 0
+        boot_theme_start(theme_i)
+        mode = Mode.Boot
+    }
+}
+
+// ---- transitions between modes
+
+// Shows the shell on screen s, fading in from black.
+fn shell_enter(s: s32) {
+    mode = Mode.Shell
+    if !sh_cfg_on(CFG_MUSIC_OFF) {
+        mu_start()
+        mu_set_target(256, 1)
+    }
+    black = 256
+    screen = s
+    sky_show_bodies(s == SCR_HOME)
+    shell_screen_enter(s)
+    sh_tr = SH_TR
+}
+
+// Moves to another screen; dir 1 slides in from the right, -1 from the left.
+fn shell_go(s: s32, dir: s32) {
+    screen = s
+    sky_show_bodies(s == SCR_HOME)
+    shell_screen_enter(s)
+    sh_trans_begin(dir)
+}
+
+fn shell_screen_enter(s: s32) {
+    mc_watch = false
+    if s == SCR_CARTS { carts_enter() }
+    else if s == SCR_CARD { mc_enter() }
+    else if s == SCR_PADS { pads_enter() }
+    else if s == SCR_SOUND { snd_enter() }
+}
+
+// Starts a theme preview once the music has faded out (a few frames).
+fn shell_preview(t: s32) {
+    snd_stop()
+    stop(6)
+    stop(7)
+    theme_i = t
+    theme_t = 0
+    mu_set_target(0, 24)
+    mode = Mode.PreviewWait
+}
+
+fn preview_wait_frame() {
+    shell_draw()
+    mu_frame()
+    if mu_gain == 0 {
+        mu_stop()
+        boot_theme_start(theme_i)
+        mode = Mode.Preview
+    }
+}
+
+fn shell_launch(i: s32) {
+    sh_sfx(SFX_LAUNCH)
+    sh_cfg_set_last_cart(i)
+    mode = Mode.Launch
+    launch_i = i
+    launch_t = 0
+    launch_y = (carts_hl >> 4) - (carts_scroll >> 4)
+}
+
+// Launches without the transition (autoboot).
+fn launch_now(i: s32) {
+    sh_cfg_set_last_cart(i)
+    mode = Mode.Launch
+    launch_i = i
+    launch_t = LAUNCH_FRAMES
+    black = 256
+}
+
+// ---- frame
+
+fn update() {
+    sh_input()
+    match mode {
+        Boot, Preview => {
+            if sh_pressed(A | START) || (mode == Mode.Preview && sh_pressed(B)) { theme_finish() }
+        }
+        Shell => shell_update()
+        else => {}
+    }
+}
+
+fn theme_finish() {
+    if mode == Mode.Boot { mode = Mode.BootOut } else { mode = Mode.PreviewOut }
+    out_t = 0
+}
+
+fn shell_update() {
+    if screen == SCR_HOME { home_update() }
+    else if screen == SCR_CARTS { carts_update() }
+    else if screen == SCR_SETTINGS { set_update() }
+    else if screen == SCR_PADS { pads_update() }
+    else if screen == SCR_SOUND { snd_update() }
+    else if screen == SCR_CARD { mc_update() }
+    else { info_update() }
+}
+
+fn draw() {
+    match mode {
+        Boot, Preview => {
+            if mode == Mode.Boot || mode == Mode.Preview {
+                if boot_theme_frame(theme_i, theme_t) { theme_finish() }
+                theme_t += 1
+            }
+        }
+        BootOut, PreviewOut => fade_out_frame()
+        Shell => {
+            mc_poll()
+            shell_draw()
+            shell_music()
+        }
+        PreviewWait => preview_wait_frame()
+        Launch => launch_frame()
+    }
+    sh_pad_prev = PAD1
+}
+
+// Fades whatever the theme left on screen to black: no clear, a subtractive quad each
+// frame (each buffer is darkened every other frame), and the theme's sound fades with it.
+fn fade_out_frame() {
+    sh_alpha = 256
+    sh_rect(0, 0, 320, 240, rgb(32, 32, 32), 2)
+    sh_fade_theme_audio(false)
+    out_t += 1
+    if out_t >= FADE_OUT_FRAMES {
+        sh_fade_theme_audio(true)
+        cls(0)
+        if mode == Mode.BootOut {
+            if sh_autoboot >= 0 { launch_now(sh_autoboot) } else { shell_enter(SCR_HOME) }
+        } else {
+            shell_enter(SCR_SETTINGS)
+        }
+    }
+}
+
+const SH_DEBUG = false         // print the shell's cycle count to the debug console
+
+fn shell_draw() {
+    if SH_DEBUG && FRAME % 20 == 0 {
+        print("screen ")
+        print_int(screen)
+        print(" cycles ")
+        print_int(cpu_used())
+        println("")
+    }
+    dither(!sh_cfg_on(CFG_DITHER_OFF))
+    sh_alpha = 256
+    sh_blend = -1
+    sh_ox = 0
+    sky_draw()
+    sh_trans_step()
+    if screen == SCR_HOME { home_draw() }
+    else if screen == SCR_CARTS { carts_draw() }
+    else if screen == SCR_SETTINGS { set_draw() }
+    else if screen == SCR_PADS { pads_draw() }
+    else if screen == SCR_SOUND { snd_draw() }
+    else if screen == SCR_CARD { mc_draw() }
+    else { info_draw() }
+    sh_alpha = 256
+    sh_blend = -1
+    if black > 0 {
+        let k = min(black, 255)
+        sh_rect(0, 0, 320, 240, rgb(k, k, k), 2)
+        black -= 16
+    }
+}
+
+// Music level for the shell: off when switched off (then stopped), ducked on the Sound
+// test screen and silent while a test plays there.
+fn shell_music() {
+    if sh_cfg_on(CFG_MUSIC_OFF) {
+        mu_set_target(0, 6)
+        if mu_gain == 0 { mu_stop() }
+    } else {
+        if !mu_running {
+            mu_start()
+        }
+        if screen == SCR_SOUND {
+            if snd_testing { mu_set_target(0, 10) } else { mu_set_target(64, 6) }
+        } else {
+            mu_set_target(256, 2)
+        }
+    }
+    mu_frame()
+}
+
+// The launch: the chosen row flares and widens, the screen fades to black, then
+// SYS_LAUNCH. The platform resets the console after this tick.
+fn launch_frame() {
+    let t = launch_t
+    mu_set_target(0, 9)                // silent by the time SYS_LAUNCH is written
+    mu_frame()
+    if t < LAUNCH_FRAMES {
+        shell_draw()
+        sh_alpha = 256
+        // flare: a warm band growing from the row
+        let grow = t * t / 3
+        let y0 = launch_y - grow
+        let h = CARTS_ROW + grow * 2
+        let k = max(0, 200 - t * 6)
+        sh_vgrad(0, y0, 320, h / 2, rgb(0, 0, 0), rgb(k, k * 3 / 4, k / 2), 1)
+        sh_vgrad(0, y0 + h / 2, 320, h / 2, rgb(k, k * 3 / 4, k / 2), rgb(0, 0, 0), 1)
+        if t > 10 {
+            let b = min(255, (t - 10) * 12)
+            sh_rect(0, 0, 320, 240, rgb(b, b, b), 2)
+        }
+    } else {
+        cls(0)
+        if t == LAUNCH_FRAMES {
+            mu_stop()
+            SYS_LAUNCH = launch_i as u32
+        }
+        if t > LAUNCH_FRAMES + LAUNCH_TIMEOUT {
+            sh_sfx(SFX_ERROR)
+            shell_enter(SCR_CARTS)
+            return
+        }
+    }
+    launch_t += 1
+}

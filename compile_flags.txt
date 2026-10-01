@@ -1,0 +1,6 @@
+-std=c11
+-Isrc/core
+-Isrc/asm
+-Isrc/lang
+-I/opt/homebrew/include
+-I/opt/homebrew/include/libusb-1.0

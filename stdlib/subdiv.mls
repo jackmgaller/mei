@@ -1,0 +1,343 @@
+// Automatic subdivision of textured faces near the camera (opt-in: subdivide(levels)).
+//
+// The GPU maps textures affinely, so a big polygon spanning a wide range of depth warps.
+// __draw_faces_sub (faces.mls) sends front-facing, on-screen textured faces that are near
+// the camera and whose estimated affine error is large, or that cross the near plane, to
+// __subdivide_face. It splits each edge whose estimated error (depth spread x length on
+// screen) exceeds the tolerance, or that crosses the near plane. The decision depends only
+// on the edge's two ends, so the faces sharing an edge split it the same way. Midpoints
+// are made in object space and transformed exactly, with averaged texture coordinates and
+// colours, so a shared edge gets bitwise-identical vertices on both sides: no cracks.
+// A quad whose opposite edges both split is cut in two along them, again and again; any
+// other pattern goes on as the quad's two triangles, which split into four or are bisected
+// edge by edge. Every edge carries a generation (how often the mesh edge was halved) that
+// the level caps. The pieces are drawn by __draw_faces like any face (culling, near
+// plane, fog, sorting, packets). The worklist, __sub_run, is generated into faces.mls.
+
+const __SUB_BASE = 2048         // scratch vertices: __sv[2048 ..] (offset 32768 bytes)
+const __SUB_MAX = 128           // scratch vertices per face
+const __SUB_OUT = 32            // pieces buffered before they are drawn
+
+var __subdiv: s32               // levels (0 = off)
+var __sub_k: s32 = 16           // 4 x the tolerated affine error in pixels
+var __sub_dist: fixed = 8.0     // only faces with a vertex nearer than this are split
+var __sub_src: *vec4            // object-space vertices of the mesh being drawn
+var __sub_mvp: mat4             // and its matrix
+var __sub_pos: [128]vec4        // scratch vertices: object-space position,
+var __sub_uv: [128]u32          // texture coordinate (u | v << 8)
+var __sub_col: [128]u32         // and colour
+var __sub_n: s32
+var __sub_face: *Face
+var __sub_out: [32]Face
+var __sub_nout: s32
+
+// Subdivide big textured faces near the camera, up to `levels` times (0 = off, the
+// default; at most 3). Each level splits a face into up to four, so textures warp less.
+fn subdivide(levels: s32) { __subdiv = clamp(levels, 0, 3) }
+
+// Tuning for subdivide(): the affine texture error in pixels tolerated before an edge is
+// split (default 4), and the view depth beyond which faces are never split (default 8.0).
+fn subdivide_tuning(pixels: s32, distance: fixed) {
+    __sub_k = clamp(pixels, 1, 64) * 4
+    __sub_dist = distance
+}
+
+fn __subdivide_face(f: *Face) {
+    __sub_face = f
+    __sub_run(__sub_load(f))     // the worklist is generated assembly (faces.mls)
+    __sub_flush()
+}
+
+fn __sub_flush() {
+    if __sub_nout > 0 {
+        __draw_faces(&__sub_out[0], __sub_nout)
+        __sub_nout = 0
+    }
+}
+
+// Copies the face's corners into scratch vertices 0..n-1 and returns n (3 or 4).
+asm fn __sub_load(f: *Face) -> s32 {
+    lbu  r2, [{f}]              ; flags
+    andi r3, r2, 4
+    shri r3, r3, 2
+    addi r3, r3, 3              ; corner count
+    sw   r3, [r0+{__sub_n}]
+    andi r2, r2, 1              ; Gouraud: a colour per corner
+    lw   r4, [{f}+12]           ; col[0] for flat faces
+    mov  r5, r0                 ; corner k
+.corner:
+    shli r6, r5, 1
+    add  r6, r6, {f}
+    lhu  r7, [r6+4]             ; vertex index
+    lhu  r8, [r6+28]            ; texture coordinate
+    shli r6, r5, 2
+    la   r1, {__sub_uv}
+    add  r1, r1, r6
+    sw   r8, [r1]
+    mov  r8, r4
+    beq  r2, r0, .flat
+    lw   r1, [r0+{__sub_face}]
+    add  r1, r1, r6
+    lw   r8, [r1+12]
+.flat:
+    la   r1, {__sub_col}
+    add  r1, r1, r6
+    sw   r8, [r1]
+    shli r6, r5, 4
+    shli r7, r7, 4
+    lw   r1, [r0+{__sub_src}]
+    add  r1, r1, r7
+    vld  v0, [r1]
+    la   r1, {__sub_pos}
+    add  r1, r1, r6
+    vst  v0, [r1]
+    la   r1, {__sv}
+    add  r7, r7, r1
+    vld  v0, [r7]
+    add  r1, r1, r6
+    vst  v0, [r1+32768]         ; __sv[__SUB_BASE + k]
+    lw   r1, [r0+{__sub_face}]
+    addi r5, r5, 1
+    bne  r5, r3, .corner
+    mov  r1, r3
+}
+
+// Should the edge between scratch vertices a and b be split? 1: yes, for its affine
+// error; 2: it crosses the near plane (split once, to save the part in front); 0: no.
+// Symmetric in a and b.
+asm fn __sub_split(a: s32, b: s32) -> bool {
+    la   r5, {__sv}
+    shli r6, {a}, 4
+    add  r6, r6, r5
+    shli r7, {b}, 4
+    add  r7, r7, r5
+    lw   r3, [r6+32780]         ; w of __sv[__SUB_BASE + a]
+    lw   r4, [r7+32780]
+    lw   r8, [r0+{__cam_near}]
+    blt  r3, r8, .behind
+    blt  r4, r8, .cross         ; crosses the near plane
+    bge  r4, r3, .ordered
+    mov  r5, r3
+    mov  r3, r4
+    mov  r4, r5                 ; r3 = nearer w, r4 = farther w
+.ordered:
+    ; the gate in __draw_faces_sub only passes faces nearer than __sub_dist with a depth
+    ; spread over 12.5%: an edge outside those limits never splits, so a face the gate
+    ; skips never leaves a neighbour's split edge unmatched
+    lw   r5, [r0+{__sub_dist}]
+    bge  r3, r5, .no
+    sari r5, r3, 3
+    add  r5, r5, r3
+    bge  r5, r4, .no
+    lw   r5, [r6+32768]         ; packed screen positions
+    lw   r6, [r7+32768]
+    shli r7, r5, 16
+    sari r7, r7, 16
+    shli r1, r6, 16
+    sari r1, r1, 16
+    sub  r7, r7, r1
+    sari r1, r7, 31
+    xor  r7, r7, r1
+    sub  r7, r7, r1             ; |dx|
+    sari r5, r5, 16
+    sari r6, r6, 16
+    sub  r5, r5, r6
+    sari r1, r5, 31
+    xor  r5, r5, r1
+    sub  r5, r5, r1             ; |dy|
+    add  r7, r7, r5
+    ; the affine error along the edge is about len * (far - near) / (4 near) pixels
+    sub  r4, r4, r3
+    sari r4, r4, 8
+    mul  r4, r4, r7
+    sari r3, r3, 8
+    lw   r5, [r0+{__sub_k}]
+    mul  r3, r3, r5
+    slt  r1, r3, r4
+    ret
+.behind:
+    slt  r1, r4, r8
+    xori r1, r1, 1
+    shli r1, r1, 1              ; a is behind: 2 (crossing) if b is in front, else 0
+    ret
+.cross:
+    addi r1, r0, 2
+    ret
+.no:
+    mov  r1, r0
+}
+
+// Adds the midpoint of scratch vertices a and b (position, texture coordinate, colour),
+// transforms it like __xform and returns its number.
+asm fn __sub_mid(a: s32, b: s32) -> s32 {
+    lw   r3, [r0+{__sub_n}]
+    addi r4, r3, 1
+    sw   r4, [r0+{__sub_n}]
+    la   r5, {__sub_pos}
+    shli r6, {a}, 4
+    add  r6, r6, r5
+    vld  v0, [r6]
+    shli r6, {b}, 4
+    add  r6, r6, r5
+    vld  v1, [r6]
+    vadd v0, v0, v1
+    li   r6, 32768
+    vscale v0, v0, r6           ; (a + b) / 2; w stays 1.0
+    shli r6, r3, 4
+    add  r6, r6, r5
+    vst  v0, [r6]
+    shli r6, {a}, 2
+    shli r8, {b}, 2
+    la   r5, {__sub_uv}
+    add  r7, r6, r5
+    lw   r1, [r7]
+    add  r7, r8, r5
+    lw   r2, [r7]
+    andi r4, r1, 255
+    andi r7, r2, 255
+    add  r4, r4, r7
+    shri r4, r4, 1
+    shri r1, r1, 8
+    shri r2, r2, 8
+    add  r1, r1, r2
+    shri r1, r1, 1
+    shli r1, r1, 8
+    or   r4, r4, r1
+    shli r7, r3, 2
+    add  r7, r7, r5
+    sw   r4, [r7]
+    la   r5, {__sub_col}
+    add  r7, r6, r5
+    lw   r1, [r7]
+    add  r7, r8, r5
+    lw   r2, [r7]
+    li   r4, 0xFEFEFE
+    and  r1, r1, r4
+    and  r2, r2, r4
+    add  r1, r1, r2
+    shri r1, r1, 1
+    shli r7, r3, 2
+    add  r7, r7, r5
+    sw   r1, [r7]
+    ; transform and project into __sv[__SUB_BASE + m] (as __xform does)
+    la   r5, {__sub_mvp}
+    vld  v4, [r5+0]
+    vld  v5, [r5+16]
+    vld  v6, [r5+32]
+    vld  v7, [r5+48]
+    vxfm v1, v0
+    vproj v2, v1
+    vget r5, v2, 0
+    vget r6, v2, 1
+    andi r5, r5, 0xFFFF
+    shli r6, r6, 16
+    or   r5, r5, r6
+    vset v2, r5, 0
+    lbu  r5, [r0+{__fog_on}]
+    beq  r5, r0, .store
+    vget r5, v1, 3
+    lw   r7, [r0+{__fog_near}]
+    lw   r8, [r0+{__fog_scale}]
+    sub  r5, r5, r7
+    fmul r5, r5, r8
+    sari r5, r5, 16
+    bge  r5, r0, .f1
+    mov  r5, r0
+.f1:
+    slti r6, r5, 257
+    bne  r6, r0, .f2
+    addi r5, r0, 256
+.f2:
+    vset v2, r5, 1
+.store:
+    la   r5, {__sv}
+    shli r6, r3, 4
+    add  r5, r5, r6
+    vst  v2, [r5+32768]
+    mov  r1, r3
+}
+
+// Queues a piece for drawing: the quad a b c d (strip order), or the triangle a b c when
+// d is negative. It takes the flags, blend mode, texture and palette of the face.
+asm fn __sub_emit(a: s32, b: s32, c: s32, d: s32) {
+    lw   r5, [r0+{__sub_nout}]
+    slti r6, r5, {__SUB_OUT}
+    bne  r6, r0, .room
+    addi sp, sp, -20
+    sw   r1, [sp+0]
+    sw   r2, [sp+4]
+    sw   r3, [sp+8]
+    sw   r4, [sp+12]
+    sw   ra, [sp+16]
+    call {__sub_flush}
+    lw   r1, [sp+0]
+    lw   r2, [sp+4]
+    lw   r3, [sp+8]
+    lw   r4, [sp+12]
+    lw   ra, [sp+16]
+    addi sp, sp, 20
+    mov  r5, r0
+.room:
+    addi r6, r5, 1
+    sw   r6, [r0+{__sub_nout}]
+    shli r6, r5, 5
+    shli r7, r5, 2
+    add  r6, r6, r7             ; n * 36
+    la   r5, {__sub_out}
+    add  r5, r5, r6
+    lw   r6, [r0+{__sub_face}]
+    lw   r7, [r6]               ; flags, blend, texture, palette
+    li   r8, 0xFFFFFFFB
+    and  r7, r7, r8             ; without the quad bit
+    bge  {d}, r0, .quad
+    mov  {d}, {c}
+    jmp  .flags
+.quad:
+    ori  r7, r7, 4
+.flags:
+    sw   r7, [r5]
+    addi r6, {a}, 2048
+    sh   r6, [r5+4]
+    shli r6, {a}, 2
+    la   r7, {__sub_col}
+    add  r7, r7, r6
+    lw   r8, [r7]
+    sw   r8, [r5+12]
+    la   r7, {__sub_uv}
+    add  r7, r7, r6
+    lw   r8, [r7]
+    sh   r8, [r5+28]
+    addi r6, {b}, 2048
+    sh   r6, [r5+6]
+    shli r6, {b}, 2
+    la   r7, {__sub_col}
+    add  r7, r7, r6
+    lw   r8, [r7]
+    sw   r8, [r5+16]
+    la   r7, {__sub_uv}
+    add  r7, r7, r6
+    lw   r8, [r7]
+    sh   r8, [r5+30]
+    addi r6, {c}, 2048
+    sh   r6, [r5+8]
+    shli r6, {c}, 2
+    la   r7, {__sub_col}
+    add  r7, r7, r6
+    lw   r8, [r7]
+    sw   r8, [r5+20]
+    la   r7, {__sub_uv}
+    add  r7, r7, r6
+    lw   r8, [r7]
+    sh   r8, [r5+32]
+    addi r6, {d}, 2048
+    sh   r6, [r5+10]
+    shli r6, {d}, 2
+    la   r7, {__sub_col}
+    add  r7, r7, r6
+    lw   r8, [r7]
+    sw   r8, [r5+24]
+    la   r7, {__sub_uv}
+    add  r7, r7, r6
+    lw   r8, [r7]
+    sh   r8, [r5+34]
+}

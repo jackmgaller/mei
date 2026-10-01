@@ -1,0 +1,71 @@
+// Integer arithmetic: signed/unsigned, division semantics, shifts, wrap-around, small types.
+fn p(n: s32) { print_int(n); print_char('\n') }
+fn pu(n: u32) { print_uint(n); print_char('\n') }
+
+var gs: s32 = 7
+
+fn init() {
+    var a = 17
+    var b = -5
+    p(a + b)        // expect: 12
+    p(a - b)        // expect: 22
+    p(a * b)        // expect: -85
+    p(a / b)        // expect: -3
+    p(a % b)        // expect: 2
+    p(b / 2)        // expect: -2
+    p(b % 2)        // expect: -1
+    p(-17 / 4)      // expect: -4
+    let m = -17
+    p(m / 4)        // expect: -4
+    p(m / 8)        // expect: -2
+    p(m >> 2)       // expect: -5
+    p(m << 3)       // expect: -136
+    let u: u32 = 0xFFFFFFF0
+    pu(u >> 4)      // expect: 268435455
+    pu(u / 16)      // expect: 268435455
+    pu(u % 7)       // expect: 2
+    pu(u % 16)      // expect: 0
+    p((u >> 28) as s32) // expect: 15
+    let big = 0x7FFFFFFF
+    p(big + 1)      // expect: -2147483648
+    var z = 0
+    p(a / z)        // expect: 0
+    p(a % z)        // expect: 0
+    var mn = -2147483648
+    p(mn / -1)      // expect: -2147483648
+    var c: u8 = 250
+    c += 10
+    p(c as s32)     // expect: 4
+    var d: s8 = 127
+    d += 1
+    p(d as s32)     // expect: -128
+    var e: s16 = -32768
+    e -= 1
+    p(e as s32)     // expect: 32767
+    var f: u16 = 0
+    f -= 1
+    p(f as s32)     // expect: 65535
+    p(a & 12)       // expect: 0
+    p(a | 12)       // expect: 29
+    p(a ^ 5)        // expect: 20
+    p(~a)           // expect: -18
+    pu(0xFFFF0000 & 0xFF00FF00) // expect: 4278190080
+    let sa: s32 = -1
+    let ua: u32 = 1
+    if sa < 1 { p(1) }          // expect: 1
+    var uu: u32 = 0xFFFFFFFF
+    if uu > ua { p(3) }         // expect: 3
+    if (uu as s32) < 0 { p(4) } // expect: 4
+    p(gs * 6)       // expect: 42
+    p(a * 8)        // expect: 136
+    p(a * 10)       // expect: 170
+    p(a * -3)       // expect: -51
+    p(a / 8)        // expect: 2
+    let small: u8 = 200
+    p(small + small)        // expect: 400
+    let neg: s8 = -100
+    p(neg * 2)              // expect: -200
+    p((300 as u8) as s32)   // expect: 44
+    p((a as u8) as s32)     // expect: 17
+    p(((-1) as u16) as s32) // expect: 65535
+}

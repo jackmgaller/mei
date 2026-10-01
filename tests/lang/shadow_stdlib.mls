@@ -1,0 +1,16 @@
+// A cart may reuse standard-library names; the library keeps using its own.
+struct A { x: s32 }
+const X = 5
+fn sin(v: fixed) -> fixed { return v }
+var btn: s32 = 3
+
+fn init() {
+    let a = A { x: X }
+    print_int(a.x + btn)
+    print_char('\n')        // expect: 8
+    print_fixed(sin(0.5))
+    print_char('\n')        // expect: 0.5
+    let m = mat4_rotate_y(0.5)
+    print_fixed(m[0].z)
+    print_char('\n')        // expect: 0.4794
+}

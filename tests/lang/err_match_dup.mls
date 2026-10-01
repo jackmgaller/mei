@@ -1,0 +1,8 @@
+// error: this value is already matched at line 5
+enum State { A, B }
+fn f(s: State) {
+    match s {
+        A => print_int(1)
+        B, A => print_int(2)
+    }
+}

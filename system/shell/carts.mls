@@ -1,0 +1,131 @@
+// Carts: a scrolling list of the catalogue (title and size). A launches.
+
+const CARTS_TOP = 48
+const CARTS_ROW = 23
+const CARTS_VISIBLE = 7
+var carts_sel: s32
+var carts_scroll: s32          // first row shown, in 1/16 rows... kept in pixels * 16
+var carts_hl: s32 = CARTS_TOP * 16
+
+fn carts_enter() {
+    if carts_sel >= sh_ncarts { carts_sel = 0 }
+}
+
+// Puts the cursor on cart i at once (no scrolling in), e.g. back from that cart.
+fn carts_jump(i: s32) {
+    carts_sel = clamp(i, 0, max(0, sh_ncarts - 1))
+    carts_scroll = 0
+    carts_scroll = carts_scroll_target() * 16
+    carts_hl = (CARTS_TOP + carts_sel * CARTS_ROW) * 16
+}
+
+fn carts_update() {
+    if sh_ncarts > 0 {
+        if sh_nav == UP {
+            if carts_sel > 0 {
+                carts_sel -= 1
+                sh_sfx(SFX_TICK)
+            }
+        } else if sh_nav == DOWN {
+            if carts_sel < sh_ncarts - 1 {
+                carts_sel += 1
+                sh_sfx(SFX_TICK)
+            }
+        } else if sh_nav == LEFT {
+            // page up
+            if carts_sel > 0 {
+                carts_sel = max(0, carts_sel - CARTS_VISIBLE)
+                sh_sfx(SFX_TICK)
+            }
+        } else if sh_nav == RIGHT {
+            if carts_sel < sh_ncarts - 1 {
+                carts_sel = min(sh_ncarts - 1, carts_sel + CARTS_VISIBLE)
+                sh_sfx(SFX_TICK)
+            }
+        }
+        if sh_ok() {
+            shell_launch(carts_sel)
+            return
+        }
+    } else if sh_ok() {
+        sh_sfx(SFX_ERROR)
+    }
+    if sh_back() {
+        sh_sfx(SFX_BACK)
+        shell_go(SCR_HOME, -1)
+    }
+}
+
+// Scroll target (pixels) that keeps the selection inside the window with one row of margin.
+fn carts_scroll_target() -> s32 {
+    let cur = carts_scroll >> 4
+    var top = cur / CARTS_ROW
+    if carts_sel < top + 1 { top = carts_sel - 1 }
+    if carts_sel > top + CARTS_VISIBLE - 2 { top = carts_sel - CARTS_VISIBLE + 2 }
+    top = clamp(top, 0, max(0, sh_ncarts - CARTS_VISIBLE))
+    return top * CARTS_ROW
+}
+
+fn carts_draw() {
+    let ox = sh_ox
+    sh_header("Carts")
+    if sh_ncarts == 0 {
+        sh_panel(40, 76, 240, 92)
+        sh_spr(SH_ART_MOON, 147 + ox, 86)
+        sh_text_c(SH_FONT_MED, 160 + ox, 118, "No carts found", SH_WHITE)
+        sh_text_c(SH_FONT_SMALL, 160 + ox, 140, "Add .mei files to the carts folder", SH_COOL_DIM)
+        sh_footer("", "Back")
+        return
+    }
+    // position "3 of 12" under the clock
+    sb_begin()
+    sb_int(carts_sel + 1, true, 0)
+    sb_str(" of ")
+    let pos = sb_int(sh_ncarts, true, 0)
+    sh_text_r(SH_FONT_SMALL, 304, 30, pos, SH_COOL_DIM)
+
+    let top = CARTS_TOP - 4
+    let h = CARTS_VISIBLE * CARTS_ROW + 6
+    sh_panel(0, top, 320, h)
+    carts_scroll = sh_ease(carts_scroll, carts_scroll_target())
+    let scroll = carts_scroll >> 4
+    carts_hl = sh_ease(carts_hl, CARTS_TOP + carts_sel * CARTS_ROW)
+    let hy = (carts_hl >> 4) - scroll
+    if hy > top - CARTS_ROW && hy < top + h {
+        sh_highlight(28, hy, 276, CARTS_ROW - 3)
+    }
+    let first = max(0, scroll / CARTS_ROW - 1)
+    let last = min(sh_ncarts, first + CARTS_VISIBLE + 3)
+    let saved = sh_blend
+    for i in first..last {
+        let y = CARTS_TOP + i * CARTS_ROW - scroll
+        // fade rows out at the top and bottom of the window
+        var a = 256
+        if y < CARTS_TOP { a = 256 - (CARTS_TOP - y) * 16 }
+        let bottom = CARTS_TOP + (CARTS_VISIBLE - 1) * CARTS_ROW
+        if y > bottom { a = 256 - (y - bottom) * 16 }
+        if a <= 0 { continue }
+        sh_blend = sh_fainter(saved, sh_dissolve(a))
+        let sel = i == carts_sel
+        var dx = 0
+        if sel { dx = 3 }
+        sh_spr_tint(SH_ART_IC_CARTS, 36 + dx + ox, y + 1, 0x808080)
+        var col = SH_WHITE
+        if !sel { col = sh_scale(SH_WHITE, 205) }
+        sh_text_fit(SH_FONT_MED, 62 + dx + ox, y, sh_cart_title(i), col, 180)
+        sb_begin()
+        var sc = SH_COOL_DIM
+        if sel { sc = SH_WARM_HI }
+        sh_text_r(SH_FONT_SMALL, 296 + ox, y + 3, sb_size(sh_cart_size(i)), sc)
+    }
+    sh_blend = saved
+    // scroll bar
+    if sh_ncarts > CARTS_VISIBLE {
+        let track = h - 8
+        let th = max(10, track * CARTS_VISIBLE / sh_ncarts)
+        let ty = top + 4 + (track - th) * scroll / ((sh_ncarts - CARTS_VISIBLE) * CARTS_ROW)
+        sh_rect(311 + ox, top + 4, 2, track, rgb(40, 40, 60), 1)
+        sh_rect(311 + ox, ty, 2, th, SH_COOL_DIM, -1)
+    }
+    sh_footer("Play", "Back")
+}

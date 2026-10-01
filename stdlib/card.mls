@@ -1,0 +1,155 @@
+// Memory cards (docs/MEMCARD.md): save and load through the card controller.
+//
+// Every command takes effect at once, but the controller then stays busy for some frames
+// (2, plus 1 per 512-byte block read, plus 3 per block written). The functions below first
+// wait for a previous command to finish; check card_busy() before calling them to keep the
+// frame loop running smoothly (see "Saving" in docs/LANGUAGE.md).
+
+reg CARD_CMD: u32 @ 0xFF0380      // write: start a command
+reg CARD_STATUS: u32 @ 0xFF0384   // bit 0 busy, bits 8-15 last error, bits 16-17 cards present
+reg CARD_SLOT: u32 @ 0xFF0388     // 0 = card 1, 1 = card 2
+reg CARD_SAVE: u32 @ 0xFF038C     // save number 0-15
+reg CARD_BUF: u32 @ 0xFF0390      // RAM address of the data
+reg CARD_LEN: u32 @ 0xFF0394      // data length (read back by READ and STAT)
+reg CARD_META: u32 @ 0xFF0398     // address of a SaveMeta record
+reg CARD_RESULT: u32 @ 0xFF039C   // command result
+
+// Error codes (card_save and card_delete return them; card_load returns them negated).
+const CARD_OK = 0
+const CARD_NO_CARD = 1
+const CARD_NOT_FOUND = 2
+const CARD_FULL = 3
+const CARD_BAD_ADDRESS = 4        // bad buffer address or length (over CARD_MAX_DATA)
+const CARD_NOT_ALLOWED = 5
+const CARD_BAD_COMMAND = 6
+const CARD_BUSY = 7
+
+const CARD_MAX_DATA = 32000       // bytes of data per save
+const CARD_SAVES = 16             // save numbers 0-15 per cart
+const CARD_BLOCKS = 255           // free blocks on an empty card; a save uses 1 + ceil(len / 512)
+
+// The title and icon shown in the OS for a save: 452 bytes. Build one with
+// tools/mei_icon.py and embed it (embed ICON: SaveMeta = "save_icon.bin"), or fill it in code.
+struct SaveMeta {
+    title: [32]u8          // ASCII, NUL-padded
+    frames: s32            // icon frames, 1-3 (the OS loops them)
+    palette: [16]u16       // 15-bit colours like rgb15(); colour 0 is transparent
+    pixels: [384]u8        // three 16x16 frames at 4 bits per pixel, low nibble = left pixel
+}
+
+// Is the controller still busy with the last command?
+fn card_busy() -> bool { return CARD_STATUS & 1 != 0 }
+
+// The error of the last command (CARD_OK, CARD_FULL, ...).
+fn card_error() -> s32 { return ((CARD_STATUS >> 8) & 255) as s32 }
+
+// Is there a card in slot n (1 or 2)?
+fn card_present(n: s32) -> bool { return (CARD_STATUS >> (15 + n as u32)) & 1 != 0 }
+
+// Use the card in slot n (1 or 2) for the following commands. Slot 1 is the default.
+fn card_slot(n: s32) { CARD_SLOT = (n - 1) as u32 & 1 }
+
+// Waits (ending frames with vsync) until the controller is idle. This stalls the frame
+// loop: update() and draw() do not run meanwhile, so the screen does not change.
+fn card_wait() {
+    while CARD_STATUS & 1 != 0 { vsync() }
+}
+
+// Starts a command (the controller must be idle) and returns its error code.
+fn __card_run(cmd: u32) -> s32 {
+    CARD_CMD = cmd
+    return card_error()
+}
+
+// Starts writing save `num` (0-15): `len` bytes from `data` (at most CARD_MAX_DATA) with the
+// title and icon in `meta`. Returns CARD_OK when the write has started; the card is busy
+// for 2 + 3 * card_blocks_for(len) frames, and `data` and `meta` must not change until then.
+// Replacing a save is atomic: if the new one does not fit (CARD_FULL), the old one stays.
+fn card_save(num: s32, data: *u8, len: s32, meta: *SaveMeta) -> s32 {
+    card_wait()
+    CARD_SAVE = num as u32
+    CARD_BUF = data as u32
+    CARD_LEN = len as u32
+    CARD_META = meta as u32
+    return __card_run(3)
+}
+
+// Reads save `num` into `data` (at most max_len bytes). Returns the number of bytes read,
+// or a negative error (-CARD_NOT_FOUND, -CARD_NO_CARD, ...).
+fn card_load(num: s32, data: *u8, max_len: s32) -> s32 {
+    card_wait()
+    CARD_SAVE = num as u32
+    CARD_BUF = data as u32
+    CARD_LEN = max_len as u32
+    CARD_META = 0
+    let e = __card_run(2)
+    if e != CARD_OK { return -e }
+    return CARD_LEN as s32
+}
+
+// Reads the title and icon of save `num` into `meta`. Returns an error code.
+fn card_load_meta(num: s32, meta: *SaveMeta) -> s32 {
+    card_wait()
+    CARD_SAVE = num as u32
+    CARD_BUF = meta as u32
+    CARD_LEN = 0
+    CARD_META = meta as u32
+    return __card_run(2)
+}
+
+// Deletes save `num`. Returns an error code (CARD_NOT_FOUND if there was none).
+fn card_delete(num: s32) -> s32 {
+    card_wait()
+    CARD_SAVE = num as u32
+    return __card_run(4)
+}
+
+// Does save `num` exist on the card?
+fn card_exists(num: s32) -> bool {
+    card_wait()
+    CARD_SAVE = num as u32
+    if __card_run(1) != CARD_OK { return false }
+    return CARD_RESULT != 0
+}
+
+// The data length of save `num`, or a negative error (-CARD_NOT_FOUND, ...).
+fn card_size(num: s32) -> s32 {
+    card_wait()
+    CARD_SAVE = num as u32
+    let e = __card_run(1)
+    if e != CARD_OK { return -e }
+    if CARD_RESULT == 0 { return -CARD_NOT_FOUND }
+    return CARD_LEN as s32
+}
+
+// Free blocks on the card (a save needs 1 + ceil(len / 512)), or a negative error.
+fn card_free_blocks() -> s32 {
+    card_wait()
+    let e = __card_run(5)
+    if e != CARD_OK { return -e }
+    return CARD_RESULT as s32
+}
+
+// Which of this cart's saves exist: bit n set for save n (0 when there is no card).
+// One command answers for all 16 save numbers; prefer it to card_exists() in a loop.
+fn card_saves() -> u32 {
+    card_wait()
+    if __card_run(6) != CARD_OK { return 0 }
+    return CARD_RESULT
+}
+
+// Blocks a save of `len` data bytes takes on the card.
+fn card_blocks_for(len: s32) -> s32 { return 1 + (len + 511) / 512 }
+
+// Sets the title of a metadata record (truncated to 32 characters, NUL-padded).
+fn card_set_title(meta: *SaveMeta, title: *u8) {
+    var i = 0
+    while i < 32 && title[i] != 0 {
+        meta.title[i] = title[i]
+        i += 1
+    }
+    while i < 32 {
+        meta.title[i] = 0
+        i += 1
+    }
+}

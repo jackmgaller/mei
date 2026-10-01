@@ -1,0 +1,87 @@
+// Loops, break/continue, short-circuit logic, early returns.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+var calls = 0
+fn t(v: bool) -> bool {
+    calls += 1
+    return v
+}
+fn bool_int(b: bool) -> s32 {
+    if b { return 1 }
+    return 0
+}
+fn first_neg() -> s32 {
+    let vals = [5, 2, 7, -1, 4]
+    for i in 0..5 {
+        if vals[i] < 0 { return i }
+    }
+    return -1
+}
+
+fn init() {
+    var s = 0
+    for i in 0..10 {
+        if i % 2 == 0 { continue }
+        if i > 7 { break }
+        s += i
+    }
+    p(s)                // expect: 16
+    var n = 0
+    while n < 100 { n += 7 }
+    p(n)                // expect: 105
+    var found = -1
+    for a in 0..10 {
+        for b in 0..10 {
+            if a * b == 42 {
+                found = a * 10 + b
+                break
+            }
+        }
+        if found >= 0 { break }
+    }
+    p(found)            // expect: 67
+    calls = 0
+    if t(false) && t(true) { p(99) }
+    p(calls)            // expect: 1
+    calls = 0
+    if t(true) || t(true) { p(5) }  // expect: 5
+    p(calls)            // expect: 1
+    let x = 3
+    let b = x > 1 && x < 5
+    if b { p(6) }       // expect: 6
+    let c = x < 1 || x == 3
+    if c { p(7) }       // expect: 7
+    let d = !(x == 3)
+    if d { p(8) } else { p(9) }     // expect: 9
+    for k in 0..4 {
+        if k == 0 { p(10) } else if k == 1 { p(11) } else if k == 2 { p(12) } else { p(13) }
+    }
+    // expect: 10
+    // expect: 11
+    // expect: 12
+    // expect: 13
+    p(first_neg())      // expect: 3
+    var cnt = 0
+    let lo: u32 = 3
+    for i in lo..6 { cnt += 1 }
+    p(cnt)              // expect: 3
+    for i in 5..2 { p(100) }
+    var acc = 0
+    for i in 0..5 { acc += i * 2 + bool_int(i > 1 && t(i < 4)) }
+    p(acc)              // expect: 22
+    var w = 0
+    while true {
+        w += 1
+        if w == 3 { continue }
+        if w > 5 { break }
+    }
+    p(w)                // expect: 6
+    if x > 2
+    {
+        p(14)           // expect: 14
+    }
+    else
+    {
+        p(15)
+    }
+}

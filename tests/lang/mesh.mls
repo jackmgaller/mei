@@ -1,0 +1,23 @@
+// mesh(): culling, near-plane rejection and ordering-table insertion.
+// frames: 3
+embed CUBE: Mesh = "data/cube.bin"
+
+fn draw() {
+    if frame() == 1 {
+        camera(vec3(0.0, 0.0, -5.0), 0.0)
+        mesh(CUBE)                      // only the front face is visible: 1 quad
+        mesh_at(CUBE, vec3(0.0, 0.0, 10.0), 0.78539816)  // turned 45 degrees: 2 quads
+        camera(vec3(0.0, 0.0, 0.5), 0.0)
+        mesh(CUBE)                      // camera inside the cube: dropped by the near plane
+    }
+}
+
+fn update() {
+    if frame() == 2 {
+        print_int(tris_drawn())
+        print_char('\n')                // expect: 6
+        let st = GPU_STATUS
+        print_int((st >> 16) as s32 & 1)
+        print_char('\n')                // expect: 0
+    }
+}

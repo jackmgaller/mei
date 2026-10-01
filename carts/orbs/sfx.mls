@@ -1,0 +1,103 @@
+// Sound: a two-channel stereo music loop (16-bit, 11,025 Hz played at pitch 0.5) and 8-bit
+// effects. The orb chime climbs a major scale with every orb and is panned toward the orb.
+
+embed MUSIC_PAD: s16 = "music_pad.raw"
+embed MUSIC_LEAD: s16 = "music_lead.raw"
+embed SFX_JUMP: s8 = "sfx_jump.raw"
+embed SFX_COLLECT: s8 = "sfx_collect.raw"
+embed SFX_STEP: s8 = "sfx_step.raw"
+embed SFX_LAND: s8 = "sfx_land.raw"
+embed SFX_SPLASH: s8 = "sfx_splash.raw"
+embed SFX_FANFARE: s8 = "sfx_fanfare.raw"
+embed SFX_START: s8 = "sfx_start.raw"
+
+const CH_PAD = 0
+const CH_LEAD = 1
+const CH_JUMP = 2
+const CH_ORB = 3
+const CH_STEP = 4
+const CH_SPLASH = 5
+const CH_JINGLE = 6
+const CH_LAND = 7
+
+const PAD_L = 150
+const PAD_R = 115
+const LEAD_L = 95
+const LEAD_R = 150
+
+// a major scale, as playback rates
+const SCALE: [10]fixed = [1.0, 1.1225, 1.2599, 1.3348, 1.4983, 1.6818, 1.8877, 2.0, 2.2449, 2.5198]
+
+var duck: s32               // frames left of lowered music (under a jingle)
+
+fn set_vol(ch: s32, l: s32, r: s32) {
+    let chan = (AUDIO_BASE + ch * 32) as *u32
+    chan[4] = (l as u32 & 255) | ((r as u32 & 255) << 8)
+}
+
+fn music_start() {
+    play16(CH_PAD, MUSIC_PAD, len(MUSIC_PAD), 0.5, PAD_L, PAD_R, true)
+    play16(CH_LEAD, MUSIC_LEAD, len(MUSIC_LEAD), 0.5, LEAD_L, LEAD_R, true)
+}
+
+// Ducks the music under jingles and fades it back in.
+fn music_update() {
+    if duck <= 0 { return }
+    duck -= 1
+    var k = 96
+    if duck < 64 { k = 256 - duck * 160 / 64 }
+    set_vol(CH_PAD, PAD_L * k / 256, PAD_R * k / 256)
+    set_vol(CH_LEAD, LEAD_L * k / 256, LEAD_R * k / 256)
+}
+
+// Left/right volumes for a sound at p: panned by its direction from the camera.
+fn pan_vols(p: vec3, vol: s32) -> s32 {
+    let dx = p.x - cam_pos.x
+    let dz = p.z - cam_pos.z
+    let side = dx * cam_c - dz * cam_s
+    let dist = abs(dx) + abs(dz) + 0.5
+    let pan = clamp(side / dist, -1.0, 1.0)          // -1 left .. 1 right
+    let l = clamp(((1.0 - pan * 0.7) * vol) as s32, 0, 255)
+    let r = clamp(((1.0 + pan * 0.7) * vol) as s32, 0, 255)
+    return l | (r << 8)
+}
+
+fn play_at(ch: s32, sample: *s8, n: u32, pitch: fixed, p: vec3, vol: s32) {
+    let v = pan_vols(p, vol)
+    play(ch, sample, n, pitch, v & 255, v >> 8, false)
+}
+
+fn sfx_jump() {
+    let pitch = 1.0 + fixed(rnd(64)) / 640
+    play(CH_JUMP, SFX_JUMP, len(SFX_JUMP), pitch, 130, 130, false)
+}
+
+fn sfx_collect(n: s32, p: vec3) {
+    play_at(CH_ORB, SFX_COLLECT, len(SFX_COLLECT), SCALE[clamp(n - 1, 0, 9)], p, 190)
+}
+
+fn sfx_step(side: s32) {
+    let pitch = 0.85 + fixed(rnd(64)) / 256
+    if side == 0 {
+        play(CH_STEP, SFX_STEP, len(SFX_STEP), pitch, 80, 50, false)
+    } else {
+        play(CH_STEP, SFX_STEP, len(SFX_STEP), pitch, 50, 80, false)
+    }
+}
+
+// A soft thud: louder and lower for harder landings (speed 0.06 .. 0.28 units per frame).
+fn sfx_land(p: vec3, speed: fixed) {
+    let vol = clamp((speed * 800) as s32 + 30, 40, 210)
+    play_at(CH_LAND, SFX_LAND, len(SFX_LAND), 1.15 - speed, p, vol)
+}
+fn sfx_splash(p: vec3) { play_at(CH_SPLASH, SFX_SPLASH, len(SFX_SPLASH), 1.0, p, 170) }
+
+fn sfx_fanfare() {
+    play(CH_JINGLE, SFX_FANFARE, len(SFX_FANFARE), 1.0, 190, 190, false)
+    duck = 160
+}
+
+fn sfx_start() {
+    play(CH_JINGLE, SFX_START, len(SFX_START), 1.0, 170, 170, false)
+    duck = 70
+}

@@ -1,0 +1,6 @@
+// error: map() returns an array, so it needs an array
+fn init() {
+    var a: [4]s32
+    let p = &a[0]
+    let b = map(p, fn(x) => x)
+}

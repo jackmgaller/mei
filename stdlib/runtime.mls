@@ -1,0 +1,40 @@
+// The frame loop. The compiler's start-up code runs global initialisers, then
+// __rt_init(), then the cart's init(), then forever: __rt_frame_begin(), update(),
+// draw(), __rt_frame_end().
+
+var __frame_cycles: s32
+var __frame_tris: s32
+
+fn __rt_init() {
+    __font_init()
+    GPU_CTRL = 1
+    camera_fov(1.04719755)
+    camera_clip(0.1, 100.0)
+    camera(vec3(0.0, 0.0, 0.0), 0.0)
+}
+
+fn __rt_frame_begin() {
+    __ot_reset(&__ot[0])
+    __arena_ptr = &__arena[0]
+    __arena_end = &__arena[0] + ARENA_WORDS
+    __ui_tail = null
+    __ot_bias = 0
+}
+
+fn __rt_frame_end() {
+    let before = GPU_STATUS & 0xFFFF
+    GPU_DRAW = &__ot[OT_SIZE - 1] as u32
+    __frame_tris = ((GPU_STATUS & 0xFFFF) - before) as s32
+    if __ui_tail != null { GPU_DRAW = __ui_head }
+    __pad_prev = PAD1
+    __pad2_prev = PAD2
+    __frame_cycles = 500000 - CYCLES
+    vsync()
+}
+
+// CPU cycles used by the previous frame (of 500,000).
+fn cpu_used() -> s32 { return __frame_cycles }
+// Triangles drawn from the ordering table (the 3D world) in the previous frame.
+fn tris_drawn() -> s32 { return __frame_tris }
+// Frames since reset.
+fn frame() -> u32 { return FRAME }

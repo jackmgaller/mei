@@ -1,0 +1,70 @@
+// Structs: literals, nesting, copies, by-reference parameters, returns, pointers.
+fn p(n: s32) { print_int(n); print_char('\n') }
+fn pf(f: fixed) { print_fixed(f); print_char('\n') }
+
+struct Point { x: s32, y: s32 }
+struct Player { pos: vec3, yaw: fixed, hp: u8, name: *u8 }
+struct Box {
+    lo: Point
+    hi: Point
+    tag: u16
+}
+
+var g: Player
+var boxes: [4]Box
+
+fn area(b: Box) -> s32 { return (b.hi.x - b.lo.x) * (b.hi.y - b.lo.y) }
+fn grow(b: *Box, n: s32) {
+    b.lo.x -= n
+    b.lo.y -= n
+    b.hi.x += n
+    b.hi.y += n
+}
+fn make(x: s32, y: s32) -> Point { return Point { x: x, y: y } }
+fn mid(b: Box) -> Point { return Point { x: (b.lo.x + b.hi.x) / 2, y: (b.lo.y + b.hi.y) / 2 } }
+fn swap(p: Point) -> Point {
+    var r = p
+    r.x = p.y
+    r.y = p.x
+    return r
+}
+
+fn init() {
+    var b = Box { lo: Point { x: 1, y: 2 }, hi: make(5, 8), tag: 9 }
+    p(area(b))          // expect: 24
+    grow(&b, 1)
+    p(area(b))          // expect: 48
+    p(b.lo.x)           // expect: 0
+    let m = mid(b)
+    p(m.x)              // expect: 3
+    p(m.y)              // expect: 5
+    p(swap(m).x)        // expect: 5
+    boxes[2] = b
+    boxes[2].tag += 1
+    p(boxes[2].tag as s32)  // expect: 10
+    p(boxes[2].hi.y)    // expect: 9
+    p(boxes[0].hi.y)    // expect: 0
+    g.pos = vec3(1.0, 2.0, 3.0)
+    g.yaw = 0.5
+    g.hp = 200
+    g.hp += 100
+    p(g.hp as s32)      // expect: 44
+    g.name = "hero"
+    println(g.name)     // expect: hero
+    let pp = &g
+    pp.pos.y += 1.0
+    pf(g.pos.y)         // expect: 3.0
+    pf(pp.yaw)          // expect: 0.5
+    var copy = g
+    copy.yaw = 9.0
+    pf(g.yaw)           // expect: 0.5
+    pf(copy.yaw)        // expect: 9.0
+    p(sizeof(Player))   // expect: 28
+    p(sizeof(Box))      // expect: 20
+    let pts = [Point { x: 1, y: 2 }, Point { x: 3, y: 4 }]
+    p(pts[1].x + pts[0].y)  // expect: 5
+    var partial = Point { y: 7 }
+    p(partial.x + partial.y)  // expect: 7
+    partial = Point { x: partial.y, y: partial.x }
+    p(partial.x * 10 + partial.y)  // expect: 70
+}

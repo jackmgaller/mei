@@ -1,0 +1,24 @@
+// String literals, string constants, formatting helpers.
+fn p(n: s32) { print_int(n); print_char('\n') }
+const GREETING = "Hello, Mei!"
+
+fn init() {
+    println(GREETING)       // expect: Hello, Mei!
+    println("quote\" and \\ backslash")  // expect: quote" and \ backslash
+    p(len(GREETING))        // expect: 12
+    let s = "abc"
+    p(s[1] as s32)          // expect: 98
+    var buf: [16]u8
+    int_to_str(&buf[0], -305)
+    println(&buf[0])        // expect: -305
+    print_hex(0xDEADBEEF)
+    print_char('\n')        // expect: DEADBEEF
+    print_fixed(-3.25)
+    print_char('\n')        // expect: -3.25
+    print_int(-2147483648)
+    print_char('\n')        // expect: -2147483648
+    print_uint(4294967295)
+    print_char('\n')        // expect: 4294967295
+    print("a")
+    print("b\n")            // expect: ab
+}

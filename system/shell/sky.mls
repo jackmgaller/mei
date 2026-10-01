@@ -1,0 +1,171 @@
+// The shell's backdrop: a sky that follows the console's real-time clock (SYS_TIME). The
+// sun rises around 06:30 and sets around 18:30 with dawn and dusk colours; by night the
+// moon takes the same arc (明 = 日 + 月) and stars twinkle. The moving hills at the bottom
+// are in hills.mls.
+
+const SKY_SUNRISE = 23400        // 06:30, in seconds since midnight; sunset 12 hours later
+
+var sky_day: s32                 // 0 night .. 256 day
+var sky_twilight: s32            // 0 .. 256, strongest when the sun is on the horizon
+var sky_bottom: u32              // horizon colour (the land and the lake use it)
+var sky_mid: u32
+var sky_bodies_on: bool          // the sun and moon are shown (home screen only)
+var sky_bodies: s32              // 0..256 as they dissolve in
+var sky_bx: s32                  // where the sun (by day) or moon (by night) is on its arc
+var sky_by: s32
+var sky_sun: bool                // the body up is the sun
+var sky_up: s32                  // 0..256: how high the body is (for reflections)
+
+const SKY_NSTARS = 36
+var sky_star: [36]u32            // packed x | y << 16 | phase << 24
+const SKY_NMOTES = 14
+var sky_mote_x: [14]s32
+var sky_mote_y: [14]s32          // in 1/16 pixels
+var sky_mote_s: [14]s32          // speed
+
+fn sky_init() {
+    seed(0x6D656921)
+    for i in 0..SKY_NSTARS {
+        let x = rnd(320) as u32
+        let y = rnd(180) as u32
+        sky_star[i] = x | (y << 16) | ((rnd(256) as u32) << 24)
+    }
+    for i in 0..SKY_NMOTES {
+        sky_mote_x[i] = rnd(320)
+        sky_mote_y[i] = rnd(240 * 16)
+        sky_mote_s[i] = 3 + rnd(6)
+    }
+    hills_init()
+}
+
+// Arc for the sun and moon (centre positions): x from SKY_ARC_X - SKY_ARC_RX to
+// SKY_ARC_X + SKY_ARC_RX, y from SKY_ARC_HORIZON up to SKY_ARC_HORIZON - SKY_ARC_RY.
+// A body is solid above y = 46, dissolves until y = 58 and is gone below that, so it
+// always clears the home menu panel (y >= 74), the subtitle (x < 198), and the glow stays
+// inside x >= 201 while visible.
+const SKY_ARC_X = 264
+const SKY_ARC_RX = 46
+const SKY_ARC_HORIZON = 78
+const SKY_ARC_RY = 54
+const SKY_GLOW_R = 20
+
+fn sky_show_bodies(on: bool) { sky_bodies_on = on }
+
+// Draws the sun or the moon at its arc position (sky_bx, sky_by).
+fn sky_body() {
+    let x = sky_bx
+    let y = sky_by
+    if y >= 58 { return }
+    var v = 256
+    if y > 46 { v = (58 - y) * 256 / 12 }
+    v = min(v, sky_bodies)
+    let saved = sh_blend
+    sh_blend = sh_dissolve(v)
+    if sky_sun {
+        sh_glow(x, y, SKY_GLOW_R, sh_scale(sh_mix(rgb(130, 60, 16), rgb(110, 90, 50), sky_day), v))
+        sh_spr(SH_ART_SUN, x - 15, y - 15)
+    } else {
+        sh_glow(x, y, SKY_GLOW_R, sh_scale(rgb(44, 52, 86), v))
+        sh_spr(SH_ART_MOON, x - 13, y - 13)
+    }
+    sh_blend = saved
+}
+
+// Day angle in radians from the real time: 0 at sunrise (06:30), pi/2 at 12:30, pi at
+// sunset (18:30), 3pi/2 in the middle of the night.
+fn sky_angle() -> fixed {
+    let t = ((SYS_TIME as s32) % 86400 - SKY_SUNRISE + 86400) % 86400
+    return from_bits(t * 4766 / 1000)        // TAU / 86400 is about 4.766 / 65536
+}
+
+var sky_c_time: s32 = -1
+var sky_top: u32
+var sky_s: fixed
+var sky_c: fixed
+
+// Sky colours and the body's position, recomputed when the clock changes (once a second).
+fn sky_update() {
+    let ang = sky_angle()
+    let s = sin(ang)
+    let c = cos(ang)
+    sky_s = s
+    sky_c = c
+    sky_day = clamp(bits(s * 3 + 0.5) >> 8, 0, 256)
+    sky_twilight = 256 - clamp(bits(abs(s) * 4) >> 8, 0, 256)
+    // the body that is up and where it is on the arc
+    var bc = c
+    var bs = s
+    sky_sun = s > 0.0
+    if !sky_sun {
+        bc = -c
+        bs = -s
+    }
+    sky_bx = SKY_ARC_X - (bc * SKY_ARC_RX) as s32
+    sky_by = SKY_ARC_HORIZON - (bs * SKY_ARC_RY) as s32
+    sky_up = clamp(bits(bs * 3) >> 8, 0, 256)
+
+    // gradient: top, middle, horizon; dawn is a little pinker than dusk
+    var top = sh_mix(rgb(8, 10, 34), rgb(46, 92, 168), sky_day)
+    var mid = sh_mix(rgb(18, 20, 60), rgb(86, 128, 196), sky_day)
+    var bot = sh_mix(rgb(40, 38, 92), rgb(156, 184, 220), sky_day)
+    let tw = sky_twilight
+    var tw_mid = rgb(132, 86, 140)
+    var tw_bot = rgb(244, 140, 92)
+    if c > 0.0 {
+        tw_mid = rgb(150, 110, 170)
+        tw_bot = rgb(250, 170, 150)
+    }
+    sky_top = sh_mix(top, rgb(50, 44, 104), tw * 3 / 5)
+    sky_mid = sh_mix(mid, tw_mid, tw * 3 / 4)
+    sky_bottom = sh_mix(bot, tw_bot, tw * 7 / 8)
+}
+
+fn sky_draw() {
+    let now = SYS_TIME as s32
+    if now != sky_c_time {
+        sky_c_time = now
+        sky_update()
+    }
+    let top = sky_top
+    let mid = sky_mid
+    let bot = sky_bottom
+    cls(top)
+    sh_vgrad(0, 0, 320, 110, top, mid, -1)
+    sh_vgrad(0, 110, 320, 130, mid, bot, -1)
+
+    // stars
+    let night = 256 - sky_day
+    let fr = FRAME as s32
+    if night > 8 {
+        for i in 0..SKY_NSTARS {
+            let st = sky_star[i]
+            let x = (st & 0x1FF) as s32
+            let y = ((st >> 16) & 0xFF) as s32
+            let ph = (st >> 24) as s32
+            let tw2 = (fr * 3 + ph * 7) & 255
+            var b = 90 + ((tw2 - 128) * (tw2 - 128) >> 7)
+            b = (b * night) >> 8
+            let col = rgb(b, b, b + 20)
+            if ph < 40 { sh_rect(x, y, 2, 2, col, 1) } else { sh_rect(x, y, 1, 1, col, 1) }
+        }
+    }
+
+    if sky_bodies_on { sky_bodies = min(256, sky_bodies + 24) } else { sky_bodies = 0 }
+    if sky_bodies > 0 { sky_body() }
+
+    // motes drift upward, warm by day and cool by night
+    let mc = sh_mix(rgb(70, 90, 130), rgb(130, 100, 60), sky_day)
+    for i in 0..SKY_NMOTES {
+        var y = sky_mote_y[i] - sky_mote_s[i]
+        if y < -128 {
+            y = 250 * 16
+            sky_mote_x[i] = rnd(320)
+        }
+        sky_mote_y[i] = y
+        let wob = (sin(from_bits((y * 40 + i * 9000))) * 6) as s32
+        let sz = 4 + (i & 3) * 2
+        sh_spr_wh(SH_ART_DOT, sky_mote_x[i] + wob, y >> 4, sz, sz, mc, 1)
+    }
+
+    hills_draw(bot)
+}

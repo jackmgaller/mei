@@ -1,0 +1,3 @@
+// error: the cart ID "LANTERN-LAKE-DELUXE" is longer than 16 characters
+cart "Lantern Lake", "LANTERN-LAKE-DELUXE"
+fn init() {}

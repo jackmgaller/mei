@@ -1,0 +1,386 @@
+// Boot theme 0, DUET. Assets: tools/gen_boot_duet.py.
+//
+// A bright white stage. A warm sun-drop and a cool moon-drop bounce in and answer each other
+// with every landing (each landing sends a ring across the floor), hop around each other,
+// then leap up together, spinning. In the air they pop into the 日 and 月 halves of 明, two
+// rings splash out and interlock, sparkles fly, and MEI bounces in letter by letter.
+// Everything is 2D, drawn on the interface list in painter's order.
+
+embed DUET_ATLAS: u8 = "duet/atlas.bin"      // 8-bit texture, slots 2-3
+embed DUET_PAL: u16 = "duet/pal.bin"         // 8-bit palette 2 (colours 512-767)
+embed DUET_ML: s8 = "duet/mix_l.raw"         // companded stereo stems
+embed DUET_MR: s8 = "duet/mix_r.raw"
+embed DUET_GAIN: u8 = "duet/gain.bin"
+
+const DUET_FRAMES = 300
+const DUET_LEAP = 120             // both leap from the floor
+const DUET_POP = 168              // the drops become 日 and 月
+const DUET_TEX: u32 = (2 << 16) | (2 << 24)    // slot 2, 8-bit, palette 2
+const DUET_CX = 160               // orbit centre on the floor
+const DUET_CY = 178
+const DUET_RX = 72
+const DUET_RY = 18
+const DUET_GY = 86                // where 明 settles (日 at x 148, 月 at x 172)
+
+// 24-segment circle
+const DUET_CS: [24]fixed = [1.0, 0.9659, 0.866, 0.7071, 0.5, 0.2588, 0.0, -0.2588, -0.5, -0.7071,
+    -0.866, -0.9659, -1.0, -0.9659, -0.866, -0.7071, -0.5, -0.2588, 0.0, 0.2588, 0.5, 0.7071, 0.866, 0.9659]
+const DUET_SN: [24]fixed = [0.0, 0.2588, 0.5, 0.7071, 0.866, 0.9659, 1.0, 0.9659, 0.866, 0.7071,
+    0.5, 0.2588, 0.0, -0.2588, -0.5, -0.7071, -0.866, -0.9659, -1.0, -0.9659, -0.866, -0.7071, -0.5, -0.2588]
+
+// Landings: frame and orbit angle (degrees). The sun starts on the left, the moon on the
+// right; they hop counter-clockwise around each other and end on swapped sides.
+const DUET_SUN_F: [4]s32 = [24, 72, 96, 120]
+const DUET_SUN_A: [4]s32 = [180, 240, 300, 360]
+const DUET_MOON_F: [4]s32 = [48, 84, 108, 120]
+const DUET_MOON_A: [4]s32 = [0, 60, 120, 180]
+
+// a drop's state this frame
+struct DuetDrop {
+    x: fixed          // screen position of the drop's base (centre bottom)
+    y: fixed
+    gy: fixed         // floor under it (for the shadow)
+    sx: fixed         // squash and stretch
+    sy: fixed
+    s: fixed          // overall scale (depth)
+    depth: fixed      // larger is nearer
+}
+
+var duet_sun: DuetDrop
+var duet_moon: DuetDrop
+
+fn duet_start() {
+    load_texture(2, DUET_ATLAS, len(DUET_ATLAS))
+    load_palette(512, DUET_PAL, 256)
+}
+
+// ---- helpers
+
+fn duet_pos(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
+
+fn duet_rad(deg: s32) -> fixed { return (deg as fixed) * 0.0174533 }
+
+// A textured quad from (x0, y0) to (x1, y1) on the interface list. mode < 0: opaque.
+fn duet_tex(x0: s32, y0: s32, x1: s32, y1: s32, u0: s32, v0: s32, u1: s32, v1: s32, tint: u32, mode: s32) {
+    if x1 <= x0 || y1 <= y0 { return }
+    let q = packet_alloc(10)
+    if q == null { return }
+    var type: u32 = 0x26
+    q[1] = tint
+    if mode >= 0 { type = 0x2E; q[1] = tint | ((mode as u32) << 24) }
+    q[2] = duet_pos(x0, y0)
+    q[3] = (u0 as u32) | ((v0 as u32) << 8) | DUET_TEX
+    q[4] = duet_pos(x1, y0)
+    q[5] = (u1 as u32) | ((v0 as u32) << 8)
+    q[6] = duet_pos(x0, y1)
+    q[7] = (u0 as u32) | ((v1 as u32) << 8)
+    q[8] = duet_pos(x1, y1)
+    q[9] = (u1 as u32) | ((v1 as u32) << 8)
+    ui_insert(q, type)
+}
+
+// A thin ellipse ring in an opaque colour; segments first..first+count-1 (of 24) only.
+fn duet_ring(cx: s32, cy: s32, r: fixed, squash: fixed, th: fixed, col: u32, first: s32, count: s32) {
+    if r <= 0.0 { return }
+    let ri = max(r - th / 2, 0.0)
+    let ro = r + th / 2
+    let ryi = ri * squash
+    let ryo = ro * squash
+    for n in 0..count {
+        let i = (first + n + 48) % 24
+        let j = (i + 1) % 24
+        let q = packet_alloc(6)
+        if q == null { return }
+        q[1] = col
+        q[2] = duet_pos(cx + (DUET_CS[i] * ri) as s32, cy + (DUET_SN[i] * ryi) as s32)
+        q[3] = duet_pos(cx + (DUET_CS[j] * ri) as s32, cy + (DUET_SN[j] * ryi) as s32)
+        q[4] = duet_pos(cx + (DUET_CS[i] * ro) as s32, cy + (DUET_SN[i] * ryo) as s32)
+        q[5] = duet_pos(cx + (DUET_CS[j] * ro) as s32, cy + (DUET_SN[j] * ryo) as s32)
+        ui_insert(q, 0x24)
+    }
+}
+
+// The colour k/256 of the way from the paper white to c.
+fn duet_ink(c: u32, k: s32) -> u32 {
+    let kk = clamp(k, 0, 256)
+    let r = 250 + ((c & 255) as s32 - 250) * kk / 256
+    let g = 250 + (((c >> 8) & 255) as s32 - 250) * kk / 256
+    let b = 248 + (((c >> 16) & 255) as s32 - 248) * kk / 256
+    return rgb(r, g, b)
+}
+
+// Scales the three channels of a colour by k (0..256).
+fn duet_scale(c: u32, k: s32) -> u32 {
+    let kk = clamp(k, 0, 256) as u32
+    return (((c & 0xFF00FF) * kk >> 8) & 0xFF00FF) | (((c & 0x00FF00) * kk >> 8) & 0x00FF00)
+}
+
+fn duet_ease_out(u: fixed) -> fixed {
+    let v = 1.0 - clamp(u, 0.0, 1.0)
+    return 1.0 - v * v * v
+}
+
+// overshooting pop: 0 -> about 1.2 -> 1
+fn duet_pop(u: fixed) -> fixed {
+    if u <= 0.0 { return 0.0 }
+    if u >= 1.0 { return 1.0 }
+    let v = 1.0 - u
+    return 1.0 - v * v * v * v * cos(u * 9.4248)
+}
+
+// ---- the drops
+
+// Where a drop is at frame t, from its landing table.
+fn duet_drop(d: *DuetDrop, t: s32, lf: *s32, la: *s32, x_in: s32) {
+    // the floor position of each landing on the orbit ellipse
+    var i = 0
+    while i < 4 && lf[i] <= t { i += 1 }
+    var x: fixed
+    var gy: fixed
+    var h: fixed
+    let sq_t = t - lf[max(i - 1, 0)]
+    if i == 0 {
+        // falling in from above the screen
+        let u = (t as fixed) / lf[0]
+        let a = duet_rad(la[0])
+        let lx = DUET_CX as fixed + cos(a) * DUET_RX
+        x = lerp(x_in as fixed, lx, u)
+        gy = DUET_CY as fixed + sin(a) * DUET_RY
+        h = (1.0 - u * u) * 230
+    } else if i >= 4 {
+        let a = duet_rad(la[3])
+        x = DUET_CX as fixed + cos(a) * DUET_RX
+        gy = DUET_CY as fixed + sin(a) * DUET_RY
+        h = 0.0
+    } else {
+        let u = ((t - lf[i - 1]) as fixed) / (lf[i] - lf[i - 1])
+        let a = lerp(duet_rad(la[i - 1]), duet_rad(la[i]), u)
+        x = DUET_CX as fixed + cos(a) * DUET_RX
+        gy = DUET_CY as fixed + sin(a) * DUET_RY
+        let hop = ((lf[i] - lf[i - 1]) as fixed) * 1.4
+        h = u * (1.0 - u) * 4 * hop
+    }
+    // squash on landing, a little stretch while falling fast
+    var sx: fixed = 1.0
+    var sy: fixed = 1.0
+    if i > 0 && sq_t < 14 {
+        let k = (14 - sq_t) as fixed / 14
+        let w = cos((sq_t as fixed) * 0.75) * k * k * 0.38
+        sy = 1.0 - w
+        sx = 1.0 + w * 0.8
+    } else if h > 30.0 && i == 0 {
+        sy = 1.18
+        sx = 0.88
+    }
+    d.x = x
+    d.y = gy - h
+    d.gy = gy
+    d.sx = sx
+    d.sy = sy
+    d.depth = (gy - DUET_CY as fixed) / DUET_RY
+    d.s = 1.0 + d.depth * 0.12
+}
+
+// The leap: from the floor (frame DUET_LEAP) spinning up to the 明 position.
+fn duet_leap(d: *DuetDrop, t: s32, a0: s32, a1: s32, hx: fixed) {
+    let u = clamp(((t - DUET_LEAP) as fixed) / (DUET_POP - DUET_LEAP), 0.0, 1.0)
+    let e = duet_ease_out(u)
+    let a = lerp(duet_rad(a0), duet_rad(a1), e)
+    let rx = lerp(DUET_RX as fixed, hx, e)
+    let ry = lerp(DUET_RY as fixed, 0.0, e)
+    let cy = lerp(DUET_CY as fixed, DUET_GY as fixed + 21.5, e) - sin(u * 3.1416) * 40
+    d.x = DUET_CX as fixed + cos(a) * rx
+    d.y = cy + sin(a) * ry
+    d.gy = DUET_CY as fixed + sin(a) * DUET_RY
+    d.depth = sin(a)
+    d.s = 1.0 + d.depth * 0.12 * (1.0 - e)
+    let st = (1.0 - e) * 0.25
+    d.sx = 1.0 - st * 0.5
+    d.sy = 1.0 + st
+}
+
+fn duet_shadow(d: *DuetDrop, fade: s32) {
+    let h = d.gy - d.y
+    let k = clamp(256 - (h * 256 / 120) as s32, 0, 256) * fade / 256
+    if k <= 0 { return }
+    let w = (22.0 * d.s * (1.0 + h / 160)) as s32
+    let hh = max(w / 4, 2)
+    let x = d.x as s32
+    let y = d.gy as s32
+    duet_tex(x - w, y - hh, x + w, y + hh, 96, 0, 144, 24, duet_scale(rgb(26, 26, 24), k), 2)
+}
+
+fn duet_draw_drop(d: *DuetDrop, u0: s32, scale: fixed) {
+    if scale <= 0.0 { return }
+    let s = d.s * scale
+    let hw = 24.0 * s * d.sx
+    let hh = 24.0 * s * d.sy
+    // the sprite's sphere sits 2.5 pixels inside its 48-pixel box
+    let cy = d.y - 21.5 * s * d.sy
+    duet_tex((d.x - hw) as s32, (cy - hh) as s32, (d.x + hw) as s32, (cy + hh) as s32,
+               u0, 0, u0 + 48, 48, 0x808080, -1)
+}
+
+// ---- sparkles
+
+fn duet_star(x: s32, y: s32, r: s32, which: s32) {
+    if r <= 0 { return }
+    let u = 144 + which * 16
+    duet_tex(x - r, y - r, x + r, y + r, u, 0, u + 16, 16, 0x808080, -1)
+}
+
+// ---- sound: two companded 8-bit stems (see gen_boot_duet.py)
+
+fn duet_audio(t: s32) {
+    if t == 0 {
+        play(0, DUET_ML, len(DUET_ML), 1.0, 0, 0, false)
+        play(1, DUET_MR, len(DUET_MR), 1.0, 0, 0, false)
+    }
+    let k = min(((sound_pos(0) * 2 + 367) / 735) as s32, len(DUET_GAIN) - 1)
+    let g = DUET_GAIN[k] as u32
+    (AUDIO_BASE as *u32)[4] = g
+    ((AUDIO_BASE + 32) as *u32)[4] = g << 8
+}
+
+// ---- frame
+
+fn duet_frame(t: s32) -> bool {
+    if t >= DUET_FRAMES {
+        stop(0)
+        stop(1)
+        return true
+    }
+    duet_audio(t)
+    cls(rgb(250, 250, 248))
+    // a whisper of warm on the left, cool on the right, and a slightly deeper floor
+    let q = packet_alloc(9)
+    if q != null {
+        q[1] = rgb(255, 250, 242); q[2] = duet_pos(0, 0)
+        q[3] = rgb(242, 248, 255); q[4] = duet_pos(320, 0)
+        q[5] = rgb(246, 244, 240); q[6] = duet_pos(0, 240)
+        q[7] = rgb(238, 242, 248); q[8] = duet_pos(320, 240)
+        ui_insert(q, 0x25)
+    }
+
+    // floor rings from each landing
+    for i in 0..4 {
+        duet_landing_ring(t, DUET_SUN_F[i], DUET_SUN_A[i], rgb(255, 150, 40))
+        duet_landing_ring(t, DUET_MOON_F[i], DUET_MOON_A[i], rgb(90, 155, 252))
+    }
+
+    // the drops
+    let sun = &duet_sun
+    let moon = &duet_moon
+    if t < DUET_LEAP {
+        duet_drop(sun, t, &DUET_SUN_F[0], &DUET_SUN_A[0], 70)
+        duet_drop(moon, t, &DUET_MOON_F[0], &DUET_MOON_A[0], 250)
+    } else {
+        // half a turn plus a whole one: the sun ends on the left, the moon on the right
+        duet_leap(sun, t, 0, 540, 12.0)
+        duet_leap(moon, t, 180, 720, 12.0)
+    }
+    var dscale: fixed = 1.0
+    if t >= DUET_POP { dscale = 1.0 - ((t - DUET_POP) as fixed) / 5 }
+    let sfade = clamp((DUET_POP + 10 - t) * 256 / 30, 0, 256)
+    duet_shadow(sun, sfade)
+    duet_shadow(moon, sfade)
+    if sun.depth < moon.depth {
+        duet_draw_drop(sun, 0, dscale)
+        duet_draw_drop(moon, 48, dscale)
+    } else {
+        duet_draw_drop(moon, 48, dscale)
+        duet_draw_drop(sun, 0, dscale)
+    }
+
+    if t >= DUET_POP - 2 { duet_finale(t) }
+    return false
+}
+
+fn duet_landing_ring(t: s32, f: s32, deg: s32, ink: u32) {
+    let dt = t - f
+    if dt < 0 || dt > 44 { return }
+    let a = duet_rad(deg)
+    let x = DUET_CX + (cos(a) * DUET_RX) as s32
+    let y = DUET_CY + (sin(a) * DUET_RY) as s32
+    let u = (dt as fixed) / 44
+    let r = 6.0 + duet_ease_out(u) * 46
+    let k = ((1.0 - u) * (1.0 - u) * 256) as s32
+    duet_ring(x, y, r, 0.27, 2.6 - u * 1.4, duet_ink(ink, k), 0, 24)
+    if dt > 6 {
+        let u2 = ((dt - 6) as fixed) / 38
+        duet_ring(x, y, 4.0 + duet_ease_out(u2) * 26, 0.27, 1.6, duet_ink(ink, ((1.0 - u2) * 120) as s32), 0, 24)
+    }
+}
+
+// 明 pops in, the rings splash out and interlock, sparkles fly, MEI bounces in.
+fn duet_finale(t: s32) {
+    let dt = t - DUET_POP
+    // rings around 日 and 月
+    if dt >= 0 && dt < 70 {
+        let u = (dt as fixed) / 70
+        let r = 20.0 + duet_ease_out(u) * 82
+        let k = ((1.0 - u) * (1.0 - u) * 256) as s32
+        let th = 5.0 - u * 4
+        let sun_ink = duet_ink(rgb(255, 150, 40), k)
+        let moon_ink = duet_ink(rgb(90, 155, 252), k)
+        duet_ring(148, DUET_GY, r, 1.0, th, sun_ink, 0, 24)
+        duet_ring(172, DUET_GY, r, 1.0, th, moon_ink, 0, 24)
+        // interlock: the sun's ring passes over the moon's at the top crossing
+        // (the moon's lies over the sun's at the bottom one)
+        let hgt = sqrt(r * r - 144.0)
+        let seg = (atan2(-hgt, 12.0) * 3.8197) as s32      // radians -> 24ths of a turn
+        duet_ring(148, DUET_GY, r, 1.0, th, sun_ink, seg - 1, 3)
+    }
+    // the glyphs: 日 (gold) and 月 (blue), 24 pixels apart, popping with overshoot
+    let s = duet_pop((dt as fixed) / 26)
+    if s > 0.0 {
+        let hw = 28.0 * s
+        let hh = 36.0 * s
+        let y0 = (DUET_GY as fixed - hh) as s32
+        let y1 = (DUET_GY as fixed + hh) as s32
+        duet_tex((148.0 - hw) as s32, y0, (148.0 + hw) as s32, y1, 0, 48, 56, 120, 0x808080, -1)
+        duet_tex((172.0 - hw) as s32, y0, (172.0 + hw) as s32, y1, 64, 48, 120, 120, 0x808080, -1)
+    }
+    // sparkles bursting from between them
+    if dt >= 0 && dt < 48 {
+        let u = (dt as fixed) / 48
+        let e = duet_ease_out(u)
+        for i in 0..10 {
+            let a = duet_rad(i * 36 + 18)
+            let dist = e * (64 + (i & 3) * 12)
+            let x = 160 + (cos(a) * dist) as s32
+            let y = DUET_GY + (sin(a) * dist * 0.8) as s32
+            let r = ((1.0 - u) * 12) as s32
+            duet_star(x, y, r, i & 1)
+        }
+    }
+    // MEI, letter by letter: M, E, I pop up from below and settle
+    duet_letter(t, 186, 106, 128, 40)
+    duet_letter(t, 192, 156, 170, 32)
+    duet_letter(t, 198, 198, 204, 16)
+    // a few twinkles to hold the moment
+    if dt > 40 {
+        for i in 0..4 {
+            let ph = (t * 7 + i * 47) % 90
+            if ph < 24 {
+                let r = (sin((ph as fixed) * 0.1309) * 7) as s32
+                let x = 160 + (i * 67 % 190) - 95
+                let y = 54 + (i * 41 % 130)
+                duet_star(x, y, r, 2)
+            }
+        }
+    }
+}
+
+// One letter of MEI: lands at frame f at x (left edge), atlas u, width w.
+fn duet_letter(t: s32, f: s32, x: s32, u: s32, w: s32) {
+    let dt = t - f + 10
+    if dt < 0 { return }
+    let s = duet_pop((dt as fixed) / 24)
+    let rise = ((1.0 - duet_ease_out((dt as fixed) / 14)) * 18) as s32
+    let cx = x + w / 2
+    let hw = ((w as fixed) * s / 2) as s32
+    let hh = (20.0 * s) as s32
+    let cy = 158 + rise
+    duet_tex(cx - hw, cy - hh, cx + hw, cy + hh, u, 48, u + w, 88, 0x808080, -1)
+}

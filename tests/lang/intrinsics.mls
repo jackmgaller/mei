@@ -1,0 +1,73 @@
+// map, map_into, filter, filter_into, reduce, each over arrays and pointer+count.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+struct Particle { pos: vec2, vel: vec2, life: s32 }
+
+var parts: [8]Particle
+var nparts = 0
+
+fn sq(x: s32) -> s32 { return x * x }
+fn alive(q: Particle) -> bool { return q.life > 0 }
+fn step(q: *Particle) {
+    q.pos = q.pos + q.vel
+    q.life -= 1
+}
+fn grow(q: Particle) -> Particle {
+    var r = q
+    r.life += 10
+    return r
+}
+
+fn init() {
+    let xs = [1, 2, 3, 4, 5, 6, 7, 8]
+    let ys = map(xs, sq)
+    p(ys[7])                                    // expect: 64
+    let fs = map(xs, fn(x) => x as fixed * 0.5)
+    print_fixed(fs[2])
+    print_char('\n')                            // expect: 1.5
+    p(reduce(xs, 0, fn(acc, x) => acc + x))     // expect: 36
+    p(reduce(xs, 1, fn(acc: s32, x: s32) -> s32 { return acc * x }, 5))  // expect: 120
+    let vs = [vec3(1.0, 0.0, 0.0), vec3(0.0, 2.0, 0.0), vec3(0.0, 0.0, 3.0)]
+    let total = reduce(vs, vec3(0.0, 0.0, 0.0), fn(a, v) => a + v)
+    print_vec(total as vec4)
+    print_char('\n')                            // expect: (1.0, 2.0, 3.0, 0.0)
+    let lens = map(vs, fn(v) => length(v))
+    print_fixed(lens[1] + lens[2])
+    print_char('\n')                            // expect: 5.0
+    var buf = xs
+    let n = filter(buf, fn(x) => x % 3 != 0)
+    p(n)                                        // expect: 6
+    p(buf[0] * 100000 + buf[1] * 10000 + buf[2] * 1000 + buf[3] * 100 + buf[4] * 10 + buf[5])  // expect: 124578
+    let m = filter(buf, fn(x) => x > 4, n)
+    p(m)                                        // expect: 3
+    var evens: [8]s32
+    let ne = filter_into(evens, xs, fn(x) => x % 2 == 0)
+    p(ne * 1000 + evens[0] * 100 + evens[3])    // expect: 4208
+    var out: [8]s32
+    map_into(out, xs, fn(x) => -x, 3)
+    p(out[0] + out[1] + out[2] + out[3])        // expect: -6
+    let ptr = &xs[2]
+    map_into(&out[0], ptr, sq, 2)
+    p(out[0] + out[1])                          // expect: 25
+    var sum = 0
+    each(xs, fn(x: s32) { print_int(x) })
+    print_char('\n')                            // expect: 12345678
+    // particles: update in place through pointers, then drop the dead ones
+    for i in 0..5 {
+        parts[i] = Particle { pos: vec2(0.0, 0.0), vel: vec2(1.0, 0.5), life: i }
+    }
+    nparts = 5
+    each(parts, step, nparts)
+    nparts = filter(parts, alive, nparts)
+    p(nparts)                                   // expect: 3
+    print_fixed(parts[0].pos.x + parts[2].pos.y)
+    print_char('\n')                            // expect: 1.5
+    p(parts[0].life + parts[1].life * 10 + parts[2].life * 100)  // expect: 321
+    let bigger = map(parts, grow)
+    p(bigger[2].life)                           // expect: 13
+    var f: fn(s32) -> s32 = sq
+    p(reduce(map(xs, f), 0, fn(a, x) => a + x))  // expect: 204
+    let empty = filter(buf, alive2, 0)
+    p(empty)                                    // expect: 0
+}
+fn alive2(x: s32) -> bool { return true }

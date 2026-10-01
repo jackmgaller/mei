@@ -1,0 +1,18 @@
+// Sun & Moon Orbs - a small 3D collect-a-thon for the Mei console.
+//
+// Run around a twilight courtyard and gather the ten sun and moon orbs.
+// Stick or d-pad: move (relative to the camera). A: jump (hold for higher).
+// L / R: turn the camera. Y: show CPU / triangle counters. START: start / restart.
+//
+// Assets come from tools/gen_orbs_assets.py. This file is the cart's entry point; the
+// game itself is in game.mls so that test entry points can import it with scripted input.
+cart "Sun & Moon Orbs"
+
+const TEST = 0
+
+// Input sources (test entry points replace these with scripted input).
+fn input_pad(f: s32) -> u32 { return PAD1 }
+fn input_stick(f: s32) -> vec2 { return stick() }
+fn test_hook(f: s32) {}
+
+import "game.mls"

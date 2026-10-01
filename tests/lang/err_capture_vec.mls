@@ -1,0 +1,5 @@
+// error: a function literal cannot capture 'v': vectors (vec3) cannot be captured; copy the lanes you need
+fn init() {
+    let v = vec3(1.0, 2.0, 3.0)
+    let f = fn(s: fixed) => v.x * s
+}

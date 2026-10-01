@@ -1,0 +1,294 @@
+// The player: movement relative to the camera, jumping, collision against the level's
+// boxes, and the follow camera.
+
+const MOVE_SPEED: fixed = 0.115
+// The jump: a floaty rise, a hang at the top while A is held, and a firmer (but capped)
+// fall. Apex about 1.9 units, a full jump lasts about 0.8 s.
+const JUMP_V: fixed = 0.150         // take-off speed (units per frame)
+const GRAVITY_UP: fixed = 0.0060    // while rising
+const GRAVITY_DOWN: fixed = 0.0085  // while falling
+const APEX_VY: fixed = 0.03         // near the top (|vy| below this) gravity halves while A is held
+const JUMP_CUT: fixed = 0.55        // letting go of A while rising keeps this much upward speed
+const MAX_FALL: fixed = 0.28        // terminal fall speed
+const AIR_STEER: fixed = 0.1        // air control (ground: 0.3)
+const AIR_DRAG: fixed = 0.015       // with no input in the air, momentum fades this slowly
+const PR: fixed = 0.28          // player radius against walls
+const STEP: fixed = 0.35        // highest ledge walked up without jumping
+const PH: fixed = 1.5           // player height (for walls)
+const FEET: fixed = 0.12        // how far past a ledge the feet still stand on it
+const CAM_DIST: fixed = 6.2
+const CAM_H: fixed = 2.7
+const CAM_PITCH: fixed = -0.29
+const CAM_LIMIT: fixed = 13.4
+const CAM_CLEAR: fixed = 2.4     // least height of the camera above the floor under it
+
+var ppos: vec3
+var pvel: vec3
+var pyaw: fixed
+var on_ground: bool
+var coyote: s32             // frames left in which a jump is still allowed after leaving ground
+var jump_buf: s32           // frames left in which a jump press is remembered
+var walk_phase: fixed
+var walk_amt: fixed         // 0 standing .. 1 running (animation weight)
+var squash: fixed           // squash and stretch: + taller, - flatter
+var in_water: bool
+var hop_base: fixed
+var jump_cut: bool          // the upward speed was already cut for this jump
+var player_hidden: bool     // something stands between the camera and the player
+
+var cam_pos: vec3
+var cam_yaw: fixed
+var cam_pitch: fixed
+var cam_dist: fixed
+
+fn player_reset() {
+    ppos = vec3(START_X, 0.0, START_Z)
+    pvel = vec3(0.0, 0.0, 0.0)
+    pyaw = 0.0
+    on_ground = true
+    coyote = 0
+    jump_buf = 0
+    squash = 0.0
+    walk_amt = 0.0
+    in_water = false
+    cam_yaw = 0.0
+    cam_pitch = CAM_PITCH
+    cam_dist = CAM_DIST
+    cam_pos = vec3(ppos.x, ppos.y + CAM_H, ppos.z - CAM_DIST)
+    update_camera()
+}
+
+// True if a player standing at height y at (x, z) would overlap a box it cannot step onto.
+fn blocked(x: fixed, z: fixed, y: fixed) -> bool {
+    for i in 0..NUM_BOXES {
+        let b = &BOXES[i]
+        if b.y1 > y + STEP && b.y0 < y + PH {
+            if x > b.x0 - PR && x < b.x1 + PR && z > b.z0 - PR && z < b.z1 + PR { return true }
+        }
+    }
+    return false
+}
+
+// The highest box top under (x, z) that a player at height y can stand on.
+fn ground_at(x: fixed, z: fixed, y: fixed) -> fixed {
+    var best: fixed = -20.0
+    for i in 0..NUM_BOXES {
+        let b = &BOXES[i]
+        if b.y1 <= y + STEP && b.y1 > best {
+            if x > b.x0 - FEET && x < b.x1 + FEET && z > b.z0 - FEET && z < b.z1 + FEET { best = b.y1 }
+        }
+    }
+    return best
+}
+
+fn in_pool(x: fixed, z: fixed) -> bool {
+    return x > POOL_X0 && x < POOL_X1 && z > POOL_Z0 && z < POOL_Z1
+}
+
+// Wraps an angle difference into -pi..pi.
+fn wrap_angle(a: fixed) -> fixed {
+    var r = a
+    while r > PI { r -= TAU }
+    while r < -PI { r += TAU }
+    return r
+}
+
+fn update_player() {
+    // input: stick, or the d-pad at full deflection
+    var ix = stick_in.x
+    var iz = stick_in.y
+    if held(LEFT) { ix = -1.0 }
+    if held(RIGHT) { ix = 1.0 }
+    if held(UP) { iz = 1.0 }
+    if held(DOWN) { iz = -1.0 }
+    if ix != 0.0 && iz != 0.0 && held(LEFT | RIGHT) && held(UP | DOWN) {
+        ix = ix * 0.7071
+        iz = iz * 0.7071
+    }
+    // camera-relative: forward is (sin yaw, cos yaw), right is (cos yaw, -sin yaw)
+    let s = sin(cam_yaw)
+    let c = cos(cam_yaw)
+    let wx = ix * c + iz * s
+    let wz = iz * c - ix * s
+    var speed = MOVE_SPEED
+    if in_water { speed = speed * 0.6 }
+    let amount = abs(wx) + abs(wz)
+    var k: fixed = 0.3
+    if !on_ground {
+        // steer in the air, but keep a running jump's momentum when the stick is let go
+        if amount > 0.1 { k = AIR_STEER } else { k = AIR_DRAG }
+    }
+    pvel.x += (wx * speed - pvel.x) * k
+    pvel.z += (wz * speed - pvel.z) * k
+    if amount > 0.1 {
+        let want = atan2(wx, wz)
+        let d = clamp(wrap_angle(want - pyaw), -0.3, 0.3)
+        pyaw = wrap_angle(pyaw + d)
+    }
+
+    // horizontal movement, one axis at a time so walls let the player slide
+    let nx = ppos.x + pvel.x
+    if blocked(nx, ppos.z, ppos.y) { pvel.x = 0.0 } else { ppos.x = nx }
+    let nz = ppos.z + pvel.z
+    if blocked(ppos.x, nz, ppos.y) { pvel.z = 0.0 } else { ppos.z = nz }
+
+    // jumping: buffered presses and a little coyote time
+    if pressed(A) { jump_buf = 7 } else if jump_buf > 0 { jump_buf -= 1 }
+    if jump_buf > 0 && coyote > 0 {
+        pvel.y = JUMP_V
+        if in_water { pvel.y = JUMP_V * 0.92 }
+        jump_buf = 0
+        coyote = 0
+        on_ground = false
+        jump_cut = false
+        squash = 0.3                    // stretch on take-off
+        spawn_dust(ppos, 0.3)
+        sfx_jump()
+    }
+    // variable height: letting go of A while rising cuts the upward speed, once
+    if !held(A) && pvel.y > 0.0 && !jump_cut && !on_ground {
+        pvel.y = pvel.y * JUMP_CUT
+        jump_cut = true
+    }
+    var grav = GRAVITY_DOWN
+    if pvel.y > 0.0 { grav = GRAVITY_UP }
+    if held(A) && abs(pvel.y) < APEX_VY && !on_ground { grav = grav / 2 }   // hang at the top
+    pvel.y = max(pvel.y - grav, -MAX_FALL)
+    let old_y = ppos.y
+    ppos.y += pvel.y
+    let g = ground_at(ppos.x, ppos.z, old_y)
+    if ppos.y <= g {
+        if !on_ground && pvel.y < -0.06 {
+            let hit = -pvel.y               // 0.06 .. 0.28
+            squash = max(-hit * 1.6, -0.4)  // squash on landing, harder for bigger falls
+            sfx_land(vec3(ppos.x, g, ppos.z), hit)
+            spawn_dust(vec3(ppos.x, g, ppos.z), hit * 4)
+        }
+        ppos.y = g
+        pvel.y = 0.0
+        on_ground = true
+        coyote = 6
+    } else {
+        on_ground = false
+        if coyote > 0 { coyote -= 1 }
+    }
+
+    // water
+    let wet = in_pool(ppos.x, ppos.z) && ppos.y < WATER_Y - 0.1
+    if wet && !in_water { sfx_splash(ppos) }
+    in_water = wet
+
+    // animation: walk cycle and squash recovery
+    let sp = abs(pvel.x) + abs(pvel.z)
+    walk_amt += (clamp(sp * 10, 0.0, 1.0) - walk_amt) * 0.2
+    if on_ground {
+        let before = walk_phase
+        walk_phase += sp * 2
+        // a footstep each half cycle
+        if (before / PI) as s32 != (walk_phase / PI) as s32 && sp > 0.03 {
+            sfx_step(((walk_phase / PI) as s32) & 1)
+        }
+        if walk_phase > 2 * TAU { walk_phase -= 2 * TAU }
+    }
+    squash = squash * 0.82
+
+    if ppos.y < -8.0 { player_reset() }     // safety net
+}
+
+// Standing still (title and win screens): settle the animation.
+// On the win screen the player hops on the spot a few times.
+fn player_idle() {
+    walk_amt = walk_amt * 0.9
+    squash = squash * 0.82
+    pyaw = wrap_angle(pyaw + 0.03)
+    if state_t == 1 { hop_base = ppos.y }
+    let ph = fixed(state_t) * 0.12
+    if state_t < 210 {
+        let h = sin(ph)
+        ppos.y = hop_base + max(h, 0.0) * 0.6
+        if h < 0.0 && sin(ph - 0.12) >= 0.0 { squash = -0.25 }
+    } else {
+        ppos.y = hop_base
+    }
+}
+
+// Follow camera: it trails the player on a leash, so turning while running swings it round.
+fn update_camera() {
+    let dx = ppos.x - cam_pos.x
+    let dz = ppos.z - cam_pos.z
+    if abs(dx) + abs(dz) > 0.05 { cam_yaw = atan2(dx, dz) }
+    if held(L) { cam_yaw -= 0.045 }
+    if held(R) { cam_yaw += 0.045 }
+    place_camera(CAM_H, 0.12)
+}
+
+// Puts the camera behind the player along cam_yaw. Near the arena walls it moves in closer
+// (and a little higher) instead of leaving the courtyard, and it always looks down at the
+// player, so a squeezed camera tilts down.
+fn place_camera(height: fixed, follow: fixed) {
+    let s = sin(cam_yaw)
+    let c = cos(cam_yaw)
+    // the camera sits at ppos - (s, c) * dist; keep it inside +-CAM_LIMIT
+    var limit = CAM_DIST
+    if s > 0.01 { limit = min(limit, (ppos.x + CAM_LIMIT) / s) }
+    if s < -0.01 { limit = min(limit, (ppos.x - CAM_LIMIT) / s) }
+    if c > 0.01 { limit = min(limit, (ppos.z + CAM_LIMIT) / c) }
+    if c < -0.01 { limit = min(limit, (ppos.z - CAM_LIMIT) / c) }
+    limit = max(limit, 1.6)
+    // pull in front of a box that blocks the view from further back (closer ones are left
+    // alone: pulling in that far would look straight down; the player shows as a ghost)
+    let hit = sight_blocked(s, c, 3.5, limit, ppos.y + height)
+    if hit < limit { limit = hit - 0.5 }
+    cam_dist = min(cam_dist + (limit - cam_dist) * 0.15, limit)
+    player_hidden = sight_blocked(s, c, 0.6, cam_dist, ppos.y + height) < cam_dist
+    let squeeze = CAM_DIST - cam_dist
+    cam_pos.x = ppos.x - s * cam_dist
+    cam_pos.z = ppos.z - c * cam_dist
+    // stay well above the floor under the camera (pool edges, platforms): a low camera
+    // would push nearby floor tiles through the near plane
+    var want_y = ppos.y + height + squeeze * 0.2
+    let floor = ground_at(cam_pos.x, cam_pos.z, want_y)
+    if want_y < floor + CAM_CLEAR { want_y = floor + CAM_CLEAR }
+    cam_pos.y += (want_y - cam_pos.y) * follow
+    if cam_pos.y < floor + 1.2 { cam_pos.y = floor + 1.2 }
+    cam_pitch = -atan2(cam_pos.y - ppos.y - 0.75, cam_dist)
+}
+
+// Walks the line of sight from the player's eyes back toward the camera, from distance t0
+// to t1, and returns the distance of the first box in the way (t1 if none).
+fn sight_blocked(s: fixed, c: fixed, t0: fixed, t1: fixed, cam_y: fixed) -> fixed {
+    let eye_y = ppos.y + 0.75
+    var t = t0
+    while t < t1 {
+        let qx = ppos.x - s * t
+        let qz = ppos.z - c * t
+        let h = eye_y + (cam_y - eye_y) * t / CAM_DIST
+        for i in 0..NUM_BOXES {
+            let b = &BOXES[i]
+            if b.y1 > h - 0.2 && b.y0 < h {
+                if qx > b.x0 - 0.2 && qx < b.x1 + 0.2 && qz > b.z0 - 0.2 && qz < b.z1 + 0.2 { return t }
+            }
+        }
+        t += 0.5
+    }
+    return t1
+}
+
+// Title: a slow orbit around the courtyard.
+fn title_camera() {
+    let a = fixed(state_t) * 0.0025 + 2.4
+    cam_yaw = a
+    cam_pos = vec3(-sin(a) * 19.0, 8.5, -cos(a) * 19.0)
+    cam_pitch = -0.4
+}
+
+// Win: circle the player.
+// It swings round to look from the middle of the courtyard toward the player (where there
+// is the most room), swaying gently from side to side.
+fn win_camera() {
+    var base = cam_yaw
+    if abs(ppos.x) + abs(ppos.z) > 1.0 { base = atan2(ppos.x, ppos.z) }
+    let want = base + sin(fixed(state_t) * 0.012) * 0.5
+    cam_yaw = wrap_angle(cam_yaw + wrap_angle(want - cam_yaw) * 0.04)
+    place_camera(2.0, 0.05)
+}

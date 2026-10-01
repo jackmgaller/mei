@@ -1,0 +1,17 @@
+// btn/btnp edge detection with button A held from the first frame.
+// frames: 4
+// pad1: 10
+fn update() {
+    print_char(if_b(btn(A)))
+    print_char(if_b(btnp(A)))
+    print_char(if_b(btn(B)))
+    print_char('\n')
+}
+fn if_b(b: bool) -> u32 {
+    if b { return '1' }
+    return '0'
+}
+// expect: 000
+// expect: 110
+// expect: 100
+// expect: 100

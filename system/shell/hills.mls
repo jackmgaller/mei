@@ -1,0 +1,60 @@
+// Moving hills along the bottom of the backdrop: three ridges drifting left at different
+// speeds (parallax), coloured from the sky's horizon so they follow the time of day.
+// Self-contained: hills_init() once, hills_draw(horizon) every frame after the sky.
+
+const HILLS_N = 32               // heights every 16 px: a ridge repeats every 512 px
+var hills_back: [32]s32
+var hills_far: [32]s32
+var hills_near: [32]s32
+
+fn hills_init() {
+    for i in 0..HILLS_N {
+        let x = (i * 16) as fixed
+        // whole numbers of waves per 512 px, so the ridges tile seamlessly
+        hills_back[i] = 182 + (sin(x * 0.0245 + 0.7) * 5 + sin(x * 0.0613) * 3) as s32
+        hills_far[i] = 194 + (sin(x * 0.0368 + 2.0) * 6 + sin(x * 0.0859 + 1.0) * 2) as s32
+        hills_near[i] = 216 + (sin(x * 0.0123 + 3.0) * 6 + sin(x * 0.0613 + 0.5) * 3) as s32
+    }
+}
+
+// One column of hillside, w pixels wide, from heights y0 (left) and y1 (right) down to
+// the bottom of the screen, shaded from `top` to `bot`.
+fn hills_col(x: s32, w: s32, y0: s32, y1: s32, top: u32, bot: u32) {
+    let q = packet_alloc(9)
+    if q == null { return }
+    let xa = x as u32 & 0xFFFF
+    let xb = (x + w) as u32 & 0xFFFF
+    let yb = (240 as u32) << 16
+    q[1] = top
+    q[2] = xa | ((y0 as u32) << 16)
+    q[3] = top
+    q[4] = xb | ((y1 as u32) << 16)
+    q[5] = bot
+    q[6] = xa | yb
+    q[7] = bot
+    q[8] = xb | yb
+    ui_insert(q, 0x25)
+}
+
+// A ridge scrolled left by `off` pixels; `step` is 1 for 16-px columns, 2 for 32-px ones.
+fn hills_ridge(h: *s32, off: s32, step: s32, top: u32, bot: u32) {
+    let w = 16 * step
+    let i0 = off / w
+    let frac = off % w
+    for k in 0..(320 / w + 2) {
+        let a = h[((i0 + k) * step) & 31]
+        let b = h[((i0 + k + 1) * step) & 31]
+        hills_col(k * w - frac, w, a, b, top, bot)
+    }
+}
+
+// Draws the three ridges; `horizon` is the sky's colour at the horizon.
+fn hills_draw(horizon: u32) {
+    let fr = FRAME as s32
+    let back = sh_mix(sh_scale(horizon, 150), rgb(30, 28, 56), 70)
+    let far = sh_mix(sh_scale(horizon, 110), rgb(20, 18, 40), 100)
+    let near = sh_mix(sh_scale(horizon, 50), rgb(10, 10, 24), 150)
+    hills_ridge(&hills_back[0], (fr >> 5) % 512, 2, sh_mix(back, horizon, 60), back)
+    hills_ridge(&hills_far[0], (fr >> 4) % 512, 1, sh_mix(far, horizon, 50), far)
+    hills_ridge(&hills_near[0], (fr >> 3) % 512, 1, near, sh_scale(near, 150))
+}

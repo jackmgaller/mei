@@ -1,0 +1,99 @@
+// Printing to the debug console (the DEBUG register). Useful for tests and logging.
+
+fn print_char(c: u32) { DEBUG = c }
+
+fn print(s: *u8) {
+    var p = s
+    while true {
+        let c = p[0]
+        if c == 0 { return }
+        DEBUG = c
+        p += 1
+    }
+}
+
+fn println(s: *u8) {
+    print(s)
+    DEBUG = '\n'
+}
+
+fn print_debug(s: *u8) { println(s) }
+
+fn print_uint(n: u32) {
+    var buf: [12]u8
+    var i = 0
+    while true {
+        buf[i] = (n % 10 + '0') as u8
+        i += 1
+        n /= 10
+        if n == 0 { break }
+    }
+    while i > 0 {
+        i -= 1
+        DEBUG = buf[i]
+    }
+}
+
+fn print_int(n: s32) {
+    if n < 0 {
+        DEBUG = '-'
+        print_uint((0 - n) as u32)
+    } else {
+        print_uint(n as u32)
+    }
+}
+
+fn print_hex(n: u32) {
+    var started = false
+    for i in 0..8 {
+        let d = (n >> (28 - 4 * i)) & 15
+        if d != 0 || started || i == 7 {
+            started = true
+            if d < 10 { DEBUG = d + '0' } else { DEBUG = d + 'A' - 10 }
+        }
+    }
+}
+
+// Prints a fixed-point number with up to four decimals ("1.5", "-0.25", "3.1416").
+fn print_fixed(f: fixed) {
+    var raw = bits(f)
+    var u: u32
+    if raw < 0 {
+        DEBUG = '-'
+        u = (0 - raw) as u32
+    } else {
+        u = raw as u32
+    }
+    var ip = u >> 16
+    var dec = ((u & 0xFFFF) * 10000 + 32768) >> 16
+    if dec >= 10000 {
+        ip += 1
+        dec -= 10000
+    }
+    print_uint(ip)
+    DEBUG = '.'
+    var div: u32 = 1000
+    var first = true
+    while div > 0 {
+        let d = dec / div
+        DEBUG = d + '0'
+        dec -= d * div
+        div /= 10
+        if dec == 0 { break }
+    }
+}
+
+fn print_vec(v: vec4) {
+    DEBUG = '('
+    print_fixed(v.x)
+    DEBUG = ','
+    DEBUG = ' '
+    print_fixed(v.y)
+    DEBUG = ','
+    DEBUG = ' '
+    print_fixed(v.z)
+    DEBUG = ','
+    DEBUG = ' '
+    print_fixed(v.w)
+    DEBUG = ')'
+}

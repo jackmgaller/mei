@@ -1,0 +1,50 @@
+// Globals with initialisers (run at start-up), constants, inferred types.
+// frames: 3
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+struct Pt { a: s32, b: s32 }
+const N = 4
+const SCALE: fixed = 0.5
+const UPV: vec3 = vec3(0.0, 1.0, 0.0)
+const NAME = "mei"
+const MASK: u32 = 0xFF00
+const NEG = -N * 3
+
+var counter: s32 = N * 10
+var half: fixed = SCALE * 3
+var pos: vec3 = UPV * 2.0
+var computed: s32 = square(9)
+var arr: [3]s32 = [1, 2, 3]
+var pt: Pt = Pt { a: 5, b: 6 }
+var inferred = 7
+var flag = true
+var later: s32 = counter + 2
+var zeroed: [2]Pt
+
+fn square(x: s32) -> s32 { return x * x }
+
+fn init() {
+    p(counter)          // expect: 40
+    print_fixed(half)
+    print_char('\n')    // expect: 1.5
+    print_fixed(pos.y)
+    print_char('\n')    // expect: 2.0
+    p(computed)         // expect: 81
+    p(arr[0] + arr[1] + arr[2])  // expect: 6
+    p(pt.a * pt.b)      // expect: 30
+    p(inferred)         // expect: 7
+    if flag { p(1) }    // expect: 1
+    p(later)            // expect: 42
+    p(zeroed[1].b)      // expect: 0
+    println(NAME)       // expect: mei
+    p((MASK >> 8) as s32) // expect: 255
+    p(NEG)              // expect: -12
+}
+
+fn update() {
+    counter += 1
+    p(counter)
+    // expect: 41
+    // expect: 42
+    // expect: 43
+}

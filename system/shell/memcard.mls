@@ -1,0 +1,651 @@
+// Memory Card: a manager for the two card slots (docs/MEMCARD.md), in the spirit of the
+// PS1's. Two panes (Card 1, Card 2) list the saves with their animated icons, titles and
+// sizes; a save can be copied to the other card, deleted (with a confirm) or inspected,
+// and a card can be formatted (behind a double confirm).
+//
+// The card controller is asynchronous. mc_poll() runs every frame: it finishes the command
+// in flight when CARD_STATUS bit 0 clears, then starts the next one: a user command first,
+// then listing the cards (LIST), then reading icons (META_ANY) for the Memory Card screen.
+// While a user command runs, the screen shows "Accessing card..." and ignores input.
+//
+// Icons: each visible row (and the Info view) has a cell in texture slot 14 below
+// SH_ICON_V (three 16x16 frames stacked) and a palette from SH_ICON_PAL; a save's frames
+// are uploaded when it moves into a cell.
+
+struct McEntry {                 // one LIST entry, 64 bytes
+    id: [16]u8
+    title: [32]u8
+    num: s32
+    blocks: s32
+    len: s32
+    handle: s32
+}
+
+const MC_MAX = 128               // saves read per card (a card holds at most 127)
+const MC_FREE_MAX = 255
+
+const MC_CMD_LIST = 16
+const MC_CMD_META = 17
+const MC_CMD_DELETE = 18
+const MC_CMD_COPY = 19
+const MC_CMD_FORMAT = 20
+
+const MC_UNKNOWN = 0
+const MC_READING = 1
+const MC_READY = 2
+const MC_NOCARD = 3
+const MC_ERROR = 4
+
+var mc_list: [256]McEntry        // card n's entries at n * MC_MAX
+var mc_meta: [256]SaveMeta
+var mc_has_meta: [256]bool
+var mc_count: [2]s32
+var mc_free: [2]s32
+var mc_state: [2]s32
+var mc_need_list: [2]bool
+var mc_meta_next: [2]s32
+var mc_present: [2]bool
+var mc_watch: bool               // the Memory Card screen is open: read icons too
+
+var mc_cmd: s32                  // command in flight (0: none)
+var mc_cmd_slot: s32
+var mc_cmd_index: s32
+var mc_pend_cmd: s32             // user command waiting for the controller
+var mc_pend_slot: s32
+var mc_pend_handle: s32
+var mc_user: bool                // a user command is pending or running
+
+var mc_pane: s32
+var mc_sel: [2]s32               // selected row; mc_count[pane] is the "Format" row
+var mc_scroll: [2]s32            // in 1/16 pixels
+var mc_hl: s32
+var mc_dialog: s32               // 0 none, 1 actions, 2 delete?, 3 format?, 4 format!!, 5 info
+var mc_dsel: s32
+var mc_toast: [48]u8
+var mc_toast_t: s32
+var mc_toast_err: bool
+var mc_cell_key: [8]s32
+var mc_art: [5]s32
+var mc_tbuf: [36]u8
+
+fn mc_card_in(slot: s32) -> bool { return (CARD_STATUS >> (16 + slot as u32)) & 1 != 0 }
+
+fn mc_init() {
+    for s in 0..2 {
+        mc_present[s] = mc_card_in(s)
+        mc_need_list[s] = true
+        mc_free[s] = -1
+    }
+    for c in 0..8 { mc_cell_key[c] = -1 }
+}
+
+fn mc_entry(slot: s32, i: s32) -> *McEntry { return &mc_list[slot * MC_MAX + i] }
+
+// A NUL-terminated copy of a fixed-width field (titles may fill all 32 bytes).
+fn mc_str(src: *u8, n: s32) -> *u8 {
+    var i = 0
+    while i < n && src[i] != 0 {
+        mc_tbuf[i] = src[i]
+        i += 1
+    }
+    mc_tbuf[i] = 0
+    return &mc_tbuf[0]
+}
+
+fn mc_issue(cmd: s32, slot: s32, handle: s32, buf: u32, len: u32, meta: u32) {
+    CARD_SLOT = slot as u32
+    CARD_SAVE = handle as u32
+    CARD_BUF = buf
+    CARD_LEN = len
+    CARD_META = meta
+    CARD_CMD = cmd as u32
+    mc_cmd = cmd
+    mc_cmd_slot = slot
+}
+
+// Queues a user command (copy, delete, format); it starts as soon as the card is free.
+fn mc_request(cmd: s32, slot: s32, handle: s32) {
+    mc_pend_cmd = cmd
+    mc_pend_slot = slot
+    mc_pend_handle = handle
+    mc_user = true
+    mc_dialog = 0
+}
+
+// Every frame, on every screen (cheap when idle).
+fn mc_poll() {
+    if mc_cmd != 0 {
+        if CARD_STATUS & 1 != 0 { return }
+        let cmd = mc_cmd
+        mc_cmd = 0
+        mc_done(cmd, card_error())
+    }
+    for s in 0..2 {
+        let p = mc_card_in(s)
+        if p != mc_present[s] {
+            mc_present[s] = p
+            mc_need_list[s] = true
+        }
+    }
+    if mc_pend_cmd != 0 {
+        mc_issue(mc_pend_cmd, mc_pend_slot, mc_pend_handle, 0, 0, 0)
+        mc_pend_cmd = 0
+        return
+    }
+    for k in 0..2 {
+        let s = (mc_pane + k) & 1
+        if mc_need_list[s] {
+            mc_need_list[s] = false
+            mc_state[s] = MC_READING
+            mc_issue(MC_CMD_LIST, s, 0, &mc_list[s * MC_MAX] as u32, (MC_MAX * 64) as u32, 0)
+            return
+        }
+    }
+    if !mc_watch { return }
+    for k in 0..2 {
+        let s = (mc_pane + k) & 1
+        if mc_state[s] == MC_READY && mc_meta_next[s] < mc_count[s] {
+            let i = mc_meta_next[s]
+            mc_cmd_index = i
+            mc_issue(MC_CMD_META, s, mc_entry(s, i).handle, 0, 0, &mc_meta[s * MC_MAX + i] as u32)
+            return
+        }
+    }
+}
+
+fn mc_set_toast(msg: *u8, err: bool) {
+    var i = 0
+    while msg[i] != 0 && i < 47 {
+        mc_toast[i] = msg[i]
+        i += 1
+    }
+    mc_toast[i] = 0
+    mc_toast_t = 180
+    mc_toast_err = err
+}
+
+fn sb_card(slot: s32) -> *u8 {
+    sb_str("Card ")
+    return sb_int(slot + 1, false, 0)
+}
+
+// A command finished with error code err.
+fn mc_done(cmd: s32, err: s32) {
+    let s = mc_cmd_slot
+    if cmd == MC_CMD_LIST {
+        if err != 0 {
+            if err == CARD_NO_CARD { mc_state[s] = MC_NOCARD } else { mc_state[s] = MC_ERROR }
+            mc_count[s] = 0
+            mc_free[s] = -1
+            mc_sel[s] = 0
+        } else {
+            let n = clamp(CARD_RESULT as s32, 0, MC_MAX)
+            var used = 0
+            for i in 0..n {
+                used += mc_entry(s, i).blocks
+                mc_has_meta[s * MC_MAX + i] = false
+            }
+            mc_count[s] = n
+            mc_free[s] = max(0, MC_FREE_MAX - used)
+            mc_meta_next[s] = 0
+            mc_state[s] = MC_READY
+            mc_sel[s] = min(mc_sel[s], n)
+        }
+        for c in 0..8 { mc_cell_key[c] = -1 }
+        return
+    }
+    if cmd == MC_CMD_META {
+        if err == 0 { mc_has_meta[s * MC_MAX + mc_cmd_index] = true }
+        mc_meta_next[s] = mc_cmd_index + 1
+        return
+    }
+    // a user command
+    mc_user = false
+    let other = 1 - s
+    sb_begin()
+    if err != 0 {
+        sh_sfx(SFX_ERROR)
+        if err == CARD_NO_CARD {
+            sb_str("No card in slot ")
+            if cmd == MC_CMD_COPY { sb_int(other + 1, false, 0) } else { sb_int(s + 1, false, 0) }
+        } else if err == CARD_FULL {
+            if cmd == MC_CMD_COPY { sb_card(other) } else { sb_card(s) }
+            sb_str(" is full")
+        } else if err == CARD_NOT_FOUND {
+            sb_str("That save is no longer there")
+        } else {
+            sb_str("Card error ")
+            sb_int(err, false, 0)
+        }
+        mc_set_toast(&sh_sb[0], true)
+    } else {
+        sh_sfx(SFX_SELECT)
+        if cmd == MC_CMD_COPY {
+            sb_str("Copied to ")
+            sb_card(other)
+        } else if cmd == MC_CMD_DELETE {
+            sb_str("Save deleted")
+        } else {
+            sb_card(s)
+            sb_str(" formatted")
+        }
+        mc_set_toast(&sh_sb[0], false)
+    }
+    if cmd == MC_CMD_COPY { mc_need_list[other] = true } else { mc_need_list[s] = true }
+}
+
+// ---- screen
+
+const MC_TOP = 86
+const MC_ROW = 22
+const MC_VISIBLE = 5
+
+fn mc_enter() {
+    mc_watch = true
+    mc_dialog = 0
+    mc_hl = (MC_TOP + mc_sel[mc_pane] * MC_ROW) * 16
+}
+
+fn mc_leave() { mc_watch = false }
+
+fn mc_rows(s: s32) -> s32 {
+    if mc_state[s] != MC_READY { return 0 }
+    return mc_count[s] + 1                 // the saves and the "Format" row
+}
+
+fn mc_update() {
+    if mc_user { return }                  // "Accessing card..."
+    if mc_dialog != 0 {
+        mc_dialog_update()
+        return
+    }
+    let s = mc_pane
+    if sh_nav == LEFT || sh_nav == RIGHT || sh_pressed(L | R) {
+        mc_pane = 1 - mc_pane
+        mc_hl = (MC_TOP + mc_sel[mc_pane] * MC_ROW) * 16
+        sh_sfx(SFX_TICK)
+        return
+    }
+    let n = mc_rows(s)
+    if sh_nav == UP && mc_sel[s] > 0 {
+        mc_sel[s] -= 1
+        sh_sfx(SFX_TICK)
+    } else if sh_nav == DOWN && mc_sel[s] < n - 1 {
+        mc_sel[s] += 1
+        sh_sfx(SFX_TICK)
+    }
+    if sh_ok() {
+        if n == 0 {
+            sh_sfx(SFX_ERROR)
+        } else if mc_sel[s] < mc_count[s] {
+            mc_dialog = 1
+            mc_dsel = 0
+            sh_sfx(SFX_SELECT)
+        } else {
+            mc_dialog = 3
+            mc_dsel = 0
+            sh_sfx(SFX_SELECT)
+        }
+    }
+    if sh_back() {
+        sh_sfx(SFX_BACK)
+        mc_leave()
+        shell_go(SCR_HOME, -1)
+    }
+}
+
+fn mc_dialog_update() {
+    let s = mc_pane
+    let i = mc_sel[s]
+    if mc_dialog == 1 {
+        if sh_nav == UP { mc_dsel = (mc_dsel + 3) % 4; sh_sfx(SFX_TICK) }
+        if sh_nav == DOWN { mc_dsel = (mc_dsel + 1) % 4; sh_sfx(SFX_TICK) }
+        if sh_back() { mc_dialog = 0; sh_sfx(SFX_BACK); return }
+        if sh_ok() {
+            if mc_dsel == 0 {
+                mc_request(MC_CMD_COPY, s, mc_entry(s, i).handle)
+            } else if mc_dsel == 1 {
+                mc_dialog = 2
+                mc_dsel = 0
+                sh_sfx(SFX_SELECT)
+            } else if mc_dsel == 2 {
+                mc_dialog = 5
+                sh_sfx(SFX_SELECT)
+            } else {
+                mc_dialog = 0
+                sh_sfx(SFX_BACK)
+            }
+        }
+        return
+    }
+    if mc_dialog == 5 {
+        if sh_ok() || sh_back() { mc_dialog = 1; mc_dsel = 2; sh_sfx(SFX_BACK) }
+        return
+    }
+    // confirms: [Cancel] [Delete/Format]
+    if sh_nav == LEFT || sh_nav == RIGHT { mc_dsel = 1 - mc_dsel; sh_sfx(SFX_TICK) }
+    if sh_back() { mc_dialog = 0; sh_sfx(SFX_BACK); return }
+    if sh_ok() {
+        if mc_dsel == 0 {
+            mc_dialog = 0
+            sh_sfx(SFX_BACK)
+        } else if mc_dialog == 2 {
+            mc_request(MC_CMD_DELETE, s, mc_entry(s, i).handle)
+        } else if mc_dialog == 3 {
+            mc_dialog = 4
+            mc_dsel = 0
+            sh_sfx(SFX_SELECT)
+        } else {
+            mc_request(MC_CMD_FORMAT, s, 0)
+        }
+    }
+}
+
+// Draws save i of card s's icon at (x, y), scale 1 or 2, through icon cell `cell`.
+fn mc_icon(cell: s32, s: s32, i: s32, x: s32, y: s32, scale: s32) {
+    let gi = s * MC_MAX + i
+    if !mc_has_meta[gi] {
+        sh_rect(x + 2 * scale, y + 2 * scale, 12 * scale, 12 * scale, rgb(50, 54, 86), -1)
+        return
+    }
+    let m = &mc_meta[gi]
+    let key = s * 1024 + i
+    if mc_cell_key[cell] != key {
+        mc_cell_key[cell] = key
+        let base = VRAM_TEXTURES + SH_SLOT_ART * TEXTURE_SLOT_SIZE + cell * 8
+        for f in 0..3 {
+            for row in 0..16 {
+                let dst = (base + (SH_ICON_V + f * 16 + row) * 128) as *u32
+                let src = &m.pixels[f * 128 + row * 8] as *u32
+                dst[0] = src[0]
+                dst[1] = src[1]
+            }
+        }
+        let pal = (VRAM_PALETTE + (SH_ICON_PAL + cell) * 32) as *u16
+        for k in 0..16 { pal[k] = m.palette[k] }
+    }
+    let frames = clamp(m.frames, 1, 3)
+    let f = ((FRAME / 15) % (frames as u32)) as s32
+    mc_art[0] = cell * 16
+    mc_art[1] = SH_ICON_V + f * 16
+    mc_art[2] = 16
+    mc_art[3] = 16
+    mc_art[4] = SH_ICON_PAL + cell
+    sh_spr_wh(&mc_art[0], x, y, 16 * scale, 16 * scale, 0x808080, -1)
+}
+
+fn mc_tab(x: s32, s: s32) {
+    let sel = s == mc_pane
+    if sel {
+        sh_rect(x, 40, 136, 20, rgb(14, 14, 36), 0)
+        sh_hgrad(x, 40, 136, 20, rgb(96, 52, 14), rgb(30, 16, 4), 1)
+        sh_rect(x, 59, 136, 1, SH_WARM, -1)
+    } else {
+        sh_rect(x, 40, 136, 20, rgb(14, 14, 36), 0)
+    }
+    var c = SH_WHITE
+    if !sel { c = SH_COOL_DIM }
+    sb_begin()
+    sh_text_c(SH_FONT_MED, x + 68, 40, sb_card(s), c)
+}
+
+fn mc_status_line() -> *u8 {
+    let s = mc_pane
+    sb_begin()
+    if mc_state[s] == MC_READY {
+        sb_int(mc_free[s], false, 0)
+        sb_str(" of 255 blocks free")
+    }
+    return &sh_sb[0]
+}
+
+fn mc_draw() {
+    let ox = sh_ox
+    sh_header("Memory Card")
+    mc_tab(16 + ox, 0)
+    mc_tab(168 + ox, 1)
+    sh_panel(0, 62, 320, 150)
+    let s = mc_pane
+    let st = mc_state[s]
+    sh_text(SH_FONT_SMALL, 24 + ox, 64, mc_status_line(), SH_COOL)
+    if st == MC_READY {
+        sb_begin()
+        sb_int(mc_count[s], false, 0)
+        if mc_count[s] == 1 { sb_str(" save") } else { sb_str(" saves") }
+        sh_text_r(SH_FONT_SMALL, 296 + ox, 64, &sh_sb[0], SH_COOL_DIM)
+    }
+    if st == MC_NOCARD || st == MC_ERROR {
+        sh_spr(SH_ART_IC_CARD, 151 + ox, 104)
+        sb_begin()
+        if st == MC_NOCARD { sb_str("No card in slot ") } else { sb_str("Can't read the card in slot ") }
+        sb_int(s + 1, false, 0)
+        sh_text_c(SH_FONT_MED, 160 + ox, 128, &sh_sb[0], SH_WHITE)
+        sh_text_c(SH_FONT_SMALL, 160 + ox, 150, "Insert a memory card", SH_COOL_DIM)
+    } else if st != MC_READY {
+        mc_spinner(160 + ox, 120)
+        sh_text_c(SH_FONT_SMALL, 160 + ox, 138, "Reading card...", SH_COOL)
+    } else {
+        mc_list_draw(s)
+    }
+    // bottom line: a message, or the selected save's details
+    if mc_toast_t > 0 {
+        mc_toast_t -= 1
+        var c = SH_WARM_HI
+        if mc_toast_err { c = rgb(255, 130, 110) }
+        sh_text_c(SH_FONT_SMALL, 160 + ox, 196, &mc_toast[0], c)
+    } else if st == MC_READY && mc_sel[s] < mc_count[s] {
+        let e = mc_entry(s, mc_sel[s])
+        sb_begin()
+        sb_str(mc_str(&e.id[0], 16))
+        sb_str("  \x7f  save ")
+        sb_int(e.num, false, 0)
+        sb_str("  \x7f  ")
+        sb_int(e.len, true, 0)
+        sb_str(" bytes")
+        sh_text_c(SH_FONT_SMALL, 160 + ox, 196, &sh_sb[0], SH_COOL_DIM)
+    }
+    if mc_dialog != 0 { mc_dialog_draw() }
+    if mc_user { mc_busy_draw() }
+    if mc_dialog == 0 && st != MC_READY { sh_footer("", "Back") }
+    else if mc_dialog == 0 && mc_sel[s] == mc_count[s] { sh_footer("Format", "Back") }
+    else if mc_dialog == 0 { sh_footer("Options", "Back") }
+    else if mc_dialog == 5 { sh_footer("", "Close") }
+    else { sh_footer("Choose", "Cancel") }
+}
+
+fn mc_list_draw(s: s32) {
+    let ox = sh_ox
+    let n = mc_count[s] + 1
+    // keep the selection in view (one row of margin)
+    var top = (mc_scroll[s] >> 4) / MC_ROW
+    let sel = mc_sel[s]
+    if sel < top + 1 { top = sel - 1 }
+    if sel > top + MC_VISIBLE - 2 { top = sel - MC_VISIBLE + 2 }
+    top = clamp(top, 0, max(0, n - MC_VISIBLE))
+    mc_scroll[s] = sh_ease(mc_scroll[s], top * MC_ROW)
+    let scroll = mc_scroll[s] >> 4
+    mc_hl = sh_ease(mc_hl, MC_TOP + sel * MC_ROW)
+    let hy = (mc_hl >> 4) - scroll
+    if hy > MC_TOP - MC_ROW && hy < MC_TOP + MC_VISIBLE * MC_ROW {
+        sh_highlight(28, hy - 2, 276, MC_ROW - 2)
+    }
+    let first = max(0, scroll / MC_ROW - 1)
+    let last = min(n, first + MC_VISIBLE + 2)
+    let saved = sh_blend
+    for i in first..last {
+        let y = MC_TOP + i * MC_ROW - scroll
+        var a = 256
+        if y < MC_TOP { a = 256 - (MC_TOP - y) * 20 }
+        let bottom = MC_TOP + (MC_VISIBLE - 1) * MC_ROW
+        if y > bottom { a = 256 - (y - bottom) * 20 }
+        if a <= 0 { continue }
+        sh_blend = sh_fainter(saved, sh_dissolve(a))
+        let is_sel = i == sel
+        var dx = 0
+        if is_sel { dx = 3 }
+        var col = SH_WHITE
+        if !is_sel { col = sh_scale(SH_WHITE, 205) }
+        if i == n - 1 {
+            sb_begin()
+            sb_str("Format ")
+            sb_card(s)
+            sb_str("\x82")
+            var fc = SH_COOL_DIM
+            if is_sel { fc = SH_WARM_HI }
+            sh_text(SH_FONT_MED, 48 + dx + ox, y - 2, &sh_sb[0], fc)
+            continue
+        }
+        let e = mc_entry(s, i)
+        mc_icon(i - first, s, i, 26 + dx + ox, y, 1)
+        sh_text_fit(SH_FONT_MED, 48 + dx + ox, y - 2, mc_str(&e.title[0], 32), col, 190)
+        sb_begin()
+        sb_int(e.blocks, false, 0)
+        if e.blocks == 1 { sb_str(" block") } else { sb_str(" blocks") }
+        var bc = SH_COOL_DIM
+        if is_sel { bc = SH_WARM_HI }
+        sh_text_r(SH_FONT_SMALL, 296 + ox, y + 1, &sh_sb[0], bc)
+    }
+    sh_blend = saved
+    if mc_count[s] == 0 {
+        sh_text_c(SH_FONT_SMALL, 160 + ox, MC_TOP + MC_ROW + 6, "This card has no saves", SH_COOL_DIM)
+    }
+}
+
+// A small dialog box.
+fn mc_box(x: s32, y: s32, w: s32, h: s32) {
+    sh_rect(0, 36, 320, 178, rgb(72, 72, 72), 2)        // dim the screen behind
+    sh_rect(x, y, w, h, rgb(18, 18, 44), -1)
+    sh_rect(x, y, w, 1, SH_WARM, -1)
+    sh_rect(x, y + h - 1, w, 1, rgb(60, 60, 100), -1)
+}
+
+fn mc_option(x: s32, y: s32, w: s32, label: *u8, sel: bool) {
+    if sel {
+        sh_hgrad(x, y, w, 19, rgb(120, 66, 18), rgb(20, 10, 2), 1)
+        sh_text(SH_FONT_MED, x + 8, y - 1, label, SH_WHITE)
+    } else {
+        sh_text(SH_FONT_MED, x + 8, y - 1, label, sh_scale(SH_WHITE, 190))
+    }
+}
+
+fn mc_dialog_draw() {
+    let s = mc_pane
+    let i = mc_sel[s]
+    if mc_dialog == 1 {
+        mc_box(90, 70, 140, 100)
+        sb_begin()
+        sb_str("Copy to ")
+        sb_card(1 - s)
+        mc_option(96, 76, 128, &sh_sb[0], mc_dsel == 0)
+        mc_option(96, 98, 128, "Delete", mc_dsel == 1)
+        mc_option(96, 120, 128, "Info", mc_dsel == 2)
+        mc_option(96, 142, 128, "Cancel", mc_dsel == 3)
+        return
+    }
+    if mc_dialog == 5 {
+        mc_info_draw(s, i)
+        return
+    }
+    mc_box(40, 80, 240, 96)
+    sb_begin()
+    var line2: *u8 = "This can't be undone."
+    if mc_dialog == 2 {
+        sh_text_c(SH_FONT_MED, 160, 86, "Delete this save?", SH_WHITE)
+        let t = mc_str(&mc_entry(s, i).title[0], 32)
+        sh_text_fit(SH_FONT_SMALL, 160 - min(220, sh_text_w(SH_FONT_SMALL, t)) / 2, 108, t, SH_COOL, 220)
+    } else if mc_dialog == 3 {
+        sb_str("Format ")
+        sb_card(s)
+        sb_str("?")
+        sh_text_c(SH_FONT_MED, 160, 86, &sh_sb[0], SH_WHITE)
+        line2 = "Every save on it will be erased."
+        sh_text_c(SH_FONT_SMALL, 160, 108, line2, SH_COOL)
+    } else {
+        sh_text_c(SH_FONT_MED, 160, 86, "Are you sure?", SH_WHITE)
+        sb_str("All saves on ")
+        sb_card(s)
+        sb_str(" will be lost.")
+        sh_text_c(SH_FONT_SMALL, 160, 108, &sh_sb[0], SH_COOL)
+    }
+    var yes: *u8 = "Delete"
+    if mc_dialog != 2 { yes = "Format" }
+    mc_option(56, 144, 96, "Cancel", mc_dsel == 0)
+    mc_option(168, 144, 96, yes, mc_dsel == 1)
+}
+
+fn mc_info_row(y: s32, label: *u8, value: *u8) {
+    sh_text(SH_FONT_SMALL, 48, y + 2, label, SH_COOL_DIM)
+    sh_text(SH_FONT_MED, 120, y, value, SH_WHITE)
+}
+
+fn mc_info_draw(s: s32, i: s32) {
+    let e = mc_entry(s, i)
+    mc_box(30, 42, 260, 166)
+    mc_icon(7, s, i, 44, 52, 2)
+    sh_text_fit(SH_FONT_MED, 84, 52, mc_str(&e.title[0], 32), SH_WHITE, 196)
+    sb_begin()
+    sb_card(s)
+    sb_str(", save ")
+    sb_int(e.num, false, 0)
+    sh_text(SH_FONT_SMALL, 84, 72, &sh_sb[0], SH_COOL)
+    mc_info_row(98, "Cart ID", mc_str(&e.id[0], 16))
+    sb_begin()
+    sb_int(e.blocks, false, 0)
+    sb_str(" blocks (")
+    sb_int(e.blocks * 512 / 1024, false, 0)
+    sb_str(" KB)")
+    mc_info_row(118, "Size", &sh_sb[0])
+    sb_begin()
+    sb_int(e.len, true, 0)
+    sb_str(" bytes")
+    mc_info_row(138, "Data", &sh_sb[0])
+    sb_begin()
+    if mc_has_meta[s * MC_MAX + i] {
+        let fr = clamp(mc_meta[s * MC_MAX + i].frames, 1, 3)
+        sb_int(fr, false, 0)
+        if fr == 1 { sb_str(" frame") } else { sb_str(" frames") }
+    } else {
+        sb_str("-")
+    }
+    mc_info_row(158, "Icon", &sh_sb[0])
+    sb_begin()
+    sb_int(e.handle, false, 0)
+    mc_info_row(178, "Handle", &sh_sb[0])
+}
+
+fn mc_spinner(cx: s32, cy: s32) {
+    let step = ((FRAME / 6) % 8) as s32
+    for k in 0..8 {
+        let a = from_bits(k * 51472)              // TAU / 8
+        let x = cx + (cos(a) * 8) as s32
+        let y = cy + (sin(a) * 8) as s32
+        var b = 60
+        if k == step { b = 255 } else if k == (step + 7) % 8 { b = 160 } else if k == (step + 6) % 8 { b = 100 }
+        sh_rect(x - 1, y - 1, 3, 3, rgb(b, b * 4 / 5, b / 2), -1)
+    }
+}
+
+fn mc_busy_draw() {
+    mc_box(80, 92, 160, 56)
+    mc_spinner(104, 120)
+    sh_text(SH_FONT_MED, 122, 100, "Accessing card...", SH_WHITE)
+    sh_text(SH_FONT_SMALL, 122, 122, "Do not remove", SH_COOL)
+}
+
+// The status shown on the home screen.
+fn mc_home_status() -> *u8 {
+    sb_begin()
+    if mc_state[0] == MC_READY {
+        sb_int(mc_free[0], false, 0)
+        return sb_str(" blocks free")
+    }
+    if mc_state[0] == MC_NOCARD || mc_state[0] == MC_ERROR {
+        if mc_state[1] == MC_READY {
+            sb_str("Card 2: ")
+            sb_int(mc_free[1], false, 0)
+            return sb_str(" free")
+        }
+        return sb_str("no card")
+    }
+    return sb_str("...")
+}

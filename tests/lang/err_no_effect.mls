@@ -1,0 +1,5 @@
+// error: this expression does nothing
+fn init() {
+    var x = 1
+    x + 1
+}

@@ -1,0 +1,160 @@
+// Fixed-point maths. Angles are in radians.
+import "sin_table.mls"
+
+const PI: fixed = 3.14159265
+const TAU: fixed = 6.28318531
+const HALF_PI: fixed = 1.57079633
+
+// sin/cos from a 1,024-step table with linear interpolation (error < 0.0001).
+fn sin(a: fixed) -> fixed {
+    let t = bits(a * 162.97466173)       // table steps per radian
+    let i = (t >> 16) & 1023
+    let s0 = __SIN_TAB[i]
+    return from_bits(s0) + from_bits(__SIN_TAB[i + 1] - s0) * from_bits(t & 0xFFFF)
+}
+
+fn cos(a: fixed) -> fixed {
+    let t = bits(a * 162.97466173) + 0x1000000   // + a quarter turn
+    let i = (t >> 16) & 1023
+    let s0 = __SIN_TAB[i]
+    return from_bits(s0) + from_bits(__SIN_TAB[i + 1] - s0) * from_bits(t & 0xFFFF)
+}
+
+fn tan(a: fixed) -> fixed { return sin(a) / cos(a) }
+
+// Square root, exact to the last bit (digit-by-digit on the 48-bit value x << 16).
+fn sqrt(x: fixed) -> fixed {
+    if x <= 0.0 { return 0.0 }
+    var v = bits(x) as u32
+    var root: u32 = 0
+    var rem: u32 = 0
+    var n = 24
+    // skip leading zero digit pairs
+    while v < 0x40000000 && n > 8 {
+        v <<= 2
+        n -= 1
+    }
+    while n > 0 {
+        rem = (rem << 2) | (v >> 30)
+        v <<= 2
+        root <<= 1
+        let trial = (root << 1) | 1
+        if rem >= trial {
+            rem -= trial
+            root |= 1
+        }
+        n -= 1
+    }
+    return from_bits(root as s32)
+}
+
+// atan2(y, x) in radians, -PI..PI (error < 0.005).
+fn atan2(y: fixed, x: fixed) -> fixed {
+    let ax = abs(x)
+    let ay = abs(y)
+    if ax == 0.0 && ay == 0.0 { return 0.0 }
+    var r: fixed
+    if ax >= ay {
+        let z = ay / ax
+        r = z * (0.78539816 + 0.273 * (1.0 - z))
+    } else {
+        let z = ax / ay
+        r = HALF_PI - z * (0.78539816 + 0.273 * (1.0 - z))
+    }
+    if x < 0.0 { r = PI - r }
+    if y < 0.0 { r = -r }
+    return r
+}
+
+// Random numbers from the RAND register (xorshift32 in hardware).
+fn rand() -> u32 { return RAND }
+fn seed(s: u32) { RAND = s }
+// 0 <= rnd(n) < n
+fn rnd(n: s32) -> s32 { return ((RAND >> 1) as s32) % n }
+// 0.0 <= rndf() < 1.0
+fn rndf() -> fixed { return from_bits((RAND >> 16) as s32) }
+
+// Used by the normalize() builtin for every vector type (unused lanes are zero).
+fn normalize4(v: vec4) -> vec4 {
+    let l = sqrt(dot(v, v))
+    if l == 0.0 { return v }
+    return v / l
+}
+
+// ---- matrices: rows are vec4, v' = m * v uses vxfm
+
+fn mat4_identity() -> mat4 {
+    var m: mat4
+    m[0] = vec4(1.0, 0.0, 0.0, 0.0)
+    m[1] = vec4(0.0, 1.0, 0.0, 0.0)
+    m[2] = vec4(0.0, 0.0, 1.0, 0.0)
+    m[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    return m
+}
+
+// The `*` operator on two mat4 values calls this.
+fn mat4_mul(a: mat4, b: mat4) -> mat4 {
+    var r: mat4
+    let b0 = b[0]
+    let b1 = b[1]
+    let b2 = b[2]
+    let b3 = b[3]
+    for i in 0..4 {
+        let row = a[i]
+        r[i] = b0 * row.x + b1 * row.y + b2 * row.z + b3 * row.w
+    }
+    return r
+}
+
+fn mat4_translate(t: vec3) -> mat4 {
+    var m = mat4_identity()
+    m[0].w = t.x
+    m[1].w = t.y
+    m[2].w = t.z
+    return m
+}
+
+fn mat4_scale(s: vec3) -> mat4 {
+    var m: mat4
+    m[0].x = s.x
+    m[1].y = s.y
+    m[2].z = s.z
+    m[3].w = 1.0
+    return m
+}
+
+// Rotation about +Y; positive angles turn +Z toward +X (the same sense as yaw).
+fn mat4_rotate_y(a: fixed) -> mat4 {
+    let s = sin(a)
+    let c = cos(a)
+    var m: mat4
+    m[0] = vec4(c, 0.0, s, 0.0)
+    m[1] = vec4(0.0, 1.0, 0.0, 0.0)
+    m[2] = vec4(-s, 0.0, c, 0.0)
+    m[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    return m
+}
+
+// Rotation about +X; positive angles turn +Z toward +Y (the same sense as pitch).
+fn mat4_rotate_x(a: fixed) -> mat4 {
+    let s = sin(a)
+    let c = cos(a)
+    var m: mat4
+    m[0] = vec4(1.0, 0.0, 0.0, 0.0)
+    m[1] = vec4(0.0, c, s, 0.0)
+    m[2] = vec4(0.0, -s, c, 0.0)
+    m[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    return m
+}
+
+// Rotation about +Z; positive angles turn +X toward +Y.
+fn mat4_rotate_z(a: fixed) -> mat4 {
+    let s = sin(a)
+    let c = cos(a)
+    var m: mat4
+    m[0] = vec4(c, -s, 0.0, 0.0)
+    m[1] = vec4(s, c, 0.0, 0.0)
+    m[2] = vec4(0.0, 0.0, 1.0, 0.0)
+    m[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    return m
+}

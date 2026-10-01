@@ -1,0 +1,42 @@
+// Layout freedom: braces on their own lines, semicolons, multi-line expressions.
+struct P
+{
+    a: s32,
+    b: s32
+}
+
+asm fn seven() -> s32
+{
+    addi r1, r0, 7
+}
+
+fn add(a: s32,
+       b: s32) -> s32
+{
+    return a +
+        b
+}
+
+fn init()
+{
+    let p = P {
+        a: 1,
+        b: 2,
+    }
+    var x = add(p.a, p.b); var y = seven()
+    if x < y
+    {
+        x = x *
+            10
+    }
+    else
+    {
+        x = 0
+    }
+    print_int(x + y); print_char('\n')    // expect: 37
+    let arr = [
+        1, 2,
+        3,
+    ]
+    print_int(arr[2]); print_char('\n')    // expect: 3
+}

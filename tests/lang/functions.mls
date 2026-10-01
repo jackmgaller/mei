@@ -1,0 +1,76 @@
+// First-class functions: function types, named functions as values, literals, callr.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+struct Op { name: *u8, f: fn(s32, s32) -> s32 }
+struct Pt { x: s32, y: s32 }
+
+const BIAS = 1000
+var handler: fn(s32) -> s32 = triple
+var ops: [3]Op
+
+fn add(a: s32, b: s32) -> s32 { return a + b }
+fn sub(a: s32, b: s32) -> s32 { return a - b }
+fn triple(x: s32) -> s32 { return x * 3 }
+fn apply2(f: fn(s32, s32) -> s32, a: s32, b: s32) -> s32 { return f(a, b) }
+fn compose(n: s32) -> fn(s32) -> s32 {
+    if n == 0 { return fn(x: s32) -> s32 { return x + BIAS } }
+    return triple
+}
+fn sum6(a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) -> s32 { return a + b * 2 + c * 3 + d * 4 + e * 5 + f * 6 }
+fn vscale2(v: vec3, s: fixed) -> vec3 { return v * s }
+fn swap(q: Pt) -> Pt { return Pt { x: q.y, y: q.x } }
+fn fact(n: s32) -> s32 {
+    let self_ref: fn(s32) -> s32 = fact
+    if n <= 1 { return 1 }
+    return n * self_ref(n - 1)
+}
+
+fn init() {
+    p(apply2(add, 3, 4))                // expect: 7
+    p(apply2(sub, 3, 4))                // expect: -1
+    var f: fn(s32, s32) -> s32 = add
+    p(f(10, 5))                         // expect: 15
+    f = sub
+    p(f(10, 5))                         // expect: 5
+    p(handler(7))                       // expect: 21
+    handler = fn(x: s32) => x - 1
+    p(handler(7))                       // expect: 6
+    ops[0] = Op { name: "add", f: add }
+    ops[1] = Op { name: "sub", f: sub }
+    ops[2] = Op { name: "mul", f: fn(a: s32, b: s32) => a * b }
+    for i in 0..3 {
+        print(ops[i].name)
+        print_char(' ')
+        p(ops[i].f(6, 3))
+    }
+    // expect: add 9
+    // expect: sub 3
+    // expect: mul 18
+    p(compose(0)(5))                    // expect: 1005
+    p(compose(1)(5))                    // expect: 15
+    var maybe: fn(s32) -> s32 = null
+    if maybe == null { p(1) }           // expect: 1
+    maybe = triple
+    if maybe != null { p(maybe(2)) }    // expect: 6
+    let g: fn(s32, s32, s32, s32, s32, s32) -> s32 = sum6
+    p(g(1, 2, 3, 4, 5, 6))              // expect: 91
+    let vf: fn(vec3, fixed) -> vec3 = vscale2
+    let v = vf(vec3(1.0, 2.0, 3.0), 0.5)
+    print_fixed(v.z)
+    print_char('\n')                    // expect: 1.5
+    let sw: fn(Pt) -> Pt = swap
+    let q = sw(Pt { x: 1, y: 2 })
+    p(q.x * 10 + q.y)                   // expect: 21
+    p(fact(10))                         // expect: 3628800
+    // calls through values inside expressions with live temporaries
+    let a = 5
+    p(a * 100 + f(a, 1) * 10 + handler(a) + apply2(add, f(9, 2), handler(3)))  // expect: 553
+    let inc = fn(x: s32) => x + 1
+    let k: fn(s32) -> s32 = inc
+    p(k(k(k(0))))                       // expect: 3
+    let as_word = add as u32
+    let back = as_word as fn(s32, s32) -> s32
+    p(back(20, 22))                     // expect: 42
+    let lit = fn() { println("called") }
+    lit()                               // expect: called
+}

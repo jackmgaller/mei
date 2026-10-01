@@ -1,0 +1,5 @@
+// error: cannot take the address of 'k': it is a read-only copy captured by the function literal
+fn init() {
+    let k = 3
+    let f = fn() -> *s32 { return &k }
+}

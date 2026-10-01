@@ -1,0 +1,19 @@
+// Embedded binary assets.
+fn p(n: s32) { print_int(n); print_char('\n') }
+embed DATA: u8 = "data/bytes.bin"
+embed WORDS: u32 = "data/bytes.bin"
+embed PART: u8 = "data/bytes.bin", 8, 4
+embed RAW = "data/bytes.bin"
+
+fn init() {
+    p(len(DATA))            // expect: 16
+    p(len(WORDS))           // expect: 4
+    p(DATA[5] as s32)       // expect: 5
+    p(WORDS[1] as s32)      // expect: 117835012
+    p(len(PART))            // expect: 4
+    p(PART[0] as s32)       // expect: 8
+    p(RAW[15] as s32)       // expect: 15
+    var sum = 0
+    for i in 0..len(DATA) { sum += DATA[i] }
+    p(sum)                  // expect: 120
+}

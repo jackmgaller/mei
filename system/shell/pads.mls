@@ -1,0 +1,126 @@
+// Controllers: a live view of both pads (buttons and stick). B is a button under test,
+// so leaving takes holding B for a moment.
+
+const PADS_HOLD = 40
+var pads_hold: s32
+
+fn pads_enter() { pads_hold = 0 }
+
+fn pads_update() {
+    if PAD1 & B != 0 {
+        pads_hold += 1
+        if pads_hold == PADS_HOLD {
+            sh_sfx(SFX_BACK)
+            shell_go(SCR_HOME, -1)
+        }
+    } else {
+        pads_hold = 0
+    }
+}
+
+fn pads_key(x: s32, y: s32, w: s32, h: s32, held: bool) {
+    if held {
+        sh_rect(x, y, w, h, SH_WARM, -1)
+        sh_rect(x, y, w, 1, SH_WARM_HI, -1)
+    } else {
+        sh_rect(x, y, w, h, rgb(52, 56, 88), -1)
+        sh_rect(x, y, w, 1, rgb(80, 86, 124), -1)
+    }
+}
+
+fn pads_label(held: bool) -> u32 {
+    if held { return rgb(30, 24, 50) }
+    return SH_COOL_DIM
+}
+
+fn pads_round(x: s32, y: s32, label: *u8, held: bool) {
+    if held {
+        sh_spr_wh(SH_ART_DISC12, x, y, 15, 15, sh_scale(SH_WARM, 128), -1)
+        sh_text_c(SH_FONT_SMALL, x + 8, y, label, rgb(30, 24, 50))
+    } else {
+        sh_spr_wh(SH_ART_DISC12, x, y, 15, 15, rgb(26, 28, 46), -1)
+        sh_text_c(SH_FONT_SMALL, x + 8, y, label, SH_COOL_DIM)
+    }
+}
+
+fn pads_view(x0: s32, title: *u8, held: u32, sx: fixed, sy: fixed) {
+    let x = x0 + sh_ox
+    let y = 46
+    sh_rect(x, y, 144, 162, rgb(14, 14, 36), 0)
+    sh_rect(x, y, 144, 1, rgb(40, 36, 30), 1)
+    var tc = SH_COOL
+    if held != 0 { tc = SH_WARM_HI }
+    sh_text_c(SH_FONT_MED, x + 72, y + 3, title, tc)
+    // shoulders, labelled inside
+    pads_key(x + 8, y + 26, 40, 14, held & L != 0)
+    pads_key(x + 96, y + 26, 40, 14, held & R != 0)
+    sh_text_c(SH_FONT_SMALL, x + 28, y + 26, "L", pads_label(held & L != 0))
+    sh_text_c(SH_FONT_SMALL, x + 116, y + 26, "R", pads_label(held & R != 0))
+    // d-pad
+    let dx = x + 27
+    let dy = y + 72
+    pads_key(dx - 5, dy - 17, 11, 12, held & UP != 0)
+    pads_key(dx - 5, dy + 6, 11, 12, held & DOWN != 0)
+    pads_key(dx - 17, dy - 5, 12, 11, held & LEFT != 0)
+    pads_key(dx + 6, dy - 5, 12, 11, held & RIGHT != 0)
+    sh_rect(dx - 5, dy - 5, 11, 11, rgb(40, 44, 70), -1)
+    // face buttons: Y top, A bottom, X left, B right
+    let fx = x + 119
+    let fy = dy
+    pads_round(fx - 8, fy - 23, "Y", held & Y != 0)
+    pads_round(fx - 8, fy + 8, "A", held & A != 0)
+    pads_round(fx - 24, fy - 8, "X", held & X != 0)
+    pads_round(fx + 8, fy - 8, "B", held & B != 0)
+    // start
+    var st = rgb(60, 66, 110)
+    if held & START != 0 { st = sh_scale(SH_WARM, 140) }
+    sh_spr_tint(SH_ART_BTN_START, x + 51, dy - 13, st)
+    var sl = rgb(60, 66, 110)
+    if held & SH_SELECT != 0 { sl = sh_scale(SH_WARM, 140) }
+    sh_spr_tint(SH_ART_BTN_SELECT, x + 51, dy + 3, sl)
+    // stick
+    let cx = x + 46
+    let cy = y + 128
+    sh_spr_wh(SH_ART_RING56, cx - 26, cy - 26, 52, 52, rgb(70, 76, 120), -1)
+    sh_rect(cx - 20, cy, 41, 1, rgb(50, 54, 90), -1)
+    sh_rect(cx, cy - 20, 1, 41, rgb(50, 54, 90), -1)
+    let px = cx + (sx * 21) as s32
+    let py = cy - (sy * 21) as s32
+    var dc = SH_COOL
+    if sx != 0.0 || sy != 0.0 { dc = SH_WARM }
+    sh_spr_wh(SH_ART_DISC8, px - 5, py - 5, 11, 11, sh_scale(dc, 128), -1)
+    // numbers
+    sb_begin()
+    sb_str("x ")
+    let sxs = sb_int((sx * 100) as s32, false, 0)
+    sh_text(SH_FONT_SMALL, x + 84, cy - 16, sxs, SH_COOL)
+    sb_begin()
+    sb_str("y ")
+    let sys = sb_int((sy * 100) as s32, false, 0)
+    sh_text(SH_FONT_SMALL, x + 84, cy - 2, sys, SH_COOL)
+    sb_begin()
+    sb_str("0x")
+    let hex = "0123456789ABCDEF"
+    for k in 0..3 { sb_char(hex[((held >> ((2 - k) * 4)) & 15) as s32] as s32) }  // 12 buttons
+    sh_text(SH_FONT_SMALL, x + 84, cy + 12, &sh_sb[0], SH_COOL_DIM)
+}
+
+fn pads_draw() {
+    sh_header("Controllers")
+    pads_view(12, "Controller 1", PAD1, STICK1_X, STICK1_Y)
+    pads_view(164, "Controller 2", PAD2, STICK2_X, STICK2_Y)
+    // footer: hold B to leave, with progress
+    let saved = sh_alpha
+    let saved_b = sh_blend
+    sh_alpha = 256
+    sh_blend = -1
+    sh_footer_bg()
+    sh_spr(SH_ART_BTN_B, 16, 225)
+    sh_text(SH_FONT_SMALL, 33, 223, "Hold to go back", SH_COOL)
+    if pads_hold > 0 {
+        sh_rect(140, 229, 60, 3, rgb(40, 44, 70), -1)
+        sh_rect(140, 229, pads_hold * 60 / PADS_HOLD, 3, SH_COOL, -1)
+    }
+    sh_alpha = saved
+    sh_blend = saved_b
+}

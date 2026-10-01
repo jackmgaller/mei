@@ -1,0 +1,5 @@
+// error: declared with 'let'
+fn init() {
+    let x = 1
+    x = 2
+}

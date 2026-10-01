@@ -1,0 +1,176 @@
+// Very quiet generative ambient music for the shell. Three short samples from
+// tools/gen_shell_assets.py (a pad tone, a celesta-like bell, a breath of air) are pitched
+// with PITCH and shaped with VOL every frame, so the music never repeats and costs ~39 KB.
+//
+// Two pad voices hold a two-note chord that changes every 12-24 s (one voice at a time, so
+// there is always something sounding); a bell plays a note from the mode's scale every few
+// seconds with a random pan; the air loop breathes underneath. The mode follows the real
+// time of day: D lydian by day, D major pentatonic / sus at dawn and dusk, D minor and an
+// octave lower (and sparser) at night.
+//
+// Channels 0-3 (the boot theme's, free while the shell runs); 6-7 stay with the UI sounds.
+
+const MU_CH_A = 0                // pad voice A (leans left)
+const MU_CH_B = 1                // pad voice B (leans right)
+const MU_CH_BELL = 2
+const MU_CH_AIR = 3
+
+const MU_FULL = 4096             // envelope full scale
+const MU_ATTACK = 23             // per frame: about 3 s to full
+const MU_RELEASE = 28            // per frame: about 2.5 s to silence
+
+// mood 0 night, 1 dawn/dusk, 2 day: pad notes (semitones from A3), four chords each
+const MU_PAD_A: [12]s32 = [-19, -16, -21, -23,   -7, -14, -9, -12,   -7, -5, -10, -7]
+const MU_PAD_B: [12]s32 = [-9, -12, -14, -19,    0, -10, -2, -7,     4, 2, -3, -3]
+// bell notes (semitones from A5), seven per mood
+const MU_BELLS: [21]s32 = [-7, -4, -2, 0, 3, 5, -9,   -7, -5, -3, 0, 2, 5, 7,   -7, -5, -3, -1, 0, 4, 7]
+// per mood: pad level, bell level, air level (VOL units at full gain), bell gap range (frames)
+const MU_PAD_VOL: [3]s32 = [28, 30, 30]
+const MU_BELL_VOL: [3]s32 = [24, 30, 34]
+const MU_AIR_VOL: [3]s32 = [18, 14, 12]
+const MU_GAP_MIN: [3]s32 = [360, 240, 180]
+const MU_GAP_RND: [3]s32 = [480, 300, 240]
+
+var mu_running: bool
+var mu_gain: s32                 // 0..256 master level (fades and ducking)
+var mu_target: s32
+var mu_speed: s32 = 2            // gain change per frame
+var mu_t: s32
+var mu_mood: s32
+var mu_chord: s32
+var mu_lvl: [2]s32               // pad envelopes 0..MU_FULL
+var mu_state: [2]s32             // 0 idle, 1 attack, 2 sustain, 3 release (then retune)
+var mu_release_at: [2]s32        // frame at which a voice starts its release for a chord change
+var mu_chord_at: s32
+var mu_bell_lvl: s32
+var mu_bell_at: s32
+var mu_bell_pan: s32
+
+fn mu_reg(ch: s32) -> *u32 { return (AUDIO_BASE + ch * 32) as *u32 }
+
+fn mu_vol(ch: s32, v: s32, pan: s32) {
+    // pan 0 (left) .. 256 (right); centre at 128 gives both sides v
+    let l = clamp(v * min(256, (256 - pan) * 2) >> 8, 0, 255)
+    let r = clamp(v * min(256, pan * 2) >> 8, 0, 255)
+    mu_reg(ch)[4] = (l as u32) | ((r as u32) << 8)
+}
+
+fn mu_mood_now() -> s32 {
+    if sky_day < 64 { return 0 }
+    if sky_day > 200 && sky_twilight < 120 { return 2 }
+    return 1
+}
+
+fn mu_pad_note(v: s32) -> s32 {
+    if v == 0 { return MU_PAD_A[mu_mood * 4 + mu_chord] }
+    return MU_PAD_B[mu_mood * 4 + mu_chord]
+}
+
+fn mu_pad_start(v: s32) {
+    let semi = clamp(mu_pad_note(v), -24, 24)
+    play16(MU_CH_A + v, SH_MU_PAD, len(SH_MU_PAD), SH_SEMI[semi + 24], 0, 0, true)
+    mu_state[v] = 1
+}
+
+// Starts the music (after the boot, or back from a preview); it fades in.
+fn mu_start() {
+    if mu_running { return }
+    mu_running = true
+    mu_gain = 0
+    mu_speed = 1
+    mu_t = 0
+    mu_mood = mu_mood_now()
+    mu_chord = rnd(4)
+    mu_lvl[0] = 0
+    mu_lvl[1] = 0
+    mu_pad_start(0)
+    mu_pad_start(1)
+    mu_release_at[0] = -1
+    mu_release_at[1] = -1
+    mu_chord_at = 720 + rnd(480)
+    mu_bell_lvl = 0
+    mu_bell_at = 150 + rnd(120)
+    stop(MU_CH_BELL)
+    play(MU_CH_AIR, SH_MU_AIR, len(SH_MU_AIR), 1.0, 0, 0, true)
+}
+
+fn mu_stop() {
+    if !mu_running { return }
+    mu_running = false
+    for ch in 0..4 { stop(ch) }
+    mu_gain = 0
+}
+
+// target: 0..256; speed: gain change per frame.
+fn mu_set_target(target: s32, speed: s32) {
+    mu_target = target
+    mu_speed = speed
+}
+
+// Once per frame while the shell runs.
+fn mu_frame() {
+    if !mu_running { return }
+    if mu_gain < mu_target { mu_gain = min(mu_target, mu_gain + mu_speed) }
+    else if mu_gain > mu_target { mu_gain = max(mu_target, mu_gain - mu_speed) }
+    let t = mu_t
+    mu_t += 1
+
+    // chord changes: voice A releases now, voice B 2.5 s later; each retunes when silent
+    if t == mu_chord_at {
+        mu_mood = mu_mood_now()
+        mu_chord = (mu_chord + 1 + rnd(3)) % 4
+        mu_release_at[0] = t
+        mu_release_at[1] = t + 150
+        var gap = 720 + rnd(480)
+        if mu_mood == 0 { gap += 240 }
+        mu_chord_at = t + gap
+    }
+    let pv = MU_PAD_VOL[mu_mood] * mu_gain >> 8
+    for v in 0..2 {
+        if t == mu_release_at[v] { mu_state[v] = 3 }
+        var l = mu_lvl[v]
+        let st = mu_state[v]
+        if st == 1 {
+            l += MU_ATTACK
+            if l >= MU_FULL {
+                l = MU_FULL
+                mu_state[v] = 2
+            }
+        } else if st == 3 {
+            l -= MU_RELEASE
+            if l <= 0 {
+                l = 0
+                mu_pad_start(v)            // retune to the new chord and fade back in
+            }
+        }
+        mu_lvl[v] = l
+        // a slow swell keeps the pad alive
+        let swell = 224 + (sin(from_bits(t * 90 + v * 40000)) * 32) as s32
+        mu_vol(MU_CH_A + v, (pv * l >> 12) * swell >> 8, 72 + v * 112)
+    }
+
+    // the bell: a note every few seconds, fading out by VOL
+    if t >= mu_bell_at {
+        mu_mood = mu_mood_now()
+        let m = mu_mood
+        let semi = MU_BELLS[m * 7 + rnd(7)]
+        play16(MU_CH_BELL, SH_MU_BELL, len(SH_MU_BELL), SH_SEMI[semi + 24], 0, 0, true)
+        mu_reg(MU_CH_BELL)[2] = SH_MU_BELL_LOOP
+        mu_bell_lvl = MU_FULL
+        mu_bell_pan = 64 + rnd(128)
+        mu_bell_at = t + MU_GAP_MIN[m] + rnd(MU_GAP_RND[m])
+    }
+    if mu_bell_lvl > 0 {
+        mu_bell_lvl = mu_bell_lvl * 61 >> 6            // about -0.4 dB a frame
+        if mu_bell_lvl < 8 {
+            mu_bell_lvl = 0
+            stop(MU_CH_BELL)
+        }
+        mu_vol(MU_CH_BELL, (MU_BELL_VOL[mu_mood] * mu_gain >> 8) * mu_bell_lvl >> 12, mu_bell_pan)
+    }
+
+    // air: slow gusts drifting across the stereo field
+    let gust = 170 + (sin(from_bits(t * 70)) * 60 + sin(from_bits(t * 23 + 9000)) * 26) as s32
+    let pan = 128 + (sin(from_bits(t * 31)) * 70) as s32
+    mu_vol(MU_CH_AIR, (MU_AIR_VOL[mu_mood] * mu_gain >> 8) * gust >> 8, pan)
+}

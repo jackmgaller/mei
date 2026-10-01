@@ -1,0 +1,59 @@
+// map / filter / reduce / each with capturing literals and closure values.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+struct Ball { pos: vec2, vel: vec2, hp: s32 }
+
+var xs: [10]s32
+var balls: [4]Ball
+
+fn sq(x: s32) -> s32 { return x * x }
+fn above(k: s32) -> fn(s32) -> bool { return fn(x: s32) => x > k }
+
+fn init() {
+    for i in 0..10 { xs[i] = i }
+    let k = 6
+    var ys: [10]s32
+    p(filter_into(ys, xs, fn(x) => x > k))          // expect: 3
+    p(ys[0] * 100 + ys[1] * 10 + ys[2])             // expect: 789
+    let lo = 2
+    let hi = 5
+    let step = 10
+    // three captures, and the literal calls a function
+    map_into(ys, xs, fn(x) => sq(x) * step + lo - hi)
+    p(ys[3])                                        // expect: 87
+    p(reduce(xs, 0, fn(a: s32, x: s32) => a + x * k))      // expect: 270
+    // through a closure value (callr)
+    let keep = above(4)
+    p(filter_into(ys, xs, keep))                    // expect: 5
+    let m = map(xs, fn(x) => x + hi)
+    p(m[9])                                         // expect: 14
+    // a pointer to a local is fine when the literal cannot outlive the function
+    var hits = 0
+    let hp = &hits
+    each(xs, fn(x: s32) { if x % 3 == 0 { *hp += 1 } })
+    p(hits)                                         // expect: 4
+    var total = 0
+    let tp = &total
+    (fn(n: s32) { *tp = n * 2 })(21)
+    p(total)                                        // expect: 42
+    // struct elements by pointer, with captured physics constants
+    let g: fixed = -0.5
+    let dmg = 3
+    for i in 0..4 { balls[i] = Ball { pos: vec2(0.0, i as fixed), vel: vec2(1.0, 0.0), hp: i * 2 } }
+    each(balls, fn(b: *Ball) {
+        b.vel.y = b.vel.y + g
+        b.pos = b.pos + b.vel
+        b.hp -= dmg
+    })
+    let alive = filter(balls, fn(b) => b.hp > 0)
+    p(alive)                                        // expect: 2
+    p(balls[0].hp * 10 + balls[1].hp)               // expect: 13
+    print_fixed(balls[1].pos.y)
+    print_char('\n')                                // expect: 2.5
+    // capturing literal with an explicit count, over a pointer
+    let base = &xs[2]
+    let off = 100
+    var out: [4]s32
+    map_into(out, base, fn(x) => x + off, 4)
+    p(out[0] + out[3])                              // expect: 207
+}

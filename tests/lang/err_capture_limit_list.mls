@@ -1,0 +1,8 @@
+// error: captured: a (s32, 1 word), b (fixed, 1 word), c (bool, 1 word), d (u8, 1 word)
+fn init() {
+    let a = 1
+    let b: fixed = 2.0
+    let c = true
+    let d: u8 = 4
+    let f = fn(x: s32) => x + a + b as s32 + c as s32 + d as s32
+}

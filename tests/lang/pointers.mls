@@ -1,0 +1,54 @@
+// Pointers: address-of, dereference, indexing, arithmetic, null, casts.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+struct Pt { a: s32, b: s32 }
+var gx: s32 = 5
+
+fn set(q: *s32, v: s32) { *q = v }
+
+fn init() {
+    var x = 10
+    let px = &x
+    *px = 20
+    p(x)                // expect: 20
+    set(&x, 30)
+    p(x)                // expect: 30
+    set(&gx, 6)
+    p(gx)               // expect: 6
+    var arr: [4]u16
+    let pa = &arr[0]
+    pa[2] = 500
+    p(arr[2] as s32)    // expect: 500
+    let pb = pa + 3
+    *pb = 7
+    p(arr[3] as s32)    // expect: 7
+    p(pb - pa)          // expect: 3
+    var q: *s32 = null
+    if q == null { p(1) }   // expect: 1
+    q = &x
+    if q != null { p(*q) }  // expect: 30
+    let raw = px as u32
+    let back = raw as *s32
+    p(*back)            // expect: 30
+    var w: u32 = 0x11223344
+    let bp = &w as *u8
+    p(bp[0] as s32)     // expect: 68
+    p(bp[3] as s32)     // expect: 17
+    var pts: [3]Pt
+    let pp = &pts[0] + 1
+    pp.a = 4
+    p(pts[1].a)         // expect: 4
+    let pal = 0x44C000 as *u16
+    pal[3] = 0x1234
+    p(pal[3] as s32)    // expect: 4660
+    if pa < pb { p(2) } // expect: 2
+    var cur = pa
+    cur += 2
+    p(*cur as s32)      // expect: 500
+    var pv: *vec3 = null
+    var vv = vec3(1.0, 2.0, 3.0)
+    pv = &vv
+    pv.z = 9.0
+    print_fixed(vv.z)
+    print_char('\n')    // expect: 9.0
+}

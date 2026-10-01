@@ -1,0 +1,4 @@
+// error: needs vectors of the same type
+fn init() {
+    let a = vec3(1.0, 2.0, 3.0) + vec4(1.0, 2.0, 3.0, 4.0)
+}

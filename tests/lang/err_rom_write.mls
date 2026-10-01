@@ -1,0 +1,3 @@
+// error: constant data lives in ROM
+const T: [2]s32 = [1, 2]
+fn init() { T[0] = 5 }

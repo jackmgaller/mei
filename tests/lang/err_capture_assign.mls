@@ -1,0 +1,5 @@
+// error: 'total' is a copy captured by the function literal: captures are copied when the literal is evaluated and are read-only
+fn init() {
+    var total = 0
+    let add = fn(x: s32) { total += x }
+}

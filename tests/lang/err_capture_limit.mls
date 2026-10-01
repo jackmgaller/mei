@@ -1,0 +1,8 @@
+// error: function literal captures 4 words, but a function value holds at most 3
+fn init() {
+    let a = 1
+    let b: fixed = 2.0
+    let c = true
+    let d: u8 = 4
+    let f = fn(x: s32) => x + a + b as s32 + c as s32 + d as s32
+}

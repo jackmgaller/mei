@@ -1,0 +1,56 @@
+// Memory helpers.
+
+// Copies n bytes; 16 bytes per step (vld/vst) when both pointers are word aligned.
+asm fn memcpy(dst: *u8, src: *u8, n: u32) {
+    or   r5, {dst}, {src}
+    andi r5, r5, 3
+    bne  r5, r0, .bytes
+.vec:
+    slti r5, {n}, 16
+    bne  r5, r0, .words
+    vld  v0, [{src}]
+    vst  v0, [{dst}]
+    addi {src}, {src}, 16
+    addi {dst}, {dst}, 16
+    addi {n}, {n}, -16
+    jmp  .vec
+.words:
+    slti r5, {n}, 4
+    bne  r5, r0, .bytes
+    lw   r6, [{src}]
+    sw   r6, [{dst}]
+    addi {src}, {src}, 4
+    addi {dst}, {dst}, 4
+    addi {n}, {n}, -4
+    jmp  .words
+.bytes:
+    beq  {n}, r0, .done
+    lbu  r6, [{src}]
+    sb   r6, [{dst}]
+    addi {src}, {src}, 1
+    addi {dst}, {dst}, 1
+    addi {n}, {n}, -1
+    jmp  .bytes
+.done:
+}
+
+// Fills n bytes with v.
+fn memset(dst: *u8, v: u8, n: u32) {
+    var p = dst
+    var k = n
+    if (p as u32) & 3 == 0 {
+        let w = (v as u32) * 0x01010101
+        var q = p as *u32
+        while k >= 4 {
+            q[0] = w
+            q += 1
+            k -= 4
+        }
+        p = q as *u8
+    }
+    while k > 0 {
+        p[0] = v
+        p += 1
+        k -= 1
+    }
+}

@@ -1,0 +1,100 @@
+// Memory cards through the standard library: save, load, check and delete.
+// cards: 1
+// frames: 1200
+cart "Card Test", "MEI-CARD-TEST"
+
+embed ICON: SaveMeta = "data/save_icon.bin"
+
+struct Progress { level: s32, score: u32, name: [16]u8, flags: [576]u8 }
+
+var game: Progress
+var back: Progress
+var meta: SaveMeta
+var big: [32000]u8
+var phase = 0
+var waited = 0
+
+fn p(n: s32) { print_int(n); print_char('\n') }
+fn pb(b: bool) { if b { println("yes") } else { println("no") } }
+
+fn init() {
+    pb(card_present(1))                         // expect: yes
+    pb(card_present(2))                         // expect: no
+    p(card_free_blocks())                       // expect: 255
+    p(card_saves() as s32)                      // expect: 0
+    pb(card_exists(3))                          // expect: no
+
+    // save 3: 600 bytes (3 blocks) with an icon from ROM and a title set at run time
+    game.level = 7
+    game.score = 123456
+    for i in 0..576 { game.flags[i] = (i * 7) as u8 }
+    meta = *ICON
+    card_set_title(&meta, "Level 7")
+    p(sizeof(Progress))                         // expect: 600
+    p(card_save(3, &game, sizeof(Progress), &meta))   // expect: 0
+    pb(card_busy())                             // expect: yes
+    let t0 = frame()
+    card_wait()
+    p((frame() - t0) as s32)                    // expect: 11
+    pb(card_exists(3))                          // expect: yes
+    p(card_size(3))                             // expect: 600
+    p(card_saves() as s32)                      // expect: 8
+    p(card_free_blocks())                       // expect: 252
+
+    // load it back
+    p(card_load(3, &back, sizeof(Progress)))    // expect: 600
+    var same = back.level == 7 && back.score == 123456
+    for i in 0..576 { if back.flags[i] != (i * 7) as u8 { same = false } }
+    pb(same)                                    // expect: yes
+    p(card_load(3, &back, 8))                   // expect: 8
+    var m2: SaveMeta
+    p(card_load_meta(3, &m2))                   // expect: 0
+    print(&m2.title[0])
+    print_char('\n')                            // expect: Level 7
+    p(m2.frames * 1000 + (m2.palette[1] as s32 & 31))  // expect: 2031
+
+    // errors
+    p(card_load(5, &back, 16))                  // expect: -2
+    p(card_delete(5))                           // expect: 2
+    p(card_save(16, &game, 4, &meta))           // expect: 4
+    p(card_save(1, &big[0], 32001, &meta))      // expect: 4
+    card_slot(2)
+    p(card_save(1, &game, 4, &meta))            // expect: 1
+    pb(card_exists(1))                          // expect: no
+    p(card_saves() as s32)                      // expect: 0
+    p(card_free_blocks())                       // expect: -1
+    card_slot(1)
+
+    // fill the card: 32000 bytes = 64 blocks per save
+    p(card_blocks_for(32000))                   // expect: 64
+    p(card_save(0, &big[0], 32000, ICON))       // expect: 0
+    p(card_save(1, &big[0], 32000, ICON))       // expect: 0
+    p(card_save(2, &big[0], 32000, ICON))       // expect: 0
+    p(card_free_blocks())                       // expect: 60
+    p(card_save(4, &big[0], 32000, ICON))       // expect: 3
+    // replacing save 3 with something too big keeps the old one
+    p(card_save(3, &big[0], 32000, ICON))       // expect: 3
+    p(card_size(3))                             // expect: 600
+
+    // delete
+    p(card_delete(3))                           // expect: 0
+    pb(card_exists(3))                          // expect: no
+    p(card_saves() as s32)                      // expect: 7
+    p(card_delete(0) + card_delete(1) + card_delete(2))   // expect: 0
+    p(card_free_blocks())                       // expect: 255
+}
+
+// The frame-loop pattern: start the save, then keep running while it is busy.
+fn update() {
+    if phase == 0 {
+        game.level = 8
+        if card_save(9, &game, 100, &meta) == CARD_OK { phase = 1 }
+    } else if phase == 1 {
+        if card_busy() { waited += 1 }
+        else {
+            phase = 2
+            p(waited)                           // expect: 7
+            p(card_saves() as s32)              // expect: 512
+        }
+    }
+}

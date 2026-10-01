@@ -1,0 +1,183 @@
+// Sound test: each UI sound, a sine sweep and a stereo left/right check, with a scope of
+// what channel 6 is playing. The sweep and the stereo tone loop a 64-sample wavetable and
+// are shaped at run time (pitch and volume written every frame).
+
+const SND_N = 7
+const SND_TOP = 50
+const SND_ROW = 22
+var snd_sel: s32
+var snd_hl: s32 = SND_TOP * 16
+var snd_job: s32 = -1          // 5 sweep, 6 stereo, -1 none
+var snd_testing: bool          // a test is playing (the music is silenced meanwhile)
+var snd_t: s32
+var snd_pitch: fixed
+
+fn snd_label(i: s32) -> *u8 {
+    if i == 0 { return "Cursor" }
+    if i == 1 { return "Select" }
+    if i == 2 { return "Back" }
+    if i == 3 { return "Launch" }
+    if i == 4 { return "Error" }
+    if i == 5 { return "Sine sweep" }
+    return "Stereo check"
+}
+
+fn snd_stop() {
+    snd_job = -1
+    stop(6)
+    stop(7)
+}
+
+fn snd_enter() { snd_stop() }
+
+// A looped tone on channel 6 from the wavetable at freq Hz (pitch = freq * 64 / 22050).
+fn snd_tone(pitch: fixed, vl: s32, vr: s32) {
+    play(6, SH_WAVE, len(SH_WAVE), pitch, vl, vr, true)
+}
+
+fn snd_set(pitch: fixed, vl: s32, vr: s32) {
+    let r = sh_chan(6)
+    r[3] = bits(pitch) as u32
+    r[4] = (clamp(vl, 0, 255) as u32) | ((clamp(vr, 0, 255) as u32) << 8)
+}
+
+fn snd_update() {
+    if sh_nav == UP {
+        snd_sel = (snd_sel + SND_N - 1) % SND_N
+        sh_sfx(SFX_TICK)
+    } else if sh_nav == DOWN {
+        snd_sel = (snd_sel + 1) % SND_N
+        sh_sfx(SFX_TICK)
+    }
+    if snd_testing && snd_job < 0 && !sound_playing(6) && !sound_playing(7) { snd_testing = false }
+    if sh_ok() {
+        snd_stop()
+        snd_testing = true
+        if snd_sel < 5 {
+            sh_play_sfx(snd_sel, 170, 170)
+        } else if snd_sel == 5 {
+            snd_job = 5
+            snd_t = 0
+            snd_pitch = 0.3193             // 110 Hz
+            snd_tone(snd_pitch, 0, 0)
+        } else {
+            snd_job = 6
+            snd_t = 0
+            snd_tone(1.2771, 0, 0)          // 440 Hz
+        }
+    }
+    if sh_back() {
+        snd_stop()
+        sh_sfx(SFX_BACK)
+        shell_go(SCR_HOME, -1)
+        return
+    }
+    // run the jobs
+    if snd_job == 5 {
+        // 110 Hz to 3,520 Hz in 150 frames (five octaves), then fade
+        let t = snd_t
+        var v = 140
+        if t < 8 { v = t * 140 / 8 }
+        if t > 140 { v = max(0, (150 - t) * 14) }
+        if t < 150 { snd_pitch = snd_pitch * 1.02338 }
+        snd_set(snd_pitch, v, v)
+        snd_t += 1
+        if snd_t > 150 { snd_stop() }
+    } else if snd_job == 6 {
+        // left for 40 frames, a gap, then right for 40 frames
+        let t = snd_t
+        var vl = 0
+        var vr = 0
+        if t < 40 { vl = snd_env(t) }
+        else if t >= 56 && t < 96 { vr = snd_env(t - 56) }
+        snd_set(1.2771, vl, vr)
+        snd_t += 1
+        if snd_t > 100 { snd_stop() }
+    }
+}
+
+// Soft attack, gentle decay over 40 frames.
+fn snd_env(t: s32) -> s32 {
+    if t < 4 { return t * 45 }
+    return max(0, 180 - (t - 4) * 4)
+}
+
+// Channel-6 scope: 56 output samples spaced 4 apart, as the mixer would read them.
+fn snd_scope(x: s32, y: s32, w: s32, h: s32) {
+    let r = sh_chan(6)
+    sh_rect(x, y + h / 2, w, 1, rgb(40, 46, 80), -1)
+    if r[5] & 1 == 0 { return }
+    let base = r[0] as *s8
+    let n = r[1]
+    if n == 0 { return }
+    let looping = r[5] & 2 != 0
+    var pos = r[6] << 16
+    let step = r[3] * 2
+    let vol = max((r[4] & 255) as s32, (r[4] >> 8 & 255) as s32)
+    var prev = y + h / 2
+    for j in 0..w / 2 {
+        let i = j * 2
+        var idx = pos >> 16
+        if idx >= n {
+            if !looping { break }
+            idx = idx % n
+        }
+        let s = base[idx] as s32
+        let py = y + h / 2 - (s * vol * (h / 2)) / (127 * 200)
+        let lo = min(prev, py)
+        let hi = max(prev, py)
+        sh_rect(x + i, lo, 2, hi - lo + 1, SH_WARM, -1)
+        prev = py
+        pos += step * 2
+    }
+}
+
+fn snd_speaker(x: s32, y: s32, label: *u8, lit: bool, lvl: s32) {
+    var c = rgb(26, 28, 46)
+    if lit { c = sh_scale(sh_mix(rgb(70, 60, 50), SH_WARM, lvl * 3 / 2), 128) }
+    sh_spr_wh(SH_ART_DISC12, x, y, 24, 24, c, -1)
+    var tc = SH_COOL_DIM
+    if lit { tc = rgb(30, 24, 50) }
+    sh_text_c(SH_FONT_SMALL, x + 12, y + 4, label, tc)
+}
+
+fn snd_draw() {
+    let ox = sh_ox
+    sh_header("Sound test")
+    sh_panel(0, SND_TOP - 6, 320, SND_N * SND_ROW + 10)
+    snd_hl = sh_ease(snd_hl, SND_TOP + snd_sel * SND_ROW)
+    sh_highlight(28, snd_hl >> 4, 130, SND_ROW - 3)
+    for i in 0..SND_N {
+        let y = SND_TOP + i * SND_ROW
+        let sel = i == snd_sel
+        var dx = 0
+        if sel { dx = 3 }
+        var col = SH_WHITE
+        if !sel { col = sh_scale(SH_WHITE, 200) }
+        sh_text(SH_FONT_MED, 36 + dx + ox, y, snd_label(i), col)
+    }
+    // scope
+    let sx = 176 + ox
+    let sy = SND_TOP + 2
+    sh_rect(sx - 2, sy - 2, 128, 76, rgb(12, 12, 24), -1)
+    sh_rect(sx - 2, sy - 2, 128, 1, rgb(60, 66, 110), -1)
+    snd_scope(sx + 6, sy + 6, 112, 64)
+    sh_text(SH_FONT_SMALL, sx, sy + 78, "Channel 6", SH_COOL_DIM)
+    if snd_job == 5 {
+        sb_begin()
+        sb_int((bits(snd_pitch) * 345) >> 16, true, 0)     // pitch * 22050 / 64
+        let hz = sb_str(" Hz")
+        sh_text_r(SH_FONT_SMALL, sx + 124, sy + 78, hz, SH_WARM_HI)
+    }
+    // speakers light with channel 6's left and right volume
+    let r = sh_chan(6)
+    var vl = 0
+    var vr = 0
+    if r[5] & 1 != 0 {
+        vl = (r[4] & 255) as s32
+        vr = ((r[4] >> 8) & 255) as s32
+    }
+    snd_speaker(sx + 20, sy + 100, "L", vl > 0, vl)
+    snd_speaker(sx + 80, sy + 100, "R", vr > 0, vr)
+    sh_footer("Play", "Back")
+}

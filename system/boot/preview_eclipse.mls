@@ -1,0 +1,51 @@
+// Loops the "eclipse" boot theme for development. Prints the CPU cycles (of the previous
+// frame) and the triangles queued, every 30th frame, with the peaks, to the debug console.
+cart "Preview eclipse"
+import "eclipse.mls"
+
+var preview_t: s32
+var preview_maxc: s32
+var preview_maxt: s32
+
+fn init() { eclipse_start() }
+
+// Triangles in a packet list starting at p.
+fn preview_count(first: u32) -> s32 {
+    var n = 0
+    var p = first
+    while p != 0xFFFFFF {
+        let w = (p as *u32)[0]
+        let ty = w >> 24
+        if ty >= 0x20 && ty <= 0x2F { n += 1 + ((ty >> 2) & 1) as s32 }
+        p = w & 0xFFFFFF
+    }
+    return n
+}
+
+fn draw() {
+    let c = cpu_used()
+    let done = eclipse_frame(preview_t)
+    var n = preview_count(&__ot[OT_SIZE - 1] as u32)
+    if __ui_tail != null { n += preview_count(__ui_head) }
+    preview_maxc = max(preview_maxc, c)
+    preview_maxt = max(preview_maxt, n)
+    if preview_t % 30 == 0 || done {
+        print("t=")
+        print_int(preview_t)
+        print(" cycles(prev)=")
+        print_int(c)
+        print(" tris=")
+        print_int(n)
+        print(" peak cycles=")
+        print_int(preview_maxc)
+        print(" peak tris=")
+        print_int(preview_maxt)
+        println("")
+    }
+    if done {
+        preview_t = 0
+        eclipse_start()
+    } else {
+        preview_t += 1
+    }
+}

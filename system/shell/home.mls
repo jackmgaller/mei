@@ -1,0 +1,93 @@
+// Home screen: the 明 mark, the five main options and a status line for each.
+
+const HOME_N = 6
+const HOME_Y = 80
+const HOME_ROW = 22
+var home_sel: s32
+var home_hl: s32 = HOME_Y * 16
+
+fn home_label(i: s32) -> *u8 {
+    if i == 0 { return "Carts" }
+    if i == 1 { return "Memory Card" }
+    if i == 2 { return "Settings" }
+    if i == 3 { return "Controllers" }
+    if i == 4 { return "Sound test" }
+    return "System"
+}
+
+fn home_icon(i: s32) -> *s32 {
+    if i == 0 { return SH_ART_IC_CARTS }
+    if i == 1 { return SH_ART_IC_CARD }
+    if i == 2 { return SH_ART_IC_SETTINGS }
+    if i == 3 { return SH_ART_IC_PADS }
+    if i == 4 { return SH_ART_IC_SOUND }
+    return SH_ART_IC_SYSTEM
+}
+
+// The status shown at the right of each option.
+fn home_status(i: s32) -> *u8 {
+    sb_begin()
+    if i == 0 {
+        if sh_ncarts == 0 { return sb_str("none") }
+        sb_int(sh_ncarts, true, 0)
+        if sh_ncarts == 1 { return sb_str(" cart") }
+        return sb_str(" carts")
+    }
+    if i == 1 { return mc_home_status() }
+    if i == 2 { return sb_str(boot_theme_name(sh_cfg_theme())) }
+    if i == 3 { return sb_str("2 pads") }
+    if i == 4 { return sb_str("8 channels") }
+    return sb_str(sh_platform)
+}
+
+// The screen each option opens.
+fn home_screen(i: s32) -> s32 {
+    if i == 0 { return SCR_CARTS }
+    if i == 1 { return SCR_CARD }
+    if i == 2 { return SCR_SETTINGS }
+    if i == 3 { return SCR_PADS }
+    if i == 4 { return SCR_SOUND }
+    return SCR_INFO
+}
+
+fn home_update() {
+    if sh_nav == UP {
+        home_sel = (home_sel + HOME_N - 1) % HOME_N
+        sh_sfx(SFX_TICK)
+    } else if sh_nav == DOWN {
+        home_sel = (home_sel + 1) % HOME_N
+        sh_sfx(SFX_TICK)
+    }
+    if sh_ok() {
+        sh_sfx(SFX_SELECT)
+        shell_go(home_screen(home_sel), 1)
+    }
+}
+
+fn home_draw() {
+    // title block
+    let ox = sh_ox
+    sh_glow(48 + ox, 44, 34, sh_mix(rgb(60, 40, 20), rgb(30, 36, 60), 256 - sky_day))
+    sh_spr(SH_ART_MEI, 18 + ox, 14)
+    sh_text(SH_FONT_BIG, 84 + ox, 14, "MEI", SH_WHITE)
+    sh_text(SH_FONT_SMALL, 86 + ox, 46, "Sun & Moon System", SH_COOL)
+
+    sh_panel(0, HOME_Y - 6, 320, HOME_N * HOME_ROW + 8)
+    home_hl = sh_ease(home_hl, HOME_Y + home_sel * HOME_ROW)
+    sh_highlight(34, home_hl >> 4, 270, HOME_ROW - 3)
+    for i in 0..HOME_N {
+        let y = HOME_Y + i * HOME_ROW
+        let sel = i == home_sel
+        var dx = 0
+        if sel { dx = 3 }
+        sh_spr_tint(home_icon(i), 42 + dx + ox, y + 2, 0x808080)
+        var col = SH_WHITE
+        if !sel { col = sh_scale(SH_WHITE, 200) }
+        sh_text(SH_FONT_MED, 68 + dx + ox, y + 1, home_label(i), col)
+        var sc = SH_COOL_DIM
+        if sel { sc = SH_WARM_HI }
+        sh_text_r(SH_FONT_SMALL, 296 + ox, y + 4, home_status(i), sc)
+    }
+    sh_footer("Select", "")
+    sh_footer_clock()
+}

@@ -1,0 +1,30 @@
+// Memory-mapped I/O registers (spec pages 12-14). Assigning to a register is one sw.
+
+reg GPU_DRAW: u32 @ 0xFF0000     // write: draw the packet list at this address
+reg GPU_CLEAR: u32 @ 0xFF0004    // write: fill the back buffer with a 15-bit colour
+reg GPU_CTRL: u32 @ 0xFF0008     // bit 0: dither
+reg GPU_STATUS: u32 @ 0xFF000C   // bits 0-15 triangles drawn, bit 16 limit exceeded
+reg GPU_BACK: u32 @ 0xFF0010     // address of the back buffer
+
+reg PAD1: u32 @ 0xFF0200
+reg PAD2: u32 @ 0xFF0204
+reg STICK1_X: fixed @ 0xFF0208
+reg STICK1_Y: fixed @ 0xFF020C
+reg STICK2_X: fixed @ 0xFF0210
+reg STICK2_Y: fixed @ 0xFF0214
+
+reg FRAME: u32 @ 0xFF0300        // frames since reset
+reg CYCLES: s32 @ 0xFF0304       // cycles left in this frame
+reg RAND: u32 @ 0xFF0308         // read: next random number; write: seed
+reg DEBUG: u32 @ 0xFF030C        // write: one character to the debug console
+
+const AUDIO_BASE = 0xFF0100      // channel n at AUDIO_BASE + n * 32
+const VRAM_PALETTE = 0x44C000    // colour i at VRAM_PALETTE + i * 2
+const VRAM_TEXTURES = 0x480000   // slot n at VRAM_TEXTURES + n * TEXTURE_SLOT_SIZE
+const TEXTURE_SLOT_SIZE = 0x8000
+const SCREEN_W = 320
+const SCREEN_H = 240
+
+asm fn vsync() {
+    vsync
+}

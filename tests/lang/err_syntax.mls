@@ -1,0 +1,4 @@
+// error: err_syntax.mls:3:18: error: expected an expression, found ')'
+fn init() {
+    let x = (1 + )
+}

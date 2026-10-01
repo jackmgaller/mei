@@ -1,0 +1,21 @@
+// Boot theme dispatch. Each theme lives in its own file (docs/SYSTEM.md) and
+// provides <name>_start() and <name>_frame(t) -> bool.
+import "duet.mls"
+import "eclipse.mls"
+
+const BOOT_THEME_COUNT: s32 = 2
+
+fn boot_theme_name(i: s32) -> *u8 {
+    if i == 1 { return "ECLIPSE" }
+    return "DUET"
+}
+
+fn boot_theme_start(i: s32) {
+    if i == 1 { eclipse_start() } else { duet_start() }
+}
+
+// Draws frame t of theme i; true when the animation has finished.
+fn boot_theme_frame(i: s32, t: s32) -> bool {
+    if i == 1 { return eclipse_frame(t) }
+    return duet_frame(t)
+}

@@ -1,0 +1,6 @@
+// error: cannot compare State with integer constant; convert with 'as'
+enum State { A, B }
+fn init() {
+    let s = State.A
+    if s == 0 { }
+}
