@@ -62,9 +62,9 @@ fn draw_title() {
     cam_pos = vec3(5.0, 2.4, -11.5)
     cam_yaw = -1.45 + sin(fixed(screen_t) * 0.004) * 0.1
     cam_pitch = -0.1
-    show_angler = false
+    show_rod = false
     draw_lake()
-    show_angler = true
+    show_rod = true
     let k = clamp(256 - screen_t * 4, 0, 256)
     ui_grad(0, 0, 320, 110, rgb(30, 20, 60), rgb(0, 0, 0), 2)
     ui_tex(32, 22, 255, 72, SLOT_FONT, PAL_LOGO, LOGO_U, LOGO_V, 255, 72, 0x808080, -1)
@@ -99,7 +99,7 @@ fn update_intro() {
 }
 
 fn draw_intro() {
-    camera_at_dock()
+    camera_first_person()
     draw_lake()
     fade(90)
     panel(34, 40, 252, 160)
@@ -217,7 +217,7 @@ fn update_travel() {
 }
 
 fn draw_travel() {
-    camera_at_dock()
+    camera_first_person()
     draw_lake()
     draw_hud()
     var k = screen_t * 9
@@ -226,7 +226,7 @@ fn draw_travel() {
 }
 
 fn draw_menu() {
-    camera_at_dock()
+    camera_first_person()
     draw_lake()
     fade(110)
     panel(6, 22, 196, 168)
@@ -384,7 +384,7 @@ fn update_shop() {
 }
 
 fn draw_shop() {
-    camera_at_dock()
+    camera_first_person()
     draw_lake()
     fade(120)
     panel(20, 22, 280, 186)
@@ -429,6 +429,7 @@ fn draw_shop() {
 
 var jr_sel: s32
 var jr_back: Screen
+var jr_pal: s32
 
 fn open_journal(back: Screen) {
     jr_back = back
@@ -450,7 +451,7 @@ fn update_journal() {
 }
 
 fn draw_journal() {
-    camera_at_dock()
+    camera_first_person()
     draw_lake()
     fade(130)
     // left: the pairs
@@ -483,7 +484,7 @@ fn draw_journal() {
     ui_tex(166, 22, 144, 72, SLOT_WORLD, PAL_GREY, UV_HALO_U, UV_HALO_V, 64, 64, rgb(40, 40, 60), 1)
     var pal = PAL_SIL2
     if caught { pal = fish_pal(f) }
-    draw_fish_sprite(f, 238, 52, 128, 64, 0.0, pal, 0x808080)
+    jr_pal = pal
     if f & 1 != 0 { icon(294, 8, IC_MOON, 0x808080) } else { icon(294, 8, IC_SUN, 0x808080) }
     if caught {
         ftext_c(238, 86, fish_name(f), CREAM, true)
@@ -510,6 +511,11 @@ fn draw_journal() {
             ftext(166, 130, "A shadow in the water...\nwhere could it be?", SOFT, false)
         }
     }
+    // the fish itself: a slowly turning 3D model over the panel
+    ui_flush_now()
+    let p = view_pt(0.71, 0.6, 2.0)
+    draw_fish3d(f, jr_pal, p, cam_yaw + 1.5708 + fixed(screen_t) * 0.02, sin(fixed(screen_t) * 0.03) * 0.12, 0.85, 0.2)
+    flush_pass()
 }
 
 // A diagram of a fish's reeling pattern: lines from step to step, fading as they go, and
@@ -640,9 +646,9 @@ fn draw_festival() {
     cam_pos = FEST_CAM
     cam_yaw = FEST_YAW
     cam_pitch = -0.08
-    show_angler = false
+    show_rod = false
     draw_lake()
-    show_angler = true
+    show_rod = true
     let t = screen_t
     fade(clamp(255 - t * 6, 0, 255))
     if t > 30 {
@@ -696,9 +702,9 @@ fn draw_ending() {
     cam_yaw = 0.4 + fixed(screen_t / 16) * 0.0096
     cam_pitch = -0.05
     fest_lanterns_on = true
-    show_angler = false
+    show_rod = false
     draw_lake()
-    show_angler = true
+    show_rod = true
     let y0 = 240 - screen_t / 2
     let lines = 12
     for i in 0..lines {

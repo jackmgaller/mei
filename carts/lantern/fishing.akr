@@ -457,47 +457,6 @@ fn aim_spread() -> fixed {
     }
 }
 
-fn rod_tip() -> vec3 {
-    let s = stand_pos()
-    let y = view_yaw()
-    let sn = sin(y)
-    let cs = cos(y)
-    // the rod points forward and up; pulled back while aiming, bent toward a fighting fish
-    var fwd = 1.9
-    var up = 1.6
-    var side = 0.25
-    match phase {
-        Aim => {
-            let k = min(fixed(aim_hold) / 20, 1.0)
-            fwd = 1.9 - k * 2.6
-            up = 1.6 + k * 0.7
-        }
-        Fly => {
-            let k = min(fixed(phase_t) / 6, 1.0)
-            fwd = -0.7 + k * 2.9
-            up = 2.3 - k * 1.0
-        }
-        Fight => {
-            let pull = f_tension
-            fwd = 1.6 + pull * 0.4
-            up = 1.5 - pull * 0.6
-            side = 0.25 + sin(f_ang - y) * 1.2
-        }
-        Bite => {
-            fwd = 2.0
-            up = 1.3
-        }
-        else => {}
-    }
-    return vec3(s.x + sn * (0.45 + fwd) + cs * side, s.y + 0.95 + up, s.z + cs * (0.45 + fwd) - sn * side)
-}
-
-fn rod_root() -> vec3 {
-    let s = stand_pos()
-    let y = view_yaw()
-    return vec3(s.x + sin(y) * 0.45 + cos(y) * 0.05, s.y + 0.92, s.z + cos(y) * 0.45 - sin(y) * 0.05)
-}
-
 // ---- the update for each phase
 
 fn fishing_update() {
@@ -635,6 +594,7 @@ fn update_wait(st: vec2) {
             moving_t = 0
         }
         reel_acc += d
+        reel_ang += d * 2
         if reel_acc > 0.8 {
             reel_acc = 0.0
             sfx_click()
@@ -846,7 +806,7 @@ fn update_fight(st: vec2) {
     // the fish swims about at the end of the line
     let wob = sin(fixed(phase_t) * 0.05) * 0.004
     f_ang += wob
-    let lim = 1.0
+    let lim = 0.5
     f_ang = clamp(f_ang, view_yaw() - lim, view_yaw() + lim)
     keep_on_water()
     lure = fish_pos()
@@ -920,6 +880,7 @@ fn trace_pattern(info: *Fish, tempo: s32, lf: fixed) {
         f_tension += (0.4 - f_tension) * 0.15
     }
     f_dist -= 0.36 * amount / info.heft
+    reel_ang += 1.2
     f_last_dir = want
     f_hit_fx = 14
     f_hit_dir = want

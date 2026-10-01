@@ -209,8 +209,46 @@ embed HOUSE7_LO: Mesh = "house7_lo.bin"
 const REED_C: [4]vec3 = [vec3(-11.5496, 1.0, -23.1333), vec3(15.8329, 1.0, 17.4848), vec3(0.0000, 1.0, 0.0000), vec3(-23.1506, 1.0, 0.1262)]
 const REED_R: [4]fixed = [3.1737, 22.4330, 1.5000, 13.6729]
 embed LILIES: Mesh = "lilies.bin"
-embed ANGLER: Mesh = "angler.bin"
 embed BOBBER: Mesh = "bobber.bin"
+embed HAND: Mesh = "hand.bin"
+embed FISH0: Mesh = "fish0.bin"
+embed FISHSH0: Mesh = "fishsh0.bin"
+embed FISH1: Mesh = "fish1.bin"
+embed FISHSH1: Mesh = "fishsh1.bin"
+embed FISH2: Mesh = "fish2.bin"
+embed FISHSH2: Mesh = "fishsh2.bin"
+embed FISH3: Mesh = "fish3.bin"
+embed FISHSH3: Mesh = "fishsh3.bin"
+embed FISH4: Mesh = "fish4.bin"
+embed FISHSH4: Mesh = "fishsh4.bin"
+embed FISH5: Mesh = "fish5.bin"
+embed FISHSH5: Mesh = "fishsh5.bin"
+embed FISH6: Mesh = "fish6.bin"
+embed FISHSH6: Mesh = "fishsh6.bin"
+fn fish_mesh(sp: s32) -> *Mesh {
+    match sp {
+        0 => return FISH0
+        1 => return FISH1
+        2 => return FISH2
+        3 => return FISH3
+        4 => return FISH4
+        5 => return FISH5
+        6 => return FISH6
+        else => return FISH0
+    }
+}
+fn fish_shadow_mesh(sp: s32) -> *Mesh {
+    match sp {
+        0 => return FISHSH0
+        1 => return FISHSH1
+        2 => return FISHSH2
+        3 => return FISHSH3
+        4 => return FISHSH4
+        5 => return FISHSH5
+        6 => return FISHSH6
+        else => return FISHSH0
+    }
+}
 
 fn terr_mesh(i: s32, refl: bool, far: bool) -> *Mesh {
     match i {

@@ -4,6 +4,7 @@
 // that traces each species' pattern (and leans against pulls, eases off leaps).
 
 const TEST = 1
+const JR_SEL = 7
 
 var bot_on: bool
 var bot_miss: s32          // every Nth step goes wrong on purpose (0: never)
@@ -47,7 +48,7 @@ fn test_init() {
                 }
             }
             open_journal(Screen.Fish)
-            jr_sel = 7
+            jr_sel = JR_SEL
         }
         7 => {                                // the festival (target met)
             start_at(0, 18, 50)

@@ -4,6 +4,7 @@ import "state.akr"
 import "world.akr"
 import "fishing.akr"
 import "scene.akr"
+import "view.akr"
 import "ui.akr"
 import "sfx.akr"
 import "screens.akr"
@@ -197,6 +198,10 @@ fn update() {
             Travel => update_travel()
         }
     }
+    // the rod's pose (the line and casts start at its tip)
+    camera_first_person()
+    begin_camera()
+    rod_update()
     let c0 = CYCLES as s32
     tod_update()
     palettes_update(false)
@@ -249,6 +254,7 @@ fn update_fish() {
 
 fn draw() {
     ui_tris = 0
+    show_rod = screen == Screen.Fish || screen == Screen.Travel
     match screen {
         Title => draw_title()
         Intro => draw_intro()
@@ -266,8 +272,7 @@ fn draw() {
 }
 
 fn draw_fish() {
-    camera_at_dock()
-    draw_lake()
+    draw_lake()                  // the camera was set in update()
     if phase == Phase.Aim { draw_aim_arc() }
     if phase == Phase.Fight && tut_text == null { draw_fight_ui() }
     if phase == Phase.Catch {

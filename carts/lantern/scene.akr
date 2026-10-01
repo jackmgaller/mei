@@ -1,5 +1,5 @@
-// Drawing a frame of the lake: the three passes (see world.akr) plus the angler, the rod
-// and line, the bobber, the fish under the water and the festival lanterns.
+// Drawing a frame of the lake: the three passes (see world.akr), then the first-person pass
+// (view.akr): the bobber, the fish under the water, the festival lanterns.
 
 var world_tris: s32           // triangles drawn by the passes this frame
 var tris_a: s32
@@ -11,25 +11,7 @@ fn pmark(i: s32) {
     prof_last = c
 }
 var tris_b: s32
-var show_angler = true
 var fest_lanterns_on = false
-
-// Sets the camera behind the angler, looking out over the water.
-fn camera_at_dock() {
-    let s = stand_pos()
-    let y = view_yaw()
-    let sn = sin(y)
-    let cs = cos(y)
-    cam_yaw = y
-    cam_pitch = -0.15
-    cam_pos = vec3(s.x - sn * 3.6, s.y + 2.25, s.z - cs * 3.6)
-}
-
-fn begin_camera() {
-    camera_look(cam_pos, cam_yaw, cam_pitch)
-    cam_s = sin(cam_yaw)
-    cam_c = cos(cam_yaw)
-}
 
 // The whole world for the current camera.
 fn draw_lake() {
@@ -52,6 +34,7 @@ fn draw_lake() {
         draw_fireworks(true)
     }
     bt_flush()
+    draw_surfacing_fish()
     draw_sky()
     draw_sky_objects(false)
     draw_clouds(false)
@@ -85,7 +68,9 @@ fn draw_lake() {
     fog_off()
     draw_garlands_day()
     bt_flush()
-    if show_angler { draw_angler() }
+    if phase == Phase.Wait || phase == Phase.Bite || phase == Phase.Fly {
+        if screen == Screen.Fish { mesh_at(BOBBER, lure, 0.0) }
+    }
     draw_leaping_fish()
     depth_bias(-6)
     draw_lantern_glows(false)
@@ -100,72 +85,17 @@ fn draw_lake() {
     bt_flush()
     depth_bias(0)
     flush_pass()
-    world_tris = (GPU_STATUS & 0xFFFF) as s32 - before
     pmark(6)
-}
-
-fn draw_angler() {
-    let s = stand_pos()
-    let y = view_yaw()
-    mesh_at(ANGLER, s, y)
-    // the bobber on the water (or the lure in the air)
-    if phase == Phase.Wait || phase == Phase.Bite || phase == Phase.Fly {
-        mesh_at(BOBBER, lure, 0.0)
-    }
-    draw_rod_and_line()
-}
-
-// The rod (a tapering screen-space strip) and the line from its tip to the lure.
-fn draw_rod_and_line() {
-    let root = rod_root()
-    let tip = rod_tip()
-    if !project(root) { return }
-    let rx = proj_x
-    let ry = proj_y
-    let rb = depth_bucket(proj_w) - 4
-    if !project(tip) { return }
-    let tx = proj_x
-    let ty = proj_y
-    let tb = depth_bucket(proj_w) - 4
-    let rodc = mix_col(rgb(40, 28, 20), rgb(130, 92, 56), (light * 200) as s32 + 56)
-    // a slight bend
-    let mx = (rx + tx) / 2 + (ty - ry) / 14
-    let my = (ry + ty) / 2 + (rx - tx) / 14
-    seg2d(rx, ry, mx, my, 2, rodc, rb)
-    seg2d(mx, my, tx, ty, 1, rodc, tb)
-    if phase == Phase.Catch { return }
-    // the line: a sagging curve to the lure (taut in a fight)
-    var sag = 0.0
-    match phase {
-        Wait, Bite => sag = 0.9
-        Idle, Aim => sag = 0.0
-        Fly => sag = 0.25
-        Fight => sag = clamp(0.5 - f_tension, 0.0, 0.5) * 2
-        else => sag = 0.6
-    }
-    var end = lure
-    if phase == Phase.Idle || phase == Phase.Aim {
-        end = vec3(tip.x, tip.y - 0.6, tip.z)
-    }
-    let linec = mix_col(rgb(90, 100, 120), rgb(225, 230, 240), (light * 256) as s32)
-    var px = tx
-    var py = ty
-    for i in 1..9 {
-        let t = fixed(i) / 8
-        var p = lerp(tip, end, t)
-        p.y -= sag * (t * (1.0 - t)) * 4.0
-        if !project(p) { return }
-        seg2d(px, py, proj_x, proj_y, 1, linec, max(depth_bucket(proj_w) - 6, 0))
-        px = proj_x
-        py = proj_y
-    }
+    // ---- pass D: the rod, the line and a fish held up, in front of everything
+    draw_view_pass()
+    world_tris = (GPU_STATUS & 0xFFFF) as s32 - before
+    pmark(7)
 }
 
 // Fish under the water: subtractive shadows by day; at night a few give themselves away
 // (bubbles, a glow, a glint).
 fn draw_shadows() {
     let day = light
-    bt_look(F_TEX | F_SEMI, 2, SLOT_WORLD, PAL_GREY, UV_SHADOW_U, UV_SHADOW_V, UV_SHADOW_U + 31, UV_SHADOW_V + 15)
     for i in 0..NSWIM {
         let s = &sw[i]
         if s.state == SW_NONE { continue }
@@ -177,12 +107,11 @@ fn draw_shadows() {
             if f_surge == 5 { continue }
         }
         if !in_view(p, 2.0) { continue }
-        let len_ = fixed(s.size_mm) / 1000 + 0.25
         if day > 0.3 {
             let k = (day * 150) as s32
             var c = scale_col(rgb(60, 56, 40), k)
             if s.id == 12 { c = scale_col(rgb(30, 50, 90), k) }   // the golden koi: a gold shimmer (less dark in blue)
-            flat_quad(vec3(p.x, 0.02, p.z), len_ * 0.5, len_, head + 1.5708 + 1.5708, c)
+            draw_fish_shadow(s.id, s.size_mm, p, head, c)
         }
     }
     bt_flush()
@@ -254,16 +183,24 @@ fn draw_aim_arc() {
     }
 }
 
-// A trout's leap during a fight: the fish sprite arcs out of the water.
+// A trout's leap during a fight: the fish arcs out of the water, nose up then down.
 fn draw_leaping_fish() {
     if phase != Phase.Fight || f_surge != 5 { return }
     let p = fish_pos()
-    let sp = f_id / 2
-    let u = FISH_U[sp] as s32
-    let v = FISH_V[sp] as s32
-    bt_look(F_TEX, 0, SLOT_FISH, fish_pal(f_id) as u32, u, v, u + 63, v + 31)
-    let c = mix_col(rgb(60, 60, 80), rgb(128, 128, 128), (light * 256) as s32 + 80)
-    billboard(vec3(p.x, f_leap_h + 0.3, p.z), 1.1, 0.55, c, c)
+    let t = fixed(40 - f_surge_t) / 40
+    let pitch = (0.5 - t) * 1.6
+    draw_fish3d(f_id, fish_pal(f_id), vec3(p.x, f_leap_h + 0.1, p.z), cam_yaw + 1.5708, pitch, fish_scale(f_size) * 2.4, 0.35)
+}
+
+// A big fish rolling just under the surface while it pulls (circles or charges): drawn
+// before the water, so the water tints it.
+fn draw_surfacing_fish() {
+    if phase != Phase.Fight || screen != Screen.Fish { return }
+    if f_surge != 2 && f_surge != 3 { return }
+    let p = fish_pos()
+    var yaw = f_ang + 3.14159
+    if f_surge == 3 { yaw = cam_yaw + f_surge_ang + 1.5708 }
+    draw_fish3d(f_id, fish_pal(f_id), vec3(p.x, -0.1, p.z), yaw, 0.0, fish_scale(f_size) * 1.3, 0.3)
 }
 
 // ---- festival lanterns: paper lanterns floating out over the water

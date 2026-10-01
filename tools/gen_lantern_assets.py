@@ -9,7 +9,7 @@ Graphics (this file):
   keypal.bin time-of-day keyframes of the world palettes (4 keys x NSRC sources x 16 colours)
   statpal.bin static 4-bit palettes (glows, fish, icons, map, fonts, logo) from palette 48
   *.bin      meshes: terrain chunks, docks, village and their mirror images (for the
-             reflections under the water), the angler, the bobber
+             reflections under the water), the bobber, the fish (3D) and their shadows
   assets.akr generated declarations: embeds, palette numbers, atlas coordinates, dock
              placements, culling tables, lantern positions, font metrics
 
@@ -615,7 +615,7 @@ def emit(faces, mirror=False, centre=None, lo=False):
         if mirror:
             pts = [(p[0], 2 * WATER_Y - p[1], p[2]) for p in pts]
             n = (n[0], -n[1], n[2])
-        uvs, cols = list(f.uvs), list(f.cols)
+        uvs, cols = (list(f.uvs) if f.uvs else None), list(f.cols)
         c = cross(sub(pts[1], pts[0]), sub(pts[2], pts[0]))
         if dot(c, n) > 0:          # wrong winding: mirror the corner order
             if len(pts) == 4:
@@ -623,7 +623,8 @@ def emit(faces, mirror=False, centre=None, lo=False):
             else:
                 order = [1, 0, 2]
             pts = [pts[i] for i in order]
-            uvs = [uvs[i] for i in order]
+            if uvs:
+                uvs = [uvs[i] for i in order]
             cols = [cols[i] for i in order]
         mat = f.mat
         if isinstance(mat, str):
@@ -927,7 +928,10 @@ def lantern_post(x, z, y, h=1.5, side=0):
     if side:
         out += box_faces(min(x, lx) - 0.03, y + h - 0.06, z - 0.03, max(x, lx) + 0.03, y + h, z + 0.03, 'log',
                          base=0.9, sides='ns', lod=False)
-    out += sw_box(lx - 0.11, ly - 0.15, z - 0.11, lx + 0.11, ly + 0.15, z + 0.11, 11, refl=False, lod=False)
+    pu = [(192, 55), (207, 55), (192, 32), (207, 32)]
+    out += box_faces(lx - 0.11, ly - 0.16, z - 0.11, lx + 0.11, ly + 0.16, z + 0.11, 'paper', uvs=pu, refl=False, lod=False,
+                     top=False)
+    out += sw_box(lx - 0.07, ly + 0.16, z - 0.07, lx + 0.07, ly + 0.2, z + 0.07, 10, refl=False, lod=False)
     return out, (lx, ly, z)
 
 
@@ -1268,31 +1272,14 @@ for g in range(4):
     write('reeds%d.bin' % g, emit(reed_groups[g]).pack())
     write('reeds%d_r.bin' % g, emit(reed_groups[g], mirror=True).pack())
 
-# ---- the angler (local space: stands at origin facing +Z), swatch-coloured
-ang = []
-ang += sw_box(-0.22, 0.0, -0.09, 0.22, 0.62, 0.1, 14, top=False)        # legs (trousers)
-ang += sw_box(-0.3, 0.6, -0.15, 0.3, 1.22, 0.15, 1)                      # coat
-ang += sw_box(-0.16, 1.22, -0.14, 0.16, 1.52, 0.14, 5, top=False)        # head
-ang += sw_box(-0.17, 1.26, -0.15, 0.17, 1.52, -0.05, 6, top=False, sides='swe')   # hair at the back
-ang += sw_box(-0.38, 0.86, -0.05, -0.26, 1.16, 0.3, 2, top=False)        # arms
-ang += sw_box(0.26, 0.86, -0.05, 0.38, 1.16, 0.3, 2, top=False)
-ang += sw_box(-0.36, 0.86, 0.3, 0.36, 0.98, 0.46, 2, top=False)          # forearms toward the rod
-ang += sw_box(-0.1, 0.85, 0.42, 0.12, 1.0, 0.52, 5, top=False)           # hands
-ang += sw_box(-0.24, 0.86, -0.3, 0.06, 1.08, -0.15, 13)                  # creel basket on the back
-# straw hat: a wide brim and a crown
-NBR = 8
-for k in range(NBR):
-    a0 = 2 * math.pi * k / NBR
-    a1 = 2 * math.pi * (k + 1) / NBR
-    r = 0.44
-    p0 = (r * math.sin(a0), 1.49, r * math.cos(a0))
-    p1 = (r * math.sin(a1), 1.49, r * math.cos(a1))
-    c0 = (0.18 * math.sin(a0), 1.52, 0.18 * math.cos(a0))
-    c1 = (0.18 * math.sin(a1), 1.52, 0.18 * math.cos(a1))
-    ang.append(Face([p0, p1, c0, c1], sw_uv(3), [lit_tint((0, 1, 0))] * 4, 'swatch', (0, 1, 0), flags=DOUBLE))
-    n = norm((math.sin((a0 + a1) / 2), 0.6, math.cos((a0 + a1) / 2)))
-    ang.append(Face([c0, c1, (0, 1.72, 0)], sw_uv(3 if k % 2 else 4)[:3], [lit_tint(n, 0.95)] * 3, 'swatch', n))
-write('angler.bin', emit(ang).pack())
+# the first-person hand: glove, thumb, cork grip, reel and sleeve, in "hand space" (origin
+# at the hand, +z along the rod, +y up); the cart places it in camera space each frame
+hand = []
+hand += sw_box(-0.03, -0.054, -0.07, 0.05, 0.018, 0.03, 6)          # glove
+hand += sw_box(-0.014, -0.012, -0.22, 0.014, 0.012, 0.05, 13)       # cork grip
+hand += sw_box(-0.022, -0.064, 0.11, 0.022, -0.016, 0.146, 9)       # reel
+hand += sw_box(-0.02, -0.125, -0.26, 0.1, -0.015, -0.05, 1)         # sleeve
+write('hand.bin', emit(hand).pack())
 
 # bobber: a small red/white diamond
 bob = []
@@ -1477,6 +1464,103 @@ for s, sp in enumerate(SPECIES):
     FISH_PAL.append((pd, pn))
 SIL_PAL = stat_pal([(40, 44, 76)] * 15)
 SIL_PAL2 = stat_pal([(70, 74, 110)] + [(36, 40, 70)] * 14)
+
+# ---- 3D fish: a lofted body whose side profile is the texture's outline, so the side view
+# maps straight onto the 64x32 texture (both flanks share it). Fins, tail and whiskers are
+# "cards" in the fish's middle plane that show the texture's fin texels (index 0 is never
+# drawn, so the cards take the fins' shapes). Model space: nose toward +z, the body 1 unit
+# long from z = +0.5 to -0.5, the tail beyond; y up. The night twin is the same mesh drawn
+# with the night palette (the cart patches the palette in a RAM copy).
+THICK = dict(perch=0.42, pike=0.55, carp=0.5, catfish=0.9, trout=0.5, bream=0.28, koi=0.55)
+FISH_LIGHT = norm((0.45, 0.8, 0.35))
+
+
+def fish_tint(n, k=1.0):
+    d = max(0.0, dot(n, FISH_LIGHT))
+    v = 128 * (0.5 + 0.62 * d) * k
+    return rgbw(v, v, v)
+
+
+def fish_model(si, sp):
+    sh = sp['shape']
+    u0, v0 = FISH_UV[si]
+    x0 = 64 * 0.06
+    body_px = sh['L'] * 64 * 0.86 * (1 - sh['tail'] * 0.6)
+    Hh = sh['H'] * 32
+    thick = THICK[sp['key']]
+
+    def prof(t):
+        p_ = math.sin(math.pi * min(1, t * 1.15) ** (0.6 + sh['snout'] * 0.5)) ** 0.8
+        return max(p_, 0.18 if t > 0.8 else 0)
+
+    def to_uv(z, y):
+        px = x0 + (0.5 - z) * body_px
+        py = 16 - y * body_px
+        return (int(round(min(max(px, 0), 63))) + u0, int(round(min(max(py, 0), 31))) + v0)
+
+    pal = (1, True, FISH_PAL[si][0])
+    T = [0.0, 0.05, 0.13, 0.25, 0.4, 0.55, 0.7, 0.84, 1.0]
+    NS = 6
+    rings = []
+    for t in T:
+        pr = prof(t)
+        yt = Hh * 0.5 * pr * 1.05 / body_px
+        yb = -Hh * 0.5 * pr * 0.95 / body_px
+        yc = (yt + yb) / 2
+        hh = (yt - yb) / 2
+        hw = hh * thick
+        z = 0.5 - t
+        ring = []
+        for k in range(NS):
+            ang = 2 * math.pi * k / NS
+            ring.append((hw * math.sin(ang), yc + hh * math.cos(ang), z))
+        rings.append((ring, yc, hh, hw, z))
+    faces = []
+    nose = (0.0, rings[1][1] - 0.01, 0.52)
+    for i in range(len(T) - 1):
+        ra, rb = rings[i][0], rings[i + 1][0]
+        for k in range(NS):
+            k1 = (k + 1) % NS
+            a0, a1, b0, b1 = ra[k], ra[k1], rb[k], rb[k1]
+            mid = tuple((a0[j] + a1[j] + b0[j] + b1[j]) / 4 for j in range(3))
+            cen = (0.0, rings[i][1], mid[2])
+            n = norm(sub(mid, cen))
+            cols = [fish_tint(norm(sub(q, (0, rings[i][1], q[2]))) if (abs(q[0]) + abs(q[1] - rings[i][1])) > 1e-6 else (0, 1, 0)) for q in (a0, a1, b0, b1)]
+            uvs = [to_uv(q[2], q[1]) for q in (a0, a1, b0, b1)]
+            if i == 0:
+                faces.append(Face([nose, b0, b1], [to_uv(nose[2], nose[1]), uvs[2], uvs[3]], [cols[0], cols[2], cols[3]], pal, n))
+            else:
+                faces.append(Face([a0, a1, b0, b1], uvs, cols, pal, n))
+    # fin cards in the middle plane, split along the body so they sort with it
+    zt_end = 0.5 - (64 - x0) / body_px              # the texture's far edge (tail tip side)
+    ztop = 16 / body_px
+    cuts = [0.62, 0.25, -0.15, -0.45, zt_end]
+    for c in range(len(cuts) - 1):
+        za, zb = cuts[c], cuts[c + 1]
+        pts = [(0.0, -ztop, za), (0.0, -ztop, zb), (0.0, ztop, za), (0.0, ztop, zb)]
+        faces.append(Face(pts, [to_uv(q[2], q[1]) for q in pts], [fish_tint((0.6, 0.6, 0.5), 1.05)] * 4, pal, (1, 0, 0),
+                          flags=DOUBLE))
+    m = emit(faces)
+    write('fish%d.bin' % si, m.pack())
+    # the shadow: the body seen from above, widened a little (untextured, subtractive; the
+    # cart sets its colour)
+    sfaces = []
+    W = 1.5
+    tail_z = 0.5 - (x0 + body_px + sh['tail'] * 64 * 0.42 * 0.8 - x0) / body_px
+    pts = [(rings[i][3] * W + 0.02, rings[i][4]) for i in range(len(T))]
+    for i in range(len(T) - 1):
+        (wa, za), (wb, zb) = pts[i], pts[i + 1]
+        sfaces.append(Face([(-wa, 0, za), (wa, 0, za), (-wb, 0, zb), (wb, 0, zb)], None, [rgbw(60, 56, 44)] * 4,
+                           (0, False, 0), (0, 1, 0), flags=SEMI, blend=2))
+    wb, zb = pts[-1]
+    sfaces.append(Face([(-wb, 0, zb), (wb, 0, zb), (-0.1, 0, tail_z), (0.1, 0, tail_z)], None, [rgbw(60, 56, 44)] * 4,
+                       (0, False, 0), (0, 1, 0), flags=SEMI, blend=2))
+    write('fishsh%d.bin' % si, emit(sfaces).pack())
+    return len(m.faces), len(m.verts), len(sfaces)
+
+
+FISH_MODEL_STATS = [fish_model(si, sp) for si, sp in enumerate(SPECIES)]
+print('fish models (faces, verts, shadow faces):', FISH_MODEL_STATS)
 
 # ---- icons 16x16 at (0..255, 64..95)
 ICONS = {}
@@ -2028,8 +2112,25 @@ for i in range(NHOUSE):
 L.append('const REED_C: [4]vec3 = [%s]' % ', '.join('vec3(%s, 1.0, %s)' % (fx(c[0]), fx(c[2])) for c, r in REED_C))
 L.append('const REED_R: [4]fixed = [%s]' % ', '.join(fx(r) for c, r in REED_C))
 L.append('embed LILIES: Mesh = "lilies.bin"')
-L.append('embed ANGLER: Mesh = "angler.bin"')
 L.append('embed BOBBER: Mesh = "bobber.bin"')
+L.append('embed HAND: Mesh = "hand.bin"')
+for si in range(len(SPECIES)):
+    L.append('embed FISH%d: Mesh = "fish%d.bin"' % (si, si))
+    L.append('embed FISHSH%d: Mesh = "fishsh%d.bin"' % (si, si))
+L.append('fn fish_mesh(sp: s32) -> *Mesh {')
+L.append('    match sp {')
+for si in range(len(SPECIES)):
+    L.append('        %d => return FISH%d' % (si, si))
+L.append('        else => return FISH0')
+L.append('    }')
+L.append('}')
+L.append('fn fish_shadow_mesh(sp: s32) -> *Mesh {')
+L.append('    match sp {')
+for si in range(len(SPECIES)):
+    L.append('        %d => return FISHSH%d' % (si, si))
+L.append('        else => return FISHSH0')
+L.append('    }')
+L.append('}')
 L.append('')
 L.append('fn terr_mesh(i: s32, refl: bool, far: bool) -> *Mesh {')
 L.append('    match i {')
@@ -2108,7 +2209,7 @@ with open(os.path.join(OUT, 'assets.akr'), 'w') as f:
 print('materials', NSRC, 'dest palettes', len(DEST), 'static palettes', len(STAT))
 print('chunks faces (near, far, refl)', [c[2:] for c in CHUNKS])
 print('docks faces', [(len(d['faces']), sum(1 for f in d['faces'] if f.lo)) for d in DOCK_LIST], 'reeds', [len(g) for g in reed_groups],
-      'houses', [len(village_faces[i]) for i in range(NHOUSE)], 'lilies', len(lily_faces), 'angler', len(ang))
+      'houses', [len(village_faces[i]) for i in range(NHOUSE)], 'lilies', len(lily_faces))
 print('docks stand/yaw', [(tuple(round(c, 2) for c in d['stand']), round(d['yaw'], 3)) for d in DOCK_LIST])
 
 # audio

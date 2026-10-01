@@ -1,0 +1,419 @@
+// The first-person view: the camera at eye height on the dock, breathing and swaying a
+// little, leaning into a fish's pull; the rod held in view from the lower right (cork grip,
+// gloved hand, reel, a tapering blank that bends under tension); and the 3D fish (held up
+// after a catch, leaping, surfacing, as shadows under the water, and in the journal).
+
+// ---- the camera
+
+var cam_roll: fixed
+var cam_r: vec3              // camera basis (world space): right, up, forward
+var cam_u: vec3
+var cam_f: vec3
+var lean_x: fixed
+var lean_y: fixed
+var show_rod = true
+
+const EYE_H: fixed = 1.62     // eye height above the deck
+const EYE_BACK: fixed = 1.3   // how far back from the end of the dock you stand
+
+fn camera_first_person() {
+    let s = stand_pos()
+    let y = view_yaw()
+    let t = fixed(tick_count)
+    let breath = sin(t * 0.021)
+    let sway = sin(t * 0.0131)
+    // leaning into the fish's pull (only while it pulls, so tracing doesn't rock the view)
+    var tx = 0.0
+    var ty = 0.0
+    if phase == Phase.Fight && (f_surge == 1 || f_surge == 3) {
+        tx = stick_in.x
+        ty = stick_in.y
+    }
+    lean_x += (tx - lean_x) * 0.07
+    lean_y += (ty - lean_y) * 0.07
+    var pitch = -0.17 + breath * 0.007
+    if phase == Phase.Aim { pitch += fixed(min(aim_hold, 30)) * 0.0018 }   // look up a little as you wind up
+    cam_yaw = y + sway * 0.007 + lean_x * 0.05
+    cam_pitch = pitch + lean_y * 0.03
+    cam_roll = -lean_x * 0.05 + sway * 0.004
+    let sn = sin(y)
+    let cs = cos(y)
+    let side = lean_x * 0.08
+    cam_pos = vec3(s.x - sn * EYE_BACK + cs * side, s.y + EYE_H + breath * 0.012, s.z - cs * EYE_BACK - sn * side)
+    fan_anchor = vec3(s.x - sn * EYE_BACK, 0.0, s.z - cs * EYE_BACK)
+    fan_anchor_yaw = y
+    fan_anchored = true
+}
+
+// camera_look with a roll: right and up are turned about the view direction.
+fn begin_camera() {
+    let sy = sin(cam_yaw)
+    let cy = cos(cam_yaw)
+    let sp = sin(cam_pitch)
+    let cp = cos(cam_pitch)
+    let sr = sin(cam_roll)
+    let cr = cos(cam_roll)
+    let r0 = vec3(cy, 0.0, -sy)
+    let u0 = vec3(-sy * sp, cp, -cy * sp)
+    let f = vec3(sy * cp, sp, cy * cp)
+    let r = r0 * cr + u0 * sr
+    let u = u0 * cr - r0 * sr
+    cam_r = r
+    cam_u = u
+    cam_f = f
+    let p = cam_pos
+    var m: mat4
+    m[0] = vec4(r.x, r.y, r.z, -dot(r, p)) * __fx
+    m[1] = vec4(u.x, u.y, u.z, -dot(u, p)) * __fy
+    m[2] = vec4(f.x, f.y, f.z, -dot(f, p))
+    m[3] = m[2]
+    camera_matrix(m)
+    cam_s = sy
+    cam_c = cy
+}
+
+// A point given in camera space (x right, y up, z forward) in world space.
+fn view_pt(x: fixed, y: fixed, z: fixed) -> vec3 { return cam_pos + cam_r * x + cam_u * y + cam_f * z }
+
+// ---- the rod
+
+var rod_e: fixed = 0.62      // elevation of the rod (radians above the view direction)
+var rod_s: fixed = -0.16     // its turn (negative: the tip leans in toward the middle)
+var rod_pull: fixed          // pulled back toward you while winding up
+var rod_bx: fixed            // the bend at the tip (camera space)
+var rod_by: fixed
+var reel_ang: fixed
+var vm_tip: vec3             // the rod tip in world space (the line starts here)
+var vm_pts: [5]vec3          // points along the blank, camera space
+const ROD_LEN: fixed = 1.95
+const ROD_R: [5]fixed = [0.009, 0.0075, 0.006, 0.0045, 0.003]
+
+// Animates the rod's pose for the phase and works out where its tip is.
+fn rod_update() {
+    var te = 0.62
+    var ts = -0.16
+    var tp = 0.0
+    var bx = 0.0
+    var by = 0.0
+    var k = 0.12
+    let t = fixed(tick_count)
+    match phase {
+        Idle => {
+            te = 0.6 + sin(t * 0.021) * 0.015
+        }
+        Aim => {
+            let a = min(fixed(aim_hold) / 30, 1.0)
+            te = 0.62 + a * 0.85             // raised up and back over the shoulder
+            ts = -0.16 + aim_x * 0.25
+            tp = a * 0.12
+            k = 0.25
+        }
+        Fly => {
+            te = 0.18                         // the flick: whipped forward
+            ts = aim_x * 0.2
+            k = 0.45
+            if phase_t > 8 {
+                te = 0.42
+                k = 0.1
+            }
+            by = -0.25 * max(1.0 - fixed(phase_t) / 10, 0.0)
+        }
+        Wait => {
+            te = 0.42 + sin(t * 0.08) * 0.01 - bob_dip * 0.08
+        }
+        Bite => {
+            te = 0.32 + sin(t * 0.9) * 0.03
+            by = -0.2
+            k = 0.3
+        }
+        Fight => {
+            te = 0.55
+            // bend toward the fish, more as the line tightens; shake while it pulls
+            let da = angle_diff(f_ang, cam_yaw)
+            let tens = clamp(f_tension, 0.0, 1.0)
+            bx = sin(da) * (0.25 + tens * 0.7)
+            by = -(0.15 + tens * 0.75)
+            if f_surge == 1 || f_surge == 3 || f_surge == 5 {
+                bx += sin(t * 1.7) * 0.05 * tens
+                by += cos(t * 2.3) * 0.04 * tens
+            }
+            k = 0.18
+        }
+        Catch => {
+            te = 1.05
+            ts = -0.05
+        }
+        else => {}
+    }
+    rod_e += (te - rod_e) * k
+    rod_s += (ts - rod_s) * k
+    rod_pull += (tp - rod_pull) * k
+    rod_bx += (bx - rod_bx) * 0.15
+    rod_by += (by - rod_by) * 0.15
+    // the blank: from the hand, along the pose, bending quadratically toward the tip
+    let ce = cos(rod_e)
+    let dx = sin(rod_s) * ce
+    let dy = sin(rod_e)
+    let dz = cos(rod_s) * ce
+    let bxh = 0.17
+    let byh = -0.16 + rod_pull * 0.3
+    let bzh = 0.6 - rod_pull
+    for i in 0..5 {
+        let u = fixed(i) / 4
+        let u2 = u * u
+        vm_pts[i] = vec3(bxh + dx * ROD_LEN * u + rod_bx * u2, byh + dy * ROD_LEN * u + rod_by * u2, bzh + dz * ROD_LEN * u)
+    }
+    let tp4 = vm_pts[4]
+    vm_tip = view_pt(tp4.x, tp4.y, tp4.z)
+}
+
+fn rod_tip() -> vec3 { return vm_tip }
+
+fn sw_look(i: s32) {
+    let u = SW_U[i] as s32
+    let v = SW_V[i] as s32
+    bt_look(F_TEX, 0, SLOT_WORLD, PAL_SWATCH, u - 2, v - 2, u + 2, v + 2)
+}
+
+// A quad given in camera space (the rod pass draws with a projection-only matrix).
+fn vquad(a: vec3, b: vec3, c: vec3, d: vec3, cb: u32, ct: u32) {
+    bt_quad(vec4(a, 1.0), vec4(b, 1.0), vec4(c, 1.0), vec4(d, 1.0), cb, ct)
+}
+
+// Projection only: vertices given in camera space.
+fn camera_view_space() {
+    var m: mat4
+    m[0] = vec4(__fx, 0.0, 0.0, 0.0)
+    m[1] = vec4(0.0, __fy, 0.0, 0.0)
+    m[2] = vec4(0.0, 0.0, 1.0, 0.0)
+    m[3] = vec4(0.0, 0.0, 1.0, 0.0)
+    camera_matrix(m)
+}
+
+// A box in camera space (the faces you can see from the eye: top, front, inner side).
+fn vbox(c: vec3, hx: fixed, hy: fixed, hz: fixed, lit: u32) {
+    let dark = scale_col(lit, 170)
+    let mid = scale_col(lit, 215)
+    // top
+    vquad(vec3(c.x - hx, c.y + hy, c.z - hz), vec3(c.x + hx, c.y + hy, c.z - hz),
+          vec3(c.x - hx, c.y + hy, c.z + hz), vec3(c.x + hx, c.y + hy, c.z + hz), lit, lit)
+    // front (facing the eye)
+    vquad(vec3(c.x - hx, c.y - hy, c.z - hz), vec3(c.x + hx, c.y - hy, c.z - hz),
+          vec3(c.x - hx, c.y + hy, c.z - hz), vec3(c.x + hx, c.y + hy, c.z - hz), dark, mid)
+    // inner side (toward the middle of the screen)
+    vquad(vec3(c.x - hx, c.y - hy, c.z + hz), vec3(c.x - hx, c.y - hy, c.z - hz),
+          vec3(c.x - hx, c.y + hy, c.z + hz), vec3(c.x - hx, c.y + hy, c.z - hz), dark, mid)
+}
+
+// The rod's light: a little darker at night (the world's palettes do the rest).
+fn rod_light() -> u32 {
+    let k = 128
+    return rgb(k, k, k)
+}
+
+fn draw_rod() {
+    let lit = rod_light()
+    let dim = scale_col(lit, 160)
+    // the blank: two visible sides of a three-sided prism per segment
+    var blank = 7                        // bamboo / willow / carbon
+    if g.up[UP_ROD] == 0 { blank = 4 }
+    if g.up[UP_ROD] >= 2 { blank = 10 }
+    sw_look(blank)
+    for i in 0..4 {
+        let a = vm_pts[i]
+        let b = vm_pts[i + 1]
+        let ddx = b.x - a.x
+        let ddy = b.y - a.y
+        let l = abs(ddx) + abs(ddy) + 0.001
+        let nx = -ddy / l
+        let ny = ddx / l
+        let ra = ROD_R[i]
+        let rb = ROD_R[min(i + 1, 4)]
+        let a1 = vec3(a.x + nx * ra, a.y + ny * ra, a.z)
+        let a2 = vec3(a.x - nx * ra, a.y - ny * ra, a.z)
+        let a3 = vec3(a.x, a.y, a.z - ra)
+        let b1 = vec3(b.x + nx * rb, b.y + ny * rb, b.z)
+        let b2 = vec3(b.x - nx * rb, b.y - ny * rb, b.z)
+        let b3 = vec3(b.x, b.y, b.z - rb)
+        vquad(a1, a3, b1, b3, lit, lit)
+        vquad(a3, a2, b3, b2, dim, dim)
+        // a guide (a dark ring) halfway up
+        if i == 2 {
+            sw_look(10)
+            vquad(vec3(a.x - nx * ra * 2, a.y - ny * ra * 2, a.z - 0.002), vec3(a.x + nx * ra * 2, a.y + ny * ra * 2, a.z - 0.002),
+                  vec3(a.x - nx * ra * 2, a.y - ny * ra * 2 + 0.006, a.z - 0.002), vec3(a.x + nx * ra * 2, a.y + ny * ra * 2 + 0.006, a.z - 0.002), dim, dim)
+            sw_look(blank)
+        }
+    }
+    // the hand, grip, reel and sleeve: a fixed mesh placed along the rod
+    let h = vm_pts[0]
+    let d = vm_pts[1] - vm_pts[0]
+    let dn = normalize(d)
+    let xa = normalize(vec3(dn.z, 0.0, -dn.x))
+    let ya = cross(dn, xa)
+    var m: mat4
+    m[0] = vec4(xa.x, ya.x, dn.x, h.x)
+    m[1] = vec4(xa.y, ya.y, dn.y, h.y)
+    m[2] = vec4(xa.z, ya.z, dn.z, h.z)
+    m[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    bt_flush()
+    mesh_xf(HAND, m)
+    // the crank turns as you reel
+    let rc = h + xa * (-0.034) + ya * (-0.04) + dn * 0.128
+    let k1 = rc + ya * (sin(reel_ang) * 0.024) + dn * (cos(reel_ang) * 0.024)
+    sw_look(10)
+    vquad(rc - ya * 0.004, rc + ya * 0.004, k1 - ya * 0.004, k1 + ya * 0.004, lit, lit)
+    sw_look(12)
+    vquad(k1 - ya * 0.008 - dn * 0.008, k1 - ya * 0.008 + dn * 0.008, k1 + ya * 0.008 - dn * 0.008, k1 + ya * 0.008 + dn * 0.008, lit, lit)
+}
+
+// The line from the rod tip to the bobber (or hanging from the tip), in screen space.
+fn draw_line() {
+    if phase == Phase.Catch { return }
+    let tip = vm_tip
+    if !project(tip) { return }
+    var px = proj_x
+    var py = proj_y
+    var sag = 0.0
+    match phase {
+        Wait, Bite => sag = 0.9
+        Idle, Aim => sag = 0.0
+        Fly => sag = 0.25
+        Fight => sag = clamp(0.5 - f_tension, 0.0, 0.5) * 2
+        else => sag = 0.6
+    }
+    var end = lure
+    if phase == Phase.Idle || phase == Phase.Aim { end = vec3(tip.x, tip.y - 0.5, tip.z) }
+    let linec = mix_col(rgb(90, 100, 120), rgb(225, 230, 240), (light * 256) as s32)
+    for i in 1..9 {
+        let t = fixed(i) / 8
+        var p = lerp(tip, end, t)
+        p.y -= sag * (t * (1.0 - t)) * 4.0
+        if !project(p) { return }
+        seg2d(px, py, proj_x, proj_y, 1, linec, max(depth_bucket(proj_w) - 2, 0))
+        px = proj_x
+        py = proj_y
+    }
+}
+
+// The first-person pass: drawn after the world, sorted among itself, always in front.
+fn draw_view_pass() {
+    if phase == Phase.Catch && screen == Screen.Fish { draw_held_fish() }
+    if show_rod {
+        draw_line()
+        bt_flush()
+        camera_view_space()
+        draw_rod()
+        bt_flush()
+        begin_camera()
+    }
+    flush_pass()
+}
+
+// ---- the 3D fish: a RAM copy of a species' mesh, its palette patched (day, night or the
+// journal's silhouette) and its tail bent every frame
+
+struct FishBuf { hdr: Mesh, v: [64]vec4, f: [56]Face }
+struct ShadowBuf { hdr: Mesh, v: [24]vec4, f: [12]Face }
+var fbuf: FishBuf
+var fbuf_sp: s32 = -1
+var fbuf_pal: s32 = -1
+var shbuf: ShadowBuf
+var shbuf_sp: s32 = -1
+
+fn mesh_verts(m: *Mesh) -> *vec4 { return ((m as u32) + m.verts) as *vec4 }
+fn mesh_faces(m: *Mesh) -> *Face { return ((m as u32) + m.faces) as *Face }
+
+fn fish_load(sp: s32, pal: s32) {
+    if sp == fbuf_sp && pal == fbuf_pal { return }
+    let src = fish_mesh(sp)
+    let nv = min(src.nverts as s32, 64)
+    let nf = min(src.nfaces as s32, 56)
+    fbuf.hdr.nverts = nv as u16
+    fbuf.hdr.nfaces = nf as u16
+    fbuf.hdr.verts = 16
+    fbuf.hdr.faces = 16 + 64 * 16
+    memcpy(&fbuf.f[0] as *u8, mesh_faces(src) as *u8, (nf * sizeof(Face)) as u32)
+    for i in 0..nf { fbuf.f[i].palette = pal as u8 }
+    fbuf_sp = sp
+    fbuf_pal = pal
+}
+
+// Copies the model's vertices, swinging the rear of the body: a tail wag.
+fn fish_bend(src: *Mesh, dst: *vec4, n: s32, phase_: fixed, amp: fixed) {
+    let sv = mesh_verts(src)
+    for i in 0..n {
+        var v = sv[i]
+        if v.z < -0.05 {
+            let k = (-v.z - 0.05) * 1.3
+            v.x += sin(phase_ + v.z * 4) * amp * k * k
+        }
+        dst[i] = v
+    }
+}
+
+fn fish_matrix(pos: vec3, yaw: fixed, pitch: fixed, scale: fixed) -> mat4 {
+    let r = mat4_rotate_y(yaw) * mat4_rotate_x(pitch)
+    var m = r
+    for i in 0..3 {
+        m[i] = vec4(r[i].x * scale, r[i].y * scale, r[i].z * scale, 0.0)
+    }
+    m[0].w = pos.x
+    m[1].w = pos.y
+    m[2].w = pos.z
+    return m
+}
+
+// Draws species f (day or night form, or a silhouette) at pos.
+fn draw_fish3d(f: s32, pal: s32, pos: vec3, yaw: fixed, pitch: fixed, scale: fixed, wag: fixed) {
+    let sp = f / 2
+    fish_load(sp, pal)
+    let src = fish_mesh(sp)
+    fish_bend(src, &fbuf.v[0], fbuf.hdr.nverts as s32, fixed(tick_count) * 0.18, wag)
+    mesh_xf(&fbuf.hdr, fish_matrix(pos, yaw, pitch, scale))
+}
+
+// How big to draw a fish of this size (the model's body is one unit long).
+fn fish_scale(size_mm: s32) -> fixed { return fixed(size_mm) / 1180 }
+
+// The catch, held up in front of you, turning slowly.
+fn draw_held_fish() {
+    let t = phase_t
+    let rise = min(fixed(t) / 20, 1.0)
+    let info = &FISH[c_id]
+    let rel = fixed(c_size - info.min_mm as s32) / max(info.max_mm as s32 - info.min_mm as s32, 1)
+    let sc = 0.62 + rel * 0.2
+    let p = view_pt(-0.02, -0.6 + rise * 0.66 + sin(fixed(t) * 0.05) * 0.015, 1.25)
+    // a warm glow behind it
+    ss_look(SS_HALO)
+    let k = min(t * 10, 200)
+    ssprite(view_pt(0.0, 0.05, 1.6), 0.5, 0.5, scale_col(rgb(140, 120, 80), k), 1, 0)
+    draw_fish3d(c_id, fish_pal(c_id), p, cam_yaw + 1.5708 + sin(fixed(t) * 0.025) * 0.6, sin(fixed(t) * 0.04) * 0.15, sc, 0.25)
+}
+
+// A fish's shadow on the lake bed seen through the water: the model's outline from above.
+fn draw_fish_shadow(f: s32, size_mm: s32, pos: vec3, heading: fixed, c: u32) {
+    let sp = f / 2
+    let src = fish_shadow_mesh(sp)
+    let nv = min(src.nverts as s32, 24)
+    let nf = min(src.nfaces as s32, 12)
+    if sp != shbuf_sp {
+        shbuf.hdr.nverts = nv as u16
+        shbuf.hdr.nfaces = nf as u16
+        shbuf.hdr.verts = 16
+        shbuf.hdr.faces = 16 + 24 * 16
+        memcpy(&shbuf.f[0] as *u8, mesh_faces(src) as *u8, (nf * sizeof(Face)) as u32)
+        shbuf_sp = sp
+    }
+    for i in 0..nf { shbuf.f[i].col[0] = c }
+    fish_bend(src, &shbuf.v[0], nv, fixed(tick_count) * 0.2 + fixed(size_mm & 7), 0.18)
+    let s = fish_scale(size_mm)
+    let sn = sin(heading) * s
+    let cs = cos(heading) * s
+    var m: mat4
+    m[0] = vec4(cs, 0.0, sn, pos.x)
+    m[1] = vec4(0.0, s, 0.0, 0.02)
+    m[2] = vec4(-sn, 0.0, cs, pos.z)
+    m[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    mesh_xf(&shbuf.hdr, m)
+}

@@ -6,8 +6,9 @@
 //   B  the water surface (semi-transparent, half background and half water), then what lies
 //      in or on it: fish shadows (subtractive), ripple rings, the moon's glittering path and
 //      lantern light on the water (additive)
-//   C  the world above the water: shore, docks, village, reeds, lily pads, the angler, the
-//      bobber, rod and line, lantern glows, fireflies, festival lanterns
+//   C  the world above the water: shore, docks, village, reeds, lily pads, the bobber,
+//      leaping fish, lantern glows, fireflies, festival lanterns
+//   D  the first-person view (view.akr): the line, the rod and hand, a fish held up
 //
 // Lighting by time of day is done with palettes: every world material has four keyframe
 // palettes (night, dawn, day, dusk) and two are blended into the live palettes every few
@@ -351,15 +352,17 @@ fn sky_band(y0: s32, y1: s32, l0: u32, r0: u32, l1: u32, r1: u32) {
     let q = packet_alloc(9)
     if q == null { return }
     q[1] = l0
-    q[2] = spos(-1, y0)
+    q[2] = spos(-1, y0 + sky_tilt)
     q[3] = r0
-    q[4] = spos(321, y0)
+    q[4] = spos(321, y0 - sky_tilt)
     q[5] = l1
-    q[6] = spos(-1, y1)
+    q[6] = spos(-1, y1 + sky_tilt)
     q[7] = r1
-    q[8] = spos(321, y1)
+    q[8] = spos(321, y1 - sky_tilt)
     ot_insert(q, 0x25, 1023)
 }
+
+var sky_tilt: s32            // half the horizon's rise across the screen (the view's roll)
 
 // How much the view direction yaw faces the low sun (warm sky): 0..256.
 fn warmth(yaw: fixed) -> s32 {
@@ -370,8 +373,26 @@ fn warmth(yaw: fixed) -> s32 {
     return (w * low * 256) as s32
 }
 
-// The horizon's screen row for the current pitch.
-fn horizon_y() -> s32 { return 120 - ((tan(-cam_pitch) * 207.8) as s32) }
+// The horizon's screen row at the middle of the screen, and its tilt (from the roll):
+// two far points at eye level, projected.
+fn horizon_y() -> s32 {
+    let a = cam_yaw - 0.4
+    let b = cam_yaw + 0.4
+    var xl = 0
+    var yl = 0
+    if project(vec3(cam_pos.x + sin(a) * 150.0, cam_pos.y, cam_pos.z + cos(a) * 150.0)) {
+        xl = proj_x
+        yl = proj_y
+    }
+    if project(vec3(cam_pos.x + sin(b) * 150.0, cam_pos.y, cam_pos.z + cos(b) * 150.0)) {
+        let dx = max(proj_x - xl, 1)
+        let slope = (proj_y - yl) * 1024 / dx
+        sky_tilt = -(slope * 161) / 1024
+        return yl + (slope * (160 - xl)) / 1024
+    }
+    sky_tilt = 0
+    return 120 - ((tan(-cam_pitch) * 207.8) as s32)
+}
 
 // The sky gradient above the horizon and its mirror image below it. Inserted last into the
 // farthest bucket, so it draws first.
@@ -710,12 +731,18 @@ fn fan_shades() {
 
 // The fan's vertices and texture coordinates: only when the camera moves.
 fn fan_positions() {
-    let cx = cam_pos.x
-    let cz = cam_pos.z
+    var cx = cam_pos.x
+    var cz = cam_pos.z
+    var yaw0 = cam_yaw
+    if fan_anchored {
+        cx = fan_anchor.x
+        cz = fan_anchor.z
+        yaw0 = fan_anchor_yaw
+    }
     var cs: [9]fixed
     var cc: [9]fixed
     for i in 0..FAN_W {
-        let a = cam_yaw + fixed(i - FAN_COLS / 2) * FAN_DA
+        let a = yaw0 + fixed(i - FAN_COLS / 2) * FAN_DA
         cs[i] = sin(a)
         cc[i] = cos(a)
     }
@@ -761,8 +788,15 @@ fn fan_positions() {
     }
 }
 
+// The fan follows a steady anchor (the first-person view's sway and lean are small enough to
+// stay inside its margin), so it is only rebuilt when the view really turns or moves.
+var fan_anchor: vec3
+var fan_anchor_yaw: fixed
+var fan_anchored: bool
+
 fn fan_build() {
-    let key = vec4(cam_pos.x, cam_pos.z, cam_yaw, 0.0)
+    var key = vec4(cam_pos.x, cam_pos.z, cam_yaw, 0.0)
+    if fan_anchored { key = vec4(fan_anchor.x, fan_anchor.z, fan_anchor_yaw, 0.0) }
     if !fan_valid || key.x != fan_last.x || key.y != fan_last.y || key.z != fan_last.z {
         fan_positions()
         fan_last = key

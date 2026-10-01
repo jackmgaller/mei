@@ -320,17 +320,16 @@ fn draw_hud() {
         sint(p, target)
         ftext(277, 18, p, CREAM, false)
     }
-    // coins and the lure
+    // coins and the lure (bottom left: the rod is on the right)
     if phase != Phase.Fight && phase != Phase.Catch {
-        panel_glass(4, 214, 70, 22)
+        panel_glass(4, 214, 150, 22)
         icon(7, 217, IC_COIN, 0x808080)
         ftext(26, 218, num(g.coins), GOLD, false)
-        panel_glass(226, 214, 90, 22)
         var li = IC_SPOON
         if g.lure == LURE_GLOW { li = IC_GLOW }
         if g.lure == LURE_FLOAT { li = IC_FLOAT }
-        icon(229, 217, li, 0x808080)
-        ftext(248, 218, lure_name(g.lure), CREAM, false)
+        icon(68, 217, li, 0x808080)
+        ftext(87, 218, lure_name(g.lure), CREAM, false)
     }
 }
 
@@ -563,30 +562,25 @@ fn draw_fish_sprite(f: s32, cx: s32, cy: s32, w: s32, h: s32, tilt: fixed, pal: 
     ui_tex4(&xs[0], &ys[0], SLOT_FISH, pal, FISH_U[sp] as s32, FISH_V[sp] as s32, 64, 32, tint)
 }
 
+// The catch: the fish itself is held up in 3D (view.akr); this is the readout under it.
 fn draw_catch_card() {
     let t = phase_t
-    let k = min(t * 12, 256)
-    panel(30, 50, 260, 150)
-    // a glow behind the fish
-    ui_tex(84, 60, 152, 100, SLOT_WORLD, PAL_GREY, UV_HALO_U, UV_HALO_V, 64, 64, scale_col(rgb(140, 120, 80), k), 1)
-    let wob = sin(fixed(t) * 0.12) * 0.08
-    let sc = 2 + min(t, 12) / 12
-    draw_fish_sprite(c_id, 160, 104, 64 * sc, 32 * sc, wob, fish_pal(c_id), 0x808080)
-    ftext_c(160, 146, fish_name(c_id), CREAM, true)
+    panel_glass(40, 152, 240, 64)
+    ftext_c(160, 154, fish_name(c_id), CREAM, true)
     let b = nb()
     b[0] = 0
     sappend(b, fmt_cm(c_size))
     sappend(b, "   +")
     sint(b, c_points)
     if g.free_play == 0 { sappend(b, " lanterns") } else { sappend(b, " coins") }
-    ftext_c(160, 166, b, GOLD, false)
+    ftext_c(160, 173, b, GOLD, false)
     if c_new {
-        if (t / 10) % 2 == 0 { ftext(40, 56, "NEW!", rgb(255, 230, 90), true) }
-        ftext_c(160, 181, first_line(fish_flavour(c_id)), SOFT, false)
+        if (t / 10) % 2 == 0 { ftext_c(160, 30, "NEW!", rgb(255, 230, 90), true) }
+        ftext_c(160, 187, fish_flavour(c_id), SOFT, false)
     } else if c_record {
-        if (t / 10) % 2 == 0 { ftext(40, 56, "RECORD!", rgb(140, 230, 255), true) }
+        if (t / 10) % 2 == 0 { ftext_c(160, 30, "RECORD!", rgb(140, 230, 255), true) }
     }
-    if t > 45 && (t / 20) % 2 == 0 { ftext_r(284, 186, "A", DIM, false) }
+    if t > 45 && (t / 20) % 2 == 0 { ftext_r(276, 154, "A", DIM, false) }
 }
 
 var line_buf: [64]u8
@@ -618,4 +612,13 @@ fn draw_tutorial() {
     icon(48, 70, IC_STAR, 0x808080)
     ftext(70, 72, tut_text, CREAM, false)
     if tut_t > 30 && (tut_t / 20) % 2 == 0 { ftext_r(272, 160, "A: OK", GOLD, false) }
+}
+
+// Draws the interface queued so far right now (so 3D drawn next lands on top of it); the
+// rest of the interface still draws at the end of the frame.
+fn ui_flush_now() {
+    if __ui_tail != null {
+        GPU_DRAW = __ui_head
+        __ui_tail = null
+    }
 }
