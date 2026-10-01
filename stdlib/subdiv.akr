@@ -148,7 +148,7 @@ asm fn __sub_split(a: s32, b: s32) -> bool {
 }
 
 // Adds the midpoint of scratch vertices a and b (position, texture coordinate, colour),
-// transforms it like __xform and returns its number.
+// transforms it like __xform (including the guard-band mark) and returns its number.
 asm fn __sub_mid(a: s32, b: s32) -> s32 {
     lw   r3, [r0+{__sub_n}]
     addi r4, r3, 1
@@ -209,6 +209,13 @@ asm fn __sub_mid(a: s32, b: s32) -> s32 {
     vproj v2, v1
     vget r5, v2, 0
     vget r6, v2, 1
+    addi r4, r0, 2000
+    addi r7, r5, 1000
+    sltu r7, r7, r4
+    addi r8, r6, 1000
+    sltu r8, r8, r4
+    and  r7, r7, r8             ; lane 2: 1 inside the guard band (clip.akr)
+    vset v2, r7, 2
     andi r5, r5, 0xFFFF
     shli r6, r6, 16
     or   r5, r5, r6

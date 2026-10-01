@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """Generates stdlib/faces.akr: the hand-written face loop used by mesh().
 
-For every face: near-plane rejection, back-face culling, ordering-table depth, then a
-straight-line packet writer specialised for the packet layout (Gouraud x textured x quad,
-with and without fog), reached through a jump table.
+For every face: near-plane rejection, the guard-band test, back-face culling, ordering-table
+depth, then a straight-line packet writer specialised for the packet layout (Gouraud x
+textured x quad, with and without fog), reached through a jump table. A face with a vertex
+outside the guard band (where vproj would clamp it, or nearly) is handed to __clip_face
+(clip.akr) before culling, since clamped positions can flip its winding; the pieces come back
+through __draw_faces.
 
 Transformed vertices (__sv, 16 bytes each, written by __xform):
   +0 packed screen position (x & 0xFFFF) | (y << 16)
   +4 fog amount 0..256
+  +8 1 when the vertex is inside the guard band (screen x and y in -1000..999), else 0
   +12 w (view depth, 16.16)
 __draw_faces_sub is the same loop for carts that enabled subdivide(): front-facing,
 on-screen textured faces near the camera whose depth spreads by more than the tolerance,
@@ -112,7 +116,7 @@ e('var __fogt_rb: u32')
 e('var __fogt_g: u32')
 e('var __ot_bias: s32')
 e('')
-HEAD_PLAIN = """    addi sp, sp, -24
+HEAD_PLAIN = """    addi sp, sp, -32
     sw   r9, [sp+0]
     sw   r10, [sp+4]
     sw   r11, [sp+8]
@@ -141,6 +145,64 @@ HEAD_PLAIN = """    addi sp, sp, -24
     lw   r11, [r7+12]
     blt  r11, r9, .next
     add  r10, r10, r11          ; w0 + w1 + w2"""
+
+# The guard-band test for the first three corners, before culling (the fourth corner of a quad
+# is tested in REST once its pointer is loaded; culling only looks at the first three). The
+# marks are 1 inside the band, so their AND is 0 when a corner is outside.
+GUARD = """    lw   r11, [r5+8]
+    lw   r12, [r6+8]
+    and  r11, r11, r12
+    lw   r12, [r7+8]
+    and  r11, r11, r12
+    beq  r11, r0, %s         ; a corner outside the guard band"""
+GUARD_PLAIN = GUARD % '.clip'
+GUARD4 = """    lw   r12, [r8+8]
+    beq  r12, r0, .clip         ; the fourth corner is outside the guard band
+"""
+# with subdivide(): a face to be split goes to __subdivide_face (unculled) and its pieces
+# are clipped as they are drawn; any other face is clipped
+GUARD_SUB = GUARD % '.gb'
+GB_SUB = """.gb:
+    lw   r11, [sp+24]
+    bne  r11, r0, .sub
+    jmp  .clip"""
+
+
+def OUTCODE(k):
+    """ANDs into r11 the screen outcode of corner k (left 1, right 2, above 4, below 8)."""
+    return """    lhu  r5, [r1+%d]
+    shli r5, r5, 4
+    add  r5, r5, r3
+    lw   r5, [r5]
+    shli r6, r5, 16
+    sari r6, r6, 16             ; x
+    sari r5, r5, 16             ; y
+    slt  r7, r6, r0
+    slti r8, r6, 320
+    xori r8, r8, 1
+    shli r8, r8, 1
+    or   r7, r7, r8
+    slt  r8, r5, r0
+    shli r8, r8, 2
+    or   r7, r7, r8
+    slti r8, r5, 240
+    xori r8, r8, 1
+    shli r8, r8, 3
+    or   r7, r7, r8
+    and  r11, r11, r7""" % (4 + 2 * k)
+
+
+# A face with a corner outside the guard band: drop it if it lies wholly off one side of the
+# screen (vproj's clamping keeps every vertex on its side), else hand it to __clip_face.
+CLIP_OFFSCREEN = """.clip:
+    addi r11, r0, 15
+""" + OUTCODE(0) + "\n" + OUTCODE(1) + "\n" + OUTCODE(2) + """
+    andi r12, r4, 4
+    beq  r12, r0, .clip3
+""" + OUTCODE(3) + """
+.clip3:
+    bne  r11, r0, .next         ; off the screen"""
+
 
 def BBOX(reg, k):
     """Grows the bounding box at [sp+36..48] by the vertex at reg if it is in front."""
@@ -310,7 +372,7 @@ REST = """    andi r11, r4, 4
     add  r8, r8, r3
     lw   r11, [r8+12]
     blt  r11, r9, .next
-    add  r10, r10, r11
+@GUARD4@    add  r10, r10, r11
     shli r11, r9, 2
     sub  r10, r10, r11
     lw   r11, [r0+{__ot_k4}]
@@ -362,16 +424,21 @@ SUB_CALL = """.sub:
     la   r3, {__sv}"""
 
 
-def face_loop(name, sub):
+def face_loop(name, sub, guard=True):
+    """guard: test the guard-band marks (a loop without the test serves meshes that __xform
+    found wholly inside the band)."""
     e('asm fn %s(first: *Face, nf: s32) {' % name)
     if sub:
         e(HEAD_SUB)
+        e(GUARD_SUB)
         e(CULL)
         e(SUB_GO)
     else:
-        e(HEAD_PLAIN)
+        e(HEAD_PLAIN if guard else HEAD_PLAIN.replace('-32', '-24'))
+        if guard:
+            e(GUARD_PLAIN)
         e(CULL)
-    e(REST)
+    e(REST.replace('@GUARD4@', GUARD4 if guard else ''))
     labels = {}
     for fog in (0, 1):
         for q in (0, 1):
@@ -381,8 +448,19 @@ def face_loop(name, sub):
                         continue
                     labels[(g, t, q, fog)] = variant(g, t, q, fog)
     if sub:
+        e(GB_SUB)
         e(SUB_CALL)
-    frame = 56 if sub else 24
+        e('    jmp  .next')
+    slot = 28 if sub else 24
+    if guard:
+        e(CLIP_OFFSCREEN)
+        e("""    sw   r1, [sp+%d]
+    sw   r2, [sp+%d]
+    call {__clip_face}          ; r1 = the face
+    lw   r1, [sp+%d]
+    lw   r2, [sp+%d]
+    la   r3, {__sv}""" % (slot, slot + 4, slot, slot + 4))
+    frame = 56 if sub else 32 if guard else 24
     e(""".next:
     addi r1, r1, 36
     addi r2, r2, -1
@@ -640,6 +718,9 @@ def subdiv_run():
 
 
 face_loop('__draw_faces', False)
+e('')
+e('// The same loop without the guard-band test, for meshes wholly inside the band.')
+face_loop('__draw_faces_in', False, guard=False)
 e('')
 e('// The same loop for carts that called subdivide(): see the header of gen_faces_asm.py.')
 face_loop('__draw_faces_sub', True)

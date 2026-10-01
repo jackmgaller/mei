@@ -20,6 +20,12 @@ static void setup(void) {
     gpu_clear(m, 0);
 }
 
+/* A fresh frame that keeps VRAM (setup() clears textures and palettes with the rest). */
+static void next_frame(void) {
+    m->gpu_status = 0;
+    gpu_clear(m, 0);
+}
+
 /* ---- packet building in RAM ---- */
 
 static uint32_t pk_next = 0x1000, pk_prev, pk_first;
@@ -242,7 +248,7 @@ static void test_reference_random(void) {
             for (int k = 0; k < 5; k++) v[i].c[k] = rnd(0, 3) == 0 ? 255 : rnd(0, 255);
         }
         if (iter % 50 == 0) v[0].x = -32768, v[1].y = 32767;
-        setup();
+        next_frame();                   /* (not setup(): it would clear the textures) */
         gpu_clear(m, (uint32_t)rnd(0, 0x7FFF));
         m->gpu_ctrl = (uint32_t)dither;
         memcpy(ref, back(), sizeof ref);
@@ -260,6 +266,46 @@ static void test_reference_random(void) {
         ref_tri(ref, v[0], v[1], v[2], flags, mode, dither, slot, four, pal);
         if (memcmp(ref, back(), sizeof ref)) {
             if (!mismatch) printf("  reference mismatch: iter %d flags %x\n", iter, flags);
+            mismatch++;
+        }
+    }
+    CHECK_EQ(mismatch, 0);
+}
+
+static void test_long_thin(void) {
+    /* Long, thin triangles at every angle crossing the screen (floors and walls seen at a
+     * grazing angle), against the brute-force reference: u, v and colour interpolation
+     * along slivers up to 2,047 pixels long within vproj's range and 60,000 beyond it. */
+    static uint16_t ref[MEI_W * MEI_H];
+    setup();
+    for (int i = 0; i < 0x10000; i++) slot_ptr(1)[i] = (uint8_t)(1 + (i * 7 + (i >> 8) * 13) % 255);
+    for (int i = 0; i < 256; i++) set_pal(i, (uint16_t)rnd(0, 0x7FFF));
+    int mismatch = 0;
+    for (int iter = 0; iter < 240; iter++) {
+        int lim = iter % 3 == 2 ? 32767 : 1023;
+        long long len = iter % 3 == 0 ? rnd(80, 600) : iter % 3 == 1 ? rnd(600, 2047) : rnd(2000, 60000);
+        long long dx = rnd(-1000, 1000), dy = rnd(-1000, 1000), w = rnd(0, 1) ? rnd(0, 300) : rnd(0, 4000);
+        if (dx * dx + dy * dy < 250000) dx = dx < 0 ? -1000 : 1000;     /* |d| about 500..1414 */
+        long long cx = rnd(0, 319), cy = rnd(0, 239), t0 = -rnd(0, 1000) * len / 1000, tm = t0 + rnd(0, 1000) * len / 1000;
+        long long px[3] = {cx + dx * t0 / 1000, cx + dx * (t0 + len) / 1000, cx + (dx * tm - dy * w / 100) / 1000};
+        long long py[3] = {cy + dy * t0 / 1000, cy + dy * (t0 + len) / 1000, cy + (dy * tm + dx * w / 100) / 1000};
+        RV v[3];
+        for (int i = 0; i < 3; i++) {
+            v[i].x = (int)(px[i] < -lim - 1 ? -lim - 1 : px[i] > lim ? lim : px[i]);
+            v[i].y = (int)(py[i] < -lim - 1 ? -lim - 1 : py[i] > lim ? lim : py[i]);
+            for (int k = 0; k < 5; k++) v[i].c[k] = rnd(0, 3) == 0 ? 255 * rnd(0, 1) : rnd(0, 255);
+        }
+        next_frame();
+        m->gpu_ctrl = 1;
+        memcpy(ref, back(), sizeof ref);
+        list_begin();
+        emit(0x23, 9, RGB(v[0].c[0], v[0].c[1], v[0].c[2]), P(v[0].x, v[0].y), TEX0(v[0].c[3], v[0].c[4], 1, 0, 0),
+             RGB(v[1].c[0], v[1].c[1], v[1].c[2]), P(v[1].x, v[1].y), UV(v[1].c[3], v[1].c[4]),
+             RGB(v[2].c[0], v[2].c[1], v[2].c[2]), P(v[2].x, v[2].y), UV(v[2].c[3], v[2].c[4]));
+        list_draw();
+        ref_tri(ref, v[0], v[1], v[2], 3, 0, 1, 1, 0, 0);
+        if (memcmp(ref, back(), sizeof ref)) {
+            if (!mismatch) printf("  long thin triangle mismatch: iter %d\n", iter);
             mismatch++;
         }
     }
@@ -634,6 +680,7 @@ int main(void) {
     test_buffers();
     test_error_screen();
     test_reference_random();
+    test_long_thin();
     if (!getenv("MEI_NO_BENCH")) bench();
     mei_destroy(m);
     printf("test_gpu: %d/%d checks passed\n", checks - fails, checks);

@@ -1,0 +1,92 @@
+// mesh(): faces with a vertex projected far off the screen are clipped to the guard band
+// (stdlib/clip.akr) instead of being drawn with vproj's clamped positions, which would bend
+// their edges or flip their winding.
+// frames: 5
+
+struct TestMesh { hdr: Mesh, v: [4]vec4, f: [1]Face }
+var quad: TestMesh
+var tquad: TestMesh                     // the same quad, textured (one white texel)
+var tri: TestMesh
+
+fn setup(m: *TestMesh, n: s32) {
+    m.hdr.nverts = n as u16
+    m.hdr.nfaces = 1
+    m.hdr.verts = 16
+    m.hdr.faces = 80
+    m.f[0].col[0] = 0xFFFFFF
+    for i in 0..n { m.f[0].idx[i] = i as u16 }
+    if n == 4 { m.f[0].flags = FACE_QUAD as u8 }
+}
+
+fn init() {
+    dither(false)
+    // a floor quad from just in front of the camera (z = 0.15, where its near corners
+    // project to about (-1226, 1505) and (1546, 1505), clamped to -1024..1023) to z = 10
+    setup(&quad, 4)
+    quad.v[0] = vec4(-1.0, 0.0, 0.15, 1.0)
+    quad.v[1] = vec4(1.0, 0.0, 0.15, 1.0)
+    quad.v[2] = vec4(-1.0, 0.0, 10.0, 1.0)
+    quad.v[3] = vec4(1.0, 0.0, 10.0, 1.0)
+    tquad = quad
+    tquad.f[0].flags = (FACE_QUAD | FACE_TEXTURED) as u8
+    tquad.f[0].tex = 1                  // slot 1, 8-bit, palette 0; every corner at texel 0, 0
+    tquad.f[0].col[0] = 0x808080
+    let texel = VRAM_TEXTURES as *u8
+    texel[TEXTURE_SLOT_SIZE] = 1
+    let pal = VRAM_PALETTE as *u16
+    pal[1] = 0x7FFF
+    // a front-facing floor triangle whose clamped screen corners wind the other way
+    // (true corners about (272, 154), (-2750, 951), (-48, 286))
+    setup(&tri, 3)
+    tri.v[0] = vec4(3.25, 0.0, 6.0, 1.0)
+    tri.v[1] = vec4(-3.5, 0.0, 0.25, 1.0)
+    tri.v[2] = vec4(-1.25, 0.0, 1.25, 1.0)
+}
+
+// A pixel of the picture drawn last frame (now the front buffer).
+fn shown(x: s32, y: s32) -> u32 {
+    var front = 0x400000
+    if GPU_BACK == 0x400000 { front = 0x425800 }
+    let p = (front + (y * 320 + x) * 2) as *u16
+    return p[0] as u32
+}
+
+fn draw() {
+    cls(0)
+    camera(vec3(0.0, 1.0, 0.0), 0.0)
+    if frame() == 1 { mesh(&quad.hdr) }
+    if frame() == 2 { mesh(&tri.hdr) }
+    if frame() == 3 {                   // with subdivide(): the pieces are clipped too
+        subdivide(2)
+        mesh(&tquad.hdr)
+        subdivide(0)
+    }
+}
+
+fn update() {
+    if frame() == 2 {
+        // the left edge of the floor crosses the bottom row at x = 41 (the clamped corner
+        // would put it at x = 9)
+        print_int(shown(25, 239) as s32)
+        print_char(' ')
+        print_int(shown(60, 239) as s32)
+        print_char(' ')
+        print_int(shown(160, 200) as s32)
+        print_char('\n')
+    }
+    if frame() == 3 {
+        print_int(shown(160, 200) as s32)
+        print_char(' ')
+        print_int(tris_drawn())
+        print_char('\n')
+    }
+    if frame() == 4 {
+        print_int(shown(25, 239) as s32)
+        print_char(' ')
+        print_int(shown(60, 239) as s32)
+        print_char('\n')
+    }
+}
+// expect: 0 32767 32767
+// expect: 32767 2
+// expect: 0 32767

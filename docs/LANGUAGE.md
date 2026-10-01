@@ -689,6 +689,16 @@ ordering table by average view depth. At the end of the frame the table is drawn
 bucket first, then the **interface list** (text, sprites, rectangles) in call order on top.
 When the arena is full, further polygons are dropped.
 
+**Guard band.** `vproj` clamps screen coordinates to −1024..1023 (spec p. 9), so a vertex that
+projects further out, typically a corner of a big floor or wall polygon right beside or below
+the camera, would be moved, bending the polygon's edges and texture as the camera turns and
+sometimes flipping its winding so that it is culled. `mesh*()` therefore clip any face with a
+vertex outside the guard band (screen x and y in −1000..999) against the edges of that band
+in clip space before culling it, with texture coordinates and colours interpolated along the
+3D edges (`stdlib/clip.akr`). The visible part is drawn where it belongs; faces sharing a
+clipped edge clip it identically, so no cracks open. Faces wholly off one side of the screen
+are dropped. Only geometry is corrected: the pieces are still mapped affinely.
+
 **Subdivision.** Textures are mapped affinely, so a big polygon that spans a wide range of
 depth warps, and it swims as the camera moves (the PlayStation's look; whole-pixel vertex
 snapping adds a wobble of its own). PlayStation games tamed it near the camera by splitting
@@ -910,7 +920,9 @@ Measured with the `CYCLES` register (500,000 cycles per frame):
 | Operation | Cycles |
 |---|---|
 | frame overhead (ordering-table reset, submit) | about 3,700 |
-| vertex transform in `mesh()` | 39 per vertex (50 with fog) |
+| vertex transform in `mesh()` | 46 per vertex (58 with fog), including the guard-band mark |
+| guard-band test, in a mesh with a vertex outside the band | about 9 more per face |
+| a face clipped to the guard band | about 3,000, including drawing its pieces |
 | face in `mesh()`, back-facing | about 65 |
 | visible flat quad / Gouraud textured quad | about 150 / 185 (triangles a little less) |
 | fog | about 45 more per visible face vertex |
@@ -947,7 +959,7 @@ function but vectors are spilled around calls; `-S` shows exactly what was gener
 - One error is reported per compilation.
 - Struct, array and matrix parameters are read-only (passed by reference).
 - `mesh()` draws at most 2,048 vertices per mesh; there is no polygon clipping against the
-  near plane (triangles with a vertex in front of it are dropped; with `subdivide()` on, a
+  near plane (triangles with a vertex closer than it are dropped; with `subdivide()` on, a
   textured face crossing it is split once and the pieces in front are kept).
 
 ## Testing the compiler

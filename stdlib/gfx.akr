@@ -44,7 +44,8 @@ var __arena_ptr: *u32
 var __arena_end: *u32
 var __ui_head: u32
 var __ui_tail: *u32
-var __sv: [2176]ivec4      // transformed vertices (see __xform); 2048.. is subdiv.akr scratch
+var __sv: [2192]ivec4      // transformed vertices (see __xform); 2048.. is subdiv.akr scratch,
+                           // 2176.. clip.akr scratch
 var __vp: mat4             // view-projection matrix
 var __fx: fixed = 1.299
 var __fy: fixed = 1.732
@@ -197,16 +198,27 @@ fn fog_off() { __fog_on = false }
 
 import "faces.akr"
 import "subdiv.akr"
+import "clip.akr"
 
 // Transforms n vertices by the matrix and projects them into __sv: lane 0 holds the packed
-// screen position (x & 0xFFFF) | (y << 16), lane 1 the fog amount 0..256, lane 3 the view
-// depth w. 39 cycles per vertex, 50 with fog.
-asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) {
+// screen position (x & 0xFFFF) | (y << 16), lane 1 the fog amount 0..256, lane 2 is 1 when x
+// and y are both within -1000..999 (the guard band, see clip.akr) and 0 otherwise, lane 3
+// the view depth w. Returns 1 when every vertex is inside the guard band. 46 cycles per
+// vertex, 58 with fog.
+asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) -> s32 {
     vld  v4, [{m}+0]
     vld  v5, [{m}+16]
     vld  v6, [{m}+32]
     vld  v7, [{m}+48]
-    beq  {n}, r0, .done
+    bne  {n}, r0, .go
+    addi r1, r0, 1
+    ret
+.go:
+    addi sp, sp, -8
+    sw   r9, [sp+0]
+    sw   r10, [sp+4]
+    addi r9, r0, 2000           ; x + 1000 < 2000 unsigned: -1000 <= x <= 999
+    addi r10, r0, 1             ; all inside so far
     lbu  r5, [r0+{__fog_on}]
     bne  r5, r0, .fog
 .loop:
@@ -215,6 +227,13 @@ asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) {
     vproj v2, v1
     vget r5, v2, 0
     vget r6, v2, 1
+    addi r7, r5, 1000
+    sltu r7, r7, r9             ; x in the guard band
+    addi r8, r6, 1000
+    sltu r8, r8, r9             ; y in the guard band
+    and  r7, r7, r8
+    vset v2, r7, 2
+    and  r10, r10, r7
     andi r5, r5, 0xFFFF
     shli r6, r6, 16
     or   r5, r5, r6
@@ -224,7 +243,7 @@ asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) {
     addi {dst}, {dst}, 16
     addi {n}, {n}, -1
     bne  {n}, r0, .loop
-    ret
+    jmp  .end
 .fog:
     lw   r7, [r0+{__fog_near}]
     lw   r8, [r0+{__fog_scale}]
@@ -234,10 +253,18 @@ asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) {
     vproj v2, v1
     vget r5, v2, 0
     vget r6, v2, 1
+    addi r4, r5, 1000
+    sltu r4, r4, r9             ; x in the guard band
     andi r5, r5, 0xFFFF
     shli r6, r6, 16
     or   r5, r5, r6
     vset v2, r5, 0
+    sari r6, r6, 16
+    addi r6, r6, 1000
+    sltu r6, r6, r9             ; y in the guard band
+    and  r4, r4, r6
+    vset v2, r4, 2
+    and  r10, r10, r4
     vget r5, v1, 3
     sub  r5, r5, r7
     fmul r5, r5, r8
@@ -255,7 +282,11 @@ asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) {
     addi {dst}, {dst}, 16
     addi {n}, {n}, -1
     bne  {n}, r0, .floop
-.done:
+.end:
+    mov  r1, r10
+    lw   r9, [sp+0]
+    lw   r10, [sp+4]
+    addi sp, sp, 8
 }
 
 // Shifts the ordering-table buckets of the following mesh() calls: negative values draw
@@ -291,12 +322,16 @@ fn __draw_mesh(m: *Mesh, mvp: mat4) {
         return
     }
     let base = m as u32
-    __xform((base + m.verts) as *vec4, nv, &__sv[0], &mvp)
+    let inside = __xform((base + m.verts) as *vec4, nv, &__sv[0], &mvp)
+    __clip_src = (base + m.verts) as *vec4      // for faces clip.akr has to clip
+    __clip_m = &mvp
     if __subdiv > 0 {
         __sub_src = (base + m.verts) as *vec4
         __sub_mvp = mvp
         __draw_faces_sub((base + m.faces) as *Face, m.nfaces as s32)
-    } else {
+    } else if inside == 0 {
         __draw_faces((base + m.faces) as *Face, m.nfaces as s32)
+    } else {
+        __draw_faces_in((base + m.faces) as *Face, m.nfaces as s32)   // no vertex to clip
     }
 }
