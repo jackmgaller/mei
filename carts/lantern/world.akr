@@ -562,12 +562,11 @@ fn draw_scenery(refl: bool) {
     }
     // docks
     for d in 0..NDOCK {
-        if d == g.dock && !refl && d != 2 {
-            // the deck right under the camera: split its planks so they do not warp (not on
-            // the high bridge, whose deck is mostly out of view, to save cycles)
-            subdivide(1)
+        if d == g.dock && !refl {
+            // the deck right under you: the generator cuts it into small tiles (a quarter
+            // texture cell each), which keeps the affine warp of the plank seams small; that
+            // costs far less than subdivide() here (about 210k vs 270-300k cycles at the bridge)
             mesh(dock_mesh(d, false, false))
-            subdivide(0)
         } else if d == g.dock || (!refl && in_view(DOCK_STAND[d], 9.0)) {
             mesh(dock_mesh(d, refl, d != g.dock))
         }
@@ -676,16 +675,19 @@ fn draw_lantern_pools() {
 // ---- the water: a fan of quads around the camera, rebuilt every frame
 
 const FAN_COLS = 8
-const FAN_RINGS = 9
+const FAN_RINGS = 10
 const FAN_W = 9                 // vertices per ring
-const FAN_NV = 90               // (FAN_COLS + 1) * (FAN_RINGS + 1)
+const FAN_NV = 99               // (FAN_COLS + 1) * (FAN_RINGS + 1)
 const FAN_DA: fixed = 0.2
-const FAN_R: [10]fixed = [1.8, 3.0, 4.6, 7.0, 10.5, 16.0, 24.0, 36.0, 52.0, 76.0]
-struct Fan { hdr: Mesh, v: [90]vec4, f: [72]Face }
+// Ring radii. Each quad's texture coordinates are world-anchored at 8 texels per unit with
+// a 64-aligned base, so a quad may span at most 255 - 63 texels: the outer rings are split
+// so that holds at any heading (worst case about 210).
+const FAN_R: [11]fixed = [1.8, 3.0, 4.6, 7.0, 10.5, 16.0, 24.0, 36.0, 52.0, 64.0, 76.0]
+struct Fan { hdr: Mesh, v: [99]vec4, f: [80]Face }
 var fan: Fan
-var fan_u: [90]s32
-var fan_v: [90]s32
-var fan_c: [90]u32
+var fan_u: [99]s32
+var fan_v: [99]s32
+var fan_c: [99]u32
 var wave_tbl: [64]s32
 var water_tint: s32 = 128
 
@@ -712,9 +714,11 @@ fn fan_init() {
     fan_shades()
 }
 
-var fan_ia: [90]s32
-var fan_ib: [90]s32
-var fan_shade: [640]u32     // 10 rings x 64: vertex colour by wave height
+var fan_quads: s32           // tests: quads built, and those whose texture span had to be clamped
+var fan_squashed: s32
+var fan_ia: [99]s32
+var fan_ib: [99]s32
+var fan_shade: [704]u32     // 11 rings x 64: vertex colour by wave height
 var fan_last: vec4
 var fan_valid: bool
 
@@ -777,6 +781,10 @@ fn fan_positions() {
             let v3 = fan_v[a + FAN_W + 1]
             let bu = min(min(u0, u1), min(u2, u3)) & ~63
             let bv = min(min(v0, v1), min(v2, v3)) & ~63
+            if TEST != 0 {
+                fan_quads += 1
+                if max(max(u0, u1), max(u2, u3)) - bu > 255 || max(max(v0, v1), max(v2, v3)) - bv > 255 { fan_squashed += 1 }
+            }
             f.uv[0] = (min(u0 - bu, 255) | (min(v0 - bv, 255) << 8)) as u16
             f.uv[1] = (min(u1 - bu, 255) | (min(v1 - bv, 255) << 8)) as u16
             f.uv[2] = (min(u2 - bu, 255) | (min(v2 - bv, 255) << 8)) as u16

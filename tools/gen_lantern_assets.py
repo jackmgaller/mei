@@ -879,6 +879,9 @@ def plank_uv(len_texels=32):
     return [(M['u'], M['v'] + 31), (M['u'] + len_texels - 1, M['v'] + 31), (M['u'], M['v']), (M['u'] + len_texels - 1, M['v'])]
 
 
+DECK_TILES = 4    # the near deck is cut into 4 x 4 tiles per segment: straight plank seams near the camera
+
+
 def deck(length, width, y, seg=1.6, thick=0.12, posts=True, post_every=2.0, x_off=0.0, sag=0.0, wob=0.0):
     """A plank deck in local space: along +Z from z=0 to z=length, x in +-width/2."""
     out = []
@@ -895,8 +898,19 @@ def deck(length, width, y, seg=1.6, thick=0.12, posts=True, post_every=2.0, x_of
         # rotate: v along z (boards across the deck)
         uvs = [(M['u'], M['v']), (M['u'], M['v'] + 31), (M['u'] + 31, M['v']), (M['u'] + 31, M['v'] + 31)]
         tint = [lit_tint((0, 1, 0), 1.0, 0.95 + 0.1 * ((s_ * 37) % 3) / 2)] * 4
+        # far version: one face per segment; near version: 2 x 2 tiles, each half the texture
+        # cell, so the affine warp near the camera stays small
         out.append(Face([(-w2 + x_off, yy0, z0), (w2 + x_off, yy0, z0), (-w2 + x_off, yy1, z1), (w2 + x_off, yy1, z1)],
-                        uvs, tint, 'planks', (0, 1, 0)))
+                        uvs, tint, 'planks', (0, 1, 0), hi=False))
+        for a in range(DECK_TILES):
+            za, zb = z0 + (z1 - z0) * a / DECK_TILES, z0 + (z1 - z0) * (a + 1) / DECK_TILES
+            ya, yb = yy0 + (yy1 - yy0) * a / DECK_TILES, yy0 + (yy1 - yy0) * (a + 1) / DECK_TILES
+            ua, ub = M['u'] + 32 * a // DECK_TILES, M['u'] + min(32 * (a + 1) // DECK_TILES, 31)
+            for b in range(DECK_TILES):
+                xa, xb = -w2 + width * b / DECK_TILES + x_off, -w2 + width * (b + 1) / DECK_TILES + x_off
+                va, vb = M['v'] + 32 * b // DECK_TILES, M['v'] + min(32 * (b + 1) // DECK_TILES, 31)
+                out.append(Face([(xa, ya, za), (xb, ya, za), (xa, yb, zb), (xb, yb, zb)],
+                                [(ua, va), (ua, vb), (ub, va), (ub, vb)], tint, 'planks', (0, 1, 0), lo=False))
         # sides
         lo = lit_tint((0, 0, 0), 0.6)
         hi = lit_tint((1, 0.2, 0), 0.85)
@@ -1045,8 +1059,16 @@ nseg = 5
 for s_ in range(nseg):
     x0 = -span / 2 - 1.0 + (span + 2.0) * s_ / nseg
     x1 = -span / 2 - 1.0 + (span + 2.0) * (s_ + 1) / nseg
-    bridge_faces.append(Face([(x0, BY, bz - 1.3), (x1, BY, bz - 1.3), (x0, BY, bz + 1.3), (x1, BY, bz + 1.3)],
-                             cell_uv('planks'), [lit_tint((0, 1, 0))] * 4, 'planks', (0, 1, 0), lo=False))
+    Mp = MATS['planks']
+    for a in range(DECK_TILES):
+        xa, xb = x0 + (x1 - x0) * a / DECK_TILES, x0 + (x1 - x0) * (a + 1) / DECK_TILES
+        ua, ub = Mp['u'] + 32 * a // DECK_TILES, Mp['u'] + min(32 * (a + 1) // DECK_TILES, 31)
+        for b in range(DECK_TILES):
+            za, zb = bz - 1.3 + 2.6 * b / DECK_TILES, bz - 1.3 + 2.6 * (b + 1) / DECK_TILES
+            va, vb = Mp['v'] + 31 - 32 * b // DECK_TILES, Mp['v'] + max(31 - 32 * (b + 1) // DECK_TILES, 0)
+            bridge_faces.append(Face([(xa, BY, za), (xb, BY, za), (xa, BY, zb), (xb, BY, zb)],
+                                     [(ua, va), (ub, va), (ua, vb), (ub, vb)], [lit_tint((0, 1, 0))] * 4, 'planks',
+                                     (0, 1, 0), lo=False))
     for sz in (-1, 1):
         z = bz + sz * 1.3
         bridge_faces.append(Face([(x0, BY - 0.35, z), (x1, BY - 0.35, z), (x0, BY, z), (x1, BY, z)],
