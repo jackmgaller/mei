@@ -4,3 +4,4 @@ build-*/
 *.mcd
 carts/lantern/tests/_scenario.*
 docs/audio/os_music_*.wav
+docs/audio/checkin_*.wav

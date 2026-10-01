@@ -507,6 +507,8 @@ fn draw_journal() {
             ftext(166, 143, fish_name(twin), CREAM, false)
             ftext(166, 162, "Its pattern: like its twin's,\nbut a little different...", SOFT, false)
             draw_pattern_ghost(twin, 238, 208)
+        } else if f == 13 {
+            ftext(166, 130, "Rumour: it swims where\nthe moon lays its path.\nThe pier sees the moon\nall night long.", SOFT, false)
         } else {
             ftext(166, 130, "A shadow in the water...\nwhere could it be?", SOFT, false)
         }

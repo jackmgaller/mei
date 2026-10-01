@@ -109,10 +109,11 @@ fn tod_update() {
     let ts = fixed(m - 350) / 790
     sun_az = 1.3 - ts * 3.1
     sun_el = sin(ts * 3.14159) * 0.45 - 0.05
-    // the moon: 19:00 - 5:00
-    let tm = fixed((m - 1140 + 1440) % 1440) / 600
-    moon_az = 1.0 - tm * 2.0
-    moon_el = sin(tm * 3.14159) * 0.30 - 0.04
+    // the moon rises at dusk and sets at dawn (above the water ~18:50 - 5:40), crossing the
+    // northern sky in front of the pier; its path on the water is where the Silver Moon Koi bites
+    let tm = fixed((m - 1110 + 1440) % 1440) / 690
+    moon_az = 1.3 - tm * 2.6
+    moon_el = sin(tm * 3.14159) * 0.30 - 0.03
     if tm > 1.0 { moon_el = -1.0 }
 }
 
@@ -514,31 +515,42 @@ fn angle_diff(a: fixed, b: fixed) -> fixed {
     return d
 }
 
-// Clouds: drifting tinted billboards high in the sky.
-const NCLOUD = 7
-const CLOUD_AZ: [7]fixed = [-1.2, -0.5, 0.15, 0.7, 1.4, 2.4, -2.5]
-const CLOUD_EL: [7]fixed = [0.16, 0.24, 0.12, 0.2, 0.14, 0.18, 0.22]
+// Clouds: drifting tinted billboards high in the sky, and their reflections in the lake.
+// A far object's reflection sits as far below the horizon as the object is above it, while
+// the reflected treeline reaches further down (the eye is 1.6 above the water), so a cloud
+// that just clears the trees is hidden in the water. The first-person view (60 degree fov,
+// pitched 0.17 down) shows the sky up to about 0.2 rad before the HUD row, so the clouds
+// sit at 0.15-0.19: high enough for their reflections to clear the reflected trees.
+const NCLOUD = 9
+const CLOUD_AZ: [9]fixed = [-1.2, -0.5, 0.15, 0.7, 1.4, 2.4, -2.5, 0.45, -0.15]
+const CLOUD_EL: [9]fixed = [0.17, 0.19, 0.16, 0.18, 0.17, 0.19, 0.16, 0.18, 0.15]
 
 fn draw_clouds(refl: bool) {
     if night > 0.75 { return }
-    let drift = fixed(tick_count % 36000) / 6000
+    // one slow turn of the sky every ~105 minutes (16.16 fixed: keep the numerator small)
+    let drift = fixed((tick_count / 16) % 23562) / 3750
     bt_look(F_TEX, 0, SLOT_WORLD, PAL_GREY, UV_CLOUD_U, UV_CLOUD_V, UV_CLOUD_U + 63, UV_CLOUD_V + 31)
     // cloud colour: lit from the sky, warm at dusk, dark at night
     var ct = mix_col(sky_hor, rgb(255, 255, 255), (light * 180) as s32)
     ct = scale_col(ct, 150)
     var cb = mix_col(ct, sky_mid, 100)
     if refl {
-        ct = scale_col(ct, 190)
-        cb = scale_col(cb, 190)
+        // seen in the water: darker, like the shore's reflection palettes (the half-transparent
+        // water fan drawn over pass A then tints it with the lake's colour and waves)
+        ct = scale_col(ct, 230)
+        cb = scale_col(cb, 205)
     }
     for i in 0..NCLOUD {
-        let az = CLOUD_AZ[i] + drift * 0.1
+        let az = CLOUD_AZ[i] + drift
         if abs(angle_diff(az, cam_yaw)) > 1.2 { continue }
         var p = sky_point(az, CLOUD_EL[i], 170.0)
-        if refl { p = mirror_about_cam(p) }
-        let w = 18.0 + fixed(i % 3) * 5
+        let w = 20.0 + fixed(i % 3) * 6
         if refl {
-            billboard(p, w, w * 0.45, ct, cb)
+            p = mirror_about_cam(p)
+            // the waves break the reflection up: a slow sideways wobble and a squashed height
+            let wob = sin(fixed(tick_count) * 0.05 + fixed(i) * 1.7) * 0.6
+            p = p + vec3(cam_c * wob, 0.0, -cam_s * wob)
+            billboard(p, w, w * 0.4, ct, cb)
         } else {
             billboard(p, w, w * 0.45, cb, ct)
         }
@@ -933,11 +945,12 @@ fn draw_glitter() {
     let s = sin(az)
     let c = cos(az)
     let k = (amt * 256) as s32
-    for i in 0..22 {
-        // distance grows along the path; the path widens with distance
+    for i in 0..30 {
+        // distance grows along the path; the path widens with distance (half-width about
+        // 0.35 + d * 0.06; the fishable zone, in_moon_path(), is wider)
         let h = (i * 2654435761) as u32
-        let d = 3.0 + fixed(i) * fixed(i) * 0.09
-        let lat = (fixed(((h >> 8) & 255) as s32) / 256 - 0.5) * (0.6 + d * 0.12)
+        let d = 2.5 + fixed(i) * fixed(i) * 0.048
+        let lat = (fixed(((h >> 8) & 255) as s32) / 256 - 0.5) * (0.7 + d * 0.12)
         let ph = ((h >> 16) as s32 + tick_count * (2 + i % 3)) & 63
         if ph > 40 { continue }
         let tw = 256 - abs(ph - 20) * 12

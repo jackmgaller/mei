@@ -7,7 +7,7 @@ ROOT="$(cd "$HERE/../../.." && pwd)"
 OUT="$3"
 FRAMES="$2"
 S="$HERE/_scenario.akr"
-printf 'cart "Lantern Test"\nconst SCENARIO = %s\nconst SHOT = %s\nimport "harness.akr"\nimport "../game.akr"\n' "$1" "${SHOT:-0}" > "$S"
+printf 'cart "Lantern Test"\nconst SCENARIO = %s\nconst SHOT = %s\nconst SEEDV = %s\nimport "harness.akr"\nimport "../game.akr"\n' "$1" "${SHOT:-0}" "${SEED:-0}" > "$S"
 "$ROOT/build/meic" "$S" -o "$OUT.mei"
 rm -f "$S"
 shift 3

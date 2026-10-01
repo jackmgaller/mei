@@ -278,6 +278,21 @@ fn panel_glass(x: s32, y: s32, w: s32, h: s32) {
 
 fn days_to_festival() -> s32 { return g.fest_day - g.day }
 
+const FESTBOX_X = 168    // left edge of the festival box (the clock panel ends at 116)
+
+// Lantern points for the HUD: in full up to 9999, then "12.3k" / "123k".
+fn spts(dst: *u8, v: s32) -> *u8 {
+    if v < 10000 { return sint(dst, v) }
+    if v < 100000 {
+        sint(dst, v / 1000)
+        sappend(dst, ".")
+        sint(dst, (v / 100) % 10)
+        return sappend(dst, "k")
+    }
+    sint(dst, v / 1000)
+    return sappend(dst, "k")
+}
+
 fn draw_hud() {
     // clock with the sun or the moon
     panel_glass(4, 4, 112, 22)
@@ -288,12 +303,14 @@ fn draw_hud() {
     sint(b, g.day)
     ftext(27, 8, b, CREAM, false)
     ftext_r(112, 8, fmt_clock(), CREAM, false)
-    // the festival countdown and progress
-    panel_glass(186, 4, 130, 30)
-    icon(189, 7, IC_LANTERN, 0x808080)
+    // the festival countdown and progress: the bar shrinks to make room for the readout, so
+    // "9999/1100" still fits (and five-digit scores shorten to "12.3k")
+    panel_glass(FESTBOX_X, 4, 316 - FESTBOX_X, 30)
+    icon(FESTBOX_X + 3, 7, IC_LANTERN, 0x808080)
+    let tx = FESTBOX_X + 22
     if g.free_play != 0 {
-        ftext(208, 8, "Free play", GOLD, false)
-        ftext(208, 19, "The lake is yours", SOFT, false)
+        ftext(tx, 8, "Free play", GOLD, false)
+        ftext(tx, 19, "The lake is yours", SOFT, false)
     } else {
         let dd = days_to_festival()
         let c = nb()
@@ -305,20 +322,21 @@ fn draw_hud() {
             sint(c, dd)
             sappend(c, " days")
         }
-        ftext(208, 7, c, GOLD, false)
+        ftext(tx, 7, c, GOLD, false)
         let target = FEST_TARGET[min(g.fest, NFEST - 1)]
-        let w = 66
-        let fill = clamp(g.points * w / max(target, 1), 0, w)
-        ui_rect(208, 22, w, 7, rgb(20, 20, 40), -1)
-        var bc = rgb(250, 170, 70)
-        if g.points >= target { bc = rgb(140, 230, 120) }
-        ui_grad(208, 22, fill, 7, mix_col(bc, WHITE, 90), bc, -1)
         let p = nb()
         p[0] = 0
-        sint(p, g.points)
+        spts(p, g.points)
         sappend(p, "/")
-        sint(p, target)
-        ftext(277, 18, p, CREAM, false)
+        spts(p, target)
+        let pw = text_w(p, false)
+        let w = max(312 - pw - 4 - tx, 24)
+        let fill = clamp(g.points * w / max(target, 1), 0, w)
+        ui_rect(tx, 22, w, 7, rgb(20, 20, 40), -1)
+        var bc = rgb(250, 170, 70)
+        if g.points >= target { bc = rgb(140, 230, 120) }
+        ui_grad(tx, 22, fill, 7, mix_col(bc, WHITE, 90), bc, -1)
+        ftext_r(313, 18, p, CREAM, false)
     }
     // coins and the lure (bottom left: the rod is on the right)
     if phase != Phase.Fight && phase != Phase.Catch {

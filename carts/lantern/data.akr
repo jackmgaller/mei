@@ -89,7 +89,7 @@ const FISH: [14]Fish = [
     Fish { bite: Bite.Shy, fight: Fight.Steady, docks: 15, home: 1, min_mm: 400, max_mm: 750, points: 160,
            weight: 1, pull: 1.1, heft: 1.5, tempo: 14, plen: 5, pat: [0, 5, 2, 6, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
     // Silver Moon Koi: the same star, mirrored
-    Fish { bite: Bite.Moonpath, fight: Fight.Steady, docks: 15, home: 1, min_mm: 400, max_mm: 750, points: 200,
+    Fish { bite: Bite.Moonpath, fight: Fight.Steady, docks: 15, home: 0, min_mm: 400, max_mm: 750, points: 200,
            weight: 1, pull: 1.1, heft: 1.5, tempo: 14, plen: 5, pat: [0, 3, 6, 2, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
 ]
 
@@ -149,7 +149,7 @@ fn fish_tip(f: s32) -> *u8 {
         10 => return "Bite: almost anything.\nA fine first catch."
         11 => return "Bite: lantern light, a glow\nlure, or the lit pier."
         12 => return "Bite: cast near it, but\nnot on top. Daytime only."
-        13 => return "Bite: in the moon's path\non the water."
+        13 => return "Bite: let it rest in the\nmoon's path, dusk to dawn."
         else => return ""
     }
 }

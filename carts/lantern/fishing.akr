@@ -114,15 +114,84 @@ fn light_here() -> bool {
     return g.dock == 0
 }
 
+// The moon's path on the water runs from your eye toward the moon and widens with distance.
+// The moon rises at dusk and sets at dawn across the northern sky (world.akr, tod_update), so
+// the pier faces it all night; the Reedy Cove sees it in the evening, the Lily Dock before
+// dawn. The fishable zone is wider than the glitter that draw_glitter() shows (about
+// +-(0.35 + d * 0.06) there), so a cast that lands anywhere in the sparkle counts.
+fn moon_path_up() -> bool { return moon_el > 0.0 && night >= 0.5 }
+
 fn in_moon_path(p: vec3) -> bool {
-    if moon_el < 0.0 || night < 0.5 { return false }
+    if !moon_path_up() { return false }
     let s = sin(moon_az)
     let c = cos(moon_az)
     let dx = p.x - cam_pos.x
     let dz = p.z - cam_pos.z
     let along = dx * s + dz * c
     let lat = dx * c - dz * s
-    return along > 2.0 && abs(lat) < 1.2 + along * 0.08
+    return along > 1.5 && abs(lat) < 1.6 + along * 0.13
+}
+
+// The Silver Moon Koi comes up the moon's path to a lure resting in it: a chance when the
+// lure lands there and a smaller one each second it stays (better with Golden Dough). The
+// other fish make way while it comes.
+const MOONKOI = 13
+var moon_rest_t: s32
+var moon_said: s32 = -1
+
+fn moon_koi_try(chance: s32) {
+    if !fish_eligible(MOONKOI) || !in_moon_path(lure) { return }
+    if rnd(100) >= chance { return }
+    var slot = -1
+    for i in 0..NSWIM {
+        if sw[i].id == MOONKOI && sw[i].state != SW_NONE && sw[i].state != SW_FLEE {
+            if sw[i].state != SW_WANDER { return }      // already on its way
+            slot = i
+        }
+    }
+    if slot < 0 {
+        // a free place, or the wanderer furthest from the lure
+        var best = -1.0
+        for i in 0..NSWIM {
+            let st = sw[i].state
+            if st == SW_NONE || st == SW_FLEE {
+                slot = i
+                best = 9999.0
+            } else if st == SW_WANDER && best < 9999.0 {
+                let d = sw[i].pos - lure
+                let d2 = dot(d, d)
+                if d2 > best {
+                    best = d2
+                    slot = i
+                }
+            }
+        }
+        if slot < 0 { return }
+        let s = &sw[slot]
+        s.id = MOONKOI
+        s.size_mm = random_size(MOONKOI)
+        s.n = 0
+        s.speed = 0.03
+        // it rises further along the path, toward the moon
+        let dir = vec3(sin(moon_az), 0.0, cos(moon_az))
+        s.pos = lure + dir * 6.0
+        if !is_water(s.pos.x, s.pos.z) { s.pos = lure + dir * 3.5 }
+        if !is_water(s.pos.x, s.pos.z) { s.pos = lure }
+    }
+    for i in 0..NSWIM {
+        if i != slot && (sw[i].state == SW_APPROACH || sw[i].state == SW_AT_LURE) { give_up(i) }
+    }
+    sw[slot].state = SW_APPROACH
+    sw[slot].t = 0
+    nobite_t = 0
+}
+
+// Is a koi coming for the lure? (Then the others keep away.)
+fn koi_coming() -> bool {
+    for i in 0..NSWIM {
+        if sw[i].id >= 12 && (sw[i].state == SW_APPROACH || sw[i].state == SW_AT_LURE) { return true }
+    }
+    return false
 }
 
 // ---- species selection
@@ -144,6 +213,7 @@ fn pick_species() -> s32 {
             var k = FISH[f].weight as s32 * 4
             if FISH[f].home as s32 == g.dock { k = k * 3 }
             if f >= 12 && g.up[UP_BAIT] >= 2 { k = k * 3 }
+            if f == 12 { k = k * 2 }     // the golden koi: rare, but not a no-show
             // Light biters are rarer without light
             if FISH[f].bite == Bite.Light && !light_here() { k = k / 3 }
             w[f] = k
@@ -309,6 +379,7 @@ fn consider_lure(i: s32) {
     if night > 0.5 && g.lure == LURE_GLOW { reach = 10.0 }
     if g.up[UP_BAIT] >= 1 { reach += 1.5 }
     if dist > reach { return }
+    if s.id < 12 && koi_coming() { return }
     match info.bite {
         Far => { if lure_dist < 14.0 { return } }
         Near => { if lure_dist > 8.5 { return } }
@@ -330,6 +401,7 @@ fn lure_landed() {
         let dist2 = dot(d, d)
         var spook = 1.6
         if FISH[s.id].bite == Bite.Shy { spook = 4.2 }
+        if s.id == 12 { spook = 3.4 }     // the golden koi: shy, but the band between 3.4 and 7 is fair to hit
         if dist2 < spook * spook {
             s.state = SW_FLEE
             s.heading = atan2(-d.x, -d.z)
@@ -339,6 +411,27 @@ fn lure_landed() {
             consider_lure(i)
         }
     }
+    moon_rest_t = 0
+    // the first time each night the bobber lands in the moon's path (until you have the koi)
+    var night_no = g.day
+    if minutes() < 720 { night_no -= 1 }
+    if in_moon_path(lure) && g.journal[MOONKOI].caught == 0 && moon_said != night_no && fish_eligible(MOONKOI) {
+        moon_said = night_no
+        say("The bobber shimmers in the moon's path...", 160)
+    }
+    var ch = 15
+    if g.up[UP_BAIT] >= 2 { ch = 25 }
+    moon_koi_try(ch)
+}
+
+// Each second the lure rests in the moon's path, the Silver Moon Koi may come.
+fn moon_path_wait() {
+    if !in_moon_path(lure) { return }
+    moon_rest_t += 1
+    if moon_rest_t % 60 != 0 { return }
+    var ch = 3
+    if g.up[UP_BAIT] >= 2 { ch = 5 }
+    moon_koi_try(ch)
 }
 
 fn bite_wait(base: s32) -> s32 {
@@ -613,6 +706,7 @@ fn update_wait(st: vec2) {
         sfx_click()
     }
     update_lure_dist()
+    moon_path_wait()
     lure.y = sin(fixed(wait_t) * 0.08) * 0.02 - bob_dip * 0.15
     if lure_dist < 2.6 || btnp_in(B) {
         reel_in()
