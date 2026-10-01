@@ -28,9 +28,11 @@ static uint8_t *mem_ptr(Mei *m, uint32_t addr, int *rom) {
 
 static int is_io(uint32_t addr) { return addr - IO_BASE < IO_SIZE; }
 
-/* The audio block covers 8 channels of 32 bytes; +1C in each is reserved. */
+/* Audio: channels 0-7 at 0x100 and 8-15 at 0x400, 32 bytes each (+1C in each is
+ * reserved), and the global audio registers at 0x500-0x50F. */
 static int is_audio(uint32_t off) {
-    return off - IO_AUDIO < AUD_CHANNELS * 0x20 && (off & 0x1F) != 0x1C;
+    if (off - IO_AUDIO < 8 * 0x20 || off - IO_AUDIO_HI < 8 * 0x20) return (off & 0x1F) != 0x1C;
+    return off - IO_AUD_GLOBAL < 0x10;
 }
 
 static uint32_t rng_next(Mei *m) {
@@ -62,7 +64,7 @@ static MeiFaultKind io_read(Mei *m, uint32_t off, uint32_t *out) {
     case IO_SYS_CYCLES: *out = (uint32_t)m->cycles; return 0;
     case IO_SYS_RAND:   *out = rng_next(m); return 0;
     }
-    if (is_audio(off) && audio_io_read(m, off - IO_AUDIO, out) == 0) return 0;
+    if (is_audio(off) && audio_io_read(m, off, out) == 0) return 0;
     if (off - IO_CARD < 0x20 && card_io_read(m, off - IO_CARD, out) == 0) return 0;
     return MEI_FAULT_UNMAPPED;
 }
@@ -83,7 +85,7 @@ static MeiFaultKind io_write(Mei *m, uint32_t off, uint32_t val) {
         return MEI_FAULT_READ_ONLY;
     }
     if (is_audio(off)) {
-        int r = audio_io_write(m, off - IO_AUDIO, val);
+        int r = audio_io_write(m, off, val);
         if (r == 0) return 0;
         if (r == -2) return MEI_FAULT_READ_ONLY;
     }

@@ -143,6 +143,7 @@ typedef enum {
 typedef enum {
     BI_NONE, BI_VEC2, BI_VEC3, BI_VEC4, BI_IVEC4, BI_DOT, BI_CROSS, BI_LEN,
     BI_BITS, BI_FROM_BITS, BI_ABS, BI_MIN, BI_MAX, BI_CLAMP, BI_LERP, BI_LENGTH, BI_NORMALIZE,
+    BI_NCLIP, BI_OTZ, BI_CLERP,     /* the geometry instructions of the same names */
     BI_MAP, BI_MAP_INTO, BI_FILTER, BI_FILTER_INTO, BI_REDUCE, BI_EACH,
 } Builtin;
 

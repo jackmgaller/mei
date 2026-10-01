@@ -94,6 +94,7 @@ TEST_LIBS := $(if $(LANG_OBJ),$(B)/libmeilang.a) $(if $(ASM_OBJ),$(B)/libmeiasm.
 $(B)/tests/%: tests/%.c $(TEST_LIBS)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $< $(TEST_LIBS) -o $@
+$(B)/tests/test_audio: tests/adpcm_vectors.h   # ADPCM reference vectors (tools/gen_adpcm_vectors.py)
 
 test: $(TESTS) $(B)/meiasm $(B)/meic $(B)/mei-headless
 	@set -e; for t in $(TESTS); do echo "== $$t"; ./$$t; done

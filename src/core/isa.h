@@ -11,15 +11,15 @@ enum {
     OP_AND, OP_OR, OP_XOR, OP_SHL, OP_SHR, OP_SAR, OP_SLT, OP_SLTU,
     OP_ADDI = 0x10, OP_ANDI, OP_ORI, OP_XORI, OP_SHLI, OP_SHRI, OP_SARI, OP_SLTI,
     OP_LUI = 0x18,
-    /* 0x19-0x1B reserved */
+    OP_NCLIP = 0x19, OP_OTZ = 0x1A, OP_CLERP = 0x1B,   /* geometry, docs/DECISIONS.md */
     OP_FMUL = 0x1C, OP_FDIV = 0x1D, OP_VSYNC = 0x1E,
-    /* 0x1F reserved */
+    OP_VXP3 = 0x1F,                                    /* geometry, docs/DECISIONS.md */
     OP_LB = 0x20, OP_LBU, OP_LH, OP_LHU, OP_LW, OP_SB, OP_SH, OP_SW,
     OP_BEQ = 0x28, OP_BNE, OP_BLT, OP_BGE, OP_BLTU, OP_BGEU,
     OP_JMP = 0x2E, OP_CALL, OP_JR, OP_CALLR,
     OP_VLD = 0x32, OP_VST, OP_VMOV, OP_VGET, OP_VSET, OP_VADD, OP_VSUB,
     OP_VMUL, OP_VSCALE, OP_VDOT, OP_VCROSS, OP_VXFM, OP_VPROJ,
-    /* 0x3F reserved */
+    /* 0x3F reserved: the all-ones word must keep faulting */
 };
 
 /* Encoding formats. */
@@ -43,6 +43,7 @@ typedef enum {
     SHAPE_VVV,       /* vadd va, vb, vc    (R)             */
     SHAPE_VVS,       /* vscale va, vb, c   (R)             */
     SHAPE_SVV,       /* vdot a, vb, vc     (R)             */
+    SHAPE_VV3,       /* vxp3 va, vb        (R, c = 0; va, vb <= v5: three registers each) */
 } MeiShape;
 
 typedef struct {

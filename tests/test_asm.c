@@ -97,11 +97,18 @@ static void test_every_mnemonic(void) {
         case SHAPE_VVV: snprintf(src, sizeof src, "%s v1, v2, v6", m); want = MEI_ENC_R(op, 1, 2, 6); break;
         case SHAPE_VVS: snprintf(src, sizeof src, "%s v1, v2, r7", m); want = MEI_ENC_R(op, 1, 2, 7); break;
         case SHAPE_SVV: snprintf(src, sizeof src, "%s r3, v2, v6", m); want = MEI_ENC_R(op, 3, 2, 6); break;
+        case SHAPE_VV3: snprintf(src, sizeof src, "%s v5, v1", m); want = MEI_ENC_R(op, 5, 1, 0); break;
         }
         EXPECT(src, want);
         count++;
     }
-    CHECK(count == 59, "expected 59 mnemonics, table has %d", count);
+    CHECK(count == 63, "expected 63 mnemonics, table has %d", count);
+    /* the geometry instructions (docs/DECISIONS.md) */
+    EXPECT("nclip r1, r2, r3", 0x6448C000);
+    EXPECT("otz r10, r4, r15", 0x6A93C000);
+    EXPECT("clerp r0, r0, r0", 0x6C000000);
+    EXPECT("vxp3 v0, v0", 0x7C000000);
+    EXPECT("VXP3 v1, v5", 0x7C540000);
 }
 
 static void test_shorthands(void) {
@@ -291,6 +298,12 @@ static void test_errors(void) {
     EXPECT_ERROR("add r1, r2, r16", "bad scalar register 'r16'");
     EXPECT_ERROR("vadd v1, v2, v8", "bad vector register 'v8'");
     EXPECT_ERROR("vadd v1, v2, r3", "bad vector register 'r3'");
+    EXPECT_ERROR("vxp3 v6, v0", "vxp3 uses three consecutive registers: v0-v5 only");
+    EXPECT_ERROR("vxp3 v0, v7", "v0-v5 only");
+    EXPECT_ERROR("vxp3 v0, v8", "bad vector register 'v8'");
+    EXPECT_ERROR("vxp3 v0", "expected ','");
+    EXPECT_ERROR("vxp3 v0, v1, v2", "unexpected");
+    EXPECT_ERROR("nclip r1, r2, v3", "bad scalar register 'v3'");
     EXPECT_ERROR("add r1, r2", "expected ','");
     EXPECT_ERROR("add r1, r2, r3, r4", "unexpected ', r4'");
     EXPECT_ERROR("beq r1, r2, 0x200002", "not word-aligned");
@@ -381,6 +394,7 @@ static void test_roundtrip(void) {
             case SHAPE_VSLANE: x = MEI_ENC_I(op, va, b, imm & 3); break;
             case SHAPE_VVV: x = MEI_ENC_R(op, va, vb, vc); break;
             case SHAPE_VVS: x = MEI_ENC_R(op, va, vb, c); break;
+            case SHAPE_VV3: x = MEI_ENC_R(op, a % 6, b % 6, 0); break;
             default: x = MEI_ENC_R(op, a, vb, vc); break;
             }
             char line[64];
@@ -408,6 +422,21 @@ static void test_roundtrip(void) {
     CHECK(!strcmp(buf, "beq r1, r2, 0x200010"), "branch disasm: %s", buf);
     mei_disasm(MEI_ENC_I(OP_SW, 3, 14, -8), 0x200000, buf, sizeof buf);
     CHECK(!strcmp(buf, "sw r3, [r14-8]"), "mem disasm: %s", buf);
+    mei_disasm(MEI_ENC_R(OP_NCLIP, 1, 2, 3), 0x200000, buf, sizeof buf);
+    CHECK(!strcmp(buf, "nclip r1, r2, r3"), "nclip disasm: %s", buf);
+    mei_disasm(MEI_ENC_R(OP_OTZ, 0, 15, 8), 0x200000, buf, sizeof buf);
+    CHECK(!strcmp(buf, "otz r0, r15, r8"), "otz disasm: %s", buf);
+    mei_disasm(MEI_ENC_R(OP_CLERP, 4, 5, 6), 0x200000, buf, sizeof buf);
+    CHECK(!strcmp(buf, "clerp r4, r5, r6"), "clerp disasm: %s", buf);
+    mei_disasm(MEI_ENC_R(OP_VXP3, 5, 3, 0), 0x200000, buf, sizeof buf);
+    CHECK(!strcmp(buf, "vxp3 v5, v3"), "vxp3 disasm: %s", buf);
+    static const uint32_t notexpr[] = {MEI_ENC_R(OP_VXP3, 6, 0, 0), MEI_ENC_R(OP_VXP3, 0, 7, 0), MEI_ENC_R(OP_VXP3, 0, 0, 1),
+                                       MEI_ENC_R(OP_VXP3, 0, 0, 0) | 1, MEI_ENC_R(OP_NCLIP, 1, 2, 3) | 0x100, 0xFC000000};
+    for (size_t i = 0; i < sizeof notexpr / sizeof *notexpr; i++) {
+        mei_disasm(notexpr[i], 0x200000, buf, sizeof buf);
+        CHECK(!strncmp(buf, ".word", 5), "%08X should disassemble as .word: %s", notexpr[i], buf);
+    }
+    roundtrip(notexpr, sizeof notexpr / sizeof *notexpr, "geometry words that are not expressible");
     free(w);
 }
 

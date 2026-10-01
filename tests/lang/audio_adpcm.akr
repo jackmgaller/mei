@@ -1,0 +1,38 @@
+// Sound: ADPCM, channels 8-15, reverb and the live CTRL updates.
+// frames: 3
+embed TONE: u8 = "data/tone.adp"
+
+fn init() {
+    let n = adpcm_samples(len(TONE))
+    if n == 2800 { println("samples ok") }                           // expect: samples ok
+    play_adpcm(12, TONE, n, 1.0, 200, 100, true)
+    play_sample(3, TONE, n, 28, 0.5, 90, 90, SND_ADPCM | SND_LOOP | SND_REVERB)
+    if sound_playing(12) && sound_playing(3) { println("playing") }  // expect: playing
+    if sound_active() == (1 << 12) | (1 << 3) { println("active ok") } // expect: active ok
+    print_int(sound_free(0, 15)); println("")                        // expect: 0
+    print_int(sound_free(12, 12)); println("")                       // expect: -1
+    reverb(REVERB_HALL, 128, 96)
+    if REVERB_CTRL == 3 && REVERB_VOL == 0x6080 { println("reverb set") }   // expect: reverb set
+    reverb_decay(300)
+    print_int(REVERB_DECAY as s32); println("")                      // expect: 44
+}
+
+fn update() {
+    if frame() == 2 {
+        let r = (AUDIO_HI_BASE + 4 * 32) as *u32
+        let p = sound_pos(12)
+        if p >= 734 && p <= 736 { println("pos ok") }                 // expect: pos ok
+        print_hex(r[5]); println("")                                   // expect: B
+        reverb_send(12, true)
+        sound_loop(12, false)
+        print_hex(r[5]); println("")                                   // expect: 19
+        if sound_pos(12) == p { println("not restarted") }             // expect: not restarted
+        sound_vol(12, 1, 2)
+        sound_pitch(12, 2.0)
+        print_hex(r[4]); println("")                                   // expect: 201
+        print_hex(r[3]); println("")                                   // expect: 20000
+        stop(12)
+        if !sound_playing(12) { println("stopped") }                   // expect: stopped
+        reverb(REVERB_OFF, 0, 0)
+    }
+}

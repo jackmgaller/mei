@@ -1,6 +1,31 @@
-// Sound: eight channels of signed mono samples at 22,050 Hz (pitch 1.0).
+// Sound: sixteen channels of signed mono samples at 22,050 Hz (pitch 1.0) in 8-bit, 16-bit
+// or 4-bit ADPCM (tools/mei_adpcm.py), and a global hardware reverb.
 
-fn __chan(ch: s32) -> *u32 { return (AUDIO_BASE + (ch & 7) * 32) as *u32 }
+const AUDIO_HI_BASE = 0xFF0400   // channel n (8-15) at AUDIO_HI_BASE + (n - 8) * 32
+reg REVERB_CTRL: u32 @ 0xFF0500  // bits 0-3: preset
+reg REVERB_VOL: u32 @ 0xFF0504   // bits 0-7 wet left, bits 8-15 wet right
+reg REVERB_DECAY: u32 @ 0xFF0508 // 0: the preset's decay; 1-255: feedback x n / 256
+reg AUDIO_ACTIVE: u32 @ 0xFF050C // bit n: channel n is playing
+
+// play_sample flags (the channel CTRL bits)
+const SND_LOOP = 2
+const SND_16BIT = 4
+const SND_ADPCM = 8
+const SND_REVERB = 16
+
+// reverb presets
+const REVERB_OFF = 0
+const REVERB_ROOM = 1
+const REVERB_STUDIO = 2
+const REVERB_HALL = 3
+const REVERB_SPACE = 4
+const REVERB_ECHO = 5
+
+fn __chan(ch: s32) -> *u32 {
+    let c = ch & 15
+    if c < 8 { return (AUDIO_BASE + c * 32) as *u32 }
+    return (AUDIO_HI_BASE + (c - 8) * 32) as *u32
+}
 
 // Plays 8-bit samples. len is in samples; volumes are 0..255.
 fn play(ch: s32, sample: *s8, len: u32, pitch: fixed, vol_l: s32, vol_r: s32, looping: bool) {
@@ -24,6 +49,66 @@ fn play16(ch: s32, sample: *s16, len: u32, pitch: fixed, vol_l: s32, vol_r: s32,
     r[5] = 5 | ((looping as u32) << 1)
 }
 
+// Plays Mei ADPCM blocks (16 bytes per 28 samples). len is in samples.
+fn play_adpcm(ch: s32, data: *u8, len: u32, pitch: fixed, vol_l: s32, vol_r: s32, looping: bool) {
+    play_sample(ch, data, len, 0, pitch, vol_l, vol_r, SND_ADPCM | ((looping as u32) << 1))
+}
+
+// Any format, with a loop start and the reverb send: flags combine one of SND_16BIT or
+// SND_ADPCM (none: 8-bit) with SND_LOOP and SND_REVERB.
+fn play_sample(ch: s32, data: *u8, len: u32, loop_start: u32, pitch: fixed, vol_l: s32, vol_r: s32, flags: u32) {
+    let r = __chan(ch)
+    r[0] = data as u32
+    r[1] = len
+    r[2] = loop_start
+    r[3] = bits(pitch) as u32
+    r[4] = (vol_l as u32 & 255) | ((vol_r as u32 & 255) << 8)
+    r[5] = 1 | (flags & 30)
+}
+
+// Samples in an ADPCM asset of `bytes` bytes (including the padding of its last block).
+fn adpcm_samples(bytes: u32) -> u32 { return bytes / 16 * 28 }
+
 fn stop(ch: s32) { __chan(ch)[5] = 0 }
 fn sound_playing(ch: s32) -> bool { return __chan(ch)[5] & 1 != 0 }
 fn sound_pos(ch: s32) -> u32 { return __chan(ch)[6] }
+
+// Changes a playing channel's volume or pitch.
+fn sound_vol(ch: s32, vol_l: s32, vol_r: s32) {
+    __chan(ch)[4] = (vol_l as u32 & 255) | ((vol_r as u32 & 255) << 8)
+}
+fn sound_pitch(ch: s32, pitch: fixed) { __chan(ch)[3] = bits(pitch) as u32 }
+
+// Turns looping on or off without restarting (off: the sample plays to its end).
+fn sound_loop(ch: s32, on: bool) {
+    let r = __chan(ch)
+    r[5] = 128 | (r[5] & 16) | ((on as u32) << 1)
+}
+
+// Sends a channel to the reverb, or not, without restarting it.
+fn reverb_send(ch: s32, on: bool) {
+    let r = __chan(ch)
+    r[5] = 128 | (r[5] & 2) | ((on as u32) << 4)
+}
+
+// Bit n set while channel n plays.
+fn sound_active() -> u32 { return AUDIO_ACTIVE }
+
+// The lowest channel in lo..hi that is not playing, or -1.
+fn sound_free(lo: s32, hi: s32) -> s32 {
+    let busy = AUDIO_ACTIVE
+    for c in lo..hi + 1 {
+        if (busy >> (c as u32 & 15)) & 1 == 0 { return c }
+    }
+    return -1
+}
+
+// Selects the reverb (REVERB_OFF, ROOM, STUDIO, HALL, SPACE, ECHO) and its wet volume
+// (0..255 per side). Changing the preset clears the reverb's memory.
+fn reverb(preset: s32, vol_l: s32, vol_r: s32) {
+    REVERB_CTRL = preset as u32 & 15
+    REVERB_VOL = (vol_l as u32 & 255) | ((vol_r as u32 & 255) << 8)
+}
+
+// 0: the preset's own decay; 1-255: its feedback scaled by n / 256 (shorter tails).
+fn reverb_decay(n: s32) { REVERB_DECAY = n as u32 & 255 }

@@ -565,6 +565,10 @@ static uint32_t encode(Asm *a, int op, const char **p) {
     case SHAPE_SVV:
         ra = sreg(a, p), comma(a, p), rb = vreg(a, p), comma(a, p), rc = vreg(a, p);
         return MEI_ENC_R(op, ra, rb, rc);
+    case SHAPE_VV3:
+        ra = vreg(a, p), comma(a, p), rb = vreg(a, p);
+        if (ra > 5 || rb > 5) fail(a, "%s uses three consecutive registers: v0-v5 only", mei_ops[op].mnemonic);
+        return MEI_ENC_R(op, ra, rb, 0);
     }
     fail(a, "internal error: bad shape");
 }

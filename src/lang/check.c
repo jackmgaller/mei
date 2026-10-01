@@ -57,6 +57,7 @@ void types_init(void) {
         {"dot", BI_DOT}, {"cross", BI_CROSS}, {"len", BI_LEN}, {"bits", BI_BITS}, {"from_bits", BI_FROM_BITS},
         {"abs", BI_ABS}, {"min", BI_MIN}, {"max", BI_MAX}, {"clamp", BI_CLAMP}, {"lerp", BI_LERP},
         {"length", BI_LENGTH}, {"normalize", BI_NORMALIZE},
+        {"nclip", BI_NCLIP}, {"otz", BI_OTZ}, {"clerp", BI_CLERP},
         {"map", BI_MAP}, {"map_into", BI_MAP_INTO}, {"filter", BI_FILTER}, {"filter_into", BI_FILTER_INTO},
         {"reduce", BI_REDUCE}, {"each", BI_EACH},
     };
@@ -1139,7 +1140,7 @@ static Expr *check_call(Ctx *c, Expr *e) {
         if (s->bi >= BI_MAP) return check_intrinsic(c, e, s->bi, name);
         e->bi = s->bi;
         int want = (s->bi == BI_DOT || s->bi == BI_CROSS || s->bi == BI_MIN || s->bi == BI_MAX) ? 2
-                 : (s->bi == BI_CLAMP || s->bi == BI_LERP) ? 3 : 1;
+                 : (s->bi == BI_CLAMP || s->bi == BI_LERP || s->bi == BI_NCLIP || s->bi == BI_OTZ || s->bi == BI_CLERP) ? 3 : 1;
         if (e->nargs != want) error_at(e->loc, "%s() takes %d argument%s, got %d", name, want, want == 1 ? "" : "s", e->nargs);
         if (s->bi == BI_LEN) {
             Expr *x = e->args[0];
@@ -1219,6 +1220,20 @@ static Expr *check_call(Ctx *c, Expr *e) {
             }
             a[2] = coerce(c, a[2], ty_fixed, "argument 3 of lerp()");
             e->ty = t;
+            return e;
+        }
+        case BI_NCLIP: case BI_OTZ: case BI_CLERP: {
+            /* one instruction each: nclip(p0, p1, p2), otz(bias, depth, scale), clerp(from, to, t) */
+            static const char *what[3] = {"argument 1 of %s()", "argument 2 of %s()", "argument 3 of %s()"};
+            Type *want[3] = {ty_u32, ty_u32, ty_u32};
+            if (s->bi == BI_OTZ) { want[0] = ty_s32; want[1] = want[2] = ty_fixed; }
+            if (s->bi == BI_CLERP) want[2] = ty_fixed;
+            for (int i = 0; i < 3; i++) {
+                if (want[i] != ty_fixed && !is_intish(a[i]->ty))
+                    error_at(a[i]->loc, "%s() needs integers for argument %d, found %s", name, i + 1, ty_str(a[i]->ty));
+                a[i] = coerce(c, a[i], want[i], ar_printf(what[i], name));
+            }
+            e->ty = s->bi == BI_CLERP ? ty_u32 : ty_s32;
             return e;
         }
         case BI_LENGTH: case BI_NORMALIZE: {

@@ -12,7 +12,7 @@
 #define VRAM_BASE  0x400000u
 #define VRAM_SIZE  0x100000u
 #define IO_BASE    0xFF0000u
-#define IO_SIZE    0x400u
+#define IO_SIZE    0x600u   /* 0x400-0x5FF: audio channels 8-15 and global audio registers */
 
 /* VRAM layout (absolute addresses) */
 #define FB_A_ADDR     0x400000u
@@ -36,6 +36,19 @@
 #define IO_AUD_VOL     0x10
 #define IO_AUD_CTRL    0x14
 #define IO_AUD_POS     0x18
+#define IO_AUDIO_HI    0x400   /* channel n (8-15) at IO_AUDIO_HI + (n - 8) * 0x20 */
+#define IO_AUD_GLOBAL  0x500   /* global audio registers, 0x500-0x50F */
+#define IO_REV_CTRL    0x500   /* bits 0-3: reverb preset (0 off) */
+#define IO_REV_VOL     0x504   /* bits 0-7: wet left volume, bits 8-15: wet right */
+#define IO_REV_DECAY   0x508   /* bits 0-7: feedback scale /256 (0: preset default) */
+#define IO_AUD_ACTIVE  0x50C   /* read-only: bit n = channel n playing */
+/* Channel CTRL bits */
+#define AUD_CTRL_PLAY    0x01u
+#define AUD_CTRL_LOOP    0x02u
+#define AUD_CTRL_16BIT   0x04u
+#define AUD_CTRL_ADPCM   0x08u
+#define AUD_CTRL_REVERB  0x10u
+#define AUD_CTRL_UPDATE  0x80u   /* write only: change bits 1 and 4 without starting or stopping */
 #define IO_PAD1        0x200
 #define IO_PAD2        0x204
 #define IO_STICK1_X    0x208
@@ -56,7 +69,9 @@
 #define GPU_LIST_LIMIT     65536
 #define GPU_STATUS_DROPPED (1u << 16)
 
-#define AUD_CHANNELS 8
+#define AUD_CHANNELS 16
+#define AUD_ADPCM_MAX_PITCH 0x100000u   /* ADPCM channels step at most 16.0 samples per output */
+#define REV_POOL 24576                  /* reverb delay memory, in samples */
 
 typedef struct {
     uint32_t slot, save, buf, len, meta, result, error;
@@ -66,7 +81,20 @@ typedef struct {
     uint32_t addr, len, loop, pitch, vol, ctrl;
     uint64_t pos;       /* 32.16 fixed-point sample position */
     int playing;
+    uint32_t dec;       /* ADPCM: index of the next sample to decode */
+    int32_t h1, h2;     /* ADPCM: the last two decoded samples */
 } MeiAudioChannel;
+
+/* Global reverb (audio.c). The state lives in the core, not in cart RAM. */
+typedef struct {
+    uint32_t ctrl, vol, decay;   /* registers as written */
+    int preset;                  /* active preset, 0 = off */
+    int32_t gain[8];             /* feedback gains with REV_DECAY applied (Q15) */
+    int32_t dc_x, dc_y;          /* input DC blocker */
+    int32_t lp[8];               /* damping filters */
+    uint32_t at[13];             /* ring positions: predelay, 4 diffusers, 8 lines */
+    int32_t buf[REV_POOL];
+} MeiReverb;
 
 struct Mei {
     uint8_t ram[RAM_SIZE];
@@ -118,6 +146,7 @@ struct Mei {
     int16_t audio_out[MEI_MAX_AUDIO_FRAMES * 2];
     int audio_frames;
     uint32_t audio_phase;    /* sub-sample accounting for 22050 / 60 */
+    MeiReverb rev;
 };
 
 /* ---- bus.c ---- memory map, I/O dispatch, fault checks.
@@ -158,8 +187,10 @@ void card_set_cart_id(Mei *m);
 
 /* ---- audio.c ---- */
 void audio_reset(Mei *m);
-int audio_io_read(Mei *m, uint32_t off, uint32_t *out);   /* off relative to IO_AUDIO; -1 = unmapped */
+int audio_io_read(Mei *m, uint32_t off, uint32_t *out);   /* off relative to IO_BASE; -1 = unmapped */
 int audio_io_write(Mei *m, uint32_t off, uint32_t val);   /* -1 unmapped, -2 read-only */
 void audio_mix_tick(Mei *m);                 /* fills audio_out / audio_frames for this tick */
+/* One ADPCM decode step: header byte, 4-bit nibble, two samples of history (updated). */
+int32_t audio_adpcm_sample(uint32_t header, uint32_t nibble, int32_t *h1, int32_t *h2);
 
 #endif

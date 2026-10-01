@@ -495,6 +495,245 @@ static void test_vector(void) {
     for (int k = 0; k < 5; k++) for (int i = 0; i < 4; i++) EQ(M->v[k][i], pr[k][i]);
 }
 
+/* ---- geometry instructions: nclip, otz, clerp, vxp3 ---- */
+
+/* r3 = op(r3, r1, r2): the first operand is also an input. */
+#define GOP(op, a0, b, c, want) gop(__LINE__, OP_##op, a0, b, c, want)
+static void gop(int line, int op, uint32_t a0, uint32_t b, uint32_t c, uint32_t want) {
+    begin(mei_ops[op].mnemonic);
+    li(3, a0); li(1, b); li(2, c);
+    int pre = N;
+    e(MEI_ENC_R(op, 3, 1, 2));
+    exec();
+    check(line, "r3", M->r[3], want);
+    check(line, "r1 unchanged", M->r[1], b);
+    check(line, "r2 unchanged", M->r[2], c);
+    check(line, "cycles", (uint32_t)cost(), (uint32_t)(pre + mei_ops[op].cycles + 1));
+}
+
+static uint32_t PK(int32_t x, int32_t y) { return ((uint32_t)x & 0xFFFF) | ((uint32_t)y << 16); }
+
+static uint32_t rng_state = 0x12345678;
+static uint32_t rng(void) {
+    rng_state ^= rng_state << 13; rng_state ^= rng_state >> 17; rng_state ^= rng_state << 5;
+    return rng_state;
+}
+
+/* Runs `op r3, r1, r2` on n operand triples from the data area (3 words each) and
+ * stores each r3 at RAM 0x10000 + 4i. */
+static void gop_batch(int op, const uint32_t (*in)[3], int n) {
+    begin(mei_ops[op].mnemonic);
+    for (int i = 0; i < n; i++) for (int j = 0; j < 3; j++) P[DATA_IDX + 3 * i + j] = in[i][j];
+    e(U(LUI, 9, DATA >> 10));
+    li(8, 0x10000);
+    for (int i = 0; i < n; i++) {
+        e(I(LW, 3, 9, 12 * i)); e(I(LW, 1, 9, 12 * i + 4)); e(I(LW, 2, 9, 12 * i + 8));
+        e(MEI_ENC_R(op, 3, 1, 2));
+        e(I(SW, 3, 8, 4 * i));
+    }
+    exec();
+}
+
+static void test_geometry(void) {
+    /* nclip: (x1-x0)(y2-y0) - (x2-x0)(y1-y0); counter-clockwise on screen is negative */
+    GOP(NCLIP, PK(0, 0), PK(10, 0), PK(0, -10), NEG(100));
+    GOP(NCLIP, PK(0, 0), PK(0, -10), PK(10, 0), 100);
+    GOP(NCLIP, PK(10, 0), PK(0, -10), PK(0, 0), NEG(100));        /* rotation keeps the sign */
+    GOP(NCLIP, PK(-1024, -1024), PK(1023, -1024), PK(-1024, 1023), 2047 * 2047);
+    GOP(NCLIP, PK(5, 5), PK(9, -3), PK(13, -11), 0);              /* collinear */
+    GOP(NCLIP, 0, 0x10000, 1, NEG(1));                            /* y is the high half */
+    GOP(NCLIP, PK(-32768, -32768), PK(32767, -32768), PK(-32768, 32767), 0x7FFFFFFF);  /* saturates */
+    GOP(NCLIP, PK(-32768, -32768), PK(-32768, 32767), PK(32767, -32768), MIN32);
+    GOP(NCLIP, PK(32767, 32767), PK(-32768, 32767), PK(32767, -32768), 0x7FFFFFFF);
+
+    begin("nclip operand aliasing and r0");
+    li(1, PK(3, 4)); li(2, PK(-7, 9)); li(4, PK(20, -6));
+    e(R(NCLIP, 1, 1, 2));                    /* p0 = p1: zero area */
+    li(5, PK(3, 4));
+    e(R(NCLIP, 5, 2, 4));
+    li(6, 77);
+    e(R(NCLIP, 0, 2, 4));                    /* discarded */
+    e(R(NCLIP, 6, 0, 0));                    /* p1 = p2 = (0, 0) */
+    exec();
+    EQ(M->r[1], 0);
+    EQ(M->r[5], 15);                         /* (-10)(-10) - (17)(5) */
+    EQ(M->r[0], 0);
+    EQ(M->r[6], 0);
+    {   /* against the stdlib's scalar sequence, on vproj's clamped range */
+        static uint32_t in[400][3];
+        for (int i = 0; i < 400; i++)
+            for (int j = 0; j < 3; j++) in[i][j] = PK((int32_t)(rng() % 2048) - 1024, (int32_t)(rng() % 2048) - 1024);
+        gop_batch(OP_NCLIP, (const uint32_t (*)[3])in, 400);
+        for (int i = 0; i < 400; i++) {
+            int32_t x0 = (int16_t)in[i][0], y0 = (int32_t)in[i][0] >> 16;
+            int32_t x1 = (int16_t)in[i][1], y1 = (int32_t)in[i][1] >> 16;
+            int32_t x2 = (int16_t)in[i][2], y2 = (int32_t)in[i][2] >> 16;
+            EQ(rd32(M->ram + 0x10000 + 4 * i), (uint32_t)((x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)));
+        }
+    }
+
+    /* otz: a = clamp(a + floor(b * c / 2^32), 0, 1023) */
+    GOP(OTZ, 0, FX(10), FX(0.5), 5);
+    GOP(OTZ, 3, FX(100), FX(1), 103);
+    GOP(OTZ, 10, FX(-0.5), FX(1), 9);                             /* floor, not truncation */
+    GOP(OTZ, 10, FX(0.5), FX(-1), 9);
+    GOP(OTZ, 0, FX(-0.5), FX(-1), 0);                             /* 0.25 */
+    GOP(OTZ, 0, 1, 1, 0);
+    GOP(OTZ, 1, NEG(1), 1, 0);                                    /* -2^-32 rounds to -1 */
+    GOP(OTZ, NEG(5), FX(1), FX(1), 0);                            /* clamped below */
+    GOP(OTZ, 1000, FX(30), FX(1), 1023);                          /* clamped above */
+    GOP(OTZ, 0, 0x7FFFFFFF, 0x7FFFFFFF, 1023);                    /* 64-bit product */
+    GOP(OTZ, 0x7FFFFFFF, 0x7FFFFFFF, 0x7FFFFFFF, 1023);           /* no wrap in the sum */
+    GOP(OTZ, MIN32, MIN32, MIN32, 0);
+    GOP(OTZ, 0x7FFFFFFF, MIN32, 0x7FFFFFFF, 1023);
+    GOP(OTZ, MIN32, 0x7FFFFFFF, 0x7FFFFFFF, 0);
+    GOP(OTZ, 1023, 0, 0, 1023);
+    GOP(OTZ, 1024, 0, 0, 1023);
+    {   /* against the stdlib's fmul / sari 16 / add bias / clamp sequence */
+        static uint32_t in[400][3];
+        for (int i = 0; i < 400; i++) {
+            in[i][0] = (uint32_t)((int32_t)(rng() % 64) - 32);         /* depth_bias */
+            in[i][1] = rng() % (uint32_t)FX(400) - (uint32_t)FX(10);   /* sum of w minus n * near */
+            in[i][2] = rng() % (uint32_t)FX(4);                        /* 1024 / (far - near) / n */
+        }
+        gop_batch(OP_OTZ, (const uint32_t (*)[3])in, 400);
+        for (int i = 0; i < 400; i++) {
+            int32_t f = (int32_t)(uint32_t)((uint64_t)((int64_t)(int32_t)in[i][1] * (int32_t)in[i][2]) >> 16);
+            int32_t d = (f >> 16) + (int32_t)in[i][0];
+            EQ(rd32(M->ram + 0x10000 + 4 * i), (uint32_t)(d < 0 ? 0 : d > 1023 ? 1023 : d));
+        }
+    }
+
+    /* clerp: each byte a + floor((b - a) * t / 65536), t clamped to 0..65536 */
+    GOP(CLERP, 0x00000000, 0x00FFFFFF, FX(0.5), 0x007F7F7F);
+    GOP(CLERP, 0x00FFFFFF, 0x00000000, FX(0.5), 0x007F7F7F);      /* 255 - 127.5 rounds down */
+    GOP(CLERP, 0x10203040, 0x50607080, 0, 0x10203040);
+    GOP(CLERP, 0x10203040, 0x50607080, FX(1), 0x50607080);
+    GOP(CLERP, 0x10203040, 0x50607080, FX(2), 0x50607080);        /* clamped */
+    GOP(CLERP, 0x10203040, 0x50607080, NEG(1), 0x10203040);
+    GOP(CLERP, 0x10203040, 0x50607080, MIN32, 0x10203040);
+    GOP(CLERP, 0x10203040, 0x50607080, 0x7FFFFFFF, 0x50607080);
+    GOP(CLERP, 0xFF0000FF, 0x00FF0000, FX(0.25), 0xBF3F00BF);     /* all four bytes */
+    GOP(CLERP, 0x000000FF, 0x00000000, 1, 0x000000FE);            /* the smallest step down */
+    GOP(CLERP, 0x00000000, 0x000000FF, 1, 0);                     /* ... and up */
+    GOP(CLERP, 0x00000003, 0x00000000, 0x8000, 1);                /* 3 - 1.5 = 1.5 -> 1 */
+    GOP(CLERP, 0x0000C8C8, 0x00000102, FX(0.75), 0x00003233);     /* uv midpoint style */
+    {   /* against the stdlib's fog blend (amount 0..256, red-blue and green lanes) */
+        static uint32_t in[400][3];
+        for (int i = 0; i < 400; i++) {
+            in[i][0] = rng() & 0xFFFFFF;
+            in[i][1] = rng() & 0xFFFFFF;
+            in[i][2] = (rng() % 257) << 8;
+        }
+        gop_batch(OP_CLERP, (const uint32_t (*)[3])in, 400);
+        for (int i = 0; i < 400; i++) {
+            uint32_t c = in[i][0], f = in[i][1], t = in[i][2] >> 8;
+            uint32_t rb = ((c & 0xFF00FF) * (256 - t) + (f & 0xFF00FF) * t) >> 8 & 0xFF00FF;
+            uint32_t g = ((c & 0xFF00) * (256 - t) + (f & 0xFF00) * t) >> 8 & 0xFF00;
+            EQ(rd32(M->ram + 0x10000 + 4 * i), rb | g);
+        }
+    }
+
+    /* vxp3: bit-exact with vxfm + vproj on lanes x, y and w; lane z is the packed position.
+     * Random matrices and points (including w = 0, negative w and clamped results). Program
+     * A transforms each point with vxfm and vproj, program B with vxp3 in several register
+     * arrangements, including ones that overlap the matrix rows. */
+    for (int round = 0; round < 60; round++) {
+        int32_t mat[4][4], pt[3][4];
+        for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) {
+            uint32_t r = rng();
+            mat[i][j] = (round % 3 == 0) ? (int32_t)r                      /* anything */
+                      : (int32_t)(r % (uint32_t)FX(8)) - FX(4);          /* camera-like */
+        }
+        for (int k = 0; k < 3; k++) for (int j = 0; j < 4; j++) {
+            uint32_t r = rng();
+            pt[k][j] = (round % 3 == 1) ? (int32_t)r : (int32_t)(r % (uint32_t)FX(200)) - FX(100);
+            if (j == 3 && round % 3 != 1) pt[k][j] = FX(1);
+        }
+        if (round == 5) { for (int j = 0; j < 4; j++) mat[3][j] = 0; }   /* w = 0 */
+        int32_t want[3][4];
+        begin("vxp3 reference: vxfm + vproj");
+        for (int i = 0; i < 4; i++) vdata(i, mat[i][0], mat[i][1], mat[i][2], mat[i][3]);
+        for (int k = 0; k < 3; k++) vdata(4 + k, pt[k][0], pt[k][1], pt[k][2], pt[k][3]);
+        e(U(LUI, 9, DATA >> 10));
+        li(8, 0x10000);
+        for (int i = 0; i < 4; i++) e(I(VLD, 4 + i, 9, 16 * i));
+        for (int k = 0; k < 3; k++) {
+            e(I(VLD, 0, 9, 64 + 16 * k));
+            e(R(VXFM, 1, 0, 0));
+            e(R(VPROJ, 2, 1, 0));
+            e(I(VST, 2, 8, 16 * k));
+        }
+        exec();
+        for (int k = 0; k < 3; k++) for (int i = 0; i < 4; i++) want[k][i] = (int32_t)rd32(M->ram + 0x10000 + 16 * k + 4 * i);
+        if (round == 5) EQ(want[0][0], 160);
+        /* (destination, source) pairs; sources are loaded first, then the matrix rows that
+         * do not overlap them (a source in v4/v5 is also a matrix row: give that row the
+         * point's value, so the reference matches) */
+        static const int pairs[][2] = {{0, 0}, {1, 1}, {0, 1}, {1, 0}, {3, 0}, {5, 0}, {0, 3}};
+        for (size_t pi = 0; pi < sizeof pairs / sizeof *pairs; pi++) {
+            int da = pairs[pi][0], sb = pairs[pi][1];
+            int ok = 1;
+            for (int k = 0; k < 3; k++) if (sb + k >= 4) ok = 0;
+            if (sb == 3) {   /* source v3, v4, v5: rows 0 and 1 are the second and third points */
+                int32_t m2[4][4];
+                memcpy(m2, mat, sizeof m2);
+                for (int j = 0; j < 4; j++) { m2[0][j] = pt[1][j]; m2[1][j] = pt[2][j]; }
+                begin("vxp3 reference with the points as rows");
+                for (int i = 0; i < 4; i++) vdata(i, m2[i][0], m2[i][1], m2[i][2], m2[i][3]);
+                for (int k = 0; k < 3; k++) vdata(4 + k, pt[k][0], pt[k][1], pt[k][2], pt[k][3]);
+                e(U(LUI, 9, DATA >> 10));
+                li(8, 0x10000);
+                for (int i = 0; i < 4; i++) e(I(VLD, 4 + i, 9, 16 * i));
+                for (int k = 0; k < 3; k++) {
+                    e(I(VLD, 0, 9, 64 + 16 * k)); e(R(VXFM, 1, 0, 0)); e(R(VPROJ, 2, 1, 0)); e(I(VST, 2, 8, 16 * k));
+                }
+                exec();
+                for (int k = 0; k < 3; k++) for (int i = 0; i < 4; i++) want[k][i] = (int32_t)rd32(M->ram + 0x10000 + 16 * k + 4 * i);
+                ok = 1;
+            }
+            if (!ok) continue;
+            begin("vxp3");
+            for (int i = 0; i < 4; i++) vdata(i, mat[i][0], mat[i][1], mat[i][2], mat[i][3]);
+            for (int k = 0; k < 3; k++) vdata(4 + k, pt[k][0], pt[k][1], pt[k][2], pt[k][3]);
+            e(U(LUI, 9, DATA >> 10));
+            li(8, 0x10000);
+            for (int i = 0; i < 4; i++) e(I(VLD, 4 + i, 9, 16 * i));
+            for (int k = 0; k < 3; k++) e(I(VLD, sb + k, 9, 64 + 16 * k));
+            e(R(VXP3, da, sb, 0));
+            for (int k = 0; k < 3; k++) e(I(VST, da + k, 8, 16 * k));
+            exec();
+            EQ(cost(), 1 + 1 + 7 * 4 + 23 + 3 * 4 + 1);   /* lui, addi, 7 vld, vxp3, 3 vst, vsync */
+            for (int k = 0; k < 3; k++) {
+                for (int i = 0; i < 4; i++) {
+                    uint32_t got = rd32(M->ram + 0x10000 + 16 * k + 4 * i);
+                    uint32_t exp = i == 2 ? PK(want[k][0], want[k][1]) : (uint32_t)want[k][i];
+                    check(__LINE__, "vxp3 lane", got, exp);
+                }
+            }
+            /* registers outside the destination are untouched */
+            for (int r = 0; r < 8; r++) {
+                if (r >= da && r < da + 3) continue;
+                int32_t exp[4] = {0, 0, 0, 0};
+                if (r >= sb && r < sb + 3) memcpy(exp, pt[r - sb], sizeof exp);
+                else if (r >= 4) memcpy(exp, mat[r - 4], sizeof exp);
+                for (int i = 0; i < 4; i++) check(__LINE__, "untouched", (uint32_t)M->v[r][i], (uint32_t)exp[i]);
+            }
+        }
+    }
+
+    begin("vxp3 ignores c");
+    e(R(VXP3, 0, 0, 7));
+    exec();
+
+    begin("vxp3 a = 5 writes v5-v7");
+    li(1, FX(1));
+    e(I(VSET, 0, 1, 3)); e(I(VSET, 1, 1, 3)); e(I(VSET, 2, 1, 3));    /* w = 1, matrix all zero */
+    e(R(VXP3, 5, 0, 0));
+    exec();
+    for (int r = 5; r < 8; r++) { EQ(M->v[r][0], 160); EQ(M->v[r][1], 120); EQ(M->v[r][2], PK(160, 120)); EQ(M->v[r][3], 0); }
+}
+
 /* One instruction of each non-control opcode in isolation, against the cycle table. */
 static void test_cycle_table(void) {
     for (int op = 0; op < 64; op++) {
@@ -507,7 +746,7 @@ static void test_cycle_table(void) {
         case SHAPE_SSI:    w = MEI_ENC_I(op, 1, 2, 5); break;
         case SHAPE_SU:     w = MEI_ENC_U(op, 1, 5); break;
         case SHAPE_SMEM: case SHAPE_VMEM: w = MEI_ENC_I(op, 1, store ? 8 : 9, 0); break;
-        case SHAPE_VV:     w = MEI_ENC_R(op, 1, 2, 0); break;
+        case SHAPE_VV: case SHAPE_VV3: w = MEI_ENC_R(op, 1, 2, 0); break;
         case SHAPE_SVLANE: case SHAPE_VSLANE: w = MEI_ENC_I(op, 1, 2, 1); break;
         default:           w = MEI_ENC_R(op, 1, 2, 3); break;
         }
@@ -540,8 +779,8 @@ static void test_faults(void) {
     EQ(M->fault.kind, MEI_FAULT_BREAK); EQ(M->fault.pc, 0x800);
 
     begin("all-ones word"); e(0xFFFFFFFF); FAULT(MEI_FAULT_ILLEGAL, 0);
-    int reserved[] = {0x19, 0x1A, 0x1B, 0x1F, 0x3F};
-    for (int i = 0; i < 5; i++) {
+    int reserved[] = {0x3F};               /* 0x19-0x1B and 0x1F are the geometry instructions */
+    for (int i = 0; i < 1; i++) {
         begin("reserved opcode"); e(I(ADDI, 1, 0, 1)); e((uint32_t)reserved[i] << 26);
         FAULT(MEI_FAULT_ILLEGAL, 0);
     }
@@ -549,6 +788,18 @@ static void test_faults(void) {
     begin("R low bits"); e(R(FMUL, 1, 2, 3) | 0x2000); FAULT(MEI_FAULT_ILLEGAL, 0);
     begin("R low bits"); e(R(VADD, 1, 2, 3) | 0x10); FAULT(MEI_FAULT_ILLEGAL, 0);
     begin("R low bits"); e(R(VPROJ, 1, 2, 0) | 0x100); FAULT(MEI_FAULT_ILLEGAL, 0);
+    uint32_t geo_low[] = {R(NCLIP, 1, 2, 3) | 1, R(OTZ, 1, 2, 3) | 0x2000, R(CLERP, 1, 2, 3) | 0x40, R(VXP3, 0, 0, 0) | 8};
+    for (size_t i = 0; i < sizeof geo_low / sizeof *geo_low; i++) {
+        begin("R low bits (geometry)"); e(I(ADDI, 1, 0, 1)); e(geo_low[i]); FAULT(MEI_FAULT_ILLEGAL, 0);
+        EQ(M->r[1], 1);
+    }
+    for (int f = 6; f < 16; f++) {
+        begin("vxp3 a field above 5"); e(R(VXP3, f, 0, 0)); FAULT(MEI_FAULT_ILLEGAL, 0);
+        begin("vxp3 b field above 5"); e(R(VXP3, 0, f, 0)); FAULT(MEI_FAULT_ILLEGAL, 0);
+    }
+    begin("vxp3 fault leaves the registers alone");
+    li(1, 55); e(I(VSET, 6, 1, 0)); e(R(VXP3, 6, 0, 0)); FAULT(MEI_FAULT_ILLEGAL, 0);
+    EQ(M->v[6][0], 55); EQ(M->v[7][0], 0);
     uint32_t badv[] = {
         R(VADD, 8, 1, 2), R(VADD, 1, 9, 2), R(VADD, 1, 2, 15), I(VLD, 8, 0, 0), I(VST, 12, 0, 0),
         R(VMOV, 1, 8, 0), I(VGET, 1, 8, 0), I(VSET, 8, 1, 0), R(VSCALE, 9, 1, 2), R(VDOT, 1, 8, 2),
@@ -557,6 +808,9 @@ static void test_faults(void) {
     for (size_t i = 0; i < sizeof badv / sizeof *badv; i++) {
         begin("bad vector field"); e(badv[i]); FAULT(MEI_FAULT_ILLEGAL, 0);
     }
+    begin("scalar fields 8-15 are fine in the scalar geometry ops");
+    e(R(NCLIP, 15, 13, 9)); e(R(OTZ, 12, 8, 11)); e(R(CLERP, 10, 14, 13));
+    exec();
     begin("scalar fields 8-15 are fine in vector ops");
     e(R(VSCALE, 1, 2, 9)); e(R(VDOT, 13, 1, 2)); e(I(VGET, 12, 1, 3)); e(I(VSET, 1, 15, 3));
     exec();
@@ -578,7 +832,7 @@ static void test_faults(void) {
     begin("unmapped write8"); li(1, 0xFEFFFF); e(I(SB, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0xFEFFFF);
     begin("bit 24 set"); li(1, 0x1000000); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x1000000);
     begin("bit 31 set"); e(I(LBU, 2, 0, -4)); FAULT(MEI_FAULT_UNMAPPED, 0xFFFFFFFC);
-    begin("past I/O"); li(1, 0xFF0400); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0xFF0400);
+    begin("past I/O"); li(1, 0xFF0600); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0xFF0600);
     begin("vld into gap"); li(1, 0x4FFFF8); e(I(VLD, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x500000);
     begin("unmapped jmp"); e(I(ADDI, 1, 0, 1)); e(J(JMP, 0x500000)); FAULT(MEI_FAULT_UNMAPPED, 0x500000);
     begin("unmapped call"); e(J(CALL, 0xFF0000)); FAULT(MEI_FAULT_UNMAPPED, 0xFF0000);
@@ -856,7 +1110,7 @@ static void test_coverage(void) {
         n++;
         if (!seen[op]) { fails++; printf("FAIL [coverage] opcode %02X (%s) never tested\n", op, mei_ops[op].mnemonic); }
     }
-    EQ(n, 59);
+    EQ(n, 63);
 }
 
 int main(void) {
@@ -871,6 +1125,7 @@ int main(void) {
     test_branches();
     test_jumps();
     test_vector();
+    test_geometry();
     test_cycle_table();
     test_faults();
     test_vsync_and_overrun();

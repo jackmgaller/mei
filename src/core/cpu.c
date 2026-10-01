@@ -53,8 +53,48 @@ static int32_t clamp_screen(int64_t v) {
     return v < -1024 ? -1024 : v > 1023 ? 1023 : (int32_t)v;
 }
 
+static int64_t clamp64(int64_t v, int64_t lo, int64_t hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+/* vproj: perspective divide of in (x, y, z, w) to screen coordinates. */
+static void project(const int32_t *in, int32_t *out) {
+    int32_t x = in[0], y = in[1], z = in[2], w = in[3];
+    out[0] = clamp_screen(160 + floor_div((int64_t)160 * x, w));
+    out[1] = clamp_screen(120 + floor_div((int64_t)-120 * y, w));
+    out[2] = fx_div(z, w);
+    out[3] = w;
+}
+
+/* ---- geometry instructions (docs/DECISIONS.md, "Geometry instructions") ----
+ * A packed screen position holds x in bits 0-15 and y in bits 16-31, both signed:
+ * the vertex word of a GPU packet. */
+static int32_t px_x(uint32_t p) { return (int32_t)(int16_t)(uint16_t)(p & 0xFFFF); }
+static int32_t px_y(uint32_t p) { return (int32_t)sar32(p, 16); }
+
+/* nclip: (x1-x0)(y2-y0) - (x2-x0)(y1-y0), exact in 64 bits, saturated to 32. */
+static uint32_t nclip(uint32_t p0, uint32_t p1, uint32_t p2) {
+    int64_t x0 = px_x(p0), y0 = px_y(p0);
+    int64_t v = (px_x(p1) - x0) * (px_y(p2) - y0) - (px_x(p2) - x0) * (px_y(p1) - y0);
+    return (uint32_t)(int32_t)clamp64(v, INT32_MIN, INT32_MAX);
+}
+
+/* otz: bias + floor(depth * scale / 2^32), clamped to the ordering table 0..1023. */
+static uint32_t otz(uint32_t bias, int32_t depth, int32_t scale) {
+    return (uint32_t)clamp64((int64_t)(int32_t)bias + sar64((int64_t)depth * scale, 32), 0, 1023);
+}
+
+/* clerp: each byte moves from a toward b by t (16.16, clamped to 0..1), rounding down. */
+static uint32_t clerp(uint32_t a, uint32_t b, int32_t t) {
+    int64_t f = clamp64(t, 0, 65536);
+    uint32_t r = 0;
+    for (int i = 0; i < 32; i += 8) {
+        int64_t x = (a >> i) & 255, y = (b >> i) & 255;
+        r |= (uint32_t)(x + sar64((y - x) * f, 16)) << i;
+    }
+    return r;
+}
+
 /* Decode-time legality: reserved opcodes, R-format must-be-zero bits,
- * vector register fields above 7, vget/vset lanes above 3. */
+ * vector register fields above 7 (above 5 for vxp3), vget/vset lanes above 3. */
 static int legal(uint32_t w) {
     const MeiOpInfo *info = &mei_ops[MEI_OPCODE(w)];
     if (!info->mnemonic) return 0;
@@ -68,6 +108,7 @@ static int legal(uint32_t w) {
     case SHAPE_VVV:    return a < 8 && b < 8 && c < 8;
     case SHAPE_VVS:    return a < 8 && b < 8;
     case SHAPE_SVV:    return b < 8 && c < 8;
+    case SHAPE_VV3:    return a < 6 && b < 6;
     default:           return 1;
     }
 }
@@ -132,6 +173,23 @@ void cpu_run(Mei *m) {
         case OP_FMUL:  r[a] = (uint32_t)fx_mul(sb, sc); break;
         case OP_FDIV:  r[a] = (uint32_t)fx_div(sb, sc); break;
         case OP_VSYNC: m->vsync_hit = 1; break;
+
+        case OP_NCLIP: r[a] = nclip(r[a], r[b], r[c]); break;
+        case OP_OTZ:   r[a] = otz(r[a], sb, sc); break;
+        case OP_CLERP: r[a] = clerp(r[a], r[b], sc); break;
+        case OP_VXP3: {
+            /* vxfm then vproj on vb..vb+2 into va..va+2, all read before any is written;
+             * lane z holds the packed screen position instead of z / w. */
+            int32_t xf[4], out[3][4];
+            for (int k = 0; k < 3; k++) {
+                for (int i = 0; i < 4; i++) xf[i] = fx_dot(m->v[4 + i], m->v[b + k]);
+                project(xf, out[k]);
+                out[k][2] = (int32_t)(((uint32_t)out[k][0] & 0xFFFF) | ((uint32_t)out[k][1] << 16));
+            }
+            for (int k = 0; k < 3; k++)
+                for (int i = 0; i < 4; i++) m->v[a + k][i] = out[k][i];
+            break;
+        }
 
         case OP_LB:  if (bus_read8(m, ea, &t, 1)) return;  r[a] = t; break;
         case OP_LBU: if (bus_read8(m, ea, &t, 0)) return;  r[a] = t; break;
@@ -200,14 +258,10 @@ void cpu_run(Mei *m) {
             for (int i = 0; i < 4; i++) tmp[i] = fx_dot(m->v[4 + i], vb);
             for (int i = 0; i < 4; i++) va[i] = tmp[i];
             break;
-        case OP_VPROJ: {
-            int32_t x = vb[0], y = vb[1], z = vb[2], ww = vb[3];
-            va[0] = clamp_screen(160 + floor_div((int64_t)160 * x, ww));
-            va[1] = clamp_screen(120 + floor_div((int64_t)-120 * y, ww));
-            va[2] = fx_div(z, ww);
-            va[3] = ww;
+        case OP_VPROJ:
+            project(vb, tmp);
+            for (int i = 0; i < 4; i++) va[i] = tmp[i];
             break;
-        }
         }
         r[0] = 0;
         m->pc = next;

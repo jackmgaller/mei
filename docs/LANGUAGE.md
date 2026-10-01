@@ -450,12 +450,19 @@ These are compiled inline (no call) and work on several types:
 | `normalize(v)` | `v / length(v)` (calls `normalize4`); zero vectors stay zero |
 | `abs(x)`, `min(a, b)`, `max(a, b)`, `clamp(x, lo, hi)` | integers or `fixed`, branch-free |
 | `lerp(a, b, t)` | `a + (b - a) * t` for `fixed` or vectors (`t` is `fixed`) |
+| `nclip(p0, p1, p2) -> s32` | twice the signed area of a screen triangle; negative when counter-clockwise on screen (front-facing). Arguments are packed positions `(x & 0xFFFF) \| (y << 16)` |
+| `otz(bias, depth, scale) -> s32` | ordering-table bucket: `bias + floor(depth * scale)`, clamped to 0..1023 (`depth`, `scale` are `fixed`) |
+| `clerp(from, to, t) -> u32` | blend two colours (each of the four bytes) by `t` (`fixed`, clamped to 0..1, rounded down) |
 | `len(x)` | element count of an array or embedded asset (a constant) |
 | `sizeof(T)` | size of a type in bytes (a constant) |
 | `bits(f)`, `from_bits(n)` | reinterpret `fixed` ↔ `s32` |
 | `T(x)` | conversion, same as `x as T` |
 
 `length`, `normalize` and the dot product overflow for vectors longer than about 181.
+
+`nclip`, `otz` and `clerp` are single instructions (see `DECISIONS.md`, "Geometry
+instructions"). The fourth, `vxp3` (transform and project three vertices), works on three
+vector registers at once and is used from `asm` blocks (`tests/lang/geometry.akr` has an example).
 
 ## map, filter, reduce, each
 
@@ -716,11 +723,42 @@ insert; write the rest as described in the spec (p. 14–16).
 
 ### Sound (`audio.akr`)
 
+Sixteen channels (0–15) of mono samples at 22,050 Hz, in 8-bit, 16-bit or 4-bit ADPCM, and a
+global reverb. `len` and `loop_start` count samples; volumes are 0–255; `pitch` 1.0 plays at
+22,050 Hz (ADPCM channels go up to 16.0). The hardware is described in `DECISIONS.md`
+("Audio upgrade").
+
 | | |
 |---|---|
-| `play(ch, sample: *s8, len: u32, pitch, vol_l, vol_r, looping: bool)` | 8-bit samples; `pitch` 1.0 = 22,050 Hz; volumes 0–255 |
+| `play(ch, sample: *s8, len: u32, pitch, vol_l, vol_r, looping: bool)` | 8-bit samples |
 | `play16(ch, sample: *s16, ...)` | 16-bit samples |
+| `play_adpcm(ch, data: *u8, ...)` | Mei ADPCM blocks (16 bytes per 28 samples) |
+| `play_sample(ch, data: *u8, len, loop_start, pitch, vol_l, vol_r, flags: u32)` | any format, with a loop start and the reverb send: `flags` combines `SND_16BIT` or `SND_ADPCM` (neither: 8-bit) with `SND_LOOP` and `SND_REVERB` |
+| `adpcm_samples(bytes) -> u32` | samples in an ADPCM asset of that many bytes (`bytes / 16 * 28`) |
 | `stop(ch)`, `sound_playing(ch) -> bool`, `sound_pos(ch) -> u32` | |
+| `sound_vol(ch, vol_l, vol_r)`, `sound_pitch(ch, pitch)` | change a playing channel |
+| `sound_loop(ch, on: bool)` | turn looping on or off without restarting (off: it plays to its end) |
+| `sound_active() -> u32`, `sound_free(lo, hi) -> s32` | bit n set while channel n plays; the lowest idle channel in `lo..hi` (inclusive), or −1 |
+| `reverb(preset, vol_l, vol_r)` | `REVERB_OFF`, `REVERB_ROOM`, `REVERB_STUDIO`, `REVERB_HALL`, `REVERB_SPACE` or `REVERB_ECHO`, and the wet volume per side. A new preset starts from silence |
+| `reverb_send(ch, on: bool)` | send a playing channel to the reverb, or stop sending, without restarting it |
+| `reverb_decay(n)` | 0: the preset's own decay; 1–255: its feedback × n / 256 (shorter tails) |
+| registers, constants | `REVERB_CTRL REVERB_VOL REVERB_DECAY AUDIO_ACTIVE`, `AUDIO_HI_BASE` (channels 8–15) |
+
+`play`, `play16` and `play_adpcm` start a channel dry (no reverb send) and loop from sample 0;
+use `play_sample` or `reverb_send` for the rest. Every `play*` restarts the channel.
+
+```
+embed MUSIC: u8 = "music.adp"     // tools/mei_adpcm.py encode music.wav -o music.adp --loop 88200
+
+fn init() {
+    reverb(REVERB_HALL, 96, 96)
+    play_sample(0, MUSIC, 1_234_567, 88200, 1.0, 180, 180, SND_ADPCM | SND_LOOP | SND_REVERB)
+}
+```
+
+`tools/mei_adpcm.py` converts WAV files (`encode in.wav -o out.adp [--loop N]`, which prints
+the sample count), decodes them back for checking, and is importable (`encode`, `decode`).
+Loop points are best on multiples of 28 samples (one block), which the encoder makes seamless.
 
 ### Debug output and memory (`debug.akr`, `mem.akr`)
 

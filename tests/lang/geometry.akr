@@ -1,0 +1,77 @@
+// The geometry instructions: nclip, otz and clerp as built-ins, vxp3 from asm.
+fn p(n: s32) { print_int(n); print_char('\n') }
+fn ph(n: u32) { print_hex(n); print_char('\n') }
+
+// screen position packed as in a GPU packet: x in the low half, y in the high half
+fn pk(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
+
+fn area(a: u32, b: u32, c: u32) -> s32 { return nclip(a, b, c) }
+
+var bias: s32 = 3
+
+asm fn xp3(src: *vec4, dst: *ivec4, m: *mat4) {
+    vld  v4, [{m}+0]
+    vld  v5, [{m}+16]
+    vld  v6, [{m}+32]
+    vld  v7, [{m}+48]
+    vld  v0, [{src}+0]
+    vld  v1, [{src}+16]
+    vld  v2, [{src}+32]
+    vxp3 v0, v0
+    vst  v0, [{dst}+0]
+    vst  v1, [{dst}+16]
+    vst  v2, [{dst}+32]
+}
+
+fn init() {
+    let a = pk(0, 0)
+    let b = pk(10, 0)
+    let c = pk(0, -10)
+    p(nclip(a, b, c))                 // expect: -100
+    p(nclip(a, c, b))                 // expect: 100
+    p(area(pk(-5, 7), pk(-5, 7), pk(3, 3)))   // expect: 0
+    var x = b
+    x = nclip(c, x, a) as u32         // the result register is also an argument (reversed order)
+    p(x as s32)                       // expect: 100
+    p(nclip(0, 0x10000, 1))           // expect: -1
+
+    // otz: bias + floor(depth * scale), clamped to 0..1023
+    p(otz(0, 10.0, 0.5))              // expect: 5
+    p(otz(bias, 100.0, 1.0))          // expect: 103
+    p(otz(-5, 1.0, 1.0))              // expect: 0
+    p(otz(0, 30000.0, 30000.0))       // expect: 1023
+    let d: fixed = -2.0
+    p(otz(bias, d, 1.0))              // expect: 1
+    p(otz(10, -0.5, 1.0))             // expect: 9
+
+    ph(clerp(0x000000, 0xFFFFFF, 0.5))        // expect: 7F7F7F
+    ph(clerp(0x102030, 0x405060, 0.0))        // expect: 102030
+    ph(clerp(0x102030, 0x405060, 1.0))        // expect: 405060
+    ph(clerp(0x102030, 0x405060, 7.0))        // expect: 405060
+    ph(clerp(0x102030, 0x405060, -1.0))       // expect: 102030
+    ph(clerp(0xFF, 0x00, 0.25))               // expect: BF
+    var col: u32 = 0x80FF00
+    col = clerp(col, 0x00FF80, 0.5)
+    ph(col)                                   // expect: 40FF40
+
+    // vxp3 against vxfm + vproj: identity camera, three points at depth 2
+    var m: mat4
+    m[0] = vec4(1.0, 0.0, 0.0, 0.0)
+    m[1] = vec4(0.0, 1.0, 0.0, 0.0)
+    m[2] = vec4(0.0, 0.0, 1.0, 0.0)
+    m[3] = vec4(0.0, 0.0, 1.0, 0.0)
+    var src: [3]vec4
+    src[0] = vec4(0.0, 0.0, 2.0, 1.0)
+    src[1] = vec4(1.0, 0.5, 2.0, 1.0)
+    src[2] = vec4(-2.0, 1.0, 2.0, 1.0)
+    var out: [3]ivec4
+    xp3(&src[0], &out[0], &m)
+    for i in 0..3 {
+        print_int(out[i].x); print_char(' '); print_int(out[i].y); print_char(' ')
+        print_hex(out[i].z as u32); print_char(' '); print_fixed(from_bits(out[i].w)); print_char('\n')
+    }
+    // expect: 160 120 7800A0 2.0
+    // expect: 240 90 5A00F0 2.0
+    // expect: 0 60 3C0000 2.0
+    p(nclip(out[0].z as u32, out[1].z as u32, out[2].z as u32))   // expect: -9600
+}

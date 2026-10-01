@@ -1420,6 +1420,17 @@ static Opnd gen_builtin(Expr *e, int hint) {
         }
         ice("scalar lerp");
     }
+    case BI_NCLIP: case BI_OTZ: case BI_CLERP: {
+        /* a = f(a, b, c): the first argument is computed into a register we own */
+        Opnd x = gen_expr(a[0], -1), y = gen_expr(a[1], -1), z = gen_expr(a[2], -1);
+        if (x.k == O_IMM) { int t = tnew(0); li(g_t[t].reg, x.v); x = o_tmp(t); }   /* even 0: not r0 */
+        else x = owned(x, 0);
+        int ry = R(&y), rz = R(&z), rx = R(&x);
+        I("%s %s, %s, %s", e->bi == BI_NCLIP ? "nclip" : e->bi == BI_OTZ ? "otz" : "clerp", RN[rx], RN[ry], RN[rz]);
+        ofree(y); ofree(z);
+        if (hint >= 0) { move_to(x, hint, 0); ofree(x); return (Opnd){O_REG, hint}; }
+        return x;
+    }
     case BI_LENGTH: {
         Opnd v = gen_expr(a[0], -1);
         int rv = VR(&v);

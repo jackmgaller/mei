@@ -1,0 +1,220 @@
+// Sound Lab: the audio hardware in one screen. One clip in 16-bit PCM, 8-bit PCM and
+// ADPCM; the reverb presets on a dry snap; a 16-channel ADPCM chord through the reverb.
+// Up/down selects a row, left/right changes it, A plays. Assets: tools/gen_soundlab_assets.py
+cart "Sound Lab", "MEI-SOUNDLAB"
+import "assets.akr"
+
+const ROWS = 8
+const ROW_PCM16 = 0
+const ROW_PCM8 = 1
+const ROW_ADPCM = 2
+const ROW_SEND = 3
+const ROW_PRESET = 4
+const ROW_WET = 5
+const ROW_DECAY = 6
+const ROW_CHORD = 7
+
+const CH_CLIP = 0
+const CH_SNAP = 1
+
+fn preset_name(p: s32) -> *u8 {
+    match p {
+        1 => return "ROOM"
+        2 => return "STUDIO"
+        3 => return "HALL"
+        4 => return "SPACE"
+        5 => return "ECHO"
+        else => return "OFF"
+    }
+}
+
+// C major pentatonic over four octaves, as playback rates of the 262.5 Hz pad
+const CHORD: [16]fixed = [0.5, 0.7491, 1.0, 1.1225, 1.2599, 1.4983, 1.6818, 2.0,
+                          2.2449, 2.5198, 2.9966, 3.3636, 4.0, 4.4898, 5.0397, 5.9932]
+const CHORD_VOL = 26
+
+var sel = 0
+var preset = REVERB_HALL
+var wet = 160
+var decay = 0
+var clip_send = false
+var clip_fmt = -1           // the row whose clip is playing
+var chord_on = false
+var chord_next = 0          // next voice to start
+var chord_timer = 0
+var chord_fade = 0          // volume while fading out
+var digit: [2]u8
+const HEX = "0123456789ABCDEF"
+
+fn apply_reverb() {
+    reverb(preset, wet, wet)
+    reverb_decay(decay)
+}
+
+fn init() {
+    apply_reverb()
+}
+
+fn play_clip(row: s32) {
+    var flags: u32 = 0
+    if clip_send { flags = SND_REVERB }
+    if row == ROW_PCM16 { play_sample(CH_CLIP, CLIP16, CLIP_SAMPLES, 0, 1.0, 200, 200, SND_16BIT | flags) }
+    else if row == ROW_PCM8 { play_sample(CH_CLIP, CLIP8, CLIP_SAMPLES, 0, 1.0, 200, 200, flags) }
+    else { play_sample(CH_CLIP, CLIP_ADPCM, CLIP_SAMPLES, 0, 1.0, 200, 200, SND_ADPCM | flags) }
+    clip_fmt = row
+}
+
+fn chord_start() {
+    chord_on = true
+    chord_next = 0
+    chord_timer = 0
+    chord_fade = CHORD_VOL
+}
+
+fn chord_update() {
+    if chord_on && chord_next < 16 {
+        chord_timer -= 1
+        if chord_timer <= 0 {
+            let c = chord_next
+            let pan = c * 12 - 90                 // spread across the stereo field
+            let l = clamp(CHORD_VOL - pan / 8, 4, 40)
+            let r = clamp(CHORD_VOL + pan / 8, 4, 40)
+            play_sample(c, PAD, PAD_SAMPLES, PAD_LOOP, CHORD[c], l, r, SND_ADPCM | SND_LOOP | SND_REVERB)
+            chord_next += 1
+            chord_timer = 5
+        }
+    }
+    if !chord_on && chord_fade > 0 {
+        chord_fade -= 1
+        for c in 0..16 {
+            if chord_fade == 0 { stop(c) }
+            else {
+                let pan = c * 12 - 90
+                sound_vol(c, clamp(chord_fade - pan / 8, 1, 40) * chord_fade / CHORD_VOL,
+                          clamp(chord_fade + pan / 8, 1, 40) * chord_fade / CHORD_VOL)
+            }
+        }
+    }
+}
+
+fn change(dir: s32) {
+    if sel == ROW_SEND {
+        clip_send = !clip_send
+        if sound_playing(CH_CLIP) && clip_fmt >= 0 { reverb_send(CH_CLIP, clip_send) }   // live, no restart
+    } else if sel == ROW_PRESET {
+        preset = (preset + dir + 6) % 6
+        apply_reverb()
+    } else if sel == ROW_WET {
+        wet = clamp(wet + dir * 16, 0, 255)
+        apply_reverb()
+    } else if sel == ROW_DECAY {
+        decay = clamp(decay + dir * 32, 0, 224)
+        apply_reverb()
+    }
+}
+
+fn press() {
+    if sel <= ROW_ADPCM { play_clip(sel) }
+    else if sel == ROW_CHORD {
+        if chord_on { chord_on = false } else { chord_start() }
+    } else {
+        play_sample(CH_SNAP, SNAP, SNAP_SAMPLES, 0, 1.0, 220, 220, SND_ADPCM | SND_REVERB)
+    }
+}
+
+fn update() {
+    if btnp(UP) { sel = (sel + ROWS - 1) % ROWS }
+    if btnp(DOWN) { sel = (sel + 1) % ROWS }
+    if btnp(LEFT) { change(-1) }
+    if btnp(RIGHT) { change(1) }
+    if btnp(A) { press() }
+    if !sound_playing(CH_CLIP) { clip_fmt = -1 }
+    chord_update()
+}
+
+const WHITE = 0xFFFFFF
+const DIM = 0x9A8C84
+const HEAD = 0x60C8F0
+const HI = 0x40D0FF
+
+fn row_y(row: s32) -> s32 {
+    if row <= ROW_ADPCM { return 40 + row * 12 }
+    if row == ROW_SEND { return 80 }
+    if row <= ROW_DECAY { return 112 + (row - ROW_PRESET) * 12 }
+    return 164
+}
+
+fn label(row: s32, s: *u8) {
+    let y = row_y(row)
+    if sel == row {
+        rect(10, y - 2, 300, 12, 0x5A3A28)
+        text(14, y, ">", HI)
+    }
+    text(26, y, s, if_col(sel == row))
+}
+
+fn if_col(on: bool) -> u32 {
+    if on { return WHITE }
+    return DIM
+}
+
+fn bytes_col(row: s32, x: s32, n: s32, snr: s32) {
+    let y = row_y(row)
+    let e = text_int(x, y, n, DIM)
+    text(e, y, " B", DIM)
+    if snr > 0 {
+        let e2 = text_int(x + 80, y, snr, DIM)
+        text(e2, y, " dB", DIM)
+    }
+    if clip_fmt == row {                   // progress of the playing clip, under its name
+        rect(26, y + 9, (sound_pos(CH_CLIP) as s32) * 120 / CLIP_SAMPLES, 1, HI)
+    }
+}
+
+fn draw() {
+    cls(rgb(24, 26, 40))
+    text(12, 10, "SOUND LAB", HI)
+    text(100, 10, "16 CHANNELS  ADPCM  REVERB", DIM)
+
+    text(12, 28, "ONE CLIP IN", HEAD)
+    text(160, 28, "SIZE", HEAD)
+    text(240, 28, "SNR", HEAD)
+    label(ROW_PCM16, "16-BIT PCM")
+    bytes_col(ROW_PCM16, 160, len(CLIP16) * 2, 0)
+    label(ROW_PCM8, "8-BIT PCM")
+    bytes_col(ROW_PCM8, 160, len(CLIP8), CLIP8_SNR)
+    label(ROW_ADPCM, "ADPCM")
+    bytes_col(ROW_ADPCM, 160, len(CLIP_ADPCM), CLIP_ADPCM_SNR)
+    label(ROW_SEND, "CLIP TO REVERB")
+    if clip_send { text(176, row_y(ROW_SEND), "< ON >", WHITE) } else { text(176, row_y(ROW_SEND), "< OFF >", WHITE) }
+
+    text(12, 100, "REVERB  (A PLAYS A DRY SNAP)", HEAD)
+    label(ROW_PRESET, "PRESET")
+    text(176, row_y(ROW_PRESET), "<", WHITE)
+    text(192, row_y(ROW_PRESET), preset_name(preset), WHITE)
+    text(256, row_y(ROW_PRESET), ">", WHITE)
+    label(ROW_WET, "WET VOLUME")
+    text(176, row_y(ROW_WET), "<", WHITE)
+    text_int(192, row_y(ROW_WET), wet, WHITE)
+    text(256, row_y(ROW_WET), ">", WHITE)
+    label(ROW_DECAY, "DECAY")
+    text(176, row_y(ROW_DECAY), "<", WHITE)
+    if decay == 0 { text(192, row_y(ROW_DECAY), "PRESET", WHITE) }
+    else { text_int(192, row_y(ROW_DECAY), decay, WHITE) }
+    text(256, row_y(ROW_DECAY), ">", WHITE)
+
+    text(12, 152, "16 CHANNELS", HEAD)
+    label(ROW_CHORD, "ADPCM CHORD")
+    if chord_on { text(176, row_y(ROW_CHORD), "A: RELEASE", WHITE) } else { text(176, row_y(ROW_CHORD), "A: PLAY", WHITE) }
+
+    // channel activity
+    let active = sound_active()
+    for c in 0..16 {
+        let x = 16 + c * 18
+        let on = (active >> (c as u32)) & 1 != 0
+        if on { rect(x, 184, 14, 20, HI) } else { rect(x, 184, 14, 20, 0x403028) }
+        digit[0] = HEX[c]
+        text(x + 3, 208, &digit[0], DIM)
+    }
+    text(12, 226, "UP/DOWN: SELECT  L/R: CHANGE  A: PLAY", DIM)
+}

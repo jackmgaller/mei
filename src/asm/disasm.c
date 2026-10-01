@@ -88,6 +88,10 @@ void mei_disasm(uint32_t w, uint32_t pc, char *buf, size_t n) {
         if (low14 || b > 7 || c > 7) goto word;
         snprintf(buf, n, "%s r%d, v%d, v%d", m, a, b, c);
         return;
+    case SHAPE_VV3:
+        if (low14 || c || a > 5 || b > 5) goto word;
+        snprintf(buf, n, "%s v%d, v%d", m, a, b);
+        return;
     }
 word:
     snprintf(buf, n, ".word 0x%08X", w);

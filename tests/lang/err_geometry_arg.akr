@@ -1,0 +1,5 @@
+// error: nclip() needs integers for argument 2
+fn init() {
+    let f: fixed = 1.5
+    print_int(nclip(0, f, 0))
+}

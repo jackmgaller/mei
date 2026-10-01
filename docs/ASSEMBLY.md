@@ -1,7 +1,8 @@
 # Mei assembly reference
 
 The assembler is `build/meiasm` (library: `src/asm/asm.h`, `mei_assemble`). The
-instruction set itself is in `spec-v0.1.txt` pages 4–9; this file covers the syntax.
+instruction set itself is in `spec-v0.1.txt` pages 4–9, plus the four geometry
+instructions in `DECISIONS.md` (`nclip`, `otz`, `clerp`, `vxp3`); this file covers the syntax.
 
 ```
 meiasm in.s [-o out.mei] [--sym out.sym] [--list]   # default output: in.s.mei
@@ -34,7 +35,7 @@ other:                      ; a label alone
 
 | Shape | Example |
 |---|---|
-| registers | `add r1, r2, r3`, `vadd v0, v1, v2`, `vscale v0, v1, r3`, `vdot r1, v0, v1` |
+| registers | `add r1, r2, r3`, `vadd v0, v1, v2`, `vscale v0, v1, r3`, `vdot r1, v0, v1`, `nclip r1, r2, r3`, `vxp3 v0, v0` |
 | immediate | `addi r1, r2, -4`, `andi r1, r1, 0xFF`, `shli r1, r1, 3`, `vget r1, v2, 3` |
 | memory | `lw r1, [r2+8]`, `sw r1, [r2-4]`, `lb r1, [r2]`, `lw r1, [0x100]` (base `r0`) |
 | branch | `beq r1, r2, label` (any expression giving an absolute address) |
@@ -49,6 +50,7 @@ Range checks:
 | `shli`, `shri`, `sari` | 0..31 |
 | `lui` | 0..0x3FFFFF (−0x200000.. also accepted, encoded as 22 bits) |
 | `vget`/`vset` lane | 0..3 |
+| `vxp3` registers | `v0`–`v5` (each names three consecutive registers) |
 | branch target | word-aligned, within ±131072 words of `pc + 4` |
 | `jmp`/`call` target | word-aligned, below 0x10000000 |
 | `[expr]` absolute | must fit sign-extended 18 bits (so I/O needs a base register) |
@@ -150,9 +152,10 @@ with one message in `file:line: message` form, e.g.
 
 `mei_disasm` output is valid input: branches and jumps show absolute hex targets,
 `add a, b, r0` shows as `mov`, `jr r15` as `ret`. Reserved opcodes, R-format words
-with non-zero low bits, vector fields above 7, lanes above 3, shift amounts above 31,
-and `jr`/`callr` words with ignored fields set come out as `.word 0x...`, so every word
-re-assembles to itself at the same address.
+with non-zero low bits, vector fields above 7 (above 5 for `vxp3`), lanes above 3, shift
+amounts above 31, and words with ignored fields set (`jr`/`callr`, and the c field of
+`vmov`, `vxfm`, `vproj`, `vxp3`) come out as `.word 0x...`, so every word re-assembles to
+itself at the same address.
 
 ## Example
 
