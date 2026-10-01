@@ -492,16 +492,16 @@ fn guide_caption(s: *u8, c: u32) {
     ftext_c(GX, GY + 30, s, c, false)
 }
 
+// One soft subtractive disc at about half strength: it calms the glare behind the dial
+// without blacking out the water.
 fn guide_backing() {
-    for k in 0..2 {
-        ui_tex(GX - 52, GY - 50, 104, 104, SLOT_WORLD, PAL_GREY, UV_HALO_U, UV_HALO_V, 64, 64, rgb(255, 255, 255), 2)
-    }
+    ui_tex(GX - 52, GY - 50, 104, 104, SLOT_WORLD, PAL_GREY, UV_HALO_U, UV_HALO_V, 64, 64, rgb(130, 130, 130), 2)
 }
 
 // A dark pill behind a line of small text (subtractive: it darkens whatever is behind).
 fn text_backing(cx: s32, y: s32, s: *u8) {
     let w = text_w(s, false)
-    ui_rect(cx - w / 2 - 4, y + 1, w + 8, 13, rgb(160, 160, 160), 2)
+    ui_rect(cx - w / 2 - 4, y + 1, w + 8, 13, rgb(140, 140, 140), 2)
 }
 
 fn draw_cursor() {
@@ -558,7 +558,7 @@ fn draw_tension() {
 
 fn draw_fight_ui() {
     // a dark backing first, so the guide reads over anything (a lantern's glow, the bright
-    // sky, the moon's glitter, the pale deck): two soft subtractive discs, black under the
+    // sky, the moon's glitter, the pale deck): a soft subtractive disc, darkest under the
     // ring of dots and fading out past the caption
     guide_backing()
     draw_tension()
