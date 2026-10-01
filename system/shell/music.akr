@@ -1,27 +1,18 @@
-// Quiet ambient music for the shell: a small sequencer playing composed scores with ADPCM
-// instruments through the hardware reverb. Everything musical (samples, instruments and
-// scores) comes from tools/gen_shell_music.py as mu_data.akr and one sample bank per style.
+// Quiet ambient music for the shell, "Crystal": quartal pad chords planing over a sub bass,
+// a glass-bell arpeggio with echoes and high sparkles in a long space reverb. A small
+// sequencer plays the composed score with ADPCM instruments; the samples, instruments and
+// score come from tools/gen_shell_music.py (mu_data.akr and mu_crystal.adp).
 //
-// MUSIC_STYLE picks one of three candidates (all three banks are in the ROM, about 190-220 KB
-// each; once one is chosen the generator can drop the others):
-//   0 Glasshouse  electric piano and pad on a voice-led progression in A, a vibraphone theme
-//                 that comes and goes; F# minor at night
-//   1 Airports    felt piano and choir tape loops of different lengths drifting in and out of
-//                 phase over a slow bass line (Music for Airports)
-//   2 Crystal     quartal pad chords planing over a sub bass, a glass-bell arpeggio with echoes
-//                 and high sparkles in a long space reverb
-//
-// A score is a set of tracks. Each track plays a cycle of slots; each slot has a few
-// variant sections and a random one plays each time (never the same twice in a row). A track
-// has a day and a night version and picks one from the sky (sky_day, from SYS_TIME) whenever
-// it comes back round to its first slot. Night scores also play slower.
+// The score is a set of tracks. Each track plays a cycle of slots; each slot has a few
+// variant sections and a random one plays each time (never the same twice in a row; the
+// first pass plays variant 0). A track has a day and a night version and picks one from the
+// sky (sky_day, from SYS_TIME) whenever it comes back round to its first slot; night plays
+// slower and with more reverb.
 //
 // Channels 0-5 and 8-15 (14 voices); 6-7 stay with the UI sounds. The reverb is global: the
 // music sets it while it plays and turns it off when it stops.
 
 import "mu_data.akr"
-
-const MUSIC_STYLE = 0
 
 const MU_NV = 14
 const MU_CHANS: [14]s32 = [8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5]
@@ -52,8 +43,6 @@ var mv_ph: [14]s32               // tremolo phase (fixed-point bits)
 var mv_out: [14]s32              // the VOL level written last frame (for stealing)
 
 // tracks (at most 12)
-var mt_count: s32
-var mt_row: [12]s32              // MU_TRACK row
 var mt_night: [12]s32
 var mt_slot: [12]s32
 var mt_last: [12]s32             // the variant played last, to avoid an immediate repeat
@@ -62,14 +51,6 @@ var mt_pos: [12]s32              // ticks x 256 into the section
 var mt_ev: [12]s32               // next event
 var mt_end: [12]s32
 var mt_tempo: [12]s32            // ticks x 256 per frame
-
-fn mu_bank() -> *u8 {
-    if MUSIC_STYLE == 1 { return MU_BANK1 }
-    if MUSIC_STYLE == 2 { return MU_BANK2 }
-    return MU_BANK0
-}
-
-fn mu_style(i: s32) -> s32 { return MU_STYLE[MUSIC_STYLE * 10 + i] }
 
 fn mu_reg(ch: s32) -> *u32 {
     if ch < 8 { return (AUDIO_BASE + ch * 32) as *u32 }
@@ -86,7 +67,7 @@ fn mu_night_now() -> s32 {
 // Starts the section for the track's current slot: a random variant, not the last one.
 // A score's first pass plays variant 0 (the full theme).
 fn mt_begin(k: s32) {
-    let tr = mt_row[k] * 4 + mt_night[k] * 2
+    let tr = k * 4 + mt_night[k] * 2
     let slot = (MU_TRACK[tr] + mt_slot[k]) * 2
     let n = MU_SLOT[slot + 1]
     var v = 0
@@ -99,11 +80,10 @@ fn mt_begin(k: s32) {
     mt_sec[k] = sec
     mt_ev[k] = MU_SEC[sec]
     mt_end[k] = MU_SEC[sec] + MU_SEC[sec + 1]
-    mt_tempo[k] = mu_style(6 + mt_night[k])
+    mt_tempo[k] = MU_TEMPO[mt_night[k]]
 }
 
-fn mt_start(k: s32, row: s32) {
-    mt_row[k] = row
+fn mt_start(k: s32) {
     mt_night[k] = mu_night
     mt_slot[k] = 0
     mt_last[k] = -1
@@ -125,7 +105,7 @@ fn mt_frame(k: s32) {
         if now < length { return }
         // next slot; back at the first one, follow the sky
         mt_pos[k] -= length << 8
-        let tr = mt_row[k] * 4 + mt_night[k] * 2
+        let tr = k * 4 + mt_night[k] * 2
         mt_slot[k] += 1
         if mt_slot[k] >= MU_TRACK[tr + 1] {
             mt_slot[k] = 0
@@ -142,7 +122,7 @@ fn mt_frame(k: s32) {
 
 // Plays one event: packed = inst | note << 4 | velocity << 11 | pan << 18.
 fn mu_note(packed: s32, dur: s32, tempo: s32) {
-    let inst = (mu_style(0) + (packed & 15)) * 12
+    let inst = (packed & 15) * 12
     let note = (packed >> 4) & 127
     let lo = MU_INST[inst + 9]
     if note < lo || note > MU_INST[inst + 10] { return }
@@ -170,7 +150,7 @@ fn mu_note(packed: s32, dur: s32, tempo: s32) {
     let ch = MU_CHANS[v]
     var flags = SND_ADPCM | SND_LOOP
     if MU_INST[inst + 5] != 0 { flags = flags | SND_REVERB }
-    play_sample(ch, mu_bank() + MU_SAMP[smp], MU_SAMP[smp + 1] as u32, MU_SAMP[smp + 2] as u32,
+    play_sample(ch, MU_BANK + MU_SAMP[smp], MU_SAMP[smp + 1] as u32, MU_SAMP[smp + 2] as u32,
                 MU_PITCH[shift], 0, 0, flags as u32)
     mv_on[v] = true
     mv_inst[v] = inst
@@ -249,12 +229,11 @@ fn mu_start() {
         mv_on[i] = false
         stop(MU_CHANS[i])
     }
-    reverb(mu_style(3), 0, 0)
-    reverb_decay(mu_style(8 + mu_night))
-    mu_wet = mu_style(4 + mu_night)
+    reverb(MU_REVERB, 0, 0)
+    reverb_decay(0)
+    mu_wet = MU_WET[mu_night]
     mu_wet_reg = -1
-    mt_count = mu_style(2)
-    for k in 0..mt_count { mt_start(k, mu_style(1) + k) }
+    for k in 0..MU_TRACKS { mt_start(k) }
 }
 
 fn mu_stop() {
@@ -281,7 +260,7 @@ fn mu_frame() {
     else if mu_gain > mu_target { mu_gain = max(mu_target, mu_gain - mu_speed) }
     mu_night = mu_night_now()
 
-    for k in 0..mt_count { mt_frame(k) }
+    for k in 0..MU_TRACKS { mt_frame(k) }
 
     let active = sound_active()
     for i in 0..MU_NV {
@@ -291,7 +270,7 @@ fn mu_frame() {
     }
 
     // the reverb follows the gain, and drifts wetter at night
-    let wet = mu_style(4 + mu_night)
+    let wet = MU_WET[mu_night]
     if mu_wet < wet { mu_wet += 1 } else if mu_wet > wet { mu_wet -= 1 }
     let w = mu_wet * mu_gain >> 8
     if w != mu_wet_reg {

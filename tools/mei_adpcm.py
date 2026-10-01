@@ -22,6 +22,13 @@ Command line:
 The .adp file is the raw blocks, ready for `embed NAME: u8 = "out.adp"`; play it with
 `play_adpcm(ch, NAME, samples, ...)`, where samples is printed by `encode` (len(NAME) / 16 * 28
 plays the padding at the end of the last block too, which is silence).
+
+Loops: make the loop start and the loop length whole numbers of 28-sample blocks (a loop that
+ends inside a block shares that block with the silent padding, which coarsens it and clicks on
+every pass), and start a looped sound with a lead-in of a block or two of the same waveform
+rather than looping from sample 0 (the loop's first block is then entered with the same history
+from the lead-in as from the loop's end; from sample 0 it is also entered from silence, which
+forces a coarse block and a click every pass). tools/gen_shell_music.py follows both rules.
 """
 import argparse, math, sys, wave
 import numpy as np
