@@ -131,6 +131,8 @@ fn test_init() {
         45 => koi_start(2, 0, 0)
         46 => koi_start(1, 10, 0)
         47 => koi_start(0, 13, 0)
+        48 => koi_start(2, 22, 0)              // short casts at night: the Frost Trout (bridge)
+        49 => koi_start(3, 22, 0)              // ... at the reeds
         22 => { start_at(0, 10, 0); g.tutorial = TUT_CAST; force_fish = 0 }   // the first hook's tutorial
         21 => {                                // a festival that comes up short
             start_at(0, 18, 50)
@@ -181,7 +183,7 @@ fn koi_start(dock: s32, h: s32, m: s32) {
     koi_t0 = g.clock
 }
 
-fn koi_scen() -> bool { return SCENARIO >= 40 && SCENARIO <= 47 }
+fn koi_scen() -> bool { return SCENARIO >= 40 && SCENARIO <= 49 }
 fn pt_breaks() -> s32 { return f_breaks }
 
 // Where the bot wants to cast: along the moon's path, or ~5.5 short of the golden koi.
@@ -192,6 +194,10 @@ fn koi_target() {
     let s = stand_pos()
     koi_yaw = DOCK_YAW[g.dock]
     koi_d = 14.0
+    if SCENARIO >= 48 {
+        koi_d = 7.0
+        return
+    }
     if SCENARIO <= 45 {
         koi_yaw = moon_az
         // aim a little off now and then, like a person would (every third cast)

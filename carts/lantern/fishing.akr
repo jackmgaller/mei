@@ -272,6 +272,8 @@ fn spawn_fish(i: s32, near: bool) {
     sw[i].size_mm = random_size(f)
     sw[i].n = 0
     sw[i].target = water_point(4.0, 22.0, 1.9)
+    // the curious one swims toward the lure (it notices it at 7 m, if it likes the spot)
+    if near && phase == Phase.Wait { sw[i].target = lure }
 }
 
 fn swimmers_reset() {
@@ -385,7 +387,7 @@ fn consider_lure(i: s32) {
     if s.id < 12 && koi_coming() { return }
     match info.bite {
         Far => { if lure_dist < 14.0 { return } }
-        Near => { if lure_dist > 8.5 { return } }
+        Near => { if lure_dist > 10.0 { return } }
         Light => { if !light_here() { return } }
         Moonpath => { if !in_moon_path(lure) { return } }
         else => {}
@@ -542,7 +544,9 @@ fn cast_target(power: fixed, yaw: fixed) -> vec3 {
 
 fn charge_power() -> fixed {
     let charge = min(fixed(aim_hold) / 45, 1.0)
-    return clamp(pull_max, 0.0, 1.0) * (0.35 + 0.65 * charge)
+    // the lightest flick lands about 7.5 m out with any rod (so a Near fish is always in reach)
+    let lo = 4.5 / cast_range()
+    return clamp(pull_max, 0.0, 1.0) * (lo + (1.0 - lo) * charge)
 }
 
 fn aim_spread() -> fixed {

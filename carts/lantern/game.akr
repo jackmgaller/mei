@@ -14,6 +14,21 @@ enum Screen { Title, Intro, Fish, Menu, Shop, Journal, Festival, Ending, Travel 
 var screen = Screen.Title
 var screen_t: s32
 var tick_count: s32          // world time: frozen while paused (and behind the menus)
+
+// tick_count * k, as an angle for sin/cos. fixed(tick_count) itself would wrap at 32768 frames
+// (about 9 minutes) and make every animation jump, so split the count: the high part steps
+// by (4096 k mod 2 pi), the low part is exact. Good for k up to about 7 and ~90 hours of play.
+fn tick_angle(k: fixed) -> fixed {
+    let hi = (tick_count >> 12) % 5000
+    let lo = tick_count & 4095
+    let c = wrap_tau(fixed(4096) * k)
+    return wrap_tau(fixed(hi) * c) + fixed(lo) * k
+}
+
+fn wrap_tau(a: fixed) -> fixed {
+    let n = (a / 6.2831853) as s32
+    return a - fixed(n) * 6.2831853
+}
 var show_debug: bool
 
 // ---- pausing: START stops the world. From Idle or Wait it opens the lake menu; anywhere

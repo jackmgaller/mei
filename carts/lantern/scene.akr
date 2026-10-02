@@ -148,7 +148,7 @@ fn draw_bobber_light() {
     let k = (night * 256) as s32
     // in the moon's path: a silver shimmer around the bobber and sparkles rising off it
     if phase == Phase.Wait && in_moon_path(lure) {
-        let pulse = 210 + sin(fixed(tick_count) * 0.09) * 46
+        let pulse = 210 + sin(tick_angle(0.09)) * 46
         ss_look(SS_HALO)
         sflat(vec3(lure.x, 0.03, lure.z), 2.0, 2.0, scale_col(rgb(120, 130, 190), pulse as s32), 1, -1024)
         ss_look(SS_SPARK)
@@ -174,7 +174,7 @@ fn draw_bobber_light() {
 fn draw_aim_marker() {
     let tgt = cast_target(charge_power(), view_yaw() + aim_x * aim_spread())
     ss_look(SS_RING)
-    let pulse = 0.7 + sin(fixed(tick_count) * 0.25) * 0.1
+    let pulse = 0.7 + sin(tick_angle(0.25)) * 0.1
     var c = rgb(150, 140, 90)
     if in_moon_path(tgt) { c = rgb(130, 150, 200) }     // silver: this cast will land in the moon's path
     sflat(vec3(tgt.x, 0.04, tgt.z), pulse, pulse, c, 1, -1024)

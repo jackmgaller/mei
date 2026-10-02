@@ -548,7 +548,7 @@ fn draw_clouds(refl: bool) {
         if refl {
             p = mirror_about_cam(p)
             // the waves break the reflection up: a slow sideways wobble and a squashed height
-            let wob = sin(fixed(tick_count) * 0.05 + fixed(i) * 1.7) * 0.6
+            let wob = sin(tick_angle(0.05) + fixed(i) * 1.7) * 0.6
             p = p + vec3(cam_c * wob, 0.0, -cam_s * wob)
             billboard(p, w, w * 0.4, ct, cb)
         } else {
