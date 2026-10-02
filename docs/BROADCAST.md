@@ -443,10 +443,11 @@ A city lies inside the map's box; a receiver places it with the map's own projec
 - **Which cities.** First the home city (when it is inside the box), then the box's own region
   city, then the other regions' cities, then the gateway's built-in table of about 220 US
   cities, largest population first.
-- **Spacing.** A city is skipped when it lies within an ellipse of 10 grid columns across and
-  5.5 grid rows down (40 × 22 pixels on a map drawn 256 × 192) of a city already chosen, or within 1.5 columns
-  or rows of the map's edge. The home and region cities only need half that distance, so they
-  are left out only where they would sit on top of one another.
+- **Spacing.** A city is skipped when it lies inside the ellipse round a city already chosen
+  whose half-axes are 10 grid columns across and 5.5 grid rows down (40 and 22 pixels on a map
+  drawn 256 × 192), or within 1.5 columns or rows of the map's edge. The home and region cities
+  only need half that distance, so they are left out only where they would sit on top of one
+  another.
 - **How many.** At most 14 for a region or home box (7 rows) and 24 for the national map (12
   rows).
 
