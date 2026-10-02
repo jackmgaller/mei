@@ -1,0 +1,55 @@
+// for loops over arrays (stepped pointers): continue, break, nesting, pointers, enums.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+struct Obj { used: u8, t: u8, hp: s16, pos: vec3 }
+var objs: [10]Obj
+var grid: [4][5]s32
+const W: [6]s32 = [1, 2, 3, 4, 5, 6]
+enum Dir { N, E, S, W }
+var dirs: [4]u8
+
+fn sum_ptr(q: *s32, n: s32) -> s32 {
+    var t = 0
+    for i in 0..n { t += q[i] }
+    return t
+}
+
+fn init() {
+    for i in 0..10 {
+        let o = &objs[i]
+        o.used = (i & 1) as u8
+        o.t = i as u8
+        o.hp = (i * 10) as s16
+        objs[i].pos = vec3(i as fixed, 0.0, 0.0)
+    }
+    var s = 0
+    for i in 0..10 {
+        if objs[i].used == 0 { continue }
+        if objs[i].t > 7 { break }
+        s += objs[i].hp as s32
+    }
+    p(s)                                   // expect: 160
+    for y in 0..4 { for x in 0..5 { grid[y][x] = y * 10 + x } }
+    var g = 0
+    for y in 1..3 { for x in 2..5 { g += grid[y][x] } }
+    p(g)                                   // expect: 108
+    var w = 0
+    for i in 2..6 { w += W[i] * W[i - 2] }
+    p(w)                                   // expect: 50
+    var loc: [8]s32
+    for i in 0..8 { loc[i] = i * i }
+    p(sum_ptr(&loc[0], 8))                 // expect: 140
+    p(sum_ptr(&loc[3], 0))                 // expect: 0
+    for d in Dir { dirs[d] = (d as s32 * 3) as u8 }
+    p(dirs[Dir.W] as s32)                  // expect: 9
+    var e = 0
+    for i in 5..2 { e += objs[i].hp as s32 }
+    p(e)                                   // expect: 0
+    var fx = 0.0
+    for i in 0..10 { fx += objs[i].pos.x }
+    print_fixed(fx); println("")           // expect: 45.0
+    var cnt: u32 = 0
+    let lo: u32 = 2
+    for i in lo..6 { cnt += W[i as s32] as u32 }
+    p(cnt as s32)                          // expect: 18
+}

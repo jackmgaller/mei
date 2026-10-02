@@ -2477,6 +2477,7 @@ static int fw_uses_s(Stmt *s, Local *x, Expr **out, int max, int n) {
     if (!s) return n;
     for (int i = 0; i < s->n; i++) n = fw_uses_s(s->list[i], x, out, max, n);
     if (s->k != S_CONST) { n = fw_uses_e(s->e, x, out, max, n); n = fw_uses_e(s->e2, x, out, max, n); }
+    for (int i = 0; i < s->nips; i++) n = fw_uses_e(s->ipinit[i], x, out, max, n);   /* (a for loop's induction pointers) */
     if (s->k == S_ASM && s->asm_text && strstr(s->asm_text, "{")) n += 1000;   /* named in asm: keep it */
     n = fw_uses_s(s->then, x, out, max, n);
     n = fw_uses_s(s->els, x, out, max, n);
@@ -2513,6 +2514,12 @@ static void fw_block(Stmt *b) {
             if (!fw_local_ok(x) || ty_is_aggr(x->ty) || e->ty != x->ty || !fw_pure(e)) continue;
             int isk = e->isconst && !ty_is_vec(x->ty) && x->ty->k != TY_FUNC;
             if (e->isconst && !isk) continue;   /* a vector constant: keep it in its register */
+            if (!isk && e->k == E_NAME && e->sym && e->sym->k == SY_LOCAL) {
+                /* a copy of a local that the rest of the block never assigns: use it directly */
+                int assigned = 0;
+                for (int j = i + 1; j < b->n && !assigned; j++) assigned = fw_assigns(b->list[j], e->sym->local);
+                if (!assigned) isk = 1;
+            }
             Expr *uses[64];
             int nu = 0;
             for (int j = i + 1; j < b->n; j++) nu = fw_uses_s(b->list[j], x, uses, 64, nu);
@@ -2590,6 +2597,16 @@ static int ip_base_ok(Expr *a, Stmt *body) {
 static void ip_collect_e(Expr *e, Local *iv, Stmt *body, IpGroup *g, int *ng) {
     if (!e || e->k == E_FUNC) return;
     if (e->isconst && e->k != E_CONV) return;
+    if (e->k == E_UNARY && e->op == U_ADDR && e->a->k == E_INDEX) {
+        /* &a[i]: the whole address is the pointer (collected as the E_INDEX, rewritten below) */
+        int before = 0;
+        for (int k = 0; k < *ng; k++) before += g[k].nuses;
+        ip_collect_e(e->a, iv, body, g, ng);
+        int after = 0;
+        for (int k = 0; k < *ng; k++) after += g[k].nuses;
+        if (after > before) e->a->hid[0] = (Local *)e;   /* remember the & around it */
+        return;
+    }
     if (e->k == E_INDEX && !e->chk && e->b->k == E_NAME && e->b->sym && e->b->sym->k == SY_LOCAL && e->b->sym->local == iv
         && ip_base_ok(e->a, body) && e->ty->size > 0) {
         int k;
@@ -2669,9 +2686,11 @@ static void ip_stmt(Func *f, Stmt *s) {
         s->nips++;
         for (int u = 0; u < g[k].nuses; u++) {
             Expr *e = g[k].uses[u];
+            Expr *amp = (Expr *)e->hid[0];
             Loc loc = e->loc;
             memset(e, 0, sizeof *e);
             e->k = E_UNARY; e->op = U_DEREF; e->loc = loc; e->a = ip_name(p); e->ty = el;
+            if (amp) { Type *t = amp->ty; *amp = *ip_name(p); amp->loc = loc; amp->ty = t; }
         }
     }
     s->narms = 0;
@@ -2682,8 +2701,8 @@ static void inline_program(Program *P) {
         Func *f = P->funcs[i];
         if (f->is_asm || !f->body) continue;
         inline_stmt(f->body);
-        fw_block(f->body);
         ip_stmt(f, f->body);
+        fw_block(f->body);
         /* a function whose only calls were inlined is now a leaf */
         if (f->has_call && !f->uses_xfm && !stmt_calls(f->body)) f->has_call = 0;
     }
