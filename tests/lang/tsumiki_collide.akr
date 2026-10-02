@@ -1,0 +1,99 @@
+// Tsumiki collision maths: shape tests, floors, raycasts and overlaps against boxes, ramps,
+// cylinders and a terrain.
+import "tsumiki.akr"
+
+const HILLS: [9]fixed = [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 2.0]
+
+fn yes(b: bool) {
+    if b { print("Y") } else { print("n") }
+}
+
+fn show(f: fixed) {
+    print_fixed(f)
+    print(",")
+}
+
+fn init() {
+    tk_open(0)
+    // shape tests
+    yes(tk_sphere_sphere(vec3(0.0, 0.0, 0.0), 1.0, vec3(1.5, 0.0, 0.0), 0.6))
+    yes(tk_sphere_sphere(vec3(0.0, 0.0, 0.0), 1.0, vec3(1.7, 0.0, 0.0), 0.6))
+    yes(tk_sphere_box(vec3(0.0, 2.4, 0.0), 0.5, vec3(-1.0, 0.0, -1.0), vec3(1.0, 2.0, 1.0)))
+    yes(tk_sphere_box(vec3(1.4, 2.4, 0.0), 0.5, vec3(-1.0, 0.0, -1.0), vec3(1.0, 2.0, 1.0)))
+    yes(tk_box_box(vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), vec3(0.9, 0.9, 0.9), vec3(2.0, 2.0, 2.0)))
+    yes(tk_box_box(vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), vec3(1.0, 0.0, 0.0), vec3(2.0, 1.0, 1.0)))
+    yes(tk_capsule_sphere(vec3(0.0, 0.0, 0.0), vec3(0.0, 2.0, 0.0), 0.3, vec3(0.5, 1.5, 0.0), 0.25))
+    yes(tk_capsule_sphere(vec3(0.0, 0.0, 0.0), vec3(0.0, 2.0, 0.0), 0.3, vec3(0.0, 2.6, 0.0), 0.25))
+    yes(tk_capsule_box(vec3(0.0, 0.0, 0.0), vec3(2.0, 2.0, 0.0), 0.2, vec3(1.0, 0.0, -0.5), vec3(2.0, 0.8, 0.5)))
+    yes(tk_capsule_box(vec3(0.0, 0.0, 0.0), vec3(0.0, 2.0, 0.0), 0.2, vec3(0.3, 0.0, -0.5), vec3(1.0, 2.0, 0.5)))
+    yes(tk_capsule_capsule(vec3(0.0, 0.0, 0.0), vec3(2.0, 0.0, 0.0), 0.2, vec3(1.0, -1.0, 0.3), vec3(1.0, 1.0, 0.3), 0.2))
+    yes(tk_capsule_capsule(vec3(0.0, 0.0, 0.0), vec3(2.0, 0.0, 0.0), 0.2, vec3(1.0, -1.0, 0.5), vec3(1.0, 1.0, 0.5), 0.2))
+    println("")
+    // expect: YnYnYnYnYnYn
+    show(tk_ray_box(vec3(-3.0, 0.5, 0.5), vec3(3.0, 0.5, 0.5), vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0)))
+    show(tk_ray_box(vec3(-3.0, 1.5, 0.5), vec3(3.0, 1.5, 0.5), vec3(0.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0)))
+    show(tk_ray_sphere(vec3(0.0, 0.0, -4.0), vec3(0.0, 0.0, 4.0), vec3(0.0, 0.0, 0.0), 1.0))
+    show(tk_ray_sphere(vec3(0.0, 2.0, -4.0), vec3(0.0, 2.0, 4.0), vec3(0.0, 0.0, 0.0), 1.0))
+    println("")
+    // expect: 0.5,-1.0,0.375,-1.0,
+
+    // the level: a block, a ramp rising east, a cylinder, a terrain
+    let blk = tk_add_box(vec3(0.0, 0.0, 0.0), vec3(2.0, 1.0, 2.0))
+    let rmp = tk_add_ramp(vec3(-4.0, 0.0, 0.0), vec3(-2.0, 1.0, 2.0), TK_EAST)
+    let cyl = tk_add_cylinder(vec3(5.0, 0.0, 1.0), 0.5, 3.0)
+    tk_terrain_set(vec3(-10.0, -2.0, -10.0), 4.0, 2, 2, &HILLS[0])
+    print_int(blk); print_int(rmp); print_int(cyl); println("")
+    // expect: 012
+
+    // floors
+    show(tk_floor_at(1.0, 1.0, 5.0))           // the block's top
+    show(tk_floor_at(1.0, 1.0, 0.5))           // under its top: nothing (below the block: no solid)
+    show(tk_floor_at(-3.0, 1.0, 5.0))          // half-way up the ramp
+    show(tk_floor_at(-2.5, 1.0, 5.0))
+    show(tk_floor_at(5.1, 1.0, 9.0))           // the cylinder's top
+    show(tk_floor_at(5.6, 1.0, 9.0))           // beside it: nothing
+    println("")
+    // expect: 1.0,-1000.0,0.5,0.75,3.0,-1000.0,
+    show(tk_terrain_height(-6.0, -6.0))        // the middle hill (1.0 above -2.0)
+    show(tk_terrain_height(-8.0, -6.0))        // half-way down its side
+    show(tk_terrain_height(-3.0, -3.0))        // toward the high corner (2.0 above)
+    show(tk_floor_at(-6.0, -6.0, 5.0))
+    println("")
+    // expect: -1.0,-1.5,-0.8125,-1.0,
+    show(tk_solid_top(rmp, -4.0, 1.0))
+    show(tk_solid_top(rmp, -1.0, 1.0))
+    println("")
+    // expect: 0.0,1.0,
+
+    // raycasts
+    var hit: TkHit
+    yes(tk_raycast(vec3(1.0, 3.0, 1.0), vec3(1.0, -3.0, 1.0), &hit))
+    show(hit.t); show(hit.pos.y); show(hit.normal.y); print_int(hit.solid); println("")
+    // expect: Y0.3333,1.0,1.0,0
+    yes(tk_raycast(vec3(-3.0, 3.0, 1.0), vec3(-3.0, -1.0, 1.0), &hit))      // straight down onto the slope
+    show(hit.pos.y); show(hit.normal.x); show(hit.normal.y); print_int(hit.solid); println("")
+    // expect: Y0.5,-0.4472,0.8944,1
+    yes(tk_raycast(vec3(-6.0, 0.5, 1.0), vec3(0.0, 0.5, 1.0), &hit))          // along the ground: into the ramp's slope
+    show(hit.pos.x); print_int(hit.solid); println("")
+    // expect: Y-3.0,1
+    yes(tk_raycast(vec3(5.0, 1.0, -3.0), vec3(5.0, 1.0, 3.0), &hit))          // into the cylinder's side
+    show(hit.pos.z); show(hit.normal.z); print_int(hit.solid); println("")
+    // expect: Y0.5,-1.0,2
+    yes(tk_raycast(vec3(6.0, 1.0, -3.0), vec3(6.0, 1.0, 3.0), &hit))          // past it
+    println("")
+    // expect: n
+    yes(tk_raycast(vec3(-6.0, 3.0, -6.0), vec3(-6.0, -3.0, -6.0), &hit))      // down onto the terrain
+    show(hit.pos.y); print_int(hit.solid); println("")
+    // expect: Y-0.9999,-1
+
+    // overlaps
+    print_int(tk_overlap_sphere(vec3(1.0, 1.2, 1.0), 0.3)); print(" ")
+    print_int(tk_overlap_sphere(vec3(1.0, 1.4, 1.0), 0.3)); print(" ")
+    print_int(tk_overlap_sphere(vec3(-3.5, 0.5, 1.0), 0.2)); print(" ")      // above the slope's low end
+    print_int(tk_overlap_sphere(vec3(-2.5, 0.5, 1.0), 0.2)); print(" ")      // inside it near the top
+    print_int(tk_overlap_box(vec3(4.0, 2.0, 0.0), vec3(4.6, 2.5, 1.0))); print(" ")
+    tk_solid_on(cyl, false)
+    print_int(tk_overlap_box(vec3(4.0, 2.0, 0.0), vec3(4.6, 2.5, 1.0)))
+    println("")
+    // expect: 0 -1 -1 1 2 -1
+}

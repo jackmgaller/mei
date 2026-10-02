@@ -1,0 +1,412 @@
+// Tsumiki bodies: the character controller. A body is an upright capsule with feet at `pos`
+// that walks on block tops, ramps, platforms and the terrain, falls, jumps (with coyote time
+// and a jump buffer, and a lower jump when the button is let go early), slides along walls
+// and steps up small ledges. No rigid-body physics: it is a toy that moves as it is told.
+//
+//     hero = tk_new_body(vec3(0.0, 0.0, 0.0))
+//     ...
+//     tk_drive(hero, wish, btn(A))      // each frame, before tk_update(): where to go, jump held
+//
+// `wish` is the direction to run in (y ignored), its length 0..1 the share of top speed;
+// tk_drive_pad() (scene.akr) makes it from the pad, relative to the camera. tk_update() moves
+// every body once, after the platforms and before the zones and the camera.
+//
+// The tuning fields have toy-sized defaults (a body 0.9 tall that runs 5 units a second and
+// jumps about 1.6 high); change them after tk_new_body(). The state fields say what happened
+// in the last step.
+
+const TK_MAX_BODIES = 16
+
+struct TkBody {
+    pos: vec3                    // the feet: the bottom middle of the capsule
+    vel: vec3                    // units per frame
+    yaw: fixed                   // the way it faces; turns toward where it runs
+    // ---- tuning
+    radius: fixed = 0.28
+    height: fixed = 0.9
+    speed: fixed = 0.085         // top running speed
+    accel: fixed = 0.2           // on the ground: the share of the way to the wanted velocity
+                                 // it gets each frame (1.0: at once)
+    air: fixed = 0.07            // the same in the air
+    jump: fixed = 0.165          // take-off speed (0: it cannot jump)
+    gravity: fixed = 0.0085      // fall acceleration per frame
+    fall_max: fixed = 0.32       // the fastest it falls
+    step: fixed = 0.32           // the highest ledge it walks up; slopes rising more than this
+                                 // across its radius are walls
+    turn: fixed = 0.25           // radians a frame it turns toward where it runs
+    coyote: s32 = 6              // frames after running off a ledge in which it can still jump
+    buffer: s32 = 6              // frames a jump pressed too early is remembered
+    // ---- state, after each step
+    on_ground: bool
+    landed: bool                 // touched down this step
+    jumped: bool                 // left the ground by jumping this step
+    bumped: bool                 // ran into a wall or a ceiling this step
+    impact: fixed                // the fall speed it landed with (on `landed`)
+    ground: s32                  // the solid it stands on (-1: the terrain, or nothing)
+    moving: fixed                // horizontal speed over top speed, 0..1
+    // ---- drawing (scene.akr)
+    mesh: *Mesh                  // drawn at pos, turned to yaw (or `anim` if that is set)
+    anim: *TkAnim
+    shadow: fixed = 0.32         // blob shadow radius (0: none)
+    puffs: bool = true           // dust puffs on jumping and landing
+    hidden: bool
+    squash: fixed                // squash and stretch, settling by itself (tk_squash)
+    // ---- the library's
+    __wish: vec3
+    __jump: bool
+    __was_jump: bool
+    __coyote: s32
+    __buffer: s32
+    __cut: bool
+    __lift: fixed                // a step up still to be shown (drawn lower, catching up)
+    __idle: *TkClip
+    __run: *TkClip
+    __air: *TkClip
+    __used: bool
+}
+
+var __tk_bodies: [16]TkBody
+var __tk_nbodies: s32
+var __tk_near: [64]s16           // solids near the body being moved
+var __tk_nnear: s32
+
+// A new body with its feet at pos; null when all 16 are in use.
+fn tk_new_body(pos: vec3) -> *TkBody {
+    if __tk_nbodies >= TK_MAX_BODIES {
+        println("tsumiki: more than 16 bodies")
+        return null
+    }
+    let b = &__tk_bodies[__tk_nbodies]
+    __tk_nbodies += 1
+    *b = TkBody { pos: pos, ground: -1, __used: true }
+    return b
+}
+
+// What the body should do in the next tk_update(): run along `wish` (its length 0..1 is the
+// share of top speed) and jump while `jump` is held (a press starts a jump; letting go early
+// makes it lower).
+fn tk_drive(b: *TkBody, wish: vec3, jump: bool) {
+    b.__wish = vec3(wish.x, 0.0, wish.z)
+    b.__jump = jump
+}
+
+// Puts the body somewhere at once, standing still.
+fn tk_teleport(b: *TkBody, pos: vec3) {
+    b.pos = pos
+    b.vel = vec3(0.0, 0.0, 0.0)
+    b.__lift = 0.0
+    b.on_ground = false
+}
+
+// Throws the body: sets its velocity and takes it off the ground (springs, knock-backs).
+fn tk_launch(b: *TkBody, vel: vec3) {
+    b.vel = vel
+    b.on_ground = false
+    b.__coyote = 0
+    b.__cut = true                 // letting go of jump does not cut a launch short
+    b.jumped = true
+}
+
+// Clips for the body's animation, chosen by tk_update(): `idle` standing, `run` moving (it
+// plays faster the faster the body runs), `air` off the ground (null: keep `run`/`idle`).
+// The body's `anim` must be set (tk_new_anim).
+fn tk_body_clips(b: *TkBody, idle: *TkClip, run: *TkClip, air: *TkClip) {
+    b.__idle = idle
+    b.__run = run
+    b.__air = air
+}
+
+// Does the body touch the ball at p of radius r? (Collectibles, hazards.)
+fn tk_body_touches(b: *TkBody, p: vec3, r: fixed) -> bool {
+    let lo = b.pos + vec3(0.0, b.radius, 0.0)
+    let hi = b.pos + vec3(0.0, max(b.height - b.radius, b.radius), 0.0)
+    return tk_capsule_sphere(lo, hi, b.radius, p, r)
+}
+
+// Do two bodies touch?
+fn tk_bodies_touch(a: *TkBody, b: *TkBody) -> bool {
+    return tk_capsule_capsule(a.pos + vec3(0.0, a.radius, 0.0), a.pos + vec3(0.0, max(a.height - a.radius, a.radius), 0.0), a.radius,
+                              b.pos + vec3(0.0, b.radius, 0.0), b.pos + vec3(0.0, max(b.height - b.radius, b.radius), 0.0), b.radius)
+}
+
+// The body's model matrix for drawing: at its feet (lowered while a step up catches up),
+// turned to its yaw, with its squash and stretch.
+fn tk_body_matrix(b: *TkBody) -> mat4 {
+    return tk_squash(b.pos - vec3(0.0, b.__lift, 0.0), b.yaw, b.squash)
+}
+
+// ---- the step
+
+// Gathers the solids that could touch the body this step into __tk_near.
+fn __tk_gather(b: *TkBody) {
+    let m = b.radius + abs(b.vel.x) + abs(b.vel.z) + 0.1
+    let x0 = b.pos.x - m
+    let x1 = b.pos.x + m
+    let z0 = b.pos.z - m
+    let z1 = b.pos.z + m
+    let y0 = b.pos.y - b.step - abs(b.vel.y) - 0.1
+    let y1 = b.pos.y + b.height + abs(b.vel.y) + 0.1
+    __tk_nnear = 0
+    for i in 0..__tk_nsolids {
+        let s = &__tk_solids[i]
+        if !s.on || s.lo.x > x1 || s.hi.x < x0 || s.lo.z > z1 || s.hi.z < z0 || s.lo.y > y1 || s.hi.y < y0 { continue }
+        if __tk_nnear < 64 {
+            __tk_near[__tk_nnear] = i as s16
+            __tk_nnear += 1
+        }
+    }
+}
+
+// The highest floor among the near solids (and the terrain) under (x, z), no higher than
+// `below`; *which gets the solid.
+fn __tk_near_floor(x: fixed, z: fixed, below: fixed, grip: fixed, which: *s32) -> fixed {
+    var best = tk_terrain_height(x, z)
+    if best > below { best = TK_NO_FLOOR }
+    *which = -1
+    for k in 0..__tk_nnear {
+        let i = __tk_near[k] as s32
+        let s = &__tk_solids[i]
+        if s.lo.y > below || s.hi.y <= best { continue }
+        if !__tk_holds(s, x, z, grip) { continue }
+        let top = __tk_top(s, x, z)
+        if top <= below && top > best {
+            best = top
+            *which = i
+        }
+    }
+    return best
+}
+
+// Pushes the body's circle (x, z, r) out of the walls among the near solids, for feet at
+// height `feet`. Returns the push (zero when nothing was in the way).
+fn __tk_push_walls(b: *TkBody) -> vec3 {
+    var total = vec3(0.0, 0.0, 0.0)
+    let r = b.radius
+    let feet = b.pos.y
+    let head = feet + b.height
+    for k in 0..__tk_nnear {
+        let s = &__tk_solids[__tk_near[k] as s32]
+        if s.lo.y >= head - 0.02 { continue }                 // above the head
+        var top = s.hi.y
+        if s.kind == TK_SOLID_RAMP {
+            // the slope as high as it gets under the body: walkable if within a step
+            top = max(__tk_top(s, b.pos.x + r, b.pos.z), __tk_top(s, b.pos.x - r, b.pos.z))
+            top = max(top, max(__tk_top(s, b.pos.x, b.pos.z + r), __tk_top(s, b.pos.x, b.pos.z - r)))
+        }
+        if top <= feet + b.step { continue }                  // a floor to walk onto
+        // the way out (a unit normal) and how far
+        var nx: fixed = 0.0
+        var nz: fixed = 0.0
+        var depth: fixed = 0.0
+        let x = b.pos.x
+        let z = b.pos.z
+        if s.kind == TK_SOLID_CYLINDER {
+            let cr = (s.hi.x - s.lo.x) / 2
+            let dx = x - (s.lo.x + s.hi.x) / 2
+            let dz = z - (s.lo.z + s.hi.z) / 2
+            let rr = cr + r
+            if abs(dx) >= rr || abs(dz) >= rr { continue }
+            let d2 = dx * dx + dz * dz
+            if d2 >= rr * rr { continue }
+            if d2 < 0.0001 {
+                nx = 1.0
+                depth = rr
+            } else {
+                let d = sqrt(d2)
+                nx = dx / d
+                nz = dz / d
+                depth = rr - d
+            }
+        } else {
+            let cx = clamp(x, s.lo.x, s.hi.x)
+            let cz = clamp(z, s.lo.z, s.hi.z)
+            let dx = x - cx
+            let dz = z - cz
+            if abs(dx) >= r || abs(dz) >= r { continue }
+            if dx == 0.0 && dz == 0.0 {
+                // the middle is inside: out through the nearest side
+                let l = x - s.lo.x
+                let rgt = s.hi.x - x
+                let n = z - s.lo.z
+                let f = s.hi.z - z
+                let m = min(min(l, rgt), min(n, f))
+                if m == l {
+                    nx = -1.0
+                } else if m == rgt {
+                    nx = 1.0
+                } else if m == n {
+                    nz = -1.0
+                } else {
+                    nz = 1.0
+                }
+                depth = m + r
+            } else if dz == 0.0 {
+                nx = 1.0                                // straight out of a side
+                if dx < 0.0 { nx = -1.0 }
+                depth = r - abs(dx)
+            } else if dx == 0.0 {
+                nz = 1.0
+                if dz < 0.0 { nz = -1.0 }
+                depth = r - abs(dz)
+            } else {
+                let d2 = dx * dx + dz * dz
+                if d2 >= r * r { continue }
+                let d = sqrt(d2)
+                if d < 0.0005 { continue }
+                nx = dx / d
+                nz = dz / d
+                depth = r - d
+            }
+        }
+        b.pos.x += nx * depth
+        b.pos.z += nz * depth
+        total = total + vec3(nx * depth, 0.0, nz * depth)
+        // lose the speed into the wall, keep the speed along it
+        let into = b.vel.x * nx + b.vel.z * nz
+        if into < 0.0 {
+            b.vel.x -= nx * into
+            b.vel.z -= nz * into
+        }
+    }
+    return total
+}
+
+// One frame of a body (tk_update() calls it for every body).
+fn __tk_body_step(b: *TkBody) {
+    b.landed = false
+    b.jumped = false
+    b.bumped = false
+    let was_ground = b.on_ground
+    // ride what it stands on
+    if was_ground && b.ground >= 0 {
+        let pl = __tk_solids[b.ground].platform as s32
+        if pl >= 0 { b.pos = b.pos + __tk_platforms[pl].delta }
+    }
+
+    // steering: toward the wanted velocity, quickly on the ground and slowly in the air
+    var wish = b.__wish
+    let w2 = dot(wish, wish)
+    if w2 > 1.0 { wish = wish / sqrt(w2) }
+    var k = b.accel
+    if !was_ground {
+        k = b.air
+        if w2 < 0.01 { k = b.air / 4 }              // keep a running jump's momentum
+    }
+    b.vel.x += (wish.x * b.speed - b.vel.x) * k
+    b.vel.z += (wish.z * b.speed - b.vel.z) * k
+    if w2 > 0.01 { b.yaw = tk_turn_toward(b.yaw, atan2(wish.x, wish.z), b.turn) }
+
+    // jumping: a press is remembered for `buffer` frames, and works for `coyote` frames after
+    // leaving the ground
+    let pressed = b.__jump && !b.__was_jump
+    b.__was_jump = b.__jump
+    if pressed { b.__buffer = b.buffer } else if b.__buffer > 0 { b.__buffer -= 1 }
+    if b.__buffer > 0 && b.__coyote > 0 && b.jump > 0.0 {
+        b.vel.y = b.jump
+        b.__buffer = 0
+        b.__coyote = 0
+        b.on_ground = false
+        b.jumped = true
+        b.__cut = false
+        b.squash = 0.22
+        if b.puffs { tk_burst(TK_DUST, b.pos, 4) }
+    }
+    if !b.__jump && b.vel.y > 0.0 && !b.__cut && !b.on_ground {
+        b.vel.y = b.vel.y / 2                       // let go early: a lower jump
+        b.__cut = true
+    }
+    b.vel.y = max(b.vel.y - b.gravity, -b.fall_max)
+
+    // across: move, then out of the walls (a few passes settle corners)
+    __tk_gather(b)
+    let ox = b.pos.x
+    let oz = b.pos.z
+    b.pos.x += b.vel.x
+    b.pos.z += b.vel.z
+    for pass in 0..3 {
+        let push = __tk_push_walls(b)
+        if push.x == 0.0 && push.z == 0.0 { break }
+        b.bumped = true
+    }
+    if __tk_terrain.on {
+        // terrain rising more than a step is a wall: slide along it one axis at a time
+        let lim = b.pos.y + b.step
+        if tk_terrain_height(b.pos.x, b.pos.z) > lim {
+            if tk_terrain_height(b.pos.x, oz) <= lim {
+                b.pos.z = oz
+                b.vel.z = 0.0
+            } else if tk_terrain_height(ox, b.pos.z) <= lim {
+                b.pos.x = ox
+                b.vel.x = 0.0
+            } else {
+                b.pos.x = ox
+                b.pos.z = oz
+                b.vel.x = 0.0
+                b.vel.z = 0.0
+            }
+            b.bumped = true
+        }
+    }
+
+    // up and down
+    let old_y = b.pos.y
+    b.pos.y += b.vel.y
+    if b.vel.y > 0.0 {
+        // a ceiling over the middle of the body
+        let head0 = old_y + b.height
+        for i in 0..__tk_nnear {
+            let s = &__tk_solids[__tk_near[i] as s32]
+            if s.lo.y >= head0 - 0.05 && s.lo.y < b.pos.y + b.height && __tk_holds(s, b.pos.x, b.pos.z, -b.radius / 2) {
+                b.pos.y = s.lo.y - b.height
+                b.vel.y = 0.0
+                b.bumped = true
+            }
+        }
+    }
+    var which = -1
+    let floor = __tk_near_floor(b.pos.x, b.pos.z, old_y + b.step, b.radius / 2, &which)
+    var stand = false
+    if b.vel.y <= 0.0 {
+        if b.pos.y <= floor { stand = true }
+        // stick to the ground going down slopes and steps (not after jumping off it)
+        if was_ground && !b.jumped && b.pos.y - floor <= b.step { stand = true }
+    }
+    if stand {
+        if !was_ground {
+            b.landed = true
+            b.impact = -b.vel.y
+            b.squash = -min(b.impact * 2, 0.45)
+            if b.puffs && b.impact > 0.1 { tk_burst(TK_DUST, vec3(b.pos.x, floor, b.pos.z), 4 + (b.impact * 20) as s32) }
+        } else if floor > old_y + 0.04 {
+            b.__lift += floor - old_y               // a step up: shown catching up
+        }
+        b.pos.y = floor
+        b.vel.y = 0.0
+        b.on_ground = true
+        b.ground = which
+        b.__coyote = b.coyote
+    } else {
+        b.on_ground = false
+        b.ground = -1
+        if b.__coyote > 0 { b.__coyote -= 1 }
+    }
+
+    b.moving = clamp(sqrt(b.vel.x * b.vel.x + b.vel.z * b.vel.z) / max(b.speed, 0.001), 0.0, 1.0)
+    b.squash = b.squash * 0.8
+    b.__lift = b.__lift / 2
+    if b.__lift < 0.005 { b.__lift = 0.0 }
+
+    // the animation
+    if b.anim != null && b.__idle != null {
+        if !b.on_ground && b.__air != null && b.__coyote == 0 {
+            tk_play(b.anim, b.__air, 5)
+            b.anim.speed = 1.0
+        } else if b.moving > 0.15 && b.__run != null {
+            tk_play(b.anim, b.__run, 8)
+            b.anim.speed = 0.4 + b.moving * 0.8
+        } else {
+            tk_play(b.anim, b.__idle, 10)
+            b.anim.speed = 1.0
+        }
+    }
+}

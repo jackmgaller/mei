@@ -1,0 +1,103 @@
+// Tsumiki animation: sampling keyframes (looping and once), speed, cross-fades, frame events
+// and where a part's joint ends up.
+import "tsumiki.akr"
+
+// a body with an arm on its right, 0.5 up and 0.3 out
+const PARTS: [2]TkPart = [
+    TkPart { parent: -1, mesh: null, joint: vec3(0.0, 1.0, 0.0) },
+    TkPart { parent: 0, mesh: null, joint: vec3(0.3, 0.5, 0.0) },
+]
+const RIG: TkRig = TkRig { parts: PARTS, count: 2 }
+
+// SWING (loops, 20 frames): the arm swings x 0 -> 1.0 -> 0 (keys at 0, 10, 20); the body bobs
+const SWING_TIMES: [3]s16 = [0, 10, 20]
+const SWING_KEYS: [6]TkJoint = [
+    TkJoint { rot: vec3(0.0, 0.0, 0.0), move: vec3(0.0, 0.0, 0.0) },
+    TkJoint { rot: vec3(0.0, 0.0, 0.0), move: vec3(0.0, 0.0, 0.0) },
+    TkJoint { rot: vec3(0.0, 0.0, 0.0), move: vec3(0.0, 0.2, 0.0) },
+    TkJoint { rot: vec3(1.0, 0.0, 0.0), move: vec3(0.0, 0.0, 0.0) },
+    TkJoint { rot: vec3(0.0, 0.0, 0.0), move: vec3(0.0, 0.0, 0.0) },
+    TkJoint { rot: vec3(0.0, 0.0, 0.0), move: vec3(0.0, 0.0, 0.0) },
+]
+const SWING: TkClip = TkClip { keys: SWING_KEYS, times: SWING_TIMES, nkeys: 3, nparts: 2, length: 20, looping: true }
+
+// RAISE (once, 8 frames): the arm turns z 0 -> 1.5708 (straight out to the side and up)
+const RAISE_TIMES: [2]s16 = [0, 8]
+const RAISE_KEYS: [4]TkJoint = [
+    TkJoint { rot: vec3(0.0, 0.0, 0.0), move: vec3(0.0, 0.0, 0.0) },
+    TkJoint { rot: vec3(0.0, 0.0, 0.0), move: vec3(0.0, 0.0, 0.0) },
+    TkJoint { rot: vec3(0.0, 0.0, 0.0), move: vec3(0.0, 0.0, 0.0) },
+    TkJoint { rot: vec3(0.0, 0.0, 1.5708), move: vec3(0.0, 0.0, 0.0) },
+]
+const RAISE: TkClip = TkClip { keys: RAISE_KEYS, times: RAISE_TIMES, nkeys: 2, nparts: 2, length: 8, looping: false }
+
+fn show(f: fixed) {
+    print_fixed(f)
+    print(",")
+}
+
+fn steps(a: *TkAnim, n: s32) {
+    for i in 0..n { tk_update() }
+}
+
+fn init() {
+    tk_open(0)
+    let a = tk_new_anim(&RIG)
+    tk_play(a, &SWING, 0)
+    // after 5 steps: half-way to the first key's arm swing, the body half-way up its bob
+    steps(a, 5)
+    show(a.time); show(tk_anim_joint(a, 1).rot.x); show(a.pose[0].move.y); println("")
+    // expect: 5.0,0.5,0.1,
+    steps(a, 10)
+    show(a.time); show(a.pose[1].rot.x); println("")
+    // expect: 15.0,0.5,
+    // it loops: 25 steps in is 5 into the second time round
+    steps(a, 10)
+    show(a.time); show(a.pose[1].rot.x); println("")
+    // expect: 5.0,0.5,
+    // twice the speed
+    a.speed = 2.0
+    steps(a, 2)
+    show(a.time); show(a.pose[1].rot.x); println("")
+    // expect: 9.0,0.9,
+    // events: frame 10 is passed by the next step (9 -> 11), not by the one after
+    steps(a, 1)
+    print_int(tk_anim_passed(a, 10) as s32)
+    steps(a, 1)
+    print_int(tk_anim_passed(a, 10) as s32)
+    println("")
+    // expect: 10
+    // the same clip again changes nothing; tk_restart starts it over
+    tk_play(a, &SWING, 8)
+    show(a.time)
+    tk_restart(a, &SWING, 0)
+    show(a.time)
+    println("")
+    // expect: 13.0,0.0,
+    a.speed = 1.0
+
+    // a cross-fade over 4 frames from SWING (arm x) to RAISE (arm z), both moving on
+    steps(a, 10)
+    tk_play(a, &RAISE, 4)
+    steps(a, 2)
+    show(a.fade); show(a.pose[1].rot.x); show(a.pose[1].rot.z); println("")
+    // expect: 0.5,0.4,0.1964,
+    steps(a, 2)
+    show(a.fade); show(a.pose[1].rot.x); show(a.pose[1].rot.z); print_int((a.from == null) as s32); println("")
+    // expect: 1.0,0.0,0.7854,1
+    // a clip played once stops at its end
+    steps(a, 10)
+    show(a.time); show(a.pose[1].rot.z); print_int(a.done as s32); println("")
+    // expect: 8.0,1.5708,1
+
+    // where the arm's joint is: the model at (2, 0, 0) turned a quarter right, the body bobbed
+    let m = tk_place(vec3(2.0, 0.0, 0.0), HALF_PI)
+    let p = tk_anim_point(a, m, 1)
+    show(p.x); show(p.y); show(p.z); println("")
+    // expect: 2.0,1.5,-0.3,
+    // a joint matrix: a quarter turn about z takes +x to +y
+    let j = tk_joint_matrix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, HALF_PI))
+    let v = j * vec4(1.0, 0.0, 0.0, 1.0)
+    show(v.x); show(v.y); println("")
+    // expect: -0.0,1.0,
+}

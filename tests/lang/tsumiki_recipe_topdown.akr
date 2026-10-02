@@ -1,0 +1,76 @@
+// docs/TSUMIKI.md, recipe "A top-down adventure" (keep the two the same down to the harness):
+// rolling hills, a camera high above that does not swing round, a pup that follows you and a
+// signpost that speaks. The harness walks north-east past the sign.
+// frames: 200
+cart "Hillside"
+import "tsumiki.akr"
+
+var hills: [100]fixed                                   // 10 x 10 corner heights (9 x 9 cells)
+var hero: *TkBody
+var pup: *TkBody
+var sign: *TkZone
+var talk: s32                                           // frames left of the sign's message
+
+fn toy(colour: u32, size: fixed) -> *Mesh {
+    tk_shape_begin()
+    tk_paint(colour, TK_PLAIN)
+    tk_smooth(true)
+    tk_sphere(vec3(0.0, size, 0.0), size, 3)
+    return tk_shape_end()
+}
+
+fn init() {
+    tk_open(TK_SKY)
+    for k in 0..10 {
+        for i in 0..10 { hills[k * 10 + i] = sin(fixed(i) * 1.1) * 0.9 + cos(fixed(k) * 0.8) * 0.9 + 1.0 }
+    }
+    tk_level_begin()
+    tk_paint(TK_GREEN, TK_FELT)
+    tk_terrain(vec3(-18.0, 0.0, -18.0), 4.0, 9, 9, &hills[0])
+    let y = tk_terrain_height(3.6, 0.7)                 // a signpost, standing on the hill
+    tk_paint(TK_BEECH, TK_WOOD)
+    tk_box(vec3(3.5, y - 0.5, 0.6), vec3(3.8, y + 2.2, 0.9))
+    tk_box(vec3(2.9, y + 1.5, 0.5), vec3(4.4, y + 2.1, 0.6))
+    tk_level_end()
+    sign = tk_new_zone(vec3(2.0, -2.0, -1.0), vec3(5.0, 8.0, 2.5))
+    hero = tk_new_body(vec3(0.0, 2.0, 0.0))
+    hero.mesh = toy(TK_RED, 0.35)
+    pup = tk_new_body(vec3(-2.0, 2.0, -1.0))
+    pup.mesh = toy(TK_CREAM, 0.22)
+    pup.speed = 0.095                                   // a little faster than the hero
+    pup.jump = 0.0                                      // pups don't jump
+    tk_cam.dist = 11.0                                  // high above, looking well down,
+    tk_cam.tilt = -1.0
+    tk_cam.swing = false                                // and always facing north
+    tk_cam_follow(hero, 0)
+}
+
+fn update() {
+    tk_drive_pad(hero)
+    let to = vec3(hero.pos.x - pup.pos.x, 0.0, hero.pos.z - pup.pos.z)
+    var wish = vec3(0.0, 0.0, 0.0)
+    if dot(to, to) > 2.5 { wish = normalize(to) }       // trot after the hero, stopping short
+    tk_drive(pup, wish, false)
+    tk_update()
+    if tk_zone_entered(sign) { talk = 120 }
+    if talk > 0 { talk -= 1 }
+}
+
+fn draw() {
+    tk_draw()
+    if talk > 0 { font_text_align(160, 200, "HILLSIDE: MIND THE PUP", TK_WHITE, ALIGN_CENTRE) }
+}
+
+// ---- the test's harness (not in the recipe)
+var t: s32
+fn tk_input_pad() -> u32 {
+    t += 1
+    if t == 60 && talk > 0 { println("the sign speaks") }
+    if t == 190 {
+        let d = hero.pos - pup.pos
+        if dot(d, d) < 9.0 { println("the pup kept up") }
+    }
+    return UP | RIGHT
+}
+// expect: the sign speaks
+// expect: the pup kept up

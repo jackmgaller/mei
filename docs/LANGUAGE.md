@@ -1450,6 +1450,17 @@ bytes: `bc_raw`, `bc_raw_read`, `bc_hamming`, `bc_crc16`. The headless runner re
 recording with `--broadcast FILE` (tests: `// broadcast: data/broadcast.bin`, and
 `// broadcast-noise: BER`).
 
+### 3D toolkit (`tsumiki.akr`)
+
+Tsumiki (積み木, "building blocks") is a small toolkit for playable 3D scenes, not in the
+prelude: `import "tsumiki.akr"`. It builds levels from boxes, ramps, cylinders and terrain;
+moves characters with a fixed-point controller (slopes, steps, coyote time, moving platforms);
+plays rigid-part animations with cross-fades and vertex morphs; runs pooled particles and five
+camera modes; and draws it all with `tk_draw()`. Its modules live in `stdlib/tsumiki/` (an
+import of a subdirectory works like any other), and `tools/tsumiki.py` builds models, clips,
+morphs and texture cells from a `.toy` file. The guide and full reference is
+[`TSUMIKI.md`](TSUMIKI.md); `carts/playroom` is a whole game made with it.
+
 ## Saving
 
 Saves go to a memory card through the card controller (`docs/MEMCARD.md`). Each cart has

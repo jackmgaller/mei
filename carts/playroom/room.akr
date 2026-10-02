@@ -1,0 +1,290 @@
+// The Playroom's room: floor, rug, walls and window, and the things in it, built from Tsumiki
+// shapes at start-up. Everything in a level piece is solid unless tk_solid(false) says not.
+//
+// Top view (+Z is north, toward the window; the toy chest stands against the north wall):
+//
+//     castle          window            TOY CHEST          lift  | high shelf
+//                                       [button]                 |
+//     block tower + ramp        rug + train                book stairs
+//     paddling pool                                   chair  table + cake
+
+const ROOM_X: fixed = 12.0        // the room is -12..12 by -10..10, 7 high
+const ROOM_Z: fixed = 10.0
+const ROOM_H: fixed = 7.0
+
+// where things are (game.akr uses these too)
+const CHEST_POS: vec3 = vec3(0.0, 0.0, 8.4)
+const BUTTON_POS: vec3 = vec3(0.0, 0.0, 5.0)
+const LIFT_LOW: vec3 = vec3(6.1, 0.0, 8.2)
+const LIFT_HIGH: vec3 = vec3(6.1, 3.3, 8.2)
+const TRAIN_CENTRE: vec3 = vec3(-1.8, 0.0, -1.2)
+const TRAIN_RADIUS: fixed = 2.2
+const POOL_LO: vec3 = vec3(-10.6, 0.0, -9.2)
+const POOL_HI: vec3 = vec3(-6.4, 0.6, -5.6)
+const CANDLES: [3]vec3 = [vec3(6.1, 3.62, -7.3), vec3(6.6, 3.62, -6.8), vec3(7.1, 3.62, -7.3)]
+const FLAG_POS: vec3 = vec3(-10.6, 5.15, 7.4)
+
+// a camera rail along the south wall, and the corner camera
+const RAIL: [3]vec3 = [vec3(-10.0, 4.6, -8.6), vec3(0.0, 5.4, -8.6), vec3(10.0, 4.6, -8.6)]
+const CORNER_EYE: vec3 = vec3(11.0, 6.4, -9.4)
+
+var lift_mesh: *Mesh
+var curtain_l: *TkMorph
+var curtain_r: *TkMorph
+var flag: *TkMorph
+var water: *TkMorph
+
+fn build_room() {
+    tk_load_atlas(&TOYS_ATLAS)
+    // ---- the ground, drawn first: floorboards, then the rug and its border on them
+    tk_ground_begin()
+    tk_paint(TK_WHITE, FLOORBOARDS)
+    tk_grid(vec3(-ROOM_X, 0.0, -ROOM_Z), vec3(ROOM_X, 0.0, ROOM_Z), 10, 8)
+    tk_ground_end()
+    tk_ground_begin()
+    tk_solid(false)
+    tk_paint(TK_WHITE, RUG_EDGE)                                    // the rug's border: four strips
+    tk_grid(vec3(-7.4, 0.01, -5.4), vec3(2.4, 0.01, -5.0), 4, 1)
+    tk_grid(vec3(-7.4, 0.01, 2.0), vec3(2.4, 0.01, 2.4), 4, 1)
+    tk_grid(vec3(-7.4, 0.01, -5.0), vec3(-7.0, 0.01, 2.0), 1, 3)
+    tk_grid(vec3(2.0, 0.01, -5.0), vec3(2.4, 0.01, 2.0), 1, 3)
+    tk_ground_end()
+    tk_ground_begin()
+    tk_solid(false)
+    tk_paint(TK_WHITE, RUG)
+    tk_grid(vec3(-7.0, 0.02, -5.0), vec3(2.0, 0.02, 2.0), 6, 5)
+    tk_ground_end()
+
+    // ---- the walls: wallpaper and skirting boards, one piece each (so the ones behind the
+    // camera are skipped), and invisible slabs behind them
+    wall(vec3(-ROOM_X, 0.0, -ROOM_Z), vec3(ROOM_X, ROOM_H, -ROOM_Z), 8, TK_NORTH,
+         vec3(-ROOM_X, 0.0, -ROOM_Z), vec3(ROOM_X, 0.45, -ROOM_Z + 0.2))
+    wall(vec3(-ROOM_X, 0.0, -ROOM_Z), vec3(-ROOM_X, ROOM_H, ROOM_Z), 7, TK_EAST,
+         vec3(-ROOM_X, 0.0, -ROOM_Z + 0.2), vec3(-ROOM_X + 0.2, 0.45, ROOM_Z - 0.2))
+    wall(vec3(ROOM_X, 0.0, -ROOM_Z), vec3(ROOM_X, ROOM_H, ROOM_Z), 7, TK_WEST,
+         vec3(ROOM_X - 0.2, 0.0, -ROOM_Z + 0.2), vec3(ROOM_X, 0.45, ROOM_Z - 0.2))
+    tk_level_begin()
+    tk_paint(TK_WHITE, WALLPAPER)
+    tk_wall(vec3(-ROOM_X, 0.0, ROOM_Z), vec3(ROOM_X, ROOM_H, ROOM_Z), 8, 2, TK_SOUTH)
+    tk_paint(TK_CREAM, SKIRTING)
+    tk_box(vec3(-ROOM_X, 0.0, ROOM_Z - 0.2), vec3(ROOM_X, 0.45, ROOM_Z))
+    // the window: a frame, the sky with clouds through it, a sill
+    tk_solid(false)
+    tk_paint(TK_SKY, SKY_WINDOW)
+    tk_wall(vec3(-9.0, 2.6, ROOM_Z - 0.02), vec3(-4.0, 5.8, ROOM_Z - 0.02), 3, 2, TK_SOUTH)
+    tk_paint(TK_WHITE, TK_WOOD)
+    tk_box(vec3(-9.2, 2.4, ROOM_Z - 0.15), vec3(-3.8, 2.6, ROOM_Z))
+    tk_box(vec3(-9.2, 5.8, ROOM_Z - 0.15), vec3(-3.8, 6.0, ROOM_Z))
+    tk_box(vec3(-9.2, 2.6, ROOM_Z - 0.15), vec3(-9.0, 5.8, ROOM_Z))
+    tk_box(vec3(-4.0, 2.6, ROOM_Z - 0.15), vec3(-3.8, 5.8, ROOM_Z))
+    tk_box(vec3(-6.6, 2.6, ROOM_Z - 0.1), vec3(-6.4, 5.8, ROOM_Z))
+    tk_box(vec3(-9.4, 2.25, ROOM_Z - 0.5), vec3(-3.6, 2.45, ROOM_Z))
+    tk_paint(TK_YELLOW, TK_PLAIN)
+    tk_box(vec3(-9.8, 6.2, ROOM_Z - 0.3), vec3(-3.2, 6.3, ROOM_Z - 0.2))        // the curtain rod
+    tk_level_end()
+    let _ = tk_add_box(vec3(-ROOM_X - 1.0, -1.0, ROOM_Z), vec3(ROOM_X + 1.0, 40.0, ROOM_Z + 1.0))
+    let _ = tk_add_box(vec3(-ROOM_X - 1.0, -1.0, -ROOM_Z - 1.0), vec3(ROOM_X + 1.0, 40.0, -ROOM_Z))
+    let _ = tk_add_box(vec3(-ROOM_X - 1.0, -1.0, -ROOM_Z), vec3(-ROOM_X, 40.0, ROOM_Z))
+    let _ = tk_add_box(vec3(ROOM_X, -1.0, -ROOM_Z), vec3(ROOM_X + 1.0, 40.0, ROOM_Z))
+
+    build_tower()
+    build_castle()
+    build_book_stairs()
+    build_shelf()
+    build_table()
+    build_pool()
+    build_soft_things()
+}
+
+// A wall of the room facing `facing`, with its skirting board (solid).
+fn wall(lo: vec3, hi: vec3, tiles: s32, facing: s32, skirt_lo: vec3, skirt_hi: vec3) {
+    tk_level_begin()
+    tk_paint(TK_WHITE, WALLPAPER)
+    tk_wall(lo, hi, tiles, 2, facing)
+    tk_paint(TK_CREAM, SKIRTING)
+    tk_box(skirt_lo, skirt_hi)
+    tk_level_end()
+}
+
+// A block of toy wood: `colour` with grain.
+fn block(lo: vec3, hi: vec3, colour: u32) {
+    tk_paint(colour, TK_WOOD)
+    tk_box(lo, hi)
+}
+
+// A letter block (a cell of toys.toy on every face).
+fn letter_block(lo: vec3, size: fixed, letter: u32) {
+    tk_paint(TK_WHITE, letter)
+    tk_box(lo, lo + vec3(size, size, size))
+}
+
+// West: a ramp up to a block terrace, a taller block beyond it with a star on top, and loose
+// letter blocks about.
+fn build_tower() {
+    tk_level_begin()
+    tk_paint(TK_YELLOW, TK_WOOD)
+    tk_ramp(vec3(-8.0, 0.0, -3.0), vec3(-5.4, 1.2, -1.0), TK_WEST)
+    block(vec3(-9.6, 0.0, -3.0), vec3(-8.0, 1.2, -1.0), TK_RED)
+    block(vec3(-11.6, 0.0, -3.4), vec3(-9.6, 2.4, -0.6), TK_BLUE)
+    block(vec3(-11.4, 2.4, -3.2), vec3(-9.8, 2.6, -0.8), TK_GREEN)          // a lid on it
+    letter_block(vec3(-9.4, 1.2, -2.9), 0.7, LETTER_A)
+    letter_block(vec3(-8.0, 0.0, 0.2), 1.0, LETTER_B)
+    letter_block(vec3(-6.6, 0.0, 0.9), 0.8, LETTER_C)
+    letter_block(vec3(-2.0, 0.0, 3.8), 0.9, LETTER_M)
+    letter_block(vec3(-1.6, 0.9, 3.95), 0.7, LETTER_E)
+    letter_block(vec3(2.6, 0.0, 3.4), 0.8, LETTER_I)
+    // an arch of blocks to run under
+    block(vec3(3.2, 0.0, -1.2), vec3(3.8, 1.6, -0.6), TK_ORANGE)
+    block(vec3(5.2, 0.0, -1.2), vec3(5.8, 1.6, -0.6), TK_ORANGE)
+    block(vec3(3.0, 1.6, -1.3), vec3(6.0, 2.0, -0.5), TK_PURPLE)
+    tk_paint(TK_GREEN, TK_WOOD)
+    tk_ramp(vec3(3.0, 2.0, -1.3), vec3(4.5, 2.6, -0.5), TK_EAST)
+    tk_ramp(vec3(4.5, 2.0, -1.3), vec3(6.0, 2.6, -0.5), TK_WEST)
+    tk_level_end()
+}
+
+// North-west corner: a castle of round towers with a flag that waves.
+fn build_castle() {
+    tk_level_begin()
+    tk_smooth(true)
+    tk_paint(TK_CREAM, TK_BRICK)
+    tk_cylinder(vec3(-10.6, 0.0, 7.4), 0.9, 3.4, 6)
+    tk_cylinder(vec3(-7.2, 0.0, 8.4), 0.8, 2.8, 6)
+    tk_smooth(false)
+    tk_box(vec3(-10.2, 0.0, 7.6), vec3(-7.4, 2.0, 8.6))
+    tk_paint(TK_RED, TK_PLAIN)
+    tk_smooth(true)
+    tk_cone(vec3(-10.6, 3.4, 7.4), 1.1, 1.4, 6)
+    tk_cone(vec3(-7.2, 2.8, 8.4), 1.0, 1.2, 6)
+    tk_smooth(false)
+    tk_paint(TK_BLUE, TK_PLAIN)
+    for i in 0..4 {
+        let x = -9.9 + fixed(i) * 0.7
+        tk_box(vec3(x, 2.0, 7.6), vec3(x + 0.35, 2.35, 8.6))                // battlements
+    }
+    tk_paint(TK_BLACK, TK_PLAIN)
+    tk_box(vec3(-9.2, 0.0, 7.55), vec3(-8.4, 1.2, 7.62))                       // the gate
+    tk_paint(TK_GREY, TK_PLAIN)
+    tk_solid(false)
+    tk_cylinder(vec3(-10.6, 4.6, 7.4), 0.04, 1.4, 4)                          // the flag pole
+    tk_level_end()
+    // the flag: a little wall, hung from its left edge at the origin and waved (morph.akr)
+    tk_shape_begin()
+    tk_paint(TK_YELLOW, TK_PLAIN)
+    tk_two_sided(true)
+    tk_wall(vec3(0.0, -0.5, 0.0), vec3(1.0, 0.0, 0.0), 5, 2, TK_SOUTH)
+    flag = tk_new_morph_mesh(tk_shape_end())
+}
+
+// East wall, south: a stair of books, each a step up.
+fn build_book_stairs() {
+    const COLS: [6]u32 = [0x3C3CB4, 0x50A050, 0xC88C3C, 0x8C50A0, 0x3CA0D2, 0x5A82E6]
+    tk_level_begin()
+    for i in 0..6 {
+        let x0 = 7.0 + fixed(i) * 0.75
+        let y = fixed(i + 1) * 0.3
+        tk_paint(COLS[i], BOOK_SPINE)
+        tk_box(vec3(x0, 0.0, -4.4), vec3(ROOM_X - 0.2, y, -2.2))
+        tk_paint(TK_CREAM, TK_PLAIN)                                         // the pages
+        tk_wall(vec3(x0 + 0.05, y - 0.26, -4.41), vec3(ROOM_X - 0.25, y - 0.04, -4.41), 1, 1, TK_SOUTH)
+    }
+    tk_level_end()
+}
+
+// North-east: a high shelf on the wall, reached by a lift.
+fn build_shelf() {
+    tk_level_begin()
+    block(vec3(7.0, 3.3, 6.6), vec3(ROOM_X, 3.6, ROOM_Z), TK_BEECH)
+    block(vec3(7.0, 0.0, 9.6), vec3(7.4, 3.3, ROOM_Z), TK_WALNUT)               // its post
+    tk_level_end()
+    // the lift: a platform that rises to the shelf and sinks again
+    tk_shape_begin()
+    tk_paint(TK_YELLOW, TK_WOOD)
+    tk_box(vec3(-0.8, -0.24, -0.8), vec3(0.8, 0.0, 0.8))
+    tk_paint(TK_RED, TK_PLAIN)
+    tk_box(vec3(-0.85, -0.3, -0.85), vec3(0.85, -0.24, 0.85))
+    lift_mesh = tk_shape_end()
+}
+
+// South-east: a chair, a table, and a birthday cake with three candles.
+fn build_table() {
+    tk_level_begin()
+    block(vec3(3.0, 0.0, -9.6), vec3(4.4, 1.3, -8.2), TK_GREEN)                // the chair's seat
+    block(vec3(3.0, 1.3, -9.6), vec3(3.3, 3.0, -8.2), TK_GREEN)                // and back
+    tk_paint(TK_WALNUT, TK_WOOD)
+    tk_box(vec3(4.6, 0.0, -9.6), vec3(4.9, 2.4, -9.3))                          // table legs
+    tk_box(vec3(8.6, 0.0, -9.6), vec3(8.9, 2.4, -9.3))
+    tk_box(vec3(4.6, 0.0, -5.3), vec3(4.9, 2.4, -5.0))
+    tk_box(vec3(8.6, 0.0, -5.3), vec3(8.9, 2.4, -5.0))
+    block(vec3(4.5, 2.4, -9.7), vec3(9.0, 2.65, -4.9), TK_BEECH)                // its top
+    tk_smooth(true)
+    tk_paint(TK_PINK, CAKE_ICING)
+    tk_cylinder(vec3(6.6, 2.65, -7.1), 0.8, 0.45, 10)
+    tk_paint(TK_CREAM, TK_PLAIN)
+    tk_cylinder(vec3(6.6, 3.1, -7.1), 0.65, 0.35, 10)
+    tk_solid(false)
+    for i in 0..3 {
+        let c = CANDLES[i]
+        tk_paint(TK_TOY_COLOURS[i * 2 + 1], TK_STRIPES)
+        tk_cylinder(vec3(c.x, 3.45, c.z), 0.05, 0.22, 5)
+    }
+    tk_paint(TK_RED, TK_PLAIN)
+    tk_sphere(vec3(6.6, 3.5, -6.6), 0.1, 2)                                     // a cherry
+    tk_level_end()
+}
+
+// South-west: a paddling pool with a waving water surface.
+fn build_pool() {
+    tk_level_begin()
+    tk_paint(TK_BLUE, TK_DOTS)
+    tk_box(vec3(POOL_LO.x, 0.0, POOL_LO.z), vec3(POOL_HI.x, 0.3, POOL_LO.z + 0.25))
+    tk_box(vec3(POOL_LO.x, 0.0, POOL_HI.z - 0.25), vec3(POOL_HI.x, 0.3, POOL_HI.z))
+    tk_box(vec3(POOL_LO.x, 0.0, POOL_LO.z + 0.25), vec3(POOL_LO.x + 0.25, 0.3, POOL_HI.z - 0.25))
+    tk_box(vec3(POOL_HI.x - 0.25, 0.0, POOL_LO.z + 0.25), vec3(POOL_HI.x, 0.3, POOL_HI.z - 0.25))
+    tk_solid(false)
+    tk_paint(rgb(150, 205, 240), TK_PLAIN)
+    tk_grid(vec3(POOL_LO.x + 0.25, 0.03, POOL_LO.z + 0.25), vec3(POOL_HI.x - 0.25, 0.03, POOL_HI.z - 0.25), 2, 2)
+    // a rubber duck
+    tk_smooth(true)
+    tk_paint(TK_YELLOW, TK_PLAIN)
+    tk_sphere(vec3(-8.0, 0.32, -7.0), 0.3, 3)
+    tk_sphere(vec3(-8.0, 0.66, -6.85), 0.17, 3)
+    tk_paint(TK_ORANGE, TK_PLAIN)
+    tk_box(vec3(-8.06, 0.6, -6.74), vec3(-7.94, 0.66, -6.58))                  // its beak
+    tk_level_end()
+    // the water: a grid of tiles, waved each frame, half see-through
+    tk_shape_begin()
+    tk_paint(rgb(60, 140, 230), TK_PLAIN)
+    tk_smooth(true)
+    tk_blend(BLEND_HALF)
+    tk_grid(vec3(POOL_LO.x + 0.25, 0.2, POOL_LO.z + 0.25), vec3(POOL_HI.x - 0.25, 0.2, POOL_HI.z - 0.25), 6, 5)
+    water = tk_new_morph_mesh(tk_shape_end())
+}
+
+// Curtains: two cloths hanging from the rod, made in code and waved by morphs.
+fn build_soft_things() {
+    tk_shape_begin()
+    tk_paint(TK_PINK, TK_DOTS)
+    tk_two_sided(true)
+    tk_wall(vec3(0.0, -3.9, 0.0), vec3(1.4, 0.0, 0.0), 3, 4, TK_SOUTH)
+    let cloth = tk_shape_end()
+    curtain_l = tk_new_morph_mesh(cloth)
+    curtain_r = tk_new_morph_mesh(cloth)
+}
+
+// One frame of the soft things: the flag, the curtains and the water move.
+fn wave_room(t: s32) {
+    tk_morph_wave(flag, vec3(0.0, 0.03, 0.14), vec3(5.0, 0.0, 0.0), -frame_angle(t, 0.16), vec3(1.0, 0.0, 0.0))
+    let breeze = vec3(0.0, 0.0, -0.18)
+    tk_morph_wave(curtain_l, breeze, vec3(2.0, 1.2, 0.0), frame_angle(t, 0.035), vec3(0.0, -0.26, 0.0))
+    tk_morph_wave(curtain_r, breeze, vec3(-2.0, 1.2, 0.0), frame_angle(t, 0.035) + 1.3, vec3(0.0, -0.26, 0.0))
+    tk_morph_wave(water, vec3(0.0, 0.06, 0.0), vec3(2.2, 0.0, 1.7), frame_angle(t, 0.07), vec3(0.0, 0.0, 0.0))
+}
+
+// Draws the soft things (after tk_draw()).
+fn draw_room_extras() {
+    mesh_at(flag.mesh, FLAG_POS, 0.0)
+    mesh_at(curtain_l.mesh, vec3(-9.75, 6.15, ROOM_Z - 0.35), 0.0)
+    mesh_at(curtain_r.mesh, vec3(-4.65, 6.15, ROOM_Z - 0.35), 0.0)
+    mesh(water.mesh)
+}

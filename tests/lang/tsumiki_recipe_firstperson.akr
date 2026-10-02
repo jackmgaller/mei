@@ -1,0 +1,62 @@
+// docs/TSUMIKI.md, recipe "A first-person walk" (keep the two the same down to the harness):
+// a little maze of block walls seen through the eyes of a body, with a way out. The harness
+// walks the maze and must find the way out.
+// frames: 640
+cart "Block Maze"
+import "tsumiki.akr"
+
+// the maze, row by row from the south: '#' a wall block, '.' floor, 'E' the way out
+const MAZE: [5]*u8 = ["#######", "#.#...#", "#.#.#.#", "#...#.E", "#######"]
+const W = 7
+const H = 5
+
+var me: *TkBody
+var out: *TkZone
+
+fn init() {
+    tk_open(TK_SKY)
+    tk_fog(TK_SKY, 4.0, 14.0)                           // a misty maze
+    tk_ground_begin()
+    tk_paint(TK_BEECH, TK_PLANKS)
+    tk_grid(vec3(0.0, 0.0, 0.0), vec3(fixed(W) * 2, 0.0, fixed(H) * 2), W, H)
+    tk_ground_end()
+    tk_level_begin()
+    for k in 0..H {
+        for i in 0..W {
+            let c = MAZE[k][i]
+            let lo = vec3(fixed(i) * 2, 0.0, fixed(k) * 2)
+            if c == '#' {
+                tk_paint(TK_TOY_COLOURS[(i + k) % 6], TK_BRICK)
+                tk_box(lo, lo + vec3(2.0, 2.5, 2.0))
+            }
+            if c == 'E' { out = tk_new_zone(lo, lo + vec3(2.0, 2.0, 2.0)) }
+        }
+    }
+    tk_level_end()
+    me = tk_new_body(vec3(3.0, 0.0, 3.0))               // a body with no mesh: just eyes
+    me.yaw = 0.0
+    tk_cam_first_person(me, 0)
+}
+
+fn update() {
+    tk_drive_pad(me)                                    // up/down walk, left/right turn, L/R step
+    tk_update()
+    if tk_zone_entered(out) { println("out of the maze!") }
+}
+
+fn draw() { tk_draw() }
+
+// ---- the test's harness (not in the recipe): walk the maze, turning at its corners
+const PLAN_KEYS: [11]u32 = [UP, RIGHT, UP, RIGHT, UP, LEFT, UP, LEFT, UP, RIGHT, UP]
+const PLAN_FRAMES: [11]s32 = [52, 32, 52, 31, 52, 31, 52, 31, 52, 31, 200]
+var step: s32
+var left: s32 = 52
+fn tk_input_pad() -> u32 {
+    if left == 0 && step < 10 {
+        step += 1
+        left = PLAN_FRAMES[step]
+    }
+    left -= 1
+    return PLAN_KEYS[step]
+}
+// expect: out of the maze!

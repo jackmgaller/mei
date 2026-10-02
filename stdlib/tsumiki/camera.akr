@@ -1,0 +1,330 @@
+// Tsumiki cameras: one camera, `tk_cam`, in one of five modes, blending smoothly from one
+// mode to the next.
+//
+//     tk_cam_follow(hero, 0)           // behind the hero, swinging round as it turns (0: at once)
+//     tk_cam_orbit(hero, 30)           // round the hero, turned by tk_cam_turn() (the stick)
+//     tk_cam_first_person(hero, 30)    // through its eyes
+//     tk_cam_fixed(vec3(8.0, 5.0, -8.0), hero, vec3(0.0, 0.0, 0.0), 30)   // a corner camera
+//     tk_cam_rail(&RAIL[0], len(RAIL), hero, 30)   // slides along a path, staying level with it
+//     tk_shake(0.3, 20)                // a bump
+//
+// tk_update() moves the camera after the bodies; tk_draw() points the view with it. Follow and
+// orbit pull in when a solid comes between the camera and what it follows, and ease back out.
+// The fields after `mode` tune it; `pos`, `yaw` and `pitch` are where it is (read them, for
+// sounds or billboards).
+
+const TK_CAM_FOLLOW = 0
+const TK_CAM_ORBIT = 1
+const TK_CAM_FIRST_PERSON = 2
+const TK_CAM_FIXED = 3
+const TK_CAM_RAIL = 4
+
+struct TkCam {
+    pos: vec3                    // where it is this frame
+    yaw: fixed
+    pitch: fixed
+    mode: s32
+    target: *TkBody              // what it follows or looks at (null: `look`)
+    look: vec3                   // a fixed camera with no target looks here
+    eye: vec3                    // a fixed camera stands here
+    rail: *vec3                  // a rail camera's path ...
+    rail_n: s32                  // ... and how many points it has
+    dist: fixed = 4.2            // follow and orbit: how far from the target
+    height: fixed = 0.7          // the point looked at: this far above the target's feet
+    tilt: fixed = -0.3           // follow: how far it looks down (radians)
+    smooth: fixed = 0.15         // follow: how quickly it catches up with a jump (0..1 a frame)
+    swing: bool = true           // follow: swing round behind the target as it runs (false: keep
+                                 // facing the same way, for top-down and side views)
+    eye_height: fixed = 0.75     // first person: eyes above the feet
+    // ---- the library's
+    __turn: vec2                 // tk_cam_turn() this frame
+    __yaw: fixed                 // orbit and first person: the angles the stick turns
+    __pitch: fixed
+    __dist: fixed                // follow and orbit: the distance now (after pulling in)
+    __ty: fixed                  // follow: the smoothed height of the target
+    __lead: vec3                 // follow: where the camera trails on its leash (before blending)
+    __tilt: fixed                // follow: the tilt now (steeper while looking over something)
+    __from_pos: vec3             // a blend: where it started ...
+    __from_yaw: fixed
+    __from_pitch: fixed
+    __blend: s32                 // ... frames into it ...
+    __blend_len: s32             // ... and how long it takes
+    __shake: fixed
+    __shake_len: s32
+    __shake_t: s32
+    __seed: u32
+    __hid: bool                  // first person hid the target
+}
+
+var tk_cam: TkCam
+
+// The camera position at angles yaw and pitch, dist away from `target`, looking at it.
+fn tk_orbit_point(target: vec3, yaw: fixed, pitch: fixed, dist: fixed) -> vec3 {
+    let c = cos(pitch) * dist
+    return vec3(target.x - sin(yaw) * c, target.y - sin(pitch) * dist, target.z - cos(yaw) * c)
+}
+
+// The pitch that looks from `from` at `to`.
+fn tk_pitch_to(from: vec3, to: vec3) -> fixed {
+    let dx = to.x - from.x
+    let dz = to.z - from.z
+    return atan2(to.y - from.y, sqrt(dx * dx + dz * dz))
+}
+
+// A direction to run in from a stick (x right, y up = forward), seen from the camera: up on
+// the stick runs away from the camera. For tk_drive().
+fn tk_cam_move_dir(s: vec2) -> vec3 {
+    let sy = sin(tk_cam.yaw)
+    let cy = cos(tk_cam.yaw)
+    return vec3(s.x * cy + s.y * sy, 0.0, s.y * cy - s.x * sy)
+}
+
+// Turns the camera this frame: yaw (positive: to the right) and pitch (positive: up), in
+// radians. Follow turns round its target, orbit orbits, first person looks about.
+fn tk_cam_turn(yaw: fixed, pitch: fixed) {
+    tk_cam.__turn = tk_cam.__turn + vec2(yaw, pitch)
+}
+
+// A shake for `frames` frames, `strength` units at first and dying away.
+fn tk_shake(strength: fixed, frames: s32) {
+    tk_cam.__shake = max(strength, tk_cam.__shake * (tk_cam.__shake_len - tk_cam.__shake_t) / max(tk_cam.__shake_len, 1))
+    tk_cam.__shake_len = max(frames, 1)
+    tk_cam.__shake_t = 0
+}
+
+// Starts a mode: blends there from where the camera is over `blend` frames (0: at once).
+fn __tk_cam_mode(mode: s32, target: *TkBody, blend: s32) {
+    let c = &tk_cam
+    if c.__hid && c.target != null { c.target.hidden = false }
+    c.__hid = false
+    c.__from_pos = c.pos
+    c.__from_yaw = c.yaw
+    c.__from_pitch = c.pitch
+    c.__blend = 0
+    c.__blend_len = blend
+    c.mode = mode
+    c.target = target
+    if target != null {
+        c.__ty = target.pos.y
+        c.__dist = c.dist
+        c.__tilt = c.tilt
+        // follow starts behind the target, whatever the camera was doing (or, not swinging,
+        // facing the way the camera faces now)
+        var fy = target.yaw
+        if !c.swing { fy = c.yaw }
+        if mode == TK_CAM_FOLLOW { c.__yaw = fy }
+        c.__lead = tk_orbit_point(target.pos + vec3(0.0, c.height, 0.0), fy, c.tilt, c.dist)
+        if mode == TK_CAM_ORBIT {
+            c.__yaw = c.yaw
+            c.__pitch = clamp(c.pitch, -1.2, 0.3)
+            if blend == 0 { c.__yaw = target.yaw }
+        }
+        if mode == TK_CAM_FIRST_PERSON {
+            c.__yaw = target.yaw
+            c.__pitch = 0.0
+        }
+    }
+}
+
+// Behind `b`, looking down at it a little (`tilt`, `dist`, `height`); it swings round behind
+// it as it runs about (unless `swing` is false), and tk_cam_turn() (L/R) turns it round.
+fn tk_cam_follow(b: *TkBody, blend: s32) {
+    __tk_cam_mode(TK_CAM_FOLLOW, b, blend)
+    if blend == 0 && b != null {
+        tk_cam.yaw = tk_cam.__yaw
+        tk_cam.pos = tk_cam.__lead
+    }
+}
+
+// Round `b` at `dist`, turned by tk_cam_turn() (the stick, in tk_drive_pad()).
+fn tk_cam_orbit(b: *TkBody, blend: s32) { __tk_cam_mode(TK_CAM_ORBIT, b, blend) }
+
+// Through b's eyes: tk_cam_turn() looks about and the body faces where the camera looks.
+// The body is hidden while it lasts.
+fn tk_cam_first_person(b: *TkBody, blend: s32) { __tk_cam_mode(TK_CAM_FIRST_PERSON, b, blend) }
+
+// Standing at `eye`, watching `b` (or the point `look` when b is null).
+fn tk_cam_fixed(eye: vec3, b: *TkBody, look: vec3, blend: s32) {
+    __tk_cam_mode(TK_CAM_FIXED, b, blend)
+    tk_cam.eye = eye
+    tk_cam.look = look
+}
+
+// On a rail: the path through the n points at `points`; the camera slides to the point of the
+// path nearest to `b` (along the ground) and watches it. `points` must stay valid (const data
+// or a global).
+fn tk_cam_rail(points: *vec3, n: s32, b: *TkBody, blend: s32) {
+    __tk_cam_mode(TK_CAM_RAIL, b, blend)
+    tk_cam.rail = points
+    tk_cam.rail_n = n
+}
+
+// What the camera looks at: the target's middle, or `look`.
+fn __tk_cam_focus() -> vec3 {
+    let c = &tk_cam
+    if c.target == null { return c.look }
+    return c.target.pos + vec3(0.0, c.height, 0.0)
+}
+
+// Pulls a camera that wants to be at `want` in front of whatever is between it and `focus`;
+// returns the distance it may have (at most `dist`).
+fn __tk_cam_clear(focus: vec3, want: vec3, dist: fixed) -> fixed {
+    var hit: TkHit
+    let d = want - focus
+    // look a little past the camera, so it keeps clear of the wall behind it
+    let past = focus + d * ((dist + 0.35) / max(dist, 0.1))
+    if tk_raycast(focus, past, &hit) {
+        return clamp(hit.t * (dist + 0.35) - 0.35, 1.0, dist)
+    }
+    return dist
+}
+
+// The camera at its distance now from `focus`, moved in further while it would be inside or
+// against a solid (the line of sight can be clear while the camera itself grazes a corner,
+// with the near plane cutting into the solid).
+fn __tk_cam_room(focus: vec3, yaw: fixed, pitch: fixed) -> vec3 {
+    let c = &tk_cam
+    var pos = tk_orbit_point(focus, yaw, pitch, c.__dist)
+    for k in 0..4 {
+        if c.__dist <= 1.0 || tk_overlap_sphere(pos, 0.4) < 0 { break }
+        c.__dist = max(c.__dist - 0.4, 1.0)
+        pos = tk_orbit_point(focus, yaw, pitch, c.__dist)
+    }
+    return pos
+}
+
+// One frame of the camera (tk_update() calls it).
+fn __tk_cam_step() {
+    let c = &tk_cam
+    let turn = c.__turn
+    c.__turn = vec2(0.0, 0.0)
+    let focus = __tk_cam_focus()
+    var pos = c.pos
+    var yaw = c.yaw
+    var pitch = c.pitch
+    match c.mode {
+        TK_CAM_FOLLOW => {
+            // the leash: the camera turns to keep looking along the line to its target
+            var f = focus
+            if c.target != null {
+                c.__ty += (c.target.pos.y - c.__ty) * c.smooth
+                if c.target.on_ground { c.__ty += (c.target.pos.y - c.__ty) * c.smooth }
+                f.y = c.__ty + c.height
+            }
+            if c.swing {
+                let dx = f.x - c.__lead.x
+                let dz = f.z - c.__lead.z
+                if abs(dx) + abs(dz) > 0.05 { c.__yaw = atan2(dx, dz) }
+            }
+            c.__yaw = tk_wrap(c.__yaw + turn.x)
+            yaw = c.__yaw
+            // something in the way: rise to look down over it if that sees further
+            var tilt = c.tilt
+            var room = __tk_cam_clear(f, tk_orbit_point(f, yaw, tilt, c.dist), c.dist)
+            if room < c.dist * 0.7 {
+                let over = __tk_cam_clear(f, tk_orbit_point(f, yaw, c.tilt - 0.55, c.dist), c.dist)
+                if over > room + 0.3 { tilt = c.tilt - 0.55 }
+            }
+            c.__tilt += (tilt - c.__tilt) * 0.08
+            if tilt != c.tilt || abs(c.__tilt - c.tilt) > 0.02 {
+                room = __tk_cam_clear(f, tk_orbit_point(f, yaw, c.__tilt, c.dist), c.dist)
+            }
+            if room < c.__dist { c.__dist = room } else { c.__dist += (room - c.__dist) * 0.08 }
+            // the leash keeps its full length, so the camera's way round does not jump when it
+            // pulls in; the camera itself sits nearer when it has to
+            c.__lead = tk_orbit_point(f, yaw, c.tilt, c.dist)
+            pos = __tk_cam_room(f, yaw, c.__tilt)
+            pitch = tk_pitch_to(pos, f)
+        }
+        TK_CAM_ORBIT => {
+            c.__yaw = tk_wrap(c.__yaw + turn.x)
+            c.__pitch = clamp(c.__pitch + turn.y, -1.3, 0.35)
+            let want = tk_orbit_point(focus, c.__yaw, c.__pitch, c.dist)
+            let room = __tk_cam_clear(focus, want, c.dist)
+            if room < c.__dist { c.__dist = room } else { c.__dist += (room - c.__dist) * 0.08 }
+            pos = __tk_cam_room(focus, c.__yaw, c.__pitch)
+            yaw = c.__yaw
+            pitch = c.__pitch
+        }
+        TK_CAM_FIRST_PERSON => {
+            c.__yaw = tk_wrap(c.__yaw + turn.x)
+            c.__pitch = clamp(c.__pitch + turn.y, -1.2, 1.2)
+            if c.target != null {
+                pos = c.target.pos + vec3(0.0, c.eye_height - c.target.__lift, 0.0)
+                c.target.yaw = c.__yaw
+                if !c.target.hidden {
+                    c.target.hidden = true
+                    c.__hid = true
+                }
+            }
+            yaw = c.__yaw
+            pitch = c.__pitch
+        }
+        TK_CAM_FIXED => {
+            pos = c.eye
+            yaw = tk_yaw_to(pos, focus)
+            pitch = tk_pitch_to(pos, focus)
+        }
+        TK_CAM_RAIL => {
+            pos = __tk_rail_point(c.rail, c.rail_n, focus)
+            yaw = tk_yaw_to(pos, focus)
+            pitch = tk_pitch_to(pos, focus)
+        }
+        else => {}
+    }
+    if c.__blend < c.__blend_len {
+        c.__blend += 1
+        let k = tk_ease(fixed(c.__blend) / c.__blend_len)
+        pos = c.__from_pos + (pos - c.__from_pos) * k
+        yaw = tk_wrap(c.__from_yaw + tk_wrap(yaw - c.__from_yaw) * k)
+        pitch = c.__from_pitch + (pitch - c.__from_pitch) * k
+    }
+    c.pos = pos
+    c.yaw = yaw
+    c.pitch = pitch
+    if c.__shake_t < c.__shake_len { c.__shake_t += 1 }
+}
+
+// The point of the path nearest to `p` along the ground (xz).
+fn __tk_rail_point(pts: *vec3, n: s32, p: vec3) -> vec3 {
+    if pts == null || n <= 0 { return tk_cam.pos }
+    var best = pts[0]
+    var bd: fixed = 30000.0
+    for i in 0..(n - 1) {
+        let a = pts[i]
+        let b = pts[i + 1]
+        let ab = vec3(b.x - a.x, 0.0, b.z - a.z)
+        let ap = vec3(p.x - a.x, 0.0, p.z - a.z)
+        let l2 = dot(ab, ab)
+        var t: fixed = 0.0
+        if l2 > 0.0001 { t = clamp(dot(ap, ab) / l2, 0.0, 1.0) }
+        let q = a + (b - a) * t
+        let d = vec3(p.x - q.x, 0.0, p.z - q.z)
+        let dd = dot(d, d)
+        if dd < bd {
+            bd = dd
+            best = q
+        }
+    }
+    if n == 1 { best = pts[0] }
+    return best
+}
+
+// Points the view (tk_draw() calls it), with the shake added.
+fn __tk_cam_apply() {
+    let c = &tk_cam
+    var pos = c.pos
+    var yaw = c.yaw
+    var pitch = c.pitch
+    if c.__shake_t < c.__shake_len {
+        let k = c.__shake * (c.__shake_len - c.__shake_t) / c.__shake_len
+        c.__seed = c.__seed * 1664525 + 1013904223
+        let a = from_bits(((c.__seed >> 15) & 0x1FFFF) as s32) - 1.0     // -1..1
+        c.__seed = c.__seed * 1664525 + 1013904223
+        let b = from_bits(((c.__seed >> 15) & 0x1FFFF) as s32) - 1.0
+        pos = pos + vec3(a * k * 0.3, b * k * 0.3, 0.0)
+        yaw += a * k * 0.06
+        pitch += b * k * 0.06
+    }
+    camera_look(pos, yaw, pitch)
+}

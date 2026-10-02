@@ -1,0 +1,261 @@
+// Tsumiki animation: rigid-part models (PS1 style) with keyframed joints, looping, speed and
+// cross-fades between two clips.
+//
+// A rig is a tree of parts. Each part is a mesh that turns about its joint; the joint sits at
+// `joint` in its parent's space (the model's, for the root). A clip gives every part a
+// rotation (radians about x, then y, then z: pitch, yaw, roll, applied yaw first) and a
+// movement at each of its key frames; between keys they are interpolated in a straight line.
+// tools/tsumiki.py makes rigs and clips from a .toy file:
+//
+//     var hero: *TkAnim
+//     fn init() { hero = tk_new_anim(&ZENMAI) }
+//     fn update() {
+//         if moving { tk_play(hero, &ZENMAI_RUN, 8) } else { tk_play(hero, &ZENMAI_IDLE, 8) }
+//         tk_update()                                // steps every animation
+//     }
+//     fn draw() { tk_anim_draw(hero, tk_place(pos, yaw)) }
+//
+// tk_play() fades from what was playing over the given frames (both clips keep moving while
+// they fade). After tk_update() the sampled pose is in `pose`, where a cart can still change
+// a joint (a head that looks at something) before drawing.
+
+const TK_MAX_PARTS = 16
+const TK_MAX_ANIMS = 16
+
+struct TkPart {
+    parent: s32              // the parent part (always an earlier one), or -1 for the root
+    mesh: *Mesh              // its mesh, in its own space (around its joint)
+    joint: vec3              // where its joint is in its parent's space
+}
+
+struct TkRig {
+    parts: *TkPart
+    count: s32
+}
+
+struct TkJoint {
+    rot: vec3                // radians about x (+ swings a hanging limb forward, toward +Z,
+                             // and tips an upright part back), y (+ turns toward +X) and z
+                             // (+ swings a hanging limb toward +X)
+    move: vec3               // added to the joint's position
+}
+
+struct TkClip {
+    keys: *TkJoint           // nkeys x nparts joints, key by key
+    times: *s16              // the frame of each key: 0 first, `length` last
+    nkeys: s32
+    nparts: s32
+    length: s32              // frames
+    looping: bool
+}
+
+struct TkAnim {
+    rig: *TkRig
+    clip: *TkClip            // what is playing (null: the rest pose)
+    time: fixed              // frames into it
+    speed: fixed = 1.0       // frames a step: 2.0 plays twice as fast
+    done: bool               // a clip played once has reached its end
+    from: *TkClip            // what it is fading from (while fade < 1.0)
+    from_time: fixed
+    fade: fixed = 1.0        // how far the fade has come: 0 all `from` .. 1.0 all `clip`
+    fade_step: fixed
+    pose: [16]TkJoint        // the pose sampled by the last step
+    meshes: [16]*Mesh        // a mesh to draw instead of a part's own (null: its own)
+    hidden: u32              // bit n set: part n is not drawn
+    __last: fixed            // `time` before the last step
+    __used: bool
+}
+
+var __tk_anims: [16]TkAnim
+var __tk_nanims: s32
+
+// A new animation of a rig, playing nothing (the rest pose); null when all 16 are in use.
+fn tk_new_anim(rig: *TkRig) -> *TkAnim {
+    if __tk_nanims >= TK_MAX_ANIMS {
+        println("tsumiki: more than 16 animations")
+        return null
+    }
+    let a = &__tk_anims[__tk_nanims]
+    __tk_nanims += 1
+    *a = TkAnim { rig: rig, __used: true }
+    if rig.count > TK_MAX_PARTS { println("tsumiki: a rig has more than 16 parts") }
+    return a
+}
+
+// Plays `clip`, fading from what was playing over `fade` frames (0: at once). Playing the
+// clip that is already playing changes nothing (it does not start again; tk_restart does).
+fn tk_play(a: *TkAnim, clip: *TkClip, fade: s32) {
+    if a.clip == clip { return }
+    tk_restart(a, clip, fade)
+}
+
+// Plays `clip` from its start, even if it is playing already, fading over `fade` frames.
+fn tk_restart(a: *TkAnim, clip: *TkClip, fade: s32) {
+    if fade > 0 && a.clip != null {
+        a.from = a.clip
+        a.from_time = a.time
+        a.fade = 0.0
+        a.fade_step = 1.0 / fade
+    } else {
+        a.from = null
+        a.fade = 1.0
+    }
+    a.clip = clip
+    a.time = 0.0
+    a.__last = 0.0
+    a.done = false
+}
+
+// Draws `mesh` for part `part` instead of its own (null: its own again): a morph of the part
+// (a blinking face: tk_new_morph(&ZENMAI_HEAD_MORPH).mesh), a held toy, another hat.
+fn tk_anim_part_mesh(a: *TkAnim, part: s32, mesh: *Mesh) {
+    if part >= 0 && part < TK_MAX_PARTS { a.meshes[part] = mesh }
+}
+
+// A joint of the pose (after tk_update()), to change before drawing.
+fn tk_anim_joint(a: *TkAnim, part: s32) -> *TkJoint { return &a.pose[part] }
+
+// Did the last step pass frame `f` of the playing clip? (Footsteps, sounds, effects. A looping
+// clip passes each of its frames once a loop.)
+fn tk_anim_passed(a: *TkAnim, f: s32) -> bool {
+    let t = fixed(f)
+    if a.time >= a.__last { return t > a.__last && t <= a.time }
+    return t > a.__last || t <= a.time          // wrapped round the loop
+}
+
+// Moves a clip's time on by `speed`, looping or stopping at its end. True at the end of a
+// clip played once.
+fn __tk_advance(c: *TkClip, t: *fixed, speed: fixed) -> bool {
+    if c == null { return false }
+    let len = fixed(c.length)
+    var x = *t + speed
+    if c.looping {
+        if len > 0.0 {
+            while x >= len { x -= len }
+            while x < 0.0 { x += len }
+        }
+        *t = x
+        return false
+    }
+    if x >= len {
+        *t = len
+        return true
+    }
+    *t = max(x, 0.0)
+    return false
+}
+
+// Part p of clip c at time t into *out.
+fn __tk_sample(c: *TkClip, t: fixed, p: s32, out: *TkJoint) {
+    if c == null || p >= c.nparts || c.nkeys == 0 {
+        out.rot = vec3(0.0, 0.0, 0.0)
+        out.move = vec3(0.0, 0.0, 0.0)
+        return
+    }
+    var k = 0
+    while k + 2 < c.nkeys && fixed(c.times[k + 1]) <= t { k += 1 }
+    if c.nkeys == 1 {
+        *out = c.keys[p]
+        return
+    }
+    let t0 = fixed(c.times[k])
+    let t1 = fixed(c.times[k + 1])
+    var f: fixed = 0.0
+    if t1 > t0 { f = clamp((t - t0) / (t1 - t0), 0.0, 1.0) }
+    let a = &c.keys[k * c.nparts + p]
+    let b = &c.keys[(k + 1) * c.nparts + p]
+    out.rot = a.rot + (b.rot - a.rot) * f
+    out.move = a.move + (b.move - a.move) * f
+}
+
+// One frame: times move on, the fade goes on, and the pose is sampled.
+fn __tk_anim_step(a: *TkAnim) {
+    a.__last = a.time
+    if __tk_advance(a.clip, &a.time, a.speed) { a.done = true }
+    if a.from != null {
+        let _ = __tk_advance(a.from, &a.from_time, a.speed)
+        a.fade += a.fade_step
+        if a.fade >= 1.0 {
+            a.fade = 1.0
+            a.from = null
+        }
+    }
+    let n = min(a.rig.count, TK_MAX_PARTS)
+    var j: TkJoint
+    for p in 0..n {
+        let out = &a.pose[p]
+        __tk_sample(a.clip, a.time, p, out)
+        if a.from != null {
+            __tk_sample(a.from, a.from_time, p, &j)
+            out.rot = j.rot + (out.rot - j.rot) * a.fade
+            out.move = j.move + (out.move - j.move) * a.fade
+        }
+    }
+}
+
+// The matrix of a joint: turned by rot (yaw, then pitch, then roll) and placed at pos.
+fn tk_joint_matrix(pos: vec3, rot: vec3) -> mat4 {
+    var m: mat4
+    if rot.x == 0.0 && rot.y == 0.0 && rot.z == 0.0 {
+        m[0] = vec4(1.0, 0.0, 0.0, pos.x)
+        m[1] = vec4(0.0, 1.0, 0.0, pos.y)
+        m[2] = vec4(0.0, 0.0, 1.0, pos.z)
+    } else {
+        let sx = sin(rot.x)
+        let cx = cos(rot.x)
+        let sy = sin(rot.y)
+        let cy = cos(rot.y)
+        let sz = sin(rot.z)
+        let cz = cos(rot.z)
+        // Ry * Rx * Rz, with mat4_rotate_x/y/z's senses
+        m[0] = vec4(cy * cz - sy * sx * sz, -cy * sz - sy * sx * cz, sy * cx, pos.x)
+        m[1] = vec4(cx * sz, cx * cz, sx, pos.y)
+        m[2] = vec4(-sy * cz - cy * sx * sz, sy * sz - cy * sx * cz, cy * cx, pos.z)
+    }
+    m[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    return m
+}
+
+// Draws the animation's pose with the model matrix `model` (tk_place(), tk_squash(), ...).
+// About 700 cycles a part plus its mesh.
+fn tk_anim_draw(a: *TkAnim, model: mat4) {
+    var mats: [16]mat4
+    let rig = a.rig
+    let n = min(rig.count, TK_MAX_PARTS)
+    let root = __vp * model
+    for p in 0..n {
+        let part = &rig.parts[p]
+        let j = &a.pose[p]
+        let local = tk_joint_matrix(part.joint + j.move, j.rot)
+        if part.parent < 0 || part.parent >= p {
+            mats[p] = root * local
+        } else {
+            mats[p] = mats[part.parent] * local
+        }
+        if ((a.hidden >> p as u32) & 1) != 0 { continue }
+        var m = a.meshes[p]
+        if m == null { m = part.mesh }
+        if m != null { __draw_mesh(m, mats[p]) }
+    }
+}
+
+// The world position of part p's joint in the last pose, with the model matrix `model`
+// (where a hand is, to hold something or start particles there).
+fn tk_anim_point(a: *TkAnim, model: mat4, part: s32) -> vec3 {
+    var m = model
+    // walk from the part up to the root, then apply the chain root first
+    var chain: [16]s32
+    var n = 0
+    var p = part
+    while p >= 0 && n < TK_MAX_PARTS {
+        chain[n] = p
+        n += 1
+        p = a.rig.parts[p].parent
+    }
+    for i in 0..n {
+        let q = chain[n - 1 - i]
+        let j = &a.pose[q]
+        m = m * tk_joint_matrix(a.rig.parts[q].joint + j.move, j.rot)
+    }
+    return vec3(m[0].w, m[1].w, m[2].w)
+}
