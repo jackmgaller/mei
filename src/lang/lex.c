@@ -32,6 +32,23 @@ static int ends_statement(const Token *t) {
     }
 }
 
+/* Does the next line start with an operator that can only continue an expression (a binary
+   operator that is not also unary, `.`, `as`)? Then the line break does not end the statement.
+   `-`, `*` and `&` are also unary (negation, dereference, address), so a line starting with
+   them begins a new statement; `&&` continues. */
+static int continues_line(Lexer *L) {
+    const char *p = L->p;
+    size_t n = (size_t)(L->end - p);
+    char c = *p, d = n > 1 ? p[1] : 0;
+    switch (c) {
+    case '+': case '/': case '%': case '^': case '|': case '<': case '>': case '.': return 1;
+    case '&': return d == '&';
+    case '=': case '!': return d == '=';
+    case 'a': return n >= 2 && d == 's' && (n == 2 || !(isalnum((unsigned char)p[2]) || p[2] == '_'));
+    default: return 0;
+    }
+}
+
 static const char *ops3[] = {"<<=", ">>=", "..=", NULL};
 static const char *ops2[] = {"->", "=>", "..", "==", "!=", "<=", ">=", "&&", "||", "<<", ">>",
                              "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", NULL};
@@ -112,10 +129,11 @@ Token lex_next(Lexer *L) {
     for (;;) {
         /* skip whitespace and comments, noting newlines */
         int saw_nl = 0;
+        Loc nl_loc = {0};
         for (;;) {
             if (L->p >= L->end) break;
             char c = *L->p;
-            if (c == '\n') { saw_nl = 1; L->p++; L->line++; L->line_start = L->p; }
+            if (c == '\n') { L->p++; L->line++; L->line_start = L->p; if (!saw_nl) nl_loc = (Loc){L->file, L->line, 1}; saw_nl = 1; }
             else if (c == ' ' || c == '\t' || c == '\r') L->p++;
             else if (c == '/' && L->p + 1 < L->end && L->p[1] == '/') {
                 while (L->p < L->end && *L->p != '\n') L->p++;
@@ -125,15 +143,15 @@ Token lex_next(Lexer *L) {
                 for (;;) {
                     if (L->p + 1 >= L->end) error_at(loc, "unterminated /* comment");
                     if (*L->p == '*' && L->p[1] == '/') { L->p += 2; break; }
-                    if (*L->p == '\n') { saw_nl = 1; L->line++; L->line_start = L->p + 1; }
+                    if (*L->p == '\n') { L->line++; L->line_start = L->p + 1; if (!saw_nl) nl_loc = (Loc){L->file, L->line, 1}; saw_nl = 1; }
                     L->p++;
                 }
             } else break;
-            if (saw_nl && !in_parens(L) && ends_statement(&L->last)) {
-                Token t = {.k = TK_NL, .loc = here(L), .s = "newline"};
-                L->last = t;
-                return t;
-            }
+        }
+        if (saw_nl && !in_parens(L) && ends_statement(&L->last) && !(L->p < L->end && continues_line(L))) {
+            Token t = {.k = TK_NL, .loc = nl_loc, .s = "newline"};
+            L->last = t;
+            return t;
         }
         Loc loc = here(L);
         Token t = {.loc = loc};

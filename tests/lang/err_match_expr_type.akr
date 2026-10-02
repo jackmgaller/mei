@@ -1,0 +1,4 @@
+// error: type mismatch: the value of this match arm is *u8, expected s32
+fn f(n: s32) -> s32 {
+    return match n { 0 => 1, else => "x" }
+}

@@ -168,6 +168,7 @@ static int g_loop_n;
 static Expr *check(Ctx *c, Expr *e, Type *want);
 static Expr *coerce(Ctx *c, Expr *e, Type *to, const char *what);
 static void resolve_const(Sym *s);
+static void resolve_const_in(Sym *s, Ctx *in);
 static void resolve_embed(Sym *s);
 static Program *g_prog;
 
@@ -205,6 +206,12 @@ static Local *hidden_local(Ctx *c, Type *t, Loc loc) {
     return l;
 }
 
+/* The assembly label of a global symbol: prefix + name, plus "$u" for a cart symbol that reuses a
+   standard library name. */
+static const char *sym_label(const char *prefix, Sym *s) {
+    return ar_printf("%s%s%s", prefix, s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
+}
+
 static Sym *stdlib_fn(Ctx *c, const char *name, Loc loc) {
     Sym *s = sym_lookup_layer(name, 0);
     if (!s || s->k != SY_FUNC) error_at(loc, "this operation needs the standard library function '%s'", name);
@@ -218,25 +225,27 @@ static int64_t const_int(Ctx *c, Expr *e, const char *what);
 
 static void resolve_enum(Type *t);
 
-static Type *resolve_type(TypeExpr *te) {
+/* Resolves a written type. `in` is the function whose body it appears in (array lengths may
+   use its local constants), or NULL. */
+static Type *resolve_type_in(TypeExpr *te, Ctx *in) {
     if (te->resolved) return te->resolved;
     Type *t;
     if (te->k == 3) {
         Type *ps[32];
         if (te->nparams > 32) error_at(te->loc, "too many parameters in a function type");
         for (int i = 0; i < te->nparams; i++) {
-            ps[i] = resolve_type(te->params[i]);
+            ps[i] = resolve_type_in(te->params[i], in);
             if (ps[i]->k == TY_VOID) error_at(te->params[i]->loc, "parameters cannot be void");
         }
-        Type *ret = te->elem ? resolve_type(te->elem) : ty_void;
+        Type *ret = te->elem ? resolve_type_in(te->elem, in) : ty_void;
         if (ret->k == TY_ARRAY) error_at(te->elem->loc, "functions cannot return arrays; wrap the array in a struct");
         t = ty_func(ps, te->nparams, ret);
-    } else if (te->k == 1) t = ty_ptr(resolve_type(te->elem));
+    } else if (te->k == 1) t = ty_ptr(resolve_type_in(te->elem, in));
     else if (te->k == 2) {
         Ctx c = {.P = g_prog};
-        int64_t n = const_int(&c, te->len, "array length");
+        int64_t n = const_int(in ? in : &c, te->len, "array length");
         if (n <= 0) error_at(te->len->loc, "array length must be positive (got %lld)", (long long)n);
-        Type *el = resolve_type(te->elem);
+        Type *el = resolve_type_in(te->elem, in);
         if (el->k == TY_STRUCT) layout_struct(el, te->loc);
         if (el->k == TY_VOID) error_at(te->loc, "arrays of void are not allowed");
         if (n * el->size > 0x200000) error_at(te->loc, "array is larger than 2 MB");
@@ -250,6 +259,8 @@ static Type *resolve_type(TypeExpr *te) {
     te->resolved = t;
     return t;
 }
+
+static Type *resolve_type(TypeExpr *te) { return resolve_type_in(te, NULL); }
 
 static int align_up(int v, int a) { return (v + a - 1) / a * a; }
 
@@ -332,13 +343,28 @@ static Local *lookup_local(Ctx *c, const char *name) {
     return NULL;
 }
 
-static Local *new_local(Ctx *c, const char *name, Type *t, Loc loc) {
+static void check_new_name(Ctx *c, const char *name, Loc loc, const char *what) {
     if (c->scope)
         for (int i = 0; i < c->scope->n; i++)
             if (!strcmp(c->scope->locals[i]->name, name))
                 error_at(loc, "'%s' is already declared in this block (line %d)", name, c->scope->locals[i]->loc.line);
     Sym *g = sym_lookup(name, loc.file);
-    if (g && g->k == SY_TYPE) error_at(loc, "'%s' is a type name and cannot be used for a variable", name);
+    if (g && g->k == SY_TYPE) error_at(loc, "'%s' is a type name and cannot be used for a %s", name, what);
+}
+
+/* A local `const`: a name in the current block for a constant (the caller sets csym). */
+static Local *declare_local_const(Ctx *c, const char *name, Loc loc) {
+    check_new_name(c, name, loc, "constant");
+    Local *l = ar_alloc(sizeof *l);
+    l->name = name;
+    l->loc = loc;
+    l->immutable = 1;
+    PUSH(c->scope->locals, c->scope->n, c->scope->cap, l);
+    return l;
+}
+
+static Local *new_local(Ctx *c, const char *name, Type *t, Loc loc) {
+    check_new_name(c, name, loc, "variable");
     Local *l = ar_alloc(sizeof *l);
     l->name = name;
     l->ty = t;
@@ -620,9 +646,21 @@ static int refs_local_storage(Expr *e) {
 
 /* ------------------------------------------------------------ expressions */
 
+static const char *g_in_local_const;   /* the local constant whose value is being checked */
+
 static Expr *check_name(Ctx *c, Expr *e) {
+    Sym *s = NULL;
     if (c->fn) {
         Local *l = lookup_local(c, e->name);
+        if (l && l->csym) { s = l->csym; l = NULL; }
+        else if (!l)
+            /* a local constant of an enclosing function needs no capture */
+            for (Ctx *o = c->outer; o && o->fn; o = o->outer) {
+                Local *ol = lookup_local(o, e->name);
+                if (ol) { if (ol->csym) s = ol->csym; break; }
+            }
+        if ((l || (!s && c->outer && is_local_name(c, e->name))) && g_in_local_const)
+            error_at(e->loc, "a constant cannot use the variable '%s' (constants are fixed when the cart is built)", e->name);
         if (l) {
             Sym *s = ar_alloc(sizeof *s);
             s->k = SY_LOCAL; s->name = l->name; s->local = l; s->ty = l->ty;
@@ -632,7 +670,7 @@ static Expr *check_name(Ctx *c, Expr *e) {
             l->weight += (int64_t)1 << (2 * d);
             return e;
         }
-        if (c->outer && (l = capture(c, e->name, e->loc))) {
+        if (!s && c->outer && (l = capture(c, e->name, e->loc))) {
             Sym *s = ar_alloc(sizeof *s);
             s->k = SY_LOCAL; s->name = l->name; s->local = l; s->ty = l->ty;
             e->sym = s;
@@ -642,7 +680,7 @@ static Expr *check_name(Ctx *c, Expr *e) {
             return e;
         }
     }
-    Sym *s = sym_lookup(e->name, e->loc.file);
+    if (!s) s = sym_lookup(e->name, e->loc.file);
     if (!s) error_at(e->loc, "unknown name '%s'", e->name);
     e->sym = s;
     switch (s->k) {
@@ -953,7 +991,7 @@ static Expr *check_index(Ctx *c, Expr *e) {
     e->a = check(c, e->a, NULL);
     e->b = check(c, e->b, NULL);
     Type *t = e->a->ty;
-    if (!is_intish(e->b->ty)) error_at(e->b->loc, "index must be an integer, found %s", ty_str(e->b->ty));
+    if (!is_intish(e->b->ty) && e->b->ty->k != TY_ENUM) error_at(e->b->loc, "index must be an integer or an enum, found %s", ty_str(e->b->ty));
     if (e->b->ty->k == TY_UINT) e->b = coerce(c, e->b, ty_s32, "index");
     if (t->k == TY_ARRAY) {
         if (e->b->isconst && (e->b->cval < 0 || e->b->cval >= t->n))
@@ -1157,6 +1195,15 @@ static Expr *check_call(Ctx *c, Expr *e) {
         if (e->nargs != want) error_at(e->loc, "%s() takes %d argument%s, got %d", name, want, want == 1 ? "" : "s", e->nargs);
         if (s->bi == BI_LEN) {
             Expr *x = e->args[0];
+            if (x->k == E_NAME && !(c->fn && is_local_name(c, x->name))) {
+                Sym *ts = sym_lookup(x->name, x->loc.file);
+                if (ts && ts->k == SY_TYPE && ts->ty->k == TY_ENUM) {
+                    /* len(Dir): the number of variants */
+                    resolve_enum(ts->ty);
+                    e->ty = ty_uint; e->isconst = 1; e->cval = ts->ty->nvariants;
+                    return e;
+                }
+            }
             if (x->k == E_NAME) {
                 Sym *xs = sym_lookup(x->name, x->loc.file);
                 if (xs && xs->k == SY_EMBED && !(c->fn && lookup_local(c, x->name))) {
@@ -1168,7 +1215,7 @@ static Expr *check_call(Ctx *c, Expr *e) {
                 }
             }
             x = check(c, x, NULL);
-            if (x->ty->k != TY_ARRAY) error_at(x->loc, "len() needs an array or an embedded asset, found %s", ty_str(x->ty));
+            if (x->ty->k != TY_ARRAY) error_at(x->loc, "len() needs an array, an embedded asset or an enum type, found %s", ty_str(x->ty));
             e->ty = ty_uint; e->isconst = 1; e->cval = x->ty->n;
             return e;
         }
@@ -1352,12 +1399,12 @@ static Expr *check_lambda(Ctx *c, Expr *e, Type *want) {
                      f->nparams == 1 ? "" : "s", wt->elem ? ty_str(wt) : ar_printf("a function of %d parameter%s", wt->nparams, wt->nparams == 1 ? "" : "s"));
         for (int i = 0; i < f->nparams; i++) {
             Param *pr = &f->params[i];
-            if (pr->texpr) pr->ty = complete(resolve_type(pr->texpr), pr->loc);
+            if (pr->texpr) pr->ty = complete(resolve_type_in(pr->texpr, c), pr->loc);
             else if (wt) pr->ty = wt->params[i];
             else error_at(pr->loc, "parameter '%s' needs a type (write '%s: T'; types can be left out only where a function type is expected)", pr->name, pr->name);
             if (pr->ty->k == TY_VOID) error_at(pr->loc, "parameters cannot be void");
         }
-        if (f->ret_texpr) f->ret = complete(resolve_type(f->ret_texpr), f->ret_texpr->loc);
+        if (f->ret_texpr) f->ret = complete(resolve_type_in(f->ret_texpr, c), f->ret_texpr->loc);
         else if (wt && wt->elem && !f->lambda_body) f->ret = wt->elem;
         else if (!f->lambda_body) f->ret = ty_void;
         else f->ret = wt && wt->elem ? wt->elem : NULL;   /* NULL: inferred from the expression */
@@ -1520,6 +1567,50 @@ static Expr *check_intrinsic(Ctx *c, Expr *e, Builtin bi, const char *name) {
     return e;
 }
 
+static Expr *check_match_head(Ctx *c, Expr *x, MatchArm *arms, int narms, Loc loc);
+
+/* match x { A => value ... }: every arm yields a value of one type (the expected type when
+   there is one, else the first arm's type; untyped constants alone default to s32 or fixed). */
+static Expr *check_match_expr(Ctx *c, Expr *e, Type *want) {
+    e->a = check_match_head(c, e->a, e->arms, e->narms, e->loc);
+    Type *t = want && want->k != TY_VOID && want->k != TY_UINT && want->k != TY_UFIXED && want->k != TY_NULL ? want : NULL;
+    for (int i = 0; i < e->narms; i++) e->arms[i].value = check(c, e->arms[i].value, t);
+    if (!t) {
+        int fx = 0, nul = 0;
+        for (int i = 0; i < e->narms && !t; i++) {
+            Type *at = e->arms[i].value->ty;
+            if (at->k == TY_UFIXED) fx = 1;
+            else if (at->k == TY_NULL) nul = 1;
+            else if (at->k != TY_UINT) t = at;
+        }
+        if (!t && nul) error_at(e->loc, "cannot infer the type of this match from null; give the variable a type");
+        if (!t) t = fx ? ty_fixed : ty_s32;
+    }
+    if (t->k == TY_VOID) error_at(e->arms[0].value->loc, "the arms of a match expression must have values");
+    for (int i = 0; i < e->narms; i++) {
+        Expr *v = e->arms[i].value;
+        if (ty_is_aggr(t)) {
+            if (v->ty != t) error_at(v->loc, "type mismatch: this arm is %s, but the match yields %s", ty_str(v->ty), ty_str(t));
+        } else v = coerce(c, v, t, "the value of this match arm");
+        e->arms[i].value = v;
+    }
+    e->ty = t;
+    if (e->a->isconst && !ty_is_aggr(t)) {
+        /* a constant value picks its arm at compile time */
+        MatchArm *pick = NULL;
+        for (int i = 0; i < e->narms && !pick; i++) {
+            if (e->arms[i].is_else) pick = &e->arms[i];
+            for (int k = 0; k < e->arms[i].npats; k++) if (e->arms[i].pats[k]->cval == e->a->cval) pick = &e->arms[i];
+        }
+        if (pick && pick->value->isconst) {
+            e->isconst = 1;
+            e->cval = pick->value->cval;
+            memcpy(e->cvec, pick->value->cvec, sizeof e->cvec);
+        }
+    }
+    return e;
+}
+
 static Sym *intern_string(Ctx *c, const char *str, size_t len) {
     Program *P = c->P;
     for (int i = 0; i < P->ndatas; i++) {
@@ -1559,16 +1650,17 @@ static Expr *check(Ctx *c, Expr *e, Type *want) {
     case E_CALL: return check_call(c, e);
     case E_INDEX: return check_index(c, e);
     case E_FIELD: return check_field(c, e);
-    case E_CAST: return check_cast(c, e, e->a, complete(resolve_type(e->texpr), e->loc));
+    case E_CAST: return check_cast(c, e, e->a, complete(resolve_type_in(e->texpr, c->fn ? c : NULL), e->loc));
     case E_ARRAY: return check_array_lit(c, e, want);
     case E_STRUCT: return check_struct_lit(c, e);
     case E_SIZEOF: {
-        Type *t = complete(resolve_type(e->texpr), e->loc);
+        Type *t = complete(resolve_type_in(e->texpr, c->fn ? c : NULL), e->loc);
         e->ty = ty_uint; e->isconst = 1; e->cval = t->size;
         return e;
     }
     case E_CONV: return e;
     case E_FUNC: return check_lambda(c, e, want);
+    case E_MATCH: return check_match_expr(c, e, want);
     }
     return e;
 }
@@ -1617,23 +1709,33 @@ static void collect_data_funcs(Sym *s, Expr *e) {
     if (e->k == E_ARRAY || e->k == E_STRUCT) for (int i = 0; i < e->nargs; i++) collect_data_funcs(s, e->args[i]);
 }
 
-static void resolve_const(Sym *s) {
+static int g_lconst_n;
+
+static void resolve_const(Sym *s) { resolve_const_in(s, NULL); }
+
+/* A constant's value. `in`: the function a local constant is declared in (NULL: a global one). */
+static void resolve_const_in(Sym *s, Ctx *in) {
     if (s->state == 2) return;
     if (s->state == 1) error_at(s->loc, "constant '%s' depends on itself", s->name);
     s->state = 1;
-    Ctx c = {.P = g_prog};
-    Type *t = s->texpr ? complete(resolve_type(s->texpr), s->loc) : NULL;
+    Ctx c0 = {.P = g_prog};
+    Ctx *c = in ? in : &c0;
+    const char *label = in ? ar_printf("K_%s$L%d", s->name, ++g_lconst_n) : sym_label("K_", s);
+    Type *t = s->texpr ? complete(resolve_type_in(s->texpr, in), s->loc) : NULL;
     if (s->init->k == E_STR && !t) {
         /* const NAME = "text": a NUL-terminated byte array in ROM */
         s->k = SY_DATA;
         s->is_str = 1; s->str = s->init->str; s->slen = s->init->slen;
         s->ty = ty_array(ty_u8, (int64_t)s->slen + 1);
-        s->label = ar_printf("K_%s%s", s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
+        s->label = label;
         PUSH(g_prog->datas, g_prog->ndatas, g_prog->capdatas, s);
         s->state = 2;
         return;
     }
-    Expr *e = check(&c, s->init, t);
+    const char *saved_in = g_in_local_const;
+    g_in_local_const = in ? s->name : NULL;
+    Expr *e = check(c, s->init, t);
+    g_in_local_const = saved_in;
     if (!t) t = e->ty;   /* untyped constants stay untyped */
     if (ty_is_aggr(t)) {
         if (e->ty != t) error_at(e->loc, "type mismatch: '%s' is %s, initialiser is %s", s->name, ty_str(t), ty_str(e->ty));
@@ -1644,13 +1746,13 @@ static void resolve_const(Sym *s) {
         s->k = SY_DATA;
         s->ty = t;
         s->init = e;
-        s->label = ar_printf("K_%s%s", s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
+        s->label = label;
         PUSH(g_prog->datas, g_prog->ndatas, g_prog->capdatas, s);
         s->state = 2;
         return;
     }
     if (t->k == TY_VOID || t->k == TY_NULL) error_at(e->loc, "cannot infer a type for constant '%s'", s->name);
-    e = coerce(&c, e, t, ar_printf("the value of '%s'", s->name));
+    e = coerce(c, e, t, ar_printf("the value of '%s'", s->name));
     if (!e->isconst && const_addr_label(e))
         error_at(e->loc, "a single constant cannot hold an address; use the name directly, or put the addresses "
                  "in a const array or struct (const TABLE: [2]*Mesh = [A, B])");
@@ -1720,14 +1822,24 @@ static int stmt_returns(Stmt *s) {
 static void check_block(Ctx *c, Stmt *b);
 
 
-static void check_asm_refs(Ctx *c, const char *text, Loc loc) {
+/* Checks the {name} references of asm text. Local constants are substituted here (their
+   value, or the label of const data); returns the text to assemble. */
+static const char *check_asm_refs(Ctx *c, const char *text, Loc loc) {
+    Buf out = {0};
+    const char *done = text;
     for (const char *p = text; *p; p++) {
         if (*p != '{') continue;
         const char *q = strchr(p, '}');
         if (!q) break;
         char *name = ar_strndup(p + 1, (size_t)(q - p - 1));
         Local *l = c->fn ? lookup_local(c, name) : NULL;
-        if (l) {
+        if (l && l->csym) {
+            Sym *k = l->csym;
+            buf_putn(&out, done, (size_t)(p - done));
+            if (k->k == SY_CONST) buf_printf(&out, "%lld", (long long)k->cval);
+            else { note_ref(c, k); buf_puts(&out, k->label); }
+            done = q + 1;
+        } else if (l) {
             if (!ty_is_scalar(l->ty) && !ty_is_vec(l->ty))
                 error_at(loc, "asm can only name scalar or vector locals ('%s' is %s); use a pointer", name, ty_str(l->ty));
             l->in_asm = 1;
@@ -1742,6 +1854,69 @@ static void check_asm_refs(Ctx *c, const char *text, Loc loc) {
         }
         p = q;
     }
+    if (done == text) { buf_free(&out); return text; }
+    buf_puts(&out, done);
+    char *r = ar_strdup(out.p);
+    buf_free(&out);
+    return r;
+}
+
+/* A match's value and patterns: patterns are constants of the value's type (a bare variant
+   name in a match on an enum), each value at most once; a match on an enum handles every
+   variant or has an else arm, a match on an integer has an else arm. Returns the checked value. */
+static Expr *check_match_head(Ctx *c, Expr *x, MatchArm *arms, int narms, Loc loc) {
+    x = check(c, x, NULL);
+    if (x->ty->k == TY_UINT) x = coerce(c, x, ty_s32, "the matched value");
+    Type *t = x->ty;
+    if (t->k != TY_ENUM && !ty_is_int(t))
+        error_at(x->loc, "match needs an enum or an integer, found %s", ty_str(t));
+    int64_t *seen = ar_alloc(sizeof(int64_t) * 4096);
+    Loc *seenloc = ar_alloc(sizeof(Loc) * 4096);
+    int nseen = 0, has_else = 0;
+    for (int i = 0; i < narms; i++) {
+        MatchArm *arm = &arms[i];
+        if (arm->is_else) {
+            if (has_else) error_at(arm->loc, "match has two else arms");
+            if (i != narms - 1) error_at(arm->loc, "the else arm must come last");
+            has_else = 1;
+        }
+        for (int k = 0; k < arm->npats; k++) {
+            Expr *pe = arm->pats[k];
+            if (t->k == TY_ENUM && pe->k == E_NAME && !(c->fn && lookup_local(c, pe->name)) && enum_variant(t, pe->name) >= 0) {
+                /* a bare variant name: State.X can be written X in a match on a State */
+                pe->ty = t;
+                pe->isconst = 1;
+                pe->cval = t->vvals[enum_variant(t, pe->name)];
+            } else {
+                pe = check(c, pe, t);
+                if (pe->ty != t) pe = coerce(c, pe, t, "the pattern");
+                if (!pe->isconst) error_at(pe->loc, "match patterns must be constants");
+            }
+            arm->pats[k] = pe;
+            for (int j = 0; j < nseen; j++)
+                if (seen[j] == pe->cval) error_at(pe->loc, "this value is already matched at line %d", seenloc[j].line);
+            if (nseen == 4096) error_at(pe->loc, "too many match patterns");
+            seen[nseen] = pe->cval;
+            seenloc[nseen++] = pe->loc;
+        }
+    }
+    if (t->k == TY_ENUM && !has_else) {
+        Buf missing = {0};
+        int nm = 0;
+        for (int v = 0; v < t->nvariants; v++) {
+            int found = 0;
+            for (int j = 0; j < nseen; j++) if (seen[j] == t->vvals[v]) found = 1;
+            if (!found) { buf_printf(&missing, "%s%s.%s", nm ? ", " : "", t->name, t->vnames[v]); nm++; }
+        }
+        if (nm) {
+            char *m = ar_strdup(missing.p);
+            buf_free(&missing);
+            error_at(loc, "match on %s does not handle %s (add %s or an else arm)", t->name, m, nm == 1 ? "it" : "them");
+        }
+    }
+    if (t->k != TY_ENUM && !has_else)
+        error_at(loc, "match on %s needs an else arm (integers cannot be matched exhaustively)", ty_str(t));
+    return x;
 }
 
 static void check_stmt(Ctx *c, Stmt *s) {
@@ -1754,7 +1929,7 @@ static void check_stmt(Ctx *c, Stmt *s) {
         break;
     }
     case S_VAR: {
-        Type *t = s->texpr ? complete(resolve_type(s->texpr), s->loc) : NULL;
+        Type *t = s->texpr ? complete(resolve_type_in(s->texpr, c), s->loc) : NULL;
         Expr *init = s->e ? check(c, s->e, t) : NULL;
         if (!t) {
             t = default_type(init);
@@ -1825,12 +2000,46 @@ static void check_stmt(Ctx *c, Stmt *s) {
         break;
     }
     case S_FOR: {
-        Expr *lo = check(c, s->e, NULL), *hi = check(c, s->e2, NULL);
-        if (!is_intish(lo->ty) || !is_intish(hi->ty)) error_at(s->loc, "for-loop bounds must be integers (found %s and %s)", ty_str(lo->ty), ty_str(hi->ty));
-        Type *t = arith_type(s->e, lo->ty, hi->ty, "..");
-        if (t == ty_uint) t = ty_s32;
-        s->e = coerce(c, lo, t, "the loop start");
-        s->e2 = coerce(c, hi, t, "the loop end");
+        Type *t;
+        if (!s->e2) {
+            /* for d in Dir: every variant, in order of value (they must be consecutive) */
+            Expr *n = s->e;
+            Sym *ts = c->fn && lookup_local(c, n->name) ? NULL : sym_lookup(n->name, n->loc.file);
+            if (!ts || ts->k != SY_TYPE || ts->ty->k != TY_ENUM)
+                error_at(n->loc, "expected a range lo..hi or an enum type after 'in', found '%s'", n->name);
+            t = ts->ty;
+            resolve_enum(t);
+            int64_t lo = t->vvals[0], hi = t->vvals[0];
+            for (int i = 1; i < t->nvariants; i++) { if (t->vvals[i] < lo) lo = t->vvals[i]; if (t->vvals[i] > hi) hi = t->vvals[i]; }
+            if (hi - lo + 1 != t->nvariants)
+                error_at(n->loc, "'for %s in %s' needs variants with consecutive values, but %s's values run from %lld to %lld "
+                         "with gaps; loop over a range of values instead", s->name, t->name, t->name, (long long)lo, (long long)hi);
+            Type *b = ty_base(t);
+            if (b->size < 4 && norm(b, hi + 1) != hi + 1)
+                error_at(n->loc, "'for %s in %s': the last value of %s (%lld) is the largest %s, so the loop cannot count past it",
+                         s->name, t->name, t->name, (long long)hi, b->name);
+            Expr *elo = ar_alloc(sizeof *elo), *ehi = ar_alloc(sizeof *ehi);
+            *elo = *n; elo->k = E_INT; elo->ty = t; elo->isconst = 1; elo->cval = lo;
+            *ehi = *n; ehi->k = E_INT; ehi->ty = t; ehi->isconst = 1; ehi->cval = hi + 1;
+            s->e = elo;
+            s->e2 = ehi;
+        } else {
+            Expr *lo = check(c, s->e, NULL), *hi = check(c, s->e2, NULL);
+            if (lo->ty->k == TY_ENUM || hi->ty->k == TY_ENUM) {
+                /* for d in Dir.A..Dir.D: d is a Dir, counting through the values A, A+1, ... before D */
+                if (lo->ty != hi->ty)
+                    error_at(s->loc, "for-loop bounds must have one type (found %s and %s)", ty_str(lo->ty), ty_str(hi->ty));
+                t = lo->ty;
+            } else {
+                if (!is_intish(lo->ty) || !is_intish(hi->ty)) error_at(s->loc, "for-loop bounds must be integers or values of one enum (found %s and %s)", ty_str(lo->ty), ty_str(hi->ty));
+                t = arith_type(s->e, lo->ty, hi->ty, "..");
+                if (t == ty_uint) t = ty_s32;
+                lo = coerce(c, lo, t, "the loop start");
+                hi = coerce(c, hi, t, "the loop end");
+            }
+            s->e = lo;
+            s->e2 = hi;
+        }
         Scope sc = {.up = c->scope};
         c->scope = &sc;
         c->loop_depth++;
@@ -1866,69 +2075,31 @@ static void check_stmt(Ctx *c, Stmt *s) {
         s->e = v;
         break;
     }
-    case S_MATCH: {
-        Expr *x = check(c, s->e, NULL);
-        if (x->ty->k == TY_UINT) x = coerce(c, x, ty_s32, "the matched value");
-        Type *t = x->ty;
-        if (t->k != TY_ENUM && !ty_is_int(t))
-            error_at(x->loc, "match needs an enum or an integer, found %s", ty_str(t));
-        s->e = x;
-        int64_t *seen = ar_alloc(sizeof(int64_t) * 4096);
-        Loc *seenloc = ar_alloc(sizeof(Loc) * 4096);
-        int nseen = 0, has_else = 0;
+    case S_MATCH:
+        s->e = check_match_head(c, s->e, s->arms, s->narms, s->loc);
         for (int i = 0; i < s->narms; i++) {
-            MatchArm *arm = &s->arms[i];
-            if (arm->is_else) {
-                if (has_else) error_at(arm->loc, "match has two else arms");
-                if (i != s->narms - 1) error_at(arm->loc, "the else arm must come last");
-                has_else = 1;
-            }
-            for (int k = 0; k < arm->npats; k++) {
-                Expr *pe = arm->pats[k];
-                if (t->k == TY_ENUM && pe->k == E_NAME && !(c->fn && lookup_local(c, pe->name)) && enum_variant(t, pe->name) >= 0) {
-                    /* a bare variant name: State.X can be written X in a match on a State */
-                    pe->ty = t;
-                    pe->isconst = 1;
-                    pe->cval = t->vvals[enum_variant(t, pe->name)];
-                } else {
-                    pe = check(c, pe, t);
-                    if (pe->ty != t) pe = coerce(c, pe, t, "the pattern");
-                    if (!pe->isconst) error_at(pe->loc, "match patterns must be constants");
-                }
-                arm->pats[k] = pe;
-                for (int j = 0; j < nseen; j++)
-                    if (seen[j] == pe->cval) error_at(pe->loc, "this value is already matched at line %d", seenloc[j].line);
-                if (nseen == 4096) error_at(pe->loc, "too many match patterns");
-                seen[nseen] = pe->cval;
-                seenloc[nseen++] = pe->loc;
-            }
             Scope sc = {.up = c->scope};
             c->scope = &sc;
-            check_stmt(c, arm->body);
+            check_stmt(c, s->arms[i].body);
             c->scope = sc.up;
         }
-        if (t->k == TY_ENUM && !has_else) {
-            Buf missing = {0};
-            int nm = 0;
-            for (int v = 0; v < t->nvariants; v++) {
-                int found = 0;
-                for (int j = 0; j < nseen; j++) if (seen[j] == t->vvals[v]) found = 1;
-                if (!found) { buf_printf(&missing, "%s%s.%s", nm ? ", " : "", t->name, t->vnames[v]); nm++; }
-            }
-            if (nm) {
-                char *m = ar_strdup(missing.p);
-                buf_free(&missing);
-                error_at(s->loc, "match on %s does not handle %s (add %s or an else arm)", t->name, m, nm == 1 ? "it" : "them");
-            }
-        }
-        if (t->k != TY_ENUM && !has_else)
-            error_at(s->loc, "match on %s needs an else arm (integers cannot be matched exhaustively)", ty_str(t));
         s->op = 1;   /* exhaustive */
+        break;
+    case S_CONST: {
+        Sym *k = ar_alloc(sizeof *k);
+        k->k = SY_CONST;
+        k->name = s->name;
+        k->loc = s->loc;
+        k->texpr = s->texpr;
+        k->init = s->e;
+        resolve_const_in(k, c);
+        Local *l = declare_local_const(c, s->name, s->loc);
+        l->csym = k;
         break;
     }
     case S_ASM:
         c->fn->has_asm = 1;
-        check_asm_refs(c, s->asm_text, s->asm_loc);
+        s->asm_text = check_asm_refs(c, s->asm_text, s->asm_loc);
         break;
     }
 }
@@ -1950,7 +2121,7 @@ static void check_signature(Func *f) {
         if (f->is_asm && ty_is_aggr(p->ty)) error_at(p->loc, "asm functions take scalars, vectors and pointers only");
     }
     if (f->is_asm && ty_is_aggr(f->ret)) error_at(f->ret_texpr->loc, "asm functions cannot return %s", ty_str(f->ret));
-    f->label = ar_printf("F_%s%s", f->name, f->sym->user && sym_lookup_layer(f->name, 0) ? "$u" : "");
+    f->label = sym_label("F_", f->sym);
     const char *n = f->name;
     if (!strcmp(n, "init") || !strcmp(n, "update") || !strcmp(n, "draw")) {
         if (f->nparams || f->ret->k != TY_VOID) error_at(f->loc, "%s() must take no arguments and return nothing", n);
@@ -2031,7 +2202,7 @@ static void resolve_embed(Sym *s) {
     Type *t = s->texpr ? complete(resolve_type(s->texpr), s->loc) : ty_u8;
     if (t->size == 0) error_at(s->loc, "cannot embed data as a zero-sized type");
     s->ty = ty_ptr(t);
-    s->label = ar_printf("E_%s%s", s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
+    s->label = sym_label("E_", s);
     Ctx c = {.P = g_prog};
     int64_t off = s->off_e ? const_int(&c, s->off_e, "embed offset") : 0;
     int64_t len = s->len_e ? const_int(&c, s->len_e, "embed length") : (int64_t)s->datalen - off;
@@ -2064,7 +2235,7 @@ void check_program(Program *P) {
         Sym *s = P->globals[i];
         if (s->texpr) s->ty = complete(resolve_type(s->texpr), s->loc);
         if (s->ty && s->ty->k == TY_VOID) error_at(s->loc, "variables cannot be void");
-        s->label = ar_printf("G_%s%s", s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
+        s->label = sym_label("G_", s);
     }
     /* global initialisers become the body of a synthesized function, in declaration order */
     Func *init = ar_alloc(sizeof *init);

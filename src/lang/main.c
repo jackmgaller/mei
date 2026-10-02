@@ -82,11 +82,15 @@ int main(int argc, char **argv) {
     if (!env || !*env) { dir = exe_stdlib_dir(argv[0]); opt.stdlib_dir = dir; }
     char *text = NULL;
     if (asm_out) opt.asm_text = &text;
+    char *warnings = NULL;
+    opt.warnings = &warnings;
     MeiAsmResult res;
     char err[2048];
     int rc = meic_compile(in, &opt, &res, err, sizeof err);
     if (asm_out && text) write_file(asm_out, text, strlen(text));
     free(text);
+    if (warnings) fprintf(stderr, "%s\n", warnings);
+    free(warnings);
     if (rc != 0) {
         fprintf(stderr, "%s\n", err);
         return 1;

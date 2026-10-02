@@ -147,6 +147,34 @@ _Noreturn void error_at(Loc loc, const char *fmt, ...) {
     error_finish(&b);
 }
 
+/* Warnings: collected during compilation, handed to the caller on success. */
+static Buf g_warn;
+static int g_nwarn;
+
+void warn_at(Loc loc, const char *fmt, ...) {
+    if (g_nwarn >= 50) return;
+    g_nwarn++;
+    if (g_warn.len) buf_putc(&g_warn, '\n');
+    if (loc.file) buf_printf(&g_warn, "%s:%d:%d: warning: ", loc.file, loc.line, loc.col);
+    else buf_puts(&g_warn, "warning: ");
+    va_list ap;
+    va_start(ap, fmt);
+    buf_vprintf(&g_warn, fmt, ap);
+    va_end(ap);
+    if (loc.file) quote_line(&g_warn, loc);
+}
+
+void warn_reset(void) { buf_free(&g_warn); g_warn = (Buf){0}; g_nwarn = 0; }
+
+char *warn_take(void) {
+    if (!g_warn.len) { warn_reset(); return NULL; }
+    char *r = malloc(g_warn.len + 1);
+    memcpy(r, g_warn.p, g_warn.len);
+    r[g_warn.len] = 0;
+    warn_reset();
+    return r;
+}
+
 _Noreturn void error_plain(const char *fmt, ...) {
     Buf b = {0};
     va_list ap;

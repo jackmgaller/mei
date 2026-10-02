@@ -1,0 +1,5 @@
+// A never-called function named like an entry point is reported (and the cart still builds).
+// warning: Update() is never called; the runtime calls update() every frame
+fn init() { println("init") }   // expect: init
+fn Update() { println("never") }
+fn drw() { println("never") }

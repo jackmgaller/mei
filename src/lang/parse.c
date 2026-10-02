@@ -49,7 +49,9 @@ static void skip_nl(Parser *p) { while (p->tok.k == TK_NL || is_op(p, ";")) next
 static void skip_nl_only(Parser *p) { while (p->tok.k == TK_NL) next(p); }
 
 static const char *expect_ident(Parser *p, const char *what) {
-    if (p->tok.k != TK_IDENT || is_keyword(p->tok.s))
+    if (p->tok.k == TK_IDENT && is_keyword(p->tok.s))
+        error_at(p->tok.loc, "'%s' is a keyword and cannot be used as %s", p->tok.s, what);
+    if (p->tok.k != TK_IDENT)
         error_at(p->tok.loc, "expected %s, found %s", what, tok_desc(&p->tok));
     const char *s = p->tok.s;
     next(p);
@@ -115,6 +117,7 @@ static Expr *new_expr(ExprKind k, Loc loc) {
 }
 
 static Expr *parse_unary(Parser *p);
+static Expr *parse_match_expr(Parser *p);
 static void parse_params(Parser *p, Func *f, int types_optional);
 static struct Stmt *parse_block(Parser *p);
 
@@ -169,7 +172,8 @@ static Expr *parse_primary(Parser *p) {
             return e;
         }
         if (!strcmp(t.s, "fn")) return parse_lambda(p);
-        if (is_keyword(t.s)) error_at(t.loc, "expected an expression, found '%s'", t.s);
+        if (!strcmp(t.s, "match")) return parse_match_expr(p);
+        if (is_keyword(t.s)) error_at(t.loc, "expected an expression, found the keyword '%s'", t.s);
         next(p);
         if (is_op(p, "{") && !p->no_struct_lit) {
             /* struct literal: Name { field: value, ... } */
@@ -396,6 +400,63 @@ static Stmt *parse_if(Parser *p) {
 
 static Stmt *parse_stmt(Parser *p);
 
+/* The patterns of a match arm and its `=>`: `A, B =>`, `else =>` or `_ =>`. */
+static MatchArm parse_arm_head(Parser *p) {
+    MatchArm arm = {0};
+    arm.loc = p->tok.loc;
+    if (is_kw(p, "else") || (p->tok.k == TK_IDENT && !strcmp(p->tok.s, "_"))) {
+        arm.is_else = 1;
+        next(p);
+    } else {
+        int pcap = 0;
+        for (;;) {
+            int save = p->no_struct_lit;
+            p->no_struct_lit = 1;
+            Expr *pat = parse_expr(p);
+            p->no_struct_lit = save;
+            PUSH(arm.pats, arm.npats, pcap, pat);
+            if (!is_op(p, ",")) break;
+            next(p);
+            skip_nl_only(p);
+        }
+    }
+    if (!is_op(p, "=>")) error_at(p->tok.loc, "expected '=>' after the match pattern, found %s", tok_desc(&p->tok));
+    next(p);
+    skip_nl_only(p);
+    return arm;
+}
+
+/* match x { A, B => value  C => value  else => value }: every arm is one expression. */
+static Expr *parse_match_expr(Parser *p) {
+    Expr *e = new_expr(E_MATCH, p->tok.loc);
+    next(p);
+    e->a = parse_cond(p);
+    skip_nl_only(p);
+    expect_op(p, "{");
+    int save = p->no_struct_lit, save_arm = p->in_arm;
+    p->in_arm = 0;
+    int cap = 0;
+    for (;;) {
+        skip_nl(p);
+        if (is_op(p, "}")) break;
+        if (p->tok.k == TK_EOF) error_at(e->loc, "unclosed match");
+        MatchArm arm = parse_arm_head(p);
+        if (is_op(p, "{"))
+            error_at(p->tok.loc, "an arm of a match expression is a value, not a block (use a match statement to run statements)");
+        p->no_struct_lit = 0;
+        arm.value = parse_expr(p);
+        p->no_struct_lit = save;
+        if (is_op(p, ",")) next(p);
+        else if (p->tok.k != TK_NL && !is_op(p, "}") && !is_op(p, ";"))
+            error_at(p->tok.loc, "expected ',' or a new line after the value of the match arm, found %s", tok_desc(&p->tok));
+        PUSH(e->arms, e->narms, cap, arm);
+    }
+    next(p);
+    p->in_arm = save_arm;
+    if (!e->narms) error_at(e->loc, "a match expression needs at least one arm");
+    return e;
+}
+
 /* match x { A, B => stmt  C => { ... }  else => ... }   (`_` is the same as else) */
 static Stmt *parse_match(Parser *p) {
     Stmt *s = new_stmt(S_MATCH, p->tok.loc);
@@ -408,27 +469,7 @@ static Stmt *parse_match(Parser *p) {
         skip_nl(p);
         if (is_op(p, "}")) break;
         if (p->tok.k == TK_EOF) error_at(s->loc, "unclosed match");
-        MatchArm arm = {0};
-        arm.loc = p->tok.loc;
-        if (is_kw(p, "else") || (p->tok.k == TK_IDENT && !strcmp(p->tok.s, "_"))) {
-            arm.is_else = 1;
-            next(p);
-        } else {
-            int pcap = 0;
-            for (;;) {
-                int save = p->no_struct_lit;
-                p->no_struct_lit = 1;
-                Expr *pat = parse_expr(p);
-                p->no_struct_lit = save;
-                PUSH(arm.pats, arm.npats, pcap, pat);
-                if (!is_op(p, ",")) break;
-                next(p);
-                skip_nl_only(p);
-            }
-        }
-        if (!is_op(p, "=>")) error_at(p->tok.loc, "expected '=>' after the match pattern, found %s", tok_desc(&p->tok));
-        next(p);
-        skip_nl_only(p);
+        MatchArm arm = parse_arm_head(p);
         if (is_op(p, "{")) arm.body = parse_block(p);
         else {
             int save = p->in_arm;
@@ -585,8 +626,11 @@ static Stmt *parse_stmt(Parser *p) {
         p->no_struct_lit = 1;
         s->e = parse_expr(p);
         if (is_op(p, "..=")) error_at(p->tok.loc, "inclusive ranges are not supported; use lo..hi+1");
-        expect_op(p, "..");
-        s->e2 = parse_expr(p);
+        if (is_op(p, "{") && s->e->k == E_NAME) s->e2 = NULL;   /* for d in EnumType: every variant */
+        else {
+            expect_op(p, "..");
+            s->e2 = parse_expr(p);
+        }
         p->no_struct_lit = save;
         s->then = parse_block(p);
         return s;
@@ -613,8 +657,22 @@ static Stmt *parse_stmt(Parser *p) {
         next(p);
         return s;
     }
-    if (is_kw(p, "const")) error_at(loc, "constants must be declared at the top level");
+    if (is_kw(p, "const")) {
+        /* a local constant: visible in the rest of its block */
+        s = new_stmt(S_CONST, loc);
+        next(p);
+        s->loc = p->tok.loc;
+        s->name = expect_ident(p, "a constant name");
+        if (is_op(p, ":")) { next(p); s->texpr = parse_type(p); }
+        expect_op(p, "=");
+        skip_nl_only(p);
+        s->e = parse_expr(p);
+        end_statement(p);
+        return s;
+    }
     if (is_op(p, "{")) return parse_block(p);
+    /* '-' and '*' are also unary: a line starting with them is a new statement */
+    const char *lead = is_op(p, "-") ? "-" : is_op(p, "*") ? "*" : NULL;
     Expr *e = parse_expr(p);
     static const struct { const char *s; int op; } as[] = {
         {"=", -1}, {"+=", B_ADD}, {"-=", B_SUB}, {"*=", B_MUL}, {"/=", B_DIV}, {"%=", B_MOD},
@@ -633,6 +691,10 @@ static Stmt *parse_stmt(Parser *p) {
         }
     }
     if (is_op(p, "==")) error_at(p->tok.loc, "'==' compares; use '=' to assign");
+    if (lead && e->k != E_CALL)
+        error_at(loc, "a line that starts with '%s' begins a new statement ('%s' is also %s, and this value alone does "
+                 "nothing); to continue the expression from the line above, end that line with '%s' instead, or put "
+                 "the whole expression in parentheses", lead, lead, lead[0] == '-' ? "unary minus" : "the dereference", lead);
     s = new_stmt(S_EXPR, loc);
     s->e = e;
     end_statement(p);

@@ -419,7 +419,7 @@ static LV gen_lv(Expr *e) {
         }
         break;
     }
-    case E_CALL: case E_ARRAY: case E_STRUCT:
+    case E_CALL: case E_ARRAY: case E_STRUCT: case E_MATCH:
         if (ty_is_aggr(e->ty)) return gen_aggr_lv(e);
         break;
     default: break;
@@ -929,6 +929,8 @@ static void gen_aggr_into(Expr *e, LV *dst) {
 }
 
 static LV gen_intrinsic_aggr(Expr *e);
+static LV gen_match_aggr(Expr *e);
+static Opnd gen_match_expr(Expr *e, int hint);
 
 static LV gen_aggr_lv(Expr *e) {
     if (e->k == E_CALL && e->bi == BI_MAP) return gen_intrinsic_aggr(e);
@@ -945,6 +947,7 @@ static LV gen_aggr_lv(Expr *e) {
         return lv_mem((Opnd){O_REG, 14}, slot, e->ty);
     }
     if (e->k == E_CONV) return gen_aggr_lv(e->a);
+    if (e->k == E_MATCH) return gen_match_aggr(e);
     return gen_lv(e);
 }
 
@@ -1798,6 +1801,9 @@ static Opnd gen_expr(Expr *e, int hint) {
             return load_lv(&lv, hint);
         }
     case E_CONV: return gen_conv(e, hint);
+    case E_MATCH:
+        if (ty_is_aggr(e->ty)) { LV lv = gen_match_aggr(e); return lv_addr(&lv); }
+        return gen_match_expr(e, hint);
     case E_ARRAY: case E_STRUCT: {
         LV lv = gen_aggr_lv(e);
         return lv_addr(&lv);
@@ -1805,6 +1811,66 @@ static Opnd gen_expr(Expr *e, int hint) {
     default: break;
     }
     ice("unhandled expression");
+}
+
+/* ---- match expressions: a chain of compares, then each arm computes its value into one
+   register (or, for an aggregate, into one frame slot) and jumps to the end. Live temporaries
+   are flushed first, so the register state is the same on every path. The last arm also takes
+   any value no pattern names (an enum converted from an integer), so the result is always set. */
+
+static int *gen_match_dispatch(Expr *e) {
+    flush_temps();
+    int *labels = ar_alloc(sizeof(int) * (size_t)e->narms);
+    for (int i = 0; i < e->narms; i++) labels[i] = new_label();
+    Opnd x = gen_expr(e->a, -1);
+    for (int i = 0; i < e->narms - 1; i++)
+        for (int k = 0; k < e->arms[i].npats; k++) {
+            Opnd pv = o_imm(e->arms[i].pats[k]->cval);
+            int rp = R(&pv), rx = R(&x);
+            I("beq %s, %s, .L%d", RN[rx], RN[rp], labels[i]);
+            ofree(pv);
+        }
+    ofree(x);
+    return labels;
+}
+
+static Opnd gen_match_expr(Expr *e, int hint) {
+    int cls = is_v(e->ty);
+    int *labels = gen_match_dispatch(e);
+    int lend = new_label();
+    int r = hint >= 0 ? hint : find_free(cls);
+    if (r < 0) r = take_reg(cls);
+    int *own_ = cls ? &g_vown[r] : &g_rown[r];
+    int was = *own_;
+    *own_ = -2;   /* keep the arms' temporaries out of the result register */
+    for (int j = 0; j < e->narms; j++) {
+        int i = j ? j - 1 : e->narms - 1;   /* the last arm is reached by falling through */
+        if (j) put_label(labels[i]);
+        Opnd v = gen_expr(e->arms[i].value, r);
+        move_to(v, r, cls);
+        ofree(v);
+        if (j != e->narms - 1) I("jmp .L%d", lend);
+    }
+    put_label(lend);
+    *own_ = was;
+    if (hint >= 0) return (Opnd){cls ? O_VREG : O_REG, hint};
+    return o_tmp(tnew_at(cls, r));
+}
+
+static LV gen_match_aggr(Expr *e) {
+    int *labels = gen_match_dispatch(e);
+    int lend = new_label();
+    int slot = slot_alloc(e->ty->size);
+    for (int j = 0; j < e->narms; j++) {
+        int i = j ? j - 1 : e->narms - 1;
+        if (j) put_label(labels[i]);
+        LV d = lv_mem((Opnd){O_REG, 14}, slot, e->ty);
+        gen_aggr_into(e->arms[i].value, &d);
+        lv_free(&d);
+        if (j != e->narms - 1) I("jmp .L%d", lend);
+    }
+    put_label(lend);
+    return lv_mem((Opnd){O_REG, 14}, slot, e->ty);
 }
 
 /* ------------------------------------------------------------- conditions */
@@ -2106,6 +2172,7 @@ static void gen_stmt(Stmt *s) {
         put_label(lend);
         break;
     }
+    case S_CONST: break;
     case S_BREAK: I("jmp .L%d", g_brk[g_nloop - 1]); break;
     case S_CONTINUE: I("jmp .L%d", g_cont[g_nloop - 1]); break;
     case S_RETURN: {
@@ -2205,6 +2272,7 @@ static void scan_expr(Expr *e, int *max_out) {
     scan_expr(e->a, max_out);
     scan_expr(e->b, max_out);
     for (int i = 0; i < e->nargs; i++) scan_expr(e->args[i], max_out);
+    for (int i = 0; i < e->narms; i++) scan_expr(e->arms[i].value, max_out);
 }
 
 static void scan_stmt(Stmt *s, int *max_out) {
@@ -2260,6 +2328,7 @@ static void live_expr(Expr *e, int p) {
     live_expr(e->a, p);
     live_expr(e->b, p);
     for (int i = 0; i < e->nargs; i++) live_expr(e->args[i], p);
+    for (int i = 0; i < e->narms; i++) live_expr(e->arms[i].value, p);
 }
 
 static void live_asm_refs(Func *f, const char *text, int p) {
@@ -2282,6 +2351,7 @@ static int count_calls(Expr *e) {
     if (e->k == E_CALL && e->bi >= BI_MAP) n += 2;   /* a loop of calls: never a single call */
     n += count_calls(e->a) + count_calls(e->b);
     for (int i = 0; i < e->nargs; i++) n += count_calls(e->args[i]);
+    for (int i = 0; i < e->narms; i++) n += 2 * count_calls(e->arms[i].value);   /* not a single call */
     return n;
 }
 
@@ -2359,6 +2429,7 @@ static void live_stmt(Func *f, Stmt *s) {
         for (int i = 0; i < s->narms; i++) live_stmt(f, s->arms[i].body);
         break;
     case S_BREAK: case S_CONTINUE: g_pos += 2; break;
+    case S_CONST: break;
     case S_ASM:
         g_pos += 2;
         p = g_pos;
@@ -2768,6 +2839,55 @@ static Func *find_fn(const char *name) {
     return s && s->k == SY_FUNC ? s->fn : NULL;
 }
 
+/* Is `a` a near miss of `b`: the same ignoring case, or one edit (insert, delete, replace or
+   swap two neighbours) away? */
+static int near_miss(const char *a, const char *b) {
+    size_t n = strlen(a), m = strlen(b);
+    char x[64], y[64];
+    if (n >= sizeof x || m >= sizeof y) return 0;
+    for (size_t i = 0; i <= n; i++) x[i] = (char)(a[i] >= 'A' && a[i] <= 'Z' ? a[i] + 32 : a[i]);
+    for (size_t i = 0; i <= m; i++) y[i] = (char)(b[i] >= 'A' && b[i] <= 'Z' ? b[i] + 32 : b[i]);
+    if (!strcmp(x, y)) return 1;
+    if (n + 1 < m || m + 1 < n || n < 3) return 0;
+    size_t i = 0;
+    while (i < n && i < m && x[i] == y[i]) i++;
+    if (n == m) {
+        if (!strcmp(x + i + 1, y + i + 1)) return 1;                                   /* replace */
+        return i + 1 < n && x[i] == y[i + 1] && x[i + 1] == y[i] && !strcmp(x + i + 2, y + i + 2);   /* swap */
+    }
+    return n > m ? !strcmp(x + i + 1, y + i) : !strcmp(x + i, y + i + 1);              /* delete / insert */
+}
+
+/* The runtime calls init(), update() and draw(). A cart function that is never called and is
+   named like one of them (or like another language's entry point) is probably a mistake. */
+static void warn_entry_points(Program *P) {
+    static const char *entries[] = {"init", "update", "draw"};
+    static const char *others[] = {"main", "setup", "start", "loop", "tick", "render"};
+    int have[3], any = 0;
+    for (int k = 0; k < 3; k++) {
+        Sym *s = sym_lookup_layer(entries[k], 1);
+        have[k] = s && s->k == SY_FUNC;
+        any |= have[k];
+    }
+    for (int i = 0; i < P->nfuncs; i++) {
+        Func *f = P->funcs[i];
+        if (f->reachable || f->is_lambda || !f->sym || !f->sym->user) continue;
+        int warned = 0;
+        for (int k = 0; k < 3 && !warned; k++)
+            if (!have[k] && strcmp(f->name, entries[k]) && near_miss(f->name, entries[k])) {
+                warn_at(f->loc, "%s() is never called; the runtime calls %s()%s (is that what you meant to write?)",
+                        f->name, entries[k], k == 0 ? " once at start-up" : " every frame");
+                warned = 1;
+            }
+        for (size_t k = 0; k < sizeof others / sizeof others[0] && !warned && !any; k++)
+            if (!strcmp(f->name, others[k])) {
+                warn_at(f->loc, "%s() is never called; a cart's entry points are init() (once at start-up), update() "
+                        "and draw() (every frame)", f->name);
+                warned = 1;
+            }
+    }
+}
+
 void gen_program(Program *P, Buf *out) {
     g_P = P;
     g_label = 0;
@@ -2818,6 +2938,8 @@ void gen_program(Program *P, Buf *out) {
                 if (!d->dfuncs[k]->reachable) { mark_reachable(d->dfuncs[k]); changed = 1; }
         }
     }
+
+    warn_entry_points(P);
 
     /* entry point and frame loop */
     buf_puts(out, "\n__start:\n");

@@ -1,0 +1,5 @@
+// error: a constant cannot use the variable
+fn init() {
+    var n = 3
+    const K = n + 1
+}

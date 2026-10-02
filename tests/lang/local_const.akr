@@ -1,0 +1,55 @@
+// Local constants: block scoped, usable in array lengths, asm blocks, nested literals.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+const N = 100
+
+fn table() -> s32 {
+    const N = 4                      // hides the global N in this function
+    const SQUARES: [N]s32 = [0, 1, 4, 9]
+    const HELLO = "hello"
+    var buf: [N * 2]u8
+    p(len(buf))
+    println(HELLO)
+    var t = 0
+    for i in 0..N { t += SQUARES[i] }
+    return t
+}
+
+fn scoped() {
+    {
+        const K: fixed = 1.5
+        print_fixed(K * 2.0); println("")
+    }
+    const K = 7
+    p(K)
+}
+
+fn with_asm() -> s32 {
+    const SHIFT = 3
+    var x = 5
+    asm {
+        shli {x}, {x}, {SHIFT}
+    }
+    return x
+}
+
+fn closure() -> s32 {
+    const BASE = 1000
+    let f = fn(x: s32) => x + BASE    // a constant is not captured
+    return f(1)
+}
+
+fn init() {
+    p(table())
+    // expect: 8
+    // expect: hello
+    // expect: 14
+    p(N)                             // expect: 100
+    scoped()
+    // expect: 3.0
+    // expect: 7
+    p(with_asm())                    // expect: 40
+    p(closure())                     // expect: 1001
+    const V = vec3(1.0, 2.0, 3.0)
+    print_fixed(V.z); println("")    // expect: 3.0
+}

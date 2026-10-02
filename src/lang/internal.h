@@ -34,6 +34,9 @@ SrcFile *src_register(const char *path, const char *text, size_t len);
 _Noreturn void error_at(Loc loc, const char *fmt, ...);
 _Noreturn void error_plain(const char *fmt, ...);
 void error_reset(char *buf, size_t len);
+void warn_at(Loc loc, const char *fmt, ...);   /* a warning (compilation goes on) */
+void warn_reset(void);
+char *warn_take(void);                          /* malloc'd text of the warnings, or NULL */
 extern void *g_error_jmp;   /* jmp_buf * */
 
 /* ---------------------------------------------------------------- lex.c */
@@ -137,6 +140,7 @@ typedef enum {
     E_INT, E_FIXED, E_BOOL, E_STR, E_NULL, E_NAME, E_UNARY, E_BINARY, E_CALL,
     E_INDEX, E_FIELD, E_CAST, E_ARRAY, E_STRUCT, E_SIZEOF, E_CONV,
     E_FUNC,       /* function literal */
+    E_MATCH,      /* match expression: a = scrutinee, arms[i].value the arm values */
 } ExprKind;
 
 /* Builtins implemented inline by the code generator. */
@@ -150,6 +154,7 @@ typedef enum {
 
 typedef struct Sym Sym;
 typedef struct Local Local;
+struct MatchArm;
 
 typedef struct Expr {
     ExprKind k;
@@ -179,18 +184,20 @@ typedef struct Expr {
     int elem_byref;        /* each(): the function takes a pointer to the element */
     struct Func *target;   /* intrinsics: the function applied, when known statically */
     int has_count;         /* intrinsics: an explicit element count was given */
+    struct MatchArm *arms; int narms;   /* E_MATCH */
 } Expr;
 
 typedef enum {
     S_BLOCK, S_EXPR, S_VAR, S_ASSIGN, S_IF, S_WHILE, S_FOR, S_BREAK, S_CONTINUE, S_RETURN, S_ASM,
-    S_MATCH,
+    S_MATCH, S_CONST,
 } StmtKind;
 
 typedef struct MatchArm {
     Loc loc;
     struct Expr **pats; int npats;   /* constant patterns; none for the else arm */
     int is_else;
-    struct Stmt *body;
+    struct Stmt *body;     /* match statement */
+    struct Expr *value;    /* match expression */
 } MatchArm;
 
 typedef struct AsmRef { const char *text; Loc loc; } AsmRef;
@@ -220,6 +227,7 @@ struct Local {
     int points_local;     /* pointer seen holding the address of local storage (dangling check) */
     int addr_taken;
     int in_asm;           /* named in an inline asm block: must live in a register */
+    Sym *csym;            /* a local `const`: its constant (the Local only names it in a scope) */
     int64_t weight;       /* use count weighted by loop depth */
     /* codegen */
     int home;             /* 0 memory, 1 scalar register, 2 vector register */

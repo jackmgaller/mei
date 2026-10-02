@@ -1,0 +1,3 @@
+// error: match on Kind does not handle Kind.Plum
+enum Kind { Apple, Pear, Plum }
+fn f(k: Kind) -> s32 { return match k { Apple => 1, Pear => 2 } }

@@ -66,7 +66,10 @@ emitted. The library API `meic_compile()` (`src/lang/lang.h`) takes a file-reade
 so the compiler can run without a file system (for example in the browser).
 
 Errors stop compilation and are reported as `file:line:col: error: message`, followed by the
-source line and a caret.
+source line and a caret. Warnings (`file:line:col: warning: ...`) do not stop it. One warning is
+always on: a function of the cart that is never called and whose name is a near miss of an
+entry point (`Update`, `drw`, `int`, ...), or `main`/`setup`/`loop`/... in a cart that defines
+none of `init`, `update` and `draw`, is reported, since the runtime only calls those three.
 
 ## Program structure
 
@@ -94,6 +97,23 @@ declaration and the library keeps using its own.
 - Statements end at a newline or `;`. A newline inside `( )` or `[ ]`, or after an operator or
   comma, does not end a statement. A `{` may start on the next line, and `else` may follow a
   line break after `}`.
+- A line that starts with an operator that can only stand between two values continues the
+  expression on the line above: `+ / % ^ | < > <= >= << >> == != && || . as` (and the compound
+  assignments `+= |= ...`). Comments and blank lines in between are fine:
+
+  ```
+  let total = base
+      + bonus * 2
+      + extra
+  let ready = loaded
+      && !paused       // still one expression
+  ```
+
+  `-`, `*` and `&` are unary operators too (negation, dereference, address), so a line that starts
+  with one of them begins a new statement (`*p = 0` is an assignment). Writing `- c` on its own
+  line to continue a subtraction is reported ("a line that starts with '-' begins a new
+  statement..."); end the line above with the operator instead (`a + b -` then `c`), or wrap the
+  whole expression in parentheses.
 - Identifiers: `[A-Za-z_][A-Za-z0-9_]*`. Names starting with `__` are used by the standard
   library.
 - Integer literals: `42`, `0x2A`, `0b101010`, with `_` separators (`1_000_000`). Character
@@ -103,8 +123,9 @@ declaration and the library keeps using its own.
 - String literals `"text"` are NUL-terminated byte arrays in ROM; escapes: `\n \t \r \0 \\ \"
   \' \xHH`.
 - Keywords: `fn var let const struct enum if else while for in match break continue return
-  import asm reg embed as true false null cart`. `=>` separates match patterns from arms and
-  starts an expression-bodied function literal.
+  import asm reg embed as true false null cart assert assert_eq`. Using one as a name is an
+  error that says so ("'reg' is a keyword and cannot be used as a variable name"). `=>`
+  separates match patterns from arms and starts an expression-bodied function literal.
 
 ## Declarations
 
@@ -290,6 +311,7 @@ assignment copies the whole value.
 var x: s32                 // a local variable, zero-initialised
 var y = 10                 // type inferred (s32)
 let z = x + y              // immutable
+const N = 8                // a local constant (see below)
 x = 5
 x += 1
 
@@ -317,6 +339,21 @@ counts with `bltu` when the bounds are `u32`).
 
 Only calls and assignments can be statements (`x + 1` alone is an error). A function with a
 result must `return` on every path.
+
+**Local constants.** `const NAME = expr` and `const NAME: T = expr` work inside functions too,
+with the same rules as at the top level (the value must be known when the cart is built;
+arrays, structs and strings become read-only data in ROM). A local constant is visible from
+its declaration to the end of its block, may hide a global of the same name, and can be used
+in array lengths (`var buf: [N * 2]u8`), in `asm` blocks (`{N}` is its value) and in function
+literals (constants are not captured; they cost nothing):
+
+```
+fn spread() {
+    const STEPS = 4
+    const WEIGHTS: [STEPS]fixed = [0.4, 0.3, 0.2, 0.1]
+    for i in 0..STEPS { ... WEIGHTS[i] ... }
+}
+```
 
 ### assert
 
@@ -363,6 +400,25 @@ An enum is its own type: it does not mix with integers or with other enums. `==`
 with `as`: `s as s32`, `2 as Dir` (no check that the value is a variant). Enums work in
 constants, globals, struct fields and arrays, and as parameters and results.
 
+**Enums as indices and loops.** An enum value indexes an array or pointer directly: the index is
+its underlying value (`speed[Dir.Left]`; a constant index is checked against the array length
+when the cart is built). `len(Dir)` is the number of variants, a constant, so an array with one
+element per variant is `[len(Dir)]T`. `for d in Dir { ... }` runs once per variant in order of
+value, with `d` of type `Dir`; it needs the variants' values to be consecutive (as they are
+with the default numbering), and compiles to an ordinary counted loop. `for d in Dir.Down..Dir.Right`
+counts through the values from `Dir.Down` up to (not including) `Dir.Right`, with `d` a `Dir`.
+
+```
+enum Dir { Up, Down, Left, Right }
+var speed: [len(Dir)]s32
+const NAMES: [len(Dir)]*u8 = ["up", "down", "left", "right"]
+
+for d in Dir { speed[d] = 0 }
+println(NAMES[Dir.Left])
+```
+
+No sentinel variant (`Count`) is needed, so a `match` on the enum stays exhaustive without one.
+
 **match** chooses one arm by value:
 
 ```
@@ -387,8 +443,30 @@ match n {
 - A match on an enum must handle every variant or have an `else` arm; the compiler lists the
   missing variants. A match on an integer must have an `else` arm. A value may appear in only
   one pattern, and `else` must come last.
-- `match` is a statement. A function can end with a `match` whose arms all `return`.
+- A function can end with a `match` statement whose arms all `return`.
 - It compiles to a chain of `beq` compares (2 cycles per pattern tested when taken, 1 when not).
+
+**match as an expression.** Where a value is expected, `match` yields the value of the arm that
+runs. Each arm is one expression (not a block); arms end at a newline or a comma:
+
+```
+let name = match kind { Apple => "apple", Pear => "pear", Plum => "plum" }
+let bonus = match streak {
+    0 => 0
+    1, 2 => streak * 10
+    else => 50
+}
+return 1000 + match k { A => f(1), else => g() }
+```
+
+The patterns follow the rules above (an enum match must cover every variant or have `else`, an
+integer match needs `else`). Every arm must yield a value of one type: the type the context
+expects (`let b: u8 = match ...`, an argument, a return value), otherwise the first arm's type
+(arms that are only untyped constants give `s32`, or `fixed` if one of them is a fixed-point
+constant). Any type works, structs and arrays included. A constant value with constant arms is
+folded at compile time (`const C = match MODE { 0 => 10, else => 20 }`). The arms compile to
+the same compare chain; the last arm is reached by falling through, so it also takes a value no
+pattern names (an enum converted from an out-of-range integer) and the result is always set.
 
 ## Functions as values
 
@@ -496,7 +574,7 @@ These are compiled inline (no call) and work on several types:
 | `nclip(p0, p1, p2) -> s32` | twice the signed area of a screen triangle; negative when counter-clockwise on screen (front-facing). Arguments are packed positions `(x & 0xFFFF) \| (y << 16)` |
 | `otz(bias, depth, scale) -> s32` | ordering-table bucket: `bias + floor(depth * scale)`, clamped to 0..1023 (`depth`, `scale` are `fixed`) |
 | `clerp(from, to, t) -> u32` | blend two colours (each of the four bytes) by `t` (`fixed`, clamped to 0..1, rounded down) |
-| `len(x)` | element count of an array or embedded asset (a constant) |
+| `len(x)` | element count of an array or embedded asset, or the number of variants of an enum type (`len(Dir)`); a constant |
 | `sizeof(T)` | size of a type in bytes (a constant) |
 | `bits(f)`, `from_bits(n)` | reinterpret `fixed` ↔ `s32` |
 | `T(x)` | conversion, same as `x as T` |
@@ -1030,10 +1108,9 @@ function but vectors are spilled around calls; `-S` shows exactly what was gener
 
 - No generics (except the built-ins above), unions, slices, methods or operator overloading.
 - Closures capture at most 3 one-word values, by copy, read-only (no vectors, structs, arrays or
-  function values). `match` is a statement, not an expression. Const data may hold named
-  functions and the addresses of embeds, strings and const data, but not function literals or
-  addresses of variables.
-- No local `const` declarations (declare constants at the top level).
+  function values). Const data may hold named functions and the addresses of embeds, strings
+  and const data, but not function literals or addresses of variables.
+- The arms of a `match` expression are single expressions (use a `match` statement for blocks).
 - Multi-lane swizzles cannot be assigned; vectors cannot be compared with `==`.
 - `for` loops count up by one; there is no `..=` or step.
 - No run-time bounds or stack-overflow checks. The locals of one function may use at most
@@ -1049,5 +1126,5 @@ function but vectors are spilled around calls; `-S` shows exactly what was gener
 `tests/run_lang_tests.sh` (run by `make test`) compiles every `tests/lang/*.akr`, runs it with
 `mei-headless` and compares the debug output with the file's `// expect:` lines (`// frames: N`,
 `// pad1: HEX`, `// error: TEXT`, `// exit: N` (e.g. 2 for a failed `assert`) and
-`// flags: ARGS` (extra `meic` arguments) adjust a test). `tools/fuzz_lang.py [count] [seed]` compiles
+`// flags: ARGS` (extra `meic` arguments) and `// warning: TEXT` (the build must warn) adjust a test). `tools/fuzz_lang.py [count] [seed]` compiles
 random programs and checks their output against a Python model of the CPU's arithmetic.

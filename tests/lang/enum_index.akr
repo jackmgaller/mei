@@ -1,0 +1,52 @@
+// Enums as array indices, len(Enum) and for loops over enums.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+enum Dir { Up, Down, Left, Right }
+enum Small: u8 { A = 3, B, C }
+enum Sparse { X = 1, Y = 4 }
+
+var speed: [len(Dir)]s32
+const NAMES: [len(Dir)]*u8 = ["up", "down", "left", "right"]
+const OFFSET: [4]s32 = [10, 20, 30, 40]
+
+fn name(d: Dir) -> *u8 { return NAMES[d] }
+
+fn init() {
+    p(len(Dir))                         // expect: 4
+    p(len(Small))                       // expect: 3
+    p(len(Sparse))                      // expect: 2
+    speed[Dir.Left] = 7
+    speed[Dir.Up] += 2
+    p(speed[2])                         // expect: 7
+    p(speed[Dir.Up])                    // expect: 2
+    println(name(Dir.Right))            // expect: right
+    var total = 0
+    for d in Dir {
+        total += OFFSET[d]
+        print(name(d))
+        print_char('.')
+    }
+    println("")                         // expect: up.down.left.right.
+    p(total)                            // expect: 100
+    for d in Dir.Down..Dir.Right { println(name(d)) }
+    // expect: down
+    // expect: left
+    var n = 0
+    for s in Small { n = n * 10 + s as s32 }
+    p(n)                                // expect: 345
+    let i = Dir.Down
+    let arr: [4]u8 = [5, 6, 7, 8]
+    p(arr[i] as s32)                    // expect: 6
+    var last = Dir.Up
+    for d in Dir { last = d }
+    if last == Dir.Right { p(1) }       // expect: 1
+    var cnt = 0
+    for d in Dir {
+        match d {
+            Up, Down => cnt += 1
+            Left => cnt += 10
+            Right => cnt += 100
+        }
+    }
+    p(cnt)                              // expect: 112
+}

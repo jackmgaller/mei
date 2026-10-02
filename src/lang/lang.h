@@ -20,6 +20,8 @@ typedef struct {
     int no_stdlib;            /* 1: do not import the standard library (test/bare-metal use) */
     int no_asserts;           /* 1: drop assert()/assert_eq() statements (meic --release) */
     char **asm_text;          /* if non-NULL, receives the generated assembly (malloc'd, caller frees) */
+    char **warnings;          /* if non-NULL, receives the warnings ("file:line:col: warning: ..." lines,
+                                 malloc'd, caller frees), or NULL when there are none */
 } MeiCompileOptions;
 
 /* Compiles the program rooted at `path`. On success returns 0 and fills `out`
