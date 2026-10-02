@@ -163,7 +163,7 @@ fn init() {
     camera_fov(1.0)
     camera_clip(0.1, 200.0)
     batch_init()
-    fan_init()
+    planes_setup()
     stars_init()
     new_game()
     tod_force = -1
@@ -332,6 +332,7 @@ fn draw() {
     draw_tutorial()
     draw_saving()
     if show_debug { draw_debug() }
+    finish_world()
 }
 
 fn draw_fish() {

@@ -34,14 +34,11 @@ fn camera_first_person() {
     if phase == Phase.Aim { pitch += fixed(min(aim_hold, 30)) * 0.0018 }   // look up a little as you wind up
     cam_yaw = y + sway * 0.007 + lean_x * 0.05
     cam_pitch = pitch + lean_y * 0.03
-    cam_roll = -lean_x * 0.05 + sway * 0.004
+    cam_roll = 0.0       // no roll: the sky and the water are per-line planes (docs/PLANES.md)
     let sn = sin(y)
     let cs = cos(y)
     let side = lean_x * 0.08
     cam_pos = vec3(s.x - sn * EYE_BACK + cs * side, s.y + EYE_H + breath * 0.012, s.z - cs * EYE_BACK - sn * side)
-    fan_anchor = vec3(s.x - sn * EYE_BACK, 0.0, s.z - cs * EYE_BACK)
-    fan_anchor_yaw = y
-    fan_anchored = true
 }
 
 // camera_look with a roll: right and up are turned about the view direction.
@@ -288,13 +285,14 @@ fn draw_line() {
         var p = lerp(tip, end, t)
         p.y -= sag * (t * (1.0 - t)) * 4.0
         if !project(p) { return }
-        seg2d(px, py, proj_x, proj_y, 1, linec, max(depth_bucket(proj_w) - 2, 0))
+        seg2d(px, py, proj_x, proj_y, 1, linec, clamp(depth_bucket(proj_w) - 2, 0, 12))
         px = proj_x
         py = proj_y
     }
 }
 
-// The first-person pass: drawn after the world, sorted among itself, always in front.
+// The first-person pass: sorted among itself, always in front of the world (whose buckets
+// start at 16; the line's are capped at 12).
 fn draw_view_pass() {
     if phase == Phase.Catch && screen == Screen.Fish { draw_held_fish() }
     if show_rod {
@@ -305,7 +303,6 @@ fn draw_view_pass() {
         bt_flush()
         begin_camera()
     }
-    flush_pass()
 }
 
 // ---- the 3D fish: a RAM copy of a species' mesh, its palette patched (day, night or the
@@ -374,6 +371,13 @@ fn draw_fish3d(f: s32, pal: s32, pos: vec3, yaw: fixed, pitch: fixed, scale: fix
 // How big to draw a fish of this size (the model's body is one unit long).
 fn fish_scale(size_mm: s32) -> fixed { return fixed(size_mm) / 1180 }
 
+// A warm glow behind the catch held up (with the low polygons: a blended sprite over the planes).
+fn draw_held_glow() {
+    ss_look(SS_HALO)
+    let k = min(phase_t * 10, 200)
+    ssprite(view_pt(0.0, 0.05, 1.6), 0.5, 0.5, scale_col(rgb(140, 120, 80), k), 1, 0)
+}
+
 // The catch, held up in front of you, turning slowly.
 fn draw_held_fish() {
     let t = phase_t
@@ -382,10 +386,6 @@ fn draw_held_fish() {
     let rel = fixed(c_size - info.min_mm as s32) / max(info.max_mm as s32 - info.min_mm as s32, 1)
     let sc = 0.62 + rel * 0.2
     let p = view_pt(-0.02, -0.6 + rise * 0.66 + sin(fixed(t) * 0.05) * 0.015, 1.25)
-    // a warm glow behind it
-    ss_look(SS_HALO)
-    let k = min(t * 10, 200)
-    ssprite(view_pt(0.0, 0.05, 1.6), 0.5, 0.5, scale_col(rgb(140, 120, 80), k), 1, 0)
     draw_fish3d(c_id, fish_pal(c_id), p, cam_yaw + 1.5708 + sin(fixed(t) * 0.025) * 0.6, sin(fixed(t) * 0.04) * 0.15, sc, 0.25)
 }
 

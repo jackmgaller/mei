@@ -658,11 +658,10 @@ fn draw_tutorial() {
     if tut_t > 30 && (tut_t / 20) % 2 == 0 { ftext_r(272, 160, "A: OK", GOLD, false) }
 }
 
-// Draws the interface queued so far right now (so 3D drawn next lands on top of it); the
-// rest of the interface still draws at the end of the frame.
+// Draws the world and the interface queued so far right now (so 3D drawn next lands on top
+// of it); the rest of the interface still draws at the end of the frame.
 fn ui_flush_now() {
-    if __ui_tail != null {
-        GPU_DRAW = __ui_head
-        __ui_tail = null
-    }
+    finish_world()
+    flush_pass()
+    ui_flush()
 }

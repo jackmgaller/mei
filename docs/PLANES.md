@@ -1,9 +1,14 @@
 # The plane chip
 
-**Status: proposal for review.** Nothing in this chapter is implemented. It adds a second video
-chip beside the polygon GPU, and it assumes the polygon GPU gets a cycle budget (setup per
-triangle plus cost per pixel, run in parallel with the CPU). That budget is specified in a
-separate chapter. The numbers below use the candidate cost table in `tools/mei_gpustats.py`.
+**Status: implemented** (`src/core/planes.c`, `stdlib/planes.akr`, tests in
+`tests/test_planes.c` and `tests/lang/planes_*`), with the open questions settled as recommended
+(see [Open questions](#open-questions)). Lantern Lake draws its sky and water with it. It adds a
+second video chip beside the polygon GPU, and it assumes the polygon GPU gets a cycle budget
+(setup per triangle plus cost per pixel, run in parallel with the CPU). That budget is specified
+in a separate chapter. The numbers below use the candidate cost table in `tools/mei_gpustats.py`.
+The design sections are the proposal as reviewed. Where the build or the Lantern Lake port found
+them wrong or incomplete, the text is corrected in place, and the measurements are in
+[What the Lantern Lake port found](#what-the-lantern-lake-port-found).
 
 Mei becomes "PlayStation polygons plus SNES-heritage planes", the way the Saturn paired VDP1
 (sprites and polygons into a framebuffer) with VDP2 (scrolling and rotating backgrounds). The
@@ -191,11 +196,16 @@ toward the horizon, as Mode 7 does.
 
 **CPU cost.** The standard library derives the same values from the view-projection matrix
 (`__vp`): the floor's screen mapping is a 3×3 homography, its inverse is computed once (about
-200 cycles), and then each row needs one `fdiv` for the reciprocal depth and four `fmul`s. That
-is about **55 cycles a line**, or 8,000 cycles (1.6% of the frame) for Lantern Lake's 142 water
-lines, and only on frames when the camera moves. Working from the matrix also covers
-`camera_matrix()` users, such as Check-In!'s panned off-axis view, exactly. A camera with roll is
-approximated: the helper takes each row's ends exactly and is linear between them.
+200 cycles), and then each row needs one `fdiv` for the reciprocal depth and four `fmul`s. The
+proposal estimated 55 cycles a line. **Measured, it is about 100 a line**, even with the row loop
+in assembly: the `fdiv`, the four products, the four table stores and the loop cost more than the
+estimate allowed. That is about 15,000 cycles a frame for Lantern Lake's 150 or so water lines,
+and only on frames when the camera moves. Working from the matrix also covers `camera_matrix()`
+users, such as Check-In!'s panned off-axis view, exactly. A camera with roll is approximated: the
+helper takes each row's ends exactly and is linear between them. **The approximation is poor.**
+The true row is a curve in texel space, and mid-row it is off by tens of texels at Lantern's roll
+angles, so the port dropped the roll. Treat the roll path as better than nothing, not as a tilted
+floor.
 
 ## Line channels
 
@@ -353,7 +363,7 @@ two spare regions are newly used, which no cart or the system ROM touches today:
 | Address | Contents | Size | |
 |---|---|---|---|
 | `0x400000`–`0x44AFFF` | framebuffers A and B | 300 KB | unchanged |
-| `0x44B000`–`0x44BFFF` | spare | 4 KB | free; extra line tables if wanted |
+| `0x44B000`–`0x44BFFF` | spare | 4 KB | free; extra line tables if wanted (Lantern Lake puts BG2's per-line mode table here) |
 | `0x44C000`–`0x44DFFF` | palette memory, shared by planes and polygons | 8 KB | unchanged |
 | `0x44E000`–`0x44FFFF` | **line tables** (convention) | 8 KB | was spare |
 | `0x450000`–`0x47FFFF` | **plane pages 10–15**: maps and tile atlases (convention) | 192 KB | was spare |
@@ -434,7 +444,7 @@ One bit is added to the polygon packet format (spec p. 15). Existing packets hav
 ## Timing and costs
 
 - **CPU: zero** for composing. A cart pays only for its own writes: registers (`sw`, 2 cycles),
-  tables (a 240-word backdrop table is about 2,500 cycles to recompute, a Mode 7 floor about 55
+  tables (a 240-word backdrop table is about 2,500 cycles to recompute, a Mode 7 floor about 100
   per line) and VRAM uploads (an 8 KB map is about 14,000 cycles, and a 32 KB atlas about 56,000,
   the same as loading a texture slot).
 - **GPU budget: zero.** Planes, the backdrop, colour math, the colour offset and auto-erase draw
@@ -449,6 +459,16 @@ One bit is added to the polygon packet format (spec p. 15). Existing packets hav
   unlike sprites, there is no content-dependent overflow to model. The Saturn's VRAM
   access-cycle rules, which limit which layer and depth combinations can be enabled together,
   are left out.
+- **Host cost of the emulator.** These figures are from the `tests/test_planes.c` bench, on one
+  core of an M-series Mac:
+  - three planes, with BG2 in Mode 7 from a per-line table, the backdrop table, colour math and
+    the offset: about 1.1 ms a frame;
+  - one tile plane: 0.43 ms;
+  - BG2 alone: 0.54 ms;
+  - polygons over a backdrop table alone: 0.15 ms.
+
+  The WebAssembly build under node runs about as fast as native (0.95 ms for the first case). In
+  `mei-headless`, Lantern Lake's 1,200-frame dusk run takes 3.9 s, against 3.3 s before the port.
 
 ### Polygon GPU and planes together
 
@@ -483,8 +503,17 @@ falls by 40–50%, to 1.3–1.6× its CPU time. If the budget were set at the CP
 Lake today would exceed it in every measured run. With planes, every run's mean fits, and only the
 festival ending's fireworks peaks go over.
 
-The budget level, the per-pixel costs and whether to keep a triangle-cap backstop are open
-questions (below), to be settled after a Lantern Lake prototype.
+The table above was the proposal's estimate. The built port measures:
+
+- day: 349k;
+- dusk: 458k;
+- night: 477k;
+- festival ending: 321k mean, 612k at its peak.
+
+The estimate held for the layers that moved. An early port without the workarounds measured dusk
+at 401k, as predicted. The [gap for blended polygons over holes](#the-saturn-gap-is-real) costs
+another 55–70k at dusk and night. The budget recommendation is under
+[open question 1](#open-questions).
 
 ## Determinism and emulation notes
 
@@ -565,6 +594,27 @@ fn parallax_bands(bg: s32, ys: *s32, rates: *fixed, n: s32, x: fixed)   // per-b
 fn plane_floor(y0: fixed, texels: fixed, uoff: fixed, voff: fixed, far: fixed)
 ```
 
+**As built** (`stdlib/planes.akr`, documented in LANGUAGE.md), the sketch holds, with these
+differences:
+
+- `planes.akr` is **not in the prelude**. A cart writes `import "planes.akr"`. The compiler now
+  falls back to the standard library directory for an import it cannot find next to the file.
+  Keeping the file out of the prelude is what keeps every existing cart's ROM byte-identical,
+  because it overrides three standard library functions (see
+  [Backward compatibility](#backward-compatibility-and-the-system-rom)).
+- These were added:
+  - `polys_show(on)`, for both polygon layers;
+  - `ui_upper(on)`, which puts the interface list's packets into PH and which `planes_on` turns
+    on;
+  - `tex_atlas(slot)`, a texture slot's address, for use as an atlas;
+  - `map_get`;
+  - `backdrop(colour)`, a flat backdrop;
+  - `lc_mode`, `lc_scroll` and `lc_winx(bg)`, the line channel targets;
+  - constants for the line-table and map layout (`LT_*`, `MAP_*`, `ATLAS_0..3`).
+- `plane_floor` returns the first floor line, or 240 if there is none, which a cart needs for its
+  own per-line tables.
+- `flags` arguments are `u32`, and so is `layer_offset`'s mask.
+
 `plane_floor` is the Mode 7 helper. It reads the current view-projection matrix, so it works with
 `camera()`, `camera_look()` and `camera_matrix()`. It fills the BG2 affine table for every row
 with depth up to `far`, sets BG2's top inset to the first such row, sets DUY = DVY = 0 and points
@@ -599,7 +649,7 @@ fn plane_floor_cam(c: vec3, yaw: fixed, pitch: fixed, y0: fixed, s: fixed, far: 
 ```
 
 A Mode 7 floor costs **zero** GPU budget, where Lantern Lake's water fan costs about 200k model
-cycles. It costs about 1–2% of the CPU budget on frames when the camera moves.
+cycles. It costs about 3% of the CPU budget (15,000 cycles) on frames when the camera moves.
 
 ## Worked examples
 
@@ -639,6 +689,123 @@ fish cannot tilt a per-line backdrop or a per-line floor exactly, so the port dr
 keeps a small one and accepts the approximation. Blended effects over the mirrored sky blend
 with black (see holes) before the water halves them, which loses a little of the sky's colour
 under them.
+
+The proposal underestimated that last point; see below.
+
+### What the Lantern Lake port found
+
+The port is in `carts/lantern`:
+
+- `world.akr`: `draw_sky`, `sky_glow`, `planes_setup`, `draw_water` and the underlays;
+- `scene.akr`: `draw_lake`.
+
+Before-and-after contact sheets are in
+`carts/lantern/screenshots/planes_{day,dusk,night,moonpath,fight,festival}.png`. The top row is
+main and the bottom row is the port, with the same scenario at the same ticks. The harness
+scenarios and gameplay are unchanged: 17 fishing, fight, koi, pause and tutorial scenarios print
+identical game logs before and after.
+
+**As built:**
+
+- **The sky** is a six-stop backdrop table: top, middle and horizon, then the mirror at 200/256
+  with the centre's warmth.
+- **The warm tint toward a low sun** is BG1:
+  - a 128×32 map of 16×16 tiles, from a precomputed glow row;
+  - 16 palettes of brightness (200–215);
+  - scrolled with the yaw and added (mode 1);
+  - a per-line mode table picks the palette by height above the horizon;
+  - windowed to the sky.
+- **The water** is BG2 on texture slot 3, set by `plane_floor`, and it half-blends (mode 0). An
+  assembly loop then runs over the floor's lines. For each line it picks one of 8 brightness
+  copies of the water palette (216–223) from two travelling sines (the fan's waves, now horizontal
+  swells), and it adds a wobble to U0.
+- **The reflection, sun, moon, stars and clouds** stay PL polygons.
+- **The roll** is gone.
+- **VRAM used** is about 9 KB:
+  - the backdrop table;
+  - the BG1 and BG2 mode tables (at `LT_FREE` and `0x44B000`);
+  - the affine table;
+  - a 2 KB BG1 map;
+  - the 32×32 BG2 map.
+
+  The BG2 atlas is the existing slot 3.
+
+**Measured** with `--gpu-stats` and the candidate model. Each figure is the mean over the run
+after its first 30 frames, or mean / max:
+
+| Run | Fill before → after | Blended after | GPU model before | GPU model after | CPU before → after |
+|---|---|---|---|---|---|
+| Day | 3.28 → 2.03 | 0.36 | 593k / 639k | 349k / 396k | 218k → 244k |
+| Dusk | 3.54 → 2.57 | 0.65 | 677k / 735k | 458k / 521k | 239k → 277k |
+| Night | 3.40 → 2.58 | 0.81 | 682k / 728k | 477k / 531k | 239k → 285k |
+| Moon path | 3.35 → 2.47 | 0.76 | 661k / 725k | 451k / 517k | 236k → 280k |
+| Fight | 3.01 → 1.77 | 0.37 | 552k / 680k | 308k / 459k | 211k → 240k |
+| Festival ending | 2.82 → 1.74 | 0.33 | 484k / 667k | 321k / 612k | 231k → 272k |
+
+**GPU work falls by 30–44%.** That is less than the 40–50% predicted, because of the underlays
+described below.
+
+**CPU rises by 26–46k (11–19%).** The proposal said it would stay about the same. The sky and
+water now cost about 34k, against the fan's 24k:
+
+- `plane_floor`: 15k;
+- the per-line water palettes and wobble: 8k;
+- the sky table and glow: 5k;
+- the rest: palettes.
+
+The rest of the rise is the underlays and the split passes. The festival's fireworks stretch is
+the worst case: about 400k, against 300k before. About 32k of that is underlays, and the rest is
+the festival lanterns' glows, now drawn in two layers and doubled. It is still under 500k.
+
+#### The Saturn gap is real
+
+Open question 3 kept the Saturn's limitation: a blended polygon over a hole blends with black. In
+Lantern Lake that loses far more than "a little of the sky's colour". Every additive or
+half-blended effect drawn where only the backdrop lay behind it turned visibly wrong:
+
+- lantern halos over the sky became dark discs;
+- the interface's translucent panels became black glass over the sky and water;
+- the lantern cores showed pink discs at dusk;
+- the halving water made doubled glows clip their hue.
+
+The port works around it in software:
+
+- **Underlays.** Before the low polygons, the cart draws opaque Gouraud rectangles in the
+  backdrop table's own colours, split at the gradient's stops, under each blended billboard and
+  shadow. The blends then mix with the sky they would have mixed with.
+  - Interface panels get low underlays from the previous frame's rectangles, so the water still
+    covers them.
+  - A panel gets a high underlay where last frame had none.
+- **Glows over the water** move to PL at double strength, because BG2 halves them. The doubling
+  preserves hue: it is scaled so that the largest channel is at most 255.
+- **Lantern halos** no longer light the posts and planks in front of them, because they are low,
+  behind the world. A small additive core in PH lights the paper.
+
+This costs 55–70k of GPU model cycles at dusk and night (0.6–0.8 screen of extra fill), and about
+32k of CPU at the festival. It is what takes those runs over a 500k budget. It is also fragile:
+every new blended effect over the sky needs an underlay. See the revised recommendation under
+open question 3.
+
+#### Other findings
+
+- **Colour math applies only to the top two layers, so BG1 under translucent water does nothing
+  useful.** Under the half-blended water, the water would blend with the glow (BG1 is second)
+  and drop the backdrop. So the glow is windowed to the sky (`plane_window(BG1, …, horizon)`), and
+  the mirror's warmth is in the backdrop table instead. The warm tint is therefore additive only.
+- **The water looks different.** The fan's travelling vertex-colour waves are now horizontal
+  palette swells and a per-line wobble. Undithered glows halved by the water show faint banding.
+  In the festival and ending views the water now covers the whole lake, where the fan stayed
+  anchored at the dock.
+- **Interface panels over water** show the mirrored sky under them, not the water, because the
+  underlay is the backdrop.
+- **`poly_upper` is not free.** The proposal said it adds one OR, which is free when it is off. It
+  actually needs:
+  - weak-function overrides of `ot_insert`, the interface flush and the frame end;
+  - a variant of the face loops.
+
+  It also costs a few cycles a packet. That is why it lives only in `planes.akr`.
+- **Init time.** Building the glow map at start-up pushed the first frame past a tick and shifted
+  the harness timing. A precomputed table (`GLOW_ROW`) keeps the first frame inside tick 1.
 
 ### (b) Check-In!: the floors as a plane, the haze as a colour offset
 
@@ -706,9 +873,18 @@ screen-sized fill plus a gradient) would be about 500k.
 - **Verification**, as for the audio upgrade: compare `--dump-every` frames, `--gpu-stats` and
   `--wav` from the old and new builds for the system ROM (every boot theme) and every cart. They
   must be bit-identical.
-- **Standard library.** `planes.akr` is new. `poly_upper` adds an OR into the first colour word
-  of each packet, which is free when it is off, because the value is 0. Nothing changes for carts
-  that do not call it.
+- **Standard library.** `planes.akr` is new, and it is not in the prelude. `poly_upper` ORs bit 26
+  into the first colour word of each packet. It does this through weak overrides of `ot_insert`,
+  `ui_flush`, `__rt_frame_end` and the face loops, which only a cart that imports `planes.akr`
+  gets. Nothing changes for carts that do not import it: their ROMs are byte-identical.
+- **Verified.** These runs were compared with the old build:
+  - demo, features, orbs, lantern (before its port), checkin, soundlab, padtest and hello, each
+    idle, with scripted play and with held inputs;
+  - the system ROM, booting and navigating under both boot themes;
+  - 11 Lantern harness scenarios.
+
+  Frames every 10 ticks, `--gpu-stats` and `--wav` were bit-identical, and every ROM except
+  Lantern's was byte-identical.
 - **System ROM.** The shell and boot themes keep working unchanged. Launching a cart, and Home
   back to the shell, go through `mei_load_cart`, which resets, so a cart's plane state never
   leaks into the shell or the next cart. The boot themes are a natural first adopter: their
@@ -718,11 +894,40 @@ screen-sized fill plus a gradient) would be about 500k.
 
 ## Open questions
 
+All were settled as recommended for the build. Questions 1 and 3 have new findings from the port.
+
 1. **GPU budget level, per-pixel costs and a triangle-cap backstop.** The candidate is 40 per
    triangle, ×2 textured, ×2 blended and 0.5 per cleared pixel. *Recommendation:* build the plane
    chip and port Lantern Lake (example a) first, then set the budget from the ported cart's
    measurements. Keep a raised triangle cap (for example 4,000) as a backstop, because the packet
    list must have a bound anyway.
+
+   *After the port:* the table gives the share of frames over each budget level, for the ported
+   Lantern Lake. Before the port, every run except the festival was over 500k on 90–100% of its
+   frames.
+
+   | Run | > 450k | > 500k | > 550k | > 600k |
+   |---|---|---|---|---|
+   | Day | 0% | 0% | 0% | 0% |
+   | Dusk | 54% | 41% | 0% | 0% |
+   | Night | 62% | 61% | 0% | 0% |
+   | Moon path | 61% | 11% | 0% | 0% |
+   | Fight | 0.2% | 0% | 0% | 0% |
+   | Festival ending | 20% | 16% | 11% | 1.6% |
+
+   *Recommendation:*
+   - Keep the candidate cost table: 40 a triangle, ×2 textured, ×2 blended, 0.5 a cleared pixel.
+   - Set the budget at **500k**, equal to the CPU's, so that neither unit is the obvious
+     bottleneck.
+   - Keep the 4,000-triangle backstop.
+   - Adopt the hardware fix in question 3 together with this budget, because it removes the
+     underlays. Without them the port measured 401k / 452k at dusk, so every Lantern run except
+     the festival's fireworks would fit.
+   - If question 3 stays as it is, 550k is the lowest round level at which ported Lantern Lake
+     holds 60 fps outside the fireworks.
+
+   Either way, Check-In! (581k) and Sun & Moon Orbs (518k) need their ports (example b, and the
+   sky) to fit, and the system ROM's boot themes peak at 528k.
 2. **Hole encoding.** `0x8000` is a hole and upper pure black is written as `0x8400`. The
    alternative is a hidden coverage bitmap per framebuffer (9,600 bytes each), which avoids the
    black rewrite but adds invisible state. *Recommendation:* `0x8000`. It is one rule, it is all
@@ -731,6 +936,18 @@ screen-sized fill plus a gradient) would be about 500k.
    calculation for polygons": a blended packet over a hole stores its blend mode for the
    compositor. That needs more framebuffer bits than there are. *Recommendation:* keep the gap,
    and revisit only if the Lantern Lake prototype looks wrong.
+
+   *After the port:* it looks wrong (see [The Saturn gap is real](#the-saturn-gap-is-real)), and
+   the software workaround costs 55–70k GPU model cycles a frame. *Revised recommendation:*
+   revisit.
+
+   The cheapest fix needs no new framebuffer bits. When the compositor is on and a blended pixel
+   lands on a hole, the GPU uses that line's backdrop colour (from the backdrop table, or
+   `BD_COLOR`) as the destination, and writes a normal pixel, not a hole. That is exactly what
+   Lantern's underlays compute, at no fill cost. It has two conditions:
+   - It is wrong where a plane, not the backdrop, would be behind the pixel. A cart can arrange to
+     avoid that.
+   - The backdrop table must be written before the polygons that use it, as Lantern already does.
 4. **Map entry layout.** The SNES layout (3-bit palette plus a priority bit) or 4-bit palettes with
    no priority bit. *Recommendation:* SNES, because the priority bit is what lets level tiles pass
    in front of characters.
