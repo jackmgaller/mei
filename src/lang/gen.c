@@ -2410,6 +2410,42 @@ static void scan_stmt(Stmt *s, int *max_out) {
 
 typedef struct { int *v; int n, cap; } IntVec;
 static IntVec g_callpos, g_xfmpos, g_asmpos;
+static IntVec g_callmask;          /* parallel to g_callpos: registers each call may change */
+
+#define CLOB_FULL 0x00FF01FEu      /* r1-r8 and v0-v7: everything a call may change */
+
+/* The registers a call may change: the callee's own (when it was generated already) plus the
+   argument and result registers. Calls through values, and unknown callees: everything. */
+static uint32_t call_mask(Expr *e) {
+    if (e->bi >= BI_MAP) {
+        Func *t = e->target;
+        return (t && t->clob_known ? t->clob : CLOB_FULL) | 0x1FEu | 0xF0000u;
+    }
+    Func *f = e->callee;
+    if (e->indirect || !f || !f->clob_known) return CLOB_FULL;
+    uint32_t m = f->clob;
+    int si = ty_is_aggr(f->ret) ? 1 : 0, vi = 0;
+    for (int i = 0; i < f->nparams; i++) { if (is_v(f->params[i].ty)) vi++; else si++; }
+    if (si > 4) si = 4;
+    if (vi > 4) vi = 4;
+    m |= (uint32_t)((1 << si) - 1) << 1;
+    m |= (uint32_t)((1 << vi) - 1) << 16;
+    if (is_v(f->ret)) m |= 1u << 16;
+    else if (f->ret->k != TY_VOID && !ty_is_aggr(f->ret)) m |= 2;
+    return m;
+}
+
+static void call_push(int p, uint32_t mask) {
+    if (g_callpos.n && g_callpos.v[g_callpos.n - 1] == p) { g_callmask.v[g_callmask.n - 1] |= (int)mask; return; }
+    if (g_callpos.n == g_callpos.cap) {
+        int nc = g_callpos.cap ? g_callpos.cap * 2 : 64;
+        int *a = ar_alloc(sizeof(int) * (size_t)nc), *b = ar_alloc(sizeof(int) * (size_t)nc);
+        if (g_callpos.n) { memcpy(a, g_callpos.v, sizeof(int) * (size_t)g_callpos.n); memcpy(b, g_callmask.v, sizeof(int) * (size_t)g_callpos.n); }
+        g_callpos.v = a; g_callmask.v = b; g_callpos.cap = g_callmask.cap = nc;
+    }
+    g_callpos.v[g_callpos.n++] = p;
+    g_callmask.v[g_callmask.n++] = (int)mask;
+}
 typedef struct { int first, last; } LoopRange;
 static LoopRange *g_loops;
 static int g_nloops, g_caploops;
@@ -2432,10 +2468,10 @@ static void use_local(Local *l, int p) { if (p > l->end) l->end = p; }
 static void live_expr(Expr *e, int p) {
     if (!e) return;
     if (e->k == E_NAME && e->sym && e->sym->k == SY_LOCAL) use_local(e->sym->local, p);
-    if (e->k == E_CALL && (e->callee || e->indirect)) iv_push(&g_callpos, p);
+    if (e->k == E_CALL && (e->callee || e->indirect)) call_push(p, call_mask(e));
     if (e->k == E_CALL && e->bi >= BI_MAP) {
         /* the loop state is live across the per-element calls */
-        iv_push(&g_callpos, p);
+        call_push(p, call_mask(e));
         for (int i = 0; i < 8; i++) if (e->hid[i]) { use_local(e->hid[i], p); e->hid[i]->start = p - 1; }
         /* the arguments are all evaluated before the first call */
         for (int i = 0; i < e->nargs; i++) live_expr(e->args[i], p - 1);
@@ -2496,7 +2532,7 @@ static void live_stmt(Func *f, Stmt *s) {
         s->pos = p;
         Expr *call = sole_call(s);
         if (call) {
-            iv_push(&g_callpos, p);
+            call_push(p, call_mask(call));
             for (int i = 0; i < call->nargs; i++) live_expr(call->args[i], p - 1);
             if (call->indirect) live_expr(call->a, p - 1);
             if (s->k == S_ASSIGN) live_expr(s->e, p);
@@ -2564,6 +2600,12 @@ static void live_stmt(Func *f, Stmt *s) {
         live_asm_refs(f, s->asm_text, p);
         break;
     }
+}
+
+static uint32_t mask_in(int lo, int hi) {   /* calls at lo < x <= hi */
+    uint32_t m = 0;
+    for (int i = 0; i < g_callpos.n; i++) if (g_callpos.v[i] > lo && g_callpos.v[i] <= hi) m |= (uint32_t)g_callmask.v[i];
+    return m;
 }
 
 static int any_in(IntVec *v, int lo, int hi) {   /* lo < x <= hi */
@@ -2658,7 +2700,7 @@ static void assign_homes(Func *f, int *locals_size) {
     }
 
     /* live ranges */
-    g_callpos = g_xfmpos = g_asmpos = (IntVec){0};
+    g_callpos = g_xfmpos = g_asmpos = g_callmask = (IntVec){0};
     g_nloops = 0;
     g_pos = 0;
     for (int i = 0; i < f->nlocals; i++) { f->locals[i]->start = 0; f->locals[i]->end = 0; f->locals[i]->home = 0; f->locals[i]->dead = 0; }
@@ -2677,7 +2719,8 @@ static void assign_homes(Func *f, int *locals_size) {
     }
     for (int i = 0; i < f->nlocals; i++) {
         Local *l = f->locals[i];
-        l->crosses_call = any_in(&g_callpos, l->start, l->end) || (!l->in_asm && any_in(&g_asmpos, l->start, l->end));
+        l->clob = mask_in(l->start, l->end) | (!l->in_asm && any_in(&g_asmpos, l->start, l->end) ? CLOB_FULL : 0);
+        l->crosses_call = l->clob != 0;
         l->crosses_xfm = any_in(&g_xfmpos, l->start - 1, l->end);
     }
 
@@ -2699,7 +2742,8 @@ static void assign_homes(Func *f, int *locals_size) {
         g_iolocal.weight = f->uses_io;
         g_iolocal.start = 0;
         g_iolocal.end = g_pos + 1;
-        g_iolocal.crosses_call = g_callpos.n > 0 || g_asmpos.n > 0;
+        g_iolocal.clob = mask_in(-1, g_pos + 1) | (g_asmpos.n ? CLOB_FULL : 0);
+        g_iolocal.crosses_call = g_iolocal.clob != 0;
         cand[nc++] = &g_iolocal;
     }
     qsort(cand, (size_t)nc, sizeof *cand, cmp_prio);
@@ -2718,17 +2762,24 @@ static void assign_homes(Func *f, int *locals_size) {
         Local *l = cand[i];
         int list[16], n = 0;
         if (is_v(l->ty)) {
-            if (l->crosses_call && !l->in_asm) continue;
+            /* vector registers are not preserved by calls, but a call leaves alone the ones
+               its callee does not use */
+            uint32_t vclob = l->in_asm ? 0 : l->clob >> 16;
             int lim = l->crosses_xfm || f->uses_xfm ? 3 : 5;
             if (l->in_asm && !f->uses_xfm) lim = 8;
-            if (l->is_param && l->in_reg_arg && l->arg_reg < lim) list[n++] = l->arg_reg;
-            for (int r = 0; r < lim; r++) list[n++] = r;
+            if (l->is_param && l->in_reg_arg && l->arg_reg < lim && !(vclob >> l->arg_reg & 1)) list[n++] = l->arg_reg;
+            for (int r = 0; r < lim; r++) if (!(vclob >> r & 1)) list[n++] = r;
             for (int k = 0; k < n; k++)
                 if (reg_free_for(16 + list[k], l)) { l->home = 2; l->reg = list[k]; reg_take(16 + list[k], l); vused |= 1 << list[k]; break; }
             continue;
         }
-        if (l->crosses_call || l->in_asm) { for (int r = 9; r <= 13; r++) list[n++] = r; }
-        else {
+        if (l->in_asm) { for (int r = 9; r <= 13; r++) list[n++] = r; }
+        else if (l->crosses_call) {
+            /* caller-saved registers the calls in the range leave alone, then callee-saved ones */
+            if (l->is_param && l->in_reg_arg && !(l->clob >> l->arg_reg & 1)) list[n++] = l->arg_reg;
+            for (int r = 1; r <= 8; r++) if (!(l->clob >> r & 1) && !(argmask >> r & 1)) list[n++] = r;
+            for (int r = 9; r <= 13; r++) list[n++] = r;
+        } else {
             /* parameters keep their argument register; other locals avoid argument registers,
                and prefer caller-saved registers (callee-saved ones cost a save and a restore) */
             if (l->is_param && l->in_reg_arg) list[n++] = l->arg_reg;
@@ -3200,6 +3251,135 @@ static void warn_entry_points(Program *P) {
     }
 }
 
+/* ---- register clobbers: which registers a function's code may change, read from its
+   generated text (compiled and asm functions alike). r9-r13 and sp are preserved by every
+   function (the calling convention); ra is the caller's business. */
+
+static Func **g_lab;
+static int g_lab_n, g_lab_cap;
+
+static size_t lab_hash(const char *s) { size_t h = 2166136261u; while (*s) h = (h ^ (unsigned char)*s++) * 16777619u; return h; }
+
+static void lab_put(Func *f) {
+    size_t i = lab_hash(f->label) & (size_t)(g_lab_cap - 1);
+    while (g_lab[i]) i = (i + 1) & (size_t)(g_lab_cap - 1);
+    g_lab[i] = f;
+    g_lab_n++;
+}
+
+static Func *lab_get(const char *label, size_t len) {
+    char buf[256];
+    if (len >= sizeof buf) return NULL;
+    memcpy(buf, label, len);
+    buf[len] = 0;
+    for (size_t i = lab_hash(buf) & (size_t)(g_lab_cap - 1); g_lab[i]; i = (i + 1) & (size_t)(g_lab_cap - 1))
+        if (!strcmp(g_lab[i]->label, buf)) return g_lab[i];
+    return NULL;
+}
+
+static void topo_visit(Program *P, Func *f, Func **order, int *n, char *seen) {
+    int idx = -1;
+    for (int i = 0; i < P->nfuncs; i++) if (P->funcs[i] == f) { idx = i; break; }
+    if (idx < 0 || seen[idx]) return;
+    seen[idx] = 1;
+    for (int i = 0; i < f->ncalls; i++) if (f->calls[i]->reachable) topo_visit(P, f->calls[i], order, n, seen);
+    order[(*n)++] = f;
+}
+
+/* "r5" -> 5, "v3" -> 16 + 3, sp/ra/r0/r9-r13 -> -1 (not a clobber), anything else -> -2 */
+static int reg_bit(const char *s, size_t len) {
+    while (len && (*s == ' ' || *s == '\t')) { s++; len--; }
+    while (len && (s[len - 1] == ' ' || s[len - 1] == '\t')) len--;
+    if (len == 2 && !strncmp(s, "sp", 2)) return -1;
+    if (len == 2 && !strncmp(s, "ra", 2)) return -1;
+    if (len < 2 || len > 3 || (s[0] != 'r' && s[0] != 'v')) return -2;
+    int n = 0;
+    for (size_t i = 1; i < len; i++) { if (s[i] < '0' || s[i] > '9') return -2; n = n * 10 + s[i] - '0'; }
+    if (s[0] == 'v') return n < 8 ? 16 + n : -2;
+    if (n > 15) return -2;
+    if (n == 0 || (n >= 9 && n <= 15)) return -1;
+    return n;
+}
+
+static uint32_t text_clobbers(const char *t, size_t len) {
+    static const char *dest_first[] = {
+        "add", "sub", "mul", "div", "divu", "rem", "remu", "and", "or", "xor", "shl", "shr", "sar", "slt", "sltu",
+        "addi", "andi", "ori", "xori", "shli", "shri", "sari", "slti", "lui", "fmul", "fdiv", "nclip", "otz", "clerp",
+        "lb", "lbu", "lh", "lhu", "lw", "vld", "vmov", "vget", "vset", "vadd", "vsub", "vmul", "vscale", "vdot",
+        "vcross", "vxfm", "vproj", "mov", "li", "la", "neg", "not", "pop", NULL};
+    static const char *no_dest[] = {
+        "sw", "sh", "sb", "vst", "beq", "bne", "blt", "bge", "bltu", "bgeu", "bgt", "ble", "bgtu", "bleu", "beqz",
+        "bnez", "b", "jmp", "jr", "ret", "nop", "brk", "vsync", "push", NULL};
+    uint32_t m = 0;
+    const char *end = t + len;
+    while (t < end) {
+        const char *e = memchr(t, '\n', (size_t)(end - t));
+        if (!e) e = end;
+        const char *s = t, *le = e;
+        t = e + 1;
+        for (const char *c = s; c < le; c++) if (*c == ';' || (*c == '/' && c + 1 < le && c[1] == '/')) { le = c; break; }
+        for (;;) {
+            while (s < le && (*s == ' ' || *s == '\t')) s++;
+            const char *w = s;
+            while (w < le && *w != ' ' && *w != '\t' && *w != ':') w++;
+            if (w < le && *w == ':') { s = w + 1; continue; }   /* a label */
+            break;
+        }
+        if (s >= le || *s == '.') continue;   /* empty, or a directive */
+        const char *op = s;
+        while (s < le && *s != ' ' && *s != '\t') s++;
+        size_t ol = (size_t)(s - op);
+        const char *a0 = s;
+        while (a0 < le && (*a0 == ' ' || *a0 == '\t')) a0++;
+        const char *a0e = a0;
+        while (a0e < le && *a0e != ',') a0e++;
+        /* control leaving the function other than by ret (a jump to another function's code,
+           a computed jump), or a new sp (coroutines): the code may come back with anything
+           changed */
+        const char *last = le;
+        while (last > a0 && (last[-1] == ' ' || last[-1] == '\t')) last--;
+        const char *lop = last;
+        while (lop > a0 && lop[-1] != ',' && lop[-1] != ' ' && lop[-1] != '\t') lop--;
+        int is_branch = op[0] == 'b' && ol >= 3 && ol <= 4 && strncmp(op, "brk", 3);
+        if ((ol == 3 && !strncmp(op, "jmp", 3)) || (ol == 1 && op[0] == 'b') || is_branch) {
+            if (lop >= last || *lop != '.') m |= CLOB_FULL;
+            continue;
+        }
+        if (ol == 2 && !strncmp(op, "jr", 2)) {
+            int r = reg_bit(a0, (size_t)(a0e - a0));
+            if (!(r == -1 && (!strncmp(a0, "r15", 3) || !strncmp(a0, "ra", 2)))) m |= CLOB_FULL;
+            continue;
+        }
+        if (a0e - a0 >= 2 && !strncmp(a0, "sp", 2) && (a0e - a0 == 2 || a0[2] == ' ')) {
+            int ok = (ol == 4 && !strncmp(op, "addi", 4) && !strncmp(a0e, ", sp,", 5)) || (ol == 3 && !strncmp(op, "lui", 3));
+            if (!ok) m |= CLOB_FULL;
+        }
+        int known = 0;
+        for (int i = 0; no_dest[i]; i++) if (strlen(no_dest[i]) == ol && !strncmp(op, no_dest[i], ol)) known = 1;
+        if (known) continue;
+        if (ol == 4 && !strncmp(op, "call", 4)) {
+            const char *l = a0, *lend = a0e;
+            while (lend > l && (lend[-1] == ' ' || lend[-1] == '\t')) lend--;
+            Func *g = lab_get(l, (size_t)(lend - l));
+            m |= g && g->clob_known ? g->clob | 2u | 0x10000u : CLOB_FULL;
+            continue;
+        }
+        if (ol == 5 && !strncmp(op, "callr", 5)) { m |= CLOB_FULL; continue; }
+        if (ol == 4 && !strncmp(op, "vxp3", 4)) {
+            int r = reg_bit(a0, (size_t)(a0e - a0));
+            if (r >= 16 && r <= 21) m |= 7u << r;
+            else m |= CLOB_FULL;
+            continue;
+        }
+        for (int i = 0; dest_first[i]; i++) if (strlen(dest_first[i]) == ol && !strncmp(op, dest_first[i], ol)) known = 1;
+        if (!known) { m |= CLOB_FULL; continue; }
+        int r = reg_bit(a0, (size_t)(a0e - a0));
+        if (r == -2) m |= CLOB_FULL;
+        else if (r > 0) m |= 1u << r;
+    }
+    return m & CLOB_FULL;
+}
+
 void gen_program(Program *P, Buf *out) {
     g_P = P;
     g_label = 0;
@@ -3268,8 +3448,24 @@ void gen_program(Program *P, Buf *out) {
     else buf_puts(out, "    vsync\n");
     buf_puts(out, "    jmp .frame\n");
 
+    /* callees before callers, so a call knows which registers its callee changes */
+    g_lab_n = 0;
+    g_lab_cap = 1024;
+    while (g_lab_cap < 4 * P->nfuncs + 16) g_lab_cap *= 2;
+    g_lab = ar_alloc(sizeof(Func *) * (size_t)g_lab_cap);
+    for (int i = 0; i < P->nfuncs; i++) if (P->funcs[i]->reachable && P->funcs[i]->label) lab_put(P->funcs[i]);
+    Func **order = ar_alloc(sizeof(Func *) * (size_t)(P->nfuncs + 1));
+    int norder = 0;
+    char *seen = ar_alloc((size_t)P->nfuncs + 1);
+    for (int i = 0; i < P->nfuncs; i++) P->funcs[i]->clob_known = 0;
+    for (int i = 0; i < P->nfuncs; i++) if (P->funcs[i]->reachable) topo_visit(P, P->funcs[i], order, &norder, seen);
     if (P->init_fn->body->n) gen_func(P->init_fn, out);
-    for (int i = 0; i < P->nfuncs; i++) if (P->funcs[i]->reachable) gen_func(P->funcs[i], out);
+    for (int i = 0; i < norder; i++) {
+        size_t start = out->len;
+        gen_func(order[i], out);
+        order[i]->clob = text_clobbers(out->p + start, out->len - start);
+        order[i]->clob_known = 1;
+    }
 
     /* ROM data */
     buf_puts(out, "\n; ROM data\n    .align 4\n");

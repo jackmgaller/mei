@@ -242,6 +242,7 @@ struct Local {
     int stack_arg_off;    /* param: offset in the caller's outgoing area (if not in a register) */
     int start, end;       /* live range in statement positions */
     int crosses_call;     /* a call (or asm block) happens inside the live range */
+    uint32_t clob;        /* registers those calls may change (as Func.clob) */
     int crosses_xfm;      /* a mat4 * vector (which loads v4-v7) happens inside the live range */
     int dead;             /* never read or written (a constant loop bound's end local): no home */
 };
@@ -279,6 +280,8 @@ typedef struct Func {
     Sym *stack_msg;       /* meic -g: the message of the stack check at entry */
     int inl;              /* inliner: 0 not decided, 1 inlinable (`return E` of a small pure E), 2 not */
     Expr *inl_e;          /* the E of an inlinable function */
+    uint32_t clob;        /* codegen: registers a call to it may change (bits 1-8 r1-r8, 16-23 v0-v7) */
+    int clob_known;       /* clob is set (the function was generated before its callers) */
 } Func;
 
 typedef enum { SY_TYPE, SY_CONST, SY_DATA, SY_GLOBAL, SY_REG, SY_EMBED, SY_FUNC, SY_LOCAL, SY_BUILTIN } SymKind;
