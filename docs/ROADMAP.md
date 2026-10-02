@@ -1,0 +1,114 @@
+# Roadmap
+
+What's planned for later, what's still undecided, and what we've decided against. Items move
+out of this file when they land, and the decision goes into DECISIONS.md or the relevant spec.
+
+## Next compiler round (approved)
+
+The "data and code ergonomics" round. Each item removes boilerplate seen across the carts.
+
+- **Slices, `[]T`:** a pointer plus a length. `fn sum(xs: []s32)` takes any array. `len(xs)`,
+  `map`/`filter` and `meic -g` bounds checks work on them.
+- **Methods (UFCS):** `p.update()` means `update(p)`. Pure syntax; lets code read by type.
+- **Packed bitfields and flag sets** in structs, such as `flags: bits { broken, dirty, lit, vip }`
+  packed into one byte. They matter with 2 MB of RAM (Check-In!'s per-object and per-tile flags).
+- **`fixed16`:** a compact 4.12 fixed-point type, like the PS1 GTE's, for big arrays of positions
+  and velocities at half the memory.
+- **Namespaces: files as modules, named on import.** `import "tsumiki/anim.akr" as tk` makes the
+  module's public names reachable only as `tk.play(...)`. Inside the module, names stay short
+  (`play`, `raycast`), and `private` already controls what it exposes. Plain `import` keeps
+  today's global behaviour, so every existing cart compiles unchanged.
+  - Compiler work: per-module symbol tables, mangled names underneath (so assembly labels and
+    `weak fn` overrides still resolve), and the checker telling `tk.` apart from struct fields
+    and enum members like `View.Now`.
+  - Together with UFCS, most calls read as `hero.play(CLIP_RUN)` and module names only appear
+    on free functions.
+  - Retires the hand-made prefixes (`bc_`, `ui_`, `ot_`, `tk_`) and the clash renames from the
+    0.2 stdlib round (`col_mix`, `strlen`, `text_width`, `project_point`).
+  - No C++-style `namespace { }` blocks: one way to do it is enough.
+
+## Language: other candidates (not yet approved)
+
+From the agents' retrospective, roughly in order of value:
+
+- **Multiple return values:** `fn divmod(a, b) -> (s32, s32)`, `let (q, r) = divmod(7, 2)`.
+- **Iterating arrays directly:** `for x in arr`, `for i, x in arr`, `step` and reverse ranges,
+  and labelled `break outer` for nested grid scans.
+- **Compile-time tables (`const fn`):** simple lookup tables built by the compiler instead of a
+  Python generator.
+- **Saturating arithmetic** (`+|`, `-|`) for colours, volumes and meters.
+- **`static` locals:** variables that keep their value between calls.
+
+## Tsumiki (in progress)
+
+The 3D creation toolkit (`docs/TSUMIKI.md`, `carts/playroom`), being built now.
+
+- **Usability test:** a fresh agent builds a small game from only `docs/TSUMIKI.md`. Wherever
+  it gets stuck shows what the docs and API need.
+- **Move to namespaces** when they land: `tk_play` becomes `tk.play`. Tsumiki is the first real
+  user of the feature.
+
+## Machine (pending go-ahead)
+
+All PS1-authentic unless noted.
+
+- **GPU draw-offset register**, like the PS1's. Check-In! generates an unrolled assembly file
+  just to pan its cached geometry.
+- **A GPU dropped-triangle counter register.** Dropped triangles past the 4,000 cap only set a
+  status bit today.
+- **Sprite packets** with their own cost, so an interface rectangle isn't two triangles. This is
+  how the real PS1 GPU worked.
+- **Per-mesh sort mode** (average, nearest or farthest depth) and per-face bias. The depth keys
+  added for Check-In! cover part of this.
+- **A clamp flag on `vxp3`**, like the GTE's FLAG register, to make clipping cheaper.
+- **Smaller ones:**
+  - a hardware ordering-table clear;
+  - per-channel volume ramps, to stop zipper noise;
+  - making the null page fault;
+  - instant memory-card status queries.
+- **Maybe:** count-leading-zeros and funnel-shift instructions for bitmask work. Borderline for
+  the era, since the R3000 had neither.
+
+## Tooling (pending go-ahead)
+
+- **Self-checking scenarios:** carts' scenario files check `// expect:` lines, and
+  `make test-carts` runs them all.
+- **`mei-headless`:**
+  - `--arg name=value`, so one build serves a parameter sweep;
+  - `--rev HEAD` for before/after runs;
+  - `--no-raster`, to run the simulation without drawing pixels;
+  - `--compare A.mei B.mei`, a frame diff with masked regions;
+  - dumps named by game tick instead of frame number;
+  - `--profile` for cycles per function, and faults reported as function and line;
+  - direct PNG dumps, and analog stick values in scripted input.
+- **`meic -D NAME=value`** for build-time constants.
+- **Assembly checks:** warn when code falls through into an assembly label.
+
+## Carts
+
+- **Check-In!:**
+  - the map feels small (maybe just the demo map);
+  - clean up the `meic -W` warnings.
+- **Plane chip ports (optional now):** Check-In!, Sun & Moon Orbs and the boot themes fit the
+  1M GPU budget as they are. Porting them to planes would only buy headroom.
+- **stdlib:** `text()` mishandles a negative x.
+
+## Networking (maybe later)
+
+- **Messaging** between consoles.
+
+## Open questions
+
+- **A name for the assembly language.**
+- **`docs/OVERVIEW.md`** still says "2,000 triangles per frame"; it's now 4,000 and a 1M-cycle
+  GPU budget.
+
+## Decided against
+
+- **Typed (data-carrying) enums.**
+- **Headlines or news on MeiNet.** Time is the only canonical feed, for carts only; scores
+  weren't wanted either.
+- **A depth buffer.** By spec; draw order stays the ordering table's job.
+- **Generics, `defer` and language-level generators:** slices, the no-heap design and the task
+  library cover them.
+- **Rigid-body physics in Tsumiki:** a character controller only.
