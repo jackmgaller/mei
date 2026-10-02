@@ -1,0 +1,61 @@
+// Screenshot scenes of the Playroom (run with tests/shots.sh, which writes
+// carts/playroom/screenshots/). A generated file defines SHOT and imports this; each scene
+// sets the room up, then holds the stick one way and takes its picture at the last frame.
+import "../game.akr"
+
+var t: s32 = -1
+var s: vec2
+var p: u32
+
+fn setup() {
+    reset_game()
+    enter(Mode.Play)
+    msg_t = 0
+    match SHOT {
+        1 => {}                                                         // the title (kept)
+        2 => { tk_teleport(hero, vec3(1.0, 0.0, -8.0)); hero.yaw = -0.2; tk_cam_follow(hero, 0) }
+        3 => { tk_teleport(hero, vec3(-8.6, 1.2, -1.6)); hero.yaw = -1.57; tk_cam_follow(hero, 0) }
+        4 => { tk_teleport(hero, vec3(-6.0, 0.0, 5.2)); hero.yaw = 2.6; tk_cam_orbit(hero, 0); cam_mode = 1 }
+        5 => { tk_teleport(hero, vec3(8.4, 2.65, -5.4)); hero.yaw = -0.75; tk_cam_first_person(hero, 0); cam_mode = 2 }
+        6 => { tk_teleport(hero, vec3(2.0, 0.0, 1.0)); tk_cam_fixed(CORNER_EYE, hero, vec3(0.0, 0.0, 0.0), 0); cam_mode = 3 }
+        7 => { tk_teleport(hero, vec3(-3.5, 0.0, -6.0)); tk_cam_rail(&RAIL[0], len(RAIL), hero, 0); cam_mode = 4 }
+        8 => { tk_teleport(hero, LIFT_LOW + vec3(0.0, 0.4, 0.0)); hero.yaw = 1.57; tk_cam_follow(hero, 0) }
+        9 => { tk_teleport(hero, vec3(0.0, 0.0, 3.2)); hero.yaw = 0.0; tk_cam_follow(hero, 0) }
+        10 => { tk_teleport(hero, vec3(-6.0, 0.0, -7.4)); hero.yaw = -1.57; tk_cam_follow(hero, 0) }
+        11 => {
+            got = 4
+            for i in 1..5 { stars[i].shown = false }
+            stars[0].pos = hero.pos + vec3(0.0, 0.7, 0.0)
+        }
+        12 => { tk_teleport(hero, vec3(6.0, 0.0, -2.8)); hero.yaw = 1.57; tk_cam_follow(hero, 0); show_costs = true }
+        else => {}
+    }
+}
+
+fn tk_input_pad() -> u32 {
+    if t == tk_ticks() { return p }
+    t = tk_ticks()
+    p = 0
+    s = vec2(0.0, 0.0)
+    if SHOT == 1 { return 0 }
+    if mode == Mode.Title {
+        if mode_t == 2 { setup() }
+        return 0
+    }
+    let k = mode_t
+    match SHOT {
+        2 => { if k > 5 { s = vec2(0.1, 1.0) } }                        // running onto the rug
+        3 => { s = vec2(0.0, 1.0); if k > 10 && k < 24 { p = A } }      // a jump onto the blue block
+        4 => { if k > 4 && k < 40 { s = vec2(0.6, 0.0) } }              // turning the orbit round
+        5 => {}
+        6 => { s = vec2(1.0, 0.0) }
+        7 => { s = vec2(1.0, 0.2) }
+        8 => {}                                                         // riding the lift up
+        9 => { s = vec2(0.0, 1.0) }                                     // onto the button: the chest opens
+        10 => { s = vec2(0.0, 1.0); if k == 30 { p = A } }              // splashing into the pool
+        else => {}
+    }
+    return p
+}
+
+fn tk_input_stick() -> vec2 { return s }

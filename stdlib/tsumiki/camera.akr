@@ -33,6 +33,8 @@ struct TkCam {
     height: fixed = 0.7          // the point looked at: this far above the target's feet
     tilt: fixed = -0.3           // follow: how far it looks down (radians)
     smooth: fixed = 0.15         // follow: how quickly it catches up with a jump (0..1 a frame)
+    swing: bool = true           // follow: swing round behind the target as it runs (false: keep
+                                 // facing the same way, for top-down and side views)
     eye_height: fixed = 0.75     // first person: eyes above the feet
     // ---- the library's
     __turn: vec2                 // tk_cam_turn() this frame
@@ -106,8 +108,12 @@ fn __tk_cam_mode(mode: s32, target: *TkBody, blend: s32) {
         c.__ty = target.pos.y
         c.__dist = c.dist
         c.__tilt = c.tilt
-        // follow starts behind the target, whatever the camera was doing
-        c.__lead = tk_orbit_point(target.pos + vec3(0.0, c.height, 0.0), target.yaw, c.tilt, c.dist)
+        // follow starts behind the target, whatever the camera was doing (or, not swinging,
+        // facing the way the camera faces now)
+        var fy = target.yaw
+        if !c.swing { fy = c.yaw }
+        if mode == TK_CAM_FOLLOW { c.__yaw = fy }
+        c.__lead = tk_orbit_point(target.pos + vec3(0.0, c.height, 0.0), fy, c.tilt, c.dist)
         if mode == TK_CAM_ORBIT {
             c.__yaw = c.yaw
             c.__pitch = clamp(c.pitch, -1.2, 0.3)
@@ -125,7 +131,7 @@ fn __tk_cam_mode(mode: s32, target: *TkBody, blend: s32) {
 fn tk_cam_follow(b: *TkBody, blend: s32) {
     __tk_cam_mode(TK_CAM_FOLLOW, b, blend)
     if blend == 0 && b != null {
-        tk_cam.yaw = b.yaw
+        tk_cam.yaw = tk_cam.__yaw
         tk_cam.pos = tk_cam.__lead
     }
 }
@@ -205,10 +211,13 @@ fn __tk_cam_step() {
                 if c.target.on_ground { c.__ty += (c.target.pos.y - c.__ty) * c.smooth }
                 f.y = c.__ty + c.height
             }
-            let dx = f.x - c.__lead.x
-            let dz = f.z - c.__lead.z
-            if abs(dx) + abs(dz) > 0.05 { yaw = atan2(dx, dz) }
-            yaw = tk_wrap(yaw + turn.x)
+            if c.swing {
+                let dx = f.x - c.__lead.x
+                let dz = f.z - c.__lead.z
+                if abs(dx) + abs(dz) > 0.05 { c.__yaw = atan2(dx, dz) }
+            }
+            c.__yaw = tk_wrap(c.__yaw + turn.x)
+            yaw = c.__yaw
             // something in the way: rise to look down over it if that sees further
             var tilt = c.tilt
             var room = __tk_cam_clear(f, tk_orbit_point(f, yaw, tilt, c.dist), c.dist)

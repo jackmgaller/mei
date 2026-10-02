@@ -242,7 +242,7 @@ fn build_pool() {
     tk_box(vec3(POOL_LO.x, 0.0, POOL_LO.z + 0.25), vec3(POOL_LO.x + 0.25, 0.3, POOL_HI.z - 0.25))
     tk_box(vec3(POOL_HI.x - 0.25, 0.0, POOL_LO.z + 0.25), vec3(POOL_HI.x, 0.3, POOL_HI.z - 0.25))
     tk_solid(false)
-    tk_paint(TK_CREAM, TK_PLAIN)
+    tk_paint(rgb(150, 205, 240), TK_PLAIN)
     tk_grid(vec3(POOL_LO.x + 0.25, 0.03, POOL_LO.z + 0.25), vec3(POOL_HI.x - 0.25, 0.03, POOL_HI.z - 0.25), 2, 2)
     // a rubber duck
     tk_smooth(true)
@@ -254,7 +254,7 @@ fn build_pool() {
     tk_level_end()
     // the water: a grid of tiles, waved each frame, half see-through
     tk_shape_begin()
-    tk_paint(rgb(110, 170, 240), TK_PLAIN)
+    tk_paint(rgb(60, 140, 230), TK_PLAIN)
     tk_smooth(true)
     tk_blend(BLEND_HALF)
     tk_grid(vec3(POOL_LO.x + 0.25, 0.2, POOL_LO.z + 0.25), vec3(POOL_HI.x - 0.25, 0.2, POOL_HI.z - 0.25), 6, 5)

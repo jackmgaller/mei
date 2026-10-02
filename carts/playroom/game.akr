@@ -20,6 +20,7 @@ const STAR_SPOTS: [5]vec3 = [
 ]
 const CAM_NAMES: [5]*u8 = ["FOLLOW", "ORBIT", "EYES", "CORNER CAM", "RAIL CAM"]
 const START_POS: vec3 = vec3(0.0, 0.0, -6.0)
+const CANDLE = 6                 // a particle style of our own (6-15 are free)
 
 var mode: Mode
 var mode_t: s32
@@ -49,9 +50,10 @@ fn pressed(b: u32) -> bool { return (pad & ~pad_was & b) != 0 }
 
 fn init() {
     tk_open(rgb(250, 236, 222))
-    tk_no_sky()                                     // the floor and walls always fill the view
+
     build_room()
     // the toys
+    tk_cam.dist = 3.7                               // a little closer than the default
     hero = tk_new_body(START_POS)
     hero.anim = tk_new_anim(&ZENMAI)
     tk_body_clips(hero, &ZENMAI_IDLE, &ZENMAI_RUN, &ZENMAI_JUMP)
@@ -88,9 +90,14 @@ fn init() {
     carriage.shadow = 0.6
     smoke = tk_new_emitter(TK_SMOKE, TRAIN_CENTRE)
     smoke.rate = 0.2
+    // candle flames: the fire preset, made smaller (a style of our own)
+    *tk_style(CANDLE) = *tk_style(TK_FIRE)
+    tk_style(CANDLE).size0 = 0.15
+    tk_style(CANDLE).lift = 0.012
+    tk_style(CANDLE).life = 16
     for i in 0..3 {
-        let e = tk_new_emitter(TK_FIRE, CANDLES[i] + vec3(0.0, 0.08, 0.0))
-        e.rate = 0.35
+        let e = tk_new_emitter(CANDLE, CANDLES[i] + vec3(0.0, 0.06, 0.0))
+        e.rate = 0.4
     }
     enter(Mode.Title)
 }

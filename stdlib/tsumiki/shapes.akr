@@ -428,6 +428,45 @@ fn __tk_tiles(lo: vec3, hi: vec3, nx: s32, nz: s32, other: u32) {
     }
 }
 
+// Rolling ground: nx x nz cells of `cell` units from `origin` (its corner, the smallest x and
+// z), with (nx + 1) x (nz + 1) heights above origin.y, row by row along x, rows going +z.
+// Lit smoothly whatever tk_smooth() says. In a level it is also the toy box's terrain (one per
+// toy box): bodies walk on it, and slopes rising more than a body's step across it are walls.
+// At most 1,024 cells (32 x 32).
+fn tk_terrain(origin: vec3, cell: fixed, nx: s32, nz: s32, heights: *fixed) {
+    let first = __tk_nv
+    let row = nx + 1
+    for k in 0..(nz + 1) {
+        for i in 0..row {
+            let _ = __tk_v(origin + vec3(cell * i, heights[k * row + i], cell * k))
+        }
+    }
+    let was = __tk_smooth
+    __tk_smooth = true
+    for k in 0..nz {
+        for i in 0..nx {
+            let a = first + k * row + i
+            __tk_face(a, a + 1, a + row, a + row + 1, vec3(0.0, 1.0, 0.0),
+                      __tk_hnormal(heights, i, k, nx, nz, cell), __tk_hnormal(heights, i + 1, k, nx, nz, cell),
+                      __tk_hnormal(heights, i, k + 1, nx, nz, cell), __tk_hnormal(heights, i + 1, k + 1, nx, nz, cell))
+        }
+    }
+    __tk_smooth = was
+    if __tk_level && __tk_solid_on { tk_terrain_set(origin, cell, nx, nz, heights) }
+}
+
+// The terrain's normal at corner (i, k), from its neighbours' heights.
+fn __tk_hnormal(h: *fixed, i: s32, k: s32, nx: s32, nz: s32, cell: fixed) -> vec3 {
+    let row = nx + 1
+    let i0 = max(i - 1, 0)
+    let i1 = min(i + 1, nx)
+    let k0 = max(k - 1, 0)
+    let k1 = min(k + 1, nz)
+    let dx = (h[k * row + i1] - h[k * row + i0]) / max(i1 - i0, 1)
+    let dz = (h[k1 * row + i] - h[k0 * row + i]) / max(k1 - k0, 1)
+    return normalize(vec3(-dx, cell, -dz))
+}
+
 // A wall: a vertical grid of nx x ny tiles from corner lo to corner hi, where lo and hi share
 // an x (a wall facing along x) or a z (facing along z). `facing` is the way its front faces:
 // TK_EAST, TK_WEST, TK_NORTH or TK_SOUTH. Not solid (put a tk_box behind it to stop bodies).
