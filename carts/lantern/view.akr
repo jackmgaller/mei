@@ -294,7 +294,10 @@ fn draw_line() {
 // The first-person pass: sorted among itself, always in front of the world (whose buckets
 // start at 16; the line's are capped at 12).
 fn draw_view_pass() {
-    if phase == Phase.Catch && screen == Screen.Fish { draw_held_fish() }
+    if phase == Phase.Catch && screen == Screen.Fish {
+        draw_held_glow()
+        draw_held_fish()
+    }
     if show_rod {
         draw_line()
         bt_flush()
@@ -371,7 +374,7 @@ fn draw_fish3d(f: s32, pal: s32, pos: vec3, yaw: fixed, pitch: fixed, scale: fix
 // How big to draw a fish of this size (the model's body is one unit long).
 fn fish_scale(size_mm: s32) -> fixed { return fixed(size_mm) / 1180 }
 
-// A warm glow behind the catch held up (with the low polygons: a blended sprite over the planes).
+// A warm glow behind the catch held up.
 fn draw_held_glow() {
     ss_look(SS_HALO)
     let k = min(phase_t * 10, 200)

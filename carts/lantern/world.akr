@@ -255,12 +255,6 @@ fn bt_quad(p0: vec4, p1: vec4, p2: vec4, p3: vec4, cb: u32, ct: u32) {
 
 // A camera-facing quad of half-size hw x hh centred at pos.
 fn billboard(pos: vec3, hw: fixed, hh: fixed, cb: u32, ct: u32) {
-    if ul_on && bt_flags & F_SEMI != 0 && project(pos) {
-        let k = (__fx * 160) * proj_iw
-        let w = (hw * k) as s32 + 2
-        let h = (hh * k) as s32 + 2
-        ul_add(proj_x - w, proj_y - h, proj_x + w, proj_y + h)
-    }
     let p = vec4(pos, 1.0)
     let r = vec4(cam_c * hw, 0.0, -cam_s * hw, 0.0)
     let u = vec4(0.0, hh, 0.0, 0.0)
@@ -313,12 +307,15 @@ fn ss_look(kind: s32) {
 
 // Where a sprite goes: its bucket is clamped to ss_min..ss_max (the passes share tables: the
 // reflection from bucket 1, what lies in the water at 0, the world from 16, the rod below 16).
-// With ss_gain, a blended sprite is drawn at double strength where it lies under the water
-// plane (from water_top down), which halves it, so it looks as it did drawn over the old
-// water fan; it is split in two at that line when it straddles it.
+// With SS_SPLIT (things in the water, drawn with the low polygons), a blended sprite is drawn
+// at double strength where it lies under the water plane (from water_top, the plane's first
+// line, down), which halves it, so it looks as it did drawn over the old water fan; it is split
+// in two at that line when it straddles it.
+const SS_ALL = 0
+const SS_SPLIT = 1
 var ss_min = 0
 var ss_max = 1023
-var ss_gain = false
+var ss_mode = SS_ALL
 
 // A sprite of half-size rw x rh (world units) centred on p. mode: blend mode, or -1 opaque.
 // bias: added to the ordering-table bucket (-1024: in front of everything).
@@ -335,20 +332,17 @@ fn ssprite(p: vec3, rw: fixed, rh: fixed, c: u32, mode: s32, bias: s32) {
         ss_part(x - hw, y - hh, x + hw, y + hh, ss_v0, ss_v1, c, 0x26, b)
         return
     }
-    if hw >= 3 && hh >= 3 { ul_add(x - hw, y - hh, x + hw, y + hh) }   // (a speck over black hardly shows)
     let col = (mode as u32) << 24
     let y0 = y - hh
     let y1 = y + hh
-    let s = water_top
-    if !ss_gain || y1 <= s {
+    if ss_mode == SS_ALL {
         ss_part(x - hw, y0, x + hw, y1, ss_v0, ss_v1, c | col, 0x2E, b)
-    } else if y0 >= s {
-        ss_double(x - hw, y0, x + hw, y1, ss_v0, ss_v1, c, col, b)
-    } else {
-        let vs = ss_v0 + (ss_v1 - ss_v0) * (s - y0) / (y1 - y0)
-        ss_part(x - hw, y0, x + hw, s, ss_v0, vs, c | col, 0x2E, b)
-        ss_double(x - hw, s, x + hw, y1, vs, ss_v1, c, col, b)
+        return
     }
+    let s = clamp(water_top, y0, y1)
+    let vs = ss_v0 + (ss_v1 - ss_v0) * (s - y0) / (y1 - y0)
+    if s > y0 { ss_part(x - hw, y0, x + hw, s, ss_v0, vs, c | col, 0x2E, b) }
+    if s < y1 { ss_double(x - hw, s, x + hw, y1, vs, ss_v1, c, col, b) }
 }
 
 // Double strength: twice the colour, or, for a bright glow, as much as keeps its hue (the
@@ -377,159 +371,6 @@ fn ss_part(x0: s32, y0: s32, x1: s32, y1: s32, v0: s32, v1: s32, col: u32, t: u3
     q[8] = spos(x1, y1)
     q[9] = (ss_u1 as u32) | ((v1 as u32) << 8)
     ot_insert(q, t, b)
-}
-
-// ---- underlays. A semi-transparent polygon blends with the framebuffer only: over a hole
-// (where only the planes will show) it would blend with black (docs/PLANES.md). So every
-// blended thing that may lie over a hole registers its screen rectangle, and before it is
-// drawn the rectangle is filled with what the planes' backdrop shows there (the sky gradient
-// or its mirror: the line table's colours, Gouraud between the gradient's stops). Pixels
-// already covered by polygons draw over the underlay, which is drawn first.
-
-const UL_MAX = 96
-var ul_x0: [96]s16
-var ul_y0: [96]s16
-var ul_x1: [96]s16
-var ul_y1: [96]s16
-var ul_n: s32
-var ul_on = false            // collecting (the low polygons' pass)
-
-fn ul_add(x0: s32, y0: s32, x1: s32, y1: s32) {
-    if !ul_on || ul_n >= UL_MAX { return }
-    let a = max(x0, 0)
-    let b = max(y0, 0)
-    let c = min(x1, 320)
-    let d = min(y1, 240)
-    if a >= c || b >= d { return }
-    ul_x0[ul_n] = a as s16
-    ul_y0[ul_n] = b as s16
-    ul_x1[ul_n] = c as s16
-    ul_y1[ul_n] = d as s16
-    ul_n += 1
-}
-
-// One underlay rectangle: a Gouraud quad for each piece between the gradient's stops, with
-// the backdrop table's colours at the piece's first and last lines; sorted first (inserted
-// last into the farthest bucket).
-fn ul_rect(x0: s32, y0: s32, x1: s32, y1: s32) {
-    let tbl = LT_BACKDROP as *u32
-    var ya = y0
-    while ya < y1 {
-        var yb = y1
-        for i in 0..6 {
-            if sky_ys[i] > ya && sky_ys[i] < yb { yb = sky_ys[i] }
-        }
-        let ct = tbl[ya]
-        let cb = tbl[yb - 1]
-        let q = packet_alloc(9)
-        if q == null { return }
-        q[1] = ct
-        q[2] = spos(x0, ya)
-        q[3] = ct
-        q[4] = spos(x1, ya)
-        q[5] = cb
-        q[6] = spos(x0, yb)
-        q[7] = cb
-        q[8] = spos(x1, yb)
-        ot_insert(q, 0x25, 1023)
-        ya = yb
-    }
-}
-
-fn ul_emit() {
-    for i in 0..ul_n { ul_rect(ul_x0[i] as s32, ul_y0[i] as s32, ul_x1[i] as s32, ul_y1[i] as s32) }
-    ul_n = 0
-}
-
-// The interface's blended packets (glass panels, glows) lie over the planes too. Their
-// rectangles are kept for the next frame, whose low polygons start with underlays there: a low
-// underlay shows exactly what a hole would (it is the backdrop, under the water plane where
-// that lies over it), so one left over from a panel that has moved costs nothing to the look,
-// and it keeps what the low polygons draw (the moon, clouds) under the panel. A rectangle that
-// last frame's did not cover gets an underlay in the high polygons' table this frame (under
-// the world, which the frame's end draws before the interface).
-const UI_MAX = 32
-var uip_x0: [32]s16
-var uip_y0: [32]s16
-var uip_x1: [32]s16
-var uip_y1: [32]s16
-var uip_n: s32
-var uic_x0: [32]s16
-var uic_y0: [32]s16
-var uic_x1: [32]s16
-var uic_y1: [32]s16
-var uic_n: s32
-
-fn ui_underlays() {
-    uic_n = 0
-    if __ui_tail != null {
-        var a = __ui_head
-        while a != 0xFFFFFF {
-            let q = a as *u32
-            let t = (q[0] >> 24) as s32
-            if t & 0xF8 == 0x28 {
-                let g = t & 1
-                let tx = (t >> 1) & 1
-                let n = 3 + ((t >> 2) & 1)
-                var x0 = 9999
-                var y0 = 9999
-                var x1 = -9999
-                var y1 = -9999
-                var k = 1
-                for v in 0..n {
-                    if v == 0 || g != 0 { k += 1 }
-                    let pos = q[k]
-                    k += 1 + tx
-                    let x = ((pos << 16) as s32) >> 16
-                    let y = (pos as s32) >> 16
-                    x0 = min(x0, x)
-                    y0 = min(y0, y)
-                    x1 = max(x1, x)
-                    y1 = max(y1, y)
-                }
-                x0 = max(x0, 0)
-                y0 = max(y0, 0)
-                x1 = min(x1, 320)
-                y1 = min(y1, 240)
-                if x0 < x1 && y0 < y1 {
-                    if !ui_had(x0, y0, x1, y1) {
-                        ul_on = true
-                        ul_add(x0, y0, x1, y1)
-                        ul_on = false
-                    }
-                    if uic_n < UI_MAX {
-                        uic_x0[uic_n] = x0 as s16
-                        uic_y0[uic_n] = y0 as s16
-                        uic_x1[uic_n] = x1 as s16
-                        uic_y1[uic_n] = y1 as s16
-                        uic_n += 1
-                    }
-                }
-            }
-            a = q[0] & 0xFFFFFF
-        }
-        ul_emit()
-    }
-    for i in 0..uic_n {
-        uip_x0[i] = uic_x0[i]
-        uip_y0[i] = uic_y0[i]
-        uip_x1[i] = uic_x1[i]
-        uip_y1[i] = uic_y1[i]
-    }
-    uip_n = uic_n
-}
-
-// Was the rectangle covered by one of last frame's (whose low underlays this frame drew)?
-fn ui_had(x0: s32, y0: s32, x1: s32, y1: s32) -> bool {
-    for i in 0..uip_n {
-        if x0 >= uip_x0[i] as s32 && y0 >= uip_y0[i] as s32 && x1 <= uip_x1[i] as s32 && y1 <= uip_y1[i] as s32 { return true }
-    }
-    return false
-}
-
-// Last frame's interface rectangles, as low underlays (in the low polygons' pass).
-fn ui_prev_underlays() {
-    for i in 0..uip_n { ul_add(uip_x0[i] as s32, uip_y0[i] as s32, uip_x1[i] as s32, uip_y1[i] as s32) }
 }
 
 // Something lying flat on the water: squashed by the viewing angle.
@@ -936,15 +777,12 @@ fn lanterns_prepare() {
     for i in 0..NLANTERN { lantern_on[i] = lantern_lit(i) as u8 }
 }
 
-// halos: the big glows (low polygons, over the water); garlands: the small lit dots (high:
-// they hang in front of the houses)
-fn draw_lantern_glows(refl: bool, halos: bool, garlands: bool) {
+fn draw_lantern_glows(refl: bool) {
     if night < 0.15 { return }
     let k = (night * 256) as s32
     let flick = (tick_count / 3) & 7
     ss_look(SS_HALO)
     for i in 0..NLANTERN {
-        if !halos { break }
         if lantern_on[i] == 0 { continue }
         var p = LANTERN_POS[i]
         if !in_view(p, 3.0) { continue }
@@ -954,7 +792,7 @@ fn draw_lantern_glows(refl: bool, halos: bool, garlands: bool) {
         ssprite(p, 1.1, 1.1, c, 1, -3)
     }
     // garlands
-    if garlands && g.village > 0 {
+    if g.village > 0 {
         ss_look(SS_DOT)
         for i in 0..NGARLAND {
             if GARLAND_LVL[i] as s32 > g.village { continue }
@@ -968,28 +806,6 @@ fn draw_lantern_glows(refl: bool, halos: bool, garlands: bool) {
             if i % 3 == 2 { c = rgb(120, 160, 255) }
             ssprite(p, 0.22, 0.22, scale_col(c, k), 1, -3)
         }
-    }
-}
-
-// The light on the lanterns' paper (pass C): the glows are low polygons, under the world, so
-// the paper would show unlit. This adds the glow's middle (a few uniform texels of the halo,
-// additive, as before) in a rectangle just inside the paper box (0.22 x 0.32): it lies over
-// polygon pixels only, never over the planes, where it would blend with black.
-fn draw_lantern_cores() {
-    if night < 0.15 { return }
-    let k = (night * 256) as s32
-    let flick = (tick_count / 3) & 7
-    ss_u0 = UV_HALO_U + 30
-    ss_v0 = UV_HALO_V + 30
-    ss_u1 = UV_HALO_U + 33
-    ss_v1 = UV_HALO_V + 33
-    ss_info = (SLOT_WORLD << 16) | (1 << 20) | ((PAL_GREY as u32) << 24)
-    for i in 0..NLANTERN {
-        if lantern_on[i] == 0 { continue }
-        let p = LANTERN_POS[i]
-        if !in_view(p, 3.0) { continue }
-        let f = 220 + ((flick + i * 3) & 7) * 5
-        ssprite(p, 0.09, 0.14, scale_col(rgb(100, 65, 30), k * f / 256), 1, -3)
     }
 }
 

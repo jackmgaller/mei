@@ -332,7 +332,6 @@ fn draw() {
     draw_tutorial()
     draw_saving()
     if show_debug { draw_debug() }
-    finish_world()
 }
 
 fn draw_fish() {

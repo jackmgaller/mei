@@ -27,8 +27,6 @@ fn draw_lake() {
     // ---- the low polygons (PL), behind the water, in one table drawn now:
     // A, the reflection (from bucket 1)
     poly_upper(false)
-    ul_on = true
-    ul_n = 0
     depth_bias(1)
     ss_min = 1
     ss_max = 1023
@@ -38,9 +36,9 @@ fn draw_lake() {
     draw_sky_objects(true)
     draw_clouds(true)
     bt_flush()
-    draw_lantern_glows(true, true, true)
+    draw_lantern_glows(true)
     if fest_lanterns_on {
-        draw_fest_lanterns(0)
+        draw_fest_lanterns(true)
         draw_fireworks(true)
     }
     bt_flush()
@@ -49,12 +47,12 @@ fn draw_lake() {
     draw_clouds(false)
     bt_flush()
     pmark(1)
-    // B, in front of it (bucket 0): what lies in the water, and the glows and sparks that
-    // hang over it, at double strength under the water plane (ss_gain)
+    // B, in front of it (bucket 0): what lies in the water, at double strength under the water
+    // plane (see ss_mode)
     depth_bias(-1024)
     ss_min = 0
     ss_max = 0
-    ss_gain = true
+    ss_mode = SS_SPLIT
     draw_shadows()
     bt_flush()
     draw_lantern_pools()
@@ -62,19 +60,8 @@ fn draw_lake() {
     draw_glitter()
     draw_ripples()
     if phase == Phase.Aim { draw_aim_marker() }
-    draw_lantern_glows(false, true, false)
-    draw_splashes()
-    draw_fireflies()
-    if fest_lanterns_on {
-        draw_fest_lanterns(1)
-        draw_fireworks(false)
-    }
-    if phase == Phase.Catch && screen == Screen.Fish { draw_held_glow() }
     bt_flush()
-    ss_gain = false
-    ui_prev_underlays()
-    ul_on = false
-    ul_emit()                    // what the blended things above lie over, drawn first
+    ss_mode = SS_ALL
     depth_bias(0)
     flush_pass()
     tris_a = (GPU_STATUS & 0xFFFF) as s32 - before
@@ -84,7 +71,6 @@ fn draw_lake() {
     // ---- the high polygons (PH), in front of the water; they stay high to the end of the
     // frame (the interface too). C, the world above the water, from bucket 16, and D (view.akr),
     // the rod, the line and a fish held up, in front of it: one table, drawn at the frame's end
-    // after the interface's underlays (finish_world)
     poly_upper(true)
     depth_bias(16)
     ss_min = 16
@@ -99,9 +85,15 @@ fn draw_lake() {
         if screen == Screen.Fish || screen == Screen.Menu { mesh_at(BOBBER, lure, 0.0) }
     }
     draw_leaping_fish()
-    if fest_lanterns_on { draw_fest_lanterns(2) }
-    draw_lantern_cores()
-    draw_lantern_glows(false, false, true)
+    // the glows and sparks, additive over the world as before the planes; over the open water
+    // they blend with the backdrop (the mirrored sky) and hide the water plane under them
+    draw_lantern_glows(false)
+    draw_splashes()
+    draw_fireflies()
+    if fest_lanterns_on {
+        draw_fest_lanterns(false)
+        draw_fireworks(false)
+    }
     bt_flush()
     depth_bias(0)
     ss_min = 0
@@ -110,10 +102,6 @@ fn draw_lake() {
     world_tris = tris_a + tris_drawn()      // (the high table's count is last frame's)
     pmark(7)
 }
-
-// The end of a frame's world: underlays for the interface's blended packets, under the high
-// polygons, which the frame's end then draws (before the interface).
-fn finish_world() { ui_underlays() }
 
 // Fish under the water: subtractive shadows by day; at night a few give themselves away
 // (bubbles, a glow, a glint).
@@ -134,10 +122,6 @@ fn draw_shadows() {
             let k = (day * 150) as s32
             var c = scale_col(rgb(60, 56, 40), k)
             if s.id == 12 { c = scale_col(rgb(30, 50, 90), k) }   // the golden koi: a gold shimmer (less dark in blue)
-            if project(p) {
-                let r = ((fish_scale(s.size_mm) * 0.9) * ((__fx * 160) * proj_iw)) as s32 + 2
-                ul_add(proj_x - r, proj_y - r, proj_x + r, proj_y + r)
-            }
             draw_fish_shadow(s.id, s.size_mm, p, head, col_add(c, c))   // double: the water halves it
         }
     }
@@ -284,19 +268,17 @@ fn fest_lanterns_update() {
 }
 
 // part: 0 the reflections, 1 the glows (low, over the water), 2 the paper lanterns (high)
-fn draw_fest_lanterns(part: s32) {
+fn draw_fest_lanterns(refl: bool) {
     for i in 0..fl_n {
         if fl_age[i] == 0 { continue }
         var p = fl_pos[i]
         if !in_view(p, 2.0) { continue }
         let fade = min(fl_age[i] * 8, 256)
         ss_look(SS_HALO)
-        if part == 0 {
+        if refl {
             ssprite(mirror(p), 0.6, 0.6, scale_col(rgb(170, 90, 40), fade), 1, -2)
-        } else if part == 1 {
-            ssprite(p, 0.7, 0.7, scale_col(rgb(200, 110, 50), fade), 1, -2)
         } else {
-            ssprite(p, 0.3, 0.3, scale_col(rgb(200, 110, 50), fade), 1, -2)    // the glow over the lantern
+            ssprite(p, 0.7, 0.7, scale_col(rgb(200, 110, 50), fade), 1, -2)
             ss_look(SS_PAPER)
             ssprite(p, 0.2, 0.28, scale_col(rgb(150, 150, 150), fade), -1, -3)
         }

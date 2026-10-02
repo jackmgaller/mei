@@ -484,7 +484,7 @@ with the line's backdrop, not with black (see [holes](#the-priority-bit-and-hole
   - polygons over a backdrop table alone: 0.15 ms.
 
   The WebAssembly build under node runs about as fast as native (0.95 ms for the first case). In
-  `mei-headless`, Lantern Lake's 1,200-frame dusk run takes 3.9 s, against 3.3 s before the port.
+  `mei-headless`, Lantern Lake's 1,200-frame dusk run takes 3.5 s, against 3.3 s before the port.
 
 ### Polygon GPU and planes together
 
@@ -519,15 +519,14 @@ falls by 40–50%, to 1.3–1.6× its CPU time. If the budget were set at the CP
 Lake today would exceed it in every measured run. With planes, every run's mean fits, and only the
 festival ending's fireworks peaks go over.
 
-The table above was the proposal's estimate. The built port measures:
+The table above was the proposal's estimate. The built port, on the rev-2 chip, measures:
 
-- day: 349k;
-- dusk: 458k;
-- night: 477k;
-- festival ending: 321k mean, 612k at its peak.
+- day: 317k;
+- dusk: 401k, as predicted;
+- night: 406k;
+- festival ending: 292k mean, 538k at its peak.
 
-The estimate held for the layers that moved. An early port without the workarounds measured dusk
-at 401k, as predicted. The [gap for blended polygons over holes](#the-saturn-gap-was-real) costs
+On the first revision the [gap for blended polygons over holes](#the-saturn-gap-was-real) cost
 another 55–70k at dusk and night. The budget recommendation is under
 [open question 1](#open-questions).
 
@@ -712,14 +711,15 @@ The proposal underestimated that last point; see below.
 
 The port is in `carts/lantern`:
 
-- `world.akr`: `draw_sky`, `sky_glow`, `planes_setup`, `draw_water` and the underlays;
+- `world.akr`: `draw_sky`, `sky_glow`, `planes_setup`, `draw_water`, and `ssprite`'s split at the
+  water;
 - `scene.akr`: `draw_lake`.
 
 Before-and-after contact sheets are in
 `carts/lantern/screenshots/planes_{day,dusk,night,moonpath,fight,festival}.png`. The top row is
-main and the bottom row is the port, with the same scenario at the same ticks. The harness
-scenarios and gameplay are unchanged: 17 fishing, fight, koi, pause and tutorial scenarios print
-identical game logs before and after.
+main and the bottom row is the port on the rev-2 chip, with the same scenario at the same ticks.
+The harness scenarios and gameplay are unchanged: 17 fishing, fight, koi, pause and tutorial
+scenarios print identical game logs before and after.
 
 **As built:**
 
@@ -735,7 +735,13 @@ identical game logs before and after.
   assembly loop then runs over the floor's lines. For each line it picks one of 8 brightness
   copies of the water palette (216–223) from two travelling sines (the fan's waves, now horizontal
   swells), and it adds a wobble to U0.
-- **The reflection, sun, moon, stars and clouds** stay PL polygons.
+- **The low polygons (PL)** are the reflection, sun, moon, stars and clouds, and then what lies in
+  the water: fish shadows, lantern pools, glitter, ripples, the bobber's light. Below the water's
+  first line these are drawn at double strength, because the water halves them (`SS_SPLIT`). A
+  bright glow is doubled hue-preserving: scaled so that the largest channel is 255.
+- **The high polygons (PH)** are the world, the rod, the interface, and, as before the planes,
+  the glows and sparks that hang over everything: lantern halos and garlands, splashes,
+  fireflies, festival lanterns and fireworks, the glow behind a catch.
 - **The roll** is gone.
 - **VRAM used** is about 9 KB:
   - the backdrop table;
@@ -751,69 +757,70 @@ after its first 30 frames, or mean / max:
 
 | Run | Fill before → after | Blended after | GPU model before | GPU model after | CPU before → after |
 |---|---|---|---|---|---|
-| Day | 3.28 → 2.03 | 0.36 | 593k / 639k | 349k / 396k | 218k → 244k |
-| Dusk | 3.54 → 2.57 | 0.65 | 677k / 735k | 458k / 521k | 239k → 277k |
-| Night | 3.40 → 2.58 | 0.81 | 682k / 728k | 477k / 531k | 239k → 285k |
-| Moon path | 3.35 → 2.47 | 0.76 | 661k / 725k | 451k / 517k | 236k → 280k |
-| Fight | 3.01 → 1.77 | 0.37 | 552k / 680k | 308k / 459k | 211k → 240k |
-| Festival ending | 2.82 → 1.74 | 0.33 | 484k / 667k | 321k / 612k | 231k → 272k |
+| Day | 3.28 → 1.65 | 0.36 | 593k / 639k | 317k / 356k | 218k → 226k |
+| Dusk | 3.54 → 1.92 | 0.63 | 677k / 735k | 401k / 453k | 239k → 250k |
+| Night | 3.40 → 1.77 | 0.80 | 682k / 728k | 406k / 450k | 239k → 255k |
+| Moon path | 3.35 → 1.72 | 0.75 | 661k / 725k | 385k / 439k | 236k → 252k |
+| Fight | 3.01 → 1.38 | 0.37 | 552k / 680k | 275k / 396k | 211k → 219k |
+| Festival ending | 2.82 → 1.45 | 0.32 | 484k / 667k | 292k / 538k | 231k → 244k |
 
-**GPU work falls by 30–44%.** That is less than the 40–50% predicted, because of the underlays
-described below.
+**GPU work falls by 40–50%**, as predicted (dusk 677k → 401k).
 
-**CPU rises by 26–46k (11–19%).** The proposal said it would stay about the same. The sky and
-water now cost about 34k, against the fan's 24k:
+**CPU rises by 8–16k (3–7%).** The proposal said it would stay about the same. The sky and water
+cost about 34k, against the fan's 24k:
 
 - `plane_floor`: 15k;
 - the per-line water palettes and wobble: 8k;
 - the sky table and glow: 5k;
 - the rest: palettes.
 
-The rest of the rise is the underlays and the split passes. The festival's fireworks stretch is
-the worst case: about 400k, against 300k before. About 32k of that is underlays, and the rest is
-the festival lanterns' glows, now drawn in two layers and doubled. It is still under 500k.
+The festival's fireworks stretch is the worst case: about 320k, against 293k before.
 
 #### The Saturn gap was real
 
-Open question 3 kept the Saturn's limitation: a blended polygon over a hole blends with black. In
-Lantern Lake that loses far more than "a little of the sky's colour". Every additive or
-half-blended effect drawn where only the backdrop lay behind it turned visibly wrong:
+The first port ran on the first revision of the chip, which kept the Saturn's limitation: a
+blended polygon over a hole blended with black. In Lantern Lake that lost far more than "a little
+of the sky's colour". Every additive or half-blended effect drawn where only the backdrop lay
+behind it turned visibly wrong:
 
 - lantern halos over the sky became dark discs;
 - the interface's translucent panels became black glass over the sky and water;
-- the lantern cores showed pink discs at dusk;
 - the halving water made doubled glows clip their hue.
 
-The port works around it in software:
+That port worked around it in software. Before the low polygons, it drew opaque Gouraud
+"underlays" in the backdrop table's own colours under every blended sprite and shadow, and, from
+the previous frame's rectangles, under the interface's panels. It moved the lantern halos and
+every other glow into PL, under the world, so they no longer lit the posts and planks. This cost
+55–70k of GPU model cycles at dusk and night, 0.6–0.8 screen of extra fill and about 32k of CPU at
+the festival. It was also fragile, because every new blended effect over the sky needed an
+underlay.
 
-- **Underlays.** Before the low polygons, the cart draws opaque Gouraud rectangles in the
-  backdrop table's own colours, split at the gradient's stops, under each blended billboard and
-  shadow. The blends then mix with the sky they would have mixed with.
-  - Interface panels get low underlays from the previous frame's rectangles, so the water still
-    covers them.
-  - A panel gets a high underlay where last frame had none.
-- **Glows over the water** move to PL at double strength, because BG2 halves them. The doubling
-  preserves hue: it is scaled so that the largest channel is at most 255.
-- **Lantern halos** no longer light the posts and planks in front of them, because they are low,
-  behind the world. A small additive core in PH lights the paper.
+The rev-2 chip does in the GPU what the underlays did (see
+[holes](#the-priority-bit-and-holes) and open question 3). The port lost the underlays, and the
+glows went back to where they were drawn before the planes.
 
-This costs 55–70k of GPU model cycles at dusk and night (0.6–0.8 screen of extra fill), and about
-32k of CPU at the festival. It is what takes those runs over a 500k budget. It is also fragile:
-every new blended effect over the sky needs an underlay. See the revised recommendation under
-open question 3.
+#### What still looks different
+
+- **No roll** while fighting a fish.
+- **Glows over the open water** (lantern halos, the moon-path glints under a halo, the catch's
+  glow) are high polygons, so inside them the water plane is hidden. There they show the
+  mirrored sky plus the glow, without the water's swells. At night the two are close. A glow
+  drawn low instead would light only the water, and the half-blending water limits it to half
+  strength, which looked flat.
+- **The water** has horizontal palette swells and a per-line wobble instead of the fan's
+  travelling vertex-colour waves. Undithered glows halved by the water show faint banding. In the
+  festival and ending views the water covers the whole lake, where the fan stayed anchored at the
+  dock.
+- **Interface panels over the water** show the mirrored sky under them, not the water, for the
+  same reason as the glows.
+- **The warm tint** is additive only (see below).
 
 #### Other findings
 
 - **Colour math applies only to the top two layers, so BG1 under translucent water does nothing
   useful.** Under the half-blended water, the water would blend with the glow (BG1 is second)
   and drop the backdrop. So the glow is windowed to the sky (`plane_window(BG1, …, horizon)`), and
-  the mirror's warmth is in the backdrop table instead. The warm tint is therefore additive only.
-- **The water looks different.** The fan's travelling vertex-colour waves are now horizontal
-  palette swells and a per-line wobble. Undithered glows halved by the water show faint banding.
-  In the festival and ending views the water now covers the whole lake, where the fan stayed
-  anchored at the dock.
-- **Interface panels over water** show the mirrored sky under them, not the water, because the
-  underlay is the backdrop.
+  the mirror's warmth is in the backdrop table instead.
 - **`poly_upper` is not free.** The proposal said it adds one OR, which is free when it is off. It
   actually needs:
   - weak-function overrides of `ot_insert`, the interface flush and the frame end;
@@ -918,32 +925,28 @@ All were settled as recommended for the build. Questions 1 and 3 have new findin
    measurements. Keep a raised triangle cap (for example 4,000) as a backstop, because the packet
    list must have a bound anyway.
 
-   *After the port:* the table gives the share of frames over each budget level, for the ported
-   Lantern Lake. Before the port, every run except the festival was over 500k on 90–100% of its
-   frames.
+   *After the port (rev-2 chip):* the table gives the share of frames over each budget level, for
+   the ported Lantern Lake. Before the port, every run except the festival was over 500k on
+   90–100% of its frames. On the first revision, with the underlays, dusk and night were over 500k
+   on 41–61%.
 
    | Run | > 450k | > 500k | > 550k | > 600k |
    |---|---|---|---|---|
    | Day | 0% | 0% | 0% | 0% |
-   | Dusk | 54% | 41% | 0% | 0% |
-   | Night | 62% | 61% | 0% | 0% |
-   | Moon path | 61% | 11% | 0% | 0% |
-   | Fight | 0.2% | 0% | 0% | 0% |
-   | Festival ending | 20% | 16% | 11% | 1.6% |
+   | Dusk | 0.7% | 0% | 0% | 0% |
+   | Night | 0% | 0% | 0% | 0% |
+   | Moon path | 0% | 0% | 0% | 0% |
+   | Fight | 0% | 0% | 0% | 0% |
+   | Festival ending | 13% | 9% | 0% | 0% |
 
    *Recommendation:*
    - Keep the candidate cost table: 40 a triangle, ×2 textured, ×2 blended, 0.5 a cleared pixel.
    - Set the budget at **500k**, equal to the CPU's, so that neither unit is the obvious
-     bottleneck.
+     bottleneck. Ported Lantern Lake fits it everywhere except the fireworks' peaks.
    - Keep the 4,000-triangle backstop.
-   - Adopt the hardware fix in question 3 together with this budget, because it removes the
-     underlays. Without them the port measured 401k / 452k at dusk, so every Lantern run except
-     the festival's fireworks would fit.
-   - If question 3 stays as it is, 550k is the lowest round level at which ported Lantern Lake
-     holds 60 fps outside the fireworks.
 
-   Either way, Check-In! (581k) and Sun & Moon Orbs (518k) need their ports (example b, and the
-   sky) to fit, and the system ROM's boot themes peak at 528k.
+   Check-In! (581k) and Sun & Moon Orbs (518k) need their ports (example b, and the sky) to fit,
+   and the system ROM's boot themes peak at 528k.
 2. **Hole encoding.** `0x8000` is a hole and upper pure black is written as `0x8400`. The
    alternative is a hidden coverage bitmap per framebuffer (9,600 bytes each), which avoids the
    black rewrite but adds invisible state. *Recommendation:* `0x8000`. It is one rule, it is all
@@ -957,8 +960,10 @@ All were settled as recommended for the build. Questions 1 and 3 have new findin
    Saturn behaviour looks wrong (see [The Saturn gap was real](#the-saturn-gap-was-real)), and its
    software workaround cost 55–70k GPU model cycles a frame. The backdrop blend needs no new
    framebuffer bits and does what the workaround did at no fill cost. Its limits:
-   - It is wrong where a plane, not the backdrop, would be behind the pixel. A cart arranges to
-     avoid that (Lantern draws its glows over the water in PL, under the water plane).
+   - It is wrong where a plane, not the backdrop, would be behind the pixel: a high blended
+     polygon there hides the plane. A cart puts what must show the plane through it under the
+     plane, as Lantern does with what lies in the water (low, at double strength), or accepts it,
+     as Lantern does with the glows that hang over the water.
    - The backdrop registers and tables must be written before the polygons that blend over them.
    - The pixel gets the polygon layer's colour offset, not the backdrop's.
 4. **Map entry layout.** The SNES layout (3-bit palette plus a priority bit) or 4-bit palettes with

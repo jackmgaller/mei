@@ -661,7 +661,6 @@ fn draw_tutorial() {
 // Draws the world and the interface queued so far right now (so 3D drawn next lands on top
 // of it); the rest of the interface still draws at the end of the frame.
 fn ui_flush_now() {
-    finish_world()
     flush_pass()
     ui_flush()
 }
