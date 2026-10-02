@@ -130,8 +130,10 @@ to 64 × 52 = 3,328 bytes. The receiver knows a page's length once it has seen t
 *last*. Rows may arrive in any order and over several passes of the loop; a page is
 **complete** when every row from 0 to the last has arrived with the same version.
 
-**Versions.** Each page has an 8-bit version that the gateway increments (wrapping at 255)
-whenever the page's contents change. Rows of the same version are identical every time they
+**Versions.** Each page has an 8-bit version, 1–255, that the gateway increments whenever the
+page's contents change, wrapping from 255 to 1 (the index uses 0 for "not on air"; only the
+time page, whose version is its time's low byte, uses 0). Two versions alias only after 255
+changes, about two and a half days of 15-minute refreshes. Rows of the same version are identical every time they
 are sent, so a receiver that already has a complete page ignores them. When a row with a
 different version arrives, the receiver starts the page again from empty. Carts therefore
 copy a page out when it completes with a new version, and otherwise leave it alone.
@@ -194,8 +196,8 @@ The carousel is built from 1-second frames of 15 packets.
 
 So in 20 seconds a receiver sees the time 20 times, the index and each current-conditions
 page 4 times, each forecast once, and about a third of the maps. A page's rows are taken from
-one snapshot of its data, made when its first row is sent, so a refresh never mixes versions
-within one pass.
+one snapshot of its data, made when the page is scheduled (for a map, when its header row is
+scheduled), so a refresh never mixes versions within one pass.
 
 ## Field types
 
@@ -393,7 +395,9 @@ then spoils at most the delta-coded rows below it up to the next key row (at mos
 comes round again, instead of the rest of the map. Since a grid row always fits a packet
 (raw is 33 bytes), compression does not change a map's airtime: every map is 49 packets
 whatever its contents. What it buys is room: a compressed row leaves the rest of its payload
-free for future use, and the key rows cost only bytes that would be padding anyway.
+free for future use, and the key rows cost only bytes that would be padding anyway. Measured on
+the test recording's nine maps (432 grid rows): raw 14,256 bytes, runs only 9,374, delta runs
+everywhere 7,222, and with key rows 7,429 (2.9 % more than delta everywhere).
 
 The data comes from a coarse grid of points sampled from Open-Meteo across the whole country
 and upsampled bilinearly by the gateway, so maps show broad patterns, not local detail.

@@ -1,0 +1,118 @@
+"""Gateway tests: python3 tools/meinet/test_meinet.py (run by `make test`)."""
+import os
+import random
+import struct
+import sys
+import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fixture  # noqa: E402
+import meinet  # noqa: E402
+import pages as pg  # noqa: E402
+import wire  # noqa: E402
+
+FIXTURE_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "tests", "lang", "data", "broadcast.bin")
+
+
+def fixture_stream(seconds=64):
+    st = meinet.Station(meinet.load_config(None))
+    st.load_fixture(0, fixture.START)
+    return b"".join(meinet.generate(st, fixture.START, seconds, True, random.Random(1), 0))
+
+
+class Wire(unittest.TestCase):
+    def test_hamming_table(self):
+        self.assertEqual(wire.HAMMING, [0x15, 0x02, 0x49, 0x5E, 0x64, 0x73, 0x38, 0x2F,
+                                        0xD0, 0xC7, 0x8C, 0x9B, 0xA1, 0xB6, 0xFD, 0xEA])
+        for n in range(16):
+            for bit in range(8):
+                self.assertEqual(wire.HAMMING_DECODE[wire.HAMMING[n] ^ 1 << bit], (n, 1))
+                for bit2 in range(bit + 1, 8):
+                    self.assertEqual(wire.HAMMING_DECODE[wire.HAMMING[n] ^ 1 << bit ^ 1 << bit2][0], -1)
+
+    def test_crc(self):
+        self.assertEqual(wire.crc16(b"123456789"), 0x29B1)
+
+    def test_packet_round_trip(self):
+        p = wire.packet(0x3401, 17, True, 200, b"hello")
+        self.assertEqual(len(p), 64)
+        h, payload, corr = wire.decode_packet(p)
+        self.assertEqual((h & 0xFFFF, h >> 16 & 63, h >> 23 & 1, h >> 24), (0x3401, 17, 1, 200))
+        self.assertEqual(payload[:5], b"hello")
+        self.assertFalse(corr)
+        bad = bytearray(p)
+        bad[3] ^= 0x10
+        self.assertTrue(wire.decode_packet(bad)[2])
+        bad[20] ^= 1
+        self.assertIsNone(wire.decode_packet(bad))
+
+
+class Pages(unittest.TestCase):
+    def test_map_rows(self):
+        rnd = random.Random(5)
+        above = None
+        for y in range(48):
+            row = [min(15, (x // 9 + y // 7) % 16) if rnd.random() > 0.1 else rnd.randrange(16) for x in range(64)]
+            enc = pg.encode_map_row(row, above, y)
+            self.assertLessEqual(len(enc), 52)
+            if y % 8 == 0:
+                self.assertNotEqual(enc[0], 2)
+            self.assertEqual(pg.decode_map_row(enc + bytes(52 - len(enc)), above), row)
+            above = row
+
+    def test_civil(self):
+        self.assertEqual(pg.civil_from_days(0), (2000, 1, 1))
+        self.assertEqual(pg.civil_from_days(9769), (2026, 9, 30))
+        self.assertEqual(pg.weekday(9769), 3)          # a Wednesday
+
+
+class Stream(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.data = fixture_stream()
+
+    def test_committed_fixture_matches(self):
+        with open(FIXTURE_FILE, "rb") as f:
+            self.assertEqual(f.read(), self.data, "regenerate with tools/meinet/make_fixture.sh")
+
+    def test_layout(self):
+        self.assertEqual(len(self.data), 64 * 960)
+        for s in range(64):
+            h, payload, _ = wire.decode_packet(self.data[s * 960:s * 960 + 64])
+            self.assertEqual(h & 0xFFFF, 0x100)
+            secs = struct.unpack_from("<I", payload)[0]
+            self.assertEqual(secs, fixture.START - wire.EPOCH_2000 + s)
+
+    def test_assembly(self):
+        rx = wire.Receiver()
+        rx.feed(self.data[:40 * 960])
+        self.assertEqual(rx.dropped, 0)
+        for page in [0x400 + i for i in range(9)]:
+            for kind in (0, 1, 2):
+                self.assertTrue(rx.complete(kind << 12 | page), hex(kind << 12 | page))
+        self.assertTrue(rx.complete(pg.INDEX_PAGE))
+        idx = rx.page_bytes(pg.INDEX_PAGE)
+        self.assertEqual(idx[0], 10)                       # home, 8 regions, national
+        cur = rx.page_bytes(0x0403)
+        self.assertEqual(cur[22:30], b"\x07Chicago")
+        rx.feed(self.data[40 * 960:])
+        self.assertEqual(rx.pages[0x0403][0], 2)           # refreshed: version 2
+        maps = [p for p in rx.pages if p >> 12 == 3 and rx.complete(p)]
+        self.assertGreaterEqual(len(maps), 9)
+        m = rx.page_bytes(maps[0])
+        above = None
+        for y in range(48):
+            above = pg.decode_map_row(m[52 * (y + 1):52 * (y + 2)], above)
+            self.assertIsNotNone(above)
+
+    def test_noise(self):
+        noisy = wire.add_noise(self.data, 1e-3, random.Random(3))
+        rx = wire.Receiver()
+        rx.feed(noisy[1000:])                              # mid-stream start
+        self.assertGreater(rx.dropped, 0)
+        self.assertGreater(rx.fixed, 0)
+        self.assertTrue(rx.complete(pg.INDEX_PAGE))
+
+
+if __name__ == "__main__":
+    unittest.main()
