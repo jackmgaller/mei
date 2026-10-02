@@ -1,0 +1,420 @@
+// Fair Skies: the app. Pages, navigation, the idle tour, and the frame loop.
+//
+// Controls: LEFT/RIGHT the location's pages (now, 5-day, 24-hour, map); L/R the previous or
+// next location (P-/P+); UP/DOWN lists; A open; B back home; X the remote (type a page
+// number); Y the regions directory; START settings; SELECT the tour ("Local Forecast").
+
+import "art.akr"
+import "rx.akr"
+import "demo.akr"
+import "model.akr"
+import "clock.akr"
+import "style.akr"
+import "maptex.akr"
+import "icons.akr"
+import "chrome.akr"
+import "pages.akr"
+import "overlays.akr"
+import "store.akr"
+import "music.akr"
+
+enum View { Clock, Regions, Now, Week, Hours, Map }
+
+var view = View.Now
+var cur = 0                       // the location shown (index into locs)
+var tick: s32                     // frames since start
+var idle: s32                     // frames since the last button
+var next_view = View.Now          // where the running transition goes
+var next_loc = 0
+
+// the tour ("Local Forecast"): the idle attract mode
+var tour_on: bool
+var tour_step: s32
+var tour_t: s32
+
+// Test hooks (tests/harness.akr replaces these).
+weak fn input_pad(f: s32) -> u32 { return PAD1 }
+weak fn test_init() {}
+weak fn test_hook(f: s32) {}
+
+private var pad: u32
+private var pad_prev: u32
+private var had_page: bool
+private var was_view = View.Now
+private var was_loc = -1
+
+fn pressed(b: u32) -> bool { return pad & ~pad_prev & b != 0 }
+
+// ---- views
+
+fn view_kind(v: View) -> s32 {
+    return match v { Now => K_NOW, Week => K_WEEK, Hours => K_HOURS, Map => K_MAP, else => -1 }
+}
+
+fn kind_view(k: s32) -> View {
+    return match k { 0 => View.Now, 1 => View.Week, 2 => View.Hours, else => View.Map }
+}
+
+// The views a location has (the kinds on air), in order.
+fn loc_views(i: s32, out: *View) -> s32 {
+    var n = 0
+    for k in 0..KINDS {
+        if loc_has_kind(i, k) {
+            out[n] = kind_view(k)
+            n += 1
+        }
+    }
+    return n
+}
+
+// The page number and subpage shown in the header for a view.
+fn view_page(v: View, i: s32) -> s32 {
+    return match v { Clock => BC_TIME_PAGE, Regions => BC_INDEX_PAGE, else => locs[i].page }
+}
+
+// Goes to a view of a location, with the blinds.
+fn go(v: View, i: s32) {
+    var vv = v
+    let ii = clamp(i, 0, nlocs - 1)
+    let k = view_kind(vv)
+    if k >= 0 && !loc_has_kind(ii, k) {
+        var vs: [4]View
+        if loc_views(ii, &vs[0]) > 0 { vv = vs[0] }
+    }
+    if vv == next_view && ii == next_loc { return }
+    next_view = vv
+    next_loc = ii
+    if !tr_active() {
+        tr_start()
+    } else if tr_swapped {
+        tr_reclose()                 // the blinds were opening: close them again from here
+    }
+    sfx_page()
+    set_page_field(view_page(vv, ii))
+}
+
+fn set_page_field(page: s32) {
+    str_copy(&hdr_page_text[0], 8, "P")
+    str_append(&hdr_page_text[0], 8, s_page(page))
+}
+
+// Jumps to a typed page number (Teletext style). False if there is no such page.
+fn go_page(page: s32) -> bool {
+    if page == BC_TIME_PAGE {
+        go(View.Clock, cur)
+        return true
+    }
+    if page == BC_INDEX_PAGE {
+        go(View.Regions, cur)
+        return true
+    }
+    let i = loc_find(page)
+    if i < 0 { return false }
+    var v = view
+    if view_kind(v) < 0 { v = View.Now }
+    go(v, i)
+    return true
+}
+
+// The ring of pages that L and R step through: clock, regions, then every location.
+private fn ring_step(d: s32) {
+    var pos = 0
+    if next_view == View.Clock { pos = 0 } else if next_view == View.Regions { pos = 1 } else { pos = 2 + next_loc }
+    let n = 2 + nlocs
+    pos = (pos + d + n) % n
+    if pos == 0 { go(View.Clock, cur) }
+    else if pos == 1 { go(View.Regions, cur) }
+    else {
+        var v = next_view
+        if view_kind(v) < 0 { v = View.Now }
+        go(v, pos - 2)
+    }
+}
+
+private fn sub_step(d: s32) {
+    if view_kind(next_view) < 0 { return }
+    var vs: [4]View
+    let n = loc_views(next_loc, &vs[0])
+    if n <= 1 { return }
+    var at = 0
+    for k in 0..n {
+        if vs[k] == next_view { at = k }
+    }
+    go(vs[(at + d + n) % n], next_loc)
+}
+
+// ---- the tour
+
+struct TourStop {
+    home: bool                    // home (else the national map)
+    view: View
+    secs: s32
+}
+
+const TOUR: [7]TourStop = [
+    TourStop { home: true, view: View.Now, secs: 10 },
+    TourStop { home: true, view: View.Hours, secs: 10 },
+    TourStop { home: true, view: View.Week, secs: 10 },
+    TourStop { home: true, view: View.Map, secs: 12 },
+    TourStop { home: false, view: View.Map, secs: 12 },
+    TourStop { home: false, view: View.Regions, secs: 10 },
+    TourStop { home: false, view: View.Clock, secs: 6 }
+]
+
+fn tour_start() {
+    tour_on = true
+    tour_step = -1
+    tour_t = 0
+    tour_next()
+}
+
+fn tour_stop() {
+    tour_on = false
+}
+
+private fn tour_next() {
+    tour_step = (tour_step + 1) % len(TOUR)
+    let s = &TOUR[tour_step]
+    var i = 0
+    if !s.home { i = max(loc_find(BC_NATIONAL), 0) }
+    if s.home && home_off { i = 0 }
+    tour_t = s.secs * 60
+    go(s.view, i)
+}
+
+private fn tour_update() {
+    if !tour_on {
+        let after = match cfg.tour { 0 => 0, 1 => 60, 2 => 120, else => 300 }
+        if after > 0 && idle > after * 60 && !overlay_open() { tour_start() }
+        return
+    }
+    tour_t -= 1
+    // a map still painting gets a few more seconds
+    if tour_t <= 0 && view == View.Map && mt_busy() && tour_t > -240 { return }
+    if tour_t <= 0 { tour_next() }
+}
+
+// ---- init, update, draw
+
+fn load_art() {
+    load_texture(2, TEX2, TEX2_ROWS * 128)
+    load_texture(3, TEX3, TEX3_ROWS * 128)
+    load_texture(4, TEX4, TEX4_ROWS * 128)
+    load_palette(PAL_FIRST * 16, PALS, PAL_COUNT * 16)
+    mt_load_palettes()
+}
+
+fn init() {
+    load_art()
+    model_reset()
+    ov_init()
+    store_load()
+    apply_source()
+    cur = 0
+    view = View.Now
+    next_view = view
+    set_page_field(view_page(view, cur))
+    sky_update()
+    music_init()
+    test_init()
+}
+
+// The source the settings ask for: automatic starts on the antenna and falls back to the
+// sample tape when there is no signal and nothing saved.
+fn apply_source() {
+    rx_use_demo(cfg.source == 2)
+}
+
+private fn auto_source() {
+    if cfg.source != 0 { return }
+    if !rx_demo && tick == 8 * 60 && !rx_carrier() && model_seen == 0 && !store_has_pages() {
+        rx_use_demo(true)
+        toast("No signal: playing the sample tape")
+    }
+}
+
+fn update() {
+    tick += 1
+    pad_prev = pad
+    pad = input_pad(tick)
+    if pad != 0 {
+        idle = 0
+        if tour_on && pad & ~pad_prev != 0 {
+            tour_stop()
+            pad_prev = pad          // the press that ends the tour does nothing else
+        }
+    } else {
+        idle += 1
+    }
+
+    rx_frame()
+    clock_update()
+    model_update()
+    auto_source()
+
+    if !overlays_input() && !tour_on { nav_input() }
+
+    if tr_step() {
+        view = next_view
+        cur = next_loc
+        model_focus(cur)
+        if view == View.Regions { reg_sel = cur }
+        ldl_reset()
+    }
+    if !tr_active() && (cur != focus) { model_focus(cur) }
+
+    // the map textures
+    mt_take_model_rows()
+    if view == View.Map && !tr_active() { mt_step() }
+    ov_step()
+    if view != View.Map && !ov_busy() {
+        // rasterise ahead: home and the national map
+        let h = loc_find(BC_HOME)
+        if h >= 0 { ov_ready(h) }
+        let n = loc_find(BC_NATIONAL)
+        if n >= 0 && !ov_busy() { ov_ready(n) }
+    }
+
+    // a gentle chime when the page on screen arrives
+    let vk = view_kind(view)
+    let have_now = vk >= 0 && wx_has(cur, vk)
+    if have_now && !had_page && was_view == view && was_loc == cur && !tr_active() { sfx_arrive() }
+    had_page = have_now
+    was_view = view
+    was_loc = cur
+
+    tour_update()
+    store_update()
+    if tick % 30 == 0 { sky_update() }
+    ldl_update()
+    hdr_flash = view_kind(view) >= 0 && !wx_has(cur, view_kind(view)) && rx_carrier()
+    music_update()
+    test_hook(tick)
+}
+
+private fn nav_input() {
+    if pressed(LEFT) { sub_step(-1) }
+    if pressed(RIGHT) { sub_step(1) }
+    if pressed(L) { ring_step(-1) }
+    if pressed(R) { ring_step(1) }
+    if pressed(Y) { go(View.Regions, cur) }
+    if pressed(B) { go(View.Now, max(loc_find(BC_HOME), 0)) }
+    if pressed(X) { remote_open() }
+    if pressed(START) { settings_open() }
+    if pressed(SELECT) { tour_start() }
+    if view == View.Regions && next_view == View.Regions {
+        if pressed(UP) {
+            reg_sel = (reg_sel + nlocs - 1) % nlocs
+            sfx_tick()
+        }
+        if pressed(DOWN) {
+            reg_sel = (reg_sel + 1) % nlocs
+            sfx_tick()
+        }
+        if pressed(A) {
+            var v = View.Now
+            if loc_is_national(reg_sel) { v = View.Map }
+            go(v, reg_sel)
+        }
+    }
+}
+
+// The lower display line's messages for the location shown.
+private fn ldl_update() {
+    if tick % 60 != 1 { return }
+    ldl_n = 0
+    let i = cur
+    if tour_on {
+        ldl_set(ldl_n, "Local Forecast")
+        ldl_n += 1
+    }
+    if wx_has(i, K_NOW) {
+        let c = &wx[i].cur
+        ldl_set(ldl_n, bc_wmo_text(c.wmo as s32))
+        ldl_n += 1
+        ldl_set(ldl_n, s_cat("Humidity ", s_pct(c.humidity as s32)))
+        ldl_n += 1
+        ldl_set(ldl_n, s_cat("Wind ", s_wind(c.wind_dir as s32, c.wind as s32)))
+        ldl_n += 1
+        ldl_set(ldl_n, s_updated(i, K_NOW, c.time, c.utc_offset as s32))
+        ldl_n += 1
+    }
+    if rx_demo {
+        ldl_set(ldl_n, "Sample tape: not real weather")
+        ldl_n += 1
+    } else if !rx_carrier() {
+        ldl_set(ldl_n, "No signal")
+        ldl_n += 1
+    }
+    if ldl_n == 0 {
+        ldl_set(0, "Fair Skies")
+        ldl_n = 1
+    }
+}
+
+fn draw() {
+    dither(true)
+    if view == View.Map { sky_around(3, 19, 258, 194) } else { sky_around(6, 42, 308, 170) }
+    let t = tick
+    header_draw(t)
+    let i = cur
+    var right = loc_name(i)
+    if tour_on { right = null }          // the tour shows the logo there
+    match view {
+        Now => {
+            banner_draw("Current Conditions", right, sub_index(), sub_count())
+            now_draw(i, t)
+        }
+        Week => {
+            banner_draw("Extended Forecast", right, sub_index(), sub_count())
+            week_draw(i, t)
+        }
+        Hours => {
+            banner_draw("Next 24 Hours", right, sub_index(), sub_count())
+            hours_draw(i, t)
+        }
+        Map => map_draw_page(i, t)
+        Regions => {
+            banner_draw("Regions", "MeiNet Weather", 0, 0)
+            regions_draw(t)
+        }
+        Clock => {
+            banner_draw("Time", null, 0, 0)
+            clock_draw(t)
+        }
+    }
+    if tour_on { tour_badge(t) }
+    tr_draw()
+    // the bottom line: the location's temperature and conditions
+    var li = i
+    if view == View.Clock || view == View.Regions || loc_is_national(li) { li = max(loc_find(BC_HOME), 0) }
+    var left = loc_name(li)
+    var ic = -1
+    if wx_has(li, K_NOW) {
+        left = s_cat(s_cat(loc_name(li), "  "), s_temp(wx[li].cur.temp as s32))
+        ic = icon_of(wx[li].cur.wmo as s32)
+    }
+    ldl_draw(t, ic, left, loc_night(li))
+    overlays_draw(t)
+    toast_draw()
+}
+
+fn sub_index() -> s32 {
+    var vs: [4]View
+    let n = loc_views(cur, &vs[0])
+    for k in 0..n {
+        if vs[k] == view { return k }
+    }
+    return 0
+}
+
+fn sub_count() -> s32 {
+    var vs: [4]View
+    return loc_views(cur, &vs[0])
+}
+
+// The tour wears the channel's logo, top right.
+private fn tour_badge(t: s32) {
+    if tr_active() { return }
+    if view == View.Map { spr(LOGO, 138, 23) } else { spr(LOGO, 198, 13) }
+}
