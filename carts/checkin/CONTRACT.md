@@ -60,7 +60,7 @@ follows it; the owner of a file is the only one who edits it (ask the owner for 
 - Origin at the **centre of the footprint at floor level**. At rotation 0 the footprint spans W
   tiles along x and D tiles along z; the object's "front" (where a person stands or sits to use
   it) faces **+z**. The game rotates objects in 90° steps about the origin.
-- Budget (a furnished floor shows 60–120 objects at once against a 2,000-triangle frame):
+- Budget (a furnished floor shows 60–120 objects at once against a 4,000-triangle frame, 2,000 when this was written):
   small objects 6–24 triangles, large ones up to ~60. Every object also gets a low-detail
   version `ART_<KEY>_LO` (≤ 10 triangles, e.g. a textured box) for the zoomed-out view.
   Back faces are culled, so closed meshes draw about half their triangles; no hidden bottoms.
@@ -547,3 +547,5 @@ Code ≤ 400 KB, art ≤ 700 KB, audio ≤ 700 KB, leaving headroom.
    The GPU drops whatever comes after the 2,000th, and the interface and the nearest people come
    last, so more guests or a busier HUD in those views could lose them. R will look at cheaper
    floors below; please mention any feature that adds many triangles per frame.
+   *Since the GPU budget change the cap is 4,000 triangles and 1M GPU cycles a tick, so this view
+   now has about 2,000 triangles of headroom; the low-detail fallback in game.akr triggers at 3,930.*

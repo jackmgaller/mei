@@ -218,9 +218,9 @@ fn draw() {
     draw_saving()
     if show_debug { draw_debug() }
     frame_words = ((__arena_ptr as s32) - ((&__arena[0]) as s32)) / 4
-    // the GPU draws 2,000 triangles a frame and the interface comes last: when zoomed in on a
+    // the GPU draws 4,000 triangles a frame and the interface comes last: when zoomed in on a
     // crowded view, fall back to the low-detail meshes (until the view changes)
-    if !cache_lo && view_zoom == 2 && tris_drawn() + lo_tris + ui_tris > 1930 {
+    if !cache_lo && view_zoom == 2 && tris_drawn() + lo_tris + ui_tris > 3930 {
         cache_lo = true
         cache_dirty = true
     }

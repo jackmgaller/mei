@@ -1150,7 +1150,7 @@ fn draw_lower() {
 
 // Moving the cache as the view pans: every packet of buffer b is moved by (dx, dy) pixels
 // (render_pass.akr). The cache holds what lies near the screen too (CULL_S, CULL_O), but the GPU
-// counts every polygon it is given against its 2,000 triangles, drawn or not, so the packets
+// counts every polygon it is given against its 4,000 triangles, drawn or not, so the packets
 // wholly more than MARK_M pixels off the screen are marked to be passed over (header type 0x0_
 // instead of 0x2_). Marking costs more than moving, so it is done as a buffer is built (each
 // step marks what it made, at the build's pan) and again whenever the view has panned MARK_M - 4

@@ -5,7 +5,7 @@
 The cache is a list of GPU polygon packets baked for one pan and shifted on screen as the view
 pans. cache_move adds (dx, dy) to every vertex position. cache_mark does the same and also marks
 each packet: a packet wholly more than cp_m pixels beyond one side of the screen gets the header
-type 0x0_ (the GPU passes over it without drawing or counting it against its 2,000 triangles), any
+type 0x0_ (the GPU passes over it without drawing or counting it against its 4,000 triangles), any
 other 0x2_ (a polygon). The layout bits (Gouraud, textured, quad) and the link stay as they are.
 
 Packet layout (spec): header; per vertex [colour if Gouraud or the first] position [uv if textured].
