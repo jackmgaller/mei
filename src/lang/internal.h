@@ -249,6 +249,7 @@ struct Local {
     int dead;             /* never read or written (a constant loop bound's end local): no home */
     int elided;           /* a `let` whose value was substituted into its uses: no home */
     int captured;         /* a function literal captures it */
+    int nreads, nwrites;  /* uses as a value / plain assignments to it (meic -W) */
 };
 
 typedef struct Param { const char *name; TypeExpr *texpr; Type *ty; Loc loc; Local *local; } Param;
@@ -335,6 +336,7 @@ typedef struct Program {
     const char *title;
     const char *cart_id;   /* `cart "Title", "ID"`: header bytes 40-55 (NULL: none) */
     int debug;             /* MEI_CHECK_* bits (meic -g) */
+    int wextra;            /* meic -W */
     Func *init_fn;         /* synthesized global initialisers */
     uint32_t ram_end;
 } Program;

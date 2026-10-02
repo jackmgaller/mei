@@ -8,7 +8,8 @@
 #   // cards: N         insert N (1 or 2) blank memory cards
 #   // exit: N          the run must end with this exit status (2: a fault, e.g. a failed assert)
 #   // flags: ARGS      extra meic arguments (e.g. --release)
-#   // warning: TEXT    compilation must succeed with a warning containing TEXT
+#   // warning: TEXT    compilation must succeed with a warning containing TEXT (with one or
+#                       more of these, the file must give exactly that many warnings)
 # Usage: tests/run_lang_tests.sh [name-filter]   (MEIC=... RUN=... select other builds)
 cd "$(dirname "$0")/.." || exit 1
 MEIC=${MEIC:-build/meic}
@@ -28,7 +29,6 @@ for t in tests/lang/*.akr tests/lang/*.mls; do
     cards=$(sed -n 's|.*// cards: *\([12]\).*|\1|p' "$t" | head -1)
     wantrc=$(sed -n 's|.*// exit: *\([0-9]*\).*|\1|p' "$t" | head -1)
     flags=$(sed -n 's|.*// flags: *||p' "$t" | head -1)
-    expwarn=$(sed -n 's|.*// warning: *||p' "$t" | head -1)
     cardargs=""
     if [ -n "$cards" ]; then
         rm -f "$tmp/$name.card1" "$tmp/$name.card2"
@@ -47,8 +47,17 @@ for t in tests/lang/*.akr tests/lang/*.mls; do
     if ! $MEIC $flags "$t" -o "$tmp/$name.mei" 2> "$tmp/err"; then
         echo "FAIL $name: compile error"; sed 's/^/  /' "$tmp/err" | head -5; fail=$((fail + 1)); continue
     fi
-    if [ -n "$expwarn" ] && ! grep -qF -- "$expwarn" "$tmp/err"; then
-        echo "FAIL $name: missing warning: $expwarn"; sed 's/^/  got: /' "$tmp/err" | head -3; fail=$((fail + 1)); continue
+    sed -n 's|.*// warning: *||p' "$t" > "$tmp/expwarn"
+    if [ -s "$tmp/expwarn" ]; then
+        missing=""
+        while IFS= read -r w; do grep -qF -- "$w" "$tmp/err" || missing="$w"; done < "$tmp/expwarn"
+        if [ -n "$missing" ]; then
+            echo "FAIL $name: missing warning: $missing"; grep 'warning:' "$tmp/err" | sed 's/^/  got: /' | head -5; fail=$((fail + 1)); continue
+        fi
+        nw=$(grep -c 'warning:' "$tmp/err"); ne=$(wc -l < "$tmp/expwarn")
+        if [ "$nw" -ne "$ne" ]; then
+            echo "FAIL $name: $nw warnings, expected $ne"; grep 'warning:' "$tmp/err" | sed 's/^/  got: /' | head -8; fail=$((fail + 1)); continue
+        fi
     fi
     $RUN "$tmp/$name.mei" --frames "${frames:-2}" ${pad:+--pad1 "$pad"} $cardargs > "$tmp/out" 2> "$tmp/runerr"
     rc=$?

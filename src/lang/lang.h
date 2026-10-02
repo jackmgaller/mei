@@ -24,6 +24,7 @@ typedef struct {
     int no_stdlib;            /* 1: do not import the standard library (test/bare-metal use) */
     int no_asserts;           /* 1: drop assert()/assert_eq() statements (meic --release) */
     int debug;                /* run-time checks (meic -g): MEI_CHECK_* bits; 0 for release code */
+    int extra_warnings;       /* 1: also warn about likely mistakes in the cart's code (meic -W) */
     char **asm_text;          /* if non-NULL, receives the generated assembly (malloc'd, caller frees) */
     char **warnings;          /* if non-NULL, receives the warnings ("file:line:col: warning: ..." lines,
                                  malloc'd, caller frees), or NULL when there are none */

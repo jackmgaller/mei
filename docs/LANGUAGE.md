@@ -59,11 +59,12 @@ mei-headless game.mei --frames 60 --dump frame.ppm   # run without a window
 
 Options: `--title TEXT` sets the cart title (otherwise the `cart` declaration, else the file
 name), `--no-stdlib` compiles without the standard library, `--release` drops `assert`s, and
-`-g`, `--trap-div` and `--trap-fmul` build a [debug cart](#debug-builds) with run-time checks.
+`-g`, `--trap-div` and `--trap-fmul` build a [debug cart](#debug-builds) with run-time checks,
+and `-W` turns on more warnings (below).
 
 The standard library (`stdlib/*.akr`) is compiled into every cart. `meic` looks for it in
-`$MEI_STDLIB`, then in `<directory of meic>/../stdlib`. Only functions a cart can reach are
-emitted. The library API `meic_compile()` (`src/lang/lang.h`) takes a file-reader callback,
+`$MEI_STDLIB`, then in `<directory of meic>/../stdlib`. Only functions and global variables a
+cart can reach are emitted. The library API `meic_compile()` (`src/lang/lang.h`) takes a file-reader callback,
 so the compiler can run without a file system (for example in the browser).
 
 Errors stop compilation and are reported as `file:line:col: error: message`, followed by the
@@ -71,6 +72,19 @@ source line and a caret. Warnings (`file:line:col: warning: ...`) do not stop it
 always on: a function of the cart that is never called and whose name is a near miss of an
 entry point (`Update`, `drw`, `int`, ...), or `main`/`setup`/`loop`/... in a cart that defines
 none of `init`, `update` and `draw`, is reported, since the runtime only calls those three.
+
+`meic -W` also reports, in the cart's own files (not the standard library):
+
+- a local variable that is never used, or only assigned (`'x' is assigned but its value is never
+  read`), and a function parameter that is never used. A name starting with `_` is exempt, so
+  `fn hook(_frame: s32) {}` documents an intentionally unused parameter;
+- a local variable (or constant, or an inner loop's variable) with the same name as the
+  variable of a loop it is inside, which hides it for the rest of the block;
+- a call statement whose `bool` result is dropped (`try_place(x, y)` where `if try_place(x, y)`
+  was meant). To drop it on purpose, write `let _ = try_place(x, y)`: `_` may be declared any
+  number of times in a block.
+
+Loop variables and function literals of the `fn(x) => expr` form are not reported as unused.
 
 ## Program structure
 
@@ -1518,5 +1532,6 @@ register-allocation, inlining, `let` forwarding and induction-pointer work):
 `tests/run_lang_tests.sh` (run by `make test`) compiles every `tests/lang/*.akr`, runs it with
 `mei-headless` and compares the debug output with the file's `// expect:` lines (`// frames: N`,
 `// pad1: HEX`, `// error: TEXT`, `// exit: N` (e.g. 2 for a failed `assert`) and
-`// flags: ARGS` (extra `meic` arguments) and `// warning: TEXT` (the build must warn) adjust a test). `tools/fuzz_lang.py [count] [seed]` compiles
+`// flags: ARGS` (extra `meic` arguments) and `// warning: TEXT` (the build must give this
+warning; with several such lines, exactly that many warnings) adjust a test). `tools/fuzz_lang.py [count] [seed]` compiles
 random programs and checks their output against a Python model of the CPU's arithmetic.

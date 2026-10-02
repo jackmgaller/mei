@@ -382,8 +382,19 @@ static Local *lookup_local(Ctx *c, const char *name) {
 static void check_new_name(Ctx *c, const char *name, Loc loc, const char *what) {
     if (c->scope)
         for (int i = 0; i < c->scope->n; i++)
-            if (!strcmp(c->scope->locals[i]->name, name))
+            if (!strcmp(c->scope->locals[i]->name, name) && strcmp(name, "_"))
                 error_at(loc, "'%s' is already declared in this block (line %d)", name, c->scope->locals[i]->loc.line);
+    if (c->P && c->P->wextra && c->scope && !file_is_stdlib(loc.file))
+        for (Scope *sc = c->scope->up; sc; sc = sc->up) {
+            int found = 0;
+            for (int i = 0; i < sc->n && !found; i++)
+                if (sc->locals[i]->is_loopvar && !strcmp(sc->locals[i]->name, name)) {
+                    warn_at(loc, "this %s '%s' hides the loop variable '%s' of the enclosing loop (line %d)",
+                            what, name, name, sc->locals[i]->loc.line);
+                    found = 1;
+                }
+            if (found) break;
+        }
     Sym *g = sym_lookup(name, loc.file);
     if (g && g->k == SY_TYPE) error_at(loc, "'%s' is a type name and cannot be used for a %s", name, what);
 }
@@ -398,6 +409,8 @@ static Local *declare_local_const(Ctx *c, const char *name, Loc loc) {
     PUSH(c->scope->locals, c->scope->n, c->scope->cap, l);
     return l;
 }
+
+static void warn_unused(Func *f);
 
 static Local *new_local(Ctx *c, const char *name, Type *t, Loc loc) {
     check_new_name(c, name, loc, "variable");
@@ -655,6 +668,7 @@ static Local *capture(Ctx *c, const char *name, Loc loc) {
     }
     f->caps[f->ncaps] = l;
     f->cap_outer[f->ncaps] = ol;
+    ol->nreads++;
     f->cap_locs[f->ncaps] = loc;
     f->ncaps++;
     int d = o->loop_depth > 6 ? 6 : o->loop_depth;
@@ -705,6 +719,7 @@ static Expr *check_name(Ctx *c, Expr *e) {
             e->ty = l->ty;
             int d = c->loop_depth > 6 ? 6 : c->loop_depth;
             l->weight += (int64_t)1 << (2 * d);
+            l->nreads++;
             return e;
         }
         if (!s && c->outer && (l = capture(c, e->name, e->loc))) {
@@ -2020,6 +2035,7 @@ static void check_stmt(Ctx *c, Stmt *s) {
         if (lhs->k == E_NAME && lhs->sym->k == SY_LOCAL) {
             int d = c->loop_depth > 6 ? 6 : c->loop_depth;
             lhs->sym->local->weight += (int64_t)1 << (2 * d);
+            if (s->op < 0) { lhs->sym->local->nreads--; lhs->sym->local->nwrites++; }   /* a plain `x = v` does not read x */
         }
         if (s->op < 0) {
             Expr *rhs = check(c, s->e2, lhs->ty);
@@ -2045,6 +2061,9 @@ static void check_stmt(Ctx *c, Stmt *s) {
         s->e = e;
         if (e->k == E_BINARY && e->op == B_EQ) error_at(e->loc, "'==' compares; use '=' to assign");
         if (e->k != E_CALL || (e->bi && e->bi < BI_MAP && !e->callee)) error_at(s->loc, "this expression does nothing (only calls and assignments are statements)");
+        if (c->P && c->P->wextra && e->ty->k == TY_BOOL && !file_is_stdlib(s->loc.file))
+            warn_at(s->loc, "the bool result of %s is ignored (test it with 'if', or write 'let _ = ...' to discard it)",
+                    e->callee ? ar_printf("%s()", e->callee->name) : "this call");
         break;
     }
     case S_IF: {
@@ -2257,6 +2276,24 @@ static void check_func_body(Program *P, Func *f, Ctx *outer) {
     if (f->ret->k != TY_VOID && !stmt_returns(f->body))
         error_at(f->loc, "%s can reach its end without returning a %s",
                  f->is_lambda ? f->name : ar_printf("%s()", f->name), ty_str(f->ret));
+    if (P->wextra) warn_unused(f);
+}
+
+/* meic -W: locals and parameters that are never read (names starting with '_' are exempt). */
+static void warn_unused(Func *f) {
+    if (file_is_stdlib(f->loc.file)) return;
+    for (int i = 0; i < f->nlocals; i++) {
+        Local *l = f->locals[i];
+        if (!l->name || !((l->name[0] | 32) >= 'a' && (l->name[0] | 32) <= 'z') || l->is_capture || l->is_loopvar || l->in_asm || l->csym) continue;
+        if (l->nreads > 0) continue;
+        if (l->is_param)
+            warn_at(l->loc, "parameter '%s' of %s is never used (call it _%s if that is intended)", l->name,
+                    f->is_lambda ? f->name : ar_printf("%s()", f->name), l->name);
+        else if (l->nwrites)
+            warn_at(l->loc, "'%s' is assigned but its value is never read", l->name);
+        else
+            warn_at(l->loc, "'%s' is never used", l->name);
+    }
 }
 
 static void check_func(Program *P, Func *f) {
