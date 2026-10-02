@@ -1,0 +1,47 @@
+// The voice allocator (stdlib/voice.akr) on channels 4-6: free channels first, instance
+// limits restart the oldest instance, priorities protect what matters, repeats within the gap
+// are dropped, and channels outside its range are left alone.
+// frames: 30
+embed SAMPLE: s8 = "data/sample.raw"
+
+var v: Voices
+
+fn go(id: s32, pri: s32, limit: s32) -> s32 {
+    return voice_play(&v, id, pri, limit, SAMPLE as *u8, len(SAMPLE), 1.0, 100, 100, SND_LOOP)
+}
+
+fn show(what: *u8, ch: s32) {
+    print(what)
+    print(" ")
+    print_int(ch)
+    println("")
+}
+
+fn init() {
+    voices_init(&v, 4, 6, 3)
+    play(7, SAMPLE, len(SAMPLE), 1.0, 50, 50, true)     // not the allocator's
+}
+
+fn update() {
+    let f = frame() as s32
+    if f == 0 {
+        show("first", go(1, 1, 2))                 // expect: first 4
+        show("repeat in the gap", go(1, 1, 2))     // expect: repeat in the gap -1
+    }
+    if f == 4 {
+        show("second instance", go(1, 1, 2))       // expect: second instance 5
+        show("count", voice_count(&v, 1))          // expect: count 2
+    }
+    if f == 8 { show("over the limit restarts the oldest", go(1, 1, 2)) }    // expect: over the limit restarts the oldest 4
+    if f == 12 { show("important", go(2, 5, 0)) }  // expect: important 6
+    if f == 16 { show("too unimportant", go(3, 0, 0)) }   // expect: too unimportant -1
+    if f == 20 { show("replaces the oldest of the least important", go(4, 1, 0)) }   // expect: replaces the oldest of the least important 5
+    if f == 24 {
+        voice_stop(&v, 1)
+        show("after stop", voice_count(&v, 1))     // expect: after stop 0
+        show("takes the stopped one", go(3, 0, 0)) // expect: takes the stopped one 4
+        if sound_playing(7) { println("channel 7 untouched") }   // expect: channel 7 untouched
+        voice_stop(&v, -1)
+        if !sound_playing(4) && !sound_playing(5) && !sound_playing(6) { println("all stopped") }   // expect: all stopped
+    }
+}

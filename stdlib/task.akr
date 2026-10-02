@@ -1,0 +1,180 @@
+// Cooperative tasks: a function that runs a while each frame, on a stack of its own, and keeps
+// its place (locals, loops, calls in progress) between frames. task_resume() runs it until it
+// calls task_yield() or returns; the next task_resume() continues after that task_yield().
+//
+//     var builder: Task
+//     var builder_stack: [4096]u8
+//
+//     fn rebuild() {                        // as if it had the CPU to itself
+//         for i in 0..n_rooms {
+//             bake_room(i)
+//             if task_time() > 60000 { task_yield() }    // the rest next frame
+//         }
+//     }
+//
+//     fn init() { task_start(&builder, &builder_stack[0], 4096, rebuild) }
+//     fn update() { if !task_done(&builder) { task_resume(&builder) } }
+//
+// A switch saves and restores only what a call must preserve (r9-r13, sp, ra; see the calling
+// convention): task_yield() is an ordinary call to the code around it. A resume and the yield
+// back cost about 125 cycles together.
+
+struct Task {
+    sp: u32              // the task's stack pointer while it is suspended
+    main_sp: u32         // the resumer's stack pointer while it runs
+    state: s32           // TASK_IDLE, TASK_READY, TASK_RUNNING or TASK_DONE
+    parent: *Task        // the task that resumed it (or null)
+    stack: u32           // the bottom of its stack, where a guard word is kept
+    start: s32           // cycle_count() when it was last resumed
+    body: fn()
+}
+
+const TASK_IDLE = 0      // never started
+const TASK_READY = 1     // started or suspended: task_resume() runs it
+const TASK_RUNNING = 2   // running now (it, or a task it resumed, called task_current())
+const TASK_DONE = 3      // its function returned
+
+const __TASK_GUARD = 0x7A5C0DE5
+
+var __task_cur: *Task    // the task running now, or null
+
+// Prepares t to run `body` on the `size` bytes at `stack`: as much as the deepest calls it
+// makes need with their locals (mesh() with clipping, fog and subdivide(3) uses about 320
+// bytes; 1-2 KB is comfortable for most work). It does not
+// run yet: task_resume() starts it. Starting a task again abandons whatever it was doing.
+fn task_start(t: *Task, stack: *u8, size: s32, body: fn()) {
+    let lo = ((stack as u32) + 3) & 0xFFFFFFFC
+    let hi = ((stack as u32) + size as u32) & 0xFFFFFFFC
+    let guard = lo as *u32
+    guard[0] = __TASK_GUARD
+    // the first resume "returns" into __task_entry with these callee-saved registers
+    let sp = hi - 24
+    let frame = sp as *u32
+    for k in 0..5 { frame[k] = 0 }
+    frame[5] = __task_entry as u32
+    t.sp = sp
+    t.main_sp = 0
+    t.state = TASK_READY
+    t.parent = null
+    t.stack = lo
+    t.start = 0
+    t.body = body
+}
+
+// Runs t until it yields (true: there is more to do) or its function returns (false). False at
+// once, running nothing, unless t is TASK_READY.
+asm fn task_resume(t: *Task) -> bool {
+    lw   r5, [{t}+8]
+    addi r6, r0, 1
+    beq  r5, r6, .go
+    mov  r1, r0
+    ret
+.go:
+    addi sp, sp, -24
+    sw   r9, [sp+0]
+    sw   r10, [sp+4]
+    sw   r11, [sp+8]
+    sw   r12, [sp+12]
+    sw   r13, [sp+16]
+    sw   r15, [sp+20]
+    sw   sp, [{t}+4]                ; main_sp
+    lw   r5, [r0+{__task_cur}]
+    sw   r5, [{t}+12]               ; parent
+    sw   {t}, [r0+{__task_cur}]
+    addi r6, r0, 2
+    sw   r6, [{t}+8]                ; running
+    li   r5, {FRAME}
+.clock:
+    lw   r6, [r5+0]
+    lw   r7, [r5+4]
+    lw   r8, [r5+0]
+    bne  r6, r8, .clock
+    li   r8, 500000
+    mul  r6, r6, r8
+    sub  r6, r6, r7
+    sw   r6, [{t}+20]               ; start: cycle_count()
+    lw   sp, [{t}+0]
+    lw   r9, [sp+0]
+    lw   r10, [sp+4]
+    lw   r11, [sp+8]
+    lw   r12, [sp+12]
+    lw   r13, [sp+16]
+    lw   r15, [sp+20]
+    addi sp, sp, 24
+    ret                             ; into the task: after its task_yield(), or __task_entry
+}
+
+// Inside a task: suspends it here and returns from the task_resume() that ran it; the next
+// task_resume() returns from this call. Outside a task it does nothing.
+asm fn task_yield() {
+    lw   r5, [r0+{__task_cur}]
+    bne  r5, r0, .go
+    ret
+.go:
+    addi sp, sp, -24
+    sw   r9, [sp+0]
+    sw   r10, [sp+4]
+    sw   r11, [sp+8]
+    sw   r12, [sp+12]
+    sw   r13, [sp+16]
+    sw   r15, [sp+20]
+    sw   sp, [r5+0]
+    addi r6, r0, 1
+    sw   r6, [r5+8]                 ; ready
+    addi r1, r0, 1                  ; task_resume returns true
+    jmp  {__task_leave}
+}
+
+// A task's first frame: runs its function, then leaves for good.
+asm fn __task_entry() {
+    lw   r6, [r0+{__task_cur}]
+    addi r6, r6, 24                 ; &body (r6: the function value, for closures)
+    lw   r5, [r6+0]
+    callr r5
+    lw   r5, [r0+{__task_cur}]
+    addi r6, r0, 3
+    sw   r6, [r5+8]                 ; done
+    mov  r1, r0                     ; task_resume returns false
+    jmp  {__task_leave}
+}
+
+// Back to the resumer of task r5 with r1 as task_resume's result (checking the stack's guard).
+asm fn __task_leave() {
+    lw   r6, [r5+12]
+    sw   r6, [r0+{__task_cur}]      ; the parent runs again
+    lw   r6, [r5+16]
+    lw   r7, [r6+0]
+    li   r8, {__TASK_GUARD}
+    bne  r7, r8, .overflow
+    lw   sp, [r5+4]
+    lw   r9, [sp+0]
+    lw   r10, [sp+4]
+    lw   r11, [sp+8]
+    lw   r12, [sp+12]
+    lw   r13, [sp+16]
+    lw   r15, [sp+20]
+    addi sp, sp, 24
+    ret                             ; from task_resume
+.overflow:
+    lw   sp, [r5+4]                 ; (a safe stack to report from)
+    call {__task_overflow}
+}
+
+fn __task_overflow() {
+    println("task stack overflow: the task used more stack than task_start() gave it")
+    __assert_halt()
+}
+
+// True once t's function has returned.
+fn task_done(t: *Task) -> bool { return t.state == TASK_DONE }
+
+// The task running now, or null.
+fn task_current() -> *Task { return __task_cur }
+
+// Cycles since the running task was last resumed (0 outside a task): yield when it passes the
+// frame's share for the work.
+fn task_time() -> s32 {
+    let t = __task_cur
+    if t == null { return 0 }
+    return cycle_count() - t.start
+}

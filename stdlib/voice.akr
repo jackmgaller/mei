@@ -1,0 +1,102 @@
+// A sound-effect voice allocator over a range of channels: a sound takes a free channel, else
+// the least important one playing (the oldest among equals) but never a more important one; a
+// sound with an instance limit restarts its own oldest instance instead of taking another
+// channel; and the same sound started again within `gap` frames plays once.
+//
+//     var sfx: Voices
+//     fn init() { voices_init(&sfx, 8, 15, 3) }              // channels 8-15
+//     fn step() { voice_play(&sfx, SND_STEP, 1, 2, STEP, len(STEP), 1.0, 90, 90, 0) }
+
+struct Voices {
+    mask: u32            // the channels it may use
+    gap: s32             // frames within which a repeat of a sound is dropped
+    seq: u32             // starts so far (the order, for "the oldest")
+    id: [16]s32          // per channel: the sound it was given (-1: none)
+    pri: [16]s32         // its priority
+    order: [16]u32       // seq when it started
+    when: [16]u32        // FRAME when it started
+}
+
+// Gives v the channels first..last (0-15) and the repeat gap in frames (0: none).
+fn voices_init(v: *Voices, first: s32, last: s32, gap: s32) {
+    v.mask = 0
+    for c in clamp(first, 0, 15)..clamp(last, 0, 15) + 1 { v.mask |= (1 as u32) << (c as u32) }
+    v.gap = gap
+    v.seq = 0
+    for c in 0..16 {
+        v.id[c] = -1
+        v.pri[c] = 0
+    }
+}
+
+// Picks the channel for sound `id` (any number the cart uses for it) with priority `pri`
+// (higher is more important) and at most `limit` instances at once (0: no limit). Returns the
+// channel, which the caller starts with play_sample() or play() now, or -1 when the sound
+// should not play (repeated within the gap, or every channel holds something more important).
+fn voice_alloc(v: *Voices, id: s32, pri: s32, limit: s32) -> s32 {
+    let active = AUDIO_ACTIVE
+    let now = FRAME
+    var count = 0
+    var same = -1                // its oldest instance playing
+    var free = -1
+    var victim = -1              // the least important playing channel that may be replaced
+    for c in 0..16 {
+        let bit = (1 as u32) << (c as u32)
+        if v.mask & bit == 0 { continue }
+        if active & bit == 0 {
+            if free < 0 { free = c }
+            continue
+        }
+        if v.id[c] == id {
+            if ((now - v.when[c]) as s32) < v.gap { return -1 }
+            count += 1
+            if same < 0 || v.order[c] < v.order[same] { same = c }
+        }
+        if v.pri[c] <= pri {
+            if victim < 0 || v.pri[c] < v.pri[victim] || (v.pri[c] == v.pri[victim] && v.order[c] < v.order[victim]) {
+                victim = c
+            }
+        }
+    }
+    var ch = -1
+    if limit > 0 && count >= limit {
+        ch = same
+    } else if free >= 0 {
+        ch = free
+    } else {
+        ch = victim
+    }
+    if ch < 0 { return -1 }
+    v.seq += 1
+    v.id[ch] = id
+    v.pri[ch] = pri
+    v.order[ch] = v.seq
+    v.when[ch] = now
+    return ch
+}
+
+// voice_alloc(), then play_sample() on the channel it picked (see play_sample for the rest).
+// Returns the channel, or -1 when nothing was played.
+fn voice_play(v: *Voices, id: s32, pri: s32, limit: s32, data: *u8, samples: u32, pitch: fixed, vol_l: s32, vol_r: s32, flags: u32) -> s32 {
+    let ch = voice_alloc(v, id, pri, limit)
+    if ch >= 0 { play_sample(ch, data, samples, 0, pitch, vol_l, vol_r, flags) }
+    return ch
+}
+
+// Instances of sound `id` playing now.
+fn voice_count(v: *Voices, id: s32) -> s32 {
+    let active = AUDIO_ACTIVE & v.mask
+    var n = 0
+    for c in 0..16 {
+        if (active >> (c as u32)) & 1 != 0 && v.id[c] == id { n += 1 }
+    }
+    return n
+}
+
+// Stops every instance of sound `id` (-1: every sound on v's channels).
+fn voice_stop(v: *Voices, id: s32) {
+    let active = AUDIO_ACTIVE & v.mask
+    for c in 0..16 {
+        if (active >> (c as u32)) & 1 != 0 && (id < 0 || v.id[c] == id) { stop(c) }
+    }
+}

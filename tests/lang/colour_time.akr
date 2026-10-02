@@ -1,0 +1,82 @@
+// Colour helpers and wrap-safe animation phases (stdlib/colour.akr).
+const PA: [5]u16 = [0x0000, 0x7FFF, 0x001F, 0x1234, 0x7C00]
+const PB: [5]u16 = [0x7FFF, 0x7FFF, 0x7C00, 0x4321, 0x001F]
+
+// Lantern Lake's 15-bit blend, the reference: t = 0..256.
+fn lerp15(a: s32, b: s32, t: s32) -> s32 {
+    if a == b { return a }
+    let r = (a & 31) + (((b & 31) - (a & 31)) * t >> 8)
+    let gg = ((a >> 5) & 31) + ((((b >> 5) & 31) - ((a >> 5) & 31)) * t >> 8)
+    let bb = ((a >> 10) & 31) + ((((b >> 10) & 31) - ((a >> 10) & 31)) * t >> 8)
+    return r | (gg << 5) | (bb << 10)
+}
+
+fn hex(v: u32) { print_hex(v); println("") }
+
+fn init() {
+    hex(col_mix(0x000000, 0xFFFFFF, 0.5))          // expect: 7F7F7F
+    hex(col_mix(0x102030, 0x405060, 0.0))          // expect: 102030
+    hex(col_mix(0x102030, 0x405060, 2.0))          // expect: 405060
+    hex(col_scale(0x808080, 0.5))                  // expect: 404040
+    hex(col_scale(0xFF8040, 1.0))                  // expect: FF8040
+    hex(col_add(0x80F010, 0x902020))               // expect: FFFF30
+    hex(rgb_of15(0x7FFF))                          // expect: FFFFFF
+    hex(rgb_of15(0x0010))                          // expect: 84
+
+    // palette_lerp matches a channel-by-channel blend for every t
+    let pal = VRAM_PALETTE as *u16
+    var bad = 0
+    for ti in 0..257 {
+        palette_lerp(16, &PA[0], &PB[0], 5, fixed(ti) / 256)
+        for i in 0..5 {
+            if pal[16 + i] as s32 != lerp15(PA[i] as s32, PB[i] as s32, ti) { bad += 1 }
+        }
+    }
+    assert_eq(bad, 0)
+    pal[30] = 0x1111
+    palette_lerp(16, &PA[0], &PB[0], 0, 0.5)       // nothing
+    assert_eq(pal[30] as s32, 0x1111)
+
+    // palette_rotate: colours move toward the index
+    for i in 0..10 { pal[32 + i] = i as u16 }
+    pal[42] = 99
+    palette_rotate(32, 10, 3)
+    for i in 0..10 { print(" "); print_int(pal[32 + i] as s32) }
+    println("")                                    // expect:  3 4 5 6 7 8 9 0 1 2
+    palette_rotate(32, 10, -3)
+    for i in 0..10 { print(" "); print_int(pal[32 + i] as s32) }
+    println("")                                    // expect:  0 1 2 3 4 5 6 7 8 9
+    palette_rotate(32, 10, 21)
+    for i in 0..10 { print(" "); print_int(pal[32 + i] as s32) }
+    println("")                                    // expect:  1 2 3 4 5 6 7 8 9 0
+    assert_eq(pal[42] as s32, 99)
+
+    // phases
+    print_fixed(frame_phase(90, 60)); println("")              // expect: 0.5
+    print_fixed(frame_phase(-30, 60)); println("")             // expect: 0.5
+    print_fixed(frame_phase(2000000000, 7)); println("")       // expect: 0.7143
+    print_fixed(frame_wave(15, 60)); println("")               // expect: 1.0
+    print_fixed(frame_angle(10, 0.25)); println("")            // expect: 2.5
+    print_fixed(frame_angle(-10, 0.25)); println("")           // expect: 3.7832
+    print_fixed(frame_angle(10, -0.25)); println("")           // expect: 3.7832
+    // the same as fixed(t) * speed while that fits, and no jumps where it would wrap
+    assert_eq(frame_angle(1000, 0.003), fixed(1000) * 0.003)
+    var jumps = 0
+    var prev = sin(frame_angle(32760, 0.05))
+    for t in 32761..32800 {
+        let s = sin(frame_angle(t, 0.05))
+        if abs(s - prev) > 0.06 { jumps += 1 }
+        prev = s
+    }
+    assert_eq(jumps, 0)
+    var prev2 = frame_angle(2147483000, 0.37)
+    for k in 1..600 {
+        let a = frame_angle(2147483000 + k, 0.37)
+        var d = a - prev2
+        if d < 0.0 { d += TAU }
+        if abs(d - 0.37) > 0.001 { jumps += 1 }
+        prev2 = a
+    }
+    assert_eq(jumps, 0)
+    println("ok")                                  // expect: ok
+}

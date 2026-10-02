@@ -791,7 +791,9 @@ The prelude (`stdlib/prelude.akr`) imports every module below. Colours are `u32`
 
 | | |
 |---|---|
-| `cpu_used() -> s32` | cycles used by the previous frame (of 500,000) |
+| `cpu_used() -> s32` | cycles used by the previous frame (of 500,000); a frame that ran over counts every budget it used up, so it reads above 500,000 |
+| `frames_dropped() -> s32` | how many budgets the previous frame ran over by: 0 when it was on time, n when the picture before it stayed up n more times |
+| `cycle_count() -> s32` | a cycle clock that keeps counting across frames and overruns (`FRAME × 500,000 − CYCLES`); differences between readings are exact for spans under 71 seconds |
 | `tris_drawn() -> s32` | 3D triangles drawn in the previous frame |
 | `frame() -> u32` | frames since reset |
 | `vsync()` | end the frame now (low level: skips the ordering table and pad bookkeeping) |
@@ -925,12 +927,267 @@ meshes that need it, raise the tolerance, or adjust it from frame to frame from 
 (keep the settings the same for all the meshes of a frame that share edges, or they may
 disagree about a shared edge).
 
-The font occupies texture slot 15 and 4-bit palette 255 (colours 4080–4095); carts should not
-use them.
+The fonts occupy texture slot 15 (the 8×8 font rows 0–47, `font_small()` rows 48–66) and 4-bit
+palette 255 (colours 4080–4095); carts should not use them.
 
 For hand-built packets: `packet_alloc(words) -> *u32` (null when full), `ot_insert(p, type,
 depth)` (depth 0 nearest .. 1023), `ui_insert(p, type)`. Word 0 of a packet is filled in by the
-insert; write the rest as described in the spec (p. 14–16).
+insert; write the rest as described in the spec (p. 14–16). The packet types are named
+`PKT_TRI`, `PKT_TRI_GOURAUD`, `PKT_TRI_TEX`, `PKT_TRI_TEX_GOURAUD`, `PKT_QUAD_FLAT`,
+`PKT_QUAD_GOURAUD`, `PKT_QUAD_TEX`, `PKT_QUAD_TEX_GOURAUD` (0x20–0x27), or built from `PKT_POLY`
+(0x20) and the flag bits `PKT_GOURAUD`, `PKT_TEXTURED`, `PKT_QUAD`, `PKT_SEMI`; a semi-transparent
+packet's blend mode goes in bits 24–25 of its first colour (`mode << BLEND_SHIFT`), and
+`TEX_4BIT` is the 4-bit flag of the first texture coordinate.
+
+### Projection, the ordering table and packet memory (`render.akr`)
+
+What `mesh()` does with the camera, the ordering table and the packet arena, available to carts
+that place 2D things in the 3D world, draw parts of the world early, or keep packets across
+frames.
+
+| | |
+|---|---|
+| `project_point(p: vec3) -> ivec4` | where `mesh()` would put a vertex at `p` (`vxfm` and `vproj`, the same rounding): lanes `x`, `y` in pixels, `z` the ordering-table bucket of its view depth (without `depth_bias`; −1 when `p` is nearer than the near plane or behind the camera, and then `x`, `y` mean nothing), `w` the view depth as raw bits (`from_bits(r.w)`) |
+| `view_depth(p: vec3) -> fixed` | the view depth of `p` |
+| `depth_bucket_of(w) -> s32` | the bucket of view depth `w` (see Sort keys) |
+| `buckets_per_unit() -> fixed` | buckets per unit of view depth, `1024 / (far − near)` |
+| `camera_focal(f)` | the projection's scale: `f = 1 / tan(fov / 2)` (`camera_fov` sets it from an angle); a point at view depth `d` is `120 × f / d` pixels per unit tall. Applies from the next `camera()`/`camera_look()` |
+| `camera_pan(px, py)` | shift the view by whole pixels (right, down) without moving the camera (an off-axis view); every vertex moves by exactly `(px, py)`. After `camera()`/`camera_look()`, which reset it |
+| `ot_clear()` | empty the frame's ordering table |
+| `ot_save(buf: *u32)`, `ot_restore(buf)` | copy the frame's table (1,024 words) out and back |
+| `ot_swap(buf)` | exchange the frame's table with `buf` (about 4,900 cycles) |
+| `ot_detach(dst, home)` | move the frame's table to `dst` as a list of its own, linked to end at `home`'s entries (usually `dst`), and empty the frame's table |
+| `ot_draw(table) -> s32` | draw a detached table now; returns the triangles drawn |
+| `ot_flush() -> s32` | draw the frame's table now and empty it (what is sorted later draws over it) |
+| `ui_flush()` | draw the interface list queued so far now (3D drawn later lands on top) |
+| `arena_init(a: *PacketArena, buf: *u32, words)`, `arena_swap(a)` | a packet arena of the cart's own; `arena_swap` exchanges it with the current one |
+| `arena_used() -> s32`, `arena_left() -> s32` | words of the frame's arena used this frame; words left in the current arena |
+
+The ordering table is 1,024 empty packets, entry `b` linking to entry `b − 1`; a packet sorted
+into bucket `b` links on to what the bucket held, so the last packet of each bucket's chain links
+to the entry below. A copy of the table (`ot_save`, `ot_swap`) therefore still links into the
+frame's table, and is only drawn correctly once it is put back (`ot_restore`, `ot_swap` again);
+`ot_detach` rewrites those last links (about 26,000 cycles for the buckets plus 15 a packet) to
+make a list that can be drawn from wherever it lives with `ot_draw`. The frame's table is set up
+at the start of each frame, after `init()`: call `ot_clear()` before using it in `init()`.
+
+The packets themselves live in the frame's arena, which is emptied at the start of every frame.
+To keep geometry across frames (a static scene built once, or a few steps per frame, then drawn
+again and again), make its packets in an arena of the cart's own and keep its table:
+
+```
+var cache: [40960]u32
+var cache_ot: [1024]u32
+var cache_arena: PacketArena
+
+fn build_scene() {                 // once, or whenever the scene changes
+    arena_init(&cache_arena, &cache[0], 40960)
+    ot_swap(&cache_ot[0])          // sort into an empty table of our own...
+    ot_clear()
+    arena_swap(&cache_arena)       // ...with packets that outlive the frame
+    mesh(TOWN)
+    arena_swap(&cache_arena)       // cache_arena.ptr: where its packets end
+    ot_swap(&cache_ot[0])          // the frame's table back; cache_ot holds the scene
+}
+
+fn draw() {
+    ot_restore(&cache_ot[0])       // the scene, then this frame's moving parts on top of it
+    mesh_at(CART, cart_pos, cart_yaw)
+}
+```
+
+Building over several frames works the same way: swap the arena and table in at the start of
+each step and out at the end (a task, below, can hold the loop). The packets of `ot_restore`d
+tables are linked into by the frame's own inserts, so a table restored every frame must be
+restored from the saved copy each time (it is: `ot_restore` copies).
+
+### 2D drawing (`draw.akr`)
+
+More shapes for the interface list, drawn like `rect()`, `sprite()` and `text()`: after the 3D
+world, in call order. Positions are whole pixels; a rectangle `(x, y, w, h)` covers `x .. x+w−1`
+and `y .. y+h−1`. Colours are `0xBBGGRR`. A `mode` is a blend mode:
+
+| `mode` | Result |
+|---|---|
+| `BLEND_NONE` (−1) | opaque |
+| `BLEND_HALF` (0) | half the background + half the shape (glass, water) |
+| `BLEND_ADD` (1) | background + shape (glows) |
+| `BLEND_SUB` (2) | background − shape (shadows, darkening a panel's backdrop) |
+| `BLEND_QUARTER` (3) | background + a quarter of the shape (faint glows) |
+
+| | |
+|---|---|
+| `rect_blend(x, y, w, h, colour, mode)` | a filled rectangle |
+| `rect_grad(x, y, w, h, top, bottom, mode)` | a vertical gradient |
+| `rect_hgrad(x, y, w, h, left, right, mode)` | a horizontal gradient |
+| `rect_grad4(x, y, w, h, tl, tr, bl, br, mode)` | a colour per corner |
+| `rect_outline(x, y, w, h, colour, mode)` | a one-pixel frame just inside the rectangle |
+| `line(x0, y0, x1, y1, colour)` | a one-pixel line; the end point is not drawn (like a rectangle's far edges), so joined lines don't overlap |
+| `line_ex(x0, y0, x1, y1, width, c0, c1, mode)` | a line `width` pixels thick (thickened down for flat lines, right for steep ones), shaded from `c0` to `c1` |
+| `tri_fill(x0, y0, x1, y1, x2, y2, colour, mode)` | a filled triangle (either winding) |
+| `tri_grad(x0, y0, x1, y1, x2, y2, c0, c1, c2, mode)` | a Gouraud-shaded triangle |
+| `quad_fill(x0, y0, x1, y1, x2, y2, x3, y3, colour, mode)` | a quad in strip order (0-1-2, 1-2-3: top-left, top-right, bottom-left, bottom-right) |
+| `tex_page(slot, palette, four_bit) -> u32` | the texture page of the sprite functions: slot, palette and depth |
+| `sprite_ex(page, u, v, tw, th, x, y, w, h, tint, mode)` | the texels `(u, v, tw, th)` stretched over `(x, y, w, h)`; a negative `tw` or `th` mirrors that axis |
+| `sprite_rot(page, u, v, tw, th, cx, cy, w, h, angle, tint, mode)` | the same `w × h`, centred on `(cx, cy)` and turned clockwise by `angle` radians |
+| `sprite_corners(page, u, v, tw, th, xs: *s32, ys: *s32, tint, mode)` | on four free corners (`xs[k]`, `ys[k]`: top-left, top-right, bottom-left, bottom-right of the texels) |
+| `col_tint(colour) -> u32` | the tint that shows a white texel in `colour` (half of it, rounded up: `col_tint(0xFFFFFF)` is `0x808080`) |
+
+A sprite's `tint` multiplies its texels by `tint / 128` per channel: `0x808080` draws the texture
+as it is, `0xFFFFFF` twice as bright (clamped), `col_tint(c)` in colour `c` when the texels are
+white. Texture coordinates are 8 bits, so `u + tw` and `v + th` are clamped to 255. Mirroring is
+exact at 1:1; scaled up, the GPU's rounding leaves the first texel of a mirrored axis one pixel
+wide, so large mirrored sprites are better mirrored in the texture.
+
+```
+let ui = tex_page(3, 40, true)                          // slot 3, 4-bit, palette 40
+rect_grad(0, 200, 320, 40, rgb(36, 44, 96), rgb(14, 16, 40), BLEND_HALF)   // a glassy panel
+rect_blend(8, 206, 80, 1, rgb(150, 170, 230), BLEND_NONE)                // its top edge
+sprite_ex(ui, 0, 0, 16, 16, 8, 210, 32, 32, 0x808080, BLEND_NONE)       // an icon at 2x
+sprite_ex(ui, 64, 192, 16, 16, cx - r, cy - r, 2 * r, 2 * r, rgb(255, 220, 110), BLEND_ADD)  // a glow
+line_ex(10, 20, 90, 60, 2, rgb(60, 70, 110), rgb(200, 200, 120), BLEND_ADD)
+```
+
+Each call builds one packet (two triangles for the rectangles, quads, lines and sprites; one for
+the triangles) and makes no other calls; when the packet arena is full it draws nothing.
+
+### Proportional text (`font.akr`)
+
+Besides the 8×8 `text()`, the library draws proportional fonts. The built-in one,
+`font_small()`, is a pixel font with 7-pixel capitals, 2-pixel descenders and a 10-pixel line
+(ASCII 32–126). It lives in texture slot 15 below the 8×8 font (rows 48–66, palette 255, both
+reserved) and is copied there the first time it is used.
+
+| | |
+|---|---|
+| `font_text(x, y, s, colour) -> s32` | draws `s` with the top-left of its first glyph at `(x, y)`; `\n` starts a new line. Returns the x after the last character |
+| `font_text_align(x, y, s, colour, align) -> s32` | each line `ALIGN_LEFT` (from x), `ALIGN_CENTRE` (centred on x) or `ALIGN_RIGHT` (ending at x) |
+| `text_width(s) -> s32` | the width of `s`: the sum of its characters' advances (the longest line) |
+| `font_line() -> s32` | the line advance |
+| `font_shadow(colour)`, `font_shadow_off()` | draw a 1-pixel drop shadow under the following text |
+| `font_use(f: *Font)` | the font of the following calls (`null`: `font_small()`) |
+| `font_load(f: *Font)` | copy a font's atlas and palette to VRAM, when its blob holds them |
+| `font_small() -> *Font` | the built-in font |
+
+The colour works as for `text()` (the tint `col_tint(colour)`; white shows the font's ink as it
+is). Characters the font lacks are skipped. A glyph costs about 45 cycles (the 8×8 `text()`:
+about 105), `text_width` about 30 cycles a character.
+
+**Fonts of your own** come from `tools/meifont.py`, which bakes a TrueType font (antialiased,
+optionally with a drop shadow baked in) or a pixel font into a blob: the glyph metrics and,
+unless `--no-texels`, the atlas rows and palette, for a given texture slot, first row and
+palette. Embed it and load it once:
+
+```
+// python3 tools/meifont.py --ttf Georgia.ttf --size 15 --shadow --slot 3 --palette 40 -o title.fnt
+embed TITLE: Font = "title.fnt"
+
+fn init() { font_load(TITLE) }
+
+fn draw() {
+    font_use(TITLE)
+    font_text_align(160, 30, "Lantern Lake", rgb(255, 220, 140), ALIGN_CENTRE)
+    font_use(null)                                   // back to font_small()
+}
+```
+
+The blob is a `Font` header (`height`, `line`, `first`, `count`, `slot`, `palette`, `row`, `rows`,
+`colours: [16]u16`) followed by a word per glyph (`u | v << 8 | w << 16 | advance << 24`) and
+`rows × 128` bytes of 4-bit texels; `tools/meifont.py` describes it, and its `--akr NAME` option
+writes it as an Akari `const` array instead (as `stdlib/font_small.akr` is made). A font atlas can
+also share a texture with other art: bake it with `--no-texels` at the rows the cart loads it to.
+
+### Colours and animation phases (`colour.akr`)
+
+| | |
+|---|---|
+| `col_mix(a, b, t) -> u32` | blend two colours, `t` 0 (a) .. 1.0 (b), clamped; each channel rounds down (one `clerp`) |
+| `col_scale(c, t) -> u32` | each channel times `t` (0..1.0) |
+| `col_add(a, b) -> u32` | channel sums, clamped at 255 |
+| `rgb_of15(c) -> u32` | the 24-bit colour of a 15-bit palette or framebuffer colour (`rgb15` is the reverse) |
+| `palette_lerp(index, a: *u16, b: *u16, count, t)` | write `count` palette colours from colour `index` on, each `a[i]` blended toward `b[i]` by `t` (15-bit colours, e.g. two keyframe palettes in ROM); about 38 cycles a colour |
+| `palette_rotate(index, count, step)` | rotate `count` palette colours in place: colour `index + i` gets what `index + (i + step) mod count` held (colour cycling); about 14 cycles a colour |
+| `frame_phase(t, period) -> fixed` | how far through a cycle of `period` frames the count `t` is: 0 up to 1.0 |
+| `frame_wave(t, period) -> fixed` | `sin(TAU * frame_phase(t, period))`, −1.0..1.0 |
+| `frame_angle(t, speed) -> fixed` | `t × speed` (radians per frame) reduced to 0..TAU, exactly |
+
+`fixed(frame_count) * speed` stops working after 32,768 frames (about nine minutes): the count
+overflows `fixed` and every animation driven by it jumps. The `frame_*` functions take the count
+itself, `frame() as s32` or a cart's own tick counter (one that stops while paused, say), and are
+exact for any count, so `sin(frame_angle(tick, 0.05))` keeps turning smoothly for as long as the
+cart runs. `frame_angle` costs about 150 cycles (five remainders), `frame_phase` about 70.
+
+### Strings (`str.akr`)
+
+Strings are NUL-terminated bytes. The `str_append*` functions add to the string already in a
+buffer of `cap` bytes (the NUL included), never write past it (the text is cut short instead),
+and return the buffer, so calls nest or chain:
+
+| | |
+|---|---|
+| `strlen(s) -> s32`, `streq(a, b) -> bool` | length; same bytes |
+| `str_copy(dst, cap, s) -> *u8` | replace the buffer's string with `s` |
+| `str_append(dst, cap, s) -> *u8`, `str_append_char(dst, cap, c) -> *u8` | |
+| `str_append_int(dst, cap, n, width, zero_pad) -> *u8` | `n` right-aligned in at least `width` characters, padded with `'0'` after the sign (`-007`) or with spaces (`  -7`) |
+| `str_append_fixed(dst, cap, f, decimals) -> *u8` | `f` rounded to 0–4 decimals, halves away from zero (`3.14`, `2.0`) |
+| `str_append_time(dst, cap, n) -> *u8` | `n / 60`, a colon and `n % 60` in two digits: seconds as m:ss (`125` → `2:05`), minutes as h:mm (`605` → `10:05`) |
+
+```
+var buf: [32]u8
+let b = &buf[0]
+str_copy(b, 32, "Day ")
+str_append_int(b, 32, day, 0, false)
+font_text_align(312, 8, str_append_time(str_copy(b, 32, ""), 32, minutes), CREAM, ALIGN_RIGHT)
+```
+
+### Tasks (`task.akr`)
+
+Work too big for one frame (rebuilding a cached scene, path finding, generating a level) can
+run as a **task**: a function with a stack of its own that runs for a while each frame and keeps
+its place between frames, locals, loops and calls in progress included, instead of a
+hand-written state machine.
+
+| | |
+|---|---|
+| `task_start(t: *Task, stack: *u8, size, body: fn())` | prepare `t` to run `body` on `size` bytes at `stack`; it does not run yet. Starting it again abandons what it was doing |
+| `task_resume(t) -> bool` | run `t` until it yields (true) or its function returns (false); false at once unless it is ready |
+| `task_yield()` | inside a task: suspend it and return from the `task_resume` that ran it. Outside a task it does nothing |
+| `task_time() -> s32` | cycles since the running task was last resumed (0 outside one) |
+| `task_done(t) -> bool`, `task_current() -> *Task` | its function has returned; the task running now (or null) |
+
+`t.state` is `TASK_IDLE`, `TASK_READY` (started or suspended), `TASK_RUNNING` or `TASK_DONE`.
+
+```
+var builder: Task
+var builder_stack: [4096]u8
+
+fn rebuild() {                                   // written as if it had the CPU to itself
+    for g in 0..floors {
+        for i in 0..n_objects(g) {
+            bake_object(g, i)
+            if task_time() > 60000 { task_yield() }    // the rest next frame
+        }
+    }
+}
+
+fn update() {
+    if dirty {
+        task_start(&builder, &builder_stack[0], 4096, rebuild)
+        dirty = false
+    }
+    task_resume(&builder)                        // false (and does nothing) once it is done
+}
+```
+
+`body` may be a closure (a function literal with captures); a task may resume other tasks, and
+`task_yield()` always suspends the innermost one. A switch is an ordinary call as far as the
+code around it is concerned: it saves and restores only what the calling convention preserves
+(`r9`–`r13`, `sp`, `ra`), so a resume and the yield back cost about 125 cycles together. The
+stack must hold the deepest calls the task makes, with their locals (`mesh()` with clipping, fog
+and `subdivide(3)` uses about 320 bytes; 1–2 KB is comfortable for most work). A guard word at
+the bottom of the stack is checked whenever the task yields or returns: a task that ran over it
+halts the cart with "task stack overflow" (by then it may have overwritten the memory below its
+stack, so leave room).
 
 ### Sound (`audio.akr`)
 
@@ -967,6 +1224,31 @@ fn init() {
 }
 ```
 
+**Voices (`voice.akr`).** A `Voices` record hands out a range of channels to sound effects, so
+a cart need not assign channels by hand:
+
+| | |
+|---|---|
+| `voices_init(v: *Voices, first, last, gap)` | channels `first..last` (inclusive); a sound started again within `gap` frames of its last start plays once |
+| `voice_alloc(v, id, pri, limit) -> s32` | the channel for sound `id` (any number the cart gives it) with priority `pri` (higher matters more) and at most `limit` instances (0: any number); −1 when it should not play. Start it on that channel at once |
+| `voice_play(v, id, pri, limit, data, samples, pitch, vol_l, vol_r, flags) -> s32` | `voice_alloc`, then `play_sample` on the channel (from sample 0) |
+| `voice_count(v, id) -> s32`, `voice_stop(v, id)` | instances of `id` playing; stop them (`id` −1: everything on `v`'s channels) |
+
+A sound takes a free channel; at its instance limit it restarts its own oldest instance instead;
+with no channel free it replaces the least important sound playing (the oldest among equals),
+but never one more important than itself. Keep the allocator's channels for it alone (music
+and ambience on others): a channel it did not start counts as a sound of priority 0.
+
+```
+const SND_STEP = 0
+const SND_COIN = 1
+var sfx: Voices
+
+fn init() { voices_init(&sfx, 8, 15, 3) }
+fn footstep() { voice_play(&sfx, SND_STEP, 1, 2, STEP, len(STEP), 0.9 + rndf() / 5, 70, 70, 0) }
+fn coin() { voice_play(&sfx, SND_COIN, 3, 1, COIN, len(COIN), 1.0, 160, 160, SND_REVERB) }
+```
+
 `tools/mei_adpcm.py` converts WAV files (`encode in.wav -o out.adp [--loop N]`, which prints
 the sample count), decodes them back for checking, and is importable (`encode`, `decode`).
 Loop points are best on multiples of 28 samples (one block), which the encoder makes seamless.
@@ -979,8 +1261,9 @@ Loop points are best on multiples of 28 samples (one block), which the encoder m
 | `print_char(c)`, `print_int(n)`, `print_uint(n)`, `print_hex(n)` | numbers |
 | `print_fixed(f)` | up to four decimals: `1.5`, `-0.25`, `3.1416` |
 | `print_vec(v: vec4)` | `(x, y, z, w)` |
-| `memcpy(dst: *u8, src: *u8, n: u32)` | 16 bytes per `vld`/`vst` when both are word aligned |
-| `memset(dst: *u8, v: u8, n: u32)` | |
+| `memcpy(dst: *u8, src: *u8, n: u32)` | front to back; 16 bytes per `vld`/`vst` (about 0.95 cycles a byte) once both are word aligned, also when they start misaligned by the same amount; byte by byte otherwise (about 10 a byte) |
+| `memset(dst: *u8, v: u8, n: u32)` | a word at a time when `dst` is aligned (about 1.8 cycles a byte), else bytes (about 6) |
+| `mem_fill(dst: *u8, v: u8, n: u32)` | the same as `memset`, fast: bytes up to a word boundary, then 64 bytes per step (about 0.3 cycles a byte). `memset` keeps its old speed, so carts that budget work by the cycle counter run as before |
 
 ### Memory cards (`card.akr`)
 
@@ -1132,6 +1415,14 @@ Measured with the `CYCLES` register (500,000 cycles per frame):
 | visible flat quad / Gouraud textured quad | about 130 / 163 (triangles a little less) |
 | fog | about 8–11 more per visible face vertex |
 | `text()` | about 105 per character |
+| `font_text()` | about 45 per glyph plus about 300 a call (`ALIGN_CENTRE`/`ALIGN_RIGHT`: about 30 more per character, to measure the line) |
+| `rect()` / `rect_blend()` / `rect_grad()` | about 140 / 90 / 110 |
+| `line()`, `tri_fill()` / `sprite()` / `sprite_ex()` / `sprite_rot()` | about 100 / 210 / 180 / 460 |
+| `palette_lerp` / `palette_rotate` | about 38 / 14 per colour |
+| `project_point` | about 120 |
+| `ot_save`/`ot_restore` / `ot_swap` / `ot_detach` | about 3,900 / 4,900 / 26,000 plus 15 per packet |
+| `task_resume` and the `task_yield` back | about 125 |
+| `memcpy`, word aligned / `mem_fill` / `memset` | about 0.95 / 0.3 / 1.8 (aligned) or 6 per byte |
 | `sin`, `cos` | about 50 |
 | `sqrt` | about 300 |
 | `mat4 * mat4` | about 300 |

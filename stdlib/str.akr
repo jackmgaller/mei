@@ -1,0 +1,148 @@
+// Strings: NUL-terminated bytes. The str_append* functions add to the string already in a
+// buffer of `cap` bytes (the NUL included), stop at the end of it, and return the buffer, so
+// calls chain:
+//
+//     var buf: [32]u8
+//     str_copy(&buf[0], 32, "Day ")
+//     str_append_int(&buf[0], 32, day, 0, false)
+
+// The number of bytes before the NUL.
+fn strlen(s: *u8) -> s32 {
+    var n = 0
+    while s[n] != 0 { n += 1 }
+    return n
+}
+
+// True when both strings hold the same bytes.
+fn streq(a: *u8, b: *u8) -> bool {
+    var i = 0
+    while true {
+        let c = a[i]
+        if c != b[i] { return false }
+        if c == 0 { return true }
+        i += 1
+    }
+    return true
+}
+
+// Copies s into dst (cap bytes); returns dst.
+fn str_copy(dst: *u8, cap: s32, s: *u8) -> *u8 {
+    if cap <= 0 { return dst }
+    dst[0] = 0
+    return str_append(dst, cap, s)
+}
+
+// Appends s to the string in dst (cap bytes); returns dst.
+fn str_append(dst: *u8, cap: s32, s: *u8) -> *u8 {
+    var n = strlen(dst)
+    var k = 0
+    while n < cap - 1 {
+        let c = s[k]
+        if c == 0 { break }
+        dst[n] = c
+        n += 1
+        k += 1
+    }
+    if n < cap { dst[n] = 0 }
+    return dst
+}
+
+// Appends one character.
+fn str_append_char(dst: *u8, cap: s32, c: s32) -> *u8 {
+    let n = strlen(dst)
+    if n < cap - 1 {
+        dst[n] = c as u8
+        dst[n + 1] = 0
+    }
+    return dst
+}
+
+// Appends n in decimal, right-aligned in at least `width` characters: padded with '0' after
+// the sign when zero_pad ("-007"), with spaces before it otherwise ("  -7").
+fn str_append_int(dst: *u8, cap: s32, n: s32, width: s32, zero_pad: bool) -> *u8 {
+    var tmp: [12]u8
+    var u = n as u32
+    if n < 0 { u = (0 - n) as u32 }
+    var k = 0
+    while true {
+        tmp[k] = (u % 10 + '0') as u8
+        k += 1
+        u /= 10
+        if u == 0 { break }
+    }
+    var ndig = k
+    if n < 0 { ndig += 1 }
+    var out: [48]u8
+    var j = 0
+    var pad = min(width, 40) - ndig
+    if !zero_pad {
+        while pad > 0 { out[j] = ' '; j += 1; pad -= 1 }
+    }
+    if n < 0 { out[j] = '-'; j += 1 }
+    while pad > 0 { out[j] = '0'; j += 1; pad -= 1 }
+    while k > 0 {
+        k -= 1
+        out[j] = tmp[k]
+        j += 1
+    }
+    out[j] = 0
+    return str_append(dst, cap, &out[0])
+}
+
+// Appends f rounded to `decimals` places (0-4): str_append_fixed(b, 16, 3.14159, 2) adds
+// "3.14", and 2.0 with 1 decimal adds "2.0". Halves round away from zero.
+fn str_append_fixed(dst: *u8, cap: s32, f: fixed, decimals: s32) -> *u8 {
+    let d = clamp(decimals, 0, 4)
+    var scale: u32 = 1
+    for i in 0..d { scale *= 10 }
+    let raw = bits(f)
+    var u = raw as u32
+    if raw < 0 { u = (0 - raw) as u32 }
+    var ip = u >> 16
+    var fp = ((u & 0xFFFF) * scale + 32768) >> 16
+    if fp >= scale {
+        ip += 1
+        fp -= scale
+    }
+    var out: [24]u8
+    var j = 0
+    if raw < 0 && (ip != 0 || fp != 0) { out[j] = '-'; j += 1 }
+    var tmp: [8]u8
+    var k = 0
+    while true {
+        tmp[k] = (ip % 10 + '0') as u8
+        k += 1
+        ip /= 10
+        if ip == 0 { break }
+    }
+    while k > 0 {
+        k -= 1
+        out[j] = tmp[k]
+        j += 1
+    }
+    if d > 0 {
+        out[j] = '.'
+        j += 1
+        var div = scale / 10
+        while div > 0 {
+            out[j] = (fp / div % 10 + '0') as u8
+            j += 1
+            div /= 10
+        }
+    }
+    out[j] = 0
+    return str_append(dst, cap, &out[0])
+}
+
+// Appends n as a clock "a:bb": n / 60, a colon and n % 60 in two digits. Seconds give m:ss
+// (125 is "2:05"), minutes give h:mm (605 is "10:05"). Negative n gets a minus sign.
+fn str_append_time(dst: *u8, cap: s32, n: s32) -> *u8 {
+    var a = n
+    if n < 0 {
+        str_append_char(dst, cap, '-')
+        a = 0 - n
+    }
+    str_append_int(dst, cap, a / 60, 0, false)
+    str_append_char(dst, cap, ':')
+    return str_append_int(dst, cap, a % 60, 2, true)
+}

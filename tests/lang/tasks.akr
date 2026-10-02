@@ -1,0 +1,152 @@
+// Cooperative tasks (stdlib/task.akr): a loop spread over frames, a closure body, nesting,
+// callee-saved registers kept across switches, and task_time().
+// frames: 16
+
+var summer: Task
+var summer_stack: [1024]u8
+var sum: s32
+var done_frame: s32
+
+// 1000 iterations, 100 a frame: the loop keeps its place (i, the running total) between frames.
+fn sum_slowly() {
+    var total = 0
+    for i in 0..1000 {
+        total += i
+        if i % 100 == 99 { task_yield() }
+    }
+    sum = total
+}
+
+var closure_task: Task
+var closure_stack: [512]u8
+var seen: s32
+
+var outer: Task
+var outer_stack: [1024]u8
+var inner: Task
+var inner_stack: [1024]u8
+var trace: [16]u8
+var trace_n: s32
+
+fn note(c: s32) {
+    trace[trace_n] = c as u8
+    trace_n += 1
+}
+
+fn inner_body() {
+    note('a')
+    task_yield()
+    note('b')
+}
+
+fn outer_body() {
+    note('1')
+    task_start(&inner, &inner_stack[0], 1024, inner_body)
+    while task_resume(&inner) {
+        note('2')
+        task_yield()             // the outer task's yield: back to update()
+    }
+    note('3')
+}
+
+// Recursion with locals on the task's stack, yielding at the bottom.
+fn depth(n: s32) -> s32 {
+    var local: [8]s32
+    for k in 0..8 { local[k] = n * 10 + k }
+    if n == 0 {
+        task_yield()
+    } else {
+        let r = depth(n - 1)
+        if r < 0 { return r }
+    }
+    var s = 0
+    for k in 0..8 { s += local[k] - n * 10 }
+    return s
+}
+
+var deep: Task
+var deep_stack: [2048]u8
+var deep_ok: s32
+
+fn deep_body() { deep_ok = depth(6) }
+
+var timed: Task
+var timed_stack: [512]u8
+var timed_slices: s32
+
+fn timed_body() {
+    var k = 0
+    timed_slices = 1
+    while k < 3000 {
+        k += 1
+        if task_time() > 20000 {
+            timed_slices += 1
+            task_yield()
+        }
+    }
+}
+
+fn init() {
+    task_yield()                 // outside a task: nothing happens
+    task_start(&summer, &summer_stack[0], 1024, sum_slowly)
+    let k = 7
+    let p = &seen
+    task_start(&closure_task, &closure_stack[0], 512, fn() {
+        p[0] = k * 6
+        task_yield()
+        p[0] += 1
+    })
+    task_start(&outer, &outer_stack[0], 1024, outer_body)
+    task_start(&deep, &deep_stack[0], 2048, deep_body)
+    task_start(&timed, &timed_stack[0], 512, timed_body)
+    assert(!task_done(&summer))
+    assert(task_current() == null)
+}
+
+fn update() {
+    // values the compiler keeps in callee-saved registers across the switches
+    let a = frame() as s32 * 3 + 1
+    let b = a * 5
+    let c = b - a
+    if task_resume(&summer) {
+        if done_frame == 0 { assert_eq(sum, 0) }
+    } else if done_frame == 0 {
+        done_frame = frame() as s32
+        print("sum ")
+        print_int(sum)
+        print(", done in frame ")
+        print_int(done_frame)
+        println("")
+    }
+    assert_eq(b, a * 5)
+    assert_eq(c, a * 4)
+    task_resume(&closure_task)
+    task_resume(&outer)
+    task_resume(&deep)
+    task_resume(&timed)
+    assert(task_current() == null)
+}
+
+fn draw() {
+    if frame() == 14 {
+        print("closure ")
+        print_int(seen)
+        println("")
+        trace[trace_n] = 0
+        print("nested ")
+        println(&trace[0])
+        print("deep ")
+        print_int(deep_ok)
+        println("")
+        // (how many depends on what the code costs; several, each about 20,000 cycles)
+        if timed_slices > 2 && timed_slices < 30 { println("timed in slices") }
+        assert(task_done(&summer) && task_done(&closure_task) && task_done(&outer))
+        assert(!task_resume(&summer))
+    }
+}
+
+// expect: sum 499500, done in frame 10
+// expect: closure 43
+// expect: nested 1a2b3
+// expect: deep 28
+// expect: timed in slices

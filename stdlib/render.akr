@@ -1,0 +1,184 @@
+// The render API beyond mesh(): projecting points, the ordering table and the packet arena
+// as values a cart can keep, draw early or swap, and the camera's pan and scale.
+//
+// The ordering table (OT) is 1,024 empty packets: entry b links to entry b - 1 and entry 0
+// ends the list, so a packet inserted into bucket b links on to whatever the bucket held, and
+// the last packet of each bucket's chain links to the entry below. A table copied elsewhere
+// therefore still links into the frame's table: put it back with ot_restore() or ot_swap()
+// before it is drawn, or make it a list of its own with ot_detach(). The frame's table is set
+// up at the start of every frame, after init(): in init(), call ot_clear() before using it.
+
+// ---- projecting points
+
+// The screen position of world point p as mesh() would put a vertex there (vxfm and vproj:
+// the same rounding and the -1024..1023 clamp): lanes x, y in pixels, z the ordering-table
+// bucket of its view depth (depth_bucket_of, without depth_bias; -1 when p is nearer than the
+// near plane or behind the camera, where x and y mean nothing), w the view depth as raw
+// fixed-point bits (from_bits(r.w)).
+fn project_point(p: vec3) -> ivec4 {
+    var r = __proj(vec4(p, 1.0), &__vp)
+    let w = from_bits(r.w)
+    if w < __cam_near {
+        r.z = -1
+    } else {
+        r.z = clamp(((w - __cam_near) * (1024.0 / (__cam_far - __cam_near))) as s32, 0, 1023)
+    }
+    return r
+}
+
+asm fn __proj(v: vec4, m: *mat4) -> ivec4 {
+    vld  v4, [{m}+0]
+    vld  v5, [{m}+16]
+    vld  v6, [{m}+32]
+    vld  v7, [{m}+48]
+    vxfm v0, {v}
+    vproj v0, v0
+}
+
+// The view depth of world point p (what sorts it; nearer is smaller).
+fn view_depth(p: vec3) -> fixed { return dot(__vp[3], vec4(p, 1.0)) }
+
+// Ordering-table buckets per unit of view depth: 1,024 / (far - near) (camera_clip).
+fn buckets_per_unit() -> fixed { return 1024.0 / (__cam_far - __cam_near) }
+
+// ---- the camera's scale and pan
+
+// Sets the projection's scale directly: f = 1 / tan(half the vertical field of view)
+// (camera_fov(fov) sets f from an angle; 1.732 is 60 degrees). Screen pixels per world unit at
+// view depth d are 120 * f / d. Takes effect at the next camera()/camera_look().
+fn camera_focal(f: fixed) {
+    __fy = f
+    __fx = f * 0.75
+}
+
+// Shifts the view on screen by whole pixels (positive px: the picture moves right, positive
+// py: down) without moving the camera: an off-axis view, as when panning a map seen from far
+// away. Every projected vertex moves by exactly (px, py). Call it after camera()/camera_look(),
+// which reset the view.
+fn camera_pan(px: s32, py: s32) {
+    let kx = fixed(px) / 160
+    let ky = fixed(py) / 120
+    __vp[0] = __vp[0] + __vp[3] * kx
+    __vp[1] = __vp[1] - __vp[3] * ky
+}
+
+// ---- the ordering table
+
+// Empties the frame's ordering table (the start of every frame does).
+fn ot_clear() { __ot_reset(&__ot[0]) }
+
+// Copies the frame's ordering table into buf (1,024 words), to put back later with ot_restore()
+// (the packets it holds must still be there: built this frame, or in an arena of the cart's).
+fn ot_save(buf: *u32) { memcpy(buf as *u8, &__ot[0] as *u8, 4096) }
+
+// Replaces the frame's ordering table with one saved by ot_save() (or by ot_swap()).
+fn ot_restore(buf: *u32) { memcpy(&__ot[0] as *u8, buf as *u8, 4096) }
+
+// Exchanges the frame's ordering table with buf: mesh() then sorts into the table that was in
+// buf, and a second ot_swap(buf) puts both back. About 4,900 cycles.
+asm fn ot_swap(buf: *u32) {
+    la   r2, {__ot}
+    addi r3, r0, 128
+.loop:
+    vld  v0, [r2+0]
+    vld  v1, [{buf}+0]
+    vld  v2, [r2+16]
+    vld  v3, [{buf}+16]
+    vst  v1, [r2+0]
+    vst  v0, [{buf}+0]
+    vst  v3, [r2+16]
+    vst  v2, [{buf}+16]
+    addi r2, r2, 32
+    addi {buf}, {buf}, 32
+    addi r3, r3, -1
+    bne  r3, r0, .loop
+}
+
+// Moves the frame's ordering table to dst as a list of its own, then empties the frame's
+// table. The ends of its buckets' chains are pointed at the entries of `home` (usually dst
+// itself; or the table it will be copied to before it is drawn), so ot_draw(home) draws it
+// whole. Its packets must stay where they are (a cart's own arena; see arena_swap()). Walks
+// every packet in the table once: about 26,000 cycles for the buckets and 15 a packet.
+fn ot_detach(dst: *u32, home: *u32) {
+    let ot0 = &__ot[0] as u32
+    let ot1 = ot0 + 4096
+    let delta = (home as u32) - ot0
+    for b in 0..1024 {
+        let w = __ot[b]
+        var nxt = w & 0xFFFFFF
+        if nxt >= ot0 && nxt < ot1 {
+            dst[b] = (w & 0xFF000000) | ((nxt + delta) & 0xFFFFFF)     // an empty bucket
+            continue
+        }
+        dst[b] = w
+        while nxt != 0xFFFFFF {
+            let q = nxt as *u32
+            let n2 = q[0] & 0xFFFFFF
+            if n2 >= ot0 && n2 < ot1 {
+                q[0] = (q[0] & 0xFF000000) | ((n2 + delta) & 0xFFFFFF)
+                break
+            }
+            nxt = n2
+        }
+    }
+    __ot_reset(&__ot[0])
+}
+
+// Draws an ordering table now (farthest bucket first): one made by ot_detach(), at its home.
+// Returns the triangles it drew.
+fn ot_draw(table: *u32) -> s32 {
+    let before = GPU_STATUS & 0xFFFF
+    GPU_DRAW = (table + 1023) as u32
+    return ((GPU_STATUS & 0xFFFF) - before) as s32
+}
+
+// Draws the frame's ordering table now and empties it: what is sorted afterwards is drawn at
+// the end of the frame, over it. Returns the triangles drawn.
+fn ot_flush() -> s32 {
+    let n = ot_draw(&__ot[0])
+    __ot_reset(&__ot[0])
+    return n
+}
+
+// Draws the interface list queued so far now (so 3D drawn later lands on top of it); what is
+// queued afterwards is drawn at the end of the frame as usual.
+fn ui_flush() {
+    if __ui_tail != null {
+        GPU_DRAW = __ui_head
+        __ui_tail = null
+    }
+}
+
+// ---- the packet arena
+
+// Packet memory: mesh(), the 2D calls and packet_alloc() take their packets from the current
+// arena, which is the frame's own (160 KB, emptied at the start of every frame) unless a cart
+// swaps in one of its own: packets made there survive the frame, so a static scene can be
+// built once (or a few steps per frame) and drawn again later from a saved ordering table.
+struct PacketArena {
+    ptr: *u32        // the next free word
+    end: *u32        // the end of the buffer
+}
+
+// Sets up an arena over `words` words at buf.
+fn arena_init(a: *PacketArena, buf: *u32, words: s32) {
+    a.ptr = buf
+    a.end = buf + words
+}
+
+// Exchanges the current arena with a: call it once to make packets in a, and again to go back
+// (a then holds where its packets end, ready to continue another time).
+fn arena_swap(a: *PacketArena) {
+    let p = __arena_ptr
+    let e = __arena_end
+    __arena_ptr = a.ptr
+    __arena_end = a.end
+    a.ptr = p
+    a.end = e
+}
+
+// Words of the frame's packet arena used so far this frame (with the frame's arena current).
+fn arena_used() -> s32 { return (__arena_ptr - &__arena[0]) as s32 }
+
+// Words left in the current arena.
+fn arena_left() -> s32 { return (__arena_end - __arena_ptr) as s32 }
