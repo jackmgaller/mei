@@ -114,5 +114,48 @@ class Stream(unittest.TestCase):
         self.assertTrue(rx.complete(pg.INDEX_PAGE))
 
 
+class Failures(unittest.TestCase):
+    def test_fetch_failure_keeps_data_marked_stale(self):
+        st = meinet.Station(meinet.load_config(None))
+        st.load_fixture(0, fixture.START)
+        v_before = st.pages[0x0401][0]
+        old_get = meinet.weather._get
+
+        def boom(*a, **k):
+            raise OSError("network down")
+        meinet.weather._get = boom
+        try:
+            stderr = sys.stderr
+            sys.stderr = open(os.devnull, "w")
+            try:
+                self.assertFalse(st.fetch_weather())
+                self.assertFalse(st.fetch_maps())
+            finally:
+                sys.stderr.close()
+                sys.stderr = stderr
+        finally:
+            meinet.weather._get = old_get
+        v, rows = st.pages[0x0401]
+        self.assertEqual(v, v_before + 1)                  # the stale flag changed the page
+        self.assertEqual(rows[0][15] & pg.FLAG_STALE, pg.FLAG_STALE)
+        self.assertEqual(rows[0][22:31], b"\x08New York")  # the last data is still sent
+        self.assertEqual(st.pages[0x3401][1][0][3] & pg.FLAG_STALE, pg.FLAG_STALE)
+        idx = st.pages[pg.INDEX_PAGE][1]
+        self.assertEqual(idx[0][2] & 2, 2)
+
+    def test_no_data_yet(self):
+        st = meinet.Station(meinet.load_config(None))
+        with st.lock:
+            st.rebuild()
+        self.assertEqual(list(st.pages), [pg.INDEX_PAGE])
+        self.assertEqual(st.pages[pg.INDEX_PAGE][1][0][0], 0)   # no entries
+        car = meinet.Carousel(st)
+        sec = car.second(fixture.START)
+        rx = wire.Receiver()
+        rx.feed(sec)
+        self.assertEqual(rx.ok, 15)
+        self.assertTrue(rx.complete(pg.TIME_PAGE) and rx.complete(pg.INDEX_PAGE))
+
+
 if __name__ == "__main__":
     unittest.main()

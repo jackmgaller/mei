@@ -544,6 +544,7 @@ Structures for the payloads, matching the tables above field for field: `BcTime`
 `BC_TEMP_UNKNOWN` (−128), the `BC_ICON_*` classes and the registers.
 
 ```
+const WHITE = 0xFFFFFF
 var now: BcCurrent
 
 fn init() { bc_select(BC_CURRENT | 0x403) }        // Chicago
@@ -553,7 +554,8 @@ fn update() {
 }
 
 fn draw() {
-    if bc_version(BC_CURRENT | 0x403) < 0 { text(8, 8, "Tuning...", WHITE); return }
+    cls(0)
+    if now.time == 0 { text(8, 8, "Tuning...", WHITE); return }     // nothing read yet
     text(8, 8, bc_name(&now.city[0]), WHITE)
     text_int(8, 20, bc_temp_f(now.temp), WHITE)
 }
