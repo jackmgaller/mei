@@ -1,0 +1,175 @@
+// The broadcast end to end: decode the canned fixture stream (tools/meinet --fixture) through
+// the decoder chip and stdlib/broadcast.akr.
+// broadcast: data/broadcast.bin
+// frames: 3600
+cart "Broadcast Test"
+
+var cur: BcCurrent
+var daily: BcDaily
+var hourly: BcHourly
+var index: BcIndex
+var map: BcMap
+var bands: [3072]u8
+var t: BcTime
+var dt: BcDateTime
+var seen_v2 = false
+
+const CHICAGO = 0x403
+
+fn p(n: s32) { print_int(n); print_char('\n') }
+fn pb(b: bool) { if b { println("yes") } else { println("no") } }
+fn two(n: s32) { if n < 10 { print_char('0') } print_int(n) }
+
+fn init() {
+    p(sizeof(BcTime) * 1000 + sizeof(BcCurrent))     // expect: 52052
+    p(sizeof(BcDaily) * 1000 + sizeof(BcHourly))     // expect: 52104
+    p(sizeof(BcIndex) * 10000 + sizeof(BcMap))       // expect: 33282548
+    pb(bc_carrier())                                 // expect: yes
+    pb(bc_locked())                                  // expect: no
+    p(bc_version(BC_CURRENT | CHICAGO))              // expect: -1
+    p(bc_select(BC_TIME_PAGE))                       // expect: 0
+    p(bc_select(BC_INDEX_PAGE))                      // expect: 1
+    p(bc_select(BC_CURRENT | CHICAGO))               // expect: 2
+    p(bc_select(BC_DAILY | CHICAGO))                 // expect: 3
+    p(bc_select(BC_HOURLY | CHICAGO))                // expect: 4
+    p(bc_select(BC_MAP | BC_HOME))                   // expect: 5
+    p(bc_select(BC_TIME_PAGE))                       // expect: 0
+}
+
+fn update() {
+    let f = frame()
+    if f == 4 {
+        // the first packet (the time page of second 0) arrived during ticks 0-3
+        pb(bc_locked())                              // expect: yes
+        pb(bc_ready(BC_TIME_PAGE))                   // expect: yes
+        p(bc_stamp(BC_TIME_PAGE) as s32)             // expect: 0
+        pb(bc_time(&t))                              // expect: yes
+        p(t.secs as s32)                             // expect: 844106400
+        p(t.utc_offset as s32 * 1000 + t.flags as s32)   // expect: -19997
+        p(t.year as s32 * 10000 + t.month as s32 * 100 + t.day as s32)   // expect: 20260930
+        print(bc_name(&t.tz[0])); print_char('\n')   // expect: CDT
+    }
+    if f == 700 {
+        // eleven seconds in: the time page is exact to the second
+        p(bc_now() as s32)                           // expect: 844106411
+        bc_datetime(bc_local_now(), &dt)
+        p(dt.year * 10000 + dt.month * 100 + dt.day) // expect: 20260930
+        p(dt.weekday)                                // expect: 3
+        two(dt.hour); print_char(':'); two(dt.minute); print_char(':'); two(dt.second); print_char('\n')   // expect: 13:00:11
+
+        // index
+        pb(bc_changed(BC_INDEX_PAGE))                // expect: yes
+        p(bc_read(BC_INDEX_PAGE, &index))            // expect: 572
+        pb(bc_changed(BC_INDEX_PAGE))                // expect: no
+        p(index.head.count as s32)                   // expect: 10
+        print(bc_name(&index.head.service[0])); print_char('\n')   // expect: MEINET WEATHER
+        for i in 0..index.head.count as s32 {
+            let e = &index.entry[i]
+            print_hex(e.page as u32); print_char(' ')
+            print_int(e.kinds as s32); print_char(' ')
+            print_int(e.flags as s32); print_char(' ')
+            print(bc_name(&e.region[0])); print_char('/')
+            print(bc_name(&e.city[0])); print_char('\n')
+        }
+        // expect: 400 15 1 Home/Springfield
+        // expect: 401 15 0 Northeast/New York
+        // expect: 402 15 0 Southeast/Atlanta
+        // expect: 403 15 0 Midwest/Chicago
+        // expect: 404 15 0 South/Dallas
+        // expect: 405 15 0 Mountain/Denver
+        // expect: 406 15 0 Southwest/Phoenix
+        // expect: 407 15 0 West/Los Angeles
+        // expect: 408 15 0 Pacific NW/Seattle
+        // expect: 4FF 8 4 United States/
+        p(index.entry[3].lat as s32 * 100000 + index.entry[3].north as s32)   // expect: 418804950
+        p(index.entry[3].versions[0] as s32)         // expect: 1
+
+        // current conditions in Chicago
+        p(bc_read(BC_CURRENT | CHICAGO, &cur))       // expect: 52
+        print(bc_name(&cur.city[0])); print_char('\n')   // expect: Chicago
+        p(cur.temp as s32)                           // expect: 38
+        p(bc_temp_c(cur.temp as s32) * 1000 + bc_temp_f(cur.temp as s32))   // expect: 19066
+        print_fixed(bc_temp_fixed(cur.feels as s32)); print_char('\n')     // expect: 17.5
+        p(cur.humidity as s32 * 1000 + cur.cloud as s32)   // expect: 55030
+        print(bc_wmo_text(cur.wmo as s32)); print_char('\n')   // expect: Cloudy
+        p(bc_icon(cur.wmo as s32))                   // expect: 2
+        print(bc_compass(cur.wind_dir as s32)); print_char(' '); p(cur.wind as s32)   // expect: SE 13
+        print_fixed(bc_pressure(cur.pressure as s32)); print_char('\n')    // expect: 1016.2
+        p(cur.high as s32 * 1000 + cur.low as s32 + 1000000)   // expect: 1044024
+        p(cur.sunrise as s32 * 10000 + cur.sunset as s32)      // expect: 3631083
+        p(cur.utc_offset as s32 * 10 + (cur.flags as s32 & BC_STALE))   // expect: -200
+
+        // the 5-day forecast
+        p(bc_read(BC_DAILY | CHICAGO, &daily))       // expect: 52
+        bc_datetime(daily.date as u32 * 86400, &dt)
+        p(dt.year * 10000 + dt.month * 100 + dt.day) // expect: 20260930
+        for d in 0..daily.count as s32 {
+            print_int(daily.day[d].weekday as s32); print_char(' ')
+            print_int(bc_temp_c(daily.day[d].high as s32)); print_char('/')
+            print_int(bc_temp_c(daily.day[d].low as s32)); print_char(' ')
+            print(bc_wmo_text(daily.day[d].wmo as s32)); print_char('\n')
+        }
+        // expect: 3 22/12 Cloudy
+        // expect: 4 21/11 Fog
+        // expect: 5 20/10 Rain
+        // expect: 6 19/9 Showers
+        // expect: 0 18/8 Thunderstorm
+
+        // the 24-hour forecast: two rows
+        p(bc_rows(BC_HOURLY | CHICAGO))              // expect: 2
+        p(bc_read(BC_HOURLY | CHICAGO, &hourly))     // expect: 104
+        p(hourly.hour as s32 * 100 + hourly.count as s32)   // expect: 1324
+        p(hourly.hours[0].temp as s32 * 1000 + hourly.hours[23].temp as s32 + 100000)   // expect: 138015
+        p(hourly.hours[23].wind as s32)              // expect: 28
+
+        // the home map, header and bands
+        p(bc_rows(BC_MAP | BC_HOME))                 // expect: 49
+        p(bc_read(BC_MAP | BC_HOME, &map))           // expect: 2548
+        print(bc_name(&map.head.name[0])); print_char('\n')   // expect: Springfield
+        p(map.head.width as s32 * 1000 + map.head.height as s32)   // expect: 64048
+        p(map.head.base as s32 * 1000 + map.head.step as s32)      // expect: 36002
+        pb(bc_map_decode(&map, &bands[0]))           // expect: yes
+        var sum = 0
+        var weighted = 0
+        for i in 0..3072 { sum += bands[i] as s32; weighted += bands[i] as s32 * (i % 61 + 1) }
+        p(sum)                                       // expect: 15547
+        p(weighted)                                  // expect: 476039
+        p(bands[0] as s32 * 100 + bands[3071] as s32)   // expect: 208
+
+        // progressive painting: each row decodes from the row above
+        var line: [64]u8
+        var row: [52]u8
+        var ok = true
+        for y in 0..48 {
+            if !bc_read_row(BC_MAP | BC_HOME, y + 1, &row[0]) { ok = false }
+            var above: *u8 = &line[0]
+            if y == 0 { above = null }
+            if !bc_map_row(&row[0], above, &line[0]) { ok = false }
+            for x in 0..64 { if line[x] != bands[y * 64 + x] { ok = false } }
+        }
+        pb(ok)                                       // expect: yes
+        p(bc_packets_dropped() as s32 * 1000 + bc_signal())   // expect: 4
+        bc_release(BC_MAP | BC_HOME)
+        p(bc_select(BC_MAP | BC_NATIONAL))           // expect: 5
+    }
+    // the gateway refreshes its data 40 seconds in: the version changes
+    if f > 2400 && !seen_v2 && bc_changed(BC_CURRENT | CHICAGO) {
+        seen_v2 = true
+        p((f / 60) as s32)                           // expect: 41
+        p(bc_version(BC_CURRENT | CHICAGO))          // expect: 2
+        bc_read(BC_CURRENT | CHICAGO, &cur)
+        p(cur.temp as s32)                           // expect: 40
+    }
+    if f == 3599 {
+        pb(seen_v2)                                  // expect: yes
+        pb(bc_ready(BC_MAP | BC_NATIONAL))           // expect: yes
+        p(bc_read(BC_MAP | BC_NATIONAL, &map))       // expect: 2548
+        p(map.head.base as s32 * 1000 + map.head.step as s32)   // expect: -39992
+        pb(bc_map_decode(&map, &bands[0]))           // expect: yes
+        var sum = 0
+        for i in 0..3072 { sum += bands[i] as s32 }
+        p(sum)                                       // expect: 34603
+        p(bc_packets_ok() as s32)                    // expect: 899
+        p(bc_packets_fixed() as s32 * 1000 + bc_packets_dropped() as s32)   // expect: 0
+    }
+}

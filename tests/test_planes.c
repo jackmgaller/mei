@@ -142,7 +142,7 @@ static void test_registers(void) {
     CHECK_EQ(bus_read32(m, 0xFF0800, &v), -1);
     CHECK_EQ(m->fault.kind, MEI_FAULT_UNMAPPED);
     memset(&m->fault, 0, sizeof m->fault);
-    CHECK_EQ(bus_read32(m, 0xFF0600, &v), -1);    /* the broadcast decoder's range: not here */
+    CHECK_EQ(bus_read32(m, 0xFF06FC, &v), -1);    /* past the broadcast decoder: unmapped */
     CHECK_EQ(m->fault.kind, MEI_FAULT_UNMAPPED);
     setup();
     for (size_t i = 0; i < sizeof valid / sizeof *valid; i++) CHECK_EQ(rreg(valid[i]), 0);

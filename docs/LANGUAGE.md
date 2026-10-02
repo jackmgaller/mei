@@ -1429,6 +1429,21 @@ Loop points are best on multiples of 28 samples (one block), which the encoder m
 
 `card_save`, `card_load`, `card_busy` and the rest: see [Saving](#saving).
 
+### Broadcast (`broadcast.akr`)
+
+The MeiNet data broadcast (time and US weather pages) through the decoder chip; the full
+reference is [`BROADCAST.md`](BROADCAST.md#standard-library-broadcastakr). Pages are named by
+page id, the kind ORed into the page number (`BC_CURRENT | 0x403` is Chicago's current
+conditions). `bc_select(page)` starts collecting a page (up to 8 at once), `bc_ready`/`bc_changed`
+say when it is complete or has a new version, and `bc_read(page, &buf)` copies it into a
+payload struct (`BcCurrent`, `BcDaily`, `BcHourly`, `BcIndex`, `BcMap`, `BcTime`). `bc_now()` is
+the broadcast clock in seconds since 2000, `bc_datetime` splits it, `bc_icon`/`bc_wmo_text`
+describe weather codes, `bc_temp_f`/`bc_temp_c` convert temperatures, and `bc_map_decode` unpacks
+a map. Signal: `bc_carrier`, `bc_locked`, `bc_signal` (0–4 bars) and the packet counters; raw
+bytes: `bc_raw`, `bc_raw_read`, `bc_hamming`, `bc_crc16`. The headless runner replays a
+recording with `--broadcast FILE` (tests: `// broadcast: data/broadcast.bin`, and
+`// broadcast-noise: BER`).
+
 ## Saving
 
 Saves go to a memory card through the card controller (`docs/MEMCARD.md`). Each cart has
@@ -1642,6 +1657,6 @@ register-allocation, inlining, `let` forwarding and induction-pointer work):
 `tests/run_lang_tests.sh` (run by `make test`) compiles every `tests/lang/*.akr`, runs it with
 `mei-headless` and compares the debug output with the file's `// expect:` lines (`// frames: N`,
 `// pad1: HEX`, `// error: TEXT`, `// exit: N` (e.g. 2 for a failed `assert`) and
-`// flags: ARGS` (extra `meic` arguments) and `// warning: TEXT` (the build must give this
+`// flags: ARGS` (extra `meic` arguments), `// broadcast: FILE` and `// broadcast-noise: BER` (replay a broadcast recording) and `// warning: TEXT` (the build must give this
 warning; with several such lines, exactly that many warnings) adjust a test). `tools/fuzz_lang.py [count] [seed]` compiles
 random programs and checks their output against a Python model of the CPU's arithmetic.

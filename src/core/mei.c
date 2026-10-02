@@ -50,6 +50,7 @@ void mei_reset(Mei *m) {
     gpu_reset(m);
     planes_reset(m);
     audio_reset(m);
+    broadcast_reset(m);
     if (m->rom_len == 0) {
         mei_raise(m, MEI_FAULT_NO_CART, 0);
         gpu_render_error_screen(m);
@@ -149,6 +150,7 @@ int mei_run_frame(Mei *m) {
             card_vsync(m);
             presented = 1;
         }
+        broadcast_tick(m);   /* FRAME still reads this tick's number */
         m->frame++;
         if (m->fault.kind) {
             for (int i = 0; i < AUD_CHANNELS; i++) m->ch[i].playing = 0;

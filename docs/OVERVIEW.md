@@ -45,6 +45,9 @@ Settings persist between sessions. Home (gamepad Guide button or F2) returns to 
 Games save to two virtual memory cards (`card1.mcd`, `card2.mcd`, 128 KB each; see
 [`docs/MEMCARD.md`](MEMCARD.md)), kept with the settings in
 `~/Library/Application Support/gallerdude/Mei/` (browser storage on the web).
+Carts can also tune in to **MeiNet**, a Teletext-style data broadcast of the time and US
+weather ([`docs/BROADCAST.md`](BROADCAST.md)): run `python3 tools/meinet/meinet.py` and the
+desktop player picks up its signal.
 To run a cart, either directly or after the boot animation:
 
 ```bash
@@ -120,7 +123,8 @@ Or in assembly ([`docs/ASSEMBLY.md`](ASSEMBLY.md)):
 | `tests/` | C unit tests per module and language tests (`tests/lang/*.akr` with expected output) |
 | `tools/` | Asset generators, the language fuzzer, the web cart packer |
 | `web/shell.html` | The browser page |
-| `docs/` | Spec, [decisions](DECISIONS.md) on everything the spec leaves open, language and assembly references |
+| `tools/meinet/` | The broadcast gateway: Open-Meteo weather encoded into a looping page carousel, served over TCP |
+| `docs/` | Spec, [decisions](DECISIONS.md) on everything the spec leaves open, language and assembly references, [memory cards](MEMCARD.md), [broadcast](BROADCAST.md) |
 
 ## Decisions on the open questions
 

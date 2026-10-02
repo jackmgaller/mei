@@ -517,7 +517,7 @@ static void test_channels_hi(void) {
 static void test_io_faults(void) {
     static const struct { uint32_t addr; MeiFaultKind k; } rd_cases[] = {
         {0xFF041C, MEI_FAULT_UNMAPPED}, {0xFF04FC, MEI_FAULT_UNMAPPED}, {0xFF0510, MEI_FAULT_UNMAPPED},
-        {0xFF0580, MEI_FAULT_UNMAPPED}, {0xFF05FC, MEI_FAULT_UNMAPPED}, {0xFF0600, MEI_FAULT_UNMAPPED},
+        {0xFF0580, MEI_FAULT_UNMAPPED}, {0xFF05FC, MEI_FAULT_UNMAPPED}, {0xFF0800, MEI_FAULT_UNMAPPED},   /* 0x600: broadcast, 0x700: planes */
         {0xFF0402, MEI_FAULT_MISALIGNED},
     };
     uint32_t v;
