@@ -12,11 +12,17 @@
 int bcnet_start(const char *host, int port) { (void)host; (void)port; return -1; }
 void bcnet_tick(Mei *m) { mei_broadcast_carrier(m, 0); }
 void bcnet_stop(void) {}
+int bcnet_spawn_gateway(const char *script, int port, const char *log) { (void)script; (void)port; (void)log; return 0; }
 #else
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
 #include <poll.h>
+#include <signal.h>
+#include <spawn.h>
+#include <sys/wait.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <time.h>
 #include <unistd.h>
@@ -36,6 +42,8 @@ static struct {
     uint8_t ring[RING];
     int head, count;
 } net = {.fd = -1};
+
+static void gateway_stop(void);
 
 static long long now_ns(void) {
     struct timespec ts;
@@ -132,8 +140,53 @@ void bcnet_tick(Mei *m) {
 }
 
 void bcnet_stop(void) {
+    gateway_stop();
     if (net.fd >= 0) close(net.fd);
     net.fd = -1;
     net.on = 0;
+}
+#endif
+
+#ifndef _WIN32
+/* ---- the gateway as a child process ---- */
+
+extern char **environ;
+static pid_t gateway_pid;
+
+/* Is something listening on 127.0.0.1:port? (a blocking connect to loopback answers at once) */
+static int port_answers(int port) {
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) return 0;
+    struct sockaddr_in a = {0};
+    a.sin_family = AF_INET;
+    a.sin_port = htons((uint16_t)port);
+    a.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    int ok = connect(fd, (struct sockaddr *)&a, sizeof a) == 0;
+    close(fd);
+    return ok;
+}
+
+int bcnet_spawn_gateway(const char *script, int port, const char *log) {
+    if (access(script, R_OK) != 0 || port_answers(port)) return 0;
+    char portstr[16];
+    snprintf(portstr, sizeof portstr, "%d", port);
+    char *argv[] = {"python3", (char *)script, "--port", portstr, "--exit-with-parent", NULL};
+    posix_spawn_file_actions_t fa;
+    posix_spawn_file_actions_init(&fa);
+    posix_spawn_file_actions_addopen(&fa, 0, "/dev/null", O_RDONLY, 0);
+    posix_spawn_file_actions_addopen(&fa, 1, log, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    posix_spawn_file_actions_adddup2(&fa, 1, 2);
+    int rc = posix_spawnp(&gateway_pid, "python3", &fa, NULL, argv, environ);
+    posix_spawn_file_actions_destroy(&fa);
+    if (rc != 0) { gateway_pid = 0; return 0; }
+    return 1;
+}
+
+static void gateway_stop(void) {
+    if (gateway_pid > 0) {
+        kill(gateway_pid, SIGTERM);
+        waitpid(gateway_pid, NULL, 0);
+        gateway_pid = 0;
+    }
 }
 #endif

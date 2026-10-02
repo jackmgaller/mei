@@ -3,13 +3,16 @@
 /* SDL3 platform layer: window, audio, input and the 60 Hz main loop.
  * The core only sees three things from here: a presented frame, queued audio
  * and pad input (see present(), queue_audio(), read_input()).
- *   mei [--no-boot] [--broadcast HOST:PORT | --no-broadcast] [--broadcast-noise BER] [cart.mei]
+ *   mei [--no-boot] [--broadcast HOST:PORT | --no-broadcast] [--no-gateway] [--broadcast-noise BER] [cart.mei]
  *   (or drop a .mei file onto the window)
  * With build/system.mei next to the executable, the console boots the system ROM
  * (boot animation + shell, docs/SYSTEM.md); a cart argument is launched after the boot
  * animation unless --no-boot is given. Home (gamepad Guide button or F2) returns to it.
  * The broadcast tuner (docs/BROADCAST.md) listens to the MeiNet gateway, by default on
  * 127.0.0.1:9600; without one the console simply has no signal. The web build has none.
+ * On the default local address the player starts the gateway itself (tools/meinet/meinet.py,
+ * found next to build/) unless one is already running or --no-gateway is given; it stops with
+ * the player and logs to build/meinet.log.
  * Gamepads come from SDL, plus XInput pads read directly over USB when built with libusb.
  * Keys: arrows d-pad, WASD stick, J/K/U/I = A/B/X/Y, Q/E = L/R, Enter = Start,
  *       Backspace or right Shift = Select,
@@ -328,12 +331,13 @@ SDL_AppResult SDL_AppInit(void **state, int argc, char **argv) {
 #ifndef __EMSCRIPTEN__
     /* the web page supplies the system ROM and catalogue through web_boot_system */
     const char *cart = NULL, *bc_addr = "127.0.0.1:9600";
-    int no_boot = 0;
+    int no_boot = 0, gateway = 1;
     double bc_noise = 0;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--no-boot")) no_boot = 1;
         else if (!strcmp(argv[i], "--broadcast") && i + 1 < argc) bc_addr = argv[++i];
         else if (!strcmp(argv[i], "--no-broadcast")) bc_addr = NULL;
+        else if (!strcmp(argv[i], "--no-gateway")) gateway = 0;
         else if (!strcmp(argv[i], "--broadcast-noise") && i + 1 < argc) bc_noise = SDL_atof(argv[++i]);
         else cart = argv[i];
     }
@@ -346,6 +350,13 @@ SDL_AppResult SDL_AppInit(void **state, int argc, char **argv) {
         memcpy(host, bc_addr, hl);
         host[hl] = 0;
         if (colon) port = SDL_atoi(colon + 1);
+        if (gateway && (!strcmp(host, "127.0.0.1") || !strcmp(host, "localhost"))) {
+            const char *bp = SDL_GetBasePath();
+            char script[1024], log[1024];
+            snprintf(script, sizeof script, "%s../tools/meinet/meinet.py", bp ? bp : "");
+            snprintf(log, sizeof log, "%smeinet.log", bp ? bp : "");
+            if (bcnet_spawn_gateway(script, port, log)) SDL_Log("started the MeiNet gateway (log: %s)", log);
+        }
         bcnet_start(host[0] ? host : "127.0.0.1", port);
     }
     if (bc_noise > 0) mei_broadcast_noise(app.mei, (uint32_t)(bc_noise * 1e6 + 0.5), 0x4D454E4Fu);
