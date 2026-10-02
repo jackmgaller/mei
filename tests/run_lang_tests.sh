@@ -8,6 +8,8 @@
 #   // cards: N         insert N (1 or 2) blank memory cards
 #   // exit: N          the run must end with this exit status (2: a fault, e.g. a failed assert)
 #   // flags: ARGS      extra meic arguments (e.g. --release)
+#   // broadcast: FILE  replay a broadcast recording (path relative to tests/lang)
+#   // broadcast-noise: BER   add bit errors to it
 #   // warning: TEXT    compilation must succeed with a warning containing TEXT (with one or
 #                       more of these, the file must give exactly that many warnings)
 # Usage: tests/run_lang_tests.sh [name-filter]   (MEIC=... RUN=... select other builds)
@@ -29,6 +31,11 @@ for t in tests/lang/*.akr tests/lang/*.mls; do
     cards=$(sed -n 's|.*// cards: *\([12]\).*|\1|p' "$t" | head -1)
     wantrc=$(sed -n 's|.*// exit: *\([0-9]*\).*|\1|p' "$t" | head -1)
     flags=$(sed -n 's|.*// flags: *||p' "$t" | head -1)
+    bcfile=$(sed -n 's|.*// broadcast: *||p' "$t" | head -1)
+    bcnoise=$(sed -n 's|.*// broadcast-noise: *||p' "$t" | head -1)
+    bcargs=""
+    [ -n "$bcfile" ] && bcargs="--broadcast tests/lang/$bcfile"
+    [ -n "$bcnoise" ] && bcargs="$bcargs --broadcast-noise $bcnoise"
     cardargs=""
     if [ -n "$cards" ]; then
         rm -f "$tmp/$name.card1" "$tmp/$name.card2"
@@ -59,7 +66,7 @@ for t in tests/lang/*.akr tests/lang/*.mls; do
             echo "FAIL $name: $nw warnings, expected $ne"; grep 'warning:' "$tmp/err" | sed 's/^/  got: /' | head -8; fail=$((fail + 1)); continue
         fi
     fi
-    $RUN "$tmp/$name.mei" --frames "${frames:-2}" ${pad:+--pad1 "$pad"} $cardargs > "$tmp/out" 2> "$tmp/runerr"
+    $RUN "$tmp/$name.mei" --frames "${frames:-2}" ${pad:+--pad1 "$pad"} $cardargs $bcargs > "$tmp/out" 2> "$tmp/runerr"
     rc=$?
     if [ $rc -ne "${wantrc:-0}" ]; then
         echo "FAIL $name: exit $rc (expected ${wantrc:-0})"; sed 's/^/  /' "$tmp/runerr" | grep -v "^  ran" | head -3; fail=$((fail + 1)); continue

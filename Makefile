@@ -77,7 +77,7 @@ $(B)/src/platform/xinput_usb.o: src/platform/xinput_usb.c $(wildcard src/*/*.h)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(USB_CFLAGS) -c $< -o $@
 
-$(B)/mei: $(B)/src/platform/sdl_main.o $(B)/src/platform/sysboot.o $(PLATFORM_OBJ) $(B)/libmeicore.a
+$(B)/mei: $(B)/src/platform/sdl_main.o $(B)/src/platform/sysboot.o $(B)/src/platform/bcnet.o $(PLATFORM_OBJ) $(B)/libmeicore.a
 	$(CC) $^ $(SDL_LIBS) $(USB_LIBS) -o $@
 
 $(B)/mei-headless: $(B)/src/platform/headless.o $(B)/src/platform/sysboot.o $(B)/libmeicore.a
@@ -99,6 +99,7 @@ $(B)/tests/test_audio: tests/adpcm_vectors.h   # ADPCM reference vectors (tools/
 test: $(TESTS) $(B)/meiasm $(B)/meic $(B)/mei-headless
 	@set -e; for t in $(TESTS); do echo "== $$t"; ./$$t; done
 	@if [ -x tests/run_lang_tests.sh ]; then MEIC=$(B)/meic RUN=$(B)/mei-headless ./tests/run_lang_tests.sh; fi
+	@if command -v python3 >/dev/null 2>&1; then echo "== tools/meinet/test_meinet.py"; PYTHONDONTWRITEBYTECODE=1 python3 tools/meinet/test_meinet.py; fi
 
 clean:
 	rm -rf $(B)

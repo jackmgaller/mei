@@ -1,0 +1,36 @@
+// No broadcast (the web build, or no gateway): no carrier, and nothing ever arrives.
+// frames: 120
+cart "Broadcast No Signal"
+
+var t: BcTime
+
+fn p(n: s32) { print_int(n); print_char('\n') }
+fn pb(b: bool) { if b { println("yes") } else { println("no") } }
+
+fn init() {
+    p(BC_CTRL as s32)                       // expect: 0
+    p(bc_select(BC_CURRENT | 0x401))        // expect: 0
+    p(BC_CTRL as s32)                       // expect: 1
+    for i in 1..8 { bc_select(0x100 + i) }
+    p(bc_select(0x200))                     // expect: -1
+    bc_release(0x101)
+    p(bc_select(0x200))                     // expect: 1
+}
+
+fn update() {
+    if frame() == 119 {
+        pb(bc_carrier())                    // expect: no
+        p(bc_signal())                      // expect: 0
+        p(bc_version(BC_CURRENT | 0x401))   // expect: -1
+        pb(bc_ready(BC_CURRENT | 0x401))    // expect: no
+        pb(bc_time(&t))                     // expect: no
+        p(bc_now() as s32)                  // expect: 0
+        p(bc_packets_ok() as s32)           // expect: 0
+        p(bc_icon(95) * 10 + bc_icon(255))  // expect: 89
+        print(bc_compass(0)); print_char(' '); print(bc_compass(248)); print_char(' ')
+        print(bc_compass(64)); print_char(' '); println(bc_compass(200))   // expect: N N E WNW
+        p(bc_temp_c(-1) * 1000 + bc_temp_c(-3))      // expect: -1
+        p(bc_temp_f(-80))                   // expect: -40
+        p(bc_temp_f(-128) * 1000 - bc_temp_f(127))   // expect: -83146
+    }
+}
