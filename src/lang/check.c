@@ -1249,8 +1249,45 @@ static Expr *check_indirect_call(Ctx *c, Expr *e) {
 
 static Expr *check_intrinsic(Ctx *c, Expr *e, Builtin bi, const char *name);
 
+/* A call through an actual field keeps its existing meaning. Otherwise dot-call syntax
+   inserts the receiver as argument 1 of an ordinary named call. No extra AST or codegen
+   path is needed: evaluation order, coercions, captures and pointer rules stay identical. */
+static void lower_method_call(Ctx *c, Expr *e) {
+    Expr *field = e->a;
+    if (field->k != E_FIELD) return;
+    Expr *receiver = field->a;
+    if (receiver->k == E_NAME && !(c->fn && is_local_name(c, receiver->name))) {
+        Sym *s = sym_lookup(receiver->name, receiver->loc.file);
+        if (s && s->k == SY_TYPE && s->ty->k == TY_ENUM) return;
+    }
+    /* Array and function literals have no fields. Let the eventual parameter type supply
+       their context, just as in a free call (e.g. [1, 2].consume() with [2]s16). */
+    if (receiver->k != E_ARRAY && receiver->k != E_FUNC) {
+        receiver = check(c, receiver, NULL);
+        field->a = receiver;
+        Type *t = receiver->ty;
+        if (t->k == TY_PTR) t = complete(t->elem, field->loc);
+        if (t->k == TY_STRUCT) {
+            complete(t, field->loc);
+            for (int i = 0; i < t->nfields; i++)
+                if (!strcmp(t->fields[i].name, field->name)) return;
+        }
+        if (ty_is_vec(t)) {
+            size_t n = strlen(field->name);
+            if (n >= 1 && n <= 4 && strspn(field->name, "xyzw") == n) return;
+        }
+    }
+    Expr *name = ar_alloc(sizeof *name);
+    name->k = E_NAME; name->loc = field->loc; name->name = field->name;
+    Expr **args = ar_alloc(sizeof *args * (size_t)(e->nargs + 1));
+    args[0] = receiver;
+    if (e->nargs) memcpy(args + 1, e->args, sizeof *args * (size_t)e->nargs);
+    e->a = name; e->args = args; e->nargs++;
+}
+
 static Expr *check_call(Ctx *c, Expr *e) {
     if (e->callee) return e;   /* synthesized */
+    lower_method_call(c, e);
     if (e->a->k != E_NAME) return check_indirect_call(c, e);
     const char *name = e->a->name;
     Sym *s = NULL;

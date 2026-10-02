@@ -1,0 +1,3 @@
+// error: 'twice' is a s32, not a function
+fn twice(n: s32) -> s32 { return n * 2 }
+fn init() { let twice = 1; let n = (3).twice() }
