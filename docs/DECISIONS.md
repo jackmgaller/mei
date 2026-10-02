@@ -380,3 +380,29 @@ reaches full scale, so two such channels can clip. To be safe, keep the sum of
 level too: at `REV_VOL` 255 its output is about 3 dB below the RMS of what is sent (for noise),
 and its peaks are well below the dry peaks because the energy is spread in time, so a wet
 volume of 64–160 with about 3–6 dB of headroom in the dry mix is a good start.
+
+## Sort keys and the cull rectangle
+
+The ordering table sorts each face by its own average depth. That is right for a single convex
+mesh, but in a scene built from many small pieces on a grid (a building game seen from above)
+it puts a tall cupboard's top in front of the chair beside it, and a long wall run in front of
+the furniture standing at one end. A depth buffer would fix this, but the console has none, by
+design. Instead a cart can say what a face should sort as:
+
+- `depth_key(w, n)` sorts the faces of following `mesh*()` calls `n` times closer to depth `w`
+  (n at least 1): their own depths still order them among themselves (so an object still draws
+  correctly), but the whole object sorts as one unit by where it stands. `depth_key_off()`
+  goes back to normal sorting (as does the start of each frame).
+- A face with flag bit 5 (`FACE_KEYED`) takes its bucket from its fourth colour word
+  (`col[3]`, unused by a flat face) instead of from its depth (still plus `depth_bias`). This lets a cart that bakes its
+  own faces give each piece of a wall or rail the bucket of its base.
+
+Both cost nothing for faces that do not use them beyond the flag test (2 cycles per visible
+face). They are kept to the bucket computation: transforming, clipping and culling are
+unchanged.
+
+`cull_rect(x0, y0, x1, y1)` sets the rectangle that faces needing clipping are dropped against
+(the screen by default; it stays until changed). A cart that records packets once and shifts
+them on screen for several frames while the view pans widens it while recording, so the parts
+that pan into view are there. Faces that need no clipping were never dropped for lying off the
+screen, so nothing else changes.

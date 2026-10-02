@@ -67,6 +67,45 @@ fn scen_sim_init() {
             new_hotel_state(); start_play(); money = 9999999
             if P1 == 1 { scen_hotel(1) } else if P1 == 2 { scen_hotel(1); s_upgrade_demo() } else { scen_grand(0, 0, 13) }
         }
+        // 430: what guests are doing (IDLE lines per game hour): the grand hotel (P1 = 0, P2 guests,
+        //      default 60) or the demo game (P1 = 1) from P4 h (default 6) at speed P3 (default 4);
+        //      P5 > 0: zoom 2 on floor P5 - 1 with the cursor at x P6 % 100, z 12.5 (z 7 if P6 >= 100)
+        430 => {
+            new_hotel_state(); start_play(); money = 9999999
+            var g = P2
+            if g == 0 { g = 60 }
+            if P1 == 1 { demo_game() } else { scen_grand(0, g, 6) }
+            if P4 > 0 { tod = P4 * 60 * MIN_FRAMES }
+            speed = P3
+            if speed == 0 { speed = 4 }
+            // P5 > 0: a close look (zoom 2) at floor P5 - 1, cursor x P6 over the south rooms
+            if P5 > 0 { view_zoom = 2; view_floor = P5 - 1; cur_x = fixed(P6 % 100); cur_z = 12.5; if P6 >= 100 { cur_z = 7.0 } view_recentre() }
+        }
+        // 431: a budget corridor: six rooms without en-suites share one small bathroom (toilet,
+        //      sink, shower), 12 guests from 6:30 with low hygiene: queues (BATHQ lines); P5 > 0: zoom 2
+        431 => {
+            new_hotel_state(); start_play(); money = 9999999
+            scen_shared()
+            if P5 > 0 { view_zoom = 2; cur_x = 19.0; cur_z = 9.5; view_recentre() }
+        }
+        // 433: a day in two rooms: the demo hotel with 12 guests from P2 h (default 12) at speed 4, a
+        //      close look (zoom 2) at the two west rooms on G; ACT lines (what their guests do)
+        433 => {
+            new_hotel_state(); start_play(); money = 9999999
+            scen_hotel(1)
+            var h = P2
+            if h == 0 { h = 12 }
+            tod = h * 60 * MIN_FRAMES
+            s_fill_guests(12)
+            speed = 4
+            view_zoom = 2
+            view_floor = 0
+            cur_x = 8.0
+            cur_z = 13.0
+            view_recentre()
+        }
+        // 432: the bathroom rules on a test floor (RULE lines: each bedroom's verdict)
+        432 => { new_hotel_state(); start_play(); money = 9999999; scen_rules() }
         // 499: cost probes (rooms_update, compute_pass, one field)
         499 => { new_hotel_state(); start_play(); money = 9999999; scen_grand(0, 60, 15) }
         else => {}
@@ -420,9 +459,392 @@ fn reach_check() {
     print(" spots, unreachable ")
     print_int(bad)
     println("")
+    // guests (who may not cross other guests' rooms): every spot in a bedroom or its en-suite, and
+    // in a shared bathroom, from the street (G) or the floor's elevator
+    bad = 0
+    n = 0
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 || OBJ_NSPOT[o.t as s32] == 0 { continue }
+        let r = o.room as s32
+        let host = r_grp[r] as s32
+        if !is_bedroom(host) && !(rooms[r].rtype as s32 == RT_BATHROOM) { continue }
+        let f = o.f as s32
+        let tt = spot_tile(k, 0)
+        for q in 0..NFIELD { fld_key[q] = -1; fld_ready[q] = false }
+        bfs_spent = 0
+        let fs = field_for(tt, false)
+        if fs < 0 { continue }
+        var from = entrance_tile()
+        if f > 0 {
+            from = -1
+            for l in 0..nlinks { if links[l].b as s32 / NT == f && links[l].kind as s32 == LK_ELEV { from = links[l].b as s32 } }
+        }
+        n += 1
+        if from < 0 || field_dist(fs, from) == INF {
+            bad += 1
+            print("GUEST UNREACHABLE ")
+            print(obj_name(o.t as s32))
+            print(" f")
+            print_int(f)
+            print(" spot ")
+            print_int(ptile_x(tt))
+            print(",")
+            print_int(ptile_z(tt))
+            println("")
+        }
+    }
+    print("guest reach: ")
+    print_int(n)
+    print(" spots, unreachable ")
+    print_int(bad)
+    println("")
+    // the rooms: types, bathrooms, prices
+    var nb = 0
+    var ne = 0
+    var ns = 0
+    var nn = 0
+    for r in 1..nrooms {
+        let rm = &rooms[r]
+        if rm.used == 0 { continue }
+        if is_bedroom(r) {
+            nb += 1
+            let bk = r_bath[r] as s32
+            if bk >= BATH_ENSUITE { ne += 1 } else if bk == BATH_SHARED { ns += 1 } else { nn += 1 }
+        }
+        if is_bedroom(r) || is_bathroom(r) {
+            print("ROOM #")
+            print_int(r)
+            print(" f")
+            print_int(rm.floor as s32)
+            print(" ")
+            print_int(rm.x0 as s32)
+            print(",")
+            print_int(rm.z0 as s32)
+            print(" ")
+            if rm.rtype as s32 != RT_NONE { print(room_type_name(rm.rtype as s32)) } else { print("(unfinished) "); print(room_type_name(rm.best as s32)) }
+            print(" bath ")
+            print_int(r_bath[r] as s32)
+            print(" ens ")
+            print_int(room_ensuite(r))
+            print(" host ")
+            print_int(bath_host(r))
+            print(" why ")
+            print_int(room_why(r))
+            print(" q ")
+            print_int(rm.quality as s32)
+            print(" $")
+            print_int(room_price(r))
+            println("")
+        }
+    }
+    print("bedrooms ")
+    print_int(nb)
+    print(" en-suite ")
+    print_int(ne)
+    print(" shared ")
+    print_int(ns)
+    print(" none ")
+    print_int(nn)
+    println("")
+}
+
+// ---- what guests are doing (scenario 430): per visible guest, moving, queueing or waiting,
+// using something (sitting, lying, at a counter, out of sight in a shower), browsing (standing to
+// look at a fountain, a plant...), or idle (standing still with nothing to do). Sampled every 16
+// frames; a run of idle samples is a guest standing about.
+var ia_n: [6]s32                 // samples by class this hour: 0 moving 1 queue 2 using 3 browse 4 idle 5 hidden
+var ia_run: [128]s16             // consecutive idle samples per person
+var ia_long: s32                 // idle runs that reached 4 samples (about 4 game minutes at x1, 16 at x4)
+var ia_long_room: s32            // ... of them inside a guest room
+var ia_hour: s32 = -1
+var ia_tot: [6]s32
+var ia_act: [256]s32             // using: samples by activity (USE_*)
+var ia_stand_use: s32            // using something standing in the plain stand frame (bar counter...)
+var ia_stand: s32                // samples standing still in the stand frame (not queueing)
+var ia_floor: s32                // samples sitting on nothing
+var ia_sum: [4]s32               // totals over the run: samples, idle, stand, floor
+fn ia_class(i: s32) -> s32 {
+    let p = &people[i]
+    let m = p.mode as s32
+    if people_vis[i].fade >= 224 { return 5 }
+    if m == M_WALK && (p.goal >= 0 || p.cs > 0.004) { return 0 }
+    if m == M_STAIRS || m == M_BOARD || m == M_ALIGHT || m == M_HOP { return 0 }
+    if m == M_WAIT_ELEV { return 1 }
+    let st = p.state as s32
+    if st == GS_ARRIVE || st == GS_QUEUE || st == GS_CHECKIN || st == GS_CHECKOUT || st == GS_LEAVE { return 1 }
+    let ps = p.pose as s32
+    if ps == POSE_SIT || ps == POSE_LIE || ps == POSE_USE || ps == POSE_SWIM { return 2 }
+    if p.obj >= 0 && (st == GS_USE || st == GS_WAIT_FOOD || st == GS_WAIT_SERVE) { return 6 }
+    if st == GS_USE && p.act as s32 == 202 { return 3 }
+    if st == GS_FOLLOW {
+        let l = p.party as s32
+        if l >= 0 && people[l].used != 0 { let c = ia_class(l); if c != 4 { return c } }
+    }
+    if p.act as s32 >= 203 && p.act as s32 <= 210 { return 2 }
+    return 4
+}
+fn ia_sample() {
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used == 0 || p.kind as s32 != P_GUEST || !m_visible(p) { ia_run[i] = 0; continue }
+        var c = ia_class(i)
+        if c == 2 || c == 6 { ia_act[p.act as s32] += 1 }
+        // as drawn: standing still in the plain stand frame (queues and the hidden aside), or
+        // sitting with no seat under them (on the floor)
+        let ps = p.pose as s32
+        if c != 0 && c != 1 && c != 5 && (ps == POSE_STAND || ps == POSE_WALK) { ia_stand += 1 }
+        // sitting with nothing under them: at a TV, a phone table, a modem or a desk without a seat
+        let a = p.act as s32
+        if ps == POSE_SIT && (a == USE_TV || a == USE_PHONE || a == USE_MODEM || a == USE_WORK) && !(p.seat >= 0) { ia_floor += 1 }
+        if c == 6 { ia_stand_use += 1; c = 2 }
+        ia_n[c] += 1
+        if c == 4 {
+            ia_run[i] += 1
+            if ia_run[i] == 4 {
+                ia_long += 1
+                let r = room_at(p.f as s32, p.x as s32, p.z as s32)
+                if r > 0 && (rooms[r].best as s32 == RT_GUEST || rooms[r].best as s32 == RT_SUITE) { ia_long_room += 1 }
+            }
+        } else {
+            ia_run[i] = 0
+        }
+    }
+}
+fn ia_report() {
+    var vis = 0
+    for k in 0..6 { vis += ia_n[k] }
+    print("IDLE ")
+    print_int(ia_hour)
+    print("h samples ")
+    print_int(vis)
+    print(" moving ")
+    print_int(ia_n[0] * 100 / max(vis, 1))
+    print("% queue ")
+    print_int(ia_n[1] * 100 / max(vis, 1))
+    print("% using ")
+    print_int(ia_n[2] * 100 / max(vis, 1))
+    print("% browse ")
+    print_int(ia_n[3] * 100 / max(vis, 1))
+    print("% idle ")
+    print_int(ia_n[4] * 100 / max(vis, 1))
+    print("% hidden ")
+    print_int(ia_n[5] * 100 / max(vis, 1))
+    print("% longidle ")
+    print_int(ia_long)
+    print(" inroom ")
+    print_int(ia_long_room)
+    print(" standuse ")
+    print_int(ia_stand_use * 100 / max(vis, 1))
+    print("% STAND ")
+    print_int(ia_stand * 100 / max(vis, 1))
+    print("% FLOORSIT ")
+    print_int(ia_floor * 100 / max(vis, 1))
+    ia_sum[0] += vis
+    ia_sum[1] += ia_n[4]
+    ia_sum[2] += ia_stand
+    ia_sum[3] += ia_floor
+    ia_stand = 0
+    ia_floor = 0
+    print("% acts")
+    for k in 0..256 { if ia_act[k] > 0 { print(" "); print_int(k); print(":"); print_int(ia_act[k]); ia_act[k] = 0 } }
+    ia_stand_use = 0
+    println("")
+    for k in 0..6 { ia_tot[k] += ia_n[k]; ia_n[k] = 0 }
+    ia_long = 0
+    ia_long_room = 0
+}
+fn ia_total() {
+    print("IDLE TOTAL samples ")
+    print_int(ia_sum[0])
+    print(" idle ")
+    print_int(ia_sum[1] * 1000 / max(ia_sum[0], 1))
+    print(" stand ")
+    print_int(ia_sum[2] * 1000 / max(ia_sum[0], 1))
+    print(" floorsit ")
+    print_int(ia_sum[3] * 1000 / max(ia_sum[0], 1))
+    println(" (per mille)")
+}
+
+// A budget corridor (scenario 431): reception in a lobby, six rooms north and south of a corridor
+// without en-suites, a small shared bathroom at its east end.
+fn scen_shared() {
+    s_room(0, FK_MARBLE, 24, 3, 27, 9)
+    s_door(0, 25, 3, 0, -1)
+    s_door(0, 24, 8, -1, 0)
+    s_obj(OB_RECEPTION_DESK, 0, 25, 5, 2)
+    s_obj(OB_KEY_RACK, 0, 27, 3, 0)
+    s_room(0, FK_CORR_CARPET, 4, 8, 23, 9)
+    for k in 0..4 {
+        s_guest_room_x(0, 4 + k * 4, 3, FK_CARPET_BLUE, true, false, false, false)
+        s_guest_room_x(0, 4 + k * 4, 10, FK_CARPET_GREEN, false, false, false, false)
+    }
+    // the bathroom: 2 x 3, its door onto the corridor
+    s_room(0, FK_TILE, 20, 10, 21, 12)
+    s_door(0, 21, 10, 0, -1)
+    s_obj(OB_TOILET, 0, 20, 10, 1)
+    s_obj(OB_SINK, 0, 20, 11, 1)
+    s_obj(OB_SHOWER, 0, 20, 12, 1)
+    rooms_update()
+    rooms_finish()
+    s_demo_staff()
+    tod = (6 * 60 + 30) * MIN_FRAMES
+    s_fill_guests(12)
+    for i in 0..npeople {
+        let p = &people[i]
+        if p.used != 0 && p.kind as s32 == P_GUEST { p.needs[N_HYGIENE] = (30 + rnd(60)) as u8; p.needs[N_SLEEP] = 255 }
+    }
+    cur_x = 17.0
+    cur_z = 9.0
+    view_recentre()
+}
+
+// The rules (scenario 432), one bedroom per case, on the ground floor off one corridor.
+fn scen_rules() {
+    s_room(0, FK_CORR_CARPET, 4, 9, 27, 10)
+    // a: bed + wardrobe, nothing else, off a corridor of its own (z 16): not bookable (no bathroom)
+    s_room(0, FK_CORR_CARPET, 4, 16, 11, 16)
+    s_room(0, FK_CARPET_BLUE, 4, 11, 7, 15)
+    s_door(0, 5, 15, 0, 1)
+    s_obj(OB_BED_DOUBLE, 0, 4, 11, 1)
+    s_obj(OB_WARDROBE, 0, 7, 11, 3)
+    // b: the same with toilet, sink and shower in the bedroom: still not (fixtures)
+    s_room(0, FK_CARPET_BLUE, 8, 11, 11, 15)
+    s_door(0, 9, 15, 0, 1)
+    s_obj(OB_BED_DOUBLE, 0, 8, 11, 1)
+    s_obj(OB_WARDROBE, 0, 11, 11, 3)
+    s_obj(OB_TOILET, 0, 8, 15, 1)
+    s_obj(OB_SINK, 0, 8, 14, 1)
+    s_obj(OB_SHOWER, 0, 11, 15, 3)
+    // c: a proper en-suite
+    s_guest_room_x(0, 12, 11, FK_CARPET_RED, false, false, true, false)
+    // d: a suite's furniture, en-suite with a shower only: a guest room (why: the tub)
+    tp_set(16, 11, 6, false, false)
+    s_room(0, FK_CARPET_RED, 16, 11, 21, 15)
+    tp_door(0, 3, 0, 0, -1)
+    tp_ensuite(0, false)
+    tp_obj(OB_BED_KING, 0, 0, 3, 1, 4, 1)
+    tp_obj(OB_TV, 0, 5, 3, 5, 3, 3)
+    tp_obj(OB_WARDROBE, 0, 5, 4, 5, 4, 3)
+    tp_obj(OB_LOUNGE_CHAIR, 0, 5, 0, 5, 0, 0)
+    // e: a real suite
+    s_suite(0, 22, 11, FK_MARBLE)
+    // f, g: north of the corridor, no en-suites, but a bathroom with doors to the corridor AND
+    // room f: shared (f and g both use it)
+    s_guest_room_x(0, 4, 4, FK_CARPET_GREEN, true, false, false, false)
+    s_room(0, FK_TILE, 8, 6, 9, 8)
+    s_door(0, 8, 8, 0, 1)
+    s_door(0, 8, 6, -1, 0)
+    s_obj(OB_TOILET, 0, 9, 6, 3)
+    s_obj(OB_SINK, 0, 9, 7, 3)
+    s_obj(OB_SHOWER, 0, 9, 8, 3)
+    s_guest_room_x(0, 10, 4, FK_CARPET_GREEN, true, false, false, false)
+    // h: a bathroom without a door
+    s_room(0, FK_TILE, 14, 6, 15, 8)
+    s_obj(OB_TOILET, 0, 14, 6, 1)
+    s_obj(OB_SINK, 0, 14, 7, 1)
+    s_obj(OB_SHOWER, 0, 14, 8, 1)
+    rooms_update()
+    rooms_finish()
+    for r in 1..nrooms {
+        let rm = &rooms[r]
+        if rm.used == 0 || !(is_bedroom(r) || is_bathroom(r)) { continue }
+        print("RULE ")
+        print_int(rm.x0 as s32)
+        print(",")
+        print_int(rm.z0 as s32)
+        print(" ")
+        if rm.rtype as s32 != RT_NONE { print(room_type_name(rm.rtype as s32)) } else { print("unfinished "); print(room_type_name(rm.best as s32)) }
+        print(" valid ")
+        print_int((rm.flags & RF_VALID) as s32)
+        print(" missing ")
+        print_int(rm.missing as s32)
+        print(" bath ")
+        print_int(room_bath(r))
+        print(" ensuite ")
+        print_int(room_ensuite(r))
+        print(" host ")
+        print_int(bath_host(r))
+        print(" why ")
+        print_int(room_why(r))
+        print(" $")
+        print_int(room_price(r))
+        println("")
+    }
 }
 
 fn scen_sim_hook() {
+    if SCENARIO == 433 && scen_t % 30 == 0 {
+        print("ACT ")
+        print_int(scen_t)
+        print(" ")
+        print(fmt_clock())
+        for i in 0..npeople {
+            let p = &people[i]
+            if p.used == 0 || p.kind as s32 != P_GUEST || p.f != 0 || p.x > 12.0 || p.z < 11.0 { continue }
+            print(" #")
+            print_int(i)
+            print(" a")
+            print_int(p.act as s32)
+            print(" st")
+            print_int(p.state as s32)
+            print(" po")
+            print_int(p.pose as s32)
+            if p.hide != 0 { print("H") }
+            if p.gest != 0 { print("g") }
+        }
+        println("")
+    }
+    if SCENARIO == 431 && P6 == 1 && scen_t % 20 == 0 && scen_t < 200 {
+        for i in 0..npeople {
+            let p = &people[i]
+            if p.used == 0 || p.kind as s32 != P_GUEST { continue }
+            print("G#"); print_int(i); print(" st "); print_int(p.state as s32); print(" act "); print_int(p.act as s32)
+            print(" room "); print_int(p.room as s32); print(" bath "); print_int(r_bath[p.room as s32] as s32)
+            print(" obj "); print_int(p.obj as s32); print(" goal "); print_int(p.goal as s32); print(" w "); print_int(p.wait as s32)
+            print(" @"); print_int(p.x as s32); print(","); print_int(p.z as s32); print(" m "); print_int(p.mode as s32)
+            print(" hyg "); print_int(p.needs[N_HYGIENE] as s32)
+            println("")
+        }
+    }
+    if SCENARIO == 431 && scen_t % 60 == 0 {
+        var waiting = 0
+        var hidden = 0
+        var inbath = 0
+        var cp = 0
+        for i in 0..npeople {
+            let p = &people[i]
+            if p.used == 0 || p.kind as s32 != P_GUEST { continue }
+            if p.act as s32 == ACT_WAIT_BATH { waiting += 1 }
+            if p.hide != 0 { hidden += 1 }
+            let r = room_at(p.f as s32, p.x as s32, p.z as s32)
+            if r > 0 && rooms[r].rtype as s32 == RT_BATHROOM { inbath += 1 }
+            if p.complaints & CP_SHAREDBATH != 0 { cp += 1 }
+        }
+        print("BATHQ ")
+        print(fmt_clock())
+        print(" waiting ")
+        print_int(waiting)
+        print(" in-bathroom ")
+        print_int(inbath)
+        print(" hidden ")
+        print_int(hidden)
+        print(" complained ")
+        print_int(cp)
+        let b = room_at(0, 20, 10)
+        print(" bathroom state ")
+        print_int(rooms[b].state as s32)
+        print(" uses ")
+        print_int(bath_uses[b] as s32)
+        print(" jobs ")
+        print_int(njobs)
+        println("")
+    }
+    if SCENARIO == 430 && scen_t > 30 {
+        if ia_hour < 0 { ia_hour = hour() }
+        if hour() != ia_hour { ia_report(); ia_hour = hour(); if ia_hour == 6 { ia_total() } }
+        if scen_t % 16 == 0 { ia_sample() }
+    }
     if SCENARIO == 405 && scen_t == 60 { reach_check() }
     if SCENARIO == 421 && P4 == 2 && scen_t % 480 == 0 { print("DUMP "); println(fmt_clock()); people_dump(0) }
     if SCENARIO == 421 && P4 == 3 && scen_t % 240 == 0 {
@@ -844,8 +1266,32 @@ fn scen_sim_hook() {
         print_int(staff_count())
         print(" rooms ")
         print_int(nrooms)
+        // bathrooms after a load (an old save keeps its in-room fixtures as en-suites)
+        var nb = 0
+        var ne = 0
+        var nl = 0
+        var nv = 0
+        for r in 1..nrooms {
+            if rooms[r].used == 0 || !is_bedroom(r) { continue }
+            nb += 1
+            if rooms[r].flags & RF_VALID != 0 { nv += 1 }
+            if r_bath[r] as s32 >= BATH_ENSUITE { ne += 1 }
+            if r_why[r] as s32 == WHY_LEGACY { nl += 1 }
+        }
+        print(" bedrooms ")
+        print_int(nb)
+        print(" bookable ")
+        print_int(nv)
+        print(" en-suite ")
+        print_int(ne)
+        print(" legacy ")
+        print_int(nl)
+        print(" legacy_baths ")
+        print_int(legacy_baths as s32)
         println("")
     }
+    // P1 = 1: save it again (in the current format)
+    if SCENARIO == 91 && P1 == 1 && scen_t == 130 { save_game(); print("saved again, size "); print_int(spos); println("") }
 }
 
 fn report() {

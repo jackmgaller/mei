@@ -139,7 +139,8 @@ GB_SUB = """.gb:
 
 
 def OUTCODE(k):
-    """ANDs into r11 the screen outcode of corner k (left 1, right 2, above 4, below 8)."""
+    """ANDs into r11 the outcode of corner k against the cull rectangle (cull_rect(), the
+    screen by default): left 1, right 2, above 4, below 8. Uses r9 and r10 (free here)."""
     return """    lhu  r5, [r1+%d]
     shli r5, r5, 4
     add  r5, r5, r3
@@ -147,15 +148,19 @@ def OUTCODE(k):
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
-    slt  r7, r6, r0
-    slti r8, r6, 320
+    lw   r9, [r0+{__scr_x0}]
+    slt  r7, r6, r9
+    lw   r10, [r0+{__scr_x1}]
+    slt  r8, r6, r10
     xori r8, r8, 1
     shli r8, r8, 1
     or   r7, r7, r8
-    slt  r8, r5, r0
+    lw   r9, [r0+{__scr_y0}]
+    slt  r8, r5, r9
     shli r8, r8, 2
     or   r7, r7, r8
-    slti r8, r5, 240
+    lw   r10, [r0+{__scr_y1}]
+    slt  r8, r5, r10
     xori r8, r8, 1
     shli r8, r8, 3
     or   r7, r7, r8
@@ -328,15 +333,17 @@ HEAD_SUB = """    addi sp, sp, -56
 """ + BBOX('r8', 3) + """.bbq:
     la   r3, {__sv}
     lw   r11, [sp+40]
-    blt  r11, r0, .next         ; all left of the screen
+    lw   r15, [r0+{__scr_x0}]
+    blt  r11, r15, .next        ; all left of the screen (the cull rectangle)
     lw   r11, [sp+36]
-    slti r11, r11, 321
-    beq  r11, r0, .next         ; all right of it
+    lw   r15, [r0+{__scr_x1}]
+    blt  r15, r11, .next        ; all right of it
     lw   r11, [sp+48]
-    blt  r11, r0, .next         ; all above
+    lw   r15, [r0+{__scr_y0}]
+    blt  r11, r15, .next        ; all above
     lw   r11, [sp+44]
-    slti r11, r11, 241
-    beq  r11, r0, .next         ; all below
+    lw   r15, [r0+{__scr_y1}]
+    blt  r15, r11, .next        ; all below
     addi r11, r0, 1             ; a candidate (if front-facing)
     sw   r11, [sp+24]
     jmp  .cull
@@ -380,7 +387,10 @@ REST = """    andi r11, r4, 4
     lw   r11, [r0+{__ot_k4}]
 .depth:
     lw   r10, [r0+{__ot_bias}]
+    andi r13, r4, 32
+    bne  r13, r0, .keyed        ; FACE_KEYED: the bucket is in col[3]
     otz  r10, r12, r11          ; ordering-table bucket
+.dk:
     lw   r15, [r0+{__arena_ptr}]
     lw   r11, [r0+{__arena_end}]
     addi r12, r15, 52
@@ -408,6 +418,19 @@ REST = """    andi r11, r4, 4
     lw   r11, [r11]
     jr   r11"""
 
+# A face with FACE_KEYED goes into the bucket its col[3] holds (the cart worked out where it
+# belongs: a sort key per face), plus depth_bias, within the table.
+KEYED = """.keyed:
+    lw   r13, [r1+24]
+    add  r10, r10, r13
+    bge  r10, r0, .k0
+    mov  r10, r0
+.k0:
+    slti r13, r10, 1024
+    bne  r13, r0, .dk
+    addi r10, r0, 1023
+    jmp  .dk"""
+
 SUB_CALL = """.sub:
     sw   r1, [sp+28]
     sw   r2, [sp+32]
@@ -433,6 +456,8 @@ def face_loop(name, sub, guard=True):
         e(CULL)
     # (the subdividing loop has checked every corner against the near plane already)
     e(REST.replace('@GUARD4@', GUARD4 if guard else '').replace('.near', '.next' if sub else '.near'))
+    # (REST ends in a jump: nothing falls into .keyed)
+    e(KEYED)
     labels = {}
     for fog in (0, 1):
         for q in (0, 1):

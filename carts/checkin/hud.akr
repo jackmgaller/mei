@@ -155,6 +155,8 @@ fn strip_text() -> *u8 {
         Void => sappend(h, "Void   \x01 drag on an upper floor   \x02 done")
         VoidGlass => sappend(h, "Glass void   \x01 drag on an upper floor   \x02 done")
         Demolish => sappend(h, "Demolish   \x01 an object, or drag over floors   \x02 done")
+        Copy => sappend(h, "Copy   \x01 a room, or hold and drag over rooms   \x02 done")
+        Paste => sappend(h, "Paste   \x01 paste   \x04 turn   \x05 \x06 floor   \x02 done")
         Inspect => {}
     }
     return h
@@ -448,10 +450,17 @@ fn draw_room_card(r: s32, x: s32, y: s32) {
     let rm = &rooms[r]
     let bt = room_target(r)
     let nreq = RT_NREQ[bt] as s32
-    let done = rm.flags & RF_VALID != 0 && rm.rtype as s32 != RT_OUTDOOR
+    let done = rm.flags & RF_VALID != 0 && rm.rtype as s32 != RT_OUTDOOR && room_why(r) != WHY_NO_DOOR
     var h = 28
     if !done && nreq > 0 { h += 4 + nreq * 10 }
+    let nb_rows = bath_rows(r, x, 0, false)
+    if nb_rows > 0 {
+        if done || nreq == 0 { h += 4 }
+        h += nb_rows * 10
+    }
+    h += 12
     panel(x, y, CARD_W, h)
+    ftext_r(x + CARD_W - 5, y + h - 12, "\x04 copy room", ST_TEXT_DIM, false)
     var title = "Empty room"
     if rm.rtype as s32 != RT_NONE && (done || rm.rtype as s32 != RT_OUTDOOR) { title = room_type_name(rm.rtype as s32) }
     else if bt != RT_NONE { title = room_type_name(bt) }
@@ -467,10 +476,84 @@ fn draw_room_card(r: s32, x: s32, y: s32) {
         sint(s, rm.quality as s32)
     }
     ftext(x + 5, y + 14, s, ST_TEXT_DIM, false)
+    var ry = y + 30
     if !done && nreq > 0 {
         ui_div(x + 4, y + 26, CARD_W - 8)
         checklist_rows(r, bt, x, y + 30)
+        ry += nreq * 10
+    } else if nb_rows > 0 {
+        ui_div(x + 4, y + 26, CARD_W - 8)
     }
+    bath_rows(r, x, ry, true)
+}
+
+// ---- bathrooms (C's rooms.akr: room_bath, bath_host, room_why): what a bedroom has, and what a
+// bathroom is for. A row with a check, a cross or a dot, and maybe a dim second line.
+
+var bath_sub: *u8
+
+// Room r's bathroom row into b: 0 none, 1 fine (check), 2 missing (cross), 3 worth knowing (dot).
+fn bath_row(r: s32, b: *u8) -> s32 {
+    bath_sub = ""
+    let rt = room_target(r)
+    if rt == RT_BATHROOM {
+        let h = bath_host(r)
+        if h != 0 {
+            sappend(b, "En-suite of a ")
+            sappend(b, room_type_name(room_target(h)))
+            return 1
+        }
+        if room_why(r) == WHY_NO_DOOR {
+            sappend(b, "No door yet")
+            bath_sub = "Its door into a bedroom"
+            return 2
+        }
+        sappend(b, "Shared by this floor")
+        return 3
+    }
+    let need = RT_BATH_NEED[rt] as s32
+    if need == 0 { return 0 }
+    let k = room_bath(r)
+    if k == BATH_ENSUITE_TUB {
+        sappend(b, "En-suite with a tub")
+        return 1
+    }
+    if k == BATH_ENSUITE {
+        if need == 2 {
+            sappend(b, "En-suite needs a bathtub")
+            return 2
+        }
+        sappend(b, "En-suite")
+        return 1
+    }
+    if k == BATH_SHARED && need == 1 {
+        sappend(b, "Shared bathroom")
+        bath_sub = "An en-suite rates higher"
+        return 3
+    }
+    sappend(b, "En-suite: none")
+    if room_why(r) == WHY_FIXTURES { bath_sub = "Fixtures go in a Bathroom" }
+    else if need == 2 { bath_sub = "A Bathroom with a tub" }
+    else { bath_sub = "A Bathroom, door into here" }
+    return 2
+}
+
+// Draws (or only counts, draw false) room r's bathroom rows from y; returns how many.
+fn bath_rows(r: s32, x: s32, y: s32, draw: bool) -> s32 {
+    let b = nb()
+    let k = bath_row(r, b)
+    if k == 0 { return 0 }
+    var n = 1
+    if bath_sub[0] != 0 { n = 2 }
+    if !draw { return n }
+    if k == 1 { glyph(x + 5, y + 1, 17) }
+    if k == 2 { glyph(x + 6, y + 1, 18) }
+    if k == 3 { ui_rect(x + 7, y + 4, 3, 3, ST_TEXT_DIM, -1) }
+    var c = ST_TEXT
+    if k == 1 { c = ST_TEXT_DIM }
+    ftext(x + 15, y, b, c, false)
+    if n == 2 { ftext(x + 15, y + 10, bath_sub, ST_TEXT_DIM, false) }
+    return n
 }
 
 // One requirement as text: "2x Table for two or Table for four" (shortened to fit the card).
@@ -516,7 +599,7 @@ fn draw_checklist(r: s32, x: s32, y: s32, compact: bool) {
     if bt == RT_NONE || nreq == 0 { return }
     let done = rm.flags & RF_VALID != 0 && rm.rtype as s32 != RT_OUTDOOR
     if done {
-        if celebrate_room != r || celebrate_t <= 0 { return }
+        if celebrate_room != r || celebrate_t <= 0 || guide_t > 0 { return }
         panel(x, y, CARD_W, 15)
         let b = nb()
         sappend(b, "\x11 ")
@@ -525,12 +608,14 @@ fn draw_checklist(r: s32, x: s32, y: s32, compact: bool) {
         ftext(x + 5, y + 3, b, ST_OK, false)
         return
     }
-    panel(x, y, CARD_W, 17 + nreq * 10)
+    let nbr = bath_rows(r, x, 0, false)
+    panel(x, y, CARD_W, 17 + (nreq + nbr) * 10)
     let b = nb()
     sappend(b, room_type_name(bt))
     sappend(b, " needs")
     ftext(x + 5, y + 3, b, ST_GOLD, false)
     checklist_rows(r, bt, x, y + 14)
+    bath_rows(r, x, y + 14 + nreq * 10, true)
 }
 
 // ---- rooms that just became complete: a ding, a label over the room, a toast
@@ -548,12 +633,12 @@ fn rooms_watch() {
             let t = rooms[r].rtype as s32
             if t == RT_CORRIDOR || t == RT_SERVICE || t == RT_OUTDOOR { real = false }
         }
-        if real && !room_was_valid[r] && watch_ready && screen == Screen.Play {
+        if real && !room_was_valid[r] && watch_ready && screen == Screen.Play && !cp_quiet {
             celebrate_room = r
             celebrate_t = 120
             fx(FX_NOTIFY)
             // (while furnishing, the checklist card says so itself)
-            if tool != Tool.Object {
+            if tool != Tool.Object && guide_room == 0 {
                 let b = nb()
                 sappend(b, room_type_name(rooms[r].rtype as s32))
                 sappend(b, " complete!")
@@ -567,6 +652,7 @@ fn rooms_watch() {
         room_was_valid[r] = real
     }
     watch_ready = true
+    cp_quiet = false
 }
 
 // ---- effects in the world: dust puffs and floating labels (projected every frame)

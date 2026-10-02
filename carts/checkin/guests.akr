@@ -41,6 +41,17 @@ const PR_SERVICE = 32
 const PR_SPA = 64
 const PR_WIFI = 128
 const PR_ROCK = 256
+const PR_BATH = 512              // a bath in their own en-suite
+const CP_SHAREDBATH = 65536      // queued for a shared bathroom (or found it dirty)
+
+// special activities (Person.act beyond the USE_* kinds)
+const ACT_SWIM = 200
+const ACT_SWIM_OUT = 201
+const ACT_BROWSE = 202           // standing by something to look at it (or chatting by it)
+const ACT_WAIT_BATH = 203        // waiting outside a busy shared bathroom
+const ACT_BED_SIT = 205          // sitting on the edge of the bed
+const ACT_WINDOW = 206           // looking out of the window
+const ACT_NAP = 207              // a nap on the bed by day
 
 var checkins_today: s32
 var guests_served: s32
@@ -143,9 +154,34 @@ fn release_obj(i: s32) {
         if o.user as s32 == i { o.user = -1 }
         p.obj = -1
     }
+    if p.seat >= 0 {
+        let so = p.seat as s32
+        if p.sspot >= 0 { spot_mask[so] = spot_mask[so] & ~((1 << (p.sspot as s32 & 7)) as u8) }
+        p.seat = -1
+    }
     p.spot = -1
+    p.sspot = -1
     p.sox = 0.0
     p.soz = 0.0
+    p.sy = 0.0
+    p.hide = 0
+    p.gest = GEST_NONE as u8
+}
+
+// Takes spot s of object oi as a seat (the bed or sofa while watching TV).
+fn claim_seat(i: s32, oi: s32, s: s32) {
+    let p = &people[i]
+    spot_mask[oi] = spot_mask[oi] | ((1 << s) as u8)
+    p.seat = oi as s16
+    p.sspot = s as s8
+}
+
+// Is a guest using object oi right now (R: a TV's screen flickers while someone watches)?
+fn obj_in_use(oi: s32) -> bool {
+    let u = objs[oi].user as s32
+    if u < 0 || u >= MAXP { return false }
+    let p = &people[u]
+    return p.used != 0 && p.obj as s32 == oi && p.state as s32 == GS_USE
 }
 
 // A free use spot of object oi (-1: none).
@@ -414,7 +450,8 @@ fn guest_tick(i: s32) {
                 checkins_today += 1
                 luggage_job(i)
                 p.state = GS_IDLE as u8
-                // first, go and see the room
+                // first, up to the room to unpack
+                plan_set(i, USE_DRESS, 0, 0)
                 go_room(i)
             }
         }
@@ -452,6 +489,10 @@ fn guest_tick(i: s32) {
                     if p.ht == 0 { p.pose = POSE_LIE as u8 }
                 }
             }
+            let a = p.act as s32
+            if a == ACT_BROWSE && (tick_count + i * 7) % 90 == 0 { browse_look(i) }
+            if a == ACT_WAIT_BATH && (tick_count + i) % 30 == 0 && bath_free(p.wroom as s32, p.want as s32) { p.timer = 0 }
+            if p.seat >= 0 && objs[p.seat as s32].used == 0 { p.timer = 0 }
             if p.timer <= 0 { finish_use(i) }
         }
         7 => {   // waiting for food
@@ -558,14 +599,17 @@ fn companion_tick(i: s32) {
         }
         return
     }
-    // the leader using something with a second spot: take it (sit together, sleep together)
+    // the leader using something with a second spot: take it (sit together, sleep together; on
+    // the bed or sofa they watch TV from)
     let ls = lp.state as s32
-    let lo = lp.obj as s32
-    if lo >= 0 && (ls == GS_USE || ls == GS_WAIT_FOOD || ls == GS_WAIT_SERVE) && objs[lo].used != 0 {
+    var lo = lp.obj as s32
+    if lp.seat >= 0 && lp.sspot >= 0 { lo = lp.seat as s32 }
+    let busy = lo >= 0 && (ls == GS_USE || ls == GS_WAIT_FOOD || ls == GS_WAIT_SERVE) && objs[lo].used != 0
+    if busy && lp.hide == 0 {
         if p.obj as s32 != lo {
-            release_obj(i)
             let s = free_spot(lo)
             if s >= 0 {
+                release_obj(i)
                 claim_spot(i, lo, s)
                 go_to(i, spot_tile(lo, s))
                 p.act = lp.act
@@ -576,12 +620,27 @@ fn companion_tick(i: s32) {
                 p.arrived = 0
                 face_obj(i, lo)
                 p.pose = lp.pose
-                seat_for(i, lo, p.spot as s32, p.act as s32)
+                settle(i, lo, p.spot as s32, p.act as s32, lp.pose as s32 == POSE_LIE)
+                if lp.seat >= 0 { p.dir = lp.dir; p.hold = 0 }
             }
             if p.goal < 0 { p.pose = lp.pose }
             return
         }
-    } else if p.obj >= 0 {
+    }
+    // the leader in the bathroom, or busy with something for one in the room: wait on the bed
+    if (lp.hide != 0 || busy) && lp.room >= 0 && lp.f == p.f && r_grp[room_at(p.f as s32, p.x as s32, p.z as s32)] as s32 == lp.room as s32 {
+        if p.obj >= 0 && p.act as s32 == ACT_BED_SIT {
+            if p.goal < 0 && p.arrived != 0 {
+                p.arrived = 0
+                p.pose = POSE_SIT as u8
+                settle(i, p.obj as s32, p.spot as s32, ACT_BED_SIT, false)
+                face_front(i, p.obj as s32)
+            }
+            return
+        }
+        if p.obj < 0 && companion_bed(i, lp.room as s32) { return }
+    }
+    if p.obj >= 0 {
         release_obj(i)
         p.pose = POSE_STAND as u8
     }
@@ -651,9 +710,13 @@ fn assign_room(i: s32) -> s32 {
         let t = rm.rtype as s32
         if t != RT_GUEST && t != RT_SUITE { continue }
         if rm.state as s32 == RS_DIRTY { continue }
-        var price = price_room
-        if t == RT_SUITE { price = price_suite }
+        let price = room_price(r)
         var sc = rm.quality as s32 + rm.view as s32
+        // their own bathroom (with a tub, for honeymooners); business travellers hate sharing
+        let bk = r_bath[r] as s32
+        if bk >= BATH_ENSUITE { sc += 15 }
+        if bk == BATH_ENSUITE_TUB && gt == GT_HONEYMOON { sc += 20 }
+        if bk == BATH_SHARED && gt == GT_BUSINESS { sc -= 25 }
         if t == RT_SUITE {
             if gt == GT_HONEYMOON || gt == GT_ROCKSTAR { sc += 100 } else { sc -= 60 }
         }
@@ -679,8 +742,7 @@ fn assign_room(i: s32) -> s32 {
     }
     if best < 0 { return -1 }
     let rm = &rooms[best]
-    var price = price_room
-    if rm.rtype as s32 == RT_SUITE { price = price_suite }
+    let price = room_price(best)
     if price > p.budget as s32 * 3 / 2 {
         complain(i, CP_PRICE, 30)
         return -1
@@ -692,6 +754,7 @@ fn assign_room(i: s32) -> s32 {
     rm.occupant = i as s16
     rm.state = RS_OCCUPIED as u8
     if rm.quality > 60 { praise(i, PR_ROOM, 8) }
+    if r_bath[best] as s32 == BATH_SHARED && gt != GT_FAMILY { complain(i, CP_SHAREDBATH, 5) }
     if rm.view >= 20 { praise(i, PR_VIEW, 10) }
     // checkout after the planned nights
     p.timer = 0
@@ -711,9 +774,17 @@ fn room_obj(r: s32, use: s32) -> s32 {
     return any
 }
 
+// Back to the room: the next thing planned, else something to do there.
 fn go_room(i: s32) {
     let p = &people[i]
     if p.room < 0 { return }
+    if p.nplan > 0 && plan_next(i) { return }
+    room_activity(i)
+}
+
+// A moment's look round the room by the bed (when nothing else is there to do).
+fn look_around(i: s32) {
+    let p = &people[i]
     let b = room_obj(p.room as s32, USE_SLEEP)
     if b < 0 { return }
     p.state = GS_GOTO as u8
@@ -738,9 +809,16 @@ fn guest_decide(i: s32) {
         start_checkout(i)
         return
     }
+    // a routine under way (unpacking, the morning wash, getting ready for bed)
+    if p.nplan > 0 && plan_next(i) { return }
     let h = hour()
-    // bedtime
+    // bedtime: wash up first, then bed
     if (h >= 22 || h < 6) && p.needs[N_SLEEP] < 200 {
+        if p.rbits & RB_BEDTIME == 0 {
+            p.rbits = p.rbits | RB_BEDTIME
+            plan_set(i, USE_WASH, USE_SLEEP, 0)
+            if plan_next(i) { return }
+        }
         if try_use(i, USE_SLEEP, true) { return }
     }
     // mealtimes: breakfast, lunch and dinner in the restaurant (room service if it's full)
@@ -771,7 +849,7 @@ fn guest_decide(i: s32) {
     if need == N_SLEEP { if try_use(i, USE_SLEEP, true) { return } }
     if need == N_HUNGER { if want_food(i) { return } }
     if need == N_HYGIENE {
-        if try_use(i, USE_SHOWER, true) || try_use(i, USE_BATH, true) || try_use(i, USE_WASH, true) || try_use(i, USE_TOILET, true) { return }
+        if want_wash(i) { return }
         complain(i, CP_BROKEN, 5)
     }
     if need == N_FUN || need < 0 {
@@ -791,7 +869,6 @@ fn guest_decide(i: s32) {
     }
     dec_n[6] += 1
     go_room(i)
-    p.act = USE_NONE as u8
 }
 
 // Wandering over to look at something: a fountain, a tree, the piano, a palm by the pool (the
@@ -832,7 +909,7 @@ fn try_browse(i: s32) -> bool {
         let pb = pass[tt] as s32
         if pb & PB_WALK == 0 || pb & (PB_STAFF | PB_PRIVATE) != 0 || !idle_tile_free(tt) { continue }
         if troom[tt] as s32 != r { continue }
-        p.act = 202
+        p.act = ACT_BROWSE as u8
         p.obj = k as s16
         p.spot = -1
         p.state = GS_GOTO as u8
@@ -881,7 +958,8 @@ fn want_fun(i: s32) -> bool {
             }
             if try_use(i, USE_PLAY, false) { return true }
         }
-        2 => {   // honeymooners: the spa, the pool, the bar
+        2 => {   // honeymooners: their jacuzzi, the spa, the pool, the bar
+            if try_use(i, USE_HOTTUB, true) { return true }
             if try_use(i, USE_MASSAGE, false) || try_use(i, USE_HOTTUB, false) || try_use(i, USE_SAUNA, false) { return true }
             if rnd(2) == 0 { complain(i, CP_NOSPA, 8) }
             if h >= 9 && h < 19 && try_use(i, USE_LOUNGE, false) { return true }
@@ -893,7 +971,7 @@ fn want_fun(i: s32) -> bool {
             if try_use(i, USE_MINIBAR, true) { return true }
         }
     }
-    if try_use(i, USE_TV, true) { return true }
+    if p.last as s32 != USE_TV && tv_watch(i) { return true }
     if try_use(i, USE_MUSIC, false) { return true }
     if try_use(i, USE_LOUNGE, false) { return true }
     complain(i, CP_NOFUN, 6)
@@ -907,7 +985,8 @@ fn use_room_ok(use: s32, rt: s32) -> bool {
         6 => return rt == RT_RESTAURANT || rt == RT_OUTDOOR || rt == RT_POOL || rt == RT_BAR
         7 => return rt == RT_BAR || rt == RT_POOL || rt == RT_OUTDOOR || rt == RT_LOBBY
         12, 13 => return rt == RT_SPA
-        33 => return rt == RT_SPA || rt == RT_POOL || rt == RT_OUTDOOR || rt == RT_SUITE
+        33 => return rt == RT_SPA || rt == RT_POOL || rt == RT_OUTDOOR
+        2, 3, 4, 5 => return rt == RT_BATHROOM
         14 => return rt == RT_GYM
         15 => return rt == RT_CONFERENCE
         11 => return rt == RT_POOL || rt == RT_OUTDOOR
@@ -942,11 +1021,12 @@ fn try_use_in(i: s32, use: s32, own: bool, rt_only: s32, act: s32) -> bool {
         if o.state & OS_BROKEN != 0 { continue }
         let r = o.room as s32
         if own {
-            if r != p.room as s32 { continue }
+            // their room, or its en-suite
+            if r_grp[r] as s32 != p.room as s32 { continue }
         } else {
             let rt = rooms[r].rtype as s32
             if r == 0 || rooms[r].flags & RF_VALID == 0 { continue }
-            if rt == RT_GUEST || rt == RT_SUITE { continue }
+            if rt == RT_GUEST || rt == RT_SUITE || r_host[r] != 0 { continue }
             if !use_room_ok(use, rt) { continue }
             if rt_only >= 0 && rt != rt_only { continue }
         }
@@ -1057,21 +1137,42 @@ fn start_use(i: s32) {
         fx_at(FX_SPLASH, p.f as s32)
         return
     }
-    if use == 202 {
-        // having a look at something (or people-watching), a few minutes
+    if use == ACT_BROWSE {
+        // having a look at something (or people-watching, chatting), a few minutes
         let oi = p.obj as s32
-        if oi >= 0 && objs[oi].used != 0 { face_obj(i, oi) }
+        if oi >= 0 && objs[oi].used != 0 { face_obj(i, oi); p.seat = oi as s16; p.sspot = -1 }
         p.obj = -1
         p.state = GS_USE as u8
         p.pose = POSE_STAND as u8
         p.timer = (MIN_FRAMES * (6 + rnd(12))) as s16
         return
     }
+    if use == ACT_WAIT_BATH {
+        // outside a busy shared bathroom, facing its door, until something's free (a few minutes)
+        p.state = GS_USE as u8
+        p.pose = POSE_STAND as u8
+        let b = p.wroom as s32
+        if b > 0 {
+            p.dir = dir_toward(p.x, p.z, fixed(rooms[b].x0 as s32 + rooms[b].x1 as s32 + 1) / 2, fixed(rooms[b].z0 as s32 + rooms[b].z1 as s32 + 1) / 2) as u8
+            p.hold = 0
+        }
+        p.timer = (MIN_FRAMES * (4 + rnd(4))) as s16
+        return
+    }
+    if use == ACT_WINDOW {
+        // looking out of the window a while (p.sfrom: the window's side, 0..3)
+        p.state = GS_USE as u8
+        p.pose = POSE_STAND as u8
+        p.dir = p.sfrom as u8
+        p.hold = 0
+        p.timer = (MIN_FRAMES * (4 + rnd(6))) as s16
+        return
+    }
     if use == USE_NONE {
-        // arrived at the room: look around a while
+        // arrived at the room with nothing to do there: a short look round
         p.state = GS_USE as u8
         p.act = USE_NONE as u8
-        p.timer = (MIN_FRAMES * 20) as s16
+        p.timer = (MIN_FRAMES * 4) as s16
         if p.room >= 0 && rooms[p.room as s32].state as s32 == RS_DIRTY { complain(i, CP_DIRTY, 3) }
         return
     }
@@ -1082,17 +1183,39 @@ fn start_use(i: s32) {
         p.state = GS_IDLE as u8
         return
     }
+    if p.room >= 0 && objs[oi].room as s32 == p.room as s32 && rooms[p.room as s32].state as s32 == RS_DIRTY && use != USE_SLEEP {
+        complain(i, CP_DIRTY, 3)
+    }
+    let orm = objs[oi].room as s32
+    if orm > 0 && rooms[orm].rtype as s32 == RT_BATHROOM && r_host[orm] == 0 && rooms[orm].state as s32 == RS_DIRTY { complain(i, CP_SHAREDBATH, 3) }
     // face the object (or, on a seat, away from it), and settle onto it
     face_obj(i, oi)
     p.pose = POSE_USE as u8
-    if use == USE_SLEEP || use == USE_LOUNGE || use == USE_MASSAGE { p.pose = POSE_LIE as u8 }
+    if use == USE_SLEEP || use == USE_LOUNGE || use == USE_MASSAGE || use == USE_BATH || use == ACT_NAP { p.pose = POSE_LIE as u8 }
     if use == USE_SIT || use == USE_EAT || use == USE_DRINK || use == USE_WORK || use == USE_MODEM || use == USE_TV ||
-       use == USE_MEET || use == USE_PHONE { p.pose = POSE_SIT as u8 }
+       use == USE_MEET || use == USE_PHONE || use == ACT_BED_SIT { p.pose = POSE_SIT as u8 }
     if use == USE_HOTTUB || use == USE_SAUNA { p.pose = POSE_SWIM as u8 }
     if use == USE_DRINK && objs[oi].t as s32 == OB_BAR_COUNTER { p.pose = POSE_STAND as u8 }
-    if use == USE_SIT { face_front(i, oi) }
-    seat_for(i, oi, max(p.spot as s32, 0), use)
+    if use == USE_SIT || use == ACT_BED_SIT { face_front(i, oi) }
+    // out of sight in the shower or on the toilet; a bob at the wardrobe or the sink, a nod at the desk
+    if use == USE_SHOWER || use == USE_TOILET { p.hide = 1 }
+    if use == USE_DRESS || use == USE_WASH { p.gest = GEST_BOB as u8 }
+    if use == USE_WORK || use == USE_MODEM { p.gest = GEST_NOD as u8 }
+    if use == USE_TV && p.seat >= 0 && objs[p.seat as s32].used != 0 {
+        // on the bed or the sofa, facing the screen
+        let so = p.seat as s32
+        settle(i, so, max(p.sspot as s32, 0), USE_SIT, false)
+        let c = obj_centre(oi)
+        p.dir = dir_toward(p.x + p.sox, p.z + p.soz, c.x, c.z) as u8
+        p.hold = 0
+    } else {
+        settle(i, oi, max(p.spot as s32, 0), use, p.pose as s32 == POSE_LIE)
+    }
     p.timer = use_time(use)
+    if use == ACT_NAP { p.timer = (MIN_FRAMES * (25 + rnd(30))) as s16 }
+    if use == ACT_BED_SIT { p.timer = (MIN_FRAMES * (8 + rnd(14))) as s16 }
+    if use == USE_DRESS { p.timer = (MIN_FRAMES * (5 + rnd(6))) as s16 }
+    if use == USE_TV { p.timer = (MIN_FRAMES * (30 + rnd(40))) as s16 }
     if use == USE_SLEEP && p.room >= 0 {
         let h = hour()
         if h >= 20 || h < 6 {
@@ -1144,7 +1267,7 @@ fn seat_for(i: s32, oi: s32, s: s32, use: s32) {
     var pull = 0.0
     var lie = p.pose as s32 == POSE_LIE
     match use {
-        1, 11, 12 => lie = true
+        1, 5, 11, 12 => lie = true
         30 => pull = 0.62
         6 => pull = 0.28
         33, 13 => pull = 0.7
@@ -1206,16 +1329,29 @@ fn finish_use(i: s32) {
     let use = p.act as s32
     let oi = p.obj as s32
     let gt = p.type as s32
+    let seat0 = p.seat as s32
     match use {
         1 => {
             p.needs[N_SLEEP] = 255
             p.needs[N_HYGIENE] = sat_sub(p.needs[N_HYGIENE], 40)
             // a good night's sleep in a clean, quiet room
             if hour() >= 6 && hour() < 11 && p.complaints & (CP_NOISE | CP_DIRTY) == 0 { praise(i, PR_ROOM, 5) }
+            // up: the bathroom, then dressed
+            p.rbits = p.rbits & ~RB_BEDTIME
+            if hour() >= 5 && hour() < 12 { plan_set(i, USE_TOILET, USE_SHOWER, USE_DRESS) }
         }
         2 => p.needs[N_HYGIENE] = sat_add(p.needs[N_HYGIENE], 50)
         3 => p.needs[N_HYGIENE] = sat_add(p.needs[N_HYGIENE], 40)
-        4, 5 => p.needs[N_HYGIENE] = 255
+        4 => p.needs[N_HYGIENE] = 255
+        5 => {
+            p.needs[N_HYGIENE] = 255
+            p.needs[N_FUN] = sat_add(p.needs[N_FUN], 40)
+            if oi >= 0 && r_host[objs[oi].room as s32] != 0 { praise(i, PR_BATH, 6) }
+        }
+        36 => p.needs[N_FUN] = sat_add(p.needs[N_FUN], 10)
+        205 => p.needs[N_FUN] = sat_add(p.needs[N_FUN], 25)
+        206 => p.needs[N_FUN] = sat_add(p.needs[N_FUN], 30)
+        207 => p.needs[N_SLEEP] = sat_add(p.needs[N_SLEEP], 80)
         6 => {
             p.needs[N_HUNGER] = 255
             praise(i, PR_FOOD, 6)
@@ -1273,6 +1409,7 @@ fn finish_use(i: s32) {
         else => {}
     }
     if oi >= 0 { wear_obj(oi, i) }
+    if oi >= 0 && use >= USE_TOILET && use <= USE_BATH { bath_used(oi) }
     if use == USE_TV && gt == GT_ROCKSTAR && oi >= 0 && rnd(4) == 0 && !security_near(p.room as s32) {
         break_obj(oi)
         praise(i, PR_ROCK, 10)
@@ -1280,10 +1417,13 @@ fn finish_use(i: s32) {
     release_obj(i)
     p.pose = POSE_STAND as u8
     p.state = GS_IDLE as u8
+    p.last = use as u8
     p.act = 0
     // the companion gets up too
     let c = p.party as s32
-    if c >= 0 && people[c].used != 0 && people[c].party as s32 == i && people[c].obj as s32 == oi {
+    var so = oi
+    if seat0 >= 0 { so = seat0 }
+    if c >= 0 && people[c].used != 0 && people[c].party as s32 == i && (people[c].obj as s32 == oi || (so >= 0 && people[c].obj as s32 == so)) {
         release_obj(c)
         people[c].pose = POSE_STAND as u8
     }
@@ -1339,8 +1479,7 @@ fn pay_bill(i: s32) {
     let p = &people[i]
     if p.room < 0 { return }
     let rm = &rooms[p.room as s32]
-    var price = price_room
-    if rm.rtype as s32 == RT_SUITE { price = price_suite }
+    let price = room_price(p.room as s32)
     let nights = max(p.nights as s32, 1)
     earn_from(i, LG_ROOMS, price * nights)
     fx_at(FX_CASH, p.f as s32)
@@ -1356,6 +1495,387 @@ fn pay_bill(i: s32) {
     clean_job(p.room as s32)
     p.room = -1
     guests_served += 1
+}
+
+// ---- in the room, and the bathroom
+
+// Plans: a short routine done in order (USE_* kinds, 0 = none), e.g. unpack on arrival, toilet,
+// shower and dress in the morning, wash before bed.
+fn plan_set(i: s32, a: s32, b: s32, c: s32) {
+    let p = &people[i]
+    p.nplan = 0
+    if a != 0 { p.plan[p.nplan as s32] = a as u8; p.nplan += 1 }
+    if b != 0 { p.plan[p.nplan as s32] = b as u8; p.nplan += 1 }
+    if c != 0 { p.plan[p.nplan as s32] = c as u8; p.nplan += 1 }
+}
+
+// Starts the next planned thing that can be done (dropping those that can't). True if off they go.
+fn plan_next(i: s32) -> bool {
+    let p = &people[i]
+    while p.nplan > 0 {
+        let u = p.plan[0] as s32
+        for k in 0..3 { p.plan[k] = p.plan[k + 1] }
+        p.nplan -= 1
+        if plan_try(i, u) { return true }
+    }
+    return false
+}
+
+fn plan_try(i: s32, u: s32) -> bool {
+    if u >= USE_TOILET && u <= USE_BATH { return bath_use(i, u) }
+    if u == USE_TV { return tv_watch(i) }
+    return try_use(i, u, true)
+}
+
+// Something to do in the room: the TV from the bed or sofa, the desk, a chair, the window, a nap,
+// the minibar, the bathroom, or just sitting on the bed. Off they go (always: at worst a short
+// look round the room).
+fn room_activity(i: s32) {
+    let p = &people[i]
+    if p.room < 0 { return }
+    let gt = p.type as s32
+    let h = hour()
+    var w: [8]s32
+    w[0] = 30                                        // TV
+    if gt == GT_FAMILY { w[0] = 45 }
+    if gt == GT_BUSINESS { w[0] = 18 }
+    if h >= 20 { w[0] += 15 }
+    w[1] = 8                                         // the desk
+    if gt == GT_BUSINESS { w[1] = 30 }
+    w[2] = 14                                        // a sofa, an armchair or a chair
+    w[3] = 7                                         // the window
+    w[4] = 0                                         // a nap
+    if p.needs[N_SLEEP] < 170 { w[4] = 30 }
+    w[5] = 0                                         // the minibar
+    if p.needs[N_HUNGER] < 160 { w[5] = 12 }
+    w[6] = 10                                        // sitting on the bed
+    w[7] = 0                                         // the toilet
+    if p.needs[N_HYGIENE] < 230 { w[7] = 8 }
+    // not the same again straight away
+    let last = p.last as s32
+    if last == USE_TV { w[0] = w[0] / 4 }
+    if last == USE_WORK { w[1] = w[1] / 4 }
+    if last == USE_SIT { w[2] = w[2] / 4 }
+    if last == ACT_WINDOW { w[3] = 0 }
+    if last == ACT_NAP { w[4] = 0 }
+    if last == ACT_BED_SIT { w[6] = w[6] / 4 }
+    for tries in 0..4 {
+        var tot = 0
+        for k in 0..8 { tot += w[k] }
+        if tot <= 0 { break }
+        var r = rnd(tot)
+        var k = 0
+        while k < 7 && r >= w[k] { r -= w[k]; k += 1 }
+        var ok = false
+        match k {
+            0 => ok = tv_watch(i)
+            1 => ok = try_use(i, USE_WORK, true)
+            2 => ok = try_use(i, USE_SIT, true)
+            3 => ok = try_window(i)
+            4 => ok = try_bed(i, ACT_NAP)
+            5 => ok = try_use(i, USE_MINIBAR, true)
+            6 => ok = try_bed(i, ACT_BED_SIT)
+            else => ok = bath_try(i, USE_TOILET)
+        }
+        if ok { return }
+        w[k] = 0
+    }
+    if try_bed(i, ACT_BED_SIT) { return }
+    look_around(i)
+}
+
+// Watching TV: the room's TV, from a sofa or armchair if there is one, else from the bed.
+fn tv_watch(i: s32) -> bool {
+    let p = &people[i]
+    if p.room < 0 { return false }
+    let rm = p.room as s32
+    var tv = -1
+    var seat = -1
+    var ss = -1
+    var bed = -1
+    var bs = -1
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 || r_grp[o.room as s32] as s32 != rm || o.state & OS_BROKEN != 0 { continue }
+        let u = OBJ_USE[o.t as s32] as s32
+        if u == USE_TV && spot_mask[k] == 0 && tv < 0 { tv = k }
+        if u == USE_SIT && o.t as s32 != OB_CHAIR && seat < 0 {
+            let s = free_spot(k)
+            if s >= 0 { seat = k; ss = s }
+        }
+        if u == USE_SLEEP && bed < 0 {
+            let s = free_spot(k)
+            if s >= 0 { bed = k; bs = s }
+        }
+    }
+    if tv < 0 { return false }
+    if seat < 0 { seat = bed; ss = bs }
+    claim_spot(i, tv, 0)
+    p.act = USE_TV as u8
+    p.state = GS_GOTO as u8
+    if seat >= 0 {
+        claim_seat(i, seat, ss)
+        go_to(i, spot_tile(seat, ss))
+    } else {
+        go_to(i, spot_tile(tv, 0))
+    }
+    return true
+}
+
+// On the bed: a nap (lying down) or a sit on its edge.
+fn try_bed(i: s32, act: s32) -> bool {
+    let p = &people[i]
+    if p.room < 0 { return false }
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 || o.room as s32 != p.room as s32 || OBJ_USE[o.t as s32] as s32 != USE_SLEEP || o.state & OS_BROKEN != 0 { continue }
+        let s = free_spot(k)
+        if s < 0 { continue }
+        claim_spot(i, k, s)
+        p.act = act as u8
+        p.state = GS_GOTO as u8
+        go_to(i, spot_tile(k, s))
+        return true
+    }
+    return false
+}
+
+// A companion waits on the bed (sitting on its edge) while the leader is busy in room `r`.
+fn companion_bed(i: s32, r: s32) -> bool {
+    let p = &people[i]
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 || o.room as s32 != r || OBJ_USE[o.t as s32] as s32 != USE_SLEEP { continue }
+        let s = free_spot(k)
+        if s < 0 { continue }
+        claim_spot(i, k, s)
+        p.act = ACT_BED_SIT as u8
+        go_to(i, spot_tile(k, s))
+        return true
+    }
+    return false
+}
+
+// To the window: a free tile of the room beside a window, facing out.
+fn try_window(i: s32) -> bool {
+    let p = &people[i]
+    let r = p.room as s32
+    if r < 0 || rooms[r].windows == 0 { return false }
+    let rm = &rooms[r]
+    let f = rm.floor as s32
+    let w = rm.x1 as s32 - rm.x0 as s32 + 1
+    let d = rm.z1 as s32 - rm.z0 as s32 + 1
+    let n = w * d
+    let k0 = rnd(n)
+    for k in 0..n {
+        let q = (k0 + k) % n
+        let x = rm.x0 as s32 + q % w
+        let z = rm.z0 as s32 + q / w
+        let t = tix(f, x, z)
+        if troom[t] as s32 != r || tobj[t] >= 0 || pass[t] as s32 & PB_WALK == 0 { continue }
+        for dd in 0..4 {
+            var dx = 0
+            var dz = 0
+            match dd {
+                0 => dx = 1
+                1 => dz = 1
+                2 => dx = -1
+                else => dz = -1
+            }
+            if edge_feat(f, x, z, dx, dz) != EF_WINDOW { continue }
+            p.act = ACT_WINDOW as u8
+            p.obj = -1
+            p.sfrom = dd as s16
+            p.state = GS_GOTO as u8
+            go_to_pt(i, t, tile_cx(t) + fixed(dx) * 0.3, tile_cz(t) + fixed(dz) * 0.3)
+            return true
+        }
+    }
+    return false
+}
+
+// Seats a person using spot s of object oi: on a bed (lying, or sitting on its foot end), else as
+// seat_for does.
+const BED_SIT_Y = 0.12
+const BED_HEAD_V = -0.12
+fn settle(i: s32, oi: s32, s: s32, use: s32, lie: bool) {
+    let p = &people[i]
+    let t = objs[oi].t as s32
+    if OBJ_USE[t] as s32 != USE_SLEEP {
+        seat_for(i, oi, s, use)
+        return
+    }
+    let lx = OBJ_SPOT[(t * 5 + s) * 2] as s32
+    let u = clamp(lx, 0, OBJ_W[t] as s32 - 1)
+    let d = OBJ_D[t] as s32
+    if lie {
+        // the head on the pillow (the bed's back end), the blanket over the rest
+        obj_local_pt(oi, fixed(u), BED_HEAD_V)
+        p.sy = 0.0
+    } else {
+        obj_local_pt(oi, fixed(u), fixed(d - 1) + 0.18)
+        p.sy = BED_SIT_Y
+    }
+    p.sox = lp_x - p.x
+    p.soz = lp_z - p.z
+}
+
+// The bathroom: an en-suite, the fixtures in the room of an old save, or a shared one.
+fn bath_try(i: s32, use: s32) -> bool {
+    let p = &people[i]
+    let r = p.room as s32
+    if r < 0 { return false }
+    let bk = r_bath[r] as s32
+    if bk >= BATH_ENSUITE { return try_use(i, use, true) }
+    if bk == BATH_SHARED { return try_use_in(i, use, false, RT_BATHROOM, use) }
+    return false
+}
+
+// A wash when hygiene is low: a bath (honeymooners love their tub), a shower, at least the sink;
+// with everything shared taken, wait outside.
+fn want_wash(i: s32) -> bool {
+    let p = &people[i]
+    let r = p.room as s32
+    if r >= 0 && r_bath[r] as s32 == BATH_ENSUITE_TUB && (p.type as s32 == GT_HONEYMOON || rnd(3) == 0) && bath_try(i, USE_BATH) { return true }
+    if bath_try(i, USE_SHOWER) || bath_try(i, USE_BATH) || bath_try(i, USE_WASH) { return true }
+    return bath_queue(i, USE_SHOWER)
+}
+
+// One fixture (from a plan): that one, a bath for a shower, or wait for a shared one.
+fn bath_use(i: s32, use: s32) -> bool {
+    if bath_try(i, use) { return true }
+    if use == USE_SHOWER && bath_try(i, USE_BATH) { return true }
+    return bath_queue(i, use)
+}
+
+// Shared bathrooms are busy: wait by the door of the nearest one on this floor with that fixture.
+fn bath_queue(i: s32, use: s32) -> bool {
+    let p = &people[i]
+    let r = p.room as s32
+    if r < 0 || r_bath[r] as s32 != BATH_SHARED { return false }
+    var best = -1
+    var bd = 0x7FFFFFFF
+    for b in 1..nrooms {
+        let rm = &rooms[b]
+        if rm.used == 0 || rm.rtype as s32 != RT_BATHROOM || r_host[b] != 0 || rm.floor != p.f { continue }
+        if !bath_has(b, use) { continue }
+        let d = abs(rm.x0 as s32 - p.x as s32) + abs(rm.z0 as s32 - p.z as s32)
+        if d < bd { bd = d; best = b }
+    }
+    if best < 0 { return false }
+    var t = bath_door_out(best)
+    if t < 0 { return false }
+    // spread out round the door: the k-th one waiting takes the k-th open tile beside it
+    var n = 0
+    for j in 0..npeople { if j != i && people[j].used != 0 && people[j].act as s32 == ACT_WAIT_BATH && people[j].wroom as s32 == best { n += 1 } }
+    let f = p.f as s32
+    let x0 = ptile_x(t)
+    let z0 = ptile_z(t)
+    var k = n % 5
+    for dd in 0..4 {
+        if k == 0 { break }
+        var x = x0
+        var z = z0
+        match dd {
+            0 => x = x0 + 1
+            1 => x = x0 - 1
+            2 => z = z0 + 1
+            else => z = z0 - 1
+        }
+        if !in_lot(x, z) || !walkable(f, x, z) || room_at(f, x, z) == best || !bath_public(room_at(f, x, z)) || !near_open(t, tix(f, x, z)) { continue }
+        k -= 1
+        if k == 0 { t = tix(f, x, z) }
+    }
+    complain(i, CP_SHAREDBATH, 8)
+    p.act = ACT_WAIT_BATH as u8
+    p.obj = -1
+    p.want = use as u8
+    p.wroom = best as s16
+    p.state = GS_GOTO as u8
+    go_to_pt(i, t, tile_cx(t) + fixed(rnd(9) - 4) / 14, tile_cz(t) + fixed(rnd(9) - 4) / 14)
+    return true
+}
+
+fn bath_has(b: s32, use: s32) -> bool {
+    if use == USE_TOILET { return rcount[b][OB_TOILET] > 0 }
+    if use == USE_WASH { return rcount[b][OB_SINK] > 0 }
+    if use == USE_BATH { return rcount[b][OB_BATHTUB] > 0 }
+    return rcount[b][OB_SHOWER] > 0 || rcount[b][OB_BATHTUB] > 0
+}
+
+// A free, working fixture for `use` in bathroom b?
+fn bath_free(b: s32, use: s32) -> bool {
+    if b <= 0 { return true }
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 || o.room as s32 != b || o.state & OS_BROKEN != 0 || spot_mask[k] != 0 { continue }
+        let u = OBJ_USE[o.t as s32] as s32
+        if u == use || (use == USE_SHOWER && u == USE_BATH) { return true }
+    }
+    return false
+}
+
+// The public tile outside a door of bathroom b (-1: none).
+fn bath_door_out(b: s32) -> s32 {
+    let rm = &rooms[b]
+    let f = rm.floor as s32
+    for z in rm.z0 as s32..rm.z1 as s32 + 1 {
+        for x in rm.x0 as s32..rm.x1 as s32 + 1 {
+            if room_at(f, x, z) != b { continue }
+            for dd in 0..4 {
+                var dx = 0
+                var dz = 0
+                match dd {
+                    0 => dx = 1
+                    1 => dz = 1
+                    2 => dx = -1
+                    else => dz = -1
+                }
+                if edge_feat(f, x, z, dx, dz) != EF_DOOR || !in_lot(x + dx, z + dz) { continue }
+                let o = room_at(f, x + dx, z + dz)
+                if o == b || !bath_public(o) || !walkable(f, x + dx, z + dz) { continue }
+                return tix(f, x + dx, z + dz)
+            }
+        }
+    }
+    return -1
+}
+
+// After a bathroom fixture was used: it wants a wipe; a shared bathroom wants cleaning every few
+// uses (an en-suite is cleaned with its bedroom).
+var bath_uses: [200]u8
+fn bath_used(oi: s32) {
+    let o = &objs[oi]
+    o.state = o.state | OS_DIRTY
+    let b = o.room as s32
+    if b <= 0 || rooms[b].rtype as s32 != RT_BATHROOM || r_host[b] != 0 { return }
+    bath_uses[b] = min(bath_uses[b] as s32 + 1, 255) as u8
+    if bath_uses[b] as s32 >= ECO_BATH_DIRTY_USES && rooms[b].state as s32 != RS_DIRTY {
+        rooms[b].state = RS_DIRTY as u8
+        clean_job(b)
+    }
+}
+
+// Browsing a while: turn to chat with someone standing about nearby, else look back at the thing
+// (p.seat) or glance round.
+fn browse_look(i: s32) {
+    let p = &people[i]
+    p.gest = GEST_NONE as u8
+    for j in 0..npeople {
+        let q = &people[j]
+        if j == i || q.used == 0 || q.f != p.f || q.mode as s32 != M_STAND { continue }
+        if abs(q.x - p.x) > 1.6 || abs(q.z - p.z) > 1.6 { continue }
+        if q.kind as s32 == P_GUEST && (q.state as s32 == GS_USE || q.state as s32 == GS_FOLLOW) && q.pose as s32 == POSE_STAND {
+            p.dir = dir_toward(p.x, p.z, q.x, q.z) as u8
+            p.hold = 0
+            p.gest = GEST_BOB as u8
+            return
+        }
+    }
+    let oi = p.seat as s32
+    if oi >= 0 && objs[oi].used != 0 && rnd(3) != 0 { face_obj(i, oi); return }
+    p.dir = ((p.dir as s32 + 1 + rnd(2) * 2) & 3) as u8
+    p.hold = 0
 }
 
 // ---- reviews
@@ -1393,6 +1913,7 @@ fn write_review(i: s32) {
     else if c & CP_NOFOOD != 0 { q = RV_NO_FOOD }
     else if c & CP_PRICE != 0 { q = RV_TOO_PRICEY }
     else if c & CP_NOSUITE != 0 { q = RV_NO_SUITE }
+    else if c & CP_SHAREDBATH != 0 && p.mood < 20 { q = RV_SHARED_BATH }
     else if c & CP_NOWIFI != 0 { q = RV_NO_WIFI }
     else if c & CP_NOPOOL != 0 { q = RV_NO_POOL }
     else if c & CP_NOSPA != 0 { q = RV_NO_SPA }
@@ -1403,6 +1924,7 @@ fn write_review(i: s32) {
         if pr & PR_ROCK != 0 { q = RV_ROCK_TRASH }
         else if pr & PR_VIEW != 0 { q = RV_GREAT_VIEW }
         else if pr & PR_SPA != 0 { q = RV_GREAT_SPA }
+        else if pr & PR_BATH != 0 && rnd(2) == 0 { q = RV_GREAT_BATH }
         else if pr & PR_FOOD != 0 { q = RV_GREAT_FOOD }
         else if pr & PR_POOL != 0 { q = RV_GREAT_POOL }
         else if pr & PR_SERVICE != 0 { q = RV_GREAT_SERVICE }

@@ -75,29 +75,97 @@ fn s_void(f: s32, x0: s32, z0: s32, x1: s32, z1: s32, glass: bool) {
     view_floor = vf
 }
 
-// A standard 4 x 4 guest room at (x0, z0) with its door in the middle of the north (z0) edge,
-// or (door_south) mirrored with the door on the south edge.
-fn gz(z0: s32, k: s32, south: bool) -> s32 {
-    if south { return z0 + 3 - k }
-    return z0 + k
+// Room templates. A room's tiles are (u, v): u across (0..w-1), v from the corridor side (0) to
+// the far wall (4); `south` puts the corridor on the south side (the door on the z0 + 4 edge) and
+// `flip` mirrors u (the en-suite on the east side). gx/gz map (u, v) to the grid, gr a rotation.
+var tp_x0: s32
+var tp_z0: s32
+var tp_w: s32
+var tp_south: bool
+var tp_flip: bool
+fn tp_set(x0: s32, z0: s32, w: s32, south: bool, flip: bool) {
+    tp_x0 = x0
+    tp_z0 = z0
+    tp_w = w
+    tp_south = south
+    tp_flip = flip
 }
-fn grot(r: s32, south: bool) -> s32 {
-    if !south { return r }
-    if r == 0 { return 2 }
-    if r == 2 { return 0 }
-    return r
+fn gx(u: s32) -> s32 { if tp_flip { return tp_x0 + tp_w - 1 - u } return tp_x0 + u }
+fn gz(v: s32) -> s32 { if tp_south { return tp_z0 + 4 - v } return tp_z0 + v }
+// rotation r (0: facing +v ... as for an unmirrored room with its corridor north) in the grid
+fn gr(r: s32) -> s32 {
+    var q = r
+    if tp_south { if q == 0 { q = 2 } else if q == 2 { q = 0 } }
+    if tp_flip { if q == 1 { q = 3 } else if q == 3 { q = 1 } }
+    return q
+}
+// an object of footprint (a x b in u, v at rotation r) whose (u, v) span is u0..u1, v0..v1
+fn tp_obj(t: s32, f: s32, u0: s32, v0: s32, u1: s32, v1: s32, r: s32) -> s32 {
+    return s_obj(t, f, min(gx(u0), gx(u1)), min(gz(v0), gz(v1)), gr(r))
+}
+// a door on the edge of (u, v) toward (u + du, v + dv)
+fn tp_door(f: s32, u: s32, v: s32, du: s32, dv: s32) {
+    var dx = du
+    var dz = dv
+    if tp_flip { dx = -dx }
+    if tp_south { dz = -dz }
+    s_door(f, gx(u), gz(v), dx, dz)
+}
+fn tp_window(f: s32, u: s32, v: s32, du: s32, dv: s32) {
+    var dx = du
+    var dz = dv
+    if tp_flip { dx = -dx }
+    if tp_south { dz = -dz }
+    s_window(f, gx(u), gz(v), dx, dz)
 }
 
-fn s_guest_room(f: s32, x0: s32, z0: s32, fk: s32, south: bool) {
-    s_room(f, fk, x0, z0, x0 + 3, z0 + 3)
-    if south { s_door(f, x0 + 1, z0 + 3, 0, 1) } else { s_door(f, x0 + 1, z0, 0, -1) }
-    if south { s_obj(OB_BED_DOUBLE, f, x0 + 2, z0, 0) } else { s_obj(OB_BED_DOUBLE, f, x0 + 2, z0 + 2, 2) }
-    s_obj(OB_WARDROBE, f, x0, gz(z0, 3, south), 1)
-    s_obj(OB_SHOWER, f, x0, gz(z0, 2, south), 1)
-    s_obj(OB_TOILET, f, x0, gz(z0, 1, south), 1)
-    s_obj(OB_SINK, f, x0 + 3, gz(z0, 0, south), 3)
-    s_obj(OB_TV, f, x0, gz(z0, 0, south), 1)
+// The en-suite of a room laid out by tp_set: 2 x 3 in the corner by the corridor (u 0..1, v 0..2),
+// toilet, sink and shower (or toilet, bathtub and sink) along the outer wall, its door into the
+// bedroom at (1, 1).
+fn tp_ensuite(f: s32, tub: bool) {
+    s_room(f, FK_TILE, min(gx(0), gx(1)), min(gz(0), gz(2)), max(gx(0), gx(1)), max(gz(0), gz(2)))
+    tp_door(f, 1, 1, 1, 0)
+    tp_obj(OB_TOILET, f, 0, 0, 0, 0, 1)
+    if tub {
+        // (a tub isn't symmetric: its spot is beside its head end, so it is turned to put that
+        // on the walking side, and the sink goes on the other tile of that side, facing it; this
+        // fits rooms with the corridor north unmirrored, or south and mirrored)
+        var r = 0
+        if tp_flip { r = 2 }
+        let x = gx(0)
+        let z = min(gz(1), gz(2))
+        s_obj(OB_BATHTUB, f, x, z, r)
+        local_to_grid(OB_BATHTUB, x, z, r, 1, 0)
+        let sx = lg_x
+        let sz = lg_z
+        var kz = gz(1)
+        if sz == kz { kz = gz(2) }
+        var kr = 2
+        if sz > kz { kr = 0 }
+        s_obj(OB_SINK, f, sx, kz, kr)
+    } else {
+        tp_obj(OB_SINK, f, 0, 1, 0, 1, 1)
+        tp_obj(OB_SHOWER, f, 0, 2, 0, 2, 1)
+    }
 }
+
+// A guest room, 4 x 5 at (x0, z0): the door from the corridor at u 2, an en-suite (unless
+// `shared`: a budget room whose guests use a shared bathroom), a double bed against the outer
+// side wall, a TV facing it, a wardrobe, a window on the far wall; `desk` adds a writing desk.
+fn s_guest_room_x(f: s32, x0: s32, z0: s32, fk: s32, south: bool, flip: bool, ensuite: bool, desk: bool) {
+    tp_set(x0, z0, 4, south, flip)
+    s_room(f, fk, x0, z0, x0 + 3, z0 + 4)
+    tp_door(f, 2, 0, 0, -1)
+    if ensuite { tp_ensuite(f, false) }
+    tp_obj(OB_BED_DOUBLE, f, 0, 3, 1, 4, 1)
+    tp_obj(OB_TV, f, 3, 3, 3, 3, 3)
+    tp_obj(OB_WARDROBE, f, 3, 4, 3, 4, 3)
+    if desk { tp_obj(OB_DESK, f, 3, 0, 3, 0, 0) }
+    if !ensuite { tp_obj(OB_DESK, f, 0, 0, 0, 0, 0); tp_obj(OB_LOUNGE_CHAIR, f, 3, 0, 3, 0, 0) }
+    tp_window(f, 2, 4, 0, 1)
+}
+
+fn s_guest_room(f: s32, x0: s32, z0: s32, fk: s32, south: bool) { s_guest_room_x(f, x0, z0, fk, south, false, true, false) }
 
 // The demo hotel: a lobby, a restaurant and kitchen, laundry, staff room, guest rooms on two
 // floors joined by an elevator. level 0: ground floor only; 1: + first floor.
@@ -145,13 +213,13 @@ fn s_demo_hotel(level: s32) {
     s_obj(OB_JUKEBOX, 0, 27, 8, 3)
     s_room(0, FK_CORR_CARPET, 4, 9, 27, 10)           // corridor
     s_obj(OB_VENDING, 0, 4, 9, 1)
-    for k in 0..6 { s_guest_room(0, 4 + k * 4, 11, FK_CARPET_BLUE, false) }
+    // guest rooms with en-suites (the east end ones mirrored: the elevator stands in the corridor there)
+    for k in 0..6 { s_guest_room_x(0, 4 + k * 4, 11, FK_CARPET_BLUE, false, k == 5, true, false) }
     if level >= 1 {
         s_room(1, FK_CORR_CARPET, 4, 9, 27, 10)
-        for k in 0..6 { s_guest_room(1, 4 + k * 4, 11, FK_CARPET_RED, false) }
-        for k in 1..6 { s_guest_room(1, 4 + k * 4, 5, FK_CARPET_GREEN, true) }
+        for k in 0..6 { s_guest_room_x(1, 4 + k * 4, 11, FK_CARPET_RED, false, k == 5, true, false) }
+        for k in 1..6 { s_guest_room_x(1, 4 + k * 4, 4, FK_CARPET_GREEN, true, k == 5, true, false) }
         s_obj(OB_ELEVATOR, 0, 26, 9, 3)                 // at the east end (doors face the corridor)
-        for k in 0..6 { s_window(1, 4 + k * 4 + 2, 14, 0, 1) }
     }
 }
 
@@ -171,18 +239,43 @@ fn s_demo_staff() {
 
 fn rooms_after_update() {}
 
-// A suite: 6 x 4 at (x0, z0), door on the north edge at x0 + 3.
-fn s_suite(f: s32, x0: s32, z0: s32, fk: s32) {
-    s_room(f, fk, x0, z0, x0 + 5, z0 + 3)
-    s_door(f, x0 + 3, z0, 0, -1)
-    s_obj(OB_BED_KING, f, x0 + 4, z0 + 2, 2)
-    s_obj(OB_WARDROBE, f, x0, z0 + 3, 1)
-    s_obj(OB_BATHTUB, f, x0, z0 + 1, 0)
-    s_obj(OB_TOILET, f, x0, z0, 1)
-    s_obj(OB_SINK, f, x0 + 5, z0, 3)
-    s_obj(OB_TV, f, x0 + 2, z0, 0)
-    s_obj(OB_PHONE, f, x0 + 2, z0 + 3, 2)
-    s_obj(OB_LOUNGE_CHAIR, f, x0 + 3, z0 + 3, 2)
+// A suite, 6 (or 8) x 5 at (x0, z0) with its door from the corridor at u 3: an en-suite with a
+// bathtub, a king-size bed, a TV, a wardrobe, an armchair and a phone table (8 wide: a sofa too).
+fn s_suite_x(f: s32, x0: s32, z0: s32, fk: s32, w: s32, south: bool) {
+    // (mirrored both ways on the south side: the tub's turns only fit one handedness)
+    tp_set(x0, z0, w, south, south)
+    s_room(f, fk, x0, z0, x0 + w - 1, z0 + 4)
+    tp_door(f, 3, 0, 0, -1)
+    tp_ensuite(f, true)
+    tp_obj(OB_BED_KING, f, 0, 3, 1, 4, 1)
+    tp_obj(OB_TV, f, 5, 3, 5, 3, 3)
+    tp_obj(OB_WARDROBE, f, 5, 4, 5, 4, 3)
+    tp_obj(OB_PHONE, f, 4, 0, 4, 0, 0)
+    tp_obj(OB_LOUNGE_CHAIR, f, 5, 0, 5, 0, 0)
+    if w >= 8 {
+        tp_obj(OB_SOFA, f, 6, 0, 7, 0, 0)
+        tp_obj(OB_PLANT, f, 7, 4, 7, 4, 0)
+        tp_window(f, 6, 4, 0, 1)
+    }
+    tp_window(f, 3, 4, 0, 1)
+    tp_window(f, 4, 4, 0, 1)
+}
+
+fn s_suite(f: s32, x0: s32, z0: s32, fk: s32) { s_suite_x(f, x0, z0, fk, 6, false) }
+
+// A shared bathroom, 4 x 5 at (x0, z0) north of the corridor (door on its south edge): two
+// toilets, two showers and two sinks for the budget rooms of its floor.
+fn s_shared_bath(f: s32, x0: s32, z0: s32) {
+    tp_set(x0, z0, 4, true, false)
+    s_room(f, FK_TILE, x0, z0, x0 + 3, z0 + 4)
+    tp_door(f, 1, 0, 0, -1)
+    tp_obj(OB_TOILET, f, 0, 4, 0, 4, 1)
+    tp_obj(OB_TOILET, f, 0, 3, 0, 3, 1)
+    tp_obj(OB_SHOWER, f, 0, 2, 0, 2, 1)
+    tp_obj(OB_SHOWER, f, 3, 2, 3, 2, 3)
+    tp_obj(OB_SINK, f, 3, 4, 3, 4, 3)
+    tp_obj(OB_SINK, f, 3, 3, 3, 3, 3)
+    tp_obj(OB_PLANT, f, 3, 0, 3, 0, 0)
 }
 
 // The grand hotel: six floors around a five-storey atrium over the lobby, with a bar,
@@ -206,9 +299,10 @@ fn s_grand_hotel() {
     s_door(0, 14, 9, 0, 1)
     s_door(0, 15, 9, 0, 1)
     s_room(0, FK_WOOD, 4, 2, 9, 9)                    // restaurant
-    s_door(0, 7, 9, 0, 1)
+    s_room(0, FK_CORR_MARBLE, 6, 8, 7, 9)             // the west lift's nook, off the corridor
+    s_door(0, 8, 9, 0, 1)
     s_obj(OB_TABLE_4, 0, 7, 3, 0)
-    s_obj(OB_TABLE_2, 0, 8, 8, 0)
+    s_obj(OB_TABLE_2, 0, 7, 6, 0)
     s_obj(OB_TABLE_2, 0, 5, 3, 1)
     s_obj(OB_TABLE_2, 0, 9, 6, 1)
     s_obj(OB_PLANT, 0, 9, 2, 0)
@@ -229,7 +323,7 @@ fn s_grand_hotel() {
     s_obj(OB_LOUNGE_CHAIR, 0, 24, 9, 2)
     s_obj(OB_LOUNGE_CHAIR, 0, 22, 9, 2)
     s_obj(OB_FLOOR_LAMP, 0, 27, 5, 0)
-    s_room(0, FK_TILE, 4, 12, 9, 15)                  // kitchen
+    s_room(0, FK_TILE, 4, 12, 9, 16)                  // kitchen
     s_door(0, 6, 12, 0, -1)
     s_obj(OB_STOVE, 0, 4, 15, 2)
     s_obj(OB_FRIDGE, 0, 5, 15, 2)
@@ -238,33 +332,33 @@ fn s_grand_hotel() {
     s_obj(OB_STORAGE_SHELF, 0, 9, 15, 2)
     s_obj(OB_STORAGE_SHELF, 0, 4, 12, 0)
     s_obj(OB_KITCHEN_SINK, 0, 9, 12, 0)
-    s_room(0, FK_CONCRETE, 10, 12, 13, 15)            // laundry
+    s_room(0, FK_CONCRETE, 10, 12, 13, 16)            // laundry
     s_door(0, 11, 12, 0, -1)
     s_obj(OB_WASHER, 0, 10, 15, 2)
     s_obj(OB_WASHER, 0, 11, 15, 2)
     s_obj(OB_LINEN_SHELF, 0, 12, 15, 2)
     s_obj(OB_LINEN_SHELF, 0, 13, 15, 2)
     s_obj(OB_DRYER, 0, 13, 12, 0)
-    s_room(0, FK_CONCRETE, 14, 12, 17, 15)            // staff room
+    s_room(0, FK_CONCRETE, 14, 12, 17, 16)            // staff room
     s_door(0, 15, 12, 0, -1)
     s_obj(OB_LOCKER, 0, 14, 15, 2)
     s_obj(OB_COFFEE_MACHINE, 0, 15, 15, 2)
     s_obj(OB_VENDING, 0, 16, 15, 2)
     s_obj(OB_COT, 0, 17, 12, 2)
-    s_room(0, FK_TILE, 18, 12, 22, 15)                // spa (the therapist stands at the bed's foot)
+    s_room(0, FK_TILE, 18, 12, 22, 16)                // spa (the therapist stands at the bed's foot)
     s_door(0, 20, 12, 0, -1)
     s_obj(OB_MASSAGE_BED, 0, 19, 13, 0)
     s_obj(OB_HOT_TUB, 0, 21, 14, 2)
     s_obj(OB_PLANT, 0, 22, 12, 0)
-    s_room(0, FK_WOOD, 23, 12, 25, 15)                // gym
+    s_room(0, FK_WOOD, 23, 12, 25, 16)                // gym
     s_door(0, 24, 12, 0, -1)
     s_obj(OB_TREADMILL, 0, 23, 14, 2)
     s_obj(OB_WEIGHTS, 0, 24, 15, 2)
-    s_room(0, FK_CORR_MARBLE, 26, 12, 27, 15)         // the way to the pool
-    s_room(0, FK_DECK, 4, 16, 27, 20)                 // pool deck
-    s_door(0, 26, 15, 0, 1)
-    s_door(0, 27, 15, 0, 1)
-    s_room(0, FK_POOL_WATER, 8, 17, 15, 19)
+    s_room(0, FK_CORR_MARBLE, 26, 12, 27, 16)         // the way to the pool
+    s_room(0, FK_DECK, 4, 17, 27, 20)                 // pool deck
+    s_door(0, 26, 16, 0, 1)
+    s_door(0, 27, 16, 0, 1)
+    s_room(0, FK_POOL_WATER, 8, 18, 15, 19)
     s_obj(OB_LOUNGER, 0, 17, 17, 0)
     s_obj(OB_LOUNGER, 0, 19, 17, 0)
     s_obj(OB_LOUNGER, 0, 21, 17, 0)
@@ -275,31 +369,36 @@ fn s_grand_hotel() {
     s_obj(OB_PALM, 0, 29, 6, 0)
     s_obj(OB_PALM, 0, 2, 13, 0)
     s_obj(OB_PALM, 0, 29, 13, 0)
-    // ---- floors 1-5: corridor, a gallery around the atrium, rooms north and south
+    // ---- floors 1-5: corridor, a gallery around the atrium, the west lift hall (F1: the stairs
+    // arrive beside it), rooms north and south with en-suites; on F2-F4 a budget wing: two north
+    // rooms share a bathroom down the hall
     for f in 1..6 {
         s_room(f, FK_CORR_CARPET, 4, 10, 27, 11)
         s_room(f, FK_CORR_MARBLE, 12, 6, 17, 9)       // gallery
         s_room(f, FK_CORR_CARPET, 26, 6, 27, 9)       // elevator hall
+        s_room(f, FK_CORR_CARPET, 4, 6, 7, 9)         // west lift hall
     }
-    s_room(1, FK_CORR_CARPET, 4, 6, 7, 9)             // the stair hall
     for f in 1..5 {
-        if f > 1 { s_room(f, FK_CORR_CARPET, 4, 6, 7, 9) }   // the west lift hall
-        s_guest_room(f, 8, 6, FK_CARPET_GREEN, true)
-        s_guest_room(f, 18, 6, FK_CARPET_BLUE, true)
-        s_guest_room(f, 22, 6, FK_CARPET_BLUE, true)
-        for k in 0..6 { s_guest_room(f, 4 + k * 4, 12, FK_CARPET_RED, false) }
+        for k in 0..6 { s_guest_room_x(f, 4 + k * 4, 12, FK_CARPET_RED, false, false, true, k % 2 == 1) }
+        if f == 1 {
+            s_guest_room_x(f, 8, 5, FK_CARPET_GREEN, true, false, true, true)
+            s_guest_room_x(f, 18, 5, FK_CARPET_BLUE, true, false, true, false)
+            s_guest_room_x(f, 22, 5, FK_CARPET_BLUE, true, true, true, false)
+        } else {
+            s_shared_bath(f, 8, 5)
+            s_guest_room_x(f, 18, 5, FK_CARPET_BLUE, true, false, false, false)
+            s_guest_room_x(f, 22, 5, FK_CARPET_BLUE, true, true, false, false)
+        }
     }
     s_suite(5, 4, 12, FK_MARBLE)
     s_suite(5, 10, 12, FK_MARBLE)
     s_suite(5, 16, 12, FK_MARBLE)
     s_suite(5, 22, 12, FK_MARBLE)
-    // north suites on the top floor: door on the south edge
-    s_north_suite(4)
-    s_north_suite(18)
+    // north on the top floor: a guest room and a large suite (door on the south edge)
+    s_guest_room_x(5, 8, 5, FK_WOOD, true, false, true, true)
+    s_suite_x(5, 18, 5, FK_WOOD, 8, true)
     // windows on the outside walls of the guest rooms
-    for f in 1..6 {
-        for k in 0..6 { s_window(f, 4 + k * 4 + 2, 15, 0, 1) }
-    }
+    // (the room templates put their own windows in)
     // the atrium: voids over the lobby's fountain on every upper floor, a chandelier, a skylight
     rooms_update()
     for f in 1..6 { s_void(f, 13, 6, 16, 8, f >= 3) }
@@ -308,9 +407,10 @@ fn s_grand_hotel() {
     s_obj(OB_INDOOR_TREE, 0, 13, 7, 0)
     s_obj(OB_CHANDELIER, 3, 14, 7, 0)
     s_obj(OB_SKYLIGHT, 5, 14, 6, 0)
-    // transport: the elevator by the bar, stairs from the restaurant
+    // transport: the elevator by the bar, a second one at the west end of the main corridor (in a
+    // nook off it on the ground floor, the west lift halls above), stairs from the restaurant
     s_obj(OB_ELEVATOR, 0, 26, 8, 0)
-    s_obj(OB_ELEVATOR, 0, 6, 6, 0)                    // a second car in the west lift hall
+    s_obj(OB_ELEVATOR, 0, 6, 8, 0)
     s_obj(OB_STAIRS, 0, 4, 6, 2)
     rooms_update()
     rooms_finish()
@@ -366,31 +466,15 @@ fn s_fill_guests(n: s32) {
     }
 }
 
-fn s_north_suite(x0: s32) {
-    s_room(5, FK_WOOD, x0, 6, x0 + 7, 9)
-    s_door(5, x0 + 3, 9, 0, 1)
-    s_obj(OB_BED_KING, 5, x0, 6, 0)
-    s_obj(OB_WARDROBE, 5, x0 + 2, 6, 0)
-    s_obj(OB_TV, 5, x0 + 3, 6, 0)
-    s_obj(OB_PHONE, 5, x0 + 4, 6, 0)
-    s_obj(OB_SINK, 5, x0 + 5, 6, 0)
-    s_obj(OB_TOILET, 5, x0 + 6, 6, 0)
-    s_obj(OB_BATHTUB, 5, x0 + 7, 6, 2)
-    s_obj(OB_LOUNGE_CHAIR, 5, x0 + 7, 9, 3)
-    s_window(5, x0 + 1, 6, 0, -1)
-    s_window(5, x0 + 5, 6, 0, -1)
-}
 
 // The demo hotel grown the way a player would for the third star (balance tests: see
 // tests/scen_sim.akr 427): room service phones in every room, and a pool deck by the bar.
 fn s_upgrade_demo() {
-    // a phone instead of the TV in every south room (the rooms are full)
+    // a phone by the door of every south room
     for f in 0..2 {
         for k in 0..6 {
-            let x = 4 + k * 4
-            let oi = tobj[tix(f, x, 11)] as s32
-            if oi >= 0 { obj_remove(oi); world_changed() }
-            s_obj(OB_PHONE, f, x, 11, 1)
+            tp_set(4 + k * 4, 11, 4, false, k == 5)
+            tp_obj(OB_PHONE, f, 3, 0, 3, 0, 0)
         }
     }
     s_room(0, FK_DECK, 28, 3, 30, 12)

@@ -24,3 +24,8 @@ const ECO_CHECKIN_H0 = 12          // guests arrive from this hour (rooms are cl
 const ECO_CHECKIN_H1 = 22          // ... until this one
 const ECO_RUSH_H0 = 15             // twice as many arrive from this hour
 const ECO_RUSH_H1 = 19             // ... until this one
+const ECO_SHARED_PRICE = 75        // a room with a shared bathroom costs this percent of the room price
+const ECO_SHARED_QUALITY = 15      // room quality lost without an en-suite
+const ECO_BATH_DIRTY_USES = 6      // uses of a shared bathroom before it wants cleaning
+// per room type: 0 not a bedroom, 1 needs an en-suite or a shared bathroom, 2 an en-suite with a tub
+const RT_BATH_NEED: [18]u8 = [0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]

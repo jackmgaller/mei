@@ -14,7 +14,7 @@ carts/checkin/gen_sim.akr (imported by sim.akr). So after editing it run both:
 USES = ['NONE', 'SLEEP', 'TOILET', 'WASH', 'SHOWER', 'BATH', 'EAT', 'DRINK', 'TV', 'WORK', 'MODEM',
         'LOUNGE', 'MASSAGE', 'SAUNA', 'GYM', 'MEET', 'PLAY', 'SNACK', 'COFFEE', 'CHECKIN', 'CONCIERGE',
         'COOK', 'FRIDGE', 'PASS', 'LAUNDRY', 'DRY', 'LINEN', 'STORE', 'REST', 'LOCKER', 'SIT', 'PHONE',
-        'MINIBAR', 'HOTTUB', 'MUSIC', 'KEYS']
+        'MINIBAR', 'HOTTUB', 'MUSIC', 'KEYS', 'DRESS']
 U = {n: i for i, n in enumerate(USES)}
 
 # object flags
@@ -42,8 +42,8 @@ OBJ = [
     ('bed_single', 'Single bed', 1, 2, 0.6, 300, 'Bedroom', 0, 'SLEEP', [(0, 2)], None, 0, 1, F_INDOOR, (110, 150, 220)),
     ('bed_double', 'Double bed', 2, 2, 0.6, 550, 'Bedroom', 0, 'SLEEP', [(0, 2), (1, 2)], None, 0, 2, F_INDOOR, (90, 130, 210)),
     ('nightstand', 'Nightstand', 1, 1, 0.5, 80, 'Bedroom', 0, 'NONE', [], None, 0, 1, F_INDOOR, (150, 100, 60)),
-    ('wardrobe', 'Wardrobe', 1, 1, 2.0, 220, 'Bedroom', 0, 'NONE', [(0, 1)], None, 0, 1, F_INDOOR | F_TALL, (140, 90, 50)),
-    ('tv', 'TV set', 1, 1, 1.0, 400, 'Bedroom', 0, 'TV', [(0, 2)], None, 2, 2, F_INDOOR, (60, 60, 70)),
+    ('wardrobe', 'Wardrobe', 1, 1, 2.0, 220, 'Bedroom', 0, 'DRESS', [(0, 1)], None, 0, 1, F_INDOOR | F_TALL, (140, 90, 50)),
+    ('tv', 'TV set', 1, 1, 1.0, 400, 'Bedroom', 0, 'TV', [(0, 1)], None, 2, 2, F_INDOOR, (60, 60, 70)),
     ('desk', 'Writing desk', 1, 1, 0.8, 180, 'Bedroom', 0, 'WORK', [(0, 1)], None, 0, 1, F_INDOOR, (160, 110, 70)),
     ('chair', 'Chair', 1, 1, 0.9, 60, 'Bedroom', 0, 'SIT', [(0, 1)], None, 0, 1, F_INDOOR | F_OUTDOOR, (170, 120, 80)),
     ('minibar', 'Minibar', 1, 1, 0.8, 350, 'Bedroom', 2, 'MINIBAR', [(0, 1)], None, 1, 2, F_INDOOR, (200, 200, 210)),
@@ -143,13 +143,13 @@ ROOMS = [
     ('corridor', 'Corridor', 0, 0, [], ['plant', 'floor_lamp', 'vending', 'lounge_chair'], (190, 180, 160), 0),
     ('service', 'Service corridor', 0, 0, [], [], (130, 130, 120), 0),
     ('outdoor', 'Garden & deck', 0, 0, [], ['palm', 'plant', 'umbrella', 'lounger', 'table_2'], (120, 190, 110), 0),
-    ('guest', 'Guest room', 0, 6, [(['bed_single', 'bed_double'], 1), (['wardrobe'], 1), (['toilet'], 1), (['sink'], 1),
-                                   (['shower', 'bathtub'], 1)],
+    # bedrooms: the bathroom is a room of its own (below): an en-suite (its only door opens into the
+    # bedroom) or a shared one down the hall (rooms.akr: bath_link, CONTRACT.md)
+    ('guest', 'Guest room', 0, 6, [(['bed_single', 'bed_double', 'bed_king'], 1), (['wardrobe'], 1)],
      ['tv', 'desk', 'chair', 'nightstand', 'floor_lamp', 'plant', 'phone', 'modem', 'minibar', 'sofa', 'lounge_chair'],
      (90, 150, 230), 0),
-    ('suite', 'Suite', 3, 12, [(['bed_king'], 1), (['wardrobe'], 1), (['toilet'], 1), (['sink'], 1),
-                               (['bathtub', 'jacuzzi'], 1), (['sofa', 'lounge_chair'], 1), (['tv'], 1)],
-     ['desk', 'minibar', 'phone', 'modem', 'floor_lamp', 'plant', 'nightstand', 'jacuzzi', 'piano', 'coffee_table'],
+    ('suite', 'Suite', 3, 12, [(['bed_king'], 1), (['wardrobe'], 1), (['sofa', 'lounge_chair'], 1), (['tv'], 1)],
+     ['desk', 'minibar', 'phone', 'modem', 'floor_lamp', 'plant', 'nightstand', 'piano', 'coffee_table', 'chair'],
      (200, 110, 220), 0),
     ('lobby', 'Lobby', 0, 9, [(['reception_desk'], 1), (['key_rack'], 1)],
      ['waiting_sofa', 'plant', 'coffee_table', 'floor_lamp', 'piano', 'fountain', 'concierge_desk', 'luggage_cart',
@@ -172,8 +172,16 @@ ROOMS = [
     ('gym', 'Gym', 2, 6, [(['treadmill'], 1), (['weights'], 1)], ['towel_rack', 'vending', 'plant'], (240, 120, 70), 3),
     ('conference', 'Conference room', 2, 9, [(['conf_table'], 1), (['projector'], 1)],
      ['lectern', 'coffee_machine', 'plant', 'floor_lamp'], (130, 120, 210), 1),
+    # appended last so the older RT_* numbers stay put
+    ('bathroom', 'Bathroom', 0, 3, [(['toilet'], 1), (['sink'], 1), (['shower', 'bathtub', 'jacuzzi'], 1)],
+     ['bathtub', 'jacuzzi', 'towel_rack', 'plant', 'floor_lamp'], (150, 205, 215), 0),
 ]
 RK = {r[0]: i for i, r in enumerate(ROOMS)}
+
+# What a room type needs of bathrooms (gen_sim.akr RT_BATH_NEED): 0 nothing (not a bedroom), 1 a
+# bedroom: an en-suite, or a shared bathroom on its floor, 2 a suite: an en-suite with a bathtub or
+# jacuzzi.
+BATH_NEED = {'guest': 1, 'suite': 2}
 
 GUESTS = [   # key, name, unlock stars, budget per night, stays (nights), wants (room kind)
     ('business', 'Business traveller', 0, 110, 1),
@@ -221,6 +229,8 @@ REVIEWS = [
     ('ok', '"It was fine. Nice enough. A hotel, for sure."'),
     ('lost', '"Got lost looking for my room. Twice."'),
     ('tired', '"The staff looked exhausted. Hire more people!"'),
+    ('shared_bath', '"Queued down the hall for the shower in my towel. Twice."'),
+    ('great_bath', '"Our own bathroom with a real tub. Pure luxury."'),
 ]
 
 # --- the economy: every price, cost and rate the simulation balances with (gen_sim.akr ECO_*).
@@ -256,6 +266,10 @@ ECONOMY = [
     ('CHECKIN_H1', 22, '... until this one'),
     ('RUSH_H0', 15, 'twice as many arrive from this hour'),
     ('RUSH_H1', 19, '... until this one'),
+    # bathrooms
+    ('SHARED_PRICE', 75, 'a room with a shared bathroom costs this percent of the room price'),
+    ('SHARED_QUALITY', 15, 'room quality lost without an en-suite'),
+    ('BATH_DIRTY_USES', 6, 'uses of a shared bathroom before it wants cleaning'),
 ]
 
 
@@ -264,6 +278,8 @@ def write_gen_sim(path):
     lines = ['// Generated by tools/checkin_data.py (the ECONOMY table): do not edit by hand.']
     for key, value, what in ECONOMY:
         lines.append('const ECO_%s = %d%s// %s' % (key, value, ' ' * max(1, 22 - len(key) - len(str(value))), what))
+    lines.append('// per room type: 0 not a bedroom, 1 needs an en-suite or a shared bathroom, 2 an en-suite with a tub')
+    lines.append('const RT_BATH_NEED: [%d]u8 = [%s]' % (len(ROOMS), ', '.join(str(BATH_NEED.get(r[0], 0)) for r in ROOMS)))
     open(path, 'w').write('\n'.join(lines) + '\n')
 
 

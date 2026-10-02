@@ -626,6 +626,21 @@ def ic_wifi(d, S):
     d.ellipse((7 * S, 10.5 * S, 9 * S, 12.5 * S), fill=(120, 220, 255, 255))
 
 
+
+def ic_copy(d, S):
+    # two sheets of a floor plan, the front one with a little room drawn on it
+    d.rectangle((1 * S, 1 * S, 10 * S, 10 * S), fill=(120, 160, 230, 255), outline=(40, 60, 120, 255), width=S)
+    d.rectangle((5 * S, 5 * S, 14 * S, 14 * S), fill=(220, 236, 255, 255), outline=(40, 60, 120, 255), width=S)
+    d.rectangle((7 * S, 7 * S, 12 * S, 12 * S), outline=(120, 160, 230, 255), width=S)
+
+
+def ic_paste(d, S):
+    # a stamp pressing a room plan onto the floor
+    d.rectangle((1 * S, 10 * S, 15 * S, 14 * S), fill=(220, 236, 255, 255), outline=(40, 60, 120, 255), width=S)
+    d.rectangle((6 * S, 1 * S, 10 * S, 6 * S), fill=(150, 90, 50, 255))
+    d.rectangle((3 * S, 6 * S, 13 * S, 9 * S), fill=(120, 160, 230, 255), outline=(40, 60, 120, 255), width=S)
+
+
 ICON_DEFS = [
     ('STAR', ic_star, GOLDS), ('STAR_OFF', ic_star_off, GREYS), ('COIN', ic_coin, GOLDS),
     ('SUN', ic_sun, [(255, 220, 80), (255, 170, 40), (230, 120, 30), (255, 250, 200)]),
@@ -657,6 +672,8 @@ ICON_DEFS = [
     ('TRASH', ic_trash, [(240, 244, 255), (200, 210, 230), (120, 130, 150)]),
     ('LAYERS', ic_layers, [(120, 160, 230), (160, 200, 255), (220, 236, 255), (40, 60, 120)]),
     ('WIFI', ic_wifi, [(120, 220, 255), (60, 140, 200)]),
+    ('COPY', ic_copy, [(120, 160, 230), (220, 236, 255), (40, 60, 120)]),
+    ('PASTE', ic_paste, [(220, 236, 255), (150, 90, 50), (120, 160, 230), (40, 60, 120)]),
 ]
 for name, fn, cols in ICON_DEFS:
     icon(name, fn, cols)

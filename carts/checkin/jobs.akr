@@ -1,7 +1,9 @@
 // Logistics: the job queue and the things people carry.
 //
 //   cleaning   a checked-out room: the housekeeper strips each bed, carries the dirty linen to a
-//              washing machine, fetches clean linen from a linen shelf, and makes the bed
+//              washing machine, fetches clean linen from a linen shelf, and makes the bed; then
+//              wipes the used bathroom fixtures (in its en-suite). A shared bathroom is cleaned
+//              (its fixtures wiped) every few uses
 //   laundry    a machine washes its load, then a housekeeper carries it to a linen shelf
 //   food       an order (restaurant table or room-service phone) goes to the kitchen: the cook
 //              takes food from the fridge, cooks at the stove and puts the meal on the pass;
@@ -197,6 +199,18 @@ fn dirty_bed(r: s32) -> s32 {
     return -1
 }
 
+// A used bathroom fixture of room r or its en-suite, or -1.
+fn dirty_fixture(r: s32) -> s32 {
+    for k in 0..nobjs {
+        let o = &objs[k]
+        if o.used == 0 || o.state & OS_DIRTY == 0 { continue }
+        let u = OBJ_USE[o.t as s32] as s32
+        if u < USE_TOILET || u > USE_BATH { continue }
+        if o.room as s32 == r || r_grp[o.room as s32] as s32 == r { return k }
+    }
+    return -1
+}
+
 fn nearest_obj_use(i: s32, use: s32, cond: s32) -> s32 {
     // cond: 0 any, 1 washer with room for a load, 2 shelf with stock, 3 shelf with space
     let p = &people[i]
@@ -225,7 +239,15 @@ fn step_clean(i: s32, j: *Job) {
         0 => {   // to the next dirty bed
             let b = dirty_bed(r)
             if b < 0 {
+                // then the bathroom
+                let fx = dirty_fixture(r)
+                if fx >= 0 {
+                    j.a = fx as s16
+                    if job_walk(i, spot_tile(fx, 0)) { j.step = 8 }
+                    return
+                }
                 if rooms[r].occupant < 0 { rooms[r].state = RS_CLEAN as u8 }
+                bath_uses[r] = 0
                 job_finish(i)
                 return
             }
@@ -299,6 +321,13 @@ fn step_clean(i: s32, j: *Job) {
                 let b = j.a as s32
                 objs[b].state = objs[b].state & ~OS_DIRTY
                 p.carry = 0
+                j.step = 0
+            }
+        }
+        8 => {   // a wipe of a toilet, sink, shower or tub
+            if job_work(i, 60) {
+                let b = j.a as s32
+                objs[b].state = objs[b].state & ~OS_DIRTY
                 j.step = 0
             }
         }

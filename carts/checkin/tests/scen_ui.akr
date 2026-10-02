@@ -25,10 +25,25 @@
 //  375  SELECT held with the overlay picker: hold 20-70, UP at 40. P1 > 0: overlay P1 shown.
 //  380  a new game (the first-time flow), cursor moved a little.
 //  385  build a lobby from scratch: X, Lobby, drag 4x4, then the drawer's Needs: reception desk
-//       and key rack placed. Prints the room's state at the end.
+//       placed, and the drawer comes back by itself (guided) on the key rack; placed, the room is
+//       complete and the cursor is back to normal. Prints the room's state at the end.
 //  390  the pause menu page P1 (0 main, 1 staff, 2 prices, 3 rating, 4 ledger, 5 controls).
 //  395  info cards on the grand hotel at zoom 2: P1 0 room, 1 person, 2 object.
 //  396  toasts, the day report and a review card.
+//  305  copy and paste one room: the demo hotel's F1, A on a guest room (card), Y copies it, the
+//       copy lights up over the original, R to F2 (the ghost, green), A pastes, DOWN (past it), A,
+//       Y Y (turned: red over the last copy), DOWN (past it), A, B. Prints "PASTE t rooms objs money" after each paste and "PG t ok why cost" every 10.
+//  306  stamp a whole floor: the copy tool on the demo hotel's F1, A dragged over the floor, R, A:
+//       F2 becomes a copy of F1. Prints the paste frame's cycles ("PERF") and the room counts.
+//  307  the copy tool's highlight while dragging over rooms (and en-suites joining in), F1.
+//  303  guided furnishing of a guest room with its en-suite, by the drawer alone: X, Guest room,
+//       drag 4x4, the Needs come up with the bed (double), the wardrobe, then the Bathroom (drag a
+//       3x2 beside it), its toilet, sink and shower (turned to face the bedroom), the door step
+//       (the cursor is put on the shared wall), A: "Guest room complete". "G t ..." every 10.
+//  304  room cards and Needs about bathrooms on a new lot, P1: 0 a guest room without a bathroom
+//       (card), 1 with an en-suite (card), 2 with a shared bathroom (card), 3 a suite whose
+//       en-suite has no tub (Needs), 4 a bathroom without a door (card), 5 the en-suite's card.
+//  308  copy a guest room with its en-suite (A on the bedroom, Y), move, paste: 2 rooms more.
 
 const SCRIPT6: [24]s32 = [10, 64, 12, 0, 20, 512, 22, 0, 30, 512, 32, 0, 40, 8, 42, 0, 60, 16, 62, 0, 70, 2, 90, 0]
 const SCRIPT7: [22]s32 = [10, 64, 12, 0, 20, 8, 22, 0, 30, 16, 32, 0, 40, 16, 50, 16 | 8, 75, 16 | 2, 95, 16, 100, 0]
@@ -127,6 +142,78 @@ fn scen_ui_init() {
             view_recentre()
         }
         396 => { new_hotel_state(); start_play(); money = 9999999; scen_hotel(1) }
+        303 => {
+            scen_new_lot()
+            s_room(0, FK_CORR_CARPET, 6, 9, 20, 10)
+            cur_x = 10.5
+            cur_z = 11.5
+            view_recentre()
+        }
+        304, 308 => {
+            scen_new_lot()
+            s_room(0, FK_CORR_CARPET, 6, 9, 24, 10)
+            // a guest room x 10..13, z 11..14 (door to the corridor), bed and wardrobe
+            s_room(0, FK_CARPET_BLUE, 10, 11, 13, 14)
+            s_door(0, 12, 11, 0, -1)
+            s_obj(OB_BED_DOUBLE, 0, 10, 11, 0)
+            s_obj(OB_WARDROBE, 0, 13, 11, 0)
+            if P1 == 1 || P1 == 5 || SCENARIO == 308 {
+                // its en-suite: x 11..13, z 15..16, door into the bedroom
+                s_room(0, FK_TILE, 11, 15, 13, 16)
+                s_door(0, 12, 15, 0, -1)
+                s_obj(OB_TOILET, 0, 11, 16, 2)
+                s_obj(OB_SINK, 0, 13, 16, 2)
+                s_obj(OB_SHOWER, 0, 13, 15, 3)
+            }
+            if P1 == 2 {
+                // a shared bathroom off the corridor (x 15..17, z 6..8)
+                s_room(0, FK_TILE, 15, 6, 17, 8)
+                s_door(0, 16, 8, 0, 1)
+                s_obj(OB_TOILET, 0, 15, 6, 0)
+                s_obj(OB_SINK, 0, 16, 6, 0)
+                s_obj(OB_SHOWER, 0, 17, 6, 0)
+            }
+            if P1 == 3 {
+                // a suite (x 15..20, z 11..14) whose en-suite (x 15..17, z 15..16) has a shower only
+                stars = 3
+                s_room(0, FK_CARPET_RED, 15, 11, 20, 14)
+                s_door(0, 18, 11, 0, -1)
+                s_obj(OB_BED_KING, 0, 18, 12, 0)
+                s_obj(OB_WARDROBE, 0, 20, 11, 0)
+                s_obj(OB_SOFA, 0, 15, 11, 0)
+                s_obj(OB_TV, 0, 15, 14, 1)
+                s_room(0, FK_TILE, 15, 15, 17, 16)
+                s_door(0, 16, 15, 0, -1)
+                s_obj(OB_TOILET, 0, 15, 16, 2)
+                s_obj(OB_SINK, 0, 17, 16, 2)
+                s_obj(OB_SHOWER, 0, 17, 15, 3)
+                room_intent[room_at(0, 16, 12)] = RT_SUITE as u8
+            }
+            if P1 == 4 {
+                s_room(0, FK_TILE, 11, 15, 13, 16)
+                s_obj(OB_TOILET, 0, 11, 16, 2)
+                s_obj(OB_SINK, 0, 13, 16, 2)
+                s_obj(OB_SHOWER, 0, 13, 15, 3)
+            }
+            rooms_update()
+            rooms_finish()
+            cur_x = 12.5
+            cur_z = 13.5
+            if P1 == 3 { cur_x = 17.5 }
+            if P1 == 4 || P1 == 5 { cur_z = 15.5 }
+            view_zoom = 2
+            view_recentre()
+        }
+        305, 306, 307 => {
+            new_hotel_state(); start_play(); money = 9999999
+            scen_hotel(1)
+            view_floor = 1
+            cur_x = 5.5
+            cur_z = 12.5
+            if SCENARIO != 305 { tool = Tool.Copy; cur_x = 4.5; cur_z = 4.5 }
+            view_zoom = P1
+            view_recentre()
+        }
         else => {}
     }
 }
@@ -169,16 +256,86 @@ fn pad385(f: s32) -> u32 {
     // move up-left into the room's middle (the cursor is at its far corner) and place it
     if f >= 140 && f < 158 { return taps(f, 140, 2, UP) | taps(f, 152, 1, LEFT) }
     if f >= 164 && f < 166 { return A }
-    // done; open the drawer again (Needs: the key rack)
-    if f >= 200 && f < 202 { return B }
-    if f >= 210 && f < 212 { return X }
+    // guided: the drawer comes back by itself on the room's Needs with the key rack selected
     if f >= 230 && f < 232 { return A }
     if f >= 240 && f < 252 { return taps(f, 240, 2, LEFT) }
     if f >= 260 && f < 262 { return A }
     return 0
 }
 
+var t_w305: s32 = 4              // taps to clear the first paste (from the clipboard's extent)
+var t_w305b: s32 = 9             // ... and the turned one
+
+fn pad305(f: s32) -> u32 {
+    if f >= 20 && f < 22 { return A }
+    if f >= 40 && f < 42 { return Y }
+    if f >= 70 && f < 72 { return R }
+    if f >= 110 && f < 112 { return A }
+    if f >= 130 && f < 180 { return taps(f, 130, t_w305, DOWN) }
+    if f >= 185 && f < 187 { return A }
+    if f >= 200 && f < 212 { return taps(f, 200, 2, Y) }
+    if f >= 220 && f < 276 { return taps(f, 220, t_w305b, DOWN) }
+    if f >= 280 && f < 282 { return A }
+    if f >= 300 && f < 302 { return B }
+    return 0
+}
+
+fn pad306(f: s32) -> u32 {
+    if f >= 20 && f < 30 { return A }
+    if f >= 50 && f < 52 { return R }
+    if f >= 90 && f < 92 { return A }
+    return 0
+}
+
+fn pad307(f: s32) -> u32 {
+    if f >= 20 && f < 90 { return A | taps(f, 26, 5, DOWN) | taps(f, 60, 4, RIGHT) }
+    return 0
+}
+
+fn pad303(f: s32) -> u32 {
+    var p: u32 = 0
+    if f >= 10 && f < 12 { p = X }
+    p = p | taps(f, 20, 1, RIGHT)
+    if f >= 26 && f < 28 { p = A }
+    if f >= 40 && f < 84 { p = p | A | taps(f, 46, 3, RIGHT) | taps(f, 64, 3, DOWN) }
+    p = p | taps(f, 100, 1, RIGHT)
+    if f >= 106 && f < 108 { p = A }
+    p = p | taps(f, 115, 3, UP) | taps(f, 133, 3, LEFT)
+    if f >= 152 && f < 154 { p = A }
+    if f >= 185 && f < 187 { p = A }
+    p = p | taps(f, 195, 3, DOWN)
+    if f >= 215 && f < 217 { p = A }
+    if f >= 250 && f < 252 { p = A }
+    p = p | taps(f, 260, 4, RIGHT)
+    if f >= 290 && f < 316 { p = p | A | taps(f, 296, 2, UP) | taps(f, 308, 1, RIGHT) }
+    if f >= 340 && f < 342 { p = A }
+    p = p | taps(f, 350, 2, Y)
+    if f >= 364 && f < 366 { p = A }
+    if f >= 400 && f < 402 { p = A }
+    p = p | taps(f, 410, 1, DOWN)
+    if f >= 418 && f < 420 { p = A }
+    if f >= 452 && f < 454 { p = A }
+    p = p | taps(f, 462, 1, DOWN)
+    if f >= 470 && f < 472 { p = A }
+    if f >= 510 && f < 512 { p = A }
+    return p
+}
+
+fn pad308(f: s32) -> u32 {
+    if f >= 20 && f < 22 { return A }
+    if f >= 40 && f < 42 { return Y }
+    if f >= 60 && f < 90 { return taps(f, 60, 5, UP) }
+    if f >= 100 && f < 102 { return A }
+    if f >= 140 && f < 142 { return B }
+    return 0
+}
+
 fn scen_ui_pad(f: s32) -> u32 {
+    if SCENARIO == 303 { return pad303(f) }
+    if SCENARIO == 308 { return pad308(f) }
+    if SCENARIO == 305 { return pad305(f) }
+    if SCENARIO == 306 { return pad306(f) }
+    if SCENARIO == 307 { return pad307(f) }
     if SCENARIO == 40 && f >= 3 { return A }
     if SCENARIO == 48 { return script_from(&SCRIPT48[0], len(SCRIPT48), f) }
     if SCENARIO == 6 { return script_from(&SCRIPT6[0], len(SCRIPT6), f) }
@@ -203,7 +360,167 @@ var t_changes: s32
 var t_red_over: s32
 var t_speed: s32 = -1
 
+var t_nobjs: s32
+var t_cpu_paste: s32
+
+fn rooms_used() -> s32 {
+    var n = 0
+    for r in 1..nrooms { if rooms[r].used != 0 { n += 1 } }
+    return n
+}
+
 fn scen_ui_hook() {
+    if SCENARIO == 303 && scen_t % 10 == 0 {
+        print("G ")
+        print_int(scen_t)
+        print(" tool ")
+        print_int(tool as s32)
+        print(" menu ")
+        print_int(menu_open as s32)
+        if menu_open && menu_n > 0 { print(" sel "); print(item_name(menu_items[menu_sel])) }
+        print(" cur ")
+        print_int(cur_tx)
+        print(",")
+        print_int(cur_tz)
+        print(" guide ")
+        print_int(guide_room)
+        print("/")
+        print_int(guide_host)
+        print(" objs ")
+        print_int(nobjs)
+        print(" rooms ")
+        print_int(rooms_used())
+        let r = room_at(0, 12, 13)
+        print(" guest ")
+        print_int(rooms[r].rtype as s32)
+        print(" valid ")
+        print_int((rooms[r].flags & RF_VALID) as s32)
+        print(" bath ")
+        print_int(room_bath(r))
+        print(" why ")
+        println(num(room_why(r)))
+    }
+    if SCENARIO == 304 && scen_t == 20 {
+        if P1 == 3 || P1 == 6 {
+            menu_room = room_at(0, cur_tx, cur_tz)
+            open_drawer(menu_room)
+        } else {
+            inspect_press()
+        }
+        let r = room_at(0, cur_tx, cur_tz)
+        print("ROOM ")
+        print_int(r)
+        print(" type ")
+        print_int(rooms[r].rtype as s32)
+        print(" best ")
+        print_int(rooms[r].best as s32)
+        print(" bath ")
+        print_int(room_bath(r))
+        print(" host ")
+        print_int(bath_host(r))
+        print(" why ")
+        println(num(room_why(r)))
+    }
+    if SCENARIO == 308 && (scen_t == 10 || scen_t == 130) { print("ROOMS "); print_int(scen_t); print(" "); print_int(rooms_used()); print(" objs "); println(num(nobjs)) }
+    if SCENARIO == 305 && scen_t == 100 && P2 == 9 {
+        for i in 0..pr_n { print("RUN "); print_int(pr_k[i] as s32); print(" "); print_int(pr_a[i] as s32); print(" "); print_int(pr_b[i] as s32); print(" "); println(num(pr_e[i] as s32)) }
+        print("BB "); print_int(pg_x0); print(" "); print_int(pg_z0); print(" "); print_int(pg_x1); print(" "); println(num(pg_z1))
+        for i in 0..cp_ne { print("EDGE "); print_int(cp_ex[i] as s32); print(" "); print_int(cp_ez[i] as s32); print(" "); print_int(cp_ed[i] as s32); print(" "); println(num(cp_ef[i] as s32)) }
+    }
+    if SCENARIO == 305 && scen_t == 5 {
+        // the cursor on the middle of a guest room of F1 (whatever the demo layout is)
+        for r in 1..nrooms {
+            let rm = &rooms[r]
+            if rm.used == 0 || rm.floor != 1 || rm.rtype as s32 != RT_GUEST { continue }
+            // a free tile of the room itself (its en-suite may sit inside its bounds)
+            var bx = -1
+            var bz = -1
+            for z in rm.z0 as s32..rm.z1 as s32 + 1 {
+                for x in rm.x0 as s32..rm.x1 as s32 + 1 {
+                    if bx < 0 && room_at(1, x, z) == r && tobj[tix(1, x, z)] < 0 { bx = x; bz = z }
+                }
+            }
+            cursor_set_tile(bx, bz)
+            view_recentre()
+            break
+        }
+    }
+    if SCENARIO == 305 && scen_t == 60 {
+        var x0 = 99
+        var x1 = -99
+        for i in 0..cp_n { x0 = min(x0, cp_tx[i] as s32); x1 = max(x1, cp_tx[i] as s32) }
+        t_w305 = x1 - x0 + 1
+        t_w305b = 2 * x1 + 1
+        print("EXTENT ")
+        print_int(x0)
+        print(" ")
+        println(num(x1))
+    }
+    if SCENARIO == 305 || SCENARIO == 306 {
+        if SCENARIO == 306 && scen_t == 22 { cursor_set_tile(27, 14) }
+        if nobjs != t_nobjs && scen_t > 5 {
+            var nr = 0
+            for r in 1..nrooms { if rooms[r].used != 0 { nr += 1 } }
+            print("PASTE ")
+            print_int(scen_t)
+            print(" rooms ")
+            print_int(nr)
+            print(" objs ")
+            print_int(nobjs)
+            print(" money ")
+            print_int(money)
+            print(" floor ")
+            print_int(view_floor)
+            print(" paste cycles ")
+            println(num(cp_cycles))
+            t_cpu_paste = scen_t
+        }
+        t_nobjs = nobjs
+        if t_cpu_paste > 0 && scen_t <= t_cpu_paste + 12 {
+            print("PERF ")
+            print_int(scen_t)
+            print(" cpu ")
+            print_int(cpu_used())
+            print(" tris ")
+            print_int(tris_drawn() + ui_tris)
+            print(" q ")
+            print_int(cpq_i)
+            print("/")
+            print_int(cpq_n)
+            print(" ready ")
+            print_int(view_ready() as s32)
+            print(" rb ")
+            println(num(rb_frame))
+        }
+        if scen_t % 10 == 0 && tool == Tool.Paste {
+            print("PG ")
+            print_int(scen_t)
+            print(" ok ")
+            print_int(pg_ok as s32)
+            print(" ")
+            print(pg_why)
+            print(" cost ")
+            print_int(pg_cost)
+            print(" cur ")
+            print_int(cur_tx)
+            print(",")
+            print_int(cur_tz)
+            print(" rot ")
+            print_int(cp_rot)
+            print(" n ")
+            print_int(cp_n)
+            print(" ")
+            print_int(cp_nr)
+            print(" ")
+            print_int(cp_no)
+            print(" ")
+            print_int(cp_ne)
+            print(" cpu ")
+            print_int(cpu_used())
+            print(" tris ")
+            println(num(tris_drawn() + ui_tris))
+        }
+    }
     if SCENARIO == 40 && scen_t == 12 { cur_x = 14.5; cur_z = 17.5 }
     if SCENARIO == 40 && scen_t == 30 { print("drag "); print_int(dragging as s32); print(" "); print_int(rx0); print(","); print_int(rz0); print(" "); print_int(rx1); print(","); print_int(rz1); print(" tool "); print_int(tool as s32); println("") }
     if SCENARIO == 300 {
@@ -509,6 +826,34 @@ fn check_strings() {
         ov_check("room line", u, CARD_W - 10)
     }
     for e in 1..13 { ov_check("toast", pe_text(e), 290) }
+    // bathrooms: the rows on room cards and checklists (C's rooms), the guided hints, copy and paste
+    let bath: [12]*u8 = ["En-suite of a Guest room", "No door yet", "Its door into a bedroom", "Shared by this floor",
+                         "En-suite with a tub", "En-suite needs a bathtub", "En-suite", "Shared bathroom", "An en-suite rates higher",
+                         "En-suite: none", "Fixtures go in a Bathroom", "A Bathroom with a tub"]
+    for k in 0..12 { ov_check("bath row", bath[k], CARD_W - 20) }
+    ov_check("bath row", "A Bathroom, door into here", CARD_W - 20)
+    ov_check("card", "\x04 copy room", CARD_W - 10)
+    let hints: [6]*u8 = ["Last step: a door from the Bathroom into the Guest room", "Drag a Bathroom beside the Guest room: 3 tiles or more",
+                         "Now a door: into a bedroom (its en-suite) or a corridor", "Next: an en-suite, its door into this room",
+                         "Into a bedroom: its en-suite. A corridor: shared", "For the en-suite: a suite needs a tub"]
+    for k in 0..6 { ov_check("hint", hints[k], 290) }
+    tool = Tool.Copy
+    ov_check("strip", strip_text(), 312)
+    tool = Tool.Paste
+    ov_check("strip", strip_text(), 312)
+    tool = Tool.Inspect
+    cp_nr = 2
+    cp_rtype[0] = RT_CONFERENCE as u8
+    cp_rtype[1] = RT_CONFERENCE as u8
+    let pc = nb()
+    sappend(pc, "Copied ")
+    sappend(pc, cp_label())
+    sappend(pc, ": move it, then \x01")
+    ov_check("paste chip", pc, 312)
+    let pc2 = nb()
+    sappend(pc2, "Not enough money  $9,999,999")
+    ov_check("paste chip", pc2, 312)
+    cp_nr = 0
     for g in 0..NGUESTT { ov_check("guest", str_of(GT_NAME_OFF[g] as s32), CARD_W - 10) }
     for k in 0..NREVIEW { ov_check("review", str_of(REVIEW_OFF[k] as s32), 312 - 12) }
     for k in 0..PM_N { ov_check("pause item", pm_label(k), 120) }

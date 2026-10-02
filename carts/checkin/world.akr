@@ -226,6 +226,7 @@ fn world_reset() {
     for i in 0..NTT { tobj[i] = -1 }
     memset(&rooms[0] as *u8, 0, sizeof(Room) * MAXROOM)
     nrooms = 1
+    legacy_baths = false
 }
 
 fn room_alloc() -> s32 {

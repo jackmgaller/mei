@@ -281,6 +281,7 @@ fn void_at(f: s32, x: s32, z: s32) -> bool {
 
 var nguestrooms: s32
 var nsuites: s32
+var nensuite: s32                // bookable bedrooms with an en-suite (the rest share a bathroom)
 var tier_missing: [6]*u8         // why the next tier isn't reached (first missing requirement)
 var reviews_avg10: s32           // average review stars x10 (last 16)
 
@@ -328,6 +329,7 @@ fn tier_ok(k: s32) -> bool {
             if objs_of(OB_PHONE) * 2 < rooms_n || staff_of(ROLE_WAITER, -1) == 0 { tier_missing[k] = "Room service (phones, waiter)"; return false }
             if count_type(RT_LAUNDRY) == 0 { tier_missing[k] = "A laundry"; return false }
             if count_type(RT_POOL) == 0 { tier_missing[k] = "A pool"; return false }
+            if nensuite * 2 < rooms_n { tier_missing[k] = "En-suites in half the rooms"; return false }
             if reviews_avg10 < 30 { tier_missing[k] = "Reviews of 3 stars"; return false }
             if score < 50 { tier_missing[k] = "Hotel score 50"; return false }
         }
@@ -338,6 +340,7 @@ fn tier_ok(k: s32) -> bool {
             if count_type(RT_CONFERENCE) == 0 { tier_missing[k] = "A conference room"; return false }
             if count_type(RT_STAFF) == 0 { tier_missing[k] = "A staff room"; return false }
             if count_type(RT_BAR) == 0 { tier_missing[k] = "A bar"; return false }
+            if nensuite * 4 < rooms_n * 3 { tier_missing[k] = "En-suites in 3 rooms of 4"; return false }
             if reviews_avg10 < 35 { tier_missing[k] = "Reviews of 3.5 stars"; return false }
             if score < 62 { tier_missing[k] = "Hotel score 62"; return false }
         }
@@ -348,6 +351,7 @@ fn tier_ok(k: s32) -> bool {
             if objs_of(OB_CONCIERGE_DESK) == 0 || staff_of(ROLE_BELLHOP, -1) == 0 { tier_missing[k] = "A staffed concierge desk"; return false }
             if staff_of(ROLE_RECEPTIONIST, 1) == 0 { tier_missing[k] = "24-hour reception (night shift)"; return false }
             if arch_score < 40 { tier_missing[k] = "Architecture 40 (an atrium!)"; return false }
+            if nensuite * 4 < rooms_n * 3 { tier_missing[k] = "En-suites in 3 rooms of 4"; return false }
             if reviews_avg10 < 42 { tier_missing[k] = "Reviews of 4.2 stars"; return false }
             if score < 75 { tier_missing[k] = "Hotel score 75"; return false }
         }
@@ -358,6 +362,11 @@ fn tier_ok(k: s32) -> bool {
 fn compute_score() {
     nguestrooms = count_type(RT_GUEST)
     nsuites = count_type(RT_SUITE)
+    nensuite = 0
+    for r in 1..nrooms {
+        let t = rooms[r].rtype as s32
+        if rooms[r].used != 0 && (t == RT_GUEST || t == RT_SUITE) && r_bath[r] as s32 >= BATH_ENSUITE { nensuite += 1 }
+    }
     // rooms: average quality of guest rooms and suites
     var q = 0
     var n = 0

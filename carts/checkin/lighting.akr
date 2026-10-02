@@ -130,8 +130,10 @@ fn sky_col() -> u32 {
     return c
 }
 
-// Small, soft warm glows around the lamps on the viewed floor while they are on.
+// Small, soft warm glows around the lamps on the viewed floor while they are on. (Also the marks
+// over broken objects, see draw_broken: both run over the objects every frame.)
 fn draw_glows() {
+    draw_broken()
     if !lamps_on { return }
     let a = min((night_amt - 100) * 2, 256)
     let col = lit(rgb(92, 70, 40), (a as u32) * 0x010101)
@@ -171,4 +173,35 @@ fn glow_quad(cx: s32, cy: s32, r: s32, col: u32, bucket: s32, lower: bool) {
     q[8] = upos(cx + r, cy + r)
     q[9] = ((UV_GLOW_U + 31) as u32) | (((UV_GLOW_V + 31) as u32) << 8)
     lo_insert(q, 0x2E, bucket, lower)
+}
+
+// A broken object on the viewed floor gets a small problem badge over it, drawn every frame from
+// objs[i].state (breaking and repairing no longer rebuild the static cache): a red diamond with a
+// white "!", outlined, bobbing a pixel. It goes on the interface list, under the HUD and panels.
+var brk_t: s32
+
+fn draw_broken() {
+    brk_t += 1
+    let bob = (brk_t >> 5) & 1
+    for i in 0..nobjs {
+        let o = &objs[i]
+        if o.used == 0 || o.state & OS_BROKEN == 0 || o.f as s32 != view_floor { continue }
+        let t = o.t as s32
+        obj_bounds(t)
+        var c = obj_centre(i)
+        c.y = c.y + ob_ytop[t] + 0.2
+        if !project(c) { continue }
+        let x = proj_x
+        let y = proj_y - 6 - bob
+        if x < -8 || x > 328 || y < -8 || y > 248 { continue }
+        broken_badge(x, y)
+    }
+}
+
+fn broken_badge(x: s32, y: s32) {
+    // (diamond corners in strip order: top, left, right, bottom)
+    ui_quad(x, y - 7, x - 7, y, x + 7, y, x, y + 7, ST_SHADOW, -1)
+    ui_quad(x, y - 6, x - 6, y, x + 6, y, x, y + 6, ST_BAD, -1)
+    ui_rect(x - 1, y - 4, 2, 5, WHITE, -1)
+    ui_rect(x - 1, y + 2, 2, 2, WHITE, -1)
 }

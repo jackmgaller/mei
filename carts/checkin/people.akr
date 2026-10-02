@@ -104,7 +104,26 @@ struct Person {
     soz: fixed
     ex: fixed                // end point of a scripted move, or of the shuffle into a waiting slot
     ez: fixed
+    // ---- what a guest is up to (guests.akr)
+    seat: s16                // the object sat or lain on while using another (the bed or sofa
+                             // while watching TV, a bed for a nap); -1: none
+    sspot: s8                // which spot of `seat`
+    nplan: u8                // queued activities (a routine: wash, then sleep...)
+    plan: [4]u8              // ... USE_* in order
+    hide: u8                 // out of sight (in the shower, on the toilet): fades out
+    gest: u8                 // a small gesture while busy (GEST_*, people_vis.gest)
+    sy: fixed                // seat height to ease people_vis.oy toward (sitting on a bed)
+    rbits: u8                // a guest's routine so far tonight (RB_*)
+    want: u8                 // waiting for a shared bathroom: the fixture wanted (USE_*)
+    last: u8                 // the last thing a guest did (an activity is seldom repeated at once)
+    wroom: s16               // ... and the bathroom (room index)
 }
+
+const RB_BEDTIME = 1         // washed up for bed already (cleared on waking)
+
+const GEST_NONE = 0
+const GEST_BOB = 1           // a small bob (rummaging in a wardrobe, at the sink, chatting)
+const GEST_NOD = 2           // a slow nod (typing at a desk, reading)
 
 var people: [128]Person
 var npeople: s32
@@ -146,6 +165,8 @@ fn person_new(kind: s32, type: s32, f: s32, x: s32, z: s32) -> s32 {
     p.elev = -1
     p.party = -1
     p.spot = -1
+    p.seat = -1
+    p.sspot = -1
     p.qslot = -1
     p.qdesk = -1
     p.link = -1
@@ -782,6 +803,7 @@ fn people_tick() {
         let p = &people[i]
         if p.used == 0 { continue }
         person_move(i)
+        if p.gest != 0 { people_vis[i].gph += 1 }
         // (only walkers hold their field: someone waiting for or riding an elevator gets a
         // new one on arrival)
         if p.fslot >= 0 && p.goal >= 0 && p.mode as s32 == M_WALK { fld_used[p.fslot as s32] = tick_count }
@@ -806,12 +828,13 @@ fn people_frame() {
         let v = &people_vis[i]
         let m = p.mode as s32
         if m == M_BOARD || m == M_ALIGHT || m == M_RIDE { continue }
-        if p.leaving != 0 {
+        if p.leaving != 0 || p.hide != 0 {
             v.fade = min(v.fade as s32 + FADE_STEP * max(speed, 1), 255) as u8
         } else if v.fade > 0 && m != M_HIDDEN {
             v.fade = max(v.fade as s32 - FADE_STEP * max(speed, 1), 0) as u8
         }
-        if v.ox != p.sox || v.oz != p.soz { seat_ease(i) }
+        if v.ox != p.sox || v.oz != p.soz || v.oy != p.sy { seat_ease(i) }
+        v.gest = p.gest
     }
 }
 
@@ -819,8 +842,11 @@ fn people_frame() {
 fn seat_ease(i: s32) {
     let p = &people[i]
     let v = &people_vis[i]
+    if speed == 0 { return }
     v.ox = v.ox + (p.sox - v.ox) / 4
     v.oz = v.oz + (p.soz - v.oz) / 4
+    v.oy = v.oy + (p.sy - v.oy) / 4
     if abs(v.ox - p.sox) < 0.01 { v.ox = p.sox }
     if abs(v.oz - p.soz) < 0.01 { v.oz = p.soz }
+    if abs(v.oy - p.sy) < 0.01 { v.oy = p.sy }
 }

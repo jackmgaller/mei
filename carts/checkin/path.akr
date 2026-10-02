@@ -97,6 +97,8 @@ fn room_access(r: s32) -> s32 {
         if t == RT_KITCHEN || t == RT_LAUNDRY || t == RT_STORAGE || t == RT_STAFF { return PB_STAFF }
     }
     if rt == RT_GUEST || rt == RT_SUITE { return PB_PRIVATE }
+    // an en-suite belongs to its bedroom's guests (rooms.akr bath_floor)
+    if r_host[r] != 0 { return PB_PRIVATE }
     return 0
 }
 
@@ -138,6 +140,9 @@ fn edge_ok(ra: s32, rb: s32, feat: s32) -> bool {
 var walk_tmp: [768]u8
 var pass_tmp: [768]u8
 var troom_snap: [4608]u8
+// Each tile's privacy group (rooms.akr r_grp: its room, or an en-suite's bedroom): guests' fields
+// treat a bedroom and its en-suite as one room.
+var tgroup: [4608]u8
 
 // Recomputes floor f's passability; true when it changed (or its rooms were renumbered).
 fn compute_pass(f: s32) -> bool {
@@ -189,6 +194,11 @@ fn compute_pass(f: s32) -> bool {
     let rw = &troom[b] as *u32
     let sw = &troom_snap[b] as *u32
     var changed = false
+    let tg = &tgroup[b]
+    for t in 0..NT {
+        let g = r_grp[tr[t] as s32]
+        if tg[t] != g { tg[t] = g; changed = true }
+    }
     for k in 0..NT / 4 {
         if (pw[k] & 0xDFDFDFDF) != qw[k] || rw[k] != sw[k] { changed = true }
         pw[k] = qw[k]
@@ -385,8 +395,8 @@ fn bfs_slot(nxt: s32) {
     let target = key & 0xFFFF
     let f = target / NT
     let base = f * NT
-    bfs_rooms = &troom[base]
-    var mode = troom[target] as s32
+    bfs_rooms = &tgroup[base]
+    var mode = tgroup[target] as s32
     if key & STAFF_KEY != 0 { mode = mode | 256 }
     bfs_mode = mode
     let d = &fld[nxt][0]
@@ -399,7 +409,8 @@ fn bfs_slot(nxt: s32) {
 // Breadth-first search over one floor from `start`: dist[] must be all 0xFFFF on entry.
 // A step t -> n is allowed when pass[t] has its direction bit (both tiles walkable, no wall);
 // guests (bfs_mode bit 8 clear) may not enter staff-only tiles outside the target room, nor
-// pass from a guest room into anything but the target. Returns the tiles reached.
+// pass from a guest room into anything but the target. Rooms are compared by privacy group
+// (tgroup: a bedroom and its en-suite are one). Returns the tiles reached.
 asm fn bfs_floor(pass: *u8, dist: *u16, q: *u16, start: s32) -> s32 {
     addi sp, sp, -28
     sw   r9, [sp+0]

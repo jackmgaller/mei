@@ -8,6 +8,7 @@ import "world.akr"
 import "render.akr"
 import "objects.akr"
 import "build.akr"
+import "paste.akr"
 import "rooms.akr"
 import "path.akr"
 import "people.akr"
@@ -98,6 +99,12 @@ fn new_hotel_state() {
     view_floor = 0
     tool = Tool.Inspect
     menu_open = false
+    guide_room = 0
+    guide_host = 0
+    guide_t = 0
+    cpq_stage = 0
+    cpq_n = 0
+    drop_t = 0
     deliveries_left = 0
     service_wait_avg = 0
     rooms_dirty = true
@@ -119,11 +126,12 @@ fn update() {
         Play => {
             if menu_open { menu_update() } else { build_update() }
             select_update()
-            if btnp_in(START) && !menu_open { open_pause() }
+            if btnp_in(START) && !menu_open && !paste_busy() { open_pause() }
             transition_update()
             cursor_anim()
             camera_follow()
             drop_update()
+            paste_update()
             info_update()
         }
         Pause => pause_update()

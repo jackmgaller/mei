@@ -18,7 +18,8 @@ fn __rt_frame_begin() {
     __arena_ptr = &__arena[0]
     __arena_end = &__arena[0] + ARENA_WORDS
     __ui_tail = null
-    __ot_bias = 0
+    __ot_user = 0
+    depth_key_off()
 }
 
 fn __rt_frame_end() {

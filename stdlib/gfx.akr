@@ -31,6 +31,7 @@ const FACE_TEXTURED = 2
 const FACE_QUAD = 4
 const FACE_SEMI = 8
 const FACE_DOUBLE = 16     // never culled
+const FACE_KEYED = 32      // sorted into the ordering-table bucket held in col[3] (not Gouraud)
 
 const OT_SIZE = 1024
 const MAX_MESH_VERTS = 2048
@@ -53,9 +54,18 @@ var __cam_near: fixed = 0.1
 var __cam_far: fixed = 100.0
 var __ot_k3: fixed
 var __ot_k4: fixed
+var __ot_k3b: fixed        // (camera_clip's scales; depth_key changes __ot_k3/__ot_k4)
+var __ot_k4b: fixed
+var __ot_user: s32         // depth_bias
+var __ot_key: s32          // depth_key's share of __ot_bias
 var __fog_on: bool
 var __fog_near: fixed
 var __fog_scale: fixed
+var __scr_x0: s32 = 0      // the cull rectangle (cull_rect), screen pixels
+var __scr_x1: s32 = 320
+var __scr_y0: s32 = 0
+var __scr_y1: s32 = 240
+var __scr_k: [4]fixed = [-1.0, 1.0, 1.0, -1.0]    // its edges in clip space (x/w left, right; y/w top, bottom)
 
 // ---- colours
 
@@ -160,8 +170,29 @@ fn camera_clip(near: fixed, far: fixed) {
     __cam_near = near
     __cam_far = far
     let scale = 1024.0 / (far - near)
-    __ot_k3 = scale / 3
-    __ot_k4 = scale / 4
+    __ot_k3b = scale / 3
+    __ot_k4b = scale / 4
+    __ot_k3 = __ot_k3b
+    __ot_k4 = __ot_k4b
+    __ot_key = 0
+    __ot_bias = __ot_user
+}
+
+// The rectangle (screen pixels) outside which mesh*() drop the faces they clip (faces that
+// cross the near plane or the guard band): by default the screen, (0, 0)-(320, 240). Faces
+// that need no clipping are never dropped for being off the screen, so a cart that keeps the
+// packets of a mesh() pass and shifts them on screen later (a panned view drawn from a cache)
+// widens the rectangle by the most it will shift them, so the clipped faces are kept as well.
+// It stays set until changed; keep it within the guard band (-1000..999).
+fn cull_rect(x0: s32, y0: s32, x1: s32, y1: s32) {
+    __scr_x0 = x0
+    __scr_x1 = x1
+    __scr_y0 = y0
+    __scr_y1 = y1
+    __scr_k[0] = fixed(x0 - 160) / 160
+    __scr_k[1] = fixed(x1 - 160) / 160
+    __scr_k[2] = fixed(120 - y0) / 120
+    __scr_k[3] = fixed(120 - y1) / 120
 }
 
 // Camera at pos looking along yaw (0 looks down +Z; positive turns right, toward +X).
@@ -398,7 +429,38 @@ asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) -> s32 {
 
 // Shifts the ordering-table buckets of the following mesh() calls: negative values draw
 // later (nearer). Use it to keep an object in front of large polygons it stands on.
-fn depth_bias(buckets: s32) { __ot_bias = buckets }
+fn depth_bias(buckets: s32) {
+    __ot_user = buckets
+    __ot_bias = buckets + __ot_key
+}
+
+// The ordering-table bucket of view depth w (as mesh*() files a face whose average depth is w).
+fn depth_bucket_of(w: fixed) -> s32 {
+    return clamp(((w - __cam_near) * (1024.0 / (__cam_far - __cam_near))) as s32, 0, 1023)
+}
+
+// Sorts the faces of the following mesh*() calls around one view depth w, instead of each by its
+// own average depth alone: a sort key per mesh, for a scene whose painter's order is known (a
+// grid seen from a fixed angle, where an object is drawn as a unit by where it stands). The faces
+// keep their own order among themselves but squash times closer to w (1: plain sorting; 8 keeps
+// an object's faces within an eighth of its depth around w, so they don't interleave with its
+// neighbours'). depth_bias() adds to it. Stays set until depth_key_off(). For a key per face,
+// see FACE_KEYED.
+fn depth_key(w: fixed, squash: s32) {
+    let kb = depth_bucket_of(w)
+    let n = max(squash, 1)
+    __ot_k3 = __ot_k3b / n
+    __ot_k4 = __ot_k4b / n
+    __ot_key = kb - kb / n
+    __ot_bias = __ot_user + __ot_key
+}
+
+fn depth_key_off() {
+    __ot_k3 = __ot_k3b
+    __ot_k4 = __ot_k4b
+    __ot_key = 0
+    __ot_bias = __ot_user
+}
 
 // Draws a mesh whose vertices are in world space.
 fn mesh(m: *Mesh) { __draw_mesh(m, __vp) }

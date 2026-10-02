@@ -2,11 +2,14 @@
 // simulation (people.akr, transport.akr) moves them; this file only reads their state, and the
 // visual state it keeps for us in sim_vis.akr: people_vis (walk phase, fade, seat offset) and
 // elev_vis (door opening), when it writes them.
-// Owner: workstream A (art and rendering). See CONTRACT.md.
+// Owner: workstream C since the feature round (it was A's). See CONTRACT.md.
 //
-// People are drawn 1:1, never scaled (crisp at every zoom): the 16x24 frames at zoom 1 and 2, the
-// 12x16 ones at zoom 0. Each has a soft shadow, and sorts from a point half a tile in front of its
-// feet, so the furniture in front does not slice it.
+// People keep the same size against the furniture at every zoom (about 1.7 units tall): the
+// 12x16 frames 1:1 at zoom 0, the 16x24 ones 1:1 at zoom 1 and stretched 4/3 to 21x32 at zoom 2
+// (a constant quad size, so the doubled texel rows don't shimmer as people move). Each has a soft
+// shadow, and sorts from a point half a tile in front of its feet, so the furniture in front does
+// not slice it. Busy people show it: sitting on a bed's edge (people_vis.oy), a small bob at the
+// wardrobe or the sink, a nod at the desk (people_vis.gest, phased by simulation ticks).
 
 // ---- people
 
@@ -124,9 +127,34 @@ fn sprite_quad(x0: s32, y0: s32, x1: s32, y1: s32, u: s32, v: s32, w: s32, h: s3
     lo_insert(q, ty, bucket, lower)
 }
 
+// Screen size of a person's frame at the current zoom (the texels are ART_PERSON_W x _H, or the
+// minis at zoom 0).
+const PZ2_W = 21
+const PZ2_H = 32
+fn spr_w() -> s32 {
+    if view_zoom == 0 { return ART_MINI_W }
+    if view_zoom == 2 { return PZ2_W }
+    return ART_PERSON_W
+}
+fn spr_h() -> s32 {
+    if view_zoom == 0 { return ART_MINI_H }
+    if view_zoom == 2 { return PZ2_H }
+    return ART_PERSON_H
+}
+
+// A gesture's lift in pixels this tick (0 or 1).
+fn gest_lift(i: s32) -> s32 {
+    let v = &people_vis[i]
+    let g = v.gest as s32
+    let ph = v.gph as s32
+    if g == GEST_BOB { return (ph >> 3) & 1 }
+    if g == GEST_NOD { if (ph >> 4) & 3 == 0 { return 1 } }
+    return 0
+}
+
 fn draw_person(p: *Person, i: s32, lower: bool) {
     let v = &people_vis[i]
-    let base = vec3(p.x + v.ox, fixed(p.f as s32) * STOREY + p.y, p.z + v.oz)
+    let base = vec3(p.x + v.ox, fixed(p.f as s32) * STOREY + p.y + v.oy, p.z + v.oz)
     if !project(base) { return }
     let fx = proj_x
     let fy = proj_y
@@ -190,19 +218,21 @@ fn draw_sprite(p: *Person, i: s32, fx: s32, fy: s32, bucket: s32, lower: bool) {
         draw_sleeper(p, i, k, d, bucket, lower)
         return
     }
-    // 1:1: the 16x24 frames, or the 12x16 ones zoomed out
-    var w = ART_PERSON_W
-    var h = ART_PERSON_H
+    // the 16x24 frames (stretched 4/3 at zoom 2), or the 12x16 ones zoomed out
+    var tw = ART_PERSON_W
+    var th = ART_PERSON_H
     var u = ART_PERSON_U[k] as s32 + fr * ART_PERSON_W
     var v = ART_PERSON_V[k] as s32 + d * ART_PERSON_H
     if view_zoom == 0 {
-        w = ART_MINI_W
-        h = ART_MINI_H
+        tw = ART_MINI_W
+        th = ART_MINI_H
         u = ART_PERSON_MU[k] as s32 + fr * ART_MINI_W
         v = ART_PERSON_MV[k] as s32 + d * ART_MINI_H
     }
+    let w = spr_w()
+    let h = spr_h()
     let x0 = fx - w / 2
-    let y1 = fy + 1
+    let y1 = fy + 1 - gest_lift(i)
     let y0 = y1 - h
     // light: outdoors with the sky, indoors with the lamps; the floors below are ghosted
     var l = light_int
@@ -221,7 +251,7 @@ fn draw_sprite(p: *Person, i: s32, fx: s32, fy: s32, bucket: s32, lower: bool) {
         sprite_quad(fx - sw / 2, fy - sh / 2, fx - sw / 2 + sw, fy - sh / 2 + sh, ART_PROP_SHADOW_U + 2, ART_PROP_SHADOW_V + 6, 12, 4,
             ART_PROP_SLOT, ART_PAL_PROPS, 0x2C2C2C, bucket + 2, lower, 2)
     }
-    sprite_quad(x0, y0, x0 + w, y1, u, v, w, h, ART_PERSON_SLOT[k] as s32, ART_PERSON_PAL[k] as s32, col, bucket, lower, mode)
+    sprite_quad(x0, y0, x0 + w, y1, u, v, tw, th, ART_PERSON_SLOT[k] as s32, ART_PERSON_PAL[k] as s32, col, bucket, lower, mode)
     if p.carry != 0 && pose != POSE_SIT && view_zoom > 0 {
         // carried things at half size (every other texel of the 16x16 prop: still crisp)
         var pu = ART_PROP_LINEN_U
@@ -231,11 +261,13 @@ fn draw_sprite(p: *Person, i: s32, fx: s32, fy: s32, bucket: s32, lower: bool) {
         if c == IT_TOOLS { pu = ART_PROP_TOOLBOX_U; pv = ART_PROP_TOOLBOX_V }
         if c == IT_BAGS { pu = ART_PROP_LUGGAGE_U; pv = ART_PROP_LUGGAGE_V }
         let py = fy - h / 2
-        var px = fx - 4
-        if d == ART_DIR_FRONT_RIGHT || d == ART_DIR_BACK_RIGHT { px = fx + 3 - 4 } else { px = fx - 3 - 4 }
+        var ps = 8
+        if view_zoom == 2 { ps = 11 }
+        var px = fx - ps / 2
+        if d == ART_DIR_FRONT_RIGHT || d == ART_DIR_BACK_RIGHT { px = fx + ps * 3 / 8 - ps / 2 } else { px = fx - ps * 3 / 8 - ps / 2 }
         var pb = bucket - 1
         if d >= ART_DIR_BACK_LEFT { pb = bucket + 1 }
-        sprite_quad(px, py - 4, px + 8, py + 4, pu, pv, 16, 16, ART_PROP_SLOT, ART_PAL_PROPS, col, pb, lower, mode)
+        sprite_quad(px, py - ps / 2, px + ps, py - ps / 2 + ps, pu, pv, 16, 16, ART_PROP_SLOT, ART_PAL_PROPS, col, pb, lower, mode)
     }
     people_drawn += 1
 }
@@ -245,23 +277,27 @@ fn draw_sleeper(p: *Person, i: s32, k: s32, d: s32, bucket: s32, lower: bool) {
     let v = &people_vis[i]
     if !project(vec3(p.x + v.ox, fixed(p.f as s32) * STOREY + 0.56, p.z + v.oz)) { return }
     let child = k >= ART_GUEST_CHILD && k < ART_GUEST_CHILD + ART_GUEST_CHILD_N
-    var w = ART_PERSON_W
+    var tw = ART_PERSON_W
     var r0 = 0
     var rh = 10
     if child { r0 = 6 }
     var u = ART_PERSON_U[k] as s32 + ART_FR_STAND * ART_PERSON_W
     var vv = ART_PERSON_V[k] as s32 + d * ART_PERSON_H
     if view_zoom == 0 {
-        w = ART_MINI_W
+        tw = ART_MINI_W
         r0 = r0 * 2 / 3
         rh = 7
         u = ART_PERSON_MU[k] as s32 + ART_FR_STAND * ART_MINI_W
         vv = ART_PERSON_MV[k] as s32 + d * ART_MINI_H
     }
+    // on screen: as the frames (4/3 at zoom 2)
+    var w = tw
+    var sh = rh
+    if view_zoom == 2 { w = PZ2_W; sh = rh * 4 / 3 }
     var col = lit(TINT, light_int)
     if lower { col = ghost_col(col) }
     let x0 = proj_x - w / 2
-    sprite_quad(x0, proj_y - rh, x0 + w, proj_y, u, vv + r0, w, rh, ART_PERSON_SLOT[k] as s32, ART_PERSON_PAL[k] as s32,
+    sprite_quad(x0, proj_y - sh, x0 + w, proj_y, u, vv + r0, tw, rh, ART_PERSON_SLOT[k] as s32, ART_PERSON_PAL[k] as s32,
         col, bucket - 2, lower, -1)
     people_drawn += 1
 }

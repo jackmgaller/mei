@@ -316,4 +316,11 @@ asm fn __sub_emit(a: s32, b: s32, c: s32, d: s32) {
     add  r7, r7, r6
     lw   r8, [r7]
     sh   r8, [r5+34]
+    lw   r6, [r0+{__sub_face}]
+    lbu  r7, [r6]
+    andi r7, r7, 32             ; FACE_KEYED: the pieces keep the face's bucket (col[3])
+    beq  r7, r0, .nk
+    lw   r8, [r6+24]
+    sw   r8, [r5+24]
+.nk:
 }

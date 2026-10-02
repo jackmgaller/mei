@@ -6,7 +6,7 @@
 var rooms_dirty = true
 var rcount: [200][74]u8          // objects of each type per room
 
-const PRIO: [13]u8 = [5, 4, 6, 8, 12, 7, 9, 10, 11, 14, 15, 16, 13]   // suite, guest, lobby, kitchen, bar (before restaurant: counters win), ...
+const PRIO: [14]u8 = [5, 4, 17, 6, 8, 12, 7, 9, 10, 11, 14, 15, 16, 13]   // suite, guest, bathroom, lobby, kitchen, bar (before restaurant: counters win), ...
 
 // How many of a type's requirements room r meets.
 fn reqs_met(r: s32, rt: s32) -> s32 {
@@ -59,7 +59,7 @@ fn detect_room(r: s32) {
     var best = -1
     var best_score = 0
     var best_met = 0
-    for p in 0..13 {
+    for p in 0..14 {
         let rt = PRIO[p] as s32
         let n = RT_NREQ[rt] as s32
         let met = reqs_met(r, rt)
@@ -102,7 +102,263 @@ fn room_quality(r: s32) {
     let free = (rm.ntiles - rm.nvoid) as s32 - used
     if free < 3 { q -= 10 }
     if free > 8 { q += 5 }
+    // a bedroom's bathroom: its en-suite's extras (a tub, a jacuzzi...) count, sharing one down the
+    // hall costs
+    if RT_BATH_NEED[rt] != 0 {
+        let b = r_ens[r] as s32
+        if b > 0 && r_bath[r] as s32 >= BATH_ENSUITE {
+            for k in 0..RT_NBONUS[RT_BATHROOM] as s32 {
+                let t = RT_BONUS[RT_BATHROOM * 12 + k] as s32
+                if rcount[b][t] > 0 { q += 2 + OBJ_APPEAL[t] as s32 * 2 }
+            }
+        }
+        if r_bath[r] as s32 == BATH_SHARED { q -= ECO_SHARED_QUALITY }
+    }
     rm.quality = clamp(q, 0, 100) as s16
+}
+
+// ---- bathrooms (CONTRACT.md, "Feature round, C")
+//
+// A bathroom is a room of its own. One whose doors all open into a single bedroom (a guest room or
+// a suite) is that bedroom's en-suite: private, its guests' alone. Any other bathroom with a door
+// is shared: public, for the guests of bedrooms without an en-suite on the same floor, who walk
+// there through corridors and public rooms. A bedroom with neither isn't bookable (it stays
+// unfinished, room_why = WHY_NO_BATH); a suite needs an en-suite with a bathtub or a jacuzzi, or it
+// is only a guest room. Everything here is derived from the grid, per floor, in rooms_update.
+
+const BATH_NONE = 0
+const BATH_SHARED = 1
+const BATH_ENSUITE = 2
+const BATH_ENSUITE_TUB = 3
+
+const WHY_NO_BATH = 1            // a bedroom with no en-suite and no shared bathroom on its floor
+const WHY_SUITE_TUB = 2          // a suite's furniture, but no en-suite with a tub: a guest room
+const WHY_FIXTURES = 3           // bathroom fixtures standing in a bedroom (they don't count)
+const WHY_NO_DOOR = 4            // a bathroom without a door
+const WHY_LEGACY = 5             // an old save's in-room fixtures, accepted as an en-suite
+
+var r_ens: [200]u8               // a bedroom's en-suite bathroom (0: none; maybe unfinished)
+var r_host: [200]u8              // an en-suite bathroom's bedroom (0: shared, or no door)
+var r_bath: [200]u8              // a bedroom's BATH_*
+var r_why: [200]u8               // WHY_* (0: nothing to say)
+var r_grp: [200]u8               // privacy group: the room itself, or an en-suite's bedroom
+var legacy_baths: bool           // a hotel from an old save (version 3): see save.akr
+
+fn room_ensuite(r: s32) -> s32 { if r <= 0 || r >= MAXROOM { return 0 } return r_ens[r] as s32 }
+fn bath_host(b: s32) -> s32 { if b <= 0 || b >= MAXROOM { return 0 } return r_host[b] as s32 }
+fn room_bath(r: s32) -> s32 { if r <= 0 || r >= MAXROOM { return 0 } return r_bath[r] as s32 }
+fn room_why(r: s32) -> s32 { if r <= 0 || r >= MAXROOM { return 0 } return r_why[r] as s32 }
+
+// The price of a night in bedroom r (CONTRACT.md).
+fn room_price(r: s32) -> s32 {
+    if r > 0 && rooms[r].rtype as s32 == RT_SUITE { return price_suite }
+    if r > 0 && r_bath[r] as s32 == BATH_SHARED { return (price_room * ECO_SHARED_PRICE + 50) / 100 }
+    return price_room
+}
+
+fn is_bedroom(r: s32) -> bool {
+    if r <= 0 { return false }
+    let rm = &rooms[r]
+    var t = rm.rtype as s32
+    if t == RT_NONE { t = rm.best as s32 }
+    return t == RT_GUEST || t == RT_SUITE
+}
+
+fn is_bathroom(r: s32) -> bool {
+    if r <= 0 { return false }
+    let rm = &rooms[r]
+    return rm.rtype as s32 == RT_BATHROOM || (rm.rtype as s32 == RT_NONE && rm.best as s32 == RT_BATHROOM)
+}
+
+fn bath_valid(b: s32) -> bool { return b > 0 && rooms[b].rtype as s32 == RT_BATHROOM }
+
+fn has_tub(r: s32) -> bool { return rcount[r][OB_BATHTUB] > 0 || rcount[r][OB_JACUZZI] > 0 }
+
+fn fixtures_in(r: s32) -> s32 {
+    return rcount[r][OB_TOILET] as s32 + rcount[r][OB_SINK] as s32 + rcount[r][OB_SHOWER] as s32 + rcount[r][OB_BATHTUB] as s32
+}
+
+// Wall class: 0 outdoors (room 0, decks), 1 a room, 2 a corridor (as path.akr's rclass).
+fn bath_cls(r: s32) -> s32 {
+    if r == 0 { return 0 }
+    let k = rooms[r].kind as s32
+    if k == KIND_ROOM { return 1 }
+    if k == KIND_CORR || k == KIND_SERVICE { return 2 }
+    return 0
+}
+
+// Public for guests: not a bedroom, an en-suite, a staff-only or service room.
+fn bath_public(r: s32) -> bool {
+    if r == 0 { return true }
+    let rm = &rooms[r]
+    if rm.kind as s32 == KIND_SERVICE || is_bedroom(r) || r_host[r] != 0 { return false }
+    let t = rm.rtype as s32
+    return !(t == RT_KITCHEN || t == RT_LAUNDRY || t == RT_STORAGE || t == RT_STAFF)
+}
+
+// The open edges between different rooms of a floor (a door, or no wall), each pair once.
+const BPAIRS = 320
+var bp_a: [320]u8
+var bp_b: [320]u8
+var bp_n: s32
+var bp_seen: [40000]u8           // [a * 200 + b]: the stamp of the floor scan that saw it
+var bp_stamp: s32
+var b_n1: [200]s16               // a bathroom's first neighbour (-1: none)
+var b_multi: [200]u8             // ... it has more than one
+var uf_up: [200]u8               // union-find over the floor's public rooms
+var uf_shared: [200]u8           // the component has a shared bathroom
+
+fn bp_add(a: s32, b: s32) {
+    var x = a
+    var y = b
+    if x > y { x = b; y = a }
+    let k = x * 200 + y
+    if bp_seen[k] as s32 == bp_stamp || bp_n >= BPAIRS { return }
+    bp_seen[k] = bp_stamp as u8
+    bp_a[bp_n] = x as u8
+    bp_b[bp_n] = y as u8
+    bp_n += 1
+}
+
+fn bp_open(ra: s32, rb: s32, feat: s32) -> bool {
+    let ca = bath_cls(ra)
+    let cb = bath_cls(rb)
+    if ca == 0 && cb == 0 { return true }
+    if ca == 2 && cb == 2 { return true }
+    return feat == EF_DOOR
+}
+
+fn uf_find(r: s32) -> s32 {
+    var x = r
+    while uf_up[x] as s32 != x { x = uf_up[x] as s32 }
+    return x
+}
+
+fn bath_floor(f: s32) {
+    // reset the floor's rooms
+    for r in 1..nrooms {
+        if rooms[r].used == 0 || rooms[r].floor as s32 != f { continue }
+        r_ens[r] = 0
+        r_host[r] = 0
+        r_bath[r] = 0
+        r_why[r] = 0
+        r_grp[r] = r as u8
+        b_n1[r] = -1
+        b_multi[r] = 0
+        uf_up[r] = r as u8
+        uf_shared[r] = 0
+    }
+    uf_up[0] = 0
+    uf_shared[0] = 0
+    // the open edges between rooms
+    bp_stamp += 1
+    if bp_stamp > 255 {
+        bp_stamp = 1
+        fill16(&bp_seen[0], 0, 40000)
+    }
+    bp_n = 0
+    let b = f * NT
+    let tr = &troom[b]
+    let ew = &edge_w[b]
+    let en = &edge_n[b]
+    for t in 0..NT {
+        let ra = tr[t] as s32
+        if (t & 31) != 31 {
+            let rb = tr[t + 1] as s32
+            if ra != rb && (f == 0 || (ra != 0 && rb != 0)) && bp_open(ra, rb, ew[t + 1] as s32) { bp_add(ra, rb) }
+        }
+        if t + GW < NT {
+            let rb = tr[t + GW] as s32
+            if ra != rb && (f == 0 || (ra != 0 && rb != 0)) && bp_open(ra, rb, en[t + GW] as s32) { bp_add(ra, rb) }
+        }
+    }
+    // each bathroom's neighbours: one bedroom only makes it that bedroom's en-suite
+    for k in 0..bp_n {
+        let a = bp_a[k] as s32
+        let c = bp_b[k] as s32
+        if is_bathroom(a) { bath_nb(a, c) }
+        if is_bathroom(c) { bath_nb(c, a) }
+    }
+    for r in 1..nrooms {
+        if rooms[r].used == 0 || rooms[r].floor as s32 != f || !is_bathroom(r) { continue }
+        let n1 = b_n1[r] as s32
+        if n1 < 0 { r_why[r] = WHY_NO_DOOR as u8; continue }
+        if b_multi[r] == 0 && is_bedroom(n1) {
+            r_host[r] = n1 as u8
+            r_grp[r] = n1 as u8
+            // the bedroom's en-suite: a finished one first, with a tub first
+            let e = r_ens[n1] as s32
+            if e == 0 || (!bath_valid(e) && bath_valid(r)) || (bath_valid(r) && has_tub(r) && !has_tub(e)) { r_ens[n1] = r as u8 }
+        }
+    }
+    // public rooms joined up; components with a (finished) shared bathroom
+    for k in 0..bp_n {
+        let a = bp_a[k] as s32
+        let c = bp_b[k] as s32
+        if bath_public(a) && bath_public(c) {
+            let x = uf_find(a)
+            let y = uf_find(c)
+            if x != y { uf_up[x] = y as u8 }
+        }
+    }
+    for r in 1..nrooms {
+        if rooms[r].used == 0 || rooms[r].floor as s32 != f || r_host[r] != 0 || !bath_valid(r) || b_n1[r] < 0 { continue }
+        uf_shared[uf_find(r)] = 1
+    }
+    // bedrooms beside a public room whose component has one
+    for k in 0..bp_n {
+        let a = bp_a[k] as s32
+        let c = bp_b[k] as s32
+        if is_bedroom(a) && bath_public(c) && uf_shared[uf_find(c)] != 0 { r_bath[a] = BATH_SHARED as u8 }
+        if is_bedroom(c) && bath_public(a) && uf_shared[uf_find(a)] != 0 { r_bath[c] = BATH_SHARED as u8 }
+    }
+    // each bedroom's verdict
+    for r in 1..nrooms {
+        if rooms[r].used == 0 || rooms[r].floor as s32 != f || !is_bedroom(r) { continue }
+        bath_verdict(r)
+    }
+}
+
+fn bath_nb(b: s32, other: s32) {
+    if b_n1[b] < 0 { b_n1[b] = other as s16 } else if b_n1[b] as s32 != other { b_multi[b] = 1 }
+}
+
+fn bath_verdict(r: s32) {
+    let rm = &rooms[r]
+    let e = r_ens[r] as s32
+    let ens = bath_valid(e)
+    let shared = r_bath[r] as s32 == BATH_SHARED
+    // an old save's bedroom with its fixtures inside
+    let legacy = legacy_baths && !ens && rcount[r][OB_TOILET] > 0 && rcount[r][OB_SINK] > 0 &&
+                 (rcount[r][OB_SHOWER] > 0 || has_tub(r))
+    if ens {
+        if has_tub(e) { r_bath[r] = BATH_ENSUITE_TUB as u8 } else { r_bath[r] = BATH_ENSUITE as u8 }
+    } else if legacy {
+        if has_tub(r) { r_bath[r] = BATH_ENSUITE_TUB as u8 } else { r_bath[r] = BATH_ENSUITE as u8 }
+        r_why[r] = WHY_LEGACY as u8
+    } else if !shared {
+        r_bath[r] = BATH_NONE as u8
+    }
+    let t = rm.rtype as s32
+    // a suite without its tub is a guest room
+    if t == RT_SUITE && r_bath[r] as s32 != BATH_ENSUITE_TUB {
+        rm.rtype = RT_GUEST as u8
+        rm.best = RT_GUEST as u8
+        r_why[r] = WHY_SUITE_TUB as u8
+    }
+    if r_bath[r] as s32 == BATH_NONE {
+        if fixtures_in(r) > 0 { r_why[r] = WHY_FIXTURES as u8 } else { r_why[r] = WHY_NO_BATH as u8 }
+        // not bookable: unfinished, one thing missing
+        if rm.rtype as s32 != RT_NONE {
+            rm.best = rm.rtype
+            rm.rtype = RT_NONE as u8
+            rm.flags = rm.flags & ~RF_VALID
+            rm.missing = 0
+        }
+        rm.missing = rm.missing + 1
+    } else if fixtures_in(r) > 0 && r_why[r] == 0 {
+        r_why[r] = WHY_FIXTURES as u8
+    }
 }
 
 fn count_windows(r: s32) {
@@ -303,6 +559,8 @@ fn rooms_update() {
         if rm.used == 0 || mask & (1 << rm.floor as s32) == 0 { continue }
         detect_room(r)
     }
+    if all { for r in 0..MAXROOM { r_grp[r] = r as u8 } }
+    for f in 0..NFL { if mask & (1 << f) != 0 { bath_floor(f) } }
     room_classes()
     elevs_rebuild()
     reception_queues_reset()
@@ -310,7 +568,11 @@ fn rooms_update() {
     fill16(&spot_mask[0], 0, MAXOBJ)
     for i in 0..npeople {
         let p = &people[i]
-        if p.used == 0 || p.obj < 0 || p.spot < 0 { continue }
+        if p.used == 0 { continue }
+        if p.seat >= 0 && p.sspot >= 0 && objs[p.seat as s32].used != 0 {
+            spot_mask[p.seat as s32] = spot_mask[p.seat as s32] | ((1 << (p.sspot as s32 & 7)) as u8)
+        }
+        if p.obj < 0 || p.spot < 0 { continue }
         let oi = p.obj as s32
         if objs[oi].used == 0 { continue }
         spot_mask[oi] = spot_mask[oi] | ((1 << (p.spot as s32 & 7)) as u8)

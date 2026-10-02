@@ -181,10 +181,20 @@ fn transport_check(t: s32, f: s32, x: s32, z: s32, rot: s32) -> s32 {
     return PE_OK
 }
 
+// No free slot lies below ob_free (a hint: obj_remove lowers it, a fresh world's nobjs of 0 caps it),
+// so adding objects does not scan the whole pool each time (B's paste adds dozens at once).
+var ob_free: s32
+
 fn obj_add(t: s32, f: s32, x: s32, z: s32, rot: s32) -> s32 {
     var i = -1
-    for k in 0..nobjs {
+    for k in min(ob_free, nobjs)..nobjs {
         if objs[k].used == 0 { i = k; break }
+    }
+    if i < 0 && nobjs >= MAXOBJ {
+        // (the hint may be stale after a load: look once from the start)
+        for k in 0..nobjs {
+            if objs[k].used == 0 { i = k; break }
+        }
     }
     if i < 0 {
         if nobjs >= MAXOBJ { return -1 }
@@ -194,6 +204,7 @@ fn obj_add(t: s32, f: s32, x: s32, z: s32, rot: s32) -> s32 {
     let o = &objs[i]
     memset(o as *u8, 0, sizeof(Obj))
     o.used = 1
+    ob_free = i + 1
     o.t = t as u8
     o.f = f as u8
     o.x = x as u8
@@ -271,6 +282,7 @@ fn obj_remove(i: s32) {
     obj_mark(i, -1)
     if o.t as s32 == OB_STAIRS || o.t as s32 == OB_GRAND_STAIRCASE { stairs_hole(i, false) }
     o.used = 0
+    ob_free = min(ob_free, i)
     while nobjs > 0 && objs[nobjs - 1].used == 0 { nobjs -= 1 }
 }
 
@@ -326,6 +338,39 @@ fn bake_mesh(m: *Mesh, c: vec3, rot: s32) {
     var sw = (base + m.faces) as *u32
     var d = (&bm.f[bm_nf]) as *u32
     let gh = mb_ghost
+    let key = mb_key
+    if key >= 0 {
+        // one sort key for all (render.akr mb_key): made last to first, so they draw in the
+        // mesh's order (Gouraud faces have no room for a key and sort by their depth)
+        sw = sw + (nf - 1) * 9
+        for k in 0..nf {
+            var fl = sw[0]
+            var c3 = sw[6]
+            if fl & 1 == 0 {
+                fl = fl | FACE_KEYED
+                c3 = key as u32
+            }
+            d[0] = fl
+            d[1] = sw[1] + add
+            d[2] = sw[2] + add
+            if gh {
+                d[3] = ghost_col(sw[3])
+                d[4] = ghost_col(sw[4])
+                d[5] = ghost_col(sw[5])
+            } else {
+                d[3] = sw[3]
+                d[4] = sw[4]
+                d[5] = sw[5]
+            }
+            d[6] = c3
+            d[7] = sw[7]
+            d[8] = sw[8]
+            d = d + 9
+            sw = sw - 9
+        }
+        bm_nf += nf
+        return
+    }
     for k in 0..nf {
         d[0] = sw[0]
         d[1] = sw[1] + add
@@ -379,21 +424,24 @@ fn bake_object(i: s32, g: s32) {
     if m != null {
         bake_mesh(m, c, o.rot as s32)
     } else {
-        var col = OBJ_COL[t]
-        if o.state & OS_BROKEN != 0 { col = shade(col, 140) }
-        bake_box(t, c, o.rot as s32, lit_int(col))
+        // (a broken object is marked every frame, lighting.akr draw_broken)
+        bake_box(t, c, o.rot as s32, lit_int(OBJ_COL[t]))
     }
 }
 
 fn obj_exposed(i: s32, g: s32) -> bool {
     let o = &objs[i]
-    let gw = obj_gw(o.t as s32, o.rot as s32)
-    let gd = obj_gd(o.t as s32, o.rot as s32)
+    let t = o.t as s32
+    let gw = obj_gw(t, o.rot as s32)
+    let gd = obj_gd(t, o.rot as s32)
+    // (the top of a tall object shows over a slab's front edge before its foot does)
+    obj_bounds(t)
+    let tall = ob_ytop[t] >= 1.5
     for dz in 0..gd {
-        var l = (o.z as s32 + dz) * GW + o.x as s32
         for dx in 0..gw {
-            if top_solid[l] as s32 <= g { return true }
-            l += 1
+            if tall {
+                if exposed_tall(g, o.x as s32 + dx, o.z as s32 + dz) { return true }
+            } else if exposed(g, o.x as s32 + dx, o.z as s32 + dz) { return true }
         }
     }
     return false
@@ -421,17 +469,58 @@ fn build_object(i: s32, g: s32) {
     if !obj_exposed(i, g) { return }
     // zoomed in, only what is near the screen (the cache is rebuilt after a long pan), and the
     // full meshes only near the middle of it: the edges take the low-detail ones (A15)
+    // only what lies within the cache's margin (render.akr CULL_O), judged by a sphere around
+    // the full mesh (the low-detail one fits inside it)
     obj_far = false
-    if view_zoom == 2 {
-        var c = obj_centre(i)
-        c.y = fixed(g) * STOREY
-        if !project(c) { return }
-        if proj_x < -CULL_M || proj_x > 320 + CULL_M || proj_y < -CULL_M || proj_y > 240 + CULL_M + 40 { return }
-        obj_far = abs(proj_x - 160) > FULL_R_X || abs(proj_y - 120) > FULL_R_Y
+    let gc = vec3(obj_centre(i).x, fixed(g) * STOREY, obj_centre(i).z)   // the footprint's middle, on the floor
+    let t = o.t as s32
+    obj_bounds(t)
+    let c = vec3(gc.x, gc.y + ob_ymid[t], gc.z)
+    if mb_cull {
+        if sphere_outside(c, ob_rad[t], CULL_O[view_zoom]) { return }
+        // zoomed in, what lies well off the screen takes the low-detail mesh (A15): further out
+        // than the view pans before a rebuild (DRIFT), so the view never comes to rest on one
+        obj_far = view_zoom == 2 && sphere_outside(c, ob_rad[t], DRIFT[2] + 8)
     }
+    // sorted as a unit, by where it stands (render.akr mb_flush_object)
+    mb_flush()
     bake_object(i, g)
+    mb_flush_object(gc, ob_rad[t])
 }
 
-var obj_far: bool                // the object is zoomed in but far from the middle of the screen
-const FULL_R_X = 190
-const FULL_R_Y = 150
+var obj_far: bool                // the object is zoomed in but well off the screen
+
+// Per object type: a sphere around its full mesh (centre ob_ymid above the origin), measured
+// the first time it is needed.
+var ob_bnd: [80]bool
+var ob_rad: [80]fixed
+var ob_ymid: [80]fixed
+var ob_ytop: [80]fixed           // (the top of the mesh)
+
+fn obj_bounds(t: s32) {
+    if ob_bnd[t] { return }
+    ob_bnd[t] = true
+    var m = obj_mesh(t, false)
+    if m == null {
+        // the placeholder box
+        let w = fixed(max(OBJ_W[t] as s32, OBJ_D[t] as s32))
+        let h = fixed(OBJ_HT[t] as s32) / 16
+        ob_ymid[t] = h / 2
+        ob_ytop[t] = h
+        ob_rad[t] = w * 0.71 + h / 2
+        return
+    }
+    let vs = ((m as u32) + m.verts) as *vec4
+    var r: fixed = 0.0
+    var y0: fixed = 0.0
+    var y1: fixed = 0.0
+    for k in 0..m.nverts as s32 {
+        let p = vs[k]
+        r = max(r, abs(p.x) + abs(p.z))
+        y0 = min(y0, p.y)
+        y1 = max(y1, p.y)
+    }
+    ob_ymid[t] = (y0 + y1) / 2
+    ob_ytop[t] = y1
+    ob_rad[t] = r + (y1 - y0) / 2
+}

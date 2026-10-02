@@ -715,6 +715,9 @@ yaw 0; positive yaw turns right (toward +X), positive pitch looks up.
 | `mesh_xf(m: *Mesh, model: mat4)` | draw a mesh with a model matrix |
 | `fog(colour, near, far)`, `fog_off()` | blend vertex colours toward `colour` between view depths `near` and `far` |
 | `depth_bias(buckets)` | shift the ordering-table bucket of following `mesh*()` polygons (negative: drawn later, in front); reset each frame |
+| `depth_key(w, squash)`, `depth_key_off()` | sort the faces of following `mesh*()` calls around view depth `w`: their own order kept, `squash` times closer to `w` (a sort key per mesh; see below); reset each frame |
+| `depth_bucket_of(w) -> s32` | the ordering-table bucket of view depth `w` (for `FACE_KEYED` faces) |
+| `cull_rect(x0, y0, x1, y1)` | the screen rectangle outside which faces that must be clipped are dropped (default the screen; see the guard band below) |
 | `subdivide(levels)` | split big textured faces near the camera, up to `levels` times (0 = off, the default; at most 3); see below |
 | `subdivide_tuning(percent, distance)` | how much deeper the far end of an edge may be than its near end before `subdivide()` splits it (default 25 %; smaller is straighter and costs more), and the view depth beyond which nothing is split (default 8.0) |
 | `text(x, y, s: *u8, colour)` | 8×8 font, ASCII 32–126; `\n` starts a new line |
@@ -750,6 +753,25 @@ in clip space before culling it, with texture coordinates and colours interpolat
 3D edges (`stdlib/clip.akr`). The visible part is drawn where it belongs; faces sharing a
 clipped edge clip it identically, so no cracks open. Faces wholly off one side of the screen
 are dropped. Only geometry is corrected: the pieces are still mapped affinely.
+
+A cart that keeps the packets of a `mesh()` pass and shifts them on screen later (a panned view
+drawn from a cache) calls `cull_rect()` with the screen widened by the most it will shift them
+while it builds that pass: a face to be clipped is dropped only when it lies wholly beyond that
+rectangle, so the part that is panned into view later is there. Faces that need no clipping are
+never dropped for lying off the screen.
+
+**Sort keys.** Each face is sorted by its own average view depth, which is right for a scene of
+small faces around a moving camera. When the painter's order is known instead, such as a grid
+seen from a fixed angle where things should be drawn by where they stand on the floor (height
+reads as nearness from above, so a tall wall's middle sorts in front of what stands against it),
+two keys are available. `depth_key(w, squash)` sorts a whole `mesh*()` call around view depth `w`
+(for example the middle of an object's footprint on the floor): its faces keep their order among
+themselves, `squash` times closer to `w`, so an object no longer interleaves with its neighbours.
+A face with the `FACE_KEYED` flag (32) goes into the bucket its `col[3]` holds
+(`depth_bucket_of(w)`, plus `depth_bias`), whatever its depth: a key per face, for example the
+middle of a wall's base. Keyed faces must not be Gouraud (`col[3]` is not a colour then); faces
+in one bucket draw in the reverse of the order they were made (the last one made first), and
+the pieces clipping or `subdivide()` makes of a keyed face keep its key.
 
 **Subdivision.** Textures are mapped affinely, so a big polygon that spans a wide range of
 depth warps, and it swims as the camera moves (the PlayStation's look; whole-pixel vertex
@@ -948,7 +970,8 @@ header (16 bytes)
   +12  u32  reserved (0)
 vertex (16 bytes): x, y, z, w as 16.16 fixed point, with w = 1.0
 face (36 bytes)
-  +0   u8   flags: bit 0 Gouraud, bit 1 textured, bit 2 quad, bit 3 semi-transparent, bit 4 double-sided
+  +0   u8   flags: bit 0 Gouraud, bit 1 textured, bit 2 quad, bit 3 semi-transparent, bit 4 double-sided,
+            bit 5 keyed (sorted into the bucket held in col[3]; see Sort keys)
   +1   u8   blend mode 0-3 (used when semi-transparent)
   +2   u8   texture: bits 0-3 slot, bit 4 set for a 4-bit texture
   +3   u8   palette (0-255 for 4-bit textures, 0-15 for 8-bit)
@@ -974,6 +997,7 @@ Measured with the `CYCLES` register (500,000 cycles per frame):
 | vertex transform in `mesh()` | 26 per vertex (40 with fog), including the guard-band mark |
 | guard-band test, in a mesh with a vertex outside the band | about 9 more per face |
 | a face clipped to the guard band | about 3,000, including drawing its pieces |
+| the sort-key check per visible face | 2 (a `FACE_KEYED` face about 8 more, instead of `otz`) |
 | face in `mesh()`, wholly behind the near plane | about 40 (every corner is checked: one in front makes it a crossing face) |
 | face crossing the near plane | about 100 when its corners show it lies beyond one side of the view; about 1,000 when that only shows once it is clipped to the plane (or it faces away); about 4,000 when it is clipped and drawn, including its pieces |
 | face in `mesh()`, back-facing | about 48 |

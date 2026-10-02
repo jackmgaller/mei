@@ -2,8 +2,13 @@
 // the grid (run-length coded), rooms, objects, the staff roster, money, time, prices, rating and
 // reviews. Everything else (room types, paths, elevators, scores) is recomputed on load; guests
 // are not saved: the hotel reopens with its rooms clean and vacant.
+//
+// Version 4 (bathrooms became rooms of their own) adds one flags byte before the end marker.
+// Version 3 saves still load: their bedrooms kept toilets, sinks and showers inside, so such a
+// hotel is marked `legacy_baths`, under which those in-room fixtures count as an en-suite
+// (rooms.akr bath_verdict, WHY_LEGACY); the flag is saved with the hotel from then on.
 
-const SAVE_VERSION = 3
+const SAVE_VERSION = 4
 const SAVE_MAGIC = 0x4E494B43     // "CKIN"
 
 var sbuf: [32000]u8
@@ -120,6 +125,7 @@ fn save_pack() -> s32 {
         let p = &people[i]
         if p.used != 0 && p.kind as s32 == P_STAFF { put8(p.type as s32 | ((p.shift as s32) << 4)) }
     }
+    put8(legacy_baths as s32)
     put16(0xBEEF)
     return spos
 }
@@ -190,7 +196,8 @@ fn load_game() -> bool {
     if n < 16 { return false }
     spos = 0
     if get32() != SAVE_MAGIC { return false }
-    if get16() != SAVE_VERSION { return false }
+    let ver = get16()
+    if ver != SAVE_VERSION && ver != 3 { return false }
     new_hotel_state()
     day = get32()
     tod = get32()
@@ -253,6 +260,7 @@ fn load_game() -> bool {
         let v = get8()
         hire(v & 15, v >> 4)
     }
+    if ver == 3 { legacy_baths = true } else { legacy_baths = get8() != 0 }
     if get16() != 0xBEEF { return false }
     for f in 0..NFL { clean_edges(f) }
     elevators_respan()

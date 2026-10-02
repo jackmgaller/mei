@@ -1,0 +1,932 @@
+// Copy and paste: copy finished rooms (their floor finish, walls, doors, windows and furniture)
+// and stamp copies elsewhere, on this floor or another one.
+// Owner: workstream B (UI and controls). See CONTRACT.md.
+//
+// Copy tool: A on a room copies it, together with every room whose doors all open into it (its
+// en-suite bathroom, a walk-in store...); hold A and drag to copy every room the rectangle
+// touches. A room card (A on a room) copies with Y as a shortcut.
+// The clipboard keeps each tile's offset from the cursor tile at the moment of copying (the grab
+// tile), so a copy lands where the cursor is: copy a floor, go up one (R), press A, and the copy
+// sits straight above the original.
+// Paste tool: the ghost follows the cursor (green and red per tile, with the walls, doors,
+// windows and furniture it will build, and the total cost), Y turns it a quarter, A pastes it in
+// one action, charging money, under the same rules as building by hand: every tile must be free
+// buildable ground (on upper floors, standing on rooms of the floor below), and each piece of
+// furniture must pass its own placement check. It stays in paste mode until B.
+
+const CP_MAXT = 768
+const CP_MAXR = 48
+const CP_MAXO = 320
+const CP_MAXE = 384
+
+var cp_n: s32                    // tiles in the clipboard
+var cp_tx: [768]s8               // offset from the grab tile
+var cp_tz: [768]s8
+var cp_ts: [768]u8               // the clipboard room it belongs to
+var cp_tf: [768]u8               // its flags (pool water, void, glass void)
+var cp_nr: s32                   // rooms
+var cp_rkind: [48]u8
+var cp_rfk: [48]u8
+var cp_rint: [48]u8              // what it was built as (room_intent)
+var cp_rtype: [48]u8             // what it is (for the labels)
+var cp_no: s32                   // objects: type, turn, footprint origin offset
+var cp_ot: [320]u8
+var cp_orot: [320]u8
+var cp_ox: [320]s8
+var cp_oz: [320]s8
+var cp_ne: s32                   // doors and windows: tile offset, side (0 -x, 1 +x, 2 -z, 3 +z), kind
+var cp_ex: [384]s8
+var cp_ez: [384]s8
+var cp_ed: [384]u8
+var cp_ef: [384]u8
+var cp_rot: s32                  // quarter turns of the paste
+var cp_hide: s32                 // frames the ghost stays hidden after a paste
+var cp_quiet: bool               // the rooms a paste made are not celebrated one by one
+var cp_sel: [200]bool            // rooms chosen with the copy tool
+var cp_nsel: s32
+var cp_din: [200]u8              // (doors into the selection / elsewhere, per room)
+var cp_dout: [200]u8
+var world_ver: s32               // counts edits (the ghost re-checks itself after one)
+
+// ---- choosing rooms
+
+// The rooms touched by the rectangle (x0, z0)-(x1, z1) on floor f, and the rooms that hang off them.
+fn cp_select_rect(f: s32, x0: s32, z0: s32, x1: s32, z1: s32) {
+    memset(&cp_sel[0] as *u8, 0, 200)
+    for z in z0..z1 + 1 {
+        for x in x0..x1 + 1 {
+            let r = room_at(f, x, z)
+            if r != 0 { cp_sel[r] = true }
+        }
+    }
+    cp_add_inner(f)
+    cp_nsel = 0
+    for r in 1..nrooms { if cp_sel[r] { cp_nsel += 1 } }
+}
+
+// Adds every walled room whose doors all open into the selection (an en-suite: its only door
+// opens into the bedroom; corridors connect without doors, so they never join). One pass is
+// enough for bedrooms and their bathrooms.
+fn cp_add_inner(f: s32) {
+    memset(&cp_din[0], 0, 200)
+    memset(&cp_dout[0], 0, 200)
+    let b = f * NT
+    for t in 0..NT {
+        let x = t & 31
+        let z = t >> 5
+        if x > 0 && edge_w[b + t] as s32 == EF_DOOR { cp_door(troom[b + t] as s32, troom[b + t - 1] as s32) }
+        if z > 0 && edge_n[b + t] as s32 == EF_DOOR { cp_door(troom[b + t] as s32, troom[b + t - GW] as s32) }
+    }
+    for r in 1..nrooms {
+        let rm = &rooms[r]
+        if cp_sel[r] || rm.used == 0 || rm.floor as s32 != f || rm.kind as s32 != KIND_ROOM { continue }
+        if cp_din[r] > 0 && cp_dout[r] == 0 { cp_sel[r] = true }
+    }
+}
+
+fn cp_door(a: s32, b: s32) {
+    if a != 0 {
+        if b != 0 && cp_sel[b] { cp_din[a] = min(cp_din[a] as s32 + 1, 255) as u8 } else { cp_dout[a] = min(cp_dout[a] as s32 + 1, 255) as u8 }
+    }
+    if b != 0 {
+        if a != 0 && cp_sel[a] { cp_din[b] = min(cp_din[b] as s32 + 1, 255) as u8 } else { cp_dout[b] = min(cp_dout[b] as s32 + 1, 255) as u8 }
+    }
+}
+
+// ---- copying
+
+// Copies the selected rooms of floor f, grabbed at tile (gx, gz). False when there is nothing.
+fn cp_copy(f: s32, gx: s32, gz: s32) -> bool {
+    var slot: [200]u8
+    memset(&slot[0], 255, 200)
+    cp_n = 0
+    cp_nr = 0
+    cp_no = 0
+    cp_ne = 0
+    for r in 1..nrooms {
+        if !cp_sel[r] || rooms[r].used == 0 || cp_nr >= CP_MAXR { continue }
+        slot[r] = cp_nr as u8
+        cp_rkind[cp_nr] = rooms[r].kind
+        cp_rfk[cp_nr] = rooms[r].fk
+        cp_rint[cp_nr] = room_intent[r]
+        cp_rtype[cp_nr] = room_target(r) as u8
+        cp_nr += 1
+    }
+    let b = f * NT
+    for t in 0..NT {
+        let s = slot[troom[b + t] as s32]
+        if s == 255 || cp_n >= CP_MAXT { continue }
+        cp_tx[cp_n] = ((t & 31) - gx) as s8
+        cp_tz[cp_n] = ((t >> 5) - gz) as s8
+        cp_ts[cp_n] = s
+        cp_tf[cp_n] = tflag[b + t] & (TF_WATER | TF_VOID | TF_GLASS)
+        cp_n += 1
+    }
+    // doors and windows on the edges of the copied tiles (edge_w: the -x side, edge_n: the -z side)
+    for t in 0..NT {
+        let x = t & 31
+        let z = t >> 5
+        let mine = slot[troom[b + t] as s32] != 255
+        let w = edge_w[b + t] as s32
+        if w != 0 && (mine || (x > 0 && slot[troom[b + t - 1] as s32] != 255)) { cp_edge_add(x - gx, z - gz, 0, w) }
+        let n = edge_n[b + t] as s32
+        if n != 0 && (mine || (z > 0 && slot[troom[b + t - GW] as s32] != 255)) { cp_edge_add(x - gx, z - gz, 2, n) }
+    }
+    // the furniture (not the stairs and lifts, which belong to more than one floor)
+    for i in 0..nobjs {
+        let o = &objs[i]
+        if o.used == 0 || o.f as s32 != f || cp_no >= CP_MAXO { continue }
+        let t = o.t as s32
+        if OBJ_FLAGS[t] as s32 & (F_WALLPIECE | F_TRANSPORT) != 0 { continue }
+        if slot[troom[tix(f, o.x as s32, o.z as s32)] as s32] == 255 { continue }
+        cp_ot[cp_no] = o.t
+        cp_orot[cp_no] = o.rot
+        cp_ox[cp_no] = (o.x as s32 - gx) as s8
+        cp_oz[cp_no] = (o.z as s32 - gz) as s8
+        cp_no += 1
+    }
+    cp_rot = 0
+    world_ver += 1
+    return cp_n > 0
+}
+
+fn cp_edge_add(x: s32, z: s32, d: s32, feat: s32) {
+    if cp_ne >= CP_MAXE { return }
+    cp_ex[cp_ne] = x as s8
+    cp_ez[cp_ne] = z as s8
+    cp_ed[cp_ne] = d as u8
+    cp_ef[cp_ne] = feat as u8
+    cp_ne += 1
+}
+
+// "Guest room", "Guest room + Bathroom", "4 rooms"
+fn cp_label() -> *u8 {
+    let b = nb()
+    if cp_nr == 1 || cp_nr == 2 {
+        for s in 0..cp_nr {
+            if s > 0 { sappend(b, " + ") }
+            sappend(b, cp_type_name(cp_rtype[s] as s32))
+        }
+        if text_w(b, false) <= 150 { return b }
+        b[0] = 0
+    }
+    sint(b, cp_nr)
+    sappend(b, " rooms")
+    return b
+}
+
+fn cp_type_name(rt: s32) -> *u8 {
+    if rt == RT_NONE { return "Room" }
+    return room_type_name(rt)
+}
+
+// ---- turning: a quarter turn takes (x, z) to (z, -x), the way an object's front turns from +z to +x
+
+var cp_rx: s32
+var cp_rz: s32
+const CP_DTURN: [4]u8 = [3, 2, 0, 1]
+
+fn cp_turn(x: s32, z: s32, k: s32) {
+    var a = x
+    var c = z
+    for i in 0..(k & 3) {
+        let t = a
+        a = c
+        c = -t
+    }
+    cp_rx = a
+    cp_rz = c
+}
+
+fn cp_turn_dir(d: s32, k: s32) -> s32 {
+    var e = d
+    for i in 0..(k & 3) { e = CP_DTURN[e] as s32 }
+    return e
+}
+
+// The paste position of clipboard object i: its footprint's min corner (cp_px, cp_pz) and turn.
+var cp_px: s32
+var cp_pz: s32
+var cp_prot: s32
+fn cp_obj_at(i: s32, cx: s32, cz: s32, k: s32) {
+    let t = cp_ot[i] as s32
+    let r0 = cp_orot[i] as s32
+    let x0 = cp_ox[i] as s32
+    let z0 = cp_oz[i] as s32
+    cp_turn(x0, z0, k)
+    let ax = cp_rx
+    let az = cp_rz
+    cp_turn(x0 + obj_gw(t, r0) - 1, z0 + obj_gd(t, r0) - 1, k)
+    cp_px = cx + min(ax, cp_rx)
+    cp_pz = cz + min(az, cp_rz)
+    cp_prot = (r0 + k) & 3
+}
+
+// The edge of clipboard edge i at the paste: tile (cp_px, cp_pz), side cp_prot (as cp_ed).
+fn cp_edge_at(i: s32, cx: s32, cz: s32, k: s32) {
+    cp_turn(cp_ex[i] as s32, cp_ez[i] as s32, k)
+    cp_px = cx + cp_rx
+    cp_pz = cz + cp_rz
+    cp_prot = cp_turn_dir(cp_ed[i] as s32, k)
+}
+
+fn cp_dvec(d: s32) {
+    edge_dx = 0
+    edge_dz = 0
+    match d {
+        0 => edge_dx = -1
+        1 => edge_dx = 1
+        2 => edge_dz = -1
+        else => edge_dz = 1
+    }
+}
+
+// ---- the paste ghost: a grid around the lot with what the paste builds on each tile
+
+const PG_W = 64
+const PG_H = 56
+const PG_O = 16
+const PG_N = 3584
+
+var pg_id: [3584]u8              // clipboard room + 1 (0: nothing)
+var pg_bad: [3584]u8             // 1: this tile can't be built
+var pg_en: [3584]u8              // door or window on the tile's -z edge
+var pg_ew: [3584]u8              // ... on its -x edge
+var pg_x0: s32                   // the stamp's bounds (lot tiles; may stick out of the lot)
+var pg_z0: s32
+var pg_x1: s32
+var pg_z1: s32
+var pg_cost: s32
+var pg_nbad: s32
+var pg_ok: bool                  // every tile can be built (money aside)
+var pg_why: *u8
+var pg_key: s32 = -1
+var pg_ver: s32 = -1
+var pg_owner: s32               // 1: the copy tool's highlight, 2: the paste ghost
+
+fn pg_in(x: s32, z: s32) -> bool { return x >= -PG_O && x < PG_W - PG_O && z >= -PG_O && z < PG_H - PG_O }
+fn pg_ix(x: s32, z: s32) -> s32 { return (z + PG_O) * PG_W + x + PG_O }
+fn pg_at(x: s32, z: s32) -> s32 {
+    if !pg_in(x, z) { return 0 }
+    return pg_id[pg_ix(x, z)] as s32
+}
+
+// Clears what the last stamp wrote (its bounds plus the edges beyond), not the whole grid.
+fn pg_clear() {
+    if pg_x0 <= pg_x1 {
+        let x0 = max(pg_x0, -PG_O)
+        let x1 = min(pg_x1 + 1, PG_W - PG_O - 1)
+        let w = (x1 - x0 + 1) as u32
+        for z in max(pg_z0, -PG_O)..min(pg_z1 + 1, PG_H - PG_O - 1) + 1 {
+            let ix = pg_ix(x0, z)
+            memset(&pg_id[ix], 0, w)
+            memset(&pg_bad[ix], 0, w)
+            memset(&pg_en[ix], 0, w)
+            memset(&pg_ew[ix], 0, w)
+        }
+    }
+    pg_x0 = 99
+    pg_z0 = 99
+    pg_x1 = -99
+    pg_z1 = -99
+}
+
+fn pg_grow(x: s32, z: s32) {
+    pg_x0 = min(pg_x0, x)
+    pg_z0 = min(pg_z0, z)
+    pg_x1 = max(pg_x1, x)
+    pg_z1 = max(pg_z1, z)
+}
+
+fn pg_set_edge(x: s32, z: s32, d: s32, feat: s32) {
+    var ex = x
+    var ez = z
+    if d == 1 { ex += 1 }
+    if d == 3 { ez += 1 }
+    if !pg_in(ex, ez) { return }
+    if d <= 1 { pg_ew[pg_ix(ex, ez)] = feat as u8 } else { pg_en[pg_ix(ex, ez)] = feat as u8 }
+}
+
+// Free room slots (each pasted room takes one).
+fn rooms_free() -> s32 {
+    var n = MAXROOM - nrooms
+    for r in 1..nrooms { if rooms[r].used == 0 { n += 1 } }
+    return n
+}
+
+// Why tile (x, z) of floor f can't take a pasted tile of finish fk ("" when it can).
+fn cp_tile_why(f: s32, x: s32, z: s32, fk: s32) -> *u8 {
+    if !in_lot(x, z) { return "Can't build there" }
+    let t = tix(f, x, z)
+    if troom[t] != 0 { return "Other rooms are in the way" }
+    if tobj[t] >= 0 || tflag[t] & (TF_HOLE | TF_WATER | TF_VOID) != 0 { return pe_text(PE_BLOCKED) }
+    if paint_ok(f, x, z, fk) { return "" }
+    if z <= 1 && f == 0 { return "Can't build on the road" }
+    if z >= SEA_Z { return "Can't build in the sea" }
+    if FLOORK_KIND[fk] as s32 == KIND_DECK { return "Decks go outside on the ground floor" }
+    if f > 0 { return "Upper floors need a floor below" }
+    return "Can't build there"
+}
+
+// Checks the paste at the cursor tile with the current turn, and fills the ghost grid.
+fn pg_eval() {
+    let f = view_floor
+    let key = ((cur_tx & 63) | ((cur_tz & 63) << 6) | ((cp_rot & 3) << 12) | (f << 14))
+    if key == pg_key && world_ver == pg_ver && pg_owner == 2 { return }
+    pg_owner = 2
+    pg_key = key
+    pg_ver = world_ver
+    pg_clear()
+    var cost = 0
+    pg_ok = true
+    pg_nbad = 0
+    pg_why = ""
+    let k = cp_rot
+    for i in 0..cp_n {
+        cp_turn(cp_tx[i] as s32, cp_tz[i] as s32, k)
+        let x = cur_tx + cp_rx
+        let z = cur_tz + cp_rz
+        let s = cp_ts[i] as s32
+        let fk = cp_rfk[s] as s32
+        pg_grow(x, z)
+        let why = cp_tile_why(f, x, z, fk)
+        let bad = why[0] != 0
+        if bad { pg_nbad += 1 }
+        if bad && pg_ok {
+            pg_ok = false
+            pg_why = why
+        }
+        cost += tile_cost(fk)
+        let fl = cp_tf[i] as s32
+        if fl & TF_WATER != 0 { cost += tile_cost(FK_POOL_WATER) }
+        if fl & TF_VOID != 0 && f > 0 { cost += 50 }
+        if pg_in(x, z) {
+            let ix = pg_ix(x, z)
+            pg_id[ix] = (s + 1) as u8
+            if bad { pg_bad[ix] = 1 }
+        }
+    }
+    let dp = OBJ_PRICE[OB_DOOR] as s32
+    for i in 0..cp_ne {
+        cp_edge_at(i, cur_tx, cur_tz, k)
+        pg_set_edge(cp_px, cp_pz, cp_prot, cp_ef[i] as s32)
+        cost += dp
+    }
+    for i in 0..cp_no {
+        let t = cp_ot[i] as s32
+        if OBJ_UNLOCK[t] as s32 <= stars { cost += OBJ_PRICE[t] as s32 }
+    }
+    if pg_ok && cp_nr > rooms_free() {
+        pg_ok = false
+        pg_why = "Too many rooms"
+    }
+    pg_cost = cost
+    pg_make_runs(true)
+}
+
+// ---- pasting
+
+var cp_rid: [48]s32
+var cp_cycles: s32               // what the last paste's first frame cost (tests)
+
+// A paste in flight. A big one (a whole floor: a dozen rooms, 60+ pieces of furniture) would not
+// fit in one frame together with the rooms' update and the rebuild, so it goes in stages: the
+// tiles, doors and windows on the frame A is pressed; the furniture over the next frames (a batch
+// a frame, each piece through its own placement check); then the rooms' update on a frame of its
+// own, and the view's rebuild from the next one (world_changed() in two halves: together they
+// overran a frame on a whole floor); until the rebuilt view is ready the stamp shows as a
+// construction outline.
+var cpq_stage: s32               // 0 idle, 1 adding furniture, 2 the rooms' update, 3 the rebuild, 4 waiting for the view
+var cpq_wait_t: s32
+var cpq_n: s32
+var cpq_i: s32                   // the next one to add
+var cpq_f: s32                   // its floor
+var cpq_t0: s32                  // the frame the paste went down
+var cpq_refund: s32              // what the ones that didn't fit cost (given back)
+var cpq_skip: s32
+var cpq_t: [320]u8
+var cpq_x: [320]u8
+var cpq_z: [320]u8
+var cpq_r: [320]u8
+const CPQ_BUDGET = 90000         // cycles of furniture a frame
+
+fn paste_busy() -> bool { return cpq_stage != 0 }
+
+fn paste_commit() {
+    if cp_n == 0 || paste_busy() { return }
+    let c0 = cycles_now()
+    pg_eval()
+    if !pg_ok {
+        fx(FX_ERROR)
+        say(pg_why, RED)
+        return
+    }
+    if pg_cost > money {
+        fx(FX_ERROR)
+        say("Not enough money", RED)
+        return
+    }
+    let f = view_floor
+    let k = cp_rot
+    // the rooms
+    for s in 0..cp_nr {
+        let r = room_alloc()
+        if r == 0 {
+            for q in 0..s { rooms[cp_rid[q]].used = 0 }
+            fx(FX_ERROR)
+            say("Too many rooms", RED)
+            return
+        }
+        let rm = &rooms[r]
+        rm.used = 1
+        rm.kind = cp_rkind[s]
+        rm.fk = cp_rfk[s]
+        rm.floor = f as u8
+        rm.x0 = 99
+        rm.z0 = 99
+        room_intent[r] = cp_rint[s]
+        cp_rid[s] = r
+    }
+    // the tiles (each room's size and bounds are counted as they go down)
+    for i in 0..cp_n {
+        cp_turn(cp_tx[i] as s32, cp_tz[i] as s32, k)
+        let x = cur_tx + cp_rx
+        let z = cur_tz + cp_rz
+        let s = cp_ts[i] as s32
+        let rm = &rooms[cp_rid[s]]
+        let t = tix(f, x, z)
+        var fl = cp_tf[i] as s32
+        if f == 0 { fl = fl & ~(TF_VOID | TF_GLASS) }
+        troom[t] = cp_rid[s] as u8
+        tfloor[t] = (cp_rfk[s] + 1) as u8
+        tflag[t] = ((tflag[t] as s32 & ~(TF_WATER | TF_VOID | TF_GLASS)) | fl) as u8
+        if fl & TF_WATER != 0 { rm.nwater += 1 }
+        if fl & TF_VOID != 0 { rm.nvoid += 1 }
+        rm.ntiles += 1
+        rm.x0 = min(rm.x0 as s32, x) as u8
+        rm.z0 = min(rm.z0 as s32, z) as u8
+        rm.x1 = max(rm.x1 as s32, x) as u8
+        rm.z1 = max(rm.z1 as s32, z) as u8
+    }
+    // doors and windows, where the new walls stand (one not standing is given back)
+    var refund = 0
+    let dp = OBJ_PRICE[OB_DOOR] as s32
+    for i in 0..cp_ne {
+        cp_edge_at(i, cur_tx, cur_tz, k)
+        cp_dvec(cp_prot)
+        let x = cp_px
+        let z = cp_pz
+        let feat = cp_ef[i] as s32
+        if !in_lot(x, z) || !wall_between(f, x, z, edge_dx, edge_dz) || (feat == EF_WINDOW && indoor(f, x, z) && indoor(f, x + edge_dx, z + edge_dz)) {
+            refund += dp
+            continue
+        }
+        set_edge_feat(f, x, z, edge_dx, edge_dz, feat)
+    }
+    // the furniture waits for the next frames (the rooms' update takes this one)
+    cpq_n = 0
+    cpq_i = 0
+    cpq_f = f
+    cpq_t0 = tick_count
+    cpq_refund = 0
+    cpq_skip = 0
+    for i in 0..cp_no {
+        let t = cp_ot[i] as s32
+        if OBJ_UNLOCK[t] as s32 > stars { cpq_skip += 1; continue }
+        cp_obj_at(i, cur_tx, cur_tz, k)
+        cpq_t[cpq_n] = t as u8
+        cpq_x[cpq_n] = clamp(cp_px, 0, 255) as u8
+        cpq_z[cpq_n] = clamp(cp_pz, 0, 255) as u8
+        cpq_r[cpq_n] = cp_prot as u8
+        cpq_n += 1
+    }
+    money -= pg_cost - refund
+    cpq_stage = 1
+    cp_cycles = cycles_now() - c0
+    // the feedback: a flash over the stamp, dust, the cost; the ghost waits for the cursor to move
+    rx0 = max(pg_x0, 0)
+    rz0 = max(pg_z0, 0)
+    rx1 = min(pg_x1, GW - 1)
+    rz1 = min(pg_z1, GH - 1)
+    built_juice(pg_cost - refund)
+    fx(FX_BUILD)
+    cp_hide = 14
+    cu_moved = 0
+    cp_hide_rot = cp_rot
+    cp_hide_f = f
+}
+
+// Every frame in play: the stages of a paste in flight.
+fn paste_update() {
+    match cpq_stage {
+        1 => {
+            if tick_count == cpq_t0 { return }
+            let c0 = cycles_now()
+            while cpq_i < cpq_n && cycles_now() - c0 < CPQ_BUDGET {
+                let i = cpq_i
+                let t = cpq_t[i] as s32
+                cpq_i += 1
+                if place_check(t, cpq_f, cpq_x[i] as s32, cpq_z[i] as s32, cpq_r[i] as s32) != PE_OK || obj_add(t, cpq_f, cpq_x[i] as s32, cpq_z[i] as s32, cpq_r[i] as s32) < 0 {
+                    cpq_refund += OBJ_PRICE[t] as s32
+                    cpq_skip += 1
+                }
+            }
+            if cpq_i >= cpq_n { cpq_stage = 2 }
+        }
+        2 => {
+            // world_changed(), less the rebuild
+            world_ver += 1
+            edges_dirty = true
+            rooms_dirty = true
+            cp_quiet = true
+            cpq_stage = 3
+            cpq_wait_t = 0
+            if cpq_n > 0 { fx_pan(FX_PLACE, 160) }
+            if cpq_refund > 0 { money += cpq_refund }
+            if cpq_skip > 0 {
+                let b = nb()
+                sint(b, cpq_skip)
+                if cpq_skip == 1 { sappend(b, " piece of furniture didn't fit") } else { sappend(b, " pieces of furniture didn't fit") }
+                say(b, GOLD)
+            }
+        }
+        3 => {
+            cache_dirty = true
+            cpq_stage = 4
+        }
+        4 => {
+            cpq_wait_t += 1
+            if (view_ready() && !rooms_dirty) || cpq_wait_t > 90 { cpq_stage = 0 }
+        }
+        else => {}
+    }
+}
+
+// Until the rebuilt view shows the paste: its outline, walls and (a few) pieces of furniture.
+fn draw_paste_drops() {
+    if cpq_stage == 0 || cpq_f != view_floor || pg_owner != 2 { return }
+    let y = fixed(cpq_f) * STOREY + 0.03
+    bm_bias = -30
+    look_flat()
+    mb_flags = FACE_SEMI
+    pg_draw_fill(y, 0.0, 0.0, shade(ST_WALL_PREVIEW, 40), shade(ST_WALL_PREVIEW, 40), 1)
+    pg_draw_walls(y, 0.42, 0.0, 0.0, ST_WALL_PREVIEW)
+    mb_flush()
+    mb_flags = 0
+    mb_blend = 0
+    if cpq_n > 12 { bm_bias = 0; return }
+    bm_bias = -1
+    for i in 0..cpq_n {
+        let t = cpq_t[i] as s32
+        let rot = cpq_r[i] as s32
+        let m = obj_mesh(t, view_zoom < 2)
+        if m == null { continue }
+        let c = vec3(fixed(cpq_x[i] as s32) + fixed(obj_gw(t, rot)) / 2, fixed(cpq_f) * STOREY, fixed(cpq_z[i] as s32) + fixed(obj_gd(t, rot)) / 2)
+        bake_turned(m, c, rot_ang(rot), 0, 1.0)
+    }
+    bm_bias = 0
+}
+
+var cp_hide_rot: s32
+var cp_hide_f: s32
+var cp_fresh: bool               // just copied: the stamp still sits on the original (shown warm)
+var cp_fx: s32
+var cp_fz: s32
+var cp_ff: s32
+
+// Copies a room (and what hangs off it) under the cursor and starts pasting.
+fn copy_room_at(f: s32, r: s32) {
+    memset(&cp_sel[0] as *u8, 0, 200)
+    cp_sel[r] = true
+    cp_add_inner(f)
+    copy_selection(f)
+}
+
+fn copy_selection(f: s32) {
+    if !cp_copy(f, cur_tx, cur_tz) {
+        fx(FX_ERROR)
+        say("Pick a room to copy", RED)
+        return
+    }
+    tool = Tool.Paste
+    info_close()
+    cp_hide = 0
+    cp_fresh = true
+    cp_fx = cur_tx
+    cp_fz = cur_tz
+    cp_ff = view_floor
+    pg_key = -1
+    fx(FX_OK)
+    let b = nb()
+    sappend(b, "Copied: ")
+    sappend(b, cp_label())
+    toast(b, CREAM)
+}
+
+// The copy tool's A released: copy what the rectangle touched.
+fn copy_release() {
+    cp_select_rect(view_floor, rx0, rz0, rx1, rz1)
+    if cp_nsel == 0 {
+        fx(FX_ERROR)
+        say("Pick a room to copy", RED)
+        return
+    }
+    copy_selection(view_floor)
+}
+
+fn paste_turn() {
+    cp_rot = (cp_rot + 1) & 3
+    sfx_at(Sfx.Click, 0, 200)
+}
+
+// ---- drawing
+
+// The ghost is drawn from runs (made once when the grid changes, not every frame): fills along
+// each row (green where the tile can be built, red where not), and where walls will stand
+// (between different rooms of the stamp, and around it) with gaps for the doors and pale panes for
+// the windows, as low half-transparent panels.
+const PR_MAX = 768
+const PG_WIN_COL = 0xE8C8A0      // #A0C8E8: a window in the ghost
+const PG_OK_COL = 0x70A85C       // #5CA870: a tile the paste can build (mixed half and half)
+const PG_BAD_COL = 0x4850C8      // #C85048: one it can't
+var pr_n: s32
+var pr_k: [768]u8                // 0 fill, 1 fill (bad), 2 wall along x, 3 window along x, 4 wall along z, 5 window along z
+var pr_a: [768]s8                // x (fills and x walls: the start)
+var pr_b: [768]s8                // z
+var pr_e: [768]s8                // the end (exclusive) along the run
+
+fn pr_add(k: s32, a: s32, b: s32, e: s32) {
+    if pr_n >= PR_MAX { return }
+    pr_k[pr_n] = k as u8
+    pr_a[pr_n] = a as s8
+    pr_b[pr_n] = b as s8
+    pr_e[pr_n] = e as s8
+    pr_n += 1
+}
+
+// The wall kind on an edge between grid cells a and b, with the door or window f on it.
+fn pr_wall(a: s32, b: s32, f: s32, feats: bool) -> s32 {
+    if a == b { return 0 }
+    if feats {
+        if f == EF_DOOR { return 0 }
+        if f == EF_WINDOW { return 2 }
+    }
+    return 1
+}
+
+fn pg_make_runs(feats: bool) {
+    pr_n = 0
+    if pg_x0 > pg_x1 { return }
+    let x0 = max(pg_x0, -PG_O + 1)
+    let x1 = min(pg_x1, PG_W - PG_O - 2)
+    let z0 = max(pg_z0, -PG_O + 1)
+    let z1 = min(pg_z1, PG_H - PG_O - 2)
+    for z in z0..z1 + 1 {
+        let row = (z + PG_O) * PG_W + PG_O
+        var x = x0
+        while x <= x1 {
+            if pg_id[row + x] == 0 { x += 1; continue }
+            let bad = pg_bad[row + x]
+            var e = x + 1
+            while e <= x1 && pg_id[row + e] != 0 && pg_bad[row + e] == bad { e += 1 }
+            pr_add(bad as s32, x, z, e)
+            x = e
+        }
+    }
+    // along x: the edges between rows z - 1 and z
+    for z in z0..z1 + 2 {
+        let rb = (z + PG_O) * PG_W + PG_O
+        let ra = rb - PG_W
+        var kd = 0
+        var xs = x0
+        for x in x0..x1 + 2 {
+            var k = 0
+            if x <= x1 { k = pr_wall(pg_id[ra + x] as s32, pg_id[rb + x] as s32, pg_en[rb + x] as s32, feats) }
+            if k != kd {
+                if kd != 0 { pr_add(kd + 1, xs, z, x) }
+                kd = k
+                xs = x
+            }
+        }
+    }
+    // along z: the edges between columns x - 1 and x
+    for x in x0..x1 + 2 {
+        var kd = 0
+        var zs = z0
+        for z in z0..z1 + 2 {
+            var k = 0
+            if z <= z1 {
+                let i = (z + PG_O) * PG_W + PG_O + x
+                k = pr_wall(pg_id[i - 1] as s32, pg_id[i] as s32, pg_ew[i] as s32, feats)
+            }
+            if k != kd {
+                if kd != 0 { pr_add(kd + 3, x, zs, z) }
+                kd = k
+                zs = z
+            }
+        }
+    }
+}
+
+// mode: the blend (1 adds: a warm highlight; 0 mixes half and half: the ghost, the same on light
+// and dark ground)
+fn pg_draw_fill(y: fixed, ox: fixed, oz: fixed, okc: u32, badc: u32, mode: s32) {
+    mb_blend = mode
+    for i in 0..pr_n {
+        let k = pr_k[i] as s32
+        if k > 1 { continue }
+        var c = okc
+        if k == 1 { c = badc }
+        let z = fixed(pr_b[i] as s32) + oz
+        mb_hquad(fixed(pr_a[i] as s32) + ox, z, fixed(pr_e[i] as s32) + ox, z + 1.0, y, c)
+    }
+}
+
+// The outline of the runs' walls on the interface list (always on top, like the cursor's): a
+// t-px line with a dark rim, at floor level.
+fn pg_draw_outline(y: fixed, col: u32, t: s32) {
+    for pass in 0..2 {
+        for i in 0..pr_n {
+            let k = pr_k[i] as s32
+            if k < 2 { continue }
+            var x0 = fixed(pr_a[i] as s32)
+            var z0 = fixed(pr_b[i] as s32)
+            var x1 = x0
+            var z1 = z0
+            if k <= 3 { x1 = fixed(pr_e[i] as s32) } else { z1 = fixed(pr_e[i] as s32) }
+            if !project(vec3(x0, y, z0)) { continue }
+            let ax = proj_x
+            let ay = proj_y
+            if !project(vec3(x1, y, z1)) { continue }
+            if pass == 0 { ui_thick(ax, ay - 1, proj_x, proj_y - 1, t + 2, ST_SHADOW, -1) } else { ui_thick(ax, ay, proj_x, proj_y, t, col, -1) }
+        }
+    }
+}
+
+fn pg_draw_walls(y: fixed, h: fixed, ox: fixed, oz: fixed, col: u32) {
+    mb_blend = 0
+    for i in 0..pr_n {
+        let k = pr_k[i] as s32
+        if k < 2 { continue }
+        var c = col
+        if k == 3 || k == 5 { c = PG_WIN_COL }
+        if k <= 3 {
+            mb_vquad_x(fixed(pr_a[i] as s32) + ox, fixed(pr_e[i] as s32) + ox, fixed(pr_b[i] as s32) + oz, y, y + h, c)
+        } else {
+            mb_vquad_z(fixed(pr_a[i] as s32) + ox, fixed(pr_b[i] as s32) + oz, fixed(pr_e[i] as s32) + oz, y, y + h, c)
+        }
+    }
+}
+
+// The paste tool: the ghost at the cursor, its walls and furniture, crosses on bad tiles, the cost.
+fn draw_paste(y: fixed) {
+    if cp_n == 0 || paste_busy() { return }
+    if cp_hide > 0 {
+        // hidden after a paste until the cursor moves on (or the stamp is turned)
+        if cp_hide > 1 { cp_hide -= 1 }
+        if cp_hide < 12 && (cu_moved < 2 || cp_hide_rot != cp_rot || cp_hide_f != view_floor) { cp_hide = 0 }
+        if cp_hide > 0 { return }
+    }
+    pg_eval()
+    let good = pg_ok && pg_cost <= money
+    // glide with the cursor's highlight
+    let ox = cu_vx - (fixed(cur_tx) + 0.5)
+    let oz = cu_vz - (fixed(cur_tz) + 0.5)
+    if cp_fresh && (cur_tx != cp_fx || cur_tz != cp_fz || view_floor != cp_ff || cp_rot != 0) { cp_fresh = false }
+    if cp_fresh {
+        // just copied: what was copied lights up; it turns into the ghost once moved
+        pg_draw_fill(y, 0.0, 0.0, shade(ST_CURSOR, 56), shade(ST_CURSOR, 56), 1)
+        mb_flush()
+        pg_draw_outline(y, ST_CURSOR, 2)
+        let b = nb()
+        sappend(b, "Copied ")
+        sappend(b, cp_label())
+        sappend(b, ": move it, then \x01")
+        paste_chip(b, true)
+        return
+    }
+    pg_draw_fill(y, ox, oz, PG_OK_COL, PG_BAD_COL, 0)
+    pg_draw_walls(y, 0.42, ox, oz, ST_WALL_PREVIEW)
+    mb_flush()
+    // the furniture: low-detail meshes (footprints when there is a lot of it)
+    var tint: u32 = ST_GHOST_OK
+    if !good { tint = ST_GHOST_BAD }
+    let lo = view_zoom < 2 || cp_no > 12
+    let fy = fixed(view_floor) * STOREY + 0.01
+    bm_bias = -2
+    for i in 0..cp_no {
+        let t = cp_ot[i] as s32
+        cp_obj_at(i, cur_tx, cur_tz, cp_rot)
+        let gw = obj_gw(t, cp_prot)
+        let gd = obj_gd(t, cp_prot)
+        let cx = fixed(cp_px) + fixed(gw) / 2 + ox
+        let cz = fixed(cp_pz) + fixed(gd) / 2 + oz
+        let m = obj_mesh(t, lo)
+        if m != null && cp_no <= 16 {
+            bake_turned(m, vec3(cx, fy, cz), rot_ang(cp_prot), tint, 1.0)
+        } else {
+            mb_blend = 0
+            mb_hquad(fixed(cp_px) + ox + 0.1, fixed(cp_pz) + oz + 0.1, fixed(cp_px + gw) + ox - 0.1, fixed(cp_pz + gd) + oz - 0.1, y + 0.02, tint)
+        }
+    }
+    mb_flush()
+    bm_bias = -30
+    // crosses on the tiles that can't be built (a few; many would be noise: the red fill says it)
+    if !pg_ok && pg_nbad <= 12 {
+        var n = 0
+        for z in max(pg_z0, 0)..min(pg_z1, GH - 1) + 1 {
+            for x in max(pg_x0, 0)..min(pg_x1, GW - 1) + 1 {
+                if n < 40 && pg_at(x, z) != 0 && pg_bad[pg_ix(x, z)] != 0 {
+                    tile_cross(x, z)
+                    n += 1
+                }
+            }
+        }
+    }
+    // the chip: what and how much, or why not, over the stamp near the cursor
+    let b = nb()
+    if pg_ok && pg_cost > money {
+        sappend(b, "Not enough money  ")
+        smoney(b, pg_cost)
+    } else if !pg_ok {
+        sappend(b, pg_why)
+    } else {
+        sappend(b, cp_label())
+        sappend(b, "  ")
+        smoney(b, pg_cost)
+    }
+    paste_chip(b, good)
+}
+
+fn paste_chip(b: *u8, good: bool) {
+    var top = 999
+    if rect_corners(fixed(pg_x0), fixed(pg_z0), fixed(pg_x1 + 1), fixed(pg_z1 + 1)) {
+        for k in 0..4 { top = min(top, oc_y[k]) }
+    }
+    if !rect_corners(fixed(cur_tx), fixed(cur_tz), fixed(cur_tx + 1), fixed(cur_tz + 1)) { return }
+    var cx = 0
+    for k in 0..4 { cx += oc_x[k] }
+    cx = cx / 4
+    let w = text_w(b, false) + 8
+    let bx = clamp(cx - w / 2, 2, 318 - w)
+    var ytop = BAR_H + 3
+    for k in 0..2 { if toasts[k].t > 0 { ytop += 17 } }
+    let by = clamp(top - 18, ytop, 200)
+    panel(bx, by, w, 13)
+    var tc = ST_TEXT
+    if !good { tc = ST_BAD }
+    ftext(bx + 4, by + 2, b, tc, false)
+}
+
+// The copy tool: the rooms that would be copied (the one under the cursor, or those the drag
+// touches), lit up with a warm rim.
+var cps_key: s32 = -1
+var cps_ver: s32 = -1
+
+fn draw_copy_select(y: fixed) {
+    let f = view_floor
+    let key = (rx0 & 31) | ((rz0 & 31) << 5) | ((rx1 & 31) << 10) | ((rz1 & 31) << 15) | (f << 20)
+    if key != cps_key || world_ver != cps_ver || pg_owner != 1 {
+        pg_owner = 1
+        cps_key = key
+        cps_ver = world_ver
+        cp_select_rect(f, rx0, rz0, rx1, rz1)
+        pg_key = -1
+        pg_clear()
+        let b = f * NT
+        for t in 0..NT {
+            let r = troom[b + t] as s32
+            if r == 0 || !cp_sel[r] { continue }
+            let x = t & 31
+            let z = t >> 5
+            pg_id[pg_ix(x, z)] = r as u8
+            pg_grow(x, z)
+        }
+        pg_make_runs(false)
+    }
+    if dragging {
+        mb_blend = 3
+        mb_hquad(fixed(rx0), fixed(rz0), fixed(rx1 + 1), fixed(rz1 + 1), y, shade(ST_CURSOR, 60))
+    }
+    if cp_nsel > 0 { pg_draw_fill(y, 0.0, 0.0, shade(ST_CURSOR, 56), shade(ST_CURSOR, 56), 1) }
+    mb_flush()
+    if cp_nsel > 0 { pg_draw_outline(y, ST_CURSOR, 2) }
+    if dragging && rect_corners(fixed(rx0), fixed(rz0), fixed(rx1 + 1), fixed(rz1 + 1)) { draw_outline(ST_CURSOR, 1, 0, 0) }
+    if cp_nsel == 0 { return }
+    // a chip naming what would be copied
+    let b = nb()
+    sappend(b, "Copy ")
+    if cp_nsel <= 2 {
+        var k = 0
+        for r in 1..nrooms {
+            if !cp_sel[r] { continue }
+            if k > 0 { sappend(b, " + ") }
+            sappend(b, cp_type_name(room_target(r)))
+            k += 1
+        }
+    } else {
+        sint(b, cp_nsel)
+        sappend(b, " rooms")
+    }
+    paste_chip(b, true)
+}

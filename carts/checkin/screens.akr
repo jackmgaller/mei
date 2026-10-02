@@ -151,15 +151,16 @@ fn draw_controls() {
     let w = 268
     panel(x, y, w, 196)
     page_head(x, y, w, "Controls")
-    let rows: [13]*u8 = ["\x0B", "Stick", "\x01", "\x02", "\x03", "\x04", "\x04 + \x15\x16", "\x04 + \x13\x14", "\x05 \x06",
-                         "\x08 tap", "\x08 + \x0B", "\x07", "\x05 \x06 (drawer)"]
-    let what: [13]*u8 = ["Move one tile along the grid", "Move freely (settles on a tile)", "Build, place, or look at what's here",
+    let rows: [15]*u8 = ["\x0B", "Stick", "\x01", "\x02", "\x03", "\x04", "\x04 + \x15\x16", "\x04 + \x13\x14", "\x05 \x06",
+                         "\x08 tap", "\x08 + \x0B", "\x07", "\x05 \x06 (drawer)", "\x04 room card", "Pasting"]
+    let what: [15]*u8 = ["Move one tile along the grid", "Move freely (settles on a tile)", "Build, place, or look at what's here",
                          "Back, close, put the tool away", "Open the build drawer", "Turn the object (or the view)",
                          "Turn the view", "Zoom in and out", "Floor down / up", "Game speed: x1, x2, x4, pause",
-                         "Show rooms, noise, staff or moods", "Pause menu", "Drawer tabs"]
-    for k in 0..13 {
-        let yy = y + 27 + k * 13
-        if k % 2 == 0 { ui_rect(x + 6, yy - 2, w - 12, 13, ST_SLOT, -1) }
+                         "Show rooms, noise, staff or moods", "Pause menu", "Drawer tabs",
+                         "Copy the room (and its en-suite)", "\x01 paste  \x04 turn  \x05 \x06 another floor"]
+    for k in 0..15 {
+        let yy = y + 26 + k * 11
+        if k % 2 == 0 { ui_rect(x + 6, yy - 1, w - 12, 11, ST_SLOT, -1) }
         ftext(x + 12, yy, rows[k], ST_TEXT, false)
         ftext(x + 82, yy, what[k], ST_TEXT, false)
     }

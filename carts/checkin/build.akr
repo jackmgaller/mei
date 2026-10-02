@@ -14,8 +14,14 @@
 //   door / window - A on a wall edge of the cursor tile (Y picks another edge)
 //   void / glass void - drag on an upper floor to open it to the floor below
 //   demolish - A on an object removes it; drag over tiles removes floors (half refunded)
+//   copy / paste - see paste.akr
+//
+// Guided furnishing: when a placement fills one of a room's missing requirements, the drawer comes
+// back on that room's Needs with the next missing item selected (bed, then wardrobe, ...); when
+// the room is complete a small toast says so and the cursor is back to normal. Decor and items the
+// room already has keep the tool, for placing several in a row.
 
-enum Tool { Inspect, Paint, Object, Door, Window, Void, VoidGlass, Demolish }
+enum Tool { Inspect, Paint, Object, Door, Window, Void, VoidGlass, Demolish, Copy, Paste }
 
 var tool = Tool.Inspect
 var tool_arg: s32
@@ -745,6 +751,13 @@ fn place_commit() {
         say(pe_text(PE_MONEY), RED)
         return
     }
+    drop_room = pe_room
+    drop_need = fills_need(pe_room, t)
+    let host = bath_host(pe_room)
+    if !drop_need && host != 0 && (t == OB_BATHTUB || t == OB_JACUZZI) && RT_BATH_NEED[room_target(host)] == 2 && room_bath(host) == BATH_ENSUITE {
+        drop_room = host
+        drop_need = true
+    }
     drop_t = DROP_N
     drop_obj = t
     drop_x = ob_x
@@ -780,6 +793,127 @@ fn drop_update() {
     popup_money(c.x, c.y + fixed(OBJ_HT[t] as s32) / 16 + 0.3, c.z, -price)
     land_t = 3
     land_obj = i
+    // it filled a missing requirement: the next step of the room comes up after the drop settles
+    if drop_need {
+        guide_room = drop_room
+        guide_t = GUIDE_DELAY
+    }
+}
+
+// ---- guided furnishing (see the header)
+
+const GUIDE_DELAY = 16
+var guide_room: s32              // the room being furnished step by step (0: none)
+var guide_host: s32              // ... when it is a bathroom built for a bedroom: that bedroom
+var guide_t: s32                 // frames until its next step comes up
+var drop_room: s32               // the room the object in flight goes into
+var drop_need: bool              // ... and whether it fills one of its missing requirements
+
+// Would an object of type t fill one of room r's missing requirements?
+fn fills_need(r: s32, t: s32) -> bool {
+    if r <= 0 || room_done(r) { return false }
+    let rt = room_target(r)
+    if rt == RT_NONE { return false }
+    let n = RT_NREQ[rt] as s32
+    for k in 0..n {
+        if req_ok(r, rt, k) { continue }
+        for a in 0..3 { if RT_REQ_ALT[(rt * 7 + k) * 3 + a] as s32 == t { return true } }
+    }
+    return false
+}
+
+fn guide_update() {
+    if guide_t == 0 { return }
+    guide_t -= 1
+    if guide_t > 0 { return }
+    var r = guide_room
+    if r == 0 || rooms[r].used == 0 {
+        guide_room = 0
+        guide_host = 0
+        return
+    }
+    if guide_host != 0 && rooms[guide_host].used == 0 { guide_host = 0 }
+    // a bathroom with all its fixtures: its door next (into the bedroom it was built for), then
+    // back to that bedroom
+    if room_target(r) == RT_BATHROOM && room_furnished(r) {
+        let h = guide_host
+        if (h != 0 && bath_host(r) != h) || (h == 0 && room_why(r) == WHY_NO_DOOR) {
+            guide_door(r, h)
+            return
+        }
+        if h != 0 {
+            r = h
+            guide_room = h
+            guide_host = 0
+        }
+    }
+    if room_done(r) {
+        // done: a small toast, and the cursor is back to normal
+        guide_room = 0
+        guide_host = 0
+        hint_t = min(hint_t, 16)
+        tool = Tool.Inspect
+        let b = nb()
+        sappend(b, "\x11 ")
+        sappend(b, room_type_name(rooms[r].rtype as s32))
+        sappend(b, " complete")
+        toast(b, GREEN)
+        return
+    }
+    // the same item is still needed (two stools, two tables): keep placing it
+    if tool == Tool.Object && fills_need(r, tool_arg) { return }
+    tool = Tool.Inspect
+    open_drawer(r)
+}
+
+// All of a room's furniture requirements are met (a bathroom may still lack its door).
+fn room_furnished(r: s32) -> bool {
+    let rt = room_target(r)
+    return rt != RT_NONE && reqs_met(r, rt) >= RT_NREQ[rt] as s32
+}
+
+// A bathroom meant for a suite (the one being built for it, or its en-suite) offers tubs first.
+fn bath_wants_tub(r: s32) -> bool {
+    if room_target(r) != RT_BATHROOM { return false }
+    var h = bath_host(r)
+    if h == 0 && guide_room == r { h = guide_host }
+    return h != 0 && RT_BATH_NEED[room_target(h)] == 2
+}
+
+// The door step: the door tool, on a tile of bathroom b next to bedroom h, facing it.
+fn guide_door(b: s32, h: s32) {
+    tool = Tool.Door
+    guide_room = b
+    fx(FX_TAB)
+    if h == 0 {
+        hint_show("Now a door: into a bedroom (its en-suite) or a corridor")
+        return
+    }
+    let rm = &rooms[b]
+    let f = rm.floor as s32
+    var best = 99999
+    for z in rm.z0 as s32..rm.z1 as s32 + 1 {
+        for x in rm.x0 as s32..rm.x1 as s32 + 1 {
+            if room_at(f, x, z) != b { continue }
+            for k in 0..4 {
+                edge_vec(k)
+                if room_at(f, x + edge_dx, z + edge_dz) != h { continue }
+                // the nearest edge with free floor on both sides (people walk through it)
+                var d = abs(x - cur_tx) + abs(z - cur_tz)
+                if tobj[tix(f, x, z)] >= 0 || tobj[tix(f, x + edge_dx, z + edge_dz)] >= 0 { d += 1000 }
+                if d < best {
+                    best = d
+                    cursor_set_tile(x, z)
+                    edge_pref = k
+                }
+            }
+        }
+    }
+    cu_moved = 0
+    let s = nb()
+    sappend(s, "Last step: a door from the Bathroom into the ")
+    sappend(s, room_type_name(room_target(h)))
+    hint_show(s)
 }
 
 var land_t: s32                  // a short squash on the frame the object lands
@@ -823,6 +957,7 @@ fn edge_commit(feat: s32) {
     set_edge_feat(f, edge_x, edge_z, edge_dx, edge_dz, feat)
     world_changed()
     fx(FX_PLACE)
+    if feat == EF_DOOR && guide_room != 0 { guide_t = GUIDE_DELAY }
     let ex = fixed(edge_x) + 0.5 + fixed(edge_dx) / 2
     let ez = fixed(edge_z) + 0.5 + fixed(edge_dz) / 2
     puff(ex, fixed(f) * STOREY, ez, 0.6)
@@ -832,6 +967,7 @@ fn edge_commit(feat: s32) {
 // Everything that depends on the building is recomputed here.
 // (the heavy part runs once, in rooms_update, however many edits a frame made)
 fn world_changed() {
+    world_ver += 1
     edges_dirty = true
     cache_dirty = true
     rooms_dirty = true
@@ -844,6 +980,7 @@ var edges_dirty: bool
 var y_chord: bool
 
 fn build_update() {
+    guide_update()
     let yheld = held_in(Y)
     if yheld {
         // Y + left/right turns the view, Y + up/down zooms
@@ -863,6 +1000,10 @@ fn build_update() {
             sfx_at(Sfx.Click, 0, 200)
         } else if tool == Tool.Door || tool == Tool.Window {
             edge_cycle()
+        } else if tool == Tool.Paste {
+            paste_turn()
+        } else if tool == Tool.Inspect && info_kind == 1 {
+            copy_room_at(view_floor, info_id)
         } else {
             rotate_view(1)
         }
@@ -873,7 +1014,7 @@ fn build_update() {
     if btnp_in(A) {
         match tool {
             Inspect => inspect_press()
-            Paint, Void, VoidGlass, Demolish => {
+            Paint, Void, VoidGlass, Demolish, Copy => {
                 dragging = true
                 drag_x0 = cur_tx
                 drag_z0 = cur_tz
@@ -882,6 +1023,7 @@ fn build_update() {
             Object => place_commit()
             Door => edge_commit(EF_DOOR)
             Window => edge_commit(EF_WINDOW)
+            Paste => paste_commit()
         }
     }
     drag_rect()
@@ -891,6 +1033,7 @@ fn build_update() {
             Void => void_tool_commit(false)
             VoidGlass => void_tool_commit(true)
             Demolish => demolish_commit()
+            Copy => copy_release()
             else => {}
         }
         dragging = false
@@ -902,8 +1045,11 @@ fn build_update() {
         } else if info_kind != 0 {
             info_close()
             fx(FX_BACK)
-        } else if tool != Tool.Inspect {
+        } else if tool != Tool.Inspect || guide_t > 0 {
             tool = Tool.Inspect
+            guide_room = 0
+            guide_host = 0
+            guide_t = 0
             fx(FX_BACK)
         }
     }
@@ -1031,6 +1177,8 @@ fn draw_build_overlay() {
             if edge_dz == -1 { mb_vquad_x(ex + 0.1, ex + 0.9, ez, y, y + h, col) }
             if edge_dz == 1 { mb_vquad_x(ex + 0.1, ex + 0.9, ez + 1.0, y, y + h, col) }
         }
+        Copy => draw_copy_select(y)
+        Paste => draw_paste(y)
         Inspect => {}
     }
     mb_flush()
@@ -1038,6 +1186,7 @@ fn draw_build_overlay() {
     mb_blend = 0
     bm_bias = 0
     draw_drop()
+    draw_paste_drops()
     if tool != Tool.Object || ghost_hide > 0 || drop_t > 0 { draw_cursor(ST_CURSOR) }
     draw_flash()
 }
@@ -1315,10 +1464,10 @@ fn draw_flash() {
 
 // ---- room types first: what the Rooms tab offers, each with a default floor finish
 
-const NRT_MENU = 16
-const RTM: [16]u8 = [RT_LOBBY, RT_GUEST, RT_CORRIDOR, RT_RESTAURANT, RT_KITCHEN, RT_BAR, RT_STAFF, RT_LAUNDRY,
-                     RT_STORAGE, RT_SUITE, RT_GYM, RT_SPA, RT_CONFERENCE, RT_OUTDOOR, RT_POOL, RT_SERVICE]
-var rt_fk: [17]u8                // the finish chosen per room type (255: not set yet)
+const NRT_MENU = 17
+const RTM: [17]u8 = [RT_LOBBY, RT_GUEST, RT_BATHROOM, RT_CORRIDOR, RT_RESTAURANT, RT_KITCHEN, RT_BAR, RT_STAFF,
+                     RT_LAUNDRY, RT_STORAGE, RT_SUITE, RT_GYM, RT_SPA, RT_CONFERENCE, RT_OUTDOOR, RT_POOL, RT_SERVICE]
+var rt_fk: [32]u8                // the finish chosen per room type (0: not set yet)
 var room_intent: [200]u8         // the type a room was built as (255: none)
 
 fn rt_default_fk(rt: s32) -> s32 {
@@ -1331,7 +1480,7 @@ fn rt_default_fk(rt: s32) -> s32 {
         RT_OUTDOOR => return FK_DECK
         RT_POOL => return FK_POOL_WATER
         RT_RESTAURANT, RT_BAR => return FK_WOOD
-        RT_KITCHEN, RT_LAUNDRY, RT_SPA => return FK_TILE
+        RT_KITCHEN, RT_LAUNDRY, RT_SPA, RT_BATHROOM => return FK_TILE
         RT_CONFERENCE => return FK_CARPET_GREEN
         else => return FK_CONCRETE
     }
@@ -1358,6 +1507,8 @@ fn rt_finish_step(rt: s32, d: s32) {
 // else the closest match.
 fn room_target(r: s32) -> s32 {
     let rm = &rooms[r]
+    // a suite's furniture without an en-suite with a tub counts as a guest room: still a suite in the making
+    if room_why(r) == WHY_SUITE_TUB { return RT_SUITE }
     if rm.rtype as s32 != RT_NONE && rm.rtype as s32 != RT_OUTDOOR { return rm.rtype as s32 }
     if room_intent[r] != 255 && room_intent[r] != 0 { return room_intent[r] as s32 }
     if rm.rtype as s32 == RT_OUTDOOR { return RT_POOL }
@@ -1387,7 +1538,8 @@ fn after_paint() {
         sappend(b, obj_name(RT_REQ_ALT[(rt * 7 + k) * 3] as s32))
     }
     hint_show(b)
-    open_build_menu()
+    guide_room = last_room
+    open_drawer(last_room)
 }
 
 // ---- the build drawer (X): a tab strip, one row of items, one detail line
@@ -1401,6 +1553,8 @@ const SP_WINDOW = 1
 const SP_VOID = 2
 const SP_VOIDGLASS = 3
 const SP_DEMOLISH = 4
+const SP_COPY = 5
+const SP_PASTE = 6
 
 // drawer tabs: 0 "Needs" (the room under the cursor), then the catalogue's tabs (TAB_* + 1)
 const DT_NEEDS = 0
@@ -1445,14 +1599,29 @@ fn menu_fill() {
         let r = menu_room
         if r == 0 { return }
         let rt = room_target(r)
-        // the requirements first (every alternative), then the bonus items
+        // the requirements first (every alternative; a bathroom for a suite lists its tubs first),
+        // then the bedroom's bathroom or the bathroom's door, then the bonus items
         let n = RT_NREQ[rt] as s32
+        let tubs = bath_wants_tub(r)
         for k in 0..n {
             for a in 0..3 {
-                let t = RT_REQ_ALT[(rt * 7 + k) * 3 + a] as s32
+                var j = a
+                if tubs && k == 2 { j = (a + 1) % 3 }
+                let t = RT_REQ_ALT[(rt * 7 + k) * 3 + j] as s32
                 if t != 255 { menu_add(1, t) }
             }
         }
+        let bn = RT_BATH_NEED[rt] as s32
+        if bn > 0 {
+            let bk = room_bath(r)
+            if bn == 2 && bk == BATH_ENSUITE {
+                menu_add(1, OB_BATHTUB)
+                menu_add(1, OB_JACUZZI)
+            } else if bk == BATH_NONE || bk == BATH_SHARED || (bn == 2 && bk != BATH_ENSUITE_TUB) {
+                menu_add(3, RT_BATHROOM)
+            }
+        }
+        if rt == RT_BATHROOM && room_why(r) == WHY_NO_DOOR { menu_add(2, SP_DOOR) }
         let nb2 = RT_NBONUS[rt] as s32
         for k in 0..nb2 {
             let t = RT_BONUS[rt * 12 + k] as s32
@@ -1475,6 +1644,8 @@ fn menu_fill() {
         menu_add(2, SP_VOID)
         menu_add(2, SP_VOIDGLASS)
         menu_add(2, SP_DEMOLISH)
+        menu_add(2, SP_COPY)
+        if cp_n > 0 { menu_add(2, SP_PASTE) }
         return
     }
     for t in 0..NOBJT {
@@ -1504,14 +1675,18 @@ fn needs_room() -> s32 {
     return r
 }
 
-fn open_build_menu() {
+fn open_build_menu() { open_drawer(-1) }
+
+// Opens the drawer; on room r's Needs when r > 0 (the guided steps), else on the room under the cursor.
+fn open_drawer(r: s32) {
     menu_open = true
     menu_out = 0
     menu_anim = 0
     dragging = false
     menu_room = needs_room()
+    if r > 0 { menu_room = r }
     // the room under the cursor still needs things: its checklist; outside any room: rooms
-    if menu_room != 0 && !room_done(menu_room) {
+    if menu_room != 0 && (!room_done(menu_room) || r > 0) {
         menu_tab = DT_NEEDS
     } else if menu_room == 0 && room_at(view_floor, cur_tx, cur_tz) == 0 {
         menu_tab = 1 + TAB_ROOMS
@@ -1538,10 +1713,19 @@ fn first_missing() -> s32 {
 
 // For the Needs tab: 1 still required, 2 required and present, 0 a bonus item.
 fn item_needed(it: MenuItem) -> s32 {
-    if menu_room == 0 || it.kind != 1 { return 0 }
+    if menu_room == 0 { return 0 }
     let rt = room_target(menu_room)
-    let n = RT_NREQ[rt] as s32
     let t = it.arg as s32
+    // a bedroom's bathroom, a bathroom's door, a suite's tub for its en-suite
+    if it.kind == 3 && t == RT_BATHROOM {
+        if RT_BATH_NEED[rt] == 1 && room_bath(menu_room) == BATH_SHARED { return 0 }
+        return 1
+    }
+    if it.kind == 2 { return 1 }
+    if it.kind != 1 { return 0 }
+    if RT_BATH_NEED[rt] == 2 && room_bath(menu_room) == BATH_ENSUITE && (t == OB_BATHTUB || t == OB_JACUZZI) { return 1 }
+    if t == OB_SHOWER && bath_wants_tub(menu_room) { return 0 }
+    let n = RT_NREQ[rt] as s32
     for k in 0..n {
         for a in 0..3 {
             if RT_REQ_ALT[(rt * 7 + k) * 3 + a] as s32 == t {
@@ -1599,6 +1783,8 @@ fn menu_update() {
     if btnp_in(B) || btnp_in(X) {
         menu_open = false
         menu_out = 5
+        guide_room = 0
+        guide_host = 0
         fx(FX_BACK)
         return
     }
@@ -1611,6 +1797,8 @@ fn menu_update() {
             return
         }
         tool_rt = -1
+        if menu_tab != DT_NEEDS { guide_host = 0 }
+        if menu_tab == DT_NEEDS && it.kind == 3 && arg == RT_BATHROOM && RT_BATH_NEED[room_target(menu_room)] != 0 { guide_host = menu_room }
         match it.kind as s32 {
             0 => { tool = Tool.Paint; tool_arg = arg }
             1 => { tool = Tool.Object; tool_arg = arg; ghost_reset() }
@@ -1621,7 +1809,9 @@ fn menu_update() {
                     1 => tool = Tool.Window
                     2 => tool = Tool.Void
                     3 => tool = Tool.VoidGlass
-                    else => tool = Tool.Demolish
+                    4 => tool = Tool.Demolish
+                    5 => tool = Tool.Copy
+                    else => { tool = Tool.Paste; cp_hide = 0; pg_key = -1 }
                 }
             }
         }
@@ -1629,7 +1819,13 @@ fn menu_update() {
         menu_out = 5
         info_close()
         fx(FX_OK)
-        if tool == Tool.Paint && tool_rt >= 0 && RT_MIN[tool_rt] > 0 {
+        if tool == Tool.Paint && tool_rt == RT_BATHROOM && guide_host != 0 {
+            let b = nb()
+            sappend(b, "Drag a Bathroom beside the ")
+            sappend(b, room_type_name(room_target(guide_host)))
+            sappend(b, ": 3 tiles or more")
+            hint_show(b)
+        } else if tool == Tool.Paint && tool_rt >= 0 && RT_MIN[tool_rt] > 0 {
             let b = nb()
             sappend(b, "Drag to paint a room: a ")
             sappend(b, room_type_name(tool_rt))
@@ -1664,7 +1860,9 @@ fn item_name(it: MenuItem) -> *u8 {
                 1 => return "Window"
                 2 => return "Void (railing)"
                 3 => return "Void (glass)"
-                else => return "Demolish"
+                4 => return "Demolish"
+                5 => return "Copy rooms"
+                else => return "Paste rooms"
             }
         }
     }
@@ -1709,6 +1907,14 @@ fn menu_icon(x: s32, y: s32, it: MenuItem, tint: u32) {
         if arg == SP_VOIDGLASS { ob = OB_RAILING_GLASS }
         if arg == SP_DEMOLISH {
             icon_tint(x + 4, y + 4, IC_TRASH, tint)
+            return
+        }
+        if arg == SP_COPY {
+            icon_tint(x + 4, y + 4, IC_COPY, tint)
+            return
+        }
+        if arg == SP_PASTE {
+            icon_tint(x + 4, y + 4, IC_PASTE, tint)
             return
         }
     }
@@ -1813,7 +2019,11 @@ fn draw_build_menu() {
         }
         ftext(nx + 8, dy, b, ST_GOLD, false)
         var d = nb()
-        if it.kind == 3 {
+        if it.kind == 3 && menu_tab == DT_NEEDS && it.arg as s32 == RT_BATHROOM {
+            if item_needed(it) == 1 { sappend(d, "Next: an en-suite, its door into this room") } else { sappend(d, "An en-suite rates higher than sharing") }
+        } else if it.kind == 2 && menu_tab == DT_NEEDS {
+            sappend(d, "Into a bedroom: its en-suite. A corridor: shared")
+        } else if it.kind == 3 {
             let fk = rt_fk_of(it.arg as s32)
             sappend(d, "Floor: ")
             sappend(d, finish_name(fk))
@@ -1822,6 +2032,8 @@ fn draw_build_menu() {
             item_purpose(d, it.arg as s32)
         } else if it.kind == 2 {
             if it.arg as s32 == SP_DEMOLISH { sappend(d, "Get half the price back") }
+            else if it.arg as s32 == SP_COPY { sappend(d, "Copy rooms with all their furniture") }
+            else if it.arg as s32 == SP_PASTE { sappend(d, "The copy: "); sappend(d, cp_label()) }
             else if it.arg as s32 <= SP_WINDOW { sappend(d, "On a wall between two tiles") }
             else { sappend(d, "Opens an upper floor to the one below") }
         }
@@ -1835,7 +2047,19 @@ fn draw_build_menu() {
 fn item_purpose(d: *u8, t: s32) {
     if menu_tab == DT_NEEDS {
         let n = item_needed(menu_items[menu_sel])
-        if n == 1 { sappend(d, "Still needed here"); return }
+        if n == 1 && (t == OB_BATHTUB || t == OB_JACUZZI) && RT_BATH_NEED[room_target(menu_room)] == 2 {
+            sappend(d, "For the en-suite: a suite needs a tub")
+            return
+        }
+        if n == 1 {
+            let rt = room_target(menu_room)
+            sappend(d, "Still needed here  \x17  ")
+            sint(d, reqs_met(menu_room, rt))
+            sappend(d, " of ")
+            sint(d, RT_NREQ[rt] as s32)
+            sappend(d, " done")
+            return
+        }
         if n == 2 { sappend(d, "\x11 Done for this room"); return }
         sappend(d, "Makes this room nicer")
         return

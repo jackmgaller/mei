@@ -168,6 +168,7 @@ fn __clip_piece(o: *Face, f: *Face, a: s32, b: s32, c: s32, d: s32) {
         o.uv[i] = (__clip_round(v.a.x) | (__clip_round(v.a.y) << 8)) as u16
         o.col[i] = __clip_round(v.k.x) | (__clip_round(v.k.y) << 8) | (__clip_round(v.k.z) << 16)
     }
+    if (f.flags & FACE_KEYED) != 0 { o.col[3] = f.col[3] }    // (its ordering-table bucket)
 }
 
 // (x, y, w) of a clip-space point scaled so that its largest lane is 1: the sign of a
@@ -234,19 +235,19 @@ fn __clip_load(f: *Face) -> bool {
     return true
 }
 
-// Is the polygon (all in front of the camera) wholly beyond one side of the view? The face
-// loops test the corners of a face crossing the near plane before it comes here, but a
-// corner behind the camera says little: most such faces turn out to be off the screen only
-// once clipped to the near plane.
+// Is the polygon (all in front of the camera) wholly beyond one side of the view (the cull
+// rectangle, cull_rect(): the screen by default)? The face loops test the corners of a face
+// crossing the near plane before it comes here, but a corner behind the camera says little:
+// most such faces turn out to be off the screen only once clipped to the near plane.
 fn __clip_offview(v: *__ClipV, n: s32) -> bool {
     var out = 15
     for k in 0..n {
         let c = v[k].c
         var o = 0
-        if c.x > c.w { o = 1 }
-        if c.x < -c.w { o = o | 2 }
-        if c.y > c.w { o = o | 4 }
-        if c.y < -c.w { o = o | 8 }
+        if c.x > c.w * __scr_k[1] { o = 1 }
+        if c.x < c.w * __scr_k[0] { o = o | 2 }
+        if c.y > c.w * __scr_k[2] { o = o | 4 }
+        if c.y < c.w * __scr_k[3] { o = o | 8 }
         out = out & o
         if out == 0 { return false }
     }
