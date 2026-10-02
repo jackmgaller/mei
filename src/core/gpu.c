@@ -49,8 +49,17 @@ void gpu_vsync(Mei *m) {
     m->gpu_status = 0;
 }
 
+/* The cost model's per-pixel table (the constants are in machine.h). */
+uint32_t gpu_pixel_cycles(int kind) {
+    uint32_t c = GPU_CYCLES_PX;
+    if (kind & 2) c *= GPU_CYCLES_TEX_X;
+    if (kind & 4) c *= GPU_CYCLES_SEMI_X;
+    return c;
+}
+
 void gpu_clear(Mei *m, uint32_t colour) {
     m->gstat.clears++;
+    m->gpu_cycles += GPU_CYCLES_CLEAR;
     uint8_t *fb = m->vram + FB_OFF(gpu_back_addr(m));
     uint16_t c = (uint16_t)(colour & (planes_on(m) ? 0xFFFF : 0x7FFF));   /* 16 bits: holes */
     for (int i = 0; i < MEI_W * MEI_H; i++) st16(fb + 2 * i, c);
@@ -392,9 +401,11 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
         if ((m->gpu_status & 0xFFFF) >= GPU_TRI_LIMIT) { m->gpu_status |= GPU_STATUS_DROPPED; m->gstat.tris_dropped++; continue; }
         m->gpu_status++;
         uint32_t n = draw_tri(&R, &vx[t], &vx[t + 1], &vx[t + 2]);
+        int kind = gouraud | textured << 1 | semi << 2;
         m->gstat.tris++;
         if (!n) m->gstat.tris_empty++;
-        m->gstat.px[gouraud | textured << 1 | semi << 2] += n;
+        m->gstat.px[kind] += n;
+        m->gpu_cycles += GPU_CYCLES_TRI + (uint64_t)n * gpu_pixel_cycles(kind);
     }
     return 1;
 }

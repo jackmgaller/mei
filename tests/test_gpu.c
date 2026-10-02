@@ -1,5 +1,6 @@
 /* GPU tests: packet walking, rasterization rules, pixel pipeline, faults. */
 #include "machine.h"
+#include "asm.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -478,27 +479,257 @@ static void test_clipping(void) {
 }
 
 static void test_limits(void) {
+    CHECK_EQ(GPU_TRI_LIMIT, 4000);
     setup(); list_begin();
-    for (int i = 0; i < 1000; i++) emit(0x24, 5, RGB(255, 255, 255), P(0, 0), P(1, 0), P(0, 1), P(1, 1));
+    for (int i = 0; i < GPU_TRI_LIMIT / 2; i++) emit(0x24, 5, RGB(255, 255, 255), P(0, 0), P(1, 0), P(0, 1), P(1, 1));
     CHECK_EQ(m->gpu_status, 0);
     list_draw();
-    CHECK_EQ(m->gpu_status, 2000);
+    CHECK_EQ(m->gpu_status, 4000);
+    uint32_t st = 0;
+    CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_STATUS, &st), 0);
+    CHECK_EQ(st, 4000);                                  /* the count fits bits 0-15 */
     list_begin();
     emit(0x20, 4, RGB(255, 255, 255), P(10, 10), P(20, 10), P(10, 20));
     list_draw();   /* second GPU_DRAW in the same frame keeps counting */
-    CHECK_EQ(m->gpu_status, 2000 | GPU_STATUS_DROPPED);
+    CHECK_EQ(m->gpu_status, 4000 | GPU_STATUS_DROPPED);
+    CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_STATUS, &st), 0);
+    CHECK_EQ(st, 4000 | GPU_STATUS_DROPPED);
+    CHECK_EQ(m->gstat.tris, 4000);
+    CHECK_EQ(m->gstat.tris_dropped, 1);
     CHECK_EQ(px(10, 10), 0);
     gpu_vsync(m);
     CHECK_EQ(m->gpu_status, 0);
 
-    /* A quad whose first half is the 2,000th triangle draws only that half. */
+    /* A quad whose first half is the 4,000th triangle draws only that half. */
     setup(); list_begin();
-    for (int i = 0; i < 1999; i++) emit(0x20, 4, RGB(0, 0, 0), P(300, 200), P(301, 200), P(300, 201));
+    for (int i = 0; i < GPU_TRI_LIMIT - 1; i++) emit(0x20, 4, RGB(0, 0, 0), P(300, 200), P(301, 200), P(300, 201));
     emit(0x24, 5, RGB(255, 255, 255), P(0, 0), P(10, 0), P(0, 10), P(10, 10));
     list_draw();
-    CHECK_EQ(m->gpu_status, 2000 | GPU_STATUS_DROPPED);
+    CHECK_EQ(m->gpu_status, 4000 | GPU_STATUS_DROPPED);
     CHECK_EQ(px(1, 1), 0x7FFF);   /* triangle 0-1-2 */
     CHECK_EQ(px(8, 8), 0);        /* triangle 1-2-3 dropped */
+}
+
+/* The cost table (docs/DECISIONS.md, "GPU budget"): 40 a triangle, 1 a flat or Gouraud pixel,
+ * x2 textured, x2 semi-transparent, 38,400 a clear. */
+static void test_cost_model(void) {
+    static const uint32_t per_px[8] = {1, 1, 2, 2, 2, 2, 4, 4};
+    for (int k = 0; k < 8; k++) CHECK_EQ(gpu_pixel_cycles(k), per_px[k]);
+    CHECK_EQ(GPU_CYCLES_TRI, 40);
+    CHECK_EQ(GPU_CYCLES_CLEAR, 38400);
+    CHECK_EQ(MEI_GPU_CYCLES_PER_FRAME, 1000000);
+
+    setup();
+    CHECK_EQ(m->gpu_cycles, 38400);                     /* setup() clears once */
+    gpu_clear(m, 0);
+    CHECK_EQ(m->gpu_cycles, 2 * 38400);
+
+    /* the 10x10 right triangle covers 55 pixels, the 10x10 quad 100 */
+    struct { uint32_t type; int n; uint32_t w[9]; uint32_t cost; } draws[] = {
+        {0x20, 4, {RGB(255, 255, 255), P(0, 0), P(10, 0), P(0, 10)}, 40 + 55},
+        {0x21, 6, {RGB(255, 0, 0), P(0, 0), RGB(0, 255, 0), P(10, 0), RGB(0, 0, 255), P(0, 10)}, 40 + 55},
+        {0x22, 7, {RGB(128, 128, 128), P(0, 0), TEX0(0, 0, 0, 0, 0), P(10, 0), UV(9, 0), P(0, 10), UV(0, 9)}, 40 + 110},
+        {0x28, 4, {RGB(255, 255, 255), P(0, 0), P(10, 0), P(0, 10)}, 40 + 110},
+        {0x29, 6, {RGB(255, 0, 0), P(0, 0), RGB(0, 255, 0), P(10, 0), RGB(0, 0, 255), P(0, 10)}, 40 + 110},
+        {0x2A, 7, {RGB(128, 128, 128), P(0, 0), TEX0(0, 0, 0, 0, 0), P(10, 0), UV(9, 0), P(0, 10), UV(0, 9)}, 40 + 220},
+        {0x2B, 9, {RGB(128, 128, 128), P(0, 0), TEX0(0, 0, 0, 0, 0), RGB(9, 9, 9), P(10, 0), UV(9, 0),
+                   RGB(200, 9, 9), P(0, 10), UV(0, 9)}, 40 + 220},
+        {0x24, 5, {RGB(255, 255, 255), P(0, 0), P(10, 0), P(0, 10), P(10, 10)}, 2 * 40 + 100},
+        {0x20, 4, {RGB(255, 255, 255), P(5, 5), P(5, 5), P(9, 9)}, 40},               /* zero area */
+        {0x20, 4, {RGB(255, 255, 255), P(-50, -50), P(-40, -50), P(-50, -40)}, 40},   /* off screen */
+        {0x24, 5, {RGB(255, 255, 255), P(0, 0), P(320, 0), P(0, 240), P(320, 240)}, 2 * 40 + 76800},
+    };
+    for (unsigned i = 0; i < sizeof draws / sizeof *draws; i++) {
+        setup(); list_begin();
+        m->gpu_cycles = 0;
+        uint32_t a = emit(draws[i].type, draws[i].n, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        for (int k = 0; k < draws[i].n; k++) wr32(m->ram + a + 4 + 4 * k, draws[i].w[k]);
+        list_draw();
+        CHECK_EQ(m->gpu_cycles, draws[i].cost);
+    }
+
+    /* dropped triangles cost nothing */
+    setup(); list_begin();
+    for (int i = 0; i < GPU_TRI_LIMIT; i++) emit(0x20, 4, RGB(0, 0, 0), P(300, 200), P(301, 200), P(300, 201));
+    m->gpu_cycles = 0;
+    list_draw();
+    CHECK_EQ(m->gpu_cycles, GPU_TRI_LIMIT * (40 + 1));
+    list_draw();
+    CHECK_EQ(m->gpu_cycles, GPU_TRI_LIMIT * (40 + 1));
+    CHECK_EQ(m->gstat.tris_dropped, GPU_TRI_LIMIT);
+}
+
+/* ---- the GPU budget: lag when a frame's modelled cycles exceed 1,000,000 a tick ---- */
+
+#define V_COUNT  0x100   /* frames the CPU has started */
+#define V_CLEARS 0x104   /* GPU_CLEARs per frame */
+#define V_LIST   0x108   /* packet list per frame */
+#define V_SPIN   0x10C   /* busy-loop iterations per frame */
+#define V_SEEN   0x8000  /* frame n's reads: PAD1 at V_SEEN + 4n, GPU_LOAD +0x400, GPU_TICKS +0x800, GPU_LAG +0xC00 */
+
+static const char *lag_src =
+    "        lui  r9, 0x3FC0\n"           /* r9 = 0xFF0000 */
+    "frame:  lw   r1, [r0+0x100]\n"
+    "        addi r1, r1, 1\n"
+    "        sw   r1, [r0+0x100]\n"
+    "        shli r3, r1, 2\n"
+    "        lw   r2, [r9+0x200]\n"       /* PAD1 */
+    "        sw   r2, [r3+0x8000]\n"
+    "        lw   r2, [r9+0x14]\n"        /* GPU_LOAD */
+    "        sw   r2, [r3+0x8400]\n"
+    "        lw   r2, [r9+0x18]\n"        /* GPU_TICKS */
+    "        sw   r2, [r3+0x8800]\n"
+    "        lw   r2, [r9+0x1C]\n"        /* GPU_LAG */
+    "        sw   r2, [r3+0x8C00]\n"
+    "        lw   r4, [r0+0x104]\n"
+    ".clr:   beq  r4, r0, .draw\n"
+    "        sw   r0, [r9+4]\n"           /* GPU_CLEAR */
+    "        addi r4, r4, -1\n"
+    "        jmp  .clr\n"
+    ".draw:  lw   r5, [r0+0x108]\n"
+    "        sw   r5, [r9+0]\n"           /* GPU_DRAW */
+    "        lw   r6, [r0+0x10C]\n"
+    ".spin:  beq  r6, r0, .end\n"
+    "        addi r6, r6, -1\n"
+    "        jmp  .spin\n"
+    ".end:   vsync\n"
+    "        jmp  frame\n";
+
+static uint32_t ram(uint32_t a) { return rd32(m->ram + a); }
+/* what frame n read: 0 PAD1, 1 GPU_LOAD, 2 GPU_TICKS, 3 GPU_LAG */
+static uint32_t seen(int frame, int what) { return ram(V_SEEN + 0x400 * (uint32_t)what + 4 * (uint32_t)frame); }
+
+static int lag_load(void) {
+    MeiAsmResult res;
+    if (mei_assemble(lag_src, "lag.s", &res) != 0) { printf("asm: %s\n", res.error); CHECK(0); return 0; }
+    CHECK_EQ(mei_load_cart(m, res.rom, res.rom_len), 0);
+    mei_asm_free(&res);
+    wr32(m->ram + V_LIST, 0xFFFFFF);
+    return 1;
+}
+
+/* Runs n ticks with PAD1 pending as 0x100 + the tick number; returns bit i = tick i presented. */
+static uint32_t ticks(int n, int *tick) {
+    uint32_t bits = 0;
+    for (int i = 0; i < n; i++, (*tick)++) {
+        MeiPadInput in = {0x100u + (uint32_t)*tick, 0, 0};
+        mei_set_pad(m, 0, &in);
+        bits |= (uint32_t)mei_run_frame(m) << i;
+    }
+    return bits;
+}
+
+static void test_budget(void) {
+    int t = 0;
+    /* Under budget: every tick presents; the registers read 0 before the first present. */
+    if (!lag_load()) return;
+    wr32(m->ram + V_CLEARS, 26);                        /* 998,400 */
+    CHECK_EQ(ticks(4, &t), 0xF);
+    CHECK_EQ(ram(V_COUNT), 4);
+    CHECK_EQ(seen(1, 1), 0); CHECK_EQ(seen(1, 2), 0); CHECK_EQ(seen(1, 3), 0);
+    CHECK_EQ(seen(2, 0), 0x100);                        /* latched at the first present (tick 0) */
+    CHECK_EQ(seen(2, 1), 998400); CHECK_EQ(seen(2, 2), 1); CHECK_EQ(seen(2, 3), 0);
+    CHECK_EQ(seen(4, 0), 0x102);
+    CHECK_EQ(mei_gpu_stats(m)->gpu_cycles, 998400);
+    CHECK_EQ(mei_gpu_stats(m)->ticks, 1);
+    CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 0);
+
+    /* Exactly the budget presents on time; 40 cycles more is a tick late. */
+    list_begin();
+    for (int i = 0; i < 40; i++) emit(0x20, 4, RGB(0, 0, 0), P(5, 5), P(5, 5), P(5, 5));   /* empty: 40 each */
+    wr32(m->ram + V_LIST, pk_first);
+    CHECK_EQ(ticks(2, &t), 0x3);
+    CHECK_EQ(mei_gpu_stats(m)->gpu_cycles, 1000000);
+    CHECK_EQ(mei_gpu_stats(m)->ticks, 1);
+    emit(0x20, 4, RGB(0, 0, 0), P(5, 5), P(5, 5), P(5, 5));
+    CHECK_EQ(ticks(2, &t), 0x2);                        /* the frame drawn in the first tick waits */
+    CHECK_EQ(mei_gpu_stats(m)->gpu_cycles, 1000040);
+    CHECK_EQ(mei_gpu_stats(m)->ticks, 2);
+    CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 1);
+    CHECK_EQ(m->gpu_lag, 1);
+
+    /* Twice the budget: presented one tick late. The CPU does not run in the wait, and the
+     * pads latch only at the present. */
+    if (!lag_load()) return;
+    t = 0;
+    wr32(m->ram + V_CLEARS, 52);                        /* 1,996,800 */
+    CHECK_EQ(ticks(1, &t), 0);                          /* frame 1 drawn, over budget */
+    CHECK_EQ(ram(V_COUNT), 1);
+    uint32_t pc = m->pc, frame0 = m->frame;
+    const uint16_t *front = mei_display(m);
+    CHECK_EQ(ticks(1, &t), 1);                          /* the wait tick presents */
+    CHECK_EQ(ram(V_COUNT), 1);                          /* the CPU did not run */
+    CHECK_EQ(m->pc, pc);
+    CHECK_EQ(m->frame, frame0 + 1);                     /* FRAME counts ticks */
+    CHECK(mei_display(m) != front);                     /* the buffers swapped at the present */
+    CHECK_EQ(ticks(1, &t), 0);                          /* frame 2 drawn in tick 2 */
+    CHECK_EQ(ram(V_COUNT), 2);
+    CHECK_EQ(seen(2, 0), 0x101);                        /* the pad of the present tick, not 0x100 */
+    CHECK_EQ(seen(2, 1), 1996800);
+    CHECK_EQ(seen(2, 2), 2);
+    CHECK_EQ(seen(2, 3), 1);
+    CHECK_EQ(ticks(5, &t), 0x15);                       /* ticks 3-7: presents at 3, 5, 7 */
+    CHECK_EQ(ram(V_COUNT), 4);
+    CHECK_EQ(seen(4, 0), 0x105);
+    CHECK_EQ(seen(4, 3), 3);
+    CHECK_EQ(m->gpu_lag, 4);
+    CHECK_EQ(mei_gpu_stats(m)->ticks, 2);
+    CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 1);
+    CHECK_EQ(mei_gpu_stats(m)->cpu_cycles < 500000, 1);
+
+    /* Three times: two ticks late. */
+    if (!lag_load()) return;
+    t = 0;
+    wr32(m->ram + V_CLEARS, 78);                        /* 2,995,200 */
+    CHECK_EQ(ticks(9, &t), 0x124);                      /* presents at ticks 2, 5, 8 */
+    CHECK_EQ(ram(V_COUNT), 3);
+    CHECK_EQ(seen(2, 0), 0x102);
+    CHECK_EQ(seen(3, 0), 0x105);
+    CHECK_EQ(seen(3, 1), 2995200);
+    CHECK_EQ(seen(3, 2), 3);
+    CHECK_EQ(seen(3, 3), 4);
+    CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 2);
+    wr32(m->ram + V_CLEARS, 79);                        /* 3,033,600: three ticks late */
+    CHECK_EQ(ticks(4, &t), 0x8);                        /* frame 4 (from tick 9) at tick 12 */
+    CHECK_EQ(mei_gpu_stats(m)->ticks, 4);
+    CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 3);
+    uint32_t lag = 0, load = 0, tk = 0;
+    CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_LAG, &lag), 0);
+    CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_LOAD, &load), 0);
+    CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_TICKS, &tk), 0);
+    CHECK_EQ(lag, 6 + 3);
+    CHECK_EQ(load, 3033600);
+    CHECK_EQ(tk, 4);
+    CHECK_EQ(bus_write32(m, IO_BASE + IO_GPU_LOAD, 0), -1);
+    CHECK_EQ(m->fault.kind, MEI_FAULT_READ_ONLY);
+    memset(&m->fault, 0, sizeof m->fault);
+
+    /* CPU overrun composes: a frame whose CPU work spans two ticks has 2,000,000 GPU cycles. */
+    if (!lag_load()) return;
+    t = 0;
+    wr32(m->ram + V_CLEARS, 52);                        /* 1,996,800 */
+    wr32(m->ram + V_SPIN, 200000);                      /* about 600,000 CPU cycles */
+    CHECK_EQ(ticks(4, &t), 0xA);                        /* late for the CPU only */
+    CHECK_EQ(mei_gpu_stats(m)->ticks, 2);
+    CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 0);
+    CHECK_EQ(mei_gpu_stats(m)->cpu_cycles > 500000 && mei_gpu_stats(m)->cpu_cycles < 1000000, 1);
+    CHECK_EQ(m->gpu_lag, 0);
+    wr32(m->ram + V_CLEARS, 53);                        /* 2,035,200: one tick more */
+    CHECK_EQ(ticks(6, &t), 0x24);                       /* frames from ticks 4 and 7 at ticks 6 and 9 */
+    CHECK_EQ(mei_gpu_stats(m)->ticks, 3);
+    CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 1);
+    CHECK_EQ(seen(3, 2), 2);                            /* frame 3 read frame 2's 2 ticks */
+    CHECK_EQ(seen(4, 2), 3);                            /* frame 4 read frame 3's 3 */
+
+    /* A reset clears the wait and the registers. */
+    wr32(m->ram + V_CLEARS, 200);
+    wr32(m->ram + V_SPIN, 0);
+    ticks(2, &t);
+    mei_reset(m);
+    CHECK_EQ(m->gpu_wait, 0);
+    CHECK_EQ(m->gpu_lag, 0);
+    CHECK_EQ(m->gpu_cycles, 0);
+    CHECK_EQ(mei_gpu_stats(m)->gpu_cycles, 0);
 }
 
 static void test_list_walk(void) {
@@ -676,6 +907,8 @@ int main(void) {
     test_blend();
     test_clipping();
     test_limits();
+    test_cost_model();
+    test_budget();
     test_list_walk();
     test_buffers();
     test_error_screen();

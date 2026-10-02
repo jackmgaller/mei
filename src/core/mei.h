@@ -11,6 +11,7 @@
 #define MEI_AUDIO_RATE 22050
 #define MEI_FPS 60
 #define MEI_CYCLES_PER_FRAME 500000
+#define MEI_GPU_CYCLES_PER_FRAME 1000000   /* the GPU's budget per tick (docs/DECISIONS.md) */
 #define MEI_MAX_AUDIO_FRAMES 368   /* per 60 Hz tick: alternates 367 / 368 */
 
 /* Pad button bits (PAD1 / PAD2). */
@@ -65,10 +66,13 @@ void mei_set_pad(Mei *m, int index, const MeiPadInput *in);
 
 /* Runs one 60 Hz tick: up to 500,000 cycles or until vsync, then produces
  * that tick's audio. Returns 1 if a new picture was presented (vsync),
- * 0 if the frame overran and the previous picture repeats. */
+ * 0 if the frame overran and the previous picture repeats: the CPU ran out of
+ * cycles before vsync, or it reached vsync but the GPU has not finished the
+ * frame (its modelled cycles exceed 1,000,000 per tick since the last present),
+ * in which case the CPU waits at vsync and does not run. */
 int mei_run_frame(Mei *m);
 
-/* GPU work of the last presented frame (measurement only: nothing here limits anything). */
+/* GPU work of the last presented frame. gpu_cycles is what the GPU budget limits. */
 typedef struct {
     uint32_t tris;          /* triangles rasterised (the ones counted against the limit) */
     uint32_t tris_empty;    /* of those: no pixels (zero area, off screen or between pixel centres) */
@@ -77,6 +81,9 @@ typedef struct {
     uint32_t clears;        /* GPU_CLEAR writes (each fills the whole screen) */
     uint32_t lists;         /* GPU_DRAW writes */
     uint32_t cpu_cycles;    /* CPU cycles spent on the frame (more than a budget after an overrun) */
+    uint32_t gpu_cycles;    /* modelled GPU cycles (the cost table in DECISIONS.md), saturated at 2^32-1 */
+    uint32_t ticks;         /* ticks from the previous present to this one: 1 = on time */
+    uint32_t gpu_lag;       /* of those, ticks the finished frame waited for the GPU */
 } MeiGpuStats;
 const MeiGpuStats *mei_gpu_stats(const Mei *m);
 

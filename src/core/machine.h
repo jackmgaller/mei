@@ -29,6 +29,9 @@
 #define IO_GPU_CTRL    0x008
 #define IO_GPU_STATUS  0x00C
 #define IO_GPU_BACK    0x010
+#define IO_GPU_LOAD    0x014   /* extension, read-only: GPU cycles of the last presented frame */
+#define IO_GPU_TICKS   0x018   /* extension, read-only: ticks the last presented frame took */
+#define IO_GPU_LAG     0x01C   /* extension, read-only: ticks the GPU held a finished frame back */
 #define IO_AUDIO       0x100   /* channel n at IO_AUDIO + n * 0x20 */
 #define IO_AUD_ADDR    0x00
 #define IO_AUD_LEN     0x04
@@ -93,9 +96,18 @@
 #define PLN_LC         0xA0    /* line channel n: ADDR at PLN_LC + 8n, CTRL at PLN_LC + 8n + 4 */
 #define PLN_HOLE       0x8000u /* a framebuffer pixel with no polygon (compositor on) */
 
-#define GPU_TRI_LIMIT      2000
+#define GPU_TRI_LIMIT      4000   /* a backstop: the cycle budget below binds first */
 #define GPU_LIST_LIMIT     65536
 #define GPU_STATUS_DROPPED (1u << 16)
+
+/* The GPU cost model (docs/DECISIONS.md, "GPU budget"), the official cost table. The GPU
+ * charges these modelled cycles against MEI_GPU_CYCLES_PER_FRAME per tick; gpu.c applies
+ * them (gpu_pixel_cycles) and mei.c holds a frame back until its ticks cover them. */
+#define GPU_CYCLES_TRI     40u   /* setup, per triangle counted against the limit (empty ones too) */
+#define GPU_CYCLES_PX      1u    /* per pixel filled, flat or Gouraud */
+#define GPU_CYCLES_TEX_X   2u    /* a textured pixel costs this many times as much */
+#define GPU_CYCLES_SEMI_X  2u    /* so does a semi-transparent one (textured and blended: 4) */
+#define GPU_CYCLES_CLEAR   (MEI_W * MEI_H / 2u)   /* GPU_CLEAR: half a cycle per pixel, 38,400 */
 
 #define AUD_CHANNELS 16
 #define AUD_ADPCM_MAX_PITCH 0x100000u   /* ADPCM channels step at most 16.0 samples per output */
@@ -204,6 +216,10 @@ struct Mei {
     uint32_t gpu_ctrl;
     uint32_t gpu_status;     /* bits 0-15 triangle count, bit 16 dropped */
     MeiGpuStats gstat, gstat_last;   /* this frame so far / the last presented frame */
+    uint64_t gpu_cycles;     /* modelled GPU cycles of the frame being drawn */
+    uint32_t frame_ticks;    /* ticks since the last present (or reset), counting this one */
+    int gpu_wait;            /* the CPU reached vsync; the frame waits for the GPU to finish */
+    uint32_t gpu_lag;        /* GPU_LAG: ticks since reset a finished frame waited for the GPU */
     uint16_t error_screen[MEI_W * MEI_H];
 
     /* Audio */
@@ -248,6 +264,7 @@ void gpu_reset(Mei *m);
 void gpu_draw_list(Mei *m, uint32_t addr);   /* GPU_DRAW write; may raise a fault */
 void gpu_clear(Mei *m, uint32_t colour);     /* GPU_CLEAR write */
 void gpu_vsync(Mei *m);                      /* swap buffers, reset triangle count */
+uint32_t gpu_pixel_cycles(int kind);         /* cost model: cycles per pixel of kind gouraud|tex<<1|semi<<2 */
 uint32_t gpu_back_addr(const Mei *m);
 const uint16_t *gpu_front(Mei *m);
 void gpu_render_error_screen(Mei *m);        /* fills m->error_screen from m->fault + registers */

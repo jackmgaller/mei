@@ -865,14 +865,14 @@ static void test_faults(void) {
         begin("bad I/O width"); e(U(LUI, 9, IO_HI)); e(width[i]);
         FAULT(MEI_FAULT_IO_WIDTH, 0xFF0000 + MEI_IMM18(width[i]));
     }
-    uint32_t unlisted[] = {0x14, 0x1C, 0xFC, 0x11C, 0x1FC, 0x218, 0x2FC, 0x320, 0x3FC};
+    uint32_t unlisted[] = {0x20, 0x24, 0xFC, 0x11C, 0x1FC, 0x218, 0x2FC, 0x320, 0x3FC};
     for (size_t i = 0; i < sizeof unlisted / sizeof *unlisted; i++) {
         begin("unlisted I/O read"); e(U(LUI, 9, IO_HI)); e(I(LW, 1, 9, unlisted[i]));
         FAULT(MEI_FAULT_UNMAPPED, 0xFF0000 + unlisted[i]);
         begin("unlisted I/O write"); e(U(LUI, 9, IO_HI)); e(I(SW, 1, 9, unlisted[i]));
         FAULT(MEI_FAULT_UNMAPPED, 0xFF0000 + unlisted[i]);
     }
-    uint32_t ro[] = {IO_GPU_STATUS, IO_GPU_BACK, IO_PAD1, IO_PAD2, IO_STICK1_X, IO_STICK1_Y,
+    uint32_t ro[] = {IO_GPU_STATUS, IO_GPU_BACK, IO_GPU_LOAD, IO_GPU_TICKS, IO_GPU_LAG, IO_PAD1, IO_PAD2, IO_STICK1_X, IO_STICK1_Y,
                      IO_STICK2_X, IO_STICK2_Y, IO_SYS_FRAME, IO_SYS_CYCLES, IO_AUDIO + 0xE0 + IO_AUD_POS};
     for (size_t i = 0; i < sizeof ro / sizeof *ro; i++) {
         begin("read-only I/O write"); e(U(LUI, 9, IO_HI)); e(I(SW, 1, 9, ro[i]));

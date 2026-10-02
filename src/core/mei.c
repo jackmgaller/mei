@@ -38,6 +38,10 @@ void mei_reset(Mei *m) {
     memset(&m->fault, 0, sizeof m->fault);
     memset(&m->gstat, 0, sizeof m->gstat);
     memset(&m->gstat_last, 0, sizeof m->gstat_last);
+    m->gpu_cycles = 0;
+    m->frame_ticks = 0;
+    m->gpu_wait = 0;
+    m->gpu_lag = 0;
     memset(m->debug_tail, 0, sizeof m->debug_tail);
     m->debug_col = 0;
     m->launch_pending = 0;
@@ -129,26 +133,49 @@ static void latch_stick(const MeiPadInput *in, int32_t out[2]) {
     out[1] = (int32_t)(y * s / mag);
 }
 
+/* vsync: the frame the CPU finished is shown. Buffers swap, the plane chip composes, and
+ * input, the clock and the card controller latch. */
+static void present(Mei *m) {
+    m->gstat.gpu_cycles = m->gpu_cycles > UINT32_MAX ? UINT32_MAX : (uint32_t)m->gpu_cycles;
+    m->gstat.ticks = m->frame_ticks;
+    m->gstat_last = m->gstat;
+    memset(&m->gstat, 0, sizeof m->gstat);
+    m->gpu_cycles = 0;
+    m->frame_ticks = 0;
+    m->gpu_wait = 0;
+    gpu_vsync(m);
+    planes_vsync(m);     /* compose the frame just drawn, then auto-erase */
+    for (int i = 0; i < 2; i++) {
+        m->pad_buttons[i] = m->pad_pending[i].buttons;
+        latch_stick(&m->pad_pending[i], m->pad_stick[i]);
+    }
+    m->clock[0] = m->clock_pending[0];
+    m->clock[1] = m->clock_pending[1];
+    card_vsync(m);
+}
+
+/* The GPU budget (docs/DECISIONS.md, "GPU budget"): a frame the CPU has finished is presented
+ * at the first vsync at which its modelled GPU cycles are at most 1,000,000 times the ticks
+ * since the last present, this one included. Until then the CPU waits at vsync. */
 int mei_run_frame(Mei *m) {
     int presented = 0;
     if (!m->fault.kind) {
-        m->cycles = MEI_CYCLES_PER_FRAME;
-        m->vsync_hit = 0;
-        cpu_run(m);
-        m->gstat.cpu_cycles += MEI_CYCLES_PER_FRAME - (m->cycles > 0 ? (uint32_t)m->cycles : 0);
-        if (m->vsync_hit) {
-            m->gstat_last = m->gstat;
-            memset(&m->gstat, 0, sizeof m->gstat);
-            gpu_vsync(m);
-            planes_vsync(m);     /* compose the frame just drawn, then auto-erase */
-            for (int i = 0; i < 2; i++) {
-                m->pad_buttons[i] = m->pad_pending[i].buttons;
-                latch_stick(&m->pad_pending[i], m->pad_stick[i]);
+        if (!m->gpu_wait) {
+            m->cycles = MEI_CYCLES_PER_FRAME;
+            m->vsync_hit = 0;
+            cpu_run(m);
+            m->gstat.cpu_cycles += MEI_CYCLES_PER_FRAME - (m->cycles > 0 ? (uint32_t)m->cycles : 0);
+            m->gpu_wait = m->vsync_hit;
+        }
+        m->frame_ticks++;
+        if (m->gpu_wait) {
+            if (m->gpu_cycles <= (uint64_t)MEI_GPU_CYCLES_PER_FRAME * m->frame_ticks) {
+                present(m);
+                presented = 1;
+            } else {
+                m->gstat.gpu_lag++;
+                m->gpu_lag++;
             }
-            m->clock[0] = m->clock_pending[0];
-            m->clock[1] = m->clock_pending[1];
-            card_vsync(m);
-            presented = 1;
         }
         broadcast_tick(m);   /* FRAME still reads this tick's number */
         m->frame++;

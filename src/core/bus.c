@@ -56,6 +56,9 @@ static MeiFaultKind io_read(Mei *m, uint32_t off, uint32_t *out) {
     case IO_GPU_CTRL:   *out = m->gpu_ctrl; return 0;
     case IO_GPU_STATUS: *out = m->gpu_status; return 0;
     case IO_GPU_BACK:   *out = gpu_back_addr(m); return 0;
+    case IO_GPU_LOAD:   *out = m->gstat_last.gpu_cycles; return 0;
+    case IO_GPU_TICKS:  *out = m->gstat_last.ticks; return 0;
+    case IO_GPU_LAG:    *out = m->gpu_lag; return 0;
     case IO_PAD1:       *out = m->pad_buttons[0]; return 0;
     case IO_PAD2:       *out = m->pad_buttons[1]; return 0;
     case IO_STICK1_X:   *out = (uint32_t)m->pad_stick[0][0]; return 0;
@@ -94,7 +97,7 @@ static MeiFaultKind io_write(Mei *m, uint32_t off, uint32_t val) {
     }
     case IO_SYS_LAUNCH: m->launch_index = val; m->launch_pending = 1; return 0;
     case IO_SYS_CONFIG: m->config_dirty |= m->sys_config != val; m->sys_config = val; return 0;
-    case IO_GPU_STATUS: case IO_GPU_BACK:
+    case IO_GPU_STATUS: case IO_GPU_BACK: case IO_GPU_LOAD: case IO_GPU_TICKS: case IO_GPU_LAG:
     case IO_PAD1: case IO_PAD2:
     case IO_STICK1_X: case IO_STICK1_Y: case IO_STICK2_X: case IO_STICK2_Y:
     case IO_SYS_FRAME: case IO_SYS_CYCLES: case IO_SYS_TIME: case IO_SYS_DATE:
