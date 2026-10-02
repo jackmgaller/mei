@@ -185,6 +185,7 @@ typedef struct Expr {
     struct Func *target;   /* intrinsics: the function applied, when known statically */
     int has_count;         /* intrinsics: an explicit element count was given */
     struct MatchArm *arms; int narms;   /* E_MATCH */
+    Sym *chk;              /* meic -g: the message of this expression's run-time check (a string) */
 } Expr;
 
 typedef enum {
@@ -223,6 +224,8 @@ struct Local {
     int immutable;
     int is_param;
     int is_loopvar;
+    int has_range;        /* a loop variable with constant bounds: its value is in [rlo, rhi) */
+    int64_t rlo, rhi;
     int is_capture;       /* a function literal's copy of a captured local (arrives in r6-r8) */
     int points_local;     /* pointer seen holding the address of local storage (dangling check) */
     int addr_taken;
@@ -271,6 +274,7 @@ typedef struct Func {
     Loc *cap_locs;        /* first use of each capture */
     int ncaps, capcaps;
     int noescape;         /* literal passed straight to map/filter/... or called at once */
+    Sym *stack_msg;       /* meic -g: the message of the stack check at entry */
 } Func;
 
 typedef enum { SY_TYPE, SY_CONST, SY_DATA, SY_GLOBAL, SY_REG, SY_EMBED, SY_FUNC, SY_LOCAL, SY_BUILTIN } SymKind;
@@ -319,6 +323,7 @@ typedef struct Program {
     Sym **regs; int nregs, capregs;
     const char *title;
     const char *cart_id;   /* `cart "Title", "ID"`: header bytes 40-55 (NULL: none) */
+    int debug;             /* MEI_CHECK_* bits (meic -g) */
     Func *init_fn;         /* synthesized global initialisers */
     uint32_t ram_end;
 } Program;

@@ -1,0 +1,15 @@
+// meic --trap-div: dividing by zero halts with a report (without it, x / 0 is 0).
+// flags: --trap-div
+// exit: 2
+fn div(a: s32, b: s32) -> s32 { return a / b }
+fn fdv(a: fixed, b: fixed) -> fixed { return a / b }
+
+fn init() {
+    print_int(div(7, 2)); println("")          // expect: 3
+    print_fixed(fdv(1.0, 4.0)); println("")    // expect: 0.25
+    var n = 10
+    n %= 3
+    print_int(n); println("")                  // expect: 1
+    print_int(div(1, 0)); println("")
+}
+// expect: check failed: debug_div.akr:4: division by zero

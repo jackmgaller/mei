@@ -51,6 +51,26 @@ static int g_brk[128], g_cont[128], g_nloop;
 static int g_out_size;
 static int g_iobase_reg;           /* register holding 0xFF0000, or -1 */
 
+/* meic -g: out-of-line failure paths of run-time checks, emitted after the function's `ret`.
+   They never return (the reporter halts), so they may clobber anything; they reset sp first,
+   since the stack itself may be what failed. */
+typedef struct { int label; const char *msg; int idx_reg; int64_t len; } CheckStub;
+static CheckStub *g_stubs;
+static int g_nstubs, g_capstubs;
+static Sym *g_div_chk;             /* set around the arith() of a checked division / multiply */
+
+static int check_stub(Sym *msg, int idx_reg, int64_t len) {
+    if (g_nstubs == g_capstubs) {
+        int nc = g_capstubs ? g_capstubs * 2 : 64;
+        CheckStub *n = ar_alloc(sizeof *n * (size_t)nc);
+        if (g_nstubs) memcpy(n, g_stubs, sizeof *n * (size_t)g_nstubs);
+        g_stubs = n;
+        g_capstubs = nc;
+    }
+    g_stubs[g_nstubs] = (CheckStub){++g_label, msg->label, idx_reg, len};
+    return g_stubs[g_nstubs++].label;
+}
+
 static const char *RN[16] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "r13", "sp", "ra"};
 static const char *VN[8] = {"v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7"};
 
@@ -359,9 +379,19 @@ static LV lv_local(Local *l) {
 static void lv_free(LV *lv) { if (lv->k == LV_MEM) ofree(lv->base); }
 
 /* Adds a scaled index to a memory lvalue. */
-static void lv_index(LV *lv, Expr *idx, int size) {
+static void lv_index(LV *lv, Expr *idx, int size, Expr *chk) {
     if (idx->isconst) { lv->off += (int32_t)(idx->cval * size); return; }
     Opnd i = gen_expr(idx, -1);
+    if (chk && chk->chk) {
+        /* meic -g: (unsigned) index < length, else report */
+        int64_t n = chk->a->ty->k == TY_ARRAY ? chk->a->ty->n : 4;
+        int ri = R(&i);
+        Opnd on = o_imm(n);
+        int rn = R(&on);
+        ri = R(&i);
+        I("bgeu %s, %s, .L%d", RN[ri], RN[rn], check_stub(chk->chk, ri, n));
+        ofree(on);
+    }
     int sh = log2_exact(size);
     Opnd sc = sh == 0 ? i : sh > 0 ? arith(B_SHL, ty_s32, 0, i, o_imm(sh), -1) : arith(B_MUL, ty_s32, 0, i, o_imm(size), -1);
     if (lv->base.k == O_REG && lv->base.v == 0) { lv->base = sc; return; }   /* absolute: the index becomes the base */
@@ -399,7 +429,7 @@ static LV gen_lv(Expr *e) {
             Opnd a = lv_addr(&lv);
             lv = lv_mem(a, 0, e->ty);
         }
-        lv_index(&lv, e->b, size);
+        lv_index(&lv, e->b, size, e);
         lv.ty = e->ty;
         return lv;
     }
@@ -1100,6 +1130,21 @@ static Opnd arith(OpKind op, Type *ty, int mixed, Opnd a, Opnd b, int hint) {
     default: ice("bad arithmetic operator");
     }
     int ra = R(&a), rb = R(&b);
+    if (g_div_chk && (op == B_DIV || op == B_MOD)) Ik("beq %s, r0, .L%d", RN[rb], check_stub(g_div_chk, -1, 0));
+    if (g_div_chk && op == B_MUL && fx) {
+        /* meic --trap-fmul: h = (a >> 8) * (b >> 8) >> 16 is within 257 of the product's bits
+           32-63, so |h| > 2^15 + 257 means the 16.16 product overflowed (a narrow band of
+           overflows just above the limit goes unreported, but nothing valid is) */
+        int t1 = tnew(0), t2 = tnew(0);
+        int r1 = g_t[t1].reg, r2 = g_t[t2].reg;
+        Ik("sari %s, %s, 8", RN[r1], RN[ra]);
+        Ik("sari %s, %s, 8", RN[r2], RN[rb]);
+        Ik("fmul %s, %s, %s", RN[r1], RN[r1], RN[r2]);
+        Ik("addi %s, %s, %d", RN[r1], RN[r1], 32768 + 258);
+        Ik("addi %s, r0, %d", RN[r2], 2 * (32768 + 258));
+        Ik("bgeu %s, %s, .L%d", RN[r1], RN[r2], check_stub(g_div_chk, -1, 0));
+        tfree(t1); tfree(t2);
+    }
     ofree(a); ofree(b);
     Opnd d = dest(0, hint, &r);
     I("%s %s, %s, %s", ins, RN[r], RN[ra], RN[rb]);
@@ -1125,6 +1170,7 @@ static Opnd gen_vec_binary(Expr *e, Opnd a, Opnd b, int hint) {
             b = o_imm(recip);
         } else {
             int rb = R(&b);
+            if (g_div_chk) Ik("beq %s, r0, .L%d", RN[rb], check_stub(g_div_chk, -1, 0));
             ofree(b);
             int t = tnew(0);
             I("lui %s, 64", RN[g_t[t].reg]);
@@ -1206,7 +1252,10 @@ static Opnd gen_binary(Expr *e, int hint) {
     if (at->k == TY_MAT4) return gen_xfm(e, hint);
     if (is_v(e->ty)) {
         Opnd a = gen_expr(e->a, -1), b = gen_expr(e->b, -1);
-        return gen_vec_binary(e, a, b, hint);
+        g_div_chk = e->chk;
+        Opnd res = gen_vec_binary(e, a, b, hint);
+        g_div_chk = NULL;
+        return res;
     }
     if (e->ty->k == TY_PTR || (at->k == TY_PTR && op == B_SUB)) {
         Opnd a = gen_expr(e->a, -1);
@@ -1230,8 +1279,11 @@ static Opnd gen_binary(Expr *e, int hint) {
         return arith(op, ty_u32, 0, a, b, hint);
     }
     Opnd a = gen_expr(e->a, -1), b = gen_expr(e->b, -1);
-    return arith(op, e->conv_from && e->conv_from != ty_s32 ? e->conv_from : e->ty,
-                 e->ty->k == TY_FIXED && e->conv_from == ty_s32, a, b, hint);
+    g_div_chk = e->chk;
+    Opnd res = arith(op, e->conv_from && e->conv_from != ty_s32 ? e->conv_from : e->ty,
+                     e->ty->k == TY_FIXED && e->conv_from == ty_s32, a, b, hint);
+    g_div_chk = NULL;
+    return res;
 }
 
 static Opnd gen_conv(Expr *e, int hint) {
@@ -1991,7 +2043,9 @@ static void gen_compound(Stmt *s) {
     Opnd b, res;
     if (is_v(bin->ty)) {
         b = gen_expr(bin->b, -1);
+        g_div_chk = bin->chk;
         res = gen_vec_binary(bin, cur, b, hint);
+        g_div_chk = NULL;
     } else if (bin->ty->k == TY_PTR) {
         int size = bin->ty->elem->size;
         if (bin->b->isconst) b = o_imm(bin->b->cval * size);
@@ -2000,7 +2054,9 @@ static void gen_compound(Stmt *s) {
     } else {
         b = gen_expr(bin->b, -1);
         Type *ot = bin->conv_from && bin->conv_from != ty_s32 ? bin->conv_from : bin->ty;
+        g_div_chk = bin->chk;
         res = arith(bin->op, ot, bin->ty->k == TY_FIXED && bin->conv_from == ty_s32, cur, b, hint);
+        g_div_chk = NULL;
     }
     store_lv(&lv, res, bin->ty);
 }
@@ -2680,7 +2736,10 @@ static void gen_func(Func *f, Buf *out) {
     }
     g_frame = g_frame_max = g_out_size + locals_size;
     g_nloop = 0;
+    g_nstubs = 0;
+    g_div_chk = NULL;
     g_ret_label = new_label();
+    int stack_stub = f->stack_msg ? check_stub(f->stack_msg, -1, 0) : 0;
 
     /* parameters: move to their homes */
     Local *order[28];
@@ -2737,6 +2796,10 @@ static void gen_func(Func *f, Buf *out) {
     }
     buf_printf(out, "%s:\n", f->label);
     if (frame) buf_printf(out, "    addi sp, sp, %d\n", -frame);
+    if (frame && stack_stub) {
+        /* meic -g: the stack must stay above the globals (r5 is free at entry) */
+        buf_printf(out, "    li r5, 0x%06X\n    bltu sp, r5, .L%d\n", g_P->ram_end, stack_stub);
+    }
     if (nonleaf) buf_printf(out, "    sw ra, [sp+%d]\n", frame - 4);
     for (int i = 0; i < ns; i++) buf_printf(out, "    sw %s, [sp+%d]\n", RN[saved_regs[i]], save_base + 4 * i);
     /* body, with @F replaced by the frame size */
@@ -2755,6 +2818,17 @@ static void gen_func(Func *f, Buf *out) {
     if (nonleaf) buf_printf(out, "    lw ra, [sp+%d]\n", frame - 4);
     if (frame) buf_printf(out, "    addi sp, sp, %d\n", frame);
     buf_puts(out, "    ret\n");
+    for (int i = 0; i < g_nstubs; i++) {
+        CheckStub *k = &g_stubs[i];
+        if (k->label == stack_stub && !frame) continue;
+        buf_printf(out, ".L%d:\n", k->label);
+        if (k->idx_reg >= 0) {
+            if (k->idx_reg != 2) buf_printf(out, "    mov r2, %s\n", RN[k->idx_reg]);
+            buf_printf(out, "    li r3, %lld\n", (long long)k->len);
+        }
+        buf_printf(out, "    la r1, %s\n    lui sp, %u\n    call %s\n", k->msg, 0x200000u >> 10,
+                   k->idx_reg >= 0 ? "F___bounds_fail" : "F___check_fail");
+    }
     g_fn = NULL;
 }
 
@@ -2891,6 +2965,8 @@ static void warn_entry_points(Program *P) {
 void gen_program(Program *P, Buf *out) {
     g_P = P;
     g_label = 0;
+    g_stubs = NULL;
+    g_nstubs = g_capstubs = 0;
     g_vconsts = NULL;
     g_vconst_n = 0;
     memset(&g_body, 0, sizeof g_body);

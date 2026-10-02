@@ -58,7 +58,8 @@ mei-headless game.mei --frames 60 --dump frame.ppm   # run without a window
 ```
 
 Options: `--title TEXT` sets the cart title (otherwise the `cart` declaration, else the file
-name), `--no-stdlib` compiles without the standard library, `--release` drops `assert`s.
+name), `--no-stdlib` compiles without the standard library, `--release` drops `assert`s, and
+`-g`, `--trap-div` and `--trap-fmul` build a [debug cart](#debug-builds) with run-time checks.
 
 The standard library (`stdlib/*.akr`) is compiled into every cart. `meic` looks for it in
 `$MEI_STDLIB`, then in `<directory of meic>/../stdlib`. Only functions a cart can reach are
@@ -656,10 +657,36 @@ per element (1,710), plus 2 per captured word for a closure. `filter(xs, fn(x) =
 | RAM from `0x000100` | global variables (small ones first, so most are one instruction away) |
 | RAM below `0x200000` | the stack (grows down): locals that are not in registers, spills, call frames |
 
-`len()` and `sizeof()` describe sizes; there is no bounds checking at run time (constant
-indexes are checked at compile time). Recursion is allowed; there is no stack-overflow check,
-so very deep recursion runs into the globals. ROM data is read-only: writing through a pointer
-into ROM faults.
+`len()` and `sizeof()` describe sizes. Constant indexes are checked at compile time; other
+indexes are checked at run time only in a [debug build](#debug-builds). Recursion is allowed;
+very deep recursion runs into the globals (a debug build stops it at the function entry that
+would). ROM data is read-only: writing through a pointer into ROM faults.
+
+### Debug builds
+
+`meic -g` adds run-time checks. A failed check reports like a failed `assert` (on the debug
+console, then a `Break` fault; `mei-headless` exits with status 2) and names the source line:
+
+```
+check failed: game.akr:42: index out of bounds for 'tiles' ([64]u8)
+  index 64, length 64
+check failed: game.akr:7: stack overflow entering walk() (too deep a recursion, or too many locals: the stack ran into the global variables)
+```
+
+| Option | Checks |
+|---|---|
+| `-g` | every array (and `mat4` row) index that is not a constant: `(unsigned) index < length`, so negative indexes fail too; the stack at every function entry that has a frame: `sp` must stay above the globals |
+| `--trap-div` | `-g`, plus integer and fixed-point division (and `%`) by zero, which otherwise gives 0 |
+| `--trap-fmul` | `-g`, plus fixed-point `*` whose product does not fit `fixed` (best effort: an overflow within about 1 % of the limit can go unreported, but no valid product is reported) |
+
+An index check costs 3 cycles (a constant length into a register and a `bgeu`); it is left out
+where the index is provably in range: a `for` loop variable whose constant bounds fit the
+array (`for i in 0..len(a) { a[i] }`), `i & K` with a constant `K` below the length, and a `u8`
+index into an array of 256 or more. The stack check costs 2-3 cycles per call. Indexing
+through a pointer (`p[i]`) is not checked: a pointer has no length. The failure paths are out
+of line, after each function's `ret`. Without these options no checking code is generated: a
+release build is unchanged. The reports come from `__check_fail` and `__bounds_fail` in
+`stdlib/debug.akr`. On Check-In! a `-g` build uses about 4-5 % more cycles.
 
 Locals whose address is never taken live in registers when possible: the compiler numbers
 statements, gives each local a live range, and shares registers between locals whose ranges
@@ -1136,8 +1163,8 @@ function but vectors are spilled around calls; `-S` shows exactly what was gener
 - The arms of a `match` expression are single expressions (use a `match` statement for blocks).
 - Multi-lane swizzles cannot be assigned; vectors cannot be compared with `==`.
 - `for` loops count up by one; there is no `..=` or step.
-- No run-time bounds or stack-overflow checks. The locals of one function may use at most
-  120 KB of stack (make large arrays global).
+- Run-time bounds and stack-overflow checks only in a debug build (`meic -g`). The locals of
+  one function may use at most 120 KB of stack (make large arrays global).
 - One error is reported per compilation.
 - Struct, array and matrix parameters are read-only (passed by reference).
 - `mesh()` draws at most 2,048 vertices per mesh. Faces crossing the near plane are clipped in

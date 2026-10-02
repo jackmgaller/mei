@@ -183,6 +183,7 @@ int meic_compile(const char *path, const MeiCompileOptions *opt, MeiAsmResult *o
     compiler_import(&C, NULL, path, (Loc){0});
     if (opt->title) P->title = opt->title;
     if (!P->title) P->title = basename_noext(path);
+    P->debug = opt->debug;
     check_program(P);
     gen_program(P, &text);
     if (opt->asm_text) *opt->asm_text = strdup(text.p ? text.p : "");

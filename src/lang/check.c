@@ -4,6 +4,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 /* ------------------------------------------------------------------ types */
 
@@ -222,6 +223,28 @@ _Noreturn void error_unknown(Loc loc, const char *what, const char *name) {
                  name, base ? base + 1 : p->loc.file, p->loc.line);
     }
     error_at(loc, "unknown %s '%s'", what, name);
+}
+
+static Sym *intern_string(Ctx *c, const char *str, size_t len);
+
+/* meic -g: the message of a run-time check, "file.akr:12: what", and a reference to the
+   standard library function that reports it (NULL when there is no standard library). */
+static Sym *check_msg(Ctx *c, Loc loc, const char *hook, const char *fmt, ...) {
+    Sym *h = sym_lookup_layer(hook, 0);
+    if (!h || h->k != SY_FUNC || !c->fn) return NULL;
+    note_call(c, h->fn);
+    va_list ap;
+    va_start(ap, fmt);
+    Buf b = {0};
+    const char *base = loc.file ? strrchr(loc.file, '/') : NULL;
+    buf_printf(&b, "%s:%d: ", base ? base + 1 : loc.file ? loc.file : "?", loc.line);
+    buf_vprintf(&b, fmt, ap);
+    va_end(ap);
+    char *m = ar_strdup(b.p);
+    buf_free(&b);
+    Sym *s = intern_string(c, m, strlen(m));
+    note_ref(c, s);
+    return s;
 }
 
 static Sym *stdlib_fn(Ctx *c, const char *name, Loc loc) {
@@ -820,6 +843,7 @@ static Expr *check_binary(Ctx *c, Expr *e) {
         if (ty_is_vec(a) && a->k != TY_IVEC4 && (op == B_MUL || op == B_DIV) && (is_fixedish(b) || b->k == TY_UINT)) {
             e->b = coerce(c, e->b, ty_fixed, "the scale factor");
             if (op == B_DIV && e->b->isconst && e->b->cval == 0) error_at(e->b->loc, "division by zero");
+            if ((c->P->debug & 2) && op == B_DIV && !e->b->isconst) e->chk = check_msg(c, e->loc, "__check_fail", "division by zero");
             e->ty = a;
             return e;
         }
@@ -929,6 +953,7 @@ static Expr *check_binary(Ctx *c, Expr *e) {
         if (e->b->ty->k == TY_U32) error_at(e->loc, "fixed values can be scaled by signed integers only; convert the u32 with 'as s32'");
         e->ty = ty_fixed;
         e->conv_from = ty_s32;   /* marks the mixed form */
+        if ((c->P->debug & 2) && op == B_DIV && !e->b->isconst) e->chk = check_msg(c, e->loc, "__check_fail", "division by zero");
         return e;
     }
 
@@ -947,6 +972,14 @@ static Expr *check_binary(Ctx *c, Expr *e) {
     int cmp = op >= B_EQ && op <= B_GE;
     e->ty = cmp ? ty_bool : t;
     if ((op == B_DIV || op == B_MOD) && e->b->isconst && e->b->cval == 0) error_at(e->b->loc, "division by zero");
+    if ((c->P->debug & 2) && (op == B_DIV || op == B_MOD) && !e->b->isconst)
+        e->chk = check_msg(c, e->loc, "__check_fail", "division by zero");
+    if ((c->P->debug & 4) && op == B_MUL && t->k == TY_FIXED && !(e->a->isconst && e->b->isconst)) {
+        /* constants of magnitude 1.0 or less cannot make a product overflow */
+        int small = (e->a->isconst && e->a->cval >= -65536 && e->a->cval <= 65536) ||
+                    (e->b->isconst && e->b->cval >= -65536 && e->b->cval <= 65536);
+        if (!small) e->chk = check_msg(c, e->loc, "__check_fail", "fixed-point multiply overflow");
+    }
     if (e->a->isconst && e->b->isconst) {
         e->isconst = 1;
         e->cval = cmp ? fold_cmp(op, t, e->a->cval, e->b->cval) : fold_bin(e->loc, op, t, e->a->cval, e->b->cval);
@@ -1006,6 +1039,23 @@ static Expr *check_index(Ctx *c, Expr *e) {
     Type *t = e->a->ty;
     if (!is_intish(e->b->ty) && e->b->ty->k != TY_ENUM) error_at(e->b->loc, "index must be an integer or an enum, found %s", ty_str(e->b->ty));
     if (e->b->ty->k == TY_UINT) e->b = coerce(c, e->b, ty_s32, "index");
+    if ((c->P->debug & 1) && !e->b->isconst && (t->k == TY_ARRAY || t->k == TY_MAT4)) {
+        /* meic -g: check the index at run time, unless it is a loop variable whose range fits */
+        int64_t n = t->k == TY_ARRAY ? t->n : 4;
+        Expr *ix = e->b;
+        while (ix->k == E_CONV && ix->a && ty_is_int(ix->ty) && ix->ty->size == 4) ix = ix->a;
+        Local *lv = ix->k == E_NAME && ix->sym && ix->sym->k == SY_LOCAL ? ix->sym->local : NULL;
+        /* also provably in range: i & K with K < n, and u8 / u16 values in a long enough array */
+        int masked = ix->k == E_BINARY && ix->op == B_AND && ((ix->b->isconst && ix->b->cval >= 0 && ix->b->cval < n) ||
+                                                              (ix->a->isconst && ix->a->cval >= 0 && ix->a->cval < n));
+        Type *it = ty_base(e->b->ty);
+        int narrow = (it->k == TY_U8 && n >= 256) || (it->k == TY_U16 && n >= 65536);
+        if (!masked && !narrow && !(lv && lv->has_range && lv->rlo >= 0 && lv->rhi <= n)) {
+            const char *what = e->a->k == E_NAME ? ar_printf("'%s'", e->a->name)
+                             : e->a->k == E_FIELD ? ar_printf("field '%s'", e->a->name) : "an array";
+            e->chk = check_msg(c, e->loc, "__bounds_fail", "index out of bounds for %s (%s)", what, ty_str(t));
+        }
+    }
     if (t->k == TY_ARRAY) {
         if (e->b->isconst && (e->b->cval < 0 || e->b->cval >= t->n))
             error_at(e->b->loc, "index %lld is out of bounds for %s", (long long)e->b->cval, ty_str(t));
@@ -2062,6 +2112,7 @@ static void check_stmt(Ctx *c, Stmt *s) {
         s->var = new_local(c, s->name, t, s->asm_loc);
         s->var->immutable = 1;
         s->var->is_loopvar = 1;
+        if (s->e->isconst && s->e2->isconst) { s->var->has_range = 1; s->var->rlo = s->e->cval; s->var->rhi = s->e2->cval; }
         s->var->weight += 4 << (2 * (c->loop_depth > 6 ? 6 : c->loop_depth));
         g_loop_stack[g_loop_n++] = s;
         check_stmt(c, s->then);
@@ -2169,6 +2220,9 @@ static void check_func_body(Program *P, Func *f, Ctx *outer) {
         p->local = l;
     }
     if (f->is_asm) { check_asm_refs(&c, f->asm_text, f->asm_loc); return; }
+    if (P->debug & 1)
+        f->stack_msg = check_msg(&c, f->loc, "__check_fail", "stack overflow entering %s (too deep a recursion, or too many "
+                                 "locals: the stack ran into the global variables)", f->is_lambda ? f->name : ar_printf("%s()", f->name));
     if (f->lambda_body) {
         /* fn(x) => expr: the body is `return expr` (or the call, for no result) */
         Expr *v = check(&c, f->lambda_body, f->ret);
