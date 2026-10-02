@@ -37,6 +37,7 @@ struct Loc {
 // The cache of one location's pages.
 struct Wx {
     have: s32                // bit k: kind k cached (the map: every row has data)
+    fresh: s32               // bit k: kind k received since the cart started (not from the card)
     ver: [4]s32              // version of each cached kind, -1 none
     cur: BcCurrent
     daily: BcDaily
@@ -183,6 +184,7 @@ fn loc_is_home(i: s32) -> bool { return locs[i].flags & LF_HOME != 0 }
 fn loc_is_national(i: s32) -> bool { return locs[i].flags & LF_NATIONAL != 0 }
 fn loc_has_kind(i: s32, k: s32) -> bool { return (locs[i].kinds >> k as u32) & 1 != 0 }
 fn wx_has(i: s32, k: s32) -> bool { return (wx[i].have >> k as u32) & 1 != 0 }
+fn wx_fresh(i: s32, k: s32) -> bool { return (wx[i].fresh >> k as u32) & 1 != 0 }
 
 // The home location's box when the index has not given one: 2.5 degrees of latitude and 3.5
 // of longitude around the city (docs/BROADCAST.md).
@@ -293,6 +295,7 @@ private fn take(i: s32, k: s32) -> bool {
         }
     }
     w.have = w.have | (1 << k as u32)
+    w.fresh = w.fresh | (1 << k as u32)
     w.ver[k] = ver
     if k == K_NOW && loc_is_home(i) && locs[i].city[0] == 0 {
         memcpy(&locs[i].city[0], &w.cur.city[0], 16)
@@ -449,6 +452,7 @@ fn map_rx(i: s32) {
         if wx_has(i, K_MAP) && memeq(&row[0], &w.map as *u8, 52) {
             mp_same = true
             w.ver[K_MAP] = v
+            w.fresh = w.fresh | (1 << K_MAP as u32)
             return
         }
         memcpy(&w.map as *u8, &row[0], 52)
@@ -476,6 +480,7 @@ fn map_rx(i: s32) {
     }
     if mp_done0 == 0xFFFFFFFF && mp_done1 == 0xFFFF {
         w.have = w.have | (1 << K_MAP as u32)
+        w.fresh = w.fresh | (1 << K_MAP as u32)
         w.ver[K_MAP] = v
         mp_same = true
         if rx_changed(pid) { rx_read(pid, &page_buf[0]) }

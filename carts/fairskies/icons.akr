@@ -1,0 +1,154 @@
+// Weather icons. Large and medium ones are built from layers (sun rays and disc, moon, white and
+// grey clouds, rain, snow, lightning, fog) and move gently: the rays turn, clouds drift, rain
+// and snow fall. Small ones (20 x 16) are still pictures.
+
+const L_RAYS = 0
+const L_DISC = 1
+const L_MOON = 2
+const L_CLOUD = 3
+const L_DARK = 4
+const L_BOLT = 5
+const L_FOG = 6
+const L_DROP = 7
+const L_FLAKE = 8
+
+private fn layer(big: bool, k: s32) -> Spr {
+    if big {
+        return match k {
+            0 => IL_RAYS, 1 => IL_DISC, 2 => IL_MOON, 3 => IL_CLOUD, 4 => IL_DARK
+            5 => IL_BOLT, 6 => IL_FOG, 7 => IL_DROP, else => IL_FLAKE
+        }
+    }
+    return match k {
+        0 => IM_RAYS, 1 => IM_DISC, 2 => IM_MOON, 3 => IM_CLOUD, 4 => IM_DARK
+        5 => IM_BOLT, 6 => IM_FOG, 7 => IM_DROP, else => IM_FLAKE
+    }
+}
+
+// The icon class of a weather code, as the standard library sees it.
+fn icon_of(wmo: s32) -> s32 {
+    if wmo == 255 { return BC_ICON_UNKNOWN }
+    return bc_icon(wmo)
+}
+
+private var big_: bool
+private var cx_: s32
+private var cy_: s32
+
+// An offset scaled for the icon's size (medium is about half).
+private fn o(v: s32) -> s32 {
+    if big_ { return v }
+    return (v * 13) >> 5
+}
+
+private fn put(k: s32, dx: s32, dy: s32) {
+    spr_c(layer(big_, k), cx_ + o(dx), cy_ + o(dy))
+}
+
+private fn sun(dx: s32, dy: s32, t: s32, night: bool) {
+    if night {
+        put(L_MOON, dx, dy)
+        return
+    }
+    let a = frame_angle(t, 0.004)
+    let r = layer(big_, L_RAYS)
+    spr_rot(r, cx_ + o(dx), cy_ + o(dy), a)
+    put(L_DISC, dx, dy)
+}
+
+private fn stars(t: s32) {
+    const SX: [4]s32 = [-30, 26, 34, -20]
+    const SY: [4]s32 = [-26, -30, 4, 18]
+    for i in 0..4 {
+        let w = frame_wave(t + i * 47, 150 + i * 30)
+        let c = col_scale(0xF0F8FF, 0.45 + w / 2 + 0.05)
+        rect(cx_ + o(SX[i]), cy_ + o(SY[i]), 1, 1, c)
+        if big_ {
+            rect(cx_ + o(SX[i]) - 1, cy_ + o(SY[i]), 3, 1, col_scale(c, 0.5))
+            rect(cx_ + o(SX[i]), cy_ + o(SY[i]) - 1, 1, 3, col_scale(c, 0.5))
+        }
+    }
+}
+
+// Falling drops or flakes under a cloud centred (dx, dy): n of them over a fall of `fall`
+// pixels (large size), `period` frames each.
+private fn precip(k: s32, n: s32, dy: s32, fall: s32, period: s32, t: s32) {
+    const PX: [6]s32 = [-22, 8, -6, 22, -14, 14]
+    for i in 0..n {
+        let ph = (t + i * period / n + i * 7) % period
+        let y = dy + ph * fall / period
+        var x = PX[i]
+        if k == L_FLAKE { x += (frame_wave(t + i * 31, 90) * 4) as s32 }
+        if k == L_DROP { x -= ph * 6 / period }        // a little slant
+        put(k, x, y)
+    }
+}
+
+private fn drift(t: s32, period: s32, amp: s32) -> s32 {
+    return (frame_wave(t, period) * amp) as s32
+}
+
+// Draws the icon of class `cls` centred at (cx, cy), large or medium, at animation time t.
+fn icon_draw(cls: s32, cx: s32, cy: s32, big: bool, t: s32, night: bool) {
+    big_ = big
+    cx_ = cx
+    cy_ = cy
+    match cls {
+        BC_ICON_CLEAR => {
+            if night { stars(t) }
+            sun(0, 0, t, night)
+        }
+        BC_ICON_PARTLY => {
+            if night { stars(t) }
+            sun(-14, -12, t, night)
+            put(L_CLOUD, 10 + drift(t, 420, 3), 12)
+        }
+        BC_ICON_CLOUDY => {
+            put(L_DARK, -12 + drift(t, 500, 3), -8)
+            put(L_CLOUD, 10 - drift(t, 380, 3), 8)
+        }
+        BC_ICON_FOG => {
+            put(L_CLOUD, 0, -10)
+            for i in 0..3 { put(L_FOG, drift(t + i * 60, 260, 6) - 4 + i * 4, 14 + i * 9) }
+        }
+        BC_ICON_DRIZZLE => {
+            precip(L_DROP, 3, 4, 26, 70, t)
+            put(L_DARK, drift(t, 460, 2), -8)
+        }
+        BC_ICON_RAIN => {
+            precip(L_DROP, 6, 4, 32, 40, t)
+            put(L_DARK, drift(t, 460, 2), -8)
+        }
+        BC_ICON_SHOWERS => {
+            sun(16, -18, t, night)
+            precip(L_DROP, 4, 4, 30, 46, t)
+            put(L_DARK, -4 + drift(t, 460, 2), -4)
+        }
+        BC_ICON_SNOW => {
+            precip(L_FLAKE, 5, 6, 30, 150, t)
+            put(L_CLOUD, drift(t, 460, 2), -8)
+        }
+        BC_ICON_THUNDER => {
+            precip(L_DROP, 4, 4, 32, 40, t)
+            let fl = t % 210
+            if fl < 14 && fl % 6 < 4 { put(L_BOLT, 2, 18) }
+            put(L_DARK, drift(t, 460, 2), -8)
+        }
+        else => {
+            put(L_CLOUD, 0, 0)
+        }
+    }
+}
+
+// The small still icon of class `cls` with its top-left at (x, y).
+fn icon_small(cls: s32, x: s32, y: s32, night: bool) {
+    let i = clamp(cls, 0, 9)
+    var v = SMALL_ICON_V
+    var pal = SMALL_ICON_PAL + i
+    if night && (i == BC_ICON_CLEAR || i == BC_ICON_PARTLY || i == BC_ICON_SHOWERS) {
+        v = SMALL_NIGHT_V
+        pal += 10
+    }
+    sprite_ex(tex_page(4, pal, true), SMALL_ICON_U + i * (SMALL_ICON_W + 1), v, SMALL_ICON_W, SMALL_ICON_H,
+              x, y, SMALL_ICON_W, SMALL_ICON_H, 0x808080, BLEND_NONE)
+}

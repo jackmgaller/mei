@@ -55,6 +55,7 @@ fn clock_update() {
             clk.second = dt.second
             clk.days = (local / 86400) as s32
             clk.on_air = true
+            clk_utc_off = tp.utc_offset as s32
             memcpy(&clk_tz[0], &tp.tz[0], 8)
             return
         }

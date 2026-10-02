@@ -1,7 +1,14 @@
 // Fair Skies - a weather channel for the Mei console.
+//
+// Tunes in to MeiNet, the console's Teletext-style data broadcast (docs/BROADCAST.md), and
+// shows the weather like a late-90s cable weather channel crossed with Ceefax: current
+// conditions, the 5-day and 24-hour forecasts and temperature maps that paint in row by row
+// as their packets arrive, for home and eight US regions. Type a page number on the remote,
+// let the idle tour cycle the pages, and keep the last pages on the memory card for when there
+// is no signal (the browser never has one: there, a recorded sample tape plays).
+//
+// The app is in app.akr, so the test scenarios (tests/) can import it with scripted input.
+// Art: tools/gen_fairskies_assets.py; music and sounds: tools/gen_fairskies_audio.py.
 cart "Fair Skies", "FAIR-SKIES"
-
-const TEST = 0
-const SCENARIO = 0
 
 import "app.akr"

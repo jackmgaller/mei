@@ -1,0 +1,284 @@
+// The frame around every page: the sky behind it, the Teletext header row, the title banner,
+// the lower display line (the "LDL" ticker at the bottom), the signal meter and the page
+// transitions.
+
+const HDR_H = 14
+const BANNER_Y = 17
+const BANNER_H = 19
+const BODY_Y = 39
+const BODY_H = 176                 // to y 215
+const LDL_Y = 218
+const LDL_H = 22
+
+// ---- the sky: follows the home city's day (sunrise and sunset when known)
+
+struct SkyKey {
+    at: s32                        // minutes relative to the anchor
+    anchor: s32                    // 0 sunrise, 1 sunset
+    top: u32
+    bottom: u32
+}
+
+const SKY: [8]SkyKey = [
+    SkyKey { at: -100, anchor: 0, top: 0x2A0C0A, bottom: 0x4A1E1C },     // night
+    SkyKey { at: -40, anchor: 0, top: 0x501A16, bottom: 0x7A3A54 },      // first light
+    SkyKey { at: 10, anchor: 0, top: 0x9A5434, bottom: 0x96AAF0 },       // sunrise, peach
+    SkyKey { at: 120, anchor: 0, top: 0xC07030, bottom: 0xEAC496 },      // morning
+    SkyKey { at: -150, anchor: 1, top: 0xC06A2E, bottom: 0xE6C4A0 },     // afternoon
+    SkyKey { at: -10, anchor: 1, top: 0x8A3C3A, bottom: 0x6A8CEA },      // sunset, rose-gold
+    SkyKey { at: 40, anchor: 1, top: 0x5A1E26, bottom: 0x8A3A6C },       // dusk, violet
+    SkyKey { at: 110, anchor: 1, top: 0x2A0C0A, bottom: 0x4A1E1C }       // night
+]
+
+var sky_top: u32 = 0x5A1E26
+var sky_bot: u32 = 0x8A3A6C
+
+fn sky_update() {
+    var sr = 6 * 60 + 50
+    var ss = 18 * 60 + 50
+    let h = loc_find(BC_HOME)
+    if h >= 0 && wx_has(h, K_NOW) {
+        let c = &wx[h].cur
+        if c.sunrise as s32 != 0xFFFF && c.sunset as s32 != 0xFFFF && c.sunset > c.sunrise {
+            sr = c.sunrise as s32
+            ss = c.sunset as s32
+        }
+    }
+    let now = clock_minutes() * 60 + clk.second
+    var prev_at = 0
+    var prev = 7
+    // walk the keys in order of time; before the first key, it is the night key
+    var found = false
+    for i in 0..8 {
+        var at = SKY[i].at * 60
+        if SKY[i].anchor == 0 { at += sr * 60 } else { at += ss * 60 }
+        if now < at {
+            var p_at = prev_at
+            if i == 0 { p_at = at - 3600 }
+            let span = max(at - p_at, 1)
+            let f = fixed(clamp(now - p_at, 0, span)) / span
+            let a = &SKY[max(i - 1, 0)]
+            let b = &SKY[i]
+            sky_top = col_mix(a.top, b.top, f)
+            sky_bot = col_mix(a.bottom, b.bottom, f)
+            found = true
+            break
+        }
+        prev_at = at
+        prev = i
+    }
+    if !found {
+        sky_top = SKY[7].top
+        sky_bot = SKY[7].bottom
+    }
+}
+
+// The sky's colour at screen row y.
+fn sky_at(y: s32) -> u32 { return col_mix(sky_top, sky_bot, fixed(y) / 240) }
+
+// The sky over rows y .. y + h.
+fn sky_band(x: s32, y: s32, w: s32, h: s32) {
+    rect_grad(x, y, w, h, sky_at(y), sky_at(y + h), BLEND_NONE)
+}
+
+fn sky_draw() { rect_grad(0, 0, 320, 240, sky_top, sky_bot, BLEND_NONE) }
+
+// ---- the header row: page number, service, date and time, signal
+
+var hdr_page_text: [8]u8          // what the page field shows ("P400", "P4__")
+var hdr_flash: bool               // the page field blinks (searching)
+
+fn signal_bars(x: s32, y: s32, bars: s32) {
+    for i in 0..4 {
+        let h = 3 + i * 2
+        var c: u32 = 0x4A3A30
+        if i < bars {
+            c = match bars { 1 => 0x40A0F0, 2 => 0x40D0F0, else => 0x90F0A0 }
+        }
+        rect(x + i * 4, y + 9 - h, 3, h, c)
+    }
+}
+
+fn header_draw(t: s32) {
+    rect(0, 0, 320, HDR_H, 0x0C0604)
+    rect_blend(0, HDR_H, 320, 1, 0x704020, BLEND_NONE)
+    // the page field
+    var pc = WHITE
+    if hdr_flash && (t / 15) % 2 == 0 { pc = C_GOLD }
+    text(4, 3, &hdr_page_text[0], pc)
+    // service or status
+    var st = "MeiNet"
+    var sc = C_CYAN
+    if rx_demo {
+        st = "SAMPLE"
+        sc = 0xE08CF0
+    } else if !rx_carrier() {
+        st = "NO SIGNAL"
+        sc = 0x60A0F0
+    } else if !rx_locked() {
+        st = "TUNING"
+        if (t / 20) % 2 == 0 { sc = C_GOLD } else { sc = 0x2080C0 }
+    }
+    text(44, 3, st, sc)
+    // date and time
+    let b = sbuf()
+    str_copy(b, SB, DAY_SHORT[clk.weekday % 7])
+    str_append_char(b, SB, ' ')
+    str_append(b, SB, MONTH_SHORT[clamp(clk.month - 1, 0, 11)])
+    str_append_char(b, SB, ' ')
+    str_append_int(b, SB, clk.day, 2, true)
+    text(124, 3, b, WHITE)
+    let tb = sbuf()
+    var h12 = clk.hour % 12
+    if h12 == 0 { h12 = 12 }
+    str_append_int(tb, SB, h12, 2, false)
+    str_append_char(tb, SB, ':')
+    str_append_int(tb, SB, clk.minute, 2, true)
+    str_append_char(tb, SB, ':')
+    str_append_int(tb, SB, clk.second, 2, true)
+    text(212, 3, tb, C_GOLD)
+    if clk.hour < 12 { text(276, 3, "AM", C_GOLD) } else { text(276, 3, "PM", C_GOLD) }
+    signal_bars(299, 2, rx_signal())
+}
+
+// ---- the title banner
+
+fn banner_draw(title: *u8, right: *u8, sub: s32, nsub: s32) {
+    let w = txt_w(F_MED, title) + 24
+    rect_hgrad(0, BANNER_Y, w, BANNER_H, C_BAR_BOT, C_BAR_TOP, BLEND_NONE)
+    tri_grad(w, BANNER_Y, w + 12, BANNER_Y, w, BANNER_Y + BANNER_H, C_BAR_TOP, C_BAR_TOP, C_BAR_TOP, BLEND_NONE)
+    rect_blend(0, BANNER_Y, w + 10, 1, 0xB0E8FF, BLEND_NONE)
+    rect_blend(0, BANNER_Y + BANNER_H, w, 1, 0x103070, BLEND_NONE)
+    txt_s(F_MED, 10, BANNER_Y + 2, title, WHITE, ALIGN_LEFT)
+    if right != null {
+        txt_s(F_MED, 314, BANNER_Y + 2, right, WHITE, ALIGN_RIGHT)
+    }
+    if nsub > 1 {
+        // subpage dots under the location name
+        let x0 = 314 - nsub * 7
+        for i in 0..nsub {
+            var c: u32 = 0x805030
+            if i == sub { c = C_GOLD }
+            rect(x0 + i * 7, BANNER_Y + BANNER_H, 4, 2, c)
+        }
+    }
+}
+
+// ---- the lower display line
+
+var ldl_msgs: [6][48]u8
+var ldl_n: s32
+private var ldl_i: s32
+private var ldl_t: s32
+
+fn ldl_set(i: s32, s: *u8) {
+    if i < 6 { str_copy(&ldl_msgs[i][0], 48, s) }
+}
+
+fn ldl_draw(t: s32, left_icon: s32, left: *u8, night: bool) {
+    rect_grad(0, LDL_Y, 320, LDL_H, 0x6A2A10, 0x3A1408, BLEND_NONE)
+    rect_blend(0, LDL_Y, 320, 1, C_BAR_TOP, BLEND_NONE)
+    var x = 6
+    if left_icon >= 0 {
+        icon_small(left_icon, 4, LDL_Y + 3, night)
+        x = 28
+    }
+    let lx = txt_s(F_MED, x, LDL_Y + 3, left, WHITE, ALIGN_LEFT)
+    rect(lx + 8, LDL_Y + 5, 1, 12, 0x905A30)
+    // rotating messages, sliding up
+    if ldl_n == 0 { return }
+    ldl_t += 1
+    if ldl_t >= 240 {
+        ldl_t = 0
+        ldl_i = (ldl_i + 1) % ldl_n
+    }
+    ldl_i = ldl_i % ldl_n
+    let mx = lx + 16
+    var dy = 0
+    if ldl_t < 10 { dy = 10 - ldl_t }
+    var c = C_SOFT
+    if ldl_t < 10 { c = col_mix(0x3A1408, C_SOFT, fixed(ldl_t) / 10) }
+    txt(F_SMALL, mx, LDL_Y + 6 + dy, &ldl_msgs[ldl_i][0], c)
+}
+
+fn ldl_reset() {
+    ldl_t = 0
+    ldl_i = 0
+}
+
+// ---- transitions: blinds across the body, closing top to bottom, then opening
+
+const TR_STRIPS = 11
+const TR_STAGGER = 2
+const TR_SPEED = 5                // frames for one strip to close
+var tr_t = -1                     // frames into the transition, -1 none
+var tr_swapped: bool              // the page underneath has changed (halfway)
+
+fn tr_start() {
+    tr_t = 0
+    tr_swapped = false
+}
+
+// Closes the blinds again from where they are while opening (a page chosen mid-transition).
+fn tr_reclose() {
+    let open_t = tr_t - tr_len() - 1
+    tr_t = clamp(tr_len() - open_t, 0, tr_len() - 1)
+    tr_swapped = false
+}
+
+fn tr_len() -> s32 { return (TR_STRIPS - 1) * TR_STAGGER + TR_SPEED }
+
+fn tr_active() -> bool { return tr_t >= 0 }
+
+// Advances the transition; true on the frame the page should change.
+fn tr_step() -> bool {
+    if tr_t < 0 { return false }
+    tr_t += 1
+    if !tr_swapped && tr_t >= tr_len() {
+        tr_swapped = true
+        return true
+    }
+    if tr_t >= 2 * tr_len() + 2 { tr_t = -1 }
+    return false
+}
+
+// Covers the body with the closing or opening blinds.
+fn tr_draw() {
+    if tr_t < 0 { return }
+    let sh = BODY_H / TR_STRIPS + 1
+    for i in 0..TR_STRIPS {
+        var f: s32 = 0                // 0..TR_SPEED: how closed
+        if !tr_swapped {
+            f = clamp(tr_t - i * TR_STAGGER, 0, TR_SPEED)
+        } else {
+            f = TR_SPEED - clamp(tr_t - tr_len() - 1 - i * TR_STAGGER, 0, TR_SPEED)
+        }
+        if f <= 0 { continue }
+        let y = BODY_Y + i * sh
+        let h = sh * f / TR_SPEED
+        sky_band(0, y, 320, h)
+        if f < TR_SPEED { rect_blend(0, y + h, 320, 1, 0x80D0FF, BLEND_QUARTER) }
+    }
+}
+
+// ---- small notices ("Saved", "Units: Celsius")
+
+var toast_text: [40]u8
+var toast_t: s32
+
+fn toast(s: *u8) {
+    str_copy(&toast_text[0], 40, s)
+    toast_t = 150
+}
+
+fn toast_draw() {
+    if toast_t <= 0 { return }
+    toast_t -= 1
+    let w = txt_w(F_SMALL, &toast_text[0]) + 16
+    let x = 160 - w / 2
+    var y = 196
+    if toast_t > 140 { y += (toast_t - 140) * 2 }
+    rect_blend(x, y, w, 15, 0x200C04, BLEND_HALF)
+    rect_blend(x, y, w, 1, C_GOLD, BLEND_NONE)
+    txt_a(F_SMALL, 160, y + 2, &toast_text[0], WHITE, ALIGN_CENTRE)
+}

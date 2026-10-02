@@ -1,0 +1,10 @@
+// Music and sounds (placeholder until the score is generated).
+
+fn music_init() {}
+fn music_update() {}
+fn music_volume_changed() {}
+fn sfx_page() {}
+fn sfx_tick() {}
+fn sfx_key() {}
+fn sfx_open() {}
+fn sfx_close() {}

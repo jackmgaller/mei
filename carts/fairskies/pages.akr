@@ -1,0 +1,536 @@
+// The pages: current conditions, the 5-day and 24-hour forecasts, the map, the regions
+// directory and the clock, and the "waiting for page" state they show until data arrives.
+
+// ---- helpers
+
+// The name a location goes by on screen: its city ("New York"), the home city's name once a
+// page has given it, or the region for the national map.
+fn loc_name(i: s32) -> *u8 {
+    let l = &locs[i]
+    if l.city[0] != 0 { return bc_name(&l.city[0]) }
+    if loc_is_home(i) && wx_has(i, K_NOW) && wx[i].cur.city[0] != 0 { return bc_name(&wx[i].cur.city[0]) }
+    return bc_name(&l.region[0])
+}
+
+fn loc_region(i: s32) -> *u8 { return bc_name(&locs[i].region[0]) }
+
+// Whether it is night at location i now (the current conditions' daytime flag).
+fn loc_night(i: s32) -> bool {
+    if i >= 0 && wx_has(i, K_NOW) { return wx[i].cur.flags & 1 == 0 }
+    return clk.hour < 6 || clk.hour >= 19
+}
+
+// "6:00 PM" (today) or "Tue 6:00 PM" for a page time (UTC seconds) and UTC offset.
+fn s_when(utc: u32, off_q: s32) -> *u8 {
+    if utc == 0 { return "--" }
+    var dt: BcDateTime
+    local_of(utc, off_q, &dt)
+    let t = s_clock(dt.hour * 60 + dt.minute)
+    let days = ((utc as s32 + off_q * 900) / 86400)
+    if days == clk.days || clk.year < 2001 { return t }
+    return s_cat(s_cat(DAY_SHORT[dt.weekday % 7], " "), t)
+}
+
+// The "updated" note for a page: on air this session, or from the memory card.
+fn s_updated(i: s32, k: s32, utc: u32, off_q: s32) -> *u8 {
+    if wx_fresh(i, k) { return s_cat("Updated ", s_when(utc, off_q)) }
+    return s_cat("Saved ", s_when(utc, off_q))
+}
+
+// ---- waiting for a page
+
+fn platform_is_web() -> bool {
+    let c = 0x3F0000 as *u8
+    return c[0] == 'C' && c[1] == 'A' && c[2] == 'T' && c[3] == 'L' && c[16] == 'w' && c[17] == 'e' && c[18] == 'b'
+}
+
+private fn arcs(cx: s32, cy: s32, t: s32) {
+    for k in 0..3 {
+        let ph = (t + k * 20) % 60
+        let r = 8 + ph / 2
+        let c = col_scale(0xF0D8A0, fixed(60 - ph) / 60)
+        var px = cx + r
+        var py = cy
+        for s in 1..7 {
+            let a = -HALF_PI * fixed(s) / 6
+            let x = cx + (cos(a) * r) as s32
+            let y = cy + (sin(a) * r) as s32
+            line(px, py, x, y, c)
+            px = x
+            py = y
+        }
+    }
+}
+
+// Draws the waiting state in the body for page (focus, k); `rows` the page's row count.
+fn wait_draw(k: s32, rows: s32, t: s32) {
+    panel(6, 42, 308, 170)
+    let cx = 160
+    spr_c(G_DISH, cx - 4, 92)
+    arcs(cx + 2, 82, t)
+    if !rx_carrier() {
+        txt_s(F_MED, cx, 122, "No signal", WHITE, ALIGN_CENTRE)
+        if platform_is_web() {
+            txt_a(F_SMALL, cx, 144, "There is no broadcast in the browser.", C_SOFT, ALIGN_CENTRE)
+        } else {
+            txt_a(F_SMALL, cx, 144, "Start the MeiNet gateway on this computer:", C_SOFT, ALIGN_CENTRE)
+            txt_a(F_TINY, cx, 160, "python3 tools/meinet/meinet.py", C_CYAN, ALIGN_CENTRE)
+        }
+        txt_a(F_SMALL, cx, 184, "Press START to play the sample tape.", C_GOLD, ALIGN_CENTRE)
+        return
+    }
+    var dots = "Tuning in"
+    match (t / 20) % 4 {
+        1 => dots = "Tuning in."
+        2 => dots = "Tuning in.."
+        3 => dots = "Tuning in..."
+        else => {}
+    }
+    txt_s(F_MED, cx - txt_w(F_MED, "Tuning in...") / 2, 122, dots, WHITE, ALIGN_LEFT)
+    let pid = pid_of(focus, k)
+    let b = sbuf()
+    str_copy(b, SB, "Waiting for page ")
+    str_append(b, SB, s_page(locs[focus].page))
+    str_append(b, SB, " (")
+    str_append(b, SB, KIND_NAMES[k])
+    str_append(b, SB, ")")
+    txt_a(F_SMALL, cx, 144, b, C_SOFT, ALIGN_CENTRE)
+    txt_a(F_SMALL, cx, 160, KIND_EVERY[k], C_DIM, ALIGN_CENTRE)
+    // the rows that have arrived, one block each
+    var total = rx_rows(pid)
+    if total == 0 { total = rows }
+    if total > 1 {
+        let bw = min(5, 240 / total)
+        let x0 = cx - total * bw / 2
+        var hi: u32 = 0
+        let lo = rx_row_bits(pid, &hi)
+        for r in 0..total {
+            var got = false
+            if r < 32 { got = (lo >> r as u32) & 1 != 0 } else { got = (hi >> (r - 32) as u32) & 1 != 0 }
+            var c: u32 = 0x5A3418
+            if got { c = C_CYAN }
+            rect(x0 + r * bw, 182, bw - 1, 8, c)
+        }
+    }
+}
+
+const KIND_NAMES: [4]*u8 = ["current conditions", "5-day forecast", "24-hour forecast", "map"]
+const KIND_EVERY: [4]*u8 = ["Current conditions come round every 5 seconds.",
+                            "The forecasts come round every 20 seconds.",
+                            "The forecasts come round every 20 seconds.",
+                            "Each map comes round about once a minute."]
+
+// ---- current conditions
+
+private fn stat_row(y: s32, label: *u8, value: *u8) {
+    txt(F_SMALL, 162, y, label, C_SOFT)
+    txt_a(F_SMALL, 306, y, value, WHITE, ALIGN_RIGHT)
+}
+
+fn now_draw(i: s32, t: s32) {
+    if !wx_has(i, K_NOW) {
+        wait_draw(K_NOW, 1, t)
+        return
+    }
+    let c = &wx[i].cur
+    let night = c.flags & 1 == 0
+    panel(6, 42, 308, 170)
+    gloss(6, 43, 308, 40)
+    rect(154, 50, 1, 154, 0x8A4424)
+    // left: the icon and the conditions
+    icon_draw(icon_of(c.wmo as s32), 80, 94, true, t, night)
+    txt_s(F_MED, 80, 140, bc_wmo_text(c.wmo as s32), WHITE, ALIGN_CENTRE)
+    if temp_known(c.feels as s32) {
+        txt_a(F_SMALL, 80, 162, s_cat("Feels like ", s_temp(c.feels as s32)), C_SOFT, ALIGN_CENTRE)
+    }
+    txt_a(F_TINY, 80, 196, s_updated(i, K_NOW, c.time, c.utc_offset as s32), C_DIM, ALIGN_CENTRE)
+    // right: the temperature, today's high and low
+    let tx = txt_s(F_HUGE, 162, 50, s_temp_n(c.temp as s32), WHITE, ALIGN_LEFT)
+    txt_s(F_MED, tx + 1, 52, s_cat("`", unit_letter()), C_SOFT, ALIGN_LEFT)
+    txt(F_SMALL, 252, 58, "High", C_SOFT)
+    txt_a(F_MED, 306, 55, s_temp(c.high as s32), ramp_rgb(c.high as s32), ALIGN_RIGHT)
+    txt(F_SMALL, 252, 78, "Low", C_SOFT)
+    txt_a(F_MED, 306, 75, s_temp(c.low as s32), ramp_rgb(c.low as s32), ALIGN_RIGHT)
+    rect(162, 100, 144, 1, 0x8A4424)
+    var y = 105
+    stat_row(y, "Humidity", s_pct(c.humidity as s32))
+    y += 15
+    stat_row(y, "Wind", s_wind(c.wind_dir as s32, c.wind as s32))
+    y += 15
+    if c.gusts as s32 != 255 && c.gusts > c.wind {
+        stat_row(y, "Gusts", s_wind(255, c.gusts as s32))
+        y += 15
+    }
+    stat_row(y, "Pressure", s_pressure(c.pressure as s32))
+    y += 15
+    stat_row(y, "Chance of rain", s_pct(c.pop as s32))
+    y += 15
+    if c.uv as s32 != 255 {
+        let b = sbuf()
+        str_append_int(b, SB, (c.uv as s32 + 5) / 10, 0, false)
+        stat_row(y, "UV index", b)
+        y += 15
+    }
+    // sunrise and sunset
+    if c.sunrise as s32 != 0xFFFF {
+        spr(G_RISE, 162, 196)
+        txt(F_SMALL, 181, 195, s_clock(c.sunrise as s32), WHITE)
+    }
+    if c.sunset as s32 != 0xFFFF {
+        spr(G_SET, 236, 196)
+        txt(F_SMALL, 255, 195, s_clock(c.sunset as s32), WHITE)
+    }
+}
+
+// ---- the 5-day forecast
+
+const DAY_COND_W = 54
+
+// Splits a description over two lines at a space if it is too wide for a column.
+private fn two_lines(s: *u8) -> *u8 {
+    if txt_w(F_TINY, s) <= DAY_COND_W { return s }
+    let b = sbuf()
+    str_copy(b, SB, s)
+    // break at the last space that leaves the first line narrow enough
+    var best = -1
+    var i = 0
+    while b[i] != 0 {
+        if b[i] == ' ' {
+            b[i] = 0
+            let w = txt_w(F_TINY, b)
+            b[i] = ' '
+            if w <= DAY_COND_W { best = i }
+        }
+        i += 1
+    }
+    if best >= 0 { b[best] = '\n' }
+    return b
+}
+
+fn week_draw(i: s32, t: s32) {
+    if !wx_has(i, K_WEEK) {
+        wait_draw(K_WEEK, 1, t)
+        return
+    }
+    let d = &wx[i].daily
+    panel(6, 42, 308, 170)
+    let n = clamp(d.count as s32, 1, 5)
+    for k in 0..n {
+        let day = &d.day[k]
+        let x = 10 + k * 61
+        let cx = x + 29
+        rect_grad(x, 46, 58, 162, 0xB05A34, 0x7A3018, BLEND_NONE)
+        rect_blend(x, 46, 58, 1, 0xF8C890, BLEND_NONE)
+        var name = DAY_SHORT[day.weekday as s32 % 7]
+        if k == 0 { name = "Today" }
+        txt_s(F_MED, cx, 50, name, WHITE, ALIGN_CENTRE)
+        icon_draw(icon_of(day.wmo as s32), cx, 88, false, t + k * 37, false)
+        txt_a(F_TINY, cx, 112, two_lines(bc_wmo_text(day.wmo as s32)), C_SOFT, ALIGN_CENTRE)
+        txt_s(F_BIG, cx, 132, s_temp(day.high as s32), WHITE, ALIGN_CENTRE)
+        txt_a(F_MED, cx, 164, s_temp(day.low as s32), C_SOFT, ALIGN_CENTRE)
+        // the day's range as a strip of the temperature ramp
+        rect_hgrad(x + 6, 158, 46, 2, ramp_rgb(day.low as s32), ramp_rgb(day.high as s32), BLEND_NONE)
+        if day.pop as s32 != 255 {
+            let w = txt_w(F_SMALL, s_pct(day.pop as s32)) + 10
+            spr(G_DROP, cx - w / 2, 188)
+            txt(F_SMALL, cx - w / 2 + 10, 187, s_pct(day.pop as s32), C_CYAN)
+        }
+    }
+}
+
+// ---- the 24-hour forecast
+
+const HR_X0 = 26
+const HR_DX = 12
+const HR_TOP = 96
+const HR_BOT = 168
+
+fn hours_draw(i: s32, t: s32) {
+    if !wx_has(i, K_HOURS) {
+        wait_draw(K_HOURS, 2, t)
+        return
+    }
+    let h = &wx[i].hourly
+    let n = clamp(h.count as s32, 2, 24)
+    panel(6, 42, 308, 170)
+    // night hours a little darker, from the location's sunrise and sunset
+    var sr = 6 * 60 + 30
+    var ss = 19 * 60
+    if wx_has(i, K_NOW) && wx[i].cur.sunrise as s32 != 0xFFFF {
+        sr = wx[i].cur.sunrise as s32
+        ss = wx[i].cur.sunset as s32
+    }
+    for k in 0..n {
+        let hr = (h.hour as s32 + k) % 24
+        let m = hr * 60 + 30
+        if m < sr || m > ss {
+            rect_grad(HR_X0 + k * HR_DX - HR_DX / 2, 46, HR_DX, 162, 0x7A3418, 0x4E1C0C, BLEND_NONE)
+        }
+    }
+    // the range
+    var lo = 1000
+    var hi = -1000
+    for k in 0..n {
+        let v = h.hours[k].temp as s32
+        if !temp_known(v) { continue }
+        lo = min(lo, v)
+        hi = max(hi, v)
+    }
+    if lo > hi {
+        lo = 0
+        hi = 10
+    }
+    if hi - lo < 12 {
+        let mid = (hi + lo) / 2
+        lo = mid - 6
+        hi = mid + 6
+    }
+    var px: [24]s32
+    var py: [24]s32
+    for k in 0..n {
+        var v = h.hours[k].temp as s32
+        if !temp_known(v) { v = (lo + hi) / 2 }
+        px[k] = HR_X0 + k * HR_DX
+        py[k] = HR_BOT - (v - lo) * (HR_BOT - HR_TOP) / (hi - lo)
+    }
+    // the area under the curve and the curve
+    for k in 0..n - 1 {
+        let c0 = ramp_rgb(h.hours[k].temp as s32)
+        let c1 = ramp_rgb(h.hours[k + 1].temp as s32)
+        let d0 = col_mix(c0, 0x5A2010, 0.7)
+        let d1 = col_mix(c1, 0x5A2010, 0.7)
+        let b0 = col_mix(c0, 0x5A2010, 0.9)
+        tri_grad(px[k], py[k], px[k + 1], py[k + 1], px[k], HR_BOT + 4, d0, d1, b0, BLEND_NONE)
+        tri_grad(px[k + 1], py[k + 1], px[k + 1], HR_BOT + 4, px[k], HR_BOT + 4, d1, b0, b0, BLEND_NONE)
+    }
+    for k in 0..n - 1 {
+        line_ex(px[k], py[k] - 1, px[k + 1], py[k + 1] - 1, 2, ramp_rgb(h.hours[k].temp as s32),
+                ramp_rgb(h.hours[k + 1].temp as s32), BLEND_NONE)
+    }
+    rect(HR_X0 - 6, HR_BOT + 4, n * HR_DX, 1, 0xC08050)
+    // every third hour: icon, temperature, time
+    var k = 0
+    while k < n {
+        let e = &h.hours[k]
+        let hr = (h.hour as s32 + k) % 24
+        let m = hr * 60 + 30
+        rect(px[k] - 1, py[k] - 2, 3, 3, WHITE)
+        icon_small(icon_of(e.wmo as s32), px[k] - 10, 50, m < sr || m > ss)
+        txt_s(F_SMALL, px[k], 68, s_temp(e.temp as s32), WHITE, ALIGN_CENTRE)
+        var lbl = s_hour(hr)
+        if k == 0 { lbl = "Now" }
+        txt_a(F_TINY, px[k], 176, lbl, C_SOFT, ALIGN_CENTRE)
+        k += 3
+    }
+    // chance of rain: a bar an hour
+    txt(F_TINY, 10, 190, "Rain", C_DIM)
+    for j in 0..n {
+        let p = h.hours[j].pop as s32
+        if p == 255 || p == 0 { continue }
+        let bh = max(1, p * 16 / 100)
+        rect(px[j] - 3, 206 - bh, 6, bh, col_mix(0xF0B060, 0xFFE0A0, fixed(p) / 100))
+    }
+}
+
+// ---- the map
+
+fn map_draw_page(i: s32, t: s32) {
+    let mx = MAP_X
+    let my = 20
+    let have = wx_has(i, K_MAP) || wx[i].rows0 != 0
+    mt_show(i)
+    let ov = ov_show(i)
+    if have {
+        map_draw(mx, my, ov)
+    } else {
+        rect(mx, my, MAP_W, MAP_H, 0x583024)
+        if ov { sprite_ex(ov_page(), 0, 0, 256, 192, mx, my, MAP_W, MAP_H, 0x808080, BLEND_NONE) }
+    }
+    rect_outline(mx - 1, my - 1, MAP_W + 2, MAP_H + 2, 0x2A1008, BLEND_NONE)
+    // the sweep: a soft line under the newest painted rows
+    if mt_loc == i && mt_painted < 96 && mt_painted > 0 {
+        rect_blend(mx, my + mt_painted * 2, MAP_W, 2, 0x705030, BLEND_ADD)
+    }
+    if i == focus && mp_last_row >= 0 && frame() as s32 - mp_last_frame < 40 {
+        let a = fixed(40 - (frame() as s32 - mp_last_frame)) / 40
+        rect_blend(mx, my + mp_last_row * 4 + 3, MAP_W, 2, col_scale(0xFFE0A0, a), BLEND_ADD)
+    }
+    // cities and their temperatures
+    for j in 0..nlocs {
+        if loc_is_national(j) { continue }
+        var p: [2]s32
+        if !map_point(i, locs[j].lat, locs[j].lon, mx, my, &p[0]) { continue }
+        rect(p[0] - 1, p[1] - 1, 3, 3, WHITE)
+        rect_outline(p[0] - 2, p[1] - 2, 5, 5, 0x200800, BLEND_NONE)
+        if wx_has(j, K_NOW) {
+            let tt = wx[j].cur.temp as s32
+            txt_s(F_MED, p[0] + 4, p[1] - 8, s_temp(tt), WHITE, ALIGN_LEFT)
+            if !loc_is_national(i) || true {
+                txt_s(F_TINY, p[0] + 4, p[1] + 6, loc_name(j), C_SOFT, ALIGN_LEFT)
+            }
+        }
+    }
+    // the title pill
+    let name = loc_region(i)
+    var nm = name
+    if loc_is_home(i) { nm = loc_name(i) }
+    let tw = max(txt_w(F_MED, nm), 96) + 14
+    rect_blend(mx + 4, my + 4, tw, 32, 0x2A0C04, BLEND_HALF)
+    rect_blend(mx + 4, my + 4, tw, 1, C_GOLD, BLEND_NONE)
+    txt_s(F_MED, mx + 10, my + 6, nm, WHITE, ALIGN_LEFT)
+    var sub = "Temperatures"
+    if !have {
+        sub = "Waiting for the map"
+    } else if wx_has(i, K_MAP) {
+        sub = s_cat("Temperatures, ", s_when(wx[i].map.time, utc_off_of(i)))
+    }
+    if i == focus && mp_hdr && !mp_same {
+        let b = sbuf()
+        str_copy(b, SB, "Receiving ")
+        str_append_int(b, SB, popcount32(mp_done0) + popcount32(mp_done1), 0, false)
+        str_append(b, SB, "/48")
+        sub = b
+    }
+    txt(F_TINY, mx + 10, my + 24, sub, C_SOFT)
+    legend_draw(i, 266, 20)
+}
+
+// The location's UTC offset (from any of its pages), for page times.
+fn utc_off_of(i: s32) -> s32 {
+    if wx_has(i, K_NOW) { return wx[i].cur.utc_offset as s32 }
+    if wx_has(i, K_HOURS) { return wx[i].hourly.utc_offset as s32 }
+    return clk_utc_off
+}
+
+var clk_utc_off: s32                 // the time page's UTC offset (for times of the national map)
+
+// The band legend of location i's map, from its header: 16 swatches, top warmest.
+fn legend_draw(i: s32, x: s32, y: s32) {
+    panel(x, y, 50, 192)
+    txt_s(F_MED, x + 25, y + 3, s_cat("`", unit_letter()), WHITE, ALIGN_CENTRE)
+    if !wx_has(i, K_MAP) && wx[i].rows0 == 0 { return }
+    let base = wx[i].map.base as s32
+    let step = wx[i].map.step as s32
+    for b in 0..16 {
+        let band = 15 - b
+        let yy = y + 24 + b * 10
+        let centre_q = 2 * base + (2 * band + 1) * step
+        let c = RAMP_RGB[clamp(centre_q / 4, -30, 45) + 30]
+        rect(x + 6, yy, 12, 10, c)
+        if band % 2 == 1 {
+            let edge = base + band * step          // the band's lower edge, half degrees
+            txt_a(F_TINY, x + 46, yy + 6, s_temp_n(edge), C_SOFT, ALIGN_RIGHT)
+        }
+    }
+    rect_outline(x + 5, y + 23, 14, 162, 0x200800, BLEND_NONE)
+}
+
+// ---- the regions directory (page 101)
+
+var reg_sel: s32
+
+fn regions_draw(t: s32) {
+    panel(6, 42, 308, 170)
+    let rows = min(nlocs, 10)
+    let top = max(0, min(reg_sel - 4, nlocs - rows))
+    for r in 0..rows {
+        let j = top + r
+        let y = 46 + r * 16
+        if j == reg_sel {
+            rect_hgrad(8, y - 1, 304, 16, C_BAR_BOT, C_BAR_TOP, BLEND_NONE)
+            rect_blend(8, y - 1, 304, 1, 0xB0E8FF, BLEND_NONE)
+        }
+        text(12, y + 3, s_page(locs[j].page), C_GOLD)
+        var name = loc_region(j)
+        if loc_is_home(j) { name = "Home" }
+        txt_s(F_MED, 44, y - 1, name, WHITE, ALIGN_LEFT)
+        if loc_is_national(j) {
+            txt(F_SMALL, 140, y + 2, "Temperature map", C_SOFT)
+            continue
+        }
+        txt(F_SMALL, 140, y + 2, loc_name(j), C_SOFT)
+        if wx_has(j, K_NOW) {
+            let c = &wx[j].cur
+            icon_small(icon_of(c.wmo as s32), 238, y - 1, c.flags & 1 == 0)
+            txt_s(F_MED, 306, y - 1, s_temp(c.temp as s32), WHITE, ALIGN_RIGHT)
+        } else {
+            txt_a(F_TINY, 306, y + 4, "waiting", C_DIM, ALIGN_RIGHT)
+        }
+    }
+}
+
+// ---- the clock (page 100)
+
+fn clock_draw(t: s32) {
+    panel(6, 42, 308, 170)
+    gloss(6, 43, 308, 40)
+    var h12 = clk.hour % 12
+    if h12 == 0 { h12 = 12 }
+    let b = sbuf()
+    str_append_int(b, SB, h12, 0, false)
+    str_append_char(b, SB, ':')
+    str_append_int(b, SB, clk.minute, 2, true)
+    let w = txt_w(F_HUGE, b)
+    let x0 = 150 - w / 2
+    let x1 = txt_s(F_HUGE, x0, 52, b, WHITE, ALIGN_LEFT)
+    let sb = sbuf()
+    str_append_char(sb, SB, ':')
+    str_append_int(sb, SB, clk.second, 2, true)
+    txt_s(F_BIG, x1 + 2, 60, sb, C_SOFT, ALIGN_LEFT)
+    var ap = "AM"
+    if clk.hour >= 12 { ap = "PM" }
+    txt_s(F_MED, x1 + 4, 76, ap, C_GOLD, ALIGN_LEFT)
+    let d = sbuf()
+    str_copy(d, SB, DAY_NAMES[clk.weekday % 7])
+    str_append(d, SB, ", ")
+    str_append(d, SB, MONTH_NAMES[clamp(clk.month - 1, 0, 11)])
+    str_append_char(d, SB, ' ')
+    str_append_int(d, SB, clk.day, 0, false)
+    txt_s(F_MED, 160, 106, d, WHITE, ALIGN_CENTRE)
+    var src = "The console's clock"
+    if clk.on_air {
+        src = "MeiNet time"
+        if clk_tz[0] != 0 { src = s_cat("MeiNet time, ", bc_name(&clk_tz[0])) }
+    }
+    txt_a(F_SMALL, 160, 126, src, C_SOFT, ALIGN_CENTRE)
+    day_arc(t)
+}
+
+// The day's arc at home: sunrise to sunset, with the sun where it is now.
+private fn day_arc(t: s32) {
+    let h = loc_find(BC_HOME)
+    if h < 0 || !wx_has(h, K_NOW) { return }
+    let c = &wx[h].cur
+    let sr = c.sunrise as s32
+    let ss = c.sunset as s32
+    if sr == 0xFFFF || ss == 0xFFFF || ss <= sr { return }
+    let cx = 160
+    let base = 196
+    let rx = 96
+    let ry = 40
+    rect(cx - rx - 14, base, 2 * rx + 28, 1, 0xC08050)
+    var px = cx - rx
+    var py = base
+    for s in 1..25 {
+        let a = PI * fixed(s) / 24
+        let x = cx - (cos(a) * rx) as s32
+        let y = base - (sin(a) * ry) as s32
+        line(px, py, x, y, 0x90C8F0)
+        px = x
+        py = y
+    }
+    spr(G_RISE, cx - rx - 8, base + 3)
+    txt(F_TINY, cx - rx + 10, base + 4, s_clock(sr), C_SOFT)
+    spr(G_SET, cx + rx - 8, base + 3)
+    txt_a(F_TINY, cx + rx - 10, base + 4, s_clock(ss), C_SOFT, ALIGN_RIGHT)
+    let now = clock_minutes()
+    if now >= sr && now <= ss {
+        let a = PI * fixed(now - sr) / (ss - sr)
+        let x = cx - (cos(a) * rx) as s32
+        let y = base - (sin(a) * ry) as s32
+        spr_rot(IM_RAYS, x, y, frame_angle(t, 0.01))
+        spr_c(IM_DISC, x, y)
+    } else {
+        spr_c(IM_MOON, cx, base - ry - 2)
+    }
+}
