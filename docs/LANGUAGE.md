@@ -663,7 +663,9 @@ The prelude (`stdlib/prelude.akr`) imports every module below. Colours are `u32`
 
 | | |
 |---|---|
-| `cpu_used() -> s32` | cycles used by the previous frame (of 500,000) |
+| `cpu_used() -> s32` | cycles used by the previous frame (of 500,000); a frame that ran over counts every budget it used up, so it reads above 500,000 |
+| `frames_dropped() -> s32` | how many budgets the previous frame ran over by: 0 when it was on time, n when the picture before it stayed up n more times |
+| `cycle_count() -> s32` | a cycle clock that keeps counting across frames and overruns (`FRAME × 500,000 − CYCLES`); differences between readings are exact for spans under 71 seconds |
 | `tris_drawn() -> s32` | 3D triangles drawn in the previous frame |
 | `frame() -> u32` | frames since reset |
 | `vsync()` | end the frame now (low level: skips the ordering table and pad bookkeeping) |
@@ -808,6 +810,67 @@ insert; write the rest as described in the spec (p. 14–16). The packet types a
 (0x20) and the flag bits `PKT_GOURAUD`, `PKT_TEXTURED`, `PKT_QUAD`, `PKT_SEMI`; a semi-transparent
 packet's blend mode goes in bits 24–25 of its first colour (`mode << BLEND_SHIFT`), and
 `TEX_4BIT` is the 4-bit flag of the first texture coordinate.
+
+### Projection, the ordering table and packet memory (`render.akr`)
+
+What `mesh()` does with the camera, the ordering table and the packet arena, available to carts
+that place 2D things in the 3D world, draw parts of the world early, or keep packets across
+frames.
+
+| | |
+|---|---|
+| `project_point(p: vec3) -> ivec4` | where `mesh()` would put a vertex at `p` (`vxfm` and `vproj`, the same rounding): lanes `x`, `y` in pixels, `z` the ordering-table bucket of its view depth (without `depth_bias`; −1 when `p` is nearer than the near plane or behind the camera, and then `x`, `y` mean nothing), `w` the view depth as raw bits (`from_bits(r.w)`) |
+| `view_depth(p: vec3) -> fixed` | the view depth of `p` |
+| `depth_bucket_of(w) -> s32` | the bucket of view depth `w` (see Sort keys) |
+| `buckets_per_unit() -> fixed` | buckets per unit of view depth, `1024 / (far − near)` |
+| `camera_focal(f)` | the projection's scale: `f = 1 / tan(fov / 2)` (`camera_fov` sets it from an angle); a point at view depth `d` is `120 × f / d` pixels per unit tall. Applies from the next `camera()`/`camera_look()` |
+| `camera_pan(px, py)` | shift the view by whole pixels (right, down) without moving the camera (an off-axis view); every vertex moves by exactly `(px, py)`. After `camera()`/`camera_look()`, which reset it |
+| `ot_clear()` | empty the frame's ordering table |
+| `ot_save(buf: *u32)`, `ot_restore(buf)` | copy the frame's table (1,024 words) out and back |
+| `ot_swap(buf)` | exchange the frame's table with `buf` (about 4,900 cycles) |
+| `ot_detach(dst, home)` | move the frame's table to `dst` as a list of its own, linked to end at `home`'s entries (usually `dst`), and empty the frame's table |
+| `ot_draw(table) -> s32` | draw a detached table now; returns the triangles drawn |
+| `ot_flush() -> s32` | draw the frame's table now and empty it (what is sorted later draws over it) |
+| `ui_flush()` | draw the interface list queued so far now (3D drawn later lands on top) |
+| `arena_init(a: *PacketArena, buf: *u32, words)`, `arena_swap(a)` | a packet arena of the cart's own; `arena_swap` exchanges it with the current one |
+| `arena_used() -> s32`, `arena_left() -> s32` | words of the frame's arena used this frame; words left in the current arena |
+
+The ordering table is 1,024 empty packets, entry `b` linking to entry `b − 1`; a packet sorted
+into bucket `b` links on to what the bucket held, so the last packet of each bucket's chain links
+to the entry below. A copy of the table (`ot_save`, `ot_swap`) therefore still links into the
+frame's table, and is only drawn correctly once it is put back (`ot_restore`, `ot_swap` again);
+`ot_detach` rewrites those last links (walking every packet once, about 15 cycles each) to make a
+list that can be drawn from wherever it lives with `ot_draw`.
+
+The packets themselves live in the frame's arena, which is emptied at the start of every frame.
+To keep geometry across frames (a static scene built once, or a few steps per frame, then drawn
+again and again), make its packets in an arena of the cart's own and keep its table:
+
+```
+var cache: [40960]u32
+var cache_ot: [1024]u32
+var cache_arena: PacketArena
+
+fn build_scene() {                 // once, or whenever the scene changes
+    arena_init(&cache_arena, &cache[0], 40960)
+    ot_swap(&cache_ot[0])          // sort into an empty table of our own...
+    ot_clear()
+    arena_swap(&cache_arena)       // ...with packets that outlive the frame
+    mesh(TOWN)
+    arena_swap(&cache_arena)       // cache_arena.ptr: where its packets end
+    ot_swap(&cache_ot[0])          // the frame's table back; cache_ot holds the scene
+}
+
+fn draw() {
+    ot_restore(&cache_ot[0])       // the scene, then this frame's moving parts on top of it
+    mesh_at(CART, cart_pos, cart_yaw)
+}
+```
+
+Building over several frames works the same way: swap the arena and table in at the start of
+each step and out at the end (a task, below, can hold the loop). The packets of `ot_restore`d
+tables are linked into by the frame's own inserts, so a table restored every frame must be
+restored from the saved copy each time (it is: `ot_restore` copies).
 
 ### 2D drawing (`draw.akr`)
 

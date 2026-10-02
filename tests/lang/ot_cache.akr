@@ -1,0 +1,74 @@
+// A scene built once into a packet arena and ordering table of the cart's own, then drawn
+// every frame from the saved table, with the frame's own geometry sorted in among it
+// (docs/LANGUAGE.md, "Projection, the ordering table and packet memory").
+// frames: 5
+
+struct Quad {
+    hdr: Mesh
+    v: [4]vec4
+    f: Face
+}
+
+var far_q: Quad          // the cached scene: a red quad at depth 20
+var near_q: Quad         // drawn every frame: a blue quad at depth 10, partly over it
+var cache: [4000]u32
+var cache_ot: [1024]u32
+var cache_arena: PacketArena
+var n: s32
+
+fn make(q: *Quad, x0: fixed, x1: fixed, z: fixed, col: u32) {
+    q.hdr.nverts = 4
+    q.hdr.nfaces = 1
+    q.hdr.verts = 16
+    q.hdr.faces = 16 + 64
+    q.v[0] = vec4(x0, -1.0, z, 1.0)
+    q.v[1] = vec4(x1, -1.0, z, 1.0)
+    q.v[2] = vec4(x0, 1.0, z, 1.0)
+    q.v[3] = vec4(x1, 1.0, z, 1.0)
+    q.f.flags = FACE_QUAD | FACE_DOUBLE
+    for k in 0..4 { q.f.idx[k] = k as u16 }
+    q.f.col[0] = col
+}
+
+fn px(x: s32, y: s32) -> u32 {
+    var fb: u32 = 0x400000
+    if GPU_BACK == 0x400000 { fb = 0x425800 }
+    return (fb as *u16)[y * 320 + x] as u32
+}
+
+fn init() {
+    dither(false)
+    camera(vec3(0.0, 0.0, 0.0), 0.0)
+    make(&far_q, -4.0, 4.0, 20.0, 0x0000FF)
+    make(&near_q, 0.0, 2.0, 10.0, 0xFF0000)
+    // build the scene once
+    arena_init(&cache_arena, &cache[0], 4000)
+    ot_swap(&cache_ot[0])
+    ot_clear()
+    arena_swap(&cache_arena)
+    mesh(&far_q.hdr)
+    arena_swap(&cache_arena)
+    ot_swap(&cache_ot[0])
+    assert_eq(cache_arena.ptr, &cache[6])
+}
+
+fn draw() {
+    n += 1
+    cls(0)
+    camera(vec3(0.0, 0.0, 0.0), 0.0)
+    ot_restore(&cache_ot[0])
+    mesh(&near_q.hdr)
+    if n == 4 {
+        print("frame arena words ")
+        print_int(arena_used())
+        println("")                     // expect: frame arena words 6
+    }
+}
+
+fn update() {
+    if n != 4 { return }
+    // the cached quad alone, the near quad over it, the background
+    print_hex(px(140, 120)); println("")   // expect: 1F
+    print_hex(px(180, 120)); println("")   // expect: 7C00
+    print_hex(px(10, 120)); println("")    // expect: 0
+}
