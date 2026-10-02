@@ -68,6 +68,18 @@ void mei_set_pad(Mei *m, int index, const MeiPadInput *in);
  * 0 if the frame overran and the previous picture repeats. */
 int mei_run_frame(Mei *m);
 
+/* GPU work of the last presented frame (measurement only: nothing here limits anything). */
+typedef struct {
+    uint32_t tris;          /* triangles rasterised (the ones counted against the limit) */
+    uint32_t tris_empty;    /* of those: no pixels (zero area, off screen or between pixel centres) */
+    uint32_t tris_dropped;  /* over the limit */
+    uint32_t px[8];         /* pixels filled, by kind: +1 Gouraud, +2 textured, +4 semi-transparent */
+    uint32_t clears;        /* GPU_CLEAR writes (each fills the whole screen) */
+    uint32_t lists;         /* GPU_DRAW writes */
+    uint32_t cpu_cycles;    /* CPU cycles spent on the frame (more than a budget after an overrun) */
+} MeiGpuStats;
+const MeiGpuStats *mei_gpu_stats(const Mei *m);
+
 /* The front buffer: 320x240 pixels, 15-bit colour (R bits 0-4, G 5-9, B 10-14).
  * When the cart has faulted this is the error screen. */
 const uint16_t *mei_display(Mei *m);
