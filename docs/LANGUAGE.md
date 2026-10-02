@@ -902,7 +902,7 @@ and `y .. y+h−1`. Colours are `0xBBGGRR`. A `mode` is a blend mode:
 | `tex_page(slot, palette, four_bit) -> u32` | the texture page of the sprite functions: slot, palette and depth |
 | `sprite_ex(page, u, v, tw, th, x, y, w, h, tint, mode)` | the texels `(u, v, tw, th)` stretched over `(x, y, w, h)`; a negative `tw` or `th` mirrors that axis |
 | `sprite_rot(page, u, v, tw, th, cx, cy, w, h, angle, tint, mode)` | the same `w × h`, centred on `(cx, cy)` and turned clockwise by `angle` radians |
-| `sprite_quad(page, u, v, tw, th, xs: *s32, ys: *s32, tint, mode)` | on four free corners (`xs[k]`, `ys[k]`: top-left, top-right, bottom-left, bottom-right of the texels) |
+| `sprite_corners(page, u, v, tw, th, xs: *s32, ys: *s32, tint, mode)` | on four free corners (`xs[k]`, `ys[k]`: top-left, top-right, bottom-left, bottom-right of the texels) |
 | `col_tint(colour) -> u32` | the tint that shows a white texel in `colour` (half of it, rounded up: `col_tint(0xFFFFFF)` is `0x808080`) |
 
 A sprite's `tint` multiplies its texels by `tint / 128` per channel: `0x808080` draws the texture
