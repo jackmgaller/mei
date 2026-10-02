@@ -68,6 +68,7 @@ static MeiFaultKind io_read(Mei *m, uint32_t off, uint32_t *out) {
     }
     if (is_audio(off) && audio_io_read(m, off, out) == 0) return 0;
     if (off - IO_CARD < 0x20 && card_io_read(m, off - IO_CARD, out) == 0) return 0;
+    if (off - IO_BC < IO_BC_SIZE && broadcast_io_read(m, off - IO_BC, out) == 0) return 0;
     return MEI_FAULT_UNMAPPED;
 }
 
@@ -105,6 +106,11 @@ static MeiFaultKind io_write(Mei *m, uint32_t off, uint32_t val) {
     }
     if (off - IO_CARD < 0x20) {
         int r = card_io_write(m, off - IO_CARD, val);
+        if (r == 0) return 0;
+        if (r == -2) return MEI_FAULT_READ_ONLY;
+    }
+    if (off - IO_BC < IO_BC_SIZE) {
+        int r = broadcast_io_write(m, off - IO_BC, val);
         if (r == 0) return 0;
         if (r == -2) return MEI_FAULT_READ_ONLY;
     }

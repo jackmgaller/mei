@@ -1,0 +1,55 @@
+// Raw mode: the cart reads the bytes from the decoder's FIFO and decodes a packet itself
+// with bc_hamming and bc_crc16.
+// broadcast: data/broadcast.bin
+// frames: 12
+cart "Broadcast Raw"
+
+var buf: [256]u8
+var n = 0
+
+fn p(n: s32) { print_int(n); print_char('\n') }
+fn pb(b: bool) { if b { println("yes") } else { println("no") } }
+
+fn init() {
+    bc_on()
+    bc_raw(true)
+    p(bc_raw_level())                       // expect: 0
+    p(bc_raw_byte())                        // expect: -1
+}
+
+fn update() {
+    let f = frame()
+    if f >= 1 && f <= 8 {
+        if f == 1 { p(bc_raw_level()) }     // expect: 16
+        n += bc_raw_read(&buf[n], 256 - n)
+    }
+    if f == 9 {
+        p(n)                                // expect: 128
+        // the stream starts with a packet: find its sync word and decode the header
+        var at = -1
+        for i in 0..n - 1 { if at < 0 && buf[i] == 0x55 && buf[i + 1] == 0xA7 { at = i } }
+        p(at)                               // expect: 0
+        var h: u32 = 0
+        var good = true
+        for i in 0..8 {
+            let v = bc_hamming(buf[at + 2 + i] as s32)
+            if v < 0 { good = false }
+            h = h | ((v as u32 & 15) << (4 * i) as u32)
+        }
+        pb(good)                            // expect: yes
+        print_hex(h & 0xFFFF); print_char('\n')    // expect: 100
+        p(((h >> 16) & 63) as s32 * 10 + ((h >> 23) & 1) as s32)   // expect: 1
+        var hb: [4]u8
+        for i in 0..4 { hb[i] = (h >> (8 * i) as u32) as u8 }
+        let crc = bc_crc16(bc_crc16(0xFFFF, &hb[0], 4), &buf[at + 10], 52)
+        pb(crc == (buf[at + 62] as u32 | (buf[at + 63] as u32 << 8)))   // expect: yes
+        let secs = buf[at + 10] as u32 | buf[at + 11] as u32 << 8 | buf[at + 12] as u32 << 16 | buf[at + 13] as u32 << 24
+        p(secs as s32)                      // expect: 844106400
+        p(bc_hamming(0x15) * 100 + bc_hamming(0x15 ^ 0x40))   // expect: 0
+        p(bc_hamming(0x15 ^ 0x41))          // expect: -1
+        // the packet decoder ran alongside
+        p(bc_packets_ok() as s32)           // expect: 2
+        bc_raw(false)
+        p(BC_CTRL as s32)                   // expect: 1
+    }
+}

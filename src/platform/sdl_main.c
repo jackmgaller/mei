@@ -3,10 +3,13 @@
 /* SDL3 platform layer: window, audio, input and the 60 Hz main loop.
  * The core only sees three things from here: a presented frame, queued audio
  * and pad input (see present(), queue_audio(), read_input()).
- *   mei [--no-boot] [cart.mei]   (or drop a .mei file onto the window)
+ *   mei [--no-boot] [--broadcast HOST:PORT | --no-broadcast] [--broadcast-noise BER] [cart.mei]
+ *   (or drop a .mei file onto the window)
  * With build/system.mei next to the executable, the console boots the system ROM
  * (boot animation + shell, docs/SYSTEM.md); a cart argument is launched after the boot
  * animation unless --no-boot is given. Home (gamepad Guide button or F2) returns to it.
+ * The broadcast tuner (docs/BROADCAST.md) listens to the MeiNet gateway, by default on
+ * 127.0.0.1:9600; without one the console simply has no signal. The web build has none.
  * Gamepads come from SDL, plus XInput pads read directly over USB when built with libusb.
  * Keys: arrows d-pad, WASD stick, J/K/U/I = A/B/X/Y, Q/E = L/R, Enter = Start,
  *       Backspace or right Shift = Select,
@@ -27,6 +30,9 @@
 #endif
 #ifdef MEI_XINPUT_USB
 #include "xinput_usb.h"
+#endif
+#ifndef __EMSCRIPTEN__
+#include "bcnet.h"
 #endif
 
 #define TICK_NS (1000000000ull / MEI_FPS)
@@ -321,12 +327,28 @@ SDL_AppResult SDL_AppInit(void **state, int argc, char **argv) {
     update_clock();
 #ifndef __EMSCRIPTEN__
     /* the web page supplies the system ROM and catalogue through web_boot_system */
-    const char *cart = NULL;
+    const char *cart = NULL, *bc_addr = "127.0.0.1:9600";
     int no_boot = 0;
+    double bc_noise = 0;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--no-boot")) no_boot = 1;
+        else if (!strcmp(argv[i], "--broadcast") && i + 1 < argc) bc_addr = argv[++i];
+        else if (!strcmp(argv[i], "--no-broadcast")) bc_addr = NULL;
+        else if (!strcmp(argv[i], "--broadcast-noise") && i + 1 < argc) bc_noise = SDL_atof(argv[++i]);
         else cart = argv[i];
     }
+    if (bc_addr) {
+        char host[256];
+        int port = 9600;
+        const char *colon = strrchr(bc_addr, ':');
+        size_t hl = colon ? (size_t)(colon - bc_addr) : strlen(bc_addr);
+        if (hl >= sizeof host) hl = sizeof host - 1;
+        memcpy(host, bc_addr, hl);
+        host[hl] = 0;
+        if (colon) port = SDL_atoi(colon + 1);
+        bcnet_start(host[0] ? host : "127.0.0.1", port);
+    }
+    if (bc_noise > 0) mei_broadcast_noise(app.mei, (uint32_t)(bc_noise * 1e6 + 0.5), 0x4D454E4Fu);
     const char *base = SDL_GetBasePath();
     char path[1024];
     snprintf(path, sizeof path, "%ssystem.mei", base ? base : "");
@@ -414,6 +436,9 @@ SDL_AppResult SDL_AppIterate(void *state) {
         read_input(pads);
         for (int p = 0; p < MAX_PADS; p++) mei_set_pad(app.mei, p, &pads[p]);
         update_clock();
+#ifndef __EMSCRIPTEN__
+        bcnet_tick(app.mei);
+#endif
         mei_run_frame(app.mei);
         uint32_t index;
         if (mei_launch_request(app.mei, &index) && in_system) launch(index);
@@ -437,6 +462,9 @@ SDL_AppResult SDL_AppIterate(void *state) {
 void SDL_AppQuit(void *state, SDL_AppResult result) {
 #ifdef MEI_XINPUT_USB
     xusb_stop();
+#endif
+#ifndef __EMSCRIPTEN__
+    bcnet_stop();
 #endif
     if (app.mei) mei_destroy(app.mei);
     SDL_free(system_rom);

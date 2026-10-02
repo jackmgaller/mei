@@ -832,7 +832,8 @@ static void test_faults(void) {
     begin("unmapped write8"); li(1, 0xFEFFFF); e(I(SB, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0xFEFFFF);
     begin("bit 24 set"); li(1, 0x1000000); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x1000000);
     begin("bit 31 set"); e(I(LBU, 2, 0, -4)); FAULT(MEI_FAULT_UNMAPPED, 0xFFFFFFFC);
-    begin("past I/O"); li(1, 0xFF0600); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0xFF0600);
+    begin("past I/O"); li(1, 0xFF0700); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0xFF0700);
+    begin("past broadcast"); li(1, 0xFF0648); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0xFF0648);
     begin("vld into gap"); li(1, 0x4FFFF8); e(I(VLD, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x500000);
     begin("unmapped jmp"); e(I(ADDI, 1, 0, 1)); e(J(JMP, 0x500000)); FAULT(MEI_FAULT_UNMAPPED, 0x500000);
     begin("unmapped call"); e(J(CALL, 0xFF0000)); FAULT(MEI_FAULT_UNMAPPED, 0xFF0000);

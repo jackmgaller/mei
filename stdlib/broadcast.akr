@@ -1,0 +1,527 @@
+// Broadcast (docs/BROADCAST.md): the MeiNet data broadcast through the decoder chip.
+//
+// Pages are named by page id: the kind in the top hex digit, the page number below it
+// (BC_MAP | 0x401 is the Northeast's map). Select a page, wait until it is complete, copy it
+// out. Selecting turns the receiver on; it then costs the CPU nothing.
+
+reg BC_CTRL: u32 @ 0xFF0600         // bit 0 receiver on, bit 1 raw FIFO capture
+reg BC_STATUS: u32 @ 0xFF0604       // bit 0 carrier, 1 locked, 2 FIFO overflow; 8-15 complete; 16-23 changed
+reg BC_CMD: u32 @ 0xFF0608          // write: 1 READ_PAGE, 2 READ_ROW, 3 READ_FIFO, 4 CLEAR_COUNTERS
+reg BC_RESULT: u32 @ 0xFF060C       // error of the last command
+reg BC_SLOT: u32 @ 0xFF0610         // slot 0-7 for the registers below
+reg BC_PAGE: u32 @ 0xFF0614         // the slot's page id (write: select; bit 31: free)
+reg BC_PSTAT: u32 @ 0xFF0618        // bit 0 complete, 1 changed, 2 on air; 8-15 version; 16-23 rows; 24-31 count
+reg BC_ROWS0: u32 @ 0xFF061C        // rows 0-31 arrived
+reg BC_ROWS1: u32 @ 0xFF0620        // rows 32-63 arrived
+reg BC_STAMP: u32 @ 0xFF0624        // FRAME when the sync of the latest row began
+reg BC_BUF: u32 @ 0xFF0628          // RAM address for copies
+reg BC_LEN: u32 @ 0xFF062C          // length for copies (written back)
+reg BC_ROW: u32 @ 0xFF0630          // row for READ_ROW
+reg BC_OK: u32 @ 0xFF0634           // packets accepted
+reg BC_FIXED: u32 @ 0xFF0638        // accepted with a corrected header
+reg BC_DROPPED: u32 @ 0xFF063C      // packets lost while locked
+reg BC_FIFO: u32 @ 0xFF0640         // raw: next byte | 0x100, or 0 when empty
+reg BC_FIFO_LEVEL: u32 @ 0xFF0644   // raw: bytes waiting
+
+const BC_TIME_PAGE = 0x100
+const BC_INDEX_PAGE = 0x101
+const BC_HOME = 0x400              // the home city (when the gateway has one)
+const BC_NATIONAL = 0x4FF          // national map (kind BC_MAP only)
+const BC_CURRENT = 0x0000          // kinds, ORed into a weather page number
+const BC_DAILY = 0x1000
+const BC_HOURLY = 0x2000
+const BC_MAP = 0x3000
+const BC_ROW_BYTES = 52
+const BC_MAX_ROWS = 64
+const BC_PAGE_MAX = 3328           // 64 rows: any page fits
+const BC_SLOTS = 8
+const BC_TEMP_UNKNOWN = -128
+const BC_STALE = 2                 // the stale bit in a payload's flags
+const BC_MAP_W = 64
+const BC_MAP_H = 48
+
+// Icon classes (bc_icon)
+const BC_ICON_CLEAR = 0
+const BC_ICON_PARTLY = 1
+const BC_ICON_CLOUDY = 2
+const BC_ICON_FOG = 3
+const BC_ICON_DRIZZLE = 4
+const BC_ICON_RAIN = 5
+const BC_ICON_SHOWERS = 6
+const BC_ICON_SNOW = 7
+const BC_ICON_THUNDER = 8
+const BC_ICON_UNKNOWN = 9
+
+// ---- payloads (field for field as in docs/BROADCAST.md) ----
+
+// Name fields (city, region, ...): a length byte, then NUL-padded text; bc_name() gives the text.
+
+struct BcTime {                    // page 0x100
+    secs: u32                      // seconds since 2000-01-01 00:00 UTC, true at the packet's sync
+    utc_offset: s8                 // local offset, 15-minute steps
+    flags: u8                      // bit 0 daylight saving, bit 1 the home city's zone
+    year: u16
+    month: u8
+    day: u8
+    weekday: u8                    // 0 = Sunday
+    hour: u8
+    minute: u8
+    second: u8
+    tz: [8]u8                      // name field: zone abbreviation
+    reserved: [30]u8
+}
+
+struct BcIndexHeader {             // page 0x101, row 0
+    count: u8                      // entries that follow
+    format: u8
+    flags: u8                      // bit 0 home city set, bit 1 some data stale
+    reserved0: u8
+    data_time: u32
+    service: [16]u8
+    reserved: [28]u8
+}
+
+struct BcIndexEntry {              // page 0x101, rows 1..count
+    page: u16                      // 0x4RR
+    kinds: u8                      // bit k: kind k on air
+    flags: u8                      // bit 0 home, bit 1 stale, bit 2 national
+    versions: [4]u8                // version of kinds 0-3 (0: not on air)
+    lat: s16                       // hundredths of a degree
+    lon: s16
+    south: s16                     // map box
+    north: s16
+    west: s16
+    east: s16
+    region: [16]u8                 // name field
+    city: [16]u8                   // name field
+}
+
+struct BcIndex {
+    head: BcIndexHeader
+    entry: [63]BcIndexEntry
+}
+
+struct BcCurrent {                 // kind 0
+    time: u32
+    temp: s8                       // half degrees C
+    feels: s8
+    humidity: u8                   // %
+    wmo: u8                        // weather code
+    wind_dir: u8                   // 256ths of a circle, from north, where the wind comes from
+    wind: u8                       // km/h
+    gusts: u8
+    cloud: u8                      // %
+    pressure: u16                  // hPa * 10 - 9000 (bc_pressure)
+    precip: u8                     // last hour, 0.1 mm
+    flags: u8                      // bit 0 daytime, bit 1 stale
+    high: s8                       // today
+    low: s8
+    pop: u8                        // today's chance of precipitation, %
+    uv: u8                         // today's max UV index * 10
+    utc_offset: s8
+    reserved0: u8
+    city: [16]u8                   // name field
+    sunrise: u16                   // minutes after local midnight
+    sunset: u16
+    reserved: [10]u8
+}
+
+struct BcDay {
+    wmo: u8
+    high: s8
+    low: s8
+    pop: u8
+    precip: u8                     // whole mm
+    wind: u8                       // max, km/h
+    wind_dir: u8
+    weekday: u8                    // 0 = Sunday
+}
+
+struct BcDaily {                   // kind 1
+    date: u16                      // days since 2000-01-01, local date of day 0
+    count: u8
+    flags: u8
+    day: [5]BcDay
+    utc_offset: s8
+    reserved: [7]u8
+}
+
+struct BcHour {
+    temp: s8
+    wmo: u8
+    pop: u8
+    wind: u8
+}
+
+struct BcHourly {                  // kind 2 (two rows)
+    time: u32                      // start of the first hour
+    count: u8
+    hour: u8                       // local hour of the first entry
+    flags: u8
+    utc_offset: s8
+    hours: [24]BcHour
+}
+
+struct BcMapHeader {               // kind 3, row 0
+    layer: u8                      // 0 temperature
+    width: u8
+    height: u8
+    flags: u8
+    time: u32
+    north: s16                     // hundredths of a degree
+    south: s16
+    west: s16
+    east: s16
+    base: s8                       // band b: base + b * step .. (half degrees C)
+    step: u8
+    reserved0: [2]u8
+    name: [16]u8
+    reserved: [16]u8
+}
+
+struct BcMap {                     // kind 3: header and 48 coded grid rows (bc_map_decode)
+    head: BcMapHeader
+    rows: [48][52]u8
+}
+
+struct BcDateTime {
+    year: s32
+    month: s32                     // 1-12
+    day: s32                       // 1-31
+    weekday: s32                   // 0 = Sunday
+    hour: s32
+    minute: s32
+    second: s32
+}
+
+// ---- pages ----
+
+// Points the slot registers at the slot holding `page`; returns the slot or -1.
+fn __bc_find(page: s32) -> s32 {
+    let want = page as u32 & 0xFFFF
+    for i in 0..8 {
+        BC_SLOT = i as u32
+        if BC_PAGE == want { return i }
+    }
+    return -1
+}
+
+// Receiver power. bc_select turns it on.
+fn bc_on() { BC_CTRL = BC_CTRL | 1 }
+fn bc_off() { BC_CTRL = 0 }
+
+// Collect a page: returns its slot (the existing one if it is already selected), or -1 when
+// all eight slots are in use.
+fn bc_select(page: s32) -> s32 {
+    BC_CTRL = BC_CTRL | 1
+    let s = __bc_find(page)
+    if s >= 0 { return s }
+    for i in 0..8 {
+        BC_SLOT = i as u32
+        if BC_PAGE == 0xFFFFFFFF {
+            BC_PAGE = page as u32 & 0xFFFF
+            return i
+        }
+    }
+    return -1
+}
+
+// Stop collecting a page and free its slot.
+fn bc_release(page: s32) {
+    if __bc_find(page) >= 0 { BC_PAGE = 0xFFFFFFFF }
+}
+
+// Every row of the page has arrived (with one version).
+fn bc_ready(page: s32) -> bool {
+    if __bc_find(page) < 0 { return false }
+    return BC_PSTAT & 1 != 0
+}
+
+// Complete with a version that has not been read with bc_read yet.
+fn bc_changed(page: s32) -> bool {
+    if __bc_find(page) < 0 { return false }
+    return BC_PSTAT & 2 != 0
+}
+
+// Copies a complete page into buf (bc_rows(page) * 52 bytes; BC_PAGE_MAX always fits) and
+// clears its changed flag. Returns the length in bytes, or 0 if it is not complete.
+fn bc_read(page: s32, buf: *u8) -> s32 {
+    if __bc_find(page) < 0 { return 0 }
+    if BC_PSTAT & 1 == 0 { return 0 }
+    BC_BUF = buf as u32
+    BC_LEN = BC_PAGE_MAX
+    BC_CMD = 1
+    return BC_LEN as s32
+}
+
+// Copies row `row` (52 bytes) into buf if it has arrived.
+fn bc_read_row(page: s32, row: s32, buf: *u8) -> bool {
+    if __bc_find(page) < 0 { return false }
+    BC_ROW = row as u32
+    BC_BUF = buf as u32
+    BC_LEN = BC_ROW_BYTES
+    BC_CMD = 2
+    return BC_RESULT == 0
+}
+
+// Has row `row` of the page arrived?
+fn bc_row_ready(page: s32, row: s32) -> bool {
+    if __bc_find(page) < 0 || row < 0 || row >= 64 { return false }
+    if row < 32 { return (BC_ROWS0 >> row as u32) & 1 != 0 }
+    return (BC_ROWS1 >> (row - 32) as u32) & 1 != 0
+}
+
+// The page's row count, 0 until its last row has arrived.
+fn bc_rows(page: s32) -> s32 {
+    if __bc_find(page) < 0 { return 0 }
+    return (BC_PSTAT >> 24) as s32
+}
+
+// The version of the rows held, or -1 before any row has arrived.
+fn bc_version(page: s32) -> s32 {
+    if __bc_find(page) < 0 { return -1 }
+    let st = BC_PSTAT
+    if st & 4 == 0 { return -1 }
+    return ((st >> 8) & 255) as s32
+}
+
+// FRAME when the sync word of the page's latest row began.
+fn bc_stamp(page: s32) -> u32 {
+    if __bc_find(page) < 0 { return 0 }
+    return BC_STAMP
+}
+
+// ---- signal ----
+
+fn bc_carrier() -> bool { return BC_STATUS & 1 != 0 }
+fn bc_locked() -> bool { return BC_STATUS & 2 != 0 }
+fn bc_packets_ok() -> u32 { return BC_OK }
+fn bc_packets_fixed() -> u32 { return BC_FIXED }
+fn bc_packets_dropped() -> u32 { return BC_DROPPED }
+fn bc_clear_counters() { BC_CMD = 4 }
+
+// Signal bars 0-4: 0 no carrier, 1 not locked, then 2-4 by the share of packets dropped since
+// the counters were cleared (4: under 1 %, 3: under 10 %).
+fn bc_signal() -> s32 {
+    let st = BC_STATUS
+    if st & 1 == 0 { return 0 }
+    if st & 2 == 0 { return 1 }
+    let total = BC_OK + BC_DROPPED
+    let dropped = BC_DROPPED
+    if dropped * 100 < total { return 4 }
+    if dropped * 10 < total { return 3 }
+    return 2
+}
+
+// ---- time ----
+
+// The latest time page (selecting page 0x100 if needed). False until it has arrived.
+fn bc_time(t: *BcTime) -> bool {
+    if bc_select(BC_TIME_PAGE) < 0 { return false }
+    if BC_PSTAT & 1 == 0 { return false }
+    BC_ROW = 0
+    BC_BUF = t as u32
+    BC_LEN = BC_ROW_BYTES
+    BC_CMD = 2
+    return BC_RESULT == 0
+}
+
+// Seconds since 2000-01-01 00:00 UTC now: the time page plus the ticks since its sync word.
+// 0 until the time page has arrived (it selects the page).
+fn bc_now() -> u32 {
+    var t: BcTime
+    if !bc_time(&t) { return 0 }
+    return t.secs + (FRAME - BC_STAMP) / 60
+}
+
+// The same in local time (the time page's UTC offset added).
+fn bc_local_now() -> u32 {
+    var t: BcTime
+    if !bc_time(&t) { return 0 }
+    return t.secs + (FRAME - BC_STAMP) / 60 + (t.utc_offset as s32 * 900) as u32
+}
+
+// Splits seconds since 2000-01-01 into a date and time (proleptic Gregorian).
+fn bc_datetime(secs: u32, out: *BcDateTime) {
+    let days = (secs / 86400) as s32
+    let sod = (secs % 86400) as s32
+    let z = days + 730425                     // days since 0000-03-01
+    let era = z / 146097
+    let doe = z - era * 146097
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+    let mp = (5 * doy + 2) / 153
+    var month = mp + 3
+    if mp >= 10 { month = mp - 9 }
+    var year = yoe + era * 400
+    if month <= 2 { year += 1 }
+    out.year = year
+    out.month = month
+    out.day = doy - (153 * mp + 2) / 5 + 1
+    out.weekday = (days + 6) % 7
+    out.hour = sod / 3600
+    out.minute = sod / 60 % 60
+    out.second = sod % 60
+}
+
+// ---- values ----
+
+// The icon class of a WMO weather code.
+fn bc_icon(code: s32) -> s32 {
+    if code == 0 { return BC_ICON_CLEAR }
+    if code == 1 || code == 2 { return BC_ICON_PARTLY }
+    if code == 3 { return BC_ICON_CLOUDY }
+    if code == 45 || code == 48 { return BC_ICON_FOG }
+    if code >= 51 && code <= 57 { return BC_ICON_DRIZZLE }
+    if code >= 61 && code <= 67 { return BC_ICON_RAIN }
+    if code >= 80 && code <= 82 { return BC_ICON_SHOWERS }
+    if (code >= 71 && code <= 77) || code == 85 || code == 86 { return BC_ICON_SNOW }
+    if code >= 95 && code <= 99 { return BC_ICON_THUNDER }
+    return BC_ICON_UNKNOWN
+}
+
+// A short description of a WMO weather code.
+fn bc_wmo_text(code: s32) -> *u8 {
+    if code == 1 { return "Mainly clear" }
+    if code == 66 || code == 67 { return "Freezing rain" }
+    if code == 56 || code == 57 { return "Freezing drizzle" }
+    if code == 96 || code == 99 { return "Thunder, hail" }
+    let icon = bc_icon(code)
+    if icon == BC_ICON_CLEAR { return "Clear" }
+    if icon == BC_ICON_PARTLY { return "Partly cloudy" }
+    if icon == BC_ICON_CLOUDY { return "Cloudy" }
+    if icon == BC_ICON_FOG { return "Fog" }
+    if icon == BC_ICON_DRIZZLE { return "Drizzle" }
+    if icon == BC_ICON_RAIN { return "Rain" }
+    if icon == BC_ICON_SHOWERS { return "Showers" }
+    if icon == BC_ICON_SNOW { return "Snow" }
+    if icon == BC_ICON_THUNDER { return "Thunderstorm" }
+    return "Unknown"
+}
+
+// A half-degree temperature in whole degrees C or F, rounded (half up); as fixed degrees C.
+fn bc_temp_c(t: s32) -> s32 { return (t + 257) / 2 - 128 }
+fn bc_temp_f(t: s32) -> s32 { return (t * 9 + 1325) / 10 - 100 }
+fn bc_temp_fixed(t: s32) -> fixed { return from_bits(t * 32768) }
+
+// A pressure field in hPa.
+fn bc_pressure(p: s32) -> fixed { return from_bits((p + 9000) * 65536 / 10) }
+
+// The 16-point compass name of a wind direction (256ths of a circle).
+fn bc_compass(dir: s32) -> *u8 {
+    const NAMES = "N\0\0\0NNE\0NE\0\0ENE\0E\0\0\0ESE\0SE\0\0SSE\0S\0\0\0SSW\0SW\0\0WSW\0W\0\0\0WNW\0NW\0\0NNW\0"
+    return &NAMES[(((dir + 8) >> 4) & 15) * 4]
+}
+
+// The text of a name field (NUL-terminated).
+fn bc_name(field: *u8) -> *u8 { return field + 1 }
+
+// ---- maps ----
+
+// Decodes one grid row (the 52 bytes of map page row y + 1) into 64 bands, one per byte.
+// `above` is the decoded row above (null for the top row); it may be `out` itself.
+fn bc_map_row(row: *u8, above: *u8, out: *u8) -> bool {
+    let mode = row[0] as s32
+    if mode == 0 {
+        for i in 0..32 {
+            let b = row[1 + i]
+            out[2 * i] = b & 15
+            out[2 * i + 1] = b >> 4
+        }
+        return true
+    }
+    if mode != 1 && mode != 2 { return false }
+    if mode == 2 && above == null { return false }
+    var x = 0
+    var i = 1
+    while x < 64 {
+        if i >= 52 { return false }
+        let b = row[i] as s32
+        let n = (b >> 4) + 1
+        let v = b & 15
+        if x + n > 64 { return false }
+        for k in x..x + n {
+            if mode == 2 { out[k] = ((v + above[k] as s32) & 15) as u8 }
+            else { out[k] = v as u8 }
+        }
+        x += n
+        i += 1
+    }
+    return true
+}
+
+// Decodes a whole map page (as read with bc_read) into 64 x 48 bands, row by row from the
+// top. False if a row is malformed.
+fn bc_map_decode(map: *BcMap, bands: *u8) -> bool {
+    for y in 0..48 {
+        var above: *u8 = null
+        if y > 0 { above = bands + (y - 1) * 64 }
+        if !bc_map_row(&map.rows[y][0], above, bands + y * 64) { return false }
+    }
+    return true
+}
+
+// ---- raw mode ----
+
+// Raw FIFO capture: every byte received also goes into a 1 KB FIFO (turning it on empties it).
+fn bc_raw(on: bool) {
+    if on { BC_CTRL = BC_CTRL | 3 } else { BC_CTRL = BC_CTRL & 1 }
+}
+
+// Bytes waiting in the FIFO.
+fn bc_raw_level() -> s32 { return BC_FIFO_LEVEL as s32 }
+
+// The next byte from the FIFO, or -1 when it is empty.
+fn bc_raw_byte() -> s32 {
+    let v = BC_FIFO
+    if v & 0x100 == 0 { return -1 }
+    return (v & 255) as s32
+}
+
+// Copies up to max bytes from the FIFO into buf; returns how many.
+fn bc_raw_read(buf: *u8, max: s32) -> s32 {
+    BC_BUF = buf as u32
+    BC_LEN = max as u32
+    BC_CMD = 3
+    return BC_LEN as s32
+}
+
+// Hamming 8/4 decode: the nibble, or 0x10 + nibble after correcting one bit, or 0xFF.
+const __BC_HAMMING: [256]u8 = [
+    0x11, 0xFF, 0x01, 0x11, 0xFF, 0x10, 0x11, 0xFF, 0xFF, 0x12, 0x11, 0xFF, 0x1A, 0xFF, 0xFF, 0x17,
+    0xFF, 0x10, 0x11, 0xFF, 0x10, 0x00, 0xFF, 0x10, 0x16, 0xFF, 0xFF, 0x1B, 0xFF, 0x10, 0x13, 0xFF,
+    0xFF, 0x1C, 0x11, 0xFF, 0x14, 0xFF, 0xFF, 0x17, 0x16, 0xFF, 0xFF, 0x17, 0xFF, 0x17, 0x17, 0x07,
+    0x16, 0xFF, 0xFF, 0x15, 0xFF, 0x10, 0x1D, 0xFF, 0x06, 0x16, 0x16, 0xFF, 0x16, 0xFF, 0xFF, 0x17,
+    0xFF, 0x12, 0x11, 0xFF, 0x14, 0xFF, 0xFF, 0x19, 0x12, 0x02, 0xFF, 0x12, 0xFF, 0x12, 0x13, 0xFF,
+    0x18, 0xFF, 0xFF, 0x15, 0xFF, 0x10, 0x13, 0xFF, 0xFF, 0x12, 0x13, 0xFF, 0x13, 0xFF, 0x03, 0x13,
+    0x14, 0xFF, 0xFF, 0x15, 0x04, 0x14, 0x14, 0xFF, 0xFF, 0x12, 0x1F, 0xFF, 0x14, 0xFF, 0xFF, 0x17,
+    0xFF, 0x15, 0x15, 0x05, 0x14, 0xFF, 0xFF, 0x15, 0x16, 0xFF, 0xFF, 0x15, 0xFF, 0x1E, 0x13, 0xFF,
+    0xFF, 0x1C, 0x11, 0xFF, 0x1A, 0xFF, 0xFF, 0x19, 0x1A, 0xFF, 0xFF, 0x1B, 0x0A, 0x1A, 0x1A, 0xFF,
+    0x18, 0xFF, 0xFF, 0x1B, 0xFF, 0x10, 0x1D, 0xFF, 0xFF, 0x1B, 0x1B, 0x0B, 0x1A, 0xFF, 0xFF, 0x1B,
+    0x1C, 0x0C, 0xFF, 0x1C, 0xFF, 0x1C, 0x1D, 0xFF, 0xFF, 0x1C, 0x1F, 0xFF, 0x1A, 0xFF, 0xFF, 0x17,
+    0xFF, 0x1C, 0x1D, 0xFF, 0x1D, 0xFF, 0x0D, 0x1D, 0x16, 0xFF, 0xFF, 0x1B, 0xFF, 0x1E, 0x1D, 0xFF,
+    0x18, 0xFF, 0xFF, 0x19, 0xFF, 0x19, 0x19, 0x09, 0xFF, 0x12, 0x1F, 0xFF, 0x1A, 0xFF, 0xFF, 0x19,
+    0x08, 0x18, 0x18, 0xFF, 0x18, 0xFF, 0xFF, 0x19, 0x18, 0xFF, 0xFF, 0x1B, 0xFF, 0x1E, 0x13, 0xFF,
+    0xFF, 0x1C, 0x1F, 0xFF, 0x14, 0xFF, 0xFF, 0x19, 0x1F, 0xFF, 0x0F, 0x1F, 0xFF, 0x1E, 0x1F, 0xFF,
+    0x18, 0xFF, 0xFF, 0x15, 0xFF, 0x1E, 0x1D, 0xFF, 0xFF, 0x1E, 0x1F, 0xFF, 0x1E, 0x0E, 0xFF, 0x1E
+]
+
+// The nibble a Hamming 8/4 byte carries (one wrong bit is corrected), or -1 for a double error.
+fn bc_hamming(b: s32) -> s32 {
+    let v = __BC_HAMMING[b & 255] as s32
+    if v == 0xFF { return -1 }
+    return v & 15
+}
+
+// CRC-16/CCITT (polynomial 0x1021) of n bytes, continuing from crc (start with 0xFFFF).
+fn bc_crc16(crc: u32, p: *u8, n: s32) -> u32 {
+    var c = crc
+    for i in 0..n {
+        c = c ^ ((p[i] as u32) << 8)
+        for _k in 0..8 {
+            if c & 0x8000 != 0 { c = ((c << 1) ^ 0x1021) & 0xFFFF }
+            else { c = (c << 1) & 0xFFFF }
+        }
+    }
+    return c
+}

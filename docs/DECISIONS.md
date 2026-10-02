@@ -101,6 +101,11 @@ triangle draws that half and drops the second.
 word) and a real-time clock, `SYS_TIME` (`0xFF0318`) and `SYS_DATE` (`0xFF031C`). The clock is
 latched at `vsync` like input, so determinism holds as long as a replay records it.
 
+**Broadcast decoder.** A one-way data broadcast (time and weather pages from a looping
+carousel, Teletext-style) is received by a decoder chip at `0xFF0600`–`0xFF0647`, which extends
+the I/O region to `0xFF06FF`. It is driven by the frame loop (16 bytes per tick) and is idle
+until a cart turns it on. See `BROADCAST.md`.
+
 ## Geometry instructions
 
 Like the PlayStation's GTE (RTPT, NCLIP, AVSZ, DPCS), the CPU has four instructions for the
@@ -191,7 +196,7 @@ builds for the system ROM with both boot themes and every cart).
 The I/O region is now `0xFF0000`–`0xFF05FF`. Every other offset in it faults as before:
 `+1C` of each channel and `0xFF0510`–`0xFF05FF` are *Unmapped address*, writing `AUD_ACTIVE`
 or a `POS` is *Read-only*, and byte or halfword access anywhere in the region is *Bad I/O
-width*. `0xFF0600` and up are unmapped. (Before the upgrade `0xFF0400`–`0xFF05FF` faulted
+width*. `0xFF0600` and up were unmapped until the [broadcast decoder](BROADCAST.md#registers-0xff0600) took `0xFF0600`–`0xFF06FF`. (Before the upgrade `0xFF0400`–`0xFF05FF` faulted
 *Unmapped address*; no working cart could depend on that.)
 
 **Channel `CTRL`**, for all sixteen channels:

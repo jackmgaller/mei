@@ -1,0 +1,48 @@
+// The broadcast through a noisy line (bit-error rate 1e-3, deterministic): headers are
+// corrected, damaged packets are dropped, and pages still complete over later passes.
+// broadcast: data/broadcast.bin
+// broadcast-noise: 0.001
+// frames: 3600
+cart "Broadcast Noise"
+
+var cur: BcCurrent
+var first_ready = 0
+
+fn p(n: s32) { print_int(n); print_char('\n') }
+fn pb(b: bool) { if b { println("yes") } else { println("no") } }
+
+fn init() {
+    bc_select(BC_CURRENT | 0x401)
+    bc_select(BC_INDEX_PAGE)
+    bc_select(BC_MAP | 0x402)
+}
+
+fn update() {
+    let f = frame() as s32
+    if first_ready == 0 && bc_ready(BC_CURRENT | 0x401) { first_ready = f }
+    if f == 2399 {
+        // eight passes of the 11-row index before the data refresh at 40 s (which restarts it)
+        pb(bc_ready(BC_INDEX_PAGE))                 // expect: yes
+    }
+    if f == 3599 {
+        pb(first_ready > 0)                         // expect: yes
+        // a map goes by only once in this recording, so about a third of its rows are missing
+        pb(bc_ready(BC_MAP | 0x402))                // expect: no
+        let rows = (BC_PSTAT >> 16 & 255) as s32
+        pb(rows > 25 && rows < 45)                  // expect: yes
+        bc_read(BC_CURRENT | 0x401, &cur)
+        print(bc_name(&cur.city[0])); print_char('\n')   // expect: New York
+        let ok = bc_packets_ok() as s32
+        let corr = bc_packets_fixed() as s32
+        let dropped = bc_packets_dropped() as s32
+        // about a third of the packets are lost at this rate (54 unprotected bytes each)
+        pb(dropped * 100 / (ok + dropped) > 25 && dropped * 100 / (ok + dropped) < 45)   // expect: yes
+        pb(corr > 0)                                // expect: yes
+        p(ok)                                       // expect: 581
+        p(corr)                                     // expect: 33
+        p(dropped)                                  // expect: 311
+        p(bc_signal())                              // expect: 2
+        bc_clear_counters()
+        p(bc_packets_ok() as s32 + bc_packets_dropped() as s32)   // expect: 0
+    }
+}

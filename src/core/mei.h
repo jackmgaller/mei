@@ -114,4 +114,14 @@ int mei_card_dirty(Mei *m, int slot);           /* 1 once after the card changed
 /* Grants the running program the system ROM's card commands; cleared by mei_load_cart. */
 void mei_set_privileged(Mei *m, int on);
 
+/* Broadcast signal (docs/BROADCAST.md). The line delivers up to MEI_BC_BYTES_PER_TICK bytes
+ * per tick: mei_broadcast_feed queues bytes for the next mei_run_frame and returns how many it
+ * took. The carrier is off until the platform turns it on. Noise inverts each delivered bit
+ * with probability errors_per_million_bits / 1e6, from a deterministic generator (seed 0 =
+ * the default seed). None of this is cleared by mei_reset: the broadcast is not rewound. */
+#define MEI_BC_BYTES_PER_TICK 16
+void mei_broadcast_carrier(Mei *m, int on);
+int mei_broadcast_feed(Mei *m, const uint8_t *data, int len);
+void mei_broadcast_noise(Mei *m, uint32_t errors_per_million_bits, uint32_t seed);
+
 #endif
