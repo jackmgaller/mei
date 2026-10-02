@@ -1,0 +1,109 @@
+// The plane chip's standard library (stdlib/planes.akr): what each call writes into the
+// registers, the maps and the line tables.
+import "planes.akr"
+
+fn hex(v: u32) { print_hex(v); println("") }
+fn rd(off: u32) -> u32 { return ((0xFF0700 + off) as *u32)[0] }
+
+const STOPS: [3]u32 = [0x000000, 0xFF0000, 0x0000FF]
+const YS: [3]s32 = [20, 120, 220]
+const BANDS: [3]s32 = [0, 100, 180]
+const RATES: [3]fixed = [0.25, 0.5, 1.0]
+
+fn init() {
+    planes_on()
+    hex(PLN_CTRL)                                  // expect: 7
+    hex(PLN_ERASE)                                 // expect: 8000
+    hex(GPU_BACK)                                  // expect: 400000
+    hex((GPU_BACK as *u16)[1234] as u32)           // expect: 8000
+
+    // plane(): mode (sizes, flags, palette base), atlas, map; shown
+    plane(BG1, ATLAS_2, MAP_BG1, 64, 32, PLANE_16PX | PLANE_8BIT, 3)
+    hex(rd(0x40))                                 // expect: 331
+    hex(rd(0x44))                                 // expect: 470000
+    hex(rd(0x48))                                 // expect: 452000
+    hex(PLN_LAYERS)                                // expect: 2
+    plane(BG2, tex_atlas(3), MAP_BG2, 128, 128, PLANE_TILE0_OUT, 200)
+    hex(rd(0x60))                                 // expect: 2C80A
+    hex(rd(0x64))                                 // expect: 498000
+    plane_show(BG1, false)
+    polys_show(false)
+    hex(PLN_LAYERS)                                // expect: C
+    polys_show(true)
+
+    // map entries
+    hex(tile(1023, 7, TILE_FLIPX | TILE_FLIPY | TILE_FRONT))   // expect: FFFF
+    hex(tile(5, 2, TILE_FLIPX))                    // expect: 4805
+    map_set(BG1, 3, 2, tile(9, 1, 0))
+    hex((MAP_BG1 as *u16)[2 * 64 + 3] as u32)      // expect: 409
+    map_set(BG1, 67, 34, tile(10, 0, 0))           // wraps to (3, 2)
+    hex(map_get(BG1, 3, 2))                        // expect: A
+    map_fill(BG1, 62, 31, 4, 2, 0x1234)            // wraps in both directions
+    hex(map_get(BG1, 63, 31))                      // expect: 1234
+    hex(map_get(BG1, 1, 0))                        // expect: 1234
+    hex(map_get(BG1, 2, 0))                        // expect: 0
+    var col: [32]u16
+    for i in 0..32 { col[i] = (i + 100) as u16 }
+    map_column(BG1, 66, &col[0])                   // column 2
+    hex(map_get(BG1, 2, 31))                       // expect: 83
+
+    // priorities, colour math, the offset, windows, scroll, the affine transform
+    plane_priority(BG1, 5, 9)
+    poly_priority(2, 12)
+    hex(PLN_PRIO)                                  // expect: C2009500
+    layer_blend(BG2, BLEND_ADD)
+    layer_blend(LAYER_PH, BLEND_QUARTER)
+    hex(PLN_MATH)                                  // expect: 70500
+    layer_blend(BG2, BLEND_NONE)
+    layer_offset((1 << LAYER_BD) | (1 << BG0), -3, 4, 127)
+    hex(PLN_OFS)                                   // expect: 7F04FD
+    hex(PLN_MATH)                                  // expect: 21070000
+    plane_window(BG0, 10, 20, 300, 230)
+    hex(rd(0x30))                                 // expect: 14000A
+    hex(rd(0x34))                                 // expect: A14
+    plane_scroll(BG0, -1, 300)
+    hex(rd(0x2C))                                 // expect: 12CFFFF
+    plane_affine(1.5, -2.0, 0.25, 0.0, 0.0, 1.0)
+    hex(bits(BG2_U0) as u32)                       // expect: 18000
+    hex(bits(BG2_V0) as u32)                       // expect: FFFE0000
+
+    // line channels
+    line_channel(3, LC_BD_COLOR, 1, LT_FREE)
+    hex(rd(0xB8))                                 // expect: 44EC00
+    hex(rd(0xBC))                                 // expect: 8014
+    line_channel(4, 0xFF0778, 4, LT_AFFINE)        // a register's address works too
+    hex(rd(0xC4))                                 // expect: 8378
+    line_off(4)
+    hex(rd(0xC4))                                 // expect: 0
+
+    // sky_gradient: the first colour above the first stop, linear between, the last below
+    sky_gradient(&STOPS[0], &YS[0], 3)
+    let t = LT_BACKDROP as *u32
+    hex(t[0])                                      // expect: 0
+    hex(t[20])                                     // expect: 0
+    hex(t[70])                                     // expect: 7F0000
+    hex(t[120])                                    // expect: FF0000
+    hex(t[170])                                    // expect: 7F007F
+    hex(t[219])                                    // expect: 200FC
+    hex(t[239])                                    // expect: FF
+    hex(rd(0xA0))                                 // expect: 44E000
+    hex(rd(0xA4))                                 // expect: 8014
+
+    // parallax_bands: x times each band's rate, the plane's own y scroll
+    plane_scroll(BG0, 0, 7)
+    parallax_bands(BG0, &BANDS[0], &RATES[0], 3, 100.0)
+    let pb = LT_BG0 as *u32
+    hex(pb[0])                                     // expect: 70019
+    hex(pb[99])                                    // expect: 70019
+    hex(pb[100])                                   // expect: 70032
+    hex(pb[239])                                   // expect: 70064
+    hex(rd(0xAC))                                 // expect: 802C
+    parallax_bands(BG0, &BANDS[0], &RATES[0], 3, -100.0)
+    hex(pb[0])                                     // expect: 7FFE7
+
+    planes_off()
+    hex(PLN_CTRL)                                  // expect: 0
+}
+
+fn update() {}
+fn draw() {}

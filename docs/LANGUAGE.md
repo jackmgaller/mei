@@ -101,7 +101,9 @@ The frame loop is: begin frame (reset the ordering table and packet memory) → 
 `draw()` → end frame (draw the ordering table, then the interface list, remember the pads
 for `btnp`) → `vsync`. Output appears on the debug console through `print*` functions.
 
-`import "other.akr"` includes another file (path relative to the importing file). Each file is
+`import "other.akr"` includes another file (path relative to the importing file; a file that
+is not there is looked up in the standard library, which is how a cart imports the library's
+optional modules, such as `import "planes.akr"`). Each file is
 compiled once however often it is imported; all files share one global namespace, except for
 names declared `private` (see [Private declarations](#private-declarations)). A cart may
 reuse a name the standard library defines (`A`, `sin`, ...): the cart sees its own
@@ -875,7 +877,8 @@ A function value in a vector register is first stored to the stack (3 cycles mor
 
 ## Standard library
 
-The prelude (`stdlib/prelude.akr`) imports every module below. Colours are `u32` words
+The prelude (`stdlib/prelude.akr`) imports every module below except the plane chip's
+(`planes.akr`), which a cart imports itself. Colours are `u32` words
 `0xBBGGRR` (red in the low byte, as the GPU expects); `rgb(r, g, b)` builds one.
 
 ### Frame and system (`runtime.akr`, `io.akr`)
@@ -1141,6 +1144,72 @@ line_ex(10, 20, 90, 60, 2, rgb(60, 70, 110), rgb(200, 200, 120), BLEND_ADD)
 
 Each call builds one packet (two triangles for the rectangles, quads, lines and sprites; one for
 the triangles) and makes no other calls; when the packet arena is full it draws nothing.
+
+### The plane chip (`planes.akr`)
+
+The plane chip ([PLANES.md](PLANES.md)) draws two tile planes (`BG0`, `BG1`), an affine plane
+(`BG2`, Mode 7) and a backdrop colour per line, and composites them with the polygons at vsync.
+It costs no CPU cycles and no GPU budget, only VRAM. It is not in the prelude:
+`import "planes.akr"`. Importing it also replaces `mesh()`'s face loops, `ot_insert()`,
+`ui_flush()` and the end of the frame with versions that can mark polygons as upper (3 cycles a
+drawn face and 4 an `ot_insert()` more).
+
+The polygons are two layers: **PL** (low, the default) and **PH** (high: packets made after
+`poly_upper(true)`, and the whole interface list after `planes_on()`). With the reset priorities
+(all 0) the stack is, back to front: backdrop, BG2, BG1, BG0, PL/PH. Any order is possible: a
+plane at a priority between PL and PH has the low polygons behind it and the high ones in front
+(a reflection under the water, the shore above it). Ties go to PH, PL, BG0, BG1, BG2.
+
+| | |
+|---|---|
+| `planes_on()`, `planes_off()` | the compositor on (with auto-erase to holes at every vsync, so no `cls()`, which would cover the planes; a dithered backdrop; the interface list in PH) or off |
+| `plane(bg, atlas, map, w, h, flags, palette)` | set plane `bg` up and show it: an atlas page (`ATLAS_0`–`ATLAS_3`, `tex_atlas(slot)` or any 32 KB-aligned VRAM address), a map of `w × h` tiles (32, 64 or 128), flags (`PLANE_16PX`, `PLANE_8BIT`; for BG2 `PLANE_WRAP`, `PLANE_TRANSPARENT_OUT`, `PLANE_TILE0_OUT`) and the palette base (0–255 4-bit, 0–15 8-bit) |
+| `plane_show(bg, on)`, `polys_show(on)` | show or hide a plane, or the polygons |
+| `plane_priority(bg, normal, front_tiles)`, `poly_priority(low, high)` | priorities 0–15; `front_tiles` is for map entries with `TILE_FRONT` |
+| `poly_upper(on)` | packets made from now on (`mesh*`, `ot_insert`, every 2D call) draw into PH; `false` back to PL. Packets made in an arena swapped in with `arena_swap()` are not marked |
+| `ui_upper(on)` | the whole interface list into PH (on after `planes_on()`) |
+| `layer_blend(layer, mode)` | colour math: where `layer` (`BG0`–`BG2`, `LAYER_PL`, `LAYER_PH`) is on top it is blended with the layer below it in a blend mode, `BLEND_NONE` for none |
+| `layer_offset(mask, r, g, b)` | the colour offset (5-bit units, −128..127) on the pixels that the layers in `mask` win (bit `n` for layer `n`, `1 << LAYER_BD` for the backdrop): fades, flashes, tints |
+| `plane_window(bg, x0, y0, x1, y1)` | show a plane only inside a rectangle |
+| `backdrop(colour)` | the backdrop colour (8 bits a channel; per line with `sky_gradient` or a line channel) |
+| `tile(t, palette, flags) -> u32` | a map entry: tile 0–1023, palette 0–7 (added to the base), `TILE_FLIPX`, `TILE_FLIPY`, `TILE_FRONT` |
+| `map_set(bg, x, y, e)`, `map_get(bg, x, y)`, `map_fill(bg, x, y, w, h, e)` | map entries (wrapping) |
+| `map_load(bg, src: *u16)`, `map_column(bg, x, src)` | a whole map, or one column (streaming a scrolling level) |
+| `atlas_load(page, src: *u8, bytes)` | tile art into an atlas page, like `load_texture` |
+| `plane_scroll(bg, x, y)` | BG0 or BG1: the plane pixel at the top left (whole pixels; planes wrap) |
+| `plane_affine(u0, v0, dux, dvx, duy, dvy)` | BG2: screen `(x, y)` shows texel `(U0 + y·DUY + x·DUX, V0 + y·DVY + x·DVX)` |
+| `line_channel(ch, target, words, table)`, `line_off(ch)` | line channel `ch` (0–7) writes `words` (1–4) registers from `target` (`LC_*`, `lc_scroll(bg)`, `lc_winx(bg)`, `lc_mode(bg)`, or a register's address) on every line, from a table of 240 × `words` words in VRAM; later channels win |
+| `sky_gradient(stops: *u32, ys: *s32, n)` | a backdrop gradient through `n` (line, colour) stops; fills `LT_BACKDROP`, channel 0 (about 3,000 cycles) |
+| `parallax_bands(bg, ys, rates: *fixed, n, x)` | BG0 or BG1 scrolled by `rates[i] × x` from line `ys[i]` down; fills its scroll table, channel 1 + `bg` |
+| `plane_floor(y0, texels, uoff, voff, far) -> s32` | Mode 7: BG2 as the plane `y = y0` through the current camera (from the view-projection matrix, so `camera_matrix()` too) at `texels` per unit with world (0, 0) at texel (`uoff`, `voff`), out to view depth `far`; fills `LT_AFFINE`, channel 7, and BG2's top inset; returns the first line (240: none). About 90 cycles a floor line. Exact without roll; with roll each line is exact only at its ends |
+| registers | `PLN_CTRL PLN_LAYERS PLN_PRIO PLN_MATH PLN_OFS BD_COLOR PLN_ERASE BG2_U0 BG2_V0 BG2_DUX BG2_DVX BG2_DUY BG2_DVY` |
+| constants | `BG0 BG1 BG2 LAYER_PL LAYER_PH LAYER_BD HOLE`, the VRAM layout below, `LC_LAYERS LC_PRIO LC_MATH LC_OFS LC_BD_COLOR LC_BG2_AFFINE` |
+
+The library's VRAM layout (a convention; the chip reads any VRAM): line tables `LT_BACKDROP`
+(`0x44E000`), `LT_BG0`, `LT_BG1`, `LT_FREE` (1 KB), `LT_AFFINE` (`0x44F000`); maps `MAP_BG0`
+(`0x450000`, up to 64 × 64), `MAP_BG1`, `MAP_FREE` (16 KB), `MAP_BG2` (`0x458000`, up to
+128 × 128); atlases `ATLAS_0`–`ATLAS_3` (`0x460000`–`0x47FFFF`). Line channels 0, 1, 2 and 7 belong
+to the helpers; 3–6 are free.
+
+```
+import "planes.akr"
+
+const SKY: [3]u32 = [0x803010, 0xE0A060, 0xF0E0C0]    // top, middle, horizon
+const SKY_Y: [3]s32 = [0, 70, 100]
+
+fn init() {
+    planes_on()
+    sky_gradient(&SKY[0], &SKY_Y[0], 3)
+    plane(BG2, tex_atlas(3), MAP_BG2, 32, 32, PLANE_WRAP, PAL_GROUND)   // slot 3 tiled 8x8
+    for i in 0..1024 { map_set(BG2, i % 32, i / 32, tile(i, 0, 0)) }
+}
+
+fn draw() {
+    camera_look(pos, yaw, -0.1)
+    plane_floor(0.0, 8.0, 0.0, 0.0, 80.0)      // the ground, out to 80 units
+    mesh(TREES)                                // polygons in front of the planes
+}
+```
 
 ### Proportional text (`font.akr`)
 

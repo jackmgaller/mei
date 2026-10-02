@@ -52,7 +52,7 @@ void gpu_vsync(Mei *m) {
 void gpu_clear(Mei *m, uint32_t colour) {
     m->gstat.clears++;
     uint8_t *fb = m->vram + FB_OFF(gpu_back_addr(m));
-    uint16_t c = (uint16_t)(colour & 0x7FFF);
+    uint16_t c = (uint16_t)(colour & (planes_on(m) ? 0xFFFF : 0x7FFF));   /* 16 bits: holes */
     for (int i = 0; i < MEI_W * MEI_H; i++) st16(fb + 2 * i, c);
 }
 
@@ -70,6 +70,9 @@ typedef struct {
     int32_t flat[3];   /* polygon colour when not Gouraud */
     uint32_t slot;     /* byte offset of the texture slot within the texture area */
     uint32_t pal;      /* first palette colour index */
+    uint16_t upper;    /* 0x8000: the packet draws into the PH layer (compositor on, colour bit 26) */
+    const Mei *planes; /* compositor on and the packet blends: see planes_under() */
+    PlnUnder *under;   /* this span's context (set per span when planes) */
 } Raster;
 
 static int64_t floor_div(int64_t n, int64_t d) {
@@ -134,6 +137,9 @@ static FORCE_INLINE void shade(const Raster *R, uint8_t *row, int x, const int8_
     }
     if (F & F_SEMI) {
         uint32_t bg = ld16(row + x * 2);
+        /* rev 2: over a hole, or (upper) over a lower pixel, blend with the layers behind */
+        if (R->under && (bg == PLN_HOLE || (R->upper && !(bg & 0x8000))))
+            bg = planes_under(R->under, x, bg, R->upper != 0);
         int br = bg & 31, bgr = (bg >> 5) & 31, bb = (bg >> 10) & 31;
         switch (R->mode) {
         case 0: r = (br + r) >> 1; g = (bgr + g) >> 1; b = (bb + b) >> 1; break;
@@ -142,13 +148,17 @@ static FORCE_INLINE void shade(const Raster *R, uint8_t *row, int x, const int8_
         default: r = clamp31(br + (r >> 2)); g = clamp31(bgr + (g >> 2)); b = clamp31(bb + (b >> 2)); break;
         }
     }
-    st16(row + x * 2, (uint16_t)(r | g << 5 | b << 10));
+    uint16_t out = (uint16_t)(r | g << 5 | b << 10) | R->upper;
+    if (out == PLN_HOLE) out = 0x8400;   /* upper black: never a hole (blue 1 of 31) */
+    st16(row + x * 2, out);
 }
 
 /* Fast span: acc[k] holds attribute k in F-bit fixed point at x0, step[k] per pixel. */
 static FORCE_INLINE void span_fixed(const Raster *R, uint8_t *row, int y, int x0, int x1,
                                     const int64_t *acc, const int64_t *step, int sh, const int F) {
-    const Raster L = *R;   /* local copy: framebuffer stores could otherwise alias *R */
+    Raster L = *R;   /* local copy: framebuffer stores could otherwise alias *R */
+    PlnUnder u;
+    if ((F & F_SEMI) && L.planes) { u.m = L.planes; u.y = y; u.ready = 0; L.under = &u; }
     int64_t ar = acc[0], ag = acc[1], ab = acc[2], au = acc[3], av = acc[4];
     const int64_t sr = step[0], sg = step[1], sb = step[2], su = step[3], sv = step[4];
     const int8_t *dm = dither_m[y & 3];
@@ -182,6 +192,10 @@ static void span_exact(const Raster *R, uint8_t *row, int y, int x0, int x1, con
     Dda d[5];
     memcpy(d, d0, sizeof d);
     const int8_t *dm = dither_m[y & 3];
+    Raster L = *R;
+    PlnUnder u;
+    if ((F & F_SEMI) && L.planes) { u.m = L.planes; u.y = y; u.ready = 0; L.under = &u; }
+    R = &L;
     for (int x = x0; x <= x1; x++) {
         int r = (F & F_GOURAUD) ? d[0].q : R->flat[0];
         int g = (F & F_GOURAUD) ? d[1].q : R->flat[1];
@@ -370,6 +384,9 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
     R.flat[2] = vx[0].a[2];
     R.slot = ((tex0 >> 16) & 15) * TEXTURE_SLOT_BYTES;
     R.pal = R.four ? (tex0 >> 24) * 16 : ((tex0 >> 24) & 15) * 256;
+    R.upper = (planes_on(m) && (col0 >> 26 & 1)) ? 0x8000 : 0;
+    R.planes = (planes_on(m) && semi) ? m : NULL;
+    R.under = NULL;
 
     for (int t = 0; t < (quad ? 2 : 1); t++) {
         if ((m->gpu_status & 0xFFFF) >= GPU_TRI_LIMIT) { m->gpu_status |= GPU_STATUS_DROPPED; m->gstat.tris_dropped++; continue; }

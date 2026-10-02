@@ -1,20 +1,27 @@
-// Rendering the lake. A frame is drawn in three passes, each flushed through the ordering
-// table before the next starts, so the layers stack without depth sorting between them:
+// Rendering the lake. The sky and the water are the plane chip's (docs/PLANES.md); the rest is
+// polygons, drawn in passes, each flushed through the ordering table before the next starts,
+// so the layers stack without depth sorting between them. Back to front:
 //
-//   A  the sky, then everything mirrored under the water line (the reflection): hills,
-//      shore, docks, houses, reeds, sun and moon, clouds, stars, lantern glows
-//   B  the water surface (semi-transparent, half background and half water), then what lies
-//      in or on it: fish shadows (subtractive), ripple rings, the moon's glittering path and
-//      lantern light on the water (additive)
-//   C  the world above the water: shore, docks, village, reeds, lily pads, the bobber,
-//      leaping fish, lantern glows, fireflies, festival lanterns
-//   D  the first-person view (view.akr): the line, the rod and hand, a fish held up
+//   backdrop  the sky gradient above the horizon and its darker mirror below (a line table)
+//   BG1       the warm glow toward a low sun, added to the sky (above the horizon only)
+//   PL  A     everything mirrored under the water line (the reflection): hills, shore, docks,
+//             houses, reeds, sun and moon, clouds, stars, lantern glows; also the sky objects
+//      B     what lies in or on the water: fish shadows (subtractive), ripple rings, the
+//             moon's glittering path and lantern light (additive), at double strength, since
+//             the water halves what lies under it
+//   BG2       the water: the water texture in perspective (Mode 7), half over the layers
+//             below; its palette darkens with distance and swells, its lines wobble
+//   PH  C     the world above the water: shore, docks, village, reeds, lily pads, the bobber,
+//             leaping fish, lantern glows, fireflies, festival lanterns
+//      D     the first-person view (view.akr): the line, the rod and hand, a fish held up,
+//             and the interface
 //
 // Lighting by time of day is done with palettes: every world material has four keyframe
 // palettes (night, dawn, day, dusk) and two are blended into the live palettes every few
 // frames. The reflection uses darker, bluer copies of the same palettes.
 
 import "assets.akr"
+import "planes.akr"
 
 const SLOT_WORLD = 0
 const SLOT_FISH = 1
@@ -133,9 +140,7 @@ fn palettes_update(all: bool) {
     }
     if all || pal_tick % 5 == 0 {
         water_rot = (water_rot + 1) % 15
-        let dst = VRAM_PALETTE as *u16
-        let o = PAL_WATER * 16
-        for i in 1..16 { dst[o + i] = water_base[(i - 1 + water_rot) % 15 + 1] }
+        water_palettes()
     }
 }
 
@@ -300,6 +305,18 @@ fn ss_look(kind: s32) {
     ss_info = (SLOT_WORLD << 16) | (1 << 20) | ((pal as u32) << 24)
 }
 
+// Where a sprite goes: its bucket is clamped to ss_min..ss_max (the passes share tables: the
+// reflection from bucket 1, what lies in the water at 0, the world from 16, the rod below 16).
+// With SS_SPLIT (things in the water, drawn with the low polygons), a blended sprite is drawn
+// at double strength where it lies under the water plane (from water_top, the plane's first
+// line, down), which halves it, so it looks as it did drawn over the old water fan; it is split
+// in two at that line when it straddles it.
+const SS_ALL = 0
+const SS_SPLIT = 1
+var ss_min = 0
+var ss_max = 1023
+var ss_mode = SS_ALL
+
 // A sprite of half-size rw x rh (world units) centred on p. mode: blend mode, or -1 opaque.
 // bias: added to the ordering-table bucket (-1024: in front of everything).
 fn ssprite(p: vec3, rw: fixed, rh: fixed, c: u32, mode: s32, bias: s32) {
@@ -310,24 +327,50 @@ fn ssprite(p: vec3, rw: fixed, rh: fixed, c: u32, mode: s32, bias: s32) {
     let x = proj_x
     let y = proj_y
     if x + hw < 0 || x - hw > 320 || y + hh < 0 || y - hh > 240 { return }
+    let b = clamp(depth_bucket(proj_w) + bias, ss_min, ss_max)
+    if mode < 0 {
+        ss_part(x - hw, y - hh, x + hw, y + hh, ss_v0, ss_v1, c, 0x26, b)
+        return
+    }
+    let col = (mode as u32) << 24
+    let y0 = y - hh
+    let y1 = y + hh
+    if ss_mode == SS_ALL {
+        ss_part(x - hw, y0, x + hw, y1, ss_v0, ss_v1, c | col, 0x2E, b)
+        return
+    }
+    let s = clamp(water_top, y0, y1)
+    let vs = ss_v0 + (ss_v1 - ss_v0) * (s - y0) / (y1 - y0)
+    if s > y0 { ss_part(x - hw, y0, x + hw, s, ss_v0, vs, c | col, 0x2E, b) }
+    if s < y1 { ss_double(x - hw, s, x + hw, y1, vs, ss_v1, c, col, b) }
+}
+
+// Double strength: twice the colour, or, for a bright glow, as much as keeps its hue (the
+// brightest channel at 255; drawing it twice would cost twice the fill, and the low layer
+// clips at 31 anyway).
+fn ss_double(x0: s32, y0: s32, x1: s32, y1: s32, v0: s32, v1: s32, c: u32, col: u32, b: s32) {
+    let m = max(max((c & 255) as s32, ((c >> 8) & 255) as s32), ((c >> 16) & 255) as s32)
+    var c2 = col_add(c, c)
+    if m > 127 {
+        let f = 65280 / m                                  // 255 / m, times 256
+        c2 = ((((c & 255) * f as u32) >> 8) & 255) | (((((c >> 8) & 255) * f as u32) >> 8) << 8) | (((((c >> 16) & 255) * f as u32) >> 8) << 16)
+    }
+    ss_part(x0, y0, x1, y1, v0, v1, c2 | col, 0x2E, b)
+}
+
+fn ss_part(x0: s32, y0: s32, x1: s32, y1: s32, v0: s32, v1: s32, col: u32, t: u32, b: s32) {
     let q = packet_alloc(10)
     if q == null { return }
-    var t: u32 = 0x26
-    var col = c
-    if mode >= 0 {
-        t = 0x2E
-        col = c | ((mode as u32) << 24)
-    }
     q[1] = col
-    q[2] = spos(x - hw, y - hh)
-    q[3] = (ss_u0 as u32) | ((ss_v0 as u32) << 8) | ss_info
-    q[4] = spos(x + hw, y - hh)
-    q[5] = (ss_u1 as u32) | ((ss_v0 as u32) << 8)
-    q[6] = spos(x - hw, y + hh)
-    q[7] = (ss_u0 as u32) | ((ss_v1 as u32) << 8)
-    q[8] = spos(x + hw, y + hh)
-    q[9] = (ss_u1 as u32) | ((ss_v1 as u32) << 8)
-    ot_insert(q, t, depth_bucket(proj_w) + bias)
+    q[2] = spos(x0, y0)
+    q[3] = (ss_u0 as u32) | ((v0 as u32) << 8) | ss_info
+    q[4] = spos(x1, y0)
+    q[5] = (ss_u1 as u32) | ((v0 as u32) << 8)
+    q[6] = spos(x0, y1)
+    q[7] = (ss_u0 as u32) | ((v1 as u32) << 8)
+    q[8] = spos(x1, y1)
+    q[9] = (ss_u1 as u32) | ((v1 as u32) << 8)
+    ot_insert(q, t, b)
 }
 
 // Something lying flat on the water: squashed by the viewing angle.
@@ -349,22 +392,6 @@ fn flush_pass() {
 
 fn spos(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
 
-fn sky_band(y0: s32, y1: s32, l0: u32, r0: u32, l1: u32, r1: u32) {
-    let q = packet_alloc(9)
-    if q == null { return }
-    q[1] = l0
-    q[2] = spos(-1, y0 + sky_tilt)
-    q[3] = r0
-    q[4] = spos(321, y0 - sky_tilt)
-    q[5] = l1
-    q[6] = spos(-1, y1 + sky_tilt)
-    q[7] = r1
-    q[8] = spos(321, y1 - sky_tilt)
-    ot_insert(q, 0x25, 1023)
-}
-
-var sky_tilt: s32            // half the horizon's rise across the screen (the view's roll)
-
 // How much the view direction yaw faces the low sun (warm sky): 0..256.
 fn warmth(yaw: fixed) -> s32 {
     var w = (cos(yaw - sun_az) + 1.0) * 0.5
@@ -374,44 +401,166 @@ fn warmth(yaw: fixed) -> s32 {
     return (w * low * 256) as s32
 }
 
-// The horizon's screen row at the middle of the screen, and its tilt (from the roll):
-// two far points at eye level, projected.
+// The horizon's screen row: a far point at eye level, projected.
 fn horizon_y() -> s32 {
-    let a = cam_yaw - 0.4
-    let b = cam_yaw + 0.4
-    var xl = 0
-    var yl = 0
-    if project(vec3(cam_pos.x + sin(a) * 150.0, cam_pos.y, cam_pos.z + cos(a) * 150.0)) {
-        xl = proj_x
-        yl = proj_y
-    }
-    if project(vec3(cam_pos.x + sin(b) * 150.0, cam_pos.y, cam_pos.z + cos(b) * 150.0)) {
-        let dx = max(proj_x - xl, 1)
-        let slope = (proj_y - yl) * 1024 / dx
-        sky_tilt = -(slope * 161) / 1024
-        return yl + (slope * (160 - xl)) / 1024
-    }
-    sky_tilt = 0
-    return 120 - ((tan(-cam_pitch) * 207.8) as s32)
+    if project(vec3(cam_pos.x + cam_s * 150.0, cam_pos.y, cam_pos.z + cam_c * 150.0)) { return proj_y }
+    return 120 - ((tan(-cam_pitch) * 219.6) as s32)
 }
 
-// The sky gradient above the horizon and its mirror image below it. Inserted last into the
-// farthest bucket, so it draws first.
+// ---- the sky: the backdrop and BG1
+
+const GLOW_PAL = 200          // 16 palettes: the warm glow at 16 strengths (its vertical fade)
+const LT_GLOW = LT_FREE       // BG1's palette base per line (channel 3)
+const GLOW_PX: fixed = 266.7  // glow strip pixels per radian of azimuth (0.6 rad = half the screen)
+
+var sky_ys: [6]s32
+var sky_cols: [6]u32
+var glow_key: u32 = 0xFFFFFFFF
+var glow_yh: s32 = -1
+
+// The sky gradient above the horizon and its darker mirror below it, in the backdrop (a line
+// table, dithered by the chip), and the warm glow toward a low sun on BG1, added to the sky
+// above the horizon. The mirror is tinted by the warmth straight ahead.
 fn draw_sky() {
     let yh = horizon_y()
-    let wl = warmth(cam_yaw - 0.6)
-    let wr = warmth(cam_yaw + 0.6)
-    let hl = mix_col(sky_hor, sky_warm, wl)
-    let hr = mix_col(sky_hor, sky_warm, wr)
-    let ml = mix_col(sky_mid, sky_warm, wl / 3)
-    let mr = mix_col(sky_mid, sky_warm, wr / 3)
-    sky_band(yh - 60, yh, ml, mr, hl, hr)
-    sky_band(yh - 300, yh - 60, sky_top, sky_top, ml, mr)
-    // reflection: a little darker
+    let wc = warmth(cam_yaw)
+    let hc = mix_col(sky_hor, sky_warm, wc)
+    let mc = mix_col(sky_mid, sky_warm, wc / 3)
     let k = 200
-    sky_band(yh, yh + 60, scale_col(hl, k), scale_col(hr, k), scale_col(ml, k), scale_col(mr, k))
-    sky_band(yh + 60, yh + 300, scale_col(ml, k), scale_col(mr, k), scale_col(sky_top, k), scale_col(sky_top, k))
+    sky_ys[0] = yh - 300
+    sky_ys[1] = yh - 60
+    sky_ys[2] = yh
+    sky_ys[3] = yh
+    sky_ys[4] = yh + 60
+    sky_ys[5] = yh + 300
+    sky_cols[0] = sky_top
+    sky_cols[1] = sky_mid
+    sky_cols[2] = sky_hor
+    sky_cols[3] = scale_col(hc, k)
+    sky_cols[4] = scale_col(mc, k)
+    sky_cols[5] = scale_col(sky_top, k)
+    sky_gradient(&sky_cols[0], &sky_ys[0], 6)
+    sky_glow(yh)
 }
+
+// BG1: a 2,048-pixel strip around the sky (glow_build), scrolled with the view's angle to the
+// sun. Its 16 palettes are the glow colour (the warm colour's excess over the horizon's,
+// scaled by how low the sun is) at 16 strengths; a line table picks one per line, fading from
+// the horizon up, as the old sky bands mixed the warm colour into the horizon (fully) and the
+// middle colour (a third).
+fn sky_glow(yh: s32) {
+    let low = clamp(1.0 - abs(sun_el - 0.05) * 4, 0.0, 1.0)
+    let dr = max((sky_warm & 0xFF) as s32 - (sky_hor & 0xFF) as s32, 0)
+    let dg = max(((sky_warm >> 8) & 0xFF) as s32 - ((sky_hor >> 8) & 0xFF) as s32, 0)
+    let db = max(((sky_warm >> 16) & 0xFF) as s32 - ((sky_hor >> 16) & 0xFF) as s32, 0)
+    let kl = (low * 256) as s32
+    let r = dr * kl / 256
+    let gg = dg * kl / 256
+    let b = db * kl / 256
+    if r < 8 && gg < 8 && b < 8 {
+        plane_show(BG1, false)
+        return
+    }
+    plane_show(BG1, true)
+    let key = (r as u32) | ((gg as u32) << 8) | ((b as u32) << 16)
+    if key != glow_key {
+        glow_key = key
+        // colour i of palette j: (r, g, b) x (i / 15) x (j / 15), 8 bits to 5: x i j / 1800,
+        // stepped in i as 16.16 sums (one division per palette and channel)
+        let pal = VRAM_PALETTE as *u16
+        for j in 0..16 {
+            let sr = r * j * 65536 / 1800
+            let sg = gg * j * 65536 / 1800
+            let sb = b * j * 65536 / 1800
+            var ar = 0
+            var ag = 0
+            var ab = 0
+            for i in 1..16 {
+                ar += sr
+                ag += sg
+                ab += sb
+                pal[(GLOW_PAL + j) * 16 + i] = ((ar >> 16) | ((ag >> 16) << 5) | ((ab >> 16) << 10)) as u16
+            }
+        }
+    }
+    let d = angle_diff(cam_yaw, sun_az)
+    plane_scroll(BG1, 1024 - 160 + (d * GLOW_PX) as s32, 0)
+    if yh != glow_yh {
+        glow_yh = yh
+        let t = LT_GLOW as *u32
+        let n = clamp(yh, 0, 240)
+        for y in 0..n { t[y] = glow_prof[yh - y] }
+        plane_window(BG1, 0, 0, 320, n)
+    }
+}
+
+// BG1's mode word for a line a lines above the horizon: 15 at the horizon, 5 at 60 above, 0 at
+// 300 above (palette GLOW_PAL + level); a 128 x 32 map of 16x16 tiles.
+var glow_prof: [300]u32
+
+fn glow_profile() {
+    for a in 0..300 {
+        var f = (300 - a) * 5 / 240
+        if a <= 60 { f = 15 - a * 10 / 60 }
+        glow_prof[a] = (2 | 0x10) as u32 | ((GLOW_PAL + clamp(f, 0, 15)) as u32 << 8)
+    }
+}
+
+// The glow strip (once): map column c holds tile c, the same in every row; tile c is 16
+// columns of the glow's strength 0-15 at azimuth (x - 1024) / GLOW_PX from the sun, with x the
+// strip column: round(15 ((cos + 1) / 2)^2), as warmth() weighs it. GLOW_ROW holds a row of
+// every tile (two texels a byte, as in the atlas), from tools/gen_lantern_assets.py's formula.
+fn glow_build() {
+    let page = ATLAS_0 as *u32
+    let row = &GLOW_ROW[0] as *u32
+    for c in 0..128 {
+        let w0 = row[c * 2]
+        let w1 = row[c * 2 + 1]
+        let o = (c / 16) * 16 * 32 + (c % 16) * 2       // in words: 16 tiles a row of cells
+        for v in 0..16 {
+            page[o + v * 32] = w0
+            page[o + v * 32 + 1] = w1
+        }
+    }
+    let m = MAP_BG1 as *u16
+    for c in 0..128 { m[c] = c as u16 }
+    for r in 1..32 { memcpy((m + r * 128) as *u8, m as *u8, 256) }
+}
+
+const GLOW_ROW: [1024]u8 = [
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+    0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x21, 0x22, 0x22, 0x22,
+    0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
+    0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x43, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x54, 0x55, 0x55, 0x55, 0x55,
+    0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x76, 0x77, 0x77, 0x77, 0x77, 0x77, 0x77,
+    0x77, 0x77, 0x77, 0x77, 0x77, 0x77, 0x77, 0x87, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x98, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99,
+    0x99, 0x99, 0x99, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xBA, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB,
+    0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xDC, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD,
+    0xDD, 0xDD, 0xDD, 0xED, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xFE, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xEE, 0xDD, 0xDD, 0xDD,
+    0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xDD, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
+    0xBC, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x9A, 0x99, 0x99,
+    0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x99, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x77, 0x77, 0x77, 0x77, 0x77, 0x77, 0x77,
+    0x77, 0x77, 0x77, 0x77, 0x77, 0x77, 0x77, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x56, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
+    0x55, 0x55, 0x55, 0x55, 0x55, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x44, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
+    0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x23, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22,
+    0x22, 0x22, 0x22, 0x22, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+    0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+]
 
 fn sky_point(az: fixed, el: fixed, dist: fixed) -> vec3 {
     let ce = cos(el) * dist
@@ -536,7 +685,7 @@ fn draw_clouds(refl: bool) {
     var cb = mix_col(ct, sky_mid, 100)
     if refl {
         // seen in the water: darker, like the shore's reflection palettes (the half-transparent
-        // water fan drawn over pass A then tints it with the lake's colour and waves)
+        // water plane over the low polygons tints it with the lake's colour and waves)
         ct = scale_col(ct, 230)
         cb = scale_col(cb, 205)
     }
@@ -684,169 +833,174 @@ fn draw_lantern_pools() {
     }
 }
 
-// ---- the water: a fan of quads around the camera, rebuilt every frame
+// ---- the water: BG2, the water texture in perspective
 
-const FAN_COLS = 8
-const FAN_RINGS = 10
-const FAN_W = 9                 // vertices per ring
-const FAN_NV = 99               // (FAN_COLS + 1) * (FAN_RINGS + 1)
-const FAN_DA: fixed = 0.2
-// Ring radii. Each quad's texture coordinates are world-anchored at 8 texels per unit with
-// a 64-aligned base, so a quad may span at most 255 - 63 texels: the outer rings are split
-// so that holds at any heading (worst case about 210).
+const WATER_PAL = 216         // 8 palettes: the water's colours at 8 brightnesses
+const NWATER = 8
+const LT_WATER = 0x44B000     // BG2's palette base per line (channel 4; spare VRAM)
+const WATER_FAR: fixed = 76.0
+// the old fan's rings: the water darkens with distance, ring by ring
 const FAN_R: [11]fixed = [1.8, 3.0, 4.6, 7.0, 10.5, 16.0, 24.0, 36.0, 52.0, 64.0, 76.0]
-struct Fan { hdr: Mesh, v: [99]vec4, f: [80]Face }
-var fan: Fan
-var fan_u: [99]s32
-var fan_v: [99]s32
-var fan_c: [99]u32
 var wave_tbl: [64]s32
-var water_tint: s32 = 128
+var wob_tbl: [64]fixed        // a line's wobble, in screen pixels
+var amp_tbl: [11]s32          // the swells' height by ring, x 256 / 14
+var water_top: s32 = 240
 
-fn fan_init() {
-    fan.hdr.nverts = FAN_NV as u16
-    fan.hdr.nfaces = (FAN_COLS * FAN_RINGS) as u16
-    fan.hdr.verts = 16
-    fan.hdr.faces = 16 + FAN_NV * 16
-    for j in 0..FAN_RINGS {
-        for i in 0..FAN_COLS {
-            let f = &fan.f[j * FAN_COLS + i]
-            let a = j * FAN_W + i
-            f.idx[0] = a as u16
-            f.idx[1] = (a + 1) as u16
-            f.idx[2] = (a + FAN_W) as u16
-            f.idx[3] = (a + FAN_W + 1) as u16
-            f.flags = (F_GOURAUD | F_TEX | F_QUAD | F_SEMI | F_DOUBLE) as u8
-            f.blend = 0
-            f.tex = (SLOT_WATER | 0x10) as u8
-            f.palette = PAL_WATER as u8
-        }
+// The plane chip's setup (once): the compositor, BG2 as the water texture (slot 3) tiled 32 x 32
+// as 8x8 tiles, wrapping, half over what lies below it; BG1 the warm glow, added to the sky;
+// the low polygons (the reflection, pass A and B) behind the water and the sky glow, the high
+// ones (the world, pass C and D, the interface) in front.
+fn planes_setup() {
+    planes_on()
+    plane(BG2, tex_atlas(SLOT_WATER), MAP_BG2, 32, 32, PLANE_WRAP, WATER_PAL)
+    let m = MAP_BG2 as *u32
+    for i in 0..512 { m[i] = ((i * 2) as u32) | (((i * 2 + 1) as u32) << 16) }
+    layer_blend(BG2, BLEND_HALF)
+    glow_build()
+    glow_profile()
+    plane(BG1, ATLAS_0, MAP_BG1, 128, 32, PLANE_16PX, GLOW_PAL)
+    layer_blend(BG1, BLEND_ADD)
+    plane_priority(BG1, 1, 1)
+    plane_priority(BG2, 1, 1)
+    poly_priority(0, 2)
+    for i in 0..64 {
+        wave_tbl[i] = (sin(fixed(i) * 0.09817) * 14) as s32
+        wob_tbl[i] = fixed(wave_tbl[i]) / 10
     }
-    for i in 0..64 { wave_tbl[i] = (sin(fixed(i) * 0.09817) * 14) as s32 }
-    fan_shades()
+    for j in 0..11 { amp_tbl[j] = max(12 - j, 3) * 256 / 14 }
+    for j in 0..10 { wl_rdux[j] = FAN_R[j] / 27.45 }
 }
 
-var fan_quads: s32           // tests: quads built, and those whose texture span had to be clamped
-var fan_squashed: s32
-var fan_ia: [99]s32
-var fan_ib: [99]s32
-var fan_shade: [704]u32     // 11 rings x 64: vertex colour by wave height
-var fan_last: vec4
-var fan_valid: bool
-
-fn fan_shades() {
-    for j in 0..FAN_RINGS + 1 {
-        let amp = max(12 - j, 3)
-        let base = water_tint + 6 - j * 3
-        for w in 0..64 {
-            let sh = clamp(base + (w - 32) * amp / 14, 40, 250)
-            fan_shade[j * 64 + w] = rgb(sh, sh, min(sh + 8, 255))
-        }
+// The water for this frame's camera: the Mode 7 table (8 texels a unit, out to 76 units, as
+// far as the fan reached), a wobble of each line's start (the waves), and each line's palette:
+// darker with distance, as the fan's rings were, and lighter and darker in swells that roll in
+// (the fan's travelling vertex colours).
+fn draw_water() {
+    let top = plane_floor(0.0, 8.0, 0.0, 0.0, WATER_FAR)
+    water_top = top
+    if top < 240 {
+        wl_t3 = tick_count / 3
+        wl_t4 = tick_count / 4
+        wl_mode = (PLANE_WRAP as u32) | ((WATER_PAL as u32) << 8)
+        __water_lines((LT_AFFINE + top * 16) as *fixed, (LT_WATER + top * 4) as *u32, 240 - top, top)
     }
+    line_channel(4, lc_mode(BG2), 1, LT_WATER)
 }
 
-// The fan's vertices and texture coordinates: only when the camera moves.
-fn fan_positions() {
-    var cx = cam_pos.x
-    var cz = cam_pos.z
-    var yaw0 = cam_yaw
-    if fan_anchored {
-        cx = fan_anchor.x
-        cz = fan_anchor.z
-        yaw0 = fan_anchor_yaw
-    }
-    var cs: [9]fixed
-    var cc: [9]fixed
-    for i in 0..FAN_W {
-        let a = yaw0 + fixed(i - FAN_COLS / 2) * FAN_DA
-        cs[i] = sin(a)
-        cc[i] = cos(a)
-    }
-    var k = 0
-    for j in 0..FAN_RINGS + 1 {
-        let r = FAN_R[j]
-        for i in 0..FAN_W {
-            let x = cx + cs[i] * r
-            let z = cz + cc[i] * r
-            fan.v[k] = vec4(x, 0.0, z, 1.0)
-            let bx = bits(x)
-            let bz = bits(z)
-            fan_u[k] = bx >> 13                 // 8 texels per unit
-            fan_v[k] = bz >> 13
-            fan_ia[k] = (bx * 3) >> 16
-            fan_ib[k] = (bz >> 15) + 21
-            k += 1
-        }
-    }
-    var fi = 0
-    var a = 0
-    for j in 0..FAN_RINGS {
-        for i in 0..FAN_COLS {
-            let f = &fan.f[fi]
-            let u0 = fan_u[a]
-            let u1 = fan_u[a + 1]
-            let u2 = fan_u[a + FAN_W]
-            let u3 = fan_u[a + FAN_W + 1]
-            let v0 = fan_v[a]
-            let v1 = fan_v[a + 1]
-            let v2 = fan_v[a + FAN_W]
-            let v3 = fan_v[a + FAN_W + 1]
-            let bu = min(min(u0, u1), min(u2, u3)) & ~63
-            let bv = min(min(v0, v1), min(v2, v3)) & ~63
-            if TEST != 0 {
-                fan_quads += 1
-                if max(max(u0, u1), max(u2, u3)) - bu > 255 || max(max(v0, v1), max(v2, v3)) - bv > 255 { fan_squashed += 1 }
-            }
-            f.uv[0] = (min(u0 - bu, 255) | (min(v0 - bv, 255) << 8)) as u16
-            f.uv[1] = (min(u1 - bu, 255) | (min(v1 - bv, 255) << 8)) as u16
-            f.uv[2] = (min(u2 - bu, 255) | (min(v2 - bv, 255) << 8)) as u16
-            f.uv[3] = (min(u3 - bu, 255) | (min(v3 - bv, 255) << 8)) as u16
-            fi += 1
-            a += 1
-        }
-        a += 1
-    }
+var wl_t3: s32
+var wl_t4: s32
+var wl_mode: u32
+var wl_rdux: [10]fixed      // the rings' radii as texels a pixel (FAN_R / 27.45)
+
+// draw_water's lines: for each line from the first water line down, its ring j (from its
+// depth: DUX x 219.6 / 8, rings compared as DUX), the swell w (two travelling waves by depth,
+// dz = depth x 4, taken as DUX x 28 / 16384), its palette (brightness 134 - 3 j + w amp(j) / 256,
+// 8 levels from 92 in steps of 8) into the mode table, and the wobble of its start, U0 +=
+// DUX x wob_tbl[(5 y + t3) mod 64]. About 45 cycles a line.
+asm fn __water_lines(t: *fixed, p: *u32, n: s32, y: s32) {
+    addi sp, sp, -20
+    sw   r9, [sp+0]
+    sw   r10, [sp+4]
+    sw   r11, [sp+8]
+    sw   r12, [sp+12]
+    sw   r13, [sp+16]
+    addi r9, r0, 10             ; j: the farthest ring
+    la   r10, {wl_rdux}
+    la   r11, {wave_tbl}
+    la   r12, {amp_tbl}
+    la   r13, {wob_tbl}
+.line:
+    lw   r5, [{t}+8]            ; DUX
+.ring:
+    beq  r9, r0, .rdone
+    shli r7, r9, 2
+    add  r7, r7, r10
+    lw   r8, [r7-4]             ; the ring inside: rdux[j - 1]
+    blt  r8, r5, .rdone         ; still beyond it
+    addi r9, r9, -1
+    jmp  .ring
+.rdone:
+    shli r7, r5, 3
+    sub  r7, r7, r5             ; DUX x 7
+    sari r7, r7, 12             ; dz
+    lw   r6, [r0+{wl_t3}]
+    add  r8, r7, r6
+    andi r8, r8, 63
+    shli r8, r8, 2
+    add  r8, r8, r11
+    lw   r8, [r8]               ; wave(dz + t3)
+    shli r6, r7, 1
+    add  r6, r6, r7
+    sari r6, r6, 1              ; dz x 3 / 2
+    lw   r7, [r0+{wl_t4}]
+    sub  r6, r6, r7
+    addi r6, r6, 21
+    andi r6, r6, 63
+    shli r6, r6, 2
+    add  r6, r6, r11
+    lw   r6, [r6]
+    add  r8, r8, r6             ; w
+    shli r7, r9, 2
+    add  r7, r7, r12
+    lw   r7, [r7]
+    mul  r8, r8, r7
+    sari r8, r8, 8              ; w x amp(j) / 256
+    shli r7, r9, 1
+    add  r7, r7, r9
+    sub  r8, r8, r7
+    addi r8, r8, 42             ; 134 - 3 j - 92 + ...
+    sari r8, r8, 3
+    bge  r8, r0, .l0
+    mov  r8, r0
+.l0:
+    slti r7, r8, 8
+    bne  r7, r0, .l1
+    addi r8, r0, 7
+.l1:
+    shli r8, r8, 8
+    lw   r7, [r0+{wl_mode}]
+    add  r8, r8, r7
+    sw   r8, [{p}+0]            ; this line's palette
+    shli r7, {y}, 2
+    add  r7, r7, {y}
+    lw   r6, [r0+{wl_t3}]
+    add  r7, r7, r6
+    andi r7, r7, 63
+    shli r7, r7, 2
+    add  r7, r7, r13
+    lw   r7, [r7]
+    fmul r7, r5, r7
+    lw   r8, [{t}+0]
+    add  r8, r8, r7
+    sw   r8, [{t}+0]            ; U0 + the wobble
+    addi {t}, {t}, 16
+    addi {p}, {p}, 4
+    addi {y}, {y}, 1
+    addi {n}, {n}, -1
+    bne  {n}, r0, .line
+    lw   r9, [sp+0]
+    lw   r10, [sp+4]
+    lw   r11, [sp+8]
+    lw   r12, [sp+12]
+    lw   r13, [sp+16]
+    addi sp, sp, 20
 }
 
-// The fan follows a steady anchor (the first-person view's sway and lean are small enough to
-// stay inside its margin), so it is only rebuilt when the view really turns or moves.
-var fan_anchor: vec3
-var fan_anchor_yaw: fixed
-var fan_anchored: bool
-
-fn fan_build() {
-    var key = vec4(cam_pos.x, cam_pos.z, cam_yaw, 0.0)
-    if fan_anchored { key = vec4(fan_anchor.x, fan_anchor.z, fan_anchor_yaw, 0.0) }
-    if !fan_valid || key.x != fan_last.x || key.y != fan_last.y || key.z != fan_last.z {
-        fan_positions()
-        fan_last = key
-        fan_valid = true
-    }
-    // the waves: vertex colours from two travelling ripples
-    let t3 = tick_count / 3
-    let t4 = tick_count / 4
-    var k = 0
-    for j in 0..FAN_RINGS + 1 {
-        let sb = j * 64 + 32
-        for i in 0..FAN_W {
-            let w = wave_tbl[(fan_ia[k] + t3) & 63] + wave_tbl[(fan_ib[k] - t4) & 63]
-            fan_c[k] = fan_shade[sb + w]
-            k += 1
+// The water's palettes: the live water colours (water_base, rotated for the shimmer) at
+// NWATER brightnesses from 0.75 to 1.19, a little bluer, as the fan's tint made them.
+fn water_palettes() {
+    let dst = VRAM_PALETTE as *u16
+    for lv in 0..NWATER {
+        let k = 96 + lv * 8
+        let kb = k + 8
+        let o = (WATER_PAL + lv) * 16
+        for i in 1..16 {
+            let c = water_base[(i - 1 + water_rot) % 15 + 1] as s32
+            let r = min(((c & 31) * k) >> 7, 31)
+            let gg = min((((c >> 5) & 31) * k) >> 7, 31)
+            let b = min((((c >> 10) & 31) * kb) >> 7, 31)
+            dst[o + i] = (r | (gg << 5) | (b << 10)) as u16
         }
-    }
-    var a = 0
-    var fi = 0
-    for j in 0..FAN_RINGS {
-        for i in 0..FAN_COLS {
-            let f = &fan.f[fi]
-            f.col[0] = fan_c[a]
-            f.col[1] = fan_c[a + 1]
-            f.col[2] = fan_c[a + FAN_W]
-            f.col[3] = fan_c[a + FAN_W + 1]
-            a += 1
-            fi += 1
-        }
-        a += 1
     }
 }
 

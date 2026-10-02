@@ -12,6 +12,8 @@
 #   // broadcast-noise: BER   add bit errors to it
 #   // warning: TEXT    compilation must succeed with a warning containing TEXT (with one or
 #                       more of these, the file must give exactly that many warnings)
+#   // pixel: X Y HEX   the last frame shown (mei_display, so the planes are composited) has the
+#                       15-bit colour HEX at (X, Y)
 # Usage: tests/run_lang_tests.sh [name-filter]   (MEIC=... RUN=... select other builds)
 cd "$(dirname "$0")/.." || exit 1
 MEIC=${MEIC:-build/meic}
@@ -66,10 +68,26 @@ for t in tests/lang/*.akr tests/lang/*.mls; do
             echo "FAIL $name: $nw warnings, expected $ne"; grep 'warning:' "$tmp/err" | sed 's/^/  got: /' | head -8; fail=$((fail + 1)); continue
         fi
     fi
-    $RUN "$tmp/$name.mei" --frames "${frames:-2}" ${pad:+--pad1 "$pad"} $cardargs $bcargs > "$tmp/out" 2> "$tmp/runerr"
+    sed -n 's|.*// pixel: *||p' "$t" > "$tmp/pixels"
+    dumpargs=""
+    [ -s "$tmp/pixels" ] && dumpargs="--dump $tmp/$name.ppm"
+    $RUN "$tmp/$name.mei" --frames "${frames:-2}" ${pad:+--pad1 "$pad"} $cardargs $bcargs $dumpargs > "$tmp/out" 2> "$tmp/runerr"
     rc=$?
     if [ $rc -ne "${wantrc:-0}" ]; then
         echo "FAIL $name: exit $rc (expected ${wantrc:-0})"; sed 's/^/  /' "$tmp/runerr" | grep -v "^  ran" | head -3; fail=$((fail + 1)); continue
+    fi
+    badpx=""
+    while read -r px py pv _rest; do
+        [ -n "$pv" ] || continue
+        # P6 header "P6\n320 240\n255\n" is 15 bytes; 8-bit channels back to 5 bits
+        read -r cr cg cb <<EOF
+$(od -An -tu1 -j $((15 + (py * 320 + px) * 3)) -N3 "$tmp/$name.ppm")
+EOF
+        got=$(( (cr >> 3) | ((cg >> 3) << 5) | ((cb >> 3) << 10) ))
+        [ "$got" -eq $((0x$pv)) ] || badpx="$badpx ($px,$py)=$(printf %04X $got) not $pv"
+    done < "$tmp/pixels"
+    if [ -n "$badpx" ]; then
+        echo "FAIL $name: pixels$badpx"; fail=$((fail + 1)); continue
     fi
     if cmp -s "$tmp/expect" "$tmp/out"; then pass=$((pass + 1))
     else

@@ -301,7 +301,7 @@ int main(void) {
     m->fault.kind = 0;
     CHECK(bus_read32(m, 0xFF06FC, &v) == -1 && mei_fault(m)->kind == MEI_FAULT_UNMAPPED);
     m->fault.kind = 0;
-    CHECK(bus_read32(m, 0xFF0700, &v) == -1 && mei_fault(m)->kind == MEI_FAULT_UNMAPPED);
+    CHECK(bus_read32(m, 0xFF0800, &v) == -1 && mei_fault(m)->kind == MEI_FAULT_UNMAPPED);
     m->fault.kind = 0;
     CHECK(bus_write32(m, BC + STATUS, 1) == -1 && mei_fault(m)->kind == MEI_FAULT_READ_ONLY);
     m->fault.kind = 0;

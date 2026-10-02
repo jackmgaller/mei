@@ -1,5 +1,6 @@
-// Drawing a frame of the lake: the three passes (see world.akr), then the first-person pass
-// (view.akr): the bobber, the fish under the water, the festival lanterns.
+// Drawing a frame of the lake: the sky and the water on the plane chip, the polygon passes
+// (see world.akr), then the first-person pass (view.akr): the bobber, the fish under the water,
+// the festival lanterns.
 
 var world_tris: s32           // triangles drawn by the passes this frame
 var tris_a: s32
@@ -19,11 +20,18 @@ fn draw_lake() {
     begin_camera()
     lanterns_prepare()
     let before = (GPU_STATUS & 0xFFFF) as s32
+    draw_sky()                   // the backdrop and BG1
+    draw_water()                 // BG2
+    pmark(0)
 
-    // ---- pass A: the reflection
+    // ---- the low polygons (PL), behind the water, in one table drawn now:
+    // A, the reflection (from bucket 1)
+    poly_upper(false)
+    depth_bias(1)
+    ss_min = 1
+    ss_max = 1023
     fog_off()
     draw_scenery(true)
-    pmark(0)
     fog_off()
     draw_sky_objects(true)
     draw_clouds(true)
@@ -35,19 +43,16 @@ fn draw_lake() {
     }
     bt_flush()
     draw_surfacing_fish()
-    draw_sky()
     draw_sky_objects(false)
     draw_clouds(false)
-    flush_pass()
-    tris_a = (GPU_STATUS & 0xFFFF) as s32 - before
+    bt_flush()
     pmark(1)
-
-    // ---- pass B: the water and what lies in it
-    fan_build()
-    pmark(2)
-    mesh(&fan.hdr)
-    pmark(3)
+    // B, in front of it (bucket 0): what lies in the water, at double strength under the water
+    // plane (see ss_mode)
     depth_bias(-1024)
+    ss_min = 0
+    ss_max = 0
+    ss_mode = SS_SPLIT
     draw_shadows()
     bt_flush()
     draw_lantern_pools()
@@ -56,12 +61,20 @@ fn draw_lake() {
     draw_ripples()
     if phase == Phase.Aim { draw_aim_marker() }
     bt_flush()
+    ss_mode = SS_ALL
     depth_bias(0)
     flush_pass()
-    tris_b = (GPU_STATUS & 0xFFFF) as s32 - before - tris_a
+    tris_a = (GPU_STATUS & 0xFFFF) as s32 - before
+    tris_b = 0
     pmark(4)
 
-    // ---- pass C: the world above the water
+    // ---- the high polygons (PH), in front of the water; they stay high to the end of the
+    // frame (the interface too). C, the world above the water, from bucket 16, and D (view.akr),
+    // the rod, the line and a fish held up, in front of it: one table, drawn at the frame's end
+    poly_upper(true)
+    depth_bias(16)
+    ss_min = 16
+    ss_max = 1023
     draw_scenery(false)
     if in_view(LILY_POS[0], 14.0) || in_view(DOCK_STAND[1], 12.0) { mesh(LILIES) }
     pmark(5)
@@ -72,10 +85,9 @@ fn draw_lake() {
         if screen == Screen.Fish || screen == Screen.Menu { mesh_at(BOBBER, lure, 0.0) }
     }
     draw_leaping_fish()
-    depth_bias(-6)
+    // the glows and sparks, additive over the world as before the planes; where they lie over
+    // the water (a hole or a low pixel), the chip blends them with the water as composed there
     draw_lantern_glows(false)
-    bt_flush()
-    depth_bias(-30)
     draw_splashes()
     draw_fireflies()
     if fest_lanterns_on {
@@ -84,11 +96,10 @@ fn draw_lake() {
     }
     bt_flush()
     depth_bias(0)
-    flush_pass()
+    ss_min = 0
     pmark(6)
-    // ---- pass D: the rod, the line and a fish held up, in front of everything
     draw_view_pass()
-    world_tris = (GPU_STATUS & 0xFFFF) as s32 - before
+    world_tris = tris_a + tris_drawn()      // (the high table's count is last frame's)
     pmark(7)
 }
 
@@ -111,7 +122,7 @@ fn draw_shadows() {
             let k = (day * 150) as s32
             var c = scale_col(rgb(60, 56, 40), k)
             if s.id == 12 { c = scale_col(rgb(30, 50, 90), k) }   // the golden koi: a gold shimmer (less dark in blue)
-            draw_fish_shadow(s.id, s.size_mm, p, head, c)
+            draw_fish_shadow(s.id, s.size_mm, p, head, col_add(c, c))   // double: the water halves it
         }
     }
     bt_flush()
@@ -256,6 +267,7 @@ fn fest_lanterns_update() {
     }
 }
 
+// part: 0 the reflections, 1 the glows (low, over the water), 2 the paper lanterns (high)
 fn draw_fest_lanterns(refl: bool) {
     for i in 0..fl_n {
         if fl_age[i] == 0 { continue }

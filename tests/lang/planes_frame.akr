@@ -1,0 +1,67 @@
+// A composited frame (stdlib/planes.akr): backdrop, a tile plane, low and high polygons,
+// priorities, colour math and the colour offset, checked in the frame that is shown.
+import "planes.akr"
+// frames: 3
+
+// a 4-bit 8x8 tile atlas: tile 1 solid index 3, tile 2 index 5 with a transparent column 0
+var atlas: [128]u8
+
+fn quad(x0: s32, y0: s32, x1: s32, y1: s32, colour: u32, depth: s32) {
+    let q = packet_alloc(6)
+    q[1] = colour
+    q[2] = (x0 as u32 & 0xFFFF) | ((y0 as u32) << 16)
+    q[3] = (x1 as u32 & 0xFFFF) | ((y0 as u32) << 16)
+    q[4] = (x0 as u32 & 0xFFFF) | ((y1 as u32) << 16)
+    q[5] = (x1 as u32 & 0xFFFF) | ((y1 as u32) << 16)
+    ot_insert(q, 0x24, depth)
+}
+
+fn init() {
+    // atlas row v of tile t (column t mod 32) is at byte v * 128 + t * 4 of the page
+    let page = ATLAS_0 as *u8
+    for v in 0..8 {
+        for i in 0..4 {
+            page[v * 128 + 4 + i] = 0x33
+            page[v * 128 + 8 + i] = 0x55
+        }
+        page[v * 128 + 8] = 0x50       // tile 2: texel (0, v) is index 0, transparent
+    }
+    let pal = VRAM_PALETTE as *u16
+    pal[16 * 6 + 3] = 0x001F           // palette 6, index 3: red
+    pal[16 * 6 + 5] = 0x03E0           // index 5: green
+    planes_on()
+    backdrop(0x44C424)                 // channels 36, 196, 68: dither-proof (4 mod 8)
+    plane(BG0, ATLAS_0, MAP_BG0, 32, 32, 0, 6)
+    map_fill(BG0, 0, 0, 10, 10, tile(1, 0, 0))      // red: x, y 0..79
+    map_fill(BG0, 20, 0, 2, 2, tile(2, 0, 0))       // green: x 160..175, y 0..15
+    plane_window(BG0, 0, 0, 320, 120)
+    plane_priority(BG0, 1, 0)
+    poly_priority(0, 2)                // PL behind BG0, PH in front
+}
+
+fn update() {}
+
+fn draw() {
+    quad(40, 40, 120, 100, rgb(0, 0, 255), 10)     // PL: under BG0 where BG0 is
+    rect(60, 60, 20, 10, rgb(255, 255, 255))      // PH (the interface list): over BG0
+    poly_upper(true)
+    quad(200, 150, 220, 170, rgb(255, 255, 0), 10) // PH
+    poly_upper(false)
+    quad(230, 150, 250, 170, rgb(0, 255, 255), 10) // PL again
+    if frame() >= 2 {
+        // the third frame: BG0 half-translucent, a red tint on the backdrop
+        layer_blend(BG0, BLEND_HALF)
+        layer_offset(1 << LAYER_BD, 4, 0, 0)
+    }
+}
+
+// The third frame (BG0 half-translucent, the backdrop tinted red +4):
+// pixel: 300 200 2308      the backdrop (4, 24, 8), plus 4 red
+// pixel: 5 5 1191          BG0 red, half over the backdrop
+// pixel: 50 50 3C0F        BG0 red, half over the low blue quad (BG0 is in front of PL)
+// pixel: 65 65 7FFF        the white interface rect: PH, in front of BG0
+// pixel: 100 90 7C00       the low blue quad where BG0's tiles are empty
+// pixel: 160 5 2308        tile 2's transparent column: the backdrop
+// pixel: 161 5 1362        tile 2's green, half over the backdrop
+// pixel: 210 160 03FF      yellow, drawn with poly_upper(true): PH
+// pixel: 240 160 7FE0      cyan, after poly_upper(false): PL

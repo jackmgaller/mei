@@ -136,7 +136,7 @@ fn packet_alloc(n: s32) -> *u32 {
 }
 
 // Inserts a packet into the ordering table. depth: 0 nearest .. 1023 farthest.
-fn ot_insert(p: *u32, type: u32, depth: s32) {
+weak fn ot_insert(p: *u32, type: u32, depth: s32) {
     let b = clamp(depth, 0, 1023)
     p[0] = (type << 24) | __ot[b]
     __ot[b] = p as u32

@@ -361,6 +361,7 @@ struct Compiler {
     char **seen; int nseen, capseen;      /* imported files (canonical paths) */
     Program *prog;
     int importing_stdlib;
+    const char *stdlib_dir;               /* where the prelude was found (NULL: no stdlib) */
 };
 /* Imports `path` (relative to `from_file`); each file is parsed once. */
 void compiler_import(Compiler *C, const char *from_file, const char *path, Loc loc);

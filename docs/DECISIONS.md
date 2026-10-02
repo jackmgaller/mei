@@ -16,7 +16,7 @@ is deterministic.
 | Compressed audio | A PS1-SPU-style 4-bit ADPCM (3.5 : 1 against 16-bit), selected per channel; see [Audio upgrade](#audio-upgrade-adpcm-16-channels-reverb). |
 | Standard library location | Compiled into each cart (counts against its 2 MB). |
 | Culling/clipping helpers | Four geometry instructions in the reserved opcodes 19–1B and 1F: a back-face test, an ordering-table depth, a colour blend and a three-vertex transform (see [Geometry instructions](#geometry-instructions)). The CPU has 63 instructions. Clipping stays in software. |
-| Fill rate | Unlimited, as drafted. |
+| Fill rate | Unlimited, as drafted. The plane chip ([PLANES.md](PLANES.md)) takes screen-sized skies, floors and water off the GPU, and its measurements are the basis for a GPU budget (see its "Timing and costs"). |
 | Controller count | Two. Each also has a **Select** button (bit 11 of `PAD1`/`PAD2`), added to the spec's eleven. |
 
 ## Details filled in
@@ -65,12 +65,12 @@ and texture coordinates are interpolated affinely (barycentric in screen space) 
 integer arithmetic. A 15-bit palette colour is expanded to 8 bits per channel as
 `(c << 3) | (c >> 2)` before tinting. Tint: `min(255, texel × colour / 128)`. Then dither
 (if `GPU_CTRL` bit 0) or not, then reduce to 5 bits, then blend if semi-transparent.
-Written pixels always have bit 15 clear.
+Written pixels always have bit 15 clear, except while the plane compositor is on (`PLN_CTRL` bit 0), when bit 15 is the polygon priority bit, `0x8000` is a hole, and a blend over a hole (or, upper, over a lower pixel) blends with the composite of the layers behind its layer ([PLANES.md](PLANES.md)).
 
 **Triangle limit.** Counted per triangle: a quad whose first half is the 2,000th
 triangle draws that half and drops the second.
 
-**GPU_CLEAR** writes the low 15 bits to every pixel of the back buffer.
+**GPU_CLEAR** writes the low 15 bits to every pixel of the back buffer (all 16 while the plane compositor is on, so `0x8000` clears to holes: [PLANES.md](PLANES.md)).
 
 **CPU and bus edge cases.**
 - Fault checks run alignment first, then region. For I/O, width is checked before offset (so `lb` on any I/O address is *Bad I/O width*).
@@ -105,6 +105,11 @@ latched at `vsync` like input, so determinism holds as long as a replay records 
 carousel, Teletext-style) is received by a decoder chip at `0xFF0600`–`0xFF0647`, which extends
 the I/O region to `0xFF06FF`. It is driven by the frame loop (16 bytes per tick) and is idle
 until a cart turns it on. See `BROADCAST.md`.
+
+**I/O map.** `0xFF0000`–`0xFF03FF` as in the spec (with the extensions above and the memory
+card at `0xFF0380`), `0xFF0400`–`0xFF05FF` the audio upgrade (below), `0xFF0600`–`0xFF06FF`
+the broadcast decoder (`docs/BROADCAST.md`) and `0xFF0700`–`0xFF07FF` the plane chip
+([PLANES.md](PLANES.md)). `0xFF0800` and up are unmapped.
 
 ## Geometry instructions
 
