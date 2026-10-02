@@ -1,0 +1,2 @@
+// error: update() is called by the runtime, so it cannot be private
+private fn update() {}

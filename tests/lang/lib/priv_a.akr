@@ -1,0 +1,27 @@
+// File-private names (tests/lang/private.akr): the same names as in priv_b.akr.
+private var money = 100
+private const STEP = 1
+private struct Slot { n: s32 }
+private enum Mode { Off, On }
+private var slots: [2]Slot
+
+private fn tile_free(i: s32) -> bool { return slots[i].n == 0 }
+
+fn a_spend(n: s32) -> s32 {
+    money -= n * STEP
+    slots[0].n = n
+    let m = Mode.On
+    if m == Mode.On && !tile_free(0) { return money }
+    return -1
+}
+
+// a public function that hands out a private function as a value
+fn a_checker() -> fn(s32) -> bool { return tile_free }
+
+fn a_asm() -> s32 {
+    var r = 0
+    asm {
+        lw {r}, [r0+{money}]
+    }
+    return r
+}

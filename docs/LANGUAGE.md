@@ -87,7 +87,8 @@ The frame loop is: begin frame (reset the ordering table and packet memory) → 
 for `btnp`) → `vsync`. Output appears on the debug console through `print*` functions.
 
 `import "other.akr"` includes another file (path relative to the importing file). Each file is
-compiled once however often it is imported; all files share one global namespace. A cart may
+compiled once however often it is imported; all files share one global namespace, except for
+names declared `private` (see [Private declarations](#private-declarations)). A cart may
 reuse a name the standard library defines (`A`, `sin`, ...): the cart sees its own
 declaration and the library keeps using its own.
 
@@ -178,7 +179,29 @@ literals, addresses of variables (`&g`) and single constants holding an address
 (`const M: *Mesh = FERN`; use `FERN` itself) are not allowed.
 
 Everything at the top level is visible everywhere (declaration order does not matter, except
-for initialisers that read other globals).
+for initialisers that read other globals), unless it is `private`.
+
+### Private declarations
+
+`private` in front of a top-level `fn`, `asm fn`, `var`, `const`, `struct`, `enum`, `embed` or
+`reg` makes the name visible only in the file that declares it. Two files may each have a
+private name that is the same, and a private name hides a public name of the same name (from
+another file, or the standard library) inside its own file:
+
+```
+// shop.akr                            // hotel.akr
+private var money = 0                  private var money: fixed = 0.0
+private fn tile_free(i: s32) -> bool   private fn tile_free(i: s32) -> bool
+fn shop_buy(n: s32) { money -= n }     fn hotel_rent() { money += 1.5 }
+```
+
+Without `private` everything is public, as before. A private name used from another file is
+reported as such ("'tile_free' is private to shop.akr (declared at line 2), so it cannot be used
+from this file"); within one file a name may still be declared only once. Private functions can
+still be handed out as values, and private types can appear in public signatures (only the
+*name* is private). `init`, `update` and `draw` cannot be private (the runtime calls them).
+`private` is only special at the start of a top-level declaration, so it is not a reserved
+word. In the assembly (`-S`) private symbols get a per-file suffix (`F_tile_free$p2`).
 
 ## Types
 

@@ -1,0 +1,2 @@
+// error: expected a declaration after 'private'
+private import "lib/priv_a.akr"

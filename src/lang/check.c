@@ -209,7 +209,19 @@ static Local *hidden_local(Ctx *c, Type *t, Loc loc) {
 /* The assembly label of a global symbol: prefix + name, plus "$u" for a cart symbol that reuses a
    standard library name. */
 static const char *sym_label(const char *prefix, Sym *s) {
+    if (s->priv) return ar_printf("%s%s$p%d", prefix, s->name, s->priv);   /* private: per file */
     return ar_printf("%s%s%s", prefix, s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
+}
+
+/* "unknown name 'x'", or that it is private to another file. */
+_Noreturn void error_unknown(Loc loc, const char *what, const char *name) {
+    Sym *p = sym_private_elsewhere(name, loc.file);
+    if (p) {
+        const char *base = strrchr(p->loc.file, '/');
+        error_at(loc, "'%s' is private to %s (declared at line %d), so it cannot be used from this file",
+                 name, base ? base + 1 : p->loc.file, p->loc.line);
+    }
+    error_at(loc, "unknown %s '%s'", what, name);
 }
 
 static Sym *stdlib_fn(Ctx *c, const char *name, Loc loc) {
@@ -252,7 +264,8 @@ static Type *resolve_type_in(TypeExpr *te, Ctx *in) {
         t = ty_array(el, n);
     } else {
         Sym *s = sym_lookup(te->name, te->loc.file);
-        if (!s || s->k != SY_TYPE) error_at(te->loc, "unknown type '%s'", te->name);
+        if (!s) error_unknown(te->loc, "type", te->name);
+        if (s->k != SY_TYPE) error_at(te->loc, "unknown type '%s'", te->name);
         t = s->ty;
         if (t->k == TY_ENUM) resolve_enum(t);
     }
@@ -681,7 +694,7 @@ static Expr *check_name(Ctx *c, Expr *e) {
         }
     }
     if (!s) s = sym_lookup(e->name, e->loc.file);
-    if (!s) error_at(e->loc, "unknown name '%s'", e->name);
+    if (!s) error_unknown(e->loc, "name", e->name);
     e->sym = s;
     switch (s->k) {
     case SY_CONST:
@@ -1176,7 +1189,7 @@ static Expr *check_call(Ctx *c, Expr *e) {
     Sym *s = NULL;
     if (c->fn && is_local_name(c, name)) return check_indirect_call(c, e);
     s = sym_lookup(name, e->loc.file);
-    if (!s) error_at(e->a->loc, "unknown function '%s'", name);
+    if (!s) error_unknown(e->a->loc, "function", name);
     if (s->k == SY_GLOBAL || s->k == SY_CONST || s->k == SY_DATA || s->k == SY_REG || s->k == SY_EMBED) return check_indirect_call(c, e);
     if (s->k == SY_TYPE) {
         Type *t = s->ty;
@@ -2123,6 +2136,8 @@ static void check_signature(Func *f) {
     if (f->is_asm && ty_is_aggr(f->ret)) error_at(f->ret_texpr->loc, "asm functions cannot return %s", ty_str(f->ret));
     f->label = sym_label("F_", f->sym);
     const char *n = f->name;
+    if (f->sym->priv && f->sym->user && (!strcmp(n, "init") || !strcmp(n, "update") || !strcmp(n, "draw")))
+        error_at(f->loc, "%s() is called by the runtime, so it cannot be private", n);
     if (!strcmp(n, "init") || !strcmp(n, "update") || !strcmp(n, "draw")) {
         if (f->nparams || f->ret->k != TY_VOID) error_at(f->loc, "%s() must take no arguments and return nothing", n);
     }

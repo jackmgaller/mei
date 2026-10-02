@@ -297,6 +297,7 @@ struct Sym {
     int is_str;            /* SY_DATA string literal */
     const char *str; size_t slen;
     int user;              /* declared by the cart (not the standard library) */
+    int priv;              /* `private`: visible in its file only; the file's number (from 1) */
     struct Func **dfuncs; int ndfuncs, capdfuncs;   /* SY_DATA: functions named in the data */
 };
 
@@ -346,7 +347,11 @@ const uint8_t *compiler_load_binary(Compiler *C, const char *from_file, const ch
 Sym *sym_lookup_global(const char *name);              /* as seen from cart code */
 Sym *sym_lookup(const char *name, const char *from_file);
 Sym *sym_lookup_layer(const char *name, int layer);   /* 0: built-ins + stdlib, 1: cart */
+Sym *sym_lookup_private(const char *name, const char *file);   /* `private` in that file */
+Sym *sym_private_elsewhere(const char *name, const char *from_file);
+_Noreturn void error_unknown(Loc loc, const char *what, const char *name);
 void sym_define_global(Sym *s);
+void sym_define_private(Sym *s, const char *file);    /* sets s->priv */
 void mark_stdlib_file(const char *path);
 int file_is_stdlib(const char *path);
 void symtab_reset(void);

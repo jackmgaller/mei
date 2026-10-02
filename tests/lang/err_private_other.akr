@@ -1,0 +1,3 @@
+// error: 'tile_free' is private to priv_a.akr
+import "lib/priv_a.akr"
+fn init() { if tile_free(0) { print_int(1) } }

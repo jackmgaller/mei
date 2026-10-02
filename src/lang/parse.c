@@ -12,6 +12,7 @@ typedef struct {
     const char *file;
     int no_struct_lit;
     int in_arm;          /* parsing a single-statement match arm: ',' may end it */
+    int priv;            /* the declaration being parsed is `private` */
 } Parser;
 
 static const char *keywords[] = {
@@ -721,10 +722,20 @@ static Stmt *parse_block(Parser *p) {
 
 static Sym *new_global(Parser *p, SymKind k, const char *name, Loc loc) {
     int user = !file_is_stdlib(p->file);
-    Sym *old = sym_lookup_layer(name, user);
+    /* a private name conflicts with this file's names; a public one with every public name and
+       with this file's private names */
+    Sym *old = sym_lookup_private(name, p->file);
+    if (!old) {
+        old = sym_lookup_layer(name, user);
+        if (old && p->priv && old->loc.file && strcmp(old->loc.file, p->file)) old = NULL;   /* hides another file's public name */
+    }
     if (!old && user) {
         old = sym_lookup_layer(name, 0);
         if (old && (old->loc.file || old->k == SY_BUILTIN)) old = NULL;   /* a cart may reuse a library or builtin function name */
+    }
+    if (!old && p->priv) {
+        Sym *b = sym_lookup_layer(name, 0);
+        if (b && !b->loc.file && b->k != SY_BUILTIN) old = b;   /* built-in types */
     }
     if (old) {
         if (!old->loc.file) error_at(loc, "'%s' is a built-in name", name);
@@ -735,7 +746,8 @@ static Sym *new_global(Parser *p, SymKind k, const char *name, Loc loc) {
     s->k = k;
     s->name = name;
     s->loc = loc;
-    sym_define_global(s);
+    if (p->priv) sym_define_private(s, p->file);
+    else sym_define_global(s);
     return s;
 }
 
@@ -859,6 +871,16 @@ static void parse_enum(Parser *p) {
 
 static void parse_toplevel(Parser *p) {
     Loc loc = p->tok.loc;
+    p->priv = 0;
+    if (is_kw(p, "private")) {
+        /* `private` (only here, so it is not a reserved word): the name is visible in this file only */
+        next(p);
+        static const char *decl[] = {"fn", "asm", "var", "const", "struct", "enum", "embed", "reg", NULL};
+        int ok = 0;
+        for (int i = 0; decl[i]; i++) ok |= is_kw(p, decl[i]);
+        if (!ok) error_at(p->tok.loc, "expected a declaration after 'private' (fn, var, const, struct, enum, embed, reg), found %s", tok_desc(&p->tok));
+        p->priv = 1;
+    }
     if (is_kw(p, "fn")) { parse_fn(p, 0); return; }
     if (is_kw(p, "asm")) {
         next(p);

@@ -1,0 +1,20 @@
+// private declarations are visible in their own file only; two files may each have one.
+import "lib/priv_a.akr"
+import "lib/priv_b.akr"
+
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+var money = 7                      // the cart's own public 'money' (the files above use their own)
+fn tile_free(i: s32) -> s32 { return i * 2 }
+private fn helper() -> s32 { return 5 }
+
+fn init() {
+    p(a_spend(3))                  // expect: 97
+    print_fixed(b_spend(1)); println("")   // expect: 12.5
+    p(money)                       // expect: 7
+    p(tile_free(21))               // expect: 42
+    let f = a_checker()
+    if !f(0) { p(1) }              // expect: 1
+    p(a_asm())                     // expect: 97
+    p(helper())                    // expect: 5
+}

@@ -1,0 +1,15 @@
+// File-private names (tests/lang/private.akr): the same names as in priv_a.akr.
+private var money: fixed = 2.5
+private const STEP = 10
+private struct Slot { a: u8, b: u8 }
+private enum Mode { Idle, Busy, Done }
+private var slots: [4]Slot
+
+private fn tile_free(i: s32) -> bool { return slots[i].b == 7 }
+
+fn b_spend(n: s32) -> fixed {
+    money += (n * STEP) as fixed
+    slots[3].b = 7
+    if tile_free(3) && Mode.Done != Mode.Idle { return money }
+    return 0.0
+}
