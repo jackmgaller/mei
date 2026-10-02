@@ -905,6 +905,26 @@ The blob is a `Font` header (`height`, `line`, `first`, `count`, `slot`, `palett
 writes it as an Akari `const` array instead (as `stdlib/font_small.akr` is made). A font atlas can
 also share a texture with other art: bake it with `--no-texels` at the rows the cart loads it to.
 
+### Colours and animation phases (`colour.akr`)
+
+| | |
+|---|---|
+| `col_mix(a, b, t) -> u32` | blend two colours, `t` 0 (a) .. 1.0 (b), clamped; each channel rounds down (one `clerp`) |
+| `col_scale(c, t) -> u32` | each channel times `t` (0..1.0) |
+| `col_add(a, b) -> u32` | channel sums, clamped at 255 |
+| `rgb_of15(c) -> u32` | the 24-bit colour of a 15-bit palette or framebuffer colour (`rgb15` is the reverse) |
+| `palette_lerp(index, a: *u16, b: *u16, count, t)` | write `count` palette colours from colour `index` on, each `a[i]` blended toward `b[i]` by `t` (15-bit colours, e.g. two keyframe palettes in ROM); about 38 cycles a colour |
+| `palette_rotate(index, count, step)` | rotate `count` palette colours in place: colour `index + i` gets what `index + (i + step) mod count` held (colour cycling); about 14 cycles a colour |
+| `frame_phase(t, period) -> fixed` | how far through a cycle of `period` frames the count `t` is: 0 up to 1.0 |
+| `frame_wave(t, period) -> fixed` | `sin(TAU * frame_phase(t, period))`, −1.0..1.0 |
+| `frame_angle(t, speed) -> fixed` | `t × speed` (radians per frame) reduced to 0..TAU, exactly |
+
+`fixed(frame_count) * speed` stops working after 32,768 frames (about nine minutes): the count
+overflows `fixed` and every animation driven by it jumps. The `frame_*` functions take the count
+itself, `frame() as s32` or a cart's own tick counter (one that stops while paused, say), and are
+exact for any count, so `sin(frame_angle(tick, 0.05))` keeps turning smoothly for as long as the
+cart runs. `frame_angle` costs about 150 cycles (five remainders), `frame_phase` about 70.
+
 ### Strings (`str.akr`)
 
 Strings are NUL-terminated bytes. The `str_append*` functions add to the string already in a

@@ -1,0 +1,145 @@
+// Colour helpers: blending packed colours (0xBBGGRR) and changing palette memory in place.
+
+// Blends two colours: t = 0 gives a, 1.0 gives b (clamped; each channel rounds down). One
+// clerp instruction.
+fn col_mix(a: u32, b: u32, t: fixed) -> u32 { return clerp(a, b, t) }
+
+// Scales each channel by t (0..1.0, clamped): col_scale(c, 0.5) is half as bright.
+fn col_scale(c: u32, t: fixed) -> u32 { return clerp(0, c, t) }
+
+// Adds two colours channel by channel, each clamped at 255.
+fn col_add(a: u32, b: u32) -> u32 {
+    let r = min((a & 255) + (b & 255), 255)
+    let g = min(((a >> 8) & 255) + ((b >> 8) & 255), 255)
+    let bl = min(((a >> 16) & 255) + ((b >> 16) & 255), 255)
+    return r | (g << 8) | (bl << 16)
+}
+
+// The 0xBBGGRR colour of a 15-bit palette or framebuffer colour (each channel expanded as the
+// GPU does: c << 3 | c >> 2).
+fn rgb_of15(c: u32) -> u32 {
+    let r = c & 31
+    let g = (c >> 5) & 31
+    let b = (c >> 10) & 31
+    return ((r << 3) | (r >> 2)) | (((g << 3) | (g >> 2)) << 8) | (((b << 3) | (b >> 2)) << 16)
+}
+
+// Writes `count` palette colours from colour `index` on: each the blend of a[i] and b[i]
+// (15-bit colours, e.g. two keyframe palettes in ROM) by t (0..1.0, clamped; each channel
+// rounds down, like clerp). About 38 cycles a colour (15 when a[i] == b[i]).
+fn palette_lerp(index: s32, a: *u16, b: *u16, count: s32, t: fixed) {
+    if count > 0 { __pal_lerp(((index & 0xFFF) | (count << 16)) as u32, a, b, t) }
+}
+
+// palette_lerp's loop: ic is the first colour | the count << 16.
+asm fn __pal_lerp(ic: u32, a: *u16, b: *u16, t: fixed) {
+    addi sp, sp, -8
+    sw   r9, [sp+0]
+    sw   r10, [sp+4]
+    shri r10, {ic}, 16              ; the count
+    andi r1, {ic}, 0xFFF
+    shli r1, r1, 1
+    li   r6, {VRAM_PALETTE}
+    add  r1, r1, r6                 ; the destination
+.loop:
+    lhu  r6, [{a}+0]
+    lhu  r7, [{b}+0]
+    beq  r6, r7, .store
+    andi r8, r6, 0x3E0              ; spread a's channels into bytes
+    shli r8, r8, 3
+    andi r9, r6, 0x7C00
+    shli r9, r9, 6
+    or   r8, r8, r9
+    andi r6, r6, 31
+    or   r6, r6, r8
+    andi r8, r7, 0x3E0              ; and b's
+    shli r8, r8, 3
+    andi r9, r7, 0x7C00
+    shli r9, r9, 6
+    or   r8, r8, r9
+    andi r7, r7, 31
+    or   r7, r7, r8
+    clerp r6, r7, {t}
+    shri r8, r6, 3                  ; pack back to 15 bits
+    andi r8, r8, 0x3E0
+    shri r9, r6, 6
+    andi r9, r9, 0x7C00
+    andi r6, r6, 31
+    or   r6, r6, r8
+    or   r6, r6, r9
+.store:
+    sh   r6, [r1+0]
+    addi {a}, {a}, 2
+    addi {b}, {b}, 2
+    addi r1, r1, 2
+    addi r10, r10, -1
+    bne  r10, r0, .loop
+    lw   r9, [sp+0]
+    lw   r10, [sp+4]
+    addi sp, sp, 8
+}
+
+// Rotates `count` palette colours from colour `index` on by `step` places: afterwards colour
+// index + i holds what index + (i + step) mod count held (colours move toward `index`; a
+// negative step moves them the other way). For colour cycling (water, fire, conveyor belts).
+// About 14 cycles a colour.
+fn palette_rotate(index: s32, count: s32, step: s32) {
+    if count < 2 { return }
+    var k = step % count
+    if k < 0 { k += count }
+    if k == 0 { return }
+    let p = (VRAM_PALETTE + index * 2) as *u16
+    __rev16(p, p + (k - 1))
+    __rev16(p + k, p + (count - 1))
+    __rev16(p, p + (count - 1))
+}
+
+// Reverses the halfwords lo..hi (inclusive).
+asm fn __rev16(lo: *u16, hi: *u16) {
+.loop:
+    bgeu {lo}, {hi}, .done
+    lhu  r5, [{lo}+0]
+    lhu  r6, [{hi}+0]
+    sh   r6, [{lo}+0]
+    sh   r5, [{hi}+0]
+    addi {lo}, {lo}, 2
+    addi {hi}, {hi}, -2
+    jmp  .loop
+.done:
+}
+
+// ---- animation phases that never jump
+//
+// fixed(frame_count) * speed overflows after 32,768 frames (about nine minutes) and makes every
+// animation jump. These take the count itself (FRAME, or the cart's own tick counter, which may
+// stop while paused) and are exact for any count.
+
+// How far through a cycle of `period` frames t is: 0 up to (not including) 1.0.
+fn frame_phase(t: s32, period: s32) -> fixed {
+    if period <= 0 { return 0.0 }
+    var m = t % period
+    if m < 0 { m += period }
+    return fixed(m) / period
+}
+
+// A sine wave over `period` frames: sin(TAU * frame_phase(t, period)), -1.0..1.0.
+fn frame_wave(t: s32, period: s32) -> fixed { return sin(frame_phase(t, period) * TAU) }
+
+// t * speed (radians per frame) as an angle in 0..TAU, exact for any t: what fixed(t) * speed
+// would be, without the wrap. sin(frame_angle(t, 0.05)) turns once every 126 frames, forever.
+fn frame_angle(t: s32, speed: fixed) -> fixed {
+    let T: u32 = 411775                 // bits(TAU)
+    var tm = t as u32
+    if t < 0 { tm = (0 - t) as u32 }
+    tm = tm % T
+    let raw = bits(speed)
+    var k = raw as u32
+    if raw < 0 { k = (0 - raw) as u32 }
+    k = k % T
+    // (tm * k) mod T in 32 bits: k = k1 * 1024 + k0
+    var r = (tm * (k >> 10)) % T
+    r = (r << 10) % T
+    r = (r + tm * (k & 1023)) % T
+    if (t < 0) != (raw < 0) && r != 0 { r = T - r }
+    return from_bits(r as s32)
+}
