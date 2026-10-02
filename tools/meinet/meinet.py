@@ -443,8 +443,18 @@ def main():
     ap.add_argument("--fixture", action="store_true", help="canned data and a fixed clock, no network")
     ap.add_argument("--no-serve", action="store_true", help="generate --seconds of stream into --record, unpaced")
     ap.add_argument("--noise", type=float, help="bit-error rate added to the stream")
+    ap.add_argument("--exit-with-parent", action="store_true",
+                    help="quit when the process that started us exits (the desktop player starts the gateway this way)")
     ap.add_argument("-v", action="store_true")
     args = ap.parse_args()
+    if args.exit_with_parent:
+        parent = os.getppid()
+
+        def watch_parent():
+            while os.getppid() == parent:
+                time.sleep(1)
+            os._exit(0)
+        threading.Thread(target=watch_parent, daemon=True).start()
     verbose = args.v
     cfg = load_config(None if args.fixture else args.config)
     if args.host:
