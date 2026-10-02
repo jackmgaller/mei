@@ -30,6 +30,7 @@ typedef struct {
     int32_t off;
     Type *ty;
     int frame_rel;        /* offset is relative to the caller's frame (incoming stack args) */
+    int far;              /* a global above 0x20000 (lui base): its address always takes two instructions */
 } LV;
 typedef struct { Opnd o; Type *t; } Arg;
 
@@ -351,6 +352,7 @@ static LV lv_abs(uint32_t addr, const char *sym, Type *t) {
     I("lui %s, %u", RN[g_t[tt].reg], addr >> 10);
     lv.base = o_tmp(tt);
     lv.off = (int32_t)(addr & 0x3FF);
+    lv.far = 1;
     return lv;
 }
 
@@ -495,7 +497,7 @@ static Opnd lv_addr_copy(LV *lv) {
 /* The address of lv as an operand; consumes lv. */
 static Opnd lv_addr(LV *lv) {
     if (lv->k != LV_MEM) ice("address of a register value");
-    if (!lv->frame_rel && !lv->sym && lv->off == 0 && lv->base.k != O_REG) return lv->base;
+    if (!lv->frame_rel && !lv->sym && lv->off == 0 && lv->base.k != O_REG && !lv->far) return lv->base;
     if (!lv->frame_rel && lv->base.k == O_REG && lv->base.v == 0) return o_imm(lv->symval + lv->off);
     if (!lv->frame_rel && !lv->sym && lv->off == 0 && lv->base.v != 14) return lv->base;
     Opnd d = lv_addr_copy(lv);
@@ -1839,7 +1841,7 @@ static Opnd gen_expr(Expr *e, int hint) {
         }
         case U_ADDR: {
             LV lv = gen_aggr_lv(e->a);
-            if (hint >= 0 && lv.k == LV_MEM && (lv.frame_rel || lv.sym || lv.off || lv.base.k == O_REG)
+            if (hint >= 0 && lv.k == LV_MEM && (lv.frame_rel || lv.sym || lv.off || lv.base.k == O_REG || lv.far)
                 && !(!lv.frame_rel && lv.base.k == O_REG && lv.base.v == 0)) {
                 /* base + offset straight into the destination */
                 lv_fix(&lv);
@@ -3216,6 +3218,24 @@ static void mark_reachable(Func *f) {
     for (int i = 0; i < f->ncalls; i++) mark_reachable(f->calls[i]);
 }
 
+/* Marks what an expression of a global initialiser uses (the initialiser function is not
+   itself a root: only the initialisers that are kept count). */
+static Func *find_fn(const char *name);
+
+static void mark_expr_refs(Expr *e) {
+    if (!e) return;
+    if (e->sym && (e->sym->k == SY_GLOBAL || e->sym->k == SY_DATA || e->sym->k == SY_EMBED)) e->sym->reachable = 1;
+    if (e->sym && e->sym->k == SY_FUNC) mark_reachable(e->sym->fn);
+    if (e->k == E_CALL && e->callee) mark_reachable(e->callee);
+    if (e->k == E_CALL && e->target) mark_reachable(e->target);
+    if (e->k == E_FUNC) mark_reachable(e->lambda);
+    if (e->chk) { e->chk->reachable = 1; Func *h = find_fn("__check_fail"), *hb = find_fn("__bounds_fail"); if (h) mark_reachable(h); if (hb) mark_reachable(hb); }
+    mark_expr_refs(e->a);
+    mark_expr_refs(e->b);
+    for (int i = 0; i < e->nargs; i++) mark_expr_refs(e->args[i]);
+    for (int i = 0; i < e->narms; i++) mark_expr_refs(e->arms[i].value);
+}
+
 static Func *find_fn(const char *name) {
     Sym *s = sym_lookup_global(name);
     return s && s->k == SY_FUNC ? s->fn : NULL;
@@ -3408,7 +3428,39 @@ void gen_program(Program *P, Buf *out) {
     g_vconst_n = 0;
     memset(&g_body, 0, sizeof g_body);
 
-    /* RAM layout: small globals first so they stay reachable from r0 */
+    /* reachability: functions from the entry points; a global initialiser runs only when its
+       variable is used, or when it makes calls (whose effects must happen) */
+    Func *roots[] = {find_fn("__rt_init"), find_fn("init"), find_fn("__rt_frame_begin"),
+                     find_fn("update"), find_fn("draw"), find_fn("__rt_frame_end")};
+    for (size_t i = 0; i < sizeof roots / sizeof roots[0]; i++) if (roots[i]) mark_reachable(roots[i]);
+    Stmt *ib = P->init_fn->body;
+    char *keep = ar_alloc((size_t)ib->n + 1);
+    for (int changed = 1; changed;) {
+        changed = 0;
+        for (int i = 0; i < ib->n; i++) {
+            Stmt *st = ib->list[i];
+            if (keep[i] || !(st->e->sym->reachable || count_calls(st->e2))) continue;
+            keep[i] = 1;
+            changed = 1;
+            st->e->sym->reachable = 1;
+            mark_expr_refs(st->e2);
+        }
+        /* functions named in reachable const data (which may make more data reachable) */
+        for (int i = 0; i < P->ndatas; i++) {
+            Sym *d = P->datas[i];
+            if (!d->reachable) continue;
+            for (int k = 0; k < d->ndfuncs; k++)
+                if (!d->dfuncs[k]->reachable) { mark_reachable(d->dfuncs[k]); changed = 1; }
+        }
+    }
+    {
+        int n = 0;
+        for (int i = 0; i < ib->n; i++) if (keep[i]) ib->list[n++] = ib->list[i];
+        ib->n = n;
+    }
+
+    /* RAM layout: small globals first so they stay reachable from r0; unused globals take no
+       RAM; arrays of 16 bytes or more start on a 16-byte boundary (for word and vector copies) */
     Sym **gl = ar_alloc(sizeof(Sym *) * (size_t)(P->nglobals + 1));
     for (int i = 0; i < P->nglobals; i++) gl[i] = P->globals[i];
     /* stable sort: keep declaration order inside each class */
@@ -3426,7 +3478,9 @@ void gen_program(Program *P, Buf *out) {
     else buf_printf(out, "; generated by meic\n    .cart \"%s\", __start\n\n; RAM globals\n", title);
     for (int i = 0; i < P->nglobals; i++) {
         Sym *s = gl[i];
+        if (!s->reachable) continue;
         uint32_t al = (uint32_t)(s->ty->align < 4 && s->ty->size >= 4 ? 4 : s->ty->align);
+        if (s->ty->k == TY_ARRAY && s->ty->size >= 16) al = 16;
         addr = (addr + al - 1) & ~(al - 1);
         s->addr = addr;
         buf_printf(out, "%s = 0x%06X    ; %s, %d bytes\n", s->label, addr, ty_str(s->ty), s->ty->size);
@@ -3437,33 +3491,18 @@ void gen_program(Program *P, Buf *out) {
     if (addr > 0x1F0000) error_plain("error: global variables use %u bytes of RAM, leaving too little for the stack", addr);
     buf_printf(out, "__ram_end = 0x%06X\n", addr);
 
-    /* reachability */
-    Func *roots[] = {P->init_fn, find_fn("__rt_init"), find_fn("init"), find_fn("__rt_frame_begin"),
-                     find_fn("update"), find_fn("draw"), find_fn("__rt_frame_end")};
-    for (size_t i = 0; i < sizeof roots / sizeof roots[0]; i++) if (roots[i]) mark_reachable(roots[i]);
-    /* functions named in reachable const data (which may make more data reachable) */
-    for (int changed = 1; changed;) {
-        changed = 0;
-        for (int i = 0; i < P->ndatas; i++) {
-            Sym *d = P->datas[i];
-            if (!d->reachable) continue;
-            for (int k = 0; k < d->ndfuncs; k++)
-                if (!d->dfuncs[k]->reachable) { mark_reachable(d->dfuncs[k]); changed = 1; }
-        }
-    }
-
     warn_entry_points(P);
 
     /* entry point and frame loop */
     buf_puts(out, "\n__start:\n");
     if (P->init_fn->body->n) buf_puts(out, "    call F__init_globals\n");
-    if (roots[1]) buf_puts(out, "    call F___rt_init\n");
-    if (roots[2]) buf_puts(out, "    call F_init\n");
+    if (roots[0]) buf_puts(out, "    call F___rt_init\n");
+    if (roots[1]) buf_puts(out, "    call F_init\n");
     buf_puts(out, ".frame:\n");
-    if (roots[3]) buf_puts(out, "    call F___rt_frame_begin\n");
-    if (roots[4]) buf_puts(out, "    call F_update\n");
-    if (roots[5]) buf_puts(out, "    call F_draw\n");
-    if (roots[6]) buf_puts(out, "    call F___rt_frame_end\n");
+    if (roots[2]) buf_puts(out, "    call F___rt_frame_begin\n");
+    if (roots[3]) buf_puts(out, "    call F_update\n");
+    if (roots[4]) buf_puts(out, "    call F_draw\n");
+    if (roots[5]) buf_puts(out, "    call F___rt_frame_end\n");
     else buf_puts(out, "    vsync\n");
     buf_puts(out, "    jmp .frame\n");
 

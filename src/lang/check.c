@@ -740,6 +740,7 @@ static Expr *check_name(Ctx *c, Expr *e) {
     case SY_GLOBAL:
         if (!c->fn) error_at(e->loc, "a constant cannot use the variable '%s' (constants are fixed when the cart is built)", s->name);
         if (!s->ty) error_at(e->loc, "'%s' is used in its own initialiser", s->name);
+        note_ref(c, s);
         e->ty = s->ty;
         return e;
     case SY_REG:
@@ -1913,7 +1914,7 @@ static const char *check_asm_refs(Ctx *c, const char *text, Loc loc) {
             if (!s) error_at(loc, "unknown name '{%s}' in asm block", name);
             if (s->k == SY_FUNC) { note_call(c, s->fn); if (c->fn) c->fn->has_call = 1; }
             else if (s->k == SY_CONST) resolve_const(s);
-            if (s->k == SY_DATA || s->k == SY_EMBED) note_ref(c, s);
+            if (s->k == SY_DATA || s->k == SY_EMBED || s->k == SY_GLOBAL) note_ref(c, s);
             if (s->k == SY_TYPE || s->k == SY_BUILTIN) error_at(loc, "'{%s}' in asm must name a variable, constant or function", name);
         }
         p = q;
