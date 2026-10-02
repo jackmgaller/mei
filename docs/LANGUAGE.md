@@ -232,8 +232,13 @@ word. In the assembly (`-S`) private symbols get a per-file suffix (`F_tile_free
 | `*T` | 4 | pointer to `T` |
 | `fn(T, U) -> R` | 16 | function value: a code address and up to 3 captured words (`fn(T)` returns nothing); 4-byte aligned |
 | enum | 1, 2 or 4 | an `enum` declaration; stored as its underlying integer type (default `s32`) |
-| `[N]T` | N × size | fixed-size array (`[4][4]u8` is an array of arrays) |
+| `[N]T` | N × size | fixed-size array (`[4][4]u8` is an array of arrays); `N` is any constant integer expression (below) |
 | struct | fields, padded | fields are aligned to their size (vectors and `mat4` to 4) |
+
+An array size is any constant integer expression, including constants, local constants,
+`len()` of an enum or of another array, and `sizeof`: `var grid: [W * H]u8`,
+`var per_kind: [len(Kind)]s32`, `var shadow: [len(TABLE)]s32`. Within the code, write `len(grid)`
+rather than repeating the expression, so the two cannot drift apart.
 
 Arithmetic happens in 32 bits. The 8- and 16-bit types exist for memory layout; a value read
 from one is sign- or zero-extended, a value stored into one is truncated.
