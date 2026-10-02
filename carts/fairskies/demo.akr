@@ -38,6 +38,7 @@ private var ready: bool
 var dm_ok: u32
 var dm_fixed: u32
 var dm_dropped: u32
+var dm_last_pid = -1
 
 const HAM_CODES: [16]u8 = [0x15, 0x02, 0x49, 0x5E, 0x64, 0x73, 0x38, 0x2F,
                            0xD0, 0xC7, 0x8C, 0x9B, 0xA1, 0xB6, 0xFD, 0xEA]
@@ -214,6 +215,7 @@ private fn accept() -> bool {
     if corrected { dm_fixed += 1 }
     let pid = (h & 0xFFFF) as s32
     if pid & 0xFFF == 0xFFF { return true }
+    dm_last_pid = pid
     let row = ((h >> 16) & 63) as s32
     let last = (h >> 23) & 1 != 0
     let ver = (h >> 24) as s32

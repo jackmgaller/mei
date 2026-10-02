@@ -358,17 +358,19 @@ fn draw() {
     let t = tick
     header_draw(t)
     let i = cur
+    var right = loc_name(i)
+    if tour_on { right = null }          // the tour shows the logo there
     match view {
         Now => {
-            banner_draw("Current Conditions", loc_name(i), sub_index(), sub_count())
+            banner_draw("Current Conditions", right, sub_index(), sub_count())
             now_draw(i, t)
         }
         Week => {
-            banner_draw("Extended Forecast", loc_name(i), sub_index(), sub_count())
+            banner_draw("Extended Forecast", right, sub_index(), sub_count())
             week_draw(i, t)
         }
         Hours => {
-            banner_draw("Next 24 Hours", loc_name(i), sub_index(), sub_count())
+            banner_draw("Next 24 Hours", right, sub_index(), sub_count())
             hours_draw(i, t)
         }
         Map => map_draw_page(i, t)
@@ -381,6 +383,7 @@ fn draw() {
             clock_draw(t)
         }
     }
+    if tour_on { tour_badge(t) }
     tr_draw()
     // the bottom line: the location's temperature and conditions
     var li = i
@@ -392,7 +395,6 @@ fn draw() {
         ic = icon_of(wx[li].cur.wmo as s32)
     }
     ldl_draw(t, ic, left, loc_night(li))
-    if tour_on { tour_badge(t) }
     overlays_draw(t)
     toast_draw()
 }
@@ -411,8 +413,8 @@ fn sub_count() -> s32 {
     return loc_views(cur, &vs[0])
 }
 
+// The tour wears the channel's logo, top right.
 private fn tour_badge(t: s32) {
-    let a = 0.75 + frame_wave(t, 180) / 4
-    rect_blend(232, 200, 84, 14, 0x2A0C04, BLEND_HALF)
-    txt_a(F_SMALL, 274, 201, "Local Forecast", col_scale(C_GOLD, a), ALIGN_CENTRE)
+    if tr_active() { return }
+    if view == View.Map { spr(LOGO, 138, 23) } else { spr(LOGO, 198, 13) }
 }

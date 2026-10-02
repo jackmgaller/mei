@@ -170,6 +170,8 @@ fn test_hook(f: s32) {
         print_int(view as s32)
         println("")
     }
+    if SCENARIO == 11 && f == 2 { go(View.Clock, 0) }
+    if TAPE_DEMO == 1 { return }            // the sample tape: screenshots only, the checks expect the fixture
     match SCENARIO {
         1 => {
             if f == 600 {
@@ -283,7 +285,6 @@ fn test_hook(f: s32) {
             }
         }
         11 => {
-            if f == 2 { go(View.Clock, 0) }
             if f == 600 {
                 assert_eq(view, View.Clock)
                 println("OK 11 clock")

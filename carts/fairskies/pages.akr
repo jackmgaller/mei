@@ -101,7 +101,7 @@ fn wait_draw(k: s32, rows: s32, t: s32) {
     var total = rx_rows(pid)
     if total == 0 { total = rows }
     if total > 1 {
-        let bw = min(5, 240 / total)
+        let bw = min(20, 240 / total)
         let x0 = cx - total * bw / 2
         var hi: u32 = 0
         let lo = rx_row_bits(pid, &hi)
@@ -506,7 +506,7 @@ fn regions_draw(t: s32) {
         if loc_is_national(j) {
             var nc = C_SOFT
             if j == reg_sel { nc = WHITE }
-            txt(F_SMALL, 140, y + 2, "Temperature map", nc)
+            txt_a(F_SMALL, 306, y + 2, "Temperature map", nc, ALIGN_RIGHT)
             continue
         }
         var cc = C_SOFT

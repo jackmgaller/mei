@@ -18,7 +18,46 @@ fn rx_use_demo(on: bool) {
 
 // Called once a frame, before the model looks at the slots.
 fn rx_frame() {
-    if rx_demo { dm_tick() }
+    if rx_demo {
+        dm_tick()
+        return
+    }
+    watch_raw()
+}
+
+// ---- the page going by: Teletext sets roll the header's page number while they search.
+// On the antenna this reads the chip's raw FIFO and decodes each packet's header itself.
+
+var rx_last_pid = -1             // page id of the latest packet seen (filler excluded)
+private var raw_on: bool
+private var tail: [10]u8         // the last ten bytes: a sync word and a header when aligned
+
+private fn watch_raw() {
+    if !raw_on {
+        bc_raw(true)
+        raw_on = true
+    }
+    var b: [64]u8
+    let n = bc_raw_read(&b[0], 64)
+    for i in 0..n {
+        for k in 0..9 { tail[k] = tail[k + 1] }
+        tail[9] = b[i]
+        if tail[0] == 0x55 && tail[1] == 0xA7 {
+            var h = 0
+            var ok = true
+            for k in 0..4 {
+                let v = bc_hamming(tail[2 + k] as s32)
+                if v < 0 { ok = false }
+                h = h | ((v & 15) << (4 * k))
+            }
+            if ok && h & 0xFFF != 0xFFF { rx_last_pid = h }
+        }
+    }
+}
+
+fn rx_passing() -> s32 {
+    if rx_demo { return dm_last_pid }
+    return rx_last_pid
 }
 
 fn rx_select(pid: s32) -> s32 { if rx_demo { return dm_select(pid) } return bc_select(pid) }

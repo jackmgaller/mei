@@ -129,6 +129,16 @@ fn header_draw(t: s32) {
     } else if !rx_locked() {
         st = "TUNING"
         if (t / 20) % 2 == 0 { sc = C_GOLD } else { sc = 0x2080C0 }
+    } else if hdr_flash && rx_passing() >= 0 {
+        // searching: the pages going by roll past, as on a Teletext set
+        let p = rx_passing()
+        let b = sbuf()
+        for k in 0..4 {
+            let d = (p >> ((3 - k) * 4) as u32) & 15
+            if d < 10 { str_append_char(b, SB, '0' + d) } else { str_append_char(b, SB, 'A' + d - 10) }
+        }
+        st = b
+        sc = C_GOLD
     }
     text(44, 3, st, sc)
     // date and time

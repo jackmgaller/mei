@@ -72,8 +72,10 @@ def city(page, lat, lon):
     for h in range(24):
         lh = (hour0 + h * 3600 + off_s) % 86400 / 3600.0
         # a day curve: coolest about 6 am, warmest about 3 pm (tomorrow a little warmer or cooler)
-        k = 0.5 - 0.5 * math.cos((lh - 6.0) / 9.0 * math.pi) if 6 <= lh <= 15 else \
-            0.5 + 0.5 * math.cos((lh - 15.0) / 15.0 * math.pi)
+        if 6 <= lh <= 15:
+            k = 0.5 - 0.5 * math.cos((lh - 6.0) / 9.0 * math.pi)
+        else:
+            k = 0.5 + 0.5 * math.cos(((lh - 15.0) % 24) / 15.0 * math.pi)
         t = lo + (hi - lo) * k + (days[0][1] - hi) * h / 24.0 * 0.5
         hpop = pop if cyc[h % len(cyc)] >= 50 else max(0, pop // 3 - 5)
         hours.append({"temp": round(t * 2) / 2, "wmo": cyc[h % len(cyc)], "pop": hpop, "wind": wind + (h % 5) - 2})
@@ -103,6 +105,10 @@ def grid_temp(lat, lon):
     t += blob(29.0, -90.0, 3.0, 6.0, 2.5)               # the Gulf coast
     t += blob(40.0, -96.0, 5.0, 4.0, 2.0)               # a warm afternoon in the Plains
     t += 1.5 * math.sin(lon / 6.0) * math.cos(lat / 5.0)    # a gentle wave
+    # a cool front across the Plains, from the upper Midwest down towards Oklahoma
+    d = (lat - 39.6) + 0.55 * (lon + 95.5)
+    t -= 5.0 / (1.0 + math.exp(-d / 0.8))
+    t += 2.0 * math.exp(-(d / 1.2) ** 2) * math.exp(-((lon + 96) / 8) ** 2)   # warm ahead of it
     return t
 
 
