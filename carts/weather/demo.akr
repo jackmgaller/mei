@@ -1,5 +1,5 @@
 // The sample tape: a recorded MeiNet broadcast (demo_tape.bin, made by
-// tools/gen_fairskies_tape.py from canned weather) played through a software model of the
+// tools/gen_weather_tape.py from canned weather) played through a software model of the
 // decoder chip (docs/BROADCAST.md, "Receiving" and "The decoder"). It feeds 16 bytes a tick
 // like the real line, so pages assemble and maps paint exactly as they would on air. Fair
 // Skies falls back to it when there is no signal and nothing saved (the web build), and the

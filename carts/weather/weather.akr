@@ -8,7 +8,7 @@
 // is no signal (the browser never has one: there, a recorded sample tape plays).
 //
 // The app is in app.akr, so the test scenarios (tests/) can import it with scripted input.
-// Art: tools/gen_fairskies_assets.py; music and sounds: tools/gen_fairskies_audio.py.
+// Art: tools/gen_weather_assets.py; music and sounds: tools/gen_weather_audio.py.
 cart "Fair Skies", "FAIR-SKIES"
 
 import "app.akr"

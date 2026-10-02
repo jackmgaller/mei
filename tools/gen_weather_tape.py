@@ -6,8 +6,8 @@ The home city is the fictional "Meiville" (in the middle of the country, on Cent
 tape is never mistaken for real weather. 64 seconds carry every page, every map included, and the
 tape loops seamlessly (it is whole packets, and nothing changes during it).
 
-Writes carts/fairskies/demo_tape.bin.
-    python3 tools/gen_fairskies_tape.py
+Writes carts/weather/demo_tape.bin.
+    python3 tools/gen_weather_tape.py
 """
 import math, os, sys
 
@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(HERE, 'meinet'))
 import meinet          # noqa: E402
 import weather         # noqa: E402
 
-OUT = os.path.join(os.path.dirname(HERE), 'carts', 'fairskies', 'demo_tape.bin')
+OUT = os.path.join(os.path.dirname(HERE), 'carts', 'weather', 'demo_tape.bin')
 START = 1790953200     # 2026-10-02 15:00 UTC: a Friday, mid-morning in the middle of the country
 SECONDS = 64
 HOME = ('Meiville', 38.9, -95.2)

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Makes the screenshots in carts/fairskies/screenshots/ and their contact sheets.
+# Makes the screenshots in carts/weather/screenshots/ and their contact sheets.
 # Most frames play the sample tape (TAPE=demo: the made-up weather of Meiville) through the
 # console's decoder; the receiving states use the gateway fixture or no signal at all.
 set -e
