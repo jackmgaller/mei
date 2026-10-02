@@ -654,7 +654,7 @@ per element (1,710), plus 2 per captured word for a closure. `filter(xs, fn(x) =
 | Where | What |
 |---|---|
 | ROM (`0x200000`) | code, `const` arrays/structs, strings, embedded files, vector constants |
-| RAM from `0x000100` | global variables (small ones first, so most are one instruction away) |
+| RAM from `0x000100` | global variables that are used (small ones first, so most are one instruction away) |
 | RAM below `0x200000` | the stack (grows down): locals that are not in registers, spills, call frames |
 
 `len()` and `sizeof()` describe sizes. Constant indexes are checked at compile time; other
@@ -690,10 +690,40 @@ release build is unchanged. The reports come from `__check_fail` and `__bounds_f
 
 Locals whose address is never taken live in registers when possible: the compiler numbers
 statements, gives each local a live range, and shares registers between locals whose ranges
-do not overlap. Locals that are live across a call use `r9`–`r13`; others may also use
-`r1`–`r4`. Vector locals stay in vector registers unless they are live across a call (vector
-registers are not preserved). Everything else (structs, arrays, matrices, address-taken
-variables, overflow) lives in the stack frame.
+do not overlap. A local may use any of `r1`–`r13` (caller-saved ones first, since the
+callee-saved `r9`–`r13` cost a save and a restore), keeping at least three registers free at
+every point for intermediate values; registers of locals that are not live at a statement serve
+as temporaries there. Functions are compiled callees first, and the compiler records which
+registers each one may change (read from its generated code, `asm fn`s included); a local
+that is live across calls may stay in any caller-saved register those particular calls leave
+alone (scalar or vector), else in `r9`–`r13`. A call through a function value, or to a function
+that leaves by other means than `ret` (a jump into another function, a new `sp`: tasks), counts
+as changing every caller-saved register. Everything else (structs, arrays, matrices,
+address-taken variables, overflow) lives in the stack frame.
+
+The compiler also:
+
+- **inlines** a call to a function whose whole body is `return E`, with `E` small and free of
+  calls (`btn(b)`, `upos(x, y)`, a tile-index helper), when the arguments make no calls and read
+  no I/O registers and an argument used more than once is a constant or a variable; the
+  function is still compiled for other uses (as a value, from `asm`);
+- **forwards `let`s**: a `let` of a constant, or a copy of a local nothing changes afterwards, is
+  replaced by its value everywhere, and a `let` built only from locals and constants is
+  substituted into its single use in a later simple statement of its block when nothing in
+  between assigns what it reads (`let r = (c & 31) * lr >> 8` ... `dst[i] = r | g << 5`); such
+  a `let` needs no register;
+- **steps pointers through arrays** in `for i in lo..hi`: `a[i]` and `&a[i]` on a global array,
+  const data, a local array or a pointer local the loop does not change become a pointer set
+  to `&a[lo]` and stepped by one element per iteration (up to three arrays per loop), so a use
+  costs no index arithmetic; a loop with a constant end, or an end that is a local the loop
+  does not change, compares with it directly;
+- multiplies by constants of the form (2^k ± 1)·2^s with shifts and an add or subtract, and
+  runs a peephole pass (forwarding a store or load to a following load of the same frame slot
+  or global, merging shifts, dropping jumps to the next instruction).
+
+Globals that no reachable code uses take no RAM (as unreachable functions take no ROM); their
+initialisers run only if they make calls. Global arrays of 16 bytes or more start on a 16-byte
+boundary.
 
 ## Assembly
 
@@ -760,6 +790,12 @@ and copies the value there.
 
 Frames: the callee lowers `sp` once in its prologue, saves `ra` (if it makes calls) and the
 callee-saved registers it uses at the top of its frame, and restores them before `ret`.
+
+The convention above is what every function may assume of a call. Compiled code also knows,
+for a direct call to a function compiled earlier, exactly which caller-saved registers that
+function changes, and keeps values in the others across the call (see [Memory](#memory)); an
+`asm fn` needs nothing for this beyond following the convention (its registers are read from
+its text, and one that returns other than by `ret` is assumed to change everything).
 
 **Function values** (16 bytes: code, c1, c2, c3) are passed and returned like vectors (in
 `v0`–`v3`, result in `v0`). A call through a value puts the code address in `r5` and the
@@ -1441,9 +1477,24 @@ the fog blend. Before them, a vertex cost 46 cycles (58 with fog), a visible Gou
 quad 187 (364 with fog) and a frame's ordering-table reset 3,600.
 
 Guidelines: integer `*` by a constant power of two and `fixed * int` are cheaper than `fmul`;
-`fdiv`/`div` cost 20 cycles; accessing a global costs one load or store; locals are in
-registers unless their address is taken; vector maths stays in vector registers within a
-function but vectors are spilled around calls; `-S` shows exactly what was generated.
+`fdiv`/`div` cost 20 cycles; accessing a global costs one load or store (two instructions
+for a global above `0x20000`, the large arrays); locals are in registers unless their address is
+taken; vector maths stays in vector registers within a function, and across calls to functions
+that leave those registers alone; small `return E` helpers cost nothing to call (they are
+inlined); `-S` shows exactly what was generated.
+
+**Compiler improvements, measured** (cycles; Check-In! and Lantern Lake averages over 500
+frames with the CPU clock made deterministic, so the work done is the same; before / after the
+register-allocation, inlining, `let` forwarding and induction-pointer work):
+
+| Workload | Before | After |
+|---|---|---|
+| Check-In! scenario 209 (floors up and down) | 165,626 | 140,160 (−15 %) |
+| Check-In! scenario 330 (busy hotel) | 138,661 | 115,670 (−17 %) |
+| Check-In! scenario 25 | 103,699 | 86,473 (−17 %) |
+| Lantern Lake, steady play | 205,982 | 194,469 (−6 %; half the frame is the asm mesh pipeline) |
+| Sun & Moon Orbs | 332,091 | 325,332 (−2 %; mostly the asm mesh pipeline) |
+| a face loop written in Akari (textured Gouraud quad) | 188 per face | 176 (the hand-written `__draw_faces_in`: 164) |
 
 ## Limitations
 
