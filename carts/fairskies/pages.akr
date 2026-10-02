@@ -74,8 +74,8 @@ fn wait_draw(k: s32, rows: s32, t: s32) {
         if platform_is_web() {
             txt_a(F_SMALL, cx, 144, "There is no broadcast in the browser.", C_SOFT, ALIGN_CENTRE)
         } else {
-            txt_a(F_SMALL, cx, 144, "Start the MeiNet gateway on this computer:", C_SOFT, ALIGN_CENTRE)
-            txt_a(F_TINY, cx, 160, "python3 tools/meinet/meinet.py", C_CYAN, ALIGN_CENTRE)
+            txt_a(F_SMALL, cx, 144, "The MeiNet station is starting up,", C_SOFT, ALIGN_CENTRE)
+            txt_a(F_SMALL, cx, 160, "or it is off the air.", C_SOFT, ALIGN_CENTRE)
         }
         txt_a(F_SMALL, cx, 184, "Press START to play the sample tape.", C_GOLD, ALIGN_CENTRE)
         return
