@@ -859,6 +859,75 @@ line_ex(10, 20, 90, 60, 2, rgb(60, 70, 110), rgb(200, 200, 120), BLEND_ADD)
 Each call builds one packet (two triangles for the rectangles, quads, lines and sprites; one for
 the triangles) and makes no other calls; when the packet arena is full it draws nothing.
 
+### Proportional text (`font.akr`)
+
+Besides the 8×8 `text()`, the library draws proportional fonts. The built-in one,
+`font_small()`, is a pixel font with 7-pixel capitals, 2-pixel descenders and a 10-pixel line
+(ASCII 32–126). It lives in texture slot 15 below the 8×8 font (rows 48–66, palette 255, both
+reserved) and is copied there the first time it is used.
+
+| | |
+|---|---|
+| `font_text(x, y, s, colour) -> s32` | draws `s` with the top-left of its first glyph at `(x, y)`; `\n` starts a new line. Returns the x after the last character |
+| `font_text_align(x, y, s, colour, align) -> s32` | each line `ALIGN_LEFT` (from x), `ALIGN_CENTRE` (centred on x) or `ALIGN_RIGHT` (ending at x) |
+| `text_width(s) -> s32` | the width of `s`: the sum of its characters' advances (the longest line) |
+| `font_line() -> s32` | the line advance |
+| `font_shadow(colour)`, `font_shadow_off()` | draw a 1-pixel drop shadow under the following text |
+| `font_use(f: *Font)` | the font of the following calls (`null`: `font_small()`) |
+| `font_load(f: *Font)` | copy a font's atlas and palette to VRAM, when its blob holds them |
+| `font_small() -> *Font` | the built-in font |
+
+The colour works as for `text()` (the tint `col_tint(colour)`; white shows the font's ink as it
+is). Characters the font lacks are skipped. A glyph costs about 45 cycles (the 8×8 `text()`:
+about 105), `text_width` about 30 cycles a character.
+
+**Fonts of your own** come from `tools/meifont.py`, which bakes a TrueType font (antialiased,
+optionally with a drop shadow baked in) or a pixel font into a blob: the glyph metrics and,
+unless `--no-texels`, the atlas rows and palette, for a given texture slot, first row and
+palette. Embed it and load it once:
+
+```
+// python3 tools/meifont.py --ttf Georgia.ttf --size 15 --shadow --slot 3 --palette 40 -o title.fnt
+embed TITLE: Font = "title.fnt"
+
+fn init() { font_load(TITLE) }
+
+fn draw() {
+    font_use(TITLE)
+    font_text_align(160, 30, "Lantern Lake", rgb(255, 220, 140), ALIGN_CENTRE)
+    font_use(null)                                   // back to font_small()
+}
+```
+
+The blob is a `Font` header (`height`, `line`, `first`, `count`, `slot`, `palette`, `row`, `rows`,
+`colours: [16]u16`) followed by a word per glyph (`u | v << 8 | w << 16 | advance << 24`) and
+`rows × 128` bytes of 4-bit texels; `tools/meifont.py` describes it, and its `--akr NAME` option
+writes it as an Akari `const` array instead (as `stdlib/font_small.akr` is made). A font atlas can
+also share a texture with other art: bake it with `--no-texels` at the rows the cart loads it to.
+
+### Strings (`str.akr`)
+
+Strings are NUL-terminated bytes. The `str_append*` functions add to the string already in a
+buffer of `cap` bytes (the NUL included), never write past it (the text is cut short instead),
+and return the buffer, so calls nest or chain:
+
+| | |
+|---|---|
+| `strlen(s) -> s32`, `streq(a, b) -> bool` | length; same bytes |
+| `str_copy(dst, cap, s) -> *u8` | replace the buffer's string with `s` |
+| `str_append(dst, cap, s) -> *u8`, `str_append_char(dst, cap, c) -> *u8` | |
+| `str_append_int(dst, cap, n, width, zero_pad) -> *u8` | `n` right-aligned in at least `width` characters, padded with `'0'` after the sign (`-007`) or with spaces (`  -7`) |
+| `str_append_fixed(dst, cap, f, decimals) -> *u8` | `f` rounded to 0–4 decimals, halves away from zero (`3.14`, `2.0`) |
+| `str_append_time(dst, cap, n) -> *u8` | `n / 60`, a colon and `n % 60` in two digits: seconds as m:ss (`125` → `2:05`), minutes as h:mm (`605` → `10:05`) |
+
+```
+var buf: [32]u8
+let b = &buf[0]
+str_copy(b, 32, "Day ")
+str_append_int(b, 32, day, 0, false)
+font_text_align(312, 8, str_append_time(str_copy(b, 32, ""), 32, minutes), CREAM, ALIGN_RIGHT)
+```
+
 ### Sound (`audio.akr`)
 
 Sixteen channels (0–15) of mono samples at 22,050 Hz, in 8-bit, 16-bit or 4-bit ADPCM, and a
