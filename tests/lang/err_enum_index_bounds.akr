@@ -1,0 +1,4 @@
+// error: index 4 is out of bounds for [4]s32
+enum E { A, B, C, D, Extra }
+var a: [4]s32
+fn init() { a[E.Extra] = 1 }

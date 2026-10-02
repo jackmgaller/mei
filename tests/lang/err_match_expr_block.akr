@@ -1,0 +1,2 @@
+// error: an arm of a match expression is a value, not a block
+fn f(k: s32) -> s32 { return match k { 0 => { 1 }, else => 2 } }

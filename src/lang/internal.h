@@ -34,6 +34,9 @@ SrcFile *src_register(const char *path, const char *text, size_t len);
 _Noreturn void error_at(Loc loc, const char *fmt, ...);
 _Noreturn void error_plain(const char *fmt, ...);
 void error_reset(char *buf, size_t len);
+void warn_at(Loc loc, const char *fmt, ...);   /* a warning (compilation goes on) */
+void warn_reset(void);
+char *warn_take(void);                          /* malloc'd text of the warnings, or NULL */
 extern void *g_error_jmp;   /* jmp_buf * */
 
 /* ---------------------------------------------------------------- lex.c */
@@ -78,7 +81,11 @@ typedef enum {
 } TyKind;
 
 typedef struct Type Type;
-typedef struct Field { const char *name; Type *type; int offset; Loc loc; } Field;
+typedef struct Field {
+    const char *name; Type *type; int offset; Loc loc;
+    struct Expr *def;      /* default value for struct literals that omit the field, or NULL */
+    int def_checked;
+} Field;
 
 struct Type {
     TyKind k;
@@ -137,6 +144,7 @@ typedef enum {
     E_INT, E_FIXED, E_BOOL, E_STR, E_NULL, E_NAME, E_UNARY, E_BINARY, E_CALL,
     E_INDEX, E_FIELD, E_CAST, E_ARRAY, E_STRUCT, E_SIZEOF, E_CONV,
     E_FUNC,       /* function literal */
+    E_MATCH,      /* match expression: a = scrutinee, arms[i].value the arm values */
 } ExprKind;
 
 /* Builtins implemented inline by the code generator. */
@@ -150,6 +158,7 @@ typedef enum {
 
 typedef struct Sym Sym;
 typedef struct Local Local;
+struct MatchArm;
 
 typedef struct Expr {
     ExprKind k;
@@ -179,18 +188,21 @@ typedef struct Expr {
     int elem_byref;        /* each(): the function takes a pointer to the element */
     struct Func *target;   /* intrinsics: the function applied, when known statically */
     int has_count;         /* intrinsics: an explicit element count was given */
+    struct MatchArm *arms; int narms;   /* E_MATCH */
+    Sym *chk;              /* meic -g: the message of this expression's run-time check (a string) */
 } Expr;
 
 typedef enum {
     S_BLOCK, S_EXPR, S_VAR, S_ASSIGN, S_IF, S_WHILE, S_FOR, S_BREAK, S_CONTINUE, S_RETURN, S_ASM,
-    S_MATCH,
+    S_MATCH, S_CONST,
 } StmtKind;
 
 typedef struct MatchArm {
     Loc loc;
     struct Expr **pats; int npats;   /* constant patterns; none for the else arm */
     int is_else;
-    struct Stmt *body;
+    struct Stmt *body;     /* match statement */
+    struct Expr *value;    /* match expression */
 } MatchArm;
 
 typedef struct AsmRef { const char *text; Loc loc; } AsmRef;
@@ -207,6 +219,9 @@ typedef struct Stmt {
     const char *asm_text; Loc asm_loc;
     Local *for_end;                /* S_FOR: hidden end-bound local */
     MatchArm *arms; int narms;     /* S_MATCH (var: hidden scrutinee local) */
+    int pos, pos2;                 /* codegen: live-range positions (loops: header, bottom) */
+    Local **ips; Expr **ipinit; int *ipstep; int nips;   /* S_FOR: induction pointers (&a[i]) */
+    int end_direct;                /* S_FOR: the end bound is a local the loop never changes: compare with it */
 } Stmt;
 
 struct Local {
@@ -216,10 +231,13 @@ struct Local {
     int immutable;
     int is_param;
     int is_loopvar;
+    int has_range;        /* a loop variable with constant bounds: its value is in [rlo, rhi) */
+    int64_t rlo, rhi;
     int is_capture;       /* a function literal's copy of a captured local (arrives in r6-r8) */
     int points_local;     /* pointer seen holding the address of local storage (dangling check) */
     int addr_taken;
     int in_asm;           /* named in an inline asm block: must live in a register */
+    Sym *csym;            /* a local `const`: its constant (the Local only names it in a scope) */
     int64_t weight;       /* use count weighted by loop depth */
     /* codegen */
     int home;             /* 0 memory, 1 scalar register, 2 vector register */
@@ -230,7 +248,12 @@ struct Local {
     int stack_arg_off;    /* param: offset in the caller's outgoing area (if not in a register) */
     int start, end;       /* live range in statement positions */
     int crosses_call;     /* a call (or asm block) happens inside the live range */
+    uint32_t clob;        /* registers those calls may change (as Func.clob) */
     int crosses_xfm;      /* a mat4 * vector (which loads v4-v7) happens inside the live range */
+    int dead;             /* never read or written (a constant loop bound's end local): no home */
+    int elided;           /* a `let` whose value was substituted into its uses: no home */
+    int captured;         /* a function literal captures it */
+    int nreads, nwrites;  /* uses as a value / plain assignments to it (meic -W) */
 };
 
 typedef struct Param { const char *name; TypeExpr *texpr; Type *ty; Loc loc; Local *local; } Param;
@@ -263,6 +286,13 @@ typedef struct Func {
     Loc *cap_locs;        /* first use of each capture */
     int ncaps, capcaps;
     int noescape;         /* literal passed straight to map/filter/... or called at once */
+    Sym *stack_msg;       /* meic -g: the message of the stack check at entry */
+    int inl;              /* inliner: 0 not decided, 1 inlinable (`return E` of a small pure E), 2 not */
+    Expr *inl_e;          /* the E of an inlinable function */
+    uint32_t clob;        /* codegen: registers a call to it may change (bits 1-8 r1-r8, 16-23 v0-v7) */
+    int clob_known;       /* clob is set (the function was generated before its callers) */
+    int weak;             /* `weak fn`: a default that another definition of the name replaces */
+    struct Func *overrides;   /* the weak function this one replaced (signatures must match) */
 } Func;
 
 typedef enum { SY_TYPE, SY_CONST, SY_DATA, SY_GLOBAL, SY_REG, SY_EMBED, SY_FUNC, SY_LOCAL, SY_BUILTIN } SymKind;
@@ -289,6 +319,7 @@ struct Sym {
     int is_str;            /* SY_DATA string literal */
     const char *str; size_t slen;
     int user;              /* declared by the cart (not the standard library) */
+    int priv;              /* `private`: visible in its file only; the file's number (from 1) */
     struct Func **dfuncs; int ndfuncs, capdfuncs;   /* SY_DATA: functions named in the data */
 };
 
@@ -298,7 +329,8 @@ typedef struct EnumDecl {
     Type *ty; int state;
 } EnumDecl;
 
-typedef struct StructDecl { const char *name; Loc loc; const char **fnames; TypeExpr **ftypes; Loc *flocs; int nf; Type *ty; } StructDecl;
+typedef struct StructDecl { const char *name; Loc loc; const char **fnames; TypeExpr **ftypes; Loc *flocs; int nf; Type *ty;
+                            struct Expr **fdefs; /* field defaults (NULL entries: none) */ } StructDecl;
 
 typedef struct Program {
     Func **funcs; int nfuncs, capfuncs;
@@ -310,6 +342,8 @@ typedef struct Program {
     Sym **regs; int nregs, capregs;
     const char *title;
     const char *cart_id;   /* `cart "Title", "ID"`: header bytes 40-55 (NULL: none) */
+    int debug;             /* MEI_CHECK_* bits (meic -g) */
+    int wextra;            /* meic -W */
     Func *init_fn;         /* synthesized global initialisers */
     uint32_t ram_end;
 } Program;
@@ -338,7 +372,11 @@ const uint8_t *compiler_load_binary(Compiler *C, const char *from_file, const ch
 Sym *sym_lookup_global(const char *name);              /* as seen from cart code */
 Sym *sym_lookup(const char *name, const char *from_file);
 Sym *sym_lookup_layer(const char *name, int layer);   /* 0: built-ins + stdlib, 1: cart */
+Sym *sym_lookup_private(const char *name, const char *file);   /* `private` in that file */
+Sym *sym_private_elsewhere(const char *name, const char *from_file);
+_Noreturn void error_unknown(Loc loc, const char *what, const char *name);
 void sym_define_global(Sym *s);
+void sym_define_private(Sym *s, const char *file);    /* sets s->priv */
 void mark_stdlib_file(const char *path);
 int file_is_stdlib(const char *path);
 void symtab_reset(void);

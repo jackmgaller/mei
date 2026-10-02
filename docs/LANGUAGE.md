@@ -30,7 +30,7 @@ fn draw() {
 1. [Building and running](#building-and-running)
 2. [Program structure](#program-structure)
 3. [Lexical rules](#lexical-rules)
-4. [Declarations](#declarations)
+4. [Declarations](#declarations) (and [private](#private-declarations), [weak](#weak-functions))
 5. [Types](#types)
 6. [Constants and conversions](#constants-and-conversions)
 7. [Operators](#operators)
@@ -58,15 +58,33 @@ mei-headless game.mei --frames 60 --dump frame.ppm   # run without a window
 ```
 
 Options: `--title TEXT` sets the cart title (otherwise the `cart` declaration, else the file
-name), `--no-stdlib` compiles without the standard library, `--release` drops `assert`s.
+name), `--no-stdlib` compiles without the standard library, `--release` drops `assert`s, and
+`-g`, `--trap-div` and `--trap-fmul` build a [debug cart](#debug-builds) with run-time checks,
+and `-W` turns on more warnings (below).
 
 The standard library (`stdlib/*.akr`) is compiled into every cart. `meic` looks for it in
-`$MEI_STDLIB`, then in `<directory of meic>/../stdlib`. Only functions a cart can reach are
-emitted. The library API `meic_compile()` (`src/lang/lang.h`) takes a file-reader callback,
+`$MEI_STDLIB`, then in `<directory of meic>/../stdlib`. Only functions and global variables a
+cart can reach are emitted. The library API `meic_compile()` (`src/lang/lang.h`) takes a file-reader callback,
 so the compiler can run without a file system (for example in the browser).
 
 Errors stop compilation and are reported as `file:line:col: error: message`, followed by the
-source line and a caret.
+source line and a caret. Warnings (`file:line:col: warning: ...`) do not stop it. One warning is
+always on: a function of the cart that is never called and whose name is a near miss of an
+entry point (`Update`, `drw`, `int`, ...), or `main`/`setup`/`loop`/... in a cart that defines
+none of `init`, `update` and `draw`, is reported, since the runtime only calls those three.
+
+`meic -W` also reports, in the cart's own files (not the standard library):
+
+- a local variable that is never used, or only assigned (`'x' is assigned but its value is never
+  read`), and a function parameter that is never used. A name starting with `_` is exempt, so
+  `fn hook(_frame: s32) {}` documents an intentionally unused parameter;
+- a local variable (or constant, or an inner loop's variable) with the same name as the
+  variable of a loop it is inside, which hides it for the rest of the block;
+- a call statement whose `bool` result is dropped (`try_place(x, y)` where `if try_place(x, y)`
+  was meant). To drop it on purpose, write `let _ = try_place(x, y)`: `_` may be declared any
+  number of times in a block.
+
+Loop variables and function literals of the `fn(x) => expr` form are not reported as unused.
 
 ## Program structure
 
@@ -84,7 +102,8 @@ The frame loop is: begin frame (reset the ordering table and packet memory) → 
 for `btnp`) → `vsync`. Output appears on the debug console through `print*` functions.
 
 `import "other.akr"` includes another file (path relative to the importing file). Each file is
-compiled once however often it is imported; all files share one global namespace. A cart may
+compiled once however often it is imported; all files share one global namespace, except for
+names declared `private` (see [Private declarations](#private-declarations)). A cart may
 reuse a name the standard library defines (`A`, `sin`, ...): the cart sees its own
 declaration and the library keeps using its own.
 
@@ -94,6 +113,23 @@ declaration and the library keeps using its own.
 - Statements end at a newline or `;`. A newline inside `( )` or `[ ]`, or after an operator or
   comma, does not end a statement. A `{` may start on the next line, and `else` may follow a
   line break after `}`.
+- A line that starts with an operator that can only stand between two values continues the
+  expression on the line above: `+ / % ^ | < > <= >= << >> == != && || . as` (and the compound
+  assignments `+= |= ...`). Comments and blank lines in between are fine:
+
+  ```
+  let total = base
+      + bonus * 2
+      + extra
+  let ready = loaded
+      && !paused       // still one expression
+  ```
+
+  `-`, `*` and `&` are unary operators too (negation, dereference, address), so a line that starts
+  with one of them begins a new statement (`*p = 0` is an assignment). Writing `- c` on its own
+  line to continue a subtraction is reported ("a line that starts with '-' begins a new
+  statement..."); end the line above with the operator instead (`a + b -` then `c`), or wrap the
+  whole expression in parentheses.
 - Identifiers: `[A-Za-z_][A-Za-z0-9_]*`. Names starting with `__` are used by the standard
   library.
 - Integer literals: `42`, `0x2A`, `0b101010`, with `_` separators (`1_000_000`). Character
@@ -103,8 +139,9 @@ declaration and the library keeps using its own.
 - String literals `"text"` are NUL-terminated byte arrays in ROM; escapes: `\n \t \r \0 \\ \"
   \' \xHH`.
 - Keywords: `fn var let const struct enum if else while for in match break continue return
-  import asm reg embed as true false null cart`. `=>` separates match patterns from arms and
-  starts an expression-bodied function literal.
+  import asm reg embed as true false null cart assert assert_eq`. Using one as a name is an
+  error that says so ("'reg' is a keyword and cannot be used as a variable name"). `=>`
+  separates match patterns from arms and starts an expression-bodied function literal.
 
 ## Declarations
 
@@ -116,7 +153,7 @@ declaration and the library keeps using its own.
 | `var name: T` / `var name: T = expr` / `var name = expr` | a global variable in RAM |
 | `reg NAME: T @ address` | a memory-mapped register; `T` must be 32 bits (`u32`, `s32`, `fixed`, a pointer) |
 | `embed NAME: T = "file" [, offset [, length]]` | the bytes of a file, placed in ROM; `NAME` is a `*T` |
-| `struct Name { field: T, ... }` | a structure (fields separated by commas or newlines) |
+| `struct Name { field: T, ... }` | a structure (fields separated by commas or newlines; `field: T = constant` gives a default, below) |
 | `enum Name { A, B = 5, ... }` / `enum Name: u8 { ... }` | an enumeration (see [Enums and match](#enums-and-match)) |
 | `fn name(a: T, ...) -> R { ... }` | a function (`-> R` omitted: no result) |
 | `asm fn name(a: T, ...) -> R { ... }` | a function written in assembly |
@@ -156,8 +193,66 @@ A function named only in const data is still compiled in (when the data is used)
 literals, addresses of variables (`&g`) and single constants holding an address
 (`const M: *Mesh = FERN`; use `FERN` itself) are not allowed.
 
+A struct literal `Name { field: value, ... }` sets the fields it names; the others are zero,
+unless the field has a **default**: a constant written after its type. An omitted field whose
+type is a struct with defaults gets those defaults (fields that are arrays of structs stay zero).
+
+```
+struct Guest { hp: s32 = 100, mood: Mood = Mood.Happy, speed: fixed = 0.5, room: s16 = -1, name_id: u8 }
+var g = Guest { name_id: 3 }          // hp 100, mood Happy, speed 0.5, room -1, name_id 3
+guests[i] = Guest{}                   // back to the defaults (as a "reset")
+var blank: Guest                      // all zero: defaults apply only to literals
+```
+
+Defaults are only used by struct literals: a declared variable, a global and an array element are
+zero until assigned, as before, so adding a default changes only the literals that omit that
+field. A default must be a single value (scalar, vector, enum, pointer, bool), not a
+struct, array or `mat4`, and a constant.
+
 Everything at the top level is visible everywhere (declaration order does not matter, except
-for initialisers that read other globals).
+for initialisers that read other globals), unless it is `private`.
+
+### Private declarations
+
+`private` in front of a top-level `fn`, `asm fn`, `var`, `const`, `struct`, `enum`, `embed` or
+`reg` makes the name visible only in the file that declares it. Two files may each have a
+private name that is the same, and a private name hides a public name of the same name (from
+another file, or the standard library) inside its own file:
+
+```
+// shop.akr                            // hotel.akr
+private var money = 0                  private var money: fixed = 0.0
+private fn tile_free(i: s32) -> bool   private fn tile_free(i: s32) -> bool
+fn shop_buy(n: s32) { money -= n }     fn hotel_rent() { money += 1.5 }
+```
+
+Without `private` everything is public, as before. A private name used from another file is
+reported as such ("'tile_free' is private to shop.akr (declared at line 2), so it cannot be used
+from this file"); within one file a name may still be declared only once. Private functions can
+still be handed out as values, and private types can appear in public signatures (only the
+*name* is private). `init`, `update` and `draw` cannot be private (the runtime calls them).
+`private` is only special at the start of a top-level declaration, so it is not a reserved
+word. In the assembly (`-S`) private symbols get a per-file suffix (`F_tile_free$p2`).
+
+### Weak functions
+
+`weak fn` (or `weak asm fn`) declares a default: if another file defines a function with the
+same name (without `weak`), that definition replaces the default everywhere, including the calls
+in the file that declares the default; otherwise the default is used. A test harness or a
+variant of a cart can then replace hooks without the game's files knowing about it:
+
+```
+// game.akr                                       // harness.akr (imports game.akr)
+weak fn input_pad(frame: s32) -> u32 {            fn input_pad(frame: s32) -> u32 {
+    return PAD1                                       return SCRIPT[frame % len(SCRIPT)]
+}                                                 }
+```
+
+The replacing function must have the same parameter and result types (otherwise an error names
+the default's signature), and a name may have only one weak default (per cart; a cart's
+definition, weak or not, also replaces a weak standard-library function). The order of the files
+does not matter. The replaced default is dropped (it takes no ROM). `weak` is only special at
+the start of a top-level declaration, and cannot be combined with `private`.
 
 ## Types
 
@@ -173,8 +268,13 @@ for initialisers that read other globals).
 | `*T` | 4 | pointer to `T` |
 | `fn(T, U) -> R` | 16 | function value: a code address and up to 3 captured words (`fn(T)` returns nothing); 4-byte aligned |
 | enum | 1, 2 or 4 | an `enum` declaration; stored as its underlying integer type (default `s32`) |
-| `[N]T` | N × size | fixed-size array (`[4][4]u8` is an array of arrays) |
+| `[N]T` | N × size | fixed-size array (`[4][4]u8` is an array of arrays); `N` is any constant integer expression (below) |
 | struct | fields, padded | fields are aligned to their size (vectors and `mat4` to 4) |
+
+An array size is any constant integer expression, including constants, local constants,
+`len()` of an enum or of another array, and `sizeof`: `var grid: [W * H]u8`,
+`var per_kind: [len(Kind)]s32`, `var shadow: [len(TABLE)]s32`. Within the code, write `len(grid)`
+rather than repeating the expression, so the two cannot drift apart.
 
 Arithmetic happens in 32 bits. The 8- and 16-bit types exist for memory layout; a value read
 from one is sign- or zero-extended, a value stored into one is truncated.
@@ -290,6 +390,7 @@ assignment copies the whole value.
 var x: s32                 // a local variable, zero-initialised
 var y = 10                 // type inferred (s32)
 let z = x + y              // immutable
+const N = 8                // a local constant (see below)
 x = 5
 x += 1
 
@@ -317,6 +418,21 @@ counts with `bltu` when the bounds are `u32`).
 
 Only calls and assignments can be statements (`x + 1` alone is an error). A function with a
 result must `return` on every path.
+
+**Local constants.** `const NAME = expr` and `const NAME: T = expr` work inside functions too,
+with the same rules as at the top level (the value must be known when the cart is built;
+arrays, structs and strings become read-only data in ROM). A local constant is visible from
+its declaration to the end of its block, may hide a global of the same name, and can be used
+in array lengths (`var buf: [N * 2]u8`), in `asm` blocks (`{N}` is its value) and in function
+literals (constants are not captured; they cost nothing):
+
+```
+fn spread() {
+    const STEPS = 4
+    const WEIGHTS: [STEPS]fixed = [0.4, 0.3, 0.2, 0.1]
+    for i in 0..STEPS { ... WEIGHTS[i] ... }
+}
+```
 
 ### assert
 
@@ -363,6 +479,25 @@ An enum is its own type: it does not mix with integers or with other enums. `==`
 with `as`: `s as s32`, `2 as Dir` (no check that the value is a variant). Enums work in
 constants, globals, struct fields and arrays, and as parameters and results.
 
+**Enums as indices and loops.** An enum value indexes an array or pointer directly: the index is
+its underlying value (`speed[Dir.Left]`; a constant index is checked against the array length
+when the cart is built). `len(Dir)` is the number of variants, a constant, so an array with one
+element per variant is `[len(Dir)]T`. `for d in Dir { ... }` runs once per variant in order of
+value, with `d` of type `Dir`; it needs the variants' values to be consecutive (as they are
+with the default numbering), and compiles to an ordinary counted loop. `for d in Dir.Down..Dir.Right`
+counts through the values from `Dir.Down` up to (not including) `Dir.Right`, with `d` a `Dir`.
+
+```
+enum Dir { Up, Down, Left, Right }
+var speed: [len(Dir)]s32
+const NAMES: [len(Dir)]*u8 = ["up", "down", "left", "right"]
+
+for d in Dir { speed[d] = 0 }
+println(NAMES[Dir.Left])
+```
+
+No sentinel variant (`Count`) is needed, so a `match` on the enum stays exhaustive without one.
+
 **match** chooses one arm by value:
 
 ```
@@ -387,8 +522,30 @@ match n {
 - A match on an enum must handle every variant or have an `else` arm; the compiler lists the
   missing variants. A match on an integer must have an `else` arm. A value may appear in only
   one pattern, and `else` must come last.
-- `match` is a statement. A function can end with a `match` whose arms all `return`.
+- A function can end with a `match` statement whose arms all `return`.
 - It compiles to a chain of `beq` compares (2 cycles per pattern tested when taken, 1 when not).
+
+**match as an expression.** Where a value is expected, `match` yields the value of the arm that
+runs. Each arm is one expression (not a block); arms end at a newline or a comma:
+
+```
+let name = match kind { Apple => "apple", Pear => "pear", Plum => "plum" }
+let bonus = match streak {
+    0 => 0
+    1, 2 => streak * 10
+    else => 50
+}
+return 1000 + match k { A => f(1), else => g() }
+```
+
+The patterns follow the rules above (an enum match must cover every variant or have `else`, an
+integer match needs `else`). Every arm must yield a value of one type: the type the context
+expects (`let b: u8 = match ...`, an argument, a return value), otherwise the first arm's type
+(arms that are only untyped constants give `s32`, or `fixed` if one of them is a fixed-point
+constant). Any type works, structs and arrays included. A constant value with constant arms is
+folded at compile time (`const C = match MODE { 0 => 10, else => 20 }`). The arms compile to
+the same compare chain; the last arm is reached by falling through, so it also takes a value no
+pattern names (an enum converted from an out-of-range integer) and the result is always set.
 
 ## Functions as values
 
@@ -496,7 +653,7 @@ These are compiled inline (no call) and work on several types:
 | `nclip(p0, p1, p2) -> s32` | twice the signed area of a screen triangle; negative when counter-clockwise on screen (front-facing). Arguments are packed positions `(x & 0xFFFF) \| (y << 16)` |
 | `otz(bias, depth, scale) -> s32` | ordering-table bucket: `bias + floor(depth * scale)`, clamped to 0..1023 (`depth`, `scale` are `fixed`) |
 | `clerp(from, to, t) -> u32` | blend two colours (each of the four bytes) by `t` (`fixed`, clamped to 0..1, rounded down) |
-| `len(x)` | element count of an array or embedded asset (a constant) |
+| `len(x)` | element count of an array or embedded asset, or the number of variants of an enum type (`len(Dir)`); a constant |
 | `sizeof(T)` | size of a type in bytes (a constant) |
 | `bits(f)`, `from_bits(n)` | reinterpret `fixed` ↔ `s32` |
 | `T(x)` | conversion, same as `x as T` |
@@ -552,20 +709,76 @@ per element (1,710), plus 2 per captured word for a closure. `filter(xs, fn(x) =
 | Where | What |
 |---|---|
 | ROM (`0x200000`) | code, `const` arrays/structs, strings, embedded files, vector constants |
-| RAM from `0x000100` | global variables (small ones first, so most are one instruction away) |
+| RAM from `0x000100` | global variables that are used (small ones first, so most are one instruction away) |
 | RAM below `0x200000` | the stack (grows down): locals that are not in registers, spills, call frames |
 
-`len()` and `sizeof()` describe sizes; there is no bounds checking at run time (constant
-indexes are checked at compile time). Recursion is allowed; there is no stack-overflow check,
-so very deep recursion runs into the globals. ROM data is read-only: writing through a pointer
-into ROM faults.
+`len()` and `sizeof()` describe sizes. Constant indexes are checked at compile time; other
+indexes are checked at run time only in a [debug build](#debug-builds). Recursion is allowed;
+very deep recursion runs into the globals (a debug build stops it at the function entry that
+would). ROM data is read-only: writing through a pointer into ROM faults.
+
+### Debug builds
+
+`meic -g` adds run-time checks. A failed check reports like a failed `assert` (on the debug
+console, then a `Break` fault; `mei-headless` exits with status 2) and names the source line:
+
+```
+check failed: game.akr:42: index out of bounds for 'tiles' ([64]u8)
+  index 64, length 64
+check failed: game.akr:7: stack overflow entering walk() (too deep a recursion, or too many locals: the stack ran into the global variables)
+```
+
+| Option | Checks |
+|---|---|
+| `-g` | every array (and `mat4` row) index that is not a constant: `(unsigned) index < length`, so negative indexes fail too; the stack at every function entry that has a frame: `sp` must stay above the globals |
+| `--trap-div` | `-g`, plus integer and fixed-point division (and `%`) by zero, which otherwise gives 0 |
+| `--trap-fmul` | `-g`, plus fixed-point `*` whose product does not fit `fixed` (best effort: an overflow within about 1 % of the limit can go unreported, but no valid product is reported) |
+
+An index check costs 3 cycles (a constant length into a register and a `bgeu`); it is left out
+where the index is provably in range: a `for` loop variable whose constant bounds fit the
+array (`for i in 0..len(a) { a[i] }`), `i & K` with a constant `K` below the length, and a `u8`
+index into an array of 256 or more. The stack check costs 2-3 cycles per call. Indexing
+through a pointer (`p[i]`) is not checked: a pointer has no length. The failure paths are out
+of line, after each function's `ret`. Without these options no checking code is generated: a
+release build is unchanged. The reports come from `__check_fail` and `__bounds_fail` in
+`stdlib/debug.akr`. On Check-In! a `-g` build uses about 4-5 % more cycles.
 
 Locals whose address is never taken live in registers when possible: the compiler numbers
 statements, gives each local a live range, and shares registers between locals whose ranges
-do not overlap. Locals that are live across a call use `r9`–`r13`; others may also use
-`r1`–`r4`. Vector locals stay in vector registers unless they are live across a call (vector
-registers are not preserved). Everything else (structs, arrays, matrices, address-taken
-variables, overflow) lives in the stack frame.
+do not overlap. A local may use any of `r1`–`r13` (caller-saved ones first, since the
+callee-saved `r9`–`r13` cost a save and a restore), keeping at least three registers free at
+every point for intermediate values; registers of locals that are not live at a statement serve
+as temporaries there. Functions are compiled callees first, and the compiler records which
+registers each one may change (read from its generated code, `asm fn`s included); a local
+that is live across calls may stay in any caller-saved register those particular calls leave
+alone (scalar or vector), else in `r9`–`r13`. A call through a function value, or to a function
+that leaves by other means than `ret` (a jump into another function, a new `sp`: tasks), counts
+as changing every caller-saved register. Everything else (structs, arrays, matrices,
+address-taken variables, overflow) lives in the stack frame.
+
+The compiler also:
+
+- **inlines** a call to a function whose whole body is `return E`, with `E` small and free of
+  calls (`btn(b)`, `upos(x, y)`, a tile-index helper), when the arguments make no calls and read
+  no I/O registers and an argument used more than once is a constant or a variable; the
+  function is still compiled for other uses (as a value, from `asm`);
+- **forwards `let`s**: a `let` of a constant, or a copy of a local nothing changes afterwards, is
+  replaced by its value everywhere, and a `let` built only from locals and constants is
+  substituted into its single use in a later simple statement of its block when nothing in
+  between assigns what it reads (`let r = (c & 31) * lr >> 8` ... `dst[i] = r | g << 5`); such
+  a `let` needs no register;
+- **steps pointers through arrays** in `for i in lo..hi`: `a[i]` and `&a[i]` on a global array,
+  const data, a local array or a pointer local the loop does not change become a pointer set
+  to `&a[lo]` and stepped by one element per iteration (up to three arrays per loop), so a use
+  costs no index arithmetic; a loop with a constant end, or an end that is a local the loop
+  does not change, compares with it directly;
+- multiplies by constants of the form (2^k ± 1)·2^s with shifts and an add or subtract, and
+  runs a peephole pass (forwarding a store or load to a following load of the same frame slot
+  or global, merging shifts, dropping jumps to the next instruction).
+
+Globals that no reachable code uses take no RAM (as unreachable functions take no ROM); their
+initialisers run only if they make calls. Global arrays of 16 bytes or more start on a 16-byte
+boundary.
 
 ## Assembly
 
@@ -632,6 +845,12 @@ and copies the value there.
 
 Frames: the callee lowers `sp` once in its prologue, saves `ra` (if it makes calls) and the
 callee-saved registers it uses at the top of its frame, and restores them before `ret`.
+
+The convention above is what every function may assume of a call. Compiled code also knows,
+for a direct call to a function compiled earlier, exactly which caller-saved registers that
+function changes, and keeps values in the others across the call (see [Memory](#memory)); an
+`asm fn` needs nothing for this beyond following the convention (its registers are read from
+its text, and one that returns other than by `ret` is assumed to change everything).
 
 **Function values** (16 bytes: code, c1, c2, c3) are passed and returned like vectors (in
 `v0`–`v3`, result in `v0`). A call through a value puts the code address in `r5` and the
@@ -1313,22 +1532,36 @@ the fog blend. Before them, a vertex cost 46 cycles (58 with fog), a visible Gou
 quad 187 (364 with fog) and a frame's ordering-table reset 3,600.
 
 Guidelines: integer `*` by a constant power of two and `fixed * int` are cheaper than `fmul`;
-`fdiv`/`div` cost 20 cycles; accessing a global costs one load or store; locals are in
-registers unless their address is taken; vector maths stays in vector registers within a
-function but vectors are spilled around calls; `-S` shows exactly what was generated.
+`fdiv`/`div` cost 20 cycles; accessing a global costs one load or store (two instructions
+for a global above `0x20000`, the large arrays); locals are in registers unless their address is
+taken; vector maths stays in vector registers within a function, and across calls to functions
+that leave those registers alone; small `return E` helpers cost nothing to call (they are
+inlined); `-S` shows exactly what was generated.
+
+**Compiler improvements, measured** (cycles; Check-In! and Lantern Lake averages over 500
+frames with the CPU clock made deterministic, so the work done is the same; before / after the
+register-allocation, inlining, `let` forwarding and induction-pointer work):
+
+| Workload | Before | After |
+|---|---|---|
+| Check-In! scenario 209 (floors up and down) | 165,626 | 140,160 (−15 %) |
+| Check-In! scenario 330 (busy hotel) | 138,661 | 115,670 (−17 %) |
+| Check-In! scenario 25 | 103,699 | 86,473 (−17 %) |
+| Lantern Lake, steady play | 205,982 | 194,469 (−6 %; half the frame is the asm mesh pipeline) |
+| Sun & Moon Orbs | 332,091 | 325,332 (−2 %; mostly the asm mesh pipeline) |
+| a face loop written in Akari (textured Gouraud quad) | 188 per face | 176 (the hand-written `__draw_faces_in`: 164) |
 
 ## Limitations
 
 - No generics (except the built-ins above), unions, slices, methods or operator overloading.
 - Closures capture at most 3 one-word values, by copy, read-only (no vectors, structs, arrays or
-  function values). `match` is a statement, not an expression. Const data may hold named
-  functions and the addresses of embeds, strings and const data, but not function literals or
-  addresses of variables.
-- No local `const` declarations (declare constants at the top level).
+  function values). Const data may hold named functions and the addresses of embeds, strings
+  and const data, but not function literals or addresses of variables.
+- The arms of a `match` expression are single expressions (use a `match` statement for blocks).
 - Multi-lane swizzles cannot be assigned; vectors cannot be compared with `==`.
 - `for` loops count up by one; there is no `..=` or step.
-- No run-time bounds or stack-overflow checks. The locals of one function may use at most
-  120 KB of stack (make large arrays global).
+- Run-time bounds and stack-overflow checks only in a debug build (`meic -g`). The locals of
+  one function may use at most 120 KB of stack (make large arrays global).
 - One error is reported per compilation.
 - Struct, array and matrix parameters are read-only (passed by reference).
 - `mesh()` draws at most 2,048 vertices per mesh. Faces crossing the near plane are clipped in
@@ -1340,5 +1573,6 @@ function but vectors are spilled around calls; `-S` shows exactly what was gener
 `tests/run_lang_tests.sh` (run by `make test`) compiles every `tests/lang/*.akr`, runs it with
 `mei-headless` and compares the debug output with the file's `// expect:` lines (`// frames: N`,
 `// pad1: HEX`, `// error: TEXT`, `// exit: N` (e.g. 2 for a failed `assert`) and
-`// flags: ARGS` (extra `meic` arguments) adjust a test). `tools/fuzz_lang.py [count] [seed]` compiles
+`// flags: ARGS` (extra `meic` arguments) and `// warning: TEXT` (the build must give this
+warning; with several such lines, exactly that many warnings) adjust a test). `tools/fuzz_lang.py [count] [seed]` compiles
 random programs and checks their output against a Python model of the CPU's arithmetic.

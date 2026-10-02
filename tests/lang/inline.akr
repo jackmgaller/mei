@@ -1,0 +1,32 @@
+// Small functions are inlined; the results must be those of real calls.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+var g = 10
+var calls = 0
+var arr: [8]s32
+
+fn sq(x: s32) -> s32 { return x * x }                    // parameter used twice
+fn pick(a: s32, b: s32) -> s32 { return b }              // a unused
+fn pos(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
+fn at(i: s32) -> s32 { return arr[i & 7] }
+fn bump() -> s32 { calls += 1; g += 1; return g }
+fn mix(a: fixed, b: fixed) -> fixed { return a * 2.0 - b }
+fn small(x: u8) -> s32 { return x as s32 + 1 }
+
+fn init() {
+    for i in 0..8 { arr[i] = i * 3 }
+    p(sq(7))                         // expect: 49
+    p(sq(g + 1))                     // expect: 121
+    p(sq(bump()))                    // expect: 121
+    p(calls)                         // expect: 1
+    p(pick(bump(), 5))               // expect: 5
+    p(calls)                         // expect: 2
+    p(pos(-1, 3) as s32)             // expect: 262143
+    p(at(5) + at(13))                // expect: 30
+    print_fixed(mix(1.5, 0.25)); println("")   // expect: 2.75
+    p(small(255))                    // expect: 256
+    let h = pick(1, g) + sq(pick(2, 3))
+    p(h)                             // expect: 21
+    let f = sq                       // still a real function
+    p(f(9))                          // expect: 81
+}

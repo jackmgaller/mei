@@ -1,5 +1,7 @@
 /* meic: the Mei language compiler.
- *   meic game.akr [-o game.mei] [-S game.s] [--sym game.sym] [--title T] [--no-stdlib]
+ *   meic game.akr [-o game.mei] [-S game.s] [--sym game.sym] [--title T] [--no-stdlib] [--release]
+ *        [-g] [--trap-div] [--trap-fmul]   (run-time checks: see docs/LANGUAGE.md)
+ *        [-W]                              (more warnings) 
  * The standard library is found through $MEI_STDLIB, else <dir of meic>/../stdlib. */
 #define _DEFAULT_SOURCE 1
 #define _XOPEN_SOURCE 700
@@ -12,7 +14,8 @@
 #include <unistd.h>
 
 static void usage(void) {
-    fprintf(stderr, "usage: meic game.akr [-o game.mei] [-S game.s] [--sym game.sym] [--title TITLE] [--no-stdlib] [--release]\n");
+    fprintf(stderr, "usage: meic game.akr [-o game.mei] [-S game.s] [--sym game.sym] [--title TITLE] [--no-stdlib] [--release]\n"
+                    "            [-g] [--trap-div] [--trap-fmul] [-W]\n");
     exit(1);
 }
 
@@ -61,6 +64,10 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--title") && i + 1 < argc) opt.title = argv[++i];
         else if (!strcmp(argv[i], "--no-stdlib")) opt.no_stdlib = 1;
         else if (!strcmp(argv[i], "--release")) opt.no_asserts = 1;
+        else if (!strcmp(argv[i], "-g")) opt.debug |= MEI_CHECK_BOUNDS;
+        else if (!strcmp(argv[i], "-W")) opt.extra_warnings = 1;
+        else if (!strcmp(argv[i], "--trap-div")) opt.debug |= MEI_CHECK_BOUNDS | MEI_CHECK_DIV;
+        else if (!strcmp(argv[i], "--trap-fmul")) opt.debug |= MEI_CHECK_BOUNDS | MEI_CHECK_FMUL;
         else if (argv[i][0] == '-' ) usage();
         else if (!in) in = argv[i];
         else usage();
@@ -82,11 +89,15 @@ int main(int argc, char **argv) {
     if (!env || !*env) { dir = exe_stdlib_dir(argv[0]); opt.stdlib_dir = dir; }
     char *text = NULL;
     if (asm_out) opt.asm_text = &text;
+    char *warnings = NULL;
+    opt.warnings = &warnings;
     MeiAsmResult res;
     char err[2048];
     int rc = meic_compile(in, &opt, &res, err, sizeof err);
     if (asm_out && text) write_file(asm_out, text, strlen(text));
     free(text);
+    if (warnings) fprintf(stderr, "%s\n", warnings);
+    free(warnings);
     if (rc != 0) {
         fprintf(stderr, "%s\n", err);
         return 1;

@@ -1,0 +1,3 @@
+// error: 'money' is already defined at
+var money = 1
+private var money = 2

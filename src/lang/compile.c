@@ -149,7 +149,10 @@ int meic_compile(const char *path, const MeiCompileOptions *opt, MeiAsmResult *o
     g_error_jmp = &jb;
     error_reset(err, errlen);
     Buf text = {0};
+    warn_reset();
+    if (opt->warnings) *opt->warnings = NULL;
     if (setjmp(jb)) {
+        warn_reset();
         buf_free(&text);
         symtab_reset();
         ar_free_all();
@@ -180,9 +183,13 @@ int meic_compile(const char *path, const MeiCompileOptions *opt, MeiAsmResult *o
     compiler_import(&C, NULL, path, (Loc){0});
     if (opt->title) P->title = opt->title;
     if (!P->title) P->title = basename_noext(path);
+    P->debug = opt->debug;
+    P->wextra = opt->extra_warnings;
     check_program(P);
     gen_program(P, &text);
     if (opt->asm_text) *opt->asm_text = strdup(text.p ? text.p : "");
+    if (opt->warnings) *opt->warnings = warn_take();
+    else warn_reset();
 
     const char *asm_name = ar_printf("%s.s", basename_noext(path));
     int r = mei_assemble(text.p ? text.p : "", asm_name, out);

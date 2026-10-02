@@ -1,0 +1,45 @@
+// Struct field defaults: used by struct literals that omit the field (declared variables and
+// arrays of structs inside a literal stay zero).
+const MAX_HP = 50
+enum Mood { Calm, Happy, Cross }
+struct Guest {
+    hp: s32 = MAX_HP * 2,
+    mood: Mood = Mood.Happy,
+    speed: fixed = 0.5,
+    tint: vec3 = vec3(1.0, 0.5, 0.25),
+    room: s16 = -1,
+    name_id: u8
+}
+struct Pair { a: Guest, b: Guest }
+const PROTO: Guest = Guest { name_id: 9 }
+var guests: [3]Guest
+var zero: Guest
+
+fn show(g: Guest) {
+    print_int(g.hp); print_char(' '); print_int(g.mood as s32); print_char(' '); print_fixed(g.speed)
+    print_char(' '); print_fixed(g.tint.y); print_char(' '); print_int(g.room as s32); print_char(' ')
+    print_int(g.name_id as s32); println("")
+}
+
+fn reset(g: *Guest) { *g = Guest{} }
+
+fn init() {
+    show(Guest{})                               // expect: 100 1 0.5 0.5 -1 0
+    show(Guest { hp: 3, room: 12 })             // expect: 3 1 0.5 0.5 12 0
+    show(PROTO)                                 // expect: 100 1 0.5 0.5 -1 9
+    show(zero)                                  // expect: 0 0 0.0 0.0 0 0
+    guests[1].hp = 7
+    guests[1].room = 4
+    reset(&guests[1])
+    show(guests[1])                             // expect: 100 1 0.5 0.5 -1 0
+    let p = Pair { b: Guest { mood: Mood.Cross } }
+    show(p.a)                                   // expect: 100 1 0.5 0.5 -1 0
+    show(p.b)                                   // expect: 100 2 0.5 0.5 -1 0
+    for i in 0..3 { guests[i] = Guest { name_id: (i + 1) as u8, hp: i * 5 } }
+    show(guests[2])                             // expect: 10 1 0.5 0.5 -1 3
+    var w = Wrap { n: 4 }
+    print_int(w.n + w.g.hp + len(w.list)); println("")   // expect: 107
+    print_int(w.list[2].hp); println("")       // expect: 0
+}
+
+struct Wrap { n: s32, g: Guest, list: [3]Guest }

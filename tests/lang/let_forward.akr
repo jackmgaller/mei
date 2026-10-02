@@ -1,0 +1,43 @@
+// let values substituted into their uses must keep the value they had at the let.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+var g = 3
+
+fn f(a: s32, b: s32) -> s32 {
+    let x = a * 2 + b
+    var y = a
+    y = x + 1                     // forwarded: reads a, b before anything changes them
+    let z = y * 3
+    y = 100                       // z must keep y's old value
+    p(z)
+    let k = 7                     // a constant: used everywhere
+    var t = 0
+    for i in 0..k { t += k }
+    p(t)
+    let w = a + b
+    var a2 = a
+    a2 += w                       // compound
+    return a2
+}
+
+fn loop_case() -> s32 {
+    var s = 0
+    var i = 0
+    while i < 4 {
+        let d = i * i
+        i += 1                    // d was taken before the increment
+        s += d
+    }
+    return s
+}
+
+fn init() {
+    p(f(5, 1))
+    // expect: 36
+    // expect: 49
+    // expect: 11
+    p(loop_case())                // expect: 14
+    let gv = g
+    g = 9
+    p(gv)                         // expect: 3
+}

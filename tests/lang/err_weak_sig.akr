@@ -1,0 +1,5 @@
+// A function replacing a weak one must have the same signature.
+// error: on_hit() replaces the weak on_hit() at tests/lang/err_weak_sig.akr:3, so it must have the same parameter and result types (on_hit(s32, s32))
+weak fn on_hit(a: s32, b: s32) {}
+fn on_hit(a: s32) {}
+fn init() { on_hit(1) }

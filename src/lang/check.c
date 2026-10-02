@@ -4,6 +4,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 /* ------------------------------------------------------------------ types */
 
@@ -168,6 +169,7 @@ static int g_loop_n;
 static Expr *check(Ctx *c, Expr *e, Type *want);
 static Expr *coerce(Ctx *c, Expr *e, Type *to, const char *what);
 static void resolve_const(Sym *s);
+static void resolve_const_in(Sym *s, Ctx *in);
 static void resolve_embed(Sym *s);
 static Program *g_prog;
 
@@ -205,6 +207,46 @@ static Local *hidden_local(Ctx *c, Type *t, Loc loc) {
     return l;
 }
 
+/* The assembly label of a global symbol: prefix + name, plus "$u" for a cart symbol that reuses a
+   standard library name. */
+static const char *sym_label(const char *prefix, Sym *s) {
+    if (s->priv) return ar_printf("%s%s$p%d", prefix, s->name, s->priv);   /* private: per file */
+    return ar_printf("%s%s%s", prefix, s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
+}
+
+/* "unknown name 'x'", or that it is private to another file. */
+_Noreturn void error_unknown(Loc loc, const char *what, const char *name) {
+    Sym *p = sym_private_elsewhere(name, loc.file);
+    if (p) {
+        const char *base = strrchr(p->loc.file, '/');
+        error_at(loc, "'%s' is private to %s (declared at line %d), so it cannot be used from this file",
+                 name, base ? base + 1 : p->loc.file, p->loc.line);
+    }
+    error_at(loc, "unknown %s '%s'", what, name);
+}
+
+static Sym *intern_string(Ctx *c, const char *str, size_t len);
+
+/* meic -g: the message of a run-time check, "file.akr:12: what", and a reference to the
+   standard library function that reports it (NULL when there is no standard library). */
+static Sym *check_msg(Ctx *c, Loc loc, const char *hook, const char *fmt, ...) {
+    Sym *h = sym_lookup_layer(hook, 0);
+    if (!h || h->k != SY_FUNC || !c->fn) return NULL;
+    note_call(c, h->fn);
+    va_list ap;
+    va_start(ap, fmt);
+    Buf b = {0};
+    const char *base = loc.file ? strrchr(loc.file, '/') : NULL;
+    buf_printf(&b, "%s:%d: ", base ? base + 1 : loc.file ? loc.file : "?", loc.line);
+    buf_vprintf(&b, fmt, ap);
+    va_end(ap);
+    char *m = ar_strdup(b.p);
+    buf_free(&b);
+    Sym *s = intern_string(c, m, strlen(m));
+    note_ref(c, s);
+    return s;
+}
+
 static Sym *stdlib_fn(Ctx *c, const char *name, Loc loc) {
     Sym *s = sym_lookup_layer(name, 0);
     if (!s || s->k != SY_FUNC) error_at(loc, "this operation needs the standard library function '%s'", name);
@@ -218,38 +260,43 @@ static int64_t const_int(Ctx *c, Expr *e, const char *what);
 
 static void resolve_enum(Type *t);
 
-static Type *resolve_type(TypeExpr *te) {
+/* Resolves a written type. `in` is the function whose body it appears in (array lengths may
+   use its local constants), or NULL. */
+static Type *resolve_type_in(TypeExpr *te, Ctx *in) {
     if (te->resolved) return te->resolved;
     Type *t;
     if (te->k == 3) {
         Type *ps[32];
         if (te->nparams > 32) error_at(te->loc, "too many parameters in a function type");
         for (int i = 0; i < te->nparams; i++) {
-            ps[i] = resolve_type(te->params[i]);
+            ps[i] = resolve_type_in(te->params[i], in);
             if (ps[i]->k == TY_VOID) error_at(te->params[i]->loc, "parameters cannot be void");
         }
-        Type *ret = te->elem ? resolve_type(te->elem) : ty_void;
+        Type *ret = te->elem ? resolve_type_in(te->elem, in) : ty_void;
         if (ret->k == TY_ARRAY) error_at(te->elem->loc, "functions cannot return arrays; wrap the array in a struct");
         t = ty_func(ps, te->nparams, ret);
-    } else if (te->k == 1) t = ty_ptr(resolve_type(te->elem));
+    } else if (te->k == 1) t = ty_ptr(resolve_type_in(te->elem, in));
     else if (te->k == 2) {
         Ctx c = {.P = g_prog};
-        int64_t n = const_int(&c, te->len, "array length");
+        int64_t n = const_int(in ? in : &c, te->len, "array length");
         if (n <= 0) error_at(te->len->loc, "array length must be positive (got %lld)", (long long)n);
-        Type *el = resolve_type(te->elem);
+        Type *el = resolve_type_in(te->elem, in);
         if (el->k == TY_STRUCT) layout_struct(el, te->loc);
         if (el->k == TY_VOID) error_at(te->loc, "arrays of void are not allowed");
         if (n * el->size > 0x200000) error_at(te->loc, "array is larger than 2 MB");
         t = ty_array(el, n);
     } else {
         Sym *s = sym_lookup(te->name, te->loc.file);
-        if (!s || s->k != SY_TYPE) error_at(te->loc, "unknown type '%s'", te->name);
+        if (!s) error_unknown(te->loc, "type", te->name);
+        if (s->k != SY_TYPE) error_at(te->loc, "unknown type '%s'", te->name);
         t = s->ty;
         if (t->k == TY_ENUM) resolve_enum(t);
     }
     te->resolved = t;
     return t;
 }
+
+static Type *resolve_type(TypeExpr *te) { return resolve_type_in(te, NULL); }
 
 static int align_up(int v, int a) { return (v + a - 1) / a * a; }
 
@@ -266,7 +313,7 @@ static void layout_struct(Type *t, Loc use) {
         if (ft->k == TY_STRUCT) layout_struct(ft, d->flocs[i]);
         if (ft->k == TY_ARRAY) { Type *b = ft; while (b->k == TY_ARRAY) b = b->elem; layout_struct(b, d->flocs[i]); }
         off = align_up(off, ft->align);
-        t->fields[i] = (Field){d->fnames[i], ft, off, d->flocs[i]};
+        t->fields[i] = (Field){d->fnames[i], ft, off, d->flocs[i], d->fdefs ? d->fdefs[i] : NULL, 0};
         off += ft->size;
         if (ft->align > align) align = ft->align;
     }
@@ -332,13 +379,41 @@ static Local *lookup_local(Ctx *c, const char *name) {
     return NULL;
 }
 
-static Local *new_local(Ctx *c, const char *name, Type *t, Loc loc) {
+static void check_new_name(Ctx *c, const char *name, Loc loc, const char *what) {
     if (c->scope)
         for (int i = 0; i < c->scope->n; i++)
-            if (!strcmp(c->scope->locals[i]->name, name))
+            if (!strcmp(c->scope->locals[i]->name, name) && strcmp(name, "_"))
                 error_at(loc, "'%s' is already declared in this block (line %d)", name, c->scope->locals[i]->loc.line);
+    if (c->P && c->P->wextra && c->scope && !file_is_stdlib(loc.file))
+        for (Scope *sc = c->scope->up; sc; sc = sc->up) {
+            int found = 0;
+            for (int i = 0; i < sc->n && !found; i++)
+                if (sc->locals[i]->is_loopvar && !strcmp(sc->locals[i]->name, name)) {
+                    warn_at(loc, "this %s '%s' hides the loop variable '%s' of the enclosing loop (line %d)",
+                            what, name, name, sc->locals[i]->loc.line);
+                    found = 1;
+                }
+            if (found) break;
+        }
     Sym *g = sym_lookup(name, loc.file);
-    if (g && g->k == SY_TYPE) error_at(loc, "'%s' is a type name and cannot be used for a variable", name);
+    if (g && g->k == SY_TYPE) error_at(loc, "'%s' is a type name and cannot be used for a %s", name, what);
+}
+
+/* A local `const`: a name in the current block for a constant (the caller sets csym). */
+static Local *declare_local_const(Ctx *c, const char *name, Loc loc) {
+    check_new_name(c, name, loc, "constant");
+    Local *l = ar_alloc(sizeof *l);
+    l->name = name;
+    l->loc = loc;
+    l->immutable = 1;
+    PUSH(c->scope->locals, c->scope->n, c->scope->cap, l);
+    return l;
+}
+
+static void warn_unused(Func *f);
+
+static Local *new_local(Ctx *c, const char *name, Type *t, Loc loc) {
+    check_new_name(c, name, loc, "variable");
     Local *l = ar_alloc(sizeof *l);
     l->name = name;
     l->ty = t;
@@ -579,6 +654,7 @@ static Local *capture(Ctx *c, const char *name, Loc loc) {
     l->is_capture = 1;
     l->points_local = ol->points_local;
     PUSH(f->locals, f->nlocals, f->caplocals, l);
+    ol->captured = 1;
     if (f->ncaps == f->capcaps) {
         int nc = f->capcaps ? f->capcaps * 2 : 4;
         Local **nl = ar_alloc(sizeof(Local *) * (size_t)nc), **no = ar_alloc(sizeof(Local *) * (size_t)nc);
@@ -592,6 +668,7 @@ static Local *capture(Ctx *c, const char *name, Loc loc) {
     }
     f->caps[f->ncaps] = l;
     f->cap_outer[f->ncaps] = ol;
+    ol->nreads++;
     f->cap_locs[f->ncaps] = loc;
     f->ncaps++;
     int d = o->loop_depth > 6 ? 6 : o->loop_depth;
@@ -620,9 +697,21 @@ static int refs_local_storage(Expr *e) {
 
 /* ------------------------------------------------------------ expressions */
 
+static const char *g_in_local_const;   /* the local constant whose value is being checked */
+
 static Expr *check_name(Ctx *c, Expr *e) {
+    Sym *s = NULL;
     if (c->fn) {
         Local *l = lookup_local(c, e->name);
+        if (l && l->csym) { s = l->csym; l = NULL; }
+        else if (!l)
+            /* a local constant of an enclosing function needs no capture */
+            for (Ctx *o = c->outer; o && o->fn; o = o->outer) {
+                Local *ol = lookup_local(o, e->name);
+                if (ol) { if (ol->csym) s = ol->csym; break; }
+            }
+        if ((l || (!s && c->outer && is_local_name(c, e->name))) && g_in_local_const)
+            error_at(e->loc, "a constant cannot use the variable '%s' (constants are fixed when the cart is built)", e->name);
         if (l) {
             Sym *s = ar_alloc(sizeof *s);
             s->k = SY_LOCAL; s->name = l->name; s->local = l; s->ty = l->ty;
@@ -630,9 +719,10 @@ static Expr *check_name(Ctx *c, Expr *e) {
             e->ty = l->ty;
             int d = c->loop_depth > 6 ? 6 : c->loop_depth;
             l->weight += (int64_t)1 << (2 * d);
+            l->nreads++;
             return e;
         }
-        if (c->outer && (l = capture(c, e->name, e->loc))) {
+        if (!s && c->outer && (l = capture(c, e->name, e->loc))) {
             Sym *s = ar_alloc(sizeof *s);
             s->k = SY_LOCAL; s->name = l->name; s->local = l; s->ty = l->ty;
             e->sym = s;
@@ -642,8 +732,8 @@ static Expr *check_name(Ctx *c, Expr *e) {
             return e;
         }
     }
-    Sym *s = sym_lookup(e->name, e->loc.file);
-    if (!s) error_at(e->loc, "unknown name '%s'", e->name);
+    if (!s) s = sym_lookup(e->name, e->loc.file);
+    if (!s) error_unknown(e->loc, "name", e->name);
     e->sym = s;
     switch (s->k) {
     case SY_CONST:
@@ -665,6 +755,7 @@ static Expr *check_name(Ctx *c, Expr *e) {
     case SY_GLOBAL:
         if (!c->fn) error_at(e->loc, "a constant cannot use the variable '%s' (constants are fixed when the cart is built)", s->name);
         if (!s->ty) error_at(e->loc, "'%s' is used in its own initialiser", s->name);
+        note_ref(c, s);
         e->ty = s->ty;
         return e;
     case SY_REG:
@@ -769,6 +860,7 @@ static Expr *check_binary(Ctx *c, Expr *e) {
         if (ty_is_vec(a) && a->k != TY_IVEC4 && (op == B_MUL || op == B_DIV) && (is_fixedish(b) || b->k == TY_UINT)) {
             e->b = coerce(c, e->b, ty_fixed, "the scale factor");
             if (op == B_DIV && e->b->isconst && e->b->cval == 0) error_at(e->b->loc, "division by zero");
+            if ((c->P->debug & 2) && op == B_DIV && !e->b->isconst) e->chk = check_msg(c, e->loc, "__check_fail", "division by zero");
             e->ty = a;
             return e;
         }
@@ -878,6 +970,7 @@ static Expr *check_binary(Ctx *c, Expr *e) {
         if (e->b->ty->k == TY_U32) error_at(e->loc, "fixed values can be scaled by signed integers only; convert the u32 with 'as s32'");
         e->ty = ty_fixed;
         e->conv_from = ty_s32;   /* marks the mixed form */
+        if ((c->P->debug & 2) && op == B_DIV && !e->b->isconst) e->chk = check_msg(c, e->loc, "__check_fail", "division by zero");
         return e;
     }
 
@@ -896,6 +989,14 @@ static Expr *check_binary(Ctx *c, Expr *e) {
     int cmp = op >= B_EQ && op <= B_GE;
     e->ty = cmp ? ty_bool : t;
     if ((op == B_DIV || op == B_MOD) && e->b->isconst && e->b->cval == 0) error_at(e->b->loc, "division by zero");
+    if ((c->P->debug & 2) && (op == B_DIV || op == B_MOD) && !e->b->isconst)
+        e->chk = check_msg(c, e->loc, "__check_fail", "division by zero");
+    if ((c->P->debug & 4) && op == B_MUL && t->k == TY_FIXED && !(e->a->isconst && e->b->isconst)) {
+        /* constants of magnitude 1.0 or less cannot make a product overflow */
+        int small = (e->a->isconst && e->a->cval >= -65536 && e->a->cval <= 65536) ||
+                    (e->b->isconst && e->b->cval >= -65536 && e->b->cval <= 65536);
+        if (!small) e->chk = check_msg(c, e->loc, "__check_fail", "fixed-point multiply overflow");
+    }
     if (e->a->isconst && e->b->isconst) {
         e->isconst = 1;
         e->cval = cmp ? fold_cmp(op, t, e->a->cval, e->b->cval) : fold_bin(e->loc, op, t, e->a->cval, e->b->cval);
@@ -953,8 +1054,25 @@ static Expr *check_index(Ctx *c, Expr *e) {
     e->a = check(c, e->a, NULL);
     e->b = check(c, e->b, NULL);
     Type *t = e->a->ty;
-    if (!is_intish(e->b->ty)) error_at(e->b->loc, "index must be an integer, found %s", ty_str(e->b->ty));
+    if (!is_intish(e->b->ty) && e->b->ty->k != TY_ENUM) error_at(e->b->loc, "index must be an integer or an enum, found %s", ty_str(e->b->ty));
     if (e->b->ty->k == TY_UINT) e->b = coerce(c, e->b, ty_s32, "index");
+    if ((c->P->debug & 1) && !e->b->isconst && (t->k == TY_ARRAY || t->k == TY_MAT4)) {
+        /* meic -g: check the index at run time, unless it is a loop variable whose range fits */
+        int64_t n = t->k == TY_ARRAY ? t->n : 4;
+        Expr *ix = e->b;
+        while (ix->k == E_CONV && ix->a && ty_is_int(ix->ty) && ix->ty->size == 4) ix = ix->a;
+        Local *lv = ix->k == E_NAME && ix->sym && ix->sym->k == SY_LOCAL ? ix->sym->local : NULL;
+        /* also provably in range: i & K with K < n, and u8 / u16 values in a long enough array */
+        int masked = ix->k == E_BINARY && ix->op == B_AND && ((ix->b->isconst && ix->b->cval >= 0 && ix->b->cval < n) ||
+                                                              (ix->a->isconst && ix->a->cval >= 0 && ix->a->cval < n));
+        Type *it = ty_base(e->b->ty);
+        int narrow = (it->k == TY_U8 && n >= 256) || (it->k == TY_U16 && n >= 65536);
+        if (!masked && !narrow && !(lv && lv->has_range && lv->rlo >= 0 && lv->rhi <= n)) {
+            const char *what = e->a->k == E_NAME ? ar_printf("'%s'", e->a->name)
+                             : e->a->k == E_FIELD ? ar_printf("field '%s'", e->a->name) : "an array";
+            e->chk = check_msg(c, e->loc, "__bounds_fail", "index out of bounds for %s (%s)", what, ty_str(t));
+        }
+    }
     if (t->k == TY_ARRAY) {
         if (e->b->isconst && (e->b->cval < 0 || e->b->cval >= t->n))
             error_at(e->b->loc, "index %lld is out of bounds for %s", (long long)e->b->cval, ty_str(t));
@@ -1138,7 +1256,7 @@ static Expr *check_call(Ctx *c, Expr *e) {
     Sym *s = NULL;
     if (c->fn && is_local_name(c, name)) return check_indirect_call(c, e);
     s = sym_lookup(name, e->loc.file);
-    if (!s) error_at(e->a->loc, "unknown function '%s'", name);
+    if (!s) error_unknown(e->a->loc, "function", name);
     if (s->k == SY_GLOBAL || s->k == SY_CONST || s->k == SY_DATA || s->k == SY_REG || s->k == SY_EMBED) return check_indirect_call(c, e);
     if (s->k == SY_TYPE) {
         Type *t = s->ty;
@@ -1157,6 +1275,15 @@ static Expr *check_call(Ctx *c, Expr *e) {
         if (e->nargs != want) error_at(e->loc, "%s() takes %d argument%s, got %d", name, want, want == 1 ? "" : "s", e->nargs);
         if (s->bi == BI_LEN) {
             Expr *x = e->args[0];
+            if (x->k == E_NAME && !(c->fn && is_local_name(c, x->name))) {
+                Sym *ts = sym_lookup(x->name, x->loc.file);
+                if (ts && ts->k == SY_TYPE && ts->ty->k == TY_ENUM) {
+                    /* len(Dir): the number of variants */
+                    resolve_enum(ts->ty);
+                    e->ty = ty_uint; e->isconst = 1; e->cval = ts->ty->nvariants;
+                    return e;
+                }
+            }
             if (x->k == E_NAME) {
                 Sym *xs = sym_lookup(x->name, x->loc.file);
                 if (xs && xs->k == SY_EMBED && !(c->fn && lookup_local(c, x->name))) {
@@ -1168,7 +1295,7 @@ static Expr *check_call(Ctx *c, Expr *e) {
                 }
             }
             x = check(c, x, NULL);
-            if (x->ty->k != TY_ARRAY) error_at(x->loc, "len() needs an array or an embedded asset, found %s", ty_str(x->ty));
+            if (x->ty->k != TY_ARRAY) error_at(x->loc, "len() needs an array, an embedded asset or an enum type, found %s", ty_str(x->ty));
             e->ty = ty_uint; e->isconst = 1; e->cval = x->ty->n;
             return e;
         }
@@ -1314,6 +1441,9 @@ static Expr *check_array_lit(Ctx *c, Expr *e, Type *want) {
     return e;
 }
 
+static void add_field_defaults(Ctx *c, Expr *e, Type *t);
+static void check_field_default(Program *P, Field *f);
+
 static Expr *check_struct_lit(Ctx *c, Expr *e) {
     Sym *s = sym_lookup(e->name, e->loc.file);
     if (!s || s->k != SY_TYPE || s->ty->k != TY_STRUCT) error_at(e->loc, "'%s' is not a struct type", e->name);
@@ -1330,9 +1460,60 @@ static Expr *check_struct_lit(Ctx *c, Expr *e) {
         e->args[i] = x;
         if (!x->isconst) allc = 0;
     }
+    add_field_defaults(c, e, t);
     e->ty = t;
     e->isconst = allc;
     return e;
+}
+
+static void check_field_default(Program *P, Field *f) {
+    if (!f->def || f->def_checked) return;
+    Ctx k = {.P = P};
+    if (ty_is_aggr(f->type)) error_at(f->def->loc, "a field default must be a single value (field '%s' is %s)", f->name, ty_str(f->type));
+    Expr *x = check(&k, f->def, f->type);
+    x = coerce(&k, x, f->type, ar_printf("the default of field '%s'", f->name));
+    if (!x->isconst) error_at(x->loc, "a field default must be a constant");
+    f->def = x;
+    f->def_checked = 1;
+}
+
+/* Does a struct have field defaults (its own, or of a struct-typed field)? */
+static int struct_has_defaults(Type *t) {
+    if (t->k != TY_STRUCT) return 0;
+    for (int j = 0; j < t->nfields; j++)
+        if (t->fields[j].def || struct_has_defaults(t->fields[j].type)) return 1;
+    return 0;
+}
+
+/* A struct literal's omitted fields that have defaults are added as if they were written; an
+   omitted field whose type is a struct with defaults gets that struct's defaults (others are
+   zero). Defaults are constants, so the literal stays constant if it was. */
+static void add_field_defaults(Ctx *c, Expr *e, Type *t) {
+    for (int j = 0; j < t->nfields; j++) {
+        Field *f = &t->fields[j];
+        if (!f->def && !struct_has_defaults(f->type)) continue;
+        int given = 0;
+        for (int i = 0; i < e->nargs && !given; i++) given = !strcmp(e->fnames[i], f->name);
+        if (given) continue;
+        Expr *v = ar_alloc(sizeof *v);
+        if (!f->def) {
+            v->k = E_STRUCT;
+            v->loc = e->loc;
+            v->name = f->type->name;
+            v->ty = f->type;
+            v->isconst = 1;
+            add_field_defaults(c, v, f->type);
+        } else check_field_default(c->P, f);
+        if (f->def) { *v = *f->def; v->loc = e->loc; }
+        Expr **na = ar_alloc(sizeof(Expr *) * (size_t)(e->nargs + 1));
+        const char **nf = ar_alloc(sizeof(char *) * (size_t)(e->nargs + 1));
+        if (e->nargs) { memcpy(na, e->args, sizeof(Expr *) * (size_t)e->nargs); memcpy(nf, e->fnames, sizeof(char *) * (size_t)e->nargs); }
+        na[e->nargs] = v;
+        nf[e->nargs] = f->name;
+        e->args = na;
+        e->fnames = nf;
+        e->nargs++;
+    }
 }
 
 /* ---- function literals ---- */
@@ -1352,12 +1533,12 @@ static Expr *check_lambda(Ctx *c, Expr *e, Type *want) {
                      f->nparams == 1 ? "" : "s", wt->elem ? ty_str(wt) : ar_printf("a function of %d parameter%s", wt->nparams, wt->nparams == 1 ? "" : "s"));
         for (int i = 0; i < f->nparams; i++) {
             Param *pr = &f->params[i];
-            if (pr->texpr) pr->ty = complete(resolve_type(pr->texpr), pr->loc);
+            if (pr->texpr) pr->ty = complete(resolve_type_in(pr->texpr, c), pr->loc);
             else if (wt) pr->ty = wt->params[i];
             else error_at(pr->loc, "parameter '%s' needs a type (write '%s: T'; types can be left out only where a function type is expected)", pr->name, pr->name);
             if (pr->ty->k == TY_VOID) error_at(pr->loc, "parameters cannot be void");
         }
-        if (f->ret_texpr) f->ret = complete(resolve_type(f->ret_texpr), f->ret_texpr->loc);
+        if (f->ret_texpr) f->ret = complete(resolve_type_in(f->ret_texpr, c), f->ret_texpr->loc);
         else if (wt && wt->elem && !f->lambda_body) f->ret = wt->elem;
         else if (!f->lambda_body) f->ret = ty_void;
         else f->ret = wt && wt->elem ? wt->elem : NULL;   /* NULL: inferred from the expression */
@@ -1520,6 +1701,50 @@ static Expr *check_intrinsic(Ctx *c, Expr *e, Builtin bi, const char *name) {
     return e;
 }
 
+static Expr *check_match_head(Ctx *c, Expr *x, MatchArm *arms, int narms, Loc loc);
+
+/* match x { A => value ... }: every arm yields a value of one type (the expected type when
+   there is one, else the first arm's type; untyped constants alone default to s32 or fixed). */
+static Expr *check_match_expr(Ctx *c, Expr *e, Type *want) {
+    e->a = check_match_head(c, e->a, e->arms, e->narms, e->loc);
+    Type *t = want && want->k != TY_VOID && want->k != TY_UINT && want->k != TY_UFIXED && want->k != TY_NULL ? want : NULL;
+    for (int i = 0; i < e->narms; i++) e->arms[i].value = check(c, e->arms[i].value, t);
+    if (!t) {
+        int fx = 0, nul = 0;
+        for (int i = 0; i < e->narms && !t; i++) {
+            Type *at = e->arms[i].value->ty;
+            if (at->k == TY_UFIXED) fx = 1;
+            else if (at->k == TY_NULL) nul = 1;
+            else if (at->k != TY_UINT) t = at;
+        }
+        if (!t && nul) error_at(e->loc, "cannot infer the type of this match from null; give the variable a type");
+        if (!t) t = fx ? ty_fixed : ty_s32;
+    }
+    if (t->k == TY_VOID) error_at(e->arms[0].value->loc, "the arms of a match expression must have values");
+    for (int i = 0; i < e->narms; i++) {
+        Expr *v = e->arms[i].value;
+        if (ty_is_aggr(t)) {
+            if (v->ty != t) error_at(v->loc, "type mismatch: this arm is %s, but the match yields %s", ty_str(v->ty), ty_str(t));
+        } else v = coerce(c, v, t, "the value of this match arm");
+        e->arms[i].value = v;
+    }
+    e->ty = t;
+    if (e->a->isconst && !ty_is_aggr(t)) {
+        /* a constant value picks its arm at compile time */
+        MatchArm *pick = NULL;
+        for (int i = 0; i < e->narms && !pick; i++) {
+            if (e->arms[i].is_else) pick = &e->arms[i];
+            for (int k = 0; k < e->arms[i].npats; k++) if (e->arms[i].pats[k]->cval == e->a->cval) pick = &e->arms[i];
+        }
+        if (pick && pick->value->isconst) {
+            e->isconst = 1;
+            e->cval = pick->value->cval;
+            memcpy(e->cvec, pick->value->cvec, sizeof e->cvec);
+        }
+    }
+    return e;
+}
+
 static Sym *intern_string(Ctx *c, const char *str, size_t len) {
     Program *P = c->P;
     for (int i = 0; i < P->ndatas; i++) {
@@ -1559,16 +1784,17 @@ static Expr *check(Ctx *c, Expr *e, Type *want) {
     case E_CALL: return check_call(c, e);
     case E_INDEX: return check_index(c, e);
     case E_FIELD: return check_field(c, e);
-    case E_CAST: return check_cast(c, e, e->a, complete(resolve_type(e->texpr), e->loc));
+    case E_CAST: return check_cast(c, e, e->a, complete(resolve_type_in(e->texpr, c->fn ? c : NULL), e->loc));
     case E_ARRAY: return check_array_lit(c, e, want);
     case E_STRUCT: return check_struct_lit(c, e);
     case E_SIZEOF: {
-        Type *t = complete(resolve_type(e->texpr), e->loc);
+        Type *t = complete(resolve_type_in(e->texpr, c->fn ? c : NULL), e->loc);
         e->ty = ty_uint; e->isconst = 1; e->cval = t->size;
         return e;
     }
     case E_CONV: return e;
     case E_FUNC: return check_lambda(c, e, want);
+    case E_MATCH: return check_match_expr(c, e, want);
     }
     return e;
 }
@@ -1617,23 +1843,33 @@ static void collect_data_funcs(Sym *s, Expr *e) {
     if (e->k == E_ARRAY || e->k == E_STRUCT) for (int i = 0; i < e->nargs; i++) collect_data_funcs(s, e->args[i]);
 }
 
-static void resolve_const(Sym *s) {
+static int g_lconst_n;
+
+static void resolve_const(Sym *s) { resolve_const_in(s, NULL); }
+
+/* A constant's value. `in`: the function a local constant is declared in (NULL: a global one). */
+static void resolve_const_in(Sym *s, Ctx *in) {
     if (s->state == 2) return;
     if (s->state == 1) error_at(s->loc, "constant '%s' depends on itself", s->name);
     s->state = 1;
-    Ctx c = {.P = g_prog};
-    Type *t = s->texpr ? complete(resolve_type(s->texpr), s->loc) : NULL;
+    Ctx c0 = {.P = g_prog};
+    Ctx *c = in ? in : &c0;
+    const char *label = in ? ar_printf("K_%s$L%d", s->name, ++g_lconst_n) : sym_label("K_", s);
+    Type *t = s->texpr ? complete(resolve_type_in(s->texpr, in), s->loc) : NULL;
     if (s->init->k == E_STR && !t) {
         /* const NAME = "text": a NUL-terminated byte array in ROM */
         s->k = SY_DATA;
         s->is_str = 1; s->str = s->init->str; s->slen = s->init->slen;
         s->ty = ty_array(ty_u8, (int64_t)s->slen + 1);
-        s->label = ar_printf("K_%s%s", s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
+        s->label = label;
         PUSH(g_prog->datas, g_prog->ndatas, g_prog->capdatas, s);
         s->state = 2;
         return;
     }
-    Expr *e = check(&c, s->init, t);
+    const char *saved_in = g_in_local_const;
+    g_in_local_const = in ? s->name : NULL;
+    Expr *e = check(c, s->init, t);
+    g_in_local_const = saved_in;
     if (!t) t = e->ty;   /* untyped constants stay untyped */
     if (ty_is_aggr(t)) {
         if (e->ty != t) error_at(e->loc, "type mismatch: '%s' is %s, initialiser is %s", s->name, ty_str(t), ty_str(e->ty));
@@ -1644,13 +1880,13 @@ static void resolve_const(Sym *s) {
         s->k = SY_DATA;
         s->ty = t;
         s->init = e;
-        s->label = ar_printf("K_%s%s", s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
+        s->label = label;
         PUSH(g_prog->datas, g_prog->ndatas, g_prog->capdatas, s);
         s->state = 2;
         return;
     }
     if (t->k == TY_VOID || t->k == TY_NULL) error_at(e->loc, "cannot infer a type for constant '%s'", s->name);
-    e = coerce(&c, e, t, ar_printf("the value of '%s'", s->name));
+    e = coerce(c, e, t, ar_printf("the value of '%s'", s->name));
     if (!e->isconst && const_addr_label(e))
         error_at(e->loc, "a single constant cannot hold an address; use the name directly, or put the addresses "
                  "in a const array or struct (const TABLE: [2]*Mesh = [A, B])");
@@ -1720,14 +1956,24 @@ static int stmt_returns(Stmt *s) {
 static void check_block(Ctx *c, Stmt *b);
 
 
-static void check_asm_refs(Ctx *c, const char *text, Loc loc) {
+/* Checks the {name} references of asm text. Local constants are substituted here (their
+   value, or the label of const data); returns the text to assemble. */
+static const char *check_asm_refs(Ctx *c, const char *text, Loc loc) {
+    Buf out = {0};
+    const char *done = text;
     for (const char *p = text; *p; p++) {
         if (*p != '{') continue;
         const char *q = strchr(p, '}');
         if (!q) break;
         char *name = ar_strndup(p + 1, (size_t)(q - p - 1));
         Local *l = c->fn ? lookup_local(c, name) : NULL;
-        if (l) {
+        if (l && l->csym) {
+            Sym *k = l->csym;
+            buf_putn(&out, done, (size_t)(p - done));
+            if (k->k == SY_CONST) buf_printf(&out, "%lld", (long long)k->cval);
+            else { note_ref(c, k); buf_puts(&out, k->label); }
+            done = q + 1;
+        } else if (l) {
             if (!ty_is_scalar(l->ty) && !ty_is_vec(l->ty))
                 error_at(loc, "asm can only name scalar or vector locals ('%s' is %s); use a pointer", name, ty_str(l->ty));
             l->in_asm = 1;
@@ -1737,11 +1983,74 @@ static void check_asm_refs(Ctx *c, const char *text, Loc loc) {
             if (!s) error_at(loc, "unknown name '{%s}' in asm block", name);
             if (s->k == SY_FUNC) { note_call(c, s->fn); if (c->fn) c->fn->has_call = 1; }
             else if (s->k == SY_CONST) resolve_const(s);
-            if (s->k == SY_DATA || s->k == SY_EMBED) note_ref(c, s);
+            if (s->k == SY_DATA || s->k == SY_EMBED || s->k == SY_GLOBAL) note_ref(c, s);
             if (s->k == SY_TYPE || s->k == SY_BUILTIN) error_at(loc, "'{%s}' in asm must name a variable, constant or function", name);
         }
         p = q;
     }
+    if (done == text) { buf_free(&out); return text; }
+    buf_puts(&out, done);
+    char *r = ar_strdup(out.p);
+    buf_free(&out);
+    return r;
+}
+
+/* A match's value and patterns: patterns are constants of the value's type (a bare variant
+   name in a match on an enum), each value at most once; a match on an enum handles every
+   variant or has an else arm, a match on an integer has an else arm. Returns the checked value. */
+static Expr *check_match_head(Ctx *c, Expr *x, MatchArm *arms, int narms, Loc loc) {
+    x = check(c, x, NULL);
+    if (x->ty->k == TY_UINT) x = coerce(c, x, ty_s32, "the matched value");
+    Type *t = x->ty;
+    if (t->k != TY_ENUM && !ty_is_int(t))
+        error_at(x->loc, "match needs an enum or an integer, found %s", ty_str(t));
+    int64_t *seen = ar_alloc(sizeof(int64_t) * 4096);
+    Loc *seenloc = ar_alloc(sizeof(Loc) * 4096);
+    int nseen = 0, has_else = 0;
+    for (int i = 0; i < narms; i++) {
+        MatchArm *arm = &arms[i];
+        if (arm->is_else) {
+            if (has_else) error_at(arm->loc, "match has two else arms");
+            if (i != narms - 1) error_at(arm->loc, "the else arm must come last");
+            has_else = 1;
+        }
+        for (int k = 0; k < arm->npats; k++) {
+            Expr *pe = arm->pats[k];
+            if (t->k == TY_ENUM && pe->k == E_NAME && !(c->fn && lookup_local(c, pe->name)) && enum_variant(t, pe->name) >= 0) {
+                /* a bare variant name: State.X can be written X in a match on a State */
+                pe->ty = t;
+                pe->isconst = 1;
+                pe->cval = t->vvals[enum_variant(t, pe->name)];
+            } else {
+                pe = check(c, pe, t);
+                if (pe->ty != t) pe = coerce(c, pe, t, "the pattern");
+                if (!pe->isconst) error_at(pe->loc, "match patterns must be constants");
+            }
+            arm->pats[k] = pe;
+            for (int j = 0; j < nseen; j++)
+                if (seen[j] == pe->cval) error_at(pe->loc, "this value is already matched at line %d", seenloc[j].line);
+            if (nseen == 4096) error_at(pe->loc, "too many match patterns");
+            seen[nseen] = pe->cval;
+            seenloc[nseen++] = pe->loc;
+        }
+    }
+    if (t->k == TY_ENUM && !has_else) {
+        Buf missing = {0};
+        int nm = 0;
+        for (int v = 0; v < t->nvariants; v++) {
+            int found = 0;
+            for (int j = 0; j < nseen; j++) if (seen[j] == t->vvals[v]) found = 1;
+            if (!found) { buf_printf(&missing, "%s%s.%s", nm ? ", " : "", t->name, t->vnames[v]); nm++; }
+        }
+        if (nm) {
+            char *m = ar_strdup(missing.p);
+            buf_free(&missing);
+            error_at(loc, "match on %s does not handle %s (add %s or an else arm)", t->name, m, nm == 1 ? "it" : "them");
+        }
+    }
+    if (t->k != TY_ENUM && !has_else)
+        error_at(loc, "match on %s needs an else arm (integers cannot be matched exhaustively)", ty_str(t));
+    return x;
 }
 
 static void check_stmt(Ctx *c, Stmt *s) {
@@ -1754,7 +2063,7 @@ static void check_stmt(Ctx *c, Stmt *s) {
         break;
     }
     case S_VAR: {
-        Type *t = s->texpr ? complete(resolve_type(s->texpr), s->loc) : NULL;
+        Type *t = s->texpr ? complete(resolve_type_in(s->texpr, c), s->loc) : NULL;
         Expr *init = s->e ? check(c, s->e, t) : NULL;
         if (!t) {
             t = default_type(init);
@@ -1780,6 +2089,7 @@ static void check_stmt(Ctx *c, Stmt *s) {
         if (lhs->k == E_NAME && lhs->sym->k == SY_LOCAL) {
             int d = c->loop_depth > 6 ? 6 : c->loop_depth;
             lhs->sym->local->weight += (int64_t)1 << (2 * d);
+            if (s->op < 0) { lhs->sym->local->nreads--; lhs->sym->local->nwrites++; }   /* a plain `x = v` does not read x */
         }
         if (s->op < 0) {
             Expr *rhs = check(c, s->e2, lhs->ty);
@@ -1805,6 +2115,9 @@ static void check_stmt(Ctx *c, Stmt *s) {
         s->e = e;
         if (e->k == E_BINARY && e->op == B_EQ) error_at(e->loc, "'==' compares; use '=' to assign");
         if (e->k != E_CALL || (e->bi && e->bi < BI_MAP && !e->callee)) error_at(s->loc, "this expression does nothing (only calls and assignments are statements)");
+        if (c->P && c->P->wextra && e->ty->k == TY_BOOL && !file_is_stdlib(s->loc.file))
+            warn_at(s->loc, "the bool result of %s is ignored (test it with 'if', or write 'let _ = ...' to discard it)",
+                    e->callee ? ar_printf("%s()", e->callee->name) : "this call");
         break;
     }
     case S_IF: {
@@ -1825,21 +2138,56 @@ static void check_stmt(Ctx *c, Stmt *s) {
         break;
     }
     case S_FOR: {
-        Expr *lo = check(c, s->e, NULL), *hi = check(c, s->e2, NULL);
-        if (!is_intish(lo->ty) || !is_intish(hi->ty)) error_at(s->loc, "for-loop bounds must be integers (found %s and %s)", ty_str(lo->ty), ty_str(hi->ty));
-        Type *t = arith_type(s->e, lo->ty, hi->ty, "..");
-        if (t == ty_uint) t = ty_s32;
-        s->e = coerce(c, lo, t, "the loop start");
-        s->e2 = coerce(c, hi, t, "the loop end");
+        Type *t;
+        if (!s->e2) {
+            /* for d in Dir: every variant, in order of value (they must be consecutive) */
+            Expr *n = s->e;
+            Sym *ts = c->fn && lookup_local(c, n->name) ? NULL : sym_lookup(n->name, n->loc.file);
+            if (!ts || ts->k != SY_TYPE || ts->ty->k != TY_ENUM)
+                error_at(n->loc, "expected a range lo..hi or an enum type after 'in', found '%s'", n->name);
+            t = ts->ty;
+            resolve_enum(t);
+            int64_t lo = t->vvals[0], hi = t->vvals[0];
+            for (int i = 1; i < t->nvariants; i++) { if (t->vvals[i] < lo) lo = t->vvals[i]; if (t->vvals[i] > hi) hi = t->vvals[i]; }
+            if (hi - lo + 1 != t->nvariants)
+                error_at(n->loc, "'for %s in %s' needs variants with consecutive values, but %s's values run from %lld to %lld "
+                         "with gaps; loop over a range of values instead", s->name, t->name, t->name, (long long)lo, (long long)hi);
+            Type *b = ty_base(t);
+            if (b->size < 4 && norm(b, hi + 1) != hi + 1)
+                error_at(n->loc, "'for %s in %s': the last value of %s (%lld) is the largest %s, so the loop cannot count past it",
+                         s->name, t->name, t->name, (long long)hi, b->name);
+            Expr *elo = ar_alloc(sizeof *elo), *ehi = ar_alloc(sizeof *ehi);
+            *elo = *n; elo->k = E_INT; elo->ty = t; elo->isconst = 1; elo->cval = lo;
+            *ehi = *n; ehi->k = E_INT; ehi->ty = t; ehi->isconst = 1; ehi->cval = hi + 1;
+            s->e = elo;
+            s->e2 = ehi;
+        } else {
+            Expr *lo = check(c, s->e, NULL), *hi = check(c, s->e2, NULL);
+            if (lo->ty->k == TY_ENUM || hi->ty->k == TY_ENUM) {
+                /* for d in Dir.A..Dir.D: d is a Dir, counting through the values A, A+1, ... before D */
+                if (lo->ty != hi->ty)
+                    error_at(s->loc, "for-loop bounds must have one type (found %s and %s)", ty_str(lo->ty), ty_str(hi->ty));
+                t = lo->ty;
+            } else {
+                if (!is_intish(lo->ty) || !is_intish(hi->ty)) error_at(s->loc, "for-loop bounds must be integers or values of one enum (found %s and %s)", ty_str(lo->ty), ty_str(hi->ty));
+                t = arith_type(s->e, lo->ty, hi->ty, "..");
+                if (t == ty_uint) t = ty_s32;
+                lo = coerce(c, lo, t, "the loop start");
+                hi = coerce(c, hi, t, "the loop end");
+            }
+            s->e = lo;
+            s->e2 = hi;
+        }
         Scope sc = {.up = c->scope};
         c->scope = &sc;
         c->loop_depth++;
         s->for_end = new_local(c, "", t, s->loc);
         s->for_end->immutable = 1;
-        s->for_end->weight = 4;
+        s->for_end->weight = (int64_t)2 << (2 * (c->loop_depth > 6 ? 6 : c->loop_depth));   /* read every iteration */
         s->var = new_local(c, s->name, t, s->asm_loc);
         s->var->immutable = 1;
         s->var->is_loopvar = 1;
+        if (s->e->isconst && s->e2->isconst) { s->var->has_range = 1; s->var->rlo = s->e->cval; s->var->rhi = s->e2->cval; }
         s->var->weight += 4 << (2 * (c->loop_depth > 6 ? 6 : c->loop_depth));
         g_loop_stack[g_loop_n++] = s;
         check_stmt(c, s->then);
@@ -1866,69 +2214,31 @@ static void check_stmt(Ctx *c, Stmt *s) {
         s->e = v;
         break;
     }
-    case S_MATCH: {
-        Expr *x = check(c, s->e, NULL);
-        if (x->ty->k == TY_UINT) x = coerce(c, x, ty_s32, "the matched value");
-        Type *t = x->ty;
-        if (t->k != TY_ENUM && !ty_is_int(t))
-            error_at(x->loc, "match needs an enum or an integer, found %s", ty_str(t));
-        s->e = x;
-        int64_t *seen = ar_alloc(sizeof(int64_t) * 4096);
-        Loc *seenloc = ar_alloc(sizeof(Loc) * 4096);
-        int nseen = 0, has_else = 0;
+    case S_MATCH:
+        s->e = check_match_head(c, s->e, s->arms, s->narms, s->loc);
         for (int i = 0; i < s->narms; i++) {
-            MatchArm *arm = &s->arms[i];
-            if (arm->is_else) {
-                if (has_else) error_at(arm->loc, "match has two else arms");
-                if (i != s->narms - 1) error_at(arm->loc, "the else arm must come last");
-                has_else = 1;
-            }
-            for (int k = 0; k < arm->npats; k++) {
-                Expr *pe = arm->pats[k];
-                if (t->k == TY_ENUM && pe->k == E_NAME && !(c->fn && lookup_local(c, pe->name)) && enum_variant(t, pe->name) >= 0) {
-                    /* a bare variant name: State.X can be written X in a match on a State */
-                    pe->ty = t;
-                    pe->isconst = 1;
-                    pe->cval = t->vvals[enum_variant(t, pe->name)];
-                } else {
-                    pe = check(c, pe, t);
-                    if (pe->ty != t) pe = coerce(c, pe, t, "the pattern");
-                    if (!pe->isconst) error_at(pe->loc, "match patterns must be constants");
-                }
-                arm->pats[k] = pe;
-                for (int j = 0; j < nseen; j++)
-                    if (seen[j] == pe->cval) error_at(pe->loc, "this value is already matched at line %d", seenloc[j].line);
-                if (nseen == 4096) error_at(pe->loc, "too many match patterns");
-                seen[nseen] = pe->cval;
-                seenloc[nseen++] = pe->loc;
-            }
             Scope sc = {.up = c->scope};
             c->scope = &sc;
-            check_stmt(c, arm->body);
+            check_stmt(c, s->arms[i].body);
             c->scope = sc.up;
         }
-        if (t->k == TY_ENUM && !has_else) {
-            Buf missing = {0};
-            int nm = 0;
-            for (int v = 0; v < t->nvariants; v++) {
-                int found = 0;
-                for (int j = 0; j < nseen; j++) if (seen[j] == t->vvals[v]) found = 1;
-                if (!found) { buf_printf(&missing, "%s%s.%s", nm ? ", " : "", t->name, t->vnames[v]); nm++; }
-            }
-            if (nm) {
-                char *m = ar_strdup(missing.p);
-                buf_free(&missing);
-                error_at(s->loc, "match on %s does not handle %s (add %s or an else arm)", t->name, m, nm == 1 ? "it" : "them");
-            }
-        }
-        if (t->k != TY_ENUM && !has_else)
-            error_at(s->loc, "match on %s needs an else arm (integers cannot be matched exhaustively)", ty_str(t));
         s->op = 1;   /* exhaustive */
+        break;
+    case S_CONST: {
+        Sym *k = ar_alloc(sizeof *k);
+        k->k = SY_CONST;
+        k->name = s->name;
+        k->loc = s->loc;
+        k->texpr = s->texpr;
+        k->init = s->e;
+        resolve_const_in(k, c);
+        Local *l = declare_local_const(c, s->name, s->loc);
+        l->csym = k;
         break;
     }
     case S_ASM:
         c->fn->has_asm = 1;
-        check_asm_refs(c, s->asm_text, s->asm_loc);
+        s->asm_text = check_asm_refs(c, s->asm_text, s->asm_loc);
         break;
     }
 }
@@ -1950,8 +2260,10 @@ static void check_signature(Func *f) {
         if (f->is_asm && ty_is_aggr(p->ty)) error_at(p->loc, "asm functions take scalars, vectors and pointers only");
     }
     if (f->is_asm && ty_is_aggr(f->ret)) error_at(f->ret_texpr->loc, "asm functions cannot return %s", ty_str(f->ret));
-    f->label = ar_printf("F_%s%s", f->name, f->sym->user && sym_lookup_layer(f->name, 0) ? "$u" : "");
+    f->label = sym_label("F_", f->sym);
     const char *n = f->name;
+    if (f->sym->priv && f->sym->user && (!strcmp(n, "init") || !strcmp(n, "update") || !strcmp(n, "draw")))
+        error_at(f->loc, "%s() is called by the runtime, so it cannot be private", n);
     if (!strcmp(n, "init") || !strcmp(n, "update") || !strcmp(n, "draw")) {
         if (f->nparams || f->ret->k != TY_VOID) error_at(f->loc, "%s() must take no arguments and return nothing", n);
     }
@@ -1983,6 +2295,9 @@ static void check_func_body(Program *P, Func *f, Ctx *outer) {
         p->local = l;
     }
     if (f->is_asm) { check_asm_refs(&c, f->asm_text, f->asm_loc); return; }
+    if (P->debug & 1)
+        f->stack_msg = check_msg(&c, f->loc, "__check_fail", "stack overflow entering %s (too deep a recursion, or too many "
+                                 "locals: the stack ran into the global variables)", f->is_lambda ? f->name : ar_printf("%s()", f->name));
     if (f->lambda_body) {
         /* fn(x) => expr: the body is `return expr` (or the call, for no result) */
         Expr *v = check(&c, f->lambda_body, f->ret);
@@ -2015,6 +2330,24 @@ static void check_func_body(Program *P, Func *f, Ctx *outer) {
     if (f->ret->k != TY_VOID && !stmt_returns(f->body))
         error_at(f->loc, "%s can reach its end without returning a %s",
                  f->is_lambda ? f->name : ar_printf("%s()", f->name), ty_str(f->ret));
+    if (P->wextra) warn_unused(f);
+}
+
+/* meic -W: locals and parameters that are never read (names starting with '_' are exempt). */
+static void warn_unused(Func *f) {
+    if (file_is_stdlib(f->loc.file)) return;
+    for (int i = 0; i < f->nlocals; i++) {
+        Local *l = f->locals[i];
+        if (!l->name || !((l->name[0] | 32) >= 'a' && (l->name[0] | 32) <= 'z') || l->is_capture || l->is_loopvar || l->in_asm || l->csym) continue;
+        if (l->nreads > 0) continue;
+        if (l->is_param)
+            warn_at(l->loc, "parameter '%s' of %s is never used (call it _%s if that is intended)", l->name,
+                    f->is_lambda ? f->name : ar_printf("%s()", f->name), l->name);
+        else if (l->nwrites)
+            warn_at(l->loc, "'%s' is assigned but its value is never read", l->name);
+        else
+            warn_at(l->loc, "'%s' is never used", l->name);
+    }
 }
 
 static void check_func(Program *P, Func *f) {
@@ -2031,7 +2364,7 @@ static void resolve_embed(Sym *s) {
     Type *t = s->texpr ? complete(resolve_type(s->texpr), s->loc) : ty_u8;
     if (t->size == 0) error_at(s->loc, "cannot embed data as a zero-sized type");
     s->ty = ty_ptr(t);
-    s->label = ar_printf("E_%s%s", s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
+    s->label = sym_label("E_", s);
     Ctx c = {.P = g_prog};
     int64_t off = s->off_e ? const_int(&c, s->off_e, "embed offset") : 0;
     int64_t len = s->len_e ? const_int(&c, s->len_e, "embed length") : (int64_t)s->datalen - off;
@@ -2040,6 +2373,435 @@ static void resolve_embed(Sym *s) {
     s->data += off;
     s->datalen = (size_t)len;
     s->state = 2;
+}
+
+/* ------------------------------------------------------------ inlining
+ * A call to a small function whose whole body is `return E`, with E free of calls, is replaced
+ * by E with the arguments in place of the parameters. Arguments must be free of calls and
+ * I/O register reads (so evaluating them where E uses them, rather than all first, changes
+ * nothing), and an argument E uses more than once must be cheap to repeat (a constant or a
+ * variable). The function itself is still emitted for other uses (values, asm). */
+
+#define INLINE_MAX_NODES 24
+
+static int inl_count(Expr *e, Func *f, int *uses, int *ok) {
+    if (!e || !*ok) return 0;
+    int n = 1;
+    switch (e->k) {
+    case E_CALL:
+        if (e->callee || e->indirect || e->bi >= BI_MAP || e->bi == BI_LENGTH || e->bi == BI_NORMALIZE) { *ok = 0; return 0; }
+        break;
+    case E_FUNC: case E_MATCH: case E_ARRAY: case E_STRUCT: *ok = 0; return 0;
+    case E_NAME:
+        if (e->sym && e->sym->k == SY_LOCAL) {
+            int found = 0;
+            for (int i = 0; i < f->nparams; i++)
+                if (f->params[i].local == e->sym->local) { uses[i]++; found = 1; }
+            if (!found) *ok = 0;
+        }
+        break;
+    default: break;
+    }
+    if (e->isconst && e->k != E_CONV) return n;
+    n += inl_count(e->a, f, uses, ok) + inl_count(e->b, f, uses, ok);
+    for (int i = 0; i < e->nargs; i++) n += inl_count(e->args[i], f, uses, ok);
+    return n;
+}
+
+static int inlinable(Func *f) {
+    if (f->inl) return f->inl == 1;
+    f->inl = 2;
+    if (f->is_asm || f->is_lambda || f->is_init || f->ncaps || !f->body || !f->ret || f->hidden_ret) return 0;
+    if (f->ret->k == TY_VOID || ty_is_aggr(f->ret) || f->nparams > 8) return 0;
+    Stmt *b = f->body;
+    while (b && b->k == S_BLOCK && b->n == 1) b = b->list[0];
+    if (!b || b->k != S_RETURN || !b->e) return 0;
+    for (int i = 0; i < f->nparams; i++) if (f->params[i].local->addr_taken || f->params[i].local->in_asm) return 0;
+    int uses[8] = {0}, ok = 1;
+    int n = inl_count(b->e, f, uses, &ok);
+    if (!ok || n > INLINE_MAX_NODES) return 0;
+    f->inl = 1;
+    f->inl_e = b->e;
+    return 1;
+}
+
+/* Does evaluating e call a function or read an I/O register? */
+static int inl_effects(Expr *e) {
+    if (!e) return 0;
+    if (e->k == E_CALL && (e->callee || e->indirect || e->bi >= BI_MAP)) return 1;
+    if (e->k == E_FUNC || e->k == E_MATCH) return 1;
+    if (e->k == E_NAME && e->sym && e->sym->k == SY_REG) return 1;
+    if (e->isconst && e->k != E_CONV) return 0;
+    if (inl_effects(e->a) || inl_effects(e->b)) return 1;
+    for (int i = 0; i < e->nargs; i++) if (inl_effects(e->args[i])) return 1;
+    return 0;
+}
+
+static int inl_cheap(Expr *e) {
+    if (e->isconst) return 1;
+    if (e->k == E_NAME) return 1;
+    if (e->k == E_STR) return 1;
+    if (e->k == E_CONV && !ty_is_aggr(e->ty)) return inl_cheap(e->a) && e->ty->size == 4 && e->conv_from && e->conv_from->size == 4
+                                                && (e->ty->k == TY_FIXED) == (e->conv_from->k == TY_FIXED);
+    return 0;
+}
+
+static Expr *inl_clone(Expr *e, Func *f, Expr **args) {
+    if (!e) return NULL;
+    if (f && e->k == E_NAME && e->sym && e->sym->k == SY_LOCAL)
+        for (int i = 0; i < f->nparams; i++)
+            if (f->params[i].local == e->sym->local) return inl_clone(args[i], NULL, NULL);
+    Expr *c = ar_alloc(sizeof *c);
+    *c = *e;
+    c->a = inl_clone(e->a, f, args);
+    c->b = inl_clone(e->b, f, args);
+    if (e->nargs) {
+        c->args = ar_alloc(sizeof(Expr *) * (size_t)e->nargs);
+        for (int i = 0; i < e->nargs; i++) c->args[i] = inl_clone(e->args[i], f, args);
+    }
+    return c;
+}
+
+static void inline_expr(Expr *e);
+
+static void inline_into(Expr *e) {
+    Func *f = e->callee;
+    if (!f || e->indirect || e->bi || !inlinable(f)) return;
+    if (e->nargs != f->nparams) return;
+    int uses[8] = {0}, ok = 1;
+    inl_count(f->inl_e, f, uses, &ok);
+    for (int i = 0; i < e->nargs; i++) {
+        Expr *a = e->args[i];
+        if (inl_effects(a)) return;
+        if (uses[i] > 1 && !inl_cheap(a)) return;
+        if (ty_is_aggr(a->ty) && !(is_lvalue(a) || (a->k == E_NAME && a->sym && a->sym->k == SY_DATA))) return;
+    }
+    Expr *c = inl_clone(f->inl_e, f, e->args);
+    Loc loc = e->loc;
+    *e = *c;
+    e->loc = loc;
+}
+
+static void inline_expr(Expr *e) {
+    if (!e) return;
+    inline_expr(e->a);
+    inline_expr(e->b);
+    for (int i = 0; i < e->nargs; i++) inline_expr(e->args[i]);
+    for (int i = 0; i < e->narms; i++) inline_expr(e->arms[i].value);
+    if (e->k == E_CALL) inline_into(e);
+}
+
+static void inline_stmt(Stmt *s) {
+    if (!s) return;
+    for (int i = 0; i < s->n; i++) inline_stmt(s->list[i]);
+    if (s->k != S_CONST) { inline_expr(s->e); inline_expr(s->e2); }
+    inline_stmt(s->then);
+    inline_stmt(s->els);
+    for (int i = 0; i < s->narms; i++) inline_stmt(s->arms[i].body);
+}
+
+static int expr_calls(Expr *e) {
+    if (!e) return 0;
+    if (e->k == E_CALL && (e->callee || e->indirect || e->bi >= BI_MAP)) return 1;
+    if (expr_calls(e->a) || expr_calls(e->b)) return 1;
+    for (int i = 0; i < e->nargs; i++) if (expr_calls(e->args[i])) return 1;
+    for (int i = 0; i < e->narms; i++) if (expr_calls(e->arms[i].value)) return 1;
+    return 0;
+}
+
+static int stmt_calls(Stmt *s) {
+    if (!s) return 0;
+    for (int i = 0; i < s->n; i++) if (stmt_calls(s->list[i])) return 1;
+    if (s->k != S_CONST && (expr_calls(s->e) || expr_calls(s->e2))) return 1;
+    if (stmt_calls(s->then) || stmt_calls(s->els)) return 1;
+    for (int i = 0; i < s->narms; i++) if (stmt_calls(s->arms[i].body)) return 1;
+    return 0;
+}
+
+/* ---- let forwarding: `let x = E` with E built only from constants and locals (no memory
+ * reads, no calls) is substituted into its uses when that cannot change its value: every use
+ * when E is a constant, or else its only use, in the value of a later simple statement of the
+ * same block, with nothing in between assigning a local E reads. x then needs no register. */
+
+static int fw_local_ok(Local *l) { return l && !l->addr_taken && !l->in_asm && !l->captured; }
+
+static int fw_pure(Expr *e) {
+    if (!e) return 1;
+    if (e->isconst && e->k != E_CONV && !ty_is_aggr(e->ty)) return 1;
+    switch (e->k) {
+    case E_NAME: return e->sym && e->sym->k == SY_LOCAL && fw_local_ok(e->sym->local) && !ty_is_aggr(e->ty);
+    case E_UNARY: return e->op != U_DEREF && e->op != U_ADDR && fw_pure(e->a);
+    case E_BINARY:
+        if (e->a->ty->k == TY_MAT4 || ty_is_aggr(e->ty)) return 0;
+        return fw_pure(e->a) && fw_pure(e->b);
+    case E_CONV: return !ty_is_aggr(e->ty) && (!e->a || fw_pure(e->a));
+    case E_FIELD: return !e->field && fw_pure(e->a);
+    case E_CALL:
+        if (e->callee || e->indirect || !e->bi || e->bi >= BI_MAP || e->bi == BI_KIND || e->bi == BI_RAW) return 0;
+        for (int i = 0; i < e->nargs; i++) if (!fw_pure(e->args[i])) return 0;
+        return 1;
+    default: return 0;
+    }
+}
+
+static void fw_reads(Expr *e, Local **v, int *n) {
+    if (!e) return;
+    if (e->k == E_NAME && e->sym && e->sym->k == SY_LOCAL) { if (*n < 16) v[(*n)++] = e->sym->local; return; }
+    if (e->isconst && e->k != E_CONV) return;
+    fw_reads(e->a, v, n);
+    fw_reads(e->b, v, n);
+    for (int i = 0; i < e->nargs; i++) fw_reads(e->args[i], v, n);
+}
+
+/* Collects the E_NAME nodes in e that name x (up to max); returns how many there are. */
+static int fw_uses_e(Expr *e, Local *x, Expr **out, int max, int n) {
+    if (!e) return n;
+    if (e->k == E_NAME && e->sym && e->sym->k == SY_LOCAL && e->sym->local == x) { if (n < max) out[n] = e; return n + 1; }
+    if (e->k == E_FUNC) return n;
+    n = fw_uses_e(e->a, x, out, max, n);
+    n = fw_uses_e(e->b, x, out, max, n);
+    for (int i = 0; i < e->nargs; i++) n = fw_uses_e(e->args[i], x, out, max, n);
+    for (int i = 0; i < e->narms; i++) n = fw_uses_e(e->arms[i].value, x, out, max, n);
+    return n;
+}
+
+static int fw_uses_s(Stmt *s, Local *x, Expr **out, int max, int n) {
+    if (!s) return n;
+    for (int i = 0; i < s->n; i++) n = fw_uses_s(s->list[i], x, out, max, n);
+    if (s->k != S_CONST) { n = fw_uses_e(s->e, x, out, max, n); n = fw_uses_e(s->e2, x, out, max, n); }
+    for (int i = 0; i < s->nips; i++) n = fw_uses_e(s->ipinit[i], x, out, max, n);   /* (a for loop's induction pointers) */
+    if (s->k == S_ASM && s->asm_text && strstr(s->asm_text, "{")) n += 1000;   /* named in asm: keep it */
+    n = fw_uses_s(s->then, x, out, max, n);
+    n = fw_uses_s(s->els, x, out, max, n);
+    for (int i = 0; i < s->narms; i++) n = fw_uses_s(s->arms[i].body, x, out, max, n);
+    return n;
+}
+
+static Expr *fw_root(Expr *e) {
+    while (e && (e->k == E_FIELD || e->k == E_INDEX) && e->a && e->a->ty->k != TY_PTR) e = e->a;
+    return e;
+}
+
+static int fw_assigns(Stmt *s, Local *l) {
+    if (!s) return 0;
+    if (s->k == S_ASSIGN) {
+        Expr *r = fw_root(s->e);
+        if (r && r->k == E_NAME && r->sym && r->sym->k == SY_LOCAL && r->sym->local == l) return 1;
+    }
+    if (s->k == S_ASM) return 1;
+    for (int i = 0; i < s->n; i++) if (fw_assigns(s->list[i], l)) return 1;
+    if (fw_assigns(s->then, l) || fw_assigns(s->els, l)) return 1;
+    for (int i = 0; i < s->narms; i++) if (fw_assigns(s->arms[i].body, l)) return 1;
+    return 0;
+}
+
+static void fw_block(Stmt *b) {
+    if (!b) return;
+    if (b->k == S_BLOCK) {
+        for (int i = 0; i < b->n; i++) {
+            Stmt *s = b->list[i];
+            if (s->k != S_VAR || !s->is_let || !s->e || !s->var) continue;
+            Local *x = s->var;
+            Expr *e = s->e;
+            if (!fw_local_ok(x) || ty_is_aggr(x->ty) || e->ty != x->ty || !fw_pure(e)) continue;
+            int isk = e->isconst && !ty_is_vec(x->ty) && x->ty->k != TY_FUNC;
+            if (e->isconst && !isk) continue;   /* a vector constant: keep it in its register */
+            if (!isk && e->k == E_NAME && e->sym && e->sym->k == SY_LOCAL) {
+                /* a copy of a local that the rest of the block never assigns: use it directly */
+                int assigned = 0;
+                for (int j = i + 1; j < b->n && !assigned; j++) assigned = fw_assigns(b->list[j], e->sym->local);
+                if (!assigned) isk = 1;
+            }
+            Expr *uses[64];
+            int nu = 0;
+            for (int j = i + 1; j < b->n; j++) nu = fw_uses_s(b->list[j], x, uses, 64, nu);
+            if (nu == 0 || nu > 64) continue;
+            if (!isk) {
+                if (nu != 1) continue;
+                /* the statement holding the use: a simple one, the use in its own value */
+                int j = i + 1, found = -1;
+                for (; j < b->n && found < 0; j++) {
+                    Expr *one[1];
+                    if (fw_uses_s(b->list[j], x, one, 1, 0)) found = j;
+                }
+                Stmt *t = b->list[found];
+                if (t->k != S_VAR && t->k != S_ASSIGN && t->k != S_EXPR && t->k != S_RETURN && t->k != S_IF && t->k != S_MATCH) continue;
+                Expr *one[1];
+                if (!(fw_uses_e(t->e, x, one, 1, 0) || (t->k != S_IF && t->k != S_MATCH && fw_uses_e(t->e2, x, one, 1, 0)))) continue;
+                Local *rd[16];
+                int nr = 0;
+                fw_reads(e, rd, &nr);
+                if (nr >= 16) continue;
+                int clash = 0;
+                for (int k = 0; k < nr && !clash; k++) {
+                    for (int m = i + 1; m < found && !clash; m++) if (fw_assigns(b->list[m], rd[k])) clash = 1;
+                    if (t->k == S_ASSIGN && t->op >= 0) {
+                        Expr *r = fw_root(t->e);
+                        if (r && r->k == E_NAME && r->sym && r->sym->local == rd[k] && fw_uses_e(t->e, x, one, 1, 0)) clash = 1;
+                    }
+                }
+                if (clash) continue;
+            }
+            for (int u = 0; u < nu; u++) {
+                Loc loc = uses[u]->loc;
+                *uses[u] = *inl_clone(e, NULL, NULL);
+                uses[u]->loc = loc;
+            }
+            x->elided = 1;
+            s->k = S_BLOCK;
+            s->n = 0;
+            s->e = NULL;
+        }
+    }
+    for (int i = 0; i < b->n; i++) fw_block(b->list[i]);
+    fw_block(b->then);
+    fw_block(b->els);
+    for (int i = 0; i < b->narms; i++) fw_block(b->arms[i].body);
+}
+
+/* ---- induction pointers: in `for i in lo..hi`, a[i] for a fixed array a (a global, const
+ * data, a local array, or a pointer local the loop does not change) becomes *p, with p = &a[i]
+ * set up with i and stepped by one element whenever i is: no index arithmetic per use. */
+
+#define MAX_IPS 3
+
+typedef struct { Expr *base; Expr **uses; int nuses, cap; } IpGroup;
+
+static int ip_same_base(Expr *a, Expr *b) {
+    return a->k == E_NAME && b->k == E_NAME && a->sym && b->sym &&
+           (a->sym->k == SY_LOCAL ? b->sym->k == SY_LOCAL && a->sym->local == b->sym->local : a->sym == b->sym);
+}
+
+static int ip_base_ok(Expr *a, Stmt *body) {
+    if (a->k != E_NAME || !a->sym) return 0;
+    switch (a->sym->k) {
+    case SY_GLOBAL: case SY_DATA: return a->ty->k == TY_ARRAY;
+    case SY_LOCAL: {
+        Local *l = a->sym->local;
+        if (a->ty->k == TY_ARRAY) return 1;
+        if (a->ty->k == TY_PTR) return !l->addr_taken && !l->in_asm && !fw_assigns(body, l);
+        return 0;
+    }
+    default: return 0;
+    }
+}
+
+static void ip_collect_e(Expr *e, Local *iv, Stmt *body, IpGroup *g, int *ng) {
+    if (!e || e->k == E_FUNC) return;
+    if (e->isconst && e->k != E_CONV) return;
+    if (e->k == E_UNARY && e->op == U_ADDR && e->a->k == E_INDEX) {
+        /* &a[i]: the whole address is the pointer (collected as the E_INDEX, rewritten below) */
+        int before = 0;
+        for (int k = 0; k < *ng; k++) before += g[k].nuses;
+        ip_collect_e(e->a, iv, body, g, ng);
+        int after = 0;
+        for (int k = 0; k < *ng; k++) after += g[k].nuses;
+        if (after > before) e->a->hid[0] = (Local *)e;   /* remember the & around it */
+        return;
+    }
+    if (e->k == E_INDEX && !e->chk && e->b->k == E_NAME && e->b->sym && e->b->sym->k == SY_LOCAL && e->b->sym->local == iv
+        && ip_base_ok(e->a, body) && e->ty->size > 0) {
+        int k;
+        for (k = 0; k < *ng; k++) if (ip_same_base(g[k].base, e->a)) break;
+        if (k == *ng) {
+            if (*ng == MAX_IPS) return;
+            g[k] = (IpGroup){e->a, NULL, 0, 0};
+            (*ng)++;
+        }
+        PUSH(g[k].uses, g[k].nuses, g[k].cap, e);
+        return;
+    }
+    ip_collect_e(e->a, iv, body, g, ng);
+    ip_collect_e(e->b, iv, body, g, ng);
+    for (int i = 0; i < e->nargs; i++) ip_collect_e(e->args[i], iv, body, g, ng);
+    for (int i = 0; i < e->narms; i++) ip_collect_e(e->arms[i].value, iv, body, g, ng);
+}
+
+static void ip_collect_s(Stmt *s, Local *iv, Stmt *body, IpGroup *g, int *ng) {
+    if (!s) return;
+    for (int i = 0; i < s->n; i++) ip_collect_s(s->list[i], iv, body, g, ng);
+    if (s->k != S_CONST) { ip_collect_e(s->e, iv, body, g, ng); ip_collect_e(s->e2, iv, body, g, ng); }
+    ip_collect_s(s->then, iv, body, g, ng);
+    ip_collect_s(s->els, iv, body, g, ng);
+    for (int i = 0; i < s->narms; i++) ip_collect_s(s->arms[i].body, iv, body, g, ng);
+}
+
+static Expr *ip_name(Local *l) {
+    Expr *n = ar_alloc(sizeof *n);
+    n->k = E_NAME;
+    n->name = l->name;
+    n->ty = l->ty;
+    n->sym = ar_alloc(sizeof(Sym));
+    n->sym->k = SY_LOCAL;
+    n->sym->name = l->name;
+    n->sym->local = l;
+    n->sym->ty = l->ty;
+    return n;
+}
+
+static void ip_stmt(Func *f, Stmt *s) {
+    if (!s) return;
+    for (int i = 0; i < s->n; i++) ip_stmt(f, s->list[i]);
+    ip_stmt(f, s->then);
+    ip_stmt(f, s->els);
+    for (int i = 0; i < s->narms; i++) ip_stmt(f, s->arms[i].body);
+    if (s->k == S_FOR && !s->e2->isconst && s->e2->k == E_NAME && s->e2->sym && s->e2->sym->k == SY_LOCAL) {
+        Local *l = s->e2->sym->local;
+        if (fw_local_ok(l) && l != s->var && ty_is_scalar(l->ty) && !fw_assigns(s->then, l)) s->end_direct = 1;
+    }
+    if (s->k != S_FOR || s->var->addr_taken || s->var->in_asm || s->var->captured) return;
+    IpGroup g[MAX_IPS];
+    int ng = 0;
+    ip_collect_s(s->then, s->var, s->then, g, &ng);
+    for (int k = 0; k < ng; k++) {
+        Expr *u0 = g[k].uses[0];
+        Type *el = u0->ty;
+        Local *p = ar_alloc(sizeof *p);
+        p->name = "";
+        p->ty = ty_ptr(el);
+        p->loc = u0->loc;
+        p->immutable = 1;
+        p->weight = (int64_t)16 * g[k].nuses + 8;
+        PUSH(f->locals, f->nlocals, f->caplocals, p);
+        /* p = &a[i], with i just set to lo */
+        Expr *ix = ar_alloc(sizeof *ix);
+        *ix = *u0;
+        ix->a = inl_clone(u0->a, NULL, NULL);
+        ix->b = inl_clone(u0->b, NULL, NULL);
+        Expr *addr = ar_alloc(sizeof *addr);
+        addr->k = E_UNARY; addr->op = U_ADDR; addr->loc = u0->loc; addr->a = ix; addr->ty = p->ty;
+        if (ix->a->sym->k == SY_LOCAL && ix->a->ty->k == TY_ARRAY) ix->a->sym->local->addr_taken = 1;
+        if (!s->ips) {
+            s->ips = ar_alloc(sizeof(Local *) * MAX_IPS);
+            s->ipinit = ar_alloc(sizeof(Expr *) * MAX_IPS);
+            s->ipstep = ar_alloc(sizeof(int) * MAX_IPS);
+        }
+        s->ips[s->nips] = p;
+        s->ipinit[s->nips] = addr;
+        s->ipstep[s->nips] = el->size;
+        s->nips++;
+        for (int u = 0; u < g[k].nuses; u++) {
+            Expr *e = g[k].uses[u];
+            Expr *amp = (Expr *)e->hid[0];
+            Loc loc = e->loc;
+            memset(e, 0, sizeof *e);
+            e->k = E_UNARY; e->op = U_DEREF; e->loc = loc; e->a = ip_name(p); e->ty = el;
+            if (amp) { Type *t = amp->ty; *amp = *ip_name(p); amp->loc = loc; amp->ty = t; }
+        }
+    }
+    s->narms = 0;
+}
+
+static void inline_program(Program *P) {
+    for (int i = 0; i < P->nfuncs; i++) {
+        Func *f = P->funcs[i];
+        if (f->is_asm || !f->body) continue;
+        inline_stmt(f->body);
+        ip_stmt(f, f->body);
+        fw_block(f->body);
+        /* a function whose only calls were inlined is now a leaf */
+        if (f->has_call && !f->uses_xfm && !stmt_calls(f->body)) f->has_call = 0;
+    }
 }
 
 void check_program(Program *P) {
@@ -2059,12 +2821,32 @@ void check_program(Program *P) {
         s->addr = (uint32_t)a;
     }
     for (int i = 0; i < P->ndatas; i++) if (P->datas[i]->k == SY_EMBED) resolve_embed(P->datas[i]);
+    for (int i = 0; i < P->nstructs; i++)
+        for (int j = 0; j < P->structs[i]->ty->nfields; j++) check_field_default(P, &P->structs[i]->ty->fields[j]);
     for (int i = 0; i < P->nfuncs; i++) check_signature(P->funcs[i]);
+    for (int i = 0; i < P->nfuncs; i++) {
+        Func *f = P->funcs[i];
+        for (Func *w = f->overrides; w; w = w->overrides) {
+        /* the replaced weak function: same parameter and result types */
+        w->ret = w->ret_texpr ? complete(resolve_type(w->ret_texpr), w->ret_texpr->loc) : ty_void;
+        int same = w->nparams == f->nparams && !strcmp(ty_str(w->ret), ty_str(f->ret));
+        for (int k = 0; k < w->nparams && same; k++)
+            same = !strcmp(ty_str(complete(resolve_type(w->params[k].texpr), w->params[k].loc)), ty_str(f->params[k].ty));
+        if (!same) {
+            Buf b = {0};
+            for (int k = 0; k < w->nparams; k++)
+                buf_printf(&b, "%s%s", k ? ", " : "", ty_str(complete(resolve_type(w->params[k].texpr), w->params[k].loc)));
+            error_at(f->loc, "%s() replaces the weak %s() at %s:%d, so it must have the same parameter and result types "
+                     "(%s(%s)%s%s)", f->name, w->name, w->loc.file, w->loc.line, w->name, b.p ? b.p : "",
+                     w->ret->k == TY_VOID ? "" : " -> ", w->ret->k == TY_VOID ? "" : ty_str(w->ret));
+        }
+        }
+    }
     for (int i = 0; i < P->nglobals; i++) {
         Sym *s = P->globals[i];
         if (s->texpr) s->ty = complete(resolve_type(s->texpr), s->loc);
         if (s->ty && s->ty->k == TY_VOID) error_at(s->loc, "variables cannot be void");
-        s->label = ar_printf("G_%s%s", s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
+        s->label = sym_label("G_", s);
     }
     /* global initialisers become the body of a synthesized function, in declaration order */
     Func *init = ar_alloc(sizeof *init);
@@ -2102,4 +2884,5 @@ void check_program(Program *P) {
     }
     P->init_fn = init;
     for (int i = 0; i < P->nfuncs; i++) check_func(P, P->funcs[i]);   /* literals are appended and already checked */
+    inline_program(P);
 }

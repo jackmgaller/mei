@@ -1,0 +1,23 @@
+// Array sizes from constant expressions: arithmetic, len() of enums and arrays, sizeof, local constants.
+const W = 8
+const H = W / 2 + 1
+enum Kind { A, B, C }
+const TBL: [5]s32 = [1, 2, 3, 4, 5]
+var grid: [W * H]u8
+var per_kind: [len(Kind)]s32
+var shadow: [len(TBL)]s32
+var mixed: [(W << 1) - sizeof(s32)]u8
+struct S { xs: [H * 2]s16 }
+var s: S
+fn init() {
+    const K = 2
+    var loc: [W - 3]s32
+    var kk: [K * K + len(TBL)]u8
+    print_int(len(grid)); println("")   // expect: 40
+    print_int(len(per_kind)); println("")   // expect: 3
+    print_int(len(shadow)); println("")   // expect: 5
+    print_int(len(mixed)); println("")   // expect: 12
+    print_int(len(s.xs)); println("")   // expect: 10
+    print_int(len(loc)); println("")    // expect: 5
+    print_int(len(kk)); println("")     // expect: 9
+}

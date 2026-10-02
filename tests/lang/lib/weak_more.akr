@@ -1,0 +1,2 @@
+// for weak.akr: replaces the weak on_score.
+fn on_score(points: s32) -> s32 { return points * 10 }

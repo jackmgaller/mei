@@ -1,0 +1,7 @@
+// error: a line that starts with '-' begins a new statement
+fn init() {
+    var total = 10
+    total = total + 5
+        - 3
+    print_int(total)
+}

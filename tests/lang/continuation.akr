@@ -1,0 +1,45 @@
+// A line that starts with a binary-only operator continues the expression above.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+struct V { x: s32, y: s32 }
+var v = V { x: 3, y: 4 }
+
+fn init() {
+    let a = 1
+        + 2
+        + 3
+    p(a)                        // expect: 6
+    let b = 100
+        / 4
+        % 7
+    p(b)                        // expect: 4
+    let ok = a > 2
+        && b < 5
+        || false
+    if ok { p(1) }              // expect: 1
+    let bits = 1
+        | 2
+        ^ 4
+        << 1
+    p(bits)                     // expect: 11
+    let eq = a
+        == 6
+    if eq { p(2) }              // expect: 2
+    let ne = a
+        != 6
+    if !ne { p(3) }             // expect: 3
+    let s = v
+        .y
+    p(s)                        // expect: 4
+    let c = 300
+        as u8
+    p(c as s32)                 // expect: 44
+    let both = a > 0
+        && b > 0  // a comment on the way
+        // and a full comment line
+        && s > 0
+    if both { p(4) }            // expect: 4
+    var x = 5
+    *(&x) = 6                   // '*' starts a new statement (a dereference)
+    p(x)                        // expect: 6
+}

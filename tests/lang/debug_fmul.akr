@@ -1,0 +1,12 @@
+// meic --trap-fmul: a fixed-point product that does not fit halts with a report.
+// flags: --trap-fmul
+// exit: 2
+fn mul(a: fixed, b: fixed) -> fixed { return a * b }
+
+fn init() {
+    print_fixed(mul(100.0, 300.0)); println("")      // expect: 30000.0
+    print_fixed(mul(-180.0, 180.0)); println("")     // expect: -32400.0
+    print_fixed(mul(0.5, 30000.0)); println("")      // expect: 15000.0
+    print_fixed(mul(300.0, 300.0)); println("")
+}
+// expect: check failed: debug_fmul.akr:4: fixed-point multiply overflow

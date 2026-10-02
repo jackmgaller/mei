@@ -1,0 +1,72 @@
+// match as an expression: every arm yields a value of one type.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+enum Kind { Apple, Pear, Plum }
+struct Pt { x: s32, y: s32 }
+
+fn kname(k: Kind) -> *u8 {
+    return match k { Apple => "apple", Pear => "pear", Plum => "plum" }
+}
+
+fn score(n: s32) -> s32 {
+    let s = match n {
+        0 => 1
+        1, 2 => n * 10
+        else => -1
+    }
+    return s
+}
+
+fn half(k: Kind) -> fixed {
+    return match k { Apple => 0.5, Pear => 1, Plum => 2.25 }
+}
+
+fn calls(k: Kind) -> s32 {
+    // arms that make calls, used inside a bigger expression with live temporaries
+    return 1000 + match k {
+        Apple => score(1) + score(2)
+        Pear => score(0)
+        else => score(9) * 2
+    } + 7
+}
+
+fn vec_of(k: Kind) -> vec3 {
+    return match k { Apple => vec3(1.0, 0.0, 0.0), Pear => vec3(0.0, 2.0, 0.0), Plum => vec3(0.0, 0.0, 3.0) }
+}
+
+fn pt(k: Kind) -> Pt {
+    let q = match k {
+        Apple => Pt { x: 1, y: 2 }
+        else => Pt { x: 30, y: 40 }
+    }
+    return q
+}
+
+const C = match 2 { 1 => 10, 2 => 20, else => 30 }
+
+fn init() {
+    println(kname(Kind.Pear))                 // expect: pear
+    p(score(0))                               // expect: 1
+    p(score(2))                               // expect: 20
+    p(score(5))                               // expect: -1
+    print_fixed(half(Kind.Plum)); println("") // expect: 2.25
+    print_fixed(half(Kind.Pear)); println("") // expect: 1.0
+    p(calls(Kind.Apple))                      // expect: 1037
+    p(calls(Kind.Pear))                       // expect: 1008
+    p(calls(Kind.Plum))                       // expect: 1005
+    let v = vec_of(Kind.Pear)
+    print_fixed(v.y); println("")             // expect: 2.0
+    p(pt(Kind.Apple).y)                       // expect: 2
+    p(pt(Kind.Plum).x)                        // expect: 30
+    p(C)                                      // expect: 20
+    var total = 0
+    for i in 0..6 {
+        total += match i % 3 { 0 => 1, 1 => 10, else => 100 }
+    }
+    p(total)                                  // expect: 222
+    let b: u8 = match Kind.Plum { Plum => 200, else => 1 }
+    p(b as s32)                               // expect: 200
+    if match 3 { 3 => true, else => false } { p(5) }   // expect: 5
+    let k = 7 as Kind                         // not a variant: takes the last arm
+    p(match k { Apple => 1, Pear => 2, Plum => 3 })    // expect: 3
+}

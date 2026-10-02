@@ -1,0 +1,3 @@
+// error: 'for v in Sparse' needs variants with consecutive values
+enum Sparse { X = 1, Y = 4 }
+fn init() { for v in Sparse { print_int(v as s32) } }

@@ -12,6 +12,8 @@ typedef struct {
     const char *file;
     int no_struct_lit;
     int in_arm;          /* parsing a single-statement match arm: ',' may end it */
+    int priv;            /* the declaration being parsed is `private` */
+    int weak;            /* the function being parsed is `weak` */
 } Parser;
 
 static const char *keywords[] = {
@@ -49,7 +51,9 @@ static void skip_nl(Parser *p) { while (p->tok.k == TK_NL || is_op(p, ";")) next
 static void skip_nl_only(Parser *p) { while (p->tok.k == TK_NL) next(p); }
 
 static const char *expect_ident(Parser *p, const char *what) {
-    if (p->tok.k != TK_IDENT || is_keyword(p->tok.s))
+    if (p->tok.k == TK_IDENT && is_keyword(p->tok.s))
+        error_at(p->tok.loc, "'%s' is a keyword and cannot be used as %s", p->tok.s, what);
+    if (p->tok.k != TK_IDENT)
         error_at(p->tok.loc, "expected %s, found %s", what, tok_desc(&p->tok));
     const char *s = p->tok.s;
     next(p);
@@ -115,6 +119,7 @@ static Expr *new_expr(ExprKind k, Loc loc) {
 }
 
 static Expr *parse_unary(Parser *p);
+static Expr *parse_match_expr(Parser *p);
 static void parse_params(Parser *p, Func *f, int types_optional);
 static struct Stmt *parse_block(Parser *p);
 
@@ -169,7 +174,8 @@ static Expr *parse_primary(Parser *p) {
             return e;
         }
         if (!strcmp(t.s, "fn")) return parse_lambda(p);
-        if (is_keyword(t.s)) error_at(t.loc, "expected an expression, found '%s'", t.s);
+        if (!strcmp(t.s, "match")) return parse_match_expr(p);
+        if (is_keyword(t.s)) error_at(t.loc, "expected an expression, found the keyword '%s'", t.s);
         next(p);
         if (is_op(p, "{") && !p->no_struct_lit) {
             /* struct literal: Name { field: value, ... } */
@@ -396,6 +402,63 @@ static Stmt *parse_if(Parser *p) {
 
 static Stmt *parse_stmt(Parser *p);
 
+/* The patterns of a match arm and its `=>`: `A, B =>`, `else =>` or `_ =>`. */
+static MatchArm parse_arm_head(Parser *p) {
+    MatchArm arm = {0};
+    arm.loc = p->tok.loc;
+    if (is_kw(p, "else") || (p->tok.k == TK_IDENT && !strcmp(p->tok.s, "_"))) {
+        arm.is_else = 1;
+        next(p);
+    } else {
+        int pcap = 0;
+        for (;;) {
+            int save = p->no_struct_lit;
+            p->no_struct_lit = 1;
+            Expr *pat = parse_expr(p);
+            p->no_struct_lit = save;
+            PUSH(arm.pats, arm.npats, pcap, pat);
+            if (!is_op(p, ",")) break;
+            next(p);
+            skip_nl_only(p);
+        }
+    }
+    if (!is_op(p, "=>")) error_at(p->tok.loc, "expected '=>' after the match pattern, found %s", tok_desc(&p->tok));
+    next(p);
+    skip_nl_only(p);
+    return arm;
+}
+
+/* match x { A, B => value  C => value  else => value }: every arm is one expression. */
+static Expr *parse_match_expr(Parser *p) {
+    Expr *e = new_expr(E_MATCH, p->tok.loc);
+    next(p);
+    e->a = parse_cond(p);
+    skip_nl_only(p);
+    expect_op(p, "{");
+    int save = p->no_struct_lit, save_arm = p->in_arm;
+    p->in_arm = 0;
+    int cap = 0;
+    for (;;) {
+        skip_nl(p);
+        if (is_op(p, "}")) break;
+        if (p->tok.k == TK_EOF) error_at(e->loc, "unclosed match");
+        MatchArm arm = parse_arm_head(p);
+        if (is_op(p, "{"))
+            error_at(p->tok.loc, "an arm of a match expression is a value, not a block (use a match statement to run statements)");
+        p->no_struct_lit = 0;
+        arm.value = parse_expr(p);
+        p->no_struct_lit = save;
+        if (is_op(p, ",")) next(p);
+        else if (p->tok.k != TK_NL && !is_op(p, "}") && !is_op(p, ";"))
+            error_at(p->tok.loc, "expected ',' or a new line after the value of the match arm, found %s", tok_desc(&p->tok));
+        PUSH(e->arms, e->narms, cap, arm);
+    }
+    next(p);
+    p->in_arm = save_arm;
+    if (!e->narms) error_at(e->loc, "a match expression needs at least one arm");
+    return e;
+}
+
 /* match x { A, B => stmt  C => { ... }  else => ... }   (`_` is the same as else) */
 static Stmt *parse_match(Parser *p) {
     Stmt *s = new_stmt(S_MATCH, p->tok.loc);
@@ -408,27 +471,7 @@ static Stmt *parse_match(Parser *p) {
         skip_nl(p);
         if (is_op(p, "}")) break;
         if (p->tok.k == TK_EOF) error_at(s->loc, "unclosed match");
-        MatchArm arm = {0};
-        arm.loc = p->tok.loc;
-        if (is_kw(p, "else") || (p->tok.k == TK_IDENT && !strcmp(p->tok.s, "_"))) {
-            arm.is_else = 1;
-            next(p);
-        } else {
-            int pcap = 0;
-            for (;;) {
-                int save = p->no_struct_lit;
-                p->no_struct_lit = 1;
-                Expr *pat = parse_expr(p);
-                p->no_struct_lit = save;
-                PUSH(arm.pats, arm.npats, pcap, pat);
-                if (!is_op(p, ",")) break;
-                next(p);
-                skip_nl_only(p);
-            }
-        }
-        if (!is_op(p, "=>")) error_at(p->tok.loc, "expected '=>' after the match pattern, found %s", tok_desc(&p->tok));
-        next(p);
-        skip_nl_only(p);
+        MatchArm arm = parse_arm_head(p);
         if (is_op(p, "{")) arm.body = parse_block(p);
         else {
             int save = p->in_arm;
@@ -585,8 +628,11 @@ static Stmt *parse_stmt(Parser *p) {
         p->no_struct_lit = 1;
         s->e = parse_expr(p);
         if (is_op(p, "..=")) error_at(p->tok.loc, "inclusive ranges are not supported; use lo..hi+1");
-        expect_op(p, "..");
-        s->e2 = parse_expr(p);
+        if (is_op(p, "{") && s->e->k == E_NAME) s->e2 = NULL;   /* for d in EnumType: every variant */
+        else {
+            expect_op(p, "..");
+            s->e2 = parse_expr(p);
+        }
         p->no_struct_lit = save;
         s->then = parse_block(p);
         return s;
@@ -613,8 +659,22 @@ static Stmt *parse_stmt(Parser *p) {
         next(p);
         return s;
     }
-    if (is_kw(p, "const")) error_at(loc, "constants must be declared at the top level");
+    if (is_kw(p, "const")) {
+        /* a local constant: visible in the rest of its block */
+        s = new_stmt(S_CONST, loc);
+        next(p);
+        s->loc = p->tok.loc;
+        s->name = expect_ident(p, "a constant name");
+        if (is_op(p, ":")) { next(p); s->texpr = parse_type(p); }
+        expect_op(p, "=");
+        skip_nl_only(p);
+        s->e = parse_expr(p);
+        end_statement(p);
+        return s;
+    }
     if (is_op(p, "{")) return parse_block(p);
+    /* '-' and '*' are also unary: a line starting with them is a new statement */
+    const char *lead = is_op(p, "-") ? "-" : is_op(p, "*") ? "*" : NULL;
     Expr *e = parse_expr(p);
     static const struct { const char *s; int op; } as[] = {
         {"=", -1}, {"+=", B_ADD}, {"-=", B_SUB}, {"*=", B_MUL}, {"/=", B_DIV}, {"%=", B_MOD},
@@ -633,6 +693,10 @@ static Stmt *parse_stmt(Parser *p) {
         }
     }
     if (is_op(p, "==")) error_at(p->tok.loc, "'==' compares; use '=' to assign");
+    if (lead && e->k != E_CALL)
+        error_at(loc, "a line that starts with '%s' begins a new statement ('%s' is also %s, and this value alone does "
+                 "nothing); to continue the expression from the line above, end that line with '%s' instead, or put "
+                 "the whole expression in parentheses", lead, lead, lead[0] == '-' ? "unary minus" : "the dereference", lead);
     s = new_stmt(S_EXPR, loc);
     s->e = e;
     end_statement(p);
@@ -659,10 +723,20 @@ static Stmt *parse_block(Parser *p) {
 
 static Sym *new_global(Parser *p, SymKind k, const char *name, Loc loc) {
     int user = !file_is_stdlib(p->file);
-    Sym *old = sym_lookup_layer(name, user);
+    /* a private name conflicts with this file's names; a public one with every public name and
+       with this file's private names */
+    Sym *old = sym_lookup_private(name, p->file);
+    if (!old) {
+        old = sym_lookup_layer(name, user);
+        if (old && p->priv && old->loc.file && strcmp(old->loc.file, p->file)) old = NULL;   /* hides another file's public name */
+    }
     if (!old && user) {
         old = sym_lookup_layer(name, 0);
         if (old && (old->loc.file || old->k == SY_BUILTIN)) old = NULL;   /* a cart may reuse a library or builtin function name */
+    }
+    if (!old && p->priv) {
+        Sym *b = sym_lookup_layer(name, 0);
+        if (b && !b->loc.file && b->k != SY_BUILTIN) old = b;   /* built-in types */
     }
     if (old) {
         if (!old->loc.file) error_at(loc, "'%s' is a built-in name", name);
@@ -673,7 +747,8 @@ static Sym *new_global(Parser *p, SymKind k, const char *name, Loc loc) {
     s->k = k;
     s->name = name;
     s->loc = loc;
-    sym_define_global(s);
+    if (p->priv) sym_define_private(s, p->file);
+    else sym_define_global(s);
     return s;
 }
 
@@ -699,14 +774,79 @@ static void parse_params(Parser *p, Func *f, int types_optional) {
     if (is_op(p, "->")) { next(p); f->ret_texpr = parse_type(p); }
 }
 
+/* Removes a replaced weak function from the program. */
+static void drop_func(Program *P, Func *f) {
+    for (int i = 0; i < P->nfuncs; i++)
+        if (P->funcs[i] == f) {
+            memmove(&P->funcs[i], &P->funcs[i + 1], sizeof(Func *) * (size_t)(P->nfuncs - i - 1));
+            P->nfuncs--;
+            return;
+        }
+}
+
+/* Weak functions: returns the symbol a function definition binds to, or NULL when the
+   definition is a weak one that an existing definition already replaces (it is then dropped). */
+static Sym *define_fn(Parser *p, Func *f) {
+    int user = !file_is_stdlib(p->file);
+    Sym *old = p->priv ? NULL : sym_lookup_layer(f->name, user);
+    if (old && old->k == SY_FUNC && old->fn) {
+        if (old->fn->weak && !f->weak) {
+            /* this definition replaces the weak one, wherever it is called from */
+            f->overrides = old->fn;
+            drop_func(p->P, old->fn);
+            Sym *lib = user ? sym_lookup_layer(f->name, 0) : NULL;
+            if (lib && lib->k == SY_FUNC && lib->fn == old->fn) lib->fn = f;   /* it had replaced a library default */
+            old->fn = f;
+            old->loc = f->loc;
+            return old;
+        }
+        if (f->weak && !old->fn->weak) { f->overrides = NULL; return NULL; }
+        if (f->weak && old->fn->weak)
+            error_at(f->loc, "'%s' already has a weak definition at %s:%d (only one weak default is allowed)",
+                     f->name, old->loc.file, old->loc.line);
+    }
+    if (!old && user && !p->priv) {
+        Sym *lib = sym_lookup_layer(f->name, 0);
+        if (lib && lib->k == SY_FUNC && lib->fn && lib->fn->weak) {
+            /* a cart's function replaces a weak library function, for the library's calls too */
+            Sym *s = new_global(p, SY_FUNC, f->name, f->loc);
+            f->overrides = lib->fn;
+            drop_func(p->P, lib->fn);
+            lib->fn = f;
+            return s;
+        }
+    }
+    return new_global(p, SY_FUNC, f->name, f->loc);
+}
+
 static void parse_fn(Parser *p, int is_asm) {
     Func *f = ar_alloc(sizeof *f);
     next(p);   /* fn */
     f->loc = p->tok.loc;
     f->name = expect_ident(p, "a function name");
     f->is_asm = is_asm;
+    f->weak = p->weak;
     parse_params(p, f, 0);
-    Sym *s = new_global(p, SY_FUNC, f->name, f->loc);
+    Sym *s = define_fn(p, f);
+    if (!s) {
+        /* a weak default for a function defined already: parse it and drop it (its signature
+           is still compared with the definition that replaces it) */
+        if (is_asm) {
+            skip_nl_only(p);
+            if (!is_op(p, "{")) error_at(p->tok.loc, "expected '{' to start the asm body");
+            f->asm_text = lex_raw_block(&p->L, &f->asm_loc);
+            next(p);
+        } else f->body = parse_block(p);
+        Sym *strong = sym_lookup_layer(f->name, !file_is_stdlib(p->file));
+        f->sym = strong;
+        Func *prev = strong->fn->overrides;
+        if (prev && file_is_stdlib(prev->loc.file) == file_is_stdlib(f->loc.file))
+            error_at(f->loc, "'%s' already has a weak definition at %s:%d (only one weak default is allowed)",
+                     f->name, prev->loc.file, prev->loc.line);
+        f->overrides = prev;
+        strong->fn->overrides = f;
+        return;
+    }
     s->fn = f;
     f->sym = s;
     if (is_asm) {
@@ -728,7 +868,7 @@ static void parse_struct(Parser *p) {
     skip_nl_only(p);
     expect_op(p, "{");
     skip_nl(p);
-    int c1 = 0, c2 = 0, c3 = 0, n1 = 0, n2 = 0;
+    int c1 = 0, c2 = 0, c3 = 0, c4 = 0, n1 = 0, n2 = 0, n4 = 0;
     while (!is_op(p, "}")) {
         Loc floc = p->tok.loc;
         const char *fname = expect_ident(p, "a field name");
@@ -736,6 +876,9 @@ static void parse_struct(Parser *p) {
             if (!strcmp(d->fnames[i], fname)) error_at(floc, "duplicate field '%s'", fname);
         expect_op(p, ":");
         TypeExpr *t = parse_type(p);
+        Expr *def = NULL;
+        if (is_op(p, "=")) { next(p); def = parse_expr(p); }
+        PUSH(d->fdefs, n4, c4, def);
         PUSH(d->fnames, n1, c1, fname);
         PUSH(d->ftypes, n2, c2, t);
         PUSH(d->flocs, d->nf, c3, floc);
@@ -797,6 +940,25 @@ static void parse_enum(Parser *p) {
 
 static void parse_toplevel(Parser *p) {
     Loc loc = p->tok.loc;
+    p->priv = 0;
+    p->weak = 0;
+    if (is_kw(p, "weak")) {
+        /* `weak` (only here, so it is not a reserved word): a default another definition replaces */
+        next(p);
+        if (is_kw(p, "private")) error_at(p->tok.loc, "a weak function cannot be private (only a public function can be replaced)");
+        if (!is_kw(p, "fn") && !is_kw(p, "asm")) error_at(p->tok.loc, "expected 'fn' or 'asm fn' after 'weak', found %s", tok_desc(&p->tok));
+        p->weak = 1;
+    }
+    if (is_kw(p, "private")) {
+        /* `private` (only here, so it is not a reserved word): the name is visible in this file only */
+        next(p);
+        static const char *decl[] = {"fn", "asm", "var", "const", "struct", "enum", "embed", "reg", NULL};
+        int ok = 0;
+        for (int i = 0; decl[i]; i++) ok |= is_kw(p, decl[i]);
+        if (!ok) error_at(p->tok.loc, "expected a declaration after 'private' (fn, var, const, struct, enum, embed, reg), found %s", tok_desc(&p->tok));
+        if (is_kw(p, "weak")) error_at(p->tok.loc, "a weak function cannot be private (write 'weak fn', without 'private')");
+        p->priv = 1;
+    }
     if (is_kw(p, "fn")) { parse_fn(p, 0); return; }
     if (is_kw(p, "asm")) {
         next(p);

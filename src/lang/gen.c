@@ -30,6 +30,7 @@ typedef struct {
     int32_t off;
     Type *ty;
     int frame_rel;        /* offset is relative to the caller's frame (incoming stack args) */
+    int far;              /* a global above 0x20000 (lui base): its address always takes two instructions */
 } LV;
 typedef struct { Opnd o; Type *t; } Arg;
 
@@ -41,6 +42,7 @@ static Temp g_t[NT];
 static unsigned g_age;
 static int g_rown[16];             /* -1 free, -2 not allocatable, else temp id */
 static int g_vown[8];
+#define REG_RESERVE 3               /* scalar registers kept free of locals for temporaries */
 static int g_spool[16], g_nspool;
 static int g_vpool[8], g_nvpool;
 static int g_saved;                /* callee-saved registers written by this function */
@@ -50,6 +52,26 @@ static int g_ret_label;
 static int g_brk[128], g_cont[128], g_nloop;
 static int g_out_size;
 static int g_iobase_reg;           /* register holding 0xFF0000, or -1 */
+
+/* meic -g: out-of-line failure paths of run-time checks, emitted after the function's `ret`.
+   They never return (the reporter halts), so they may clobber anything; they reset sp first,
+   since the stack itself may be what failed. */
+typedef struct { int label; const char *msg; int idx_reg; int64_t len; } CheckStub;
+static CheckStub *g_stubs;
+static int g_nstubs, g_capstubs;
+static Sym *g_div_chk;             /* set around the arith() of a checked division / multiply */
+
+static int check_stub(Sym *msg, int idx_reg, int64_t len) {
+    if (g_nstubs == g_capstubs) {
+        int nc = g_capstubs ? g_capstubs * 2 : 64;
+        CheckStub *n = ar_alloc(sizeof *n * (size_t)nc);
+        if (g_nstubs) memcpy(n, g_stubs, sizeof *n * (size_t)g_nstubs);
+        g_stubs = n;
+        g_capstubs = nc;
+    }
+    g_stubs[g_nstubs] = (CheckStub){++g_label, msg->label, idx_reg, len};
+    return g_stubs[g_nstubs++].label;
+}
 
 static const char *RN[16] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "r13", "sp", "ra"};
 static const char *VN[8] = {"v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7"};
@@ -330,6 +352,7 @@ static LV lv_abs(uint32_t addr, const char *sym, Type *t) {
     I("lui %s, %u", RN[g_t[tt].reg], addr >> 10);
     lv.base = o_tmp(tt);
     lv.off = (int32_t)(addr & 0x3FF);
+    lv.far = 1;
     return lv;
 }
 
@@ -359,9 +382,30 @@ static LV lv_local(Local *l) {
 static void lv_free(LV *lv) { if (lv->k == LV_MEM) ofree(lv->base); }
 
 /* Adds a scaled index to a memory lvalue. */
-static void lv_index(LV *lv, Expr *idx, int size) {
-    if (idx->isconst) { lv->off += (int32_t)(idx->cval * size); return; }
+static void lv_index(LV *lv, Expr *idx, int size, Expr *chk) {
+    if (idx->isconst) {
+        int64_t n = chk && chk->chk ? (chk->a->ty->k == TY_ARRAY ? chk->a->ty->n : 4) : 0;
+        if (chk && chk->chk && (idx->cval < 0 || idx->cval >= n)) {
+            /* meic -g: a constant index out of range (after inlining): always fails */
+            Opnd c = o_imm(idx->cval);
+            int rc = R(&c);
+            I("jmp .L%d", check_stub(chk->chk, rc, n));
+            ofree(c);
+        }
+        lv->off += (int32_t)(idx->cval * size);
+        return;
+    }
     Opnd i = gen_expr(idx, -1);
+    if (chk && chk->chk) {
+        /* meic -g: (unsigned) index < length, else report */
+        int64_t n = chk->a->ty->k == TY_ARRAY ? chk->a->ty->n : 4;
+        int ri = R(&i);
+        Opnd on = o_imm(n);
+        int rn = R(&on);
+        ri = R(&i);
+        I("bgeu %s, %s, .L%d", RN[ri], RN[rn], check_stub(chk->chk, ri, n));
+        ofree(on);
+    }
     int sh = log2_exact(size);
     Opnd sc = sh == 0 ? i : sh > 0 ? arith(B_SHL, ty_s32, 0, i, o_imm(sh), -1) : arith(B_MUL, ty_s32, 0, i, o_imm(size), -1);
     if (lv->base.k == O_REG && lv->base.v == 0) { lv->base = sc; return; }   /* absolute: the index becomes the base */
@@ -399,7 +443,7 @@ static LV gen_lv(Expr *e) {
             Opnd a = lv_addr(&lv);
             lv = lv_mem(a, 0, e->ty);
         }
-        lv_index(&lv, e->b, size);
+        lv_index(&lv, e->b, size, e);
         lv.ty = e->ty;
         return lv;
     }
@@ -419,7 +463,7 @@ static LV gen_lv(Expr *e) {
         }
         break;
     }
-    case E_CALL: case E_ARRAY: case E_STRUCT:
+    case E_CALL: case E_ARRAY: case E_STRUCT: case E_MATCH:
         if (ty_is_aggr(e->ty)) return gen_aggr_lv(e);
         break;
     default: break;
@@ -453,7 +497,7 @@ static Opnd lv_addr_copy(LV *lv) {
 /* The address of lv as an operand; consumes lv. */
 static Opnd lv_addr(LV *lv) {
     if (lv->k != LV_MEM) ice("address of a register value");
-    if (!lv->frame_rel && !lv->sym && lv->off == 0 && lv->base.k != O_REG) return lv->base;
+    if (!lv->frame_rel && !lv->sym && lv->off == 0 && lv->base.k != O_REG && !lv->far) return lv->base;
     if (!lv->frame_rel && lv->base.k == O_REG && lv->base.v == 0) return o_imm(lv->symval + lv->off);
     if (!lv->frame_rel && !lv->sym && lv->off == 0 && lv->base.v != 14) return lv->base;
     Opnd d = lv_addr_copy(lv);
@@ -929,6 +973,8 @@ static void gen_aggr_into(Expr *e, LV *dst) {
 }
 
 static LV gen_intrinsic_aggr(Expr *e);
+static LV gen_match_aggr(Expr *e);
+static Opnd gen_match_expr(Expr *e, int hint);
 
 static LV gen_aggr_lv(Expr *e) {
     if (e->k == E_CALL && e->bi == BI_MAP) return gen_intrinsic_aggr(e);
@@ -945,6 +991,7 @@ static LV gen_aggr_lv(Expr *e) {
         return lv_mem((Opnd){O_REG, 14}, slot, e->ty);
     }
     if (e->k == E_CONV) return gen_aggr_lv(e->a);
+    if (e->k == E_MATCH) return gen_match_aggr(e);
     return gen_lv(e);
 }
 
@@ -1047,6 +1094,32 @@ static Opnd arith(OpKind op, Type *ty, int mixed, Opnd a, Opnd b, int hint) {
                 }
             } else if (m == 1) { if (hint >= 0) { move_to(a, hint, 0); ofree(a); return (Opnd){O_REG, hint}; } return a; }
             else if (m > 0 && log2_exact(m) >= 0) { iop = "shli"; imm = log2_exact(m); }
+            else if (m > 2 && m <= 0x7FFFFFFF) {
+                /* m = (2^k +- 1) << lb: a shift and an add or subtract (and a shift), 2-3 cycles
+                   instead of li + mul (5); the low 32 bits are the same */
+                int lb = 0;
+                int64_t mm = m;
+                while (!(mm & 1)) { mm >>= 1; lb++; }
+                int k = -1, plus = 1;
+                if (log2_exact(mm - 1) > 0) k = log2_exact(mm - 1);
+                else if (log2_exact(mm + 1) > 0) { k = log2_exact(mm + 1); plus = 0; }
+                if (k > 0 && k < 32) {
+                    int ra = R(&a);
+                    int t = tnew(0), rt = g_t[t].reg;
+                    Ik("shli %s, %s, %d", RN[rt], RN[ra], k);
+                    if (!lb) {
+                        ofree(a); tfree(t);
+                        Opnd d = dest(0, hint, &r);
+                        I("%s %s, %s, %s", plus ? "add" : "sub", RN[r], RN[rt], RN[ra]);
+                        return d;
+                    }
+                    Ik("%s %s, %s, %s", plus ? "add" : "sub", RN[rt], RN[rt], RN[ra]);
+                    ofree(a); tfree(t);
+                    Opnd d = dest(0, hint, &r);
+                    I("shli %s, %s, %d", RN[r], RN[rt], lb);
+                    return d;
+                }
+            }
             break;
         }
         case B_DIV:
@@ -1097,6 +1170,21 @@ static Opnd arith(OpKind op, Type *ty, int mixed, Opnd a, Opnd b, int hint) {
     default: ice("bad arithmetic operator");
     }
     int ra = R(&a), rb = R(&b);
+    if (g_div_chk && (op == B_DIV || op == B_MOD)) Ik("beq %s, r0, .L%d", RN[rb], check_stub(g_div_chk, -1, 0));
+    if (g_div_chk && op == B_MUL && fx) {
+        /* meic --trap-fmul: h = (a >> 8) * (b >> 8) >> 16 is within 257 of the product's bits
+           32-63, so |h| > 2^15 + 257 means the 16.16 product overflowed (a narrow band of
+           overflows just above the limit goes unreported, but nothing valid is) */
+        int t1 = tnew(0), t2 = tnew(0);
+        int r1 = g_t[t1].reg, r2 = g_t[t2].reg;
+        Ik("sari %s, %s, 8", RN[r1], RN[ra]);
+        Ik("sari %s, %s, 8", RN[r2], RN[rb]);
+        Ik("fmul %s, %s, %s", RN[r1], RN[r1], RN[r2]);
+        Ik("addi %s, %s, %d", RN[r1], RN[r1], 32768 + 258);
+        Ik("addi %s, r0, %d", RN[r2], 2 * (32768 + 258));
+        Ik("bgeu %s, %s, .L%d", RN[r1], RN[r2], check_stub(g_div_chk, -1, 0));
+        tfree(t1); tfree(t2);
+    }
     ofree(a); ofree(b);
     Opnd d = dest(0, hint, &r);
     I("%s %s, %s, %s", ins, RN[r], RN[ra], RN[rb]);
@@ -1122,6 +1210,7 @@ static Opnd gen_vec_binary(Expr *e, Opnd a, Opnd b, int hint) {
             b = o_imm(recip);
         } else {
             int rb = R(&b);
+            if (g_div_chk) Ik("beq %s, r0, .L%d", RN[rb], check_stub(g_div_chk, -1, 0));
             ofree(b);
             int t = tnew(0);
             I("lui %s, 64", RN[g_t[t].reg]);
@@ -1203,7 +1292,10 @@ static Opnd gen_binary(Expr *e, int hint) {
     if (at->k == TY_MAT4) return gen_xfm(e, hint);
     if (is_v(e->ty)) {
         Opnd a = gen_expr(e->a, -1), b = gen_expr(e->b, -1);
-        return gen_vec_binary(e, a, b, hint);
+        g_div_chk = e->chk;
+        Opnd res = gen_vec_binary(e, a, b, hint);
+        g_div_chk = NULL;
+        return res;
     }
     if (e->ty->k == TY_PTR || (at->k == TY_PTR && op == B_SUB)) {
         Opnd a = gen_expr(e->a, -1);
@@ -1227,8 +1319,11 @@ static Opnd gen_binary(Expr *e, int hint) {
         return arith(op, ty_u32, 0, a, b, hint);
     }
     Opnd a = gen_expr(e->a, -1), b = gen_expr(e->b, -1);
-    return arith(op, e->conv_from && e->conv_from != ty_s32 ? e->conv_from : e->ty,
-                 e->ty->k == TY_FIXED && e->conv_from == ty_s32, a, b, hint);
+    g_div_chk = e->chk;
+    Opnd res = arith(op, e->conv_from && e->conv_from != ty_s32 ? e->conv_from : e->ty,
+                     e->ty->k == TY_FIXED && e->conv_from == ty_s32, a, b, hint);
+    g_div_chk = NULL;
+    return res;
 }
 
 static Opnd gen_conv(Expr *e, int hint) {
@@ -1746,6 +1841,17 @@ static Opnd gen_expr(Expr *e, int hint) {
         }
         case U_ADDR: {
             LV lv = gen_aggr_lv(e->a);
+            if (hint >= 0 && lv.k == LV_MEM && (lv.frame_rel || lv.sym || lv.off || lv.base.k == O_REG || lv.far)
+                && !(!lv.frame_rel && lv.base.k == O_REG && lv.base.v == 0)) {
+                /* base + offset straight into the destination */
+                lv_fix(&lv);
+                int b = R(&lv.base);
+                if (lv.frame_rel) I("addi %s, %s, %d+\001", RN[hint], RN[b], lv.off);
+                else if (lv.sym) I("addi %s, %s, %s+%d", RN[hint], RN[b], lv.sym, lv.off);
+                else I("addi %s, %s, %d", RN[hint], RN[b], lv.off);
+                lv_free(&lv);
+                return (Opnd){O_REG, hint};
+            }
             Opnd a = lv_addr(&lv);
             if (hint >= 0) { move_to(a, hint, 0); ofree(a); return (Opnd){O_REG, hint}; }
             return a;
@@ -1798,6 +1904,9 @@ static Opnd gen_expr(Expr *e, int hint) {
             return load_lv(&lv, hint);
         }
     case E_CONV: return gen_conv(e, hint);
+    case E_MATCH:
+        if (ty_is_aggr(e->ty)) { LV lv = gen_match_aggr(e); return lv_addr(&lv); }
+        return gen_match_expr(e, hint);
     case E_ARRAY: case E_STRUCT: {
         LV lv = gen_aggr_lv(e);
         return lv_addr(&lv);
@@ -1805,6 +1914,66 @@ static Opnd gen_expr(Expr *e, int hint) {
     default: break;
     }
     ice("unhandled expression");
+}
+
+/* ---- match expressions: a chain of compares, then each arm computes its value into one
+   register (or, for an aggregate, into one frame slot) and jumps to the end. Live temporaries
+   are flushed first, so the register state is the same on every path. The last arm also takes
+   any value no pattern names (an enum converted from an integer), so the result is always set. */
+
+static int *gen_match_dispatch(Expr *e) {
+    flush_temps();
+    int *labels = ar_alloc(sizeof(int) * (size_t)e->narms);
+    for (int i = 0; i < e->narms; i++) labels[i] = new_label();
+    Opnd x = gen_expr(e->a, -1);
+    for (int i = 0; i < e->narms - 1; i++)
+        for (int k = 0; k < e->arms[i].npats; k++) {
+            Opnd pv = o_imm(e->arms[i].pats[k]->cval);
+            int rp = R(&pv), rx = R(&x);
+            I("beq %s, %s, .L%d", RN[rx], RN[rp], labels[i]);
+            ofree(pv);
+        }
+    ofree(x);
+    return labels;
+}
+
+static Opnd gen_match_expr(Expr *e, int hint) {
+    int cls = is_v(e->ty);
+    int *labels = gen_match_dispatch(e);
+    int lend = new_label();
+    int r = hint >= 0 ? hint : find_free(cls);
+    if (r < 0) r = take_reg(cls);
+    int *own_ = cls ? &g_vown[r] : &g_rown[r];
+    int was = *own_;
+    *own_ = -2;   /* keep the arms' temporaries out of the result register */
+    for (int j = 0; j < e->narms; j++) {
+        int i = j ? j - 1 : e->narms - 1;   /* the last arm is reached by falling through */
+        if (j) put_label(labels[i]);
+        Opnd v = gen_expr(e->arms[i].value, r);
+        move_to(v, r, cls);
+        ofree(v);
+        if (j != e->narms - 1) I("jmp .L%d", lend);
+    }
+    put_label(lend);
+    *own_ = was;
+    if (hint >= 0) return (Opnd){cls ? O_VREG : O_REG, hint};
+    return o_tmp(tnew_at(cls, r));
+}
+
+static LV gen_match_aggr(Expr *e) {
+    int *labels = gen_match_dispatch(e);
+    int lend = new_label();
+    int slot = slot_alloc(e->ty->size);
+    for (int j = 0; j < e->narms; j++) {
+        int i = j ? j - 1 : e->narms - 1;
+        if (j) put_label(labels[i]);
+        LV d = lv_mem((Opnd){O_REG, 14}, slot, e->ty);
+        gen_aggr_into(e->arms[i].value, &d);
+        lv_free(&d);
+        if (j != e->narms - 1) I("jmp .L%d", lend);
+    }
+    put_label(lend);
+    return lv_mem((Opnd){O_REG, 14}, slot, e->ty);
 }
 
 /* ------------------------------------------------------------- conditions */
@@ -1925,7 +2094,9 @@ static void gen_compound(Stmt *s) {
     Opnd b, res;
     if (is_v(bin->ty)) {
         b = gen_expr(bin->b, -1);
+        g_div_chk = bin->chk;
         res = gen_vec_binary(bin, cur, b, hint);
+        g_div_chk = NULL;
     } else if (bin->ty->k == TY_PTR) {
         int size = bin->ty->elem->size;
         if (bin->b->isconst) b = o_imm(bin->b->cval * size);
@@ -1934,7 +2105,9 @@ static void gen_compound(Stmt *s) {
     } else {
         b = gen_expr(bin->b, -1);
         Type *ot = bin->conv_from && bin->conv_from != ty_s32 ? bin->conv_from : bin->ty;
+        g_div_chk = bin->chk;
         res = arith(bin->op, ot, bin->ty->k == TY_FIXED && bin->conv_from == ty_s32, cur, b, hint);
+        g_div_chk = NULL;
     }
     store_lv(&lv, res, bin->ty);
 }
@@ -1948,8 +2121,17 @@ static void zero_local(Local *l) {
     lv_free(&lv);
 }
 
+static void set_pool(int p);
+static void bump_local(Local *l, int32_t delta);
+
 static void gen_stmt(Stmt *s) {
     int mark = g_frame;
+    switch (s->k) {
+    case S_VAR: case S_ASSIGN: case S_EXPR: case S_RETURN: case S_IF: case S_FOR: case S_MATCH: case S_ASM:
+        set_pool(s->pos);
+        break;
+    default: break;
+    }
     switch (s->k) {
     case S_BLOCK:
         for (int i = 0; i < s->n; i++) gen_stmt(s->list[i]);
@@ -2046,6 +2228,7 @@ static void gen_stmt(Stmt *s) {
         gen_stmt(s->then);
         g_nloop--;
         put_label(lcond);
+        set_pool(s->pos2);
         if (forever) I("jmp .L%d", ltop);
         else gen_cond(s->e, ltop, 1);
         put_label(lbrk);
@@ -2055,8 +2238,15 @@ static void gen_stmt(Stmt *s) {
         Local *v = s->var, *end = s->for_end;
         LV lv = lv_local(v);
         gen_assign_value(&lv, s->e, v->ty);
-        LV le = lv_local(end);
-        gen_assign_value(&le, s->e2, end->ty);
+        if (!end->dead) {
+            LV le = lv_local(end);
+            gen_assign_value(&le, s->e2, end->ty);
+        }
+        for (int k = 0; k < s->nips; k++) {
+            /* induction pointers: &a[i] for the first i, stepped with i */
+            LV lp = lv_local(s->ips[k]);
+            gen_assign_value(&lp, s->ipinit[k], s->ips[k]->ty);
+        }
         int ltop = new_label(), lcont = new_label(), lcond = new_label(), lbrk = new_label();
         I("jmp .L%d", lcond);
         put_label(ltop);
@@ -2064,6 +2254,8 @@ static void gen_stmt(Stmt *s) {
         gen_stmt(s->then);
         g_nloop--;
         put_label(lcont);
+        set_pool(s->pos2);
+        for (int k = 0; k < s->nips; k++) bump_local(s->ips[k], s->ipstep[k]);
         LV li_ = lv_local(v);
         Opnd cur = load_lv(&li_, -1);
         int hint = li_.k == LV_REG ? li_.reg : -1;
@@ -2071,8 +2263,11 @@ static void gen_stmt(Stmt *s) {
         LV li2 = lv_local(v);
         store_lv(&li2, nx, v->ty);
         put_label(lcond);
-        LV a = lv_local(v), b = lv_local(end);
-        Opnd oa = load_lv(&a, -1), ob = load_lv(&b, -1);
+        LV a = lv_local(v);
+        Opnd oa = load_lv(&a, -1), ob;
+        if (s->end_direct) ob = gen_expr(s->e2, -1);
+        else if (end->dead) ob = o_imm(s->e2->cval);
+        else { LV b = lv_local(end); ob = load_lv(&b, -1); }
         int ra = R(&oa), rb = R(&ob);
         ra = R(&oa);
         ofree(oa); ofree(ob);
@@ -2106,6 +2301,7 @@ static void gen_stmt(Stmt *s) {
         put_label(lend);
         break;
     }
+    case S_CONST: break;
     case S_BREAK: I("jmp .L%d", g_brk[g_nloop - 1]); break;
     case S_CONTINUE: I("jmp .L%d", g_cont[g_nloop - 1]); break;
     case S_RETURN: {
@@ -2205,6 +2401,7 @@ static void scan_expr(Expr *e, int *max_out) {
     scan_expr(e->a, max_out);
     scan_expr(e->b, max_out);
     for (int i = 0; i < e->nargs; i++) scan_expr(e->args[i], max_out);
+    for (int i = 0; i < e->narms; i++) scan_expr(e->arms[i].value, max_out);
 }
 
 static void scan_stmt(Stmt *s, int *max_out) {
@@ -2223,6 +2420,42 @@ static void scan_stmt(Stmt *s, int *max_out) {
 
 typedef struct { int *v; int n, cap; } IntVec;
 static IntVec g_callpos, g_xfmpos, g_asmpos;
+static IntVec g_callmask;          /* parallel to g_callpos: registers each call may change */
+
+#define CLOB_FULL 0x00FF01FEu      /* r1-r8 and v0-v7: everything a call may change */
+
+/* The registers a call may change: the callee's own (when it was generated already) plus the
+   argument and result registers. Calls through values, and unknown callees: everything. */
+static uint32_t call_mask(Expr *e) {
+    if (e->bi >= BI_MAP) {
+        Func *t = e->target;
+        return (t && t->clob_known ? t->clob : CLOB_FULL) | 0x1FEu | 0xF0000u;
+    }
+    Func *f = e->callee;
+    if (e->indirect || !f || !f->clob_known) return CLOB_FULL;
+    uint32_t m = f->clob;
+    int si = ty_is_aggr(f->ret) ? 1 : 0, vi = 0;
+    for (int i = 0; i < f->nparams; i++) { if (is_v(f->params[i].ty)) vi++; else si++; }
+    if (si > 4) si = 4;
+    if (vi > 4) vi = 4;
+    m |= (uint32_t)((1 << si) - 1) << 1;
+    m |= (uint32_t)((1 << vi) - 1) << 16;
+    if (is_v(f->ret)) m |= 1u << 16;
+    else if (f->ret->k != TY_VOID && !ty_is_aggr(f->ret)) m |= 2;
+    return m;
+}
+
+static void call_push(int p, uint32_t mask) {
+    if (g_callpos.n && g_callpos.v[g_callpos.n - 1] == p) { g_callmask.v[g_callmask.n - 1] |= (int)mask; return; }
+    if (g_callpos.n == g_callpos.cap) {
+        int nc = g_callpos.cap ? g_callpos.cap * 2 : 64;
+        int *a = ar_alloc(sizeof(int) * (size_t)nc), *b = ar_alloc(sizeof(int) * (size_t)nc);
+        if (g_callpos.n) { memcpy(a, g_callpos.v, sizeof(int) * (size_t)g_callpos.n); memcpy(b, g_callmask.v, sizeof(int) * (size_t)g_callpos.n); }
+        g_callpos.v = a; g_callmask.v = b; g_callpos.cap = g_callmask.cap = nc;
+    }
+    g_callpos.v[g_callpos.n++] = p;
+    g_callmask.v[g_callmask.n++] = (int)mask;
+}
 typedef struct { int first, last; } LoopRange;
 static LoopRange *g_loops;
 static int g_nloops, g_caploops;
@@ -2245,10 +2478,10 @@ static void use_local(Local *l, int p) { if (p > l->end) l->end = p; }
 static void live_expr(Expr *e, int p) {
     if (!e) return;
     if (e->k == E_NAME && e->sym && e->sym->k == SY_LOCAL) use_local(e->sym->local, p);
-    if (e->k == E_CALL && (e->callee || e->indirect)) iv_push(&g_callpos, p);
+    if (e->k == E_CALL && (e->callee || e->indirect)) call_push(p, call_mask(e));
     if (e->k == E_CALL && e->bi >= BI_MAP) {
         /* the loop state is live across the per-element calls */
-        iv_push(&g_callpos, p);
+        call_push(p, call_mask(e));
         for (int i = 0; i < 8; i++) if (e->hid[i]) { use_local(e->hid[i], p); e->hid[i]->start = p - 1; }
         /* the arguments are all evaluated before the first call */
         for (int i = 0; i < e->nargs; i++) live_expr(e->args[i], p - 1);
@@ -2260,6 +2493,7 @@ static void live_expr(Expr *e, int p) {
     live_expr(e->a, p);
     live_expr(e->b, p);
     for (int i = 0; i < e->nargs; i++) live_expr(e->args[i], p);
+    for (int i = 0; i < e->narms; i++) live_expr(e->arms[i].value, p);
 }
 
 static void live_asm_refs(Func *f, const char *text, int p) {
@@ -2282,6 +2516,7 @@ static int count_calls(Expr *e) {
     if (e->k == E_CALL && e->bi >= BI_MAP) n += 2;   /* a loop of calls: never a single call */
     n += count_calls(e->a) + count_calls(e->b);
     for (int i = 0; i < e->nargs; i++) n += count_calls(e->args[i]);
+    for (int i = 0; i < e->narms; i++) n += 2 * count_calls(e->arms[i].value);   /* not a single call */
     return n;
 }
 
@@ -2304,9 +2539,10 @@ static void live_stmt(Func *f, Stmt *s) {
     case S_VAR: case S_ASSIGN: case S_EXPR: case S_RETURN: {
         g_pos += 2;
         p = g_pos;
+        s->pos = p;
         Expr *call = sole_call(s);
         if (call) {
-            iv_push(&g_callpos, p);
+            call_push(p, call_mask(call));
             for (int i = 0; i < call->nargs; i++) live_expr(call->args[i], p - 1);
             if (call->indirect) live_expr(call->a, p - 1);
             if (s->k == S_ASSIGN) live_expr(s->e, p);
@@ -2321,6 +2557,7 @@ static void live_stmt(Func *f, Stmt *s) {
     case S_IF:
         g_pos += 2;
         p = g_pos;
+        s->pos = p;
         live_expr(s->e, p);
         live_stmt(f, s->then);
         live_stmt(f, s->els);
@@ -2328,6 +2565,7 @@ static void live_stmt(Func *f, Stmt *s) {
     case S_WHILE: case S_FOR: {
         g_pos += 2;
         int first = g_pos;
+        s->pos = first;
         live_expr(s->e, first);
         live_expr(s->e2, first);
         if (s->k == S_FOR) {
@@ -2335,14 +2573,27 @@ static void live_stmt(Func *f, Stmt *s) {
                survive any call in the header: start the ranges just before it */
             s->var->start = first - 1;
             s->var->end = first;
+            /* a constant end bound needs no local: the bottom compares with the constant */
+            s->for_end->dead = (s->e2->isconst && fits_s18(s->e2->cval)) || s->end_direct;
             s->for_end->start = first - 1;
             s->for_end->end = first;
+            for (int k = 0; k < s->nips; k++) {
+                live_expr(s->ipinit[k], first);
+                s->ips[k]->start = first;
+                s->ips[k]->end = first;
+            }
         }
         live_stmt(f, s->then);
         g_pos += 2;
         int last = g_pos;
+        s->pos2 = last;
         if (s->k == S_WHILE) live_expr(s->e, last);
-        else { use_local(s->var, last); use_local(s->for_end, last); }
+        else {
+            use_local(s->var, last);
+            if (!s->for_end->dead) use_local(s->for_end, last);
+            if (s->end_direct) live_expr(s->e2, last);
+            for (int k = 0; k < s->nips; k++) use_local(s->ips[k], last);
+        }
         if (g_nloops == g_caploops) {
             int nc = g_caploops ? g_caploops * 2 : 16;
             LoopRange *nl = ar_alloc(sizeof *nl * (size_t)nc);
@@ -2355,17 +2606,26 @@ static void live_stmt(Func *f, Stmt *s) {
     }
     case S_MATCH:
         g_pos += 2;
+        s->pos = g_pos;
         live_expr(s->e, g_pos);
         for (int i = 0; i < s->narms; i++) live_stmt(f, s->arms[i].body);
         break;
     case S_BREAK: case S_CONTINUE: g_pos += 2; break;
+    case S_CONST: break;
     case S_ASM:
         g_pos += 2;
         p = g_pos;
+        s->pos = p;
         iv_push(&g_asmpos, p);
         live_asm_refs(f, s->asm_text, p);
         break;
     }
+}
+
+static uint32_t mask_in(int lo, int hi) {   /* calls at lo < x <= hi */
+    uint32_t m = 0;
+    for (int i = 0; i < g_callpos.n; i++) if (g_callpos.v[i] > lo && g_callpos.v[i] <= hi) m |= (uint32_t)g_callmask.v[i];
+    return m;
 }
 
 static int any_in(IntVec *v, int lo, int hi) {   /* lo < x <= hi */
@@ -2404,6 +2664,30 @@ static void reg_take(int slot, Local *l) {
 
 static Local g_iolocal;
 
+/* Is register slot (0-15 scalar, 16-23 vector) held by a local at position p? A local is
+   busy from its start through end + 1 (an argument used just before a call at p - 1 may still
+   be waiting to be read while the statement at p is evaluated). */
+static int reg_busy(int slot, int p) {
+    LocalVec *u = &g_regusers[slot];
+    for (int i = 0; i < u->n; i++) if (u->v[i]->start <= p && u->v[i]->end + (u->v[i]->end & 1) >= p) return 1;
+    return 0;
+}
+
+/* Before a statement at position p (no temporaries are live): registers of locals that are
+   not live there are free for temporaries. */
+static void set_pool(int p) {
+    for (int i = 0; i < g_nspool; i++) {
+        int r = g_spool[i];
+        if (g_rown[r] >= 0) ice("temporary live across statements");
+        g_rown[r] = reg_busy(r, p) ? -2 : -1;
+    }
+    for (int i = 0; i < g_nvpool; i++) {
+        int r = g_vpool[i];
+        if (g_vown[r] >= 0) ice("vector temporary live across statements");
+        g_vown[r] = reg_busy(16 + r, p) ? -2 : -1;
+    }
+}
+
 /* Decides where every local lives and builds the temporary pools. */
 static void assign_homes(Func *f, int *locals_size) {
     g_leaf = !(f->has_call || f->has_asm || f->is_init);
@@ -2436,10 +2720,10 @@ static void assign_homes(Func *f, int *locals_size) {
     }
 
     /* live ranges */
-    g_callpos = g_xfmpos = g_asmpos = (IntVec){0};
+    g_callpos = g_xfmpos = g_asmpos = g_callmask = (IntVec){0};
     g_nloops = 0;
     g_pos = 0;
-    for (int i = 0; i < f->nlocals; i++) { f->locals[i]->start = 0; f->locals[i]->end = 0; f->locals[i]->home = 0; }
+    for (int i = 0; i < f->nlocals; i++) { f->locals[i]->start = 0; f->locals[i]->end = 0; f->locals[i]->home = 0; f->locals[i]->dead = 0; }
     live_stmt(f, f->body);
     for (int i = 0; i < norder; i++) { order[i]->start = 0; if (order[i]->end < 1) order[i]->end = 0; }
     for (int changed = 1; changed;) {
@@ -2455,7 +2739,8 @@ static void assign_homes(Func *f, int *locals_size) {
     }
     for (int i = 0; i < f->nlocals; i++) {
         Local *l = f->locals[i];
-        l->crosses_call = any_in(&g_callpos, l->start, l->end) || (!l->in_asm && any_in(&g_asmpos, l->start, l->end));
+        l->clob = mask_in(l->start, l->end) | (!l->in_asm && any_in(&g_asmpos, l->start, l->end) ? CLOB_FULL : 0);
+        l->crosses_call = l->clob != 0;
         l->crosses_xfm = any_in(&g_xfmpos, l->start - 1, l->end);
     }
 
@@ -2465,6 +2750,7 @@ static void assign_homes(Func *f, int *locals_size) {
     for (int i = 0; i < f->nlocals; i++) {
         Local *l = f->locals[i];
         int byref = ty_is_aggr(l->ty) && l->is_param;
+        if (l->dead) continue;
         if (l->addr_taken && !byref) continue;
         if (ty_is_scalar(l->ty) || byref || is_v(l->ty)) cand[nc++] = l;
     }
@@ -2476,7 +2762,8 @@ static void assign_homes(Func *f, int *locals_size) {
         g_iolocal.weight = f->uses_io;
         g_iolocal.start = 0;
         g_iolocal.end = g_pos + 1;
-        g_iolocal.crosses_call = g_callpos.n > 0 || g_asmpos.n > 0;
+        g_iolocal.clob = mask_in(-1, g_pos + 1) | (g_asmpos.n ? CLOB_FULL : 0);
+        g_iolocal.crosses_call = g_iolocal.clob != 0;
         cand[nc++] = &g_iolocal;
     }
     qsort(cand, (size_t)nc, sizeof *cand, cmp_prio);
@@ -2487,29 +2774,49 @@ static void assign_homes(Func *f, int *locals_size) {
         Local *l = order[i];
         if (l->in_reg_arg && !is_v(l->ty) && !l->crosses_call && !(l->addr_taken && !ty_is_aggr(l->ty))) argmask |= 1 << l->arg_reg;
     }
+    /* scalar registers held by locals at each position: at least REG_RESERVE of r1-r13 stay
+       free for expression temporaries everywhere */
+    int npos = g_pos + 3;
+    int *occ = ar_alloc(sizeof(int) * (size_t)npos);
     for (int i = 0; i < nc; i++) {
         Local *l = cand[i];
         int list[16], n = 0;
+        if (l->elided) continue;
         if (is_v(l->ty)) {
-            if (l->crosses_call && !l->in_asm) continue;
+            /* vector registers are not preserved by calls, but a call leaves alone the ones
+               its callee does not use */
+            uint32_t vclob = l->in_asm ? 0 : l->clob >> 16;
             int lim = l->crosses_xfm || f->uses_xfm ? 3 : 5;
             if (l->in_asm && !f->uses_xfm) lim = 8;
-            if (l->is_param && l->in_reg_arg && l->arg_reg < lim) list[n++] = l->arg_reg;
-            for (int r = 0; r < lim; r++) list[n++] = r;
+            if (l->is_param && l->in_reg_arg && l->arg_reg < lim && !(vclob >> l->arg_reg & 1)) list[n++] = l->arg_reg;
+            for (int r = 0; r < lim; r++) if (!(vclob >> r & 1)) list[n++] = r;
             for (int k = 0; k < n; k++)
                 if (reg_free_for(16 + list[k], l)) { l->home = 2; l->reg = list[k]; reg_take(16 + list[k], l); vused |= 1 << list[k]; break; }
             continue;
         }
-        if (l->crosses_call || l->in_asm) { for (int r = 9; r <= 13; r++) list[n++] = r; }
-        else {
-            /* parameters keep their argument register; other locals avoid argument registers */
-            if (l->is_param && l->in_reg_arg) list[n++] = l->arg_reg;
-            for (int r = 1; r <= 4; r++) if (!(argmask >> r & 1)) list[n++] = r;
+        if (l->in_asm) { for (int r = 9; r <= 13; r++) list[n++] = r; }
+        else if (l->crosses_call) {
+            /* caller-saved registers the calls in the range leave alone, then callee-saved ones */
+            if (l->is_param && l->in_reg_arg && !(l->clob >> l->arg_reg & 1)) list[n++] = l->arg_reg;
+            for (int r = 1; r <= 8; r++) if (!(l->clob >> r & 1) && !(argmask >> r & 1)) list[n++] = r;
             for (int r = 9; r <= 13; r++) list[n++] = r;
-            for (int r = 1; r <= 4; r++) if (argmask >> r & 1) list[n++] = r;
+        } else {
+            /* parameters keep their argument register; other locals avoid argument registers,
+               and prefer caller-saved registers (callee-saved ones cost a save and a restore) */
+            if (l->is_param && l->in_reg_arg) list[n++] = l->arg_reg;
+            for (int r = 1; r <= 8; r++) if (!(argmask >> r & 1)) list[n++] = r;
+            for (int r = 9; r <= 13; r++) list[n++] = r;
+            for (int r = 1; r <= 8; r++) if (argmask >> r & 1) list[n++] = r;
         }
-        for (int k = 0; k < n; k++)
-            if (reg_free_for(list[k], l)) { l->home = 1; l->reg = list[k]; reg_take(list[k], l); sused |= 1 << list[k]; break; }
+        int lo = l->start < 0 ? 0 : l->start, hi = (l->end & 1 ? l->end + 1 : l->end) < npos ? (l->end & 1 ? l->end + 1 : l->end) : npos - 1;
+        int fits = 1;
+        if (!l->in_asm) for (int p = lo; p <= hi && fits; p++) if (occ[p] >= 13 - REG_RESERVE) fits = 0;
+        for (int k = 0; k < n && fits; k++)
+            if (reg_free_for(list[k], l)) {
+                l->home = 1; l->reg = list[k]; reg_take(list[k], l); sused |= 1 << list[k];
+                for (int p = lo; p <= hi; p++) occ[p]++;
+                break;
+            }
         if (!l->home && l->in_asm) error_at(l->loc, "too many locals named in asm blocks: '%s' cannot get a register", l->name);
     }
     if (f->uses_io >= 2 && g_iolocal.home == 1) g_iobase_reg = g_iolocal.reg;
@@ -2520,6 +2827,7 @@ static void assign_homes(Func *f, int *locals_size) {
         Local *l = f->locals[i];
         if (l->home) continue;
         if (l->is_param && !l->in_reg_arg) continue;   /* stays in the caller's frame */
+        if (l->dead || l->elided) continue;
         int size = (ty_is_aggr(l->ty) && l->is_param) ? 4 : l->ty->size;
         off = (off + 3) & ~3;
         l->off = off;
@@ -2527,20 +2835,14 @@ static void assign_homes(Func *f, int *locals_size) {
     }
     *locals_size = off - g_out_size;
 
-    /* temporary pools: everything no local uses */
+    /* temporary pools: every register; set_pool() makes those of the locals live at the
+       statement being generated unavailable */
     g_nspool = g_nvpool = 0;
     static const int sorder[] = {5, 6, 7, 8, 1, 2, 3, 4, 9, 10, 11, 12, 13};
-    for (size_t k = 0; k < sizeof sorder / sizeof sorder[0]; k++) {
-        int r = sorder[k];
-        if (sused >> r & 1) continue;
-        g_spool[g_nspool++] = r;
-        g_rown[r] = -1;
-    }
-    for (int r = 0; r < 8; r++) {
-        if (vused >> r & 1) continue;
-        g_vpool[g_nvpool++] = r;
-        g_vown[r] = -1;
-    }
+    for (size_t k = 0; k < sizeof sorder / sizeof sorder[0]; k++) g_spool[g_nspool++] = sorder[k];
+    for (int r = 0; r < 8; r++) g_vpool[g_nvpool++] = r;
+    set_pool(0);
+    (void)vused;
     g_saved = sused & 0x3E00;
 }
 
@@ -2589,6 +2891,133 @@ static void gen_asm_func(Func *f, Buf *out) {
     buf_free(&b);
 }
 
+/* ---- peephole: a pass over the generated text of one function. Only neighbouring
+   instructions are combined (a label between them is a join point and stops a pattern), and
+   inline asm (between "; @asm" and "; @end") is left alone. */
+
+typedef struct { char *s; int dead; } PLine;
+
+/* "    op a, b, c" -> op and up to 3 operands; returns the operand count, or -1 (label, comment) */
+static int pl_parse(const char *s, char *op, char ops[3][64]) {
+    while (*s == ' ') s++;
+    if (*s == '.' || *s == ';' || !*s) return -1;
+    int n = 0;
+    while (*s && *s != ' ' && n < 15) op[n++] = *s++;
+    op[n] = 0;
+    int k = 0;
+    while (*s == ' ') s++;
+    while (*s && k < 3) {
+        int m = 0, depth = 0;
+        while (*s && (depth || *s != ',') && m < 63) { if (*s == '[') depth++; if (*s == ']') depth--; ops[k][m++] = *s++; }
+        ops[k][m] = 0;
+        k++;
+        if (*s == ',') s++;
+        while (*s == ' ') s++;
+    }
+    return k;
+}
+
+/* RAM that only this program's code touches: a frame slot or a global by its label. */
+static int pl_plain_mem(const char *m) { return !strncmp(m, "[sp+", 4) || !strncmp(m, "[r0+G_", 6); }
+
+static const char *pl_inverse(const char *b) {
+    static const char *pairs[][2] = {{"beq", "bne"}, {"bne", "beq"}, {"blt", "bge"}, {"bge", "blt"}, {"bltu", "bgeu"}, {"bgeu", "bltu"}};
+    for (size_t i = 0; i < sizeof pairs / sizeof pairs[0]; i++) if (!strcmp(b, pairs[i][0])) return pairs[i][1];
+    return NULL;
+}
+
+static void peephole(Buf *body) {
+    if (!body->p || !body->len) return;
+    int n = 0, cap = 256;
+    PLine *L = malloc(sizeof *L * (size_t)cap);
+    for (char *p = body->p; *p;) {
+        char *e = strchr(p, '\n');
+        size_t len = e ? (size_t)(e - p) : strlen(p);
+        if (n == cap) { cap *= 2; L = realloc(L, sizeof *L * (size_t)cap); }
+        L[n].s = ar_strndup(p, len);
+        L[n].dead = 0;
+        n++;
+        p += len + (e ? 1 : 0);
+    }
+    /* inline asm is not touched */
+    char *inasm = calloc((size_t)n + 1, 1);
+    for (int i = 0, in = 0; i < n; i++) {
+        if (strstr(L[i].s, "; @asm")) in = 1;
+        inasm[i] = (char)in;
+        if (strstr(L[i].s, "; @end")) in = 0;
+    }
+    char op1[16], op2[16], a[3][64], b[3][64];
+    for (int pass = 0; pass < 4; pass++) {
+        int changed = 0;
+        for (int i = 0; i < n; i++) {
+            if (L[i].dead || inasm[i]) continue;
+            int na = pl_parse(L[i].s, op1, a);
+            if (na < 0) continue;
+            if (!strcmp(op1, "mov") && na == 2 && !strcmp(a[0], a[1])) { L[i].dead = 1; changed = 1; continue; }
+            int j = i + 1;
+            while (j < n && L[j].dead) j++;
+            if (j >= n || inasm[j]) continue;
+            int nb = pl_parse(L[j].s, op2, b);
+            if (nb < 0) {
+                /* jmp .Lx straight into .Lx (possibly among other labels) */
+                if (!strcmp(op1, "jmp") && na == 1) {
+                    for (int k = j; k < n && (L[k].dead || L[k].s[0] == '.'); k++) {
+                        if (L[k].dead) continue;
+                        size_t ll = strlen(a[0]);
+                        if (!strncmp(L[k].s, a[0], ll) && L[k].s[ll] == ':' && !L[k].s[ll + 1]) { L[i].dead = 1; changed = 1; break; }
+                    }
+                }
+                continue;
+            }
+            /* sw rA, M; lw rB, M  ->  sw rA, M; mov rB, rA */
+            if (!strcmp(op1, "sw") && !strcmp(op2, "lw") && na == 2 && nb == 2 && !strcmp(a[1], b[1]) && pl_plain_mem(a[1])) {
+                L[j].s = strcmp(a[0], b[0]) ? ar_printf("    mov %s, %s", b[0], a[0]) : L[j].s;
+                if (!strcmp(a[0], b[0])) L[j].dead = 1;
+                changed = 1;
+                continue;
+            }
+            /* ld rA, M; ld rB, M  ->  ld rA, M; mov rB, rA   (rA is not M's base) */
+            if (!strcmp(op1, op2) && (!strcmp(op1, "lw") || !strcmp(op1, "lbu") || !strcmp(op1, "lhu") || !strcmp(op1, "lb") || !strcmp(op1, "lh"))
+                && na == 2 && nb == 2 && !strcmp(a[1], b[1]) && pl_plain_mem(a[1])) {
+                if (!strcmp(a[0], b[0])) L[j].dead = 1;
+                else L[j].s = ar_printf("    mov %s, %s", b[0], a[0]);
+                changed = 1;
+                continue;
+            }
+            /* shli rA, rB, k1; shli rA, rA, k2  ->  shli rA, rB, k1 + k2 */
+            if (!strcmp(op1, op2) && (!strcmp(op1, "shli") || !strcmp(op1, "shri")) && na == 3 && nb == 3
+                && !strcmp(a[0], b[0]) && !strcmp(b[1], a[0])) {
+                int k = atoi(a[2]) + atoi(b[2]);
+                if (k <= 31) {
+                    L[i].dead = 1;
+                    L[j].s = ar_printf("    %s %s, %s, %d", op1, a[0], a[1], k);
+                    changed = 1;
+                    continue;
+                }
+            }
+            /* bCC x, y, .L1; jmp .L2; .L1:  ->  bNCC x, y, .L2; .L1: */
+            if (na == 3 && pl_inverse(op1) && !strcmp(op2, "jmp") && nb == 1) {
+                int k = j + 1;
+                while (k < n && L[k].dead) k++;
+                size_t ll = strlen(a[2]);
+                if (k < n && !strncmp(L[k].s, a[2], ll) && L[k].s[ll] == ':' && !L[k].s[ll + 1]) {
+                    L[i].s = ar_printf("    %s %s, %s, %s", pl_inverse(op1), a[0], a[1], b[0]);
+                    L[j].dead = 1;
+                    changed = 1;
+                    continue;
+                }
+            }
+        }
+        if (!changed) break;
+    }
+    Buf o = {0};
+    for (int i = 0; i < n; i++) if (!L[i].dead) { buf_puts(&o, L[i].s); buf_putc(&o, '\n'); }
+    free(L);
+    free(inasm);
+    buf_free(body);
+    *body = o;
+}
+
 static void gen_func(Func *f, Buf *out) {
     if (f->is_asm) { gen_asm_func(f, out); return; }
     g_fn = f;
@@ -2609,7 +3038,10 @@ static void gen_func(Func *f, Buf *out) {
     }
     g_frame = g_frame_max = g_out_size + locals_size;
     g_nloop = 0;
+    g_nstubs = 0;
+    g_div_chk = NULL;
     g_ret_label = new_label();
+    int stack_stub = f->stack_msg ? check_stub(f->stack_msg, -1, 0) : 0;
 
     /* parameters: move to their homes */
     Local *order[28];
@@ -2634,7 +3066,14 @@ static void gen_func(Func *f, Buf *out) {
             if (l->reg != l->arg_reg) vmv[nvm++] = (Move){l->arg_reg, l->reg};
         }
     }
-    parallel_move(mv, nm, 0, 5);
+    {
+        /* a scratch register for breaking cycles: one no move involves */
+        int busy = 0, scratch = -1;
+        for (int i = 0; i < nm; i++) busy |= 1 << mv[i].src | 1 << mv[i].dst;
+        for (int r = 1; r <= 13 && scratch < 0; r++) if (!(busy >> r & 1)) scratch = r;
+        if (nm && scratch < 0) ice("no scratch register for the parameter moves");
+        parallel_move(mv, nm, 0, scratch);
+    }
     int vscratch = 7;
     while (vscratch > 0 && (vbusy >> vscratch & 1)) vscratch--;
     parallel_move(vmv, nvm, 1, vscratch);
@@ -2647,6 +3086,7 @@ static void gen_func(Func *f, Buf *out) {
     if (g_iobase_reg >= 0) I("lui %s, %u", RN[g_iobase_reg], IO_BASE_ADDR >> 10);
 
     gen_stmt(f->body);
+    peephole(&g_body);
 
     /* frame layout: [out args][locals][temps][saved regs][ra] */
     int nonleaf = !g_leaf;
@@ -2666,6 +3106,10 @@ static void gen_func(Func *f, Buf *out) {
     }
     buf_printf(out, "%s:\n", f->label);
     if (frame) buf_printf(out, "    addi sp, sp, %d\n", -frame);
+    if (frame && stack_stub) {
+        /* meic -g: the stack must stay above the globals (r5 is free at entry) */
+        buf_printf(out, "    li r5, 0x%06X\n    bltu sp, r5, .L%d\n", g_P->ram_end, stack_stub);
+    }
     if (nonleaf) buf_printf(out, "    sw ra, [sp+%d]\n", frame - 4);
     for (int i = 0; i < ns; i++) buf_printf(out, "    sw %s, [sp+%d]\n", RN[saved_regs[i]], save_base + 4 * i);
     /* body, with @F replaced by the frame size */
@@ -2684,6 +3128,17 @@ static void gen_func(Func *f, Buf *out) {
     if (nonleaf) buf_printf(out, "    lw ra, [sp+%d]\n", frame - 4);
     if (frame) buf_printf(out, "    addi sp, sp, %d\n", frame);
     buf_puts(out, "    ret\n");
+    for (int i = 0; i < g_nstubs; i++) {
+        CheckStub *k = &g_stubs[i];
+        if (k->label == stack_stub && !frame) continue;
+        buf_printf(out, ".L%d:\n", k->label);
+        if (k->idx_reg >= 0) {
+            if (k->idx_reg != 2) buf_printf(out, "    mov r2, %s\n", RN[k->idx_reg]);
+            buf_printf(out, "    li r3, %lld\n", (long long)k->len);
+        }
+        buf_printf(out, "    la r1, %s\n    lui sp, %u\n    call %s\n", k->msg, 0x200000u >> 10,
+                   k->idx_reg >= 0 ? "F___bounds_fail" : "F___check_fail");
+    }
     g_fn = NULL;
 }
 
@@ -2763,19 +3218,249 @@ static void mark_reachable(Func *f) {
     for (int i = 0; i < f->ncalls; i++) mark_reachable(f->calls[i]);
 }
 
+/* Marks what an expression of a global initialiser uses (the initialiser function is not
+   itself a root: only the initialisers that are kept count). */
+static Func *find_fn(const char *name);
+
+static void mark_expr_refs(Expr *e) {
+    if (!e) return;
+    if (e->sym && (e->sym->k == SY_GLOBAL || e->sym->k == SY_DATA || e->sym->k == SY_EMBED)) e->sym->reachable = 1;
+    if (e->sym && e->sym->k == SY_FUNC) mark_reachable(e->sym->fn);
+    if (e->k == E_CALL && e->callee) mark_reachable(e->callee);
+    if (e->k == E_CALL && e->target) mark_reachable(e->target);
+    if (e->k == E_FUNC) mark_reachable(e->lambda);
+    if (e->chk) { e->chk->reachable = 1; Func *h = find_fn("__check_fail"), *hb = find_fn("__bounds_fail"); if (h) mark_reachable(h); if (hb) mark_reachable(hb); }
+    mark_expr_refs(e->a);
+    mark_expr_refs(e->b);
+    for (int i = 0; i < e->nargs; i++) mark_expr_refs(e->args[i]);
+    for (int i = 0; i < e->narms; i++) mark_expr_refs(e->arms[i].value);
+}
+
 static Func *find_fn(const char *name) {
     Sym *s = sym_lookup_global(name);
     return s && s->k == SY_FUNC ? s->fn : NULL;
 }
 
+/* Is `a` a near miss of `b`: the same ignoring case, or one edit (insert, delete, replace or
+   swap two neighbours) away? */
+static int near_miss(const char *a, const char *b) {
+    size_t n = strlen(a), m = strlen(b);
+    char x[64], y[64];
+    if (n >= sizeof x || m >= sizeof y) return 0;
+    for (size_t i = 0; i <= n; i++) x[i] = (char)(a[i] >= 'A' && a[i] <= 'Z' ? a[i] + 32 : a[i]);
+    for (size_t i = 0; i <= m; i++) y[i] = (char)(b[i] >= 'A' && b[i] <= 'Z' ? b[i] + 32 : b[i]);
+    if (!strcmp(x, y)) return 1;
+    if (n + 1 < m || m + 1 < n || n < 3) return 0;
+    size_t i = 0;
+    while (i < n && i < m && x[i] == y[i]) i++;
+    if (n == m) {
+        if (!strcmp(x + i + 1, y + i + 1)) return 1;                                   /* replace */
+        return i + 1 < n && x[i] == y[i + 1] && x[i + 1] == y[i] && !strcmp(x + i + 2, y + i + 2);   /* swap */
+    }
+    return n > m ? !strcmp(x + i + 1, y + i) : !strcmp(x + i, y + i + 1);              /* delete / insert */
+}
+
+/* The runtime calls init(), update() and draw(). A cart function that is never called and is
+   named like one of them (or like another language's entry point) is probably a mistake. */
+static void warn_entry_points(Program *P) {
+    static const char *entries[] = {"init", "update", "draw"};
+    static const char *others[] = {"main", "setup", "start", "loop", "tick", "render"};
+    int have[3], any = 0;
+    for (int k = 0; k < 3; k++) {
+        Sym *s = sym_lookup_layer(entries[k], 1);
+        have[k] = s && s->k == SY_FUNC;
+        any |= have[k];
+    }
+    for (int i = 0; i < P->nfuncs; i++) {
+        Func *f = P->funcs[i];
+        if (f->reachable || f->is_lambda || !f->sym || !f->sym->user) continue;
+        int warned = 0;
+        for (int k = 0; k < 3 && !warned; k++)
+            if (!have[k] && strcmp(f->name, entries[k]) && near_miss(f->name, entries[k])) {
+                warn_at(f->loc, "%s() is never called; the runtime calls %s()%s (is that what you meant to write?)",
+                        f->name, entries[k], k == 0 ? " once at start-up" : " every frame");
+                warned = 1;
+            }
+        for (size_t k = 0; k < sizeof others / sizeof others[0] && !warned && !any; k++)
+            if (!strcmp(f->name, others[k])) {
+                warn_at(f->loc, "%s() is never called; a cart's entry points are init() (once at start-up), update() "
+                        "and draw() (every frame)", f->name);
+                warned = 1;
+            }
+    }
+}
+
+/* ---- register clobbers: which registers a function's code may change, read from its
+   generated text (compiled and asm functions alike). r9-r13 and sp are preserved by every
+   function (the calling convention); ra is the caller's business. */
+
+static Func **g_lab;
+static int g_lab_n, g_lab_cap;
+
+static size_t lab_hash(const char *s) { size_t h = 2166136261u; while (*s) h = (h ^ (unsigned char)*s++) * 16777619u; return h; }
+
+static void lab_put(Func *f) {
+    size_t i = lab_hash(f->label) & (size_t)(g_lab_cap - 1);
+    while (g_lab[i]) i = (i + 1) & (size_t)(g_lab_cap - 1);
+    g_lab[i] = f;
+    g_lab_n++;
+}
+
+static Func *lab_get(const char *label, size_t len) {
+    char buf[256];
+    if (len >= sizeof buf) return NULL;
+    memcpy(buf, label, len);
+    buf[len] = 0;
+    for (size_t i = lab_hash(buf) & (size_t)(g_lab_cap - 1); g_lab[i]; i = (i + 1) & (size_t)(g_lab_cap - 1))
+        if (!strcmp(g_lab[i]->label, buf)) return g_lab[i];
+    return NULL;
+}
+
+static void topo_visit(Program *P, Func *f, Func **order, int *n, char *seen) {
+    int idx = -1;
+    for (int i = 0; i < P->nfuncs; i++) if (P->funcs[i] == f) { idx = i; break; }
+    if (idx < 0 || seen[idx]) return;
+    seen[idx] = 1;
+    for (int i = 0; i < f->ncalls; i++) if (f->calls[i]->reachable) topo_visit(P, f->calls[i], order, n, seen);
+    order[(*n)++] = f;
+}
+
+/* "r5" -> 5, "v3" -> 16 + 3, sp/ra/r0/r9-r13 -> -1 (not a clobber), anything else -> -2 */
+static int reg_bit(const char *s, size_t len) {
+    while (len && (*s == ' ' || *s == '\t')) { s++; len--; }
+    while (len && (s[len - 1] == ' ' || s[len - 1] == '\t')) len--;
+    if (len == 2 && !strncmp(s, "sp", 2)) return -1;
+    if (len == 2 && !strncmp(s, "ra", 2)) return -1;
+    if (len < 2 || len > 3 || (s[0] != 'r' && s[0] != 'v')) return -2;
+    int n = 0;
+    for (size_t i = 1; i < len; i++) { if (s[i] < '0' || s[i] > '9') return -2; n = n * 10 + s[i] - '0'; }
+    if (s[0] == 'v') return n < 8 ? 16 + n : -2;
+    if (n > 15) return -2;
+    if (n == 0 || (n >= 9 && n <= 15)) return -1;
+    return n;
+}
+
+static uint32_t text_clobbers(const char *t, size_t len) {
+    static const char *dest_first[] = {
+        "add", "sub", "mul", "div", "divu", "rem", "remu", "and", "or", "xor", "shl", "shr", "sar", "slt", "sltu",
+        "addi", "andi", "ori", "xori", "shli", "shri", "sari", "slti", "lui", "fmul", "fdiv", "nclip", "otz", "clerp",
+        "lb", "lbu", "lh", "lhu", "lw", "vld", "vmov", "vget", "vset", "vadd", "vsub", "vmul", "vscale", "vdot",
+        "vcross", "vxfm", "vproj", "mov", "li", "la", "neg", "not", "pop", NULL};
+    static const char *no_dest[] = {
+        "sw", "sh", "sb", "vst", "beq", "bne", "blt", "bge", "bltu", "bgeu", "bgt", "ble", "bgtu", "bleu", "beqz",
+        "bnez", "b", "jmp", "jr", "ret", "nop", "brk", "vsync", "push", NULL};
+    uint32_t m = 0;
+    const char *end = t + len;
+    while (t < end) {
+        const char *e = memchr(t, '\n', (size_t)(end - t));
+        if (!e) e = end;
+        const char *s = t, *le = e;
+        t = e + 1;
+        for (const char *c = s; c < le; c++) if (*c == ';' || (*c == '/' && c + 1 < le && c[1] == '/')) { le = c; break; }
+        for (;;) {
+            while (s < le && (*s == ' ' || *s == '\t')) s++;
+            const char *w = s;
+            while (w < le && *w != ' ' && *w != '\t' && *w != ':') w++;
+            if (w < le && *w == ':') { s = w + 1; continue; }   /* a label */
+            break;
+        }
+        if (s >= le || *s == '.') continue;   /* empty, or a directive */
+        const char *op = s;
+        while (s < le && *s != ' ' && *s != '\t') s++;
+        size_t ol = (size_t)(s - op);
+        const char *a0 = s;
+        while (a0 < le && (*a0 == ' ' || *a0 == '\t')) a0++;
+        const char *a0e = a0;
+        while (a0e < le && *a0e != ',') a0e++;
+        /* control leaving the function other than by ret (a jump to another function's code,
+           a computed jump), or a new sp (coroutines): the code may come back with anything
+           changed */
+        const char *last = le;
+        while (last > a0 && (last[-1] == ' ' || last[-1] == '\t')) last--;
+        const char *lop = last;
+        while (lop > a0 && lop[-1] != ',' && lop[-1] != ' ' && lop[-1] != '\t') lop--;
+        int is_branch = op[0] == 'b' && ol >= 3 && ol <= 4 && strncmp(op, "brk", 3);
+        if ((ol == 3 && !strncmp(op, "jmp", 3)) || (ol == 1 && op[0] == 'b') || is_branch) {
+            if (lop >= last || *lop != '.') m |= CLOB_FULL;
+            continue;
+        }
+        if (ol == 2 && !strncmp(op, "jr", 2)) {
+            int r = reg_bit(a0, (size_t)(a0e - a0));
+            if (!(r == -1 && (!strncmp(a0, "r15", 3) || !strncmp(a0, "ra", 2)))) m |= CLOB_FULL;
+            continue;
+        }
+        if (a0e - a0 >= 2 && !strncmp(a0, "sp", 2) && (a0e - a0 == 2 || a0[2] == ' ')) {
+            int ok = (ol == 4 && !strncmp(op, "addi", 4) && !strncmp(a0e, ", sp,", 5)) || (ol == 3 && !strncmp(op, "lui", 3));
+            if (!ok) m |= CLOB_FULL;
+        }
+        int known = 0;
+        for (int i = 0; no_dest[i]; i++) if (strlen(no_dest[i]) == ol && !strncmp(op, no_dest[i], ol)) known = 1;
+        if (known) continue;
+        if (ol == 4 && !strncmp(op, "call", 4)) {
+            const char *l = a0, *lend = a0e;
+            while (lend > l && (lend[-1] == ' ' || lend[-1] == '\t')) lend--;
+            Func *g = lab_get(l, (size_t)(lend - l));
+            m |= g && g->clob_known ? g->clob | 2u | 0x10000u : CLOB_FULL;
+            continue;
+        }
+        if (ol == 5 && !strncmp(op, "callr", 5)) { m |= CLOB_FULL; continue; }
+        if (ol == 4 && !strncmp(op, "vxp3", 4)) {
+            int r = reg_bit(a0, (size_t)(a0e - a0));
+            if (r >= 16 && r <= 21) m |= 7u << r;
+            else m |= CLOB_FULL;
+            continue;
+        }
+        for (int i = 0; dest_first[i]; i++) if (strlen(dest_first[i]) == ol && !strncmp(op, dest_first[i], ol)) known = 1;
+        if (!known) { m |= CLOB_FULL; continue; }
+        int r = reg_bit(a0, (size_t)(a0e - a0));
+        if (r == -2) m |= CLOB_FULL;
+        else if (r > 0) m |= 1u << r;
+    }
+    return m & CLOB_FULL;
+}
+
 void gen_program(Program *P, Buf *out) {
     g_P = P;
     g_label = 0;
+    g_stubs = NULL;
+    g_nstubs = g_capstubs = 0;
     g_vconsts = NULL;
     g_vconst_n = 0;
     memset(&g_body, 0, sizeof g_body);
 
-    /* RAM layout: small globals first so they stay reachable from r0 */
+    /* reachability: functions from the entry points; a global initialiser runs only when its
+       variable is used, or when it makes calls (whose effects must happen) */
+    Func *roots[] = {find_fn("__rt_init"), find_fn("init"), find_fn("__rt_frame_begin"),
+                     find_fn("update"), find_fn("draw"), find_fn("__rt_frame_end")};
+    for (size_t i = 0; i < sizeof roots / sizeof roots[0]; i++) if (roots[i]) mark_reachable(roots[i]);
+    Stmt *ib = P->init_fn->body;
+    char *keep = ar_alloc((size_t)ib->n + 1);
+    for (int changed = 1; changed;) {
+        changed = 0;
+        for (int i = 0; i < ib->n; i++) {
+            Stmt *st = ib->list[i];
+            if (keep[i] || !(st->e->sym->reachable || count_calls(st->e2))) continue;
+            keep[i] = 1;
+            changed = 1;
+            st->e->sym->reachable = 1;
+            mark_expr_refs(st->e2);
+        }
+        /* functions named in reachable const data (which may make more data reachable) */
+        for (int i = 0; i < P->ndatas; i++) {
+            Sym *d = P->datas[i];
+            if (!d->reachable) continue;
+            for (int k = 0; k < d->ndfuncs; k++)
+                if (!d->dfuncs[k]->reachable) { mark_reachable(d->dfuncs[k]); changed = 1; }
+        }
+    }
+    {
+        int n = 0;
+        for (int i = 0; i < ib->n; i++) if (keep[i]) ib->list[n++] = ib->list[i];
+        ib->n = n;
+    }
+
+    /* RAM layout: small globals first so they stay reachable from r0; unused globals take no
+       RAM; arrays of 16 bytes or more start on a 16-byte boundary (for word and vector copies) */
     Sym **gl = ar_alloc(sizeof(Sym *) * (size_t)(P->nglobals + 1));
     for (int i = 0; i < P->nglobals; i++) gl[i] = P->globals[i];
     /* stable sort: keep declaration order inside each class */
@@ -2793,7 +3478,9 @@ void gen_program(Program *P, Buf *out) {
     else buf_printf(out, "; generated by meic\n    .cart \"%s\", __start\n\n; RAM globals\n", title);
     for (int i = 0; i < P->nglobals; i++) {
         Sym *s = gl[i];
+        if (!s->reachable) continue;
         uint32_t al = (uint32_t)(s->ty->align < 4 && s->ty->size >= 4 ? 4 : s->ty->align);
+        if (s->ty->k == TY_ARRAY && s->ty->size >= 16) al = 16;
         addr = (addr + al - 1) & ~(al - 1);
         s->addr = addr;
         buf_printf(out, "%s = 0x%06X    ; %s, %d bytes\n", s->label, addr, ty_str(s->ty), s->ty->size);
@@ -2804,36 +3491,39 @@ void gen_program(Program *P, Buf *out) {
     if (addr > 0x1F0000) error_plain("error: global variables use %u bytes of RAM, leaving too little for the stack", addr);
     buf_printf(out, "__ram_end = 0x%06X\n", addr);
 
-    /* reachability */
-    Func *roots[] = {P->init_fn, find_fn("__rt_init"), find_fn("init"), find_fn("__rt_frame_begin"),
-                     find_fn("update"), find_fn("draw"), find_fn("__rt_frame_end")};
-    for (size_t i = 0; i < sizeof roots / sizeof roots[0]; i++) if (roots[i]) mark_reachable(roots[i]);
-    /* functions named in reachable const data (which may make more data reachable) */
-    for (int changed = 1; changed;) {
-        changed = 0;
-        for (int i = 0; i < P->ndatas; i++) {
-            Sym *d = P->datas[i];
-            if (!d->reachable) continue;
-            for (int k = 0; k < d->ndfuncs; k++)
-                if (!d->dfuncs[k]->reachable) { mark_reachable(d->dfuncs[k]); changed = 1; }
-        }
-    }
+    warn_entry_points(P);
 
     /* entry point and frame loop */
     buf_puts(out, "\n__start:\n");
     if (P->init_fn->body->n) buf_puts(out, "    call F__init_globals\n");
-    if (roots[1]) buf_puts(out, "    call F___rt_init\n");
-    if (roots[2]) buf_puts(out, "    call F_init\n");
+    if (roots[0]) buf_puts(out, "    call F___rt_init\n");
+    if (roots[1]) buf_puts(out, "    call F_init\n");
     buf_puts(out, ".frame:\n");
-    if (roots[3]) buf_puts(out, "    call F___rt_frame_begin\n");
-    if (roots[4]) buf_puts(out, "    call F_update\n");
-    if (roots[5]) buf_puts(out, "    call F_draw\n");
-    if (roots[6]) buf_puts(out, "    call F___rt_frame_end\n");
+    if (roots[2]) buf_puts(out, "    call F___rt_frame_begin\n");
+    if (roots[3]) buf_puts(out, "    call F_update\n");
+    if (roots[4]) buf_puts(out, "    call F_draw\n");
+    if (roots[5]) buf_puts(out, "    call F___rt_frame_end\n");
     else buf_puts(out, "    vsync\n");
     buf_puts(out, "    jmp .frame\n");
 
+    /* callees before callers, so a call knows which registers its callee changes */
+    g_lab_n = 0;
+    g_lab_cap = 1024;
+    while (g_lab_cap < 4 * P->nfuncs + 16) g_lab_cap *= 2;
+    g_lab = ar_alloc(sizeof(Func *) * (size_t)g_lab_cap);
+    for (int i = 0; i < P->nfuncs; i++) if (P->funcs[i]->reachable && P->funcs[i]->label) lab_put(P->funcs[i]);
+    Func **order = ar_alloc(sizeof(Func *) * (size_t)(P->nfuncs + 1));
+    int norder = 0;
+    char *seen = ar_alloc((size_t)P->nfuncs + 1);
+    for (int i = 0; i < P->nfuncs; i++) P->funcs[i]->clob_known = 0;
+    for (int i = 0; i < P->nfuncs; i++) if (P->funcs[i]->reachable) topo_visit(P, P->funcs[i], order, &norder, seen);
     if (P->init_fn->body->n) gen_func(P->init_fn, out);
-    for (int i = 0; i < P->nfuncs; i++) if (P->funcs[i]->reachable) gen_func(P->funcs[i], out);
+    for (int i = 0; i < norder; i++) {
+        size_t start = out->len;
+        gen_func(order[i], out);
+        order[i]->clob = text_clobbers(out->p + start, out->len - start);
+        order[i]->clob_known = 1;
+    }
 
     /* ROM data */
     buf_puts(out, "\n; ROM data\n    .align 4\n");

@@ -1,0 +1,18 @@
+// meic -g: runaway recursion is caught at function entry, before it overwrites the globals.
+// flags: -g
+// exit: 2
+// frames: 30
+var depth = 0
+
+fn dive(n: s32) -> s32 {
+    var pad: [64]s32
+    pad[n & 63] = n
+    depth += 1
+    return dive(n + 1) + pad[3]
+}
+
+fn init() {
+    println("start")            // expect: start
+    print_int(dive(0))
+}
+// expect: check failed: debug_stack.akr:7: stack overflow entering dive() (too deep a recursion, or too many locals: the stack ran into the global variables)

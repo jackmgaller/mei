@@ -1,0 +1,19 @@
+// weak fn: a default that a definition in another file replaces, for every caller.
+import "lib/weak_hooks.akr"
+
+weak fn on_score(points: s32) -> s32 { return points }       // replaced below (lib/weak_more.akr)
+weak fn colour_of(k: s32) -> u16 { return 0 }                 // never replaced: the default is used
+weak asm fn twice(x: s32) -> s32 { add r1, r1, r1
+    ret }
+
+fn init() {
+    print_int(on_score(5)); println("")         // expect: 50
+    print_int(colour_of(3) as s32); println("") // expect: 0
+    print_int(score_via_lib(7)); println("")   // expect: 70
+    hook_hello()                                // expect: replaced hello
+    print_int(twice(21)); println("")          // expect: 42
+    let f = on_score
+    print_int(f(2)); println("")               // expect: 20
+}
+
+import "lib/weak_more.akr"

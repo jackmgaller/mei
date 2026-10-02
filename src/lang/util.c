@@ -147,6 +147,34 @@ _Noreturn void error_at(Loc loc, const char *fmt, ...) {
     error_finish(&b);
 }
 
+/* Warnings: collected during compilation, handed to the caller on success. */
+static Buf g_warn;
+static int g_nwarn;
+
+void warn_at(Loc loc, const char *fmt, ...) {
+    if (g_nwarn >= 50) return;
+    g_nwarn++;
+    if (g_warn.len) buf_putc(&g_warn, '\n');
+    if (loc.file) buf_printf(&g_warn, "%s:%d:%d: warning: ", loc.file, loc.line, loc.col);
+    else buf_puts(&g_warn, "warning: ");
+    va_list ap;
+    va_start(ap, fmt);
+    buf_vprintf(&g_warn, fmt, ap);
+    va_end(ap);
+    if (loc.file) quote_line(&g_warn, loc);
+}
+
+void warn_reset(void) { buf_free(&g_warn); g_warn = (Buf){0}; g_nwarn = 0; }
+
+char *warn_take(void) {
+    if (!g_warn.len) { warn_reset(); return NULL; }
+    char *r = malloc(g_warn.len + 1);
+    memcpy(r, g_warn.p, g_warn.len);
+    r[g_warn.len] = 0;
+    warn_reset();
+    return r;
+}
+
 _Noreturn void error_plain(const char *fmt, ...) {
     Buf b = {0};
     va_list ap;
@@ -163,6 +191,10 @@ _Noreturn void error_plain(const char *fmt, ...) {
 
 typedef struct { Sym **tab; size_t cap, n; } SymTab;
 static SymTab g_layers[2];
+/* `private` declarations: one table per file, searched before the layers */
+typedef struct { const char *file; SymTab tab; } FileTab;
+static FileTab *g_ftabs;
+static int g_nftabs, g_capftabs;
 static const char **g_stdfiles;
 static int g_nstdfiles, g_capstdfiles;
 
@@ -174,6 +206,10 @@ static size_t hash_str(const char *s) {
 
 void symtab_reset(void) {
     for (int i = 0; i < 2; i++) { free(g_layers[i].tab); g_layers[i] = (SymTab){0}; }
+    for (int i = 0; i < g_nftabs; i++) free(g_ftabs[i].tab.tab);
+    free(g_ftabs);
+    g_ftabs = NULL;
+    g_nftabs = g_capftabs = 0;
     g_stdfiles = NULL;
     g_nstdfiles = g_capstdfiles = 0;
 }
@@ -195,8 +231,7 @@ int file_is_stdlib(const char *path) {
     return 0;
 }
 
-Sym *sym_lookup_layer(const char *name, int layer) {
-    SymTab *t = &g_layers[layer];
+static Sym *tab_lookup(SymTab *t, const char *name) {
     if (!t->cap) return NULL;
     for (size_t i = hash_str(name) & (t->cap - 1);; i = (i + 1) & (t->cap - 1)) {
         if (!t->tab[i]) return NULL;
@@ -204,7 +239,40 @@ Sym *sym_lookup_layer(const char *name, int layer) {
     }
 }
 
+Sym *sym_lookup_layer(const char *name, int layer) { return tab_lookup(&g_layers[layer], name); }
+
+/* The private table of a file (its number, from 1, in *index), optionally created. */
+static FileTab *file_tab(const char *file, int create) {
+    if (!file) return NULL;
+    for (int i = 0; i < g_nftabs; i++)
+        if (g_ftabs[i].file == file || !strcmp(g_ftabs[i].file, file)) return &g_ftabs[i];
+    if (!create) return NULL;
+    if (g_nftabs == g_capftabs) {
+        g_capftabs = g_capftabs ? g_capftabs * 2 : 16;
+        g_ftabs = realloc(g_ftabs, sizeof *g_ftabs * (size_t)g_capftabs);
+    }
+    g_ftabs[g_nftabs] = (FileTab){file, {0}};
+    return &g_ftabs[g_nftabs++];
+}
+
+Sym *sym_lookup_private(const char *name, const char *file) {
+    FileTab *f = file_tab(file, 0);
+    return f ? tab_lookup(&f->tab, name) : NULL;
+}
+
+/* A private symbol of some file other than `from_file` (for error messages). */
+Sym *sym_private_elsewhere(const char *name, const char *from_file) {
+    for (int i = 0; i < g_nftabs; i++) {
+        if (from_file && !strcmp(g_ftabs[i].file, from_file)) continue;
+        Sym *s = tab_lookup(&g_ftabs[i].tab, name);
+        if (s) return s;
+    }
+    return NULL;
+}
+
 Sym *sym_lookup(const char *name, const char *from_file) {
+    Sym *p = sym_lookup_private(name, from_file);
+    if (p) return p;
     if (file_is_stdlib(from_file)) return sym_lookup_layer(name, 0);
     Sym *s = sym_lookup_layer(name, 1);
     return s ? s : sym_lookup_layer(name, 0);
@@ -232,3 +300,9 @@ static void define_in(SymTab *t, Sym *s) {
 }
 
 void sym_define_global(Sym *s) { define_in(&g_layers[s->user ? 1 : 0], s); }
+
+void sym_define_private(Sym *s, const char *file) {
+    FileTab *f = file_tab(file, 1);
+    s->priv = (int)(f - g_ftabs) + 1;
+    define_in(&f->tab, s);
+}

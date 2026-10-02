@@ -130,6 +130,25 @@ fn __assert_eq_fail(msg: *u8, ka: s32, a: s32, kb: s32, b: s32) {
     __assert_halt()
 }
 
+// ---- run-time checks of a debug build (meic -g; the compiler calls these on a failure)
+
+fn __check_fail(msg: *u8) {
+    print("check failed: ")
+    println(msg)
+    __assert_halt()
+}
+
+fn __bounds_fail(msg: *u8, index: s32, length: s32) {
+    print("check failed: ")
+    println(msg)
+    print("  index ")
+    print_int(index)
+    print(", length ")
+    print_int(length)
+    println("")
+    __assert_halt()
+}
+
 fn __assert_halt() {
     asm {
         brk

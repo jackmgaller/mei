@@ -1,0 +1,4 @@
+// error: 'reg' is a keyword and cannot be used as a variable name
+fn init() {
+    var reg = 3
+}

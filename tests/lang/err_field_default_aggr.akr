@@ -1,0 +1,4 @@
+// Only single values can be field defaults.
+// error: a field default must be a single value (field 'm' is mat4)
+struct P { m: mat4 = mat4_identity() }
+fn init() { }
