@@ -1,6 +1,6 @@
 // Music and interface sounds.
 //
-// "Fair Skies Theme": smooth-jazz lounge for the weather channel (tools/gen_weather_audio.py
+// "Mei Weather Theme": smooth-jazz lounge for the weather channel (tools/gen_weather_audio.py
 // composes it and renders the instruments into mu_data.akr and audio/). A small sequencer, after
 // the system shell's (system/shell/music.akr): each track plays a cycle of slots, each slot has a
 // few variant sections and a random one plays each time round (never the same twice running; the

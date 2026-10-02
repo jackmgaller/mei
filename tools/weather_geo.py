@@ -1,4 +1,4 @@
-"""Hand-drawn geography for Fair Skies' temperature maps: (lat, lon) in degrees.
+"""Hand-drawn geography for Mei Weather's temperature maps: (lat, lon) in degrees.
 
 Simplified by hand from well-known places along each coast and border, to roughly a tenth to a
 quarter of a degree: enough for a 64 x 48 temperature map drawn 256 x 192 on screen. Kinds:

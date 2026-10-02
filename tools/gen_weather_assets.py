@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fair Skies art: fonts, glossy weather-icon layers, interface glyphs, the logo, palettes, the
+"""Mei Weather art: fonts, glossy weather-icon layers, interface glyphs, the logo, palettes, the
 temperature colour ramp, the memory-card icon and the map geography.
 
 Writes carts/weather/art/ (texture rows per slot, palettes, the geography blob, the save icon)
@@ -360,75 +360,67 @@ def glyph_drop():
     return drop(7, 10)
 
 
-def glyph_wind():
-    W, H = 12, 10
-
-    def draw(dr, s):
-        k = SS
-        dr.line([0, 3 * k, 8 * k, 3 * k], fill=255, width=int(1.4 * k))
-        dr.arc([6 * k, 0.6 * k, 10.6 * k, 5.2 * k], 180, 100, fill=255, width=int(1.4 * k))
-        dr.line([0, 6.5 * k, 9 * k, 6.5 * k], fill=255, width=int(1.4 * k))
-        dr.arc([7 * k, 5 * k, 11.5 * k, 9.6 * k], 260, 160, fill=255, width=int(1.4 * k))
-    m = mask_of(draw, W, H)
-    fill = vgrad(W * SS, H * SS, (235, 245, 255), (190, 215, 245))
-    return compose(fill, m, (30, 44, 90), 0.0)
+def _rgba_img(layer):
+    return Image.fromarray(np.clip(np.dstack([layer[..., :3], layer[..., 3:] * 255]), 0, 255).astype(np.uint8), 'RGBA')
 
 
-def glyph_sunrise(up):
-    W, H = 16, 10
+def glyph_sun_horizon(up):
+    """Sunrise (up) or sunset: a glossy half sun on the horizon, built from the weather icons'
+    own sun layers at 4x and reduced, with a crisp horizon line and an arrow above (22 x 20)."""
+    W, H = 22, 20
+    HZ = 15                                        # the horizon row
+    k = 4
+    big = Image.new('RGBA', (W * k, H * k), (0, 0, 0, 0))
+    cx, cy = W * k // 2, HZ * k                    # the sun's centre sits on the horizon
+    rays = _rgba_img(sun_rays(78, 12)).rotate(15, resample=Image.BICUBIC)
+    disc = _rgba_img(sun_disc(54))
+    big.alpha_composite(rays, (cx - rays.width // 2, cy - rays.height // 2))
+    big.alpha_composite(disc, (cx - disc.width // 2, cy - disc.height // 2))
+    a = np.asarray(big, np.float32).copy()
+    a[cy:, :, 3] = 0                               # below the horizon: nothing
+    im = np.asarray(Image.fromarray(a.astype(np.uint8), 'RGBA').resize((W, H), Image.BOX), np.float32)
+    rgba = np.dstack([im[..., :3], im[..., 3] / 255.0])
 
-    def draw(dr, s):
-        k = SS
-        dr.pieslice([3 * k, 3 * k, 13 * k, 13 * k], 180, 360, fill=255)
-        dr.rectangle([0, 8.2 * k, 16 * k, 9.4 * k], fill=255)
-        ax = 8 * k
-        if up:
-            dr.polygon([(ax, 0), (ax - 2.2 * k, 2.4 * k), (ax + 2.2 * k, 2.4 * k)], fill=255)
-        else:
-            dr.polygon([(ax, 2.6 * k), (ax - 2.2 * k, 0.2 * k), (ax + 2.2 * k, 0.2 * k)], fill=255)
-    m = mask_of(draw, W, H)
-    fill = vgrad(W * SS, H * SS, (255, 230, 140), (250, 160, 70))
-    return compose(fill, m, (60, 30, 30), 0.0)
-
-
-def glyph_home():
-    W, H = 10, 10
-
-    def draw(dr, s):
-        k = SS
-        dr.polygon([(5 * k, 0.5 * k), (0.2 * k, 5 * k), (9.8 * k, 5 * k)], fill=255)
-        dr.rectangle([1.6 * k, 4.5 * k, 8.4 * k, 9.6 * k], fill=255)
-    m = mask_of(draw, W, H)
-    fill = vgrad(W * SS, H * SS, (255, 255, 255), (220, 230, 250))
-    return compose(fill, m, (30, 40, 80), 0.0)
-
-
-def glyph_dish():
-    """A little satellite dish for the tuning screen (24 x 24)."""
-    W, H = 24, 24
-
-    def draw(dr, s):
-        k = SS
-        dr.chord([1 * k, 2 * k, 19 * k, 20 * k], 110, 340, fill=255)
-        dr.line([10 * k, 11 * k, 16 * k, 5 * k], fill=255, width=int(1.3 * k))
-        dr.ellipse([15 * k, 3.5 * k, 18 * k, 6.5 * k], fill=255)
-        dr.polygon([(9 * k, 15 * k), (5 * k, 23 * k), (15 * k, 23 * k)], fill=255)
-    m = mask_of(draw, W, H)
-    fill = vgrad(W * SS, H * SS, (250, 252, 255), (170, 190, 225))
-    return compose(fill, m, (30, 40, 80), 0.9)
+    def dot(x, y, col):
+        if 0 <= y < H and 0 <= x < W:
+            rgba[y, x] = (*col, 1.0)
+    # the horizon: a pale line with a dark one under it
+    for x in range(W):
+        dot(x, HZ, (255, 236, 196))
+        dot(x, HZ + 1, (60, 30, 30))
+    # the arrow: a head three rows deep and a two-pixel stem, outlined in navy
+    rows = [(10, 11), (9, 12), (8, 13), (10, 11), (10, 11), (10, 11)]
+    if not up:
+        rows = rows[::-1]
+    ink = (255, 255, 255) if up else (255, 226, 190)
+    shape = {(x, y) for y, (x0, x1) in enumerate(rows) for x in range(x0, x1 + 1)}
+    for x, y in shape:
+        for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            if (x + dx, y + dy) not in shape:
+                dot(x + dx, y + dy, (30, 30, 70))
+    for x, y in shape:
+        dot(x, y, ink)
+    return rgba
 
 
 def logo():
-    """'Fair Skies' wordmark: Avenir Next Heavy Italic, white on a glossy sun swoosh."""
-    W, H = 118, 26
+    """'Mei Weather' wordmark: Avenir Next Heavy Italic over a glossy sun, 'Mei' in sunshine gold
+    and 'Weather' in white."""
     idx = face_index(AVENIR, 'Heavy Italic')
     f = ImageFont.truetype(AVENIR, 19 * SS, index=idx)
-    m = Image.new('L', (W * SS, H * SS), 0)
-    d = ImageDraw.Draw(m)
-    d.text((24 * SS, 1 * SS), 'Fair Skies', font=f, fill=255)
-    mask = np.asarray(m, np.float32) / 255
-    fill = vgrad(W * SS, H * SS, (255, 255, 255), (210, 228, 255))
-    text = compose(fill, mask, (16, 30, 90), 1.2)
+    x0 = 22 * SS
+    gap = 2 * SS
+    w_mei = int(f.getlength('Mei'))
+    w_all = x0 + w_mei + gap + int(f.getlength('Weather'))
+    W, H = (w_all + SS - 1) // SS + 4, 26
+    m_mei = Image.new('L', (W * SS, H * SS), 0)
+    ImageDraw.Draw(m_mei).text((x0, 1 * SS), 'Mei', font=f, fill=255)
+    m_wx = Image.new('L', (W * SS, H * SS), 0)
+    ImageDraw.Draw(m_wx).text((x0 + w_mei + gap, 1 * SS), 'Weather', font=f, fill=255)
+    gold = compose(vgrad(W * SS, H * SS, (255, 246, 170), (255, 170, 50)),
+                   np.asarray(m_mei, np.float32) / 255, (110, 50, 20), 1.2)
+    white = compose(vgrad(W * SS, H * SS, (255, 255, 255), (210, 228, 255)),
+                    np.asarray(m_wx, np.float32) / 255, (16, 30, 90), 1.2)
     sun = sun_disc(16)
     rays = sun_rays(26, 10)
     out = np.zeros((H, W, 4), np.float32)
@@ -440,7 +432,8 @@ def logo():
         dst[y:y + h, x:x + w, 3] = a[..., 0] + dst[y:y + h, x:x + w, 3] * (1 - a[..., 0])
     over(out, rays, 0, 0)
     over(out, sun, 3, 3)
-    over(out, text, 0, 0)
+    over(out, gold, 0, 0)
+    over(out, white, 0, 0)
     return out
 
 
@@ -590,7 +583,7 @@ def save_icon():
             im = Image.fromarray(np.clip(np.dstack([layer[..., :3], layer[..., 3:] * 255]), 0, 255).astype(np.uint8), 'RGBA')
             big.alpha_composite(im, (x, y))
         frames.append(big.resize((16, 16), Image.LANCZOS))
-    return mei_icon.make_meta(frames, 'Fair Skies', quantize=True)
+    return mei_icon.make_meta(frames, 'Mei Weather', quantize=True)
 
 
 # ============================================================================ main
@@ -601,7 +594,7 @@ def main():
     args = ap.parse_args()
     os.makedirs(ART, exist_ok=True)
     akr = ['// Generated by tools/gen_weather_assets.py - do not edit.',
-           '// Texture slots, palettes, fonts and sprites of Fair Skies (see the generator for the layout).',
+           '// Texture slots, palettes, fonts and sprites of Mei Weather (see the generator for the layout).',
            '']
     consts = []
     pals = Palettes(17)          # 4-bit palettes from 17 (16 is the overlay)
@@ -637,9 +630,8 @@ def main():
         sprites.append((name, atlas.slot, p, u, v, idx.shape[1], idx.shape[0]))
         return idx, pal
 
-    for name, img in [('g_drop', glyph_drop()), ('g_wind', glyph_wind()), ('g_rise', glyph_sunrise(True)),
-                      ('g_set', glyph_sunrise(False)), ('g_home', glyph_home()), ('g_dish', glyph_dish()),
-                      ('logo', logo())]:
+    for name, img in [('g_drop', glyph_drop()), ('g_rise', glyph_sun_horizon(True)),
+                      ('g_set', glyph_sun_horizon(False)), ('logo', logo())]:
         add_sprite(a3, name, img)
 
     # ---- slot 4: icon layers, large and medium, and the small icons

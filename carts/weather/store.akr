@@ -1,13 +1,13 @@
 // The memory card: save 0 holds the settings, save 1 the pages last received (the locations
 // and their cached pages, maps packed two bands a byte), so the cart can show the weather it
-// last saw, marked "Saved ...", when there is no signal.
+// last saw when there is no signal. Nothing on screen says so: it is just the weather.
 //
 // The cache is written a little after pages first arrive, then at most every five minutes
 // while new pages come in, without stopping the frame loop. The sample tape is never saved.
 
 const SAVE_SETTINGS = 0
 const SAVE_CACHE = 1
-const CACHE_MAGIC: u32 = 0x31434B46        // "FKC1"
+const CACHE_MAGIC: u32 = 0x3243574D        // "MWC2"
 const CACHE_FIRST_DELAY = 20 * 60
 const CACHE_EVERY = 5 * 60 * 60
 
@@ -21,16 +21,17 @@ struct CacheHead {
 // What is saved of a location's cache (the bands follow, packed).
 struct WxSaved {
     have: s32
-    ver: [4]s32
+    ver: [5]s32
     cur: BcCurrent
     daily: BcDaily
     hourly: BcHourly
     map: BcMapHeader
-    rows0: u32
-    rows1: u32
-    row_base: [48]s8
-    row_step: [48]u8
+    ncities: s32
+    cities: [24]BcCity
 }
+
+const CACHE_PER_LOC = sizeof(Loc) + sizeof(WxSaved) + 1536
+const CACHE_MAX = 32000                     // a save's limit (docs/MEMCARD.md)
 
 private var buf: [32000]u8
 private var meta: SaveMeta
@@ -56,7 +57,7 @@ fn store_load() {
     if n < sizeof(CacheHead) { return }
     let h = &buf[0] as *CacheHead
     if h.magic != CACHE_MAGIC || h.size != n || h.nlocs < 1 || h.nlocs > MAX_LOCS { return }
-    let per = sizeof(Loc) + sizeof(WxSaved) + 1536
+    let per = CACHE_PER_LOC
     if n != sizeof(CacheHead) + h.nlocs * per { return }
     nlocs = h.nlocs
     index_ok = h.flags & 1 != 0
@@ -68,18 +69,14 @@ fn store_load() {
         let ws = &buf[p] as *WxSaved
         let w = &wx[i]
         w.have = ws.have
-        w.fresh = 0
         for k in 0..KINDS { w.ver[k] = ws.ver[k] }
         w.cur = ws.cur
         w.daily = ws.daily
         w.hourly = ws.hourly
         w.map = ws.map
-        w.rows0 = ws.rows0
-        w.rows1 = ws.rows1
-        for y in 0..48 {
-            w.row_base[y] = ws.row_base[y]
-            w.row_step[y] = ws.row_step[y]
-        }
+        w.ncities = clamp(ws.ncities, 0, MAX_CITIES)
+        for k in 0..MAX_CITIES { w.cities[k] = ws.cities[k] }
+        w.gen += 1
         p += sizeof(WxSaved)
         for k in 0..1536 {
             let b = buf[p + k]
@@ -98,21 +95,21 @@ fn store_load() {
 fn store_save_settings() {
     if !card_present(1) || card_busy() { return }
     meta = *SAVE_ICON
-    card_set_title(&meta, "Fair Skies settings")
+    card_set_title(&meta, "Mei Weather settings")
     card_save(SAVE_SETTINGS, &cfg as *u8, sizeof(Settings), &meta)
 }
 
 private fn save_cache() {
-    let per = sizeof(Loc) + sizeof(WxSaved) + 1536
+    let per = CACHE_PER_LOC
     let h = &buf[0] as *CacheHead
     h.magic = CACHE_MAGIC
-    h.nlocs = nlocs
+    h.nlocs = min(nlocs, (CACHE_MAX - sizeof(CacheHead)) / per)    // all of them, unless a gateway adds many regions
     h.flags = 0
     if index_ok { h.flags = h.flags | 1 }
     if home_off { h.flags = h.flags | 2 }
-    h.size = sizeof(CacheHead) + nlocs * per
+    h.size = sizeof(CacheHead) + h.nlocs * per
     var p = sizeof(CacheHead)
-    for i in 0..nlocs {
+    for i in 0..h.nlocs {
         memcpy(&buf[p], &locs[i] as *u8, sizeof(Loc) as u32)
         p += sizeof(Loc)
         let ws = &buf[p] as *WxSaved
@@ -123,12 +120,8 @@ private fn save_cache() {
         ws.daily = w.daily
         ws.hourly = w.hourly
         ws.map = w.map
-        ws.rows0 = w.rows0
-        ws.rows1 = w.rows1
-        for y in 0..48 {
-            ws.row_base[y] = w.row_base[y]
-            ws.row_step[y] = w.row_step[y]
-        }
+        ws.ncities = w.ncities
+        for k in 0..MAX_CITIES { ws.cities[k] = w.cities[k] }
         p += sizeof(WxSaved)
         for k in 0..1536 {
             buf[p + k] = (w.bands[2 * k] & 15) | (w.bands[2 * k + 1] << 4)
@@ -136,7 +129,7 @@ private fn save_cache() {
         p += 1536
     }
     meta = *SAVE_ICON
-    card_set_title(&meta, "Fair Skies weather")
+    card_set_title(&meta, "Mei Weather")
     if card_save(SAVE_CACHE, &buf[0], h.size, &meta) == CARD_OK {
         saving = true
         model_dirty = 0

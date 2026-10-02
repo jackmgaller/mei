@@ -2,8 +2,8 @@
 //
 // Temperatures (slot 0, 8-bit, 128 x 96 texels shown at 2x): each band's centre temperature,
 // upsampled 2x bilinearly from the 64 x 48 bands and looked up in the temperature ramp (8-bit
-// palette 0). Texel rows are repainted when their band rows change, a few a frame, so a map
-// paints in from the top, and a map arriving on air paints as its packets come.
+// palette 0). A map shown (or replaced by a newer one) is repainted a few texel rows a frame,
+// so it wipes in from the top.
 //
 // Geography (slot 1, 4-bit, 256 x 192, palette 16): water, coasts and lakes filled from the
 // rings in GEO by scanlines, then state lines and national borders, for the location's box.
@@ -13,16 +13,16 @@ const MT_SLOT = 0
 const OV_SLOT = 1
 const OV_PAL = 16
 const MAP_X = 4
-const MAP_Y = 18
+const MAP_Y = 13
 const MAP_W = 256
 const MAP_H = 192
 const NO_DATA_Q = -32768
 const MT_ROWS_PER_FRAME = 8
 
 var mt_loc = -1                  // the location whose temperatures are in slot 0
+private var mt_gen = -1          // the version of its map that is painted (Wx.gen)
 private var mt_dirty: [3]u32     // texel rows 0-95 to repaint
 private var hrow: [48 * 128]s16  // band rows upsampled across, quarter degrees C
-var mt_painted: s32              // texel rows painted since the location changed (paint-in)
 
 // The ramp index of a temperature in quarter degrees C.
 fn ramp_idx(q: s32) -> s32 {
@@ -41,22 +41,17 @@ private fn dirty_set(t: s32) {
     mt_dirty[t >> 5] = mt_dirty[t >> 5] | (1 as u32 << (t & 31) as u32)
 }
 
-private fn row_valid(w: *Wx, y: s32) -> bool {
-    if y < 32 { return (w.rows0 >> y as u32) & 1 != 0 }
-    return (w.rows1 >> (y - 32) as u32) & 1 != 0
-}
-
 // Recomputes band row y's upsampled temperatures and marks its texel rows.
 fn mt_band_row(y: s32) {
     if mt_loc < 0 { return }
     let w = &wx[mt_loc]
     let dst = &hrow[y * 128]
-    if !row_valid(w, y) {
+    if w.have & (1 << K_MAP as u32) == 0 {
         for u in 0..128 { dst[u] = NO_DATA_Q as s16 }
     } else {
         var centre: [16]s32
-        let base = w.row_base[y] as s32
-        let step = w.row_step[y] as s32
+        let base = w.map.base as s32
+        let step = w.map.step as s32
         for b in 0..16 { centre[b] = 2 * base + (2 * b + 1) * step }
         let src = &w.bands[y * 64]
         var prev = centre[src[0] & 15]
@@ -72,32 +67,14 @@ fn mt_band_row(y: s32) {
     for t in 2 * y - 1..2 * y + 3 { dirty_set(t) }
 }
 
-// Shows location i's map: if it is not the one in the texture, every row is repainted from the
-// top (the paint-in).
+// Shows location i's map: if it is not the one in the texture (another location, or a newer
+// map), every row is repainted from the top.
 fn mt_show(i: s32) {
-    if i == mt_loc { return }
+    if i == mt_loc && wx[i].gen == mt_gen { return }
     mt_loc = i
-    mt_painted = 0
+    mt_gen = wx[i].gen
     for y in 0..48 { mt_band_row(y) }
     for k in 0..3 { mt_dirty[k] = 0xFFFFFFFF }
-}
-
-fn mt_forget() { mt_loc = -1 }
-
-// The rows the model decoded since the last call (the focus location's map on air).
-fn mt_take_model_rows() {
-    if mt_loc != focus {
-        mp_changed_rows0 = 0
-        mp_changed_rows1 = 0
-        return
-    }
-    for y in 0..48 {
-        var hit = false
-        if y < 32 { hit = (mp_changed_rows0 >> y as u32) & 1 != 0 } else { hit = (mp_changed_rows1 >> (y - 32) as u32) & 1 != 0 }
-        if hit { mt_band_row(y) }
-    }
-    mp_changed_rows0 = 0
-    mp_changed_rows1 = 0
 }
 
 // Repaints up to MT_ROWS_PER_FRAME dirty texel rows, top first.
@@ -108,7 +85,6 @@ fn mt_step() {
         if (mt_dirty[t >> 5] >> (t & 31) as u32) & 1 == 0 { continue }
         mt_dirty[t >> 5] = mt_dirty[t >> 5] & ~(1 as u32 << (t & 31) as u32)
         paint_row(t)
-        mt_painted = max(mt_painted, t + 1)
         n += 1
         if n >= MT_ROWS_PER_FRAME { return }
     }

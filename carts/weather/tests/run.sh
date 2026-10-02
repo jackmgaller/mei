@@ -3,6 +3,8 @@
 # Builds the scenario cart (tests/harness.akr + the app), runs it headless against the
 # recorded broadcast (tests/fixture.bin, from the gateway's --fixture data) and converts the
 # last frame to OUT_BASENAME.png. A failed assert makes mei-headless exit with status 2.
+# The recording is remade with
+#   python3 tools/meinet/meinet.py --fixture --no-serve --seconds 150 --record carts/weather/tests/fixture.bin
 #   SHOT=1          hide the test overlay (for screenshots)
 #   NOBC=1          no broadcast (no carrier, as on the web)
 #   TAPE=demo       play the sample tape (demo_tape.bin) through the decoder instead
@@ -19,7 +21,7 @@ S="$HERE/_scenario_$1_$$.akr"
 PP="$(echo ${P:-} 0 0 0)"
 TD=0
 if [ "$TAPE" = demo ]; then TD=1; fi
-printf 'cart "Fair Skies Test", "FAIR-SKIES-TEST"\nconst SCENARIO = %s\nconst SHOT = %s\nconst TAPE_DEMO = %s\n' "$1" "${SHOT:-0}" "$TD" > "$S"
+printf 'cart "Mei Weather Test", "MEI-WEATHER-TEST"\nconst SCENARIO = %s\nconst SHOT = %s\nconst TAPE_DEMO = %s\n' "$1" "${SHOT:-0}" "$TD" > "$S"
 k=1
 for v in $PP; do [ $k -le 3 ] && printf 'const P%s = %s\n' $k $v >> "$S"; k=$((k+1)); done
 printf 'import "harness.akr"\nimport "../app.akr"\n' >> "$S"

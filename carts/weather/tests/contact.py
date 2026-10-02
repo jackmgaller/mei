@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Contact sheets of Fair Skies screenshots: a grid of frames, each with a caption.
+"""Contact sheets of Mei Weather screenshots: a grid of frames, each with a caption.
 
     python3 tests/contact.py OUT.png COLS SCALE "file.png=Caption" ...
 

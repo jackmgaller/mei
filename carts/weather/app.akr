@@ -1,4 +1,4 @@
-// Fair Skies: the app. Pages, navigation, the idle tour, and the frame loop.
+// Mei Weather: the app. Pages, navigation, the idle tour, and the frame loop.
 //
 // Controls: LEFT/RIGHT the location's pages (now, 5-day, 24-hour, map); L/R the previous or
 // next location (P-/P+); UP/DOWN lists; A open; B back home; X the remote (type a page
@@ -52,24 +52,20 @@ fn view_kind(v: View) -> s32 {
 }
 
 fn kind_view(k: s32) -> View {
-    return match k { 0 => View.Now, 1 => View.Week, 2 => View.Hours, else => View.Map }
+    return match k { K_NOW => View.Now, K_WEEK => View.Week, K_HOURS => View.Hours, else => View.Map }
 }
 
-// The views a location has (the kinds on air), in order.
+// The views a location has (the kinds on air), in order. (The cities are drawn on the map:
+// they have no view of their own.)
 fn loc_views(i: s32, out: *View) -> s32 {
     var n = 0
-    for k in 0..KINDS {
+    for k in 0..K_MAP + 1 {
         if loc_has_kind(i, k) {
             out[n] = kind_view(k)
             n += 1
         }
     }
     return n
-}
-
-// The page number and subpage shown in the header for a view.
-fn view_page(v: View, i: s32) -> s32 {
-    return match v { Clock => BC_TIME_PAGE, Regions => BC_INDEX_PAGE, else => locs[i].page }
 }
 
 // Goes to a view of a location, with the blinds.
@@ -90,12 +86,6 @@ fn go(v: View, i: s32) {
         tr_reclose()                 // the blinds were opening: close them again from here
     }
     sfx_page()
-    set_page_field(view_page(vv, ii))
-}
-
-fn set_page_field(page: s32) {
-    str_copy(&hdr_page_text[0], 8, "P")
-    str_append(&hdr_page_text[0], 8, s_page(page))
 }
 
 // Jumps to a typed page number (Teletext style). False if there is no such page.
@@ -189,7 +179,7 @@ private fn tour_update() {
         return
     }
     tour_t -= 1
-    // a map still painting gets a few more seconds
+    // a map still wiping in gets a few more seconds
     if tour_t <= 0 && view == View.Map && mt_busy() && tour_t > -240 { return }
     if tour_t <= 0 { tour_next() }
 }
@@ -213,7 +203,6 @@ fn init() {
     cur = 0
     view = View.Now
     next_view = view
-    set_page_field(view_page(view, cur))
     sky_update()
     music_init()
     test_init()
@@ -229,7 +218,6 @@ private fn auto_source() {
     if cfg.source != 0 { return }
     if !rx_demo && tick == 8 * 60 && !rx_carrier() && model_seen == 0 && !store_has_pages() {
         rx_use_demo(true)
-        toast("No signal: playing the sample tape")
     }
 }
 
@@ -264,7 +252,6 @@ fn update() {
     if !tr_active() && (cur != focus) { model_focus(cur) }
 
     // the map textures
-    mt_take_model_rows()
     if view == View.Map && !tr_active() { mt_step() }
     ov_step()
     if view != View.Map && !ov_busy() {
@@ -287,7 +274,6 @@ fn update() {
     store_update()
     if tick % 30 == 0 { sky_update() }
     ldl_update()
-    hdr_flash = view_kind(view) >= 0 && !wx_has(cur, view_kind(view)) && rx_carrier()
     music_update()
     test_hook(tick)
 }
@@ -336,27 +322,21 @@ private fn ldl_update() {
         ldl_n += 1
         ldl_set(ldl_n, s_cat("Wind ", s_wind(c.wind_dir as s32, c.wind as s32)))
         ldl_n += 1
-        ldl_set(ldl_n, s_updated(i, K_NOW, c.time, c.utc_offset as s32))
-        ldl_n += 1
     }
     if rx_demo {
-        ldl_set(ldl_n, "Sample tape: not real weather")
-        ldl_n += 1
-    } else if !rx_carrier() {
-        ldl_set(ldl_n, "No signal")
+        ldl_set(ldl_n, "Sample tape: made-up weather")
         ldl_n += 1
     }
     if ldl_n == 0 {
-        ldl_set(0, "Fair Skies")
+        ldl_set(0, "Mei Weather")
         ldl_n = 1
     }
 }
 
 fn draw() {
     dither(true)
-    if view == View.Map { sky_around(3, 19, 258, 194) } else { sky_around(6, 42, 308, 170) }
+    if view == View.Map { sky_around(3, MAP_Y - 1, 258, MAP_H + 2) } else { sky_around(6, BODY_Y, 308, BODY_H) }
     let t = tick
-    header_draw(t)
     let i = cur
     var right = loc_name(i)
     if tour_on { right = null }          // the tour shows the logo there
@@ -413,8 +393,18 @@ fn sub_count() -> s32 {
     return loc_views(cur, &vs[0])
 }
 
-// The tour wears the channel's logo, top right.
+// The tour wears the channel's logo, top right (on the map, its top right corner).
 private fn tour_badge(t: s32) {
     if tr_active() { return }
-    if view == View.Map { spr(LOGO, 138, 23) } else { spr(LOGO, 198, 13) }
+    spr(LOGO, tour_logo_x(), tour_logo_y())
+}
+
+fn tour_logo_x() -> s32 {
+    if view == View.Map { return MAP_X + MAP_W - 4 - LOGO.w as s32 }
+    return 316 - LOGO.w as s32
+}
+
+fn tour_logo_y() -> s32 {
+    if view == View.Map { return MAP_Y + 4 }
+    return BANNER_Y - 3
 }

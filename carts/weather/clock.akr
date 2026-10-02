@@ -13,7 +13,6 @@ struct Clock {
     hour: s32
     minute: s32
     second: s32
-    days: s32                // days since 2000-01-01 (local)
     on_air: bool             // from the time page
 }
 
@@ -25,20 +24,6 @@ const DAY_NAMES: [7]*u8 = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday
 const DAY_SHORT: [7]*u8 = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 const MONTH_NAMES: [12]*u8 = ["January", "February", "March", "April", "May", "June", "July",
                               "August", "September", "October", "November", "December"]
-const MONTH_SHORT: [12]*u8 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-
-// Days since 2000-01-01 of a civil date.
-fn days_from_civil(y: s32, m: s32, d: s32) -> s32 {
-    var yy = y
-    if m <= 2 { yy -= 1 }
-    let era = yy / 400
-    let yoe = yy - era * 400
-    var mp = m - 3
-    if m <= 2 { mp = m + 9 }
-    let doy = (153 * mp + 2) / 5 + d - 1
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
-    return era * 146097 + doe - 719468 - 10957
-}
 
 fn clock_update() {
     if !rx_demo && bc_time(&tp) {
@@ -53,9 +38,7 @@ fn clock_update() {
             clk.hour = dt.hour
             clk.minute = dt.minute
             clk.second = dt.second
-            clk.days = (local / 86400) as s32
             clk.on_air = true
-            clk_utc_off = tp.utc_offset as s32
             memcpy(&clk_tz[0], &tp.tz[0], 8)
             return
         }
@@ -69,17 +52,9 @@ fn clock_update() {
     clk.month = ((d >> 5) & 15) as s32
     clk.weekday = ((d >> 9) & 7) as s32
     clk.year = (d >> 16) as s32
-    clk.days = days_from_civil(clk.year, clk.month, clk.day)
     clk.on_air = false
     clk_tz[0] = 0
 }
 
 // Minutes since local midnight now.
 fn clock_minutes() -> s32 { return clk.hour * 60 + clk.minute }
-
-// Splits a time-of-page (seconds since 2000 UTC) into local fields with a UTC offset in
-// 15-minute steps.
-fn local_of(utc: u32, offset_q: s32, out: *BcDateTime) {
-    let local = (utc as s32 + offset_q * 900) as u32
-    bc_datetime(local, out)
-}

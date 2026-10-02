@@ -1,23 +1,23 @@
-// Test scenarios for Fair Skies (tests/run.sh SCENARIO FRAMES OUT). The broadcast is the
+// Test scenarios for Mei Weather (tests/run.sh SCENARIO FRAMES OUT). The broadcast is the
 // recorded fixture (tests/fixture.bin: the gateway's canned data, 150 s from 18:00:00 UTC on
-// 2026-09-30, home "Springfield" in CDT, refreshed once 40 s in), replayed 16 bytes a tick,
-// so every run is exact. Each scenario scripts the pad and checks itself with asserts; a
+// 2026-09-30, the made-up home "Meiville" in CDT, refreshed once 40 s in), replayed 16 bytes a
+// tick, so every run is exact. Each scenario scripts the pad and checks itself with asserts; a
 // failure stops the run with exit status 2. Frame counts below are the cart's tick.
 //
-//   1  tune in: the home page assembles (current conditions), the clock comes from the air
+//   1  tune in: the home page arrives (current conditions), the clock comes from the air
 //   2  the 5-day forecast (RIGHT)               3  the 24-hour forecast (RIGHT RIGHT)
-//   4  home map painting in as its rows arrive (LEFT); P1: the frame to stop at
+//   4  the home map with its cities (LEFT): the labels overlap nothing
 //   5  the national map (L three times from home: regions, clock, then round to 4FF)
 //   6  regions directory: Y, DOWN x3, A opens the Midwest
 //   7  the remote: X, 4 0 3 OK -> the Midwest; then X 7 7 7: "not on air", the page stays
 //   8  settings: START, Celsius, idle tour 1 minute, B (saved to the card)
 //   9  the tour: idle until it starts, then it cycles pages; any button stops it
-//  10  no signal (run with NOBC=1): the sample tape starts after 8 s; P1=1 with a card that
-//      has saved pages: they are shown instead, marked "Saved"
+//  10  no signal (run with NOBC=1): the placeholder, then the sample tape after 8 s; P1=1
+//      with a card that has saved pages: they are shown instead
 //  11  the clock (page 100)
 //  12  a perf sweep: every page of every location, with the remote and settings open;
 //      prints "PERF max_cycles max_tris" and asserts the budgets
-//  13  noisy reception (run with --broadcast-noise): pages still assemble
+//  13  noisy reception (run with --broadcast-noise): pages still arrive
 //  14  page transition sequence (Now -> 5-day), for the screenshots
 //  15  the Midwest map (remote 4 0 3, then LEFT), P1 the frame to stop at
 //  16  the remote open, three digits in progress (screenshot)
@@ -25,6 +25,7 @@
 //  18  the regions directory once all current conditions are in (screenshot)
 //  19  saving: with CARD=FILE, the received pages are on the card 20 s after the first arrived
 //      (then scenario 10 with P=1 and the same card shows them with no signal)
+//  20  a region's map from the directory: Y, DOWN x P1, A, LEFT (5 the Mountain region)
 
 const TEST = 1
 
@@ -91,6 +92,17 @@ const S16: [16]s32 = [60, PAD_X, 64, 0, 80, PAD_DOWN, 84, 0, 90, PAD_A, 94, 0, 1
 const S17: [8]s32 = [60, PAD_START, 64, 0, 80, PAD_DOWN, 84, 0]
 const S18: [4]s32 = [60, PAD_Y, 64, 0]
 
+// Scenario 20: Y at 60, DOWN P1 times, A, then LEFT to the map.
+fn region_map_pad(f: s32) -> u32 {
+    if f >= 60 && f < 64 { return PAD_Y as u32 }
+    let k = (f - 100) / 10
+    if f >= 100 && k < P1 && (f - 100) % 10 < 4 { return PAD_DOWN as u32 }
+    let g = f - 100 - P1 * 10
+    if g >= 20 && g < 24 { return PAD_A as u32 }
+    if g >= 80 && g < 84 { return PAD_LEFT as u32 }
+    return 0
+}
+
 fn input_pad(f: s32) -> u32 {
     return match SCENARIO {
         2 => script_from(&S2[0], len(S2), f)
@@ -107,6 +119,7 @@ fn input_pad(f: s32) -> u32 {
         16 => script_from(&S16[0], len(S16), f)
         17 => script_from(&S17[0], len(S17), f)
         18 => script_from(&S18[0], len(S18), f)
+        20 => region_map_pad(f)
         else => 0
     }
 }
@@ -136,6 +149,42 @@ fn test_init() {
 }
 
 fn home_i() -> s32 { return loc_find(BC_HOME) }
+
+// The map on screen: its cities are drawn, most of them labelled, and no label overlaps
+// another, a dot, the title pill or the map's edge. Returns the labels placed.
+fn check_cities(i: s32, at_least: s32) -> s32 {
+    assert(wx_has(i, K_MAP), "the map arrived")
+    assert(wx[i].ncities >= at_least, "its cities arrived")
+    var placed = 0
+    for a in 0..nlab {
+        let la = &lab[a]
+        if la.mode == 0 { continue }
+        placed += 1
+        assert(la.lx >= MAP_X && la.lx + la.lw <= MAP_X + MAP_W, "label inside the map (x)")
+        assert(la.ly >= MAP_Y && la.ly + la.lh <= MAP_Y + MAP_H, "label inside the map (y)")
+        let px = MAP_X + 4
+        let py = MAP_Y + MAP_H - PILL_H - 4
+        let pill = la.lx < px + pill_w(i) && px < la.lx + la.lw && la.ly < py + PILL_H && py < la.ly + la.lh
+        assert(!pill, "label clear of the title pill")
+        for b in 0..nlab {
+            let lb_ = &lab[b]
+            if b == a || lb_.mode == 0 { continue }
+            if b > a {
+                let over = la.lx < lb_.lx + lb_.lw && lb_.lx < la.lx + la.lw && la.ly < lb_.ly + lb_.lh && lb_.ly < la.ly + la.lh
+                assert(!over, "labels do not overlap")
+            }
+            let dot = la.lx < lb_.x + 3 && lb_.x - 2 < la.lx + la.lw && la.ly < lb_.y + 3 && lb_.y - 2 < la.ly + la.lh
+            assert(!dot, "a label does not cover another city's dot")
+        }
+    }
+    assert(placed >= at_least, "most cities labelled")
+    print("cities ")
+    print_int(wx[i].ncities)
+    print(" labelled ")
+    print_int(placed)
+    println("")
+    return placed
+}
 
 fn perf() {
     if scen_t > 120 {
@@ -178,7 +227,7 @@ fn test_hook(f: s32) {
                 let h = home_i()
                 assert(h >= 0, "home page listed")
                 assert(wx_has(h, K_NOW), "home conditions received")
-                assert(streq(bc_name(&wx[h].cur.city[0]), "Springfield"), "fixture home city")
+                assert(streq(bc_name(&wx[h].cur.city[0]), "Meiville"), "fixture home city")
                 assert(clk.on_air, "time from the broadcast")
                 assert_eq(clk.hour, 13)              // 18:00 UTC is 13:00 CDT
                 assert_eq(view, View.Now)
@@ -209,6 +258,8 @@ fn test_hook(f: s32) {
             if f == 8000 {
                 assert(wx_has(home_i(), K_MAP), "home map complete")
                 assert(!mt_busy(), "map painted")
+                check_cities(home_i(), 6)
+                assert(streq(bc_name(&wx[home_i()].cities[0].name[0]), "Meiville"), "home first")
                 println("OK 4 map")
             }
         }
@@ -219,6 +270,7 @@ fn test_hook(f: s32) {
             }
             if f == 8900 {
                 assert(wx_has(cur, K_MAP), "national map complete")
+                check_cities(cur, 16)
                 println("OK 5 national")
             }
         }
@@ -267,7 +319,10 @@ fn test_hook(f: s32) {
         }
         10 => {
             if P1 == 0 {
-                if f == 400 { assert(!rx_demo, "antenna first") }
+                if f == 400 {
+                    assert(!rx_demo, "antenna first")
+                    assert(!wx_has(home_i(), K_NOW), "nothing yet: the placeholder")
+                }
                 if f == 600 {
                     assert(rx_demo, "sample tape when nothing is saved")
                 }
@@ -279,7 +334,7 @@ fn test_hook(f: s32) {
                 if f == 600 {
                     assert(!rx_demo, "saved pages, no sample tape")
                     assert(wx_has(home_i(), K_NOW), "saved home conditions")
-                    assert(!wx_fresh(home_i(), K_NOW), "marked as saved")
+                    assert(wx[home_i()].ncities > 0, "saved cities")
                     println("OK 10 saved pages")
                 }
             }
@@ -301,19 +356,31 @@ fn test_hook(f: s32) {
         13 => {
             if f == 1800 {
                 assert(wx_has(home_i(), K_NOW), "conditions through the noise")
-                print("signal ")
-                print_int(rx_signal())
-                print(" fixed ")
-                print_uint(rx_fixed())
+                print("fixed ")
+                print_uint(bc_packets_fixed())
                 print(" dropped ")
-                print_uint(rx_dropped())
+                print_uint(bc_packets_dropped())
                 println("")
-                assert(rx_fixed() > 0, "some headers corrected")
+                assert(bc_packets_fixed() > 0, "some headers corrected")
                 println("OK 13 noise")
             }
         }
         15 => {
             if f == 300 { assert_eq(locs[cur].page, 0x403) }
+            if f == 3700 {
+                check_cities(cur, 10)
+                println("OK 15 midwest")
+            }
+        }
+        20 => {
+            if f == 400 + P1 * 10 {
+                assert_eq(view, View.Map)
+                assert_eq(locs[cur].page, 0x400 + P1)
+            }
+            if f == P2 {
+                check_cities(cur, 10)
+                println("OK 20 region map")
+            }
         }
         19 => {
             if f == 2400 {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fair Skies' music and sounds: "Fair Skies Theme", a smooth-jazz lounge piece in F major for the
+"""Mei Weather's music and sounds: "Mei Weather Theme", a smooth-jazz lounge piece in F major for the
 weather channel, and the interface sounds.
 
 The band: a Rhodes-style electric piano comping lush 9th chords, a fretless bass, a soft string

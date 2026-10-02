@@ -4,7 +4,7 @@
 // ---- the remote
 
 const RM_X = 206
-const RM_Y = 40
+const RM_Y = 34
 const RM_W = 108
 const RM_H = 174
 const RM_KEY_W = 28
@@ -33,23 +33,13 @@ fn remote_open() {
 private fn remote_close() {
     rm_open = false
     rm_n = 0
-    set_page_field(view_page(next_view, next_loc))
     sfx_close()
-}
-
-private fn rm_field() {
-    let b = &hdr_page_text[0]
-    str_copy(b, 8, "P")
-    for k in 0..3 {
-        if k < rm_n { str_append_char(b, 8, '0' + rm_digits[k]) } else { str_append_char(b, 8, '-') }
-    }
 }
 
 private fn rm_press_digit(d: s32) {
     if rm_n >= 3 { rm_n = 0 }
     rm_digits[rm_n] = d
     rm_n += 1
-    rm_field()
     sfx_key()
     if rm_n == 3 {
         let page = rm_digits[0] << 8 | rm_digits[1] << 4 | rm_digits[2]
@@ -86,7 +76,6 @@ private fn rm_press() {
     if k >= 0 { rm_press_digit(k) }
     else if k == -1 {
         if rm_n > 0 { rm_n -= 1 }
-        rm_field()
         sfx_key()
     } else {
         if rm_n == 0 { remote_close() }
@@ -183,7 +172,7 @@ private fn remote_draw(t: s32) {
 var settings_shown: bool
 var st_sel: s32
 private var st_changed: bool
-const ST_ITEMS = 6
+const ST_ITEMS = 5
 
 fn settings_open() {
     settings_shown = true
@@ -237,7 +226,7 @@ private fn settings_input() {
     if pressed(RIGHT) || pressed(A) { st_change(1) }
 }
 
-const ST_NAMES: [6]*u8 = ["Temperature", "Idle tour", "Music", "Sounds", "Source", "Reception"]
+const ST_NAMES: [5]*u8 = ["Temperature", "Idle tour", "Music", "Sounds", "Source"]
 
 private fn st_value(k: s32) -> *u8 {
     return match k {
@@ -253,9 +242,9 @@ private fn st_value(k: s32) -> *u8 {
 private fn settings_draw(t: s32) {
     if !settings_shown { return }
     let x = 40
-    let y = 46
+    let y = 44
     let w = 240
-    let h = 164
+    let h = 146
     // a drop shadow: only the strips that show
     rect_blend(x + w, y + 4, 4, h, 0x200C04, BLEND_HALF)
     rect_blend(x + 4, y + h, w - 4, 4, 0x200C04, BLEND_HALF)
@@ -271,13 +260,9 @@ private fn settings_draw(t: s32) {
         var lc = C_SOFT
         if k == st_sel { lc = WHITE }
         txt(F_SMALL, x + 12, ry + 1, ST_NAMES[k], lc)
-        if k == 5 {
-            reception_line(x + w - 12, ry + 1)
-            continue
-        }
         let v = st_value(k)
         var vx = x + w - 12
-        if k == st_sel && k != 5 {
+        if k == st_sel {
             txt_a(F_SMALL, vx, ry + 1, ">", C_GOLD, ALIGN_RIGHT)
             vx -= 10
         }
@@ -287,19 +272,6 @@ private fn settings_draw(t: s32) {
         }
     }
     txt_a(F_TINY, x + w / 2, y + h - 12, "UP/DOWN choose  LEFT/RIGHT change  B close", C_DIM, ALIGN_CENTRE)
-}
-
-private fn reception_line(rx_: s32, y: s32) {
-    let b = sbuf()
-    str_append_int(b, SB, rx_ok() as s32, 0, false)
-    str_append(b, SB, " ok  ")
-    str_append_int(b, SB, rx_fixed() as s32, 0, false)
-    str_append(b, SB, " fixed  ")
-    str_append_int(b, SB, rx_dropped() as s32, 0, false)
-    str_append(b, SB, " lost")
-    let w = txt_w(F_TINY, b)
-    txt_a(F_TINY, rx_, y + 3, b, WHITE, ALIGN_RIGHT)
-    signal_bars(rx_ - w - 22, y + 1, rx_signal())
 }
 
 // ---- dispatch
@@ -314,13 +286,6 @@ fn overlays_input() -> bool {
     }
     if rm_open {
         remote_input()
-        return true
-    }
-    // START from the "no signal" page plays the sample tape
-    if pressed(START) && !rx_carrier() && model_seen == 0 && !store_has_pages() {
-        cfg.source = 2
-        rx_use_demo(true)
-        toast("Playing the sample tape")
         return true
     }
     return false

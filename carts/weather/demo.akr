@@ -1,9 +1,9 @@
 // The sample tape: a recorded MeiNet broadcast (demo_tape.bin, made by
 // tools/gen_weather_tape.py from canned weather) played through a software model of the
 // decoder chip (docs/BROADCAST.md, "Receiving" and "The decoder"). It feeds 16 bytes a tick
-// like the real line, so pages assemble and maps paint exactly as they would on air. Fair
-// Skies falls back to it when there is no signal and nothing saved (the web build), and the
-// settings can pick it by hand.
+// like the real line, so pages arrive exactly as they would on air. Mei Weather falls back to
+// it when there is no signal and nothing saved (the web build), and the settings can pick it
+// by hand.
 
 embed DEMO_TAPE: u8 = "demo_tape.bin"
 
@@ -18,27 +18,20 @@ private struct DmSlot {
     count: s32           // row count, 0 until the last row has arrived
     complete: bool
     changed: bool
-    stamp: u32           // tick in which the sync of the latest row began
 }
 
 var dm_running: bool
 private var slots: [8]DmSlot
 private var mem: [8 * 3328]u8
 private var pos: s32                // next byte of the tape
-private var tick: u32               // ticks fed
 private var locked: bool
 private var fails: s32              // failures in a row while locked
 private var buf: [64]u8
 private var fill: s32
-private var buf_tick: u32           // tick in which buf[0] arrived
 private var work: [256]u8
 private var ham: [256]u8            // Hamming 8/4: nibble, | 0x10 corrected, 0xFF double error
 private var crc_tab: [256]u16
 private var ready: bool
-var dm_ok: u32
-var dm_fixed: u32
-var dm_dropped: u32
-var dm_last_pid = -1
 
 const HAM_CODES: [16]u8 = [0x15, 0x02, 0x49, 0x5E, 0x64, 0x73, 0x38, 0x2F,
                            0xD0, 0xC7, 0x8C, 0x9B, 0xA1, 0xB6, 0xFD, 0xEA]
@@ -86,13 +79,9 @@ fn dm_start() {
     if !ready { setup() }
     for i in 0..DM_SLOTS { slots[i] = DmSlot { page: -1, version: -1 } }
     pos = 0
-    tick = 0
     locked = false
     fails = 0
     fill = 0
-    dm_ok = 0
-    dm_fixed = 0
-    dm_dropped = 0
     dm_running = true
 }
 
@@ -109,7 +98,6 @@ fn dm_tick() {
         if pos >= n { pos = 0 }
     }
     feed(&b[0], 16)
-    tick += 1
 }
 
 private fn feed(src: *u8, n: s32) {
@@ -120,7 +108,6 @@ private fn feed(src: *u8, n: s32) {
         let b = work[i]
         i += 1
         if locked {
-            if fill == 0 { buf_tick = tick }
             buf[fill] = b
             fill += 1
             if fill < 64 { continue }
@@ -130,7 +117,6 @@ private fn feed(src: *u8, n: s32) {
                 fails = 0
                 continue
             }
-            dm_dropped += 1
             fails += 1
             if sync_err > 2 || fails >= 4 {
                 // back to hunting from the second byte of that packet
@@ -145,7 +131,6 @@ private fn feed(src: *u8, n: s32) {
                 if b == 0x55 {
                     buf[0] = b
                     fill = 1
-                    buf_tick = tick
                 }
                 continue
             }
@@ -155,8 +140,6 @@ private fn feed(src: *u8, n: s32) {
                     fill = 2
                 } else if b != 0x55 {
                     fill = 0
-                } else {
-                    buf_tick = tick
                 }
                 continue
             }
@@ -196,11 +179,9 @@ private fn refeed(i: s32, wn: s32) -> s32 {
 // Checks buf as a packet and stores it; false if its header or CRC is bad.
 private fn accept() -> bool {
     var h: u32 = 0
-    var corrected = false
     for k in 0..8 {
         let d = ham[buf[2 + k]] as u32
         if d == 0xFF { return false }
-        if d & 0x10 != 0 { corrected = true }
         h = h | ((d & 15) << (4 * k as u32))
     }
     var hb: [4]u8
@@ -211,11 +192,8 @@ private fn accept() -> bool {
     var c = dm_crc16(0xFFFF, &hb[0], 4)
     c = dm_crc16(c, &buf[10], 52)
     if c != (buf[62] as u32 | (buf[63] as u32) << 8) { return false }
-    dm_ok += 1
-    if corrected { dm_fixed += 1 }
     let pid = (h & 0xFFFF) as s32
     if pid & 0xFFF == 0xFFF { return true }
-    dm_last_pid = pid
     let row = ((h >> 16) & 63) as s32
     let last = (h >> 23) & 1 != 0
     let ver = (h >> 24) as s32
@@ -238,7 +216,6 @@ private fn store(s: s32, row: s32, last: bool, ver: s32) {
     }
     if sl.complete { return }
     sl.version = ver
-    sl.stamp = buf_tick
     memcpy(m + row * 52, &buf[10], 52)
     if row < 32 { sl.rows0 = sl.rows0 | (1 as u32 << row as u32) } else { sl.rows1 = sl.rows1 | (1 as u32 << (row - 32) as u32) }
     if last { sl.count = row + 1 }
@@ -285,11 +262,6 @@ fn dm_release(pid: s32) {
     if s >= 0 { slots[s].page = -1 }
 }
 
-fn dm_ready(pid: s32) -> bool {
-    let s = slot_of(pid)
-    return s >= 0 && slots[s].complete
-}
-
 fn dm_changed(pid: s32) -> bool {
     let s = slot_of(pid)
     return s >= 0 && slots[s].changed
@@ -304,47 +276,8 @@ fn dm_read(pid: s32, dst: *u8) -> s32 {
     return n
 }
 
-fn dm_row_ready(pid: s32, row: s32) -> bool {
-    let s = slot_of(pid)
-    if s < 0 || row < 0 || row > 63 { return false }
-    if row < 32 { return (slots[s].rows0 >> row as u32) & 1 != 0 }
-    return (slots[s].rows1 >> (row - 32) as u32) & 1 != 0
-}
-
-fn dm_read_row(pid: s32, row: s32, dst: *u8) -> bool {
-    if !dm_row_ready(pid, row) { return false }
-    let s = slot_of(pid)
-    memcpy(dst, &mem[s * DM_PAGE_BYTES + row * 52], 52)
-    return true
-}
-
-fn dm_rows(pid: s32) -> s32 {
-    let s = slot_of(pid)
-    if s < 0 { return 0 }
-    return slots[s].count
-}
-
 fn dm_version(pid: s32) -> s32 {
     let s = slot_of(pid)
     if s < 0 { return -1 }
     return slots[s].version
 }
-
-fn dm_stamp(pid: s32) -> u32 {
-    let s = slot_of(pid)
-    if s < 0 { return 0 }
-    return slots[s].stamp
-}
-
-fn dm_locked() -> bool { return dm_running && locked }
-
-fn dm_signal() -> s32 {
-    if !dm_running { return 0 }
-    if !locked { return 1 }
-    let total = dm_ok + dm_dropped
-    if total == 0 || dm_dropped * 100 < total { return 4 }
-    if dm_dropped * 10 < total { return 3 }
-    return 2
-}
-
-fn dm_tick_count() -> u32 { return tick }

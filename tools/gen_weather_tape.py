@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Fair Skies' sample tape: 64 seconds of a MeiNet broadcast with made-up, pleasant early-autumn
+"""Mei Weather's sample tape: 72 seconds of a MeiNet broadcast with made-up, pleasant early-autumn
 weather, recorded through the gateway's own page encoder and carousel (tools/meinet).
 
 The home city is the fictional "Meiville" (in the middle of the country, on Central time), so the
-tape is never mistaken for real weather. 64 seconds carry every page, every map included, and the
-tape loops seamlessly (it is whole packets, and nothing changes during it).
+tape is never mistaken for real weather. 72 seconds carry every page, every map and every map's
+cities included, and the tape loops seamlessly (it is whole packets, and nothing changes during
+it). The map cities are the gateway's own choice from its table, with made-up weather: the
+temperature field below, and mostly the conditions of the nearest region's city.
 
 Writes carts/weather/demo_tape.bin.
     python3 tools/gen_weather_tape.py
@@ -18,7 +20,7 @@ import weather         # noqa: E402
 
 OUT = os.path.join(os.path.dirname(HERE), 'carts', 'weather', 'demo_tape.bin')
 START = 1790953200     # 2026-10-02 15:00 UTC: a Friday, mid-morning in the middle of the country
-SECONDS = 64
+SECONDS = 72
 HOME = ('Meiville', 38.9, -95.2)
 
 # page: (UTC offset hours, now, feels, humidity, wmo, wind dir, wind km/h, cloud %, hPa,
@@ -112,6 +114,26 @@ def grid_temp(lat, lon):
     return t
 
 
+def map_city(lat, lon, name):
+    """Made-up current conditions for a map city: the field's temperature, a degree warmer in
+    town, and the nearest region city's weather, or now and then a variation on it."""
+    best = None
+    for page, c in CITIES.items():
+        clat, clon = REGION_AT[page]
+        d = (lat - clat) ** 2 + (lon - clon) ** 2
+        if best is None or d < best[0]:
+            best = (d, c[4])
+    k = sum(ord(ch) for ch in name) % 4
+    wmo = best[1]
+    if k == 2 and wmo < 50:
+        wmo = (0, 1, 2, 1)[sum(ord(ch) for ch in name) % 3]
+    return {"temp": round((grid_temp(lat, lon) + 1.0) * 2) / 2, "wmo": wmo, "is_day": 1}
+
+
+REGION_AT = {0x400: HOME[1:]}
+REGION_AT.update({0x400 + n: (r[2], r[3]) for n, r in meinet.REGIONS.items()})
+
+
 def main():
     cfg = meinet.load_config(None)
     st = meinet.Station(cfg)
@@ -122,6 +144,8 @@ def main():
     cols, rows = cfg['grid']
     pts = weather.grid_points(meinet.NATIONAL_BOX, cols, rows)
     st.grid = ([grid_temp(a, b) for a, b in pts], cols, rows, meinet.NATIONAL_BOX, START - 1800)
+    names = {(c["lat"], c["lon"]): c["name"] for p in st.picks.values() for c in p}
+    st.city_wx = {p: map_city(p[0], p[1], names[p]) for p in st.city_points()}
     st.data_time = START - 300
     with st.lock:
         st.rebuild()

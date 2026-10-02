@@ -6,13 +6,11 @@ const C_GOLD: u32 = 0x46C2FA               // teletext yellow, warmed
 const C_CYAN: u32 = 0xF0E07A
 const C_SOFT: u32 = 0xF4DCC0               // pale blue-white for labels
 const C_DIM: u32 = 0xC09A84
-const C_NAVY: u32 = 0x3C180C
 const C_PANEL_TOP: u32 = 0x9A4A2A
 const C_PANEL_BOT: u32 = 0x6A2816
 const C_PANEL_HI: u32 = 0xF0B47C
 const C_BAR_TOP: u32 = 0x5AB8FA            // gold title bar
 const C_BAR_BOT: u32 = 0x2A78E2
-const C_GREEN: u32 = 0x8CE08C
 
 // The degree sign in the cart's fonts.
 const DEG = '`'
@@ -27,7 +25,7 @@ struct Settings {
     pad: [3]u8
 }
 
-const SETTINGS_MAGIC: u32 = 0x31534B46     // "FKS1"
+const SETTINGS_MAGIC: u32 = 0x3153574D     // "MWS1"
 var cfg = Settings { magic: SETTINGS_MAGIC, units: 0, tour: 2, music: 3, sfx: 1, source: 0 }
 
 // ---- sprites
@@ -38,11 +36,6 @@ fn spr(s: Spr, x: s32, y: s32) {
 }
 
 fn spr_c(s: Spr, cx: s32, cy: s32) { spr(s, cx - s.w as s32 / 2, cy - s.h as s32 / 2) }
-
-fn spr_tint(s: Spr, x: s32, y: s32, tint: u32, mode: s32) {
-    sprite_ex(tex_page(s.slot as s32, s.pal as s32, true), s.u as s32, s.v as s32, s.w as s32, s.h as s32,
-              x, y, s.w as s32, s.h as s32, tint, mode)
-}
 
 fn spr_rot(s: Spr, cx: s32, cy: s32, angle: fixed) {
     sprite_rot(tex_page(s.slot as s32, s.pal as s32, true), s.u as s32, s.v as s32, s.w as s32, s.h as s32,
@@ -182,19 +175,6 @@ fn s_hour(h: s32) -> *u8 {
     str_append_int(b, SB, h12, 0, false)
     if h % 24 < 12 { return str_append_char(b, SB, 'a') }
     return str_append_char(b, SB, 'p')
-}
-
-fn s_upper(s: *u8) -> *u8 {
-    let b = sbuf()
-    var i = 0
-    while s[i] != 0 && i < SB - 1 {
-        var c = s[i] as s32
-        if c >= 'a' && c <= 'z' { c -= 32 }
-        b[i] = c as u8
-        i += 1
-    }
-    b[i] = 0
-    return b
 }
 
 fn s_cat(a: *u8, c: *u8) -> *u8 {
