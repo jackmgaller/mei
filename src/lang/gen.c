@@ -2263,7 +2263,8 @@ static void gen_stmt(Stmt *s) {
         put_label(lcond);
         LV a = lv_local(v);
         Opnd oa = load_lv(&a, -1), ob;
-        if (end->dead) ob = o_imm(s->e2->cval);
+        if (s->end_direct) ob = gen_expr(s->e2, -1);
+        else if (end->dead) ob = o_imm(s->e2->cval);
         else { LV b = lv_local(end); ob = load_lv(&b, -1); }
         int ra = R(&oa), rb = R(&ob);
         ra = R(&oa);
@@ -2571,7 +2572,7 @@ static void live_stmt(Func *f, Stmt *s) {
             s->var->start = first - 1;
             s->var->end = first;
             /* a constant end bound needs no local: the bottom compares with the constant */
-            s->for_end->dead = s->e2->isconst && fits_s18(s->e2->cval);
+            s->for_end->dead = (s->e2->isconst && fits_s18(s->e2->cval)) || s->end_direct;
             s->for_end->start = first - 1;
             s->for_end->end = first;
             for (int k = 0; k < s->nips; k++) {
@@ -2588,6 +2589,7 @@ static void live_stmt(Func *f, Stmt *s) {
         else {
             use_local(s->var, last);
             if (!s->for_end->dead) use_local(s->for_end, last);
+            if (s->end_direct) live_expr(s->e2, last);
             for (int k = 0; k < s->nips; k++) use_local(s->ips[k], last);
         }
         if (g_nloops == g_caploops) {

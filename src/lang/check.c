@@ -2109,7 +2109,7 @@ static void check_stmt(Ctx *c, Stmt *s) {
         c->loop_depth++;
         s->for_end = new_local(c, "", t, s->loc);
         s->for_end->immutable = 1;
-        s->for_end->weight = 4;
+        s->for_end->weight = (int64_t)2 << (2 * (c->loop_depth > 6 ? 6 : c->loop_depth));   /* read every iteration */
         s->var = new_local(c, s->name, t, s->asm_loc);
         s->var->immutable = 1;
         s->var->is_loopvar = 1;
@@ -2653,6 +2653,10 @@ static void ip_stmt(Func *f, Stmt *s) {
     ip_stmt(f, s->then);
     ip_stmt(f, s->els);
     for (int i = 0; i < s->narms; i++) ip_stmt(f, s->arms[i].body);
+    if (s->k == S_FOR && !s->e2->isconst && s->e2->k == E_NAME && s->e2->sym && s->e2->sym->k == SY_LOCAL) {
+        Local *l = s->e2->sym->local;
+        if (fw_local_ok(l) && l != s->var && ty_is_scalar(l->ty) && !fw_assigns(s->then, l)) s->end_direct = 1;
+    }
     if (s->k != S_FOR || s->var->addr_taken || s->var->in_asm || s->var->captured) return;
     IpGroup g[MAX_IPS];
     int ng = 0;

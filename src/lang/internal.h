@@ -217,6 +217,7 @@ typedef struct Stmt {
     MatchArm *arms; int narms;     /* S_MATCH (var: hidden scrutinee local) */
     int pos, pos2;                 /* codegen: live-range positions (loops: header, bottom) */
     Local **ips; Expr **ipinit; int *ipstep; int nips;   /* S_FOR: induction pointers (&a[i]) */
+    int end_direct;                /* S_FOR: the end bound is a local the loop never changes: compare with it */
 } Stmt;
 
 struct Local {
