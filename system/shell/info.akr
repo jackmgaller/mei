@@ -24,7 +24,7 @@ fn info_draw() {
     info_row(1, "Budget", "500,000 cycles a frame")
     info_row(2, "RAM", "2 MB")
     info_row(3, "VRAM", "1 MB, 16 texture slots")
-    info_row(4, "GPU", "2,000 triangles a frame")
+    info_row(4, "GPU", "60 MHz, 4,000 triangles")
     info_row(5, "Audio", "8 channels, 22,050 Hz")
     info_row(6, "Platform", sh_platform)
     sb_begin()
