@@ -1095,6 +1095,31 @@ fn init() {
 }
 ```
 
+**Voices (`voice.akr`).** A `Voices` record hands out a range of channels to sound effects, so
+a cart need not assign channels by hand:
+
+| | |
+|---|---|
+| `voices_init(v: *Voices, first, last, gap)` | channels `first..last` (inclusive); a sound started again within `gap` frames of its last start plays once |
+| `voice_alloc(v, id, pri, limit) -> s32` | the channel for sound `id` (any number the cart gives it) with priority `pri` (higher matters more) and at most `limit` instances (0: any number); −1 when it should not play. Start it on that channel at once |
+| `voice_play(v, id, pri, limit, data, samples, pitch, vol_l, vol_r, flags) -> s32` | `voice_alloc`, then `play_sample` on the channel (from sample 0) |
+| `voice_count(v, id) -> s32`, `voice_stop(v, id)` | instances of `id` playing; stop them (`id` −1: everything on `v`'s channels) |
+
+A sound takes a free channel; at its instance limit it restarts its own oldest instance instead;
+with no channel free it replaces the least important sound playing (the oldest among equals),
+but never one more important than itself. Keep the allocator's channels for it alone (music
+and ambience on others): a channel it did not start counts as a sound of priority 0.
+
+```
+const SND_STEP = 0
+const SND_COIN = 1
+var sfx: Voices
+
+fn init() { voices_init(&sfx, 8, 15, 3) }
+fn footstep() { voice_play(&sfx, SND_STEP, 1, 2, STEP, len(STEP), 0.9 + rndf() / 5, 70, 70, 0) }
+fn coin() { voice_play(&sfx, SND_COIN, 3, 1, COIN, len(COIN), 1.0, 160, 160, SND_REVERB) }
+```
+
 `tools/mei_adpcm.py` converts WAV files (`encode in.wav -o out.adp [--loop N]`, which prints
 the sample count), decodes them back for checking, and is importable (`encode`, `decode`).
 Loop points are best on multiples of 28 samples (one block), which the encoder makes seamless.
