@@ -1,0 +1,237 @@
+// Proportional text on the interface list. A font is a blob baked by tools/meifont.py (glyph
+// metrics, and optionally the atlas texels and palette); the built-in one, font_small(), is a
+// pixel font with 7-px capitals and a 10-px line, kept in texture slot 15 below the 8x8 font
+// (rows 48-66) with palette 255. It is copied to VRAM the first time it is used.
+import "font_small.akr"
+
+struct Font {
+    height: u8           // glyph cell height in texels
+    line: u8             // line advance in pixels
+    first: u8            // first character code in the glyph table
+    count: u8            // glyphs in the table
+    slot: u8             // texture slot of the atlas
+    palette: u8          // 4-bit palette
+    row: u8              // first texture row of the atlas
+    rows: u8             // texture rows stored after the glyph table (0: none)
+    colours: [16]u16     // the palette (15-bit), written by font_load() when rows > 0
+}
+// followed by the glyph table, a word per glyph: u | v << 8 | w << 16 | advance << 24
+
+const ALIGN_LEFT = 0
+const ALIGN_CENTRE = 1
+const ALIGN_RIGHT = 2
+
+var __font: *Font                // font_use(); null: font_small()
+var __font_small_ready: bool     // font_small()'s texels are in VRAM
+var __font_shadow: u32           // the drop-shadow colour | 1 << 24, or 0 for none
+
+// The built-in font.
+fn font_small() -> *Font { return &__FONT_SMALL[0] as *Font }
+
+// Copies a font's atlas rows and palette (colours 1-15) into VRAM, when the blob holds them.
+// Call it once for a font of your own before drawing with it; font_small() loads itself.
+fn font_load(f: *Font) {
+    let n = f.rows as u32
+    if n == 0 { return }
+    let texels = (f as u32 + 40 + (f.count as u32) * 4) as *u8
+    let dst = VRAM_TEXTURES + (f.slot as s32 & 15) * TEXTURE_SLOT_SIZE + (f.row as s32) * 128
+    memcpy(dst as *u8, texels, n * 128)
+    let pal = (VRAM_PALETTE + (f.palette as s32) * 32) as *u16
+    for i in 1..16 { pal[i] = f.colours[i] }
+}
+
+// Selects the font of the following font_text() and text_width() calls (null: font_small()).
+fn font_use(f: *Font) { __font = f }
+
+// Draws a 1-pixel drop shadow in `colour` under the following font_text() calls.
+fn font_shadow(colour: u32) { __font_shadow = (colour & 0xFFFFFF) | 0x1000000 }
+fn font_shadow_off() { __font_shadow = 0 }
+
+// The current font's line advance in pixels.
+fn font_line() -> s32 { return __font_cur().line as s32 }
+
+fn __font_cur() -> *Font {
+    var f = __font
+    let small = font_small()
+    if f == null { f = small }
+    if f == small && !__font_small_ready {
+        font_load(small)
+        __font_small_ready = true
+    }
+    return f
+}
+
+// Draws s at (x, y) (the top-left of the first glyph cell) in the current font; '\n' starts a
+// new line. The colour works like text()'s: white shows the font's ink as it is. Returns the x
+// after the last character.
+fn font_text(x: s32, y: s32, s: *u8, colour: u32) -> s32 {
+    return font_text_align(x, y, s, colour, ALIGN_LEFT)
+}
+
+// The same with each line aligned to x: ALIGN_LEFT (starting at x), ALIGN_CENTRE (centred on
+// x) or ALIGN_RIGHT (ending at x). Returns the x after the last character.
+fn font_text_align(x: s32, y: s32, s: *u8, colour: u32, align: s32) -> s32 {
+    let f = __font_cur()
+    if __font_shadow != 0 { __font_lines(f, x + 1, y + 1, s, col_tint(__font_shadow), align) }
+    return __font_lines(f, x, y, s, col_tint(colour), align)
+}
+
+// The width of s in the current font: the sum of its characters' advances (the longest line).
+fn text_width(s: *u8) -> s32 {
+    let f = __font_cur()
+    var p = s
+    var best = 0
+    while true {
+        let w = __font_line_w(f, p)
+        best = max(best, w)
+        while p[0] != 0 && p[0] != '\n' { p += 1 }
+        if p[0] == 0 { return best }
+        p += 1
+    }
+    return best
+}
+
+// The advance of the line starting at p (up to '\n' or the end).
+fn __font_line_w(f: *Font, p: *u8) -> s32 {
+    let first = f.first as u32
+    let count = f.count as u32
+    let gl = (f as u32 + 40) as *u32
+    var q = p
+    var w: u32 = 0
+    while true {
+        let ch = q[0] as u32
+        if ch == 0 || ch == '\n' { return w as s32 }
+        q += 1
+        let k = ch - first
+        if k < count { w += gl[k] >> 24 }
+    }
+    return 0
+}
+
+fn __font_lines(f: *Font, x: s32, y: s32, s: *u8, tint: u32, align: s32) -> s32 {
+    __font_tint = tint
+    var p = s
+    var cy = y
+    while true {
+        var cx = x
+        if align != ALIGN_LEFT {
+            let w = __font_line_w(f, p)
+            if align == ALIGN_CENTRE { cx = x - w / 2 } else { cx = x - w }
+        }
+        cx = __font_run(f, p, cx, cy)
+        p = __font_end
+        if p[0] == 0 { return cx }
+        p += 1
+        cy += f.line as s32
+    }
+    return x
+}
+
+var __font_tint: u32             // (__font_run's tint and where it stopped)
+var __font_end: *u8
+
+// Draws the glyphs of s from x up to '\n' or the end, on the line at y: one packet per glyph,
+// appended to the interface list. Returns the x after the last one and leaves the place it
+// stopped in __font_end. About 45 cycles a glyph.
+asm fn __font_run(f: *Font, s: *u8, x: s32, y: s32) -> s32 {
+    addi sp, sp, -24
+    sw   r9, [sp+0]
+    sw   r10, [sp+4]
+    sw   r11, [sp+8]
+    sw   r12, [sp+12]
+    sw   r13, [sp+16]
+    sw   r15, [sp+20]
+    lbu  r5, [{f}+2]                ; first
+    lbu  r6, [{f}+3]                ; count
+    lbu  r7, [{f}+0]                ; height
+    lbu  r8, [{f}+4]
+    andi r8, r8, 15
+    shli r8, r8, 16
+    lbu  r9, [{f}+5]
+    shli r9, r9, 24
+    or   r8, r8, r9
+    lui  r9, 0x400                  ; 0x100000: a 4-bit texture
+    or   r8, r8, r9                 ; r8: the texture info of the first coordinate
+    add  r9, {y}, r7
+    shli r9, r9, 16                 ; r9: the bottom row, << 16
+    shli {y}, {y}, 16               ; y: the top row, << 16
+    shli r7, r7, 8                  ; r7: the height as a v offset
+    addi {f}, {f}, 40               ; f: the glyph table
+    lw   r10, [r0+{__arena_ptr}]    ; r10: the next packet
+.loop:
+    lbu  r11, [{s}+0]
+    beq  r11, r0, .end
+    addi r12, r0, 10
+    beq  r11, r12, .end
+    addi {s}, {s}, 1
+    sub  r11, r11, r5
+    bgeu r11, r6, .loop             ; not in the font
+    shli r11, r11, 2
+    add  r11, r11, {f}
+    lw   r11, [r11+0]               ; r11: the glyph u | v << 8 | w << 16 | advance << 24
+    shri r12, r11, 16
+    andi r12, r12, 255              ; r12: w
+    beq  r12, r0, .adv
+    addi r13, r10, 40               ; the packet after this one
+    lw   r15, [r0+{__arena_end}]
+    bltu r15, r13, .end             ; the arena is full
+    lui  r15, 0x98000               ; 0x26000000: a textured quad, linked to the next packet
+    or   r15, r15, r13
+    sw   r15, [r10+0]
+    lw   r15, [r0+{__font_tint}]
+    sw   r15, [r10+4]
+    andi r15, {x}, 0xFFFF
+    or   r13, r15, {y}
+    sw   r13, [r10+8]
+    or   r13, r15, r9
+    sw   r13, [r10+24]
+    add  r15, {x}, r12
+    andi r15, r15, 0xFFFF
+    or   r13, r15, {y}
+    sw   r13, [r10+16]
+    or   r13, r15, r9
+    sw   r13, [r10+32]
+    andi r15, r11, 0xFFFF           ; u | v << 8
+    or   r13, r15, r8
+    sw   r13, [r10+12]
+    add  r13, r15, r12
+    sw   r13, [r10+20]
+    add  r15, r15, r7
+    sw   r15, [r10+28]
+    add  r15, r15, r12
+    sw   r15, [r10+36]
+    addi r10, r10, 40
+.adv:
+    shri r11, r11, 24
+    add  {x}, {x}, r11
+    jmp  .loop
+.end:
+    sw   {s}, [r0+{__font_end}]
+    lw   r11, [r0+{__arena_ptr}]    ; the first packet of this run
+    beq  r11, r10, .done
+    li   r12, 0x26FFFFFF            ; the last one ends the list
+    sw   r12, [r10+-40]
+    lw   r12, [r0+{__ui_tail}]
+    beq  r12, r0, .head
+    lw   r13, [r12+0]
+    shri r13, r13, 24
+    shli r13, r13, 24
+    or   r13, r13, r11
+    sw   r13, [r12+0]
+    jmp  .tail
+.head:
+    sw   r11, [r0+{__ui_head}]
+.tail:
+    addi r12, r10, -40
+    sw   r12, [r0+{__ui_tail}]
+    sw   r10, [r0+{__arena_ptr}]
+.done:
+    mov  r1, {x}
+    lw   r9, [sp+0]
+    lw   r10, [sp+4]
+    lw   r11, [sp+8]
+    lw   r12, [sp+12]
+    lw   r13, [sp+16]
+    lw   r15, [sp+20]
+    addi sp, sp, 24
+}

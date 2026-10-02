@@ -1,0 +1,68 @@
+// Proportional text (stdlib/font.akr): widths, alignment and the drawn pixels (read back from
+// the presented picture in the next frame, dither off), with the 8x8 text() alongside.
+// frames: 3
+
+var n: s32
+
+fn px(x: s32, y: s32) -> u32 {
+    var fb: u32 = 0x400000
+    if GPU_BACK == 0x400000 { fb = 0x425800 }
+    return (fb as *u16)[y * 320 + x] as u32
+}
+
+fn show(name: *u8, v: u32) {
+    print(name)
+    print(" ")
+    print_hex(v)
+    println("")
+}
+
+fn init() {
+    dither(false)
+    // advances: a glyph's width plus one
+    print_int(text_width("I")); println("")              // expect: 4
+    print_int(text_width("Hi")); println("")             // expect: 8
+    print_int(text_width("Hi\nHello")); println("")      // expect: 24
+    print_int(text_width("")); println("")               // expect: 0
+    print_int(text_width("a\x01b")); println("")         // expect: 12
+    print_int(font_line()); println("")                  // expect: 10
+}
+
+fn draw() {
+    if n != 1 { return }
+    cls(0)
+    // 'I' is ###, .#., .#., ... (3 wide, 7 tall)
+    let e = font_text(100, 100, "I", rgb(255, 255, 255))
+    print_int(e); println("")                            // expect: 104
+    font_text(100, 120, "II\nI", rgb(255, 0, 0))
+    font_text_align(160, 140, "I", rgb(0, 255, 0), ALIGN_CENTRE)
+    font_text_align(200, 140, "II", rgb(0, 0, 255), ALIGN_RIGHT)
+    rect(0, 160, 320, 20, rgb(255, 255, 255))
+    font_shadow(rgb(0, 0, 0))
+    font_text(100, 162, "I", rgb(255, 0, 0))
+    font_shadow_off()
+    font_text(150, 162, "I", rgb(255, 0, 0))
+    text(10, 200, "8x8", rgb(255, 255, 255))
+}
+
+fn update() {
+    n += 1
+    if n != 2 { return }
+    show("I top left", px(100, 100))            // expect: I top left 7FFF
+    show("I top right", px(102, 100))           // expect: I top right 7FFF
+    show("I stem", px(101, 103))                // expect: I stem 7FFF
+    show("beside the stem", px(100, 103))       // expect: beside the stem 0
+    show("I bottom", px(100, 106))              // expect: I bottom 7FFF
+    show("below", px(100, 107))                 // expect: below 0
+    show("second I", px(104, 120))              // expect: second I 1F
+    show("gap", px(103, 120))                   // expect: gap 0
+    show("second line", px(100, 130))           // expect: second line 1F
+    show("centred", px(158, 140))               // expect: centred 3E0
+    show("left of centred", px(157, 140))       // expect: left of centred 0
+    show("right-aligned last", px(198, 140))    // expect: right-aligned last 7C00
+    show("right-aligned past", px(199, 140))    // expect: right-aligned past 0
+    show("shadow ink", px(100, 162))            // expect: shadow ink 1F
+    show("shadow", px(103, 163))                // expect: shadow 0
+    show("no shadow", px(153, 163))             // expect: no shadow 7FFF
+    show("8x8 text", px(11, 201))               // expect: 8x8 text 7FFF
+}

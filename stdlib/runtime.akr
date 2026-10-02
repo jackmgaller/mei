@@ -4,6 +4,8 @@
 
 var __frame_cycles: s32
 var __frame_tris: s32
+var __frame_next: u32          // the tick the next frame starts in when this one makes its vsync
+var __frames_dropped: s32
 
 fn __rt_init() {
     __font_init()
@@ -30,11 +32,40 @@ fn __rt_frame_end() {
     __pad_prev = PAD1
     __pad2_prev = PAD2
     __frame_cycles = 500000 - CYCLES
+    // A frame that ran over its budget ended in a later tick (FRAME counts every 500,000-cycle
+    // budget, presented or not): count the budgets it used up in full. (After CYCLES is read,
+    // so a frame on time reads exactly as before.)
+    let late = (FRAME - __frame_next) as s32
+    __frames_dropped = late
+    if late > 0 { __frame_cycles += min(late, 4000) * 500000 }
+    __frame_next = FRAME + 1
     vsync()
 }
 
-// CPU cycles used by the previous frame (of 500,000).
+// CPU cycles used by the previous frame (of 500,000 a frame). A frame that ran over counts in
+// full: 500,000 for each budget it used up plus what it used of the last, so the number goes
+// above 500,000 instead of wrapping to a small one.
 fn cpu_used() -> s32 { return __frame_cycles }
+
+// The frames the previous frame ran over by: 0 when it was on time, n when the picture before
+// it stayed on screen n more times (n extra 500,000-cycle budgets).
+fn frames_dropped() -> s32 { return __frames_dropped }
+
+// A cycle clock that keeps counting across frames and overruns: FRAME * 500,000 - CYCLES.
+// Differences between two readings are exact (the s32 wraps every 71 seconds; subtracting
+// still works for spans shorter than that).
+asm fn cycle_count() -> s32 {
+    li   r5, {FRAME}
+.again:
+    lw   r6, [r5+0]                 ; FRAME
+    lw   r7, [r5+4]                 ; CYCLES
+    lw   r8, [r5+0]
+    bne  r6, r8, .again             ; a new budget began in between
+    li   r1, 500000
+    mul  r1, r6, r1
+    sub  r1, r1, r7
+}
+
 // Triangles drawn from the ordering table (the 3D world) in the previous frame.
 fn tris_drawn() -> s32 { return __frame_tris }
 // Frames since reset.

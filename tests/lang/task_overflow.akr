@@ -1,0 +1,24 @@
+// A task that outgrows its stack is caught when it next yields (its guard word is gone).
+// exit: 2
+
+var pad: [4096]u8          // (below the task's stack: what the overflow tramples)
+var small: [256]u8
+var t: Task
+
+fn dig(n: s32) -> s32 {
+    var junk: [16]s32
+    for k in 0..16 { junk[k] = n + k }
+    if n == 0 {
+        task_yield()
+        return 0
+    }
+    return dig(n - 1) + junk[3]
+}
+
+fn init() {
+    task_start(&t, &small[0], 256, fn() { dig(12) })
+    task_resume(&t)
+    println("not reached")
+}
+
+// expect: task stack overflow: the task used more stack than task_start() gave it

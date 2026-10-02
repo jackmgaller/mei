@@ -1,0 +1,160 @@
+// The render API (stdlib/render.akr, runtime.akr): project_point against the packets mesh()
+// makes, the ordering table saved, swapped, detached and drawn, a cart's own packet arena,
+// ui_flush, cycle_count and an overrun frame in cpu_used()/frames_dropped().
+// frames: 6
+
+struct Tri {
+    hdr: Mesh
+    v: [3]vec4
+    f: Face
+}
+
+var tri: Tri
+var store: [2000]u32
+var table: [1024]u32
+var saved: [1024]u32
+var arena: PacketArena
+var n: s32
+
+// Buckets holding packets (an empty bucket b links straight to entry b - 1 of `home`).
+fn used_buckets(t: *u32, home: *u32) -> s32 {
+    var k = 0
+    for b in 1..1024 {
+        if t[b] & 0xFFFFFF != (home + (b - 1)) as u32 { k += 1 }
+    }
+    return k
+}
+
+fn pk(r: ivec4) -> u32 { return (r.x as u32 & 0xFFFF) | ((r.y as u32) << 16) }
+
+fn show(r: ivec4) {
+    print_int(r.x); print(" "); print_int(r.y); print(" "); print_int(r.z); print(" ")
+    print_fixed(from_bits(r.w)); println("")
+}
+
+fn init() {
+    camera(vec3(0.0, 0.0, 0.0), 0.0)
+    show(project_point(vec3(0.0, 0.0, 10.0)))      // expect: 160 120 101 10.0
+    show(project_point(vec3(1.0, 0.0, 10.0)))      // expect: 180 120 101 10.0
+    show(project_point(vec3(0.0, 2.0, 10.0)))      // expect: 160 78 101 10.0
+    show(project_point(vec3(-3.0, -1.5, 4.0)))     // expect: 4 197 39 4.0
+    assert_eq(project_point(vec3(0.0, 0.0, -5.0)).z, -1)
+    assert_eq(project_point(vec3(0.0, 0.0, 0.05)).z, -1)
+    assert_eq(project_point(vec3(0.0, 0.0, 10.0)).z, depth_bucket_of(10.0))
+    print_fixed(view_depth(vec3(3.0, 1.0, 7.5))); println("")    // expect: 7.5
+    print_fixed(buckets_per_unit()); println("")                 // expect: 10.2502
+    // a pan moves every point by exactly the pan
+    camera_pan(7, -5)
+    show(project_point(vec3(1.0, 0.0, 10.0)))      // expect: 187 115 101 10.0
+    show(project_point(vec3(-3.0, -1.5, 4.0)))     // expect: 11 192 39 4.0
+    camera(vec3(0.0, 0.0, 0.0), 0.0)
+
+    // a triangle mesh: its packet's corners are where project_point puts them
+    tri.hdr.nverts = 3
+    tri.hdr.nfaces = 1
+    tri.hdr.verts = 16
+    tri.hdr.faces = 16 + 48
+    tri.v[0] = vec4(-2.3, -1.1, 6.0, 1.0)
+    tri.v[1] = vec4(2.7, -0.9, 7.0, 1.0)
+    tri.v[2] = vec4(0.4, 2.2, 6.5, 1.0)
+    tri.f.flags = FACE_DOUBLE
+    tri.f.idx[0] = 0
+    tri.f.idx[1] = 1
+    tri.f.idx[2] = 2
+    tri.f.col[0] = 0x00FF00
+}
+
+fn draw() {
+    n += 1
+    if n == 1 { check_tables() }
+    if n == 2 { burn() }
+    if n == 3 {
+        print("after an overrun: dropped ")
+        print_int(frames_dropped())
+        if cpu_used() > 500000 && cpu_used() < 1000000 { println(", cpu over a budget") }
+    }
+    if n == 4 {
+        print("on time: dropped ")
+        print_int(frames_dropped())
+        if cpu_used() < 500000 { println(", cpu within the budget") }
+    }
+}
+
+fn check_tables() {
+    let ot = (&table[0]) as *u32
+    mesh(&tri.hdr)
+    ot_save(&saved[0])
+    assert_eq(used_buckets(&saved[0], &__ot[0]), 1)
+    // find the packet
+    var p: *u32 = null
+    for b in 1..1024 {
+        if saved[b] & 0xFFFFFF != (&__ot[b - 1]) as u32 { p = (saved[b] & 0xFFFFFF) as *u32 }
+    }
+    assert_eq(p[0] >> 24, 0x20)                      // a flat triangle
+    assert_eq(p[2], pk(project_point(tri.v[0].xyz)))
+    assert_eq(p[3], pk(project_point(tri.v[1].xyz)))
+    assert_eq(p[4], pk(project_point(tri.v[2].xyz)))
+    println("mesh corners match")                    // expect: mesh corners match
+
+    // swap: the frame's table is empty while the other one is out, then both come back
+    ot_clear()
+    ot_swap(&saved[0])
+    assert_eq(used_buckets(&__ot[0], &__ot[0]), 1)
+    assert_eq(used_buckets(&saved[0], &__ot[0]), 0)
+    ot_swap(&saved[0])
+    assert_eq(used_buckets(&__ot[0], &__ot[0]), 0)
+    ot_restore(&saved[0])
+    assert_eq(used_buckets(&__ot[0], &__ot[0]), 1)
+
+    // detach: a list of its own at `table`; the frame's table is emptied
+    ot_detach(ot, ot)
+    assert_eq(used_buckets(&__ot[0], &__ot[0]), 0)
+    assert_eq(used_buckets(ot, ot), 1)
+    print("detached table drew ")
+    print_int(ot_draw(ot))
+    println(" triangle")                             // expect: detached table drew 1 triangle
+
+    // a cart's own arena: packets go there while it is swapped in
+    let used0 = arena_used()
+    arena_init(&arena, &store[0], 2000)
+    arena_swap(&arena)
+    assert_eq(arena_left(), 2000)
+    rect_blend(0, 0, 4, 4, 0xFF, BLEND_NONE)
+    mesh(&tri.hdr)
+    assert_eq(arena_left(), 2000 - 6 - 5)
+    arena_swap(&arena)
+    assert_eq(arena.ptr, &store[11])
+    assert_eq(arena_used(), used0)
+    assert_eq(store[0] >> 24, 0x24)
+    ot_clear()
+
+    // ui_flush draws the interface list into the back buffer now
+    dither(false)
+    cls(0)
+    rect_blend(50, 60, 10, 10, rgb(255, 0, 0), BLEND_NONE)
+    ui_flush()
+    let fb = GPU_BACK as *u16
+    print_hex(fb[65 * 320 + 55] as u32)
+    println("")                                      // expect: 1F
+    rect_blend(50, 60, 10, 10, rgb(0, 0, 255), BLEND_NONE)    // drawn at the end of the frame
+
+    // cycle_count counts what CYCLES counts down
+    let a = cycle_count()
+    let c = CYCLES
+    for i in 0..100 { }
+    let d = CYCLES
+    let b = cycle_count()
+    assert(b - a >= c - d)
+    assert(b - a < c - d + 40)
+    println("cycle clock ok")                        // expect: cycle clock ok
+}
+
+// About 1.3 budgets of work: this frame runs over by one.
+fn burn() {
+    let c0 = cycle_count()
+    while cycle_count() - c0 < 600000 { }
+}
+
+// (frames 3 and 4, after check_tables)
+// expect: after an overrun: dropped 1, cpu over a budget
+// expect: on time: dropped 0, cpu within the budget
