@@ -78,10 +78,21 @@ fn sky_at(y: s32) -> u32 { return col_mix(sky_top, sky_bot, fixed(y) / 240) }
 
 // The sky over rows y .. y + h.
 fn sky_band(x: s32, y: s32, w: s32, h: s32) {
+    if w <= 0 || h <= 0 { return }
     rect_grad(x, y, w, h, sky_at(y), sky_at(y + h), BLEND_NONE)
 }
 
 fn sky_draw() { rect_grad(0, 0, 320, 240, sky_top, sky_bot, BLEND_NONE) }
+
+// The sky only where it shows: around the body box (x, y, w, h), between the header and the
+// lower display line, so the screen is not filled twice.
+fn sky_around(x: s32, y: s32, w: s32, h: s32) {
+    let top = HDR_H + 1
+    sky_band(0, top, 320, y - top)
+    sky_band(0, y, x, h)
+    sky_band(x + w, y, 320 - x - w, h)
+    sky_band(0, y + h, 320, LDL_Y - y - h)
+}
 
 // ---- the header row: page number, service, date and time, signal
 

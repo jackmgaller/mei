@@ -256,7 +256,9 @@ private fn settings_draw(t: s32) {
     let y = 46
     let w = 240
     let h = 164
-    rect_blend(x + 4, y + 4, w, h, 0x200C04, BLEND_HALF)
+    // a drop shadow: only the strips that show
+    rect_blend(x + w, y + 4, 4, h, 0x200C04, BLEND_HALF)
+    rect_blend(x + 4, y + h, w - 4, 4, 0x200C04, BLEND_HALF)
     panel(x, y, w, h)
     gloss(x, y + 1, w, 24)
     txt_s(F_MED, x + 10, y + 5, "Settings", WHITE, ALIGN_LEFT)

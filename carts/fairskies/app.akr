@@ -354,7 +354,7 @@ private fn ldl_update() {
 
 fn draw() {
     dither(true)
-    sky_draw()
+    if view == View.Map { sky_around(3, 19, 258, 194) } else { sky_around(6, 42, 308, 170) }
     let t = tick
     header_draw(t)
     let i = cur

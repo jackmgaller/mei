@@ -164,6 +164,13 @@ fn model_reset() {
     mp_reset()
 }
 
+// The receiver changed (antenna <-> sample tape): every slot is to be selected again.
+fn model_source_changed() {
+    focus_page = -1
+    for s in 0..SCAN_SLOTS { scan_pid[s] = -1 }
+    mp_reset()
+}
+
 fn mp_reset() {
     mp_ver = -1
     mp_done0 = 0
@@ -248,6 +255,11 @@ private fn take_index() {
 // Rearranges the caches so that wx[i] holds what wx[order[i]] held (order[i] -1: empty).
 private var wx_tmp: [16]Wx
 private fn wx_reorder(order: *s32, n: s32) {
+    var same = n == nlocs
+    for i in 0..n {
+        if order[i] != i { same = false }
+    }
+    if same { return }                     // the usual case: nothing moves
     for i in 0..MAX_LOCS { wx_tmp[i] = wx[i] }
     for i in 0..MAX_LOCS {
         if i < n && order[i] >= 0 { wx[i] = wx_tmp[order[i]] } else { wx_clear(&wx[i]) }

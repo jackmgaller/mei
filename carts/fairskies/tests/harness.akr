@@ -23,6 +23,8 @@
 //  16  the remote open, three digits in progress (screenshot)
 //  17  the settings open (screenshot)
 //  18  the regions directory once all current conditions are in (screenshot)
+//  19  saving: with CARD=FILE, the received pages are on the card 20 s after the first arrived
+//      (then scenario 10 with P=1 and the same card shows them with no signal)
 
 const TEST = 1
 
@@ -73,7 +75,7 @@ const S7: [72]s32 = [
     400, PAD_X, 404, 0, 420, PAD_DOWN, 424, 0, 430, PAD_DOWN, 434, 0,
     440, PAD_A, 444, 0, 450, PAD_A, 454, 0, 460, PAD_A, 464, 0
 ]
-const S8: [16]s32 = [60, PAD_START, 64, 0, 80, PAD_RIGHT, 84, 0, 90, PAD_DOWN, 94, 0, 100, PAD_LEFT, 104, 0]
+const S8: [16]s32 = [60, PAD_START, 64, 0, 80, PAD_RIGHT, 84, 0, 90, PAD_DOWN, 94, 0, 100, PAD_RIGHT, 104, 0]
 const S8B: [4]s32 = [130, PAD_B, 134, 0]
 const S9: [4]s32 = [4500, PAD_A, 4504, 0]
 const S10: [4]s32 = [0, 0, 1, 0]
@@ -157,7 +159,9 @@ fn perf_report() {
 fn test_hook(f: s32) {
     scen_t = f
     perf()
-    if cpu_used() > 450000 || frames_dropped() > 0 {
+    var slow = 450000
+    if P3 > 0 { slow = P3 }                 // P="... ... N": report frames over N cycles
+    if f > 3 && (cpu_used() > slow || frames_dropped() > 0) {
         print("SLOW frame ")
         print_int(f)
         print(" cycles ")
@@ -309,6 +313,15 @@ fn test_hook(f: s32) {
         }
         15 => {
             if f == 300 { assert_eq(locs[cur].page, 0x403) }
+        }
+        19 => {
+            if f == 2400 {
+                assert(card_present(1), "a memory card")
+                assert(!card_busy(), "the save has finished")
+                assert(card_exists(1), "the pages were saved")
+                assert(card_size(1) > 10000, "with the maps")
+                println("OK 19 saved")
+            }
         }
         else => {}
     }

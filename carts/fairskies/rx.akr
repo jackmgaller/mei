@@ -13,6 +13,7 @@ fn rx_use_demo(on: bool) {
         dm_stop()
     }
     rx_demo = on
+    model_source_changed()
 }
 
 // Called once a frame, before the model looks at the slots.
