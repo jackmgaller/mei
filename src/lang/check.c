@@ -2282,6 +2282,159 @@ static void resolve_embed(Sym *s) {
     s->state = 2;
 }
 
+/* ------------------------------------------------------------ inlining
+ * A call to a small function whose whole body is `return E`, with E free of calls, is replaced
+ * by E with the arguments in place of the parameters. Arguments must be free of calls and
+ * I/O register reads (so evaluating them where E uses them, rather than all first, changes
+ * nothing), and an argument E uses more than once must be cheap to repeat (a constant or a
+ * variable). The function itself is still emitted for other uses (values, asm). */
+
+#define INLINE_MAX_NODES 24
+
+static int inl_count(Expr *e, Func *f, int *uses, int *ok) {
+    if (!e || !*ok) return 0;
+    int n = 1;
+    switch (e->k) {
+    case E_CALL:
+        if (e->callee || e->indirect || e->bi >= BI_MAP || e->bi == BI_LENGTH || e->bi == BI_NORMALIZE) { *ok = 0; return 0; }
+        break;
+    case E_FUNC: case E_MATCH: case E_ARRAY: case E_STRUCT: *ok = 0; return 0;
+    case E_NAME:
+        if (e->sym && e->sym->k == SY_LOCAL) {
+            int found = 0;
+            for (int i = 0; i < f->nparams; i++)
+                if (f->params[i].local == e->sym->local) { uses[i]++; found = 1; }
+            if (!found) *ok = 0;
+        }
+        break;
+    default: break;
+    }
+    if (e->isconst && e->k != E_CONV) return n;
+    n += inl_count(e->a, f, uses, ok) + inl_count(e->b, f, uses, ok);
+    for (int i = 0; i < e->nargs; i++) n += inl_count(e->args[i], f, uses, ok);
+    return n;
+}
+
+static int inlinable(Func *f) {
+    if (f->inl) return f->inl == 1;
+    f->inl = 2;
+    if (f->is_asm || f->is_lambda || f->is_init || f->ncaps || !f->body || !f->ret || f->hidden_ret) return 0;
+    if (f->ret->k == TY_VOID || ty_is_aggr(f->ret) || f->nparams > 8) return 0;
+    Stmt *b = f->body;
+    while (b && b->k == S_BLOCK && b->n == 1) b = b->list[0];
+    if (!b || b->k != S_RETURN || !b->e) return 0;
+    for (int i = 0; i < f->nparams; i++) if (f->params[i].local->addr_taken || f->params[i].local->in_asm) return 0;
+    int uses[8] = {0}, ok = 1;
+    int n = inl_count(b->e, f, uses, &ok);
+    if (!ok || n > INLINE_MAX_NODES) return 0;
+    f->inl = 1;
+    f->inl_e = b->e;
+    return 1;
+}
+
+/* Does evaluating e call a function or read an I/O register? */
+static int inl_effects(Expr *e) {
+    if (!e) return 0;
+    if (e->k == E_CALL && (e->callee || e->indirect || e->bi >= BI_MAP)) return 1;
+    if (e->k == E_FUNC || e->k == E_MATCH) return 1;
+    if (e->k == E_NAME && e->sym && e->sym->k == SY_REG) return 1;
+    if (e->isconst && e->k != E_CONV) return 0;
+    if (inl_effects(e->a) || inl_effects(e->b)) return 1;
+    for (int i = 0; i < e->nargs; i++) if (inl_effects(e->args[i])) return 1;
+    return 0;
+}
+
+static int inl_cheap(Expr *e) {
+    if (e->isconst) return 1;
+    if (e->k == E_NAME) return 1;
+    if (e->k == E_STR) return 1;
+    if (e->k == E_CONV && !ty_is_aggr(e->ty)) return inl_cheap(e->a) && e->ty->size == 4 && e->conv_from && e->conv_from->size == 4
+                                                && (e->ty->k == TY_FIXED) == (e->conv_from->k == TY_FIXED);
+    return 0;
+}
+
+static Expr *inl_clone(Expr *e, Func *f, Expr **args) {
+    if (!e) return NULL;
+    if (f && e->k == E_NAME && e->sym && e->sym->k == SY_LOCAL)
+        for (int i = 0; i < f->nparams; i++)
+            if (f->params[i].local == e->sym->local) return inl_clone(args[i], NULL, NULL);
+    Expr *c = ar_alloc(sizeof *c);
+    *c = *e;
+    c->a = inl_clone(e->a, f, args);
+    c->b = inl_clone(e->b, f, args);
+    if (e->nargs) {
+        c->args = ar_alloc(sizeof(Expr *) * (size_t)e->nargs);
+        for (int i = 0; i < e->nargs; i++) c->args[i] = inl_clone(e->args[i], f, args);
+    }
+    return c;
+}
+
+static void inline_expr(Expr *e);
+
+static void inline_into(Expr *e) {
+    Func *f = e->callee;
+    if (!f || e->indirect || e->bi || !inlinable(f)) return;
+    if (e->nargs != f->nparams) return;
+    int uses[8] = {0}, ok = 1;
+    inl_count(f->inl_e, f, uses, &ok);
+    for (int i = 0; i < e->nargs; i++) {
+        Expr *a = e->args[i];
+        if (inl_effects(a)) return;
+        if (uses[i] > 1 && !inl_cheap(a)) return;
+        if (ty_is_aggr(a->ty) && !(is_lvalue(a) || (a->k == E_NAME && a->sym && a->sym->k == SY_DATA))) return;
+    }
+    Expr *c = inl_clone(f->inl_e, f, e->args);
+    Loc loc = e->loc;
+    *e = *c;
+    e->loc = loc;
+}
+
+static void inline_expr(Expr *e) {
+    if (!e) return;
+    inline_expr(e->a);
+    inline_expr(e->b);
+    for (int i = 0; i < e->nargs; i++) inline_expr(e->args[i]);
+    for (int i = 0; i < e->narms; i++) inline_expr(e->arms[i].value);
+    if (e->k == E_CALL) inline_into(e);
+}
+
+static void inline_stmt(Stmt *s) {
+    if (!s) return;
+    for (int i = 0; i < s->n; i++) inline_stmt(s->list[i]);
+    if (s->k != S_CONST) { inline_expr(s->e); inline_expr(s->e2); }
+    inline_stmt(s->then);
+    inline_stmt(s->els);
+    for (int i = 0; i < s->narms; i++) inline_stmt(s->arms[i].body);
+}
+
+static int expr_calls(Expr *e) {
+    if (!e) return 0;
+    if (e->k == E_CALL && (e->callee || e->indirect || e->bi >= BI_MAP)) return 1;
+    if (expr_calls(e->a) || expr_calls(e->b)) return 1;
+    for (int i = 0; i < e->nargs; i++) if (expr_calls(e->args[i])) return 1;
+    for (int i = 0; i < e->narms; i++) if (expr_calls(e->arms[i].value)) return 1;
+    return 0;
+}
+
+static int stmt_calls(Stmt *s) {
+    if (!s) return 0;
+    for (int i = 0; i < s->n; i++) if (stmt_calls(s->list[i])) return 1;
+    if (s->k != S_CONST && (expr_calls(s->e) || expr_calls(s->e2))) return 1;
+    if (stmt_calls(s->then) || stmt_calls(s->els)) return 1;
+    for (int i = 0; i < s->narms; i++) if (stmt_calls(s->arms[i].body)) return 1;
+    return 0;
+}
+
+static void inline_program(Program *P) {
+    for (int i = 0; i < P->nfuncs; i++) {
+        Func *f = P->funcs[i];
+        if (f->is_asm || !f->body) continue;
+        inline_stmt(f->body);
+        /* a function whose only calls were inlined is now a leaf */
+        if (f->has_call && !f->uses_xfm && !stmt_calls(f->body)) f->has_call = 0;
+    }
+}
+
 void check_program(Program *P) {
     g_prog = P;
     g_loop_n = 0;
@@ -2342,4 +2495,5 @@ void check_program(Program *P) {
     }
     P->init_fn = init;
     for (int i = 0; i < P->nfuncs; i++) check_func(P, P->funcs[i]);   /* literals are appended and already checked */
+    inline_program(P);
 }

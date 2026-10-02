@@ -215,6 +215,7 @@ typedef struct Stmt {
     const char *asm_text; Loc asm_loc;
     Local *for_end;                /* S_FOR: hidden end-bound local */
     MatchArm *arms; int narms;     /* S_MATCH (var: hidden scrutinee local) */
+    int pos, pos2;                 /* codegen: live-range positions (loops: header, bottom) */
 } Stmt;
 
 struct Local {
@@ -242,6 +243,7 @@ struct Local {
     int start, end;       /* live range in statement positions */
     int crosses_call;     /* a call (or asm block) happens inside the live range */
     int crosses_xfm;      /* a mat4 * vector (which loads v4-v7) happens inside the live range */
+    int dead;             /* never read or written (a constant loop bound's end local): no home */
 };
 
 typedef struct Param { const char *name; TypeExpr *texpr; Type *ty; Loc loc; Local *local; } Param;
@@ -275,6 +277,8 @@ typedef struct Func {
     int ncaps, capcaps;
     int noescape;         /* literal passed straight to map/filter/... or called at once */
     Sym *stack_msg;       /* meic -g: the message of the stack check at entry */
+    int inl;              /* inliner: 0 not decided, 1 inlinable (`return E` of a small pure E), 2 not */
+    Expr *inl_e;          /* the E of an inlinable function */
 } Func;
 
 typedef enum { SY_TYPE, SY_CONST, SY_DATA, SY_GLOBAL, SY_REG, SY_EMBED, SY_FUNC, SY_LOCAL, SY_BUILTIN } SymKind;

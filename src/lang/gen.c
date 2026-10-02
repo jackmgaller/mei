@@ -41,6 +41,7 @@ static Temp g_t[NT];
 static unsigned g_age;
 static int g_rown[16];             /* -1 free, -2 not allocatable, else temp id */
 static int g_vown[8];
+#define REG_RESERVE 3               /* scalar registers kept free of locals for temporaries */
 static int g_spool[16], g_nspool;
 static int g_vpool[8], g_nvpool;
 static int g_saved;                /* callee-saved registers written by this function */
@@ -380,7 +381,18 @@ static void lv_free(LV *lv) { if (lv->k == LV_MEM) ofree(lv->base); }
 
 /* Adds a scaled index to a memory lvalue. */
 static void lv_index(LV *lv, Expr *idx, int size, Expr *chk) {
-    if (idx->isconst) { lv->off += (int32_t)(idx->cval * size); return; }
+    if (idx->isconst) {
+        int64_t n = chk && chk->chk ? (chk->a->ty->k == TY_ARRAY ? chk->a->ty->n : 4) : 0;
+        if (chk && chk->chk && (idx->cval < 0 || idx->cval >= n)) {
+            /* meic -g: a constant index out of range (after inlining): always fails */
+            Opnd c = o_imm(idx->cval);
+            int rc = R(&c);
+            I("jmp .L%d", check_stub(chk->chk, rc, n));
+            ofree(c);
+        }
+        lv->off += (int32_t)(idx->cval * size);
+        return;
+    }
     Opnd i = gen_expr(idx, -1);
     if (chk && chk->chk) {
         /* meic -g: (unsigned) index < length, else report */
@@ -1080,6 +1092,32 @@ static Opnd arith(OpKind op, Type *ty, int mixed, Opnd a, Opnd b, int hint) {
                 }
             } else if (m == 1) { if (hint >= 0) { move_to(a, hint, 0); ofree(a); return (Opnd){O_REG, hint}; } return a; }
             else if (m > 0 && log2_exact(m) >= 0) { iop = "shli"; imm = log2_exact(m); }
+            else if (m > 2 && m <= 0x7FFFFFFF) {
+                /* m = (2^k +- 1) << lb: a shift and an add or subtract (and a shift), 2-3 cycles
+                   instead of li + mul (5); the low 32 bits are the same */
+                int lb = 0;
+                int64_t mm = m;
+                while (!(mm & 1)) { mm >>= 1; lb++; }
+                int k = -1, plus = 1;
+                if (log2_exact(mm - 1) > 0) k = log2_exact(mm - 1);
+                else if (log2_exact(mm + 1) > 0) { k = log2_exact(mm + 1); plus = 0; }
+                if (k > 0 && k < 32) {
+                    int ra = R(&a);
+                    int t = tnew(0), rt = g_t[t].reg;
+                    Ik("shli %s, %s, %d", RN[rt], RN[ra], k);
+                    if (!lb) {
+                        ofree(a); tfree(t);
+                        Opnd d = dest(0, hint, &r);
+                        I("%s %s, %s, %s", plus ? "add" : "sub", RN[r], RN[rt], RN[ra]);
+                        return d;
+                    }
+                    Ik("%s %s, %s, %s", plus ? "add" : "sub", RN[rt], RN[rt], RN[ra]);
+                    ofree(a); tfree(t);
+                    Opnd d = dest(0, hint, &r);
+                    I("shli %s, %s, %d", RN[r], RN[rt], lb);
+                    return d;
+                }
+            }
             break;
         }
         case B_DIV:
@@ -1801,6 +1839,17 @@ static Opnd gen_expr(Expr *e, int hint) {
         }
         case U_ADDR: {
             LV lv = gen_aggr_lv(e->a);
+            if (hint >= 0 && lv.k == LV_MEM && (lv.frame_rel || lv.sym || lv.off || lv.base.k == O_REG)
+                && !(!lv.frame_rel && lv.base.k == O_REG && lv.base.v == 0)) {
+                /* base + offset straight into the destination */
+                lv_fix(&lv);
+                int b = R(&lv.base);
+                if (lv.frame_rel) I("addi %s, %s, %d+\001", RN[hint], RN[b], lv.off);
+                else if (lv.sym) I("addi %s, %s, %s+%d", RN[hint], RN[b], lv.sym, lv.off);
+                else I("addi %s, %s, %d", RN[hint], RN[b], lv.off);
+                lv_free(&lv);
+                return (Opnd){O_REG, hint};
+            }
             Opnd a = lv_addr(&lv);
             if (hint >= 0) { move_to(a, hint, 0); ofree(a); return (Opnd){O_REG, hint}; }
             return a;
@@ -2070,8 +2119,16 @@ static void zero_local(Local *l) {
     lv_free(&lv);
 }
 
+static void set_pool(int p);
+
 static void gen_stmt(Stmt *s) {
     int mark = g_frame;
+    switch (s->k) {
+    case S_VAR: case S_ASSIGN: case S_EXPR: case S_RETURN: case S_IF: case S_FOR: case S_MATCH: case S_ASM:
+        set_pool(s->pos);
+        break;
+    default: break;
+    }
     switch (s->k) {
     case S_BLOCK:
         for (int i = 0; i < s->n; i++) gen_stmt(s->list[i]);
@@ -2168,6 +2225,7 @@ static void gen_stmt(Stmt *s) {
         gen_stmt(s->then);
         g_nloop--;
         put_label(lcond);
+        set_pool(s->pos2);
         if (forever) I("jmp .L%d", ltop);
         else gen_cond(s->e, ltop, 1);
         put_label(lbrk);
@@ -2177,8 +2235,10 @@ static void gen_stmt(Stmt *s) {
         Local *v = s->var, *end = s->for_end;
         LV lv = lv_local(v);
         gen_assign_value(&lv, s->e, v->ty);
-        LV le = lv_local(end);
-        gen_assign_value(&le, s->e2, end->ty);
+        if (!end->dead) {
+            LV le = lv_local(end);
+            gen_assign_value(&le, s->e2, end->ty);
+        }
         int ltop = new_label(), lcont = new_label(), lcond = new_label(), lbrk = new_label();
         I("jmp .L%d", lcond);
         put_label(ltop);
@@ -2186,6 +2246,7 @@ static void gen_stmt(Stmt *s) {
         gen_stmt(s->then);
         g_nloop--;
         put_label(lcont);
+        set_pool(s->pos2);
         LV li_ = lv_local(v);
         Opnd cur = load_lv(&li_, -1);
         int hint = li_.k == LV_REG ? li_.reg : -1;
@@ -2193,8 +2254,10 @@ static void gen_stmt(Stmt *s) {
         LV li2 = lv_local(v);
         store_lv(&li2, nx, v->ty);
         put_label(lcond);
-        LV a = lv_local(v), b = lv_local(end);
-        Opnd oa = load_lv(&a, -1), ob = load_lv(&b, -1);
+        LV a = lv_local(v);
+        Opnd oa = load_lv(&a, -1), ob;
+        if (end->dead) ob = o_imm(s->e2->cval);
+        else { LV b = lv_local(end); ob = load_lv(&b, -1); }
         int ra = R(&oa), rb = R(&ob);
         ra = R(&oa);
         ofree(oa); ofree(ob);
@@ -2430,6 +2493,7 @@ static void live_stmt(Func *f, Stmt *s) {
     case S_VAR: case S_ASSIGN: case S_EXPR: case S_RETURN: {
         g_pos += 2;
         p = g_pos;
+        s->pos = p;
         Expr *call = sole_call(s);
         if (call) {
             iv_push(&g_callpos, p);
@@ -2447,6 +2511,7 @@ static void live_stmt(Func *f, Stmt *s) {
     case S_IF:
         g_pos += 2;
         p = g_pos;
+        s->pos = p;
         live_expr(s->e, p);
         live_stmt(f, s->then);
         live_stmt(f, s->els);
@@ -2454,6 +2519,7 @@ static void live_stmt(Func *f, Stmt *s) {
     case S_WHILE: case S_FOR: {
         g_pos += 2;
         int first = g_pos;
+        s->pos = first;
         live_expr(s->e, first);
         live_expr(s->e2, first);
         if (s->k == S_FOR) {
@@ -2461,14 +2527,17 @@ static void live_stmt(Func *f, Stmt *s) {
                survive any call in the header: start the ranges just before it */
             s->var->start = first - 1;
             s->var->end = first;
+            /* a constant end bound needs no local: the bottom compares with the constant */
+            s->for_end->dead = s->e2->isconst && fits_s18(s->e2->cval);
             s->for_end->start = first - 1;
             s->for_end->end = first;
         }
         live_stmt(f, s->then);
         g_pos += 2;
         int last = g_pos;
+        s->pos2 = last;
         if (s->k == S_WHILE) live_expr(s->e, last);
-        else { use_local(s->var, last); use_local(s->for_end, last); }
+        else { use_local(s->var, last); if (!s->for_end->dead) use_local(s->for_end, last); }
         if (g_nloops == g_caploops) {
             int nc = g_caploops ? g_caploops * 2 : 16;
             LoopRange *nl = ar_alloc(sizeof *nl * (size_t)nc);
@@ -2481,6 +2550,7 @@ static void live_stmt(Func *f, Stmt *s) {
     }
     case S_MATCH:
         g_pos += 2;
+        s->pos = g_pos;
         live_expr(s->e, g_pos);
         for (int i = 0; i < s->narms; i++) live_stmt(f, s->arms[i].body);
         break;
@@ -2489,6 +2559,7 @@ static void live_stmt(Func *f, Stmt *s) {
     case S_ASM:
         g_pos += 2;
         p = g_pos;
+        s->pos = p;
         iv_push(&g_asmpos, p);
         live_asm_refs(f, s->asm_text, p);
         break;
@@ -2531,6 +2602,30 @@ static void reg_take(int slot, Local *l) {
 
 static Local g_iolocal;
 
+/* Is register slot (0-15 scalar, 16-23 vector) held by a local at position p? A local is
+   busy from its start through end + 1 (an argument used just before a call at p - 1 may still
+   be waiting to be read while the statement at p is evaluated). */
+static int reg_busy(int slot, int p) {
+    LocalVec *u = &g_regusers[slot];
+    for (int i = 0; i < u->n; i++) if (u->v[i]->start <= p && u->v[i]->end + (u->v[i]->end & 1) >= p) return 1;
+    return 0;
+}
+
+/* Before a statement at position p (no temporaries are live): registers of locals that are
+   not live there are free for temporaries. */
+static void set_pool(int p) {
+    for (int i = 0; i < g_nspool; i++) {
+        int r = g_spool[i];
+        if (g_rown[r] >= 0) ice("temporary live across statements");
+        g_rown[r] = reg_busy(r, p) ? -2 : -1;
+    }
+    for (int i = 0; i < g_nvpool; i++) {
+        int r = g_vpool[i];
+        if (g_vown[r] >= 0) ice("vector temporary live across statements");
+        g_vown[r] = reg_busy(16 + r, p) ? -2 : -1;
+    }
+}
+
 /* Decides where every local lives and builds the temporary pools. */
 static void assign_homes(Func *f, int *locals_size) {
     g_leaf = !(f->has_call || f->has_asm || f->is_init);
@@ -2566,7 +2661,7 @@ static void assign_homes(Func *f, int *locals_size) {
     g_callpos = g_xfmpos = g_asmpos = (IntVec){0};
     g_nloops = 0;
     g_pos = 0;
-    for (int i = 0; i < f->nlocals; i++) { f->locals[i]->start = 0; f->locals[i]->end = 0; f->locals[i]->home = 0; }
+    for (int i = 0; i < f->nlocals; i++) { f->locals[i]->start = 0; f->locals[i]->end = 0; f->locals[i]->home = 0; f->locals[i]->dead = 0; }
     live_stmt(f, f->body);
     for (int i = 0; i < norder; i++) { order[i]->start = 0; if (order[i]->end < 1) order[i]->end = 0; }
     for (int changed = 1; changed;) {
@@ -2592,6 +2687,7 @@ static void assign_homes(Func *f, int *locals_size) {
     for (int i = 0; i < f->nlocals; i++) {
         Local *l = f->locals[i];
         int byref = ty_is_aggr(l->ty) && l->is_param;
+        if (l->dead) continue;
         if (l->addr_taken && !byref) continue;
         if (ty_is_scalar(l->ty) || byref || is_v(l->ty)) cand[nc++] = l;
     }
@@ -2614,6 +2710,10 @@ static void assign_homes(Func *f, int *locals_size) {
         Local *l = order[i];
         if (l->in_reg_arg && !is_v(l->ty) && !l->crosses_call && !(l->addr_taken && !ty_is_aggr(l->ty))) argmask |= 1 << l->arg_reg;
     }
+    /* scalar registers held by locals at each position: at least REG_RESERVE of r1-r13 stay
+       free for expression temporaries everywhere */
+    int npos = g_pos + 3;
+    int *occ = ar_alloc(sizeof(int) * (size_t)npos);
     for (int i = 0; i < nc; i++) {
         Local *l = cand[i];
         int list[16], n = 0;
@@ -2629,14 +2729,22 @@ static void assign_homes(Func *f, int *locals_size) {
         }
         if (l->crosses_call || l->in_asm) { for (int r = 9; r <= 13; r++) list[n++] = r; }
         else {
-            /* parameters keep their argument register; other locals avoid argument registers */
+            /* parameters keep their argument register; other locals avoid argument registers,
+               and prefer caller-saved registers (callee-saved ones cost a save and a restore) */
             if (l->is_param && l->in_reg_arg) list[n++] = l->arg_reg;
-            for (int r = 1; r <= 4; r++) if (!(argmask >> r & 1)) list[n++] = r;
+            for (int r = 1; r <= 8; r++) if (!(argmask >> r & 1)) list[n++] = r;
             for (int r = 9; r <= 13; r++) list[n++] = r;
-            for (int r = 1; r <= 4; r++) if (argmask >> r & 1) list[n++] = r;
+            for (int r = 1; r <= 8; r++) if (argmask >> r & 1) list[n++] = r;
         }
-        for (int k = 0; k < n; k++)
-            if (reg_free_for(list[k], l)) { l->home = 1; l->reg = list[k]; reg_take(list[k], l); sused |= 1 << list[k]; break; }
+        int lo = l->start < 0 ? 0 : l->start, hi = (l->end & 1 ? l->end + 1 : l->end) < npos ? (l->end & 1 ? l->end + 1 : l->end) : npos - 1;
+        int fits = 1;
+        if (!l->in_asm) for (int p = lo; p <= hi && fits; p++) if (occ[p] >= 13 - REG_RESERVE) fits = 0;
+        for (int k = 0; k < n && fits; k++)
+            if (reg_free_for(list[k], l)) {
+                l->home = 1; l->reg = list[k]; reg_take(list[k], l); sused |= 1 << list[k];
+                for (int p = lo; p <= hi; p++) occ[p]++;
+                break;
+            }
         if (!l->home && l->in_asm) error_at(l->loc, "too many locals named in asm blocks: '%s' cannot get a register", l->name);
     }
     if (f->uses_io >= 2 && g_iolocal.home == 1) g_iobase_reg = g_iolocal.reg;
@@ -2647,6 +2755,7 @@ static void assign_homes(Func *f, int *locals_size) {
         Local *l = f->locals[i];
         if (l->home) continue;
         if (l->is_param && !l->in_reg_arg) continue;   /* stays in the caller's frame */
+        if (l->dead) continue;
         int size = (ty_is_aggr(l->ty) && l->is_param) ? 4 : l->ty->size;
         off = (off + 3) & ~3;
         l->off = off;
@@ -2654,20 +2763,14 @@ static void assign_homes(Func *f, int *locals_size) {
     }
     *locals_size = off - g_out_size;
 
-    /* temporary pools: everything no local uses */
+    /* temporary pools: every register; set_pool() makes those of the locals live at the
+       statement being generated unavailable */
     g_nspool = g_nvpool = 0;
     static const int sorder[] = {5, 6, 7, 8, 1, 2, 3, 4, 9, 10, 11, 12, 13};
-    for (size_t k = 0; k < sizeof sorder / sizeof sorder[0]; k++) {
-        int r = sorder[k];
-        if (sused >> r & 1) continue;
-        g_spool[g_nspool++] = r;
-        g_rown[r] = -1;
-    }
-    for (int r = 0; r < 8; r++) {
-        if (vused >> r & 1) continue;
-        g_vpool[g_nvpool++] = r;
-        g_vown[r] = -1;
-    }
+    for (size_t k = 0; k < sizeof sorder / sizeof sorder[0]; k++) g_spool[g_nspool++] = sorder[k];
+    for (int r = 0; r < 8; r++) g_vpool[g_nvpool++] = r;
+    set_pool(0);
+    (void)vused;
     g_saved = sused & 0x3E00;
 }
 
@@ -2714,6 +2817,133 @@ static void gen_asm_func(Func *f, Buf *out) {
     }
     buf_puts(out, "    ; @end\n    ret\n");
     buf_free(&b);
+}
+
+/* ---- peephole: a pass over the generated text of one function. Only neighbouring
+   instructions are combined (a label between them is a join point and stops a pattern), and
+   inline asm (between "; @asm" and "; @end") is left alone. */
+
+typedef struct { char *s; int dead; } PLine;
+
+/* "    op a, b, c" -> op and up to 3 operands; returns the operand count, or -1 (label, comment) */
+static int pl_parse(const char *s, char *op, char ops[3][64]) {
+    while (*s == ' ') s++;
+    if (*s == '.' || *s == ';' || !*s) return -1;
+    int n = 0;
+    while (*s && *s != ' ' && n < 15) op[n++] = *s++;
+    op[n] = 0;
+    int k = 0;
+    while (*s == ' ') s++;
+    while (*s && k < 3) {
+        int m = 0, depth = 0;
+        while (*s && (depth || *s != ',') && m < 63) { if (*s == '[') depth++; if (*s == ']') depth--; ops[k][m++] = *s++; }
+        ops[k][m] = 0;
+        k++;
+        if (*s == ',') s++;
+        while (*s == ' ') s++;
+    }
+    return k;
+}
+
+/* RAM that only this program's code touches: a frame slot or a global by its label. */
+static int pl_plain_mem(const char *m) { return !strncmp(m, "[sp+", 4) || !strncmp(m, "[r0+G_", 6); }
+
+static const char *pl_inverse(const char *b) {
+    static const char *pairs[][2] = {{"beq", "bne"}, {"bne", "beq"}, {"blt", "bge"}, {"bge", "blt"}, {"bltu", "bgeu"}, {"bgeu", "bltu"}};
+    for (size_t i = 0; i < sizeof pairs / sizeof pairs[0]; i++) if (!strcmp(b, pairs[i][0])) return pairs[i][1];
+    return NULL;
+}
+
+static void peephole(Buf *body) {
+    if (!body->p || !body->len) return;
+    int n = 0, cap = 256;
+    PLine *L = malloc(sizeof *L * (size_t)cap);
+    for (char *p = body->p; *p;) {
+        char *e = strchr(p, '\n');
+        size_t len = e ? (size_t)(e - p) : strlen(p);
+        if (n == cap) { cap *= 2; L = realloc(L, sizeof *L * (size_t)cap); }
+        L[n].s = ar_strndup(p, len);
+        L[n].dead = 0;
+        n++;
+        p += len + (e ? 1 : 0);
+    }
+    /* inline asm is not touched */
+    char *inasm = calloc((size_t)n + 1, 1);
+    for (int i = 0, in = 0; i < n; i++) {
+        if (strstr(L[i].s, "; @asm")) in = 1;
+        inasm[i] = (char)in;
+        if (strstr(L[i].s, "; @end")) in = 0;
+    }
+    char op1[16], op2[16], a[3][64], b[3][64];
+    for (int pass = 0; pass < 4; pass++) {
+        int changed = 0;
+        for (int i = 0; i < n; i++) {
+            if (L[i].dead || inasm[i]) continue;
+            int na = pl_parse(L[i].s, op1, a);
+            if (na < 0) continue;
+            if (!strcmp(op1, "mov") && na == 2 && !strcmp(a[0], a[1])) { L[i].dead = 1; changed = 1; continue; }
+            int j = i + 1;
+            while (j < n && L[j].dead) j++;
+            if (j >= n || inasm[j]) continue;
+            int nb = pl_parse(L[j].s, op2, b);
+            if (nb < 0) {
+                /* jmp .Lx straight into .Lx (possibly among other labels) */
+                if (!strcmp(op1, "jmp") && na == 1) {
+                    for (int k = j; k < n && (L[k].dead || L[k].s[0] == '.'); k++) {
+                        if (L[k].dead) continue;
+                        size_t ll = strlen(a[0]);
+                        if (!strncmp(L[k].s, a[0], ll) && L[k].s[ll] == ':' && !L[k].s[ll + 1]) { L[i].dead = 1; changed = 1; break; }
+                    }
+                }
+                continue;
+            }
+            /* sw rA, M; lw rB, M  ->  sw rA, M; mov rB, rA */
+            if (!strcmp(op1, "sw") && !strcmp(op2, "lw") && na == 2 && nb == 2 && !strcmp(a[1], b[1]) && pl_plain_mem(a[1])) {
+                L[j].s = strcmp(a[0], b[0]) ? ar_printf("    mov %s, %s", b[0], a[0]) : L[j].s;
+                if (!strcmp(a[0], b[0])) L[j].dead = 1;
+                changed = 1;
+                continue;
+            }
+            /* ld rA, M; ld rB, M  ->  ld rA, M; mov rB, rA   (rA is not M's base) */
+            if (!strcmp(op1, op2) && (!strcmp(op1, "lw") || !strcmp(op1, "lbu") || !strcmp(op1, "lhu") || !strcmp(op1, "lb") || !strcmp(op1, "lh"))
+                && na == 2 && nb == 2 && !strcmp(a[1], b[1]) && pl_plain_mem(a[1])) {
+                if (!strcmp(a[0], b[0])) L[j].dead = 1;
+                else L[j].s = ar_printf("    mov %s, %s", b[0], a[0]);
+                changed = 1;
+                continue;
+            }
+            /* shli rA, rB, k1; shli rA, rA, k2  ->  shli rA, rB, k1 + k2 */
+            if (!strcmp(op1, op2) && (!strcmp(op1, "shli") || !strcmp(op1, "shri")) && na == 3 && nb == 3
+                && !strcmp(a[0], b[0]) && !strcmp(b[1], a[0])) {
+                int k = atoi(a[2]) + atoi(b[2]);
+                if (k <= 31) {
+                    L[i].dead = 1;
+                    L[j].s = ar_printf("    %s %s, %s, %d", op1, a[0], a[1], k);
+                    changed = 1;
+                    continue;
+                }
+            }
+            /* bCC x, y, .L1; jmp .L2; .L1:  ->  bNCC x, y, .L2; .L1: */
+            if (na == 3 && pl_inverse(op1) && !strcmp(op2, "jmp") && nb == 1) {
+                int k = j + 1;
+                while (k < n && L[k].dead) k++;
+                size_t ll = strlen(a[2]);
+                if (k < n && !strncmp(L[k].s, a[2], ll) && L[k].s[ll] == ':' && !L[k].s[ll + 1]) {
+                    L[i].s = ar_printf("    %s %s, %s, %s", pl_inverse(op1), a[0], a[1], b[0]);
+                    L[j].dead = 1;
+                    changed = 1;
+                    continue;
+                }
+            }
+        }
+        if (!changed) break;
+    }
+    Buf o = {0};
+    for (int i = 0; i < n; i++) if (!L[i].dead) { buf_puts(&o, L[i].s); buf_putc(&o, '\n'); }
+    free(L);
+    free(inasm);
+    buf_free(body);
+    *body = o;
 }
 
 static void gen_func(Func *f, Buf *out) {
@@ -2764,7 +2994,14 @@ static void gen_func(Func *f, Buf *out) {
             if (l->reg != l->arg_reg) vmv[nvm++] = (Move){l->arg_reg, l->reg};
         }
     }
-    parallel_move(mv, nm, 0, 5);
+    {
+        /* a scratch register for breaking cycles: one no move involves */
+        int busy = 0, scratch = -1;
+        for (int i = 0; i < nm; i++) busy |= 1 << mv[i].src | 1 << mv[i].dst;
+        for (int r = 1; r <= 13 && scratch < 0; r++) if (!(busy >> r & 1)) scratch = r;
+        if (nm && scratch < 0) ice("no scratch register for the parameter moves");
+        parallel_move(mv, nm, 0, scratch);
+    }
     int vscratch = 7;
     while (vscratch > 0 && (vbusy >> vscratch & 1)) vscratch--;
     parallel_move(vmv, nvm, 1, vscratch);
@@ -2777,6 +3014,7 @@ static void gen_func(Func *f, Buf *out) {
     if (g_iobase_reg >= 0) I("lui %s, %u", RN[g_iobase_reg], IO_BASE_ADDR >> 10);
 
     gen_stmt(f->body);
+    peephole(&g_body);
 
     /* frame layout: [out args][locals][temps][saved regs][ra] */
     int nonleaf = !g_leaf;
