@@ -12,7 +12,8 @@
 #define VRAM_BASE  0x400000u
 #define VRAM_SIZE  0x100000u
 #define IO_BASE    0xFF0000u
-#define IO_SIZE    0x600u   /* 0x400-0x5FF: audio channels 8-15 and global audio registers */
+#define IO_SIZE    0x800u   /* 0x400-0x5FF: audio channels 8-15 and global audio registers;
+                               0x700-0x7FF: the plane chip */
 
 /* VRAM layout (absolute addresses) */
 #define FB_A_ADDR     0x400000u
@@ -64,6 +65,31 @@
 #define IO_SYS_TIME    0x318   /* extension: local time of day, seconds since midnight */
 #define IO_SYS_DATE    0x31C   /* extension: local date */
 #define IO_CARD        0x380   /* extension: memory card controller, 0x380-0x39F */
+
+/* The plane chip (docs/PLANES.md), 0x700-0x7FF. Offsets below are from IO_PLANES. */
+#define IO_PLANES      0x700
+#define PLN_CTRL       0x00    /* 0 compositor on, 1 auto-erase at vsync, 2 dither the backdrop */
+#define PLN_LAYERS     0x04    /* 0-2 BG0-BG2 on, 3 polygon layer hidden */
+#define PLN_PRIO       0x08
+#define PLN_MATH       0x0C
+#define PLN_OFS        0x10
+#define PLN_BD_COLOR   0x14
+#define PLN_ERASE      0x18
+#define PLN_BG0        0x20    /* BGn registers at PLN_BG0 + n * 0x20 */
+#define PLN_BG_MODE    0x00
+#define PLN_BG_TILES   0x04
+#define PLN_BG_MAP     0x08
+#define PLN_BG_SCROLL  0x0C    /* BG0, BG1 */
+#define PLN_BG_WINX    0x10
+#define PLN_BG_WINY    0x14
+#define PLN_BG2_U0     0x78    /* U0 V0 DUX DVX DUY DVY, 16.16 */
+#define PLN_BG2_V0     0x7C
+#define PLN_BG2_DUX    0x80
+#define PLN_BG2_DVX    0x84
+#define PLN_BG2_DUY    0x88
+#define PLN_BG2_DVY    0x8C
+#define PLN_LC         0xA0    /* line channel n: ADDR at PLN_LC + 8n, CTRL at PLN_LC + 8n + 4 */
+#define PLN_HOLE       0x8000u /* a framebuffer pixel with no polygon (compositor on) */
 
 #define GPU_TRI_LIMIT      2000
 #define GPU_LIST_LIMIT     65536
@@ -150,6 +176,11 @@ struct Mei {
     int audio_frames;
     uint32_t audio_phase;    /* sub-sample accounting for 22050 / 60 */
     MeiReverb rev;
+
+    /* Plane chip (planes.c) */
+    uint32_t pln_reg[64];    /* 0xFF0700-0xFF07FC as the CPU last wrote them */
+    int pln_shown;           /* the compositor was on at the last vsync: mei_display shows pln_out */
+    uint16_t pln_out[MEI_W * MEI_H];   /* the composite (host side; the CPU never sees it) */
 };
 
 /* ---- bus.c ---- memory map, I/O dispatch, fault checks.
@@ -181,6 +212,13 @@ void gpu_vsync(Mei *m);                      /* swap buffers, reset triangle cou
 uint32_t gpu_back_addr(const Mei *m);
 const uint16_t *gpu_front(Mei *m);
 void gpu_render_error_screen(Mei *m);        /* fills m->error_screen from m->fault + registers */
+
+/* ---- planes.c ---- the plane chip: tile and affine planes composited at vsync */
+void planes_reset(Mei *m);
+int planes_io_read(Mei *m, uint32_t off, uint32_t *out);   /* off relative to IO_PLANES; -1 = unmapped */
+int planes_io_write(Mei *m, uint32_t off, uint32_t val);   /* -1 unmapped */
+void planes_vsync(Mei *m);       /* after gpu_vsync: compose the new front buffer, then auto-erase */
+static inline int planes_on(const Mei *m) { return m->pln_reg[PLN_CTRL / 4] & 1; }
 
 /* ---- card.c ---- */
 int card_io_read(Mei *m, uint32_t off, uint32_t *out);    /* off relative to IO_CARD; -1 = unmapped */

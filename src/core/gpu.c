@@ -52,7 +52,7 @@ void gpu_vsync(Mei *m) {
 void gpu_clear(Mei *m, uint32_t colour) {
     m->gstat.clears++;
     uint8_t *fb = m->vram + FB_OFF(gpu_back_addr(m));
-    uint16_t c = (uint16_t)(colour & 0x7FFF);
+    uint16_t c = (uint16_t)(colour & (planes_on(m) ? 0xFFFF : 0x7FFF));   /* 16 bits: holes */
     for (int i = 0; i < MEI_W * MEI_H; i++) st16(fb + 2 * i, c);
 }
 
@@ -70,6 +70,7 @@ typedef struct {
     int32_t flat[3];   /* polygon colour when not Gouraud */
     uint32_t slot;     /* byte offset of the texture slot within the texture area */
     uint32_t pal;      /* first palette colour index */
+    uint16_t upper;    /* 0x8000: the packet draws into the PH layer (compositor on, colour bit 26) */
 } Raster;
 
 static int64_t floor_div(int64_t n, int64_t d) {
@@ -142,7 +143,9 @@ static FORCE_INLINE void shade(const Raster *R, uint8_t *row, int x, const int8_
         default: r = clamp31(br + (r >> 2)); g = clamp31(bgr + (g >> 2)); b = clamp31(bb + (b >> 2)); break;
         }
     }
-    st16(row + x * 2, (uint16_t)(r | g << 5 | b << 10));
+    uint16_t out = (uint16_t)(r | g << 5 | b << 10) | R->upper;
+    if (out == PLN_HOLE) out = 0x8400;   /* upper black: never a hole (blue 1 of 31) */
+    st16(row + x * 2, out);
 }
 
 /* Fast span: acc[k] holds attribute k in F-bit fixed point at x0, step[k] per pixel. */
@@ -370,6 +373,7 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
     R.flat[2] = vx[0].a[2];
     R.slot = ((tex0 >> 16) & 15) * TEXTURE_SLOT_BYTES;
     R.pal = R.four ? (tex0 >> 24) * 16 : ((tex0 >> 24) & 15) * 256;
+    R.upper = (planes_on(m) && (col0 >> 26 & 1)) ? 0x8000 : 0;
 
     for (int t = 0; t < (quad ? 2 : 1); t++) {
         if ((m->gpu_status & 0xFFFF) >= GPU_TRI_LIMIT) { m->gpu_status |= GPU_STATUS_DROPPED; m->gstat.tris_dropped++; continue; }

@@ -48,6 +48,7 @@ void mei_reset(Mei *m) {
     memset(m->pad_buttons, 0, sizeof m->pad_buttons);
     memset(m->pad_stick, 0, sizeof m->pad_stick);
     gpu_reset(m);
+    planes_reset(m);
     audio_reset(m);
     if (m->rom_len == 0) {
         mei_raise(m, MEI_FAULT_NO_CART, 0);
@@ -138,6 +139,7 @@ int mei_run_frame(Mei *m) {
             m->gstat_last = m->gstat;
             memset(&m->gstat, 0, sizeof m->gstat);
             gpu_vsync(m);
+            planes_vsync(m);     /* compose the frame just drawn, then auto-erase */
             for (int i = 0; i < 2; i++) {
                 m->pad_buttons[i] = m->pad_pending[i].buttons;
                 latch_stick(&m->pad_pending[i], m->pad_stick[i]);
@@ -158,7 +160,8 @@ int mei_run_frame(Mei *m) {
 }
 
 const uint16_t *mei_display(Mei *m) {
-    return m->fault.kind ? m->error_screen : gpu_front(m);
+    if (m->fault.kind) return m->error_screen;
+    return m->pln_shown ? m->pln_out : gpu_front(m);
 }
 
 int mei_audio(Mei *m, const int16_t **samples) {
