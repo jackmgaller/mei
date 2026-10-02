@@ -85,8 +85,8 @@ fn draw_lake() {
         if screen == Screen.Fish || screen == Screen.Menu { mesh_at(BOBBER, lure, 0.0) }
     }
     draw_leaping_fish()
-    // the glows and sparks, additive over the world as before the planes; over the open water
-    // they blend with the backdrop (the mirrored sky) and hide the water plane under them
+    // the glows and sparks, additive over the world as before the planes; where they lie over
+    // the water (a hole or a low pixel), the chip blends them with the water as composed there
     draw_lantern_glows(false)
     draw_splashes()
     draw_fireflies()

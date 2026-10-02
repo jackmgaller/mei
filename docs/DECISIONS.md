@@ -65,7 +65,7 @@ and texture coordinates are interpolated affinely (barycentric in screen space) 
 integer arithmetic. A 15-bit palette colour is expanded to 8 bits per channel as
 `(c << 3) | (c >> 2)` before tinting. Tint: `min(255, texel × colour / 128)`. Then dither
 (if `GPU_CTRL` bit 0) or not, then reduce to 5 bits, then blend if semi-transparent.
-Written pixels always have bit 15 clear, except while the plane compositor is on (`PLN_CTRL` bit 0), when bit 15 is the polygon priority bit, `0x8000` is a hole, and a blend over a hole blends with that line's backdrop colour ([PLANES.md](PLANES.md)).
+Written pixels always have bit 15 clear, except while the plane compositor is on (`PLN_CTRL` bit 0), when bit 15 is the polygon priority bit, `0x8000` is a hole, and a blend over a hole (or, upper, over a lower pixel) blends with the composite of the layers behind its layer ([PLANES.md](PLANES.md)).
 
 **Triangle limit.** Counted per triangle: a quad whose first half is the 2,000th
 triangle draws that half and drops the second.

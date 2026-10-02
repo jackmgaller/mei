@@ -1005,13 +1005,16 @@ static int ref_backdrop(int y, int x) {
     return out;
 }
 static int ref_c31(int v) { return v < 0 ? 0 : v > 31 ? 31 : v; }
-static uint16_t ref_pixel(const uint16_t *front, int x, int y) {
+/* The composite at (x, y) with framebuffer pixel f. below = 3 (PL) or 4 (PH): only the layers
+ * behind that layer, without the colour offset (rev 2: what a blended packet of that layer
+ * blends with); -1: the whole stack, as composed. */
+static uint16_t ref_stack(uint16_t f, int x, int y, int below) {
     struct { int layer, prio, order, col; } c[4];
     int nc = 0;
     static const int order[5] = {2, 1, 0, 3, 4};
     uint32_t layers = ref_W(y, 4), prio = ref_W(y, 8), math = ref_W(y, 12), ofs = ref_W(y, 16);
-    if (!(layers & 8)) {
-        uint16_t f = front[y * MEI_W + x];
+    int cp = below < 0 ? 99 : (int)(prio >> (below == 4 ? 28 : 24)) & 15, co = below < 0 ? 0 : order[below];
+    if (!(layers & 8) || below >= 0) {
         if (f != 0x8000) {
             int L = (f & 0x8000) ? 4 : 3;
             c[nc].layer = L; c[nc].prio = (int)(prio >> (L == 4 ? 28 : 24)) & 15; c[nc].order = order[L]; c[nc].col = f & 0x7FFF; nc++;
@@ -1025,6 +1028,8 @@ static uint16_t ref_pixel(const uint16_t *front, int x, int y) {
         if (col < 0) continue;
         c[nc].layer = n; c[nc].prio = (int)(prio >> (8 * n + (hi ? 4 : 0))) & 15; c[nc].order = order[n]; c[nc].col = col; nc++;
     }
+    for (int i = 0; i < nc; i++)   /* drop what is not behind the cut */
+        if (c[i].prio > cp || (c[i].prio == cp && c[i].order >= co)) { c[i] = c[nc - 1]; nc--; i--; }
     int a = -1, b = -1;
     for (int i = 0; i < nc; i++) {
         int better_a = a < 0 || c[i].prio > c[a].prio || (c[i].prio == c[a].prio && c[i].order > c[a].order);
@@ -1044,13 +1049,14 @@ static uint16_t ref_pixel(const uint16_t *front, int x, int y) {
         }
         out = r;
     }
-    if ((math >> (24 + layer)) & 1) {
+    if (below < 0 && (math >> (24 + layer)) & 1) {
         int r = 0;
         for (int k = 0; k < 3; k++) r |= ref_c31(((out >> (5 * k)) & 31) + (int8_t)(ofs >> (8 * k))) << (5 * k);
         out = r;
     }
     return (uint16_t)out;
 }
+static uint16_t ref_pixel(const uint16_t *front, int x, int y) { return ref_stack(front[y * MEI_W + x], x, y, -1); }
 
 /* ================================================================ blends over holes (rev 2) */
 
@@ -1184,6 +1190,131 @@ static void test_blend_over_hole(void) {
     quad(0, 0, 10, 10, RGB(80, 80, 80) | 1u << 24, 1);
     list_draw();
     CHECK_EQ(back_get(5, 5), C15(10, 10, 10));
+}
+
+/* Rev 2, in full: a blended pixel over a hole, or an upper one over a lower pixel, blends with
+ * the composite of the layers behind its own layer (planes, backdrop, the lower pixel; their
+ * colour math; no offset). */
+static void test_blend_under(void) {
+    setup();
+    m->gpu_ctrl = 0;
+    pal_identity();
+    tile4(ATLAS4, 1, pat_solid);
+    for (int i = 0; i < 32 * 32; i++) wr16(V(MAP2) + 2 * i, 1);
+    reg(BG(2, PLN_BG_MODE), 3u << 8);                 /* BG2 shows 48 + 9 = 57: (25, 1, 0) */
+    reg(BG(2, PLN_BG_TILES), ATLAS4);
+    reg(BG(2, PLN_BG_MAP), MAP2);
+    affine(0, 0, 1 << 16, 0, 0, 1 << 16);
+    reg(PLN_CTRL, 1);
+    reg(PLN_LAYERS, 4);
+    reg(PLN_PRIO, 1u << 16 | 2u << 28);               /* PL 0 < BG2 1 < PH 2: a water plane */
+    reg(PLN_MATH, 4u << 8);                           /* BG2 half */
+    reg(PLN_BD_COLOR, RGB(80, 160, 240));             /* (10, 20, 30) */
+    back_fill(0x8000);
+    list_begin();
+    quad(0, 0, 10, 10, RGB(80, 80, 80) | 1u << 24 | UPPER, 1);       /* PH over a hole: the water */
+    quad(10, 0, 20, 10, RGB(80, 80, 80) | 1u << 24, 1);              /* PL over a hole: the backdrop */
+    quad(20, 0, 30, 10, RGB(64, 64, 64), 0);                         /* a PL pixel ... */
+    quad(20, 0, 30, 10, RGB(80, 80, 80) | 1u << 24 | UPPER, 1);      /* ... PH over it: water over it */
+    quad(30, 0, 40, 10, RGB(64, 64, 64), 0);
+    quad(30, 0, 40, 10, RGB(80, 80, 80) | 1u << 24, 1);              /* PL over PL: as ever */
+    quad(40, 0, 50, 10, RGB(64, 64, 64) | UPPER, 0);
+    quad(40, 0, 50, 10, RGB(80, 80, 80) | 1u << 24 | UPPER, 1);      /* PH over PH: as ever */
+    quad(50, 0, 60, 10, RGB(64, 64, 64) | UPPER, 0);
+    quad(50, 0, 60, 10, RGB(80, 80, 80) | 1u << 24, 1);              /* PL over PH: as ever */
+    list_draw();
+    CHECK_EQ(back_get(5, 5), 0x8000 | C15(27, 20, 25));   /* (17, 10, 15) + 10 */
+    CHECK_EQ(back_get(15, 5), C15(20, 30, 31));
+    CHECK_EQ(back_get(25, 5), 0x8000 | C15(26, 14, 14));  /* (16, 4, 4) + 10 */
+    CHECK_EQ(back_get(35, 5), C15(18, 18, 18));
+    CHECK_EQ(back_get(45, 5), 0x8000 | C15(18, 18, 18));
+    CHECK_EQ(back_get(55, 5), C15(18, 18, 18));
+    /* BG2 behind the low polygons (priority 0, ties behind PL): a PL blend sees it too */
+    reg(PLN_PRIO, 2u << 28);
+    back_fill(0x8000);
+    list_begin();
+    quad(0, 0, 10, 10, RGB(80, 80, 80) | 1u << 24, 1);
+    list_draw();
+    CHECK_EQ(back_get(5, 5), C15(27, 20, 25));
+    /* outside BG2's window, and with BG2 off: the backdrop; the offset is not applied */
+    reg(PLN_PRIO, 1u << 16 | 2u << 28);
+    reg(BG(2, PLN_BG_WINX), 100);
+    reg(PLN_MATH, 4u << 8 | 1u << 28 | 1u << 26);         /* offsets on PH and BG2 */
+    reg(PLN_OFS, 0x050505);
+    back_fill(0x8000);
+    list_begin();
+    quad(0, 0, 10, 10, RGB(80, 80, 80) | 1u << 24 | UPPER, 1);
+    quad(100, 0, 110, 10, RGB(80, 80, 80) | 1u << 24 | UPPER, 1);
+    list_draw();
+    CHECK_EQ(back_get(5, 5), 0x8000 | C15(20, 30, 31));
+    CHECK_EQ(back_get(105, 5), 0x8000 | C15(27, 20, 25));
+    const uint16_t *d = present();
+    CHECK_EQ(d[5 * MEI_W + 105], C15(31, 25, 30));       /* the offset applies once, to PH */
+
+    /* random registers, tables, maps and framebuffers; a full-screen blended quad of each
+     * layer and mode against the reference */
+    int bad = 0;
+    for (int iter = 0; iter < 24; iter++) {
+        setup();
+        m->gpu_ctrl = 0;
+        for (int i = 0; i < 4096; i++) pal(i, (uint16_t)(rnd32() & 0x7FFF));
+        for (uint32_t a = 0x44E000; a < 0x490000; a += 4) wr32(V(a), rnd32() & (rnd(0, 3) ? 0xFFFFFFFFu : 0));
+        uint16_t *fr = (uint16_t *)(void *)back();
+        for (int i = 0; i < MEI_W * MEI_H; i++) fr[i] = rnd(0, 2) ? 0x8000 : (uint16_t)rnd32();
+        uint32_t r[64] = {0};
+        r[0] = 1 | (uint32_t)rnd(0, 1) << 2;
+        r[1] = rnd32() & 15;
+        r[2] = rnd32();
+        r[3] = rnd32() & 0x3F0FFFFF;
+        r[4] = rnd32();
+        r[5] = rnd32();
+        static const uint32_t maps[] = {0x450000, 0x452000, 0x454000, 0x458000};
+        static const uint32_t pages[] = {0x460000, 0x468000, 0x470000, 0x478000, 0x480000};
+        for (int n = 0; n < 3; n++) {
+            uint32_t b = (0x20 + 0x20 * (uint32_t)n) / 4;
+            r[b] = rnd32() & 0x3FF3F;
+            r[b + 1] = pages[rnd(0, 4)];
+            r[b + 2] = maps[rnd(0, 3)];
+            if (n < 2) r[b + 3] = rnd32();
+            if (rnd(0, 2) == 0) { r[b + 4] = (uint32_t)rnd(0, 60) | (uint32_t)rnd(0, 60) << 16; r[b + 5] = (uint32_t)rnd(0, 50) | (uint32_t)rnd(0, 50) << 8; }
+        }
+        for (int k = 0; k < 6; k++) r[0x78 / 4 + k] = rnd(0, 1) ? rnd32() : (uint32_t)(rnd(-0x30000, 0x30000));
+        /* line channels, but never onto the tile and map registers: a random map could lie in
+         * the framebuffer being drawn, which the GPU reads as it stands mid-draw */
+        static const uint8_t tg[] = {0x04, 0x08, 0x0C, 0x10, 0x14, 0x20, 0x2C, 0x30, 0x34, 0x40, 0x4C, 0x50, 0x54, 0x60, 0x70, 0x74, 0x78, 0x7C, 0x80, 0x84, 0x88, 0x8C};
+        int nch = rnd(0, 4);
+        for (int i = 0; i < nch; i++) {
+            int ch = rnd(0, 7), t = tg[rnd(0, (int)sizeof tg - 1)];
+            int nw = (t <= 0x0C || t >= 0x78) ? rnd(0, (0x90 - t) / 4 - 1 < 3 ? (0x90 - t) / 4 - 1 : 3) : 0;
+            if (t <= 0x0C && nw > 1) nw = 1;
+            r[(0xA0 + 8 * ch) / 4] = 0x44E000 + (uint32_t)rnd(0, 0x1000) * 4;
+            r[(0xA4 + 8 * ch) / 4] = 0x8000 | (uint32_t)nw << 8 | (uint32_t)t;
+        }
+        for (int i = 0; i < 64; i++) {
+            m->pln_reg[i] = r[i];
+            ref_reg[i] = r[i];
+        }
+        static uint16_t before[MEI_W * MEI_H];
+        memcpy(before, fr, sizeof before);
+        int upper = iter & 1, mode = (iter >> 1) & 3;
+        int cr = rnd(0, 255), cg = rnd(0, 255), cb = rnd(0, 255);
+        list_begin();
+        quad(0, 0, 320, 240, RGB(cr, cg, cb) | (uint32_t)mode << 24 | (upper ? UPPER : 0), 1);
+        list_draw();
+        int a = C15(cr >> 3, cg >> 3, cb >> 3);
+        for (int y = 0; y < MEI_H; y++)
+            for (int x = 0; x < MEI_W; x += (iter < 8 ? 1 : 5)) {
+                uint16_t f = before[y * MEI_W + x];
+                int dst = (f == 0x8000 || (upper && !(f & 0x8000))) ? ref_stack(f, x, y, upper ? 4 : 3) : (f & 0x7FFF);
+                uint16_t want = (uint16_t)(ref_blend(dst, a, mode) | (upper ? 0x8000 : 0));
+                if (want == 0x8000) want = 0x8400;
+                if (fr[y * MEI_W + x] != want) {
+                    if (!bad) printf("  under %d: (%d, %d) = 0x%04X, reference 0x%04X (f 0x%04X)\n", iter, x, y, fr[y * MEI_W + x], want, f);
+                    bad++;
+                }
+            }
+    }
+    CHECK_EQ(bad, 0);
 }
 
 static void test_reference_random(void) {
@@ -1356,6 +1487,7 @@ int main(void) {
     test_colour_math();
     test_colour_math_exact();
     test_blend_over_hole();
+    test_blend_under();
     test_reference_random();
     test_display_path();
     if (!getenv("MEI_NO_BENCH")) bench();

@@ -280,8 +280,8 @@ tint, or a haze over one polygon group, at no fill cost.
 
 **Left out:** ratio blends (the Saturn's 32 levels), three-way blending, two independent offsets,
 shadow and highlight, mosaic, window logic (AND/OR of windows, sprite windows), line colour
-screens, bitmap (direct-colour) planes, and per-pixel blending of semi-transparent polygons with
-the planes (see below).
+screens and bitmap (direct-colour) planes. Semi-transparent polygons blend with the planes behind
+them as the GPU draws (rev 2, see below), not as the compositor composes.
 
 ## The polygon layer and compositing
 
@@ -309,24 +309,56 @@ PlayStation (its mask bit) and the Saturn (sprite priority bits in the framebuff
 With the compositor off, the GPU ignores bit 26, writes bit 15 clear and `GPU_CLEAR` writes bits
 0–14, exactly as today.
 
-**Blending polygons over holes (rev-2 chip fix).** A semi-transparent polygon blends with the
-framebuffer only. While the compositor is on, a blended pixel that lands on a hole blends with
-**that line's backdrop colour** instead: the colour the compositor would show in the hole, with
-the line channels' `BD_COLOR` for that line and the backdrop dither (`PLN_CTRL` bit 2) at that
-pixel, but without the colour offset. The registers and line tables are read as they stand when
-the GPU draws the packet, so a cart writes its backdrop table before drawing the blended polygons
-over it. The result is an ordinary pixel of the packet's layer, not a hole, and it hides whatever
-plane would have shown there.
+**Blending polygons with the layers behind them (rev-2 chip fix).** A semi-transparent polygon
+blends with the framebuffer pixel under it. While the compositor is on, two cases change:
 
-This deviates from the Saturn. On VDP1 a translucent sprite over an empty framebuffer pixel
-blended with the empty pixel's colour, black, which is the well-known VDP1 transparency gap; the
-first revision of this chip kept it. The Lantern Lake port showed that every glow and translucent
-panel over the sky went dark, and that the software workaround (opaque "underlays" in the
-backdrop's colours under every blended effect) cost 55–70k GPU model cycles a frame, so the
-second revision does in the GPU what the underlays did. A blend over a plane still needs plane
-colour math, or opaque polygon pixels under it: the GPU never sees the planes. Over an upper black
-pixel (`0x8400`) a blend is a blend over that pixel (blue 1), as before; only exactly `0x8000` is
-a hole. With the compositor off nothing changes: a blend reads bits 0–14 of whatever is there.
+- a blended pixel that lands on a **hole**;
+- an **upper** (PH) blended pixel that lands on a **lower** (PL) pixel.
+
+In both, the pixel blends instead with **the composite of the layers behind the packet's own
+layer** at that pixel. That composite is what the compositor would show there if the packet's
+layer and everything in front of it were taken away. It is built by the [compose
+algorithm](#algorithm-normative) restricted to the candidates whose (priority, tie order) is
+below the packet's layer:
+
+- the planes, in their windows, with their priority bits;
+- the backdrop, with that line's `BD_COLOR` after the line channels and the backdrop dither;
+- for an upper packet, the lower pixel.
+
+Colour math between the top two of those layers is applied, but the colour offset is not; the
+offset is applied once, at output, to the layer the pixel ends up in. The result is an ordinary
+pixel of the packet's layer, never a hole. Every other case is unchanged: a lower packet over a
+lower or upper pixel, and an upper packet over an upper pixel, blend with that pixel's bits 0–14.
+
+Three consequences:
+
+- **With every priority at 0**, the planes are behind the low polygons, so a translucent sprite
+  over a hole blends with the planes behind it, as on the PlayStation over its background.
+- **A water plane** between PL and PH (Lantern Lake: PL 0, BG2 1, PH 2) is behind a high glow but
+  in front of a low one. A high glow over the water adds to the water as composed, including the
+  water's own colour math with the low pixel or the backdrop under it. A low glow there blends
+  with the backdrop only, and the water then covers it.
+- **Draw-time semantics.** The registers, line tables, maps, atlases and palettes are read as they
+  stand when the GPU draws the packet. A cart sets up its planes for the frame before drawing the
+  blended polygons over them, and later changes (a scroll at vsync, say) do not reach pixels
+  already drawn. A map or atlas that lies in the framebuffer being drawn is read as it stands
+  mid-draw.
+
+This deviates from the Saturn. On VDP1, a translucent sprite over an empty framebuffer pixel
+blended with the empty pixel's colour, black. That is the well-known VDP1 transparency gap, and
+the first revision of this chip kept it. The Lantern Lake port showed that the gap looks wrong:
+every glow and translucent panel over the sky went dark. The software workaround, opaque
+"underlays" in the backdrop's colours under every blended effect, cost 55–70k GPU model cycles a
+frame. Blending with the backdrop alone fixed the sky, but a high glow over the water then showed
+the unhalved mirrored sky (pink discs at dusk) instead of the water. Hence the rule above.
+
+It is "colour calculation" for polygons, done by the GPU at draw time instead of by the
+compositor, so it needs no extra framebuffer bits. Its emulation cost falls only on blended
+pixels that land on a hole or a lower pixel: one sample per enabled plane.
+
+Over an upper black pixel (`0x8400`) a blend is a blend over that pixel (blue 1), as before;
+only exactly `0x8000` is a hole. With the compositor off nothing changes: a blend reads bits 0–14
+of whatever is there.
 
 ### Order
 
@@ -454,8 +486,9 @@ One bit is added to the polygon packet format (spec p. 15). Existing packets hav
 |---|---|---|
 | Colour (first only) | 26 | Upper: the pixels drawn go to the PH layer (only while `PLN_CTRL` bit 0 is set) |
 
-And one rule changes for blended packets while `PLN_CTRL` bit 0 is set: over a hole they blend
-with the line's backdrop, not with black (see [holes](#the-priority-bit-and-holes)).
+And one rule changes for blended packets while `PLN_CTRL` bit 0 is set. Over a hole, or (upper
+packets) over a lower pixel, they blend with the composite of the layers behind their own layer,
+not with the framebuffer pixel (see [holes](#the-priority-bit-and-holes)).
 
 ## Timing and costs
 
@@ -484,7 +517,8 @@ with the line's backdrop, not with black (see [holes](#the-priority-bit-and-hole
   - polygons over a backdrop table alone: 0.15 ms.
 
   The WebAssembly build under node runs about as fast as native (0.95 ms for the first case). In
-  `mei-headless`, Lantern Lake's 1,200-frame dusk run takes 3.5 s, against 3.3 s before the port.
+  `mei-headless`, Lantern Lake's 1,200-frame dusk run takes 4.05 s, against 3.27 s before the port; about
+  0.45 ms a frame of that is the rev-2 GPU sampling the planes under the glows.
 
 ### Polygon GPU and planes together
 
@@ -538,7 +572,9 @@ another 55–70k at dusk and night. The budget recommendation is under
 - **Nothing the compositor produces is visible to the CPU.** The composite is a host-side
   320×240 buffer in the core, like `error_screen`, not in VRAM. The only VRAM writes are
   auto-erase and the GPU's bit 15, both deterministic. A bug in composing could make a wrong
-  picture but could never change a cart's execution.
+  picture but could never change a cart's execution. (Rev 2: the GPU's blends over holes and
+  lower pixels read the planes through the same integer sampling, `planes_under()`, so the
+  framebuffer depends on the plane state at draw time, still deterministically.)
 - **Implementation.** `planes.c`, called from `mei_run_frame` right after `gpu_vsync`: compose,
   then auto-erase. `mei_display` returns the composite when the compositor was on at the last
   vsync, otherwise the front buffer as today (and the error screen after a fault). After an
@@ -741,7 +777,8 @@ scenarios print identical game logs before and after.
   bright glow is doubled hue-preserving: scaled so that the largest channel is 255.
 - **The high polygons (PH)** are the world, the rod, the interface, and, as before the planes,
   the glows and sparks that hang over everything: lantern halos and garlands, splashes,
-  fireflies, festival lanterns and fireworks, the glow behind a catch.
+  fireflies, festival lanterns and fireworks, the glow behind a catch. Where they lie over the
+  water, the chip blends them with the water as composed there (rev 2).
 - **The roll** is gone.
 - **VRAM used** is about 9 KB:
   - the backdrop table;
@@ -795,24 +832,22 @@ every other glow into PL, under the world, so they no longer lit the posts and p
 the festival. It was also fragile, because every new blended effect over the sky needed an
 underlay.
 
-The rev-2 chip does in the GPU what the underlays did (see
+The rev-2 chip does in the GPU what the underlays did, and more (see
 [holes](#the-priority-bit-and-holes) and open question 3). The port lost the underlays, and the
 glows went back to where they were drawn before the planes.
+
+An intermediate version of the rev-2 chip blended only with the backdrop over a hole. With it,
+the high halos over the water showed the unhalved mirrored sky plus the glow. At night that was
+close to the water, but at dusk it made pink discs. Blending with the full composite behind the
+layer fixed that at no polygon cost.
 
 #### What still looks different
 
 - **No roll** while fighting a fish.
-- **Glows over the open water** (lantern halos, the moon-path glints under a halo, the catch's
-  glow) are high polygons, so inside them the water plane is hidden. There they show the
-  mirrored sky plus the glow, without the water's swells. At night the two are close. A glow
-  drawn low instead would light only the water, and the half-blending water limits it to half
-  strength, which looked flat.
 - **The water** has horizontal palette swells and a per-line wobble instead of the fan's
   travelling vertex-colour waves. Undithered glows halved by the water show faint banding. In the
   festival and ending views the water covers the whole lake, where the fan stayed anchored at the
   dock.
-- **Interface panels over the water** show the mirrored sky under them, not the water, for the
-  same reason as the glows.
 - **The warm tint** is additive only (see below).
 
 #### Other findings
@@ -951,21 +986,23 @@ All were settled as recommended for the build. Questions 1 and 3 have new findin
    alternative is a hidden coverage bitmap per framebuffer (9,600 bytes each), which avoids the
    black rewrite but adds invisible state. *Recommendation:* `0x8000`. It is one rule, it is all
    in VRAM, and the colour change is invisible.
-3. **Blended polygons over holes.** **Resolved: rev-2 chip fix, implemented.** A blended pixel
-   over a hole blends with that line's backdrop (see [holes](#the-priority-bit-and-holes)).
+3. **Blended polygons over holes.** **Resolved: rev-2 chip fix, implemented.** Over a hole, or
+   (upper packets) over a lower pixel, a blended pixel blends with the composite of the layers
+   behind its own layer (see [holes](#the-priority-bit-and-holes)).
 
    The first revision blended with black, as on the Saturn. The other alternative considered was
    "colour calculation for polygons": a blended packet over a hole stores its blend mode for the
-   compositor. That needs more framebuffer bits than there are. The Lantern Lake port showed the
-   Saturn behaviour looks wrong (see [The Saturn gap was real](#the-saturn-gap-was-real)), and its
-   software workaround cost 55–70k GPU model cycles a frame. The backdrop blend needs no new
-   framebuffer bits and does what the workaround did at no fill cost. Its limits:
-   - It is wrong where a plane, not the backdrop, would be behind the pixel: a high blended
-     polygon there hides the plane. A cart puts what must show the plane through it under the
-     plane, as Lantern does with what lies in the water (low, at double strength), or accepts it,
-     as Lantern does with the glows that hang over the water.
-   - The backdrop registers and tables must be written before the polygons that blend over them.
-   - The pixel gets the polygon layer's colour offset, not the backdrop's.
+   compositor. That needs more framebuffer bits than there are.
+
+   The Lantern Lake port showed the Saturn behaviour looks wrong (see [The Saturn gap was
+   real](#the-saturn-gap-was-real)), and its software workaround cost 55–70k GPU model cycles a
+   frame. A first fix, blending with the line's backdrop only, still showed the sky instead of the
+   water inside high glows over the water. The rule as built does the colour calculation in the
+   GPU at draw time, so it needs no new framebuffer bits and costs no fill. Its limits:
+   - Planes and tables are read when the GPU draws, not at vsync.
+   - The pixel gets the polygon layer's colour offset, not that of the layers behind it.
+   - Only two layers blend, as in the compositor. A high glow over the water adds to the water as
+     composed, but the water's own blend saw only its second layer.
 4. **Map entry layout.** The SNES layout (3-bit palette plus a priority bit) or 4-bit palettes with
    no priority bit. *Recommendation:* SNES, because the priority bit is what lets level tiles pass
    in front of characters.

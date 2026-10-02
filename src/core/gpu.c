@@ -71,8 +71,8 @@ typedef struct {
     uint32_t slot;     /* byte offset of the texture slot within the texture area */
     uint32_t pal;      /* first palette colour index */
     uint16_t upper;    /* 0x8000: the packet draws into the PH layer (compositor on, colour bit 26) */
-    const Mei *planes; /* compositor on and the packet blends: blend with the backdrop over a hole */
-    const uint32_t *bd;   /* this row's backdrop at x mod 4 (set per span when planes) */
+    const Mei *planes; /* compositor on and the packet blends: see planes_under() */
+    PlnUnder *under;   /* this span's context (set per span when planes) */
 } Raster;
 
 static int64_t floor_div(int64_t n, int64_t d) {
@@ -137,7 +137,9 @@ static FORCE_INLINE void shade(const Raster *R, uint8_t *row, int x, const int8_
     }
     if (F & F_SEMI) {
         uint32_t bg = ld16(row + x * 2);
-        if (bg == PLN_HOLE && R->bd) bg = R->bd[x & 3];   /* rev-2: a hole blends as the backdrop */
+        /* rev 2: over a hole, or (upper) over a lower pixel, blend with the layers behind */
+        if (R->under && (bg == PLN_HOLE || (R->upper && !(bg & 0x8000))))
+            bg = planes_under(R->under, x, bg, R->upper != 0);
         int br = bg & 31, bgr = (bg >> 5) & 31, bb = (bg >> 10) & 31;
         switch (R->mode) {
         case 0: r = (br + r) >> 1; g = (bgr + g) >> 1; b = (bb + b) >> 1; break;
@@ -155,8 +157,8 @@ static FORCE_INLINE void shade(const Raster *R, uint8_t *row, int x, const int8_
 static FORCE_INLINE void span_fixed(const Raster *R, uint8_t *row, int y, int x0, int x1,
                                     const int64_t *acc, const int64_t *step, int sh, const int F) {
     Raster L = *R;   /* local copy: framebuffer stores could otherwise alias *R */
-    uint32_t bd[4];
-    if ((F & F_SEMI) && L.planes) { planes_backdrop_line(L.planes, y, bd); L.bd = bd; }
+    PlnUnder u;
+    if ((F & F_SEMI) && L.planes) { u.m = L.planes; u.y = y; u.ready = 0; L.under = &u; }
     int64_t ar = acc[0], ag = acc[1], ab = acc[2], au = acc[3], av = acc[4];
     const int64_t sr = step[0], sg = step[1], sb = step[2], su = step[3], sv = step[4];
     const int8_t *dm = dither_m[y & 3];
@@ -191,8 +193,8 @@ static void span_exact(const Raster *R, uint8_t *row, int y, int x0, int x1, con
     memcpy(d, d0, sizeof d);
     const int8_t *dm = dither_m[y & 3];
     Raster L = *R;
-    uint32_t bd[4];
-    if ((F & F_SEMI) && L.planes) { planes_backdrop_line(L.planes, y, bd); L.bd = bd; }
+    PlnUnder u;
+    if ((F & F_SEMI) && L.planes) { u.m = L.planes; u.y = y; u.ready = 0; L.under = &u; }
     R = &L;
     for (int x = x0; x <= x1; x++) {
         int r = (F & F_GOURAUD) ? d[0].q : R->flat[0];
@@ -384,7 +386,7 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
     R.pal = R.four ? (tex0 >> 24) * 16 : ((tex0 >> 24) & 15) * 256;
     R.upper = (planes_on(m) && (col0 >> 26 & 1)) ? 0x8000 : 0;
     R.planes = (planes_on(m) && semi) ? m : NULL;
-    R.bd = NULL;
+    R.under = NULL;
 
     for (int t = 0; t < (quad ? 2 : 1); t++) {
         if ((m->gpu_status & 0xFFFF) >= GPU_TRI_LIMIT) { m->gpu_status |= GPU_STATUS_DROPPED; m->gstat.tris_dropped++; continue; }

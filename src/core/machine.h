@@ -258,7 +258,18 @@ int planes_io_read(Mei *m, uint32_t off, uint32_t *out);   /* off relative to IO
 int planes_io_write(Mei *m, uint32_t off, uint32_t val);   /* -1 unmapped */
 void planes_vsync(Mei *m);       /* after gpu_vsync: compose the new front buffer, then auto-erase */
 static inline int planes_on(const Mei *m) { return m->pln_reg[PLN_CTRL / 4] & 1; }
-void planes_backdrop_line(const Mei *m, int y, uint32_t bd4[4]);
+/* Rev 2: what a blended polygon pixel blends with where the framebuffer holds a hole (or, for
+ * an upper packet, a lower pixel): the composite of the layers behind the packet's layer. The
+ * GPU keeps one per span of a blended packet; planes_under() fills it on first use. */
+typedef struct {
+    const Mei *m;
+    int y, ready;
+    uint32_t W[64];          /* line y's registers */
+    int on[3], kpl, kph;
+    uint32_t bd4[4];
+    uint32_t buf[MEI_W];     /* one plane pixel at a time, at its x */
+} PlnUnder;
+uint32_t planes_under(PlnUnder *u, int x, uint32_t f, int upper);
 
 /* ---- card.c ---- */
 int card_io_read(Mei *m, uint32_t off, uint32_t *out);    /* off relative to IO_CARD; -1 = unmapped */

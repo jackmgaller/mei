@@ -227,24 +227,6 @@ static void bd_reduce(uint32_t bd, int dith, int y, uint32_t bd4[4]) {
     }
 }
 
-/* Line y's backdrop as the compositor would show it in a hole (before the colour offset), from
- * the registers and line tables as they stand now: what the GPU blends with over a hole (rev-2
- * chip fix). Only the channels that write BD_COLOR matter, the later ones winning, as in
- * line_regs(). */
-void planes_backdrop_line(const Mei *m, int y, uint32_t bd4[4]) {
-    uint32_t bd = m->pln_reg[R(PLN_BD_COLOR)];
-    for (int ch = 0; ch < 8; ch++) {
-        uint32_t ctrl = m->pln_reg[R(PLN_LC + 8 * ch + 4)];
-        if (!(ctrl & 0x8000)) continue;
-        uint32_t target = ctrl & 0xFC, n = ((ctrl >> 8) & 3) + 1;
-        if (target > PLN_BD_COLOR || target + 4 * n <= PLN_BD_COLOR) continue;
-        uint32_t k = (PLN_BD_COLOR - target) / 4;
-        uint32_t addr = m->pln_reg[R(PLN_LC + 8 * ch)] & 0xFFFFCu;
-        bd = rd32(m->vram + ((addr + ((uint32_t)y * n + k) * 4) & VMASK));
-    }
-    bd_reduce(bd, (m->pln_reg[R(PLN_CTRL)] >> 2) & 1, y, bd4);
-}
-
 /* The registers for line y: the CPU's values, then line channels 0-7 in order. */
 static void line_regs(const Mei *m, int y, uint32_t *W) {
     memcpy(W, m->pln_reg, sizeof m->pln_reg);
@@ -270,6 +252,65 @@ static int window(const uint32_t *b, int y, int *x0, int *x1) {
     *x1 = MEI_W - (int)((wx >> 16) & 0x1FF);
     if (*x1 > MEI_W) *x1 = MEI_W;
     return *x0 < *x1;
+}
+
+/* The top of the layer stack at one pixel (as compose() picks it, by key), from the
+ * candidates whose key is below cut: the
+ * polygon pixel (key kp < 0: none) and the planes' pixels c[n] (0: transparent or outside).
+ * Returns the colour before the colour offset and sets *la to the top layer (L_BD: none). */
+static FORCE_INLINE uint32_t stack_px(int kp, uint32_t fp, int lp, const uint32_t *c, const int *klo,
+                                      const int *khi, uint32_t math, uint32_t bd, int cut, int *la) {
+    int ka = -1, kb = -1;
+    uint32_t ca = 0, cb = 0;
+    *la = L_BD;
+#define CAND(key, col, layer) do { \
+        if ((key) > ka) { kb = ka; cb = ca; ka = (key); ca = (col); *la = (layer); } \
+        else if ((key) > kb) { kb = (key); cb = (col); } } while (0)
+    if (kp >= 0 && kp < cut) CAND(kp, fp, lp);
+    for (int n = 0; n < 3; n++) {
+        if (!c[n]) continue;
+        int k = (c[n] & 0x10000) ? khi[n] : klo[n];
+        if (k < cut) CAND(k, c[n] & 0x7FFF, n);
+    }
+#undef CAND
+    if (ka < 0) return bd;
+    uint32_t mm = (math >> (4 * *la)) & 15;
+    return (mm & 4) ? blend(kb < 0 ? bd : cb, ca, mm & 3) : ca;
+}
+
+/* Rev 2. A blended polygon pixel over a hole, or an upper one over a lower pixel f, blends with
+ * the composite of the layers behind its own layer (PL or PH) at (x, y): the planes and the
+ * backdrop, and for an upper packet the lower pixel, with their colour math but not the colour
+ * offset. Registers, line tables, maps and atlases are read as they stand when the GPU draws. */
+uint32_t planes_under(PlnUnder *u, int x, uint32_t f, int upper) {
+    const uint32_t *W = u->W;
+    if (!u->ready) {
+        u->ready = 1;
+        line_regs(u->m, u->y, u->W);
+        uint32_t layers = W[R(PLN_LAYERS)], prio = W[R(PLN_PRIO)];
+        for (int n = 0; n < 3; n++) u->on[n] = (layers >> n & 1) != 0;
+        u->kpl = (int)((prio >> 24) & 15) * 8 + tie_order[L_PL];
+        u->kph = (int)((prio >> 28) & 15) * 8 + tie_order[L_PH];
+        bd_reduce(W[R(PLN_BD_COLOR)], (W[R(PLN_CTRL)] >> 2) & 1, u->y, u->bd4);
+    }
+    uint32_t prio = W[R(PLN_PRIO)], c[3] = {0, 0, 0};
+    int klo[3], khi[3];
+    for (int n = 0; n < 3; n++) {
+        klo[n] = (int)((prio >> (8 * n)) & 15) * 8 + tie_order[n];
+        khi[n] = (int)((prio >> (8 * n + 4)) & 15) * 8 + tie_order[n];
+        const uint32_t *b = W + R(PLN_BG0 + 0x20 * n);
+        int x0, x1;
+        if (!u->on[n] || !window(b, u->y, &x0, &x1) || x < x0 || x >= x1) continue;
+        Plane p;
+        plane_setup(&p, u->m->vram, b);
+        u->buf[x] = 0;
+        if (n < 2) tile_line(&p, b[R(PLN_BG_SCROLL)], u->y, x, x + 1, u->buf);
+        else affine_line(&p, W, (int)((b[R(PLN_BG_MODE)] >> 16) & 3), u->y, x, x + 1, u->buf);
+        c[n] = u->buf[x];
+    }
+    int la, kp = f == PLN_HOLE ? -1 : u->kpl;
+    return stack_px(kp, f & 0x7FFF, L_PL, c, klo, khi, W[R(PLN_MATH)], u->bd4[x & 3],
+                    upper ? u->kph : u->kpl, &la);
 }
 
 static void compose(Mei *m) {
