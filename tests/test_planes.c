@@ -1,7 +1,7 @@
 /* Plane chip tests (docs/PLANES.md): registers, holes and the priority bit, auto-erase, the
  * backdrop, tile planes (scroll, wrap, flips, palettes, tile sizes, depths, windows), the affine
  * plane (outside modes, 64-bit sums, a Mode 7 perspective table), line channels, priorities,
- * colour math and the colour offset. Hand-worked pixels, plus whole frames against a literal
+ * colour math and the colour offset, blends over holes (rev 2). Hand-worked pixels, plus whole frames against a literal
  * per-pixel transcription of the normative algorithm. */
 #include "machine.h"
 #include "asm.h"
@@ -103,7 +103,7 @@ static void tile4(uint32_t page, int t, int (*f)(int, int)) {
         for (int tx = 0; tx < 8; tx++) atlas4_set(page, (t % 32) * 8 + tx, (t / 32) * 8 + ty, f(tx, ty));
 }
 static int pat_a(int tx, int ty) { return (tx + 2 * ty) % 15 + 1; }        /* never transparent */
-static int pat_solid(int tx, int ty) { return 9; }
+static int pat_solid(int tx, int ty) { (void)tx; (void)ty; return 9; }
 static int pat_hole(int tx, int ty) { return (tx == 3 && ty == 4) ? 0 : 5; }
 static void map_set(uint32_t map, int w, int mx, int my, uint16_t e) { wr16(V(map) + (my * w + mx) * 2, e); }
 
@@ -205,7 +205,7 @@ static void test_holes(void) {
     CHECK_EQ(back_get(15, 5), 0x8400);
     CHECK_EQ(back_get(25, 5), 0x0000);
     CHECK_EQ(back_get(35, 5), 31 << 5);
-    CHECK_EQ(back_get(45, 5), 0x8000 | C15(10, 10, 10));   /* blends with the hole's black */
+    CHECK_EQ(back_get(45, 5), 0x8000 | C15(10, 10, 10));   /* blends with the backdrop (black here) */
     CHECK_EQ(back_get(55, 5), C15(10, 10, 10));
     CHECK_EQ(back_get(5, 25), C15(23, 23, 23));             /* blending reads bits 0-14 only */
     CHECK_EQ(back_get(25, 25), 0x8000 | C15(1, 1, 31));
@@ -1052,6 +1052,140 @@ static uint16_t ref_pixel(const uint16_t *front, int x, int y) {
     return (uint16_t)out;
 }
 
+/* ================================================================ blends over holes (rev 2) */
+
+/* The GPU's blend modes on 15-bit colours, b below and a on top. */
+static uint16_t ref_blend(int b, int a, int mode) {
+    int out = 0;
+    for (int k = 0; k < 3; k++) {
+        int bv = (b >> (5 * k)) & 31, av = (a >> (5 * k)) & 31, v;
+        if (mode == 0) v = (bv + av) >> 1;
+        else if (mode == 1) v = ref_c31(bv + av);
+        else if (mode == 2) v = ref_c31(bv - av);
+        else v = ref_c31(bv + (av >> 2));
+        out |= v << (5 * k);
+    }
+    return (uint16_t)out;
+}
+
+/* A blended polygon pixel over a hole blends with the backdrop the compositor would show there
+ * (line channels and dither included, the colour offset not), as the registers and tables stand
+ * when the packet is drawn, and writes an ordinary pixel. */
+static void test_blend_over_hole(void) {
+    setup();
+    m->gpu_ctrl = 0;
+    reg(PLN_CTRL, 1);
+    reg(PLN_BD_COLOR, RGB(80, 160, 240));               /* (10, 20, 30) in 5 bits */
+    back_fill(0x8000);
+    list_begin();
+    quad(0, 0, 10, 10, RGB(255, 0, 0), 1);                              /* half, lower */
+    quad(10, 0, 20, 10, RGB(255, 0, 0) | UPPER, 1);                     /* half, upper */
+    quad(20, 0, 30, 10, RGB(80, 80, 80) | 1u << 24, 1);                 /* add */
+    quad(30, 0, 40, 10, RGB(64, 64, 64) | 2u << 24 | UPPER, 1);         /* subtract */
+    quad(40, 0, 50, 10, RGB(255, 255, 255) | 3u << 24, 1);              /* quarter add */
+    quad(50, 0, 60, 10, RGB(0, 0, 0) | 2u << 24 | UPPER, 1);            /* subtract nothing: the backdrop itself */
+    quad(60, 0, 70, 10, RGB(255, 0, 0), 0);                             /* opaque: no blend */
+    list_draw();
+    CHECK_EQ(back_get(5, 5), C15(20, 10, 15));
+    CHECK_EQ(back_get(15, 5), 0x8000 | C15(20, 10, 15));
+    CHECK_EQ(back_get(25, 5), C15(20, 30, 31));
+    CHECK_EQ(back_get(35, 5), 0x8000 | C15(2, 12, 22));
+    CHECK_EQ(back_get(45, 5), C15(17, 27, 31));
+    CHECK_EQ(back_get(55, 5), 0x8000 | C15(10, 20, 30));
+    CHECK_EQ(back_get(65, 5), C15(31, 0, 0));
+    CHECK_EQ(back_get(75, 5), 0x8000);                  /* untouched holes stay holes */
+    /* blending again over the written pixel reads it, not the backdrop */
+    list_begin();
+    quad(0, 0, 10, 10, RGB(255, 0, 0), 1);
+    list_draw();
+    CHECK_EQ(back_get(5, 5), C15(25, 5, 7));
+    /* what the compositor shows: the blended pixel, opaque, where the hole showed the backdrop */
+    const uint16_t *d = present();
+    CHECK_EQ(d[5 * MEI_W + 15], C15(20, 10, 15));
+    CHECK_EQ(d[5 * MEI_W + 75], C15(10, 20, 30));
+    /* drawn-time: changing the backdrop afterwards does not change pixels already drawn */
+    reg(PLN_BD_COLOR, 0);
+    d = present();
+    CHECK_EQ(d[5 * MEI_W + 15], C15(20, 10, 15));
+    CHECK_EQ(d[5 * MEI_W + 75], 0);
+
+    /* upper black is still 0x8400, never a hole, and a blend over it is a blend over black
+     * (blue 1), not over the backdrop */
+    setup();
+    m->gpu_ctrl = 0;
+    reg(PLN_CTRL, 1);
+    reg(PLN_BD_COLOR, RGB(248, 248, 248));
+    back_fill(0x8000);
+    list_begin();
+    quad(0, 0, 10, 10, RGB(0, 0, 0) | UPPER, 0);
+    quad(0, 0, 10, 10, RGB(80, 80, 80) | 1u << 24, 1);
+    quad(10, 0, 20, 10, RGB(0, 0, 0) | UPPER, 0);
+    quad(20, 0, 30, 10, RGB(248, 248, 248) | 2u << 24 | UPPER, 1);   /* white minus white backdrop */
+    list_draw();
+    CHECK_EQ(back_get(5, 5), C15(10, 10, 11));
+    CHECK_EQ(back_get(15, 5), 0x8400);
+    CHECK_EQ(back_get(25, 5), 0x8400);                  /* black over a hole: still not a hole */
+    d = present();
+    CHECK_EQ(d[5 * MEI_W + 15], 0x0400);
+    CHECK_EQ(d[5 * MEI_W + 35], C15(31, 31, 31));
+
+    /* a dithered backdrop from a line table (with a later channel overriding some lines, and a
+     * three-word channel that covers BD_COLOR), under every blend mode, against the reference */
+    setup();
+    m->gpu_ctrl = 0;
+    reg(PLN_CTRL, 1 | 4);
+    reg(PLN_BD_COLOR, RGB(1, 2, 3));
+    back_fill(0x8000);
+    for (int y = 0; y < 240; y++) {
+        wr32(V(TABLES) + y * 4, RGB(y, 255 - y, (y * 7) & 255));
+        wr32(V(TABLES + 0x400) + y * 12 + 0, 0);                         /* PLN_MATH */
+        wr32(V(TABLES + 0x400) + y * 12 + 4, 0);                         /* PLN_OFS */
+        wr32(V(TABLES + 0x400) + y * 12 + 8, RGB(200, 100, y));          /* BD_COLOR */
+    }
+    reg(PLN_LC + 0, TABLES);
+    reg(PLN_LC + 4, 0x8000 | PLN_BD_COLOR);
+    reg(PLN_LC + 6 * 8, TABLES + 0x400);
+    reg(PLN_LC + 6 * 8 + 4, 0x8000 | 2u << 8 | PLN_MATH);                /* overrides channel 0 */
+    list_begin();
+    for (int k = 0; k < 4; k++) quad(100 + 20 * k, 0, 116 + 20 * k, 240, RGB(40 * k + 30, 90, 200 - 40 * k) | (uint32_t)k << 24, 1);
+    list_draw();
+    for (int i = 0; i < 64; i++) ref_reg[i] = m->pln_reg[i];
+    int bad = 0;
+    for (int k = 0; k < 4; k++) {
+        int a = C15((40 * k + 30) >> 3, 90 >> 3, (200 - 40 * k) >> 3);
+        for (int y = 0; y < 240; y++)
+            for (int x = 100 + 20 * k; x < 116 + 20 * k; x++) bad += back_get(x, y) != ref_blend(ref_backdrop(y, x), a, k);
+    }
+    CHECK_EQ(bad, 0);
+    CHECK_EQ(back_get(100, 7), ref_blend(C15(200 >> 3, 100 >> 3, (7 + 3) >> 3), C15(3, 11, 25), 0));   /* hand-worked */
+    /* with channel 6 off, channel 0's gradient is the backdrop */
+    reg(PLN_LC + 6 * 8 + 4, 0);
+    back_fill(0x8000);
+    list_begin();
+    quad(0, 0, 8, 240, RGB(0, 0, 0) | 1u << 24, 1);
+    list_draw();
+    for (int i = 0; i < 64; i++) ref_reg[i] = m->pln_reg[i];
+    bad = 0;
+    for (int y = 0; y < 240; y++)
+        for (int x = 0; x < 8; x++) bad += back_get(x, y) != ref_backdrop(y, x);
+    CHECK_EQ(bad, 0);
+    d = present();
+    bad = 0;
+    for (int y = 0; y < 240; y++)
+        for (int x = 0; x < 8; x++) bad += d[y * MEI_W + x] != d[y * MEI_W + x + 8];   /* same as the holes beside */
+    CHECK_EQ(bad, 0);
+
+    /* compositor off: no holes, bits 0-14 as before */
+    setup();
+    m->gpu_ctrl = 0;
+    m->pln_reg[PLN_BD_COLOR / 4] = RGB(248, 248, 248);
+    back_fill(0x8000);
+    list_begin();
+    quad(0, 0, 10, 10, RGB(80, 80, 80) | 1u << 24, 1);
+    list_draw();
+    CHECK_EQ(back_get(5, 5), C15(10, 10, 10));
+}
+
 static void test_reference_random(void) {
     int total_bad = 0;
     for (int iter = 0; iter < 40; iter++) {
@@ -1221,6 +1355,7 @@ int main(void) {
     test_priority();
     test_colour_math();
     test_colour_math_exact();
+    test_blend_over_hole();
     test_reference_random();
     test_display_path();
     if (!getenv("MEI_NO_BENCH")) bench();

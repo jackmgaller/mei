@@ -214,6 +214,37 @@ static inline uint32_t offset(uint32_t c, uint32_t ofs) {
 
 /* ---- composing ---- */
 
+/* The backdrop colour bd (8 bits a channel) reduced to 15 bits at x mod 4 = 0..3 on line y,
+ * dithered if dith. */
+static void bd_reduce(uint32_t bd, int dith, int y, uint32_t bd4[4]) {
+    for (int i = 0; i < 4; i++) {
+        int o = dith ? dither_m[y & 3][i] : 0, c[3];
+        for (int k = 0; k < 3; k++) {
+            int v = (int)((bd >> (8 * k)) & 0xFF) + o;
+            c[k] = (v < 0 ? 0 : v > 255 ? 255 : v) >> 3;
+        }
+        bd4[i] = (uint32_t)(c[0] | c[1] << 5 | c[2] << 10);
+    }
+}
+
+/* Line y's backdrop as the compositor would show it in a hole (before the colour offset), from
+ * the registers and line tables as they stand now: what the GPU blends with over a hole (rev-2
+ * chip fix). Only the channels that write BD_COLOR matter, the later ones winning, as in
+ * line_regs(). */
+void planes_backdrop_line(const Mei *m, int y, uint32_t bd4[4]) {
+    uint32_t bd = m->pln_reg[R(PLN_BD_COLOR)];
+    for (int ch = 0; ch < 8; ch++) {
+        uint32_t ctrl = m->pln_reg[R(PLN_LC + 8 * ch + 4)];
+        if (!(ctrl & 0x8000)) continue;
+        uint32_t target = ctrl & 0xFC, n = ((ctrl >> 8) & 3) + 1;
+        if (target > PLN_BD_COLOR || target + 4 * n <= PLN_BD_COLOR) continue;
+        uint32_t k = (PLN_BD_COLOR - target) / 4;
+        uint32_t addr = m->pln_reg[R(PLN_LC + 8 * ch)] & 0xFFFFCu;
+        bd = rd32(m->vram + ((addr + ((uint32_t)y * n + k) * 4) & VMASK));
+    }
+    bd_reduce(bd, (m->pln_reg[R(PLN_CTRL)] >> 2) & 1, y, bd4);
+}
+
 /* The registers for line y: the CPU's values, then line channels 0-7 in order. */
 static void line_regs(const Mei *m, int y, uint32_t *W) {
     memcpy(W, m->pln_reg, sizeof m->pln_reg);
@@ -249,16 +280,8 @@ static void compose(Mei *m) {
         uint32_t layers = W[R(PLN_LAYERS)], prio = W[R(PLN_PRIO)], math = W[R(PLN_MATH)], ofs = W[R(PLN_OFS)];
 
         /* backdrop: 8 bits per channel reduced to 5, dithered by x mod 4 if PLN_CTRL bit 2 */
-        uint32_t bd = W[R(PLN_BD_COLOR)], bd4[4];
-        int dith = (W[R(PLN_CTRL)] >> 2) & 1;
-        for (int i = 0; i < 4; i++) {
-            int o = dith ? dither_m[y & 3][i] : 0, c[3];
-            for (int k = 0; k < 3; k++) {
-                int v = (int)((bd >> (8 * k)) & 0xFF) + o;
-                c[k] = (v < 0 ? 0 : v > 255 ? 255 : v) >> 3;
-            }
-            bd4[i] = (uint32_t)(c[0] | c[1] << 5 | c[2] << 10);
-        }
+        uint32_t bd4[4];
+        bd_reduce(W[R(PLN_BD_COLOR)], (W[R(PLN_CTRL)] >> 2) & 1, y, bd4);
 
         /* the planes' pixels on this line (0: transparent or outside the window) */
         int on[3], klo[3], khi[3];

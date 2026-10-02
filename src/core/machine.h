@@ -258,6 +258,7 @@ int planes_io_read(Mei *m, uint32_t off, uint32_t *out);   /* off relative to IO
 int planes_io_write(Mei *m, uint32_t off, uint32_t val);   /* -1 unmapped */
 void planes_vsync(Mei *m);       /* after gpu_vsync: compose the new front buffer, then auto-erase */
 static inline int planes_on(const Mei *m) { return m->pln_reg[PLN_CTRL / 4] & 1; }
+void planes_backdrop_line(const Mei *m, int y, uint32_t bd4[4]);
 
 /* ---- card.c ---- */
 int card_io_read(Mei *m, uint32_t off, uint32_t *out);    /* off relative to IO_CARD; -1 = unmapped */

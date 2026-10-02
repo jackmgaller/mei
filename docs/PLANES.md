@@ -309,11 +309,24 @@ PlayStation (its mask bit) and the Saturn (sprite priority bits in the framebuff
 With the compositor off, the GPU ignores bit 26, writes bit 15 clear and `GPU_CLEAR` writes bits
 0–14, exactly as today.
 
-**Blending polygons over holes.** A semi-transparent polygon blends with the framebuffer only. On
-a hole it blends with the hole's colour, black, not with the plane that will show there. This is
-the Saturn's well-known VDP1 transparency gap, and it is kept. A cart that needs a translucent
-layer over a plane uses plane colour math, or draws the blended polygons over opaque polygon
-pixels.
+**Blending polygons over holes (rev-2 chip fix).** A semi-transparent polygon blends with the
+framebuffer only. While the compositor is on, a blended pixel that lands on a hole blends with
+**that line's backdrop colour** instead: the colour the compositor would show in the hole, with
+the line channels' `BD_COLOR` for that line and the backdrop dither (`PLN_CTRL` bit 2) at that
+pixel, but without the colour offset. The registers and line tables are read as they stand when
+the GPU draws the packet, so a cart writes its backdrop table before drawing the blended polygons
+over it. The result is an ordinary pixel of the packet's layer, not a hole, and it hides whatever
+plane would have shown there.
+
+This deviates from the Saturn. On VDP1 a translucent sprite over an empty framebuffer pixel
+blended with the empty pixel's colour, black, which is the well-known VDP1 transparency gap; the
+first revision of this chip kept it. The Lantern Lake port showed that every glow and translucent
+panel over the sky went dark, and that the software workaround (opaque "underlays" in the
+backdrop's colours under every blended effect) cost 55–70k GPU model cycles a frame, so the
+second revision does in the GPU what the underlays did. A blend over a plane still needs plane
+colour math, or opaque polygon pixels under it: the GPU never sees the planes. Over an upper black
+pixel (`0x8400`) a blend is a blend over that pixel (blue 1), as before; only exactly `0x8000` is
+a hole. With the compositor off nothing changes: a blend reads bits 0–14 of whatever is there.
 
 ### Order
 
@@ -441,6 +454,9 @@ One bit is added to the polygon packet format (spec p. 15). Existing packets hav
 |---|---|---|
 | Colour (first only) | 26 | Upper: the pixels drawn go to the PH layer (only while `PLN_CTRL` bit 0 is set) |
 
+And one rule changes for blended packets while `PLN_CTRL` bit 0 is set: over a hole they blend
+with the line's backdrop, not with black (see [holes](#the-priority-bit-and-holes)).
+
 ## Timing and costs
 
 - **CPU: zero** for composing. A cart pays only for its own writes: registers (`sw`, 2 cycles),
@@ -511,7 +527,7 @@ The table above was the proposal's estimate. The built port measures:
 - festival ending: 321k mean, 612k at its peak.
 
 The estimate held for the layers that moved. An early port without the workarounds measured dusk
-at 401k, as predicted. The [gap for blended polygons over holes](#the-saturn-gap-is-real) costs
+at 401k, as predicted. The [gap for blended polygons over holes](#the-saturn-gap-was-real) costs
 another 55–70k at dusk and night. The budget recommendation is under
 [open question 1](#open-questions).
 
@@ -757,7 +773,7 @@ The rest of the rise is the underlays and the split passes. The festival's firew
 the worst case: about 400k, against 300k before. About 32k of that is underlays, and the rest is
 the festival lanterns' glows, now drawn in two layers and doubled. It is still under 500k.
 
-#### The Saturn gap is real
+#### The Saturn gap was real
 
 Open question 3 kept the Saturn's limitation: a blended polygon over a hole blends with black. In
 Lantern Lake that loses far more than "a little of the sky's colour". Every additive or
@@ -932,22 +948,19 @@ All were settled as recommended for the build. Questions 1 and 3 have new findin
    alternative is a hidden coverage bitmap per framebuffer (9,600 bytes each), which avoids the
    black rewrite but adds invisible state. *Recommendation:* `0x8000`. It is one rule, it is all
    in VRAM, and the colour change is invisible.
-3. **Blended polygons over holes** blend with black, as on the Saturn. An alternative is "colour
-   calculation for polygons": a blended packet over a hole stores its blend mode for the
-   compositor. That needs more framebuffer bits than there are. *Recommendation:* keep the gap,
-   and revisit only if the Lantern Lake prototype looks wrong.
+3. **Blended polygons over holes.** **Resolved: rev-2 chip fix, implemented.** A blended pixel
+   over a hole blends with that line's backdrop (see [holes](#the-priority-bit-and-holes)).
 
-   *After the port:* it looks wrong (see [The Saturn gap is real](#the-saturn-gap-is-real)), and
-   the software workaround costs 55–70k GPU model cycles a frame. *Revised recommendation:*
-   revisit.
-
-   The cheapest fix needs no new framebuffer bits. When the compositor is on and a blended pixel
-   lands on a hole, the GPU uses that line's backdrop colour (from the backdrop table, or
-   `BD_COLOR`) as the destination, and writes a normal pixel, not a hole. That is exactly what
-   Lantern's underlays compute, at no fill cost. It has two conditions:
-   - It is wrong where a plane, not the backdrop, would be behind the pixel. A cart can arrange to
-     avoid that.
-   - The backdrop table must be written before the polygons that use it, as Lantern already does.
+   The first revision blended with black, as on the Saturn. The other alternative considered was
+   "colour calculation for polygons": a blended packet over a hole stores its blend mode for the
+   compositor. That needs more framebuffer bits than there are. The Lantern Lake port showed the
+   Saturn behaviour looks wrong (see [The Saturn gap was real](#the-saturn-gap-was-real)), and its
+   software workaround cost 55–70k GPU model cycles a frame. The backdrop blend needs no new
+   framebuffer bits and does what the workaround did at no fill cost. Its limits:
+   - It is wrong where a plane, not the backdrop, would be behind the pixel. A cart arranges to
+     avoid that (Lantern draws its glows over the water in PL, under the water plane).
+   - The backdrop registers and tables must be written before the polygons that blend over them.
+   - The pixel gets the polygon layer's colour offset, not the backdrop's.
 4. **Map entry layout.** The SNES layout (3-bit palette plus a priority bit) or 4-bit palettes with
    no priority bit. *Recommendation:* SNES, because the priority bit is what lets level tiles pass
    in front of characters.
