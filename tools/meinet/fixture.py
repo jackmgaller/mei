@@ -4,7 +4,7 @@ formulas (only + and *, so every platform computes the same floats)."""
 # 2026-09-30 18:00:00 UTC
 START = 1790791200
 REFRESH_AT = 40          # seconds into the stream: the data changes once, so versions change
-HOME = {"name": "Springfield", "lat": 39.80, "lon": -89.64}
+HOME = {"name": "Meiville", "lat": 38.90, "lon": -95.20}     # a made-up town, mid-country
 UTC_OFFSET = -5 * 3600   # CDT
 TZ_ABBR = "CDT"
 
@@ -41,3 +41,11 @@ def grid(points, generation):
         stripes = (int((lon + 125.0) / 2.0) % 3) * 3.0
         out.append(34.0 - 0.9 * (lat - 25.0) - 0.004 * dx * dx + stripes + 2.0 * generation)
     return out
+
+
+def point(lat, lon, generation):
+    """Current conditions at a map city (kind 4 pages): the grid's temperature there, a little
+    warmer in town, and a weather code picked by the place."""
+    t = grid([(lat, lon)], generation)[0] + 1.0
+    k = int(round(lat * 100)) * 7 + int(round(lon * 100)) * 3 + generation
+    return {"temp": t, "wmo": WMO_CYCLE[k % len(WMO_CYCLE)], "is_day": 1}

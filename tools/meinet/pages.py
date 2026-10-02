@@ -8,7 +8,8 @@ TIME_PAGE = 0x100
 INDEX_PAGE = 0x101
 HOME_PAGE = 0x400
 NATIONAL_PAGE = 0x4FF
-KIND_CURRENT, KIND_DAILY, KIND_HOURLY, KIND_MAP = 0, 1, 2, 3
+KIND_CURRENT, KIND_DAILY, KIND_HOURLY, KIND_MAP, KIND_CITIES = 0, 1, 2, 3, 4
+KINDS = 5
 MAP_W, MAP_H = 64, 48
 FLAG_STALE = 2
 
@@ -239,18 +240,57 @@ def map_page(m):
     return rows, b
 
 
+INDEX_FORMAT = 2
+
+
 def index_page(entries, data_time, home_set, any_stale):
-    """entries: dicts with page, kinds, flags, versions[4], lat, lon, box (s, n, w, e), region, city."""
-    head = struct.pack("<BBBBI", len(entries), 1, (1 if home_set else 0) | (2 if any_stale else 0), 0,
+    """entries: dicts with page, kinds, flags, versions[5], lat, lon, box (s, n, w, e), region, city."""
+    head = struct.pack("<BBBBI", len(entries), INDEX_FORMAT, (1 if home_set else 0) | (2 if any_stale else 0), 0,
                        secs2000(data_time))
     head += name_field("MEINET WEATHER", 16)
     rows = rows_of(head)
     for en in entries:
         s, n, w, e = en["box"]
-        data = struct.pack("<HBB4Bhhhhhh", en["page"], en["kinds"], en["flags"], *en["versions"],
+        v = en["versions"]
+        data = struct.pack("<HBB4Bhhhhhh", en["page"], en["kinds"], en["flags"], *v[:4],
                            hundredths(en["lat"]), hundredths(en["lon"]),
                            hundredths(s), hundredths(n), hundredths(w), hundredths(e))
-        data += name_field(en["region"], 16) + name_field(en["city"], 16)
+        data += name_field(en["region"], 15) + bytes([v[4]]) + name_field(en["city"], 16)
         assert len(data) == 52
         rows.append(data)
     return rows
+
+
+# ---- cities (kind 4)
+
+CITY_BYTES = 26
+CITY_NAME = 18
+
+
+def city_entry(c):
+    """c: dict with lat, lon, temp (deg C or None), wmo, is_day, stale, name."""
+    flags = (1 if c.get("is_day") else 0) | (FLAG_STALE if c.get("stale") else 0)
+    data = struct.pack("<hhbBBB", hundredths(c["lat"]), hundredths(c["lon"]), temp(c.get("temp")),
+                       u8(c.get("wmo")), flags, 0)
+    data += name_field(c["name"], CITY_NAME)
+    assert len(data) == CITY_BYTES
+    return data
+
+
+def cities_page(entries):
+    """Two cities a row, in the order given (most prominent first); an odd count leaves the
+    last row's second entry empty (zeros)."""
+    assert 1 <= len(entries) <= 2 * 64
+    return rows_of(b"".join(city_entry(c) for c in entries))
+
+
+def decode_cities(data):
+    """The entries of a cities page's bytes: (lat, lon, temp, wmo, flags, name) each."""
+    out = []
+    for i in range(0, len(data) - CITY_BYTES + 1, CITY_BYTES):
+        lat, lon, t, wmo, flags, _ = struct.unpack_from("<hhbBBB", data, i)
+        n = data[i + 8]
+        if n == 0:
+            continue
+        out.append((lat, lon, t, wmo, flags, data[i + 9:i + 9 + n].decode("ascii")))
+    return out

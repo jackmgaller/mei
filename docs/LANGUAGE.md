@@ -1436,7 +1436,7 @@ reference is [`BROADCAST.md`](BROADCAST.md#standard-library-broadcastakr). Pages
 page id, the kind ORed into the page number (`BC_CURRENT | 0x403` is Chicago's current
 conditions). `bc_select(page)` starts collecting a page (up to 8 at once), `bc_ready`/`bc_changed`
 say when it is complete or has a new version, and `bc_read(page, &buf)` copies it into a
-payload struct (`BcCurrent`, `BcDaily`, `BcHourly`, `BcIndex`, `BcMap`, `BcTime`). `bc_now()` is
+payload struct (`BcCurrent`, `BcDaily`, `BcHourly`, `BcIndex`, `BcMap`, `BcCities`, `BcTime`). `bc_now()` is
 the broadcast clock in seconds since 2000, `bc_datetime` splits it, `bc_icon`/`bc_wmo_text`
 describe weather codes, `bc_temp_f`/`bc_temp_c` convert temperatures, and `bc_map_decode` unpacks
 a map. Signal: `bc_carrier`, `bc_locked`, `bc_signal` (0–4 bars) and the packet counters; raw

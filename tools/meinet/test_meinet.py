@@ -14,7 +14,7 @@ import wire  # noqa: E402
 FIXTURE_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "tests", "lang", "data", "broadcast.bin")
 
 
-def fixture_stream(seconds=64):
+def fixture_stream(seconds=80):
     st = meinet.Station(meinet.load_config(None))
     st.load_fixture(0, fixture.START)
     return b"".join(meinet.generate(st, fixture.START, seconds, True, random.Random(1), 0))
@@ -60,6 +60,28 @@ class Pages(unittest.TestCase):
             self.assertEqual(pg.decode_map_row(enc + bytes(52 - len(enc)), above), row)
             above = row
 
+    def test_cities_page(self):
+        cs = [{"name": "Somewhere %d" % i, "lat": 40 + i / 10, "lon": -100 - i / 10, "temp": 10.5 + i,
+               "wmo": 3, "is_day": i % 2} for i in range(5)]
+        rows = pg.cities_page(cs)
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[2][26:], bytes(26))                           # the empty second half
+        got = pg.decode_cities(b"".join(rows))
+        self.assertEqual([g[5] for g in got], [c["name"] for c in cs])
+        self.assertEqual(got[1][:5], (4010, -10010, 23, 3, 1))
+
+    def test_pick_spacing(self):
+        box = meinet.REGIONS[3][4]
+        got = meinet.ct.pick(box, [], 14)
+        self.assertEqual(len(got), 14)
+        self.assertEqual(got[0]["name"], "Chicago")
+        for a in got:
+            for b in got:
+                if a is not b:
+                    ax, ay = meinet.ct.cell(box, a["lat"], a["lon"])
+                    bx, by = meinet.ct.cell(box, b["lat"], b["lon"])
+                    self.assertGreaterEqual(((ax - bx) / meinet.ct.SPACE_X) ** 2 + ((ay - by) / meinet.ct.SPACE_Y) ** 2, 1.0)
+
     def test_civil(self):
         self.assertEqual(pg.civil_from_days(0), (2000, 1, 1))
         self.assertEqual(pg.civil_from_days(9769), (2026, 9, 30))
@@ -76,8 +98,8 @@ class Stream(unittest.TestCase):
             self.assertEqual(f.read(), self.data, "regenerate with tools/meinet/make_fixture.sh")
 
     def test_layout(self):
-        self.assertEqual(len(self.data), 64 * 960)
-        for s in range(64):
+        self.assertEqual(len(self.data), 80 * 960)
+        for s in range(80):
             h, payload, _ = wire.decode_packet(self.data[s * 960:s * 960 + 64])
             self.assertEqual(h & 0xFFFF, 0x100)
             secs = struct.unpack_from("<I", payload)[0]
@@ -105,6 +127,39 @@ class Stream(unittest.TestCase):
             above = pg.decode_map_row(m[52 * (y + 1):52 * (y + 2)], above)
             self.assertIsNotNone(above)
 
+    def test_cities(self):
+        rx = wire.Receiver()
+        rx.feed(self.data)
+        idx = rx.page_bytes(pg.INDEX_PAGE)
+        self.assertEqual(idx[1], pg.INDEX_FORMAT)
+        for e in range(idx[0]):
+            en = idx[52 * (e + 1):52 * (e + 2)]
+            page = en[0] | en[1] << 8
+            self.assertTrue(en[2] & 1 << pg.KIND_CITIES, hex(page))          # every location has cities
+            self.assertTrue(rx.complete(pg.pid(page, pg.KIND_CITIES)), hex(page))
+            self.assertIn(en[35], (1, 2))                                          # their version
+            got = pg.decode_cities(rx.page_bytes(pg.pid(page, pg.KIND_CITIES)))
+            cap = meinet.NATIONAL_CITIES_CAP if page == pg.NATIONAL_PAGE else meinet.CITIES_CAP
+            self.assertTrue(5 <= len(got) <= cap, (hex(page), len(got)))
+            s, n, w, e_ = struct.unpack_from("<hhhh", en, 12)
+            for lat, lon, t, wmo, flags, name in got:
+                self.assertTrue(s < lat < n and w < lon < e_, (hex(page), name))
+                self.assertNotEqual(t, pg.TEMP_UNKNOWN)
+        home = pg.decode_cities(rx.page_bytes(pg.pid(pg.HOME_PAGE, pg.KIND_CITIES)))
+        self.assertEqual(home[0][5], fixture.HOME["name"])                     # home first
+        self.assertEqual(pg.decode_cities(rx.page_bytes(0x4403))[1][5], "Chicago")
+
+    def test_cities_before_maps(self):
+        """The map sequence sends each page number's cities right before its map."""
+        prev = None
+        for i in range(0, len(self.data), 64):
+            h, _, _ = wire.decode_packet(self.data[i:i + 64])
+            pid, row = h & 0xFFFF, h >> 16 & 63
+            if pid >> 12 == pg.KIND_MAP and row == 0:
+                self.assertEqual(prev, pg.pid(pid & 0xFFF, pg.KIND_CITIES))
+            if pid >> 12 in (pg.KIND_MAP, pg.KIND_CITIES):
+                prev = pid
+
     def test_noise(self):
         noisy = wire.add_noise(self.data, 1e-3, random.Random(3))
         rx = wire.Receiver()
@@ -130,6 +185,7 @@ class Failures(unittest.TestCase):
             try:
                 self.assertFalse(st.fetch_weather())
                 self.assertFalse(st.fetch_maps())
+                self.assertFalse(st.fetch_cities())
             finally:
                 sys.stderr.close()
                 sys.stderr = stderr
@@ -140,6 +196,8 @@ class Failures(unittest.TestCase):
         self.assertEqual(rows[0][15] & pg.FLAG_STALE, pg.FLAG_STALE)
         self.assertEqual(rows[0][22:31], b"\x08New York")  # the last data is still sent
         self.assertEqual(st.pages[0x3401][1][0][3] & pg.FLAG_STALE, pg.FLAG_STALE)
+        cities = pg.decode_cities(b"".join(st.pages[0x4401][1]))
+        self.assertTrue(all(c[4] & pg.FLAG_STALE for c in cities))
         idx = st.pages[pg.INDEX_PAGE][1]
         self.assertEqual(idx[0][2] & 2, 2)
 

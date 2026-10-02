@@ -17,6 +17,7 @@ import threading
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cities as ct  # noqa: E402
 import fixture  # noqa: E402
 import pages as pg  # noqa: E402
 import weather  # noqa: E402
@@ -30,6 +31,8 @@ QUARTER = 70                                             # loop packets per 5-se
 HOME_SPAN = (2.5, 3.5)                                   # home map box: +-lat, +-lon degrees
 NATIONAL_BOX = (24.5, 49.5, -125.0, -66.5)
 RETRY_SECONDS = 120
+CITIES_CAP = 14                                          # map cities for a region or home box
+NATIONAL_CITIES_CAP = 24                                 # ... and for the national map
 
 # page: (region, city, lat, lon, (south, north, west, east))
 REGIONS = {
@@ -66,6 +69,7 @@ def load_config(path):
         "port": int(s.get("port", "9600") or 9600),
         "refresh_minutes": float(s.get("refresh_minutes", "15") or 15),
         "map_refresh_minutes": float(s.get("map_refresh_minutes", "180") or 180),
+        "cities_refresh_minutes": float(s.get("cities_refresh_minutes", "60") or 60),
         "map_grid": s.get("map_grid", "30x14").strip() or "30x14",
         "noise": float(s.get("noise", "0") or 0),
     }
@@ -131,6 +135,11 @@ class Station:
         self.data_time = 0
         self.versions = {}       # page id -> (bytes, version)
         self.pages = {}          # page id -> (version, rows)
+        self.table = ct.table()
+        self.picks = {}          # page -> the map's cities (dicts: name, lat, lon, and "loc" for a location's own city)
+        self.city_wx = {}        # (lat, lon) -> {"temp", "wmo", "is_day"} for the table's cities
+        self.cities_stale = False
+        self.pick_cities()
 
     def set_home(self, name, lat, lon, tz=None):
         dlat, dlon = HOME_SPAN
@@ -139,9 +148,52 @@ class Station:
         self.locs[pg.HOME_PAGE] = self.home
         if tz is not None:
             self.tz, self.home_tz = tz, True
+        self.pick_cities()
 
     def cities(self):
+        """The locations with a city of their own (home and the regions)."""
         return [l for p, l in sorted(self.locs.items()) if not l.get("national")]
+
+    def pick_cities(self):
+        """Chooses each map box's cities (docs/BROADCAST.md, "Cities (kind 4)"): the home city,
+        the box's own region city, the other region cities, then the table, largest first."""
+        own = [{"name": l["city"], "lat": l["lat"], "lon": l["lon"], "loc": l["page"]} for l in self.cities()]
+        home = [c for c in own if c["loc"] == pg.HOME_PAGE]
+        regions = [c for c in own if c["loc"] != pg.HOME_PAGE]
+        self.picks = {}
+        for page, loc in self.locs.items():
+            mine = [c for c in regions if c["loc"] == page]
+            seeds = home + mine + [c for c in regions if c["loc"] != page]
+            cap = NATIONAL_CITIES_CAP if loc.get("national") else CITIES_CAP
+            self.picks[page] = ct.pick(loc["box"], seeds, cap, self.table)
+
+    def city_points(self):
+        """The table cities on any map (the locations' own cities have their own pages)."""
+        seen = []
+        for page in sorted(self.picks):
+            for c in self.picks[page]:
+                key = (c["lat"], c["lon"])
+                if "loc" not in c and key not in seen:
+                    seen.append(key)
+        return seen
+
+    def cities_entries(self, page):
+        """The kind 4 entries for a page: every chosen city with data."""
+        out = []
+        for c in self.picks.get(page, []):
+            if "loc" in c:
+                w = self.wx.get(c["loc"])
+                if not w:
+                    continue
+                cur = w["current"]
+                d = {"temp": cur["temp"], "wmo": cur["wmo"], "is_day": cur.get("is_day"), "stale": w.get("stale")}
+            else:
+                d = self.city_wx.get((c["lat"], c["lon"]))
+                if not d:
+                    continue
+                d = dict(d, stale=self.cities_stale)
+            out.append(dict(d, name=c["name"], lat=c["lat"], lon=c["lon"]))
+        return out
 
     # -- versions --
     def _set(self, page_id, rows):
@@ -171,12 +223,18 @@ class Station:
                 self._set(pg.pid(page, pg.KIND_MAP), rows)
                 on_air.add(pg.pid(page, pg.KIND_MAP))
                 kinds |= 1 << pg.KIND_MAP
+            ce = self.cities_entries(page)
+            if ce:
+                self._set(pg.pid(page, pg.KIND_CITIES), pg.cities_page(ce))
+                on_air.add(pg.pid(page, pg.KIND_CITIES))
+                kinds |= 1 << pg.KIND_CITIES
             if kinds:
-                stale = bool(w and w.get("stale")) or (kinds & 8 and self.grid_stale)
+                stale = bool(w and w.get("stale")) or bool(kinds & 8 and self.grid_stale) or \
+                    bool(kinds & 16 and self.cities_stale)
                 entries.append({
                     "page": page, "kinds": kinds,
                     "flags": (1 if loc.get("home") else 0) | (2 if stale else 0) | (4 if loc.get("national") else 0),
-                    "versions": [self.pages[pg.pid(page, k)][0] if kinds >> k & 1 else 0 for k in range(4)],
+                    "versions": [self.pages[pg.pid(page, k)][0] if kinds >> k & 1 else 0 for k in range(pg.KINDS)],
                     "lat": loc["lat"], "lon": loc["lon"], "box": loc["box"],
                     "region": loc["region"], "city": loc["city"],
                 })
@@ -218,6 +276,7 @@ class Station:
             cols, rows = self.cfg["grid"]
             pts = weather.grid_points(NATIONAL_BOX, cols, rows)
             self.grid = (fixture.grid(pts, generation), cols, rows, NATIONAL_BOX, now)
+            self.city_wx = {p: fixture.point(p[0], p[1], generation) for p in self.city_points()}
             self.data_time = now
             self.rebuild()
 
@@ -290,6 +349,25 @@ class Station:
         return True
 
 
+    def fetch_cities(self):
+        """The map cities' current conditions, in batched multi-location requests."""
+        pts = self.city_points()
+        try:
+            data = weather.fetch_points(pts)
+        except Exception as e:
+            print("meinet: cities fetch failed (%s); keeping the last data, marked stale" % e, file=sys.stderr)
+            with self.lock:
+                self.cities_stale = bool(self.city_wx)
+                self.rebuild()
+            return False
+        with self.lock:
+            self.city_wx = {p: d for p, d in zip(pts, data) if d["temp"] is not None}
+            self.cities_stale = False
+            self.rebuild()
+        log("cities: %d points in %d requests" % (len(pts), (len(pts) + 99) // 100))
+        return True
+
+
 def fill_missing(temps):
     ok = [t for t in temps if t is not None]
     if not ok:
@@ -303,7 +381,7 @@ def refresher(station, stop):
     schedules, retrying failures after RETRY_SECONDS."""
     cfg = station.cfg
     home_done = False
-    next_wx = next_map = 0.0
+    next_wx = next_map = next_cities = 0.0
     while not stop.is_set():
         now = time.time()
         if not home_done:
@@ -311,12 +389,17 @@ def refresher(station, stop):
                 home_done = station.fetch_home()
             except Exception as e:
                 print("meinet: home lookup failed (%s); retrying" % e, file=sys.stderr)
+            if home_done:
+                next_cities = 0.0              # the home box has its own cities to fetch
         if now >= next_wx:
             ok = station.fetch_weather()
             next_wx = now + (cfg["refresh_minutes"] * 60 if ok and home_done else RETRY_SECONDS)
         if now >= next_map:
             ok = station.fetch_maps()
             next_map = now + (cfg["map_refresh_minutes"] * 60 if ok else RETRY_SECONDS)
+        if now >= next_cities:
+            ok = station.fetch_cities()
+            next_cities = now + (cfg["cities_refresh_minutes"] * 60 if ok else RETRY_SECONDS)
         stop.wait(5)
 
 
@@ -356,13 +439,16 @@ class Carousel:
         self.quarter = (self.quarter + 1) % 4
         while len(block) < QUARTER:
             if not self.map_rows:
-                maps = sorted(p for p in snap if p >> 12 == pg.KIND_MAP)
-                if not maps:
+                # the map sequence: each page number's cities, then its map
+                pages = sorted(set(p & 0xFFF for p in snap if p >> 12 in (pg.KIND_MAP, pg.KIND_CITIES)))
+                if not pages:
                     block.append(wire.filler())
                     continue
-                nxt = next((p for p in maps if p > self.last_map), maps[0])
+                nxt = next((p for p in pages if p > self.last_map), pages[0])
                 self.last_map = nxt
-                self.map_rows.extend(self._page(nxt, *snap[nxt]))
+                for kind in (pg.KIND_CITIES, pg.KIND_MAP):
+                    if pg.pid(nxt, kind) in snap:
+                        self.map_rows.extend(self._page(pg.pid(nxt, kind), *snap[pg.pid(nxt, kind)]))
             block.append(self.map_rows.popleft())
         self.queue.extend(block)
 
@@ -477,6 +563,7 @@ def main():
             station.fetch_home()
             station.fetch_weather()
             station.fetch_maps()
+            station.fetch_cities()
         for sec in generate(station, start, args.seconds, args.fixture, noise_rng, ber):
             record.write(sec)
         record.close()

@@ -108,6 +108,27 @@ def fetch_grid(points, batch=100):
     return temps
 
 
+def fetch_points(points, batch=100):
+    """points: list of (lat, lon). Returns the current conditions at each, as dicts with
+    temp (deg C), wmo and is_day, in batched multi-location requests."""
+    out = []
+    for i in range(0, len(points), batch):
+        chunk = points[i:i + batch]
+        data = _get(FORECAST, {
+            "latitude": ",".join("%.2f" % p[0] for p in chunk),
+            "longitude": ",".join("%.2f" % p[1] for p in chunk),
+            "current": "temperature_2m,weather_code,is_day", "timeformat": "unixtime",
+        })
+        if isinstance(data, dict):
+            data = [data]
+        if len(data) != len(chunk):
+            raise RuntimeError("cities: expected %d points, got %d" % (len(chunk), len(data)))
+        for d in data:
+            c = d["current"]
+            out.append({"temp": c.get("temperature_2m"), "wmo": c.get("weather_code"), "is_day": c.get("is_day")})
+    return out
+
+
 def grid_points(box, cols, rows):
     """Coarse grid over box (south, north, west, east), corners included, north row first."""
     s, n, w, e = box
