@@ -1,0 +1,402 @@
+// 2D drawing on the interface list: blended and gradient rectangles, lines, triangles,
+// quads and textured quads (sprites) with scale, tint and blend. Like text(), sprite() and
+// rect(), everything here is drawn after the 3D world, in call order.
+//
+// A blend `mode` is BLEND_NONE (-1, opaque) or one of the GPU's four semi-transparent modes.
+
+// ---- GPU packet types (spec p. 15): PKT_POLY plus any of the four flag bits
+
+const PKT_POLY = 0x20             // a flat triangle; add the flags below
+const PKT_GOURAUD = 1             // a colour per vertex
+const PKT_TEXTURED = 2
+const PKT_QUAD = 4                // four vertices in strip order (0-1-2, 1-2-3)
+const PKT_SEMI = 8                // semi-transparent: the blend mode is in bits 24-25 of the first colour
+const PKT_TRI = 0x20
+const PKT_TRI_GOURAUD = 0x21
+const PKT_TRI_TEX = 0x22
+const PKT_TRI_TEX_GOURAUD = 0x23
+const PKT_QUAD_FLAT = 0x24
+const PKT_QUAD_GOURAUD = 0x25
+const PKT_QUAD_TEX = 0x26
+const PKT_QUAD_TEX_GOURAUD = 0x27
+
+// ---- blend modes (spec p. 16), for the `mode` arguments and FACE_SEMI faces
+
+const BLEND_NONE = -1             // opaque
+const BLEND_HALF = 0              // half background + half polygon (glass, water)
+const BLEND_ADD = 1               // background + polygon (glows)
+const BLEND_SUB = 2               // background - polygon (shadows)
+const BLEND_QUARTER = 3           // background + a quarter of the polygon (faint glows)
+const BLEND_SHIFT = 24            // a packet's first colour word holds the mode at this bit
+
+const TEX_4BIT = 0x100000         // first texture coordinate word: a 4-bit texture
+
+// Each drawing function below allocates its packet and appends it to the interface list
+// itself (the same steps as packet_alloc() and ui_insert()), so it makes no calls and keeps
+// its values in registers.
+
+// ---- rectangles
+
+// A filled rectangle with a blend mode (BLEND_NONE: opaque, like rect()).
+fn rect_blend(x: s32, y: s32, w: s32, h: s32, colour: u32, mode: s32) {
+    let q = __arena_ptr
+    if q + 6 > __arena_end { return }
+    __arena_ptr = q + 6
+    var c = colour & 0xFFFFFF
+    var t: u32 = 0x24FFFFFF
+    if mode >= 0 {
+        t = 0x2CFFFFFF
+        c |= (mode as u32 & 3) << 24
+    }
+    let xl = x as u32 & 0xFFFF
+    let xr = (x + w) as u32 & 0xFFFF
+    let yt = (y as u32) << 16
+    let yb = ((y + h) as u32) << 16
+    q[0] = t
+    q[1] = c
+    q[2] = xl | yt
+    q[3] = xr | yt
+    q[4] = xl | yb
+    q[5] = xr | yb
+    let tail = __ui_tail
+    if tail == null { __ui_head = q as u32 } else { tail[0] = (tail[0] & 0xFF000000) | q as u32 }
+    __ui_tail = q
+}
+
+// A rectangle with a colour at each corner: top-left, top-right, bottom-left, bottom-right.
+fn rect_grad4(x: s32, y: s32, w: s32, h: s32, tl: u32, tr: u32, bl: u32, br: u32, mode: s32) {
+    let q = __arena_ptr
+    if q + 9 > __arena_end { return }
+    __arena_ptr = q + 9
+    var c = tl & 0xFFFFFF
+    var t: u32 = 0x25FFFFFF
+    if mode >= 0 {
+        t = 0x2DFFFFFF
+        c |= (mode as u32 & 3) << 24
+    }
+    let xl = x as u32 & 0xFFFF
+    let xr = (x + w) as u32 & 0xFFFF
+    let yt = (y as u32) << 16
+    let yb = ((y + h) as u32) << 16
+    q[0] = t
+    q[1] = c
+    q[2] = xl | yt
+    q[3] = tr & 0xFFFFFF
+    q[4] = xr | yt
+    q[5] = bl & 0xFFFFFF
+    q[6] = xl | yb
+    q[7] = br & 0xFFFFFF
+    q[8] = xr | yb
+    let tail = __ui_tail
+    if tail == null { __ui_head = q as u32 } else { tail[0] = (tail[0] & 0xFF000000) | q as u32 }
+    __ui_tail = q
+}
+
+// A vertical gradient: `top` along the top edge to `bottom` along the bottom edge.
+fn rect_grad(x: s32, y: s32, w: s32, h: s32, top: u32, bottom: u32, mode: s32) {
+    let q = __arena_ptr
+    if q + 9 > __arena_end { return }
+    __arena_ptr = q + 9
+    var c = top & 0xFFFFFF
+    var t: u32 = 0x25FFFFFF
+    if mode >= 0 {
+        t = 0x2DFFFFFF
+        c |= (mode as u32 & 3) << 24
+    }
+    let xl = x as u32 & 0xFFFF
+    let xr = (x + w) as u32 & 0xFFFF
+    let yt = (y as u32) << 16
+    let yb = ((y + h) as u32) << 16
+    let cb = bottom & 0xFFFFFF
+    q[0] = t
+    q[1] = c
+    q[2] = xl | yt
+    q[3] = top & 0xFFFFFF
+    q[4] = xr | yt
+    q[5] = cb
+    q[6] = xl | yb
+    q[7] = cb
+    q[8] = xr | yb
+    let tail = __ui_tail
+    if tail == null { __ui_head = q as u32 } else { tail[0] = (tail[0] & 0xFF000000) | q as u32 }
+    __ui_tail = q
+}
+
+// A horizontal gradient: `left` to `right`.
+fn rect_hgrad(x: s32, y: s32, w: s32, h: s32, left: u32, right: u32, mode: s32) {
+    let q = __arena_ptr
+    if q + 9 > __arena_end { return }
+    __arena_ptr = q + 9
+    var c = left & 0xFFFFFF
+    var t: u32 = 0x25FFFFFF
+    if mode >= 0 {
+        t = 0x2DFFFFFF
+        c |= (mode as u32 & 3) << 24
+    }
+    let xl = x as u32 & 0xFFFF
+    let xr = (x + w) as u32 & 0xFFFF
+    let yt = (y as u32) << 16
+    let yb = ((y + h) as u32) << 16
+    let cr = right & 0xFFFFFF
+    q[0] = t
+    q[1] = c
+    q[2] = xl | yt
+    q[3] = cr
+    q[4] = xr | yt
+    q[5] = left & 0xFFFFFF
+    q[6] = xl | yb
+    q[7] = cr
+    q[8] = xr | yb
+    let tail = __ui_tail
+    if tail == null { __ui_head = q as u32 } else { tail[0] = (tail[0] & 0xFF000000) | q as u32 }
+    __ui_tail = q
+}
+
+// A one-pixel outline just inside the rectangle (x, y, w, h).
+fn rect_outline(x: s32, y: s32, w: s32, h: s32, colour: u32, mode: s32) {
+    rect_blend(x, y, w, 1, colour, mode)
+    if h > 1 { rect_blend(x, y + h - 1, w, 1, colour, mode) }
+    if h > 2 {
+        rect_blend(x, y + 1, 1, h - 2, colour, mode)
+        if w > 1 { rect_blend(x + w - 1, y + 1, 1, h - 2, colour, mode) }
+    }
+}
+
+// ---- lines, triangles and quads
+
+// A one-pixel line from (x0, y0) toward (x1, y1). Like a rectangle's right and bottom edges,
+// the end point itself is not drawn, so joined lines do not overlap.
+fn line(x0: s32, y0: s32, x1: s32, y1: s32, colour: u32) {
+    let q = __arena_ptr
+    if q + 6 > __arena_end { return }
+    __arena_ptr = q + 6
+    var ox = 0
+    var oy = 0
+    if abs(x1 - x0) >= abs(y1 - y0) { oy = 1 } else { ox = 1 }
+    q[0] = 0x24FFFFFF
+    q[1] = colour & 0xFFFFFF
+    q[2] = (x0 as u32 & 0xFFFF) | ((y0 as u32) << 16)
+    q[3] = (x1 as u32 & 0xFFFF) | ((y1 as u32) << 16)
+    q[4] = ((x0 + ox) as u32 & 0xFFFF) | (((y0 + oy) as u32) << 16)
+    q[5] = ((x1 + ox) as u32 & 0xFFFF) | (((y1 + oy) as u32) << 16)
+    let tail = __ui_tail
+    if tail == null { __ui_head = q as u32 } else { tail[0] = (tail[0] & 0xFF000000) | q as u32 }
+    __ui_tail = q
+}
+
+// A line `width` pixels thick (thickened along the shorter screen axis: down for lines that
+// are more horizontal, right for the others), shaded from c0 at (x0, y0) to c1 at (x1, y1).
+fn line_ex(x0: s32, y0: s32, x1: s32, y1: s32, width: s32, c0: u32, c1: u32, mode: s32) {
+    let q = __arena_ptr
+    if q + 9 > __arena_end { return }
+    __arena_ptr = q + 9
+    var ox = 0
+    var oy = 0
+    if abs(x1 - x0) >= abs(y1 - y0) { oy = width } else { ox = width }
+    var c = c0 & 0xFFFFFF
+    var t: u32 = 0x25FFFFFF
+    if mode >= 0 {
+        t = 0x2DFFFFFF
+        c |= (mode as u32 & 3) << 24
+    }
+    q[0] = t
+    q[1] = c
+    q[2] = (x0 as u32 & 0xFFFF) | ((y0 as u32) << 16)
+    q[3] = c1 & 0xFFFFFF
+    q[4] = (x1 as u32 & 0xFFFF) | ((y1 as u32) << 16)
+    q[5] = c0 & 0xFFFFFF
+    q[6] = ((x0 + ox) as u32 & 0xFFFF) | (((y0 + oy) as u32) << 16)
+    q[7] = c1 & 0xFFFFFF
+    q[8] = ((x1 + ox) as u32 & 0xFFFF) | (((y1 + oy) as u32) << 16)
+    let tail = __ui_tail
+    if tail == null { __ui_head = q as u32 } else { tail[0] = (tail[0] & 0xFF000000) | q as u32 }
+    __ui_tail = q
+}
+
+// A filled triangle (either winding).
+fn tri_fill(x0: s32, y0: s32, x1: s32, y1: s32, x2: s32, y2: s32, colour: u32, mode: s32) {
+    let q = __arena_ptr
+    if q + 5 > __arena_end { return }
+    __arena_ptr = q + 5
+    var c = colour & 0xFFFFFF
+    var t: u32 = 0x20FFFFFF
+    if mode >= 0 {
+        t = 0x28FFFFFF
+        c |= (mode as u32 & 3) << 24
+    }
+    q[0] = t
+    q[1] = c
+    q[2] = (x0 as u32 & 0xFFFF) | ((y0 as u32) << 16)
+    q[3] = (x1 as u32 & 0xFFFF) | ((y1 as u32) << 16)
+    q[4] = (x2 as u32 & 0xFFFF) | ((y2 as u32) << 16)
+    let tail = __ui_tail
+    if tail == null { __ui_head = q as u32 } else { tail[0] = (tail[0] & 0xFF000000) | q as u32 }
+    __ui_tail = q
+}
+
+// A Gouraud-shaded triangle: colour c0 at (x0, y0) and so on.
+fn tri_grad(x0: s32, y0: s32, x1: s32, y1: s32, x2: s32, y2: s32, c0: u32, c1: u32, c2: u32, mode: s32) {
+    let q = __arena_ptr
+    if q + 7 > __arena_end { return }
+    __arena_ptr = q + 7
+    var c = c0 & 0xFFFFFF
+    var t: u32 = 0x21FFFFFF
+    if mode >= 0 {
+        t = 0x29FFFFFF
+        c |= (mode as u32 & 3) << 24
+    }
+    q[0] = t
+    q[1] = c
+    q[2] = (x0 as u32 & 0xFFFF) | ((y0 as u32) << 16)
+    q[3] = c1 & 0xFFFFFF
+    q[4] = (x1 as u32 & 0xFFFF) | ((y1 as u32) << 16)
+    q[5] = c2 & 0xFFFFFF
+    q[6] = (x2 as u32 & 0xFFFF) | ((y2 as u32) << 16)
+    let tail = __ui_tail
+    if tail == null { __ui_head = q as u32 } else { tail[0] = (tail[0] & 0xFF000000) | q as u32 }
+    __ui_tail = q
+}
+
+// A filled quad from four corners in strip order: triangles 0-1-2 and 1-2-3 (for a rectangle:
+// top-left, top-right, bottom-left, bottom-right).
+fn quad_fill(x0: s32, y0: s32, x1: s32, y1: s32, x2: s32, y2: s32, x3: s32, y3: s32, colour: u32, mode: s32) {
+    let q = __arena_ptr
+    if q + 6 > __arena_end { return }
+    __arena_ptr = q + 6
+    var c = colour & 0xFFFFFF
+    var t: u32 = 0x24FFFFFF
+    if mode >= 0 {
+        t = 0x2CFFFFFF
+        c |= (mode as u32 & 3) << 24
+    }
+    q[0] = t
+    q[1] = c
+    q[2] = (x0 as u32 & 0xFFFF) | ((y0 as u32) << 16)
+    q[3] = (x1 as u32 & 0xFFFF) | ((y1 as u32) << 16)
+    q[4] = (x2 as u32 & 0xFFFF) | ((y2 as u32) << 16)
+    q[5] = (x3 as u32 & 0xFFFF) | ((y3 as u32) << 16)
+    let tail = __ui_tail
+    if tail == null { __ui_head = q as u32 } else { tail[0] = (tail[0] & 0xFF000000) | q as u32 }
+    __ui_tail = q
+}
+
+// ---- textured quads
+
+// The texture page of a sprite: texture slot 0-15, palette (0-255 for 4-bit textures, 0-15 for
+// 8-bit) and depth, as the GPU wants them in a packet's first texture coordinate.
+fn tex_page(slot: s32, palette: s32, four_bit: bool) -> u32 {
+    return ((slot as u32 & 15) << 16) | ((four_bit as u32) << 20) | ((palette as u32 & 255) << 24)
+}
+
+// The tint that draws a texture in `colour` as it would draw white: the GPU multiplies a texel
+// by tint / 128, so this halves the colour (rounding up). col_tint(0xFFFFFF) is 0x808080.
+fn col_tint(colour: u32) -> u32 {
+    return ((colour >> 1) & 0x7F7F7F) + (colour & 0x010101)
+}
+
+// Draws the texels (u, v, tw, th) of `page` (tex_page) stretched over the screen rectangle
+// (x, y, w, h), multiplied by `tint` (0x808080: unchanged, up to 0xFFFFFF: twice as bright),
+// with a blend mode. A negative tw or th mirrors the texels (u, v, |tw|, |th|) across that axis
+// (exact at 1:1; scaled up, the GPU's rounding leaves the first texel of a mirrored axis one
+// pixel wide, so mirror large sprites in the texture instead). Texel coordinates stop at 255
+// (u + tw is clamped), as the GPU's are 8 bits.
+fn sprite_ex(page: u32, u: s32, v: s32, tw: s32, th: s32, x: s32, y: s32, w: s32, h: s32, tint: u32, mode: s32) {
+    let q = __arena_ptr
+    if q + 10 > __arena_end { return }
+    __arena_ptr = q + 10
+    var c = tint & 0xFFFFFF
+    var t: u32 = 0x26FFFFFF
+    if mode >= 0 {
+        t = 0x2EFFFFFF
+        c |= (mode as u32 & 3) << 24
+    }
+    // mirrored: from the last texel back to the first (the first pixel samples exactly the
+    // corner's coordinate, so starting at u + tw would show the column beyond the rectangle)
+    var ua = u
+    var ub = min(u + tw, 255)
+    if tw < 0 {
+        ua = u - tw - 1
+        ub = u
+    }
+    var va = v
+    var vb = min(v + th, 255)
+    if th < 0 {
+        va = v - th - 1
+        vb = v
+    }
+    let xl = x as u32 & 0xFFFF
+    let xr = (x + w) as u32 & 0xFFFF
+    let yt = (y as u32) << 16
+    let yb = ((y + h) as u32) << 16
+    let ta = (va as u32) << 8
+    let tb = (vb as u32) << 8
+    q[0] = t
+    q[1] = c
+    q[2] = xl | yt
+    q[3] = (ua as u32) | ta | (page & 0xFFFF0000)
+    q[4] = xr | yt
+    q[5] = (ub as u32) | ta
+    q[6] = xl | yb
+    q[7] = (ua as u32) | tb
+    q[8] = xr | yb
+    q[9] = (ub as u32) | tb
+    let tail = __ui_tail
+    if tail == null { __ui_head = q as u32 } else { tail[0] = (tail[0] & 0xFF000000) | q as u32 }
+    __ui_tail = q
+}
+
+// The texels (u, v, tw, th) of `page` on a quad with free corners: (xs[k], ys[k]) for k = 0
+// top-left, 1 top-right, 2 bottom-left, 3 bottom-right of the texture rectangle.
+fn sprite_quad(page: u32, u: s32, v: s32, tw: s32, th: s32, xs: *s32, ys: *s32, tint: u32, mode: s32) {
+    let q = __arena_ptr
+    if q + 10 > __arena_end { return }
+    __arena_ptr = q + 10
+    var c = tint & 0xFFFFFF
+    var t: u32 = 0x26FFFFFF
+    if mode >= 0 {
+        t = 0x2EFFFFFF
+        c |= (mode as u32 & 3) << 24
+    }
+    let ub = min(u + tw, 255) as u32
+    let vb = (min(v + th, 255) as u32) << 8
+    let ua = u as u32
+    let va = (v as u32) << 8
+    q[0] = t
+    q[1] = c
+    q[2] = (xs[0] as u32 & 0xFFFF) | ((ys[0] as u32) << 16)
+    q[3] = ua | va | (page & 0xFFFF0000)
+    q[4] = (xs[1] as u32 & 0xFFFF) | ((ys[1] as u32) << 16)
+    q[5] = ub | va
+    q[6] = (xs[2] as u32 & 0xFFFF) | ((ys[2] as u32) << 16)
+    q[7] = ua | vb
+    q[8] = (xs[3] as u32 & 0xFFFF) | ((ys[3] as u32) << 16)
+    q[9] = ub | vb
+    let tail = __ui_tail
+    if tail == null { __ui_head = q as u32 } else { tail[0] = (tail[0] & 0xFF000000) | q as u32 }
+    __ui_tail = q
+}
+
+// The texels (u, v, tw, th) of `page` drawn w x h pixels, centred on (cx, cy) and turned by
+// `angle` radians (positive: clockwise on screen).
+fn sprite_rot(page: u32, u: s32, v: s32, tw: s32, th: s32, cx: s32, cy: s32, w: s32, h: s32, angle: fixed, tint: u32, mode: s32) {
+    let s = sin(angle)
+    let c = cos(angle)
+    let hw = fixed(w) / 2
+    let hh = fixed(h) / 2
+    // corner offsets: TL (-hw, -hh), TR (hw, -hh), BL (-hw, hh), BR (hw, hh), rotated
+    let ax = hw * c
+    let ay = hw * s
+    let bx = hh * s
+    let by = hh * c
+    var xs: [4]s32
+    var ys: [4]s32
+    xs[0] = cx + (-ax + bx) as s32
+    ys[0] = cy + (-ay - by) as s32
+    xs[1] = cx + (ax + bx) as s32
+    ys[1] = cy + (ay - by) as s32
+    xs[2] = cx + (-ax - bx) as s32
+    ys[2] = cy + (-ay + by) as s32
+    xs[3] = cx + (ax - bx) as s32
+    ys[3] = cy + (ay + by) as s32
+    sprite_quad(page, u, v, tw, th, &xs[0], &ys[0], tint, mode)
+}

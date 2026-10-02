@@ -1,0 +1,107 @@
+// 2D drawing (stdlib/draw.akr): each shape is drawn in the first frame and its pixels are read
+// back from the presented picture in the next (dither off, so colours are exact 15-bit values).
+// frames: 3
+
+var n: s32
+
+// A pixel of the frame presented last (the buffer that is not the back buffer).
+fn px(x: s32, y: s32) -> u32 {
+    var fb: u32 = 0x400000
+    if GPU_BACK == 0x400000 { fb = 0x425800 }
+    return (fb as *u16)[y * 320 + x] as u32
+}
+
+fn show(name: *u8, v: u32) {
+    print(name)
+    print(" ")
+    print_hex(v)
+    println("")
+}
+
+// a 4-bit texture in slot 0: texel (u, v) = 1 + (u & 1) + 2 * (v & 1) for the 2x2 block at
+// (0, 0) (colours 1-4 of palette 0: red, green, blue, white)
+fn init() {
+    dither(false)
+    let t = VRAM_TEXTURES as *u8
+    t[0] = 0x21          // (0,0) = 1, (1,0) = 2
+    t[128] = 0x43        // (0,1) = 3, (1,1) = 4
+    let pal = VRAM_PALETTE as *u16
+    pal[1] = 0x001F
+    pal[2] = 0x03E0
+    pal[3] = 0x7C00
+    pal[4] = 0x7FFF
+}
+
+fn draw() {
+    if n != 1 { return }
+    cls(0)
+    rect_blend(10, 10, 50, 30, rgb(255, 0, 0), BLEND_NONE)
+    rect_blend(30, 20, 50, 30, rgb(0, 0, 255), BLEND_ADD)
+    rect_blend(100, 10, 10, 10, rgb(255, 255, 255), BLEND_HALF)
+    rect_blend(120, 10, 10, 10, rgb(255, 255, 255), BLEND_NONE)
+    rect_blend(120, 10, 10, 10, rgb(128, 128, 128), BLEND_SUB)
+    rect_blend(140, 10, 10, 10, rgb(255, 255, 255), BLEND_QUARTER)
+    rect_grad(160, 10, 10, 32, rgb(255, 255, 255), rgb(0, 0, 0), BLEND_NONE)
+    rect_hgrad(180, 10, 32, 10, rgb(255, 0, 0), rgb(0, 0, 255), BLEND_NONE)
+    rect_outline(220, 10, 20, 20, rgb(0, 255, 0), BLEND_NONE)
+    line(10, 100, 50, 100, rgb(255, 255, 255))
+    line(60, 100, 60, 120, rgb(255, 255, 0))
+    line_ex(70, 100, 110, 100, 3, rgb(255, 0, 0), rgb(0, 0, 255), BLEND_NONE)
+    tri_fill(120, 100, 160, 100, 140, 130, rgb(0, 255, 0), BLEND_NONE)
+    tri_grad(170, 100, 210, 100, 190, 130, rgb(255, 0, 0), rgb(255, 0, 0), rgb(255, 0, 0), BLEND_NONE)
+    quad_fill(220, 100, 250, 100, 220, 120, 250, 120, rgb(0, 255, 255), BLEND_NONE)
+    let pg = tex_page(0, 0, true)
+    sprite_ex(pg, 0, 0, 2, 2, 10, 150, 16, 16, 0x808080, BLEND_NONE)
+    sprite_ex(pg, 0, 0, -2, 2, 40, 150, 2, 2, 0x808080, BLEND_NONE)
+    sprite_ex(pg, 0, 0, 2, -2, 70, 150, 2, 2, 0x808080, BLEND_NONE)
+    sprite_ex(pg, 0, 0, 2, 2, 100, 150, 2, 2, 0x404040, BLEND_NONE)
+    sprite_rot(pg, 0, 0, 2, 2, 138, 158, 16, 16, 0.0, 0x808080, BLEND_NONE)
+    sprite_rot(pg, 0, 0, 2, 2, 168, 158, 16, 16, PI, 0x808080, BLEND_NONE)
+}
+
+fn update() {
+    n += 1
+    if n != 2 { return }
+    show("rect", px(20, 15))                    // expect: rect 1F
+    show("rect right edge", px(59, 15))         // expect: rect right edge 1F
+    show("past right edge", px(60, 15))         // expect: past right edge 0
+    show("add", px(40, 25))                     // expect: add 7C1F
+    show("add alone", px(70, 45))               // expect: add alone 7C00
+    show("half", px(105, 15))                   // expect: half 3DEF
+    show("sub", px(125, 15))                    // expect: sub 3DEF
+    show("quarter", px(145, 15))                // expect: quarter 1CE7
+    show("grad top", px(165, 10))               // expect: grad top 7FFF
+    show("grad bottom", px(165, 41))            // expect: grad bottom 0
+    show("hgrad left", px(180, 15))             // expect: hgrad left 1F
+    show("hgrad right", px(211, 15))            // expect: hgrad right 7800
+    show("outline", px(220, 15))                // expect: outline 3E0
+    show("outline inside", px(225, 15))         // expect: outline inside 0
+    show("outline right", px(239, 29))          // expect: outline right 3E0
+    show("line", px(10, 100))                   // expect: line 7FFF
+    show("line end", px(49, 100))               // expect: line end 7FFF
+    show("line past end", px(50, 100))          // expect: line past end 0
+    show("line below", px(30, 101))             // expect: line below 0
+    show("vline", px(60, 110))                  // expect: vline 3FF
+    show("thick start", px(70, 102))            // expect: thick start 1F
+    show("thick below", px(90, 103))            // expect: thick below 0
+    show("tri", px(140, 110))                   // expect: tri 3E0
+    show("tri outside", px(122, 128))           // expect: tri outside 0
+    show("tri grad", px(190, 110))              // expect: tri grad 1F
+    show("quad", px(235, 110))                  // expect: quad 7FE0
+    // sprites: texels 2x2 scaled to 16x16, 8 px a texel
+    show("sprite tl", px(12, 152))              // expect: sprite tl 1F
+    show("sprite tr", px(20, 152))              // expect: sprite tr 3E0
+    show("sprite bl", px(12, 160))              // expect: sprite bl 7C00
+    show("sprite br", px(25, 165))              // expect: sprite br 7FFF
+    // mirrored at 1:1 (exact): the columns, or the rows, swap
+    show("mirror x tl", px(40, 150))            // expect: mirror x tl 3E0
+    show("mirror x tr", px(41, 150))            // expect: mirror x tr 1F
+    show("mirror x br", px(41, 151))            // expect: mirror x br 7C00
+    show("mirror y tl", px(70, 150))            // expect: mirror y tl 7C00
+    show("mirror y bl", px(70, 151))            // expect: mirror y bl 1F
+    show("mirror y br", px(71, 151))            // expect: mirror y br 3E0
+    show("tinted", px(101, 151))                // expect: tinted 3DEF
+    show("rot 0 tl", px(132, 152))              // expect: rot 0 tl 1F
+    show("rot pi tl", px(162, 152))             // expect: rot pi tl 7FFF
+    show("rot pi br", px(174, 164))             // expect: rot pi br 1F
+}

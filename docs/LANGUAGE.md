@@ -802,7 +802,62 @@ use them.
 
 For hand-built packets: `packet_alloc(words) -> *u32` (null when full), `ot_insert(p, type,
 depth)` (depth 0 nearest .. 1023), `ui_insert(p, type)`. Word 0 of a packet is filled in by the
-insert; write the rest as described in the spec (p. 14–16).
+insert; write the rest as described in the spec (p. 14–16). The packet types are named
+`PKT_TRI`, `PKT_TRI_GOURAUD`, `PKT_TRI_TEX`, `PKT_TRI_TEX_GOURAUD`, `PKT_QUAD_FLAT`,
+`PKT_QUAD_GOURAUD`, `PKT_QUAD_TEX`, `PKT_QUAD_TEX_GOURAUD` (0x20–0x27), or built from `PKT_POLY`
+(0x20) and the flag bits `PKT_GOURAUD`, `PKT_TEXTURED`, `PKT_QUAD`, `PKT_SEMI`; a semi-transparent
+packet's blend mode goes in bits 24–25 of its first colour (`mode << BLEND_SHIFT`), and
+`TEX_4BIT` is the 4-bit flag of the first texture coordinate.
+
+### 2D drawing (`draw.akr`)
+
+More shapes for the interface list, drawn like `rect()`, `sprite()` and `text()`: after the 3D
+world, in call order. Positions are whole pixels; a rectangle `(x, y, w, h)` covers `x .. x+w−1`
+and `y .. y+h−1`. Colours are `0xBBGGRR`. A `mode` is a blend mode:
+
+| `mode` | Result |
+|---|---|
+| `BLEND_NONE` (−1) | opaque |
+| `BLEND_HALF` (0) | half the background + half the shape (glass, water) |
+| `BLEND_ADD` (1) | background + shape (glows) |
+| `BLEND_SUB` (2) | background − shape (shadows, darkening a panel's backdrop) |
+| `BLEND_QUARTER` (3) | background + a quarter of the shape (faint glows) |
+
+| | |
+|---|---|
+| `rect_blend(x, y, w, h, colour, mode)` | a filled rectangle |
+| `rect_grad(x, y, w, h, top, bottom, mode)` | a vertical gradient |
+| `rect_hgrad(x, y, w, h, left, right, mode)` | a horizontal gradient |
+| `rect_grad4(x, y, w, h, tl, tr, bl, br, mode)` | a colour per corner |
+| `rect_outline(x, y, w, h, colour, mode)` | a one-pixel frame just inside the rectangle |
+| `line(x0, y0, x1, y1, colour)` | a one-pixel line; the end point is not drawn (like a rectangle's far edges), so joined lines don't overlap |
+| `line_ex(x0, y0, x1, y1, width, c0, c1, mode)` | a line `width` pixels thick (thickened down for flat lines, right for steep ones), shaded from `c0` to `c1` |
+| `tri_fill(x0, y0, x1, y1, x2, y2, colour, mode)` | a filled triangle (either winding) |
+| `tri_grad(x0, y0, x1, y1, x2, y2, c0, c1, c2, mode)` | a Gouraud-shaded triangle |
+| `quad_fill(x0, y0, x1, y1, x2, y2, x3, y3, colour, mode)` | a quad in strip order (0-1-2, 1-2-3: top-left, top-right, bottom-left, bottom-right) |
+| `tex_page(slot, palette, four_bit) -> u32` | the texture page of the sprite functions: slot, palette and depth |
+| `sprite_ex(page, u, v, tw, th, x, y, w, h, tint, mode)` | the texels `(u, v, tw, th)` stretched over `(x, y, w, h)`; a negative `tw` or `th` mirrors that axis |
+| `sprite_rot(page, u, v, tw, th, cx, cy, w, h, angle, tint, mode)` | the same `w × h`, centred on `(cx, cy)` and turned clockwise by `angle` radians |
+| `sprite_quad(page, u, v, tw, th, xs: *s32, ys: *s32, tint, mode)` | on four free corners (`xs[k]`, `ys[k]`: top-left, top-right, bottom-left, bottom-right of the texels) |
+| `col_tint(colour) -> u32` | the tint that shows a white texel in `colour` (half of it, rounded up: `col_tint(0xFFFFFF)` is `0x808080`) |
+
+A sprite's `tint` multiplies its texels by `tint / 128` per channel: `0x808080` draws the texture
+as it is, `0xFFFFFF` twice as bright (clamped), `col_tint(c)` in colour `c` when the texels are
+white. Texture coordinates are 8 bits, so `u + tw` and `v + th` are clamped to 255. Mirroring is
+exact at 1:1; scaled up, the GPU's rounding leaves the first texel of a mirrored axis one pixel
+wide, so large mirrored sprites are better mirrored in the texture.
+
+```
+let ui = tex_page(3, 40, true)                          // slot 3, 4-bit, palette 40
+rect_grad(0, 200, 320, 40, rgb(36, 44, 96), rgb(14, 16, 40), BLEND_HALF)   // a glassy panel
+rect_blend(8, 206, 80, 1, rgb(150, 170, 230), BLEND_NONE)                // its top edge
+sprite_ex(ui, 0, 0, 16, 16, 8, 210, 32, 32, 0x808080, BLEND_NONE)       // an icon at 2x
+sprite_ex(ui, 64, 192, 16, 16, cx - r, cy - r, 2 * r, 2 * r, rgb(255, 220, 110), BLEND_ADD)  // a glow
+line_ex(10, 20, 90, 60, 2, rgb(60, 70, 110), rgb(200, 200, 120), BLEND_ADD)
+```
+
+Each call builds one packet (two triangles for the rectangles, quads, lines and sprites; one for
+the triangles) and makes no other calls; when the packet arena is full it draws nothing.
 
 ### Sound (`audio.akr`)
 
