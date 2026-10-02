@@ -1,0 +1,348 @@
+// The sample tape: a recorded MeiNet broadcast (demo_tape.bin, made by
+// tools/gen_fairskies_tape.py from canned weather) played through a software model of the
+// decoder chip (docs/BROADCAST.md, "Receiving" and "The decoder"). It feeds 16 bytes a tick
+// like the real line, so pages assemble and maps paint exactly as they would on air. Fair
+// Skies falls back to it when there is no signal and nothing saved (the web build), and the
+// settings can pick it by hand.
+
+embed DEMO_TAPE: u8 = "demo_tape.bin"
+
+const DM_SLOTS = 8
+const DM_PAGE_BYTES = 64 * 52
+
+private struct DmSlot {
+    page: s32            // page id, -1 free
+    rows0: u32           // rows 0-31 that have arrived
+    rows1: u32           // rows 32-63
+    version: s32         // version of the rows held, -1 none
+    count: s32           // row count, 0 until the last row has arrived
+    complete: bool
+    changed: bool
+    stamp: u32           // tick in which the sync of the latest row began
+}
+
+var dm_running: bool
+private var slots: [8]DmSlot
+private var mem: [8 * 3328]u8
+private var pos: s32                // next byte of the tape
+private var tick: u32               // ticks fed
+private var locked: bool
+private var fails: s32              // failures in a row while locked
+private var buf: [64]u8
+private var fill: s32
+private var buf_tick: u32           // tick in which buf[0] arrived
+private var work: [256]u8
+private var ham: [256]u8            // Hamming 8/4: nibble, | 0x10 corrected, 0xFF double error
+private var crc_tab: [256]u16
+private var ready: bool
+var dm_ok: u32
+var dm_fixed: u32
+var dm_dropped: u32
+
+const HAM_CODES: [16]u8 = [0x15, 0x02, 0x49, 0x5E, 0x64, 0x73, 0x38, 0x2F,
+                           0xD0, 0xC7, 0x8C, 0x9B, 0xA1, 0xB6, 0xFD, 0xEA]
+
+private fn popcount(x: u32) -> s32 {
+    var v = x
+    var n = 0
+    while v != 0 {
+        v = v & (v - 1)
+        n += 1
+    }
+    return n
+}
+
+private fn setup() {
+    for b in 0..256 {
+        var best = 0xFF
+        for k in 0..16 {
+            let d = popcount((b ^ HAM_CODES[k] as s32) as u32)
+            if d == 0 { best = k }
+            else if d == 1 { best = k | 0x10 }
+        }
+        ham[b] = best as u8
+    }
+    for b in 0..256 {
+        var c = (b << 8) as u32
+        for _i in 0..8 {
+            if c & 0x8000 != 0 { c = ((c << 1) ^ 0x1021) & 0xFFFF } else { c = (c << 1) & 0xFFFF }
+        }
+        crc_tab[b] = c as u16
+    }
+    ready = true
+}
+
+fn dm_crc16(crc: u32, p: *u8, n: s32) -> u32 {
+    var c = crc
+    for i in 0..n {
+        c = ((c << 8) & 0xFFFF) ^ crc_tab[((c >> 8) ^ p[i] as u32) & 255] as u32
+    }
+    return c
+}
+
+// Starts (or restarts) the tape from its beginning with every slot free.
+fn dm_start() {
+    if !ready { setup() }
+    for i in 0..DM_SLOTS { slots[i] = DmSlot { page: -1, version: -1 } }
+    pos = 0
+    tick = 0
+    locked = false
+    fails = 0
+    fill = 0
+    dm_ok = 0
+    dm_fixed = 0
+    dm_dropped = 0
+    dm_running = true
+}
+
+fn dm_stop() { dm_running = false }
+
+// One tick of the line: 16 bytes of the tape (looping), as the chip takes them after the CPU.
+fn dm_tick() {
+    if !dm_running { return }
+    let n = len(DEMO_TAPE)
+    var b: [16]u8
+    for i in 0..16 {
+        b[i] = DEMO_TAPE[pos]
+        pos += 1
+        if pos >= n { pos = 0 }
+    }
+    feed(&b[0], 16)
+    tick += 1
+}
+
+private fn feed(src: *u8, n: s32) {
+    for i in 0..n { work[i] = src[i] }
+    var wn = n
+    var i = 0
+    while i < wn {
+        let b = work[i]
+        i += 1
+        if locked {
+            if fill == 0 { buf_tick = tick }
+            buf[fill] = b
+            fill += 1
+            if fill < 64 { continue }
+            fill = 0
+            let sync_err = popcount((buf[0] ^ 0x55) as u32) + popcount((buf[1] ^ 0xA7) as u32)
+            if sync_err <= 2 && accept() {
+                fails = 0
+                continue
+            }
+            dm_dropped += 1
+            fails += 1
+            if sync_err > 2 || fails >= 4 {
+                // back to hunting from the second byte of that packet
+                locked = false
+                fails = 0
+                i = refeed(i, wn)
+                wn = 63 + wn - i
+                i = 0
+            }
+        } else {
+            if fill == 0 {
+                if b == 0x55 {
+                    buf[0] = b
+                    fill = 1
+                    buf_tick = tick
+                }
+                continue
+            }
+            if fill == 1 {
+                if b == 0xA7 {
+                    buf[1] = b
+                    fill = 2
+                } else if b != 0x55 {
+                    fill = 0
+                } else {
+                    buf_tick = tick
+                }
+                continue
+            }
+            buf[fill] = b
+            fill += 1
+            if fill < 64 { continue }
+            fill = 0
+            if accept() {
+                locked = true
+                fails = 0
+                continue
+            }
+            i = refeed(i, wn)
+            wn = 63 + wn - i
+            i = 0
+        }
+    }
+}
+
+// Puts buf[1..63] in front of the unread work bytes (work[i..wn]); returns the old i so the
+// caller can size the new work list.
+private fn refeed(i: s32, wn: s32) -> s32 {
+    var tmp: [256]u8
+    var k = 0
+    for j in 1..64 {
+        tmp[k] = buf[j]
+        k += 1
+    }
+    for j in i..wn {
+        tmp[k] = work[j]
+        k += 1
+    }
+    for j in 0..k { work[j] = tmp[j] }
+    return i
+}
+
+// Checks buf as a packet and stores it; false if its header or CRC is bad.
+private fn accept() -> bool {
+    var h: u32 = 0
+    var corrected = false
+    for k in 0..8 {
+        let d = ham[buf[2 + k]] as u32
+        if d == 0xFF { return false }
+        if d & 0x10 != 0 { corrected = true }
+        h = h | ((d & 15) << (4 * k as u32))
+    }
+    var hb: [4]u8
+    hb[0] = h as u8
+    hb[1] = (h >> 8) as u8
+    hb[2] = (h >> 16) as u8
+    hb[3] = (h >> 24) as u8
+    var c = dm_crc16(0xFFFF, &hb[0], 4)
+    c = dm_crc16(c, &buf[10], 52)
+    if c != (buf[62] as u32 | (buf[63] as u32) << 8) { return false }
+    dm_ok += 1
+    if corrected { dm_fixed += 1 }
+    let pid = (h & 0xFFFF) as s32
+    if pid & 0xFFF == 0xFFF { return true }
+    let row = ((h >> 16) & 63) as s32
+    let last = (h >> 23) & 1 != 0
+    let ver = (h >> 24) as s32
+    for s in 0..DM_SLOTS {
+        if slots[s].page == pid { store(s, row, last, ver) }
+    }
+    return true
+}
+
+private fn store(s: s32, row: s32, last: bool, ver: s32) {
+    let sl = &slots[s]
+    let m = &mem[s * DM_PAGE_BYTES]
+    if sl.version >= 0 && sl.version != ver {
+        sl.rows0 = 0
+        sl.rows1 = 0
+        sl.count = 0
+        sl.complete = false
+        sl.changed = false
+        mem_fill(m, 0, DM_PAGE_BYTES)
+    }
+    if sl.complete { return }
+    sl.version = ver
+    sl.stamp = buf_tick
+    memcpy(m + row * 52, &buf[10], 52)
+    if row < 32 { sl.rows0 = sl.rows0 | (1 as u32 << row as u32) } else { sl.rows1 = sl.rows1 | (1 as u32 << (row - 32) as u32) }
+    if last { sl.count = row + 1 }
+    if sl.count > 0 && have_all(sl) {
+        sl.complete = true
+        sl.changed = true
+    }
+}
+
+private fn have_all(sl: *DmSlot) -> bool {
+    let n = sl.count
+    var want0: u32 = 0xFFFFFFFF
+    var want1: u32 = 0
+    if n < 32 { want0 = (1 as u32 << n as u32) - 1 }
+    else if n > 32 { want1 = (1 as u32 << (n - 32) as u32) - 1 }
+    if n == 64 { want1 = 0xFFFFFFFF }
+    return sl.rows0 & want0 == want0 && sl.rows1 & want1 == want1
+}
+
+private fn slot_of(pid: s32) -> s32 {
+    for s in 0..DM_SLOTS {
+        if slots[s].page == pid { return s }
+    }
+    return -1
+}
+
+// ---- the same calls as the standard library's bc_*
+
+fn dm_select(pid: s32) -> s32 {
+    let have = slot_of(pid)
+    if have >= 0 { return have }
+    for s in 0..DM_SLOTS {
+        if slots[s].page < 0 {
+            slots[s] = DmSlot { page: pid, version: -1 }
+            mem_fill(&mem[s * DM_PAGE_BYTES], 0, DM_PAGE_BYTES)
+            return s
+        }
+    }
+    return -1
+}
+
+fn dm_release(pid: s32) {
+    let s = slot_of(pid)
+    if s >= 0 { slots[s].page = -1 }
+}
+
+fn dm_ready(pid: s32) -> bool {
+    let s = slot_of(pid)
+    return s >= 0 && slots[s].complete
+}
+
+fn dm_changed(pid: s32) -> bool {
+    let s = slot_of(pid)
+    return s >= 0 && slots[s].changed
+}
+
+fn dm_read(pid: s32, dst: *u8) -> s32 {
+    let s = slot_of(pid)
+    if s < 0 || !slots[s].complete { return 0 }
+    let n = slots[s].count * 52
+    memcpy(dst, &mem[s * DM_PAGE_BYTES], n as u32)
+    slots[s].changed = false
+    return n
+}
+
+fn dm_row_ready(pid: s32, row: s32) -> bool {
+    let s = slot_of(pid)
+    if s < 0 || row < 0 || row > 63 { return false }
+    if row < 32 { return (slots[s].rows0 >> row as u32) & 1 != 0 }
+    return (slots[s].rows1 >> (row - 32) as u32) & 1 != 0
+}
+
+fn dm_read_row(pid: s32, row: s32, dst: *u8) -> bool {
+    if !dm_row_ready(pid, row) { return false }
+    let s = slot_of(pid)
+    memcpy(dst, &mem[s * DM_PAGE_BYTES + row * 52], 52)
+    return true
+}
+
+fn dm_rows(pid: s32) -> s32 {
+    let s = slot_of(pid)
+    if s < 0 { return 0 }
+    return slots[s].count
+}
+
+fn dm_version(pid: s32) -> s32 {
+    let s = slot_of(pid)
+    if s < 0 { return -1 }
+    return slots[s].version
+}
+
+fn dm_stamp(pid: s32) -> u32 {
+    let s = slot_of(pid)
+    if s < 0 { return 0 }
+    return slots[s].stamp
+}
+
+fn dm_locked() -> bool { return dm_running && locked }
+
+fn dm_signal() -> s32 {
+    if !dm_running { return 0 }
+    if !locked { return 1 }
+    let total = dm_ok + dm_dropped
+    if total == 0 || dm_dropped * 100 < total { return 4 }
+    if dm_dropped * 10 < total { return 3 }
+    return 2
+}
+
+fn dm_tick_count() -> u32 { return tick }

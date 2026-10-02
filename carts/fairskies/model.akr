@@ -1,0 +1,517 @@
+// The weather model: the locations on air (from the index page, or the spec's defaults before
+// it arrives), a cache of every page received, and which pages the decoder's eight slots
+// collect.
+//
+// Slots: the time page (clock.akr), the index, the four kinds of the location on screen (the
+// "focus"), and two scanners that walk the other locations' pages, fetching the ones whose
+// version in the index differs from the cached one. Maps are decoded row by row as their
+// packets arrive (map_rx), so the map on screen paints in from the top.
+
+const MAX_LOCS = 16
+const KINDS = 4
+const K_NOW = 0
+const K_WEEK = 1
+const K_HOURS = 2
+const K_MAP = 3
+const LF_HOME = 1
+const LF_STALE = 2
+const LF_NATIONAL = 4
+const SCAN_SLOTS = 2
+const SCAN_PATIENCE = 26 * 60       // frames a scanner waits for a page before moving on
+
+struct Loc {
+    page: s32                // 0x400..0x4FF
+    kinds: s32               // kinds on air (bit k)
+    flags: s32               // LF_*
+    iver: [4]s32             // versions in the index, -1 unknown
+    lat: s32                 // hundredths of a degree
+    lon: s32
+    south: s32
+    north: s32
+    west: s32
+    east: s32
+    region: [16]u8           // name fields (length byte, text)
+    city: [16]u8
+}
+
+// The cache of one location's pages.
+struct Wx {
+    have: s32                // bit k: kind k cached (the map: every row has data)
+    ver: [4]s32              // version of each cached kind, -1 none
+    cur: BcCurrent
+    daily: BcDaily
+    hourly: BcHourly
+    map: BcMapHeader         // the newest map header
+    rows0: u32               // map rows holding data (0-31, 32-47)
+    rows1: u32
+    row_base: [48]s8         // each map row's band base and step (its header's), so a map
+    row_step: [48]u8         // repainted from a new version halfway is still drawn right
+    bands: [3072]u8          // 64 x 48 bands
+}
+
+var locs: [16]Loc
+var nlocs: s32
+var wx: [16]Wx
+var focus = -1               // location on screen
+var index_ok: bool           // the index page has arrived
+var home_off: bool           // the index says no home city is set
+var model_dirty: s32         // pages received since the cache was last saved
+var model_seen: s32          // pages received since start
+var last_rx_frame: s32       // frame the last page arrived
+
+private var idx: BcIndex
+private var page_buf: [3328]u8
+private var focus_page: s32 = -1
+private var scan_pid: [2]s32
+private var scan_since: [2]s32
+private var scan_next: s32
+private var frame_n: s32
+
+// map row receiver state for the focus location
+var mp_ver = -1              // version being received
+var mp_done0: u32            // grid rows decoded in this version
+var mp_done1: u32
+var mp_hdr: bool             // its header (row 0) has arrived
+var mp_same: bool            // it is the map already cached
+var mp_last_row = -1         // the row decoded most recently (for the paint sweep)
+var mp_last_frame: s32
+var mp_changed_rows0: u32    // rows decoded since the painter last looked (map_tex.akr)
+var mp_changed_rows1: u32
+
+struct LocDefault {
+    page: s32
+    region: *u8
+    city: *u8
+    lat: s32
+    lon: s32
+    south: s32
+    north: s32
+    west: s32
+    east: s32
+}
+
+// The spec's regions (docs/BROADCAST.md), used until the index arrives.
+const DEFAULT_LOCS: [9]LocDefault = [
+    LocDefault { page: 0x401, region: "Northeast", city: "New York", lat: 4071, lon: -7401, south: 3700, north: 4750, west: -8050, east: -6700 },
+    LocDefault { page: 0x402, region: "Southeast", city: "Atlanta", lat: 3375, lon: -8439, south: 2500, north: 3700, west: -9150, east: -7550 },
+    LocDefault { page: 0x403, region: "Midwest", city: "Chicago", lat: 4188, lon: -8763, south: 3600, north: 4950, west: -9750, east: -8050 },
+    LocDefault { page: 0x404, region: "South", city: "Dallas", lat: 3278, lon: -9680, south: 2550, north: 3700, west: -10650, east: -8850 },
+    LocDefault { page: 0x405, region: "Mountain", city: "Denver", lat: 3974, lon: -10499, south: 3700, north: 4900, west: -11700, east: -10200 },
+    LocDefault { page: 0x406, region: "Southwest", city: "Phoenix", lat: 3345, lon: -11207, south: 3130, north: 3700, west: -12000, east: -10300 },
+    LocDefault { page: 0x407, region: "West", city: "Los Angeles", lat: 3405, lon: -11824, south: 3250, north: 4200, west: -12450, east: -11400 },
+    LocDefault { page: 0x408, region: "Pacific NW", city: "Seattle", lat: 4761, lon: -12233, south: 4200, north: 4900, west: -12480, east: -11100 },
+    LocDefault { page: 0x4FF, region: "United States", city: "", lat: 3900, lon: -9600, south: 2450, north: 4950, west: -12500, east: -6650 }
+]
+
+fn name_set(dst: *u8, s: *u8) {
+    let n = min(strlen(s), 14)
+    dst[0] = n as u8
+    for i in 0..15 {
+        if i < n { dst[1 + i] = s[i] } else { dst[1 + i] = 0 }
+    }
+}
+
+private fn wx_clear(w: *Wx) {
+    mem_fill(w as *u8, 0, sizeof(Wx))
+    for k in 0..KINDS { w.ver[k] = -1 }
+}
+
+private fn loc_blank(l: *Loc, page: s32) {
+    mem_fill(l as *u8, 0, sizeof(Loc))
+    l.page = page
+    l.kinds = 15
+    for k in 0..KINDS { l.iver[k] = -1 }
+}
+
+// The default locations: home first, the eight regions, the national map last.
+fn model_reset() {
+    nlocs = 0
+    let h = &locs[0]
+    loc_blank(h, BC_HOME)
+    h.flags = LF_HOME
+    name_set(&h.region[0], "Home")
+    nlocs = 1
+    for d in 0..len(DEFAULT_LOCS) {
+        let src = &DEFAULT_LOCS[d]
+        let l = &locs[nlocs]
+        loc_blank(l, src.page)
+        name_set(&l.region[0], src.region)
+        name_set(&l.city[0], src.city)
+        l.lat = src.lat
+        l.lon = src.lon
+        l.south = src.south
+        l.north = src.north
+        l.west = src.west
+        l.east = src.east
+        if src.page == BC_NATIONAL {
+            l.flags = LF_NATIONAL
+            l.kinds = 8
+        }
+        nlocs += 1
+    }
+    for i in 0..MAX_LOCS { wx_clear(&wx[i]) }
+    index_ok = false
+    home_off = false
+    model_dirty = 0
+    model_seen = 0
+    focus = 0
+    focus_page = -1
+    for s in 0..SCAN_SLOTS {
+        scan_pid[s] = -1
+        scan_since[s] = 0
+    }
+    mp_reset()
+}
+
+fn mp_reset() {
+    mp_ver = -1
+    mp_done0 = 0
+    mp_done1 = 0
+    mp_hdr = false
+    mp_same = false
+    mp_last_row = -1
+}
+
+fn loc_find(page: s32) -> s32 {
+    for i in 0..nlocs {
+        if locs[i].page == page { return i }
+    }
+    return -1
+}
+
+fn loc_is_home(i: s32) -> bool { return locs[i].flags & LF_HOME != 0 }
+fn loc_is_national(i: s32) -> bool { return locs[i].flags & LF_NATIONAL != 0 }
+fn loc_has_kind(i: s32, k: s32) -> bool { return (locs[i].kinds >> k as u32) & 1 != 0 }
+fn wx_has(i: s32, k: s32) -> bool { return (wx[i].have >> k as u32) & 1 != 0 }
+
+// The home location's box when the index has not given one: 2.5 degrees of latitude and 3.5
+// of longitude around the city (docs/BROADCAST.md).
+private fn home_box_from(l: *Loc) {
+    l.south = l.lat - 250
+    l.north = l.lat + 250
+    l.west = l.lon - 350
+    l.east = l.lon + 350
+}
+
+// ---- the index
+
+private fn take_index() {
+    let n = rx_read(BC_INDEX_PAGE, &page_buf[0])
+    if n < 52 { return }
+    memcpy(&idx as *u8, &page_buf[0], n as u32)
+    let cnt = min(idx.head.count as s32, (n - 52) / 52)
+    if cnt == 0 { return }               // nothing on air yet: keep what we have
+    index_ok = true
+    home_off = idx.head.flags & 1 == 0
+    // rebuild the table in the index's order, keeping each location's cache
+    var new_locs: [16]Loc
+    var from: [16]s32
+    var k = 0
+    for e in 0..cnt {
+        if k >= MAX_LOCS { break }
+        let en = &idx.entry[e]
+        let l = &new_locs[k]
+        loc_blank(l, en.page as s32)
+        l.kinds = en.kinds as s32
+        l.flags = en.flags as s32 & 7
+        for j in 0..KINDS {
+            if (l.kinds >> j as u32) & 1 != 0 { l.iver[j] = en.versions[j] as s32 } else { l.iver[j] = -1 }
+        }
+        l.lat = en.lat as s32
+        l.lon = en.lon as s32
+        l.south = en.south as s32
+        l.north = en.north as s32
+        l.west = en.west as s32
+        l.east = en.east as s32
+        memcpy(&l.region[0], &en.region[0], 16)
+        memcpy(&l.city[0], &en.city[0], 16)
+        if l.page == BC_HOME { l.flags = l.flags | LF_HOME }
+        if l.page == BC_NATIONAL { l.flags = l.flags | LF_NATIONAL }
+        from[k] = loc_find(l.page)
+        k += 1
+    }
+    // move the caches along (through a scratch copy, one location at a time)
+    var moved: [16]bool
+    var order: [16]s32
+    for i in 0..k { order[i] = from[i] }
+    var focus_pg = -1
+    if focus >= 0 && focus < nlocs { focus_pg = locs[focus].page }
+    wx_reorder(&order[0], k)
+    for i in 0..k { locs[i] = new_locs[i] }
+    nlocs = k
+    focus = max(loc_find(focus_pg), 0)
+    model_dirty += 1
+}
+
+// Rearranges the caches so that wx[i] holds what wx[order[i]] held (order[i] -1: empty).
+private var wx_tmp: [16]Wx
+private fn wx_reorder(order: *s32, n: s32) {
+    for i in 0..MAX_LOCS { wx_tmp[i] = wx[i] }
+    for i in 0..MAX_LOCS {
+        if i < n && order[i] >= 0 { wx[i] = wx_tmp[order[i]] } else { wx_clear(&wx[i]) }
+    }
+}
+
+// ---- pages
+
+fn pid_of(i: s32, k: s32) -> s32 { return (k << 12) | locs[i].page }
+
+// Copies a complete page into the cache. False if it was not ready.
+private fn take(i: s32, k: s32) -> bool {
+    let pid = pid_of(i, k)
+    let ver = rx_version(pid)
+    let n = rx_read(pid, &page_buf[0])
+    if n <= 0 { return false }
+    let w = &wx[i]
+    match k {
+        K_NOW => memcpy(&w.cur as *u8, &page_buf[0], 52)
+        K_WEEK => memcpy(&w.daily as *u8, &page_buf[0], 52)
+        K_HOURS => memcpy(&w.hourly as *u8, &page_buf[0], 104)
+        else => {
+            // a whole map at once (a scanner's): decode every row
+            var hdr: BcMapHeader
+            memcpy(&hdr as *u8, &page_buf[0], 52)
+            var tmp: [3072]u8
+            var ok = true
+            for y in 0..48 {
+                var above: *u8 = null
+                if y > 0 { above = &tmp[(y - 1) * 64] }
+                if !bc_map_row(&page_buf[52 * (y + 1)], above, &tmp[y * 64]) {
+                    ok = false
+                    break
+                }
+            }
+            if !ok { return false }
+            memcpy(&w.bands[0], &tmp[0], 3072)
+            w.map = hdr
+            for y in 0..48 {
+                w.row_base[y] = hdr.base
+                w.row_step[y] = hdr.step
+            }
+            w.rows0 = 0xFFFFFFFF
+            w.rows1 = 0xFFFF
+        }
+    }
+    w.have = w.have | (1 << k as u32)
+    w.ver[k] = ver
+    if k == K_NOW && loc_is_home(i) && locs[i].city[0] == 0 {
+        memcpy(&locs[i].city[0], &w.cur.city[0], 16)
+    }
+    model_dirty += 1
+    model_seen += 1
+    last_rx_frame = frame_n
+    return true
+}
+
+// Selects the focus location's pages (releasing the previous ones).
+fn model_focus(i: s32) {
+    if i < 0 || i >= nlocs { return }
+    focus = i
+    let page = locs[i].page
+    if page == focus_page { return }
+    if focus_page >= 0 {
+        for k in 0..KINDS { rx_release((k << 12) | focus_page) }
+    }
+    focus_page = page
+    // a scanner holding one of these pages lets it go to the focus
+    for s in 0..SCAN_SLOTS {
+        if scan_pid[s] >= 0 && scan_pid[s] & 0xFFF == page {
+            scan_pid[s] = -1
+        }
+    }
+    for k in 0..KINDS {
+        if loc_has_kind(i, k) { rx_select(pid_of(i, k)) }
+    }
+    mp_reset()
+}
+
+// Every frame: index, focus pages, the map rows, the scanners.
+fn model_update() {
+    frame_n += 1
+    rx_select(BC_INDEX_PAGE)
+    if rx_changed(BC_INDEX_PAGE) { take_index() }
+    if focus >= nlocs { focus = 0 }
+    if focus_page != locs[focus].page { model_focus(focus) }
+
+    let f = focus
+    for k in 0..3 {
+        if loc_has_kind(f, k) && rx_changed(pid_of(f, k)) { take(f, k) }
+    }
+    if loc_has_kind(f, K_MAP) { map_rx(f) }
+    scan()
+}
+
+// ---- the scanners
+
+// Whether page (i, k) is worth fetching: never received, or the index has a newer version.
+private fn wanted(i: s32, k: s32) -> bool {
+    if !loc_has_kind(i, k) { return false }
+    if !wx_has(i, k) { return true }
+    let iv = locs[i].iver[k]
+    return iv >= 0 && iv != wx[i].ver[k]
+}
+
+private fn scanning(pid: s32) -> bool {
+    for s in 0..SCAN_SLOTS {
+        if scan_pid[s] == pid { return true }
+    }
+    return false
+}
+
+// The next page a scanner should collect: the other locations' current conditions first,
+// then home's forecasts, then everyone's forecasts and maps.
+private fn pick() -> s32 {
+    let n = nlocs
+    for pass in 0..3 {
+        for j in 0..n {
+            let i = (scan_next + j) % n
+            if i == focus { continue }
+            for k in 0..KINDS {
+                let take_it = match pass {
+                    0 => k == K_NOW
+                    1 => loc_is_home(i) && k != K_NOW
+                    else => k == K_WEEK || k == K_HOURS || (k == K_MAP && loc_is_national(i))
+                }
+                if !take_it { continue }
+                let pid = pid_of(i, k)
+                if wanted(i, k) && !scanning(pid) {
+                    scan_next = (i + 1) % n
+                    return pid
+                }
+            }
+        }
+    }
+    return -1
+}
+
+private fn scan() {
+    for s in 0..SCAN_SLOTS {
+        let pid = scan_pid[s]
+        if pid >= 0 {
+            let i = loc_find(pid & 0xFFF)
+            let k = (pid >> 12) & 15
+            if i >= 0 && rx_changed(pid) {
+                take(i, k)
+                rx_release(pid)
+                scan_pid[s] = -1
+            } else if i < 0 || frame_n - scan_since[s] > SCAN_PATIENCE {
+                rx_release(pid)
+                scan_pid[s] = -1
+            }
+        }
+        if scan_pid[s] < 0 && rx_carrier() {
+            let p = pick()
+            if p >= 0 && rx_select(p) >= 0 {
+                scan_pid[s] = p
+                scan_since[s] = frame_n
+            }
+        }
+    }
+}
+
+// ---- the map, row by row
+
+private fn row_done(y: s32) -> bool {
+    if y < 32 { return (mp_done0 >> y as u32) & 1 != 0 }
+    return (mp_done1 >> (y - 32) as u32) & 1 != 0
+}
+
+private fn mark_done(y: s32) {
+    if y < 32 {
+        mp_done0 = mp_done0 | (1 as u32 << y as u32)
+        mp_changed_rows0 = mp_changed_rows0 | (1 as u32 << y as u32)
+    } else {
+        mp_done1 = mp_done1 | (1 as u32 << (y - 32) as u32)
+        mp_changed_rows1 = mp_changed_rows1 | (1 as u32 << (y - 32) as u32)
+    }
+}
+
+const MAP_ROWS_PER_FRAME = 4
+
+// Decodes the focus map's rows as they arrive. A version whose header matches the cached map's
+// is the map we have; a new one is painted over the old, row by row.
+fn map_rx(i: s32) {
+    let pid = pid_of(i, K_MAP)
+    let v = rx_version(pid)
+    if v < 0 { return }
+    if v != mp_ver {
+        mp_reset()
+        mp_ver = v
+    }
+    let w = &wx[i]
+    if mp_same {
+        if rx_changed(pid) { rx_read(pid, &page_buf[0]) }
+        return
+    }
+    if !mp_hdr {
+        var row: [52]u8
+        if !rx_read_row(pid, 0, &row[0]) { return }
+        if wx_has(i, K_MAP) && memeq(&row[0], &w.map as *u8, 52) {
+            mp_same = true
+            w.ver[K_MAP] = v
+            return
+        }
+        memcpy(&w.map as *u8, &row[0], 52)
+        mp_hdr = true
+    }
+    var budget = MAP_ROWS_PER_FRAME
+    var row: [52]u8
+    for y in 0..48 {
+        if budget == 0 { break }
+        if row_done(y) { continue }
+        if !rx_read_row(pid, y + 1, &row[0]) { continue }
+        var above: *u8 = null
+        if row[0] == 2 {
+            if y == 0 || !row_done(y - 1) { continue }     // a delta row needs this version's row above
+            above = &w.bands[(y - 1) * 64]
+        }
+        if !bc_map_row(&row[0], above, &w.bands[y * 64]) { continue }
+        w.row_base[y] = w.map.base
+        w.row_step[y] = w.map.step
+        if y < 32 { w.rows0 = w.rows0 | (1 as u32 << y as u32) } else { w.rows1 = w.rows1 | (1 as u32 << (y - 32) as u32) }
+        mark_done(y)
+        mp_last_row = y
+        mp_last_frame = frame_n
+        budget -= 1
+    }
+    if mp_done0 == 0xFFFFFFFF && mp_done1 == 0xFFFF {
+        w.have = w.have | (1 << K_MAP as u32)
+        w.ver[K_MAP] = v
+        mp_same = true
+        if rx_changed(pid) { rx_read(pid, &page_buf[0]) }
+        model_dirty += 1
+        model_seen += 1
+        last_rx_frame = frame_n
+    }
+}
+
+fn memeq(a: *u8, b: *u8, n: s32) -> bool {
+    for k in 0..n {
+        if a[k] != b[k] { return false }
+    }
+    return true
+}
+
+// How far the focus page (kind k) has assembled: rows arrived and rows in the page (0 when
+// the count is not known yet).
+fn page_progress(k: s32, total: *s32) -> s32 {
+    if focus < 0 { return 0 }
+    let pid = pid_of(focus, k)
+    *total = rx_rows(pid)
+    var hi: u32 = 0
+    let lo = rx_row_bits(pid, &hi)
+    return popcount32(lo) + popcount32(hi)
+}
+
+fn popcount32(x: u32) -> s32 {
+    var v = x
+    var n = 0
+    while v != 0 {
+        v = v & (v - 1)
+        n += 1
+    }
+    return n
+}
+
+// Whether the focus location's page of kind k has started arriving on the current version.
+fn page_on_air(k: s32) -> bool { return rx_version(pid_of(focus, k)) >= 0 }

@@ -1,0 +1,52 @@
+// The receiver: the console's broadcast decoder (the standard library's bc_* calls), or the
+// sample tape played through demo.akr's model of it. Everything above this file talks to
+// rx_*, so the whole cart works the same on either.
+
+var rx_demo: bool
+
+fn rx_use_demo(on: bool) {
+    if on == rx_demo { return }
+    if on {
+        bc_off()
+        dm_start()
+    } else {
+        dm_stop()
+    }
+    rx_demo = on
+}
+
+// Called once a frame, before the model looks at the slots.
+fn rx_frame() {
+    if rx_demo { dm_tick() }
+}
+
+fn rx_select(pid: s32) -> s32 { if rx_demo { return dm_select(pid) } return bc_select(pid) }
+fn rx_release(pid: s32) { if rx_demo { dm_release(pid) } else { bc_release(pid) } }
+fn rx_ready(pid: s32) -> bool { if rx_demo { return dm_ready(pid) } return bc_ready(pid) }
+fn rx_changed(pid: s32) -> bool { if rx_demo { return dm_changed(pid) } return bc_changed(pid) }
+fn rx_read(pid: s32, buf: *u8) -> s32 { if rx_demo { return dm_read(pid, buf) } return bc_read(pid, buf) }
+fn rx_row_ready(pid: s32, row: s32) -> bool { if rx_demo { return dm_row_ready(pid, row) } return bc_row_ready(pid, row) }
+fn rx_read_row(pid: s32, row: s32, buf: *u8) -> bool { if rx_demo { return dm_read_row(pid, row, buf) } return bc_read_row(pid, row, buf) }
+fn rx_rows(pid: s32) -> s32 { if rx_demo { return dm_rows(pid) } return bc_rows(pid) }
+fn rx_version(pid: s32) -> s32 { if rx_demo { return dm_version(pid) } return bc_version(pid) }
+fn rx_carrier() -> bool { if rx_demo { return dm_running } return bc_carrier() }
+fn rx_locked() -> bool { if rx_demo { return dm_locked() } return bc_locked() }
+fn rx_signal() -> s32 { if rx_demo { return dm_signal() } return bc_signal() }
+fn rx_ok() -> u32 { if rx_demo { return dm_ok } return bc_packets_ok() }
+fn rx_fixed() -> u32 { if rx_demo { return dm_fixed } return bc_packets_fixed() }
+fn rx_dropped() -> u32 { if rx_demo { return dm_dropped } return bc_packets_dropped() }
+
+// Rows of a page that have arrived (bit r for rows 0-31; rows 32-63 in *hi).
+fn rx_row_bits(pid: s32, hi: *u32) -> u32 {
+    var lo: u32 = 0
+    var h: u32 = 0
+    let n = max(rx_rows(pid), 1)
+    for r in 0..64 {
+        if r >= n && rx_rows(pid) > 0 { break }
+        if rx_row_ready(pid, r) {
+            if r < 32 { lo = lo | (1 as u32 << r as u32) } else { h = h | (1 as u32 << (r - 32) as u32) }
+        }
+    }
+    if hi != null { *hi = h }
+    return lo
+}

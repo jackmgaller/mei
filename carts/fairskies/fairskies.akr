@@ -1,0 +1,7 @@
+// Fair Skies - a weather channel for the Mei console.
+cart "Fair Skies", "FAIR-SKIES"
+
+const TEST = 0
+const SCENARIO = 0
+
+import "app.akr"

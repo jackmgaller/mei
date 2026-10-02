@@ -1,0 +1,32 @@
+import "rx.akr"
+import "demo.akr"
+import "model.akr"
+import "clock.akr"
+
+var t: s32
+
+fn init() {
+    model_reset()
+    rx_use_demo(SCENARIO == 1)
+}
+
+fn update() {
+    rx_frame()
+    clock_update()
+    model_update()
+    t += 1
+    if t % 600 == 0 {
+        print("t "); print_int(t); print(" ok "); print_uint(dm_ok); print(" drop "); print_uint(dm_dropped)
+        print(" locs "); print_int(nlocs); print(" seen "); print_int(model_seen); println("")
+        for i in 0..nlocs {
+            print_hex(locs[i].page as u32); print(" "); print(bc_name(&locs[i].region[0])); print(" have "); print_int(wx[i].have)
+            print(" v "); print_int(wx[i].ver[0]); print(" iv "); print_int(locs[i].iver[0])
+            if wx_has(i, 0) { print(" T "); print_int(bc_temp_f(wx[i].cur.temp as s32)); print(" "); print(bc_name(&wx[i].cur.city[0])) }
+            println("")
+        }
+    }
+}
+
+fn draw() {
+    cls(rgb(10, 20, 60))
+}
