@@ -1,0 +1,28 @@
+// Tsumiki (積み木, wooden building blocks): a small 3D toolkit for Mei. Not in the prelude:
+// a cart that wants it writes
+//
+//     import "tsumiki.akr"
+//
+// Every public name starts with tk_ (functions and variables), Tk (types) or TK_ (constants).
+// docs/TSUMIKI.md is the instruction booklet: a quickstart, recipes, the reference and costs.
+//
+//   tsumiki/base.akr       paint colours, texture cells, the shape bin, angles, placing things
+//   tsumiki/shapes.akr     meshes from blocks: box, ramp, cylinder, cone, sphere, grid, wall
+//   tsumiki/collide.akr    solids, shape tests, raycasts and overlaps
+//   tsumiki/body.akr       the character controller
+//   tsumiki/anim.akr       rigid-part models and keyframed clips with cross-fades
+//   tsumiki/morph.akr      vertex poses and waves
+//   tsumiki/particles.akr  pooled particles and emitters, with presets
+//   tsumiki/camera.akr     follow, orbit, first-person, fixed and rail cameras; shake
+//   tsumiki/scene.akr      the toy box: level, platforms, zones, props, tk_update, tk_draw
+//   tsumiki/logo.akr       the Tsumiki title in blocks
+import "tsumiki/base.akr"
+import "tsumiki/shapes.akr"
+import "tsumiki/collide.akr"
+import "tsumiki/body.akr"
+import "tsumiki/anim.akr"
+import "tsumiki/morph.akr"
+import "tsumiki/particles.akr"
+import "tsumiki/camera.akr"
+import "tsumiki/scene.akr"
+import "tsumiki/logo.akr"

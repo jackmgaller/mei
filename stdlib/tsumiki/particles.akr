@@ -1,0 +1,296 @@
+// Tsumiki particles: puffs, sparkles, smoke, splashes, fire and confetti from one shared pool
+// of 256, drawn as camera-facing quads straight into the ordering table.
+//
+//     tk_burst(TK_SPARKLE, star_pos, 12)                  // 12 at once
+//     let chimney = tk_new_emitter(TK_SMOKE, vec3(3.0, 2.2, 1.0))
+//     chimney.rate = 0.25                                 // one every 4 frames
+//
+// A style (TkStyle) says how particles of a kind move and look: velocity, gravity, drag, a
+// lifetime, colour at birth, middle and end of life, size at birth and death, the blend mode
+// and the texture cell. Styles 0-5 are the presets TK_DUST, TK_SPARKLE, TK_SMOKE, TK_SPLASH,
+// TK_FIRE and TK_CONFETTI; 6-15 are free (tk_style(n) gives a style to fill in or change).
+//
+// The pool is a ring: when all 256 are alive a new particle replaces the oldest. At most
+// TK_SPAWN_CAP (64) start in one frame (the rest of a burst is dropped), and at most the
+// draw cap (tk_particle_cap, 160 by default) are drawn: with more alive, every second (third,
+// ...) one is drawn, a little bigger, so a crowd thins out instead of costing more.
+
+const TK_DUST = 0
+const TK_SPARKLE = 1
+const TK_SMOKE = 2
+const TK_SPLASH = 3
+const TK_FIRE = 4
+const TK_CONFETTI = 5
+
+const TK_MAX_PARTICLES = 256
+const TK_MAX_EMITTERS = 16
+const TK_SPAWN_CAP = 64
+
+struct TkStyle {
+    life: s32 = 30               // frames
+    life_jitter: s32 = 8         // + up to this many more
+    speed: fixed = 0.03          // outward speed (a random direction, flattened by `flat`)
+    flat: fixed = 0.0            // 0: any direction .. 1.0: only sideways
+    lift: fixed = 0.0            // extra upward speed at birth
+    spread: fixed = 0.1          // born this far from the spot (a random offset)
+    gravity: fixed = 0.0         // per frame per frame (negative rises)
+    drag: fixed = 0.95           // speed kept each frame
+    size0: fixed = 0.2           // world size at birth ..
+    size1: fixed = 0.1           // .. and at death
+    col0: u32 = 0xFFFFFF         // colour at birth, half-way and at death
+    col1: u32 = 0xFFFFFF
+    col2: u32 = 0x000000
+    blend: s32 = 1               // BLEND_ADD, BLEND_HALF, BLEND_SUB, BLEND_QUARTER, BLEND_NONE
+    cell: u32 = 0xFEF18F80       // a texture cell (TK_DOT)
+    spin: bool                   // turns as it flies
+    twinkle: bool                // flickers
+    toy_colours: bool            // each one a toy colour (TK_TOY_COLOURS) instead of col0..2
+    lands: bool                  // stops on the floor below where it was born
+}
+
+struct TkParticle {
+    pos: vec3
+    vel: vec3
+    floor: fixed                 // where it lands (styles that land)
+    age: s16
+    life: s16                    // 0: dead
+    style: u8
+    tint: u8                     // its toy colour
+    angle: u8                    // 0..15 sixteenths of a half turn
+    spin: s8
+}
+
+// A spot that makes particles all the time.
+struct TkEmitter {
+    style: s32
+    pos: vec3
+    rate: fixed = 0.5            // particles a frame (0.25: one every 4 frames)
+    vel: vec3                    // added to each one's velocity (wind, a jet)
+    on: bool = true
+    __acc: fixed
+    __used: bool
+}
+
+var __tk_parts: [256]TkParticle
+var __tk_pnext: s32
+var __tk_palive: s32
+var __tk_pspawned: s32           // started this frame
+var __tk_pcap: s32 = 160
+var __tk_pdrawn: s32
+var __tk_styles: [16]TkStyle
+var __tk_emitters: [16]TkEmitter
+var __tk_nemitters: s32
+
+// The presets.
+fn __tk_styles_init() {
+    for i in 0..16 { __tk_styles[i] = TkStyle {} }
+    __tk_styles[TK_DUST] = TkStyle {
+        life: 24, life_jitter: 8, speed: 0.035, flat: 0.8, lift: 0.008, spread: 0.2, gravity: -0.0004,
+        drag: 0.86, size0: 0.22, size1: 0.5, col0: 0x5A6E82, col1: 0x46505A, col2: 0, blend: 1, cell: TK_PUFF
+    }
+    __tk_styles[TK_SPARKLE] = TkStyle {
+        life: 30, life_jitter: 12, speed: 0.05, lift: 0.02, spread: 0.25, gravity: 0.0, drag: 0.92,
+        size0: 0.32, size1: 0.06, col0: 0xC8FAFF, col1: 0x5AD2FF, col2: 0x003C78, blend: 1, cell: TK_STAR,
+        spin: true, twinkle: true
+    }
+    __tk_styles[TK_SMOKE] = TkStyle {
+        life: 70, life_jitter: 24, speed: 0.008, lift: 0.012, spread: 0.08, gravity: -0.0006, drag: 0.97,
+        size0: 0.22, size1: 0.85, col0: 0x50504C, col1: 0x30302E, col2: 0, blend: 2, cell: TK_PUFF, spin: true
+    }
+    __tk_styles[TK_SPLASH] = TkStyle {
+        life: 34, life_jitter: 8, speed: 0.04, flat: 0.7, lift: 0.11, spread: 0.12, gravity: 0.011, drag: 0.99,
+        size0: 0.14, size1: 0.07, col0: 0xFFF0D2, col1: 0xFAC896, col2: 0xE6A064, blend: 0, cell: TK_DROP, lands: true
+    }
+    __tk_styles[TK_FIRE] = TkStyle {
+        life: 22, life_jitter: 6, speed: 0.006, lift: 0.018, spread: 0.05, gravity: -0.0018, drag: 0.94,
+        size0: 0.26, size1: 0.04, col0: 0x96F0FF, col1: 0x288CFF, col2: 0x001478, blend: 1, cell: TK_FLAME,
+        twinkle: true
+    }
+    __tk_styles[TK_CONFETTI] = TkStyle {
+        life: 130, life_jitter: 40, speed: 0.07, lift: 0.13, spread: 0.2, gravity: 0.0045, drag: 0.95,
+        size0: 0.11, size1: 0.11, blend: -1, cell: TK_SQUARE, spin: true, toy_colours: true, lands: true
+    }
+}
+
+// Style n (0-15) to change, or to fill in for a kind of your own (6-15). Copying a preset is
+// a good start: *tk_style(7) = *tk_style(TK_SPARKLE).
+fn tk_style(n: s32) -> *TkStyle { return &__tk_styles[n & 15] }
+
+// The most particles drawn in one frame (1-256; 160 to start with).
+fn tk_particle_cap(n: s32) { __tk_pcap = clamp(n, 1, TK_MAX_PARTICLES) }
+
+// Particles alive now, and drawn in the last frame.
+fn tk_particles_alive() -> s32 { return __tk_palive }
+fn tk_particles_drawn() -> s32 { return __tk_pdrawn }
+
+// Starts `count` particles of `style` at pos.
+fn tk_burst(style: s32, pos: vec3, count: s32) { tk_burst_moving(style, pos, count, vec3(0.0, 0.0, 0.0)) }
+
+// The same, with `vel` added to each one's velocity (a splash thrown up, sparks blown sideways).
+fn tk_burst_moving(style: s32, pos: vec3, count: s32, vel: vec3) {
+    let st = &__tk_styles[style & 15]
+    var floor = TK_NO_FLOOR
+    if st.lands { floor = tk_floor_at(pos.x, pos.z, pos.y + 0.05) }
+    for k in 0..count {
+        if __tk_pspawned >= TK_SPAWN_CAP { return }
+        __tk_pspawned += 1
+        let p = &__tk_parts[__tk_pnext]
+        __tk_pnext = (__tk_pnext + 1) & (TK_MAX_PARTICLES - 1)
+        if p.life == 0 { __tk_palive += 1 }
+        // a random direction, flattened toward the ground plane by `flat`
+        var d = vec3(tk_rand_signed(), tk_rand_signed() * (1.0 - st.flat), tk_rand_signed())
+        let dd = dot(d, d)
+        if dd > 1.0 { d = d / sqrt(dd) }
+        p.pos = pos + vec3(tk_rand_signed(), tk_rand_signed() * (1.0 - st.flat), tk_rand_signed()) * st.spread
+        p.vel = d * st.speed + vec3(0.0, st.lift, 0.0) + vel
+        p.floor = floor
+        p.age = 0
+        p.life = (st.life + rnd(st.life_jitter + 1)) as s16
+        p.style = (style & 15) as u8
+        p.tint = rnd(6) as u8
+        p.angle = rnd(16) as u8
+        p.spin = 0
+        if st.spin { p.spin = (rnd(5) - 2) as s8 }
+        if p.life <= 0 { p.life = 1 }
+    }
+}
+
+// A new emitter of `style` at pos (switch it with its `on`, aim it with `vel`); null when
+// all 16 are in use.
+fn tk_new_emitter(style: s32, pos: vec3) -> *TkEmitter {
+    if __tk_nemitters >= TK_MAX_EMITTERS {
+        println("tsumiki: more than 16 emitters")
+        return null
+    }
+    let e = &__tk_emitters[__tk_nemitters]
+    __tk_nemitters += 1
+    *e = TkEmitter { style: style, pos: pos, __used: true }
+    return e
+}
+
+// One frame of every emitter and particle (tk_update() calls it).
+fn __tk_particles_step() {
+    __tk_pspawned = 0
+    for i in 0..__tk_nemitters {
+        let e = &__tk_emitters[i]
+        if !e.on { continue }
+        e.__acc += e.rate
+        let n = e.__acc as s32
+        if n > 0 {
+            e.__acc -= fixed(n)
+            tk_burst_moving(e.style, e.pos, n, e.vel)
+        }
+    }
+    var alive = 0
+    for i in 0..TK_MAX_PARTICLES {
+        let p = &__tk_parts[i]
+        if p.life == 0 { continue }
+        p.age += 1
+        if p.age >= p.life {
+            p.life = 0
+            continue
+        }
+        alive += 1
+        let st = &__tk_styles[p.style]
+        p.vel.y -= st.gravity
+        p.vel = p.vel * st.drag
+        p.pos = p.pos + p.vel
+        p.angle = (p.angle as s32 + p.spin) as u8
+        if st.lands && p.pos.y < p.floor + 0.02 {
+            p.pos.y = p.floor + 0.02
+            p.vel = vec3(0.0, 0.0, 0.0)
+            p.spin = 0
+        }
+    }
+    __tk_palive = alive
+}
+
+// Corner offsets of a quad turned by sixteenths of a half turn (cos, sin).
+const __TK_TURN: [16]vec2 = [
+    vec2(1.0, 0.0), vec2(0.9808, 0.1951), vec2(0.9239, 0.3827), vec2(0.8315, 0.5556),
+    vec2(0.7071, 0.7071), vec2(0.5556, 0.8315), vec2(0.3827, 0.9239), vec2(0.1951, 0.9808),
+    vec2(0.0, 1.0), vec2(-0.1951, 0.9808), vec2(-0.3827, 0.9239), vec2(-0.5556, 0.8315),
+    vec2(-0.7071, 0.7071), vec2(-0.8315, 0.5556), vec2(-0.9239, 0.3827), vec2(-0.9808, 0.1951),
+]
+
+// Size grows with the thinning stride (about its square root) so a thinned crowd looks as full.
+const __TK_THIN: [8]fixed = [1.0, 1.0, 1.41, 1.73, 2.0, 2.24, 2.45, 2.65]
+
+// Draws the particles into the ordering table (tk_draw() calls it). About 160 cycles each.
+fn __tk_particles_draw() {
+    __tk_pdrawn = 0
+    if __tk_palive == 0 { return }
+    var stride = 1
+    if __tk_palive > __tk_pcap { stride = min((__tk_palive + __tk_pcap - 1) / __tk_pcap, 7) }
+    let thin = __TK_THIN[stride]
+    let r0 = __vp[0]
+    let r1 = __vp[1]
+    let r3 = __vp[3]
+    let near = __cam_near + 0.15
+    let kb = 1024.0 / (__cam_far - __cam_near)
+    let pix = __fy * 120          // pixels per unit at depth 1
+    var seen = 0
+    var drawn = 0
+    for i in 0..TK_MAX_PARTICLES {
+        let p = &__tk_parts[i]
+        if p.life == 0 { continue }
+        seen += 1
+        if stride > 1 && seen % stride != 0 { continue }
+        if drawn >= __tk_pcap { break }
+        let v = vec4(p.pos, 1.0)
+        let w = dot(r3, v)
+        if w < near { continue }
+        let inv = 1.0 / w
+        let sx = 160 + ((dot(r0, v) * inv) * 160) as s32
+        let sy = 120 - ((dot(r1, v) * inv) * 120) as s32
+        let st = &__tk_styles[p.style]
+        let t = fixed(p.age) / p.life
+        let size = (st.size0 + (st.size1 - st.size0) * t) * thin
+        let half = min((size * pix * inv) as s32 / 2 + 1, 48)
+        if sx + half < 0 || sx - half > 320 || sy + half < 0 || sy - half > 240 { continue }
+        var col: u32
+        if st.toy_colours {
+            col = TK_TOY_COLOURS[p.tint]
+        } else if t < 0.5 {
+            col = clerp(st.col0, st.col1, t * 2)
+        } else {
+            col = clerp(st.col1, st.col2, t * 2 - 1.0)
+        }
+        if st.twinkle && ((p.age + i) & 4) != 0 { col = (col >> 1) & 0x7F7F7F }
+        let q = __arena_ptr
+        if q + 10 > __arena_end { break }
+        __arena_ptr = q + 10
+        var tint = col_tint(col)
+        var type: u32 = 0x26
+        if st.blend >= 0 {
+            type = 0x2E
+            tint |= (st.blend as u32 & 3) << 24
+        }
+        let c = st.cell
+        let u0 = tk_cell_u(c) as u32
+        let v0 = tk_cell_v(c) as u32
+        let u1 = u0 + (tk_cell_w(c) - 1) as u32
+        let v1 = v0 + (tk_cell_h(c) - 1) as u32
+        // the corners: top-left, top-right, bottom-left, bottom-right, turned by the angle
+        var ax = half
+        var ay = 0
+        if p.angle != 0 {
+            let r = __TK_TURN[p.angle & 15]
+            ax = (r.x * half) as s32
+            ay = (r.y * half) as s32
+        }
+        // (ax, ay) is the quad's half-width along its turned x axis; (-ay, ax) along its y axis
+        q[1] = tint
+        q[2] = __pos(sx - ax + ay, sy - ay - ax)
+        q[3] = u0 | (v0 << 8) | tk_cell_page(c)
+        q[4] = __pos(sx + ax + ay, sy + ay - ax)
+        q[5] = u1 | (v0 << 8)
+        q[6] = __pos(sx - ax - ay, sy - ay + ax)
+        q[7] = u0 | (v1 << 8)
+        q[8] = __pos(sx + ax - ay, sy + ay + ax)
+        q[9] = u1 | (v1 << 8)
+        ot_insert(q, type, ((w - __cam_near) * kb) as s32 + __ot_user)
+        drawn += 1
+    }
+    __tk_pdrawn = drawn
+}

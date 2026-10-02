@@ -1,0 +1,182 @@
+// Tsumiki's character controller: landing, walls (stopping and sliding), step-up, ramps,
+// jumping with coyote time and the jump buffer, a lower jump when let go, moving platforms
+// and zones. Each case runs tk_update() frame by frame from init().
+// frames: 300
+import "tsumiki.akr"
+
+var b: *TkBody
+
+fn show(f: fixed) {
+    print_fixed(f)
+    print(",")
+}
+
+fn yes(c: bool) {
+    if c { print("Y") } else { print("n") }
+}
+
+// A floor slab under y = 0 from -10 to 10, and a body at pos.
+fn reset(pos: vec3) {
+    tk_open(0)
+    let _ = tk_add_box(vec3(-10.0, -1.0, -10.0), vec3(10.0, 0.0, 10.0))
+    b = tk_new_body(pos)
+}
+
+fn run(frames: s32, wish: vec3, jump: bool) {
+    for i in 0..frames {
+        tk_drive(b, wish, jump)
+        tk_update()
+    }
+}
+
+fn init() {
+    // landing: dropped from 2 up, it falls and lands once, squashing
+    reset(vec3(0.0, 2.0, 0.0))
+    var landings = 0
+    var frames = 0
+    for i in 0..60 {
+        tk_drive(b, vec3(0.0, 0.0, 0.0), false)
+        tk_update()
+        if b.landed {
+            landings += 1
+            if landings == 1 { frames = i + 1 }
+        }
+    }
+    print_int(landings); print(","); print_int(frames); print(","); show(b.pos.y); show(b.impact); yes(b.on_ground); println("")
+    // expect: 1,22,0.0,0.187,Y
+
+    // a wall at x = 2: running east stops with the body's side against it
+    reset(vec3(0.0, 0.0, 0.0))
+    let _ = tk_add_box(vec3(2.0, 0.0, -5.0), vec3(3.0, 2.0, 5.0))
+    run(60, vec3(1.0, 0.0, 0.0), false)
+    show(b.pos.x); show(b.vel.x); yes(b.bumped); println("")
+    // expect: 1.72,0.0,Y
+    // sliding: running north-east along it keeps going north
+    let z0 = b.pos.z
+    run(30, vec3(0.7071, 0.0, 0.7071), false)
+    show(b.pos.x); yes(b.pos.z - z0 > 1.0); println("")
+    // expect: 1.72,Y
+
+    // step-up: a 0.25 ledge is walked up, a 0.5 one is a wall
+    reset(vec3(0.0, 0.0, 0.0))
+    let _ = tk_add_box(vec3(1.0, 0.0, -5.0), vec3(3.0, 0.25, 5.0))
+    let _ = tk_add_box(vec3(4.0, 0.0, -5.0), vec3(6.0, 0.75, 5.0))
+    run(30, vec3(1.0, 0.0, 0.0), false)
+    show(b.pos.x); show(b.pos.y); yes(b.on_ground); println("")
+    // expect: 2.1543,0.25,Y
+    run(60, vec3(1.0, 0.0, 0.0), false)
+    show(b.pos.x); show(b.pos.y); println("")
+    // expect: 3.72,0.0,
+
+    // ramps: a gentle one (1 up over 3) is walked up; a steep one (2 up over 1) is a wall
+    reset(vec3(0.0, 0.0, 1.0))
+    let _ = tk_add_ramp(vec3(1.0, 0.0, 0.0), vec3(4.0, 1.0, 2.0), TK_EAST)
+    let _ = tk_add_box(vec3(4.0, 0.0, 0.0), vec3(6.0, 1.0, 2.0))
+    run(25, vec3(1.0, 0.0, 0.0), false)
+    show(b.pos.x); show(b.pos.y); yes(b.on_ground); println("")
+    // expect: 1.7304,0.2435,Y
+    run(30, vec3(1.0, 0.0, 0.0), false)
+    show(b.pos.y); println("")
+    // expect: 1.0,
+    // and down again, staying on the slope
+    var airborne = 0
+    for i in 0..70 {
+        tk_drive(b, vec3(-1.0, 0.0, 0.0), false)
+        tk_update()
+        if !b.on_ground { airborne += 1 }
+    }
+    show(b.pos.y); print_int(airborne); println("")
+    // expect: 0.0,0
+    reset(vec3(0.0, 0.0, 1.0))
+    let _ = tk_add_ramp(vec3(1.0, 0.0, 0.0), vec3(2.0, 2.0, 2.0), TK_EAST)
+    run(40, vec3(1.0, 0.0, 0.0), false)
+    show(b.pos.x); show(b.pos.y); println("")
+    // expect: 0.72,0.0,
+
+    // a jump: about 1.6 high; let go at once and it is lower
+    reset(vec3(0.0, 0.0, 0.0))
+    var top: fixed = 0.0
+    for i in 0..80 {
+        tk_drive(b, vec3(0.0, 0.0, 0.0), i < 40)
+        tk_update()
+        top = max(top, b.pos.y)
+    }
+    show(top); yes(b.on_ground); println("")
+    // expect: 1.52,Y
+    top = 0.0
+    for i in 0..80 {
+        tk_drive(b, vec3(0.0, 0.0, 0.0), i < 3)
+        tk_update()
+        top = max(top, b.pos.y)
+    }
+    show(top); println("")
+    // expect: 0.696,
+
+    // coyote time: off a ledge, a jump 4 frames later still works; 10 frames later it does
+    // not (the ledge is high, so the press is long forgotten when it lands)
+    for late in 0..2 {
+        reset(vec3(0.0, 4.0, 0.0))
+        let _ = tk_add_box(vec3(-5.0, 0.0, -5.0), vec3(0.5, 4.0, 5.0))
+        run(1, vec3(0.0, 0.0, 0.0), false)
+        var off = -1
+        var jumped = false
+        var down = false
+        for i in 0..80 {
+            var j = false
+            if off >= 0 && i == off + 4 + late * 6 { j = true }
+            tk_drive(b, vec3(1.0, 0.0, 0.0), j)
+            tk_update()
+            if off < 0 && !b.on_ground { off = i }
+            if b.landed { down = true }
+            if b.jumped && !down { jumped = true }
+        }
+        yes(jumped)
+    }
+    println("")
+    // expect: Yn
+
+    // the jump buffer: pressed 4 frames before landing, it jumps on landing
+    reset(vec3(0.0, 1.0, 0.0))
+    var land_at = -1
+    for i in 0..30 {
+        tk_drive(b, vec3(0.0, 0.0, 0.0), false)
+        tk_update()
+        if b.landed { land_at = i }
+    }
+    reset(vec3(0.0, 1.0, 0.0))
+    var bounced = false
+    for i in 0..60 {
+        tk_drive(b, vec3(0.0, 0.0, 0.0), i >= land_at - 4 && i < land_at + 10)
+        tk_update()
+        if b.jumped && i > land_at - 4 { bounced = true }
+    }
+    print_int(land_at); print(","); yes(bounced); println("")
+    // expect: 14,Y
+
+    // a moving platform carries what stands on it
+    tk_open(0)
+    let _ = tk_add_box(vec3(-10.0, -1.0, -10.0), vec3(10.0, 0.0, 10.0))
+    let p = tk_new_platform(null, vec3(0.0, 1.0, 0.0), vec3(-1.0, -0.2, -1.0), vec3(1.0, 0.0, 1.0))
+    b = tk_new_body(vec3(0.0, 1.5, 0.0))
+    run(20, vec3(0.0, 0.0, 0.0), false)
+    tk_platform_path(p, vec3(0.0, 1.0, 0.0), vec3(4.0, 2.0, 0.0), 60)
+    yes(b.on_ground); print_int(b.ground); println("")
+    // expect: Y1
+    run(70, vec3(0.0, 0.0, 0.0), false)
+    show(p.pos.x); show(b.pos.x); show(b.pos.y - p.pos.y); println("")
+    // expect: 4.0,4.0,0.0,
+
+    // zones: enter and leave events
+    reset(vec3(0.0, 0.0, 0.0))
+    let z = tk_new_zone(vec3(2.0, 0.0, -1.0), vec3(3.0, 2.0, 1.0))
+    var entered = -1
+    var left = -1
+    for i in 0..80 {
+        tk_drive(b, vec3(1.0, 0.0, 0.0), false)
+        tk_update()
+        if tk_zone_entered(z) { entered = i }
+        if tk_zone_left(z) { left = i }
+    }
+    print_int(entered); print(","); print_int(left); print(","); yes(tk_zone_has(z, b)); println("")
+    // expect: 24,43,n
+}

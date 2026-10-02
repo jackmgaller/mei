@@ -1,0 +1,38 @@
+// The Tsumiki title: TSUMIKI on seven chunky painted blocks, a little out of line as if a
+// child had stacked them. 2D, on the interface list.
+
+const __TK_LOGO_TEXT = "TSUMIKI"
+const __TK_LOGO_COLS: [7]u32 = [0x2F32DC, 0x28C8FA, 0xD26428, 0x46AA46, 0x1E82F0, 0xB4508C, 0x2F32DC]
+const __TK_LOGO_DY: [7]s32 = [0, -3, 2, -2, 3, -1, 1]
+
+// The width of the title drawn with blocks of `size` pixels.
+fn tk_logo_width(size: s32) -> s32 { return 7 * size + 6 * (size / 8) + size / 6 }
+
+// Draws the title with its top-left near (x, y), blocks `size` pixels square (16-48; 24 is a
+// good title size). `t` sets it bouncing (a frame count; 0 for still).
+fn tk_logo(x: s32, y: s32, size: s32, t: s32) {
+    let gap = size / 8
+    let side = max(size / 6, 2)
+    let g = max((size * 2 / 3) / 8, 1) * 8          // the letter: the 8x8 font at a whole scale
+    let page = tex_page(FONT_SLOT, FONT_PALETTE, true)
+    for i in 0..7 {
+        let c = __TK_LOGO_COLS[i]
+        var bob = 0
+        if t != 0 { bob = (sin(frame_angle(t, 0.09) + fixed(i) * 0.9) * (size / 8)) as s32 }
+        let bx = x + i * (size + gap)
+        let by = y + __TK_LOGO_DY[i] * size / 24 + bob
+        // the block's side and bottom, then its face, lighter at the top
+        rect_blend(bx + side, by + side, size, size, col_scale(c, 0.42), BLEND_NONE)
+        rect_grad(bx, by, size, size, col_add(c, 0x303030), col_scale(c, 0.86), BLEND_NONE)
+        rect_blend(bx, by, size, max(size / 12, 1), col_add(c, 0x606060), BLEND_NONE)
+        rect_outline(bx, by, size, size, col_scale(c, 0.6), BLEND_NONE)
+        // the letter, with a shadow
+        let ch = (__TK_LOGO_TEXT[i] as s32) - 32
+        let u = (ch & 15) * 8
+        let v = (ch >> 4) * 8
+        let lx = bx + (size - g) / 2
+        let ly = by + (size - g) / 2
+        sprite_ex(page, u, v, 7, 7, lx + g / 8, ly + g / 8, g, g, col_tint(col_scale(c, 0.35)), BLEND_NONE)
+        sprite_ex(page, u, v, 7, 7, lx, ly, g, g, 0x808080, BLEND_NONE)
+    }
+}

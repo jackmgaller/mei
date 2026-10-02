@@ -33,7 +33,7 @@ all: $(B)/mei $(B)/mei-headless $(B)/meiasm $(B)/meic carts
 # The system ROM (boot animation + shell), docs/SYSTEM.md
 # Akari sources end in .akr (.mls is the older extension and still builds)
 SRC_EXT = $(firstword $(foreach e,akr mls,$(if $(wildcard $(1).$(e)),$(1).$(e))))
-STDLIB_SRC := $(wildcard stdlib/*.akr stdlib/*.akr)
+STDLIB_SRC := $(wildcard stdlib/*.akr stdlib/*/*.akr)
 SYSTEM_ROM := $(if $(call SRC_EXT,system/system),$(B)/system.mei)
 all: $(SYSTEM_ROM)
 $(B)/system.mei: $(shell find system -type f 2>/dev/null | sed 's/ /\\ /g') $(STDLIB_SRC) $(B)/meic
