@@ -1011,6 +1011,55 @@ str_append_int(b, 32, day, 0, false)
 font_text_align(312, 8, str_append_time(str_copy(b, 32, ""), 32, minutes), CREAM, ALIGN_RIGHT)
 ```
 
+### Tasks (`task.akr`)
+
+Work too big for one frame (rebuilding a cached scene, path finding, generating a level) can
+run as a **task**: a function with a stack of its own that runs for a while each frame and keeps
+its place between frames, locals, loops and calls in progress included, instead of a
+hand-written state machine.
+
+| | |
+|---|---|
+| `task_start(t: *Task, stack: *u8, size, body: fn())` | prepare `t` to run `body` on `size` bytes at `stack`; it does not run yet. Starting it again abandons what it was doing |
+| `task_resume(t) -> bool` | run `t` until it yields (true) or its function returns (false); false at once unless it is ready |
+| `task_yield()` | inside a task: suspend it and return from the `task_resume` that ran it. Outside a task it does nothing |
+| `task_time() -> s32` | cycles since the running task was last resumed (0 outside one) |
+| `task_done(t) -> bool`, `task_current() -> *Task` | its function has returned; the task running now (or null) |
+
+`t.state` is `TASK_IDLE`, `TASK_READY` (started or suspended), `TASK_RUNNING` or `TASK_DONE`.
+
+```
+var builder: Task
+var builder_stack: [4096]u8
+
+fn rebuild() {                                   // written as if it had the CPU to itself
+    for g in 0..floors {
+        for i in 0..n_objects(g) {
+            bake_object(g, i)
+            if task_time() > 60000 { task_yield() }    // the rest next frame
+        }
+    }
+}
+
+fn update() {
+    if dirty {
+        task_start(&builder, &builder_stack[0], 4096, rebuild)
+        dirty = false
+    }
+    task_resume(&builder)                        // false (and does nothing) once it is done
+}
+```
+
+`body` may be a closure (a function literal with captures); a task may resume other tasks, and
+`task_yield()` always suspends the innermost one. A switch is an ordinary call as far as the
+code around it is concerned: it saves and restores only what the calling convention preserves
+(`r9`–`r13`, `sp`, `ra`), so a resume and the yield back cost about 125 cycles together. The
+stack must hold the deepest calls the task makes, with their locals (`mesh()` with clipping, fog
+and `subdivide(3)` uses about 320 bytes; 1–2 KB is comfortable for most work). A guard word at
+the bottom of the stack is checked whenever the task yields or returns: a task that ran over it
+halts the cart with "task stack overflow" (by then it may have overwritten the memory below its
+stack, so leave room).
+
 ### Sound (`audio.akr`)
 
 Sixteen channels (0–15) of mono samples at 22,050 Hz, in 8-bit, 16-bit or 4-bit ADPCM, and a
