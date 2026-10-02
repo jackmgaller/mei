@@ -799,8 +799,8 @@ meshes that need it, raise the tolerance, or adjust it from frame to frame from 
 (keep the settings the same for all the meshes of a frame that share edges, or they may
 disagree about a shared edge).
 
-The font occupies texture slot 15 and 4-bit palette 255 (colours 4080–4095); carts should not
-use them.
+The fonts occupy texture slot 15 (the 8×8 font rows 0–47, `font_small()` rows 48–66) and 4-bit
+palette 255 (colours 4080–4095); carts should not use them.
 
 For hand-built packets: `packet_alloc(words) -> *u32` (null when full), `ot_insert(p, type,
 depth)` (depth 0 nearest .. 1023), `ui_insert(p, type)`. Word 0 of a packet is filled in by the
