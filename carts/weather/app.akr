@@ -355,7 +355,7 @@ fn draw() {
         }
         Map => map_draw_page(i, t)
         Regions => {
-            banner_draw("Regions", "MeiNet Weather", 0, 0)
+            banner_draw("Regions", "Mei Weather", 0, 0)
             regions_draw(t)
         }
         Clock => {
