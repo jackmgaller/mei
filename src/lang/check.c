@@ -2768,6 +2768,24 @@ void check_program(Program *P) {
     }
     for (int i = 0; i < P->ndatas; i++) if (P->datas[i]->k == SY_EMBED) resolve_embed(P->datas[i]);
     for (int i = 0; i < P->nfuncs; i++) check_signature(P->funcs[i]);
+    for (int i = 0; i < P->nfuncs; i++) {
+        Func *f = P->funcs[i];
+        for (Func *w = f->overrides; w; w = w->overrides) {
+        /* the replaced weak function: same parameter and result types */
+        w->ret = w->ret_texpr ? complete(resolve_type(w->ret_texpr), w->ret_texpr->loc) : ty_void;
+        int same = w->nparams == f->nparams && !strcmp(ty_str(w->ret), ty_str(f->ret));
+        for (int k = 0; k < w->nparams && same; k++)
+            same = !strcmp(ty_str(complete(resolve_type(w->params[k].texpr), w->params[k].loc)), ty_str(f->params[k].ty));
+        if (!same) {
+            Buf b = {0};
+            for (int k = 0; k < w->nparams; k++)
+                buf_printf(&b, "%s%s", k ? ", " : "", ty_str(complete(resolve_type(w->params[k].texpr), w->params[k].loc)));
+            error_at(f->loc, "%s() replaces the weak %s() at %s:%d, so it must have the same parameter and result types "
+                     "(%s(%s)%s%s)", f->name, w->name, w->loc.file, w->loc.line, w->name, b.p ? b.p : "",
+                     w->ret->k == TY_VOID ? "" : " -> ", w->ret->k == TY_VOID ? "" : ty_str(w->ret));
+        }
+        }
+    }
     for (int i = 0; i < P->nglobals; i++) {
         Sym *s = P->globals[i];
         if (s->texpr) s->ty = complete(resolve_type(s->texpr), s->loc);

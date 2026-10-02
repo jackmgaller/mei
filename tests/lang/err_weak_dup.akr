@@ -1,0 +1,5 @@
+// Only one weak default per name.
+// error: 'tick' already has a weak definition at tests/lang/err_weak_dup.akr:3
+weak fn tick() {}
+weak fn tick() {}
+fn init() { tick() }

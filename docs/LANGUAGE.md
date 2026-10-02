@@ -30,7 +30,7 @@ fn draw() {
 1. [Building and running](#building-and-running)
 2. [Program structure](#program-structure)
 3. [Lexical rules](#lexical-rules)
-4. [Declarations](#declarations)
+4. [Declarations](#declarations) (and [private](#private-declarations), [weak](#weak-functions))
 5. [Types](#types)
 6. [Constants and conversions](#constants-and-conversions)
 7. [Operators](#operators)
@@ -217,6 +217,26 @@ still be handed out as values, and private types can appear in public signatures
 *name* is private). `init`, `update` and `draw` cannot be private (the runtime calls them).
 `private` is only special at the start of a top-level declaration, so it is not a reserved
 word. In the assembly (`-S`) private symbols get a per-file suffix (`F_tile_free$p2`).
+
+### Weak functions
+
+`weak fn` (or `weak asm fn`) declares a default: if another file defines a function with the
+same name (without `weak`), that definition replaces the default everywhere, including the calls
+in the file that declares the default; otherwise the default is used. A test harness or a
+variant of a cart can then replace hooks without the game's files knowing about it:
+
+```
+// game.akr                                       // harness.akr (imports game.akr)
+weak fn input_pad(frame: s32) -> u32 {            fn input_pad(frame: s32) -> u32 {
+    return PAD1                                       return SCRIPT[frame % len(SCRIPT)]
+}                                                 }
+```
+
+The replacing function must have the same parameter and result types (otherwise an error names
+the default's signature), and a name may have only one weak default (per cart; a cart's
+definition, weak or not, also replaces a weak standard-library function). The order of the files
+does not matter. The replaced default is dropped (it takes no ROM). `weak` is only special at
+the start of a top-level declaration, and cannot be combined with `private`.
 
 ## Types
 

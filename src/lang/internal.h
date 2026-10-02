@@ -287,6 +287,8 @@ typedef struct Func {
     Expr *inl_e;          /* the E of an inlinable function */
     uint32_t clob;        /* codegen: registers a call to it may change (bits 1-8 r1-r8, 16-23 v0-v7) */
     int clob_known;       /* clob is set (the function was generated before its callers) */
+    int weak;             /* `weak fn`: a default that another definition of the name replaces */
+    struct Func *overrides;   /* the weak function this one replaced (signatures must match) */
 } Func;
 
 typedef enum { SY_TYPE, SY_CONST, SY_DATA, SY_GLOBAL, SY_REG, SY_EMBED, SY_FUNC, SY_LOCAL, SY_BUILTIN } SymKind;

@@ -1,0 +1,4 @@
+// for weak.akr: a strong hook_hello defined before the weak default, and a caller of on_score.
+fn hook_hello() { println("replaced hello") }
+weak fn hook_hello() { println("default hello") }
+fn score_via_lib(n: s32) -> s32 { return on_score(n) }

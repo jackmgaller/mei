@@ -13,6 +13,7 @@ typedef struct {
     int no_struct_lit;
     int in_arm;          /* parsing a single-statement match arm: ',' may end it */
     int priv;            /* the declaration being parsed is `private` */
+    int weak;            /* the function being parsed is `weak` */
 } Parser;
 
 static const char *keywords[] = {
@@ -773,14 +774,79 @@ static void parse_params(Parser *p, Func *f, int types_optional) {
     if (is_op(p, "->")) { next(p); f->ret_texpr = parse_type(p); }
 }
 
+/* Removes a replaced weak function from the program. */
+static void drop_func(Program *P, Func *f) {
+    for (int i = 0; i < P->nfuncs; i++)
+        if (P->funcs[i] == f) {
+            memmove(&P->funcs[i], &P->funcs[i + 1], sizeof(Func *) * (size_t)(P->nfuncs - i - 1));
+            P->nfuncs--;
+            return;
+        }
+}
+
+/* Weak functions: returns the symbol a function definition binds to, or NULL when the
+   definition is a weak one that an existing definition already replaces (it is then dropped). */
+static Sym *define_fn(Parser *p, Func *f) {
+    int user = !file_is_stdlib(p->file);
+    Sym *old = p->priv ? NULL : sym_lookup_layer(f->name, user);
+    if (old && old->k == SY_FUNC && old->fn) {
+        if (old->fn->weak && !f->weak) {
+            /* this definition replaces the weak one, wherever it is called from */
+            f->overrides = old->fn;
+            drop_func(p->P, old->fn);
+            Sym *lib = user ? sym_lookup_layer(f->name, 0) : NULL;
+            if (lib && lib->k == SY_FUNC && lib->fn == old->fn) lib->fn = f;   /* it had replaced a library default */
+            old->fn = f;
+            old->loc = f->loc;
+            return old;
+        }
+        if (f->weak && !old->fn->weak) { f->overrides = NULL; return NULL; }
+        if (f->weak && old->fn->weak)
+            error_at(f->loc, "'%s' already has a weak definition at %s:%d (only one weak default is allowed)",
+                     f->name, old->loc.file, old->loc.line);
+    }
+    if (!old && user && !p->priv) {
+        Sym *lib = sym_lookup_layer(f->name, 0);
+        if (lib && lib->k == SY_FUNC && lib->fn && lib->fn->weak) {
+            /* a cart's function replaces a weak library function, for the library's calls too */
+            Sym *s = new_global(p, SY_FUNC, f->name, f->loc);
+            f->overrides = lib->fn;
+            drop_func(p->P, lib->fn);
+            lib->fn = f;
+            return s;
+        }
+    }
+    return new_global(p, SY_FUNC, f->name, f->loc);
+}
+
 static void parse_fn(Parser *p, int is_asm) {
     Func *f = ar_alloc(sizeof *f);
     next(p);   /* fn */
     f->loc = p->tok.loc;
     f->name = expect_ident(p, "a function name");
     f->is_asm = is_asm;
+    f->weak = p->weak;
     parse_params(p, f, 0);
-    Sym *s = new_global(p, SY_FUNC, f->name, f->loc);
+    Sym *s = define_fn(p, f);
+    if (!s) {
+        /* a weak default for a function defined already: parse it and drop it (its signature
+           is still compared with the definition that replaces it) */
+        if (is_asm) {
+            skip_nl_only(p);
+            if (!is_op(p, "{")) error_at(p->tok.loc, "expected '{' to start the asm body");
+            f->asm_text = lex_raw_block(&p->L, &f->asm_loc);
+            next(p);
+        } else f->body = parse_block(p);
+        Sym *strong = sym_lookup_layer(f->name, !file_is_stdlib(p->file));
+        f->sym = strong;
+        Func *prev = strong->fn->overrides;
+        if (prev && file_is_stdlib(prev->loc.file) == file_is_stdlib(f->loc.file))
+            error_at(f->loc, "'%s' already has a weak definition at %s:%d (only one weak default is allowed)",
+                     f->name, prev->loc.file, prev->loc.line);
+        f->overrides = prev;
+        strong->fn->overrides = f;
+        return;
+    }
     s->fn = f;
     f->sym = s;
     if (is_asm) {
@@ -872,6 +938,14 @@ static void parse_enum(Parser *p) {
 static void parse_toplevel(Parser *p) {
     Loc loc = p->tok.loc;
     p->priv = 0;
+    p->weak = 0;
+    if (is_kw(p, "weak")) {
+        /* `weak` (only here, so it is not a reserved word): a default another definition replaces */
+        next(p);
+        if (is_kw(p, "private")) error_at(p->tok.loc, "a weak function cannot be private (only a public function can be replaced)");
+        if (!is_kw(p, "fn") && !is_kw(p, "asm")) error_at(p->tok.loc, "expected 'fn' or 'asm fn' after 'weak', found %s", tok_desc(&p->tok));
+        p->weak = 1;
+    }
     if (is_kw(p, "private")) {
         /* `private` (only here, so it is not a reserved word): the name is visible in this file only */
         next(p);
@@ -879,6 +953,7 @@ static void parse_toplevel(Parser *p) {
         int ok = 0;
         for (int i = 0; decl[i]; i++) ok |= is_kw(p, decl[i]);
         if (!ok) error_at(p->tok.loc, "expected a declaration after 'private' (fn, var, const, struct, enum, embed, reg), found %s", tok_desc(&p->tok));
+        if (is_kw(p, "weak")) error_at(p->tok.loc, "a weak function cannot be private (write 'weak fn', without 'private')");
         p->priv = 1;
     }
     if (is_kw(p, "fn")) { parse_fn(p, 0); return; }

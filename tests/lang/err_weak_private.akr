@@ -1,0 +1,4 @@
+// A weak function cannot be private.
+// error: a weak function cannot be private
+weak private fn tick() {}
+fn init() { tick() }
