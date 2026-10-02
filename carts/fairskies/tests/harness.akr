@@ -177,6 +177,7 @@ fn test_hook(f: s32) {
                 assert_eq(clk.hour, 13)              // 18:00 UTC is 13:00 CDT
                 assert_eq(view, View.Now)
                 assert(index_ok, "index received")
+                assert(sound_active() & 0xFFF != 0, "the music plays")
                 println("OK 1 tune in")
                 perf_report()
             }

@@ -5,6 +5,7 @@
 # last frame to OUT_BASENAME.png. A failed assert makes mei-headless exit with status 2.
 #   SHOT=1          hide the test overlay (for screenshots)
 #   NOBC=1          no broadcast (no carrier, as on the web)
+#   TAPE=demo       play the sample tape (demo_tape.bin) through the decoder instead
 #   CARD=FILE       memory card 1 (kept between runs: tests of the saved pages)
 #   SEQ="N [FROM]"  also save every Nth frame (from frame FROM) as OUT_BASENAME_seq_*.png
 #   P="a b c"       scenario parameters P1..P3 (default 0)
@@ -22,7 +23,9 @@ printf 'import "harness.akr"\nimport "../app.akr"\n' >> "$S"
 "$ROOT/build/meic" "$S" -o "$OUT.mei" || { rm -f "$S"; exit 1; }
 rm -f "$S"
 shift 3
-if [ -z "$NOBC" ]; then set -- --broadcast "$HERE/fixture.bin" "$@"; fi
+BC="$HERE/fixture.bin"
+if [ "$TAPE" = demo ]; then BC="$HERE/../demo_tape.bin"; fi
+if [ -z "$NOBC" ]; then set -- --broadcast "$BC" "$@"; fi
 if [ -n "$CARD" ]; then set -- --card1 "$CARD" "$@"; fi
 if [ -n "$SEQ" ]; then
     set -- --dump-every $(echo $SEQ | cut -d' ' -f1) "${OUT}_seq" --dump-from $(echo "$SEQ 0" | cut -d' ' -f2) "$@"

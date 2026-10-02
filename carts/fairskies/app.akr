@@ -39,6 +39,9 @@ weak fn test_hook(f: s32) {}
 
 private var pad: u32
 private var pad_prev: u32
+private var had_page: bool
+private var was_view = View.Now
+private var was_loc = -1
 
 fn pressed(b: u32) -> bool { return pad & ~pad_prev & b != 0 }
 
@@ -271,6 +274,14 @@ fn update() {
         let n = loc_find(BC_NATIONAL)
         if n >= 0 && !ov_busy() { ov_ready(n) }
     }
+
+    // a gentle chime when the page on screen arrives
+    let vk = view_kind(view)
+    let have_now = vk >= 0 && wx_has(cur, vk)
+    if have_now && !had_page && was_view == view && was_loc == cur && !tr_active() { sfx_arrive() }
+    had_page = have_now
+    was_view = view
+    was_loc = cur
 
     tour_update()
     store_update()

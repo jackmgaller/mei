@@ -33,6 +33,7 @@ fn s_when(utc: u32, off_q: s32) -> *u8 {
 
 // The "updated" note for a page: on air this session, or from the memory card.
 fn s_updated(i: s32, k: s32, utc: u32, off_q: s32) -> *u8 {
+    if rx_demo { return "Sample tape: not real weather" }
     if wx_fresh(i, k) { return s_cat("Updated ", s_when(utc, off_q)) }
     return s_cat("Saved ", s_when(utc, off_q))
 }
@@ -355,29 +356,10 @@ fn map_draw_page(i: s32, t: s32) {
         let a = fixed(40 - (frame() as s32 - mp_last_frame)) / 40
         rect_blend(mx, my + mp_last_row * 4 + 3, MAP_W, 2, col_scale(0xFFE0A0, a), BLEND_ADD)
     }
-    // cities and their temperatures
-    for j in 0..nlocs {
-        if loc_is_national(j) { continue }
-        var p: [2]s32
-        if !map_point(i, locs[j].lat, locs[j].lon, mx, my, &p[0]) { continue }
-        rect(p[0] - 1, p[1] - 1, 3, 3, WHITE)
-        rect_outline(p[0] - 2, p[1] - 2, 5, 5, 0x200800, BLEND_NONE)
-        if wx_has(j, K_NOW) {
-            let tt = wx[j].cur.temp as s32
-            txt_s(F_MED, p[0] + 4, p[1] - 8, s_temp(tt), WHITE, ALIGN_LEFT)
-            if !loc_is_national(i) || true {
-                txt_s(F_TINY, p[0] + 4, p[1] + 6, loc_name(j), C_SOFT, ALIGN_LEFT)
-            }
-        }
-    }
-    // the title pill
+    // the title pill, bottom left (the open sea on the national map)
     let name = loc_region(i)
     var nm = name
     if loc_is_home(i) { nm = loc_name(i) }
-    let tw = max(txt_w(F_MED, nm), 96) + 14
-    rect_blend(mx + 4, my + 4, tw, 32, 0x2A0C04, BLEND_HALF)
-    rect_blend(mx + 4, my + 4, tw, 1, C_GOLD, BLEND_NONE)
-    txt_s(F_MED, mx + 10, my + 6, nm, WHITE, ALIGN_LEFT)
     var sub = "Temperatures"
     if !have {
         sub = "Waiting for the map"
@@ -386,13 +368,88 @@ fn map_draw_page(i: s32, t: s32) {
     }
     if i == focus && mp_hdr && !mp_same {
         let b = sbuf()
-        str_copy(b, SB, "Receiving ")
+        str_copy(b, SB, "Receiving rows: ")
         str_append_int(b, SB, popcount32(mp_done0) + popcount32(mp_done1), 0, false)
-        str_append(b, SB, "/48")
+        str_append(b, SB, " of 48")
         sub = b
     }
-    txt(F_TINY, mx + 10, my + 24, sub, C_SOFT)
+    let tw = max(txt_w(F_MED, nm), txt_w(F_TINY, sub)) + 14
+    let py = my + MAP_H - 36
+    rect_blend(mx + 4, py, tw, 32, 0x2A0C04, BLEND_HALF)
+    rect_blend(mx + 4, py, tw, 1, C_GOLD, BLEND_NONE)
+    txt_s(F_MED, mx + 10, py + 2, nm, WHITE, ALIGN_LEFT)
+    txt(F_TINY, mx + 10, py + 20, sub, C_SOFT)
+    labels_reset()
+    label_block(mx + 4, py, tw, 32)
+    // cities and their temperatures: home first, each label where it does not cover another
+    for pass in 0..2 {
+        for j in 0..nlocs {
+            if loc_is_national(j) || loc_is_home(j) != (pass == 0) { continue }
+            var p: [2]s32
+            if !map_point(i, locs[j].lat, locs[j].lon, mx, my, &p[0]) { continue }
+            rect(p[0] - 1, p[1] - 1, 3, 3, WHITE)
+            rect_outline(p[0] - 2, p[1] - 2, 5, 5, 0x200800, BLEND_NONE)
+            label_block(p[0] - 2, p[1] - 2, 5, 5)
+            if !wx_has(j, K_NOW) { continue }
+            let ts = s_temp(wx[j].cur.temp as s32)
+            let ns = loc_name(j)
+            let w = max(txt_w(F_MED, ts), txt_w(F_TINY, ns)) + 2
+            let h = 24
+            // right, left, above, below
+            var placed = false
+            for c in 0..4 {
+                var lx = p[0] + 4
+                var ly = p[1] - 9
+                match c {
+                    1 => lx = p[0] - 4 - w
+                    2 => {
+                        lx = clamp(p[0] - w / 2, mx + 1, mx + MAP_W - 1 - w)
+                        ly = p[1] - 4 - h
+                    }
+                    3 => {
+                        lx = clamp(p[0] - w / 2, mx + 1, mx + MAP_W - 1 - w)
+                        ly = p[1] + 4
+                    }
+                    else => {}
+                }
+                if lx < mx + 1 || lx + w > mx + MAP_W - 1 || ly < my + 1 || ly + h > my + MAP_H - 1 { continue }
+                if label_hits(lx, ly, w, h) { continue }
+                label_block(lx, ly, w, h)
+                txt_s(F_MED, lx, ly, ts, WHITE, ALIGN_LEFT)
+                txt_s(F_TINY, lx, ly + 15, ns, C_SOFT, ALIGN_LEFT)
+                placed = true
+                break
+            }
+            if !placed {
+                // no room: just the temperature, to the right
+                txt_s(F_MED, p[0] + 4, p[1] - 9, ts, WHITE, ALIGN_LEFT)
+            }
+        }
+    }
     legend_draw(i, 266, 20)
+}
+
+// Label placement on the map: boxes already taken.
+private var lb: [24 * 4]s32
+private var nlb: s32
+
+private fn labels_reset() { nlb = 0 }
+
+private fn label_block(x: s32, y: s32, w: s32, h: s32) {
+    if nlb >= 24 { return }
+    lb[nlb * 4] = x
+    lb[nlb * 4 + 1] = y
+    lb[nlb * 4 + 2] = w
+    lb[nlb * 4 + 3] = h
+    nlb += 1
+}
+
+private fn label_hits(x: s32, y: s32, w: s32, h: s32) -> bool {
+    for k in 0..nlb {
+        let b = &lb[k * 4]
+        if x < b[0] + b[2] && b[0] < x + w && y < b[1] + b[3] && b[1] < y + h { return true }
+    }
+    return false
 }
 
 // The location's UTC offset (from any of its pages), for page times.
@@ -440,15 +497,21 @@ fn regions_draw(t: s32) {
             rect_hgrad(8, y - 1, 304, 16, C_BAR_BOT, C_BAR_TOP, BLEND_NONE)
             rect_blend(8, y - 1, 304, 1, 0xB0E8FF, BLEND_NONE)
         }
-        text(12, y + 3, s_page(locs[j].page), C_GOLD)
+        var pc = C_GOLD
+        if j == reg_sel { pc = WHITE }
+        text(12, y + 3, s_page(locs[j].page), pc)
         var name = loc_region(j)
         if loc_is_home(j) { name = "Home" }
         txt_s(F_MED, 44, y - 1, name, WHITE, ALIGN_LEFT)
         if loc_is_national(j) {
-            txt(F_SMALL, 140, y + 2, "Temperature map", C_SOFT)
+            var nc = C_SOFT
+            if j == reg_sel { nc = WHITE }
+            txt(F_SMALL, 140, y + 2, "Temperature map", nc)
             continue
         }
-        txt(F_SMALL, 140, y + 2, loc_name(j), C_SOFT)
+        var cc = C_SOFT
+        if j == reg_sel { cc = WHITE }
+        txt(F_SMALL, 140, y + 2, loc_name(j), cc)
         if wx_has(j, K_NOW) {
             let c = &wx[j].cur
             icon_small(icon_of(c.wmo as s32), 238, y - 1, c.flags & 1 == 0)
@@ -476,10 +539,10 @@ fn clock_draw(t: s32) {
     let sb = sbuf()
     str_append_char(sb, SB, ':')
     str_append_int(sb, SB, clk.second, 2, true)
-    txt_s(F_BIG, x1 + 2, 60, sb, C_SOFT, ALIGN_LEFT)
+    txt_s(F_MED, x1 + 3, 54, sb, C_SOFT, ALIGN_LEFT)
     var ap = "AM"
     if clk.hour >= 12 { ap = "PM" }
-    txt_s(F_MED, x1 + 4, 76, ap, C_GOLD, ALIGN_LEFT)
+    txt_s(F_MED, x1 + 3, 80, ap, C_GOLD, ALIGN_LEFT)
     let d = sbuf()
     str_copy(d, SB, DAY_NAMES[clk.weekday % 7])
     str_append(d, SB, ", ")

@@ -1,10 +1,260 @@
-// Music and sounds (placeholder until the score is generated).
+// Music and interface sounds.
+//
+// "Fair Skies Theme": smooth-jazz lounge for the weather channel (tools/gen_fairskies_audio.py
+// composes it and renders the instruments into mu_data.akr and audio/). A small sequencer, after
+// the system shell's (system/shell/music.akr): each track plays a cycle of slots, each slot has a
+// few variant sections and a random one plays each time round (never the same twice running; the
+// first pass plays variant 0). Instruments are struck (an attack that decays into a loop, the
+// decay continued here with the channel volume), sustained (attack, hold, release) or one-shots
+// (the drums).
+//
+// Channels 0-11 are the music's voices; the interface sounds take 12-15 (voice.akr).
 
-fn music_init() {}
-fn music_update() {}
-fn music_volume_changed() {}
-fn sfx_page() {}
-fn sfx_tick() {}
-fn sfx_key() {}
-fn sfx_open() {}
-fn sfx_close() {}
+import "mu_data.akr"
+
+const MU_NV = 12
+const MU_FULL = 32767            // envelope full scale
+const MU_TWO_PI = 411775         // 2 pi in fixed-point bits
+const MU_KILL = 2                // a voice below this level is stopped
+const MU_PITCH: [3]fixed = [1.0, 2.0, 4.0]
+const MU_GAINS: [5]s32 = [0, 70, 130, 190, 250]   // the settings' music volumes
+
+private var running: bool
+private var gain: s32            // 0..256 (fades)
+private var target: s32
+
+// voices
+private var v_on: [12]bool
+private var v_inst: [12]s32
+private var v_lvl: [12]s32
+private var v_state: [12]s32     // 1 attack, 2 sustain or decay, 3 release
+private var v_age: [12]s32
+private var v_hold: [12]s32
+private var v_rel: [12]s32
+private var v_vol: [12]s32
+private var v_pan: [12]s32
+private var v_ph: [12]s32
+private var v_out: [12]s32
+
+// tracks
+private var t_slot: [8]s32
+private var t_last: [8]s32
+private var t_sec: [8]s32
+private var t_pos: [8]s32        // ticks x 256 into the section
+private var t_ev: [8]s32
+private var t_end: [8]s32
+
+var sfx: Voices
+
+private fn chan(ch: s32) -> *u32 {
+    if ch < 8 { return (AUDIO_BASE + ch * 32) as *u32 }
+    return (AUDIO_HI_BASE + (ch - 8) * 32) as *u32
+}
+
+// ---- tracks
+
+private fn begin(k: s32) {
+    let slot = (MU_TRACK[k * 2] + t_slot[k]) * 2
+    let n = MU_SLOT[slot + 1]
+    var v = 0
+    if n > 1 && t_last[k] >= 0 {
+        v = rnd(n - 1)
+        if v >= t_last[k] { v += 1 }
+    }
+    t_last[k] = v
+    let sec = (MU_SLOT[slot] + v) * 3
+    t_sec[k] = sec
+    t_ev[k] = MU_SEC[sec]
+    t_end[k] = MU_SEC[sec] + MU_SEC[sec + 1]
+}
+
+private fn track_start(k: s32) {
+    t_slot[k] = 0
+    t_last[k] = -1
+    t_pos[k] = 0
+    begin(k)
+}
+
+private fn track_frame(k: s32) {
+    t_pos[k] += MU_TEMPO
+    while true {
+        let now = t_pos[k] >> 8
+        var e = t_ev[k]
+        while e < t_end[k] && MU_EV[e * 2] & 0xFFFF <= now {
+            note(MU_EV[e * 2 + 1], MU_EV[e * 2] >> 16)
+            e += 1
+        }
+        t_ev[k] = e
+        let length = MU_SEC[t_sec[k] + 2]
+        if now < length { return }
+        t_pos[k] -= length << 8
+        t_slot[k] = (t_slot[k] + 1) % MU_TRACK[k * 2 + 1]
+        if t_slot[k] == 0 { t_last[k] = -1 }      // the form starts again: any variant
+        begin(k)
+    }
+}
+
+// ---- voices
+
+// One event: packed = inst | note << 4 | velocity << 11 | pan << 18.
+private fn note(packed: s32, dur: s32) {
+    let inst = (packed & 15) * 12
+    let nt = (packed >> 4) & 127
+    let lo = MU_INST[inst + 9]
+    if nt < lo || nt > MU_INST[inst + 10] { return }
+    let map = MU_NMAP[MU_INST[inst + 8] + nt - lo]
+    if map < 0 { return }
+    let smp = (map & 0xFFFF) * 4
+    let shift = map >> 16
+    let mode = MU_INST[inst]
+
+    // a free voice, or the quietest; a held note only if every voice is one
+    var v = -1
+    var quiet = 1 << 30
+    for i in 0..MU_NV {
+        if !v_on[i] {
+            v = i
+            break
+        }
+        var q = v_out[i]
+        if MU_INST[v_inst[i]] == 2 && v_state[i] != 3 { q += 1024 }
+        if q < quiet {
+            quiet = q
+            v = i
+        }
+    }
+    var flags = SND_ADPCM
+    if mode != 3 { flags = flags | SND_LOOP }
+    if MU_INST[inst + 5] != 0 { flags = flags | SND_REVERB }
+    play_sample(v, MU_BANK + MU_SAMP[smp], MU_SAMP[smp + 1] as u32, MU_SAMP[smp + 2] as u32,
+                MU_PITCH[shift], 0, 0, flags as u32)
+    v_on[v] = true
+    v_inst[v] = inst
+    v_age[v] = 0
+    v_hold[v] = MU_SAMP[smp + 3] >> shift
+    v_vol[v] = ((packed >> 11) & 127) * MU_INST[inst + 4] >> 7
+    v_pan[v] = ((packed >> 18) & 127) * 2 + 1
+    v_ph[v] = rnd(MU_TWO_PI)
+    v_out[v] = 0
+    if mode == 2 {
+        v_lvl[v] = 0
+        v_state[v] = 1
+    } else {
+        v_lvl[v] = MU_FULL
+        v_state[v] = 2
+    }
+    if dur > 0 { v_rel[v] = dur * 256 / MU_TEMPO } else { v_rel[v] = -1 }
+}
+
+private fn voice_frame(i: s32) {
+    let inst = v_inst[i]
+    let mode = MU_INST[inst]
+    let age = v_age[i] + 1
+    v_age[i] = age
+    var l = v_lvl[i]
+    var st = v_state[i]
+    if v_rel[i] >= 0 && age >= v_rel[i] { st = 3 }
+    if st == 1 {
+        l += MU_INST[inst + 1]
+        if l >= MU_FULL {
+            l = MU_FULL
+            st = 2
+        }
+    } else if st == 2 {
+        if mode == 1 && age > v_hold[i] {
+            l = l * MU_INST[inst + 2] >> 16
+            if l < MU_FULL / 24 { l = 0 }
+        }
+    } else {
+        l = l * MU_INST[inst + 3] >> 16
+        if l < MU_FULL / 16 { l = 0 }
+    }
+    v_lvl[i] = l
+    v_state[i] = st
+    var v = v_vol[i] * l >> 15
+    let depth = MU_INST[inst + 6]
+    if depth > 0 {
+        let ph = (v_ph[i] + MU_INST[inst + 7]) % MU_TWO_PI
+        v_ph[i] = ph
+        let s = bits(sin(from_bits(ph))) >> 8          // -256..256
+        v = v * (256 - (depth * (256 - s) >> 9)) >> 8
+    }
+    if v < MU_KILL && st != 1 {
+        v_on[i] = false
+        stop(i)
+        return
+    }
+    v_out[i] = v
+    v = v * gain >> 8
+    let pan = v_pan[i]
+    let left = clamp(v * min(256, (256 - pan) * 2) >> 8, 0, 255)
+    let right = clamp(v * min(256, pan * 2) >> 8, 0, 255)
+    chan(i)[4] = (left as u32) | ((right as u32) << 8)
+}
+
+// ---- control
+
+fn music_init() {
+    voices_init(&sfx, 12, 15, 4)
+    reverb(MU_REVERB, 0, 0)
+    reverb_decay(0)
+    music_volume_changed()
+    for k in 0..MU_TRACKS { track_start(k) }
+    running = true
+    gain = 0
+}
+
+fn music_volume_changed() {
+    target = MU_GAINS[clamp(cfg.music as s32, 0, 4)]
+}
+
+fn music_update() {
+    if !running { return }
+    if gain < target { gain = min(target, gain + 2) }
+    else if gain > target { gain = max(target, gain - 4) }
+    if target == 0 && gain == 0 {
+        // silent: keep time, but play nothing
+        for i in 0..MU_NV {
+            if v_on[i] {
+                v_on[i] = false
+                stop(i)
+            }
+        }
+        for k in 0..MU_TRACKS {
+            t_pos[k] += MU_TEMPO
+            let length = MU_SEC[t_sec[k] + 2]
+            if t_pos[k] >> 8 >= length { track_frame(k) }
+        }
+        return
+    }
+    for k in 0..MU_TRACKS { track_frame(k) }
+    let active = sound_active()
+    for i in 0..MU_NV {
+        if v_on[i] {
+            if (active >> i as u32) & 1 == 0 { v_on[i] = false } else { voice_frame(i) }
+        }
+    }
+    let w = MU_WET * gain >> 8
+    REVERB_VOL = (w as u32) | ((w as u32) << 8)
+}
+
+// ---- interface sounds
+
+const SND_PAGE = 0
+const SND_TICK = 1
+const SND_KEY = 2
+const SND_OPEN = 3
+const SND_CLOSE = 4
+const SND_ARRIVE = 5
+
+private fn sfx_play(id: s32, data: *u8, n: s32, vol: s32, pri: s32) {
+    if cfg.sfx == 0 { return }
+    voice_play(&sfx, id, pri, 1, data, n as u32, 1.0, vol, vol, SND_ADPCM | SND_REVERB)
+}
+
+fn sfx_page() { sfx_play(SND_PAGE, SFX_PAGE, SFX_PAGE_LEN, 120, 2) }
+fn sfx_tick() { sfx_play(SND_TICK, SFX_TICK, SFX_TICK_LEN, 90, 1) }
+fn sfx_key() { sfx_play(SND_KEY, SFX_KEY, SFX_KEY_LEN, 110, 2) }
+fn sfx_open() { sfx_play(SND_OPEN, SFX_OPEN, SFX_OPEN_LEN, 110, 2) }
+fn sfx_close() { sfx_play(SND_CLOSE, SFX_CLOSE, SFX_CLOSE_LEN, 100, 2) }
+fn sfx_arrive() { sfx_play(SND_ARRIVE, SFX_ARRIVE, SFX_ARRIVE_LEN, 100, 3) }

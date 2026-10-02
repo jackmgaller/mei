@@ -266,7 +266,9 @@ private fn settings_draw(t: s32) {
         if k == st_sel {
             rect_hgrad(x + 4, ry - 2, w - 8, 18, C_BAR_BOT, C_BAR_TOP, BLEND_NONE)
         }
-        txt(F_SMALL, x + 12, ry + 1, ST_NAMES[k], C_SOFT)
+        var lc = C_SOFT
+        if k == st_sel { lc = WHITE }
+        txt(F_SMALL, x + 12, ry + 1, ST_NAMES[k], lc)
         if k == 5 {
             reception_line(x + w - 12, ry + 1)
             continue
