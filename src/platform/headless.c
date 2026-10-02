@@ -2,7 +2,7 @@
  *   mei-headless cart.mei [--frames N] [--dump out.ppm] [--pad1 HEX] [--input F:HEX,F:HEX...]
  *                [--wav out.wav] [--system-carts DIR] [--config HEX] [--time HH:MM[:SS]]
  *                [--date YYYY-MM-DD] [--card1 FILE] [--card2 FILE] [--quiet]
- *                [--dump-every N PREFIX] [--dump-from F]
+ *                [--dump-every N PREFIX] [--dump-from F] [--gpu-stats out.csv]
  * Prints the cart's debug console to stdout. Exit status: 0 ok, 2 fault, 1 usage/IO error.
  * --input changes controller 1's buttons from frame F on (e.g. 0:0,120:400,124:0).
  * --system-carts treats the cart as the system ROM and appends a catalogue of the .mei files in DIR;
@@ -12,7 +12,9 @@
  * --card1/--card2 insert memory card files (blank if missing), saved back at exit if changed.
  * With --system-carts the system ROM gets the system card commands until a cart launches.
  * --dump-every N PREFIX also writes the screen every N ticks (from tick --dump-from F, default 0)
- * to PREFIX_00012.ppm etc. (the tick number), for frame sequences and contact sheets. */
+ * to PREFIX_00012.ppm etc. (the tick number), for frame sequences and contact sheets.
+ * --gpu-stats writes one CSV row per presented frame: CPU cycles, triangles, and pixels filled
+ * by kind (flat/Gouraud x untextured/textured x opaque/semi-transparent), for measuring fill. */
 #include "mei.h"
 #include "sysboot.h"
 
@@ -67,7 +69,7 @@ static int weekday(int y, int m, int d) {   /* 0 = Sunday (Sakamoto) */
 }
 
 int main(int argc, char **argv) {
-    const char *cart = NULL, *dump = NULL, *wav = NULL, *sysdir = NULL, *seq = NULL;
+    const char *cart = NULL, *dump = NULL, *wav = NULL, *sysdir = NULL, *seq = NULL, *gstats_path = NULL;
     long frames = 1, seq_every = 0, seq_from = 0;
     unsigned pad1 = 0, config = 0;
     int quiet = 0, have_config = 0, nev = 0;
@@ -97,6 +99,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--quiet")) quiet = 1;
         else if (!strcmp(argv[i], "--dump-every") && i + 2 < argc) { seq_every = strtol(argv[++i], NULL, 0); seq = argv[++i]; }
         else if (!strcmp(argv[i], "--dump-from") && i + 1 < argc) seq_from = strtol(argv[++i], NULL, 0);
+        else if (!strcmp(argv[i], "--gpu-stats") && i + 1 < argc) gstats_path = argv[++i];
         else if (argv[i][0] != '-' && !cart) cart = argv[i];
         else { cart = NULL; break; }
     }
@@ -147,6 +150,13 @@ int main(int argc, char **argv) {
         wav_header(wf, 0);
     }
 
+    FILE *gs = NULL;
+    if (gstats_path) {
+        gs = fopen(gstats_path, "w");
+        if (!gs) { perror(gstats_path); return 1; }
+        fprintf(gs, "tick,cpu_cycles,tris,tris_empty,tris_dropped,clears,lists,"
+                    "px_flat,px_gouraud,px_tex,px_tex_gouraud,px_semi_flat,px_semi_gouraud,px_semi_tex,px_semi_tex_gouraud\n");
+    }
     MeiPadInput in = {pad1, 0, 0};
     long presented = 0;
     for (long i = 0; i < frames; i++) {
@@ -154,7 +164,14 @@ int main(int argc, char **argv) {
         mei_set_pad(m, 0, &in);
         long now = (start_secs + i / 60) % 86400;
         mei_set_clock(m, year, month, day, wd, (int)(now / 3600), (int)(now / 60 % 60), (int)(now % 60));
-        presented += mei_run_frame(m);
+        int shown = mei_run_frame(m);
+        presented += shown;
+        if (gs && shown) {
+            const MeiGpuStats *g = mei_gpu_stats(m);
+            fprintf(gs, "%ld,%u,%u,%u,%u,%u,%u", i, g->cpu_cycles, g->tris, g->tris_empty, g->tris_dropped, g->clears, g->lists);
+            for (int k = 0; k < 8; k++) fprintf(gs, ",%u", g->px[k]);
+            fputc('\n', gs);
+        }
         if (wf) {
             const int16_t *s;
             int n = mei_audio(m, &s);
@@ -186,6 +203,7 @@ int main(int argc, char **argv) {
         if (!quiet) fprintf(stderr, "saved %s\n", card_path[s]);
     }
     if (wf) { wav_header(wf, wav_frames); fclose(wf); }
+    if (gs) fclose(gs);
     if (dump && write_ppm(dump, mei_display(m)) != 0) { perror(dump); return 1; }
 
     const MeiFault *fl = mei_fault(m);

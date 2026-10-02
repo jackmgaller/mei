@@ -36,6 +36,8 @@ void mei_reset(Mei *m) {
     m->frame = 0;
     m->rng = RNG_RESET_SEED;
     memset(&m->fault, 0, sizeof m->fault);
+    memset(&m->gstat, 0, sizeof m->gstat);
+    memset(&m->gstat_last, 0, sizeof m->gstat_last);
     memset(m->debug_tail, 0, sizeof m->debug_tail);
     m->debug_col = 0;
     m->launch_pending = 0;
@@ -131,7 +133,10 @@ int mei_run_frame(Mei *m) {
         m->cycles = MEI_CYCLES_PER_FRAME;
         m->vsync_hit = 0;
         cpu_run(m);
+        m->gstat.cpu_cycles += MEI_CYCLES_PER_FRAME - (m->cycles > 0 ? (uint32_t)m->cycles : 0);
         if (m->vsync_hit) {
+            m->gstat_last = m->gstat;
+            memset(&m->gstat, 0, sizeof m->gstat);
             gpu_vsync(m);
             for (int i = 0; i < 2; i++) {
                 m->pad_buttons[i] = m->pad_pending[i].buttons;
@@ -162,6 +167,8 @@ int mei_audio(Mei *m, const int16_t **samples) {
 }
 
 const MeiFault *mei_fault(const Mei *m) { return &m->fault; }
+
+const MeiGpuStats *mei_gpu_stats(const Mei *m) { return &m->gstat_last; }
 
 const char *mei_fault_name(MeiFaultKind k) {
     static const char *const names[] = {

@@ -50,6 +50,7 @@ void gpu_vsync(Mei *m) {
 }
 
 void gpu_clear(Mei *m, uint32_t colour) {
+    m->gstat.clears++;
     uint8_t *fb = m->vram + FB_OFF(gpu_back_addr(m));
     uint16_t c = (uint16_t)(colour & 0x7FFF);
     for (int i = 0; i < MEI_W * MEI_H; i++) st16(fb + 2 * i, c);
@@ -194,9 +195,11 @@ static void span_exact(const Raster *R, uint8_t *row, int y, int x0, int x1, con
     }
 }
 
-static void draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vtx *v2) {
+/* Returns the number of pixels written (for the frame statistics). */
+static uint32_t draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vtx *v2) {
+    uint32_t filled = 0;
     int64_t area = (int64_t)(v1->x - v0->x) * (v2->y - v0->y) - (int64_t)(v1->y - v0->y) * (v2->x - v0->x);
-    if (area == 0) return;
+    if (area == 0) return 0;
     if (area < 0) { const Vtx *t = v1; v1 = v2; v2 = t; area = -area; }
 
     int32_t minx = v0->x, maxx = v0->x, miny = v0->y, maxy = v0->y;
@@ -211,7 +214,7 @@ static void draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vtx *v
     if (miny < 0) miny = 0;
     if (maxx > MEI_W - 1) maxx = MEI_W - 1;
     if (maxy > MEI_H - 1) maxy = MEI_H - 1;
-    if (minx > maxx || miny > maxy) return;
+    if (minx > maxx || miny > maxy) return 0;
 
     /* Edge i is opposite vertex i: E_i(p) = A x + B y + C, the weight of vertex i.
      * With area > 0, p is inside when every E_i + bias_i >= 0; bias is 0 on top
@@ -287,6 +290,7 @@ static void draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vtx *v
         }
         if (empty || xl > xr) continue;
         uint8_t *row = R->fb + (size_t)y * MEI_W * 2;
+        filled += (uint32_t)(xr - xl + 1);
 
         if (!fast) {
             for (int k = lo; k < hi; k++) {
@@ -310,6 +314,7 @@ static void draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vtx *v
         py = y;
         fn(R, row, y, xl, xr, acc, sx_up, sh);
     }
+    return filled;
 }
 
 /* ---- packet list ---- */
@@ -367,15 +372,19 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
     R.pal = R.four ? (tex0 >> 24) * 16 : ((tex0 >> 24) & 15) * 256;
 
     for (int t = 0; t < (quad ? 2 : 1); t++) {
-        if ((m->gpu_status & 0xFFFF) >= GPU_TRI_LIMIT) { m->gpu_status |= GPU_STATUS_DROPPED; continue; }
+        if ((m->gpu_status & 0xFFFF) >= GPU_TRI_LIMIT) { m->gpu_status |= GPU_STATUS_DROPPED; m->gstat.tris_dropped++; continue; }
         m->gpu_status++;
-        draw_tri(&R, &vx[t], &vx[t + 1], &vx[t + 2]);
+        uint32_t n = draw_tri(&R, &vx[t], &vx[t + 1], &vx[t + 2]);
+        m->gstat.tris++;
+        if (!n) m->gstat.tris_empty++;
+        m->gstat.px[gouraud | textured << 1 | semi << 2] += n;
     }
     return 1;
 }
 
 void gpu_draw_list(Mei *m, uint32_t addr) {
     uint32_t count = 0;
+    m->gstat.lists++;
     while (addr != LIST_END) {
         if (++count > GPU_LIST_LIMIT) { mei_raise(m, MEI_FAULT_BAD_PACKET_LIST, addr); return; }
         if (addr >= ROM_BASE + ROM_SIZE) { mei_raise(m, MEI_FAULT_UNMAPPED, addr); return; }

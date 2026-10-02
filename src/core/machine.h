@@ -141,6 +141,7 @@ struct Mei {
     int back;                /* 0: framebuffer A is the back buffer, 1: B */
     uint32_t gpu_ctrl;
     uint32_t gpu_status;     /* bits 0-15 triangle count, bit 16 dropped */
+    MeiGpuStats gstat, gstat_last;   /* this frame so far / the last presented frame */
     uint16_t error_screen[MEI_W * MEI_H];
 
     /* Audio */
