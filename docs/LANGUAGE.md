@@ -549,6 +549,32 @@ folded at compile time (`const C = match MODE { 0 => 10, else => 20 }`). The arm
 the same compare chain; the last arm is reached by falling through, so it also takes a value no
 pattern names (an enum converted from an out-of-range integer) and the result is always set.
 
+## Method syntax (UFCS)
+
+`receiver.function(args...)` means `function(receiver, args...)`. Any visible named function,
+function value or builtin can be called this way; there are no method declarations or overloads.
+The receiver is evaluated once, before the remaining arguments, using the ordinary call rules.
+Chaining works when each call returns the receiver for the next call:
+
+```
+fn moved(p: vec3, delta: vec3) -> vec3 { return p + delta }
+fn damage(p: *Player, amount: s32) { p.hp -= amount }
+
+let q = position.moved(velocity).normalize()   // normalize(moved(position, velocity))
+(&player).damage(5)                           // damage(&player, 5)
+let p = &player
+p.damage(5)                                   // damage(p, 5)
+let n = values.len()                          // len(values)
+```
+
+A receiver has the same type requirements as argument 1 of a free call. Address-taking and
+pointer dereferencing are explicit: `player.damage(5)` does not insert `&player`. Local callable
+names shadow top-level functions, and `private` visibility applies as usual. A real struct field
+or vector swizzle takes precedence: `button.on_press()` calls its function-valued field with no
+inserted argument; calling a numeric field reports that it is not a function. Enum member access
+keeps its existing meaning. Bare `receiver.function` remains field access; it does not create a
+bound function value.
+
 ## Functions as values
 
 A function type is written `fn(T, U) -> R` (`fn(T)` for no result). Named functions and

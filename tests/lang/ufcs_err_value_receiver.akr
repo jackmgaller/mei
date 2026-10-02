@@ -1,0 +1,4 @@
+// error: argument 1 of score() is *Player, expected Player
+struct Player { hp: s32 }
+fn score(p: Player) -> s32 { return p.hp }
+fn init() { var p = Player { hp: 10 }; let n = (&p).score() }

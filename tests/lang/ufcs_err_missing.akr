@@ -1,0 +1,2 @@
+// error: unknown function 'nonexistent_method'
+fn init() { let n = (3).nonexistent_method() }

@@ -1,0 +1,3 @@
+// error: this is a fixed, not a function
+fn x(v: vec3) -> fixed { return v.x }
+fn init() { let v = vec3(1.0, 2.0, 3.0); let n = v.x() }

@@ -1,0 +1,4 @@
+// error: this is a Mode, not a function
+enum Mode { Idle, Busy }
+fn Busy(m: s32) -> s32 { return m }
+fn init() { let n = Mode.Busy() }

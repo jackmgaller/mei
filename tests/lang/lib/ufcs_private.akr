@@ -1,0 +1,2 @@
+private fn hidden_method(n: s32) -> s32 { return n + 9 }
+fn ufcs_private_use(n: s32) -> s32 { return n.hidden_method() }

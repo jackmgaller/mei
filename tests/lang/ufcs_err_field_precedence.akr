@@ -1,0 +1,4 @@
+// error: this is a s32, not a function
+struct Player { score: s32 }
+fn score(p: Player) -> s32 { return p.score }
+fn init() { let p = Player { score: 10 }; let n = p.score() }
