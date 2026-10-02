@@ -1,0 +1,571 @@
+// The plane chip (docs/PLANES.md): two tile planes (BG0, BG1), an affine plane (BG2), a
+// backdrop colour per line, eight line channels that rewrite the plane registers on every line,
+// colour math and a colour offset, composited with the polygons at vsync. The planes cost no
+// CPU cycles and no GPU budget, only VRAM.
+//
+// Not part of the prelude: a cart that uses the chip says `import "planes.akr"`. Importing it
+// replaces mesh()'s face loops (planes_faces.akr), ot_insert(), ui_flush() and the end of the
+// frame with versions that can mark polygons as upper (the PH layer, see poly_upper()); they
+// cost 3 cycles a drawn face and 4 an ot_insert() more than the plain ones.
+//
+// VRAM layout (a convention: the chip reads any VRAM):
+//   0x44E000  LT_BACKDROP  backdrop table, 1 word a line (sky_gradient(); channel 0)
+//   0x44E400  LT_BG0       BG0 scroll table (parallax_bands(); channel 1)
+//   0x44E800  LT_BG1       BG1 scroll table (channel 2)
+//   0x44EC00  LT_FREE      1 KB for a table of the cart's own (channels 3-6 are free)
+//   0x44F000  LT_AFFINE    BG2 table, 4 words a line (plane_floor(); channel 7)
+//   0x450000  MAP_BG0      BG0 map (up to 64x64)
+//   0x452000  MAP_BG1      BG1 map (up to 64x64)
+//   0x454000  MAP_FREE     16 KB: a 64x64 BG2 map, or a second map to flip between
+//   0x458000  MAP_BG2      BG2 map (up to 128x128)
+//   0x460000  ATLAS_0..3   pages 12-15: four 4-bit tile atlases (or two 8-bit ones)
+// A texture slot is also an atlas (the formats are the same): tex_atlas(slot).
+
+import "planes_faces.akr"
+
+reg PLN_CTRL: u32 @ 0xFF0700      // 0 compositor on, 1 auto-erase at vsync, 2 dither the backdrop
+reg PLN_LAYERS: u32 @ 0xFF0704    // 0-2 BG0-BG2 shown, 3 polygons hidden
+reg PLN_PRIO: u32 @ 0xFF0708      // 4-bit priorities: BG0, BG0 front tiles, BG1, .., BG2 front, PL, PH
+reg PLN_MATH: u32 @ 0xFF070C      // colour math (4 bits a layer) and the offset enables (24-29)
+reg PLN_OFS: u32 @ 0xFF0710       // colour offset: signed 5-bit units, red 0-7, green 8-15, blue 16-23
+reg BD_COLOR: u32 @ 0xFF0714      // backdrop colour 0xBBGGRR
+reg PLN_ERASE: u32 @ 0xFF0718     // what auto-erase writes (HOLE)
+reg BG2_U0: fixed @ 0xFF0778      // the affine plane: u = U0 + y DUY + x DUX, v = V0 + y DVY + x DVX
+reg BG2_V0: fixed @ 0xFF077C
+reg BG2_DUX: fixed @ 0xFF0780
+reg BG2_DVX: fixed @ 0xFF0784
+reg BG2_DUY: fixed @ 0xFF0788
+reg BG2_DVY: fixed @ 0xFF078C
+
+const BG0 = 0
+const BG1 = 1
+const BG2 = 2
+const LAYER_PL = 3                // the low polygons
+const LAYER_PH = 4                // the high polygons (poly_upper)
+const LAYER_BD = 5                // the backdrop (layer_offset only)
+const HOLE = 0x8000               // a framebuffer pixel with no polygon: the layers behind show
+
+const LINE_TABLES = 0x44E000
+const LT_BACKDROP = 0x44E000
+const LT_BG0 = 0x44E400
+const LT_BG1 = 0x44E800
+const LT_FREE = 0x44EC00
+const LT_AFFINE = 0x44F000
+const PAGE_PLANES = 0x450000      // pages 10-15
+const MAP_BG0 = 0x450000
+const MAP_BG1 = 0x452000
+const MAP_FREE = 0x454000
+const MAP_BG2 = 0x458000
+const ATLAS_0 = 0x460000
+const ATLAS_1 = 0x468000
+const ATLAS_2 = 0x470000
+const ATLAS_3 = 0x478000
+
+// plane() flags
+const PLANE_16PX = 0x10           // 16x16 tiles (otherwise 8x8)
+const PLANE_8BIT = 0x20           // 8-bit colour (otherwise 4-bit)
+const PLANE_WRAP = 0              // BG2 outside its map: wrap
+const PLANE_TRANSPARENT_OUT = 0x10000    // BG2 outside its map: nothing
+const PLANE_TILE0_OUT = 0x20000   // BG2 outside its map: tile 0, repeated (a sea around an island)
+
+// tile() flags
+const TILE_FRONT = 0x2000         // the plane's front-tile priority (plane_priority)
+const TILE_FLIPX = 0x4000
+const TILE_FLIPY = 0x8000
+
+// line_channel() targets: register offsets from 0xFF0700 (a register's address works too)
+const LC_LAYERS = 0x04
+const LC_PRIO = 0x08
+const LC_MATH = 0x0C
+const LC_OFS = 0x10
+const LC_BD_COLOR = 0x14
+const LC_BG2_AFFINE = 0x78        // U0, V0, DUX, DVX: 4 words a line
+fn lc_scroll(bg: s32) -> u32 { return (0x2C + bg * 0x20) as u32 }
+fn lc_mode(bg: s32) -> u32 { return (0x20 + bg * 0x20) as u32 }
+fn lc_winx(bg: s32) -> u32 { return (0x30 + bg * 0x20) as u32 }
+
+var __pu_bits: u32                // 0x400 while poly_upper() is on (planes_faces.akr ORs it into each face's flags)
+var __pu_on: bool
+var __pu_ui: bool                 // the interface list draws into PH (planes_on)
+var __pu_mark: u32                // the arena position at poly_upper(true)
+
+// ---- setup
+
+// Turns the compositor on: auto-erase to holes at every vsync (so no cls() is needed: cls()
+// would cover the planes), a dithered backdrop, and the interface list in the PH layer. Clears
+// this frame's back buffer to holes.
+fn planes_on() {
+    PLN_ERASE = HOLE
+    PLN_CTRL = 7
+    GPU_CLEAR = HOLE
+    __pu_ui = true
+}
+
+// Turns the compositor off: the screen shows the framebuffer again (the cart clears it).
+fn planes_off() {
+    poly_upper(false)
+    PLN_CTRL = 0
+    __pu_ui = false
+}
+
+fn __bg_regs(bg: s32) -> *u32 { return (0xFF0720 + bg * 0x20) as *u32 }
+
+fn __map_code(n: s32) -> u32 {
+    if n >= 128 { return 2 }
+    if n >= 64 { return 1 }
+    return 0
+}
+
+// Sets up plane bg (BG0, BG1, BG2) and shows it: an atlas page (ATLAS_n, MAP_*, tex_atlas(slot)
+// or any 32 KB-aligned VRAM address), a map of w x h tiles (32, 64 or 128 each), flags
+// (PLANE_16PX, PLANE_8BIT, and for BG2 the PLANE_*_OUT modes) and the palette base: the palette
+// number (0-255 for 4-bit, 0-15 for 8-bit) that a tile's palette 0 uses.
+fn plane(bg: s32, atlas: u32, map: u32, w: s32, h: s32, flags: u32, palette: s32) {
+    let r = __bg_regs(bg)
+    r[0] = __map_code(w) | (__map_code(h) << 2) | (flags & 0x30030) | ((palette as u32 & 255) << 8)
+    r[1] = atlas
+    r[2] = map
+    plane_show(bg, true)
+}
+
+// The atlas address of texture slot n (a texture is also a tile atlas).
+fn tex_atlas(slot: s32) -> u32 { return (VRAM_TEXTURES + (slot & 15) * TEXTURE_SLOT_SIZE) as u32 }
+
+fn plane_show(bg: s32, on: bool) {
+    let b = (1 as u32) << (bg as u32)
+    if on { PLN_LAYERS = PLN_LAYERS | b } else { PLN_LAYERS = PLN_LAYERS & ~b }
+}
+
+// Shows or hides the polygons (both layers).
+fn polys_show(on: bool) {
+    if on { PLN_LAYERS = PLN_LAYERS & ~(8 as u32) } else { PLN_LAYERS = PLN_LAYERS | 8 }
+}
+
+// Priorities 0-15 (higher is in front; ties: PH, PL, BG0, BG1, BG2). front_tiles is for the
+// tiles with TILE_FRONT.
+fn plane_priority(bg: s32, normal: s32, front_tiles: s32) {
+    let sh = (bg * 8) as u32
+    PLN_PRIO = (PLN_PRIO & ~((0xFF as u32) << sh)) | ((normal as u32 & 15) << sh) | ((front_tiles as u32 & 15) << (sh + 4))
+}
+
+fn poly_priority(low: s32, high: s32) {
+    PLN_PRIO = (PLN_PRIO & 0xFFFFFF) | ((low as u32 & 15) << 24) | ((high as u32 & 15) << 28)
+}
+
+// Colour math for a layer (BG0..BG2, LAYER_PL, LAYER_PH): where it is on top it is blended with
+// the layer below it (or the backdrop) in one of the GPU's blend modes, BLEND_NONE for none.
+fn layer_blend(layer: s32, mode: s32) {
+    let sh = (layer * 4) as u32
+    var v = PLN_MATH & ~((15 as u32) << sh)
+    if mode >= 0 { v |= (4 | (mode as u32 & 3)) << sh }
+    PLN_MATH = v
+}
+
+// The colour offset: r, g, b (5-bit units, -128..127) added to the pixels that a layer in
+// `mask` wins (bit n: layer n; 1 << LAYER_BD: the backdrop). A fade, a flash, a tint.
+fn layer_offset(mask: u32, r: s32, g: s32, b: s32) {
+    PLN_OFS = (r as u32 & 255) | ((g as u32 & 255) << 8) | ((b as u32 & 255) << 16)
+    PLN_MATH = (PLN_MATH & 0xC0FFFFFF) | ((mask & 63) << 24)
+}
+
+// Shows plane bg only inside the screen rectangle x0..x1-1, y0..y1-1.
+fn plane_window(bg: s32, x0: s32, y0: s32, x1: s32, y1: s32) {
+    let r = __bg_regs(bg)
+    r[4] = (clamp(x0, 0, 320) as u32) | (clamp(320 - x1, 0, 320) as u32 << 16)
+    r[5] = (clamp(y0, 0, 240) as u32) | (clamp(240 - y1, 0, 240) as u32 << 8)
+}
+
+fn backdrop(colour: u32) { BD_COLOR = colour }
+
+// ---- maps and tiles
+
+// A map entry: tile t (0-1023), palette 0-7 (added to the plane's base), TILE_* flags.
+fn tile(t: s32, palette: s32, flags: u32) -> u32 {
+    return (t as u32 & 0x3FF) | ((palette as u32 & 7) << 10) | (flags & 0xE000)
+}
+
+fn __map_w(r: *u32) -> s32 { return 32 << min((r[0] & 3) as s32, 2) }
+fn __map_h(r: *u32) -> s32 { return 32 << min(((r[0] >> 2) & 3) as s32, 2) }
+fn __map_ptr(r: *u32) -> *u16 { return (0x400000 | (r[2] & 0xFF800)) as *u16 }
+
+// Sets the entry at (x, y) of plane bg's map (wrapped into the map).
+fn map_set(bg: s32, x: s32, y: s32, entry: u32) {
+    let r = __bg_regs(bg)
+    let w = __map_w(r)
+    __map_ptr(r)[(y & (__map_h(r) - 1)) * w + (x & (w - 1))] = entry as u16
+}
+
+fn map_get(bg: s32, x: s32, y: s32) -> u32 {
+    let r = __bg_regs(bg)
+    let w = __map_w(r)
+    return __map_ptr(r)[(y & (__map_h(r) - 1)) * w + (x & (w - 1))] as u32
+}
+
+// Fills a w x h block of plane bg's map from (x, y) (wrapping) with one entry.
+fn map_fill(bg: s32, x: s32, y: s32, w: s32, h: s32, entry: u32) {
+    let r = __bg_regs(bg)
+    let mw = __map_w(r)
+    let mh = __map_h(r)
+    let m = __map_ptr(r)
+    let e = entry as u16
+    for j in 0..h {
+        let row = ((y + j) & (mh - 1)) * mw
+        for i in 0..w { m[row + ((x + i) & (mw - 1))] = e }
+    }
+}
+
+// Copies a whole map (w x h entries, row by row) into plane bg's map.
+fn map_load(bg: s32, src: *u16) {
+    let r = __bg_regs(bg)
+    memcpy(__map_ptr(r) as *u8, src as *u8, (__map_w(r) * __map_h(r) * 2) as u32)
+}
+
+// Copies one column (h entries, top to bottom) into column x: streaming a scrolling level.
+fn map_column(bg: s32, x: s32, src: *u16) {
+    let r = __bg_regs(bg)
+    let w = __map_w(r)
+    let m = __map_ptr(r) + (x & (w - 1))
+    for j in 0..__map_h(r) { m[j * w] = src[j] }
+}
+
+// Copies tile art into an atlas page (like load_texture): ATLAS_n, or any page.
+fn atlas_load(page: u32, src: *u8, bytes: u32) { memcpy(page as *u8, src, bytes) }
+
+// Scrolls BG0 or BG1: the plane pixel at the screen's top left (whole pixels; the plane wraps).
+fn plane_scroll(bg: s32, x: s32, y: s32) {
+    __bg_regs(bg)[3] = (x as u32 & 0xFFFF) | ((y as u32) << 16)
+}
+
+// BG2's transform: screen pixel (x, y) shows texel (U0 + y DUY + x DUX, V0 + y DVY + x DVX).
+// plane_affine(u, v, 1.0, 0.0, 0.0, 1.0) is a plain scrolling plane.
+fn plane_affine(u0: fixed, v0: fixed, dux: fixed, dvx: fixed, duy: fixed, dvy: fixed) {
+    BG2_U0 = u0
+    BG2_V0 = v0
+    BG2_DUX = dux
+    BG2_DVX = dvx
+    BG2_DUY = duy
+    BG2_DVY = dvy
+}
+
+// ---- line tables
+
+// Line channel ch (0-7) writes `words` (1-4) registers from `target` (LC_*, an offset from
+// 0xFF0700 or a register's address) on every line, from the table at `table` in VRAM (240
+// lines x words). Later channels win. Channels 0, 1, 2 and 7 are the helpers' (below).
+fn line_channel(ch: s32, target: u32, words: s32, table: u32) {
+    let r = (0xFF07A0 + ch * 8) as *u32
+    r[0] = table
+    r[1] = 0x8000 | (((words - 1) as u32 & 3) << 8) | (target & 0xFC)
+}
+
+fn line_off(ch: s32) { ((0xFF07A4 + ch * 8) as *u32)[0] = 0 }
+
+// A backdrop gradient: colour stops[i] at line ys[i] (ascending), linear in between, the end
+// colours beyond. Fills LT_BACKDROP and points channel 0 at it. About 3,000 cycles.
+fn sky_gradient(stops: *u32, ys: *s32, n: s32) {
+    let t = LT_BACKDROP as *u32
+    var y = 0
+    while y < 240 && y < ys[0] {
+        t[y] = stops[0]
+        y += 1
+    }
+    for i in 0..n - 1 {
+        let y1 = min(ys[i + 1], 240)
+        if y1 <= y { continue }
+        let a = stops[i]
+        let b = stops[i + 1]
+        let dt = 1.0 / (ys[i + 1] - ys[i])
+        var f = fixed(y - ys[i]) * dt
+        while y < y1 {
+            t[y] = clerp(a, b, f)
+            f += dt
+            y += 1
+        }
+    }
+    while y < 240 {
+        t[y] = stops[n - 1]
+        y += 1
+    }
+    line_channel(0, LC_BD_COLOR, 1, LT_BACKDROP)
+}
+
+// Parallax: BG0 or BG1 scrolled at rates[i] times x from line ys[i] (ascending) down to the
+// next band (the first band reaches up to line 0). The vertical scroll is the plane's own
+// (plane_scroll). Fills the plane's scroll table and points channel 1 + bg at it.
+fn parallax_bands(bg: s32, ys: *s32, rates: *fixed, n: s32, x: fixed) {
+    var tbl = LT_BG0
+    if bg == BG1 { tbl = LT_BG1 }
+    let t = tbl as *u32
+    let yw = __bg_regs(bg)[3] & 0xFFFF0000
+    var y = 0
+    for i in 0..n {
+        var y1 = 240
+        if i + 1 < n { y1 = min(ys[i + 1], 240) }
+        let w = ((x * rates[i]) as s32 as u32 & 0xFFFF) | yw
+        while y < y1 {
+            t[y] = w
+            y += 1
+        }
+    }
+    line_channel(1 + bg, lc_scroll(bg), 1, tbl)
+}
+
+// Mode 7: BG2 as the horizontal plane y = y0 seen through the current camera (camera(),
+// camera_look() or camera_matrix(): it works from the view-projection matrix), at `texels`
+// texels per world unit, with world (0, 0) at texel (uoff, voff). Fills LT_AFFINE for every
+// line whose view depth is at most `far`, shows BG2 from the first such line down (its top
+// inset), sets DUY = DVY = 0 and points channel 7 at the table. Returns that first line (240:
+// the floor is not in view). Call it whenever the camera moves: about 90 cycles a floor line
+// and 20 a line above it (14,000 for a floor over 140 lines). A camera with roll is
+// approximated: each line's ends are exact and the line is linear between (about 250 cycles a
+// line). texels times the world coordinates in view must stay within the fixed range.
+fn plane_floor(y0: fixed, texels: fixed, uoff: fixed, voff: fixed, far: fixed) -> s32 {
+    // The floor's screen mapping (X, Z, 1) -> clip (x, y, w) is the matrix H below, and its
+    // adjugate maps back: (X, Z, 1) ~ adj H (s, k, 1) = (p, q, r), with s = x / w = (px - 160) / 160
+    // and k = y / w = (120 - py) / 120. The view depth there is det H / r.
+    let a0 = __vp[0].x
+    let c0 = __vp[0].z
+    let d0 = __vp[0].y * y0 + __vp[0].w
+    let a1 = __vp[1].x
+    let c1 = __vp[1].z
+    let d1 = __vp[1].y * y0 + __vp[1].w
+    let a3 = __vp[3].x
+    let c3 = __vp[3].z
+    let d3 = __vp[3].y * y0 + __vp[3].w
+    var p0 = c1 * d3 - d1 * c3
+    var p1 = d0 * c3 - c0 * d3
+    var p2 = c0 * d1 - d0 * c1
+    var q0 = d1 * a3 - a1 * d3
+    var q1 = a0 * d3 - d0 * a3
+    var q2 = d0 * a1 - a0 * d1
+    var r0 = a1 * c3 - c1 * a3
+    var r1 = c0 * a3 - a0 * c3
+    var r2 = a0 * c1 - c0 * a1
+    var det = a0 * p0 + c0 * q0 + d0 * r0
+    if det < 0.0 {
+        // the adjugate's sign is free: make det positive, so a line is in range when r >= det / far
+        p0 = -p0
+        p1 = -p1
+        p2 = -p2
+        q0 = -q0
+        q1 = -q1
+        q2 = -q2
+        r0 = -r0
+        r1 = -r1
+        r2 = -r2
+        det = -det
+    }
+    BG2_DUY = 0.0
+    BG2_DVY = 0.0
+    var top = 240
+    let rmin = det / far
+    if abs(r0) <= from_bits(16) {
+        // no roll: the depth is constant along a line, so u and v are exactly linear in x
+        let c = &__pf_c[0]
+        c[0] = r1
+        c[1] = r2
+        c[2] = rmin
+        c[4] = texels * p1
+        c[5] = texels * p2 - texels * p0
+        c[6] = texels * q1
+        c[7] = texels * q2 - texels * q0
+        c[8] = texels * p0 / 160
+        c[9] = texels * q0 / 160
+        c[10] = uoff
+        c[11] = voff
+        top = __pf_rows(c, LT_AFFINE as *fixed)
+    } else {
+        let t = LT_AFFINE as *fixed
+        for y in 0..240 {
+            let k = fixed(120 - y) / 120
+            let rk = r1 * k + r2
+            if rk < rmin { continue }
+            let rl = rk - r0
+            let rr = rk + r0
+            if rl <= 0.0 || rr <= 0.0 { continue }
+            if top == 240 { top = y }
+            let pk = p1 * k + p2
+            let qk = q1 * k + q2
+            let ul = texels * ((pk - p0) / rl)
+            let vl = texels * ((qk - q0) / rl)
+            let ur = texels * ((pk + p0) / rr)
+            let vr = texels * ((qk + q0) / rr)
+            let e = t + y * 4
+            e[0] = ul + uoff
+            e[1] = vl + voff
+            e[2] = from_bits(bits(ur - ul) / 320)
+            e[3] = from_bits(bits(vr - vl) / 320)
+        }
+    }
+    let r = __bg_regs(BG2)
+    r[5] = (r[5] & 0xFF00) | (top as u32)
+    line_channel(7, LC_BG2_AFFINE, 4, LT_AFFINE)
+    return top
+}
+
+var __pf_c: [12]fixed      // plane_floor's constants for __pf_rows (16-byte aligned: vld)
+
+// plane_floor's lines without roll. c: r1, r2, rmin, -, then (texels times) p1, p2 - p0, q1,
+// q2 - q0, p0 / 160, q0 / 160, uoff, voff. Line y: k = (120 - y) / 120 (stepped exactly, as
+// quotient and remainder), r = r1 k + r2; a line with r < rmin is above the horizon or too far.
+// Returns the first line in range.
+asm fn __pf_rows(c: *fixed, tbl: *fixed) -> s32 {
+    addi sp, sp, -20
+    sw   r9, [sp+0]
+    sw   r10, [sp+4]
+    sw   r11, [sp+8]
+    sw   r12, [sp+12]
+    sw   r13, [sp+16]
+    vld  v0, [{c}+0]
+    vld  v1, [{c}+16]
+    vld  v2, [{c}+32]
+    addi r9, r0, 240            ; the first line in range (240: none yet)
+    mov  r10, r0                ; y
+    lui  r11, 64                ; k = 1.0
+    mov  r12, r0                ; ... and the remainder of (120 - y) * 65536 / 120
+    lui  r13, 64                ; 1.0
+.row:
+    vget r5, v0, 0
+    fmul r5, r5, r11
+    vget r6, v0, 1
+    add  r5, r5, r6             ; r
+    vget r6, v0, 2
+    blt  r5, r6, .skip          ; r < rmin
+    fdiv r5, r13, r5            ; 1 / r
+    addi r6, r0, 240
+    bne  r9, r6, .in
+    mov  r9, r10
+.in:
+    vget r6, v1, 0
+    fmul r6, r6, r11
+    vget r7, v1, 1
+    add  r6, r6, r7
+    fmul r6, r6, r5
+    vget r7, v2, 2
+    add  r6, r6, r7
+    sw   r6, [{tbl}+0]          ; U0
+    vget r6, v1, 2
+    fmul r6, r6, r11
+    vget r7, v1, 3
+    add  r6, r6, r7
+    fmul r6, r6, r5
+    vget r7, v2, 3
+    add  r6, r6, r7
+    sw   r6, [{tbl}+4]          ; V0
+    vget r6, v2, 0
+    fmul r6, r6, r5
+    sw   r6, [{tbl}+8]          ; DUX
+    vget r6, v2, 1
+    fmul r6, r6, r5
+    sw   r6, [{tbl}+12]         ; DVX
+.skip:
+    addi {tbl}, {tbl}, 16
+    addi r11, r11, -546         ; 65536 = 546 * 120 + 16
+    addi r12, r12, -16
+    bge  r12, r0, .k
+    addi r12, r12, 120
+    addi r11, r11, -1
+.k:
+    addi r10, r10, 1
+    slti r6, r10, 240
+    bne  r6, r0, .row
+    mov  r1, r9
+    lw   r9, [sp+0]
+    lw   r10, [sp+4]
+    lw   r11, [sp+8]
+    lw   r12, [sp+12]
+    lw   r13, [sp+16]
+    addi sp, sp, 20
+}
+
+// ---- the polygon layers
+
+// Packets made from now on (mesh*(), ot_insert(), sprites, text, every 2D call) draw into the
+// PH layer (bit 26 of their first colour word), until poly_upper(false). The others draw into PL.
+// With the default priorities PL and PH both sit in front of the planes; give a plane a priority
+// between them to put polygons behind it (a reflection under water) and in front of it (the
+// shore). planes_on() puts the whole interface list in PH as well. Packets made in an arena
+// swapped in with arena_swap() are not marked.
+fn poly_upper(on: bool) {
+    if on == __pu_on { return }
+    if on {
+        __pu_mark = __arena_ptr as u32
+        __pu_bits = 0x400
+    } else {
+        __pu_ui_tag()
+        __pu_bits = 0
+    }
+    __pu_on = on
+}
+
+// Whether the whole interface list (text, sprites, rect*, every 2D call) draws into PH,
+// whatever poly_upper() says: planes_on() turns it on.
+fn ui_upper(on: bool) { __pu_ui = on }
+
+// Sets bit 26 in the first colour word of every polygon packet of the list at p whose address
+// is in lo .. hi - 1. About 10 cycles a packet.
+asm fn __pu_walk(p: u32, lo: u32, hi: u32) {
+    li   r5, 0xFFFFFF
+    lui  r6, 0x10000            ; 1 << 26
+.loop:
+    beq  {p}, r5, .done
+    lw   r7, [{p}+0]
+    bltu {p}, {lo}, .next
+    bgeu {p}, {hi}, .next
+    shri r8, r7, 28
+    addi r8, r8, -2
+    bne  r8, r0, .next          ; polygon packets (0x20-0x2F) only
+    lw   r8, [{p}+4]
+    or   r8, r8, r6
+    sw   r8, [{p}+4]
+.next:
+    shli {p}, r7, 8
+    shri {p}, {p}, 8
+    jmp  .loop
+.done:
+}
+
+// Marks the interface list's packets that go to PH: all of them after planes_on(), else those
+// made since poly_upper(true).
+fn __pu_ui_tag() {
+    if __ui_tail == null { return }
+    if __pu_ui {
+        __pu_walk(__ui_head, 0, 0xFFFFFFFF)
+    } else if __pu_on {
+        __pu_walk(__ui_head, __pu_mark, __arena_ptr as u32)
+    }
+}
+
+// (replaces gfx.akr's) The same, and a polygon packet inserted while poly_upper() is on is upper.
+fn ot_insert(p: *u32, type: u32, depth: s32) {
+    let b = clamp(depth, 0, 1023)
+    p[0] = (type << 24) | __ot[b]
+    __ot[b] = p as u32
+    if __pu_on && (type & 0xF0) == 0x20 { p[1] = p[1] | 0x4000000 }
+}
+
+// (replaces render.akr's) The same, after marking the interface list's PH packets.
+fn ui_flush() {
+    __pu_ui_tag()
+    if __ui_tail != null {
+        GPU_DRAW = __ui_head
+        __ui_tail = null
+    }
+}
+
+// (replaces runtime.akr's) The same, after marking the interface list's PH packets.
+fn __rt_frame_end() {
+    __pu_ui_tag()
+    let before = GPU_STATUS & 0xFFFF
+    GPU_DRAW = &__ot[OT_SIZE - 1] as u32
+    __frame_tris = ((GPU_STATUS & 0xFFFF) - before) as s32
+    if __ui_tail != null { GPU_DRAW = __ui_head }
+    __pad_prev = PAD1
+    __pad2_prev = PAD2
+    __frame_cycles = 500000 - CYCLES
+    let late = (FRAME - __frame_next) as s32
+    __frames_dropped = late
+    if late > 0 { __frame_cycles += min(late, 4000) * 500000 }
+    __frame_next = FRAME + 1
+    vsync()
+}

@@ -1,0 +1,91 @@
+// poly_upper() and ui_upper() (stdlib/planes.akr): which packets draw into the PH layer, read
+// back from the framebuffer (bit 15) after drawing them early. mesh() through every face loop
+// (plain, guard band and near-plane clipping, subdivided), ot_insert() and the interface list.
+import "planes.akr"
+
+struct TestMesh { hdr: Mesh, v: [4]vec4, f: [1]Face }
+var near: TestMesh              // a quad wholly in view
+var cross: TestMesh             // a floor quad crossing the near plane (clipped)
+
+fn quad(m: *TestMesh, a: vec4, b: vec4, c: vec4, d: vec4) {
+    m.hdr.nverts = 4
+    m.hdr.nfaces = 1
+    m.hdr.verts = 16
+    m.hdr.faces = 16 + 16 * 4
+    m.v[0] = a
+    m.v[1] = b
+    m.v[2] = c
+    m.v[3] = d
+    m.f[0].flags = (FACE_QUAD | FACE_DOUBLE) as u8
+    m.f[0].col[0] = 0
+    for k in 0..4 { m.f[0].idx[k] = k as u16 }
+}
+
+fn px(x: s32, y: s32) -> u32 { return (GPU_BACK as *u16)[y * 320 + x] as u32 }
+fn show(what: *u8, x: s32, y: s32) {
+    print(what)
+    print(" ")
+    print_hex(px(x, y))
+    println("")
+}
+
+fn own_quad(x: s32, y: s32, c: u32) {
+    let q = packet_alloc(6)
+    q[1] = c
+    q[2] = (x as u32) | ((y as u32) << 16)
+    q[3] = ((x + 10) as u32) | ((y as u32) << 16)
+    q[4] = (x as u32) | (((y + 10) as u32) << 16)
+    q[5] = ((x + 10) as u32) | (((y + 10) as u32) << 16)
+    ot_insert(q, 0x24, 5)
+}
+
+fn init() {
+    dither(false)
+    // camera at the origin looking along +z
+    quad(&near, vec4(-0.5, -0.5, 3.0, 1.0), vec4(0.5, -0.5, 3.0, 1.0), vec4(-0.5, 0.5, 3.0, 1.0), vec4(0.5, 0.5, 3.0, 1.0))
+    quad(&cross, vec4(-1.0, -1.0, -2.0, 1.0), vec4(1.0, -1.0, -2.0, 1.0), vec4(-1.0, -1.0, 6.0, 1.0), vec4(1.0, -1.0, 6.0, 1.0))
+}
+
+fn update() {}
+
+fn draw() {
+    if frame() != 0 { return }
+    planes_on()
+    ui_upper(false)
+    // black: an upper black pixel reads 0x8400, a lower one 0
+    mesh_at(&near.hdr, vec3(-1.0, 0.0, 0.0), 0.0)         // low, left of the centre
+    poly_upper(true)
+    mesh_at(&near.hdr, vec3(1.0, 0.0, 0.0), 0.0)          // high, right of it
+    mesh(&cross.hdr)                                      // clipped at the near plane: high
+    own_quad(10, 10, 0x0000FF)                            // ot_insert: high
+    rect(40, 10, 10, 10, 0x00FF00)                        // the interface list: high (made now)
+    poly_upper(false)
+    own_quad(10, 30, 0x0000FF)                            // low
+    rect(40, 30, 10, 10, 0x00FF00)                        // low
+    ot_flush()
+    ui_flush()
+    show("low mesh", 91, 120)                             // expect: low mesh 0
+    show("high mesh", 229, 120)                          // expect: high mesh 8400
+    show("clipped", 160, 230)                             // expect: clipped 8400
+    show("ot_insert high", 15, 15)                        // expect: ot_insert high 801F
+    show("ui high", 45, 15)                               // expect: ui high 83E0
+    show("ot_insert low", 15, 35)                         // expect: ot_insert low 1F
+    show("ui low", 45, 35)                                // expect: ui low 3E0
+    show("hole", 300, 10)                                 // expect: hole 8000
+    // subdivided faces come back through the same loops
+    subdivide(2)
+    subdivide_tuning(1, 100.0)
+    poly_upper(true)
+    mesh_at(&near.hdr, vec3(0.0, 1.2, 0.0), 0.0)
+    poly_upper(false)
+    subdivide(0)
+    ot_flush()
+    show("subdivided", 160, 37)                           // expect: subdivided 8400
+    // ui_upper: the whole interface list, made before or after
+    ui_upper(true)
+    rect(60, 50, 10, 10, 0x0000FF)
+    ui_flush()
+    show("ui_upper", 65, 55)                              // expect: ui_upper 801F
+    // the end of the frame marks the list too
+    rect(80, 50, 10, 10, 0x0000FF)
+}

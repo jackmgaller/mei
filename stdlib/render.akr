@@ -142,7 +142,7 @@ fn ot_flush() -> s32 {
 
 // Draws the interface list queued so far now (so 3D drawn later lands on top of it); what is
 // queued afterwards is drawn at the end of the frame as usual.
-fn ui_flush() {
+weak fn ui_flush() {
     if __ui_tail != null {
         GPU_DRAW = __ui_head
         __ui_tail = null

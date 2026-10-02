@@ -1,0 +1,90 @@
+// plane_floor() (stdlib/planes.akr): the Mode 7 table from the view-projection matrix. Every
+// line's texels, taken back to the world, must project onto that line and column, as a mesh()
+// vertex there would (within the rounding of vproj, which floors: 1 pixel); with roll only at
+// each line's ends; the far limit and a floor out of view.
+import "planes.akr"
+
+const XS: [5]s32 = [0, 319, 1, 160, 318]
+
+// Checks lines top.. (every 3rd) at the first n of XS; returns the worst error in pixels.
+fn worst(top: s32, uoff: fixed, voff: fixed, texels: fixed, y0: fixed, n: s32) -> s32 {
+    let t = LT_AFFINE as *fixed
+    var w = 0
+    var y = top
+    while y < 240 {
+        for i in 0..n {
+            let x = XS[i]
+            let u = t[y * 4] + t[y * 4 + 2] * fixed(x)
+            let v = t[y * 4 + 1] + t[y * 4 + 3] * fixed(x)
+            let p = project_point(vec3((u - uoff) / texels, y0, (v - voff) / texels))
+            w = max(w, max(abs(p.x - x), abs(p.y - y)))
+        }
+        y += 3
+    }
+    return w
+}
+
+fn init() {
+    // the worked example of docs/PLANES.md: eye 2.2 above the water, pitch -0.14, yaw 0
+    camera_look(vec3(20.0, 2.2, 10.0), 0.0, -0.14)
+    let top = plane_floor(0.0, 8.0, 0.0, 0.0, 64.0)
+    print_int(top)                                   // expect: 98
+    println("")
+    let t = LT_AFFINE as *fixed
+    print_int((t[120 * 4] * 10) as s32)              // expect: 629
+    println("")
+    print_int((t[120 * 4 + 1] * 10) as s32)          // expect: 2049
+    println("")
+    print_int((t[120 * 4 + 2] * 1000) as s32)        // expect: 606
+    println("")
+    print_int(worst(top, 0.0, 0.0, 8.0, 0.0, 5))     // expect: 1
+    println("")
+    assert_eq(((0xFF0774 as *u32)[0] & 0xFF) as s32, 98)       // BG2's top inset
+    assert_eq((0xFF07DC as *u32)[0] as s32, 0x8378)             // channel 7: 4 words at BG2_U0
+
+    // turned and offset, a floor at y = -1.5, 16 texels a unit
+    camera_look(vec3(-7.0, 1.0, 30.0), 2.3, -0.3)
+    let top2 = plane_floor(-1.5, 16.0, 100.0, -40.0, 30.0)
+    print_int(top2)                                  // expect: 74
+    println("")
+    print_int(worst(top2, 100.0, -40.0, 16.0, -1.5, 5))   // expect: 1
+    println("")
+    // a nearer far limit starts lower
+    print_int(plane_floor(-1.5, 16.0, 100.0, -40.0, 10.0))   // expect: 111
+    println("")
+
+    // with roll (Lantern Lake's old camera): exact at each line's ends, linear between (in the
+    // middle of a line that is far off: 0.08 of roll puts it tens of pixels out near the horizon)
+    let roll = 0.08
+    let yaw = 0.4
+    let pitch = -0.2
+    let sy = sin(yaw)
+    let cy = cos(yaw)
+    let sp = sin(pitch)
+    let cp = cos(pitch)
+    let r0 = vec3(cy, 0.0, -sy)
+    let u0 = vec3(-sy * sp, cp, -cy * sp)
+    let f = vec3(sy * cp, sp, cy * cp)
+    let r = r0 * cos(roll) + u0 * sin(roll)
+    let u = u0 * cos(roll) - r0 * sin(roll)
+    let pos = vec3(3.0, 1.6, -4.0)
+    var m: mat4
+    m[0] = vec4(r.x, r.y, r.z, -dot(r, pos)) * __fx
+    m[1] = vec4(u.x, u.y, u.z, -dot(u, pos)) * __fy
+    m[2] = vec4(f.x, f.y, f.z, -dot(f, pos))
+    m[3] = m[2]
+    camera_matrix(m)
+    let top3 = plane_floor(0.0, 8.0, 0.0, 0.0, 40.0)
+    print_int(top3)                                  // expect: 91
+    println("")
+    print_int(worst(top3, 0.0, 0.0, 8.0, 0.0, 2))    // expect: 1
+    println("")
+
+    // looking up: no floor in view, BG2 hidden by its top inset
+    camera_look(vec3(0.0, 2.0, 0.0), 0.0, 1.2)
+    print_int(plane_floor(0.0, 8.0, 0.0, 0.0, 64.0)) // expect: 240
+    println("")
+}
+
+fn update() {}
+fn draw() {}

@@ -24,7 +24,7 @@ fn __rt_frame_begin() {
     depth_key_off()
 }
 
-fn __rt_frame_end() {
+weak fn __rt_frame_end() {
     let before = GPU_STATUS & 0xFFFF
     GPU_DRAW = &__ot[OT_SIZE - 1] as u32
     __frame_tris = ((GPU_STATUS & 0xFFFF) - before) as s32
