@@ -1,0 +1,64 @@
+// memset, mem_fill and memcpy at every alignment and many lengths, against byte-by-byte references; and
+// that large fills and copies take the fast paths.
+// frames: 80
+var a: [260]u8
+var b: [260]u8
+var want: [260]u8
+var big: [4096]u8
+var big2: [4100]u8
+
+fn fill_pattern() {
+    for i in 0..260 {
+        a[i] = (i * 7 + 3) as u8
+        b[i] = (i * 13 + 1) as u8
+        want[i] = b[i]
+    }
+}
+
+fn check() -> s32 {
+    var bad = 0
+    for i in 0..260 { if b[i] != want[i] { bad += 1 } }
+    return bad
+}
+
+fn init() {
+    var bad = 0
+    for off in 0..4 {
+        for n in 0..70 {
+            // memset b[off..off+n] = 0x5A
+            fill_pattern()
+            memset(&b[off], 0x5A, n as u32)
+            for i in off..off + n { want[i] = 0x5A }
+            bad += check()
+            fill_pattern()
+            mem_fill(&b[off], 0xA5, n as u32)
+            for i in off..off + n { want[i] = 0xA5 }
+            bad += check()
+            // memcpy b[100 + off2..] = a[off..] at every relative alignment
+            for off2 in 0..4 {
+                fill_pattern()
+                memcpy(&b[off2 + 100], &a[off], n as u32)
+                for i in 0..n { want[off2 + 100 + i] = a[off + i] }
+                bad += check()
+            }
+        }
+    }
+    assert_eq(bad, 0)
+    println("memset, mem_fill and memcpy ok")    // expect: memset, mem_fill and memcpy ok
+
+    // a large fill, and copies: aligned, misaligned alike, misaligned apart
+    let c0 = CYCLES
+    mem_fill(&big[1], 0, 3500)
+    let c1 = CYCLES
+    memcpy(&big2[0], &big[0], 3500)
+    let c2 = CYCLES
+    memcpy(&big2[1], &big[1], 3500)
+    let c3 = CYCLES
+    memcpy(&big2[2], &big[1], 3500)
+    let c4 = CYCLES
+    assert(c0 - c1 < 1500)                  // (about 0.3 cycles a byte)
+    assert(c1 - c2 < 4000)                  // (about 0.95 a byte)
+    assert(c2 - c3 < 4000)
+    assert(c3 - c4 > 20000)                 // never aligned together: byte by byte
+    println("fast paths taken")              // expect: fast paths taken
+}

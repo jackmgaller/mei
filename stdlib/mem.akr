@@ -1,10 +1,13 @@
 // Memory helpers.
 
-// Copies n bytes; 16 bytes per step (vld/vst) when both pointers are word aligned.
+// Copies n bytes, front to back; 16 bytes per step (vld/vst) once dst and src are word
+// aligned. When they are misaligned by the same amount, the first bytes are copied one at a
+// time up to the boundary and the rest goes as fast; otherwise byte by byte (about 10 cycles a
+// byte, against about 0.95 a byte for the 16-byte steps).
 asm fn memcpy(dst: *u8, src: *u8, n: u32) {
     or   r5, {dst}, {src}
     andi r5, r5, 3
-    bne  r5, r0, .bytes
+    bne  r5, r0, .unaligned
 .vec:
     slti r5, {n}, 16
     bne  r5, r0, .words
@@ -23,6 +26,20 @@ asm fn memcpy(dst: *u8, src: *u8, n: u32) {
     addi {dst}, {dst}, 4
     addi {n}, {n}, -4
     jmp  .words
+.unaligned:
+    xor  r5, {dst}, {src}
+    andi r5, r5, 3
+    bne  r5, r0, .bytes             ; never aligned together: bytes
+.head:
+    beq  {n}, r0, .done             ; the same misalignment: bytes up to the boundary
+    lbu  r6, [{src}]
+    sb   r6, [{dst}]
+    addi {src}, {src}, 1
+    addi {dst}, {dst}, 1
+    addi {n}, {n}, -1
+    andi r5, {dst}, 3
+    bne  r5, r0, .head
+    jmp  .vec
 .bytes:
     beq  {n}, r0, .done
     lbu  r6, [{src}]
@@ -53,4 +70,63 @@ fn memset(dst: *u8, v: u8, n: u32) {
         p += 1
         k -= 1
     }
+}
+
+// Fills n bytes with v, fast: single bytes up to a word boundary, then 64 bytes per step (four
+// vst), then words and the last bytes. About 0.3 cycles a byte for large fills, against about
+// 1.8 (word-aligned) or 6 (not) for memset(), which is kept as it was so that carts that budget
+// their work by the cycle counter run exactly as before.
+asm fn mem_fill(dst: *u8, v: u8, n: u32) {
+    beq  {n}, r0, .done
+    andi {v}, {v}, 255
+.head:
+    andi r5, {dst}, 3
+    beq  r5, r0, .aligned
+    sb   {v}, [{dst}+0]
+    addi {dst}, {dst}, 1
+    addi {n}, {n}, -1
+    bne  {n}, r0, .head
+    ret
+.aligned:
+    shli r5, {v}, 8
+    or   r5, r5, {v}
+    shli r6, r5, 16
+    or   r5, r5, r6                 ; v in all four bytes
+    addi r6, r0, 16
+    bltu {n}, r6, .words
+    vset v0, r5, 0
+    vset v0, r5, 1
+    vset v0, r5, 2
+    vset v0, r5, 3
+    addi r6, r0, 64
+    bltu {n}, r6, .v16
+.v64:
+    vst  v0, [{dst}+0]
+    vst  v0, [{dst}+16]
+    vst  v0, [{dst}+32]
+    vst  v0, [{dst}+48]
+    addi {dst}, {dst}, 64
+    addi {n}, {n}, -64
+    bgeu {n}, r6, .v64
+    addi r6, r0, 16
+.v16:
+    bltu {n}, r6, .words
+    vst  v0, [{dst}+0]
+    addi {dst}, {dst}, 16
+    addi {n}, {n}, -16
+    jmp  .v16
+.words:
+    addi r6, r0, 4
+    bltu {n}, r6, .bytes
+    sw   r5, [{dst}+0]
+    addi {dst}, {dst}, 4
+    addi {n}, {n}, -4
+    jmp  .words
+.bytes:
+    beq  {n}, r0, .done
+    sb   {v}, [{dst}+0]
+    addi {dst}, {dst}, 1
+    addi {n}, {n}, -1
+    jmp  .bytes
+.done:
 }

@@ -839,8 +839,9 @@ The ordering table is 1,024 empty packets, entry `b` linking to entry `b − 1`;
 into bucket `b` links on to what the bucket held, so the last packet of each bucket's chain links
 to the entry below. A copy of the table (`ot_save`, `ot_swap`) therefore still links into the
 frame's table, and is only drawn correctly once it is put back (`ot_restore`, `ot_swap` again);
-`ot_detach` rewrites those last links (walking every packet once, about 15 cycles each) to make a
-list that can be drawn from wherever it lives with `ot_draw`.
+`ot_detach` rewrites those last links (about 26,000 cycles for the buckets plus 15 a packet) to
+make a list that can be drawn from wherever it lives with `ot_draw`. The frame's table is set up
+at the start of each frame, after `init()`: call `ot_clear()` before using it in `init()`.
 
 The packets themselves live in the frame's arena, which is emptied at the start of every frame.
 To keep geometry across frames (a static scene built once, or a few steps per frame, then drawn
@@ -1132,8 +1133,9 @@ Loop points are best on multiples of 28 samples (one block), which the encoder m
 | `print_char(c)`, `print_int(n)`, `print_uint(n)`, `print_hex(n)` | numbers |
 | `print_fixed(f)` | up to four decimals: `1.5`, `-0.25`, `3.1416` |
 | `print_vec(v: vec4)` | `(x, y, z, w)` |
-| `memcpy(dst: *u8, src: *u8, n: u32)` | 16 bytes per `vld`/`vst` when both are word aligned |
-| `memset(dst: *u8, v: u8, n: u32)` | |
+| `memcpy(dst: *u8, src: *u8, n: u32)` | front to back; 16 bytes per `vld`/`vst` (about 0.95 cycles a byte) once both are word aligned, also when they start misaligned by the same amount; byte by byte otherwise (about 10 a byte) |
+| `memset(dst: *u8, v: u8, n: u32)` | a word at a time when `dst` is aligned (about 1.8 cycles a byte), else bytes (about 6) |
+| `mem_fill(dst: *u8, v: u8, n: u32)` | the same as `memset`, fast: bytes up to a word boundary, then 64 bytes per step (about 0.3 cycles a byte). `memset` keeps its old speed, so carts that budget work by the cycle counter run as before |
 
 ### Memory cards (`card.akr`)
 
@@ -1285,6 +1287,14 @@ Measured with the `CYCLES` register (500,000 cycles per frame):
 | visible flat quad / Gouraud textured quad | about 130 / 163 (triangles a little less) |
 | fog | about 8–11 more per visible face vertex |
 | `text()` | about 105 per character |
+| `font_text()` | about 45 per glyph plus about 300 a call (`ALIGN_CENTRE`/`ALIGN_RIGHT`: about 30 more per character, to measure the line) |
+| `rect()` / `rect_blend()` / `rect_grad()` | about 140 / 90 / 110 |
+| `line()`, `tri_fill()` / `sprite()` / `sprite_ex()` / `sprite_rot()` | about 100 / 210 / 180 / 460 |
+| `palette_lerp` / `palette_rotate` | about 38 / 14 per colour |
+| `project_point` | about 120 |
+| `ot_save`/`ot_restore` / `ot_swap` / `ot_detach` | about 3,900 / 4,900 / 26,000 plus 15 per packet |
+| `task_resume` and the `task_yield` back | about 125 |
+| `memcpy`, word aligned / `mem_fill` / `memset` | about 0.95 / 0.3 / 1.8 (aligned) or 6 per byte |
 | `sin`, `cos` | about 50 |
 | `sqrt` | about 300 |
 | `mat4 * mat4` | about 300 |

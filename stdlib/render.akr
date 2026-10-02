@@ -5,7 +5,8 @@
 // ends the list, so a packet inserted into bucket b links on to whatever the bucket held, and
 // the last packet of each bucket's chain links to the entry below. A table copied elsewhere
 // therefore still links into the frame's table: put it back with ot_restore() or ot_swap()
-// before it is drawn, or make it a list of its own with ot_detach().
+// before it is drawn, or make it a list of its own with ot_detach(). The frame's table is set
+// up at the start of every frame, after init(): in init(), call ot_clear() before using it.
 
 // ---- projecting points
 
@@ -97,7 +98,7 @@ asm fn ot_swap(buf: *u32) {
 // table. The ends of its buckets' chains are pointed at the entries of `home` (usually dst
 // itself; or the table it will be copied to before it is drawn), so ot_draw(home) draws it
 // whole. Its packets must stay where they are (a cart's own arena; see arena_swap()). Walks
-// every packet in the table once: about 15 cycles a packet and 15 a bucket.
+// every packet in the table once: about 26,000 cycles for the buckets and 15 a packet.
 fn ot_detach(dst: *u32, home: *u32) {
     let ot0 = &__ot[0] as u32
     let ot1 = ot0 + 4096
