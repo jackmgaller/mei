@@ -4,8 +4,10 @@
 `tests/test_planes.c` and `tests/lang/planes_*`), with the open questions settled as recommended
 (see [Open questions](#open-questions)). Lantern Lake draws its sky and water with it. It adds a
 second video chip beside the polygon GPU, and it assumes the polygon GPU gets a cycle budget
-(setup per triangle plus cost per pixel, run in parallel with the CPU). That budget is specified
-in a separate chapter. The numbers below use the candidate cost table in `tools/mei_gpustats.py`.
+(setup per triangle plus cost per pixel, run in parallel with the CPU). That budget is now
+specified in [DECISIONS.md, "GPU budget"](DECISIONS.md#gpu-budget): 1,000,000 GPU cycles a tick,
+with lag on overrun (see [open question 1](#open-questions)). The numbers below use the cost
+table that became official there, then a candidate in `tools/mei_gpustats.py`.
 The design sections are the proposal as reviewed. Where the build or the Lantern Lake port found
 them wrong or incomplete, the text is corrected in place, and the measurements are in
 [What the Lantern Lake port found](#what-the-lantern-lake-port-found).
@@ -498,7 +500,7 @@ not with the framebuffer pixel (see [holes](#the-priority-bit-and-holes)).
   the same as loading a texture slot).
 - **GPU budget: zero.** Planes, the backdrop, colour math, the colour offset and auto-erase draw
   no triangles and fill no pixels. They do not count against the triangle limit or any fill
-  budget. `GPU_CLEAR` stays a GPU operation, costed as the GPU chapter decides.
+  budget. `GPU_CLEAR` stays a GPU operation: 38,400 GPU cycles ([DECISIONS.md](DECISIONS.md#gpu-budget)).
 - **Limits.** Three planes and the backdrop. One affine plane. Maps up to 128×128 entries (32 KB).
   Atlases of 1,024 8×8 or 256 16×16 tiles per plane. 4,096 palette colours shared with the
   polygons. Eight line channels of at most four words per line. One colour-math mode per layer and
@@ -561,8 +563,8 @@ The table above was the proposal's estimate. The built port, on the rev-2 chip, 
 - festival ending: 292k mean, 538k at its peak.
 
 On the first revision the [gap for blended polygons over holes](#the-saturn-gap-was-real) cost
-another 55–70k at dusk and night. The budget recommendation is under
-[open question 1](#open-questions).
+another 55–70k at dusk and night. The budget was set at 1,000,000 under
+[open question 1](#open-questions), so every one of these runs fits with room to spare.
 
 ## Determinism and emulation notes
 
@@ -952,7 +954,8 @@ screen-sized fill plus a gradient) would be about 500k.
 
 ## Open questions
 
-All were settled as recommended for the build. Questions 1 and 3 have new findings from the port.
+All are settled: question 1 after the port, with a higher budget than recommended, and the rest
+as recommended for the build. Questions 1 and 3 have new findings from the port.
 
 1. **GPU budget level, per-pixel costs and a triangle-cap backstop.** The candidate is 40 per
    triangle, ×2 textured, ×2 blended and 0.5 per cleared pixel. *Recommendation:* build the plane
@@ -982,6 +985,21 @@ All were settled as recommended for the build. Questions 1 and 3 have new findin
 
    Check-In! (581k) and Sun & Moon Orbs (518k) need their ports (example b, and the sky) to fit,
    and the system ROM's boot themes peak at 528k.
+
+   **Resolved: 1,000,000 GPU cycles a tick, implemented** (see
+   [DECISIONS.md, "GPU budget"](DECISIONS.md#gpu-budget)).
+   - The cost table above is the official one: 40 a triangle, 1 a pixel, ×2 textured, ×2
+     blended, 38,400 a clear.
+   - The budget is twice the 500k recommended: a 60 MHz GPU beside the 30 MHz CPU. Every cart
+     then fits as it is, ported or not, with the GPU as the unit a cart grows into rather than
+     the one it starts against. Measured on the console, no frame of any cart lags; the highest
+     are Lantern Lake's map menu (866k), the Eclipse boot (748k), Check-In! (589k), Sun & Moon
+     Orbs (573k) and the festival ending (538k) (the table is in DECISIONS.md).
+   - The triangle cap is 4,000, a backstop. 4,000 triangles cost 160,000 cycles of setup, so the
+     cap binds before the budget only in scenes of small triangles (under about 210 flat pixels
+     each on average); it still drops triangles, where the budget only slows the frame down.
+   - A frame over budget is shown late, as on the PlayStation: the CPU waits at `vsync` until
+     the ticks since the last picture cover the frame's GPU cycles. Nothing is dropped.
 2. **Hole encoding.** `0x8000` is a hole and upper pure black is written as `0x8400`. The
    alternative is a hidden coverage bitmap per framebuffer (9,600 bytes each), which avoids the
    black rewrite but adds invisible state. *Recommendation:* `0x8000`. It is one rule, it is all

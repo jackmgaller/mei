@@ -70,3 +70,23 @@ asm fn cycle_count() -> s32 {
 fn tris_drawn() -> s32 { return __frame_tris }
 // Frames since reset.
 fn frame() -> u32 { return FRAME }
+
+// The GPU's cycles per tick (docs/DECISIONS.md, "GPU budget").
+const GPU_BUDGET = 1000000
+
+// GPU cycles the previous frame took to draw, by the cost table in docs/DECISIONS.md (40 a
+// triangle, 1-4 a pixel, 38,400 a clear). A frame over GPU_BUDGET for each tick it took is held
+// back until it fits, so a cart can lower its detail as this nears GPU_BUDGET.
+fn gpu_used() -> s32 {
+    let c = GPU_LOAD
+    if c > 0x7FFFFFFF { return 0x7FFFFFFF }
+    return c as s32
+}
+
+// Ticks the previous frame took, from the picture before it to its own: 1 on time, n when the
+// picture before it stayed up n - 1 more times because the CPU or the GPU ran over.
+fn frame_ticks() -> s32 { return GPU_TICKS as s32 }
+
+// Ticks since reset in which a finished frame waited for the GPU. Two readings' difference is
+// the slowdown the GPU caused between them.
+fn gpu_lag() -> s32 { return GPU_LAG as s32 }

@@ -16,7 +16,7 @@ is deterministic.
 | Compressed audio | A PS1-SPU-style 4-bit ADPCM (3.5 : 1 against 16-bit), selected per channel; see [Audio upgrade](#audio-upgrade-adpcm-16-channels-reverb). |
 | Standard library location | Compiled into each cart (counts against its 2 MB). |
 | Culling/clipping helpers | Four geometry instructions in the reserved opcodes 19–1B and 1F: a back-face test, an ordering-table depth, a colour blend and a three-vertex transform (see [Geometry instructions](#geometry-instructions)). The CPU has 63 instructions. Clipping stays in software. |
-| Fill rate | Unlimited, as drafted. The plane chip ([PLANES.md](PLANES.md)) takes screen-sized skies, floors and water off the GPU, and its measurements are the basis for a GPU budget (see its "Timing and costs"). |
+| Fill rate | Budgeted: the GPU has 1,000,000 cycles a tick (a 60 MHz GPU beside the 30 MHz CPU), charged by a cost table (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a clear). A frame over budget is shown late, never cut short; the triangle limit is raised to 4,000 as a backstop. See [GPU budget](#gpu-budget). The plane chip ([PLANES.md](PLANES.md)) costs the GPU nothing. |
 | Controller count | Two. Each also has a **Select** button (bit 11 of `PAD1`/`PAD2`), added to the spec's eleven. |
 
 ## Details filled in
@@ -26,6 +26,8 @@ is deterministic.
 slightly negative; the deficit is not carried over. `vsync` ends the tick: the buffers
 swap, the triangle count resets and input is latched. If the budget runs out first, the
 front buffer is unchanged (the previous picture repeats) and the CPU resumes next tick.
+A frame whose GPU work is over the GPU's budget is also shown late: the CPU waits at its
+`vsync` until the GPU has finished ([GPU budget](#gpu-budget)).
 `FRAME` counts ticks since reset. `CYCLES` reads the budget left before the reading `lw`
 is charged.
 
@@ -67,8 +69,9 @@ integer arithmetic. A 15-bit palette colour is expanded to 8 bits per channel as
 (if `GPU_CTRL` bit 0) or not, then reduce to 5 bits, then blend if semi-transparent.
 Written pixels always have bit 15 clear, except while the plane compositor is on (`PLN_CTRL` bit 0), when bit 15 is the polygon priority bit, `0x8000` is a hole, and a blend over a hole (or, upper, over a lower pixel) blends with the composite of the layers behind its layer ([PLANES.md](PLANES.md)).
 
-**Triangle limit.** Counted per triangle: a quad whose first half is the 2,000th
-triangle draws that half and drops the second.
+**Triangle limit.** 4,000 triangles a frame (the spec's 2,000, raised as a backstop when the
+GPU got a cycle budget: see [GPU budget](#gpu-budget)). Counted per triangle: a quad whose
+first half is the 4,000th triangle draws that half and drops the second.
 
 **GPU_CLEAR** writes the low 15 bits to every pixel of the back buffer (all 16 while the plane compositor is on, so `0x8000` clears to holes: [PLANES.md](PLANES.md)).
 
@@ -84,7 +87,7 @@ triangle draws that half and drops the second.
 - `mei_reset` clears the latched input registers but keeps the platform's pending input.
 
 **GPU edge cases.**
-- Every submitted triangle counts against the 2,000 budget, including zero-area and fully off-screen ones; a second `GPU_DRAW` in a frame keeps counting.
+- Every submitted triangle counts against the 4,000 limit (and costs its 40 setup cycles), including zero-area and fully off-screen ones; a second `GPU_DRAW` in a frame keeps counting.
 - Packet checks: region first (*Unmapped address*), then alignment (*Misaligned access*). Every packet word is checked, so a polygon running off the end of ROM faults at that word. The 65,536 cap counts every packet, including empty and unknown ones. Packets drawn before a fault stay drawn.
 - `GPU_DRAW` is not masked: exactly `0xFFFFFF` is an empty list; anything else outside RAM/ROM faults.
 - 8-bit textures may start on an odd slot; texel addresses wrap within the 512 KB texture area (slot 15 + 1 = slot 0). For 8-bit textures only palette bits 24–27 are used.
@@ -100,6 +103,8 @@ triangle draws that half and drops the second.
 (`docs/SYSTEM.md`): `SYS_LAUNCH` (`0xFF0310`), `SYS_CONFIG` (`0xFF0314`, a persisted settings
 word) and a real-time clock, `SYS_TIME` (`0xFF0318`) and `SYS_DATE` (`0xFF031C`). The clock is
 latched at `vsync` like input, so determinism holds as long as a replay records it.
+Three read-only GPU registers, `GPU_LOAD`, `GPU_TICKS` and `GPU_LAG` (`0xFF0014`–`0xFF001C`),
+report the GPU budget ([GPU budget](#gpu-budget)).
 
 **Broadcast decoder.** A one-way data broadcast (time and weather pages from a looping
 carousel, Teletext-style) is received by a decoder chip at `0xFF0600`–`0xFF0647`, which extends
@@ -178,6 +183,112 @@ Orbs. A microbenchmark of the standard library's sequences, before and after (cy
 A lane-wise vector lerp was considered instead of `clerp`: `vsub`, `vscale`, `vadd` already
 do it in 6 cycles, so it would save at most 2, while fog works on packed colours, where
 `clerp` saves about 22.
+
+## GPU budget
+
+The spec leaves the GPU's fill rate open and caps it at 2,000 triangles a frame. Mei gives the
+GPU a cycle budget like the CPU's instead: it is a 60 MHz chip beside the 30 MHz CPU, so it has
+**1,000,000 GPU cycles per tick**. A frame that needs more is shown late, as on the PlayStation,
+where a heavy scene slows the game down rather than losing polygons. The triangle limit stays
+as a backstop (the packet list needs a bound anyway), raised to **4,000**. The plane chip
+([PLANES.md](PLANES.md)) is a separate chip and costs the GPU nothing; it is what lets the
+heavy carts fit (its "Timing and costs" and open question 1 have the measurements behind
+these numbers).
+
+### Cost table
+
+This is the official table. The constants are `GPU_CYCLES_*` in `src/core/machine.h`, applied
+in one place (`gpu_pixel_cycles` and the two charges in `src/core/gpu.c`).
+
+| Work | GPU cycles |
+|---|---|
+| a triangle's setup: every triangle counted against the limit, including zero-area, off-screen and empty ones (a quad is two) | 40 |
+| a pixel filled, flat or Gouraud | 1 |
+| a pixel filled, textured | 2 |
+| a pixel filled, semi-transparent | 2 |
+| a pixel filled, textured and semi-transparent | 4 |
+| `GPU_CLEAR` (76,800 pixels at half a cycle) | 38,400 |
+| triangles over the limit, packets that are not polygons, walking the list, `GPU_CTRL` | 0 |
+| the plane chip: planes, backdrop, colour math, colour offset, auto-erase | 0 |
+
+A pixel counts when it is inside the triangle, whether or not it is written: a textured
+pixel whose texel is 0 costs the same as any other. Gouraud shading and dither cost nothing
+extra. The cost is integer and exact; a frame's total is the sum over everything drawn
+between two presents.
+
+### Lag
+
+The GPU draws in parallel with the CPU, so a frame takes as long as the slower of the two, in
+whole ticks:
+
+- The GPU adds up the cycles of the frame being drawn: everything drawn since the last
+  present (or reset).
+- When the CPU executes `vsync`, the frame is presented at the first tick end at which its
+  GPU cycles are at most **1,000,000 × n**, where n is the number of ticks since the last
+  present, counting the current one. On time and under budget (n = 1) that is the tick of the
+  `vsync`, as before.
+- Until then the CPU waits at `vsync` and runs nothing. The buffers do not swap, the plane chip
+  does not compose, and the pads, sticks, clock and card controller do not latch: it is
+  exactly as if the frame had taken longer. Audio, the broadcast decoder and `FRAME` go on
+  every tick. `mei_run_frame` returns 0 for those ticks (the previous picture repeats).
+- At the present everything a `vsync` does happens, and the CPU resumes in the next tick.
+
+So a frame at 1–2× the budget is shown one tick late, and at 2–3× two ticks late; exactly
+the budget is on time. It composes with a CPU overrun: a frame whose CPU work spanned two
+ticks has 2,000,000 GPU cycles, and the ticks are not counted twice. In all, a frame takes
+max(its CPU ticks, ⌈GPU cycles ÷ 1,000,000⌉) ticks. Everything is integer, so a replay with
+the same input lags identically.
+
+The model does not let the GPU run on into the next frame (on the PlayStation it draws the
+last frame's list while the CPU builds the next), because here the GPU draws when the packets
+are submitted. The lag a cart sees is the same as in a pipelined machine whose frame takes
+max(CPU, GPU).
+
+### Registers
+
+| Address | Name | Access | Purpose |
+|---|---|---|---|
+| `0xFF0014` | `GPU_LOAD` | Read | GPU cycles of the last presented frame (saturates at `0xFFFFFFFF`) |
+| `0xFF0018` | `GPU_TICKS` | Read | ticks the last presented frame took, from the present before it (or reset) to its own: 1 on time, more when the CPU or the GPU ran over |
+| `0xFF001C` | `GPU_LAG` | Read | ticks since reset in which a finished frame waited for the GPU |
+
+All three read 0 after reset until the first present, and writing any of them is
+*Read-only*; `0xFF0020`–`0xFF00FF` stay unmapped. A cart sees them change only at `vsync`
+(the CPU does not run while `GPU_LAG` counts). `GPU_TICKS − 1` is how late the last frame was
+for any reason; the difference of two `GPU_LAG` readings is the part the GPU caused. `GPU_LAG`
+is a running count rather than cleared on reading, so reads have no side effects and a cart
+that looks only now and then loses nothing.
+
+The standard library reads them with `gpu_used()`, `frame_ticks()` and `gpu_lag()`, and has
+`GPU_BUDGET` (`LANGUAGE.md`). `cpu_used()` and `frames_dropped()` are unchanged, so they still
+count from one `vsync` to the next: the frame after one that the GPU held back includes the
+wait in them.
+
+`mei-headless --gpu-stats` writes `gpu_cycles`, `ticks` and `gpu_lag` for every presented
+frame, and `tools/mei_gpustats.py` summarises them. The halt screen and the desktop player show
+no CPU load, so they show no GPU load either.
+
+### Every cart fits
+
+Measured with `mei-headless --gpu-stats` (the console's own count) over 1,500–1,800 ticks a
+run, idle and with held and pressed buttons, plus the Lantern Lake and Check-In! test
+scenarios: 38 runs and 63,440 frames, **none of them held back by the GPU**. Each run's frames
+and audio are bit-identical to the build before the budget.
+
+| Cart | Highest GPU cycles in a frame | Of the budget |
+|---|---|---|
+| Lantern Lake: the map menu over the lake | 865,915 | 87 % |
+| Lantern Lake: day, dusk, night, fights, festival ending (scenarios 1–30) | 537,524 (festival ending) | 54 % |
+| System ROM: Eclipse boot | 748,421 | 75 % |
+| System ROM: shell, then a launched cart | 690,225 | 69 % |
+| System ROM: Duet boot | 528,096 | 53 % |
+| Check-In! (scenarios 12, 209, 215, 224 and the cart) | 588,743 | 59 % |
+| Sun & Moon Orbs | 573,270 | 57 % |
+| Fair Skies | 336,993 | 34 % |
+| Demo, Sound Lab, Pad Test, Features, Hello | 150,538 or less | 15 % or less |
+
+The Lantern Lake map menu (blended and textured panels over the whole lake scene) is the
+closest to the budget.
 
 ## Audio upgrade: ADPCM, 16 channels, reverb
 

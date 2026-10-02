@@ -13,8 +13,10 @@
  * With --system-carts the system ROM gets the system card commands until a cart launches.
  * --dump-every N PREFIX also writes the screen every N ticks (from tick --dump-from F, default 0)
  * to PREFIX_00012.ppm etc. (the tick number), for frame sequences and contact sheets.
- * --gpu-stats writes one CSV row per presented frame: CPU cycles, triangles, and pixels filled
- * by kind (flat/Gouraud x untextured/textured x opaque/semi-transparent), for measuring fill.
+ * --gpu-stats writes one CSV row per presented frame: CPU cycles, triangles, pixels filled
+ * by kind (flat/Gouraud x untextured/textured x opaque/semi-transparent), the modelled GPU
+ * cycles (docs/DECISIONS.md, "GPU budget"), the ticks the frame took (1 = on time) and how
+ * many of them it waited for the GPU (gpu_lag). tools/mei_gpustats.py summarises them.
  * --broadcast FILE replays a recorded broadcast (docs/BROADCAST.md) at exactly 16 bytes per tick
  * from tick 0, with the carrier on until the file ends; --broadcast-noise BER adds bit errors
  * (deterministic: errors per million bits, seed 0x4D454E4F). */
@@ -115,7 +117,7 @@ int main(int argc, char **argv) {
                         "                    [--wav out.wav] [--system-carts DIR] [--config HEX]\n"
                         "                    [--time HH:MM[:SS]] [--date YYYY-MM-DD] [--card1 FILE] [--card2 FILE]\n"
                         "                    [--quiet] [--dump-every N PREFIX] [--dump-from F]\n"
-                        "                    [--broadcast FILE] [--broadcast-noise BER]\n");
+                        "                    [--gpu-stats out.csv] [--broadcast FILE] [--broadcast-noise BER]\n");
         return 1;
     }
 
@@ -176,7 +178,8 @@ int main(int argc, char **argv) {
         gs = fopen(gstats_path, "w");
         if (!gs) { perror(gstats_path); return 1; }
         fprintf(gs, "tick,cpu_cycles,tris,tris_empty,tris_dropped,clears,lists,"
-                    "px_flat,px_gouraud,px_tex,px_tex_gouraud,px_semi_flat,px_semi_gouraud,px_semi_tex,px_semi_tex_gouraud\n");
+                    "px_flat,px_gouraud,px_tex,px_tex_gouraud,px_semi_flat,px_semi_gouraud,px_semi_tex,px_semi_tex_gouraud,"
+                    "gpu_cycles,ticks,gpu_lag\n");
     }
     MeiPadInput in = {pad1, 0, 0};
     long presented = 0;
@@ -196,7 +199,7 @@ int main(int argc, char **argv) {
             const MeiGpuStats *g = mei_gpu_stats(m);
             fprintf(gs, "%ld,%u,%u,%u,%u,%u,%u", i, g->cpu_cycles, g->tris, g->tris_empty, g->tris_dropped, g->clears, g->lists);
             for (int k = 0; k < 8; k++) fprintf(gs, ",%u", g->px[k]);
-            fputc('\n', gs);
+            fprintf(gs, ",%u,%u,%u\n", g->gpu_cycles, g->ticks, g->gpu_lag);
         }
         if (wf) {
             const int16_t *s;

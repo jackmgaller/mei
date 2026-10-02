@@ -5,6 +5,9 @@ reg GPU_CLEAR: u32 @ 0xFF0004    // write: fill the back buffer with a 15-bit co
 reg GPU_CTRL: u32 @ 0xFF0008     // bit 0: dither
 reg GPU_STATUS: u32 @ 0xFF000C   // bits 0-15 triangles drawn, bit 16 limit exceeded
 reg GPU_BACK: u32 @ 0xFF0010     // address of the back buffer
+reg GPU_LOAD: u32 @ 0xFF0014     // GPU cycles the last frame shown took to draw (budget 1,000,000 a tick)
+reg GPU_TICKS: u32 @ 0xFF0018    // ticks the last frame shown took: 1 on time
+reg GPU_LAG: u32 @ 0xFF001C      // ticks since reset a finished frame waited for the GPU
 
 reg PAD1: u32 @ 0xFF0200
 reg PAD2: u32 @ 0xFF0204

@@ -889,10 +889,16 @@ The prelude (`stdlib/prelude.akr`) imports every module below except the plane c
 | `frames_dropped() -> s32` | how many budgets the previous frame ran over by: 0 when it was on time, n when the picture before it stayed up n more times |
 | `cycle_count() -> s32` | a cycle clock that keeps counting across frames and overruns (`FRAME × 500,000 − CYCLES`); differences between readings are exact for spans under 71 seconds |
 | `tris_drawn() -> s32` | 3D triangles drawn in the previous frame |
+| `gpu_used() -> s32` | GPU cycles the previous frame took to draw (of `GPU_BUDGET` = 1,000,000 a tick), by the cost table in `DECISIONS.md` (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a `cls`); a frame over the budget is shown late, so a cart can lower its detail as this nears the budget |
+| `frame_ticks() -> s32` | ticks the previous frame took: 1 on time, n when the picture before it stayed up n − 1 more times because the CPU or the GPU ran over |
+| `gpu_lag() -> s32` | ticks since reset in which a finished frame waited for the GPU; the difference of two readings is the slowdown the GPU caused between them |
 | `frame() -> u32` | frames since reset |
 | `vsync()` | end the frame now (low level: skips the ordering table and pad bookkeeping) |
-| registers | `GPU_DRAW GPU_CLEAR GPU_CTRL GPU_STATUS GPU_BACK PAD1 PAD2 STICK1_X STICK1_Y STICK2_X STICK2_Y FRAME CYCLES RAND DEBUG` |
-| constants | `AUDIO_BASE VRAM_PALETTE VRAM_TEXTURES TEXTURE_SLOT_SIZE SCREEN_W SCREEN_H` |
+| registers | `GPU_DRAW GPU_CLEAR GPU_CTRL GPU_STATUS GPU_BACK GPU_LOAD GPU_TICKS GPU_LAG PAD1 PAD2 STICK1_X STICK1_Y STICK2_X STICK2_Y FRAME CYCLES RAND DEBUG` |
+| constants | `AUDIO_BASE VRAM_PALETTE VRAM_TEXTURES TEXTURE_SLOT_SIZE SCREEN_W SCREEN_H GPU_BUDGET` |
+
+`cpu_used()` and `frames_dropped()` measure from one `vsync` to the next, so the frame after one
+the GPU held back counts the wait as well; `gpu_lag()` tells the two apart.
 
 ### Input (`input.akr`)
 
@@ -1014,7 +1020,7 @@ Midpoints are made in object space and transformed exactly, with averaged textur
 coordinates and colours. The decision for an edge depends only on its two ends and on how
 often it has been halved, so the faces sharing an edge always split it alike and no cracks
 open between them, whatever their own pattern. The pieces are culled, fogged, sorted and
-drawn like any face, and count against the 2,000-triangle limit. Untextured faces are never
+drawn like any face, and count against the 4,000-triangle limit and the GPU budget. Untextured faces are never
 split. Splitting is not free (see Performance notes): a cart can enable it only for the
 meshes that need it, raise the tolerance, or adjust it from frame to frame from `cpu_used()`
 (Sun & Moon Orbs does)
@@ -1609,6 +1615,12 @@ Measured with the `CYCLES` register (500,000 cycles per frame):
 
 The demo cart (a fogged 16×16 ground and a textured cube, about 370 triangles, plus a HUD)
 uses about 78,000 cycles per frame with `subdivide(2)` at a 10 % tolerance.
+
+The GPU has its own budget of 1,000,000 cycles a frame (`gpu_used()`; the cost table is in
+`DECISIONS.md`, "GPU budget"): 40 per triangle plus 1 per pixel filled, twice that textured and
+twice again semi-transparent, and 38,400 per `cls`. Overdraw and large textured or blended
+polygons are what spend it, and a frame over it is shown late. The plane chip (`planes.akr`)
+draws skies, floors and water without touching it.
 
 `mesh()` uses the geometry instructions (`DECISIONS.md`): `vxp3` transforms and projects three
 vertices at a time, `nclip` is the back-face test, `otz` the ordering-table bucket and `clerp`
