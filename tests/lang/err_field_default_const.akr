@@ -1,0 +1,5 @@
+// A field default must be a constant.
+// error: a constant cannot use the variable 'start'
+var start = 3
+struct P { x: s32 = start }
+fn init() { }

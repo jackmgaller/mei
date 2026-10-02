@@ -153,7 +153,7 @@ declaration and the library keeps using its own.
 | `var name: T` / `var name: T = expr` / `var name = expr` | a global variable in RAM |
 | `reg NAME: T @ address` | a memory-mapped register; `T` must be 32 bits (`u32`, `s32`, `fixed`, a pointer) |
 | `embed NAME: T = "file" [, offset [, length]]` | the bytes of a file, placed in ROM; `NAME` is a `*T` |
-| `struct Name { field: T, ... }` | a structure (fields separated by commas or newlines) |
+| `struct Name { field: T, ... }` | a structure (fields separated by commas or newlines; `field: T = constant` gives a default, below) |
 | `enum Name { A, B = 5, ... }` / `enum Name: u8 { ... }` | an enumeration (see [Enums and match](#enums-and-match)) |
 | `fn name(a: T, ...) -> R { ... }` | a function (`-> R` omitted: no result) |
 | `asm fn name(a: T, ...) -> R { ... }` | a function written in assembly |
@@ -192,6 +192,22 @@ const ACTIONS: [3]fn(s32) = [walk, swim, fish]       // function values: [code, 
 A function named only in const data is still compiled in (when the data is used). Function
 literals, addresses of variables (`&g`) and single constants holding an address
 (`const M: *Mesh = FERN`; use `FERN` itself) are not allowed.
+
+A struct literal `Name { field: value, ... }` sets the fields it names; the others are zero,
+unless the field has a **default**: a constant written after its type. An omitted field whose
+type is a struct with defaults gets those defaults (fields that are arrays of structs stay zero).
+
+```
+struct Guest { hp: s32 = 100, mood: Mood = Mood.Happy, speed: fixed = 0.5, room: s16 = -1, name_id: u8 }
+var g = Guest { name_id: 3 }          // hp 100, mood Happy, speed 0.5, room -1, name_id 3
+guests[i] = Guest{}                   // back to the defaults (as a "reset")
+var blank: Guest                      // all zero: defaults apply only to literals
+```
+
+Defaults are only used by struct literals: a declared variable, a global and an array element are
+zero until assigned, as before, so adding a default changes only the literals that omit that
+field. A default must be a single value (scalar, vector, enum, pointer, bool), not a
+struct, array or `mat4`, and a constant.
 
 Everything at the top level is visible everywhere (declaration order does not matter, except
 for initialisers that read other globals), unless it is `private`.

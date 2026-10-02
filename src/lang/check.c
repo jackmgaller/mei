@@ -313,7 +313,7 @@ static void layout_struct(Type *t, Loc use) {
         if (ft->k == TY_STRUCT) layout_struct(ft, d->flocs[i]);
         if (ft->k == TY_ARRAY) { Type *b = ft; while (b->k == TY_ARRAY) b = b->elem; layout_struct(b, d->flocs[i]); }
         off = align_up(off, ft->align);
-        t->fields[i] = (Field){d->fnames[i], ft, off, d->flocs[i]};
+        t->fields[i] = (Field){d->fnames[i], ft, off, d->flocs[i], d->fdefs ? d->fdefs[i] : NULL, 0};
         off += ft->size;
         if (ft->align > align) align = ft->align;
     }
@@ -1441,6 +1441,9 @@ static Expr *check_array_lit(Ctx *c, Expr *e, Type *want) {
     return e;
 }
 
+static void add_field_defaults(Ctx *c, Expr *e, Type *t);
+static void check_field_default(Program *P, Field *f);
+
 static Expr *check_struct_lit(Ctx *c, Expr *e) {
     Sym *s = sym_lookup(e->name, e->loc.file);
     if (!s || s->k != SY_TYPE || s->ty->k != TY_STRUCT) error_at(e->loc, "'%s' is not a struct type", e->name);
@@ -1457,9 +1460,60 @@ static Expr *check_struct_lit(Ctx *c, Expr *e) {
         e->args[i] = x;
         if (!x->isconst) allc = 0;
     }
+    add_field_defaults(c, e, t);
     e->ty = t;
     e->isconst = allc;
     return e;
+}
+
+static void check_field_default(Program *P, Field *f) {
+    if (!f->def || f->def_checked) return;
+    Ctx k = {.P = P};
+    if (ty_is_aggr(f->type)) error_at(f->def->loc, "a field default must be a single value (field '%s' is %s)", f->name, ty_str(f->type));
+    Expr *x = check(&k, f->def, f->type);
+    x = coerce(&k, x, f->type, ar_printf("the default of field '%s'", f->name));
+    if (!x->isconst) error_at(x->loc, "a field default must be a constant");
+    f->def = x;
+    f->def_checked = 1;
+}
+
+/* Does a struct have field defaults (its own, or of a struct-typed field)? */
+static int struct_has_defaults(Type *t) {
+    if (t->k != TY_STRUCT) return 0;
+    for (int j = 0; j < t->nfields; j++)
+        if (t->fields[j].def || struct_has_defaults(t->fields[j].type)) return 1;
+    return 0;
+}
+
+/* A struct literal's omitted fields that have defaults are added as if they were written; an
+   omitted field whose type is a struct with defaults gets that struct's defaults (others are
+   zero). Defaults are constants, so the literal stays constant if it was. */
+static void add_field_defaults(Ctx *c, Expr *e, Type *t) {
+    for (int j = 0; j < t->nfields; j++) {
+        Field *f = &t->fields[j];
+        if (!f->def && !struct_has_defaults(f->type)) continue;
+        int given = 0;
+        for (int i = 0; i < e->nargs && !given; i++) given = !strcmp(e->fnames[i], f->name);
+        if (given) continue;
+        Expr *v = ar_alloc(sizeof *v);
+        if (!f->def) {
+            v->k = E_STRUCT;
+            v->loc = e->loc;
+            v->name = f->type->name;
+            v->ty = f->type;
+            v->isconst = 1;
+            add_field_defaults(c, v, f->type);
+        } else check_field_default(c->P, f);
+        if (f->def) { *v = *f->def; v->loc = e->loc; }
+        Expr **na = ar_alloc(sizeof(Expr *) * (size_t)(e->nargs + 1));
+        const char **nf = ar_alloc(sizeof(char *) * (size_t)(e->nargs + 1));
+        if (e->nargs) { memcpy(na, e->args, sizeof(Expr *) * (size_t)e->nargs); memcpy(nf, e->fnames, sizeof(char *) * (size_t)e->nargs); }
+        na[e->nargs] = v;
+        nf[e->nargs] = f->name;
+        e->args = na;
+        e->fnames = nf;
+        e->nargs++;
+    }
 }
 
 /* ---- function literals ---- */
@@ -2767,6 +2821,8 @@ void check_program(Program *P) {
         s->addr = (uint32_t)a;
     }
     for (int i = 0; i < P->ndatas; i++) if (P->datas[i]->k == SY_EMBED) resolve_embed(P->datas[i]);
+    for (int i = 0; i < P->nstructs; i++)
+        for (int j = 0; j < P->structs[i]->ty->nfields; j++) check_field_default(P, &P->structs[i]->ty->fields[j]);
     for (int i = 0; i < P->nfuncs; i++) check_signature(P->funcs[i]);
     for (int i = 0; i < P->nfuncs; i++) {
         Func *f = P->funcs[i];

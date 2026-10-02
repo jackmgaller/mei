@@ -868,7 +868,7 @@ static void parse_struct(Parser *p) {
     skip_nl_only(p);
     expect_op(p, "{");
     skip_nl(p);
-    int c1 = 0, c2 = 0, c3 = 0, n1 = 0, n2 = 0;
+    int c1 = 0, c2 = 0, c3 = 0, c4 = 0, n1 = 0, n2 = 0, n4 = 0;
     while (!is_op(p, "}")) {
         Loc floc = p->tok.loc;
         const char *fname = expect_ident(p, "a field name");
@@ -876,6 +876,9 @@ static void parse_struct(Parser *p) {
             if (!strcmp(d->fnames[i], fname)) error_at(floc, "duplicate field '%s'", fname);
         expect_op(p, ":");
         TypeExpr *t = parse_type(p);
+        Expr *def = NULL;
+        if (is_op(p, "=")) { next(p); def = parse_expr(p); }
+        PUSH(d->fdefs, n4, c4, def);
         PUSH(d->fnames, n1, c1, fname);
         PUSH(d->ftypes, n2, c2, t);
         PUSH(d->flocs, d->nf, c3, floc);

@@ -81,7 +81,11 @@ typedef enum {
 } TyKind;
 
 typedef struct Type Type;
-typedef struct Field { const char *name; Type *type; int offset; Loc loc; } Field;
+typedef struct Field {
+    const char *name; Type *type; int offset; Loc loc;
+    struct Expr *def;      /* default value for struct literals that omit the field, or NULL */
+    int def_checked;
+} Field;
 
 struct Type {
     TyKind k;
@@ -325,7 +329,8 @@ typedef struct EnumDecl {
     Type *ty; int state;
 } EnumDecl;
 
-typedef struct StructDecl { const char *name; Loc loc; const char **fnames; TypeExpr **ftypes; Loc *flocs; int nf; Type *ty; } StructDecl;
+typedef struct StructDecl { const char *name; Loc loc; const char **fnames; TypeExpr **ftypes; Loc *flocs; int nf; Type *ty;
+                            struct Expr **fdefs; /* field defaults (NULL entries: none) */ } StructDecl;
 
 typedef struct Program {
     Func **funcs; int nfuncs, capfuncs;
