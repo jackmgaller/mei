@@ -1,0 +1,9 @@
+// exit: 2
+fn init() {
+    var u: u32 = 0
+    u -= 1
+    assert_eq(u > 0, true)
+    assert_eq(u, 7)
+}
+// expect: assertion failed: assert_eq_misc.akr:6: assert_eq(u, 7)
+// expect:   got 4294967295, expected 7

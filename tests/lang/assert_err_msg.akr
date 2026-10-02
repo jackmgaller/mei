@@ -1,0 +1,5 @@
+// error: the message of assert() must be a string literal
+fn init() {
+    let s = "x"
+    assert(true, s)
+}

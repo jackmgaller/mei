@@ -36,6 +36,8 @@ void mei_reset(Mei *m) {
     m->frame = 0;
     m->rng = RNG_RESET_SEED;
     memset(&m->fault, 0, sizeof m->fault);
+    memset(m->debug_tail, 0, sizeof m->debug_tail);
+    m->debug_col = 0;
     m->launch_pending = 0;
     memset(&m->card_regs, 0, sizeof m->card_regs);
     m->card_busy = 0;

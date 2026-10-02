@@ -1360,7 +1360,7 @@ static Opnd gen_builtin(Expr *e, int hint) {
         I("vcross %s, %s, %s", VN[r], VN[rx], VN[ry]);
         return d;
     }
-    case BI_BITS: case BI_FROM_BITS: return gen_expr(a[0], hint);
+    case BI_BITS: case BI_FROM_BITS: case BI_RAW: return gen_expr(a[0], hint);
     case BI_ABS: {
         Opnd x = gen_expr(a[0], -1);
         int rx = R(&x);

@@ -34,7 +34,7 @@ fn draw() {
 5. [Types](#types)
 6. [Constants and conversions](#constants-and-conversions)
 7. [Operators](#operators)
-8. [Statements](#statements)
+8. [Statements](#statements) (and [assert](#assert))
 9. [Enums and match](#enums-and-match)
 10. [Functions as values](#functions-as-values)
 11. [Built-in functions](#built-in-functions)
@@ -58,7 +58,7 @@ mei-headless game.mei --frames 60 --dump frame.ppm   # run without a window
 ```
 
 Options: `--title TEXT` sets the cart title (otherwise the `cart` declaration, else the file
-name), `--no-stdlib` compiles without the standard library.
+name), `--no-stdlib` compiles without the standard library, `--release` drops `assert`s.
 
 The standard library (`stdlib/*.akr`) is compiled into every cart. `meic` looks for it in
 `$MEI_STDLIB`, then in `<directory of meic>/../stdlib`. Only functions a cart can reach are
@@ -317,6 +317,30 @@ counts with `bltu` when the bounds are `u32`).
 
 Only calls and assignments can be statements (`x + 1` alone is an error). A function with a
 result must `return` on every path.
+
+### assert
+
+```
+assert(hp > 0)
+assert(slot < 16, "slot out of range")
+assert_eq(count(), 4)              // reports both values on failure
+assert_eq(speed * 2.0, 2.5, "speed doubles")
+```
+
+When the condition is false (or the values differ) the cart prints a report to the debug
+console and halts with a `Break` fault:
+
+```
+assertion failed: game.akr:12: assert_eq(count(), 4)
+  got 3, expected 4
+```
+
+`mei-headless` prints it and exits with status 2; the desktop player's halt screen shows the
+last lines of debug output. `assert_eq` takes integers, `fixed`, `bool`, enums and pointers
+(both must be comparable with `!=`); the message must be a string literal. A passing check
+costs a compare and a branch. On a failure `assert_eq`'s operands are evaluated a second time
+for the report, so keep side effects out of them. `meic --release` drops every `assert` (the
+code is still parsed but not type-checked). `assert` and `assert_eq` are keywords.
 
 ## Enums and match
 
@@ -1000,5 +1024,6 @@ function but vectors are spilled around calls; `-S` shows exactly what was gener
 
 `tests/run_lang_tests.sh` (run by `make test`) compiles every `tests/lang/*.akr`, runs it with
 `mei-headless` and compares the debug output with the file's `// expect:` lines (`// frames: N`,
-`// pad1: HEX` and `// error: TEXT` adjust a test). `tools/fuzz_lang.py [count] [seed]` compiles
+`// pad1: HEX`, `// error: TEXT`, `// exit: N` (e.g. 2 for a failed `assert`) and
+`// flags: ARGS` (extra `meic` arguments) adjust a test). `tools/fuzz_lang.py [count] [seed]` compiles
 random programs and checks their output against a Python model of the CPU's arithmetic.

@@ -1,0 +1,23 @@
+// assert() and assert_eq() that hold: no output from them, the cart carries on.
+enum Dir { Up, Down }
+
+fn sq(x: s32) -> s32 { return x * x }
+
+fn init() {
+    let a = 6
+    assert(a > 5)
+    assert(a == 6, "six")
+    assert(
+        a < 10 &&
+        a != 3
+    )
+    assert_eq(sq(a), 36)
+    assert_eq(1.5 * 2.0, 3.0)
+    assert_eq(a > 0, true)
+    assert_eq(Dir.Down, Dir.Down)
+    let p: *s32 = null
+    assert_eq(p, null)
+    var v: u8 = 250
+    assert_eq(v, 250)
+    println("ok")      // expect: ok
+}

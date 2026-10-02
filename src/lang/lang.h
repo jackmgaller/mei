@@ -18,6 +18,7 @@ typedef struct {
     const char *stdlib_dir;   /* directory holding prelude.akr; NULL: $MEI_STDLIB, else "stdlib" */
     const char *title;        /* cart title; NULL: the `cart "..."` declaration, else the file name */
     int no_stdlib;            /* 1: do not import the standard library (test/bare-metal use) */
+    int no_asserts;           /* 1: drop assert()/assert_eq() statements (meic --release) */
     char **asm_text;          /* if non-NULL, receives the generated assembly (malloc'd, caller frees) */
 } MeiCompileOptions;
 

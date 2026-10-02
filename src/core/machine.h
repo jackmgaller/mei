@@ -129,6 +129,8 @@ struct Mei {
     char cart_id[17];
     MeiDebugFn debug_fn;
     void *debug_user;
+    char debug_tail[4][81];  /* the last lines of debug output (shown on the halt screen) */
+    int debug_col;
 
     /* Input: pending from the platform, latched at vsync */
     MeiPadInput pad_pending[2];

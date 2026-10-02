@@ -6,6 +6,8 @@
 #   // pad1: HEX        hold these controller-1 buttons
 #   // error: TEXT      compilation must fail with TEXT in the message
 #   // cards: N         insert N (1 or 2) blank memory cards
+#   // exit: N          the run must end with this exit status (2: a fault, e.g. a failed assert)
+#   // flags: ARGS      extra meic arguments (e.g. --release)
 # Usage: tests/run_lang_tests.sh [name-filter]   (MEIC=... RUN=... select other builds)
 cd "$(dirname "$0")/.." || exit 1
 MEIC=${MEIC:-build/meic}
@@ -23,6 +25,8 @@ for t in tests/lang/*.akr tests/lang/*.mls; do
     pad=$(sed -n 's|.*// pad1: *\([0-9A-Fa-fx]*\).*|\1|p' "$t" | head -1)
     experr=$(sed -n 's|.*// error: *||p' "$t" | head -1)
     cards=$(sed -n 's|.*// cards: *\([12]\).*|\1|p' "$t" | head -1)
+    wantrc=$(sed -n 's|.*// exit: *\([0-9]*\).*|\1|p' "$t" | head -1)
+    flags=$(sed -n 's|.*// flags: *||p' "$t" | head -1)
     cardargs=""
     if [ -n "$cards" ]; then
         rm -f "$tmp/$name.card1" "$tmp/$name.card2"
@@ -38,13 +42,13 @@ for t in tests/lang/*.akr tests/lang/*.mls; do
         else echo "FAIL $name: wrong error"; echo "  expected: $experr"; sed 's/^/  got: /' "$tmp/err" | head -3; fail=$((fail + 1)); fi
         continue
     fi
-    if ! $MEIC "$t" -o "$tmp/$name.mei" 2> "$tmp/err"; then
+    if ! $MEIC $flags "$t" -o "$tmp/$name.mei" 2> "$tmp/err"; then
         echo "FAIL $name: compile error"; sed 's/^/  /' "$tmp/err" | head -5; fail=$((fail + 1)); continue
     fi
     $RUN "$tmp/$name.mei" --frames "${frames:-2}" ${pad:+--pad1 "$pad"} $cardargs > "$tmp/out" 2> "$tmp/runerr"
     rc=$?
-    if [ $rc -ne 0 ]; then
-        echo "FAIL $name: exit $rc"; sed 's/^/  /' "$tmp/runerr" | grep -v "^  ran" | head -3; fail=$((fail + 1)); continue
+    if [ $rc -ne "${wantrc:-0}" ]; then
+        echo "FAIL $name: exit $rc (expected ${wantrc:-0})"; sed 's/^/  /' "$tmp/runerr" | grep -v "^  ran" | head -3; fail=$((fail + 1)); continue
     fi
     if cmp -s "$tmp/expect" "$tmp/out"; then pass=$((pass + 1))
     else

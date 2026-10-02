@@ -1,6 +1,8 @@
 /* Bus: memory map, I/O register dispatch and fault checks. */
 #include "machine.h"
 
+#include <string.h>
+
 #define RNG_RESET_SEED 0x4D454921u
 
 void mei_raise(Mei *m, MeiFaultKind kind, uint32_t addr) {
@@ -75,7 +77,19 @@ static MeiFaultKind io_write(Mei *m, uint32_t off, uint32_t val) {
     case IO_GPU_CLEAR: gpu_clear(m, val); return 0;
     case IO_GPU_CTRL:  m->gpu_ctrl = val; return 0;
     case IO_SYS_RAND:  m->rng = val ? val : RNG_RESET_SEED; return 0;
-    case IO_SYS_DEBUG: if (m->debug_fn) m->debug_fn(m->debug_user, (char)(val & 0xFF)); return 0;
+    case IO_SYS_DEBUG: {
+        char ch = (char)(val & 0xFF);
+        if (m->debug_fn) m->debug_fn(m->debug_user, ch);
+        if (ch == '\n') {
+            memmove(m->debug_tail[0], m->debug_tail[1], sizeof m->debug_tail - sizeof m->debug_tail[0]);
+            m->debug_tail[3][0] = 0;
+            m->debug_col = 0;
+        } else if (m->debug_col < 80 && (unsigned char)ch >= 32) {
+            m->debug_tail[3][m->debug_col++] = ch;
+            m->debug_tail[3][m->debug_col] = 0;
+        }
+        return 0;
+    }
     case IO_SYS_LAUNCH: m->launch_index = val; m->launch_pending = 1; return 0;
     case IO_SYS_CONFIG: m->config_dirty |= m->sys_config != val; m->sys_config = val; return 0;
     case IO_GPU_STATUS: case IO_GPU_BACK:

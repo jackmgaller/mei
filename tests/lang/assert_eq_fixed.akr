@@ -1,0 +1,7 @@
+// exit: 2
+fn init() {
+    let speed = 1.25
+    assert_eq(speed * 2.0, 2.0, "speed doubles")
+}
+// expect: assertion failed: assert_eq_fixed.akr:4: assert_eq(speed * 2.0, 2.0) - speed doubles
+// expect:   got 2.5, expected 2.0

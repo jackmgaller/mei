@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 static void usage(void) {
-    fprintf(stderr, "usage: meic game.akr [-o game.mei] [-S game.s] [--sym game.sym] [--title TITLE] [--no-stdlib]\n");
+    fprintf(stderr, "usage: meic game.akr [-o game.mei] [-S game.s] [--sym game.sym] [--title TITLE] [--no-stdlib] [--release]\n");
     exit(1);
 }
 
@@ -60,6 +60,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--sym") && i + 1 < argc) sym_out = argv[++i];
         else if (!strcmp(argv[i], "--title") && i + 1 < argc) opt.title = argv[++i];
         else if (!strcmp(argv[i], "--no-stdlib")) opt.no_stdlib = 1;
+        else if (!strcmp(argv[i], "--release")) opt.no_asserts = 1;
         else if (argv[i][0] == '-' ) usage();
         else if (!in) in = argv[i];
         else usage();

@@ -1,0 +1,5 @@
+// error: vectors cannot be compared with '!='
+fn init() {
+    let v = vec3(1.0, 2.0, 3.0)
+    assert_eq(v, v)
+}

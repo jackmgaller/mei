@@ -58,6 +58,7 @@ void types_init(void) {
         {"abs", BI_ABS}, {"min", BI_MIN}, {"max", BI_MAX}, {"clamp", BI_CLAMP}, {"lerp", BI_LERP},
         {"length", BI_LENGTH}, {"normalize", BI_NORMALIZE},
         {"nclip", BI_NCLIP}, {"otz", BI_OTZ}, {"clerp", BI_CLERP},
+        {"__kind", BI_KIND}, {"__raw", BI_RAW},
         {"map", BI_MAP}, {"map_into", BI_MAP_INTO}, {"filter", BI_FILTER}, {"filter_into", BI_FILTER_INTO},
         {"reduce", BI_REDUCE}, {"each", BI_EACH},
     };
@@ -1247,6 +1248,23 @@ static Expr *check_call(Ctx *c, Expr *e) {
                 a[i] = coerce(c, a[i], want[i], ar_printf(what[i], name));
             }
             e->ty = s->bi == BI_CLERP ? ty_u32 : ty_s32;
+            return e;
+        }
+        case BI_KIND: case BI_RAW: {
+            /* assert_eq()'s report: 0 signed, 1 unsigned, 2 fixed, 3 bool, 4 pointer */
+            Expr *x = a[0];
+            if (x->ty->k == TY_UINT) x = coerce(c, x, ty_s32, "argument");
+            else if (x->ty->k == TY_UFIXED) x = coerce(c, x, ty_fixed, "argument");
+            a[0] = x;
+            Type *t = x->ty;
+            if (!ty_is_scalar(t) && t->k != TY_PTR && t->k != TY_NULL && t->k != TY_ENUM)
+                error_at(x->loc, "assert_eq() compares numbers, booleans, enums and pointers, found %s", ty_str(t));
+            e->ty = ty_s32;
+            if (s->bi == BI_KIND) {
+                e->isconst = 1;
+                e->cval = t->k == TY_FIXED ? 2 : t->k == TY_BOOL ? 3 : (t->k == TY_PTR || t->k == TY_NULL) ? 4
+                        : (t->k == TY_U8 || t->k == TY_U16 || t->k == TY_U32) ? 1 : 0;
+            }
             return e;
         }
         case BI_LENGTH: case BI_NORMALIZE: {

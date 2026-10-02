@@ -97,3 +97,41 @@ fn print_vec(v: vec4) {
     print_fixed(v.w)
     DEBUG = ')'
 }
+
+// ---- assert() and assert_eq() (the compiler turns them into calls to these on failure)
+//
+// The report goes to the debug console, then the cart halts with a Break fault: the desktop
+// shows it on the halt screen, mei-headless exits with status 2.
+
+fn __assert_fail(msg: *u8) {
+    print("assertion failed: ")
+    println(msg)
+    __assert_halt()
+}
+
+fn __assert_value(kind: s32, v: s32) {
+    match kind {
+        1 => print_uint(v as u32)
+        2 => print_fixed(from_bits(v))
+        3 => { if v != 0 { print("true") } else { print("false") } }
+        4 => { print("0x"); print_hex(v as u32) }
+        else => print_int(v)
+    }
+}
+
+fn __assert_eq_fail(msg: *u8, ka: s32, a: s32, kb: s32, b: s32) {
+    print("assertion failed: ")
+    println(msg)
+    print("  got ")
+    __assert_value(ka, a)
+    print(", expected ")
+    __assert_value(kb, b)
+    println("")
+    __assert_halt()
+}
+
+fn __assert_halt() {
+    asm {
+        brk
+    }
+}

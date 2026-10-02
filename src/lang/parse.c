@@ -16,7 +16,8 @@ typedef struct {
 
 static const char *keywords[] = {
     "fn", "var", "let", "const", "struct", "if", "else", "while", "for", "in", "break",
-    "continue", "return", "import", "asm", "reg", "embed", "as", "true", "false", "null", "cart", "enum", "match", NULL,
+    "continue", "return", "import", "asm", "reg", "embed", "as", "true", "false", "null", "cart", "enum", "match",
+    "assert", "assert_eq", NULL,
 };
 
 static int is_keyword(const char *s) {
@@ -442,9 +443,123 @@ static Stmt *parse_match(Parser *p) {
     return s;
 }
 
+/* ---- assert(cond[, "message"]) and assert_eq(a, b[, "message"]) ----
+ * Desugared here, where the source text is at hand:
+ *   assert(c)        ->  if !c { __assert_fail("file:line: assert(c)") }
+ *   assert_eq(a, b)  ->  if a != b { __assert_eq_fail("file:line: ...", __kind(a), __raw(a), __kind(b), __raw(b)) }
+ * (on a failure a and b are evaluated a second time, for the report). With
+ * MeiCompileOptions.no_asserts the statement is checked for syntax only and dropped. */
+
+typedef struct { Lexer L; Token tok; } ParseState;
+static ParseState parse_save(Parser *p) { ParseState s = {p->L, p->tok}; return s; }
+static void parse_restore(Parser *p, ParseState s) { p->L = s.L; p->tok = s.tok; }
+
+static Expr *mk_call1(const char *fname, Loc loc, Expr **args, int n) {
+    Expr *c = new_expr(E_CALL, loc);
+    c->a = new_expr(E_NAME, loc);
+    c->a->name = fname;
+    c->args = ar_alloc(sizeof *c->args * (size_t)n);
+    for (int i = 0; i < n; i++) c->args[i] = args[i];
+    c->nargs = n;
+    return c;
+}
+
+static Expr *mk_wrap(const char *fname, Expr *x) { return mk_call1(fname, x->loc, &x, 1); }
+
+static Stmt *parse_assert(Parser *p) {
+    Loc loc = p->tok.loc;
+    int eq = is_kw(p, "assert_eq");
+    const char *kw = eq ? "assert_eq" : "assert";
+    next(p);
+    if (!is_op(p, "(")) error_at(p->tok.loc, "expected '(' after %s", kw);
+    const char *src0 = p->L.p;          /* just after the '(' */
+    next(p);
+    int save = p->no_struct_lit;
+    p->no_struct_lit = 0;
+    ParseState args = parse_save(p);
+    Expr *a = parse_expr(p), *b = NULL;
+    if (eq) {
+        if (!is_op(p, ",")) error_at(p->tok.loc, "assert_eq() compares two values: assert_eq(got, expected)");
+        next(p);
+        b = parse_expr(p);
+    }
+    if (p->tok.k != TK_OP) error_at(p->tok.loc, "expected ',' or ')' in %s(), found %s", kw, tok_desc(&p->tok));
+    const char *src1 = p->L.p - strlen(p->tok.s);
+    const char *msg = NULL;
+    if (is_op(p, ",")) {
+        next(p);
+        if (p->tok.k != TK_STR) error_at(p->tok.loc, "the message of %s() must be a string literal", kw);
+        msg = p->tok.s;
+        next(p);
+    }
+    expect_op(p, ")");
+    p->no_struct_lit = save;
+    ParseState after = parse_save(p);
+
+    /* "file.akr:12: assert(x > 0) - message", with whitespace runs collapsed */
+    size_t cap = (size_t)(src1 - src0) + 1, n = 0;
+    char *text = ar_alloc(cap);
+    for (const char *q = src0; q < src1; q++) {
+        char ch = (*q == '\n' || *q == '\t' || *q == '\r') ? ' ' : *q;
+        if (ch == ' ' && (n == 0 || text[n - 1] == ' ')) continue;
+        text[n++] = ch;
+    }
+    while (n > 0 && text[n - 1] == ' ') n--;
+    text[n] = 0;
+    const char *base = strrchr(loc.file, '/');
+    base = base ? base + 1 : loc.file;
+    Expr *str = new_expr(E_STR, loc);
+    str->str = ar_printf("%s:%d: %s(%s)%s%s", base, loc.line, kw, text, msg ? " - " : "", msg ? msg : "");
+    str->slen = strlen(str->str);
+
+    if (p->C->opt->no_asserts) {
+        parse_restore(p, after);
+        end_statement(p);
+        return new_stmt(S_BLOCK, loc);
+    }
+    Stmt *s = new_stmt(S_IF, loc);
+    Expr *call;
+    if (!eq) {
+        Expr *nt = new_expr(E_UNARY, loc);
+        nt->op = U_NOT;
+        nt->a = a;
+        s->e = nt;
+        call = mk_call1("__assert_fail", loc, &str, 1);
+    } else {
+        Expr *ne = new_expr(E_BINARY, loc);
+        ne->op = B_NE;
+        ne->a = a;
+        ne->b = b;
+        s->e = ne;
+        /* fresh copies of the operands for the report (the checker rewrites nodes in place) */
+        Expr *cp[4];
+        for (int k = 0; k < 2; k++) {
+            parse_restore(p, args);
+            p->no_struct_lit = 0;
+            cp[k * 2] = parse_expr(p);
+            next(p);                    /* the ',' */
+            cp[k * 2 + 1] = parse_expr(p);
+        }
+        p->no_struct_lit = save;
+        Expr *rep[5] = {str, mk_wrap("__kind", cp[0]), mk_wrap("__raw", cp[2]), mk_wrap("__kind", cp[1]), mk_wrap("__raw", cp[3])};
+        call = mk_call1("__assert_eq_fail", loc, rep, 5);
+    }
+    Stmt *cs = new_stmt(S_EXPR, loc);
+    cs->e = call;
+    Stmt *then = new_stmt(S_BLOCK, loc);
+    then->list = ar_alloc(sizeof *then->list);
+    then->list[0] = cs;
+    then->n = 1;
+    s->then = then;
+    parse_restore(p, after);
+    end_statement(p);
+    return s;
+}
+
 static Stmt *parse_stmt(Parser *p) {
     Loc loc = p->tok.loc;
     Stmt *s;
+    if (is_kw(p, "assert") || is_kw(p, "assert_eq")) return parse_assert(p);
     if (is_kw(p, "match")) return parse_match(p);
     if (is_kw(p, "var") || is_kw(p, "let")) {
         s = parse_var_decl(p, is_kw(p, "let"));

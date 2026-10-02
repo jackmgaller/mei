@@ -1,0 +1,8 @@
+// assert_eq() prints both values.
+// exit: 2
+fn count() -> s32 { return 3 }
+fn init() {
+    assert_eq(count(), 4)
+}
+// expect: assertion failed: assert_eq_int.akr:5: assert_eq(count(), 4)
+// expect:   got 3, expected 4

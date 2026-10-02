@@ -1,0 +1,6 @@
+// exit: 2
+fn init() {
+    let n = 0
+    assert(n != 0, "n must be set before init")
+}
+// expect: assertion failed: assert_msg.akr:4: assert(n != 0) - n must be set before init

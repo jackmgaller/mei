@@ -423,8 +423,8 @@ void gpu_render_error_screen(Mei *m) {
     char buf[48];
     text(img, (MEI_W - 17 * 16) / 2, 12, "MEI - CART HALTED", white, 2);
     text(img, 16, 52, mei_fault_name(m->fault.kind), yellow, 1);
-    text(img, 16, 68, hexs(buf, "PC   0x", m->fault.pc, 6), white, 1);
-    text(img, 16, 80, hexs(buf, "ADDR 0x", m->fault.addr, 6), white, 1);
+    text(img, 16, 66, hexs(buf, "PC   0x", m->fault.pc, 6), white, 1);
+    text(img, 16, 76, hexs(buf, "ADDR 0x", m->fault.addr, 6), white, 1);
 
     uint32_t pc = m->fault.pc, insn = 0;
     int ok = (pc & 3) == 0;
@@ -432,13 +432,34 @@ void gpu_render_error_screen(Mei *m) {
     else if (ok && pc - ROM_BASE < ROM_SIZE) insn = rd32(m->rom + (pc - ROM_BASE));
     else if (ok && pc - VRAM_BASE < VRAM_SIZE) insn = rd32(m->vram + (pc - VRAM_BASE));
     else ok = 0;
-    text(img, 16, 92, ok ? hexs(buf, "INSN 0x", insn, 8) : "INSN --------", white, 1);
+    text(img, 16, 86, ok ? hexs(buf, "INSN 0x", insn, 8) : "INSN --------", white, 1);
 
-    text(img, 16, 112, "REGISTERS", grey, 1);
+    text(img, 16, 102, "REGISTERS", grey, 1);
     for (int i = 0; i < 16; i++) {
         char lab[8] = "R    0x";          /* "R7   0x", "R12  0x" */
         if (i < 10) lab[1] = (char)('0' + i);
         else { lab[1] = '1'; lab[2] = (char)('0' + i - 10); }
-        text(img, i < 8 ? 16 : 168, 126 + (i & 7) * 12, hexs(buf, lab, m->r[i], 8), white, 1);
+        text(img, i < 8 ? 16 : 168, 114 + (i & 7) * 10, hexs(buf, lab, m->r[i], 8), white, 1);
+    }
+
+    /* the last debug output (an assert()'s report, say), wrapped at 36 columns: its last 3 rows */
+    enum { COLS = 36, ROWS = 3 };
+    char rows[16][COLS + 1];
+    int nrows = 0;
+    for (int l = 0; l < 4; l++) {
+        const char *s = m->debug_tail[l];
+        size_t len = strlen(s);
+        for (size_t at = 0; at < len; at += COLS) {
+            if (nrows == 16) { memmove(rows[0], rows[1], sizeof rows - sizeof rows[0]); nrows--; }
+            size_t k = len - at < COLS ? len - at : COLS;
+            memcpy(rows[nrows], s + at, k);
+            rows[nrows][k] = 0;
+            nrows++;
+        }
+    }
+    if (nrows) {
+        text(img, 16, 198, "OUTPUT", grey, 1);
+        int first = nrows > ROWS ? nrows - ROWS : 0;
+        for (int i = first; i < nrows; i++) text(img, 16, 208 + (i - first) * 10, rows[i], yellow, 1);
     }
 }

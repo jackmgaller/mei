@@ -1,0 +1,10 @@
+// A failing assert() reports file:line and its source text, then halts (exit status 2).
+// exit: 2
+fn init() {
+    println("before")            // expect: before
+    let hp = 3
+    assert(hp   >
+           10)
+    println("not reached")
+}
+// expect: assertion failed: assert_fail.akr:6: assert(hp > 10)
