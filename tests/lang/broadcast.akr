@@ -1,7 +1,7 @@
 // The broadcast end to end: decode the canned fixture stream (tools/meinet --fixture) through
 // the decoder chip and stdlib/broadcast.akr.
 // broadcast: data/broadcast.bin
-// frames: 3600
+// frames: 4500
 cart "Broadcast Test"
 
 var cur: BcCurrent
@@ -9,6 +9,7 @@ var daily: BcDaily
 var hourly: BcHourly
 var index: BcIndex
 var map: BcMap
+var cities: BcCities
 var bands: [3072]u8
 var t: BcTime
 var dt: BcDateTime
@@ -24,6 +25,7 @@ fn init() {
     p(sizeof(BcTime) * 1000 + sizeof(BcCurrent))     // expect: 52052
     p(sizeof(BcDaily) * 1000 + sizeof(BcHourly))     // expect: 52104
     p(sizeof(BcIndex) * 10000 + sizeof(BcMap))       // expect: 33282548
+    p(sizeof(BcCity) * 10000 + sizeof(BcCities))     // expect: 263328
     pb(bc_carrier())                                 // expect: yes
     pb(bc_locked())                                  // expect: no
     p(bc_version(BC_CURRENT | CHICAGO))              // expect: -1
@@ -33,6 +35,7 @@ fn init() {
     p(bc_select(BC_DAILY | CHICAGO))                 // expect: 3
     p(bc_select(BC_HOURLY | CHICAGO))                // expect: 4
     p(bc_select(BC_MAP | BC_HOME))                   // expect: 5
+    p(bc_select(BC_CITIES | BC_HOME))                // expect: 6
     p(bc_select(BC_TIME_PAGE))                       // expect: 0
 }
 
@@ -71,16 +74,16 @@ fn update() {
             print(bc_name(&e.region[0])); print_char('/')
             print(bc_name(&e.city[0])); print_char('\n')
         }
-        // expect: 400 15 1 Home/Springfield
-        // expect: 401 15 0 Northeast/New York
-        // expect: 402 15 0 Southeast/Atlanta
-        // expect: 403 15 0 Midwest/Chicago
-        // expect: 404 15 0 South/Dallas
-        // expect: 405 15 0 Mountain/Denver
-        // expect: 406 15 0 Southwest/Phoenix
-        // expect: 407 15 0 West/Los Angeles
-        // expect: 408 15 0 Pacific NW/Seattle
-        // expect: 4FF 8 4 United States/
+        // expect: 400 31 1 Home/Meiville
+        // expect: 401 31 0 Northeast/New York
+        // expect: 402 31 0 Southeast/Atlanta
+        // expect: 403 31 0 Midwest/Chicago
+        // expect: 404 31 0 South/Dallas
+        // expect: 405 31 0 Mountain/Denver
+        // expect: 406 31 0 Southwest/Phoenix
+        // expect: 407 31 0 West/Los Angeles
+        // expect: 408 31 0 Pacific NW/Seattle
+        // expect: 4FF 24 4 United States/
         p(index.entry[3].lat as s32 * 100000 + index.entry[3].north as s32)   // expect: 418804950
         p(index.entry[3].versions[0] as s32)         // expect: 1
 
@@ -122,19 +125,42 @@ fn update() {
         p(hourly.hours[0].temp as s32 * 1000 + hourly.hours[23].temp as s32 + 100000)   // expect: 138015
         p(hourly.hours[23].wind as s32)              // expect: 28
 
+        // the home map's cities: the home city first, then its neighbours
+        let cn = bc_read(BC_CITIES | BC_HOME, &cities)
+        p(cn)                                        // expect: 260
+        p(bc_city_count(&cities, cn))                // expect: 9
+        for i in 0..bc_city_count(&cities, cn) {
+            let c = &cities.city[i]
+            print(bc_name(&c.name[0])); print_char(' ')
+            print_int(c.lat as s32); print_char(' ')
+            print_int(c.lon as s32); print_char(' ')
+            print_int(bc_temp_f(c.temp as s32)); print_char(' ')
+            print_int(bc_icon(c.wmo as s32)); print_char('\n')
+        }
+        // expect: Meiville 3890 -9520 67 0
+        // expect: Wichita 3769 -9734 80 1
+        // expect: Lincoln 4081 -9670 81 8
+        // expect: Springfield 3721 -9329 75 0
+        // expect: Columbia 3895 -9233 78 6
+        // expect: St. Joseph 3977 -9485 71 3
+        // expect: Grand Island 4093 -9834 74 4
+        // expect: Joplin 3708 -9451 75 2
+        // expect: Salina 3884 -9761 78 5
+        p(index.entry[0].cities_version as s32)      // expect: 1
+
         // the home map, header and bands
         p(bc_rows(BC_MAP | BC_HOME))                 // expect: 49
         p(bc_read(BC_MAP | BC_HOME, &map))           // expect: 2548
-        print(bc_name(&map.head.name[0])); print_char('\n')   // expect: Springfield
+        print(bc_name(&map.head.name[0])); print_char('\n')   // expect: Meiville
         p(map.head.width as s32 * 1000 + map.head.height as s32)   // expect: 64048
-        p(map.head.base as s32 * 1000 + map.head.step as s32)      // expect: 36002
+        p(map.head.base as s32 * 1000 + map.head.step as s32)      // expect: 38002
         pb(bc_map_decode(&map, &bands[0]))           // expect: yes
         var sum = 0
         var weighted = 0
         for i in 0..3072 { sum += bands[i] as s32; weighted += bands[i] as s32 * (i % 61 + 1) }
-        p(sum)                                       // expect: 15547
-        p(weighted)                                  // expect: 476039
-        p(bands[0] as s32 * 100 + bands[3071] as s32)   // expect: 208
+        p(sum)                                       // expect: 15607
+        p(weighted)                                  // expect: 475436
+        p(bands[0] as s32 * 100 + bands[3071] as s32)   // expect: 309
 
         // progressive painting: each row decodes from the row above
         var line: [64]u8
@@ -160,7 +186,7 @@ fn update() {
         bc_read(BC_CURRENT | CHICAGO, &cur)
         p(cur.temp as s32)                           // expect: 40
     }
-    if f == 3599 {
+    if f == 4499 {
         pb(seen_v2)                                  // expect: yes
         pb(bc_ready(BC_MAP | BC_NATIONAL))           // expect: yes
         p(bc_read(BC_MAP | BC_NATIONAL, &map))       // expect: 2548
@@ -169,7 +195,7 @@ fn update() {
         var sum = 0
         for i in 0..3072 { sum += bands[i] as s32 }
         p(sum)                                       // expect: 34603
-        p(bc_packets_ok() as s32)                    // expect: 899
+        p(bc_packets_ok() as s32)                    // expect: 1124
         p(bc_packets_fixed() as s32 * 1000 + bc_packets_dropped() as s32)   // expect: 0
     }
 }

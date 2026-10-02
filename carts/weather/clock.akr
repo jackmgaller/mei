@@ -1,0 +1,60 @@
+// The clock: MeiNet's time page when it has arrived (true to the second on air), otherwise
+// the console's own clock (SYS_TIME, SYS_DATE). The sample tape's time is a recording's, so
+// it is not used.
+
+reg SYS_TIME: u32 @ 0xFF0318        // seconds since local midnight
+reg SYS_DATE: u32 @ 0xFF031C        // bits 0-4 day, 5-8 month, 9-11 weekday, 16-31 year
+
+struct Clock {
+    year: s32
+    month: s32
+    day: s32
+    weekday: s32
+    hour: s32
+    minute: s32
+    second: s32
+    on_air: bool             // from the time page
+}
+
+var clk: Clock
+var clk_tz: [8]u8            // the time page's zone name field
+private var tp: BcTime
+
+const DAY_NAMES: [7]*u8 = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+const DAY_SHORT: [7]*u8 = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+const MONTH_NAMES: [12]*u8 = ["January", "February", "March", "April", "May", "June", "July",
+                              "August", "September", "October", "November", "December"]
+
+fn clock_update() {
+    if !rx_demo && bc_time(&tp) {
+        let local = bc_local_now()
+        if local != 0 {
+            var dt: BcDateTime
+            bc_datetime(local, &dt)
+            clk.year = dt.year
+            clk.month = dt.month
+            clk.day = dt.day
+            clk.weekday = dt.weekday
+            clk.hour = dt.hour
+            clk.minute = dt.minute
+            clk.second = dt.second
+            clk.on_air = true
+            memcpy(&clk_tz[0], &tp.tz[0], 8)
+            return
+        }
+    }
+    let t = SYS_TIME as s32
+    let d = SYS_DATE
+    clk.hour = t / 3600
+    clk.minute = t / 60 % 60
+    clk.second = t % 60
+    clk.day = (d & 31) as s32
+    clk.month = ((d >> 5) & 15) as s32
+    clk.weekday = ((d >> 9) & 7) as s32
+    clk.year = (d >> 16) as s32
+    clk.on_air = false
+    clk_tz[0] = 0
+}
+
+// Minutes since local midnight now.
+fn clock_minutes() -> s32 { return clk.hour * 60 + clk.minute }

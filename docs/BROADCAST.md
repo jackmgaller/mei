@@ -4,7 +4,8 @@ Mei can receive a **data broadcast**, in the spirit of Teletext and the Satellav
 signal that repeats a loop of pages (a *carousel*) forever. There is no uplink. A receiver
 tunes in at any moment, picks out the pages it wants as they go by, and assembles each one
 from its rows. The service, **MeiNet**, carries the time and US weather: current conditions,
-a 5-day forecast, a 24-hour forecast and a temperature map per region.
+a 5-day forecast, a 24-hour forecast, a temperature map and the weather in the cities on that
+map, per region.
 
 The console has a **broadcast decoder chip**, modelled on Teletext decoders such as the
 SAA5246. It finds packets in the byte stream, corrects and checks them, and assembles up to
@@ -146,10 +147,10 @@ copy a page out when it completes with a new version, and otherwise leave it alo
 | `0x100` | 0 | [time](#time-page-0x100) |
 | `0x101` | 0 | [index](#index-page-0x101) |
 | `0x102`–`0x3FF` | | reserved for other services |
-| `0x400` | 0–3 | weather for the **home city** (set in the gateway's config; not sent when unset) |
-| `0x401`–`0x408` | 0–3 | weather for the eight US regions below |
-| `0x409`–`0x4FE` | 0–3 | further regions, if the gateway config adds them |
-| `0x4FF` | 3 | national map of the contiguous United States |
+| `0x400` | 0–4 | weather for the **home city** (set in the gateway's config; not sent when unset) |
+| `0x401`–`0x408` | 0–4 | weather for the eight US regions below |
+| `0x409`–`0x4FE` | 0–4 | further regions, if the gateway config adds them |
+| `0x4FF` | 3, 4 | national map of the contiguous United States, and its cities |
 | `0x500`–`0xFFE` | | reserved |
 | `0xFFF` | any | filler: receivers ignore it |
 
@@ -161,6 +162,7 @@ Weather pages are `0x4RR`, where RR is the region number. Their kinds:
 | 1 | `0x14RR` | [5-day forecast](#5-day-forecast-kind-1) | 1 |
 | 2 | `0x24RR` | [24-hour forecast](#24-hour-forecast-kind-2) | 2 |
 | 3 | `0x34RR` | [temperature map](#map-kind-3) | 49 |
+| 4 | `0x44RR` | [cities](#cities-kind-4): the weather in the cities on the map | 1–12 |
 
 The regions, each with one representative city:
 
@@ -187,17 +189,28 @@ The carousel is built from 1-second frames of 15 packets.
 - The other 14 packets of each second carry the **loop**: 280 packets, 20 seconds. The loop is
   four 5-second quarters (70 packets each). Every quarter starts with the index page and then
   every region's current conditions. The first quarter adds every region's 5-day forecast and
-  the second every 24-hour forecast. The rest of each quarter carries map rows.
-- Maps go out one after another, each from its header row to its last row, so a map paints top
-  to bottom; the map sequence carries on across quarters and loops. With the home city, eight
-  regions and the national map, a loop carries about 3.5 maps, and every map comes round in
-  about a minute.
+  the second every 24-hour forecast. The rest of each quarter carries the **map sequence**.
+- The map sequence goes through the page numbers that have a map or cities, in order, and sends
+  each one's [cities](#cities-kind-4) and then its map, every page from its first row to its
+  last: the cities are in by the time the map has painted, and a map paints top to bottom. The
+  sequence carries on across quarters and loops. With the home city, eight regions and the
+  national map it is 10 maps of 49 rows plus up to 75 rows of cities, up to 565 packets; a
+  loop carries 173 of them (41, 32, 50 and 50 in its four quarters), so every map comes round, with its cities,
+  in about 65 seconds.
 - Packets nothing else needs are filler (page `0xFFF`).
 
 So in 20 seconds a receiver sees the time 20 times, the index and each current-conditions
-page 4 times, each forecast once, and about a third of the maps. A page's rows are taken from
-one snapshot of its data, made when the page is scheduled (for a map, when its header row is
-scheduled), so a refresh never mixes versions within one pass.
+page 4 times, each forecast once, and about a third of the maps with their cities. A page's rows
+are taken from one snapshot of its data, made when the page is scheduled (for a map and its
+cities, when the cities' first row is scheduled), so a refresh never mixes versions within one
+pass.
+
+*Airtime of the cities.* Before the cities were added a loop carried 3.5 maps and every map
+came round in about a minute. The cities ride in the map sequence rather than in quarters of
+their own, so the loop is still 20 seconds and still carries every page; the time, the index,
+the current conditions and the forecasts keep exactly their airtime, and the maps give up about
+13 % of theirs (65 seconds round instead of 57). A cities page is small (two cities a row), and
+a receiver wants a map's cities when it shows that map, which is when they arrive.
 
 ## Field types
 
@@ -254,7 +267,7 @@ Header (row 0):
 | Offset | Type | Field |
 |---|---|---|
 | +0 | u8 | number of entries, *n* |
-| +1 | u8 | format, 1 |
+| +1 | u8 | format, 2 (1 had no cities: a 16-byte region name and no +35) |
 | +2 | u8 | flags: bit 0 a home city is set; bit 1 some data is stale |
 | +3 | u8 | reserved |
 | +4 | time | when the newest weather data was fetched |
@@ -266,13 +279,14 @@ Entry (rows 1 to *n*, in page order):
 | Offset | Type | Field |
 |---|---|---|
 | +0 | u16 | page number, `0x4RR` |
-| +2 | u8 | kinds on air: bit *k* set when kind *k* is being sent |
+| +2 | u8 | kinds on air: bit *k* set when kind *k* (0–4) is being sent |
 | +3 | u8 | flags: bit 0 the home city; bit 1 stale; bit 2 national (no city) |
 | +4 | 4 × u8 | the current version of kinds 0–3 (0 when not on air) |
 | +8 | s16 | city latitude, hundredths of a degree (north positive) |
 | +10 | s16 | city longitude, hundredths of a degree (east positive) |
 | +12 | 4 × s16 | map box: south, north, west, east, hundredths of a degree |
-| +20 | name, 16 | region name, e.g. `Pacific NW` (`Home` for `0x400`) |
+| +20 | name, 15 | region name, e.g. `Pacific NW` (`Home` for `0x400`) |
+| +35 | u8 | the current version of kind 4, the cities (0 when not on air) |
 | +36 | name, 16 | city name, e.g. `Seattle` (empty for the national map) |
 
 ### Current conditions (kind 0)
@@ -401,6 +415,47 @@ everywhere 7,222, and with key rows 7,429 (2.9 % more than delta everywhere).
 
 The data comes from a coarse grid of points sampled from Open-Meteo across the whole country
 and upsampled bilinearly by the gateway, so maps show broad patterns, not local detail.
+
+### Cities (kind 4)
+
+The weather in the cities on a map: what a weather channel prints over its map. Every page
+number with a map has one (`0x44RR` for region RR, `0x4400` for home, `0x44FF` for the national
+map). Cities are listed most prominent first, two to a row, so a page of *n* cities has
+⌈*n* ÷ 2⌉ rows; when *n* is odd, the last row's second entry is all zeros. There is no header:
+an entry whose name is empty is not a city.
+
+Each city (26 bytes; the first at +0 of a row, the second at +26):
+
+| Offset | Type | Field |
+|---|---|---|
+| +0 | s16 | latitude, hundredths of a degree (north positive) |
+| +2 | s16 | longitude, hundredths of a degree (east positive) |
+| +4 | temperature | current temperature |
+| +5 | conditions | current weather code |
+| +6 | u8 | flags: bit 0 daytime; bit 1 stale |
+| +7 | u8 | reserved, 0 |
+| +8 | name, 18 | city name, up to 16 characters (`Colorado Springs`) |
+
+A city lies inside the map's box; a receiver places it with the map's own projection (see
+[Map](#map-kind-3)): column (lon − west) × 64 ÷ (east − west), row (north − lat) × 48 ÷
+(north − south). The gateway thins the cities so their labels have room:
+
+- **Which cities.** First the home city (when it is inside the box), then the box's own region
+  city, then the other regions' cities, then the gateway's built-in table of about 220 US
+  cities, largest population first.
+- **Spacing.** A city is skipped when it lies inside the ellipse round a city already chosen
+  whose half-axes are 10 grid columns across and 5.5 grid rows down (40 and 22 pixels on a map
+  drawn 256 × 192), or within 1.5 columns or rows of the map's edge. The home and region cities
+  only need half that distance, so they are left out only where they would sit on top of one
+  another.
+- **How many.** At most 14 for a region or home box (7 rows) and 24 for the national map (12
+  rows).
+
+The home city and the regions' cities carry the same temperature and conditions as their
+current-conditions pages. The others are fetched every hour.
+
+The spacing is only a guide for receivers: their labels differ, so a cart should still avoid
+drawing labels over one another or over its own legends.
 
 ### Weather codes
 
@@ -532,15 +587,16 @@ Part of the prelude. Pages are named by page id (`BC_MAP | 0x401`).
 | `bc_name(field: *u8) -> *u8` | the text of a name field |
 | `bc_map_decode(map: *BcMap, bands: *u8) -> bool` | decode a whole map page into 64 × 48 bytes, one band per byte; false on a malformed row |
 | `bc_map_row(row: *u8, above: *u8, out: *u8) -> bool` | decode one grid row (the 52 bytes of page row *y* + 1) given the decoded row above (`null` for the top row), for painting as rows arrive |
+| `bc_city_count(cities: *BcCities, bytes) -> s32` | the number of cities in a cities page read with `bc_read` (`bytes`: what it returned) |
 | `bc_raw(on: bool)`, `bc_raw_level() -> s32`, `bc_raw_byte() -> s32`, `bc_raw_read(buf: *u8, max) -> s32` | raw FIFO: turn capture on or off, bytes waiting, the next byte (−1 when empty), copy out up to `max` bytes |
 | `bc_hamming(b) -> s32`, `bc_crc16(crc: u32, p: *u8, n) -> u32` | for decoding raw packets: a Hamming 8/4 byte's nibble (−1 for a double error); the CRC-16 of `n` bytes continuing from `crc` (start with `0xFFFF`) |
 
 Structures for the payloads, matching the tables above field for field: `BcTime`,
 `BcIndexHeader`, `BcIndexEntry`, `BcIndex` (header and 63 entries), `BcCurrent`, `BcDay`,
-`BcDaily`, `BcHour`, `BcHourly`, `BcMapHeader`, `BcMap` (header and 48 rows of 52 bytes), and
-`BcDateTime`. Constants: `BC_TIME_PAGE`, `BC_INDEX_PAGE`, `BC_HOME` (`0x400`),
+`BcDaily`, `BcHour`, `BcHourly`, `BcMapHeader`, `BcMap` (header and 48 rows of 52 bytes),
+`BcCity`, `BcCities` (128 cities, a whole page) and `BcDateTime`. Constants: `BC_TIME_PAGE`, `BC_INDEX_PAGE`, `BC_HOME` (`0x400`),
 `BC_NATIONAL` (`0x4FF`), the kinds `BC_CURRENT` (`0x0000`), `BC_DAILY` (`0x1000`),
-`BC_HOURLY` (`0x2000`), `BC_MAP` (`0x3000`), `BC_ROW_BYTES` (52), `BC_PAGE_MAX` (3,328),
+`BC_HOURLY` (`0x2000`), `BC_MAP` (`0x3000`), `BC_CITIES` (`0x4000`), `BC_ROW_BYTES` (52), `BC_PAGE_MAX` (3,328),
 `BC_TEMP_UNKNOWN` (−128), the `BC_ICON_*` classes and the registers.
 
 ```
@@ -578,7 +634,7 @@ python3 tools/meinet/meinet.py --fixture --no-serve --seconds 64 --record stream
 | `--port N`, `--host ADDR` | where to listen (default `127.0.0.1:9600`) |
 | `--record FILE` | write every byte sent to `FILE` |
 | `--seconds N` | stop after N seconds of stream |
-| `--fixture` | use canned data (`fixture.py`) and start the clock at 2026-09-30 18:00:00 UTC; the data is "refreshed" once, 40 seconds in, so versions change |
+| `--fixture` | use canned data (`fixture.py`: a made-up home city, Meiville, and made-up weather everywhere) and start the clock at 2026-09-30 18:00:00 UTC; the data is "refreshed" once, 40 seconds in, so versions change |
 | `--no-serve` | don't listen or pace in real time: generate `--seconds` of stream as fast as possible (needs `--record`) |
 | `--noise BER` | invert each bit with this probability before sending (default 0) |
 | `-v` | log fetches and clients |
@@ -594,6 +650,7 @@ home = Portland, Oregon     ; the home city, page 0x400 (empty: none)
 port = 9600
 refresh_minutes = 15
 map_refresh_minutes = 180
+cities_refresh_minutes = 60
 noise = 0
 ```
 
@@ -604,6 +661,7 @@ noise = 0
 | `host`, `port` | `127.0.0.1`, `9600` | listening address |
 | `refresh_minutes` | 15 | how often current conditions and forecasts are fetched |
 | `map_refresh_minutes` | 180 | how often the map grid is fetched |
+| `cities_refresh_minutes` | 60 | how often the map cities' current conditions are fetched |
 | `map_grid` | `30x14` | the coarse national grid, columns × rows (420 points) |
 | `noise` | 0 | bit-error rate added to the stream |
 | `[regions]` | the eight above | `N = Region; City; lat; lon; south; north; west; east` replaces or adds region N (1–254) |
@@ -616,7 +674,10 @@ From `api.open-meteo.com/v1/forecast` (free, no key): one request for every city
 conditions, daily and hourly forecasts (`timeformat=unixtime`, `timezone=auto`), and the map
 grid in batches of 100 points (`current=temperature_2m`). Region and home maps are cut from
 the national grid when they lie inside it (otherwise the home map gets its own 8 × 6 grid),
-bilinearly upsampled to 64 × 48 and quantised to bands. With the defaults this is about 6,000
+bilinearly upsampled to 64 × 48 and quantised to bands. The map cities from the gateway's table
+(`tools/meinet/cities.py`; about 100 of them are on some map) are fetched the same way, every
+location in one comma-separated `latitude`/`longitude` list, 100 to a request
+(`current=temperature_2m,weather_code,is_day`). With the defaults this is about 8,500
 location-requests a day, inside Open-Meteo's free allowance.
 
 A page's version is incremented whenever its encoded bytes change; the index carries every

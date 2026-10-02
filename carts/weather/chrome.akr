@@ -1,0 +1,235 @@
+// The frame around every page: the sky behind it, the title banner, the lower display line
+// (the "LDL" ticker at the bottom) and the page transitions.
+
+const BANNER_Y = 6
+const BANNER_H = 19
+const BODY_Y = 30                  // the body panel: 6, 30, 308 x 184 (to y 214)
+const BODY_H = 184
+const LDL_Y = 218
+const LDL_H = 22
+
+// ---- the sky: follows the home city's day (sunrise and sunset when known)
+
+struct SkyKey {
+    at: s32                        // minutes relative to the anchor
+    anchor: s32                    // 0 sunrise, 1 sunset
+    top: u32
+    bottom: u32
+}
+
+const SKY: [8]SkyKey = [
+    SkyKey { at: -100, anchor: 0, top: 0x2A0C0A, bottom: 0x4A1E1C },     // night
+    SkyKey { at: -40, anchor: 0, top: 0x501A16, bottom: 0x7A3A54 },      // first light
+    SkyKey { at: 10, anchor: 0, top: 0x9A5434, bottom: 0x96AAF0 },       // sunrise, peach
+    SkyKey { at: 120, anchor: 0, top: 0xC07030, bottom: 0xEAC496 },      // morning
+    SkyKey { at: -150, anchor: 1, top: 0xC06A2E, bottom: 0xE6C4A0 },     // afternoon
+    SkyKey { at: -10, anchor: 1, top: 0x8A3C3A, bottom: 0x6A8CEA },      // sunset, rose-gold
+    SkyKey { at: 40, anchor: 1, top: 0x5A1E26, bottom: 0x8A3A6C },       // dusk, violet
+    SkyKey { at: 110, anchor: 1, top: 0x2A0C0A, bottom: 0x4A1E1C }       // night
+]
+
+var sky_top: u32 = 0x5A1E26
+var sky_bot: u32 = 0x8A3A6C
+
+fn sky_update() {
+    var sr = 6 * 60 + 50
+    var ss = 18 * 60 + 50
+    let h = loc_find(BC_HOME)
+    if h >= 0 && wx_has(h, K_NOW) {
+        let c = &wx[h].cur
+        if c.sunrise as s32 != 0xFFFF && c.sunset as s32 != 0xFFFF && c.sunset > c.sunrise {
+            sr = c.sunrise as s32
+            ss = c.sunset as s32
+        }
+    }
+    let now = clock_minutes() * 60 + clk.second
+    var prev_at = 0
+    var prev = 7
+    // walk the keys in order of time; before the first key, it is the night key
+    var found = false
+    for i in 0..8 {
+        var at = SKY[i].at * 60
+        if SKY[i].anchor == 0 { at += sr * 60 } else { at += ss * 60 }
+        if now < at {
+            var p_at = prev_at
+            if i == 0 { p_at = at - 3600 }
+            let span = max(at - p_at, 1)
+            let f = fixed(clamp(now - p_at, 0, span)) / span
+            let a = &SKY[max(i - 1, 0)]
+            let b = &SKY[i]
+            sky_top = col_mix(a.top, b.top, f)
+            sky_bot = col_mix(a.bottom, b.bottom, f)
+            found = true
+            break
+        }
+        prev_at = at
+        prev = i
+    }
+    if !found {
+        sky_top = SKY[7].top
+        sky_bot = SKY[7].bottom
+    }
+}
+
+// The sky's colour at screen row y.
+fn sky_at(y: s32) -> u32 { return col_mix(sky_top, sky_bot, fixed(y) / 240) }
+
+// The sky over rows y .. y + h.
+fn sky_band(x: s32, y: s32, w: s32, h: s32) {
+    if w <= 0 || h <= 0 { return }
+    rect_grad(x, y, w, h, sky_at(y), sky_at(y + h), BLEND_NONE)
+}
+
+// The sky only where it shows: around the body box (x, y, w, h), above the lower display
+// line, so the screen is not filled twice.
+fn sky_around(x: s32, y: s32, w: s32, h: s32) {
+    sky_band(0, 0, 320, y)
+    sky_band(0, y, x, h)
+    sky_band(x + w, y, 320 - x - w, h)
+    sky_band(0, y + h, 320, LDL_Y - y - h)
+}
+
+// ---- the title banner
+
+fn banner_draw(title: *u8, right: *u8, sub: s32, nsub: s32) {
+    let w = txt_w(F_MED, title) + 24
+    rect_hgrad(0, BANNER_Y, w, BANNER_H, C_BAR_BOT, C_BAR_TOP, BLEND_NONE)
+    tri_grad(w, BANNER_Y, w + 12, BANNER_Y, w, BANNER_Y + BANNER_H, C_BAR_TOP, C_BAR_TOP, C_BAR_TOP, BLEND_NONE)
+    rect_blend(0, BANNER_Y, w + 10, 1, 0xB0E8FF, BLEND_NONE)
+    rect_blend(0, BANNER_Y + BANNER_H, w, 1, 0x103070, BLEND_NONE)
+    txt_s(F_MED, 10, BANNER_Y + 2, title, WHITE, ALIGN_LEFT)
+    if right != null {
+        txt_s(F_MED, 314, BANNER_Y + 2, right, WHITE, ALIGN_RIGHT)
+    }
+    if nsub > 1 {
+        // subpage dots under the location name
+        let x0 = 314 - nsub * 7
+        for i in 0..nsub {
+            var c: u32 = 0x805030
+            if i == sub { c = C_GOLD }
+            rect(x0 + i * 7, BANNER_Y + BANNER_H, 4, 2, c)
+        }
+    }
+}
+
+// ---- the lower display line
+
+var ldl_msgs: [6][48]u8
+var ldl_n: s32
+private var ldl_i: s32
+private var ldl_t: s32
+
+fn ldl_set(i: s32, s: *u8) {
+    if i < 6 { str_copy(&ldl_msgs[i][0], 48, s) }
+}
+
+fn ldl_draw(t: s32, left_icon: s32, left: *u8, night: bool) {
+    rect_grad(0, LDL_Y, 320, LDL_H, 0x6A2A10, 0x3A1408, BLEND_NONE)
+    rect_blend(0, LDL_Y, 320, 1, C_BAR_TOP, BLEND_NONE)
+    var x = 6
+    if left_icon >= 0 {
+        icon_small(left_icon, 4, LDL_Y + 3, night)
+        x = 28
+    }
+    let lx = txt_s(F_MED, x, LDL_Y + 3, left, WHITE, ALIGN_LEFT)
+    rect(lx + 8, LDL_Y + 5, 1, 12, 0x905A30)
+    // rotating messages, sliding up
+    if ldl_n == 0 { return }
+    ldl_t += 1
+    if ldl_t >= 240 {
+        ldl_t = 0
+        ldl_i = (ldl_i + 1) % ldl_n
+    }
+    ldl_i = ldl_i % ldl_n
+    let mx = lx + 16
+    var dy = 0
+    if ldl_t < 10 { dy = 10 - ldl_t }
+    var c = C_SOFT
+    if ldl_t < 10 { c = col_mix(0x3A1408, C_SOFT, fixed(ldl_t) / 10) }
+    txt(F_SMALL, mx, LDL_Y + 6 + dy, &ldl_msgs[ldl_i][0], c)
+}
+
+fn ldl_reset() {
+    ldl_t = 0
+    ldl_i = 0
+}
+
+// ---- transitions: blinds across the body, closing top to bottom, then opening
+
+const TR_STRIPS = 11
+const TR_STAGGER = 2
+const TR_SPEED = 5                // frames for one strip to close
+var tr_t = -1                     // frames into the transition, -1 none
+var tr_swapped: bool              // the page underneath has changed (halfway)
+
+fn tr_start() {
+    tr_t = 0
+    tr_swapped = false
+}
+
+// Closes the blinds again from where they are while opening (a page chosen mid-transition).
+fn tr_reclose() {
+    let open_t = tr_t - tr_len() - 1
+    tr_t = clamp(tr_len() - open_t, 0, tr_len() - 1)
+    tr_swapped = false
+}
+
+fn tr_len() -> s32 { return (TR_STRIPS - 1) * TR_STAGGER + TR_SPEED }
+
+fn tr_active() -> bool { return tr_t >= 0 }
+
+// Advances the transition; true on the frame the page should change.
+fn tr_step() -> bool {
+    if tr_t < 0 { return false }
+    tr_t += 1
+    if !tr_swapped && tr_t >= tr_len() {
+        tr_swapped = true
+        return true
+    }
+    if tr_t >= 2 * tr_len() + 2 { tr_t = -1 }
+    return false
+}
+
+// Covers the page (the banner, the body and the map) with the closing or opening blinds.
+const TR_Y = BANNER_Y
+const TR_H = LDL_Y - 3 - BANNER_Y
+
+fn tr_draw() {
+    if tr_t < 0 { return }
+    let sh = TR_H / TR_STRIPS + 1
+    for i in 0..TR_STRIPS {
+        var f: s32 = 0                // 0..TR_SPEED: how closed
+        if !tr_swapped {
+            f = clamp(tr_t - i * TR_STAGGER, 0, TR_SPEED)
+        } else {
+            f = TR_SPEED - clamp(tr_t - tr_len() - 1 - i * TR_STAGGER, 0, TR_SPEED)
+        }
+        if f <= 0 { continue }
+        let y = TR_Y + i * sh
+        let h = min(sh * f / TR_SPEED, TR_Y + TR_H - y)
+        sky_band(0, y, 320, h)
+        if f < TR_SPEED { rect_blend(0, y + h, 320, 1, 0x80D0FF, BLEND_QUARTER) }
+    }
+}
+
+// ---- small notices ("Page 777 is not on air")
+
+var toast_text: [40]u8
+var toast_t: s32
+
+fn toast(s: *u8) {
+    str_copy(&toast_text[0], 40, s)
+    toast_t = 150
+}
+
+fn toast_draw() {
+    if toast_t <= 0 { return }
+    toast_t -= 1
+    let w = txt_w(F_SMALL, &toast_text[0]) + 16
+    let x = 160 - w / 2
+    var y = 196
+    if toast_t > 140 { y += (toast_t - 140) * 2 }
+    rect_blend(x, y, w, 15, 0x200C04, BLEND_HALF)
+    rect_blend(x, y, w, 1, C_GOLD, BLEND_NONE)
+    txt_a(F_SMALL, 160, y + 2, &toast_text[0], WHITE, ALIGN_CENTRE)
+}

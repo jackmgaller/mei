@@ -31,6 +31,7 @@ const BC_CURRENT = 0x0000          // kinds, ORed into a weather page number
 const BC_DAILY = 0x1000
 const BC_HOURLY = 0x2000
 const BC_MAP = 0x3000
+const BC_CITIES = 0x4000
 const BC_ROW_BYTES = 52
 const BC_MAX_ROWS = 64
 const BC_PAGE_MAX = 3328           // 64 rows: any page fits
@@ -39,6 +40,8 @@ const BC_TEMP_UNKNOWN = -128
 const BC_STALE = 2                 // the stale bit in a payload's flags
 const BC_MAP_W = 64
 const BC_MAP_H = 48
+const BC_CITY_BYTES = 26
+const BC_CITIES_MAX = 128          // two a row, 64 rows
 
 // Icon classes (bc_icon)
 const BC_ICON_CLEAR = 0
@@ -92,7 +95,8 @@ struct BcIndexEntry {              // page 0x101, rows 1..count
     north: s16
     west: s16
     east: s16
-    region: [16]u8                 // name field
+    region: [15]u8                 // name field
+    cities_version: u8             // version of kind 4 (0: not on air)
     city: [16]u8                   // name field
 }
 
@@ -182,6 +186,20 @@ struct BcMapHeader {               // kind 3, row 0
 struct BcMap {                     // kind 3: header and 48 coded grid rows (bc_map_decode)
     head: BcMapHeader
     rows: [48][52]u8
+}
+
+struct BcCity {                    // kind 4: two a row
+    lat: s16                       // hundredths of a degree
+    lon: s16
+    temp: s8                       // half degrees C
+    wmo: u8                        // weather code
+    flags: u8                      // bit 0 daytime, bit 1 stale
+    reserved: u8
+    name: [18]u8                   // name field (empty: no city)
+}
+
+struct BcCities {                  // kind 4, as read with bc_read (bc_city_count says how many)
+    city: [128]BcCity
 }
 
 struct BcDateTime {
@@ -459,6 +477,15 @@ fn bc_map_decode(map: *BcMap, bands: *u8) -> bool {
         if !bc_map_row(&map.rows[y][0], above, bands + y * 64) { return false }
     }
     return true
+}
+
+// ---- cities ----
+
+// The number of cities in a cities page read with bc_read (bytes: what bc_read returned).
+fn bc_city_count(cities: *BcCities, bytes: s32) -> s32 {
+    var n = min(bytes / BC_CITY_BYTES, BC_CITIES_MAX)
+    while n > 0 && cities.city[n - 1].name[0] == 0 { n -= 1 }
+    return n
 }
 
 // ---- raw mode ----

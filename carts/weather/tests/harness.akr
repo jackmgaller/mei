@@ -1,0 +1,396 @@
+// Test scenarios for Mei Weather (tests/run.sh SCENARIO FRAMES OUT). The broadcast is the
+// recorded fixture (tests/fixture.bin: the gateway's canned data, 150 s from 18:00:00 UTC on
+// 2026-09-30, the made-up home "Meiville" in CDT, refreshed once 40 s in), replayed 16 bytes a
+// tick, so every run is exact. Each scenario scripts the pad and checks itself with asserts; a
+// failure stops the run with exit status 2. Frame counts below are the cart's tick.
+//
+//   1  tune in: the home page arrives (current conditions), the clock comes from the air
+//   2  the 5-day forecast (RIGHT)               3  the 24-hour forecast (RIGHT RIGHT)
+//   4  the home map with its cities (LEFT): the labels overlap nothing
+//   5  the national map (L three times from home: regions, clock, then round to 4FF)
+//   6  regions directory: Y, DOWN x3, A opens the Midwest
+//   7  the remote: X, 4 0 3 OK -> the Midwest; then X 7 7 7: "not on air", the page stays
+//   8  settings: START, Celsius, idle tour 1 minute, B (saved to the card)
+//   9  the tour: idle until it starts, then it cycles pages; any button stops it
+//  10  no signal (run with NOBC=1): the placeholder, then the sample tape after 8 s; P1=1
+//      with a card that has saved pages: they are shown instead
+//  11  the clock (page 100)
+//  12  a perf sweep: every page of every location, with the remote and settings open;
+//      prints "PERF max_cycles max_tris" and asserts the budgets
+//  13  noisy reception (run with --broadcast-noise): pages still arrive
+//  14  page transition sequence (Now -> 5-day), for the screenshots
+//  15  the Midwest map (remote 4 0 3, then LEFT), P1 the frame to stop at
+//  16  the remote open, three digits in progress (screenshot)
+//  17  the settings open (screenshot)
+//  18  the regions directory once all current conditions are in (screenshot)
+//  19  saving: with CARD=FILE, the received pages are on the card 20 s after the first arrived
+//      (then scenario 10 with P=1 and the same card shows them with no signal)
+//  20  a region's map from the directory: Y, DOWN x P1, A, LEFT (5 the Mountain region)
+
+const TEST = 1
+
+var scen_t: s32
+var cpu_max: s32
+var tri_max: s32
+var cpu_sum: s32
+var cpu_n: s32
+
+const PAD_UP = 1
+const PAD_DOWN = 2
+const PAD_LEFT = 4
+const PAD_RIGHT = 8
+const PAD_A = 16
+const PAD_B = 32
+const PAD_X = 64
+const PAD_Y = 128
+const PAD_L = 256
+const PAD_R = 512
+const PAD_START = 1024
+const PAD_SELECT = 2048
+
+// A script: frame, buttons held from that frame on; pairs in order.
+fn script_from(tab: *s32, n: s32, f: s32) -> u32 {
+    var pad: u32 = 0
+    var k = 0
+    while k < n {
+        if tab[k] > f { break }
+        pad = tab[k + 1] as u32
+        k += 2
+    }
+    return pad
+}
+
+const S2: [4]s32 = [60, PAD_RIGHT, 64, 0]
+const S3: [8]s32 = [60, PAD_RIGHT, 64, 0, 120, PAD_RIGHT, 124, 0]
+const S4: [4]s32 = [60, PAD_LEFT, 64, 0]
+const S5: [12]s32 = [60, PAD_L, 64, 0, 100, PAD_L, 104, 0, 140, PAD_L, 144, 0]
+const S6: [20]s32 = [60, PAD_Y, 64, 0, 120, PAD_DOWN, 124, 0, 130, PAD_DOWN, 134, 0, 140, PAD_DOWN, 144, 0,
+                     160, PAD_A, 164, 0]
+// X; 4 (row 1 col 0): DOWN, A; 0 (row 3 col 1): DOWN DOWN RIGHT A; 3 (row 0 col 2): UP UP UP RIGHT A
+const S7: [72]s32 = [
+    60, PAD_X, 64, 0,
+    80, PAD_DOWN, 84, 0, 90, PAD_A, 94, 0,
+    100, PAD_DOWN, 104, 0, 110, PAD_DOWN, 114, 0, 120, PAD_RIGHT, 124, 0, 130, PAD_A, 134, 0,
+    140, PAD_UP, 144, 0, 150, PAD_UP, 154, 0, 160, PAD_UP, 164, 0, 170, PAD_RIGHT, 174, 0, 180, PAD_A, 184, 0,
+    // later: X, 7 (row 2 col 0) x 3
+    400, PAD_X, 404, 0, 420, PAD_DOWN, 424, 0, 430, PAD_DOWN, 434, 0,
+    440, PAD_A, 444, 0, 450, PAD_A, 454, 0, 460, PAD_A, 464, 0
+]
+const S8: [16]s32 = [60, PAD_START, 64, 0, 80, PAD_RIGHT, 84, 0, 90, PAD_DOWN, 94, 0, 100, PAD_RIGHT, 104, 0]
+const S8B: [4]s32 = [130, PAD_B, 134, 0]
+const S9: [4]s32 = [4500, PAD_A, 4504, 0]
+const S10: [4]s32 = [0, 0, 1, 0]
+const S14: [4]s32 = [600, PAD_RIGHT, 604, 0]
+const S15: [52]s32 = [
+    60, PAD_X, 64, 0,
+    80, PAD_DOWN, 84, 0, 90, PAD_A, 94, 0,
+    100, PAD_DOWN, 104, 0, 110, PAD_DOWN, 114, 0, 120, PAD_RIGHT, 124, 0, 130, PAD_A, 134, 0,
+    140, PAD_UP, 144, 0, 150, PAD_UP, 154, 0, 160, PAD_UP, 164, 0, 170, PAD_RIGHT, 174, 0, 180, PAD_A, 184, 0,
+    240, PAD_LEFT, 244, 0
+]
+const S16: [16]s32 = [60, PAD_X, 64, 0, 80, PAD_DOWN, 84, 0, 90, PAD_A, 94, 0, 110, PAD_DOWN, 114, 0]
+const S17: [8]s32 = [60, PAD_START, 64, 0, 80, PAD_DOWN, 84, 0]
+const S18: [4]s32 = [60, PAD_Y, 64, 0]
+
+// Scenario 20: Y at 60, DOWN P1 times, A, then LEFT to the map.
+fn region_map_pad(f: s32) -> u32 {
+    if f >= 60 && f < 64 { return PAD_Y as u32 }
+    let k = (f - 100) / 10
+    if f >= 100 && k < P1 && (f - 100) % 10 < 4 { return PAD_DOWN as u32 }
+    let g = f - 100 - P1 * 10
+    if g >= 20 && g < 24 { return PAD_A as u32 }
+    if g >= 80 && g < 84 { return PAD_LEFT as u32 }
+    return 0
+}
+
+fn input_pad(f: s32) -> u32 {
+    return match SCENARIO {
+        2 => script_from(&S2[0], len(S2), f)
+        3 => script_from(&S3[0], len(S3), f)
+        4 => script_from(&S4[0], len(S4), f)
+        5 => script_from(&S5[0], len(S5), f)
+        6 => script_from(&S6[0], len(S6), f)
+        7 => script_from(&S7[0], len(S7), f)
+        8 => script_from(&S8[0], len(S8), f) | script_from(&S8B[0], len(S8B), f)
+        9 => script_from(&S9[0], len(S9), f)
+        12 => sweep_pad(f)
+        14 => script_from(&S14[0], len(S14), f)
+        15 => script_from(&S15[0], len(S15), f)
+        16 => script_from(&S16[0], len(S16), f)
+        17 => script_from(&S17[0], len(S17), f)
+        18 => script_from(&S18[0], len(S18), f)
+        20 => region_map_pad(f)
+        else => 0
+    }
+}
+
+// Scenario 12: R every 3 s through the ring, RIGHT through each location's pages, then the
+// remote and the settings.
+fn sweep_pad(f: s32) -> u32 {
+    if f < 600 { return 0 }
+    let g = f - 600
+    if g < 4000 {
+        let k = g % 90
+        if k < 3 {
+            if (g / 90) % 4 == 3 { return PAD_R as u32 }
+            return PAD_RIGHT as u32
+        }
+        return 0
+    }
+    if g >= 4000 && g < 4004 { return PAD_X as u32 }
+    if g >= 4100 && g < 4104 { return PAD_B as u32 }
+    if g >= 4200 && g < 4204 { return PAD_START as u32 }
+    return 0
+}
+
+fn test_init() {
+    cfg.tour = 0                         // no idle tour, except in its own scenario
+    if SCENARIO == 9 { cfg.tour = 1 }
+}
+
+fn home_i() -> s32 { return loc_find(BC_HOME) }
+
+// The map on screen: its cities are drawn, most of them labelled, and no label overlaps
+// another, a dot, the title pill or the map's edge. Returns the labels placed.
+fn check_cities(i: s32, at_least: s32) -> s32 {
+    assert(wx_has(i, K_MAP), "the map arrived")
+    assert(wx[i].ncities >= at_least, "its cities arrived")
+    var placed = 0
+    for a in 0..nlab {
+        let la = &lab[a]
+        if la.mode == 0 { continue }
+        placed += 1
+        assert(la.lx >= MAP_X && la.lx + la.lw <= MAP_X + MAP_W, "label inside the map (x)")
+        assert(la.ly >= MAP_Y && la.ly + la.lh <= MAP_Y + MAP_H, "label inside the map (y)")
+        let px = MAP_X + 4
+        let py = MAP_Y + MAP_H - PILL_H - 4
+        let pill = la.lx < px + pill_w(i) && px < la.lx + la.lw && la.ly < py + PILL_H && py < la.ly + la.lh
+        assert(!pill, "label clear of the title pill")
+        for b in 0..nlab {
+            let lb_ = &lab[b]
+            if b == a || lb_.mode == 0 { continue }
+            if b > a {
+                let over = la.lx < lb_.lx + lb_.lw && lb_.lx < la.lx + la.lw && la.ly < lb_.ly + lb_.lh && lb_.ly < la.ly + la.lh
+                assert(!over, "labels do not overlap")
+            }
+            let dot = la.lx < lb_.x + 3 && lb_.x - 2 < la.lx + la.lw && la.ly < lb_.y + 3 && lb_.y - 2 < la.ly + la.lh
+            assert(!dot, "a label does not cover another city's dot")
+        }
+    }
+    assert(placed >= at_least, "most cities labelled")
+    print("cities ")
+    print_int(wx[i].ncities)
+    print(" labelled ")
+    print_int(placed)
+    println("")
+    return placed
+}
+
+fn perf() {
+    if scen_t > 120 {
+        cpu_max = max(cpu_max, cpu_used())
+        tri_max = max(tri_max, tris_drawn())
+        cpu_sum += cpu_used()
+        cpu_n += 1
+    }
+}
+
+fn perf_report() {
+    print("PERF max_cycles ")
+    print_int(cpu_max)
+    print(" avg ")
+    print_int(cpu_sum / max(cpu_n, 1))
+    print(" max_tris ")
+    print_int(tri_max)
+    println("")
+}
+
+fn test_hook(f: s32) {
+    scen_t = f
+    perf()
+    var slow = 450000
+    if P3 > 0 { slow = P3 }                 // P="... ... N": report frames over N cycles
+    if f > 3 && (cpu_used() > slow || frames_dropped() > 0) {
+        print("SLOW frame ")
+        print_int(f)
+        print(" cycles ")
+        print_int(cpu_used())
+        print(" view ")
+        print_int(view as s32)
+        println("")
+    }
+    if SCENARIO == 11 && f == 2 { go(View.Clock, 0) }
+    if TAPE_DEMO == 1 { return }            // the sample tape: screenshots only, the checks expect the fixture
+    match SCENARIO {
+        1 => {
+            if f == 600 {
+                let h = home_i()
+                assert(h >= 0, "home page listed")
+                assert(wx_has(h, K_NOW), "home conditions received")
+                assert(streq(bc_name(&wx[h].cur.city[0]), "Meiville"), "fixture home city")
+                assert(clk.on_air, "time from the broadcast")
+                assert_eq(clk.hour, 13)              // 18:00 UTC is 13:00 CDT
+                assert_eq(view, View.Now)
+                assert(index_ok, "index received")
+                assert(sound_active() & 0xFFF != 0, "the music plays")
+                println("OK 1 tune in")
+                perf_report()
+            }
+        }
+        2 => {
+            if f == 1500 {
+                assert_eq(view, View.Week)
+                assert(wx_has(home_i(), K_WEEK), "5-day forecast received")
+                assert_eq(wx[home_i()].daily.count as s32, 5)
+                println("OK 2 week")
+            }
+        }
+        3 => {
+            if f == 1500 {
+                assert_eq(view, View.Hours)
+                assert(wx_has(home_i(), K_HOURS), "24-hour forecast received")
+                assert_eq(wx[home_i()].hourly.count as s32, 24)
+                println("OK 3 hours")
+            }
+        }
+        4 => {
+            if f == 200 { assert_eq(view, View.Map) }
+            if f == 8000 {
+                assert(wx_has(home_i(), K_MAP), "home map complete")
+                assert(!mt_busy(), "map painted")
+                check_cities(home_i(), 6)
+                assert(streq(bc_name(&wx[home_i()].cities[0].name[0]), "Meiville"), "home first")
+                println("OK 4 map")
+            }
+        }
+        5 => {
+            if f == 250 {
+                assert_eq(view, View.Map)
+                assert_eq(locs[cur].page, BC_NATIONAL)
+            }
+            if f == 8900 {
+                assert(wx_has(cur, K_MAP), "national map complete")
+                check_cities(cur, 16)
+                println("OK 5 national")
+            }
+        }
+        6 => {
+            if f == 150 { assert_eq(view, View.Regions) }
+            if f == 300 {
+                assert_eq(view, View.Now)
+                assert_eq(locs[cur].page, 0x403)
+                println("OK 6 regions")
+            }
+        }
+        7 => {
+            if f == 300 {
+                assert_eq(locs[cur].page, 0x403)
+                assert_eq(view, View.Now)
+                assert(!rm_open, "remote closed after a jump")
+            }
+            if f == 520 {
+                assert_eq(locs[cur].page, 0x403)
+                assert(toast_t > 0, "not-on-air notice")
+                println("OK 7 remote")
+            }
+        }
+        8 => {
+            if f == 120 {
+                assert_eq(cfg.units as s32, 1)
+                assert_eq(cfg.tour as s32, 1)
+                assert(settings_shown, "settings open")
+            }
+            if f == 200 {
+                assert(!settings_shown, "settings closed")
+                println("OK 8 settings")
+            }
+        }
+        9 => {
+            if f == 3500 { assert(!tour_on, "no tour yet") }
+            if f == 3700 { assert(tour_on, "tour after a minute idle") }
+            if f == 4400 {
+                assert(tour_on, "tour running")
+                assert(tour_step >= 1, "tour moved on")
+            }
+            if f == 4520 {
+                assert(!tour_on, "a button stops the tour")
+                println("OK 9 tour")
+            }
+        }
+        10 => {
+            if P1 == 0 {
+                if f == 400 {
+                    assert(!rx_demo, "antenna first")
+                    assert(!wx_has(home_i(), K_NOW), "nothing yet: the placeholder")
+                }
+                if f == 600 {
+                    assert(rx_demo, "sample tape when nothing is saved")
+                }
+                if f == 1800 {
+                    assert(wx_has(home_i(), K_NOW), "sample tape pages")
+                    println("OK 10 no signal")
+                }
+            } else {
+                if f == 600 {
+                    assert(!rx_demo, "saved pages, no sample tape")
+                    assert(wx_has(home_i(), K_NOW), "saved home conditions")
+                    assert(wx[home_i()].ncities > 0, "saved cities")
+                    println("OK 10 saved pages")
+                }
+            }
+        }
+        11 => {
+            if f == 600 {
+                assert_eq(view, View.Clock)
+                println("OK 11 clock")
+            }
+        }
+        12 => {
+            if f == 4900 {
+                perf_report()
+                assert(cpu_max < 500000, "frame budget")
+                assert(tri_max < 2000, "triangle budget")
+                println("OK 12 sweep")
+            }
+        }
+        13 => {
+            if f == 1800 {
+                assert(wx_has(home_i(), K_NOW), "conditions through the noise")
+                print("fixed ")
+                print_uint(bc_packets_fixed())
+                print(" dropped ")
+                print_uint(bc_packets_dropped())
+                println("")
+                assert(bc_packets_fixed() > 0, "some headers corrected")
+                println("OK 13 noise")
+            }
+        }
+        15 => {
+            if f == 300 { assert_eq(locs[cur].page, 0x403) }
+            if f == 3700 {
+                check_cities(cur, 10)
+                println("OK 15 midwest")
+            }
+        }
+        20 => {
+            if f == 400 + P1 * 10 {
+                assert_eq(view, View.Map)
+                assert_eq(locs[cur].page, 0x400 + P1)
+            }
+            if f == P2 {
+                check_cities(cur, 10)
+                println("OK 20 region map")
+            }
+        }
+        19 => {
+            if f == 2400 {
+                assert(card_present(1), "a memory card")
+                assert(!card_busy(), "the save has finished")
+                assert(card_exists(1), "the pages were saved")
+                assert(card_size(1) > 10000, "with the maps")
+                println("OK 19 saved")
+            }
+        }
+        else => {}
+    }
+}

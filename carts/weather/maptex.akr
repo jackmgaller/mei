@@ -1,0 +1,397 @@
+// The map on screen: two textures drawn 256 x 192.
+//
+// Temperatures (slot 0, 8-bit, 128 x 96 texels shown at 2x): each band's centre temperature,
+// upsampled 2x bilinearly from the 64 x 48 bands and looked up in the temperature ramp (8-bit
+// palette 0). A map shown (or replaced by a newer one) is repainted a few texel rows a frame,
+// so it wipes in from the top.
+//
+// Geography (slot 1, 4-bit, 256 x 192, palette 16): water, coasts and lakes filled from the
+// rings in GEO by scanlines, then state lines and national borders, for the location's box.
+// Land is transparent. Rasterised by a task over a few frames and kept per location.
+
+const MT_SLOT = 0
+const OV_SLOT = 1
+const OV_PAL = 16
+const MAP_X = 4
+const MAP_Y = 13
+const MAP_W = 256
+const MAP_H = 192
+const NO_DATA_Q = -32768
+const MT_ROWS_PER_FRAME = 8
+
+var mt_loc = -1                  // the location whose temperatures are in slot 0
+private var mt_gen = -1          // the version of its map that is painted (Wx.gen)
+private var mt_dirty: [3]u32     // texel rows 0-95 to repaint
+private var hrow: [48 * 128]s16  // band rows upsampled across, quarter degrees C
+
+// The ramp index of a temperature in quarter degrees C.
+fn ramp_idx(q: s32) -> s32 {
+    let i = clamp(q - RAMP_Q0, 0, len(RAMP_IDX) - 1)
+    return RAMP_IDX[i] as s32
+}
+
+// The ramp colour of a half-degree temperature (for labels and the legend).
+fn ramp_rgb(t_half: s32) -> u32 {
+    let c = clamp(bc_temp_c(t_half), -30, 45)
+    return RAMP_RGB[c + 30]
+}
+
+private fn dirty_set(t: s32) {
+    if t < 0 || t >= 96 { return }
+    mt_dirty[t >> 5] = mt_dirty[t >> 5] | (1 as u32 << (t & 31) as u32)
+}
+
+// Recomputes band row y's upsampled temperatures and marks its texel rows.
+fn mt_band_row(y: s32) {
+    if mt_loc < 0 { return }
+    let w = &wx[mt_loc]
+    let dst = &hrow[y * 128]
+    if w.have & (1 << K_MAP as u32) == 0 {
+        for u in 0..128 { dst[u] = NO_DATA_Q as s16 }
+    } else {
+        var centre: [16]s32
+        let base = w.map.base as s32
+        let step = w.map.step as s32
+        for b in 0..16 { centre[b] = 2 * base + (2 * b + 1) * step }
+        let src = &w.bands[y * 64]
+        var prev = centre[src[0] & 15]
+        for x in 0..64 {
+            let c = centre[src[x] & 15]
+            var nx = c
+            if x < 63 { nx = centre[src[x + 1] & 15] }
+            dst[2 * x] = ((prev + 3 * c) >> 2) as s16
+            dst[2 * x + 1] = ((3 * c + nx) >> 2) as s16
+            prev = c
+        }
+    }
+    for t in 2 * y - 1..2 * y + 3 { dirty_set(t) }
+}
+
+// Shows location i's map: if it is not the one in the texture (another location, or a newer
+// map), every row is repainted from the top.
+fn mt_show(i: s32) {
+    if i == mt_loc && wx[i].gen == mt_gen { return }
+    mt_loc = i
+    mt_gen = wx[i].gen
+    for y in 0..48 { mt_band_row(y) }
+    for k in 0..3 { mt_dirty[k] = 0xFFFFFFFF }
+}
+
+// Repaints up to MT_ROWS_PER_FRAME dirty texel rows, top first.
+fn mt_step() {
+    if mt_loc < 0 { return }
+    var n = 0
+    for t in 0..96 {
+        if (mt_dirty[t >> 5] >> (t & 31) as u32) & 1 == 0 { continue }
+        mt_dirty[t >> 5] = mt_dirty[t >> 5] & ~(1 as u32 << (t & 31) as u32)
+        paint_row(t)
+        n += 1
+        if n >= MT_ROWS_PER_FRAME { return }
+    }
+}
+
+fn mt_busy() -> bool { return mt_dirty[0] | mt_dirty[1] | mt_dirty[2] != 0 }
+
+private fn paint_row(t: s32) {
+    // texel row 2k lies a quarter of a band above band row k's centre, 2k + 1 a quarter below
+    var a = t >> 1                 // the band row above the texel row's centre
+    var wa = 3                     // its weight in quarters (the row below gets 4 - wa)
+    if t & 1 == 0 {
+        a -= 1
+        wa = 1
+    }
+    var b = a + 1
+    if a < 0 { a = 0 }
+    if b > 47 { b = 47 }
+    let ra = &hrow[a * 128]
+    let rb = &hrow[b * 128]
+    let dst = (VRAM_TEXTURES + MT_SLOT * TEXTURE_SLOT_SIZE + t * 256) as *u8
+    let va = ra[0] != NO_DATA_Q as s16
+    let vb = rb[0] != NO_DATA_Q as s16
+    if !va && !vb {
+        mem_fill(dst, 1, 128)
+        return
+    }
+    if !va || !vb {
+        var r = ra
+        if !va { r = rb }
+        for u in 0..128 { dst[u] = ramp_idx(r[u] as s32) as u8 }
+        return
+    }
+    let wb = 4 - wa
+    for u in 0..128 {
+        let q = (ra[u] as s32 * wa + rb[u] as s32 * wb) >> 2
+        dst[u] = ramp_idx(q) as u8
+    }
+}
+
+// ---- the geography overlay
+
+const OV_BYTES = 256 * 192 / 2
+private var ov_cache: [16 * 24576]u8
+private var ov_have: [16]bool
+private var ov_box: [16][4]s32           // the box each cached overlay was drawn for
+var ov_loc = -1                          // the location whose overlay is in slot 1
+private var ov_job = -1                  // the location being rasterised
+private var ov_task: Task
+private var ov_stack: [2048]u8
+private var ov_px: [256 * 192]u8         // the work buffer, one byte a pixel
+private var edges: [1400 * 4]s32         // x0, y0, x1, y1 in 1/16 pixel
+private var nedges: s32
+private var jb: [4]s32                   // the job's box: south, north, west, east
+
+fn ov_init() {
+    for i in 0..MAX_LOCS { ov_have[i] = false }
+    ov_loc = -1
+    ov_job = -1
+}
+
+private fn box_of(i: s32, out: *s32) {
+    out[0] = locs[i].south
+    out[1] = locs[i].north
+    out[2] = locs[i].west
+    out[3] = locs[i].east
+}
+
+private fn box_ok(i: s32) -> bool {
+    return locs[i].north > locs[i].south && locs[i].east > locs[i].west
+}
+
+// Whether location i's overlay is ready; starts rasterising it if not (one job at a time).
+fn ov_ready(i: s32) -> bool {
+    if i < 0 || !box_ok(i) { return false }
+    var b: [4]s32
+    box_of(i, &b[0])
+    if ov_have[i] && ov_box[i][0] == b[0] && ov_box[i][1] == b[1] && ov_box[i][2] == b[2] && ov_box[i][3] == b[3] {
+        return true
+    }
+    if ov_job < 0 {
+        ov_job = i
+        for k in 0..4 { jb[k] = b[k] }
+        task_start(&ov_task, &ov_stack[0], len(ov_stack), raster)
+    }
+    return false
+}
+
+// Puts location i's overlay in slot 1 (when ready). True when it is there.
+fn ov_show(i: s32) -> bool {
+    if ov_loc == i && ov_have[i] { return true }
+    if !ov_ready(i) { return false }
+    let dst = (VRAM_TEXTURES + OV_SLOT * TEXTURE_SLOT_SIZE) as *u8
+    memcpy(dst, &ov_cache[i * OV_BYTES], OV_BYTES)
+    ov_loc = i
+    return true
+}
+
+// Runs the rasteriser for about `budget` cycles.
+fn ov_step() {
+    if ov_job < 0 { return }
+    if !task_resume(&ov_task) {
+        let i = ov_job
+        ov_have[i] = true
+        for k in 0..4 { ov_box[i][k] = jb[k] }
+        if ov_loc == i { ov_loc = -1 }
+        ov_job = -1
+    }
+}
+
+fn ov_busy() -> bool { return ov_job >= 0 }
+
+const OV_SLICE = 120000
+
+private fn maybe_yield() {
+    if task_time() > OV_SLICE { task_yield() }
+}
+
+// Projects (lat, lon) in hundredths to 1/16 pixels.
+private fn proj_x(lon: s32) -> s32 { return (lon - jb[2]) * (MAP_W * 16) / (jb[3] - jb[2]) }
+private fn proj_y(lat: s32) -> s32 { return (jb[1] - lat) * (MAP_H * 16) / (jb[1] - jb[0]) }
+
+private fn geo_count() -> s32 { return (GEO[0] as s32) | (GEO[1] as s32) << 8 }
+
+private fn raster() {
+    mem_fill(&ov_px[0], 1, len(ov_px))
+    // 1. edges of the rings that reach the box's rows
+    nedges = 0
+    let ymax = MAP_H * 16
+    var p = 4
+    let n = geo_count()
+    for s in 0..n {
+        let kind = GEO[p] as s32
+        let np = (GEO[p + 2] as s32) | (GEO[p + 3] as s32) << 8
+        let pts = (&GEO[p + 4]) as *s16
+        p += 4 + np * 4
+        if kind > 1 { continue }
+        var px = proj_x(pts[(np - 1) * 2 + 1] as s32)
+        var py = proj_y(pts[(np - 1) * 2] as s32)
+        for k in 0..np {
+            let x = proj_x(pts[k * 2 + 1] as s32)
+            let y = proj_y(pts[k * 2] as s32)
+            if py != y && !(py < 0 && y < 0) && !(py >= ymax && y >= ymax) && nedges < 1400 {
+                let e = &edges[nedges * 4]
+                e[0] = px
+                e[1] = py
+                e[2] = x
+                e[3] = y
+                nedges += 1
+            }
+            px = x
+            py = y
+        }
+        maybe_yield()
+    }
+    // 2. scanlines: land inside an odd number of rings
+    var xs: [96]s32
+    for row in 0..MAP_H {
+        let yc = row * 16 + 8
+        var nx = 0
+        for k in 0..nedges {
+            let e = &edges[k * 4]
+            let y0 = e[1]
+            let y1 = e[3]
+            if (y0 <= yc && yc < y1) || (y1 <= yc && yc < y0) {
+                if nx < 96 {
+                    xs[nx] = e[0] + (yc - y0) * (e[2] - e[0]) / (y1 - y0)
+                    nx += 1
+                }
+            }
+        }
+        // insertion sort
+        for i in 1..nx {
+            let v = xs[i]
+            var j = i - 1
+            while j >= 0 && xs[j] > v {
+                xs[j + 1] = xs[j]
+                j -= 1
+            }
+            xs[j + 1] = v
+        }
+        let line = &ov_px[row * MAP_W]
+        var i = 0
+        while i + 1 < nx {
+            let a = clamp((xs[i] + 8) >> 4, 0, MAP_W)
+            let b = clamp((xs[i + 1] + 8) >> 4, 0, MAP_W)
+            if b > a { mem_fill(line + a, 0, (b - a) as u32) }
+            i += 2
+        }
+        maybe_yield()
+    }
+    // 3. coasts: the water next to land, then two rings fading out to sea
+    shore(0, 3)
+    shore(3, 2)
+    shore(2, 6)
+    // 4. lines
+    p = 4
+    for s in 0..n {
+        let kind = GEO[p] as s32
+        let np = (GEO[p + 2] as s32) | (GEO[p + 3] as s32) << 8
+        let pts = (&GEO[p + 4]) as *s16
+        p += 4 + np * 4
+        if kind < 2 { continue }
+        var c = 4
+        if kind == 2 { c = 5 }
+        for k in 1..np {
+            seg(proj_x(pts[(k - 1) * 2 + 1] as s32), proj_y(pts[(k - 1) * 2] as s32),
+                proj_x(pts[k * 2 + 1] as s32), proj_y(pts[k * 2] as s32), c)
+        }
+        maybe_yield()
+    }
+    // 5. pack into the cache, two pixels a byte
+    let dst = &ov_cache[ov_job * OV_BYTES]
+    for k in 0..OV_BYTES {
+        dst[k] = (ov_px[2 * k] | (ov_px[2 * k + 1] << 4)) as u8
+        if k & 1023 == 0 { maybe_yield() }
+    }
+}
+
+// Water pixels (1) next to a pixel of colour `next_to` become `c`.
+private fn shore(next_to: s32, c: s32) {
+    let nt = next_to as u8
+    let cc = c as u8
+    for y in 0..MAP_H {
+        let row = &ov_px[y * MAP_W]
+        for x in 0..MAP_W {
+            if row[x] != 1 { continue }
+            var hit = false
+            if x > 0 && row[x - 1] == nt { hit = true }
+            else if x < MAP_W - 1 && row[x + 1] == nt { hit = true }
+            else if y > 0 && row[x - MAP_W] == nt { hit = true }
+            else if y < MAP_H - 1 && row[x + MAP_W] == nt { hit = true }
+            if hit { row[x] = 7 }               // mark, so this pass does not spread
+        }
+        maybe_yield()
+    }
+    for y in 0..MAP_H {
+        let row = &ov_px[y * MAP_W]
+        for x in 0..MAP_W {
+            if row[x] == 7 { row[x] = cc }
+        }
+        maybe_yield()
+    }
+}
+
+// A line in 1/16 pixels, drawn on land only (a pixel that is 0, or a line already).
+private fn seg(x0: s32, y0: s32, x1: s32, y1: s32, c: s32) {
+    let ax = x0 >> 4
+    let ay = y0 >> 4
+    let bx = x1 >> 4
+    let by = y1 >> 4
+    if (ax < 0 && bx < 0) || (ay < 0 && by < 0) || (ax >= MAP_W && bx >= MAP_W) || (ay >= MAP_H && by >= MAP_H) { return }
+    let dx = abs(bx - ax)
+    let dy = -abs(by - ay)
+    var sx = 1
+    if ax > bx { sx = -1 }
+    var sy = 1
+    if ay > by { sy = -1 }
+    var err = dx + dy
+    var x = ax
+    var y = ay
+    let cc = c as u8
+    var guard = 0
+    while guard < 4096 {
+        guard += 1
+        if x >= 0 && x < MAP_W && y >= 0 && y < MAP_H {
+            let px = &ov_px[y * MAP_W + x]
+            if px[0] == 0 || px[0] == 4 { px[0] = cc }
+        }
+        if x == bx && y == by { break }
+        let e2 = 2 * err
+        if e2 >= dy {
+            err += dy
+            x += sx
+        }
+        if e2 <= dx {
+            err += dx
+            y += sy
+        }
+    }
+}
+
+// ---- drawing
+
+// The texture pages of the two layers.
+fn mt_page() -> u32 { return tex_page(MT_SLOT, 0, false) }
+fn ov_page() -> u32 { return tex_page(OV_SLOT, OV_PAL, true) }
+
+// Draws the map (temperatures and geography) with its top-left at (x, y). Rows of the
+// temperature texture not painted yet show the "no data" colour.
+fn map_draw(x: s32, y: s32, with_overlay: bool) {
+    sprite_ex(mt_page(), 0, 0, 128, 96, x, y, MAP_W, MAP_H, 0x808080, BLEND_NONE)
+    if with_overlay {
+        sprite_ex(ov_page(), 0, 0, 256, 192, x, y, MAP_W, MAP_H, 0x808080, BLEND_NONE)
+    }
+}
+
+// Where (lat, lon) falls on a map of location i drawn at (x, y); false when outside.
+fn map_point(i: s32, lat: s32, lon: s32, mx: s32, my: s32, out: *s32) -> bool {
+    let l = &locs[i]
+    if lat <= l.south || lat >= l.north || lon <= l.west || lon >= l.east { return false }
+    out[0] = mx + (lon - l.west) * MAP_W / (l.east - l.west)
+    out[1] = my + (l.north - lat) * MAP_H / (l.north - l.south)
+    return true
+}
+
+fn mt_load_palettes() {
+    load_palette(0, RAMP_PAL, 256)
+    load_palette(OV_PAL * 16, OVERLAY_PAL, 16)
+}

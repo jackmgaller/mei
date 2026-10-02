@@ -1,0 +1,29 @@
+// The receiver: the console's broadcast decoder (the standard library's bc_* calls), or the
+// sample tape played through demo.akr's model of it. Everything above this file talks to
+// rx_*, so the whole cart works the same on either.
+
+var rx_demo: bool
+
+fn rx_use_demo(on: bool) {
+    if on == rx_demo { return }
+    if on {
+        bc_off()
+        dm_start()
+    } else {
+        dm_stop()
+    }
+    rx_demo = on
+    model_source_changed()
+}
+
+// Called once a frame, before the model looks at the slots.
+fn rx_frame() {
+    if rx_demo { dm_tick() }
+}
+
+fn rx_select(pid: s32) -> s32 { if rx_demo { return dm_select(pid) } return bc_select(pid) }
+fn rx_release(pid: s32) { if rx_demo { dm_release(pid) } else { bc_release(pid) } }
+fn rx_changed(pid: s32) -> bool { if rx_demo { return dm_changed(pid) } return bc_changed(pid) }
+fn rx_read(pid: s32, buf: *u8) -> s32 { if rx_demo { return dm_read(pid, buf) } return bc_read(pid, buf) }
+fn rx_version(pid: s32) -> s32 { if rx_demo { return dm_version(pid) } return bc_version(pid) }
+fn rx_carrier() -> bool { if rx_demo { return dm_running } return bc_carrier() }
