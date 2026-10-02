@@ -230,8 +230,24 @@ fn tk_box(lo: vec3, hi: vec3) {
     __tk_quad(base + 1, base + 5, base + 3, base + 7, vec3(1.0, 0.0, 0.0))
     __tk_quad(base + 4, base + 0, base + 6, base + 2, vec3(-1.0, 0.0, 0.0))
     __tk_quad(base + 2, base + 3, base + 6, base + 7, vec3(0.0, 1.0, 0.0))
-    __tk_quad(base + 4, base + 5, base + 0, base + 1, vec3(0.0, -1.0, 0.0))
+    // in a level, a block standing on the ground (y = 0) or on a solid's top never shows its
+    // bottom: it is left out
+    if !(__tk_level && (lo.y == 0.0 || __tk_rests_on_solid(lo, hi))) {
+        __tk_quad(base + 4, base + 5, base + 0, base + 1, vec3(0.0, -1.0, 0.0))
+    }
     if __tk_level && __tk_solid_on { let _ = tk_add_box(lo, hi) }
+}
+
+// Does the block lo..hi stand on top of a block solid (its bottom on the solid's top, its
+// footprint within the solid's)?
+fn __tk_rests_on_solid(lo: vec3, hi: vec3) -> bool {
+    for i in 0..__tk_nsolids {
+        let s = &__tk_solids[i]
+        if s.kind == TK_SOLID_BOX && s.hi.y == lo.y && s.lo.x <= lo.x && s.hi.x >= hi.x && s.lo.z <= lo.z && s.hi.z >= hi.z {
+            return true
+        }
+    }
+    return false
 }
 
 // A point of the ramp in lo..hi rising toward dir: `a` 0..1 along the rise, `s` 0..1 across.

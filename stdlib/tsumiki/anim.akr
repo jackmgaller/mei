@@ -105,6 +105,12 @@ fn tk_restart(a: *TkAnim, clip: *TkClip, fade: s32) {
     a.done = false
 }
 
+// Draws `mesh` for part `part` instead of its own (null: its own again): a morph of the part
+// (a blinking face: tk_new_morph(&ZENMAI_HEAD_MORPH).mesh), a held toy, another hat.
+fn tk_anim_part_mesh(a: *TkAnim, part: s32, mesh: *Mesh) {
+    if part >= 0 && part < TK_MAX_PARTS { a.meshes[part] = mesh }
+}
+
 // A joint of the pose (after tk_update()), to change before drawing.
 fn tk_anim_joint(a: *TkAnim, part: s32) -> *TkJoint { return &a.pose[part] }
 

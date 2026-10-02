@@ -186,8 +186,11 @@ fn tk_visible(p: vec3, r: fixed) -> bool {
     let v = vec4(p, 1.0)
     let w = dot(__vp[3], v)
     if w < __cam_near - r { return false }
+    // the ball reaches r further out in clip space, scaled by the projection (fx, fy)
     let x = dot(__vp[0], v)
+    let mx = w + r * (1.0 + __fx)
+    if x > mx || x < -mx { return false }
     let y = dot(__vp[1], v)
-    let m = w + r * 2.2
-    return x < m && x > -m && y < m && y > -m
+    let my = w + r * (1.0 + __fy)
+    return y < my && y > -my
 }

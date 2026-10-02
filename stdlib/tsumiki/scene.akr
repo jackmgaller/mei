@@ -24,7 +24,7 @@
 // (flushed at once, so nothing sorts under it), the level, platforms, props, bodies, their
 // blob shadows and the particles. Call it first in draw(); draw your own things after it.
 
-const TK_MAX_PIECES = 32
+const TK_MAX_PIECES = 64
 const TK_MAX_PLATFORMS = 8
 const TK_MAX_ZONES = 16
 const TK_MAX_PROPS = 32
@@ -36,6 +36,7 @@ struct TkPiece {
     radius: fixed
     ground: bool                 // drawn first and flushed (floors, rugs)
     shown: bool
+    group: s32                   // the chunks of one piece share a group
 }
 
 // A moving platform: a mesh with a block collider that carries what stands on it.
@@ -79,9 +80,14 @@ struct TkProp {
     shadow: fixed                // blob shadow radius (0: none)
     shown: bool = true
     __t: fixed
+    __r: fixed                   // how far it reaches from pos (worked out when first drawn)
+    __floor: fixed               // the floor under its shadow, found at (__fx, __fz)
+    __fx: fixed
+    __fz: fixed
+    __fy: fixed
 }
 
-var __tk_pieces: [32]TkPiece
+var __tk_pieces: [64]TkPiece
 var __tk_npieces: s32
 var __tk_platforms: [8]TkPlatform
 var __tk_nplatforms: s32
@@ -170,37 +176,114 @@ fn tk_level_begin() {
     __tk_level = true
 }
 
-// Ends the piece; returns its mesh (already added to the toy box).
-fn tk_level_end() -> *Mesh { return __tk_piece_end(false) }
+// Ends the piece and adds it to the toy box.
+fn tk_level_end() { __tk_piece_end(false) }
 
 // Starts a piece of the ground: like a level piece, but drawn before everything else, so
 // nothing standing on it can sort under it. Floors, rugs, roads; ground pieces draw in the
 // order they were made (a rug after the floor it lies on).
 fn tk_ground_begin() { tk_level_begin() }
-fn tk_ground_end() -> *Mesh { return __tk_piece_end(true) }
+fn tk_ground_end() { __tk_piece_end(true) }
 
-fn __tk_piece_end(ground: bool) -> *Mesh {
+// A piece is cut into chunks of about TK_CHUNK units across (by where each face's middle is),
+// each a mesh of its own that tk_draw() skips when it is off screen: mesh() still builds
+// packets for faces that are off screen, and half a room usually is.
+const TK_CHUNK: fixed = 8.0
+var __tk_cut_verts: [2048]vec4   // the piece's vertices while it is cut up
+var __tk_cut_map: [2048]s16      // vertex number in the chunk being written, or -1
+var __tk_cut_cell: [1024]u8      // each face's chunk
+var __tk_group: s32              // ground pieces are flushed piece by piece, not chunk by chunk
+
+fn __tk_piece_end(ground: bool) {
+    let m = __tk_mesh
+    __tk_mesh = null
+    __tk_level = false
+    if m == null || __tk_full { return }
+    let nv = __tk_nv
+    let nf = __tk_nf
     let lo = __tk_lo
     let hi = __tk_hi
-    let m = tk_shape_end()
-    __tk_level = false
-    if m == null { return null }
+    memcpy(&__tk_cut_verts[0] as *u8, __tk_verts as *u8, (nv * 16) as u32)
+    let ncx = clamp(((hi.x - lo.x) / TK_CHUNK) as s32 + 1, 1, 8)
+    let ncz = clamp(((hi.z - lo.z) / TK_CHUNK) as s32 + 1, 1, 8)
+    for i in 0..nf {
+        let f = &__tk_faces[i]
+        var c = (__tk_cut_verts[f.idx[0]] + __tk_cut_verts[f.idx[1]] + __tk_cut_verts[f.idx[2]]) as vec3
+        c = c / 3
+        let cx = clamp(((c.x - lo.x) / TK_CHUNK) as s32, 0, ncx - 1)
+        let cz = clamp(((c.z - lo.z) / TK_CHUNK) as s32, 0, ncz - 1)
+        __tk_cut_cell[i] = (cz * 8 + cx) as u8
+    }
+    __tk_group += 1
+    let g = __tk_group
+    for cell in 0..64 {
+        __tk_chunk(cell, nf, ground, g)
+    }
+}
+
+// Writes the faces of chunk `cell` as a mesh of their own and adds it as a piece.
+fn __tk_chunk(cell: s32, nf: s32, ground: bool, group: s32) {
+    var count = 0
+    for i in 0..nf { if __tk_cut_cell[i] as s32 == cell { count += 1 } }
+    if count == 0 { return }
+    for k in 0..2048 { __tk_cut_map[k] = -1 }
+    // the vertices it uses, in order of first use
+    let m = (&__tk_bin[0] as *u8 + __tk_bin_used) as *Mesh
+    let verts = (m as *u8 + 16) as *vec4
+    var nv = 0
+    var lo = vec3(1000.0, 1000.0, 1000.0)
+    var hi = vec3(-1000.0, -1000.0, -1000.0)
+    for i in 0..nf {
+        if __tk_cut_cell[i] as s32 != cell { continue }
+        let f = &__tk_faces[i]
+        for k in 0..4 {
+            let v = f.idx[k] as s32
+            if __tk_cut_map[v] < 0 {
+                if __tk_bin_used + 16 + (nv + 1) * 16 + count * sizeof(Face) > TK_BIN_BYTES {
+                    println("tsumiki: the shape bin is full (128 KB)")
+                    return
+                }
+                __tk_cut_map[v] = nv as s16
+                let p = __tk_cut_verts[v]
+                verts[nv] = p
+                lo = vec3(min(lo.x, p.x), min(lo.y, p.y), min(lo.z, p.z))
+                hi = vec3(max(hi.x, p.x), max(hi.y, p.y), max(hi.z, p.z))
+                nv += 1
+            }
+        }
+    }
+    let faces = (verts as *u8 + nv * 16) as *Face
+    var n = 0
+    for i in 0..nf {
+        if __tk_cut_cell[i] as s32 != cell { continue }
+        faces[n] = __tk_faces[i]
+        for k in 0..4 { faces[n].idx[k] = __tk_cut_map[faces[n].idx[k] as s32] as u16 }
+        n += 1
+    }
+    m.nverts = nv as u16
+    m.nfaces = n as u16
+    m.verts = 16
+    m.faces = (16 + nv * 16) as u32
+    m.reserved = 0
+    let _ = __tk_alloc(16 + nv * 16 + n * sizeof(Face))
     tk_add_piece(m, ground)
-    __tk_pieces[__tk_npieces - 1].centre = (lo + hi) * 0.5
-    __tk_pieces[__tk_npieces - 1].radius = length((hi - lo) * 0.5) + 0.1
-    return m
+    let p = &__tk_pieces[__tk_npieces - 1]
+    p.centre = (lo + hi) * 0.5
+    p.radius = length((hi - lo) * 0.5) + 0.1
+    p.group = group
 }
 
 // Adds a mesh to the level (one built by tools/tsumiki.py, say): drawn every frame (first,
 // if `ground`). Not solid: add tk_add_box() colliders for it.
 fn tk_add_piece(m: *Mesh, ground: bool) {
     if __tk_npieces >= TK_MAX_PIECES {
-        println("tsumiki: more than 32 level pieces")
+        println("tsumiki: more than 64 level pieces (chunks)")
         return
     }
     let p = &__tk_pieces[__tk_npieces]
     __tk_npieces += 1
-    *p = TkPiece { mesh: m, centre: vec3(0.0, 0.0, 0.0), radius: 0.0, ground: ground, shown: true }
+    __tk_group += 1
+    *p = TkPiece { mesh: m, centre: vec3(0.0, 0.0, 0.0), radius: 0.0, ground: ground, shown: true, group: __tk_group }
 }
 
 // ---- platforms
@@ -411,14 +494,22 @@ fn tk_draw() {
     if __tk_clear { cls(__tk_sky) }
     __tk_cam_apply()
     if __tk_fog_on { fog(__tk_fog_col, __tk_fog_near, __tk_fog_far) } else { fog_off() }
-    // the ground: each piece drawn now, in order, so it is under everything
+    // the ground: each piece drawn now, in order, so it is under everything (its chunks
+    // sorted together, then drawn before the next piece)
+    var pending = false
     for i in 0..__tk_npieces {
         let p = &__tk_pieces[i]
-        if p.ground && p.shown {
-            mesh(p.mesh)
+        if !p.ground { continue }
+        if pending && p.group != __tk_pieces[i - 1].group {
             let _ = ot_flush()
+            pending = false
+        }
+        if p.shown && tk_visible(p.centre, p.radius) {
+            mesh(p.mesh)
+            pending = true
         }
     }
+    if pending { let _ = ot_flush() }
     for i in 0..__tk_npieces {
         let p = &__tk_pieces[i]
         if !p.ground && p.shown && (p.radius == 0.0 || tk_visible(p.centre, p.radius)) { mesh(p.mesh) }
@@ -431,7 +522,8 @@ fn tk_draw() {
         let p = &__tk_props[i]
         if !p.shown { continue }
         let at = tk_prop_spot(p)
-        if !tk_visible(at, p.scale * 1.5) { continue }
+        if p.__r == 0.0 { p.__r = __tk_prop_reach(p) }
+        if !tk_visible(at, p.__r * p.scale) { continue }
         let m = tk_place_scaled(at, p.yaw, vec3(p.scale, p.scale, p.scale))
         if p.anim != null { tk_anim_draw(p.anim, m) } else if p.mesh != null { mesh_xf(p.mesh, m) }
     }
@@ -451,16 +543,57 @@ fn tk_draw() {
     }
     for i in 0..__tk_nprops {
         let p = &__tk_props[i]
-        if p.shown && p.shadow > 0.0 { tk_shadow(p.pos, p.shadow) }
+        if !p.shown || p.shadow == 0.0 || !tk_visible(p.pos, p.shadow + 2.0) { continue }
+        // props mostly stay put: the floor under one is looked up again only when it moves
+        if p.pos.x != p.__fx || p.pos.z != p.__fz || p.pos.y != p.__fy || p.__floor == 0.0 {
+            p.__floor = tk_floor_at(p.pos.x, p.pos.z, p.pos.y + 0.05)
+            p.__fx = p.pos.x
+            p.__fz = p.pos.z
+            p.__fy = p.pos.y
+        }
+        __tk_shadow_on(p.pos, p.shadow, p.__floor)
     }
     depth_bias(0)
     __tk_particles_draw()
     fog_off()
 }
 
+// How far a prop's mesh (or its animation's rig) reaches from its origin.
+fn __tk_prop_reach(p: *TkProp) -> fixed {
+    if p.anim != null {
+        var r: fixed = 0.1
+        let rig = p.anim.rig
+        var at: [16]vec3
+        for i in 0..min(rig.count, TK_MAX_PARTS) {
+            let part = &rig.parts[i]
+            at[i] = part.joint
+            if part.parent >= 0 && part.parent < i { at[i] = at[part.parent] + part.joint }
+            r = max(r, length(at[i]) + tk_mesh_reach(part.mesh))
+        }
+        return r
+    }
+    return max(tk_mesh_reach(p.mesh), 0.1)
+}
+
+// How far a mesh's vertices reach from its origin (at most; a quick bound for culling).
+fn tk_mesh_reach(m: *Mesh) -> fixed {
+    if m == null { return 0.0 }
+    let v = (m as *u8 + m.verts) as *vec4
+    var big = vec3(0.0, 0.0, 0.0)
+    for i in 0..(m.nverts as s32) {
+        let q = v[i]
+        big = vec3(max(big.x, abs(q.x)), max(big.y, abs(q.y)), max(big.z, abs(q.z)))
+    }
+    return length(big)
+}
+
 // A soft round shadow on the floor under p, radius r, fainter and smaller the higher p is.
 fn tk_shadow(p: vec3, r: fixed) {
-    let floor = tk_floor_at(p.x, p.z, p.y + 0.05)
+    if !tk_visible(p, r + 2.0) { return }
+    __tk_shadow_on(p, r, tk_floor_at(p.x, p.z, p.y + 0.05))
+}
+
+fn __tk_shadow_on(p: vec3, r: fixed, floor: fixed) {
     if floor == TK_NO_FLOOR { return }
     let h = p.y - floor
     if h > 6.0 { return }

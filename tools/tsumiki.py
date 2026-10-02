@@ -51,6 +51,7 @@ STD_CELLS = ['wood', 'planks', 'felt', 'stripes', 'dots', 'check', 'brick', 'sta
              'dot', 'star', 'puff', 'drop', 'flame', 'square', 'ring', 'heart']
 
 DIRS = {'+x': 0, 'east': 0, '-x': 1, 'west': 1, '+z': 2, 'north': 2, '-z': 3, 'south': 3}
+PANEL_DIRS = dict(DIRS, **{'+y': 4, 'up': 4, '-y': 5, 'down': 5})
 
 
 def _norm(v):
@@ -87,9 +88,9 @@ def parse_colour(s):
     return ((v >> 16) & 255, (v >> 8) & 255, v & 255)
 
 
-def shade(colour, n):
+def shade(colour, n, light=_L, ambient=AMBIENT):
     """The lit colour of a face (or corner) with normal n, as shapes.akr computes it."""
-    l = AMBIENT + DIFFUSE * max(0.0, _dot(_norm(n), _L))
+    l = ambient + (1.0 - ambient) * max(0.0, _dot(_norm(n), light))
     return tuple(min(255, int(c * l)) for c in colour)
 
 
@@ -177,13 +178,13 @@ def pattern(kind, w, h, arg=None, seed=1):
         return v
     if kind == 'felt':          # soft fabric noise
         return 0.62 + (_value_noise(w, h, 8, seed) - 0.5) * 0.35 + (rng.random((h, w)) - 0.5) * 0.18
-    if kind == 'stripes':       # vertical stripes, two tones
-        return np.where((xx // (w / 4)) % 2 == 0, 1.0, 0.72)
-    if kind == 'dots':          # polka dots on a light ground
+    if kind == 'stripes':       # vertical stripes: the first colour and the last
+        return np.where((xx // (w / 4)) % 2 == 0, 1.0, 0.0)
+    if kind == 'dots':          # polka dots (the first colour) on the last
         px, py = (xx % (w / 2)) - w / 4 + 0.5, (yy % (h / 2)) - h / 4 + 0.5
-        return np.where(np.hypot(px, py) < w / 9, 0.55, 1.0)
-    if kind == 'check':         # a 2 x 2 checkerboard
-        return np.where(((xx // (w / 2)) + (yy // (h / 2))) % 2 == 0, 1.0, 0.7)
+        return np.where(np.hypot(px, py) < w / 9, 0.0, 1.0)
+    if kind == 'check':         # a 2 x 2 checkerboard of the first and last colours
+        return np.where(((xx // (w / 2)) + (yy // (h / 2))) % 2 == 0, 1.0, 0.0)
     if kind == 'brick':
         course = (yy // (h / 4)).astype(int)
         bx = (xx + (course % 2) * (w / 4)) % (w / 2)
@@ -191,11 +192,11 @@ def pattern(kind, w, h, arg=None, seed=1):
         v[(yy % (h / 4)) == (h / 4 - 1)] = 0.35
         v[bx == 0] = 0.35
         return v
-    if kind == 'stars':         # little stars scattered on a ground (wallpaper)
-        v = np.ones((h, w)) * 0.86
+    if kind == 'stars':         # little stars (the first colour) scattered on the last (wallpaper)
+        v = np.ones((h, w))
         for sx, sy in ((w * 0.25, h * 0.3), (w * 0.75, h * 0.75), (w * 0.8, h * 0.2), (w * 0.2, h * 0.8)):
             d = np.abs(xx - sx) + np.abs(yy - sy)
-            v[d < w / 12] = 1.0 if sx < w / 2 else 0.5
+            v[d < w / 12] = 0.0
         return v
     if kind == 'dot':           # a soft round dot, bright in the middle
         v = np.clip(1.0 - rad, 0, 1) ** 1.3
@@ -225,6 +226,11 @@ def pattern(kind, w, h, arg=None, seed=1):
         return np.where(inside & (dy > -0.95), v, -1.0)
     if kind == 'square':
         return np.ones((h, w))
+    if kind == 'star5':         # a five-pointed star, outlined (0.5 edge, 1.0 inside)
+        ang = np.arctan2(-(yy - cy), xx - cx) - math.pi / 2
+        lim = 0.5 + 0.48 * np.abs(np.cos(5 * ang / 2)) ** 2.2
+        v = np.where(rad < lim - 0.12, 1.0, 0.5)
+        return np.where(rad < lim, v, -1.0)
     if kind == 'ring':
         v = np.clip(1.0 - np.abs(rad - 0.75) * 6, 0, 1)
         return np.where(v > 0.05, v, -1.0)
@@ -351,6 +357,7 @@ class Builder:
         self.verts = []
         self.faces = []         # (idx list, colours, uvs, flags, cell handle, blend)
         self.brush = Brush()
+        self.light, self.ambient = _L, AMBIENT
         self.offset = (0.0, 0.0, 0.0)
         self.rot = None         # 3x3 rows, or None
         self.origin = (0.0, 0.0, 0.0)   # subtracted from every vertex (a part's joint)
@@ -392,7 +399,7 @@ class Builder:
         return [(u0, v1), (u1, v1), ((u0 + u1) // 2, v0)]
 
     def _colour(self, n):
-        c = shade(self.brush.colour, self._xn(n))
+        c = shade(self.brush.colour, self._xn(n), self.light, self.ambient)
         if self.brush.cell is not None:      # a tint: 128 leaves the texel as it is
             c = tuple((ch + 1) // 2 for ch in c)
         return rgb(*c)
@@ -436,6 +443,25 @@ class Builder:
         self.face([p[2], p[3], p[6], p[7]], (0, 1, 0))
         self.face([p[4], p[5], p[0], p[1]], (0, -1, 0))
 
+    def panel(self, lo, hi, d):
+        """One flat rectangle (a decal: an eye, a sign, a window) facing d (0 +x, 1 -x, 2 +z,
+        3 -z, 4 +y, 5 -y), filling the box lo..hi, which is flat along that axis."""
+        x0, y0, z0 = lo
+        x1, y1, z1 = hi
+        n = [(1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1), (0, 1, 0), (0, -1, 0)][d]
+        if d < 2:
+            x = x1 if d == 0 else x0
+            pts = [(x, y0, z0), (x, y0, z1), (x, y1, z0), (x, y1, z1)]
+        elif d < 4:
+            z = z1 if d == 2 else z0
+            pts = [(x0, y0, z), (x1, y0, z), (x0, y1, z), (x1, y1, z)]
+        else:
+            y = y1 if d == 4 else y0
+            pts = [(x0, y, z0), (x1, y, z0), (x0, y, z1), (x1, y, z1)]
+        idx = [self.v(p) for p in pts]
+        # strip order seen from the front: face() mirrors it if it came the other way round
+        self.face(idx, n)
+
     def ramp(self, lo, hi, d):
         """A wedge in the box lo..hi rising toward d (0 +x, 1 -x, 2 +z, 3 -z)."""
         x0, y0, z0 = lo
@@ -467,7 +493,7 @@ class Builder:
                 'z': lambda a, h, b: (a, b, h), '-y': lambda a, h, b: (a, -h, b),
                 '-x': lambda a, h, b: (-h, a, b), '-z': lambda a, h, b: (a, b, -h)}[axis]
 
-    def cylinder(self, base, r, h, sides=8, axis='y', cone=False):
+    def cylinder(self, base, r, h, sides=8, axis='y', cone=False, caps=True):
         m = self._axis(axis)
         ring0, ring1, ns = [], [], []
         for i in range(sides):
@@ -488,8 +514,9 @@ class Builder:
                 self.face([ring0[i], ring0[j], ring1[i], ring1[j]], mid, [ns[i], ns[j], ns[i], ns[j]])
         down, up = m(0, -1, 0), m(0, 1, 0)
         for i in range(1, sides - 1):
-            self.face([ring0[0], ring0[i], ring0[i + 1]], down)
-            if not cone:
+            if caps:
+                self.face([ring0[0], ring0[i], ring0[i + 1]], down)
+            if not cone and caps:
                 self.face([ring1[0], ring1[i], ring1[i + 1]], up)
 
     def sphere(self, c, r, rings=4, scale=(1, 1, 1)):
@@ -593,10 +620,11 @@ class Clip:
 
 
 class Morph:
-    def __init__(self, name):
+    def __init__(self, name, builder=None, part_embed=None):
         self.name = name
-        self.builder = Builder()
+        self.builder = builder or Builder()
         self.poses = []         # (name, [vertex positions])
+        self.part_embed = part_embed    # a rig part's poses: the part's own mesh is the base
 
 
 class Toy:
@@ -611,6 +639,7 @@ class Toy:
         self.atlas = None
         self.cells = {}
         self.cur = None         # the Builder that shapes go into
+        self.part_cur = None
         self.model_cur = None
         self.clip_cur = None
         self.morph_cur = None
@@ -632,13 +661,21 @@ class Toy:
         return c
 
     # -- what shapes go into
+    def light(self, direction, ambient=AMBIENT):
+        """The light of the shapes built from now on (in the file: light X Y Z [ambient A])."""
+        self._light = (_norm(tuple(float(c) for c in direction)), float(ambient))
+        if self.cur is not None:
+            self.cur.light, self.cur.ambient = self._light
+
     def _new_builder(self, b):
+        b.light, b.ambient = getattr(self, '_light', (_L, AMBIENT))
         self.cur = b
         self.clip_cur = None
         self.pose_cur = None
         return b
 
     def mesh(self, name):
+        self._finish_pose()
         b = self._new_builder(Builder())
         self.meshes.append((name, b))
         self.model_cur = None
@@ -646,6 +683,7 @@ class Toy:
         return b
 
     def model(self, name):
+        self._finish_pose()
         self.model_cur = Model(name)
         self.models.append(self.model_cur)
         self.morph_cur = None
@@ -653,9 +691,11 @@ class Toy:
         return self.model_cur
 
     def part(self, name, parent=None, joint=(0, 0, 0)):
+        self._finish_pose()
         m = self.model_cur
         if m is None:
             raise ValueError("'part' needs a 'model' first")
+        self.morph_cur = None
         pi = -1 if parent in (None, '-', '') else m.find(parent)
         p = Part(name, pi, tuple(float(c) for c in joint))
         p.builder.origin = p.joint      # shapes are given in model space
@@ -663,9 +703,12 @@ class Toy:
         if len(m.parts) > 16:
             raise ValueError('a model may have at most 16 parts')
         self._new_builder(p.builder)
+        self.part_cur = p
         return p
 
     def morph(self, name):
+        self._finish_pose()
+        self.part_cur = None
         self.morph_cur = Morph(name)
         self.morphs.append(self.morph_cur)
         self.model_cur = None
@@ -673,9 +716,16 @@ class Toy:
         return self.morph_cur
 
     def pose(self, name):
+        self._finish_pose()
         m = self.morph_cur
+        if m is None and self.part_cur is not None and self.model_cur is not None:
+            # poses of a rig part: a morph whose base is the part's own mesh
+            p = self.part_cur
+            m = Morph(f'{self.model_cur.name}_{p.name}', p.builder, (self.model_cur.name, p.name))
+            self.morphs.append(m)
+            self.morph_cur = m
         if m is None:
-            raise ValueError("'pose' needs a 'morph' first")
+            raise ValueError("'pose' needs a 'morph' (or a 'part') first")
         if len(m.poses) >= 7:
             raise ValueError('a morph may have at most 8 poses (the base and 7 more)')
         m.poses.append((name, list(m.builder.verts)))
@@ -683,6 +733,7 @@ class Toy:
         # shapes given after 'pose' describe it again from scratch
         self._respec = Builder()
         self._respec.brush = m.builder.brush
+        self._respec.origin = m.builder.origin
         self.cur = self._respec
         return self.pose_cur
 
@@ -722,10 +773,14 @@ class Toy:
 
     # -- shapes
     def box(self, *a): self._builder().box(tuple(a[0:3]), tuple(a[3:6]))
+    def panel(self, x0, y0, z0, x1, y1, z1, d):
+        self._builder().panel((x0, y0, z0), (x1, y1, z1), PANEL_DIRS[d] if isinstance(d, str) else d)
     def ramp(self, x0, y0, z0, x1, y1, z1, d):
         self._builder().ramp((x0, y0, z0), (x1, y1, z1), DIRS[d] if isinstance(d, str) else d)
-    def cylinder(self, x, y, z, r, h, sides=8, axis='y'): self._builder().cylinder((x, y, z), r, h, int(sides), axis)
-    def cone(self, x, y, z, r, h, sides=8, axis='y'): self._builder().cylinder((x, y, z), r, h, int(sides), axis, cone=True)
+    def cylinder(self, x, y, z, r, h, sides=8, axis='y', caps=True):
+        self._builder().cylinder((x, y, z), r, h, int(sides), axis, caps=caps)
+    def cone(self, x, y, z, r, h, sides=8, axis='y', caps=True):
+        self._builder().cylinder((x, y, z), r, h, int(sides), axis, cone=True, caps=caps)
     def sphere(self, x, y, z, r, rings=4, scale=(1, 1, 1)): self._builder().sphere((x, y, z), r, int(rings), scale)
     def grid(self, x0, y, z0, x1, z1, nx=1, nz=1, alt=None):
         self._builder().grid(x0, y, z0, x1, z1, int(nx), int(nz), parse_colour(alt) if alt else None)
@@ -733,6 +788,9 @@ class Toy:
 
     # -- clips
     def clip(self, model, name, frames, loop=True):
+        self._finish_pose()
+        self.part_cur = None
+        self.morph_cur = None
         m = model if isinstance(model, Model) else next((x for x in self.models if x.name == model), None)
         if m is None:
             raise ValueError(f"no model '{model}' for clip '{name}'")
@@ -765,8 +823,17 @@ class Toy:
             return True
         return all(box[i] <= p[i] <= box[i + 3] for i in range(3))
 
+    def _local(self, about, inside):
+        # pose edits are given in the same space as shapes: a part's are in model space
+        o = self.morph_cur.builder.origin
+        about = _sub(tuple(about), o)
+        if inside is not None:
+            inside = tuple(inside[i] - o[i % 3] for i in range(6))
+        return about, inside
+
     def pose_scale(self, s, about=(0, 0, 0), inside=None):
         vs = self._pose_verts()
+        about, inside = self._local(about, inside)
         base = self.morph_cur.builder.verts
         for i, p in enumerate(vs):
             if self._inside(base[i], inside):
@@ -774,6 +841,7 @@ class Toy:
 
     def pose_move(self, d, inside=None):
         vs = self._pose_verts()
+        _, inside = self._local((0, 0, 0), inside)
         base = self.morph_cur.builder.verts
         for i, p in enumerate(vs):
             if self._inside(base[i], inside):
@@ -781,7 +849,7 @@ class Toy:
 
     def _finish_pose(self):
         # a pose described again with shapes replaces the copied vertices
-        if self.morph_cur is not None and self.pose_cur is not None and self._respec.verts:
+        if self.morph_cur is not None and self.pose_cur is not None and getattr(self, '_respec', None) and self._respec.verts:
             m = self.morph_cur
             if len(self._respec.verts) != len(m.builder.verts):
                 raise ValueError(f"pose '{m.poses[self.pose_cur][0]}' of morph '{m.name}' has "
@@ -790,6 +858,7 @@ class Toy:
             m.poses[self.pose_cur] = (m.poses[self.pose_cur][0], list(self._respec.verts))
             self._respec = Builder()
             self._respec.brush = m.builder.brush
+            self._respec.origin = m.builder.origin
             self.cur = self._respec
 
     # -- output
@@ -879,18 +948,24 @@ class Toy:
 
         for mo in self.morphs:
             b = mo.builder
-            fname = f'{mo.name.lower()}.bin'
-            emit_bin(fname, b.bin())
             nm = cname(mo.name)
             poses = [b.verts] + [p[1] for p in mo.poses]
-            L.append(f'// Morph "{mo.name}": {len(b.verts)} vertices, {len(poses)} poses')
-            L.append(f'embed {nm}_MESH: Mesh = "{fname}"')
+            if mo.part_embed:
+                mesh_name = cname(mo.part_embed[0], mo.part_embed[1], 'mesh')
+                L.append(f'// Poses of part "{mo.part_embed[1]}" of {mo.part_embed[0]}: {len(b.verts)} vertices, '
+                         f'{len(poses)} poses (tk_anim_part_mesh shows a morph of them)')
+            else:
+                fname = f'{mo.name.lower()}.bin'
+                emit_bin(fname, b.bin())
+                mesh_name = f'{nm}_MESH'
+                L.append(f'// Morph "{mo.name}": {len(b.verts)} vertices, {len(poses)} poses')
+                L.append(f'embed {mesh_name}: Mesh = "{fname}"')
             L.append(f'const {nm}_POSES: [{len(poses) * len(b.verts)}]vec4 = [')
             for pv in poses:
                 for p in pv:
                     L.append(f'    vec4({fv(p[0])}, {fv(p[1])}, {fv(p[2])}, 1.0),')
             L.append(']')
-            L.append(f'const {nm}: TkMorphData = TkMorphData {{ mesh: {nm}_MESH, poses: {nm}_POSES, count: {len(poses)} }}')
+            L.append(f'const {nm}_MORPH: TkMorphData = TkMorphData {{ mesh: {mesh_name}, poses: {nm}_POSES, count: {len(poses)} }}')
             L.append(f'const {cname(mo.name, "base")} = 0    // pose numbers (tk_morph_blend)')
             for i, (pn, _) in enumerate(mo.poses):
                 L.append(f'const {cname(mo.name, pn)} = {i + 1}')
@@ -1013,6 +1088,9 @@ def parse_toy(text, name, basedir='.'):
                 toy.paint(a[0], finish, smooth)
             elif w == 'blend':
                 toy.blend(a[0].lower())
+            elif w == 'light':
+                o = _opts(a[3:], ln, {'ambient': 1})
+                toy.light(_nums(a, 3, ln), o.get('ambient', [AMBIENT])[0])
             elif w == 'twosided':
                 toy.twosided(not a or a[0].lower() in ('on', 'yes', 'true'))
             elif w == 'place':
@@ -1020,6 +1098,11 @@ def parse_toy(text, name, basedir='.'):
                 toy.place(o.get('at', (0, 0, 0)), o.get('turn', (0, 0, 0)))
             elif w == 'box':
                 toy.box(*_nums(a, 6, ln))
+            elif w == 'panel':
+                v = _nums(a, 6, ln)
+                if len(a) < 7 or a[6].lower() not in PANEL_DIRS:
+                    raise ValueError(f'line {ln}: a panel needs the way it faces: +x -x +y -y +z -z')
+                toy.panel(*v, a[6].lower())
             elif w == 'ramp':
                 v = _nums(a, 6, ln)
                 if len(a) < 7 or a[6].lower() not in DIRS:
@@ -1027,9 +1110,9 @@ def parse_toy(text, name, basedir='.'):
                 toy.ramp(*v, a[6].lower())
             elif w in ('cylinder', 'cone'):
                 v = _nums(a, 5, ln)
-                o = _opts(a[5:], ln, {'sides': 1, 'axis': 'w'})
+                o = _opts(a[5:], ln, {'sides': 1, 'axis': 'w', 'open': 0})
                 f = toy.cylinder if w == 'cylinder' else toy.cone
-                f(*v, int(o.get('sides', [8])[0]), o.get('axis', 'y').lower())
+                f(*v, int(o.get('sides', [8])[0]), o.get('axis', 'y').lower(), caps=not o.get('open'))
             elif w == 'sphere':
                 v = _nums(a, 4, ln)
                 o = _opts(a[4:], ln, {'rings': 1, 'scale': 3})

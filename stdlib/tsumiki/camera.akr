@@ -40,6 +40,8 @@ struct TkCam {
     __pitch: fixed
     __dist: fixed                // follow and orbit: the distance now (after pulling in)
     __ty: fixed                  // follow: the smoothed height of the target
+    __lead: vec3                 // follow: where the camera trails on its leash (before blending)
+    __tilt: fixed                // follow: the tilt now (steeper while looking over something)
     __from_pos: vec3             // a blend: where it started ...
     __from_yaw: fixed
     __from_pitch: fixed
@@ -103,6 +105,9 @@ fn __tk_cam_mode(mode: s32, target: *TkBody, blend: s32) {
     if target != null {
         c.__ty = target.pos.y
         c.__dist = c.dist
+        c.__tilt = c.tilt
+        // follow starts behind the target, whatever the camera was doing
+        c.__lead = tk_orbit_point(target.pos + vec3(0.0, c.height, 0.0), target.yaw, c.tilt, c.dist)
         if mode == TK_CAM_ORBIT {
             c.__yaw = c.yaw
             c.__pitch = clamp(c.pitch, -1.2, 0.3)
@@ -121,7 +126,7 @@ fn tk_cam_follow(b: *TkBody, blend: s32) {
     __tk_cam_mode(TK_CAM_FOLLOW, b, blend)
     if blend == 0 && b != null {
         tk_cam.yaw = b.yaw
-        tk_cam.pos = tk_orbit_point(b.pos + vec3(0.0, tk_cam.height, 0.0), b.yaw, tk_cam.tilt, tk_cam.dist)
+        tk_cam.pos = tk_cam.__lead
     }
 }
 
@@ -163,9 +168,23 @@ fn __tk_cam_clear(focus: vec3, want: vec3, dist: fixed) -> fixed {
     // look a little past the camera, so it keeps clear of the wall behind it
     let past = focus + d * ((dist + 0.35) / max(dist, 0.1))
     if tk_raycast(focus, past, &hit) {
-        return clamp(hit.t * (dist + 0.35) - 0.35, 0.5, dist)
+        return clamp(hit.t * (dist + 0.35) - 0.35, 1.0, dist)
     }
     return dist
+}
+
+// The camera at its distance now from `focus`, moved in further while it would be inside or
+// against a solid (the line of sight can be clear while the camera itself grazes a corner,
+// with the near plane cutting into the solid).
+fn __tk_cam_room(focus: vec3, yaw: fixed, pitch: fixed) -> vec3 {
+    let c = &tk_cam
+    var pos = tk_orbit_point(focus, yaw, pitch, c.__dist)
+    for k in 0..4 {
+        if c.__dist <= 1.0 || tk_overlap_sphere(pos, 0.55) < 0 { break }
+        c.__dist = max(c.__dist - 0.4, 1.0)
+        pos = tk_orbit_point(focus, yaw, pitch, c.__dist)
+    }
+    return pos
 }
 
 // One frame of the camera (tk_update() calls it).
@@ -186,14 +205,26 @@ fn __tk_cam_step() {
                 if c.target.on_ground { c.__ty += (c.target.pos.y - c.__ty) * c.smooth }
                 f.y = c.__ty + c.height
             }
-            let dx = f.x - c.pos.x
-            let dz = f.z - c.pos.z
+            let dx = f.x - c.__lead.x
+            let dz = f.z - c.__lead.z
             if abs(dx) + abs(dz) > 0.05 { yaw = atan2(dx, dz) }
             yaw = tk_wrap(yaw + turn.x)
-            let want = tk_orbit_point(f, yaw, c.tilt, c.dist)
-            let room = __tk_cam_clear(f, want, c.dist)
+            // something in the way: rise to look down over it if that sees further
+            var tilt = c.tilt
+            var room = __tk_cam_clear(f, tk_orbit_point(f, yaw, tilt, c.dist), c.dist)
+            if room < c.dist * 0.7 {
+                let over = __tk_cam_clear(f, tk_orbit_point(f, yaw, c.tilt - 0.55, c.dist), c.dist)
+                if over > room + 0.3 { tilt = c.tilt - 0.55 }
+            }
+            c.__tilt += (tilt - c.__tilt) * 0.08
+            if tilt != c.tilt || abs(c.__tilt - c.tilt) > 0.02 {
+                room = __tk_cam_clear(f, tk_orbit_point(f, yaw, c.__tilt, c.dist), c.dist)
+            }
             if room < c.__dist { c.__dist = room } else { c.__dist += (room - c.__dist) * 0.08 }
-            pos = tk_orbit_point(f, yaw, c.tilt, c.__dist)
+            // the leash keeps its full length, so the camera's way round does not jump when it
+            // pulls in; the camera itself sits nearer when it has to
+            c.__lead = tk_orbit_point(f, yaw, c.tilt, c.dist)
+            pos = __tk_cam_room(f, yaw, c.__tilt)
             pitch = tk_pitch_to(pos, f)
         }
         TK_CAM_ORBIT => {
@@ -202,7 +233,7 @@ fn __tk_cam_step() {
             let want = tk_orbit_point(focus, c.__yaw, c.__pitch, c.dist)
             let room = __tk_cam_clear(focus, want, c.dist)
             if room < c.__dist { c.__dist = room } else { c.__dist += (room - c.__dist) * 0.08 }
-            pos = tk_orbit_point(focus, c.__yaw, c.__pitch, c.__dist)
+            pos = __tk_cam_room(focus, c.__yaw, c.__pitch)
             yaw = c.__yaw
             pitch = c.__pitch
         }
