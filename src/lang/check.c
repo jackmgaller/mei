@@ -641,6 +641,7 @@ static Local *capture(Ctx *c, const char *name, Loc loc) {
     l->is_capture = 1;
     l->points_local = ol->points_local;
     PUSH(f->locals, f->nlocals, f->caplocals, l);
+    ol->captured = 1;
     if (f->ncaps == f->capcaps) {
         int nc = f->capcaps ? f->capcaps * 2 : 4;
         Local **nl = ar_alloc(sizeof(Local *) * (size_t)nc), **no = ar_alloc(sizeof(Local *) * (size_t)nc);
@@ -2425,11 +2426,264 @@ static int stmt_calls(Stmt *s) {
     return 0;
 }
 
+/* ---- let forwarding: `let x = E` with E built only from constants and locals (no memory
+ * reads, no calls) is substituted into its uses when that cannot change its value: every use
+ * when E is a constant, or else its only use, in the value of a later simple statement of the
+ * same block, with nothing in between assigning a local E reads. x then needs no register. */
+
+static int fw_local_ok(Local *l) { return l && !l->addr_taken && !l->in_asm && !l->captured; }
+
+static int fw_pure(Expr *e) {
+    if (!e) return 1;
+    if (e->isconst && e->k != E_CONV && !ty_is_aggr(e->ty)) return 1;
+    switch (e->k) {
+    case E_NAME: return e->sym && e->sym->k == SY_LOCAL && fw_local_ok(e->sym->local) && !ty_is_aggr(e->ty);
+    case E_UNARY: return e->op != U_DEREF && e->op != U_ADDR && fw_pure(e->a);
+    case E_BINARY:
+        if (e->a->ty->k == TY_MAT4 || ty_is_aggr(e->ty)) return 0;
+        return fw_pure(e->a) && fw_pure(e->b);
+    case E_CONV: return !ty_is_aggr(e->ty) && (!e->a || fw_pure(e->a));
+    case E_FIELD: return !e->field && fw_pure(e->a);
+    case E_CALL:
+        if (e->callee || e->indirect || !e->bi || e->bi >= BI_MAP || e->bi == BI_KIND || e->bi == BI_RAW) return 0;
+        for (int i = 0; i < e->nargs; i++) if (!fw_pure(e->args[i])) return 0;
+        return 1;
+    default: return 0;
+    }
+}
+
+static void fw_reads(Expr *e, Local **v, int *n) {
+    if (!e) return;
+    if (e->k == E_NAME && e->sym && e->sym->k == SY_LOCAL) { if (*n < 16) v[(*n)++] = e->sym->local; return; }
+    if (e->isconst && e->k != E_CONV) return;
+    fw_reads(e->a, v, n);
+    fw_reads(e->b, v, n);
+    for (int i = 0; i < e->nargs; i++) fw_reads(e->args[i], v, n);
+}
+
+/* Collects the E_NAME nodes in e that name x (up to max); returns how many there are. */
+static int fw_uses_e(Expr *e, Local *x, Expr **out, int max, int n) {
+    if (!e) return n;
+    if (e->k == E_NAME && e->sym && e->sym->k == SY_LOCAL && e->sym->local == x) { if (n < max) out[n] = e; return n + 1; }
+    if (e->k == E_FUNC) return n;
+    n = fw_uses_e(e->a, x, out, max, n);
+    n = fw_uses_e(e->b, x, out, max, n);
+    for (int i = 0; i < e->nargs; i++) n = fw_uses_e(e->args[i], x, out, max, n);
+    for (int i = 0; i < e->narms; i++) n = fw_uses_e(e->arms[i].value, x, out, max, n);
+    return n;
+}
+
+static int fw_uses_s(Stmt *s, Local *x, Expr **out, int max, int n) {
+    if (!s) return n;
+    for (int i = 0; i < s->n; i++) n = fw_uses_s(s->list[i], x, out, max, n);
+    if (s->k != S_CONST) { n = fw_uses_e(s->e, x, out, max, n); n = fw_uses_e(s->e2, x, out, max, n); }
+    if (s->k == S_ASM && s->asm_text && strstr(s->asm_text, "{")) n += 1000;   /* named in asm: keep it */
+    n = fw_uses_s(s->then, x, out, max, n);
+    n = fw_uses_s(s->els, x, out, max, n);
+    for (int i = 0; i < s->narms; i++) n = fw_uses_s(s->arms[i].body, x, out, max, n);
+    return n;
+}
+
+static Expr *fw_root(Expr *e) {
+    while (e && (e->k == E_FIELD || e->k == E_INDEX) && e->a && e->a->ty->k != TY_PTR) e = e->a;
+    return e;
+}
+
+static int fw_assigns(Stmt *s, Local *l) {
+    if (!s) return 0;
+    if (s->k == S_ASSIGN) {
+        Expr *r = fw_root(s->e);
+        if (r && r->k == E_NAME && r->sym && r->sym->k == SY_LOCAL && r->sym->local == l) return 1;
+    }
+    if (s->k == S_ASM) return 1;
+    for (int i = 0; i < s->n; i++) if (fw_assigns(s->list[i], l)) return 1;
+    if (fw_assigns(s->then, l) || fw_assigns(s->els, l)) return 1;
+    for (int i = 0; i < s->narms; i++) if (fw_assigns(s->arms[i].body, l)) return 1;
+    return 0;
+}
+
+static void fw_block(Stmt *b) {
+    if (!b) return;
+    if (b->k == S_BLOCK) {
+        for (int i = 0; i < b->n; i++) {
+            Stmt *s = b->list[i];
+            if (s->k != S_VAR || !s->is_let || !s->e || !s->var) continue;
+            Local *x = s->var;
+            Expr *e = s->e;
+            if (!fw_local_ok(x) || ty_is_aggr(x->ty) || e->ty != x->ty || !fw_pure(e)) continue;
+            int isk = e->isconst && !ty_is_vec(x->ty) && x->ty->k != TY_FUNC;
+            if (e->isconst && !isk) continue;   /* a vector constant: keep it in its register */
+            Expr *uses[64];
+            int nu = 0;
+            for (int j = i + 1; j < b->n; j++) nu = fw_uses_s(b->list[j], x, uses, 64, nu);
+            if (nu == 0 || nu > 64) continue;
+            if (!isk) {
+                if (nu != 1) continue;
+                /* the statement holding the use: a simple one, the use in its own value */
+                int j = i + 1, found = -1;
+                for (; j < b->n && found < 0; j++) {
+                    Expr *one[1];
+                    if (fw_uses_s(b->list[j], x, one, 1, 0)) found = j;
+                }
+                Stmt *t = b->list[found];
+                if (t->k != S_VAR && t->k != S_ASSIGN && t->k != S_EXPR && t->k != S_RETURN && t->k != S_IF && t->k != S_MATCH) continue;
+                Expr *one[1];
+                if (!(fw_uses_e(t->e, x, one, 1, 0) || (t->k != S_IF && t->k != S_MATCH && fw_uses_e(t->e2, x, one, 1, 0)))) continue;
+                Local *rd[16];
+                int nr = 0;
+                fw_reads(e, rd, &nr);
+                if (nr >= 16) continue;
+                int clash = 0;
+                for (int k = 0; k < nr && !clash; k++) {
+                    for (int m = i + 1; m < found && !clash; m++) if (fw_assigns(b->list[m], rd[k])) clash = 1;
+                    if (t->k == S_ASSIGN && t->op >= 0) {
+                        Expr *r = fw_root(t->e);
+                        if (r && r->k == E_NAME && r->sym && r->sym->local == rd[k] && fw_uses_e(t->e, x, one, 1, 0)) clash = 1;
+                    }
+                }
+                if (clash) continue;
+            }
+            for (int u = 0; u < nu; u++) {
+                Loc loc = uses[u]->loc;
+                *uses[u] = *inl_clone(e, NULL, NULL);
+                uses[u]->loc = loc;
+            }
+            x->elided = 1;
+            s->k = S_BLOCK;
+            s->n = 0;
+            s->e = NULL;
+        }
+    }
+    for (int i = 0; i < b->n; i++) fw_block(b->list[i]);
+    fw_block(b->then);
+    fw_block(b->els);
+    for (int i = 0; i < b->narms; i++) fw_block(b->arms[i].body);
+}
+
+/* ---- induction pointers: in `for i in lo..hi`, a[i] for a fixed array a (a global, const
+ * data, a local array, or a pointer local the loop does not change) becomes *p, with p = &a[i]
+ * set up with i and stepped by one element whenever i is: no index arithmetic per use. */
+
+#define MAX_IPS 3
+
+typedef struct { Expr *base; Expr **uses; int nuses, cap; } IpGroup;
+
+static int ip_same_base(Expr *a, Expr *b) {
+    return a->k == E_NAME && b->k == E_NAME && a->sym && b->sym &&
+           (a->sym->k == SY_LOCAL ? b->sym->k == SY_LOCAL && a->sym->local == b->sym->local : a->sym == b->sym);
+}
+
+static int ip_base_ok(Expr *a, Stmt *body) {
+    if (a->k != E_NAME || !a->sym) return 0;
+    switch (a->sym->k) {
+    case SY_GLOBAL: case SY_DATA: return a->ty->k == TY_ARRAY;
+    case SY_LOCAL: {
+        Local *l = a->sym->local;
+        if (a->ty->k == TY_ARRAY) return 1;
+        if (a->ty->k == TY_PTR) return !l->addr_taken && !l->in_asm && !fw_assigns(body, l);
+        return 0;
+    }
+    default: return 0;
+    }
+}
+
+static void ip_collect_e(Expr *e, Local *iv, Stmt *body, IpGroup *g, int *ng) {
+    if (!e || e->k == E_FUNC) return;
+    if (e->isconst && e->k != E_CONV) return;
+    if (e->k == E_INDEX && !e->chk && e->b->k == E_NAME && e->b->sym && e->b->sym->k == SY_LOCAL && e->b->sym->local == iv
+        && ip_base_ok(e->a, body) && e->ty->size > 0) {
+        int k;
+        for (k = 0; k < *ng; k++) if (ip_same_base(g[k].base, e->a)) break;
+        if (k == *ng) {
+            if (*ng == MAX_IPS) return;
+            g[k] = (IpGroup){e->a, NULL, 0, 0};
+            (*ng)++;
+        }
+        PUSH(g[k].uses, g[k].nuses, g[k].cap, e);
+        return;
+    }
+    ip_collect_e(e->a, iv, body, g, ng);
+    ip_collect_e(e->b, iv, body, g, ng);
+    for (int i = 0; i < e->nargs; i++) ip_collect_e(e->args[i], iv, body, g, ng);
+    for (int i = 0; i < e->narms; i++) ip_collect_e(e->arms[i].value, iv, body, g, ng);
+}
+
+static void ip_collect_s(Stmt *s, Local *iv, Stmt *body, IpGroup *g, int *ng) {
+    if (!s) return;
+    for (int i = 0; i < s->n; i++) ip_collect_s(s->list[i], iv, body, g, ng);
+    if (s->k != S_CONST) { ip_collect_e(s->e, iv, body, g, ng); ip_collect_e(s->e2, iv, body, g, ng); }
+    ip_collect_s(s->then, iv, body, g, ng);
+    ip_collect_s(s->els, iv, body, g, ng);
+    for (int i = 0; i < s->narms; i++) ip_collect_s(s->arms[i].body, iv, body, g, ng);
+}
+
+static Expr *ip_name(Local *l) {
+    Expr *n = ar_alloc(sizeof *n);
+    n->k = E_NAME;
+    n->name = l->name;
+    n->ty = l->ty;
+    n->sym = ar_alloc(sizeof(Sym));
+    n->sym->k = SY_LOCAL;
+    n->sym->name = l->name;
+    n->sym->local = l;
+    n->sym->ty = l->ty;
+    return n;
+}
+
+static void ip_stmt(Func *f, Stmt *s) {
+    if (!s) return;
+    for (int i = 0; i < s->n; i++) ip_stmt(f, s->list[i]);
+    ip_stmt(f, s->then);
+    ip_stmt(f, s->els);
+    for (int i = 0; i < s->narms; i++) ip_stmt(f, s->arms[i].body);
+    if (s->k != S_FOR || s->var->addr_taken || s->var->in_asm || s->var->captured) return;
+    IpGroup g[MAX_IPS];
+    int ng = 0;
+    ip_collect_s(s->then, s->var, s->then, g, &ng);
+    for (int k = 0; k < ng; k++) {
+        Expr *u0 = g[k].uses[0];
+        Type *el = u0->ty;
+        Local *p = ar_alloc(sizeof *p);
+        p->name = "";
+        p->ty = ty_ptr(el);
+        p->loc = u0->loc;
+        p->immutable = 1;
+        p->weight = (int64_t)16 * g[k].nuses + 8;
+        PUSH(f->locals, f->nlocals, f->caplocals, p);
+        /* p = &a[i], with i just set to lo */
+        Expr *ix = ar_alloc(sizeof *ix);
+        *ix = *u0;
+        ix->a = inl_clone(u0->a, NULL, NULL);
+        ix->b = inl_clone(u0->b, NULL, NULL);
+        Expr *addr = ar_alloc(sizeof *addr);
+        addr->k = E_UNARY; addr->op = U_ADDR; addr->loc = u0->loc; addr->a = ix; addr->ty = p->ty;
+        if (ix->a->sym->k == SY_LOCAL && ix->a->ty->k == TY_ARRAY) ix->a->sym->local->addr_taken = 1;
+        if (!s->ips) {
+            s->ips = ar_alloc(sizeof(Local *) * MAX_IPS);
+            s->ipinit = ar_alloc(sizeof(Expr *) * MAX_IPS);
+            s->ipstep = ar_alloc(sizeof(int) * MAX_IPS);
+        }
+        s->ips[s->nips] = p;
+        s->ipinit[s->nips] = addr;
+        s->ipstep[s->nips] = el->size;
+        s->nips++;
+        for (int u = 0; u < g[k].nuses; u++) {
+            Expr *e = g[k].uses[u];
+            Loc loc = e->loc;
+            memset(e, 0, sizeof *e);
+            e->k = E_UNARY; e->op = U_DEREF; e->loc = loc; e->a = ip_name(p); e->ty = el;
+        }
+    }
+    s->narms = 0;
+}
+
 static void inline_program(Program *P) {
     for (int i = 0; i < P->nfuncs; i++) {
         Func *f = P->funcs[i];
         if (f->is_asm || !f->body) continue;
         inline_stmt(f->body);
+        fw_block(f->body);
+        ip_stmt(f, f->body);
         /* a function whose only calls were inlined is now a leaf */
         if (f->has_call && !f->uses_xfm && !stmt_calls(f->body)) f->has_call = 0;
     }

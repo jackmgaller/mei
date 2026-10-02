@@ -2120,6 +2120,7 @@ static void zero_local(Local *l) {
 }
 
 static void set_pool(int p);
+static void bump_local(Local *l, int32_t delta);
 
 static void gen_stmt(Stmt *s) {
     int mark = g_frame;
@@ -2239,6 +2240,11 @@ static void gen_stmt(Stmt *s) {
             LV le = lv_local(end);
             gen_assign_value(&le, s->e2, end->ty);
         }
+        for (int k = 0; k < s->nips; k++) {
+            /* induction pointers: &a[i] for the first i, stepped with i */
+            LV lp = lv_local(s->ips[k]);
+            gen_assign_value(&lp, s->ipinit[k], s->ips[k]->ty);
+        }
         int ltop = new_label(), lcont = new_label(), lcond = new_label(), lbrk = new_label();
         I("jmp .L%d", lcond);
         put_label(ltop);
@@ -2247,6 +2253,7 @@ static void gen_stmt(Stmt *s) {
         g_nloop--;
         put_label(lcont);
         set_pool(s->pos2);
+        for (int k = 0; k < s->nips; k++) bump_local(s->ips[k], s->ipstep[k]);
         LV li_ = lv_local(v);
         Opnd cur = load_lv(&li_, -1);
         int hint = li_.k == LV_REG ? li_.reg : -1;
@@ -2567,13 +2574,22 @@ static void live_stmt(Func *f, Stmt *s) {
             s->for_end->dead = s->e2->isconst && fits_s18(s->e2->cval);
             s->for_end->start = first - 1;
             s->for_end->end = first;
+            for (int k = 0; k < s->nips; k++) {
+                live_expr(s->ipinit[k], first);
+                s->ips[k]->start = first;
+                s->ips[k]->end = first;
+            }
         }
         live_stmt(f, s->then);
         g_pos += 2;
         int last = g_pos;
         s->pos2 = last;
         if (s->k == S_WHILE) live_expr(s->e, last);
-        else { use_local(s->var, last); if (!s->for_end->dead) use_local(s->for_end, last); }
+        else {
+            use_local(s->var, last);
+            if (!s->for_end->dead) use_local(s->for_end, last);
+            for (int k = 0; k < s->nips; k++) use_local(s->ips[k], last);
+        }
         if (g_nloops == g_caploops) {
             int nc = g_caploops ? g_caploops * 2 : 16;
             LoopRange *nl = ar_alloc(sizeof *nl * (size_t)nc);
@@ -2761,6 +2777,7 @@ static void assign_homes(Func *f, int *locals_size) {
     for (int i = 0; i < nc; i++) {
         Local *l = cand[i];
         int list[16], n = 0;
+        if (l->elided) continue;
         if (is_v(l->ty)) {
             /* vector registers are not preserved by calls, but a call leaves alone the ones
                its callee does not use */
@@ -2806,7 +2823,7 @@ static void assign_homes(Func *f, int *locals_size) {
         Local *l = f->locals[i];
         if (l->home) continue;
         if (l->is_param && !l->in_reg_arg) continue;   /* stays in the caller's frame */
-        if (l->dead) continue;
+        if (l->dead || l->elided) continue;
         int size = (ty_is_aggr(l->ty) && l->is_param) ? 4 : l->ty->size;
         off = (off + 3) & ~3;
         l->off = off;

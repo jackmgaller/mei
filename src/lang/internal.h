@@ -216,6 +216,7 @@ typedef struct Stmt {
     Local *for_end;                /* S_FOR: hidden end-bound local */
     MatchArm *arms; int narms;     /* S_MATCH (var: hidden scrutinee local) */
     int pos, pos2;                 /* codegen: live-range positions (loops: header, bottom) */
+    Local **ips; Expr **ipinit; int *ipstep; int nips;   /* S_FOR: induction pointers (&a[i]) */
 } Stmt;
 
 struct Local {
@@ -245,6 +246,8 @@ struct Local {
     uint32_t clob;        /* registers those calls may change (as Func.clob) */
     int crosses_xfm;      /* a mat4 * vector (which loads v4-v7) happens inside the live range */
     int dead;             /* never read or written (a constant loop bound's end local): no home */
+    int elided;           /* a `let` whose value was substituted into its uses: no home */
+    int captured;         /* a function literal captures it */
 };
 
 typedef struct Param { const char *name; TypeExpr *texpr; Type *ty; Loc loc; Local *local; } Param;
