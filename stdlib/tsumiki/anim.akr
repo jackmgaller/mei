@@ -34,8 +34,9 @@ struct TkRig {
 }
 
 struct TkJoint {
-    rot: vec3                // radians about x (pitch: + tips forward and down for a limb that
-                             // hangs), y (yaw) and z (roll)
+    rot: vec3                // radians about x (+ swings a hanging limb forward, toward +Z,
+                             // and tips an upright part back), y (+ turns toward +X) and z
+                             // (+ swings a hanging limb toward +X)
     move: vec3               // added to the joint's position
 }
 

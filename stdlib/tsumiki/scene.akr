@@ -274,7 +274,7 @@ fn __tk_chunk(cell: s32, nf: s32, ground: bool, group: s32) {
 }
 
 // Adds a mesh to the level (one built by tools/tsumiki.py, say): drawn every frame (first,
-// if `ground`). Not solid: add tk_add_box() colliders for it.
+// if `ground`), skipped when off screen. Not solid: add tk_add_box() colliders for it.
 fn tk_add_piece(m: *Mesh, ground: bool) {
     if __tk_npieces >= TK_MAX_PIECES {
         println("tsumiki: more than 64 level pieces (chunks)")
@@ -284,6 +284,19 @@ fn tk_add_piece(m: *Mesh, ground: bool) {
     __tk_npieces += 1
     __tk_group += 1
     *p = TkPiece { mesh: m, centre: vec3(0.0, 0.0, 0.0), radius: 0.0, ground: ground, shown: true, group: __tk_group }
+    // its bounds, for culling
+    let v = (m as *u8 + m.verts) as *vec4
+    var lo = vec3(1000.0, 1000.0, 1000.0)
+    var hi = vec3(-1000.0, -1000.0, -1000.0)
+    for i in 0..(m.nverts as s32) {
+        let q = v[i]
+        lo = vec3(min(lo.x, q.x), min(lo.y, q.y), min(lo.z, q.z))
+        hi = vec3(max(hi.x, q.x), max(hi.y, q.y), max(hi.z, q.z))
+    }
+    if m.nverts > 0 {
+        p.centre = (lo + hi) * 0.5
+        p.radius = length((hi - lo) * 0.5) + 0.1
+    }
 }
 
 // ---- platforms

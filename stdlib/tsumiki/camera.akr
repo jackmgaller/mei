@@ -126,8 +126,8 @@ fn __tk_cam_mode(mode: s32, target: *TkBody, blend: s32) {
     }
 }
 
-// Behind `b`, looking down at it a little; swings round behind it as it runs about, and L/R
-// (tk_cam_turn) turn it round.
+// Behind `b`, looking down at it a little (`tilt`, `dist`, `height`); it swings round behind
+// it as it runs about (unless `swing` is false), and tk_cam_turn() (L/R) turns it round.
 fn tk_cam_follow(b: *TkBody, blend: s32) {
     __tk_cam_mode(TK_CAM_FOLLOW, b, blend)
     if blend == 0 && b != null {
@@ -186,7 +186,7 @@ fn __tk_cam_room(focus: vec3, yaw: fixed, pitch: fixed) -> vec3 {
     let c = &tk_cam
     var pos = tk_orbit_point(focus, yaw, pitch, c.__dist)
     for k in 0..4 {
-        if c.__dist <= 1.0 || tk_overlap_sphere(pos, 0.55) < 0 { break }
+        if c.__dist <= 1.0 || tk_overlap_sphere(pos, 0.4) < 0 { break }
         c.__dist = max(c.__dist - 0.4, 1.0)
         pos = tk_orbit_point(focus, yaw, pitch, c.__dist)
     }

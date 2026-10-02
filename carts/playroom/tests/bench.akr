@@ -104,6 +104,20 @@ fn update() {
         c = cycle_count()
         for i in 0..60 { __tk_cam_step() }
         report("camera step (follow, with pull-in rays)", cycle_count() - c, 60)
+        tk_cam_fixed(vec3(0.0, 4.0, -10.0), hero, vec3(0.0, 0.0, 0.0), 0)
+        c = cycle_count()
+        for i in 0..60 { __tk_cam_step() }
+        report("camera step (fixed)", cycle_count() - c, 60)
+        tk_cam_follow(hero, 0)
+        for i in 0..8 { let _ = tk_new_zone(vec3(fixed(i) - 4.0, 0.0, 0.0), vec3(fixed(i) - 3.5, 1.0, 1.0)) }
+        c = cycle_count()
+        for i in 0..60 { __tk_zones_step() }
+        report("zone step (per zone, 1 body)", cycle_count() - c, 480)
+        let p = tk_new_platform(null, vec3(0.0, 3.0, 9.0), vec3(-1.0, -0.2, -1.0), vec3(1.0, 0.0, 1.0))
+        tk_platform_path(p, vec3(0.0, 3.0, 9.0), vec3(3.0, 3.0, 9.0), 100)
+        c = cycle_count()
+        for i in 0..60 { __tk_platforms_step() }
+        report("platform step (moving, nothing on it)", cycle_count() - c, 60)
     }
     if frame_n == 10 {
         for i in 0..256 { tk_burst(TK_SPARKLE, vec3(fixed(i % 16) * 0.4 - 3.0, 1.0, fixed(i / 16) * 0.3 - 3.0), 1) }
