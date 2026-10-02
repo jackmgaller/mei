@@ -12,7 +12,7 @@
 #define VRAM_BASE  0x400000u
 #define VRAM_SIZE  0x100000u
 #define IO_BASE    0xFF0000u
-#define IO_SIZE    0x600u   /* 0x400-0x5FF: audio channels 8-15 and global audio registers */
+#define IO_SIZE    0x700u   /* 0x400-0x5FF: audio channels 8-15 and global audio registers; 0x600: broadcast */
 
 /* VRAM layout (absolute addresses) */
 #define FB_A_ADDR     0x400000u
@@ -64,6 +64,8 @@
 #define IO_SYS_TIME    0x318   /* extension: local time of day, seconds since midnight */
 #define IO_SYS_DATE    0x31C   /* extension: local date */
 #define IO_CARD        0x380   /* extension: memory card controller, 0x380-0x39F */
+#define IO_BC          0x600   /* extension: broadcast decoder, 0x600-0x647 (docs/BROADCAST.md) */
+#define IO_BC_SIZE     0x48
 
 #define GPU_TRI_LIMIT      2000
 #define GPU_LIST_LIMIT     65536
@@ -76,6 +78,40 @@
 typedef struct {
     uint32_t slot, save, buf, len, meta, result, error;
 } MeiCardRegs;
+
+/* Broadcast decoder (broadcast.c, docs/BROADCAST.md) */
+#define MEI_BC_SLOTS      8
+#define MEI_BC_MAX_ROWS   64
+#define MEI_BC_ROW_BYTES  52
+#define MEI_BC_PACKET     64
+#define MEI_BC_FIFO       1024
+
+typedef struct {
+    uint32_t page;           /* page id, or 0xFFFFFFFF when free */
+    uint8_t version, seen, complete, changed;
+    uint8_t count;           /* row count, 0 until the last row has arrived */
+    uint64_t rows;           /* bit r: row r has arrived */
+    uint32_t stamp;          /* FRAME of the sync of the latest stored row */
+    uint8_t data[MEI_BC_MAX_ROWS * MEI_BC_ROW_BYTES];
+} MeiBcSlot;
+
+typedef struct {
+    /* the signal (kept across reset) */
+    int carrier;
+    uint8_t in[MEI_BC_BYTES_PER_TICK];
+    int in_n;
+    uint32_t noise_ppm, noise_rng;
+    /* the decoder */
+    uint32_t ctrl, sel, buf, len, row, result;
+    uint32_t n_ok, n_fixed, n_dropped;
+    int locked, misses;
+    uint8_t pk[MEI_BC_PACKET];
+    uint32_t pk_tick[MEI_BC_PACKET];
+    int pk_n;
+    uint8_t fifo[MEI_BC_FIFO];
+    int fifo_head, fifo_n, fifo_over;
+    MeiBcSlot slot[MEI_BC_SLOTS];
+} MeiBroadcast;
 
 typedef struct {
     uint32_t addr, len, loop, pitch, vol, ctrl;
@@ -150,6 +186,9 @@ struct Mei {
     int audio_frames;
     uint32_t audio_phase;    /* sub-sample accounting for 22050 / 60 */
     MeiReverb rev;
+
+    /* Broadcast decoder */
+    MeiBroadcast bc;
 };
 
 /* ---- bus.c ---- memory map, I/O dispatch, fault checks.
@@ -187,6 +226,14 @@ int card_io_read(Mei *m, uint32_t off, uint32_t *out);    /* off relative to IO_
 int card_io_write(Mei *m, uint32_t off, uint32_t val);    /* -1 unmapped, -2 read-only */
 void card_vsync(Mei *m);
 void card_set_cart_id(Mei *m);
+
+/* ---- broadcast.c ---- */
+void broadcast_reset(Mei *m);
+void broadcast_tick(Mei *m);                 /* end of a tick: take the bytes delivered during it */
+int broadcast_io_read(Mei *m, uint32_t off, uint32_t *out);   /* off relative to IO_BC; -1 = unmapped */
+int broadcast_io_write(Mei *m, uint32_t off, uint32_t val);   /* -1 unmapped, -2 read-only */
+int bc_hamming84(uint8_t byte);              /* nibble, | 0x10 if corrected, -1 for a double error */
+uint16_t bc_crc16(const uint8_t *p, int n, uint16_t crc);
 
 /* ---- audio.c ---- */
 void audio_reset(Mei *m);
