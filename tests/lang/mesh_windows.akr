@@ -1,0 +1,129 @@
+// mesh(): texture windows. A face's texture byte bits 5-7 pick one of up to seven windows
+// from the table at the mesh header's byte offset +12; the face loops put it into bits 16-31
+// of the packet's second texture coordinate. The same mesh without a table builds exactly the
+// packets it did before windows existed (the checksums were recorded with that build), with or
+// without fog (the third line), and the one with a table differs only in those words.
+// frames: 4
+
+struct TestMesh { hdr: Mesh, v: [4]vec4, f: [6]Face, win: [4]u16 }
+var wm: TestMesh                        // with windows
+var um: TestMesh                        // the same faces, no table
+
+fn face(f: *Face, flags: s32, tex: s32, pal: s32) {
+    f.flags = (flags | FACE_DOUBLE) as u8
+    f.tex = tex as u8
+    f.palette = pal as u8
+    f.idx[0] = 0
+    f.idx[1] = 1
+    f.idx[2] = 2
+    f.idx[3] = 3
+    f.col[0] = 0x808080
+    f.col[1] = 0x406080
+    f.col[2] = 0x8080C0
+    f.col[3] = 0x20A040
+    f.uv[0] = 0x0000
+    f.uv[1] = 0x00F0                    // u 240
+    f.uv[2] = 0xC800                    // v 200
+    f.uv[3] = 0xC8F0
+}
+
+fn init() {
+    wm.hdr.nverts = 4
+    wm.hdr.nfaces = 6
+    wm.hdr.verts = 16
+    wm.hdr.faces = 16 + 4 * 16
+    wm.hdr.windows = 16 + 4 * 16 + 6 * 36
+    wm.v[0] = vec4(-1.0, -1.0, 0.0, 1.0)
+    wm.v[1] = vec4(1.0, -1.0, 0.0, 1.0)
+    wm.v[2] = vec4(-1.0, 1.0, 0.0, 1.0)
+    wm.v[3] = vec4(1.0, 1.0, 0.0, 1.0)
+    face(&wm.f[0], FACE_TEXTURED | FACE_QUAD, 0x20 | 0x10 | 3, 5)                 // window 1, 4-bit
+    face(&wm.f[1], FACE_TEXTURED | FACE_QUAD | FACE_GOURAUD, 0x40 | 6, 2)         // window 2, 8-bit
+    face(&wm.f[2], FACE_TEXTURED, 0x60 | 0x10 | 9, 0xAB)                          // window 3
+    face(&wm.f[3], FACE_TEXTURED | FACE_GOURAUD, 0x10 | 1, 7)                     // no window
+    face(&wm.f[4], FACE_QUAD | FACE_GOURAUD, 0xE0, 0)                             // untextured (bits ignored)
+    face(&wm.f[5], FACE_TEXTURED | FACE_QUAD | FACE_SEMI, 0x80 | 0x10 | 15, 255)  // window 4, semi
+    wm.f[5].blend = 2
+    wm.win[0] = 0x2222                  // the window halfwords as the packet holds them
+    wm.win[1] = 0xF9AB
+    wm.win[2] = 0x0701
+    wm.win[3] = 0xFFFF
+    um = wm
+    um.hdr.windows = 0
+    for i in 0..6 { um.f[i].tex = um.f[i].tex & 0x1F }
+}
+
+var pu0: *u32
+var pu1: *u32
+var pw1: *u32
+
+fn draw() {
+    camera(vec3(0.0, 0.0, -3.0), 0.0)
+    if frame() == 2 { fog(0x305070, 1.0, 8.0) }
+    pu0 = __arena_ptr
+    mesh(&um.hdr)
+    pu1 = __arena_ptr
+    mesh(&wm.hdr)
+    pw1 = __arena_ptr
+    fog_off()
+}
+
+// Words of a packet of type t (header included), and the index of its second texture word.
+fn words(t: u32) -> s32 {
+    let n = 3 + ((t >> 2) & 1) as s32
+    var w = 1 + n
+    if (t & 1) != 0 { w += n } else { w += 1 }
+    if (t & 2) != 0 { w += n }
+    return w
+}
+
+fn update() {
+    if frame() == 0 { return }
+    // checksum of the plain mesh's packets (headers left out: they hold ordering-table links)
+    var sum: u32 = 0
+    var np = 0
+    var p = pu0
+    while (p as u32) < (pu1 as u32) {
+        let n = words(p[0] >> 24)
+        for k in 1..n { sum = sum * 31 + p[k] }
+        np += 1
+        p = (p as u32 + 4 * n as u32) as *u32
+    }
+    // the windowed mesh's packets: equal word for word, but the second texture coordinate
+    var bad = 0
+    var wins = 0
+    var q = pu1
+    p = pu0
+    while (q as u32) < (pw1 as u32) {
+        let t = q[0] >> 24
+        let n = words(t)
+        if (p[0] >> 24) != t { bad += 1 }
+        for k in 1..n {
+            let k1 = 5 + (t & 1) as s32
+            if (t & 2) != 0 && k == k1 {
+                if (q[k] & 0xFFFF) != p[k] { bad += 1 }
+                if (q[k] >> 16) != 0 {
+                    wins += 1
+                    print_hex(q[k] >> 16)
+                    print_char(' ')
+                }
+            } else if q[k] != p[k] {
+                bad += 1
+            }
+        }
+        q = (q as u32 + 4 * n as u32) as *u32
+        p = (p as u32 + 4 * n as u32) as *u32
+    }
+    if (p as u32) != (pu1 as u32) { bad += 1 }
+    print_int(np)
+    print_char(' ')
+    print_hex(sum)
+    print_char(' ')
+    print_int(wins)
+    print_char(' ')
+    print_int(bad)
+    print_char('\n')
+}
+// expect: 2222 F9AB 701 FFFF 6 9683FD8E 4 0
+// expect: 2222 F9AB 701 FFFF 6 9683FD8E 4 0
+// expect: 2222 F9AB 701 FFFF 6 DA1C7142 4 0

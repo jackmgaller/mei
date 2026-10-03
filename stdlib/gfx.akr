@@ -13,13 +13,14 @@ struct Mesh {
     nfaces: u16      // face count
     verts: u32       // byte offset of the vertices from the start of the mesh
     faces: u32       // byte offset of the faces
-    reserved: u32
+    windows: u32     // byte offset of the texture window table, 0 for none (see Face.tex)
 }
 
 struct Face {
     flags: u8        // FACE_* bits; bits 0-3 match the GPU packet type bits
     blend: u8        // blend mode 0-3 for semi-transparent faces
-    tex: u8          // bits 0-3 texture slot, bit 4 set for a 4-bit texture
+    tex: u8          // bits 0-3 texture slot, bit 4 set for a 4-bit texture, bits 5-7 texture
+                     // window 1-7: the window table's halfword 1-7 (0: none; ignored with no table)
     palette: u8      // palette number
     idx: [4]u16      // vertex indices (quads use all four, in strip order)
     col: [4]u32      // colours 0xBBGGRR; flat faces use col[0]; 0x808080 leaves textures unchanged
@@ -58,13 +59,14 @@ var __ot_k3b: fixed        // (camera_clip's scales; depth_key changes __ot_k3/_
 var __ot_k4b: fixed
 var __ot_user: s32         // depth_bias
 var __ot_key: s32          // depth_key's share of __ot_bias
-var __fog_on: bool
+var __fog_on: u32          // 0, or 0x8001 while fog is on (+0x10000 while a mesh with windows draws)
 var __fog_near: fixed
 var __fog_scale: fixed
 var __scr_x0: s32 = 0      // the cull rectangle (cull_rect), screen pixels
 var __scr_x1: s32 = 320
 var __scr_y0: s32 = 0
 var __scr_y1: s32 = 240
+var __win_tab: u32         // the window table of the mesh being drawn (__draw_mesh_win)
 var __scr_k: [4]fixed = [-1.0, 1.0, 1.0, -1.0]    // its edges in clip space (x/w left, right; y/w top, bottom)
 
 // ---- colours
@@ -225,14 +227,14 @@ fn camera_matrix(m: mat4) { __vp = m }
 // Blends vertex colours toward `colour` between view depths near and far. Textured faces
 // can only darken (their colour is a tint), so they fade toward half the fog colour.
 fn fog(colour: u32, near: fixed, far: fixed) {
-    __fog_on = true
+    __fog_on = 0x8001
     __fog_col = colour & 0xFFFFFF
     __fogt_col = (colour >> 1) & 0x7F7F7F
     __fog_near = near
     __fog_scale = 256.0 / (far - near)
 }
 
-fn fog_off() { __fog_on = false }
+fn fog_off() { __fog_on = 0 }
 
 // ---- meshes
 
@@ -484,16 +486,24 @@ fn mesh_xf(m: *Mesh, model: mat4) {
     __draw_mesh(m, mvp)
 }
 
+// A mesh with a window table goes to __draw_mesh_win, so the test is all a mesh without one
+// pays (its stores to __clip_src and __clip_m moved ahead of __xform pay for it: the same cycles
+// as before windows).
 fn __draw_mesh(m: *Mesh, mvp: mat4) {
     let nv = m.nverts as s32
     if nv > MAX_MESH_VERTS {
         println("mesh(): too many vertices")
         return
     }
+    if m.windows != 0 {
+        __draw_mesh_win(m, mvp)
+        return
+    }
     let base = m as u32
-    let inside = __xform((base + m.verts) as *vec4, nv, &__sv[0], &mvp)
-    __clip_src = (base + m.verts) as *vec4      // for faces clip.akr has to clip
+    let src = (base + m.verts) as *vec4
+    __clip_src = src      // for faces clip.akr has to clip
     __clip_m = &mvp
+    let inside = __xform(src, nv, &__sv[0], &mvp)
     if __subdiv > 0 {
         __sub_src = (base + m.verts) as *vec4
         __sub_mvp = mvp
@@ -503,4 +513,27 @@ fn __draw_mesh(m: *Mesh, mvp: mat4) {
     } else {
         __draw_faces_in((base + m.faces) as *Face, m.nfaces as s32)   // no vertex to clip
     }
+}
+
+// The same for a mesh with texture windows: bit 16 of __fog_on sends its faces (and their
+// clipped and subdivided pieces) to the face loops' window variants, which look each face's
+// window up in __win_tab and put it into the packet's second texture coordinate.
+fn __draw_mesh_win(m: *Mesh, mvp: mat4) {
+    __win_tab = m as u32 + m.windows
+    __fog_on = __fog_on | 0x10000
+    let base = m as u32
+    let src = (base + m.verts) as *vec4
+    __clip_src = src
+    __clip_m = &mvp
+    let inside = __xform(src, m.nverts as s32, &__sv[0], &mvp)
+    if __subdiv > 0 {
+        __sub_src = src
+        __sub_mvp = mvp
+        __draw_faces_sub((base + m.faces) as *Face, m.nfaces as s32)
+    } else if inside == 0 {
+        __draw_faces((base + m.faces) as *Face, m.nfaces as s32)
+    } else {
+        __draw_faces_in((base + m.faces) as *Face, m.nfaces as s32)
+    }
+    __fog_on = __fog_on & 0xFFFF
 }
