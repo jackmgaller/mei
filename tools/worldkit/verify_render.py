@@ -14,9 +14,13 @@ clips every face to its pass's near plane in floating point, projects it with th
 the cart used, and picks the nearest face at each pixel by true view depth. Only pixels where
 that choice cannot be changed by the runtime's rounding are compared: pixels at least
 `edge_margin` pixels inside the winning face and at least that far from every other face that
-could be nearer, with a depth difference larger than `depth_epsilon`. The two passes are kept
-apart as the reader keeps them: wherever a near-pass face covers a pixel, the far pass's
-stand-ins are behind it by construction (docs/WORLDPACK.md, "What a reader does").
+could be nearer, with a depth difference larger than `depth_epsilon`. The reader's passes are
+kept apart as the reader keeps them, each drawn over the one before: the far pass's stand-ins,
+then the ground pass (ground placements, when the pack has them and the runtime draws ground
+first), then the near pass (docs/WORLDPACK.md, "What a reader does"). Wherever a later pass's
+face covers a pixel, the earlier passes are behind it by construction; where an earlier pass's
+face is truly nearer, the pixel is an inversion of that design (a stand-in in front of near
+geometry, or ground in front of what is drawn after it), counted apart from wrong order.
 
 See docs/WORLDCHECKER.md for what is and is not exact.
 """
@@ -98,6 +102,7 @@ class Instance:
     mask: int = 0
     tag: int = None
     sphere: tuple = None
+    ground: bool = False    # a ground placement (pack 1.1): drawn in the ground pass
 
 
 def instances(pack):
@@ -110,7 +115,8 @@ def instances(pack):
             if pl_off is None:
                 pl_off = struct.unpack_from('<I', pack.data, c.off + 56)[0]
             out.append(Instance(('placement', i, j, k), (i, j), p['mesh'], pl_off + 48 * k + 40, p['pos'],
-                                p['cos'], p['sin'], mask=p['mask'], tag=p['tag'], sphere=p['sphere']))
+                                p['cos'], p['sin'], mask=p['mask'], tag=p['tag'], sphere=p['sphere'],
+                                ground=p.get('ground', False)))
         if c.standin:
             out.append(Instance(('standin', i, j), (i, j), c.standin, c.off + 48, (0, 0, 0),
                                 sphere=c.standin_bounds))
@@ -187,7 +193,7 @@ struct VOut {{
     drawn: s32
     standins: s32
     entities: s32
-    reserved: s32
+    ground: s32         // ground placements drawn
     origin: vec4
     vp: mat4
 }}
@@ -241,6 +247,7 @@ fn draw() {{
     wp_far_ring = {far_ring}
     wp_clip_near = {clip_near}
     wp_near_far = {near_far}
+    wp_ground_first = {ground_first}
     let nl = wp_layer_count()
     for l in 0..nl {{ wp_layer_set(l, false) }}
     for l in 0..nl {{
@@ -264,6 +271,7 @@ fn draw() {{
     vout.drawn = wp_stats.drawn
     vout.standins = wp_stats.standins
     vout.entities = ne
+    vout.ground = wp_stats.ground
     let o = wp_view_origin()
     vout.origin = vec4(o.x, o.y, o.z, 0.0)
     vout.vp = __vp
@@ -308,7 +316,8 @@ def run_cart(pack_bytes, id_bytes, views, runtime, tools, work):
     near_far = runtime['near_far']
     (work / 'check.akr').write_text(CART.format(far_ring=int(runtime['far_ring']),
                                                 clip_near=fixed_literal(runtime['clip_near']),
-                                                near_far=fixed_literal(near_far)))
+                                                near_far=fixed_literal(near_far),
+                                                ground_first='true' if runtime['ground_first'] else 'false'))
     t0 = time.perf_counter()
     _run([tools['compiler'], work / 'check.akr', '-o', work / 'check.mei', '--sym', work / 'check.sym'],
          'compiling the verification cart')
@@ -341,7 +350,7 @@ def run_cart(pack_bytes, id_bytes, views, runtime, tools, work):
         at += OUT_SIZE
         out = dict(request=o[0] & 0xFFFFFFFF, view=o[1], draw_cycles=o[2], entity_cycles=o[3],
                    arena_bytes=o[4], arena_left=o[5], near_cells=o[6], placements=o[7], drawn=o[8],
-                   standins=o[9], entities=o[10], origin=[c / ONE for c in origin[:3]],
+                   standins=o[9], entities=o[10], ground=o[11], origin=[c / ONE for c in origin[:3]],
                    vp=np.array(vp, dtype=float).reshape(4, 4) / ONE)
         pic = None
         if out['request'] & 2:
@@ -383,7 +392,8 @@ def cell_mask(pack, cell, layers_on):
 
 def select(pack, by_cell, eye, vp, layers_on, runtime):
     """What wp_draw() (and the cart's entity loop) draws from eye: a list of (instance, pass,
-    certain), certain False where a culling sphere is too close to a plane to say."""
+    certain), certain False where a culling sphere is too close to a plane to say. The pass is
+    'far', 'ground' (a ground placement, when the runtime draws ground first) or 'near'."""
     S = 1 << pack.cell_shift
     half = S / 2
     ci, cj = math.floor(eye[0]) >> pack.cell_shift, math.floor(eye[2]) >> pack.cell_shift
@@ -425,7 +435,8 @@ def select(pack, by_cell, eye, vp, layers_on, runtime):
                     s = inst.sphere
                     v = _sphere(planes, (s[0] / ONE + di * S, s[1] / ONE, s[2] / ONE + dj * S), s[3] / ONE)
                     if v is not False:
-                        out.append((inst, 'near', v is True and cv is True))
+                        pas = 'ground' if inst.ground and runtime['ground_first'] else 'near'
+                        out.append((inst, pas, v is True and cv is True))
     return out
 
 
@@ -434,7 +445,7 @@ class Face:
     id: int
     inst: object
     index: int          # the face's number in its mesh
-    pass_: str          # 'near' or 'far'
+    pass_: str          # 'far', 'ground' or 'near' (PASSES)
     poly: object        # screen polygon (k, 2), centred on the runtime's rounding
     plane: tuple        # (N, D): depth w = D / (N . (u, v, 1))
     definite: bool      # drawn for certain and checkable: may be the expected face
@@ -604,21 +615,30 @@ class _Pass:
         return exp.astype(np.int32), covered
 
 
+PASSES = ('far', 'ground', 'near')     # the reader's passes in drawing order, each over the last
+
+
 def compare_view(faces, actual, settings):
     """The ordering check of one view: actual is the ID picture (0 = nothing drawn)."""
     np = numpy()
     margin = settings['edge_margin']
     eps = settings['depth_epsilon']
     tol_extra = max((f.tol for f in faces), default=0.0)
-    near, far = _Pass(), _Pass()
+    passes = {name: _Pass() for name in PASSES}
     for f in faces:
-        (near if f.pass_ == 'near' else far).add(f, margin)
-    exp_n, cov_n = near.expected(eps + tol_extra)
-    exp_f, cov_f = far.expected(eps + tol_extra)
-    expected = np.where(cov_n, exp_n, exp_f)
+        passes[f.pass_].add(f, margin)
+    # each pixel's expected face comes from the last pass that may cover it (its top pass)
+    expected = np.zeros(W * H, dtype=np.int32)
+    depth_e = np.full(W * H, np.inf)
+    top = np.full(W * H, -1, dtype=np.int32)
+    for rank, name in enumerate(PASSES):
+        exp_p, cov_p = passes[name].expected(eps + tol_extra)
+        expected = np.where(cov_p, exp_p, expected)
+        depth_e = np.where(cov_p, passes[name].r1, depth_e)
+        top = np.where(cov_p, rank, top)
+    rank_of = {name: rank for rank, name in enumerate(PASSES)}
     by_id = {f.id: f for f in faces}
     tested = expected >= 0
-    depth_e = np.where(cov_n, near.r1, far.r1)
     mism = tested & (actual != expected)
     wrong = np.zeros(W * H, dtype=bool)
     coverage = np.zeros(W * H, dtype=bool)
@@ -639,18 +659,26 @@ def compare_view(faces, actual, settings):
         for p in pix.tolist():
             z = zmap.get(p)
             e = expected[p]
-            if z is None or e == 0 or (f.pass_ == 'far' and cov_n[p]):
-                coverage[p] = True
+            if z is None or e == 0 or rank_of[f.pass_] < top[p]:
+                coverage[p] = True          # an earlier pass's face over a later pass's
             elif z > depth_e[p] + eps + tol_extra:
                 wrong[p] = True
                 drawn_depth[p] = z
             else:
                 coverage[p] = True
-    # stand-ins in front of the near pass (the two-pass design draws them behind)
-    inversion = tested & cov_n & np.isfinite(far.r1) & (far.r1 < near.r1 - eps - tol_extra) & (actual == expected)
+    # Inversions of the pass design, at pixels drawn as designed: a face of an earlier pass that
+    # surely covers the pixel and is truly nearer than the later pass's expected face. Stand-ins
+    # in front of ground or near geometry; ground in front of the near pass (ground-first drawing
+    # puts what stands on the ground over it, so whatever the ground truly hides shows through).
+    sure = tested & (actual == expected) & (expected > 0)
+    far, ground = passes['far'], passes['ground']
+    inversion = sure & (top > rank_of['far']) & (far.r1 < depth_e - eps - tol_extra)
+    ground_inv = sure & (top == rank_of['near']) & (ground.r1 < depth_e - eps - tol_extra)
+    covered = top >= 0
     return dict(expected=expected, tested=tested, wrong=wrong, coverage=coverage, depth=depth_e,
-                drawn_depth=drawn_depth, inversion=inversion, ambiguous=(~tested) & (cov_n | cov_f),
-                by_id=by_id, covered=cov_n | cov_f)
+                drawn_depth=drawn_depth, inversion=inversion, ground_inversion=ground_inv,
+                ground_id=ground.rid, ground_depth=ground.r1, ambiguous=(~tested) & covered,
+                by_id=by_id, covered=covered)
 
 
 def witnesses(cmp, actual, settings, describe, limit):
@@ -689,8 +717,30 @@ def witnesses(cmp, actual, settings, describe, limit):
     return out, near_pix, total - near_pix
 
 
+def ground_witnesses(cmp, describe, limit):
+    """Ground inversions grouped by (ground face, the face drawn over it), largest first."""
+    np = numpy()
+    inv = cmp['ground_inversion']
+    if not inv.any():
+        return []
+    pairs = {}
+    for p in np.flatnonzero(inv).tolist():
+        g, e = int(cmp['ground_id'][p]), int(cmp['expected'][p])
+        rec = pairs.setdefault((g, e), dict(count=0, sample=p, gap=0.0, depth=float('inf')))
+        rec['count'] += 1
+        rec['gap'] = max(rec['gap'], float(cmp['depth'][p] - cmp['ground_depth'][p]))
+        rec['depth'] = min(rec['depth'], float(cmp['ground_depth'][p]))
+    out = []
+    for (g, e), rec in sorted(pairs.items(), key=lambda kv: (-kv[1]['count'], kv[0]))[:limit]:
+        p = rec['sample']
+        out.append({'code': 'ground_inversion', 'pixels': rec['count'], 'ground': describe(cmp['by_id'][g]),
+                    'drawn': describe(cmp['by_id'][e]), 'sample_pixel': [p % W, p // W],
+                    'ground_depth': round(rec['depth'], 4), 'max_depth_behind': round(rec['gap'], 4)})
+    return out
+
+
 def diagnostic_image(cmp, actual):
     np = numpy()
     exp = np.where(cmp['tested'], cmp['expected'], 0) - 1
     act = actual.astype(np.int64) - 1
-    return diagnostic_png(exp.astype(np.int64), act, cmp['wrong'] | cmp['coverage'])
+    return diagnostic_png(exp.astype(np.int64), act, cmp['wrong'] | cmp['coverage'] | cmp['ground_inversion'])

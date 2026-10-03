@@ -18,7 +18,8 @@ Three groups of checks, all from the pack alone (plus optional names for reports
    the air between rooftops, at authored vantage points and on cell seams, for each layer
    combination; CPU and GPU cycles, triangles submitted and dropped, packet arena use.
 3. Ordering: each view's triangle-ID picture against an independent reference that resolves
-   true depth (verify_render.py).
+   true depth (verify_render.py), with the reader's passes (far stand-ins, ground, near) kept
+   apart as the reader draws them.
 
 Hard failures in every mode: dropped triangles, a full packet arena, static collision errors
 and broken references. Thresholds (budgets, wrong-order pixels, stand-ins) fail the check only
@@ -54,6 +55,7 @@ DEFAULTS = {
         'near_wrong_pixels': 0,         # ...allowed per view
         'far_wrong_fraction': 0.005,    # of the screen, per view, elsewhere
         'coverage_pixels': 0,           # pixels the runtime drew differently from the reference
+        'ground_inversion_pixels': 0,   # per view: pixels where ground truly hides what is drawn over it
         'gpu_cycles': 800000,           # per view (80% of 1,000,000)
         'draw_cpu_cycles': 300000,      # wp_draw() plus entity meshes per view (60% of 500,000)
         'cell_triangles': 1600,
@@ -74,7 +76,7 @@ DEFAULTS = {
         'max_views': 600,
     },
     'vantage_points': [],               # {"position": [x, y, z], "yaw": deg, "pitch": deg}
-    'runtime': {'far_ring': 3, 'clip_near': 0.1, 'near_far': None, 'draw_entities': True},
+    'runtime': {'far_ring': 3, 'clip_near': 0.1, 'near_far': None, 'draw_entities': True, 'ground_first': True},
     'ordering': {'enabled': True, 'edge_margin': 1.0, 'depth_epsilon': 0.001, 'witnesses': 8},
     'collision': {'crack_samples_per_unit': 4.0, 'solid_ray_length': 32.0, 'findings': 50},
     'images': 6,
@@ -399,6 +401,8 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         ncrack += n
     ents, nent = ST.entity_check(pack, tris, cfg['collision'], lim)
     ref_err, ref_warn = ST.reference_check(pack, rt['far_ring'])
+    if rt['ground_first']:
+        ref_warn += ST.ground_check(pack, rt['near_far'], lim)
     cells, regions = ST.counts(pack)
     static['collision'] = {'triangles': len(tris), 'boundary_edges': nedges, 'findings': cracks[:lim],
                            'entities_in_solid': ents}
@@ -498,28 +502,32 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
                                 'triangles_dropped': max(st['tris_dropped'], st2['tris_dropped']),
                                 'arena_bytes': out['arena_bytes'],
                                 'arena_full': min(out['arena_left'], out2['arena_left']) < RD.ARENA_FULL,
-                                'placements_drawn': out['drawn'], 'standins_drawn': out['standins'],
-                                'entities_drawn': out['entities']}
+                                'placements_drawn': out['drawn'], 'ground_drawn': out['ground'],
+                                'standins_drawn': out['standins'], 'entities_drawn': out['entities']}
                 t1 = time.perf_counter()
                 if cfg['ordering']['enabled'] and ids_ok:
-                    near_planes = {'near': rt['clip_near'], 'far': S / 2}
+                    near_planes = {'near': rt['clip_near'], 'ground': rt['clip_near'], 'far': S / 2}
                     sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
                     faces = RD.view_faces(pack, meshes, sel, out2['vp'], out2['origin'], first, near_planes)
                     cmp = RD.compare_view(faces, pic, order_cfg)
                     issues, near_px, far_px = RD.witnesses(cmp, pic, order_cfg, describe, order_cfg['witnesses'])
                     cov = int(cmp['coverage'].sum())
+                    ginv = int(cmp['ground_inversion'].sum())
                     row['ordering'] = {'tested_pixels': int((cmp['tested'] & cmp['covered']).sum()),
                                        'tested_background': int((cmp['tested'] & ~cmp['covered']).sum()),
                                        'undecided_pixels': int(cmp['ambiguous'].sum()),
                                        'wrong_near_pixels': near_px, 'wrong_far_pixels': far_px,
                                        'coverage_errors': cov, 'pass_inversions': int(cmp['inversion'].sum()),
-                                       'faces': len(faces), 'issues': issues}
+                                       'ground_inversions': ginv, 'faces': len(faces), 'issues': issues}
+                    if ginv:
+                        row['ordering']['ground_issues'] = RD.ground_witnesses(cmp, describe,
+                                                                               order_cfg['witnesses'])
                     if cov:
                         p = int(RD.numpy().flatnonzero(cmp['coverage'])[0])
                         row['ordering']['coverage_sample'] = {'pixel': [p % RD.W, p // RD.W], 'drawn_id': int(pic[p]),
                                                               'expected_id': int(cmp['expected'][p])}
-                    if out_dir and (near_px or far_px or cov):
-                        diag.append(((near_px, far_px + cov), v['index'], cmp, pic))
+                    if out_dir and (near_px or far_px or cov or ginv):
+                        diag.append(((near_px + ginv, far_px + cov), v['index'], cmp, pic))
                         diag.sort(key=lambda d: (-d[0][0], -d[0][1], d[1]))
                         del diag[cfg['images']:]
                 else:
@@ -569,6 +577,11 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
             report['threshold_failures'].append({'check': 'ordering', 'code': 'coverage', **where,
                                                  'value': o['coverage_errors'], 'limit': th['coverage_pixels'],
                                                  'sample': o.get('coverage_sample')})
+        if o['ground_inversions'] > th['ground_inversion_pixels']:
+            report['threshold_failures'].append({'check': 'ordering', 'code': 'ground_inversion', **where,
+                                                 'value': o['ground_inversions'],
+                                                 'limit': th['ground_inversion_pixels'],
+                                                 'witness': o['ground_issues'][0]})
 
     def worst(key, f):
         cand = [r for r in rows if f(r) is not None]
@@ -585,6 +598,7 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         'max_wrong_near_pixels': worst('wn', lambda r: r['ordering'].get('wrong_near_pixels')),
         'max_wrong_far_pixels': worst('wf', lambda r: r['ordering'].get('wrong_far_pixels')),
         'coverage_errors': sum(r['ordering'].get('coverage_errors', 0) for r in rows),
+        'max_ground_inversions': worst('gi', lambda r: r['ordering'].get('ground_inversions')),
         'tested_pixels': sum(r['ordering'].get('tested_pixels', 0) for r in rows),
         'hard_failures': len(report['hard_failures']),
         'threshold_failures': len(report['threshold_failures']),
@@ -593,8 +607,10 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
     report['scope'] = ('Static collision checks use the reader\'s exact floor query at sampled points. '
                        'Views are sampled, not exhaustive. Ordering compares pixels at least edge_margin '
                        'pixels inside the nearest face and clear of every other face that could be nearer; '
-                       'other pixels are counted as undecided. Semi-transparent and non-swatch textured faces '
-                       'are never the expected face. See docs/WORLDCHECKER.md.')
+                       'other pixels are counted as undecided. Ground placements are expected behind '
+                       'everything near drawn after them, as the reader draws them; where ground truly hides '
+                       'such a face it is counted as a ground inversion. Semi-transparent and non-swatch '
+                       'textured faces are never the expected face. See docs/WORLDCHECKER.md.')
     timing['native_seconds'] = t_native
     timing['compile_seconds'] = compile_s
     timing['emulator_seconds'] = run_s
