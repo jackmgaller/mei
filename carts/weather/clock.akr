@@ -2,9 +2,6 @@
 // the console's own clock (SYS_TIME, SYS_DATE). The sample tape's time is a recording's, so
 // it is not used.
 
-reg SYS_TIME: u32 @ 0xFF0318        // seconds since local midnight
-reg SYS_DATE: u32 @ 0xFF031C        // bits 0-4 day, 5-8 month, 9-11 weekday, 16-31 year
-
 struct Clock {
     year: s32
     month: s32

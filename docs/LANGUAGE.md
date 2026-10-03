@@ -1099,7 +1099,7 @@ The prelude (`stdlib/prelude.akr`) imports every module below except the plane c
 | `gpu_lag() -> s32` | ticks since reset in which a finished frame waited for the GPU; the difference of two readings is the slowdown the GPU caused between them |
 | `frame() -> u32` | frames since reset |
 | `vsync()` | end the frame now (low level: skips the ordering table and pad bookkeeping) |
-| registers | `GPU_DRAW GPU_CLEAR GPU_CTRL GPU_STATUS GPU_BACK GPU_LOAD GPU_TICKS GPU_LAG PAD1 PAD2 STICK1_X STICK1_Y STICK2_X STICK2_Y FRAME CYCLES RAND DEBUG` |
+| registers | `GPU_DRAW GPU_CLEAR GPU_CTRL GPU_STATUS GPU_BACK GPU_LOAD GPU_TICKS GPU_LAG PAD1 PAD2 STICK1_X STICK1_Y STICK2_X STICK2_Y FRAME CYCLES RAND DEBUG SYS_TIME SYS_DATE` |
 | constants | `AUDIO_BASE VRAM_PALETTE VRAM_TEXTURES TEXTURE_SLOT_SIZE SCREEN_W SCREEN_H GPU_BUDGET` |
 
 `cpu_used()` and `frames_dropped()` measure from one `vsync` to the next, so the frame after one
