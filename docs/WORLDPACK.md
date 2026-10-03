@@ -1,6 +1,6 @@
 # The world pack format
 
-**Version 1.0.** A world pack (`*.world.bin`) is the contract between the World Kit
+**Version 1.1.** A world pack (`*.world.bin`) is the contract between the World Kit
 ([WORLDKIT.md](WORLDKIT.md)), which writes packs, and the reader a cart runs, which reads them in
 place from ROM. This document is normative: a second encoder or reader can be written from it
 alone. The reference implementations are `tools/worldkit/pack.py` (encoder, decoder and an exact
@@ -13,6 +13,7 @@ What each part's status is:
 |---|---|---|---|
 | Header, index, cells | specified | yes | yes |
 | Placements, stand-ins, layers | specified | yes | yes: drawing, culling, layer masks |
+| Ground placements (1.1) | specified | yes | yes: drawn first, in a pass of their own |
 | Collision blocks (cells and entities) | specified | yes, with an exact oracle | yes: floor, ceiling, wall push, segment |
 | Entities and parameter records | specified | yes | yes: iteration, tracking, lookup by number |
 | Regions: palette variants, texture set | specified | yes | palettes loaded and blended; textures loaded at once only |
@@ -31,15 +32,16 @@ What each part's status is:
 8. [Regions](#regions)
 9. [Cells](#cells)
 10. [Placements](#placements)
-11. [Entities](#entities)
-12. [Collision blocks](#collision-blocks)
-13. [Meshes and strings](#meshes-and-strings)
-14. [What a reader does](#what-a-reader-does)
-15. [Validation](#validation)
-16. [Precision](#precision)
-17. [Costs](#costs)
-18. [The console reader](#the-console-reader-stdlibworldpackakr)
-19. [Extensions not made](#extensions-not-made)
+11. [Ground](#ground)
+12. [Entities](#entities)
+13. [Collision blocks](#collision-blocks)
+14. [Meshes and strings](#meshes-and-strings)
+15. [What a reader does](#what-a-reader-does)
+16. [Validation](#validation)
+17. [Precision](#precision)
+18. [Costs](#costs)
+19. [The console reader](#the-console-reader-stdlibworldpackakr)
+20. [Extensions not made](#extensions-not-made)
 
 ## Conventions
 
@@ -74,7 +76,7 @@ What each part's status is:
 
 ## Versions
 
-The header holds a major and a minor version; this document is 1.0.
+The header holds a major and a minor version; this document is 1.1.
 
 - A reader refuses a pack whose **major** version it does not know.
 - A reader accepts a pack with the same major and a **higher minor** version and reads it as the
@@ -84,7 +86,16 @@ The header holds a major and a minor version; this document is 1.0.
   record.
 - Header **flags** bits 0–3 mark features a reader may ignore; bits 4–7 mark features a reader
   must understand, so a reader refuses a pack with a bit 4–7 set that it does not know. Version
-  1.0 defines none of them.
+  1.1 defines bit 0 (ground); none of bits 4–7 is defined.
+
+**1.1** adds [ground](#ground): placement flags bit 0, the cell's `ground_count` (its first
+reserved word) and header flags bit 0. It is a minor version because it only gives meaning to
+fields that are reserved, and so zero, in 1.0, and because ignoring them is safe: a 1.0 reader
+draws a 1.1 pack's ground in the near pass with everything else, which is the 1.0 picture (the
+ground sorted by its own depth), not a misreading; nothing else about the pack changes. The other
+way round, a 1.0 pack reads as a pack without ground: a 1.1 reader reads the three fields only in
+a pack whose minor version is at least 1. A 1.1 pack without ground differs from a 1.0 pack only
+in its minor version.
 
 ## Limits
 
@@ -137,8 +148,8 @@ records, and a reader treats it like any other world.
 | 6 | `u16` | `minor` | 0 |
 | 8 | `u32` | `size` | the pack's length in bytes, a multiple of 4 |
 | 12 | `u8` | `cell_shift` | 4–7 |
-| 13 | `u8` | `flags` | see [Versions](#versions); 0 in 1.0 |
-| 14 | `u16` | `header_size` | 64 in 1.0; at least 64 |
+| 13 | `u8` | `flags` | see [Versions](#versions); bit 0 (1.1): some cell has a ground placement |
+| 14 | `u16` | `header_size` | 64 in 1.0 and 1.1; at least 64 |
 | 16 | `s16` | `i0` | grid column of the index's first entry |
 | 18 | `s16` | `j0` | grid row of the index's first entry |
 | 20 | `u16` | `w` | index width (columns) |
@@ -243,7 +254,8 @@ planes are then set up (`plane()`, scroll rates) is the game's.
 | 64 | `u32` | `entity_off` | |
 | 68 | `u32` | `entity_first` | the number of its first entity: its entities are `entity_first` .. + `entity_count` − 1 |
 | 72 | `u32` | `coll_off` | its collision block, or 0 |
-| 76 | `[5]u32` | reserved | |
+| 76 | `u32` | `ground_count` | (1.1) its first `ground_count` placements are ground, the rest are not |
+| 80 | `[4]u32` | reserved | |
 
 ## Placements
 
@@ -257,13 +269,88 @@ planes are then set up (`plane()`, scroll rates) is the game's.
 | 36 | `fixed` | `sin` | sin yaw |
 | 40 | `u32` | `mesh` | the mesh (model coordinates) |
 | 44 | `u8` | `mask` | the cell layer bit it belongs to (one bit), or 0 for always |
-| 45 | `u8` | `flags` | reserved |
+| 45 | `u8` | `flags` | bit 0 (1.1): ground; bits 1–7 reserved |
 | 46 | `u16` | `tag` | the encoder's number for it (for reports and tests) |
 
 The sphere must contain every vertex of the mesh as drawn with the stored `cos` and `sin`. The
 reference encoder takes the centre of the vertices' box and the largest distance from it, plus
 2/65,536. The mesh's vertices may reach at most `overhang` past the cell's square, and `pos`
 lies in the square.
+
+A cell's ground placements come first in its list: placement *k* has the ground bit exactly when
+*k* < `ground_count`. The reference encoder files them so, each group in the order it was given.
+
+## Ground
+
+A level marks the placements that are **ground**: the open floor everything else stands on. The
+reader draws them before everything else near the camera, so nothing standing on the ground can
+sort behind it. Mei has no depth buffer: a large ground face sorts by its average depth, which
+says little about the depth under a small object standing on it, so in one ordering table the
+ground is drawn over the object's feet. The World Checker measured this on both example worlds:
+wrong-order pixels near the camera in about half of all sampled views, up to 24,000 in one, from
+ground tiles drawn over what stands on them and from faces inside one asset
+([WORLDCHECKER.md](WORLDCHECKER.md), "Ground"). Drawing the floor first is the classic fix on
+this kind of hardware.
+
+**What the reader does.** After the far pass and with the near pass's camera and clip range, the
+**ground pass**: the ground placements of the 3 × 3 near cells, culled as any placement (layers,
+cell bounds, sphere), sorted among themselves in the frame's ordering table and drawn at once
+(`ot_flush()`), unless none was drawn. Then the near pass as before, without them; the cart's own
+meshes join it. The frame is drawn in three passes, each over the one before: far stand-ins,
+ground, near.
+
+Why a pass of its own rather than the other ways of drawing ground "first" on this machine:
+
+- *A depth bias* (`depth_bias()`) moves ground faces a fixed number of buckets farther. It fixes
+  only errors smaller than the bias, and a ground face's average depth can lie anywhere along it
+  (half of a 32-unit tile is 170 buckets at 64-unit cells), while a bias that large also puts the
+  ground behind things it truly hides farther away.
+- *Forcing ground into the near pass's farthest buckets* (`depth_key()`, or keyed faces) makes
+  it farther than everything else only if the rest stays out of those buckets, and squeezes the
+  ground's own order into a few buckets, so ground faces that do overlap sort worse than now.
+- *A pass of its own* keeps all 1,024 buckets for the ground's own order and all 1,024 for the
+  rest, changes nothing about how anything else sorts, and costs one flush (`ot_flush()` empties
+  the table again) and a second look at the near cells: about 2,000 cycles a view in all
+  ([Costs](#costs)). The GPU draws the same triangles.
+
+**What it makes right.** At a pixel, ground-first drawing gives the true picture unless a ground
+face is truly in front of a face drawn after it there, or two ground faces overlap there (they
+are sorted among themselves by average depth, as before). So it is exact for:
+
+- anything standing on or above the ground, whatever its size against the ground's faces:
+  objects, characters, entities, the cart's own meshes; semi-transparent things too, which blend
+  over the ground already drawn;
+- ground faces that meet edge to edge, at one height or not, wherever the ground the camera can
+  see forms a valley seen from above: a flat floor, a single slope, a floor rising into a ramp up
+  from its edge, a bowl. Seen from above such a surface, its faces never overlap each other on
+  screen and nothing above it is behind it, so their order does not matter;
+- the far pass, which stays behind both.
+
+**What it does not handle.** Whatever a ground face truly hides is drawn over it:
+
+- anything under or behind ground: a bridge, raised platform, block or step flagged as ground
+  (what passes under it or stands behind it shows through: a character walking behind a ground
+  block is drawn over the block), a ground-flagged ramp the player can walk under;
+- the far side of a crest: a ramp up to a higher floor, both flagged, hides the feet of what
+  stands just past the top from below, and they are drawn anyway;
+- a pit or a drop seen across its edge: the near lip hides the bottom and what falls in;
+- an object sunk into the ground: its buried part shows;
+- ground seen from below or from beside it (the underside of a walkway, a double-sided floor);
+- ground that overlaps ground: a raised ground piece on the ground, or solid ground slabs, whose
+  sides lie under their neighbours' tops, are sorted among themselves by average depth as before;
+- semi-transparent ground (water, glass): what is under it is drawn over it without blending.
+
+The rule for authors: **flag as ground only the lowest open floor of an area, the surfaces
+nothing is ever under or behind from where the camera can be; everything raised (platforms,
+ramps to higher floors, bridges, blocks, steps) stays an ordinary placement.** Ground meshes are
+best modelled as surfaces rather than solids. The World Checker warns of geometry a ground face
+can hide and of ground that can overlap ground, and measures the pixels where ground truly hides
+what is drawn over it ([WORLDCHECKER.md](WORLDCHECKER.md), "Ground").
+
+Stand-ins are never ground: a stand-in is a whole cell, drawn in the far pass (or, for a near cell
+whose region is not loaded, in the near pass), so there is nothing to flag. A merged scatter mesh
+is ground when the props merged into it are (the World Kit merges ground and the rest apart).
+Terrain, when it is built ([WORLDKIT.md](WORLDKIT.md), "Terrain"), is ground by default.
 
 ## Entities
 
@@ -469,17 +556,18 @@ The answer is the fraction *t* along the segment, the triangle, and whether it w
 behind. Every cell the segment's box touches is asked (each in its own frame), and in each the
 buckets the segment passes through.
 
-**Drawing** (two passes, [WORLDKIT.md](WORLDKIT.md), "Sight lines and stand-ins"). The frame's
+**Drawing** (three passes, [WORLDKIT.md](WORLDKIT.md), "Sight lines and stand-ins"). The frame's
 origin is the centre of the camera's cell; the camera and everything drawn are relative to it,
 so the vertex transform never sees a large coordinate. First the **far pass**: the stand-ins of
 the cells 2 .. *R* cells from the camera's cell (Chebyshev distance), with the clip range
 [*S*/2, 3*S*(2*R* + 1)/4], each culled by its stand-in sphere, flushed (`ot_flush()`) so the near
-pass draws over it. Then the **near pass**: the 3 × 3 cells around the camera's cell, with the
-range [0.1, 1.5 *S*] by default, each cell culled by its `bounds`, then each present placement by
-its sphere. A sphere is culled when it lies wholly outside one of the six planes of the view
-volume. The near set is convex, so along any line of sight near geometry comes before far; it is
-chosen around the camera, which may trail the player. A near cell whose region is not loaded is
-drawn as its stand-in.
+pass draws over it. Then the 3 × 3 cells around the camera's cell, with the range
+[0.1, 1.5 *S*] by default, each cell culled by its `bounds`, then each present placement by its
+sphere: first the **ground pass**, their ground placements, flushed when any was drawn
+([Ground](#ground)); then the **near pass**, the rest. A sphere is culled when it lies wholly
+outside one of the six planes of the view volume. The near set is convex, so along any line of
+sight near geometry comes before far; it is chosen around the camera, which may trail the player.
+A near cell whose region is not loaded is drawn as its stand-in, in the near pass.
 
 **Entities.** A tracked area is the cells within a radius (0–2) of a point. An entity is active
 while its cell is in the area and it is present. Each update retires the entities that stopped
@@ -490,7 +578,9 @@ being active (their cell left, or their layer went off), then spawns the ones th
 `decode()` in `tools/worldkit/pack.py` checks everything a reader might trip over, and is the
 reference for a tool's own checks: the magic, versions and flags; that the size matches; that every
 table lies inside the pack and is aligned; that every index entry's cell names its own square;
-layer ids and masks against the cell's layer list; region, mesh, string and parameter references;
+layer ids and masks against the cell's layer list; that ground placements come first in their
+cells and agree with `ground_count` and the header's flag; region, mesh, string and parameter
+references;
 every mesh's header, vertex and face extents; every collision block's grid, buckets and list
 entries; and that entity numbers, back-references and the directory agree. Any failure raises
 `PackError`; random corruption never makes it fail any other way (tested).
@@ -552,6 +642,8 @@ Drawing, cycles:
 | a placement drawn: fixed cost beyond its vertices and faces | about 500 (a one-triangle mesh costs 562; `mesh_at()` 755) |
 | a 12-triangle box placement drawn | 1,445 (`mesh_at()`: 1,637) |
 | the demonstration views: 4 near cells, 8–11 placements (ground of 64 quads a cell), a stand-in | 84,000–93,000 for 310–460 triangles |
+| the ground pass, in a view that draws ground (the flush, a second look at the near cells) | about 2,000 (2,068 and 2,289 on average over the example worlds' views) |
+| a 1.1 pack without ground, against the 1.0 reader | 58–88 more a view (the example worlds) |
 
 The fixed cost per placement drawn matters for budgets: 100 small props drawn cost 50,000 cycles
 before their faces. Placements should be assets of tens of faces or more; scatter of tiny props is
@@ -569,10 +661,10 @@ largest radius (2). World positions in and out are `fixed` world coordinates.
 | `wp_open(pack) -> bool` | open a pack (checks magic, version, flags, grid); layers start as the pack says |
 | `wp_cell_size()`, `wp_cell_index(x)`, `wp_cell(i, j)`, `wp_cell_at(p)`, `wp_cell_centre(c)` | the grid |
 | `wp_layer_find(name)`, `wp_layer_on(id)`, `wp_layer_set(id, on)`, `wp_cell_mask(c)` | layers (exclusive groups applied) |
-| `wp_draw(eye, yaw, pitch)` | the two passes; leaves the near camera set, relative to `wp_view_origin()` |
+| `wp_draw(eye, yaw, pitch)` | the far, ground and near passes; leaves the near camera set, relative to `wp_view_origin()` |
 | `wp_view_origin()` | where this frame is drawn around: draw the game's own meshes at `pos − wp_view_origin()` |
-| `wp_clip_near`, `wp_near_far`, `wp_far_ring`, `wp_region_loaded` | settings (0.1, 1.5 cells, 3, −1 = any) |
-| `wp_stats` | near cells, placements looked at and drawn, stand-ins drawn, last `wp_draw` |
+| `wp_clip_near`, `wp_near_far`, `wp_far_ring`, `wp_region_loaded`, `wp_ground_first` | settings (0.1, 1.5 cells, 3, −1 = any, true; false draws ground in the near pass, as 1.0 did) |
+| `wp_stats` | near cells, placements looked at and drawn, stand-ins drawn, ground placements drawn, last `wp_draw` |
 | `wp_floor(p, above)`, `wp_ceiling(p, below)`, `wp_push(p, radius)`, `wp_ray(a, b)` | collision in the world; answers in `wp_hit` |
 | `wp_coll_floor`, `wp_coll_ceiling`, `wp_coll_push`, `wp_coll_ray` | the same against one block, in its frame (an entity's: `wp_entity_coll(e)`) |
 | `wp_hit_normal()` | the unit front normal of what was hit |
@@ -585,7 +677,7 @@ itself, character control, cameras, goals and saving (the game's).
 
 ## Extensions not made
 
-Each was left out because version 1.0 is clearly sufficient without it; each fits as a minor
+Each was left out because version 1.1 is clearly sufficient without it; each fits as a minor
 version (a reserved field or a flag) unless noted.
 
 - **Pitch, roll and scale on placements.** Yaw covers buildings and props on level ground; a
@@ -599,4 +691,7 @@ version (a reserved field or a flag) unless noted.
 - **A potentially-visible set per cell** (WORLDKIT.md, question 2): a reserved cell field could
   point at it.
 - **Non-uniform cells** (quadtrees, irregular districts): out of scope; the grid is uniform.
+- **Ordered ground** (several ground passes, lowest first, so a raised floor could be ground over
+  a lower one) and ground per face rather than per placement. Neither would stop ground from
+  being drawn under what it truly hides, which is the larger limit ([Ground](#ground)).
 - **Compression.** ROM is read in place, so packs are stored as they are used.
