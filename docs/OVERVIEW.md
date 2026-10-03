@@ -152,6 +152,7 @@ If something has a name, it matters. These are the named things in the project.
 | **Asset Checker** | The Asset Kit's `verify`: proves one asset's faces draw in the right order from every side | [ASSETKIT.md](ASSETKIT.md) |
 | **World Kit** | Turns a world recipe into a level: cells, regions, layers, collision, game data. In progress | [WORLDKIT.md](WORLDKIT.md) |
 | **World Pack** | The binary level format the World Kit writes and the console reads in place | [WORLDPACK.md](WORLDPACK.md), `stdlib/worldpack.akr` |
+| **Mochi** | The small language a game's schema for the World Kit is written in (its entity types and their fields, the player's body, the worlds); files end in `.mochi`. Translated into the JSON form, which is still accepted | [WORLDKIT.md](WORLDKIT.md), `tools/worldkit/mochi.py` |
 | **World Checker** | The World Kit's `verify`: checks a level from where a player can stand, for budgets, drawing order and collision holes. In progress | [WORLDKIT.md](WORLDKIT.md) |
 | **Reference Renderer** | An independent renderer that Mei's output is compared against, to test the console itself (`make rendercheck`). Not yet committed | |
 

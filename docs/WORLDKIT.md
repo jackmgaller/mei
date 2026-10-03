@@ -360,42 +360,97 @@ stakes are higher here: an Asset Kit ID only labels a report; a World Kit ID add
 save.
 
 **Built: the game schema.** A small file the game owns, in the kit's own restricted format so
-that parameters can be packed into fixed records the cart reads without parsing (`schema` prints
-its JSON Schema under `$defs/game`):
+that parameters can be packed into fixed records the cart reads without parsing. It is written in
+**Mochi**, a tiny type-description language (`NAME.game.mochi`):
 
-```json
-{
-  "format": "mei-world-game",
-  "version": 1,
-  "name": "city",
-  "probe": {"radius": 0.3, "height": 1.6, "step": 0.32, "floor_max_degrees": 40},
-  "types": {
-    "coin": {"saved": true},
-    "challenge_switch": {"saved": true, "params": {
-      "course": {"type": "entity_ref", "required": true},
-      "time_window": {"type": "enum", "values": ["any", "day", "night"], "default": "any"}
-    }},
-    "camera_zone": {"params": {
-      "size": {"type": "vec3"},
-      "mode": {"type": "enum", "values": ["follow", "fixed", "rail"]}
-    }},
-    "door": {"params": {"world": {"type": "world_ref"}, "spawn": {"type": "name"}}}
-  },
-  "worlds": ["city", "mall"]
+```
+// The game schema of a small city game.
+game city
+
+probe {
+  radius            = 0.3
+  height            = 1.6
+  step              = 0.32
+  floor_max_degrees = 40
+}
+
+worlds city, mall
+
+saved type coin
+
+saved type challenge_switch {
+  course:      ref
+  time_window: any | day | night = any
+  reward:      u8 = 1
+}
+
+type camera_zone {
+  size:     vec3 = [8, 4, 8]
+  mode:     follow | fixed | rail
+  priority: s16 = 0
+}
+
+type door {
+  world:  world
+  spawn:  name = entrance
+  locked: bool = false
+  key:    ref?
 }
 ```
 
-Field types are `bool`, `u8`, `s16`, `s32`, `fixed`, `vec3`, `enum`, `name`, `entity_ref` and
-`world_ref`. A parameter is required unless it has a `default`; an `entity_ref` is optional (none)
-unless `required`. Types are numbered in the order they are written; `world_ref` values are
-indexes of `worlds`. The kit checks that references resolve, without knowing why they exist, and
-emits the type numbers, an Akari `struct` per type with parameters and an `enum` per enum
-parameter in `GAME.game.akr`, which every world of the game imports. `saved: true` asks the kit
-for a persistent bit per entity of that type. `probe` describes the player's body: the kit
-classifies collision by `floor_max_degrees` (and `ceiling_max_degrees`, default 45) and copies
-walls `radius` past cell edges; the World Checker will sample cameras with it. It is geometry, not
-movement rules. Everything else (what `night` means, whether a coin respawns) is the game's.
-Entity IDs are world-wide, so an `entity_ref` and a saved bit can name any entity.
+Field types are `bool`, `u8`, `s16`, `s32`, `fixed`, `vec3`, `name`, `world` (a world of
+`worlds`), `ref` (an entity ID) and enums, written as their values separated by `|`. A field is
+required unless it has a default (`= value`); a `ref` is required, `ref?` may be none, and a ref
+never has a default. Types are numbered in the order they are written; `world` values are indexes
+of `worlds`. The kit checks that references resolve, without knowing why they exist, and emits
+the type numbers, an Akari `struct` per type with parameters and an `enum` per enum parameter in
+`GAME.game.akr`, which every world of the game imports. `saved` asks the kit for a persistent bit
+per entity of that type. `probe` describes the player's body: the kit classifies collision by
+`floor_max_degrees` (and `ceiling_max_degrees`, default 45) and copies walls `radius` past cell
+edges; the World Checker will sample cameras with it. It is geometry, not movement rules.
+Everything else (what `night` means, whether a coin respawns) is the game's. Entity IDs are
+world-wide, so a `ref` and a saved bit can name any entity.
+
+*Mochi is a front end, not a second format.* The kit translates it into the JSON form (format
+`mei-world-game`, whose JSON Schema `schema` prints under `$defs/game`, with Mochi's grammar, rules
+and an example under `$defs/game/x-mochi`) and everything downstream sees only that. A game schema whose file does not end in `.mochi` is read as JSON, which stays
+fully supported; `convert` turns one form into the other, and JSON → Mochi → JSON gives the same
+schema. It describes data only: no expressions, conditions, includes or macros, and world and cell
+recipes stay JSON. Each construct is one JSON construct:
+
+| Mochi | JSON |
+|---|---|
+| `game city` | `"format": "mei-world-game", "version": 1, "name": "city"` |
+| `probe { radius = 0.3  floor_max_degrees = 40 }` | `"probe": {"radius": 0.3, "floor_max_degrees": 40}` |
+| `worlds city, mall` | `"worlds": ["city", "mall"]` |
+| `saved type coin` | `"coin": {"saved": true}` in `types` |
+| `type door { ... }` | `"door": {"params": {...}}` |
+| `count: u8 = 1` | `"count": {"type": "u8", "default": 1}` (likewise `bool`, `s16`, `s32`, `fixed`, `vec3`, `name`) |
+| `course: ref` / `key: ref?` | `{"type": "entity_ref", "required": true}` / `{"type": "entity_ref"}` |
+| `exit: world = city` | `{"type": "world_ref", "default": "city"}` |
+| `mode: follow \| fixed = fixed` | `{"type": "enum", "values": ["follow", "fixed"], "default": "fixed"}` |
+| `kind: \| only` | `{"type": "enum", "values": ["only"]}`: a one-value enum starts with `\|` |
+
+The rest of the syntax: spaces and line breaks are free and `//` starts a comment; `:` gives a
+type, `=` a value; numbers are written as in JSON (`1` and `1.0` stay an integer and a float);
+vec3 defaults are `[x, y, z]`; `true` and `false` are bool defaults; names, enum values and world
+names are bare and follow the kit's name rule, `^[a-z][a-z0-9_]{0,47}$`. There are no reserved
+words, so an enum value may be `u8` (`kind: u8 | s16`, where the `|` makes it an enum) and a field
+may be called `world`. `game` comes first; `probe`, `worlds` and types follow in any order. The
+probe requires `radius` and `floor_max_degrees`; `height`, `step` and `ceiling_max_degrees` are
+optional. `convert` writes the canonical style shown above (probe values and field types aligned,
+a blank line between statements); it drops `"saved": false`, empty `params` and `"required":
+false`, which mean the same as leaving them out.
+
+Errors in a Mochi file carry `file`, `line` and `column` besides the usual `path` and `message`,
+say what was expected and usually how to fix it. Errors that the kit's JSON validation finds
+later (a `u8` default of 300, an enum default that is not a value, a field named after an Akari
+keyword) are mapped back from their JSON Pointer to the line of the construct it names:
+
+```json
+{"ok": false, "errors": [{"path": "/types/trigger/params/count/default", "message": "Maximum is 255.",
+  "file": ".../garden.game.mochi", "line": 19, "column": 21}]}
+```
 
 **Built: the ID lock file.** The kit writes `NAME.ids.json` beside the recipe and expects it to
 be committed. It maps every saved entity's ID to its bit, append-only:
@@ -474,7 +529,7 @@ cell files are every `*.cell.json` in `cell_dir`, in name order, each named afte
 ```json
 {
   "format": "mei-world", "version": 1, "name": "two_districts",
-  "game": "city.game.json", "assets": "assets", "cell_dir": "cells",
+  "game": "city.game.mochi", "assets": "assets", "cell_dir": "cells",
   "grid": {"cell_size": 32},
   "collision": {"surfaces": {"default": 0, "tags": {"ground": 1, "wall": 3, "roof": 4}}},
   "regions": {
@@ -687,7 +742,8 @@ stdin (relative paths then resolve from the current directory), `--compiler`, `-
 
 | Command | Result |
 |---|---|
-| `schema [--game FILE]` | The world recipe's JSON Schema (cell files and game schemas under `$defs`), with the game's entity types folded in when given |
+| `schema [--game FILE]` | The world recipe's JSON Schema (cell files and game schemas under `$defs`, Mochi under `$defs/game/x-mochi`), with the game's entity types (Mochi or JSON) folded in when given |
+| `convert FILE [-o OUT] [--force]` | A game schema in the other form: JSON to canonical Mochi, or a `.mochi` file to JSON. Without `-o`, the result holds the `text` (Mochi) or `game` (JSON) |
 | `init DIR [--example room\|city] [--force]` | Copies an example world (world file, cells, game schema, asset recipes) into a new directory |
 | `validate FILE` | Every static check: schemas, references, game data, IDs, palettes, that every asset compiles and that the pack can hold the world; the ID changes a build would make |
 | `inspect FILE [--cell ID]` | The same, with the full report: per cell and per region costs, palettes and variants, entity numbers, asset hashes, warnings |
@@ -702,7 +758,7 @@ the World Kit still models nothing).
 ### Using the tool
 
 ```sh
-python3 tools/mei_world.py schema --game examples/worlds/test_room/garden.game.json
+python3 tools/mei_world.py schema --game examples/worlds/test_room/garden.game.mochi
 python3 tools/mei_world.py init /tmp/room --example room
 python3 tools/mei_world.py inspect /tmp/room/test_room.world.json
 make build/meic build/mei-headless build/mei-asset-probe
