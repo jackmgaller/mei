@@ -85,6 +85,12 @@ static long long edge(const RV *a, const RV *b, int x, int y) {
 static int top_left(const RV *a, const RV *b) { int dy = b->y - a->y, dx = b->x - a->x; return dy < 0 || (dy == 0 && dx > 0); }
 static int clampi(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 
+/* The texture window the reference applies (bits 16-31 of vertex 1's texture word, 0: none). */
+static uint32_t ref_win;
+static int ref_wrap(int t, uint32_t w) {   /* w: 3-bit size code, 5-bit origin / 8 */
+    return (w & 7) ? (int)(((uint32_t)t % (4u << (w & 7)) + (w >> 3 & 31) * 8) & 255) : t;
+}
+
 /* flags as in the packet type; tex: slot/four/pal; colour used flat from v[0] unless Gouraud */
 static void ref_tri(uint16_t *fb, RV a, RV b, RV c, int flags, int mode, int dither, int slot, int four, int pal) {
     long long area = edge(&a, &b, c.x, c.y);
@@ -106,7 +112,7 @@ static void ref_tri(uint16_t *fb, RV a, RV b, RV c, int flags, int mode, int dit
             int col[3];
             for (int k = 0; k < 3; k++) col[k] = (flags & 1) ? at[k] : a.c[k];
             if (flags & 2) {
-                int u = at[3], v = at[4], idx;
+                int u = ref_wrap(at[3], ref_win & 0xFF), v = ref_wrap(at[4], ref_win >> 8 & 0xFF), idx;
                 if (four) { int byt = slot_ptr(slot)[v * 128 + u / 2]; idx = (u & 1) ? byt >> 4 : byt & 15; idx += pal * 16; if ((idx & 15) == 0) continue; }
                 else { idx = m->vram[(TEXTURE_ADDR - VRAM_BASE) + ((slot * 0x8000 + v * 256 + u) & 0x7FFFF)]; if (!idx) continue; idx += (pal & 15) * 256; }
                 uint16_t t = rd16(m->vram + (PALETTE_ADDR - VRAM_BASE) + idx * 2);
@@ -385,6 +391,130 @@ static void test_textures(void) {
     emit(0x26, 9, RGB(128, 128, 128), P(0, 0), TEX0(0, 0, 6, 0, 0x12), P(4, 0), UV(4, 0), P(0, 4), UV(0, 4), P(4, 4), UV(4, 4));
     list_draw();
     CHECK_EQ(px(0, 0), C15(3, 4, 5));
+}
+
+/* Window halfword for vertex 1's texture word: size codes 0-7 (k: 4 << k texels), origins in texels. */
+static uint32_t WIN(int usize, int uorg, int vsize, int vorg) {
+    return ((uint32_t)usize | (uint32_t)(uorg / 8) << 3 | (uint32_t)vsize << 8 | (uint32_t)(vorg / 8) << 11) << 16;
+}
+
+static void test_texture_window(void) {
+    /* 4-bit, slot 3, palette 5: a 16x16 tile at (32, 64) in a slot of index 15, repeated over a
+     * 128x100 flat quad (u 0-128, v 0-100). The same quad without a window samples the slot. */
+    setup();
+    memset(slot_ptr(3), 0xFF, TEXTURE_SLOT_BYTES);
+    for (int y = 0; y < 16; y++)
+        for (int x = 0; x < 16; x++) {
+            uint8_t *b = &slot_ptr(3)[(64 + y) * 128 + (32 + x) / 2];
+            int c = 1 + (x + 2 * y) % 14;
+            *b = (uint8_t)((x & 1) ? (*b & 0x0F) | c << 4 : (*b & 0xF0) | c);
+        }
+    for (int i = 0; i < 16; i++) set_pal(80 + i, C15(i * 2, 31 - i * 2, i * 7 % 32));
+    list_begin();
+    emit(0x26, 9, RGB(128, 128, 128), P(0, 0), TEX0(0, 0, 3, 1, 5), P(128, 0), UV(128, 0) | WIN(2, 32, 2, 64),
+         P(0, 100), UV(0, 100), P(128, 100), UV(128, 100));
+    emit(0x26, 9, RGB(128, 128, 128), P(0, 120), TEX0(0, 0, 3, 1, 5), P(128, 120), UV(128, 0),
+         P(0, 220), UV(0, 100), P(128, 220), UV(128, 100));
+    list_draw();
+    int bad = 0, bad_plain = 0;
+    for (int y = 0; y < 100; y++)
+        for (int x = 0; x < 128; x++) {
+            int c = 1 + (x % 16 + 2 * (y % 16)) % 14;
+            bad += px(x, y) != C15(c * 2, 31 - c * 2, c * 7 % 32);
+            int in = x >= 32 && x < 48 && y >= 64 && y < 80, cp = in ? 1 + ((x - 32) + 2 * (y - 64)) % 14 : 15;
+            bad_plain += px(x, 120 + y) != C15(cp * 2, 31 - cp * 2, cp * 7 % 32);
+        }
+    CHECK_EQ(bad, 0);
+    CHECK_EQ(bad_plain, 0);
+
+    /* 8-bit, slots 6-7 (rows 128-255 are slot 7), palette 2: a 32x32 tile at (200, 160),
+     * Gouraud quad. Then the window's origin + size past 256 wraps: 64 wide at u 224 samples
+     * u 224-255 then 0-31; 16 high at v 248 samples rows 248-255 then 0-7. */
+    setup();
+    for (int v = 0; v < 256; v++)
+        for (int u = 0; u < 256; u++) slot_ptr(6)[v * 256 + u] = (uint8_t)(1 + (3 * u + 5 * v) % 200);
+    for (int i = 0; i < 256; i++) set_pal(512 + i, (uint16_t)((i * 97 + 5) & 0x7FFF));
+    list_begin();
+    emit(0x27, 12, RGB(128, 128, 128), P(0, 0), TEX0(0, 0, 6, 0, 2), RGB(128, 128, 128), P(150, 0), UV(150, 0) | WIN(3, 200, 3, 160),
+         RGB(128, 128, 128), P(0, 120), UV(0, 120), RGB(128, 128, 128), P(150, 120), UV(150, 120));
+    emit(0x26, 9, RGB(128, 128, 128), P(160, 0), TEX0(0, 0, 6, 0, 2), P(310, 0), UV(150, 0) | WIN(4, 224, 2, 248),
+         P(160, 120), UV(0, 120), P(310, 120), UV(150, 120));
+    list_draw();
+    int bad8 = 0, badw = 0;
+    for (int y = 0; y < 120; y++)
+        for (int x = 0; x < 150; x++) {
+            int u = 200 + x % 32, v = 160 + y % 32, i = 1 + (3 * u + 5 * v) % 200;
+            bad8 += px(x, y) != ((i * 97 + 5) & 0x7FFF);
+            u = (224 + x % 64) & 255, v = (248 + y % 16) & 255, i = 1 + (3 * u + 5 * v) % 200;
+            badw += px(160 + x, y) != ((i * 97 + 5) & 0x7FFF);
+        }
+    CHECK_EQ(bad8, 0);
+    CHECK_EQ(badw, 0);
+
+    /* Semi-transparent, with palette index 0 inside the window: a 8x8 4-bit tile at (8, 0)
+     * whose even columns are index 0. Those pixels keep the background; the rest average. */
+    setup();
+    gpu_clear(m, C15(20, 10, 4));
+    for (int y = 0; y < 8; y++) memset(&slot_ptr(1)[y * 128 + 4], 0x70, 4);   /* (u even: 0, odd: 7) */
+    set_pal(7, C15(10, 30, 0));
+    list_begin();
+    emit(0x2E, 9, RGB(128, 128, 128), P(0, 0), TEX0(0, 0, 1, 1, 0), P(40, 0), UV(40, 0) | WIN(1, 8, 1, 0),
+         P(0, 20), UV(0, 20), P(40, 20), UV(40, 20));
+    list_draw();
+    int bads = 0;
+    for (int y = 0; y < 20; y++)
+        for (int x = 0; x < 40; x++) bads += px(x, y) != ((x & 1) ? C15(15, 20, 2) : C15(20, 10, 4));
+    CHECK_EQ(bads, 0);
+    CHECK_EQ(px(40, 0), C15(20, 10, 4));
+
+    /* Every flag combination, triangles and quads, random windows (codes 0-7, any origin)
+     * against the brute-force reference. The window is read from vertex 1 only; the high bits
+     * of the other vertices' words stay as before (vertex 0: slot, depth, palette). */
+    static uint16_t ref[MEI_W * MEI_H];
+    setup();
+    for (int i = 0; i < 0x10000; i++) slot_ptr(0)[i] = (uint8_t)(rnd(0, 255) * (rnd(0, 7) != 0));
+    for (int i = 0; i < 0x8000; i++) slot_ptr(15)[i] = (uint8_t)rnd(0, 255);
+    for (int i = 0; i < 4096; i++) set_pal(i, (uint16_t)rnd(0, 0x7FFF));
+    int mismatch = 0;
+    for (int iter = 0; iter < 400; iter++) {
+        int flags = 2 | rnd(0, 15), mode = rnd(0, 3), dither = rnd(0, 1), quad = flags >> 2 & 1, nv = quad ? 4 : 3;
+        int four = rnd(0, 1), slot = four ? 15 : rnd(0, 1) * 15, pal = four ? rnd(0, 255) : rnd(0, 15);
+        uint32_t win = (uint32_t)rnd(0, 0xFFFF);
+        if (iter % 4 == 0) win &= 0xFF00;   /* u only, v only, or neither */
+        if (iter % 4 == 1) win &= 0x00FF;
+        RV v[4];
+        int big = iter % 5 == 0;           /* huge triangles take the exact (slow) span path */
+        for (int i = 0; i < nv; i++) {
+            v[i].x = big ? rnd(-2000, 2000) : rnd(-40, 360);
+            v[i].y = big ? rnd(-2000, 2000) : rnd(-40, 280);
+            for (int k = 0; k < 5; k++) v[i].c[k] = rnd(0, 255);
+            if (!(flags & 1)) memcpy(v[i].c, v[0].c, 3 * sizeof v[0].c[0]);   /* flat: vertex 0's colour */
+        }
+        next_frame();
+        gpu_clear(m, (uint32_t)rnd(0, 0x7FFF));
+        m->gpu_ctrl = (uint32_t)dither;
+        memcpy(ref, back(), sizeof ref);
+        list_begin();
+        uint32_t w[12];
+        int n = 0;
+        for (int i = 0; i < nv; i++) {
+            if (i == 0 || (flags & 1)) w[n++] = RGB(v[i].c[0], v[i].c[1], v[i].c[2]) | (i == 0 ? (uint32_t)mode << 24 : 0);
+            w[n++] = P(v[i].x, v[i].y);
+            w[n++] = i == 0 ? TEX0(v[i].c[3], v[i].c[4], slot, four, pal) : UV(v[i].c[3], v[i].c[4]) | (i == 1 ? win << 16 : 0);
+        }
+        uint32_t a = emit((uint32_t)(0x20 | flags), 0);
+        for (int i = 0; i < n; i++) wr32(m->ram + a + 4 + 4 * i, w[i]);
+        list_draw();
+        ref_win = win;
+        ref_tri(ref, v[0], v[1], v[2], flags, mode, dither, slot, four, pal);
+        if (quad) ref_tri(ref, v[1], v[2], v[3], flags, mode, dither, slot, four, pal);
+        ref_win = 0;
+        if (memcmp(ref, back(), sizeof ref)) {
+            if (!mismatch) printf("  window reference mismatch: iter %d flags %x window %04x\n", iter, flags, win);
+            mismatch++;
+        }
+    }
+    CHECK_EQ(mismatch, 0);
 }
 
 static void test_dither(void) {
@@ -921,6 +1051,7 @@ int main(void) {
     test_shared_edges();
     test_gouraud();
     test_textures();
+    test_texture_window();
     test_dither();
     test_blend();
     test_clipping();

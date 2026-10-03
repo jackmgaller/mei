@@ -22,6 +22,14 @@ it skips never has an edge its neighbour splits. A face crossing the near plane 
 __clip_face_sub, which drops it if it cannot be seen and otherwise subdivides it (textured)
 or clips it.
 
+Texture windows: the dispatch reads the whole __fog_on word, which holds fog in bits 0 and 15
+and, while __draw_mesh_win draws a mesh with a window table, bit 16. Shifted right by 12 they
+are bits 3 and 4 of the jump-table index (the OR into the packet type leaves bits 15-16 above
+the header), so the table has 32 entries: the second 16 send textured faces to copies of the
+textured writers that look the face's window up (texture byte bits 5-7, 1-7 into the table at
+__win_tab, 0 none) and put it into bits 16-31 of the second texture coordinate. Meshes without
+a table run exactly the instructions they did before (the lbu became a lw, the shli a shri).
+
 The three face loops are weak functions. With --planes the script writes
 stdlib/planes_faces.akr instead: the same loops, which replace these in carts that import
 planes.akr, with one change: a face drawn while poly_upper() is on gets bit 26 (upper) in its
@@ -43,13 +51,14 @@ out = []
 def e(s=''):
     out.append(s)
 
-def variant(g, t, q, fog):
+def variant(g, t, q, fog, win=False):
     n = 4 if q else 3
     stride = 4 * (1 + g + t)
     size = 4 + (n if g else 1) * 4 + n * 4 + (n * 4 if t else 0)
-    label = '.v%d%d%d%d' % (g, t, q, fog)
-    e('%s:   ; %s%s%s%s, %d bytes' % (label, 'gouraud ' if g else 'flat ', 'textured ' if t else '',
-                                     'quad' if q else 'triangle', ' fog' if fog else '', size))
+    label = '.v%d%d%d%d%s' % (g, t, q, fog, 'w' if win else '')
+    e('%s:   ; %s%s%s%s%s, %d bytes' % (label, 'gouraud ' if g else 'flat ', 'textured ' if t else '',
+                                       'quad' if q else 'triangle', ' fog' if fog else '',
+                                       ', texture window' if win else '', size))
     e('    addi r11, r15, %d' % size)
     e('    sw   r11, [r0+{__arena_ptr}]')
     if fog:
@@ -85,7 +94,20 @@ def variant(g, t, q, fog):
         e('    sw   r11, [r15+%d]' % base)
         # texture coordinate
         if t:
+            if win and k == 1:
+                # the face's window (texture byte bits 5-7: 1-7 in the mesh's table, 0 none)
+                # goes into bits 16-31 of the second texture coordinate
+                e('    shri r12, r4, 20          ; window index x 2')
+                e('    andi r12, r12, 14')
+                e('    beq  r12, r0, %s_n' % label)
+                e('    lw   r11, [r0+{__win_tab}]')
+                e('    add  r12, r12, r11')
+                e('    lhu  r12, [r12-2]         ; the window')
+                e('    shli r12, r12, 16')
+                e('%s_n:' % label)
             e('    lhu  r11, [r1+%d]' % (28 + 2 * k))
+            if win and k == 1:
+                e('    or   r11, r11, r12')
             if k == 0:
                 e('    shri r12, r4, 16          ; slot, depth and palette -> bits 16-31')
                 e('    andi r12, r12, 0xFF1F')
@@ -418,9 +440,9 @@ REST = """    andi r11, r4, 4
     lw   r11, [r0+{__arena_end}]
     addi r12, r15, 52
     bltu r11, r12, .done        ; packet memory full
-    lbu  r12, [r0+{__fog_on}]
+    lw   r12, [r0+{__fog_on}]   ; fog: bits 0 and 15; a mesh with windows: bit 16
     andi r9, r4, 15
-    or   r9, r9, r12            ; fog makes every face Gouraud
+    or   r9, r9, r12            ; fog makes every face Gouraud (bits 15-16 leave the header)
     ; header and ordering-table insertion
     la   r11, {__ot}
     shli r10, r10, 2
@@ -431,9 +453,9 @@ REST = """    andi r11, r4, 4
     or   r10, r10, r13
     sw   r10, [r15]
     sw   r15, [r11]
-    ; dispatch on Gouraud/textured/quad (+ fog)
+    ; dispatch on Gouraud/textured/quad (+ fog, + windows)
     andi r9, r9, 7
-    shli r12, r12, 3
+    shri r12, r12, 12           ; fog -> bit 3, windows -> bit 4
     or   r9, r9, r12
     shli r9, r9, 2
     la   r11, .table
@@ -494,6 +516,13 @@ def face_loop(name, sub, guard=True):
                     if fog and not g:
                         continue
                     labels[(g, t, q, fog)] = variant(g, t, q, fog)
+    # meshes with windows: the textured variants again, putting the face's window into the packet
+    for fog in (0, 1):
+        for q in (0, 1):
+            for g in (0, 1):
+                if fog and not g:
+                    continue
+                labels[(g, 1, q, fog, 'w')] = variant(g, 1, q, fog, win=True)
     if sub:
         e(GB_SUB)
         e(SUB_CALL)
@@ -524,11 +553,12 @@ def face_loop(name, sub, guard=True):
     ret
     .align 4
 .table:""" % frame)
-    for fog in (0, 1):
-        for idx in range(8):
-            g, t, q = idx & 1, (idx >> 1) & 1, (idx >> 2) & 1
-            key = (g if not fog else 1, t, q, fog)
-            e('    .word %s' % labels[key])
+    for win in (0, 1):
+        for fog in (0, 1):
+            for idx in range(8):
+                g, t, q = idx & 1, (idx >> 1) & 1, (idx >> 2) & 1
+                key = (g if not fog else 1, t, q, fog) + (('w',) if win and t else ())
+                e('    .word %s' % labels[key])
     e('}')
 
 

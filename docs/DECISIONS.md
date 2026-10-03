@@ -91,7 +91,7 @@ first half is the 4,000th triangle draws that half and drops the second.
 - Packet checks: region first (*Unmapped address*), then alignment (*Misaligned access*). Every packet word is checked, so a polygon running off the end of RAM or of the ROM window faults at that word. The 65,536 cap counts every packet, including empty and unknown ones. Packets drawn before a fault stay drawn.
 - `GPU_DRAW` is not masked: exactly `0xFFFFFF` is an empty list; anything else outside RAM/ROM faults.
 - 8-bit textures may start on an odd slot; texel addresses wrap within the 512 KB texture area (slot 15 + 1 = slot 0). For 8-bit textures only palette bits 24–27 are used.
-- Interpolated colour and u,v are `floor(weighted sum / area)`; no wrapping.
+- Interpolated colour and u,v are `floor(weighted sum / area)`; they never leave 0–255 (no wrapping). A textured polygon may then map u,v through its texture window before the texel is read ([Texture windows](#texture-windows)).
 - Semi-transparent textured polygons blend every non-zero texel (no per-texel transparency bit). Untextured black draws normally.
 - `gpu_vsync` leaves `GPU_CTRL` alone.
 
@@ -607,6 +607,41 @@ moving anything.
   `.word` text, so a large asset costs compile time and memory in proportion to its size.
 - **System ROM.** It is still loaded as a 2 MB image, so its catalogue moves with the ROM base to
   `0x081F0000` (see `SYSTEM.md`).
+
+## Texture windows
+
+The spec's texture coordinates are 8 bits per vertex, interpolated without wrapping, inside a
+256×256 slot: a small pattern can repeat across a big surface only if it is repeated in VRAM.
+For the open-world city (large surfaces, small repeating patterns, 1 MB of VRAM) the project
+owner approved (2026-10-03) a small departure that the original PlayStation also had: a
+**per-polygon texture window**, an optional power-of-two rectangle inside the slot that u and v
+wrap within. It saves VRAM (many small repeating tiles in one slot instead of one slot per
+pre-repeated tile); it does not let a face repeat a tile more often than its 8-bit coordinates
+allow.
+
+- **Encoding.** Bits 16–31 of the **second vertex's texture coordinate word**, which the spec
+  says should be zero and which no cart, scenario or test sets (each draws the same frames
+  with the window decoded): bits 16–18 the u size (0: no window; k: 4 << k texels, so 1–6 give
+  8–256 and 7 is 256 too), 19–23 the u origin ÷ 8, 24–26 the v size and 27–31 the v origin ÷ 8.
+  All zeros is no window. No packet grows, and there is no new register or global state: the
+  window travels with the polygon.
+- **Sampling.** After interpolation, u becomes `(origin_u + (u mod size_u)) & 255` (likewise
+  v), then the texel is addressed as before: 4-bit and 8-bit textures, an 8-bit texture's second
+  slot and the slot 15 → 0 wrap are unchanged, and index 0 stays transparent. An axis with size
+  0 is untouched; an origin plus size past 256 wraps to 0. The window is decoded once per
+  packet, so both triangles of a quad share it.
+- **Cost.** None on the GPU (no new cost-table term). Packets without a window draw exactly as
+  before.
+- **Meshes.** No format or version change: the face's texture byte bits 5–7 pick a window 1–7
+  from a table of halfwords (the packet's bits 16–31) at the byte offset in the mesh header's
+  `+12`, formerly reserved (0 in every mesh). `mesh()` sends a mesh with a table through
+  windowed copies of the face loops' textured packet writers (a second half of their jump
+  tables), so a mesh without one costs the same cycles as before; clipped and subdivided
+  pieces keep their face's window. See `LANGUAGE.md`, "Texture windows" and "Mesh format".
+- **Limits.** u and v are still 8 bits per vertex, so a single face repeats a tile at most
+  255 texels' worth (31 × 8, 15 × 16, 7 × 32, 3 × 64, 1 × 128 whole repeats): windows help tiles
+  of 64 texels or less. A face whose coordinate ends exactly at 256 is one texel short, as
+  before.
 
 ## The kits and the first open-world game
 

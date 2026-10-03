@@ -1,0 +1,8 @@
+// mesh_windows.akr with the plane chip's face loops (planes_faces.akr), which replace the
+// weak ones in faces.akr: the same packets.
+// frames: 4
+import "planes.akr"
+import "mesh_windows.akr"
+// expect: 2222 F9AB 701 FFFF 6 9683FD8E 4 0
+// expect: 2222 F9AB 701 FFFF 6 9683FD8E 4 0
+// expect: 2222 F9AB 701 FFFF 6 DA1C7142 4 0

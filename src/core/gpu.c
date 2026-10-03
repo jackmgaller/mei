@@ -79,6 +79,8 @@ typedef struct {
     int32_t flat[3];   /* polygon colour when not Gouraud */
     uint32_t slot;     /* byte offset of the texture slot within the texture area */
     uint32_t pal;      /* first palette colour index */
+    int window;        /* textured with a texture window: u samples ((u & mu) + ou) & 255, likewise v */
+    uint32_t mu, ou, mv, ov;
     uint16_t upper;    /* 0x8000: the packet draws into the PH layer (compositor on, colour bit 26) */
     const Mei *planes; /* compositor on and the packet blends: see planes_under() */
     PlnUnder *under;   /* this span's context (set per span when planes) */
@@ -115,7 +117,7 @@ typedef struct { int32_t q, qs; int64_t r, rs; } Dda;
 #define FORCE_INLINE inline
 #endif
 
-enum { F_GOURAUD = 1, F_TEXTURED = 2, F_SEMI = 4, F_DITHER = 8 };
+enum { F_GOURAUD = 1, F_TEXTURED = 2, F_SEMI = 4, F_DITHER = 8, F_WINDOW = 16 };
 
 static FORCE_INLINE int clamp255(int v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
 static FORCE_INLINE int clamp31(int v) { return v < 0 ? 0 : v > 31 ? 31 : v; }
@@ -126,7 +128,8 @@ static FORCE_INLINE void shade(const Raster *R, uint8_t *row, int x, const int8_
     if (F & F_TEXTURED) {
         const uint8_t *tex = R->vram + TEX_OFF;
         uint32_t idx;
-        u &= 255; v &= 255;
+        if (F & F_WINDOW) { u = ((u & R->mu) + R->ou) & 255; v = ((v & R->mv) + R->ov) & 255; }
+        else { u &= 255; v &= 255; }
         if (R->four) idx = (tex[R->slot + v * 128 + (u >> 1)] >> ((u & 1) * 4)) & 15;
         else idx = tex[(R->slot + v * 256 + u) & TEX_MASK];
         if (idx == 0) return;
@@ -191,9 +194,12 @@ typedef void (*SpanFn)(const Raster *, uint8_t *, int, int, int, const int64_t *
     const int64_t *acc, const int64_t *step, int sh) { span_fixed(R, row, y, x0, x1, acc, step, sh, F); }
 SPAN_FN(0) SPAN_FN(1) SPAN_FN(2) SPAN_FN(3) SPAN_FN(4) SPAN_FN(5) SPAN_FN(6) SPAN_FN(7)
 SPAN_FN(8) SPAN_FN(9) SPAN_FN(10) SPAN_FN(11) SPAN_FN(12) SPAN_FN(13) SPAN_FN(14) SPAN_FN(15)
-static const SpanFn span_fns[16] = {
+SPAN_FN(18) SPAN_FN(19) SPAN_FN(22) SPAN_FN(23) SPAN_FN(26) SPAN_FN(27) SPAN_FN(30) SPAN_FN(31)
+static const SpanFn span_fns[32] = {   /* F_WINDOW only with F_TEXTURED */
     span_0, span_1, span_2, span_3, span_4, span_5, span_6, span_7,
     span_8, span_9, span_10, span_11, span_12, span_13, span_14, span_15,
+    NULL, NULL, span_18, span_19, NULL, NULL, span_22, span_23,
+    NULL, NULL, span_26, span_27, NULL, NULL, span_30, span_31,
 };
 
 /* Slow exact span (flags at run time). */
@@ -267,7 +273,7 @@ static uint32_t draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vt
 
     /* Attributes: N_k(p) = sum_i a_ik E_i(p) = NA x + NB y + NC. */
     int flags = (R->gouraud ? F_GOURAUD : 0) | (R->textured ? F_TEXTURED : 0) |
-                (R->semi ? F_SEMI : 0) | (R->dither ? F_DITHER : 0);
+                (R->semi ? F_SEMI : 0) | (R->dither ? F_DITHER : 0) | (R->window ? F_WINDOW : 0);
     int lo = R->gouraud ? 0 : 3, hi = R->textured ? 5 : 3;
     int64_t NA[5] = {0}, NB[5] = {0}, NC[5] = {0}, gmax = 0;
     for (int k = lo; k < hi; k++) {
@@ -393,6 +399,17 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
     R.flat[2] = vx[0].a[2];
     R.slot = ((tex0 >> 16) & 15) * TEXTURE_SLOT_BYTES;
     R.pal = R.four ? (tex0 >> 24) * 16 : ((tex0 >> 24) & 15) * 256;
+    /* Texture window (DECISIONS.md): bits 16-31 of the second vertex's texture coordinate.
+     * Bits 16-18 u size (0: none, k: 4 << k texels), 19-23 u origin / 8, 24-26 v size, 27-31 v origin / 8. */
+    R.mu = R.mv = 255;
+    R.ou = R.ov = 0;
+    R.window = 0;
+    if (textured) {
+        uint32_t win = w[gouraud ? 5 : 4] >> 16;   /* vertex 1: colour 0, position 0, texture 0, [colour 1], position 1, texture 1 */
+        R.window = win != 0;
+        if (win & 7) { R.mu = (4u << (win & 7)) - 1; R.ou = (win >> 3 & 31) * 8; }
+        if (win >> 8 & 7) { R.mv = (4u << (win >> 8 & 7)) - 1; R.ov = (win >> 11 & 31) * 8; }
+    }
     R.upper = (planes_on(m) && (col0 >> 26 & 1)) ? 0x8000 : 0;
     R.planes = (planes_on(m) && semi) ? m : NULL;
     R.under = NULL;

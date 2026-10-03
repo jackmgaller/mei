@@ -288,6 +288,21 @@ fn tex_page(slot: s32, palette: s32, four_bit: bool) -> u32 {
     return ((slot as u32 & 15) << 16) | ((four_bit as u32) << 20) | ((palette as u32 & 255) << 24)
 }
 
+// A texture window (docs/LANGUAGE.md, "Texture windows"): the polygon samples
+// u_origin + (u mod u_size) instead of u, likewise v. Sizes are 8, 16, 32, 64, 128 or 256 texels
+// (0: no window along that axis), origins multiples of 8. The result is a mesh window table's
+// halfword; shifted left 16 it is ORed into a packet's second texture coordinate word.
+fn tex_window(u_size: s32, u_origin: s32, v_size: s32, v_origin: s32) -> u32 {
+    return __win_axis(u_size, u_origin) | (__win_axis(v_size, v_origin) << 8)
+}
+
+fn __win_axis(size: s32, origin: s32) -> u32 {
+    if size <= 0 { return 0 }
+    var k = 1
+    while (4 << k) < size && k < 6 { k += 1 }
+    return k as u32 | ((origin as u32 >> 3) & 31) << 3
+}
+
 // The tint that draws a texture in `colour` as it would draw white: the GPU multiplies a texel
 // by tint / 128, so this halves the colour (rounding up). col_tint(0xFFFFFF) is 0x808080.
 fn col_tint(colour: u32) -> u32 {

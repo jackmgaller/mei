@@ -1234,6 +1234,26 @@ meshes that need it, raise the tolerance, or adjust it from frame to frame from 
 (keep the settings the same for all the meshes of a frame that share edges, or they may
 disagree about a shared edge).
 
+**Texture windows.** Texture coordinates are 8 bits and do not wrap, so on its own a small
+pattern can repeat across a large face only if it is repeated in VRAM. A texture window (a Mei
+addition, `DECISIONS.md`) makes a polygon repeat a power-of-two rectangle of its slot instead:
+it samples `origin_u + (u mod size_u)` and likewise v, so a slot can hold many small tiles,
+each repeating over its own faces. A mesh gives a face a window through bits 5–7 of its
+texture byte, 1–7 picking a halfword from the mesh's window table (see [Mesh
+format](#mesh-format); `tools/meshlib.py` writes both), and `mesh()` puts it into the face's
+packet. Each axis has a size of 8, 16, 32, 64, 128 or 256 texels, or none (that axis samples
+as usual), and an origin that is a multiple of 8; `origin + size` past 256 wraps to 0. The
+window applies after interpolation and before addressing, so it works for 4-bit and 8-bit
+textures alike (an 8-bit texture's rows 128 and on are still in the next slot), keeps
+palette index 0 transparent, and is the same for both triangles of a quad and for the pieces
+clipping and `subdivide()` make of a face (they keep its texture byte). Limits: a face's u
+and v still run 0–255, so it repeats a tile at most 255 texels' worth (31 times for 8 texels,
+15 for 16, 7 for 32, 3 for 64, once for 128: windows pay off for tiles of 64 texels or less);
+and a face whose coordinate ends exactly at 256 is one texel short, as before. Windows cost
+nothing in a mesh without a table; see [Performance notes](#performance-notes) for one with
+one. Hand-built packets take the halfword `tex_window(...)` returns, shifted left 16, in their
+second vertex's texture coordinate word.
+
 The fonts occupy texture slot 15 (the 8×8 font rows 0–47, `font_small()` rows 48–66) and 4-bit
 palette 255 (colours 4080–4095); carts should not use them.
 
@@ -1335,6 +1355,7 @@ and `y .. y+h−1`. Colours are `0xBBGGRR`. A `mode` is a blend mode:
 | `tri_grad(x0, y0, x1, y1, x2, y2, c0, c1, c2, mode)` | a Gouraud-shaded triangle |
 | `quad_fill(x0, y0, x1, y1, x2, y2, x3, y3, colour, mode)` | a quad in strip order (0-1-2, 1-2-3: top-left, top-right, bottom-left, bottom-right) |
 | `tex_page(slot, palette, four_bit) -> u32` | the texture page of the sprite functions: slot, palette and depth |
+| `tex_window(u_size, u_origin, v_size, v_origin) -> u32` | a texture window halfword (sizes 8-256, 0 for none; origins multiples of 8): a mesh window table entry, or `<< 16` into a hand-built packet's second texture coordinate |
 | `sprite_ex(page, u, v, tw, th, x, y, w, h, tint, mode)` | the texels `(u, v, tw, th)` stretched over `(x, y, w, h)`; a negative `tw` or `th` mirrors that axis |
 | `sprite_rot(page, u, v, tw, th, cx, cy, w, h, angle, tint, mode)` | the same `w × h`, centred on `(cx, cy)` and turned clockwise by `angle` radians |
 | `sprite_corners(page, u, v, tw, th, xs: *s32, ys: *s32, tint, mode)` | on four free corners (`xs[k]`, `ys[k]`: top-left, top-right, bottom-left, bottom-right of the texels) |
@@ -1766,18 +1787,28 @@ header (16 bytes)
   +2   u16  face count
   +4   u32  byte offset of the vertices (from the start of the mesh; normally 16)
   +8   u32  byte offset of the faces
-  +12  u32  reserved (0)
+  +12  u32  byte offset of the texture window table, even (0: none; meshlib puts it after the faces)
 vertex (16 bytes): x, y, z, w as 16.16 fixed point, with w = 1.0
 face (36 bytes)
   +0   u8   flags: bit 0 Gouraud, bit 1 textured, bit 2 quad, bit 3 semi-transparent, bit 4 double-sided,
             bit 5 keyed (sorted into the bucket held in col[3]; see Sort keys)
   +1   u8   blend mode 0-3 (used when semi-transparent)
-  +2   u8   texture: bits 0-3 slot, bit 4 set for a 4-bit texture
+  +2   u8   texture: bits 0-3 slot, bit 4 set for a 4-bit texture, bits 5-7 texture window
+            (1-7: that entry of the window table; 0: none; ignored in a mesh without a table)
   +3   u8   palette (0-255 for 4-bit textures, 0-15 for 8-bit)
   +4   u16  vertex index ×4 (triangles ignore the fourth)
   +12  u32  colour ×4, 0xBBGGRR (flat faces use the first; for textured faces 0x808080 leaves the texture unchanged)
   +28  u16  texture coordinate ×4: u | v << 8
+window table (2 bytes per window, up to 7; window n is the nth halfword)
+  bits 0-2   u size: 0 none, k: 4 << k texels (1-6: 8-256; 7 is 256 too)
+  bits 3-7   u origin / 8
+  bits 8-10  v size, bits 11-15 v origin / 8 (as for u)
 ```
+
+A window halfword is exactly what the GPU reads from bits 16–31 of a polygon's second
+texture coordinate (`DECISIONS.md`, "Texture windows"); `tex_window(u_size, u_origin, v_size,
+v_origin)` builds one. A mesh without windows has 0 at +12 and zeros in the texture bytes'
+bits 5–7, as every mesh did before windows existed.
 
 Vertices are 16 bytes so `vld`/`vxfm` work on them directly. Flag bits 0–3 equal the GPU packet
 type bits. A triangle is front-facing when its vertices are counter-clockwise as seen by the
@@ -1819,6 +1850,7 @@ Measured with the `CYCLES` register (500,000 cycles per frame):
 | `map`/`filter`/`reduce`/`each` | about 11 cycles per element plus the function's own cost |
 | `mesh()` with `subdivide()` on: each face not split | about 35 more |
 | a face split by `subdivide()` | about 1,000 per piece drawn (a quad cut in two: about 2,000 more than drawing it whole) |
+| a mesh with a texture window table | about 55 more a `mesh*()` call; 10 more per visible textured face with a window, 5 per one without (a mesh without a table: nothing) |
 
 The demo cart (a fogged 16×16 ground and a textured cube, about 370 triangles, plus a HUD)
 uses about 78,000 cycles per frame with `subdivide(2)` at a 10 % tolerance.

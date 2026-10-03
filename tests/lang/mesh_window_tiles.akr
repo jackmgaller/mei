@@ -1,0 +1,172 @@
+// mesh(): texture windows through the real face loops, near-plane clipping and subdivide().
+// A floor of two quads repeats small tiles with windows: a 16x16 4-bit tile (flat) and a
+// 32x32 8-bit tile that crosses into the second slot of its pair (Gouraud). The reference is
+// the same floor without windows, sampling copies of the tiles repeated across whole slots.
+// Clipped and subdivided pieces keep their face's window, so the two pictures must be equal
+// pixel for pixel (index 0 inside the tile shows the background in both); the floor with its
+// windows taken away must not be. Each line: the scene, the number of the floor's triangles
+// (more than two: it was cut into pieces), how many of rows 121-239 differ between the
+// windowed and the reference picture, and how many of their pixels show the floor.
+// frames: 50
+
+struct Floor { hdr: Mesh, v: [6]vec4, f: [2]Face, win: [2]u16 }
+var wf: Floor                           // windows
+var rf: Floor                           // reference: pre-repeated tiles, no windows
+var sf: Floor                           // windows taken away
+
+fn tile4(x: s32, y: s32) -> s32 { return (x + 2 * y) % 15 }          // 0-14 (0: see-through)
+fn tile8(x: s32, y: s32) -> s32 { return (3 * x + 5 * y) % 200 }     // 0-199
+
+fn quad(f: *Face, a: u16, b: u16, c: u16, d: u16, um: s32, vm: s32) {
+    f.idx[0] = a
+    f.idx[1] = b
+    f.idx[2] = c
+    f.idx[3] = d
+    f.uv[0] = 0
+    f.uv[1] = um as u16
+    f.uv[2] = (vm << 8) as u16
+    f.uv[3] = (um | vm << 8) as u16
+}
+
+fn init() {
+    dither(false)
+    // 4-bit, slot 3, palette 5: the tile at (32, 64) in a slot of index 15; slot 4 repeats it
+    let t3 = (VRAM_TEXTURES + 3 * TEXTURE_SLOT_SIZE) as *u8
+    let t4 = (VRAM_TEXTURES + 4 * TEXTURE_SLOT_SIZE) as *u8
+    for i in 0..TEXTURE_SLOT_SIZE { t3[i] = 0xFF }
+    for v in 0..256 {
+        for u in 0..128 {
+            let lo = tile4((2 * u) % 16, v % 16)
+            let hi = tile4((2 * u + 1) % 16, v % 16)
+            t4[v * 128 + u] = (lo | hi << 4) as u8
+            if v >= 64 && v < 80 && u >= 16 && u < 24 { t3[v * 128 + u] = (lo | hi << 4) as u8 }
+        }
+    }
+    // 8-bit, slots 6-7, palette 2: the tile at (200, 160) (rows 128 on are slot 7) in a texture
+    // of index 255; slots 8-9 repeat it
+    let t6 = (VRAM_TEXTURES + 6 * TEXTURE_SLOT_SIZE) as *u8
+    let t8 = (VRAM_TEXTURES + 8 * TEXTURE_SLOT_SIZE) as *u8
+    for v in 0..256 {
+        for u in 0..256 {
+            let c = tile8(u % 32, v % 32) as u8
+            t8[v * 256 + u] = c
+            if v >= 160 && v < 192 && u >= 200 && u < 232 {
+                t6[v * 256 + u] = tile8(u - 200, v - 160) as u8
+            } else {
+                t6[v * 256 + u] = 255
+            }
+        }
+    }
+    let pal = VRAM_PALETTE as *u16
+    for i in 0..16 { pal[5 * 16 + i] = ((i * 2) | ((31 - i * 2) << 5) | ((i * 7 % 32) << 10)) as u16 }
+    for i in 0..256 { pal[2 * 256 + i] = ((i % 32) | ((i / 8) << 5) | (((i * 13) % 32) << 10)) as u16 }
+
+    // the floor: x -3..3 split at x = 0, z -4..12 (the camera at y = 1 looks along +z)
+    wf.hdr.nverts = 6
+    wf.hdr.nfaces = 2
+    wf.hdr.verts = 16
+    wf.hdr.faces = 16 + 6 * 16
+    wf.hdr.windows = 16 + 6 * 16 + 2 * 36
+    wf.v[0] = vec4(-3.0, 0.0, -4.0, 1.0)
+    wf.v[1] = vec4(0.0, 0.0, -4.0, 1.0)
+    wf.v[2] = vec4(3.0, 0.0, -4.0, 1.0)
+    wf.v[3] = vec4(-3.0, 0.0, 12.0, 1.0)
+    wf.v[4] = vec4(0.0, 0.0, 12.0, 1.0)
+    wf.v[5] = vec4(3.0, 0.0, 12.0, 1.0)
+    quad(&wf.f[0], 0, 1, 3, 4, 48, 240)
+    wf.f[0].flags = (FACE_QUAD | FACE_TEXTURED) as u8
+    wf.f[0].tex = 0x20 | 0x10 | 3       // window 1, 4-bit, slot 3
+    wf.f[0].palette = 5
+    wf.f[0].col[0] = 0x808080
+    quad(&wf.f[1], 1, 2, 4, 5, 72, 248)
+    wf.f[1].flags = (FACE_QUAD | FACE_TEXTURED | FACE_GOURAUD) as u8
+    wf.f[1].tex = 0x40 | 6              // window 2, 8-bit, slots 6-7
+    wf.f[1].palette = 2
+    wf.f[1].col[0] = 0x808080
+    wf.f[1].col[1] = 0x60A0FF
+    wf.f[1].col[2] = 0xFF8040
+    wf.f[1].col[3] = 0x808080
+    wf.win[0] = (2 | 4 << 3 | (2 | 8 << 3) << 8) as u16       // 16 x 16 at (32, 64)
+    wf.win[1] = (3 | 25 << 3 | (3 | 20 << 3) << 8) as u16     // 32 x 32 at (200, 160)
+    rf = wf
+    rf.hdr.windows = 0
+    rf.f[0].tex = 0x10 | 4
+    rf.f[1].tex = 8
+    sf = wf
+    sf.hdr.windows = 0
+}
+
+var drawn = 0                           // draw() calls so far (init takes several frames)
+
+fn draw() {
+    cls(0x203040)
+    drawn += 1
+    let f = drawn - 1
+    let scene = (f - 1) / 3            // 0: clipped, 1: subdivided, 2: subdivided and clipped
+    let k = (f - 1) % 3                // 0: windows, 1: reference, 2: windows taken away
+    if f < 1 || scene > 2 { return }
+    if scene == 1 { camera(vec3(0.0, 1.0, -5.5), 0.0) } else { camera(vec3(0.0, 1.0, 0.0), 0.0) }
+    if scene > 0 { subdivide(2) }
+    if k == 0 { mesh(&wf.hdr) }
+    if k == 1 { mesh(&rf.hdr) }
+    if k == 2 { mesh(&sf.hdr) }
+    subdivide(0)
+}
+
+var row_hash: [120]u32
+var shown_tris: s32
+var floor_px: s32
+
+// Hashes rows 121-239 of the picture shown (drawn last frame); with keep, stores the hashes,
+// else returns how many differ from the stored ones.
+fn rows(keep: bool) -> s32 {
+    var front = 0x400000
+    if GPU_BACK == 0x400000 { front = 0x425800 }
+    let bg = rgb15(0x203040)
+    var diff = 0
+    floor_px = 0
+    for y in 121..240 {
+        let p = (front + y * 640) as *u16
+        var h: u32 = 0
+        for x in 0..320 {
+            let c = p[x] as u32
+            h = h * 31 + c
+            if c != bg { floor_px += 1 }
+        }
+        if keep { row_hash[y - 120] = h } else if row_hash[y - 120] != h { diff += 1 }
+    }
+    return diff
+}
+
+fn update() {
+    let f = drawn - 1                   // the draw whose picture is shown
+    if f < 1 || f > 9 { return }
+    let k = (f - 1) % 3
+    if k == 0 {
+        rows(true)
+        shown_tris = tris_drawn()
+        return
+    }
+    let d = rows(false)
+    var tris = shown_tris               // the windowed floor's
+    var which = 'r'
+    if k == 2 {
+        tris = tris_drawn()
+        which = 's'
+    }
+    print_int((f - 1) / 3)
+    print_char(which)
+    print_char(' ')
+    print_int(tris)
+    print_char(' ')
+    print_int(d)
+    print_char(' ')
+    print_int(floor_px)
+    print_char('\n')
+}
+// expect: 0r 6 0 27787
+// expect: 0s 6 103 28963
+// expect: 1r 12 0 28479
+// expect: 1s 12 109 29565
+// expect: 2r 14 0 28131
+// expect: 2s 14 103 29053
