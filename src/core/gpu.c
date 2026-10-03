@@ -79,6 +79,7 @@ typedef struct {
     int32_t flat[3];   /* polygon colour when not Gouraud */
     uint32_t slot;     /* byte offset of the texture slot within the texture area */
     uint32_t pal;      /* first palette colour index */
+    uint32_t mu, ou, mv, ov;   /* texture window: u samples ((u & mu) + ou) & 255 (none: 255, 0) */
     uint16_t upper;    /* 0x8000: the packet draws into the PH layer (compositor on, colour bit 26) */
     const Mei *planes; /* compositor on and the packet blends: see planes_under() */
     PlnUnder *under;   /* this span's context (set per span when planes) */
@@ -126,7 +127,7 @@ static FORCE_INLINE void shade(const Raster *R, uint8_t *row, int x, const int8_
     if (F & F_TEXTURED) {
         const uint8_t *tex = R->vram + TEX_OFF;
         uint32_t idx;
-        u &= 255; v &= 255;
+        u = ((u & R->mu) + R->ou) & 255; v = ((v & R->mv) + R->ov) & 255;
         if (R->four) idx = (tex[R->slot + v * 128 + (u >> 1)] >> ((u & 1) * 4)) & 15;
         else idx = tex[(R->slot + v * 256 + u) & TEX_MASK];
         if (idx == 0) return;
@@ -393,6 +394,15 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
     R.flat[2] = vx[0].a[2];
     R.slot = ((tex0 >> 16) & 15) * TEXTURE_SLOT_BYTES;
     R.pal = R.four ? (tex0 >> 24) * 16 : ((tex0 >> 24) & 15) * 256;
+    /* Texture window (DECISIONS.md): bits 16-31 of the second vertex's texture coordinate.
+     * Bits 16-18 u size (0: none, k: 4 << k texels), 19-23 u origin / 8, 24-26 v size, 27-31 v origin / 8. */
+    R.mu = R.mv = 255;
+    R.ou = R.ov = 0;
+    if (textured) {
+        uint32_t win = w[gouraud ? 5 : 4] >> 16;   /* vertex 1: colour 0, position 0, texture 0, [colour 1], position 1, texture 1 */
+        if (win & 7) { R.mu = (4u << (win & 7)) - 1; R.ou = (win >> 3 & 31) * 8; }
+        if (win >> 8 & 7) { R.mv = (4u << (win >> 8 & 7)) - 1; R.ov = (win >> 11 & 31) * 8; }
+    }
     R.upper = (planes_on(m) && (col0 >> 26 & 1)) ? 0x8000 : 0;
     R.planes = (planes_on(m) && semi) ? m : NULL;
     R.under = NULL;
