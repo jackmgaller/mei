@@ -652,7 +652,7 @@ For a world named `city` of a game named `game`, `build` produces:
 |---|---|
 | `city.world.bin` | The pack: index, regions, cells, mesh pool, collision, entity records |
 | `city.akr` | `embed WORLD_CITY: u8 = "city.world.bin"`; `world_city_load()` (opens the pack, copies the swatch, loads every region's first variant); constants for regions, variants, colour ranges (`_SURFACE`, `_EMISSIVE` and their counts), layers, entity numbers and saved bits; `world_city_string()` for `name` parameters |
-| `game.game.akr` | The game's type numbers, parameter `struct`s and `enum`s, imported by every world of the game (build worlds of one game into one directory, so a cart compiles it once) |
+| `game.game.akr` | The game's type numbers, parameter `struct`s and `enum`s, imported by every world of the game; make links one copy per game for a cart's worlds, so a cart compiles it once ([Using a world in a cart](#using-a-world-in-a-cart)) |
 | `city.swatch` | The 8-byte palette swatch row, when any material is palette-backed |
 | `city.ids.json` | A copy of the ID lock file (the lock itself is written beside the recipe) |
 | `source/` | The world file, cell files, game schema and every asset recipe used, as built |
@@ -770,6 +770,67 @@ trigger whose parameters use every kind of reference) and
 day and night variants, stand-ins, a far cell, merged scatter, a festival layer, a `share: false`
 material). `make test-world` (also part of `make test`) runs `tests/test_worldkit.py`, which builds
 both and runs them on the console.
+
+## Using a world in a cart
+
+A cart in `carts/NAME/` that uses worlds lists their recipes in `carts/NAME/worlds.txt`, one
+repository path per line (`#` starts a comment). World Viewer's:
+
+```
+examples/worlds/test_room/test_room.world.json
+examples/worlds/two_districts/two_districts.world.json
+```
+
+Its Akari source imports each world's generated file by name, as if it were next to it:
+
+```
+import "test_room.akr"        // also brings in worldpack.akr and garden.game.akr
+
+fn init() { assert(world_test_room_load()) }
+```
+
+`make build/carts/NAME.mei` then:
+
+1. builds each recipe once (`tools/world_cart.py build`, which runs `mei_world.py build` with the
+   build directory's tools) into `build/worlds/<the recipe's folder>/`, for example
+   `build/worlds/examples/worlds/test_room/`. The World Checker runs as every build runs it,
+   report-only unless the recipe says `enforce`, and make prints two lines per world:
+
+   ```
+   world test_room: 1 cell, 12,592 bytes, 0 warnings -> build/worlds/examples/worlds/test_room
+     World Checker (report): 132 views, 0 hard failures, 79 over thresholds; peaks 50 tris, CPU 56,018, GPU 198,538 cycles; build/worlds/examples/worlds/test_room/verification/world-check.json
+   ```
+
+   An invalid recipe stops make with the kit's errors, one per line (`file:line:column: JSON
+   Pointer: message`), and the `mei_world.py validate` command that gives them as JSON;
+2. links every world's `NAME.akr`, `NAME.world.bin` and `NAME.swatch`, and each game's
+   `GAME.game.akr`, into `build/cart-worlds/NAME/` (`tools/world_cart.py link`), so that worlds
+   of one game share one `GAME.game.akr`. Two worlds of one name, or two worlds of one game
+   built from different game schemas, are an error;
+3. compiles the cart with `meic -I build/cart-worlds/NAME`: an import that is not next to the
+   importing file is looked for there before the standard library
+   ([LANGUAGE.md](LANGUAGE.md#building-and-running)).
+
+A world is rebuilt when its recipe, a cell file, its game schema, its ID lock file, an asset
+recipe, its cell or asset folder (a file added or removed), or the kit's Python changes:
+`build.d` beside the build records what the build read. Editing the cart's own files rebuilds
+only the cart. A recipe edit that adds a saved entity updates the ID lock file beside the recipe,
+which is then committed with it. Packs stay in the build directory; `make B=DIR` builds them
+into `DIR/worlds/`. Building a world needs Python 3.10 or later and NumPy (for the Asset and
+World Checkers).
+
+For a cart's test scenarios, `tools/cart_scenario.sh` passes `SC_IMPORT=DIR` to meic as `-I
+DIR`; `carts/worldview/tests/run.sh` shows the use. `make test-carts` runs World Viewer's
+scripted run and `tests/world_carts.sh`, which checks these rules (what rebuilds after which
+edit, the errors, two worlds of one game).
+
+**World Viewer** (`carts/worldview/`, built on request) is the example: `make
+build/carts/worldview.mei`, then `./build/mei build/carts/worldview.mei`. It flies a camera
+through both example worlds, or walks it (the floor under it followed and walls pushed out at
+the game's probe radius, through `wp_floor` and `wp_push`), and shows the cell, triangles drawn,
+CPU and GPU cycles and the surface byte under the camera. Stick: move; d-pad or right stick:
+look; L and R: down and up; A: walk or fly; B: next palette variant; SELECT and X: choose a layer
+and switch it; START: next world; Y: hide the overlay.
 
 ## Open questions
 

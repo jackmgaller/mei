@@ -80,8 +80,10 @@ To run a cart, either directly or after the boot animation:
 ./build/mei --no-boot build/carts/orbs.mei
 ```
 
-`make` builds every cart except Mei Demo and Sound Lab, which are built on request
-(`make build/carts/demo.mei build/carts/soundlab.mei`) and so are not in the shell's list.
+`make` builds every cart except Mei Demo, Sound Lab and World Viewer, which are built on
+request (`make build/carts/demo.mei build/carts/soundlab.mei build/carts/worldview.mei`) and so
+are not in the shell's list. World Viewer builds the World Kit's example worlds first, which
+needs NumPy ([WORLDKIT.md](WORLDKIT.md#using-a-world-in-a-cart)).
 
 Or drop a `.mei` file on the window. Keyboard: arrows = d-pad, WASD = analog stick,
 J K U I = A B X Y, Q E = L R, Enter = Start, Backspace or right Shift = Select, F2 home,
@@ -193,6 +195,7 @@ If something has a name, it matters. These are the named things in the project.
 | **Mei Weather** | A weather channel fed by MeiNet | `carts/weather/` |
 | **Features** | Short screens showing what the machine can do | `carts/features/` |
 | **Sound Lab**, **Mei Demo** | The audio hardware test and the smallest example; built on request | `carts/soundlab/`, `carts/demo/` |
+| **World Viewer** | Fly or walk through the World Kit's example worlds, with palette variants, layers and costs on screen; the reference for a cart that uses a world. Built on request | `carts/worldview/` |
 
 **Retired names**, which still appear in history and in some measurements: **Tsumiki** (a 3D
 toolkit in the stdlib), **Playroom** (its sample cart) and **Check-In!** (a hotel-building cart).
