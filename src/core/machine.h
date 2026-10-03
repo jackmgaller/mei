@@ -6,12 +6,12 @@
 
 /* Memory map */
 #define RAM_BASE   0x000000u
-#define RAM_SIZE   0x200000u
+#define RAM_SIZE   MEI_RAM_SIZE
 #define ROM_BASE   MEI_ROM_BASE     /* the cart ROM window (mei.h) */
 #define ROM_WINDOW MEI_ROM_WINDOW
 #define VRAM_BASE  0x400000u
 #define VRAM_SIZE  0x100000u
-#define IO_BASE    0xFF0000u
+#define IO_BASE    MEI_IO_BASE
 #define IO_SIZE    0x800u   /* 0x400-0x5FF: audio channels 8-15 and global audio registers;
                                0x600: broadcast; 0x700-0x7FF: the plane chip */
 

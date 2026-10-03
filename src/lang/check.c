@@ -1,6 +1,7 @@
 /* Type checker: resolves names and types, folds constants, inserts implicit
  * conversions and collects per-function facts (locals, calls) for the code generator. */
 #include "internal.h"
+#include "isa.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -175,7 +176,7 @@ static int is_intish(Type *t) { return ty_is_int(t) || t->k == TY_UINT; }
 static int is_fixedish(Type *t) { return t->k == TY_FIXED || t->k == TY_FIXED16 || t->k == TY_UFIXED; }
 static int is_numeric(Type *t) { return is_intish(t) || is_fixedish(t); }
 
-int fits_s18(int64_t v) { return v >= -131072 && v <= 131071; }
+int fits_s18(int64_t v) { return v >= MEI_IMM_MIN && v <= MEI_IMM_MAX; }
 
 /* -------------------------------------------------------------- contexts */
 

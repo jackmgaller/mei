@@ -21,6 +21,12 @@
 #define MEI_ROM_WINDOW 0x08000000u   /* 128 MB */
 #define MEI_ROM_MAX    0x04000000u   /* 64 MB */
 
+/* RAM is MEI_RAM_SIZE bytes from address 0; a program's own data starts at MEI_RAM_USER_BASE
+ * (the assembler's `.section ram`, the compiler's globals). I/O registers from MEI_IO_BASE. */
+#define MEI_RAM_SIZE      0x200000u   /* 2 MB */
+#define MEI_RAM_USER_BASE 0x000100u
+#define MEI_IO_BASE       0xFF0000u
+
 /* The optional cart header (docs/DECISIONS.md, "Cart file format"): word 0 is any
  * instruction (normally a jump past the header), then the magic "MEI1", the title and the
  * cart ID for memory cards, both NUL-padded (an all-zero ID: none). Code follows it. */

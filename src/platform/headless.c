@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
         sys_scan_dir(&cat, sysdir, base ? base + 1 : cart);
         size_t img_len;
         uint8_t *img = sys_build_image(data, len, &cat, SYS_NO_AUTOBOOT, 0, "headless", &img_len);
-        if (!img) { fprintf(stderr, "%s: system ROM larger than 0x1F0000 bytes\n", cart); return 1; }
+        if (!img) { fprintf(stderr, "%s: system ROM larger than 0x%X bytes\n", cart, SYS_ROM_MAX); return 1; }
         free(data);
         data = img;
         len = img_len;

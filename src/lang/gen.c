@@ -10,6 +10,7 @@
  *  - temporaries never live across statements, and short-circuit operators in value context
  *    flush live temporaries first, so the register state is identical at every join point. */
 #include "internal.h"
+#include "isa.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -354,7 +355,7 @@ static LV lv_mem(Opnd base, int32_t off, Type *t) {
 
 static LV lv_abs(uint32_t addr, const char *sym, Type *t) {
     LV lv = {.k = LV_MEM, .ty = t, .base = {O_REG, 0}};
-    if (addr < 0x20000) { lv.sym = sym; lv.symval = addr; return lv; }
+    if (addr <= MEI_IMM_MAX) { lv.sym = sym; lv.symval = addr; return lv; }
     if (g_iobase_reg >= 0 && addr >= IO_BASE_ADDR && addr < IO_BASE_ADDR + 0x400) {
         lv.base = (Opnd){O_REG, g_iobase_reg};
         lv.off = (int32_t)(addr - IO_BASE_ADDR);
@@ -1190,7 +1191,7 @@ static Opnd gen_cmp_value(Expr *e, int hint) {
         if (op == B_EQ) I("xori %s, %s, 1", RN[r], RN[r]);
         return d;
     }
-    if (b.k == O_IMM && b.v >= 0 && b.v <= 0x3FFFF) {
+    if (b.k == O_IMM && b.v >= 0 && b.v <= MEI_UIMM_MAX) {
         ofree(a);
         Opnd d = dest(0, hint, &r);
         I("xori %s, %s, %d", RN[r], RN[ra], b.v);
@@ -1224,9 +1225,9 @@ static Opnd arith(OpKind op, Type *ty, int mixed, Opnd a, Opnd b, int hint) {
         switch (op) {
         case B_ADD: if (fits_s18(v)) iop = "addi"; break;
         case B_SUB: if (fits_s18(-(int64_t)v)) { iop = "addi"; imm = -v; } break;
-        case B_AND: if (v >= 0 && v <= 0x3FFFF) iop = "andi"; break;
-        case B_OR: if (v >= 0 && v <= 0x3FFFF) iop = "ori"; break;
-        case B_XOR: if (v >= 0 && v <= 0x3FFFF) iop = "xori"; break;
+        case B_AND: if (v >= 0 && v <= MEI_UIMM_MAX) iop = "andi"; break;
+        case B_OR: if (v >= 0 && v <= MEI_UIMM_MAX) iop = "ori"; break;
+        case B_XOR: if (v >= 0 && v <= MEI_UIMM_MAX) iop = "xori"; break;
         case B_SHL: iop = "shli"; imm = v & 31; break;
         case B_SHR: iop = sgn ? "sari" : "shri"; imm = v & 31; break;
         case B_MUL: {
@@ -1288,7 +1289,7 @@ static Opnd arith(OpKind op, Type *ty, int mixed, Opnd a, Opnd b, int hint) {
             }
             break;
         case B_MOD:
-            if (!sgn && v > 0 && log2_exact(v) >= 0 && v - 1 <= 0x3FFFF) { iop = "andi"; imm = v - 1; }
+            if (!sgn && v > 0 && log2_exact(v) >= 0 && v - 1 <= MEI_UIMM_MAX) { iop = "andi"; imm = v - 1; }
             break;
         default: break;
         }

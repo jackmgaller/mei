@@ -13,8 +13,8 @@
 
 #define ROM_START   MEI_ROM_BASE
 #define ROM_MAX     MEI_ROM_MAX
-#define RAM_START   0x000100u
-#define RAM_END     0x200000u
+#define RAM_START   MEI_RAM_USER_BASE
+#define RAM_END     MEI_RAM_SIZE   /* RAM starts at 0 */
 #define MAX_LINE    4096
 #define NAME_MAX_   256
 #define MAX_DEPTH   16
@@ -506,7 +506,7 @@ static uint32_t mem_operand(Asm *a, const char **p, int *base) {
     ws(p);
     if (**p != ']') fail(a, "expected ']'");
     (*p)++;
-    return (uint32_t)check(a, off, ok, -131072, 131071, *base ? "memory offset" : "absolute address");
+    return (uint32_t)check(a, off, ok, MEI_IMM_MIN, MEI_IMM_MAX, *base ? "memory offset" : "absolute address");
 }
 
 static uint32_t branch_imm(Asm *a, const char **p) {
@@ -517,7 +517,7 @@ static uint32_t branch_imm(Asm *a, const char **p) {
     if (t & 3) fail(a, "branch target 0x%llX is not word-aligned", (long long)t);
     int32_t diff = (int32_t)((uint32_t)t - (a->loc[SEC_ROM] + 4));
     int32_t off = diff / 4;
-    if (off < -131072 || off > 131071) fail(a, "branch target 0x%llX out of range (%d words away)", (long long)t, off);
+    if (off < MEI_IMM_MIN || off > MEI_IMM_MAX) fail(a, "branch target 0x%llX out of range (%d words away)", (long long)t, off);
     return (uint32_t)off & 0x3FFFF;
 }
 
@@ -544,9 +544,9 @@ static uint32_t encode(Asm *a, int op, const char **p) {
     case SHAPE_SSI:
         ra = sreg(a, p), comma(a, p), rb = sreg(a, p), comma(a, p);
         v = expr(a, p, &ok);
-        if (op == OP_ANDI || op == OP_ORI || op == OP_XORI) v = check(a, v, ok, 0, 0x3FFFF, "unsigned immediate");
+        if (op == OP_ANDI || op == OP_ORI || op == OP_XORI) v = check(a, v, ok, 0, MEI_UIMM_MAX, "unsigned immediate");
         else if (op >= OP_SHLI && op <= OP_SARI) v = check(a, v, ok, 0, 31, "shift amount");
-        else v = check(a, v, ok, -131072, 131071, "immediate");
+        else v = check(a, v, ok, MEI_IMM_MIN, MEI_IMM_MAX, "immediate");
         return MEI_ENC_I(op, ra, rb, v);
     case SHAPE_SU:
         ra = sreg(a, p), comma(a, p);
@@ -630,7 +630,7 @@ static void instruction(Asm *a, const char *mn, const char **p) {
         int words = 2;
         if (mn[1] == 'i') {
             if (a->pass == 1) {
-                words = ok && s >= -131072 && s <= 131071 ? 1 : 2;
+                words = ok && s >= MEI_IMM_MIN && s <= MEI_IMM_MAX ? 1 : 2;
                 if (a->nlisz == a->caplisz)
                     a->lisz = xrealloc(a, a->lisz, a->caplisz = a->caplisz ? a->caplisz * 2 : 64);
                 a->lisz[a->nlisz++] = (uint8_t)words;
@@ -640,7 +640,7 @@ static void instruction(Asm *a, const char *mn, const char **p) {
             }
         }
         if (words == 1) {
-            if (s < -131072 || s > 131071) fail(a, "internal error: li size changed between passes");
+            if (s < MEI_IMM_MIN || s > MEI_IMM_MAX) fail(a, "internal error: li size changed between passes");
             emit_insn(a, MEI_ENC_I(OP_ADDI, ra, 0, s));
         } else {
             emit_lui_ori(a, ra, v);
@@ -778,7 +778,7 @@ static void directive(Asm *a, const char *d, const char **p) {
         if (**p == ',') (*p)++, fill = check(a, expr_now(a, p, "fill"), 1, -128, 255, "fill byte");
         if (a->sec == SEC_RAM) {
             if (fill) fail(a, "fill value not allowed in the ram section (it holds no initialised data)");
-            if (a->loc[SEC_RAM] + v > RAM_END) fail(a, "RAM is full (2 MB)");
+            if (a->loc[SEC_RAM] + v > RAM_END) fail(a, "RAM is full (%u MB)", RAM_END >> 20);
             a->loc[SEC_RAM] += (uint32_t)v;
         } else {
             if (a->loc[SEC_ROM] + v > ROM_START + ROM_MAX) fail(a, "ROM is full (%u MB)", ROM_MAX >> 20);
