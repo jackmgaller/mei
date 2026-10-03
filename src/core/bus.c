@@ -19,11 +19,15 @@ static int fail(Mei *m, MeiFaultKind kind, uint32_t addr) {
 
 /* Host pointer for a plain-memory access of `size` bytes, or NULL if the
  * address is not RAM/ROM/VRAM. Callers have already checked alignment, so an
- * access never straddles a region end. */
+ * access never straddles a region end, nor the end of the word-padded cart image. */
 static uint8_t *mem_ptr(Mei *m, uint32_t addr, int *rom) {
+    static uint8_t past_image[4];   /* the ROM window past the cart reads 0; ROM writes fault before using it */
     *rom = 0;
     if (addr < RAM_BASE + RAM_SIZE) return m->ram + addr;
-    if (addr - ROM_BASE < ROM_SIZE) { *rom = 1; return m->rom + (addr - ROM_BASE); }
+    if (addr - ROM_BASE < ROM_WINDOW) {
+        *rom = 1;
+        return addr - ROM_BASE < m->rom_len ? m->rom + (addr - ROM_BASE) : past_image;
+    }
     if (addr - VRAM_BASE < VRAM_SIZE) return m->vram + (addr - VRAM_BASE);
     return NULL;
 }

@@ -97,7 +97,7 @@ static void test_reset_state(void) {
     e(VSYNC);
     load();
     EQ(M->pc, ROM_BASE);
-    EQ(M->r[14], 0x200000);
+    EQ(M->r[14], RAM_BASE + RAM_SIZE);
     for (int i = 0; i < 16; i++) if (i != 14) EQ(M->r[i], 0);
     for (int i = 0; i < 8; i++) for (int j = 0; j < 4; j++) EQ(M->v[i][j], 0);
     EQ(M->frame, 0);
@@ -280,8 +280,8 @@ static void test_memory(void) {
     begin("regions");
     e(U(LUI, 1, ROM_BASE >> 10));
     e(I(LW, 2, 1, 0));                       /* ROM: this program's first word */
-    li(3, 0x3FFFFC);
-    e(I(LW, 4, 3, 0));                       /* last ROM word */
+    li(3, ROM_BASE + ROM_WINDOW - 4);
+    e(I(LW, 4, 3, 0));                       /* last word of the ROM window: past the cart, 0 */
     e(U(LUI, 5, VRAM_BASE >> 10));
     li(6, 0x1234ABCD);
     e(I(SW, 6, 5, 0));
@@ -831,6 +831,11 @@ static void test_faults(void) {
     begin("unmapped write"); li(1, 0x600000); e(I(SW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x600000);
     begin("unmapped write8"); li(1, 0xFEFFFF); e(I(SB, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0xFEFFFF);
     begin("bit 24 set"); li(1, 0x1000000); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x1000000);
+    begin("old ROM base"); li(1, 0x200000); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x200000);
+    begin("below the ROM window"); li(1, ROM_BASE - 4); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, ROM_BASE - 4);
+    begin("past the ROM window"); li(1, ROM_BASE + ROM_WINDOW); e(I(LBU, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, ROM_BASE + ROM_WINDOW);
+    begin("vld off the ROM window"); li(1, ROM_BASE + ROM_WINDOW - 8); e(I(VLD, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, ROM_BASE + ROM_WINDOW);
+    begin("jr past the ROM window"); li(1, ROM_BASE + ROM_WINDOW); e(I(JR, 0, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, ROM_BASE + ROM_WINDOW);
     begin("bit 31 set"); e(I(LBU, 2, 0, -4)); FAULT(MEI_FAULT_UNMAPPED, 0xFFFFFFFC);
     begin("past I/O"); li(1, 0xFF0800); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0xFF0800);
     begin("past broadcast"); li(1, 0xFF0648); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0xFF0648);
@@ -855,7 +860,7 @@ static void test_faults(void) {
     EQ(M->r[1], 1);
 
     begin("ROM write"); e(U(LUI, 1, ROM_BASE >> 10)); e(I(SW, 1, 1, 0)); FAULT(MEI_FAULT_READ_ONLY, ROM_BASE);
-    begin("ROM write8"); li(1, 0x3FFFFF); e(I(SB, 1, 1, 0)); FAULT(MEI_FAULT_READ_ONLY, 0x3FFFFF);
+    begin("ROM write8"); li(1, ROM_BASE + ROM_WINDOW - 1); e(I(SB, 1, 1, 0)); FAULT(MEI_FAULT_READ_ONLY, ROM_BASE + ROM_WINDOW - 1);
     begin("ROM vst"); e(U(LUI, 1, ROM_BASE >> 10)); e(I(VST, 1, 1, 0x100)); FAULT(MEI_FAULT_READ_ONLY, ROM_BASE + 0x100);
 
     /* I/O */
@@ -1057,14 +1062,16 @@ static void test_api(void) {
     EQ(mei_run_frame(m), 0);
     EQ(mei_display(m) == m->error_screen, 1);
     EQ(strcmp(mei_cart_title(m), ""), 0);
-    static uint8_t big[ROM_SIZE + 1];
-    EQ(mei_load_cart(m, big, ROM_SIZE + 1), (uint32_t)-1);
+    static uint8_t big[MEI_ROM_MAX + 1];
+    EQ(mei_load_cart(m, big, MEI_ROM_MAX + 1), (uint32_t)-1);
     EQ(mei_load_cart(m, big, 0), (uint32_t)-1);
     EQ(mei_fault(m)->kind, MEI_FAULT_NO_CART);
-    EQ(mei_load_cart(m, big, ROM_SIZE), 0);
+    EQ(mei_load_cart(m, big, MEI_ROM_MAX), 0);
     EQ(mei_fault(m)->kind, MEI_FAULT_NONE);
     EQ(mei_run_frame(m), 0);                 /* all-zeros ROM: brk */
     EQ(mei_fault(m)->kind, MEI_FAULT_BREAK);
+    EQ(mei_load_cart(m, big, MEI_ROM_MAX + 1), (uint32_t)-1);   /* a rejected cart leaves the last one */
+    EQ(m->rom_len, MEI_ROM_MAX);
 
     uint8_t hdr[64] = {0};
     wr32(hdr, VSYNC);
@@ -1092,7 +1099,7 @@ static void test_api(void) {
     EQ(M->fault.kind, MEI_FAULT_BREAK);
     mei_reset(M);
     EQ(M->fault.kind, MEI_FAULT_NONE);
-    EQ(M->ram[0x1000], 0); EQ(M->r[14], ROM_BASE); EQ(M->r[2], 0); EQ(M->v[3][1], 0);
+    EQ(M->ram[0x1000], 0); EQ(M->r[14], RAM_BASE + RAM_SIZE); EQ(M->r[2], 0); EQ(M->v[3][1], 0);
     EQ(M->pc, ROM_BASE); EQ(M->frame, 0);
     EQ(mei_run_frame(M), 0);
     EQ(M->ram[0x1000], 99);

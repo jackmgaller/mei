@@ -11,10 +11,10 @@ is deterministic.
 | Random numbers | xorshift32 (`x ^= x<<13; x ^= x>>17; x ^= x<<5`). Reset seed `0x4D454921`. Reading `RAND` advances the state and returns it. Writing sets the seed; writing 0 sets it to the reset seed (xorshift would stick at 0). |
 | Audio mixing | Each channel produces a signed 16-bit sample (8-bit samples are shifted left 8). Left = sample × left volume ÷ 256 (arithmetic shift), same for right. The channels (eight, now sixteen, plus the reverb: see [Audio upgrade](#audio-upgrade-adpcm-16-channels-reverb)) are summed in 32 bits and hard-clipped to −32768..32767. No interpolation: nearest sample. |
 | Save data | Two memory card slots, 128 KB each in 512-byte blocks, accessed through a card controller at `0xFF0380` that isolates each cart's saves by cart ID. Saves carry a title and a 16×16 animated icon. See `MEMCARD.md`. |
-| Cart file format | A cart is a raw ROM image (≤ 2 MB) mapped at `0x200000`; execution starts at its first word. Optional header: word 0 is any instruction (normally `jmp start`), bytes 4–7 are `"MEI1"`, bytes 8–39 are the title, NUL-padded, bytes 40–55 the cart ID for memory cards (NUL-padded; all zero: none). Code starts at byte 56. Extension `.mei`. |
+| Cart file format | A cart is a raw ROM image (≤ 64 MB) mapped at `0x08000000` (see [Cart ROM](#cart-rom-up-to-64-mb-in-a-128-mb-window)); execution starts at its first word. Optional header: word 0 is any instruction (normally `jmp start`), bytes 4–7 are `"MEI1"`, bytes 8–39 are the title, NUL-padded, bytes 40–55 the cart ID for memory cards (NUL-padded; all zero: none). Code starts at byte 56. Extension `.mei`. |
 | Language syntax | See `LANGUAGE.md`. |
 | Compressed audio | A PS1-SPU-style 4-bit ADPCM (3.5 : 1 against 16-bit), selected per channel; see [Audio upgrade](#audio-upgrade-adpcm-16-channels-reverb). |
-| Standard library location | Compiled into each cart (counts against its 2 MB). |
+| Standard library location | Compiled into each cart (counts against its ROM size). |
 | Culling/clipping helpers | Four geometry instructions in the reserved opcodes 19–1B and 1F: a back-face test, an ordering-table depth, a colour blend and a three-vertex transform (see [Geometry instructions](#geometry-instructions)). The CPU has 63 instructions. Clipping stays in software. |
 | Fill rate | Budgeted: the GPU has 1,000,000 cycles a tick (a 60 MHz GPU beside the 30 MHz CPU), charged by a cost table (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a clear). A frame over budget is shown late, never cut short; the triangle limit is raised to 4,000 as a backstop. See [GPU budget](#gpu-budget). The plane chip ([PLANES.md](PLANES.md)) costs the GPU nothing. |
 | Controller count | Two. Each also has a **Select** button (bit 11 of `PAD1`/`PAD2`), added to the spec's eleven. |
@@ -88,7 +88,7 @@ first half is the 4,000th triangle draws that half and drops the second.
 
 **GPU edge cases.**
 - Every submitted triangle counts against the 4,000 limit (and costs its 40 setup cycles), including zero-area and fully off-screen ones; a second `GPU_DRAW` in a frame keeps counting.
-- Packet checks: region first (*Unmapped address*), then alignment (*Misaligned access*). Every packet word is checked, so a polygon running off the end of ROM faults at that word. The 65,536 cap counts every packet, including empty and unknown ones. Packets drawn before a fault stay drawn.
+- Packet checks: region first (*Unmapped address*), then alignment (*Misaligned access*). Every packet word is checked, so a polygon running off the end of RAM or of the ROM window faults at that word. The 65,536 cap counts every packet, including empty and unknown ones. Packets drawn before a fault stay drawn.
 - `GPU_DRAW` is not masked: exactly `0xFFFFFF` is an empty list; anything else outside RAM/ROM faults.
 - 8-bit textures may start on an odd slot; texel addresses wrap within the 512 KB texture area (slot 15 + 1 = slot 0). For 8-bit textures only palette bits 24–27 are used.
 - Interpolated colour and u,v are `floor(weighted sum / area)`; no wrapping.
@@ -97,7 +97,7 @@ first half is the 4,000th triangle draws that half and drops the second.
 
 **Audio edge cases.**
 - Channel registers store and read back the full 32-bit value; `VOL` uses bits 0–15. Unaligned offsets are unmapped.
-- A sample is read, then `POS` advances, so the first output after a start is sample 0. If one step overshoots `LEN` by more than the loop length, `POS` wraps modulo `LEN − LOOP`. With the loop bit set but `LOOP ≥ LEN`, or with `LEN = 0`, the channel stops. 16-bit samples need not be aligned; a sample straddling the end of RAM/ROM stops the channel.
+- A sample is read, then `POS` advances, so the first output after a start is sample 0. If one step overshoots `LEN` by more than the loop length, `POS` wraps modulo `LEN − LOOP`. With the loop bit set but `LOOP ≥ LEN`, or with `LEN = 0`, the channel stops. 16-bit samples need not be aligned; a sample straddling the end of RAM or of the ROM window stops the channel.
 
 **Extensions beyond the spec.** Four system registers support the system ROM
 (`docs/SYSTEM.md`): `SYS_LAUNCH` (`0xFF0310`), `SYS_CONFIG` (`0xFF0314`, a persisted settings
@@ -562,3 +562,42 @@ whole groups remain ordinary aggregates for copies and enclosing struct paramete
 Context-typed `bits { flag: true }` literals use the existing struct default and zero rules.
 Each inline declaration has its own identity, avoiding accidental copies between unrelated
 flag layouts. Signed fields are omitted to keep extension and overflow rules explicit.
+
+## Cart ROM: up to 64 MB in a 128 MB window
+
+The spec gives the cart 2 MB at `0x200000`–`0x3FFFFF` and says every address fits in 24 bits.
+Mei departs from that so carts can hold large streamed worlds: as on the N64, the ROM stays
+memory-mapped and is read in place, while RAM stays 2 MB and VRAM 1 MB. The ROM moves to a
+reserved **128 MB window at `0x08000000`–`0x0FFFFFFF`**, and a cart may be up to **64 MB**
+(`0x08000000`–`0x0BFFFFFF`). RAM, VRAM and I/O keep their addresses; `0x200000`–`0x3FFFFF` is now
+unmapped. The window and the limit are separate constants (`MEI_ROM_WINDOW` and `MEI_ROM_MAX` in
+`src/core/mei.h`, with `MEI_ROM_BASE`), so the limit can rise to the whole window later without
+moving anything.
+
+| Address | Region | Size | Access |
+|---|---|---|---|
+| `0x000000`–`0x1FFFFF` | RAM | 2 MB | read/write |
+| `0x400000`–`0x4FFFFF` | VRAM | 1 MB | read/write |
+| `0xFF0000`–`0xFF07FF` | I/O | 2 KB | see the I/O map in [Details filled in](#details-filled-in) |
+| `0x08000000`–`0x0FFFFFFF` | cart ROM window | 128 MB (carts up to 64 MB) | read only |
+
+- **Reach.** `jmp`/`call` targets are 26 bits × 4, so a plain jump or call reaches the whole window
+  (anything below `0x10000000`); `la` and `lui` + `ori` build any 32-bit address. The instruction
+  encoding is unchanged.
+- **Past the image.** A cart is still a raw image, and the core keeps only its bytes (a small cart
+  costs a small cart's memory). The rest of the window reads as zeros, as the unused part of the
+  spec's 2 MB region did: loads there return 0, an instruction fetch there finds the all-zeros
+  word, `brk`, and stops the cart with *Break*. Writes anywhere in the window fault *Read-only
+  write*. The GPU, the audio channels and the memory card controller read the same zeros.
+  Outside the window is *Unmapped address* as before.
+- **Reset.** `pc` starts at `0x08000000`; `r14` (the stack) still starts at `0x200000`, the top of
+  RAM.
+- **Packet links.** A packet's next address keeps its 24 bits (and `0xFFFFFF` still ends the
+  list), so a link reaches RAM only. `GPU_DRAW` takes a full 32-bit address, so a list may start
+  with a packet in ROM; the packets it links to are in RAM.
+- **No longer adjacent.** RAM used to run straight into ROM and ROM into VRAM. Now an access,
+  sample or packet running off the end of RAM reaches unmapped memory.
+- **Tools.** The assembler and compiler stop with *ROM is full (64 MB)*; `mei_load_cart`, the
+  platforms and the system ROM's catalogue reject or skip a larger file.
+- **System ROM.** It is still loaded as a 2 MB image, so its catalogue moves with the ROM base to
+  `0x081F0000` (see `SYSTEM.md`).

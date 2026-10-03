@@ -1,0 +1,6 @@
+// error: ROM is full (64 MB)
+asm fn huge() {
+    .space 0x4000000
+}
+
+fn init() { huge() }

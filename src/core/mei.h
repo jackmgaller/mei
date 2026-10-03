@@ -14,6 +14,13 @@
 #define MEI_GPU_CYCLES_PER_FRAME 1000000   /* the GPU's budget per tick (docs/DECISIONS.md) */
 #define MEI_MAX_AUDIO_FRAMES 368   /* per 60 Hz tick: alternates 367 / 368 */
 
+/* Cart ROM (docs/DECISIONS.md, "Cart ROM"): the cart image is mapped at MEI_ROM_BASE in a
+ * reserved 128 MB window, 0x08000000-0x0FFFFFFF; past the image the window reads 0. A cart
+ * may be at most MEI_ROM_MAX bytes, which can grow up to the whole window. */
+#define MEI_ROM_BASE   0x08000000u
+#define MEI_ROM_WINDOW 0x08000000u   /* 128 MB */
+#define MEI_ROM_MAX    0x04000000u   /* 64 MB */
+
 /* Pad button bits (PAD1 / PAD2). */
 enum {
     MEI_BTN_UP = 1 << 0, MEI_BTN_DOWN = 1 << 1, MEI_BTN_LEFT = 1 << 2, MEI_BTN_RIGHT = 1 << 3,
@@ -54,7 +61,8 @@ typedef void (*MeiDebugFn)(void *user, char c);
 Mei *mei_create(void);
 void mei_destroy(Mei *m);
 
-/* Loads a ROM image (at most 2 MB) and resets. Returns 0 on success. */
+/* Loads a ROM image (1 to MEI_ROM_MAX bytes; the core keeps its own copy) and resets.
+ * Returns 0 on success; on failure the previous cart stays loaded. */
 int mei_load_cart(Mei *m, const uint8_t *data, size_t len);
 void mei_reset(Mei *m);
 

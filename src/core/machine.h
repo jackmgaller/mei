@@ -7,8 +7,8 @@
 /* Memory map */
 #define RAM_BASE   0x000000u
 #define RAM_SIZE   0x200000u
-#define ROM_BASE   0x200000u
-#define ROM_SIZE   0x200000u
+#define ROM_BASE   MEI_ROM_BASE     /* the cart ROM window (mei.h) */
+#define ROM_WINDOW MEI_ROM_WINDOW
 #define VRAM_BASE  0x400000u
 #define VRAM_SIZE  0x100000u
 #define IO_BASE    0xFF0000u
@@ -172,7 +172,7 @@ typedef struct {
 
 struct Mei {
     uint8_t ram[RAM_SIZE];
-    uint8_t rom[ROM_SIZE];
+    uint8_t *rom;            /* the cart image, rom_len bytes, zero-padded to a whole word */
     uint8_t vram[VRAM_SIZE];
     uint32_t rom_len;
     char title[33];
@@ -254,6 +254,9 @@ static inline uint32_t rd32(const uint8_t *p) { return p[0] | (p[1] << 8) | (p[2
 static inline uint16_t rd16(const uint8_t *p) { return (uint16_t)(p[0] | (p[1] << 8)); }
 static inline void wr32(uint8_t *p, uint32_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); p[2] = (uint8_t)(v >> 16); p[3] = (uint8_t)(v >> 24); }
 static inline void wr16(uint8_t *p, uint32_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8); }
+
+/* The word at a word-aligned offset into the ROM window: the cart image, then zeros. */
+static inline uint32_t rom_word(const Mei *m, uint32_t off) { return off < m->rom_len ? rd32(m->rom + off) : 0; }
 
 /* ---- cpu.c ---- */
 void cpu_reset(Mei *m);

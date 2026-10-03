@@ -12,6 +12,7 @@ static int checks, fails;
     if (a_ != b_) { fails++; printf("FAIL %s:%d: %s == %lld, expected %lld\n", __FILE__, __LINE__, #a, a_, b_); } } while (0)
 
 static Mei *m;
+#define IMAGE 0x1000                  /* the blank cart loaded for the tests that need ROM */
 
 static void setup(void) {
     mei_reset(m);
@@ -232,16 +233,26 @@ static void test_registers(void) {
     CHECK_EQ(rd(0, IO_AUD_CTRL) & 1, 0);
     CHECK_EQ(L(0), 0);
     CHECK_EQ(m->fault.kind, MEI_FAULT_NONE);
-    setup();                          /* runs off the end of ROM mid-sample */
-    m->rom[ROM_SIZE - 1] = 0x40;
-    play(0, ROM_BASE + ROM_SIZE - 2, 100, 0, 0x10000, 0, 255, 0);
+    setup();                          /* past the cart image the ROM window reads 0 */
+    m->rom[IMAGE - 1] = 0x40;
+    play(0, ROM_BASE + IMAGE - 2, 1000, 0, 0x10000, 0, 255, 0);
     audio_mix_tick(m);
     CHECK_EQ(R(0), 0);
     CHECK_EQ(R(1), 0x4000 * 255 / 256);
     CHECK_EQ(R(2), 0);
+    CHECK_EQ(rd(0, IO_AUD_CTRL) & 1, 1);
+    setup();                          /* runs off the end of the ROM window mid-sample */
+    play(0, ROM_BASE + ROM_WINDOW - 2, 100, 0, 0x10000, 0, 255, 0);
+    audio_mix_tick(m);
+    CHECK_EQ(R(2), 0);
+    CHECK_EQ(rd(0, IO_AUD_POS), 2);
     CHECK_EQ(rd(0, IO_AUD_CTRL) & 1, 0);
-    setup();                          /* 16-bit sample straddling the end of ROM */
-    play(0, ROM_BASE + ROM_SIZE - 1, 100, 0, 0x10000, 0, 255, 4);
+    setup();                          /* 16-bit sample straddling the end of the ROM window */
+    play(0, ROM_BASE + ROM_WINDOW - 1, 100, 0, 0x10000, 0, 255, 4);
+    audio_mix_tick(m);
+    CHECK_EQ(rd(0, IO_AUD_CTRL) & 1, 0);
+    setup();                          /* and the end of RAM, which no longer runs into ROM */
+    play(0, RAM_SIZE - 1, 100, 0, 0x10000, 0, 255, 4);
     audio_mix_tick(m);
     CHECK_EQ(rd(0, IO_AUD_CTRL) & 1, 0);
 
@@ -276,7 +287,7 @@ static uint32_t legacy_scene_hash(Mei *mm) {
         {0x42000, 100000, 0, 0x2000, 0x10F0, 1},
         {0x50000, 777, 3, 0x91234, 0xF010, 3},
         {0x80000, 200, 50, 0x10000, 0xFFFF, 6},     /* written but not started */
-        {0x1FFF00, 0x1000, 0, 0x10000, 0x8080, 1},  /* runs off the end of RAM into ROM */
+        {0x1FFF00, 0x1000, 0, 0x10000, 0x8080, 1},  /* runs off the end of RAM (into blank ROM on the old map) */
     };
     uint32_t h = 2166136261u;
     for (int k = 0; k < 8; k++) {
@@ -299,7 +310,7 @@ static uint32_t legacy_scene_hash(Mei *mm) {
  * before the upgrade (same scene, same bus writes). */
 static void test_legacy_unchanged(void) {
     setup();
-    memset(m->rom, 0, 0x1000);   /* channel 7 runs into ROM, which was blank */
+    memset(m->rom, 0, IMAGE);    /* channel 7 ran into ROM, which was blank; now it stops: silent either way */
     CHECK_EQ(legacy_scene_hash(m), 0x8277EC03u);
     CHECK_EQ(m->fault.kind, MEI_FAULT_NONE);
 }
@@ -416,32 +427,42 @@ static void test_adpcm_channel(void) {
     CHECK((m->ram[0x10000 + 10 * 16] >> 4) != 0);
     CHECK(memcmp(lp + 280, lp + 560, 28 * sizeof lp[0]) != 0);
 
-    /* Out-of-range reads stop the channel: a block whose header is the last byte of ROM. */
+    /* Out-of-range reads stop the channel: a block whose header is the last byte of the ROM window. */
     setup();
-    m->rom[ROM_SIZE - 1] = 0x0C;
-    play_adpcm_ch(1, ROM_BASE + ROM_SIZE - 1, 28, 0, 0x10000, 255, 255, 0);
+    play_adpcm_ch(1, ROM_BASE + ROM_WINDOW - 1, 28, 0, 0x10000, 255, 255, 0);
     audio_mix_tick(m);
     CHECK_EQ(rd(1, IO_AUD_CTRL) & 1, 0);
     CHECK_EQ(L(0), 0);
     CHECK_EQ(m->fault.kind, MEI_FAULT_NONE);
-    /* The last block of RAM decodes, and the next one (in ROM) too. */
+    /* The last block of RAM decodes; the next one is unmapped (RAM no longer runs into ROM). */
     setup();
     memset(m->ram + RAM_SIZE - 16, 0, 16);
     m->ram[RAM_SIZE - 16] = 0x04;              /* shift 4: a nibble step of 256 */
     m->ram[RAM_SIZE - 14] = 0x31;              /* samples 0, 1: nibbles 1, 3 */
-    m->rom[0] = 0x04;
-    m->rom[2] = 0x02;
     play_adpcm_ch(1, RAM_SIZE - 16, 56, 0, 0x10000, 0, 255, 0);
     audio_mix_tick(m);
     CHECK_EQ(R(0), 255);
     CHECK_EQ(R(1), 3 * 255);
     CHECK_EQ(R(27), 0);
-    CHECK_EQ(R(28), 2 * 255);
+    CHECK_EQ(R(28), 0);
+    CHECK_EQ(rd(1, IO_AUD_CTRL) & 1, 0);
+    /* The last block of the cart image decodes, and the next one (zeros past the image) too. */
+    setup();
+    memset(m->rom + IMAGE - 16, 0, 16);
+    m->rom[IMAGE - 16] = 0x04;
+    m->rom[IMAGE - 14] = 0x31;
+    play_adpcm_ch(1, ROM_BASE + IMAGE - 16, 56, 0, 0x10000, 0, 255, 0);
+    audio_mix_tick(m);
+    CHECK_EQ(R(0), 255);
+    CHECK_EQ(R(1), 3 * 255);
+    CHECK_EQ(R(28), 0);
+    CHECK_EQ(R(55), 0);
     CHECK_EQ(R(56), 0);
+    CHECK_EQ(m->ch[1].dec, 56);
     /* Pitch skipping into an unmapped block stops the channel there. */
     setup();
-    play_adpcm_ch(1, VRAM_BASE - 32, 1000, 0, 0x100000, 255, 255, 0);
-    audio_mix_tick(m);   /* the last two blocks of ROM, then block 2 lies in VRAM */
+    play_adpcm_ch(1, ROM_BASE + ROM_WINDOW - 32, 1000, 0, 0x100000, 255, 255, 0);
+    audio_mix_tick(m);   /* the last two blocks of the ROM window, then block 2 is unmapped */
     CHECK_EQ(m->ch[1].dec, 56);
     CHECK_EQ(rd(1, IO_AUD_CTRL) & 1, 0);
 }
@@ -689,7 +710,8 @@ static void test_reverb(void) {
 
 int main(void) {
     m = mei_create();
-    if (!m) return 1;
+    static const uint8_t blank[IMAGE];
+    if (!m || mei_load_cart(m, blank, sizeof blank)) return 1;
     test_tick_sizes();
     test_8bit();
     test_16bit();

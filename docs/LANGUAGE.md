@@ -895,9 +895,9 @@ per element (1,710), plus 2 per captured word for a closure. `filter(xs, fn(x) =
 
 | Where | What |
 |---|---|
-| ROM (`0x200000`) | code, `const` arrays/structs, strings, embedded files, vector constants |
+| ROM (`0x08000000`, up to 64 MB) | code, `const` arrays/structs, strings, embedded files, vector constants |
 | RAM from `0x000100` | global variables that are used (small ones first, so most are one instruction away) |
-| RAM below `0x200000` | the stack (grows down): locals that are not in registers, spills, call frames |
+| RAM below `0x200000` (its top) | the stack (grows down): locals that are not in registers, spills, call frames |
 
 `len()` and `sizeof()` describe sizes. Constant array indexes are checked at compile time; slice indexes and other array
 indexes are checked at run time only in a [debug build](#debug-builds). Recursion is allowed;

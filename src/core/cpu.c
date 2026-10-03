@@ -7,7 +7,7 @@ void cpu_reset(Mei *m) {
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 4; j++) m->v[i][j] = 0;
     m->pc = ROM_BASE;
-    m->r[14] = ROM_BASE;
+    m->r[14] = RAM_BASE + RAM_SIZE;   /* the stack grows down from the top of RAM */
     m->cycles = 0;
     m->vsync_hit = 0;
 }

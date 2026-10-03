@@ -11,7 +11,7 @@ A 3D fantasy console modelled on PlayStation-era hardware, implemented from
 - A GPU that only fills 2D triangles: affine textures, whole-pixel vertices, no depth buffer,
   an ordering table, four blend modes, and a budget of 1,000,000 GPU cycles and 4,000
   triangles per frame
-- 22,050 Hz audio: 16 channels, ADPCM, reverb; two controllers, 2 MB RAM, 2 MB cart ROM, 1 MB VRAM
+- 22,050 Hz audio: 16 channels, ADPCM, reverb; two controllers, 2 MB RAM, up to 64 MB cart ROM (read in place), 1 MB VRAM
 
 The look comes from those rules (texture warp, vertex wobble, sorting glitches, dither),
 not from post-processing, and everything is deterministic fixed-point.
@@ -133,5 +133,5 @@ Or in assembly ([`docs/ASSEMBLY.md`](ASSEMBLY.md)):
 The spec lists questions that are not yet decided. [`docs/DECISIONS.md`](DECISIONS.md)
 records how this implementation answers each one, and every edge case the spec leaves
 open: xorshift32 for `RAND`, how audio is mixed and clipped, the cart format (a raw ROM
-image with an optional `MEI1` title header), the standard library compiled into each cart,
+image of up to 64 MB at `0x08000000`, with an optional `MEI1` title header), the standard library compiled into each cart,
 and so on.

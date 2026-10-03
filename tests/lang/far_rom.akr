@@ -1,0 +1,54 @@
+// A cart larger than the old 2 MB ROM: pad() holds 3 MB of zeros, so the code after it and all
+// ROM data (constants, strings, vector constants, embeds) lie past the first 2 MB. Each way the
+// compiler forms a ROM address is used from there: calls, function values, closures, la for
+// constants, slices of them, pointers stored in ROM, strings and a GPU packet in ROM.
+fn p(n: s32) { print_int(n); print_char('\n') }
+
+asm fn pad() -> s32 {
+    jmp .over
+    .space 0x300000
+.over:
+    li r1, 7
+}
+
+struct Pt { x: s32, y: s32 }
+const TABLE: [4]s32 = [10, 20, 30, 40]
+const PTS: [2]Pt = [Pt { x: 1, y: 2 }, Pt { x: 3, y: 4 }]
+const NAME = "far away"
+const MORE: [2]s32 = [50, 60]
+const PTRS: [2]*s32 = [&TABLE as *s32, &MORE as *s32]
+const TRI: [5]u32 = [0x20FFFFFF, 0x0000FF, 0, 10, 10 << 16]   // a red triangle, the list's only packet
+embed DATA: u8 = "data/bytes.bin"
+
+fn far_fn(x: s32) -> s32 { return x * 3 }
+fn far_sq(x: s32) -> s32 { return x * x }
+const FNS: [2]fn(s32) -> s32 = [far_fn, far_sq]
+fn apply(f: fn(s32) -> s32, x: s32) -> s32 { return f(x) }
+fn sum(xs: []const s32) -> s32 {
+    var total = 0
+    for i in 0..len(xs) { total += xs[i] }
+    return total
+}
+
+fn init() {
+    p(pad())                                    // expect: 7
+    let rom: u32 = 0x08000000                   // the ROM base
+    p(((&TABLE[0]) as u32 - rom) >> 20)         // expect: 3
+    p((far_fn as u32 - rom) >> 20)              // expect: 3
+    p(far_fn(5))                                // expect: 15
+    p(apply(far_fn, 6))                         // expect: 18
+    let k = 100
+    p(apply(fn(x: s32) => x + k, 1))            // expect: 101
+    p(TABLE[3] + PTS[1].y)                      // expect: 44
+    p(sum(TABLE[1..3]))                         // expect: 50
+    p(PTRS[0][3] + PTRS[1][1])                  // expect: 100
+    p(FNS[0](2) + FNS[1](4))                    // expect: 22
+    println(NAME)                               // expect: far away
+    p(DATA[15] as s32)                          // expect: 15
+    var v = vec4(1.5, 2.5, 3.5, 4.5)            // a vector constant in ROM
+    print_fixed(v.w)
+    print_char('\n')                            // expect: 4.5
+}
+
+fn draw() { GPU_DRAW = (&TRI[0]) as u32 }
+// pixel: 1 1 001F

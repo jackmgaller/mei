@@ -6,7 +6,7 @@ instructions in `DECISIONS.md` (`nclip`, `otz`, `clerp`, `vxp3`); this file cove
 
 ```
 meiasm in.s [-o out.mei] [--sym out.sym] [--list]   # default output: in.s.mei
-meiasm --disasm cart.mei                            # disassemble a ROM from 0x200000
+meiasm --disasm cart.mei                            # disassemble a ROM from 0x08000000
 ```
 
 `--sym` writes one `ADDRESS NAME` line per symbol (hex, sorted by value). `--list`
@@ -101,7 +101,7 @@ constant) is always two words.
 
 | Directive | Meaning |
 |---|---|
-| `.section rom` / `.section ram` | switch location counter. ROM starts at 0x200000, RAM at 0x000100 |
+| `.section rom` / `.section ram` | switch location counter. ROM starts at 0x08000000, RAM at 0x000100 |
 | `.org addr` | set the location. In ROM only forward (the gap is zero-filled) |
 | `.align n` | align to `n` bytes (power of two); ROM padding is zero |
 | `.byte x, ...` | 8-bit values (−128..255); string items allowed: `.byte "ab", 0` |
@@ -131,21 +131,23 @@ buffer: .space 1024
 ```
 
 `ram_used` in the result (end of the RAM section) is the first free RAM address.
-The stack starts at 0x200000 and grows down.
+The stack starts at 0x200000 (the top of RAM) and grows down.
 
 **Cart header.** `.cart "Title", entry, "ID"` emits `jmp entry`, the bytes `MEI1`, the
 title NUL-padded to 32 bytes, and the cart ID NUL-padded to 16 bytes (56 bytes in all, see
 `DECISIONS.md`). Without `entry` (`.cart "Title"`, `.cart "Title", "ID"` or
-`.cart "Title", , "ID"`) the jump goes to 0x200038, the first byte after the header. The
+`.cart "Title", , "ID"`) the jump goes to 0x08000038, the first byte after the header. The
 cart ID (up to 16 printable ASCII characters, e.g. `"LANTERN-LAKE"`) is what the memory
 card controller files the cart's saves under (`MEMCARD.md`); without one the header holds
 zeros there and the controller uses a hash of the title.
 
 ## Output
 
-The ROM image runs from 0x200000 to the highest byte written (at most 2 MB). The
-symbol table holds every label and constant, sorted by value. Errors stop assembly
-with one message in `file:line: message` form, e.g.
+The ROM image runs from 0x08000000 to the highest byte written (at most 64 MB, so the last
+ROM address is 0x0BFFFFFF; see `DECISIONS.md`, "Cart ROM"). A plain `jmp` or `call` reaches
+any ROM address (they reach 0..0x0FFFFFFC), and so does `la`. The symbol table holds every
+label and constant, sorted by value. Errors stop assembly with one message in
+`file:line: message` form, e.g.
 `game.s:12: immediate 200000 out of range (-131072..131071)`.
 
 ## Disassembly

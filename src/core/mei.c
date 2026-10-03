@@ -8,18 +8,27 @@
 #define STICK_ONE      65536
 #define STICK_DEAD     13107          /* 0.2 in 16.16, rounded down */
 
+_Static_assert(MEI_ROM_MAX <= MEI_ROM_WINDOW, "the largest cart must fit the ROM window");
+
 Mei *mei_create(void) {
     Mei *m = calloc(1, sizeof *m);
     if (m) mei_reset(m);
     return m;
 }
 
-void mei_destroy(Mei *m) { free(m); }
+void mei_destroy(Mei *m) {
+    if (m) free(m->rom);
+    free(m);
+}
 
+/* The core holds only the image (rounded up to a word): the rest of the window reads 0. */
 int mei_load_cart(Mei *m, const uint8_t *data, size_t len) {
-    if (!data || len == 0 || len > ROM_SIZE) return -1;
-    memset(m->rom, 0, sizeof m->rom);
-    memcpy(m->rom, data, len);
+    if (!data || len == 0 || len > MEI_ROM_MAX) return -1;
+    uint8_t *rom = calloc(1, (len + 3) & ~(size_t)3);
+    if (!rom) return -1;
+    memcpy(rom, data, len);
+    free(m->rom);
+    m->rom = rom;
     m->rom_len = (uint32_t)len;
     memset(m->title, 0, sizeof m->title);
     if (len >= 40 && !memcmp(data + 4, "MEI1", 4)) memcpy(m->title, data + 8, 32);

@@ -108,15 +108,21 @@ static uint32_t read_save(const uint8_t *c, int first, uint8_t *dst, uint32_t ma
     return done;
 }
 
-/* Host pointers for cart-supplied buffers: destinations must lie in RAM, sources may also be in ROM. */
+/* Host pointers for cart-supplied buffers: destinations must lie in RAM, sources may also be in
+ * the ROM window. A source running past the cart image reads zeros there, staged in tmp (len bytes). */
 static uint8_t *ram_ptr(Mei *m, uint32_t addr, uint32_t len) {
     return addr < RAM_SIZE && len <= RAM_SIZE - addr ? m->ram + addr : NULL;
 }
 
-static const uint8_t *src_ptr(Mei *m, uint32_t addr, uint32_t len) {
+static const uint8_t *src_ptr(Mei *m, uint32_t addr, uint32_t len, uint8_t *tmp) {
     if (addr < RAM_SIZE && len <= RAM_SIZE - addr) return m->ram + addr;
-    if (addr - ROM_BASE < ROM_SIZE && len <= ROM_SIZE - (addr - ROM_BASE)) return m->rom + (addr - ROM_BASE);
-    return NULL;
+    uint32_t off = addr - ROM_BASE;
+    if (off >= ROM_WINDOW || len > ROM_WINDOW - off) return NULL;
+    uint32_t n = off < m->rom_len ? m->rom_len - off : 0;
+    if (n >= len) return m->rom + off;
+    if (n) memcpy(tmp, m->rom + off, n);
+    memset(tmp + n, 0, len - n);
+    return tmp;
 }
 
 static int run(Mei *m, uint32_t cmd, int *blocks_moved) {
@@ -146,8 +152,10 @@ static int run(Mei *m, uint32_t cmd, int *blocks_moved) {
         return E_NONE;
     }
     case CMD_WRITE: {
-        const uint8_t *src = src_ptr(m, r->buf, r->len), *meta = src_ptr(m, r->meta, META_SIZE);
-        if (!src || !meta || r->len > MAX_DATA || r->save > 15) return E_BAD_ADDR;
+        uint8_t tmp[MAX_DATA], tmp_meta[META_SIZE];
+        if (r->len > MAX_DATA) return E_BAD_ADDR;
+        const uint8_t *src = src_ptr(m, r->buf, r->len, tmp), *meta = src_ptr(m, r->meta, META_SIZE, tmp_meta);
+        if (!src || !meta || r->save > 15) return E_BAD_ADDR;
         int e = write_save(c, id, r->save, src, r->len, meta);
         if (e == E_NONE) { m->card_dirty[slot] = 1; *blocks_moved = 3 * (1 + (int)((r->len + BLK - 1) / BLK)); }
         return e;

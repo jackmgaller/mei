@@ -347,7 +347,7 @@ static inline int32_t sext16(uint32_t v) { return (int32_t)(v & 0xFFFF) - (int32
 /* Reads a word of a packet from RAM or ROM; 0 if outside both. addr is word-aligned. */
 static int list_word(const Mei *m, uint32_t addr, uint32_t *out) {
     if (addr < RAM_BASE + RAM_SIZE) { *out = rd32(m->ram + addr); return 1; }
-    if (addr - ROM_BASE < ROM_SIZE) { *out = rd32(m->rom + (addr - ROM_BASE)); return 1; }
+    if (addr - ROM_BASE < ROM_WINDOW) { *out = rom_word(m, addr - ROM_BASE); return 1; }
     return 0;
 }
 
@@ -415,7 +415,7 @@ void gpu_draw_list(Mei *m, uint32_t addr) {
     m->gstat.lists++;
     while (addr != LIST_END) {
         if (++count > GPU_LIST_LIMIT) { mei_raise(m, MEI_FAULT_BAD_PACKET_LIST, addr); return; }
-        if (addr >= ROM_BASE + ROM_SIZE) { mei_raise(m, MEI_FAULT_UNMAPPED, addr); return; }
+        if (addr >= RAM_BASE + RAM_SIZE && addr - ROM_BASE >= ROM_WINDOW) { mei_raise(m, MEI_FAULT_UNMAPPED, addr); return; }
         if (addr & 3) { mei_raise(m, MEI_FAULT_MISALIGNED, addr); return; }
         uint32_t hdr;
         list_word(m, addr, &hdr);
@@ -460,13 +460,13 @@ void gpu_render_error_screen(Mei *m) {
     char buf[48];
     text(img, (MEI_W - 17 * 16) / 2, 12, "MEI - CART HALTED", white, 2);
     text(img, 16, 52, mei_fault_name(m->fault.kind), yellow, 1);
-    text(img, 16, 66, hexs(buf, "PC   0x", m->fault.pc, 6), white, 1);
-    text(img, 16, 76, hexs(buf, "ADDR 0x", m->fault.addr, 6), white, 1);
+    text(img, 16, 66, hexs(buf, "PC   0x", m->fault.pc, 8), white, 1);
+    text(img, 16, 76, hexs(buf, "ADDR 0x", m->fault.addr, 8), white, 1);
 
     uint32_t pc = m->fault.pc, insn = 0;
     int ok = (pc & 3) == 0;
     if (ok && pc < RAM_BASE + RAM_SIZE) insn = rd32(m->ram + pc);
-    else if (ok && pc - ROM_BASE < ROM_SIZE) insn = rd32(m->rom + (pc - ROM_BASE));
+    else if (ok && pc - ROM_BASE < ROM_WINDOW) insn = rom_word(m, pc - ROM_BASE);
     else if (ok && pc - VRAM_BASE < VRAM_SIZE) insn = rd32(m->vram + (pc - VRAM_BASE));
     else ok = 0;
     text(img, 16, 86, ok ? hexs(buf, "INSN 0x", insn, 8) : "INSN --------", white, 1);

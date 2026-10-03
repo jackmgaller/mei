@@ -14,6 +14,12 @@ static int checks, fails;
     if (a_ != b_) { fails++; printf("FAIL %s:%d: %s == %lld, expected %lld\n", __FILE__, __LINE__, #a, a_, b_); } } while (0)
 
 static Mei *m;
+#define IMAGE 0x1000             /* the blank cart loaded for the tests that put packets in ROM */
+
+static void blank_cart(void) {
+    static const uint8_t blank[IMAGE];
+    if (mei_load_cart(m, blank, sizeof blank)) { printf("FAIL: can't load a blank cart\n"); exit(1); }
+}
 
 static void setup(void) {
     mei_reset(m);
@@ -753,7 +759,8 @@ static void test_list_walk(void) {
     gpu_draw_list(m, 0xFFFFFF);
     CHECK_EQ(m->fault.kind, MEI_FAULT_NONE);
 
-    /* List in ROM. */
+    /* List in ROM (as the first packet: a next address has 24 bits, so it reaches only RAM). */
+    blank_cart();
     setup();
     wr32(m->rom + 0x100, 0x20u << 24 | 0xFFFFFF);
     wr32(m->rom + 0x104, RGB(0, 0, 255));
@@ -781,28 +788,39 @@ static void test_list_walk(void) {
     /* Bad next addresses. Packets before the bad one are drawn. */
     struct { uint32_t next; MeiFaultKind kind; } bad[] = {
         {0x400000, MEI_FAULT_UNMAPPED}, {0xFF0000, MEI_FAULT_UNMAPPED}, {0x1002, MEI_FAULT_MISALIGNED},
-        {0x200001, MEI_FAULT_MISALIGNED}, {0xFFFFFE, MEI_FAULT_UNMAPPED},
+        {0x200000, MEI_FAULT_UNMAPPED}, {0xFFFFFE, MEI_FAULT_UNMAPPED},   /* 0x200000: the old ROM base */
     };
     for (unsigned i = 0; i < sizeof bad / sizeof *bad; i++) {
         setup(); list_begin();
         uint32_t a = emit(0x20, 4, RGB(255, 255, 255), P(0, 0), P(10, 0), P(0, 10));
         wr32(m->ram + a, 0x20u << 24 | bad[i].next);
-        m->pc = 0x200040;
+        m->pc = ROM_BASE + 0x40;
         list_draw();
         CHECK_EQ(m->fault.kind, bad[i].kind);
         CHECK_EQ(m->fault.addr, bad[i].next);
-        CHECK_EQ(m->fault.pc, 0x200040);
+        CHECK_EQ(m->fault.pc, ROM_BASE + 0x40);
         CHECK_EQ(px(1, 1), 0x7FFF);
     }
     setup();                 /* first address itself bad */
     gpu_draw_list(m, 0x500000);
     CHECK_EQ(m->fault.kind, MEI_FAULT_UNMAPPED);
-    setup();                 /* polygon running off the end of ROM */
-    wr32(m->rom + ROM_SIZE - 8, 0x20u << 24 | 0xFFFFFF);
-    gpu_draw_list(m, ROM_BASE + ROM_SIZE - 8);
+    setup();                 /* polygon running off the end of RAM (no longer into ROM) */
+    wr32(m->ram + RAM_SIZE - 8, 0x20u << 24 | 0xFFFFFF);
+    gpu_draw_list(m, RAM_SIZE - 8);
     CHECK_EQ(m->fault.kind, MEI_FAULT_UNMAPPED);
-    CHECK_EQ(m->fault.addr, 0x400000);
-    memset(m->rom + ROM_SIZE - 8, 0, 8);
+    CHECK_EQ(m->fault.addr, RAM_SIZE);
+    setup();                 /* past the cart image the ROM window reads 0: a degenerate triangle */
+    wr32(m->rom + IMAGE - 8, 0x20u << 24 | 0xFFFFFF);
+    gpu_draw_list(m, ROM_BASE + IMAGE - 8);
+    CHECK_EQ(m->fault.kind, MEI_FAULT_NONE);
+    CHECK_EQ(m->gpu_status & 0xFFFF, 1);
+    setup();                 /* either side of the window is unmapped */
+    gpu_draw_list(m, ROM_BASE + ROM_WINDOW);
+    CHECK_EQ(m->fault.kind, MEI_FAULT_UNMAPPED);
+    setup();
+    gpu_draw_list(m, ROM_BASE - 4);
+    CHECK_EQ(m->fault.kind, MEI_FAULT_UNMAPPED);
+    memset(m->rom + IMAGE - 8, 0, 8);
 }
 
 static void test_buffers(void) {

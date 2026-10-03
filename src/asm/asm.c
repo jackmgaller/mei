@@ -2,6 +2,7 @@
  * Syntax reference: docs/ASSEMBLY.md. Errors abort via longjmp with "file:line: message". */
 #include "asm.h"
 #include "isa.h"
+#include "mei.h"
 
 #include <ctype.h>
 #include <setjmp.h>
@@ -10,8 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define ROM_START   0x200000u
-#define ROM_MAX     0x200000u
+#define ROM_START   MEI_ROM_BASE
+#define ROM_MAX     MEI_ROM_MAX
 #define RAM_START   0x000100u
 #define RAM_END     0x200000u
 #define CART_HEADER 56u            /* jmp word + "MEI1" + 32-byte title + 16-byte cart ID */
@@ -32,7 +33,8 @@ typedef struct {
     Sym *syms; size_t nsyms, capsyms;
     uint32_t *tab; size_t tabcap;  /* open addressing; slot = symbol index + 1, 0 = empty */
     FileBuf *files; size_t nfiles;
-    uint8_t *rom;                  /* 2 MB image buffer */
+    uint8_t *rom;                  /* image buffer of rom_cap bytes, sized after pass 1 */
+    uint32_t rom_cap;
     uint32_t loc[2];               /* location counters */
     int sec;
     uint32_t rom_end;              /* one past the highest ROM byte written */
@@ -423,8 +425,11 @@ static void need_rom(Asm *a, const char *what) {
 
 static void emit_byte(Asm *a, uint8_t b) {
     uint32_t l = a->loc[SEC_ROM];
-    if (l >= ROM_START + ROM_MAX) fail(a, "ROM is full (2 MB)");
-    if (a->pass == 2) a->rom[l - ROM_START] = b;
+    if (l >= ROM_START + ROM_MAX) fail(a, "ROM is full (%u MB)", ROM_MAX >> 20);
+    if (a->pass == 2) {
+        if (l - ROM_START >= a->rom_cap) fail(a, "internal error: ROM grew between passes");
+        a->rom[l - ROM_START] = b;
+    }
     if (!a->emit_n++) a->emit_start = l;
     a->loc[SEC_ROM] = ++l;
     if (l > a->rom_end) a->rom_end = l;
@@ -717,7 +722,7 @@ static void directive(Asm *a, const char *d, const char **p) {
         v = expr_now(a, p, ".align size");
         if (v < 1 || v > 0x10000 || (v & (v - 1))) fail(a, ".align needs a power of two (1..65536)");
         uint32_t l = a->loc[a->sec], n = (uint32_t)((l + v - 1) & ~(v - 1));
-        if (a->sec == SEC_ROM && n > ROM_START + ROM_MAX) fail(a, "ROM is full (2 MB)");
+        if (a->sec == SEC_ROM && n > ROM_START + ROM_MAX) fail(a, "ROM is full (%u MB)", ROM_MAX >> 20);
         a->loc[a->sec] = n;
     } else if (!strcmp(d, ".byte") || !strcmp(d, ".half") || !strcmp(d, ".word")) {
         int size = d[1] == 'b' ? 1 : d[1] == 'h' ? 2 : 4;
@@ -760,7 +765,7 @@ static void directive(Asm *a, const char *d, const char **p) {
             if (a->loc[SEC_RAM] + v > RAM_END) fail(a, "RAM is full (2 MB)");
             a->loc[SEC_RAM] += (uint32_t)v;
         } else {
-            if (a->loc[SEC_ROM] + v > ROM_START + ROM_MAX) fail(a, "ROM is full (2 MB)");
+            if (a->loc[SEC_ROM] + v > ROM_START + ROM_MAX) fail(a, "ROM is full (%u MB)", ROM_MAX >> 20);
             for (int64_t i = 0; i < v; i++) emit_byte(a, (uint8_t)fill);
         }
     } else if (!strcmp(d, ".equ") || !strcmp(d, ".set")) {
@@ -799,7 +804,7 @@ static void directive(Asm *a, const char *d, const char **p) {
                 len = v;
             }
         }
-        if (a->loc[SEC_ROM] + len > ROM_START + ROM_MAX) fail(a, "ROM is full (2 MB)");
+        if (a->loc[SEC_ROM] + len > ROM_START + ROM_MAX) fail(a, "ROM is full (%u MB)", ROM_MAX >> 20);
         for (int64_t i = 0; i < len; i++) emit_byte(a, (uint8_t)f->data[off + i]);
     } else if (!strcmp(d, ".section")) {
         char id[NAME_MAX_];
@@ -892,8 +897,8 @@ static void statement(Asm *a, const char *p) {
 static void list_line(Asm *a, const char *src, uint32_t addr, int nonblank) {
     Str *L = &a->list;
     if (!a->emit_n) {
-        if (nonblank) sb_printf(a, L, "%06X              %s\n", addr, src);
-        else sb_printf(a, L, "                    %s\n", src);
+        if (nonblank) sb_printf(a, L, "%08X              %s\n", addr, src);
+        else sb_printf(a, L, "                      %s\n", src);
         return;
     }
     uint32_t n = a->emit_n, rows = 0;
@@ -902,7 +907,7 @@ static void list_line(Asm *a, const char *src, uint32_t addr, int nonblank) {
         uint32_t at = a->emit_start + off, k = n - off < 4 ? n - off : 4;
         const uint8_t *b = a->rom + (at - ROM_START);
         if (rows == 4 && n > 20) {
-            sb_printf(a, L, "        ...         (%u bytes)\n", n);
+            sb_printf(a, L, "          ...         (%u bytes)\n", n);
             break;
         }
         if (a->insn && k == 4) snprintf(hex, sizeof hex, "%08X", b[0] | b[1] << 8 | b[2] << 16 | (uint32_t)b[3] << 24);
@@ -910,7 +915,7 @@ static void list_line(Asm *a, const char *src, uint32_t addr, int nonblank) {
             int m = 0;
             for (uint32_t i = 0; i < k; i++) m += snprintf(hex + m, sizeof hex - m, i ? " %02X" : "%02X", b[i]);
         }
-        sb_printf(a, L, "%06X  %-11s  %s\n", at, hex, off ? "" : src);
+        sb_printf(a, L, "%08X  %-11s  %s\n", at, hex, off ? "" : src);
     }
 }
 
@@ -936,7 +941,7 @@ static void process_source(Asm *a, const char *src, size_t len, const char *fnam
         a->emit_n = 0, a->insn = 0;
         uint32_t addr = a->loc[a->sec];
         int inc = a->pass == 2 && a->listing && !strncmp(buf + strspn(buf, " \t"), ".include", 8);
-        if (inc) sb_printf(a, &a->list, "                    %s\n", raw);
+        if (inc) sb_printf(a, &a->list, "                      %s\n", raw);
         statement(a, buf);
         if (a->listing && a->pass == 2 && !inc) {
             const char *q = buf;
@@ -974,10 +979,13 @@ int mei_assemble_opts(const char *source, const char *filename, const MeiAsmOpti
         return -1;
     }
     a->listing = opts && opts->listing;
-    a->rom = calloc(ROM_MAX, 1);
-    if (!a->rom) fail(a, "out of memory");
     const char *fname = filename ? filename : "<input>";
     for (a->pass = 1; a->pass <= 2; a->pass++) {
+        if (a->pass == 2) {   /* pass 1 found the image size; pass 2 writes it */
+            a->rom_cap = a->rom_end - ROM_START;
+            a->rom = calloc(a->rom_cap + 1, 1);
+            if (!a->rom) fail(a, "out of memory");
+        }
         a->loc[SEC_ROM] = ROM_START, a->loc[SEC_RAM] = RAM_START, a->sec = SEC_ROM;
         a->rom_end = ROM_START, a->rom_touched = 0, a->scope[0] = 0, a->liidx = 0;
         process_source(a, source, strlen(source), fname);
@@ -986,8 +994,8 @@ int mei_assemble_opts(const char *source, const char *filename, const MeiAsmOpti
     a->line = 0;
 
     out->rom_len = a->rom_end - ROM_START;
-    out->rom = xrealloc(a, NULL, out->rom_len);
-    memcpy(out->rom, a->rom, out->rom_len);
+    out->rom = a->rom;             /* the image buffer moves to the result */
+    a->rom = NULL;
     out->ram_used = a->loc[SEC_RAM];
     out->symbols = xrealloc(a, NULL, a->nsyms * sizeof *out->symbols);
     for (size_t i = 0; i < a->nsyms; i++) {

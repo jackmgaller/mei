@@ -11,7 +11,7 @@ typedef struct {
 } MeiSymbol;
 
 typedef struct {
-    uint8_t *rom;          /* ROM image, loaded at 0x200000; caller frees with mei_asm_free */
+    uint8_t *rom;          /* ROM image, loaded at MEI_ROM_BASE; caller frees with mei_asm_free */
     size_t rom_len;
     MeiSymbol *symbols;    /* every label and constant, sorted by value */
     size_t symbol_count;

@@ -1,6 +1,6 @@
 // The Mei system ROM (docs/SYSTEM.md): the boot animation, then the shell.
 //
-// Boot flow. The catalogue at 0x3F0000 lists the carts (no "CATL" magic: zero carts, no
+// Boot flow. The catalogue at 0x081F0000 lists the carts (no "CATL" magic: zero carts, no
 // flags). Unless catalogue flag bit 0, flag bit 1 or SYS_CONFIG bit 4 says otherwise, the
 // boot theme chosen by SYS_CONFIG bits 0-3 plays (A or Start skips), then the picture fades
 // to black and the shell fades in. With an autoboot index the cart launches after the

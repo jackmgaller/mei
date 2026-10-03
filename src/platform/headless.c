@@ -56,11 +56,16 @@ static void wav_header(FILE *f, uint32_t frames) {
     put16(f, 4); put16(f, 16); fwrite("data", 1, 4, f); put32(f, frames * 4);
 }
 
+/* Reads up to one byte more than the largest cart, so mei_load_cart rejects an oversized one. */
 static uint8_t *read_file(const char *path, size_t *len) {
     FILE *f = fopen(path, "rb");
     if (!f) return NULL;
-    uint8_t *buf = malloc(0x200001);
-    *len = fread(buf, 1, 0x200001, f);
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    size_t n = size < 0 ? 0 : size > (long)MEI_ROM_MAX ? MEI_ROM_MAX + 1 : (size_t)size;
+    uint8_t *buf = malloc(n ? n : 1);
+    *len = buf ? fread(buf, 1, n, f) : 0;
     fclose(f);
     return buf;
 }
@@ -237,7 +242,7 @@ int main(int argc, char **argv) {
 
     const MeiFault *fl = mei_fault(m);
     if (fl->kind) {
-        fprintf(stderr, "fault: %s at pc=0x%06X addr=0x%06X\n", mei_fault_name(fl->kind), fl->pc, fl->addr);
+        fprintf(stderr, "fault: %s at pc=0x%08X addr=0x%08X\n", mei_fault_name(fl->kind), fl->pc, fl->addr);
         return 2;
     }
     int dirty;

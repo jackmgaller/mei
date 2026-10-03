@@ -8,10 +8,10 @@ registers and a catalogue that the platform writes into ROM let it launch carts.
 
 ## Size
 
-The system ROM must be at most `0x1F0000` bytes (1,984 KB). The last 64 KB of the ROM
-window, from `0x3F0000`, holds the catalogue.
+The system ROM must be at most `0x1F0000` bytes (1,984 KB). The platform loads it as a 2 MB
+image whose last 64 KB, from `0x081F0000` (ROM offset `0x1F0000`), holds the catalogue.
 
-## Catalogue (`0x3F0000`, read-only)
+## Catalogue (`0x081F0000`, read-only)
 
 The platform appends this after loading the system ROM. All values are little-endian.
 
@@ -27,7 +27,7 @@ The platform appends this after loading the system ROM. All values are little-en
 Each entry: bytes 0–31 the title (NUL-padded, from the cart's `MEI1` header, else the file
 name), bytes 32–35 the cart size in bytes, bytes 36–63 zero.
 
-If no catalogue is present (the four bytes at `0x3F0000` are not `"CATL"`), the system
+If no catalogue is present (the four bytes at `0x081F0000` are not `"CATL"`), the system
 ROM behaves as if there are zero carts and no flags.
 
 ## Registers

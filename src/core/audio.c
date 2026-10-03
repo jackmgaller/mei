@@ -248,7 +248,7 @@ int audio_io_write(Mei *m, uint32_t off, uint32_t val) {
 /* Byte of sample memory (RAM or ROM), or -1 outside them. */
 static inline int sample_byte(const Mei *m, uint64_t a) {
     if (a < RAM_BASE + RAM_SIZE) return m->ram[a];
-    if (a >= ROM_BASE && a < ROM_BASE + ROM_SIZE) return m->rom[a - ROM_BASE];
+    if (a >= ROM_BASE && a < ROM_BASE + ROM_WINDOW) return a - ROM_BASE < m->rom_len ? m->rom[a - ROM_BASE] : 0;
     return -1;
 }
 
@@ -270,10 +270,10 @@ int32_t audio_adpcm_sample(uint32_t header, uint32_t nibble, int32_t *h1, int32_
     return s;
 }
 
-/* Pointer to the 16 bytes of an ADPCM block if they all lie in RAM or all in ROM. */
+/* Pointer to the 16 bytes of an ADPCM block if they all lie in RAM or all in the cart image. */
 static inline const uint8_t *block_ptr(const Mei *m, uint64_t a) {
     if (a + 16 <= RAM_BASE + RAM_SIZE) return m->ram + a;
-    if (a >= ROM_BASE && a + 16 <= ROM_BASE + ROM_SIZE) return m->rom + (a - ROM_BASE);
+    if (a >= ROM_BASE && a + 16 <= ROM_BASE + (uint64_t)m->rom_len) return m->rom + (a - ROM_BASE);
     return NULL;
 }
 
@@ -299,7 +299,7 @@ static int adpcm_decode_to(const Mei *m, MeiAudioChannel *c, uint64_t idx) {
             }
             c->h1 = h1;
             c->h2 = h2;
-        } else {   /* a block straddling the end of RAM or ROM: byte by byte */
+        } else {   /* a block straddling the end of RAM or of the cart image: byte by byte */
             int h = sample_byte(m, a);
             for (; j <= last; j++) {
                 int b = sample_byte(m, a + 2 + (j >> 1));

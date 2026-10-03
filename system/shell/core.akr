@@ -26,9 +26,9 @@ const SH_COOL: u32 = 0xFFD6C4          // rgb(196, 214, 255)
 const SH_COOL_DIM: u32 = 0xC8A090      // rgb(144, 160, 200)
 const SH_DIM: u32 = 0x9A8C88           // rgb(136, 140, 154)
 
-// ---- catalogue (0x3F0000)
+// ---- catalogue (0x081F0000)
 
-const SH_CAT = 0x3F0000
+const SH_CAT = 0x081F0000
 const SH_MAX_CARTS = 512
 
 var sh_ncarts: s32

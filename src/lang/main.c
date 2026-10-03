@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
         FILE *f = fopen(sym_out, "w");
         if (!f) { perror(sym_out); status = 1; }
         else {
-            for (size_t i = 0; i < res.symbol_count; i++) fprintf(f, "%06X %s\n", res.symbols[i].value, res.symbols[i].name);
+            for (size_t i = 0; i < res.symbol_count; i++) fprintf(f, "%08X %s\n", res.symbols[i].value, res.symbols[i].name);
             fclose(f);
         }
     }

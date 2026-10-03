@@ -1,4 +1,4 @@
-/* Booting the system ROM: building the cart catalogue it reads at 0x3F0000
+/* Booting the system ROM: building the cart catalogue it reads at 0x081F0000
  * (see docs/SYSTEM.md). Shared by the desktop, web and headless front ends. */
 #ifndef MEI_SYSBOOT_H
 #define MEI_SYSBOOT_H
@@ -6,8 +6,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define SYS_CATALOGUE_ADDR   0x3F0000u
+#include "mei.h"
+
 #define SYS_ROM_MAX          0x1F0000u
+#define SYS_CATALOGUE_ADDR   (MEI_ROM_BASE + SYS_ROM_MAX)
+#define SYS_IMAGE_SIZE       0x200000u   /* the system ROM and the 64 KB catalogue after it */
 #define SYS_MAX_CARTS        512
 #define SYS_NO_AUTOBOOT      0xFFFFFFFFu
 #define SYS_FLAG_SKIP_BOOT   1u
@@ -37,7 +40,7 @@ int sys_scan_dir(SysCatalogue *c, const char *dir, const char *skip);
 /* Index of the entry whose path is `path`, or -1. */
 int sys_find_path(const SysCatalogue *c, const char *path);
 
-/* Builds a full 2 MB ROM image: the system ROM followed by the catalogue.
+/* Builds a SYS_IMAGE_SIZE (2 MB) ROM image: the system ROM followed by the catalogue.
  * Returns a malloc'd buffer (caller frees) or NULL if the system ROM is too big. */
 uint8_t *sys_build_image(const uint8_t *rom, size_t len, const SysCatalogue *c,
                          uint32_t autoboot, uint32_t flags, const char *platform, size_t *out_len);

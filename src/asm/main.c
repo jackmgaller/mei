@@ -3,6 +3,7 @@
  *   meiasm --disasm cart.mei
  * The default output is the input name with ".mei" appended. */
 #include "asm.h"
+#include "mei.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,13 +38,13 @@ static int disasm(const char *path) {
     int header = len >= 56 && !memcmp(rom + 4, "MEI1", 4);
     if (header) printf("; cart header, title \"%.32s\", ID \"%.16s\"\n", (const char *)rom + 8, (const char *)rom + 40);
     for (size_t i = 0; i + 4 <= len; i += 4) {
-        uint32_t w = rom[i] | rom[i + 1] << 8 | rom[i + 2] << 16 | (uint32_t)rom[i + 3] << 24, pc = 0x200000 + (uint32_t)i;
+        uint32_t w = rom[i] | rom[i + 1] << 8 | rom[i + 2] << 16 | (uint32_t)rom[i + 3] << 24, pc = MEI_ROM_BASE + (uint32_t)i;
         char text[64];
         if (header && i >= 4 && i < 56) snprintf(text, sizeof text, ".word 0x%08X", w);
         else mei_disasm(w, pc, text, sizeof text);
-        printf("%06X  %08X  %s\n", pc, w, text);
+        printf("%08X  %08X  %s\n", pc, w, text);
     }
-    for (size_t i = len & ~(size_t)3; i < len; i++) printf("%06X  %02X        .byte 0x%02X\n", 0x200000 + (unsigned)i, rom[i], rom[i]);
+    for (size_t i = len & ~(size_t)3; i < len; i++) printf("%08X  %02X        .byte 0x%02X\n", MEI_ROM_BASE + (unsigned)i, rom[i], rom[i]);
     free(rom);
     return 0;
 }
@@ -79,7 +80,7 @@ int main(int argc, char **argv) {
     if (sym) {
         FILE *s = fopen(sym, "w");
         if (!s) { perror(sym); return 1; }
-        for (size_t i = 0; i < r.symbol_count; i++) fprintf(s, "%06X %s\n", r.symbols[i].value, r.symbols[i].name);
+        for (size_t i = 0; i < r.symbol_count; i++) fprintf(s, "%08X %s\n", r.symbols[i].value, r.symbols[i].name);
         fclose(s);
     }
     if (list) fputs(r.listing, stdout);

@@ -60,7 +60,7 @@ int sys_scan_dir(SysCatalogue *c, const char *dir, const char *skip) {
         fseek(f, 0, SEEK_END);
         long size = ftell(f);
         fclose(f);
-        if (size <= 0 || size > 0x200000) continue;
+        if (size <= 0 || size > MEI_ROM_MAX) continue;
         char title[32];
         sys_cart_title(head, got, ent->d_name, title);
         if (sys_add(c, title, (uint32_t)size, path) < 0) break;
@@ -74,11 +74,11 @@ int sys_scan_dir(SysCatalogue *c, const char *dir, const char *skip) {
 uint8_t *sys_build_image(const uint8_t *rom, size_t len, const SysCatalogue *c,
                          uint32_t autoboot, uint32_t flags, const char *platform, size_t *out_len) {
     if (len > SYS_ROM_MAX) return NULL;
-    size_t total = 0x200000;
+    size_t total = SYS_IMAGE_SIZE;
     uint8_t *img = calloc(1, total);
     if (!img) return NULL;
     memcpy(img, rom, len);
-    uint8_t *cat = img + (SYS_CATALOGUE_ADDR - 0x200000);
+    uint8_t *cat = img + (SYS_CATALOGUE_ADDR - MEI_ROM_BASE);
     int n = c ? c->count : 0;
     memcpy(cat, "CATL", 4);
     wr32le(cat + 4, (uint32_t)n);
