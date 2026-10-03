@@ -10,6 +10,7 @@
 #   SEQ="N [FROM]"  also save every Nth frame (from frame FROM) as OUT_BASENAME_seq_*.png
 #   KEEP_PPM=1      keep OUT_BASENAME.ppm next to the PNG
 #   MEIC, RUN       the compiler and player (default build/meic, build/mei-headless)
+#   SC_IMPORT=DIR   an import directory for meic (-I), such as a cart's built worlds
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MEIC="${MEIC:-$ROOT/build/meic}"
@@ -18,7 +19,7 @@ TESTS="$1"; SCEN="$2"; FRAMES="$3"; OUT="$4"
 shift 4
 S="$TESTS/_scenario_${SCEN}_$$.akr"
 printf '%s\nimport "harness.akr"\nimport "%s"\n' "$SC_HEAD" "$SC_APP" > "$S"
-"$MEIC" "$S" -o "$OUT.mei" || { rm -f "$S"; exit 1; }
+"$MEIC" ${SC_IMPORT:+-I "$SC_IMPORT"} "$S" -o "$OUT.mei" || { rm -f "$S"; exit 1; }
 rm -f "$S"
 if [ -n "$SEQ" ]; then
     set -- --dump-every $(echo $SEQ | cut -d' ' -f1) "${OUT}_seq" --dump-from $(echo "$SEQ 0" | cut -d' ' -f2) "$@"

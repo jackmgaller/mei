@@ -57,9 +57,34 @@ CART_FILES = $(shell find carts/$(1) \( -path carts/$(1)/tests -o -path carts/$(
 define LANG_CART_RULE
 $(B)/carts/$(1).mei: $(call SRC_EXT,carts/$(1)/$(1)) $(call CART_FILES,$(1)) $(STDLIB_SRC) $(B)/meic
 	@mkdir -p $(B)/carts
-	$(B)/meic $$< -o $$@
+	$(B)/meic $$< -o $$@ $$(CART_MEIC_FLAGS)
 endef
 $(foreach c,$(LANG_CARTS),$(eval $(call LANG_CART_RULE,$(notdir $(c:.mei=)))))
+
+# Carts that use worlds (docs/WORLDKIT.md, "Using a world in a cart"). carts/NAME/worlds.txt
+# lists World Kit recipes, one repository path per line (# starts a comment). Each recipe is
+# built once into $(B)/worlds/<its folder>/ (the World Checker runs, report-only, and prints a
+# summary); tools/world_cart.py writes the sources it read to build.d, so editing any of them
+# rebuilds it. The cart's worlds and their games' GAME.game.akr are linked into
+# $(B)/cart-worlds/NAME/, which meic searches for imports (-I).
+WORLD_CARTS := $(foreach c,$(LANG_CARTS),$(if $(wildcard carts/$(notdir $(c:.mei=))/worlds.txt),$(notdir $(c:.mei=))))
+CART_WORLDS = $(strip $(shell sed -e 's/\#.*//' carts/$(1)/worlds.txt))
+WORLD_BUILT = $(B)/worlds/$(patsubst %/,%,$(dir $(1)))/build.json
+WORLD_RECIPES := $(sort $(foreach c,$(WORLD_CARTS),$(call CART_WORLDS,$(c))))
+WORLD_KIT := $(wildcard tools/mei_world.py tools/world_cart.py tools/worldkit/*.py tools/kitcore/*.py tools/assetkit/*.py)
+define WORLD_RULE
+$(call WORLD_BUILT,$(1)): $(1) $(WORLD_KIT) | $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe $(B)/mei-scene-probe
+	PYTHONDONTWRITEBYTECODE=1 python3 tools/world_cart.py build $(1) $(B)
+endef
+define WORLD_CART_RULE
+$(B)/carts/$(1).mei: CART_MEIC_FLAGS = -I $(B)/cart-worlds/$(1)
+$(B)/carts/$(1).mei: $(B)/cart-worlds/$(1)/worlds.json
+$(B)/cart-worlds/$(1)/worlds.json: carts/$(1)/worlds.txt tools/world_cart.py $(foreach w,$(call CART_WORLDS,$(1)),$(call WORLD_BUILT,$(w)))
+	PYTHONDONTWRITEBYTECODE=1 python3 tools/world_cart.py link $(B)/cart-worlds/$(1) $(B) $(call CART_WORLDS,$(1))
+endef
+$(foreach w,$(WORLD_RECIPES),$(eval $(call WORLD_RULE,$(w))))
+$(foreach c,$(WORLD_CARTS),$(eval $(call WORLD_CART_RULE,$(c))))
+-include $(foreach w,$(WORLD_RECIPES),$(dir $(call WORLD_BUILT,$(w)))build.d)
 
 $(B)/%.o: %.c $(wildcard src/*/*.h)
 	@mkdir -p $(dir $@)
