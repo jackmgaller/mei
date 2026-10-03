@@ -44,8 +44,8 @@ fn init() {
     face(&wm.f[4], FACE_QUAD | FACE_GOURAUD, 0xE0, 0)                             // untextured (bits ignored)
     face(&wm.f[5], FACE_TEXTURED | FACE_QUAD | FACE_SEMI, 0x80 | 0x10 | 15, 255)  // window 4, semi
     wm.f[5].blend = 2
-    wm.win[0] = 0x2222                  // the window halfwords as the packet holds them
-    wm.win[1] = 0xF9AB
+    wm.win[0] = tex_window(16, 32, 16, 32) as u16             // 0x2222
+    wm.win[1] = tex_window(32, 168, 8, 248) as u16            // 0xF9AB
     wm.win[2] = 0x0701
     wm.win[3] = 0xFFFF
     um = wm
