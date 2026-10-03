@@ -1,0 +1,325 @@
+// The world pack demonstration: a scripted camera and a point body in the world that
+// tests/worldpack/fixture.py's demo_world() describes (packed at test time). A test fixture,
+// not a game: each SCENE prints what it saw for tests/test_worldpack.py to check.
+//   SCENE 1      the camera visits VIEWS, one a frame, printing what was drawn
+//   SCENE 10+k   view k on every frame (for a picture of it)
+//   SCENE 2      a body dropped, slid up a ramp, pushed into walls, under a roof, through a gate
+//   SCENE 3      entities spawned and retired as the active cells and the layers change
+//   SCENE 4      the region's palette variants and texture loaded into VRAM
+// The wrapper the test writes defines SCENE and embeds PACK and MARKER (a small mesh).
+
+import "worldpack.akr"
+
+struct View {
+    eye: vec3
+    yaw: fixed
+    pitch: fixed
+    gate: bool
+    bridge_down: bool
+}
+
+const VIEWS: [6]View = [
+    View { eye: vec3(32.0, 2.0, 4.0), yaw: 0.0, pitch: 0.0 },                    // into cell (0, 1)
+    View { eye: vec3(8.0, 20.0, 32.0), yaw: 1.5708, pitch: -0.15 },              // east to the far cell
+    View { eye: vec3(8.0, 20.0, 32.0), yaw: 1.5708, pitch: -0.15, gate: true },  // the gate on
+    View { eye: vec3(8.0, 20.0, 32.0), yaw: 1.5708, pitch: -0.15, bridge_down: true },
+    View { eye: vec3(70.0, 30.0, -20.0), yaw: -0.4, pitch: -0.6 },               // from outside
+    View { eye: vec3(32.0, 5.0, 32.0), yaw: 0.0, pitch: 1.5 },                   // the sky
+]
+
+var tick: s32
+var hold: s32          // SCENE 10+k: k
+var layer_gate: s32
+var layer_up: s32
+var layer_down: s32
+
+fn init() {
+    assert(wp_open(PACK))
+    wp_far_ring = 6
+    if SCENE >= 10 { hold = SCENE - 10 }
+    layer_gate = wp_layer_find("gate")
+    layer_up = wp_layer_find("bridge_up")
+    layer_down = wp_layer_find("bridge_down")
+    assert_eq(wp_layer_find("nope"), -1)
+    if SCENE == 2 { body_scene() }
+    if SCENE == 3 { entity_scene() }
+    if SCENE == 4 { region_scene() }
+}
+
+fn set_view(k: s32) {
+    let v = &VIEWS[k]
+    wp_layer_set(layer_gate, v.gate)
+    if v.bridge_down { wp_layer_set(layer_down, true) } else { wp_layer_set(layer_up, true) }
+}
+
+fn draw() {
+    cls(rgb(40, 60, 120))
+    if SCENE == 1 {
+        if tick > 0 && tick <= len(VIEWS) {
+            print("tris ")
+            print_int(tick - 1)
+            print_char(' ')
+            print_int(tris_drawn())
+            println("")
+        }
+        if tick < len(VIEWS) {
+            set_view(tick)
+            let v = &VIEWS[tick]
+            let c0 = cycle_count()
+            wp_draw(v.eye, v.yaw, v.pitch)
+            let c1 = cycle_count()
+            print("view ")
+            print_int(tick)
+            print_char(' ')
+            print_int(wp_stats.near_cells)
+            print_char(' ')
+            print_int(wp_stats.placements)
+            print_char(' ')
+            print_int(wp_stats.drawn)
+            print_char(' ')
+            print_int(wp_stats.standins)
+            print_char(' ')
+            print_int(c1 - c0)
+            print_char(' ')
+            print_int(arena_used())
+            println("")
+        }
+    } else if SCENE >= 10 {
+        set_view(hold)
+        let v = &VIEWS[hold]
+        wp_draw(v.eye, v.yaw, v.pitch)
+        // a marker drawn relative to the view origin: the first coin, where the world says it is
+        let e = wp_entity(0)
+        let o = wp_view_origin()
+        mesh_at(MARKER, wp_entity_pos(e) - o, 0.0)
+    }
+    tick += 1
+}
+
+
+// ---- the body
+
+fn show(label: *u8, v: fixed) {
+    print(label)
+    print_char(' ')
+    print_int(bits(v))
+    println("")
+}
+
+// Falls from p until a floor stops it; returns where it rests. A step of `snap` up is taken.
+fn drop(p: vec3) -> vec3 {
+    var q = p
+    var vy = 0.0
+    for f in 0..600 {
+        vy -= 0.02
+        let next = q.y + vy
+        if wp_floor(vec3(q.x, q.y, q.z), 0.25) && next <= wp_hit.y {
+            return vec3(q.x, wp_hit.y, q.z)
+        }
+        q.y = next
+    }
+    return q
+}
+
+fn body_scene() {
+    // dropped onto the ramp (x 20..28 rises 0..4 over z 40..48): lands at y = (x - 20) / 2
+    var p = drop(vec3(23.0, 10.0, 44.0))
+    show("land_y", p.y)
+    print("land_surface ")
+    print_int(wp_hit.surface)
+    println("")
+    let n = wp_hit_normal()
+    show("ramp_nx", n.x)
+    show("ramp_ny", n.y)
+    // walked up the ramp and onto the platform (top y 4 at x 28..36), snapping to the floor
+    for k in 0..40 {
+        p.x += 0.25
+        if wp_floor(p, 0.6) { p.y = wp_hit.y }
+    }
+    show("walk_x", p.x)
+    show("walk_y", p.y)
+    // pushed east into the block (x 40..44, z 8..24) with radius 0.5: stops at x 39.5
+    p = vec3(30.0, 1.0, 16.0)
+    var walls = 0
+    for k in 0..60 {
+        p.x += 0.3
+        p = wp_push(p, 0.5)
+        walls += wp_hit.walls
+    }
+    show("push_x", p.x)
+    print("push_walls ")
+    print_int(walls)
+    println("")
+    // into the block's corner diagonally: both faces push
+    p = vec3(36.0, 1.0, 4.0)
+    for k in 0..40 {
+        p.x += 0.2
+        p.z += 0.2
+        p = wp_push(p, 0.5)
+    }
+    show("corner_x", p.x)
+    show("corner_z", p.z)
+    // under the roof (x 8..20, z 8..20, underside y 3): a jump's head hits it
+    p = vec3(14.0, 0.0, 14.0)
+    if wp_ceiling(vec3(p.x, p.y + 1.0, p.z), 0.0) { show("ceiling_y", wp_hit.y) }
+    var vy = 0.4
+    var bumped = false
+    for k in 0..30 {
+        p.y += vy
+        vy -= 0.02
+        if wp_ceiling(vec3(p.x, p.y + 1.0, p.z), 0.5) && p.y + 1.0 >= wp_hit.y {
+            p.y = wp_hit.y - 1.0
+            vy = 0.0
+            bumped = true
+        }
+    }
+    print("bumped ")
+    print_int(bumped as s32)
+    println("")
+    // a camera's line of sight east from (30, 1, 16) meets the block's face at x 40: t 0.5
+    if wp_ray(vec3(30.0, 1.0, 16.0), vec3(50.0, 1.0, 16.0)) {
+        show("ray_t", wp_hit.t)
+        show("ray_x", wp_hit.pos.x)
+        print("ray_kind ")
+        print_int(wp_hit.kind)
+        println("")
+    }
+    // down onto the ground from above the roof: the roof's top (y 3.5) comes first
+    if wp_ray(vec3(14.0, 10.0, 14.0), vec3(14.0, -1.0, 14.0)) { show("down_y", wp_hit.pos.y) }
+    // the steep (50 degree) ramp is a wall, the gentle (40 degree) one a floor
+    print("steep_floor ")
+    print_int(wp_floor(vec3(12.0, 10.0, 77.0), 0.0) as s32)
+    print_char(' ')
+    print_int(wp_hit.surface)
+    println("")
+    if wp_floor(vec3(33.0, 10.0, 77.0), 0.0) { show("gentle_y", wp_hit.y) }
+    // the gate (x 84..88, z 28..36): no wall while its layer is off
+    p = vec3(80.0, 1.0, 32.0)
+    for k in 0..20 { p.x += 0.3; p = wp_push(p, 0.5) }
+    show("gate_off_x", p.x)
+    wp_layer_set(layer_gate, true)
+    p = vec3(80.0, 1.0, 32.0)
+    for k in 0..20 { p.x += 0.3; p = wp_push(p, 0.5) }
+    show("gate_on_x", p.x)
+    if wp_floor(vec3(86.0, 10.0, 32.0), 0.0) { show("gate_top", wp_hit.y) }
+    wp_layer_set(layer_gate, false)
+    // the platform, an entity with collision in its own frame (turned 30 degrees): stand on
+    // it by asking in its frame
+    let plat = wp_cell_entity(wp_cell(0, 1), 0)
+    let wp = wp_entity_pos(plat)
+    let s = sin(plat.yaw)
+    let c = cos(plat.yaw)
+    let d = vec3(51.0, 6.0, 101.0) - wp
+    let local = vec3(c * d.x - s * d.z, d.y, s * d.x + c * d.z)      // mesh_at's turn, undone
+    if wp_coll_floor(wp_entity_coll(plat), local, 0.0, 0) { show("platform_y", wp_hit.y + wp.y) }
+    // the seam between cells (0, 0) and (1, 0) at x 64: the ground is found on both sides
+    print("seam ")
+    print_int(wp_floor(vec3(63.99998, 1.0, 50.0), 0.0) as s32)
+    print_int(wp_floor(vec3(64.0, 1.0, 50.0), 0.0) as s32)
+    print_int(wp_floor(vec3(64.00002, 1.0, 50.0), 0.0) as s32)
+    println("")
+    // nothing outside the world
+    print("outside ")
+    print_int(wp_floor(vec3(-1.0, 1.0, 10.0), 5.0) as s32)
+    println("")
+    println("done")
+}
+
+// ---- entities
+
+fn spawned(e: *WpEntity) {
+    print("spawn ")
+    print_int(e.number as s32)
+    println("")
+}
+
+fn retired(e: *WpEntity) {
+    print("retire ")
+    print_int(e.number as s32)
+    println("")
+}
+
+fn entity_scene() {
+    print("entities ")
+    print_int(wp_pack.entity_count as s32)
+    println("")
+    // a walk over the cells' entities, by hand
+    let c = wp_cell(0, 0)
+    for k in 0..c.entity_count as s32 {
+        let e = wp_cell_entity(c, k)
+        print("cell00 ")
+        print_int(e.type_id as s32)
+        print_char(' ')
+        print_int(e.saved_bit)
+        print_char(' ')
+        print_int(bits(wp_entity_pos(e).x))
+        println("")
+    }
+    // the switch's parameters: a u8, a fixed, an entity_ref and a vec3
+    let sw = wp_cell_entity(wp_cell(1, 1), 0)
+    let prm = wp_entity_params(sw)
+    print("switch ")
+    print_int(prm[0] as s32)
+    print_char(' ')
+    print_int(*((prm + 4) as *s32))
+    print_char(' ')
+    let ref = *((prm + 8) as *s32)
+    print_int(wp_entity(ref).saved_bit)
+    println("")
+    // exclusive layers: switching one bridge on switches the other off
+    wp_layer_set(layer_down, true)
+    print("bridges ")
+    print_int(wp_layer_on(layer_up) as s32)
+    print_int(wp_layer_on(layer_down) as s32)
+    wp_layer_set(layer_up, true)
+    print_char(' ')
+    print_int(wp_layer_on(layer_up) as s32)
+    print_int(wp_layer_on(layer_down) as s32)
+    println("")
+    println("step 1")
+    wp_track(vec3(32.0, 0.0, 32.0), 1, spawned, retired)
+    println("step 2")
+    wp_track(vec3(33.0, 0.0, 33.0), 1, spawned, retired)        // nothing changes
+    println("step 3")
+    wp_layer_set(layer_gate, true)
+    wp_track(vec3(33.0, 0.0, 33.0), 1, spawned, retired)        // the gate's coin
+    println("step 4")
+    wp_track(vec3(5.0 * 64.0 + 10.0, 0.0, 10.0), 1, spawned, retired)  // to the far cell
+    println("step 5")
+    wp_track(vec3(32.0, 0.0, 32.0), 0, spawned, retired)        // back, radius 0
+    println("step 6")
+    wp_track_clear(retired)
+    println("done")
+}
+
+// ---- regions
+
+fn colours(label: *u8, first: s32) {
+    let pal = (VRAM_PALETTE + first * 2) as *u16
+    print(label)
+    for k in 0..3 {
+        print_char(' ')
+        print_int(pal[k] as s32)
+    }
+    println("")
+}
+
+fn region_scene() {
+    let r = wp_region(0)
+    wp_palette_load(0, 0)
+    colours("day", r.first_colour as s32)
+    wp_palette_load(0, 1)
+    colours("night", r.first_colour as s32)
+    wp_palette_blend(0, 0, 1, 0.5)
+    colours("dusk", r.first_colour as s32)
+    wp_textures_load(0)
+    let tex = (VRAM_TEXTURES + 3 * TEXTURE_SLOT_SIZE) as *u8
+    print("texture ")
+    print_int(tex[0] as s32)
+    print_char(' ')
+    print_int(tex[1] as s32)
+    print_char(' ')
+    print_int(tex[1023] as s32)
+    println("")
+    println("done")
+}

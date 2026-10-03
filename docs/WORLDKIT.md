@@ -1,8 +1,9 @@
 # Mei World Kit
 
-**Status: design proposal. Nothing here is implemented.** There is no `tools/mei_world.py`, no
-world format and no runtime that reads one. This document records the design decisions made so
-far, proposes the rest, and lists what is still open. It depends on three things:
+**Status: design proposal.** There is no `tools/mei_world.py` yet. The pack format and a runtime
+that reads it now exist ([WORLDPACK.md](WORLDPACK.md), `stdlib/worldpack.akr`); the rest is not
+implemented. This document records the design decisions made so far, proposes the rest, and lists
+what is still open. It depends on three things:
 
 - **A larger cart ROM.** Today a cart is at most 2 MB, mapped at `0x200000`
   ([DECISIONS.md](DECISIONS.md), "Cart file format"). A change to a 64 MB limit inside a 128 MB
@@ -10,9 +11,10 @@ far, proposes the rest, and lists what is still open. It depends on three things
   world with several regions does not (see [ROM](#rom)).
 - **The Asset Kit** ([ASSETKIT.md](ASSETKIT.md)), plus the changes to it listed in
   [Asset Kit changes this needs](#asset-kit-changes-this-needs).
-- **A runtime that does not exist.** Tsumiki, the stdlib 3D toolkit that had a scene, solids,
-  a character controller and cameras, was removed in October 2026 ([ROADMAP.md](ROADMAP.md)).
-  The stdlib today has no level loader, no collision and no per-object culling.
+- **A runtime.** Tsumiki, the stdlib 3D toolkit that had a scene, solids, a character controller
+  and cameras, was removed in October 2026 ([ROADMAP.md](ROADMAP.md)). Its replacement for worlds
+  is the narrow pack reader `stdlib/worldpack.akr` (cells, culled two-pass drawing, collision
+  queries, entity tracking; [WORLDPACK.md](WORLDPACK.md)).
 
 The World Kit is a command-line tool for AI agents, a sibling of the Asset Kit. An editable JSON
 recipe places Asset Kit assets into cells and regions, attaches game data to them, and builds one
@@ -467,30 +469,14 @@ For a world named `city`, `build` produces (*proposal*):
 Outputs are staged and replaced only on success, and a failed gate leaves the previous pack in
 place with `verification.failed.json`, as in the Asset Kit.
 
-*Proposal: the pack layout.* Every reference is an offset from the pack's start.
-
-```
-header       "MEIW", version, grid size, cell size, offsets of the tables below
-regions      per region: texture set (slots and ROM offsets), palette variants (colour tables),
-             audio bank (sample table), backdrop (plane maps, tiles, line tables)
-index        grid width × height entries: offset of the cell blob, or 0 for no cell
-cell blob    region, bounds, layer names and exclusive groups, stand-in mesh offset,
-             placements: mesh offset, local position, yaw, bounding sphere, layer bit,
-             collision: triangles in cell-local coordinates, plane equations, a lookup grid,
-             entities: type, saved-bit index or -1, local position, layer bit, parameter record
-mesh pool    native Mei meshes (LANGUAGE.md, "Mesh format"), each stored once, word-aligned
-```
-
-Meshes stay in the existing format so the runtime draws them with `mesh_at` or `mesh_xf`
-directly from ROM.
-
-What the runtime is expected to do, each frame: find the camera's and player's cells from the
-index; draw the far ring's stand-ins, then the near cells' placements whose layers are on and
-whose bounds are in view, camera-relative; answer collision queries against the player's cell
-and its neighbours; spawn entities of newly active cells and retire those of cells that left;
-when the player enters a seam, swap the region's texture slots and palettes over a few frames;
-blend palette variants when the game asks. What it is not expected to do is in
-[open question 3](#3-the-runtime).
+**The pack format is specified in [WORLDPACK.md](WORLDPACK.md)** (version 1.0), byte by byte:
+header, sparse index, layers, regions, cells, placements, entities and their parameter records,
+collision blocks with precomputed rows and a lookup grid, and the mesh pool (meshes stay in the
+native format). `tools/worldkit/pack.py` is the reference encoder and decoder the kit builds on,
+and `stdlib/worldpack.akr` the console reader. What the reader does each frame (cells from the
+index, the two drawing passes, collision in the player's cell, entities spawned and retired as
+cells and layers change, region palettes) is in WORLDPACK.md, "What a reader does"; what it
+does not do is in [open question 3](#3-the-runtime).
 
 ## Verification
 
