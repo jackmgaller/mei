@@ -1,0 +1,30 @@
+// The stdlib's menu key repeat: a press acts at once, a held press again after REPEAT_DELAY
+// frames and every REPEAT_EVERY after; a change of buttons starts over. menu_dirs() reads the
+// d-pad (here DOWN and A are held: only DOWN is a direction).
+// pad1: 12
+// frames: 4
+fn p(n: u32) { print_char(' '); print_uint(n) }
+
+fn init() {
+    var r: KeyRepeat
+    // DOWN held for 30 frames: acts on frames 0, 18, 23 and 28
+    for i in 0..30 { if key_repeat(&r, DOWN) != 0 { p(i as u32) } }
+    print_char('\n')        // expect:  0 18 23 28
+    p(key_repeat(&r, DOWN | RIGHT))   // RIGHT is new: only it acts
+    p(key_repeat(&r, DOWN | RIGHT))   // held, not yet repeating
+    p(key_repeat(&r, 0))
+    p(key_repeat(&r, UP))
+    print_char('\n')        // expect:  8 0 0 1
+    var other: KeyRepeat    // each KeyRepeat keeps its own state
+    p(key_repeat(&other, UP))
+    p(key_repeat(&r, UP))
+    print_char('\n')        // expect:  1 0
+}
+
+var shown: bool
+fn update() {               // the pad is latched at vsync: held from the second update
+    if shown || FRAME < 2 { return }
+    shown = true
+    p(menu_dirs())
+    print_char('\n')        // expect:  2
+}

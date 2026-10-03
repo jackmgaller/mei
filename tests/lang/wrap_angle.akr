@@ -1,0 +1,19 @@
+// The stdlib's wrap_angle: any angle into -PI..PI by whole turns.
+fn pf(f: fixed) { print_fixed(f); print_char('\n') }
+
+fn init() {
+    pf(wrap_angle(0.5))             // expect: 0.5
+    pf(wrap_angle(-0.5))            // expect: -0.5
+    pf(wrap_angle(4.0))             // expect: -2.2832
+    pf(wrap_angle(-4.0))            // expect: 2.2832
+    pf(wrap_angle(0.5 + 3 * TAU))   // expect: 0.5
+    pf(wrap_angle(0.5 - 5 * TAU))   // expect: 0.5
+    // far from 0 the error of TAU in 16.16 bits shows (exactly: 0.9735)
+    pf(wrap_angle(1000.0))          // expect: 0.9731
+    // the difference between two headings either side of PI: the short way round
+    pf(wrap_angle(-3.0 - 3.0))      // expect: 0.2832
+    let a = wrap_angle(PI + 0.001)
+    print_int(if_i(a < -3.14 && a >= -PI))
+    print_char('\n')                // expect: 1
+}
+fn if_i(b: bool) -> s32 { if b { return 1 } return 0 }

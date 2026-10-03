@@ -1115,6 +1115,7 @@ Buttons are bit masks: `UP DOWN LEFT RIGHT A B X Y L R START SELECT`.
 | `btnp(b: u32) -> bool` | pressed this frame: held now, not held on the previous frame |
 | `btn2`, `btnp2` | the same for controller 2 |
 | `stick() -> vec2`, `stick2() -> vec2` | analog stick, −1.0..1.0 on each axis (y up), dead zone applied |
+| `menu_dirs() -> u32`, `key_repeat(r: *KeyRepeat, held: u32) -> u32` | menu navigation: the directions held (d-pad, or the stick past half way), and of `held` the buttons that act this frame: new presses, then the held ones again after `REPEAT_DELAY` (18) frames and every `REPEAT_EVERY` (5); one zeroed `KeyRepeat` per thing that repeats |
 
 ### Maths (`math.akr`)
 
@@ -1122,6 +1123,7 @@ Buttons are bit masks: `UP DOWN LEFT RIGHT A B X Y L R START SELECT`.
 |---|---|
 | `sin(a)`, `cos(a)`, `tan(a)` | radians; 1,024-entry table with interpolation |
 | `atan2(y, x)` | radians, −π..π, error under 0.005 |
+| `wrap_angle(a)` | `a` brought into −π..π by whole turns (the short way between two headings) |
 | `sqrt(x)` | exact to the last bit; 0 for x ≤ 0 |
 | `rand() -> u32`, `seed(s)`, `rnd(n) -> s32` (0..n−1), `rndf() -> fixed` (0..1) | the hardware generator |
 | `PI`, `TAU`, `HALF_PI` | constants |

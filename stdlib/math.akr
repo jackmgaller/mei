@@ -66,6 +66,15 @@ fn atan2(y: fixed, x: fixed) -> fixed {
     return r
 }
 
+// An angle in radians brought into -PI..PI (adding or taking away whole turns), for example
+// the difference between two headings.
+fn wrap_angle(a: fixed) -> fixed {
+    var r = a - fixed((a / TAU) as s32) * TAU   // 0..TAU: `as s32` rounds down
+    if r > PI { r -= TAU }
+    if r < -PI { r += TAU }
+    return r
+}
+
 // Random numbers from the RAND register (xorshift32 in hardware).
 fn rand() -> u32 { return RAND }
 fn seed(s: u32) { RAND = s }
