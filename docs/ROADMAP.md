@@ -15,27 +15,18 @@ From the agents' retrospective, roughly in order of value:
 - **Saturating arithmetic** (`+|`, `-|`) for colours, volumes and meters.
 - **`static` locals:** variables that keep their value between calls.
 
-## Tsumiki (in progress)
-
-The 3D creation toolkit (`docs/TSUMIKI.md`, `carts/playroom`), being built now.
-
-- **Usability test:** a fresh agent builds a small game from only `docs/TSUMIKI.md`. Wherever
-  it gets stuck shows what the docs and API need.
-- **Adopt namespaces:** move the toolkit to short module-local names and named imports
-  (`tk_play` becomes `tk.play`) now that the compiler supports them.
-
 ## Machine (pending go-ahead)
 
 All PS1-authentic unless noted.
 
-- **GPU draw-offset register**, like the PS1's. Check-In! generates an unrolled assembly file
-  just to pan its cached geometry.
+- **GPU draw-offset register**, like the PS1's, so cached screen-space geometry can be panned
+  without rewriting it.
 - **A GPU dropped-triangle counter register.** Dropped triangles past the 4,000 cap only set a
   status bit today.
 - **Sprite packets** with their own cost, so an interface rectangle isn't two triangles. This is
   how the real PS1 GPU worked.
-- **Per-mesh sort mode** (average, nearest or farthest depth) and per-face bias. The depth keys
-  added for Check-In! cover part of this.
+- **Per-mesh sort mode** (average, nearest or farthest depth) and per-face bias. The existing
+  depth keys cover part of this.
 - **A clamp flag on `vxp3`**, like the GTE's FLAG register, to make clipping cheaper.
 - **Smaller ones:**
   - a hardware ordering-table clear;
@@ -60,15 +51,6 @@ All PS1-authentic unless noted.
 - **`meic -D NAME=value`** for build-time constants.
 - **Assembly checks:** warn when code falls through into an assembly label.
 
-## Carts
-
-- **Check-In!:**
-  - the map feels small (maybe just the demo map);
-  - clean up the `meic -W` warnings.
-- **Plane chip ports (optional now):** Check-In!, Sun & Moon Orbs and the boot themes fit the
-  1M GPU budget as they are. Porting them to planes would only buy headroom.
-- **stdlib:** `text()` mishandles a negative x.
-
 ## Networking (maybe later)
 
 - **Messaging** between consoles.
@@ -76,8 +58,8 @@ All PS1-authentic unless noted.
 ## Open questions
 
 - **A name for the assembly language.**
-- **`docs/OVERVIEW.md`** still says "2,000 triangles per frame"; it's now 4,000 and a 1M-cycle
-  GPU budget.
+- **Plane chip ports:** Sun & Moon Orbs and the boot themes fit the 1M GPU budget as they are;
+  porting them to planes would only buy headroom.
 
 ## Decided against
 
@@ -87,4 +69,6 @@ All PS1-authentic unless noted.
 - **A depth buffer.** By spec; draw order stays the ordering table's job.
 - **Generics, `defer` and language-level generators:** slices, the no-heap design and the task
   library cover them.
-- **Rigid-body physics in Tsumiki:** a character controller only.
+- **Tsumiki**, the stdlib 3D toolkit, and its Playroom sample cart: removed in October 2026
+  in favour of a different approach.
+- **Check-In!**: the cart and its asset generators were removed in October 2026.

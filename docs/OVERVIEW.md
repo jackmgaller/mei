@@ -9,7 +9,8 @@ A 3D fantasy console modelled on PlayStation-era hardware, implemented from
 - A vector unit with eight 4-lane 16.16 registers (`vxfm`, `vproj`, …) and GTE-style geometry
   instructions (`vxp3`, `nclip`, `otz`, `clerp`; see [`DECISIONS.md`](DECISIONS.md#geometry-instructions))
 - A GPU that only fills 2D triangles: affine textures, whole-pixel vertices, no depth buffer,
-  an ordering table, four blend modes and 2,000 triangles per frame
+  an ordering table, four blend modes, and a budget of 1,000,000 GPU cycles and 4,000
+  triangles per frame
 - 22,050 Hz audio: 16 channels, ADPCM, reverb; two controllers, 2 MB RAM, 2 MB cart ROM, 1 MB VRAM
 
 The look comes from those rules (texture warp, vertex wobble, sorting glitches, dither),
