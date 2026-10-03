@@ -122,6 +122,12 @@ check-generated:
 test-world: $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe
 	MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldkit.py -v
 
+# The carts' self-checking scenarios (carts/*/tests/check.sh), through tools/cart_scenario.sh.
+.PHONY: test-carts
+test-carts: $(B)/meic $(B)/mei-headless
+	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/weather/tests/check.sh
+	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/lantern/tests/check.sh
+
 .PHONY: test-assets
 test-assets: $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe
 	MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_assetkit.py -v
