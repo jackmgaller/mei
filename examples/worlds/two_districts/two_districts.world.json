@@ -2,7 +2,7 @@
   "format": "mei-world",
   "version": 1,
   "name": "two_districts",
-  "game": "city.game.json",
+  "game": "city.game.mochi",
   "assets": "assets",
   "cell_dir": "cells",
   "grid": {

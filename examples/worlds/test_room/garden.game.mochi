@@ -1,0 +1,21 @@
+game garden
+
+probe {
+  radius            = 0.3
+  height            = 1.6
+  step              = 0.32
+  floor_max_degrees = 40
+}
+
+worlds test_room
+
+saved type coin
+
+saved type trigger {
+  size:        vec3
+  event:       name
+  target:      ref?
+  time_window: any | day | night = any
+  count:       u8 = 1
+  exit:        world = test_room
+}

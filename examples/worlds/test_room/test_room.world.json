@@ -2,7 +2,7 @@
   "format": "mei-world",
   "version": 1,
   "name": "test_room",
-  "game": "garden.game.json",
+  "game": "garden.game.mochi",
   "assets": "assets",
   "grid": {
     "cell_size": 64

@@ -104,7 +104,7 @@ class CliTests(unittest.TestCase):
         self.assertIn('cell_file', schema['$defs'])
         self.assertIn('game', schema['$defs'])
         self.assertIn('terrain', schema['x-unknown'])
-        code, schema = cli('schema', '--game', EXAMPLES/'test_room'/'garden.game.json')
+        code, schema = cli('schema', '--game', EXAMPLES/'test_room'/'garden.game.mochi')
         self.assertEqual(code, 0)
         branches = schema['properties']['cells']['items']['properties']['entities']['items']['oneOf']
         trigger = [b for b in branches if b['properties']['type'] == {'const': 'trigger'}][0]
@@ -149,6 +149,10 @@ class ValidationTests(unittest.TestCase):
     def check(self, edit, path, message=None, rel=None, name='test_room', file=None):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp, name)
+            if rel == 'garden.game.json':
+                # The JSON game schema form (tests/worldkit), so both forms stay covered.
+                shutil.copy(ROOT/'tests'/'worldkit'/'garden.game.json', ex.dir)
+                ex.edit(lambda w: w.update(game='garden.game.json'))
             ex.edit(edit, rel)
             with self.assertRaises(WorldError) as error:
                 ex.compile()
@@ -304,7 +308,8 @@ class BuildTests(unittest.TestCase):
             source = sorted(str(p.relative_to(Path(tmp)/'out_a'/'source')) for p in (Path(tmp)/'out_a'/'source').rglob('*.json'))
             self.assertIn('cells/shrine_gate.cell.json', source)
             self.assertIn('assets/shop.asset.json', source)
-            self.assertIn('city.game.json', source)
+            self.assertEqual((Path(tmp)/'out_a'/'source'/'city.game.mochi').read_text(),
+                             (EXAMPLES/'two_districts'/'city.game.mochi').read_text())
             # A failing build leaves the previous outputs in place.
             before = (Path(tmp)/'out_a'/'two_districts.world.bin').read_bytes()
             a.edit(lambda c: c['placements'][0].update(position=[999, 0, 0]), 'cells/downtown_a.cell.json')
