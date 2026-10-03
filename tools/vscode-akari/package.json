@@ -1,0 +1,56 @@
+{
+  "name": "akari-language",
+  "displayName": "Akari (Mei)",
+  "description": "Syntax highlighting for the Mei fantasy console's Akari language.",
+  "version": "0.1.0",
+  "publisher": "mei-local",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "akari",
+    "mei",
+    "akr"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": true
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "akari",
+        "aliases": [
+          "Akari",
+          "akari"
+        ],
+        "extensions": [
+          ".akr"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "akari",
+        "scopeName": "source.akari",
+        "path": "./syntaxes/akari.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "test": "node --test test/*.test.cjs",
+    "package": "vsce package --no-dependencies --allow-missing-repository --skip-license"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "4.0.0",
+    "vscode-oniguruma": "2.0.1",
+    "vscode-textmate": "9.3.2"
+  }
+}

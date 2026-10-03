@@ -1,0 +1,361 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Akari",
+  "scopeName": "source.akari",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#assembly"
+    },
+    {
+      "include": "#core"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.akari",
+          "begin": "//",
+          "end": "$"
+        },
+        {
+          "name": "comment.block.akari",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "escapes": {
+      "patterns": [
+        {
+          "match": "\\\\(?:[ntr0\\\\'\"]|x[0-9A-Fa-f]{2})",
+          "name": "constant.character.escape.akari"
+        },
+        {
+          "match": "\\\\.",
+          "name": "invalid.illegal.escape.akari"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.akari",
+          "begin": "\"",
+          "end": "\"|$",
+          "patterns": [
+            {
+              "include": "#escapes"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.akari",
+          "begin": "'",
+          "end": "'|$",
+          "patterns": [
+            {
+              "include": "#escapes"
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "match": "\\b0[xX][0-9A-Fa-f_]+\\b",
+          "name": "constant.numeric.hex.akari"
+        },
+        {
+          "match": "\\b0[bB][01_]+\\b",
+          "name": "constant.numeric.binary.akari"
+        },
+        {
+          "match": "\\b[0-9][0-9_]*\\.[0-9][0-9_]*\\b",
+          "name": "constant.numeric.fixed.akari"
+        },
+        {
+          "match": "\\b[0-9][0-9_]*\\b",
+          "name": "constant.numeric.integer.akari"
+        }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "match": "\\b(fn)\\s+(?:([A-Za-z_][A-Za-z0-9_]*)(\\.))?([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.function.akari"
+            },
+            "2": {
+              "name": "entity.name.namespace.akari"
+            },
+            "3": {
+              "name": "punctuation.accessor.akari"
+            },
+            "4": {
+              "name": "entity.name.function.akari"
+            }
+          }
+        },
+        {
+          "match": "\\b(struct|enum)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.akari"
+            },
+            "2": {
+              "name": "entity.name.type.akari"
+            }
+          }
+        },
+        {
+          "match": "\\b(const|embed|reg)\\s+([A-Za-z_][A-Za-z0-9_]*)(?=\\s*[:=])",
+          "captures": {
+            "1": {
+              "name": "storage.type.akari"
+            },
+            "2": {
+              "name": "variable.other.constant.akari"
+            }
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "match": "\\b(?:private|weak)\\b(?=\\s+(?:asm|fn|var|const|struct|enum|embed|reg)\\b)",
+          "name": "storage.modifier.akari"
+        },
+        {
+          "match": "\\b(?:if|else|while|for|in|break|continue|return|match)\\b",
+          "name": "keyword.control.akari"
+        },
+        {
+          "match": "\\b(?:import|cart)\\b",
+          "name": "keyword.control.directive.akari"
+        },
+        {
+          "match": "\\bas\\b",
+          "name": "keyword.operator.word.akari"
+        },
+        {
+          "match": "\\b(?:fn|var|let|const|struct|enum|reg|embed)\\b",
+          "name": "storage.type.akari"
+        },
+        {
+          "match": "\\bbits\\b(?=\\s*\\{)",
+          "name": "storage.type.akari"
+        },
+        {
+          "match": "\\b(?:true|false|null)\\b",
+          "name": "constant.language.akari"
+        }
+      ]
+    },
+    "types": {
+      "match": "\\b(?:bool|s8|s16|s32|u8|u16|u32|fixed|fixed16|vec2|vec3|vec4|ivec4|mat4)\\b",
+      "name": "support.type.akari"
+    },
+    "builtins": {
+      "match": "\\b(?:sizeof|assert|assert_eq|dot|cross|len|bits|from_bits|from_bits16|abs|min|max|clamp|lerp|length|normalize|nclip|otz|clerp|__kind|__raw|map|map_into|filter|filter_into|reduce|each)\\b(?=\\s*\\()",
+      "name": "support.function.builtin.akari"
+    },
+    "names": {
+      "patterns": [
+        {
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*\\()",
+          "name": "entity.name.function.akari"
+        },
+        {
+          "match": "\\b[A-Z][A-Z0-9_]*\\b",
+          "name": "variable.other.constant.akari"
+        },
+        {
+          "match": "\\b[A-Z][A-Za-z0-9_]*\\b",
+          "name": "entity.name.type.akari"
+        }
+      ]
+    },
+    "operators": {
+      "match": "<<=|>>=|\\.\\.=|->|=>|\\.\\.|==|!=|<=|>=|&&|\\|\\||<<|>>|[+*/%&|^~!<>=-]=?",
+      "name": "keyword.operator.akari"
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "match": "[{}]",
+          "name": "punctuation.section.block.akari"
+        },
+        {
+          "match": "[\\[\\]()]",
+          "name": "punctuation.section.group.akari"
+        },
+        {
+          "match": "[,;:]",
+          "name": "punctuation.separator.akari"
+        },
+        {
+          "match": "\\.",
+          "name": "punctuation.accessor.akari"
+        },
+        {
+          "match": "@",
+          "name": "punctuation.definition.address.akari"
+        }
+      ]
+    },
+    "core": {
+      "patterns": [
+        {
+          "include": "#comments"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#declarations"
+        },
+        {
+          "include": "#keywords"
+        },
+        {
+          "include": "#types"
+        },
+        {
+          "include": "#builtins"
+        },
+        {
+          "include": "#names"
+        },
+        {
+          "include": "#operators"
+        },
+        {
+          "include": "#punctuation"
+        }
+      ]
+    },
+    "asm-reference": {
+      "name": "meta.interpolation.akari",
+      "begin": "\\{",
+      "end": "\\}",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.interpolation.begin.akari"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.interpolation.end.akari"
+        }
+      },
+      "patterns": [
+        {
+          "match": "[A-Za-z_][A-Za-z0-9_]*",
+          "name": "variable.other.akari"
+        },
+        {
+          "include": "#operators"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#punctuation"
+        }
+      ]
+    },
+    "asm-body": {
+      "name": "meta.embedded.block.mei-asm",
+      "begin": "\\{",
+      "end": "\\}",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.block.begin.akari"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.block.end.akari"
+        }
+      },
+      "patterns": [
+        {
+          "name": "comment.line.mei-asm",
+          "begin": ";|//",
+          "end": "$"
+        },
+        {
+          "include": "#asm-reference"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "match": "[A-Za-z_.][A-Za-z0-9_.$]*(?=\\s*:)",
+          "name": "entity.name.label.mei-asm"
+        },
+        {
+          "match": "(?i)(?<![\\w.])(?:r(?:1[0-5]|[0-9])|v[0-7]|sp|ra)\\b",
+          "name": "variable.language.register.mei-asm"
+        },
+        {
+          "match": "(?i)(?<![\\w.])(?:brk|add|sub|mul|div|divu|rem|remu|and|or|xor|shl|shr|sar|slt|sltu|addi|andi|ori|xori|shli|shri|sari|slti|lui|nclip|otz|clerp|fmul|fdiv|vsync|vxp3|lb|lbu|lh|lhu|lw|sb|sh|sw|beq|bne|blt|bge|bltu|bgeu|jmp|call|jr|callr|vld|vst|vmov|vget|vset|vadd|vsub|vmul|vscale|vdot|vcross|vxfm|vproj|nop|mov|ret|li|la|b|bgt|ble|bgtu|bleu|beqz|bnez|neg|not|push|pop)\\b",
+          "name": "keyword.control.instruction.mei-asm"
+        },
+        {
+          "match": "(?i)\\.(?:section|org|align|byte|half|word|fixed|ascii|asciz|space|zero|equ|include|incbin|cart)\\b",
+          "name": "keyword.control.directive.mei-asm"
+        },
+        {
+          "match": "(?i)\\b(?:hi|lo)(?=\\s*\\()",
+          "name": "support.function.mei-asm"
+        },
+        {
+          "match": "\\.[A-Za-z_][A-Za-z0-9_.$]*",
+          "name": "entity.name.label.mei-asm"
+        },
+        {
+          "include": "#operators"
+        },
+        {
+          "include": "#punctuation"
+        }
+      ]
+    },
+    "assembly": {
+      "name": "meta.asm.akari",
+      "begin": "\\basm\\b",
+      "end": "(?<=\\})",
+      "beginCaptures": {
+        "0": {
+          "name": "storage.modifier.asm.akari"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#asm-body"
+        },
+        {
+          "include": "#core"
+        }
+      ]
+    }
+  }
+}
