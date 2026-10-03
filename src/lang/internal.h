@@ -86,6 +86,7 @@ typedef struct Field {
     const char *name; Type *type; int offset; Loc loc;
     struct Expr *def;      /* default value for struct literals that omit the field, or NULL */
     int def_checked;
+    int bit_width, bit_shift; /* packed field: bits from offset byte; zero width: ordinary */
 } Field;
 
 struct Type {
@@ -98,6 +99,7 @@ struct Type {
     int layout;            /* struct: 0 not laid out, 1 in progress, 2 done */
     Loc loc;
     struct StructDecl *decl;
+    int packed_bits;       /* anonymous bits group; byte-aligned aggregate */
     Type *ptr_cache;       /* interned *T */
     Type *arr_list;        /* interned arrays of this element type */
     Type *arr_sib;         /* next array type in the element's arr_list */
@@ -132,7 +134,8 @@ typedef enum {
 } OpKind;
 
 typedef struct TypeExpr {
-    int k;                 /* 0 name, 1 pointer, 2 array, 3 function */
+    int k;                 /* 0 name, 1 pointer, 2 array, 3 function, 5 bits */
+    struct StructDecl *bits; /* inline packed group declaration */
     Loc loc;
     const char *name;
     struct TypeExpr *elem;   /* pointer/array element; function result (NULL: none) */
@@ -333,6 +336,7 @@ typedef struct EnumDecl {
 } EnumDecl;
 
 typedef struct StructDecl { const char *name; Loc loc; const char **fnames; TypeExpr **ftypes; Loc *flocs; int nf; Type *ty;
+                            struct Expr **fwidths; /* packed member widths (NULL: bool flag) */
                             struct Expr **fdefs; /* field defaults (NULL entries: none) */ } StructDecl;
 
 typedef struct Program {

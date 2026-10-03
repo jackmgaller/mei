@@ -245,6 +245,37 @@ struct, array or `mat4`, and a constant.
 Everything at the top level is visible everywhere (declaration order does not matter, except
 for initialisers that read other globals), unless it is `private`.
 
+### Packed flag groups
+
+Packed flag groups use `bits { ... }` as a struct field type. A bare name declares a
+one-bit `bool`; an unsigned field uses `name: u8: width`, `u16` or `u32`:
+
+```akr
+struct Object {
+    flags: bits { broken, dirty, lit = true, vip, layer: u8: 3 }
+}
+var o = Object { flags: bits { dirty: true, layer: 5 } }
+o.flags.broken = true
+o.flags.layer += 1
+```
+
+Fields occupy consecutive bits in declaration order, starting with the low bit of the first
+byte. A group is byte-aligned and takes `ceil(total bits / 8)` bytes; ordinary surrounding
+fields keep their usual alignment. Four flags therefore occupy one byte. Unsigned widths are
+constant expressions from 1 through the type's bit count (8, 16 or 32), and fields can cross
+byte boundaries. Reads zero-extend the stored value. Writes and compound assignments keep the
+low `width` bits and preserve all neighboring fields; the destination is evaluated once.
+Boolean flags require `bool` values, just like ordinary bool fields.
+
+`bits { name: value, ... }` constructs a group using its expected type from a surrounding
+struct literal, assignment or explicit variable type. Omitted members are zero unless they
+have a constant default inside the declaration. Defaults apply when constructing a literal;
+uninitialized globals and local declarations stay zero, like ordinary structs. Each group
+declaration defines its own type. Groups can be copied between values of that type; structs
+containing them work with arrays, pointers, const data, parameters and returns. You can take
+the address of a whole group, but a packed member has no byte address, so `&o.flags.broken`
+is rejected. Read-only struct and parameter rules apply to the group and its members.
+
 ### Private declarations
 
 `private` in front of a top-level `fn`, `asm fn`, `var`, `const`, `struct`, `enum`, `embed` or

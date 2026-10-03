@@ -115,6 +115,19 @@ Type *ty_func(Type **params, int n, Type *ret) {
 Type *ty_base(Type *t) { return t->k == TY_ENUM && t->elem ? t->elem : t; }
 
 const char *ty_str(Type *t) {
+    if (t->packed_bits) {
+        Buf b = {0};
+        buf_puts(&b, "bits {");
+        for (int i = 0; i < t->nfields; i++) {
+            Field *f = &t->fields[i];
+            buf_printf(&b, "%s%s", i ? ", " : "", f->name);
+            if (f->type != ty_bool) buf_printf(&b, ": %s: %d", ty_str(f->type), f->bit_width);
+        }
+        buf_putc(&b, '}');
+        char *r = ar_strdup(b.p);
+        buf_free(&b);
+        return r;
+    }
     switch (t->k) {
     case TY_FUNC: {
         Buf b = {0};
@@ -268,7 +281,24 @@ static void resolve_enum(Type *t);
 static Type *resolve_type_in(TypeExpr *te, Ctx *in) {
     if (te->resolved) return te->resolved;
     Type *t;
-    if (te->k == 3) {
+    if (te->k == 5) {
+        t = ar_alloc(sizeof *t);
+        t->k = TY_STRUCT; t->name = "bits"; t->loc = te->loc;
+        t->packed_bits = 1; t->decl = te->bits;
+        te->bits->ty = t;
+        if (in) for (int i = 0; i < te->bits->nf; i++)
+            if (te->bits->fwidths[i]) const_int(in, te->bits->fwidths[i], "packed field width");
+        layout_struct(t, te->loc);
+        if (in) for (int i = 0; i < t->nfields; i++) {
+            Field *f = &t->fields[i];
+            if (!f->def) continue;
+            Expr *x = check(in, f->def, f->type);
+            x = coerce(in, x, f->type, ar_printf("the default of field '%s'", f->name));
+            if (!x->isconst) error_at(x->loc, "a field default must be a constant");
+            f->def = x; f->def_checked = 1;
+        }
+        PUSH(g_prog->structs, g_prog->nstructs, g_prog->capstructs, te->bits);
+    } else if (te->k == 3) {
         Type *ps[32];
         if (te->nparams > 32) error_at(te->loc, "too many parameters in a function type");
         for (int i = 0; i < te->nparams; i++) {
@@ -310,13 +340,26 @@ static void layout_struct(Type *t, Loc use) {
     StructDecl *d = t->decl;
     t->fields = ar_alloc(sizeof(Field) * (size_t)(d->nf ? d->nf : 1));
     t->nfields = d->nf;
-    int off = 0, align = 1;
+    int off = 0, align = 1, bit = 0;
     for (int i = 0; i < d->nf; i++) {
         Type *ft = resolve_type(d->ftypes[i]);
         if (ft->k == TY_STRUCT) layout_struct(ft, d->flocs[i]);
         if (ft->k == TY_ARRAY) { Type *b = ft; while (b->k == TY_ARRAY) b = b->elem; layout_struct(b, d->flocs[i]); }
+        if (t->packed_bits) {
+            int64_t width = d->fwidths[i] ? const_int(&(Ctx){.P = g_prog}, d->fwidths[i], "packed field width") : 1;
+            if (d->fwidths[i] && !(ft == ty_u8 || ft == ty_u16 || ft == ty_u32))
+                error_at(d->flocs[i], "packed integer fields require u8, u16 or u32");
+            if (width <= 0 || width > ft->size * 8)
+                error_at(d->flocs[i], "packed field width must be between 1 and %d", ft->size * 8);
+            t->fields[i] = (Field){.name = d->fnames[i], .type = ft, .offset = bit / 8,
+                .loc = d->flocs[i], .def = d->fdefs[i], .bit_width = (int)width, .bit_shift = bit % 8};
+            bit += (int)width;
+            off = (bit + 7) / 8;
+            if (off > 0x200000) error_at(use, "bits group is larger than 2 MB");
+            continue;
+        }
         off = align_up(off, ft->align);
-        t->fields[i] = (Field){d->fnames[i], ft, off, d->flocs[i], d->fdefs ? d->fdefs[i] : NULL, 0};
+        t->fields[i] = (Field){.name = d->fnames[i], .type = ft, .offset = off, .loc = d->flocs[i], .def = d->fdefs ? d->fdefs[i] : NULL};
         off += ft->size;
         if (ft->align > align) align = ft->align;
     }
@@ -1057,6 +1100,8 @@ static Expr *check_unary(Ctx *c, Expr *e) {
         if (!is_lvalue(e->a) || (e->a->k == E_FIELD && !e->a->field && e->a->nlanes != 1))
             error_at(e->loc, "cannot take the address of this expression");
         if (e->a->k == E_FIELD && !e->a->field) error_at(e->loc, "cannot take the address of a vector lane");
+        if (e->a->k == E_FIELD && e->a->field && e->a->field->bit_width)
+            error_at(e->loc, "cannot take the address of a packed field");
         if (e->a->k == E_NAME && e->a->sym->k == SY_LOCAL && e->a->sym->local->is_capture)
             error_at(e->loc, "cannot take the address of '%s': it is a read-only copy captured by the function literal", e->a->name);
         mark_addr_taken(e->a);
@@ -1522,10 +1567,16 @@ static Expr *check_array_lit(Ctx *c, Expr *e, Type *want) {
 static void add_field_defaults(Ctx *c, Expr *e, Type *t);
 static void check_field_default(Program *P, Field *f);
 
-static Expr *check_struct_lit(Ctx *c, Expr *e) {
-    Sym *s = sym_lookup(e->name, e->loc.file);
-    if (!s || s->k != SY_TYPE || s->ty->k != TY_STRUCT) error_at(e->loc, "'%s' is not a struct type", e->name);
-    Type *t = complete(s->ty, e->loc);
+static Expr *check_struct_lit(Ctx *c, Expr *e, Type *want) {
+    Type *t;
+    if (!strcmp(e->name, "bits")) {
+        if (!want || !want->packed_bits) error_at(e->loc, "a bits literal needs a packed group type from its context");
+        t = want;
+    } else {
+        Sym *s = sym_lookup(e->name, e->loc.file);
+        if (!s || s->k != SY_TYPE || s->ty->k != TY_STRUCT) error_at(e->loc, "'%s' is not a struct type", e->name);
+        t = complete(s->ty, e->loc);
+    }
     int allc = 1;
     for (int i = 0; i < e->nargs; i++) {
         Field *f = NULL;
@@ -1545,6 +1596,8 @@ static Expr *check_struct_lit(Ctx *c, Expr *e) {
 }
 
 static void check_field_default(Program *P, Field *f) {
+    if (f->type->packed_bits)
+        for (int i = 0; i < f->type->nfields; i++) check_field_default(P, &f->type->fields[i]);
     if (!f->def || f->def_checked) return;
     Ctx k = {.P = P};
     if (ty_is_aggr(f->type)) error_at(f->def->loc, "a field default must be a single value (field '%s' is %s)", f->name, ty_str(f->type));
@@ -1864,7 +1917,7 @@ static Expr *check(Ctx *c, Expr *e, Type *want) {
     case E_FIELD: return check_field(c, e);
     case E_CAST: return check_cast(c, e, e->a, complete(resolve_type_in(e->texpr, c->fn ? c : NULL), e->loc));
     case E_ARRAY: return check_array_lit(c, e, want);
-    case E_STRUCT: return check_struct_lit(c, e);
+    case E_STRUCT: return check_struct_lit(c, e, want);
     case E_SIZEOF: {
         Type *t = complete(resolve_type_in(e->texpr, c->fn ? c : NULL), e->loc);
         e->ty = ty_uint; e->isconst = 1; e->cval = t->size;
@@ -2963,5 +3016,9 @@ void check_program(Program *P) {
     }
     P->init_fn = init;
     for (int i = 0; i < P->nfuncs; i++) check_func(P, P->funcs[i]);   /* literals are appended and already checked */
+    /* Inline groups declared in globals/signatures/locals can be resolved after the
+       initial default pass. Validate their defaults even if no literal uses them. */
+    for (int i = 0; i < P->nstructs; i++)
+        for (int j = 0; j < P->structs[i]->ty->nfields; j++) check_field_default(P, &P->structs[i]->ty->fields[j]);
     inline_program(P);
 }

@@ -1,0 +1,2 @@
+// error: a bits literal needs a packed group type from its context
+fn init() { let a = bits { lit: true } }

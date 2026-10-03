@@ -31,6 +31,7 @@ typedef struct {
     Type *ty;
     int frame_rel;        /* offset is relative to the caller's frame (incoming stack args) */
     int far;              /* a global above 0x20000 (lui base): its address always takes two instructions */
+    int bit_width, bit_shift; /* packed member metadata */
 } LV;
 typedef struct { Opnd o; Type *t; } Arg;
 
@@ -458,6 +459,7 @@ static LV gen_lv(Expr *e) {
             if (e->a->ty->k == TY_PTR) lv = lv_mem(gen_expr(e->a, -1), 0, e->ty);
             else lv = gen_aggr_lv(e->a);
             lv.off += e->field->offset;
+            lv.bit_width = e->field->bit_width; lv.bit_shift = e->field->bit_shift;
             lv.ty = e->ty;
             return lv;
         }
@@ -525,6 +527,58 @@ static const char *store_op(Type *t) {
     switch (t->size) { case 1: return "sb"; case 2: return "sh"; default: return "sw"; }
 }
 
+/* Packed accesses use bytes, so unaligned/cross-byte fields work without touching
+ * bytes beyond their group. Fields are least-significant bit first. */
+static Opnd load_packed(LV *lv, int hint, int keep) {
+    lv_fix(lv);
+    Opnd result = o_imm(0);
+    int left = lv->bit_width, shift = lv->bit_shift, out = 0, byte = 0;
+    while (left) {
+        int width = left < 8 - shift ? left : 8 - shift;
+        LV partlv = *lv; partlv.off += byte;
+        const char *m = mem(&partlv);
+        int r; Opnd part = dest(0, -1, &r);
+        I("lbu %s, %s", RN[r], m);
+        if (shift) part = arith(B_SHR, ty_u32, 0, part, o_imm(shift), -1);
+        part = arith(B_AND, ty_u32, 0, part, o_imm((1u << width) - 1), -1);
+        if (out) part = arith(B_SHL, ty_u32, 0, part, o_imm(out), -1);
+        result = arith(B_OR, ty_u32, 0, result, part, -1);
+        left -= width; out += width; shift = 0; byte++;
+    }
+    if (!keep) lv_free(lv);
+    if (hint >= 0) { move_to(result, hint, 0); ofree(result); return (Opnd){O_REG, hint}; }
+    return result;
+}
+
+static void store_packed(LV *lv, Opnd v, int keep) {
+    lv_fix(lv);
+    int left = lv->bit_width, shift = lv->bit_shift, input = 0, byte = 0;
+    while (left) {
+        int width = left < 8 - shift ? left : 8 - shift;
+        uint32_t mask = (1u << width) - 1;
+        LV partlv = *lv; partlv.off += byte;
+        int r; Opnd part = dest(0, -1, &r);
+        int source = R(&v); r = R(&part);
+        if (input) I("shri %s, %s, %d", RN[r], RN[source], input);
+        else I("mov %s, %s", RN[r], RN[source]);
+        part = arith(B_AND, ty_u32, 0, part, o_imm(mask), -1);
+        if (shift) part = arith(B_SHL, ty_u32, 0, part, o_imm(shift), -1);
+        if (width != 8) {
+            const char *m = mem(&partlv);
+            Opnd old = dest(0, -1, &r);
+            I("lbu %s, %s", RN[r], m);
+            old = arith(B_AND, ty_u32, 0, old, o_imm(255u ^ (mask << shift)), -1);
+            part = arith(B_OR, ty_u32, 0, old, part, -1);
+        }
+        r = R(&part);
+        I("sb %s, %s", RN[r], mem(&partlv));
+        ofree(part);
+        left -= width; input += width; shift = 0; byte++;
+    }
+    ofree(v);
+    if (!keep) lv_free(lv);
+}
+
 static Opnd load_lv(LV *lv, int hint) {
     Type *t = lv->ty;
     switch (lv->k) {
@@ -534,6 +588,7 @@ static Opnd load_lv(LV *lv, int hint) {
     default: break;
     }
     if (ty_is_aggr(t)) return lv_addr(lv);
+    if (lv->bit_width) return load_packed(lv, hint, 0);
     lv_fix(lv);
     const char *m = mem(lv);
     lv_free(lv);
@@ -549,6 +604,7 @@ static void copy_mem(LV *dst, LV *src, int size, int align);
 
 /* Stores `v` (of type vt) into lv. Consumes v. */
 static void store_lv_k(LV *lv, Opnd v, Type *vt, int keep) {
+    if (lv->bit_width) { store_packed(lv, v, keep); return; }
     Type *t = lv->ty;
     switch (lv->k) {
     case LV_REG:
@@ -961,13 +1017,14 @@ static void gen_aggr_into(Expr *e, LV *dst) {
     if (e->k == E_STRUCT) {
         int covered = 0;
         for (int i = 0; i < t->nfields; i++) covered += t->fields[i].type->size;
-        if (e->nargs < t->nfields || covered != t->size) zero_mem(dst, t->size, t->align);
+        if (t->packed_bits || e->nargs < t->nfields || covered != t->size) zero_mem(dst, t->size, t->align);
         for (int i = 0; i < e->nargs; i++) {
             Field *f = NULL;
             for (int j = 0; j < t->nfields; j++) if (!strcmp(t->fields[j].name, e->fnames[i])) f = &t->fields[j];
             LV d = *dst;
             d.off += f->offset;
             d.ty = f->type;
+            d.bit_width = f->bit_width; d.bit_shift = f->bit_shift;
             store_value_into(e->args[i], &d);
         }
         return;
@@ -2117,7 +2174,8 @@ static void gen_compound(Stmt *s) {
     LV lv = gen_lv(s->e);
     Opnd cur;
     int hint = -1;
-    if (lv.k == LV_MEM) {
+    if (lv.bit_width) cur = load_packed(&lv, -1, 1);
+    else if (lv.k == LV_MEM) {
         /* load without consuming the address: it is used again by the store */
         lv_fix(&lv);
         int r;
@@ -3211,7 +3269,18 @@ static void serialize(Expr *e, Type *t, uint8_t *buf, uint8_t *base) {
     if (e->k == E_STRUCT) {
         for (int i = 0; i < e->nargs; i++)
             for (int j = 0; j < t->nfields; j++)
-                if (!strcmp(t->fields[j].name, e->fnames[i])) serialize(e->args[i], t->fields[j].type, buf + t->fields[j].offset, base);
+                if (!strcmp(t->fields[j].name, e->fnames[i])) {
+                    Field *f = &t->fields[j];
+                    if (f->bit_width) {
+                        uint32_t value = (uint32_t)e->args[i]->cval;
+                        for (int bit = 0; bit < f->bit_width; bit++) {
+                            int pos = f->bit_shift + bit;
+                            uint8_t mask = (uint8_t)(1u << (pos % 8));
+                            uint8_t *dst = buf + f->offset + pos / 8;
+                            *dst = (uint8_t)((*dst & ~mask) | (((value >> bit) & 1) ? mask : 0));
+                        }
+                    } else serialize(e->args[i], f->type, buf + f->offset, base);
+                }
         return;
     }
     const char *label = const_addr_label(e);

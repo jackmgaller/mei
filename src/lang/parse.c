@@ -78,7 +78,43 @@ static Expr *parse_expr(Parser *p);
 static TypeExpr *parse_type(Parser *p) {
     TypeExpr *t = ar_alloc(sizeof *t);
     t->loc = p->tok.loc;
-    if (is_op(p, "*")) {
+    if (is_kw(p, "bits")) {
+        next(p);
+        t->k = 5;
+        StructDecl *d = ar_alloc(sizeof *d);
+        d->name = "bits"; d->loc = t->loc;
+        t->bits = d;
+        expect_op(p, "{");
+        skip_nl(p);
+        int cn = 0, ct = 0, cl = 0, cd = 0, cw = 0;
+        int nn = 0, nt = 0, nd = 0, nw = 0;
+        while (!is_op(p, "}")) {
+            Loc loc = p->tok.loc;
+            const char *name = expect_ident(p, "a packed field name");
+            for (int i = 0; i < d->nf; i++)
+                if (!strcmp(name, d->fnames[i])) error_at(loc, "duplicate packed field '%s'", name);
+            TypeExpr *ft = ar_alloc(sizeof *ft);
+            ft->loc = loc; ft->name = "bool";
+            Expr *width = NULL, *def = NULL;
+            if (is_op(p, ":")) {
+                next(p); ft = parse_type(p);
+                expect_op(p, ":");
+                width = parse_expr(p);
+            }
+            if (is_op(p, "=")) { next(p); def = parse_expr(p); }
+            PUSH(d->fnames, nn, cn, name);
+            PUSH(d->ftypes, nt, ct, ft);
+            PUSH(d->flocs, d->nf, cl, loc);
+            PUSH(d->fdefs, nd, cd, def);
+            PUSH(d->fwidths, nw, cw, width);
+            if (is_op(p, ",")) next(p);
+            else if (p->tok.k != TK_NL && !is_op(p, "}"))
+                error_at(p->tok.loc, "expected ',' or '}' in bits declaration");
+            skip_nl(p);
+        }
+        if (!d->nf) error_at(t->loc, "bits declarations require at least one field");
+        next(p);
+    } else if (is_op(p, "*")) {
         next(p);
         t->k = 1;
         t->elem = parse_type(p);

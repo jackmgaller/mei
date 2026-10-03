@@ -1,0 +1,4 @@
+// error: cannot take the address of a packed field
+struct X { f: bits { a } }
+var x: X
+fn init() { let p = &x.f.a }

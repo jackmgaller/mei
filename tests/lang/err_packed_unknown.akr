@@ -1,0 +1,4 @@
+// error: has no field 'missing'
+struct X { f: bits { a } }
+var x: X
+fn init() { x.f.missing = true }
