@@ -1089,6 +1089,23 @@ The prelude (`stdlib/prelude.akr`) imports every module below except the plane c
 (`planes.akr`), which a cart imports itself. Colours are `u32` words
 `0xBBGGRR` (red in the low byte, as the GPU expects); `rgb(r, g, b)` builds one.
 
+Where a function lives (each file's section below lists all of it):
+
+| File | What lives there |
+|---|---|
+| `runtime.akr` | the frame loop; frame counters and budgets (`cpu_used`, `gpu_used`, `frame`, ...); animation phases from a frame count (`frame_phase`, `frame_wave`, `frame_angle`) |
+| `io.akr`, `input.akr`, `math.akr` | hardware registers and `vsync`; buttons and sticks; maths |
+| `gfx.akr` | 3D meshes: the mesh format, `mesh*()`, `fog`, depth sorting (`depth_*`), `cull_rect`; the screen (`cls`, `dither`). With `subdiv.akr` (`subdivide*`) and `clip.akr` |
+| `render.akr` | the camera (`camera*`), projecting points, the ordering table (`ot_*`), the interface list (`ui_insert`, `ui_flush`), the packet arena (`packet_alloc`, `arena_*`) |
+| `text.akr` | the 8×8 text: `text`, `text_int` |
+| `font.akr` | proportional text: `font_*`, `text_width` |
+| `draw.akr` | 2D drawing on the interface list: `rect*`, `line*`, `tri_*`, `quad_fill`, `sprite*`, `tex_page`, `tex_window`, `col_tint`, the `PKT_*`/`BLEND_*` constants |
+| `texture.akr` | loading textures and palettes into VRAM: `load_texture`, `load_palette` |
+| `colour.akr` | colour words (`rgb`, `rgb15`, `rgb_of15`, `col_*`) and changing palette colours in place (`palette_*`) |
+| `str.akr` | strings: `strlen`, `streq`, `str_*`, `int_to_str` |
+| `task.akr`, `audio.akr`, `voice.akr`, `debug.akr`, `mem.akr`, `card.akr`, `broadcast.akr` | tasks, sound, debug output, memory, memory cards, broadcast |
+| `planes.akr`, `worldpack.akr` | not in the prelude: the plane chip; the world pack reader |
+
 ### Frame and system (`runtime.akr`, `io.akr`)
 
 | | |
@@ -1101,12 +1118,21 @@ The prelude (`stdlib/prelude.akr`) imports every module below except the plane c
 | `frame_ticks() -> s32` | ticks the previous frame took: 1 on time, n when the picture before it stayed up n − 1 more times because the CPU or the GPU ran over |
 | `gpu_lag() -> s32` | ticks since reset in which a finished frame waited for the GPU; the difference of two readings is the slowdown the GPU caused between them |
 | `frame() -> u32` | frames since reset |
+| `frame_phase(t, period) -> fixed` | how far through a cycle of `period` frames the count `t` is: 0 up to 1.0 |
+| `frame_wave(t, period) -> fixed` | `sin(TAU * frame_phase(t, period))`, −1.0..1.0 |
+| `frame_angle(t, speed) -> fixed` | `t × speed` (radians per frame) reduced to 0..TAU, exactly |
 | `vsync()` | end the frame now (low level: skips the ordering table and pad bookkeeping) |
 | registers | `GPU_DRAW GPU_CLEAR GPU_CTRL GPU_STATUS GPU_BACK GPU_LOAD GPU_TICKS GPU_LAG PAD1 PAD2 STICK1_X STICK1_Y STICK2_X STICK2_Y FRAME CYCLES RAND DEBUG SYS_TIME SYS_DATE` |
 | constants | `AUDIO_BASE VRAM_PALETTE VRAM_TEXTURES TEXTURE_SLOT_SIZE SCREEN_W SCREEN_H GPU_BUDGET` |
 
 `cpu_used()` and `frames_dropped()` measure from one `vsync` to the next, so the frame after one
 the GPU held back counts the wait as well; `gpu_lag()` tells the two apart.
+
+`fixed(frame_count) * speed` stops working after 32,768 frames (about nine minutes): the count
+overflows `fixed` and every animation driven by it jumps. The `frame_*` functions take the count
+itself, `frame() as s32` or a cart's own tick counter (one that stops while paused, say), and are
+exact for any count, so `sin(frame_angle(tick, 0.05))` keeps turning smoothly for as long as the
+cart runs. `frame_angle` costs about 150 cycles (five remainders), `frame_phase` about 70.
 
 ### Input (`input.akr`)
 
@@ -1135,21 +1161,16 @@ Buttons are bit masks: `UP DOWN LEFT RIGHT A B X Y L R START SELECT`.
 `mat4_rotate_y(a)` turns +Z toward +X (the same sense as camera yaw), `mat4_rotate_x(a)` turns +Z
 toward +Y, `mat4_rotate_z(a)` turns +X toward +Y.
 
-### Graphics (`gfx.akr`, `text.akr`)
+### Meshes and the screen (`gfx.akr`)
 
 **Coordinates.** World space has +X right, +Y up and +Z forward. The camera looks along +Z at
-yaw 0; positive yaw turns right (toward +X), positive pitch looks up.
+yaw 0; positive yaw turns right (toward +X), positive pitch looks up (the camera is set in
+`render.akr`).
 
 | | |
 |---|---|
 | `cls(colour)` | clear the back buffer now |
-| `rgb(r, g, b) -> u32`, `rgb15(colour) -> u32` | build a colour; convert to the 15-bit framebuffer format |
 | `dither(on: bool)` | ordered dither (on by default) |
-| `camera(pos: vec3, yaw)` | set the view (no pitch) |
-| `camera_look(pos: vec3, yaw, pitch)` | set the view with pitch |
-| `camera_fov(fov)` | vertical field of view in radians (default 1.047, 60°); the 4:3 aspect is built in |
-| `camera_clip(near, far)` | near plane (default 0.1; geometry closer than it is clipped away) and the depth that maps to the farthest ordering-table bucket (default 100) |
-| `camera_matrix(m: mat4)` | use your own view-projection matrix (row 3 must produce view depth in w) |
 | `mesh(m: *Mesh)` | draw a mesh whose vertices are in world space |
 | `mesh_at(m: *Mesh, pos: vec3, yaw)` | draw a mesh placed at `pos`, turned by `yaw` |
 | `mesh_xf(m: *Mesh, model: mat4)` | draw a mesh with a model matrix |
@@ -1158,15 +1179,8 @@ yaw 0; positive yaw turns right (toward +X), positive pitch looks up.
 | `depth_key(w, squash)`, `depth_key_off()` | sort the faces of following `mesh*()` calls around view depth `w`: their own order kept, `squash` times closer to `w` (a sort key per mesh; see below); reset each frame |
 | `depth_bucket_of(w) -> s32` | the ordering-table bucket of view depth `w` (for `FACE_KEYED` faces) |
 | `cull_rect(x0, y0, x1, y1)` | the screen rectangle outside which faces that must be clipped are dropped (default the screen; see the guard band below) |
-| `subdivide(levels)` | split big textured faces near the camera, up to `levels` times (0 = off, the default; at most 3); see below |
-| `subdivide_tuning(percent, distance)` | how much deeper the far end of an edge may be than its near end before `subdivide()` splits it (default 25 %; smaller is straighter and costs more), and the view depth beyond which nothing is split (default 8.0) |
-| `text(x, y, s: *u8, colour)` | 8×8 font, ASCII 32–126; `\n` starts a new line |
-| `text_int(x, y, n, colour) -> s32` | draw a number; returns the x after it |
-| `int_to_str(buf: *u8, n) -> *u8` | format a number (buf needs 12 bytes) |
-| `sprite(slot, palette, four_bit: bool, u, v, w, h, x, y)` | draw a w×h texel rectangle of a texture at (x, y), untinted |
-| `rect(x, y, w, h, colour)` | a filled rectangle |
-| `load_texture(slot, src: *u8, bytes)` | copy texture data (in the GPU's layout, spec p. 11) into a slot |
-| `load_palette(index, src: *u16, count)` | copy 15-bit colours into palette memory from colour `index` |
+| `subdivide(levels)` (`subdiv.akr`) | split big textured faces near the camera, up to `levels` times (0 = off, the default; at most 3); see below |
+| `subdivide_tuning(percent, distance)` (`subdiv.akr`) | how much deeper the far end of an edge may be than its near end before `subdivide()` splits it (default 25 %; smaller is straighter and costs more), and the view depth beyond which nothing is split (default 8.0) |
 
 `mesh*()` transform vertices with the vector unit, clip faces that cross the near plane (and
 drop those wholly behind it), cull back faces (front faces are counter-clockwise on screen), fog vertex colours,
@@ -1260,29 +1274,31 @@ nothing in a mesh without a table; see [Performance notes](#performance-notes) f
 one. Hand-built packets take the halfword `tex_window(...)` returns, shifted left 16, in their
 second vertex's texture coordinate word.
 
-The fonts occupy texture slot 15 (the 8×8 font rows 0–47, `font_small()` rows 48–66) and 4-bit
-palette 255 (colours 4080–4095); carts should not use them.
-
-For hand-built packets: `packet_alloc(words) -> *u32` (null when full), `ot_insert(p, type,
-depth)` (depth 0 nearest .. 1023), `ui_insert(p, type)`. Word 0 of a packet is filled in by the
-insert; write the rest as described in the spec (p. 14–16). The packet types are named
-`PKT_TRI`, `PKT_TRI_GOURAUD`, `PKT_TRI_TEX`, `PKT_TRI_TEX_GOURAUD`, `PKT_QUAD_FLAT`,
-`PKT_QUAD_GOURAUD`, `PKT_QUAD_TEX`, `PKT_QUAD_TEX_GOURAUD` (0x20–0x27), or built from `PKT_POLY`
-(0x20) and the flag bits `PKT_GOURAUD`, `PKT_TEXTURED`, `PKT_QUAD`, `PKT_SEMI`; a semi-transparent
-packet's blend mode goes in bits 24–25 of its first colour (`mode << BLEND_SHIFT`), and
-`TEX_4BIT` is the 4-bit flag of the first texture coordinate.
-
-### Projection, the ordering table and packet memory (`render.akr`)
-
-What `mesh()` does with the camera, the ordering table and the packet arena, available to carts
-that place 2D things in the 3D world, draw parts of the world early, or keep packets across
-frames.
+### 8×8 text (`text.akr`)
 
 | | |
 |---|---|
+| `text(x, y, s: *u8, colour)` | 8×8 font, ASCII 32–126; `\n` starts a new line |
+| `text_int(x, y, n, colour) -> s32` | draw a number; returns the x after it |
+
+The fonts occupy texture slot 15 (the 8×8 font rows 0–47, `font_small()` rows 48–66) and 4-bit
+palette 255 (colours 4080–4095); carts should not use them.
+
+### The camera, the ordering table and packet memory (`render.akr`)
+
+The camera, and what `mesh()` does with it, the ordering table and the packet arena, available
+to carts that place 2D things in the 3D world, draw parts of the world early, or keep packets
+across frames.
+
+| | |
+|---|---|
+| `camera(pos: vec3, yaw)` | set the view (no pitch) |
+| `camera_look(pos: vec3, yaw, pitch)` | set the view with pitch |
+| `camera_fov(fov)` | vertical field of view in radians (default 1.047, 60°); the 4:3 aspect is built in |
+| `camera_clip(near, far)` | near plane (default 0.1; geometry closer than it is clipped away) and the depth that maps to the farthest ordering-table bucket (default 100) |
+| `camera_matrix(m: mat4)` | use your own view-projection matrix (row 3 must produce view depth in w) |
 | `project_point(p: vec3) -> ivec4` | where `mesh()` would put a vertex at `p` (`vxfm` and `vproj`, the same rounding): lanes `x`, `y` in pixels, `z` the ordering-table bucket of its view depth (without `depth_bias`; −1 when `p` is nearer than the near plane or behind the camera, and then `x`, `y` mean nothing), `w` the view depth as raw bits (`from_bits(r.w)`) |
 | `view_depth(p: vec3) -> fixed` | the view depth of `p` |
-| `depth_bucket_of(w) -> s32` | the bucket of view depth `w` (see Sort keys) |
 | `buckets_per_unit() -> fixed` | buckets per unit of view depth, `1024 / (far − near)` |
 | `camera_focal(f)` | the projection's scale: `f = 1 / tan(fov / 2)` (`camera_fov` sets it from an angle); a point at view depth `d` is `120 × f / d` pixels per unit tall. Applies from the next `camera()`/`camera_look()` |
 | `camera_pan(px, py)` | shift the view by whole pixels (right, down) without moving the camera (an off-axis view); every vertex moves by exactly `(px, py)`. After `camera()`/`camera_look()`, which reset it |
@@ -1293,6 +1309,7 @@ frames.
 | `ot_draw(table) -> s32` | draw a detached table now; returns the triangles drawn |
 | `ot_flush() -> s32` | draw the frame's table now and empty it (what is sorted later draws over it) |
 | `ui_flush()` | draw the interface list queued so far now (3D drawn later lands on top) |
+| `packet_alloc(words) -> *u32`, `ot_insert(p, type, depth)`, `ui_insert(p, type)` | hand-built packets (below) |
 | `arena_init(a: *PacketArena, buf: *u32, words)`, `arena_swap(a)` | a packet arena of the cart's own; `arena_swap` exchanges it with the current one |
 | `arena_used() -> s32`, `arena_left() -> s32` | words of the frame's arena used this frame; words left in the current arena |
 
@@ -1303,6 +1320,16 @@ frame's table, and is only drawn correctly once it is put back (`ot_restore`, `o
 `ot_detach` rewrites those last links (about 26,000 cycles for the buckets plus 15 a packet) to
 make a list that can be drawn from wherever it lives with `ot_draw`. The frame's table is set up
 at the start of each frame, after `init()`: call `ot_clear()` before using it in `init()`.
+
+For hand-built packets: `packet_alloc(words) -> *u32` (null when full), `ot_insert(p, type,
+depth)` (depth 0 nearest .. 1023), `ui_insert(p, type)`. Word 0 of a packet is filled in by the
+insert; write the rest as described in the spec (p. 14–16). The packet types are named
+`PKT_TRI`, `PKT_TRI_GOURAUD`, `PKT_TRI_TEX`, `PKT_TRI_TEX_GOURAUD`, `PKT_QUAD_FLAT`,
+`PKT_QUAD_GOURAUD`, `PKT_QUAD_TEX`, `PKT_QUAD_TEX_GOURAUD` (0x20–0x27), or built from `PKT_POLY`
+(0x20) and the flag bits `PKT_GOURAUD`, `PKT_TEXTURED`, `PKT_QUAD`, `PKT_SEMI`; a semi-transparent
+packet's blend mode goes in bits 24–25 of its first colour (`mode << BLEND_SHIFT`), and
+`TEX_4BIT` is the 4-bit flag of the first texture coordinate. (These constants are in
+`draw.akr`.)
 
 The packets themselves live in the frame's arena, which is emptied at the start of every frame.
 To keep geometry across frames (a static scene built once, or a few steps per frame, then drawn
@@ -1336,8 +1363,8 @@ restored from the saved copy each time (it is: `ot_restore` copies).
 
 ### 2D drawing (`draw.akr`)
 
-More shapes for the interface list, drawn like `rect()`, `sprite()` and `text()`: after the 3D
-world, in call order. Positions are whole pixels; a rectangle `(x, y, w, h)` covers `x .. x+w−1`
+Shapes and sprites for the interface list, drawn like `text()`: after the 3D world, in call
+order. Positions are whole pixels; a rectangle `(x, y, w, h)` covers `x .. x+w−1`
 and `y .. y+h−1`. Colours are `0xBBGGRR`. A `mode` is a blend mode:
 
 | `mode` | Result |
@@ -1350,6 +1377,8 @@ and `y .. y+h−1`. Colours are `0xBBGGRR`. A `mode` is a blend mode:
 
 | | |
 |---|---|
+| `sprite(slot, palette, four_bit: bool, u, v, w, h, x, y)` | draw a w×h texel rectangle of a texture at (x, y), untinted |
+| `rect(x, y, w, h, colour)` | a filled rectangle |
 | `rect_blend(x, y, w, h, colour, mode)` | a filled rectangle |
 | `rect_grad(x, y, w, h, top, bottom, mode)` | a vertical gradient |
 | `rect_hgrad(x, y, w, h, left, right, mode)` | a horizontal gradient |
@@ -1383,7 +1412,18 @@ line_ex(10, 20, 90, 60, 2, rgb(60, 70, 110), rgb(200, 200, 120), BLEND_ADD)
 ```
 
 Each call builds one packet (two triangles for the rectangles, quads, lines and sprites; one for
-the triangles) and makes no other calls; when the packet arena is full it draws nothing.
+the triangles) and, apart from `rect()` and `sprite()`, makes no other calls; when the packet
+arena is full it draws nothing.
+
+### Textures and palettes (`texture.akr`)
+
+| | |
+|---|---|
+| `load_texture(slot, src: *u8, bytes)` | copy texture data (in the GPU's layout, spec p. 11) into a slot |
+| `load_palette(index, src: *u16, count)` | copy 15-bit colours into palette memory from colour `index` |
+
+Drawing with them: `sprite*()` and `tex_page()` (`draw.akr`), `mesh()` (`gfx.akr`). Changing
+palette colours in place: `palette_lerp()`, `palette_rotate()` (`colour.akr`).
 
 ### The plane chip (`planes.akr`)
 
@@ -1497,25 +1537,17 @@ The blob is a `Font` header (`height`, `line`, `first`, `count`, `slot`, `palett
 writes it as an Akari `const` array instead (as `stdlib/font_small.akr` is made). A font atlas can
 also share a texture with other art: bake it with `--no-texels` at the rows the cart loads it to.
 
-### Colours and animation phases (`colour.akr`)
+### Colours (`colour.akr`)
 
 | | |
 |---|---|
+| `rgb(r, g, b) -> u32`, `rgb15(colour) -> u32` | build a colour; convert to the 15-bit framebuffer format |
 | `col_mix(a, b, t) -> u32` | blend two colours, `t` 0 (a) .. 1.0 (b), clamped; each channel rounds down (one `clerp`) |
 | `col_scale(c, t) -> u32` | each channel times `t` (0..1.0) |
 | `col_add(a, b) -> u32` | channel sums, clamped at 255 |
 | `rgb_of15(c) -> u32` | the 24-bit colour of a 15-bit palette or framebuffer colour (`rgb15` is the reverse) |
 | `palette_lerp(index, a: *u16, b: *u16, count, t)` | write `count` palette colours from colour `index` on, each `a[i]` blended toward `b[i]` by `t` (15-bit colours, e.g. two keyframe palettes in ROM); about 38 cycles a colour |
 | `palette_rotate(index, count, step)` | rotate `count` palette colours in place: colour `index + i` gets what `index + (i + step) mod count` held (colour cycling); about 14 cycles a colour |
-| `frame_phase(t, period) -> fixed` | how far through a cycle of `period` frames the count `t` is: 0 up to 1.0 |
-| `frame_wave(t, period) -> fixed` | `sin(TAU * frame_phase(t, period))`, −1.0..1.0 |
-| `frame_angle(t, speed) -> fixed` | `t × speed` (radians per frame) reduced to 0..TAU, exactly |
-
-`fixed(frame_count) * speed` stops working after 32,768 frames (about nine minutes): the count
-overflows `fixed` and every animation driven by it jumps. The `frame_*` functions take the count
-itself, `frame() as s32` or a cart's own tick counter (one that stops while paused, say), and are
-exact for any count, so `sin(frame_angle(tick, 0.05))` keeps turning smoothly for as long as the
-cart runs. `frame_angle` costs about 150 cycles (five remainders), `frame_phase` about 70.
 
 ### Strings (`str.akr`)
 
@@ -1530,6 +1562,7 @@ and return the buffer, so calls nest or chain:
 | `str_append(dst, cap, s) -> *u8`, `str_append_char(dst, cap, c) -> *u8` | |
 | `str_append_int(dst, cap, n, width, zero_pad) -> *u8` | `n` right-aligned in at least `width` characters, padded with `'0'` after the sign (`-007`) or with spaces (`  -7`) |
 | `str_append_fixed(dst, cap, f, decimals) -> *u8` | `f` rounded to 0–4 decimals, halves away from zero (`3.14`, `2.0`) |
+| `int_to_str(buf: *u8, n) -> *u8` | `n` in decimal into a buffer of at least 12 bytes; returns `buf` |
 | `str_append_time(dst, cap, n) -> *u8` | `n / 60`, a colon and `n % 60` in two digits: seconds as m:ss (`125` → `2:05`), minutes as h:mm (`605` → `10:05`) |
 
 ```
