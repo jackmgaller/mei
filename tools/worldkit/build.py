@@ -10,6 +10,8 @@ Outputs for a world named NAME (game GAME) in the output directory:
     NAME.ids.json       a copy of the ID lock file (the original is written beside the recipe)
     source/             the world file, its cell files, the game schema and every asset recipe used
     report.json         per cell and region costs, palettes, IDs, asset hashes, warnings, gates
+    preview/            (preview, or build --preview) per region and palette variant, one cell
+                        rendered natively, and contact.png
 """
 from pathlib import Path
 
@@ -48,7 +50,8 @@ def run_gate(context):
     return result
 
 
-def build(path, directory, compiler=None, runner=None, probe=None, locked=False, assets_dir=None):
+def build(path, directory, compiler=None, runner=None, probe=None, locked=False, assets_dir=None, preview=False,
+          cell=None):
     source, compiled = compile_source(path,assets_dir)
     name, game = source.world['name'], source.game['name']
     if locked and compiled.lock_changes:
@@ -71,7 +74,7 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
     sources = ([source.world_path,source.game_path,lock_path(source)]+[cs.file for cs in source.cells]
                +[a.file for a in compiled.library.assets.values()])
     directory = Path(directory).resolve()
-    staged.guard(directory,list(files)+['report.json','source'],sources,error=WorldError)
+    staged.guard(directory,list(files)+['report.json','source','preview'],sources,error=WorldError)
     for s in sources:
         if s and Path(s).resolve().is_relative_to(directory/'source'):
             raise WorldError('/output','The output directory\'s source/ would overwrite the recipe. Use a separate output directory.')
@@ -90,6 +93,9 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
             failure = directory/'verification.failed.json'
             failure.write_text(jsonio.pretty(gate))
             raise WorldError('/verification','Export blocked by the World Checker; see verification.failed.json.')
+        if preview:
+            from .preview import render
+            compiled.report['preview'] = render(stage,source,compiled,compiler,runner,cell)
         (stage/'report.json').write_text(jsonio.pretty(compiled.report))
         generated = staged.commit(stage,directory)
     # The lock beside the recipe changes only once the build that needs it has been published.

@@ -5,8 +5,8 @@ normative) with its reference encoder `tools/worldkit/pack.py`; the console read
 `stdlib/worldpack.akr`; and the first version of the tool, `tools/mei_world.py`, with the
 [recipe format](#recipe-format) and [command line](#command-line) below. Not built yet:
 terrain, the **World Checker** (the in-level verification and its scene probe, being built
-separately as `tools/worldkit/verify.py` and `tools/worldkit/scene_probe.c`), preview renders,
-textures, audio banks and backdrops. This document records the
+separately as `tools/worldkit/verify.py` and `tools/worldkit/scene_probe.c`), textures, audio
+banks and backdrops. This document records the
 decisions made so far, proposes the rest, and lists what is still open. Where it and the owner's
 later decisions in [DECISIONS.md](DECISIONS.md) ("World Kit, Asset Kit and the first open-world
 game") ever disagree, DECISIONS.md wins. It depends on three things, all now in place:
@@ -604,8 +604,10 @@ For a world named `city` of a game named `game`, `build` produces:
 | `source/` | The world file, cell files, game schema and every asset recipe used, as built |
 | `report.json` | Per cell and region: triangles (always and per layer), placements, collision triangles by kind, bytes, palettes and variants, entity numbers, ID changes, asset hashes and Asset Checker results, warnings, the World Checker's result |
 
-*Not built yet:* `verification.json` and `preview/` (native renders per region and palette
-variant, and a contact sheet; `kitcore.native` has the compiler, runner and contact-sheet helpers).
+With `preview` (or `build --preview`) there is also `preview/`: for every region, its busiest
+cell seen from a fixed camera above its south edge, once per palette variant, drawn by the real
+reader (so far cells appear as stand-ins), as PNGs with GPU statistics, and `contact.png`.
+*Not built yet:* `verification.json` (the World Checker's).
 
 Outputs are staged and replaced only on success, as in the Asset Kit. Before anything is written,
 every referenced asset is compiled from its recipe and each asset whose recipe requires
@@ -689,11 +691,11 @@ stdin (relative paths then resolve from the current directory), `--compiler`, `-
 | `init DIR [--example room\|city] [--force]` | Copies an example world (world file, cells, game schema, asset recipes) into a new directory |
 | `validate FILE` | Every static check: schemas, references, game data, IDs, palettes, that every asset compiles and that the pack can hold the world; the ID changes a build would make |
 | `inspect FILE [--cell ID]` | The same, with the full report: per cell and per region costs, palettes and variants, entity numbers, asset hashes, warnings |
-| `build FILE -o DIR [--locked]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam |
+| `build FILE -o DIR [--locked] [--preview]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam |
+| `preview FILE -o DIR [--cell ID] [--locked]` | `build`, plus native renders of a cell per region and palette variant (`--cell` picks the cell) |
 
 *Proposals, not built:* `verify FILE [-o DIR] [--cell ID] [--layers A,B]` (the World Checker,
-diagnostic only), `preview FILE -o DIR [--cell ID] [--variant NAME]` (native renders per region and
-palette variant), and `standin-draft FILE --cell ID -o RECIPE` (an Asset Kit recipe of boxes from
+diagnostic only), and `standin-draft FILE --cell ID -o RECIPE` (an Asset Kit recipe of boxes from
 the cell's placement bounds, for an agent to edit; the Asset Kit then builds it like any other, so
 the World Kit still models nothing).
 
@@ -704,7 +706,7 @@ python3 tools/mei_world.py schema --game examples/worlds/test_room/garden.game.j
 python3 tools/mei_world.py init /tmp/room --example room
 python3 tools/mei_world.py inspect /tmp/room/test_room.world.json
 make build/meic build/mei-headless build/mei-asset-probe
-python3 tools/mei_world.py build /tmp/room/test_room.world.json -o build/worlds/room
+python3 tools/mei_world.py preview /tmp/room/test_room.world.json -o build/worlds/room
 ```
 
 A cart then imports the generated file and draws through the reader:

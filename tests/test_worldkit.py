@@ -476,6 +476,21 @@ class ConsoleTests(unittest.TestCase):
             self.assertGreater(len(pixels), 6)
             self.assertNotEqual(data[(200 * 320 + 160) * 3:(200 * 320 + 160) * 3 + 3], bytes([40, 60, 120]))
 
+    def test_preview_renders_each_region_and_variant(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp, 'two_districts')
+            out = Path(tmp)/'out'
+            code, report = cli('preview', ex.world, '-o', out, '--compiler', COMPILER, '--runner', RUNNER, '--probe', PROBE)
+            self.assertEqual(code, 0, report)
+            views = report['preview']['views']
+            self.assertEqual([(v['cell'], v['variant']) for v in views],
+                             [('downtown_a', 'day'), ('downtown_a', 'night'), ('shrine_gate', 'day'), ('shrine_gate', 'night')])
+            self.assertTrue(all(v['stats']['tris_dropped'] == 0 and v['stats']['tris'] > 0 for v in views))
+            self.assertTrue((out/'preview'/'contact.png').is_file())
+            day, night = ((out/v['image']).read_bytes() for v in views[:2])
+            self.assertNotEqual(day, night, 'the night variant recolours the scene')
+            self.assertEqual(sorted(p.name for p in out.iterdir() if p.name.startswith('.')), [])
+
     def test_multi_region_world_loads_and_draws_stand_ins(self):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp, 'two_districts')

@@ -52,14 +52,16 @@ def parser():
     i.add_argument('--force',action='store_true')
     for name,text in (('validate','Check the recipe, its cells, game data, IDs and assets, and that the pack can hold it.'),
                       ('inspect','validate, plus per-cell and per-region costs, palettes and warnings.'),
-                      ('build','Build the pack, its Akari imports, the ID lock file and report.json.')):
+                      ('build','Build the pack, its Akari imports, the ID lock file and report.json.'),
+                      ('preview','build, plus native renders of a cell per region and palette variant.')):
         cmd = sub.add_parser(name,help=text)
         cmd.add_argument('recipe',help='World recipe path, or - to read stdin (paths then resolve from the current directory).')
         cmd.add_argument('--assets',type=Path,help='Use this asset directory instead of the recipe\'s.')
-        if name == 'inspect':
-            cmd.add_argument('--cell',help='Report one cell (by ID).')
-        if name == 'build':
+        if name in ('inspect','preview'):
+            cmd.add_argument('--cell',help='Report (inspect) or render (preview) one cell, by ID.')
+        if name in ('build','preview'):
             cmd.add_argument('-o','--output',required=True,help='Dedicated generated-output directory.')
+            if name == 'build': cmd.add_argument('--preview',action='store_true',help='Also render previews.')
             cmd.add_argument('--locked',action='store_true',help='Fail instead of changing the ID lock file.')
             cmd.add_argument('--compiler',type=Path,default=ROOT/'build'/'meic')
             cmd.add_argument('--runner',type=Path,default=ROOT/'build'/'mei-headless')
@@ -78,9 +80,10 @@ def main(argv=None):
             jsonio.output(published(game))
         elif args.command == 'init':
             jsonio.output(init(args.output,args.example,args.force))
-        elif args.command == 'build':
+        elif args.command in ('build','preview'):
             jsonio.output(build(args.recipe,args.output,args.compiler.resolve(),args.runner.resolve(),
-                                args.probe.resolve(),args.locked,args.assets))
+                                args.probe.resolve(),args.locked,args.assets,
+                                args.command == 'preview' or args.preview,getattr(args,'cell',None)))
         else:
             _,compiled = compile_source(args.recipe,args.assets)
             report = compiled.report
