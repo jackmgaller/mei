@@ -1,0 +1,32 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "bollard",
+  "materials": {
+    "steel": {
+      "color": "#9aa0a8",
+      "palette": true
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "nodes": [
+    {
+      "id": "post",
+      "op": "cylinder",
+      "radius": 0.12,
+      "height": 0.9,
+      "segments": 6,
+      "material": "steel",
+      "transform": {
+        "translate": [
+          0,
+          0.45,
+          0
+        ]
+      }
+    }
+  ]
+}

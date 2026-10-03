@@ -1,0 +1,162 @@
+{
+  "format": "mei-world",
+  "version": 1,
+  "name": "test_room",
+  "game": "garden.game.json",
+  "assets": "assets",
+  "grid": {
+    "cell_size": 64
+  },
+  "collision": {
+    "surfaces": {
+      "default": 0,
+      "tags": {
+        "floor": 1,
+        "ledge": 1,
+        "slope": 2,
+        "wall": 3,
+        "roof": 4
+      }
+    }
+  },
+  "regions": {
+    "lab": {
+      "variants": {
+        "day": {},
+        "night": {
+          "surface": {
+            "multiply": "#6070a0"
+          },
+          "colors": {
+            "gate.bars": "#ff6060"
+          }
+        }
+      }
+    }
+  },
+  "layers": {
+    "gate_closed": {
+      "group": "gate",
+      "on": true
+    },
+    "gate_open": {
+      "group": "gate"
+    }
+  },
+  "cells": [
+    {
+      "id": "room",
+      "at": [
+        0,
+        0
+      ],
+      "region": "lab",
+      "placements": [
+        {
+          "id": "floor",
+          "asset": "room_floor",
+          "position": [
+            32,
+            0,
+            32
+          ],
+          "collision": "self"
+        },
+        {
+          "id": "slope",
+          "asset": "ramp",
+          "position": [
+            36,
+            0,
+            26
+          ],
+          "collision": "self"
+        },
+        {
+          "id": "ledge",
+          "asset": "ledge_block",
+          "position": [
+            26,
+            0,
+            36
+          ],
+          "collision": "self"
+        },
+        {
+          "id": "wall",
+          "asset": "climb_wall",
+          "position": [
+            32,
+            0,
+            42
+          ],
+          "collision": "self"
+        },
+        {
+          "id": "canopy",
+          "asset": "canopy",
+          "position": [
+            32,
+            3,
+            30
+          ],
+          "collision": "canopy_col"
+        },
+        {
+          "id": "gate",
+          "asset": "gate",
+          "position": [
+            32,
+            0,
+            22
+          ],
+          "layer": "gate_closed",
+          "collision": "self"
+        },
+        {
+          "id": "gate_swung",
+          "asset": "gate",
+          "position": [
+            29.8,
+            0,
+            24
+          ],
+          "yaw": 90,
+          "layer": "gate_open",
+          "collision": "self"
+        }
+      ],
+      "entities": [
+        {
+          "id": "coin_ledge",
+          "type": "coin",
+          "asset": "coin",
+          "position": [
+            26,
+            2.5,
+            36
+          ]
+        },
+        {
+          "id": "gate_switch",
+          "type": "trigger",
+          "position": [
+            38,
+            0,
+            32
+          ],
+          "params": {
+            "size": [
+              2,
+              2,
+              2
+            ],
+            "event": "open_gate",
+            "target": "coin_ledge",
+            "time_window": "day"
+          }
+        }
+      ]
+    }
+  ]
+}

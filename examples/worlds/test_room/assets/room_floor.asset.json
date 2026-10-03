@@ -1,0 +1,35 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "room_floor",
+  "materials": {
+    "concrete": {
+      "color": "#a4a8ad",
+      "palette": true,
+      "tag": "floor"
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "nodes": [
+    {
+      "id": "slab",
+      "op": "box",
+      "size": [
+        24,
+        0.5,
+        24
+      ],
+      "transform": {
+        "translate": [
+          0,
+          -0.25,
+          0
+        ]
+      },
+      "material": "concrete"
+    }
+  ]
+}

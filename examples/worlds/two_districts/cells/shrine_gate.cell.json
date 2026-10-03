@@ -1,0 +1,81 @@
+{
+  "format": "mei-world-cell",
+  "version": 1,
+  "id": "shrine_gate",
+  "at": [
+    2,
+    0
+  ],
+  "region": "shrine",
+  "standin": "shrine_far",
+  "placements": [
+    {
+      "id": "ground",
+      "asset": "ground_tile",
+      "position": [
+        80,
+        0,
+        16
+      ],
+      "collision": "self"
+    },
+    {
+      "id": "torii",
+      "asset": "torii",
+      "position": [
+        80,
+        0,
+        16
+      ],
+      "collision": "self"
+    },
+    {
+      "id": "lantern_0",
+      "asset": "lantern",
+      "position": [
+        74,
+        0,
+        24
+      ],
+      "collision": "self",
+      "layer": "festival",
+      "merge": true
+    },
+    {
+      "id": "lantern_1",
+      "asset": "lantern",
+      "position": [
+        78,
+        0,
+        24
+      ],
+      "collision": "self",
+      "layer": "festival",
+      "merge": true
+    },
+    {
+      "id": "lantern_2",
+      "asset": "lantern",
+      "position": [
+        82,
+        0,
+        24
+      ],
+      "collision": "self",
+      "layer": "festival",
+      "merge": true
+    },
+    {
+      "id": "lantern_3",
+      "asset": "lantern",
+      "position": [
+        86,
+        0,
+        24
+      ],
+      "collision": "self",
+      "layer": "festival",
+      "merge": true
+    }
+  ]
+}

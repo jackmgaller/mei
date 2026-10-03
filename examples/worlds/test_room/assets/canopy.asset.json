@@ -1,0 +1,57 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "canopy",
+  "materials": {
+    "cloth": {
+      "color": "#3d6f8f",
+      "palette": true,
+      "tag": "roof"
+    },
+    "pole": {
+      "color": "#5a5a60",
+      "palette": true,
+      "tag": "pole"
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "nodes": [
+    {
+      "id": "roof",
+      "op": "box",
+      "size": [
+        4,
+        0.3,
+        4
+      ],
+      "transform": {
+        "translate": [
+          0,
+          0.15,
+          0
+        ]
+      },
+      "material": "cloth"
+    },
+    {
+      "id": "trim",
+      "op": "box",
+      "size": [
+        4.2,
+        0.1,
+        0.1
+      ],
+      "material": "pole",
+      "transform": {
+        "translate": [
+          0,
+          0.35,
+          0
+        ]
+      }
+    }
+  ]
+}

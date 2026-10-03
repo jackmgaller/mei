@@ -1,0 +1,35 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "climb_wall",
+  "materials": {
+    "brick": {
+      "color": "#a0522d",
+      "palette": true,
+      "tag": "wall"
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "nodes": [
+    {
+      "id": "wall",
+      "op": "box",
+      "size": [
+        8,
+        5,
+        0.5
+      ],
+      "transform": {
+        "translate": [
+          0,
+          2.5,
+          0
+        ]
+      },
+      "material": "brick"
+    }
+  ]
+}

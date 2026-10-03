@@ -1,0 +1,52 @@
+// The World Kit's two-region example on the console: tests/test_worldkit.py builds
+// examples/worlds/two_districts, copies this cart next to the outputs and runs it headless.
+
+cart "World Kit Districts"
+import "two_districts.akr"
+
+fn pal(c: s32) -> s32 { return ((VRAM_PALETTE + c * 2) as *u16)[0] as s32 }
+
+fn init() {
+    assert(world_two_districts_load())
+    // Both regions' palettes are loaded at once: they never share colours.
+    print("palettes ")
+    print_int(pal(WORLD_TWO_DISTRICTS_DOWNTOWN_SURFACE))
+    print_char(' ')
+    print_int(pal(WORLD_TWO_DISTRICTS_SHRINE_SURFACE))
+    println("")
+    let found = wp_floor(vec3(16.0, 1.0, 8.0), 0.0)
+    print("floor ")
+    print_int(found as s32)
+    print_char(' ')
+    print_int(bits(wp_hit.y))
+    print_char(' ')
+    print_int(wp_hit.surface)
+    println("")
+    print("festival ")
+    print_int(wp_layer_on(WORLD_TWO_DISTRICTS_LAYER_FESTIVAL) as s32)
+    wp_layer_set(WORLD_TWO_DISTRICTS_LAYER_FESTIVAL, true)
+    print_char(' ')
+    print_int(wp_layer_on(WORLD_TWO_DISTRICTS_LAYER_FESTIVAL) as s32)
+    println("")
+    wp_far_ring = 6
+}
+
+var frame: s32
+
+fn draw() {
+    cls(rgb(40, 60, 120))
+    // From downtown, looking east along the row of cells to the far shrine cell.
+    wp_draw(vec3(4.0, 6.0, 16.0), 1.5708, -0.1)
+    if frame == 0 {
+        print("east ")
+        print_int(wp_stats.near_cells)
+        print_char(' ')
+        print_int(wp_stats.placements)
+        print_char(' ')
+        print_int(wp_stats.drawn)
+        print_char(' ')
+        print_int(wp_stats.standins)
+        println("")
+    }
+    frame += 1
+}

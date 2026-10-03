@@ -1,0 +1,101 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "shop",
+  "materials": {
+    "wall": {
+      "color": "#d9c6a0",
+      "palette": true,
+      "tag": "wall"
+    },
+    "roof": {
+      "color": "#6b4a3a",
+      "palette": true,
+      "tag": "roof"
+    },
+    "sign": {
+      "color": "#ff3fa4",
+      "class": "emissive",
+      "tag": "sign"
+    },
+    "window": {
+      "color": "#ffe08a",
+      "class": "emissive",
+      "share": false
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "nodes": [
+    {
+      "id": "body",
+      "op": "box",
+      "size": [
+        6,
+        4,
+        5
+      ],
+      "transform": {
+        "translate": [
+          0,
+          2,
+          0
+        ]
+      },
+      "material": "wall"
+    },
+    {
+      "id": "roof",
+      "op": "box",
+      "size": [
+        6.4,
+        0.4,
+        5.4
+      ],
+      "transform": {
+        "translate": [
+          0,
+          4.2,
+          0
+        ]
+      },
+      "material": "roof"
+    },
+    {
+      "id": "sign",
+      "op": "box",
+      "size": [
+        3,
+        0.8,
+        0.1
+      ],
+      "material": "sign",
+      "transform": {
+        "translate": [
+          0,
+          3.2,
+          -2.6
+        ]
+      }
+    },
+    {
+      "id": "window",
+      "op": "box",
+      "size": [
+        1.2,
+        1,
+        0.1
+      ],
+      "material": "window",
+      "transform": {
+        "translate": [
+          1.8,
+          1.6,
+          -2.6
+        ]
+      }
+    }
+  ]
+}

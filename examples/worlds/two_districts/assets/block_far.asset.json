@@ -1,0 +1,56 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "block_far",
+  "materials": {
+    "paving": {
+      "color": "#7a7f88",
+      "palette": true,
+      "tag": "ground"
+    },
+    "mass": {
+      "color": "#b8ab90",
+      "palette": true
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "nodes": [
+    {
+      "id": "ground",
+      "op": "box",
+      "size": [
+        32,
+        0.5,
+        32
+      ],
+      "transform": {
+        "translate": [
+          0,
+          -0.25,
+          0
+        ]
+      },
+      "material": "paving"
+    },
+    {
+      "id": "mass",
+      "op": "box",
+      "size": [
+        8,
+        4,
+        6
+      ],
+      "transform": {
+        "translate": [
+          0,
+          2,
+          0
+        ]
+      },
+      "material": "mass"
+    }
+  ]
+}

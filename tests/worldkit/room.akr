@@ -1,0 +1,69 @@
+// The World Kit's test room on the console: tests/test_worldkit.py builds
+// examples/worlds/test_room with tools/mei_world.py, copies this cart next to the outputs and
+// runs it headless. It prints what the reader answers about the built pack (collision, layers,
+// entities and their parameters, palettes) and draws the room; the test checks every line.
+
+cart "World Kit Room"
+import "test_room.akr"
+
+fn out(label: *u8, a: s32, b: s32, c: s32, d: s32) {
+    print(label)
+    print_char(' ')
+    print_int(a)
+    print_char(' ')
+    print_int(b)
+    print_char(' ')
+    print_int(c)
+    print_char(' ')
+    print_int(d)
+    println("")
+}
+
+fn floor_at(label: *u8, p: vec3) {
+    let found = wp_floor(p, 0.0)
+    out(label, found as s32, bits(wp_hit.y), wp_hit.surface, wp_hit.tag)
+}
+
+fn pal(c: s32) -> s32 { return ((VRAM_PALETTE + c * 2) as *u16)[0] as s32 }
+
+fn init() {
+    assert(world_test_room_load())
+    floor_at("ledge", vec3(26.0, 5.0, 36.0))
+    floor_at("slope", vec3(38.0, 3.0, 26.0))
+    floor_at("ground", vec3(24.0, 1.0, 24.0))
+    // Under the canopy: its companion collision asset's underside is a ceiling at 3.
+    let under = wp_ceiling(vec3(32.0, 1.0, 30.0), 0.0)
+    out("ceiling", under as s32, bits(wp_hit.y), wp_hit.surface, wp_hit.tag)
+    // The ramp's underside rests on the floor, so no ceiling is found over the ground at the ramp.
+    let none = wp_ceiling(vec3(37.0, -0.25, 26.0), 0.0)
+    out("ramp_underside", none as s32, 0, 0, 0)
+    let w = wp_push(vec3(32.0, 1.0, 41.6), 0.3)
+    out("wall", bits(w.x), bits(w.z), wp_hit.walls, wp_hit.surface)
+    let g = wp_push(vec3(32.0, 1.0, 22.1), 0.3)
+    out("gate_closed", bits(g.z), wp_hit.walls, 0, 0)
+    wp_layer_set(WORLD_TEST_ROOM_LAYER_GATE_OPEN, true)
+    let h = wp_push(vec3(32.0, 1.0, 22.1), 0.3)
+    out("gate_open", bits(h.z), wp_hit.walls, wp_layer_on(WORLD_TEST_ROOM_LAYER_GATE_CLOSED) as s32, 0)
+    wp_layer_set(WORLD_TEST_ROOM_LAYER_GATE_CLOSED, true)
+    let coin = wp_entity(WORLD_TEST_ROOM_ENTITY_COIN_LEDGE)
+    out("coin", coin.type_id as s32, coin.saved_bit, (coin.mesh != 0) as s32, coin.flags as s32)
+    let e = wp_entity(WORLD_TEST_ROOM_ENTITY_GATE_SWITCH)
+    let p = wp_entity_params(e) as *GardenTrigger
+    out("trigger", e.type_id as s32, e.saved_bit, p.target as s32, p.time_window as s32)
+    out("trigger_more", bits(p.size.x), p.count as s32, p.exit as s32, WORLD_TEST_ROOM_SAVED_GATE_SWITCH)
+    print("event ")
+    println(world_test_room_string(p.event))
+    out("palette_day", pal(WORLD_TEST_ROOM_LAB_SURFACE), pal(WORLD_TEST_ROOM_LAB_EMISSIVE), 0, 0)
+    wp_palette_load(WORLD_TEST_ROOM_REGION_LAB, WORLD_TEST_ROOM_LAB_VARIANT_NIGHT)
+    out("palette_night", pal(WORLD_TEST_ROOM_LAB_SURFACE), pal(WORLD_TEST_ROOM_LAB_EMISSIVE), 0, 0)
+    wp_palette_load(WORLD_TEST_ROOM_REGION_LAB, WORLD_TEST_ROOM_LAB_VARIANT_DAY)
+}
+
+var frame: s32
+
+fn draw() {
+    cls(rgb(40, 60, 120))
+    wp_draw(vec3(32.0, 4.0, 8.0), 0.0, -0.2)
+    if frame == 0 { out("draw", wp_stats.near_cells, wp_stats.placements, wp_stats.drawn, 0) }
+    frame += 1
+}

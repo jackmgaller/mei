@@ -1,0 +1,86 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "torii",
+  "materials": {
+    "lacquer": {
+      "color": "#c0302a",
+      "palette": true,
+      "tag": "wall"
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "nodes": [
+    {
+      "id": "left",
+      "op": "box",
+      "size": [
+        0.4,
+        4,
+        0.4
+      ],
+      "transform": {
+        "translate": [
+          -2,
+          2,
+          0
+        ]
+      },
+      "material": "lacquer"
+    },
+    {
+      "id": "right",
+      "op": "box",
+      "size": [
+        0.4,
+        4,
+        0.4
+      ],
+      "transform": {
+        "translate": [
+          2,
+          2,
+          0
+        ]
+      },
+      "material": "lacquer"
+    },
+    {
+      "id": "beam",
+      "op": "box",
+      "size": [
+        5.4,
+        0.4,
+        0.6
+      ],
+      "transform": {
+        "translate": [
+          0,
+          4.2,
+          0
+        ]
+      },
+      "material": "lacquer"
+    },
+    {
+      "id": "tie",
+      "op": "box",
+      "size": [
+        4.4,
+        0.3,
+        0.3
+      ],
+      "transform": {
+        "translate": [
+          0,
+          3.4,
+          0
+        ]
+      },
+      "material": "lacquer"
+    }
+  ]
+}
