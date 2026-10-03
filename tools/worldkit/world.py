@@ -353,17 +353,22 @@ def compile_world(source, lock=None, assets_dir=None):
         to_merge = {}
         for pl in plan['placements']:
             binary = rp.relocated(pl['asset'], slot, row)
+            ground = bool(pl['spec'].get('ground'))
             if pl['spec'].get('merge'):
-                to_merge.setdefault(pl['spec'].get('layer'), []).append((binary, pl))
+                to_merge.setdefault((pl['spec'].get('layer'), ground), []).append((binary, pl))
                 continue
             cell.placements.append(P.Placement(binary, tuple(pl['spec']['position']), pl['yaw'],
-                                               pl['spec'].get('layer'), pl['k']))
-        for lname, items in sorted(to_merge.items(), key=lambda kv: (kv[0] is not None, kv[0] or '')):
+                                               pl['spec'].get('layer'), pl['k'], ground))
+        # merged props: one mesh per layer, ground and the rest apart (a merged ground mesh is a
+        # ground placement, the way a terrain piece is)
+        for (lname, ground), items in sorted(to_merge.items(),
+                                             key=lambda kv: (kv[0][0] is not None, kv[0][0] or '', kv[0][1])):
             meshes = merge.merge([(b, pl['spec']['position'], pl['yaw']) for b, pl in items], centre)
             for m in meshes:
-                cell.placements.append(P.Placement(m, centre, 0.0, lname, 0xFFFF))
-            merged_report.setdefault(c['id'], []).append(
-                {'layer': lname, 'placements': [pl['spec']['id'] for _, pl in items], 'meshes': len(meshes)})
+                cell.placements.append(P.Placement(m, centre, 0.0, lname, 0xFFFF, ground))
+            entry = {'layer': lname, 'placements': [pl['spec']['id'] for _, pl in items], 'meshes': len(meshes)}
+            if ground: entry['ground'] = True
+            merged_report.setdefault(c['id'], []).append(entry)
         if plan['standin']:
             cell.standin = rp.relocated(plan['standin'], slot, row)
         cell.collision = plan['collision']
@@ -498,6 +503,7 @@ def make_report(source, world, data, plans, library, region_palettes, variants_s
             'id': c['id'], 'at': c['at'], 'region': c['region'],
             'file': relative(plan['source'].file, source.base) if plan['source'].file else None,
             'placements': len(c.get('placements', [])), 'drawn_placements': len(pcell.placements),
+            'ground_placements': sum(1 for p in pcell.placements if p.ground),
             'triangles': {'always': always, 'by_layer': by_layer,
                           'most': always + sum(by_layer.values())},
             'standin_triangles': mesh_faces(pcell.standin) if pcell.standin else None,

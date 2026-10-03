@@ -34,6 +34,7 @@ PLACEMENT = obj({
     'collision':{'type':'string','pattern':r'^[a-z][a-z0-9_]{0,47}$',
                  'description':'"self" (the asset\'s own mesh), "none", or a companion collision asset recipe.'},
     'merge':dict(BOOL,description='Merge this static prop with the cell\'s other merged props into one mesh per layer (trades ROM for the ~500-cycle cost per drawn placement). Default false.'),
+    'ground':dict(BOOL,description='Ground: drawn before everything else near the camera, so nothing standing on it is drawn behind it. Only for surfaces nothing can be seen through or behind: open floors with nothing below them (WORLDKIT.md, "Ground"). Default false.'),
 }, ['id','asset','position','collision'])
 
 ENTITY = obj({
