@@ -9,7 +9,9 @@ verification gate decides whether geometry and visibility pass.
 Modeling and ordinary builds use Python 3.10+ without third-party packages. Visibility
 verification additionally requires NumPy and `meic` / `mei-asset-probe`; `make` builds the
 native tools. Preview rendering uses `meic` / `mei-headless`. No GUI, model service or network
-is involved in these checks.
+is involved in these checks. The kit's code is `tools/assetkit/`; what it shares with the World
+Kit (errors, JSON input, schema validation, vectors, the compiler and runner wrappers, images and
+staged outputs) is in `tools/kitcore/`.
 
 ## Agent workflow
 

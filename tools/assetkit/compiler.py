@@ -5,14 +5,11 @@ import json
 import math
 import struct
 
+from kitcore.jsonio import canonical  # noqa: F401 (re-exported)
 from meshlib import Mesh as NativeMesh, rgb
 from .geometry import (AssetError, Mesh, add, sub, cross, dot, norm, extrude,
                        lathe, loft, explicit_mesh, transform, modify)
 from .schema import validate
-
-
-def canonical(recipe):
-    return json.dumps(recipe, sort_keys=True, separators=(',',':'), allow_nan=False).encode()
 
 
 def compile_recipe(recipe):
