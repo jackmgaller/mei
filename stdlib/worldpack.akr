@@ -1,0 +1,879 @@
+// The world pack reader (docs/WORLDPACK.md): a world of square cells read in place from ROM.
+// It answers geometric questions only: which cell holds a point, what to draw (two passes,
+// culled by bounding sphere, layers applied, camera-relative), what is under, above or beside
+// a point, where a segment first hits, and which entities become active or inactive. What
+// entities, surfaces and layers mean is the game's.
+//
+// Not part of the prelude: a cart that reads a pack says `import "worldpack.akr"`.
+//
+//   embed CITY: u8 = "city.world.bin"
+//   fn init() { wp_open(CITY) }
+//   fn draw() {
+//       cls(SKY)
+//       wp_draw(eye, yaw, pitch)                       // the world, around the camera's cell
+//       let o = wp_view_origin()                       // the frame's origin: draw relative to it
+//       mesh_at(HERO, hero_pos - o, hero_yaw)
+//   }
+//
+// Coordinates given to and returned by wp_* functions are world coordinates (fixed, Y up). The
+// pack stores everything relative to its cell's centre, and the reader works there, so no
+// product ever involves a large coordinate: world x and z may use the whole fixed range, but
+// a cart's own maths on world positions (length(), dot()) still overflows past about 181.
+// One pack is open at a time; an interior is another pack (wp_open it at the door).
+
+// ---- the format (docs/WORLDPACK.md); every *_off is a byte offset from the pack's start
+
+struct WpHeader {
+    magic: u32
+    major: u16
+    minor: u16
+    size: u32
+    cell_shift: u8
+    flags: u8
+    header_size: u16
+    i0: s16
+    j0: s16
+    w: u16
+    h: u16
+    index_off: u32
+    pad: fixed
+    overhang: fixed
+    region_count: u16
+    layer_count: u16
+    region_off: u32
+    layer_off: u32
+    entity_count: u32
+    entity_dir_off: u32
+    mesh_count: u32
+    mesh_dir_off: u32
+}
+
+struct WpLayer {
+    name: u32
+    group: u8          // exclusive group, 0xFF none
+    flags: u8          // bit 0: on when the pack is opened
+    reserved: u16
+}
+
+struct WpRegion {
+    name: u32
+    texture_count: u16
+    sample_count: u16
+    texture_off: u32
+    sample_off: u32
+    variant_count: u16
+    colour_count: u16
+    first_colour: u16
+    backdrop_count: u16
+    palette_off: u32
+    backdrop_off: u32
+}
+
+struct WpTexture {
+    slot: u8
+    flags: u8          // bit 0: 4-bit
+    reserved: u16
+    data: u32
+    bytes: u32
+}
+
+struct WpCell {
+    i: s16
+    j: s16
+    region: u16
+    layer_count: u8
+    flags: u8
+    layers: [8]u8      // global layer ids of the cell's layer bits 0-7
+    bounds: vec4       // sphere (centre x, y, z, radius) around the placements, cell-local
+    standin_bounds: vec4
+    standin_off: u32
+    placement_count: u32
+    placement_off: u32
+    entity_count: u32
+    entity_off: u32
+    entity_first: u32  // the global number of its first entity
+    coll_off: u32
+    reserved: [5]u32
+}
+
+struct WpPlacement {
+    sphere: vec4       // bounding sphere, cell-local
+    pos: vec4          // position, cell-local (w = 0)
+    cos: fixed         // yaw, as mesh_at() turns
+    sin: fixed
+    mesh: u32
+    mask: u8           // the cell layer bit it belongs to, or 0
+    flags: u8
+    tag: u16
+}
+
+struct WpEntity {
+    pos: vec4          // cell-local (w = 0)
+    type_id: u16
+    mask: u8
+    flags: u8          // bit 0: saved_bit is valid
+    saved_bit: s32
+    yaw: fixed
+    mesh: u32
+    coll: u32          // a collision block in the entity's own frame, or 0
+    params: u32
+    params_size: u32
+    number: u32
+    cell: u32
+    reserved: [3]u32
+}
+
+struct WpColl {
+    grid_shift: u8
+    flags: u8
+    reserved: u16
+    half: fixed        // the lookup grid covers -half..half in x and z
+    inv: fixed         // grid columns per unit
+    pad: fixed         // walls are filed this much wider: wp_push radii up to it
+    floor_count: u32
+    floor_off: u32
+    wall_count: u32
+    wall_off: u32
+    ceil_count: u32
+    ceil_off: u32
+    bucket_off: u32
+    list_off: u32
+}
+
+struct WpBucket {
+    start: u32         // first entry in the block's list of u16 triangle numbers
+    nf: u8             // then this many floors, walls and ceilings
+    nw: u8
+    nc: u8
+    reserved: u8
+}
+
+// A floor or ceiling: height y = h.x * x + h.y * z + h.z (dot(h, (x, z, 1, 0))), and the edges
+// of its outline seen from above: inside where dot(e, (x, z, 1, 0)) >= 0 for all three. h.w
+// holds the info word (surface | layer mask << 8 | tag << 16).
+struct WpFlat {
+    h: vec4
+    e0: vec4
+    e1: vec4
+    e2: vec4
+}
+
+// A wall: signed distance dot(p, (x, y, z, 1)) from its plane (positive in front); its edges in
+// the plane, inside where dot(e, (x, y, z, 1)) >= 0; the horizontal push direction and
+// 1 / its length in the normal.
+struct WpWall {
+    p: vec4
+    e0: vec4
+    e1: vec4
+    e2: vec4
+    hx: fixed
+    hz: fixed
+    inv: fixed
+    info: u32
+}
+
+const WP_FLOOR = 0
+const WP_WALL = 1
+const WP_CEILING = 2
+const WP_MAX_TRACK = 25    // cells wp_track() can keep active (radius 2)
+
+// What the last query found.
+struct WpHit {
+    y: fixed           // wp_floor / wp_ceiling: the height
+    t: fixed           // wp_ray: how far along the segment, 0..1
+    pos: vec3          // wp_ray: where (world)
+    kind: s32          // WP_FLOOR, WP_WALL, WP_CEILING
+    surface: s32       // the surface byte
+    tag: s32           // the triangle's tag (0xFFFF: none)
+    back: bool         // wp_ray: hit from behind
+    walls: s32         // wp_push: walls that pushed
+    rec: *u8           // the WpFlat or WpWall
+    cell: *WpCell
+}
+
+struct WpStats {
+    near_cells: s32    // near cells looked at
+    placements: s32    // placements looked at
+    drawn: s32         // placements drawn
+    standins: s32      // stand-ins drawn
+}
+
+// ---- state and settings
+
+var wp_pack: *WpHeader     // the open pack, or null
+var wp_hit: WpHit
+var wp_stats: WpStats
+var wp_clip_near: fixed = 0.1  // the near pass's near plane
+var wp_near_far: fixed     // the near pass's far depth (wp_open: 1.5 cells)
+var wp_far_ring: s32 = 3   // the far pass draws stand-ins out to this many cells (< 2: none)
+var wp_region_loaded: s32 = -1  // near cells of other regions draw as stand-ins (-1: any)
+
+var __wp_base: u32
+var __wp_shift: s32
+var __wp_half: fixed
+var __wp_i0: s32
+var __wp_j0: s32
+var __wp_w: u32
+var __wp_h: u32
+var __wp_index: *u32
+var __wp_layer_on: [32]u8
+var __wp_origin: vec3
+var __wp_planes: [6]vec4
+var __wp_track_n: s32
+var __wp_track_cell: [25]u32
+var __wp_track_mask: [25]u32
+
+// ---- opening a pack
+
+// Opens a pack embedded in ROM (or anywhere word-aligned). False, with a message on the debug
+// console, if it is not a pack this reader reads (another major version, a bad cell size).
+// Layers start as the pack says.
+fn wp_open(pack: *u8) -> bool {
+    let h = pack as *WpHeader
+    wp_pack = null
+    if h.magic != 0x5749454D {
+        println("wp_open: not a world pack")
+        return false
+    }
+    if h.major != 1 {
+        println("wp_open: pack version is not 1.x")
+        return false
+    }
+    let shift = h.cell_shift as s32
+    if shift < 4 || shift > 7 || h.w == 0 || h.h == 0 {
+        println("wp_open: bad grid")
+        return false
+    }
+    wp_pack = h
+    __wp_base = pack as u32
+    __wp_shift = shift
+    __wp_half = fixed(1 << (shift - 1))
+    __wp_i0 = h.i0 as s32
+    __wp_j0 = h.j0 as s32
+    __wp_w = h.w as u32
+    __wp_h = h.h as u32
+    __wp_index = (__wp_base + h.index_off) as *u32
+    wp_near_far = __wp_half * 3
+    __wp_track_n = 0
+    mem_fill(&__wp_layer_on[0], 0, 32)
+    let layers = (__wp_base + h.layer_off) as *WpLayer
+    for k in 0..h.layer_count as s32 {
+        if layers[k].flags & 1 != 0 { __wp_layer_on[k >> 3] |= (1 << (k & 7)) as u8 }
+    }
+    return true
+}
+
+// The cell size in units (1 << the header's cell shift).
+fn wp_cell_size() -> s32 { return 1 << __wp_shift }
+
+// ---- cells
+
+// The grid column of world x (or row of world z): floor(x / cell size).
+fn wp_cell_index(x: fixed) -> s32 { return (x as s32) >> __wp_shift }
+
+// The cell at grid position (i, j), or null where the world has none.
+fn wp_cell(i: s32, j: s32) -> *WpCell {
+    let x = (i - __wp_i0) as u32
+    let y = (j - __wp_j0) as u32
+    if x >= __wp_w || y >= __wp_h { return null }
+    let off = __wp_index[y * __wp_w + x]
+    if off == 0 { return null }
+    return (__wp_base + off) as *WpCell
+}
+
+// The cell holding world point p, or null.
+fn wp_cell_at(p: vec3) -> *WpCell { return wp_cell(wp_cell_index(p.x), wp_cell_index(p.z)) }
+
+// The world position of a cell's centre (y = 0): its local coordinates are relative to this.
+fn wp_cell_centre(c: *WpCell) -> vec3 {
+    return vec3(fixed((c.i as s32) << __wp_shift) + __wp_half, 0.0,
+                fixed((c.j as s32) << __wp_shift) + __wp_half)
+}
+
+// ---- layers
+
+fn wp_layer_count() -> s32 { return wp_pack.layer_count as s32 }
+
+// The id of the layer with this name, or -1.
+fn wp_layer_find(name: *u8) -> s32 {
+    let layers = (__wp_base + wp_pack.layer_off) as *WpLayer
+    for k in 0..wp_pack.layer_count as s32 {
+        if streq((__wp_base + layers[k].name) as *u8, name) { return k }
+    }
+    return -1
+}
+
+fn wp_layer_on(id: s32) -> bool { return (__wp_layer_on[id >> 3] >> (id & 7)) & 1 != 0 }
+
+// Switches a layer on or off in every cell that has it. Switching one on switches off the
+// other layers of its exclusive group.
+fn wp_layer_set(id: s32, on: bool) {
+    if id < 0 || id >= wp_pack.layer_count as s32 { return }
+    let layers = (__wp_base + wp_pack.layer_off) as *WpLayer
+    if on {
+        let g = layers[id].group
+        if g != 0xFF {
+            for k in 0..wp_pack.layer_count as s32 {
+                if layers[k].group == g { __wp_layer_on[k >> 3] &= (~(1 << (k & 7))) as u8 }
+            }
+        }
+        __wp_layer_on[id >> 3] |= (1 << (id & 7)) as u8
+    } else {
+        __wp_layer_on[id >> 3] &= (~(1 << (id & 7))) as u8
+    }
+}
+
+// The cell's layer bits that are on now (bit k: its k-th layer).
+fn wp_cell_mask(c: *WpCell) -> u32 {
+    var m: u32 = 0
+    for k in 0..c.layer_count as s32 {
+        let id = c.layers[k] as s32
+        if (__wp_layer_on[id >> 3] >> (id & 7)) & 1 != 0 { m |= (1 << k) as u32 }
+    }
+    return m
+}
+
+// ---- drawing
+
+// The world position the last wp_draw() drew around: everything drawn after it this frame is
+// drawn relative to it (mesh_at(m, pos - wp_view_origin(), yaw)).
+fn wp_view_origin() -> vec3 { return __wp_origin }
+
+// Draws the world from eye (world position) looking along yaw and pitch, as camera_look()
+// would, and leaves that camera set (relative to wp_view_origin()) with the near pass's clip
+// range. First the far pass: the stand-ins of the cells 2..wp_far_ring cells from the eye's
+// cell, sorted in a table of their own and drawn at once (ot_flush()). Then the near pass: the
+// placements of the 3 x 3 cells around it whose layers are on and whose spheres are in view,
+// into the frame's table, which the cart's own meshes join. Call it after cls().
+fn wp_draw(eye: vec3, yaw: fixed, pitch: fixed) {
+    let ci = wp_cell_index(eye.x)
+    let cj = wp_cell_index(eye.z)
+    __wp_origin = vec3(fixed(ci << __wp_shift) + __wp_half, 0.0, fixed(cj << __wp_shift) + __wp_half)
+    let local = eye - __wp_origin
+    wp_stats = WpStats {}
+    let size = __wp_half * 2
+    let r = wp_far_ring
+    if r >= 2 {
+        let far = size * (2 * r + 1) * 3 / 4
+        camera_clip(__wp_half, far)
+        camera_look(local, yaw, pitch)
+        __wp_frustum(__wp_half, far)
+        for dj in -r..r + 1 {
+            for di in -r..r + 1 {
+                if max(abs(di), abs(dj)) < 2 { continue }
+                let c = wp_cell(ci + di, cj + dj)
+                if c != null && c.standin_off != 0 { __wp_standin(c, di, dj) }
+            }
+        }
+        ot_flush()
+    }
+    camera_clip(wp_clip_near, wp_near_far)
+    camera_look(local, yaw, pitch)
+    __wp_frustum(wp_clip_near, wp_near_far)
+    for dj in -1..2 {
+        for di in -1..2 {
+            let c = wp_cell(ci + di, cj + dj)
+            if c == null { continue }
+            if wp_region_loaded >= 0 && c.region as s32 != wp_region_loaded {
+                if c.standin_off != 0 { __wp_standin(c, di, dj) }
+            } else {
+                __wp_near_cell(c, di, dj)
+            }
+        }
+    }
+}
+
+// The view volume's six planes from the camera just set, each scaled so dot(plane, (p, 1)) is
+// the distance of p inside it.
+fn __wp_frustum(near: fixed, far: fixed) {
+    let r0 = __vp[0]
+    let r1 = __vp[1]
+    let r3 = __vp[3]
+    let kx = 1.0 / sqrt(1.0 + __fx * __fx)     // right and forward are unit and square
+    let ky = 1.0 / sqrt(1.0 + __fy * __fy)
+    __wp_planes[0] = (r3 + r0) * kx
+    __wp_planes[1] = (r3 - r0) * kx
+    __wp_planes[2] = (r3 + r1) * ky
+    __wp_planes[3] = (r3 - r1) * ky
+    __wp_planes[4] = r3 - vec4(0.0, 0.0, 0.0, near)
+    __wp_planes[5] = vec4(0.0, 0.0, 0.0, far) - r3
+}
+
+// Whether a sphere (x, y, z, radius), relative to the frame's origin, touches the view volume.
+fn __wp_visible(s: vec4) -> bool {
+    let p = vec4(s.x, s.y, s.z, 1.0)
+    let nr = -s.w
+    if dot(__wp_planes[0], p) < nr { return false }
+    if dot(__wp_planes[1], p) < nr { return false }
+    if dot(__wp_planes[2], p) < nr { return false }
+    if dot(__wp_planes[3], p) < nr { return false }
+    if dot(__wp_planes[4], p) < nr { return false }
+    if dot(__wp_planes[5], p) < nr { return false }
+    return true
+}
+
+// Draws a mesh turned by (cos, sin) and moved by t, with the current camera: mesh_at()'s
+// matrix, multiplied out without the mat4 product.
+fn __wp_mesh(m: *Mesh, t: vec4, c: fixed, s: fixed) {
+    var mvp: mat4
+    let t1 = vec4(t.x, t.y, t.z, 1.0)
+    let v0 = __vp[0]
+    mvp[0] = vec4(v0.x * c - v0.z * s, v0.y, v0.x * s + v0.z * c, dot(v0, t1))
+    let v1 = __vp[1]
+    mvp[1] = vec4(v1.x * c - v1.z * s, v1.y, v1.x * s + v1.z * c, dot(v1, t1))
+    let v2 = __vp[2]
+    mvp[2] = vec4(v2.x * c - v2.z * s, v2.y, v2.x * s + v2.z * c, dot(v2, t1))
+    let v3 = __vp[3]
+    mvp[3] = vec4(v3.x * c - v3.z * s, v3.y, v3.x * s + v3.z * c, dot(v3, t1))
+    __draw_mesh(m, mvp)
+}
+
+fn __wp_standin(c: *WpCell, di: s32, dj: s32) {
+    let off = vec4(fixed(di << __wp_shift), 0.0, fixed(dj << __wp_shift), 0.0)
+    if !__wp_visible(c.standin_bounds + off) { return }
+    __wp_mesh((__wp_base + c.standin_off) as *Mesh, off, 1.0, 0.0)
+    wp_stats.standins += 1
+}
+
+fn __wp_near_cell(c: *WpCell, di: s32, dj: s32) {
+    let n = c.placement_count as s32
+    if n == 0 { return }
+    wp_stats.near_cells += 1
+    let off = vec4(fixed(di << __wp_shift), 0.0, fixed(dj << __wp_shift), 0.0)
+    if !__wp_visible(c.bounds + off) { return }
+    let mask = wp_cell_mask(c)
+    var p = (__wp_base + c.placement_off) as *WpPlacement
+    wp_stats.placements += n
+    for k in 0..n {
+        let pm = p.mask as u32
+        if (pm == 0 || pm & mask != 0) && __wp_visible(p.sphere + off) {
+            __wp_mesh((__wp_base + p.mesh) as *Mesh, p.pos + off, p.cos, p.sin)
+            wp_stats.drawn += 1
+        }
+        p = p + 1
+    }
+}
+
+// ---- collision in a block's own frame
+//
+// A collision block is a cell's (in cell-local coordinates) or an entity's (in its own frame:
+// for a moving object, turn the query into its frame, ask, and turn the answer back). mask is
+// the layer bits that are on (wp_cell_mask(); entity blocks have no layers: pass 0).
+
+fn __wp_bucket(cb: *WpColl, x: fixed, z: fixed) -> *WpBucket {
+    let g1 = (1 << cb.grid_shift) - 1
+    let bx = clamp(((x + cb.half) * cb.inv) as s32, 0, g1)
+    let bz = clamp(((z + cb.half) * cb.inv) as s32, 0, g1)
+    return (__wp_base + cb.bucket_off) as *WpBucket + ((bz << cb.grid_shift) + bx)
+}
+
+// The highest floor under p at or below p.y + above: true and wp_hit.y, .surface, ... set, or
+// false.
+fn wp_coll_floor(cb: *WpColl, p: vec3, above: fixed, mask: u32) -> bool {
+    let b = __wp_bucket(cb, p.x, p.z)
+    let n = b.nf as s32
+    if n == 0 { return false }
+    let ids = (__wp_base + cb.list_off) as *u16 + b.start
+    let flats = (__wp_base + cb.floor_off) as *WpFlat
+    let q = vec4(p.x, p.z, 1.0, 0.0)
+    let lim = p.y + above
+    var best: *WpFlat = null
+    var by = 0.0
+    for k in 0..n {
+        let f = flats + ids[k] as s32
+        let lm = (bits(f.h.w) >> 8) & 255
+        if lm != 0 && (lm as u32) & mask == 0 { continue }
+        if dot(f.e0, q) < 0.0 || dot(f.e1, q) < 0.0 || dot(f.e2, q) < 0.0 { continue }
+        let y = dot(f.h, q)
+        if y > lim || (best != null && y <= by) { continue }
+        best = f
+        by = y
+    }
+    if best == null { return false }
+    __wp_hit_flat(best, WP_FLOOR)
+    wp_hit.y = by
+    return true
+}
+
+// The lowest ceiling over p at or above p.y - below.
+fn wp_coll_ceiling(cb: *WpColl, p: vec3, below: fixed, mask: u32) -> bool {
+    let b = __wp_bucket(cb, p.x, p.z)
+    let n = b.nc as s32
+    if n == 0 { return false }
+    let ids = (__wp_base + cb.list_off) as *u16 + b.start + b.nf + b.nw
+    let flats = (__wp_base + cb.ceil_off) as *WpFlat
+    let q = vec4(p.x, p.z, 1.0, 0.0)
+    let lim = p.y - below
+    var best: *WpFlat = null
+    var by = 0.0
+    for k in 0..n {
+        let f = flats + ids[k] as s32
+        let lm = (bits(f.h.w) >> 8) & 255
+        if lm != 0 && (lm as u32) & mask == 0 { continue }
+        if dot(f.e0, q) < 0.0 || dot(f.e1, q) < 0.0 || dot(f.e2, q) < 0.0 { continue }
+        let y = dot(f.h, q)
+        if y < lim || (best != null && y >= by) { continue }
+        best = f
+        by = y
+    }
+    if best == null { return false }
+    __wp_hit_flat(best, WP_CEILING)
+    wp_hit.y = by
+    return true
+}
+
+fn __wp_hit_flat(f: *WpFlat, kind: s32) {
+    let info = bits(f.h.w)
+    wp_hit.kind = kind
+    wp_hit.surface = info & 255
+    wp_hit.tag = (info >> 16) & 0xFFFF
+    wp_hit.rec = f as *u8
+    wp_hit.back = false
+}
+
+// Pushes an upright body's point p out of the walls within radius of it (radius at most the
+// block's pad), along each wall's horizontal normal, one wall after another in the order the
+// pack files them. Returns the pushed point; wp_hit.walls counts the walls that pushed and the
+// last one's surface and record are in wp_hit. Sample a tall body at a few heights.
+fn wp_coll_push(cb: *WpColl, p: vec3, radius: fixed, mask: u32) -> vec3 {
+    let b = __wp_bucket(cb, p.x, p.z)
+    let n = b.nw as s32
+    wp_hit.walls = 0
+    if n == 0 { return p }
+    let ids = (__wp_base + cb.list_off) as *u16 + b.start + b.nf
+    let walls = (__wp_base + cb.wall_off) as *WpWall
+    var q = vec4(p.x, p.y, p.z, 1.0)
+    for k in 0..n {
+        let w = walls + ids[k] as s32
+        let lm = (w.info >> 8) & 255
+        if lm != 0 && lm & mask == 0 { continue }
+        let d = dot(w.p, q)
+        if d <= -radius || d >= radius { continue }
+        if dot(w.e0, q) < 0.0 || dot(w.e1, q) < 0.0 || dot(w.e2, q) < 0.0 { continue }
+        let push = (radius - d) * w.inv
+        q.x += w.hx * push
+        q.z += w.hz * push
+        wp_hit.walls += 1
+        wp_hit.kind = WP_WALL
+        wp_hit.surface = (w.info & 255) as s32
+        wp_hit.tag = (w.info >> 16) as s32
+        wp_hit.rec = w as *u8
+    }
+    return vec3(q.x, q.y, q.z)
+}
+
+// The first triangle the segment a -> b crosses (from either side; a triangle it starts on does
+// not count), if nearer than wp_hit.t: then true, with wp_hit.t (0..1), .kind, .back, .rec set
+// (.pos is left to wp_ray). Set wp_hit.t = 1.0 before the first call.
+fn wp_coll_ray(cb: *WpColl, a: vec3, b: vec3, mask: u32) -> bool {
+    // The buckets the segment passes through, column by column: in each column of the grid
+    // the segment crosses, the rows its z covers there (widened by EPS against rounding).
+    const EPS = 0.015625
+    let g1 = (1 << cb.grid_shift) - 1
+    let half = cb.half
+    let inv = cb.inv
+    let bs = half * 2 / (1 << cb.grid_shift)
+    let xlo = min(a.x, b.x)
+    let xhi = max(a.x, b.x)
+    let bx0 = clamp(((xlo + half) * inv) as s32, 0, g1)
+    let bx1 = clamp(((xhi + half) * inv) as s32, 0, g1)
+    let bzlo = clamp(((min(a.z, b.z) + half) * inv) as s32, 0, g1)
+    let bzhi = clamp(((max(a.z, b.z) + half) * inv) as s32, 0, g1)
+    let dx = b.x - a.x
+    let dz = b.z - a.z
+    let steep = abs(dx) < 0.0625            // nearly along z: every column takes every row
+    var found = false
+    for bx in bx0..bx1 + 1 {
+        var bz0 = bzlo
+        var bz1 = bzhi
+        if !steep && bx0 != bx1 {
+            var xl = xlo
+            var xh = xhi
+            if bx > bx0 { xl = max(xl, bs * bx - half - EPS) }
+            if bx < bx1 { xh = min(xh, bs * (bx + 1) - half + EPS) }
+            let za = a.z + dz * clamp((xl - a.x) / dx, 0.0, 1.0)
+            let zb = a.z + dz * clamp((xh - a.x) / dx, 0.0, 1.0)
+            bz0 = max(bz0, clamp(((min(za, zb) - EPS + half) * inv) as s32, 0, g1))
+            bz1 = min(bz1, clamp(((max(za, zb) + EPS + half) * inv) as s32, 0, g1))
+        }
+        for bz in bz0..bz1 + 1 {
+            if __wp_ray_bucket(cb, (bz << cb.grid_shift) + bx, a, b, mask) { found = true }
+        }
+    }
+    return found
+}
+
+fn __wp_ray_bucket(cb: *WpColl, k: s32, a: vec3, b: vec3, mask: u32) -> bool {
+    let bk = (__wp_base + cb.bucket_off) as *WpBucket + k
+    var ids = (__wp_base + cb.list_off) as *u16 + bk.start
+    var found = false
+    if bk.nf != 0 && __wp_ray_flats((__wp_base + cb.floor_off) as *WpFlat, ids, bk.nf as s32, a, b, mask, WP_FLOOR) {
+        found = true
+    }
+    ids = ids + bk.nf
+    if bk.nw != 0 && __wp_ray_walls((__wp_base + cb.wall_off) as *WpWall, ids, bk.nw as s32, a, b, mask) {
+        found = true
+    }
+    ids = ids + bk.nw
+    if bk.nc != 0 && __wp_ray_flats((__wp_base + cb.ceil_off) as *WpFlat, ids, bk.nc as s32, a, b, mask, WP_CEILING) {
+        found = true
+    }
+    return found
+}
+
+fn __wp_ray_flats(flats: *WpFlat, ids: *u16, n: s32, a: vec3, b: vec3, mask: u32, kind: s32) -> bool {
+    let qa = vec4(a.x, a.z, 1.0, 0.0)
+    let qb = vec4(b.x, b.z, 1.0, 0.0)
+    var found = false
+    for k in 0..n {
+        let f = flats + ids[k] as s32
+        let lm = (bits(f.h.w) >> 8) & 255
+        if lm != 0 && (lm as u32) & mask == 0 { continue }
+        let fa = a.y - dot(f.h, qa)
+        let fb = b.y - dot(f.h, qb)
+        if !((fa > 0.0 && fb <= 0.0) || (fa < 0.0 && fb >= 0.0)) { continue }
+        let t = fa / (fa - fb)
+        if t >= wp_hit.t { continue }
+        let q = vec4(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t, 1.0, 0.0)
+        if dot(f.e0, q) < 0.0 || dot(f.e1, q) < 0.0 || dot(f.e2, q) < 0.0 { continue }
+        __wp_hit_flat(f, kind)
+        wp_hit.t = t
+        wp_hit.back = (kind == WP_FLOOR) == (fa < 0.0)
+        found = true
+    }
+    return found
+}
+
+fn __wp_ray_walls(walls: *WpWall, ids: *u16, n: s32, a: vec3, b: vec3, mask: u32) -> bool {
+    let qa = vec4(a.x, a.y, a.z, 1.0)
+    let qb = vec4(b.x, b.y, b.z, 1.0)
+    var found = false
+    for k in 0..n {
+        let w = walls + ids[k] as s32
+        let lm = (w.info >> 8) & 255
+        if lm != 0 && lm & mask == 0 { continue }
+        let fa = dot(w.p, qa)
+        let fb = dot(w.p, qb)
+        if !((fa > 0.0 && fb <= 0.0) || (fa < 0.0 && fb >= 0.0)) { continue }
+        let t = fa / (fa - fb)
+        if t >= wp_hit.t { continue }
+        let q = qa + (qb - qa) * t
+        if dot(w.e0, q) < 0.0 || dot(w.e1, q) < 0.0 || dot(w.e2, q) < 0.0 { continue }
+        wp_hit.kind = WP_WALL
+        wp_hit.surface = (w.info & 255) as s32
+        wp_hit.tag = (w.info >> 16) as s32
+        wp_hit.rec = w as *u8
+        wp_hit.t = t
+        wp_hit.back = fa < 0.0
+        found = true
+    }
+    return found
+}
+
+// ---- collision in the world
+
+// The highest floor under world point p at or below p.y + above, in p's cell (which holds every
+// triangle over its square): true with wp_hit.y (world height), .surface, .tag, .cell set.
+fn wp_floor(p: vec3, above: fixed) -> bool {
+    let c = wp_cell_at(p)
+    if c == null || c.coll_off == 0 { return false }
+    let o = wp_cell_centre(c)
+    wp_hit.cell = c
+    return wp_coll_floor((__wp_base + c.coll_off) as *WpColl, p - o, above, wp_cell_mask(c))
+}
+
+// The lowest ceiling over world point p at or above p.y - below.
+fn wp_ceiling(p: vec3, below: fixed) -> bool {
+    let c = wp_cell_at(p)
+    if c == null || c.coll_off == 0 { return false }
+    let o = wp_cell_centre(c)
+    wp_hit.cell = c
+    return wp_coll_ceiling((__wp_base + c.coll_off) as *WpColl, p - o, below, wp_cell_mask(c))
+}
+
+// World point p pushed out of the walls within radius (at most the pack's pad, 1.0 by
+// default; see wp_coll_push).
+fn wp_push(p: vec3, radius: fixed) -> vec3 {
+    let c = wp_cell_at(p)
+    wp_hit.walls = 0
+    if c == null || c.coll_off == 0 { return p }
+    let o = wp_cell_centre(c)
+    wp_hit.cell = c
+    return wp_coll_push((__wp_base + c.coll_off) as *WpColl, p - o, radius, wp_cell_mask(c)) + o
+}
+
+// The first floor, wall or ceiling the world segment a -> b crosses (a camera's line of sight):
+// true with wp_hit.t, .pos, .kind, .surface, .back, .cell set. It looks in every cell the
+// segment's box touches, so keep segments short (a camera's distance): the cost grows with the
+// box's area.
+fn wp_ray(a: vec3, b: vec3) -> bool {
+    let i0 = wp_cell_index(min(a.x, b.x))
+    let i1 = wp_cell_index(max(a.x, b.x))
+    let j0 = wp_cell_index(min(a.z, b.z))
+    let j1 = wp_cell_index(max(a.z, b.z))
+    wp_hit.t = 1.0
+    var found = false
+    for j in j0..j1 + 1 {
+        for i in i0..i1 + 1 {
+            let c = wp_cell(i, j)
+            if c == null || c.coll_off == 0 { continue }
+            let o = wp_cell_centre(c)
+            if wp_coll_ray((__wp_base + c.coll_off) as *WpColl, a - o, b - o, wp_cell_mask(c)) {
+                wp_hit.cell = c
+                found = true
+            }
+        }
+    }
+    if found { wp_hit.pos = a + (b - a) * wp_hit.t }
+    return found
+}
+
+// The unit normal of what the last query hit (its front side).
+fn wp_hit_normal() -> vec3 {
+    if wp_hit.kind == WP_WALL {
+        let w = wp_hit.rec as *WpWall
+        return vec3(w.p.x, w.p.y, w.p.z)
+    }
+    let f = wp_hit.rec as *WpFlat
+    let n = normalize(vec3(-f.h.x, 1.0, -f.h.y))
+    if wp_hit.kind == WP_CEILING { return -n }
+    return n
+}
+
+// ---- entities
+
+// The entity with global number n (as an entity_ref parameter holds it).
+fn wp_entity(n: s32) -> *WpEntity {
+    if n < 0 || n >= wp_pack.entity_count as s32 { return null }
+    return (__wp_base + ((__wp_base + wp_pack.entity_dir_off) as *u32)[n]) as *WpEntity
+}
+
+// The k-th entity of a cell (0 .. c.entity_count - 1).
+fn wp_cell_entity(c: *WpCell, k: s32) -> *WpEntity {
+    return (__wp_base + c.entity_off) as *WpEntity + k
+}
+
+fn wp_entity_cell(e: *WpEntity) -> *WpCell { return (__wp_base + e.cell) as *WpCell }
+
+// The entity's world position.
+fn wp_entity_pos(e: *WpEntity) -> vec3 {
+    return vec3(e.pos.x, e.pos.y, e.pos.z) + wp_cell_centre(wp_entity_cell(e))
+}
+
+// Whether the entity's layer (if it has one) is on.
+fn wp_entity_live(e: *WpEntity) -> bool {
+    return e.mask == 0 || (e.mask as u32) & wp_cell_mask(wp_entity_cell(e)) != 0
+}
+
+// Its parameter record (the game's struct), or null.
+fn wp_entity_params(e: *WpEntity) -> *u8 {
+    if e.params == 0 { return null }
+    return (__wp_base + e.params) as *u8
+}
+
+fn wp_entity_mesh(e: *WpEntity) -> *Mesh {
+    if e.mesh == 0 { return null }
+    return (__wp_base + e.mesh) as *Mesh
+}
+
+// Its collision block (in its own frame), or null.
+fn wp_entity_coll(e: *WpEntity) -> *WpColl {
+    if e.coll == 0 { return null }
+    return (__wp_base + e.coll) as *WpColl
+}
+
+// Keeps the cells within `radius` cells (0..2) of world point p active: calls retire(e) for
+// each entity that stops being active (its cell left the set, or its layer went off) and then
+// spawn(e) for each that starts (its cell joined, or its layer came on). Call it every frame
+// (or whenever p crosses a cell or a layer changes); the game owns what spawning means.
+fn wp_track(p: vec3, radius: s32, spawn: fn(*WpEntity), retire: fn(*WpEntity)) {
+    let r = clamp(radius, 0, 2)
+    let ci = wp_cell_index(p.x)
+    let cj = wp_cell_index(p.z)
+    var ncell: [25]u32
+    var nmask: [25]u32
+    var nn = 0
+    for dj in -r..r + 1 {
+        for di in -r..r + 1 {
+            let c = wp_cell(ci + di, cj + dj)
+            if c != null && c.entity_count != 0 {
+                ncell[nn] = c as u32
+                nmask[nn] = wp_cell_mask(c) | 0x100        // bit 8: the entities with no layer
+                nn += 1
+            }
+        }
+    }
+    for k in 0..__wp_track_n {
+        var now: u32 = 0
+        for m in 0..nn { if ncell[m] == __wp_track_cell[k] { now = nmask[m] } }
+        __wp_track_change(__wp_track_cell[k] as *WpCell, __wp_track_mask[k], now, retire)
+    }
+    for m in 0..nn {
+        var before: u32 = 0
+        for k in 0..__wp_track_n { if __wp_track_cell[k] == ncell[m] { before = __wp_track_mask[k] } }
+        __wp_track_change(ncell[m] as *WpCell, nmask[m], before, spawn)
+    }
+    for m in 0..nn {
+        __wp_track_cell[m] = ncell[m]
+        __wp_track_mask[m] = nmask[m]
+    }
+    __wp_track_n = nn
+}
+
+// Retires every tracked entity and empties the set (before wp_open() of another pack).
+fn wp_track_clear(retire: fn(*WpEntity)) {
+    for k in 0..__wp_track_n {
+        __wp_track_change(__wp_track_cell[k] as *WpCell, __wp_track_mask[k], 0, retire)
+    }
+    __wp_track_n = 0
+}
+
+// Calls f for the cell's entities live under mask `from` but not under `to`.
+fn __wp_track_change(c: *WpCell, from: u32, to: u32, f: fn(*WpEntity)) {
+    if from & ~to == 0 { return }
+    var e = (__wp_base + c.entity_off) as *WpEntity
+    for k in 0..c.entity_count as s32 {
+        var bit: u32 = 0x100
+        if e.mask != 0 { bit = e.mask as u32 }
+        if bit & from != 0 && bit & to == 0 { f(e) }
+        e = e + 1
+    }
+}
+
+// ---- regions (palettes and textures; the rest is specified, not read yet)
+
+fn wp_region(k: s32) -> *WpRegion {
+    return (__wp_base + wp_pack.region_off) as *WpRegion + k
+}
+
+// Loads palette variant v of region k into palette memory.
+fn wp_palette_load(k: s32, v: s32) {
+    let r = wp_region(k)
+    if v < 0 || v >= r.variant_count as s32 { return }
+    let n = r.colour_count as s32
+    let cols = (__wp_base + r.palette_off + 4 * (r.variant_count as u32)) as *u16 + v * n
+    load_palette(r.first_colour as s32, cols, n)
+}
+
+// Writes region k's palette blended from variant va toward vb by t (palette_lerp: about 38
+// cycles a colour).
+fn wp_palette_blend(k: s32, va: s32, vb: s32, t: fixed) {
+    let r = wp_region(k)
+    let n = r.colour_count as s32
+    if va < 0 || vb < 0 || va >= r.variant_count as s32 || vb >= r.variant_count as s32 { return }
+    let cols = (__wp_base + r.palette_off + 4 * (r.variant_count as u32)) as *u16
+    palette_lerp(r.first_colour as s32, cols + va * n, cols + vb * n, n, t)
+}
+
+// Copies region k's texture set into its slots now (about 56,000 cycles a 32 KB slot: spread a
+// swap over frames by calling wp_texture_load for one texture a frame).
+fn wp_textures_load(k: s32) {
+    for t in 0..wp_region(k).texture_count as s32 { wp_texture_load(k, t) }
+}
+
+fn wp_texture_load(k: s32, t: s32) {
+    let r = wp_region(k)
+    if t < 0 || t >= r.texture_count as s32 { return }
+    let x = (__wp_base + r.texture_off) as *WpTexture + t
+    load_texture(x.slot as s32, (__wp_base + x.data) as *u8, x.bytes as s32)
+}

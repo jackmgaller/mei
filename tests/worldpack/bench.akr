@@ -1,0 +1,96 @@
+// Measures the world pack reader in fixture.bench_world(): collision queries at the points in
+// PTS, then drawing in three views. Prints cycles for tests/test_worldpack.py to report.
+// The wrapper embeds PACK and PTS (vec4 points, world coordinates).
+
+import "worldpack.akr"
+
+var tick: s32
+
+fn report(label: *u8, cycles: s32, n: s32) {
+    print(label)
+    print_char(' ')
+    print_int(cycles / n)
+    println("")
+}
+
+fn init() {
+    assert(wp_open(PACK))
+    let n = len(PTS) as s32
+    var hits = 0
+    // the loop and the point loads alone
+    var c0 = cycle_count()
+    var sink = 0.0
+    for k in 0..n { sink += PTS[k].y }
+    let base = cycle_count() - c0
+    report("loop", base, n)
+    c0 = cycle_count()
+    for k in 0..n { if wp_cell_at(vec3(PTS[k].x, PTS[k].y, PTS[k].z)) != null { hits += 1 } }
+    report("cell", cycle_count() - c0 - base, n)
+    c0 = cycle_count()
+    for k in 0..n { if wp_floor(vec3(PTS[k].x, PTS[k].y, PTS[k].z), 0.5) { hits += 1 } }
+    report("floor", cycle_count() - c0 - base, n)
+    c0 = cycle_count()
+    for k in 0..n { if wp_ceiling(vec3(PTS[k].x, PTS[k].y, PTS[k].z), 0.5) { hits += 1 } }
+    report("ceiling", cycle_count() - c0 - base, n)
+    c0 = cycle_count()
+    var walls = 0
+    for k in 0..n {
+        let q = wp_push(vec3(PTS[k].x, PTS[k].y + 1.0, PTS[k].z), 0.5)
+        walls += wp_hit.walls
+    }
+    report("push", cycle_count() - c0 - base, n)
+    c0 = cycle_count()
+    for k in 0..n {
+        let a = vec3(PTS[k].x, PTS[k].y + 1.5, PTS[k].z)
+        if wp_ray(a, a + vec3(3.0, -1.0, 2.0)) { hits += 1 }
+    }
+    report("ray4", cycle_count() - c0 - base, n)
+    c0 = cycle_count()
+    for k in 0..n {
+        let a = vec3(PTS[k].x, PTS[k].y + 1.5, PTS[k].z)
+        if wp_ray(a, a + vec3(-9.0, 1.0, 12.0)) { hits += 1 }
+    }
+    report("ray15", cycle_count() - c0 - base, n)
+    print("hits ")
+    print_int(hits)
+    print_char(' ')
+    print_int(walls)
+    println("")
+}
+
+fn view(label: *u8, eye: vec3, yaw: fixed, pitch: fixed) {
+    let c0 = cycle_count()
+    wp_draw(eye, yaw, pitch)
+    let c = cycle_count() - c0
+    print(label)
+    print_char(' ')
+    print_int(c)
+    print_char(' ')
+    print_int(wp_stats.placements)
+    print_char(' ')
+    print_int(wp_stats.drawn)
+    println("")
+}
+
+fn draw() {
+    cls(0)
+    if tick > 0 && tick < 4 {
+        print("frame ")
+        print_int(tris_drawn())
+        print_char(' ')
+        print_int(cpu_used())
+        println("")
+    }
+    wp_far_ring = 0
+    // every near cell's sphere in view, every placement out of it (they are on the ground)
+    if tick == 0 { view("culled", vec3(96.0, 2.0, 96.0), 0.0, 1.2) }
+    // standing in the middle of the town, looking along it
+    if tick == 1 { view("street", vec3(96.0, 2.0, 70.0), 0.3, -0.1) }
+    // from above: most of the near set
+    if tick == 2 {
+        wp_near_far = 300.0
+        view("above", vec3(96.0, 120.0, 96.0), 0.0, -1.5)
+    }
+    if tick == 3 { println("done") }
+    tick += 1
+}

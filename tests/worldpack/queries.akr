@@ -1,0 +1,75 @@
+// Runs a list of collision queries against a world pack and prints each answer, for
+// tests/test_worldpack.py to compare with the exact oracle in tools/worldkit/pack.py.
+// The test's wrapper embeds PACK (the pack) and QUERIES (WpQuery records) and imports this.
+
+import "worldpack.akr"
+
+struct WpQuery {
+    op: s32            // 0 floor, 1 ceiling, 2 push, 3 ray, 4 layer; 5-8 the same against an entity
+    arg: s32           // layer: id | on << 16; entity ops: the entity's number
+    p: vec4            // a point (w = 0)
+    q: vec4            // floor/ceiling: x = above/below; push: x = radius; ray: the end point
+}
+
+fn out3(a: s32, b: s32, c: s32) {
+    print_int(a)
+    print_char(' ')
+    print_int(b)
+    print_char(' ')
+    print_int(c)
+}
+
+fn flat_line(found: bool) {
+    if found {
+        print("1 ")
+        out3(bits(wp_hit.y), wp_hit.surface, wp_hit.tag)
+    } else {
+        print("0 0 0 0")
+    }
+    println("")
+}
+
+fn ray_line(found: bool) {
+    if found {
+        print("1 ")
+        out3(bits(wp_hit.t), wp_hit.tag, wp_hit.kind)
+    } else {
+        print("0 0 0 0")
+    }
+    println("")
+}
+
+fn run(k: s32) {
+    let r = &QUERIES[k]
+    let p = vec3(r.p.x, r.p.y, r.p.z)
+    let q = vec3(r.q.x, r.q.y, r.q.z)
+    match r.op {
+        0 => flat_line(wp_floor(p, q.x))
+        1 => flat_line(wp_ceiling(p, q.x))
+        2 => {
+            let o = wp_push(p, q.x)
+            out3(bits(o.x), bits(o.z), wp_hit.walls)
+            println("")
+        }
+        3 => ray_line(wp_ray(p, q))
+        4 => wp_layer_set(r.arg & 0xFFFF, (r.arg >> 16) != 0)
+        5 => flat_line(wp_coll_floor(wp_entity_coll(wp_entity(r.arg)), p, q.x, 0))
+        6 => {
+            let o = wp_coll_push(wp_entity_coll(wp_entity(r.arg)), p, q.x, 0)
+            out3(bits(o.x), bits(o.z), wp_hit.walls)
+            println("")
+        }
+        7 => {
+            wp_hit.t = 1.0
+            ray_line(wp_coll_ray(wp_entity_coll(wp_entity(r.arg)), p, q, 0))
+        }
+        8 => flat_line(wp_coll_ceiling(wp_entity_coll(wp_entity(r.arg)), p, q.x, 0))
+        else => println("?")
+    }
+}
+
+fn init() {
+    assert(wp_open(PACK))
+    for k in 0..len(QUERIES) { run(k) }
+    println("done")
+}
