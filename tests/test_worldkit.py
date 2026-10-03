@@ -5,7 +5,9 @@ The CLI, validation, ID, palette, collision and determinism tests need only Pyth
 tests build the example worlds, compile carts that load them with stdlib/worldpack.akr and run
 them headless (MEIC and RUN select the builds; skipped when they have not been built). The
 Asset Checker test also needs NumPy and mei-asset-probe (PROBE). Example worlds are copied to a
-temporary directory first, so their committed ID lock files are never touched.
+temporary directory first, so their committed ID lock files are never touched. Builds skip the
+World Checker (build(checker='skip')) or sample a few views, except test_report_and_gate_seam,
+which runs it in full; the checker's own suite is tests/test_worldverify.py.
 """
 import importlib.util
 import json
@@ -67,11 +69,14 @@ class Example:
     def compile(self):
         return compile_source(str(self.world))[1]
 
-    def build(self, out, **kw):
-        return build(str(self.world), out, COMPILER, RUNNER, PROBE, **kw)
+    def build(self, out, checker='skip', **kw):
+        """build(). The World Checker is skipped unless the test asks for it (checker='full', or
+        a number of views): most tests are about what the kit writes, not about verification,
+        and the full check of two_districts takes about 8 seconds."""
+        return build(str(self.world), out, COMPILER, RUNNER, PROBE, checker=checker, **kw)
 
 
-def build_without_checker(example, out, **kw):
+def build_without_asset_checker(example, out, **kw):
     """build(), with the coin's Asset Checker policy dropped so the test needs no NumPy."""
     example.edit(lambda a: a.pop('verification', None), 'assets/coin.asset.json')
     return example.build(out, **kw)
@@ -226,12 +231,12 @@ class IdTests(unittest.TestCase):
     def test_bits_survive_edits_renames_and_deletions(self):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp)
-            build_without_checker(ex, Path(tmp)/'out')
+            build_without_asset_checker(ex, Path(tmp)/'out')
             lock = json.loads(ex.lock.read_text())
             self.assertEqual(lock['bits'], {'coin_ledge': 0, 'gate_switch': 1})
             # A new coin placed first gets the next bit; existing bits do not move.
             ex.edit(lambda w: w['cells'][0]['entities'].insert(0, {'id': 'coin_new', 'type': 'coin', 'position': [40, 1, 40]}))
-            build_without_checker(ex, Path(tmp)/'out')
+            build_without_asset_checker(ex, Path(tmp)/'out')
             lock = json.loads(ex.lock.read_text())
             self.assertEqual(lock['bits'], {'coin_ledge': 0, 'gate_switch': 1, 'coin_new': 2})
             # Rename with "was": the bit follows; the old name is recorded.
@@ -240,21 +245,21 @@ class IdTests(unittest.TestCase):
                 e['was'], e['id'] = e['id'], 'coin_on_ledge'
                 w['cells'][0]['entities'][2]['params']['target'] = 'coin_on_ledge'
             ex.edit(rename)
-            report = build_without_checker(ex, Path(tmp)/'out')
+            report = build_without_asset_checker(ex, Path(tmp)/'out')
             lock = json.loads(ex.lock.read_text())
             self.assertEqual(lock['bits']['coin_on_ledge'], 0)
             self.assertEqual(lock['renamed'], {'coin_ledge': 'coin_on_ledge'})
             self.assertEqual(report['ids']['changes'], {'renamed': [['coin_ledge', 'coin_on_ledge']]})
             # Deleting retires the bit; a later entity never reuses it; re-adding revives it.
             ex.edit(lambda w: w['cells'][0]['entities'].pop(0))
-            build_without_checker(ex, Path(tmp)/'out')
+            build_without_asset_checker(ex, Path(tmp)/'out')
             ex.edit(lambda w: w['cells'][0]['entities'].append({'id': 'coin_late', 'type': 'coin', 'position': [41, 1, 41]}))
-            build_without_checker(ex, Path(tmp)/'out')
+            build_without_asset_checker(ex, Path(tmp)/'out')
             lock = json.loads(ex.lock.read_text())
             self.assertEqual(lock['retired'], {'coin_new': 2})
             self.assertEqual(lock['bits']['coin_late'], 3)
             ex.edit(lambda w: w['cells'][0]['entities'].append({'id': 'coin_new', 'type': 'coin', 'position': [42, 1, 41]}))
-            report = build_without_checker(ex, Path(tmp)/'out')
+            report = build_without_asset_checker(ex, Path(tmp)/'out')
             self.assertEqual(json.loads(ex.lock.read_text())['bits']['coin_new'], 2)
             self.assertEqual(report['ids']['changes'], {'revived': ['coin_new']})
             # The pack carries the bits; the .akr names them.
@@ -267,10 +272,10 @@ class IdTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp)
             with self.assertRaisesRegex(WorldError, 'locked'):
-                build_without_checker(ex, Path(tmp)/'out', locked=True)
+                build_without_asset_checker(ex, Path(tmp)/'out', locked=True)
             self.assertFalse(ex.lock.exists())
-            build_without_checker(ex, Path(tmp)/'out')
-            build_without_checker(ex, Path(tmp)/'out', locked=True)     # nothing changes: fine
+            build_without_asset_checker(ex, Path(tmp)/'out')
+            build_without_asset_checker(ex, Path(tmp)/'out', locked=True)     # nothing changes: fine
             ex.edit(lambda w: w['cells'][0]['entities'][0].update(was='gate_switch'))
             with self.assertRaises(WorldError) as error:
                 ex.compile()
@@ -297,8 +302,9 @@ class BuildTests(unittest.TestCase):
     def test_builds_are_deterministic_and_staged(self):
         with tempfile.TemporaryDirectory() as tmp:
             a, b = Example(Path(tmp)/'a', 'two_districts'), Example(Path(tmp)/'b', 'two_districts')
-            ra = a.build(Path(tmp)/'out_a')
-            rb = b.build(Path(tmp)/'out_b')
+            # A reduced sample of the World Checker: its report must be deterministic too.
+            ra = a.build(Path(tmp)/'out_a', checker=12)
+            rb = b.build(Path(tmp)/'out_b', checker=12)
             for f in ('two_districts.world.bin', 'two_districts.akr', 'city.game.akr', 'two_districts.swatch',
                       'two_districts.ids.json', 'report.json'):
                 self.assertEqual((Path(tmp)/'out_a'/f).read_bytes(), (Path(tmp)/'out_b'/f).read_bytes(), f)
@@ -314,6 +320,8 @@ class BuildTests(unittest.TestCase):
             self.assertEqual(checked['views_report'], 'verification/world-check.json')
             full = json.loads((Path(tmp)/'out_a'/'verification'/'world-check.json').read_text())
             self.assertEqual(len(full['views']), checked['summary']['views'])
+            self.assertLessEqual(checked['summary']['views'], 12)
+            self.assertEqual(checked['reduced']['max_views'], 12)
             source = sorted(str(p.relative_to(Path(tmp)/'out_a'/'source')) for p in (Path(tmp)/'out_a'/'source').rglob('*.json'))
             self.assertIn('cells/shrine_gate.cell.json', source)
             self.assertIn('assets/shop.asset.json', source)
@@ -332,7 +340,8 @@ class BuildTests(unittest.TestCase):
     def test_report_and_gate_seam(self):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp)
-            report = build_without_checker(ex, Path(tmp)/'out')
+            # The one build in this suite with the full World Checker, as make's world rule runs it.
+            report = build_without_asset_checker(ex, Path(tmp)/'out', checker='full')
             cell = report['cells'][0]
             self.assertEqual(cell['layers'], ['gate_closed', 'gate_open'])
             self.assertEqual(cell['triangles']['by_layer'], {'gate_closed': 12, 'gate_open': 12})
@@ -343,6 +352,30 @@ class BuildTests(unittest.TestCase):
             self.assertNotIn('timing', report['verification'])
             self.assertTrue(all(not a['recipe'].startswith('/') for a in report['assets'].values()))
             self.assertEqual(report['assets']['canopy_col']['used_as'], ['collision'])
+            self.assertNotIn('reduced', report['verification'])
+            self.assertEqual(report['verification']['summary']['views'],
+                             len(json.loads((Path(tmp)/'out'/'verification'/'world-check.json').read_text())['views']))
+
+    def test_world_checker_can_be_skipped_or_reduced_but_never_silently(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            report = build_without_asset_checker(ex, Path(tmp)/'out', checker='skip')
+            self.assertEqual({k: report['verification'][k] for k in ('ran', 'ok', 'skipped')},
+                             {'ran': False, 'ok': None, 'skipped': True})
+            written = json.loads((Path(tmp)/'out'/'report.json').read_text())['verification']
+            self.assertIn('not verified', written['reason'])
+            self.assertFalse((Path(tmp)/'out'/'verification').exists())
+            for bad in ('none', '0', -3, True, '2.5'):
+                with self.assertRaisesRegex(WorldError, 'full, skip or a number'):
+                    ex.build(Path(tmp)/'out', checker=bad)
+            # A world that enforces the World Checker builds only with the full check.
+            ex.edit(lambda w: w.update(verification={'mode': 'enforce'}))
+            for quick in ('skip', 5):
+                with self.assertRaises(WorldError) as error:
+                    ex.build(Path(tmp)/'out', checker=quick)
+                self.assertEqual(error.exception.path, '/verification/mode')
+            code, out = cli('build', ex.world, '-o', Path(tmp)/'out', '--world-checker', 'skip')
+            self.assertEqual((code, out['errors'][0]['path']), (1, '/verification/mode'))
 
     def test_palettes_are_packed_per_region(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -485,7 +518,7 @@ class ConsoleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp)
             out = Path(tmp)/'out'
-            report = build_without_checker(ex, out)
+            report = build_without_asset_checker(ex, out)
             got = self.run_cart(out, 'room.akr', dump=out/'room.ppm')
             fx = lambda v: str(P.fx(v))
             self.assertEqual(got['ledge'], ['1', fx(2), '1', '2'])
@@ -520,7 +553,8 @@ class ConsoleTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp, 'two_districts')
             out = Path(tmp)/'out'
-            code, report = cli('preview', ex.world, '-o', out, '--compiler', COMPILER, '--runner', RUNNER, '--probe', PROBE)
+            code, report = cli('preview', ex.world, '-o', out, '--compiler', COMPILER, '--runner', RUNNER, '--probe', PROBE,
+                               '--world-checker', 'skip')
             self.assertEqual(code, 0, report)
             views = report['preview']['views']
             self.assertEqual([(v['cell'], v['variant']) for v in views],

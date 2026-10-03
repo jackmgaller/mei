@@ -771,8 +771,17 @@ stdin (relative paths then resolve from the current directory), `--compiler`, `-
 | `init DIR [--example room\|city] [--force]` | Copies an example world (world file, cells, game schema, asset recipes) into a new directory |
 | `validate FILE` | Every static check: schemas, references, game data, IDs, palettes, that every asset compiles and that the pack can hold the world; the ID changes a build would make |
 | `inspect FILE [--cell ID]` | The same, with the full report: per cell and per region costs, palettes and variants, entity numbers, asset hashes, warnings |
-| `build FILE -o DIR [--locked] [--preview]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam |
-| `preview FILE -o DIR [--cell ID] [--locked]` | `build`, plus native renders of a cell per region and palette variant (`--cell` picks the cell) |
+| `build FILE -o DIR [--locked] [--preview] [--world-checker full\|skip\|N]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam |
+| `preview FILE -o DIR [--cell ID] [--locked] [--world-checker full\|skip\|N]` | `build`, plus native renders of a cell per region and palette variant (`--cell` picks the cell) |
+
+`--world-checker` is for quick builds, such as the World Kit's own tests: `full` (the default)
+runs the World Checker with the world's settings; `skip` does not run it, and `report.json`
+says so (`"verification": {"ran": false, "ok": null, "skipped": true, "reason": ...}`); a number
+*N* samples at most *N* views (the checker's `sampling.max_views`), and the report's
+`verification.reduced` records it. A world whose recipe says `"verification": {"mode":
+"enforce"}` builds only with the full check: `skip` or *N* is refused with an error at
+`/verification/mode`. make's world rule ([Using a world in a cart](#using-a-world-in-a-cart))
+always runs the full check.
 
 *Proposals, not built:* `verify FILE [-o DIR] [--cell ID] [--layers A,B]` (the World Checker,
 diagnostic only), and `standin-draft FILE --cell ID -o RECIPE` (an Asset Kit recipe of boxes from

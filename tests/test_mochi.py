@@ -264,7 +264,7 @@ class BuildTests(unittest.TestCase):
                 recipe.pop('verification', None)        # the Asset Checker needs NumPy; not what this tests
                 coin.write_text(json.dumps(recipe))
                 out = world.parent.parent/(world.parent.name + '_out')
-                build(str(world), out, COMPILER, RUNNER, PROBE)
+                build(str(world), out, COMPILER, RUNNER, PROBE, checker='skip')    # nor is the World Checker
                 outs.append(out)
             for name in ('test_room.world.bin', 'test_room.akr', 'garden.game.akr', 'test_room.ids.json'):
                 self.assertEqual((outs[0]/name).read_bytes(), (outs[1]/name).read_bytes(), name)
