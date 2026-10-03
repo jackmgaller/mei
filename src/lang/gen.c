@@ -1357,10 +1357,13 @@ static Opnd gen_vec_binary(Expr *e, Opnd a, Opnd b, int hint) {
         } else {
             int rb = R(&b);
             if (g_div_chk) Ik("beq %s, r0, .L%d", RN[rb], check_stub(g_div_chk, -1, 0));
-            ofree(b);
+            /* the reciprocal's register is taken before b is freed: a divisor held in a
+             * temporary (vec / v.x, vec / max(..)) would otherwise share it and be overwritten
+             * by the lui, making the quotient 1.0 and the result the vector unscaled */
             int t = tnew(0);
             I("lui %s, 64", RN[g_t[t].reg]);
-            I("fdiv %s, %s, %s", RN[treg(t)], RN[treg(t)], RN[rb]);
+            I("fdiv %s, %s, %s", RN[treg(t)], RN[treg(t)], RN[R(&b)]);
+            ofree(b);
             b = o_tmp(t);
         }
     }

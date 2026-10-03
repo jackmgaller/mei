@@ -235,15 +235,33 @@ Evidence (the tests and the sweeps behind them):
   views (up to 24,000 pixels in one view): real mis-sorts, mostly between ground tiles and what
   stands on them and inside the shop asset, which report mode lists and strict mode would fail.
   See [Ground](#ground) for what ground-first drawing left.
-- 1,500 random cameras over the demonstration world (many inside geometry or against it) found 4
-  views with coverage errors. All four are faces the runtime drops, not reference errors: for
-  example from eye (10.5278, 2.6406, 9.0798), yaw −2.9315597, pitch −0.8297644 (under the roof
-  in cell (0, 0), looking down at the ground) a plain cart calling only `wp_draw()` leaves a
-  5,179-pixel hole in the ground tile under the camera, which crosses the near plane, and the
-  hole closes when the camera moves 1/10,000 of a radian; from (135.2339, 23.4188, 9.4824), yaw
-  −131.8°, pitch −39.3° a stand-in face crossing the far pass's near plane at the screen's edge
-  is missing. Both point at the near-plane path of the face loops and `stdlib/clip.akr`. This is
-  what coverage errors are for; they fail only in strict mode.
+- Coverage errors found three ways the runtime dropped faces that cross the near plane, all
+  fixed (regression tests: `tests/lang/clip_near_drop.akr`, `tests/lang/vec_div_temp.akr` and
+  `ViewTests.test_clipped_faces_are_not_dropped`):
+  - the pieces of a clipped face were back-face culled again from their rounded screen
+    corners; where clipping left two corners on one pixel, a quad piece's first triangle had no
+    area and the whole quad was dropped (from eye (10.5278, 2.6406, 9.0798), yaw −2.9315597,
+    pitch −0.8297644 in the demonstration world: a 5,179-pixel hole in the ground tile under
+    the camera, closing when the camera moved 1/10,000 of a radian);
+  - the clip-space back-face test overflowed 16.16 for large clip coordinates (the far pass,
+    where the near plane is half a cell away, and large faces in the near pass), because the
+    compiler returned `v / max(…)` unscaled when the divisor was a temporary (from
+    (135.2339, 23.4188, 9.4824), yaw −131.8°, pitch −39.3°: a stand-in face missing at the
+    screen's edge; a whole 32-unit floor from cameras low over it);
+  - a quad whose fourth corner alone was behind the camera and whose other corners were outside
+    the guard band was judged off the screen from that corner's mirrored projection.
+
+  Random-camera sweeps (1,500 cameras a world, half of them within 3 units of the ground, over
+  eight worlds: the demonstration, bench, plaza, near-plane, slope and ground worlds of the
+  tests and the two example worlds; two seeds, 24,000 views, about 370 million decided pixels)
+  found coverage errors in 253 views (1.1%) before the fixes: 231 from the overflow, 8 from
+  the piece culling, 12 from the fourth corner, 1 needing two fixes. After them: one view,
+  320 pixels in one row along the near-plane cut of a ground face seen from 0.07 units above it
+  (`two_districts`, eye (68.5025, 0.0692, 9.7815), yaw 0.4216°, pitch −44.154°). With the eye
+  closer to a surface than the near distance, that cut moves about 2,900 pixels per unit of
+  the eye's height, so the 16.16 camera matrix and clipped corner put it a pixel or two off the
+  reference's: a precision limit, not a dropped face. Coverage errors fail only in strict
+  mode.
 
 ### Ground
 

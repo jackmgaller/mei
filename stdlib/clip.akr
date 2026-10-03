@@ -153,8 +153,14 @@ asm fn __clip_put(c: vec4, k: s32) {
 fn __clip_round(f: fixed) -> u32 { return s32(f + 0.5) as u32 }
 
 // Writes the piece a b c (d < 0) or the quad a b c d (strip order) of the clipped polygon.
+// The pieces are double-sided: __clip_load has already decided that the face is seen from the
+// front, exactly, in clip space, and culling them again from their rounded screen corners would
+// be wrong. Clipping can leave two corners within a pixel of each other (where the polygon
+// meets two planes close together, or crosses the near plane next to a corner just behind it),
+// so a quad piece's first three corners can round to a line, nclip 0, although its other
+// triangle (b d c) is large; the face loops would drop the whole quad for that.
 fn __clip_piece(o: *Face, f: *Face, a: s32, b: s32, c: s32, d: s32) {
-    var fl = f.flags as u32 & ~(FACE_QUAD as u32)
+    var fl = (f.flags as u32 & ~(FACE_QUAD as u32)) | FACE_DOUBLE as u32
     if d >= 0 { fl = fl | FACE_QUAD as u32 }
     o.flags = fl as u8
     o.blend = f.blend

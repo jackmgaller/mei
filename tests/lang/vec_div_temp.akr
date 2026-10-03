@@ -1,0 +1,31 @@
+// A vector divided by a scalar held in a temporary (an expression, not a local): the compiler
+// used to free the divisor's register before taking one for its reciprocal, so both were the
+// same register, the reciprocal came out 1.0 and the vector was returned unscaled. clip.akr's
+// __clip_unit (`v / max(...)`) hit it, and the back-face test of clipped faces overflowed.
+
+fn unit(c: vec4) -> vec3 {
+    let v = vec3(c.x, c.y, c.w)
+    return v / max(max(abs(c.x), abs(c.y)), abs(c.w))
+}
+
+fn init() {
+    let c = vec4(4.0, 2.0, 1.0, 8.0)
+    print_vec(vec4(unit(c), 0.0))
+    println("")
+    print_vec(c / c.x)
+    println("")
+    let n = 4
+    let h = vec2(2.0, 1.0) / fixed(n)
+    print_vec(vec4(h.x, h.y, 0.0, 0.0))
+    println("")
+    let s: fixed = 4.0
+    print_vec(c / s)                      // a local divisor (always worked)
+    println("")
+    print_vec(c / 4.0)                    // a constant one
+    println("")
+}
+// expect: (0.5, 0.25, 1.0, 0.0)
+// expect: (1.0, 0.5, 0.25, 2.0)
+// expect: (0.5, 0.25, 0.0, 0.0)
+// expect: (1.0, 0.5, 0.25, 2.0)
+// expect: (1.0, 0.5, 0.25, 2.0)
