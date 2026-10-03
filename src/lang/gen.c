@@ -3702,23 +3702,51 @@ static uint32_t text_clobbers(const char *t, size_t len) {
     return m & CLOB_FULL;
 }
 
-void gen_program(Program *P, Buf *out) {
-    g_P = P;
-    g_fn = NULL;
-    g_label = 0;
-    /* These reusable buffers belong to the compilation arena, which the driver frees
-       between API calls. Keep reuse within one program, never across compilations. */
-    g_loops = NULL;
-    g_nloops = g_caploops = 0;
-    g_relocs = NULL;
-    g_nrelocs = g_caprelocs = 0;
-    g_ret_into = NULL;
+/* Every file-scope variable of the code generator, back to its state before any compilation,
+   so a compilation never depends on the one before it in the same process. The arrays they
+   point to belong to the compilation arena, which the driver frees between compilations. */
+static void gen_reset(Program *P) {
     buf_free(&g_body);   /* also recover a partially generated body after an error */
+    memset(&g_body, 0, sizeof g_body);
+    g_fn = NULL;
+    g_P = P;
+    g_leaf = 0;
+    memset(g_t, 0, sizeof g_t);
+    g_age = 0;
+    memset(g_rown, 0, sizeof g_rown);
+    memset(g_vown, 0, sizeof g_vown);
+    memset(g_spool, 0, sizeof g_spool);
+    memset(g_vpool, 0, sizeof g_vpool);
+    g_nspool = g_nvpool = 0;
+    g_saved = 0;
+    g_frame = g_frame_max = 0;
+    g_label = 0;
+    g_ret_label = 0;
+    memset(g_brk, 0, sizeof g_brk);
+    memset(g_cont, 0, sizeof g_cont);
+    g_nloop = 0;
+    g_out_size = 0;
+    g_iobase_reg = -1;
     g_stubs = NULL;
     g_nstubs = g_capstubs = 0;
+    g_div_chk = NULL;
     g_vconsts = NULL;
     g_vconst_n = 0;
-    memset(&g_body, 0, sizeof g_body);
+    g_ret_into = NULL;
+    g_callpos = g_xfmpos = g_asmpos = g_callmask = (IntVec){0};
+    g_loops = NULL;
+    g_nloops = g_caploops = 0;
+    g_pos = 0;
+    memset(g_regusers, 0, sizeof g_regusers);
+    memset(&g_iolocal, 0, sizeof g_iolocal);
+    g_relocs = NULL;
+    g_nrelocs = g_caprelocs = 0;
+    g_lab = NULL;
+    g_lab_n = g_lab_cap = 0;
+}
+
+void gen_program(Program *P, Buf *out) {
+    gen_reset(P);
 
     /* reachability: functions from the entry points; a global initialiser runs only when its
        variable is used, or when it makes calls (whose effects must happen) */

@@ -2733,9 +2733,20 @@ static void resolve_embed(Sym *s) {
     s->state = 2;
 }
 
-void check_program(Program *P) {
+/* Every file-scope variable of the checker, back to its state before any compilation, so a
+   compilation never depends on the one before it in the same process. (g_functypes and
+   g_lambda_n belong to the type table, which types_init() resets before parsing.) */
+static void check_reset(Program *P) {
     g_prog = P;
+    memset(g_loop_stack, 0, sizeof g_loop_stack);
     g_loop_n = 0;
+    g_in_local_const = NULL;
+    g_lambda_noescape = 0;
+    g_lconst_n = 0;
+}
+
+void check_program(Program *P) {
+    check_reset(P);
     for (int i = 0; i < P->nenums; i++) resolve_enum(P->enums[i]->ty);
     for (int i = 0; i < P->nstructs; i++) layout_struct(P->structs[i]->ty, P->structs[i]->loc);
     for (int i = 0; i < P->nconsts; i++) resolve_const(P->consts[i]);
