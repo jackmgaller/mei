@@ -1,0 +1,3 @@
+// error: has no field 'b'
+struct X { f: bits { a } }
+fn init() { let x = X { f: bits { b: true } } }

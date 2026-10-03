@@ -527,3 +527,15 @@ unchanged.
 them on screen for several frames while the view pans widens it while recording, so the parts
 that pan into view are there. Faces that need no clipping were never dropped for lying off the
 screen, so nothing else changes.
+
+### Packed struct flags and integer fields
+
+Inline `bits { flag, count: u8: 3 }` groups store bool flags and explicitly sized unsigned
+integer fields in declaration order, low bit first, with byte alignment and no gaps between
+members. Integer fields may span bytes; byte loads/stores avoid imposing alignment or touching
+memory beyond the group. Writes truncate to the declared width and preserve neighboring bits,
+including when a right-hand-side function changes other flags. Member addresses are rejected;
+whole groups remain ordinary aggregates for copies and enclosing struct parameters/returns.
+Context-typed `bits { flag: true }` literals use the existing struct default and zero rules.
+Each inline declaration has its own identity, avoiding accidental copies between unrelated
+flag layouts. Signed fields are omitted to keep extension and overflow rules explicit.

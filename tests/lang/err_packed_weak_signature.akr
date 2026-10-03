@@ -1,0 +1,4 @@
+// error: must have the same parameter and result types
+weak fn value() -> bits { a } { return bits {} }
+fn value() -> bits { a: u32: 32 } { return bits {} }
+fn init() {}

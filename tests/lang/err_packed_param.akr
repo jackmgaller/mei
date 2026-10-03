@@ -1,0 +1,4 @@
+// error: parameters are passed by reference and are read-only
+struct X { f: bits { a } }
+fn mutate(x: X) { x.f.a = true }
+fn init() {}
