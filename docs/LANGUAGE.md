@@ -60,7 +60,10 @@ mei-headless game.mei --frames 60 --dump frame.ppm   # run without a window
 Options: `--title TEXT` sets the cart title (otherwise the `cart` declaration, else the file
 name), `--no-stdlib` compiles without the standard library, `--release` drops `assert`s, and
 `-g`, `--trap-div` and `--trap-fmul` build a [debug cart](#debug-builds) with run-time checks,
-and `-W` turns on more warnings (below).
+`-W` turns on more warnings (below), and `-I DIR` (repeatable) adds an import directory: an
+`import` that is not next to the importing file is looked for in each `-I` directory in order,
+then in the standard library. `make` passes the build directory's copy of a cart's worlds this
+way ([WORLDKIT.md](WORLDKIT.md#using-a-world-in-a-cart)); `embed` paths are not searched.
 
 The standard library (`stdlib/*.akr`) is compiled into every cart. `meic` looks for it in
 `$MEI_STDLIB`, then in `<directory of meic>/../stdlib`. Only functions and global variables a
@@ -102,8 +105,8 @@ The frame loop is: begin frame (reset the ordering table and packet memory) → 
 for `btnp`) → `vsync`. Output appears on the debug console through `print*` functions.
 
 `import "other.akr"` includes another file (path relative to the importing file; a file that
-is not there is looked up in the standard library, which is how a cart imports the library's
-optional modules, such as `import "planes.akr"`). Each file is compiled once however often it
+is not there is looked up in the `-I` directories and then in the standard library, which is how
+a cart imports the library's optional modules, such as `import "planes.akr"`). Each file is compiled once however often it
 is imported. Plain imports preserve the shared global namespace (except `private` names).
 A cart may reuse a standard library name (`A`, `sin`, ...): the cart sees its own declaration
 and the library keeps using its own.

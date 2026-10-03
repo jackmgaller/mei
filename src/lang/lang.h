@@ -20,6 +20,9 @@ typedef struct {
     MeiReadFileFn read_file;  /* NULL: read from the host file system with stdio */
     void *user;               /* passed to read_file */
     const char *stdlib_dir;   /* directory holding prelude.akr; NULL: $MEI_STDLIB, else "stdlib" */
+    const char *const *import_dirs; /* searched in order for an import that is not next to the
+                                       importing file, before the standard library (meic -I) */
+    int import_dir_count;
     const char *title;        /* cart title; NULL: the `cart "..."` declaration, else the file name */
     int no_stdlib;            /* 1: do not import the standard library (test/bare-metal use) */
     int no_asserts;           /* 1: drop assert()/assert_eq() statements (meic --release) */

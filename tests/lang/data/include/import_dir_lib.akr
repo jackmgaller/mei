@@ -1,0 +1,5 @@
+// Found through meic -I by tests/lang/import_dir.akr.
+import "import_dir_more.akr"
+embed LIB_BYTES: u8 = "../bytes.bin"
+
+fn lib_answer() -> s32 { return 42 }
