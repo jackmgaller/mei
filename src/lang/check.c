@@ -1533,7 +1533,7 @@ static Expr *check_call(Ctx *c, Expr *e) {
         error_at(e->loc, "'%s' cannot be called; build a %s with a literal", name, name);
     }
     if (s->k == SY_BUILTIN) {
-        if (s->bi >= BI_MAP) return check_intrinsic(c, e, s->bi, name);
+        if (bi_is_higher_order(s->bi)) return check_intrinsic(c, e, s->bi, name);
         e->bi = s->bi;
         int want = (s->bi == BI_DOT || s->bi == BI_CROSS || s->bi == BI_MIN || s->bi == BI_MAX) ? 2
                  : (s->bi == BI_CLAMP || s->bi == BI_LERP || s->bi == BI_NCLIP || s->bi == BI_OTZ || s->bi == BI_CLERP) ? 3 : 1;
@@ -2458,7 +2458,7 @@ static void check_stmt(Ctx *c, Stmt *s) {
         Expr *e = check(c, s->e, NULL);
         s->e = e;
         if (e->k == E_BINARY && e->op == B_EQ) error_at(e->loc, "'==' compares; use '=' to assign");
-        if (e->k != E_CALL || (e->bi && e->bi < BI_MAP && !e->callee)) error_at(s->loc, "this expression does nothing (only calls and assignments are statements)");
+        if (e->k != E_CALL || (e->bi && !bi_is_higher_order(e->bi) && !e->callee)) error_at(s->loc, "this expression does nothing (only calls and assignments are statements)");
         if (c->P && c->P->wextra && e->ty->k == TY_BOOL && !file_is_stdlib(s->loc.file))
             warn_at(s->loc, "the bool result of %s is ignored (test it with 'if', or write 'let _ = ...' to discard it)",
                     e->callee ? ar_printf("%s()", e->callee->name) : "this call");
@@ -2747,7 +2747,7 @@ static int inl_count(Expr *e, Func *f, int *uses, int *ok) {
     int n = 1;
     switch (e->k) {
     case E_CALL:
-        if (e->callee || e->indirect || e->bi >= BI_MAP || e->bi == BI_LENGTH || e->bi == BI_NORMALIZE) { *ok = 0; return 0; }
+        if (e->callee || e->indirect || bi_is_higher_order(e->bi) || e->bi == BI_LENGTH || e->bi == BI_NORMALIZE) { *ok = 0; return 0; }
         break;
     case E_FUNC: case E_MATCH: case E_ARRAY: case E_STRUCT: *ok = 0; return 0;
     case E_NAME:
@@ -2786,7 +2786,7 @@ static int inlinable(Func *f) {
 /* Does evaluating e call a function or read an I/O register? */
 static int inl_effects(Expr *e) {
     if (!e) return 0;
-    if (e->k == E_CALL && (e->callee || e->indirect || e->bi >= BI_MAP)) return 1;
+    if (e->k == E_CALL && (e->callee || e->indirect || bi_is_higher_order(e->bi))) return 1;
     if (e->k == E_FUNC || e->k == E_MATCH) return 1;
     if (e->k == E_NAME && e->sym && e->sym->k == SY_REG) return 1;
     if (e->isconst && e->k != E_CONV) return 0;
@@ -2860,7 +2860,7 @@ static void inline_stmt(Stmt *s) {
 
 static int expr_calls(Expr *e) {
     if (!e) return 0;
-    if (e->k == E_CALL && (e->callee || e->indirect || e->bi >= BI_MAP)) return 1;
+    if (e->k == E_CALL && (e->callee || e->indirect || bi_is_higher_order(e->bi))) return 1;
     if (expr_calls(e->a) || expr_calls(e->b)) return 1;
     for (int i = 0; i < e->nargs; i++) if (expr_calls(e->args[i])) return 1;
     for (int i = 0; i < e->narms; i++) if (expr_calls(e->arms[i].value)) return 1;
@@ -2895,7 +2895,7 @@ static int fw_pure(Expr *e) {
     case E_CONV: return !ty_is_aggr(e->ty) && (!e->a || fw_pure(e->a));
     case E_FIELD: return !e->field && fw_pure(e->a);
     case E_CALL:
-        if (e->callee || e->indirect || !e->bi || e->bi >= BI_MAP || e->bi == BI_KIND || e->bi == BI_RAW) return 0;
+        if (e->callee || e->indirect || !e->bi || bi_is_higher_order(e->bi) || e->bi == BI_KIND || e->bi == BI_RAW) return 0;
         for (int i = 0; i < e->nargs; i++) if (!fw_pure(e->args[i])) return 0;
         return 1;
     default: return 0;

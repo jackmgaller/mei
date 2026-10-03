@@ -166,8 +166,14 @@ typedef enum {
     BI_NCLIP, BI_OTZ, BI_CLERP,     /* the geometry instructions of the same names */
     BI_FROM_BITS16,               /* signed raw 4.12 -> fixed16 */
     BI_KIND, BI_RAW,                /* assert_eq() reports: a value's print kind, its raw 32 bits */
+    /* The higher-order builtins (they call a function per element): keep them last, since
+       bi_is_higher_order() tests for them as everything from BI_MAP on. */
     BI_MAP, BI_MAP_INTO, BI_FILTER, BI_FILTER_INTO, BI_REDUCE, BI_EACH,
 } Builtin;
+
+/* map, map_into, filter, filter_into, reduce, each: checked by check_intrinsic, generated as
+   loops of calls. */
+static inline int bi_is_higher_order(Builtin bi) { return bi >= BI_MAP; }
 
 typedef struct Sym Sym;
 typedef struct Local Local;

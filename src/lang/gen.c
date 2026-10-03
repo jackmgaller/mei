@@ -2098,7 +2098,7 @@ static Opnd gen_expr(Expr *e, int hint) {
     case E_CALL:
         if (e->bi == BI_MAP || (e->bi == BI_MAP_INTO && e->ty->k == TY_SLICE)) { LV lv = gen_intrinsic_aggr(e); return lv_addr(&lv); }
         if (e->bi == BI_LEN) return seq_len(e->args[0]);
-        if (e->bi >= BI_MAP) return gen_intrinsic(e, hint, NULL);
+        if (bi_is_higher_order(e->bi)) return gen_intrinsic(e, hint, NULL);
         if (e->bi == BI_LERP && !is_v(e->ty)) return gen_lerp_scalar(e, hint);
         if (e->bi) return gen_builtin(e, hint);
         if (ty_is_aggr(e->ty)) { LV out; gen_call(e, -1, &out); return lv_addr(&out); }
@@ -2425,7 +2425,7 @@ static void gen_stmt(Stmt *s) {
     case S_EXPR: {
         Expr *e = s->e;
         Opnd o;
-        if (e->bi >= BI_MAP) { if (e->bi == BI_MAP || (e->bi == BI_MAP_INTO && e->ty->k == TY_SLICE)) gen_intrinsic_aggr(e); else ofree(gen_intrinsic(e, -1, NULL)); o.k = O_NONE; }
+        if (bi_is_higher_order(e->bi)) { if (e->bi == BI_MAP || (e->bi == BI_MAP_INTO && e->ty->k == TY_SLICE)) gen_intrinsic_aggr(e); else ofree(gen_intrinsic(e, -1, NULL)); o.k = O_NONE; }
         else if (ty_is_aggr(e->ty)) { LV out; gen_call(e, -1, &out); o.k = O_NONE; }
         else o = gen_expr(e, -1);
         ofree(o);
@@ -2663,7 +2663,7 @@ static IntVec g_callmask;          /* parallel to g_callpos: registers each call
 /* The registers a call may change: the callee's own (when it was generated already) plus the
    argument and result registers. Calls through values, and unknown callees: everything. */
 static uint32_t call_mask(Expr *e) {
-    if (e->bi >= BI_MAP) {
+    if (bi_is_higher_order(e->bi)) {
         Func *t = e->target;
         return (t && t->clob_known ? t->clob : CLOB_FULL) | 0x1FEu | 0xF0000u;
     }
@@ -2715,7 +2715,7 @@ static void live_expr(Expr *e, int p) {
     if (!e) return;
     if (e->k == E_NAME && e->sym && e->sym->k == SY_LOCAL) use_local(e->sym->local, p);
     if (e->k == E_CALL && (e->callee || e->indirect)) call_push(p, call_mask(e));
-    if (e->k == E_CALL && e->bi >= BI_MAP) {
+    if (e->k == E_CALL && bi_is_higher_order(e->bi)) {
         /* the loop state is live across the per-element calls */
         call_push(p, call_mask(e));
         for (int i = 0; i < 8; i++) if (e->hid[i]) { use_local(e->hid[i], p); e->hid[i]->start = p - 1; }
@@ -2749,7 +2749,7 @@ static void live_asm_refs(Func *f, const char *text, int p) {
 static int count_calls(Expr *e) {
     if (!e) return 0;
     int n = (e->k == E_CALL && (e->callee || e->indirect)) || (e->k == E_BINARY && e->a && e->a->ty && e->a->ty->k == TY_MAT4 && e->ty && is_v(e->ty));
-    if (e->k == E_CALL && e->bi >= BI_MAP) n += 2;   /* a loop of calls: never a single call */
+    if (e->k == E_CALL && bi_is_higher_order(e->bi)) n += 2;   /* a loop of calls: never a single call */
     n += count_calls(e->a) + count_calls(e->b);
     for (int i = 0; i < e->nargs; i++) n += count_calls(e->args[i]);
     for (int i = 0; i < e->narms; i++) n += 2 * count_calls(e->arms[i].value);   /* not a single call */
