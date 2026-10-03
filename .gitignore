@@ -12,11 +12,9 @@ __pycache__/
 
 # Generated audio previews
 docs/audio/os_music_*.wav
-docs/audio/checkin_*.wav
 
 # Scratch files written by the cart test scripts
 carts/*/tests/_scenario*
-carts/*/tests/_shot.akr
 carts/*/tests/out/
 carts/*/tests/*.mei
 

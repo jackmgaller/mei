@@ -39,15 +39,14 @@ fn text(x: s32, y: s32, s: *u8, colour: u32) {
             let g = ch - 32
             let u = ((g & 15) << 3) as u32
             let v = ((g >> 4) << 11) as u32
-            let pos = (cx as u32 & 0xFFFF) | ((cy as u32) << 16)
             q[1] = tint
-            q[2] = pos
+            q[2] = __pos(cx, cy)
             q[3] = u | v | texinfo
-            q[4] = pos + 8
+            q[4] = __pos(cx + 8, cy)
             q[5] = (u + 8) | v
-            q[6] = pos + 0x80000
+            q[6] = __pos(cx, cy + 8)
             q[7] = u | (v + 0x800)
-            q[8] = pos + 0x80008
+            q[8] = __pos(cx + 8, cy + 8)
             q[9] = (u + 8) | (v + 0x800)
             ui_insert(q, 0x26)
         }

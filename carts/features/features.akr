@@ -1,10 +1,16 @@
 // Language features showcase: an enum state machine drives a menu; screens are picked
 // with `match`; a particle system is updated with each/filter/map_into/reduce; orbit
-// curves are function values, and the colour ramps are closures. Up/Down + A to choose,
+// curves are function values, and the colour ramps are closures. Flocking uses vectors,
+// creatures use enum states, and cellular automata use double-buffered arrays.
+// Up/Down + A to choose,
 // B to go back. Left alone, the cart cycles through its screens by itself.
 cart "Features"
 
-enum Screen { Menu, Particles, Orbits, About }
+import "flocking.akr"
+import "creatures.akr"
+import "automata.akr"
+
+enum Screen { Menu, Particles, Orbits, Flocking, Creatures, Automata, About }
 
 struct Item { label: *u8, target: Screen }
 struct Particle { pos: vec2, vel: vec2, life: s32, hue: u8 }
@@ -12,11 +18,12 @@ struct Particle { pos: vec2, vel: vec2, life: s32, hue: u8 }
 const MAX_PARTS = 96
 const IDLE_MENU = 75         // frames before the menu picks an item by itself
 const IDLE_SCREEN = 240      // frames before a screen returns to the menu by itself
+const IDLE_SIM = 600         // let the new simulations demonstrate their behaviour
 
 var screen = Screen.Menu
 var cursor = 0
 var idle = 0
-var items: [3]Item
+var items: [6]Item
 var parts: [96]Particle
 var count = 0
 var speeds: [96]fixed
@@ -27,7 +34,10 @@ var t: fixed
 fn init() {
     items[0] = Item { label: "PARTICLES", target: Screen.Particles }
     items[1] = Item { label: "ORBITS", target: Screen.Orbits }
-    items[2] = Item { label: "ABOUT", target: Screen.About }
+    items[2] = Item { label: "FLOCKING", target: Screen.Flocking }
+    items[3] = Item { label: "TINY CREATURES", target: Screen.Creatures }
+    items[4] = Item { label: "CELLULAR AUTOMATA", target: Screen.Automata }
+    items[5] = Item { label: "ABOUT", target: Screen.About }
     tint[0] = ramp(255, -1, 40)
     tint[1] = ramp(60, 255, -1)
     tint[2] = ramp(-1, 140, 255)
@@ -53,6 +63,9 @@ fn enter(s: Screen) {
     screen = s
     idle = 0
     if s == Screen.Particles { count = 0 }
+    if s == Screen.Flocking { flocking_reset() }
+    if s == Screen.Creatures { creatures_reset() }
+    if s == Screen.Automata { automata_reset() }
 }
 
 // ---- update
@@ -60,13 +73,21 @@ fn enter(s: Screen) {
 fn update() {
     t += 0.03
     idle += 1
-    if btn(UP | DOWN | LEFT | RIGHT | A | B | START) { idle = 0 }
+    if btn(UP | DOWN | LEFT | RIGHT | A | B | X | Y | L | R | START | SELECT) { idle = 0 }
     match screen {
         Menu => update_menu()
         Particles => update_particles()
+        Flocking => flocking_update()
+        Creatures => creatures_update()
+        Automata => automata_update()
         Orbits, About => {}
     }
-    if screen != Screen.Menu && (btnp(B) || idle > IDLE_SCREEN) {
+    var duration = IDLE_SCREEN
+    match screen {
+        Flocking, Creatures, Automata => duration = IDLE_SIM
+        else => {}
+    }
+    if screen != Screen.Menu && (btnp(B) || idle > duration) {
         // come back with the cursor on the next item
         cursor = (cursor + 1) % len(items)
         enter(Screen.Menu)
@@ -113,10 +134,14 @@ fn draw() {
         Menu => draw_menu()
         Particles => draw_particles()
         Orbits => draw_orbits()
+        Flocking => flocking_draw()
+        Creatures => creatures_draw()
+        Automata => automata_draw()
         About => draw_about()
     }
     text(8, 228, "CPU", rgb(120, 120, 140))
     text_int(40, 228, cpu_used(), rgb(120, 120, 140))
+    if screen != Screen.Menu { text(216, 228, "B: BACK", rgb(120, 120, 140)) }
 }
 
 fn heading(s: *u8) {
@@ -128,7 +153,7 @@ fn draw_menu() {
     cls(rgb(12, 14, 30))
     heading("MEI LANGUAGE FEATURES")
     for i in 0..len(items) {
-        let y = 70 + i * 24
+        let y = 54 + i * 22
         var colour = rgb(150, 150, 170)
         if i == cursor {
             colour = rgb(255, 220, 90)
@@ -137,7 +162,8 @@ fn draw_menu() {
         }
         text(80, y, items[i].label, colour)
     }
-    text(56, 160, "UP/DOWN + A TO CHOOSE", rgb(90, 90, 120))
+    text(56, 192, "UP/DOWN + A TO CHOOSE", rgb(120, 120, 150))
+    text(56, 208, "LEAVE IDLE FOR AUTO TOUR", rgb(90, 90, 120))
 }
 
 fn draw_particle(p: Particle) {
@@ -180,7 +206,9 @@ fn draw_about() {
     cls(rgb(20, 12, 24))
     heading("ABOUT")
     let lines = ["enum Screen { Menu, ... }", "match screen { ... }", "ramp(r, g, b): closures",
-                 "fn(p) => p.life > 0", "each / filter / map_into", "reduce(xs, 0, f, n)"]
+                 "fn(p) => p.life > 0", "each / filter / map_into", "reduce(xs, 0, f, n)",
+                 "vec2: steering a flock", "enum states: tiny creatures",
+                 "arrays: cellular automata"]
     for i in 0..len(lines) {
         text(24, 40 + i * 16, lines[i], rgb(200, 190, 230))
     }

@@ -1,0 +1,152 @@
+// A snapshot of the flock is read while the next velocities are written separately.
+// Neighbour distances are tested only after rejecting large x/y deltas: 16.16
+// squared distances across the entire screen would overflow.
+struct FlockBoid { pos: vec2, vel: vec2 }
+const FLOCK_COUNT = 28
+var flock_boids: [28]FlockBoid
+var flock_next: [28]vec2
+var flock_formation = false
+var flock_clock = 0
+var flock_auto = 0
+var flock_phase: fixed
+
+fn flocking_reset() {
+    flock_formation = false
+    flock_clock = 0
+    flock_auto = 0
+    flock_phase = 0.0
+    for i in 0..FLOCK_COUNT {
+        let a = fixed(i) * 0.2244
+        flock_boids[i] = FlockBoid {
+            pos: vec2(160.0 + cos(a) * 100.0, 119.0 + sin(a) * 62.0),
+            vel: vec2(-sin(a) * 1.5, cos(a) * 1.5),
+        }
+    }
+}
+
+fn flocking_update() {
+    flock_clock += 1
+    flock_auto += 1
+    flock_phase += 0.012
+    if btnp(A) || flock_auto >= 240 {
+        flock_formation = !flock_formation
+        flock_auto = 0
+    }
+    let leader = vec2(160.0 + cos(flock_phase) * 68.0, 119.0 + sin(flock_phase) * 24.0)
+    let forward = normalize(vec2(-sin(flock_phase) * 68.0, cos(flock_phase) * 24.0))
+    let side = vec2(-forward.y, forward.x)
+    for i in 0..FLOCK_COUNT {
+        let b = &flock_boids[i]
+        var separation = vec2(0.0, 0.0)
+        var alignment = vec2(0.0, 0.0)
+        var cohesion = vec2(0.0, 0.0)
+        var neighbours = 0
+        for j in 0..FLOCK_COUNT {
+            if j == i { continue }
+            let delta = flock_boids[j].pos - b.pos
+            if abs(delta.x) > 42.0 || abs(delta.y) > 42.0 { continue }
+            let d2 = dot(delta, delta)
+            if d2 < 1764.0 {
+                alignment = alignment + flock_boids[j].vel
+                cohesion = cohesion + delta
+                neighbours += 1
+                if d2 < 169.0 {
+                    separation = separation - delta * (1.0 / (d2 + 1.0))
+                }
+            }
+        }
+        var steer = separation * 0.9
+        if neighbours > 0 && !flock_formation {
+            steer = steer + (alignment / fixed(neighbours) - b.vel) * 0.04
+            steer = steer + cohesion / fixed(neighbours) * 0.0025
+        }
+        if flock_formation {
+            // Two trailing arms, with a separate slot for every struct in the array.
+            let row = fixed(i / 2)
+            var flank = -1.0
+            if i % 2 == 0 { flank = 1.0 }
+            let slot = leader - forward * (row * 4.0) + side * ((row + 1.0) * flank * 3.0)
+            let lead_velocity = vec2(-sin(flock_phase) * 0.816, cos(flock_phase) * 0.288)
+            steer = steer * 0.2 + (lead_velocity + (slot - b.pos) * 0.09 - b.vel) * 0.25
+        } else {
+            // A gentle clockwise drift keeps the flock exploring the whole field.
+            let centre = b.pos - vec2(160.0, 119.0)
+            steer = steer + vec2(-centre.y, centre.x) * 0.00025
+        }
+        let rock = b.pos - vec2(160.0, 119.0)
+        if abs(rock.x) < 48.0 && abs(rock.y) < 48.0 {
+            if dot(rock, rock) < 2304.0 { steer = steer + rock * 0.008 }
+        }
+        if b.pos.x < 26.0 { steer.x += 0.14 }
+        if b.pos.x > 294.0 { steer.x -= 0.14 }
+        if b.pos.y < 58.0 { steer.y += 0.14 }
+        if b.pos.y > 183.0 { steer.y -= 0.14 }
+        var velocity = b.vel + steer
+        let speed = length(velocity)
+        if speed > 2.1 { velocity = velocity * (2.1 / speed) }
+        if !flock_formation && speed < 1.1 && speed > 0.01 {
+            velocity = velocity * (1.1 / speed)
+        }
+        flock_next[i] = velocity
+    }
+    for i in 0..FLOCK_COUNT {
+        let b = &flock_boids[i]
+        b.vel = flock_next[i]
+        b.pos = b.pos + b.vel
+        // Hard limits are only a safety net; the soft wall forces act first.
+        b.pos.x = clamp(b.pos.x, 12.0, 308.0)
+        b.pos.y = clamp(b.pos.y, 48.0, 192.0)
+    }
+}
+
+// A flat triangle on the standard interface list; no meshes or external assets.
+fn flock_triangle(a: vec2, b: vec2, c: vec2, colour: u32) {
+    let p = packet_alloc(5)
+    if p == null { return }
+    p[1] = colour
+    p[2] = __pos(a.x as s32, a.y as s32)
+    p[3] = __pos(b.x as s32, b.y as s32)
+    p[4] = __pos(c.x as s32, c.y as s32)
+    ui_insert(p, 0x20)
+}
+
+fn flocking_draw() {
+    cls(rgb(7, 17, 27))
+    heading("FLOCKING: VECTORS / STRUCT ARRAYS")
+    text(8, 28, "28 BOIDS", rgb(120, 164, 177))
+    if flock_formation {
+        text(208, 28, "FORMATION", rgb(255, 214, 111))
+    } else {
+        text(256, 28, "SWARM", rgb(117, 232, 211))
+    }
+    // Sparse survey grid and a faceted obstacle leave plenty of negative space.
+    for y in 0..5 {
+        for x in 0..10 { rect(16 + x * 32, 53 + y * 32, 1, 1, rgb(33, 55, 70)) }
+    }
+    let centre = vec2(160.0, 119.0)
+    for i in 0..8 {
+        let a = fixed(i) * PI / 4
+        let b = a + PI / 4
+        var colour = rgb(34, 58, 73)
+        if i < 4 { colour = rgb(44, 72, 84) }
+        flock_triangle(centre, centre + vec2(cos(a), sin(a)) * 20.0,
+            centre + vec2(cos(b), sin(b)) * 20.0, colour)
+    }
+    rect(157, 116, 6, 6, rgb(75, 103, 111))
+    for i in 0..FLOCK_COUNT {
+        let b = &flock_boids[i]
+        let direction = normalize(b.vel)
+        let wing = vec2(-direction.y, direction.x)
+        let tail = b.pos - direction * 9.0
+        rect(tail.x as s32, tail.y as s32, 2, 2, rgb(34, 87, 97))
+        var colour = rgb(117, 232, 211)
+        if i % 3 == 0 { colour = rgb(130, 183, 255) }
+        if flock_formation && i < 2 { colour = rgb(255, 214, 111) }
+        flock_triangle(b.pos + direction * 5.0,
+            b.pos - direction * 3.0 + wing * 2.8,
+            b.pos - direction * 3.0 - wing * 2.8, colour)
+    }
+    rect(8, 201, 304, 1, rgb(33, 55, 70))
+    text(8, 208, "SEPARATE / ALIGN / COHERE", rgb(135, 174, 185))
+    text(8, 220, "A: SWARM / FORMATION", rgb(87, 122, 142))
+}

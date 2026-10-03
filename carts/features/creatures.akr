@@ -1,0 +1,238 @@
+// Small actors share an enum state machine. Pointers mutate their records in place;
+// match keeps each state's behaviour and appearance together.
+enum CreatureState: u8 { Wander, Seek, Eat, Home, Sleep }
+struct Creature {
+    pos: vec2, target: vec2, home: vec2,
+    state: CreatureState, timer: s32, food: s32, facing: s32,
+}
+struct CreatureFood { pos: vec2, active: bool }
+
+const CREATURE_COUNT = 8
+const CREATURE_FOOD_COUNT = 14
+var creatures: [8]Creature
+var creature_food: [14]CreatureFood
+var creature_frame = 0
+var creature_seed = 19
+
+fn creature_random(n: s32) -> s32 {
+    creature_seed = (creature_seed * 25173 + 13849) & 65535
+    return creature_seed % n
+}
+
+fn creature_roam(c: *Creature) {
+    c.state = CreatureState.Wander
+    c.timer = 75 + creature_random(85)
+    c.target = vec2(fixed(28 + creature_random(190)), fixed(99 + creature_random(82)))
+}
+
+fn creature_grow_food() {
+    for i in 0..CREATURE_FOOD_COUNT {
+        if !creature_food[i].active {
+            creature_food[i].pos = vec2(fixed(30 + creature_random(183)), fixed(99 + creature_random(78)))
+            creature_food[i].active = true
+            return
+        }
+    }
+}
+
+fn creatures_reset() {
+    creature_frame = 0
+    creature_seed = 19
+    for i in 0..CREATURE_FOOD_COUNT { creature_food[i].active = false }
+    for i in 0..10 { creature_grow_food() }
+    for i in 0..CREATURE_COUNT {
+        let c = &creatures[i]
+        c.home = vec2(fixed(257 + (i % 2) * 28), fixed(97 + (i / 2) * 24))
+        c.pos = vec2(fixed(47 + (i % 4) * 48), fixed(110 + (i / 4) * 46))
+        c.food = -1
+        c.facing = 1
+        creature_roam(c)
+        // Start with a lived-in habitat, so every state is immediately visible.
+        if i == 2 || i == 3 { c.state = CreatureState.Seek }
+        if i == 4 || i == 5 { c.state = CreatureState.Eat; c.timer = 45 + i * 6 }
+        if i == 6 || i == 7 {
+            c.pos = c.home
+            c.state = CreatureState.Sleep
+            c.timer = 120 + i * 8
+        }
+    }
+}
+
+// Chebyshev steering avoids a costly normalization for these tiny walkers.
+fn creature_walk(c: *Creature, speed: fixed) -> bool {
+    let d = c.target - c.pos
+    if abs(d.x) < speed && abs(d.y) < speed { c.pos = c.target; return true }
+    if d.x > 0.0 { c.pos.x += min(d.x, speed); c.facing = 1 }
+    else if d.x < 0.0 { c.pos.x -= min(-d.x, speed); c.facing = -1 }
+    if d.y > 0.0 { c.pos.y += min(d.y, speed) }
+    else if d.y < 0.0 { c.pos.y -= min(-d.y, speed) }
+    return false
+}
+
+fn creature_find_food(c: *Creature) {
+    var nearest = 10000
+    c.food = -1
+    for j in 0..CREATURE_FOOD_COUNT {
+        if creature_food[j].active {
+            let delta = creature_food[j].pos - c.pos
+            let dist = abs(delta.x as s32) + abs(delta.y as s32)
+            if dist < nearest { nearest = dist; c.food = j }
+        }
+    }
+    if c.food >= 0 { c.target = creature_food[c.food].pos }
+}
+
+fn creatures_update() {
+    creature_frame += 1
+    if creature_frame % 36 == 0 { creature_grow_food() }
+    if btnp(A) {
+        for i in 0..6 { creature_grow_food() }
+        for i in 0..CREATURE_COUNT {
+            let c = &creatures[i]
+            if c.state == CreatureState.Sleep || c.state == CreatureState.Home {
+                c.state = CreatureState.Seek
+                c.food = -1
+            }
+        }
+    }
+    for i in 0..CREATURE_COUNT {
+        let c = &creatures[i]
+        c.timer -= 1
+        match c.state {
+            Wander => {
+                creature_walk(c, 0.45)
+                if c.timer <= 0 { c.state = CreatureState.Seek; c.food = -1 }
+            }
+            Seek => {
+                if c.food < 0 { creature_find_food(c) }
+                else if !creature_food[c.food].active { creature_find_food(c) }
+                if c.food >= 0 && creature_walk(c, 0.8) {
+                    creature_food[c.food].active = false
+                    c.state = CreatureState.Eat
+                    c.timer = 55
+                }
+            }
+            Eat => {
+                if c.timer <= 0 {
+                    c.state = CreatureState.Home
+                    c.target = c.home
+                }
+            }
+            Home => {
+                if creature_walk(c, 1.05) {
+                    c.state = CreatureState.Sleep
+                    c.timer = 100 + i * 7
+                }
+            }
+            Sleep => { if c.timer <= 0 { creature_roam(c) } }
+        }
+    }
+}
+
+fn creature_colour(state: CreatureState) -> u32 {
+    match state {
+        Wander => return rgb(119, 212, 157)
+        Seek => return rgb(114, 201, 231)
+        Eat => return rgb(255, 179, 120)
+        Home, Sleep => return rgb(190, 161, 229)
+    }
+}
+
+fn creature_berry(x: s32, y: s32) {
+    rect(x - 1, y - 4, 3, 2, rgb(125, 188, 103))
+    rect(x - 3, y - 2, 6, 4, rgb(206, 90, 115))
+    rect(x - 2, y - 2, 2, 1, rgb(255, 185, 172))
+}
+
+fn creature_draw_actor(c: *Creature, index: s32) {
+    let x = c.pos.x as s32
+    var y = c.pos.y as s32
+    let moving = c.state == CreatureState.Wander || c.state == CreatureState.Seek || c.state == CreatureState.Home
+    var bob = 0
+    if moving { bob = ((creature_frame / 10 + index) % 2) }
+    if c.state == CreatureState.Eat { bob = (creature_frame / 7) % 2 }
+    rect(x - 7, y + 3, 14, 3, rgb(24, 47, 43))
+    y -= bob
+    let col = creature_colour(c.state)
+    let ink = rgb(34, 53, 66)
+    // Two ears, a rounded body, cheeks and tiny stepping feet.
+    rect(x - 5, y - 12, 3, 5, col)
+    rect(x + 2, y - 12, 3, 5, col)
+    rect(x - 4, y - 11, 1, 3, rgb(245, 173, 182))
+    rect(x + 3, y - 11, 1, 3, rgb(245, 173, 182))
+    rect(x - 5, y - 8, 10, 11, col)
+    rect(x - 7, y - 5, 14, 6, col)
+    rect(x - 4, y + 3, 3, 2, ink)
+    rect(x + 1, y + 3 - bob, 3, 2, ink)
+    var look = 0
+    if moving { look = c.facing }
+    if c.state == CreatureState.Sleep {
+        rect(x - 4, y - 3, 3, 1, ink)
+        rect(x + 1, y - 3, 3, 1, ink)
+    } else {
+        rect(x - 4 + look, y - 5, 2, 3, ink)
+        rect(x + 1 + look, y - 5, 2, 3, ink)
+        rect(x - 4 + look, y - 5, 1, 1, rgb(242, 249, 237))
+        rect(x + 1 + look, y - 5, 1, 1, rgb(242, 249, 237))
+    }
+    rect(x - 5, y - 1, 2, 1, rgb(237, 138, 147))
+    rect(x + 3, y - 1, 2, 1, rgb(237, 138, 147))
+    match c.state {
+        Wander => { rect(x - 1, y - 17, 3, 2, col) }
+        Seek => { text(x - 2, y - 24, "?", col) }
+        Eat => { creature_berry(x, y + 1); text(x - 2, y - 24, "+", col) }
+        Home => { text(x - 2, y - 24, "z", col) }
+        Sleep => { text(x + 4, y - 22 - (creature_frame / 25 % 3), "Z", col) }
+    }
+}
+
+fn creatures_draw() {
+    cls(rgb(15, 28, 35))
+    heading("TINY CREATURES: ENUM / MATCH")
+    text(12, 29, "A LITTLE WORLD OF SMALL DECISIONS", rgb(166, 193, 183))
+    rect(9, 49, 302, 145, rgb(36, 66, 56))
+    rect(12, 52, 228, 139, rgb(43, 81, 63))
+    rect(243, 52, 65, 139, rgb(46, 55, 73))
+    text(22, 62, "BERRY PATCH", rgb(143, 187, 128))
+    text(249, 62, "NAP NOOK", rgb(177, 168, 208))
+    // Sparse grass and flowers make the simulation's paths easy to read.
+    for i in 0..22 {
+        let x = 23 + (i * 47 % 206)
+        let y = 83 + (i * 31 % 102)
+        rect(x, y, 1, 3, rgb(68, 112, 77))
+        rect(x + 2, y - 1, 1, 4, rgb(68, 112, 77))
+        if i % 6 == 0 { rect(x, y - 2, 3, 2, rgb(194, 180, 107)) }
+    }
+    for i in 0..CREATURE_COUNT {
+        let x = creatures[i].home.x as s32
+        let y = creatures[i].home.y as s32
+        rect(x - 10, y - 8, 20, 15, rgb(80, 68, 94))
+        rect(x - 9, y - 7, 18, 12, rgb(103, 87, 115))
+        rect(x - 8, y + 5, 16, 2, rgb(149, 120, 143))
+    }
+    for i in 0..CREATURE_FOOD_COUNT {
+        if creature_food[i].active {
+            creature_berry(creature_food[i].pos.x as s32, creature_food[i].pos.y as s32)
+        }
+    }
+    for i in 0..CREATURE_COUNT { creature_draw_actor(&creatures[i], i) }
+    // The live legend pairs enum states with the colours used on the actors.
+    var counts: [4]s32
+    for i in 0..CREATURE_COUNT {
+        match creatures[i].state {
+            Wander => counts[0] += 1
+            Seek => counts[1] += 1
+            Eat => counts[2] += 1
+            Home, Sleep => counts[3] += 1
+        }
+    }
+    let labels = ["WANDER", "SEEK", "EAT", "REST"]
+    for i in 0..4 {
+        let x = 12 + i * 77
+        let col = creature_colour(i as CreatureState)
+        rect(x, 201, 5, 5, col)
+        text(x + 9, 200, labels[i], col)
+        text_int(x + 61, 200, counts[i], rgb(235, 241, 226))
+    }
+    text(12, 215, "ENUM STATES + MATCH   A: FEED / WAKE", rgb(151, 171, 190))
+}

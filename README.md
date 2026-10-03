@@ -11,3 +11,6 @@ make && ./build/mei
 ```
 
 More in [docs/OVERVIEW.md](docs/OVERVIEW.md).
+
+For VS Code syntax highlighting of Akari (`.akr`) files, see
+[the Akari extension](tools/vscode-akari/README.md) for installation instructions.

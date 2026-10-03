@@ -43,6 +43,9 @@ fn draw() {
     font_shadow_off()
     font_text(150, 162, "I", rgb(255, 0, 0))
     text(10, 200, "8x8", rgb(255, 255, 255))
+    // an 8x8 glyph half off the left edge, and the same glyph whole for comparison
+    text(-4, 220, "W", rgb(255, 255, 255))
+    text(40, 220, "W", rgb(255, 255, 255))
 }
 
 fn update() {
@@ -65,4 +68,15 @@ fn update() {
     show("shadow", px(103, 163))                // expect: shadow 0
     show("no shadow", px(153, 163))             // expect: no shadow 7FFF
     show("8x8 text", px(11, 201))               // expect: 8x8 text 7FFF
+    // the visible half of the clipped glyph matches the right half of the whole one
+    var lit = 0
+    var diff = 0
+    for y in 219..229 {
+        for x in 0..4 {
+            if px(44 + x, y) != 0 { lit += 1 }
+            if px(x, y) != px(44 + x, y) { diff += 1 }
+        }
+    }
+    print_int((lit > 0) as s32); println("")     // expect: 1
+    print_int(diff); println("")                 // expect: 0
 }

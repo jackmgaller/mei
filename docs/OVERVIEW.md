@@ -9,7 +9,8 @@ A 3D fantasy console modelled on PlayStation-era hardware, implemented from
 - A vector unit with eight 4-lane 16.16 registers (`vxfm`, `vproj`, …) and GTE-style geometry
   instructions (`vxp3`, `nclip`, `otz`, `clerp`; see [`DECISIONS.md`](DECISIONS.md#geometry-instructions))
 - A GPU that only fills 2D triangles: affine textures, whole-pixel vertices, no depth buffer,
-  an ordering table, four blend modes and 2,000 triangles per frame
+  an ordering table, four blend modes, and a budget of 1,000,000 GPU cycles and 4,000
+  triangles per frame
 - 22,050 Hz audio: 16 channels, ADPCM, reverb; two controllers, 2 MB RAM, 2 MB cart ROM, 1 MB VRAM
 
 The look comes from those rules (texture warp, vertex wobble, sorting glitches, dither),
@@ -63,7 +64,8 @@ J K U I = A B X Y, Q E = L R, Enter = Start, Backspace = Select, F2 home, F5 res
 Gamepads work too. On macOS, XInput-only controllers (Xbox 360-protocol pads such as an
 8BitDo Ultimate 2C on a cable) have no system driver, so when libusb is installed
 (`brew install libusb`) the desktop build reads them directly over USB
-(`src/platform/xinput_usb.c`). `carts/padtest` shows what the console sees from each pad.
+(`src/platform/xinput_usb.c`). The system menu's Controllers screen shows what the console
+sees from each pad.
 
 For the browser, serve `build/web` (for example `python3 -m http.server -d build/web`) and
 open it. The page lists the bundled carts and accepts dropped or opened `.mei` files.

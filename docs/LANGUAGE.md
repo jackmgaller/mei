@@ -928,7 +928,8 @@ index into an array of 256 or more. The stack check costs 2-3 cycles per call. I
 through a pointer (`p[i]`) is not checked: a pointer has no length. The failure paths are out
 of line, after each function's `ret`. Without these options indexing checks are omitted. The explicit-destination
 `map(xs, f, out)` still checks capacities in release builds. The reports come from `__check_fail` and `__bounds_fail` in
-`stdlib/debug.akr`. On Check-In! a `-g` build uses about 4-5 % more cycles.
+`stdlib/debug.akr`. On Check-In! (a large cart, since removed) a `-g` build used about 4-5 % more
+cycles.
 
 Locals whose address is never taken live in registers when possible: the compiler numbers
 statements, gives each local a live range, and shares registers between locals whose ranges
@@ -1634,17 +1635,6 @@ a map. Signal: `bc_carrier`, `bc_locked`, `bc_signal` (0–4 bars) and the packe
 bytes: `bc_raw`, `bc_raw_read`, `bc_hamming`, `bc_crc16`. The headless runner replays a
 recording with `--broadcast FILE` (tests: `// broadcast: data/broadcast.bin`, and
 `// broadcast-noise: BER`).
-
-### 3D toolkit (`tsumiki.akr`)
-
-Tsumiki (積み木, "building blocks") is a small toolkit for playable 3D scenes, not in the
-prelude: `import "tsumiki.akr"`. It builds levels from boxes, ramps, cylinders and terrain;
-moves characters with a fixed-point controller (slopes, steps, coyote time, moving platforms);
-plays rigid-part animations with cross-fades and vertex morphs; runs pooled particles and five
-camera modes; and draws it all with `tk_draw()`. Its modules live in `stdlib/tsumiki/` (an
-import of a subdirectory works like any other), and `tools/tsumiki.py` builds models, clips,
-morphs and texture cells from a `.toy` file. The guide and full reference is
-[`TSUMIKI.md`](TSUMIKI.md); `carts/playroom` is a whole game made with it.
 
 ## Saving
 
