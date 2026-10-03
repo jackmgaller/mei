@@ -5,12 +5,12 @@ import "render.akr"
 import "hud.akr"
 import "sfx.akr"
 
-embed TEX4: u8 = "tex4.bin"           // 4-bit atlas, slot 0
-embed TEX4B: u8 = "tex4b.bin"         // 4-bit 2x2-tiled copies for the coarse LOD, slot 1
-embed PAL4: u16 = "pal4.bin"          // 4-bit palettes 0-15
-embed TEX8: u8 = "tex8.bin"           // 8-bit texture, slots 2-3
-embed PAL8: u16 = "pal8.bin"          // 8-bit palettes 1-3
-embed SAVE_ICON: SaveMeta = "save_icon.bin"   // memory card title and sun/moon icon
+embed TEX4: u8 = "art/tex4.bin"       // 4-bit atlas, slot 0
+embed TEX4B: u8 = "art/tex4b.bin"     // 4-bit 2x2-tiled copies for the coarse LOD, slot 1
+embed PAL4: u16 = "art/pal4.bin"      // 4-bit palettes 0-15
+embed TEX8: u8 = "art/tex8.bin"       // 8-bit texture, slots 2-3
+embed PAL8: u16 = "art/pal8.bin"      // 8-bit palettes 1-3
+embed SAVE_ICON: SaveMeta = "art/save_icon.bin"   // memory card title and sun/moon icon
 
 // The best time is kept on the memory card (save 0).
 struct SaveData { version: u32, best: s32 }

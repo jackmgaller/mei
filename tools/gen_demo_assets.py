@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates the demo cart's assets in carts/demo/:
+"""Generates the demo cart's assets in carts/demo/art/:
   cube.bin   - a textured, Gouraud-shaded cube (6 quads)
   ground.bin - a 16x16 checkerboard of flat quads
   tex.bin    - a 4-bit 32x32 brick texture for slot 0 (stride 128 bytes, 32 rows)
@@ -8,7 +8,8 @@ import os, struct, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from meshlib import Mesh, rgb
 
-out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'carts', 'demo')
+out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'carts', 'demo', 'art')
+os.makedirs(out, exist_ok=True)
 
 def cross(a, b):
     return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Generates the assets of the "Sun & Moon Orbs" cart in carts/orbs/:
+"""Generates the assets of the "Sun & Moon Orbs" cart in carts/orbs/ (binaries in art/ and
+audio/, like every cart):
 
   tex4.bin      4-bit texture atlas for slot 0 (32x32 cells, one 16-colour palette each)
   pal4.bin      its palettes: 4-bit palettes 0-15 (colours 0-255)
@@ -24,12 +25,16 @@ from meshlib import Mesh, rgb, DOUBLE, SEMI
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'carts', 'orbs')
-os.makedirs(OUT, exist_ok=True)
+ART = os.path.join(OUT, 'art')
+AUDIO = os.path.join(OUT, 'audio')
+os.makedirs(ART, exist_ok=True)
+os.makedirs(AUDIO, exist_ok=True)
 rng = np.random.default_rng(1234)
 
 
 def write(name, data):
-    with open(os.path.join(OUT, name), 'wb') as f:
+    """Sounds (.raw) go to audio/, everything else to art/."""
+    with open(os.path.join(AUDIO if name.endswith('.raw') else ART, name), 'wb') as f:
         f.write(data)
 
 
@@ -1399,8 +1404,8 @@ lines.append('const SHRINE_X: fixed = %s' % fx(SHRINE[0]))
 lines.append('const SHRINE_Z: fixed = %s' % fx(SHRINE[1]))
 lines.append('')
 for ch, c, r, nv, nf, lo_, hi_, nvl, nfl in chunk_info:
-    lines.append('embed CHUNK%d: Mesh = "chunk%d.bin"         // %d vertices, %d faces' % (ch, ch, nv, nf))
-    lines.append('embed CHUNK%d_LO: Mesh = "chunk%d_lo.bin"   // %d vertices, %d faces' % (ch, ch, nvl, nfl))
+    lines.append('embed CHUNK%d: Mesh = "art/chunk%d.bin"         // %d vertices, %d faces' % (ch, ch, nv, nf))
+    lines.append('embed CHUNK%d_LO: Mesh = "art/chunk%d_lo.bin"   // %d vertices, %d faces' % (ch, ch, nvl, nfl))
 lines.append('')
 lines.append('// Draws the level chunks that may be visible (sphere test against the view), with the')
 lines.append('// fine version near the camera and the coarse one further away.')

@@ -2,12 +2,12 @@
 // effects. Transparent effects use all four blend modes: water (0, half and half), glows
 // (1, additive), blob shadows (2, subtractive) and light beams (3, quarter additive).
 
-embed RING: Mesh = "ring.bin"
-embed WATER: Mesh = "water.bin"
-embed PLAYER: Mesh = "player.bin"
-embed FOOT: Mesh = "foot.bin"
-embed ORB_SUN: Mesh = "orb_sun.bin"
-embed ORB_MOON: Mesh = "orb_moon.bin"
+embed RING: Mesh = "art/ring.bin"
+embed WATER: Mesh = "art/water.bin"
+embed PLAYER: Mesh = "art/player.bin"
+embed FOOT: Mesh = "art/foot.bin"
+embed ORB_SUN: Mesh = "art/orb_sun.bin"
+embed ORB_MOON: Mesh = "art/orb_moon.bin"
 
 const FOG_TEX = 0xDC96C8        // rgb(200, 150, 220): textured faces fade toward half of it
 const FOG_FLAT = 0x6E4B64       // rgb(100, 75, 110): the same look for untextured faces
