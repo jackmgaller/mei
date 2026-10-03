@@ -109,6 +109,13 @@ test: $(TESTS) $(B)/meiasm $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe $(B)
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldpack.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldpack.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldkit.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldkit.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldverify.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless SCENE_PROBE=$(B)/mei-scene-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldverify.py; fi
+	@if command -v python3 >/dev/null 2>&1; then echo "== tools/check_generated.sh"; PYTHONDONTWRITEBYTECODE=1 ./tools/check_generated.sh; fi
+
+# Generated files (stdlib faces and data tables, the reverb table, ADPCM test vectors) match
+# what their generators make now.
+.PHONY: check-generated
+check-generated:
+	PYTHONDONTWRITEBYTECODE=1 ./tools/check_generated.sh
 
 # Agent asset recipes, binary exports and six-view renders through the real GPU.
 .PHONY: test-world

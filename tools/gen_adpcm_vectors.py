@@ -2,7 +2,7 @@
 """Writes tests/adpcm_vectors.h: ADPCM reference vectors for tests/test_audio.c, made with
 the independent Python decoder in tools/mei_adpcm.py and a Python model of an ADPCM
 channel (pitch, loop, history), so the C core is checked against a second implementation.
-Run: python3 tools/gen_adpcm_vectors.py"""
+Run: python3 tools/gen_adpcm_vectors.py [output path]   (default tests/adpcm_vectors.h)"""
 import os, sys
 import numpy as np
 
@@ -101,7 +101,7 @@ def main():
         out.append(carr(f'ADPCM_SC{i}_R', 'int16_t', R))
         names.append(f"    {{{mus}, {ch}, {ln}, {lp}, 0x{pitch:X}, {looping}, {vl}, {vr}, {n}, ADPCM_SC{i}_L, ADPCM_SC{i}_R}},")
     out.append("static const AdpcmScenario ADPCM_SCENARIOS[] = {\n" + '\n'.join(names) + "\n};\n")
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tests', 'adpcm_vectors.h')
+    path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tests', 'adpcm_vectors.h')
     open(path, 'w').write('\n'.join(out))
     print(f"wrote {os.path.normpath(path)}")
 
