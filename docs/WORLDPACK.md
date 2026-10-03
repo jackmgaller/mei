@@ -660,7 +660,8 @@ largest radius (2). World positions in and out are `fixed` world coordinates.
 |---|---|
 | `wp_open(pack) -> bool` | open a pack (checks magic, version, flags, grid); layers start as the pack says |
 | `wp_cell_size()`, `wp_cell_index(x)`, `wp_cell(i, j)`, `wp_cell_at(p)`, `wp_cell_centre(c)` | the grid |
-| `wp_layer_find(name)`, `wp_layer_on(id)`, `wp_layer_set(id, on)`, `wp_cell_mask(c)` | layers (exclusive groups applied) |
+| `wp_layer_count()`, `wp_layer_name(id)`, `wp_layer_find(name)`, `wp_layer_on(id)`, `wp_layer_set(id, on)`, `wp_cell_mask(c)` | layers (exclusive groups applied) |
+| `wp_pad()` | the header's `pad`: how far walls are copied past a cell, the largest radius `wp_push` answers for exactly |
 | `wp_draw(eye, yaw, pitch)` | the far, ground and near passes; leaves the near camera set, relative to `wp_view_origin()` |
 | `wp_view_origin()` | where this frame is drawn around: draw the game's own meshes at `pos − wp_view_origin()` |
 | `wp_clip_near`, `wp_near_far`, `wp_far_ring`, `wp_region_loaded`, `wp_ground_first` | settings (0.1, 1.5 cells, 3, −1 = any, true; false draws ground in the near pass, as 1.0 did) |
@@ -670,6 +671,7 @@ largest radius (2). World positions in and out are `fixed` world coordinates.
 | `wp_hit_normal()` | the unit front normal of what was hit |
 | `wp_entity(n)`, `wp_cell_entity(c, k)`, `wp_entity_pos(e)`, `wp_entity_live(e)`, `wp_entity_params(e)`, `wp_entity_mesh(e)`, `wp_entity_coll(e)` | entities |
 | `wp_track(p, radius, spawn, retire)`, `wp_track_clear(retire)` | spawn and retire as the area and layers change |
+| `wp_region_count()`, `wp_region_name(k)`, `wp_variant_name(k, v)` | region and palette variant names (the name accessors answer null for an index out of range) |
 | `wp_region(k)`, `wp_palette_load(k, v)`, `wp_palette_blend(k, va, vb, t)`, `wp_textures_load(k)`, `wp_texture_load(k, t)` | region palettes and textures (spreading a swap over frames is the game's: one `wp_texture_load` a frame) |
 
 Not implemented: reading audio banks and backdrops, swapping a region's textures across frames by

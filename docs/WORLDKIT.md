@@ -413,7 +413,10 @@ the type numbers, an Akari `struct` per type with parameters and an `enum` per e
 `GAME.game.akr`, which every world of the game imports. `saved` asks the kit for a persistent bit
 per entity of that type. `probe` describes the player's body: the kit classifies collision by
 `floor_max_degrees` (and `ceiling_max_degrees`, default 45) and copies walls `radius` past cell
-edges; the World Checker will sample cameras with it. It is geometry, not movement rules.
+edges; the World Checker samples cameras with its `radius`, `height` and `step`. `GAME.game.akr`
+exports it as `GAME_PROBE_RADIUS` and `_FLOOR_MAX_DEGREES`, `_HEIGHT` and `_STEP` when the
+schema gives them, and `_CEILING_MAX_DEGREES` (always: the angle the kit used), so a cart moves
+the same body the level was checked for. It is geometry, not movement rules.
 Everything else (what `night` means, whether a coin respawns) is the game's. Entity IDs are
 world-wide, so a `ref` and a saved bit can name any entity.
 
@@ -693,7 +696,7 @@ For a world named `city` of a game named `game`, `build` produces:
 |---|---|
 | `city.world.bin` | The pack: index, regions, cells, mesh pool, collision, entity records |
 | `city.akr` | `embed WORLD_CITY: u8 = "city.world.bin"`; `world_city_load()` (opens the pack, copies the swatch, loads every region's first variant); constants for regions, variants, colour ranges (`_SURFACE`, `_EMISSIVE` and their counts), layers, entity numbers and saved bits; `world_city_string()` for `name` parameters |
-| `game.game.akr` | The game's type numbers, parameter `struct`s and `enum`s, imported by every world of the game; make links one copy per game for a cart's worlds, so a cart compiles it once ([Using a world in a cart](#using-a-world-in-a-cart)) |
+| `game.game.akr` | The game's type numbers, world numbers, probe constants, parameter `struct`s and `enum`s, imported by every world of the game; make links one copy per game for a cart's worlds, so a cart compiles it once ([Using a world in a cart](#using-a-world-in-a-cart)) |
 | `city.swatch` | The 8-byte palette swatch row, when any material is palette-backed |
 | `city.ids.json` | A copy of the ID lock file (the lock itself is written beside the recipe) |
 | `source/` | The world file, cell files and every asset recipe used, as built, and the game schema exactly as written (Mochi comments kept; the report's `game_sha256` is the hash of its JSON form, so comments and layout do not change it) |
@@ -878,11 +881,19 @@ edit, the errors, two worlds of one game).
 
 **World Viewer** (`carts/worldview/`, built on request) is the example: `make
 build/carts/worldview.mei`, then `./build/mei build/carts/worldview.mei`. It flies a camera
-through both example worlds, or walks it (the floor under it followed and walls pushed out at
-the game's probe radius, through `wp_floor` and `wp_push`), and shows the cell, triangles drawn,
-CPU and GPU cycles and the surface byte under the camera. Stick: move; d-pad or right stick:
+through both example worlds, or walks it as the game's probe body (`GAME_PROBE_RADIUS`,
+`_HEIGHT` and `_STEP`: the eye at the body's height, floors followed up to a step through
+`wp_floor`, walls pushed out at the radius through `wp_push`), and shows the cell, triangles
+drawn, CPU and GPU cycles, the surface byte under the camera and the names of the variant and
+layer (`wp_variant_name`, `wp_layer_name`). Stick: move; d-pad or right stick:
 look; L and R: down and up; A: walk or fly; B: next palette variant; SELECT and X: choose a layer
 and switch it; START: next world; Y: hide the overlay.
+
+**Open** (found while writing World Viewer; neither is built): a helper that draws the live
+entities' meshes in the near cells, which every game that draws entities writes for itself
+(World Viewer's `draw_entities()`, the World Checker's verification cart); and a way to call
+"the open world's" generated functions without a branch per world (World Viewer's
+`world_load(k)` chooses between `world_test_room_load()` and `world_two_districts_load()`).
 
 ## Open questions
 

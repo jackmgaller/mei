@@ -301,6 +301,13 @@ fn wp_cell_centre(c: *WpCell) -> vec3 {
 
 fn wp_layer_count() -> s32 { return wp_pack.layer_count as s32 }
 
+// The layer's name, or null for an id outside 0 .. wp_layer_count() - 1.
+fn wp_layer_name(id: s32) -> *u8 {
+    if id < 0 || id >= wp_pack.layer_count as s32 { return null }
+    let layers = (__wp_base + wp_pack.layer_off) as *WpLayer
+    return (__wp_base + layers[id].name) as *u8
+}
+
 // The id of the layer with this name, or -1.
 fn wp_layer_find(name: *u8) -> s32 {
     let layers = (__wp_base + wp_pack.layer_off) as *WpLayer
@@ -873,6 +880,26 @@ fn __wp_track_change(c: *WpCell, from: u32, to: u32, f: fn(*WpEntity)) {
 fn wp_region(k: s32) -> *WpRegion {
     return (__wp_base + wp_pack.region_off) as *WpRegion + k
 }
+
+fn wp_region_count() -> s32 { return wp_pack.region_count as s32 }
+
+// Region k's name, or null for k outside 0 .. wp_region_count() - 1.
+fn wp_region_name(k: s32) -> *u8 {
+    if k < 0 || k >= wp_pack.region_count as s32 { return null }
+    return (__wp_base + wp_region(k).name) as *u8
+}
+
+// The name of region k's palette variant v (wp_region(k).variant_count of them), or null.
+fn wp_variant_name(k: s32, v: s32) -> *u8 {
+    if k < 0 || k >= wp_pack.region_count as s32 { return null }
+    let r = wp_region(k)
+    if v < 0 || v >= r.variant_count as s32 { return null }
+    return (__wp_base + ((__wp_base + r.palette_off) as *u32)[v]) as *u8
+}
+
+// How far the pack copied walls past each cell's edge (its header's pad): the largest radius
+// wp_push() answers for exactly.
+fn wp_pad() -> fixed { return wp_pack.pad }
 
 // Loads palette variant v of region k into palette memory.
 fn wp_palette_load(k: s32, v: s32) {

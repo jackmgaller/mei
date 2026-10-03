@@ -6,7 +6,7 @@
 //   test_room (start: flying at (32, 3, 10), looking +Z, in front of the room's floor slab)
 //      3  check: cell 0,0, no floor under the camera
 //      5..48  forward, flying: check: over the slab (floor at 0)
-//     50  A: walk; check: the camera dropped to the floor plus EYE_HEIGHT
+//     50  A: walk; check: the camera dropped to the floor plus the probe height
 //     51..200  forward: check: the closed gate (z 22) stopped the camera
 //    210  SELECT (layer gate_open), 215 X; check: gate_open on, gate_closed off (one group)
 //    220..280  forward: check: through the open gate
@@ -16,7 +16,7 @@
 //    310..329  R: up 5 units; check
 //    330..459  forward: check (465): in cell 1,0
 //    470  X (festival on); check: more placements drawn than before
-//    480  A: walk; check: on the ground (surface 1, "ground"), at EYE_HEIGHT
+//    480  A: walk; check: on the ground (surface 1, "ground"), at the probe height
 //    490  B; check: night colours
 //    500  check: the summary line
 
@@ -99,11 +99,11 @@ fn test_hook(f: s32) {
         ok("fly: over the floor")
     }
     if f == 50 {
-        assert(walking && near(eye.y, EYE_HEIGHT))
+        assert(walking && near(eye.y, eye_height()))
         ok("walk: dropped to the floor")
     }
     if f == 200 {
-        assert(walking && eye.z > 21.0 && eye.z < 22.0 && near(eye.y, EYE_HEIGHT))
+        assert(walking && eye.z > 21.0 && eye.z < 22.0 && near(eye.y, eye_height()))
         ok("walk: the closed gate stops the camera")
     }
     if f == 215 {
@@ -111,7 +111,7 @@ fn test_hook(f: s32) {
         ok("layer gate_open on, gate_closed off")
     }
     if f == 280 {
-        assert(eye.z > 23.0 && near(eye.y, EYE_HEIGHT))
+        assert(eye.z > 23.0 && near(eye.y, eye_height()))
         ok("walk: through the open gate")
     }
     if f == 290 {
@@ -137,7 +137,7 @@ fn test_hook(f: s32) {
         ok("layer festival on: more placements drawn")
     }
     if f == 480 {
-        assert(walking && near(eye.y, EYE_HEIGHT))
+        assert(walking && near(eye.y, eye_height()))
         assert(wp_floor(eye, 0.0) && wp_hit.surface == 1)
         ok("walk: on the ground, surface 1")
     }

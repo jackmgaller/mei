@@ -534,6 +534,9 @@ class ConsoleTests(unittest.TestCase):
             self.assertEqual(got['trigger'], ['1', '1', '0', '1'])        # target: entity 0; time_window: day
             self.assertEqual(got['trigger_more'], [fx(2), '1', '0', '1'])
             self.assertEqual(got['event'], ['open_gate'])
+            self.assertEqual(got['names'], ['lab', 'night', 'gate_open'])
+            self.assertEqual(got['names_out'], ['1', '0', '0', '0'])
+            self.assertEqual(got['probe'], [fx(0.3), fx(1.6), fx(0.32), fx(45)])
             lab = report['regions']['lab']
             day, night = lab['variants']['day'], lab['variants']['night']
             rgb15 = lambda c: (int(c[1:3], 16) >> 3) | (int(c[3:5], 16) >> 3) << 5 | (int(c[5:7], 16) >> 3) << 10
