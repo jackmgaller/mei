@@ -16,7 +16,7 @@ is deterministic.
 | Compressed audio | A PS1-SPU-style 4-bit ADPCM (3.5 : 1 against 16-bit), selected per channel; see [Audio upgrade](#audio-upgrade-adpcm-16-channels-reverb). |
 | Standard library location | Compiled into each cart (counts against its ROM size). |
 | Culling/clipping helpers | Four geometry instructions in the reserved opcodes 19–1B and 1F: a back-face test, an ordering-table depth, a colour blend and a three-vertex transform (see [Geometry instructions](#geometry-instructions)). The CPU has 63 instructions. Clipping stays in software. |
-| Fill rate | Budgeted: the GPU has 1,000,000 cycles a tick (a 60 MHz GPU beside the 30 MHz CPU), charged by a cost table (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a clear). A frame over budget is shown late, never cut short; the triangle limit is raised to 4,000 as a backstop. See [GPU budget](#gpu-budget). The plane chip ([PLANES.md](PLANES.md)) costs the GPU nothing. |
+| Fill rate | Budgeted: the GPU, named the **Prism Engine** (the 3D polygon processor), has 1,000,000 cycles a tick (a 60 MHz GPU beside the 30 MHz CPU), charged by a cost table (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a clear). A frame over budget is shown late, never cut short; the triangle limit is raised to 4,000 as a backstop. See [GPU budget](#gpu-budget). The plane chip, the **Horizon Engine** (the scrolling plane processor, [PLANES.md](PLANES.md)), costs the GPU nothing. |
 | Controller count | Two. Each also has a **Select** button (bit 11 of `PAD1`/`PAD2`), added to the spec's eleven. |
 
 ## Details filled in
@@ -186,14 +186,15 @@ do it in 6 cycles, so it would save at most 2, while fog works on packed colours
 
 ## GPU budget
 
-The spec leaves the GPU's fill rate open and caps it at 2,000 triangles a frame. Mei gives the
-GPU a cycle budget like the CPU's instead: it is a 60 MHz chip beside the 30 MHz CPU, so it has
-**1,000,000 GPU cycles per tick**. A frame that needs more is shown late, as on the PlayStation,
-where a heavy scene slows the game down rather than losing polygons. The triangle limit stays
-as a backstop (the packet list needs a bound anyway), raised to **4,000**. The plane chip
-([PLANES.md](PLANES.md)) is a separate chip and costs the GPU nothing; it is what lets the
-heavy carts fit (its "Timing and costs" and open question 1 have the measurements behind
-these numbers).
+The GPU is the **Prism Engine** (Prism for short), Mei's 3D polygon processor. The spec leaves
+its fill rate open and caps it at 2,000 triangles a frame. Mei gives Prism a cycle budget like
+the CPU's instead: it is a 60 MHz chip beside the 30 MHz CPU, so it has **1,000,000 GPU cycles
+per tick**. A frame that needs more is shown late, as on the PlayStation, where a heavy scene
+slows the game down rather than losing polygons. The triangle limit stays as a backstop (the
+packet list needs a bound anyway), raised to **4,000**. The plane chip, the **Horizon Engine**
+(Horizon, the scrolling plane processor; [PLANES.md](PLANES.md)), is a separate chip and costs
+the GPU nothing; it is what lets the heavy carts fit (its "Timing and costs" and open question 1
+have the measurements behind these numbers).
 
 ### Cost table
 
@@ -607,92 +608,27 @@ moving anything.
 - **System ROM.** It is still loaded as a 2 MB image, so its catalogue moves with the ROM base to
   `0x081F0000` (see `SYSTEM.md`).
 
-## World Kit, Asset Kit and the first open-world game
+## The kits and the first open-world game
 
-These are design decisions made by the project owner on 2026-10-03. They are choices, not yet
-implementation: at the time of writing the World Kit does not exist, and the Asset Kit and
-runtime work they call for is in progress. `WORLDKIT.md` is the fuller design; where it disagrees
-with this section (terrain, gate thresholds and units, below), this section is the later decision.
+On 2026-10-03 the project owner decided how levels are to be built for Mei and what the first
+open-world game is. Most of those decisions are about tools and a game, not about how the
+machine departs from the spec, so they are recorded where they apply:
 
-### The two tools
+- the World Kit's (the two tools and their boundary, the world format, terrain, streaming, the
+  runtime reader, verification) in [WORLDKIT.md](WORLDKIT.md), with the World Checker in
+  [WORLDCHECKER.md](WORLDCHECKER.md) and the pack format in [WORLDPACK.md](WORLDPACK.md);
+- the Asset Kit's (palettes for day and night, shading, examples, textures) in
+  [ASSETKIT.md](ASSETKIT.md);
+- the platformer's (setting, pace, moves, the movement garden, build order) in
+  [PLATFORMER.md](PLATFORMER.md), as design intent.
 
-- **Separate tools, shared core, one-way dependency.** The World Kit refers to Asset Kit recipes
-  by name; the Asset Kit never learns that worlds exist. Both import one shared core (fixed-point
-  geometry, the compiler and probe wrappers, schema validation, preview rendering). A single
-  hybrid tool that both models and builds levels was rejected.
-- **The boundary is "could you place it twice?"** Anything reusable (a staircase, a vending
-  machine, a length of guard rail) is an asset. Anything that exists once, at one place in the
-  world, belongs to the world.
-- **Terrain belongs to the World Kit.** Ground (a heightfield) and paths (a profile swept along a
-  line) are described in world coordinates in the world recipe, generated by the shared core and
-  cut per cell by the kit, so seams match by construction. These are the only modelling the World
-  Kit does. Paths are also world data in their own right: the same line can be a road, a traffic
-  route or a rail to grind. Neither is needed before the movement garden; paths come first.
-- **No game rules in the kit, including time of day.** The kit knows what can be present and
-  visible, so it can pack and verify it. It knows nothing about when or why. A goal that exists
-  only at night carries its time window as an ordinary game-defined parameter.
+Three tools check the work, each under its own name:
 
-### The world format
-
-- **One format for open worlds and discrete levels.** A world is a set of self-contained cells
-  behind an index. A discrete level is a world with one cell; an interior is a separate one-cell
-  world reached through a door.
-- **Streaming without a disc.** The ROM is memory-mapped, so geometry and collision are read in
-  place. Streaming means choosing which cells are active, swapping textures and palettes in VRAM,
-  and spawning and retiring entities.
-- **Grid.** Uniform and square. The cell size is chosen per world, stored in the pack header, and
-  may be restricted to powers of two. It is not a property of the format or the runtime. The same
-  holds for runtime capacities (active entities, placements drawn per frame): constants each cart
-  sets.
-- **Regions.** A region owns a texture set, named palette variants, an audio bank and a backdrop.
-  There is a shared common set plus one set per region, swapped at seams.
-- **Stand-ins.** Every cell has a low-detail stand-in for when it is far away.
-- **Layers.** Named groups of placements in a cell that the game switches on and off. The kit
-  verifies budgets and sorting with each layer on; it does not know what a layer means.
-- **Game data is opaque.** Goals, collectibles, switches and triggers are a type, a stable ID and
-  parameters, checked against a schema the game supplies. IDs are stable because each goal has a
-  saved bit that must survive later edits to the level.
-- **Collision** is authored separately as simpler geometry: a companion collision recipe per
-  placed asset, or "use my own mesh" for simple props. It is stored as triangles, with plane
-  equations, floor/wall/ceiling classes and a lookup grid precomputed by the kit. Surface types
-  are an opaque byte the game defines. Terrain collision comes from the terrain itself.
-- **Units.** The tools do not enforce a scale. The convention, used by the examples and the
-  platformer, is one unit per metre.
-
-### The runtime
-
-- **A narrow reader in `stdlib/`,** imported only by carts that use it. It answers geometric
-  questions: which cells are active, drawing with culling, collision queries, and a cell's entity
-  records. Character control, cameras, goals and saving belong to each game. A shared character
-  body may be lifted out later, once a second game wants the same one.
-
-### Verification
-
-- **In-level gate.** The World Kit samples camera positions through the playable space, including
-  rooftops and the air between them, and checks GPU and CPU budgets, face ordering and collision
-  holes. The scene probe that does this is a World Kit component.
-- **Thresholds are per-world settings** with defaults from the kit, and the gate starts in
-  report-only mode until a real level has been measured.
-
-### Asset Kit
-
-- **Committed with three examples** (robot, vessel, cottage). `ion_cruise`, `sky_castle` and
-  `clockwork_kraken` fail the kit's own visibility gate and stay out until fixed.
-  `tools/mei_modeler.py` stays out.
-- **Day and night through palettes.** Materials draw through palette entries (a textured face
-  sampling a swatch, with the baked shade as the vertex tint), so `palette_lerp` can recolour a
-  mesh. Emissive materials (`"class": "emissive"`) get palette entries of their own so they can
-  brighten while everything else darkens.
-- **Shading** baked into vertices is time-neutral and survives rotation about the vertical axis
-  (`lighting.mode: "vertical"`). Every wall then has the same shade, which is accepted: colour,
-  textures and the palette's time-of-day tint separate surfaces. If a real street looks flat, the
-  fallback is a variation of a few percent by facing, baked in the asset's own frame. Baking a
-  sun direction per placement and lighting at draw time were both rejected.
-- **Palette entries.** Surface materials of the same colour share an entry by default; a recipe
-  may force separate entries. The materials manifest is written for every build.
-- **Textures.** Named procedural patterns and small texel grids written in the recipe, with UVs
-  always generated by projection. Image files come later, for signage.
-- **Surface tags** on materials are carried through to the outputs without being interpreted.
+| Name | What it checks | Where |
+|---|---|---|
+| **Asset Checker** | One asset's faces draw in the right order from every side (`mei_assets.py verify`) | [ASSETKIT.md](ASSETKIT.md#automated-visibility-gate) |
+| **World Checker** | A level from where a player can stand: budgets, drawing order, collision holes (`tools/worldkit/verify.py`, run by `mei_world.py build`) | [WORLDCHECKER.md](WORLDCHECKER.md) |
+| **Reference Renderer** | Mei itself: an independent renderer its output is compared against (`make rendercheck`). Not yet committed | |
 
 ### The machine
 
@@ -700,22 +636,3 @@ with this section (terrain, gate thresholds and units, below), this section is t
   128 MB reserved. Bank switching, a disc device and a depth buffer were considered and left out.
 - **VRAM stays 1 MB** and the ordering table stays a cart convention. Both are to be revisited
   only if a second region or a real district shows they cannot work.
-
-### The platformer
-
-A 3D platformer in a 1990s Japanese metropolis (downtown, shrines, parks, an electric-town
-district, a mall): one multi-region open world with many small goals, a single collectible unit
-and switches that start challenges. The same kit must also serve games with discrete levels.
-
-- **Time of day** changes, and some goals exist only at certain times (a shrine festival at
-  night).
-- **Pace** is Mario 64's: brisk and precise, on foot throughout. No vehicle or second movement
-  mode.
-- **Moves.** Mario 64's base set, with a glider in place of the triple jump. Rails to grind,
-  poles, and bounce surfaces are in. Riding traffic is wanted later and not designed yet.
-- **Wall jump.** Central to the game, and to be tuned between Mario 64's (satisfying, too hard)
-  and Sunshine's (too easy).
-- **No combat.**
-- **Build order.** Movement is tuned in a small garden cart, which is also the first level built
-  with the World Kit; then one district block; then a second region, to force the texture-swap
-  seam.

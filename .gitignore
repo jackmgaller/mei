@@ -21,3 +21,7 @@ carts/*/tests/*.mei
 # meinet local config and fixtures
 tools/meinet/meinet.conf
 tools/meinet/**/*.bin
+
+# VS Code extension dependencies and packages
+tools/vscode-akari/**/node_modules/
+tools/vscode-akari/**/*.vsix

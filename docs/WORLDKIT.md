@@ -2,14 +2,12 @@
 
 **Status: design, partly built.** What exists: the pack format ([WORLDPACK.md](WORLDPACK.md),
 normative) with its reference encoder `tools/worldkit/pack.py`; the console reader
-`stdlib/worldpack.akr`; and the first version of the tool, `tools/mei_world.py`, with the
-[recipe format](#recipe-format) and [command line](#command-line) below. Not built yet:
-terrain, the **World Checker** (the in-level verification and its scene probe, being built
-separately as `tools/worldkit/verify.py` and `tools/worldkit/scene_probe.c`), textures, audio
-banks and backdrops. This document records the
-decisions made so far, proposes the rest, and lists what is still open. Where it and the owner's
-later decisions in [DECISIONS.md](DECISIONS.md) ("World Kit, Asset Kit and the first open-world
-game") ever disagree, DECISIONS.md wins. It depends on three things, all now in place:
+`stdlib/worldpack.akr`; the tool, `tools/mei_world.py`, with the [recipe format](#recipe-format)
+and [command line](#command-line) below; and the **World Checker**, the in-level verification
+every build runs ([WORLDCHECKER.md](WORLDCHECKER.md)). Not built yet: terrain, textures, audio
+banks and backdrops. This document records the project owner's decisions (most of them made on
+2026-10-03), proposes the rest, and lists what is still open. The game that motivates it is
+described in [PLATFORMER.md](PLATFORMER.md). It depends on three things, all now in place:
 
 - **A larger cart ROM.** A cart may be up to 64 MB, read in place from a 128 MB window at
   `0x08000000` (commit `620a8d1`; [DECISIONS.md](DECISIONS.md), "Cart ROM: up to 64 MB in a
@@ -58,7 +56,7 @@ The motivating game is a 3D platformer with Mario 64-style movement, set in a 19
 metropolis: downtown, shrines, parks, an electric-town district and a mall. The city is one open
 world of several regions with many small goals: a collectible unit scattered everywhere, and
 switches that start short challenges, in the manner of Mario Kart World's open world. The mall is
-an interior reached through doors.
+an interior reached through doors. [PLATFORMER.md](PLATFORMER.md) describes the game.
 
 The same kit should serve games built from discrete levels, without a second format.
 
@@ -150,9 +148,10 @@ These are Asset Kit features, not World Kit features. Each is generic: none ment
    its baked shade ([ASSETKIT.md](ASSETKIT.md), "Palette-backed materials"). With the material
    manifest and `relocate()`, a packer can move an asset's entries into a region's palettes.
 3. **Done: surface tags and the vertical bake** (`tag`, `lighting.mode: "vertical"`).
-4. **Approved: forced separate entries and a manifest for every build.** Surface materials of the
-   same colour share an entry by default; a recipe may force separate ones. The material
-   manifest is written for every build, so a world build reads one shape of data for every asset.
+4. **Done: forced separate entries and a manifest for every build.** Surface materials of the
+   same colour share an entry by default; a recipe may force separate ones (`"share": false`).
+   The material manifest is written for every build, so a world build reads one shape of data
+   for every asset.
 5. **Textures and UVs.** Regions own texture sets (decision 4), but the Asset Kit cannot author
    textured surfaces yet (proposed in [ASSETKIT.md](ASSETKIT.md), "Textures"). Until it can, a
    region's texture set is empty, and the stage-3 texture-swap seam has nothing to swap.
@@ -662,13 +661,20 @@ For a world named `city` of a game named `game`, `build` produces:
 With `preview` (or `build --preview`) there is also `preview/`: for every region, its busiest
 cell seen from a fixed camera above its south edge, once per palette variant, drawn by the real
 reader (so far cells appear as stand-ins), as PNGs with GPU statistics, and `contact.png`.
-*Not built yet:* `verification.json` (the World Checker's).
+Every build also writes `verification/`: the World Checker's report, `world-check.json`, and
+pictures of its worst views ([WORLDCHECKER.md](WORLDCHECKER.md)).
+
+**Packs are build outputs, not sources.** World packs and the rest of a world's outputs are
+built into `build/` (the tests use temporary directories) and are not committed: the recipes
+are the source, together with the ID lock file, which is committed. Packs for released
+games are to be published separately, later. Small existing carts that commit their generated
+assets (`carts/*/`) are not affected.
 
 Outputs are staged and replaced only on success, as in the Asset Kit. Before anything is written,
 every referenced asset is compiled from its recipe and each asset whose recipe requires
 verification is checked by the Asset Checker, which must pass. Then `build` hands the staged
 outputs to the World Checker through one seam, `worldkit.build.run_gate(context)`, which calls
-`worldkit.verify.check_world(context)` when that module exists (context: the staged pack and
+`worldkit.verify.check_world(context)` (context: the staged pack and
 `.akr`, the mode and thresholds, the game's probe, the report and the native tools) and records
 its result in the report. In `report` mode nothing fails; in `enforce` mode a failed check leaves
 the previous build in place with `verification.failed.json`.
@@ -684,55 +690,33 @@ does not do is in [open question 3](#3-the-runtime).
 
 ## Verification
 
-**Decided: the World Checker.** The analogue of the Asset Checker: sample camera positions through the playable
-space, including rooftops and the air between them, since they give the longest sight lines, and
-check GPU and CPU budgets and face ordering; plus collision checks for holes.
+**Decided: the World Checker.** The analogue of the Asset Checker: sample camera positions
+through the playable space, including rooftops and the air between them, since they give the
+longest sight lines, and check GPU and CPU budgets and face ordering; plus collision checks for
+holes. **Decided:** its scene probe is a World Kit component, not an Asset Kit change, because a
+camera standing in a level sees several meshes at once, palette swatch faces, and faces crossing
+the near plane and the guard band, which the Asset Checker rejects. **Decided:** thresholds are
+per-world settings with defaults from the kit, and the checker starts in **report-only** mode
+until a real level has been measured: it records what it finds in the build report and fails
+nothing on thresholds. Switching a world to enforcing is an explicit edit of its recipe
+(`"verification": {"mode": "enforce"}`).
 
-**Decided: the scene probe is a World Kit component** of the World Checker, not an Asset Kit
-change: it renders
-scenes rather than single meshes, from arbitrary camera positions, with several meshes per view,
-textured (palette swatch) faces, and near-plane and guard-band clipping (a camera standing in a
-level always has floor faces crossing the near plane). It is being built as
-`tools/worldkit/verify.py` and `tools/worldkit/scene_probe.c`.
+**Built.** [WORLDCHECKER.md](WORLDCHECKER.md) is the reference: what fails in each mode, the
+settings and their defaults, the static collision checks, how views are sampled, the ordering
+check and its evidence, timings and limits. Every `build` runs it through `run_gate()` ([Build
+outputs](#build-outputs-and-the-runtime-contract)); `tools/worldkit/verify.py` runs it on any
+pack.
 
-**Decided: thresholds are per-world settings** with defaults from the kit, and the World Checker
-starts in **report-only** mode until a real level has been measured: it records what it finds in the
-build report and fails nothing. Switching a world to enforcing is an explicit edit of its recipe.
+Before the World Checker runs, `validate` and `build` check the recipe itself: every referenced
+asset builds and passes its own verification policy; references resolve (assets, regions,
+layers, stand-ins, entity types, `entity_ref`, `world_ref`) and parameters match the game
+schema; placements lie in their cells and overhang a neighbour by no more than `overhang`, which
+keeps the two-pass sort sound; regions' palettes do not overlap; and the ID lock file agrees with
+the recipe.
 
-*Proposal:* what a build checks, in three groups.
-
-**Static checks (no rendering).**
-
-- Every referenced asset builds and passes its own verification policy. *(Built.)*
-- References resolve: assets, regions, layers, stand-ins, entity types, `entity_ref`,
-  `world_ref`. Parameters match the game schema. *(Built.)*
-- Placements lie in their cells; no placement's bounds overhang a neighbouring cell by more than
-  a declared margin (*placeholder*: 8 units), which keeps the two-pass sort sound.
-- The ID lock file agrees with the recipe. *(Built.)*
-- VRAM and palette use per region fit the declared split. Stand-ins use only the common set.
-- Collision: no cracks, meaning boundary edges of walkable floors that face another floor within
-  `probe.step` in height across a gap narrower than `probe.radius`; floor edges on a cell
-  boundary match the neighbouring cell's; no entity origin inside solid collision.
-
-**Sampled views (rendered natively).** Cameras are sampled from walkable floors (a grid over each
-cell's floor triangles at the probe's eye height and a follow-camera offset), from authored
-vantage points, from every cell's highest floors (rooftops), and from points inside seams. Each
-view runs the real runtime in a generated verification cart, as the Asset Kit generates a
-preview cart, and records CPU cycles, GPU cycles, triangles submitted and dropped, and packet
-arena use. It also renders the triangle-ID buffer and compares it with the independent
-rasterizer, as the Asset Kit does. Views are repeated with each layer combination: all off, each
-layer alone, and the largest set allowed by the exclusive groups.
-
-**Failure, once enforcing.** Dropped triangles and a full packet arena always fail. Budget and
-ordering thresholds are per-world settings ([question 5](#5-what-the-world-checker-samples-and-what-fails)
-has the starting defaults). In seam views, any drawn face that samples a region texture fails,
-because those slots are being overwritten.
-
-The Asset Checker cannot do this as it stands: it rejects views with near-plane and
-guard-band clipping and renders one mesh, hence the scene probe. Its ID rendering has to strip
-the textured flag while keeping coverage, and palette index 0 (never drawn) makes holes in
-textured faces that the expected rasterizer must reproduce. How long a sweep takes per view was
-not measured for this document.
+Not checked yet (WORLDCHECKER.md, "Limits"): the seam rule, that nothing drawn while a region's
+texture slots are being swapped samples a region texture; and that stand-ins use only the common
+texture set, which waits for region texture sets.
 
 ## Command line
 
@@ -809,9 +793,13 @@ at 64 units is 16 × 16 = 256 cells, 1 KB).
 
 **Decided:** a uniform square grid, the cell size chosen per world (16, 32, 64 or 128 units:
 the pack's `cell_shift` 4–7) and stored in the pack header; it is not a property of the format or
-the runtime. *Recommendation:* 64 units until stage 2 measures. Alternatives considered: a quadtree or irregular cells for districts of very different density, and a
-precomputed potentially-visible set per cell, which the kit could produce offline from the same
-renders it verifies with; in a dense city, buildings hide most cells.
+the runtime. The same holds for runtime capacities, such as active entities or placements drawn
+a frame: they are constants each cart sets, not limits of the format (the reader keeps no
+storage per placement or entity; WORLDPACK.md, "The console reader"). *Recommendation:* 64
+units until stage 2 measures. Alternatives considered: a quadtree or irregular cells for
+districts of very different density, and a precomputed potentially-visible set per cell, which
+the kit could produce offline from the same renders it verifies with; in a dense city, buildings
+hide most cells.
 
 ### 3. The runtime
 
@@ -834,24 +822,22 @@ built, ground can be written as an explicit Asset Kit `mesh` per cell.
 
 ### 5. What the World Checker samples and what fails
 
-Open: sample density per cell; which yaws and pitches; whether follow-camera positions are
-sampled or only eye positions. Decided: thresholds are per-world settings with kit defaults, and
-the World Checker starts report-only. The Asset Kit demands zero wrong-depth pixels and no ordering cycles
-for an isolated asset. A whole street from the near pass will not meet that.
-
-*Recommendation for the defaults:* zero wrong-order pixels and no cycles where either face belongs to an
-entity's asset or lies within a near band of the camera (*placeholder*: 16 units); a bounded
-fraction of the screen elsewhere (*placeholder*: 0.5%), reported with witnesses; GPU cycles at
-most 80% of 1,000,000 and CPU cycles for drawing at most 60% of 500,000 in every view
-(*placeholders*), leaving room for game logic and for camera positions the sampling missed.
+Settled: [WORLDCHECKER.md](WORLDCHECKER.md), "Settings" and "Outcome", has the sampling (eye
+and follow cameras over every floor, rooftops, the air between rooftops, seams and vantage
+points, each with the layer combinations) and the default thresholds, which are this document's
+earlier placeholders. The Asset Checker demands zero wrong-depth pixels and no ordering cycles
+for an isolated asset; a whole street from the near pass will not meet that, so the World
+Checker allows a bounded fraction of the screen outside a near band of the camera, and none
+within it or on an entity.
 
 ## Build order
 
 **Decided:**
 
-1. **A movement garden.** Movement is tuned in a small garden cart, which is also the first level
-   built with the World Kit: a slope, a ledge, a wall, one collectible and one camera zone, as the
-   one-cell world above, growing as the moves need. Paths come before ground heightfields.
+1. **A movement garden** ([PLATFORMER.md](PLATFORMER.md#the-movement-garden)). Movement is
+   tuned in a small garden cart, which is also the first level built with the World Kit: a
+   slope, a ledge, a wall, one collectible and one camera zone, as the one-cell world above,
+   growing as the moves need. Paths come before ground heightfields.
 2. **One small district block.** A few cells of one region, with stand-ins, a layer, and palette
    variants.
 3. **A second region,** to force the texture-swap seam.
@@ -860,8 +846,8 @@ most 80% of 1,000,000 and CPU cycles for drawing at most 60% of 500,000 in every
 
 | Stage | Proves | Needs first |
 |---|---|---|
-| 1 | Recipe, schema, ID lock file, pack, collision format and queries, holes check, one-view budget check | The runtime reader, the collision decision and the tool (done); the World Checker (in progress) |
-| 2 | Cell selection, two-pass sorting, stand-ins, layers, the World Checker at scale, the per-cell budgets above | The larger ROM, palette-backed materials and the material class (done); the scene probe (in progress) |
+| 1 | Recipe, schema, ID lock file, pack, collision format and queries, holes check, one-view budget check | The runtime reader, the collision decision, the tool and the World Checker (done) |
+| 2 | Cell selection, two-pass sorting, stand-ins, layers, the World Checker at scale, the per-cell budgets above | The larger ROM, palette-backed materials, the material class and the scene probe (done) |
 | 3 | Region resources, seams, swaps spread over frames, stand-ins across a region boundary | Textures and UVs in the Asset Kit, or the seam has only palettes and audio to change |
 
 Interiors (the mall) need nothing new after stage 1: a door is an entity with a `world_ref`.

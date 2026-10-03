@@ -1358,7 +1358,7 @@ the triangles) and makes no other calls; when the packet arena is full it draws 
 
 ### The plane chip (`planes.akr`)
 
-The plane chip ([PLANES.md](PLANES.md)) draws two tile planes (`BG0`, `BG1`), an affine plane
+The plane chip, the **Horizon Engine** ([PLANES.md](PLANES.md)), draws two tile planes (`BG0`, `BG1`), an affine plane
 (`BG2`, Mode 7) and a backdrop colour per line, and composites them with the polygons at vsync.
 It costs no CPU cycles and no GPU budget, only VRAM. It is not in the prelude:
 `import "planes.akr"`. Importing it also replaces `mesh()`'s face loops, `ot_insert()`,

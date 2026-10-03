@@ -1,22 +1,29 @@
-# The plane chip
+# The Horizon Engine
 
 **Status: implemented** (`src/core/planes.c`, `stdlib/planes.akr`, tests in
 `tests/test_planes.c` and `tests/lang/planes_*`), with the open questions settled as recommended
-(see [Open questions](#open-questions)). Lantern Lake draws its sky and water with it. It adds a
-second video chip beside the polygon GPU, and it assumes the polygon GPU gets a cycle budget
-(setup per triangle plus cost per pixel, run in parallel with the CPU). That budget is now
-specified in [DECISIONS.md, "GPU budget"](DECISIONS.md#gpu-budget): 1,000,000 GPU cycles a tick,
-with lag on overrun (see [open question 1](#open-questions)). The numbers below use the cost
-table that became official there, then a candidate in `tools/mei_gpustats.py`.
+(see [Open questions](#open-questions)). Lantern Lake draws its sky and water with it.
+
+The **Horizon Engine** (Horizon for short) is Mei's scrolling plane processor: a second video
+chip beside the **Prism Engine** (Prism), the 3D polygon processor that the spec calls the GPU.
+This document, like the code (`planes.c`, `planes.akr`, the `PLN_` registers), also calls Horizon
+the plane chip and Prism the polygon GPU.
+
+Horizon's design assumes that Prism gets a cycle budget (setup per triangle plus cost per pixel,
+run in parallel with the CPU). That budget is now specified in
+[DECISIONS.md, "GPU budget"](DECISIONS.md#gpu-budget): 1,000,000 GPU cycles a tick, with lag on
+overrun (see [open question 1](#open-questions)). The numbers below use the cost table that
+became official there, then a candidate in `tools/mei_gpustats.py`.
 The design sections are the proposal as reviewed. Where the build or the Lantern Lake port found
 them wrong or incomplete, the text is corrected in place, and the measurements are in
 [What the Lantern Lake port found](#what-the-lantern-lake-port-found).
 
 Mei becomes "PlayStation polygons plus SNES-heritage planes", the way the Saturn paired VDP1
-(sprites and polygons into a framebuffer) with VDP2 (scrolling and rotating backgrounds). The
-**plane chip** draws three tiled background planes and a per-line backdrop colour. At scan-out it
-composites them with the polygon framebuffer in a priority order. The planes cost no CPU cycles
-and no GPU budget, only the VRAM that holds their tiles, maps and line tables.
+(sprites and polygons into a framebuffer) with VDP2 (scrolling and rotating backgrounds): Prism
+is Mei's VDP1 and Horizon its VDP2. Horizon draws three tiled background planes and a per-line
+backdrop colour. At scan-out it composites them with the polygon framebuffer in a priority
+order. The planes cost no CPU cycles and no GPU budget, only the VRAM that holds their tiles,
+maps and line tables.
 
 ## Why
 
