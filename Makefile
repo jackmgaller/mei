@@ -105,12 +105,14 @@ test: $(TESTS) $(B)/meiasm $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe $(B)
 	@if command -v python3 >/dev/null 2>&1; then MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_assetkit.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldpack.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldpack.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldkit.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldkit.py; fi
+	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_mochi.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_mochi.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldverify.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless SCENE_PROBE=$(B)/mei-scene-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldverify.py; fi
 
 # Agent asset recipes, binary exports and six-view renders through the real GPU.
 .PHONY: test-world
 test-world: $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe
 	MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldkit.py -v
+	MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_mochi.py -v
 
 .PHONY: test-assets
 test-assets: $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe
