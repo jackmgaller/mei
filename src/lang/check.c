@@ -211,6 +211,8 @@ static Local *hidden_local(Ctx *c, Type *t, Loc loc) {
 /* The assembly label of a global symbol: prefix + name, plus "$u" for a cart symbol that reuses a
    standard library name. */
 static const char *sym_label(const char *prefix, Sym *s) {
+    if (s->module && s->priv) return ar_printf("%s%s$m%d$p%d", prefix, s->name, s->module, s->priv);
+    if (s->module) return ar_printf("%s%s$m%d", prefix, s->name, s->module);
     if (s->priv) return ar_printf("%s%s$p%d", prefix, s->name, s->priv);   /* private: per file */
     return ar_printf("%s%s%s", prefix, s->name, s->user && sym_lookup_layer(s->name, 0) ? "$u" : "");
 }
@@ -716,8 +718,8 @@ static int refs_local_storage(Expr *e) {
 static const char *g_in_local_const;   /* the local constant whose value is being checked */
 
 static Expr *check_name(Ctx *c, Expr *e) {
-    Sym *s = NULL;
-    if (c->fn) {
+    Sym *s = e->sym;
+    if (!s && c->fn) {
         Local *l = lookup_local(c, e->name);
         if (l && l->csym) { s = l->csym; l = NULL; }
         else if (!l)
@@ -1109,9 +1111,24 @@ static Expr *check_index(Ctx *c, Expr *e) {
 
 static int enum_variant(Type *t, const char *name);
 
+static Expr *resolve_qualified_expr(Ctx *c, Expr *e) {
+    if (e->k != E_FIELD || e->a->k != E_NAME) return e;
+    Expr *root = e->a;
+    if (c->fn && is_local_name(c, root->name)) return e;
+    if (!module_has_alias(root->loc.file, root->name)) return e;
+    const char *name = ar_printf("%s.%s", root->name, e->name);
+    Sym *s = sym_lookup_qualified(name, root->loc.file);
+    if (!s) error_unknown(e->loc, "module member", name);
+    e->k = E_NAME; e->name = name; e->sym = s; e->a = NULL;
+    return e;
+}
+
 static Expr *check_field(Ctx *c, Expr *e) {
+    resolve_qualified_expr(c, e);
+    if (e->k == E_NAME) return check_name(c, e);
+    resolve_qualified_expr(c, e->a);
     if (e->a->k == E_NAME && !(c->fn && lookup_local(c, e->a->name))) {
-        Sym *ts = sym_lookup(e->a->name, e->a->loc.file);
+        Sym *ts = e->a->sym ? e->a->sym : sym_lookup(e->a->name, e->a->loc.file);
         if (ts && ts->k == SY_TYPE && ts->ty->k == TY_ENUM) {
             /* State.Title */
             Type *t = ts->ty;
@@ -1308,12 +1325,13 @@ static void lower_method_call(Ctx *c, Expr *e) {
 
 static Expr *check_call(Ctx *c, Expr *e) {
     if (e->callee) return e;   /* synthesized */
+    resolve_qualified_expr(c, e->a);
     lower_method_call(c, e);
     if (e->a->k != E_NAME) return check_indirect_call(c, e);
     const char *name = e->a->name;
     Sym *s = NULL;
     if (c->fn && is_local_name(c, name)) return check_indirect_call(c, e);
-    s = sym_lookup(name, e->loc.file);
+    s = e->a->sym ? e->a->sym : sym_lookup(name, e->loc.file);
     if (!s) error_unknown(e->a->loc, "function", name);
     if (s->k == SY_GLOBAL || s->k == SY_CONST || s->k == SY_DATA || s->k == SY_REG || s->k == SY_EMBED) return check_indirect_call(c, e);
     if (s->k == SY_TYPE) {
@@ -1333,8 +1351,9 @@ static Expr *check_call(Ctx *c, Expr *e) {
         if (e->nargs != want) error_at(e->loc, "%s() takes %d argument%s, got %d", name, want, want == 1 ? "" : "s", e->nargs);
         if (s->bi == BI_LEN) {
             Expr *x = e->args[0];
+            resolve_qualified_expr(c, x);
             if (x->k == E_NAME && !(c->fn && is_local_name(c, x->name))) {
-                Sym *ts = sym_lookup(x->name, x->loc.file);
+                Sym *ts = x->sym ? x->sym : sym_lookup(x->name, x->loc.file);
                 if (ts && ts->k == SY_TYPE && ts->ty->k == TY_ENUM) {
                     /* len(Dir): the number of variants */
                     resolve_enum(ts->ty);
@@ -1343,7 +1362,7 @@ static Expr *check_call(Ctx *c, Expr *e) {
                 }
             }
             if (x->k == E_NAME) {
-                Sym *xs = sym_lookup(x->name, x->loc.file);
+                Sym *xs = x->sym ? x->sym : sym_lookup(x->name, x->loc.file);
                 if (xs && xs->k == SY_EMBED && !(c->fn && lookup_local(c, x->name))) {
                     resolve_embed(xs);
                     note_ref(c, xs);
@@ -2039,7 +2058,7 @@ static const char *check_asm_refs(Ctx *c, const char *text, Loc loc) {
             l->weight += 1000;
         } else {
             Sym *s = sym_lookup(name, loc.file);
-            if (!s) error_at(loc, "unknown name '{%s}' in asm block", name);
+            if (!s) error_unknown(loc, "name in asm block", name);
             if (s->k == SY_FUNC) { note_call(c, s->fn); if (c->fn) c->fn->has_call = 1; }
             else if (s->k == SY_CONST) resolve_const(s);
             if (s->k == SY_DATA || s->k == SY_EMBED || s->k == SY_GLOBAL) note_ref(c, s);
@@ -2321,9 +2340,10 @@ static void check_signature(Func *f) {
     if (f->is_asm && ty_is_aggr(f->ret)) error_at(f->ret_texpr->loc, "asm functions cannot return %s", ty_str(f->ret));
     f->label = sym_label("F_", f->sym);
     const char *n = f->name;
-    if (f->sym->priv && f->sym->user && (!strcmp(n, "init") || !strcmp(n, "update") || !strcmp(n, "draw")))
+    if (!f->sym->module && f->sym->priv && f->sym->user && (!strcmp(n, "init") || !strcmp(n, "update") || !strcmp(n, "draw")))
         error_at(f->loc, "%s() is called by the runtime, so it cannot be private", n);
-    if (!strcmp(n, "init") || !strcmp(n, "update") || !strcmp(n, "draw")) {
+    if ((!f->sym->module || sym_lookup_global(n) == f->sym) &&
+        (!strcmp(n, "init") || !strcmp(n, "update") || !strcmp(n, "draw"))) {
         if (f->nparams || f->ret->k != TY_VOID) error_at(f->loc, "%s() must take no arguments and return nothing", n);
     }
 }
@@ -2888,9 +2908,9 @@ void check_program(Program *P) {
         for (Func *w = f->overrides; w; w = w->overrides) {
         /* the replaced weak function: same parameter and result types */
         w->ret = w->ret_texpr ? complete(resolve_type(w->ret_texpr), w->ret_texpr->loc) : ty_void;
-        int same = w->nparams == f->nparams && !strcmp(ty_str(w->ret), ty_str(f->ret));
+        int same = w->nparams == f->nparams && w->ret == f->ret;
         for (int k = 0; k < w->nparams && same; k++)
-            same = !strcmp(ty_str(complete(resolve_type(w->params[k].texpr), w->params[k].loc)), ty_str(f->params[k].ty));
+            same = complete(resolve_type(w->params[k].texpr), w->params[k].loc) == f->params[k].ty;
         if (!same) {
             Buf b = {0};
             for (int k = 0; k < w->nparams; k++)

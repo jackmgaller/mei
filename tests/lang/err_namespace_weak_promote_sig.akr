@@ -1,0 +1,5 @@
+// error: must have the same parameter and result types
+fn hook(n: u32) -> s32 { return n as s32 }
+import "lib/ns/weak.akr" as hooks
+import "lib/ns/weak.akr"
+fn init() {}

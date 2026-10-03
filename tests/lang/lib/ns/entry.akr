@@ -1,0 +1,2 @@
+fn init() { println("module init") }
+fn update() { println("module update") }

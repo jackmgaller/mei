@@ -1,0 +1,3 @@
+import "math.akr" as inner
+import "helpers.akr"
+fn sum() -> s32 { return inner.VALUE + value() }

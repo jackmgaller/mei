@@ -1,0 +1,2 @@
+const NS_PLAIN = 8
+fn ns_plain_value() -> s32 { return NS_PLAIN }

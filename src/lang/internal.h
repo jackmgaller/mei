@@ -321,6 +321,7 @@ struct Sym {
     int is_str;            /* SY_DATA string literal */
     const char *str; size_t slen;
     int user;              /* declared by the cart (not the standard library) */
+    int module;            /* isolated source module number, or 0 for legacy global names */
     int priv;              /* `private`: visible in its file only; the file's number (from 1) */
     struct Func **dfuncs; int ndfuncs, capdfuncs;   /* SY_DATA: functions named in the data */
 };
@@ -367,6 +368,7 @@ struct Compiler {
 };
 /* Imports `path` (relative to `from_file`); each file is parsed once. */
 void compiler_import(Compiler *C, const char *from_file, const char *path, Loc loc);
+void compiler_import_as(Compiler *C, const char *from_file, const char *path, const char *alias, Loc loc);
 /* Loads a binary file relative to from_file (for embed). */
 const uint8_t *compiler_load_binary(Compiler *C, const char *from_file, const char *path, Loc loc, size_t *len);
 
@@ -383,6 +385,14 @@ void sym_define_private(Sym *s, const char *file);    /* sets s->priv */
 void mark_stdlib_file(const char *path);
 int file_is_stdlib(const char *path);
 void symtab_reset(void);
+void module_begin(const char *file, int isolated);
+int file_is_module(const char *file);
+Sym *sym_lookup_module(const char *name, const char *file, int public_only);
+void sym_define_module(Sym *s, const char *file);
+void module_import(const char *from, const char *target, const char *alias, Loc loc);
+int module_has_alias(const char *file, const char *name);
+Sym *sym_lookup_qualified(const char *name, const char *file);
+void module_publish(const char *file, Program *P);
 
 /* ---------------------------------------------------------------- check.c */
 
