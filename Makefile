@@ -142,6 +142,7 @@ test: $(TESTS) $(B)/meiasm $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe $(B)
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldkit.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldkit.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_mochi.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_mochi.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldverify.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless SCENE_PROBE=$(B)/mei-scene-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldverify.py; fi
+	@if command -v python3 >/dev/null 2>&1 && python3 -c 'import numpy, PIL' 2>/dev/null; then echo "== tests/reference_renderer: stress scene, subdivision"; mkdir -p $(B)/reference_renderer; { $(RR_RUN) $(RR)/gen_scene.py && $(RR_RUN) $(RR)/oracle.py && $(RR_RUN) $(RR)/geometry_check.py; } > $(B)/reference_renderer/test.log 2>&1 || { tail -5 $(B)/reference_renderer/test.log; echo "FAILED: see $(B)/reference_renderer/test.log"; exit 1; }; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tools/check_generated.sh"; PYTHONDONTWRITEBYTECODE=1 ./tools/check_generated.sh; fi
 
 # Generated files (stdlib faces and data tables, the reverb table, ADPCM test vectors) match
@@ -161,6 +162,23 @@ test-world: $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe
 test-carts: $(B)/meic $(B)/mei-headless
 	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/weather/tests/check.sh
 	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/lantern/tests/check.sh
+
+# The Reference Renderer (tests/reference_renderer/README.md): Mei's output against an
+# independent renderer in Python (NumPy, Pillow). Its carts, probes, images and reports are
+# built into $(B)/reference_renderer/. rendercheck-motion runs the checks over time.
+RR     := tests/reference_renderer
+RR_RUN := MEI_BUILD=$(B) PYTHONDONTWRITEBYTECODE=1 python3
+.PHONY: rendercheck rendercheck-motion
+rendercheck: $(B)/meic $(B)/mei-headless $(B)/libmeicore.a
+	$(RR_RUN) $(RR)/gen_scene.py
+	$(RR_RUN) $(RR)/oracle.py
+	$(RR_RUN) $(RR)/geometry_check.py
+	$(RR_RUN) $(RR)/fuzz.py
+	$(RR_RUN) $(RR)/planes_check.py --cases 64
+rendercheck-motion: $(B)/meic $(B)/mei-headless $(B)/libmeicore.a
+	$(RR_RUN) $(RR)/motion_check.py --frames 128
+	$(RR_RUN) $(RR)/texture_check.py
+	$(RR_RUN) $(RR)/plane_motion_check.py
 
 .PHONY: test-assets
 test-assets: $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe

@@ -346,7 +346,7 @@ fn col_tint(colour: u32) -> u32 {
 // with a blend mode. A negative tw or th mirrors the texels (u, v, |tw|, |th|) across that axis
 // (exact at 1:1; scaled up, the GPU's rounding leaves the first texel of a mirrored axis one
 // pixel wide, so mirror large sprites in the texture instead). Texel coordinates stop at 255
-// (u + tw is clamped), as the GPU's are 8 bits.
+// (u + tw, or a mirror's first texel, is clamped), as the GPU's are 8 bits.
 fn sprite_ex(page: u32, u: s32, v: s32, tw: s32, th: s32, x: s32, y: s32, w: s32, h: s32, tint: u32, mode: s32) {
     let q = __arena_ptr
     if q + 10 > __arena_end { return }
@@ -362,13 +362,13 @@ fn sprite_ex(page: u32, u: s32, v: s32, tw: s32, th: s32, x: s32, y: s32, w: s32
     var ua = u
     var ub = min(u + tw, 255)
     if tw < 0 {
-        ua = u - tw - 1
+        ua = min(u - tw - 1, 255)
         ub = u
     }
     var va = v
     var vb = min(v + th, 255)
     if th < 0 {
-        va = v - th - 1
+        va = min(v - th - 1, 255)
         vb = v
     }
     let xl = x as u32 & 0xFFFF

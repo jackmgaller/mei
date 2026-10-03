@@ -663,7 +663,7 @@ Three tools check the work, each under its own name:
 |---|---|---|
 | **Asset Checker** | One asset's faces draw in the right order from every side (`mei_assets.py verify`) | [ASSETKIT.md](ASSETKIT.md#automated-visibility-gate) |
 | **World Checker** | A level from where a player can stand: budgets, drawing order, collision holes (`tools/worldkit/verify.py`, run by `mei_world.py build`) | [WORLDCHECKER.md](WORLDCHECKER.md) |
-| **Reference Renderer** | Mei itself: an independent renderer its output is compared against (`make rendercheck`). Not yet committed | |
+| **Reference Renderer** | Mei itself: an independent renderer its output is compared against (`make rendercheck`, `make rendercheck-motion`) | [tests/reference_renderer/README.md](../tests/reference_renderer/README.md) |
 
 ### The machine
 

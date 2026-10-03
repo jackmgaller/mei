@@ -1398,8 +1398,8 @@ and `y .. y+h−1`. Colours are `0xBBGGRR`. A `mode` is a blend mode:
 
 A sprite's `tint` multiplies its texels by `tint / 128` per channel: `0x808080` draws the texture
 as it is, `0xFFFFFF` twice as bright (clamped), `col_tint(c)` in colour `c` when the texels are
-white. Texture coordinates are 8 bits, so `u + tw` and `v + th` are clamped to 255. Mirroring is
-exact at 1:1; scaled up, the GPU's rounding leaves the first texel of a mirrored axis one pixel
+white. Texture coordinates are 8 bits, so `u + tw` and `v + th` are clamped to 255, and so is a
+mirrored axis's first texel (`u + |tw| - 1`, likewise v). Mirroring is exact at 1:1; scaled up, the GPU's rounding leaves the first texel of a mirrored axis one pixel
 wide, so large mirrored sprites are better mirrored in the texture.
 
 ```

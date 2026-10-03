@@ -13,7 +13,7 @@ in [README.md](README.md#documentation).
 | `system/` | The system ROM: boot themes (`boot/`) and the shell (`shell/`), in Akari |
 | `carts/` | The carts, one folder each (`carts/NAME/NAME.akr`), with their binary assets in `art/` and `audio/`, their tests in `tests/`, and the worlds they use in `worlds.txt` |
 | `examples/` | Example recipes for the kits: `assets/` (Asset Kit) and `worlds/` (World Kit) |
-| `tests/` | C unit tests (`test_*.c`), language tests (`lang/`), the kits' Python suites (`test_*.py`) and their fixtures |
+| `tests/` | C unit tests (`test_*.c`), language tests (`lang/`), the kits' Python suites (`test_*.py`) and their fixtures, the Reference Renderer (`reference_renderer/`) |
 | `tools/` | Generators, the kits and their shared core, the MeiNet gateway, the language fuzzer, the web cart packer, the VS Code extension |
 | `web/` | The browser page (`shell.html`) |
 | `docs/` | The documentation and the spec |
@@ -28,6 +28,8 @@ make test-assets                  # the Asset Kit suite alone, verbose
 make test-world                   # the World Kit and Mochi suites alone, verbose
 make test-carts                   # the carts' self-checking scenarios, then test-world-carts
 make test-world-carts             # World Viewer's scripted run and tests/world_carts.sh
+make rendercheck                  # the Reference Renderer (about a minute; NumPy and Pillow)
+make rendercheck-motion           # the Reference Renderer's checks over time
 make web                          # the WebAssembly build in build/web (needs Emscripten)
 tests/run_lang_tests.sh planes    # only the language tests whose name contains "planes"
 ```
@@ -63,7 +65,10 @@ Pass the tools to scripts the same way, for example
 
 Mei Demo, Sound Lab and World Viewer are built only on request (`make build/carts/demo.mei
 build/carts/soundlab.mei build/carts/worldview.mei`); `make` and `make web` leave them out.
-`make rendercheck` will run the Reference Renderer once it is committed.
+The Reference Renderer
+([tests/reference_renderer/README.md](tests/reference_renderer/README.md)) builds its carts,
+probes and reports into `$(B)/reference_renderer/` on each run; `make test` runs its two
+quickest checks, the stress scene and subdivision, when NumPy and Pillow are installed.
 
 **Carts that use worlds.** A cart lists World Kit recipes in `carts/NAME/worlds.txt`, one
 repository path per line. make builds each recipe once into `build/worlds/<its folder>/`
@@ -84,7 +89,7 @@ details; `carts/worldview/` is the example.
   `gen_faces_asm`, `gen_reverb_tables`, `gen_demo_assets` and `gen_weather_tape`.
 - **NumPy** for the Asset Checker (`mei_assets.py verify`) and the World Checker, and so for
   building a cart that uses worlds (World Viewer) and for `make test-carts`; and for every other
-  generator. **Pillow** too for the generators that draw: `gen_boot_duet`, `gen_boot_eclipse`,
+  generator. **NumPy and Pillow** for the Reference Renderer. **Pillow** too for the generators that draw: `gen_boot_duet`, `gen_boot_eclipse`,
   `gen_shell_assets`, `gen_lantern_assets`, `gen_orbs_assets`, `gen_weather_assets` and
   `meifont`. **SciPy** too for `gen_boot_duet` and `gen_soundlab_assets`.
 - Several generators draw with macOS system fonts (Avenir Next, Hiragino, Georgia, Optima and
@@ -116,6 +121,9 @@ details; `carts/worldview/` is the example.
   rule into the build directory. (`tools/assetkit_probe.c` predates this.)
 - **Standard library functions** in the `stdlib/` file for their topic, by the table at the top
   of [LANGUAGE.md's Standard library](docs/LANGUAGE.md#standard-library).
+- **A test suite with its own scripts and probes** in a folder of `tests/`
+  (`tests/reference_renderer/`), with one README; the carts and data it generates are built
+  into the build directory, not committed.
 - **Example worlds** in `examples/worlds/NAME/`, example assets in `examples/assets/`.
 - **Generated world packs are built into `build/` and not committed.** The recipes, and each
   world's ID lock file (`NAME.ids.json`), are the source.

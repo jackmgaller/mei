@@ -1,0 +1,27 @@
+// Mirrored rectangles reaching the atlas edge must clamp their UV corners.
+// Overflow must not wrap U, carry into V, or change the texture page.
+fn init() {
+    let p = VRAM_PALETTE as *u16
+    p[1] = 31
+    p[2] = 992
+    p[3] = 31744
+    p[4] = 32767
+    let t = (VRAM_TEXTURES + 8 * TEXTURE_SLOT_SIZE) as *u8
+    t[80 * 128 + 127] = 0x20   // (255,80): green
+    t[255 * 128 + 40] = 0x03   // (80,255): blue
+    t[255 * 128 + 127] = 0x20  // (255,255): green
+    t[80 * 128 + 11] = 0x40    // (23,80): white, ordinary mirror
+}
+fn draw() {
+    cls(rgb(24,32,48))
+    dither(false)
+    let page = tex_page(8,0,true)
+    sprite_ex(page,240,80,-47,43,10,10,16,16,0x808080,BLEND_NONE)
+    sprite_ex(page,80,240,47,-43,40,10,16,16,0x808080,BLEND_NONE)
+    sprite_ex(page,240,240,-47,-43,70,10,16,16,0x808080,BLEND_NONE)
+    sprite_ex(page,20,80,-4,4,100,10,4,4,0x808080,BLEND_NONE)
+}
+// pixel: 10 10 03E0
+// pixel: 40 10 7C00
+// pixel: 70 10 03E0
+// pixel: 100 10 7FFF
