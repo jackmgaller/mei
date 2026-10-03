@@ -31,7 +31,12 @@ NAME = {'type':'string','pattern':r'^[a-z][a-z0-9_]{0,47}$'}
 BOOL = {'type':'boolean'}
 TRANSFORM = obj({'translate':VEC,'rotate':VEC,'scale':VEC,'pivot':VEC})
 MATERIAL = obj({'color':{'type':'string','pattern':r'^#[0-9a-fA-F]{6}$'},
-                'smooth':BOOL,'double_sided':BOOL}, ['color'])
+                'smooth':BOOL,'double_sided':BOOL,
+                'palette':dict(BOOL,description='Draw through a 4-bit palette entry (a textured swatch face tinted by the baked shade), so rewriting the palette recolours it. Default false; true for emissive.'),
+                'class':dict(choice('surface','emissive'),description='emissive: own palette entries, never shaded, reported separately. Default surface.'),
+                'tag':dict(NAME,description='Opaque surface tag carried to the material manifest; not interpreted by the kit.')}, ['color'])
+PALETTE_LAYOUT = dict(obj({'slot':integer(0,14),'row':integer(0,255),'first':integer(0,254)}),
+                      description='Where palette-backed materials live: swatch texels u 0-15 of row `row` in texture slot `slot` (default 14, 0); entries from 4-bit palette `first` (default 0).')
 VERIFICATION = obj({'required':BOOL,'yaw_steps':integer(4,120),
                     'pitches':array(number(-1.4,1.4),1,5),
                     'distances':array(number(.8,3),1,3),'far':number(1,1000),'geometry':choice('error','warn')})
@@ -72,7 +77,9 @@ SCHEMA = {
         'materials':{'type':'object','propertyNames':NAME,'additionalProperties':MATERIAL,'maxProperties':128},
         'prototypes':{'type':'object','propertyNames':NAME,'additionalProperties':ref('node'),'maxProperties':128},
         'nodes':array(ref('node'),1,128),
-        'lighting':obj({'direction':VEC,'ambient':number(0,1),'bake':BOOL}),
+        'lighting':obj({'direction':VEC,'ambient':number(0,1),'bake':BOOL,
+                        'mode':dict(choice('directional','vertical'),description='vertical: shade by the face normal\'s Y only (tops light, walls mid, undersides dark), unchanged by any yaw. Default directional.')}),
+        'palette_layout':PALETTE_LAYOUT,
         'budget':obj({'vertices':integer(3,2048),'triangles':integer(1,4000)}),
         'verification':VERIFICATION,
     }, ['format','version','name','nodes']),

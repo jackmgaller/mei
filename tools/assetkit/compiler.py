@@ -3,6 +3,7 @@ from collections import Counter, defaultdict
 import hashlib
 import json
 import math
+import struct
 
 from meshlib import Mesh as NativeMesh, rgb
 from .geometry import (AssetError, Mesh, add, sub, cross, dot, norm, extrude,
@@ -110,13 +111,174 @@ def compile_recipe(recipe):
         if count > budget[key]:
             raise AssetError('/budget/'+key,f'Asset has {count} {key}; budget is {budget[key]}. Reduce detail/repetition or explicitly raise the budget within hardware limits.')
     light = recipe.get('lighting',{})
-    if light.get('bake',True) and dot(light.get('direction',[-0.4,0.85,-0.35]), light.get('direction',[-0.4,0.85,-0.35])) == 0:
+    if light.get('mode','directional') == 'vertical':
+        if 'direction' in light:
+            raise AssetError('/lighting/direction','Vertical lighting shades by each face normal\'s Y only. Remove direction, or use mode "directional".')
+    elif light.get('bake',True) and dot(light.get('direction',[-0.4,0.85,-0.35]), light.get('direction',[-0.4,0.85,-0.35])) == 0:
         raise AssetError('/lighting/direction','Baked light direction must be nonzero.')
-    return mesh, materials, report(mesh,recipe,budget)
+    for name,mat in recipe.get('materials',{}).items():
+        if mat.get('class') == 'emissive' and mat.get('palette') is False:
+            raise AssetError(f'/materials/{name}/palette','Emissive materials are always drawn through palette entries of their own. Remove palette: false, or use class "surface".')
+    mesh.palette = assign_palette(mesh,materials,recipe)
+    return mesh, materials, report(mesh,recipe,budget,materials)
 
 
-def report(mesh, recipe, budget):
+DEFAULT_LAYOUT = {'slot':14,'row':0,'first':0}
+
+
+def palette_backed(mat):
+    return mat.get('palette',mat.get('class','surface') == 'emissive')
+
+
+def rgb15(color):
+    r,g,b = (int(color[k:k+2],16) for k in (1,3,5))
+    return (r>>3)|((g>>3)<<5)|((b>>3)<<10)
+
+
+def assign_palette(mesh, materials, recipe):
+    """One 4-bit palette entry per distinct (class, colour) among the palette-backed materials
+    the mesh uses: surface entries first, then emissive, indices 1-15 of consecutive palettes.
+    Index 0 is never assigned (the GPU never draws it)."""
+    used = sorted({f.material for f in mesh.faces})
+    keys, owners = [], defaultdict(list)
+    for kind in ('surface','emissive'):
+        for name in used:
+            mat = materials[name]
+            if palette_backed(mat) and mat.get('class','surface') == kind:
+                key = (kind,mat['color'].lower())
+                if key not in owners: keys.append(key)
+                owners[key].append(name)
+    if not keys:
+        if 'palette_layout' in recipe:
+            raise AssetError('/palette_layout','No material the mesh uses is drawn through the palette. Set palette: true (or class "emissive") on a material, or remove palette_layout.')
+        return None
+    layout = {**DEFAULT_LAYOUT,**recipe.get('palette_layout',{})}
+    count = (len(keys)+14)//15
+    if layout['first']+count > 255:
+        raise AssetError('/palette_layout/first',f'{len(keys)} palette entries need {count} 4-bit palettes from {layout["first"]}; palette 255 holds the fonts.')
+    entries, by_material = [], {}
+    for i,key in enumerate(keys):
+        palette, index = layout['first']+i//15, 1+i%15
+        entry = {'colour':palette*16+index,'palette':palette,'index':index,'class':key[0],
+                 'color':key[1],'rgb15':rgb15(key[1]),'materials':owners[key]}
+        entries.append(entry)
+        for name in owners[key]: by_material[name] = entry
+    return {'layout':layout,'palettes':list(range(layout['first'],layout['first']+count)),
+            'entries':entries,'by_material':by_material}
+
+
+def face_runs(mesh, keep):
+    """Half-open [start, end) runs of exported face indices whose face satisfies keep."""
+    runs = []
+    for i,face in enumerate(mesh.faces):
+        if not keep(face): continue
+        if runs and runs[-1][1] == i: runs[-1][1] = i+1
+        else: runs.append([i,i+1])
+    return runs
+
+
+def uses_material_features(recipe):
+    return any(key in mat for mat in recipe.get('materials',{}).values() for key in ('palette','class','tag'))
+
+
+def material_manifest(mesh, materials, recipe):
+    """The consumer's view of materials: palette entries and their defaults, classes, tags
+    and the faces each covers. Written only for recipes using the material extensions."""
+    if not uses_material_features(recipe): return None
+    name, palette = recipe['name'], mesh.palette
+    used = sorted({f.material for f in mesh.faces})
+    result = {'format':'mei-asset-materials','version':1,'name':name}
+    if palette:
+        layout = palette['layout']
+        result['swatch'] = {'file':name+'.swatch','slot':layout['slot'],'row':layout['row'],'texels':16,
+                            'meaning':'4-bit texel u of the row holds palette index u; a face draws an entry by sampling (index, row) at all its corners.'}
+        result['palette'] = {'file':name+'.pal','first_colour':palette['palettes'][0]*16,
+                             'colours':16*len(palette['palettes']),'palettes':palette['palettes']}
+        result['entries'] = [dict(e) for e in palette['entries']]
+        result['classes'] = {}
+        for kind in ('surface','emissive'):
+            colours = [e['colour'] for e in palette['entries'] if e['class'] == kind]
+            if colours:
+                result['classes'][kind] = {'first_colour':colours[0],'colours':colours[-1]-colours[0]+1,'entries':colours}
+    result['materials'] = {}
+    for key in used:
+        mat = materials[key]
+        entry = palette['by_material'].get(key) if palette else None
+        result['materials'][key] = {'color':mat['color'].lower(),'class':mat.get('class','surface'),
+                                    'palette_colour':entry['colour'] if entry else None,'tag':mat.get('tag'),
+                                    'triangles':sum(f.material == key for f in mesh.faces),
+                                    'faces':face_runs(mesh,lambda f: f.material == key)}
+    tags = sorted({materials[key]['tag'] for key in used if 'tag' in materials[key]})
+    result['tags'] = {tag:face_runs(mesh,lambda f: materials[f.material].get('tag') == tag) for tag in tags}
+    return result
+
+
+def palette_bytes(mesh):
+    """Default colours of every palette the asset uses, 15-bit; unused indices are 0."""
+    first = mesh.palette['palettes'][0]*16
+    colours = [0]*16*len(mesh.palette['palettes'])
+    for entry in mesh.palette['entries']: colours[entry['colour']-first] = entry['rgb15']
+    return struct.pack(f'<{len(colours)}H',*colours)
+
+
+# Texel u of the swatch row holds palette index u (4-bit: the low nibble is the left texel).
+SWATCH = bytes(2*j|(2*j+1)<<4 for j in range(8))
+
+
+def import_source(name, mesh):
+    """The generated Akari import. Assets without palette materials keep the original two lines."""
+    upper = name.upper()
+    text = f'// Mei Asset Kit: {len(mesh.vertices)} vertices, {len(mesh.faces)} triangles.\nembed ASSET_{upper}: Mesh = "{name}.bin"\n'
+    palette = mesh.palette
+    if not palette: return text
+    layout, first = palette['layout'], palette['palettes'][0]*16
+    lines = ['',f'// Palette-backed materials: 4-bit palettes {palette["palettes"][0]}-{palette["palettes"][-1]} '
+             f'(colours {first}-{first+16*len(palette["palettes"])-1}),',
+             f'// swatch texels u 0-15 of row {layout["row"]} in texture slot {layout["slot"]}. Call asset_{name}_load() before drawing.',
+             f'embed ASSET_{upper}_PALETTE: u16 = "{name}.pal"',
+             f'embed ASSET_{upper}_SWATCH: u8 = "{name}.swatch"',
+             f'const ASSET_{upper}_COLOUR = {first}']
+    for kind in ('surface','emissive'):
+        colours = [e['colour'] for e in palette['entries'] if e['class'] == kind]
+        if colours:
+            lines += [f'const ASSET_{upper}_{kind.upper()} = {colours[0]}',
+                      f'const ASSET_{upper}_{kind.upper()}_COUNT = {colours[-1]-colours[0]+1}']
+    lines += ['','// Copies the swatch texels and the default palette colours into VRAM.',
+              f'fn asset_{name}_load() {{',
+              f'    memcpy((VRAM_TEXTURES + {layout["slot"]} * TEXTURE_SLOT_SIZE + {layout["row"]*128}) as *u8, ASSET_{upper}_SWATCH, {len(SWATCH)})',
+              f'    load_palette(ASSET_{upper}_COLOUR, ASSET_{upper}_PALETTE, len(ASSET_{upper}_PALETTE))',
+              '}','']
+    return text+'\n'.join(lines)
+
+
+def relocate(binary, colours=None, slot=None, row=None):
+    """Move palette-backed faces to other palette colours and/or swatch position, for a
+    consumer packing several assets into shared palettes. colours maps an old colour index
+    (palette * 16 + index) to a new one; index 0 of a palette is never a valid target."""
+    data = bytearray(binary)
+    _,count,_,offset,_ = struct.unpack_from('<HHIII',data)
+    for i in range(count):
+        at = offset+i*36
+        if not data[at]&2: continue
+        tex,palette = data[at+2],data[at+3]
+        uv = struct.unpack_from('<4H',data,at+28)
+        if not tex&16 or len(set(uv[:3])) != 1 or not 0 < (uv[0]&255) < 16:
+            raise AssetError('/binary',f'Face {i} is textured but is not a palette swatch face.')
+        colour, v = palette*16+(uv[0]&255), uv[0]>>8
+        if colours and colour in colours:
+            colour = colours[colour]
+            if not 0 < colour < 4080 or colour%16 == 0:
+                raise AssetError('/binary',f'Colour {colour} is index 0 of a palette or outside palettes 0-254.')
+        if slot is not None: tex = (tex&~15)|slot
+        if row is not None: v = row
+        data[at+2],data[at+3] = tex,colour//16
+        struct.pack_into('<4H',data,at+28,*([colour%16|v<<8]*4))
+    return bytes(data)
+
+
+def report(mesh, recipe, budget, materials=None):
     parts, warnings = [],[]
+    tagged = materials is not None and any('tag' in materials[f.material] for f in mesh.faces)
     by_part = defaultdict(list)
     for face in mesh.faces: by_part[face.part].append(face)
     for name,faces in sorted(by_part.items()):
@@ -139,6 +301,7 @@ def report(mesh, recipe, budget):
                 'materials':sorted({f.material for f in faces}),
                 'boundary_edges':boundary,'nonmanifold_edges':nonmanifold,
                 'inconsistent_edges':winding,'duplicate_triangles':duplicates}
+        if tagged: data['tags'] = sorted({materials[f.material]['tag'] for f in faces if 'tag' in materials[f.material]})
         parts.append(data)
         for code,count,message in (
             ('open_surface',boundary,'Boundary edges; intentional for open surfaces.'),
@@ -150,17 +313,39 @@ def report(mesh, recipe, budget):
             if count: warnings.append({'code':code,'part':name,'count':count,'message':message})
     lo,hi = mesh.bounds()
     byte_count = 16+16*len(mesh.vertices)+36*len(mesh.faces)
-    return {'ok':True,'format':'mei-asset-report','version':1,'name':recipe['name'],
-            'recipe_sha256':hashlib.sha256(canonical(recipe)).hexdigest(),
-            'vertices':len(mesh.vertices),'triangles':len(mesh.faces),'mesh_bytes':byte_count,
-            'bounds':{'min':lo,'max':hi},'budget':budget,
-            'budget_used':{'vertices':len(mesh.vertices)/budget['vertices'],'triangles':len(mesh.faces)/budget['triangles']},
-            'parts':parts,'warnings':warnings}
+    result = {'ok':True,'format':'mei-asset-report','version':1,'name':recipe['name'],
+              'recipe_sha256':hashlib.sha256(canonical(recipe)).hexdigest(),
+              'vertices':len(mesh.vertices),'triangles':len(mesh.faces),'mesh_bytes':byte_count,
+              'bounds':{'min':lo,'max':hi},'budget':budget,
+              'budget_used':{'vertices':len(mesh.vertices)/budget['vertices'],'triangles':len(mesh.faces)/budget['triangles']},
+              'parts':parts,'warnings':warnings}
+    # Only recipes using the material extensions gain keys, so legacy reports are unchanged.
+    palette = mesh.palette
+    if palette:
+        result['palette'] = {'palettes':palette['palettes'],'entries':len(palette['entries']),
+                             'emissive_entries':sum(e['class'] == 'emissive' for e in palette['entries']),
+                             'textured_triangles':sum(f.material in palette['by_material'] for f in mesh.faces),
+                             'swatch':{'slot':palette['layout']['slot'],'row':palette['layout']['row']}}
+    if tagged:
+        result['tags'] = dict(sorted(Counter(materials[f.material]['tag'] for f in mesh.faces
+                                             if 'tag' in materials[f.material]).items()))
+    return result
+
+
+def shading(lighting):
+    """The baked shade (0-1) of a unit normal under a recipe's lighting."""
+    ambient, bake = lighting.get('ambient',0.45),lighting.get('bake',True)
+    if not bake: return lambda n: 1
+    if lighting.get('mode','directional') == 'vertical':
+        # A function of the normal's Y alone, so any rotation about Y leaves it unchanged.
+        return lambda n: ambient+(1-ambient)*(1+n[1])/2
+    light = norm(lighting.get('direction',[-0.4,0.85,-0.35]))
+    return lambda n: ambient+(1-ambient)*max(0,dot(n,light))
 
 
 def native_bytes(mesh, materials, lighting):
-    light = norm(lighting.get('direction',[-0.4,0.85,-0.35]))
-    ambient, bake = lighting.get('ambient',0.45),lighting.get('bake',True)
+    shade_of = shading(lighting)
+    palette = mesh.palette
     normals, smooth = [],defaultdict(lambda: (0,0,0))
     for face in mesh.faces:
         a,b,c = (mesh.vertices[i] for i in face.indices)
@@ -173,14 +358,23 @@ def native_bytes(mesh, materials, lighting):
     result.verts = mesh.vertices
     for face,normal in zip(mesh.faces,normals):
         mat = materials[face.material]
-        color = tuple(int(mat['color'][k:k+2],16) for k in (1,3,5))
+        entry = palette['by_material'].get(face.material) if palette else None
+        # A palette-backed face samples a solid swatch texel, tinted by the shade (128 = 1).
+        color = (128,128,128) if entry else tuple(int(mat['color'][k:k+2],16) for k in (1,3,5))
         colors = []
         for i in face.indices:
             n = norm(smooth[face.part,face.material,i]) if mat.get('smooth',False) else normal
-            shade = ambient+(1-ambient)*max(0,dot(n,light)) if bake else 1
+            # Emissive surfaces are never shaded: their brightness is their palette entry's.
+            shade = 1 if entry and entry['class'] == 'emissive' else shade_of(n)
             colors.append(rgb(*(max(0,min(255,round(c*shade))) for c in color)))
         # Mei's front faces have cross . outward < 0. Color order follows indices.
-        result.tri(list(reversed(face.indices)),list(reversed(colors)),flags=16 if mat.get('double_sided',False) else 0)
+        flags = 16 if mat.get('double_sided',False) else 0
+        if entry:
+            uv = (entry['index'],palette['layout']['row'])
+            result.tri(list(reversed(face.indices)),list(reversed(colors)),[uv]*3,flags,
+                       slot=palette['layout']['slot'],four_bit=True,palette=entry['palette'])
+        else:
+            result.tri(list(reversed(face.indices)),list(reversed(colors)),flags=flags)
     return result.pack()
 
 

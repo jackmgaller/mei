@@ -27,11 +27,23 @@ DEPTH_EPSILON=2/65536
 
 
 def identity_mesh(binary):
-    """Keep geometry, flags, and ordering unchanged; replace color with RGB555 ID."""
+    """Keep geometry, flags, and ordering unchanged; replace color with RGB555 ID.
+
+    A palette swatch face (4-bit, the same nonzero texel index at every corner) covers
+    exactly the pixels of the untextured face: the GPU interpolates equal texture
+    coordinates to that texel everywhere, only index 0 skips pixels, and mesh() sorts and
+    clips textured faces like untextured ones. Such faces are checked untextured."""
     data=bytearray(binary)
     _,count,_,offset,_=struct.unpack_from('<HHIII',data)
     for i in range(count):
-        flags=data[offset+i*36]
+        at=offset+i*36
+        flags=data[at]
+        if flags&2:
+            uv=struct.unpack_from('<3H',data,at+28)
+            if not data[at+2]&16 or len(set(uv))!=1 or not 0<(uv[0]&255)<16:
+                raise AssetError('/verification','Textured faces are supported only as palette swatch faces.')
+            flags&=~2;data[at]=flags;data[at+2]=data[at+3]=0
+            struct.pack_into('<4H',data,at+28,0,0,0,0)
         if flags&~17: raise AssetError('/verification','Only opaque, untextured triangle meshes are supported.')
         n=i+1
         color=((n&31)<<3)|(((n>>5)&31)<<11)|(((n>>10)&31)<<19)

@@ -34,6 +34,7 @@ class Face:
 class Mesh:
     vertices: list = field(default_factory=list)
     faces: list = field(default_factory=list)
+    palette: dict = None   # set on the final mesh only: the palette entry assignment, if any
 
     def append(self, other):
         offset = len(self.vertices)

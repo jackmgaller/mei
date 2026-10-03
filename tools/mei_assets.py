@@ -11,7 +11,8 @@ import sys
 import tempfile
 
 from assetkit.compiler import (AssetError, compile_recipe, native_bytes,
-                               editor_project, obj_text, import_obj)
+                               editor_project, obj_text, import_obj, import_source,
+                               material_manifest, palette_bytes, SWATCH)
 from assetkit.preview import source, render
 from assetkit.schema import SCHEMA
 
@@ -53,14 +54,21 @@ def artifacts(recipe, mesh, materials, report):
     report['mesh_sha256'] = hashlib.sha256(binary).hexdigest()
     files = {
         name+'.bin':binary,
-        name+'.akr':f'// Mei Asset Kit: {len(mesh.vertices)} vertices, {len(mesh.faces)} triangles.\nembed ASSET_{name.upper()}: Mesh = "{name}.bin"\n'.encode(),
+        name+'.akr':import_source(name,mesh).encode(),
         name+'.asset.json':(json.dumps(recipe,indent=2,allow_nan=False)+'\n').encode(),
         name+'.model.json':(json.dumps(editor_project(mesh,materials,name,recipe.get('lighting',{})),indent=2)+'\n').encode(),
         name+'.obj':('mtllib '+name+'.mtl\n'+obj_text(mesh,materials)).encode(),
         name+'.mtl':''.join('newmtl '+key+'\nKd '+' '.join(f'{int(mat["color"][i:i+2],16)/255:.6f}' for i in (1,3,5))+'\n\n' for key,mat in sorted(materials.items())).encode(),
-        'preview.akr':source(name,report['bounds']).encode(),
+        'preview.akr':source(name,report['bounds'],load=bool(mesh.palette)).encode(),
         'report.json':(json.dumps(report,indent=2)+'\n').encode(),
     }
+    # Only recipes using the material extensions produce these, so legacy builds are unchanged.
+    manifest = material_manifest(mesh,materials,recipe)
+    if manifest is not None:
+        files[name+'.materials.json'] = (json.dumps(manifest,indent=2)+'\n').encode()
+    if mesh.palette:
+        files[name+'.pal'] = palette_bytes(mesh)
+        files[name+'.swatch'] = SWATCH
     return files
 
 
@@ -103,7 +111,7 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
                 raise VerificationFailure(checked)
             report['verification']=checked
         if preview:
-            report['preview'] = render(stage,recipe['name'],report['bounds'],compiler,runner)
+            report['preview'] = render(stage,recipe['name'],report['bounds'],compiler,runner,bool(mesh.palette))
             report['preview']['contact'] = str(directory/'contact.png')
         (stage/'report.json').write_text(json.dumps(report,indent=2)+'\n')
         generated = sorted(p.name for p in stage.iterdir())
@@ -126,7 +134,7 @@ def parser():
     sub.add_parser('schema',help='Print the complete JSON Schema; no file access needed.')
     init = sub.add_parser('init',help='Write an editable example recipe (never overwrite by default).')
     init.add_argument('output')
-    init.add_argument('--example',choices=['robot','vessel','cottage'],default='robot')
+    init.add_argument('--example',choices=['robot','vessel','cottage','kiosk'],default='robot')
     init.add_argument('--force',action='store_true')
     for name in ('validate','inspect','build','preview','verify'):
         cmd = sub.add_parser(name,help={'validate':'Validate schema, topology and Mei budgets.',

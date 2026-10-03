@@ -289,6 +289,276 @@ class CLITests(unittest.TestCase):
             with self.assertRaisesRegex(AssetError,'overwrite'): build(recipe(),tmp,input_path=str(p))
 
 
+def palette_recipe(**extra):
+    """A surface box and an emissive box of the same colour, side by side, facing -Z."""
+    materials = {'wall':{'color':'#c08040','palette':True,'tag':'wall'},
+                 'neon':{'color':'#c08040','class':'emissive','tag':'sign'},**extra.pop('materials',{})}
+    return recipe(None,**{'materials':materials,'lighting':{'mode':'vertical','ambient':.5},**extra}) | {'nodes':[
+        {'id':'left','op':'box','size':[1,1,1],'material':'wall','transform':{'translate':[-1,0,0]}},
+        {'id':'right','op':'box','size':[1,1,1],'material':'neon','transform':{'translate':[1,0,0]}}]}
+
+
+def faces_of(binary):
+    _,count,_,offset,_ = struct.unpack_from('<HHIII',binary)
+    return [struct.unpack_from('<BBBB4H4I4H',binary,offset+36*i) for i in range(count)]
+
+
+class MaterialExtensionTests(unittest.TestCase):
+    # SHA-256 prefixes of every `build` output, recorded with the kit before palette materials,
+    # vertical lighting and tags existed. Recipes using none of them must keep these exactly;
+    # update a pin only for a deliberate change to that example recipe.
+    LEGACY = {
+        'robot':{'preview.akr':'4e8fee4ee73347b8','report.json':'113a80ee9870f5d1','robot.akr':'91303006a56188c3',
+                 'robot.asset.json':'8d063b2e0302a54b','robot.bin':'db78e63a2817c462','robot.model.json':'2a9371a13914c418',
+                 'robot.mtl':'a7c93e1572c28449','robot.obj':'cd3836530f2829ae'},
+        'vessel':{'preview.akr':'d9023e1e0b6fffdc','report.json':'e2dac00c993eda51','vessel.akr':'45e8d25cc6fb1731',
+                  'vessel.asset.json':'cb20d9c8d179312d','vessel.bin':'b54ae0a8d2736895','vessel.model.json':'c45972502fe5f586',
+                  'vessel.mtl':'51aba9dfbec9a6e0','vessel.obj':'dab33524ab6e1ff1'},
+        'cottage':{'cottage.akr':'7807fdaf0cfb4f38','cottage.asset.json':'ff67f836786c651e','cottage.bin':'343d8dc5fc953595',
+                   'cottage.model.json':'89cdf3a951c5367f','cottage.mtl':'9201dadf12051bb0','cottage.obj':'72f3140be1f8e08d',
+                   'preview.akr':'88d6a6337033dc29','report.json':'f1ddd6cf211a8e55'},
+        'test':{'preview.akr':'d70ab8dac209b8a0','report.json':'7f8c8545259dfdc2','test.akr':'afaaec486ebceb10',
+                'test.asset.json':'c524d9a758308cf4','test.bin':'1568544c40fd4c3e','test.model.json':'f92ea602281419c7',
+                'test.mtl':'913848954b735d78','test.obj':'33a034107a6226f2'},
+    }
+
+    def test_legacy_recipes_build_byte_identical_outputs(self):
+        import hashlib
+        recipes = {name:json.loads((ROOT/f'examples/assets/{name}.asset.json').read_text()) for name in ('robot','vessel','cottage')}
+        recipes['test'] = recipe(materials={'default':{'color':'#cf8753','smooth':True}},lighting={'direction':[1,1,0],'ambient':.3})
+        for name,r in recipes.items():
+            with self.subTest(asset=name), tempfile.TemporaryDirectory() as tmp:
+                build(r,tmp)
+                got = {p.name:hashlib.sha256(p.read_bytes()).hexdigest()[:16] for p in Path(tmp).iterdir()}
+                self.assertEqual(got,self.LEGACY[name])
+
+    def test_palette_entries_classes_and_index_zero(self):
+        r = palette_recipe()
+        r['materials']['brick'] = {'color':'#C08040','palette':True}   # same colour, any case: shares wall's entry
+        r['nodes'].append({'id':'third','op':'box','size':[1,1,1],'material':'brick','transform':{'translate':[0,2,0]}})
+        mesh,mats,report = compile_recipe(r)
+        entries = mesh.palette['entries']
+        self.assertEqual([(e['class'],e['colour'],e['materials']) for e in entries],
+                         [('surface',1,['brick','wall']),('emissive',2,['neon'])])
+        self.assertEqual(report['palette']['entries'],2)
+        self.assertEqual(report['palette']['emissive_entries'],1)
+        # Seventeen surface colours span two palettes and never use index 0.
+        r = recipe(materials={f'm{i}':{'color':f'#{i:02x}0000','palette':True} for i in range(17)},
+                   palette_layout={'first':40})
+        r['nodes'] = [{'id':f'b{i}','op':'box','size':[.5,.5,.5],'material':f'm{i}','transform':{'translate':[i,0,0]}} for i in range(17)]
+        mesh,_,_ = compile_recipe(r)
+        colours = [e['colour'] for e in mesh.palette['entries']]
+        self.assertEqual(mesh.palette['palettes'],[40,41])
+        self.assertEqual(colours,list(range(641,656))+[657,658])
+        self.assertTrue(all(c%16 for c in colours))
+
+    def test_palette_face_layout_tint_and_emissive(self):
+        r = palette_recipe(palette_layout={'slot':9,'row':37,'first':12})
+        mesh,mats,_ = compile_recipe(r)
+        faces = faces_of(native_bytes(mesh,mats,r['lighting']))
+        normals = []
+        for face in mesh.faces:
+            a,b,c = (mesh.vertices[i] for i in face.indices)
+            n = cross(sub(b,a),sub(c,a))
+            normals.append(n[1]/math.sqrt(dot(n,n)))
+        for face,(flags,blend,tex,pal,*values),ny in zip(mesh.faces,faces,normals):
+            colours,uvs = values[4:8],values[8:12]
+            self.assertEqual(flags&2,2)
+            self.assertEqual(tex,9|16)
+            self.assertEqual(pal,12)
+            self.assertEqual(set(uvs[:3]),{(1 if face.material == 'wall' else 2)|37<<8})
+            if face.material == 'neon':
+                self.assertEqual(colours[:3],[0x808080]*3,'Emissive faces are never shaded.')
+            else:
+                t = round(128*(.5+.5*(1+ny)/2))
+                self.assertEqual(colours[:3],[t|t<<8|t<<16]*3)
+
+    def test_material_extension_errors_have_json_pointers(self):
+        cases = [
+            (palette_recipe(materials={'n':{'color':'#ffffff','class':'emissive','palette':False}}),'/materials/n/palette'),
+            (palette_recipe(lighting={'mode':'vertical','direction':[0,1,0]}),'/lighting/direction'),
+            (recipe(palette_layout={'slot':3}),'/palette_layout'),
+            (palette_recipe(palette_layout={'first':255}),'/palette_layout/first'),
+            (palette_recipe(palette_layout={'slot':15}),'/palette_layout/slot'),
+            (palette_recipe(materials={'n':{'color':'#ffffff','class':'glow'}}),'/materials/n/class'),
+            (palette_recipe(materials={'n':{'color':'#ffffff','tag':'Has Space'}}),'/materials/n/tag'),
+        ]
+        for r,path in cases:
+            with self.subTest(path=path), self.assertRaises(AssetError) as error: compile_recipe(r)
+            self.assertEqual(error.exception.path,path)
+
+    def test_vertical_bake_survives_any_yaw(self):
+        # The bake is in the asset's frame; mesh_at() later turns it about Y. A rotation-safe
+        # bake gives every face the shade its world-space normal would get.
+        from assetkit.compiler import shading
+        r = recipe({'op':'group','children':[{'op':'box','size':[1,.5,2],'transform':{'rotate':[25,10,0]}},
+                                             {'op':'sphere','radius':.6,'transform':{'translate':[0,1,0]}}]})
+        mesh,_,_ = compile_recipe(r)
+        normals = []
+        for face in mesh.faces:
+            a,b,c = (mesh.vertices[i] for i in face.indices)
+            n = cross(sub(b,a),sub(c,a)); length = math.sqrt(dot(n,n))
+            normals.append(tuple(x/length for x in n))
+        def turn(n,yaw): return (n[0]*math.cos(yaw)+n[2]*math.sin(yaw),n[1],-n[0]*math.sin(yaw)+n[2]*math.cos(yaw))
+        vertical, directional = shading({'mode':'vertical'}), shading({})
+        worst = {'vertical':0,'directional':0}
+        for yaw in (math.pi/4,math.pi/2,math.pi,4.0):
+            for n in normals:
+                worst['vertical'] = max(worst['vertical'],abs(vertical(n)-vertical(turn(n,yaw))))
+                worst['directional'] = max(worst['directional'],abs(directional(n)-directional(turn(n,yaw))))
+        self.assertLess(worst['vertical'],1e-9)
+        self.assertGreater(worst['directional'],.3,'The directional bake is expected to depend on yaw.')
+        # Tops light, walls mid, undersides dark.
+        self.assertEqual([round(vertical(n),3) for n in ((0,1,0),(1,0,0),(0,-1,0))],[1,.725,.45])
+        # Rebaking the asset turned by any yaw gives the same native colours face for face.
+        r['lighting'] = {'mode':'vertical'}
+        reference = [f[8:12] for f in faces_of(native_bytes(*compile_recipe(r)[:2],r['lighting']))]
+        for yaw in (90,180,-37):
+            turned = copy.deepcopy(r); turned['nodes'][0]['transform'] = {'rotate':[0,yaw,0]}
+            mesh,mats,_ = compile_recipe(turned)
+            colours = [f[8:12] for f in faces_of(native_bytes(mesh,mats,turned['lighting']))]
+            close = all(abs((x>>s&255)-(y>>s&255)) <= 1 for a,b in zip(colours,reference) for x,y in zip(a,b) for s in (0,8,16))
+            self.assertTrue(close,f'yaw {yaw}')
+
+    def test_manifest_tags_and_import_file(self):
+        r = palette_recipe()
+        r['materials']['plain'] = {'color':'#203040','tag':'floor'}
+        r['nodes'].append({'id':'base','op':'box','size':[3,.2,1],'material':'plain','transform':{'translate':[0,-.7,0]}})
+        with tempfile.TemporaryDirectory() as tmp:
+            report = build(r,tmp)
+            out = Path(tmp)
+            self.assertIn('test.materials.json',report['files'])
+            manifest = json.loads((out/'test.materials.json').read_text())
+            self.assertEqual(manifest['palette'],{'file':'test.pal','first_colour':0,'colours':16,'palettes':[0]})
+            self.assertEqual(manifest['classes']['surface']['entries'],[1])
+            self.assertEqual(manifest['classes']['emissive']['entries'],[2])
+            self.assertEqual(manifest['tags'],{'floor':[[24,36]],'sign':[[12,24]],'wall':[[0,12]]})
+            self.assertEqual(manifest['materials']['plain']['palette_colour'],None)
+            self.assertEqual(report['tags'],{'floor':12,'sign':12,'wall':12})
+            self.assertEqual([p['tags'] for p in report['parts']],[['floor'],['wall'],['sign']])
+            pal = struct.unpack('<16H',(out/'test.pal').read_bytes())
+            colour = (0xc0>>3)|(0x80>>3)<<5|(0x40>>3)<<10
+            self.assertEqual(pal,(0,colour,colour)+(0,)*13)
+            self.assertEqual((out/'test.swatch').read_bytes(),bytes([0x10,0x32,0x54,0x76,0x98,0xba,0xdc,0xfe]))
+            akr = (out/'test.akr').read_text()
+            for line in ('embed ASSET_TEST_PALETTE: u16 = "test.pal"','const ASSET_TEST_EMISSIVE = 2','fn asset_test_load() {'):
+                self.assertIn(line,akr)
+            self.assertIn('asset_test_load()',(out/'preview.akr').read_text())
+        # Tags alone add a manifest but no palette files.
+        r = recipe(materials={'default':{'color':'#ffffff','tag':'floor'}})
+        with tempfile.TemporaryDirectory() as tmp:
+            files = build(r,tmp)['files']
+            self.assertIn('test.materials.json',files)
+            self.assertNotIn('test.pal',files)
+
+    def test_relocate_moves_entries_and_swatch(self):
+        from assetkit.compiler import relocate
+        mesh,mats,_ = compile_recipe(palette_recipe())
+        binary = native_bytes(mesh,mats,{'mode':'vertical'})
+        moved = relocate(binary,{1:16*70+3,2:16*71+9},slot=5,row=200)
+        for before,after in zip(faces_of(binary),faces_of(moved)):
+            colour = 16*70+3 if before[12]&255 == 1 else 16*71+9
+            self.assertEqual((after[2],after[3],after[12]),(5|16,colour//16,colour%16|200<<8))
+            self.assertEqual(after[4:12],before[4:12])
+        with self.assertRaises(AssetError): relocate(binary,{1:16*70})
+
+    def test_identity_mesh_accepts_only_swatch_faces(self):
+        from assetkit.visibility import identity_mesh
+        mesh,mats,_ = compile_recipe(palette_recipe())
+        binary = native_bytes(mesh,mats,{'mode':'vertical'})
+        for flags,blend,tex,pal,*values in faces_of(identity_mesh(binary)):
+            self.assertEqual((flags&2,tex,pal,values[8:12]),(0,0,0,[0]*4))
+        _,_,_,offset,_ = struct.unpack_from('<HHIII',binary)
+        bad = bytearray(binary); struct.pack_into('<H',bad,offset+30,5)   # a second, different texel
+        with self.assertRaisesRegex(AssetError,'swatch'): identity_mesh(bytes(bad))
+
+
+@unittest.skipUnless(COMPILER.exists() and RUNNER.exists(),'Build Mei for native rendering tests.')
+class NativePaletteTests(unittest.TestCase):
+    """Builds a palette-backed asset, draws it with the real compiler and emulator, then rewrites
+    palette entries at run time and checks the pixels follow."""
+
+    def render(self,tmp,setup):
+        Path(tmp,'cart.akr').write_text(f'''cart "Palette test"
+import "test.akr"
+embed NIGHT: u16 = "night.pal"
+embed DAY: u16 = "day.pal"
+
+fn init() {{
+    asset_test_load()
+{setup}
+}}
+
+fn draw() {{
+    cls(0)
+    dither(false)
+    camera(vec3(0.0, 0.0, -5.0), 0.0)
+    mesh(ASSET_TEST)
+}}
+''')
+        subprocess.run([str(COMPILER),str(Path(tmp,'cart.akr')),'-o',str(Path(tmp,'cart.mei'))],check=True,capture_output=True)
+        subprocess.run([str(RUNNER),str(Path(tmp,'cart.mei')),'--frames','4','--dump',str(Path(tmp,'out.ppm'))],check=True,capture_output=True)
+        pixels = Path(tmp,'out.ppm').read_bytes().split(b'\n',3)[3]
+        def at(x,y): return tuple(pixels[(y*320+x)*3:(y*320+x)*3+3])
+        return at(114,120),at(206,120)
+
+    def test_rewriting_palette_entries_recolours_the_mesh(self):
+        from assetkit.compiler import rgb15
+        r = palette_recipe()
+        with tempfile.TemporaryDirectory() as tmp:
+            build(r,tmp)
+            Path(tmp,'day.pal').write_bytes(struct.pack('<H',rgb15('#c08040')))
+            Path(tmp,'night.pal').write_bytes(struct.pack('<H',rgb15('#20f0f0')))
+            def expect(color,tint):
+                # The GPU: 5-bit texel expanded to 8 bits, times tint / 128, then the top 5 bits shown.
+                out = []
+                for k in (1,3,5):
+                    c5 = int(color[k:k+2],16)>>3
+                    c = min(255,((c5<<3)|(c5>>2))*tint>>7)>>3
+                    out.append((c<<3)|(c>>2))
+                return tuple(out)
+            wall,neon = self.render(tmp,'')
+            # A front wall: vertical bake with ambient 0.5 shades it 0.75, a tint of 96.
+            self.assertEqual(wall,expect('#c08040',96))
+            self.assertEqual(neon,expect('#c08040',128))
+            # Rewrite the surface entry only: the surface box changes, the emissive one does not,
+            # although both materials have the same default colour.
+            wall2,neon2 = self.render(tmp,'    load_palette(ASSET_TEST_SURFACE, NIGHT, 1)')
+            self.assertEqual(wall2,expect('#20f0f0',96))
+            self.assertEqual(neon2,neon)
+            # Drive the emissive entry alone with palette_lerp, as a day/night cycle would.
+            wall3,neon3 = self.render(tmp,'    palette_lerp(ASSET_TEST_EMISSIVE, DAY, NIGHT, ASSET_TEST_EMISSIVE_COUNT, 1.0)')
+            self.assertEqual(wall3,wall)
+            self.assertEqual(neon3,expect('#20f0f0',128))
+
+    def test_kiosk_example_previews_with_palette_materials(self):
+        r = json.loads((ROOT/'examples/assets/kiosk.asset.json').read_text())
+        r.pop('verification')
+        with tempfile.TemporaryDirectory() as tmp:
+            report = build(r,tmp,True,COMPILER,RUNNER)
+            textured = sum(v['stats']['px_tex'] for v in report['preview']['views'])
+            flat = sum(v['stats']['px_flat'] for v in report['preview']['views'])
+            self.assertGreater(textured,flat,'Palette-backed faces should cover most of the kiosk.')
+
+    @unittest.skipUnless(PROBE.exists(),'Needs mei-asset-probe.')
+    def test_probe_reads_carts_larger_than_two_megabytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            build(recipe(),tmp)
+            # The mesh is drawn only if the cart's last byte, beyond 2 MB, was read.
+            Path(tmp,'pad.bin').write_bytes(bytes(3*1024*1024-1)+b'\7')
+            code = source('test',build(recipe(),tmp)['bounds']).replace('fn draw() {','embed PAD: u8 = "pad.bin"\n\nfn draw() {\n    if PAD[len(PAD) - 1] != 7 { return }')
+            Path(tmp,'big.akr').write_text(code)
+            subprocess.run([str(COMPILER),str(Path(tmp,'big.akr')),'-o',str(Path(tmp,'big.mei')),'--sym',str(Path(tmp,'big.sym'))],check=True,capture_output=True)
+            self.assertGreater(Path(tmp,'big.mei').stat().st_size,3*1024*1024)
+            symbols = {line.split()[1]:line.split()[0] for line in Path(tmp,'big.sym').read_text().splitlines() if len(line.split()) == 2}
+            result = subprocess.run([str(PROBE),str(Path(tmp,'big.mei')),str(Path(tmp,'capture.bin')),
+                                     str(int(symbols['G___sv'],16)),'8'],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            capture = Path(tmp,'capture.bin').read_bytes()
+            self.assertEqual(capture[:4],b'MAV1')
+            self.assertGreater(struct.unpack_from('<I',capture,8)[0],0,'The probe did not read the whole cart.')
+
+
 @unittest.skipUnless(COMPILER.exists() and RUNNER.exists(),'Build Mei for native rendering tests.')
 class NativeRenderTests(unittest.TestCase):
     @unittest.skipUnless(importlib.util.find_spec('numpy'),'Optional depth oracle needs NumPy.')
@@ -365,7 +635,13 @@ class NativeRenderTests(unittest.TestCase):
                     raw = (Path(tmp)/('view_'+view['view']+'.ppm')).read_bytes().split(b'\n',3)[3]
                     # Check model area, excluding text bands; visible output cannot be only a HUD.
                     colors = {raw[i:i+3] for y in range(32,208) for x in range(48,272) for i in [(y*320+x)*3]}
-                    self.assertGreater(len(colors),8)
+                    if 'palette' in report:
+                        # Few flat palette colours (one roof entry seen from the top); check coverage.
+                        background = raw[:3]
+                        drawn = sum(raw[i:i+3] != background for y in range(32,208) for x in range(48,272) for i in [(y*320+x)*3])
+                        self.assertGreater(drawn,2000)
+                    else:
+                        self.assertGreater(len(colors),8)
 
 
 @unittest.skipUnless(importlib.util.find_spec('numpy'),'Optional depth oracle needs NumPy.')
@@ -470,6 +746,15 @@ class NativeVisibilityGateTests(unittest.TestCase):
         report=self.checked(r)
         self.assertTrue(report['ok'])
         self.assertTrue(all(v['tested_pixels']>0 for v in report['views']))
+
+    def test_palette_backed_faces_use_the_same_gate(self):
+        report=self.checked(palette_recipe())
+        self.assertTrue(report['ok'])
+        self.assertEqual(report['totals']['coverage_errors'],0)
+        r=self.overlap();r['materials']={'default':{'color':'#808080','palette':True}}
+        report=self.checked(r)
+        self.assertFalse(report['ok'],'Palette-backed faces must not hide ordering errors.')
+        self.assertGreater(report['totals']['wrong_pixels'],100)
 
     def test_crossing_depths_have_cycle_and_split_diagnostic(self):
         r=recipe({'op':'mesh','vertices':[[-1,-1,-.2],[1,-1,.2],[0,1,0],[-1,-1,.2],[1,-1,-.2]],
