@@ -19,7 +19,7 @@ game") ever disagree, DECISIONS.md wins. It depends on three things, all now in 
   which have landed: see [Asset Kit changes this needs](#asset-kit-changes-this-needs).
 - **A runtime.** Tsumiki, the stdlib 3D toolkit that had a scene, solids, a character controller
   and cameras, was removed in October 2026 ([ROADMAP.md](ROADMAP.md)). Its replacement for worlds
-  is the narrow pack reader `stdlib/worldpack.akr` (cells, culled two-pass drawing, collision
+  is the narrow pack reader `stdlib/worldpack.akr` (cells, culled drawing in passes, collision
   queries, entity tracking; [WORLDPACK.md](WORLDPACK.md)).
 
 The World Kit is a command-line tool for AI agents, a sibling of the Asset Kit. An editable JSON
@@ -658,7 +658,7 @@ outputs to the World Checker through one seam, `worldkit.build.run_gate(context)
 its result in the report. In `report` mode nothing fails; in `enforce` mode a failed check leaves
 the previous build in place with `verification.failed.json`.
 
-**The pack format is specified in [WORLDPACK.md](WORLDPACK.md)** (version 1.0), byte by byte:
+**The pack format is specified in [WORLDPACK.md](WORLDPACK.md)** (version 1.1), byte by byte:
 header, sparse index, layers, regions, cells, placements, entities and their parameter records,
 collision blocks with precomputed rows and a lookup grid, and the mesh pool (meshes stay in the
 native format). `tools/worldkit/pack.py` is the reference encoder and decoder the kit builds on,
