@@ -128,6 +128,46 @@ Or in assembly ([`docs/ASSEMBLY.md`](ASSEMBLY.md)):
 | `tools/meinet/` | The broadcast gateway: Open-Meteo weather encoded into a looping page carousel, served over TCP |
 | `docs/` | Spec, [decisions](DECISIONS.md) on everything the spec leaves open, language and assembly references, [memory cards](MEMCARD.md), [broadcast](BROADCAST.md) |
 
+## Names
+
+If something has a name, it matters. These are the named things in the project.
+
+**The console**
+
+| Name | What it is | Where |
+|---|---|---|
+| **Mei** | The console. The name is the character 明, "bright" | `src/core/`, [the spec](spec-v0.1.txt) |
+| **Akari** | The programming language (明かり, "light"); sources end in `.akr` | `src/lang/`, [LANGUAGE.md](LANGUAGE.md) |
+| **Prism Engine** | The 3D polygon processor: the GPU that fills triangles | `src/core/gpu.c`, [the spec](spec-v0.1.txt) |
+| **Horizon Engine** | The scrolling plane processor: the second video chip, for background planes, skies, floors and backdrops (called "the plane chip" in older text) | `src/core/planes.c`, [PLANES.md](PLANES.md) |
+| **MeiNet** | The one-way data broadcast (time and weather) and the gateway that sends it | [BROADCAST.md](BROADCAST.md), `tools/meinet/` |
+| **Mei System** | The system ROM: boot animation and shell | [SYSTEM.md](SYSTEM.md), `system/` |
+| **Duet**, **Eclipse** | The two boot themes | `system/boot/` |
+
+**Tools**
+
+| Name | What it is | Where |
+|---|---|---|
+| **Asset Kit** | Turns a JSON recipe into one native mesh. For things you could place twice | [ASSETKIT.md](ASSETKIT.md), `tools/mei_assets.py` |
+| **Asset Checker** | The Asset Kit's `verify`: proves one asset's faces draw in the right order from every side | [ASSETKIT.md](ASSETKIT.md) |
+| **World Kit** | Turns a world recipe into a level: cells, regions, layers, collision, game data. In progress | [WORLDKIT.md](WORLDKIT.md) |
+| **World Pack** | The binary level format the World Kit writes and the console reads in place | [WORLDPACK.md](WORLDPACK.md), `stdlib/worldpack.akr` |
+| **World Checker** | The World Kit's `verify`: checks a level from where a player can stand, for budgets, drawing order and collision holes. In progress | [WORLDKIT.md](WORLDKIT.md) |
+| **Reference Renderer** | An independent renderer that Mei's output is compared against, to test the console itself (`make rendercheck`). Not yet committed | |
+
+**Carts**
+
+| Name | What it is | Where |
+|---|---|---|
+| **Lantern Lake** | A fishing game on a lake, day into night | `carts/lantern/` |
+| **Sun & Moon Orbs** | A small 3D collect-a-thon in a courtyard | `carts/orbs/` |
+| **Mei Weather** | A weather channel fed by MeiNet | `carts/weather/` |
+| **Features** | Short screens showing what the machine can do | `carts/features/` |
+| **Sound Lab**, **Mei Demo** | The audio hardware test and the smallest example; built on request | `carts/soundlab/`, `carts/demo/` |
+
+**Retired names**, which still appear in history and in some measurements: **Tsumiki** (a 3D
+toolkit in the stdlib), **Playroom** (its sample cart) and **Check-In!** (a hotel-building cart).
+
 ## Decisions on the open questions
 
 The spec lists questions that are not yet decided. [`docs/DECISIONS.md`](DECISIONS.md)
