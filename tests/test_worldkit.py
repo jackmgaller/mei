@@ -299,7 +299,8 @@ class BuildTests(unittest.TestCase):
                       'two_districts.ids.json', 'report.json'):
                 self.assertEqual((Path(tmp)/'out_a'/f).read_bytes(), (Path(tmp)/'out_b'/f).read_bytes(), f)
             self.assertEqual(sorted(ra['files']), ['city.game.akr', 'report.json', 'source', 'two_districts.akr',
-                                                   'two_districts.ids.json', 'two_districts.swatch', 'two_districts.world.bin'])
+                                                   'two_districts.ids.json', 'two_districts.swatch', 'two_districts.world.bin',
+                                                   'verification'])
             source = sorted(str(p.relative_to(Path(tmp)/'out_a'/'source')) for p in (Path(tmp)/'out_a'/'source').rglob('*.json'))
             self.assertIn('cells/shrine_gate.cell.json', source)
             self.assertIn('assets/shop.asset.json', source)
@@ -324,7 +325,8 @@ class BuildTests(unittest.TestCase):
             self.assertGreater(cell['collision']['stripped_resting'], 0)
             self.assertEqual(report['regions']['lab']['palette']['classes']['emissive']['entries'], 1)
             self.assertEqual(report['verification']['mode'], 'report')
-            self.assertFalse(report['verification']['ran'])
+            self.assertTrue(report['verification']['ran'])
+            self.assertNotIn('timing', report['verification'])
             self.assertTrue(all(not a['recipe'].startswith('/') for a in report['assets'].values()))
             self.assertEqual(report['assets']['canopy_col']['used_as'], ['collision'])
 

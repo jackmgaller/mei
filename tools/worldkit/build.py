@@ -88,6 +88,8 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
                    'probe':source.game['probe'],'report':compiled.report,
                    'compiler':str(compiler) if compiler else None,'runner':str(runner) if runner else None}
         gate = run_gate(context)
+        # Wall-clock timings would make report.json differ between identical builds.
+        timing = gate.pop('timing',None)
         compiled.report['verification'] = gate
         if context['mode'] == 'enforce' and not gate['ok']:
             failure = directory/'verification.failed.json'
@@ -101,4 +103,6 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
     # The lock beside the recipe changes only once the build that needs it has been published.
     if compiled.lock_changes or not lock_path(source).exists():
         lock_path(source).write_text(jsonio.pretty(compiled.lock))
-    return dict(compiled.report,output=str(directory),files=generated,lock=str(lock_path(source)))
+    result = dict(compiled.report,output=str(directory),files=generated,lock=str(lock_path(source)))
+    if timing: result['verification_timing'] = timing
+    return result
