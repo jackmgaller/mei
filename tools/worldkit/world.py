@@ -64,13 +64,7 @@ def load(path):
     game_path = (base / world['game']).resolve()
     if not game_path.is_file():
         raise WorldError('/game', f'No game schema at {game_path}.')
-    game = jsonio.load(str(game_path), WorldError)
-    try:
-        validate_game(game)
-    except WorldError as error:
-        error.file = str(game_path)
-        raise
-    check_game(game, str(game_path))
+    game = load_game(str(game_path))
     cells = []
     if 'cells' in world:
         cells = [CellSource(c, None, f'/cells/{k}') for k, c in enumerate(world['cells'])]
@@ -92,6 +86,27 @@ def load(path):
                 raise WorldError('/id', f'A cell file is named after its cell: {recipe["id"]}.cell.json.', str(f))
             cells.append(CellSource(recipe, str(f), ''))
     return Source(world, world_path, base, game, game_path, cells)
+
+
+def load_game(path):
+    """A game schema, Mochi (a .mochi file) or JSON ('-' reads JSON from stdin), validated and
+    cross-checked. Errors name the file and, in Mochi, the line and column."""
+    at = None
+    try:
+        if not path.endswith('.mochi'):
+            game = jsonio.load(path, WorldError)
+        else:
+            from . import mochi
+            with open(path, encoding='utf-8') as stream: text = stream.read(jsonio.MAX_INPUT + 1)
+            if len(text) > jsonio.MAX_INPUT: raise WorldError('/input', 'Input exceeds 8 MiB.')
+            game, at = mochi.parse(text)
+        validate_game(game)
+        check_game(game, path)
+    except WorldError as error:
+        if path != '-': error.file = path
+        if at is not None: mochi.locate(error, at)
+        raise
+    return game
 
 
 def check_game(game, file):

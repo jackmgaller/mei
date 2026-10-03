@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Mei World Kit: agent-first world recipes (cells, regions, layers, game data) to world packs.
 
-Run `python3 tools/mei_world.py schema` for the complete recipe contract, or read
-docs/WORLDKIT.md. All command results and errors are JSON on stdout; exit 0 or 1.
+Run `python3 tools/mei_world.py schema` for the complete recipe contract (the game schema's
+Mochi form is described under $defs/game x-mochi), or read docs/WORLDKIT.md. All command results
+and errors are JSON on stdout; exit 0 or 1.
 """
 from pathlib import Path
 import shutil
@@ -11,8 +12,10 @@ import sys
 from kitcore import jsonio
 from kitcore.cli import parser_class
 from assetkit.geometry import AssetError
-from worldkit.schema import WorldError, published, validate_game
+from worldkit.schema import WorldError, published
 from worldkit.build import build, compile_source
+from worldkit.world import load_game
+from worldkit import mochi
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT/'examples'/'worlds'
@@ -38,6 +41,23 @@ def init(directory, example, force=False):
     return {'ok':True,'world':str(world.resolve()),'next':'inspect, then build this world'}
 
 
+def convert(source, output=None, force=False):
+    """A game schema in the other form: JSON to canonical Mochi, Mochi (.mochi) to JSON."""
+    game = load_game(source)
+    to = 'json' if source.endswith('.mochi') else 'mochi'
+    text = jsonio.pretty(game) if to == 'json' else mochi.format(game)
+    if output is None:
+        return {'ok':True,'format':to,'game':game} if to == 'json' else {'ok':True,'format':to,'text':text}
+    target = Path(output)
+    if target.suffix != '.'+to:
+        raise WorldError('/arguments',f'This converts to {"JSON" if to == "json" else "Mochi"}: name the output *.{to}.')
+    if target.exists() and not force:
+        raise WorldError('/arguments',f'{target} exists. Choose a new path, or pass --force.')
+    target.parent.mkdir(parents=True,exist_ok=True)
+    target.write_text(text)
+    return {'ok':True,'format':to,'output':str(target.resolve())}
+
+
 ArgumentParser = parser_class(WorldError)
 
 
@@ -45,7 +65,11 @@ def parser():
     p = ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest='command',required=True)
     s = sub.add_parser('schema',help='Print the JSON Schema of world recipes, cell files and game schemas.')
-    s.add_argument('--game',help='Fold this game schema\'s entity types and parameters in.')
+    s.add_argument('--game',help='Fold this game schema\'s (Mochi or JSON) entity types and parameters in.')
+    c = sub.add_parser('convert',help='Convert a game schema: JSON to canonical Mochi, or Mochi (.mochi) to JSON.')
+    c.add_argument('game',help='Game schema path (- reads JSON from stdin).')
+    c.add_argument('-o','--output',help='Write this file (*.mochi or *.json) instead of returning the result.')
+    c.add_argument('--force',action='store_true',help='Overwrite the output file.')
     i = sub.add_parser('init',help='Copy an example world (world file, cells, game schema, asset recipes) into a directory.')
     i.add_argument('output')
     i.add_argument('--example',choices=sorted(EXAMPLE_WORLDS),default='room')
@@ -73,11 +97,9 @@ def main(argv=None):
     try:
         args = parser().parse_args(argv)
         if args.command == 'schema':
-            game = None
-            if args.game:
-                game = jsonio.load(args.game,WorldError)
-                validate_game(game)
-            jsonio.output(published(game))
+            jsonio.output(published(load_game(args.game) if args.game else None))
+        elif args.command == 'convert':
+            jsonio.output(convert(args.game,args.output,args.force))
         elif args.command == 'init':
             jsonio.output(init(args.output,args.example,args.force))
         elif args.command in ('build','preview'):
@@ -96,7 +118,8 @@ def main(argv=None):
         return 0
     except (WorldError,AssetError,OSError,ValueError,RecursionError) as error:
         failure = {'path':getattr(error,'path','/input'),'message':str(error)}
-        if getattr(error,'file',None): failure['file'] = error.file
+        for key in ('file','line','column'):
+            if getattr(error,key,None): failure[key] = getattr(error,key)
         jsonio.output({**getattr(error,'report',{}),'ok':False,'errors':[failure]})
         return 1
 

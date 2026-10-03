@@ -9,10 +9,12 @@ from kitcore.schema import number, integer, array, obj, choice, NAME, BOOL, COLO
 
 
 class WorldError(KitError):
-    """A world error: a JSON Pointer path into `file` (the world recipe when None)."""
+    """A world error: a JSON Pointer path into `file` (the world recipe when None), and for a Mochi
+    game schema the line and column."""
     def __init__(self, path, message, file=None):
         super().__init__(path, message)
         self.file = file
+        self.line = self.column = None
 
 
 NUM = number(-32767,32767)
@@ -79,7 +81,7 @@ REGION = dict(obj({
 
 WORLD = dict(obj({
     'format':{'const':'mei-world'},'version':{'const':1},'name':NAME,
-    'game':dict(PATH,description='The game schema (format mei-world-game).'),
+    'game':dict(PATH,description='The game schema: Mochi (a .mochi file; see $defs/game x-mochi) or JSON (format mei-world-game).'),
     'assets':dict(PATH,description='Directory of Asset Kit recipes.'),
     'grid':obj({'cell_size':dict(choice(16,32,64,128),description='Units; one unit is a metre by convention.')},['cell_size']),
     'overhang':dict(number(0,64),description='How far placements may reach past their cell (units, default 8, at most half a cell).'),
@@ -161,12 +163,15 @@ def entity_schema(game):
 
 
 def published(game=None):
-    """The schema the `schema` command prints, with a game's entity types folded in if given."""
-    if game is None: return SCHEMA
+    """The schema the `schema` command prints, with Mochi described under $defs/game and a game's
+    entity types folded in if given."""
+    from .mochi import CONTRACT
+    base = dict(SCHEMA,**{'$defs':dict(SCHEMA['$defs'],game=dict(GAME,**{'x-mochi':CONTRACT}))})
+    if game is None: return base
     entity = entity_schema(game)
     def swap(cell):
         props = dict(cell['properties'],entities=array(entity,0,4096))
         return dict(cell,properties=props)
-    world = dict(SCHEMA,properties=dict(SCHEMA['properties'],cells=array(swap(CELL),1,4096)))
-    world['$defs'] = dict(SCHEMA['$defs'],cell_file=swap(CELL_FILE))
+    world = dict(base,properties=dict(SCHEMA['properties'],cells=array(swap(CELL),1,4096)))
+    world['$defs'] = dict(base['$defs'],cell_file=swap(CELL_FILE))
     return world
