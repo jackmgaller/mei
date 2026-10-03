@@ -28,7 +28,7 @@ import struct
 
 MAGIC = b'MEIW'
 VERSION_MAJOR = 1
-VERSION_MINOR = 0
+VERSION_MINOR = 1
 HEADER_SIZE = 64
 CELL_SIZE = 96
 PLACEMENT_SIZE = 48
@@ -55,7 +55,8 @@ MAX_COORD = 4096            # |local collision coordinate| and |y| (units)
 MAX_WORLD = 32767           # |world x, z| of everything (units)
 MAX_MESH_VERTS = 2048
 FLAG_SAVED = 1
-FLAGS_REQUIRED = 0xF0       # header flag bits a reader must understand (none defined in 1.0)
+PLACEMENT_GROUND = 1        # placement flags bit 0 (1.1): drawn in the ground pass
+FLAGS_REQUIRED = 0xF0       # header flag bits a reader must understand (none defined in 1.1)
 
 KIND_FLOOR, KIND_WALL, KIND_CEILING = 0, 1, 2
 KIND_NAMES = ('floor', 'wall', 'ceiling')
@@ -116,11 +117,15 @@ class Tri:
 
 @dataclass
 class Placement:
+    """An asset drawn at a position and yaw. ground: drawn in the reader's ground pass, before
+    everything else near the camera (WORLDPACK.md, "Ground"); the encoder files a cell's ground
+    placements first, keeping their order and the order of the rest."""
     mesh: bytes
     position: tuple
     yaw: float = 0.0
     layer: str = None
     tag: int = 0
+    ground: bool = False
 
 
 @dataclass
@@ -695,7 +700,9 @@ def encode(world, report=None):
         # placements
         spheres = []
         prec = bytearray()
-        for p in c.placements:
+        placements = [p for p in c.placements if p.ground] + [p for p in c.placements if not p.ground]
+        ground_count = sum(1 for p in placements if p.ground)
+        for p in placements:
             pos = _raw3(p.position, 'placement position')
             local = (pos[0] - cx, pos[1], pos[2] - cz)
             if not (-half <= local[0] < half and -half <= local[2] < half):
@@ -715,9 +722,10 @@ def encode(world, report=None):
                 raise PackError(f'cell ({c.i}, {c.j}): placement layer {p.layer!r} not in the cell')
             if not 0 <= p.tag <= 0xFFFF:
                 raise PackError('placement tag out of range')
-            prec += struct.pack('<8i2iIBBH', *sc, sr, *local, 0, cs, sn, 0, mask_of(p.layer), 0, p.tag)
-        pl_off = out.put(bytes(prec)) if c.placements else 0
-        for k, p in enumerate(c.placements):
+            prec += struct.pack('<8i2iIBBH', *sc, sr, *local, 0, cs, sn, 0, mask_of(p.layer),
+                                PLACEMENT_GROUND if p.ground else 0, p.tag)
+        pl_off = out.put(bytes(prec)) if placements else 0
+        for k, p in enumerate(placements):
             mesh_ref(pl_off + PLACEMENT_SIZE * k + 40, p.mesh)
         bounds = _sphere_of_spheres(spheres) if spheres else ([0, 0, 0], 0)
         sb = ([0, 0, 0], 0)
@@ -768,7 +776,7 @@ def encode(world, report=None):
         lay = [layer_id[n] for n in names] + [NO_LAYER] * (MAX_CELL_LAYERS - len(names))
         out.patch(at, 'hhHBB8B4i4iIIIIIII5I', c.i, c.j, c.region, len(names), 0, *lay,
                   *bounds[0], bounds[1], *sb[0], sb[1], 0, len(c.placements), pl_off,
-                  len(c.entities), en_off, first, coll_off, 0, 0, 0, 0, 0)
+                  len(c.entities), en_off, first, coll_off, ground_count, 0, 0, 0, 0)
         if c.standin is not None:
             mesh_ref(at + 48, c.standin)
 
@@ -837,10 +845,11 @@ class DCell:
     bounds: tuple
     standin_bounds: tuple
     standin: int
-    placements: list    # dicts
+    placements: list    # dicts; a 1.1 pack's ground placements come first ('ground': True)
     entities: list      # dicts
     entity_first: int
     coll: Coll
+    ground_count: int = 0
 
 
 @dataclass
@@ -1053,6 +1062,9 @@ def decode(data):
         bounds = v[13:17]
         sbounds = v[17:21]
         sto, npl, plo, nen, eno, efirst, collo = v[21:28]
+        nground = v[28] if minor >= 1 else 0        # reserved (ignored) in 1.0
+        if nground > npl:
+            raise PackError(f'cell ({ci}, {cj}): more ground placements than placements')
         r.table(plo, npl, PLACEMENT_SIZE, 'placements', hs)
         r.table(eno, nen, ENTITY_SIZE, 'entities', hs)
         lmask = (1 << nl) - 1
@@ -1063,8 +1075,11 @@ def decode(data):
                 raise PackError(f'cell ({ci}, {cj}): bad placement layer mask')
             if pv[10] == 0:
                 raise PackError(f'cell ({ci}, {cj}): a placement has no mesh')
+            ground = minor >= 1 and bool(pv[12] & PLACEMENT_GROUND)
+            if ground != (p < nground):
+                raise PackError(f'cell ({ci}, {cj}): the ground placements are not the first {nground}')
             pls.append(dict(sphere=pv[0:4], pos=pv[4:7], cos=pv[8], sin=pv[9],
-                            mesh=mesh_at(pv[10], 'placement'), mask=pv[11], tag=pv[13]))
+                            mesh=mesh_at(pv[10], 'placement'), mask=pv[11], tag=pv[13], ground=ground))
         ens = []
         for e in range(nen):
             ea = eno + ENTITY_SIZE * e
@@ -1080,7 +1095,7 @@ def decode(data):
         if coll is not None and coll.half != half:
             raise PackError(f'cell ({ci}, {cj}): collision grid is not the cell square')
         cells[(ci, cj)] = DCell(co, ci, cj, reg, lay, bounds, sbounds, mesh_at(sto, 'stand-in'), pls, ens,
-                                efirst, coll)
+                                efirst, coll, nground)
     ents = []
     for k in range(nent):
         eo = r.u('I', ent_dir + 4 * k, 'entity directory')[0]

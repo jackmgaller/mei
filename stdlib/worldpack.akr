@@ -1,6 +1,7 @@
 // The world pack reader (docs/WORLDPACK.md): a world of square cells read in place from ROM.
-// It answers geometric questions only: which cell holds a point, what to draw (two passes,
-// culled by bounding sphere, layers applied, camera-relative), what is under, above or beside
+// It answers geometric questions only: which cell holds a point, what to draw (far stand-ins,
+// then the near ground, then the rest near the camera; culled by bounding sphere, layers applied,
+// camera-relative), what is under, above or beside
 // a point, where a segment first hits, and which entities become active or inactive. What
 // entities, surfaces and layers mean is the game's.
 //
@@ -93,7 +94,8 @@ struct WpCell {
     entity_off: u32
     entity_first: u32  // the global number of its first entity
     coll_off: u32
-    reserved: [5]u32
+    ground_count: u32  // 1.1: its first ground_count placements are ground (0 in a 1.0 pack)
+    reserved: [4]u32
 }
 
 struct WpPlacement {
@@ -103,7 +105,7 @@ struct WpPlacement {
     sin: fixed
     mesh: u32
     mask: u8           // the cell layer bit it belongs to, or 0
-    flags: u8
+    flags: u8          // bit 0 (1.1): ground
     tag: u16
 }
 
@@ -194,8 +196,9 @@ struct WpHit {
 struct WpStats {
     near_cells: s32    // near cells looked at
     placements: s32    // placements looked at
-    drawn: s32         // placements drawn
+    drawn: s32         // placements drawn (ground included)
     standins: s32      // stand-ins drawn
+    ground: s32        // ground placements drawn in the ground pass
 }
 
 // ---- state and settings
@@ -207,6 +210,9 @@ var wp_clip_near: fixed = 0.1  // the near pass's near plane
 var wp_near_far: fixed     // the near pass's far depth (wp_open: 1.5 cells)
 var wp_far_ring: s32 = 3   // the far pass draws stand-ins out to this many cells (< 2: none)
 var wp_region_loaded: s32 = -1  // near cells of other regions draw as stand-ins (-1: any)
+var wp_ground_first: bool = true  // draw ground placements in a pass of their own, first
+
+var __wp_ground: bool      // the pack is 1.1 or later: cells' ground_count is meaningful
 
 var __wp_base: u32
 var __wp_shift: s32
@@ -245,6 +251,7 @@ fn wp_open(pack: *u8) -> bool {
         return false
     }
     wp_pack = h
+    __wp_ground = h.minor >= 1
     __wp_base = pack as u32
     __wp_shift = shift
     __wp_half = fixed(1 << (shift - 1))
@@ -342,9 +349,12 @@ fn wp_view_origin() -> vec3 { return __wp_origin }
 // Draws the world from eye (world position) looking along yaw and pitch, as camera_look()
 // would, and leaves that camera set (relative to wp_view_origin()) with the near pass's clip
 // range. First the far pass: the stand-ins of the cells 2..wp_far_ring cells from the eye's
-// cell, sorted in a table of their own and drawn at once (ot_flush()). Then the near pass: the
-// placements of the 3 x 3 cells around it whose layers are on and whose spheres are in view,
-// into the frame's table, which the cart's own meshes join. Call it after cls().
+// cell, sorted in a table of their own and drawn at once (ot_flush()). Then the near pass, over
+// the placements of the 3 x 3 cells around it whose layers are on and whose spheres are in view:
+// their ground placements first, sorted among themselves and drawn at once (ot_flush(), when
+// wp_ground_first is set and any was drawn), so that nothing standing on the ground can sort
+// behind it; then the rest, into the frame's table, which the cart's own meshes join. Call it
+// after cls().
 fn wp_draw(eye: vec3, yaw: fixed, pitch: fixed) {
     let ci = wp_cell_index(eye.x)
     let cj = wp_cell_index(eye.z)
@@ -370,14 +380,29 @@ fn wp_draw(eye: vec3, yaw: fixed, pitch: fixed) {
     camera_clip(wp_clip_near, wp_near_far)
     camera_look(local, yaw, pitch)
     __wp_frustum(wp_clip_near, wp_near_far)
+    let ground = wp_ground_first && __wp_ground
+    if ground {
+        for dj in -1..2 {
+            for di in -1..2 {
+                let c = wp_cell(ci + di, cj + dj)
+                if c == null || c.ground_count == 0 { continue }
+                if wp_region_loaded >= 0 && c.region as s32 != wp_region_loaded { continue }
+                wp_stats.ground += __wp_placements(c, di, dj, 0, c.ground_count as s32)
+            }
+        }
+        if wp_stats.ground != 0 { ot_flush() }
+    }
     for dj in -1..2 {
         for di in -1..2 {
             let c = wp_cell(ci + di, cj + dj)
             if c == null { continue }
             if wp_region_loaded >= 0 && c.region as s32 != wp_region_loaded {
                 if c.standin_off != 0 { __wp_standin(c, di, dj) }
-            } else {
-                __wp_near_cell(c, di, dj)
+            } else if c.placement_count != 0 {
+                wp_stats.near_cells += 1
+                var k0 = 0
+                if ground { k0 = c.ground_count as s32 }
+                __wp_placements(c, di, dj, k0, c.placement_count as s32)
             }
         }
     }
@@ -435,23 +460,26 @@ fn __wp_standin(c: *WpCell, di: s32, dj: s32) {
     wp_stats.standins += 1
 }
 
-fn __wp_near_cell(c: *WpCell, di: s32, dj: s32) {
-    let n = c.placement_count as s32
-    if n == 0 { return }
-    wp_stats.near_cells += 1
+// Draws placements k0..k1 - 1 of a near cell that are present and in view (the whole cell is
+// culled by its bounds first). Returns how many it drew.
+fn __wp_placements(c: *WpCell, di: s32, dj: s32, k0: s32, k1: s32) -> s32 {
+    if k0 >= k1 { return 0 }
     let off = vec4(fixed(di << __wp_shift), 0.0, fixed(dj << __wp_shift), 0.0)
-    if !__wp_visible(c.bounds + off) { return }
+    if !__wp_visible(c.bounds + off) { return 0 }
     let mask = wp_cell_mask(c)
-    var p = (__wp_base + c.placement_off) as *WpPlacement
-    wp_stats.placements += n
-    for k in 0..n {
+    var p = (__wp_base + c.placement_off) as *WpPlacement + k0
+    wp_stats.placements += k1 - k0
+    var drawn = 0
+    for k in k0..k1 {
         let pm = p.mask as u32
         if (pm == 0 || pm & mask != 0) && __wp_visible(p.sphere + off) {
             __wp_mesh((__wp_base + p.mesh) as *Mesh, p.pos + off, p.cos, p.sin)
-            wp_stats.drawn += 1
+            drawn += 1
         }
         p = p + 1
     }
+    wp_stats.drawn += drawn
+    return drawn
 }
 
 // ---- collision in a block's own frame

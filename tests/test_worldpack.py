@@ -38,7 +38,7 @@ class EncoderTests(unittest.TestCase):
         data = encode(w, rep)
         self.assertEqual(data, encode(F.demo_world()), 'encoding is deterministic')
         p = decode(data)
-        self.assertEqual((p.major, p.minor, p.cell_shift), (1, 0, 6))
+        self.assertEqual((p.major, p.minor, p.cell_shift), (1, 1, 6))
         self.assertEqual(set(p.cells), {(0, 0), (1, 0), (0, 1), (1, 1), (5, 0)})
         self.assertEqual([l[0] for l in p.layers], ['gate', 'bridge_up', 'bridge_down'])
         self.assertEqual([l[1:] for l in p.layers], [(255, False), (0, True), (0, False)])
@@ -209,6 +209,40 @@ class EncoderTests(unittest.TestCase):
                 decode(bytes(bad))
             except PackError:
                 pass
+
+    def test_ground_round_trip_and_older_packs(self):
+        m = F.box_mesh((-1, 0, -1), (1, 2, 1), 0xFFFFFF)
+        pls = [Placement(m, (8, 0, 8), tag=1), Placement(m, (9, 0, 9), tag=2, ground=True),
+               Placement(m, (10, 0, 10), tag=3), Placement(m, (11, 0, 11), tag=4, ground=True)]
+        w = World(cells=[Cell(0, 0, placements=pls)], cell_shift=5)
+        data = encode(w)
+        c = decode(data).cells[(0, 0)]
+        # ground placements are filed first, each group in its own order
+        self.assertEqual([p['tag'] for p in c.placements], [2, 4, 1, 3])
+        self.assertEqual([p['ground'] for p in c.placements], [True, True, False, False])
+        self.assertEqual(c.ground_count, 2)
+        co = c.off
+        self.assertEqual(struct.unpack_from('<I', data, co + 76)[0], 2)
+        pl = struct.unpack_from('<I', data, co + 56)[0]
+        self.assertEqual([data[pl + P.PLACEMENT_SIZE * k + 45] for k in range(4)], [1, 1, 0, 0])
+        # the same pack read as 1.0: the fields 1.1 uses are reserved there, and ignored
+        old = data[:6] + struct.pack('<H', 0) + data[8:]
+        c0 = decode(old).cells[(0, 0)]
+        self.assertEqual((c0.ground_count, [p['ground'] for p in c0.placements]), (0, [False] * 4))
+        # a pack without ground is a 1.0 pack but for its minor version: 1.0 packs read as before
+        plain = World(cells=[Cell(0, 0, placements=pls[:1] + [Placement(m, (9, 0, 9), tag=2)])], cell_shift=5)
+        new = encode(plain)
+        as10 = new[:6] + struct.pack('<H', 0) + new[8:]
+        for d in (new, as10):
+            c = decode(d).cells[(0, 0)]
+            self.assertEqual(c.ground_count, 0)
+            self.assertEqual([(p['tag'], p['ground']) for p in c.placements], [(1, False), (2, False)])
+        # inconsistent ground fields are refused
+        for at, value, fmt in ((co + 76, 5, '<I'), (co + 76, 1, '<I'), (pl + P.PLACEMENT_SIZE * 2 + 45, 1, '<B')):
+            bad = bytearray(data)
+            struct.pack_into(fmt, bad, at, value)
+            with self.subTest(at=at), self.assertRaises(PackError):
+                decode(bytes(bad))
 
     def test_params_layout_matches_akari_structs(self):
         self.assertEqual(P.pack_params([('u8', 1), ('s16', -2), ('s32', 3)]), struct.pack('<Bxhi', 1, -2, 3))
@@ -727,6 +761,57 @@ def meshlib_rgb(r, g, b):
 
 
 @needs_tools
+def ground_test_world(strip=True, crate=True, ground=True):
+    """tests/worldverify's mis-sorted pair alone: a runway strip (blue, z 1..17) and a crate (red)
+    standing on it at z 12..13, seen from the strip's near end (tests/worldpack/ground.akr), where
+    the strip's average depth is nearer than the crate's front: one near pass draws the strip over
+    the crate's lower part."""
+    c = Cell(0, 0)
+    if strip:
+        m = F.meshlib.Mesh()
+        a, b, cc, d = m.vertex(-1, 0.01, -8), m.vertex(1, 0.01, -8), m.vertex(-1, 0.01, 8), m.vertex(1, 0.01, 8)
+        m.quad([a, b, cc, d], [meshlib_rgb(60, 60, 200)])
+        c.placements.append(Placement(m.pack(), (27, 0, 9), tag=50, ground=ground))
+    if crate:
+        c.placements.append(Placement(F.box_mesh((-1, 0, -0.5), (1, 1.5, 0.5), meshlib_rgb(200, 60, 60)),
+                                      (27, 0.01, 12.5), tag=51))
+    return World(cells=[c], cell_shift=5)
+
+
+@needs_tools
+class GroundTests(unittest.TestCase):
+    """Ground-first drawing on the console: an object standing on the ground is overdrawn by it
+    in one near pass and whole with the ground drawn first."""
+
+    def shot(self, data, ground_first=True):
+        with tempfile.TemporaryDirectory() as tmp:
+            dump = Path(tmp) / 'shot.ppm'
+            lines = F.run_cart(tmp, 'ground.akr', {'PACK': ('u8', data)},
+                               {'GROUND': 'true' if ground_first else 'false'}, frames=2, dump=dump)
+            w, h, px = F.read_ppm(dump)
+        red = sum(1 for k in range(w * h) if px[3 * k] > 150 and px[3 * k + 2] < 100)
+        blue = sum(1 for k in range(w * h) if px[3 * k + 2] > 150 and px[3 * k] < 100)
+        return lines[-1], red, blue
+
+    def test_object_on_ground_is_no_longer_overdrawn(self):
+        pack = encode(ground_test_world())
+        _, alone, _ = self.shot(encode(ground_test_world(strip=False)))
+        line, red, blue = self.shot(pack)
+        off_line, off_red, off_blue = self.shot(pack, ground_first=False)
+        old_line, old_red, _ = self.shot(pack[:6] + struct.pack('<H', 0) + pack[8:])    # read as 1.0
+        if VERBOSE:
+            print(f'\n  crate alone {alone}, ground first {red} (strip {blue}), '
+                  f'one pass {off_red} (strip {off_blue}), as 1.0 {old_red}')
+        self.assertGreater(alone, 1000)
+        self.assertEqual(line, 'drawn 2 ground 1')
+        self.assertEqual(red, alone, 'the whole crate is drawn over the ground')
+        self.assertGreater(blue, 1000)
+        self.assertEqual(off_line, 'drawn 2 ground 0')
+        self.assertLess(off_red, alone - 100, 'one near pass draws the strip over the crate')
+        self.assertEqual(off_red + off_blue, red + blue)
+        self.assertEqual((old_line, old_red), (off_line, off_red), 'a 1.0 reading is one near pass')
+
+
 class CostTests(unittest.TestCase):
     """Cycles per query and per frame in fixture.bench_world(): a 64-unit cell holds 2,128
     floors, 320 walls and 80 ceilings (a heightfield of 2-unit quads and 40 buildings), and 100
