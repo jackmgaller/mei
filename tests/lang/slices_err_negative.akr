@@ -1,0 +1,3 @@
+// error: slice index cannot be negative
+var xs: [2]s32
+fn init() { let s: []s32 = xs; print_int(s[-1]) }

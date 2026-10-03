@@ -1,0 +1,3 @@
+// error: expected []s32
+const xs: [2]s32 = [1, 2]
+fn init() { let s: []const s32 = xs; let m: []s32 = s }

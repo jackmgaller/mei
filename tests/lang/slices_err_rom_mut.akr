@@ -1,0 +1,3 @@
+// error: cannot make a mutable slice of read-only storage
+const xs: [2]s32 = [1, 2]
+fn init() { let s: []s32 = xs }

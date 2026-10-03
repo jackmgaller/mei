@@ -1,0 +1,2 @@
+// error: cannot make a mutable slice of read-only storage
+fn bad(xs: [2]s32) { let s: []s32 = xs }

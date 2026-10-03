@@ -78,6 +78,7 @@ typedef enum {
     TY_FUNC,      /* function value: 16 bytes, [code address, 3 captured words]; elem = result,
                      params = parameter types. Held in vector registers like a vec4. */
     TY_FIXED16,   /* signed 4.12 in memory; canonical 16.16 in scalar registers */
+    TY_SLICE,     /* 8-byte descriptor: element pointer and s32 length */
     TY_ENUM,      /* enumeration: elem = underlying integer type */
 } TyKind;
 
@@ -100,6 +101,9 @@ struct Type {
     Loc loc;
     struct StructDecl *decl;
     int packed_bits;       /* anonymous bits group; byte-aligned aggregate */
+    int readonly;         /* TY_SLICE: backing elements are read-only */
+    Type *readonly_slice_cache;
+    Type *slice_cache;     /* interned []T */
     Type *ptr_cache;       /* interned *T */
     Type *arr_list;        /* interned arrays of this element type */
     Type *arr_sib;         /* next array type in the element's arr_list */
@@ -115,6 +119,7 @@ extern Type *ty_void, *ty_bool, *ty_s8, *ty_s16, *ty_s32, *ty_u8, *ty_u16, *ty_u
 void types_init(void);
 Type *ty_ptr(Type *t);
 Type *ty_array(Type *t, int64_t n);
+Type *ty_slice(Type *t);
 const char *ty_str(Type *t);
 int ty_is_int(Type *t);       /* s8..u32 (not untyped) */
 int ty_is_signed(Type *t);
@@ -134,7 +139,8 @@ typedef enum {
 } OpKind;
 
 typedef struct TypeExpr {
-    int k;                 /* 0 name, 1 pointer, 2 array, 3 function, 5 bits */
+    int readonly;          /* []const T */
+    int k;                 /* 0 name, 1 pointer, 2 array, 3 function, 4 slice, 5 bits */
     struct StructDecl *bits; /* inline packed group declaration */
     Loc loc;
     const char *name;
@@ -147,6 +153,7 @@ typedef struct TypeExpr {
 typedef enum {
     E_INT, E_FIXED, E_BOOL, E_STR, E_NULL, E_NAME, E_UNARY, E_BINARY, E_CALL,
     E_INDEX, E_FIELD, E_CAST, E_ARRAY, E_STRUCT, E_SIZEOF, E_CONV,
+    E_SLICE,      /* sequence[lo..hi]: args[0:2] bounds */
     E_FUNC,       /* function literal */
     E_MATCH,      /* match expression: a = scrutinee, arms[i].value the arm values */
 } ExprKind;
@@ -240,6 +247,7 @@ struct Local {
     int64_t rlo, rhi;
     int is_capture;       /* a function literal's copy of a captured local (arrives in r6-r8) */
     int points_local;     /* pointer seen holding the address of local storage (dangling check) */
+    int borrows_param;    /* slice/aggregate local may refer to caller-owned storage */
     int addr_taken;
     int in_asm;           /* named in an inline asm block: must live in a register */
     Sym *csym;            /* a local `const`: its constant (the Local only names it in a scope) */

@@ -1,0 +1,4 @@
+// error: cannot store a slice of local storage outside its function
+struct H {s: []s32}
+var saved: H
+fn init() { var a: [2]s32; let p = &saved; p.s = a }

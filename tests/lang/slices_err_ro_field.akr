@@ -1,0 +1,4 @@
+// error: slice elements are read-only
+struct P {x: s32}
+const data: [1]P = [P {x: 3}]
+fn init() { let ps = data[0..1]; ps[0].x = 4 }

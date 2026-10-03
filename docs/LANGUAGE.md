@@ -4,7 +4,7 @@ Akari (明かり, "light") is the Mei console's programming language. Its name s
 kanji 明 with the console: sun and moon, "bright". It is small and statically typed, and
 it compiles to the Mei CPU's machine code. Source files end in `.akr` (the older `.mls`
 extension still builds). There is no garbage collector and no heap:
-data is scalars, vectors, structs and fixed-size arrays in RAM, ROM and registers.
+data is scalars, vectors, structs, slices and fixed-size arrays in RAM, ROM and registers.
 
 ```
 cart "Spinner"
@@ -333,6 +333,7 @@ the start of a top-level declaration, and cannot be combined with `private`.
 | `*T` | 4 | pointer to `T` |
 | `fn(T, U) -> R` | 16 | function value: a code address and up to 3 captured words (`fn(T)` returns nothing); 4-byte aligned |
 | enum | 1, 2 or 4 | an `enum` declaration; stored as its underlying integer type (default `s32`) |
+| `[]T`, `[]const T` | 8 bytes | pointer and element count; mutable or read-only backing |
 | `[N]T` | N × size | fixed-size array (`[4][4]u8` is an array of arrays); `N` is any constant integer expression (below) |
 | struct | fields, padded | fields are aligned to their size (vectors and `mat4` to 4) |
 
@@ -356,8 +357,57 @@ range; explicitly typed values can wrap, so `fixed16(fixed(8.0))` is −8.0.
 Debug multiply and divide checks apply to the promoted `fixed` operation; narrowing itself
 wraps in debug mode as well.
 
-Scalars live in scalar registers, vectors in vector registers; structs, arrays and matrices
-always live in memory.
+Scalars live in scalar registers, vectors in vector registers; structs, arrays, slices and
+matrices always live in memory.
+
+### Slices
+
+`[]T` is a view of stored array elements: an element pointer followed by a signed 32-bit
+length. Passing an array to a slice parameter does not copy its elements, and accepts any
+array length with the same element type. `[]const T` provides read-only access to RAM or ROM;
+a mutable slice converts implicitly to a read-only slice. Mutable `[]T` views require mutable
+backing: a `var` array, or another mutable slice. Const data, `let` arrays and aggregate array
+parameters convert to `[]const T`.
+
+```
+fn sum(xs: []const s32) -> s32 {
+    var result = 0
+    for i in 0..len(xs) { result += xs[i] }
+    return result
+}
+var values: [4]s32 = [10, 20, 30, 40]
+let xs: []s32 = values
+let middle = xs[1..3]       // shares values[1] and values[2], length 2
+middle[0] = 25             // changes values[1]; let freezes the descriptor, not its backing
+let empty = xs[2..2]        // length 0
+let total = sum(values)     // any stored array length, or a slice
+```
+
+`xs[lo..hi]` makes a slice with an exclusive end; `0 <= lo <= hi <= len(xs)`.
+Bounds may be run-time expressions and are evaluated once. Arrays and existing slices support
+ranges, including empty ranges; slicing read-only storage preserves its read-only qualifier.
+`len(slice)` is a run-time `s32`, while `len(array)` remains a compile-time constant.
+`meic -g` checks slice indexing and range bounds and reports an invalid index with the current
+length. Release builds omit these checks, as they do for arrays.
+
+Slices use the existing aggregate calling convention: descriptor parameters are passed by
+reference and cannot be reassigned inside the callee, and returned descriptors use a hidden
+output pointer. Writable slice parameters can change their backing elements. Slices may be
+copied into locals, globals, struct fields and arrays. Uninitialized descriptors are empty.
+
+The backing must remain alive while the view is used. Store an array literal in a variable
+before taking a slice; temporary arrays cannot provide backing. The checker rejects returning
+local-backed slices, including views carried inside aggregates, and rejects storing local or
+parameter-backed views into globals or through pointers. A parameter-backed view can be
+returned to its caller. Escape tracking is conservative: a slice-bearing result of a call
+may borrow any input backing. Raw pointer casts are the same explicit, unchecked escape hatch
+as elsewhere in Akari. Slice values cannot be captured directly by function literals; pass a
+slice parameter, use a global, or use a pointer to a longer-lived descriptor.
+
+`[]const T` forbids assignments to elements, mutable element pointers, `filter`, writable
+intrinsic destinations, and pointer-taking `each` callbacks. Reading, `reduce`, value-taking
+`each`, mapping to separate output and `filter_into` with a writable destination work normally.
+
 
 ## Constants and conversions
 
@@ -374,6 +424,7 @@ division by a constant zero is an error.
 - between integer types, in either direction (narrowing truncates);
 - between `fixed` and `fixed16`, in either direction (narrowing rounds down and wraps);
 - `null` to any pointer type; any pointer to `*u8` (a byte pointer, like `void *`);
+- a mutable array variable `[N]T` to `[]T`; any stored array to `[]const T`; `[]T` to `[]const T`.
 - an array variable `[N]T` to `*T` (or `*u8`): `sum(buf, 10)` passes `&buf[0]`.
 
 Everything else needs an explicit conversion. In particular integer variables and fixed-point values never mix
@@ -466,7 +517,8 @@ at a time with a single load or store, so `p.pos.y += 1.0` costs three instructi
 
 **Assignment** `=`, and compound `+= -= *= /= %= &= |= ^= <<= >>=`. The target of a compound
 assignment is evaluated once (`a[next()] += 1` calls `next` once). Struct, array and matrix
-assignment copies the whole value.
+assignment copies the whole value. Slice assignment copies its pointer and length, sharing
+the backing elements.
 
 ## Statements
 
@@ -739,7 +791,7 @@ for i in 0..4 { fs[i] = fn(x: s32) => x * i }   // four values, each with its ow
     note: pass the extra values as arguments, or capture one pointer to a struct that holds them
   ```
 
-- **Not capturable:** vectors, structs, arrays and matrices (copy the lanes or fields you need
+- **Not capturable:** vectors, structs, arrays, slices and matrices (copy the lanes or fields you need
   into locals first, and use those, or capture a pointer), and function values (4 words each:
   pass them as arguments or keep them in a global).
 - **Nested literals** capture through each level: an inner literal that uses a local of the
@@ -767,7 +819,7 @@ These are compiled inline (no call) and work on several types:
 | `nclip(p0, p1, p2) -> s32` | twice the signed area of a screen triangle; negative when counter-clockwise on screen (front-facing). Arguments are packed positions `(x & 0xFFFF) \| (y << 16)` |
 | `otz(bias, depth, scale) -> s32` | ordering-table bucket: `bias + floor(depth * scale)`, clamped to 0..1023 (`depth`, `scale` are `fixed`) |
 | `clerp(from, to, t) -> u32` | blend two colours (each of the four bytes) by `t` (`fixed`, clamped to 0..1, rounded down) |
-| `len(x)` | element count of an array or embedded asset, or the number of variants of an enum type (`len(Dir)`); a constant |
+| `len(x)` | element count of a slice (run-time `s32`), an array or embedded asset, or the number of variants of an enum type (`len(Dir)`); all except slices are constant |
 | `sizeof(T)` | size of a type in bytes (a constant) |
 | `bits(f)`, `from_bits(n)` | reinterpret `fixed` ↔ `s32` |
 | `T(x)` | conversion, same as `x as T` |
@@ -777,6 +829,25 @@ These are compiled inline (no call) and work on several types:
 `nclip`, `otz` and `clerp` are single instructions (see `DECISIONS.md`, "Geometry
 instructions"). The fourth, `vxp3` (transform and project three vertices), works on three
 vector registers at once and is used from `asm` blocks (`tests/lang/geometry.akr` has an example).
+
+Slices also work with `map_into`, `filter`, `filter_into`, `reduce` and `each`; without an
+explicit count, they process `len(xs)` elements. `filter` compacts writable backing and returns
+the kept count, without changing the descriptor's length: use `xs[0..kept]` for the shorter view.
+Explicit counts and slice destinations are checked against their capacities in debug builds.
+
+`map(slice, f, out)` returns a writable slice of `out` whose length equals the input length.
+The destination is a mutable array or slice and must hold every mapped element. Its capacity
+is checked in **all builds**, before any callback or output write. The output descriptor and
+input expressions are evaluated once. An empty input produces an empty view of `out`.
+`map(array, f)` retains its existing fixed-array result; a dynamic slice requires the third
+argument because Akari has no heap for variable-sized results.
+
+```
+var squared: [4]s32
+let mapped = map(xs, fn(x) => x * x, squared)
+let kept = filter(mapped, fn(x) => x > 500)
+let surviving = mapped[0..kept]
+```
 
 ## map, filter, reduce, each
 
@@ -790,6 +861,7 @@ first `count` elements (it is required when the sequence is a pointer).
 | Form | Meaning |
 |---|---|
 | `map(xs, f) -> [N]U` | a new array with `f(x)` for each element of the `[N]T` array `xs`; `f: fn(T) -> U` |
+| `map(xs, f, out) -> []U` | map to caller-owned mutable array or slice `out`; capacity checked in all builds |
 | `map_into(out, xs, f [, count])` | `out[i] = f(xs[i])`; `out` may be `xs` itself (in place) |
 | `filter(xs, keep [, count]) -> s32` | keeps the elements for which `keep(x)` is true, moving them to the front of `xs` in order; returns how many remain |
 | `filter_into(out, xs, keep [, count]) -> s32` | copies the kept elements to `out`; returns how many |
@@ -826,7 +898,7 @@ per element (1,710), plus 2 per captured word for a closure. `filter(xs, fn(x) =
 | RAM from `0x000100` | global variables that are used (small ones first, so most are one instruction away) |
 | RAM below `0x200000` | the stack (grows down): locals that are not in registers, spills, call frames |
 
-`len()` and `sizeof()` describe sizes. Constant indexes are checked at compile time; other
+`len()` and `sizeof()` describe sizes. Constant array indexes are checked at compile time; slice indexes and other array
 indexes are checked at run time only in a [debug build](#debug-builds). Recursion is allowed;
 very deep recursion runs into the globals (a debug build stops it at the function entry that
 would). ROM data is read-only: writing through a pointer into ROM faults.
@@ -844,7 +916,7 @@ check failed: game.akr:7: stack overflow entering walk() (too deep a recursion, 
 
 | Option | Checks |
 |---|---|
-| `-g` | every array (and `mat4` row) index that is not a constant: `(unsigned) index < length`, so negative indexes fail too; the stack at every function entry that has a frame: `sp` must stay above the globals |
+| `-g` | every slice index and range, and array (and `mat4` row) indexes that are not constants: `(unsigned) index < length`, so negative indexes fail too; the stack at every function entry that has a frame: `sp` must stay above the globals |
 | `--trap-div` | `-g`, plus integer and fixed-point division (and `%`) by zero, which otherwise gives 0 |
 | `--trap-fmul` | `-g`, plus fixed-point `*` whose product does not fit `fixed` (best effort: an overflow within about 1 % of the limit can go unreported, but no valid product is reported) |
 
@@ -853,8 +925,8 @@ where the index is provably in range: a `for` loop variable whose constant bound
 array (`for i in 0..len(a) { a[i] }`), `i & K` with a constant `K` below the length, and a `u8`
 index into an array of 256 or more. The stack check costs 2-3 cycles per call. Indexing
 through a pointer (`p[i]`) is not checked: a pointer has no length. The failure paths are out
-of line, after each function's `ret`. Without these options no checking code is generated: a
-release build is unchanged. The reports come from `__check_fail` and `__bounds_fail` in
+of line, after each function's `ret`. Without these options indexing checks are omitted. The explicit-destination
+`map(xs, f, out)` still checks capacities in release builds. The reports come from `__check_fail` and `__bounds_fail` in
 `stdlib/debug.akr`. On Check-In! a `-g` build uses about 4-5 % more cycles.
 
 Locals whose address is never taken live in registers when possible: the compiler numbers
@@ -1772,7 +1844,7 @@ register-allocation, inlining, `let` forwarding and induction-pointer work):
 
 ## Limitations
 
-- No generics (except the built-ins above), unions, slices, methods or operator overloading.
+- No generics (except the built-ins above), unions, methods or operator overloading.
 - Closures capture at most 3 one-word values, by copy, read-only (no vectors, structs, arrays or
   function values). Const data may hold named functions and the addresses of embeds, strings
   and const data, but not function literals or addresses of variables.
@@ -1782,7 +1854,8 @@ register-allocation, inlining, `let` forwarding and induction-pointer work):
 - Run-time bounds and stack-overflow checks only in a debug build (`meic -g`). The locals of
   one function may use at most 120 KB of stack (make large arrays global).
 - One error is reported per compilation.
-- Struct, array and matrix parameters are read-only (passed by reference).
+- Struct, array, slice and matrix parameters are read-only descriptors (passed by reference);
+  mutable slice parameters may change their backing elements.
 - `mesh()` draws at most 2,048 vertices per mesh. Faces crossing the near plane are clipped in
   clip space (see Near plane), which costs far more than drawing a face whole: keep the camera
   clear of walls where it can.

@@ -1,0 +1,4 @@
+// error: cannot return a slice of local storage
+struct H {a: [2]s32}
+fn view(h: H) -> []const s32 { return h.a }
+fn bad() -> []const s32 { var h: H; return view(h) }
