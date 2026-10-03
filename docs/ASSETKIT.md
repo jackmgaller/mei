@@ -17,7 +17,7 @@ is involved in these checks.
 # Discover the exact supported input contract.
 python3 tools/mei_assets.py schema
 
-# Start from a working recipe. Alternatives: vessel, cottage.
+# Start from a working recipe. Alternatives: vessel, cottage, kiosk (palette materials).
 python3 tools/mei_assets.py init /tmp/robot.asset.json --example robot
 
 # Edit the JSON, preserving meaningful node IDs.
@@ -62,7 +62,7 @@ and an actionable `message`. Commands accepting a recipe also accept `-` to read
 | Command | Result |
 |---|---|
 | `schema` | Full JSON Schema, including supported operations and field bounds |
-| `init FILE [--example robot\|vessel\|cottage]` | Editable starter; refuses to overwrite unless `--force` |
+| `init FILE [--example robot\|vessel\|cottage\|kiosk]` | Editable starter; refuses to overwrite unless `--force` |
 | `validate FILE [--strict]` | Schema, reference, geometry, fixed-point and budget checks |
 | `inspect FILE [--strict]` | Same checks, with full bounds and per-part report |
 | `verify FILE [-o DIR]` | Geometry checks plus native triangle-ID visibility and ordering-graph checks |
@@ -147,8 +147,10 @@ result in `report.json`. The report records recipe, mesh, compiler and probe has
    topology reports still cover open/nonmanifold surfaces; use `--strict` when those should fail.
 2. **Coverage and identity:** a temporary diagnostic mesh gives every exported triangle a
    unique RGB555 ID. It keeps vertex positions, winding, face order, double-sided and Gouraud
-   flags. Dithering is disabled and no HUD is drawn. The real core renders the ID buffer;
-   `mei-asset-probe` captures its projected integer vertices and 16.16 depths.
+   flags. Palette-backed faces are checked untextured: see [Palette-backed
+   materials](#palette-backed-materials). Dithering is disabled and no HUD is drawn. The real
+   core renders the ID buffer; `mei-asset-probe` captures its projected integer vertices and
+   16.16 depths.
 3. **Expected visibility:** a separate CPU rasterizer uses those projected vertices and Mei's
    exact integer top-left pixel-coverage rule, then selects the nearest triangle by reciprocal
    depth. Every covered pixel is checked, including triangle boundaries. Colors and lighting
@@ -218,7 +220,8 @@ Overrides on `verify` are exploratory; edit the recipe to change an enforced bui
 `--geometry warn` records geometric defects as warnings, but visibility and cycles still must
 pass. Use it explicitly for diagnosis, not to label intersecting geometry as clean.
 
-The gate currently covers opaque static meshes and sampled fitted cameras. Near-plane or
+The gate currently covers opaque static meshes (untextured or palette-backed faces) and sampled
+fitted cameras. Near-plane or
 guard-band clipping is rejected as unsupported, not treated as a pass. Animation, arbitrary
 camera translations/FOVs, other ordering-table ranges, exact real-number visibility before
 projection, fully enclosed internal components and unobserved faces are not certified.
@@ -229,7 +232,6 @@ not a proof for every possible camera or pose. No runtime depth buffer is added 
 
 Y is up. Distances are Mei world units and angles are degrees. The examples face -Z, which
 is the preview's front camera; assets may use another facing convention if the cart needs it.
-This is independent of Tsumiki's usual +Z character convention.
 
 Every node accepts `id`, `material`, `transform` and `modifiers`. A transform contains optional
 `scale`, `rotate`, `translate` and `pivot` three-number arrays. Defaults are scale `[1,1,1]` and
@@ -291,15 +293,93 @@ The implicit `default` material is `#c4cad4`. Flat shading is the default. Smoot
 area-weighted vertex normals within each named part and material; split parts to retain a
 hard boundary. Reflections and nonuniform scales are handled before normals are calculated.
 
-Root `lighting` accepts `direction: [-0.4,0.85,-0.35]`, `ambient: 0.45` and `bake: true`.
-Lighting is baked into face/vertex colors at export. Set `bake: false` for unlit colors.
-Double-sided faces render their single baked color from either side.
+Root `lighting` accepts `direction: [-0.4,0.85,-0.35]`, `ambient: 0.45`, `bake: true` and
+`mode: "directional"`. Lighting is baked into face/vertex colors at export. Set `bake: false` for
+unlit colors. Double-sided faces render their single baked color from either side.
+
+The directional bake is in the asset's own frame: an asset drawn with `mesh_at(…, yaw)` at yaw
+180 is lit from the opposite side to one drawn at yaw 0. For assets placed at arbitrary yaws
+(buildings, props scattered through a scene), use `"mode": "vertical"`. Its shade depends only
+on the normal's Y: `ambient + (1 - ambient) × (1 + y) / 2`, so tops are fully lit, walls get the
+midpoint and undersides get `ambient`. Any rotation about Y leaves every face's shade unchanged.
+The price is that all walls share one shade, so adjacent walls of a box are not told apart by
+lighting; separate them with material colors. `direction` is an error in vertical mode.
 
 Use `mesh.face_materials` for adjacent colored regions on one continuous surface, such as
 a robot's visor and eyes. Each entry names a material for the corresponding source polygon;
 all triangles produced from that polygon retain the material. This avoids overlapping colored
 panels that can cut through one another under Mei's triangle depth sorting. The robot example's
 head uses this approach, retaining a closed mesh with shared boundary vertices.
+
+### Palette-backed materials
+
+An ordinary material's colour is baked into vertex colours, which live in the mesh in ROM: a
+cart cannot recolour it. A palette-backed material is drawn through a palette entry instead,
+so rewriting that entry at run time (`load_palette`, `palette_lerp`, `palette_rotate`) recolours
+every face using it. Material fields:
+
+| Field | Default | Meaning |
+|---|---|---|
+| `palette` | `false` (`true` when emissive) | Draw through a palette entry |
+| `class` | `"surface"` | `"emissive"`: palette entries of its own, never shaded, reported separately |
+| `tag` | none | Opaque surface tag (a name), carried to the outputs; the kit does not interpret it |
+
+```json
+"materials": {
+  "wall": {"color": "#d9c6a0", "palette": true, "tag": "wall"},
+  "door": {"color": "#6b4a3a", "tag": "door"},
+  "neon": {"color": "#ff3fa4", "class": "emissive", "tag": "sign"}
+},
+"lighting": {"mode": "vertical", "ambient": 0.5},
+"palette_layout": {"slot": 14, "row": 0, "first": 0}
+```
+
+**Representation.** Each palette-backed face is a 4-bit textured face whose three texture
+coordinates are the same texel of a 16-texel *swatch*: texel `u` of one texture row holds palette
+index `u`. The face's palette byte selects a 4-bit palette and its `u` the entry, so the GPU
+fills the face with exactly that palette colour (equal coordinates interpolate to the same texel
+everywhere, also after near-plane or guard-band clipping). The baked shade becomes the vertex
+tint, where 128 is unchanged: a face shaded 0.75 has tint 96 and shows 75 % of its entry's
+colour, so shape shading survives any recolouring. Smooth materials still get Gouraud tints.
+`palette_layout` places the swatch (texels u 0–15 of `row` in texture `slot`, 0–14; default slot
+14, row 0; 8 bytes of VRAM) and the first 4-bit palette (`first`, 0–254; default 0).
+
+**Entries.** The kit gives one entry to each distinct colour per class among the palette-backed
+materials the mesh uses: surface entries first, then emissive, as indices 1–15 of palette
+`first`, then of `first + 1`, and so on. Index 0 is never used, since the GPU never draws it.
+Surface materials with the same colour share an entry and recolour together (use different
+colours to recolour them separately); an emissive material never shares an entry with a surface
+one, even with the same colour, so a cart can drive emissives with a different curve.
+
+**Emissive shading.** An emissive surface's brightness is its palette entry's, not the light's:
+its tint is 128 at every vertex, whatever the lighting, `smooth` or orientation. Brightening or
+dimming it is the cart's job, through its entries. Emissive implies `palette: true`; setting
+`palette: false` on an emissive material is an error.
+
+**Tags** are names such as `wall`, `floor` or `sign`, on any material (palette-backed or not).
+The kit carries them to `report.json` (triangles per tag, tags per part) and to the material
+manifest (face ranges per tag), so a later tool can derive collision surface types or other
+game data from them. The kit attaches no meaning to them.
+
+**Cost.** A textured pixel costs the GPU twice a flat one (`gpu_used()`; `DECISIONS.md`, "GPU
+budget"). Measured with the kiosk example's previews, the same mesh built once palette-backed
+and once with plain vertex colours: in the isometric view the mesh's GPU cycles (excluding the
+`cls` and the HUD text) go from about 18,050 to 29,800, +65 %: the 94 triangles cost the same and
+the 12,600 filled pixels cost double. That is 1.2 % of the 1,000,000-cycle frame budget for an
+asset covering a sixth of the screen. CPU cost rises about 7 % (textured packets are longer).
+Mix both kinds freely: only palette-backed materials pay for textures, so leave materials that
+never change colour unbacked (the kiosk's door is).
+
+**Caveats.** Fog makes textured faces fade toward half the fog colour (their colour is a tint),
+so they can only fog toward dark colours. Do not enable `subdivide()` for these meshes: a swatch
+has nothing to warp, and splitting would only add triangles. Palette 255 and texture slot 15
+hold the fonts.
+
+**Verification.** The gate checks palette-backed faces as untextured faces with the same
+geometry, flags and order. That is exact: such a face covers precisely the pixels of the
+untextured face (only texel index 0 skips pixels, and swatch faces never sample it), and
+`mesh()` clips, culls and sorts textured faces like untextured ones. Any other textured face is
+rejected by the gate.
 
 ### Budgets and diagnostics
 
@@ -336,6 +416,16 @@ For an asset named `stool`, `build` produces:
 | `preview.akr` | Standalone camera-fitted preview cart source |
 | `report.json` | Build costs, hashes, per-part diagnostics and optional native render results |
 
+Recipes that use material `palette`, `class` or `tag` also get:
+
+| File | Purpose |
+|---|---|
+| `stool.materials.json` | Material manifest: palette entries, classes, tags and face ranges (below) |
+| `stool.pal` | Default colours of the palettes used, 15-bit, 16 per palette (unused indices 0) |
+| `stool.swatch` | The 8-byte swatch row: texel `u` holds index `u` (palette-backed only) |
+
+Recipes using none of the extensions build byte-identical outputs to earlier versions of the kit.
+
 Import the `.akr` from your cart and draw normally:
 
 ```
@@ -348,6 +438,67 @@ fn draw() {
 }
 ```
 
+With palette-backed materials the `.akr` also embeds the palette and swatch, defines the colour
+indices and a loader, and the cart calls the loader once:
+
+```
+embed ASSET_KIOSK_PALETTE: u16 = "kiosk.pal"
+embed ASSET_KIOSK_SWATCH: u8 = "kiosk.swatch"
+const ASSET_KIOSK_COLOUR = 0           // first colour of the first palette (palette × 16)
+const ASSET_KIOSK_SURFACE = 1          // surface entries: colours 1..4
+const ASSET_KIOSK_SURFACE_COUNT = 4
+const ASSET_KIOSK_EMISSIVE = 5         // emissive entries: colours 5..6
+const ASSET_KIOSK_EMISSIVE_COUNT = 2
+fn asset_kiosk_load() { … }            // swatch into VRAM, then load_palette(…)
+```
+
+```
+import "kiosk.akr"
+embed NIGHT_SIGNS: u16 = "night_signs.pal"   // two 15-bit colours: the emissives at night
+var night: fixed = 0.0                       // 0 day .. 1.0 night, set by the game
+
+fn init() { asset_kiosk_load() }
+
+fn update() {
+    // Blend only the signs; surface entries keep their colours.
+    palette_lerp(ASSET_KIOSK_EMISSIVE, &ASSET_KIOSK_PALETTE[ASSET_KIOSK_EMISSIVE - ASSET_KIOSK_COLOUR],
+                 NIGHT_SIGNS, ASSET_KIOSK_EMISSIVE_COUNT, night)
+}
+```
+
+A class's range runs from its first to its last entry and may include index 0 of a later
+palette when it spans palettes; blending that unused colour is harmless.
+
+The **material manifest** is for tools that pack several assets into shared palettes or derive
+game data. For the kiosk (abridged):
+
+```json
+{
+  "format": "mei-asset-materials", "version": 1, "name": "kiosk",
+  "swatch": {"file": "kiosk.swatch", "slot": 14, "row": 0, "texels": 16, "meaning": "…"},
+  "palette": {"file": "kiosk.pal", "first_colour": 0, "colours": 16, "palettes": [0]},
+  "entries": [
+    {"colour": 1, "palette": 0, "index": 1, "class": "surface", "color": "#3d4f66",
+     "rgb15": 12583, "materials": ["fascia"]},
+    {"colour": 5, "palette": 0, "index": 5, "class": "emissive", "color": "#ff3fa4",
+     "rgb15": 20735, "materials": ["neon"]}
+  ],
+  "classes": {"surface": {"first_colour": 1, "colours": 4, "entries": [1, 2, 3, 4]},
+              "emissive": {"first_colour": 5, "colours": 2, "entries": [5, 6]}},
+  "materials": {"door": {"color": "#6b4a3a", "class": "surface", "palette_colour": null,
+                         "tag": "door", "triangles": 4, "faces": [[10, 14]]}},
+  "tags": {"door": [[10, 14]], "window": [[32, 34]], "roof": [[80, 88]], "floor": [[88, 96]]}
+}
+```
+
+`colour` is the global palette colour index (`palette × 16 + index`). Face ranges are half-open
+`[start, end)` indices into the exported mesh's faces. In `stool.bin`, a palette-backed face has
+flag bit 1 set, texture byte `slot | 16`, palette byte `palette`, and every texture coordinate
+`index | row << 8`; that is all a packer needs to move entries. `assetkit.compiler.relocate(binary,
+colours, slot, row)` does it: it maps old colour indices to new ones and moves the swatch,
+rejecting index 0 and any textured face that is not a swatch face. The manifest's `entries`
+then give the default colours to place in the shared palette.
+
 OBJ import preserves geometry and winding, including negative vertex indices. It intentionally
 does not import material files, UVs, supplied normals or textures, and returns a warning about
 that conversion. Assign recipe materials afterward. The Modeler exchange file carries base
@@ -355,9 +506,66 @@ colors and its global lighting toggle; it does not preserve procedural operation
 normals or a custom light direction when re-exported through that editor. Keep the recipe as
 the source of truth. The editor may impose additional object/coordinate limits on large recipes.
 
-Version 1 focuses on static colored meshes. Texture-atlas/UV authoring, Boolean solids,
-skeletal animation, morph animation and automatic LOD generation are not included. Existing
-Tsumiki tools remain available for texture cells, rigid rigs, animation clips and morphs.
+Version 1 focuses on static meshes with solid colours, baked or palette-backed. Texture and UV
+authoring (see the proposal below), Boolean solids, skeletal animation, morph animation and
+automatic LOD generation are not included, and the repository has no other tool for them.
+
+## Textures (proposal)
+
+Not built. The owner's chosen direction: **named procedural patterns** (brick, tile, planks,
+wood grain…, a few parameters each, generated deterministically by the kit) and **small texel
+grids written in the recipe** as rows of palette indices (about 16×16, for trims, icons and
+simple signs), with **UVs always automatic per primitive**: planar, box or cylindrical
+projection with a scale, never hand-placed coordinates. Image files come later, for signage.
+
+**Recipe sketch.** A material gains an optional `texture`; its colours are palette entries
+exactly as for palette-backed materials, so `class` and `tag` apply unchanged:
+
+```json
+"brick": {"color": "#a0522d", "class": "surface", "tag": "wall",
+  "texture": {"pattern": "brick", "colors": ["#a0522d", "#d8d0c0"],
+              "params": {"courses": 4, "bond": 0.5, "mortar": 1},
+              "size": 16, "projection": "box", "scale": [0.5, 0.25]}},
+"shop_sign": {"color": "#202020", "class": "emissive",
+  "texture": {"texels": ["1111111111111111", "1222222222222221", "…"],
+              "colors": ["#202020", "#ffe070"], "projection": "planar", "axis": "z",
+              "scale": [1.6, 0.4]}}
+```
+
+`texels` rows are hex digits naming `colors` entries (1-based, so a row can never contain
+index 0). `projection` maps object-space positions to UV per face corner: `planar` along an axis,
+`box` by each face's dominant normal axis, `cylindrical` around Y; `scale` is world units per
+repeat. A solid palette-backed material is the degenerate case: a one-texel texture with one
+colour and constant UVs, which is the swatch the kit already emits.
+
+**Palette entries.** A face selects one 4-bit palette, so all colours of one textured material
+must sit in the same 16-colour palette (at most 15). Entry assignment becomes packing of groups
+into palettes, where today's solid materials are groups of one; the manifest would list each
+group so a packer keeps it together. Texels hold palette-local indices, so a packer may move a
+group to another palette at the same indices with `relocate`-style rewriting of face bytes only,
+but merging groups into one palette at different indices means rewriting texels too. Sharing an
+entry between a pattern colour and a solid material of the same colour and class works as now.
+
+**Mesh format and runtime.** No format change: faces already carry four 8-bit UVs, a slot, a
+4-bit flag and a palette, per face corner, so projections need no extra vertices. UVs are whole
+texels (0–255) and wrap only at the 256-texel page edge, which is the real design constraint for
+repeats. Three options per pattern: fill a whole slot with repeated tiles (32 KB, any repeat);
+fill a band 256 texels wide and one tile high (16 rows of 4-bit = 2 KB) and split faces where
+they cross a tile row; or keep one tile (128 bytes for 16×16) and split faces at every tile
+boundary, which costs triangles. Large textured faces warp affinely; carts would use
+`subdivide()` near the camera, which (unlike for swatches) then earns its CPU cost.
+
+**Verification.** The gate stays as it is if pattern and grid texels never contain index 0:
+coverage is then that of the untextured face, as for swatches. `identity_mesh` would check
+"the face's texture region contains no index 0" against the texels the kit generated instead
+of "the UVs are one swatch texel". Cutouts (index 0 as holes: fences, foliage) would change
+coverage per texel and need the probe to render real texels: a gate redesign, so the proposal
+excludes them.
+
+**VRAM and GPU.** The swatch row is 8 bytes. A 16×16 4-bit tile is 128 bytes; the repeat
+options above cost 128 bytes, 2 KB or 32 KB per pattern, against 15 free 32 KB slots. Fill cost
+is the same as palette-backed solids (textured pixels at twice the flat cost); patterns add no
+GPU cost over swatches, only VRAM and, with face splitting, triangles.
 
 ## Tests
 
@@ -367,8 +575,12 @@ make test-assets
 
 This builds the native runner, compiler and diagnostic probe, and checks geometry, winding, transformations, quantization,
 schema failures, deterministic exports, OBJ import, output preservation on failure, and all
-three examples rendered from six angles by Mei. With NumPy it also checks identical-color
-occlusion, crossing-depth cycles, exact native coverage, required-policy enforcement and
+four examples rendered from six angles by Mei. It pins the build outputs of legacy recipes byte
+for byte, checks palette entry assignment, the vertical bake under rotation, the manifest and
+`relocate`, and renders a palette-backed asset in the emulator while rewriting a surface entry
+and blending an emissive one with `palette_lerp`. With NumPy it also checks identical-color
+occlusion, crossing-depth cycles, exact native coverage, palette-backed faces in the gate,
+required-policy enforcement and
 preservation of prior artifacts on failed verification. It also runs as part of `make test` when
 Python is available. Pure Python tests can run independently; native render tests skip if
 the binaries are absent:
@@ -378,4 +590,6 @@ python3 -m unittest discover -s tests -p test_assetkit.py -v
 ```
 
 Example recipes: [`robot`](../examples/assets/robot.asset.json),
-[`vessel`](../examples/assets/vessel.asset.json), [`cottage`](../examples/assets/cottage.asset.json).
+[`vessel`](../examples/assets/vessel.asset.json), [`cottage`](../examples/assets/cottage.asset.json),
+[`kiosk`](../examples/assets/kiosk.asset.json) (palette-backed and emissive materials, tags,
+vertical lighting and a required verification policy).
