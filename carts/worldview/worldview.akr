@@ -1,0 +1,24 @@
+// World Viewer - fly or walk through the World Kit's example worlds.
+//
+// A tool, and the reference for how a cart uses a world: carts/worldview/worlds.txt names the
+// world recipes, make builds them (tools/mei_world.py) and passes the generated files to meic,
+// and viewer.akr imports them and draws through stdlib/worldpack.akr.
+//
+// Stick: move. D-pad (or the right stick): look. L / R: down / up (flying).
+// A: walk (the camera drops onto the floor and keeps to it) or fly. B: next palette variant.
+// SELECT: choose a layer. X: switch it on or off. START: next world. Y: hide the overlay.
+// Keyboard: WASD stick, arrows d-pad, Q/E L/R, J A, K B, U X, I Y, Enter START, Backspace SELECT.
+//
+// This file is the cart's entry point; the viewer is in viewer.akr so that test entry points
+// can import it with scripted input (see tests/).
+cart "World Viewer", "MEI-WORLDVIEW"
+
+const TEST = 0
+
+// Input sources (test entry points replace these with scripted input).
+fn input_pad(f: s32) -> u32 { return PAD1 }
+fn input_stick(f: s32) -> vec2 { return stick() }
+fn input_look(f: s32) -> vec2 { return stick2() }
+fn test_hook(f: s32) {}
+
+import "viewer.akr"

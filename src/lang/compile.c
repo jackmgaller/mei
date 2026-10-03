@@ -81,14 +81,22 @@ static int read_file(Compiler *C, const char *path, char **data, size_t *len) {
 void compiler_import_as(Compiler *C, const char *from_file, const char *path, const char *alias, Loc loc) {
     char *full = resolve_path(from_file, path);
     int std = C->importing_stdlib || (from_file && file_is_stdlib(from_file));
-    if (!std && path[0] != '/' && C->stdlib_dir) {
-        /* not next to the importing file: a standard library file outside the prelude
-           (planes.akr), which a cart imports by name */
+    if (!std && path[0] != '/') {
+        /* not next to the importing file: a file in an import directory (meic -I, such as
+           the generated sources of a cart's worlds), else a standard library file outside the
+           prelude (planes.akr), which a cart imports by name */
         char *probe;
         size_t plen;
         if (read_file(C, full, &probe, &plen) != 0) {
-            char *alt = resolve_path(NULL, ar_printf("%s/%s", C->stdlib_dir, path));
-            if (read_file(C, alt, &probe, &plen) == 0) { full = alt; std = 1; }
+            int found = 0;
+            for (int i = 0; i < C->opt->import_dir_count && !found; i++) {
+                char *alt = resolve_path(NULL, ar_printf("%s/%s", C->opt->import_dirs[i], path));
+                if (read_file(C, alt, &probe, &plen) == 0) { full = alt; found = 1; }
+            }
+            if (!found && C->stdlib_dir) {
+                char *alt = resolve_path(NULL, ar_printf("%s/%s", C->stdlib_dir, path));
+                if (read_file(C, alt, &probe, &plen) == 0) { full = alt; std = 1; }
+            }
         }
     }
     int isolated = alias || file_is_module(from_file);

@@ -25,6 +25,7 @@ make                              # emulator, tools, probes, system ROM and cart
 make test                         # every test: C, language and (with python3) the Python suites
 make test-assets                  # the Asset Kit suite alone, verbose
 make test-world                   # the World Kit suite alone, verbose
+make test-carts                   # the carts' self-checking scenarios (World Viewer's too)
 make web                          # the WebAssembly build in build/web (needs Emscripten)
 tests/run_lang_tests.sh planes    # only the language tests whose name contains "planes"
 ```
@@ -47,10 +48,10 @@ rather than failed.
 Pass the tools to scripts the same way, for example
 `MEIC=build-mine/meic RUN=build-mine/mei-headless tests/run_lang_tests.sh planes`.
 
-Mei Demo and Sound Lab are built only on request (`make build/carts/demo.mei
-build/carts/soundlab.mei`); `make` and `make web` leave them out. Two more targets are being
-added: `make check-generated` and `make test-carts`. A third, `make rendercheck`, will run the
-Reference Renderer once it is committed.
+Mei Demo, Sound Lab and World Viewer are built only on request (`make build/carts/demo.mei
+build/carts/soundlab.mei build/carts/worldview.mei`); `make` and `make web` leave them out. Two
+more targets are being added: `make check-generated` and `make test-carts`. A third, `make
+rendercheck`, will run the Reference Renderer once it is committed.
 
 ## Dependencies
 
@@ -94,6 +95,10 @@ Reference Renderer once it is committed.
 - **Example worlds** in `examples/worlds/NAME/`, example assets in `examples/assets/`.
 - **Generated world packs are built into `build/` and not committed.** The recipes, and each
   world's ID lock file (`NAME.ids.json`), are the source.
+- **A cart that uses worlds** lists their recipes in `carts/NAME/worlds.txt` and imports
+  `WORLD.akr` by name; make builds the worlds into `build/worlds/` and passes them to meic
+  with `-I` ([WORLDKIT.md](docs/WORLDKIT.md#using-a-world-in-a-cart); `carts/worldview/` is
+  the example).
 - **Small existing carts keep committing their generated assets**, binaries in the cart's
   `art/` and `audio/` folders and the generated `.akr` files at the top of the cart folder
   (`carts/lantern/` and `carts/weather/` are laid out this way).

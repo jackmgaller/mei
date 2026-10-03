@@ -1,0 +1,13 @@
+// meic -I: an import that is not next to the importing file is found in an import directory
+// (before the standard library); the found file's own imports and embeds stay relative to it.
+// flags: -I tests/lang/data/include
+import "import_dir_lib.akr"
+
+fn init() {
+    print_int(lib_answer())         // expect: 42
+    print_char('\n')
+    print_int(LIB_BYTES[3] as s32)  // expect: 3
+    print_char('\n')
+    print_int(lib_twice(4))         // expect: 8
+    print_char('\n')
+}
