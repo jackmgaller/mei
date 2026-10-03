@@ -28,7 +28,7 @@ TEST_SRC := $(wildcard tests/test_*.c)
 TESTS    := $(TEST_SRC:tests/%.c=$(B)/tests/%)
 
 .PHONY: all test clean web carts
-all: $(B)/mei $(B)/mei-headless $(B)/meiasm $(B)/meic $(B)/mei-asset-probe carts
+all: $(B)/mei $(B)/mei-headless $(B)/meiasm $(B)/meic $(B)/mei-asset-probe $(B)/mei-scene-probe carts
 
 # The system ROM (boot animation + shell), docs/SYSTEM.md
 # Akari sources end in .akr
@@ -98,13 +98,14 @@ $(B)/tests/%: tests/%.c $(TEST_LIBS)
 	$(CC) $(CFLAGS) $< $(TEST_LIBS) -o $@
 $(B)/tests/test_audio: tests/adpcm_vectors.h   # ADPCM reference vectors (tools/gen_adpcm_vectors.py)
 
-test: $(TESTS) $(B)/meiasm $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe
+test: $(TESTS) $(B)/meiasm $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe $(B)/mei-scene-probe
 	@set -e; for t in $(TESTS); do echo "== $$t"; ./$$t; done
 	@if [ -x tests/run_lang_tests.sh ]; then MEIC=$(B)/meic RUN=$(B)/mei-headless ./tests/run_lang_tests.sh; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tools/meinet/test_meinet.py"; PYTHONDONTWRITEBYTECODE=1 python3 tools/meinet/test_meinet.py; fi
 	@if command -v python3 >/dev/null 2>&1; then MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_assetkit.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldpack.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldpack.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldkit.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldkit.py; fi
+	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldverify.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless SCENE_PROBE=$(B)/mei-scene-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldverify.py; fi
 
 # Agent asset recipes, binary exports and six-view renders through the real GPU.
 .PHONY: test-world
@@ -116,6 +117,10 @@ test-assets: $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe
 	MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_assetkit.py -v
 
 $(B)/mei-asset-probe: tools/assetkit_probe.c $(B)/libmeicore.a
+	$(CC) $(CFLAGS) $^ -o $@
+
+# The World Checker's probe (docs/WORLDCHECKER.md).
+$(B)/mei-scene-probe: tools/worldkit/scene_probe.c $(B)/libmeicore.a
 	$(CC) $(CFLAGS) $^ -o $@
 
 clean:
