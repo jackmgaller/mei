@@ -2,10 +2,11 @@
 
 **Status: design, partly built.** What exists: the pack format ([WORLDPACK.md](WORLDPACK.md),
 normative) with its reference encoder `tools/worldkit/pack.py`; the console reader
-`stdlib/worldpack.akr`. The tool itself, `tools/mei_world.py`, is being built to the
-[command line](#command-line-sketch) below. Not built yet: terrain, the in-level
-verification gate and its scene probe (being built separately as `tools/worldkit/verify.py` and
-`tools/worldkit/scene_probe.c`), textures, audio banks and backdrops. This document records the
+`stdlib/worldpack.akr`; and the first version of the tool, `tools/mei_world.py`, with the
+[recipe format](#recipe-format) and [command line](#command-line) below. Not built yet:
+terrain, the **World Checker** (the in-level verification and its scene probe, being built
+separately as `tools/worldkit/verify.py` and `tools/worldkit/scene_probe.c`), preview renders,
+textures, audio banks and backdrops. This document records the
 decisions made so far, proposes the rest, and lists what is still open. Where it and the owner's
 later decisions in [DECISIONS.md](DECISIONS.md) ("World Kit, Asset Kit and the first open-world
 game") ever disagree, DECISIONS.md wins. It depends on three things, all now in place:
@@ -23,9 +24,10 @@ game") ever disagree, DECISIONS.md wins. It depends on three things, all now in 
 
 The World Kit is a command-line tool for AI agents, a sibling of the Asset Kit. An editable JSON
 recipe places Asset Kit assets into cells and regions, attaches game data to them, and builds one
-native world pack that a cart embeds. A verification gate samples cameras through the playable
+native world pack that a cart embeds. The World Checker samples cameras through the playable
 space and reports budget overruns, face-ordering errors and holes in collision (report-only at
-first; see [Verification](#verification)).
+first; see [Verification](#verification)). The Asset Kit's own verification gate is the **Asset Checker**
+(`mei_assets.py verify`).
 
 **Reading this document.** The project owner settled the decisions in the table below. They are
 stated as the design. Everything else marked *Proposal* is this document's addition, there for the
@@ -42,13 +44,13 @@ shown, or marked *placeholder*.
 | 6 | Layers: named groups of placements the game switches | [Data model](#data-model) |
 | 7 | Opaque game data with stable IDs, validated against a game-supplied schema | [Game data](#game-data-and-stable-ids) |
 | 8 | No game rules in the kit, including time of day | [Day and night](#day-and-night) |
-| 9 | In-level verification: budgets, ordering, collision holes; the scene probe is a World Kit component; thresholds are per-world settings and the gate starts report-only | [Verification](#verification) |
+| 9 | The World Checker: budgets, ordering, collision holes; its scene probe is a World Kit component; thresholds are per-world settings and it starts report-only | [Verification](#verification) |
 | 10 | Time-neutral, rotation-neutral baked shading; materials draw through palette entries; emissive materials get entries of their own | [Day and night](#day-and-night) |
 | 11 | Build order: a movement garden (the first World Kit level), one district block, a second region | [Build order](#build-order) |
 | 12 | The boundary is "could you place it twice?": reusable things are assets | [The boundary](#the-boundary-with-the-asset-kit) |
 | 13 | Terrain (ground heightfields and swept paths, in world coordinates) belongs to the World Kit | [Terrain](#terrain) |
 | 14 | Collision is authored separately as simpler geometry; surface types are an opaque byte | [Collision](#collision) |
-| 15 | Units: the tools enforce no scale; the convention is one unit per metre | [Recipe format](#recipe-format-sketch) |
+| 15 | Units: the tools enforce no scale; the convention is one unit per metre | [Recipe format](#recipe-format) |
 
 ## What this is for
 
@@ -67,7 +69,7 @@ Goals:
 - One recipe format and one pack format for a one-room test level, a course-based game and a
   multi-region open world.
 - Placement, grouping and game data only. Every triangle comes from an Asset Kit recipe.
-- A numerical gate, like the Asset Kit's, that an agent can iterate against: budgets, sorting and
+- A numerical checker, like the Asset Checker, that an agent can iterate against: budgets, sorting and
   collision checked from sampled cameras, with witnesses that name the cell, placement and face.
 - Deterministic builds: identical recipes and asset recipes give byte-identical packs.
 - Stable identifiers for anything a save file refers to.
@@ -156,7 +158,8 @@ These are Asset Kit features, not World Kit features. Each is generic: none ment
    region's texture set is empty, and the stage-3 texture-swap seam has nothing to swap.
 
 Two items earlier versions of this list carried are no longer Asset Kit changes: terrain belongs
-to the World Kit ([Terrain](#terrain)), and the scene probe is a World Kit component
+to the World Kit ([Terrain](#terrain)), and the scene probe is a World Kit component (part of the
+World Checker)
 ([Verification](#verification)).
 
 ## Data model
@@ -183,10 +186,10 @@ festival stalls that appear at night, a bridge raised by a switch, the before an
 a building site. The kit does not know what a layer means. It knows the group exists so it can
 check triangle budgets and sorting with each layer on.
 
-*Proposal:* layers are per cell, at most 8 per cell (one byte of mask), and may name an
-`exclusive` group: `bridge_up` and `bridge_down` in group `bridge` are never on together. The
-game can switch a layer in many cells at once by name; the runtime maps the name to each cell's
-bit. Entities can be in layers too.
+*Built:* layers are named world-wide in the world file (so the game switches one in every cell at
+once), at most 8 used in any one cell (one byte of mask), and may name an exclusive `group`:
+`bridge_up` and `bridge_down` in group `bridge` are never on together. The pack maps the name to
+each cell's bit. Placements, entities and their collision can be in layers.
 
 *Proposal:* the world recipe may name a shared `common` file holding the common texture set and
 common palettes, so the city and the mall interiors use the same common set and a door between
@@ -356,42 +359,61 @@ a saved bit that must survive level edits, as the Asset Kit asks agents to prese
 stakes are higher here: an Asset Kit ID only labels a report; a World Kit ID addresses a player's
 save.
 
-*Proposal: the game schema.* A small file the game owns, in the kit's own restricted format so
-that parameters can be packed into fixed records the cart reads without parsing:
+**Built: the game schema.** A small file the game owns, in the kit's own restricted format so
+that parameters can be packed into fixed records the cart reads without parsing (`schema` prints
+its JSON Schema under `$defs/game`):
 
 ```json
 {
   "format": "mei-world-game",
   "version": 1,
+  "name": "city",
   "probe": {"radius": 0.3, "height": 1.6, "step": 0.32, "floor_max_degrees": 40},
   "types": {
-    "coin": {"saved": true, "params": {}},
+    "coin": {"saved": true},
     "challenge_switch": {"saved": true, "params": {
-      "course": {"type": "entity_ref"},
-      "time_window": {"type": "enum", "values": ["any", "day", "night"]}
+      "course": {"type": "entity_ref", "required": true},
+      "time_window": {"type": "enum", "values": ["any", "day", "night"], "default": "any"}
     }},
     "camera_zone": {"params": {
       "size": {"type": "vec3"},
       "mode": {"type": "enum", "values": ["follow", "fixed", "rail"]}
     }},
     "door": {"params": {"world": {"type": "world_ref"}, "spawn": {"type": "name"}}}
-  }
+  },
+  "worlds": ["city", "mall"]
 }
 ```
 
 Field types are `bool`, `u8`, `s16`, `s32`, `fixed`, `vec3`, `enum`, `name`, `entity_ref` and
-`world_ref`. The kit checks that references resolve, without knowing why they exist, and emits an
-Akari `struct` per type in the generated `.akr`. `saved: true` asks the kit for a persistent bit
-index per entity of that type. `probe` describes the player's body for collision checks and camera
-sampling; the kit uses it as geometry, not as movement rules. Everything else (what `night` means,
-whether a coin respawns) is the game's.
+`world_ref`. A parameter is required unless it has a `default`; an `entity_ref` is optional (none)
+unless `required`. Types are numbered in the order they are written; `world_ref` values are
+indexes of `worlds`. The kit checks that references resolve, without knowing why they exist, and
+emits the type numbers, an Akari `struct` per type with parameters and an `enum` per enum
+parameter in `GAME.game.akr`, which every world of the game imports. `saved: true` asks the kit
+for a persistent bit per entity of that type. `probe` describes the player's body: the kit
+classifies collision by `floor_max_degrees` (and `ceiling_max_degrees`, default 45) and copies
+walls `radius` past cell edges; the World Checker will sample cameras with it. It is geometry, not
+movement rules. Everything else (what `night` means, whether a coin respawns) is the game's.
+Entity IDs are world-wide, so an `entity_ref` and a saved bit can name any entity.
 
-*Proposal: the ID lock file.* The kit writes `NAME.ids.json` beside the recipe and expects it to
-be committed. It maps every saved entity's ID to its bit index, append-only. A deleted entity's
-bit is retired, never reused; a new entity gets the next free bit. Renaming is a delete plus an
-add unless the entity says `"was": "old_id"`. Builds fail if the lock file and the recipe disagree
-in a way that would move an existing bit. A save holds up to 32,000 bytes (MEMCARD.md), so bits
-are not scarce: 256,000 of them.
+**Built: the ID lock file.** The kit writes `NAME.ids.json` beside the recipe and expects it to
+be committed. It maps every saved entity's ID to its bit, append-only:
+
+```json
+{"format": "mei-world-ids", "version": 1, "world": "test_room", "next_bit": 3,
+ "bits": {"coin_on_ledge": 0, "gate_switch": 1}, "retired": {"coin_old": 2},
+ "renamed": {"coin_ledge": "coin_on_ledge"}}
+```
+
+A new saved entity gets the next bit. A deleted entity's bit is retired, never given to another
+ID; re-adding the same ID gives its own bit back (it names the same goal). Renaming is a delete
+plus an add unless the entity says `"was": "old_id"`, which moves the bit and records the rename;
+`was` may stay in the recipe afterwards as history. A `was` naming an entity that still exists, or
+one the lock has never seen, is an error, as is a lock file whose bits collide. `validate` and
+`inspect` report the changes a build would make without writing; `build` writes the lock only
+after its outputs are published, and `build --locked` fails instead of changing it (for CI). A save
+holds up to 32,000 bytes (MEMCARD.md), so bits are not scarce: 256,000 of them.
 
 ## Day and night
 
@@ -431,70 +453,121 @@ that is not baked vertically and is placed at a yaw other than 0.
 cycles, 16% of the CPU. Blending 256 colours a frame (9,728 cycles, 2%) refreshes the whole region
 every 8 frames, which is smooth enough for a day that lasts minutes.
 
-## Recipe format (sketch)
+## Recipe format
 
 The conventions are the Asset Kit's: `format` and `version`, names matching
 `^[a-z][a-z0-9_]{0,47}$`, unknown properties and duplicate keys are errors, errors carry a JSON
-Pointer `path` and a `message`, no expressions or random generation, Y up, world units, angles in
-degrees.
+Pointer `path` and a `message` (and a `file` when the error is in a cell file or the game schema),
+no expressions or random generation, Y up, world units, angles in degrees. `schema` is the
+authoritative contract; `schema --game FILE` folds one game's entity types and parameters in.
 
 **Decided: units.** The tools do not enforce a scale. The convention, used by the examples and the
-platformer, is one unit per metre (the Asset Kit's stool seat is at 0.8). A one-cell test room
-(stage 1):
+platformer, is one unit per metre (the Asset Kit's stool seat is at 0.8).
+
+**Files.** A world is a world file, one file per cell, a game schema and a directory of Asset Kit
+recipes. A one-cell world may keep its cell inline instead. This confirms the earlier proposal of
+one file per cell: an open world of hundreds of cells in one JSON file is unwieldy for an agent and
+close to the 8 MiB input limit, and an agent editing one cell should not rewrite the others. The
+cell files are every `*.cell.json` in `cell_dir`, in name order, each named after its cell's
+`id`; adding a cell is adding a file. The world file of the two-district example:
 
 ```json
 {
-  "format": "mei-world",
-  "version": 1,
-  "name": "test_room",
-  "game": "game.schema.json",
-  "assets": {"dir": "../assets"},
-  "grid": {"cell_size": 64},
+  "format": "mei-world", "version": 1, "name": "two_districts",
+  "game": "city.game.json", "assets": "assets", "cell_dir": "cells",
+  "grid": {"cell_size": 32},
+  "collision": {"surfaces": {"default": 0, "tags": {"ground": 1, "wall": 3, "roof": 4}}},
   "regions": {
-    "lab": {
-      "palette_variants": ["day", "night"],
-      "palettes": {
-        "concrete": ["#a4a8ad", "#3b4255"],
-        "lamp": ["#fff3c4", "#ffe08a"]
-      }
-    }
-  },
-  "cells": [
-    {"id": "room", "at": [0, 0], "region": "lab", "standin": "room_far",
-     "layers": {"gate_open": {}},
-     "placements": [
-       {"id": "floor", "asset": "room_floor", "position": [32, 0, 32]},
-       {"id": "slope", "asset": "ramp_4x2", "position": [38, 0, 36], "yaw": 90},
-       {"id": "ledge", "asset": "ledge_block", "position": [26, 0, 36]},
-       {"id": "wall", "asset": "climb_wall", "position": [32, 0, 44]},
-       {"id": "gate", "asset": "gate", "position": [32, 0, 24], "layer": "gate_open"}
-     ],
-     "entities": [
-       {"id": "coin_ledge", "type": "coin", "asset": "coin", "position": [26, 2.5, 36]},
-       {"id": "cam_wall", "type": "camera_zone", "position": [32, 1, 42],
-        "params": {"size": [8, 4, 4], "mode": "fixed"}}
-     ]}
+    "downtown": {"variants": {"day": {}, "night": {"surface": {"multiply": "#506090"},
+                                                   "colors": {"shop.window": "#fff0b0"}}}},
+    "shrine": {"variants": {"day": {}, "night": {"surface": {"multiply": "#405080"}}}}},
+  "layers": {"festival": {}}
+}
+```
+
+and one of its cells, `cells/downtown_b.cell.json`:
+
+```json
+{
+  "format": "mei-world-cell", "version": 1,
+  "id": "downtown_b", "at": [1, 0], "region": "downtown", "standin": "block_far",
+  "placements": [
+    {"id": "ground", "asset": "ground_tile", "position": [48, 0, 16], "collision": "self"},
+    {"id": "shop_1", "asset": "shop", "position": [48, 0, 20], "yaw": 90, "collision": "shop_col"}
+  ],
+  "entities": [
+    {"id": "coin_b", "type": "coin", "position": [40, 1, 8]},
+    {"id": "night_switch", "type": "switch", "position": [56, 0, 8],
+     "params": {"target": "coin_far", "time_window": "night"}}
   ]
 }
 ```
 
-Notes on the sketch:
+| Property | Meaning |
+|---|---|
+| `game`, `assets`, `cell_dir` | Paths relative to the world file: the game schema, the Asset Kit recipes (`NAME.asset.json`), the cell files |
+| `grid.cell_size` | 16, 32, 64 or 128 units: the pack's `cell_shift`. Cell (*i*, *j*) (`at`) covers *x* in [*i S*, (*i*+1) *S*) and *z* likewise |
+| `overhang` | How far a placement may reach past its cell (default 8, at most half a cell) |
+| `collision.pad` | How far walls are copied past a cell's edge: at least, and by default, the probe radius |
+| `collision.surfaces` | Material `tag` to surface byte; untagged faces and unmapped tags get `default` (unmapped tags are listed in the warnings) |
+| `palette` | `swatch_slot` and `swatch_row` (default 14, 0): where the world's swatch row lives in VRAM; `first`: the first 4-bit palette regions are given (default 0) |
+| `regions` | Named regions in order (the pack's region numbers): optional `palettes` (`first`, `count`) and `variants`. `textures`, `audio` and `backdrop` are reserved and rejected for now |
+| `layers` | World-wide layer names in order (the pack's layer ids), each with an optional exclusive `group` and `on` (at start) |
+| `verification` | The World Checker's per-world settings: `mode` (`report`, the default, or `enforce`) and `thresholds` |
+| `terrain` | Reserved ([Terrain](#terrain)); rejected for now |
 
-- `asset` names an Asset Kit recipe: `ramp_4x2` resolves to `../assets/ramp_4x2.asset.json`.
-  The world recipe never contains geometry.
-- `at` is the cell's grid coordinate; cell (i, j) covers x from 64i to 64i + 64 and z from 64j to
-  64j + 64. Positions are world coordinates in the recipe, and the kit checks that each
-  placement's position lies in its cell, then stores it cell-locally.
-- `palettes` gives one colour per variant for each palette-backed material name.
-- `standin` names an ordinary asset recipe, `room_far`.
-- Collision is absent from this sketch; see [Collision](#collision).
-- `textures`, `audio` and `backdrop` on a region are left out until there is something to put in
-  them; their formats are not designed here.
+A **placement** is an `id` (unique in its cell; reports and the pack's 16-bit tag follow it), an
+`asset`, a `position` (world coordinates, in the cell), `yaw` (degrees, as `mesh_at()`), an
+optional `layer`, `merge` (below) and a required `collision`: `"self"` (the asset's own mesh),
+`"none"`, or a companion collision asset recipe placed the same way. Requiring it makes an agent
+decide for every asset. An **entity** is an `id` (world-wide), a game `type`, a `position`,
+optional `yaw`, `layer`, `asset` (a mesh the game may draw), `collision` (an asset in the entity's
+own frame, for moving objects), `params` and `was`. A cell's `standin` is an ordinary asset
+modelled in cell-local coordinates around the cell's centre. Placing an asset whose lighting is
+directional at a yaw other than 0 is a warning ([Day and night](#day-and-night)).
 
-*Proposal: one file per cell.* An open world of hundreds of cells in one JSON file is unwieldy
-for an agent and close to the Asset Kit's 8 MiB input limit. A world file can list
-`"cells": {"dir": "cells"}` instead, with each cell in `cells/ID.cell.json` holding exactly the
-object shown above. The kit reports and verifies one cell at a time on request.
+**Collision as built.** Each placement's collision asset is compiled, its faces turned and moved
+as `mesh_at()` draws them, given surface bytes from their material tags and the placement's
+layer, and tagged with the placement's number. Downward faces resting on a floor (centroid within
+1/256 unit above a floor triangle of the same or no layer) are dropped: the bottom of a box
+standing on the ground would otherwise be a ceiling at ground level. The pack's encoder then
+classifies, files and copies triangles into neighbouring cells.
+
+### Palettes per region
+
+Every asset drawn in a region (placements, stand-ins and entity meshes, not collision assets)
+contributes its material manifest's palette entries to the region. Entries of the same class and
+colour share one region entry, across assets, as they do within one asset; an entry the asset's
+recipe forced apart (`share: false`, manifest `separate`) stays apart. Surface entries come first,
+then emissive ones, as indices 1–15 of consecutive 4-bit palettes, so a cart can blend the
+emissive range on its own curve. Each asset's palette faces are then rewritten with
+`assetkit.compiler.relocate()` to the region's colours and the world's swatch position, so a mesh
+drawn in two regions is stored twice (the pack pools identical bytes).
+
+**Regions get disjoint palettes** (by default consecutively from `palette.first`; an explicit
+`palettes.first` may place them, and overlaps are errors). That departs from the placeholder split
+in [Regions and the VRAM split](#regions-and-the-vram-split), which shared one range among regions
+and swapped it: with flat-colour materials a region needs tens of colours, not hundreds, so every
+region's palettes can be loaded at once, and a far cell's stand-in is coloured correctly whichever
+region the player is in. Shared ranges belong with region texture sets, when there is something to
+swap.
+
+**Variants** are named full sets of the region's colours, in order (default: one, `default`). A
+variant starts from the entries' own colours, multiplies surface and emissive entries by
+`surface.multiply` and `emissive.multiply`, then sets exact `colors` by `MATERIAL` (that material
+of every asset drawn in the region) or `ASSET.MATERIAL`. A name that matches nothing is an error;
+two names giving one shared entry two colours is an error that suggests `share: false`; recolouring
+an entry another material shares is a warning. The kit attaches no meaning to the names.
+
+### Merged scatter
+
+`"merge": true` on a placement merges it, with the cell's other merged placements of the same
+layer, into one mesh placed at the cell's centre (split only between props, at 2,048 vertices or
+4,000 faces). The reader spends about 500 cycles on every placement it draws beyond its vertices
+and faces (WORLDPACK.md, "Costs"), so eight bollards cost one placement instead of eight; the
+price is ROM (each copy's vertices are stored) and coarser culling (one sphere). Collision is
+unchanged: each merged prop keeps its own. The pack needs no new record. `report.json` lists what
+was merged per cell.
 
 ## Collision
 
@@ -519,20 +592,29 @@ queries in that frame.
 
 ## Build outputs and the runtime contract
 
-For a world named `city`, `build` produces (*proposal*):
+For a world named `city` of a game named `game`, `build` produces:
 
 | File | Purpose |
 |---|---|
 | `city.world.bin` | The pack: index, regions, cells, mesh pool, collision, entity records |
-| `city.akr` | `embed WORLD_CITY: u8 = "city.world.bin"`, the entity `struct`s, layer and region name constants |
-| `city.ids.json` | The ID lock file (written beside the recipe, not in the output directory) |
-| `city.world.json` | Copy of the recipe (and its cell files) |
-| `report.json` | Per cell and region: triangles, bytes, VRAM and palette use, asset hashes, warnings |
-| `verification.json` | Gate results, as the Asset Kit's |
-| `preview/` | Native renders per region and palette variant, and a contact sheet |
+| `city.akr` | `embed WORLD_CITY: u8 = "city.world.bin"`; `world_city_load()` (opens the pack, copies the swatch, loads every region's first variant); constants for regions, variants, colour ranges (`_SURFACE`, `_EMISSIVE` and their counts), layers, entity numbers and saved bits; `world_city_string()` for `name` parameters |
+| `game.game.akr` | The game's type numbers, parameter `struct`s and `enum`s, imported by every world of the game (build worlds of one game into one directory, so a cart compiles it once) |
+| `city.swatch` | The 8-byte palette swatch row, when any material is palette-backed |
+| `city.ids.json` | A copy of the ID lock file (the lock itself is written beside the recipe) |
+| `source/` | The world file, cell files, game schema and every asset recipe used, as built |
+| `report.json` | Per cell and region: triangles (always and per layer), placements, collision triangles by kind, bytes, palettes and variants, entity numbers, ID changes, asset hashes and Asset Checker results, warnings, the World Checker's result |
 
-Outputs are staged and replaced only on success, and a failed gate leaves the previous pack in
-place with `verification.failed.json`, as in the Asset Kit.
+*Not built yet:* `verification.json` and `preview/` (native renders per region and palette
+variant, and a contact sheet; `kitcore.native` has the compiler, runner and contact-sheet helpers).
+
+Outputs are staged and replaced only on success, as in the Asset Kit. Before anything is written,
+every referenced asset is compiled from its recipe and each asset whose recipe requires
+verification is checked by the Asset Checker, which must pass. Then `build` hands the staged
+outputs to the World Checker through one seam, `worldkit.build.run_gate(context)`, which calls
+`worldkit.verify.check_world(context)` when that module exists (context: the staged pack and
+`.akr`, the mode and thresholds, the game's probe, the report and the native tools) and records
+its result in the report. In `report` mode nothing fails; in `enforce` mode a failed check leaves
+the previous build in place with `verification.failed.json`.
 
 **The pack format is specified in [WORLDPACK.md](WORLDPACK.md)** (version 1.0), byte by byte:
 header, sparse index, layers, regions, cells, placements, entities and their parameter records,
@@ -545,30 +627,31 @@ does not do is in [open question 3](#3-the-runtime).
 
 ## Verification
 
-**Decided.** The analogue of the Asset Kit's gate: sample camera positions through the playable
+**Decided: the World Checker.** The analogue of the Asset Checker: sample camera positions through the playable
 space, including rooftops and the air between them, since they give the longest sight lines, and
 check GPU and CPU budgets and face ordering; plus collision checks for holes.
 
-**Decided: the scene probe is a World Kit component,** not an Asset Kit change: it renders
+**Decided: the scene probe is a World Kit component** of the World Checker, not an Asset Kit
+change: it renders
 scenes rather than single meshes, from arbitrary camera positions, with several meshes per view,
 textured (palette swatch) faces, and near-plane and guard-band clipping (a camera standing in a
 level always has floor faces crossing the near plane). It is being built as
 `tools/worldkit/verify.py` and `tools/worldkit/scene_probe.c`.
 
-**Decided: thresholds are per-world settings** with defaults from the kit, and the gate starts
-in **report-only** mode until a real level has been measured: it records what it finds in the
+**Decided: thresholds are per-world settings** with defaults from the kit, and the World Checker
+starts in **report-only** mode until a real level has been measured: it records what it finds in the
 build report and fails nothing. Switching a world to enforcing is an explicit edit of its recipe.
 
 *Proposal:* what a build checks, in three groups.
 
 **Static checks (no rendering).**
 
-- Every referenced asset builds and passes its own verification policy.
+- Every referenced asset builds and passes its own verification policy. *(Built.)*
 - References resolve: assets, regions, layers, stand-ins, entity types, `entity_ref`,
-  `world_ref`. Parameters match the game schema.
+  `world_ref`. Parameters match the game schema. *(Built.)*
 - Placements lie in their cells; no placement's bounds overhang a neighbouring cell by more than
   a declared margin (*placeholder*: 8 units), which keeps the two-pass sort sound.
-- The ID lock file agrees with the recipe.
+- The ID lock file agrees with the recipe. *(Built.)*
 - VRAM and palette use per region fit the declared split. Stand-ins use only the common set.
 - Collision: no cracks, meaning boundary edges of walkable floors that face another floor within
   `probe.step` in height across a gap narrower than `probe.radius`; floor edges on a cell
@@ -584,34 +667,67 @@ rasterizer, as the Asset Kit does. Views are repeated with each layer combinatio
 layer alone, and the largest set allowed by the exclusive groups.
 
 **Failure, once enforcing.** Dropped triangles and a full packet arena always fail. Budget and
-ordering thresholds are per-world settings ([question 5](#5-what-the-gate-samples-and-what-fails)
+ordering thresholds are per-world settings ([question 5](#5-what-the-world-checker-samples-and-what-fails)
 has the starting defaults). In seam views, any drawn face that samples a region texture fails,
 because those slots are being overwritten.
 
-The Asset Kit's checker cannot do this as it stands: it rejects views with near-plane and
+The Asset Checker cannot do this as it stands: it rejects views with near-plane and
 guard-band clipping and renders one mesh, hence the scene probe. Its ID rendering has to strip
 the textured flag while keeping coverage, and palette index 0 (never drawn) makes holes in
 textured faces that the expected rasterizer must reproduce. How long a sweep takes per view was
 not measured for this document.
 
-## Command line (sketch)
+## Command line
 
 Parallel to `mei_assets.py`: JSON on stdout for successes and failures, exit 0 or 1, `-` for
-stdin, `--compiler`, `--runner` and `--probe` to use other builds.
+stdin (relative paths then resolve from the current directory), `--compiler`, `--runner` and
+`--probe` to use other builds, `--assets DIR` to use another asset directory.
 
 | Command | Result |
 |---|---|
-| `schema [--game FILE]` | The world recipe's JSON Schema, with the game's entity types folded in |
-| `init FILE [--example room\|block]` | Editable starter world, with its asset recipes |
-| `validate FILE` | Static checks only |
-| `inspect FILE [--cell ID]` | Static checks plus per-cell and per-region costs |
-| `verify FILE [-o DIR] [--cell ID] [--layers A,B]` | Sampled-view gate, diagnostic only |
-| `build FILE -o DIR [--verify] [--preview]` | The pack and its imports; recipe-mandated gate as in the Asset Kit |
-| `preview FILE -o DIR [--cell ID] [--variant NAME]` | Native renders of cells from sampled and vantage cameras |
-| `standin-draft FILE --cell ID -o RECIPE` | An Asset Kit recipe of boxes from the cell's placement bounds, for an agent to edit |
+| `schema [--game FILE]` | The world recipe's JSON Schema (cell files and game schemas under `$defs`), with the game's entity types folded in when given |
+| `init DIR [--example room\|city] [--force]` | Copies an example world (world file, cells, game schema, asset recipes) into a new directory |
+| `validate FILE` | Every static check: schemas, references, game data, IDs, palettes, that every asset compiles and that the pack can hold the world; the ID changes a build would make |
+| `inspect FILE [--cell ID]` | The same, with the full report: per cell and per region costs, palettes and variants, entity numbers, asset hashes, warnings |
+| `build FILE -o DIR [--locked]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam |
 
-`standin-draft` writes an ordinary asset recipe and stops; the Asset Kit builds it like any
-other, so the World Kit still models nothing. *All commands are proposals.*
+*Proposals, not built:* `verify FILE [-o DIR] [--cell ID] [--layers A,B]` (the World Checker,
+diagnostic only), `preview FILE -o DIR [--cell ID] [--variant NAME]` (native renders per region and
+palette variant), and `standin-draft FILE --cell ID -o RECIPE` (an Asset Kit recipe of boxes from
+the cell's placement bounds, for an agent to edit; the Asset Kit then builds it like any other, so
+the World Kit still models nothing).
+
+### Using the tool
+
+```sh
+python3 tools/mei_world.py schema --game examples/worlds/test_room/garden.game.json
+python3 tools/mei_world.py init /tmp/room --example room
+python3 tools/mei_world.py inspect /tmp/room/test_room.world.json
+make build/meic build/mei-headless build/mei-asset-probe
+python3 tools/mei_world.py build /tmp/room/test_room.world.json -o build/worlds/room
+```
+
+A cart then imports the generated file and draws through the reader:
+
+```
+import "test_room.akr"
+
+fn init() { assert(world_test_room_load()) }
+
+fn draw() {
+    cls(rgb(40, 60, 120))
+    wp_draw(vec3(32.0, 4.0, 8.0), 0.0, -0.2)
+}
+```
+
+Examples: [`examples/worlds/test_room`](../examples/worlds/test_room) (one cell inline: a floor, a
+slope, a ledge, a wall, a canopy whose underside is a ceiling from a companion collision asset, a
+gate in an exclusive pair of layers, a collectible with a required Asset Checker policy and a
+trigger whose parameters use every kind of reference) and
+[`examples/worlds/two_districts`](../examples/worlds/two_districts) (four cells in two regions with
+day and night variants, stand-ins, a far cell, merged scatter, a festival layer, a `share: false`
+material). `make test-world` (also part of `make test`) runs `tests/test_worldkit.py`, which builds
+both and runs them on the console.
 
 ## Open questions
 
@@ -658,11 +774,11 @@ Kit): terrain belongs to the World Kit ([Terrain](#terrain)), described in world
 cut per cell by the kit, so seams match by construction instead of by a seam check. Until it is
 built, ground can be written as an explicit Asset Kit `mesh` per cell.
 
-### 5. What the gate samples and what fails
+### 5. What the World Checker samples and what fails
 
 Open: sample density per cell; which yaws and pitches; whether follow-camera positions are
 sampled or only eye positions. Decided: thresholds are per-world settings with kit defaults, and
-the gate starts report-only. The Asset Kit demands zero wrong-depth pixels and no ordering cycles
+the World Checker starts report-only. The Asset Kit demands zero wrong-depth pixels and no ordering cycles
 for an isolated asset. A whole street from the near pass will not meet that.
 
 *Recommendation for the defaults:* zero wrong-order pixels and no cycles where either face belongs to an
@@ -686,8 +802,8 @@ most 80% of 1,000,000 and CPU cycles for drawing at most 60% of 500,000 in every
 
 | Stage | Proves | Needs first |
 |---|---|---|
-| 1 | Recipe, schema, ID lock file, pack, collision format and queries, holes check, one-view budget gate | The runtime reader and the collision decision (both done) |
-| 2 | Cell selection, two-pass sorting, stand-ins, layers, the sampled-view gate at scale, the per-cell budgets above | The larger ROM, palette-backed materials and the material class (done); the scene probe (in progress) |
+| 1 | Recipe, schema, ID lock file, pack, collision format and queries, holes check, one-view budget check | The runtime reader, the collision decision and the tool (done); the World Checker (in progress) |
+| 2 | Cell selection, two-pass sorting, stand-ins, layers, the World Checker at scale, the per-cell budgets above | The larger ROM, palette-backed materials and the material class (done); the scene probe (in progress) |
 | 3 | Region resources, seams, swaps spread over frames, stand-ins across a region boundary | Textures and UVs in the Asset Kit, or the seam has only palettes and audio to change |
 
 Interiors (the mall) need nothing new after stage 1: a door is an entity with a `world_ref`.

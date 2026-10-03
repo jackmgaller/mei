@@ -18,13 +18,13 @@ def staging(directory, prefix):
         yield Path(tmp)
 
 
-def guard(directory, names, sources, what='Output'):
+def guard(directory, names, sources, what='Output', error=KitError):
     """Refuses outputs that would overwrite one of the source files (paths)."""
     directory = Path(directory).resolve()
     sources = {Path(s).resolve() for s in sources if s and s != '-'}
     for name in names:
         if (directory/name).resolve() in sources:
-            raise KitError('/output',f'{what} would overwrite the source recipe. Use a separate output directory.')
+            raise error('/output',f'{what} would overwrite the source recipe. Use a separate output directory.')
 
 
 def commit(stage, directory):

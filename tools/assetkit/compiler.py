@@ -1,11 +1,10 @@
 """Compile declarative recipes, audit their quantized meshes, and export Mei data."""
 from collections import Counter, defaultdict
 import hashlib
-import json
 import math
 import struct
 
-from kitcore.jsonio import canonical  # noqa: F401 (re-exported)
+from kitcore.jsonio import canonical
 from meshlib import Mesh as NativeMesh, rgb
 from .geometry import (AssetError, Mesh, add, sub, cross, dot, norm, extrude,
                        lathe, loft, explicit_mesh, transform, modify)
