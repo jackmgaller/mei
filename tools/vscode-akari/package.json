@@ -1,7 +1,7 @@
 {
   "name": "akari-language",
   "displayName": "Akari (Mei)",
-  "description": "Syntax highlighting for the Mei fantasy console's Akari language.",
+  "description": "Syntax highlighting for the Mei fantasy console's Akari language and Mochi game schemas.",
   "version": "0.1.0",
   "publisher": "mei-local",
   "license": "UNLICENSED",
@@ -14,7 +14,8 @@
   "keywords": [
     "akari",
     "mei",
-    "akr"
+    "akr",
+    "mochi"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -34,6 +35,17 @@
           ".akr"
         ],
         "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "mochi",
+        "aliases": [
+          "Mochi",
+          "mochi"
+        ],
+        "extensions": [
+          ".mochi"
+        ],
+        "configuration": "./mochi-language-configuration.json"
       }
     ],
     "grammars": [
@@ -41,6 +53,11 @@
         "language": "akari",
         "scopeName": "source.akari",
         "path": "./syntaxes/akari.tmLanguage.json"
+      },
+      {
+        "language": "mochi",
+        "scopeName": "source.mochi",
+        "path": "./syntaxes/mochi.tmLanguage.json"
       }
     ]
   },

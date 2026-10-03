@@ -6,6 +6,10 @@ assembly (`asm` blocks and `asm fn`, including `{name}` references). Standard
 TextMate scopes pick up your editor theme's colors. Also provides comment
 toggling, bracket matching, quote pairing and indentation.
 
+It also highlights `.mochi` files, the World Kit's game schemas written in Mochi
+(docs/WORLDKIT.md): statements, type and field names, field types, `ref?`, enum
+values, defaults, numbers and comments.
+
 This is a declarative extension with no runtime code or dependencies. It does not
 provide completion, diagnostics or a language server.
 
@@ -47,7 +51,8 @@ in sync with those sources when the language changes. Capitalized type names and
 uppercase constant references are lexical conventions, not symbol resolution.
 
 `npm test` runs the actual TextMate/Oniguruma tokenizer, checks scope boundaries
-and tricky literals/assembly, and smoke-tests the repo's Akari source files.
+and tricky literals/assembly, and smoke-tests the repo's Akari source files and
+Mochi game schemas. The Mochi grammar follows `tools/worldkit/mochi.py`.
 Development dependencies and tests are excluded from the VSIX.
 
 References: [VS Code syntax highlighting guide](https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide)

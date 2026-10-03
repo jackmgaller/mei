@@ -1,0 +1,97 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Mochi",
+  "scopeName": "source.mochi",
+  "patterns": [
+    {
+      "name": "comment.line.double-slash.mochi",
+      "match": "//.*$"
+    },
+    {
+      "match": "\\b(game)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.other.mochi" },
+        "2": { "name": "entity.name.namespace.mochi" }
+      }
+    },
+    {
+      "match": "\\b(saved)\\b(?=\\s+type\\b)",
+      "name": "storage.modifier.mochi"
+    },
+    {
+      "match": "\\b(type)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "storage.type.mochi" },
+        "2": { "name": "entity.name.type.mochi" }
+      }
+    },
+    {
+      "match": "\\b(probe|worlds)\\b(?!\\s*:)",
+      "name": "keyword.other.mochi"
+    },
+    {
+      "match": "\\b([A-Za-z_][A-Za-z0-9_]*)\\s*(:)",
+      "captures": {
+        "1": { "name": "variable.other.member.mochi" },
+        "2": { "name": "punctuation.separator.key-value.mochi" }
+      }
+    },
+    {
+      "match": "\\b(radius|height|step|floor_max_degrees|ceiling_max_degrees)\\b(?=\\s*=)",
+      "name": "variable.other.property.mochi"
+    },
+    {
+      "match": "(=)\\s*(true|false)\\b",
+      "captures": {
+        "1": { "name": "keyword.operator.assignment.mochi" },
+        "2": { "name": "constant.language.boolean.mochi" }
+      }
+    },
+    {
+      "match": "(=)\\s*([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.operator.assignment.mochi" },
+        "2": { "name": "constant.other.value.mochi" }
+      }
+    },
+    {
+      "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b(?=\\s*\\|)",
+      "name": "constant.other.enum.mochi"
+    },
+    {
+      "match": "(\\|)\\s*([A-Za-z_][A-Za-z0-9_]*)",
+      "captures": {
+        "1": { "name": "keyword.operator.enum.mochi" },
+        "2": { "name": "constant.other.enum.mochi" }
+      }
+    },
+    {
+      "match": "\\b(bool|u8|s16|s32|fixed|vec3|name|world|ref)\\b",
+      "name": "support.type.mochi"
+    },
+    {
+      "match": "\\?",
+      "name": "keyword.operator.optional.mochi"
+    },
+    {
+      "match": "\\|",
+      "name": "keyword.operator.enum.mochi"
+    },
+    {
+      "match": "=",
+      "name": "keyword.operator.assignment.mochi"
+    },
+    {
+      "match": "-?\\b[0-9]+(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\\b",
+      "name": "constant.numeric.mochi"
+    },
+    {
+      "match": "[{}\\[\\]]",
+      "name": "punctuation.section.mochi"
+    },
+    {
+      "match": ",",
+      "name": "punctuation.separator.comma.mochi"
+    }
+  ]
+}
