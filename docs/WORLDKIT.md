@@ -635,55 +635,33 @@ does not do is in [open question 3](#3-the-runtime).
 
 ## Verification
 
-**Decided: the World Checker.** The analogue of the Asset Checker: sample camera positions through the playable
-space, including rooftops and the air between them, since they give the longest sight lines, and
-check GPU and CPU budgets and face ordering; plus collision checks for holes.
+**Decided: the World Checker.** The analogue of the Asset Checker: sample camera positions
+through the playable space, including rooftops and the air between them, since they give the
+longest sight lines, and check GPU and CPU budgets and face ordering; plus collision checks for
+holes. **Decided:** its scene probe is a World Kit component, not an Asset Kit change, because a
+camera standing in a level sees several meshes at once, palette swatch faces, and faces crossing
+the near plane and the guard band, which the Asset Checker rejects. **Decided:** thresholds are
+per-world settings with defaults from the kit, and the checker starts in **report-only** mode
+until a real level has been measured: it records what it finds in the build report and fails
+nothing on thresholds. Switching a world to enforcing is an explicit edit of its recipe
+(`"verification": {"mode": "enforce"}`).
 
-**Decided: the scene probe is a World Kit component** of the World Checker, not an Asset Kit
-change: it renders
-scenes rather than single meshes, from arbitrary camera positions, with several meshes per view,
-textured (palette swatch) faces, and near-plane and guard-band clipping (a camera standing in a
-level always has floor faces crossing the near plane). It is being built as
-`tools/worldkit/verify.py` and `tools/worldkit/scene_probe.c`.
+**Built.** [WORLDCHECKER.md](WORLDCHECKER.md) is the reference: what fails in each mode, the
+settings and their defaults, the static collision checks, how views are sampled, the ordering
+check and its evidence, timings and limits. Every `build` runs it through `run_gate()` ([Build
+outputs](#build-outputs-and-the-runtime-contract)); `tools/worldkit/verify.py` runs it on any
+pack.
 
-**Decided: thresholds are per-world settings** with defaults from the kit, and the World Checker
-starts in **report-only** mode until a real level has been measured: it records what it finds in the
-build report and fails nothing. Switching a world to enforcing is an explicit edit of its recipe.
+Before the World Checker runs, `validate` and `build` check the recipe itself: every referenced
+asset builds and passes its own verification policy; references resolve (assets, regions,
+layers, stand-ins, entity types, `entity_ref`, `world_ref`) and parameters match the game
+schema; placements lie in their cells and overhang a neighbour by no more than `overhang`, which
+keeps the two-pass sort sound; regions' palettes do not overlap; and the ID lock file agrees with
+the recipe.
 
-*Proposal:* what a build checks, in three groups.
-
-**Static checks (no rendering).**
-
-- Every referenced asset builds and passes its own verification policy. *(Built.)*
-- References resolve: assets, regions, layers, stand-ins, entity types, `entity_ref`,
-  `world_ref`. Parameters match the game schema. *(Built.)*
-- Placements lie in their cells; no placement's bounds overhang a neighbouring cell by more than
-  a declared margin (*placeholder*: 8 units), which keeps the two-pass sort sound.
-- The ID lock file agrees with the recipe. *(Built.)*
-- VRAM and palette use per region fit the declared split. Stand-ins use only the common set.
-- Collision: no cracks, meaning boundary edges of walkable floors that face another floor within
-  `probe.step` in height across a gap narrower than `probe.radius`; floor edges on a cell
-  boundary match the neighbouring cell's; no entity origin inside solid collision.
-
-**Sampled views (rendered natively).** Cameras are sampled from walkable floors (a grid over each
-cell's floor triangles at the probe's eye height and a follow-camera offset), from authored
-vantage points, from every cell's highest floors (rooftops), and from points inside seams. Each
-view runs the real runtime in a generated verification cart, as the Asset Kit generates a
-preview cart, and records CPU cycles, GPU cycles, triangles submitted and dropped, and packet
-arena use. It also renders the triangle-ID buffer and compares it with the independent
-rasterizer, as the Asset Kit does. Views are repeated with each layer combination: all off, each
-layer alone, and the largest set allowed by the exclusive groups.
-
-**Failure, once enforcing.** Dropped triangles and a full packet arena always fail. Budget and
-ordering thresholds are per-world settings ([question 5](#5-what-the-world-checker-samples-and-what-fails)
-has the starting defaults). In seam views, any drawn face that samples a region texture fails,
-because those slots are being overwritten.
-
-The Asset Checker cannot do this as it stands: it rejects views with near-plane and
-guard-band clipping and renders one mesh, hence the scene probe. Its ID rendering has to strip
-the textured flag while keeping coverage, and palette index 0 (never drawn) makes holes in
-textured faces that the expected rasterizer must reproduce. How long a sweep takes per view was
-not measured for this document.
+Not checked yet (WORLDCHECKER.md, "Limits"): the seam rule, that nothing drawn while a region's
+texture slots are being swapped samples a region texture; and that stand-ins use only the common
+texture set, which waits for region texture sets.
 
 ## Command line
 
@@ -788,16 +766,13 @@ built, ground can be written as an explicit Asset Kit `mesh` per cell.
 
 ### 5. What the World Checker samples and what fails
 
-Open: sample density per cell; which yaws and pitches; whether follow-camera positions are
-sampled or only eye positions. Decided: thresholds are per-world settings with kit defaults, and
-the World Checker starts report-only. The Asset Kit demands zero wrong-depth pixels and no ordering cycles
-for an isolated asset. A whole street from the near pass will not meet that.
-
-*Recommendation for the defaults:* zero wrong-order pixels and no cycles where either face belongs to an
-entity's asset or lies within a near band of the camera (*placeholder*: 16 units); a bounded
-fraction of the screen elsewhere (*placeholder*: 0.5%), reported with witnesses; GPU cycles at
-most 80% of 1,000,000 and CPU cycles for drawing at most 60% of 500,000 in every view
-(*placeholders*), leaving room for game logic and for camera positions the sampling missed.
+Settled: [WORLDCHECKER.md](WORLDCHECKER.md), "Settings" and "Outcome", has the sampling (eye
+and follow cameras over every floor, rooftops, the air between rooftops, seams and vantage
+points, each with the layer combinations) and the default thresholds, which are this document's
+earlier placeholders. The Asset Checker demands zero wrong-depth pixels and no ordering cycles
+for an isolated asset; a whole street from the near pass will not meet that, so the World
+Checker allows a bounded fraction of the screen outside a near band of the camera, and none
+within it or on an entity.
 
 ## Build order
 
@@ -815,8 +790,8 @@ most 80% of 1,000,000 and CPU cycles for drawing at most 60% of 500,000 in every
 
 | Stage | Proves | Needs first |
 |---|---|---|
-| 1 | Recipe, schema, ID lock file, pack, collision format and queries, holes check, one-view budget check | The runtime reader, the collision decision and the tool (done); the World Checker (in progress) |
-| 2 | Cell selection, two-pass sorting, stand-ins, layers, the World Checker at scale, the per-cell budgets above | The larger ROM, palette-backed materials and the material class (done); the scene probe (in progress) |
+| 1 | Recipe, schema, ID lock file, pack, collision format and queries, holes check, one-view budget check | The runtime reader, the collision decision, the tool and the World Checker (done) |
+| 2 | Cell selection, two-pass sorting, stand-ins, layers, the World Checker at scale, the per-cell budgets above | The larger ROM, palette-backed materials, the material class and the scene probe (done) |
 | 3 | Region resources, seams, swaps spread over frames, stand-ins across a region boundary | Textures and UVs in the Asset Kit, or the seam has only palettes and audio to change |
 
 Interiors (the mall) need nothing new after stage 1: a door is an entity with a `world_ref`.
