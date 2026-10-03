@@ -14,3 +14,8 @@ More in [docs/OVERVIEW.md](docs/OVERVIEW.md).
 
 For VS Code syntax highlighting of Akari (`.akr`) files, see
 [the Akari extension](tools/vscode-akari/README.md) for installation instructions.
+
+For agent-driven 3D modeling, [Mei Asset Kit](docs/ASSETKIT.md) builds JSON recipes into native
+meshes with extrusion, lathes, lofts, reusable parts, and six-view previews rendered by Mei.
+Its `verify` command checks triangle identities against depth-correct visibility and can block
+exports on intersections, ordering errors or cycles, without relying on visual inspection.

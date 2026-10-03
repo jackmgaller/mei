@@ -1,0 +1,209 @@
+#!/usr/bin/env python3
+"""Mei Asset Kit: agent-first procedural 3D modeling and native render feedback.
+
+Run `python3 tools/mei_assets.py schema` for the complete recipe contract, or
+read docs/ASSETKIT.md. All command results and errors are JSON on stdout.
+"""
+import argparse
+import json
+from pathlib import Path
+import sys
+import tempfile
+
+from assetkit.compiler import (AssetError, compile_recipe, native_bytes,
+                               editor_project, obj_text, import_obj)
+from assetkit.preview import source, render
+from assetkit.schema import SCHEMA
+
+ROOT = Path(__file__).resolve().parents[1]
+EXAMPLES = ROOT/'examples'/'assets'
+MAX_INPUT = 8*1024*1024
+
+
+def output(value):
+    print(json.dumps(value,indent=2,allow_nan=False))
+
+
+def load(path):
+    if path == '-':
+        text = sys.stdin.read(MAX_INPUT+1)
+    else:
+        with Path(path).open() as stream: text = stream.read(MAX_INPUT+1)
+    if len(text) > MAX_INPUT: raise AssetError('/input','Input exceeds 8 MiB.')
+    def unique(pairs):
+        result = {}
+        for key,value in pairs:
+            if key in result: raise AssetError('/input',f'Duplicate JSON property {key!r}.')
+            result[key] = value
+        return result
+    return json.loads(text,object_pairs_hook=unique)
+
+
+def write_new(path, value, force=False):
+    path = Path(path)
+    path.parent.mkdir(parents=True,exist_ok=True)
+    with path.open('w' if force else 'x') as stream:
+        stream.write(json.dumps(value,indent=2,allow_nan=False)+'\n')
+
+
+def artifacts(recipe, mesh, materials, report):
+    name = recipe['name']
+    binary = native_bytes(mesh,materials,recipe.get('lighting',{}))
+    import hashlib
+    report['mesh_sha256'] = hashlib.sha256(binary).hexdigest()
+    files = {
+        name+'.bin':binary,
+        name+'.akr':f'// Mei Asset Kit: {len(mesh.vertices)} vertices, {len(mesh.faces)} triangles.\nembed ASSET_{name.upper()}: Mesh = "{name}.bin"\n'.encode(),
+        name+'.asset.json':(json.dumps(recipe,indent=2,allow_nan=False)+'\n').encode(),
+        name+'.model.json':(json.dumps(editor_project(mesh,materials,name,recipe.get('lighting',{})),indent=2)+'\n').encode(),
+        name+'.obj':('mtllib '+name+'.mtl\n'+obj_text(mesh,materials)).encode(),
+        name+'.mtl':''.join('newmtl '+key+'\nKd '+' '.join(f'{int(mat["color"][i:i+2],16)/255:.6f}' for i in (1,3,5))+'\n\n' for key,mat in sorted(materials.items())).encode(),
+        'preview.akr':source(name,report['bounds']).encode(),
+        'report.json':(json.dumps(report,indent=2)+'\n').encode(),
+    }
+    return files
+
+
+class VerificationFailure(AssetError):
+    def __init__(self, report):
+        super().__init__('/verification','Export blocked by verification. Inspect the face/camera witnesses in verification.failed.json or run verify for a diagnostic sweep.')
+        self.report=report
+
+
+def build(recipe, directory, preview=False, compiler=None, runner=None, input_path=None, verification=False, probe=None):
+    mesh,materials,report = compile_recipe(recipe)
+    files = artifacts(recipe,mesh,materials,report)
+    directory = Path(directory).resolve()
+    if input_path and input_path != '-':
+        source_path = Path(input_path).resolve()
+        if any(directory/name == source_path for name in files):
+            raise AssetError('/output','Output would overwrite the source recipe. Use a separate output directory.')
+    directory.mkdir(parents=True,exist_ok=True)
+    # Complete validation and serialization before replacing any generated outputs.
+    # Stage preview too, so compiler/render failures leave the previous build intact.
+    with tempfile.TemporaryDirectory(prefix='.mei-assets-',dir=directory) as tmp:
+        stage = Path(tmp)
+        for name,data in files.items(): (stage/name).write_bytes(data)
+        policy=recipe.get('verification')
+        if verification or (policy is not None and policy.get('required',True)):
+            from assetkit.visibility import verify
+            checked=verify(recipe,directory=stage,compiler=compiler,probe=probe)
+            if not checked['ok']:
+                failure=directory/'verification.failed.json'
+                if input_path and input_path!='-' and Path(input_path).resolve()==failure:
+                    raise AssetError('/output','Failure report would overwrite the source recipe. Use a separate output directory.')
+                if checked['images']:
+                    images_dir=directory/'verification-failed'
+                    images_dir.mkdir(exist_ok=True)
+                    for filename in checked['images']:(stage/filename).replace(images_dir/filename)
+                    for row in checked['views']:
+                        if 'image' in row:row['image']='verification-failed/'+row['image']
+                    checked['images']=['verification-failed/'+name for name in checked['images']]
+                failure.write_text(json.dumps(checked,indent=2)+'\n')
+                raise VerificationFailure(checked)
+            report['verification']=checked
+        if preview:
+            report['preview'] = render(stage,recipe['name'],report['bounds'],compiler,runner)
+            report['preview']['contact'] = str(directory/'contact.png')
+        (stage/'report.json').write_text(json.dumps(report,indent=2)+'\n')
+        generated = sorted(p.name for p in stage.iterdir())
+        if input_path and input_path != '-' and any(directory/name == Path(input_path).resolve() for name in generated):
+            raise AssetError('/output','Generated preview would overwrite the source recipe. Use a separate output directory.')
+        for filename in generated: (stage/filename).replace(directory/filename)
+    report['output'] = str(directory)
+    report['files'] = generated
+    return report
+
+
+class ArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        raise AssetError('/arguments', message)
+
+
+def parser():
+    p = ArgumentParser(description=__doc__)
+    sub = p.add_subparsers(dest='command',required=True)
+    sub.add_parser('schema',help='Print the complete JSON Schema; no file access needed.')
+    init = sub.add_parser('init',help='Write an editable example recipe (never overwrite by default).')
+    init.add_argument('output')
+    init.add_argument('--example',choices=['robot','vessel','cottage'],default='robot')
+    init.add_argument('--force',action='store_true')
+    for name in ('validate','inspect','build','preview','verify'):
+        cmd = sub.add_parser(name,help={'validate':'Validate schema, topology and Mei budgets.',
+                                      'inspect':'Return bounds, costs and diagnostics per named part.',
+                                      'build':'Export native meshes, Akari import, OBJ and editor project.',
+                                      'preview':'Build and render six views using the actual Mei GPU.',
+                                      'verify':'Audit geometry and native triangle visibility across a camera sweep.'}[name])
+        cmd.add_argument('recipe',help='Recipe JSON path, or - to read stdin.')
+        cmd.add_argument('--strict',action='store_true',help='Treat topology warnings as errors.')
+        if name in ('build','preview'):
+            cmd.add_argument('-o','--output',required=True,help='Dedicated generated-output directory.')
+            if name == 'build': cmd.add_argument('--preview',action='store_true')
+            cmd.add_argument('--compiler',type=Path,default=ROOT/'build'/'meic')
+            cmd.add_argument('--runner',type=Path,default=ROOT/'build'/'mei-headless')
+            cmd.add_argument('--verify',action='store_true',help='Block export on geometry or triangle-visibility failures; also enforced by recipe verification.required.')
+            cmd.add_argument('--probe',type=Path,default=ROOT/'build'/'mei-asset-probe')
+        elif name=='verify':
+            cmd.add_argument('-o','--output',help='Save verification.json and triangle-ID difference images.')
+            cmd.add_argument('--compiler',type=Path,default=ROOT/'build'/'meic')
+            cmd.add_argument('--probe',type=Path,default=ROOT/'build'/'mei-asset-probe')
+            cmd.add_argument('--yaw-steps',type=int)
+            cmd.add_argument('--pitches',help='Comma-separated camera pitches in radians; use --pitches=-0.35,0,0.35.')
+            cmd.add_argument('--distances',help='Comma-separated multipliers of the fitted camera distance.')
+            cmd.add_argument('--far',type=float,help='Ordering-table far depth; default 100, matching Mei camera defaults.')
+            cmd.add_argument('--geometry',choices=['error','warn'],help='Default error. warn explicitly permits geometric intersections while still enforcing visibility.')
+    imp = sub.add_parser('import-obj',help='Convert OBJ geometry into an editable recipe; materials/UVs are not imported.')
+    imp.add_argument('input')
+    imp.add_argument('-o','--output',required=True)
+    imp.add_argument('--name',default='imported')
+    imp.add_argument('--force',action='store_true')
+    return p
+
+
+def main(argv=None):
+    try:
+        args = parser().parse_args(argv)
+        if args.command == 'schema':
+            output(SCHEMA)
+        elif args.command == 'init':
+            recipe = load(str(EXAMPLES/(args.example+'.asset.json')))
+            compile_recipe(recipe)
+            write_new(args.output,recipe,args.force)
+            output({'ok':True,'recipe':str(Path(args.output).resolve()),'next':'inspect, then preview this recipe'})
+        elif args.command == 'import-obj':
+            with Path(args.input).open() as stream: text = stream.read(MAX_INPUT+1)
+            if len(text) > MAX_INPUT: raise AssetError('/input','Input exceeds 8 MiB.')
+            recipe = import_obj(text,args.name)
+            write_new(args.output,recipe,args.force)
+            output({'ok':True,'recipe':str(Path(args.output).resolve()),
+                    'warnings':['Geometry only: OBJ materials, UVs and supplied normals are not imported. Assign recipe materials before building.']})
+        else:
+            recipe = load(args.recipe)
+            _,_,report = compile_recipe(recipe)
+            if args.strict and report['warnings']:
+                output(dict(report,ok=False,errors=[{'path':'/nodes','message':'Topology warnings rejected by --strict.'}]))
+                return 1
+            if args.command in ('build','preview'):
+                report = build(recipe,args.output,args.command == 'preview' or args.preview,
+                               args.compiler.resolve(),args.runner.resolve(),args.recipe,args.verify,args.probe.resolve())
+            elif args.command=='verify':
+                from assetkit.visibility import verify
+                profile={}
+                if args.yaw_steps is not None:profile['yaw_steps']=args.yaw_steps
+                if args.geometry is not None:profile['geometry']=args.geometry
+                if args.far is not None:profile['far']=args.far
+                for key in ('pitches','distances'):
+                    if getattr(args,key) is not None:profile[key]=[float(n) for n in getattr(args,key).split(',')]
+                if args.output and args.recipe!='-' and (Path(args.output).resolve()/'verification.json')==Path(args.recipe).resolve():
+                    raise AssetError('/output','Verification report would overwrite the source recipe.')
+                report=verify(recipe,profile,args.output,args.compiler.resolve(),args.probe.resolve())
+            output(report)
+            if not report['ok']:return 1
+        return 0
+    except (AssetError,OSError,ValueError,RecursionError) as error:
+        output({**getattr(error,'report',{}),'ok':False,'errors':[{'path':getattr(error,'path','/input'),'message':str(error)}]})
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
