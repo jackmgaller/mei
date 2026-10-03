@@ -1,5 +1,5 @@
-// The render API beyond mesh(): projecting points, the ordering table and the packet arena
-// as values a cart can keep, draw early or swap, and the camera's pan and scale.
+// The camera, projecting points, the ordering table, the interface list and the packet arena:
+// what mesh() and the 2D calls build on, and what a cart can keep, draw early or swap.
 //
 // The ordering table (OT) is 1,024 empty packets: entry b links to entry b - 1 and entry 0
 // ends the list, so a packet inserted into bucket b links on to whatever the bucket held, and
@@ -7,6 +7,73 @@
 // therefore still links into the frame's table: put it back with ot_restore() or ot_swap()
 // before it is drawn, or make it a list of its own with ot_detach(). The frame's table is set
 // up at the start of every frame, after init(): in init(), call ot_clear() before using it.
+
+// ---- the camera
+
+// Vertical field of view in radians (default 60 degrees, about 1.047).
+fn camera_fov(fov: fixed) {
+    let h = fov * 0.5
+    __fy = cos(h) / sin(h)
+    __fx = __fy * 0.75          // 4:3 screen
+}
+
+// Near plane (geometry closer than this is clipped away, see clip.akr) and the far depth
+// that maps to the last ordering-table bucket.
+fn camera_clip(near: fixed, far: fixed) {
+    __cam_near = near
+    __cam_far = far
+    let scale = 1024.0 / (far - near)
+    __ot_k3b = scale / 3
+    __ot_k4b = scale / 4
+    __ot_k3 = __ot_k3b
+    __ot_k4 = __ot_k4b
+    __ot_key = 0
+    __ot_bias = __ot_user
+}
+
+// Camera at pos looking along yaw (0 looks down +Z; positive turns right, toward +X).
+fn camera(pos: vec3, yaw: fixed) { camera_look(pos, yaw, 0.0) }
+
+// Camera with pitch (positive looks up).
+fn camera_look(pos: vec3, yaw: fixed, pitch: fixed) {
+    let sy = sin(yaw)
+    let cy = cos(yaw)
+    let sp = sin(pitch)
+    let cp = cos(pitch)
+    let p = vec4(pos, 0.0)
+    var right = vec4(cy, 0.0, -sy, 0.0)
+    var up = vec4(-sy * sp, cp, -cy * sp, 0.0)
+    var fwd = vec4(sy * cp, sp, cy * cp, 0.0)
+    right.w = -dot(right, p)
+    up.w = -dot(up, p)
+    fwd.w = -dot(fwd, p)
+    __vp[0] = right * __fx
+    __vp[1] = up * __fy
+    __vp[2] = fwd
+    __vp[3] = fwd
+}
+
+// Sets the view-projection matrix directly (rows: x, y, z, w; w must be view depth).
+fn camera_matrix(m: mat4) { __vp = m }
+
+// Sets the projection's scale directly: f = 1 / tan(half the vertical field of view)
+// (camera_fov(fov) sets f from an angle; 1.732 is 60 degrees). Screen pixels per world unit at
+// view depth d are 120 * f / d. Takes effect at the next camera()/camera_look().
+fn camera_focal(f: fixed) {
+    __fy = f
+    __fx = f * 0.75
+}
+
+// Shifts the view on screen by whole pixels (positive px: the picture moves right, positive
+// py: down) without moving the camera: an off-axis view, as when panning a map seen from far
+// away. Every projected vertex moves by exactly (px, py). Call it after camera()/camera_look(),
+// which reset the view.
+fn camera_pan(px: s32, py: s32) {
+    let kx = fixed(px) / 160
+    let ky = fixed(py) / 120
+    __vp[0] = __vp[0] + __vp[3] * kx
+    __vp[1] = __vp[1] - __vp[3] * ky
+}
 
 // ---- projecting points
 
@@ -41,28 +108,57 @@ fn view_depth(p: vec3) -> fixed { return dot(__vp[3], vec4(p, 1.0)) }
 // Ordering-table buckets per unit of view depth: 1,024 / (far - near) (camera_clip).
 fn buckets_per_unit() -> fixed { return 1024.0 / (__cam_far - __cam_near) }
 
-// ---- the camera's scale and pan
-
-// Sets the projection's scale directly: f = 1 / tan(half the vertical field of view)
-// (camera_fov(fov) sets f from an angle; 1.732 is 60 degrees). Screen pixels per world unit at
-// view depth d are 120 * f / d. Takes effect at the next camera()/camera_look().
-fn camera_focal(f: fixed) {
-    __fy = f
-    __fx = f * 0.75
-}
-
-// Shifts the view on screen by whole pixels (positive px: the picture moves right, positive
-// py: down) without moving the camera: an off-axis view, as when panning a map seen from far
-// away. Every projected vertex moves by exactly (px, py). Call it after camera()/camera_look(),
-// which reset the view.
-fn camera_pan(px: s32, py: s32) {
-    let kx = fixed(px) / 160
-    let ky = fixed(py) / 120
-    __vp[0] = __vp[0] + __vp[3] * kx
-    __vp[1] = __vp[1] - __vp[3] * ky
-}
-
 // ---- the ordering table
+
+const OT_SIZE = 1024
+
+asm fn __ot_reset(ot: *u32) {
+    ; entry i links to entry i-1; entry 0 ends the list. v0 holds the links of four entries
+    ; and v1 steps them on: 1.4 cycles per entry.
+    addi r2, {ot}, -4
+    vset v0, r2, 0
+    vset v0, {ot}, 1
+    addi r2, {ot}, 4
+    vset v0, r2, 2
+    addi r2, {ot}, 8
+    vset v0, r2, 3
+    addi r2, r0, 16
+    vset v1, r2, 0
+    vset v1, r2, 1
+    vset v1, r2, 2
+    vset v1, r2, 3
+    mov  r3, {ot}
+    addi r4, r0, 32
+.loop:
+    vst  v0, [r3+0]
+    vadd v0, v0, v1
+    vst  v0, [r3+16]
+    vadd v0, v0, v1
+    vst  v0, [r3+32]
+    vadd v0, v0, v1
+    vst  v0, [r3+48]
+    vadd v0, v0, v1
+    vst  v0, [r3+64]
+    vadd v0, v0, v1
+    vst  v0, [r3+80]
+    vadd v0, v0, v1
+    vst  v0, [r3+96]
+    vadd v0, v0, v1
+    vst  v0, [r3+112]
+    vadd v0, v0, v1
+    addi r3, r3, 128
+    addi r4, r4, -1
+    bne  r4, r0, .loop
+    li   r2, 0xFFFFFF
+    sw   r2, [{ot}]
+}
+
+// Inserts a packet into the ordering table. depth: 0 nearest .. 1023 farthest.
+weak fn ot_insert(p: *u32, type: u32, depth: s32) {
+    let b = clamp(depth, 0, 1023)
+    p[0] = (type << 24) | __ot[b]
+    __ot[b] = p as u32
+}
 
 // Empties the frame's ordering table (the start of every frame does).
 fn ot_clear() { __ot_reset(&__ot[0]) }
@@ -140,6 +236,19 @@ fn ot_flush() -> s32 {
     return n
 }
 
+// ---- the interface list
+
+// Appends a packet to the interface list (drawn after the world, in call order).
+fn ui_insert(p: *u32, type: u32) {
+    p[0] = (type << 24) | 0xFFFFFF
+    if __ui_tail == null {
+        __ui_head = p as u32
+    } else {
+        __ui_tail[0] = (__ui_tail[0] & 0xFF000000) | (p as u32)
+    }
+    __ui_tail = p
+}
+
 // Draws the interface list queued so far now (so 3D drawn later lands on top of it); what is
 // queued afterwards is drawn at the end of the frame as usual.
 weak fn ui_flush() {
@@ -150,6 +259,18 @@ weak fn ui_flush() {
 }
 
 // ---- the packet arena
+
+const ARENA_WORDS = 40960  // 160 KB of packets per frame
+
+// Allocates n words of packet memory for this frame, or returns null when full.
+fn packet_alloc(n: s32) -> *u32 {
+    let p = __arena_ptr
+    if p + n > __arena_end { return null }
+    __arena_ptr = p + n
+    return p
+}
+
+fn __pos(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
 
 // Packet memory: mesh(), the 2D calls and packet_alloc() take their packets from the current
 // arena, which is the frame's own (160 KB, emptied at the start of every frame) unless a cart

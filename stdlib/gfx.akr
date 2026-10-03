@@ -1,4 +1,6 @@
-// 3D and 2D drawing: ordering table, packet arena, camera, meshes, fog.
+// 3D meshes: the mesh format, mesh*(), fog, depth sorting (depth_*) and the clipping
+// rectangle; also the screen (cls, dither) and the render state the camera, the ordering table
+// and the packet arena share (render.akr).
 //
 // Each frame the runtime resets a 1,024-bucket ordering table (OT) and a packet arena.
 // mesh() transforms vertices on the vector unit, culls, fogs and builds GPU packets into
@@ -34,9 +36,7 @@ const FACE_SEMI = 8
 const FACE_DOUBLE = 16     // never culled
 const FACE_KEYED = 32      // sorted into the ordering-table bucket held in col[3] (not Gouraud)
 
-const OT_SIZE = 1024
 const MAX_MESH_VERTS = 2048
-const ARENA_WORDS = 40960  // 160 KB of packets per frame
 
 // ---- state
 
@@ -69,116 +69,14 @@ var __scr_y1: s32 = 240
 var __win_tab: u32         // the window table of the mesh being drawn (__draw_mesh_win)
 var __scr_k: [4]fixed = [-1.0, 1.0, 1.0, -1.0]    // its edges in clip space (x/w left, right; y/w top, bottom)
 
-// ---- colours
-
-// Packs 0-255 channels into a GPU colour word (red in the low byte).
-fn rgb(r: s32, g: s32, b: s32) -> u32 {
-    return (r as u32 & 255) | ((g as u32 & 255) << 8) | ((b as u32 & 255) << 16)
-}
-
-// Converts a colour word to the 15-bit framebuffer format.
-fn rgb15(c: u32) -> u32 {
-    return ((c >> 3) & 31) | (((c >> 11) & 31) << 5) | (((c >> 19) & 31) << 10)
-}
+// ---- the screen
 
 // Clears the back buffer now.
 fn cls(c: u32) { GPU_CLEAR = rgb15(c) }
 
 fn dither(on: bool) { GPU_CTRL = on as u32 }
 
-// ---- packets
-
-asm fn __ot_reset(ot: *u32) {
-    ; entry i links to entry i-1; entry 0 ends the list. v0 holds the links of four entries
-    ; and v1 steps them on: 1.4 cycles per entry.
-    addi r2, {ot}, -4
-    vset v0, r2, 0
-    vset v0, {ot}, 1
-    addi r2, {ot}, 4
-    vset v0, r2, 2
-    addi r2, {ot}, 8
-    vset v0, r2, 3
-    addi r2, r0, 16
-    vset v1, r2, 0
-    vset v1, r2, 1
-    vset v1, r2, 2
-    vset v1, r2, 3
-    mov  r3, {ot}
-    addi r4, r0, 32
-.loop:
-    vst  v0, [r3+0]
-    vadd v0, v0, v1
-    vst  v0, [r3+16]
-    vadd v0, v0, v1
-    vst  v0, [r3+32]
-    vadd v0, v0, v1
-    vst  v0, [r3+48]
-    vadd v0, v0, v1
-    vst  v0, [r3+64]
-    vadd v0, v0, v1
-    vst  v0, [r3+80]
-    vadd v0, v0, v1
-    vst  v0, [r3+96]
-    vadd v0, v0, v1
-    vst  v0, [r3+112]
-    vadd v0, v0, v1
-    addi r3, r3, 128
-    addi r4, r4, -1
-    bne  r4, r0, .loop
-    li   r2, 0xFFFFFF
-    sw   r2, [{ot}]
-}
-
-// Allocates n words of packet memory for this frame, or returns null when full.
-fn packet_alloc(n: s32) -> *u32 {
-    let p = __arena_ptr
-    if p + n > __arena_end { return null }
-    __arena_ptr = p + n
-    return p
-}
-
-// Inserts a packet into the ordering table. depth: 0 nearest .. 1023 farthest.
-weak fn ot_insert(p: *u32, type: u32, depth: s32) {
-    let b = clamp(depth, 0, 1023)
-    p[0] = (type << 24) | __ot[b]
-    __ot[b] = p as u32
-}
-
-// Appends a packet to the interface list (drawn after the world, in call order).
-fn ui_insert(p: *u32, type: u32) {
-    p[0] = (type << 24) | 0xFFFFFF
-    if __ui_tail == null {
-        __ui_head = p as u32
-    } else {
-        __ui_tail[0] = (__ui_tail[0] & 0xFF000000) | (p as u32)
-    }
-    __ui_tail = p
-}
-
-fn __pos(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
-
-// ---- camera
-
-// Vertical field of view in radians (default 60 degrees, about 1.047).
-fn camera_fov(fov: fixed) {
-    let h = fov * 0.5
-    __fy = cos(h) / sin(h)
-    __fx = __fy * 0.75          // 4:3 screen
-}
-
-// Near plane (geometry closer than this is clipped away, see clip.akr) and the far depth
-// that maps to the last ordering-table bucket.
-fn camera_clip(near: fixed, far: fixed) {
-    __cam_near = near
-    __cam_far = far
-    let scale = 1024.0 / (far - near)
-    __ot_k3b = scale / 3
-    __ot_k4b = scale / 4
-    __ot_k3 = __ot_k3b
-    __ot_k4 = __ot_k4b
-    __ot_key = 0
-    __ot_bias = __ot_user
-}
+// ---- clipping
 
 // The rectangle (screen pixels) outside which mesh*() drop the faces they clip (faces that
 // cross the near plane or the guard band): by default the screen, (0, 0)-(320, 240). Faces
@@ -196,31 +94,6 @@ fn cull_rect(x0: s32, y0: s32, x1: s32, y1: s32) {
     __scr_k[2] = fixed(120 - y0) / 120
     __scr_k[3] = fixed(120 - y1) / 120
 }
-
-// Camera at pos looking along yaw (0 looks down +Z; positive turns right, toward +X).
-fn camera(pos: vec3, yaw: fixed) { camera_look(pos, yaw, 0.0) }
-
-// Camera with pitch (positive looks up).
-fn camera_look(pos: vec3, yaw: fixed, pitch: fixed) {
-    let sy = sin(yaw)
-    let cy = cos(yaw)
-    let sp = sin(pitch)
-    let cp = cos(pitch)
-    let p = vec4(pos, 0.0)
-    var right = vec4(cy, 0.0, -sy, 0.0)
-    var up = vec4(-sy * sp, cp, -cy * sp, 0.0)
-    var fwd = vec4(sy * cp, sp, cy * cp, 0.0)
-    right.w = -dot(right, p)
-    up.w = -dot(up, p)
-    fwd.w = -dot(fwd, p)
-    __vp[0] = right * __fx
-    __vp[1] = up * __fy
-    __vp[2] = fwd
-    __vp[3] = fwd
-}
-
-// Sets the view-projection matrix directly (rows: x, y, z, w; w must be view depth).
-fn camera_matrix(m: mat4) { __vp = m }
 
 // ---- fog
 

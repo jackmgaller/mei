@@ -1,6 +1,8 @@
 // The frame loop. The compiler's start-up code runs global initialisers, then
 // __rt_init(), then the cart's init(), then forever: __rt_frame_begin(), update(),
-// draw(), __rt_frame_end().
+// draw(), __rt_frame_end(). Also what a cart can ask about frames and their budgets
+// (cpu_used(), gpu_used(), frame() and the rest), and animation phases from a frame count
+// (frame_phase(), frame_wave(), frame_angle()).
 
 var __frame_cycles: s32
 var __frame_tris: s32
@@ -90,3 +92,39 @@ fn frame_ticks() -> s32 { return GPU_TICKS as s32 }
 // Ticks since reset in which a finished frame waited for the GPU. Two readings' difference is
 // the slowdown the GPU caused between them.
 fn gpu_lag() -> s32 { return GPU_LAG as s32 }
+
+// ---- animation phases that never jump
+//
+// fixed(frame_count) * speed overflows after 32,768 frames (about nine minutes) and makes every
+// animation jump. These take the count itself (FRAME, or the cart's own tick counter, which may
+// stop while paused) and are exact for any count.
+
+// How far through a cycle of `period` frames t is: 0 up to (not including) 1.0.
+fn frame_phase(t: s32, period: s32) -> fixed {
+    if period <= 0 { return 0.0 }
+    var m = t % period
+    if m < 0 { m += period }
+    return fixed(m) / period
+}
+
+// A sine wave over `period` frames: sin(TAU * frame_phase(t, period)), -1.0..1.0.
+fn frame_wave(t: s32, period: s32) -> fixed { return sin(frame_phase(t, period) * TAU) }
+
+// t * speed (radians per frame) as an angle in 0..TAU, exact for any t: what fixed(t) * speed
+// would be, without the wrap. sin(frame_angle(t, 0.05)) turns once every 126 frames, forever.
+fn frame_angle(t: s32, speed: fixed) -> fixed {
+    let T: u32 = 411775                 // bits(TAU)
+    var tm = t as u32
+    if t < 0 { tm = (0 - t) as u32 }
+    tm = tm % T
+    let raw = bits(speed)
+    var k = raw as u32
+    if raw < 0 { k = (0 - raw) as u32 }
+    k = k % T
+    // (tm * k) mod T in 32 bits: k = k1 * 1024 + k0
+    var r = (tm * (k >> 10)) % T
+    r = (r << 10) % T
+    r = (r + tm * (k & 1023)) % T
+    if (t < 0) != (raw < 0) && r != 0 { r = T - r }
+    return from_bits(r as s32)
+}
