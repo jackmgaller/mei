@@ -36,7 +36,7 @@ fn home_status(i: s32) -> *u8 {
     if i == 1 { return mc_home_status() }
     if i == 2 { return sb_str(boot_theme_name(sh_cfg_theme())) }
     if i == 3 { return sb_str("2 pads") }
-    if i == 4 { return sb_str("8 channels") }
+    if i == 4 { return sb_str("16 channels") }
     return sb_str(sh_platform)
 }
 
