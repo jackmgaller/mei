@@ -84,9 +84,10 @@ static TypeExpr *parse_type(Parser *p) {
         t->elem = parse_type(p);
     } else if (is_op(p, "[")) {
         next(p);
-        t->k = 2;
-        t->len = parse_expr(p);
+        t->k = is_op(p, "]") ? 4 : 2;
+        if (t->k == 2) t->len = parse_expr(p);
         expect_op(p, "]");
+        if (t->k == 4 && is_kw(p, "const")) { t->readonly = 1; next(p); }
         t->elem = parse_type(p);
     } else if (is_kw(p, "fn")) {
         /* function type: fn(T, U) -> R */
@@ -262,6 +263,15 @@ static Expr *parse_postfix(Parser *p) {
             int save = p->no_struct_lit;
             p->no_struct_lit = 0;
             x->b = parse_expr(p);
+            if (is_op(p, "..")) {
+                next(p);
+                x->k = E_SLICE;
+                x->args = ar_alloc(2 * sizeof *x->args);
+                x->args[0] = x->b;
+                x->args[1] = parse_expr(p);
+                x->nargs = 2;
+                x->b = NULL;
+            }
             p->no_struct_lit = save;
             expect_op(p, "]");
             e = x;

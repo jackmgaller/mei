@@ -1,0 +1,3 @@
+// error: cannot return a slice of local storage
+fn id(s: []s32) -> []s32 { return s }
+fn bad() -> []s32 { var a: [2]s32; return id(a) }

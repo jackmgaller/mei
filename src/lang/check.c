@@ -75,6 +75,25 @@ Type *ty_ptr(Type *t) {
     return t->ptr_cache;
 }
 
+Type *ty_slice(Type *t) {
+    if (!t->slice_cache) {
+        Type *s = ar_alloc(sizeof *s);
+        s->k = TY_SLICE; s->elem = t; s->size = 8; s->align = 4; s->layout = 2;
+        t->slice_cache = s;
+    }
+    return t->slice_cache;
+}
+
+static Type *ty_slice_readonly(Type *t) {
+    if (!t->readonly_slice_cache) {
+        Type *s = ar_alloc(sizeof *s);
+        *s = *ty_slice(t);
+        s->readonly = 1;
+        t->readonly_slice_cache = s;
+    }
+    return t->readonly_slice_cache;
+}
+
 static void layout_struct(Type *t, Loc use);
 
 Type *ty_array(Type *t, int64_t n) {
@@ -125,6 +144,7 @@ const char *ty_str(Type *t) {
         buf_free(&b);
         return r;
     }
+    case TY_SLICE: return ar_printf("[]%s%s", t->readonly ? "const " : "", ty_str(t->elem));
     case TY_PTR: return ar_printf("*%s", ty_str(t->elem));
     case TY_ARRAY: return ar_printf("[%lld]%s", (long long)t->n, ty_str(t->elem));
     default: return t->name;
@@ -135,7 +155,7 @@ int ty_is_int(Type *t) { return t->k >= TY_S8 && t->k <= TY_U32; }
 int ty_is_signed(Type *t) { t = ty_base(t); return t->k == TY_S8 || t->k == TY_S16 || t->k == TY_S32 || t->k == TY_FIXED || t->k == TY_UINT || t->k == TY_UFIXED; }
 int ty_is_scalar(Type *t) { return (t->k >= TY_BOOL && t->k <= TY_FIXED) || t->k == TY_PTR || t->k == TY_NULL || t->k == TY_UINT || t->k == TY_UFIXED || t->k == TY_ENUM; }
 int ty_is_vec(Type *t) { return t->k >= TY_VEC2 && t->k <= TY_IVEC4; }
-int ty_is_aggr(Type *t) { return t->k == TY_STRUCT || t->k == TY_ARRAY || t->k == TY_MAT4; }
+int ty_is_aggr(Type *t) { return t->k == TY_STRUCT || t->k == TY_ARRAY || t->k == TY_MAT4 || t->k == TY_SLICE; }
 int ty_lanes(Type *t) { return t->k == TY_VEC2 ? 2 : t->k == TY_VEC3 ? 3 : 4; }
 static int is_intish(Type *t) { return ty_is_int(t) || t->k == TY_UINT; }
 static int is_fixedish(Type *t) { return t->k == TY_FIXED || t->k == TY_UFIXED; }
@@ -276,7 +296,11 @@ static Type *resolve_type_in(TypeExpr *te, Ctx *in) {
         if (ret->k == TY_ARRAY) error_at(te->elem->loc, "functions cannot return arrays; wrap the array in a struct");
         t = ty_func(ps, te->nparams, ret);
     } else if (te->k == 1) t = ty_ptr(resolve_type_in(te->elem, in));
-    else if (te->k == 2) {
+    else if (te->k == 4) {
+        Type *el = resolve_type_in(te->elem, in);
+        if (el->k == TY_VOID) error_at(te->loc, "slices of void are not allowed");
+        t = te->readonly ? ty_slice_readonly(el) : ty_slice(el);
+    } else if (te->k == 2) {
         Ctx c = {.P = g_prog};
         int64_t n = const_int(in ? in : &c, te->len, "array length");
         if (n <= 0) error_at(te->len->loc, "array length must be positive (got %lld)", (long long)n);
@@ -457,6 +481,7 @@ static const char *not_assignable(Expr *e) {
         if (e->sym->k == SY_DATA) return "constant data lives in ROM and is read-only";
         return "it is not a variable";
     case E_INDEX:
+        if (e->a->ty->k == TY_SLICE) return e->a->ty->readonly ? "slice elements are read-only" : NULL;
         if (e->a->ty->k == TY_PTR) return NULL;
         if (e->a->ty->k == TY_ARRAY || e->a->ty->k == TY_MAT4) return not_assignable(e->a);
         return "it is not a variable";
@@ -503,6 +528,19 @@ static Expr *coerce(Ctx *c, Expr *e, Type *to, const char *what) {
     if ((from->k == TY_UINT || from->k == TY_UFIXED) && !e->isconst)
         error_at(e->loc, "internal compiler error: untyped value that is not a constant");
     if (from == to) return e;
+    if (to->k == TY_SLICE && from->k == TY_ARRAY && to->elem == from->elem) {
+        if (!is_lvalue(e)) error_at(e->loc, "a slice needs stored array backing; store the array in a variable first");
+        if (!to->readonly && not_assignable(e)) error_at(e->loc, "cannot make a mutable slice of read-only storage; use []const %s", ty_str(from->elem));
+        mark_addr_taken(e);
+        Expr *x = ar_alloc(sizeof *x);
+        x->k = E_CONV; x->loc = e->loc; x->a = e; x->conv_from = from; x->ty = to;
+        return x;
+    }
+    if (to->k == TY_SLICE && from->k == TY_SLICE && to->elem == from->elem && to->readonly && !from->readonly) {
+        Expr *x = ar_alloc(sizeof *x);
+        x->k = E_CONV; x->loc = e->loc; x->a = e; x->conv_from = from; x->ty = to;
+        return x;
+    }
     if (to->k == TY_VOID) error_at(e->loc, "%s has no value", what);
     if (from->k == TY_UINT) {
         if (ty_is_int(to)) {
@@ -653,6 +691,7 @@ static Local *capture(Ctx *c, const char *name, Loc loc) {
     l->is_param = 1;
     l->is_capture = 1;
     l->points_local = ol->points_local;
+    l->borrows_param = ol->borrows_param;
     PUSH(f->locals, f->nlocals, f->caplocals, l);
     ol->captured = 1;
     if (f->ncaps == f->capcaps) {
@@ -676,11 +715,31 @@ static Local *capture(Ctx *c, const char *name, Loc loc) {
     return l;
 }
 
+/* Descriptors inside a copied aggregate preserve their backing-storage lifetime. */
+static int contains_slice(Type *t) {
+    if (t->k == TY_SLICE) return 1;
+    if (t->k == TY_ARRAY) return contains_slice(t->elem);
+    if (t->k == TY_STRUCT) {
+        for (int i = 0; i < t->nfields; i++) if (contains_slice(t->fields[i].type)) return 1;
+    }
+    return 0;
+}
+
+/* A by-reference aggregate can lend its own inline array storage to a result. */
+static int contains_array(Type *t) {
+    if (t->k == TY_ARRAY) return 1;
+    if (t->k == TY_STRUCT) {
+        for (int i = 0; i < t->nfields; i++) if (contains_array(t->fields[i].type)) return 1;
+    }
+    return 0;
+}
+
 /* Does this pointer expression hold the address of local storage of the current function? */
 static int refs_local_storage(Expr *e) {
     if (!e) return 0;
     switch (e->k) {
     case E_UNARY:
+        if (e->op == U_DEREF) return refs_local_storage(e->a);
         if (e->op != U_ADDR) return 0;
         for (Expr *x = e->a; x;) {
             if (x->k == E_NAME) return x->sym && x->sym->k == SY_LOCAL && !x->sym->local->is_param;
@@ -689,8 +748,65 @@ static int refs_local_storage(Expr *e) {
         }
         return 0;
     case E_NAME: return e->sym && e->sym->k == SY_LOCAL && e->sym->local->points_local;
-    case E_CONV: return refs_local_storage(e->a);
+    case E_STRUCT: case E_ARRAY:
+        for (int i = 0; i < e->nargs; i++) if (refs_local_storage(e->args[i])) return 1;
+        return 0;
+    case E_FIELD: case E_INDEX: return refs_local_storage(e->a);
+    case E_MATCH:
+        for (int i = 0; i < e->narms; i++) if (refs_local_storage(e->arms[i].value)) return 1;
+        return 0;
+    case E_CALL:
+        if (!contains_slice(e->ty)) return 0;
+        for (int i = 0; i < e->nargs; i++) {
+            Expr *a = e->args[i];
+            if (refs_local_storage(a)) return 1;
+            if (contains_array(a->ty)) {
+                Expr *owner = a;
+                while ((owner->k == E_FIELD || owner->k == E_INDEX) && owner->a->ty->k != TY_PTR && owner->a->ty->k != TY_SLICE) owner = owner->a;
+                if (owner->k == E_NAME && owner->sym && owner->sym->k == SY_LOCAL && !owner->sym->local->is_param) return 1;
+            }
+        }
+        return 0;
+    case E_SLICE:
+        if (refs_local_storage(e->a)) return 1;
+        if (e->a->ty->k == TY_ARRAY) {
+            Expr *x = e->a;
+            while (x->k == E_FIELD || x->k == E_INDEX) x = x->a;
+            return x->k == E_NAME && x->sym->k == SY_LOCAL && !x->sym->local->is_param;
+        }
+        return 0;
+    case E_CONV:
+        if (e->ty->k == TY_SLICE && e->a->ty->k == TY_ARRAY) {
+            Expr *x = e->a;
+            while (x->k == E_FIELD || x->k == E_INDEX) x = x->a;
+            if (x->k == E_NAME && x->sym->k == SY_LOCAL && !x->sym->local->is_param) return 1;
+        }
+        return refs_local_storage(e->a);
     case E_BINARY: return e->ty->k == TY_PTR && (refs_local_storage(e->a) || refs_local_storage(e->b));
+    default: return 0;
+    }
+}
+
+static int refs_borrowed_storage(Expr *e) {
+    if (!e) return 0;
+    switch (e->k) {
+    case E_NAME:
+        return e->sym && e->sym->k == SY_LOCAL &&
+            (e->sym->local->points_local || e->sym->local->borrows_param ||
+             (e->sym->local->is_param && (ty_is_aggr(e->ty) || e->ty->k == TY_PTR)));
+    case E_FIELD: case E_INDEX: case E_SLICE: case E_CONV:
+        return refs_borrowed_storage(e->a);
+    case E_UNARY:
+        return e->op == U_ADDR || e->op == U_DEREF ? refs_borrowed_storage(e->a) : 0;
+    case E_CALL:
+        if (!contains_slice(e->ty) && e->ty->k != TY_PTR) return 0;
+        /* fall through */
+    case E_STRUCT: case E_ARRAY:
+        for (int i = 0; i < e->nargs; i++) if (refs_borrowed_storage(e->args[i])) return 1;
+        return 0;
+    case E_MATCH:
+        for (int i = 0; i < e->narms; i++) if (refs_borrowed_storage(e->arms[i].value)) return 1;
+        return 0;
     default: return 0;
     }
 }
@@ -1037,6 +1153,12 @@ static Expr *check_unary(Ctx *c, Expr *e) {
         if (e->a->k == E_FIELD && !e->a->field) error_at(e->loc, "cannot take the address of a vector lane");
         if (e->a->k == E_NAME && e->a->sym->k == SY_LOCAL && e->a->sym->local->is_capture)
             error_at(e->loc, "cannot take the address of '%s': it is a read-only copy captured by the function literal", e->a->name);
+        Expr *base = e->a;
+        while (base->k == E_FIELD || base->k == E_INDEX) {
+            if (base->k == E_INDEX && base->a->ty->k == TY_SLICE && base->a->ty->readonly)
+                error_at(e->loc, "cannot take a mutable pointer to read-only slice elements");
+            base = base->a;
+        }
         mark_addr_taken(e->a);
         e->ty = ty_ptr(t);
         return e;
@@ -1073,7 +1195,11 @@ static Expr *check_index(Ctx *c, Expr *e) {
             e->chk = check_msg(c, e->loc, "__bounds_fail", "index out of bounds for %s (%s)", what, ty_str(t));
         }
     }
-    if (t->k == TY_ARRAY) {
+    if (t->k == TY_SLICE) {
+        e->ty = complete(t->elem, e->loc);
+        if (e->b->isconst && e->b->cval < 0) error_at(e->b->loc, "slice index cannot be negative");
+        if (c->P->debug & 1) e->chk = check_msg(c, e->loc, "__bounds_fail", "index out of bounds for slice (%s)", ty_str(t));
+    } else if (t->k == TY_ARRAY) {
         if (e->b->isconst && (e->b->cval < 0 || e->b->cval >= t->n))
             error_at(e->b->loc, "index %lld is out of bounds for %s", (long long)e->b->cval, ty_str(t));
         e->ty = t->elem;
@@ -1219,6 +1345,7 @@ static void check_args(Ctx *c, Expr *e, Type **pts, int n, const char *name) {
     for (int i = 0; i < n; i++) {
         Type *pt = pts[i];
         Expr *arg = check(c, e->args[i], pt);
+        if (pt->k == TY_SLICE) arg = coerce(c, arg, pt, "slice argument");
         if (ty_is_aggr(pt)) {
             if (arg->ty != pt) error_at(arg->loc, "type mismatch: argument %d of %s is %s, expected %s", i + 1, name, ty_str(arg->ty), ty_str(pt));
             if (is_lvalue(arg)) mark_addr_taken(arg);
@@ -1295,7 +1422,9 @@ static Expr *check_call(Ctx *c, Expr *e) {
                 }
             }
             x = check(c, x, NULL);
-            if (x->ty->k != TY_ARRAY) error_at(x->loc, "len() needs an array, an embedded asset or an enum type, found %s", ty_str(x->ty));
+            e->args[0] = x;
+            if (x->ty->k == TY_SLICE) { e->ty = ty_s32; return e; }
+            if (x->ty->k != TY_ARRAY) error_at(x->loc, "len() needs a slice, an array, an embedded asset or an enum type, found %s", ty_str(x->ty));
             e->ty = ty_uint; e->isconst = 1; e->cval = x->ty->n;
             return e;
         }
@@ -1421,6 +1550,7 @@ static Expr *check_call(Ctx *c, Expr *e) {
 
 static Expr *check_array_lit(Ctx *c, Expr *e, Type *want) {
     Type *el = NULL;
+    if (want && want->k == TY_SLICE) el = want->elem;
     if (want && want->k == TY_ARRAY) {
         el = want->elem;
         if (e->nargs != want->n)
@@ -1431,6 +1561,7 @@ static Expr *check_array_lit(Ctx *c, Expr *e, Type *want) {
     for (int i = 0; i < e->nargs; i++) {
         Expr *x = check(c, e->args[i], el);
         if (!el) { el = default_type(x); if (el->k == TY_NULL) error_at(x->loc, "cannot infer the element type"); }
+        if (el->k == TY_SLICE) x = coerce(c, x, el, "slice element");
         if (ty_is_aggr(el)) { if (x->ty != el) error_at(x->loc, "type mismatch: element is %s, expected %s", ty_str(x->ty), ty_str(el)); }
         else x = coerce(c, x, el, ar_printf("element %d", i));
         e->args[i] = x;
@@ -1455,6 +1586,7 @@ static Expr *check_struct_lit(Ctx *c, Expr *e) {
         if (!f) error_at(e->args[i]->loc, "struct %s has no field '%s'", t->name, e->fnames[i]);
         for (int j = 0; j < i; j++) if (!strcmp(e->fnames[j], e->fnames[i])) error_at(e->args[i]->loc, "field '%s' is given twice", e->fnames[i]);
         Expr *x = check(c, e->args[i], f->type);
+        if (f->type->k == TY_SLICE) x = coerce(c, x, f->type, "slice field");
         if (ty_is_aggr(f->type)) { if (x->ty != f->type) error_at(x->loc, "type mismatch: field '%s' is %s, got %s", f->name, ty_str(f->type), ty_str(x->ty)); }
         else x = coerce(c, x, f->type, ar_printf("field '%s'", f->name));
         e->args[i] = x;
@@ -1589,8 +1721,12 @@ static Type *seq_elem(Ctx *c, Expr **xp, int64_t *n, const char *fname, const ch
         if (is_lvalue(x)) mark_addr_taken(x);
         return complete(x->ty->elem, x->loc);
     }
+    if (x->ty->k == TY_SLICE) {
+        if (writes && x->ty->readonly) error_at(x->loc, "%s() cannot write to read-only slice elements", fname);
+        *n = -2; return complete(x->ty->elem, x->loc);
+    }
     if (x->ty->k == TY_PTR && x->ty->elem->k != TY_VOID) { *n = -1; return complete(x->ty->elem, x->loc); }
-    error_at(x->loc, "%s() needs an array or a pointer as %s, found %s", fname, role, ty_str(x->ty));
+    error_at(x->loc, "%s() needs a slice, an array or a pointer as %s, found %s", fname, role, ty_str(x->ty));
 }
 
 /* The function argument of an intrinsic: checked against fn(params) -> ret (ret NULL: any). */
@@ -1612,7 +1748,7 @@ static Expr *fn_arg(Ctx *c, Expr *call, int i, Type **ps, int np, Type *ret, con
 
 static Expr *check_intrinsic(Ctx *c, Expr *e, Builtin bi, const char *name) {
     static const struct { Builtin bi; int lo, hi; const char *usage; } forms[] = {
-        {BI_MAP, 2, 2, "map(xs, f) -> array"},
+        {BI_MAP, 2, 3, "map(array, f) or map(slice, f, out)"},
         {BI_MAP_INTO, 3, 4, "map_into(out, xs, f [, count])"},
         {BI_FILTER, 2, 3, "filter(xs, keep [, count]) -> new count"},
         {BI_FILTER_INTO, 3, 4, "filter_into(out, xs, keep [, count]) -> count"},
@@ -1624,23 +1760,31 @@ static Expr *check_intrinsic(Ctx *c, Expr *e, Builtin bi, const char *name) {
     if (!c->fn) error_at(e->loc, "%s() cannot be used in a constant expression", name);
     if (e->nargs < forms[fi].lo || e->nargs > forms[fi].hi)
         error_at(e->loc, "wrong number of arguments: the form is %s", forms[fi].usage);
+    int slice_map = bi == BI_MAP && e->nargs == 3;
+    if (slice_map) {
+        Expr *xs = e->args[0], *f = e->args[1], *out = e->args[2];
+        e->args[0] = out; e->args[1] = xs; e->args[2] = f;
+        bi = BI_MAP_INTO;
+    }
     e->bi = bi;
-    e->has_count = e->nargs == forms[fi].hi && forms[fi].lo != forms[fi].hi;
+    e->has_count = !slice_map && bi != BI_MAP && e->nargs == forms[fi].hi && forms[fi].lo != forms[fi].hi;
     int has_out = bi == BI_MAP_INTO || bi == BI_FILTER_INTO;
     int xi = has_out ? 1 : 0;
     int64_t n = -1, nout = -1;
     Type *out_t = NULL;
     if (has_out) out_t = seq_elem(c, &e->args[0], &nout, name, "the output", 1);
     Type *t = seq_elem(c, &e->args[xi], &n, name, "the input", bi == BI_FILTER);
-    if (bi == BI_MAP && n < 0) error_at(e->args[0]->loc, "map() returns an array, so it needs an array; use map_into(out, ptr, f, count) for pointers");
+    if (bi == BI_MAP && n == -1) error_at(e->args[0]->loc, "map() returns an array, so it needs an array; use map_into(out, ptr, f, count) for pointers");
+    if (bi == BI_MAP && n == -2) error_at(e->args[0]->loc, "map() over a slice needs a destination: map(xs, f, out)");
+    if (slice_map && nout == -1) error_at(e->args[0]->loc, "map(xs, f, out) needs an array or slice destination with a known capacity");
     int fidx = bi == BI_REDUCE ? 2 : xi + 1;
     if (e->has_count) {
         Expr *cnt = check(c, e->args[e->nargs - 1], NULL);
         if (!is_intish(cnt->ty)) error_at(cnt->loc, "the element count must be an integer, found %s", ty_str(cnt->ty));
         e->args[e->nargs - 1] = coerce(c, cnt, ty_s32, "the element count");
         if (cnt->isconst && n >= 0 && cnt->cval > n) error_at(cnt->loc, "count %lld is more than the %lld elements of the array", (long long)cnt->cval, (long long)n);
-    } else if (n < 0) error_at(e->args[xi]->loc, "%s() over a pointer needs an element count: %s", name, forms[fi].usage);
-    if (has_out && !e->has_count && nout >= 0 && nout < n)
+    } else if (n == -1) error_at(e->args[xi]->loc, "%s() over a pointer needs an element count: %s", name, forms[fi].usage);
+    if (has_out && !e->has_count && nout >= 0 && n >= 0 && nout < n)
         error_at(e->args[0]->loc, "the output has %lld elements but the input has %lld", (long long)nout, (long long)n);
     Type *ps[2] = {t, t};
     switch (bi) {
@@ -1653,7 +1797,7 @@ static Expr *check_intrinsic(Ctx *c, Expr *e, Builtin bi, const char *name) {
     }
     case BI_MAP_INTO:
         fn_arg(c, e, 2, ps, 1, out_t, name);
-        e->ty = ty_void;
+        e->ty = slice_map ? ty_slice(out_t) : ty_void;
         break;
     case BI_FILTER: case BI_FILTER_INTO:
         if (bi == BI_FILTER_INTO && out_t != t) error_at(e->args[0]->loc, "type mismatch: filter_into() copies %s elements, but the output holds %s", ty_str(t), ty_str(out_t));
@@ -1680,6 +1824,8 @@ static Expr *check_intrinsic(Ctx *c, Expr *e, Builtin bi, const char *name) {
         if (ft->k != TY_FUNC || ft->nparams != 1 || (ft->params[0] != t && ft->params[0] != ty_ptr(t)))
             error_at(f->loc, "type mismatch: each() needs a function taking %s or %s, found %s", ty_str(t), ty_str(ty_ptr(t)), ty_str(ft));
         e->elem_byref = ft->params[0] == ty_ptr(t);
+        if (e->elem_byref && e->args[0]->ty->k == TY_SLICE && e->args[0]->ty->readonly)
+            error_at(f->loc, "each() cannot pass pointers to read-only slice elements");
         if (f->k == E_FUNC) e->target = f->lambda;
         else if (f->k == E_NAME && f->sym && f->sym->k == SY_FUNC) e->target = f->sym->fn;
         e->ty = ty_void;
@@ -1687,6 +1833,9 @@ static Expr *check_intrinsic(Ctx *c, Expr *e, Builtin bi, const char *name) {
     }
     default: break;
     }
+    if (slice_map || ((c->P->debug & 1) &&
+        (e->args[xi]->ty->k == TY_SLICE || (has_out && e->args[0]->ty->k == TY_SLICE))))
+        e->chk = check_msg(c, e->loc, "__check_fail", "sequence count exceeds slice or output capacity");
     /* loop state lives in compiler-made locals: count, source, destination, function, accumulator */
     e->hid[0] = hidden_local(c, ty_s32, e->loc);
     e->hid[1] = hidden_local(c, ty_u32, e->loc);
@@ -1723,6 +1872,7 @@ static Expr *check_match_expr(Ctx *c, Expr *e, Type *want) {
     if (t->k == TY_VOID) error_at(e->arms[0].value->loc, "the arms of a match expression must have values");
     for (int i = 0; i < e->narms; i++) {
         Expr *v = e->arms[i].value;
+        if (t->k == TY_SLICE) v = coerce(c, v, t, "slice match arm");
         if (ty_is_aggr(t)) {
             if (v->ty != t) error_at(v->loc, "type mismatch: this arm is %s, but the match yields %s", ty_str(v->ty), ty_str(t));
         } else v = coerce(c, v, t, "the value of this match arm");
@@ -1781,8 +1931,36 @@ static Expr *check(Ctx *c, Expr *e, Type *want) {
     case E_NAME: return check_name(c, e);
     case E_UNARY: return check_unary(c, e);
     case E_BINARY: return check_binary(c, e);
-    case E_CALL: return check_call(c, e);
+    case E_CALL: {
+        Expr *x = check_call(c, e);
+        if (!x->bi && (x->callee || x->indirect) && contains_slice(x->ty)) {
+            for (int i = 0; i < x->nargs; i++) {
+                Expr *arg = x->args[i];
+                if (contains_array(arg->ty) && !is_lvalue(arg))
+                    error_at(arg->loc, "a slice-bearing result needs stored array backing; store the argument in a variable first");
+            }
+        }
+        return x;
+    }
     case E_INDEX: return check_index(c, e);
+    case E_SLICE: {
+        e->a = check(c, e->a, NULL);
+        Type *t = e->a->ty;
+        if (t->k != TY_ARRAY && t->k != TY_SLICE) error_at(e->loc, "a slice range needs an array or slice");
+        if (t->k == TY_ARRAY && !is_lvalue(e->a)) error_at(e->loc, "a slice needs stored array backing");
+        for (int i = 0; i < 2; i++) {
+            Expr *b = check(c, e->args[i], NULL);
+            if (!is_intish(b->ty)) error_at(b->loc, "slice bounds must be integers");
+            e->args[i] = coerce(c, b, ty_s32, "slice bound");
+            if (b->isconst && (b->cval < 0 || (t->k == TY_ARRAY && b->cval > t->n))) error_at(b->loc, "slice bound is out of range");
+        }
+        if (e->args[0]->isconst && e->args[1]->isconst && e->args[0]->cval > e->args[1]->cval) error_at(e->loc, "slice start exceeds its end");
+        if (t->k == TY_ARRAY) mark_addr_taken(e->a);
+        Type *el = complete(t->elem, e->loc);
+        e->ty = (t->k == TY_SLICE ? t->readonly : not_assignable(e->a) != NULL) ? ty_slice_readonly(el) : ty_slice(el);
+        if (c->P->debug & 1) e->chk = check_msg(c, e->loc, "__check_fail", "slice range out of bounds");
+        return e;
+    }
     case E_FIELD: return check_field(c, e);
     case E_CAST: return check_cast(c, e, e->a, complete(resolve_type_in(e->texpr, c->fn ? c : NULL), e->loc));
     case E_ARRAY: return check_array_lit(c, e, want);
@@ -2072,13 +2250,17 @@ static void check_stmt(Ctx *c, Stmt *s) {
         }
         if (t->k == TY_VOID) error_at(s->loc, "variables cannot be void");
         if (init) {
+            if (t->k == TY_SLICE) init = coerce(c, init, t, "slice initial value");
             if (ty_is_aggr(t)) { if (init->ty != t) error_at(init->loc, "type mismatch: '%s' is %s, initialiser is %s", s->name, ty_str(t), ty_str(init->ty)); }
             else init = coerce(c, init, t, ar_printf("the initial value of '%s'", s->name));
         }
         s->e = init;
         s->var = new_local(c, s->name, t, s->loc);
         s->var->immutable = s->is_let;
-        if (t->k == TY_PTR && refs_local_storage(init)) s->var->points_local = 1;
+        if (contains_slice(t) || t->k == TY_PTR) {
+            if (refs_local_storage(init)) s->var->points_local = 1;
+            if (refs_borrowed_storage(init)) s->var->borrows_param = 1;
+        }
         break;
     }
     case S_ASSIGN: {
@@ -2093,12 +2275,25 @@ static void check_stmt(Ctx *c, Stmt *s) {
         }
         if (s->op < 0) {
             Expr *rhs = check(c, s->e2, lhs->ty);
+            if (lhs->ty->k == TY_SLICE) rhs = coerce(c, rhs, lhs->ty, "assigned slice");
             if (ty_is_aggr(lhs->ty)) {
                 if (rhs->ty != lhs->ty) error_at(rhs->loc, "type mismatch: assigning %s to %s", ty_str(rhs->ty), ty_str(lhs->ty));
             } else rhs = coerce(c, rhs, lhs->ty, "the assigned value");
             s->e2 = rhs;
-            if (lhs->ty->k == TY_PTR && lhs->k == E_NAME && lhs->sym->k == SY_LOCAL && refs_local_storage(rhs))
-                lhs->sym->local->points_local = 1;
+            if ((contains_slice(lhs->ty) || lhs->ty->k == TY_PTR) && (refs_local_storage(rhs) || refs_borrowed_storage(rhs))) {
+                Expr *base = lhs;
+                int indirect = 0;
+                while (base->k == E_FIELD || base->k == E_INDEX) {
+                    if (base->a->ty->k == TY_PTR || base->a->ty->k == TY_SLICE) indirect = 1;
+                    base = base->a;
+                }
+                if (base->k == E_UNARY && base->op == U_DEREF) indirect = 1;
+                if (!indirect && base->k == E_NAME && base->sym->k == SY_LOCAL && !base->sym->local->is_param) {
+                    if (refs_local_storage(rhs)) base->sym->local->points_local = 1;
+                    base->sym->local->borrows_param = 1;
+                }
+                else if (contains_slice(lhs->ty)) error_at(rhs->loc, "cannot store a slice of local storage outside its function");
+            }
         } else {
             Expr *bin = ar_alloc(sizeof *bin);
             bin->k = E_BINARY; bin->loc = s->loc; bin->op = (OpKind)s->op; bin->a = lhs; bin->b = s->e2;
@@ -2209,6 +2404,11 @@ static void check_stmt(Ctx *c, Stmt *s) {
         }
         if (rt->k == TY_VOID) error_at(s->e->loc, "%s() does not return a value", c->fn->name);
         Expr *v = check(c, s->e, rt);
+        if (rt->k == TY_SLICE) {
+            v = coerce(c, v, rt, "returned slice");
+            if (refs_local_storage(v)) error_at(v->loc, "cannot return a slice of local storage");
+        }
+        if (contains_slice(rt) && refs_local_storage(v)) error_at(v->loc, "cannot return an aggregate containing a slice or pointer to local storage");
         if (ty_is_aggr(rt)) { if (v->ty != rt) error_at(v->loc, "type mismatch: returning %s, expected %s", ty_str(v->ty), ty_str(rt)); }
         else v = coerce(c, v, rt, "the return value");
         s->e = v;
@@ -2313,6 +2513,11 @@ static void check_func_body(Program *P, Func *f, Ctx *outer) {
             if (v->ty->k != TY_VOID && v->k != E_CALL) error_at(v->loc, "this function literal returns nothing, so its body must be a call");
             st->k = S_EXPR;
         } else {
+            if (f->ret->k == TY_SLICE) {
+                v = coerce(&c, v, f->ret, "returned slice");
+                if (refs_local_storage(v)) error_at(v->loc, "cannot return a slice of local storage");
+            }
+            if (contains_slice(f->ret) && refs_local_storage(v)) error_at(v->loc, "cannot return an aggregate containing a slice or pointer to local storage");
             if (ty_is_aggr(f->ret)) { if (v->ty != f->ret) error_at(v->loc, "type mismatch: the result is %s, expected %s", ty_str(v->ty), ty_str(f->ret)); }
             else v = coerce(&c, v, f->ret, "the result");
             st->k = S_RETURN;
@@ -2871,6 +3076,7 @@ void check_program(Program *P) {
                 if (t->k == TY_NULL || t->k == TY_VOID) error_at(v->loc, "cannot infer the type of '%s'", s->name);
                 s->ty = t;
             }
+            if (t->k == TY_SLICE) v = coerce(&c, v, t, "global slice initial value");
             if (ty_is_aggr(t)) { if (v->ty != t) error_at(v->loc, "type mismatch: '%s' is %s, initialiser is %s", s->name, ty_str(t), ty_str(v->ty)); }
             else v = coerce(&c, v, t, ar_printf("the initial value of '%s'", s->name));
             Stmt *st = ar_alloc(sizeof *st);

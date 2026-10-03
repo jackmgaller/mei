@@ -56,7 +56,7 @@ static int g_iobase_reg;           /* register holding 0xFF0000, or -1 */
 /* meic -g: out-of-line failure paths of run-time checks, emitted after the function's `ret`.
    They never return (the reporter halts), so they may clobber anything; they reset sp first,
    since the stack itself may be what failed. */
-typedef struct { int label; const char *msg; int idx_reg; int64_t len; } CheckStub;
+typedef struct { int label; const char *msg; int idx_reg; int64_t len; int len_reg; } CheckStub;
 static CheckStub *g_stubs;
 static int g_nstubs, g_capstubs;
 static Sym *g_div_chk;             /* set around the arith() of a checked division / multiply */
@@ -69,8 +69,14 @@ static int check_stub(Sym *msg, int idx_reg, int64_t len) {
         g_stubs = n;
         g_capstubs = nc;
     }
-    g_stubs[g_nstubs] = (CheckStub){++g_label, msg->label, idx_reg, len};
+    g_stubs[g_nstubs] = (CheckStub){++g_label, msg->label, idx_reg, len, -1};
     return g_stubs[g_nstubs++].label;
+}
+
+static int check_stub_dynamic(Sym *msg, int idx, int len) {
+    int label = check_stub(msg, idx, 0);
+    g_stubs[g_nstubs - 1].len_reg = len;
+    return label;
 }
 
 static const char *RN[16] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "r13", "sp", "ra"};
@@ -414,6 +420,14 @@ static void lv_index(LV *lv, Expr *idx, int size, Expr *chk) {
 
 /* An lvalue (or aggregate rvalue) in memory or a register. */
 static LV gen_aggr_lv(Expr *e);
+static Opnd load_lv(LV *lv, int hint);
+static Opnd lv_addr_copy(LV *lv);
+
+/* Load a descriptor word without re-evaluating its expression. */
+static Opnd slice_word(LV *lv, int off) {
+    LV w = lv_mem(lv_addr_copy(lv), off, ty_u32);
+    return load_lv(&w, -1);
+}
 
 static LV gen_lv(Expr *e) {
     switch (e->k) {
@@ -434,6 +448,24 @@ static LV gen_lv(Expr *e) {
         Type *bt = e->a->ty;
         LV lv;
         int size;
+        if (bt->k == TY_SLICE) {
+            LV descriptor = gen_aggr_lv(e->a);
+            Opnd ptr = slice_word(&descriptor, 0);
+            Opnd length = e->chk ? slice_word(&descriptor, 4) : (Opnd){O_NONE, 0};
+            lv_free(&descriptor);
+            Opnd idx = gen_expr(e->b, -1);
+            if (e->chk) {
+                int ri = R(&idx), rn = R(&length);
+                ri = R(&idx);
+                I("bgeu %s, %s, .L%d", RN[ri], RN[rn], check_stub_dynamic(e->chk, ri, rn));
+                ofree(length);
+            }
+            int sh = log2_exact(e->ty->size);
+            Opnd scaled = sh == 0 ? idx : sh > 0 ? arith(B_SHL, ty_s32, 0, idx, o_imm(sh), -1)
+                                                   : arith(B_MUL, ty_s32, 0, idx, o_imm(e->ty->size), -1);
+            Opnd addr = arith(B_ADD, ty_u32, 0, ptr, scaled, -1);
+            return lv_mem(addr, 0, e->ty);
+        }
         if (bt->k == TY_PTR) { lv = lv_mem(gen_expr(e->a, -1), 0, e->ty); size = e->ty->size; }
         else if (bt->k == TY_MAT4) { lv = gen_aggr_lv(e->a); size = 16; }
         else { lv = gen_aggr_lv(e->a); size = bt->elem->size; }
@@ -463,7 +495,7 @@ static LV gen_lv(Expr *e) {
         }
         break;
     }
-    case E_CALL: case E_ARRAY: case E_STRUCT: case E_MATCH:
+    case E_CALL: case E_ARRAY: case E_STRUCT: case E_MATCH: case E_CONV: case E_SLICE:
         if (ty_is_aggr(e->ty)) return gen_aggr_lv(e);
         break;
     default: break;
@@ -944,6 +976,48 @@ static void store_value_into(Expr *v, LV *dst) {
 /* Builds an aggregate value directly into memory. */
 static void gen_aggr_into(Expr *e, LV *dst) {
     Type *t = e->ty;
+    if (e->ty->k == TY_SLICE && e->k == E_CONV && e->a->ty->k == TY_ARRAY) {
+        LV backing = gen_aggr_lv(e->a);
+        Opnd ptr = lv_addr(&backing);
+        LV p = *dst; p.ty = ty_u32;
+        store_lv_k(&p, ptr, ty_u32, 1);
+        LV n = *dst; n.ty = ty_s32; n.off += 4;
+        store_lv_k(&n, o_imm(e->a->ty->n), ty_s32, 1);
+        return;
+    }
+    if (e->k == E_SLICE) {
+        Opnd ptr, len;
+        if (e->a->ty->k == TY_ARRAY) {
+            LV backing = gen_aggr_lv(e->a);
+            ptr = lv_addr(&backing); len = o_imm(e->a->ty->n);
+        } else {
+            LV backing = gen_aggr_lv(e->a);
+            ptr = slice_word(&backing, 0); len = slice_word(&backing, 4);
+            lv_free(&backing);
+        }
+        Opnd lo = gen_expr(e->args[0], -1), hi = gen_expr(e->args[1], -1);
+        if (e->chk) {
+            int rl = R(&lo), rh = R(&hi), rn = R(&len);
+            rl = R(&lo); rh = R(&hi);
+            int fail = check_stub(e->chk, -1, 0);
+            I("bgtu %s, %s, .L%d", RN[rl], RN[rh], fail);
+            I("bgtu %s, %s, .L%d", RN[rh], RN[rn], fail);
+        }
+        ofree(len);
+        /* Keep both bounds alive while computing the range length. */
+        Opnd count = owned(hi, 0);
+        Opnd lowcopy = owned(lo, 0);
+        int rlo = R(&lowcopy), rc = R(&count);
+        rlo = R(&lowcopy);
+        I("sub %s, %s, %s", RN[rc], RN[rc], RN[rlo]);
+        Opnd offset = arith(B_MUL, ty_s32, 0, lowcopy, o_imm(e->ty->elem->size), -1);
+        ptr = arith(B_ADD, ty_u32, 0, ptr, offset, -1);
+        LV p = *dst; p.ty = ty_u32;
+        store_lv_k(&p, ptr, ty_u32, 1);
+        LV n = *dst; n.ty = ty_s32; n.off += 4;
+        store_lv_k(&n, count, ty_s32, 1);
+        return;
+    }
     if (e->k == E_STRUCT) {
         int covered = 0;
         for (int i = 0; i < t->nfields; i++) covered += t->fields[i].type->size;
@@ -977,13 +1051,13 @@ static LV gen_match_aggr(Expr *e);
 static Opnd gen_match_expr(Expr *e, int hint);
 
 static LV gen_aggr_lv(Expr *e) {
-    if (e->k == E_CALL && e->bi == BI_MAP) return gen_intrinsic_aggr(e);
+    if (e->k == E_CALL && (e->bi == BI_MAP || (e->bi == BI_MAP_INTO && e->ty->k == TY_SLICE))) return gen_intrinsic_aggr(e);
     if (e->k == E_CALL && (e->callee || e->indirect) && !e->bi) {
         LV out;
         gen_call(e, -1, &out);
         return out;
     }
-    if (e->k == E_STRUCT || e->k == E_ARRAY) {
+    if (e->k == E_STRUCT || e->k == E_ARRAY || e->k == E_SLICE || (e->k == E_CONV && e->ty->k == TY_SLICE && e->a->ty->k == TY_ARRAY)) {
         int slot = slot_alloc(e->ty->size);
         LV d = lv_mem((Opnd){O_REG, 14}, slot, e->ty);
         gen_aggr_into(e, &d);
@@ -1557,7 +1631,21 @@ static void bump_local(Local *l, int32_t delta) {
     set_local(l, r, l->ty);
 }
 
+static Opnd seq_len(Expr *x) {
+    if (x->ty->k != TY_SLICE) return o_imm(x->ty->n);
+    LV lv = gen_aggr_lv(x);
+    Opnd n = slice_word(&lv, 4);
+    lv_free(&lv);
+    return n;
+}
+
 static Opnd seq_addr(Expr *x) {
+    if (x->ty->k == TY_SLICE) {
+        LV lv = gen_aggr_lv(x);
+        Opnd ptr = slice_word(&lv, 0);
+        lv_free(&lv);
+        return ptr;
+    }
     if (x->ty->k == TY_ARRAY) { LV lv = gen_aggr_lv(x); return lv_addr(&lv); }
     return gen_expr(x, -1);
 }
@@ -1571,13 +1659,59 @@ static Opnd gen_intrinsic(Expr *e, int hint, LV *into) {
     Type *T = xs->ty->elem, *ft = f->ty, *U = ft->elem;
     Local *cnt = e->hid[0], *src = e->hid[1], *dst = e->hid[2], *fv = e->hid[3], *acc = e->hid[4];
     flush_temps();
+    /* Evaluate slice descriptors once; pointer and length must describe the same value. */
+    Expr xcopy = *xs, ocopy;
+    if (xs->ty->k == TY_SLICE) {
+        LV value = gen_aggr_lv(xs);
+        int slot = slot_alloc(8);
+        LV saved = lv_mem((Opnd){O_REG, 14}, slot, xs->ty);
+        copy_mem(&saved, &value, 8, 4); lv_free(&value);
+        Local *l = ar_alloc(sizeof *l); l->ty = xs->ty; l->off = slot;
+        Sym *s = ar_alloc(sizeof *s); s->k = SY_LOCAL; s->local = l;
+        xcopy.k = E_NAME; xcopy.sym = s; xs = &xcopy;
+    }
+    Expr *out = has_out ? e->args[0] : NULL;
+    if (out && out->ty->k == TY_SLICE) {
+        LV value = gen_aggr_lv(out);
+        int slot = slot_alloc(8);
+        LV saved = lv_mem((Opnd){O_REG, 14}, slot, out->ty);
+        copy_mem(&saved, &value, 8, 4); lv_free(&value);
+        Local *l = ar_alloc(sizeof *l); l->ty = out->ty; l->off = slot;
+        Sym *s = ar_alloc(sizeof *s); s->k = SY_LOCAL; s->local = l;
+        ocopy = *out; ocopy.k = E_NAME; ocopy.sym = s; out = &ocopy;
+    }
     /* set up: source, destination, count, function, accumulator */
     set_local(src, seq_addr(xs), ty_u32);
-    if (has_out) set_local(dst, seq_addr(e->args[0]), ty_u32);
+    if (has_out) set_local(dst, seq_addr(out), ty_u32);
     else if (bi == BI_FILTER) set_local(dst, get_local(src), ty_u32);
     else if (bi == BI_MAP) set_local(dst, lv_addr_copy(into), ty_u32);
     if (e->has_count) set_local(cnt, gen_expr(e->args[e->nargs - 1], -1), ty_s32);
-    else set_local(cnt, o_imm(xs->ty->n), ty_s32);
+    else set_local(cnt, seq_len(xs), ty_s32);
+    if (e->chk) {
+        int fail = check_stub(e->chk, -1, 0);
+        Opnd n = get_local(cnt);
+        int rn = R(&n);
+        I("bgt r0, %s, .L%d", RN[rn], fail);
+        if (xs->ty->k != TY_PTR) {
+            Opnd cap = seq_len(xs);
+            int rcap = R(&cap); rn = R(&n);
+            I("bgtu %s, %s, .L%d", RN[rn], RN[rcap], fail);
+            ofree(cap);
+        }
+        if (has_out && e->args[0]->ty->k != TY_PTR) {
+            Opnd cap = seq_len(out);
+            int rcap = R(&cap); rn = R(&n);
+            I("bgtu %s, %s, .L%d", RN[rn], RN[rcap], fail);
+            ofree(cap);
+        }
+        ofree(n);
+    }
+    if (e->ty->k == TY_SLICE) {
+        LV p = *into; p.ty = ty_u32;
+        store_lv_k(&p, get_local(dst), ty_u32, 1);
+        LV n = *into; n.ty = ty_s32; n.off += 4;
+        store_lv_k(&n, get_local(cnt), ty_s32, 1);
+    }
     if (fv) set_local(fv, gen_expr(f, -1), ft);
     int ncaps = e->target ? e->target->ncaps : 0;
     for (int k = 0; k < ncaps; k++) {
@@ -1866,12 +2000,14 @@ static Opnd gen_expr(Expr *e, int hint) {
     }
     case E_BINARY: return gen_binary(e, hint);
     case E_CALL:
-        if (e->bi == BI_MAP) { LV lv = gen_intrinsic_aggr(e); return lv_addr(&lv); }
+        if (e->bi == BI_MAP || (e->bi == BI_MAP_INTO && e->ty->k == TY_SLICE)) { LV lv = gen_intrinsic_aggr(e); return lv_addr(&lv); }
+        if (e->bi == BI_LEN) return seq_len(e->args[0]);
         if (e->bi >= BI_MAP) return gen_intrinsic(e, hint, NULL);
         if (e->bi == BI_LERP && !is_v(e->ty)) return gen_lerp_scalar(e, hint);
         if (e->bi) return gen_builtin(e, hint);
         if (ty_is_aggr(e->ty)) { LV out; gen_call(e, -1, &out); return lv_addr(&out); }
         return gen_call(e, hint, NULL);
+    case E_SLICE: { LV lv = gen_aggr_lv(e); return lv_addr(&lv); }
     case E_INDEX: case E_FIELD:
         if (e->k == E_FIELD && !e->field) {
             /* vector lanes */
@@ -2189,7 +2325,7 @@ static void gen_stmt(Stmt *s) {
     case S_EXPR: {
         Expr *e = s->e;
         Opnd o;
-        if (e->bi >= BI_MAP) { if (e->bi == BI_MAP) gen_intrinsic_aggr(e); else ofree(gen_intrinsic(e, -1, NULL)); o.k = O_NONE; }
+        if (e->bi >= BI_MAP) { if (e->bi == BI_MAP || (e->bi == BI_MAP_INTO && e->ty->k == TY_SLICE)) gen_intrinsic_aggr(e); else ofree(gen_intrinsic(e, -1, NULL)); o.k = O_NONE; }
         else if (ty_is_aggr(e->ty)) { LV out; gen_call(e, -1, &out); o.k = O_NONE; }
         else o = gen_expr(e, -1);
         ofree(o);
@@ -3133,8 +3269,11 @@ static void gen_func(Func *f, Buf *out) {
         if (k->label == stack_stub && !frame) continue;
         buf_printf(out, ".L%d:\n", k->label);
         if (k->idx_reg >= 0) {
+            int scratch = k->idx_reg == 1 ? 4 : 1;
+            if (k->len_reg >= 0) buf_printf(out, "    mov %s, %s\n", RN[scratch], RN[k->len_reg]);
             if (k->idx_reg != 2) buf_printf(out, "    mov r2, %s\n", RN[k->idx_reg]);
-            buf_printf(out, "    li r3, %lld\n", (long long)k->len);
+            if (k->len_reg >= 0) buf_printf(out, "    mov r3, %s\n", RN[scratch]);
+            else buf_printf(out, "    li r3, %lld\n", (long long)k->len);
         }
         buf_printf(out, "    la r1, %s\n    lui sp, %u\n    call %s\n", k->msg, 0x200000u >> 10,
                    k->idx_reg >= 0 ? "F___bounds_fail" : "F___check_fail");

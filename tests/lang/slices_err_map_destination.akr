@@ -1,0 +1,3 @@
+// error: needs a destination
+var xs: [3]s32
+fn init() { let s: []s32 = xs; let m = map(s, fn(x) => x + 1) }

@@ -1,0 +1,32 @@
+// flags: -g
+var data: [6]s32 = [10, 20, 30, 40, 50, 60]
+var output: [8]s32
+var calls = 0
+fn p(n: s32) { print_int(n); println("") }
+fn view() -> []s32 { calls += 100; return data }
+fn out() -> []s32 { calls += 1000; return output }
+fn low() -> s32 { calls += 1; return 1 }
+fn high() -> s32 { calls += 10; return 5 }
+fn ix() -> s32 { calls += 10000; return 2 }
+fn init() {
+    let s = view()[low()..high()]
+    p(calls)                                   // expect: 111
+    p(len(s) * 100 + s[0] + s[3])               // expect: 470
+    p(view()[ix()])                            // expect: 30
+    p(calls)                                   // expect: 10211
+    p(len(view()))                             // expect: 6
+    p(calls)                                   // expect: 10311
+    let mapped = map(view()[1..4], fn(x) => x + 1, out())
+    p(calls)                                   // expect: 11411
+    p(len(mapped) * 100 + mapped[0] + mapped[2]) // expect: 362
+    map_into(out(), view()[0..2], fn(x) => x + 2)
+    p(calls)                                   // expect: 12511
+    p(output[0] + output[1])                    // expect: 34
+    var lo = 2
+    var hi = 5
+    let t = data[lo..hi]
+    lo = 0; hi = 6
+    p(len(t) * 100 + t[0] + t[2])                // expect: 380
+    p(filter_into(out(), view()[0..4], fn(x) => x > 20)) // expect: 2
+    p(calls)                                   // expect: 13611
+}

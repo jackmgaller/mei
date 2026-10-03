@@ -1,0 +1,3 @@
+// error: cannot store a slice of local storage outside its function
+var stored: []s32
+fn init() { var a: [2]s32; stored = a }
