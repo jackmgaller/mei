@@ -188,15 +188,11 @@ int meic_compile(const char *path, const MeiCompileOptions *opt, MeiAsmResult *o
         const char *dir = opt->stdlib_dir;
         if (!dir) dir = getenv("MEI_STDLIB");
         if (!dir || !*dir) dir = "stdlib";
-        /* Akari sources end in .akr; .mls is the older extension */
         char *prelude = ar_printf("%s/prelude.akr", dir);
         char *probe;
         size_t plen;
-        if (read_file(&C, resolve_path(NULL, prelude), &probe, &plen) != 0) {
-            prelude = ar_printf("%s/prelude.mls", dir);
-            if (read_file(&C, resolve_path(NULL, prelude), &probe, &plen) != 0)
-                error_plain("error: cannot find the standard library in '%s' (set MEI_STDLIB to the stdlib directory)", dir);
-        }
+        if (read_file(&C, resolve_path(NULL, prelude), &probe, &plen) != 0)
+            error_plain("error: cannot find the standard library in '%s' (set MEI_STDLIB to the stdlib directory)", dir);
         C.stdlib_dir = dir;
         C.importing_stdlib = 1;
         compiler_import(&C, NULL, prelude, (Loc){0});

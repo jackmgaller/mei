@@ -23,7 +23,7 @@ tmp=$(mktemp -d "${TMPDIR:-/tmp}/meilang.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
 pass=0
 fail=0
-for t in tests/lang/*.akr tests/lang/*.mls; do
+for t in tests/lang/*.akr; do
     [ -e "$t" ] || continue
     name=$(basename "$t"); name=${name%.*}
     case "$name" in *"$1"*) ;; *) continue ;; esac

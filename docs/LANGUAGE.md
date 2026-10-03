@@ -2,9 +2,9 @@
 
 Akari (明かり, "light") is the Mei console's programming language. Its name shares the
 kanji 明 with the console: sun and moon, "bright". It is small and statically typed, and
-it compiles to the Mei CPU's machine code. Source files end in `.akr` (the older `.mls`
-extension still builds). There is no garbage collector and no heap:
-data is scalars, vectors, structs, slices and fixed-size arrays in RAM, ROM and registers.
+it compiles to the Mei CPU's machine code. Source files end in `.akr`. There is no garbage
+collector and no heap: data is scalars, vectors, structs, slices and fixed-size arrays in
+RAM, ROM and registers.
 
 ```
 cart "Spinner"

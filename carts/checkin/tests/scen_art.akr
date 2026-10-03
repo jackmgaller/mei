@@ -39,8 +39,8 @@ fn scen_art_pad(f: s32) -> u32 { return 0 }
 //       frame 405 the cache is rebuilt where the view stands (frames 400 and 440 must match);
 //       P="1 0 0 0 0 0" / "1 0 0 1 0 0" pan to the lot's near corner (the ground must reach the
 //       bottom of the screen: the near plane), "1 0 0 2 28 12" a zoomed-in pan
-//   (evidence shots: screenshots/fixR_*.png; 230 "1 1 2 2 14 108" shows the lobby's indoor tree
-//   through the atrium, a tall object whose foot is hidden)
+//   (230 "1 1 2 2 14 108" shows the lobby's indoor tree through the atrium, a tall object
+//   whose foot is hidden)
 //   232 broken objects marked live (break at 60, one repaired at 150; no rebuild)
 //   233 the sort lab: furniture against walls, at the ends of long walls and beside taller or
 //       lower neighbours (rotation P3, zoom P4, cursor P5/P6)

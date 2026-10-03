@@ -1,9 +1,25 @@
+# Build output
 build/
 build-*/
+
+# OS, editor and tooling
 .DS_Store
+__pycache__/
+.claude/worktrees/
+
+# Memory card images written at runtime
 *.mcd
-carts/lantern/tests/_scenario.*
-carts/playroom/tests/_shot.akr
+
+# Generated audio previews
 docs/audio/os_music_*.wav
 docs/audio/checkin_*.wav
-.claude/worktrees/
+
+# Scratch files written by the cart test scripts
+carts/*/tests/_scenario*
+carts/*/tests/_shot.akr
+carts/*/tests/out/
+carts/*/tests/*.mei
+
+# meinet local config and fixtures
+tools/meinet/meinet.conf
+tools/meinet/**/*.bin
