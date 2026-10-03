@@ -90,7 +90,10 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
         gate = run_gate(context)
         # Wall-clock timings would make report.json differ between identical builds.
         timing = gate.pop('timing',None)
-        compiled.report['verification'] = gate
+        # report.json keeps the checker's summary and failures; its row per sampled view (over
+        # a megabyte for the example city) stays in the checker's own verification/world-check.json.
+        compiled.report['verification'] = {k:v for k,v in gate.items() if k != 'views'}
+        if 'views' in gate: compiled.report['verification']['views_report'] = 'verification/world-check.json'
         if context['mode'] == 'enforce' and not gate['ok']:
             failure = directory/'verification.failed.json'
             failure.write_text(jsonio.pretty(gate))
