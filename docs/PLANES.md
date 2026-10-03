@@ -36,6 +36,10 @@ A third to a half of each frame's fill is a screen-sized layer that is flat, a g
 textured plane seen in perspective. That is what the SNES and Saturn drew with background
 hardware and not with sprites or polygons.
 
+Check-In!, which appears in this table and elsewhere below, was an example cart that has since been
+removed from the repository. Its measurements are kept as they were taken, and example (b) is kept
+as a design example. Nothing in the tree builds or runs it now.
+
 ## Precedent
 
 - **SNES PPU.** Up to four tiled BG layers (8×8 or 16×16 tiles, 2/4/8 bits per pixel, 32×32 to
@@ -203,8 +207,9 @@ proposal estimated 55 cycles a line. **Measured, it is about 100 a line**, even 
 in assembly: the `fdiv`, the four products, the four table stores and the loop cost more than the
 estimate allowed. That is about 15,000 cycles a frame for Lantern Lake's 150 or so water lines,
 and only on frames when the camera moves. Working from the matrix also covers `camera_matrix()`
-users, such as Check-In!'s panned off-axis view, exactly. A camera with roll is approximated: the
-helper takes each row's ends exactly and is linear between them. **The approximation is poor.**
+users, such as the panned off-axis view of example (b), exactly. A camera with roll is
+approximated: the helper takes each row's ends exactly and is linear between them. **The
+approximation is poor.**
 The true row is a curve in texel space, and mid-row it is off by tens of texels at Lantern's roll
 angles, so the port dropped the roll. Treat the roll path as better than nothing, not as a tilted
 floor.
@@ -869,9 +874,11 @@ layer fixed that at no polygon cost.
 
 ### (b) Check-In!: the floors as a plane, the haze as a colour offset
 
-Check-In! clears the screen, draws the floors below (seen through atriums) at 5/8 brightness,
-then adds a full-screen grey (`GHOST_ADD` in `render.akr`, a blended flat quad: 1.00 screen),
-then draws the viewed floor on top.
+This describes Check-In!, a cart that is no longer in the repository; it stays as a worked design
+example, and the figures come from the runs measured while the cart existed. Check-In! clears
+the screen, draws the floors below (seen through atriums) at 5/8 brightness, then adds a
+full-screen grey (`GHOST_ADD` in the cart's `render.akr`, a blended flat quad: 1.00 screen), then
+draws the viewed floor on top.
 
 | Piece | Becomes |
 |---|---|
@@ -894,8 +901,7 @@ pixel off the tile seam beneath it. That is era-correct. Drawing wall bases a pi
 it.
 
 **VRAM:** map 32 KB (page 11) + affine table 3,840 B. The floor tiles need no more if the floor
-art sits on the 16×16 grid of its texture slot, which is a change to `tools/gen_checkin_art.py`.
-Otherwise they need one 32 KB page.
+art sits on the 16×16 grid of its texture slot. Otherwise they need one 32 KB page.
 
 **Saving per frame:** the haze and the clear alone take the day-to-dusk run from 581k to 389k
 model cycles (−33%). Floors and ground are not measured separately. Textured fill is 1.7–2.0
@@ -939,7 +945,8 @@ screen-sized fill plus a gradient) would be about 500k.
   gets. Nothing changes for carts that do not import it: their ROMs are byte-identical.
 - **Verified.** These runs were compared with the old build:
   - demo, features, orbs, lantern (before its port), checkin, soundlab, padtest and hello, each
-    idle, with scripted play and with held inputs;
+    idle, with scripted play and with held inputs (checkin, padtest and hello have since been
+    removed from the tree);
   - the system ROM, booting and navigating under both boot themes;
   - 11 Lantern harness scenarios.
 
