@@ -1,0 +1,74 @@
+import "lib/language_round_cells.akr" as cells
+var objects: [5]cells.Cell
+var values: [5]fixed16
+var output: [5]fixed16
+fn checksum(xs: []fixed16) -> s32 { return reduce(xs, 0, fn(a, x) => a + bits(x)) }
+fn out(x: s32) { print_int(x); print_char('\n') }
+fn init() {
+    objects[0].amount = from_bits16(0)
+    objects[0].flags.a = true
+    objects[0].flags.h = false
+    objects[0].flags.i = false
+    (&objects[0]).advance(from_bits(-464848))
+    values[0] = objects[0].amount
+    out(bits(values[0]))
+    out(s32(objects[0].flags.a) + 2 * s32(objects[0].flags.h) + 4 * s32(objects[0].flags.i))
+    objects[1].amount = from_bits16(1)
+    objects[1].flags.a = true
+    objects[1].flags.h = false
+    objects[1].flags.i = false
+    (&objects[1]).advance(from_bits(293200))
+    values[1] = objects[1].amount
+    out(bits(values[1]))
+    out(s32(objects[1].flags.a) + 2 * s32(objects[1].flags.h) + 4 * s32(objects[1].flags.i))
+    objects[2].amount = from_bits16(1)
+    objects[2].flags.a = false
+    objects[2].flags.h = false
+    objects[2].flags.i = true
+    (&objects[2]).advance(from_bits(383280))
+    values[2] = objects[2].amount
+    out(bits(values[2]))
+    out(s32(objects[2].flags.a) + 2 * s32(objects[2].flags.h) + 4 * s32(objects[2].flags.i))
+    objects[3].amount = from_bits16(-1)
+    objects[3].flags.a = false
+    objects[3].flags.h = true
+    objects[3].flags.i = false
+    (&objects[3]).advance(from_bits(-519872))
+    values[3] = objects[3].amount
+    out(bits(values[3]))
+    out(s32(objects[3].flags.a) + 2 * s32(objects[3].flags.h) + 4 * s32(objects[3].flags.i))
+    objects[4].amount = from_bits16(1)
+    objects[4].flags.a = false
+    objects[4].flags.h = true
+    objects[4].flags.i = true
+    (&objects[4]).advance(from_bits(409744))
+    values[4] = objects[4].amount
+    out(bits(values[4]))
+    out(s32(objects[4].flags.a) + 2 * s32(objects[4].flags.h) + 4 * s32(objects[4].flags.i))
+    let xs: []fixed16 = values
+    out(xs.len())
+    out(xs.checksum())
+    let mapped = map(xs, fn(x) => fixed16(fixed(x) + 0.25), output)
+    out(mapped.len())
+    out(mapped.checksum())
+    let kept = filter(mapped, fn(x) => bits(x) >= 0)
+    out(kept)
+    out(reduce(mapped, 0, fn(a, x) => a + bits(x), kept))
+}
+
+// expect: -29053
+// expect: 4
+// expect: 18326
+// expect: 4
+// expect: 23956
+// expect: 1
+// expect: -32493
+// expect: 7
+// expect: 25610
+// expect: 3
+// expect: 5
+// expect: 6346
+// expect: 5
+// expect: 11466
+// expect: 3
+// expect: 70964
