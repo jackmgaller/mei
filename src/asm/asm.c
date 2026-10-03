@@ -15,7 +15,6 @@
 #define ROM_MAX     MEI_ROM_MAX
 #define RAM_START   0x000100u
 #define RAM_END     0x200000u
-#define CART_HEADER 56u            /* jmp word + "MEI1" + 32-byte title + 16-byte cart ID */
 #define MAX_LINE    4096
 #define NAME_MAX_   256
 #define MAX_DEPTH   16
@@ -844,8 +843,8 @@ static void directive(Asm *a, const char *d, const char **p) {
         need_rom(a, d);
         if (a->loc[SEC_ROM] != ROM_START || a->rom_touched) fail(a, ".cart must come first in the rom section");
         size_t n = parse_string(a, p, buf, sizeof buf);
-        if (n > 32) fail(a, "cart title is longer than 32 bytes");
-        uint32_t target = (ROM_START + CART_HEADER) >> 2;
+        if (n > MEI_HDR_TITLE_LEN) fail(a, "cart title is longer than %d bytes", MEI_HDR_TITLE_LEN);
+        uint32_t target = (ROM_START + MEI_HDR_SIZE) >> 2;
         char id[512];
         size_t idn = 0;
         int has_id = 0;
@@ -864,15 +863,15 @@ static void directive(Asm *a, const char *d, const char **p) {
         if (has_id) {
             idn = parse_string(a, p, id, sizeof id);
             if (idn == 0) fail(a, "the cart ID is empty (leave it out to use the title hash)");
-            if (idn > 16) fail(a, "cart ID is longer than 16 characters");
+            if (idn > MEI_HDR_ID_LEN) fail(a, "cart ID is longer than %d characters", MEI_HDR_ID_LEN);
             for (size_t i = 0; i < idn; i++)
                 if ((unsigned char)id[i] < 32 || (unsigned char)id[i] > 126) fail(a, "cart ID must be printable ASCII");
         }
         emit_insn(a, MEI_ENC_J(OP_JMP, target));
         a->insn = 0;
-        emit_le(a, 'M' | 'E' << 8 | 'I' << 16 | '1' << 24, 4);
-        for (size_t i = 0; i < 32; i++) emit_byte(a, i < n ? (uint8_t)buf[i] : 0);
-        for (size_t i = 0; i < 16; i++) emit_byte(a, i < idn ? (uint8_t)id[i] : 0);
+        for (size_t i = 0; i < MEI_HDR_MAGIC_LEN; i++) emit_byte(a, (uint8_t)MEI_HDR_MAGIC[i]);
+        for (size_t i = 0; i < MEI_HDR_TITLE_LEN; i++) emit_byte(a, i < n ? (uint8_t)buf[i] : 0);
+        for (size_t i = 0; i < MEI_HDR_ID_LEN; i++) emit_byte(a, i < idn ? (uint8_t)id[i] : 0);
     } else {
         fail(a, "unknown directive '%s'", d);
     }

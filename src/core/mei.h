@@ -21,6 +21,18 @@
 #define MEI_ROM_WINDOW 0x08000000u   /* 128 MB */
 #define MEI_ROM_MAX    0x04000000u   /* 64 MB */
 
+/* The optional cart header (docs/DECISIONS.md, "Cart file format"): word 0 is any
+ * instruction (normally a jump past the header), then the magic "MEI1", the title and the
+ * cart ID for memory cards, both NUL-padded (an all-zero ID: none). Code follows it. */
+#define MEI_HDR_MAGIC      "MEI1"
+#define MEI_HDR_MAGIC_OFF  4
+#define MEI_HDR_MAGIC_LEN  4
+#define MEI_HDR_TITLE_OFF  8
+#define MEI_HDR_TITLE_LEN  32
+#define MEI_HDR_ID_OFF     40
+#define MEI_HDR_ID_LEN     16
+#define MEI_HDR_SIZE       56
+
 /* Pad button bits (PAD1 / PAD2). */
 enum {
     MEI_BTN_UP = 1 << 0, MEI_BTN_DOWN = 1 << 1, MEI_BTN_LEFT = 1 << 2, MEI_BTN_RIGHT = 1 << 3,
