@@ -1,0 +1,116 @@
+# The movement garden
+
+The cart where the platformer's movement is tuned, and the first level built with the World Kit
+and the Asset Kit. The movement design is in [PLATFORMER.md](../../docs/PLATFORMER.md); this file
+is the **contract** between the teams building the garden. It changes only through the main
+session (the integration branch), never by one team on its own.
+
+![Layout sketch](layout.png)
+
+`layout.png` is drawn by `layout.py` (`python3 carts/garden/layout.py`); the coordinates in its
+`D` list are the plan in metres. It is a sketch: the world lead owns the exact numbers in the
+recipe and keeps the sketch roughly in step.
+
+## Teams
+
+| Layer | Who | Owns | Reports to |
+|---|---|---|---|
+| 0 | Main session | This contract, merges, test runs, the owner | The owner |
+| 1 | World lead | `carts/garden/world/`: style sheet, world recipe, cells, placements, collision, entities, the game schema, World Checker results | Main session |
+| 2 | Asset workers (7) | Their families' recipes in `carts/garden/world/assets/` | World lead |
+| 1 | Controller lead | `carts/garden/*.akr` and `carts/garden/tests/`: character, camera, tuning menu, timing readout | Main session |
+| 2 | Camera worker, attachments worker | Their parts of the cart, as the controller lead assigns | Controller lead |
+| 1 | Kit engineer | `tools/`, `stdlib/`, `docs/` for kit features the garden needs | Main session |
+
+All agents are Opus. Nobody edits outside what they own; a gap in someone else's area is reported
+up, and the main session routes it.
+
+## Files
+
+```
+carts/garden/
+  README.md, layout.py, layout.png    this contract and the sketch
+  garden.akr                          the cart (controller lead)
+  worlds.txt                          carts/garden/world/garden.world.json
+  world/
+    STYLE.md                          the style sheet (world lead)
+    garden.world.json, cells/         the world recipe (world lead)
+    garden.game.mochi                 the game schema (world lead, to this contract)
+    garden.ids.json                   the ID lock file, committed
+    assets/                           Asset Kit recipes (workers; collision companions *_col)
+  tests/                              harness.akr, run.sh, check.sh (controller lead)
+```
+
+The garden is an uninstalled cart like World Viewer (its world needs NumPy to build): add it to
+`UNINSTALLED_CARTS` in the Makefile, build it with `make build/carts/garden.mei`, and give it a
+`tests/check.sh` that `make test-carts` runs.
+
+## World
+
+- **Units:** 1 unit = 1 metre; y is up. The block is 128 × 128 m: **four 64 m cells** (2 × 2), so
+  the crossroads lies on the corner where all four meet, which tests seams and cell selection.
+- **One region**, `garden`, with palette variants `day` and `night`. A second region is a later
+  stage, not the garden.
+- **Layers:** `festival` (the stalls and their goals), on at night only; the game switches it.
+- **Ground** is explicit Asset Kit meshes per cell until World Kit terrain exists.
+- **The grey box comes first:** the world lead builds the whole block from primitives with final
+  footprints, heights and collision before any detailed asset, so the controller has ground to
+  run on in the first round. A detailed asset then replaces its grey box with the same footprint,
+  height and collision.
+
+## Surfaces
+
+Collision triangles carry a surface byte from their material's `tag`
+(`collision.surfaces` in the world recipe). Floor, wall and ceiling come from the normal and
+`probe.floor_max_degrees`, so steepness is not a surface type.
+
+| Byte | Tag | Meaning to the controller |
+|---|---|---|
+| 0 | (default) | Normal ground or wall; every wall can be kicked off |
+| 1 | `bounce` | Landing launches the player (awning, park trampoline) |
+| 2 | `slide` | Cannot be stood on; the player slides down (playground slide) |
+
+New bytes are added here first.
+
+## Entities (the game schema)
+
+`garden.game.mochi` defines these types; the field names below are the contract, the Mochi types
+are the world lead's choice. Positions are the entity's placement; offsets are relative to it.
+
+| Type | Fields | Meaning |
+|---|---|---|
+| `spawn` | `yaw` | Where the player starts |
+| `coin` (saved) | `time_window: any \| day \| night` | The collectible; five in the garden |
+| `pole` | `height` | A vertical pole from the placement up |
+| `rail` | `path` (a World Kit path name) | Something to grind or hang from: overpass rail, wires, crane jib |
+| `mover` | `to` (offset) or `path`, `period` (ticks), `pause` (ticks), `mode: pingpong \| loop`, collision asset | A moving platform: gondola, crane hook, the train |
+| `camera_zone` | `size`, `mode: follow \| fixed \| rail`, `look` | Inside it the camera changes behaviour (the kick alley) |
+
+Rails, wires and the train's route are **World Kit paths**, which the kit engineer builds first
+(they are reserved in [WORLDKIT.md](../../docs/WORLDKIT.md#terrain), not yet built). Until they
+land, the grey box places the poles and movers, and the rails come with the paths.
+
+The probe (`probe.radius`, `height`, `step`, `floor_max_degrees`) starts as in
+`examples/worlds/test_room/garden.game.mochi` (0.3, 1.6, 0.32, 40); the controller lead may ask
+for other numbers through the main session.
+
+## Gates
+
+- **Asset worker → world lead:** the recipe, a passing Asset Checker (`mei_assets.py verify`),
+  its preview sheet looked at, and any kit gaps.
+- **World lead → main session:** the world builds; the World Checker report with every ordering
+  error fixed or explained; fixed-viewpoint screenshots; each asset swap keeping its footprint
+  and collision.
+- **Controller lead → main session:** cart scenarios that run each move headless; the tuning
+  values in one table; the timing readout working.
+- **Kit engineer → main session:** the feature with tests and docs, `make test` passing, and
+  every existing cart ROM byte-identical.
+
+## How everyone works
+
+- Each agent works in its own worktree and branch, builds into a private directory
+  (`make B=build-NAME`), and commits there. Workers branch from (or merge) their lead's branch;
+  the lead merges its workers; the main session merges the leads.
+- Commit subjects follow [AGENTS.md](../../AGENTS.md): plain descriptions, area first
+  ("Garden: grey-box the north-west quarter").
+- Nobody pushes. Nobody edits the main checkout.
