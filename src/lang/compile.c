@@ -68,7 +68,7 @@ static int read_file(Compiler *C, const char *path, char **data, size_t *len) {
     return 0;
 }
 
-void compiler_import(Compiler *C, const char *from_file, const char *path, Loc loc) {
+void compiler_import_as(Compiler *C, const char *from_file, const char *path, const char *alias, Loc loc) {
     char *full = resolve_path(from_file, path);
     int std = C->importing_stdlib || (from_file && file_is_stdlib(from_file));
     if (!std && path[0] != '/' && C->stdlib_dir) {
@@ -81,7 +81,13 @@ void compiler_import(Compiler *C, const char *from_file, const char *path, Loc l
             if (read_file(C, alt, &probe, &plen) == 0) { full = alt; std = 1; }
         }
     }
-    for (int i = 0; i < C->nseen; i++) if (!strcmp(C->seen[i], full)) return;
+    int isolated = alias || file_is_module(from_file);
+    module_import(from_file, full, alias, loc);
+    for (int i = 0; i < C->nseen; i++) if (!strcmp(C->seen[i], full)) {
+        if (!isolated) module_publish(full, C->prog);
+        return;
+    }
+    module_begin(full, isolated);
     if (C->nseen == C->capseen) {
         int nc = C->capseen ? C->capseen * 2 : 16;
         char **ns = ar_alloc(sizeof(char *) * (size_t)nc);
@@ -99,6 +105,10 @@ void compiler_import(Compiler *C, const char *from_file, const char *path, Loc l
     }
     src_register(full, text, len);
     parse_file(C, C->prog, full, text, len);
+}
+
+void compiler_import(Compiler *C, const char *from_file, const char *path, Loc loc) {
+    compiler_import_as(C, from_file, path, NULL, loc);
 }
 
 const uint8_t *compiler_load_binary(Compiler *C, const char *from_file, const char *path, Loc loc, size_t *len) {

@@ -3273,7 +3273,7 @@ static void warn_entry_points(Program *P) {
     }
     for (int i = 0; i < P->nfuncs; i++) {
         Func *f = P->funcs[i];
-        if (f->reachable || f->is_lambda || !f->sym || !f->sym->user) continue;
+        if (f->reachable || f->is_lambda || !f->sym || !f->sym->user || f->sym->module) continue;
         int warned = 0;
         for (int k = 0; k < 3 && !warned; k++)
             if (!have[k] && strcmp(f->name, entries[k]) && near_miss(f->name, entries[k])) {
@@ -3496,13 +3496,13 @@ void gen_program(Program *P, Buf *out) {
     /* entry point and frame loop */
     buf_puts(out, "\n__start:\n");
     if (P->init_fn->body->n) buf_puts(out, "    call F__init_globals\n");
-    if (roots[0]) buf_puts(out, "    call F___rt_init\n");
-    if (roots[1]) buf_puts(out, "    call F_init\n");
+    if (roots[0]) buf_printf(out, "    call %s\n", roots[0]->label);
+    if (roots[1]) buf_printf(out, "    call %s\n", roots[1]->label);
     buf_puts(out, ".frame:\n");
-    if (roots[2]) buf_puts(out, "    call F___rt_frame_begin\n");
-    if (roots[3]) buf_puts(out, "    call F_update\n");
-    if (roots[4]) buf_puts(out, "    call F_draw\n");
-    if (roots[5]) buf_puts(out, "    call F___rt_frame_end\n");
+    if (roots[2]) buf_printf(out, "    call %s\n", roots[2]->label);
+    if (roots[3]) buf_printf(out, "    call %s\n", roots[3]->label);
+    if (roots[4]) buf_printf(out, "    call %s\n", roots[4]->label);
+    if (roots[5]) buf_printf(out, "    call %s\n", roots[5]->label);
     else buf_puts(out, "    vsync\n");
     buf_puts(out, "    jmp .frame\n");
 

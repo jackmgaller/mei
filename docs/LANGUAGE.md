@@ -103,11 +103,41 @@ for `btnp`) → `vsync`. Output appears on the debug console through `print*` fu
 
 `import "other.akr"` includes another file (path relative to the importing file; a file that
 is not there is looked up in the standard library, which is how a cart imports the library's
-optional modules, such as `import "planes.akr"`). Each file is
-compiled once however often it is imported; all files share one global namespace, except for
-names declared `private` (see [Private declarations](#private-declarations)). A cart may
-reuse a name the standard library defines (`A`, `sin`, ...): the cart sees its own
-declaration and the library keeps using its own.
+optional modules, such as `import "planes.akr"`). Each file is compiled once however often it
+is imported. Plain imports preserve the shared global namespace (except `private` names).
+A cart may reuse a standard library name (`A`, `sin`, ...): the cart sees its own declaration
+and the library keeps using its own.
+
+A named import gives a file its own namespace:
+
+```
+import "animation.akr" as anim
+var actor: anim.Actor = anim.Actor { frame: 0 }
+fn init() { anim.play(&actor, anim.Clip.Run) }
+```
+
+Its public functions, constants, globals, structs, enums, registers and embedded assets are
+accessed through the alias: `anim.play`, `anim.Actor`, `anim.Clip.Run`. Qualified types also
+work in `sizeof(anim.Actor)`, casts and function signatures; functions can be passed as
+values, and assembly references use `{anim.play}` or `{anim.frames}`. Inside the module,
+its own declarations retain their short names. `private` keeps names inside their source
+file, including private types used by public functions. The compiler gives module symbols
+unique assembly labels, so files can independently declare the same short names.
+
+Aliases belong to their importing file and can be shadowed by local variables. Repeating an
+alias for the same file is harmless; reusing it for another file or a declaration is an
+error. Aliases imported inside a module are not re-exported. A plain import inside a module
+makes that dependency's public names available to the module without exporting them through
+the module's alias. The module binds its own names before plain-imported dependencies and
+then the standard library; it cannot implicitly use a cart's globals. Circular imports and
+multiple aliases of the same file share one copy of its declarations and state. If the same
+file is also plainly imported by the cart, its public names become global as well.
+
+A namespaced `init`, `update` or `draw` is an ordinary function; the runtime only calls global
+entry points. To replace a module's weak hook explicitly, define `fn anim.hook(...)` after
+the named import. Its signature must match the weak default, and calls and assembly references
+inside the module use the replacement. An unqualified cart function with the same short name
+does not replace an isolated module's hook.
 
 ## Lexical rules
 
@@ -151,6 +181,7 @@ declaration and the library keeps using its own.
 |---|---|
 | `cart "Title"` / `cart "Title", "ID"` | the title in the cart header (at most 32 bytes) and the cart ID for memory cards (at most 16 printable ASCII characters; see [Saving](#saving)) |
 | `import "file.akr"` | compile another file into the program |
+| `import "file.akr" as name` | access a file's public names through `name.member` |
 | `const NAME = expr` / `const NAME: T = expr` | a compile-time constant; with an array or struct type, read-only data in ROM |
 | `var name: T` / `var name: T = expr` / `var name = expr` | a global variable in RAM |
 | `reg NAME: T @ address` | a memory-mapped register; `T` must be 32 bits (`u32`, `s32`, `fixed`, a pointer) |

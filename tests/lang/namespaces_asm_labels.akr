@@ -1,0 +1,3 @@
+import "lib/ns/label_a.akr" as a
+import "lib/ns/label_b.akr" as b
+fn init() { print_int(a.value() + b.value()); println("") } // expect: 6

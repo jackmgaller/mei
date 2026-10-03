@@ -1,0 +1,6 @@
+// error: type mismatch
+import "lib/ns/math.akr" as a
+import "lib/ns/other.akr" as b
+import "lib/ns/nested.akr" as nested
+fn show(n: s32) {}
+fn init() { var s: a.State = b.State { n: 1 } }

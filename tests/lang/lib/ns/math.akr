@@ -1,0 +1,25 @@
+const VALUE = 3
+private const SECRET = 11
+struct State { n: s32 = VALUE }
+enum Mode: u8 { Idle, Run }
+const DATA: [3]s32 = [2, 3, 5]
+var count = VALUE
+fn value() -> s32 { return count + SECRET }
+fn make(n: s32) -> State { return State { n: n } }
+fn read(s: State) -> s32 { return s.n }
+fn mode(m: Mode) -> s32 { return m as s32 }
+fn init(n: s32) -> s32 { return n + 1 }
+weak fn hook(n: s32) -> s32 { return n }
+fn invoke(n: s32) -> s32 { return hook(n) }
+asm fn asm_value() -> s32 {
+    lw r1, [{count}]
+    addi r1, r1, {SECRET}
+    ret
+}
+private struct Hidden { n: s32 }
+embed ASSET: u8 = "../../data/bytes.bin"
+reg PAD: u32 @ 0xFF0014
+weak fn default_hook(n: s32) -> s32 { return n + 6 }
+fn private_reader() -> s32 { return Hidden { n: 13 }.n }
+weak fn state_hook(s: State) -> s32 { return s.n }
+private fn hidden_method(s: State) -> s32 { return s.n }

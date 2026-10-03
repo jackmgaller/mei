@@ -1,0 +1,5 @@
+const VALUE = 7
+struct State { n: s32 }
+enum Mode: u8 { Idle = 4, Run }
+var count = VALUE
+fn value() -> s32 { return count }

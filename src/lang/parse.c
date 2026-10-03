@@ -105,6 +105,7 @@ static TypeExpr *parse_type(Parser *p) {
     } else {
         t->k = 0;
         t->name = expect_ident(p, "a type");
+        if (is_op(p, ".")) { next(p); t->name = ar_printf("%s.%s", t->name, expect_ident(p, "a type name")); }
     }
     return t;
 }
@@ -150,6 +151,31 @@ static Expr *parse_lambda(Parser *p) {
     return e;
 }
 
+static Expr *parse_struct_expr(Parser *p, const char *name, Loc loc) {
+    Expr *e = new_expr(E_STRUCT, loc);
+    e->name = name;
+    next(p);
+    int cap = 0, fcap = 0, nf = 0;
+    skip_nl(p);
+    while (!is_op(p, "}")) {
+        const char *fname = expect_ident(p, "a field name");
+        expect_op(p, ":");
+        skip_nl_only(p);
+        int save = p->no_struct_lit;
+        p->no_struct_lit = 0;
+        Expr *v = parse_expr(p);
+        p->no_struct_lit = save;
+        PUSH(e->fnames, nf, fcap, fname);
+        PUSH(e->args, e->nargs, cap, v);
+        if (is_op(p, ",")) next(p);
+        else if (p->tok.k != TK_NL && !is_op(p, "}"))
+            error_at(p->tok.loc, "expected ',' or '}' in struct literal, found %s", tok_desc(&p->tok));
+        skip_nl(p);
+    }
+    expect_op(p, "}");
+    return e;
+}
+
 static Expr *parse_primary(Parser *p) {
     Token t = p->tok;
     Expr *e;
@@ -177,31 +203,7 @@ static Expr *parse_primary(Parser *p) {
         if (!strcmp(t.s, "match")) return parse_match_expr(p);
         if (is_keyword(t.s)) error_at(t.loc, "expected an expression, found the keyword '%s'", t.s);
         next(p);
-        if (is_op(p, "{") && !p->no_struct_lit) {
-            /* struct literal: Name { field: value, ... } */
-            e = new_expr(E_STRUCT, t.loc);
-            e->name = t.s;
-            next(p);
-            int cap = 0, fcap = 0, nf = 0;
-            skip_nl(p);
-            while (!is_op(p, "}")) {
-                const char *fname = expect_ident(p, "a field name");
-                expect_op(p, ":");
-                skip_nl_only(p);
-                int save = p->no_struct_lit;
-                p->no_struct_lit = 0;
-                Expr *v = parse_expr(p);
-                p->no_struct_lit = save;
-                PUSH(e->fnames, nf, fcap, fname);
-                PUSH(e->args, e->nargs, cap, v);
-                if (is_op(p, ",")) next(p);
-                else if (p->tok.k != TK_NL && !is_op(p, "}"))
-                    error_at(p->tok.loc, "expected ',' or '}' in struct literal, found %s", tok_desc(&p->tok));
-                skip_nl(p);
-            }
-            expect_op(p, "}");
-            return e;
-        }
+        if (is_op(p, "{") && !p->no_struct_lit) return parse_struct_expr(p, t.s, t.loc);
         e = new_expr(E_NAME, t.loc);
         e->name = t.s;
         return e;
@@ -271,6 +273,8 @@ static Expr *parse_postfix(Parser *p) {
             f->a = e;
             f->name = expect_ident(p, "a field name");
             e = f;
+        } else if (is_op(p, "{") && !p->no_struct_lit && e->k == E_FIELD && e->a->k == E_NAME) {
+            e = parse_struct_expr(p, ar_printf("%s.%s", e->a->name, e->name), e->a->loc);
         } else return e;
     }
 }
@@ -725,8 +729,10 @@ static Sym *new_global(Parser *p, SymKind k, const char *name, Loc loc) {
     int user = !file_is_stdlib(p->file);
     /* a private name conflicts with this file's names; a public one with every public name and
        with this file's private names */
+    if (module_has_alias(p->file, name)) error_at(loc, "'%s' conflicts with an import alias", name);
     Sym *old = sym_lookup_private(name, p->file);
-    if (!old) {
+    if (!old) old = sym_lookup_module(name, p->file, 1);
+    if (!old && !file_is_module(p->file)) {
         old = sym_lookup_layer(name, user);
         if (old && p->priv && old->loc.file && strcmp(old->loc.file, p->file)) old = NULL;   /* hides another file's public name */
     }
@@ -748,7 +754,8 @@ static Sym *new_global(Parser *p, SymKind k, const char *name, Loc loc) {
     s->name = name;
     s->loc = loc;
     if (p->priv) sym_define_private(s, p->file);
-    else sym_define_global(s);
+    else if (!file_is_module(p->file)) sym_define_global(s);
+    sym_define_module(s, p->file);
     return s;
 }
 
@@ -788,7 +795,15 @@ static void drop_func(Program *P, Func *f) {
    definition is a weak one that an existing definition already replaces (it is then dropped). */
 static Sym *define_fn(Parser *p, Func *f) {
     int user = !file_is_stdlib(p->file);
-    Sym *old = p->priv ? NULL : sym_lookup_layer(f->name, user);
+    Sym *old = p->priv ? NULL : file_is_module(p->file)
+        ? sym_lookup_module(f->name, p->file, 1) : sym_lookup_layer(f->name, user);
+    if (strchr(f->name, '.')) {
+        if (p->priv || f->weak) error_at(f->loc, "a qualified function declaration must override a public weak function");
+        old = sym_lookup_qualified(f->name, p->file);
+        if (!old || old->k != SY_FUNC || !old->fn || !old->fn->weak)
+            error_at(f->loc, "'%s' is not a public weak function", f->name);
+        f->name = old->name;
+    }
     if (old && old->k == SY_FUNC && old->fn) {
         if (old->fn->weak && !f->weak) {
             /* this definition replaces the weak one, wherever it is called from */
@@ -805,7 +820,7 @@ static Sym *define_fn(Parser *p, Func *f) {
             error_at(f->loc, "'%s' already has a weak definition at %s:%d (only one weak default is allowed)",
                      f->name, old->loc.file, old->loc.line);
     }
-    if (!old && user && !p->priv) {
+    if (!old && user && !p->priv && !file_is_module(p->file)) {
         Sym *lib = sym_lookup_layer(f->name, 0);
         if (lib && lib->k == SY_FUNC && lib->fn && lib->fn->weak) {
             /* a cart's function replaces a weak library function, for the library's calls too */
@@ -824,6 +839,7 @@ static void parse_fn(Parser *p, int is_asm) {
     next(p);   /* fn */
     f->loc = p->tok.loc;
     f->name = expect_ident(p, "a function name");
+    if (is_op(p, ".")) { next(p); f->name = ar_printf("%s.%s", f->name, expect_ident(p, "a function name")); }
     f->is_asm = is_asm;
     f->weak = p->weak;
     parse_params(p, f, 0);
@@ -837,7 +853,7 @@ static void parse_fn(Parser *p, int is_asm) {
             f->asm_text = lex_raw_block(&p->L, &f->asm_loc);
             next(p);
         } else f->body = parse_block(p);
-        Sym *strong = sym_lookup_layer(f->name, !file_is_stdlib(p->file));
+        Sym *strong = sym_lookup(f->name, p->file);
         f->sym = strong;
         Func *prev = strong->fn->overrides;
         if (prev && file_is_stdlib(prev->loc.file) == file_is_stdlib(f->loc.file))
@@ -974,8 +990,10 @@ static void parse_toplevel(Parser *p) {
         const char *path = p->tok.s;
         Loc ploc = p->tok.loc;
         next(p);
+        const char *alias = NULL;
+        if (is_kw(p, "as")) { next(p); alias = expect_ident(p, "an import alias"); }
         end_statement(p);
-        compiler_import(p->C, p->file, path, ploc);
+        compiler_import_as(p->C, p->file, path, alias, ploc);
         return;
     }
     if (is_kw(p, "cart")) {

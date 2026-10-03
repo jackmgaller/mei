@@ -14,18 +14,6 @@ The "data and code ergonomics" round. Each item removes boilerplate seen across 
   packed into one byte. They matter with 2 MB of RAM (Check-In!'s per-object and per-tile flags).
 - **`fixed16`:** a compact 4.12 fixed-point type, like the PS1 GTE's, for big arrays of positions
   and velocities at half the memory.
-- **Namespaces: files as modules, named on import.** `import "tsumiki/anim.akr" as tk` makes the
-  module's public names reachable only as `tk.play(...)`. Inside the module, names stay short
-  (`play`, `raycast`), and `private` already controls what it exposes. Plain `import` keeps
-  today's global behaviour, so every existing cart compiles unchanged.
-  - Compiler work: per-module symbol tables, mangled names underneath (so assembly labels and
-    `weak fn` overrides still resolve), and the checker telling `tk.` apart from struct fields
-    and enum members like `View.Now`.
-  - Together with UFCS, most calls read as `hero.play(CLIP_RUN)` and module names only appear
-    on free functions.
-  - Retires the hand-made prefixes (`bc_`, `ui_`, `ot_`, `tk_`) and the clash renames from the
-    0.2 stdlib round (`col_mix`, `strlen`, `text_width`, `project_point`).
-  - No C++-style `namespace { }` blocks: one way to do it is enough.
 
 ## Language: other candidates (not yet approved)
 
