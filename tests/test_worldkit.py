@@ -417,6 +417,30 @@ class BuildTests(unittest.TestCase):
             self.assertEqual(s['merged'][0]['layer'], 'festival')
             self.assertEqual(s['triangles']['by_layer'], {'festival': 4 * c.library.assets['lantern'].triangles})
 
+    def test_ground_placements(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            c = ex.compile()
+            cell = P.decode(c.pack).cells[(0, 0)]
+            # the room's floor is declared ground: filed first in its cell, flagged, counted
+            self.assertEqual((cell.ground_count, cell.placements[0]['ground'], cell.placements[0]['tag']), (1, True, 0))
+            self.assertEqual([p['ground'] for p in cell.placements[1:]], [False] * 6)
+            self.assertEqual(c.report['cells'][0]['ground_placements'], 1)
+            self.assertEqual(c.report['pack']['version'], '1.1')
+            ex.edit(lambda w: w['cells'][0]['placements'][0].update(ground='yes'))
+            with self.assertRaises(WorldError) as cm:
+                ex.compile()
+            self.assertEqual(cm.exception.path, '/cells/0/placements/0/ground')
+        with tempfile.TemporaryDirectory() as tmp:
+            # merged props stay apart by ground as by layer: a merged ground mesh is ground
+            ex = Example(tmp, 'two_districts')
+            ex.edit(lambda cell: [p.update(ground=True) for p in cell['placements'][3:6]], 'cells/downtown_a.cell.json')
+            c = ex.compile()
+            a = [x for x in c.report['cells'] if x['id'] == 'downtown_a'][0]
+            self.assertEqual([(m.get('ground', False), len(m['placements'])) for m in a['merged']], [(False, 5), (True, 3)])
+            pls = P.decode(c.pack).cells[(0, 0)].placements
+            self.assertEqual([(p['tag'], p['ground']) for p in pls if p['ground']], [(0, True), (0xFFFF, True)])
+
     def test_assets_must_pass_their_own_policy(self):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp)

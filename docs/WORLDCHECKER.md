@@ -45,6 +45,7 @@ are measured and listed, and nothing fails on them.
 | a view with dropped triangles (over the GPU's 4,000) | wrong-order pixels in the near band over `near_wrong_pixels` |
 | a view that filled the packet arena | wrong-order pixels elsewhere over `far_wrong_fraction` of the screen |
 | a collision crack or mismatched floor edge | coverage errors over `coverage_pixels` |
+| | ground inversions over `ground_inversion_pixels` ([Ground](#ground)) |
 | an entity origin inside solid collision | a cell over `cell_triangles`, `cell_placements`, `standin_triangles` |
 | a face index outside its mesh | a cell without a stand-in that other cells can see |
 
@@ -68,6 +69,7 @@ are WORLDKIT.md's placeholders.
 | `thresholds.near_wrong_pixels` | 0 | per view, nearer than the band or on an entity |
 | `thresholds.far_wrong_fraction` | 0.005 | of the screen (384 pixels), per view |
 | `thresholds.coverage_pixels` | 0 | per view |
+| `thresholds.ground_inversion_pixels` | 0 | per view: pixels where ground truly hides what is drawn over it |
 | `thresholds.gpu_cycles` | 800,000 | 80% of the GPU's budget |
 | `thresholds.draw_cpu_cycles` | 300,000 | 60% of the CPU's: `wp_draw()` plus entity meshes |
 | `thresholds.cell_triangles`, `cell_placements`, `standin_triangles` | 1,600, 100, 32 | every layer on |
@@ -81,7 +83,7 @@ are WORLDKIT.md's placeholders.
 | `sampling.layer_combinations` | true | |
 | `sampling.max_views` | 600 | views after layer combinations; thinned evenly per kind; vantage points always kept |
 | `vantage_points` | [] | `{"position": [x, y, z], "yaw": deg, "pitch": deg}` |
-| `runtime` | far ring 3, near 0.1, near far 1.5 cells, entities drawn | what the game sets on the reader |
+| `runtime` | far ring 3, near 0.1, near far 1.5 cells, entities drawn, ground first | what the game sets on the reader (`ground_first`: `wp_ground_first`) |
 | `ordering` | on; edge margin 1 px; depth epsilon 0.001 | see [Ordering](#ordering-check-3) |
 | `collision` | 4 samples a unit, rays of 32 units, 50 findings | |
 | `images` | 6 | diagnostic pictures of the worst views |
@@ -111,6 +113,8 @@ the console has. Each check runs with every layer off and with each layer on alo
   skewed off edges, 32 units): if every one first meets a triangle from behind, the origin is
   inside a closed solid. An origin on a surface is not inside. An entity's own collision block
   is not included.
+- **Ground** (warnings; [Ground](#ground)): geometry that an upward ground face can hide
+  (`ground_hides`), and ground faces that can overlap each other (`ground_over_ground`).
 - **References.** Face indices within their meshes (`decode()` checks the rest), stand-ins for
   cells within 2 to `far_ring` cells of another cell (a policy: strict mode), unused layers and
   faces the ordering check cannot judge (warnings).
@@ -155,7 +159,7 @@ shift views. Per view the report has:
 | `gpu_cycles` | the frame's GPU cycles (including the clear, 38,400) |
 | `triangles`, `triangles_dropped` | as the GPU counted them |
 | `arena_bytes`, `arena_full` | full: fewer bytes left than a quad's packet (the face loops stop there) |
-| `placements_drawn`, `standins_drawn`, `entities_drawn` | |
+| `placements_drawn`, `ground_drawn`, `standins_drawn`, `entities_drawn` | `ground_drawn`: ground placements, in the ground pass |
 
 The measured frame and the identity frame differ only in colours and texture flags, so they
 submit the same triangles.
@@ -168,29 +172,33 @@ and opaque (`FACE_KEYED` faces keep their bucket). The picture then says which f
 left on each pixel.
 
 The **reference** is independent of the runtime's drawing code. From the pack it selects what
-the reader should draw: the near 3 × 3 cells with layers applied, each cell and placement
-culled by its sphere against the near pass's six planes, the stand-ins of the far ring against
-the far pass's, and the entities. A sphere within 1/64 unit of a plane is "unsure": its faces may
-cover pixels but are never expected. Every face is transformed in floating point with the camera
-matrix the cart used, clipped to its pass's near plane (0.1 near, half a cell far), back-face
-culled, projected, and centred on the runtime's rounding (`vproj` rounds down). At each pixel the
-reference keeps, per pass, the nearest face by true view depth (from the face's plane), the
-nearest face that *may* cover it and the second nearest. A pixel's expected face is decided only
-when the nearest face covers it at least `edge_margin` (1) pixels inside, is the nearest of all
-faces that come within that margin, and is nearer than the next by more than `depth_epsilon`
-plus the face's non-planarity. Wherever a near-pass face may cover a pixel, the far pass is
-behind it by the reader's design; a stand-in truly in front of near geometry is counted as a
-`pass_inversion`, not an error. Faces whose plane passes through the eye (edge-on), thin faces,
+the reader should draw: the near 3 × 3 cells with layers applied, each cell and placement culled
+by its sphere against the near pass's six planes (ground placements into the ground pass), the
+stand-ins of the far ring against the far pass's, and the entities. A sphere within 1/64 unit of
+a plane is "unsure": its faces may cover pixels but are never expected. Every face is
+transformed in floating point with the camera matrix the cart used, clipped to its pass's near
+plane (0.1 near and ground, half a cell far), back-face culled, projected, and centred on the
+runtime's rounding (`vproj` rounds down). At each pixel the reference keeps, per pass, the
+nearest face by true view depth (from the face's plane), the nearest face that *may* cover it
+and the second nearest. A pixel's expected face is decided only when the nearest face covers it
+at least `edge_margin` (1) pixels inside, is the nearest of all faces that come within that
+margin, and is nearer than the next by more than `depth_epsilon` plus the face's non-planarity.
+The reader draws three passes, each over the one before (far stand-ins, ground, near), so a
+pixel's expected face comes from the last pass that may cover it: wherever a near-pass face may
+cover a pixel, the ground and the far pass are behind it by the reader's design, and wherever a
+ground face may, the far pass is. A stand-in truly in front of ground or near geometry is
+counted as a `pass_inversion`, not an error; ground truly in front of near geometry is a ground
+inversion ([Ground](#ground)). Faces whose plane passes through the eye (edge-on), thin faces,
 twisted quads, semi-transparent faces and textured faces that are not palette swatches may cover
-pixels but are never expected (a swatch face covers exactly the pixels of its untextured face, as
-in the Asset Checker).
+pixels but are never expected (a swatch face covers exactly the pixels of its untextured face,
+as in the Asset Checker).
 
 Then, at every decided pixel:
 
 - the runtime drew the expected face (or nothing where nothing was expected): correct;
 - it drew a face that may cover the pixel and is farther than the expected one: **wrong order**;
-- anything else (nothing, a face that cannot be there, a stand-in over a near face): a
-  **coverage error**.
+- anything else (nothing, a face that cannot be there, a face of an earlier pass over a later
+  pass's, such as a stand-in over a near face): a **coverage error**.
 
 Wrong-order pixels are **near** when the visible surface is nearer than `near_band` or either
 face belongs to an entity, otherwise **far**. Witnesses group them by (drawn face, expected face)
@@ -222,10 +230,11 @@ Evidence (the tests and the sweeps behind them):
   props), 600 random cameras.
 - The World Kit's example worlds built by `mei_world.py build` (palette swatch faces, regions,
   layers), checked through the build's gate in a trial merge: `test_room` 132 views (4.1
-  million decided pixels) and `two_districts` 416 views (17 million), no coverage error. Both
-  have wrong-order pixels in the near band in about half their views (up to 24,000 pixels in
-  one view): real mis-sorts between ground tiles and what stands on them, which report mode
-  lists and strict mode would fail.
+  million decided pixels) and `two_districts` 416 views (17 million), no coverage error. Before
+  their ground was flagged, both had wrong-order pixels in the near band in about half their
+  views (up to 24,000 pixels in one view): real mis-sorts, mostly between ground tiles and what
+  stands on them and inside the shop asset, which report mode lists and strict mode would fail.
+  See [Ground](#ground) for what ground-first drawing left.
 - 1,500 random cameras over the demonstration world (many inside geometry or against it) found 4
   views with coverage errors. All four are faces the runtime drops, not reference errors: for
   example from eye (10.5278, 2.6406, 9.0798), yaw −2.9315597, pitch −0.8297644 (under the roof
@@ -235,6 +244,84 @@ Evidence (the tests and the sweeps behind them):
   −131.8°, pitch −39.3° a stand-in face crossing the far pass's near plane at the screen's edge
   is missing. Both point at the near-plane path of the face loops and `stdlib/clip.akr`. This is
   what coverage errors are for; they fail only in strict mode.
+
+### Ground
+
+A world pack 1.1 marks some placements as ground, and the reader draws them in a pass of their
+own before the rest near the camera ([WORLDPACK.md](WORLDPACK.md), "Ground"). That order is the
+design, not an error, so the reference reproduces it exactly: ground placements go into a ground
+pass between the far and near passes, which keeps the same three per-pixel depths as the others.
+A ground face is then the expected face only where no near-pass face may cover the pixel; where
+one may, the near pass decides it alone, by true depth among its own faces, as the runtime does.
+Among themselves, ground faces are judged by true depth like any other faces of one pass, so a
+mis-sort inside the ground pass (a ground piece on the ground, the side of a ground slab over its
+neighbour's top) is reported as wrong order. With the runtime setting `ground_first` false (a game
+that turns `wp_ground_first` off) ground is ordinary near geometry, as in a 1.0 pack.
+
+What the rule gets wrong is measured, not excused: a pixel drawn as the rule says (actual =
+expected) where a ground face surely covers it at least `edge_margin` inside and is truly nearer
+than the expected near-pass face by more than `depth_epsilon` plus the faces' non-planarity is a
+**ground inversion**: the ground truly hides what was drawn over it (a crate sunk into the
+ground, the feet of something beyond a crest). Like wrong-order pixels these are exact where they
+are counted; pixels near outlines and depth ties are not. Each view reports
+`ground_inversions` and, when there are any, `ground_issues`: witnesses grouped by (ground face,
+the face drawn over it) with a sample pixel, the ground's depth and how far behind it the drawn
+face lies. They count against `ground_inversion_pixels` (0 by default) in strict mode, and pick
+diagnostic pictures like near wrong-order pixels.
+
+The **static warnings** point at likely misuse before any view is drawn. A pair of instances
+(placements and entity meshes within two cells of each other) is reported when a camera above an
+upward ground face (its normal at least 10° above level) can see a face of the other through it:
+part of the other face lies more than 1/64 unit behind the ground face's plane, part of the ground
+face lies in front of the other face's plane, and those parts are within the near pass's reach of
+each other. The camera then sits just above the ground face, on the line from the hidden point
+through the ground, so such a camera always exists; whether the game ever puts one there is the
+author's to judge, which is why these are warnings. `ground_hides` names geometry drawn after the
+ground (what ground-first drawing would draw over it); `ground_over_ground` names ground that can
+overlap ground (sorted inside the ground pass by average depth). Layers that can never be on
+together are skipped. The sides and undersides of ground meshes are not counted as hiding: only
+cameras below the ground's top see through them.
+
+Evidence (`tests/test_worldverify.py`, `GroundStaticTests` and `GroundViewTests`):
+
+- The planted mis-sort (strip over crate) with the strip flagged as ground: no wrong-order pixel,
+  no coverage error and no ground inversion in strict mode; with `ground_first` false, the same
+  pack is reported as before (strip over crate, near band).
+- Not excused: the crate flagged as ground too (a raised ground piece) is reported as wrong order
+  inside the ground pass and warned of as `ground_over_ground`; the crate sunk 0.3 units through
+  the ground gives 188 ground inversions (ground strip over crate), a strict failure and a
+  `ground_hides` warning.
+- A valley (a flat and a ramp up from its edge, both ground, a building and a coin on the flat):
+  76 sampled views, 2.7 million decided pixels, no wrong order, coverage error, ground inversion or
+  warning. The same world with an upper floor past the ramp's crest and a box on it: ground
+  inversions where the crest hides the box's bottom, and both warnings.
+
+Measured on the example worlds (default settings; before: the same recipes without `ground`):
+
+| | `test_room` before | after | `two_districts` before | after |
+|---|---|---|---|---|
+| views with wrong-order pixels in the near band | 69 of 132 | 9 | 160 of 416 | 111 |
+| near-band wrong-order pixels | 153,444 | 2,775 | 365,309 | 318,722 |
+| ... ground drawn over what stands on it | 150,459 | 0 | 45,739 | 0 |
+| ... something drawn over the ground in front of it | 210 | 0 | 848 | 0 |
+| ... ground over ground (slab sides at seams) | 0 | 0 | 10,018 | 10,018 |
+| ... inside one asset (`canopy`; `shop`) | 2,775 | 2,775 | 308,704 | 308,704 |
+| largest in one view | 13,715 | 575 | 24,008 | 24,008 |
+| wrong-order pixels elsewhere (views) | 7,206 (30) | 0 | 20,154 (122) | 3,138 (68) |
+| ground inversions, coverage errors | 0, 0 | 0, 0 | 0, 0 | 0, 0 |
+| draw CPU cycles a view, mean (largest) | 27,413 (56,018) | 29,481 (58,086) | 35,706 (84,468) | 37,995 (86,763) |
+| GPU cycles a view, mean (largest) | 116,229 (198,538) | the same | 138,636 (289,506) | the same |
+| decided pixels | 4,120,595 | 4,113,056 | 17,054,981 | 17,041,425 |
+
+The "before" column is the reader before ground existed; the 1.1 reader on the same packs
+without ground measures 58 and 88 cycles a view more. Nothing got worse but the CPU cost of the
+ground pass (about 2,000 cycles a view, 0.4% of the CPU's frame) and 0.1–0.2% fewer decided
+pixels (a near-pass face that may cover a pixel now leaves it undecided even where the ground
+under it is nearer, as the runtime draws it over the ground there). The `two_districts` largest
+view is a mis-sort inside the shop (the body's top drawn over the roof slab sitting on it), which
+no ground flag can change; its ground-over-ground pixels are the sides of the 0.5-unit ground
+slabs, which the static check names as `ground_over_ground` and a ground tile modelled as a
+surface would remove.
 
 ## Timing
 

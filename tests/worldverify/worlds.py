@@ -142,6 +142,65 @@ def missort_world():
 VANTAGE_MISSORT = {'position': [27.0, 1.2, 1.5], 'yaw': 0.0, 'pitch': -8.0}
 
 
+def ground_missort_world(crate_ground=False, sink=0.0):
+    """The mis-sorted pair of missort_world() with the strip (tag 50) flagged as ground, so the
+    reader draws it first and the crate (tag 51) over it. crate_ground flags the crate as ground
+    too (a raised ground piece: the pair is then sorted inside the ground pass, by average depth,
+    and mis-sorted again); sink lowers the crate this far through the strip, so that the strip
+    truly hides its bottom while the reader draws all of it over the strip."""
+    w = missort_world()
+    strip, crate = w.cells[0].placements[-2:]
+    strip.ground = True
+    crate.ground = crate_ground
+    crate.position = (crate.position[0], crate.position[1] - sink, crate.position[2])
+    return w
+
+
+def surface_mesh(x0, z0, nx, nz, step, height, colours):
+    """Up-facing quads over a grid of `step` units from (x0, z0), at heights height(x, z)."""
+    m = meshlib.Mesh()
+    idx = {}
+
+    def v(i, k):
+        if (i, k) not in idx:
+            x, z = x0 + i * step, z0 + k * step
+            idx[(i, k)] = m.vertex(x, height(x, z), z)
+        return idx[(i, k)]
+    for k in range(nz):
+        for i in range(nx):
+            m.quad([v(i, k), v(i + 1, k), v(i, k + 1), v(i + 1, k + 1)], [colours[(i + k) % len(colours)]])
+    return m.pack()
+
+
+def slope_world(ridge=False):
+    """Ground that is all flagged ground: a flat (tag 1, z 0..14) and a ramp rising from its far
+    edge (tag 2, z 14..22, up to y = 4), with a box building (tag 10) and a coin on the flat. Seen
+    from above, the flat and the ramp make a valley: no ground face can hide another or hide what
+    stands on the flat, so ground-first drawing is exact. ridge adds an upper flat at the ramp's
+    top (tag 3, z 22..32) with a box (tag 11) on it: seen from the flat, the crest hides the
+    bottom of that box, which the reader draws over the crest anyway (ground inversions)."""
+    c = Cell(0, 0)
+    flat = surface_mesh(0, 0, 16, 7, 2.0, lambda x, z: 0.0, SAND)
+    ramp = surface_mesh(0, 14, 16, 4, 2.0, lambda x, z: (z - 14) * 0.5, SAND)
+    parts = [(flat, 1), (ramp, 2)]
+    if ridge:
+        parts.append((surface_mesh(0, 22, 16, 5, 2.0, lambda x, z: 4.0, SAND), 3))
+    for m, tag in parts:
+        c.placements.append(Placement(m, (0, 0, 0), tag=tag, ground=True))
+        c.collision += placed_tris(m, (0, 0, 0), 1, tag=tag)
+    boxes = [((6, 0, 6), 10, 3.0)] + ([((16, 4.0, 25), 11, 3.0)] if ridge else [])
+    for pos, tag, h in boxes:
+        m = box_mesh((-2, 0, -1), (2, h, 1), meshlib.rgb(170, 90, 70))
+        c.placements.append(Placement(m, pos, tag=tag))
+        c.collision += placed_tris(m, pos, 2, tag=tag)
+    coin = box_mesh((-0.3, 0, -0.3), (0.3, 0.6, 0.3), meshlib.rgb(250, 220, 0))
+    c.entities.append(Entity(1, (20, 1, 8), mesh=coin))
+    return World(cells=[c], cell_shift=5)
+
+
+VANTAGE_RIDGE = {'position': [16.0, 1.0, 8.0], 'yaw': 0.0, 'pitch': 0.0}
+
+
 def overdraw_world():
     """The plaza with twelve screen-filling panels (tag 60) stacked in front of VANTAGE_OVERDRAW,
     farthest first in depth: about 12 screens of fill, over the GPU threshold."""

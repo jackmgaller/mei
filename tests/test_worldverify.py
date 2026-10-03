@@ -295,6 +295,112 @@ class ViewTests(unittest.TestCase):
             self.assertEqual(v['ordering']['coverage_errors'], 0)
 
 
+class GroundStaticTests(unittest.TestCase):
+    """The static warnings for likely misuse of the ground flag (no tools needed)."""
+
+    def warnings(self, world):
+        pack = decode(encode(world))
+        return {w['code']: w for w in ST.ground_check(pack, 48.0, 10)}
+
+    def test_ground_static_warnings(self):
+        self.assertEqual(self.warnings(F.missort_world()), {}, 'no ground: nothing to check')
+        self.assertEqual(self.warnings(F.ground_missort_world()), {}, 'a crate standing on the ground')
+        self.assertEqual(self.warnings(F.slope_world()), {}, 'a valley hides nothing')
+        sunk = self.warnings(F.ground_missort_world(sink=0.3))
+        self.assertEqual(list(sunk), ['ground_hides'])
+        f = sunk['ground_hides']['findings'][0]
+        self.assertEqual((f['ground']['tag'], f['other']['tag']), (50, 51))
+        self.assertAlmostEqual(f['behind'], 0.3, places=3)
+        # the crate is ground too: two ground pieces that can overlap, and the crate's top can hide
+        # the bottoms of the buildings beyond it
+        raised = self.warnings(F.ground_missort_world(crate_ground=True))
+        self.assertEqual(sorted(raised), ['ground_hides', 'ground_over_ground'])
+        f = raised['ground_over_ground']['findings'][0]
+        self.assertEqual({f['ground']['tag'], f['other']['tag']}, {50, 51})
+        ridge = self.warnings(F.slope_world(ridge=True))
+        self.assertEqual(sorted(ridge), ['ground_hides', 'ground_over_ground'])
+        pairs = [(f['ground']['tag'], f['other'].get('tag')) for f in ridge['ground_hides']['findings']]
+        self.assertIn((2, 11), pairs)
+
+
+@needs_tools
+class GroundViewTests(unittest.TestCase):
+    """Ground-first drawing as the checker models it (docs/WORLDCHECKER.md, "Ground")."""
+
+    def run_check(self, world, s=None):
+        return V.verify(encode(world), s, tools=F.tools())
+
+    def test_ground_first_fixes_the_mis_sort_and_is_modelled_both_ways(self):
+        s = settings(VANTAGE_ONLY, vantage_points=[F.VANTAGE_MISSORT], mode='strict')
+        r = self.run_check(F.ground_missort_world(), s)
+        o = r['views'][0]['ordering']
+        if VERBOSE:
+            print('\n  ground-first:', json.dumps(o)[:600])
+        self.assertTrue(r['ok'], json.dumps(r['threshold_failures'])[:2000])
+        self.assertEqual(r['views'][0]['stats']['ground_drawn'], 1)
+        self.assertEqual((o['wrong_near_pixels'], o['coverage_errors'], o['ground_inversions']), (0, 0, 0))
+        self.assertGreater(o['tested_pixels'], 20000)
+        # a game that turns ground-first off gets the old picture, and the checker says so
+        off = self.run_check(F.ground_missort_world(), settings(s, runtime={'ground_first': False}))
+        o = off['views'][0]['ordering']
+        self.assertEqual(off['views'][0]['stats']['ground_drawn'], 0)
+        self.assertEqual(o['coverage_errors'], 0)
+        self.assertGreater(o['wrong_near_pixels'], 50)
+        self.assertEqual((o['issues'][0]['drawn']['tag'], o['issues'][0]['expected']['tag']), (50, 51))
+
+    def test_errors_ground_first_does_not_excuse(self):
+        s = settings(VANTAGE_ONLY, vantage_points=[F.VANTAGE_MISSORT], mode='strict')
+        # a raised ground piece on the ground: the pair is sorted inside the ground pass
+        r = self.run_check(F.ground_missort_world(crate_ground=True), s)
+        o = r['views'][0]['ordering']
+        self.assertFalse(r['ok'])
+        self.assertEqual(o['coverage_errors'], 0)
+        self.assertGreater(o['wrong_near_pixels'], 50)
+        self.assertEqual((o['issues'][0]['drawn']['tag'], o['issues'][0]['expected']['tag']), (50, 51))
+        self.assertIn('ground_over_ground', codes(r['static']['warnings']))
+        # a crate sunk through the ground: drawn whole over the ground that truly hides its bottom
+        r = self.run_check(F.ground_missort_world(sink=0.3), s)
+        o = r['views'][0]['ordering']
+        if VERBOSE:
+            print('\n  sunk crate:', json.dumps(o)[:800])
+        self.assertFalse(r['ok'])
+        self.assertEqual((o['wrong_near_pixels'], o['coverage_errors']), (0, 0))
+        self.assertGreater(o['ground_inversions'], 50)
+        w = o['ground_issues'][0]
+        self.assertEqual((w['ground']['tag'], w['drawn']['tag']), (50, 51))
+        self.assertGreater(w['max_depth_behind'], 0.001)
+        self.assertEqual(codes(r['threshold_failures']), ['ground_inversion'])
+        self.assertIn('ground_hides', codes(r['static']['warnings']))
+        # the threshold is the world's to set
+        ok = self.run_check(F.ground_missort_world(sink=0.3),
+                            settings(s, thresholds={'ground_inversion_pixels': 100000}))
+        self.assertTrue(ok['ok'])
+
+    def test_ground_on_ground_in_a_valley_and_over_a_ridge(self):
+        s = {'mode': 'strict', 'sampling': {'floor_spacing': 8.0, 'seams': None}}
+        r = self.run_check(F.slope_world(), s)
+        if VERBOSE:
+            print('\n  valley:', json.dumps(r['summary']))
+        self.assertTrue(r['ok'], json.dumps(r['threshold_failures'])[:2000])
+        self.assertGreater(r['summary']['views'], 40)
+        self.assertGreater(r['summary']['tested_pixels'], 30 * 40000)
+        for v in r['views']:
+            o = v['ordering']
+            self.assertEqual((o['wrong_near_pixels'], o['wrong_far_pixels'], o['coverage_errors'],
+                              o['ground_inversions']), (0, 0, 0, 0), v['camera'])
+            self.assertIn(v['stats']['ground_drawn'], (1, 2))
+        self.assertIn(2, [v['stats']['ground_drawn'] for v in r['views']])
+        # over a ridge the crest hides the bottom of what stands beyond it: ground inversions
+        ridge = self.run_check(F.slope_world(ridge=True),
+                               settings(VANTAGE_ONLY, vantage_points=[F.VANTAGE_RIDGE]))
+        o = ridge['views'][0]['ordering']
+        if VERBOSE:
+            print('\n  ridge:', json.dumps(o)[:800])
+        self.assertEqual((o['wrong_near_pixels'], o['coverage_errors']), (0, 0))
+        self.assertGreater(o['ground_inversions'], 20)
+        self.assertEqual((o['ground_issues'][0]['ground']['tag'], o['ground_issues'][0]['drawn']['tag']), (2, 11))
+
+
 @needs_tools
 class TimingTests(unittest.TestCase):
     def test_timing_is_reported(self):

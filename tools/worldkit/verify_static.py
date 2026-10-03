@@ -453,6 +453,157 @@ def reference_check(pack, far_ring):
     return errors, warnings
 
 
+GROUND_TOL = 1 / 64        # how far behind a ground face's plane counts as behind it (units)
+GROUND_UP = math.sin(math.radians(10))  # ground faces whose normal is at least 10 degrees above level
+
+
+def _world_faces(pack, inst, mesh):
+    """An instance's triangles in world coordinates: [(corners, front normal, face number,
+    double-sided)]; a quad gives (0, 1, 2) and (2, 1, 3) as collision does."""
+    S = 1 << pack.cell_shift
+    cx, cz = inst.cell[0] * S + S / 2, inst.cell[1] * S + S / 2
+    if inst.yaw is not None:
+        c, s = math.cos(inst.yaw), math.sin(inst.yaw)
+    else:
+        c, s = inst.cos / ONE, inst.sin / ONE
+    px, py, pz = inst.pos[0] / ONE + cx, inst.pos[1] / ONE, inst.pos[2] / ONE + cz
+    vs = []
+    for x, y, z in mesh.raw:
+        x, y, z = x / ONE, y / ONE, z / ONE
+        vs.append((c * x + s * z + px, y + py, -s * x + c * z + pz))
+    out = []
+    for k, (flags, idx, _, _, _) in enumerate(mesh.faces):
+        tris = [(idx[0], idx[1], idx[2])] + ([(idx[2], idx[1], idx[3])] if len(idx) == 4 else [])
+        for t in tris:
+            a, b, cc = (vs[i] for i in t)
+            n = _cross(_sub(cc, a), _sub(b, a))
+            ln = math.sqrt(_dot(n, n))
+            if ln > 1e-12:
+                out.append(((a, b, cc), tuple(q / ln for q in n), k, bool(flags & 16)))
+    return out
+
+
+def _sub(a, b): return (a[0] - b[0], a[1] - b[1], a[2] - b[2])
+def _dot(a, b): return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+def _cross(a, b): return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+
+
+def _clip_side(poly, n, d):
+    """The part of a convex polygon where n . p - d > 0."""
+    out = []
+    for i in range(len(poly)):
+        a, b = poly[i - 1], poly[i]
+        da, db = _dot(n, a) - d, _dot(n, b) - d
+        if (da > 0) != (db > 0):
+            t = da / (da - db)
+            out.append(tuple(a[q] + (b[q] - a[q]) * t for q in range(3)))
+        if db > 0:
+            out.append(b)
+    return out
+
+
+def ground_check(pack, near_far, limit):
+    """Likely misuse of the ground flag (docs/WORLDPACK.md, "Ground"): geometry that a ground
+    face can hide. The reader draws ground first, so whatever is drawn after it shows through
+    ground that truly hides it, and ground faces that can overlap on screen are sorted among
+    themselves by average depth like any other faces. A pair is reported when a camera above a
+    ground face that faces up (GROUND_UP) can see the other face through it: part of the other
+    face lies more than GROUND_TOL behind the ground face's plane, part of the ground face lies in
+    front of the other face's plane, and those parts are within the near pass's reach (near_far)
+    of each other. The sides and undersides of ground meshes are left out as hiding faces: only
+    cameras below the ground's top see through them. Layers that can never be on together are
+    skipped. Returns warnings: one per pair of
+    instances, at most `limit` of each code, with the totals."""
+    from .verify_render import instances, read_mesh
+    insts = [i for i in instances(pack) if i.key[0] != 'standin']
+    ground = [i for i in insts if i.ground]
+    if not ground:
+        return []
+    meshes, faces = {}, {}
+    for inst in insts:
+        if inst.mesh not in meshes:
+            meshes[inst.mesh] = read_mesh(pack.data, inst.mesh)
+        faces[inst.key] = _world_faces(pack, inst, meshes[inst.mesh])
+
+    def layer(inst):
+        if not inst.mask:
+            return None
+        return pack.cells[inst.cell].layers[inst.mask.bit_length() - 1]
+
+    def exclusive(a, b):
+        la, lb = layer(a), layer(b)
+        return (la is not None and lb is not None and la != lb and
+                pack.layers[la][1] != 0xFF and pack.layers[la][1] == pack.layers[lb][1])
+
+    found = {'ground_hides': [], 'ground_over_ground': []}
+    total = {'ground_hides': 0, 'ground_over_ground': 0}
+    for g in ground:
+        for x in insts:
+            if max(abs(g.cell[0] - x.cell[0]), abs(g.cell[1] - x.cell[1])) > 2 or exclusive(g, x):
+                continue
+            hit = _ground_pair(faces[g.key], faces[x.key], near_far)
+            if hit is None:
+                continue
+            code = 'ground_over_ground' if x.ground else 'ground_hides'
+            total[code] += 1
+            if len(found[code]) < limit:
+                gf, xf, behind, point = hit
+                found[code].append({'ground': _inst_name(g, gf), 'other': _inst_name(x, xf),
+                                    'behind': round(behind, 4), 'point': [round(q, 4) for q in point]})
+    out = []
+    if total['ground_hides']:
+        out.append({'code': 'ground_hides', 'pairs': total['ground_hides'], 'findings': found['ground_hides'],
+                    'message': 'geometry drawn after the ground lies behind a ground face: from some cameras '
+                               'the ground truly hides it, and it is drawn over the ground anyway'})
+    if total['ground_over_ground']:
+        out.append({'code': 'ground_over_ground', 'pairs': total['ground_over_ground'],
+                    'findings': found['ground_over_ground'],
+                    'message': 'ground faces that can overlap on screen: the ground pass sorts them by '
+                               'average depth, so they can be drawn in the wrong order'})
+    return out
+
+
+def _inst_name(inst, face):
+    out = {'kind': inst.key[0], 'cell': list(inst.cell), 'face': face}
+    if inst.key[0] == 'placement':
+        out['placement'], out['tag'] = inst.key[3], inst.tag
+    else:
+        out['entity'] = inst.key[1]
+    return out
+
+
+def _ground_pair(gfaces, xfaces, reach):
+    """The first (ground face, other face, depth behind, a point behind) where a face of x can
+    be seen through a ground face, or None."""
+    xs = [v for f in xfaces for v in f[0]]
+    if not xs:
+        return None
+    for gv, gn, gk, gdouble in gfaces:
+        for side in ((1, -1) if gdouble else (1,)):
+            n = tuple(side * q for q in gn)
+            if n[1] < GROUND_UP:
+                continue
+            d = _dot(n, gv[0])
+            if min(_dot(n, v) for v in xs) - d >= -GROUND_TOL:
+                continue                    # all of x is in front of this ground face
+            for xv, xn, xk, xdouble in xfaces:
+                if xv == gv:
+                    continue
+                behind = _clip_side(list(xv), tuple(-q for q in n), -d + GROUND_TOL)
+                if not behind:
+                    continue
+                for xside in ((1, -1) if xdouble else (1,)):
+                    m = tuple(xside * q for q in xn)
+                    front = _clip_side(list(gv), m, _dot(m, xv[0]) + GROUND_TOL)
+                    if not front:
+                        continue
+                    near = min(math.sqrt(_dot(_sub(p, q), _sub(p, q))) for p in behind for q in front)
+                    if near <= reach:
+                        p = max(behind, key=lambda v: d - _dot(n, v))
+                        return gk, xk, d - _dot(n, p), p
+    return None
+
+
 def counts(pack):
     data = pack.data
     cache = {}

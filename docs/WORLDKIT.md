@@ -17,7 +17,7 @@ described in [PLATFORMER.md](PLATFORMER.md). It depends on three things, all now
   which have landed: see [Asset Kit changes this needs](#asset-kit-changes-this-needs).
 - **A runtime.** Tsumiki, the stdlib 3D toolkit that had a scene, solids, a character controller
   and cameras, was removed in October 2026 ([ROADMAP.md](ROADMAP.md)). Its replacement for worlds
-  is the narrow pack reader `stdlib/worldpack.akr` (cells, culled two-pass drawing, collision
+  is the narrow pack reader `stdlib/worldpack.akr` (cells, culled drawing in passes, collision
   queries, entity tracking; [WORLDPACK.md](WORLDPACK.md)).
 
 The World Kit is a command-line tool for AI agents, a sibling of the Asset Kit. An editable JSON
@@ -213,6 +213,9 @@ Terrain collision comes from the terrain itself.
   take it with no format change. A terrain piece would be packed as a placement at its cell's
   centre whose mesh is in cell-local coordinates (yaw 0), as a merged mesh of small scatter props
   would be.
+- Terrain is ground by default ([Ground](#ground)): a heightfield is the open floor that
+  ground-first drawing is for, and a swept path lying on it is too. A raised path (a bridge, a
+  viaduct) is not, so a path will be able to say so.
 - Materials and palette entries of terrain would be declared in the world recipe and packed into
   region palettes by the same packer as asset entries, so a path's kerb can share an entry with
   a building's stone.
@@ -311,6 +314,10 @@ geometry. A 3 × 3 block of cells around the camera's cell is convex. Placements
 neighbouring cell weaken this, so the kit limits overhang (see [Verification](#verification)).
 The near set is chosen around the camera, which may trail the player; the collision set is chosen
 around the player.
+
+**Decided: ground first.** Within the near cells, the placements a level marks as ground are drawn
+in a pass of their own before the rest (the world pack's ground pass), so nothing standing on the
+ground sorts behind a large ground face; see [Ground](#ground) and WORLDPACK.md, "Ground".
 
 The far backdrop (skyline, sky gradient, distant hills) belongs on the plane chip (PLANES.md):
 a tile plane and a backdrop line table cost no GPU cycles and no triangles.
@@ -546,7 +553,8 @@ and one of its cells, `cells/downtown_b.cell.json`:
   "format": "mei-world-cell", "version": 1,
   "id": "downtown_b", "at": [1, 0], "region": "downtown", "standin": "block_far",
   "placements": [
-    {"id": "ground", "asset": "ground_tile", "position": [48, 0, 16], "collision": "self"},
+    {"id": "ground", "asset": "ground_tile", "position": [48, 0, 16], "ground": true,
+     "collision": "self"},
     {"id": "shop_1", "asset": "shop", "position": [48, 0, 20], "yaw": 90, "collision": "shop_col"}
   ],
   "entities": [
@@ -572,13 +580,14 @@ and one of its cells, `cells/downtown_b.cell.json`:
 
 A **placement** is an `id` (unique in its cell; reports and the pack's 16-bit tag follow it), an
 `asset`, a `position` (world coordinates, in the cell), `yaw` (degrees, as `mesh_at()`), an
-optional `layer`, `merge` (below) and a required `collision`: `"self"` (the asset's own mesh),
-`"none"`, or a companion collision asset recipe placed the same way. Requiring it makes an agent
-decide for every asset. An **entity** is an `id` (world-wide), a game `type`, a `position`,
-optional `yaw`, `layer`, `asset` (a mesh the game may draw), `collision` (an asset in the entity's
-own frame, for moving objects), `params` and `was`. A cell's `standin` is an ordinary asset
-modelled in cell-local coordinates around the cell's centre. Placing an asset whose lighting is
-directional at a yaw other than 0 is a warning ([Day and night](#day-and-night)).
+optional `layer`, `merge` and `ground` (below) and a required `collision`: `"self"` (the asset's
+own mesh), `"none"`, or a companion collision asset recipe placed the same way. Requiring it
+makes an agent decide for every asset. An **entity** is an `id` (world-wide), a game `type`, a
+`position`, optional `yaw`, `layer`, `asset` (a mesh the game may draw), `collision` (an asset
+in the entity's own frame, for moving objects), `params` and `was`. A cell's `standin` is an
+ordinary asset modelled in cell-local coordinates around the cell's centre. Placing an asset
+whose lighting is directional at a yaw other than 0 is a warning
+([Day and night](#day-and-night)).
 
 **Collision as built.** Each placement's collision asset is compiled, its faces turned and moved
 as `mesh_at()` draws them, given surface bytes from their material tags and the placement's
@@ -616,12 +625,43 @@ an entry another material shares is a warning. The kit attaches no meaning to th
 ### Merged scatter
 
 `"merge": true` on a placement merges it, with the cell's other merged placements of the same
-layer, into one mesh placed at the cell's centre (split only between props, at 2,048 vertices or
-4,000 faces). The reader spends about 500 cycles on every placement it draws beyond its vertices
-and faces (WORLDPACK.md, "Costs"), so eight bollards cost one placement instead of eight; the
-price is ROM (each copy's vertices are stored) and coarser culling (one sphere). Collision is
-unchanged: each merged prop keeps its own. The pack needs no new record. `report.json` lists what
-was merged per cell.
+layer and the same `ground`, into one mesh placed at the cell's centre (split only between
+props, at 2,048 vertices or 4,000 faces). The reader spends about 500 cycles on every placement
+it draws beyond its vertices and faces (WORLDPACK.md, "Costs"), so eight bollards cost one
+placement instead of eight; the price is ROM (each copy's vertices are stored) and coarser
+culling (one sphere). Collision is unchanged: each merged prop keeps its own. The pack needs no
+new record. `report.json` lists what was merged per cell.
+
+### Ground
+
+`"ground": true` on a placement makes it **ground**: the reader draws the near cells' ground in a
+pass of its own before everything else near the camera, so nothing standing on it can be drawn
+behind it (WORLDPACK.md, "Ground", has the reasons and the exact cases). Without a depth buffer a
+large floor face sorts by its average depth, and one ordering table draws it over the feet of what
+stands on it; flagging the floors of the two example worlds took their near-camera wrong-order
+pixels from 153,444 to 2,775 (`test_room`) and from 365,309 to 318,722 (`two_districts`, where
+most of what is left is inside the shop asset; WORLDCHECKER.md, "Ground").
+
+**The rule: flag as ground only the lowest open floor of an area, the surfaces nothing is ever
+under or behind from where the camera can be; everything raised stays an ordinary placement.**
+Ground-first drawing draws whatever a ground face truly hides over it, so:
+
+| Ground | Not ground |
+|---|---|
+| a floor, a street, a courtyard | a platform, block, step or kerb on the floor |
+| a floor rising into a ramp up from its edge (a valley seen from above) | a ramp up to a higher floor that is also ground: the crest hides the feet of what stands beyond it |
+| one surface per area, its pieces meeting edge to edge | a bridge, a walkway or a ramp you can walk or see under |
+| | a floor at the edge of a pit or a drop with anything drawn below it (the lip hides part of it) |
+| | water, glass and other semi-transparent surfaces |
+| | anything seen from below |
+
+Ground meshes are best surfaces rather than solids: the sides of a ground slab lie under its
+neighbours' tops, and ground faces that overlap are sorted among themselves as before. Objects
+stand on the ground, not in it: a buried part is drawn over the ground. Stand-ins are never ground
+(a stand-in is the whole cell); a merged mesh is ground when its props are. The World Checker
+warns of geometry an upward ground face can hide (`ground_hides`) and of ground that can overlap
+ground (`ground_over_ground`), and counts the pixels where the ground truly hides what is drawn
+over it (`ground_inversion`, a threshold).
 
 ## Collision
 
@@ -679,7 +719,7 @@ outputs to the World Checker through one seam, `worldkit.build.run_gate(context)
 its result in the report. In `report` mode nothing fails; in `enforce` mode a failed check leaves
 the previous build in place with `verification.failed.json`.
 
-**The pack format is specified in [WORLDPACK.md](WORLDPACK.md)** (version 1.0), byte by byte:
+**The pack format is specified in [WORLDPACK.md](WORLDPACK.md)** (version 1.1), byte by byte:
 header, sparse index, layers, regions, cells, placements, entities and their parameter records,
 collision blocks with precomputed rows and a lookup grid, and the mesh pool (meshes stay in the
 native format). `tools/worldkit/pack.py` is the reference encoder and decoder the kit builds on,

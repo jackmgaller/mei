@@ -1,0 +1,21 @@
+// Ground-first drawing (docs/WORLDPACK.md, "Ground"): one fixed view of PACK on every frame,
+// with wp_ground_first set to GROUND, printing what was drawn. A test fixture, not a game: the
+// wrapper tests/test_worldpack.py writes defines GROUND and embeds PACK.
+
+import "worldpack.akr"
+
+fn init() {
+    assert(wp_open(PACK))
+    wp_ground_first = GROUND
+    dither(false)
+}
+
+fn draw() {
+    cls(rgb(0, 0, 0))
+    wp_draw(vec3(27.0, 1.2, 1.5), 0.0, -0.1396263)
+    print("drawn ")
+    print_int(wp_stats.drawn)
+    print(" ground ")
+    print_int(wp_stats.ground)
+    println("")
+}
