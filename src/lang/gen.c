@@ -3683,7 +3683,16 @@ static uint32_t text_clobbers(const char *t, size_t len) {
 
 void gen_program(Program *P, Buf *out) {
     g_P = P;
+    g_fn = NULL;
     g_label = 0;
+    /* These reusable buffers belong to the compilation arena, which the driver frees
+       between API calls. Keep reuse within one program, never across compilations. */
+    g_loops = NULL;
+    g_nloops = g_caploops = 0;
+    g_relocs = NULL;
+    g_nrelocs = g_caprelocs = 0;
+    g_ret_into = NULL;
+    buf_free(&g_body);   /* also recover a partially generated body after an error */
     g_stubs = NULL;
     g_nstubs = g_capstubs = 0;
     g_vconsts = NULL;

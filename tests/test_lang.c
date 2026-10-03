@@ -14,6 +14,7 @@ static int checks, failures;
 static const char module_source[] =
     "struct Cell { amount: fixed16, flags: bits { ready, a, b, c, d, e, f, g, high } }\n"
     "var calls: s32\n"
+    "const LABELS: [2]*u8 = [\"one\", \"two\"]\n"
     "private fn secret() -> s32 { return 1234 }\n"
     "fn tick(cell: *Cell) { cell.amount += 0.25; cell.flags.ready = false; calls += 1 }\n";
 static const char good_source[] =
@@ -33,6 +34,7 @@ static const char good_source[] =
     "    values[1] = -0.5\n"
     "    answer = values.total() + m.calls + second.calls\n"
     "    if cell.flags.ready || !cell.flags.high { answer = -1 }\n"
+    "    if m.LABELS[0][0] != 'o' || second.LABELS[1][0] != 't' { answer = -2 }\n"
     "}\n";
 static const char bad_source[] =
     "import \"cells.akr\" as m\n"
