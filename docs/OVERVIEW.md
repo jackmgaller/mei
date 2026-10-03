@@ -182,7 +182,7 @@ If something has a name, it matters. These are the named things in the project.
 | **World Pack** | The binary level format the World Kit writes and the console reads in place | [WORLDPACK.md](WORLDPACK.md), `stdlib/worldpack.akr` |
 | **Mochi** | The small language a game's schema for the World Kit is written in (its entity types and their fields, the player's body, the worlds); files end in `.mochi`. Translated into the JSON form, which is still accepted | [WORLDKIT.md](WORLDKIT.md), `tools/worldkit/mochi.py` |
 | **World Checker** | The World Kit's in-level verification, run by every `mei_world.py build` and on its own: checks a level from where a player can stand, for budgets, drawing order and collision holes. Built | [WORLDCHECKER.md](WORLDCHECKER.md), `tools/worldkit/verify.py` |
-| **Reference Renderer** | An independent renderer that Mei's output is compared against, to test the console itself (`make rendercheck`). Not yet committed | |
+| **Reference Renderer** | An independent renderer that Mei's output is compared against, to test the console itself: stress scenes, subdivision, GPU fuzzing, the plane compositor, and all of them in motion (`make rendercheck`, `make rendercheck-motion`) | [its README](../tests/reference_renderer/README.md), `tests/reference_renderer/` |
 
 **Carts**
 

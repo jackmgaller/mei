@@ -35,6 +35,8 @@ repository, and the [names](docs/OVERVIEW.md#names) of the project's parts.
 - [WORLDPACK.md](docs/WORLDPACK.md): the world pack format
 - [WORLDCHECKER.md](docs/WORLDCHECKER.md): the World Checker, the World Kit's in-level
   verification
+- [The Reference Renderer](tests/reference_renderer/README.md): the console checked against an
+  independent renderer (`make rendercheck`)
 - [The Akari extension](tools/vscode-akari/README.md) for VS Code syntax highlighting
 
 **Project**
