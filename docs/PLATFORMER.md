@@ -51,10 +51,17 @@ Replaces the triple jump. To explore:
 
 ### Timing
 
-The timing windows above will be counted in frames, so the game's frame rate must be confirmed
-before any of them is written down. The console ticks 60 times a second, but a frame that is
-shown late lasts more than one tick ([DECISIONS.md, "Lag"](DECISIONS.md#lag)), so the same
-number of frames can be a longer time.
+The console ticks 60 times a second, and a frame that is on budget is shown every tick, so the
+target is 60 frames a second and one frame is 1/60 s. Measured on 2026-10-03 over 1,200 ticks
+each with `mei-headless --gpu-stats`: Sun & Moon Orbs and Lantern Lake both present a frame on
+every tick (Orbs: CPU median 256,000 of 500,000 cycles, GPU median 525,000 of 1,000,000).
+
+A frame that is over budget is shown late and lasts more than one tick
+([DECISIONS.md, "Lag"](DECISIONS.md#lag)), and the pads are only read when a frame is presented.
+So timing windows are to be counted in ticks (the `FRAME` register advances every tick), not in
+presented frames: a three-tick window is then the same length of time whether or not a frame was
+late, though a late frame still means one fewer chance to read the button inside it. The garden's
+frame-timing readout should show both.
 
 ## The movement garden
 
@@ -75,3 +82,39 @@ example), growing as the moves need. It is where movement is tuned, so it has:
 
 [WORLDKIT.md, "Build order"](WORLDKIT.md#build-order) says what each stage proves and what the
 kits need first.
+
+## Ideas under consideration
+
+These are not decided. They are recorded so they are not lost, and each says what it would ask
+of the kits.
+
+### Elevated train lines
+
+The city has a lot of rail, and none of it is underground: the lines run above the streets on
+viaducts, each line in its own colour. The player can jump onto a train and off it again. Whether
+the inside of a train can be entered is open, and the roof is where the play is; a walkable
+interior that is also moving is a hard case and may not be worth it.
+
+What it gives the game: coloured lines are landmarks visible from anywhere, which is how a player
+finds their way around an open world; train roofs are moving platforms; a viaduct is a long rail
+to grind; stations are hubs. This is the "riding traffic" move in its intended form.
+
+What it asks of the kits: a viaduct is a path (the World Kit's swept path, not yet built), and the
+same line can be the track mesh, the train's route and a grind rail. A train is an entity with
+collision in its own moving frame, which the pack format already carries. A station concourse is
+a natural seam for the texture swap between districts.
+
+### A second city
+
+After the first city (Tokyo-like), a second (Kyoto-like): a Johto to its Kanto. The game becomes
+twice as large, with two areas of different character: low-rise streets, temples, hills, a river
+and bamboo against rooftops and neon. The first city would hold some fixed number of the
+collectible (65 was mentioned; undecided) before the second opens.
+
+It should not feel disconnected. A portal was the first thought; a long-distance train between the
+two cities would make the transition feel like travel and fits the elevated lines above.
+
+What it asks of the kits: nothing new in the format. A second city is a second world, and a door
+in one world can already name another. It leans on terrain (heightfields and paths) far more than
+the first city does. The cost is content, so the first city should be designed so that nothing
+assumes it is the only world, and the second decided once a district of the first exists.
