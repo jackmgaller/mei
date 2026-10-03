@@ -1,0 +1,30 @@
+{
+  "format": "mei-asset", "version": 1, "name": "cottage",
+  "materials": {
+    "plaster": {"color": "#e7cb95"}, "roof": {"color": "#566f88"},
+    "wood": {"color": "#8a5745"}, "glass": {"color": "#98c8ce"},
+    "stone": {"color": "#9ca397"}, "trim": {"color": "#f6deb0"}
+  },
+  "prototypes": {
+    "window": {"op":"group", "children":[
+      {"id":"frame","op":"box","size":[0.43,0.5,0.08],"material":"trim"},
+      {"id":"pane","op":"box","size":[0.34,0.41,0.02],"material":"glass","transform":{"translate":[0,0,-0.05]}},
+      {"id":"cross_v","op":"box","size":[0.04,0.42,0.025],"material":"wood","transform":{"translate":[0,0,-0.07]}},
+      {"id":"cross_h","op":"box","size":[0.35,0.04,0.025],"material":"wood","transform":{"translate":[0,0,-0.071]}}
+    ]}
+  },
+  "nodes": [
+    {"id":"foundation","op":"box","size":[2.3,0.2,1.9],"material":"stone","transform":{"translate":[0,0.1,0]}},
+    {"id":"walls","op":"extrude","points":[[-1,0.2],[1,0.2],[1,1.7],[0,2.45],[-1,1.7]],"depth":1.6,"material":"plaster"},
+    {"id":"roof","op":"extrude","points":[[-1.22,1.63],[0,2.59],[1.22,1.63],[1.22,1.78],[0,2.74],[-1.22,1.78]],"depth":2.02,"material":"roof"},
+    {"id":"door","op":"extrude","points":[[-0.23,0],[0.23,0],[0.23,0.72],[0.13,0.85],[-0.13,0.85],[-0.23,0.72]],"depth":0.06,"material":"wood","transform":{"translate":[0,0.2,-0.82]}},
+    {"id":"step","op":"box","size":[0.65,0.13,0.4],"material":"stone","transform":{"translate":[0,0.1,-1.03]}},
+    {"id":"front_windows","op":"group","children":[
+      {"id":"window","op":"instance","ref":"window","transform":{"translate":[0.64,1.02,-0.84]}}
+    ],"modifiers":[{"op":"mirror","axis":"x"}]},
+    {"id":"side_windows","op":"instance","ref":"window","modifiers":[{"op":"array","count":2,"step":[0.8,0,0]}],"transform":{"rotate":[0,-90,0],"translate":[1.04,1.04,-0.4]}},
+    {"id":"chimney","op":"box","size":[0.32,0.83,0.34],"material":"wood","transform":{"translate":[0.58,2.28,0.43]}},
+    {"id":"chimney_cap","op":"box","size":[0.43,0.12,0.44],"material":"stone","transform":{"translate":[0.58,2.72,0.43]}},
+    {"id":"ridge","op":"cylinder","radius":0.07,"height":2.08,"segments":6,"material":"trim","transform":{"rotate":[90,0,0],"translate":[0,2.73,0]}}
+  ]
+}
