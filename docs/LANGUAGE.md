@@ -1844,7 +1844,7 @@ register-allocation, inlining, `let` forwarding and induction-pointer work):
 
 ## Limitations
 
-- No generics (except the built-ins above), unions, methods or operator overloading.
+- No generics (except the built-ins above), unions or operator overloading.
 - Closures capture at most 3 one-word values, by copy, read-only (no vectors, structs, arrays or
   function values). Const data may hold named functions and the addresses of embeds, strings
   and const data, but not function literals or addresses of variables.
@@ -1868,3 +1868,8 @@ register-allocation, inlining, `let` forwarding and induction-pointer work):
 `// flags: ARGS` (extra `meic` arguments), `// broadcast: FILE` and `// broadcast-noise: BER` (replay a broadcast recording) and `// warning: TEXT` (the build must give this
 warning; with several such lines, exactly that many warnings) adjust a test). `tools/fuzz_lang.py [count] [seed]` compiles
 random programs and checks their output against a Python model of the CPU's arithmetic.
+
+`tests/test_lang.c` also exercises all five data/code ergonomics features through the compiler
+library and a virtual filesystem, including repeated recovery from failed compilations.
+`tools/fuzz_language_round.py [count] [seed]` combines namespaced types, UFCS, packed flags,
+`fixed16` and slice intrinsics, checking release/debug output against a Python model.
