@@ -220,8 +220,8 @@ var __wp_layer_on: [32]u8
 var __wp_origin: vec3
 var __wp_planes: [6]vec4
 var __wp_track_n: s32
-var __wp_track_cell: [25]u32
-var __wp_track_mask: [25]u32
+var __wp_track_cell: [WP_MAX_TRACK]u32
+var __wp_track_mask: [WP_MAX_TRACK]u32
 
 // ---- opening a pack
 
@@ -235,8 +235,8 @@ fn wp_open(pack: *u8) -> bool {
         println("wp_open: not a world pack")
         return false
     }
-    if h.major != 1 {
-        println("wp_open: pack version is not 1.x")
+    if h.major != 1 || h.flags & 0xF0 != 0 {
+        println("wp_open: pack version is not 1.x, or needs a newer reader")
         return false
     }
     let shift = h.cell_shift as s32
@@ -790,8 +790,8 @@ fn wp_track(p: vec3, radius: s32, spawn: fn(*WpEntity), retire: fn(*WpEntity)) {
     let r = clamp(radius, 0, 2)
     let ci = wp_cell_index(p.x)
     let cj = wp_cell_index(p.z)
-    var ncell: [25]u32
-    var nmask: [25]u32
+    var ncell: [WP_MAX_TRACK]u32
+    var nmask: [WP_MAX_TRACK]u32
     var nn = 0
     for dj in -r..r + 1 {
         for di in -r..r + 1 {

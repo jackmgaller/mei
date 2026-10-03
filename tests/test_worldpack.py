@@ -176,12 +176,14 @@ class EncoderTests(unittest.TestCase):
             'size': good[:-4],
             'truncated': good[:100],
             'shift': good[:12] + bytes([9]) + good[13:],
+            'required flag': good[:13] + bytes([0x10]) + good[14:],
         }
         for name, data in cases.items():
             with self.subTest(name), self.assertRaises(PackError):
                 decode(data)
         # a newer minor version is still read
         decode(good[:6] + struct.pack('<H', 7) + good[8:])
+        decode(good[:13] + bytes([0x01]) + good[14:])     # an ignorable flag
         # corrupt offsets anywhere in the cell table must be caught, never crash
         p = decode(good)
         rng = random.Random(5)
@@ -690,6 +692,19 @@ class DemoTests(unittest.TestCase):
         self.assertEqual(sorted(steps[5]), ['retire 3', 'spawn 0', 'spawn 1'])
         self.assertEqual(sorted(steps[6]), ['retire 0', 'retire 1'])
 
+    def test_open_checks_the_version(self):
+        good = encode(World(cells=[Cell(0, 0)], cell_shift=5))
+        cases = [(good, 'open 1 32'),
+                 (good[:6] + struct.pack('<H', 9) + good[8:], 'open 1 32'),       # a newer minor
+                 (good[:13] + bytes([0x01]) + good[14:], 'open 1 32'),            # an ignorable flag
+                 (good[:4] + struct.pack('<H', 2) + good[6:], 'open 0'),          # another major
+                 (good[:13] + bytes([0x10]) + good[14:], 'open 0'),               # a required feature
+                 (b'MEIX' + good[4:], 'open 0')]
+        for data, want in cases:
+            with tempfile.TemporaryDirectory() as tmp:
+                lines = F.run_cart(tmp, 'open.akr', {'PACK': ('u8', data)})
+            self.assertEqual(lines[-1], want)
+
     def test_palettes_and_textures(self):
         lines, _ = self.run_demo(4)
         self.assertEqual(lines[-1], 'done')
@@ -697,6 +712,10 @@ class DemoTests(unittest.TestCase):
         self.assertEqual(vals['day'], '32767 31 992')
         self.assertEqual(vals['night'], '1057 16 512')
         self.assertEqual(vals['texture'], '0 1 255')
+        for d, a, b in zip(*(map(int, vals[k].split()) for k in ('dusk', 'day', 'night'))):
+            for sh in (0, 5, 10):          # each 5-bit channel half way, give or take one
+                ca, cb, cd = (a >> sh) & 31, (b >> sh) & 31, (d >> sh) & 31
+                self.assertLessEqual(abs(cd - (ca + cb) / 2), 1)
 
 
 def meshlib_rgb(r, g, b):

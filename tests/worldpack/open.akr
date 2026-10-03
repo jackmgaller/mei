@@ -1,0 +1,14 @@
+// Prints whether wp_open() accepts PACK (embedded by the test's wrapper), and its cell size.
+
+import "worldpack.akr"
+
+fn init() {
+    let ok = wp_open(PACK)
+    print("open ")
+    print_int(ok as s32)
+    if ok {
+        print_char(' ')
+        print_int(wp_cell_size())
+    }
+    println("")
+}

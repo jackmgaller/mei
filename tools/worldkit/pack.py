@@ -55,6 +55,7 @@ MAX_COORD = 4096            # |local collision coordinate| and |y| (units)
 MAX_WORLD = 32767           # |world x, z| of everything (units)
 MAX_MESH_VERTS = 2048
 FLAG_SAVED = 1
+FLAGS_REQUIRED = 0xF0       # header flag bits a reader must understand (none defined in 1.0)
 
 KIND_FLOOR, KIND_WALL, KIND_CEILING = 0, 1, 2
 KIND_NAMES = ('floor', 'wall', 'ceiling')
@@ -942,6 +943,8 @@ def decode(data):
         raise PackError(f'pack size field {size} does not match its {len(data)} bytes')
     (shift, flags, hs, i0, j0, gw, gh, index_off, pad, overhang, nreg, nlay, reg_off, lay_off,
      nent, ent_dir, nmesh, mesh_dir) = r.u('BBHhhHHIiiHHIIIIII', 12, 'header')
+    if flags & FLAGS_REQUIRED:
+        raise PackError(f'pack needs features this reader lacks (header flags {flags:#x})')
     if hs < HEADER_SIZE or hs % 4 or hs > size:
         raise PackError('bad header size')
     if not MIN_CELL_SHIFT <= shift <= MAX_CELL_SHIFT:
