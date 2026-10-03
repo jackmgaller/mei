@@ -29,7 +29,7 @@ import math, os, sys, wave
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, 'carts', 'lantern')
+OUT = os.path.join(ROOT, 'carts', 'lantern', 'audio')
 PREVIEW = None
 if '--review' in sys.argv:
     PREVIEW = sys.argv[sys.argv.index('--review') + 1]
