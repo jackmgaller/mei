@@ -116,6 +116,8 @@ def compile_recipe(recipe):
     for name,mat in recipe.get('materials',{}).items():
         if mat.get('class') == 'emissive' and mat.get('palette') is False:
             raise AssetError(f'/materials/{name}/palette','Emissive materials are always drawn through palette entries of their own. Remove palette: false, or use class "surface".')
+        if 'share' in mat and not palette_backed(mat):
+            raise AssetError(f'/materials/{name}/share','share only applies to palette-backed materials. Set palette: true, or remove share.')
     mesh.palette = assign_palette(mesh,materials,recipe)
     return mesh, materials, report(mesh,recipe,budget,materials)
 
@@ -134,15 +136,16 @@ def rgb15(color):
 
 def assign_palette(mesh, materials, recipe):
     """One 4-bit palette entry per distinct (class, colour) among the palette-backed materials
-    the mesh uses: surface entries first, then emissive, indices 1-15 of consecutive palettes.
-    Index 0 is never assigned (the GPU never draws it)."""
+    the mesh uses, and one of its own for each material with share: false: surface entries
+    first, then emissive, indices 1-15 of consecutive palettes. Index 0 is never assigned (the
+    GPU never draws it)."""
     used = sorted({f.material for f in mesh.faces})
     keys, owners = [], defaultdict(list)
     for kind in ('surface','emissive'):
         for name in used:
             mat = materials[name]
             if palette_backed(mat) and mat.get('class','surface') == kind:
-                key = (kind,mat['color'].lower())
+                key = (kind,mat['color'].lower()) if mat.get('share',True) else (kind,mat['color'].lower(),name)
                 if key not in owners: keys.append(key)
                 owners[key].append(name)
     if not keys:
@@ -158,6 +161,7 @@ def assign_palette(mesh, materials, recipe):
         palette, index = layout['first']+i//15, 1+i%15
         entry = {'colour':palette*16+index,'palette':palette,'index':index,'class':key[0],
                  'color':key[1],'rgb15':rgb15(key[1]),'materials':owners[key]}
+        if len(key) == 3: entry['separate'] = True    # share: false; never merged with another
         entries.append(entry)
         for name in owners[key]: by_material[name] = entry
     return {'layout':layout,'palettes':list(range(layout['first'],layout['first']+count)),
@@ -174,14 +178,9 @@ def face_runs(mesh, keep):
     return runs
 
 
-def uses_material_features(recipe):
-    return any(key in mat for mat in recipe.get('materials',{}).values() for key in ('palette','class','tag'))
-
-
 def material_manifest(mesh, materials, recipe):
     """The consumer's view of materials: palette entries and their defaults, classes, tags
-    and the faces each covers. Written only for recipes using the material extensions."""
-    if not uses_material_features(recipe): return None
+    and the faces each covers. Written for every build."""
     name, palette = recipe['name'], mesh.palette
     used = sorted({f.material for f in mesh.faces})
     result = {'format':'mei-asset-materials','version':1,'name':name}

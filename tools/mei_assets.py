@@ -42,10 +42,9 @@ def artifacts(recipe, mesh, materials, report):
         'preview.akr':source(name,report['bounds'],load=bool(mesh.palette)).encode(),
         'report.json':(json.dumps(report,indent=2)+'\n').encode(),
     }
-    # Only recipes using the material extensions produce these, so legacy builds are unchanged.
-    manifest = material_manifest(mesh,materials,recipe)
-    if manifest is not None:
-        files[name+'.materials.json'] = (json.dumps(manifest,indent=2)+'\n').encode()
+    # Every build has a manifest; only palette-backed meshes have palettes and a swatch, so
+    # the files legacy recipes always had are unchanged.
+    files[name+'.materials.json'] = (json.dumps(material_manifest(mesh,materials,recipe),indent=2)+'\n').encode()
     if mesh.palette:
         files[name+'.pal'] = palette_bytes(mesh)
         files[name+'.swatch'] = SWATCH

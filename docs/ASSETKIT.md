@@ -325,6 +325,7 @@ every face using it. Material fields:
 | `palette` | `false` (`true` when emissive) | Draw through a palette entry |
 | `class` | `"surface"` | `"emissive"`: palette entries of its own, never shaded, reported separately |
 | `tag` | none | Opaque surface tag (a name), carried to the outputs; the kit does not interpret it |
+| `share` | `true` | Palette-backed only. `false`: an entry of its own, never shared (below) |
 
 ```json
 "materials": {
@@ -349,9 +350,11 @@ colour, so shape shading survives any recolouring. Smooth materials still get Go
 **Entries.** The kit gives one entry to each distinct colour per class among the palette-backed
 materials the mesh uses: surface entries first, then emissive, as indices 1–15 of palette
 `first`, then of `first + 1`, and so on. Index 0 is never used, since the GPU never draws it.
-Surface materials with the same colour share an entry and recolour together (use different
-colours to recolour them separately); an emissive material never shares an entry with a surface
-one, even with the same colour, so a cart can drive emissives with a different curve.
+Surface materials with the same colour share an entry and recolour together by default; give a
+material `"share": false` to force an entry of its own, so it can be recoloured separately while
+looking the same by default (its manifest entry says `"separate": true`, and a packer keeps it
+separate too). An emissive material never shares an entry with a surface one, even with the same
+colour, so a cart can drive emissives with a different curve.
 
 **Emissive shading.** An emissive surface's brightness is its palette entry's, not the light's:
 its tint is 128 at every vertex, whatever the lighting, `smooth` or orientation. Brightening or
@@ -417,16 +420,19 @@ For an asset named `stool`, `build` produces:
 | `stool.model.json` | Explicit geometry in Mei Modeler's project format |
 | `preview.akr` | Standalone camera-fitted preview cart source |
 | `report.json` | Build costs, hashes, per-part diagnostics and optional native render results |
+| `stool.materials.json` | Material manifest: palette entries, classes, tags and face ranges (below) |
 
-Recipes that use material `palette`, `class` or `tag` also get:
+Recipes with palette-backed materials also get:
 
 | File | Purpose |
 |---|---|
-| `stool.materials.json` | Material manifest: palette entries, classes, tags and face ranges (below) |
 | `stool.pal` | Default colours of the palettes used, 15-bit, 16 per palette (unused indices 0) |
-| `stool.swatch` | The 8-byte swatch row: texel `u` holds index `u` (palette-backed only) |
+| `stool.swatch` | The 8-byte swatch row: texel `u` holds index `u` |
 
-Recipes using none of the extensions build byte-identical outputs to earlier versions of the kit.
+Recipes using none of the material extensions build byte-identical files to earlier versions of
+the kit; the manifest, written for every build so that a packer reads one shape of data for every
+asset, is the only addition (for such a recipe it lists each material's colour, triangles and
+faces, with no palette and no tags).
 
 Import the `.akr` from your cart and draw normally:
 

@@ -17,7 +17,8 @@ MATERIAL = obj({'color':{'type':'string','pattern':r'^#[0-9a-fA-F]{6}$'},
                 'smooth':BOOL,'double_sided':BOOL,
                 'palette':dict(BOOL,description='Draw through a 4-bit palette entry (a textured swatch face tinted by the baked shade), so rewriting the palette recolours it. Default false; true for emissive.'),
                 'class':dict(choice('surface','emissive'),description='emissive: own palette entries, never shaded, reported separately. Default surface.'),
-                'tag':dict(NAME,description='Opaque surface tag carried to the material manifest; not interpreted by the kit.')}, ['color'])
+                'tag':dict(NAME,description='Opaque surface tag carried to the material manifest; not interpreted by the kit.'),
+                'share':dict(BOOL,description='Palette-backed materials only. Default true: share a palette entry with every material of the same class and colour. false: an entry of its own, so it can be recoloured separately.')}, ['color'])
 PALETTE_LAYOUT = dict(obj({'slot':integer(0,14),'row':integer(0,255),'first':integer(0,254)}),
                       description='Where palette-backed materials live: swatch texels u 0-15 of row `row` in texture slot `slot` (default 14, 0); entries from 4-bit palette `first` (default 0).')
 VERIFICATION = obj({'required':BOOL,'yaw_steps':integer(4,120),
