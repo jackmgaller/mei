@@ -1,0 +1,491 @@
+"""The World Checker's static checks: what can be checked from a pack without rendering.
+
+Collision is read back from the pack as the console reads it: the floor, wall and ceiling
+records of every cell's block, translated to world rows (exactly: cell centres are whole units)
+and merged across the cells they were copied into. Floor queries here are the reader's, bit for
+bit (the same bucket, the same integer edge tests and height rows), so a hole found here is a
+hole the console has. See docs/WORLDCHECKER.md.
+"""
+from dataclasses import dataclass
+import math
+import struct
+
+from .pack import ONE, KIND_FLOOR, KIND_WALL, KIND_CEILING, mesh_info
+from .verify_render import checkable
+
+FLAT_RAYS = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1),
+             (1, 1, 1), (1, 1, -1), (1, -1, 1), (1, -1, -1), (-1, 1, 1), (-1, 1, -1), (-1, -1, 1), (-1, -1, -1)]
+
+
+@dataclass
+class WTri:
+    """A collision triangle in world coordinates, as the pack stores it."""
+    kind: int
+    rows: tuple         # floors/ceilings: ((a, b, c), (e0, e1, e2) of (mx, mz, k)); walls: (p, edges, push)
+    layer: int          # layer id, or None
+    surface: int
+    tag: int
+    cell: tuple         # a cell that holds it
+    verts: tuple = None  # corners (world units, float), reconstructed from the rows
+
+
+def _centre(pack, i, j):
+    half = 1 << (15 + pack.cell_shift)
+    return (i << (16 + pack.cell_shift)) + half, (j << (16 + pack.cell_shift)) + half
+
+
+def _layer_of(cell, info):
+    m = (info >> 8) & 255
+    if not m:
+        return None
+    return cell.layers[m.bit_length() - 1]
+
+
+def _flat_corners(h, edges):
+    """Corners (world units) of a floor or ceiling: where consecutive edge lines meet."""
+    pts = []
+    for e in range(3):
+        a1, b1, c1 = edges[e - 1]
+        a2, b2, c2 = edges[e]
+        det = a1 * b2 - a2 * b1
+        if det == 0:
+            return None
+        x = -ONE * (c1 * b2 - c2 * b1) / det
+        z = -ONE * (a1 * c2 - a2 * c1) / det
+        y = (h[0] * x + h[1] * z) / ONE + h[2]
+        pts.append((x / ONE, y / ONE, z / ONE))
+    return tuple(pts)
+
+
+def _wall_corners(p, edges):
+    pts = []
+    for e in range(3):
+        rows = [p[:3], edges[e - 1][:3], edges[e][:3]]
+        rhs = [-p[3] * ONE, -edges[e - 1][3] * ONE, -edges[e][3] * ONE]
+        m = [[float(v) for v in r] for r in rows]
+        det = _det3(m)
+        if det == 0:
+            return None
+        sol = []
+        for k in range(3):
+            mk = [r[:] for r in m]
+            for r in range(3):
+                mk[r][k] = rhs[r]
+            sol.append(_det3(mk) / det / ONE)
+        pts.append(tuple(sol))
+    return tuple(pts)
+
+
+def _det3(m):
+    return (m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+            m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]))
+
+
+def world_triangles(pack):
+    """Every collision triangle of the pack's cells, once, in world rows (a triangle copied into
+    several cells gives identical world rows in each)."""
+    seen = {}
+    for (i, j) in sorted(pack.cells, key=lambda ij: (ij[1], ij[0])):
+        c = pack.cells[(i, j)]
+        if c.coll is None:
+            continue
+        cx, cz = _centre(pack, i, j)
+        for kind, recs in ((KIND_FLOOR, c.coll.floors), (KIND_CEILING, c.coll.ceilings)):
+            for a, b, cc, info, edges, ymin, ymax in recs:
+                h = (a, b, cc - (a * cx + b * cz) // ONE)
+                ed = tuple((mx, mz, k - (mx * cx + mz * cz) // ONE) for mx, mz, k in edges)
+                key = (kind, h, ed, info & 0xFFFF00FF, _layer_of(c, info))
+                if key not in seen:
+                    seen[key] = WTri(kind, (h, ed), _layer_of(c, info), info & 255, info >> 16, (i, j),
+                                     _flat_corners(h, ed))
+        for p, edges, hx, hz, inv, info in c.coll.walls:
+            pw = (p[0], p[1], p[2], p[3] - (p[0] * cx + p[2] * cz) // ONE)
+            ed = tuple((ux, uy, uz, k - (ux * cx + uz * cz) // ONE) for ux, uy, uz, k in edges)
+            key = (KIND_WALL, pw, ed, info & 0xFFFF00FF, _layer_of(c, info))
+            if key not in seen:
+                seen[key] = WTri(KIND_WALL, (pw, ed), _layer_of(c, info), info & 255, info >> 16, (i, j),
+                                 _wall_corners(pw, ed))
+    return list(seen.values())
+
+
+# ---- the reader's floor query, exactly
+
+def reader_floor(pack, x, y, z, layers_on, above=0):
+    """wp_floor() at raw world point (x, y, z): the height (raw) of the highest present floor at
+    or below y + above whose edge rows accept the point, and its tag; or None."""
+    (i, j), lx, lz = pack.cell_of(x, z)
+    c = pack.cells.get((i, j))
+    if c is None or c.coll is None:
+        return None
+    mask = sum(1 << k for k, lid in enumerate(c.layers) if lid in layers_on)
+    lim = y + above
+    best = None
+    for fid in c.coll.bucket(lx, lz)[0]:
+        a, b, cc, info, edges, _, _ = c.coll.floors[fid]
+        lm = (info >> 8) & 255
+        if lm and not lm & mask:
+            continue
+        if any(mx * lx + mz * lz + k * ONE < 0 for mx, mz, k in edges):
+            continue
+        h = (a * lx + b * lz + cc * ONE) >> 16
+        if h > lim or (best is not None and h <= best[0]):
+            continue
+        best = (h, info >> 16, info & 255)
+    return best
+
+
+# ---- collision checks
+
+def _present(t, layers_on):
+    return t.layer is None or t.layer in layers_on
+
+
+def _height(t, x, z):
+    a, b, c = t.rows[0]
+    return (a * x * ONE + b * z * ONE) / ONE / ONE + c / ONE
+
+
+def _same_ends(a, b, tol=2e-3):
+    (p, q), (r, s) = a, b
+    close = lambda u, v: abs(u[0] - v[0]) <= tol and abs(u[2] - v[2]) <= tol  # noqa: E731
+    return (close(p, r) and close(q, s)) or (close(p, s) and close(q, r))
+
+
+def _boundary_edges(floors):
+    """Edges of floors with no neighbour across them: no other floor has the exactly opposite
+    edge row with the same ends (a row says only which line; the corners, worked out from the
+    rounded rows, agree to well within 2/1000 of a unit)."""
+    edges = {}
+    for t in floors:
+        if t.verts is None:
+            continue
+        for e, row in enumerate(t.rows[1]):
+            edges.setdefault(row, []).append((t.verts[e], t.verts[(e + 1) % 3]))
+    out = []
+    for t in floors:
+        if t.verts is None:
+            continue
+        for e, row in enumerate(t.rows[1]):
+            # edge e runs between the corners where edge lines e-1/e and e/e+1 meet
+            p, q = t.verts[e], t.verts[(e + 1) % 3]
+            if any(_same_ends((p, q), o) for o in edges.get((-row[0], -row[1], -row[2]), ())):
+                continue
+            out.append((t, row, p, q))
+    return out
+
+
+def crack_check(pack, floors_all, layers_on, probe, settings, limit):
+    """Holes in walkable floors that a point query can fall through: from points along each
+    boundary edge of a floor, step outward up to probe radius; a gap (no floor within probe step
+    of the edge's height) followed by a floor again is a crack. Also boundary edges that run
+    along another floor's boundary edge, facing it, at a height within probe step, without
+    sharing its rows: a T-junction or mismatched corners (WORLDPACK.md, "Floor and ceiling
+    records"), which leave a sliver no row accepts."""
+    floors = [t for t in floors_all if t.kind == KIND_FLOOR and _present(t, layers_on)]
+    edges = _boundary_edges(floors)
+    radius, step = probe['radius'], probe['step']
+    per_unit = settings['crack_samples_per_unit']
+    offsets = [1 / ONE, 2 / ONE, 4 / ONE, 16 / ONE, 1 / 256, 1 / 64]
+    t = 1 / 16
+    while t <= radius + 1e-9:
+        offsets.append(t)
+        t += 1 / 16
+    S = 1 << pack.cell_shift
+    findings = {}
+    count = 0
+    for tri, row, p, q in edges:
+        ln = math.hypot(q[0] - p[0], q[2] - p[2])
+        if ln == 0:
+            continue
+        mlen = math.hypot(row[0], row[1])
+        out = (-row[0] / mlen, -row[1] / mlen)
+        n = max(2, min(64, math.ceil(ln * per_unit)))
+        for s in range(n):
+            f = (s + 0.5) / n
+            px, pz = p[0] + (q[0] - p[0]) * f, p[2] + (q[2] - p[2]) * f
+            h = _height(tri, px, pz)
+            gap = None
+            for off in offsets:
+                x, z = round((px + out[0] * off) * ONE), round((pz + out[1] * off) * ONE)
+                got = reader_floor(pack, x, round((h + step) * ONE), z, layers_on)
+                present = got is not None and got[0] >= (h - step) * ONE
+                if not present and gap is None:
+                    gap = off
+                elif present and gap is not None:
+                    count += 1
+                    key = (tri.tag, got[1], tri.cell)
+                    if key not in findings:
+                        findings[key] = {'code': 'crack', 'cell': list(tri.cell), 'floor_tag': tri.tag,
+                                         'beyond_tag': got[1], 'at': [round(px, 4), round(h, 4), round(pz, 4)],
+                                         'gap': [round(gap, 6), round(off, 6)], 'samples': 0,
+                                         'on_seam': _on_seam(px, pz, S)}
+                    findings[key]['samples'] += 1
+                    break
+    # collinear boundary edges facing each other without shared rows
+    lines = {}
+    for tri, row, p, q in edges:
+        mlen = math.hypot(row[0], row[1])
+        nx, nz = row[0] / mlen, row[1] / mlen
+        off = row[2] * ONE / mlen / ONE        # n . x + off = 0, units
+        sgn = 1 if (nx > 1e-9 or (abs(nx) <= 1e-9 and nz > 0)) else -1
+        key = (round(math.atan2(sgn * nz, sgn * nx) * 2000), round(sgn * off * 128))
+        lines.setdefault(key, []).append((tri, row, p, q, sgn))
+    mism = {}
+    for key, group in sorted(lines.items()):
+        cands = list(group)
+        for dk in ((0, 1), (1, 0), (1, 1), (0, -1), (-1, 0), (-1, -1), (1, -1), (-1, 1)):
+            cands += lines.get((key[0] + dk[0], key[1] + dk[1]), [])
+        for a in group:
+            for b in cands:
+                if a is b or a[4] == b[4] or id(a[0]) >= id(b[0]):
+                    continue
+                r = _facing_overlap(a, b, step)
+                if r is None:
+                    continue
+                k2 = (a[0].tag, b[0].tag, a[0].cell)
+                if k2 not in mism:
+                    mx_, mz_ = r
+                    mism[k2] = {'code': 'edge_mismatch', 'cell': list(a[0].cell), 'floor_tag': a[0].tag,
+                                'beyond_tag': b[0].tag,
+                                'at': [round(mx_, 4), round(_height(a[0], mx_, mz_), 4), round(mz_, 4)],
+                                'on_seam': _on_seam(mx_, mz_, S)}
+    found = list(findings.values()) + list(mism.values())
+    found.sort(key=lambda f: (f['code'], f['cell'], f['floor_tag'], f['beyond_tag']))
+    return found[:limit], len(found), len(edges), count
+
+
+def _on_seam(x, z, S):
+    return abs(x / S - round(x / S)) * S < 1e-3 or abs(z / S - round(z / S)) * S < 1e-3
+
+
+def _facing_overlap(a, b, step):
+    """Whether boundary edges a and b lie on one line (within 1/1024 unit), face each other,
+    overlap by more than 1/256 unit and are at heights within step there: the midpoint."""
+    ta, ra, pa, qa, _ = a
+    tb, rb, pb, qb, _ = b
+    la, lb = math.hypot(ra[0], ra[1]), math.hypot(rb[0], rb[1])
+    if abs(ra[0] / la + rb[0] / lb) > 1e-4 or abs(ra[1] / la + rb[1] / lb) > 1e-4:
+        return None
+    # distance of b's ends from a's line
+    for pt in (pb, qb):
+        if abs((ra[0] * pt[0] + ra[1] * pt[2]) / la + ra[2] / la) > 1 / 1024:
+            return None
+    dx, dz = qa[0] - pa[0], qa[2] - pa[2]
+    ln = math.hypot(dx, dz)
+    if ln == 0:
+        return None
+    ux, uz = dx / ln, dz / ln
+    sa = sorted([0.0, ln])
+    sb = sorted([(pb[0] - pa[0]) * ux + (pb[2] - pa[2]) * uz, (qb[0] - pa[0]) * ux + (qb[2] - pa[2]) * uz])
+    lo, hi = max(sa[0], sb[0]), min(sa[1], sb[1])
+    if hi - lo <= 1 / 256:
+        return None
+    mid = (lo + hi) / 2
+    x, z = pa[0] + ux * mid, pa[2] + uz * mid
+    if abs(_height(ta, x, z) - _height(tb, x, z)) > step:
+        return None
+    return x, z
+
+
+def _ray_hit(t, a, d):
+    """First crossing of segment a + d s (s in 0..1, world units) with triangle t, as the reader
+    tests it in floating point: (s, from_behind) or None. Points it starts on do not count."""
+    if t.kind == KIND_WALL:
+        p, edges = t.rows
+        n = [p[0] / ONE, p[1] / ONE, p[2] / ONE]
+        fa = n[0] * a[0] + n[1] * a[1] + n[2] * a[2] + p[3] / ONE
+        fb = fa + n[0] * d[0] + n[1] * d[1] + n[2] * d[2]
+    else:
+        (ha, hb, hc), edges = t.rows
+        fa = a[1] - (ha * a[0] + hb * a[2]) / ONE - hc / ONE
+        bx, by, bz = a[0] + d[0], a[1] + d[1], a[2] + d[2]
+        fb = by - (ha * bx + hb * bz) / ONE - hc / ONE
+    if abs(fa) < 1e-6 or not ((fa > 0 and fb <= 0) or (fa < 0 and fb >= 0)):
+        return None
+    s = fa / (fa - fb)
+    q = (a[0] + d[0] * s, a[1] + d[1] * s, a[2] + d[2] * s)
+    if t.kind == KIND_WALL:
+        if any((e[0] * q[0] + e[1] * q[1] + e[2] * q[2]) / ONE + e[3] / ONE < -1e-6 for e in edges):
+            return None
+        back = fa < 0
+    else:
+        if any((e[0] * q[0] + e[1] * q[2]) / ONE + e[2] / ONE < -1e-6 for e in edges):
+            return None
+        back = (t.kind == KIND_FLOOR) == (fa < 0)
+    return s, back
+
+
+class TriGrid:
+    """Triangles filed by their boxes on a 4-unit grid over x and z, for segment queries."""
+    CELL = 4.0
+
+    def __init__(self, tris):
+        self.cells = {}
+        self.box = {}
+        for n, t in enumerate(tris):
+            if t.verts is None:
+                lo, hi = (-1e9,) * 3, (1e9,) * 3
+                self.cells.setdefault(None, []).append(n)
+            else:
+                lo = tuple(min(v[k] for v in t.verts) for k in range(3))
+                hi = tuple(max(v[k] for v in t.verts) for k in range(3))
+                for gx in range(math.floor(lo[0] / self.CELL), math.floor(hi[0] / self.CELL) + 1):
+                    for gz in range(math.floor(lo[2] / self.CELL), math.floor(hi[2] / self.CELL) + 1):
+                        self.cells.setdefault((gx, gz), []).append(n)
+            self.box[n] = (lo, hi)
+        self.tris = tris
+
+    def near(self, lo, hi):
+        found = set(self.cells.get(None, ()))
+        for gx in range(math.floor(lo[0] / self.CELL), math.floor(hi[0] / self.CELL) + 1):
+            for gz in range(math.floor(lo[2] / self.CELL), math.floor(hi[2] / self.CELL) + 1):
+                found.update(self.cells.get((gx, gz), ()))
+        return [self.tris[n] for n in sorted(found)
+                if all(self.box[n][0][k] <= hi[k] + 1e-3 and self.box[n][1][k] >= lo[k] - 1e-3 for k in range(3))]
+
+
+def first_hit(grid, a, d, layers_on=None):
+    """The nearest crossing of segment a -> a + d with a triangle in grid (present under
+    layers_on, or every triangle when None): (s, from_behind, triangle) or None."""
+    best = None
+    lo = [min(a[k], a[k] + d[k]) for k in range(3)]
+    hi = [max(a[k], a[k] + d[k]) for k in range(3)]
+    for t in grid.near(lo, hi):
+        if layers_on is not None and not _present(t, layers_on):
+            continue
+        h = _ray_hit(t, a, d)
+        if h is not None and (best is None or h[0] < best[0]):
+            best = (h[0], h[1], t)
+    return best
+
+
+def entity_check(pack, tris, settings, limit):
+    """Entities whose origin is inside solid collision: every one of 14 rays from it (axes and
+    diagonals, `solid_ray_length` units) first meets a triangle from behind."""
+    S = 1 << pack.cell_shift
+    reach = settings['solid_ray_length']
+    grid = tris if isinstance(tris, TriGrid) else TriGrid(tris)
+    out = []
+    count = 0
+    for (i, j) in sorted(pack.cells, key=lambda ij: (ij[1], ij[0])):
+        c = pack.cells[(i, j)]
+        for e in c.entities:
+            cx, cz = i * S + S / 2, j * S + S / 2
+            o = (e['pos'][0] / ONE + cx, e['pos'][1] / ONE, e['pos'][2] / ONE + cz)
+            on = set()
+            if e['mask']:
+                on.add(c.layers[e['mask'].bit_length() - 1])
+            inside = True
+            hits = []
+            for r in FLAT_RAYS:
+                ln = math.sqrt(sum(x * x for x in r))
+                # a slight skew keeps rays off edges and corners that line up with the axes
+                d = [reach * (r[0] / ln + 0.0123), reach * (r[1] / ln + 0.0071), reach * (r[2] / ln + 0.0037)]
+                h = first_hit(grid, o, d, on)
+                if h is None or not h[1]:
+                    inside = False
+                    break
+                hits.append(h[2].tag)
+            if inside:
+                count += 1
+                if len(out) < limit:
+                    out.append({'code': 'entity_in_solid', 'cell': [i, j], 'entity': e['number'], 'type': e['type'],
+                                'at': [round(x, 4) for x in o], 'enclosing_tags': sorted(set(hits))})
+    return out, count
+
+
+# ---- references and counts
+
+def mesh_triangles_count(data, off):
+    nv, nf, vo, fo = mesh_info(data[off:])
+    tris = 0
+    for k in range(nf):
+        flags = data[off + fo + 36 * k]
+        tris += 2 if flags & 4 else 1
+    return nv, nf, tris
+
+
+def reference_check(pack, far_ring):
+    """Face indices within their meshes, stand-ins where a cell can be seen from 2 or more cells
+    away, layers that are used. Returns (errors, warnings)."""
+    errors, warnings = [], []
+    data = pack.data
+    meshes = set(pack.meshes)
+    for c in pack.cells.values():
+        meshes.update(p['mesh'] for p in c.placements)
+        meshes.update(e['mesh'] for e in c.entities if e['mesh'])
+        if c.standin:
+            meshes.add(c.standin)
+    unverifiable = 0
+    for off in sorted(meshes):
+        nv, nf, vo, fo = mesh_info(data[off:])
+        for k in range(nf):
+            at = off + fo + 36 * k
+            flags = data[at]
+            idx = struct.unpack_from('<4H', data, at + 4)[:4 if flags & 4 else 3]
+            if max(idx) >= nv:
+                errors.append({'code': 'bad_face_index', 'mesh': off, 'face': k,
+                               'message': f'face {k} of the mesh at {off} names vertex {max(idx)} of {nv}'})
+            uv = struct.unpack_from('<4H', data, at + 28)[:len(idx)]
+            tex = data[at + 2]
+            if not checkable(flags, tex, uv):
+                unverifiable += 1
+    if unverifiable:
+        warnings.append({'code': 'unverifiable_faces', 'faces': unverifiable,
+                         'message': 'semi-transparent or textured (not palette swatch) faces: their pixels '
+                                    'are not compared in the ordering check'})
+    cells = set(pack.cells)
+    if far_ring >= 2:
+        for (i, j), c in sorted(pack.cells.items(), key=lambda kv: (kv[0][1], kv[0][0])):
+            if c.standin:
+                continue
+            seen_from = [ij for ij in cells if 2 <= max(abs(ij[0] - i), abs(ij[1] - j)) <= far_ring]
+            if seen_from:
+                errors.append({'code': 'standin_missing', 'cell': [i, j], 'policy': True,
+                               'message': f'cell ({i}, {j}) has no stand-in but is in the far ring of '
+                                          f'{len(seen_from)} cells'})
+    used = set()
+    for c in pack.cells.values():
+        used.update(c.layers)
+    for lid, (name, group, on) in enumerate(pack.layers):
+        if lid not in used:
+            warnings.append({'code': 'layer_unused', 'layer': name, 'message': f'no cell has layer {name!r}'})
+    return errors, warnings
+
+
+def counts(pack):
+    data = pack.data
+    cache = {}
+
+    def mc(off):
+        if off not in cache:
+            cache[off] = mesh_triangles_count(data, off)
+        return cache[off]
+    cells, regions = [], {}
+    for (i, j) in sorted(pack.cells, key=lambda ij: (ij[1], ij[0])):
+        c = pack.cells[(i, j)]
+        tri = sum(mc(p['mesh'])[2] for p in c.placements)
+        verts = sum(mc(p['mesh'])[0] for p in c.placements)
+        base = sum(mc(p['mesh'])[2] for p in c.placements if not p['mask'])
+        layered = {}
+        for p in c.placements:
+            if p['mask']:
+                layered[p['mask']] = layered.get(p['mask'], 0) + mc(p['mesh'])[2]
+        rec = {'cell': [i, j], 'region': c.region, 'placements': len(c.placements), 'triangles': tri,
+               'triangles_no_layers': base, 'vertices': verts,
+               'standin_triangles': mc(c.standin)[2] if c.standin else None,
+               'entities': len(c.entities),
+               'entity_triangles': sum(mc(e['mesh'])[2] for e in c.entities if e['mesh']),
+               'collision': {'floors': len(c.coll.floors) if c.coll else 0,
+                             'walls': len(c.coll.walls) if c.coll else 0,
+                             'ceilings': len(c.coll.ceilings) if c.coll else 0},
+               'layers': [pack.layers[l][0] for l in c.layers]}
+        cells.append(rec)
+        r = regions.setdefault(c.region, {'region': c.region, 'name': pack.regions[c.region].name, 'cells': 0,
+                                          'placements': 0, 'triangles': 0, 'standin_triangles': 0, 'entities': 0})
+        r['cells'] += 1
+        r['placements'] += rec['placements']
+        r['triangles'] += tri
+        r['standin_triangles'] += rec['standin_triangles'] or 0
+        r['entities'] += rec['entities']
+    return cells, [regions[k] for k in sorted(regions)]
