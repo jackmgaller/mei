@@ -505,6 +505,17 @@ def _write_coll(out, tris, half, pad, grid_shift, floor_cos, ceiling_cos, layer_
     return head
 
 
+def entity_numbers(world):
+    """{(i, j, k): number} for the k-th entity of cell (i, j): the numbers encode() will give
+    them (cells by row j, then column i; entities in order), for filling entity_ref parameters
+    before encoding."""
+    out = {}
+    for c in sorted(world.cells, key=lambda c: (c.j, c.i)):
+        for k in range(len(c.entities)):
+            out[(c.i, c.j, k)] = len(out)
+    return out
+
+
 def world_triangles(world):
     """Every collision triangle of a world, quantized as the encoder quantizes it, in world raw
     coordinates: a list of dicts (kind, v, n, surface, layer, tag). The oracle uses these."""

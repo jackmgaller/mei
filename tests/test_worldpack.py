@@ -71,6 +71,10 @@ class EncoderTests(unittest.TestCase):
         self.assertEqual(r.textures[0].data, bytes(range(256)) * 4)
         self.assertEqual(r.backdrop[0].address, 0x450000)
         self.assertEqual(rep['entities'][0], ((0, 0), 0))
+        nums = P.entity_numbers(w)
+        self.assertEqual(sorted(nums.values()), list(range(len(p.entities))))
+        for (i, j, k), n in nums.items():
+            self.assertEqual(p.cells[(i, j)].entities[k]['number'], n)
 
     def test_classification_by_angle(self):
         w = F.demo_world()

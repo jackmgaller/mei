@@ -288,7 +288,7 @@ lies in the square.
 **Numbers.** Entities are numbered in the order of their cells in the index (by row *j*, then
 column *i*), then in their order in the cell. The entity directory maps a number to its record.
 An `entity_ref` parameter holds a number. Numbers are stable for one pack, not across edits: what
-a save remembers is `saved_bit`.
+a save remembers is `saved_bit`. (`pack.entity_numbers()` gives them before encoding.)
 
 **Parameter records** are the game's structs, laid out by Akari's rules so that a cart reads them
 by casting `params` to a pointer of its struct type: fields in order, each aligned to its size (4
