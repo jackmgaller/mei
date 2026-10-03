@@ -187,5 +187,3 @@ start:  lui   r1, IO_HI
         vsync
         b     .frame
 ```
-
-A fuller sample is `carts/asm/hello.s`.

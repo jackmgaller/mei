@@ -42,7 +42,9 @@ $(B)/system.mei: $(shell find system -type f 2>/dev/null | sed 's/ /\\ /g') $(ST
 # Carts: carts/asm/NAME.s and carts/NAME/NAME.akr build to build/carts/NAME.mei
 ASM_CARTS  := $(patsubst carts/asm/%.s,$(B)/carts/%.mei,$(wildcard carts/asm/*.s))
 LANG_CARTS := $(foreach d,$(wildcard carts/*/),$(if $(call SRC_EXT,$(d)$(notdir $(d:/=))),$(B)/carts/$(notdir $(d:/=)).mei))
-CARTS := $(LANG_CARTS) $(ASM_CARTS)
+# Uninstalled carts remain available through their explicit build targets.
+UNINSTALLED_CARTS := demo soundlab
+CARTS := $(filter-out $(UNINSTALLED_CARTS:%=$(B)/carts/%.mei),$(LANG_CARTS) $(ASM_CARTS))
 carts: $(CARTS)
 
 $(B)/carts/%.mei: carts/asm/%.s $(B)/meiasm
