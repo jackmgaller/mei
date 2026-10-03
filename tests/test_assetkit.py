@@ -20,7 +20,7 @@ COMPILER = Path(os.environ.get('MEIC',ROOT/'build/meic')).resolve()
 RUNNER = Path(os.environ.get('RUN',ROOT/'build/mei-headless')).resolve()
 PROBE = Path(os.environ.get('PROBE',ROOT/'build/mei-asset-probe')).resolve()
 sys.path.insert(0,str(ROOT/'tools'))
-from assetkit.compiler import compile_recipe, native_bytes, import_obj, obj_text
+from assetkit.compiler import compile_recipe, native_bytes, import_obj, obj_text, material_manifest
 from assetkit.geometry import AssetError, cross, dot, sub
 from assetkit.schema import SCHEMA, validate
 from assetkit.preview import source
@@ -306,7 +306,8 @@ def faces_of(binary):
 class MaterialExtensionTests(unittest.TestCase):
     # SHA-256 prefixes of every `build` output, recorded with the kit before palette materials,
     # vertical lighting and tags existed. Recipes using none of them must keep these exactly;
-    # update a pin only for a deliberate change to that example recipe.
+    # update a pin only for a deliberate change to that example recipe. The material manifest
+    # (written for every build since) is an additional file, checked separately.
     LEGACY = {
         'robot':{'preview.akr':'4e8fee4ee73347b8','report.json':'113a80ee9870f5d1','robot.akr':'91303006a56188c3',
                  'robot.asset.json':'8d063b2e0302a54b','robot.bin':'db78e63a2817c462','robot.model.json':'2a9371a13914c418',
@@ -330,7 +331,15 @@ class MaterialExtensionTests(unittest.TestCase):
             with self.subTest(asset=name), tempfile.TemporaryDirectory() as tmp:
                 build(r,tmp)
                 got = {p.name:hashlib.sha256(p.read_bytes()).hexdigest()[:16] for p in Path(tmp).iterdir()}
+                manifest = json.loads((Path(tmp)/f'{name}.materials.json').read_text())
+                del got[f'{name}.materials.json']
                 self.assertEqual(got,self.LEGACY[name])
+                # A legacy manifest: no palette, no tags, every material's faces.
+                self.assertEqual(set(manifest),{'format','version','name','materials','tags'})
+                self.assertEqual(manifest['tags'],{})
+                self.assertTrue(all(m['palette_colour'] is None for m in manifest['materials'].values()))
+                self.assertEqual(sum(m['triangles'] for m in manifest['materials'].values()),
+                                 json.loads((Path(tmp)/'report.json').read_text())['triangles'])
 
     def test_palette_entries_classes_and_index_zero(self):
         r = palette_recipe()
@@ -351,6 +360,28 @@ class MaterialExtensionTests(unittest.TestCase):
         self.assertEqual(mesh.palette['palettes'],[40,41])
         self.assertEqual(colours,list(range(641,656))+[657,658])
         self.assertTrue(all(c%16 for c in colours))
+
+    def test_share_false_forces_separate_entries(self):
+        r = palette_recipe()
+        r['materials']['brick'] = {'color':'#c08040','palette':True,'share':False}
+        r['materials']['trim'] = {'color':'#c08040','palette':True,'share':False}
+        for i,m in enumerate(('brick','trim')):
+            r['nodes'].append({'id':m,'op':'box','size':[1,1,1],'material':m,'transform':{'translate':[0,2+2*i,0]}})
+        mesh,mats,_ = compile_recipe(r)
+        entries = mesh.palette['entries']
+        self.assertEqual([(e['class'],e['colour'],e['materials'],e.get('separate',False)) for e in entries],
+                         [('surface',1,['brick'],True),('surface',2,['trim'],True),('surface',3,['wall'],False),
+                          ('emissive',4,['neon'],False)])
+        manifest = material_manifest(mesh,mats,r)
+        self.assertEqual([e.get('separate') for e in manifest['entries']],[True,True,None,None])
+        # Without share: false the three share one entry, and the manifest says nothing new.
+        for m in ('brick','trim'): del r['materials'][m]['share']
+        mesh,mats,_ = compile_recipe(r)
+        self.assertEqual([e['materials'] for e in mesh.palette['entries']],[['brick','trim','wall'],['neon']])
+        self.assertNotIn('separate',material_manifest(mesh,mats,r)['entries'][0])
+        with self.assertRaises(AssetError) as error:
+            compile_recipe(palette_recipe(materials={'n':{'color':'#ffffff','share':False}}))
+        self.assertEqual(error.exception.path,'/materials/n/share')
 
     def test_palette_face_layout_tint_and_emissive(self):
         r = palette_recipe(palette_layout={'slot':9,'row':37,'first':12})

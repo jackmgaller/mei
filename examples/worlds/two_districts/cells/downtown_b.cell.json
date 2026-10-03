@@ -1,0 +1,58 @@
+{
+  "format": "mei-world-cell",
+  "version": 1,
+  "id": "downtown_b",
+  "at": [
+    1,
+    0
+  ],
+  "region": "downtown",
+  "standin": "block_far",
+  "placements": [
+    {
+      "id": "ground",
+      "asset": "ground_tile",
+      "position": [
+        48,
+        0,
+        16
+      ],
+      "collision": "self"
+    },
+    {
+      "id": "shop_1",
+      "asset": "shop",
+      "position": [
+        48,
+        0,
+        20
+      ],
+      "yaw": 90,
+      "collision": "shop_col"
+    }
+  ],
+  "entities": [
+    {
+      "id": "coin_b",
+      "type": "coin",
+      "position": [
+        40,
+        1,
+        8
+      ]
+    },
+    {
+      "id": "night_switch",
+      "type": "switch",
+      "position": [
+        56,
+        0,
+        8
+      ],
+      "params": {
+        "target": "coin_far",
+        "time_window": "night"
+      }
+    }
+  ]
+}

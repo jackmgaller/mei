@@ -1,0 +1,33 @@
+{
+  "format": "mei-world-game",
+  "version": 1,
+  "name": "city",
+  "probe": {
+    "radius": 0.3,
+    "height": 1.6,
+    "step": 0.32,
+    "floor_max_degrees": 40
+  },
+  "types": {
+    "coin": {
+      "saved": true
+    },
+    "switch": {
+      "saved": true,
+      "params": {
+        "target": {
+          "type": "entity_ref",
+          "required": true
+        },
+        "time_window": {
+          "type": "enum",
+          "values": [
+            "any",
+            "night"
+          ],
+          "default": "any"
+        }
+      }
+    }
+  }
+}

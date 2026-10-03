@@ -1,11 +1,9 @@
 """Render the exported mesh with Mei's real compiler and headless GPU, not a proxy."""
-import csv
 import math
 from pathlib import Path
-import struct
-import subprocess
-import zlib
 
+from kitcore import native
+from kitcore.native import png_bytes  # noqa: F401 (re-exported for visibility.py)
 from .geometry import AssetError
 
 
@@ -42,26 +40,10 @@ import "{name}.akr"
 '''
 
 
-def png_bytes(width, height, pixels):
-    def chunk(kind, data):
-        return struct.pack('>I',len(data))+kind+data+struct.pack('>I',zlib.crc32(kind+data)&0xffffffff)
-    rows = b''.join(b'\0'+pixels[y*width*3:(y+1)*width*3] for y in range(height))
-    return (b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>2I5B',width,height,8,2,0,0,0))+
-            chunk(b'IDAT',zlib.compress(rows,9))+chunk(b'IEND',b''))
-
-
 def render(directory, name, bounds, compiler, runner, load=False):
     directory = Path(directory).resolve()
-    for executable in (compiler,runner):
-        if not Path(executable).is_file():
-            raise AssetError('/preview',f'Missing {executable}. Run make to build Mei, or pass --compiler/--runner.')
-    def run(args):
-        try:
-            result = subprocess.run([str(a) for a in args],capture_output=True,text=True,timeout=45)
-        except (OSError,subprocess.TimeoutExpired) as error:
-            raise AssetError('/preview',str(error)) from error
-        if result.returncode:
-            raise AssetError('/preview',(result.stderr+'\n'+result.stdout).strip()[-4000:])
+    native.require('/preview',(compiler,runner),error=AssetError)
+    def run(args): native.run(args,'/preview',error=AssetError)
     images, reports = [],[]
     for view,yaw,pitch in VIEWS:
         stem = directory/f'view_{view}'
@@ -69,23 +51,13 @@ def render(directory, name, bounds, compiler, runner, load=False):
         run([compiler,stem.with_suffix('.akr'),'-o',stem.with_suffix('.mei')])
         run([runner,stem.with_suffix('.mei'),'--frames','4','--dump',stem.with_suffix('.ppm'),
              '--gpu-stats',stem.with_suffix('.csv')])
-        header,width_height,maxval,pixels = stem.with_suffix('.ppm').read_bytes().split(b'\n',3)
-        if (header,width_height,maxval,len(pixels)) != (b'P6',b'320 240',b'255',320*240*3):
-            raise AssetError('/preview','Headless runner produced an unexpected image format.')
+        pixels = native.read_ppm(stem.with_suffix('.ppm'),'/preview',error=AssetError)
         stem.with_suffix('.png').write_bytes(png_bytes(320,240,pixels))
         images.append(pixels)
-        with stem.with_suffix('.csv').open() as stream:
-            frames = list(csv.DictReader(stream))
-        if not frames:
+        latest = native.last_frame_stats(stem.with_suffix('.csv'))
+        if latest is None:
             raise AssetError('/preview',f'No presented frame for {view}.')
-        latest = {k:int(v) for k,v in frames[-1].items()}
         reports.append({'view':view,'image':stem.with_suffix('.png').name,'stats':latest})
-    pixels = bytearray(960*480*3)
-    for i,img in enumerate(images):
-        x,y = (i%3)*320,(i//3)*240
-        for row in range(240):
-            start = ((y+row)*960+x)*3
-            pixels[start:start+960] = img[row*960:(row+1)*960]
     contact = directory/'contact.png'
-    contact.write_bytes(png_bytes(960,480,pixels))
+    contact.write_bytes(native.contact_sheet(images))
     return {'contact':str(contact),'views':reports}

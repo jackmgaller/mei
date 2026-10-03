@@ -4,12 +4,12 @@
 Run `python3 tools/mei_assets.py schema` for the complete recipe contract, or
 read docs/ASSETKIT.md. All command results and errors are JSON on stdout.
 """
-import argparse
 import json
 from pathlib import Path
 import sys
-import tempfile
 
+from kitcore import jsonio, output as staged
+from kitcore.cli import parser_class
 from assetkit.compiler import (AssetError, compile_recipe, native_bytes,
                                editor_project, obj_text, import_obj, import_source,
                                material_manifest, palette_bytes, SWATCH)
@@ -18,33 +18,13 @@ from assetkit.schema import SCHEMA
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT/'examples'/'assets'
-MAX_INPUT = 8*1024*1024
-
-
-def output(value):
-    print(json.dumps(value,indent=2,allow_nan=False))
+MAX_INPUT = jsonio.MAX_INPUT
+output = jsonio.output
+write_new = jsonio.write_new
 
 
 def load(path):
-    if path == '-':
-        text = sys.stdin.read(MAX_INPUT+1)
-    else:
-        with Path(path).open() as stream: text = stream.read(MAX_INPUT+1)
-    if len(text) > MAX_INPUT: raise AssetError('/input','Input exceeds 8 MiB.')
-    def unique(pairs):
-        result = {}
-        for key,value in pairs:
-            if key in result: raise AssetError('/input',f'Duplicate JSON property {key!r}.')
-            result[key] = value
-        return result
-    return json.loads(text,object_pairs_hook=unique)
-
-
-def write_new(path, value, force=False):
-    path = Path(path)
-    path.parent.mkdir(parents=True,exist_ok=True)
-    with path.open('w' if force else 'x') as stream:
-        stream.write(json.dumps(value,indent=2,allow_nan=False)+'\n')
+    return jsonio.load(path,AssetError)
 
 
 def artifacts(recipe, mesh, materials, report):
@@ -62,10 +42,9 @@ def artifacts(recipe, mesh, materials, report):
         'preview.akr':source(name,report['bounds'],load=bool(mesh.palette)).encode(),
         'report.json':(json.dumps(report,indent=2)+'\n').encode(),
     }
-    # Only recipes using the material extensions produce these, so legacy builds are unchanged.
-    manifest = material_manifest(mesh,materials,recipe)
-    if manifest is not None:
-        files[name+'.materials.json'] = (json.dumps(manifest,indent=2)+'\n').encode()
+    # Every build has a manifest; only palette-backed meshes have palettes and a swatch, so
+    # the files legacy recipes always had are unchanged.
+    files[name+'.materials.json'] = (json.dumps(material_manifest(mesh,materials,recipe),indent=2)+'\n').encode()
     if mesh.palette:
         files[name+'.pal'] = palette_bytes(mesh)
         files[name+'.swatch'] = SWATCH
@@ -86,11 +65,9 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
         source_path = Path(input_path).resolve()
         if any(directory/name == source_path for name in files):
             raise AssetError('/output','Output would overwrite the source recipe. Use a separate output directory.')
-    directory.mkdir(parents=True,exist_ok=True)
     # Complete validation and serialization before replacing any generated outputs.
     # Stage preview too, so compiler/render failures leave the previous build intact.
-    with tempfile.TemporaryDirectory(prefix='.mei-assets-',dir=directory) as tmp:
-        stage = Path(tmp)
+    with staged.staging(directory,'.mei-assets-') as stage:
         for name,data in files.items(): (stage/name).write_bytes(data)
         policy=recipe.get('verification')
         if verification or (policy is not None and policy.get('required',True)):
@@ -117,15 +94,13 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
         generated = sorted(p.name for p in stage.iterdir())
         if input_path and input_path != '-' and any(directory/name == Path(input_path).resolve() for name in generated):
             raise AssetError('/output','Generated preview would overwrite the source recipe. Use a separate output directory.')
-        for filename in generated: (stage/filename).replace(directory/filename)
+        staged.commit(stage,directory)
     report['output'] = str(directory)
     report['files'] = generated
     return report
 
 
-class ArgumentParser(argparse.ArgumentParser):
-    def error(self, message):
-        raise AssetError('/arguments', message)
+ArgumentParser = parser_class(AssetError)
 
 
 def parser():

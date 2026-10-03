@@ -1,0 +1,49 @@
+{
+  "format": "mei-world",
+  "version": 1,
+  "name": "two_districts",
+  "game": "city.game.json",
+  "assets": "assets",
+  "cell_dir": "cells",
+  "grid": {
+    "cell_size": 32
+  },
+  "collision": {
+    "surfaces": {
+      "default": 0,
+      "tags": {
+        "ground": 1,
+        "wall": 3,
+        "roof": 4
+      }
+    }
+  },
+  "regions": {
+    "downtown": {
+      "variants": {
+        "day": {},
+        "night": {
+          "surface": {
+            "multiply": "#506090"
+          },
+          "colors": {
+            "shop.window": "#fff0b0"
+          }
+        }
+      }
+    },
+    "shrine": {
+      "variants": {
+        "day": {},
+        "night": {
+          "surface": {
+            "multiply": "#405080"
+          }
+        }
+      }
+    }
+  },
+  "layers": {
+    "festival": {}
+  }
+}

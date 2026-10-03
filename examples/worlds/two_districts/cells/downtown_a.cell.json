@@ -1,0 +1,143 @@
+{
+  "format": "mei-world-cell",
+  "version": 1,
+  "id": "downtown_a",
+  "at": [
+    0,
+    0
+  ],
+  "region": "downtown",
+  "standin": "block_far",
+  "placements": [
+    {
+      "id": "ground",
+      "asset": "ground_tile",
+      "position": [
+        16,
+        0,
+        16
+      ],
+      "collision": "self"
+    },
+    {
+      "id": "shop_1",
+      "asset": "shop",
+      "position": [
+        10,
+        0,
+        20
+      ],
+      "collision": "shop_col"
+    },
+    {
+      "id": "shop_2",
+      "asset": "shop",
+      "position": [
+        22,
+        0,
+        20
+      ],
+      "yaw": 180,
+      "collision": "shop_col"
+    },
+    {
+      "id": "bollard_0",
+      "asset": "bollard",
+      "position": [
+        4,
+        0,
+        12
+      ],
+      "collision": "none",
+      "merge": true
+    },
+    {
+      "id": "bollard_1",
+      "asset": "bollard",
+      "position": [
+        7,
+        0,
+        12
+      ],
+      "collision": "none",
+      "merge": true
+    },
+    {
+      "id": "bollard_2",
+      "asset": "bollard",
+      "position": [
+        10,
+        0,
+        12
+      ],
+      "collision": "none",
+      "merge": true
+    },
+    {
+      "id": "bollard_3",
+      "asset": "bollard",
+      "position": [
+        13,
+        0,
+        12
+      ],
+      "collision": "none",
+      "merge": true
+    },
+    {
+      "id": "bollard_4",
+      "asset": "bollard",
+      "position": [
+        16,
+        0,
+        12
+      ],
+      "collision": "none",
+      "merge": true
+    },
+    {
+      "id": "bollard_5",
+      "asset": "bollard",
+      "position": [
+        19,
+        0,
+        12
+      ],
+      "collision": "none",
+      "merge": true
+    },
+    {
+      "id": "bollard_6",
+      "asset": "bollard",
+      "position": [
+        22,
+        0,
+        12
+      ],
+      "collision": "none",
+      "merge": true
+    },
+    {
+      "id": "bollard_7",
+      "asset": "bollard",
+      "position": [
+        25,
+        0,
+        12
+      ],
+      "collision": "none",
+      "merge": true
+    }
+  ],
+  "entities": [
+    {
+      "id": "coin_a",
+      "type": "coin",
+      "position": [
+        16,
+        1,
+        8
+      ]
+    }
+  ]
+}

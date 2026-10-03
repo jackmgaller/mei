@@ -1,0 +1,38 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "ramp",
+  "materials": {
+    "tile": {
+      "color": "#c9a46b",
+      "palette": true,
+      "tag": "slope"
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "nodes": [
+    {
+      "id": "wedge",
+      "op": "extrude",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          4,
+          0
+        ],
+        [
+          4,
+          2
+        ]
+      ],
+      "depth": 3,
+      "material": "tile"
+    }
+  ]
+}

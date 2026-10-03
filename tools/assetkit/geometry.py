@@ -6,21 +6,12 @@ editor process is needed, which keeps recipes reproducible in agent sandboxes.
 from dataclasses import dataclass, field
 import math
 
-
-class AssetError(ValueError):
-    def __init__(self, path, message):
-        self.path = path
-        super().__init__(message)
+from kitcore.errors import KitError
+from kitcore.vector import add, sub, mul, dot, cross, norm  # noqa: F401 (re-exported)
 
 
-def add(a, b): return tuple(x + y for x, y in zip(a, b))
-def sub(a, b): return tuple(x - y for x, y in zip(a, b))
-def mul(a, s): return tuple(x * s for x in a)
-def dot(a, b): return sum(x * y for x, y in zip(a, b))
-def cross(a, b): return (a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0])
-def norm(a):
-    length = math.sqrt(dot(a, a))
-    return mul(a, 1 / length) if length else (0, 0, 0)
+class AssetError(KitError):
+    """A recipe error: a JSON Pointer path and an actionable message."""
 
 
 @dataclass

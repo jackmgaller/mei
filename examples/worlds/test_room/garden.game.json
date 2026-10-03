@@ -1,0 +1,50 @@
+{
+  "format": "mei-world-game",
+  "version": 1,
+  "name": "garden",
+  "probe": {
+    "radius": 0.3,
+    "height": 1.6,
+    "step": 0.32,
+    "floor_max_degrees": 40
+  },
+  "types": {
+    "coin": {
+      "saved": true
+    },
+    "trigger": {
+      "saved": true,
+      "params": {
+        "size": {
+          "type": "vec3"
+        },
+        "event": {
+          "type": "name"
+        },
+        "target": {
+          "type": "entity_ref"
+        },
+        "time_window": {
+          "type": "enum",
+          "values": [
+            "any",
+            "day",
+            "night"
+          ],
+          "default": "any"
+        },
+        "count": {
+          "type": "u8",
+          "default": 1
+        },
+        "exit": {
+          "type": "world_ref",
+          "default": "test_room"
+        }
+      }
+    }
+  },
+  "worlds": [
+    "test_room"
+  ]
+}

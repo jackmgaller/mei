@@ -1,0 +1,12 @@
+{
+  "format": "mei-world-ids",
+  "version": 1,
+  "world": "test_room",
+  "next_bit": 2,
+  "bits": {
+    "coin_ledge": 0,
+    "gate_switch": 1
+  },
+  "retired": {},
+  "renamed": {}
+}

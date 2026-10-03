@@ -1,0 +1,14 @@
+{
+  "format": "mei-world-ids",
+  "version": 1,
+  "world": "two_districts",
+  "next_bit": 4,
+  "bits": {
+    "coin_a": 0,
+    "coin_b": 1,
+    "night_switch": 2,
+    "coin_far": 3
+  },
+  "retired": {},
+  "renamed": {}
+}

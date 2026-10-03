@@ -1,0 +1,34 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "canopy_col",
+  "materials": {
+    "solid": {
+      "color": "#ffffff",
+      "tag": "roof"
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "nodes": [
+    {
+      "id": "slab",
+      "op": "box",
+      "size": [
+        4,
+        0.3,
+        4
+      ],
+      "transform": {
+        "translate": [
+          0,
+          0.15,
+          0
+        ]
+      },
+      "material": "solid"
+    }
+  ]
+}
