@@ -1177,7 +1177,10 @@ beyond it, such as a wall or pillar the camera stands beside or the floor under 
 to the plane in clip space, so the part in front of the camera is drawn (`stdlib/clip.akr`,
 with the guard-band clipping below). Faces sharing an edge across the plane clip it at the
 same point, so no cracks open. A face wholly behind the plane is dropped, and so is a crossing
-face that lies wholly beyond one side of the view or faces away. The camera itself should
+face that lies wholly beyond one side of the view or faces away. Whether a face to be clipped
+faces away is decided once, in clip space, from its own corners (valid behind the camera too);
+its pieces are drawn without a second back-face test, since clipping can leave two of their
+corners on one pixel, whose rounded screen positions say nothing about the winding. The camera itself should
 still keep a little more than the near distance away from walls it looks at: geometry nearer
 than the near plane is cut away, so a wall closer than that shows what is behind it.
 
