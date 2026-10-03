@@ -20,6 +20,8 @@ reg FRAME: u32 @ 0xFF0300        // frames since reset
 reg CYCLES: s32 @ 0xFF0304       // cycles left in this frame
 reg RAND: u32 @ 0xFF0308         // read: next random number; write: seed
 reg DEBUG: u32 @ 0xFF030C        // write: one character to the debug console
+reg SYS_TIME: u32 @ 0xFF0318     // local time: seconds since midnight (docs/SYSTEM.md)
+reg SYS_DATE: u32 @ 0xFF031C     // bits 0-4 day, 5-8 month, 9-11 weekday (0 = Sunday), 16-31 year
 
 const AUDIO_BASE = 0xFF0100      // channel n at AUDIO_BASE + n * 32
 const VRAM_PALETTE = 0x44C000    // colour i at VRAM_PALETTE + i * 2

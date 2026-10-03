@@ -1,15 +1,15 @@
 // Sound: a two-channel stereo music loop (16-bit, 11,025 Hz played at pitch 0.5) and 8-bit
 // effects. The orb chime climbs a major scale with every orb and is panned toward the orb.
 
-embed MUSIC_PAD: s16 = "music_pad.raw"
-embed MUSIC_LEAD: s16 = "music_lead.raw"
-embed SFX_JUMP: s8 = "sfx_jump.raw"
-embed SFX_COLLECT: s8 = "sfx_collect.raw"
-embed SFX_STEP: s8 = "sfx_step.raw"
-embed SFX_LAND: s8 = "sfx_land.raw"
-embed SFX_SPLASH: s8 = "sfx_splash.raw"
-embed SFX_FANFARE: s8 = "sfx_fanfare.raw"
-embed SFX_START: s8 = "sfx_start.raw"
+embed MUSIC_PAD: s16 = "audio/music_pad.raw"
+embed MUSIC_LEAD: s16 = "audio/music_lead.raw"
+embed SFX_JUMP: s8 = "audio/sfx_jump.raw"
+embed SFX_COLLECT: s8 = "audio/sfx_collect.raw"
+embed SFX_STEP: s8 = "audio/sfx_step.raw"
+embed SFX_LAND: s8 = "audio/sfx_land.raw"
+embed SFX_SPLASH: s8 = "audio/sfx_splash.raw"
+embed SFX_FANFARE: s8 = "audio/sfx_fanfare.raw"
+embed SFX_START: s8 = "audio/sfx_start.raw"
 
 const CH_PAD = 0
 const CH_LEAD = 1

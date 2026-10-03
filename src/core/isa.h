@@ -56,6 +56,12 @@ typedef struct {
 /* Indexed by opcode (0..63). Defined in isa.c. */
 extern const MeiOpInfo mei_ops[64];
 
+/* The range of an 18-bit immediate: signed (addi and the other I-format arithmetic, memory
+ * offsets, branch offsets in words) and unsigned (andi, ori, xori). */
+#define MEI_IMM_MIN   (-131072)
+#define MEI_IMM_MAX   131071
+#define MEI_UIMM_MAX  0x3FFFF
+
 /* Field helpers. */
 #define MEI_OPCODE(w)  ((uint32_t)(w) >> 26)
 #define MEI_FA(w)      (((uint32_t)(w) >> 22) & 0xF)

@@ -31,7 +31,8 @@ int mei_load_cart(Mei *m, const uint8_t *data, size_t len) {
     m->rom = rom;
     m->rom_len = (uint32_t)len;
     memset(m->title, 0, sizeof m->title);
-    if (len >= 40 && !memcmp(data + 4, "MEI1", 4)) memcpy(m->title, data + 8, 32);
+    if (len >= MEI_HDR_ID_OFF && !memcmp(data + MEI_HDR_MAGIC_OFF, MEI_HDR_MAGIC, MEI_HDR_MAGIC_LEN))
+        memcpy(m->title, data + MEI_HDR_TITLE_OFF, MEI_HDR_TITLE_LEN);
     card_set_cart_id(m);
     m->privileged = 0;
     mei_reset(m);

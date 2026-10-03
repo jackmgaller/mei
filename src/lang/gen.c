@@ -10,6 +10,7 @@
  *  - temporaries never live across statements, and short-circuit operators in value context
  *    flush live temporaries first, so the register state is identical at every join point. */
 #include "internal.h"
+#include "isa.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -354,7 +355,7 @@ static LV lv_mem(Opnd base, int32_t off, Type *t) {
 
 static LV lv_abs(uint32_t addr, const char *sym, Type *t) {
     LV lv = {.k = LV_MEM, .ty = t, .base = {O_REG, 0}};
-    if (addr < 0x20000) { lv.sym = sym; lv.symval = addr; return lv; }
+    if (addr <= MEI_IMM_MAX) { lv.sym = sym; lv.symval = addr; return lv; }
     if (g_iobase_reg >= 0 && addr >= IO_BASE_ADDR && addr < IO_BASE_ADDR + 0x400) {
         lv.base = (Opnd){O_REG, g_iobase_reg};
         lv.off = (int32_t)(addr - IO_BASE_ADDR);
@@ -1190,7 +1191,7 @@ static Opnd gen_cmp_value(Expr *e, int hint) {
         if (op == B_EQ) I("xori %s, %s, 1", RN[r], RN[r]);
         return d;
     }
-    if (b.k == O_IMM && b.v >= 0 && b.v <= 0x3FFFF) {
+    if (b.k == O_IMM && b.v >= 0 && b.v <= MEI_UIMM_MAX) {
         ofree(a);
         Opnd d = dest(0, hint, &r);
         I("xori %s, %s, %d", RN[r], RN[ra], b.v);
@@ -1224,9 +1225,9 @@ static Opnd arith(OpKind op, Type *ty, int mixed, Opnd a, Opnd b, int hint) {
         switch (op) {
         case B_ADD: if (fits_s18(v)) iop = "addi"; break;
         case B_SUB: if (fits_s18(-(int64_t)v)) { iop = "addi"; imm = -v; } break;
-        case B_AND: if (v >= 0 && v <= 0x3FFFF) iop = "andi"; break;
-        case B_OR: if (v >= 0 && v <= 0x3FFFF) iop = "ori"; break;
-        case B_XOR: if (v >= 0 && v <= 0x3FFFF) iop = "xori"; break;
+        case B_AND: if (v >= 0 && v <= MEI_UIMM_MAX) iop = "andi"; break;
+        case B_OR: if (v >= 0 && v <= MEI_UIMM_MAX) iop = "ori"; break;
+        case B_XOR: if (v >= 0 && v <= MEI_UIMM_MAX) iop = "xori"; break;
         case B_SHL: iop = "shli"; imm = v & 31; break;
         case B_SHR: iop = sgn ? "sari" : "shri"; imm = v & 31; break;
         case B_MUL: {
@@ -1288,7 +1289,7 @@ static Opnd arith(OpKind op, Type *ty, int mixed, Opnd a, Opnd b, int hint) {
             }
             break;
         case B_MOD:
-            if (!sgn && v > 0 && log2_exact(v) >= 0 && v - 1 <= 0x3FFFF) { iop = "andi"; imm = v - 1; }
+            if (!sgn && v > 0 && log2_exact(v) >= 0 && v - 1 <= MEI_UIMM_MAX) { iop = "andi"; imm = v - 1; }
             break;
         default: break;
         }
@@ -2097,7 +2098,7 @@ static Opnd gen_expr(Expr *e, int hint) {
     case E_CALL:
         if (e->bi == BI_MAP || (e->bi == BI_MAP_INTO && e->ty->k == TY_SLICE)) { LV lv = gen_intrinsic_aggr(e); return lv_addr(&lv); }
         if (e->bi == BI_LEN) return seq_len(e->args[0]);
-        if (e->bi >= BI_MAP) return gen_intrinsic(e, hint, NULL);
+        if (bi_is_higher_order(e->bi)) return gen_intrinsic(e, hint, NULL);
         if (e->bi == BI_LERP && !is_v(e->ty)) return gen_lerp_scalar(e, hint);
         if (e->bi) return gen_builtin(e, hint);
         if (ty_is_aggr(e->ty)) { LV out; gen_call(e, -1, &out); return lv_addr(&out); }
@@ -2424,7 +2425,7 @@ static void gen_stmt(Stmt *s) {
     case S_EXPR: {
         Expr *e = s->e;
         Opnd o;
-        if (e->bi >= BI_MAP) { if (e->bi == BI_MAP || (e->bi == BI_MAP_INTO && e->ty->k == TY_SLICE)) gen_intrinsic_aggr(e); else ofree(gen_intrinsic(e, -1, NULL)); o.k = O_NONE; }
+        if (bi_is_higher_order(e->bi)) { if (e->bi == BI_MAP || (e->bi == BI_MAP_INTO && e->ty->k == TY_SLICE)) gen_intrinsic_aggr(e); else ofree(gen_intrinsic(e, -1, NULL)); o.k = O_NONE; }
         else if (ty_is_aggr(e->ty)) { LV out; gen_call(e, -1, &out); o.k = O_NONE; }
         else o = gen_expr(e, -1);
         ofree(o);
@@ -2662,7 +2663,7 @@ static IntVec g_callmask;          /* parallel to g_callpos: registers each call
 /* The registers a call may change: the callee's own (when it was generated already) plus the
    argument and result registers. Calls through values, and unknown callees: everything. */
 static uint32_t call_mask(Expr *e) {
-    if (e->bi >= BI_MAP) {
+    if (bi_is_higher_order(e->bi)) {
         Func *t = e->target;
         return (t && t->clob_known ? t->clob : CLOB_FULL) | 0x1FEu | 0xF0000u;
     }
@@ -2714,7 +2715,7 @@ static void live_expr(Expr *e, int p) {
     if (!e) return;
     if (e->k == E_NAME && e->sym && e->sym->k == SY_LOCAL) use_local(e->sym->local, p);
     if (e->k == E_CALL && (e->callee || e->indirect)) call_push(p, call_mask(e));
-    if (e->k == E_CALL && e->bi >= BI_MAP) {
+    if (e->k == E_CALL && bi_is_higher_order(e->bi)) {
         /* the loop state is live across the per-element calls */
         call_push(p, call_mask(e));
         for (int i = 0; i < 8; i++) if (e->hid[i]) { use_local(e->hid[i], p); e->hid[i]->start = p - 1; }
@@ -2748,7 +2749,7 @@ static void live_asm_refs(Func *f, const char *text, int p) {
 static int count_calls(Expr *e) {
     if (!e) return 0;
     int n = (e->k == E_CALL && (e->callee || e->indirect)) || (e->k == E_BINARY && e->a && e->a->ty && e->a->ty->k == TY_MAT4 && e->ty && is_v(e->ty));
-    if (e->k == E_CALL && e->bi >= BI_MAP) n += 2;   /* a loop of calls: never a single call */
+    if (e->k == E_CALL && bi_is_higher_order(e->bi)) n += 2;   /* a loop of calls: never a single call */
     n += count_calls(e->a) + count_calls(e->b);
     for (int i = 0; i < e->nargs; i++) n += count_calls(e->args[i]);
     for (int i = 0; i < e->narms; i++) n += 2 * count_calls(e->arms[i].value);   /* not a single call */
@@ -3701,23 +3702,51 @@ static uint32_t text_clobbers(const char *t, size_t len) {
     return m & CLOB_FULL;
 }
 
-void gen_program(Program *P, Buf *out) {
-    g_P = P;
-    g_fn = NULL;
-    g_label = 0;
-    /* These reusable buffers belong to the compilation arena, which the driver frees
-       between API calls. Keep reuse within one program, never across compilations. */
-    g_loops = NULL;
-    g_nloops = g_caploops = 0;
-    g_relocs = NULL;
-    g_nrelocs = g_caprelocs = 0;
-    g_ret_into = NULL;
+/* Every file-scope variable of the code generator, back to its state before any compilation,
+   so a compilation never depends on the one before it in the same process. The arrays they
+   point to belong to the compilation arena, which the driver frees between compilations. */
+static void gen_reset(Program *P) {
     buf_free(&g_body);   /* also recover a partially generated body after an error */
+    memset(&g_body, 0, sizeof g_body);
+    g_fn = NULL;
+    g_P = P;
+    g_leaf = 0;
+    memset(g_t, 0, sizeof g_t);
+    g_age = 0;
+    memset(g_rown, 0, sizeof g_rown);
+    memset(g_vown, 0, sizeof g_vown);
+    memset(g_spool, 0, sizeof g_spool);
+    memset(g_vpool, 0, sizeof g_vpool);
+    g_nspool = g_nvpool = 0;
+    g_saved = 0;
+    g_frame = g_frame_max = 0;
+    g_label = 0;
+    g_ret_label = 0;
+    memset(g_brk, 0, sizeof g_brk);
+    memset(g_cont, 0, sizeof g_cont);
+    g_nloop = 0;
+    g_out_size = 0;
+    g_iobase_reg = -1;
     g_stubs = NULL;
     g_nstubs = g_capstubs = 0;
+    g_div_chk = NULL;
     g_vconsts = NULL;
     g_vconst_n = 0;
-    memset(&g_body, 0, sizeof g_body);
+    g_ret_into = NULL;
+    g_callpos = g_xfmpos = g_asmpos = g_callmask = (IntVec){0};
+    g_loops = NULL;
+    g_nloops = g_caploops = 0;
+    g_pos = 0;
+    memset(g_regusers, 0, sizeof g_regusers);
+    memset(&g_iolocal, 0, sizeof g_iolocal);
+    g_relocs = NULL;
+    g_nrelocs = g_caprelocs = 0;
+    g_lab = NULL;
+    g_lab_n = g_lab_cap = 0;
+}
+
+void gen_program(Program *P, Buf *out) {
+    gen_reset(P);
 
     /* reachability: functions from the entry points; a global initialiser runs only when its
        variable is used, or when it makes calls (whose effects must happen) */
@@ -3762,7 +3791,7 @@ void gen_program(Program *P, Buf *out) {
         gl[j + 1] = x;
     }
     uint32_t addr = RAM_GLOBALS_BASE;
-    char title[33];
+    char title[MEI_HDR_TITLE_LEN + 1];
     snprintf(title, sizeof title, "%s", P->title);
     for (char *c = title; *c; c++) if (*c == '"' || *c == '\\' || (unsigned char)*c < 32) *c = '\'';
     if (P->cart_id) buf_printf(out, "; generated by meic\n    .cart \"%s\", __start, \"%s\"\n\n; RAM globals\n", title, P->cart_id);

@@ -166,8 +166,14 @@ typedef enum {
     BI_NCLIP, BI_OTZ, BI_CLERP,     /* the geometry instructions of the same names */
     BI_FROM_BITS16,               /* signed raw 4.12 -> fixed16 */
     BI_KIND, BI_RAW,                /* assert_eq() reports: a value's print kind, its raw 32 bits */
+    /* The higher-order builtins (they call a function per element): keep them last, since
+       bi_is_higher_order() tests for them as everything from BI_MAP on. */
     BI_MAP, BI_MAP_INTO, BI_FILTER, BI_FILTER_INTO, BI_REDUCE, BI_EACH,
 } Builtin;
+
+/* map, map_into, filter, filter_into, reduce, each: checked by check_intrinsic, generated as
+   loops of calls. */
+static inline int bi_is_higher_order(Builtin bi) { return bi >= BI_MAP; }
 
 typedef struct Sym Sym;
 typedef struct Local Local;
@@ -415,9 +421,15 @@ void module_publish(const char *file, Program *P);
 
 void check_program(Program *P);
 int fits_s18(int64_t v);
+int is_lvalue(Expr *e);   /* can be assigned to or have its address taken */
 /* For a link-time address constant in const data (an embed, a string or other const data, a
    function, or one of these converted to a pointer / u32 / s32): its label; else NULL. */
 const char *const_addr_label(Expr *e);
+
+/* ---------------------------------------------------------------- opt.c */
+
+/* Inlining, let forwarding and induction pointers, on a checked program. */
+void opt_program(Program *P);
 
 /* ---------------------------------------------------------------- gen.c */
 
@@ -427,9 +439,9 @@ void gen_program(Program *P, Buf *out);
 /* Where data lives decides how large it may be: global variables are in RAM, from
    RAM_GLOBALS_BASE up to RAM_GLOBALS_END (the stack has the rest of the 2 MB); const arrays
    and structs, strings and embeds are in the cart ROM, at most MEI_ROM_MAX (mei.h) in all. */
-#define RAM_GLOBALS_BASE 0x000100u
+#define RAM_GLOBALS_BASE MEI_RAM_USER_BASE
 #define RAM_GLOBALS_END  0x1F0000u
-#define RAM_TOP          0x200000u   /* the end of RAM (src/core/machine.h RAM_SIZE) */
-#define IO_BASE_ADDR     0xFF0000u
+#define RAM_TOP          MEI_RAM_SIZE   /* the end of RAM (RAM starts at 0) */
+#define IO_BASE_ADDR     MEI_IO_BASE
 
 #endif

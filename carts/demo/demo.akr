@@ -3,10 +3,10 @@
 // camera, up/down tilts it, A toggles fog.
 cart "Mei Demo"
 
-embed CUBE: Mesh = "cube.bin"
-embed GROUND: Mesh = "ground.bin"
-embed BRICKS: u8 = "tex.bin"
-embed BRICK_PAL: u16 = "pal.bin"
+embed CUBE: Mesh = "art/cube.bin"
+embed GROUND: Mesh = "art/ground.bin"
+embed BRICKS: u8 = "art/tex.bin"
+embed BRICK_PAL: u16 = "art/pal.bin"
 
 const SKY = 0x5A3C28            // rgb(40, 60, 90)
 

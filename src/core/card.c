@@ -262,8 +262,9 @@ void card_vsync(Mei *m) { if (m->card_busy > 0) m->card_busy--; }
 /* The cart ID from header bytes 40-55, else "T:" + FNV-1a of the title. */
 void card_set_cart_id(Mei *m) {
     memset(m->cart_id, 0, sizeof m->cart_id);
-    if (m->rom_len >= 56 && !memcmp(m->rom + 4, "MEI1", 4) && m->rom[40]) {
-        memcpy(m->cart_id, m->rom + 40, 16);
+    if (m->rom_len >= MEI_HDR_SIZE && !memcmp(m->rom + MEI_HDR_MAGIC_OFF, MEI_HDR_MAGIC, MEI_HDR_MAGIC_LEN) &&
+        m->rom[MEI_HDR_ID_OFF]) {
+        memcpy(m->cart_id, m->rom + MEI_HDR_ID_OFF, MEI_HDR_ID_LEN);
         return;
     }
     uint32_t h = 2166136261u;

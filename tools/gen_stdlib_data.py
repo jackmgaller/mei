@@ -2,13 +2,15 @@
 """Generates the data tables of the Mei standard library:
   stdlib/font_data.akr   - the 8x8 font (src/core/font8x8.h) pre-expanded to a 4-bit texture
   stdlib/sin_table.akr   - 1025-entry sine table over one full turn, 16.16 fixed point
-Run from the repository root: python3 tools/gen_stdlib_data.py"""
-import math, re, os
+Run from the repository root: python3 tools/gen_stdlib_data.py [output directory]
+(the output directory defaults to stdlib/)"""
+import math, re, os, sys
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+out_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(root, 'stdlib')
 
 def write(name, text):
-    with open(os.path.join(root, 'stdlib', name), 'w') as f:
+    with open(os.path.join(out_dir, name), 'w') as f:
         f.write(text)
 
 # ---- font: 95 glyphs (ASCII 32..126), 16 per row -> 128 x 48 texels, 4-bit, 64 bytes per row

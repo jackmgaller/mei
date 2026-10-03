@@ -305,6 +305,15 @@ class BuildTests(unittest.TestCase):
             self.assertEqual(sorted(ra['files']), ['city.game.akr', 'report.json', 'source', 'two_districts.akr',
                                                    'two_districts.ids.json', 'two_districts.swatch', 'two_districts.world.bin',
                                                    'verification'])
+            # report.json keeps the World Checker's summary and failures; the row per view stays
+            # in the checker's own report.
+            checked = json.loads((Path(tmp)/'out_a'/'report.json').read_text())['verification']
+            self.assertNotIn('views', checked)
+            self.assertIn('summary', checked)
+            self.assertIn('threshold_failures', checked)
+            self.assertEqual(checked['views_report'], 'verification/world-check.json')
+            full = json.loads((Path(tmp)/'out_a'/'verification'/'world-check.json').read_text())
+            self.assertEqual(len(full['views']), checked['summary']['views'])
             source = sorted(str(p.relative_to(Path(tmp)/'out_a'/'source')) for p in (Path(tmp)/'out_a'/'source').rglob('*.json'))
             self.assertIn('cells/shrine_gate.cell.json', source)
             self.assertIn('assets/shop.asset.json', source)

@@ -1053,7 +1053,7 @@ static void parse_toplevel(Parser *p) {
             next(p);
             if (p->tok.k != TK_STR) error_at(p->tok.loc, "expected the cart ID as a string, e.g. cart \"My Game\", \"MY-GAME\"");
             if (p->tok.slen == 0) error_at(p->tok.loc, "the cart ID is empty (leave it out to use a hash of the title)");
-            if (p->tok.slen > 16) error_at(p->tok.loc, "the cart ID \"%s\" is longer than 16 characters", p->tok.s);
+            if (p->tok.slen > MEI_HDR_ID_LEN) error_at(p->tok.loc, "the cart ID \"%s\" is longer than %d characters", p->tok.s, MEI_HDR_ID_LEN);
             for (size_t i = 0; i < p->tok.slen; i++)
                 if ((unsigned char)p->tok.s[i] < 32 || (unsigned char)p->tok.s[i] > 126 || p->tok.s[i] == '"' || p->tok.s[i] == '\\')
                     error_at(p->tok.loc, "the cart ID must be printable ASCII without quotes or backslashes");

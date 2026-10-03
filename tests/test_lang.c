@@ -165,6 +165,40 @@ static void test_big_data(Mei *machine) {
     mei_asm_free(&result);
 }
 
+/* ---- the same program compiled twice in one process gives the same assembly ---- */
+
+static const char repeat_source[] =
+    "var out: [4]s32\n"
+    "fn pick(i: s32) -> s32 { const T: [3]s32 = [3, 1, 4]; return T[i] }\n"
+    "fn init() {\n"
+    "    const U: [2]s32 = [5, 9]\n"
+    "    let f = fn(x: s32) -> s32 { return x * 2 }\n"
+    "    for i in 0..2 { out[i] = pick(i) + U[i] + f(i) }\n"
+    "    out[3] = 0x7F0000 & out[0]\n"
+    "}\n";
+static int read_repeat(void *user, const char *path, char **data, size_t *len) {
+    (void)user;
+    if (strcmp(path, "repeat/main.akr")) return -1;
+    *len = strlen(repeat_source);
+    if (!(*data = malloc(*len))) return -1;
+    memcpy(*data, repeat_source, *len);
+    return 0;
+}
+
+static void test_repeat_compile(void) {
+    char error[2048], *text[2] = {NULL, NULL};
+    for (int i = 0; i < 2; i++) {
+        MeiCompileOptions options = {.no_stdlib = 1, .read_file = read_repeat, .asm_text = &text[i]};
+        MeiAsmResult result;
+        CHECK(meic_compile("repeat/main.akr", &options, &result, error, sizeof error) == 0, "repeat compile %d: %s", i, error);
+        mei_asm_free(&result);
+    }
+    CHECK(text[0] && text[1] && strcmp(text[0], text[1]) == 0,
+          "compiling the same program twice gives the same assembly text");
+    free(text[0]);
+    free(text[1]);
+}
+
 int main(void) {
     uint8_t *reference = NULL;
     size_t reference_len = 0;
@@ -172,6 +206,7 @@ int main(void) {
     CHECK(machine != NULL, "create virtual machine");
     if (!machine) return 1;
     test_big_data(machine);
+    test_repeat_compile();
     for (int round = 0; round < 32; round++) {
         Files files = {.bad = 1};
         char error[2048], *assembly = NULL, *warnings = NULL;

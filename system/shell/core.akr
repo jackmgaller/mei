@@ -5,8 +5,6 @@ import "assets.akr"
 
 reg SYS_LAUNCH: u32 @ 0xFF0310
 reg SYS_CONFIG: u32 @ 0xFF0314
-reg SYS_TIME: u32 @ 0xFF0318     // seconds since local midnight
-reg SYS_DATE: u32 @ 0xFF031C     // day 0-4, month 5-8, weekday 9-11, year 16-31
 
 // ---- SYS_CONFIG (docs/SYSTEM.md; bits 5-31 belong to the shell)
 const CFG_THEME_MASK: u32 = 0xF        // bits 0-3: boot theme

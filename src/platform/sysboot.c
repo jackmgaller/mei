@@ -11,8 +11,9 @@ static void wr32le(uint8_t *p, uint32_t v) { p[0] = (uint8_t)v; p[1] = (uint8_t)
 
 void sys_cart_title(const uint8_t *data, size_t len, const char *fallback, char out[32]) {
     memset(out, 0, 32);
-    if (len >= 40 && memcmp(data + 4, "MEI1", 4) == 0 && data[8]) {
-        memcpy(out, data + 8, 31);
+    if (len >= MEI_HDR_ID_OFF && memcmp(data + MEI_HDR_MAGIC_OFF, MEI_HDR_MAGIC, MEI_HDR_MAGIC_LEN) == 0 &&
+        data[MEI_HDR_TITLE_OFF]) {
+        memcpy(out, data + MEI_HDR_TITLE_OFF, 31);
         return;
     }
     /* file name without directory or extension */
@@ -55,7 +56,7 @@ int sys_scan_dir(SysCatalogue *c, const char *dir, const char *skip) {
         snprintf(path, sizeof path, "%s/%s", dir, ent->d_name);
         FILE *f = fopen(path, "rb");
         if (!f) continue;
-        uint8_t head[40] = {0};
+        uint8_t head[MEI_HDR_ID_OFF] = {0};   /* the header up to the end of the title */
         size_t got = fread(head, 1, sizeof head, f);
         fseek(f, 0, SEEK_END);
         long size = ftell(f);

@@ -35,12 +35,13 @@ static int disasm(const char *path) {
     size_t len;
     unsigned char *rom = (unsigned char *)read_file(path, &len);
     if (!rom) { perror(path); return 1; }
-    int header = len >= 56 && !memcmp(rom + 4, "MEI1", 4);
-    if (header) printf("; cart header, title \"%.32s\", ID \"%.16s\"\n", (const char *)rom + 8, (const char *)rom + 40);
+    int header = len >= MEI_HDR_SIZE && !memcmp(rom + MEI_HDR_MAGIC_OFF, MEI_HDR_MAGIC, MEI_HDR_MAGIC_LEN);
+    if (header) printf("; cart header, title \"%.*s\", ID \"%.*s\"\n", MEI_HDR_TITLE_LEN, (const char *)rom + MEI_HDR_TITLE_OFF,
+                       MEI_HDR_ID_LEN, (const char *)rom + MEI_HDR_ID_OFF);
     for (size_t i = 0; i + 4 <= len; i += 4) {
         uint32_t w = rom[i] | rom[i + 1] << 8 | rom[i + 2] << 16 | (uint32_t)rom[i + 3] << 24, pc = MEI_ROM_BASE + (uint32_t)i;
         char text[64];
-        if (header && i >= 4 && i < 56) snprintf(text, sizeof text, ".word 0x%08X", w);
+        if (header && i >= MEI_HDR_MAGIC_OFF && i < MEI_HDR_SIZE) snprintf(text, sizeof text, ".word 0x%08X", w);
         else mei_disasm(w, pc, text, sizeof text);
         printf("%08X  %08X  %s\n", pc, w, text);
     }

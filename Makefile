@@ -51,8 +51,11 @@ $(B)/carts/%.mei: carts/asm/%.s $(B)/meiasm
 	@mkdir -p $(dir $@)
 	$(B)/meiasm $< -o $@
 
+# Every file in a cart's folder, in subfolders too, except its tests/ and screenshots/
+# (which its test scripts write to); spaces escaped for make.
+CART_FILES = $(shell find carts/$(1) \( -path carts/$(1)/tests -o -path carts/$(1)/screenshots \) -prune -o -type f -print 2>/dev/null | sed 's/ /\\ /g')
 define LANG_CART_RULE
-$(B)/carts/$(1).mei: $(call SRC_EXT,carts/$(1)/$(1)) $(wildcard carts/$(1)/*) $(STDLIB_SRC) $(B)/meic
+$(B)/carts/$(1).mei: $(call SRC_EXT,carts/$(1)/$(1)) $(call CART_FILES,$(1)) $(STDLIB_SRC) $(B)/meic
 	@mkdir -p $(B)/carts
 	$(B)/meic $$< -o $$@
 endef
@@ -107,12 +110,25 @@ test: $(TESTS) $(B)/meiasm $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe $(B)
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldkit.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldkit.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_mochi.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_mochi.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldverify.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless SCENE_PROBE=$(B)/mei-scene-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldverify.py; fi
+	@if command -v python3 >/dev/null 2>&1; then echo "== tools/check_generated.sh"; PYTHONDONTWRITEBYTECODE=1 ./tools/check_generated.sh; fi
+
+# Generated files (stdlib faces and data tables, the reverb table, ADPCM test vectors) match
+# what their generators make now.
+.PHONY: check-generated
+check-generated:
+	PYTHONDONTWRITEBYTECODE=1 ./tools/check_generated.sh
 
 # Agent asset recipes, binary exports and six-view renders through the real GPU.
 .PHONY: test-world
 test-world: $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe
 	MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldkit.py -v
 	MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_mochi.py -v
+
+# The carts' self-checking scenarios (carts/*/tests/check.sh), through tools/cart_scenario.sh.
+.PHONY: test-carts
+test-carts: $(B)/meic $(B)/mei-headless
+	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/weather/tests/check.sh
+	MEIC=$(B)/meic RUN=$(B)/mei-headless carts/lantern/tests/check.sh
 
 .PHONY: test-assets
 test-assets: $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe

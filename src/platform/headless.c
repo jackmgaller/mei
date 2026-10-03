@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
         sys_scan_dir(&cat, sysdir, base ? base + 1 : cart);
         size_t img_len;
         uint8_t *img = sys_build_image(data, len, &cat, SYS_NO_AUTOBOOT, 0, "headless", &img_len);
-        if (!img) { fprintf(stderr, "%s: system ROM larger than 0x1F0000 bytes\n", cart); return 1; }
+        if (!img) { fprintf(stderr, "%s: system ROM larger than 0x%X bytes\n", cart, SYS_ROM_MAX); return 1; }
         free(data);
         data = img;
         len = img_len;
@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
         if (bc_len > 0 && fread(bc, 1, (size_t)bc_len, bf) != (size_t)bc_len) { perror(bc_path); return 1; }
         fclose(bf);
     }
-    if (bc_noise > 0) mei_broadcast_noise(m, (uint32_t)(bc_noise * 1e6 + 0.5), 0x4D454E4Fu);
+    if (bc_noise > 0) mei_broadcast_noise(m, (uint32_t)(bc_noise * 1e6 + 0.5), 0);
     if (mei_load_cart(m, data, len) != 0) { fprintf(stderr, "%s: not a valid cart (%zu bytes)\n", cart, len); return 1; }
     if (sysdir) mei_set_privileged(m, 1);
 

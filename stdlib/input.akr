@@ -26,3 +26,33 @@ fn btnp2(b: u32) -> bool { return PAD2 & ~__pad2_prev & b != 0 }
 // Analog sticks: x -1.0 (left) .. 1.0 (right), y -1.0 (down) .. 1.0 (up).
 fn stick() -> vec2 { return vec2(STICK1_X, STICK1_Y) }
 fn stick2() -> vec2 { return vec2(STICK2_X, STICK2_Y) }
+
+// Menu navigation with key repeat. menu_dirs() is the directions held on controller 1, from
+// the d-pad or the stick pushed past half way. key_repeat(&r, held) is the buttons of `held`
+// that act this frame: those just pressed, and while the same buttons stay held, all of them
+// again after REPEAT_DELAY frames and every REPEAT_EVERY frames after that. Keep one
+// KeyRepeat per thing that repeats (zero is ready to use), and call it once a frame.
+const REPEAT_DELAY = 18
+const REPEAT_EVERY = 5
+struct KeyRepeat { prev: u32, held_for: s32 }
+
+fn menu_dirs() -> u32 {
+    var d = PAD1 & (UP | DOWN | LEFT | RIGHT)
+    if STICK1_Y > 0.5 { d = d | UP }
+    if STICK1_Y < -0.5 { d = d | DOWN }
+    if STICK1_X < -0.5 { d = d | LEFT }
+    if STICK1_X > 0.5 { d = d | RIGHT }
+    return d
+}
+
+fn key_repeat(r: *KeyRepeat, held: u32) -> u32 {
+    var act = held & ~r.prev
+    if held != 0 && held == r.prev {
+        r.held_for += 1
+        if r.held_for >= REPEAT_DELAY && (r.held_for - REPEAT_DELAY) % REPEAT_EVERY == 0 { act = held }
+    } else {
+        r.held_for = 0
+    }
+    r.prev = held
+    return act
+}

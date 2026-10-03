@@ -3,6 +3,7 @@
 # Builds the scenario cart (tests/harness.akr + the app), runs it headless against the
 # recorded broadcast (tests/fixture.bin, from the gateway's --fixture data) and converts the
 # last frame to OUT_BASENAME.png. A failed assert makes mei-headless exit with status 2.
+# The shared runner is tools/cart_scenario.sh.
 # The recording is remade with
 #   python3 tools/meinet/meinet.py --fixture --no-serve --seconds 150 --record carts/weather/tests/fixture.bin
 #   SHOT=1          hide the test overlay (for screenshots)
@@ -14,31 +15,18 @@
 #   P="a b c"       scenario parameters P1..P3 (default 0)
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$HERE/../../.." && pwd)"
-OUT="$3"
-FRAMES="$2"
-S="$HERE/_scenario_$1_$$.akr"
 PP="$(echo ${P:-} 0 0 0)"
 TD=0
 if [ "$TAPE" = demo ]; then TD=1; fi
-printf 'cart "Mei Weather Test", "MEI-WEATHER-TEST"\nconst SCENARIO = %s\nconst SHOT = %s\nconst TAPE_DEMO = %s\n' "$1" "${SHOT:-0}" "$TD" > "$S"
+SC_HEAD="$(printf 'cart "Mei Weather Test", "MEI-WEATHER-TEST"\nconst SCENARIO = %s\nconst SHOT = %s\nconst TAPE_DEMO = %s' "$1" "${SHOT:-0}" "$TD")"
 k=1
-for v in $PP; do [ $k -le 3 ] && printf 'const P%s = %s\n' $k $v >> "$S"; k=$((k+1)); done
-printf 'import "harness.akr"\nimport "../app.akr"\n' >> "$S"
-"$ROOT/build/meic" "$S" -o "$OUT.mei" || { rm -f "$S"; exit 1; }
-rm -f "$S"
+for v in $PP; do [ $k -le 3 ] && SC_HEAD="$SC_HEAD$(printf '\nconst P%s = %s' $k $v)"; k=$((k+1)); done
+SCEN="$1"; FRAMES="$2"; OUT="$3"
 shift 3
 BC="$HERE/fixture.bin"
 if [ "$TAPE" = demo ]; then BC="$HERE/../demo_tape.bin"; fi
 if [ -z "$NOBC" ]; then set -- --broadcast "$BC" "$@"; fi
 if [ -n "$CARD" ]; then set -- --card1 "$CARD" "$@"; fi
 if [ -n "$NOISE" ]; then set -- --broadcast-noise "$NOISE" "$@"; fi
-if [ -n "$SEQ" ]; then
-    set -- --dump-every $(echo $SEQ | cut -d' ' -f1) "${OUT}_seq" --dump-from $(echo "$SEQ 0" | cut -d' ' -f2) "$@"
-fi
-"$ROOT/build/mei-headless" "$OUT.mei" --frames "$FRAMES" --dump "$OUT.ppm" --time 13:00:00 --date 2026-09-30 "$@"
-if [ -n "$SEQ" ]; then
-    for f in "${OUT}"_seq_*.ppm; do sips -s format png "$f" --out "${f%.ppm}.png" >/dev/null && rm -f "$f"; done
-fi
-sips -s format png "$OUT.ppm" --out "$OUT.png" >/dev/null
-rm -f "$OUT.ppm"
+SC_HEAD="$SC_HEAD" SC_APP="../app.akr" exec "$HERE/../../../tools/cart_scenario.sh" "$HERE" "$SCEN" "$FRAMES" "$OUT" \
+    --time 13:00:00 --date 2026-09-30 "$@"

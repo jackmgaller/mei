@@ -1,15 +1,9 @@
 #!/bin/sh
 # Usage: tests/run.sh SCENARIO FRAMES OUT_BASENAME [extra mei-headless args]
-# Builds the scenario cart into the scratch dir, runs it and converts the dump to PNG.
+# Builds the scenario cart into the scratch dir, runs it and converts the dump to PNG
+# (keeping the PPM). SHOT, SEED and BOT set the harness's constants of those names; SEQ is as
+# in the shared runner, tools/cart_scenario.sh.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$HERE/../../.." && pwd)"
-OUT="$3"
-FRAMES="$2"
-S="$HERE/_scenario.akr"
-printf 'cart "Lantern Test"\nconst SCENARIO = %s\nconst SHOT = %s\nconst SEEDV = %s\nconst BOTV = %s\nimport "harness.akr"\nimport "../game.akr"\n' "$1" "${SHOT:-0}" "${SEED:-0}" "${BOT:-0}" > "$S"
-"$ROOT/build/meic" "$S" -o "$OUT.mei"
-rm -f "$S"
-shift 3
-"$ROOT/build/mei-headless" "$OUT.mei" --frames "$FRAMES" --dump "$OUT.ppm" "$@"
-sips -s format png "$OUT.ppm" --out "$OUT.png" >/dev/null
+SC_HEAD="$(printf 'cart "Lantern Test"\nconst SCENARIO = %s\nconst SHOT = %s\nconst SEEDV = %s\nconst BOTV = %s' "$1" "${SHOT:-0}" "${SEED:-0}" "${BOT:-0}")"
+SC_HEAD="$SC_HEAD" SC_APP="../game.akr" KEEP_PPM=1 exec "$HERE/../../../tools/cart_scenario.sh" "$HERE" "$@"
