@@ -19,9 +19,14 @@ int main(int argc, char **argv) {
     if (*end || count<3 || count>2048 || count*16>RAM_SIZE-address) return 1;
     FILE *f=fopen(argv[1],"rb");
     if (!f) { perror(argv[1]); return 1; }
-    unsigned char *rom=malloc(0x200001);
+    /* Read up to one byte more than the largest cart, so mei_load_cart rejects an oversized one. */
+    fseek(f,0,SEEK_END);
+    long length=ftell(f);
+    fseek(f,0,SEEK_SET);
+    size_t want=length<0 ? 0 : length>(long)MEI_ROM_MAX ? MEI_ROM_MAX+1 : (size_t)length;
+    unsigned char *rom=malloc(want ? want : 1);
     if (!rom) { fclose(f); return 1; }
-    size_t size=fread(rom,1,0x200001,f);
+    size_t size=fread(rom,1,want,f);
     fclose(f);
     Mei *m=mei_create();
     if (!m) { free(rom); return 1; }
