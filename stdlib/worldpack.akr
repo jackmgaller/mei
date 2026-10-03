@@ -212,7 +212,7 @@ var wp_far_ring: s32 = 3   // the far pass draws stand-ins out to this many cell
 var wp_region_loaded: s32 = -1  // near cells of other regions draw as stand-ins (-1: any)
 var wp_ground_first: bool = true  // draw ground placements in a pass of their own, first
 
-var __wp_ground: bool      // the pack is 1.1 or later: cells' ground_count is meaningful
+var __wp_ground: bool      // the pack is 1.1 or later and has ground placements
 
 var __wp_base: u32
 var __wp_shift: s32
@@ -251,7 +251,7 @@ fn wp_open(pack: *u8) -> bool {
         return false
     }
     wp_pack = h
-    __wp_ground = h.minor >= 1
+    __wp_ground = h.minor >= 1 && h.flags & 1 != 0
     __wp_base = pack as u32
     __wp_shift = shift
     __wp_half = fixed(1 << (shift - 1))

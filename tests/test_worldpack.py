@@ -187,7 +187,7 @@ class EncoderTests(unittest.TestCase):
                 decode(data)
         # a newer minor version is still read
         decode(good[:6] + struct.pack('<H', 7) + good[8:])
-        decode(good[:13] + bytes([0x01]) + good[14:])     # an ignorable flag
+        decode(good[:13] + bytes([0x02]) + good[14:])     # an ignorable flag 1.1 does not define
         # corrupt offsets anywhere in the cell table must be caught, never crash
         p = decode(good)
         rng = random.Random(5)
@@ -223,6 +223,7 @@ class EncoderTests(unittest.TestCase):
         self.assertEqual(c.ground_count, 2)
         co = c.off
         self.assertEqual(struct.unpack_from('<I', data, co + 76)[0], 2)
+        self.assertEqual(data[13], P.FLAG_GROUND)
         pl = struct.unpack_from('<I', data, co + 56)[0]
         self.assertEqual([data[pl + P.PLACEMENT_SIZE * k + 45] for k in range(4)], [1, 1, 0, 0])
         # the same pack read as 1.0: the fields 1.1 uses are reserved there, and ignored
@@ -233,12 +234,14 @@ class EncoderTests(unittest.TestCase):
         plain = World(cells=[Cell(0, 0, placements=pls[:1] + [Placement(m, (9, 0, 9), tag=2)])], cell_shift=5)
         new = encode(plain)
         as10 = new[:6] + struct.pack('<H', 0) + new[8:]
+        self.assertEqual(new[13], 0)
         for d in (new, as10):
             c = decode(d).cells[(0, 0)]
             self.assertEqual(c.ground_count, 0)
             self.assertEqual([(p['tag'], p['ground']) for p in c.placements], [(1, False), (2, False)])
         # inconsistent ground fields are refused
-        for at, value, fmt in ((co + 76, 5, '<I'), (co + 76, 1, '<I'), (pl + P.PLACEMENT_SIZE * 2 + 45, 1, '<B')):
+        for at, value, fmt in ((co + 76, 5, '<I'), (co + 76, 1, '<I'), (pl + P.PLACEMENT_SIZE * 2 + 45, 1, '<B'),
+                               (13, 0, '<B')):
             bad = bytearray(data)
             struct.pack_into(fmt, bad, at, value)
             with self.subTest(at=at), self.assertRaises(PackError):
@@ -734,7 +737,7 @@ class DemoTests(unittest.TestCase):
         good = encode(World(cells=[Cell(0, 0)], cell_shift=5))
         cases = [(good, 'open 1 32'),
                  (good[:6] + struct.pack('<H', 9) + good[8:], 'open 1 32'),       # a newer minor
-                 (good[:13] + bytes([0x01]) + good[14:], 'open 1 32'),            # an ignorable flag
+                 (good[:13] + bytes([0x02]) + good[14:], 'open 1 32'),            # an ignorable flag
                  (good[:4] + struct.pack('<H', 2) + good[6:], 'open 0'),          # another major
                  (good[:13] + bytes([0x10]) + good[14:], 'open 0'),               # a required feature
                  (b'MEIX' + good[4:], 'open 0')]

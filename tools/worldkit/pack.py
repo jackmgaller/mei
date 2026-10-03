@@ -57,6 +57,7 @@ MAX_MESH_VERTS = 2048
 FLAG_SAVED = 1
 PLACEMENT_GROUND = 1        # placement flags bit 0 (1.1): drawn in the ground pass
 FLAGS_REQUIRED = 0xF0       # header flag bits a reader must understand (none defined in 1.1)
+FLAG_GROUND = 1             # header flags bit 0 (1.1, ignorable): some placement is ground
 
 KIND_FLOOR, KIND_WALL, KIND_CEILING = 0, 1, 2
 KIND_NAMES = ('floor', 'wall', 'ceiling')
@@ -685,6 +686,7 @@ def encode(world, report=None):
         names = cell_layers[key]
         return lambda name: 0 if name is None else 1 << names.index(name)
 
+    any_ground = False
     entity_numbers = []         # (cell (i, j), k)
     entity_records = []         # offsets
     cell_offs = {}
@@ -702,6 +704,7 @@ def encode(world, report=None):
         prec = bytearray()
         placements = [p for p in c.placements if p.ground] + [p for p in c.placements if not p.ground]
         ground_count = sum(1 for p in placements if p.ground)
+        any_ground = any_ground or ground_count > 0
         for p in placements:
             pos = _raw3(p.position, 'placement position')
             local = (pos[0] - cx, pos[1], pos[2] - cz)
@@ -803,7 +806,7 @@ def encode(world, report=None):
         out.patch(at, 'I', strings[text])
     out.align(4)
     out.patch(0, '4sHHIBBHhhHHIiiHHIIIIII', MAGIC, VERSION_MAJOR, VERSION_MINOR, len(out.b),
-              shift, 0, HEADER_SIZE, i0, j0, gw, gh, index_off, pad, overhang,
+              shift, FLAG_GROUND if any_ground else 0, HEADER_SIZE, i0, j0, gw, gh, index_off, pad, overhang,
               len(world.regions), len(world.layers), region_off, layer_off,
               len(entity_records), ent_dir, len(mesh_order), mesh_dir)
     if report is not None:
@@ -1096,6 +1099,8 @@ def decode(data):
             raise PackError(f'cell ({ci}, {cj}): collision grid is not the cell square')
         cells[(ci, cj)] = DCell(co, ci, cj, reg, lay, bounds, sbounds, mesh_at(sto, 'stand-in'), pls, ens,
                                 efirst, coll, nground)
+    if minor >= 1 and bool(flags & FLAG_GROUND) != any(c.ground_count for c in cells.values()):
+        raise PackError('the header\'s ground flag disagrees with the cells')
     ents = []
     for k in range(nent):
         eo = r.u('I', ent_dir + 4 * k, 'entity directory')[0]
