@@ -1,7 +1,7 @@
 # Mei
 
 A 3D fantasy console modelled on PlayStation-era hardware, implemented from
-[`docs/Mei console specification v0.1.pdf`](Mei%20console%20specification%20v0.1.pdf)
+[`docs/spec-v0.1.pdf`](spec-v0.1.pdf)
 (text copy in [`docs/spec-v0.1.txt`](spec-v0.1.txt)).
 
 - 320×240 at 60 fps, 15-bit colour, 4×4 ordered dither
