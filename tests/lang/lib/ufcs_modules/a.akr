@@ -1,0 +1,13 @@
+struct Thing { value: s32 }
+enum Mode { Off, On }
+fn make(n: s32) -> Thing { return Thing { value: n } }
+fn read(q: Thing) -> s32 { return q.value + 10 }
+fn change(q: *Thing, n: s32) -> *Thing { q.value += n; return q }
+fn global_choice(q: Thing) -> s32 { return q.value + 20 }
+fn local_choice(q: Thing) -> s32 { return q.value + 30 }
+fn enum_number(m: Mode) -> s32 { return (m as s32) + 100 }
+private fn hidden_method(q: Thing) -> s32 { return q.value + 40 }
+fn public_wrapper(q: Thing) -> s32 { return q.hidden_method() }
+fn pointer_read(q: *Thing) -> s32 { return read(*q) }
+var callback: fn(Thing) -> s32 = read
+weak fn overridden(q: Thing) -> s32 { return 0 }

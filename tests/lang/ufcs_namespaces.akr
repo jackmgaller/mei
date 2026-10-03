@@ -1,0 +1,27 @@
+// Associated public functions are found by receiver type when no visible name shadows them.
+import "lib/ufcs_modules/a.akr" as a
+import "lib/ufcs_modules/b.akr" as b
+fn global_choice(q: a.Thing) -> s32 { return q.value + 200 }
+fn a.overridden(q: a.Thing) -> s32 { return q.value + 500 }
+fn init() {
+    var first = a.make(2)
+    var second = b.make(3)
+    assert_eq(first.read(), 12)
+    assert_eq(second.read(), 1003)
+    assert_eq(a.make(4).read(), 14)
+    assert_eq(b.make(4).read(), 1004)
+    assert_eq((&first).change(4).change(5).pointer_read(), 21)
+    assert_eq((&second).change(4).change(5).pointer_read(), 1060)
+    assert_eq(first.global_choice(), 211)
+    assert_eq(first.local_choice(), 41)
+    let local_choice = fn(q: a.Thing) => q.value + 300
+    assert_eq(first.local_choice(), 311)
+    assert_eq(a.Mode.On.enum_number(), 101)
+    assert_eq(b.Mode.On.enum_number(), 201)
+    assert_eq(first.public_wrapper(), 51)
+    assert_eq(first.callback(), 21)
+    assert_eq(first.overridden(), 511)
+    let a = &first
+    assert_eq(a.pointer_read(), 21)
+    println("namespace ufcs ok") // expect: namespace ufcs ok
+}

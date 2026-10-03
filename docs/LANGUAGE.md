@@ -635,6 +635,10 @@ pattern names (an enum converted from an out-of-range integer) and the result is
 
 `receiver.function(args...)` means `function(receiver, args...)`. Any visible named function,
 function value or builtin can be called this way; there are no method declarations or overloads.
+For a struct or enum receiver (including a pointer to either), lookup also finds public callable
+names in the type's defining file. This lets `hero.play(...)` find `tk.play` when `hero` has a
+type from a named import. Visible local or top-level names take precedence; argument type or
+arity errors do not retry another function. Private functions remain private.
 The receiver is evaluated once, before the remaining arguments, using the ordinary call rules.
 Chaining works when each call returns the receiver for the next call:
 

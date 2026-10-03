@@ -1338,9 +1338,9 @@ static Expr *check_intrinsic(Ctx *c, Expr *e, Builtin bi, const char *name);
 static void lower_method_call(Ctx *c, Expr *e) {
     Expr *field = e->a;
     if (field->k != E_FIELD) return;
-    Expr *receiver = field->a;
+    Expr *receiver = resolve_qualified_expr(c, field->a);
     if (receiver->k == E_NAME && !(c->fn && is_local_name(c, receiver->name))) {
-        Sym *s = sym_lookup(receiver->name, receiver->loc.file);
+        Sym *s = receiver->sym ? receiver->sym : sym_lookup(receiver->name, receiver->loc.file);
         if (s && s->k == SY_TYPE && s->ty->k == TY_ENUM) return;
     }
     /* Array and function literals have no fields. Let the eventual parameter type supply
@@ -1362,6 +1362,18 @@ static void lower_method_call(Ctx *c, Expr *e) {
     }
     Expr *name = ar_alloc(sizeof *name);
     name->k = E_NAME; name->loc = field->loc; name->name = field->name;
+    /* Public functions from the receiver's defining file are available as methods even
+       when that file was imported under an alias. Ordinary visible names win: this is
+       fallback lookup, not type-based overloading. Never expose a private declaration. */
+    if (!(c->fn && is_local_name(c, name->name)) && !sym_lookup(name->name, name->loc.file)) {
+        Type *owner = receiver->ty;
+        while (owner && owner->k == TY_PTR) owner = owner->elem;
+        if (owner && (owner->k == TY_STRUCT || owner->k == TY_ENUM)) {
+            Sym *s = sym_lookup_module(name->name, owner->loc.file, 1);
+            if (s && (s->k == SY_FUNC || s->k == SY_GLOBAL || s->k == SY_CONST || s->k == SY_DATA))
+                name->sym = s;
+        }
+    }
     Expr **args = ar_alloc(sizeof *args * (size_t)(e->nargs + 1));
     args[0] = receiver;
     if (e->nargs) memcpy(args + 1, e->args, sizeof *args * (size_t)e->nargs);
