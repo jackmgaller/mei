@@ -1,0 +1,2 @@
+// error: from_bits16() needs an integer
+fn init() { print_fixed(from_bits16(1.0)) }

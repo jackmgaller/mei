@@ -300,6 +300,11 @@ static int is_small_int(Type *t) { t = ty_base(t); return t->k == TY_S8 || t->k 
 static void normalize(int d, int s, Type *t) {
     switch (ty_base(t)->k) {
     case TY_S8: I("shli %s, %s, 24", RN[d], RN[s]); I("sari %s, %s, 24", RN[d], RN[d]); break;
+    case TY_FIXED16:
+        I("shli %s, %s, 12", RN[d], RN[s]);
+        I("sari %s, %s, 16", RN[d], RN[d]);
+        I("shli %s, %s, 4", RN[d], RN[d]);
+        break;
     case TY_S16: I("shli %s, %s, 16", RN[d], RN[s]); I("sari %s, %s, 16", RN[d], RN[d]); break;
     case TY_U8: I("andi %s, %s, 255", RN[d], RN[s]); break;
     case TY_U16: I("andi %s, %s, 65535", RN[d], RN[s]); break;
@@ -369,7 +374,7 @@ static LV lv_local(Local *l) {
     }
     if (l->home == 2) return (LV){.k = LV_VREG, .reg = l->reg, .ty = l->ty};
     LV lv = lv_mem((Opnd){O_REG, 14}, l->off, l->ty);
-    if (l->is_param && !l->in_reg_arg) { lv.frame_rel = 1; lv.off = l->stack_arg_off; }
+    if (l->is_param && !l->in_reg_arg && l->ty->k != TY_FIXED16) { lv.frame_rel = 1; lv.off = l->stack_arg_off; }
     if (ty_is_aggr(l->ty) && l->is_param) {
         /* by-reference parameter spilled to memory: load the pointer */
         int t = tnew(0);
@@ -511,7 +516,7 @@ static const char *load_op(Type *t) {
     switch (ty_base(t)->k) {
     case TY_S8: return "lb";
     case TY_U8: case TY_BOOL: return "lbu";
-    case TY_S16: return "lh";
+    case TY_FIXED16: case TY_S16: return "lh";
     case TY_U16: return "lhu";
     default: return "lw";
     }
@@ -536,6 +541,7 @@ static Opnd load_lv(LV *lv, int hint) {
     if (is_v(t)) { Opnd d = dest(1, hint, &r); I("vld %s, %s", VN[r], m); return d; }
     Opnd d = dest(0, hint, &r);
     I("%s %s, %s", load_op(t), RN[r], m);
+    if (t->k == TY_FIXED16) I("shli %s, %s, 4", RN[r], RN[r]);
     return d;
 }
 
@@ -546,13 +552,21 @@ static void store_lv_k(LV *lv, Opnd v, Type *vt, int keep) {
     Type *t = lv->ty;
     switch (lv->k) {
     case LV_REG:
-        if (is_small_int(t) && ty_base(vt) != ty_base(t)) { int s = R(&v); normalize(lv->reg, s, t); }
+        if ((is_small_int(t) || t->k == TY_FIXED16) && ty_base(vt) != ty_base(t)) { int s = R(&v); normalize(lv->reg, s, t); }
         else move_to(v, lv->reg, 0);
         ofree(v);
         return;
     case LV_VREG: move_to(v, lv->reg, 1); ofree(v); return;
     case LV_VLANE: { int s = R(&v); I("vset %s, %s, %d", VN[lv->reg], RN[s], lv->lane); ofree(v); return; }
     default: break;
+    }
+    if (t->k == TY_FIXED16) {
+        /* Memory holds signed 4.12; never alter a register still owned by a local. */
+        int tt = tnew(0);
+        int rr = R(&v);
+        I("sari %s, %s, 4", RN[treg(tt)], RN[rr]);
+        ofree(v);
+        v = o_tmp(tt);
     }
     lv_fix(lv);
     if (is_v(t)) {
@@ -1381,12 +1395,14 @@ static Opnd gen_conv(Expr *e, int hint) {
     }
     if (ty_is_aggr(to)) ice("aggregate conversion");
     /* conversions that change nothing in a register: let the operand use the hint */
-    int noop = (from->k == TY_FIXED) == (to->k == TY_FIXED) &&
+    int fromfx = from->k == TY_FIXED || from->k == TY_FIXED16;
+    int tofx = to->k == TY_FIXED || to->k == TY_FIXED16;
+    int noop = fromfx == tofx && to->k != TY_FIXED16 &&
                !(is_small_int(to) && (from->size > to->size || ty_is_signed(from) != ty_is_signed(to)));
     if (noop) return gen_expr(e->a, hint);
     Opnd a = gen_expr(e->a, -1);
     int r;
-    if (from->k == TY_FIXED && to->k != TY_FIXED) {
+    if (fromfx && !tofx) {
         int ra = R(&a);
         ofree(a);
         Opnd d = dest(0, hint, &r);
@@ -1394,11 +1410,19 @@ static Opnd gen_conv(Expr *e, int hint) {
         if (is_small_int(to)) normalize(r, r, to);
         return d;
     }
-    if (to->k == TY_FIXED && from->k != TY_FIXED) {
+    if (tofx && !fromfx) {
         int ra = R(&a);
         ofree(a);
         Opnd d = dest(0, hint, &r);
         I("shli %s, %s, 16", RN[r], RN[ra]);
+        if (to->k == TY_FIXED16) normalize(r, r, to);
+        return d;
+    }
+    if (to->k == TY_FIXED16) {
+        int ra = R(&a);
+        ofree(a);
+        Opnd d = dest(0, hint, &r);
+        normalize(r, ra, to);
         return d;
     }
     if (is_small_int(to) && (from->size > to->size || ty_is_signed(from) != ty_is_signed(to))) {
@@ -1455,7 +1479,20 @@ static Opnd gen_builtin(Expr *e, int hint) {
         I("vcross %s, %s, %s", VN[r], VN[rx], VN[ry]);
         return d;
     }
-    case BI_BITS: case BI_FROM_BITS: case BI_RAW: return gen_expr(a[0], hint);
+    case BI_BITS:
+        if (a[0]->ty->k == TY_FIXED16)
+            return arith(B_SHR, ty_s32, 0, gen_expr(a[0], -1), o_imm(4), hint);
+        return gen_expr(a[0], hint);
+    case BI_FROM_BITS16: {
+        Opnd x = gen_expr(a[0], -1);
+        int rx = R(&x);
+        ofree(x);
+        Opnd d = dest(0, hint, &r);
+        I("shli %s, %s, 16", RN[r], RN[rx]);
+        I("sari %s, %s, 12", RN[r], RN[r]);
+        return d;
+    }
+    case BI_FROM_BITS: case BI_RAW: return gen_expr(a[0], hint);
     case BI_ABS: {
         Opnd x = gen_expr(a[0], -1);
         int rx = R(&x);
@@ -1613,6 +1650,7 @@ static Opnd gen_intrinsic(Expr *e, int hint, LV *into) {
             const char *m = mem(&el);
             lv_free(&el);
             I("%s %s, %s", vec ? "vld" : load_op(T), vec ? VN[areg] : RN[areg], m);
+            if (T->k == TY_FIXED16) I("shli %s, %s, 4", RN[areg], RN[areg]);
             args[na++] = (Arg){o_tmp(t), T};
         } else args[na++] = (Arg){load_lv(&el, -1), T};
     }
@@ -2086,7 +2124,10 @@ static void gen_compound(Stmt *s) {
         Type *t = lv.ty;
         const char *m = mem(&lv);
         if (is_v(t)) { cur = dest(1, -1, &r); I("vld %s, %s", VN[r], m); }
-        else { cur = dest(0, -1, &r); I("%s %s, %s", load_op(t), RN[r], m); }
+        else {
+            cur = dest(0, -1, &r); I("%s %s, %s", load_op(t), RN[r], m);
+            if (t->k == TY_FIXED16) I("shli %s, %s, 4", RN[r], RN[r]);
+        }
     } else {
         cur = load_lv(&lv, -1);
         if (lv.k == LV_REG || lv.k == LV_VREG) hint = lv.reg;
@@ -2826,7 +2867,7 @@ static void assign_homes(Func *f, int *locals_size) {
     for (int i = 0; i < f->nlocals; i++) {
         Local *l = f->locals[i];
         if (l->home) continue;
-        if (l->is_param && !l->in_reg_arg) continue;   /* stays in the caller's frame */
+        if (l->is_param && !l->in_reg_arg && l->ty->k != TY_FIXED16) continue;   /* stays in the caller's frame */
         if (l->dead || l->elided) continue;
         int size = (ty_is_aggr(l->ty) && l->is_param) ? 4 : l->ty->size;
         off = (off + 3) & ~3;
@@ -3055,11 +3096,23 @@ static void gen_func(Func *f, Buf *out) {
     int nm = 0, nvm = 0, vbusy = 0;
     for (int i = 0; i < norder; i++) {
         Local *l = order[i];
-        if (!l->in_reg_arg) continue;
+        if (!l->in_reg_arg) {
+            if (l->home == 0 && l->ty->k == TY_FIXED16) {
+                /* Copy the canonical ABI word before any parameter moves can occupy r5. */
+                I("lw r5, [sp+%d+\001]", l->stack_arg_off);
+                I("sari r5, r5, 4");
+                I("sh r5, [sp+%d]", l->off);
+            }
+            continue;
+        }
         if (l->home == 0) {
             if (is_v(l->ty)) I("vst %s, [sp+%d]", VN[l->arg_reg], l->off);
             else if (ty_is_aggr(l->ty)) I("sw %s, [sp+%d]", RN[l->arg_reg], l->off);
-            else I("%s %s, [sp+%d]", store_op(l->ty), RN[l->arg_reg], l->off);
+            else if (l->ty->k == TY_FIXED16) {
+                /* r5 is free at entry: argument/capture registers must survive the moves. */
+                I("sari r5, %s, 4", RN[l->arg_reg]);
+                I("sh r5, [sp+%d]", l->off);
+            } else I("%s %s, [sp+%d]", store_op(l->ty), RN[l->arg_reg], l->off);
         } else if (l->home == 1 && l->reg != l->arg_reg) mv[nm++] = (Move){l->arg_reg, l->reg};
         else if (l->home == 2) {
             vbusy |= 1 << l->arg_reg | 1 << l->reg;
@@ -3082,6 +3135,7 @@ static void gen_func(Func *f, Buf *out) {
         if (l->in_reg_arg) continue;
         if (l->home == 1) I("lw %s, [sp+%d+\001]", RN[l->reg], l->stack_arg_off);
         else if (l->home == 2) I("vld %s, [sp+%d+\001]", VN[l->reg], l->stack_arg_off);
+
     }
     if (g_iobase_reg >= 0) I("lui %s, %u", RN[g_iobase_reg], IO_BASE_ADDR >> 10);
 
@@ -3182,7 +3236,7 @@ static void serialize(Expr *e, Type *t, uint8_t *buf, uint8_t *base) {
         }
         return;
     }
-    uint32_t v = (uint32_t)e->cval;
+    uint32_t v = (uint32_t)(t->k == TY_FIXED16 ? e->cval >> 4 : e->cval);
     for (int k = 0; k < t->size; k++) buf[k] = (uint8_t)(v >> (8 * k));
 }
 

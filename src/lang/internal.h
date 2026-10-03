@@ -77,6 +77,7 @@ typedef enum {
     TY_NULL,      /* type of `null` */
     TY_FUNC,      /* function value: 16 bytes, [code address, 3 captured words]; elem = result,
                      params = parameter types. Held in vector registers like a vec4. */
+    TY_FIXED16,   /* signed 4.12 in memory; canonical 16.16 in scalar registers */
     TY_ENUM,      /* enumeration: elem = underlying integer type */
 } TyKind;
 
@@ -106,7 +107,7 @@ struct Type {
     const char **vnames; int64_t *vvals; int nvariants;   /* TY_ENUM, after resolution */
 };
 
-extern Type *ty_void, *ty_bool, *ty_s8, *ty_s16, *ty_s32, *ty_u8, *ty_u16, *ty_u32, *ty_fixed,
+extern Type *ty_void, *ty_bool, *ty_s8, *ty_s16, *ty_s32, *ty_u8, *ty_u16, *ty_u32, *ty_fixed, *ty_fixed16,
             *ty_vec2, *ty_vec3, *ty_vec4, *ty_ivec4, *ty_mat4, *ty_uint, *ty_ufixed, *ty_null;
 
 void types_init(void);
@@ -152,6 +153,7 @@ typedef enum {
     BI_NONE, BI_VEC2, BI_VEC3, BI_VEC4, BI_IVEC4, BI_DOT, BI_CROSS, BI_LEN,
     BI_BITS, BI_FROM_BITS, BI_ABS, BI_MIN, BI_MAX, BI_CLAMP, BI_LERP, BI_LENGTH, BI_NORMALIZE,
     BI_NCLIP, BI_OTZ, BI_CLERP,     /* the geometry instructions of the same names */
+    BI_FROM_BITS16,               /* signed raw 4.12 -> fixed16 */
     BI_KIND, BI_RAW,                /* assert_eq() reports: a value's print kind, its raw 32 bits */
     BI_MAP, BI_MAP_INTO, BI_FILTER, BI_FILTER_INTO, BI_REDUCE, BI_EACH,
 } Builtin;

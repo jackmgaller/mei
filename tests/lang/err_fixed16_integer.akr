@@ -1,0 +1,2 @@
+// error: out of range for fixed16
+fn init() { let x: fixed16 = 8; print_fixed(x) }

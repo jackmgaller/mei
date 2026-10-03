@@ -263,6 +263,7 @@ the start of a top-level declaration, and cannot be combined with `private`.
 | `s8 s16 s32` | 1, 2, 4 | signed integers |
 | `u8 u16 u32` | 1, 2, 4 | unsigned integers |
 | `fixed` | 4 | 16.16 fixed point, −32768 to 32767.99998 |
+| `fixed16` | 2 | signed 4.12 fixed point, −8 to 7.99975586; 2-byte aligned |
 | `bool` | 1 | `true` / `false` |
 | `vec2 vec3 vec4` | 16 | vectors of `fixed`; unused lanes are always zero |
 | `ivec4` | 16 | four `s32` lanes |
@@ -280,6 +281,18 @@ rather than repeating the expression, so the two cannot drift apart.
 
 Arithmetic happens in 32 bits. The 8- and 16-bit types exist for memory layout; a value read
 from one is sign- or zero-extended, a value stored into one is truncated.
+`fixed16` likewise exists for compact storage: arrays use two bytes per element and struct
+fields align to two bytes. A load expands its signed 4.12 pattern to 16.16, and arithmetic
+(including unary minus, shifts, `abs`, `min`, `max` and `clamp`) promotes it to `fixed`.
+For example, `fixed16(-8.0) * fixed16(-8.0)` produces `fixed` 64.0.
+Assignment, argument passing and returns convert between `fixed` and `fixed16` implicitly.
+Narrowing drops four fractional bits (rounds down to a multiple of 1/4096) and wraps the
+signed 16-bit pattern on overflow, including for values that stay in registers.
+`var x: fixed16 = 0.1` stores raw 409 (about 0.09985); `x += 0.5` computes in `fixed` then
+narrows back. Untyped constants assigned or converted directly to `fixed16` must fit its
+range; explicitly typed values can wrap, so `fixed16(fixed(8.0))` is −8.0.
+Debug multiply and divide checks apply to the promoted `fixed` operation; narrowing itself
+wraps in debug mode as well.
 
 Scalars live in scalar registers, vectors in vector registers; structs, arrays and matrices
 always live in memory.
@@ -297,10 +310,11 @@ division by a constant zero is an error.
 **Implicit conversions** (assignment, arguments, return values):
 
 - between integer types, in either direction (narrowing truncates);
+- between `fixed` and `fixed16`, in either direction (narrowing rounds down and wraps);
 - `null` to any pointer type; any pointer to `*u8` (a byte pointer, like `void *`);
 - an array variable `[N]T` to `*T` (or `*u8`): `sum(buf, 10)` passes `&buf[0]`.
 
-Everything else needs an explicit conversion. In particular integers and `fixed` never mix
+Everything else needs an explicit conversion. In particular integer variables and fixed-point values never mix
 implicitly.
 
 **Explicit conversions**: `x as T`, or `T(x)` for scalar types (`fixed(3)`, `s32(f)`).
@@ -309,6 +323,9 @@ implicitly.
 |---|---|
 | integer → `fixed` | the same value: shifted left 16 (`3 as fixed` is 3.0) |
 | `fixed` → integer | rounded down (floor): `1.75 as s32` is 1, `-1.25 as s32` is −2 |
+| integer → `fixed16` | the same numerical value, then narrowed to 4.12 (wraps outside −8..7.99975586) |
+| `fixed16` → integer | rounded down (floor), like `fixed` → integer |
+| `fixed` ↔ `fixed16` | numerical value kept; narrowing rounds down to 1/4096 and wraps signed 16 bits |
 | integer → integer | truncated or extended |
 | `bool` → integer | 0 or 1 |
 | pointer ↔ pointer, pointer ↔ `u32`/`s32`, integer → pointer | the address, unchanged |
@@ -319,7 +336,10 @@ implicitly.
 | `u32`/`s32` → function value | a value with that code address and no captured words |
 
 `bits(f)` gives the raw 32-bit pattern of a `fixed` as `s32` (`bits(1.0)` is 65536);
-`from_bits(n)` is the reverse.
+`from_bits(n)` is the reverse. For `fixed16`, `bits(f)` returns the signed raw 4.12 pattern
+as `s32` (`bits(fixed16(1.0))` is 4096). `from_bits16(n)` reverses it, taking the low 16 bits
+as signed 4.12 (`from_bits16(65535)` is −1/4096). `from_bits` always returns `fixed`;
+use `from_bits16` when reconstructing a compact value.
 
 ## Operators
 
