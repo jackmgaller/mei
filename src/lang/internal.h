@@ -421,9 +421,15 @@ void module_publish(const char *file, Program *P);
 
 void check_program(Program *P);
 int fits_s18(int64_t v);
+int is_lvalue(Expr *e);   /* can be assigned to or have its address taken */
 /* For a link-time address constant in const data (an embed, a string or other const data, a
    function, or one of these converted to a pointer / u32 / s32): its label; else NULL. */
 const char *const_addr_label(Expr *e);
+
+/* ---------------------------------------------------------------- opt.c */
+
+/* Inlining, let forwarding and induction pointers, on a checked program. */
+void opt_program(Program *P);
 
 /* ---------------------------------------------------------------- gen.c */
 

@@ -244,6 +244,7 @@ int meic_compile(const char *path, const MeiCompileOptions *opt, MeiAsmResult *o
     P->debug = opt->debug;
     P->wextra = opt->extra_warnings;
     check_program(P);
+    opt_program(P);
     gen_program(P, &text);
     if (opt->asm_text) *opt->asm_text = strdup(text.p ? text.p : "");
     if (opt->warnings) *opt->warnings = warn_take();
