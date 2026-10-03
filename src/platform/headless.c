@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
         if (bc_len > 0 && fread(bc, 1, (size_t)bc_len, bf) != (size_t)bc_len) { perror(bc_path); return 1; }
         fclose(bf);
     }
-    if (bc_noise > 0) mei_broadcast_noise(m, (uint32_t)(bc_noise * 1e6 + 0.5), 0x4D454E4Fu);
+    if (bc_noise > 0) mei_broadcast_noise(m, (uint32_t)(bc_noise * 1e6 + 0.5), 0);
     if (mei_load_cart(m, data, len) != 0) { fprintf(stderr, "%s: not a valid cart (%zu bytes)\n", cart, len); return 1; }
     if (sysdir) mei_set_privileged(m, 1);
 

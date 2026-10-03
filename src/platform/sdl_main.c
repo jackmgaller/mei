@@ -359,7 +359,7 @@ SDL_AppResult SDL_AppInit(void **state, int argc, char **argv) {
         }
         bcnet_start(host[0] ? host : "127.0.0.1", port);
     }
-    if (bc_noise > 0) mei_broadcast_noise(app.mei, (uint32_t)(bc_noise * 1e6 + 0.5), 0x4D454E4Fu);
+    if (bc_noise > 0) mei_broadcast_noise(app.mei, (uint32_t)(bc_noise * 1e6 + 0.5), 0);
     const char *base = SDL_GetBasePath();
     char path[1024];
     snprintf(path, sizeof path, "%ssystem.mei", base ? base : "");

@@ -35,19 +35,6 @@ var tri_max: s32
 var cpu_sum: s32
 var cpu_n: s32
 
-const PAD_UP = 1
-const PAD_DOWN = 2
-const PAD_LEFT = 4
-const PAD_RIGHT = 8
-const PAD_A = 16
-const PAD_B = 32
-const PAD_X = 64
-const PAD_Y = 128
-const PAD_L = 256
-const PAD_R = 512
-const PAD_START = 1024
-const PAD_SELECT = 2048
-
 // A script: frame, buttons held from that frame on; pairs in order.
 fn script_from(tab: *s32, n: s32, f: s32) -> u32 {
     var pad: u32 = 0
@@ -60,46 +47,46 @@ fn script_from(tab: *s32, n: s32, f: s32) -> u32 {
     return pad
 }
 
-const S2: [4]s32 = [60, PAD_RIGHT, 64, 0]
-const S3: [8]s32 = [60, PAD_RIGHT, 64, 0, 120, PAD_RIGHT, 124, 0]
-const S4: [4]s32 = [60, PAD_LEFT, 64, 0]
-const S5: [12]s32 = [60, PAD_L, 64, 0, 100, PAD_L, 104, 0, 140, PAD_L, 144, 0]
-const S6: [20]s32 = [60, PAD_Y, 64, 0, 120, PAD_DOWN, 124, 0, 130, PAD_DOWN, 134, 0, 140, PAD_DOWN, 144, 0,
-                     160, PAD_A, 164, 0]
+const S2: [4]s32 = [60, RIGHT, 64, 0]
+const S3: [8]s32 = [60, RIGHT, 64, 0, 120, RIGHT, 124, 0]
+const S4: [4]s32 = [60, LEFT, 64, 0]
+const S5: [12]s32 = [60, L, 64, 0, 100, L, 104, 0, 140, L, 144, 0]
+const S6: [20]s32 = [60, Y, 64, 0, 120, DOWN, 124, 0, 130, DOWN, 134, 0, 140, DOWN, 144, 0,
+                     160, A, 164, 0]
 // X; 4 (row 1 col 0): DOWN, A; 0 (row 3 col 1): DOWN DOWN RIGHT A; 3 (row 0 col 2): UP UP UP RIGHT A
 const S7: [72]s32 = [
-    60, PAD_X, 64, 0,
-    80, PAD_DOWN, 84, 0, 90, PAD_A, 94, 0,
-    100, PAD_DOWN, 104, 0, 110, PAD_DOWN, 114, 0, 120, PAD_RIGHT, 124, 0, 130, PAD_A, 134, 0,
-    140, PAD_UP, 144, 0, 150, PAD_UP, 154, 0, 160, PAD_UP, 164, 0, 170, PAD_RIGHT, 174, 0, 180, PAD_A, 184, 0,
+    60, X, 64, 0,
+    80, DOWN, 84, 0, 90, A, 94, 0,
+    100, DOWN, 104, 0, 110, DOWN, 114, 0, 120, RIGHT, 124, 0, 130, A, 134, 0,
+    140, UP, 144, 0, 150, UP, 154, 0, 160, UP, 164, 0, 170, RIGHT, 174, 0, 180, A, 184, 0,
     // later: X, 7 (row 2 col 0) x 3
-    400, PAD_X, 404, 0, 420, PAD_DOWN, 424, 0, 430, PAD_DOWN, 434, 0,
-    440, PAD_A, 444, 0, 450, PAD_A, 454, 0, 460, PAD_A, 464, 0
+    400, X, 404, 0, 420, DOWN, 424, 0, 430, DOWN, 434, 0,
+    440, A, 444, 0, 450, A, 454, 0, 460, A, 464, 0
 ]
-const S8: [16]s32 = [60, PAD_START, 64, 0, 80, PAD_RIGHT, 84, 0, 90, PAD_DOWN, 94, 0, 100, PAD_RIGHT, 104, 0]
-const S8B: [4]s32 = [130, PAD_B, 134, 0]
-const S9: [4]s32 = [4500, PAD_A, 4504, 0]
+const S8: [16]s32 = [60, START, 64, 0, 80, RIGHT, 84, 0, 90, DOWN, 94, 0, 100, RIGHT, 104, 0]
+const S8B: [4]s32 = [130, B, 134, 0]
+const S9: [4]s32 = [4500, A, 4504, 0]
 const S10: [4]s32 = [0, 0, 1, 0]
-const S14: [4]s32 = [600, PAD_RIGHT, 604, 0]
+const S14: [4]s32 = [600, RIGHT, 604, 0]
 const S15: [52]s32 = [
-    60, PAD_X, 64, 0,
-    80, PAD_DOWN, 84, 0, 90, PAD_A, 94, 0,
-    100, PAD_DOWN, 104, 0, 110, PAD_DOWN, 114, 0, 120, PAD_RIGHT, 124, 0, 130, PAD_A, 134, 0,
-    140, PAD_UP, 144, 0, 150, PAD_UP, 154, 0, 160, PAD_UP, 164, 0, 170, PAD_RIGHT, 174, 0, 180, PAD_A, 184, 0,
-    240, PAD_LEFT, 244, 0
+    60, X, 64, 0,
+    80, DOWN, 84, 0, 90, A, 94, 0,
+    100, DOWN, 104, 0, 110, DOWN, 114, 0, 120, RIGHT, 124, 0, 130, A, 134, 0,
+    140, UP, 144, 0, 150, UP, 154, 0, 160, UP, 164, 0, 170, RIGHT, 174, 0, 180, A, 184, 0,
+    240, LEFT, 244, 0
 ]
-const S16: [16]s32 = [60, PAD_X, 64, 0, 80, PAD_DOWN, 84, 0, 90, PAD_A, 94, 0, 110, PAD_DOWN, 114, 0]
-const S17: [8]s32 = [60, PAD_START, 64, 0, 80, PAD_DOWN, 84, 0]
-const S18: [4]s32 = [60, PAD_Y, 64, 0]
+const S16: [16]s32 = [60, X, 64, 0, 80, DOWN, 84, 0, 90, A, 94, 0, 110, DOWN, 114, 0]
+const S17: [8]s32 = [60, START, 64, 0, 80, DOWN, 84, 0]
+const S18: [4]s32 = [60, Y, 64, 0]
 
 // Scenario 20: Y at 60, DOWN P1 times, A, then LEFT to the map.
 fn region_map_pad(f: s32) -> u32 {
-    if f >= 60 && f < 64 { return PAD_Y as u32 }
+    if f >= 60 && f < 64 { return Y as u32 }
     let k = (f - 100) / 10
-    if f >= 100 && k < P1 && (f - 100) % 10 < 4 { return PAD_DOWN as u32 }
+    if f >= 100 && k < P1 && (f - 100) % 10 < 4 { return DOWN as u32 }
     let g = f - 100 - P1 * 10
-    if g >= 20 && g < 24 { return PAD_A as u32 }
-    if g >= 80 && g < 84 { return PAD_LEFT as u32 }
+    if g >= 20 && g < 24 { return A as u32 }
+    if g >= 80 && g < 84 { return LEFT as u32 }
     return 0
 }
 
@@ -132,14 +119,14 @@ fn sweep_pad(f: s32) -> u32 {
     if g < 4000 {
         let k = g % 90
         if k < 3 {
-            if (g / 90) % 4 == 3 { return PAD_R as u32 }
-            return PAD_RIGHT as u32
+            if (g / 90) % 4 == 3 { return R as u32 }
+            return RIGHT as u32
         }
         return 0
     }
-    if g >= 4000 && g < 4004 { return PAD_X as u32 }
-    if g >= 4100 && g < 4104 { return PAD_B as u32 }
-    if g >= 4200 && g < 4204 { return PAD_START as u32 }
+    if g >= 4000 && g < 4004 { return X as u32 }
+    if g >= 4100 && g < 4104 { return B as u32 }
+    if g >= 4200 && g < 4204 { return START as u32 }
     return 0
 }
 
