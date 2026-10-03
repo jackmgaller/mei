@@ -43,7 +43,7 @@ $(B)/system.mei: $(shell find system -type f 2>/dev/null | sed 's/ /\\ /g') $(ST
 ASM_CARTS  := $(patsubst carts/asm/%.s,$(B)/carts/%.mei,$(wildcard carts/asm/*.s))
 LANG_CARTS := $(foreach d,$(wildcard carts/*/),$(if $(call SRC_EXT,$(d)$(notdir $(d:/=))),$(B)/carts/$(notdir $(d:/=)).mei))
 # Uninstalled carts remain available through their explicit build targets.
-UNINSTALLED_CARTS := demo soundlab
+UNINSTALLED_CARTS := demo soundlab worldview
 CARTS := $(filter-out $(UNINSTALLED_CARTS:%=$(B)/carts/%.mei),$(LANG_CARTS) $(ASM_CARTS))
 carts: $(CARTS)
 
@@ -85,6 +85,13 @@ endef
 $(foreach w,$(WORLD_RECIPES),$(eval $(call WORLD_RULE,$(w))))
 $(foreach c,$(WORLD_CARTS),$(eval $(call WORLD_CART_RULE,$(c))))
 -include $(foreach w,$(WORLD_RECIPES),$(dir $(call WORLD_BUILT,$(w)))build.d)
+
+# Part of test-carts: World Viewer's scripted run, then the rules above (tests/world_carts.sh).
+.PHONY: test-world-carts
+test-world-carts: $(B)/carts/worldview.mei
+	MEIC=$(B)/meic RUN=$(B)/mei-headless WORLDS=$(B)/cart-worlds/worldview carts/worldview/tests/check.sh
+	B=$(B) PYTHONDONTWRITEBYTECODE=1 tests/world_carts.sh
+test-carts: test-world-carts
 
 $(B)/%.o: %.c $(wildcard src/*/*.h)
 	@mkdir -p $(dir $@)

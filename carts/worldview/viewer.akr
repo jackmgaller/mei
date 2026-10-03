@@ -1,0 +1,255 @@
+// World Viewer: the camera, walking, the overlay and the frame loop.
+// The worlds' generated files (test_room.akr, two_districts.akr and their games' GAME.game.akr)
+// are not in this folder: make builds them from carts/worldview/worlds.txt into the build
+// directory and passes it to meic with -I.
+import "test_room.akr"
+import "two_districts.akr"
+
+struct World {
+    name: *u8
+    eye: vec3          // where the camera starts, flying
+    yaw: fixed
+    radius: fixed      // the game schema's probe radius: walls push the walking camera this far
+}
+
+const WORLD_COUNT = 2
+const WORLDS: [2]World = [
+    World { name: "test_room", eye: vec3(32.0, 3.0, 10.0), yaw: 0.0, radius: GARDEN_PROBE_RADIUS },
+    World { name: "two_districts", eye: vec3(2.0, 3.0, 6.0), yaw: 1.5708,     // looking +X
+            radius: CITY_PROBE_RADIUS },
+]
+
+fn world_load(k: s32) -> bool {
+    if k == 0 { return world_test_room_load() }
+    return world_two_districts_load()
+}
+
+const EYE_HEIGHT: fixed = 1.5    // above the floor, walking (the World Checker's eye cameras)
+const STEP: fixed = 0.35         // the highest floor a walking step climbs onto
+const FLY_SPEED: fixed = 0.25
+const WALK_SPEED: fixed = 0.08
+const TURN: fixed = 0.04
+const PITCH_MAX: fixed = 1.4
+
+var world: s32
+var eye: vec3              // the camera (world coordinates)
+var yaw: fixed
+var pitch: fixed
+var walking: bool
+var variant: s32           // the palette variant every region shows (its last, if it has fewer)
+var layer: s32             // the layer SELECT chooses and X switches
+var overlay = true
+var message: *u8           // a short note in the overlay ("no floor below")
+var message_t: s32
+var tick: s32
+
+var pad_now: u32
+var pad_prev: u32
+fn held(b: u32) -> bool { return pad_now & b != 0 }
+fn pressed(b: u32) -> bool { return pad_now & ~pad_prev & b != 0 }
+
+fn init() {
+    open_world(0)
+}
+
+fn open_world(k: s32) {
+    world = k
+    assert(world_load(k))
+    eye = WORLDS[k].eye
+    yaw = WORLDS[k].yaw
+    pitch = -0.15
+    walking = false
+    variant = 0
+    layer = 0
+}
+
+// ---- reading names from the pack (the reader has no accessors for them)
+
+fn pack_string(off: u32) -> *u8 { return (wp_pack as u32 + off) as *u8 }
+
+fn layer_name(id: s32) -> *u8 {
+    let layers = (wp_pack as u32 + wp_pack.layer_off) as *WpLayer
+    return pack_string(layers[id].name)
+}
+
+fn variant_name(region: s32, v: s32) -> *u8 {
+    let r = wp_region(region)
+    return pack_string(((wp_pack as u32 + r.palette_off) as *u32)[v])
+}
+
+// ---- palette variants
+
+fn region_variants(k: s32) -> s32 { return wp_region(k).variant_count as s32 }
+
+fn variants_max() -> s32 {
+    var n = 1
+    for k in 0..wp_pack.region_count as s32 { n = max(n, region_variants(k)) }
+    return n
+}
+
+fn show_variant(v: s32) {
+    variant = v
+    for k in 0..wp_pack.region_count as s32 {
+        let n = region_variants(k)
+        if n > 0 && wp_region(k).colour_count > 0 { wp_palette_load(k, min(v, n - 1)) }
+    }
+}
+
+// ---- moving
+
+// Walking: the feet move by d, walls push them out at knee and chest height (the probe's
+// radius), and they stand on the highest floor no more than STEP above them, or drop to the
+// next floor below. A camera kept on the floor, not a character: no gravity, jumping or limit
+// on slopes.
+fn walk(d: vec3) {
+    let r = WORLDS[world].radius
+    var p = eye - vec3(0.0, EYE_HEIGHT, 0.0) + d
+    for h in 0..2 {
+        let q = wp_push(p + vec3(0.0, 0.5 + 0.7 * h, 0.0), r)
+        p = vec3(q.x, p.y, q.z)
+    }
+    if wp_floor(p, STEP) { p.y = wp_hit.y }
+    eye = p + vec3(0.0, EYE_HEIGHT, 0.0)
+}
+
+fn toggle_walk() {
+    if walking {
+        walking = false
+        return
+    }
+    if !wp_floor(eye, 0.0) {
+        note("no floor below")
+        return
+    }
+    walking = true
+    eye.y = wp_hit.y + EYE_HEIGHT
+    walk(vec3(0.0, 0.0, 0.0))
+}
+
+fn note(s: *u8) {
+    message = s
+    message_t = 90
+}
+
+fn update() {
+    pad_prev = pad_now
+    pad_now = input_pad(tick)
+    let s = input_stick(tick)
+    var look = input_look(tick)
+    if held(LEFT) { look.x = -1.0 }
+    if held(RIGHT) { look.x = 1.0 }
+    if held(UP) { look.y = 1.0 }
+    if held(DOWN) { look.y = -1.0 }
+    yaw = wrap_angle(yaw + look.x * TURN)
+    pitch = clamp(pitch + look.y * TURN, -PITCH_MAX, PITCH_MAX)
+
+    let fwd = vec3(sin(yaw), 0.0, cos(yaw))
+    let right = vec3(cos(yaw), 0.0, -sin(yaw))
+    if walking {
+        walk((fwd * s.y + right * s.x) * WALK_SPEED)
+    } else {
+        eye = eye + (fwd * s.y + right * s.x) * FLY_SPEED
+        if held(L) { eye.y -= FLY_SPEED }
+        if held(R) { eye.y += FLY_SPEED }
+    }
+
+    if pressed(A) { toggle_walk() }
+    if pressed(B) { show_variant((variant + 1) % variants_max()) }
+    if pressed(SELECT) && wp_layer_count() > 0 { layer = (layer + 1) % wp_layer_count() }
+    if pressed(X) && wp_layer_count() > 0 { wp_layer_set(layer, !wp_layer_on(layer)) }
+    if pressed(START) { open_world((world + 1) % WORLD_COUNT) }
+    if pressed(Y) { overlay = !overlay }
+    if message_t > 0 { message_t -= 1 }
+    test_hook(tick)
+    tick += 1
+}
+
+// ---- drawing
+
+// The entities' own meshes (a coin), which wp_draw() leaves to the game, in the 3 x 3 cells.
+fn draw_entities() {
+    let o = wp_view_origin()
+    let ci = wp_cell_index(eye.x)
+    let cj = wp_cell_index(eye.z)
+    for dj in -1..2 {
+        for di in -1..2 {
+            let c = wp_cell(ci + di, cj + dj)
+            if c == null { continue }
+            for k in 0..c.entity_count as s32 {
+                let e = wp_cell_entity(c, k)
+                let m = wp_entity_mesh(e)
+                if m != null && wp_entity_live(e) { mesh_at(m, wp_entity_pos(e) - o, e.yaw) }
+            }
+        }
+    }
+}
+
+fn draw() {
+    if variant == 0 { cls(rgb(110, 150, 200)) } else { cls(rgb(20, 24, 48)) }
+    wp_draw(eye, yaw, pitch)
+    draw_entities()
+    if overlay { draw_overlay() }
+}
+
+fn ink() -> u32 { return rgb(255, 255, 255) }
+fn dim() -> u32 { return rgb(150, 180, 200) }
+
+// A fixed value with two decimals.
+fn text_fixed(x: s32, y: s32, f: fixed, colour: u32) -> s32 {
+    var v = (f * 100.0) as s32
+    var nx = x
+    if v < 0 {
+        text(nx, y, "-", colour)
+        nx += 8
+        v = -v
+    }
+    nx = text_int(nx, y, v / 100, colour)
+    text(nx, y, ".", colour)
+    if v % 100 < 10 {
+        text(nx + 8, y, "0", colour)
+        return text_int(nx + 16, y, v % 100, colour)
+    }
+    return text_int(nx + 8, y, v % 100, colour)
+}
+
+fn draw_overlay() {
+    rect(0, 0, 320, 44, rgb(24, 32, 40))
+    var x = 0
+    text(4, 2, WORLDS[world].name, ink())
+    if walking { text(140, 2, "WALK", ink()) } else { text(140, 2, "FLY", ink()) }
+    text(184, 2, variant_name(0, min(variant, region_variants(0) - 1)), ink())
+    let c = wp_cell_at(eye)
+    text(4, 12, "cell", dim())
+    if c == null {
+        text(44, 12, "none", ink())
+    } else {
+        x = text_int(44, 12, c.i as s32, ink())
+        text(x, 12, ",", ink())
+        text_int(x + 8, 12, c.j as s32, ink())
+    }
+    text(108, 12, "tris", dim())
+    text_int(148, 12, tris_drawn(), ink())
+    text(196, 12, "drawn", dim())
+    x = text_int(244, 12, wp_stats.drawn, ink())
+    text(x, 12, "+", dim())
+    text_int(x + 8, 12, wp_stats.standins, ink())
+    text(4, 22, "cpu", dim())
+    text_int(36, 22, cpu_used(), ink())
+    text(108, 22, "gpu", dim())
+    text_int(140, 22, gpu_used(), ink())
+    text(4, 32, "floor", dim())
+    if wp_floor(eye, 0.0) {
+        text_fixed(52, 32, wp_hit.y, ink())
+        text(108, 32, "surface", dim())
+        text_int(172, 32, wp_hit.surface, ink())
+    } else {
+        text(52, 32, "none", ink())
+    }
+    if wp_layer_count() > 0 {
+        text(196, 32, layer_name(layer), ink())
+        if wp_layer_on(layer) { text(296, 32, "on", ink()) } else { text(296, 32, "off", dim()) }
+    }
+    if message_t > 0 { text(4, 48, message, rgb(255, 208, 112)) }
+    rect(0, 228, 320, 12, rgb(24, 32, 40))
+    text(4, 230, "A walk  B palette  X layer  START world", dim())
+}

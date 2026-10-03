@@ -1,0 +1,152 @@
+// The World Viewer's scripted run (tests/run.sh SCENARIO FRAMES OUT; tests/check.sh runs it).
+// The pad and stick follow the timeline below; at the frames marked "check" the harness asserts
+// what the viewer should show and prints an OK line. A failed assert stops the run with exit
+// status 2. Scenario 1 is the whole run; scenarios 2 and 3 only hold the camera for pictures.
+//
+//   test_room (start: flying at (32, 3, 10), looking +Z, in front of the room's floor slab)
+//      3  check: cell 0,0, no floor under the camera
+//      5..48  forward, flying: check: over the slab (floor at 0)
+//     50  A: walk; check: the camera dropped to the floor plus EYE_HEIGHT
+//     51..200  forward: check: the closed gate (z 22) stopped the camera
+//    210  SELECT (layer gate_open), 215 X; check: gate_open on, gate_closed off (one group)
+//    220..280  forward: check: through the open gate
+//    290  B; check: the night variant's colours are in palette memory
+//    300  START; check: two_districts, flying from its start
+//   two_districts (start: flying at (2, 3, 6), looking +X)
+//    310..329  R: up 5 units; check
+//    330..459  forward: check (465): in cell 1,0
+//    470  X (festival on); check: more placements drawn than before
+//    480  A: walk; check: on the ground (surface 1, "ground"), at EYE_HEIGHT
+//    490  B; check: night colours
+//    500  check: the summary line
+
+const TEST = 1
+
+var checks: s32
+var drawn_before: s32
+var colour_before: s32
+
+fn input_pad(f: s32) -> u32 {
+    if SCENARIO != 1 { return 0 }
+    if f == 50 || f == 480 { return A }
+    if f == 210 { return SELECT }
+    if f == 215 || f == 470 { return X }
+    if f == 290 || f == 490 { return B }
+    if f == 300 { return START }
+    if f >= 310 && f < 330 { return R }
+    return 0
+}
+
+fn forward(f: s32) -> bool {
+    return (f >= 5 && f <= 48) || (f >= 51 && f <= 200) || (f >= 220 && f <= 280) || (f >= 330 && f < 460)
+}
+
+fn input_stick(f: s32) -> vec2 {
+    if SCENARIO == 1 && forward(f) { return vec2(0.0, 1.0) }
+    return vec2(0.0, 0.0)
+}
+
+fn input_look(f: s32) -> vec2 { return vec2(0.0, 0.0) }
+
+fn near(a: fixed, b: fixed) -> bool { return abs(a - b) < 0.02 }
+
+fn palette_entry(c: s32) -> s32 { return ((VRAM_PALETTE + c * 2) as *u16)[0] as s32 }
+
+fn ok(what: *u8) {
+    checks += 1
+    print("OK ")
+    print(what)
+    print(" eye ")
+    print_fixed(eye.x)
+    print_char(' ')
+    print_fixed(eye.y)
+    print_char(' ')
+    print_fixed(eye.z)
+    print(" drawn ")
+    print_int(wp_stats.drawn)
+    print(" tris ")
+    print_int(tris_drawn())
+    println("")
+}
+
+fn cell_is(i: s32, j: s32) -> bool {
+    let c = wp_cell_at(eye)
+    return c != null && c.i as s32 == i && c.j as s32 == j
+}
+
+fn test_hook(f: s32) {
+    if SCENARIO == 2 && f == 0 {          // a picture: test_room from the ramp, walking
+        eye = vec3(38.5, 3.0, 26.0)
+        yaw = -2.6
+        toggle_walk()
+    }
+    if SCENARIO == 3 && f == 0 {          // a picture: two_districts at night, festival on
+        open_world(1)
+        eye = vec3(60.0, 6.0, 2.0)
+        yaw = 1.2
+        pitch = -0.25
+        show_variant(1)
+        wp_layer_set(WORLD_TWO_DISTRICTS_LAYER_FESTIVAL, true)
+    }
+    if SCENARIO != 1 { return }
+    if f == 3 {
+        assert(world == 0 && cell_is(0, 0) && !wp_floor(eye, 0.0))
+        colour_before = palette_entry(WORLD_TEST_ROOM_LAB_SURFACE)
+        ok("start test_room cell 0,0, no floor below")
+    }
+    if f == 48 {
+        assert(!walking && near(eye.z, 21.0) && wp_floor(eye, 0.0) && near(wp_hit.y, 0.0))
+        ok("fly: over the floor")
+    }
+    if f == 50 {
+        assert(walking && near(eye.y, EYE_HEIGHT))
+        ok("walk: dropped to the floor")
+    }
+    if f == 200 {
+        assert(walking && eye.z > 21.0 && eye.z < 22.0 && near(eye.y, EYE_HEIGHT))
+        ok("walk: the closed gate stops the camera")
+    }
+    if f == 215 {
+        assert(wp_layer_on(WORLD_TEST_ROOM_LAYER_GATE_OPEN) && !wp_layer_on(WORLD_TEST_ROOM_LAYER_GATE_CLOSED))
+        ok("layer gate_open on, gate_closed off")
+    }
+    if f == 280 {
+        assert(eye.z > 23.0 && near(eye.y, EYE_HEIGHT))
+        ok("walk: through the open gate")
+    }
+    if f == 290 {
+        assert(variant == 1 && palette_entry(WORLD_TEST_ROOM_LAB_SURFACE) != colour_before)
+        ok("variant night")
+    }
+    if f == 300 {
+        assert(world == 1 && !walking && variant == 0 && cell_is(0, 0))
+        colour_before = palette_entry(WORLD_TWO_DISTRICTS_DOWNTOWN_SURFACE)
+        ok("world two_districts")
+    }
+    if f == 329 {
+        assert(near(eye.y, 8.0))
+        ok("fly: up 5")
+    }
+    if f == 465 {
+        assert(cell_is(1, 0) && !wp_layer_on(WORLD_TWO_DISTRICTS_LAYER_FESTIVAL))
+        drawn_before = wp_stats.drawn
+        ok("fly: east into cell 1,0")
+    }
+    if f == 475 {
+        assert(wp_layer_on(WORLD_TWO_DISTRICTS_LAYER_FESTIVAL) && wp_stats.drawn > drawn_before)
+        ok("layer festival on: more placements drawn")
+    }
+    if f == 480 {
+        assert(walking && near(eye.y, EYE_HEIGHT))
+        assert(wp_floor(eye, 0.0) && wp_hit.surface == 1)
+        ok("walk: on the ground, surface 1")
+    }
+    if f == 490 {
+        assert(variant == 1 && palette_entry(WORLD_TWO_DISTRICTS_DOWNTOWN_SURFACE) != colour_before)
+        ok("variant night")
+    }
+    if f == 500 {
+        assert_eq(checks, 13)
+        println("OK worldview: 13 checks passed")
+    }
+}

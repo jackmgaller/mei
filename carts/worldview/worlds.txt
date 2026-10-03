@@ -1,0 +1,4 @@
+# The worlds World Viewer shows (docs/WORLDKIT.md, "Using a world in a cart"): World Kit
+# recipes, one repository path per line. make builds each into the build directory.
+examples/worlds/test_room/test_room.world.json
+examples/worlds/two_districts/two_districts.world.json
