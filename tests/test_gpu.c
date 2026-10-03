@@ -483,9 +483,10 @@ static void test_texture_window(void) {
         if (iter % 4 == 0) win &= 0xFF00;   /* u only, v only, or neither */
         if (iter % 4 == 1) win &= 0x00FF;
         RV v[4];
+        int big = iter % 5 == 0;           /* huge triangles take the exact (slow) span path */
         for (int i = 0; i < nv; i++) {
-            v[i].x = rnd(-40, 360);
-            v[i].y = rnd(-40, 280);
+            v[i].x = big ? rnd(-2000, 2000) : rnd(-40, 360);
+            v[i].y = big ? rnd(-2000, 2000) : rnd(-40, 280);
             for (int k = 0; k < 5; k++) v[i].c[k] = rnd(0, 255);
             if (!(flags & 1)) memcpy(v[i].c, v[0].c, 3 * sizeof v[0].c[0]);   /* flat: vertex 0's colour */
         }
