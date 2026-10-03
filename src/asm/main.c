@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     char *src = read_file(in, &len);
     if (!src) { perror(in); return 1; }
     if (strlen(src) != len) { fprintf(stderr, "%s: NUL byte in source\n", in); return 1; }
-    MeiAsmOptions opts = {list};
+    MeiAsmOptions opts = {.listing = list};
     MeiAsmResult r;
     int rc = mei_assemble_opts(src, in, &opts, &r);
     free(src);

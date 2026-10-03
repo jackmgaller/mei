@@ -340,7 +340,10 @@ static Type *resolve_type_in(TypeExpr *te, Ctx *in) {
         Type *el = resolve_type_in(te->elem, in);
         if (el->k == TY_STRUCT) layout_struct(el, te->loc);
         if (el->k == TY_VOID) error_at(te->loc, "arrays of void are not allowed");
-        if (n * el->size > 0x200000) error_at(te->loc, "array is larger than 2 MB");
+        /* no data is larger than the cart ROM; a global variable must also fit in RAM
+           (check_program), a local in its stack frame (gen.c) */
+        if (el->size && n > (int64_t)MEI_ROM_MAX / el->size)
+            error_at(te->loc, "array is larger than %u MB, the cart ROM limit", MEI_ROM_MAX >> 20);
         t = ty_array(el, n);
     } else {
         Sym *s = sym_lookup(te->name, te->loc.file);
@@ -379,12 +382,13 @@ static void layout_struct(Type *t, Loc use) {
                 .loc = d->flocs[i], .def = d->fdefs[i], .bit_width = (int)width, .bit_shift = bit % 8};
             bit += (int)width;
             off = (bit + 7) / 8;
-            if (off > 0x200000) error_at(use, "bits group is larger than 2 MB");
+            if (off > (int)MEI_ROM_MAX) error_at(use, "bits group is larger than %u MB, the cart ROM limit", MEI_ROM_MAX >> 20);
             continue;
         }
         off = align_up(off, ft->align);
         t->fields[i] = (Field){.name = d->fnames[i], .type = ft, .offset = off, .loc = d->flocs[i], .def = d->fdefs ? d->fdefs[i] : NULL};
         off += ft->size;
+        if (off > (int)MEI_ROM_MAX) error_at(d->loc, "struct '%s' is larger than %u MB, the cart ROM limit", t->name, MEI_ROM_MAX >> 20);
         if (ft->align > align) align = ft->align;
     }
     t->align = align;
@@ -2720,8 +2724,11 @@ static void resolve_embed(Sym *s) {
     int64_t len = s->len_e ? const_int(&c, s->len_e, "embed length") : (int64_t)s->datalen - off;
     if (off < 0 || off > (int64_t)s->datalen || len < 0 || off + len > (int64_t)s->datalen)
         error_at(s->loc, "embed range %lld+%lld is outside '%s' (%zu bytes)", (long long)off, (long long)len, s->path, s->datalen);
+    if (len > (int64_t)MEI_ROM_MAX)
+        error_at(s->loc, "embed '%s' is %lld bytes, more than the %u MB cart ROM limit", s->name, (long long)len, MEI_ROM_MAX >> 20);
     s->data += off;
     s->datalen = (size_t)len;
+    s->file_off = (size_t)off;
     s->state = 2;
 }
 
@@ -3234,6 +3241,13 @@ void check_program(Program *P) {
         }
     }
     P->init_fn = init;
+    for (int i = 0; i < P->nglobals; i++) {
+        Sym *s = P->globals[i];
+        if (s->ty && s->ty->size > (int)(RAM_GLOBALS_END - RAM_GLOBALS_BASE))
+            error_at(s->loc, "'%s' is %d bytes, but global variables have %u bytes of RAM (%u MB less the stack); "
+                     "data that never changes can be a const or an embed, which live in ROM",
+                     s->name, s->ty->size, RAM_GLOBALS_END - RAM_GLOBALS_BASE, RAM_TOP >> 20);
+    }
     for (int i = 0; i < P->nfuncs; i++) check_func(P, P->funcs[i]);   /* literals are appended and already checked */
     /* Inline groups declared in globals/signatures/locals can be resolved after the
        initial default pass. Validate their defaults even if no literal uses them. */

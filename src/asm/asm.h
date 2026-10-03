@@ -20,8 +20,17 @@ typedef struct {
     char *listing;         /* source listing, only when MeiAsmOptions.listing is set */
 } MeiAsmResult;
 
+/* A file held in memory: `.incbin "name"` takes these bytes instead of reading a file. */
+typedef struct {
+    const char *name;      /* matched exactly against the .incbin file name */
+    const uint8_t *data;   /* not copied: must stay valid until mei_assemble_opts returns */
+    size_t len;
+} MeiAsmBlob;
+
 typedef struct {
     int listing;           /* produce MeiAsmResult.listing (address, bytes, source line) */
+    const MeiAsmBlob *blobs;   /* in-memory files for .incbin (the compiler's embeds), or NULL */
+    size_t blob_count;
 } MeiAsmOptions;
 
 /* Assembles `source`. `filename` is used in error messages and as the base

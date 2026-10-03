@@ -113,7 +113,7 @@ constant) is always two words.
 | `.space n [, fill]` / `.zero n` | `n` bytes of `fill` (default 0) |
 | `.equ NAME, x` / `NAME = x` | define a constant (no redefinition) |
 | `.include "file"` | assemble another source file inline (path relative to the including file) |
-| `.incbin "file" [, offset [, length]]` | insert raw bytes from a file |
+| `.incbin "file" [, offset [, length]]` | insert raw bytes from a file (or an in-memory blob, below) |
 | `.cart "Title" [, entry] [, "ID"]` | cart header (see below); must be the first thing in ROM |
 
 `.half`, `.word` and `.fixed` do not align automatically; instructions must be
@@ -132,6 +132,16 @@ buffer: .space 1024
 
 `ram_used` in the result (end of the RAM section) is the first free RAM address.
 The stack starts at 0x200000 (the top of RAM) and grows down.
+
+**Blobs.** A program calling the library can hand the assembler files it already holds in
+memory: `MeiAsmOptions.blobs` lists `{name, data, len}` entries, and `.incbin "name"` takes
+a blob whose name matches exactly before it looks for a file. The bytes are copied once, straight
+into the ROM image, so a 40 MB `.incbin` costs about as much as the 40 MB it adds. The
+compiler passes every embed this way, named by the file's path as it read it (`.incbin
+"carts/game/world.bin", 0, 41943040`), and const data of 64 KB or more under its label in angle
+brackets (`.incbin "<K_HEIGHTS>", 0, 65536`, with `.word label` between the pieces for the
+addresses it holds); such `-S` output reassembles with `meiasm` only where those names are
+files.
 
 **Cart header.** `.cart "Title", entry, "ID"` emits `jmp entry`, the bytes `MEI1`, the
 title NUL-padded to 32 bytes, and the cart ID NUL-padded to 16 bytes (56 bytes in all, see

@@ -904,6 +904,25 @@ indexes are checked at run time only in a [debug build](#debug-builds). Recursio
 very deep recursion runs into the globals (a debug build stops it at the function entry that
 would). ROM data is read-only: writing through a pointer into ROM faults.
 
+How large data may be follows where it lives. A `const` array or struct, a string or an embed
+is ROM data: one may be as large as the cart ROM (64 MB), and the cart's code and ROM data
+together must fit in it (`the cart is larger than the 64 MB cart ROM limit`). No type may be
+larger than 64 MB either (`array is larger than 64 MB, the cart ROM limit`; also a struct). A
+global variable is in RAM: all the used globals together get 2 MB less 64 KB for the stack, and a
+single one larger than that is an error at its declaration. Locals are on the stack (see
+[Limitations](#limitations)). So a large table that never changes belongs in ROM:
+
+```
+const HEIGHTS: [4096]Chunk = [...]    // ROM: up to 64 MB
+embed WORLD: u8 = "world.bin"         // ROM: the file's bytes, however large (up to 64 MB)
+var cache: [16384]Chunk               // RAM: about 2 MB in all for globals
+```
+
+Large data costs the compiler time and memory in proportion to its size: an embedded file is
+read once (however many embeds take ranges of it) and handed to the assembler as it is, and const
+data of 64 KB or more is too (in `-S` output these are `.incbin` lines; see
+[ASSEMBLY.md](ASSEMBLY.md)). A 40 MB embed compiles in well under a second.
+
 ### Debug builds
 
 `meic -g` adds run-time checks. A failed check reports like a failed `assert` (on the debug

@@ -1,0 +1,5 @@
+// error: struct 'Pair' is larger than 64 MB, the cart ROM limit
+// Two arrays that each fit make a struct that does not.
+struct Pair { a: [10000000]u32, b: [10000000]u32 }
+embed P: Pair = "data/bytes.bin"
+fn init() { let x = P.a[0] }

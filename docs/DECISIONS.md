@@ -599,5 +599,10 @@ moving anything.
   sample or packet running off the end of RAM reaches unmapped memory.
 - **Tools.** The assembler and compiler stop with *ROM is full (64 MB)*; `mei_load_cart`, the
   platforms and the system ROM's catalogue reject or skip a larger file.
+- **Data limits follow the region.** In Akari, ROM data (const arrays and structs, strings,
+  embeds) is limited only by the cart ROM, so one table or asset may be up to 64 MB; global
+  variables stay within RAM (2 MB less the stack). The compiler hands embeds and const data of
+  64 KB or more to the assembler in memory (`.incbin` of a blob, `ASSEMBLY.md`) rather than as
+  `.word` text, so a large asset costs compile time and memory in proportion to its size.
 - **System ROM.** It is still loaded as a 2 MB image, so its catalogue moves with the ROM base to
   `0x081F0000` (see `SYSTEM.md`).

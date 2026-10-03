@@ -277,8 +277,24 @@ static void test_directives(void) {
     if (mei_assemble("nop\n.include \"bad.s\"", "build/tests/asmfiles/main.s", &r) == 0) { CHECK(0, "bad include assembled"); mei_asm_free(&r); }
     else CHECK(!strcmp(r.error, "build/tests/asmfiles/bad.s:3: unknown instruction 'frob'"), "include error location: %s", r.error);
 
+    /* .incbin of in-memory blobs (the compiler's embeds): looked up by exact name before any file */
+    static const uint8_t blob_bytes[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
+    MeiAsmBlob blobs[] = {{"data.bin", blob_bytes, 6}, {"<K>", blob_bytes + 2, 4}};
+    MeiAsmOptions bo = {.blobs = blobs, .blob_count = 2};
+    const char *bsrc = ".incbin \"<K>\"\n.incbin \"data.bin\", 1, 2\n.incbin \"data.bin\", 6\n.align 4\n"
+                       ".incbin \"<K>\", 0, 0\n.incbin \"inc.s\", 0, 4";
+    if (mei_assemble_opts(bsrc, "build/tests/asmfiles/main.s", &bo, &r) == 0) {
+        CHECK(r.rom_len == 12 && rd32(&r, MEI_ROM_BASE) == 0x66554433 && rd32(&r, MEI_ROM_BASE + 4) == 0x3322 &&
+              !memcmp(r.rom + 8, "INCL", 4), "incbin blobs (len %zu)", r.rom_len);
+        mei_asm_free(&r);
+    } else {
+        CHECK(0, "incbin blobs: %s", r.error);
+    }
+    if (mei_assemble_opts(".incbin \"<K>\", 2, 3", "t.s", &bo, &r) == 0) { CHECK(0, "blob range assembled"); mei_asm_free(&r); }
+    else CHECK(strstr(r.error, ".incbin length 3 past end of file (4 bytes)") != NULL, "blob range error: %s", r.error);
+
     /* listing */
-    MeiAsmOptions o = {1};
+    MeiAsmOptions o = {.listing = 1};
     if (mei_assemble_opts("start: li r1, 0x123456 ; big\n.byte 1,2,3,4,5\n", "t.s", &o, &r) == 0) {
         CHECK(r.listing && strstr(r.listing, "08000000  6040048D     start: li r1, 0x123456 ; big") &&
               strstr(r.listing, "08000004  48440056") && strstr(r.listing, "08000008  01 02 03 04"),

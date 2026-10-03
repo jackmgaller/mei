@@ -1,0 +1,30 @@
+// Const data larger than the 2 MB of RAM: it lives in ROM, so only the cart ROM limits it.
+// CHUNKS is 5 MB (each Chunk is 1 MB, its tag in the last word); its far elements are read
+// with constant and variable indexes, through a slice and through a pointer.
+// flags: -g
+struct Chunk { head: [3]u32, pad: [262140]u32, tag: u32 }
+const CHUNKS: [5]Chunk = [Chunk { tag: 11 }, Chunk { tag: 22 }, Chunk { tag: 33 },
+                          Chunk { tag: 44, head: [1, 2, 3] }, Chunk { tag: 55 }]
+const AFTER: [2]s32 = [7, 8]   // placed after CHUNKS, more than 5 MB into ROM
+
+fn p(n: s32) { print_int(n); print_char('\n') }
+fn tag_sum(cs: []const Chunk) -> s32 {
+    var t = 0
+    for i in 0..len(cs) { t += cs[i].tag as s32 }
+    return t
+}
+
+fn init() {
+    p(len(CHUNKS))                          // expect: 5
+    p(CHUNKS[4].tag as s32)                 // expect: 55
+    var i = 0
+    while i < 4 { i += 1 }
+    p(CHUNKS[i].tag as s32)                 // expect: 55
+    p(CHUNKS[i].pad[262139] as s32)         // expect: 0
+    p(tag_sum(CHUNKS[1..5]))                // expect: 154
+    let c: *Chunk = &CHUNKS[3]
+    p((c.head[2] + c.tag) as s32)           // expect: 47
+    p(AFTER[1])                             // expect: 8
+    let rom: u32 = 0x08000000
+    p((((&AFTER[0]) as u32 - rom) >> 20) as s32)   // expect: 5
+}

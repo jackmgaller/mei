@@ -3387,7 +3387,7 @@ static void gen_func(Func *f, Buf *out) {
             if (k->len_reg >= 0) buf_printf(out, "    mov r3, %s\n", RN[scratch]);
             else buf_printf(out, "    li r3, %lld\n", (long long)k->len);
         }
-        buf_printf(out, "    la r1, %s\n    lui sp, %u\n    call %s\n", k->msg, 0x200000u >> 10,
+        buf_printf(out, "    la r1, %s\n    lui sp, %u\n    call %s\n", k->msg, RAM_TOP >> 10,
                    k->idx_reg >= 0 ? "F___bounds_fail" : "F___check_fail");
     }
     g_fn = NULL;
@@ -3448,19 +3448,20 @@ static void serialize(Expr *e, Type *t, uint8_t *buf, uint8_t *base) {
     for (int k = 0; k < t->size; k++) buf[k] = (uint8_t)(v >> (8 * k));
 }
 
-/* Emits bytes as .word/.byte lines; the words at g_relocs offsets become `.word label`. */
-static const char *reloc_at(size_t off) {
-    for (int r = 0; r < g_nrelocs; r++) if ((size_t)g_relocs[r].off == off) return g_relocs[r].label;
-    return NULL;
+static int reloc_cmp(const void *x, const void *y) {
+    const Reloc *a = x, *b = y;
+    return (a->off > b->off) - (a->off < b->off);
 }
 
+/* Emits bytes as .word/.byte lines; the words at g_relocs offsets (sorted) become `.word label`. */
 static void emit_bytes(Buf *out, const uint8_t *p, size_t n) {
     size_t i = 0;
+    int r = 0;
+#define RELOC_AT(i) (r < g_nrelocs && (size_t)g_relocs[r].off == (i))
     while (i + 4 <= n) {
-        const char *lab = reloc_at(i);
-        if (lab) { buf_printf(out, "    .word %s\n", lab); i += 4; continue; }
+        if (RELOC_AT(i)) { buf_printf(out, "    .word %s\n", g_relocs[r++].label); i += 4; continue; }
         buf_puts(out, "    .word ");
-        for (int k = 0; k < 8 && i + 4 <= n && (k == 0 || !reloc_at(i)); k++, i += 4) {
+        for (int k = 0; k < 8 && i + 4 <= n && (k == 0 || !RELOC_AT(i)); k++, i += 4) {
             uint32_t w = p[i] | (p[i + 1] << 8) | (p[i + 2] << 16) | ((uint32_t)p[i + 3] << 24);
             buf_printf(out, k ? ",0x%08X" : "0x%08X", w);
         }
@@ -3470,6 +3471,25 @@ static void emit_bytes(Buf *out, const uint8_t *p, size_t n) {
         buf_puts(out, "    .byte ");
         for (int k = 0; i < n; k++, i++) buf_printf(out, k ? ",%u" : "%u", p[i]);
         buf_putc(out, '\n');
+    }
+#undef RELOC_AT
+}
+
+/* A large piece of data (64 KB or more) is not written out as text: the bytes reach the
+   assembler in memory, as a blob named "<label>" for .incbin (meic_compile), with the
+   relocated words between the pieces. Smaller data stays readable .word lines. */
+#define DATA_BLOB_MIN 65536
+
+static void emit_data(Buf *out, Program *P, const char *label, const uint8_t *p, size_t n) {
+    if (g_nrelocs > 1) qsort(g_relocs, (size_t)g_nrelocs, sizeof *g_relocs, reloc_cmp);
+    if (n < DATA_BLOB_MIN) { emit_bytes(out, p, n); return; }
+    const char *name = ar_printf("<%s>", label);
+    P->blobs[P->nblobs++] = (MeiAsmBlob){name, p, n};
+    size_t i = 0;
+    for (int r = 0; r <= g_nrelocs; r++) {
+        size_t end = r < g_nrelocs ? (size_t)g_relocs[r].off : n;
+        if (end > i) buf_printf(out, "    .incbin \"%s\", %zu, %zu\n", name, i, end - i);
+        if (r < g_nrelocs) { buf_printf(out, "    .word %s\n", g_relocs[r].label); i = end + 4; }
     }
 }
 
@@ -3759,7 +3779,7 @@ void gen_program(Program *P, Buf *out) {
     }
     addr = (addr + 15) & ~15u;
     P->ram_end = addr;
-    if (addr > 0x1F0000) error_plain("error: global variables use %u bytes of RAM, leaving too little for the stack", addr);
+    if (addr > RAM_GLOBALS_END) error_plain("error: global variables use %u bytes of RAM, leaving too little for the stack", addr);
     buf_printf(out, "__ram_end = 0x%06X\n", addr);
 
     warn_entry_points(P);
@@ -3801,24 +3821,33 @@ void gen_program(Program *P, Buf *out) {
     for (VConst *k = g_vconsts; k; k = k->next)
         buf_printf(out, "VC%d: .word 0x%08X,0x%08X,0x%08X,0x%08X\n", k->label,
                    (uint32_t)k->v[0], (uint32_t)k->v[1], (uint32_t)k->v[2], (uint32_t)k->v[3]);
+    P->blobs = ar_alloc(sizeof *P->blobs * (size_t)(P->ndatas + 1));
+    P->nblobs = 0;
     for (int i = 0; i < P->ndatas; i++) {
         Sym *s = P->datas[i];
         if (!s->reachable) continue;
         buf_puts(out, "    .align 4\n");
         if (s->k == SY_EMBED) {
-            buf_printf(out, "%s:    ; embed \"%s\", %zu bytes\n", s->label, s->path, s->datalen);
-            emit_bytes(out, s->data, s->datalen);
+            /* the file itself reaches the assembler in memory, as a blob named by its path */
+            buf_printf(out, "%s:    ; embed \"%s\", %zu bytes\n    .incbin \"", s->label, s->path, s->datalen);
+            for (const char *c = s->file_path; *c; c++) {
+                if (*c == '"' || *c == '\\') buf_printf(out, "\\%c", *c);
+                else if ((unsigned char)*c < 32) buf_printf(out, "\\x%02X", (unsigned char)*c);
+                else buf_putc(out, *c);
+            }
+            buf_printf(out, "\", %zu, %zu\n", s->file_off, s->datalen);
+            P->blobs[P->nblobs++] = (MeiAsmBlob){s->file_path, s->data - s->file_off, s->file_len};
         } else if (s->is_str) {
             buf_printf(out, "%s:\n", s->label);
             uint8_t *tmp = ar_alloc(s->slen + 1);
             memcpy(tmp, s->str, s->slen);
-            emit_bytes(out, tmp, s->slen + 1);
+            emit_data(out, P, s->label, tmp, s->slen + 1);
         } else {
             buf_printf(out, "%s:    ; %s\n", s->label, ty_str(s->ty));
             uint8_t *tmp = ar_alloc((size_t)s->ty->size);
             g_nrelocs = 0;
             serialize(s->init, s->ty, tmp, tmp);
-            emit_bytes(out, tmp, (size_t)s->ty->size);
+            emit_data(out, P, s->label, tmp, (size_t)s->ty->size);
             g_nrelocs = 0;
         }
     }

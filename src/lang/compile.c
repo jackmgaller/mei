@@ -13,6 +13,12 @@ static int default_read(void *user, const char *path, char **data, size_t *len) 
     FILE *f = fopen(path, "rb");
     if (!f) return -1;
     size_t cap = 4096, n = 0;
+    /* room for the whole file at once (and one byte more, to see the end) */
+    if (fseek(f, 0, SEEK_END) == 0) {
+        long size = ftell(f);
+        if (size > 0) cap = (size_t)size + 1;
+        rewind(f);
+    }
     char *buf = malloc(cap);
     for (;;) {
         if (n == cap) { cap *= 2; buf = realloc(buf, cap); }
@@ -53,6 +59,10 @@ static char *resolve_path(const char *from, const char *rel) {
     buf_free(&o);
     return r;
 }
+
+/* Files read for embeds, by canonical path; the data is the reader's own buffer. */
+static MeiAsmBlob *g_bins;
+static int g_nbins, g_capbins;
 
 static int read_file(Compiler *C, const char *path, char **data, size_t *len) {
     MeiReadFileFn fn = C->opt->read_file ? C->opt->read_file : default_read;
@@ -111,11 +121,35 @@ void compiler_import(Compiler *C, const char *from_file, const char *path, Loc l
     compiler_import_as(C, from_file, path, NULL, loc);
 }
 
-const uint8_t *compiler_load_binary(Compiler *C, const char *from_file, const char *path, Loc loc, size_t *len) {
+const uint8_t *compiler_load_binary(Compiler *C, const char *from_file, const char *path, Loc loc, size_t *len,
+                                    const char **fullp) {
     char *full = resolve_path(from_file, path);
-    char *data;
-    if (read_file(C, full, &data, len) != 0) error_at(loc, "cannot read asset '%s'", full);
-    return (const uint8_t *)data;
+    /* a file is read once, however many embeds take ranges of it */
+    for (int i = 0; i < g_nbins; i++)
+        if (!strcmp(g_bins[i].name, full)) { *len = g_bins[i].len; *fullp = g_bins[i].name; return g_bins[i].data; }
+    /* kept as the reader returned it (not copied into the arena): freed by free_bins */
+    MeiReadFileFn fn = C->opt->read_file ? C->opt->read_file : default_read;
+    char *data = NULL;
+    *len = 0;
+    if (fn(C->opt->user, full, &data, len) != 0) error_at(loc, "cannot read asset '%s'", full);
+    if (g_nbins == g_capbins) {
+        int nc = g_capbins ? g_capbins * 2 : 16;
+        MeiAsmBlob *nb = realloc(g_bins, sizeof *nb * (size_t)nc);
+        if (!nb) { free(data); error_at(loc, "out of memory reading asset '%s'", full); }
+        g_bins = nb;
+        g_capbins = nc;
+    }
+    if (!data) *len = 0;
+    g_bins[g_nbins++] = (MeiAsmBlob){full, (const uint8_t *)data, *len};
+    *fullp = full;
+    return data ? (const uint8_t *)data : (const uint8_t *)"";
+}
+
+static void free_bins(void) {
+    for (int i = 0; i < g_nbins; i++) free((void *)g_bins[i].data);
+    free(g_bins);
+    g_bins = NULL;
+    g_nbins = g_capbins = 0;
 }
 
 static const char *basename_noext(const char *path) {
@@ -155,6 +189,11 @@ static void report_asm_error(const char *text, const char *aerr, char *err, size
         snprintf(err, errlen, "%.*s:%ld:1: error: in asm: %s", (int)mfilelen, mfile, mline + (line - mstart - 1), msg);
         return;
     }
+    if (strstr(msg, "ROM is full") && err && errlen) {
+        snprintf(err, errlen, "error: the cart is larger than the %u MB cart ROM limit (its code, const data, strings "
+                 "and embeds together)", MEI_ROM_MAX >> 20);
+        return;
+    }
     if (err && errlen)
         snprintf(err, errlen, "internal compiler error: the generated assembly failed to assemble: %s\n"
                  "(please report this; meic -S writes the generated assembly)", aerr);
@@ -176,6 +215,7 @@ int meic_compile(const char *path, const MeiCompileOptions *opt, MeiAsmResult *o
         warn_reset();
         buf_free(&text);
         symtab_reset();
+        free_bins();
         ar_free_all();
         g_error_jmp = saved;
         return -1;
@@ -210,10 +250,13 @@ int meic_compile(const char *path, const MeiCompileOptions *opt, MeiAsmResult *o
     else warn_reset();
 
     const char *asm_name = ar_printf("%s.s", basename_noext(path));
-    int r = mei_assemble(text.p ? text.p : "", asm_name, out);
+    /* embeds and large const data, for the .incbin lines gen_program wrote */
+    MeiAsmOptions aopt = {.blobs = P->blobs, .blob_count = (size_t)P->nblobs};
+    int r = mei_assemble_opts(text.p ? text.p : "", asm_name, &aopt, out);
     if (r != 0) report_asm_error(text.p ? text.p : "", out->error, err, errlen);
     buf_free(&text);
     symtab_reset();
+    free_bins();
     ar_free_all();
     g_error_jmp = saved;
     return r;
