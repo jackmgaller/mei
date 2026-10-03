@@ -1,0 +1,3 @@
+// error: cannot convert *fixed16 to fixed16
+var x: fixed16
+fn init() { print_fixed(fixed16(&x)) }

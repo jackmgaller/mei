@@ -1,0 +1,8 @@
+// flags: --trap-div
+// exit: 2
+var numerator: fixed16 = 1.0
+var denominator: fixed16
+fn init() {
+    print_fixed(numerator / denominator)
+}
+// expect: check failed: fixed16_debug_div.akr:6: division by zero

@@ -1,0 +1,120 @@
+// Packed fixed16 storage, promotion, conversions and runtime normalization.
+const HALF: fixed16 = 0.5
+const LOW: fixed16 = -8.0
+const HIGH: fixed16 = 7.99975586
+const NEG: fixed16 = -0.1
+const WIDE: fixed = 8.0
+const WRAPPED: fixed16 = WIDE
+const TABLE: [5]fixed16 = [LOW, HIGH, HALF, NEG, 0.1]
+struct Compact { lead: u8, x: fixed16 = 0.5, y: fixed16, tail: u8 }
+const RECORD: Compact = Compact { lead: 1, y: -2.25, tail: 2 }
+var values: [5]fixed16 = [LOW, HIGH, HALF, NEG, 0.1]
+var record = RECORD
+var wide: fixed = 8.0
+var source: fixed16 = -1.25
+var dynamic: fixed16 = half_value()
+fn half_value() -> fixed16 { return HALF }
+fn keep(x: fixed16) -> fixed16 { return x }
+fn add(x: fixed16, y: fixed16) -> fixed16 { return x + y }
+fn scale(x: fixed16, n: s32) -> fixed16 { return x * n }
+fn touch(x: *fixed16) { *x += 0.5 }
+fn stack_args(a: fixed16, b: fixed16, c: fixed16, d: fixed16, e: fixed16, f: fixed16) -> fixed16 {
+    // Taking addresses forces packed homes for register and stack arguments.
+    let pa = &a
+    let pe = &e
+    let pf = &f
+    return *pa + b + c + d + *pe + *pf
+}
+fn init() {
+    assert_eq(sizeof(fixed16), 2)
+    assert_eq(sizeof([100]fixed16), 200)
+    assert_eq(sizeof(Compact), 8)
+    assert_eq(len(TABLE), 5)
+    assert_eq(bits(LOW), -32768)
+    assert_eq(bits(HIGH), 32767)
+    assert_eq(bits(HALF), 2048)
+    assert_eq(bits(NEG), -410)
+    assert_eq(bits(TABLE[0]), -32768)
+    assert_eq(bits(TABLE[1]), 32767)
+    assert_eq(bits(TABLE[4]), 409)
+    assert_eq(bits(WRAPPED), -32768)
+    assert_eq(bits(from_bits16(65535)), -1)
+    assert_eq(bits(from_bits16(32768)), -32768)
+    assert_eq(bits(from_bits16(65536)), 0)
+    assert_eq(bits(fixed16(s32(8))), -32768)
+    assert_eq(bits(fixed16(s32(-9))), 28672)
+    assert_eq(bits(fixed16(WIDE)), -32768)
+    assert_eq(bits(fixed16(wide)), -32768)
+    assert_eq(bits(dynamic), 2048)
+    assert_eq(bits(record.x), 2048)
+    assert_eq(bits(record.y), -9216)
+    assert_eq(record.lead, 1)
+    assert_eq(record.tail, 2)
+    assert_eq(bits(keep(source)), -5120)
+    assert_eq(source as s32, -2)
+    assert_eq(fixed(source), -1.25)
+    assert_eq(source + 0.5, -0.75)
+    assert_eq(source - HALF, -1.75)
+    assert_eq(source * HALF, -0.625)
+    assert_eq(source / HALF, -2.5)
+    assert_eq(source * 3, -3.75)
+    assert_eq(3 * source, -3.75)
+    assert_eq(source / 2, -0.625)
+    assert_eq(source << 1, -2.5)
+    assert_eq(source >> 1, -0.625)
+    assert_eq(-source, 1.25)
+    assert_eq(-LOW, 8.0)
+    assert_eq(LOW * LOW, 64.0)
+    assert_eq(abs(source), 1.25)
+    assert_eq(abs(LOW), 8.0)
+    assert_eq(min(source, HALF), -1.25)
+    assert_eq(max(source, HALF), 0.5)
+    assert_eq(clamp(source, -1.0, HALF), -1.0)
+    assert_eq(lerp(source, HALF, HALF), -0.375)
+    assert_eq(vec2(source, HALF).x, -1.25)
+    assert_eq((vec2(2.0, 4.0) * HALF).y, 2.0)
+    assert_eq(source < HALF, true)
+    assert_eq(source <= -1.25, true)
+    assert_eq(source == -1.25, true)
+    assert_eq(source != HALF, true)
+    assert_eq(HALF > source, true)
+    assert_eq(HALF >= source, true)
+    var local: fixed16 = wide
+    assert_eq(bits(local), -32768)
+    local = source
+    local += 0.5
+    assert_eq(bits(local), -3072)
+    local -= HALF
+    local *= 2
+    local /= 2.0
+    assert_eq(bits(local), -5120)
+    local = HIGH
+    local += 0.00024414
+    assert_eq(bits(local), -32768)
+    local = LOW
+    local -= 0.00024414
+    assert_eq(bits(local), 32767)
+    values[0] = wide
+    values[2] += 0.5
+    assert_eq(bits(values[0]), -32768)
+    assert_eq(bits(values[2]), 4096)
+    touch(&values[2])
+    assert_eq(bits(values[2]), 6144)
+    record.x += source
+    assert_eq(bits(record.x), -3072)
+    let raw = (&values[0]) as *s16
+    assert_eq(raw[0], -32768)
+    assert_eq(raw[1], 32767)
+    assert_eq(raw[2], 6144)
+    assert_eq(raw[3], -410)
+    assert_eq(raw[4], 409)
+    assert_eq(((&record.lead) as *u8)[2], 0)
+    assert_eq(((&record.lead) as *u8)[3], 244)
+    assert_eq(bits(stack_args(-0.5, 0.5, -1.0, 1.0, -2.0, 2.5)), 2048)
+    assert_eq(bits(add(source, HALF)), -3072)
+    assert_eq(bits(scale(source, 2)), -10240)
+    var capture = source
+    let fn_value: fn(fixed16) -> fixed16 = fn(x: fixed16) -> fixed16 { return x + capture }
+    assert_eq(bits(fn_value(HALF)), -3072)
+    print("fixed16 ok\n") // expect: fixed16 ok
+}

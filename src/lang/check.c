@@ -8,8 +8,8 @@
 
 /* ------------------------------------------------------------------ types */
 
-static Type builtin_types[TY_NULL + 1];
-Type *ty_void, *ty_bool, *ty_s8, *ty_s16, *ty_s32, *ty_u8, *ty_u16, *ty_u32, *ty_fixed,
+static Type builtin_types[TY_ENUM + 1];
+Type *ty_void, *ty_bool, *ty_s8, *ty_s16, *ty_s32, *ty_u8, *ty_u16, *ty_u32, *ty_fixed, *ty_fixed16,
      *ty_vec2, *ty_vec3, *ty_vec4, *ty_ivec4, *ty_mat4, *ty_uint, *ty_ufixed, *ty_null;
 
 static Type *mk_builtin(TyKind k, const char *name, int size, int align) {
@@ -43,6 +43,7 @@ void types_init(void) {
     ty_u16 = mk_builtin(TY_U16, "u16", 2, 2);
     ty_u32 = mk_builtin(TY_U32, "u32", 4, 4);
     ty_fixed = mk_builtin(TY_FIXED, "fixed", 4, 4);
+    ty_fixed16 = mk_builtin(TY_FIXED16, "fixed16", 2, 2);
     ty_vec2 = mk_builtin(TY_VEC2, "vec2", 16, 4);
     ty_vec3 = mk_builtin(TY_VEC3, "vec3", 16, 4);
     ty_vec4 = mk_builtin(TY_VEC4, "vec4", 16, 4);
@@ -51,11 +52,11 @@ void types_init(void) {
     ty_uint = mk_builtin(TY_UINT, "integer constant", 4, 4);
     ty_ufixed = mk_builtin(TY_UFIXED, "fixed constant", 4, 4);
     ty_null = mk_builtin(TY_NULL, "null", 4, 4);
-    Type *named[] = {ty_bool, ty_s8, ty_s16, ty_s32, ty_u8, ty_u16, ty_u32, ty_fixed,
+    Type *named[] = {ty_bool, ty_s8, ty_s16, ty_s32, ty_u8, ty_u16, ty_u32, ty_fixed, ty_fixed16,
                      ty_vec2, ty_vec3, ty_vec4, ty_ivec4, ty_mat4};
     for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) def_builtin(named[i]->name, SY_TYPE)->ty = named[i];
     static const struct { const char *name; Builtin bi; } bis[] = {
-        {"dot", BI_DOT}, {"cross", BI_CROSS}, {"len", BI_LEN}, {"bits", BI_BITS}, {"from_bits", BI_FROM_BITS},
+        {"dot", BI_DOT}, {"cross", BI_CROSS}, {"len", BI_LEN}, {"bits", BI_BITS}, {"from_bits", BI_FROM_BITS}, {"from_bits16", BI_FROM_BITS16},
         {"abs", BI_ABS}, {"min", BI_MIN}, {"max", BI_MAX}, {"clamp", BI_CLAMP}, {"lerp", BI_LERP},
         {"length", BI_LENGTH}, {"normalize", BI_NORMALIZE},
         {"nclip", BI_NCLIP}, {"otz", BI_OTZ}, {"clerp", BI_CLERP},
@@ -132,13 +133,13 @@ const char *ty_str(Type *t) {
 }
 
 int ty_is_int(Type *t) { return t->k >= TY_S8 && t->k <= TY_U32; }
-int ty_is_signed(Type *t) { t = ty_base(t); return t->k == TY_S8 || t->k == TY_S16 || t->k == TY_S32 || t->k == TY_FIXED || t->k == TY_UINT || t->k == TY_UFIXED; }
-int ty_is_scalar(Type *t) { return (t->k >= TY_BOOL && t->k <= TY_FIXED) || t->k == TY_PTR || t->k == TY_NULL || t->k == TY_UINT || t->k == TY_UFIXED || t->k == TY_ENUM; }
+int ty_is_signed(Type *t) { t = ty_base(t); return t->k == TY_S8 || t->k == TY_S16 || t->k == TY_S32 || t->k == TY_FIXED || t->k == TY_FIXED16 || t->k == TY_UINT || t->k == TY_UFIXED; }
+int ty_is_scalar(Type *t) { return (t->k >= TY_BOOL && t->k <= TY_FIXED) || t->k == TY_FIXED16 || t->k == TY_PTR || t->k == TY_NULL || t->k == TY_UINT || t->k == TY_UFIXED || t->k == TY_ENUM; }
 int ty_is_vec(Type *t) { return t->k >= TY_VEC2 && t->k <= TY_IVEC4; }
 int ty_is_aggr(Type *t) { return t->k == TY_STRUCT || t->k == TY_ARRAY || t->k == TY_MAT4; }
 int ty_lanes(Type *t) { return t->k == TY_VEC2 ? 2 : t->k == TY_VEC3 ? 3 : 4; }
 static int is_intish(Type *t) { return ty_is_int(t) || t->k == TY_UINT; }
-static int is_fixedish(Type *t) { return t->k == TY_FIXED || t->k == TY_UFIXED; }
+static int is_fixedish(Type *t) { return t->k == TY_FIXED || t->k == TY_FIXED16 || t->k == TY_UFIXED; }
 static int is_numeric(Type *t) { return is_intish(t) || is_fixedish(t); }
 
 int fits_s18(int64_t v) { return v >= -131072 && v <= 131071; }
@@ -337,6 +338,7 @@ static int64_t norm(Type *t, int64_t v) {
     case TY_BOOL: return v != 0;
     case TY_S8: return (int8_t)v;
     case TY_S16: return (int16_t)v;
+    case TY_FIXED16: return (int16_t)(v >> 4) * 16LL;
     case TY_S32: case TY_FIXED: return (int32_t)(uint32_t)v;
     case TY_U8: return (uint8_t)v;
     case TY_U16: return (uint16_t)v;
@@ -479,8 +481,8 @@ static void mark_addr_taken(Expr *e) {
 }
 
 static const char *conv_hint(Type *from, Type *to) {
-    if (ty_is_int(from) && to->k == TY_FIXED) return "; convert with 'as fixed' (scales by 65536)";
-    if (from->k == TY_FIXED && ty_is_int(to)) return ar_printf("; convert with 'as %s' (rounds down)", to->name);
+    if (ty_is_int(from) && (to->k == TY_FIXED || to->k == TY_FIXED16)) return "; convert with 'as fixed' (scales by 65536)";
+    if ((from->k == TY_FIXED || from->k == TY_FIXED16) && ty_is_int(to)) return ar_printf("; convert with 'as %s' (rounds down)", to->name);
     if (from->k == TY_UFIXED && ty_is_int(to)) return ar_printf("; convert with 'as %s'", to->name);
     if (from->k == TY_ARRAY && to->k == TY_PTR) return "; take the address of an element with '&a[0]'";
     if (ty_is_vec(from) && ty_is_vec(to)) return ar_printf("; convert with 'as %s'", to->name);
@@ -509,12 +511,26 @@ static Expr *coerce(Ctx *c, Expr *e, Type *to, const char *what) {
             if (!fits(to, e->cval)) error_at(e->loc, "constant %lld does not fit in %s (%s)", (long long)e->cval, to->name, what);
             return mk_const(e, to, e->cval);
         }
+        if (to->k == TY_FIXED16) {
+            if (e->cval < -8 || e->cval > 7) error_at(e->loc, "constant %lld is out of range for fixed16 (-8 .. 7.99975586)", (long long)e->cval);
+            return mk_const(e, to, e->cval * 65536);
+        }
         if (to->k == TY_FIXED) {
             if (e->cval < -32768 || e->cval > 32767) error_at(e->loc, "constant %lld is out of range for fixed (-32768 .. 32767)", (long long)e->cval);
             return mk_const(e, to, e->cval * 65536);
         }
     }
     if (from->k == TY_UFIXED && to->k == TY_FIXED) { check_ufixed_range(e->loc, e->cval); return mk_const(e, to, e->cval); }
+    if (from->k == TY_UFIXED && to->k == TY_FIXED16) {
+        if (e->cval < -524288 || e->cval > 524272) error_at(e->loc, "fixed-point constant out of range for fixed16 (-8 .. 7.99975586)");
+        return mk_const(e, to, e->cval);
+    }
+    if ((from->k == TY_FIXED || from->k == TY_FIXED16) && (to->k == TY_FIXED || to->k == TY_FIXED16)) {
+        if (e->isconst) return mk_const(e, to, e->cval);
+        Expr *x = ar_alloc(sizeof *x);
+        x->k = E_CONV; x->loc = e->loc; x->a = e; x->conv_from = from; x->ty = to;
+        return x;
+    }
     if (from->k == TY_NULL && (to->k == TY_PTR || to->k == TY_FUNC)) return mk_const(e, to, 0);
     if (ty_is_int(from) && ty_is_int(to)) {
         if (e->isconst) return mk_const(e, to, e->cval);
@@ -784,8 +800,8 @@ static Type *arith_type(Expr *e, Type *a, Type *b, const char *opname) {
     if (a->k == TY_UINT && b->k == TY_UINT) return ty_uint;
     if ((a->k == TY_UFIXED || a->k == TY_UINT) && (b->k == TY_UFIXED || b->k == TY_UINT)) return ty_ufixed;
     if (is_fixedish(a) && is_fixedish(b)) return ty_fixed;
-    if (a->k == TY_FIXED && (b->k == TY_UINT || b->k == TY_UFIXED)) return ty_fixed;
-    if (b->k == TY_FIXED && (a->k == TY_UINT || a->k == TY_UFIXED)) return ty_fixed;
+    if ((a->k == TY_FIXED || a->k == TY_FIXED16) && (b->k == TY_UINT || b->k == TY_UFIXED)) return ty_fixed;
+    if ((b->k == TY_FIXED || b->k == TY_FIXED16) && (a->k == TY_UINT || a->k == TY_UFIXED)) return ty_fixed;
     if (is_intish(a) && is_intish(b)) {
         int au = a->k == TY_U32, bu = b->k == TY_U32;
         int as = a->k == TY_S8 || a->k == TY_S16 || a->k == TY_S32;
@@ -942,6 +958,9 @@ static Expr *check_binary(Ctx *c, Expr *e) {
     }
     if (!is_numeric(a) || !is_numeric(b)) error_at(e->loc, "operator '%s' is not defined for %s and %s", on, ty_str(a), ty_str(b));
 
+    if (a->k == TY_FIXED16) { e->a = coerce(c, e->a, ty_fixed, "operand"); a = ty_fixed; }
+    if (b->k == TY_FIXED16) { e->b = coerce(c, e->b, ty_fixed, "operand"); b = ty_fixed; }
+
     /* shifts: the result has the left operand's type */
     if (op == B_SHL || op == B_SHR) {
         if (!is_intish(b)) error_at(e->b->loc, "shift count must be an integer");
@@ -1016,6 +1035,7 @@ static Expr *check_unary(Ctx *c, Expr *e) {
             return e;
         }
         if (!is_numeric(t)) error_at(e->loc, "'-' needs a number, found %s", ty_str(t));
+        if (t->k == TY_FIXED16) { e->a = coerce(c, e->a, ty_fixed, "operand"); t = ty_fixed; }
         e->ty = t->k == TY_U32 ? ty_u32 : (ty_is_int(t) ? ty_s32 : t);
         if (e->a->isconst) { e->isconst = 1; e->cval = (t->k == TY_UINT || t->k == TY_UFIXED) ? -e->a->cval : norm(e->ty, -e->a->cval); }
         return e;
@@ -1154,19 +1174,20 @@ static Expr *check_cast(Ctx *c, Expr *e, Expr *x, Type *to) {
     e->conv_from = from;
     e->k = E_CONV;
     if (from == to) return x;
-    if (from->k == TY_UINT && (ty_is_int(to) || to->k == TY_FIXED)) {
-        if (to->k == TY_FIXED) return coerce(c, x, to, "value");
+    if (from->k == TY_UINT && (ty_is_int(to) || to->k == TY_FIXED || to->k == TY_FIXED16)) {
+        if (to->k == TY_FIXED || to->k == TY_FIXED16) return coerce(c, x, to, "value");
         return mk_const(x, to, x->cval);   /* explicit: wrap */
     }
     if (from->k == TY_UINT && (to->k == TY_PTR || to->k == TY_ENUM)) return mk_const(x, to, x->cval);
     if (from->k == TY_UFIXED) {
         check_ufixed_range(x->loc, x->cval);
+        if (to->k == TY_FIXED16) return coerce(c, x, to, "value");
         if (to->k == TY_FIXED) return mk_const(x, to, x->cval);
         if (ty_is_int(to)) return mk_const(x, to, x->cval >> 16);
     }
     if (from->k == TY_NULL && (to->k == TY_PTR || to->k == TY_FUNC)) return mk_const(x, to, 0);
     int ok = 0;
-    if ((ty_is_int(from) || from->k == TY_FIXED) && (ty_is_int(to) || to->k == TY_FIXED)) ok = 1;
+    if ((ty_is_int(from) || from->k == TY_FIXED || from->k == TY_FIXED16) && (ty_is_int(to) || to->k == TY_FIXED || to->k == TY_FIXED16)) ok = 1;
     if (from->k == TY_BOOL && ty_is_int(to)) ok = 1;
     if ((from->k == TY_PTR || ty_is_int(from)) && to->k == TY_PTR) ok = 1;
     if (from->k == TY_PTR && (to->k == TY_U32 || to->k == TY_S32)) ok = 1;
@@ -1177,8 +1198,8 @@ static Expr *check_cast(Ctx *c, Expr *e, Expr *x, Type *to) {
     if (x->isconst && ty_is_scalar(from)) {
         e->isconst = 1;
         int64_t v = x->cval;
-        if (to->k == TY_FIXED && from->k != TY_FIXED) v = (int64_t)(uint64_t)((uint32_t)norm(from, v) << 16);
-        else if (from->k == TY_FIXED && to->k != TY_FIXED) v = (int32_t)v >> 16;
+        if ((to->k == TY_FIXED || to->k == TY_FIXED16) && ty_is_int(from)) v = (int64_t)(uint64_t)((uint32_t)norm(from, v) << 16);
+        else if ((from->k == TY_FIXED || from->k == TY_FIXED16) && ty_is_int(to)) v = (int32_t)v >> 16;
         e->cval = norm(to, v);
     }
     return e;
@@ -1312,19 +1333,20 @@ static Expr *check_call(Ctx *c, Expr *e) {
             e->ty = ty_vec3;
             return e;
         case BI_BITS:
-            if (a[0]->ty->k != TY_FIXED && a[0]->ty->k != TY_UFIXED) error_at(e->loc, "bits() needs a fixed value");
-            a[0] = coerce(c, a[0], ty_fixed, "argument");
+            if (!is_fixedish(a[0]->ty)) error_at(e->loc, "bits() needs a fixed value");
+            if (a[0]->ty->k != TY_FIXED16) a[0] = coerce(c, a[0], ty_fixed, "argument");
             e->ty = ty_s32;
-            if (a[0]->isconst) { e->isconst = 1; e->cval = a[0]->cval; }
+            if (a[0]->isconst) { e->isconst = 1; e->cval = a[0]->ty->k == TY_FIXED16 ? a[0]->cval >> 4 : a[0]->cval; }
             return e;
+        case BI_FROM_BITS16:
         case BI_FROM_BITS:
-            if (!is_intish(a[0]->ty)) error_at(e->loc, "from_bits() needs an integer");
+            if (!is_intish(a[0]->ty)) error_at(e->loc, "%s() needs an integer", name);
             if (a[0]->ty->k == TY_UINT) a[0] = coerce(c, a[0], ty_s32, "argument");
-            e->ty = ty_fixed;
-            if (a[0]->isconst) { e->isconst = 1; e->cval = norm(ty_fixed, a[0]->cval); }
+            e->ty = s->bi == BI_FROM_BITS16 ? ty_fixed16 : ty_fixed;
+            if (a[0]->isconst) { e->isconst = 1; e->cval = s->bi == BI_FROM_BITS16 ? (int16_t)a[0]->cval * 16LL : norm(ty_fixed, a[0]->cval); }
             return e;
         case BI_ABS: case BI_MIN: case BI_MAX: case BI_CLAMP: {
-            Type *t = default_type(a[0]);
+            Type *t = a[0]->ty->k == TY_FIXED16 ? ty_fixed : default_type(a[0]);
             for (int i = 1; i < e->nargs; i++) {
                 Type *u = arith_type(e, t, a[i]->ty, name);
                 if (!u) error_at(e->loc, "%s() needs numbers of one type, found %s and %s", name, ty_str(t), ty_str(a[i]->ty));
@@ -1389,7 +1411,7 @@ static Expr *check_call(Ctx *c, Expr *e) {
             e->ty = ty_s32;
             if (s->bi == BI_KIND) {
                 e->isconst = 1;
-                e->cval = t->k == TY_FIXED ? 2 : t->k == TY_BOOL ? 3 : (t->k == TY_PTR || t->k == TY_NULL) ? 4
+                e->cval = (t->k == TY_FIXED || t->k == TY_FIXED16) ? 2 : t->k == TY_BOOL ? 3 : (t->k == TY_PTR || t->k == TY_NULL) ? 4
                         : (t->k == TY_U8 || t->k == TY_U16 || t->k == TY_U32) ? 1 : 0;
             }
             return e;
@@ -2104,7 +2126,7 @@ static void check_stmt(Ctx *c, Stmt *s) {
             bin->k = E_BINARY; bin->loc = s->loc; bin->op = (OpKind)s->op; bin->a = lhs; bin->b = s->e2;
             bin = check(c, bin, NULL);
             if (bin->k != E_BINARY) error_at(s->loc, "compound assignment is not supported for %s", ty_str(lhs->ty));
-            if (bin->ty != lhs->ty && !(ty_is_int(bin->ty) && ty_is_int(lhs->ty)))
+            if (bin->ty != lhs->ty && !(ty_is_int(bin->ty) && ty_is_int(lhs->ty)) && !(bin->ty == ty_fixed && lhs->ty == ty_fixed16))
                 error_at(s->loc, "result of '%s' is %s, which cannot be stored in %s", op_name(bin->op), ty_str(bin->ty), ty_str(lhs->ty));
             s->e2 = bin;
         }

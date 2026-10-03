@@ -1,0 +1,4 @@
+// error: cannot mix fixed and integer values
+var x: fixed16 = 1.5
+var y: s32 = 2
+fn init() { print_fixed(x + y) }

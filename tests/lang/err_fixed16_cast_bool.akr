@@ -1,0 +1,2 @@
+// error: cannot convert bool to fixed16
+fn init() { print_fixed(fixed16(true)) }
