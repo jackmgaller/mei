@@ -16,7 +16,7 @@ is deterministic.
 | Compressed audio | A PS1-SPU-style 4-bit ADPCM (3.5 : 1 against 16-bit), selected per channel; see [Audio upgrade](#audio-upgrade-adpcm-16-channels-reverb). |
 | Standard library location | Compiled into each cart (counts against its ROM size). |
 | Culling/clipping helpers | Four geometry instructions in the reserved opcodes 19–1B and 1F: a back-face test, an ordering-table depth, a colour blend and a three-vertex transform (see [Geometry instructions](#geometry-instructions)). The CPU has 63 instructions. Clipping stays in software. |
-| Fill rate | Budgeted: the GPU has 1,000,000 cycles a tick (a 60 MHz GPU beside the 30 MHz CPU), charged by a cost table (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a clear). A frame over budget is shown late, never cut short; the triangle limit is raised to 4,000 as a backstop. See [GPU budget](#gpu-budget). The plane chip ([PLANES.md](PLANES.md)) costs the GPU nothing. |
+| Fill rate | Budgeted: the GPU, named the **Prism Engine** (the 3D polygon processor), has 1,000,000 cycles a tick (a 60 MHz GPU beside the 30 MHz CPU), charged by a cost table (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a clear). A frame over budget is shown late, never cut short; the triangle limit is raised to 4,000 as a backstop. See [GPU budget](#gpu-budget). The plane chip, the **Horizon Engine** (the scrolling plane processor, [PLANES.md](PLANES.md)), costs the GPU nothing. |
 | Controller count | Two. Each also has a **Select** button (bit 11 of `PAD1`/`PAD2`), added to the spec's eleven. |
 
 ## Details filled in
@@ -186,14 +186,15 @@ do it in 6 cycles, so it would save at most 2, while fog works on packed colours
 
 ## GPU budget
 
-The spec leaves the GPU's fill rate open and caps it at 2,000 triangles a frame. Mei gives the
-GPU a cycle budget like the CPU's instead: it is a 60 MHz chip beside the 30 MHz CPU, so it has
-**1,000,000 GPU cycles per tick**. A frame that needs more is shown late, as on the PlayStation,
-where a heavy scene slows the game down rather than losing polygons. The triangle limit stays
-as a backstop (the packet list needs a bound anyway), raised to **4,000**. The plane chip
-([PLANES.md](PLANES.md)) is a separate chip and costs the GPU nothing; it is what lets the
-heavy carts fit (its "Timing and costs" and open question 1 have the measurements behind
-these numbers).
+The GPU is the **Prism Engine** (Prism for short), Mei's 3D polygon processor. The spec leaves
+its fill rate open and caps it at 2,000 triangles a frame. Mei gives Prism a cycle budget like
+the CPU's instead: it is a 60 MHz chip beside the 30 MHz CPU, so it has **1,000,000 GPU cycles
+per tick**. A frame that needs more is shown late, as on the PlayStation, where a heavy scene
+slows the game down rather than losing polygons. The triangle limit stays as a backstop (the
+packet list needs a bound anyway), raised to **4,000**. The plane chip, the **Horizon Engine**
+(Horizon, the scrolling plane processor; [PLANES.md](PLANES.md)), is a separate chip and costs
+the GPU nothing; it is what lets the heavy carts fit (its "Timing and costs" and open question 1
+have the measurements behind these numbers).
 
 ### Cost table
 

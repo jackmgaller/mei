@@ -8,10 +8,14 @@ A 3D fantasy console modelled on PlayStation-era hardware, implemented from
 - 32-bit RISC CPU, 63 instructions, 500,000 cycles per frame
 - A vector unit with eight 4-lane 16.16 registers (`vxfm`, `vproj`, …) and GTE-style geometry
   instructions (`vxp3`, `nclip`, `otz`, `clerp`; see [`DECISIONS.md`](DECISIONS.md#geometry-instructions))
-- A GPU that only fills 2D triangles: affine textures, whole-pixel vertices, no depth buffer,
-  an ordering table, four blend modes, and a budget of 1,000,000 GPU cycles and 4,000
-  triangles per frame
-- 22,050 Hz audio: 16 channels, ADPCM, reverb; two controllers, 2 MB RAM, up to 64 MB cart ROM (read in place), 1 MB VRAM
+- The **Prism Engine**, the 3D polygon processor (the spec's GPU), which only fills 2D
+  triangles: affine textures, whole-pixel vertices, no depth buffer, an ordering table, four
+  blend modes, and a budget of 1,000,000 GPU cycles and 4,000 triangles per frame
+- The **Horizon Engine**, the scrolling plane processor: two tile planes, an affine (Mode 7)
+  plane and a backdrop colour per line, composited with Prism's polygons at no CPU or GPU cost
+  ([`PLANES.md`](PLANES.md))
+- 22,050 Hz audio: 16 channels, ADPCM, reverb; two controllers, 2 MB RAM, up to 64 MB cart ROM
+  (read in place), 1 MB VRAM
 
 The look comes from those rules (texture warp, vertex wobble, sorting glitches, dither),
 not from post-processing, and everything is deterministic fixed-point.
@@ -136,7 +140,7 @@ Or in assembly ([`docs/ASSEMBLY.md`](ASSEMBLY.md)):
 
 | Path | Contents |
 |---|---|
-| `src/core/` | The emulator core: plain C, no platform calls. `bus.c` (memory map, I/O, faults), `cpu.c`, `gpu.c` (packet lists and rasterizer), `planes.c` (the plane chip), `audio.c`, `card.c` (memory cards), `broadcast.c` (the broadcast decoder), `mei.c` (public API in `mei.h`) |
+| `src/core/` | The emulator core: plain C, no platform calls. `bus.c` (memory map, I/O, faults), `cpu.c`, `gpu.c` (Prism: packet lists and rasterizer), `planes.c` (Horizon, the plane chip), `audio.c`, `card.c` (memory cards), `broadcast.c` (the broadcast decoder), `mei.c` (public API in `mei.h`) |
 | `src/platform/` | `sdl_main.c` (SDL3 desktop and browser), `sysboot.c` (loading the system ROM and its catalogue), `bcnet.c` (the desktop's broadcast tuner and gateway launcher), `xinput_usb.c` (XInput pads over libusb), `headless.c` |
 | `src/asm/` | Assembler and disassembler library + `meiasm` |
 | `src/lang/` | The compiler (`meic`): lexer, parser, type checker, code generator |
@@ -162,7 +166,7 @@ If something has a name, it matters. These are the named things in the project.
 |---|---|---|
 | **Mei** | The console. The name is the character 明, "bright" | `src/core/`, [the spec](spec-v0.1.txt) |
 | **Akari** | The programming language (明かり, "light"); sources end in `.akr` | `src/lang/`, [LANGUAGE.md](LANGUAGE.md) |
-| **Prism Engine** | The 3D polygon processor: the GPU that fills triangles | `src/core/gpu.c`, [the spec](spec-v0.1.txt) |
+| **Prism Engine** | The 3D polygon processor: the GPU that fills triangles | `src/core/gpu.c`, [the spec](spec-v0.1.txt), [GPU budget](DECISIONS.md#gpu-budget) |
 | **Horizon Engine** | The scrolling plane processor: the second video chip, for background planes, skies, floors and backdrops (called "the plane chip" in older text) | `src/core/planes.c`, [PLANES.md](PLANES.md) |
 | **MeiNet** | The one-way data broadcast (time and weather) and the gateway that sends it | [BROADCAST.md](BROADCAST.md), `tools/meinet/` |
 | **Mei System** | The system ROM: boot animation and shell | [SYSTEM.md](SYSTEM.md), `system/` |
