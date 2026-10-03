@@ -146,3 +146,29 @@ fn str_append_time(dst: *u8, cap: s32, n: s32) -> *u8 {
     str_append_char(dst, cap, ':')
     return str_append_int(dst, cap, a % 60, 2, true)
 }
+
+// Formats n in decimal into buf (at least 12 bytes) and returns buf.
+fn int_to_str(buf: *u8, n: s32) -> *u8 {
+    var tmp: [12]u8
+    var u = n as u32
+    if n < 0 { u = (0 - n) as u32 }
+    var i = 0
+    while true {
+        tmp[i] = (u % 10 + '0') as u8
+        i += 1
+        u /= 10
+        if u == 0 { break }
+    }
+    var j = 0
+    if n < 0 {
+        buf[0] = '-'
+        j = 1
+    }
+    while i > 0 {
+        i -= 1
+        buf[j] = tmp[i]
+        j += 1
+    }
+    buf[j] = 0
+    return buf
+}
