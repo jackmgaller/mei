@@ -10,6 +10,7 @@ Outputs for a world named NAME (game GAME) in the output directory:
     NAME.ids.json       a copy of the ID lock file (the original is written beside the recipe)
     source/             the world file, its cell files, the game schema and every asset recipe used
     report.json         per cell and region costs, palettes, IDs, asset hashes, warnings, gates
+    verification/       the World Checker's report (world-check.json) and pictures of its worst views
     preview/            (preview, or build --preview) per region and palette variant, one cell
                         rendered natively, and contact.png
 """
@@ -26,18 +27,21 @@ def lock_path(source):
     return base/f'{source.world["name"]}.ids.json'
 
 
-def game_text(source):
-    """The game schema as built, in the form it was written: canonical Mochi or JSON."""
-    if source.game_path.suffix == '.mochi':
-        from .mochi import format
-        return format(source.game)
-    return jsonio.pretty(source.game)
-
-
 def compile_source(path, assets_dir=None):
     source = load(path)
     lock = ids.load(lock_path(source),source.world['name'])
     return source, compile_world(source,lock,assets_dir)
+
+
+def checker_option(value):
+    """build()'s `checker`: 'full' (the default), 'skip', or a number of views (an int >= 1)."""
+    if value is None or value == 'full': return 'full'
+    if value == 'skip': return 'skip'
+    text = str(value).strip()
+    if isinstance(value, bool) or not text.isdigit() or int(text) < 1:
+        raise WorldError('/arguments', f'The World Checker option is full, skip or a number of views (1 or more), '
+                         f'not {value!r}.')
+    return int(text)
 
 
 def run_gate(context):
@@ -52,15 +56,31 @@ def run_gate(context):
         return {'ran':False,'ok':True,'mode':context['mode'],'reason':'The World Checker (worldkit.verify) is not installed.'}
     if not hasattr(verify,'check_world'):
         return {'ran':False,'ok':True,'mode':context['mode'],'reason':'worldkit.verify has no check_world(context).'}
+    if context.get('checker') == 'skip':
+        # Only on request (build --world-checker skip), and recorded as such in report.json.
+        return {'ran':False,'ok':None,'mode':context['mode'],'skipped':True,
+                'reason':'Skipped on request (--world-checker skip): this build is not verified.'}
     result = dict(verify.check_world(context))
     result.setdefault('ran',True)
     result['mode'] = context['mode']
+    if isinstance(context.get('checker'),int):
+        result['reduced'] = {'max_views':context['checker'],
+                             'reason':f'A reduced sample on request (--world-checker {context["checker"]}), '
+                                      'not the full check.'}
     return result
 
 
 def build(path, directory, compiler=None, runner=None, probe=None, locked=False, assets_dir=None, preview=False,
-          cell=None):
+          cell=None, checker='full'):
+    """`checker` is how the World Checker runs: 'full' (the world's own settings), 'skip', or
+    a number of views to sample at most, for a quick check. A world whose recipe says
+    verification.mode "enforce" builds only with the full check."""
+    checker = checker_option(checker)
     source, compiled = compile_source(path,assets_dir)
+    settings = source.world.get('verification',{})
+    if checker != 'full' and settings.get('mode') == 'enforce':
+        raise WorldError('/verification/mode','This world enforces the World Checker, so it builds only with the full '
+                         f'check, not --world-checker {checker}. Build without the option, or set the mode to "report".')
     name, game = source.world['name'], source.game['name']
     if locked and compiled.lock_changes:
         raise WorldError('/cells',f'The ID lock file would change ({compiled.lock_changes}); --locked forbids it. '
@@ -73,7 +93,9 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
              f'{game}.game.akr':compiled.game_akr.encode(),f'{name}.ids.json':jsonio.pretty(compiled.lock).encode()}
     if compiled.swatch: files[f'{name}.swatch'] = compiled.swatch
     snapshot = {'source/'+(source.world_path.name if source.world_path else f'{name}.world.json'):jsonio.pretty(source.world).encode(),
-                'source/'+source.game_path.name:game_text(source).encode()}
+                # The game schema exactly as written, comments included. report.json's game_sha256
+                # is the hash of its JSON form, which this file parses to.
+                'source/'+source.game_path.name:source.game_text}
     for cs in source.cells:
         if cs.file:
             snapshot['source/'+source.world['cell_dir'].strip('/')+'/'+Path(cs.file).name] = jsonio.pretty(cs.recipe).encode()
@@ -90,10 +112,9 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
         for rel,data in {**files,**snapshot}.items():
             (stage/rel).parent.mkdir(parents=True,exist_ok=True)
             (stage/rel).write_bytes(data)
-        settings = source.world.get('verification',{})
         context = {'world':name,'stage':str(stage),'pack':str(stage/f'{name}.world.bin'),'akr':str(stage/f'{name}.akr'),
                    'mode':settings.get('mode','report'),'thresholds':settings.get('thresholds',{}),
-                   'probe':source.game['probe'],'report':compiled.report,
+                   'probe':source.game['probe'],'report':compiled.report,'checker':checker,
                    'compiler':str(compiler) if compiler else None,'runner':str(runner) if runner else None}
         gate = run_gate(context)
         # Wall-clock timings would make report.json differ between identical builds.

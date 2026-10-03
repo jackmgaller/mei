@@ -39,11 +39,13 @@ make web        # WebAssembly build in build/web (serve it over HTTP)
 ```
 
 `make test` runs the C unit tests (`tests/test_*.c`), the Akari language tests
-(`tests/run_lang_tests.sh`) and, when `python3` is on the path, the MeiNet gateway's tests and
-the Asset Kit, world pack, World Kit and World Checker suites (`tests/test_*.py`); tests that
-need NumPy or a native tool that is missing are skipped. `make test-assets` and `make test-world`
-run the Asset Kit and World Kit suites alone, verbosely. `make B=DIR` builds into `DIR` instead
-of `build/`.
+(`tests/run_lang_tests.sh`) and, when `python3` is on the path, the MeiNet gateway's tests, the
+Asset Kit, world pack, World Kit, Mochi and World Checker suites (`tests/test_*.py`) and `make
+check-generated` (generated files match their generators); tests that need NumPy or a native
+tool that is missing are skipped. `make test-assets` and `make test-world` run the Asset Kit
+suite and the World Kit and Mochi suites alone, verbosely. `make test-carts` runs the carts'
+self-checking scenarios (`carts/*/tests/check.sh`). `make B=DIR` builds into `DIR` instead of
+`build/`. [AGENTS.md](../AGENTS.md) has the details.
 
 **Python.** The emulator, the compilers, the system ROM and the carts build and run without
 Python: every generated file they use is committed. Python 3 runs the MeiNet gateway, the kits,
@@ -136,7 +138,22 @@ Or in assembly ([`docs/ASSEMBLY.md`](ASSEMBLY.md)):
 ```
 
 `meiasm --disasm cart.mei` disassembles a cart. Put a cart in `carts/NAME/NAME.akr` or
-`carts/asm/NAME.s` and `make` builds it into `build/carts/` (and `make web` bundles it).
+`carts/asm/NAME.s` and `make` builds it into `build/carts/` (and `make web` bundles it). A cart
+is rebuilt when any file in its folder changes.
+
+**Assets.** A cart keeps its binary assets in two folders beside its source, `art/` (meshes,
+textures, palettes, icons) and `audio/` (sounds and music), and embeds them by path:
+`embed CUBE: Mesh = "art/cube.bin"` (Mei Demo's). Generated Akari files, such as Lantern Lake's
+`assets.akr` of embeds and constants, sit at the top of the cart's folder. A mesh can be
+made with the [Asset Kit](ASSETKIT.md) from a JSON recipe (`mei_assets.py build` writes the
+mesh and an `.akr` to import).
+
+**Worlds.** A level made with the [World Kit](WORLDKIT.md) is a world pack. A cart lists the
+world recipes it uses in `carts/NAME/worlds.txt`, imports each world's generated file by name
+(`import "test_room.akr"`) and draws and collides through `stdlib/worldpack.akr`
+(`wp_draw`, `wp_floor`, `wp_push`, ...); `make` builds the worlds into `build/worlds/` first,
+which needs NumPy, and passes them to meic with `-I`. World Viewer (`carts/worldview/`) is the
+example: [WORLDKIT.md, "Using a world in a cart"](WORLDKIT.md#using-a-world-in-a-cart).
 
 ## Layout
 
@@ -145,13 +162,13 @@ Or in assembly ([`docs/ASSEMBLY.md`](ASSEMBLY.md)):
 | `src/core/` | The emulator core: plain C, no platform calls. `bus.c` (memory map, I/O, faults), `cpu.c`, `gpu.c` (Prism: packet lists and rasterizer), `planes.c` (Horizon, the plane chip), `audio.c`, `card.c` (memory cards), `broadcast.c` (the broadcast decoder), `mei.c` (public API in `mei.h`) |
 | `src/platform/` | `sdl_main.c` (SDL3 desktop and browser), `sysboot.c` (loading the system ROM and its catalogue), `bcnet.c` (the desktop's broadcast tuner and gateway launcher), `xinput_usb.c` (XInput pads over libusb), `headless.c` |
 | `src/asm/` | Assembler and disassembler library + `meiasm` |
-| `src/lang/` | The compiler (`meic`): lexer, parser, type checker, code generator |
+| `src/lang/` | The compiler (`meic`): lexer, parser, type checker (`check.c`), optimiser (`opt.c`), code generator (`gen.c`) |
 | `system/` | The system ROM: boot themes (`system/boot/`) and the shell, written in Akari |
 | `stdlib/` | The standard library, compiled into every cart: input, maths, camera, `mesh`, ordering table, fog, text, sprites, audio, memory cards, broadcast. `planes.akr` and `worldpack.akr` (the world pack reader) only go into carts that import them |
-| `carts/` | Example carts |
+| `carts/` | The carts, one folder each: source, `art/` and `audio/`, `tests/` (self-checking scenarios), `worlds.txt` for a cart that uses worlds |
 | `examples/` | Example recipes for the kits: assets (`examples/assets/`) and worlds (`examples/worlds/`) |
-| `tests/` | C unit tests per module, language tests (`tests/lang/*.akr` with expected output) and the kits' Python suites |
-| `tools/` | Asset generators (`gen_*.py`), the kits' entry points (`mei_assets.py`, `mei_world.py`), the language fuzzer, the web cart packer |
+| `tests/` | C unit tests per module, language tests (`tests/lang/*.akr` with expected output), the kits' Python suites and `world_carts.sh` (make's world rule) |
+| `tools/` | Asset generators (`gen_*.py`), the kits' entry points (`mei_assets.py`, `mei_world.py`), make's world rule (`world_cart.py`), the cart scenario runner (`cart_scenario.sh`), `check_generated.sh`, the language fuzzer, the web cart packer |
 | `tools/assetkit/`, `tools/worldkit/`, `tools/kitcore/` | The [Asset Kit](ASSETKIT.md), the [World Kit](WORLDKIT.md) (with the [World Checker](WORLDCHECKER.md)) and the core they share |
 | `tools/meinet/` | The broadcast gateway: Open-Meteo weather encoded into a looping page carousel, served over TCP |
 | `tools/vscode-akari/` | Syntax highlighting for Akari in VS Code |
@@ -168,8 +185,8 @@ If something has a name, it matters. These are the named things in the project.
 |---|---|---|
 | **Mei** | The console. The name is the character 明, "bright" | `src/core/`, [the spec](spec-v0.1.txt) |
 | **Akari** | The programming language (明かり, "light"); sources end in `.akr` | `src/lang/`, [LANGUAGE.md](LANGUAGE.md) |
-| **Prism Engine** | The 3D polygon processor: the GPU that fills triangles | `src/core/gpu.c`, [the spec](spec-v0.1.txt), [GPU budget](DECISIONS.md#gpu-budget) |
-| **Horizon Engine** | The scrolling plane processor: the second video chip, for background planes, skies, floors and backdrops (called "the plane chip" in older text) | `src/core/planes.c`, [PLANES.md](PLANES.md) |
+| **Prism Engine** | The 3D polygon processor (the spec's GPU): fills 2D triangles from linked packet lists (which carts sort with an ordering table), with a budget of 1,000,000 GPU cycles and 4,000 triangles a frame, and per-polygon texture windows for repeating tiles | `src/core/gpu.c`, [the spec](spec-v0.1.txt), [GPU budget](DECISIONS.md#gpu-budget), [texture windows](DECISIONS.md#texture-windows) |
+| **Horizon Engine** | The scrolling plane processor: the second video chip, with two tile planes, an affine (Mode 7) plane and a backdrop colour per line, for skies, floors and backdrops at no CPU or GPU cost (also called "the plane chip") | `src/core/planes.c`, `stdlib/planes.akr`, [PLANES.md](PLANES.md) |
 | **MeiNet** | The one-way data broadcast (time and weather) and the gateway that sends it | [BROADCAST.md](BROADCAST.md), `tools/meinet/` |
 | **Mei System** | The system ROM: boot animation and shell | [SYSTEM.md](SYSTEM.md), `system/` |
 | **Duet**, **Eclipse** | The two boot themes | `system/boot/` |
@@ -179,11 +196,11 @@ If something has a name, it matters. These are the named things in the project.
 | Name | What it is | Where |
 |---|---|---|
 | **Asset Kit** | Turns a JSON recipe into one native mesh. For things you could place twice | [ASSETKIT.md](ASSETKIT.md), `tools/mei_assets.py` |
-| **Asset Checker** | The Asset Kit's `verify` command: proves one asset's faces draw in the right order from every side | [ASSETKIT.md](ASSETKIT.md), `mei_assets.py verify` |
-| **World Kit** | Turns a world recipe into a level: cells, regions, layers, collision, game data. Built; terrain, textures, audio banks and backdrops are still to come | [WORLDKIT.md](WORLDKIT.md), `tools/mei_world.py` |
-| **World Pack** | The binary level format the World Kit writes and the console reads in place | [WORLDPACK.md](WORLDPACK.md), `stdlib/worldpack.akr` |
-| **Mochi** | The small language a game's schema for the World Kit is written in (its entity types and their fields, the player's body, the worlds); files end in `.mochi`. Translated into the JSON form, which is still accepted | [WORLDKIT.md](WORLDKIT.md), `tools/worldkit/mochi.py` |
-| **World Checker** | The World Kit's in-level verification, run by every `mei_world.py build` and on its own: checks a level from where a player can stand, for budgets, drawing order and collision holes. Built | [WORLDCHECKER.md](WORLDCHECKER.md), `tools/worldkit/verify.py` |
+| **Asset Checker** | The Asset Kit's `verify` command: renders one asset from sampled cameras around it through the real GPU and checks that its faces draw in the right order, against an independent rasterizer; a recipe can require it to pass | [ASSETKIT.md](ASSETKIT.md#automated-visibility-gate), `mei_assets.py verify` |
+| **World Kit** | Turns a world recipe into a level: cells, regions, layers, ground, collision, game data. Built; terrain, textures, audio banks and backdrops are still to come | [WORLDKIT.md](WORLDKIT.md), `tools/mei_world.py` |
+| **World Pack** | The binary level format (version 1.1) the World Kit writes and the console reads in place from ROM, through the reader `stdlib/worldpack.akr` | [WORLDPACK.md](WORLDPACK.md), `tools/worldkit/pack.py` |
+| **Mochi** | The small language a game's schema for the World Kit is written in (its entity types and their fields, the player's body, the worlds); files end in `.mochi`. Translated into the JSON form, which is still accepted | [WORLDKIT.md](WORLDKIT.md#game-data-and-stable-ids), `tools/worldkit/mochi.py` |
+| **World Checker** | The World Kit's in-level verification: checks a level from where a player can stand, for budgets, drawing order and collision holes. Run by every `mei_world.py build` (report-only unless the world says `enforce`) and on its own | [WORLDCHECKER.md](WORLDCHECKER.md), `tools/worldkit/verify.py` |
 | **Reference Renderer** | An independent renderer that Mei's output is compared against, to test the console itself (`make rendercheck`). Not yet committed | |
 
 **Carts**
@@ -195,7 +212,7 @@ If something has a name, it matters. These are the named things in the project.
 | **Mei Weather** | A weather channel fed by MeiNet | `carts/weather/` |
 | **Features** | Short screens showing what the machine can do | `carts/features/` |
 | **Sound Lab**, **Mei Demo** | The audio hardware test and the smallest example; built on request | `carts/soundlab/`, `carts/demo/` |
-| **World Viewer** | Fly or walk through the World Kit's example worlds, with palette variants, layers and costs on screen; the reference for a cart that uses a world. Built on request | `carts/worldview/` |
+| **World Viewer** | Fly or walk through the World Kit's example worlds, with palette variants, layers and costs on screen; the reference for a cart that uses a world. Built on request | `carts/worldview/`, [WORLDKIT.md](WORLDKIT.md#using-a-world-in-a-cart) |
 
 **Retired names**, which still appear in history and in some measurements: **Tsumiki** (a 3D
 toolkit in the stdlib), **Playroom** (its sample cart) and **Check-In!** (a hotel-building cart).

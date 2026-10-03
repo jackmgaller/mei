@@ -341,6 +341,30 @@ no ground flag can change; its ground-over-ground pixels are the sides of the 0.
 slabs, which the static check names as `ground_over_ground` and a ground tile modelled as a
 surface would remove.
 
+Both were then fixed in the examples' asset recipes (WORLDKIT.md, "Ground"): the ground tiles,
+the room's floor and the far block's ground became upward quads; the shop became one shell whose
+window, sign and roof edge are bands of its walls, with no faces inside it; the canopy's trim
+became its roof's front and back edges. Measured the same way:
+
+| | `test_room` with ground | remodelled | `two_districts` with ground | remodelled |
+|---|---|---|---|---|
+| views with wrong-order pixels in the near band | 9 of 132 | 0 | 111 of 416 | 19 |
+| near-band wrong-order pixels | 2,775 | 0 | 318,722 | 348 |
+| ... ground over ground; inside `shop`; inside `canopy` | 0; –; 2,775 | 0; –; 0 | 10,018; 308,346; – | 0; 0; – |
+| ... inside `torii`; inside a merged mesh | – | – | 356; 2 | 346; 2 |
+| largest in one view | 575 | 0 | 24,008 | 60 |
+| wrong-order pixels elsewhere (views) | 0 | 0 | 3,138 (68) | 120 (10) |
+| static warnings | none | none | `ground_over_ground` | none |
+| draw CPU cycles a view, mean (largest) | 29,481 (58,086) | 25,041 (40,573) | 37,995 (86,763) | 30,938 (73,922) |
+| GPU cycles a view, mean (largest) | 116,229 (198,538) | 115,964 (197,952) | 138,636 (289,506) | 133,183 (265,088) |
+| decided pixels | 4,113,056 | 4,113,702 | 17,041,425 | 16,975,729 |
+
+The shop and the canopy now pass the Asset Checker with no wrong pixel (`mei_assets.py verify`,
+default profile; before: 39,143 and 7,493 wrong pixels and four coplanar overlaps each). What is
+left in `two_districts` is inside the torii (its tie passes through its posts, which the Asset
+Checker reports as surface intersections; not yet remodelled) and 2 pixels inside the merged
+bollards.
+
 ## Timing
 
 Measured on an Apple-silicon Mac with `make` defaults:

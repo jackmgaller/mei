@@ -23,9 +23,13 @@ def game_source(game):
     for k,wname in enumerate(game.get('worlds',[])):
         lines.append(f'const {g}_WORLD_{upper(wname)} = {k}')
     probe = game['probe']
-    lines += ['',f'// The body the kit classified collision for (units; degrees).',
-              f'const {g}_PROBE_RADIUS: fixed = {float(probe["radius"])}',
-              f'const {g}_PROBE_FLOOR_MAX_DEGREES: fixed = {float(probe["floor_max_degrees"])}']
+    lines += ['',f'// The body the kit classified collision for (units; degrees): every field the schema gives,',
+              '// and the ceiling angle the kit used (45 when the schema leaves it out).']
+    for key in ('radius','height','step','floor_max_degrees'):
+        if key in probe: lines.append(f'const {g}_PROBE_{upper(key)}: fixed = {float(probe[key])}')
+    from .world import DEFAULT_CEILING_DEGREES
+    lines.append(f'const {g}_PROBE_CEILING_MAX_DEGREES: fixed = '
+                 f'{float(probe.get("ceiling_max_degrees",DEFAULT_CEILING_DEGREES))}')
     for tname,t in game['types'].items():
         params = t.get('params',{})
         if not params: continue

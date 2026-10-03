@@ -635,10 +635,13 @@ def check_world(context):
     ('report' or 'enforce', which is this checker's 'strict') and 'thresholds', the game's
     'probe', the staging directory ('stage', where the report and images go, under
     verification/) and optionally the 'compiler' to use (mei-scene-probe is looked for beside
-    it). Returns the report, or {'ok': False, 'errors': [...]} when the check could not run."""
+    it), and 'checker' (a number: sample at most that many views; build --world-checker N).
+    Returns the report, or {'ok': False, 'errors': [...]} when the check could not run."""
     mode = context.get('mode') or 'report'
     settings = {'mode': 'strict' if mode == 'enforce' else mode,
                 'thresholds': dict(context.get('thresholds') or {})}
+    if isinstance(context.get('checker'), int):     # build --world-checker N: a reduced sample
+        settings['sampling'] = {'max_views': context['checker']}
     probe = {k: v for k, v in (context.get('probe') or {}).items() if k in DEFAULTS['probe']}
     if probe:
         settings['probe'] = {**DEFAULTS['probe'], **probe}

@@ -258,20 +258,29 @@ class BuildTests(unittest.TestCase):
     def test_mochi_and_json_build_byte_identical_outputs(self):
         with tempfile.TemporaryDirectory() as tmp:
             outs = []
-            for world in self.worlds(tmp):
+            worlds = self.worlds(tmp)
+            # The Mochi schema as an author might write it: comments and loose layout, which the
+            # build's source/ snapshot keeps as written.
+            written = ('// The garden, as written.\n'
+                       + (EXAMPLES/'test_room'/'garden.game.mochi').read_text().replace('\n\n', '\n  // spacing\n'))
+            (worlds[0].parent/'garden.game.mochi').write_text(written)
+            for world in worlds:
                 coin = world.parent/'assets'/'coin.asset.json'
                 recipe = json.loads(coin.read_text())
                 recipe.pop('verification', None)        # the Asset Checker needs NumPy; not what this tests
                 coin.write_text(json.dumps(recipe))
                 out = world.parent.parent/(world.parent.name + '_out')
-                build(str(world), out, COMPILER, RUNNER, PROBE)
+                build(str(world), out, COMPILER, RUNNER, PROBE, checker='skip')    # nor is the World Checker
                 outs.append(out)
             for name in ('test_room.world.bin', 'test_room.akr', 'garden.game.akr', 'test_room.ids.json'):
                 self.assertEqual((outs[0]/name).read_bytes(), (outs[1]/name).read_bytes(), name)
-            self.assertEqual((outs[0]/'source'/'garden.game.mochi').read_text(),
-                             (EXAMPLES/'test_room'/'garden.game.mochi').read_text())
-            self.assertEqual(json.loads((outs[1]/'source'/'garden.game.json').read_text()),
-                             json.loads(GARDEN_JSON.read_text()))
+            self.assertEqual((outs[0]/'source'/'garden.game.mochi').read_text(), written)
+            self.assertEqual((outs[1]/'source'/'garden.game.json').read_bytes(), GARDEN_JSON.read_bytes())
+            # game_sha256 is the hash of the schema's JSON form: the same for both, and for the
+            # snapshot, whatever its comments and layout.
+            reports = [json.loads((o/'report.json').read_text()) for o in outs]
+            self.assertEqual(reports[0]['game_sha256'], reports[1]['game_sha256'])
+            self.assertEqual(load_game(str(outs[0]/'source'/'garden.game.mochi')), json.loads(GARDEN_JSON.read_text()))
 
 
 if __name__ == '__main__':

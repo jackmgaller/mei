@@ -38,8 +38,14 @@ All PS1-authentic unless noted.
 
 ## Tooling (pending go-ahead)
 
-- **Self-checking scenarios:** carts' scenario files check `// expect:` lines, and
-  `make test-carts` runs them all.
+- **`// expect:` lines in scenario files.** `make test-carts` now runs the carts' self-checking
+  scenarios (`carts/{lantern,weather,worldview}/tests/check.sh`, through
+  `tools/cart_scenario.sh`), which check with `assert` in the scenario cart; scenario files that
+  state their expected output in `// expect:` lines are still to do.
+- **The kits' next pieces**, planned in their documents: terrain, region textures, audio banks
+  and backdrops, `verify` and `standin-draft` in the World Kit
+  ([WORLDKIT.md](WORLDKIT.md#command-line)); textures and UVs in the Asset Kit, built on texture
+  windows ([ASSETKIT.md](ASSETKIT.md#textures-proposal)).
 - **`mei-headless`:**
   - `--arg name=value`, so one build serves a parameter sweep;
   - `--rev HEAD` for before/after runs;
@@ -58,17 +64,22 @@ All PS1-authentic unless noted.
 ## Open questions
 
 - **A name for the assembly language.**
-- **Plane chip ports:** Sun & Moon Orbs and the boot themes fit the 1M GPU budget as they are;
-  porting them to planes would only buy headroom.
+- **Horizon Engine ports:** Sun & Moon Orbs and the boot themes fit the Prism Engine's 1,000,000
+  GPU cycles a frame as they are; moving their backgrounds to the Horizon Engine's planes
+  ([PLANES.md](PLANES.md)) would only buy headroom.
 
 ## Decided against
 
 - **Typed (data-carrying) enums.**
 - **Headlines or news on MeiNet.** Time is the only canonical feed, for carts only; scores
   weren't wanted either.
-- **A depth buffer.** By spec; draw order stays the ordering table's job.
+- **A depth buffer.** By spec; draw order stays the ordering table's job, with the Asset and
+  World Checkers measuring where it goes wrong.
+- **Bank switching and a disc device**, considered for large worlds on 2026-10-03: the cart ROM
+  grew to 64 MB, read in place, instead ([DECISIONS.md](DECISIONS.md#the-machine)).
 - **Generics, `defer` and language-level generators:** slices, the no-heap design and the task
   library cover them.
 - **Tsumiki**, the stdlib 3D toolkit, and its Playroom sample cart: removed in October 2026
-  in favour of a different approach.
+  in favour of the World Kit and the world pack reader, `stdlib/worldpack.akr`
+  ([WORLDKIT.md](WORLDKIT.md)).
 - **Check-In!**: the cart and its asset generators were removed in October 2026.

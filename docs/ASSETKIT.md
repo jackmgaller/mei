@@ -564,6 +564,25 @@ they cross a tile row; or keep one tile (128 bytes for 16×16) and split faces a
 boundary, which costs triangles. Large textured faces warp affinely; carts would use
 `subdivide()` near the camera, which (unlike for swatches) then earns its CPU cost.
 
+**Texture windows (since approved and built).** The repeat constraint above is now partly
+answered by the Prism Engine's per-polygon texture windows
+([DECISIONS.md](DECISIONS.md#texture-windows), [LANGUAGE.md](LANGUAGE.md#mesh-format)): a face
+may name one of up to 7 windows from its mesh's window table, a power-of-two rectangle of 8–256
+texels per axis (origins on multiples of 8) that its u and v wrap within. A tile is then stored once and repeats inside its own window, so many
+patterns share one slot: the third option's VRAM cost (128 bytes for a 16×16 tile) without its
+face splitting. What windows do not change: coordinates are still 8 bits per vertex, so one face
+spans at most 255 texels of a pattern (15 repeats of a 16-texel tile, 7 of a 32-texel one), and
+a larger face must still be split, or carry a larger pre-repeated tile. The proposal becomes:
+patterns packed as window-aligned tiles, split only where a face's span exceeds 255 texels.
+
+What the kit still needs to use them, none of it built: the texture authoring above (patterns,
+texel grids, projections); packing tiles into a slot at window-aligned origins and writing the
+window table and the faces' window bits (`tools/meshlib.py`, which the kit exports through,
+already writes both: `Mesh.window()` and `face(window=...)`); splitting faces at 255 texels of
+span; the material manifest listing tiles and windows, and `relocate()` moving them (today it
+rejects any textured face that is not a swatch face); and the Asset Checker's identity mesh
+treating a windowed face whose texels never contain index 0 like a swatch face.
+
 **Verification.** The gate stays as it is if pattern and grid texels never contain index 0:
 coverage is then that of the untextured face, as for swatches. `identity_mesh` would check
 "the face's texture region contains no index 0" against the texels the kit generated instead

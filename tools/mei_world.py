@@ -87,6 +87,9 @@ def parser():
             cmd.add_argument('-o','--output',required=True,help='Dedicated generated-output directory.')
             if name == 'build': cmd.add_argument('--preview',action='store_true',help='Also render previews.')
             cmd.add_argument('--locked',action='store_true',help='Fail instead of changing the ID lock file.')
+            cmd.add_argument('--world-checker',default='full',metavar='full|skip|N',
+                             help='How the World Checker runs: full (the default), skip, or at most N sampled views. '
+                                  'Recorded in report.json; refused for a world in enforce mode.')
             cmd.add_argument('--compiler',type=Path,default=ROOT/'build'/'meic')
             cmd.add_argument('--runner',type=Path,default=ROOT/'build'/'mei-headless')
             cmd.add_argument('--probe',type=Path,default=ROOT/'build'/'mei-asset-probe')
@@ -105,7 +108,8 @@ def main(argv=None):
         elif args.command in ('build','preview'):
             jsonio.output(build(args.recipe,args.output,args.compiler.resolve(),args.runner.resolve(),
                                 args.probe.resolve(),args.locked,args.assets,
-                                args.command == 'preview' or args.preview,getattr(args,'cell',None)))
+                                args.command == 'preview' or args.preview,getattr(args,'cell',None),
+                                args.world_checker))
         else:
             _,compiled = compile_source(args.recipe,args.assets)
             report = compiled.report

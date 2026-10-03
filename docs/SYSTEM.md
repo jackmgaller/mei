@@ -47,11 +47,13 @@ ROM behaves as if there are zero carts and no flags.
 | 4 | boot animation off |
 | 5–31 | reserved for the shell (documented in `system/system.akr`) |
 
-These registers are an extension for the system ROM. Ordinary carts have no reason to
-use `SYS_LAUNCH` or `SYS_CONFIG`; any cart may read the clock. Like controller input, the
-clock is latched at `vsync`, so it changes once per frame and a replay that records it stays
-deterministic. The headless runner simulates it (`--time`, `--date`; default 12:00 on
-2026-01-01, advancing one second per 60 ticks).
+These registers are an extension for the system ROM. Ordinary carts have no reason to use
+`SYS_LAUNCH` or `SYS_CONFIG`, which the shell declares itself (`system/shell/core.akr`). Any cart
+may read the clock: the standard library declares `SYS_TIME` and `SYS_DATE` (`stdlib/io.akr`), so
+a cart reads them with no `reg` line of its own. Like controller input, the clock is latched at
+`vsync`, so it changes once per frame and a replay that records it stays deterministic. The
+headless runner simulates it (`--time`, `--date`; default 12:00 on 2026-01-01, advancing one
+second per 60 ticks).
 
 ## Returning to the system
 

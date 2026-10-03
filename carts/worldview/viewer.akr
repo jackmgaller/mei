@@ -9,14 +9,18 @@ struct World {
     name: *u8
     eye: vec3          // where the camera starts, flying
     yaw: fixed
-    radius: fixed      // the game schema's probe radius: walls push the walking camera this far
+    // The game schema's probe (GAME.game.akr), the body the kit classified collision for:
+    radius: fixed      // walls push the walking camera this far
+    height: fixed      // the walking eye is this far above the floor (the top of the body)
+    step: fixed        // the highest floor a walking step climbs onto
 }
 
 const WORLD_COUNT = 2
 const WORLDS: [2]World = [
-    World { name: "test_room", eye: vec3(32.0, 3.0, 10.0), yaw: 0.0, radius: GARDEN_PROBE_RADIUS },
+    World { name: "test_room", eye: vec3(32.0, 3.0, 10.0), yaw: 0.0, radius: GARDEN_PROBE_RADIUS,
+            height: GARDEN_PROBE_HEIGHT, step: GARDEN_PROBE_STEP },
     World { name: "two_districts", eye: vec3(2.0, 3.0, 6.0), yaw: 1.5708,     // looking +X
-            radius: CITY_PROBE_RADIUS },
+            radius: CITY_PROBE_RADIUS, height: CITY_PROBE_HEIGHT, step: CITY_PROBE_STEP },
 ]
 
 fn world_load(k: s32) -> bool {
@@ -24,8 +28,8 @@ fn world_load(k: s32) -> bool {
     return world_two_districts_load()
 }
 
-const EYE_HEIGHT: fixed = 1.5    // above the floor, walking (the World Checker's eye cameras)
-const STEP: fixed = 0.35         // the highest floor a walking step climbs onto
+fn eye_height() -> fixed { return WORLDS[world].height }
+
 const FLY_SPEED: fixed = 0.25
 const WALK_SPEED: fixed = 0.08
 const TURN: fixed = 0.04
@@ -63,33 +67,19 @@ fn open_world(k: s32) {
     layer = 0
 }
 
-// ---- reading names from the pack (the reader has no accessors for them)
-
-fn pack_string(off: u32) -> *u8 { return (wp_pack as u32 + off) as *u8 }
-
-fn layer_name(id: s32) -> *u8 {
-    let layers = (wp_pack as u32 + wp_pack.layer_off) as *WpLayer
-    return pack_string(layers[id].name)
-}
-
-fn variant_name(region: s32, v: s32) -> *u8 {
-    let r = wp_region(region)
-    return pack_string(((wp_pack as u32 + r.palette_off) as *u32)[v])
-}
-
 // ---- palette variants
 
 fn region_variants(k: s32) -> s32 { return wp_region(k).variant_count as s32 }
 
 fn variants_max() -> s32 {
     var n = 1
-    for k in 0..wp_pack.region_count as s32 { n = max(n, region_variants(k)) }
+    for k in 0..wp_region_count() { n = max(n, region_variants(k)) }
     return n
 }
 
 fn show_variant(v: s32) {
     variant = v
-    for k in 0..wp_pack.region_count as s32 {
+    for k in 0..wp_region_count() {
         let n = region_variants(k)
         if n > 0 && wp_region(k).colour_count > 0 { wp_palette_load(k, min(v, n - 1)) }
     }
@@ -98,18 +88,18 @@ fn show_variant(v: s32) {
 // ---- moving
 
 // Walking: the feet move by d, walls push them out at knee and chest height (the probe's
-// radius), and they stand on the highest floor no more than STEP above them, or drop to the
-// next floor below. A camera kept on the floor, not a character: no gravity, jumping or limit
-// on slopes.
+// radius), and they stand on the highest floor no more than the probe's step above them, or
+// drop to the next floor below. A camera kept on the floor, not a character: no gravity,
+// jumping or limit on slopes.
 fn walk(d: vec3) {
     let r = WORLDS[world].radius
-    var p = eye - vec3(0.0, EYE_HEIGHT, 0.0) + d
+    var p = eye - vec3(0.0, eye_height(), 0.0) + d
     for h in 0..2 {
         let q = wp_push(p + vec3(0.0, 0.5 + 0.7 * h, 0.0), r)
         p = vec3(q.x, p.y, q.z)
     }
-    if wp_floor(p, STEP) { p.y = wp_hit.y }
-    eye = p + vec3(0.0, EYE_HEIGHT, 0.0)
+    if wp_floor(p, WORLDS[world].step) { p.y = wp_hit.y }
+    eye = p + vec3(0.0, eye_height(), 0.0)
 }
 
 fn toggle_walk() {
@@ -122,7 +112,7 @@ fn toggle_walk() {
         return
     }
     walking = true
-    eye.y = wp_hit.y + EYE_HEIGHT
+    eye.y = wp_hit.y + eye_height()
     walk(vec3(0.0, 0.0, 0.0))
 }
 
@@ -217,7 +207,7 @@ fn draw_overlay() {
     var x = 0
     text(4, 2, WORLDS[world].name, ink())
     if walking { text(140, 2, "WALK", ink()) } else { text(140, 2, "FLY", ink()) }
-    text(184, 2, variant_name(0, min(variant, region_variants(0) - 1)), ink())
+    text(184, 2, wp_variant_name(0, min(variant, region_variants(0) - 1)), ink())
     let c = wp_cell_at(eye)
     text(4, 12, "cell", dim())
     if c == null {
@@ -246,7 +236,7 @@ fn draw_overlay() {
         text(52, 32, "none", ink())
     }
     if wp_layer_count() > 0 {
-        text(196, 32, layer_name(layer), ink())
+        text(196, 32, wp_layer_name(layer), ink())
         if wp_layer_on(layer) { text(296, 32, "on", ink()) } else { text(296, 32, "off", dim()) }
     }
     if message_t > 0 { text(4, 48, message, rgb(255, 208, 112)) }
