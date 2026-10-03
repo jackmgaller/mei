@@ -18,20 +18,35 @@ not from post-processing, and everything is deterministic fixed-point.
 
 ## Build
 
-Needs a C compiler and SDL3 (`brew install sdl3`); the browser build also needs
-Emscripten (`brew install emscripten`).
+Needs a C compiler and SDL3 (`brew install sdl3`). Optional: libusb (`brew install libusb`)
+for XInput pads on macOS (see [Run](#run)), and Emscripten (`brew install emscripten`) for the
+browser build.
 
 ```bash
-make            # emulator, tools and carts in build/
+make            # emulator, tools, system ROM and carts in build/
 ```
 
 ```bash
-make test       # CPU, GPU, audio, assembler and language tests
+make test       # C unit tests, language tests and, with python3, the Python test suites
 ```
 
 ```bash
 make web        # WebAssembly build in build/web (serve it over HTTP)
 ```
+
+`make test` runs the C unit tests (`tests/test_*.c`), the Akari language tests
+(`tests/run_lang_tests.sh`) and, when `python3` is on the path, the MeiNet gateway's tests and
+the Asset Kit, world pack, World Kit and World Checker suites (`tests/test_*.py`); tests that
+need NumPy or a native tool that is missing are skipped. `make test-assets` and `make test-world`
+run the Asset Kit and World Kit suites alone, verbosely. `make B=DIR` builds into `DIR` instead
+of `build/`.
+
+**Python.** The emulator, the compilers, the system ROM and the carts build and run without
+Python: every generated file they use is committed. Python 3 runs the MeiNet gateway, the kits,
+the asset generators and `make web`'s cart packer. The Asset Kit and World Kit build recipes with
+the standard library alone (Python 3.10 or later); the Asset Checker and the World Checker need
+NumPy. The asset generators in `tools/` need NumPy, those that draw pictures need Pillow, and
+the Duet boot theme's and Sound Lab's need SciPy too; several use macOS system fonts.
 
 ## Run
 
@@ -40,27 +55,33 @@ make web        # WebAssembly build in build/web (serve it over HTTP)
 ```
 
 This powers on the console: the system ROM (`system/`, see [`docs/SYSTEM.md`](SYSTEM.md))
-plays a boot animation (five themes, chosen in Settings) and opens a small shell to browse
-and launch the carts in `build/carts`, test controllers and sounds, and change settings.
+plays a boot animation (two themes, Duet and Eclipse, chosen in Settings) and opens a small
+shell to browse and launch the carts in `build/carts`, test controllers and sounds, and change
+settings.
 Settings persist between sessions. Home (gamepad Guide button or F2) returns to the shell.
 Games save to two virtual memory cards (`card1.mcd`, `card2.mcd`, 128 KB each; see
 [`docs/MEMCARD.md`](MEMCARD.md)), kept with the settings in
 `~/Library/Application Support/gallerdude/Mei/` (browser storage on the web).
 Carts can also tune in to **MeiNet**, a Teletext-style data broadcast of the time and US
-weather ([`docs/BROADCAST.md`](BROADCAST.md)): run `python3 tools/meinet/meinet.py` and the
-desktop player picks up its signal.
+weather ([`docs/BROADCAST.md`](BROADCAST.md)). The desktop player starts the gateway,
+`tools/meinet/meinet.py`, by itself when none is running (it needs `python3`; `--no-gateway`
+turns this off; the gateway logs to `meinet.log` beside the executable).
 To run a cart, either directly or after the boot animation:
 
 ```bash
-./build/mei build/carts/demo.mei
+./build/mei build/carts/orbs.mei
 ```
 
 ```bash
-./build/mei --no-boot build/carts/demo.mei
+./build/mei --no-boot build/carts/orbs.mei
 ```
 
+`make` builds every cart except Mei Demo and Sound Lab, which are built on request
+(`make build/carts/demo.mei build/carts/soundlab.mei`) and so are not in the shell's list.
+
 Or drop a `.mei` file on the window. Keyboard: arrows = d-pad, WASD = analog stick,
-J K U I = A B X Y, Q E = L R, Enter = Start, Backspace = Select, F2 home, F5 reset, F11 fullscreen, Esc quit.
+J K U I = A B X Y, Q E = L R, Enter = Start, Backspace or right Shift = Select, F2 home,
+F5 reset, F11 fullscreen, Esc quit.
 Gamepads work too. On macOS, XInput-only controllers (Xbox 360-protocol pads such as an
 8BitDo Ultimate 2C on a cable) have no system driver, so when libusb is installed
 (`brew install libusb`) the desktop build reads them directly over USB
@@ -115,18 +136,21 @@ Or in assembly ([`docs/ASSEMBLY.md`](ASSEMBLY.md)):
 
 | Path | Contents |
 |---|---|
-| `src/core/` | The emulator core: plain C, no platform calls. `bus.c` (memory map, I/O, faults), `cpu.c`, `gpu.c` (packet lists and rasterizer), `audio.c`, `mei.c` (public API in `mei.h`) |
-| `src/platform/` | `sdl_main.c` (SDL3 desktop and browser), `xinput_usb.c` (XInput pads over libusb), `headless.c` |
+| `src/core/` | The emulator core: plain C, no platform calls. `bus.c` (memory map, I/O, faults), `cpu.c`, `gpu.c` (packet lists and rasterizer), `planes.c` (the plane chip), `audio.c`, `card.c` (memory cards), `broadcast.c` (the broadcast decoder), `mei.c` (public API in `mei.h`) |
+| `src/platform/` | `sdl_main.c` (SDL3 desktop and browser), `sysboot.c` (loading the system ROM and its catalogue), `bcnet.c` (the desktop's broadcast tuner and gateway launcher), `xinput_usb.c` (XInput pads over libusb), `headless.c` |
 | `src/asm/` | Assembler and disassembler library + `meiasm` |
 | `src/lang/` | The compiler (`meic`): lexer, parser, type checker, code generator |
 | `system/` | The system ROM: boot themes (`system/boot/`) and the shell, written in Akari |
-| `stdlib/` | The standard library, compiled into every cart: input, maths, camera, `mesh`, ordering table, fog, text, sprites, audio |
+| `stdlib/` | The standard library, compiled into every cart: input, maths, camera, `mesh`, ordering table, fog, text, sprites, audio, memory cards, broadcast. `planes.akr` and `worldpack.akr` (the world pack reader) only go into carts that import them |
 | `carts/` | Example carts |
-| `tests/` | C unit tests per module and language tests (`tests/lang/*.akr` with expected output) |
-| `tools/` | Asset generators, the language fuzzer, the web cart packer |
-| `web/shell.html` | The browser page |
+| `examples/` | Example recipes for the kits: assets (`examples/assets/`) and worlds (`examples/worlds/`) |
+| `tests/` | C unit tests per module, language tests (`tests/lang/*.akr` with expected output) and the kits' Python suites |
+| `tools/` | Asset generators (`gen_*.py`), the kits' entry points (`mei_assets.py`, `mei_world.py`), the language fuzzer, the web cart packer |
+| `tools/assetkit/`, `tools/worldkit/`, `tools/kitcore/` | The [Asset Kit](ASSETKIT.md), the [World Kit](WORLDKIT.md) (with the [World Checker](WORLDCHECKER.md)) and the core they share |
 | `tools/meinet/` | The broadcast gateway: Open-Meteo weather encoded into a looping page carousel, served over TCP |
-| `docs/` | Spec, [decisions](DECISIONS.md) on everything the spec leaves open, language and assembly references, [memory cards](MEMCARD.md), [broadcast](BROADCAST.md) |
+| `tools/vscode-akari/` | Syntax highlighting for Akari in VS Code |
+| `web/shell.html` | The browser page |
+| `docs/` | Spec, [decisions](DECISIONS.md) on everything the spec leaves open, language and assembly references, [memory cards](MEMCARD.md), [broadcast](BROADCAST.md), [planes](PLANES.md), the kits and the [world pack format](WORLDPACK.md) |
 
 ## Names
 
@@ -149,10 +173,10 @@ If something has a name, it matters. These are the named things in the project.
 | Name | What it is | Where |
 |---|---|---|
 | **Asset Kit** | Turns a JSON recipe into one native mesh. For things you could place twice | [ASSETKIT.md](ASSETKIT.md), `tools/mei_assets.py` |
-| **Asset Checker** | The Asset Kit's `verify`: proves one asset's faces draw in the right order from every side | [ASSETKIT.md](ASSETKIT.md) |
-| **World Kit** | Turns a world recipe into a level: cells, regions, layers, collision, game data. In progress | [WORLDKIT.md](WORLDKIT.md) |
+| **Asset Checker** | The Asset Kit's `verify` command: proves one asset's faces draw in the right order from every side | [ASSETKIT.md](ASSETKIT.md), `mei_assets.py verify` |
+| **World Kit** | Turns a world recipe into a level: cells, regions, layers, collision, game data. Built; terrain, textures, audio banks and backdrops are still to come | [WORLDKIT.md](WORLDKIT.md), `tools/mei_world.py` |
 | **World Pack** | The binary level format the World Kit writes and the console reads in place | [WORLDPACK.md](WORLDPACK.md), `stdlib/worldpack.akr` |
-| **World Checker** | The World Kit's `verify`: checks a level from where a player can stand, for budgets, drawing order and collision holes. In progress | [WORLDKIT.md](WORLDKIT.md) |
+| **World Checker** | The World Kit's in-level verification, run by every `mei_world.py build` and on its own: checks a level from where a player can stand, for budgets, drawing order and collision holes. Built | [WORLDCHECKER.md](WORLDCHECKER.md), `tools/worldkit/verify.py` |
 | **Reference Renderer** | An independent renderer that Mei's output is compared against, to test the console itself (`make rendercheck`). Not yet committed | |
 
 **Carts**
@@ -173,5 +197,5 @@ toolkit in the stdlib), **Playroom** (its sample cart) and **Check-In!** (a hote
 The spec lists questions that are not yet decided. [`docs/DECISIONS.md`](DECISIONS.md)
 records how this implementation answers each one, and every edge case the spec leaves
 open: xorshift32 for `RAND`, how audio is mixed and clipped, the cart format (a raw ROM
-image of up to 64 MB at `0x08000000`, with an optional `MEI1` title header), the standard library compiled into each cart,
-and so on.
+image of up to 64 MB at `0x08000000`, with an optional `MEI1` title header), the standard
+library compiled into each cart, and so on.
