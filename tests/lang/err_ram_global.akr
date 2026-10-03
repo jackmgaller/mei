@@ -1,0 +1,4 @@
+// error: 'world' is 2400000 bytes, but global variables have 2031360 bytes of RAM (2 MB less the stack)
+// A variable lives in RAM, so the RAM limit applies (the same array as a const would be ROM data).
+var world: [600000]u32
+fn init() { world[0] = 1 }

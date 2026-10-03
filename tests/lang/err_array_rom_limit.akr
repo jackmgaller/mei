@@ -1,0 +1,4 @@
+// error: array is larger than 64 MB, the cart ROM limit
+// No data can be larger than the cart ROM, wherever it lives (an embed type, too).
+embed WORLD: [16777217]u32 = "data/bytes.bin"
+fn init() { let x = WORLD[0][0] }

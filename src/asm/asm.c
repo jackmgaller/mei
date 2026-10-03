@@ -43,6 +43,7 @@ typedef struct {
     uint8_t *lisz; size_t nlisz, caplisz, liidx;  /* li sizes chosen in pass 1 */
     const char *file; int line, depth;
     int listing, insn;
+    const MeiAsmBlob *blobs; size_t nblobs, blob_last;   /* in-memory .incbin files */
     uint32_t emit_start, emit_n;   /* bytes emitted by the current statement */
     Str list;
 } Asm;
@@ -436,6 +437,22 @@ static void emit_byte(Asm *a, uint8_t b) {
     a->rom_touched = 1;
 }
 
+/* n bytes at once (.incbin): the same as n emit_byte calls, without the per-byte work. */
+static void emit_block(Asm *a, const uint8_t *p, uint32_t n) {
+    uint32_t l = a->loc[SEC_ROM];
+    if (!n) return;
+    if (n > ROM_START + ROM_MAX - l) fail(a, "ROM is full (%u MB)", ROM_MAX >> 20);
+    if (a->pass == 2) {
+        if (l - ROM_START + n > a->rom_cap) fail(a, "internal error: ROM grew between passes");
+        memcpy(a->rom + (l - ROM_START), p, n);
+    }
+    if (!a->emit_n) a->emit_start = l;
+    a->emit_n += n;
+    a->loc[SEC_ROM] = l += n;
+    if (l > a->rom_end) a->rom_end = l;
+    a->rom_touched = 1;
+}
+
 static void emit_le(Asm *a, uint32_t v, int n) {
     for (int i = 0; i < n; i++) emit_byte(a, (uint8_t)(v >> (8 * i)));
 }
@@ -790,22 +807,32 @@ static void directive(Asm *a, const char *d, const char **p) {
         need_rom(a, d);
         size_t n = parse_string(a, p, buf, sizeof buf - 1);
         buf[n] = 0;
-        FileBuf *f = load_file(a, buf);
-        int64_t off = 0, len = (int64_t)f->len;
+        const uint8_t *data = NULL;
+        size_t flen = 0;
+        /* blobs are usually named in order: start the search at the last match */
+        for (size_t k = 0; k < a->nblobs && !data; k++) {
+            size_t i = (a->blob_last + k) % a->nblobs;
+            if (!strcmp(a->blobs[i].name, buf)) data = a->blobs[i].data, flen = a->blobs[i].len, a->blob_last = i;
+        }
+        if (!data) {
+            FileBuf *f = load_file(a, buf);
+            data = (const uint8_t *)f->data, flen = f->len;
+        }
+        int64_t off = 0, len = (int64_t)flen;
         ws(p);
         if (**p == ',') {
             (*p)++, off = expr_now(a, p, ".incbin offset");
-            if (off < 0 || off > (int64_t)f->len) fail(a, ".incbin offset %lld past end of file (%zu bytes)", (long long)off, f->len);
-            len = (int64_t)f->len - off;
+            if (off < 0 || off > (int64_t)flen) fail(a, ".incbin offset %lld past end of file (%zu bytes)", (long long)off, flen);
+            len = (int64_t)flen - off;
             ws(p);
             if (**p == ',') {
                 (*p)++, v = expr_now(a, p, ".incbin length");
-                if (v < 0 || off + v > (int64_t)f->len) fail(a, ".incbin length %lld past end of file (%zu bytes)", (long long)v, f->len);
+                if (v < 0 || off + v > (int64_t)flen) fail(a, ".incbin length %lld past end of file (%zu bytes)", (long long)v, flen);
                 len = v;
             }
         }
         if (a->loc[SEC_ROM] + len > ROM_START + ROM_MAX) fail(a, "ROM is full (%u MB)", ROM_MAX >> 20);
-        for (int64_t i = 0; i < len; i++) emit_byte(a, (uint8_t)f->data[off + i]);
+        emit_block(a, data + off, (uint32_t)len);
     } else if (!strcmp(d, ".section")) {
         char id[NAME_MAX_];
         ws(p);
@@ -979,6 +1006,7 @@ int mei_assemble_opts(const char *source, const char *filename, const MeiAsmOpti
         return -1;
     }
     a->listing = opts && opts->listing;
+    if (opts) a->blobs = opts->blobs, a->nblobs = opts->blob_count;
     const char *fname = filename ? filename : "<input>";
     for (a->pass = 1; a->pass <= 2; a->pass++) {
         if (a->pass == 2) {   /* pass 1 found the image size; pass 2 writes it */

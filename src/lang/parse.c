@@ -1117,7 +1117,8 @@ static void parse_toplevel(Parser *p) {
             s->off_e = parse_expr(p);
             if (is_op(p, ",")) { next(p); s->len_e = parse_expr(p); }
         }
-        s->data = compiler_load_binary(p->C, p->file, s->path, ploc, &s->datalen);
+        s->data = compiler_load_binary(p->C, p->file, s->path, ploc, &s->datalen, &s->file_path);
+        s->file_len = s->datalen;
         PUSH(p->P->datas, p->P->ndatas, p->P->capdatas, s);
         end_statement(p);
         return;

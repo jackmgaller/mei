@@ -1,0 +1,5 @@
+// error: bytes of RAM, leaving too little for the stack
+// Each fits in RAM, but not together.
+var a: [300000]u32
+var b: [300000]u32
+fn init() { a[0] = 1; b[0] = 2 }

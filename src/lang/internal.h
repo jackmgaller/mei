@@ -4,6 +4,7 @@
 #define MEI_LANG_INTERNAL_H
 
 #include "lang.h"
+#include "mei.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdarg.h>
@@ -327,7 +328,9 @@ struct Sym {
     Builtin bi;
     /* SY_EMBED */
     const char *path; Expr *off_e, *len_e;
-    const uint8_t *data; size_t datalen;
+    const uint8_t *data; size_t datalen;   /* the embedded bytes (after resolve_embed: the range) */
+    const char *file_path; size_t file_off, file_len;   /* the whole file (its path as opened) and
+                                                           where the range starts in it */
     int reachable;
     int is_str;            /* SY_DATA string literal */
     const char *str; size_t slen;
@@ -361,6 +364,7 @@ typedef struct Program {
     int wextra;            /* meic -W */
     Func *init_fn;         /* synthesized global initialisers */
     uint32_t ram_end;
+    MeiAsmBlob *blobs; int nblobs;   /* bytes the generated .incbin lines name (gen.c) */
 } Program;
 
 /* ---------------------------------------------------------------- parse.c */
@@ -381,8 +385,9 @@ struct Compiler {
 /* Imports `path` (relative to `from_file`); each file is parsed once. */
 void compiler_import(Compiler *C, const char *from_file, const char *path, Loc loc);
 void compiler_import_as(Compiler *C, const char *from_file, const char *path, const char *alias, Loc loc);
-/* Loads a binary file relative to from_file (for embed). */
-const uint8_t *compiler_load_binary(Compiler *C, const char *from_file, const char *path, Loc loc, size_t *len);
+/* Loads a binary file relative to from_file (for embed); *full receives the path it was read from. */
+const uint8_t *compiler_load_binary(Compiler *C, const char *from_file, const char *path, Loc loc, size_t *len,
+                                    const char **full);
 
 /* ---------------------------------------------------------------- symbols */
 
@@ -419,7 +424,12 @@ const char *const_addr_label(Expr *e);
 /* Generates assembly for the whole program. */
 void gen_program(Program *P, Buf *out);
 
+/* Where data lives decides how large it may be: global variables are in RAM, from
+   RAM_GLOBALS_BASE up to RAM_GLOBALS_END (the stack has the rest of the 2 MB); const arrays
+   and structs, strings and embeds are in the cart ROM, at most MEI_ROM_MAX (mei.h) in all. */
 #define RAM_GLOBALS_BASE 0x000100u
+#define RAM_GLOBALS_END  0x1F0000u
+#define RAM_TOP          0x200000u   /* the end of RAM (src/core/machine.h RAM_SIZE) */
 #define IO_BASE_ADDR     0xFF0000u
 
 #endif
