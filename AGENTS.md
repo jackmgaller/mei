@@ -8,10 +8,10 @@ in [README.md](README.md#documentation).
 
 | Folder | What is in it |
 |---|---|
-| `src/` | The emulator core (`core/`), the platforms (`platform/`: SDL3, browser, headless), the assembler (`asm/`) and the Akari compiler (`lang/`), in C |
+| `src/` | The emulator core (`core/`), the platforms (`platform/`: SDL3, browser, headless), the assembler (`asm/`) and the Akari compiler (`lang/`: lexer, parser, type checker `check.c`, optimiser `opt.c`, code generator `gen.c`), in C |
 | `stdlib/` | Akari's standard library, compiled into every cart |
 | `system/` | The system ROM: boot themes (`boot/`) and the shell (`shell/`), in Akari |
-| `carts/` | The carts, one folder each (`carts/NAME/NAME.akr`), with their assets and tests |
+| `carts/` | The carts, one folder each (`carts/NAME/NAME.akr`), with their binary assets in `art/` and `audio/`, their tests in `tests/`, and the worlds they use in `worlds.txt` |
 | `examples/` | Example recipes for the kits: `assets/` (Asset Kit) and `worlds/` (World Kit) |
 | `tests/` | C unit tests (`test_*.c`), language tests (`lang/`), the kits' Python suites (`test_*.py`) and their fixtures |
 | `tools/` | Generators, the kits and their shared core, the MeiNet gateway, the language fuzzer, the web cart packer, the VS Code extension |
@@ -22,13 +22,26 @@ in [README.md](README.md#documentation).
 
 ```sh
 make                              # emulator, tools, probes, system ROM and carts in build/
-make test                         # every test: C, language and (with python3) the Python suites
+make test                         # C, language, (with python3) Python suites, check-generated
+make check-generated              # the generated files match what their generators make now
 make test-assets                  # the Asset Kit suite alone, verbose
-make test-world                   # the World Kit suite alone, verbose
-make test-carts                   # the carts' self-checking scenarios (World Viewer's too)
+make test-world                   # the World Kit and Mochi suites alone, verbose
+make test-carts                   # the carts' self-checking scenarios, then test-world-carts
+make test-world-carts             # World Viewer's scripted run and tests/world_carts.sh
 make web                          # the WebAssembly build in build/web (needs Emscripten)
 tests/run_lang_tests.sh planes    # only the language tests whose name contains "planes"
 ```
+
+`make test` runs the suites in this order: the C unit tests, `tests/run_lang_tests.sh`, the
+MeiNet gateway's tests, then `test_assetkit.py`, `test_worldpack.py`, `test_worldkit.py`,
+`test_mochi.py` and `test_worldverify.py`, and last `tools/check_generated.sh` (what `make
+check-generated` runs: the generators that need only the standard library, and
+`gen_adpcm_vectors.py` when NumPy is there, into a temporary directory, compared with the
+committed files). `make test-carts` runs `carts/lantern/tests/check.sh`,
+`carts/weather/tests/check.sh` and `test-world-carts`, which builds World Viewer (and so the
+example worlds) first. A cart's scenarios are Akari files built by `tools/cart_scenario.sh` from
+the cart's `tests/harness.akr` and its game; `carts/*/tests/run.sh SCENARIO FRAMES OUT` runs one
+and writes `OUT.png`.
 
 A single Python suite, with the native tools it needs:
 
@@ -49,9 +62,17 @@ Pass the tools to scripts the same way, for example
 `MEIC=build-mine/meic RUN=build-mine/mei-headless tests/run_lang_tests.sh planes`.
 
 Mei Demo, Sound Lab and World Viewer are built only on request (`make build/carts/demo.mei
-build/carts/soundlab.mei build/carts/worldview.mei`); `make` and `make web` leave them out. Two
-more targets are being added: `make check-generated` and `make test-carts`. A third, `make
-rendercheck`, will run the Reference Renderer once it is committed.
+build/carts/soundlab.mei build/carts/worldview.mei`); `make` and `make web` leave them out.
+`make rendercheck` will run the Reference Renderer once it is committed.
+
+**Carts that use worlds.** A cart lists World Kit recipes in `carts/NAME/worlds.txt`, one
+repository path per line. make builds each recipe once into `build/worlds/<its folder>/`
+(`tools/world_cart.py build`, which runs `mei_world.py build` with the full World Checker and
+needs NumPy), links the cart's worlds and their games' `GAME.game.akr` into
+`build/cart-worlds/NAME/` and compiles the cart with `meic -I build/cart-worlds/NAME`. `meic -I
+DIR` (repeatable) names a directory searched for imports after the importing file's own folder
+and before the standard library. [WORLDKIT.md](docs/WORLDKIT.md#using-a-world-in-a-cart) has the
+details; `carts/worldview/` is the example.
 
 ## Dependencies
 
@@ -61,7 +82,8 @@ rendercheck`, will run the Reference Renderer once it is committed.
   the standard library: the Asset Kit and World Kit (building recipes), the world pack encoder,
   the MeiNet gateway and its tests, the web cart packer, and the generators `gen_stdlib_data`,
   `gen_faces_asm`, `gen_reverb_tables`, `gen_demo_assets` and `gen_weather_tape`.
-- **NumPy** for the Asset Checker (`mei_assets.py verify`), the World Checker and every other
+- **NumPy** for the Asset Checker (`mei_assets.py verify`) and the World Checker, and so for
+  building a cart that uses worlds (World Viewer) and for `make test-carts`; and for every other
   generator. **Pillow** too for the generators that draw: `gen_boot_duet`, `gen_boot_eclipse`,
   `gen_shell_assets`, `gen_lantern_assets`, `gen_orbs_assets`, `gen_weather_assets` and
   `meifont`. **SciPy** too for `gen_boot_duet` and `gen_soundlab_assets`.
@@ -99,9 +121,18 @@ rendercheck`, will run the Reference Renderer once it is committed.
   `WORLD.akr` by name; make builds the worlds into `build/worlds/` and passes them to meic
   with `-I` ([WORLDKIT.md](docs/WORLDKIT.md#using-a-world-in-a-cart); `carts/worldview/` is
   the example).
-- **Small existing carts keep committing their generated assets**, binaries in the cart's
-  `art/` and `audio/` folders and the generated `.akr` files at the top of the cart folder
-  (`carts/lantern/` and `carts/weather/` are laid out this way).
+- **A cart's assets:** binaries in the cart's `art/` (meshes, textures, palettes, icons) and
+  `audio/` (sounds, music) folders, and generated `.akr` files at the top of the cart folder.
+  Every cart is laid out this way, and the existing carts commit their generated assets.
+- **A cart's tests** in `carts/NAME/tests/`: a `harness.akr` with the scenarios, a `run.sh` that
+  calls `tools/cart_scenario.sh`, and a `check.sh` that `make test-carts` runs.
+- **Machine constants** come from the core's headers, not from new numbers: the memory map
+  (`MEI_ROM_BASE`, `MEI_RAM_SIZE`, `MEI_RAM_USER_BASE`, `MEI_IO_BASE`), the cart header layout
+  (`MEI_HDR_*`) and the frame budgets in `src/core/mei.h`; the 18-bit immediate range
+  (`MEI_IMM_MIN`, `MEI_IMM_MAX`, `MEI_UIMM_MAX`) and the instruction encodings in
+  `src/core/isa.h`.
+- **Compiler passes:** the AST optimisations (inlining, let forwarding, induction pointers) are
+  in `src/lang/opt.c`, run by `opt_program()` between type checking and code generation.
 
 ## Generators
 
@@ -120,11 +151,11 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_boot_eclipse.py` | `system/boot/eclipse/`: textures, palette, sound, volumes and `gen.akr` for Eclipse |
 | `gen_shell_assets.py` | `system/shell/`: font and art textures, palettes, glyph metrics, UI sounds (`snd_*.raw`), `wave.raw` and `assets.akr` |
 | `gen_shell_music.py` | `system/shell/mu_crystal.adp` (samples) and `system/shell/mu_data.akr` (the score) |
-| `gen_demo_assets.py` | `carts/demo/`: a cube, a ground mesh, a texture and its palette |
+| `gen_demo_assets.py` | `carts/demo/art/`: a cube, a ground mesh, a texture and its palette |
 | `gen_lantern_assets.py` | `carts/lantern/art/` and `carts/lantern/assets.akr`; then runs `gen_lantern_audio.py` |
 | `gen_lantern_audio.py` | `carts/lantern/audio/` |
-| `gen_orbs_assets.py` | Sun & Moon Orbs' meshes, textures, palettes, sounds, save icon and `level_data.akr`, in `carts/orbs/` |
-| `gen_soundlab_assets.py` | Sound Lab's clips (PCM and ADPCM) and `assets.akr`, in `carts/soundlab/` |
+| `gen_orbs_assets.py` | `carts/orbs/art/` (meshes, textures, palettes, the save icon), `carts/orbs/audio/` (sounds, music) and `carts/orbs/level_data.akr` |
+| `gen_soundlab_assets.py` | `carts/soundlab/audio/` (clips, PCM and ADPCM) and `carts/soundlab/assets.akr` |
 | `gen_weather_assets.py` | `carts/weather/art/` and `carts/weather/art.akr` |
 | `gen_weather_audio.py` | `carts/weather/audio/` and `carts/weather/mu_data.akr` |
 | `gen_weather_tape.py` | `carts/weather/demo_tape.bin`, Mei Weather's sample broadcast |
@@ -133,4 +164,7 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 Helpers the generators import, which write nothing themselves: `boot_audio.py`, `mei_adpcm.py`,
 `mei_icon.py` (memory card icons), `meshlib.py` (the native mesh format) and `weather_geo.py`.
 The kits' outputs (`mei_assets.py build`, `mei_world.py build`) are not in this table: they go
-wherever `-o` says, and only the examples' recipes are committed.
+wherever `-o` says (make's world rule: `build/worlds/`), and only the examples' recipes and the
+worlds' ID lock files are committed. `make check-generated` reruns `gen_faces_asm.py` (both
+outputs), `gen_stdlib_data.py`, `gen_reverb_tables.py` and, with NumPy, `gen_adpcm_vectors.py`
+and compares; the others are not rerun by any target.

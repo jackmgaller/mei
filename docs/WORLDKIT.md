@@ -1,13 +1,18 @@
 # Mei World Kit
 
-**Status: design, partly built.** What exists: the pack format ([WORLDPACK.md](WORLDPACK.md),
-normative) with its reference encoder `tools/worldkit/pack.py`; the console reader
-`stdlib/worldpack.akr`; the tool, `tools/mei_world.py`, with the [recipe format](#recipe-format)
-and [command line](#command-line) below; and the **World Checker**, the in-level verification
-every build runs ([WORLDCHECKER.md](WORLDCHECKER.md)). Not built yet: terrain, textures, audio
-banks and backdrops. This document records the project owner's decisions (most of them made on
-2026-10-03), proposes the rest, and lists what is still open. The game that motivates it is
-described in [PLATFORMER.md](PLATFORMER.md). It depends on three things, all now in place:
+**Status: design, partly built.** What exists: the pack format, version 1.1
+([WORLDPACK.md](WORLDPACK.md), normative) with its reference encoder `tools/worldkit/pack.py`; the
+console reader `stdlib/worldpack.akr`; the tool, `tools/mei_world.py`, with the [recipe
+format](#recipe-format) (cells, regions and palette variants, layers, [ground](#ground), [merged
+scatter](#merged-scatter), collision, game data in [Mochi](#game-data-and-stable-ids) or JSON,
+the ID lock file) and [command line](#command-line) below; the **World Checker**, the in-level
+verification every build runs ([WORLDCHECKER.md](WORLDCHECKER.md)); two example worlds in
+`examples/worlds/`; and make's rule for [a cart that uses worlds](#using-a-world-in-a-cart), with
+World Viewer (`carts/worldview/`) as its example. Not built yet: terrain, textures, audio banks
+and backdrops (see [Build order](#build-order) for where the stages stand). This document records
+the project owner's decisions (most of them made on 2026-10-03), proposes the rest, and lists
+what is still open. The game that motivates it is described in [PLATFORMER.md](PLATFORMER.md)
+and is not built. It depends on three things, all now in place:
 
 - **A larger cart ROM.** A cart may be up to 64 MB, read in place from a 128 MB window at
   `0x08000000` (commit `620a8d1`; [DECISIONS.md](DECISIONS.md), "Cart ROM: up to 64 MB in a
@@ -153,8 +158,11 @@ These are Asset Kit features, not World Kit features. Each is generic: none ment
    The material manifest is written for every build, so a world build reads one shape of data
    for every asset.
 5. **Textures and UVs.** Regions own texture sets (decision 4), but the Asset Kit cannot author
-   textured surfaces yet (proposed in [ASSETKIT.md](ASSETKIT.md), "Textures"). Until it can, a
-   region's texture set is empty, and the stage-3 texture-swap seam has nothing to swap.
+   textured surfaces yet (proposed in [ASSETKIT.md](ASSETKIT.md#textures-proposal)). Until it
+   can, a region's texture set is empty, and the stage-3 texture-swap seam has nothing to swap.
+   The planned basis for repeating pattern textures is the Prism Engine's per-polygon **texture
+   windows** ([DECISIONS.md](DECISIONS.md#texture-windows)), which `mesh()` already sends from a
+   mesh's window table: many small repeating tiles share one texture slot instead of a slot each.
 
 Two items earlier versions of this list carried are no longer Asset Kit changes: terrain belongs
 to the World Kit ([Terrain](#terrain)), and the scene probe is a World Kit component (part of the
@@ -267,8 +275,8 @@ VRAM is 1,024 KB (spec p. 11, PLANES.md "Memory map"):
 | framebuffers A and B | 300 KB | 2 × 153,600 bytes |
 | spare | 4 KB | |
 | palette memory | 8 KB | 4,096 colours; palette 255 (colours 4080–4095) is the font's |
-| plane chip line tables | 8 KB | convention |
-| plane chip pages 10–15 | 192 KB | maps and atlases for backdrops |
+| Horizon Engine line tables | 8 KB | convention |
+| Horizon Engine pages 10–15 | 192 KB | maps and atlases for backdrops |
 | texture slots 0–15 | 512 KB | 32 KB each (one 4-bit 256×256 texture; an 8-bit one takes two) |
 
 300 + 4 + 8 + 8 + 192 + 512 = 1,024. Slot 15 holds the fonts (rows 0–66), so 15 whole slots are
@@ -319,8 +327,9 @@ around the player.
 in a pass of their own before the rest (the world pack's ground pass), so nothing standing on the
 ground sorts behind a large ground face; see [Ground](#ground) and WORLDPACK.md, "Ground".
 
-The far backdrop (skyline, sky gradient, distant hills) belongs on the plane chip (PLANES.md):
-a tile plane and a backdrop line table cost no GPU cycles and no triangles.
+The far backdrop (skyline, sky gradient, distant hills) belongs on the Horizon Engine, the plane
+chip ([PLANES.md](PLANES.md)): a tile plane and a backdrop line table cost no GPU cycles and no
+triangles.
 
 **Fixed point limits world coordinates.** `length`, `normalize` and the dot product overflow for
 vectors longer than about 181 (LANGUAGE.md), and Tsumiki told carts to keep levels within about
@@ -501,7 +510,7 @@ tint (128 is unchanged). Palette variants and emissives then work as decided. Co
 pixels are twice the GPU fill (above, still about 43% of the budget), and textured faces can only
 fog toward dark colours (spec p. 17), which suits night but not bright haze. Two alternatives were
 considered and not taken: recolouring vertices at run time (meshes are in ROM, so RAM copies or a
-per-vertex blend costing CPU every frame), and the plane chip's colour offset (`PLN_OFS`), a
+per-vertex blend costing CPU every frame), and the Horizon Engine's colour offset (`PLN_OFS`), a
 uniform additive shift rather than a palette, still worth keeping for a whole-screen dusk tint on
 top.
 
@@ -523,8 +532,9 @@ The conventions are the Asset Kit's: `format` and `version`, names matching
 `^[a-z][a-z0-9_]{0,47}$`, unknown properties and duplicate keys are errors, errors carry a JSON
 Pointer `path` and a `message`, a `file` when the error is in a cell file or the game schema, and
 a `line` and `column` when that file is Mochi ([Game data](#game-data-and-stable-ids)). There are
-no expressions or random generation; Y is up, lengths are world units and angles degrees. `schema` is the
-authoritative contract; `schema --game FILE` folds one game's entity types and parameters in.
+no expressions or random generation; Y is up, lengths are world units and angles degrees.
+`schema` is the authoritative contract; `schema --game FILE` folds one game's entity types and
+parameters in.
 
 **Decided: units.** The tools do not enforce a scale. The convention, used by the examples and the
 platformer, is one unit per metre (the Asset Kit's stool seat is at 0.8).
@@ -709,13 +719,14 @@ For a world named `city` of a game named `game`, `build` produces:
 | `city.swatch` | The 8-byte palette swatch row, when any material is palette-backed |
 | `city.ids.json` | A copy of the ID lock file (the lock itself is written beside the recipe) |
 | `source/` | The world file, cell files and every asset recipe used, as built, and the game schema exactly as written (Mochi comments kept; the report's `game_sha256` is the hash of its JSON form, so comments and layout do not change it) |
-| `report.json` | Per cell and region: triangles (always and per layer), placements, collision triangles by kind, bytes, palettes and variants, entity numbers, ID changes, asset hashes and Asset Checker results, warnings, the World Checker's result |
+| `report.json` | Per cell and region: triangles (always and per layer), placements, merged meshes, ground placements, collision triangles by kind, bytes, palettes and variants, entity numbers, ID changes, recipe, game and asset hashes and Asset Checker results, warnings; and `verification`, the World Checker's summary, failures and static results, whose row per sampled view stays in `verification/world-check.json` (named by `verification.views_report`), or why it did not run (`ran: false`, with `skipped` for `--world-checker skip`) |
 
 With `preview` (or `build --preview`) there is also `preview/`: for every region, its busiest
 cell seen from a fixed camera above its south edge, once per palette variant, drawn by the real
 reader (so far cells appear as stand-ins), as PNGs with GPU statistics, and `contact.png`.
 Every build also writes `verification/`: the World Checker's report, `world-check.json`, and
-pictures of its worst views ([WORLDCHECKER.md](WORLDCHECKER.md)).
+pictures of its worst views ([WORLDCHECKER.md](WORLDCHECKER.md)); a build with `--world-checker
+skip` writes none.
 
 **Packs are build outputs, not sources.** World packs and the rest of a world's outputs are
 built into `build/` (the tests use temporary directories) and are not committed: the recipes
@@ -798,10 +809,12 @@ says so (`"verification": {"ran": false, "ok": null, "skipped": true, "reason": 
 `/verification/mode`. make's world rule ([Using a world in a cart](#using-a-world-in-a-cart))
 always runs the full check.
 
-*Proposals, not built:* `verify FILE [-o DIR] [--cell ID] [--layers A,B]` (the World Checker,
-diagnostic only), and `standin-draft FILE --cell ID -o RECIPE` (an Asset Kit recipe of boxes from
-the cell's placement bounds, for an agent to edit; the Asset Kit then builds it like any other, so
-the World Kit still models nothing).
+The World Checker also runs on its own on any built pack: `python3 tools/worldkit/verify.py
+PACK -o DIR` ([WORLDCHECKER.md](WORLDCHECKER.md)). *Proposals, not built:* `verify FILE [-o DIR]
+[--cell ID] [--layers A,B]` (the World Checker on a recipe, diagnostic only), and `standin-draft
+FILE --cell ID -o RECIPE` (an Asset Kit recipe of boxes from the cell's placement bounds, for an
+agent to edit; the Asset Kit then builds it like any other, so the World Kit still models
+nothing).
 
 ### Using the tool
 
@@ -833,7 +846,7 @@ trigger whose parameters use every kind of reference) and
 [`examples/worlds/two_districts`](../examples/worlds/two_districts) (four cells in two regions with
 day and night variants, stand-ins, a far cell, merged scatter, a festival layer, a `share: false`
 material). `make test-world` (also part of `make test`) runs `tests/test_worldkit.py`, which builds
-both and runs them on the console.
+both and runs them on the console, and `tests/test_mochi.py`.
 
 ## Using a world in a cart
 
@@ -981,6 +994,15 @@ within it or on an entity.
 |---|---|---|
 | 1 | Recipe, schema, ID lock file, pack, collision format and queries, holes check, one-view budget check | The runtime reader, the collision decision, the tool and the World Checker (done) |
 | 2 | Cell selection, two-pass sorting, stand-ins, layers, the World Checker at scale, the per-cell budgets above | The larger ROM, palette-backed materials, the material class and the scene probe (done) |
-| 3 | Region resources, seams, swaps spread over frames, stand-ins across a region boundary | Textures and UVs in the Asset Kit, or the seam has only palettes and audio to change |
+| 3 | Region resources, seams, swaps spread over frames, stand-ins across a region boundary | Textures and UVs in the Asset Kit (on [texture windows](DECISIONS.md#texture-windows)), or the seam has only palettes and audio to change |
 
 Interiors (the mall) need nothing new after stage 1: a door is an entity with a `world_ref`.
+
+**Where it stands** (2026-10-03). Everything stage 1 and stage 2 need first is built, and the
+two example worlds rehearse their shapes: `test_room` is a one-cell garden (slope, ledge, wall,
+collectible, a trigger, a layer pair), and `two_districts` four cells in two regions with
+stand-ins, a layer, palette variants and merged scatter, both checked by the World Checker on
+every build and walked through in World Viewer. Neither stage is built as the game: the movement
+garden cart, its character control and its camera zones are the game's
+([PLATFORMER.md](PLATFORMER.md)), and stage 2's per-cell budgets have been measured only on the
+examples ([WORLDCHECKER.md](WORLDCHECKER.md#ground)). Stage 3 waits for textures.
