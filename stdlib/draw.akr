@@ -1,6 +1,6 @@
-// 2D drawing on the interface list: blended and gradient rectangles, lines, triangles,
-// quads and textured quads (sprites) with scale, tint and blend. Like text(), sprite() and
-// rect(), everything here is drawn after the 3D world, in call order.
+// 2D drawing on the interface list: rectangles (rect() and blended and gradient ones), lines,
+// triangles, quads and sprites (sprite(), and textured quads with scale, tint and blend). Like
+// text(), everything here is drawn after the 3D world, in call order.
 //
 // A blend `mode` is BLEND_NONE (-1, opaque) or one of the GPU's four semi-transparent modes.
 
@@ -30,6 +30,38 @@ const BLEND_QUARTER = 3           // background + a quarter of the polygon (fain
 const BLEND_SHIFT = 24            // a packet's first colour word holds the mode at this bit
 
 const TEX_4BIT = 0x100000         // first texture coordinate word: a 4-bit texture
+
+// ---- sprite() and rect()
+
+// Draws a w x h texel rectangle from texture slot `slot` at pixel (x, y), untinted.
+// four_bit: the texture holds 4-bit texels (palette 0-255) instead of 8-bit (palette 0-15).
+fn sprite(slot: u32, palette: u32, four_bit: bool, u: s32, v: s32, w: s32, h: s32, x: s32, y: s32) {
+    let q = packet_alloc(10)
+    if q == null { return }
+    let info = ((slot & 15) << 16) | ((four_bit as u32) << 20) | (palette << 24)
+    q[1] = 0x808080
+    q[2] = __pos(x, y)
+    q[3] = (u as u32) | ((v as u32) << 8) | info
+    q[4] = __pos(x + w, y)
+    q[5] = ((u + w) as u32) | ((v as u32) << 8)
+    q[6] = __pos(x, y + h)
+    q[7] = (u as u32) | (((v + h) as u32) << 8)
+    q[8] = __pos(x + w, y + h)
+    q[9] = ((u + w) as u32) | (((v + h) as u32) << 8)
+    ui_insert(q, 0x26)
+}
+
+// Fills a rectangle on the interface layer.
+fn rect(x: s32, y: s32, w: s32, h: s32, colour: u32) {
+    let q = packet_alloc(6)
+    if q == null { return }
+    q[1] = colour
+    q[2] = __pos(x, y)
+    q[3] = __pos(x + w, y)
+    q[4] = __pos(x, y + h)
+    q[5] = __pos(x + w, y + h)
+    ui_insert(q, 0x24)
+}
 
 // Each drawing function below allocates its packet and appends it to the interface list
 // itself (the same steps as packet_alloc() and ui_insert()), so it makes no calls and keeps

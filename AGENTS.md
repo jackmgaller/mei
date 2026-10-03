@@ -114,6 +114,8 @@ details; `carts/worldview/` is the example.
 - **A kit's entry point** at the top of `tools/` (`tools/mei_assets.py`, `tools/mei_world.py`).
 - **Native probes** with their package (`tools/worldkit/scene_probe.c`), built by a `Makefile`
   rule into the build directory. (`tools/assetkit_probe.c` predates this.)
+- **Standard library functions** in the `stdlib/` file for their topic, by the table at the top
+  of [LANGUAGE.md's Standard library](docs/LANGUAGE.md#standard-library).
 - **Example worlds** in `examples/worlds/NAME/`, example assets in `examples/assets/`.
 - **Generated world packs are built into `build/` and not committed.** The recipes, and each
   world's ID lock file (`NAME.ids.json`), are the source.

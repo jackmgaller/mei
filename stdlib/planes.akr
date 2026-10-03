@@ -536,7 +536,7 @@ fn __pu_ui_tag() {
     }
 }
 
-// (replaces gfx.akr's) The same, and a polygon packet inserted while poly_upper() is on is upper.
+// (replaces render.akr's) The same, and a polygon packet inserted while poly_upper() is on is upper.
 fn ot_insert(p: *u32, type: u32, depth: s32) {
     let b = clamp(depth, 0, 1023)
     p[0] = (type << 24) | __ot[b]

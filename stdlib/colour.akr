@@ -1,4 +1,15 @@
-// Colour helpers: blending packed colours (0xBBGGRR) and changing palette memory in place.
+// Colours: building, converting and blending packed colours (0xBBGGRR), and changing palette
+// memory in place.
+
+// Packs 0-255 channels into a GPU colour word (red in the low byte).
+fn rgb(r: s32, g: s32, b: s32) -> u32 {
+    return (r as u32 & 255) | ((g as u32 & 255) << 8) | ((b as u32 & 255) << 16)
+}
+
+// Converts a colour word to the 15-bit framebuffer format.
+fn rgb15(c: u32) -> u32 {
+    return ((c >> 3) & 31) | (((c >> 11) & 31) << 5) | (((c >> 19) & 31) << 10)
+}
 
 // Blends two colours: t = 0 gives a, 1.0 gives b (clamped; each channel rounds down). One
 // clerp instruction.
@@ -106,40 +117,4 @@ asm fn __rev16(lo: *u16, hi: *u16) {
     addi {hi}, {hi}, -2
     jmp  .loop
 .done:
-}
-
-// ---- animation phases that never jump
-//
-// fixed(frame_count) * speed overflows after 32,768 frames (about nine minutes) and makes every
-// animation jump. These take the count itself (FRAME, or the cart's own tick counter, which may
-// stop while paused) and are exact for any count.
-
-// How far through a cycle of `period` frames t is: 0 up to (not including) 1.0.
-fn frame_phase(t: s32, period: s32) -> fixed {
-    if period <= 0 { return 0.0 }
-    var m = t % period
-    if m < 0 { m += period }
-    return fixed(m) / period
-}
-
-// A sine wave over `period` frames: sin(TAU * frame_phase(t, period)), -1.0..1.0.
-fn frame_wave(t: s32, period: s32) -> fixed { return sin(frame_phase(t, period) * TAU) }
-
-// t * speed (radians per frame) as an angle in 0..TAU, exact for any t: what fixed(t) * speed
-// would be, without the wrap. sin(frame_angle(t, 0.05)) turns once every 126 frames, forever.
-fn frame_angle(t: s32, speed: fixed) -> fixed {
-    let T: u32 = 411775                 // bits(TAU)
-    var tm = t as u32
-    if t < 0 { tm = (0 - t) as u32 }
-    tm = tm % T
-    let raw = bits(speed)
-    var k = raw as u32
-    if raw < 0 { k = (0 - raw) as u32 }
-    k = k % T
-    // (tm * k) mod T in 32 bits: k = k1 * 1024 + k0
-    var r = (tm * (k >> 10)) % T
-    r = (r << 10) % T
-    r = (r + tm * (k & 1023)) % T
-    if (t < 0) != (raw < 0) && r != 0 { r = T - r }
-    return from_bits(r as s32)
 }

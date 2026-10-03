@@ -1,6 +1,6 @@
-// 2D interface drawing: text, sprites and rectangles go on the interface list, drawn
-// after the 3D world in call order. The built-in font lives in texture slot 15 with
-// 4-bit palette 255 (colours 4080-4095); those are reserved.
+// The 8x8 text: text() and text_int() go on the interface list, drawn after the 3D world in
+// call order. The built-in font lives in texture slot 15 with 4-bit palette 255 (colours
+// 4080-4095); those are reserved.
 import "font_data.akr"
 
 const FONT_SLOT = 15
@@ -52,72 +52,6 @@ fn text(x: s32, y: s32, s: *u8, colour: u32) {
         }
         cx += 8
     }
-}
-
-// Draws a w x h texel rectangle from texture slot `slot` at pixel (x, y), untinted.
-// four_bit: the texture holds 4-bit texels (palette 0-255) instead of 8-bit (palette 0-15).
-fn sprite(slot: u32, palette: u32, four_bit: bool, u: s32, v: s32, w: s32, h: s32, x: s32, y: s32) {
-    let q = packet_alloc(10)
-    if q == null { return }
-    let info = ((slot & 15) << 16) | ((four_bit as u32) << 20) | (palette << 24)
-    q[1] = 0x808080
-    q[2] = __pos(x, y)
-    q[3] = (u as u32) | ((v as u32) << 8) | info
-    q[4] = __pos(x + w, y)
-    q[5] = ((u + w) as u32) | ((v as u32) << 8)
-    q[6] = __pos(x, y + h)
-    q[7] = (u as u32) | (((v + h) as u32) << 8)
-    q[8] = __pos(x + w, y + h)
-    q[9] = ((u + w) as u32) | (((v + h) as u32) << 8)
-    ui_insert(q, 0x26)
-}
-
-// Fills a rectangle on the interface layer.
-fn rect(x: s32, y: s32, w: s32, h: s32, colour: u32) {
-    let q = packet_alloc(6)
-    if q == null { return }
-    q[1] = colour
-    q[2] = __pos(x, y)
-    q[3] = __pos(x + w, y)
-    q[4] = __pos(x, y + h)
-    q[5] = __pos(x + w, y + h)
-    ui_insert(q, 0x24)
-}
-
-// Copies texture data into a slot (bytes laid out as the GPU expects, spec p.11).
-fn load_texture(slot: s32, src: *u8, bytes: u32) {
-    memcpy((VRAM_TEXTURES + (slot & 15) * TEXTURE_SLOT_SIZE) as *u8, src, bytes)
-}
-
-// Copies `count` 15-bit colours into palette memory starting at colour `index`.
-fn load_palette(index: s32, src: *u16, count: s32) {
-    memcpy((VRAM_PALETTE + index * 2) as *u8, src as *u8, (count * 2) as u32)
-}
-
-// Formats n in decimal into buf (at least 12 bytes) and returns buf.
-fn int_to_str(buf: *u8, n: s32) -> *u8 {
-    var tmp: [12]u8
-    var u = n as u32
-    if n < 0 { u = (0 - n) as u32 }
-    var i = 0
-    while true {
-        tmp[i] = (u % 10 + '0') as u8
-        i += 1
-        u /= 10
-        if u == 0 { break }
-    }
-    var j = 0
-    if n < 0 {
-        buf[0] = '-'
-        j = 1
-    }
-    while i > 0 {
-        i -= 1
-        buf[j] = tmp[i]
-        j += 1
-    }
-    buf[j] = 0
-    return buf
 }
 
 // Draws a number; returns the x coordinate after it.

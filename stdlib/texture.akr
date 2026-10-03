@@ -1,0 +1,13 @@
+// Textures and palettes: copying texels into a texture slot and colours into palette memory
+// (spec p. 11). Drawing with them is in draw.akr (sprite(), sprite_ex() and tex_page()) and
+// gfx.akr (mesh()); changing palette colours in place is in colour.akr.
+
+// Copies texture data into a slot (bytes laid out as the GPU expects, spec p.11).
+fn load_texture(slot: s32, src: *u8, bytes: u32) {
+    memcpy((VRAM_TEXTURES + (slot & 15) * TEXTURE_SLOT_SIZE) as *u8, src, bytes)
+}
+
+// Copies `count` 15-bit colours into palette memory starting at colour `index`.
+fn load_palette(index: s32, src: *u16, count: s32) {
+    memcpy((VRAM_PALETTE + index * 2) as *u8, src as *u8, (count * 2) as u32)
+}
