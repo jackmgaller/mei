@@ -89,9 +89,10 @@ details; `carts/worldview/` is the example.
   `gen_faces_asm`, `gen_reverb_tables`, `gen_demo_assets` and `gen_weather_tape`.
 - **NumPy** for the Asset Checker (`mei_assets.py verify`) and the World Checker, and so for
   building a cart that uses worlds (World Viewer) and for `make test-carts`; and for every other
-  generator. **NumPy and Pillow** for the Reference Renderer. **Pillow** too for the generators that draw: `gen_boot_duet`, `gen_boot_eclipse`,
-  `gen_shell_assets`, `gen_lantern_assets`, `gen_orbs_assets`, `gen_weather_assets` and
-  `meifont`. **SciPy** too for `gen_boot_duet` and `gen_soundlab_assets`.
+  generator. **NumPy and Pillow** for the Reference Renderer. **Pillow** too for the generators
+  that draw: `gen_boot_duet`, `gen_boot_eclipse`, `gen_shell_assets`, `gen_lantern_assets`,
+  `gen_orbs_assets`, `gen_weather_assets` and `meifont`. **SciPy** too for `gen_boot_duet` and
+  `gen_soundlab_assets`.
 - Several generators draw with macOS system fonts (Avenir Next, Hiragino, Georgia, Optima and
   others). Their outputs are committed, so building and running Mei needs none of this.
 
