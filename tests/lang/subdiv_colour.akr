@@ -1,0 +1,32 @@
+// Subdivision must average full byte channels, including two odd endpoints.
+// Use the actual midpoint helper rather than duplicating its arithmetic.
+fn midpoint_colour(a: u32, b: u32, expected: u32) {
+    __sub_n = 2
+    __sub_pos[0] = vec4(-1.0, -1.0, 1.0, 1.0)
+    __sub_pos[1] = vec4(1.0, -1.0, 5.0, 1.0)
+    __sub_uv[0] = 0
+    __sub_uv[1] = 65535
+    __sub_col[0] = a
+    __sub_col[1] = b
+    let m = __sub_mid(0, 1)
+    assert(m == 2)
+    assert(__sub_col[m] == expected)
+    assert(__sub_uv[m] == 32639) // 127 | 127 << 8
+}
+fn init() {
+    camera_clip(0.5, 32.0)
+    fog_off()
+    __sub_mvp[0] = vec4(1.0, 0.0, 0.0, 0.0)
+    __sub_mvp[1] = vec4(0.0, 1.0, 0.0, 0.0)
+    __sub_mvp[2] = vec4(0.0, 0.0, 1.0, 0.0)
+    __sub_mvp[3] = vec4(0.0, 0.0, 1.0, 0.0)
+    midpoint_colour(rgb(65,65,65), rgb(65,65,65), rgb(65,65,65))
+    midpoint_colour(rgb(65,66,255), rgb(65,67,255), rgb(65,66,255))
+    midpoint_colour(rgb(65,67,255), rgb(65,66,255), rgb(65,66,255))
+    midpoint_colour(rgb(1,2,3), rgb(255,254,253), rgb(128,128,128))
+    midpoint_colour(rgb(255,254,253), rgb(1,2,3), rgb(128,128,128))
+    midpoint_colour(rgb(0,255,0), rgb(255,0,255), rgb(127,127,127))
+    print_int(1)
+    print_char('\n')
+}
+// expect: 1
