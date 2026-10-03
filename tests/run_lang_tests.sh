@@ -46,7 +46,7 @@ for t in tests/lang/*.akr tests/lang/*.mls; do
     fi
     sed -n 's|.*// expect: \{0,1\}||p' "$t" > "$tmp/expect"
     if [ -n "$experr" ]; then
-        if $MEIC "$t" -o "$tmp/$name.mei" 2> "$tmp/err"; then
+        if $MEIC $flags "$t" -o "$tmp/$name.mei" 2> "$tmp/err"; then
             echo "FAIL $name: compiled, but expected error: $experr"; fail=$((fail + 1)); continue
         fi
         if grep -qF -- "$experr" "$tmp/err"; then pass=$((pass + 1))

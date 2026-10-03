@@ -87,7 +87,7 @@ Type *ty_slice(Type *t) {
 static Type *ty_slice_readonly(Type *t) {
     if (!t->readonly_slice_cache) {
         Type *s = ar_alloc(sizeof *s);
-        *s = *ty_slice(t);
+        s->k = TY_SLICE; s->elem = t; s->size = 8; s->align = 4; s->layout = 2;
         s->readonly = 1;
         t->readonly_slice_cache = s;
     }
@@ -1761,6 +1761,7 @@ static Expr *check_intrinsic(Ctx *c, Expr *e, Builtin bi, const char *name) {
     if (e->nargs < forms[fi].lo || e->nargs > forms[fi].hi)
         error_at(e->loc, "wrong number of arguments: the form is %s", forms[fi].usage);
     int slice_map = bi == BI_MAP && e->nargs == 3;
+    if (slice_map) stdlib_fn(c, "__check_fail", e->loc);
     if (slice_map) {
         Expr *xs = e->args[0], *f = e->args[1], *out = e->args[2];
         e->args[0] = out; e->args[1] = xs; e->args[2] = f;

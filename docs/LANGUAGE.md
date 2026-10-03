@@ -725,7 +725,8 @@ Explicit counts and slice destinations are checked against their capacities in d
 
 `map(slice, f, out)` returns a writable slice of `out` whose length equals the input length.
 The destination is a mutable array or slice and must hold every mapped element. Its capacity
-is checked in **all builds**, before any callback or output write. The output descriptor and
+is checked in **all builds**, before any callback or output write. This form requires the
+standard library check reporter, so `--no-stdlib` reports a compile error. The output descriptor and
 input expressions are evaluated once. An empty input produces an empty view of `out`.
 `map(array, f)` retains its existing fixed-array result; a dynamic slice requires the third
 argument because Akari has no heap for variable-sized results.

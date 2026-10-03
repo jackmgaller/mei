@@ -1,0 +1,5 @@
+// flags: --no-stdlib --release
+// error: needs the standard library function '__check_fail'
+var data: [2]s32
+var output: [2]s32
+fn init() { let s: []s32 = data; let m = map(s, fn(x) => x, output) }
