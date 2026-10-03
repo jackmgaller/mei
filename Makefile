@@ -51,8 +51,11 @@ $(B)/carts/%.mei: carts/asm/%.s $(B)/meiasm
 	@mkdir -p $(dir $@)
 	$(B)/meiasm $< -o $@
 
+# Every file in a cart's folder, in subfolders too, except its tests/ and screenshots/
+# (which its test scripts write to); spaces escaped for make.
+CART_FILES = $(shell find carts/$(1) \( -path carts/$(1)/tests -o -path carts/$(1)/screenshots \) -prune -o -type f -print 2>/dev/null | sed 's/ /\\ /g')
 define LANG_CART_RULE
-$(B)/carts/$(1).mei: $(call SRC_EXT,carts/$(1)/$(1)) $(wildcard carts/$(1)/*) $(STDLIB_SRC) $(B)/meic
+$(B)/carts/$(1).mei: $(call SRC_EXT,carts/$(1)/$(1)) $(call CART_FILES,$(1)) $(STDLIB_SRC) $(B)/meic
 	@mkdir -p $(B)/carts
 	$(B)/meic $$< -o $$@
 endef
