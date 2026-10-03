@@ -643,8 +643,11 @@ pass of its own before everything else near the camera, so nothing standing on i
 behind it (WORLDPACK.md, "Ground", has the reasons and the exact cases). Without a depth buffer a
 large floor face sorts by its average depth, and one ordering table draws it over the feet of what
 stands on it; flagging the floors of the two example worlds took their near-camera wrong-order
-pixels from 153,444 to 2,775 (`test_room`) and from 365,309 to 318,722 (`two_districts`, where
-most of what is left is inside the shop asset; WORLDCHECKER.md, "Ground").
+pixels from 153,444 to 2,775 (`test_room`) and from 365,309 to 318,722 (`two_districts`). What
+was left was the examples' own modelling, fixed since: ground slabs whose sides overlapped their
+neighbours, and faces hidden inside an asset (the shop's body top under its roof, the canopy's
+trim on its roof). With ground modelled as surfaces and those faces removed, the near-camera
+count is 0 and 348 (WORLDCHECKER.md, "Ground").
 
 **The rule: flag as ground only the lowest open floor of an area, the surfaces nothing is ever
 under or behind from where the camera can be; everything raised stays an ordinary placement.**
@@ -660,7 +663,13 @@ Ground-first drawing draws whatever a ground face truly hides over it, so:
 | | anything seen from below |
 
 Ground meshes are best surfaces rather than solids: the sides of a ground slab lie under its
-neighbours' tops, and ground faces that overlap are sorted among themselves as before. Objects
+neighbours' tops, and ground faces that overlap are sorted among themselves as before. The Asset
+Kit's `box` has no option to leave faces out, so a ground piece is an explicit `mesh` of upward
+faces only, as the examples' `ground_tile` and `room_floor` are. The same goes for faces inside
+an asset that nothing can see, such as the top of a body under the roof sitting on it: they still
+sort, and can be drawn over what covers them. The examples' `shop` is one `mesh` shell whose
+window, sign and roof edge are bands of its walls (`face_materials`), with no bottom, and passes
+the Asset Checker. Objects
 stand on the ground, not in it: a buried part is drawn over the ground. Stand-ins are never ground
 (a stand-in is the whole cell); a merged mesh is ground when its props are. The World Checker
 warns of geometry an upward ground face can hide (`ground_hides`) and of ground that can overlap
@@ -852,8 +861,8 @@ fn init() { assert(world_test_room_load()) }
    report-only unless the recipe says `enforce`, and make prints two lines per world:
 
    ```
-   world test_room: 1 cell, 12,592 bytes, 0 warnings -> build/worlds/examples/worlds/test_room
-     World Checker (report): 132 views, 0 hard failures, 79 over thresholds; peaks 50 tris, CPU 56,018, GPU 198,538 cycles; build/worlds/examples/worlds/test_room/verification/world-check.json
+   world test_room: 1 cell, 10,712 bytes, 0 warnings -> build/worlds/examples/worlds/test_room
+     World Checker (report): 132 views, 0 hard failures, 0 over thresholds; peaks 45 tris, CPU 40,573, GPU 197,952 cycles; build/worlds/examples/worlds/test_room/verification/world-check.json
    ```
 
    An invalid recipe stops make with the kit's errors, one per line (`file:line:column: JSON
