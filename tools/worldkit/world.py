@@ -44,6 +44,7 @@ class Source:
     game: dict
     game_path: Path
     cells: list          # CellSource
+    game_text: bytes = b''   # the game schema file as written (comments and layout kept)
 
 
 def err(path, message, cell=None):
@@ -64,6 +65,7 @@ def load(path):
     game_path = (base / world['game']).resolve()
     if not game_path.is_file():
         raise WorldError('/game', f'No game schema at {game_path}.')
+    game_text = game_path.read_bytes()
     game = load_game(str(game_path))
     cells = []
     if 'cells' in world:
@@ -85,7 +87,7 @@ def load(path):
             if f.name != recipe['id'] + '.cell.json':
                 raise WorldError('/id', f'A cell file is named after its cell: {recipe["id"]}.cell.json.', str(f))
             cells.append(CellSource(recipe, str(f), ''))
-    return Source(world, world_path, base, game, game_path, cells)
+    return Source(world, world_path, base, game, game_path, cells, game_text)
 
 
 def load_game(path):

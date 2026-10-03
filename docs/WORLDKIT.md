@@ -518,8 +518,9 @@ every 8 frames, which is smooth enough for a day that lasts minutes.
 
 The conventions are the Asset Kit's: `format` and `version`, names matching
 `^[a-z][a-z0-9_]{0,47}$`, unknown properties and duplicate keys are errors, errors carry a JSON
-Pointer `path` and a `message` (and a `file` when the error is in a cell file or the game schema),
-no expressions or random generation, Y up, world units, angles in degrees. `schema` is the
+Pointer `path` and a `message`, a `file` when the error is in a cell file or the game schema, and
+a `line` and `column` when that file is Mochi ([Game data](#game-data-and-stable-ids)). There are
+no expressions or random generation; Y is up, lengths are world units and angles degrees. `schema` is the
 authoritative contract; `schema --game FILE` folds one game's entity types and parameters in.
 
 **Decided: units.** The tools do not enforce a scale. The convention, used by the examples and the
@@ -695,7 +696,7 @@ For a world named `city` of a game named `game`, `build` produces:
 | `game.game.akr` | The game's type numbers, parameter `struct`s and `enum`s, imported by every world of the game; make links one copy per game for a cart's worlds, so a cart compiles it once ([Using a world in a cart](#using-a-world-in-a-cart)) |
 | `city.swatch` | The 8-byte palette swatch row, when any material is palette-backed |
 | `city.ids.json` | A copy of the ID lock file (the lock itself is written beside the recipe) |
-| `source/` | The world file, cell files, game schema and every asset recipe used, as built |
+| `source/` | The world file, cell files and every asset recipe used, as built, and the game schema exactly as written (Mochi comments kept; the report's `game_sha256` is the hash of its JSON form, so comments and layout do not change it) |
 | `report.json` | Per cell and region: triangles (always and per layer), placements, collision triangles by kind, bytes, palettes and variants, entity numbers, ID changes, asset hashes and Asset Checker results, warnings, the World Checker's result |
 
 With `preview` (or `build --preview`) there is also `preview/`: for every region, its busiest
@@ -760,7 +761,9 @@ texture set, which waits for region texture sets.
 
 ## Command line
 
-Parallel to `mei_assets.py`: JSON on stdout for successes and failures, exit 0 or 1, `-` for
+Parallel to `mei_assets.py`: JSON on stdout for successes and failures (an error has `path`,
+`message` and, as in [Recipe format](#recipe-format), `file`, `line` and `column` where they
+apply), exit 0 or 1, `-` for
 stdin (relative paths then resolve from the current directory), `--compiler`, `--runner` and
 `--probe` to use other builds, `--assets DIR` to use another asset directory.
 

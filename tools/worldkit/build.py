@@ -27,14 +27,6 @@ def lock_path(source):
     return base/f'{source.world["name"]}.ids.json'
 
 
-def game_text(source):
-    """The game schema as built, in the form it was written: canonical Mochi or JSON."""
-    if source.game_path.suffix == '.mochi':
-        from .mochi import format
-        return format(source.game)
-    return jsonio.pretty(source.game)
-
-
 def compile_source(path, assets_dir=None):
     source = load(path)
     lock = ids.load(lock_path(source),source.world['name'])
@@ -101,7 +93,9 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
              f'{game}.game.akr':compiled.game_akr.encode(),f'{name}.ids.json':jsonio.pretty(compiled.lock).encode()}
     if compiled.swatch: files[f'{name}.swatch'] = compiled.swatch
     snapshot = {'source/'+(source.world_path.name if source.world_path else f'{name}.world.json'):jsonio.pretty(source.world).encode(),
-                'source/'+source.game_path.name:game_text(source).encode()}
+                # The game schema exactly as written, comments included. report.json's game_sha256
+                # is the hash of its JSON form, which this file parses to.
+                'source/'+source.game_path.name:source.game_text}
     for cs in source.cells:
         if cs.file:
             snapshot['source/'+source.world['cell_dir'].strip('/')+'/'+Path(cs.file).name] = jsonio.pretty(cs.recipe).encode()
