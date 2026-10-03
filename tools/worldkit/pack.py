@@ -131,6 +131,8 @@ class Entity:
     layer: str = None
     saved_bit: int = -1
     params: bytes = b''
+    names: list = field(default_factory=list)        # (byte offset in params, text): `name`
+                                                     # parameters, patched to string offsets
     mesh: bytes = None
     collision: list = field(default_factory=list)    # Tri in the entity's own frame
     collision_half: float = None                     # grid half-extent (None: fitted)
@@ -626,10 +628,10 @@ def encode(world, report=None):
             mesh_order.append(data)
         pending_meshes.append((at, data))
 
-    blobs = []                  # (patch offset, bytes, align)
+    blobs = []                  # (patch offset, bytes, align, [(offset in bytes, string)])
 
-    def blob_ref(at, data, align=4):
-        blobs.append((at, data, align))
+    def blob_ref(at, data, align=4, names=()):
+        blobs.append((at, data, align, names))
 
     index_off = out.reserve(4 * gw * gh)
     layer_off = out.reserve(LAYER_SIZE * len(world.layers)) if world.layers else 0
@@ -743,7 +745,12 @@ def encode(world, report=None):
                       len(entity_numbers), at, 0, 0, 0)
             mesh_ref(ea + 28, e.mesh)
             if e.params:
-                blob_ref(ea + 36, bytes(e.params))
+                for o, _ in e.names:
+                    if not 0 <= o <= len(e.params) - 4 or o % 4:
+                        raise PackError('name parameter offset out of range')
+                blob_ref(ea + 36, bytes(e.params), 4, e.names)
+            elif e.names:
+                raise PackError('name parameters without a parameter record')
             entity_numbers.append(((c.i, c.j), k))
             entity_records.append(ea)
             if e.collision:
@@ -774,8 +781,11 @@ def encode(world, report=None):
         out.patch(mesh_dir + 4 * k, 'I', meshes[m])
     for at, m in pending_meshes:
         out.patch(at, 'I', meshes[m])
-    for at, data, align in blobs:
-        out.patch(at, 'I', out.put(data, align))
+    for at, data, align, names in blobs:
+        off = out.put(data, align)
+        out.patch(at, 'I', off)
+        for o, text in names:
+            string_ref(off + o, text)
     for at, text in pending_strings:
         if text not in strings:
             raw = text.encode('ascii')
