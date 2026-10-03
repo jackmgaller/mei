@@ -41,3 +41,4 @@ repository, and the [names](docs/OVERVIEW.md#names) of the project's parts.
 
 - [ROADMAP.md](docs/ROADMAP.md): what is planned, undecided and decided against
 - [PLATFORMER.md](docs/PLATFORMER.md): the design of the first open-world game
+- [AGENTS.md](AGENTS.md): working in this repository, for people and AI agents
