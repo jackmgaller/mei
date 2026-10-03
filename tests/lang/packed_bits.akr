@@ -1,0 +1,104 @@
+// Packed bool flags, unsigned bitfields, literals/defaults, structs and arrays.
+struct Flags { flags: bits { broken, dirty, lit = true, vip } }
+struct Wide {
+    before: u8
+    flags: bits { first, small: u8: 3 = 5, middle: u16: 13, full: u32: 32, last }
+    after: u8
+}
+struct Many { flags: bits { a, b, c, d, e, f, g, h, i, j } }
+const TEMPLATE = Wide { before: 19, flags: bits { first: true, middle: 7171, full: 0xfedcba98, last: true }, after: 91 }
+var global: Wide = Wide { flags: bits { full: 0xffffffff, middle: 8191, first: true, last: true } }
+var rows: [3]Wide
+var zero: Flags
+fn flagmake() -> bits { ready, count: u8: 4 } { return bits { ready: true, count: 11 } }
+fn flagparam(v: bits { ready, count: u8: 4 }) -> u8 { assert(v.ready); return v.count }
+fn copy(x: Wide) -> Wide { return x }
+fn modify(p: *Wide) { p.flags.small = 3; p.flags.middle += 17; p.flags.full ^= 0xffff0000 }
+fn side_index() -> s32 { calls += 1; return 1 }
+fn side_value() -> u16 { calls += 1; return 1234 }
+var calls: s32
+var dynamic: Wide = copy(TEMPLATE)
+fn neighbor_value(p: *Wide) -> u16 { p.flags.first = false; p.flags.last = false; return 3141 }
+fn init() {
+    assert(flagmake().ready)
+    assert_eq(flagmake().count, 11 as u8)
+    assert_eq(flagparam(bits { ready: true, count: 13 }), 13 as u8)
+    assert_eq(sizeof(Flags), 1)
+    assert_eq(sizeof(Many), 2)
+    assert_eq(sizeof(Wide), 9)
+    assert(!zero.flags.lit)
+    const WIDTH = 7
+    const DEFAULT = 53
+    var standalone: bits { count: u8: WIDTH = DEFAULT, ready } = bits {}
+    assert_eq(standalone.count, 53 as u8)
+    standalone.ready = true
+    assert(standalone.ready)
+    var f = Flags {}
+    assert(f.flags.lit)
+    f.flags.vip = true; f.flags.broken = true; f.flags.dirty = true
+    f.flags.lit = false; f.flags.broken = false
+    assert(f.flags.vip && f.flags.dirty && !f.flags.lit && !f.flags.broken)
+    let rawf = &f as *u8
+    assert_eq(rawf[0], 10 as u8)
+    var m: Many
+    m.flags.h = true; m.flags.i = true; m.flags.j = true
+    m.flags.i = false
+    assert(m.flags.h && !m.flags.i && m.flags.j)
+    let rawm = &m as *u8
+    assert_eq(rawm[0], 128 as u8); assert_eq(rawm[1], 2 as u8)
+    assert_eq(dynamic.flags.middle, 7171 as u16)
+    assert_eq(copy(TEMPLATE).flags.full, 0xfedcba98 as u32)
+    assert(copy(TEMPLATE).flags.first)
+    assert_eq(TEMPLATE.flags.full, 0xfedcba98 as u32)
+    assert_eq(TEMPLATE.flags.middle, 7171 as u16)
+    assert_eq(TEMPLATE.flags.small, 5 as u8)
+    var w = copy(TEMPLATE)
+    assert_eq(w.before, 19 as u8); assert_eq(w.after, 91 as u8)
+    assert(w.flags.first && w.flags.last)
+    modify(&w)
+    assert_eq(w.flags.small, 3 as u8)
+    assert_eq(w.flags.middle, 7188 as u16)
+    assert_eq(w.flags.full, 0x0123ba98 as u32)
+    assert_eq(w.before, 19 as u8); assert_eq(w.after, 91 as u8)
+    assert(w.flags.first && w.flags.last)
+    assert_eq(TEMPLATE.flags.small, 5 as u8)
+    global.flags.middle = 0
+    global.flags.first = false
+    assert_eq(global.flags.full, 0xffffffff as u32)
+    assert(global.flags.last)
+    rows[1] = w
+    rows[side_index()].flags.middle += side_value()
+    assert_eq(calls, 2)
+    assert_eq(rows[1].flags.middle, 8422 as u16 & 8191 as u16)
+    assert_eq(rows[1].flags.full, 0x0123ba98 as u32)
+    rows[1].flags.full = 0xffffffff
+    rows[1].flags.small = 255
+    assert_eq(rows[1].flags.small, 7 as u8)
+    rows[1].flags.full += 1
+    assert_eq(rows[1].flags.full, 0 as u32)
+    assert(rows[1].flags.first && rows[1].flags.last)
+    assert_eq(rows[1].after, 91 as u8)
+    assert_eq(rows[0].flags.full, 0 as u32)
+    var r = Wide { flags: bits { middle: 0xffff, small: 0xff, full: 0xffffffff } }
+    assert_eq(r.flags.middle, 8191 as u16)
+    assert_eq(r.flags.small, 7 as u8)
+    r.flags = bits { last: true }
+    assert(r.flags.last && !r.flags.first)
+    assert_eq(r.flags.small, 5 as u8)
+    assert_eq(r.flags.middle, 0 as u16)
+    assert_eq(r.flags.full, 0 as u32)
+    r.flags = w.flags
+    assert_eq(r.flags.full, w.flags.full)
+    assert_eq(r.flags.middle, w.flags.middle)
+    let group = &r.flags
+    group.middle -= 1
+    assert_eq(r.flags.middle, 7187 as u16)
+    r.flags.middle = neighbor_value(&r)
+    assert_eq(r.flags.middle, 3141 as u16)
+    assert(!r.flags.first && !r.flags.last)
+    r.flags.first = true; r.flags.last = true
+    r.flags.middle += neighbor_value(&r)
+    assert_eq(r.flags.middle, 6282 as u16)
+    assert(!r.flags.first && !r.flags.last)
+    println("packed bits passed") // expect: packed bits passed
+}

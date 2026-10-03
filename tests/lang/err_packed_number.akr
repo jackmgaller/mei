@@ -1,0 +1,4 @@
+// error: type mismatch
+struct X { f: bits { a } }
+var x: X
+fn init() { x.f.a = 1 }

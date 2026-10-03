@@ -1,0 +1,4 @@
+// error: cannot write to read-only slice elements
+var data: [2]s32
+const output: [2]s32 = [0, 0]
+fn init() { let o = output[0..2]; let m = map(data, fn(x) => x, o) }

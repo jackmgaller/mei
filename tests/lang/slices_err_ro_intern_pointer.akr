@@ -1,0 +1,3 @@
+// error: slice elements are read-only
+var data: [2]s32
+fn init() { var mutable: []s32 = data; let p = &mutable; var readonly: []const s32 = mutable; let rp = &readonly; (*rp)[0] = 99 }

@@ -1,0 +1,4 @@
+// error: argument 1 of read() is Thing, expected s32
+import "lib/ufcs_modules/a.akr" as a
+fn read(n: s32) -> s32 { return n }
+fn init() { let q = a.make(2); let n = q.read() }

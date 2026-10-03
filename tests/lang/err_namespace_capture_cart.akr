@@ -1,0 +1,4 @@
+// error: unknown function 'cart_only'
+import "lib/ns/capture_cart.akr" as a
+fn cart_only() -> s32 { return 42 }
+fn init() { a.test() }

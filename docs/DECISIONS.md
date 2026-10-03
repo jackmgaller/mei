@@ -527,3 +527,38 @@ unchanged.
 them on screen for several frames while the view pans widens it while recording, so the parts
 that pan into view are there. Faces that need no clipping were never dropped for lying off the
 screen, so nothing else changes.
+
+## Akari data and code ergonomics
+
+The compiler supports the five additions approved in the data and code ergonomics round:
+
+- Slices use an eight-byte pointer/length descriptor over caller-owned storage. `[]T` allows
+  element writes; `[]const T` provides read-only access, including ROM arrays. Debug builds
+  check indexing and subranges. `map(slice, f, out)` uses a caller-provided destination, checks
+  its capacity even in release builds, and returns a slice; no heap or variable-size stack
+  allocation is introduced.
+- Dot calls use UFCS: `value.function(args)` passes `value` as the first argument of the free
+  function. Pointer receivers remain explicit. Real fields take precedence; a type's module
+  supplies public associated functions when no local or visible free function shadows them.
+- Structs can contain byte-aligned `bits` groups, with one-bit boolean flags and explicitly
+  sized unsigned fields. Reads and writes preserve adjacent bits; members have no individual
+  address.
+- `fixed16` stores signed 4.12 values in two bytes while using canonical 16.16 register values
+  and the scalar calling convention. Arithmetic promotes to `fixed`; narrowing drops the
+  low four fractional bits and wraps to signed sixteen-bit storage.
+- Named file imports expose public symbols through their alias and use module-specific
+  assembly labels. Plain imports retain their existing global behavior.
+
+See `LANGUAGE.md` for syntax, conversions, lifetime restrictions and examples.
+
+### Packed struct flags and integer fields
+
+Inline `bits { flag, count: u8: 3 }` groups store bool flags and explicitly sized unsigned
+integer fields in declaration order, low bit first, with byte alignment and no gaps between
+members. Integer fields may span bytes; byte loads/stores avoid imposing alignment or touching
+memory beyond the group. Writes truncate to the declared width and preserve neighboring bits,
+including when a right-hand-side function changes other flags. Member addresses are rejected;
+whole groups remain ordinary aggregates for copies and enclosing struct parameters/returns.
+Context-typed `bits { flag: true }` literals use the existing struct default and zero rules.
+Each inline declaration has its own identity, avoiding accidental copies between unrelated
+flag layouts. Signed fields are omitted to keep extension and overflow rules explicit.

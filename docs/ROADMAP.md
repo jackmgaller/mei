@@ -3,30 +3,6 @@
 What's planned for later, what's still undecided, and what we've decided against. Items move
 out of this file when they land, and the decision goes into DECISIONS.md or the relevant spec.
 
-## Next compiler round (approved)
-
-The "data and code ergonomics" round. Each item removes boilerplate seen across the carts.
-
-- **Slices, `[]T`:** a pointer plus a length. `fn sum(xs: []s32)` takes any array. `len(xs)`,
-  `map`/`filter` and `meic -g` bounds checks work on them.
-- **Methods (UFCS):** `p.update()` means `update(p)`. Pure syntax; lets code read by type.
-- **Packed bitfields and flag sets** in structs, such as `flags: bits { broken, dirty, lit, vip }`
-  packed into one byte. They matter with 2 MB of RAM (Check-In!'s per-object and per-tile flags).
-- **`fixed16`:** a compact 4.12 fixed-point type, like the PS1 GTE's, for big arrays of positions
-  and velocities at half the memory.
-- **Namespaces: files as modules, named on import.** `import "tsumiki/anim.akr" as tk` makes the
-  module's public names reachable only as `tk.play(...)`. Inside the module, names stay short
-  (`play`, `raycast`), and `private` already controls what it exposes. Plain `import` keeps
-  today's global behaviour, so every existing cart compiles unchanged.
-  - Compiler work: per-module symbol tables, mangled names underneath (so assembly labels and
-    `weak fn` overrides still resolve), and the checker telling `tk.` apart from struct fields
-    and enum members like `View.Now`.
-  - Together with UFCS, most calls read as `hero.play(CLIP_RUN)` and module names only appear
-    on free functions.
-  - Retires the hand-made prefixes (`bc_`, `ui_`, `ot_`, `tk_`) and the clash renames from the
-    0.2 stdlib round (`col_mix`, `strlen`, `text_width`, `project_point`).
-  - No C++-style `namespace { }` blocks: one way to do it is enough.
-
 ## Language: other candidates (not yet approved)
 
 From the agents' retrospective, roughly in order of value:
@@ -45,8 +21,8 @@ The 3D creation toolkit (`docs/TSUMIKI.md`, `carts/playroom`), being built now.
 
 - **Usability test:** a fresh agent builds a small game from only `docs/TSUMIKI.md`. Wherever
   it gets stuck shows what the docs and API need.
-- **Move to namespaces** when they land: `tk_play` becomes `tk.play`. Tsumiki is the first real
-  user of the feature.
+- **Adopt namespaces:** move the toolkit to short module-local names and named imports
+  (`tk_play` becomes `tk.play`) now that the compiler supports them.
 
 ## Machine (pending go-ahead)
 

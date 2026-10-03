@@ -1,0 +1,7 @@
+struct Thing { value: s32 }
+enum Mode { Off, On }
+fn make(n: s32) -> Thing { return Thing { value: n } }
+fn read(q: Thing) -> s32 { return q.value + 1000 }
+fn change(q: *Thing, n: s32) -> *Thing { q.value *= n; return q }
+fn enum_number(m: Mode) -> s32 { return (m as s32) + 200 }
+fn pointer_read(q: *Thing) -> s32 { return read(*q) }

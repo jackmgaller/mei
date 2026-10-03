@@ -1,0 +1,3 @@
+// error: unknown name 'a'
+import "lib/ns/math.akr" as a
+fn init() { let x = a }

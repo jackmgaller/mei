@@ -1,0 +1,4 @@
+// error: cannot return an aggregate containing a slice
+struct H { s: []s32 }
+fn id(h: H) -> H { return h }
+fn bad() -> H { var a: [2]s32; let h = H {s: a}; return id(h) }

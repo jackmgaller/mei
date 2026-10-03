@@ -1,0 +1,9 @@
+struct Cell {
+    amount: fixed16,
+    flags: bits { a, b, c, d, e, f, g, h, i }
+}
+fn advance(cell: *Cell, delta: fixed) {
+    cell.amount = fixed16(fixed(cell.amount) + delta)
+    cell.flags.a = !cell.flags.a
+    cell.flags.i = !cell.flags.i
+}

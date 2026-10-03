@@ -1,0 +1,7 @@
+// flags: -g
+// exit: 2
+var data: [3]s32
+fn get(s: []s32, i: s32) -> s32 { return s[i] }
+fn init() { print_int(get(data, -1)) }
+// expect: check failed: slices_bounds_negative.akr:4: index out of bounds for slice ([]s32)
+// expect:   index -1, length 3

@@ -1,0 +1,4 @@
+// error: stored array backing
+struct H {a: [2]s32}
+fn view(h: H) -> []const s32 { return h.a }
+fn init() { let s = view(H {a: [1, 2]}); print_int(s[0]) }

@@ -1,0 +1,3 @@
+// error: slice start exceeds its end
+var xs: [3]s32
+fn init() { let s = xs[2..1] }

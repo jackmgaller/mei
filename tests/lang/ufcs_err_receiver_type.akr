@@ -1,0 +1,3 @@
+// error: argument 1 of grow() is s32, expected fixed
+fn grow(x: fixed) -> fixed { return x + 1.0 }
+fn init() { let n: s32 = 3; let a = n.grow() }

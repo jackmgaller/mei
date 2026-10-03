@@ -1,0 +1,4 @@
+// error: expected []s32
+var xs: [2]u8
+fn take(xs: []s32) {}
+fn init() { take(xs) }

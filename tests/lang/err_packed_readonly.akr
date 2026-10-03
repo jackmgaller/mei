@@ -1,0 +1,3 @@
+// error: declared with 'let'
+struct X { f: bits { a } }
+fn init() { let x = X {}; x.f.a = true }

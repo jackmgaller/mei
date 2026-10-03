@@ -1,0 +1,901 @@
+// Generated coverage of every bit alignment and unsigned width boundary.
+// flags: -g
+fn check_bytes(p: *u8, shift: s32, width: s32, n: s32, value: u32) {
+    for b in 0..n {
+        var expected: u8 = 0
+        for k in 0..8 {
+            let bit = b * 8 + k
+            var set: bool
+            if bit >= shift && bit < shift + width { set = ((value >> (bit - shift)) & 1) != 0 }
+            else { set = ((0xa5 >> k) & 1) != 0 }
+            if set { expected |= (1 << k) as u8 }
+        }
+        assert_eq(p[b], expected)
+    }
+}
+struct C0_1 { before: u8, f: bits { value: u32: 1, tail }, after: u8 }
+struct C0_7 { before: u8, f: bits { value: u32: 7, tail }, after: u8 }
+struct C0_8 { before: u8, f: bits { value: u32: 8, tail }, after: u8 }
+struct C0_9 { before: u8, f: bits { value: u32: 9, tail }, after: u8 }
+struct C0_15 { before: u8, f: bits { value: u32: 15, tail }, after: u8 }
+struct C0_16 { before: u8, f: bits { value: u32: 16, tail }, after: u8 }
+struct C0_17 { before: u8, f: bits { value: u32: 17, tail }, after: u8 }
+struct C0_24 { before: u8, f: bits { value: u32: 24, tail }, after: u8 }
+struct C0_31 { before: u8, f: bits { value: u32: 31, tail }, after: u8 }
+struct C0_32 { before: u8, f: bits { value: u32: 32, tail }, after: u8 }
+struct C1_1 { before: u8, f: bits { pad: u8: 1, value: u32: 1, tail }, after: u8 }
+struct C1_7 { before: u8, f: bits { pad: u8: 1, value: u32: 7, tail }, after: u8 }
+struct C1_8 { before: u8, f: bits { pad: u8: 1, value: u32: 8, tail }, after: u8 }
+struct C1_9 { before: u8, f: bits { pad: u8: 1, value: u32: 9, tail }, after: u8 }
+struct C1_15 { before: u8, f: bits { pad: u8: 1, value: u32: 15, tail }, after: u8 }
+struct C1_16 { before: u8, f: bits { pad: u8: 1, value: u32: 16, tail }, after: u8 }
+struct C1_17 { before: u8, f: bits { pad: u8: 1, value: u32: 17, tail }, after: u8 }
+struct C1_24 { before: u8, f: bits { pad: u8: 1, value: u32: 24, tail }, after: u8 }
+struct C1_31 { before: u8, f: bits { pad: u8: 1, value: u32: 31, tail }, after: u8 }
+struct C1_32 { before: u8, f: bits { pad: u8: 1, value: u32: 32, tail }, after: u8 }
+struct C2_1 { before: u8, f: bits { pad: u8: 2, value: u32: 1, tail }, after: u8 }
+struct C2_7 { before: u8, f: bits { pad: u8: 2, value: u32: 7, tail }, after: u8 }
+struct C2_8 { before: u8, f: bits { pad: u8: 2, value: u32: 8, tail }, after: u8 }
+struct C2_9 { before: u8, f: bits { pad: u8: 2, value: u32: 9, tail }, after: u8 }
+struct C2_15 { before: u8, f: bits { pad: u8: 2, value: u32: 15, tail }, after: u8 }
+struct C2_16 { before: u8, f: bits { pad: u8: 2, value: u32: 16, tail }, after: u8 }
+struct C2_17 { before: u8, f: bits { pad: u8: 2, value: u32: 17, tail }, after: u8 }
+struct C2_24 { before: u8, f: bits { pad: u8: 2, value: u32: 24, tail }, after: u8 }
+struct C2_31 { before: u8, f: bits { pad: u8: 2, value: u32: 31, tail }, after: u8 }
+struct C2_32 { before: u8, f: bits { pad: u8: 2, value: u32: 32, tail }, after: u8 }
+struct C3_1 { before: u8, f: bits { pad: u8: 3, value: u32: 1, tail }, after: u8 }
+struct C3_7 { before: u8, f: bits { pad: u8: 3, value: u32: 7, tail }, after: u8 }
+struct C3_8 { before: u8, f: bits { pad: u8: 3, value: u32: 8, tail }, after: u8 }
+struct C3_9 { before: u8, f: bits { pad: u8: 3, value: u32: 9, tail }, after: u8 }
+struct C3_15 { before: u8, f: bits { pad: u8: 3, value: u32: 15, tail }, after: u8 }
+struct C3_16 { before: u8, f: bits { pad: u8: 3, value: u32: 16, tail }, after: u8 }
+struct C3_17 { before: u8, f: bits { pad: u8: 3, value: u32: 17, tail }, after: u8 }
+struct C3_24 { before: u8, f: bits { pad: u8: 3, value: u32: 24, tail }, after: u8 }
+struct C3_31 { before: u8, f: bits { pad: u8: 3, value: u32: 31, tail }, after: u8 }
+struct C3_32 { before: u8, f: bits { pad: u8: 3, value: u32: 32, tail }, after: u8 }
+struct C4_1 { before: u8, f: bits { pad: u8: 4, value: u32: 1, tail }, after: u8 }
+struct C4_7 { before: u8, f: bits { pad: u8: 4, value: u32: 7, tail }, after: u8 }
+struct C4_8 { before: u8, f: bits { pad: u8: 4, value: u32: 8, tail }, after: u8 }
+struct C4_9 { before: u8, f: bits { pad: u8: 4, value: u32: 9, tail }, after: u8 }
+struct C4_15 { before: u8, f: bits { pad: u8: 4, value: u32: 15, tail }, after: u8 }
+struct C4_16 { before: u8, f: bits { pad: u8: 4, value: u32: 16, tail }, after: u8 }
+struct C4_17 { before: u8, f: bits { pad: u8: 4, value: u32: 17, tail }, after: u8 }
+struct C4_24 { before: u8, f: bits { pad: u8: 4, value: u32: 24, tail }, after: u8 }
+struct C4_31 { before: u8, f: bits { pad: u8: 4, value: u32: 31, tail }, after: u8 }
+struct C4_32 { before: u8, f: bits { pad: u8: 4, value: u32: 32, tail }, after: u8 }
+struct C5_1 { before: u8, f: bits { pad: u8: 5, value: u32: 1, tail }, after: u8 }
+struct C5_7 { before: u8, f: bits { pad: u8: 5, value: u32: 7, tail }, after: u8 }
+struct C5_8 { before: u8, f: bits { pad: u8: 5, value: u32: 8, tail }, after: u8 }
+struct C5_9 { before: u8, f: bits { pad: u8: 5, value: u32: 9, tail }, after: u8 }
+struct C5_15 { before: u8, f: bits { pad: u8: 5, value: u32: 15, tail }, after: u8 }
+struct C5_16 { before: u8, f: bits { pad: u8: 5, value: u32: 16, tail }, after: u8 }
+struct C5_17 { before: u8, f: bits { pad: u8: 5, value: u32: 17, tail }, after: u8 }
+struct C5_24 { before: u8, f: bits { pad: u8: 5, value: u32: 24, tail }, after: u8 }
+struct C5_31 { before: u8, f: bits { pad: u8: 5, value: u32: 31, tail }, after: u8 }
+struct C5_32 { before: u8, f: bits { pad: u8: 5, value: u32: 32, tail }, after: u8 }
+struct C6_1 { before: u8, f: bits { pad: u8: 6, value: u32: 1, tail }, after: u8 }
+struct C6_7 { before: u8, f: bits { pad: u8: 6, value: u32: 7, tail }, after: u8 }
+struct C6_8 { before: u8, f: bits { pad: u8: 6, value: u32: 8, tail }, after: u8 }
+struct C6_9 { before: u8, f: bits { pad: u8: 6, value: u32: 9, tail }, after: u8 }
+struct C6_15 { before: u8, f: bits { pad: u8: 6, value: u32: 15, tail }, after: u8 }
+struct C6_16 { before: u8, f: bits { pad: u8: 6, value: u32: 16, tail }, after: u8 }
+struct C6_17 { before: u8, f: bits { pad: u8: 6, value: u32: 17, tail }, after: u8 }
+struct C6_24 { before: u8, f: bits { pad: u8: 6, value: u32: 24, tail }, after: u8 }
+struct C6_31 { before: u8, f: bits { pad: u8: 6, value: u32: 31, tail }, after: u8 }
+struct C6_32 { before: u8, f: bits { pad: u8: 6, value: u32: 32, tail }, after: u8 }
+struct C7_1 { before: u8, f: bits { pad: u8: 7, value: u32: 1, tail }, after: u8 }
+struct C7_7 { before: u8, f: bits { pad: u8: 7, value: u32: 7, tail }, after: u8 }
+struct C7_8 { before: u8, f: bits { pad: u8: 7, value: u32: 8, tail }, after: u8 }
+struct C7_9 { before: u8, f: bits { pad: u8: 7, value: u32: 9, tail }, after: u8 }
+struct C7_15 { before: u8, f: bits { pad: u8: 7, value: u32: 15, tail }, after: u8 }
+struct C7_16 { before: u8, f: bits { pad: u8: 7, value: u32: 16, tail }, after: u8 }
+struct C7_17 { before: u8, f: bits { pad: u8: 7, value: u32: 17, tail }, after: u8 }
+struct C7_24 { before: u8, f: bits { pad: u8: 7, value: u32: 24, tail }, after: u8 }
+struct C7_31 { before: u8, f: bits { pad: u8: 7, value: u32: 31, tail }, after: u8 }
+struct C7_32 { before: u8, f: bits { pad: u8: 7, value: u32: 32, tail }, after: u8 }
+fn init() {
+    for seed in 0..4 {
+        let value = (0x5a5af00f as u32) ^ ((seed as u32) * (0x98ab7654 as u32))
+        var x0_1 = C0_1 { before: 37, after: 93 }
+        let p0_1 = &x0_1.f as *u8
+        for b in 0..1 { p0_1[b] = 0xa5 }
+        x0_1.f.value = value
+        assert_eq(x0_1.f.value, value & (0x1 as u32))
+        check_bytes(p0_1, 0, 1, 1, value)
+        x0_1.f.value ^= 0xffffffff
+        assert_eq(x0_1.f.value, (~value) & (0x1 as u32))
+        check_bytes(p0_1, 0, 1, 1, ~value)
+        assert_eq(x0_1.before, 37 as u8); assert_eq(x0_1.after, 93 as u8)
+        var x0_7 = C0_7 { before: 37, after: 93 }
+        let p0_7 = &x0_7.f as *u8
+        for b in 0..1 { p0_7[b] = 0xa5 }
+        x0_7.f.value = value
+        assert_eq(x0_7.f.value, value & (0x7f as u32))
+        check_bytes(p0_7, 0, 7, 1, value)
+        x0_7.f.value ^= 0xffffffff
+        assert_eq(x0_7.f.value, (~value) & (0x7f as u32))
+        check_bytes(p0_7, 0, 7, 1, ~value)
+        assert_eq(x0_7.before, 37 as u8); assert_eq(x0_7.after, 93 as u8)
+        var x0_8 = C0_8 { before: 37, after: 93 }
+        let p0_8 = &x0_8.f as *u8
+        for b in 0..2 { p0_8[b] = 0xa5 }
+        x0_8.f.value = value
+        assert_eq(x0_8.f.value, value & (0xff as u32))
+        check_bytes(p0_8, 0, 8, 2, value)
+        x0_8.f.value ^= 0xffffffff
+        assert_eq(x0_8.f.value, (~value) & (0xff as u32))
+        check_bytes(p0_8, 0, 8, 2, ~value)
+        assert_eq(x0_8.before, 37 as u8); assert_eq(x0_8.after, 93 as u8)
+        var x0_9 = C0_9 { before: 37, after: 93 }
+        let p0_9 = &x0_9.f as *u8
+        for b in 0..2 { p0_9[b] = 0xa5 }
+        x0_9.f.value = value
+        assert_eq(x0_9.f.value, value & (0x1ff as u32))
+        check_bytes(p0_9, 0, 9, 2, value)
+        x0_9.f.value ^= 0xffffffff
+        assert_eq(x0_9.f.value, (~value) & (0x1ff as u32))
+        check_bytes(p0_9, 0, 9, 2, ~value)
+        assert_eq(x0_9.before, 37 as u8); assert_eq(x0_9.after, 93 as u8)
+        var x0_15 = C0_15 { before: 37, after: 93 }
+        let p0_15 = &x0_15.f as *u8
+        for b in 0..2 { p0_15[b] = 0xa5 }
+        x0_15.f.value = value
+        assert_eq(x0_15.f.value, value & (0x7fff as u32))
+        check_bytes(p0_15, 0, 15, 2, value)
+        x0_15.f.value ^= 0xffffffff
+        assert_eq(x0_15.f.value, (~value) & (0x7fff as u32))
+        check_bytes(p0_15, 0, 15, 2, ~value)
+        assert_eq(x0_15.before, 37 as u8); assert_eq(x0_15.after, 93 as u8)
+        var x0_16 = C0_16 { before: 37, after: 93 }
+        let p0_16 = &x0_16.f as *u8
+        for b in 0..3 { p0_16[b] = 0xa5 }
+        x0_16.f.value = value
+        assert_eq(x0_16.f.value, value & (0xffff as u32))
+        check_bytes(p0_16, 0, 16, 3, value)
+        x0_16.f.value ^= 0xffffffff
+        assert_eq(x0_16.f.value, (~value) & (0xffff as u32))
+        check_bytes(p0_16, 0, 16, 3, ~value)
+        assert_eq(x0_16.before, 37 as u8); assert_eq(x0_16.after, 93 as u8)
+        var x0_17 = C0_17 { before: 37, after: 93 }
+        let p0_17 = &x0_17.f as *u8
+        for b in 0..3 { p0_17[b] = 0xa5 }
+        x0_17.f.value = value
+        assert_eq(x0_17.f.value, value & (0x1ffff as u32))
+        check_bytes(p0_17, 0, 17, 3, value)
+        x0_17.f.value ^= 0xffffffff
+        assert_eq(x0_17.f.value, (~value) & (0x1ffff as u32))
+        check_bytes(p0_17, 0, 17, 3, ~value)
+        assert_eq(x0_17.before, 37 as u8); assert_eq(x0_17.after, 93 as u8)
+        var x0_24 = C0_24 { before: 37, after: 93 }
+        let p0_24 = &x0_24.f as *u8
+        for b in 0..4 { p0_24[b] = 0xa5 }
+        x0_24.f.value = value
+        assert_eq(x0_24.f.value, value & (0xffffff as u32))
+        check_bytes(p0_24, 0, 24, 4, value)
+        x0_24.f.value ^= 0xffffffff
+        assert_eq(x0_24.f.value, (~value) & (0xffffff as u32))
+        check_bytes(p0_24, 0, 24, 4, ~value)
+        assert_eq(x0_24.before, 37 as u8); assert_eq(x0_24.after, 93 as u8)
+        var x0_31 = C0_31 { before: 37, after: 93 }
+        let p0_31 = &x0_31.f as *u8
+        for b in 0..4 { p0_31[b] = 0xa5 }
+        x0_31.f.value = value
+        assert_eq(x0_31.f.value, value & (0x7fffffff as u32))
+        check_bytes(p0_31, 0, 31, 4, value)
+        x0_31.f.value ^= 0xffffffff
+        assert_eq(x0_31.f.value, (~value) & (0x7fffffff as u32))
+        check_bytes(p0_31, 0, 31, 4, ~value)
+        assert_eq(x0_31.before, 37 as u8); assert_eq(x0_31.after, 93 as u8)
+        var x0_32 = C0_32 { before: 37, after: 93 }
+        let p0_32 = &x0_32.f as *u8
+        for b in 0..5 { p0_32[b] = 0xa5 }
+        x0_32.f.value = value
+        assert_eq(x0_32.f.value, value & (0xffffffff as u32))
+        check_bytes(p0_32, 0, 32, 5, value)
+        x0_32.f.value ^= 0xffffffff
+        assert_eq(x0_32.f.value, (~value) & (0xffffffff as u32))
+        check_bytes(p0_32, 0, 32, 5, ~value)
+        assert_eq(x0_32.before, 37 as u8); assert_eq(x0_32.after, 93 as u8)
+        var x1_1 = C1_1 { before: 37, after: 93 }
+        let p1_1 = &x1_1.f as *u8
+        for b in 0..1 { p1_1[b] = 0xa5 }
+        x1_1.f.value = value
+        assert_eq(x1_1.f.value, value & (0x1 as u32))
+        check_bytes(p1_1, 1, 1, 1, value)
+        x1_1.f.value ^= 0xffffffff
+        assert_eq(x1_1.f.value, (~value) & (0x1 as u32))
+        check_bytes(p1_1, 1, 1, 1, ~value)
+        assert_eq(x1_1.before, 37 as u8); assert_eq(x1_1.after, 93 as u8)
+        var x1_7 = C1_7 { before: 37, after: 93 }
+        let p1_7 = &x1_7.f as *u8
+        for b in 0..2 { p1_7[b] = 0xa5 }
+        x1_7.f.value = value
+        assert_eq(x1_7.f.value, value & (0x7f as u32))
+        check_bytes(p1_7, 1, 7, 2, value)
+        x1_7.f.value ^= 0xffffffff
+        assert_eq(x1_7.f.value, (~value) & (0x7f as u32))
+        check_bytes(p1_7, 1, 7, 2, ~value)
+        assert_eq(x1_7.before, 37 as u8); assert_eq(x1_7.after, 93 as u8)
+        var x1_8 = C1_8 { before: 37, after: 93 }
+        let p1_8 = &x1_8.f as *u8
+        for b in 0..2 { p1_8[b] = 0xa5 }
+        x1_8.f.value = value
+        assert_eq(x1_8.f.value, value & (0xff as u32))
+        check_bytes(p1_8, 1, 8, 2, value)
+        x1_8.f.value ^= 0xffffffff
+        assert_eq(x1_8.f.value, (~value) & (0xff as u32))
+        check_bytes(p1_8, 1, 8, 2, ~value)
+        assert_eq(x1_8.before, 37 as u8); assert_eq(x1_8.after, 93 as u8)
+        var x1_9 = C1_9 { before: 37, after: 93 }
+        let p1_9 = &x1_9.f as *u8
+        for b in 0..2 { p1_9[b] = 0xa5 }
+        x1_9.f.value = value
+        assert_eq(x1_9.f.value, value & (0x1ff as u32))
+        check_bytes(p1_9, 1, 9, 2, value)
+        x1_9.f.value ^= 0xffffffff
+        assert_eq(x1_9.f.value, (~value) & (0x1ff as u32))
+        check_bytes(p1_9, 1, 9, 2, ~value)
+        assert_eq(x1_9.before, 37 as u8); assert_eq(x1_9.after, 93 as u8)
+        var x1_15 = C1_15 { before: 37, after: 93 }
+        let p1_15 = &x1_15.f as *u8
+        for b in 0..3 { p1_15[b] = 0xa5 }
+        x1_15.f.value = value
+        assert_eq(x1_15.f.value, value & (0x7fff as u32))
+        check_bytes(p1_15, 1, 15, 3, value)
+        x1_15.f.value ^= 0xffffffff
+        assert_eq(x1_15.f.value, (~value) & (0x7fff as u32))
+        check_bytes(p1_15, 1, 15, 3, ~value)
+        assert_eq(x1_15.before, 37 as u8); assert_eq(x1_15.after, 93 as u8)
+        var x1_16 = C1_16 { before: 37, after: 93 }
+        let p1_16 = &x1_16.f as *u8
+        for b in 0..3 { p1_16[b] = 0xa5 }
+        x1_16.f.value = value
+        assert_eq(x1_16.f.value, value & (0xffff as u32))
+        check_bytes(p1_16, 1, 16, 3, value)
+        x1_16.f.value ^= 0xffffffff
+        assert_eq(x1_16.f.value, (~value) & (0xffff as u32))
+        check_bytes(p1_16, 1, 16, 3, ~value)
+        assert_eq(x1_16.before, 37 as u8); assert_eq(x1_16.after, 93 as u8)
+        var x1_17 = C1_17 { before: 37, after: 93 }
+        let p1_17 = &x1_17.f as *u8
+        for b in 0..3 { p1_17[b] = 0xa5 }
+        x1_17.f.value = value
+        assert_eq(x1_17.f.value, value & (0x1ffff as u32))
+        check_bytes(p1_17, 1, 17, 3, value)
+        x1_17.f.value ^= 0xffffffff
+        assert_eq(x1_17.f.value, (~value) & (0x1ffff as u32))
+        check_bytes(p1_17, 1, 17, 3, ~value)
+        assert_eq(x1_17.before, 37 as u8); assert_eq(x1_17.after, 93 as u8)
+        var x1_24 = C1_24 { before: 37, after: 93 }
+        let p1_24 = &x1_24.f as *u8
+        for b in 0..4 { p1_24[b] = 0xa5 }
+        x1_24.f.value = value
+        assert_eq(x1_24.f.value, value & (0xffffff as u32))
+        check_bytes(p1_24, 1, 24, 4, value)
+        x1_24.f.value ^= 0xffffffff
+        assert_eq(x1_24.f.value, (~value) & (0xffffff as u32))
+        check_bytes(p1_24, 1, 24, 4, ~value)
+        assert_eq(x1_24.before, 37 as u8); assert_eq(x1_24.after, 93 as u8)
+        var x1_31 = C1_31 { before: 37, after: 93 }
+        let p1_31 = &x1_31.f as *u8
+        for b in 0..5 { p1_31[b] = 0xa5 }
+        x1_31.f.value = value
+        assert_eq(x1_31.f.value, value & (0x7fffffff as u32))
+        check_bytes(p1_31, 1, 31, 5, value)
+        x1_31.f.value ^= 0xffffffff
+        assert_eq(x1_31.f.value, (~value) & (0x7fffffff as u32))
+        check_bytes(p1_31, 1, 31, 5, ~value)
+        assert_eq(x1_31.before, 37 as u8); assert_eq(x1_31.after, 93 as u8)
+        var x1_32 = C1_32 { before: 37, after: 93 }
+        let p1_32 = &x1_32.f as *u8
+        for b in 0..5 { p1_32[b] = 0xa5 }
+        x1_32.f.value = value
+        assert_eq(x1_32.f.value, value & (0xffffffff as u32))
+        check_bytes(p1_32, 1, 32, 5, value)
+        x1_32.f.value ^= 0xffffffff
+        assert_eq(x1_32.f.value, (~value) & (0xffffffff as u32))
+        check_bytes(p1_32, 1, 32, 5, ~value)
+        assert_eq(x1_32.before, 37 as u8); assert_eq(x1_32.after, 93 as u8)
+        var x2_1 = C2_1 { before: 37, after: 93 }
+        let p2_1 = &x2_1.f as *u8
+        for b in 0..1 { p2_1[b] = 0xa5 }
+        x2_1.f.value = value
+        assert_eq(x2_1.f.value, value & (0x1 as u32))
+        check_bytes(p2_1, 2, 1, 1, value)
+        x2_1.f.value ^= 0xffffffff
+        assert_eq(x2_1.f.value, (~value) & (0x1 as u32))
+        check_bytes(p2_1, 2, 1, 1, ~value)
+        assert_eq(x2_1.before, 37 as u8); assert_eq(x2_1.after, 93 as u8)
+        var x2_7 = C2_7 { before: 37, after: 93 }
+        let p2_7 = &x2_7.f as *u8
+        for b in 0..2 { p2_7[b] = 0xa5 }
+        x2_7.f.value = value
+        assert_eq(x2_7.f.value, value & (0x7f as u32))
+        check_bytes(p2_7, 2, 7, 2, value)
+        x2_7.f.value ^= 0xffffffff
+        assert_eq(x2_7.f.value, (~value) & (0x7f as u32))
+        check_bytes(p2_7, 2, 7, 2, ~value)
+        assert_eq(x2_7.before, 37 as u8); assert_eq(x2_7.after, 93 as u8)
+        var x2_8 = C2_8 { before: 37, after: 93 }
+        let p2_8 = &x2_8.f as *u8
+        for b in 0..2 { p2_8[b] = 0xa5 }
+        x2_8.f.value = value
+        assert_eq(x2_8.f.value, value & (0xff as u32))
+        check_bytes(p2_8, 2, 8, 2, value)
+        x2_8.f.value ^= 0xffffffff
+        assert_eq(x2_8.f.value, (~value) & (0xff as u32))
+        check_bytes(p2_8, 2, 8, 2, ~value)
+        assert_eq(x2_8.before, 37 as u8); assert_eq(x2_8.after, 93 as u8)
+        var x2_9 = C2_9 { before: 37, after: 93 }
+        let p2_9 = &x2_9.f as *u8
+        for b in 0..2 { p2_9[b] = 0xa5 }
+        x2_9.f.value = value
+        assert_eq(x2_9.f.value, value & (0x1ff as u32))
+        check_bytes(p2_9, 2, 9, 2, value)
+        x2_9.f.value ^= 0xffffffff
+        assert_eq(x2_9.f.value, (~value) & (0x1ff as u32))
+        check_bytes(p2_9, 2, 9, 2, ~value)
+        assert_eq(x2_9.before, 37 as u8); assert_eq(x2_9.after, 93 as u8)
+        var x2_15 = C2_15 { before: 37, after: 93 }
+        let p2_15 = &x2_15.f as *u8
+        for b in 0..3 { p2_15[b] = 0xa5 }
+        x2_15.f.value = value
+        assert_eq(x2_15.f.value, value & (0x7fff as u32))
+        check_bytes(p2_15, 2, 15, 3, value)
+        x2_15.f.value ^= 0xffffffff
+        assert_eq(x2_15.f.value, (~value) & (0x7fff as u32))
+        check_bytes(p2_15, 2, 15, 3, ~value)
+        assert_eq(x2_15.before, 37 as u8); assert_eq(x2_15.after, 93 as u8)
+        var x2_16 = C2_16 { before: 37, after: 93 }
+        let p2_16 = &x2_16.f as *u8
+        for b in 0..3 { p2_16[b] = 0xa5 }
+        x2_16.f.value = value
+        assert_eq(x2_16.f.value, value & (0xffff as u32))
+        check_bytes(p2_16, 2, 16, 3, value)
+        x2_16.f.value ^= 0xffffffff
+        assert_eq(x2_16.f.value, (~value) & (0xffff as u32))
+        check_bytes(p2_16, 2, 16, 3, ~value)
+        assert_eq(x2_16.before, 37 as u8); assert_eq(x2_16.after, 93 as u8)
+        var x2_17 = C2_17 { before: 37, after: 93 }
+        let p2_17 = &x2_17.f as *u8
+        for b in 0..3 { p2_17[b] = 0xa5 }
+        x2_17.f.value = value
+        assert_eq(x2_17.f.value, value & (0x1ffff as u32))
+        check_bytes(p2_17, 2, 17, 3, value)
+        x2_17.f.value ^= 0xffffffff
+        assert_eq(x2_17.f.value, (~value) & (0x1ffff as u32))
+        check_bytes(p2_17, 2, 17, 3, ~value)
+        assert_eq(x2_17.before, 37 as u8); assert_eq(x2_17.after, 93 as u8)
+        var x2_24 = C2_24 { before: 37, after: 93 }
+        let p2_24 = &x2_24.f as *u8
+        for b in 0..4 { p2_24[b] = 0xa5 }
+        x2_24.f.value = value
+        assert_eq(x2_24.f.value, value & (0xffffff as u32))
+        check_bytes(p2_24, 2, 24, 4, value)
+        x2_24.f.value ^= 0xffffffff
+        assert_eq(x2_24.f.value, (~value) & (0xffffff as u32))
+        check_bytes(p2_24, 2, 24, 4, ~value)
+        assert_eq(x2_24.before, 37 as u8); assert_eq(x2_24.after, 93 as u8)
+        var x2_31 = C2_31 { before: 37, after: 93 }
+        let p2_31 = &x2_31.f as *u8
+        for b in 0..5 { p2_31[b] = 0xa5 }
+        x2_31.f.value = value
+        assert_eq(x2_31.f.value, value & (0x7fffffff as u32))
+        check_bytes(p2_31, 2, 31, 5, value)
+        x2_31.f.value ^= 0xffffffff
+        assert_eq(x2_31.f.value, (~value) & (0x7fffffff as u32))
+        check_bytes(p2_31, 2, 31, 5, ~value)
+        assert_eq(x2_31.before, 37 as u8); assert_eq(x2_31.after, 93 as u8)
+        var x2_32 = C2_32 { before: 37, after: 93 }
+        let p2_32 = &x2_32.f as *u8
+        for b in 0..5 { p2_32[b] = 0xa5 }
+        x2_32.f.value = value
+        assert_eq(x2_32.f.value, value & (0xffffffff as u32))
+        check_bytes(p2_32, 2, 32, 5, value)
+        x2_32.f.value ^= 0xffffffff
+        assert_eq(x2_32.f.value, (~value) & (0xffffffff as u32))
+        check_bytes(p2_32, 2, 32, 5, ~value)
+        assert_eq(x2_32.before, 37 as u8); assert_eq(x2_32.after, 93 as u8)
+        var x3_1 = C3_1 { before: 37, after: 93 }
+        let p3_1 = &x3_1.f as *u8
+        for b in 0..1 { p3_1[b] = 0xa5 }
+        x3_1.f.value = value
+        assert_eq(x3_1.f.value, value & (0x1 as u32))
+        check_bytes(p3_1, 3, 1, 1, value)
+        x3_1.f.value ^= 0xffffffff
+        assert_eq(x3_1.f.value, (~value) & (0x1 as u32))
+        check_bytes(p3_1, 3, 1, 1, ~value)
+        assert_eq(x3_1.before, 37 as u8); assert_eq(x3_1.after, 93 as u8)
+        var x3_7 = C3_7 { before: 37, after: 93 }
+        let p3_7 = &x3_7.f as *u8
+        for b in 0..2 { p3_7[b] = 0xa5 }
+        x3_7.f.value = value
+        assert_eq(x3_7.f.value, value & (0x7f as u32))
+        check_bytes(p3_7, 3, 7, 2, value)
+        x3_7.f.value ^= 0xffffffff
+        assert_eq(x3_7.f.value, (~value) & (0x7f as u32))
+        check_bytes(p3_7, 3, 7, 2, ~value)
+        assert_eq(x3_7.before, 37 as u8); assert_eq(x3_7.after, 93 as u8)
+        var x3_8 = C3_8 { before: 37, after: 93 }
+        let p3_8 = &x3_8.f as *u8
+        for b in 0..2 { p3_8[b] = 0xa5 }
+        x3_8.f.value = value
+        assert_eq(x3_8.f.value, value & (0xff as u32))
+        check_bytes(p3_8, 3, 8, 2, value)
+        x3_8.f.value ^= 0xffffffff
+        assert_eq(x3_8.f.value, (~value) & (0xff as u32))
+        check_bytes(p3_8, 3, 8, 2, ~value)
+        assert_eq(x3_8.before, 37 as u8); assert_eq(x3_8.after, 93 as u8)
+        var x3_9 = C3_9 { before: 37, after: 93 }
+        let p3_9 = &x3_9.f as *u8
+        for b in 0..2 { p3_9[b] = 0xa5 }
+        x3_9.f.value = value
+        assert_eq(x3_9.f.value, value & (0x1ff as u32))
+        check_bytes(p3_9, 3, 9, 2, value)
+        x3_9.f.value ^= 0xffffffff
+        assert_eq(x3_9.f.value, (~value) & (0x1ff as u32))
+        check_bytes(p3_9, 3, 9, 2, ~value)
+        assert_eq(x3_9.before, 37 as u8); assert_eq(x3_9.after, 93 as u8)
+        var x3_15 = C3_15 { before: 37, after: 93 }
+        let p3_15 = &x3_15.f as *u8
+        for b in 0..3 { p3_15[b] = 0xa5 }
+        x3_15.f.value = value
+        assert_eq(x3_15.f.value, value & (0x7fff as u32))
+        check_bytes(p3_15, 3, 15, 3, value)
+        x3_15.f.value ^= 0xffffffff
+        assert_eq(x3_15.f.value, (~value) & (0x7fff as u32))
+        check_bytes(p3_15, 3, 15, 3, ~value)
+        assert_eq(x3_15.before, 37 as u8); assert_eq(x3_15.after, 93 as u8)
+        var x3_16 = C3_16 { before: 37, after: 93 }
+        let p3_16 = &x3_16.f as *u8
+        for b in 0..3 { p3_16[b] = 0xa5 }
+        x3_16.f.value = value
+        assert_eq(x3_16.f.value, value & (0xffff as u32))
+        check_bytes(p3_16, 3, 16, 3, value)
+        x3_16.f.value ^= 0xffffffff
+        assert_eq(x3_16.f.value, (~value) & (0xffff as u32))
+        check_bytes(p3_16, 3, 16, 3, ~value)
+        assert_eq(x3_16.before, 37 as u8); assert_eq(x3_16.after, 93 as u8)
+        var x3_17 = C3_17 { before: 37, after: 93 }
+        let p3_17 = &x3_17.f as *u8
+        for b in 0..3 { p3_17[b] = 0xa5 }
+        x3_17.f.value = value
+        assert_eq(x3_17.f.value, value & (0x1ffff as u32))
+        check_bytes(p3_17, 3, 17, 3, value)
+        x3_17.f.value ^= 0xffffffff
+        assert_eq(x3_17.f.value, (~value) & (0x1ffff as u32))
+        check_bytes(p3_17, 3, 17, 3, ~value)
+        assert_eq(x3_17.before, 37 as u8); assert_eq(x3_17.after, 93 as u8)
+        var x3_24 = C3_24 { before: 37, after: 93 }
+        let p3_24 = &x3_24.f as *u8
+        for b in 0..4 { p3_24[b] = 0xa5 }
+        x3_24.f.value = value
+        assert_eq(x3_24.f.value, value & (0xffffff as u32))
+        check_bytes(p3_24, 3, 24, 4, value)
+        x3_24.f.value ^= 0xffffffff
+        assert_eq(x3_24.f.value, (~value) & (0xffffff as u32))
+        check_bytes(p3_24, 3, 24, 4, ~value)
+        assert_eq(x3_24.before, 37 as u8); assert_eq(x3_24.after, 93 as u8)
+        var x3_31 = C3_31 { before: 37, after: 93 }
+        let p3_31 = &x3_31.f as *u8
+        for b in 0..5 { p3_31[b] = 0xa5 }
+        x3_31.f.value = value
+        assert_eq(x3_31.f.value, value & (0x7fffffff as u32))
+        check_bytes(p3_31, 3, 31, 5, value)
+        x3_31.f.value ^= 0xffffffff
+        assert_eq(x3_31.f.value, (~value) & (0x7fffffff as u32))
+        check_bytes(p3_31, 3, 31, 5, ~value)
+        assert_eq(x3_31.before, 37 as u8); assert_eq(x3_31.after, 93 as u8)
+        var x3_32 = C3_32 { before: 37, after: 93 }
+        let p3_32 = &x3_32.f as *u8
+        for b in 0..5 { p3_32[b] = 0xa5 }
+        x3_32.f.value = value
+        assert_eq(x3_32.f.value, value & (0xffffffff as u32))
+        check_bytes(p3_32, 3, 32, 5, value)
+        x3_32.f.value ^= 0xffffffff
+        assert_eq(x3_32.f.value, (~value) & (0xffffffff as u32))
+        check_bytes(p3_32, 3, 32, 5, ~value)
+        assert_eq(x3_32.before, 37 as u8); assert_eq(x3_32.after, 93 as u8)
+        var x4_1 = C4_1 { before: 37, after: 93 }
+        let p4_1 = &x4_1.f as *u8
+        for b in 0..1 { p4_1[b] = 0xa5 }
+        x4_1.f.value = value
+        assert_eq(x4_1.f.value, value & (0x1 as u32))
+        check_bytes(p4_1, 4, 1, 1, value)
+        x4_1.f.value ^= 0xffffffff
+        assert_eq(x4_1.f.value, (~value) & (0x1 as u32))
+        check_bytes(p4_1, 4, 1, 1, ~value)
+        assert_eq(x4_1.before, 37 as u8); assert_eq(x4_1.after, 93 as u8)
+        var x4_7 = C4_7 { before: 37, after: 93 }
+        let p4_7 = &x4_7.f as *u8
+        for b in 0..2 { p4_7[b] = 0xa5 }
+        x4_7.f.value = value
+        assert_eq(x4_7.f.value, value & (0x7f as u32))
+        check_bytes(p4_7, 4, 7, 2, value)
+        x4_7.f.value ^= 0xffffffff
+        assert_eq(x4_7.f.value, (~value) & (0x7f as u32))
+        check_bytes(p4_7, 4, 7, 2, ~value)
+        assert_eq(x4_7.before, 37 as u8); assert_eq(x4_7.after, 93 as u8)
+        var x4_8 = C4_8 { before: 37, after: 93 }
+        let p4_8 = &x4_8.f as *u8
+        for b in 0..2 { p4_8[b] = 0xa5 }
+        x4_8.f.value = value
+        assert_eq(x4_8.f.value, value & (0xff as u32))
+        check_bytes(p4_8, 4, 8, 2, value)
+        x4_8.f.value ^= 0xffffffff
+        assert_eq(x4_8.f.value, (~value) & (0xff as u32))
+        check_bytes(p4_8, 4, 8, 2, ~value)
+        assert_eq(x4_8.before, 37 as u8); assert_eq(x4_8.after, 93 as u8)
+        var x4_9 = C4_9 { before: 37, after: 93 }
+        let p4_9 = &x4_9.f as *u8
+        for b in 0..2 { p4_9[b] = 0xa5 }
+        x4_9.f.value = value
+        assert_eq(x4_9.f.value, value & (0x1ff as u32))
+        check_bytes(p4_9, 4, 9, 2, value)
+        x4_9.f.value ^= 0xffffffff
+        assert_eq(x4_9.f.value, (~value) & (0x1ff as u32))
+        check_bytes(p4_9, 4, 9, 2, ~value)
+        assert_eq(x4_9.before, 37 as u8); assert_eq(x4_9.after, 93 as u8)
+        var x4_15 = C4_15 { before: 37, after: 93 }
+        let p4_15 = &x4_15.f as *u8
+        for b in 0..3 { p4_15[b] = 0xa5 }
+        x4_15.f.value = value
+        assert_eq(x4_15.f.value, value & (0x7fff as u32))
+        check_bytes(p4_15, 4, 15, 3, value)
+        x4_15.f.value ^= 0xffffffff
+        assert_eq(x4_15.f.value, (~value) & (0x7fff as u32))
+        check_bytes(p4_15, 4, 15, 3, ~value)
+        assert_eq(x4_15.before, 37 as u8); assert_eq(x4_15.after, 93 as u8)
+        var x4_16 = C4_16 { before: 37, after: 93 }
+        let p4_16 = &x4_16.f as *u8
+        for b in 0..3 { p4_16[b] = 0xa5 }
+        x4_16.f.value = value
+        assert_eq(x4_16.f.value, value & (0xffff as u32))
+        check_bytes(p4_16, 4, 16, 3, value)
+        x4_16.f.value ^= 0xffffffff
+        assert_eq(x4_16.f.value, (~value) & (0xffff as u32))
+        check_bytes(p4_16, 4, 16, 3, ~value)
+        assert_eq(x4_16.before, 37 as u8); assert_eq(x4_16.after, 93 as u8)
+        var x4_17 = C4_17 { before: 37, after: 93 }
+        let p4_17 = &x4_17.f as *u8
+        for b in 0..3 { p4_17[b] = 0xa5 }
+        x4_17.f.value = value
+        assert_eq(x4_17.f.value, value & (0x1ffff as u32))
+        check_bytes(p4_17, 4, 17, 3, value)
+        x4_17.f.value ^= 0xffffffff
+        assert_eq(x4_17.f.value, (~value) & (0x1ffff as u32))
+        check_bytes(p4_17, 4, 17, 3, ~value)
+        assert_eq(x4_17.before, 37 as u8); assert_eq(x4_17.after, 93 as u8)
+        var x4_24 = C4_24 { before: 37, after: 93 }
+        let p4_24 = &x4_24.f as *u8
+        for b in 0..4 { p4_24[b] = 0xa5 }
+        x4_24.f.value = value
+        assert_eq(x4_24.f.value, value & (0xffffff as u32))
+        check_bytes(p4_24, 4, 24, 4, value)
+        x4_24.f.value ^= 0xffffffff
+        assert_eq(x4_24.f.value, (~value) & (0xffffff as u32))
+        check_bytes(p4_24, 4, 24, 4, ~value)
+        assert_eq(x4_24.before, 37 as u8); assert_eq(x4_24.after, 93 as u8)
+        var x4_31 = C4_31 { before: 37, after: 93 }
+        let p4_31 = &x4_31.f as *u8
+        for b in 0..5 { p4_31[b] = 0xa5 }
+        x4_31.f.value = value
+        assert_eq(x4_31.f.value, value & (0x7fffffff as u32))
+        check_bytes(p4_31, 4, 31, 5, value)
+        x4_31.f.value ^= 0xffffffff
+        assert_eq(x4_31.f.value, (~value) & (0x7fffffff as u32))
+        check_bytes(p4_31, 4, 31, 5, ~value)
+        assert_eq(x4_31.before, 37 as u8); assert_eq(x4_31.after, 93 as u8)
+        var x4_32 = C4_32 { before: 37, after: 93 }
+        let p4_32 = &x4_32.f as *u8
+        for b in 0..5 { p4_32[b] = 0xa5 }
+        x4_32.f.value = value
+        assert_eq(x4_32.f.value, value & (0xffffffff as u32))
+        check_bytes(p4_32, 4, 32, 5, value)
+        x4_32.f.value ^= 0xffffffff
+        assert_eq(x4_32.f.value, (~value) & (0xffffffff as u32))
+        check_bytes(p4_32, 4, 32, 5, ~value)
+        assert_eq(x4_32.before, 37 as u8); assert_eq(x4_32.after, 93 as u8)
+        var x5_1 = C5_1 { before: 37, after: 93 }
+        let p5_1 = &x5_1.f as *u8
+        for b in 0..1 { p5_1[b] = 0xa5 }
+        x5_1.f.value = value
+        assert_eq(x5_1.f.value, value & (0x1 as u32))
+        check_bytes(p5_1, 5, 1, 1, value)
+        x5_1.f.value ^= 0xffffffff
+        assert_eq(x5_1.f.value, (~value) & (0x1 as u32))
+        check_bytes(p5_1, 5, 1, 1, ~value)
+        assert_eq(x5_1.before, 37 as u8); assert_eq(x5_1.after, 93 as u8)
+        var x5_7 = C5_7 { before: 37, after: 93 }
+        let p5_7 = &x5_7.f as *u8
+        for b in 0..2 { p5_7[b] = 0xa5 }
+        x5_7.f.value = value
+        assert_eq(x5_7.f.value, value & (0x7f as u32))
+        check_bytes(p5_7, 5, 7, 2, value)
+        x5_7.f.value ^= 0xffffffff
+        assert_eq(x5_7.f.value, (~value) & (0x7f as u32))
+        check_bytes(p5_7, 5, 7, 2, ~value)
+        assert_eq(x5_7.before, 37 as u8); assert_eq(x5_7.after, 93 as u8)
+        var x5_8 = C5_8 { before: 37, after: 93 }
+        let p5_8 = &x5_8.f as *u8
+        for b in 0..2 { p5_8[b] = 0xa5 }
+        x5_8.f.value = value
+        assert_eq(x5_8.f.value, value & (0xff as u32))
+        check_bytes(p5_8, 5, 8, 2, value)
+        x5_8.f.value ^= 0xffffffff
+        assert_eq(x5_8.f.value, (~value) & (0xff as u32))
+        check_bytes(p5_8, 5, 8, 2, ~value)
+        assert_eq(x5_8.before, 37 as u8); assert_eq(x5_8.after, 93 as u8)
+        var x5_9 = C5_9 { before: 37, after: 93 }
+        let p5_9 = &x5_9.f as *u8
+        for b in 0..2 { p5_9[b] = 0xa5 }
+        x5_9.f.value = value
+        assert_eq(x5_9.f.value, value & (0x1ff as u32))
+        check_bytes(p5_9, 5, 9, 2, value)
+        x5_9.f.value ^= 0xffffffff
+        assert_eq(x5_9.f.value, (~value) & (0x1ff as u32))
+        check_bytes(p5_9, 5, 9, 2, ~value)
+        assert_eq(x5_9.before, 37 as u8); assert_eq(x5_9.after, 93 as u8)
+        var x5_15 = C5_15 { before: 37, after: 93 }
+        let p5_15 = &x5_15.f as *u8
+        for b in 0..3 { p5_15[b] = 0xa5 }
+        x5_15.f.value = value
+        assert_eq(x5_15.f.value, value & (0x7fff as u32))
+        check_bytes(p5_15, 5, 15, 3, value)
+        x5_15.f.value ^= 0xffffffff
+        assert_eq(x5_15.f.value, (~value) & (0x7fff as u32))
+        check_bytes(p5_15, 5, 15, 3, ~value)
+        assert_eq(x5_15.before, 37 as u8); assert_eq(x5_15.after, 93 as u8)
+        var x5_16 = C5_16 { before: 37, after: 93 }
+        let p5_16 = &x5_16.f as *u8
+        for b in 0..3 { p5_16[b] = 0xa5 }
+        x5_16.f.value = value
+        assert_eq(x5_16.f.value, value & (0xffff as u32))
+        check_bytes(p5_16, 5, 16, 3, value)
+        x5_16.f.value ^= 0xffffffff
+        assert_eq(x5_16.f.value, (~value) & (0xffff as u32))
+        check_bytes(p5_16, 5, 16, 3, ~value)
+        assert_eq(x5_16.before, 37 as u8); assert_eq(x5_16.after, 93 as u8)
+        var x5_17 = C5_17 { before: 37, after: 93 }
+        let p5_17 = &x5_17.f as *u8
+        for b in 0..3 { p5_17[b] = 0xa5 }
+        x5_17.f.value = value
+        assert_eq(x5_17.f.value, value & (0x1ffff as u32))
+        check_bytes(p5_17, 5, 17, 3, value)
+        x5_17.f.value ^= 0xffffffff
+        assert_eq(x5_17.f.value, (~value) & (0x1ffff as u32))
+        check_bytes(p5_17, 5, 17, 3, ~value)
+        assert_eq(x5_17.before, 37 as u8); assert_eq(x5_17.after, 93 as u8)
+        var x5_24 = C5_24 { before: 37, after: 93 }
+        let p5_24 = &x5_24.f as *u8
+        for b in 0..4 { p5_24[b] = 0xa5 }
+        x5_24.f.value = value
+        assert_eq(x5_24.f.value, value & (0xffffff as u32))
+        check_bytes(p5_24, 5, 24, 4, value)
+        x5_24.f.value ^= 0xffffffff
+        assert_eq(x5_24.f.value, (~value) & (0xffffff as u32))
+        check_bytes(p5_24, 5, 24, 4, ~value)
+        assert_eq(x5_24.before, 37 as u8); assert_eq(x5_24.after, 93 as u8)
+        var x5_31 = C5_31 { before: 37, after: 93 }
+        let p5_31 = &x5_31.f as *u8
+        for b in 0..5 { p5_31[b] = 0xa5 }
+        x5_31.f.value = value
+        assert_eq(x5_31.f.value, value & (0x7fffffff as u32))
+        check_bytes(p5_31, 5, 31, 5, value)
+        x5_31.f.value ^= 0xffffffff
+        assert_eq(x5_31.f.value, (~value) & (0x7fffffff as u32))
+        check_bytes(p5_31, 5, 31, 5, ~value)
+        assert_eq(x5_31.before, 37 as u8); assert_eq(x5_31.after, 93 as u8)
+        var x5_32 = C5_32 { before: 37, after: 93 }
+        let p5_32 = &x5_32.f as *u8
+        for b in 0..5 { p5_32[b] = 0xa5 }
+        x5_32.f.value = value
+        assert_eq(x5_32.f.value, value & (0xffffffff as u32))
+        check_bytes(p5_32, 5, 32, 5, value)
+        x5_32.f.value ^= 0xffffffff
+        assert_eq(x5_32.f.value, (~value) & (0xffffffff as u32))
+        check_bytes(p5_32, 5, 32, 5, ~value)
+        assert_eq(x5_32.before, 37 as u8); assert_eq(x5_32.after, 93 as u8)
+        var x6_1 = C6_1 { before: 37, after: 93 }
+        let p6_1 = &x6_1.f as *u8
+        for b in 0..1 { p6_1[b] = 0xa5 }
+        x6_1.f.value = value
+        assert_eq(x6_1.f.value, value & (0x1 as u32))
+        check_bytes(p6_1, 6, 1, 1, value)
+        x6_1.f.value ^= 0xffffffff
+        assert_eq(x6_1.f.value, (~value) & (0x1 as u32))
+        check_bytes(p6_1, 6, 1, 1, ~value)
+        assert_eq(x6_1.before, 37 as u8); assert_eq(x6_1.after, 93 as u8)
+        var x6_7 = C6_7 { before: 37, after: 93 }
+        let p6_7 = &x6_7.f as *u8
+        for b in 0..2 { p6_7[b] = 0xa5 }
+        x6_7.f.value = value
+        assert_eq(x6_7.f.value, value & (0x7f as u32))
+        check_bytes(p6_7, 6, 7, 2, value)
+        x6_7.f.value ^= 0xffffffff
+        assert_eq(x6_7.f.value, (~value) & (0x7f as u32))
+        check_bytes(p6_7, 6, 7, 2, ~value)
+        assert_eq(x6_7.before, 37 as u8); assert_eq(x6_7.after, 93 as u8)
+        var x6_8 = C6_8 { before: 37, after: 93 }
+        let p6_8 = &x6_8.f as *u8
+        for b in 0..2 { p6_8[b] = 0xa5 }
+        x6_8.f.value = value
+        assert_eq(x6_8.f.value, value & (0xff as u32))
+        check_bytes(p6_8, 6, 8, 2, value)
+        x6_8.f.value ^= 0xffffffff
+        assert_eq(x6_8.f.value, (~value) & (0xff as u32))
+        check_bytes(p6_8, 6, 8, 2, ~value)
+        assert_eq(x6_8.before, 37 as u8); assert_eq(x6_8.after, 93 as u8)
+        var x6_9 = C6_9 { before: 37, after: 93 }
+        let p6_9 = &x6_9.f as *u8
+        for b in 0..2 { p6_9[b] = 0xa5 }
+        x6_9.f.value = value
+        assert_eq(x6_9.f.value, value & (0x1ff as u32))
+        check_bytes(p6_9, 6, 9, 2, value)
+        x6_9.f.value ^= 0xffffffff
+        assert_eq(x6_9.f.value, (~value) & (0x1ff as u32))
+        check_bytes(p6_9, 6, 9, 2, ~value)
+        assert_eq(x6_9.before, 37 as u8); assert_eq(x6_9.after, 93 as u8)
+        var x6_15 = C6_15 { before: 37, after: 93 }
+        let p6_15 = &x6_15.f as *u8
+        for b in 0..3 { p6_15[b] = 0xa5 }
+        x6_15.f.value = value
+        assert_eq(x6_15.f.value, value & (0x7fff as u32))
+        check_bytes(p6_15, 6, 15, 3, value)
+        x6_15.f.value ^= 0xffffffff
+        assert_eq(x6_15.f.value, (~value) & (0x7fff as u32))
+        check_bytes(p6_15, 6, 15, 3, ~value)
+        assert_eq(x6_15.before, 37 as u8); assert_eq(x6_15.after, 93 as u8)
+        var x6_16 = C6_16 { before: 37, after: 93 }
+        let p6_16 = &x6_16.f as *u8
+        for b in 0..3 { p6_16[b] = 0xa5 }
+        x6_16.f.value = value
+        assert_eq(x6_16.f.value, value & (0xffff as u32))
+        check_bytes(p6_16, 6, 16, 3, value)
+        x6_16.f.value ^= 0xffffffff
+        assert_eq(x6_16.f.value, (~value) & (0xffff as u32))
+        check_bytes(p6_16, 6, 16, 3, ~value)
+        assert_eq(x6_16.before, 37 as u8); assert_eq(x6_16.after, 93 as u8)
+        var x6_17 = C6_17 { before: 37, after: 93 }
+        let p6_17 = &x6_17.f as *u8
+        for b in 0..3 { p6_17[b] = 0xa5 }
+        x6_17.f.value = value
+        assert_eq(x6_17.f.value, value & (0x1ffff as u32))
+        check_bytes(p6_17, 6, 17, 3, value)
+        x6_17.f.value ^= 0xffffffff
+        assert_eq(x6_17.f.value, (~value) & (0x1ffff as u32))
+        check_bytes(p6_17, 6, 17, 3, ~value)
+        assert_eq(x6_17.before, 37 as u8); assert_eq(x6_17.after, 93 as u8)
+        var x6_24 = C6_24 { before: 37, after: 93 }
+        let p6_24 = &x6_24.f as *u8
+        for b in 0..4 { p6_24[b] = 0xa5 }
+        x6_24.f.value = value
+        assert_eq(x6_24.f.value, value & (0xffffff as u32))
+        check_bytes(p6_24, 6, 24, 4, value)
+        x6_24.f.value ^= 0xffffffff
+        assert_eq(x6_24.f.value, (~value) & (0xffffff as u32))
+        check_bytes(p6_24, 6, 24, 4, ~value)
+        assert_eq(x6_24.before, 37 as u8); assert_eq(x6_24.after, 93 as u8)
+        var x6_31 = C6_31 { before: 37, after: 93 }
+        let p6_31 = &x6_31.f as *u8
+        for b in 0..5 { p6_31[b] = 0xa5 }
+        x6_31.f.value = value
+        assert_eq(x6_31.f.value, value & (0x7fffffff as u32))
+        check_bytes(p6_31, 6, 31, 5, value)
+        x6_31.f.value ^= 0xffffffff
+        assert_eq(x6_31.f.value, (~value) & (0x7fffffff as u32))
+        check_bytes(p6_31, 6, 31, 5, ~value)
+        assert_eq(x6_31.before, 37 as u8); assert_eq(x6_31.after, 93 as u8)
+        var x6_32 = C6_32 { before: 37, after: 93 }
+        let p6_32 = &x6_32.f as *u8
+        for b in 0..5 { p6_32[b] = 0xa5 }
+        x6_32.f.value = value
+        assert_eq(x6_32.f.value, value & (0xffffffff as u32))
+        check_bytes(p6_32, 6, 32, 5, value)
+        x6_32.f.value ^= 0xffffffff
+        assert_eq(x6_32.f.value, (~value) & (0xffffffff as u32))
+        check_bytes(p6_32, 6, 32, 5, ~value)
+        assert_eq(x6_32.before, 37 as u8); assert_eq(x6_32.after, 93 as u8)
+        var x7_1 = C7_1 { before: 37, after: 93 }
+        let p7_1 = &x7_1.f as *u8
+        for b in 0..2 { p7_1[b] = 0xa5 }
+        x7_1.f.value = value
+        assert_eq(x7_1.f.value, value & (0x1 as u32))
+        check_bytes(p7_1, 7, 1, 2, value)
+        x7_1.f.value ^= 0xffffffff
+        assert_eq(x7_1.f.value, (~value) & (0x1 as u32))
+        check_bytes(p7_1, 7, 1, 2, ~value)
+        assert_eq(x7_1.before, 37 as u8); assert_eq(x7_1.after, 93 as u8)
+        var x7_7 = C7_7 { before: 37, after: 93 }
+        let p7_7 = &x7_7.f as *u8
+        for b in 0..2 { p7_7[b] = 0xa5 }
+        x7_7.f.value = value
+        assert_eq(x7_7.f.value, value & (0x7f as u32))
+        check_bytes(p7_7, 7, 7, 2, value)
+        x7_7.f.value ^= 0xffffffff
+        assert_eq(x7_7.f.value, (~value) & (0x7f as u32))
+        check_bytes(p7_7, 7, 7, 2, ~value)
+        assert_eq(x7_7.before, 37 as u8); assert_eq(x7_7.after, 93 as u8)
+        var x7_8 = C7_8 { before: 37, after: 93 }
+        let p7_8 = &x7_8.f as *u8
+        for b in 0..2 { p7_8[b] = 0xa5 }
+        x7_8.f.value = value
+        assert_eq(x7_8.f.value, value & (0xff as u32))
+        check_bytes(p7_8, 7, 8, 2, value)
+        x7_8.f.value ^= 0xffffffff
+        assert_eq(x7_8.f.value, (~value) & (0xff as u32))
+        check_bytes(p7_8, 7, 8, 2, ~value)
+        assert_eq(x7_8.before, 37 as u8); assert_eq(x7_8.after, 93 as u8)
+        var x7_9 = C7_9 { before: 37, after: 93 }
+        let p7_9 = &x7_9.f as *u8
+        for b in 0..3 { p7_9[b] = 0xa5 }
+        x7_9.f.value = value
+        assert_eq(x7_9.f.value, value & (0x1ff as u32))
+        check_bytes(p7_9, 7, 9, 3, value)
+        x7_9.f.value ^= 0xffffffff
+        assert_eq(x7_9.f.value, (~value) & (0x1ff as u32))
+        check_bytes(p7_9, 7, 9, 3, ~value)
+        assert_eq(x7_9.before, 37 as u8); assert_eq(x7_9.after, 93 as u8)
+        var x7_15 = C7_15 { before: 37, after: 93 }
+        let p7_15 = &x7_15.f as *u8
+        for b in 0..3 { p7_15[b] = 0xa5 }
+        x7_15.f.value = value
+        assert_eq(x7_15.f.value, value & (0x7fff as u32))
+        check_bytes(p7_15, 7, 15, 3, value)
+        x7_15.f.value ^= 0xffffffff
+        assert_eq(x7_15.f.value, (~value) & (0x7fff as u32))
+        check_bytes(p7_15, 7, 15, 3, ~value)
+        assert_eq(x7_15.before, 37 as u8); assert_eq(x7_15.after, 93 as u8)
+        var x7_16 = C7_16 { before: 37, after: 93 }
+        let p7_16 = &x7_16.f as *u8
+        for b in 0..3 { p7_16[b] = 0xa5 }
+        x7_16.f.value = value
+        assert_eq(x7_16.f.value, value & (0xffff as u32))
+        check_bytes(p7_16, 7, 16, 3, value)
+        x7_16.f.value ^= 0xffffffff
+        assert_eq(x7_16.f.value, (~value) & (0xffff as u32))
+        check_bytes(p7_16, 7, 16, 3, ~value)
+        assert_eq(x7_16.before, 37 as u8); assert_eq(x7_16.after, 93 as u8)
+        var x7_17 = C7_17 { before: 37, after: 93 }
+        let p7_17 = &x7_17.f as *u8
+        for b in 0..4 { p7_17[b] = 0xa5 }
+        x7_17.f.value = value
+        assert_eq(x7_17.f.value, value & (0x1ffff as u32))
+        check_bytes(p7_17, 7, 17, 4, value)
+        x7_17.f.value ^= 0xffffffff
+        assert_eq(x7_17.f.value, (~value) & (0x1ffff as u32))
+        check_bytes(p7_17, 7, 17, 4, ~value)
+        assert_eq(x7_17.before, 37 as u8); assert_eq(x7_17.after, 93 as u8)
+        var x7_24 = C7_24 { before: 37, after: 93 }
+        let p7_24 = &x7_24.f as *u8
+        for b in 0..4 { p7_24[b] = 0xa5 }
+        x7_24.f.value = value
+        assert_eq(x7_24.f.value, value & (0xffffff as u32))
+        check_bytes(p7_24, 7, 24, 4, value)
+        x7_24.f.value ^= 0xffffffff
+        assert_eq(x7_24.f.value, (~value) & (0xffffff as u32))
+        check_bytes(p7_24, 7, 24, 4, ~value)
+        assert_eq(x7_24.before, 37 as u8); assert_eq(x7_24.after, 93 as u8)
+        var x7_31 = C7_31 { before: 37, after: 93 }
+        let p7_31 = &x7_31.f as *u8
+        for b in 0..5 { p7_31[b] = 0xa5 }
+        x7_31.f.value = value
+        assert_eq(x7_31.f.value, value & (0x7fffffff as u32))
+        check_bytes(p7_31, 7, 31, 5, value)
+        x7_31.f.value ^= 0xffffffff
+        assert_eq(x7_31.f.value, (~value) & (0x7fffffff as u32))
+        check_bytes(p7_31, 7, 31, 5, ~value)
+        assert_eq(x7_31.before, 37 as u8); assert_eq(x7_31.after, 93 as u8)
+        var x7_32 = C7_32 { before: 37, after: 93 }
+        let p7_32 = &x7_32.f as *u8
+        for b in 0..5 { p7_32[b] = 0xa5 }
+        x7_32.f.value = value
+        assert_eq(x7_32.f.value, value & (0xffffffff as u32))
+        check_bytes(p7_32, 7, 32, 5, value)
+        x7_32.f.value ^= 0xffffffff
+        assert_eq(x7_32.f.value, (~value) & (0xffffffff as u32))
+        check_bytes(p7_32, 7, 32, 5, ~value)
+        assert_eq(x7_32.before, 37 as u8); assert_eq(x7_32.after, 93 as u8)
+    }
+    println("packed stress passed") // expect: packed stress passed
+}

@@ -1,0 +1,72 @@
+// flags: -g
+// Pointer+length slices, readonly qualification, copies, calls, nested views and intrinsics.
+struct Point { x: s32, y: s32 }
+struct Holder { xs: []s32 }
+var data: [6]s32 = [1, 2, 3, 4, 5, 6]
+var out: [8]s32
+const ROM: [3]s32 = [7, 8, 9]
+var global_view: []s32 = data
+fn p(n: s32) { print_int(n); println("") }
+fn sum(xs: []const s32) -> s32 {
+    var total = 0
+    for i in 0..len(xs) { total += xs[i] }
+    return total
+}
+fn tail(xs: []s32) -> []s32 { return xs[1..len(xs)] }
+fn bump(xs: []s32) { xs[0] += 10 }
+fn many(a: s32, b: s32, c: s32, d: s32, xs: []const s32) -> s32 {
+    return a + b + c + d + sum(xs)
+}
+fn init() {
+    p(sizeof([]s32))                              // expect: 8
+    p(sum(data) + sum(ROM))                        // expect: 45
+    p(len(global_view))                           // expect: 6
+    let xs: []s32 = data
+    bump(xs)
+    p(data[0])                                    // expect: 11
+    var copy = xs
+    copy = out
+    p(len(copy))                                  // expect: 8
+    let ys = tail(xs)
+    p(len(ys) * 100 + ys[0])                       // expect: 502
+    let tiny = ys[1..4][1..2]
+    p(len(tiny) * 100 + tiny[0])                   // expect: 104
+    let empty = xs[3..3]
+    p(len(empty))                                 // expect: 0
+    p(reduce(empty, 13, fn(a, x) => a + x))        // expect: 13
+    let f: fn([]const s32) -> s32 = sum
+    p(f(xs))                                      // expect: 31
+    p(many(1, 2, 3, 4, xs))                       // expect: 41
+    var local: [3]s32 = [20, 30, 40]
+    let local_view: []s32 = local
+    p(sum(local_view))                            // expect: 90
+    let ro: []const s32 = local_view
+    p(ro[1])                                      // expect: 30
+    let roi = ROM[0..2]
+    p(sum(roi))                                   // expect: 15
+    let mapped = map(xs, fn(x) => x * 2, out)
+    p(len(mapped))                                // expect: 6
+    p(mapped[0] + mapped[5])                       // expect: 34
+    let n = filter(mapped, fn(x) => x % 4 == 0)
+    p(n)                                          // expect: 3
+    p(reduce(mapped, 0, fn(a, x) => a + x, n))      // expect: 24
+    each(mapped[0..n], fn(x: *s32) { *x += 1 })
+    p(out[0] + out[2])                            // expect: 18
+    map_into(out[0..3], local_view, fn(x) => x - 1)
+    p(out[0] + out[2])                            // expect: 58
+    p(filter_into(out[0..3], local_view, fn(x) => x >= 30)) // expect: 2
+    p(out[0] + out[1])                            // expect: 70
+    var h = Holder { xs: data }
+    h.xs[2] = 99
+    p(data[2])                                    // expect: 99
+    var views: [2][]s32 = [local, data]
+    p(len(views[1]) + views[0][1])                 // expect: 36
+    let chosen: []s32 = match 1 { 0 => local_view, else => xs }
+    p(len(chosen))                                // expect: 6
+    var points: [3]Point = [Point {x: 1, y: 2}, Point {x: 3, y: 4}, Point {x: 5, y: 6}]
+    let ps: []Point = points
+    ps[1].x = 30
+    var mapped_points: [3]Point
+    let qs = map(ps, fn(q: Point) -> Point { return Point { x: q.x + 1, y: q.y + 2 } }, mapped_points)
+    p(qs[1].x + qs[1].y)                          // expect: 37
+}

@@ -4,7 +4,7 @@ Akari (明かり, "light") is the Mei console's programming language. Its name s
 kanji 明 with the console: sun and moon, "bright". It is small and statically typed, and
 it compiles to the Mei CPU's machine code. Source files end in `.akr` (the older `.mls`
 extension still builds). There is no garbage collector and no heap:
-data is scalars, vectors, structs and fixed-size arrays in RAM, ROM and registers.
+data is scalars, vectors, structs, slices and fixed-size arrays in RAM, ROM and registers.
 
 ```
 cart "Spinner"
@@ -103,11 +103,41 @@ for `btnp`) → `vsync`. Output appears on the debug console through `print*` fu
 
 `import "other.akr"` includes another file (path relative to the importing file; a file that
 is not there is looked up in the standard library, which is how a cart imports the library's
-optional modules, such as `import "planes.akr"`). Each file is
-compiled once however often it is imported; all files share one global namespace, except for
-names declared `private` (see [Private declarations](#private-declarations)). A cart may
-reuse a name the standard library defines (`A`, `sin`, ...): the cart sees its own
-declaration and the library keeps using its own.
+optional modules, such as `import "planes.akr"`). Each file is compiled once however often it
+is imported. Plain imports preserve the shared global namespace (except `private` names).
+A cart may reuse a standard library name (`A`, `sin`, ...): the cart sees its own declaration
+and the library keeps using its own.
+
+A named import gives a file its own namespace:
+
+```
+import "animation.akr" as anim
+var actor: anim.Actor = anim.Actor { frame: 0 }
+fn init() { anim.play(&actor, anim.Clip.Run) }
+```
+
+Its public functions, constants, globals, structs, enums, registers and embedded assets are
+accessed through the alias: `anim.play`, `anim.Actor`, `anim.Clip.Run`. Qualified types also
+work in `sizeof(anim.Actor)`, casts and function signatures; functions can be passed as
+values, and assembly references use `{anim.play}` or `{anim.frames}`. Inside the module,
+its own declarations retain their short names. `private` keeps names inside their source
+file, including private types used by public functions. The compiler gives module symbols
+unique assembly labels, so files can independently declare the same short names.
+
+Aliases belong to their importing file and can be shadowed by local variables. Repeating an
+alias for the same file is harmless; reusing it for another file or a declaration is an
+error. Aliases imported inside a module are not re-exported. A plain import inside a module
+makes that dependency's public names available to the module without exporting them through
+the module's alias. The module binds its own names before plain-imported dependencies and
+then the standard library; it cannot implicitly use a cart's globals. Circular imports and
+multiple aliases of the same file share one copy of its declarations and state. If the same
+file is also plainly imported by the cart, its public names become global as well.
+
+A namespaced `init`, `update` or `draw` is an ordinary function; the runtime only calls global
+entry points. To replace a module's weak hook explicitly, define `fn anim.hook(...)` after
+the named import. Its signature must match the weak default, and calls and assembly references
+inside the module use the replacement. An unqualified cart function with the same short name
+does not replace an isolated module's hook.
 
 ## Lexical rules
 
@@ -151,6 +181,7 @@ declaration and the library keeps using its own.
 |---|---|
 | `cart "Title"` / `cart "Title", "ID"` | the title in the cart header (at most 32 bytes) and the cart ID for memory cards (at most 16 printable ASCII characters; see [Saving](#saving)) |
 | `import "file.akr"` | compile another file into the program |
+| `import "file.akr" as name` | access a file's public names through `name.member` |
 | `const NAME = expr` / `const NAME: T = expr` | a compile-time constant; with an array or struct type, read-only data in ROM |
 | `var name: T` / `var name: T = expr` / `var name = expr` | a global variable in RAM |
 | `reg NAME: T @ address` | a memory-mapped register; `T` must be 32 bits (`u32`, `s32`, `fixed`, a pointer) |
@@ -214,6 +245,37 @@ struct, array or `mat4`, and a constant.
 Everything at the top level is visible everywhere (declaration order does not matter, except
 for initialisers that read other globals), unless it is `private`.
 
+### Packed flag groups
+
+Packed flag groups use `bits { ... }` as a struct field type. A bare name declares a
+one-bit `bool`; an unsigned field uses `name: u8: width`, `u16` or `u32`:
+
+```akr
+struct Object {
+    flags: bits { broken, dirty, lit = true, vip, layer: u8: 3 }
+}
+var o = Object { flags: bits { dirty: true, layer: 5 } }
+o.flags.broken = true
+o.flags.layer += 1
+```
+
+Fields occupy consecutive bits in declaration order, starting with the low bit of the first
+byte. A group is byte-aligned and takes `ceil(total bits / 8)` bytes; ordinary surrounding
+fields keep their usual alignment. Four flags therefore occupy one byte. Unsigned widths are
+constant expressions from 1 through the type's bit count (8, 16 or 32), and fields can cross
+byte boundaries. Reads zero-extend the stored value. Writes and compound assignments keep the
+low `width` bits and preserve all neighboring fields; the destination is evaluated once.
+Boolean flags require `bool` values, just like ordinary bool fields.
+
+`bits { name: value, ... }` constructs a group using its expected type from a surrounding
+struct literal, assignment or explicit variable type. Omitted members are zero unless they
+have a constant default inside the declaration. Defaults apply when constructing a literal;
+uninitialized globals and local declarations stay zero, like ordinary structs. Each group
+declaration defines its own type. Groups can be copied between values of that type; structs
+containing them work with arrays, pointers, const data, parameters and returns. You can take
+the address of a whole group, but a packed member has no byte address, so `&o.flags.broken`
+is rejected. Read-only struct and parameter rules apply to the group and its members.
+
 ### Private declarations
 
 `private` in front of a top-level `fn`, `asm fn`, `var`, `const`, `struct`, `enum`, `embed` or
@@ -263,6 +325,7 @@ the start of a top-level declaration, and cannot be combined with `private`.
 | `s8 s16 s32` | 1, 2, 4 | signed integers |
 | `u8 u16 u32` | 1, 2, 4 | unsigned integers |
 | `fixed` | 4 | 16.16 fixed point, −32768 to 32767.99998 |
+| `fixed16` | 2 | signed 4.12 fixed point, −8 to 7.99975586; 2-byte aligned |
 | `bool` | 1 | `true` / `false` |
 | `vec2 vec3 vec4` | 16 | vectors of `fixed`; unused lanes are always zero |
 | `ivec4` | 16 | four `s32` lanes |
@@ -270,6 +333,7 @@ the start of a top-level declaration, and cannot be combined with `private`.
 | `*T` | 4 | pointer to `T` |
 | `fn(T, U) -> R` | 16 | function value: a code address and up to 3 captured words (`fn(T)` returns nothing); 4-byte aligned |
 | enum | 1, 2 or 4 | an `enum` declaration; stored as its underlying integer type (default `s32`) |
+| `[]T`, `[]const T` | 8 bytes | pointer and element count; mutable or read-only backing |
 | `[N]T` | N × size | fixed-size array (`[4][4]u8` is an array of arrays); `N` is any constant integer expression (below) |
 | struct | fields, padded | fields are aligned to their size (vectors and `mat4` to 4) |
 
@@ -280,9 +344,70 @@ rather than repeating the expression, so the two cannot drift apart.
 
 Arithmetic happens in 32 bits. The 8- and 16-bit types exist for memory layout; a value read
 from one is sign- or zero-extended, a value stored into one is truncated.
+`fixed16` likewise exists for compact storage: arrays use two bytes per element and struct
+fields align to two bytes. A load expands its signed 4.12 pattern to 16.16, and arithmetic
+(including unary minus, shifts, `abs`, `min`, `max` and `clamp`) promotes it to `fixed`.
+For example, `fixed16(-8.0) * fixed16(-8.0)` produces `fixed` 64.0.
+Assignment, argument passing and returns convert between `fixed` and `fixed16` implicitly.
+Narrowing drops four fractional bits (rounds down to a multiple of 1/4096) and wraps the
+signed 16-bit pattern on overflow, including for values that stay in registers.
+`var x: fixed16 = 0.1` stores raw 409 (about 0.09985); `x += 0.5` computes in `fixed` then
+narrows back. Untyped constants assigned or converted directly to `fixed16` must fit its
+range; explicitly typed values can wrap, so `fixed16(fixed(8.0))` is −8.0.
+Debug multiply and divide checks apply to the promoted `fixed` operation; narrowing itself
+wraps in debug mode as well.
 
-Scalars live in scalar registers, vectors in vector registers; structs, arrays and matrices
-always live in memory.
+Scalars live in scalar registers, vectors in vector registers; structs, arrays, slices and
+matrices always live in memory.
+
+### Slices
+
+`[]T` is a view of stored array elements: an element pointer followed by a signed 32-bit
+length. Passing an array to a slice parameter does not copy its elements, and accepts any
+array length with the same element type. `[]const T` provides read-only access to RAM or ROM;
+a mutable slice converts implicitly to a read-only slice. Mutable `[]T` views require mutable
+backing: a `var` array, or another mutable slice. Const data, `let` arrays and aggregate array
+parameters convert to `[]const T`.
+
+```
+fn sum(xs: []const s32) -> s32 {
+    var result = 0
+    for i in 0..len(xs) { result += xs[i] }
+    return result
+}
+var values: [4]s32 = [10, 20, 30, 40]
+let xs: []s32 = values
+let middle = xs[1..3]       // shares values[1] and values[2], length 2
+middle[0] = 25             // changes values[1]; let freezes the descriptor, not its backing
+let empty = xs[2..2]        // length 0
+let total = sum(values)     // any stored array length, or a slice
+```
+
+`xs[lo..hi]` makes a slice with an exclusive end; `0 <= lo <= hi <= len(xs)`.
+Bounds may be run-time expressions and are evaluated once. Arrays and existing slices support
+ranges, including empty ranges; slicing read-only storage preserves its read-only qualifier.
+`len(slice)` is a run-time `s32`, while `len(array)` remains a compile-time constant.
+`meic -g` checks slice indexing and range bounds and reports an invalid index with the current
+length. Release builds omit these checks, as they do for arrays.
+
+Slices use the existing aggregate calling convention: descriptor parameters are passed by
+reference and cannot be reassigned inside the callee, and returned descriptors use a hidden
+output pointer. Writable slice parameters can change their backing elements. Slices may be
+copied into locals, globals, struct fields and arrays. Uninitialized descriptors are empty.
+
+The backing must remain alive while the view is used. Store an array literal in a variable
+before taking a slice; temporary arrays cannot provide backing. The checker rejects returning
+local-backed slices, including views carried inside aggregates, and rejects storing local or
+parameter-backed views into globals or through pointers. A parameter-backed view can be
+returned to its caller. Escape tracking is conservative: a slice-bearing result of a call
+may borrow any input backing. Raw pointer casts are the same explicit, unchecked escape hatch
+as elsewhere in Akari. Slice values cannot be captured directly by function literals; pass a
+slice parameter, use a global, or use a pointer to a longer-lived descriptor.
+
+`[]const T` forbids assignments to elements, mutable element pointers, `filter`, writable
+intrinsic destinations, and pointer-taking `each` callbacks. Reading, `reduce`, value-taking
+`each`, mapping to separate output and `filter_into` with a writable destination work normally.
+
 
 ## Constants and conversions
 
@@ -297,10 +422,12 @@ division by a constant zero is an error.
 **Implicit conversions** (assignment, arguments, return values):
 
 - between integer types, in either direction (narrowing truncates);
+- between `fixed` and `fixed16`, in either direction (narrowing rounds down and wraps);
 - `null` to any pointer type; any pointer to `*u8` (a byte pointer, like `void *`);
+- a mutable array variable `[N]T` to `[]T`; any stored array to `[]const T`; `[]T` to `[]const T`.
 - an array variable `[N]T` to `*T` (or `*u8`): `sum(buf, 10)` passes `&buf[0]`.
 
-Everything else needs an explicit conversion. In particular integers and `fixed` never mix
+Everything else needs an explicit conversion. In particular integer variables and fixed-point values never mix
 implicitly.
 
 **Explicit conversions**: `x as T`, or `T(x)` for scalar types (`fixed(3)`, `s32(f)`).
@@ -309,6 +436,9 @@ implicitly.
 |---|---|
 | integer → `fixed` | the same value: shifted left 16 (`3 as fixed` is 3.0) |
 | `fixed` → integer | rounded down (floor): `1.75 as s32` is 1, `-1.25 as s32` is −2 |
+| integer → `fixed16` | the same numerical value, then narrowed to 4.12 (wraps outside −8..7.99975586) |
+| `fixed16` → integer | rounded down (floor), like `fixed` → integer |
+| `fixed` ↔ `fixed16` | numerical value kept; narrowing rounds down to 1/4096 and wraps signed 16 bits |
 | integer → integer | truncated or extended |
 | `bool` → integer | 0 or 1 |
 | pointer ↔ pointer, pointer ↔ `u32`/`s32`, integer → pointer | the address, unchanged |
@@ -319,7 +449,10 @@ implicitly.
 | `u32`/`s32` → function value | a value with that code address and no captured words |
 
 `bits(f)` gives the raw 32-bit pattern of a `fixed` as `s32` (`bits(1.0)` is 65536);
-`from_bits(n)` is the reverse.
+`from_bits(n)` is the reverse. For `fixed16`, `bits(f)` returns the signed raw 4.12 pattern
+as `s32` (`bits(fixed16(1.0))` is 4096). `from_bits16(n)` reverses it, taking the low 16 bits
+as signed 4.12 (`from_bits16(65535)` is −1/4096). `from_bits` always returns `fixed`;
+use `from_bits16` when reconstructing a compact value.
 
 ## Operators
 
@@ -384,7 +517,8 @@ at a time with a single load or store, so `p.pos.y += 1.0` costs three instructi
 
 **Assignment** `=`, and compound `+= -= *= /= %= &= |= ^= <<= >>=`. The target of a compound
 assignment is evaluated once (`a[next()] += 1` calls `next` once). Struct, array and matrix
-assignment copies the whole value.
+assignment copies the whole value. Slice assignment copies its pointer and length, sharing
+the backing elements.
 
 ## Statements
 
@@ -549,6 +683,36 @@ folded at compile time (`const C = match MODE { 0 => 10, else => 20 }`). The arm
 the same compare chain; the last arm is reached by falling through, so it also takes a value no
 pattern names (an enum converted from an out-of-range integer) and the result is always set.
 
+## Method syntax (UFCS)
+
+`receiver.function(args...)` means `function(receiver, args...)`. Any visible named function,
+function value or builtin can be called this way; there are no method declarations or overloads.
+For a struct or enum receiver (including a pointer to either), lookup also finds public callable
+names in the type's defining file. This lets `hero.play(...)` find `tk.play` when `hero` has a
+type from a named import. Visible local or top-level names take precedence; argument type or
+arity errors do not retry another function. Private functions remain private.
+The receiver is evaluated once, before the remaining arguments, using the ordinary call rules.
+Chaining works when each call returns the receiver for the next call:
+
+```
+fn moved(p: vec3, delta: vec3) -> vec3 { return p + delta }
+fn damage(p: *Player, amount: s32) { p.hp -= amount }
+
+let q = position.moved(velocity).normalize()   // normalize(moved(position, velocity))
+(&player).damage(5)                           // damage(&player, 5)
+let p = &player
+p.damage(5)                                   // damage(p, 5)
+let n = values.len()                          // len(values)
+```
+
+A receiver has the same type requirements as argument 1 of a free call. Address-taking and
+pointer dereferencing are explicit: `player.damage(5)` does not insert `&player`. Local callable
+names shadow top-level functions, and `private` visibility applies as usual. A real struct field
+or vector swizzle takes precedence: `button.on_press()` calls its function-valued field with no
+inserted argument; calling a numeric field reports that it is not a function. Enum member access
+keeps its existing meaning. Bare `receiver.function` remains field access; it does not create a
+bound function value.
+
 ## Functions as values
 
 A function type is written `fn(T, U) -> R` (`fn(T)` for no result). Named functions and
@@ -627,7 +791,7 @@ for i in 0..4 { fs[i] = fn(x: s32) => x * i }   // four values, each with its ow
     note: pass the extra values as arguments, or capture one pointer to a struct that holds them
   ```
 
-- **Not capturable:** vectors, structs, arrays and matrices (copy the lanes or fields you need
+- **Not capturable:** vectors, structs, arrays, slices and matrices (copy the lanes or fields you need
   into locals first, and use those, or capture a pointer), and function values (4 words each:
   pass them as arguments or keep them in a global).
 - **Nested literals** capture through each level: an inner literal that uses a local of the
@@ -655,7 +819,7 @@ These are compiled inline (no call) and work on several types:
 | `nclip(p0, p1, p2) -> s32` | twice the signed area of a screen triangle; negative when counter-clockwise on screen (front-facing). Arguments are packed positions `(x & 0xFFFF) \| (y << 16)` |
 | `otz(bias, depth, scale) -> s32` | ordering-table bucket: `bias + floor(depth * scale)`, clamped to 0..1023 (`depth`, `scale` are `fixed`) |
 | `clerp(from, to, t) -> u32` | blend two colours (each of the four bytes) by `t` (`fixed`, clamped to 0..1, rounded down) |
-| `len(x)` | element count of an array or embedded asset, or the number of variants of an enum type (`len(Dir)`); a constant |
+| `len(x)` | element count of a slice (run-time `s32`), an array or embedded asset, or the number of variants of an enum type (`len(Dir)`); all except slices are constant |
 | `sizeof(T)` | size of a type in bytes (a constant) |
 | `bits(f)`, `from_bits(n)` | reinterpret `fixed` ↔ `s32` |
 | `T(x)` | conversion, same as `x as T` |
@@ -665,6 +829,26 @@ These are compiled inline (no call) and work on several types:
 `nclip`, `otz` and `clerp` are single instructions (see `DECISIONS.md`, "Geometry
 instructions"). The fourth, `vxp3` (transform and project three vertices), works on three
 vector registers at once and is used from `asm` blocks (`tests/lang/geometry.akr` has an example).
+
+Slices also work with `map_into`, `filter`, `filter_into`, `reduce` and `each`; without an
+explicit count, they process `len(xs)` elements. `filter` compacts writable backing and returns
+the kept count, without changing the descriptor's length: use `xs[0..kept]` for the shorter view.
+Explicit counts and slice destinations are checked against their capacities in debug builds.
+
+`map(slice, f, out)` returns a writable slice of `out` whose length equals the input length.
+The destination is a mutable array or slice and must hold every mapped element. Its capacity
+is checked in **all builds**, before any callback or output write. This form requires the
+standard library check reporter, so `--no-stdlib` reports a compile error. The output descriptor and
+input expressions are evaluated once. An empty input produces an empty view of `out`.
+`map(array, f)` retains its existing fixed-array result; a dynamic slice requires the third
+argument because Akari has no heap for variable-sized results.
+
+```
+var squared: [4]s32
+let mapped = map(xs, fn(x) => x * x, squared)
+let kept = filter(mapped, fn(x) => x > 500)
+let surviving = mapped[0..kept]
+```
 
 ## map, filter, reduce, each
 
@@ -678,6 +862,7 @@ first `count` elements (it is required when the sequence is a pointer).
 | Form | Meaning |
 |---|---|
 | `map(xs, f) -> [N]U` | a new array with `f(x)` for each element of the `[N]T` array `xs`; `f: fn(T) -> U` |
+| `map(xs, f, out) -> []U` | map to caller-owned mutable array or slice `out`; capacity checked in all builds |
 | `map_into(out, xs, f [, count])` | `out[i] = f(xs[i])`; `out` may be `xs` itself (in place) |
 | `filter(xs, keep [, count]) -> s32` | keeps the elements for which `keep(x)` is true, moving them to the front of `xs` in order; returns how many remain |
 | `filter_into(out, xs, keep [, count]) -> s32` | copies the kept elements to `out`; returns how many |
@@ -714,7 +899,7 @@ per element (1,710), plus 2 per captured word for a closure. `filter(xs, fn(x) =
 | RAM from `0x000100` | global variables that are used (small ones first, so most are one instruction away) |
 | RAM below `0x200000` | the stack (grows down): locals that are not in registers, spills, call frames |
 
-`len()` and `sizeof()` describe sizes. Constant indexes are checked at compile time; other
+`len()` and `sizeof()` describe sizes. Constant array indexes are checked at compile time; slice indexes and other array
 indexes are checked at run time only in a [debug build](#debug-builds). Recursion is allowed;
 very deep recursion runs into the globals (a debug build stops it at the function entry that
 would). ROM data is read-only: writing through a pointer into ROM faults.
@@ -732,7 +917,7 @@ check failed: game.akr:7: stack overflow entering walk() (too deep a recursion, 
 
 | Option | Checks |
 |---|---|
-| `-g` | every array (and `mat4` row) index that is not a constant: `(unsigned) index < length`, so negative indexes fail too; the stack at every function entry that has a frame: `sp` must stay above the globals |
+| `-g` | every slice index and range, and array (and `mat4` row) indexes that are not constants: `(unsigned) index < length`, so negative indexes fail too; the stack at every function entry that has a frame: `sp` must stay above the globals |
 | `--trap-div` | `-g`, plus integer and fixed-point division (and `%`) by zero, which otherwise gives 0 |
 | `--trap-fmul` | `-g`, plus fixed-point `*` whose product does not fit `fixed` (best effort: an overflow within about 1 % of the limit can go unreported, but no valid product is reported) |
 
@@ -741,8 +926,8 @@ where the index is provably in range: a `for` loop variable whose constant bound
 array (`for i in 0..len(a) { a[i] }`), `i & K` with a constant `K` below the length, and a `u8`
 index into an array of 256 or more. The stack check costs 2-3 cycles per call. Indexing
 through a pointer (`p[i]`) is not checked: a pointer has no length. The failure paths are out
-of line, after each function's `ret`. Without these options no checking code is generated: a
-release build is unchanged. The reports come from `__check_fail` and `__bounds_fail` in
+of line, after each function's `ret`. Without these options indexing checks are omitted. The explicit-destination
+`map(xs, f, out)` still checks capacities in release builds. The reports come from `__check_fail` and `__bounds_fail` in
 `stdlib/debug.akr`. On Check-In! a `-g` build uses about 4-5 % more cycles.
 
 Locals whose address is never taken live in registers when possible: the compiler numbers
@@ -1660,7 +1845,7 @@ register-allocation, inlining, `let` forwarding and induction-pointer work):
 
 ## Limitations
 
-- No generics (except the built-ins above), unions, slices, methods or operator overloading.
+- No generics (except the built-ins above), unions or operator overloading.
 - Closures capture at most 3 one-word values, by copy, read-only (no vectors, structs, arrays or
   function values). Const data may hold named functions and the addresses of embeds, strings
   and const data, but not function literals or addresses of variables.
@@ -1670,7 +1855,8 @@ register-allocation, inlining, `let` forwarding and induction-pointer work):
 - Run-time bounds and stack-overflow checks only in a debug build (`meic -g`). The locals of
   one function may use at most 120 KB of stack (make large arrays global).
 - One error is reported per compilation.
-- Struct, array and matrix parameters are read-only (passed by reference).
+- Struct, array, slice and matrix parameters are read-only descriptors (passed by reference);
+  mutable slice parameters may change their backing elements.
 - `mesh()` draws at most 2,048 vertices per mesh. Faces crossing the near plane are clipped in
   clip space (see Near plane), which costs far more than drawing a face whole: keep the camera
   clear of walls where it can.
@@ -1683,3 +1869,8 @@ register-allocation, inlining, `let` forwarding and induction-pointer work):
 `// flags: ARGS` (extra `meic` arguments), `// broadcast: FILE` and `// broadcast-noise: BER` (replay a broadcast recording) and `// warning: TEXT` (the build must give this
 warning; with several such lines, exactly that many warnings) adjust a test). `tools/fuzz_lang.py [count] [seed]` compiles
 random programs and checks their output against a Python model of the CPU's arithmetic.
+
+`tests/test_lang.c` also exercises all five data/code ergonomics features through the compiler
+library and a virtual filesystem, including repeated recovery from failed compilations.
+`tools/fuzz_language_round.py [count] [seed]` combines namespaced types, UFCS, packed flags,
+`fixed16` and slice intrinsics, checking release/debug output against a Python model.

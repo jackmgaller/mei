@@ -195,6 +195,11 @@ static SymTab g_layers[2];
 typedef struct { const char *file; SymTab tab; } FileTab;
 static FileTab *g_ftabs;
 static int g_nftabs, g_capftabs;
+typedef struct Import { const char *file, *alias; struct Import *next; } Import;
+typedef struct { const char *file; SymTab tab; Import *imports; int isolated; } Module;
+static Module *g_modules;
+static int g_nmodules, g_capmodules;
+static Sym *qualified_private(const char *name, const char *file);
 static const char **g_stdfiles;
 static int g_nstdfiles, g_capstdfiles;
 
@@ -210,6 +215,8 @@ void symtab_reset(void) {
     free(g_ftabs);
     g_ftabs = NULL;
     g_nftabs = g_capftabs = 0;
+    for (int i = 0; i < g_nmodules; i++) free(g_modules[i].tab.tab);
+    free(g_modules); g_modules = NULL; g_nmodules = g_capmodules = 0;
     g_stdfiles = NULL;
     g_nstdfiles = g_capstdfiles = 0;
 }
@@ -262,6 +269,7 @@ Sym *sym_lookup_private(const char *name, const char *file) {
 
 /* A private symbol of some file other than `from_file` (for error messages). */
 Sym *sym_private_elsewhere(const char *name, const char *from_file) {
+    if (strchr(name, '.')) return qualified_private(name, from_file);
     for (int i = 0; i < g_nftabs; i++) {
         if (from_file && !strcmp(g_ftabs[i].file, from_file)) continue;
         Sym *s = tab_lookup(&g_ftabs[i].tab, name);
@@ -271,8 +279,13 @@ Sym *sym_private_elsewhere(const char *name, const char *from_file) {
 }
 
 Sym *sym_lookup(const char *name, const char *from_file) {
+    if (strchr(name, '.')) return sym_lookup_qualified(name, from_file);
     Sym *p = sym_lookup_private(name, from_file);
     if (p) return p;
+    if (file_is_module(from_file)) {
+        p = sym_lookup_module(name, from_file, 0);
+        return p ? p : sym_lookup_layer(name, 0);
+    }
     if (file_is_stdlib(from_file)) return sym_lookup_layer(name, 0);
     Sym *s = sym_lookup_layer(name, 1);
     return s ? s : sym_lookup_layer(name, 0);
@@ -305,4 +318,130 @@ void sym_define_private(Sym *s, const char *file) {
     FileTab *f = file_tab(file, 1);
     s->priv = (int)(f - g_ftabs) + 1;
     define_in(&f->tab, s);
+}
+
+/* File modules retain their own public table even when a plain import also publishes
+   those names to the legacy global layer. Import aliases belong to the importing file. */
+static Module *module_get(const char *file) {
+    if (!file) return NULL;
+    for (int i = 0; i < g_nmodules; i++)
+        if (!strcmp(g_modules[i].file, file)) return &g_modules[i];
+    return NULL;
+}
+void module_begin(const char *file, int isolated) {
+    if (module_get(file)) return;
+    if (g_nmodules == g_capmodules) {
+        g_capmodules = g_capmodules ? g_capmodules * 2 : 16;
+        g_modules = realloc(g_modules, sizeof *g_modules * (size_t)g_capmodules);
+    }
+    g_modules[g_nmodules++] = (Module){.file=file, .isolated=isolated};
+}
+int file_is_module(const char *file) { Module *m = module_get(file); return m && m->isolated; }
+static Sym *module_lookup_inner(const char *name, const char *file, int public_only,
+                               const char **visited, int n) {
+    Module *m = module_get(file);
+    if (!m || n >= 256) return NULL;
+    for (int i = 0; i < n; i++) if (!strcmp(visited[i], file)) return NULL;
+    visited[n++] = file;
+    Sym *s = tab_lookup(&m->tab, name);
+    if (s || public_only) return s;
+    Sym *found = NULL;
+    for (Import *i = m->imports; i; i = i->next) if (!i->alias) {
+        Sym *x = module_lookup_inner(name, i->file, 0, visited, n);
+        if (x && found && x != found)
+            error_at(x->loc, "ambiguous imported name '%s'; use named imports", name);
+        if (x) found = x;
+    }
+    return found;
+}
+Sym *sym_lookup_module(const char *name, const char *file, int public_only) {
+    const char *visited[256];
+    return module_lookup_inner(name, file, public_only, visited, 0);
+}
+void sym_define_module(Sym *s, const char *file) {
+    Module *m = module_get(file);
+    if (!m) return;
+    if (m->isolated) s->module = (int)(m - g_modules) + 1;
+    if (!s->priv) define_in(&m->tab, s);
+}
+int module_has_alias(const char *file, const char *name) {
+    Module *m = module_get(file);
+    if (!m) return 0;
+    for (Import *i = m->imports; i; i = i->next)
+        if (i->alias && !strcmp(i->alias, name)) return 1;
+    return 0;
+}
+void module_import(const char *from, const char *target, const char *alias, Loc loc) {
+    Module *m = module_get(from);
+    if (!m) return;
+    for (Import *i = m->imports; i; i = i->next) {
+        if (alias && i->alias && !strcmp(alias, i->alias)) {
+            if (!strcmp(target, i->file)) return;
+            error_at(loc, "import alias '%s' is already defined", alias);
+        }
+        if (!alias && !i->alias && !strcmp(target, i->file)) return;
+    }
+    if (alias && (sym_lookup_module(alias, from, 1) || sym_lookup_private(alias, from)))
+        error_at(loc, "import alias '%s' conflicts with a declaration", alias);
+    Import *i = ar_alloc(sizeof *i); i->file=target; i->alias=alias;
+    i->next=m->imports; m->imports=i;
+}
+Sym *sym_lookup_qualified(const char *name, const char *file) {
+    const char *dot = strchr(name, '.');
+    if (!dot) return sym_lookup(name, file);
+    const char *alias = ar_strndup(name, (size_t)(dot-name));
+    Module *m = module_get(file);
+    if (!m) return NULL;
+    for (Import *i = m->imports; i; i = i->next) if (i->alias && !strcmp(i->alias, alias)) {
+        Sym *s = sym_lookup_module(dot+1, i->file, 1);
+        return s;
+    }
+    return NULL;
+}
+static Sym *qualified_private(const char *name, const char *file) {
+    const char *dot = strchr(name, '.');
+    Module *m = module_get(file);
+    if (!dot || !m) return NULL;
+    size_t n = (size_t)(dot - name);
+    for (Import *i = m->imports; i; i = i->next)
+        if (i->alias && strlen(i->alias) == n && !strncmp(i->alias, name, n))
+            return sym_lookup_private(dot + 1, i->file);
+    return NULL;
+}
+static void publish_drop_func(Program *P, Func *f) {
+    for (int i = 0; i < P->nfuncs; i++) if (P->funcs[i] == f) {
+        memmove(&P->funcs[i], &P->funcs[i + 1], sizeof(Func *) * (size_t)(P->nfuncs - i - 1));
+        P->nfuncs--;
+        return;
+    }
+}
+void module_publish(const char *file, Program *P) {
+    Module *m = module_get(file);
+    if (!m || !m->isolated) return;
+    m->isolated = 0;  /* also breaks plain-import cycles */
+    for (size_t j = 0; j < m->tab.cap; j++) {
+        Sym *s = m->tab.tab[j];
+        if (!s) continue;
+        Sym *old = sym_lookup_layer(s->name, s->user);
+        if (old && old != s) {
+            if (old->k == SY_FUNC && s->k == SY_FUNC && old->fn != s->fn &&
+                old->fn->weak != s->fn->weak) {
+                Func *strong = old->fn->weak ? s->fn : old->fn;
+                Func *weak = old->fn->weak ? old->fn : s->fn;
+                for (Func *w = strong->overrides; w; w = w->overrides)
+                    if (file_is_stdlib(w->loc.file) == file_is_stdlib(weak->loc.file))
+                        error_at(weak->loc, "'%s' already has a weak definition at %s:%d (only one weak default is allowed)",
+                                 s->name, w->loc.file, w->loc.line);
+                weak->overrides = strong->overrides;
+                strong->overrides = weak;
+                publish_drop_func(P, weak);
+                old->fn = s->fn = strong;
+            } else if (!(old->k == SY_FUNC && s->k == SY_FUNC && old->fn == s->fn)) {
+                error_at(s->loc, "'%s' is already defined at %s:%d", s->name,
+                         old->loc.file ? old->loc.file : "<built-in>", old->loc.line);
+            }
+        }
+        if (!old) sym_define_global(s);
+    }
+    for (Import *i = m->imports; i; i = i->next) if (!i->alias) module_publish(i->file, P);
 }

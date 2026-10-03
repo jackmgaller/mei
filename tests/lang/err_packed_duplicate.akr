@@ -1,0 +1,3 @@
+// error: duplicate packed field
+struct X { f: bits { a, a } }
+fn init() {}

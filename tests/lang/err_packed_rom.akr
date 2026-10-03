@@ -1,0 +1,4 @@
+// error: constant data lives in ROM and is read-only
+struct X { f: bits { a } }
+const x = X {}
+fn init() { x.f.a = true }

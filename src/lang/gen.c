@@ -31,6 +31,7 @@ typedef struct {
     Type *ty;
     int frame_rel;        /* offset is relative to the caller's frame (incoming stack args) */
     int far;              /* a global above 0x20000 (lui base): its address always takes two instructions */
+    int bit_width, bit_shift; /* packed member metadata */
 } LV;
 typedef struct { Opnd o; Type *t; } Arg;
 
@@ -56,7 +57,7 @@ static int g_iobase_reg;           /* register holding 0xFF0000, or -1 */
 /* meic -g: out-of-line failure paths of run-time checks, emitted after the function's `ret`.
    They never return (the reporter halts), so they may clobber anything; they reset sp first,
    since the stack itself may be what failed. */
-typedef struct { int label; const char *msg; int idx_reg; int64_t len; } CheckStub;
+typedef struct { int label; const char *msg; int idx_reg; int64_t len; int len_reg; } CheckStub;
 static CheckStub *g_stubs;
 static int g_nstubs, g_capstubs;
 static Sym *g_div_chk;             /* set around the arith() of a checked division / multiply */
@@ -69,8 +70,14 @@ static int check_stub(Sym *msg, int idx_reg, int64_t len) {
         g_stubs = n;
         g_capstubs = nc;
     }
-    g_stubs[g_nstubs] = (CheckStub){++g_label, msg->label, idx_reg, len};
+    g_stubs[g_nstubs] = (CheckStub){++g_label, msg->label, idx_reg, len, -1};
     return g_stubs[g_nstubs++].label;
+}
+
+static int check_stub_dynamic(Sym *msg, int idx, int len) {
+    int label = check_stub(msg, idx, 0);
+    g_stubs[g_nstubs - 1].len_reg = len;
+    return label;
 }
 
 static const char *RN[16] = {"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "r13", "sp", "ra"};
@@ -300,6 +307,11 @@ static int is_small_int(Type *t) { t = ty_base(t); return t->k == TY_S8 || t->k 
 static void normalize(int d, int s, Type *t) {
     switch (ty_base(t)->k) {
     case TY_S8: I("shli %s, %s, 24", RN[d], RN[s]); I("sari %s, %s, 24", RN[d], RN[d]); break;
+    case TY_FIXED16:
+        I("shli %s, %s, 12", RN[d], RN[s]);
+        I("sari %s, %s, 16", RN[d], RN[d]);
+        I("shli %s, %s, 4", RN[d], RN[d]);
+        break;
     case TY_S16: I("shli %s, %s, 16", RN[d], RN[s]); I("sari %s, %s, 16", RN[d], RN[d]); break;
     case TY_U8: I("andi %s, %s, 255", RN[d], RN[s]); break;
     case TY_U16: I("andi %s, %s, 65535", RN[d], RN[s]); break;
@@ -369,7 +381,7 @@ static LV lv_local(Local *l) {
     }
     if (l->home == 2) return (LV){.k = LV_VREG, .reg = l->reg, .ty = l->ty};
     LV lv = lv_mem((Opnd){O_REG, 14}, l->off, l->ty);
-    if (l->is_param && !l->in_reg_arg) { lv.frame_rel = 1; lv.off = l->stack_arg_off; }
+    if (l->is_param && !l->in_reg_arg && l->ty->k != TY_FIXED16) { lv.frame_rel = 1; lv.off = l->stack_arg_off; }
     if (ty_is_aggr(l->ty) && l->is_param) {
         /* by-reference parameter spilled to memory: load the pointer */
         int t = tnew(0);
@@ -414,6 +426,14 @@ static void lv_index(LV *lv, Expr *idx, int size, Expr *chk) {
 
 /* An lvalue (or aggregate rvalue) in memory or a register. */
 static LV gen_aggr_lv(Expr *e);
+static Opnd load_lv(LV *lv, int hint);
+static Opnd lv_addr_copy(LV *lv);
+
+/* Load a descriptor word without re-evaluating its expression. */
+static Opnd slice_word(LV *lv, int off) {
+    LV w = lv_mem(lv_addr_copy(lv), off, ty_u32);
+    return load_lv(&w, -1);
+}
 
 static LV gen_lv(Expr *e) {
     switch (e->k) {
@@ -434,6 +454,24 @@ static LV gen_lv(Expr *e) {
         Type *bt = e->a->ty;
         LV lv;
         int size;
+        if (bt->k == TY_SLICE) {
+            LV descriptor = gen_aggr_lv(e->a);
+            Opnd ptr = slice_word(&descriptor, 0);
+            Opnd length = e->chk ? slice_word(&descriptor, 4) : (Opnd){O_NONE, 0};
+            lv_free(&descriptor);
+            Opnd idx = gen_expr(e->b, -1);
+            if (e->chk) {
+                int ri = R(&idx), rn = R(&length);
+                ri = R(&idx);
+                I("bgeu %s, %s, .L%d", RN[ri], RN[rn], check_stub_dynamic(e->chk, ri, rn));
+                ofree(length);
+            }
+            int sh = log2_exact(e->ty->size);
+            Opnd scaled = sh == 0 ? idx : sh > 0 ? arith(B_SHL, ty_s32, 0, idx, o_imm(sh), -1)
+                                                   : arith(B_MUL, ty_s32, 0, idx, o_imm(e->ty->size), -1);
+            Opnd addr = arith(B_ADD, ty_u32, 0, ptr, scaled, -1);
+            return lv_mem(addr, 0, e->ty);
+        }
         if (bt->k == TY_PTR) { lv = lv_mem(gen_expr(e->a, -1), 0, e->ty); size = e->ty->size; }
         else if (bt->k == TY_MAT4) { lv = gen_aggr_lv(e->a); size = 16; }
         else { lv = gen_aggr_lv(e->a); size = bt->elem->size; }
@@ -453,6 +491,7 @@ static LV gen_lv(Expr *e) {
             if (e->a->ty->k == TY_PTR) lv = lv_mem(gen_expr(e->a, -1), 0, e->ty);
             else lv = gen_aggr_lv(e->a);
             lv.off += e->field->offset;
+            lv.bit_width = e->field->bit_width; lv.bit_shift = e->field->bit_shift;
             lv.ty = e->ty;
             return lv;
         }
@@ -463,7 +502,7 @@ static LV gen_lv(Expr *e) {
         }
         break;
     }
-    case E_CALL: case E_ARRAY: case E_STRUCT: case E_MATCH:
+    case E_CALL: case E_ARRAY: case E_STRUCT: case E_MATCH: case E_CONV: case E_SLICE:
         if (ty_is_aggr(e->ty)) return gen_aggr_lv(e);
         break;
     default: break;
@@ -511,13 +550,65 @@ static const char *load_op(Type *t) {
     switch (ty_base(t)->k) {
     case TY_S8: return "lb";
     case TY_U8: case TY_BOOL: return "lbu";
-    case TY_S16: return "lh";
+    case TY_FIXED16: case TY_S16: return "lh";
     case TY_U16: return "lhu";
     default: return "lw";
     }
 }
 static const char *store_op(Type *t) {
     switch (t->size) { case 1: return "sb"; case 2: return "sh"; default: return "sw"; }
+}
+
+/* Packed accesses use bytes, so unaligned/cross-byte fields work without touching
+ * bytes beyond their group. Fields are least-significant bit first. */
+static Opnd load_packed(LV *lv, int hint, int keep) {
+    lv_fix(lv);
+    Opnd result = o_imm(0);
+    int left = lv->bit_width, shift = lv->bit_shift, out = 0, byte = 0;
+    while (left) {
+        int width = left < 8 - shift ? left : 8 - shift;
+        LV partlv = *lv; partlv.off += byte;
+        const char *m = mem(&partlv);
+        int r; Opnd part = dest(0, -1, &r);
+        I("lbu %s, %s", RN[r], m);
+        if (shift) part = arith(B_SHR, ty_u32, 0, part, o_imm(shift), -1);
+        part = arith(B_AND, ty_u32, 0, part, o_imm((1u << width) - 1), -1);
+        if (out) part = arith(B_SHL, ty_u32, 0, part, o_imm(out), -1);
+        result = arith(B_OR, ty_u32, 0, result, part, -1);
+        left -= width; out += width; shift = 0; byte++;
+    }
+    if (!keep) lv_free(lv);
+    if (hint >= 0) { move_to(result, hint, 0); ofree(result); return (Opnd){O_REG, hint}; }
+    return result;
+}
+
+static void store_packed(LV *lv, Opnd v, int keep) {
+    lv_fix(lv);
+    int left = lv->bit_width, shift = lv->bit_shift, input = 0, byte = 0;
+    while (left) {
+        int width = left < 8 - shift ? left : 8 - shift;
+        uint32_t mask = (1u << width) - 1;
+        LV partlv = *lv; partlv.off += byte;
+        int r; Opnd part = dest(0, -1, &r);
+        int source = R(&v); r = R(&part);
+        if (input) I("shri %s, %s, %d", RN[r], RN[source], input);
+        else I("mov %s, %s", RN[r], RN[source]);
+        part = arith(B_AND, ty_u32, 0, part, o_imm(mask), -1);
+        if (shift) part = arith(B_SHL, ty_u32, 0, part, o_imm(shift), -1);
+        if (width != 8) {
+            const char *m = mem(&partlv);
+            Opnd old = dest(0, -1, &r);
+            I("lbu %s, %s", RN[r], m);
+            old = arith(B_AND, ty_u32, 0, old, o_imm(255u ^ (mask << shift)), -1);
+            part = arith(B_OR, ty_u32, 0, old, part, -1);
+        }
+        r = R(&part);
+        I("sb %s, %s", RN[r], mem(&partlv));
+        ofree(part);
+        left -= width; input += width; shift = 0; byte++;
+    }
+    ofree(v);
+    if (!keep) lv_free(lv);
 }
 
 static Opnd load_lv(LV *lv, int hint) {
@@ -529,6 +620,7 @@ static Opnd load_lv(LV *lv, int hint) {
     default: break;
     }
     if (ty_is_aggr(t)) return lv_addr(lv);
+    if (lv->bit_width) return load_packed(lv, hint, 0);
     lv_fix(lv);
     const char *m = mem(lv);
     lv_free(lv);
@@ -536,6 +628,7 @@ static Opnd load_lv(LV *lv, int hint) {
     if (is_v(t)) { Opnd d = dest(1, hint, &r); I("vld %s, %s", VN[r], m); return d; }
     Opnd d = dest(0, hint, &r);
     I("%s %s, %s", load_op(t), RN[r], m);
+    if (t->k == TY_FIXED16) I("shli %s, %s, 4", RN[r], RN[r]);
     return d;
 }
 
@@ -543,16 +636,25 @@ static void copy_mem(LV *dst, LV *src, int size, int align);
 
 /* Stores `v` (of type vt) into lv. Consumes v. */
 static void store_lv_k(LV *lv, Opnd v, Type *vt, int keep) {
+    if (lv->bit_width) { store_packed(lv, v, keep); return; }
     Type *t = lv->ty;
     switch (lv->k) {
     case LV_REG:
-        if (is_small_int(t) && ty_base(vt) != ty_base(t)) { int s = R(&v); normalize(lv->reg, s, t); }
+        if ((is_small_int(t) || t->k == TY_FIXED16) && ty_base(vt) != ty_base(t)) { int s = R(&v); normalize(lv->reg, s, t); }
         else move_to(v, lv->reg, 0);
         ofree(v);
         return;
     case LV_VREG: move_to(v, lv->reg, 1); ofree(v); return;
     case LV_VLANE: { int s = R(&v); I("vset %s, %s, %d", VN[lv->reg], RN[s], lv->lane); ofree(v); return; }
     default: break;
+    }
+    if (t->k == TY_FIXED16) {
+        /* Memory holds signed 4.12; never alter a register still owned by a local. */
+        int tt = tnew(0);
+        int rr = R(&v);
+        I("sari %s, %s, 4", RN[treg(tt)], RN[rr]);
+        ofree(v);
+        v = o_tmp(tt);
     }
     lv_fix(lv);
     if (is_v(t)) {
@@ -944,16 +1046,59 @@ static void store_value_into(Expr *v, LV *dst) {
 /* Builds an aggregate value directly into memory. */
 static void gen_aggr_into(Expr *e, LV *dst) {
     Type *t = e->ty;
+    if (e->ty->k == TY_SLICE && e->k == E_CONV && e->a->ty->k == TY_ARRAY) {
+        LV backing = gen_aggr_lv(e->a);
+        Opnd ptr = lv_addr(&backing);
+        LV p = *dst; p.ty = ty_u32;
+        store_lv_k(&p, ptr, ty_u32, 1);
+        LV n = *dst; n.ty = ty_s32; n.off += 4;
+        store_lv_k(&n, o_imm(e->a->ty->n), ty_s32, 1);
+        return;
+    }
+    if (e->k == E_SLICE) {
+        Opnd ptr, len;
+        if (e->a->ty->k == TY_ARRAY) {
+            LV backing = gen_aggr_lv(e->a);
+            ptr = lv_addr(&backing); len = o_imm(e->a->ty->n);
+        } else {
+            LV backing = gen_aggr_lv(e->a);
+            ptr = slice_word(&backing, 0); len = slice_word(&backing, 4);
+            lv_free(&backing);
+        }
+        Opnd lo = gen_expr(e->args[0], -1), hi = gen_expr(e->args[1], -1);
+        if (e->chk) {
+            int rl = R(&lo), rh = R(&hi), rn = R(&len);
+            rl = R(&lo); rh = R(&hi);
+            int fail = check_stub(e->chk, -1, 0);
+            I("bgtu %s, %s, .L%d", RN[rl], RN[rh], fail);
+            I("bgtu %s, %s, .L%d", RN[rh], RN[rn], fail);
+        }
+        ofree(len);
+        /* Keep both bounds alive while computing the range length. */
+        Opnd count = owned(hi, 0);
+        Opnd lowcopy = owned(lo, 0);
+        int rlo = R(&lowcopy), rc = R(&count);
+        rlo = R(&lowcopy);
+        I("sub %s, %s, %s", RN[rc], RN[rc], RN[rlo]);
+        Opnd offset = arith(B_MUL, ty_s32, 0, lowcopy, o_imm(e->ty->elem->size), -1);
+        ptr = arith(B_ADD, ty_u32, 0, ptr, offset, -1);
+        LV p = *dst; p.ty = ty_u32;
+        store_lv_k(&p, ptr, ty_u32, 1);
+        LV n = *dst; n.ty = ty_s32; n.off += 4;
+        store_lv_k(&n, count, ty_s32, 1);
+        return;
+    }
     if (e->k == E_STRUCT) {
         int covered = 0;
         for (int i = 0; i < t->nfields; i++) covered += t->fields[i].type->size;
-        if (e->nargs < t->nfields || covered != t->size) zero_mem(dst, t->size, t->align);
+        if (t->packed_bits || e->nargs < t->nfields || covered != t->size) zero_mem(dst, t->size, t->align);
         for (int i = 0; i < e->nargs; i++) {
             Field *f = NULL;
             for (int j = 0; j < t->nfields; j++) if (!strcmp(t->fields[j].name, e->fnames[i])) f = &t->fields[j];
             LV d = *dst;
             d.off += f->offset;
             d.ty = f->type;
+            d.bit_width = f->bit_width; d.bit_shift = f->bit_shift;
             store_value_into(e->args[i], &d);
         }
         return;
@@ -977,13 +1122,13 @@ static LV gen_match_aggr(Expr *e);
 static Opnd gen_match_expr(Expr *e, int hint);
 
 static LV gen_aggr_lv(Expr *e) {
-    if (e->k == E_CALL && e->bi == BI_MAP) return gen_intrinsic_aggr(e);
+    if (e->k == E_CALL && (e->bi == BI_MAP || (e->bi == BI_MAP_INTO && e->ty->k == TY_SLICE))) return gen_intrinsic_aggr(e);
     if (e->k == E_CALL && (e->callee || e->indirect) && !e->bi) {
         LV out;
         gen_call(e, -1, &out);
         return out;
     }
-    if (e->k == E_STRUCT || e->k == E_ARRAY) {
+    if (e->k == E_STRUCT || e->k == E_ARRAY || e->k == E_SLICE || (e->k == E_CONV && e->ty->k == TY_SLICE && e->a->ty->k == TY_ARRAY)) {
         int slot = slot_alloc(e->ty->size);
         LV d = lv_mem((Opnd){O_REG, 14}, slot, e->ty);
         gen_aggr_into(e, &d);
@@ -1381,12 +1526,14 @@ static Opnd gen_conv(Expr *e, int hint) {
     }
     if (ty_is_aggr(to)) ice("aggregate conversion");
     /* conversions that change nothing in a register: let the operand use the hint */
-    int noop = (from->k == TY_FIXED) == (to->k == TY_FIXED) &&
+    int fromfx = from->k == TY_FIXED || from->k == TY_FIXED16;
+    int tofx = to->k == TY_FIXED || to->k == TY_FIXED16;
+    int noop = fromfx == tofx && to->k != TY_FIXED16 &&
                !(is_small_int(to) && (from->size > to->size || ty_is_signed(from) != ty_is_signed(to)));
     if (noop) return gen_expr(e->a, hint);
     Opnd a = gen_expr(e->a, -1);
     int r;
-    if (from->k == TY_FIXED && to->k != TY_FIXED) {
+    if (fromfx && !tofx) {
         int ra = R(&a);
         ofree(a);
         Opnd d = dest(0, hint, &r);
@@ -1394,11 +1541,19 @@ static Opnd gen_conv(Expr *e, int hint) {
         if (is_small_int(to)) normalize(r, r, to);
         return d;
     }
-    if (to->k == TY_FIXED && from->k != TY_FIXED) {
+    if (tofx && !fromfx) {
         int ra = R(&a);
         ofree(a);
         Opnd d = dest(0, hint, &r);
         I("shli %s, %s, 16", RN[r], RN[ra]);
+        if (to->k == TY_FIXED16) normalize(r, r, to);
+        return d;
+    }
+    if (to->k == TY_FIXED16) {
+        int ra = R(&a);
+        ofree(a);
+        Opnd d = dest(0, hint, &r);
+        normalize(r, ra, to);
         return d;
     }
     if (is_small_int(to) && (from->size > to->size || ty_is_signed(from) != ty_is_signed(to))) {
@@ -1455,7 +1610,20 @@ static Opnd gen_builtin(Expr *e, int hint) {
         I("vcross %s, %s, %s", VN[r], VN[rx], VN[ry]);
         return d;
     }
-    case BI_BITS: case BI_FROM_BITS: case BI_RAW: return gen_expr(a[0], hint);
+    case BI_BITS:
+        if (a[0]->ty->k == TY_FIXED16)
+            return arith(B_SHR, ty_s32, 0, gen_expr(a[0], -1), o_imm(4), hint);
+        return gen_expr(a[0], hint);
+    case BI_FROM_BITS16: {
+        Opnd x = gen_expr(a[0], -1);
+        int rx = R(&x);
+        ofree(x);
+        Opnd d = dest(0, hint, &r);
+        I("shli %s, %s, 16", RN[r], RN[rx]);
+        I("sari %s, %s, 12", RN[r], RN[r]);
+        return d;
+    }
+    case BI_FROM_BITS: case BI_RAW: return gen_expr(a[0], hint);
     case BI_ABS: {
         Opnd x = gen_expr(a[0], -1);
         int rx = R(&x);
@@ -1557,7 +1725,21 @@ static void bump_local(Local *l, int32_t delta) {
     set_local(l, r, l->ty);
 }
 
+static Opnd seq_len(Expr *x) {
+    if (x->ty->k != TY_SLICE) return o_imm(x->ty->n);
+    LV lv = gen_aggr_lv(x);
+    Opnd n = slice_word(&lv, 4);
+    lv_free(&lv);
+    return n;
+}
+
 static Opnd seq_addr(Expr *x) {
+    if (x->ty->k == TY_SLICE) {
+        LV lv = gen_aggr_lv(x);
+        Opnd ptr = slice_word(&lv, 0);
+        lv_free(&lv);
+        return ptr;
+    }
     if (x->ty->k == TY_ARRAY) { LV lv = gen_aggr_lv(x); return lv_addr(&lv); }
     return gen_expr(x, -1);
 }
@@ -1571,13 +1753,59 @@ static Opnd gen_intrinsic(Expr *e, int hint, LV *into) {
     Type *T = xs->ty->elem, *ft = f->ty, *U = ft->elem;
     Local *cnt = e->hid[0], *src = e->hid[1], *dst = e->hid[2], *fv = e->hid[3], *acc = e->hid[4];
     flush_temps();
+    /* Evaluate slice descriptors once; pointer and length must describe the same value. */
+    Expr xcopy = *xs, ocopy;
+    if (xs->ty->k == TY_SLICE) {
+        LV value = gen_aggr_lv(xs);
+        int slot = slot_alloc(8);
+        LV saved = lv_mem((Opnd){O_REG, 14}, slot, xs->ty);
+        copy_mem(&saved, &value, 8, 4); lv_free(&value);
+        Local *l = ar_alloc(sizeof *l); l->ty = xs->ty; l->off = slot;
+        Sym *s = ar_alloc(sizeof *s); s->k = SY_LOCAL; s->local = l;
+        xcopy.k = E_NAME; xcopy.sym = s; xs = &xcopy;
+    }
+    Expr *out = has_out ? e->args[0] : NULL;
+    if (out && out->ty->k == TY_SLICE) {
+        LV value = gen_aggr_lv(out);
+        int slot = slot_alloc(8);
+        LV saved = lv_mem((Opnd){O_REG, 14}, slot, out->ty);
+        copy_mem(&saved, &value, 8, 4); lv_free(&value);
+        Local *l = ar_alloc(sizeof *l); l->ty = out->ty; l->off = slot;
+        Sym *s = ar_alloc(sizeof *s); s->k = SY_LOCAL; s->local = l;
+        ocopy = *out; ocopy.k = E_NAME; ocopy.sym = s; out = &ocopy;
+    }
     /* set up: source, destination, count, function, accumulator */
     set_local(src, seq_addr(xs), ty_u32);
-    if (has_out) set_local(dst, seq_addr(e->args[0]), ty_u32);
+    if (has_out) set_local(dst, seq_addr(out), ty_u32);
     else if (bi == BI_FILTER) set_local(dst, get_local(src), ty_u32);
     else if (bi == BI_MAP) set_local(dst, lv_addr_copy(into), ty_u32);
     if (e->has_count) set_local(cnt, gen_expr(e->args[e->nargs - 1], -1), ty_s32);
-    else set_local(cnt, o_imm(xs->ty->n), ty_s32);
+    else set_local(cnt, seq_len(xs), ty_s32);
+    if (e->chk) {
+        int fail = check_stub(e->chk, -1, 0);
+        Opnd n = get_local(cnt);
+        int rn = R(&n);
+        I("bgt r0, %s, .L%d", RN[rn], fail);
+        if (xs->ty->k != TY_PTR) {
+            Opnd cap = seq_len(xs);
+            int rcap = R(&cap); rn = R(&n);
+            I("bgtu %s, %s, .L%d", RN[rn], RN[rcap], fail);
+            ofree(cap);
+        }
+        if (has_out && e->args[0]->ty->k != TY_PTR) {
+            Opnd cap = seq_len(out);
+            int rcap = R(&cap); rn = R(&n);
+            I("bgtu %s, %s, .L%d", RN[rn], RN[rcap], fail);
+            ofree(cap);
+        }
+        ofree(n);
+    }
+    if (e->ty->k == TY_SLICE) {
+        LV p = *into; p.ty = ty_u32;
+        store_lv_k(&p, get_local(dst), ty_u32, 1);
+        LV n = *into; n.ty = ty_s32; n.off += 4;
+        store_lv_k(&n, get_local(cnt), ty_s32, 1);
+    }
     if (fv) set_local(fv, gen_expr(f, -1), ft);
     int ncaps = e->target ? e->target->ncaps : 0;
     for (int k = 0; k < ncaps; k++) {
@@ -1613,6 +1841,7 @@ static Opnd gen_intrinsic(Expr *e, int hint, LV *into) {
             const char *m = mem(&el);
             lv_free(&el);
             I("%s %s, %s", vec ? "vld" : load_op(T), vec ? VN[areg] : RN[areg], m);
+            if (T->k == TY_FIXED16) I("shli %s, %s, 4", RN[areg], RN[areg]);
             args[na++] = (Arg){o_tmp(t), T};
         } else args[na++] = (Arg){load_lv(&el, -1), T};
     }
@@ -1866,12 +2095,14 @@ static Opnd gen_expr(Expr *e, int hint) {
     }
     case E_BINARY: return gen_binary(e, hint);
     case E_CALL:
-        if (e->bi == BI_MAP) { LV lv = gen_intrinsic_aggr(e); return lv_addr(&lv); }
+        if (e->bi == BI_MAP || (e->bi == BI_MAP_INTO && e->ty->k == TY_SLICE)) { LV lv = gen_intrinsic_aggr(e); return lv_addr(&lv); }
+        if (e->bi == BI_LEN) return seq_len(e->args[0]);
         if (e->bi >= BI_MAP) return gen_intrinsic(e, hint, NULL);
         if (e->bi == BI_LERP && !is_v(e->ty)) return gen_lerp_scalar(e, hint);
         if (e->bi) return gen_builtin(e, hint);
         if (ty_is_aggr(e->ty)) { LV out; gen_call(e, -1, &out); return lv_addr(&out); }
         return gen_call(e, hint, NULL);
+    case E_SLICE: { LV lv = gen_aggr_lv(e); return lv_addr(&lv); }
     case E_INDEX: case E_FIELD:
         if (e->k == E_FIELD && !e->field) {
             /* vector lanes */
@@ -2079,14 +2310,18 @@ static void gen_compound(Stmt *s) {
     LV lv = gen_lv(s->e);
     Opnd cur;
     int hint = -1;
-    if (lv.k == LV_MEM) {
+    if (lv.bit_width) cur = load_packed(&lv, -1, 1);
+    else if (lv.k == LV_MEM) {
         /* load without consuming the address: it is used again by the store */
         lv_fix(&lv);
         int r;
         Type *t = lv.ty;
         const char *m = mem(&lv);
         if (is_v(t)) { cur = dest(1, -1, &r); I("vld %s, %s", VN[r], m); }
-        else { cur = dest(0, -1, &r); I("%s %s, %s", load_op(t), RN[r], m); }
+        else {
+            cur = dest(0, -1, &r); I("%s %s, %s", load_op(t), RN[r], m);
+            if (t->k == TY_FIXED16) I("shli %s, %s, 4", RN[r], RN[r]);
+        }
     } else {
         cur = load_lv(&lv, -1);
         if (lv.k == LV_REG || lv.k == LV_VREG) hint = lv.reg;
@@ -2189,7 +2424,7 @@ static void gen_stmt(Stmt *s) {
     case S_EXPR: {
         Expr *e = s->e;
         Opnd o;
-        if (e->bi >= BI_MAP) { if (e->bi == BI_MAP) gen_intrinsic_aggr(e); else ofree(gen_intrinsic(e, -1, NULL)); o.k = O_NONE; }
+        if (e->bi >= BI_MAP) { if (e->bi == BI_MAP || (e->bi == BI_MAP_INTO && e->ty->k == TY_SLICE)) gen_intrinsic_aggr(e); else ofree(gen_intrinsic(e, -1, NULL)); o.k = O_NONE; }
         else if (ty_is_aggr(e->ty)) { LV out; gen_call(e, -1, &out); o.k = O_NONE; }
         else o = gen_expr(e, -1);
         ofree(o);
@@ -2826,7 +3061,7 @@ static void assign_homes(Func *f, int *locals_size) {
     for (int i = 0; i < f->nlocals; i++) {
         Local *l = f->locals[i];
         if (l->home) continue;
-        if (l->is_param && !l->in_reg_arg) continue;   /* stays in the caller's frame */
+        if (l->is_param && !l->in_reg_arg && l->ty->k != TY_FIXED16) continue;   /* stays in the caller's frame */
         if (l->dead || l->elided) continue;
         int size = (ty_is_aggr(l->ty) && l->is_param) ? 4 : l->ty->size;
         off = (off + 3) & ~3;
@@ -3055,11 +3290,23 @@ static void gen_func(Func *f, Buf *out) {
     int nm = 0, nvm = 0, vbusy = 0;
     for (int i = 0; i < norder; i++) {
         Local *l = order[i];
-        if (!l->in_reg_arg) continue;
+        if (!l->in_reg_arg) {
+            if (l->home == 0 && l->ty->k == TY_FIXED16) {
+                /* Copy the canonical ABI word before any parameter moves can occupy r5. */
+                I("lw r5, [sp+%d+\001]", l->stack_arg_off);
+                I("sari r5, r5, 4");
+                I("sh r5, [sp+%d]", l->off);
+            }
+            continue;
+        }
         if (l->home == 0) {
             if (is_v(l->ty)) I("vst %s, [sp+%d]", VN[l->arg_reg], l->off);
             else if (ty_is_aggr(l->ty)) I("sw %s, [sp+%d]", RN[l->arg_reg], l->off);
-            else I("%s %s, [sp+%d]", store_op(l->ty), RN[l->arg_reg], l->off);
+            else if (l->ty->k == TY_FIXED16) {
+                /* r5 is free at entry: argument/capture registers must survive the moves. */
+                I("sari r5, %s, 4", RN[l->arg_reg]);
+                I("sh r5, [sp+%d]", l->off);
+            } else I("%s %s, [sp+%d]", store_op(l->ty), RN[l->arg_reg], l->off);
         } else if (l->home == 1 && l->reg != l->arg_reg) mv[nm++] = (Move){l->arg_reg, l->reg};
         else if (l->home == 2) {
             vbusy |= 1 << l->arg_reg | 1 << l->reg;
@@ -3082,6 +3329,7 @@ static void gen_func(Func *f, Buf *out) {
         if (l->in_reg_arg) continue;
         if (l->home == 1) I("lw %s, [sp+%d+\001]", RN[l->reg], l->stack_arg_off);
         else if (l->home == 2) I("vld %s, [sp+%d+\001]", VN[l->reg], l->stack_arg_off);
+
     }
     if (g_iobase_reg >= 0) I("lui %s, %u", RN[g_iobase_reg], IO_BASE_ADDR >> 10);
 
@@ -3133,8 +3381,11 @@ static void gen_func(Func *f, Buf *out) {
         if (k->label == stack_stub && !frame) continue;
         buf_printf(out, ".L%d:\n", k->label);
         if (k->idx_reg >= 0) {
+            int scratch = k->idx_reg == 1 ? 4 : 1;
+            if (k->len_reg >= 0) buf_printf(out, "    mov %s, %s\n", RN[scratch], RN[k->len_reg]);
             if (k->idx_reg != 2) buf_printf(out, "    mov r2, %s\n", RN[k->idx_reg]);
-            buf_printf(out, "    li r3, %lld\n", (long long)k->len);
+            if (k->len_reg >= 0) buf_printf(out, "    mov r3, %s\n", RN[scratch]);
+            else buf_printf(out, "    li r3, %lld\n", (long long)k->len);
         }
         buf_printf(out, "    la r1, %s\n    lui sp, %u\n    call %s\n", k->msg, 0x200000u >> 10,
                    k->idx_reg >= 0 ? "F___bounds_fail" : "F___check_fail");
@@ -3157,7 +3408,18 @@ static void serialize(Expr *e, Type *t, uint8_t *buf, uint8_t *base) {
     if (e->k == E_STRUCT) {
         for (int i = 0; i < e->nargs; i++)
             for (int j = 0; j < t->nfields; j++)
-                if (!strcmp(t->fields[j].name, e->fnames[i])) serialize(e->args[i], t->fields[j].type, buf + t->fields[j].offset, base);
+                if (!strcmp(t->fields[j].name, e->fnames[i])) {
+                    Field *f = &t->fields[j];
+                    if (f->bit_width) {
+                        uint32_t value = (uint32_t)e->args[i]->cval;
+                        for (int bit = 0; bit < f->bit_width; bit++) {
+                            int pos = f->bit_shift + bit;
+                            uint8_t mask = (uint8_t)(1u << (pos % 8));
+                            uint8_t *dst = buf + f->offset + pos / 8;
+                            *dst = (uint8_t)((*dst & ~mask) | (((value >> bit) & 1) ? mask : 0));
+                        }
+                    } else serialize(e->args[i], f->type, buf + f->offset, base);
+                }
         return;
     }
     const char *label = const_addr_label(e);
@@ -3182,7 +3444,7 @@ static void serialize(Expr *e, Type *t, uint8_t *buf, uint8_t *base) {
         }
         return;
     }
-    uint32_t v = (uint32_t)e->cval;
+    uint32_t v = (uint32_t)(t->k == TY_FIXED16 ? e->cval >> 4 : e->cval);
     for (int k = 0; k < t->size; k++) buf[k] = (uint8_t)(v >> (8 * k));
 }
 
@@ -3273,7 +3535,7 @@ static void warn_entry_points(Program *P) {
     }
     for (int i = 0; i < P->nfuncs; i++) {
         Func *f = P->funcs[i];
-        if (f->reachable || f->is_lambda || !f->sym || !f->sym->user) continue;
+        if (f->reachable || f->is_lambda || !f->sym || !f->sym->user || f->sym->module) continue;
         int warned = 0;
         for (int k = 0; k < 3 && !warned; k++)
             if (!have[k] && strcmp(f->name, entries[k]) && near_miss(f->name, entries[k])) {
@@ -3421,7 +3683,16 @@ static uint32_t text_clobbers(const char *t, size_t len) {
 
 void gen_program(Program *P, Buf *out) {
     g_P = P;
+    g_fn = NULL;
     g_label = 0;
+    /* These reusable buffers belong to the compilation arena, which the driver frees
+       between API calls. Keep reuse within one program, never across compilations. */
+    g_loops = NULL;
+    g_nloops = g_caploops = 0;
+    g_relocs = NULL;
+    g_nrelocs = g_caprelocs = 0;
+    g_ret_into = NULL;
+    buf_free(&g_body);   /* also recover a partially generated body after an error */
     g_stubs = NULL;
     g_nstubs = g_capstubs = 0;
     g_vconsts = NULL;
@@ -3496,13 +3767,13 @@ void gen_program(Program *P, Buf *out) {
     /* entry point and frame loop */
     buf_puts(out, "\n__start:\n");
     if (P->init_fn->body->n) buf_puts(out, "    call F__init_globals\n");
-    if (roots[0]) buf_puts(out, "    call F___rt_init\n");
-    if (roots[1]) buf_puts(out, "    call F_init\n");
+    if (roots[0]) buf_printf(out, "    call %s\n", roots[0]->label);
+    if (roots[1]) buf_printf(out, "    call %s\n", roots[1]->label);
     buf_puts(out, ".frame:\n");
-    if (roots[2]) buf_puts(out, "    call F___rt_frame_begin\n");
-    if (roots[3]) buf_puts(out, "    call F_update\n");
-    if (roots[4]) buf_puts(out, "    call F_draw\n");
-    if (roots[5]) buf_puts(out, "    call F___rt_frame_end\n");
+    if (roots[2]) buf_printf(out, "    call %s\n", roots[2]->label);
+    if (roots[3]) buf_printf(out, "    call %s\n", roots[3]->label);
+    if (roots[4]) buf_printf(out, "    call %s\n", roots[4]->label);
+    if (roots[5]) buf_printf(out, "    call %s\n", roots[5]->label);
     else buf_puts(out, "    vsync\n");
     buf_puts(out, "    jmp .frame\n");
 

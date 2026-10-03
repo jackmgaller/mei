@@ -1,0 +1,7 @@
+// flags: --release
+// exit: 2
+var data: [3]s32
+var output: [2]s32
+fn get(s: []s32) -> []s32 { return map(s, fn(x) => x, output) }
+fn init() { let s = get(data) }
+// expect: check failed: slices_map_capacity.akr:5: sequence count exceeds slice or output capacity

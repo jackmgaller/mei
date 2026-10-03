@@ -1,0 +1,65 @@
+import "lib/ns/math.akr" as a
+import "lib/ns/./math.akr" as again
+import "lib/ns/math.akr" as a
+import "lib/ns/other.akr" as b
+import "lib/ns/nested.akr" as nested
+const VALUE = 100
+var count = 200
+struct State { value: s32 }
+fn value() -> s32 { return VALUE }
+fn a.hook(n: s32) -> s32 { return n * 10 }
+asm fn adapter() -> s32 {
+    addi sp, sp, -4
+    sw ra, [sp]
+    call {a.value}
+    lw ra, [sp]
+    addi sp, sp, 4
+    ret
+}
+fn show(n: s32) { print_int(n); println("") }
+fn init() {
+    show(a.VALUE + b.VALUE + VALUE) // expect: 110
+    show(a.value() + b.value() + value()) // expect: 121
+    a.count += 1
+    show(again.count) // expect: 4
+    show(count) // expect: 200
+    var s: a.State = a.State { n: 42 }
+    show(a.read(s)) // expect: 42
+    show(a.read(a.State {})) // expect: 3
+    show(a.make(9).n) // expect: 9
+    show(sizeof(a.State)) // expect: 4
+    var mode: a.Mode = a.Mode.Run
+    show(a.mode(mode)) // expect: 1
+    show(a.Mode(0) as s32) // expect: 0
+    show(b.Mode.Run as s32) // expect: 5
+    show(len(a.Mode)) // expect: 2
+    show(a.DATA[2]) // expect: 5
+    let f = a.value
+    show(f()) // expect: 15
+    let callbacks: [1]fn() -> s32 = [a.value]
+    show(callbacks[0]()) // expect: 15
+    show(a.invoke(3)) // expect: 30
+    show(a.asm_value()) // expect: 15
+    show(adapter()) // expect: 15
+    var raw: s32 = 0
+    asm {
+        lw {raw}, [{a.count}]
+        addi {raw}, {raw}, {a.VALUE}
+    }
+    show(raw) // expect: 7
+    asm {
+        call {a.value}
+        mov {raw}, r1
+    }
+    show(raw) // expect: 15
+    show(nested.sum()) // expect: 23
+    show(a.init(8)) // expect: 9
+    show(a.default_hook(1)) // expect: 7
+    show(a.private_reader()) // expect: 13
+    show(len(a.ASSET)) // expect: 16
+    show(a.ASSET[5] as s32) // expect: 5
+    let address = &a.PAD
+    show((address as u32 == 0xFF0014 as u32) as s32) // expect: 1
+    let a = State { value: 17 }
+    show(a.value) // expect: 17
+}

@@ -1,0 +1,3 @@
+// error: cannot return a slice of local storage
+struct H {a: [3]s32}
+fn bad() -> []s32 { var h: H; return h.a[0..2] }

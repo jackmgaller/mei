@@ -77,6 +77,8 @@ typedef enum {
     TY_NULL,      /* type of `null` */
     TY_FUNC,      /* function value: 16 bytes, [code address, 3 captured words]; elem = result,
                      params = parameter types. Held in vector registers like a vec4. */
+    TY_FIXED16,   /* signed 4.12 in memory; canonical 16.16 in scalar registers */
+    TY_SLICE,     /* 8-byte descriptor: element pointer and s32 length */
     TY_ENUM,      /* enumeration: elem = underlying integer type */
 } TyKind;
 
@@ -85,6 +87,7 @@ typedef struct Field {
     const char *name; Type *type; int offset; Loc loc;
     struct Expr *def;      /* default value for struct literals that omit the field, or NULL */
     int def_checked;
+    int bit_width, bit_shift; /* packed field: bits from offset byte; zero width: ordinary */
 } Field;
 
 struct Type {
@@ -97,6 +100,10 @@ struct Type {
     int layout;            /* struct: 0 not laid out, 1 in progress, 2 done */
     Loc loc;
     struct StructDecl *decl;
+    int packed_bits;       /* anonymous bits group; byte-aligned aggregate */
+    int readonly;         /* TY_SLICE: backing elements are read-only */
+    Type *readonly_slice_cache;
+    Type *slice_cache;     /* interned []T */
     Type *ptr_cache;       /* interned *T */
     Type *arr_list;        /* interned arrays of this element type */
     Type *arr_sib;         /* next array type in the element's arr_list */
@@ -106,12 +113,13 @@ struct Type {
     const char **vnames; int64_t *vvals; int nvariants;   /* TY_ENUM, after resolution */
 };
 
-extern Type *ty_void, *ty_bool, *ty_s8, *ty_s16, *ty_s32, *ty_u8, *ty_u16, *ty_u32, *ty_fixed,
+extern Type *ty_void, *ty_bool, *ty_s8, *ty_s16, *ty_s32, *ty_u8, *ty_u16, *ty_u32, *ty_fixed, *ty_fixed16,
             *ty_vec2, *ty_vec3, *ty_vec4, *ty_ivec4, *ty_mat4, *ty_uint, *ty_ufixed, *ty_null;
 
 void types_init(void);
 Type *ty_ptr(Type *t);
 Type *ty_array(Type *t, int64_t n);
+Type *ty_slice(Type *t);
 const char *ty_str(Type *t);
 int ty_is_int(Type *t);       /* s8..u32 (not untyped) */
 int ty_is_signed(Type *t);
@@ -131,7 +139,9 @@ typedef enum {
 } OpKind;
 
 typedef struct TypeExpr {
-    int k;                 /* 0 name, 1 pointer, 2 array, 3 function */
+    int readonly;          /* []const T */
+    int k;                 /* 0 name, 1 pointer, 2 array, 3 function, 4 slice, 5 bits */
+    struct StructDecl *bits; /* inline packed group declaration */
     Loc loc;
     const char *name;
     struct TypeExpr *elem;   /* pointer/array element; function result (NULL: none) */
@@ -143,6 +153,7 @@ typedef struct TypeExpr {
 typedef enum {
     E_INT, E_FIXED, E_BOOL, E_STR, E_NULL, E_NAME, E_UNARY, E_BINARY, E_CALL,
     E_INDEX, E_FIELD, E_CAST, E_ARRAY, E_STRUCT, E_SIZEOF, E_CONV,
+    E_SLICE,      /* sequence[lo..hi]: args[0:2] bounds */
     E_FUNC,       /* function literal */
     E_MATCH,      /* match expression: a = scrutinee, arms[i].value the arm values */
 } ExprKind;
@@ -152,6 +163,7 @@ typedef enum {
     BI_NONE, BI_VEC2, BI_VEC3, BI_VEC4, BI_IVEC4, BI_DOT, BI_CROSS, BI_LEN,
     BI_BITS, BI_FROM_BITS, BI_ABS, BI_MIN, BI_MAX, BI_CLAMP, BI_LERP, BI_LENGTH, BI_NORMALIZE,
     BI_NCLIP, BI_OTZ, BI_CLERP,     /* the geometry instructions of the same names */
+    BI_FROM_BITS16,               /* signed raw 4.12 -> fixed16 */
     BI_KIND, BI_RAW,                /* assert_eq() reports: a value's print kind, its raw 32 bits */
     BI_MAP, BI_MAP_INTO, BI_FILTER, BI_FILTER_INTO, BI_REDUCE, BI_EACH,
 } Builtin;
@@ -235,6 +247,7 @@ struct Local {
     int64_t rlo, rhi;
     int is_capture;       /* a function literal's copy of a captured local (arrives in r6-r8) */
     int points_local;     /* pointer seen holding the address of local storage (dangling check) */
+    int borrows_param;    /* slice/aggregate local may refer to caller-owned storage */
     int addr_taken;
     int in_asm;           /* named in an inline asm block: must live in a register */
     Sym *csym;            /* a local `const`: its constant (the Local only names it in a scope) */
@@ -319,6 +332,7 @@ struct Sym {
     int is_str;            /* SY_DATA string literal */
     const char *str; size_t slen;
     int user;              /* declared by the cart (not the standard library) */
+    int module;            /* isolated source module number, or 0 for legacy global names */
     int priv;              /* `private`: visible in its file only; the file's number (from 1) */
     struct Func **dfuncs; int ndfuncs, capdfuncs;   /* SY_DATA: functions named in the data */
 };
@@ -330,6 +344,7 @@ typedef struct EnumDecl {
 } EnumDecl;
 
 typedef struct StructDecl { const char *name; Loc loc; const char **fnames; TypeExpr **ftypes; Loc *flocs; int nf; Type *ty;
+                            struct Expr **fwidths; /* packed member widths (NULL: bool flag) */
                             struct Expr **fdefs; /* field defaults (NULL entries: none) */ } StructDecl;
 
 typedef struct Program {
@@ -365,6 +380,7 @@ struct Compiler {
 };
 /* Imports `path` (relative to `from_file`); each file is parsed once. */
 void compiler_import(Compiler *C, const char *from_file, const char *path, Loc loc);
+void compiler_import_as(Compiler *C, const char *from_file, const char *path, const char *alias, Loc loc);
 /* Loads a binary file relative to from_file (for embed). */
 const uint8_t *compiler_load_binary(Compiler *C, const char *from_file, const char *path, Loc loc, size_t *len);
 
@@ -381,6 +397,14 @@ void sym_define_private(Sym *s, const char *file);    /* sets s->priv */
 void mark_stdlib_file(const char *path);
 int file_is_stdlib(const char *path);
 void symtab_reset(void);
+void module_begin(const char *file, int isolated);
+int file_is_module(const char *file);
+Sym *sym_lookup_module(const char *name, const char *file, int public_only);
+void sym_define_module(Sym *s, const char *file);
+void module_import(const char *from, const char *target, const char *alias, Loc loc);
+int module_has_alias(const char *file, const char *name);
+Sym *sym_lookup_qualified(const char *name, const char *file);
+void module_publish(const char *file, Program *P);
 
 /* ---------------------------------------------------------------- check.c */
 

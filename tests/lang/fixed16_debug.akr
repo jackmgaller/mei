@@ -1,0 +1,11 @@
+// Narrowing wraps in debug mode; promoted arithmetic still uses fixed overflow checks.
+// flags: --trap-fmul
+// exit: 2
+var x: fixed16 = 7.0
+fn init() {
+    x += 2.0
+    assert_eq(bits(x), -28672)
+    let y = x * 10000.0
+    print_fixed(y)
+}
+// expect: check failed: fixed16_debug.akr:8: fixed-point multiply overflow

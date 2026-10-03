@@ -1,0 +1,4 @@
+import "lib/ns/weak.akr" as hooks
+import "lib/ns/weak.akr"
+fn hook(n: s32) -> s32 { return n * 2 }
+fn init() { print_int(hooks.invoke(3)); println("") } // expect: 6

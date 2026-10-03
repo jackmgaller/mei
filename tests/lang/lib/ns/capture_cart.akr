@@ -1,0 +1,1 @@
+fn test() -> s32 { return cart_only() }

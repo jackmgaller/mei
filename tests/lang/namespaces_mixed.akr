@@ -1,0 +1,7 @@
+import "lib/ns/plain.akr" as first
+import "lib/ns/plain.akr"
+import "lib/ns/plain.akr" as second
+fn init() {
+    print_int(first.ns_plain_value() + ns_plain_value() + second.NS_PLAIN)
+    println("") // expect: 24
+}

@@ -1,0 +1,41 @@
+// Compare folded conversions with runtime conversion across the complete raw range.
+var raw_input: s32
+var integer_input: s32
+var fraction: fixed
+fn init() {
+    for i in -32768..32768 {
+        raw_input = i
+        let compact = from_bits16(raw_input)
+        assert_eq(bits(compact), i)
+        assert_eq(bits(fixed(compact)), i << 4)
+        var memory: [2]fixed16
+        memory[0] = compact
+        memory[1] = compact
+        assert_eq(bits(memory[0]), i)
+        assert_eq(bits(memory[1]), i)
+    }
+    for i in -64..64 {
+        integer_input = i
+        assert_eq(bits(fixed16(integer_input)), s16(i << 12))
+    }
+    fraction = from_bits(-1)
+    assert_eq(bits(fixed16(fraction)), -1)
+    assert_eq(bits(fixed16(from_bits(-1))), -1)
+    fraction = from_bits(15)
+    assert_eq(bits(fixed16(fraction)), 0)
+    assert_eq(bits(fixed16(from_bits(15))), 0)
+    fraction = from_bits(-17)
+    assert_eq(bits(fixed16(fraction)), -2)
+    assert_eq(bits(fixed16(from_bits(-17))), -2)
+    fraction = from_bits(524287)
+    assert_eq(bits(fixed16(fraction)), 32767)
+    assert_eq(bits(fixed16(from_bits(524287))), 32767)
+    fraction = from_bits(524288)
+    assert_eq(bits(fixed16(fraction)), -32768)
+    assert_eq(bits(fixed16(from_bits(524288))), -32768)
+    fraction = from_bits(-524289)
+    assert_eq(bits(fixed16(fraction)), 32767)
+    assert_eq(bits(fixed16(from_bits(-524289))), 32767)
+    print("fixed16 rounding ok\n") // expect: fixed16 rounding ok
+}
+// frames: 20

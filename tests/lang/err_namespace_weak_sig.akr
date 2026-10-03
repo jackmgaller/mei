@@ -1,0 +1,6 @@
+// error: must have the same parameter and result types
+import "lib/ns/math.akr" as a
+import "lib/ns/other.akr" as b
+import "lib/ns/nested.akr" as nested
+fn show(n: s32) {}
+fn a.hook(n: u32) -> s32 { return n as s32 }

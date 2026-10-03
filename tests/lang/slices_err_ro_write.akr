@@ -1,0 +1,3 @@
+// error: slice elements are read-only
+const xs: [2]s32 = [1, 2]
+fn init() { let s: []const s32 = xs; s[0] = 3 }

@@ -1,0 +1,3 @@
+// error: cannot store a slice of local storage outside its function
+var saved: []s32
+fn save(s: []s32) { saved = s }

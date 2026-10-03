@@ -1,0 +1,2 @@
+import "lib/ns/entry.akr" as module
+fn init() { println("cart init") } // expect: cart init

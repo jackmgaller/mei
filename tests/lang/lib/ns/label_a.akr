@@ -1,0 +1,6 @@
+asm fn value() -> s32 {
+    li r1, 2
+    jmp .done
+.done:
+    ret
+}

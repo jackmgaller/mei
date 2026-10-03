@@ -1,0 +1,4 @@
+// error: slice elements are read-only
+var data: [2]s32
+var nested: [1][]s32 = [data]
+fn init() { var readonly: [1][]const s32 = [data]; readonly[0][0] = 99 }

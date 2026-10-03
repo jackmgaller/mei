@@ -1,0 +1,2 @@
+// error: cannot return a slice of local storage
+fn bad() -> []s32 { var a: [2]s32; let p = &a; return (*p)[0..2] }

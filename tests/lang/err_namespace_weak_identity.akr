@@ -1,0 +1,5 @@
+// error: must have the same parameter and result types
+import "lib/ns/math.akr" as a
+import "lib/ns/other.akr" as b
+fn a.state_hook(s: b.State) -> s32 { return s.n }
+fn init() {}
