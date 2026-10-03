@@ -212,16 +212,16 @@ def OUTCODE(k):
     and  r11, r11, r7""" % (4 + 2 * k)
 
 
-def OUTCODE_W(k):
+def OUTCODE_W(k, label='.ow'):
     """ANDs into r11 the side of the view that corner k is beyond (as OUTCODE), for a corner
     that may be behind the camera: there x > w (right of the view, in clip space) means
     screen x < 320 and so on (the projection is mirrored through the centre, and vproj's
     clamping keeps the side), so the bits flip."""
     return OUTCODE(k).replace("""    lw   r5, [r5+8]""", """    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]""").replace("""    and  r11, r11, r7""", """    bge  r12, r0, .ow%d
+    lw   r5, [r5+8]""").replace("""    and  r11, r11, r7""", """    bge  r12, r0, %s%d
     xori r7, r7, 15             ; behind the camera
-.ow%d:
-    and  r11, r11, r7""" % (k, k))
+%s%d:
+    and  r11, r11, r7""" % (label, k, label, k))
 
 
 def NEAR(slot, sub):
@@ -266,12 +266,18 @@ def NEAR(slot, sub):
 
 # A face with a corner outside the guard band: drop it if it lies wholly off one side of the
 # screen (vproj's clamping keeps every vertex on its side), else hand it to __clip_face.
-CLIP_OFFSCREEN = """.clip:
+# Corners a b c are in front of the near plane here, but in the plain loops a quad's fourth
+# corner comes here from the guard-band test of the first three before its own near-plane test
+# (which only REST makes): it may be behind the camera, where its projection is mirrored, so
+# its outcode is taken as in .near (__clip_face then clips the face to the near plane too).
+# The subdividing loop has tested every corner against the near plane already.
+def CLIP_OFFSCREEN(sub):
+    return """.clip:
     addi r11, r0, 15
 """ + OUTCODE(0) + "\n" + OUTCODE(1) + "\n" + OUTCODE(2) + """
     andi r12, r4, 4
     beq  r12, r0, .clip3
-""" + OUTCODE(3) + """
+""" + (OUTCODE(3) if sub else OUTCODE_W(3, '.cw')) + """
 .clip3:
     bne  r11, r0, .next         ; off the screen"""
 
@@ -530,7 +536,7 @@ def face_loop(name, sub, guard=True):
     slot = 28 if sub else 24
     e(NEAR(slot, sub))
     if guard:
-        e(CLIP_OFFSCREEN)
+        e(CLIP_OFFSCREEN(sub))
         e("""    sw   r1, [sp+%d]
     sw   r2, [sp+%d]
     call {__clip_face}          ; r1 = the face

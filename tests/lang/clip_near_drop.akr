@@ -1,0 +1,123 @@
+// mesh(): three ways a face crossing the near plane used to vanish (found by the World Checker,
+// docs/WORLDCHECKER.md).
+// 1. A floor tile under the camera: clipped to the near plane and then to the guard band, two
+//    corners of the clipped polygon land on the same pixel (999, 999). The fan's quad piece
+//    starting with them has nclip 0 over its first three corners, and the face loop culled the
+//    whole quad as a back face, leaving a hole of about 5,000 pixels. Pieces of a clipped face
+//    are not culled again (clip.akr): its facing was decided in clip space.
+// 2. A large face seen with a far near plane (the world pack reader's far pass: near 32): the
+//    clip-space back-face determinant overflowed 16.16 because __clip_unit did not scale its
+//    rows down: `v / max(..)` divided by 1.0 when the divisor was a temporary (a compiler bug,
+//    tests/lang/vec_div_temp.akr).
+//    The determinant of this front face is about +173,000, which wrapped to -23,108.
+// 3. A big floor quad under a low camera whose fourth corner (d) is behind it while a b c are in
+//    front but outside the guard band: the face loop's guard-band path took d's projected
+//    position as if it were in front (it is mirrored) and dropped the floor as wholly above
+//    the screen. That path now takes the outcode of d as the near-plane path does.
+// Each frame draws one face in white on black; the rectangles lie inside it on screen.
+// frames: 5
+
+struct TestMesh { hdr: Mesh, v: [4]vec4, f: [1]Face }
+var tile: TestMesh
+var top: TestMesh
+var floor: TestMesh
+
+fn quad(m: *TestMesh, a: vec4, b: vec4, c: vec4, d: vec4) {
+    m.hdr.nverts = 4
+    m.hdr.nfaces = 1
+    m.hdr.verts = 16
+    m.hdr.faces = 16 + 16 * 4
+    m.v[0] = a
+    m.v[1] = b
+    m.v[2] = c
+    m.v[3] = d
+    m.f[0].flags = FACE_QUAD as u8
+    m.f[0].col[0] = 0xFFFFFF
+    m.f[0].idx[0] = 0
+    m.f[0].idx[1] = 1
+    m.f[0].idx[2] = 2
+    m.f[0].idx[3] = 3
+}
+
+fn init() {
+    dither(false)
+    // a ground tile of the world pack demonstration world (cell (0, 0), relative to its centre)
+    quad(&tile, vec4(-24.0, 0.0, -24.0, 1.0), vec4(-16.0, 0.0, -24.0, 1.0),
+         vec4(-24.0, 0.0, -16.0, 1.0), vec4(-16.0, 0.0, -16.0, 1.0))
+    // the top of a stand-in box two cells west of the camera's cell
+    quad(&top, vec4(-158.0, 2.0, -30.0, 1.0), vec4(-98.0, 2.0, -30.0, 1.0),
+         vec4(-158.0, 2.0, 30.0, 1.0), vec4(-98.0, 2.0, 30.0, 1.0))
+    // the World Checker's near-plane test floor (one 32 x 32 quad, relative to its cell's centre)
+    quad(&floor, vec4(-16.0, 0.0, -16.0, 1.0), vec4(16.0, 0.0, -16.0, 1.0),
+         vec4(-16.0, 0.0, 16.0, 1.0), vec4(16.0, 0.0, 16.0, 1.0))
+}
+
+fn shown(x: s32, y: s32) -> u32 {
+    var front = 0x400000
+    if GPU_BACK == 0x400000 { front = 0x425800 }
+    let p = (front + (y * 320 + x) * 2) as *u16
+    return p[0] as u32
+}
+
+fn holes(x0: s32, y0: s32, x1: s32, y1: s32) -> s32 {
+    var n = 0
+    for y in y0..y1 {
+        for x in x0..x1 {
+            if shown(x, y) != 32767 { n += 1 }
+        }
+    }
+    return n
+}
+
+fn draw() {
+    cls(0)
+    let f = frame()
+    if f == 1 {
+        // the camera of WORLDCHECKER.md's first example, relative to the cell's centre
+        camera_clip(0.1, 96.0)
+        camera_look(vec3(10.5278 - 32.0, 2.6406, 9.0798 - 32.0), -2.9315597, -0.8297644)
+        mesh(&tile.hdr)
+    }
+    if f == 2 {
+        // its second example: the far pass's camera, near plane at half a cell
+        camera_clip(32.0, 336.0)
+        camera_look(vec3(135.2339 - 160.0, 23.4188, 9.4824 - 32.0), -2.300344, -0.6859144)
+        mesh(&top.hdr)
+    }
+    if f == 3 {
+        // 0.24 above the floor, looking nearly straight down: it fills the screen
+        camera_clip(0.1, 48.0)
+        camera_look(vec3(26.9662 - 16.0, 0.2385, 26.011 - 16.0), -2.0146964, -1.4553306)
+        mesh(&floor.hdr)
+    }
+}
+
+fn update() {
+    let f = frame() as s32
+    if f == 2 {
+        print("tile: ")
+        print_int(holes(260, 205, 320, 240))     // below the line the dropped piece began at
+        print(" ")
+        print_int(holes(60, 218, 160, 240))      // the rest of the tile
+        print(" ")
+        print_int(tris_drawn())
+        print_char('\n')
+    }
+    if f == 3 {
+        print("top: ")
+        print_int(holes(316, 41, 320, 47))       // the stand-in's top at the screen's right edge
+        print(" ")
+        print_int(tris_drawn())
+        print_char('\n')
+    }
+    if f == 4 {
+        print("floor: ")
+        print_int(holes(0, 0, 320, 8) + holes(0, 116, 320, 124) + holes(0, 232, 320, 240))
+        print(" ")
+        print_int(tris_drawn())
+        print_char('\n')
+    }
+}
+// expect: tile: 0 0 4
+// expect: top: 0 3
+// expect: floor: 0 2

@@ -219,6 +219,31 @@ class ViewTests(unittest.TestCase):
         self.assertEqual(r['views'][5]['ordering']['tested_background'], 76800)
         self.assertEqual(r['views'][5]['stats']['placements_drawn'], 2)     # drawn, all clipped away
 
+    def test_clipped_faces_are_not_dropped(self):
+        """Cameras that used to leave holes. Two over the world pack demonstration world: a ground
+        tile under the eye whose clipped polygon had two corners on one pixel (the face loop culled
+        a quad piece by its first three corners), and a stand-in face in the far pass whose
+        clip-space back-face determinant overflowed (__clip_unit did not scale; a compiler bug)."""
+        vps = [{'position': [10.5278, 2.6406, 9.0798], 'yaw': -167.96602, 'pitch': -47.54201},
+               {'position': [135.2339, 23.4188, 9.4824], 'yaw': -131.8, 'pitch': -39.3}]
+        s = settings(VANTAGE_ONLY, vantage_points=vps, mode='strict')
+        s['sampling'] = dict(s['sampling'], layer_combinations=False)
+        r = V.verify(encode(F._wp.demo_world()), s, tools=F.tools())
+        for v in r['views']:
+            self.assertEqual(v['ordering']['coverage_errors'], 0, v['camera'])
+        self.assertGreater(r['views'][0]['ordering']['tested_pixels'], 70000)
+        self.assertGreater(r['views'][1]['ordering']['tested_pixels'], 15000)
+        # a floor quad whose fourth corner alone is behind a low camera, the first three outside
+        # the guard band: the guard-band path took that corner's mirrored projection as in front
+        # and dropped the whole floor as above the screen
+        vps = [{'position': [26.9662, 0.2385, 26.011], 'yaw': -115.4336, 'pitch': -83.3843},
+               {'position': [22.262, 1.0046, 24.7188], 'yaw': -147.61, 'pitch': -48.5955}]
+        s = settings(VANTAGE_ONLY, vantage_points=vps, mode='strict')
+        r = V.verify(encode(F.nearplane_world()), s, tools=F.tools())
+        for v in r['views']:
+            self.assertEqual(v['ordering']['coverage_errors'], 0, v['camera'])
+            self.assertGreater(v['ordering']['tested_pixels'], 70000)
+
     def test_over_budget_view_report_and_strict(self):
         s = settings(VANTAGE_ONLY, vantage_points=[F.VANTAGE_OVERDRAW])
         r = self.run_check(F.overdraw_world(), s)
