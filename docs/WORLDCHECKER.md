@@ -220,6 +220,12 @@ Evidence (the tests and the sweeps behind them):
 - Sweeps with no coverage error: the world pack demonstration world, 3,005 sampled views
   (129 million decided pixels, stand-ins, layers, entities); the dense bench world (yawed
   props), 600 random cameras.
+- The World Kit's example worlds built by `mei_world.py build` (palette swatch faces, regions,
+  layers), checked through the build's gate in a trial merge: `test_room` 132 views (4.1
+  million decided pixels) and `two_districts` 416 views (17 million), no coverage error. Both
+  have wrong-order pixels in the near band in about half their views (up to 24,000 pixels in
+  one view): real mis-sorts between ground tiles and what stands on them, which report mode
+  lists and strict mode would fail.
 - 1,500 random cameras over the demonstration world (many inside geometry or against it) found 4
   views with coverage errors. All four are faces the runtime drops, not reference errors: for
   example from eye (10.5278, 2.6406, 9.0798), yaw −2.9315597, pitch −0.8297644 (under the roof
@@ -243,6 +249,7 @@ Measured on an Apple-silicon Mac with `make` defaults:
 | static checks: plaza / demonstration world / bench world | 0.01 / 0.13 / 1.4 |
 | the plaza with default sampling (60 views) | 1.5 |
 | the demonstration world, every sampled view (3,005: 601 cameras × layer sets) | 67 |
+| `test_room` / `two_districts` examples, default settings (132 / 416 views) | 2.0 / 7.6 |
 
 Hence `max_views` 600 (about 15–20 seconds a world). The reference dominates; NumPy work per
 face is the cost, so dense views cost more. Sampling and static checks are pure Python and grow
