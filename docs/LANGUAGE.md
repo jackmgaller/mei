@@ -1114,7 +1114,7 @@ Where a function lives (each file's section below lists all of it):
 | `frames_dropped() -> s32` | how many budgets the previous frame ran over by: 0 when it was on time, n when the picture before it stayed up n more times |
 | `cycle_count() -> s32` | a cycle clock that keeps counting across frames and overruns (`FRAME × CPU_BUDGET − CYCLES`); differences between readings are exact for spans under 35 seconds |
 | `tris_drawn() -> s32` | 3D triangles drawn in the previous frame |
-| `gpu_used() -> s32` | GPU cycles the previous frame took to draw (of `GPU_BUDGET` = 1,000,000 a tick), by the cost table in `DECISIONS.md` (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a `cls`); a frame over the budget is shown late, so a cart can lower its detail as this nears the budget |
+| `gpu_used() -> s32` | GPU cycles the previous frame took to draw (of `GPU_BUDGET` = 2,000,000 a tick), by the cost table in `DECISIONS.md` (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a `cls`; the depth buffer and perspective add their own terms, `RENDERING.md`); a frame over the budget is shown late, so a cart can lower its detail as this nears the budget |
 | `frame_ticks() -> s32` | ticks the previous frame took: 1 on time, n when the picture before it stayed up n − 1 more times because the CPU or the GPU ran over |
 | `gpu_lag() -> s32` | ticks since reset in which a finished frame waited for the GPU; the difference of two readings is the slowdown the GPU caused between them |
 | `frame() -> u32` | frames since reset |
@@ -1895,8 +1895,8 @@ Measured with the `CYCLES` register (1,000,000 cycles per frame):
 The demo cart (a fogged 16×16 ground and a textured cube, about 370 triangles, plus a HUD)
 uses about 78,000 cycles per frame with `subdivide(2)` at a 10 % tolerance.
 
-The GPU has its own budget of 1,000,000 cycles a frame (`gpu_used()`; the cost table is in
-`DECISIONS.md`, "GPU budget"): 40 per triangle plus 1 per pixel filled, twice that textured and
+The GPU has its own budget of 2,000,000 cycles a frame (`gpu_used()`; the cost table is in
+`DECISIONS.md`, "GPU budget", and `RENDERING.md`): 40 per triangle plus 1 per pixel filled, twice that textured and
 twice again semi-transparent, and 38,400 per `cls`. Overdraw and large textured or blended
 polygons are what spend it, and a frame over it is shown late. The plane chip (`planes.akr`)
 draws skies, floors and water without touching it.

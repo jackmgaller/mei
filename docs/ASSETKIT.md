@@ -428,8 +428,8 @@ game data from them. The kit attaches no meaning to them.
 budget"). Measured with the kiosk example's previews, the same mesh built once palette-backed
 and once with plain vertex colours: in the isometric view the mesh's GPU cycles (excluding the
 `cls` and the HUD text) go from about 18,050 to 29,800, +65 %: the 94 triangles cost the same and
-the 12,600 filled pixels cost double. That is 1.2 % of the 1,000,000-cycle frame budget for an
-asset covering a sixth of the screen. CPU cost rises about 7 % (textured packets are longer).
+the 12,600 filled pixels cost double. That is 0.6 % of the 2,000,000-cycle frame budget (1.2 %
+of the 1,000,000 it was) for an asset covering a sixth of the screen. CPU cost rises about 7 % (textured packets are longer).
 Mix both kinds freely: only palette-backed materials pay for textures, so leave materials that
 never change colour unbacked (the kiosk's door is).
 

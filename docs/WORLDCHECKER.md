@@ -70,7 +70,7 @@ are WORLDKIT.md's placeholders.
 | `thresholds.far_wrong_fraction` | 0.005 | of the screen (384 pixels), per view |
 | `thresholds.coverage_pixels` | 0 | per view |
 | `thresholds.ground_inversion_pixels` | 0 | per view: pixels where ground truly hides what is drawn over it |
-| `thresholds.gpu_cycles` | 800,000 | 80% of the GPU's budget |
+| `thresholds.gpu_cycles` | 1,600,000 | 80% of the GPU's budget (2,000,000 since 2026-10-03) |
 | `thresholds.draw_cpu_cycles` | 600,000 | 60% of the CPU's: `wp_draw()` plus entity meshes |
 | `thresholds.view_triangles` | 4,000 | triangles submitted per view (WORLDKIT.md, "A frame budget") |
 | `thresholds.cell_triangles`, `cell_placements`, `standin_triangles` | 1,600, 100, 32 | every layer on |

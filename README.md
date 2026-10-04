@@ -24,6 +24,8 @@ repository, and the [names](docs/OVERVIEW.md#names) of the project's parts.
 - [MEMCARD.md](docs/MEMCARD.md): memory cards
 - [BROADCAST.md](docs/BROADCAST.md): MeiNet, the data broadcast
 - [PLANES.md](docs/PLANES.md): the Horizon Engine, the scrolling plane processor
+- [RENDERING.md](docs/RENDERING.md): the Prism Engine's depth buffer and perspective-correct
+  texturing
 - [The spec](docs/spec-v0.1.pdf) ([text copy](docs/spec-v0.1.txt)) and
   [DECISIONS.md](docs/DECISIONS.md), how this implementation settles what the spec leaves open
 

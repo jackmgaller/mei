@@ -64,8 +64,8 @@ All PS1-authentic unless noted.
 ## Open questions
 
 - **A name for the assembly language.**
-- **Horizon Engine ports:** Sun & Moon Orbs and the boot themes fit the Prism Engine's 1,000,000
-  GPU cycles a frame as they are; moving their backgrounds to the Horizon Engine's planes
+- **Horizon Engine ports:** Sun & Moon Orbs and the boot themes fit the Prism Engine's GPU budget
+  (2,000,000 cycles a frame) as they are; moving their backgrounds to the Horizon Engine's planes
   ([PLANES.md](PLANES.md)) would only buy headroom.
 
 ## Decided against

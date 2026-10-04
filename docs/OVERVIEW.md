@@ -9,8 +9,10 @@ A 3D fantasy console modelled on PlayStation-era hardware, implemented from
 - A vector unit with eight 4-lane 16.16 registers (`vxfm`, `vproj`, …) and GTE-style geometry
   instructions (`vxp3`, `nclip`, `otz`, `clerp`; see [`DECISIONS.md`](DECISIONS.md#geometry-instructions))
 - The **Prism Engine**, the 3D polygon processor (the spec's GPU), which only fills 2D
-  triangles: affine textures, whole-pixel vertices, no depth buffer, an ordering table, four
-  blend modes, and a budget of 1,000,000 GPU cycles and 4,000 triangles per frame
+  triangles: whole-pixel vertices, affine textures and an ordering table, or per polygon a
+  16-bit depth buffer and perspective-correct, unfiltered textures
+  ([`RENDERING.md`](RENDERING.md)); four blend modes, and a budget of 2,000,000 GPU cycles
+  (120 MHz) and 4,000 triangles per frame
 - The **Horizon Engine**, the scrolling plane processor: two tile planes, an affine (Mode 7)
   plane and a backdrop colour per line, composited with Prism's polygons at no CPU or GPU cost
   ([`PLANES.md`](PLANES.md))
@@ -173,7 +175,7 @@ example: [WORLDKIT.md, "Using a world in a cart"](WORLDKIT.md#using-a-world-in-a
 | `tools/meinet/` | The broadcast gateway: Open-Meteo weather encoded into a looping page carousel, served over TCP |
 | `tools/vscode-akari/` | Syntax highlighting for Akari in VS Code |
 | `web/shell.html` | The browser page |
-| `docs/` | Spec, [decisions](DECISIONS.md) on everything the spec leaves open, language and assembly references, [memory cards](MEMCARD.md), [broadcast](BROADCAST.md), [planes](PLANES.md), the kits and the [world pack format](WORLDPACK.md) |
+| `docs/` | Spec, [decisions](DECISIONS.md) on everything the spec leaves open, language and assembly references, [memory cards](MEMCARD.md), [broadcast](BROADCAST.md), [planes](PLANES.md), [the depth buffer and perspective](RENDERING.md), the kits and the [world pack format](WORLDPACK.md) |
 
 ## Names
 
@@ -185,7 +187,7 @@ If something has a name, it matters. These are the named things in the project.
 |---|---|---|
 | **Mei** | The console. The name is the character 明, "bright" | `src/core/`, [the spec](spec-v0.1.txt) |
 | **Akari** | The programming language (明かり, "light"); sources end in `.akr` | `src/lang/`, [LANGUAGE.md](LANGUAGE.md) |
-| **Prism Engine** | The 3D polygon processor (the spec's GPU): fills 2D triangles from linked packet lists (which carts sort with an ordering table), with a budget of 1,000,000 GPU cycles and 4,000 triangles a frame, and per-polygon texture windows for repeating tiles | `src/core/gpu.c`, [the spec](spec-v0.1.txt), [GPU budget](DECISIONS.md#gpu-budget), [texture windows](DECISIONS.md#texture-windows) |
+| **Prism Engine** | The 3D polygon processor (the spec's GPU): fills 2D triangles from linked packet lists (which carts sort with an ordering table), with a budget of 2,000,000 GPU cycles and 4,000 triangles a frame, per-polygon texture windows for repeating tiles, and an opt-in depth buffer and perspective-correct texturing | `src/core/gpu.c`, [the spec](spec-v0.1.txt), [GPU budget](DECISIONS.md#gpu-budget), [texture windows](DECISIONS.md#texture-windows), [RENDERING.md](RENDERING.md) |
 | **Horizon Engine** | The scrolling plane processor: the second video chip, with two tile planes, an affine (Mode 7) plane and a backdrop colour per line, for skies, floors and backdrops at no CPU or GPU cost (also called "the plane chip") | `src/core/planes.c`, `stdlib/planes.akr`, [PLANES.md](PLANES.md) |
 | **MeiNet** | The one-way data broadcast (time and weather) and the gateway that sends it | [BROADCAST.md](BROADCAST.md), `tools/meinet/` |
 | **Mei System** | The system ROM: boot animation and shell | [SYSTEM.md](SYSTEM.md), `system/` |

@@ -16,7 +16,7 @@ is deterministic.
 | Compressed audio | A PS1-SPU-style 4-bit ADPCM (3.5 : 1 against 16-bit), selected per channel; see [Audio upgrade](#audio-upgrade-adpcm-16-channels-reverb). |
 | Standard library location | Compiled into each cart (counts against its ROM size). |
 | Culling/clipping helpers | Four geometry instructions in the reserved opcodes 19–1B and 1F: a back-face test, an ordering-table depth, a colour blend and a three-vertex transform (see [Geometry instructions](#geometry-instructions)). The CPU has 63 instructions. Clipping stays in software. |
-| Fill rate | Budgeted: the GPU, named the **Prism Engine** (the 3D polygon processor), has 1,000,000 cycles a tick (a 60 MHz GPU; the CPU too since [2026-10-03](#the-cpu-at-60-mhz)), charged by a cost table (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a clear). A frame over budget is shown late, never cut short; the triangle limit is raised to 4,000 as a backstop. See [GPU budget](#gpu-budget). The plane chip, the **Horizon Engine** (the scrolling plane processor, [PLANES.md](PLANES.md)), costs the GPU nothing. |
+| Fill rate | Budgeted: the GPU, named the **Prism Engine** (the 3D polygon processor), has 2,000,000 cycles a tick (a 120 MHz GPU since [2026-10-03](#a-depth-buffer-perspective-texturing-and-a-2000000-cycle-gpu); 1,000,000 at 60 MHz before), charged by a cost table (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a clear; the depth buffer and perspective add terms of their own, [RENDERING.md](RENDERING.md#cost)). A frame over budget is shown late, never cut short; the triangle limit is raised to 4,000 as a backstop. See [GPU budget](#gpu-budget). The plane chip, the **Horizon Engine** (the scrolling plane processor, [PLANES.md](PLANES.md)), costs the GPU nothing. |
 | Controller count | Two. Each also has a **Select** button (bit 11 of `PAD1`/`PAD2`), added to the spec's eleven. |
 
 ## Details filled in
@@ -64,7 +64,8 @@ zero.
 **Rasterization.** Pixel centres are at integer coordinates. Integer edge functions with
 a top-left fill rule; both windings are drawn; zero-area triangles are skipped. Colours
 and texture coordinates are interpolated affinely (barycentric in screen space) with
-integer arithmetic. A 15-bit palette colour is expanded to 8 bits per channel as
+integer arithmetic (textured packets with depth, `0x30`–`0x3F`, are perspective-correct instead:
+[RENDERING.md](RENDERING.md)). A 15-bit palette colour is expanded to 8 bits per channel as
 `(c << 3) | (c >> 2)` before tinting. Tint: `min(255, texel × colour / 128)`. Then dither
 (if `GPU_CTRL` bit 0) or not, then reduce to 5 bits, then blend if semi-transparent.
 Written pixels always have bit 15 clear, except while the plane compositor is on (`PLN_CTRL` bit 0), when bit 15 is the polygon priority bit, `0x8000` is a hole, and a blend over a hole (or, upper, over a lower pixel) blends with the composite of the layers behind its layer ([PLANES.md](PLANES.md)).
@@ -104,7 +105,8 @@ first half is the 4,000th triangle draws that half and drops the second.
 word) and a real-time clock, `SYS_TIME` (`0xFF0318`) and `SYS_DATE` (`0xFF031C`). The clock is
 latched at `vsync` like input, so determinism holds as long as a replay records it.
 Three read-only GPU registers, `GPU_LOAD`, `GPU_TICKS` and `GPU_LAG` (`0xFF0014`–`0xFF001C`),
-report the GPU budget ([GPU budget](#gpu-budget)).
+report the GPU budget ([GPU budget](#gpu-budget)), and two more, `GPU_DEPTH` (`0xFF0020`) and
+`GPU_ZCLEAR` (`0xFF0024`), control the depth buffer ([RENDERING.md](RENDERING.md)).
 
 **Broadcast decoder.** A one-way data broadcast (time and weather pages from a looping
 carousel, Teletext-style) is received by a decoder chip at `0xFF0600`–`0xFF0647`, which extends
@@ -188,9 +190,11 @@ do it in 6 cycles, so it would save at most 2, while fog works on packed colours
 
 The GPU is the **Prism Engine** (Prism for short), Mei's 3D polygon processor. The spec leaves
 its fill rate open and caps it at 2,000 triangles a frame. Mei gives Prism a cycle budget like
-the CPU's instead: it is a 60 MHz chip (beside a 30 MHz CPU when this was decided; the CPU has
-been 60 MHz too since [2026-10-03](#the-cpu-at-60-mhz)), so it has **1,000,000 GPU cycles per
-tick**. A frame that needs more is shown late, as on the PlayStation, where a heavy scene
+the CPU's instead: it was a 60 MHz chip (beside a 30 MHz CPU when this was decided; the CPU has
+been 60 MHz too since [2026-10-03](#the-cpu-at-60-mhz)), so it had 1,000,000 GPU cycles per tick.
+Since [the depth buffer](#a-depth-buffer-perspective-texturing-and-a-2000000-cycle-gpu) (also
+2026-10-03) it is a 120 MHz chip with **2,000,000 GPU cycles per tick**
+(`MEI_GPU_CYCLES_PER_FRAME` in `src/core/mei.h`, `GPU_BUDGET` in `stdlib/runtime.akr`). A frame that needs more is shown late, as on the PlayStation, where a heavy scene
 slows the game down rather than losing polygons. The triangle limit stays as a backstop (the
 packet list needs a bound anyway), raised to **4,000**. The plane chip, the **Horizon Engine**
 (Horizon, the scrolling plane processor; [PLANES.md](PLANES.md)), is a separate chip and costs
@@ -210,6 +214,7 @@ in one place (`gpu_pixel_cycles` and the two charges in `src/core/gpu.c`).
 | a pixel filled, semi-transparent | 2 |
 | a pixel filled, textured and semi-transparent | 4 |
 | `GPU_CLEAR` (76,800 pixels at half a cycle) | 38,400 |
+| packets with depth: a pixel failing the depth test (1), the vertex reciprocals (24 a triangle), a perspective divide (2), `GPU_ZCLEAR` (38,400) | [RENDERING.md](RENDERING.md#cost) |
 | triangles over the limit, packets that are not polygons, walking the list, `GPU_CTRL` | 0 |
 | the plane chip: planes, backdrop, colour math, colour offset, auto-erase | 0 |
 
@@ -226,7 +231,7 @@ whole ticks:
 - The GPU adds up the cycles of the frame being drawn: everything drawn since the last
   present (or reset).
 - When the CPU executes `vsync`, the frame is presented at the first tick end at which its
-  GPU cycles are at most **1,000,000 × n**, where n is the number of ticks since the last
+  GPU cycles are at most **2,000,000 × n**, where n is the number of ticks since the last
   present, counting the current one. On time and under budget (n = 1) that is the tick of the
   `vsync`, as before.
 - Until then the CPU waits at `vsync` and runs nothing. The buffers do not swap, the plane chip
@@ -237,8 +242,8 @@ whole ticks:
 
 So a frame at 1–2× the budget is shown one tick late, and at 2–3× two ticks late; exactly
 the budget is on time. It composes with a CPU overrun: a frame whose CPU work spanned two
-ticks has 2,000,000 GPU cycles, and the ticks are not counted twice. In all, a frame takes
-max(its CPU ticks, ⌈GPU cycles ÷ 1,000,000⌉) ticks. Everything is integer, so a replay with
+ticks has 4,000,000 GPU cycles, and the ticks are not counted twice. In all, a frame takes
+max(its CPU ticks, ⌈GPU cycles ÷ 2,000,000⌉) ticks. Everything is integer, so a replay with
 the same input lags identically.
 
 The model does not let the GPU run on into the next frame (on the PlayStation it draws the
@@ -255,7 +260,8 @@ max(CPU, GPU).
 | `0xFF001C` | `GPU_LAG` | Read | ticks since reset in which a finished frame waited for the GPU |
 
 All three read 0 after reset until the first present, and writing any of them is
-*Read-only*; `0xFF0020`–`0xFF00FF` stay unmapped. A cart sees them change only at `vsync`
+*Read-only*; `0xFF0020` and `0xFF0024` are `GPU_DEPTH` and `GPU_ZCLEAR`
+([RENDERING.md](RENDERING.md#registers)), and `0xFF0028`–`0xFF00FF` stay unmapped. A cart sees them change only at `vsync`
 (the CPU does not run while `GPU_LAG` counts). `GPU_TICKS − 1` is how late the last frame was
 for any reason; the difference of two `GPU_LAG` readings is the part the GPU caused. `GPU_LAG`
 is a running count rather than cleared on reading, so reads have no side effects and a cart
@@ -275,7 +281,9 @@ no CPU load, so they show no GPU load either.
 Measured with `mei-headless --gpu-stats` (the console's own count) over 1,500–1,800 ticks a
 run, idle and with held and pressed buttons, plus the Lantern Lake and Check-In! test
 scenarios: 38 runs and 63,440 frames, **none of them held back by the GPU**. Each run's frames
-and audio are bit-identical to the build before the budget.
+and audio are bit-identical to the build before the budget. (These are shares of the 1,000,000
+of then; the budget is twice that since
+[2026-10-03](#a-depth-buffer-perspective-texturing-and-a-2000000-cycle-gpu).)
 
 | Cart | Highest GPU cycles in a frame | Of the budget |
 |---|---|---|
@@ -509,8 +517,10 @@ volume of 64–160 with about 3–6 dB of headroom in the dry mix is a good star
 The ordering table sorts each face by its own average depth. That is right for a single convex
 mesh, but in a scene built from many small pieces on a grid (a building game seen from above)
 it puts a tall cupboard's top in front of the chair beside it, and a long wall run in front of
-the furniture standing at one end. A depth buffer would fix this, but the console has none, by
-design. Instead a cart can say what a face should sort as:
+the furniture standing at one end. A depth buffer would fix this, but the console had none, by
+design (it has an opt-in one since
+[2026-10-03](#a-depth-buffer-perspective-texturing-and-a-2000000-cycle-gpu); what follows is for
+the ordering table). Instead a cart can say what a face should sort as:
 
 - `depth_key(w, n)` sorts the faces of following `mesh*()` calls `n` times closer to depth `w`
   (n at least 1): their own depths still order them among themselves (so an object still draws
@@ -669,7 +679,9 @@ Three tools check the work, each under its own name:
 ### The machine
 
 - **Cart ROM** as in [the section above](#cart-rom-up-to-64-mb-in-a-128-mb-window): 64 MB now,
-  128 MB reserved. Bank switching, a disc device and a depth buffer were considered and left out.
+  128 MB reserved. Bank switching, a disc device and a depth buffer were considered and left out
+  (the depth buffer was adopted later the same day:
+  [below](#a-depth-buffer-perspective-texturing-and-a-2000000-cycle-gpu)).
 - **VRAM stays 1 MB** and the ordering table stays a cart convention. Both are to be revisited
   only if a second region or a real district shows they cannot work.
 
@@ -678,7 +690,7 @@ Three tools check the work, each under its own name:
 On 2026-10-03 the project owner doubled the CPU's clock: **30 MHz → 60 MHz, 500,000 →
 1,000,000 cycles a tick** (`MEI_CYCLES_PER_FRAME` in `src/core/mei.h`, `CPU_BUDGET` in
 `stdlib/runtime.akr`). Only the CPU changes: the Prism Engine keeps its 1,000,000 GPU cycles a
-tick, the cost table and the 4,000-triangle backstop, and RAM (2 MB) and VRAM (1 MB) stay as
+tick (doubled later that day: [below](#a-depth-buffer-perspective-texturing-and-a-2000000-cycle-gpu)), the cost table and the 4,000-triangle backstop, and RAM (2 MB) and VRAM (1 MB) stay as
 they are. Every instruction costs the cycles it did. This supersedes the CPU figure in the
 published v0.1 spec (`spec-v0.1.pdf`, `spec-v0.1.txt`), which is left as published.
 
@@ -731,3 +743,134 @@ one frame over 500,000 cycles and now has none, so it presents one more frame an
 the run is a frame ahead; Movement Garden's scenarios 36–38 (which time `mesh_at` on purpose)
 present 94 frames of 100 instead of 88; and Movement Garden's timing bar is half as long. Mei
 Weather, World Viewer, Sun & Moon Orbs, Features and the system ROM are unchanged.
+
+## A depth buffer, perspective texturing and a 2,000,000-cycle GPU
+
+On 2026-10-03 the project owner set Mei's target as "the 1997 slot", just past the N64, and
+decided three changes to the Prism Engine after two prototypes measured them (branches
+`worktree-agent-a3f0efcad6721f943`, commit `cc8f47a`, and `worktree-agent-a0ed2dee138e8ac58`,
+commit `56ffd84`):
+
+1. **A depth buffer, opt-in.** Cost model "early depth": a pixel that fails the depth test costs
+   only the test, and opaque faces are meant to be submitted nearest first. Semi-transparent
+   faces test but do not write, and still go back to front.
+2. **The GPU budget doubled:** 1,000,000 → **2,000,000 cycles a tick**, the Prism Engine at
+   120 MHz. The CPU is unchanged (1,000,000).
+3. **Perspective-correct texturing**, one divide every **16 pixels** with affine steps between;
+   textures stay unfiltered (nearest texel). Opt-in per polygon.
+
+The interface (registers, packets, the key, the test, the perspective rule, the cost table) is
+[RENDERING.md](RENDERING.md); this section records why. It supersedes the v0.1 spec's "Depth:
+None" and its affine-only texturing, and the GPU figure in [GPU budget](#gpu-budget); the spec
+is left as published.
+
+**One packet bit, one word per vertex.** Both prototypes had independently chosen the same
+encoding: types `0x30`–`0x3F` are the `0x2X` layouts followed by each vertex's view depth *w*
+(16.16, what `vxp3` leaves in lane w). The adopted chip takes one reciprocal per vertex,
+2⁴⁰ ÷ *w*, and uses it for both: interpolated exactly for the depth key, and scaled to 16 bits
+for the perspective planes. So one set of face loops serves both features, and the setup that
+computes the reciprocals is charged once a triangle (24 cycles) whichever of the two uses it.
+Packets without the bit are untouched, so every existing cart draws as before.
+
+**Why a depth buffer.** The ordering table sorts each face by its average depth, and the kits
+spend a great deal working around what that gets wrong (object keys and biases, a ground pass
+drawn first, authoring rules about splitting tops and keeping clear of thin geometry, and the
+Asset and World Checkers' ordering checks). The depth prototype ran the World Checker over the
+Movement Garden's 600 views both ways:
+
+| | Ordering table | Depth buffer |
+|---|---|---|
+| wrong-order pixels, near / far | 51,382 / 4,810 | 73 / 81 |
+| views with wrong order | 263 | 53 |
+| entity over a nearer face / something over an entity | 17,464 / 2 | 3 / 0 |
+| GPU cycles a view, peak / median (+1 a tested pixel) | 625,372 / 243,828 | 941,678 / 366,395 |
+
+What is left with the depth buffer is a pixel or few at edges: vertex positions are whole
+pixels, so a face's plane is off by up to half a pixel's worth of depth.
+
+**Why 16 bits, a float of 1/w, on the GPU.** 1/*w* is linear in screen space, so interpolating
+it is exact and cheap; *w* itself would need a divide per pixel. Stored linearly in 16 bits,
+1/*w* would step 2.5 units at a distance of 128; as a float with a 12-bit mantissa it steps
+1/4,096 of the distance at any distance, which is what a facing wall needs (the precision table
+in RENDERING.md). The 150 KB buffer is the GPU's own memory: VRAM stays 1 MB for framebuffers,
+palettes and textures, and the CPU never needs to read it.
+
+**Why early depth, and what a passing pixel costs.** At +1 cycle for every tested pixel (the
+prototype's model: a 16-bit read-modify-write on its own bus) the garden's GPU peak rose
+51–64 % and one frame of the kick alley went 1.9 % over the old budget, because the table still
+drew back to front, so the test rarely failed and saved nothing. Under early depth the test
+sits in front of the pixel pipeline on the depth memory's own bus: a pixel that fails costs 1
+cycle (its test) and is never textured or blended; a pixel that passes costs what it always
+did, the test overlapping its texel fetch and write. (The prototype's estimate of about 600,000
+for the kick-alley frame with near-first order assumed exactly this.) Hidden pixels then cost
+less than visible ones, so opaque faces submitted nearest first are cheapest. `GPU_ZCLEAR`
+costs what `GPU_CLEAR` does, 38,400.
+
+**Why perspective, and why every 16 pixels.** Affine texturing warps large faces, and
+`subdivide()` only reduces it at a high CPU cost. The perspective prototype measured a corridor
+of large textured quads (`tests/perspective/measure.py` on its branch), 24 cycles a triangle
+for the reciprocals and 2 a divide:
+
+| Corridor view | `mesh()` CPU | GPU cycles | GPU vs affine | Pixels off the exact picture | Mean error (texels) |
+|---|---|---|---|---|---|
+| affine | 12,334 | 161,970 | — | 99.5 % | ≥ 5 |
+| affine + `subdivide(2)` | 50,858 | 163,238 | +0.8 % | 99.5 % | ≥ 5 |
+| a divide every pixel (exact) | 12,622 | 284,964 | +75.9 % | 0 | 0 |
+| every 8 pixels | 12,622 | 181,128 | +11.8 % | 10.4 % | 0.17 |
+| **every 16 pixels** | 12,622 | 173,760 | **+7.3 %** | 20.7 % | 0.41 |
+| every 32 pixels | 12,622 | 170,160 | +5.1 % | 33.4 % | 0.82 |
+
+A divide every 16 pixels removes the warp for about 7 % more GPU work (6–7 % on the other two
+views), and leaves a one-texel drift between divide points at grazing angles: the look of a
+1997 span renderer with nearest sampling, which the owner chose over N64-style filtering.
+Every 8 pixels costs twice the divides for half the error; every 32 visibly wobbles on far
+walls. The prototype's selector of the spacing (`GPU_CTRL` bits 8–10) is not adopted.
+
+**Why 2,000,000 cycles.** The new mode costs more per frame than the ordering table (a
+`GPU_ZCLEAR` a frame, the reciprocals, the divides, and, where faces are not perfectly sorted,
+overdraw that still costs), the heaviest carts already reached 87 % of the old budget (Lantern
+Lake's map menu), and the garden's World Checker views peaked at 941,678 with the prototype's
+costs. A 120 MHz polygon chip beside the 60 MHz CPU fits the 1997 slot. The 4,000-triangle
+backstop is unchanged: at 40 cycles a triangle it still binds only far past any frame that fits.
+
+**Calls made while adopting it** (by the agent that built it; recorded so they can be revisited):
+
+- A pixel that passes costs its old price, with nothing added for the test (above).
+- The reciprocal is ⌊2⁴⁰ ÷ *w*⌋ for *w* ≥ 1/16 and 2²⁸ otherwise, including *w* ≤ 0, as in
+  the depth prototype. For perspective the three are shifted right together until the largest
+  fits 16 bits (the perspective prototype normalised to the nearest vertex instead); the
+  difference is below a texel's rounding.
+- A triangle whose three scaled reciprocals are equal is affine: it draws exactly as without
+  depth and makes no divides. So a billboard or a sprite drawn with one *w* looks as it would
+  without depth.
+- At every divide point, the span's last pixel included, the pixel uses the divided value; the
+  prototype stepped onto its last pixel.
+- `GPU_DEPTH` keeps bit 0 only (bits 1–31 reserved, read 0); `GPU_ZCLEAR` reads 0.
+- The decal offset is added to the key that is written as well as to the one tested, so a decal
+  drawn before its wall still wins (as in the depth prototype).
+- An untextured packet with depth while the test is off costs exactly its plain price (it needs
+  no reciprocals); a triangle that needs them pays the 24 cycles even when empty or off screen,
+  like the 40 of setup.
+- The World Checker's `gpu_cycles` threshold follows the budget: 1,600,000 (80 %).
+
+**What changed with it.** `MEI_GPU_CYCLES_PER_FRAME` and `GPU_BUDGET` are 2,000,000;
+`tools/mei_gpustats.py` reports against it and lists the depth and perspective work (the new
+`--gpu-stats` columns `px_ztest`, `px_zfail`, `zclears`, `tris_recip`, `px_persp`,
+`persp_divs`); `stdlib/io.akr` names `GPU_DEPTH` and `GPU_ZCLEAR`. Packet type `0x30` was the
+unit tests' example of an unknown type; `0x40` is now.
+
+**Existing carts.** Every cart ROM and `system.mei` builds byte-identical to the build before,
+except Movement Garden's: its timing readout draws the GPU bar against `GPU_BUDGET` (the ROM is
+identical with the old constant). Compared frame by frame, old build against new: every cart
+and the system ROM for 1,800–2,400 ticks with scripted input, every Lantern Lake and Movement
+Garden scenario of `make test-carts` (121 runs). No frame of any run was over 1,000,000 GPU
+cycles before (the highest: 894,990, Lantern Lake scenario 9), so no frame presents earlier
+and every frame is identical, except in Movement Garden's timing readout, whose GPU bar is half
+as long (and its cycle counts move by the pixels the bar no longer draws).
+
+**Host time.** The new spans are compiled for every combination of the depth test,
+perspective and the old flags; the old types take the old spans, whose speed is unchanged. The
+unit tests' benchmark (2,000 textured Gouraud triangles of about 35 × 36 pixels, far more fill
+than a frame within the budget): natively (M1 Pro, `-O2`) 4.5 ms a frame plain, 5.5 ms
+depth-tested, 7.0 ms depth-tested and perspective; in WebAssembly (Emscripten `-O3`, Node)
+7.8, 10.6 and 9.5 ms.

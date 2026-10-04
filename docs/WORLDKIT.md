@@ -369,7 +369,8 @@ For comparison, Tsumiki's Playroom ran at a median of 903 triangles, peak 1,555,
 
 With the CPU at 1,000,000 the GPU binds about as soon: 2,250 visible triangles cost 90,000 cycles
 of setup, and 2.5 screens of textured fill (192,000 pixels × 2) cost 384,000, about 47% of the
-1,000,000 budget, with blended faces and overdraw beyond that.
+1,000,000 budget of then (24% of the 2,000,000 since 2026-10-03), with blended faces and overdraw
+beyond that.
 
 *Placeholder per-cell budgets:* near pass 1,600 faces, of which about four of the nine near cells
 are in view, so about 400 faces per cell as drawn from any one camera; far pass 400 faces, so

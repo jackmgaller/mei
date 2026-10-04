@@ -11,8 +11,8 @@ the plane chip and Prism the polygon GPU.
 
 Horizon's design assumes that Prism gets a cycle budget (setup per triangle plus cost per pixel,
 run in parallel with the CPU). That budget is now specified in
-[DECISIONS.md, "GPU budget"](DECISIONS.md#gpu-budget): 1,000,000 GPU cycles a tick, with lag on
-overrun (see [open question 1](#open-questions)). The numbers below use the cost table that
+[DECISIONS.md, "GPU budget"](DECISIONS.md#gpu-budget): 1,000,000 GPU cycles a tick (2,000,000 since
+2026-10-03), with lag on overrun (see [open question 1](#open-questions)). The numbers below use the cost table that
 became official there, then a candidate in `tools/mei_gpustats.py`.
 The design sections are the proposal as reviewed. Where the build or the Lantern Lake port found
 them wrong or incomplete, the text is corrected in place, and the measurements are in
@@ -1001,7 +1001,7 @@ as recommended for the build. Questions 1 and 3 have new findings from the port.
    and the system ROM's boot themes peak at 528k.
 
    **Resolved: 1,000,000 GPU cycles a tick, implemented** (see
-   [DECISIONS.md, "GPU budget"](DECISIONS.md#gpu-budget)).
+   [DECISIONS.md, "GPU budget"](DECISIONS.md#gpu-budget); 2,000,000 since 2026-10-03).
    - The cost table above is the official one: 40 a triangle, 1 a pixel, ×2 textured, ×2
      blended, 38,400 a clear.
    - The budget is twice the 500k recommended: a 60 MHz GPU beside the 30 MHz CPU (the CPU went
