@@ -78,42 +78,52 @@ than about 10 : 1): the World Checker's edge test misreads them.
 
 ## Drawing order: what the World Checker taught the grey box
 
-Mei has no depth buffer: faces sort by their average depth into 1,024 buckets. The grey box went
-from 16,044 wrong-order pixels in its worst view to 1,991 by following these rules; detailed
-assets must keep to them, and the Asset Checker (zero wrong pixels) enforces most of them.
+**The garden is drawn with the depth buffer** (`"runtime": {"depth": true, "perspective": true}`
+in `garden.world.json`; docs/RENDERING.md), and its assets are checked so: the checkers give no
+ordering verdicts in depth mode. Rules 2, 3 (its first sentence), 4 and 6 below existed only for
+the ordering table, where faces sort by their average depth into 1,024 buckets, and **do not
+apply in depth mode**; the recipes that follow them are still correct. Rules 1, 3's second
+sentence and 5 still apply: hidden faces cost cycles, and coplanar overlaps and duplicate faces
+fight in the depth buffer (the Asset Checker still fails them). Under the ordering table the grey
+box went from 16,044 wrong-order pixels in its worst view to 1,991 by following these rules; in
+depth mode the whole garden has none.
 
 1. **No hidden faces.** Leave out every face nothing can see: bottoms of things on the ground
    (`box` `"open": ["bottom"]`), the top of a body under a roof, the faces of two parts pressed
-   together. A hidden face still sorts and can be drawn over what covers it.
-2. **Nothing under what stands on you.** Where another placement stands on an asset (the water
+   together. A hidden face costs a face's cycles for nothing (and, without depth, still sorts and
+   can be drawn over what covers it).
+2. **Nothing under what stands on you.** *(Ordering table only.)* Where another placement stands on an asset (the water
    tank and AC units on the office roof, the pagoda and the hall on the shrine hill, the ramps on
    the car park's decks), the asset has no face under it: cut the top around the footprint.
-3. **No parts through parts.** Posts do not pass through beams; a beam sits between posts or on
-   top of them. Use one `mesh` with shared edges for bands of colour on one surface (windows,
+3. **No parts through parts.** *(First sentence: ordering table only.)* Posts do not pass
+   through beams; a beam sits between posts or on top of them. *(Always:)* Use one `mesh` with shared edges for bands of colour on one surface (windows,
    signs, stripes are bands of the wall, as `face_materials`, never panels in front of it).
-4. **Split big faces near small things.** A wall more than about 8 m across with something in
+4. **Split big faces near small things.** *(Ordering table only.)* A wall more than about 8 m across with something in
    front of it (a fire escape, an awning, a stall) is split into panels or bands where the small
    thing meets it. Large roofs that things stand on are tiled at about 8 m, edges meeting edge to
    edge (no T-junctions).
-5. **Gaps, not slivers.** Two parts closer than 0.05 m sort unpredictably; touch exactly or keep
-   0.1 m apart.
-6. **Ties go to the earlier face.** Within one ordering-table bucket the face submitted first is
+5. **Gaps, not slivers.** Two parts closer than 0.05 m sort unpredictably (and in depth mode
+   fight in the depth buffer); touch exactly or keep 0.1 m apart. Never put two faces in one
+   plane over each other.
+6. **Ties go to the earlier face.** *(Ordering table only.)* Within one ordering-table bucket the face submitted first is
    drawn last, so it ends up on top. In a recipe, put what must win a tie first: a sign's or
    band's node before the wall it lies on. Order between two placements sharing a bucket is not
    to be relied on.
 
 ## Budgets
 
-Measured on the grey box (`verification/world-check.json`, 600 views): drawing costs about 2,500
-CPU cycles per placement drawn plus about 160 per triangle on screen, and from most places the
-whole 128 m block is in view. The World Checker's draw limit is 300,000 cycles (60% of the CPU),
-so the **whole block may hold about 5,500 triangles** with every layer on: about **1,400 per
-cell**, against the kit's placeholder of 1,600. Each asset's recipe sets `"budget"` to its row
-below, which is a ceiling, not a target.
+The console now has 1,000,000 CPU cycles a tick and a 2,000,000-cycle GPU; the World Checker's
+draw limit is 600,000 CPU cycles. From most places the whole 128 m block is in view, so the
+per-view numbers are what bind. Measured on the detailed garden in depth mode (2026-10-04,
+600 views): draw CPU peak 451,828, GPU peak 500,615, at most 2,076 triangles in one view, and
+1,312 to 1,706 triangles per cell. The garden sets `cell_triangles` to 2,400 (the kit's
+placeholder, 1,600, dates from the 500,000-cycle CPU). Each asset's recipe sets `"budget"` to
+its row below (or the raised number its recipe gives), which is a ceiling, not a target; the
+first numbers were set for the old budget and are being raised as the per-view peaks allow.
 
 | Family | Asset (triangles) |
 |---|---|
-| Residential | apartments 260, fire escape 200, bathhouse 200, car park 400 |
+| Residential | apartments 260, fire escape 200, bathhouse 200, car park 620 |
 | Office | tower 260, water tank 60, AC unit 24 (placed 4 times), gondola 60 |
 | Construction | steel frame 400, scaffold pole 16 (x4), crane 220, hook 48 |
 | Train | viaduct 120 per half, pillar 16 (x8), station 220, station stairs 140, overpass 60 per half, overpass stairs 100 each, train car 140 |
