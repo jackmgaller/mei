@@ -28,8 +28,9 @@ import struct
 
 MAGIC = b'MEIW'
 VERSION_MAJOR = 1
-VERSION_MINOR = 1
-HEADER_SIZE = 64
+VERSION_MINOR = 2
+HEADER_SIZE = 72            # 64 in 1.0 and 1.1; 1.2 adds path_count and path_off
+MIN_HEADER_SIZE = 64
 CELL_SIZE = 96
 PLACEMENT_SIZE = 48
 ENTITY_SIZE = 64
@@ -42,6 +43,8 @@ REGION_SIZE = 32
 TEXTURE_SIZE = 12
 SAMPLE_SIZE = 20
 VRAM_COPY_SIZE = 12
+PATH_SIZE = 48
+PATH_POINT_SIZE = 40
 
 ONE = 65536
 NO_LAYER = 0xFF
@@ -58,6 +61,10 @@ FLAG_SAVED = 1
 PLACEMENT_GROUND = 1        # placement flags bit 0 (1.1): drawn in the ground pass
 FLAGS_REQUIRED = 0xF0       # header flag bits a reader must understand (none defined in 1.1)
 FLAG_GROUND = 1             # header flags bit 0 (1.1, ignorable): some placement is ground
+PATH_RAISED = 1             # path flags bit 0 (1.2): raised, not lying on the ground
+PATH_CLOSED = 2             # path flags bit 1 (1.2): a loop (its last stored point repeats its first)
+MAX_PATH_POINTS = 4096      # stored points of one path
+MAX_PATH_LENGTH = 16384     # units: keeps every product the reader forms inside fixed range
 
 KIND_FLOOR, KIND_WALL, KIND_CEILING = 0, 1, 2
 KIND_NAMES = ('floor', 'wall', 'ceiling')
@@ -197,6 +204,18 @@ class Region:
 
 
 @dataclass
+class Path:
+    """A named polyline in world coordinates (WORLDPACK.md, "Paths"). closed joins the last
+    point back to the first (do not repeat it: the encoder stores the repeat). raised and surface
+    are carried for the game; the format attaches no meaning to them."""
+    name: str
+    points: list
+    raised: bool = False
+    closed: bool = False
+    surface: int = 0
+
+
+@dataclass
 class World:
     cells: list
     cell_shift: int = 6
@@ -206,6 +225,7 @@ class World:
     overhang: float = 8.0
     floor_max_degrees: float = 45.0
     ceiling_max_degrees: float = 45.0
+    paths: list = field(default_factory=list)       # Path (1.2)
 
 
 # ---- meshes
@@ -539,6 +559,77 @@ def world_triangles(world):
     return out
 
 
+# ---- paths
+
+def _round_sqrt(n):
+    """round(sqrt(n)) for a non-negative integer n, exactly (halves cannot occur)."""
+    r = math.isqrt(n)
+    return r + 1 if n - r * r > r else r
+
+
+def path_points(path):
+    """A Path's stored point records, raw: a list of (pos, dir, s, len), where pos is the point,
+    dir the rounded unit direction of the segment to the next point (zero for the last), len that
+    segment's rounded length and s the sum of the lens before it. A closed path stores its first
+    point again at the end. Also returns the box (lo, hi) of the points. Raises PackError for what
+    the format cannot hold."""
+    pts = [_raw3(p, f'path {path.name!r} point') for p in path.points]
+    if path.closed:
+        if len(pts) < 3:
+            raise PackError(f'path {path.name!r}: a closed path has at least 3 points')
+        pts.append(pts[0])
+    if len(pts) < 2:
+        raise PackError(f'path {path.name!r}: a path has at least 2 points')
+    if len(pts) > MAX_PATH_POINTS:
+        raise PackError(f'path {path.name!r}: more than {MAX_PATH_POINTS} points')
+    for p in pts:
+        if max(abs(c) for c in p) > MAX_WORLD * ONE:
+            raise PackError(f'path {path.name!r}: a point lies beyond +-{MAX_WORLD} units')
+    recs = []
+    s = 0
+    for k, p in enumerate(pts):
+        if k == len(pts) - 1:
+            recs.append((p, (0, 0, 0), s, 0))
+            break
+        d = sub3(pts[k + 1], p)
+        n2 = dot3(d, d)
+        ln = _round_sqrt(n2)
+        if ln == 0:
+            raise PackError(f'path {path.name!r}: segment {k} has no length')
+        exact = math.sqrt(n2)
+        u = tuple(rnd(c / exact * ONE) for c in d)
+        recs.append((p, u, s, ln))
+        s += ln
+    if s > MAX_PATH_LENGTH * ONE:
+        raise PackError(f'path {path.name!r}: longer than {MAX_PATH_LENGTH} units')
+    lo = tuple(min(p[k] for p in pts) for k in range(3))
+    hi = tuple(max(p[k] for p in pts) for k in range(3))
+    return recs, lo, hi
+
+
+def _write_paths(out, paths, string_ref):
+    """The path table and each path's points (1.2); returns the table's offset, or 0."""
+    if not paths:
+        return 0
+    names = set()
+    for p in paths:
+        if not p.name or p.name in names:
+            raise PackError(f'path names must be distinct and not empty ({p.name!r})')
+        names.add(p.name)
+        if not 0 <= p.surface <= 255:
+            raise PackError(f'path {p.name!r}: surface byte out of range')
+    table = out.reserve(PATH_SIZE * len(paths))
+    for k, p in enumerate(paths):
+        recs, lo, hi = path_points(p)
+        body = b''.join(struct.pack('<4i4i2i', *pos, 0, *u, 0, s, ln) for pos, u, s, ln in recs)
+        po = out.put(body)
+        at = table + PATH_SIZE * k
+        flags = (PATH_RAISED if p.raised else 0) | (PATH_CLOSED if p.closed else 0)
+        out.patch(at, 'IIIBBH4i4i', 0, len(recs), po, flags, p.surface, 0, *lo, recs[-1][2], *hi, 0)
+        string_ref(at, p.name)
+    return table
+
+
 # ---- the encoder
 
 def encode(world, report=None):
@@ -682,6 +773,8 @@ def encode(world, report=None):
         out.patch(at + 4, 'HHIIHHHHII', len(r.textures), len(r.samples), tex_off, smp_off,
                   nvar, ncol, r.first_colour, len(r.backdrop), pal_off, bd_off)
 
+    path_off = _write_paths(out, world.paths, string_ref)
+
     def mask_for(key):
         names = cell_layers[key]
         return lambda name: 0 if name is None else 1 << names.index(name)
@@ -805,16 +898,17 @@ def encode(world, report=None):
             strings[text] = out.put(raw + b'\0', 1)
         out.patch(at, 'I', strings[text])
     out.align(4)
-    out.patch(0, '4sHHIBBHhhHHIiiHHIIIIII', MAGIC, VERSION_MAJOR, VERSION_MINOR, len(out.b),
+    out.patch(0, '4sHHIBBHhhHHIiiHHIIIIIIII', MAGIC, VERSION_MAJOR, VERSION_MINOR, len(out.b),
               shift, FLAG_GROUND if any_ground else 0, HEADER_SIZE, i0, j0, gw, gh, index_off, pad, overhang,
               len(world.regions), len(world.layers), region_off, layer_off,
-              len(entity_records), ent_dir, len(mesh_order), mesh_dir)
+              len(entity_records), ent_dir, len(mesh_order), mesh_dir, len(world.paths), path_off)
     if report is not None:
         report['layers'] = dict(layer_id)
         report['cell_layers'] = {k: list(v) for k, v in cell_layers.items()}
         report['entities'] = entity_numbers
         report['cells'] = dict(cell_offs)
         report['meshes'] = len(mesh_order)
+        report['paths'] = {p.name: k for k, p in enumerate(world.paths)}
     return bytes(out.b)
 
 
@@ -872,6 +966,7 @@ class Pack:
     cells: dict         # (i, j) -> DCell
     entities: list      # record offsets
     meshes: list        # offsets
+    paths: list = field(default_factory=list)   # dicts (1.2): name, flags, surface, lo, hi, length, points
 
     def cell_of(self, x, z):
         """(i, j) of the cell holding raw world point (x, z), and its local x and z."""
@@ -978,7 +1073,7 @@ def decode(data):
      nent, ent_dir, nmesh, mesh_dir) = r.u('BBHhhHHIiiHHIIIIII', 12, 'header')
     if flags & FLAGS_REQUIRED:
         raise PackError(f'pack needs features this reader lacks (header flags {flags:#x})')
-    if hs < HEADER_SIZE or hs % 4 or hs > size:
+    if hs < MIN_HEADER_SIZE or hs % 4 or hs > size:
         raise PackError('bad header size')
     if not MIN_CELL_SHIFT <= shift <= MAX_CELL_SHIFT:
         raise PackError(f'cell shift {shift} out of range')
@@ -994,6 +1089,7 @@ def decode(data):
     r.table(mesh_dir, nmesh, 4, 'mesh directory', hs)
     if nreg == 0:
         raise PackError('no regions')
+    paths = _decode_paths(r, minor, hs)
     layers = []
     for k in range(nlay):
         no, grp, fl, _ = r.u('IBBH', lay_off + LAYER_SIZE * k, 'layer')
@@ -1112,7 +1208,54 @@ def decode(data):
     if len(by_off) != nent:
         raise PackError('entity count disagrees with the cells')
     return Pack(data, major, minor, shift, i0, j0, gw, gh, pad, overhang, layers, regions, cells,
-                ents, meshes)
+                ents, meshes, paths)
+
+
+def _decode_paths(r, minor, hs):
+    """The path table of a 1.2 pack (none before 1.2), validated: names, point tables, and that
+    every point record agrees with the next (s and len add up, the last has no segment, a closed
+    path ends where it starts, the box holds every point)."""
+    if minor < 2:
+        return []
+    if hs < HEADER_SIZE:
+        raise PackError(f'a 1.{minor} header is at least {HEADER_SIZE} bytes')
+    count, table = r.u('II', 64, 'header')
+    r.table(table, count, PATH_SIZE, 'paths', hs)
+    if count and table == 0:
+        raise PackError('paths: no table')
+    out, names = [], set()
+    for k in range(count):
+        v = r.u('IIIBBH4i4i', table + PATH_SIZE * k, 'path')
+        name = r.string(v[0], 'path')
+        if not name or name in names:
+            raise PackError(f'path {k}: missing or repeated name')
+        names.add(name)
+        npt, po, flags, surface = v[1], v[2], v[3], v[4]
+        lo, length, hi = v[6:9], v[9], v[10:13]
+        if npt < 2 or npt > MAX_PATH_POINTS:
+            raise PackError(f'path {name!r}: {npt} points')
+        if po == 0:
+            raise PackError(f'path {name!r}: no points')
+        r.table(po, npt, PATH_POINT_SIZE, f'path {name!r} points', hs)
+        pts = []
+        s = 0
+        for q in range(npt):
+            pv = r.u('4i4i2i', po + PATH_POINT_SIZE * q, 'path point')
+            pos, u, ps, ln = pv[0:3], pv[4:7], pv[8], pv[9]
+            last = q == npt - 1
+            if ps != s or (ln <= 0) != last or (last and (ln or any(u))):
+                raise PackError(f'path {name!r}: point {q} disagrees with its neighbours')
+            if any(not lo[i] <= pos[i] <= hi[i] for i in range(3)):
+                raise PackError(f'path {name!r}: point {q} lies outside its box')
+            s += ln
+            pts.append(dict(pos=pos, dir=u, s=ps, len=ln))
+        if length != s or length > MAX_PATH_LENGTH * ONE:
+            raise PackError(f'path {name!r}: bad length')
+        if flags & PATH_CLOSED and (npt < 4 or pts[0]['pos'] != pts[-1]['pos']):
+            raise PackError(f'path {name!r}: a closed path ends where it starts')
+        out.append(dict(name=name, flags=flags, surface=surface, raised=bool(flags & PATH_RAISED),
+                        closed=bool(flags & PATH_CLOSED), lo=lo, hi=hi, length=length, points=pts))
+    return out
 
 
 # ---- entity parameter records
@@ -1309,3 +1452,56 @@ class Oracle:
         if len(hits) > 1:
             margin = min(margin, float(hits[1][0] - hits[0][0]) * seg)
         return hits[0], margin
+
+
+# ---- paths, exactly
+
+def path_nearest(path, p, reach):
+    """What wp_path_nearest() answers, in exact rational arithmetic over a decoded path's records
+    (decode(...).paths[k]): the nearest point to raw point p on any segment whose nearest point
+    lies within reach (units) of p in each of x, y and z. Returns ((segment, t, s, point,
+    squared distance), margin) in units (Fractions), or (None, margin); margin is how far (units)
+    the answer is from changing: from the reach box, or from a second segment as near."""
+    q = [Fraction(c, ONE) for c in p]
+    reach = Fraction(reach)
+    margin = float('inf')
+    best = second = None
+    for k, rec in enumerate(path['points'][:-1]):
+        pos = [Fraction(c, ONE) for c in rec['pos']]
+        u = [Fraction(c, ONE) for c in rec['dir']]
+        d = [q[i] - pos[i] for i in range(3)]
+        t = min(max(sum(d[i] * u[i] for i in range(3)), Fraction(0)), Fraction(rec['len'], ONE))
+        c = [pos[i] + u[i] * t for i in range(3)]
+        e = [q[i] - c[i] for i in range(3)]
+        margin = min(margin, min(abs(abs(x) - reach) for x in e))
+        if any(abs(x) >= reach for x in e):
+            continue
+        d2 = sum(x * x for x in e)
+        cand = (d2, k, t, Fraction(rec['s'], ONE) + t, tuple(c))
+        if best is None or d2 < best[0]:
+            best, second = cand, best
+        elif second is None or d2 < second[0]:
+            second = cand
+    if best is None:
+        return None, margin
+    if second is not None:
+        margin = min(margin, float(second[0] - best[0]) / (2 * math.sqrt(max(float(second[0]), 1e-12))))
+    d2, k, t, s, c = best
+    return (k, t, s, c, d2), margin
+
+
+def path_at(path, s):
+    """What wp_path_at() answers: (segment, point) at arc length s (units) along a decoded path;
+    a closed path wraps s, an open one clamps it to its ends."""
+    s = Fraction(s)
+    total = Fraction(path['length'], ONE)
+    if path['closed']:
+        s -= total * math.floor(s / total)
+    s = min(max(s, Fraction(0)), total)
+    pts = path['points']
+    k = 0
+    while k + 1 < len(pts) - 1 and Fraction(pts[k + 1]['s'], ONE) <= s:
+        k += 1
+    rec = pts[k]
+    t = s - Fraction(rec['s'], ONE)
+    return k, tuple(Fraction(rec['pos'][i], ONE) + Fraction(rec['dir'][i], ONE) * t for i in range(3))

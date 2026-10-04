@@ -38,9 +38,12 @@ MODIFIERS = {'oneOf':[
     operation('twist', {'degrees':NUM}, ['degrees']),
     operation('subdivide', {'levels':integer(1,3)}, ['levels']),
 ]}
+BOX_SIDES = ('top','bottom','left','right','back','front')
 COMMON = {'id':NAME,'material':NAME,'transform':TRANSFORM,'modifiers':array(MODIFIERS,0,16)}
 NODE = {'oneOf':[
-    operation('box', {'size':array(POS,3,3)}, ['size'], COMMON),
+    operation('box', {'size':array(POS,3,3),
+                      'open':dict(array(choice(*BOX_SIDES),1,5),description='Faces to leave out: top (+Y), bottom (-Y), left (-X), right (+X), back (-Z), front (+Z). For a ground tile ["bottom"], for a building standing on the ground ["bottom"].')},
+              ['size'], COMMON),
     operation('sphere', {'radius':POS,'rings':integer(2,64),'segments':integer(3,128)}, ['radius'], COMMON),
     operation('cylinder', {'radius':POS,'height':POS,'segments':integer(3,128),'caps':BOOL}, ['radius','height'], COMMON),
     operation('cone', {'radius':POS,'height':POS,'segments':integer(3,128),'caps':BOOL}, ['radius','height'], COMMON),

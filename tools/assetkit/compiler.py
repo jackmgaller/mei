@@ -6,9 +6,30 @@ import struct
 
 from kitcore.jsonio import canonical
 from meshlib import Mesh as NativeMesh, rgb
-from .geometry import (AssetError, Mesh, add, sub, cross, dot, norm, extrude,
+from .geometry import (AssetError, Mesh, Face, add, sub, cross, dot, norm, extrude,
                        lathe, loft, explicit_mesh, transform, modify)
 from .schema import validate
+
+
+SIDE_AXES = {'right':(0,1),'left':(0,-1),'top':(1,1),'bottom':(1,-1),'front':(2,1),'back':(2,-1)}
+
+
+def open_box(mesh, sides, path):
+    """A box without the faces on the named sides (each face's outward normal names its side),
+    and without the vertices only they used."""
+    if len(set(sides)) != len(sides):
+        raise AssetError(path, 'Name each side once.')
+    gone = {SIDE_AXES[s] for s in sides}
+    kept = []
+    for face in mesh.faces:
+        a,b,c = (mesh.vertices[i] for i in face.indices)
+        n = cross(sub(b,a),sub(c,a))
+        k = max(range(3),key=lambda i: abs(n[i]))
+        if (k,1 if n[k] > 0 else -1) not in gone: kept.append(face)
+    used = sorted({i for f in kept for i in f.indices})
+    new = {old:k for k,old in enumerate(used)}
+    return Mesh([mesh.vertices[i] for i in used],
+                [Face(tuple(new[i] for i in f.indices),f.material,f.part) for f in kept])
 
 
 def compile_recipe(recipe):
@@ -32,6 +53,7 @@ def compile_recipe(recipe):
         if op == 'box':
             x,y,z = [v/2 for v in spec['size']]
             mesh = extrude([[-x,-y],[x,-y],[x,y],[-x,y]], z*2, path)
+            if 'open' in spec: mesh = open_box(mesh, spec['open'], path+'/open')
         elif op in ('sphere','cylinder','cone','lathe'):
             segments = spec.get('segments',12)
             if op == 'sphere':

@@ -325,6 +325,35 @@ def compile_world(source, lock=None, assets_dir=None):
         if lname not in used_layers:
             warnings.append({'code': 'unused_layer', 'layer': lname, 'message': 'No placement or entity uses this layer.'})
 
+    # ---- paths: named polylines in world coordinates, stored once per world (WORLDPACK.md, "Paths")
+    paths, path_report = [], {}
+    for pname, spec in w.get('paths', {}).items():
+        pp = pointer('/paths', pname)
+        pts = [tuple(q) for q in spec['points']]
+        closed = bool(spec.get('closed'))
+        for k in range(1, len(pts)):
+            if pts[k] == pts[k - 1]:
+                raise WorldError(f'{pp}/points/{k}', 'The point repeats the one before it; a segment needs a length.')
+        if closed and len(pts) < 3:
+            raise WorldError(f'{pp}/points', 'A closed path has at least 3 points.')
+        if closed and pts[-1] == pts[0]:
+            raise WorldError(f'{pp}/points/{len(pts) - 1}', 'A closed path joins its last point to its first by '
+                             'itself: do not repeat the first point.')
+        path = P.Path(pname, pts, bool(spec.get('raised')), closed, surface_of(spec.get('tag')))
+        try:
+            recs, _, _ = P.path_points(path)
+        except P.PackError as error:
+            raise WorldError(pp, f'The pack cannot hold this path: {error}.') from error
+        outside = [k for k, q in enumerate(pts) if (math.floor(q[0] / size), math.floor(q[2] / size)) not in seen_at]
+        if outside:
+            warnings.append({'code': 'path_outside_cells', 'path': pname, 'points': outside,
+                             'message': 'These points lie over no cell of the world. The path is kept; '
+                                        'nothing is drawn or collided with there.'})
+        paths.append(path)
+        path_report[pname] = {'number': len(path_report), 'points': len(pts), 'segments': len(recs) - 1,
+                              'length': round(recs[-1][2] / P.ONE, 4), 'raised': path.raised, 'closed': closed,
+                              'surface': path.surface}
+
     # ---- palettes: each region's entries, then the assets' faces moved to them
     palette = w.get('palette', {})
     slot, row = palette.get('swatch_slot', 14), palette.get('swatch_row', 0)
@@ -398,7 +427,7 @@ def compile_world(source, lock=None, assets_dir=None):
 
     world = P.World(cells=cells, cell_shift=shift, layers=players, regions=pregions, coll_pad=pad,
                     overhang=overhang, floor_max_degrees=probe['floor_max_degrees'],
-                    ceiling_max_degrees=probe.get('ceiling_max_degrees', DEFAULT_CEILING_DEGREES))
+                    ceiling_max_degrees=probe.get('ceiling_max_degrees', DEFAULT_CEILING_DEGREES), paths=paths)
 
     # ---- entity numbers, saved bits, parameter records
     numbers = P.entity_numbers(world)
@@ -444,6 +473,7 @@ def compile_world(source, lock=None, assets_dir=None):
 
     report = make_report(source, world, data, plans, library, region_palettes, variants_shown, encoded, warnings,
                          new_lock, changes, merged_report, number_of, pad)
+    report['paths'] = path_report
     compiled = Compiled(data, report, '', '', SWATCH if any_palette else b'', new_lock, changes, library, world, encoded)
     from .akr import world_source, game_source
     compiled.akr = world_source(source, compiled, region_palettes, slot, row, number_of, groups)

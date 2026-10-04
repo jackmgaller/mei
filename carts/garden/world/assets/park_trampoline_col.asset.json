@@ -1,0 +1,107 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "park_trampoline_col",
+ "materials": {
+  "bounce": {
+   "color": "#f04880",
+   "palette": true,
+   "tag": "bounce"
+  },
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "mesh",
+   "vertices": [
+    [
+     -1.5,
+     0.60009765625,
+     1.5
+    ],
+    [
+     1.5,
+     0.60009765625,
+     1.5
+    ],
+    [
+     1.5,
+     0.60009765625,
+     -1.5
+    ],
+    [
+     -1.5,
+     0.60009765625,
+     -1.5
+    ],
+    [
+     -1.5,
+     0.0,
+     -1.5
+    ],
+    [
+     -1.5,
+     0.0,
+     1.5
+    ],
+    [
+     1.5,
+     0.0,
+     1.5
+    ],
+    [
+     1.5,
+     0.0,
+     -1.5
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     0,
+     3
+    ],
+    [
+     2,
+     1,
+     6,
+     7
+    ],
+    [
+     3,
+     2,
+     7,
+     4
+    ],
+    [
+     5,
+     6,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "bounce",
+    "solid",
+    "solid",
+    "solid",
+    "solid"
+   ]
+  }
+ ]
+}

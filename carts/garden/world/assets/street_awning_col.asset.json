@@ -1,0 +1,107 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "street_awning_col",
+ "materials": {
+  "bounce": {
+   "color": "#f04880",
+   "palette": true,
+   "tag": "bounce"
+  },
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "mesh",
+   "vertices": [
+    [
+     -9.0,
+     0.14990234375,
+     1.75
+    ],
+    [
+     -9.0,
+     0.75,
+     -1.75
+    ],
+    [
+     -9.0,
+     0.60009765625,
+     -1.75
+    ],
+    [
+     -9.0,
+     0.0,
+     1.75
+    ],
+    [
+     9.0,
+     0.0,
+     1.75
+    ],
+    [
+     9.0,
+     0.60009765625,
+     -1.75
+    ],
+    [
+     9.0,
+     0.75,
+     -1.75
+    ],
+    [
+     9.0,
+     0.14990234375,
+     1.75
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     7,
+     6,
+     1,
+     0
+    ],
+    [
+     5,
+     4,
+     3,
+     2
+    ],
+    [
+     4,
+     7,
+     0,
+     3
+    ]
+   ],
+   "face_materials": [
+    "bounce",
+    "bounce",
+    "bounce",
+    "solid",
+    "solid"
+   ]
+  }
+ ]
+}

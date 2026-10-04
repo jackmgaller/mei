@@ -1,0 +1,39 @@
+// The test room with paths (tests/test_worldkit.py adds them to a copy of the recipe): the
+// generated constants, a path found by the name an entity parameter holds, a grind check by the
+// rail and a point along the loop.
+
+cart "World Kit Paths"
+import "test_room.akr"
+
+fn out(label: *u8, a: s32, b: s32, c: s32, d: s32) {
+    print(label)
+    print_char(' ')
+    print_int(a)
+    print_char(' ')
+    print_int(b)
+    print_char(' ')
+    print_int(c)
+    print_char(' ')
+    print_int(d)
+    println("")
+}
+
+fn init() {
+    assert(world_test_room_load())
+    let rail = wp_path(WORLD_TEST_ROOM_PATH_RAIL)
+    out("paths", wp_path_count(), WORLD_TEST_ROOM_PATHS, wp_path_points(rail), rail.flags as s32)
+    // the trigger's event parameter names the rail
+    let e = wp_entity(WORLD_TEST_ROOM_ENTITY_GATE_SWITCH)
+    let p = wp_entity_params(e) as *GardenTrigger
+    let named = wp_path_find(world_test_room_string(p.event))
+    out("by_name", (named == rail) as s32, (world_test_room_string(p.event) == wp_path_name(rail)) as s32,
+        rail.surface as s32, 0)
+    // a body 0.5 above the rail's second segment grinds; one 1.0 away in x does not
+    let on = wp_path_nearest(rail, vec3(30.0, 2.5, 37.0), 0.6)
+    out("grind", on as s32, wp_near.seg, bits(wp_near.s), bits(wp_near.dist2))
+    let off = wp_path_nearest(rail, vec3(31.0, 2.0, 37.0), 0.6)
+    out("no_grind", off as s32, 0, 0, 0)
+    // 45 units along the 40-unit loop wraps to 5: on its first side
+    let q = wp_path_at(wp_path(WORLD_TEST_ROOM_PATH_LOOP), 45.0)
+    out("loop", bits(q.x), bits(q.z), wp_near.seg, bits(wp_path_length(wp_path(WORLD_TEST_ROOM_PATH_LOOP))))
+}

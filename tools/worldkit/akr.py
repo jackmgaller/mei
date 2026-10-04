@@ -73,6 +73,11 @@ def world_source(source, compiled, palettes, slot, row, numbers, groups):
     if layers:
         lines += ['','// Layers (wp_layer_set(id, on)); exclusive groups switch each other off.']
         for k,lname in enumerate(layers): lines.append(f'const WORLD_{N}_LAYER_{upper(lname)} = {k}')
+    paths = list(w.get('paths',{}))
+    if paths:
+        lines += ['','// Paths (wp_path(n); by name: wp_path_find(name)), in the order of the recipe.']
+        for k,pname in enumerate(paths): lines.append(f'const WORLD_{N}_PATH_{upper(pname)} = {k}')
+        lines.append(f'const WORLD_{N}_PATHS = {len(paths)}')
     if numbers:
         lines += ['','// Entity numbers (wp_entity(n)) in this pack; not stable across edits: saves use SAVED_ bits.']
         for eid,num in sorted(numbers.items(),key=lambda kv: kv[1]): lines.append(f'const WORLD_{N}_ENTITY_{upper(eid)} = {num}')

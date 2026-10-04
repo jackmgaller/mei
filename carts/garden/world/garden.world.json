@@ -1,0 +1,23 @@
+{
+  "format": "mei-world",
+  "version": 1,
+  "name": "garden",
+  "game": "garden.game.mochi",
+  "assets": "assets",
+  "cell_dir": "cells",
+  "grid": {"cell_size": 64},
+  "collision": {
+    "surfaces": {"default": 0, "tags": {"bounce": 1, "slide": 2}}
+  },
+  "regions": {
+    "garden": {
+      "variants": {
+        "day": {},
+        "night": {"surface": {"multiply": "#4a5884"}}
+      }
+    }
+  },
+  "layers": {
+    "festival": {}
+  }
+}

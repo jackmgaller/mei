@@ -52,6 +52,13 @@ ENTITY = obj({
     'was':dict(NAME,description='The ID this entity had before a rename: it keeps that ID\'s saved bit.'),
 }, ['id','type','position'])
 
+PATH_SPEC = obj({
+    'points':dict(array(VEC,2,4095),description='World coordinates, in order; consecutive points differ. A closed path joins the last back to the first (do not repeat it).'),
+    'raised':dict(BOOL,description='Raised: not lying on the ground (a rail, a wire, a jib). Carried to the pack for the game and for swept geometry later. Default false.'),
+    'closed':dict(BOOL,description='A loop: the last point joins the first. Default false.'),
+    'tag':dict(NAME,description='A surface tag, mapped to the pack\'s surface byte by collision.surfaces as material tags are.'),
+}, ['points'])
+
 RESERVED = 'is reserved for a later version of the World Kit and not supported yet.'
 CELL_PROPS = {
     'id':NAME,
@@ -96,6 +103,8 @@ WORLD = dict(obj({
     'layers':{'type':'object','propertyNames':NAME,'additionalProperties':obj({'group':NAME,'on':BOOL}),'maxProperties':255},
     'cells':array(CELL,1,4096),
     'cell_dir':dict(PATH,description='Directory of cell files (*.cell.json), one per cell; instead of cells.'),
+    'paths':{'type':'object','propertyNames':NAME,'additionalProperties':PATH_SPEC,'maxProperties':4096,
+             'description':'Named polylines in world coordinates, in order (the pack\'s path numbers): rails, wires, routes. The kit attaches no meaning to them; entities refer to them by name.'},
     'verification':obj({'mode':choice('report','enforce'),
                         'thresholds':{'type':'object','propertyNames':NAME,'additionalProperties':{},
                                       'description':'Per-world World Checker settings (defaults from the kit).'}}),
