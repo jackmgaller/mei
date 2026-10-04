@@ -45,7 +45,7 @@ All PS1-authentic unless noted.
 - **The kits' next pieces**, planned in their documents: terrain, region textures, audio banks
   and backdrops, `verify` and `standin-draft` in the World Kit
   ([WORLDKIT.md](WORLDKIT.md#command-line)); textures and UVs in the Asset Kit, built on texture
-  windows ([ASSETKIT.md](ASSETKIT.md#textures-proposal)).
+  windows ([ASSETKIT.md](ASSETKIT.md#textures-decided-not-built)).
 - **`mei-headless`:**
   - `--arg name=value`, so one build serves a parameter sweep;
   - `--rev HEAD` for before/after runs;

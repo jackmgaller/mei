@@ -613,81 +613,85 @@ Version 1 focuses on static meshes with solid colours, baked or palette-backed. 
 authoring (see the proposal below), Boolean solids, skeletal animation, morph animation and
 automatic LOD generation are not included, and the repository has no other tool for them.
 
-## Textures (proposal)
+## Textures (decided, not built)
 
-Not built. The owner's chosen direction: **named procedural patterns** (brick, tile, planks,
-wood grain…, a few parameters each, generated deterministically by the kit) and **small texel
-grids written in the recipe** as rows of palette indices (about 16×16, for trims, icons and
-simple signs), with **UVs always automatic per primitive**: planar, box or cylindrical
-projection with a scale, never hand-placed coordinates. Image files come later, for signage.
+Decided by the owner on 2026-10-04, revising the earlier proposal now that the Prism Engine has
+an opt-in depth buffer and perspective-correct texturing ([RENDERING.md](RENDERING.md)): large
+textured faces no longer warp, and texel 0 can be a hole that the depth test handles correctly.
+Nothing below is built yet.
 
-**Recipe sketch.** A material gains an optional `texture`; its colours are palette entries
-exactly as for palette-backed materials, so `class` and `tag` apply unchanged:
+**Sources.** A textured material takes its texels from one of:
+
+- a **pattern**: a named procedural pattern (brick, tile, planks, wood grain and the like), a few
+  parameters each, generated deterministically by the kit; for cheap repeating surfaces;
+- **texels** written in the recipe: rows of hex digits naming the material's `colors` (about
+  16×16; trims, icons, simple signs);
+- an **image**: a PNG file beside the recipe, or one cell of a **sheet** (below); for anything
+  detailed (signage, liveries, faces, panels).
 
 ```json
-"brick": {"color": "#a0522d", "class": "surface", "tag": "wall",
-  "texture": {"pattern": "brick", "colors": ["#a0522d", "#d8d0c0"],
-              "params": {"courses": 4, "bond": 0.5, "mortar": 1},
-              "size": 16, "projection": "box", "scale": [0.5, 0.25]}},
-"shop_sign": {"color": "#202020", "class": "emissive",
-  "texture": {"texels": ["1111111111111111", "1222222222222221", "…"],
-              "colors": ["#202020", "#ffe070"], "projection": "planar", "axis": "z",
-              "scale": [1.6, 0.4]}}
+"brick":  {"color": "#a0522d", "class": "surface", "tag": "wall",
+           "texture": {"pattern": "brick", "colors": ["#a0522d", "#d8d0c0"],
+                       "params": {"courses": 4, "bond": 0.5}, "size": 16,
+                       "projection": "box", "scale": [0.5, 0.25]}},
+"ramen":  {"color": "#202020", "class": "emissive",
+           "texture": {"sheet": "signs", "cell": "ramen", "projection": "fit"}},
+"livery": {"color": "#e0e0d8",
+           "texture": {"image": "art/car_side.png", "bits": 8, "projection": "fit"}}
 ```
 
-`texels` rows are hex digits naming `colors` entries (1-based, so a row can never contain
-index 0). `projection` maps object-space positions to UV per face corner: `planar` along an axis,
-`box` by each face's dominant normal axis, `cylindrical` around Y; `scale` is world units per
-repeat. A solid palette-backed material is the degenerate case: a one-texel texture with one
-colour and constant UVs, which is the swatch the kit already emits.
+**Sheets.** A sheet is one PNG holding many textures, declared once per recipe: either a uniform
+grid (`"sheets": {"signs": {"image": "art/signs.png", "grid": [32, 16]}}`, cells named by
+`[column, row]`) or named rectangles in a sidecar `NAME.sheet.json`. A sheet is only an authoring
+container: the kit slices it, and every cell it uses is packed like any other texture. The
+sheet's layout never becomes the VRAM layout.
 
-**Palette entries.** A face selects one 4-bit palette, so all colours of one textured material
-must sit in the same 16-colour palette (at most 15). Entry assignment becomes packing of groups
-into palettes, where today's solid materials are groups of one; the manifest would list each
-group so a packer keeps it together. Texels hold palette-local indices, so a packer may move a
-group to another palette at the same indices with `relocate`-style rewriting of face bytes only,
-but merging groups into one palette at different indices means rewriting texels too. Sharing an
-entry between a pattern colour and a solid material of the same colour and class works as now.
+**Animated textures.** A texture may be a sequence of frames, written as cells of a sheet:
+`{"sheet": "neon", "frames": ["a", "b", "c"], "ticks": 8}` (each frame shown for 8 ticks,
+looping). Meshes are read in place from ROM, so frames are not selected by rewriting the faces:
+the packer gives the texture one tile in VRAM and keeps its frames in ROM, and a stdlib helper
+copies the current frame into that tile when it changes (a 16×16 4-bit frame is 128 bytes).
+Every placement of the asset animates in step. Palette cycling (shifting the colours of a
+texture's palette entries) is the cheaper alternative for flicker and glow, and stays available.
 
-**Mesh format and runtime.** No format change: faces already carry four 8-bit UVs, a slot, a
-4-bit flag and a palette, per face corner, so projections need no extra vertices. UVs are whole
-texels (0–255) and wrap only at the 256-texel page edge, which is the real design constraint for
-repeats. Three options per pattern: fill a whole slot with repeated tiles (32 KB, any repeat);
-fill a band 256 texels wide and one tile high (16 rows of 4-bit = 2 KB) and split faces where
-they cross a tile row; or keep one tile (128 bytes for 16×16) and split faces at every tile
-boundary, which costs triangles. Large textured faces warp affinely; carts would use
-`subdivide()` near the camera, which (unlike for swatches) then earns its CPU cost.
+**Bit depth.** Textures are **4-bit by default** (one 16-colour palette per face, at most 15
+colours, since index 0 is reserved) so that every texture works with region palette variants for
+day and night. A texture may ask for **`"bits": 8`** (255 colours, twice the VRAM); its 256-entry
+palette is the kit's own, and a region's night variant applies to it as a single tint
+(`multiply`) rather than per-colour choices. The kit quantises images to the depth asked for,
+or keeps them exact when they already fit, and reports each texture's VRAM cost.
 
-**Texture windows (since approved and built).** The repeat constraint above is now partly
-answered by the Prism Engine's per-polygon texture windows
-([DECISIONS.md](DECISIONS.md#texture-windows), [LANGUAGE.md](LANGUAGE.md#mesh-format)): a face
-may name one of up to 7 windows from its mesh's window table, a power-of-two rectangle of 8–256
-texels per axis (origins on multiples of 8) that its u and v wrap within. A tile is then stored once and repeats inside its own window, so many
-patterns share one slot: the third option's VRAM cost (128 bytes for a 16×16 tile) without its
-face splitting. What windows do not change: coordinates are still 8 bits per vertex, so one face
-spans at most 255 texels of a pattern (15 repeats of a 16-texel tile, 7 of a 32-texel one), and
-a larger face must still be split, or carry a larger pre-repeated tile. The proposal becomes:
-patterns packed as window-aligned tiles, split only where a face's span exceeds 255 texels.
+**Placement (UVs).** UVs are generated per primitive, by `projection`:
 
-What the kit still needs to use them, none of it built: the texture authoring above (patterns,
-texel grids, projections); packing tiles into a slot at window-aligned origins and writing the
-window table and the faces' window bits (`tools/meshlib.py`, which the kit exports through,
-already writes both: `Mesh.window()` and `face(window=...)`); splitting faces at 255 texels of
-span; the material manifest listing tiles and windows, and `relocate()` moving them (today it
-rejects any textured face that is not a swatch face); and the Asset Checker's identity mesh
-treating a windowed face whose texels never contain index 0 like a swatch face.
+| Projection | Mapping |
+|---|---|
+| `planar` | along an axis (`axis`), `scale` world units per repeat |
+| `box` | by each face's dominant normal axis |
+| `cylindrical` | around Y |
+| `fit` | the texture exactly covers each face it is on (its extent in the face's plane): a sign on a panel, a livery on a car side |
 
-**Verification.** The gate stays as it is if pattern and grid texels never contain index 0:
-coverage is then that of the untextured face, as for swatches. `identity_mesh` would check
-"the face's texture region contains no index 0" against the texels the kit generated instead
-of "the UVs are one swatch texel". Cutouts (index 0 as holes: fences, foliage) would change
-coverage per texel and need the probe to render real texels: a gate redesign, so the proposal
-excludes them.
+Every projection takes `offset`, `rotate` (0, 90, 180, 270) and `flip`. Hand-written per-vertex
+UVs exist only in explicit `mesh` nodes, the escape hatch for shapes nothing else fits.
 
-**VRAM and GPU.** The swatch row is 8 bytes. A 16×16 4-bit tile is 128 bytes; the repeat
-options above cost 128 bytes, 2 KB or 32 KB per pattern, against 15 free 32 KB slots. Fill cost
-is the same as palette-backed solids (textured pixels at twice the flat cost); patterns add no
-GPU cost over swatches, only VRAM and, with face splitting, triangles.
+**Cutouts.** In assets drawn with the depth buffer (policy `"depth": true`), a texture may have
+holes: transparent pixels of an image (alpha below one half) or a `"clear"` colour in texels
+become texel 0, which draws nothing and writes no depth (fences, railings, grilles, foliage). An
+asset without depth mode may not use cutouts. For faces with cutouts the Asset Checker renders the
+real texels and judges coverage per texel; other textured faces are judged as solid faces, as
+swatch faces are today. Semi-transparency stays per face (glass), not per texel.
+
+**Who owns VRAM.** An asset declares the textures it uses; it does not place them. The **World
+Kit packs each region's textures**: it removes duplicates (one brick tile however many assets use
+it), packs tiles into texture slots at window-aligned origins, writes window tables and rewrites
+the faces' texture bytes, and fails the build with a report when a region's textures do not fit.
+A cart that uses assets without a world packs them with an Asset Kit command (`mei_assets.py
+pack`). Repeats rely on texture windows ([DECISIONS.md](DECISIONS.md#texture-windows)): a tile
+is stored once and repeats inside its window; a face spanning more than 255 texels of a pattern
+is split.
+
+**Cost.** Textured pixels cost the GPU twice a flat one, as palette-backed faces already do;
+perspective correction adds a little per triangle and per 16 pixels (RENDERING.md). Patterns and
+images add VRAM, not GPU time.
 
 ## Decisions
 
@@ -706,9 +710,11 @@ The project owner's decisions about the kit (2026-10-03), besides those describe
   palette's tint separate surfaces. If a real street looks flat, the fallback is a variation of
   a few percent by facing, baked in the asset's own frame. Baking a sun direction per placement
   and lighting at draw time were both rejected.
-- **Textures** are to be named procedural patterns and small texel grids written in the recipe,
-  with UVs always generated by projection; image files come later, for signage
-  ([Textures](#textures-proposal)).
+- **Textures** (revised 2026-10-04): procedural patterns and recipe texel grids for repeats, and
+  PNG images and sheets now for detailed art; 4-bit by default, 8-bit per texture; UVs by
+  projection or `fit`, hand UVs only in `mesh` nodes; cutouts in depth-mode assets; animated
+  textures from sheet frames; the World Kit packs VRAM per region
+  ([Textures](#textures-decided-not-built)).
 - **Examples.** Of the four examples, only `kiosk` passes the Asset Checker (and requires it).
   `robot`, `vessel` and `cottage` predate the gate and fail its geometry check with surface
   intersections (`verify`, October 2026); they remain as modelling examples. Three more recipes
