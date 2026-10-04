@@ -498,6 +498,9 @@ fn poly_upper(on: bool) {
     __pu_on = on
 }
 
+// (replaces depth.akr's, in a cart that imports both) The upper bit for depth.akr's face loops.
+fn __z_upper() -> u32 { return __pu_bits }
+
 // Whether the whole interface list (text, sprites, rect*, every 2D call) draws into PH,
 // whatever poly_upper() says: planes_on() turns it on.
 fn ui_upper(on: bool) { __pu_ui = on }

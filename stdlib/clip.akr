@@ -262,7 +262,7 @@ fn __clip_offview(v: *__ClipV, n: s32) -> bool {
 
 // Clips the polygon __clip_load left in __clip_p and draws the pieces, with the flags,
 // texture and blend mode of face f.
-fn __clip_draw(f: *Face) {
+weak fn __clip_draw(f: *Face) {
     var n = __clip_n
     let planes = __clip_planes
     var src = &__clip_p[0]

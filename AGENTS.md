@@ -13,7 +13,7 @@ in [README.md](README.md#documentation).
 | `system/` | The system ROM: boot themes (`boot/`) and the shell (`shell/`), in Akari |
 | `carts/` | The carts, one folder each (`carts/NAME/NAME.akr`), with their binary assets in `art/` and `audio/`, their tests in `tests/`, and the worlds they use in `worlds.txt` |
 | `examples/` | Example recipes for the kits: `assets/` (Asset Kit) and `worlds/` (World Kit) |
-| `tests/` | C unit tests (`test_*.c`), language tests (`lang/`), the kits' Python suites (`test_*.py`) and their fixtures, the Reference Renderer (`reference_renderer/`) |
+| `tests/` | C unit tests (`test_*.c`), language tests (`lang/`), the kits' Python suites (`test_*.py`) and their fixtures, the Reference Renderer (`reference_renderer/`), the depth mode's measurements (`depth/`) |
 | `tools/` | Generators, the kits and their shared core, the MeiNet gateway, the language fuzzer, the web cart packer, the VS Code extension |
 | `web/` | The browser page (`shell.html`) |
 | `docs/` | The documentation and the spec |
@@ -156,7 +156,7 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | Generator | Writes |
 |---|---|
 | `gen_stdlib_data.py` | `stdlib/font_data.akr` (the 8×8 font as a texture), `stdlib/sin_table.akr` |
-| `gen_faces_asm.py` | `stdlib/faces.akr` (`mesh()`'s face loops); with `--planes`, `stdlib/planes_faces.akr` |
+| `gen_faces_asm.py` | `stdlib/faces.akr` (`mesh()`'s face loops); with `--planes`, `stdlib/planes_faces.akr`; with `--depth`, `stdlib/depth_faces.akr` |
 | `meifont.py` | Proportional fonts: `stdlib/font_small.akr` (the command is in its first line); Mei Weather's fonts through `gen_weather_assets.py` |
 | `gen_reverb_tables.py` | The reverb preset table in `src/core/audio.c`, between its `BEGIN`/`END generated` markers |
 | `gen_adpcm_vectors.py` | `tests/adpcm_vectors.h`, reference vectors for `tests/test_audio.c` |
@@ -178,6 +178,6 @@ Helpers the generators import, which write nothing themselves: `boot_audio.py`, 
 `mei_icon.py` (memory card icons), `meshlib.py` (the native mesh format) and `weather_geo.py`.
 The kits' outputs (`mei_assets.py build`, `mei_world.py build`) are not in this table: they go
 wherever `-o` says (make's world rule: `build/worlds/`), and only the examples' recipes and the
-worlds' ID lock files are committed. `make check-generated` reruns `gen_faces_asm.py` (both
+worlds' ID lock files are committed. `make check-generated` reruns `gen_faces_asm.py` (all three
 outputs), `gen_stdlib_data.py`, `gen_reverb_tables.py` and, with NumPy, `gen_adpcm_vectors.py`
 and compares; the others are not rerun by any target.

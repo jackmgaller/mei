@@ -17,7 +17,7 @@ fn __rt_init() {
     camera(vec3(0.0, 0.0, 0.0), 0.0)
 }
 
-fn __rt_frame_begin() {
+weak fn __rt_frame_begin() {
     __ot_reset(&__ot[0])
     __arena_ptr = &__arena[0]
     __arena_end = &__arena[0] + ARENA_WORDS

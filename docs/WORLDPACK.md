@@ -16,7 +16,7 @@ What each part's status is:
 | Ground placements (1.1) | specified | yes | yes: drawn first, in a pass of their own |
 | Paths (1.2) | specified | yes, with an exact oracle | yes: by number and name, nearest point, point at a length, lines for debugging |
 | Levels of detail, near range (1.3) | specified | yes, with the exact level rule | yes: a level per placement with hysteresis; the pack's near range |
-| [Objects](#objects): entity meshes, the game's own | (not part of the format) | – | yes: culled, keyed at their nearest point, nearer from above |
+| [Objects](#objects): entity meshes, the game's own | (not part of the format) | – | yes: culled, keyed at their nearest point, nearer from above (in depth mode: culled only) |
 | Collision blocks (cells and entities) | specified | yes, with an exact oracle | yes: floor, ceiling, wall push, segment |
 | Entities and parameter records | specified | yes | yes: iteration, tracking, lookup by number |
 | Regions: palette variants, texture set | specified | yes | palettes loaded and blended; textures loaded at once only |
@@ -392,7 +392,7 @@ this kind of hardware.
 cell bounds, sphere), sorted among themselves in the frame's ordering table and drawn at once
 (`ot_flush()`), unless none was drawn. Then the near pass as before, without them; the cart's own
 meshes join it. The frame is drawn in three passes, each over the one before: far stand-ins,
-ground, near.
+ground, near. (In depth mode there is no ground pass: [Objects](#objects), "In depth mode".)
 
 Why a pass of its own rather than the other ways of drawing ground "first" on this machine:
 
@@ -540,6 +540,30 @@ drawing its own character works the bounds out once (`wp_mesh_bounds(HERO)`: rad
 point) and passes them with the character's position every frame:
 `wp_draw_object(HERO, pos, yaw, b.x, pos.y + b.y)`. The same call suits any object the game
 draws at a world position; `wp_object_bias` and `wp_object_squash` can be set before each call.
+
+**In depth mode.** Everything above works around the ordering table. A cart that imports
+`depth.akr` and calls `render_depth(true)` ([RENDERING.md](RENDERING.md),
+[LANGUAGE.md](LANGUAGE.md#the-depth-buffer-and-perspective-depthakr)) has a depth buffer
+order its pixels instead, and `depth.akr` replaces `wp_draw()` and `wp_draw_object()` with
+versions that leave the workarounds out while the test is on (and are the same as these while it
+is off):
+
+- `wp_draw()` makes no `ot_flush()` and no ground pass: the far pass's stand-ins and every near
+  placement, ground or not (`wp_stats.ground` stays 0), go into the same tables, opaque faces
+  drawn nearest first and semi-transparent ones after them, back to front. Both passes sort over
+  one clip range, `wp_clip_near` to the far pass's far depth (`wp_near_far` without a far pass),
+  which is the range it leaves set; the culling is as before (the far pass's view volume still
+  starts at half a cell).
+- `wp_draw_object()` culls the object by its sphere as before and draws it as `mesh_at()` would,
+  without the key or the bias: `wp_object_bias` and `wp_object_squash` do nothing, and none of
+  the cases in "What it does not handle" remains (thin walls, large tops, sunk objects and the
+  object's own faces are all ordered per pixel). The authoring rules above are for the ordering
+  table only.
+
+What is left is precision: vertex positions are whole pixels, so where two faces meet or lie
+within about a key step of each other a pixel or few at the edge can go either way (RENDERING.md,
+"Precision"; the depth prototype's World Checker run left 73 near and 81 far wrong-order pixels
+over the Movement Garden's 600 views, against 51,382 and 4,810 with the ordering table).
 
 ## Entities
 
@@ -823,7 +847,8 @@ by 1/16 unit needs no clipping, so its mesh is drawn by the loops that skip the 
 per-face clipping tests (`__draw_mesh_safe`; the same packets). The near set is convex, so along any line of
 sight near geometry comes before far; it is chosen around the camera, which may trail the player.
 A near cell whose region is not loaded is drawn as its stand-in, in the near pass. The game's
-objects join the near pass after it ([Objects](#objects)).
+objects join the near pass after it ([Objects](#objects)). With a depth buffer nothing is flushed
+and there is no ground pass ([Objects](#objects), "In depth mode").
 
 Each present placement in view is drawn at the level of detail its distance chooses
 ([Levels of detail](#levels-of-detail)), or not at all past its cull mark.
@@ -847,7 +872,9 @@ own meshes come after `wp_draw()`, so in a shared bucket the world's faces are d
 `wp_draw_object()`'s keys and biases move an object out of the shared buckets. Within one asset
 this is a rule recipes may rely on (a sign earlier than the wall it hangs on wins their ties);
 between placements it depends on the placements' order and the cells' and should not be relied
-on: the World Checker judges what is drawn either way.
+on: the World Checker judges what is drawn either way. In depth mode the buckets order only the
+cost; ties in the depth test go to the face drawn later, and a decal wins with
+`depth_offset()`, whatever the order ([LANGUAGE.md](LANGUAGE.md#the-depth-buffer-and-perspective-depthakr)).
 
 **Entities.** A tracked area is the cells within a radius (0–2) of a point. An entity is active
 while its cell is in the area and it is present. Each update retires the entities that stopped
@@ -984,8 +1011,8 @@ radius (2), and `WP_MAX_LOD` = 2,048 bytes of level memory, one per placement sl
 | `wp_cell_size()`, `wp_cell_index(x)`, `wp_cell(i, j)`, `wp_cell_at(p)`, `wp_cell_centre(c)` | the grid |
 | `wp_layer_count()`, `wp_layer_name(id)`, `wp_layer_find(name)`, `wp_layer_on(id)`, `wp_layer_set(id, on)`, `wp_cell_mask(c)` | layers (exclusive groups applied) |
 | `wp_pad()` | the header's `pad`: how far walls are copied past a cell, the largest radius `wp_push` answers for exactly |
-| `wp_draw(eye, yaw, pitch)` | the far, ground and near passes; leaves the near camera set, relative to `wp_view_origin()` |
-| `wp_draw_object(m, pos, yaw, radius, base) -> bool` | after `wp_draw()`: an object's mesh at a world position, culled by its sphere, keyed at its nearest point, nearer while the eye is above `base` ([Objects](#objects)) |
+| `wp_draw(eye, yaw, pitch)` | the far, ground and near passes; leaves the near camera set, relative to `wp_view_origin()`. In depth mode one pass into the depth tables, no ground pass ([Objects](#objects), "In depth mode") |
+| `wp_draw_object(m, pos, yaw, radius, base) -> bool` | after `wp_draw()`: an object's mesh at a world position, culled by its sphere, keyed at its nearest point, nearer while the eye is above `base` ([Objects](#objects)); in depth mode without the key and the bias |
 | `wp_draw_entities() -> s32`, `wp_entity_draw(e) -> bool` | the live entities' meshes in the near cells (or one entity's mesh) through `wp_draw_object()`; how many were drawn |
 | `wp_mesh_bounds(m) -> vec2` | a mesh's radius around its origin and its lowest vertex's height (a scan) |
 | `wp_view_origin()` | where this frame is drawn around: draw the game's own meshes at `pos − wp_view_origin()` |
@@ -1003,6 +1030,14 @@ radius (2), and `WP_MAX_LOD` = 2,048 bytes of level memory, one per placement sl
 | `wp_path_count()`, `wp_path(n)`, `wp_path_find(name)`, `wp_path_name(p)`, `wp_path_points(p)`, `wp_path_point(p, k)`, `wp_path_length(p)` | paths (1.2; none in an older pack) by number or name (null when there is none), their points and length; `p.flags` (`WP_PATH_RAISED`, `WP_PATH_CLOSED`) and `p.surface` |
 | `wp_path_nearest(p, pos, reach)`, `wp_path_at(p, s)` | the nearest point on a path within reach (a grind check), the point at a length along it (a mover); answers in `wp_near`: `pos`, `dir`, `seg`, `t`, `s`, `dist2` |
 | `wp_path_draw(p, colour)` | the path as lines over the frame, after `wp_draw()` (a debug view) |
+
+**Depth mode** (`import "depth.akr"`, `render_depth(true)`): `depth.akr` replaces `wp_draw()` and
+`wp_draw_object()` (it imports `worldpack.akr` for that), as [Objects](#objects) describes. On
+the Movement Garden's scripted runs (`tests/depth/garden.sh`) it costs 1.4–4.6 % more CPU a
+frame than the ordering table (mean: 155,461 → 157,583 on the tour of the park, 304,639 →
+318,686 in the kick alley, 209,136 → 217,593 sweeping the camera at the spawn): the faces with
+depth cost 14–24 cycles more each, less the two `ot_flush()` table resets it no longer makes.
+The GPU figures are in [LANGUAGE.md](LANGUAGE.md#the-depth-buffer-and-perspective-depthakr).
 
 Not implemented: reading audio banks and backdrops, swapping a region's textures across frames by
 itself, character control, cameras, goals and saving (the game's).

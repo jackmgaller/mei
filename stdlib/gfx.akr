@@ -368,7 +368,7 @@ fn __arena_room(nf: s32) -> bool { return ((__arena_end as u32) - (__arena_ptr a
 // same packets as __draw_mesh, made by the loops that skip those tests (__xform_safe,
 // __draw_faces_safe); a mesh with texture windows, fog, subdivide() or too little packet memory
 // left for all its faces goes to __draw_mesh instead.
-fn __draw_mesh_safe(m: *Mesh, mvp: mat4) {
+weak fn __draw_mesh_safe(m: *Mesh, mvp: mat4) {
     let nf = m.nfaces as s32
     if m.windows != 0 || __fog_on != 0 || __subdiv > 0 || m.nverts as s32 > MAX_MESH_VERTS || !__arena_room(nf) {
         __draw_mesh(m, mvp)
@@ -439,7 +439,7 @@ fn mesh_xf(m: *Mesh, model: mat4) {
 // A mesh with a window table goes to __draw_mesh_win, so the test is all a mesh without one
 // pays (its stores to __clip_src and __clip_m moved ahead of __xform pay for it: the same cycles
 // as before windows).
-fn __draw_mesh(m: *Mesh, mvp: mat4) {
+weak fn __draw_mesh(m: *Mesh, mvp: mat4) {
     let nv = m.nverts as s32
     if nv > MAX_MESH_VERTS {
         println("mesh(): too many vertices")

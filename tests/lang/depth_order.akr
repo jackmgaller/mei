@@ -1,0 +1,75 @@
+// depth.akr's submission order and what it saves: a textured wall hidden behind a nearer one.
+// Frame 1 draws them with the opaque faces nearest first (depth.akr's table), so the hidden
+// wall's pixels fail the test at 1 GPU cycle; frame 2 puts opaque faces in the back-to-front
+// table instead (as the ordering table would draw them), so they pass at 2 and are then drawn
+// over. The picture is the same; the difference is the hidden pixels (10,609). Frame 3 flushes
+// the tables halfway (ot_flush()) after the far wall: the near one, drawn after, still tests
+// against it (and the tables are spliced in again), at the back-to-front cost.
+// frames: 5
+// pixel: 160 120 7C00
+
+import "depth.akr"
+
+struct Quad { hdr: Mesh, v: [4]vec4, f: [1]Face }
+var front: Quad      // flat blue, at z 2
+var back: Quad       // textured, at z 4, wholly behind it
+
+fn quad(m: *Quad, s: fixed, z: fixed) {
+    m.hdr.nverts = 4
+    m.hdr.nfaces = 1
+    m.hdr.verts = 16
+    m.hdr.faces = 16 + 64
+    m.v[0] = vec4(-s, -s, z, 1.0)
+    m.v[1] = vec4(s, -s, z, 1.0)
+    m.v[2] = vec4(-s, s, z, 1.0)
+    m.v[3] = vec4(s, s, z, 1.0)
+    m.f[0].flags = FACE_QUAD as u8
+    m.f[0].col[0] = 0xFF0000
+    m.f[0].idx[1] = 1
+    m.f[0].idx[2] = 2
+    m.f[0].idx[3] = 3
+}
+
+var cost: [3]s32
+
+fn init() {
+    dither(false)
+    quad(&front, 1.0, 2.0)
+    quad(&back, 1.0, 4.0)
+    back.f[0].flags = (FACE_QUAD | FACE_TEXTURED) as u8
+    back.f[0].col[0] = 0x808080
+    let texel = VRAM_TEXTURES as *u8
+    texel[0] = 1
+    let pal = VRAM_PALETTE as *u16
+    pal[1] = 0x001F
+    camera(vec3(0.0, 0.0, 0.0), 0.0)
+    render_depth(true)
+}
+
+fn update() {
+    let f = frame() as s32
+    if f >= 2 && f <= 4 { cost[f - 2] = gpu_used() }
+    if f == 4 {
+        print_int(cost[1] - cost[0])       // the hidden pixels: 2 cycles each, not 1
+        println("")
+        print_int(cost[2] - cost[0])       // flushed back first: the same as back to front
+        println("")
+    }
+}
+
+fn draw() {
+    cls(0)
+    let f = frame()
+    if f == 2 { __z_tab[0] = __z_tab[1] }   // (for comparison only: opaque faces back to front)
+    if f == 3 {
+        mesh(&back.hdr)
+        let _ = ot_flush()
+        mesh(&front.hdr)
+        return
+    }
+    mesh(&back.hdr)
+    mesh(&front.hdr)
+    if f == 2 { __z_tab[0] = &__zo[0] as u32 }
+}
+// expect: 10609
+// expect: 10609

@@ -385,8 +385,9 @@ fn wp_view_origin() -> vec3 { return __wp_origin }
 // their ground placements first, sorted among themselves and drawn at once (ot_flush(), when
 // wp_ground_first is set and any was drawn), so that nothing standing on the ground can sort
 // behind it; then the rest, into the frame's table, which the cart's own meshes join. Call it
-// after cls().
-fn wp_draw(eye: vec3, yaw: fixed, pitch: fixed) {
+// after cls(). (depth.akr replaces it with a version that does the same with the depth test off
+// and draws in depth mode with it on: keep the two in step.)
+weak fn wp_draw(eye: vec3, yaw: fixed, pitch: fixed) {
     let ci = wp_cell_index(eye.x)
     let cj = wp_cell_index(eye.z)
     __wp_origin = vec3(fixed(ci << __wp_shift) + __wp_half, 0.0, fixed(cj << __wp_shift) + __wp_half)
@@ -663,8 +664,9 @@ asm fn __wp_scan(v: *vec4, n: s32) -> vec2 {
 // around pos that holds the mesh (culled against the near pass's view volume, and drawn without
 // clipping tests when it needs none, so it must hold every vertex; 0: never culled, and keyed at
 // pos); base: the world height of its lowest point (its feet). Returns whether it
-// was drawn. Leaves depth_key off; adds to the cart's own depth_bias.
-fn wp_draw_object(m: *Mesh, pos: vec3, yaw: fixed, radius: fixed, base: fixed) -> bool {
+// was drawn. Leaves depth_key off; adds to the cart's own depth_bias. (depth.akr replaces it, as
+// wp_draw().)
+weak fn wp_draw_object(m: *Mesh, pos: vec3, yaw: fixed, radius: fixed, base: fixed) -> bool {
     let t = pos - __wp_origin
     let ts = vec4(t.x, t.y, t.z, radius)
     if radius > 0.0 && !__wp_visible(ts) { return false }

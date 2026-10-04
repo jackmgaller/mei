@@ -161,7 +161,7 @@ weak fn ot_insert(p: *u32, type: u32, depth: s32) {
 }
 
 // Empties the frame's ordering table (the start of every frame does).
-fn ot_clear() { __ot_reset(&__ot[0]) }
+weak fn ot_clear() { __ot_reset(&__ot[0]) }
 
 // Copies the frame's ordering table into buf (1,024 words), to put back later with ot_restore()
 // (the packets it holds must still be there: built this frame, or in an arena of the cart's).
@@ -230,7 +230,7 @@ fn ot_draw(table: *u32) -> s32 {
 
 // Draws the frame's ordering table now and empties it: what is sorted afterwards is drawn at
 // the end of the frame, over it. Returns the triangles drawn.
-fn ot_flush() -> s32 {
+weak fn ot_flush() -> s32 {
     let n = ot_draw(&__ot[0])
     __ot_reset(&__ot[0])
     return n
