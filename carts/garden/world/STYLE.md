@@ -97,6 +97,10 @@ assets must keep to them, and the Asset Checker (zero wrong pixels) enforces mos
    edge (no T-junctions).
 5. **Gaps, not slivers.** Two parts closer than 0.05 m sort unpredictably; touch exactly or keep
    0.1 m apart.
+6. **Ties go to the earlier face.** Within one ordering-table bucket the face submitted first is
+   drawn last, so it ends up on top. In a recipe, put what must win a tie first: a sign's or
+   band's node before the wall it lies on. Order between two placements sharing a bucket is not
+   to be relied on.
 
 ## Budgets
 
