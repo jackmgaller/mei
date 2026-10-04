@@ -1,0 +1,58 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "stall",
+  "budget": {"vertices": 256, "triangles": 200},
+  "sheets": {
+    "signs": {"image": "../../../assets/art/stall_sheet.png"}
+  },
+  "materials": {
+    "brick": {"color": "#9c4f34", "tag": "wall",
+              "texture": {"pattern": "brick", "colors": ["#9c4f34", "#d6cbb4", "#86412b"],
+                          "params": {"courses": 4, "bricks": 2}, "projection": "box", "scale": [0.5, 0.25]}},
+    "counter": {"color": "#a57a4e", "tag": "floor",
+                "texture": {"pattern": "planks", "colors": ["#a57a4e", "#5a3c24", "#93693f", "#7d5634"],
+                            "params": {"boards": 4}, "projection": "planar", "axis": "y", "scale": [1, 0.5]}},
+    "post": {"color": "#7a5236",
+             "texture": {"pattern": "grain", "colors": ["#8a5f3e", "#5e3d26", "#74502f"],
+                         "params": {"rings": 2, "waves": 2}, "projection": "cylindrical", "scale": [0.3, 0.6], "rotate": 90}},
+    "awning": {"color": "#c8402f", "tag": "roof",
+               "texture": {"pattern": "stripes", "colors": ["#c8402f", "#efe6d2"], "params": {"count": 4},
+                           "projection": "box", "scale": [0.6, 0.6]}},
+    "sign": {"color": "#d86030", "class": "emissive",
+             "texture": {"sheet": "signs", "cell": "ramen", "bits": 8, "projection": "fit"}},
+    "emblem": {"color": "#eee2c4",
+               "texture": {"sheet": "signs", "cell": "emblem", "projection": "disc", "axis": "y"}},
+    "lantern": {"color": "#d04a2c", "class": "emissive",
+                "texture": {"sheet": "signs", "frames": ["glow_a", "glow_b"], "ticks": 12,
+                            "projection": "cylindrical", "scale": [0.95, 0.3]}},
+    "screen": {"color": "#3a2c22", "double_sided": true,
+               "texture": {"pattern": "lattice", "colors": ["#3a2c22", "#000000"], "clear": "#000000",
+                           "params": {"count": 2, "bar": 2}, "projection": "fit"}}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.55},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {"id": "base", "op": "box", "size": [2, 0.9, 0.7], "open": ["bottom", "top"], "material": "brick",
+     "transform": {"translate": [0, 0.45, 0]}},
+    {"id": "top", "op": "box", "size": [2.2, 0.08, 0.9], "material": "counter",
+     "transform": {"translate": [0, 0.94, 0]}},
+    {"id": "posts", "op": "group", "children": [
+      {"id": "post", "op": "cylinder", "radius": 0.05, "height": 1.22, "segments": 8, "caps": false,
+       "material": "post", "transform": {"translate": [1.0, 1.59, 0.3]}}
+    ], "modifiers": [{"op": "mirror", "axis": "x"}]},
+    {"id": "awning", "op": "box", "size": [2.4, 0.06, 1.2], "material": "awning",
+     "transform": {"translate": [0, 2.23, 0]}},
+    {"id": "sign", "op": "box", "size": [1.2, 0.3, 0.04], "material": "sign",
+     "transform": {"translate": [0, 2.45, -0.5]}},
+    {"id": "screens", "op": "group", "children": [
+      {"id": "screen", "op": "mesh", "material": "screen",
+       "vertices": [[1.08, 1.0, -0.4], [1.08, 1.0, 0.4], [1.08, 2.18, 0.4], [1.08, 2.18, -0.4]],
+       "faces": [[0, 1, 2, 3]]}
+    ], "modifiers": [{"op": "mirror", "axis": "x"}]},
+    {"id": "lantern", "op": "cylinder", "radius": 0.15, "height": 0.3, "segments": 10, "caps": false,
+     "material": "lantern", "transform": {"translate": [0.8, 1.95, -0.62]}},
+    {"id": "emblem", "op": "cylinder", "radius": 0.22, "height": 0.03, "segments": 12, "material": "emblem",
+     "transform": {"rotate": [-90, 0, 0], "translate": [0, 0.5, -0.38]}}
+  ]
+}

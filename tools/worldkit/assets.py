@@ -30,6 +30,11 @@ class Asset:
     verification: dict = None            # the Asset Checker's result, when it ran
     uses: list = field(default_factory=list)
     levels: list = field(default_factory=list)   # native meshes of levels of detail 1.. (recipe lod)
+    mesh: object = None                  # textured assets: the compiled mesh, placed per region
+    materials: dict = None
+
+    @property
+    def textured(self): return self.mesh is not None
 
     @property
     def triangles(self): return self.report['triangles']
@@ -93,10 +98,6 @@ class Library:
             except (AssetError,OSError,ValueError,RecursionError) as error:
                 where = getattr(error,'path','/input')
                 raise WorldError(path,f'Asset {name!r} does not build: {where}: {error}',file) from error
-            if mesh.textures:
-                raise WorldError(path,f'Asset {name!r} has textured materials; packing textures per region is not '
-                                      'built in the World Kit yet (docs/ASSETKIT.md, "Textures"). Use mei_assets.py pack '
-                                      'for a cart without a world.',file)
             if recipe['name'] != name:
                 raise WorldError(path,f'{source} is named {recipe["name"]!r}; an asset file must be named after its recipe.',file)
             binary = native_bytes(mesh,materials,recipe.get('lighting',{}))
@@ -104,6 +105,10 @@ class Library:
             tags = [materials[f.material].get('tag') for f in mesh.faces]
             self.assets[name] = Asset(name,str(source),recipe,binary,manifest,report,tags,relative(source,self.base_path))
             self.assets[name].levels = [native_bytes(m,materials,recipe.get('lighting',{})) for m,_ in mesh.levels or []]
+            if mesh.textures:
+                # Placed per region later (worldkit/textures.py); binary is the asset's own
+                # placement, whose geometry, collision and bounds are the same.
+                self.assets[name].mesh,self.assets[name].materials = mesh,materials
         asset = self.assets[name]
         asset.uses.append(use)
         return asset
@@ -116,7 +121,8 @@ class Library:
         perspective where the recipe does not set them (the world draws its assets so)."""
         from .cache import AssetVerdicts
         required = {name:self.policy_recipe(asset,runtime) for name,asset in self.assets.items() if asset.policy_required}
-        outcomes = AssetVerdicts(cache,compiler,probe).run(required)
+        folders = {name:Path(self.assets[name].file).parent for name in required}
+        outcomes = AssetVerdicts(cache,compiler,probe).run(required,folders)
         for name,asset in sorted(self.assets.items()):
             if not asset.policy_required: continue
             result,error = outcomes[name]

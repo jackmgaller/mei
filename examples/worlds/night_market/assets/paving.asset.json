@@ -1,0 +1,16 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "paving",
+  "materials": {
+    "stone": {"color": "#8a8d92", "tag": "ground",
+              "texture": {"pattern": "tile", "colors": ["#8a8d92", "#5c5f66", "#7d8188"], "params": {"count": 2},
+                          "projection": "planar", "axis": "y", "scale": [2, 2]}}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "nodes": [
+    {"id": "surface", "op": "mesh", "material": "stone",
+     "vertices": [[-16, 0, -16], [16, 0, -16], [16, 0, 16], [-16, 0, 16]],
+     "faces": [[0, 3, 2, 1]]}
+  ]
+}

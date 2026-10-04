@@ -1,0 +1,11 @@
+{
+  "format": "mei-world-ids",
+  "version": 1,
+  "world": "night_market",
+  "next_bit": 1,
+  "bits": {
+    "coin_market": 0
+  },
+  "retired": {},
+  "renamed": {}
+}

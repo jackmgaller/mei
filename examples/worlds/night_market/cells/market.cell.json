@@ -1,0 +1,15 @@
+{
+  "format": "mei-world-cell", "version": 1,
+  "id": "market", "at": [0, 0], "region": "market", "standin": "block_far",
+  "placements": [
+    {"id": "ground", "asset": "paving", "position": [16, 0, 16], "ground": true, "collision": "self"},
+    {"id": "shop_west", "asset": "shopfront", "position": [8, 0, 22], "collision": "self"},
+    {"id": "shop_east", "asset": "shopfront", "position": [22, 0, 24], "yaw": -20, "collision": "self"},
+    {"id": "stall_1", "asset": "stall", "position": [12, 0, 14], "collision": "self"},
+    {"id": "stall_2", "asset": "stall", "position": [18, 0, 13], "yaw": 15, "collision": "self"},
+    {"id": "crate_1", "asset": "crate", "position": [15, 0, 17], "yaw": 10, "collision": "self"}
+  ],
+  "entities": [
+    {"id": "coin_market", "type": "coin", "position": [16, 1, 10]}
+  ]
+}

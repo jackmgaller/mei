@@ -1,0 +1,113 @@
+// The World Kit's textures and backdrops on the console: tests/test_worldkit.py builds
+// examples/worlds/night_market, copies this cart next to the outputs and runs it headless.
+// Eight views, six frames each (the screenshots are the last frame of each), in depth and
+// perspective mode: the market by day and by night, close to a stall (its lantern and the
+// shop's neon sign animate), turned (the skyline scrolls with the yaw), the harbour (another
+// region: its own texture set and mountains) by day and night, and dusk (the variants blended).
+// It prints what each piece costs, in CPU cycles.
+
+cart "World Kit Night Market"
+import "night_market.akr"
+import "depth.akr"
+
+struct View {
+    region: s32
+    va: s32
+    vb: s32
+    t: fixed
+    eye: vec3
+    yaw: fixed
+    pitch: fixed
+}
+
+const VIEWS = 8
+const HOLD = 6
+var views: [VIEWS]View
+var region: s32 = -1
+var shown: s32 = -1
+var c_enter: s32
+var c_anim: s32
+var c_anim_max: s32
+var c_back: s32
+var c_blend: s32
+var c_draw: s32
+
+fn view(k: s32, r: s32, va: s32, vb: s32, t: fixed, eye: vec3, yaw: fixed, pitch: fixed) {
+    views[k] = View { region: r, va: va, vb: vb, t: t, eye: eye, yaw: yaw, pitch: pitch }
+}
+
+fn init() {
+    assert(world_night_market_load())
+    let m = WORLD_NIGHT_MARKET_REGION_MARKET
+    let h = WORLD_NIGHT_MARKET_REGION_HARBOUR
+    let day = WORLD_NIGHT_MARKET_MARKET_VARIANT_DAY
+    let night = WORLD_NIGHT_MARKET_MARKET_VARIANT_NIGHT
+    view(0, m, day, day, 0.0, vec3(16.0, 1.7, 3.0), 0.0, 0.08)
+    view(1, m, night, night, 0.0, vec3(16.0, 1.7, 3.0), 0.0, 0.08)
+    view(2, m, day, day, 0.0, vec3(12.6, 1.8, 10.2), -0.1, -0.12)
+    view(3, m, night, night, 0.0, vec3(12.6, 1.8, 10.2), -0.1, -0.12)
+    view(4, m, night, night, 0.0, vec3(16.0, 1.7, 3.0), 0.55, 0.08)
+    view(5, h, day, day, 0.0, vec3(40.0, 1.7, 4.0), 0.45, 0.05)
+    view(6, h, night, night, 0.0, vec3(40.0, 1.7, 4.0), 0.45, 0.05)
+    view(7, m, day, night, 0.5, vec3(16.0, 1.7, 3.0), 0.0, 0.08)
+    let a = cycle_count()
+    wp_region_enter(h, 0)
+    let b = cycle_count()
+    wp_region_enter(m, 0)
+    print("enter ")
+    print_int(b - a)
+    println("")
+    region = m
+}
+
+fn draw() {
+    let f = frame() as s32
+    let k = min(f / HOLD, VIEWS - 1)
+    let v = views[k]
+    if v.region != region {
+        let a = cycle_count()
+        wp_region_enter(v.region, v.va)
+        c_enter = cycle_count() - a
+        region = v.region
+        shown = -1
+    }
+    if k != shown {
+        wp_backdrop_show(v.region)
+        let a = cycle_count()
+        wp_variant_blend(v.region, v.va, v.vb, v.t)
+        c_blend = cycle_count() - a
+        wp_backdrop_variant(v.va, v.vb, v.t)
+        shown = k
+    }
+    var a = cycle_count()
+    wp_animate(f)
+    c_anim = cycle_count() - a
+    if wp_anim_copied > 0 { c_anim_max = max(c_anim_max, c_anim) }
+    a = cycle_count()
+    wp_backdrop_draw(v.yaw, v.pitch)
+    c_back = cycle_count() - a
+    render_depth(true)
+    render_perspective(true)
+    a = cycle_count()
+    wp_draw(v.eye, v.yaw, v.pitch)
+    c_draw = cycle_count() - a
+    if f % HOLD == HOLD - 1 {
+        print("view ")
+        print_int(k)
+        print(" draw ")
+        print_int(c_draw)
+        print(" anim ")
+        print_int(c_anim)
+        print(" anim_copy_max ")
+        print_int(c_anim_max)
+        print(" backdrop ")
+        print_int(c_back)
+        print(" blend ")
+        print_int(c_blend)
+        print(" enter ")
+        print_int(c_enter)
+        print(" drawn ")
+        print_int(wp_stats.drawn)
+        println("")
+    }
+}

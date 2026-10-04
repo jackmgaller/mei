@@ -149,9 +149,9 @@ def _verify_level(job):
     """One level's Asset Checker run, in a worker: (verdict or None, error or None)."""
     from assetkit.visibility import verify
     from assetkit.geometry import AssetError
-    recipe,compiler,probe = job
+    recipe,compiler,probe,folder = job
     try:
-        result = verify(recipe,compiler=compiler,probe=probe)
+        result = verify(recipe,compiler=compiler,probe=probe,folder=folder)
     except (AssetError,OSError,ValueError) as error:
         return None,(type(error).__name__,getattr(error,'path','/verification'),str(error))
     return {'ok':bool(result['ok']),'views':len(result.get('views',[]))},None
@@ -181,18 +181,22 @@ class AssetVerdicts:
                             **runtime_versions()}
         return self._common
 
-    def key(self, level):
+    def key(self, level, folder=None):
         from assetkit.compiler import compile_recipe, native_bytes
-        mesh,materials,_ = compile_recipe(level)
+        mesh,materials,_ = compile_recipe(level,folder)
         binary = native_bytes(mesh,materials,level.get('lighting',{}))
-        return key_of({'common':self.common(),'recipe':level,'mesh':hashlib.sha256(binary).hexdigest()})
+        parts = {'common':self.common(),'recipe':level,'mesh':hashlib.sha256(binary).hexdigest()}
+        if mesh.textures:
+            # the texels (images and sheets beside the recipe) are in the tiles' content keys
+            parts['tiles'] = sorted({t.tile.key for t in mesh.textures['textures'].values()})
+        return key_of(parts)
 
     def levels(self, recipe):
         from assetkit.compiler import level_recipe
         return [level_recipe(recipe,k) for k in range(len(recipe.get('lod',{}).get('levels',[]))+1)] \
             if 'lod' in recipe else [recipe]
 
-    def run(self, recipes):
+    def run(self, recipes, folders=None):
         """{name: (verdict, error)} for {name: recipe}: a verdict is {'ok', 'views'}; error is
         the exception verify(recipe) would raise (its first level's that could not be checked),
         and then verdict is None."""
@@ -200,12 +204,12 @@ class AssetVerdicts:
         results, todo = {}, []
         for name,levels in plan.items():
             for k,level in enumerate(levels):
-                key = self.key(level) if self.directory else None
+                key = self.key(level,(folders or {}).get(name)) if self.directory else None
                 hit = self.load(key)
                 if hit is not None: results[name,k] = (hit,None)
                 else: todo.append((name,k,level,key))
         if todo:
-            work = [(level,self.compiler,self.probe) for _,_,level,_ in todo]
+            work = [(level,self.compiler,self.probe,(folders or {}).get(name)) for name,_,level,_ in todo]
             done = parallel(_verify_level,work)
             for (name,k,_,key),(verdict,error) in zip(todo,done):
                 results[name,k] = (verdict,error)

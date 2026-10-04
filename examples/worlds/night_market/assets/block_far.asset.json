@@ -1,0 +1,16 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "block_far",
+  "materials": {
+    "mass": {"color": "#6e6a72", "palette": true}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "nodes": [
+    {"id": "ground", "op": "mesh", "material": "mass",
+     "vertices": [[-16, 0, -16], [16, 0, -16], [16, 0, 16], [-16, 0, 16]],
+     "faces": [[0, 3, 2, 1]]},
+    {"id": "block", "op": "box", "size": [8, 4.5, 6], "open": ["bottom"], "material": "mass",
+     "transform": {"translate": [0, 2.25, 4]}}
+  ]
+}

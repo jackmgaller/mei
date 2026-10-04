@@ -1,0 +1,143 @@
+// World pack backdrops (docs/WORLDPACK.md, "Backdrops"; docs/WORLDKIT.md, "Backdrops"): a
+// region's sky and horizon silhouette drawn by the plane chip (docs/PLANES.md) behind the 3D
+// world, at no GPU cost.
+//
+// Not part of the prelude, nor of worldpack.akr: it imports planes.akr, which replaces mesh()'s
+// face loops (3 cycles a drawn face more), so only a cart whose world has a backdrop pays for it.
+// The World Kit's NAME.akr imports it when a region has a backdrop.
+//
+//   fn init() {
+//       world_city_load()               // enters a region: its backdrop art is in VRAM
+//       wp_backdrop_show(0)             // compositor on, the sky and BG1 set up
+//   }
+//   fn draw() {
+//       // no cls(): the plane chip erases the frame to holes, and the planes show through
+//       wp_backdrop_draw(yaw, pitch)    // the gradient's lines and the silhouette's scroll
+//       wp_draw(eye, yaw, pitch)
+//   }
+//
+// How it moves with the camera. Each sky stop is at an elevation e above the horizon; its
+// screen line is 120 - F tan(e - pitch), F = wp_backdrop_focal pixels a radian (207.8 for the
+// default 60-degree camera), and the backdrop colour is interpolated between the stops' lines
+// on every line (sky_gradient(), channel 0). The silhouette's horizon row is put on the
+// horizon's line, 120 + F tan(pitch), and only its own rows are shown (BG1's window), so the
+// plane's vertical wrap never shows a second copy. Horizontally it scrolls with the yaw at its
+// rate (pixels a radian: its width times its repeats over 2 pi; the camera turns the 3D world
+// at F at the screen's centre), its column 0 facing +Z at the screen's centre. The camera's
+// roll is not followed (the reader's cameras have none).
+
+import "planes.akr"
+import "worldpack.akr"
+
+struct WpSky {
+    mode: u32          // BG1_MODE: map size, 8 x 8 4-bit tiles, the silhouette's palette
+    atlas: u32         // BG1_TILES: the atlas page
+    map: u32           // BG1_MAP
+    rate: fixed        // plane pixels a radian of yaw
+    horizon: s16       // the plane row on the horizon
+    top: s16           // the plane row of the silhouette's first row
+    height: u16        // the silhouette's rows (0: none)
+    stops: u16         // sky gradient stops
+    flags: u32         // bit 0: a silhouette
+    data: u32          // stops fixed elevations (radians), then variant_count x stops u32 colours
+}
+
+var wp_backdrop_focal: fixed = 207.8    // pixels a radian at the screen's centre
+var __wp_sky: *WpSky
+var __wp_sky_n: s32
+var __wp_sky_region: s32
+var __wp_sky_va: s32
+var __wp_sky_vb: s32
+var __wp_sky_t: fixed
+var __wp_sky_cols: [64]u32
+var __wp_sky_ys: [64]s32
+
+// The sky record of region k, or null.
+fn wp_backdrop_sky(k: s32) -> *WpSky {
+    let e = wp_region_ext(k)
+    if e == null || e.sky_off == 0 { return null }
+    return (__wp_base + e.sky_off) as *WpSky
+}
+
+// Shows region k's backdrop: turns the compositor on (planes_on(): the frame is erased to holes
+// at every vsync, so the cart draws no cls()), points BG1 at the silhouette's atlas and map
+// (which wp_region_enter() copied into VRAM) and starts at palette variant 0. False when the
+// region has no backdrop (the planes are left as they were).
+fn wp_backdrop_show(k: s32) -> bool {
+    let s = wp_backdrop_sky(k)
+    if s == null { return false }
+    __wp_sky = s
+    __wp_sky_region = k
+    __wp_sky_n = min(s.stops as s32, 64)
+    planes_on()
+    if s.flags & 1 != 0 {
+        let r = (0xFF0740) as *u32                // BG1's registers
+        r[0] = s.mode
+        r[1] = s.atlas
+        r[2] = s.map
+        plane_show(BG1, true)
+    } else {
+        plane_show(BG1, false)
+    }
+    wp_backdrop_variant(0, 0, 0.0)
+    return true
+}
+
+// Hides the backdrop: BG1 off, the backdrop line channel off, the compositor off.
+fn wp_backdrop_hide() {
+    if __wp_sky == null { return }
+    plane_show(BG1, false)
+    line_off(0)
+    planes_off()
+    __wp_sky = null
+}
+
+// The sky's colours: variant va blended toward vb by t (the silhouette's colours are in the
+// region's palette: wp_variant_blend() blends them with everything else).
+fn wp_backdrop_variant(va: s32, vb: s32, t: fixed) {
+    __wp_sky_va = va
+    __wp_sky_vb = vb
+    __wp_sky_t = t
+}
+
+// Sets the backdrop for this frame's camera (the yaw and pitch given to wp_draw()). About 4,000
+// cycles with a silhouette and four stops (the gradient's 240 lines are most of it).
+fn wp_backdrop_draw(yaw: fixed, pitch: fixed) {
+    let s = __wp_sky
+    if s == null { return }
+    let n = __wp_sky_n
+    let elev = (__wp_base + s.data) as *fixed
+    let cols = (__wp_base + s.data) as *u32 + n
+    let nv = max(wp_region(__wp_sky_region).variant_count as s32, 1)
+    let va = clamp(__wp_sky_va, 0, nv - 1)
+    let vb = clamp(__wp_sky_vb, 0, nv - 1)
+    let f = wp_backdrop_focal
+    // the stops' lines, highest elevation (top of the screen) first
+    var prev = -100000
+    for i in 0..n {
+        let q = n - 1 - i
+        let a = clamp(elev[q] - pitch, -1.4, 1.4)
+        var y = 120 - (f * sin(a) / cos(a)) as s32
+        if y <= prev { y = prev + 1 }
+        prev = y
+        __wp_sky_ys[i] = y
+        __wp_sky_cols[i] = clerp(cols[va * n + q], cols[vb * n + q], __wp_sky_t)
+    }
+    sky_gradient(&__wp_sky_cols[0], &__wp_sky_ys[0], n)
+    if s.flags & 1 == 0 { return }
+    let p = clamp(pitch, -1.4, 1.4)
+    let yh = 120 + (f * sin(p) / cos(p)) as s32
+    var w = yaw - fixed((yaw / TAU) as s32) * TAU
+    if w < 0.0 { w += TAU }
+    let sx = (w * s.rate) as s32 - 160
+    let sy = s.horizon as s32 - yh
+    plane_scroll(BG1, sx, sy & 0xFFFF)
+    let y0 = s.top as s32 - sy
+    let y1 = y0 + s.height as s32
+    if y1 <= 0 || y0 >= 240 {
+        plane_show(BG1, false)
+        return
+    }
+    plane_show(BG1, true)
+    plane_window(BG1, 0, y0, 320, y1)
+}

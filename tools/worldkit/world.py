@@ -21,6 +21,8 @@ from . import ids, merge
 from . import pack as P
 from .assets import Library, collision_triangles, relative
 from .palettes import RegionPalette
+from .textures import RegionTextures, relocated_palette
+from . import backdrop as BD
 from .terrain import TAG_FIELD, TAG_SWEEP, compile_terrain
 from .schema import (WorldError, validate_world, validate_cell_file, validate_game, param_schema, obj,
                      AKARI_KEYWORDS)
@@ -249,12 +251,15 @@ def compile_world(source, lock=None, assets_dir=None):
 
     # ---- assets, collision and placements per cell
     region_palettes = {r: RegionPalette(r, w['regions'][r], pointer('/regions', r)) for r in regions}
+    region_textures = {r: RegionTextures(r, w['regions'][r], pointer('/regions', r), w.get('textures'))
+                       for r in regions}
     used_layers = set()
     def plan_cell(cs):
         c, p = cs.recipe, cs.path
         i, j = c['at']
         lo_x, lo_z = i * size, j * size
         rp = region_palettes[c['region']]
+        rt = region_textures[c['region']]
         plan = {'source': cs, 'placements': [], 'merged': {}, 'collision': [], 'entities': [], 'layers': [],
                 'stripped': 0, 'standin': None}
 
@@ -279,6 +284,7 @@ def compile_world(source, lock=None, assets_dir=None):
                 raise err(p + '/placements', 'At most 65,534 placements a cell.', cs)
             asset = library.get(pl['asset'], pp + '/asset', cs.file)
             rp.add_asset(asset)
+            rt.add_asset(asset)
             inside(pl['position'], pp + '/position', 'Placement')
             if 'layer' in pl: use_layer(pl['layer'], pp + '/layer')
             yaw = pl.get('yaw', 0)
@@ -299,6 +305,10 @@ def compile_world(source, lock=None, assets_dir=None):
             plan['placements'].append({'k': k, 'spec': pl, 'asset': asset, 'yaw': yaw})
         if 'standin' in c:
             plan['standin'] = library.get(c['standin'], p + '/standin', cs.file, 'standin')
+            if plan['standin'].textured:
+                raise err(p + '/standin', f'Stand-in {c["standin"]!r} has textured materials. A stand-in is drawn '
+                          'whichever region is loaded, so it cannot use a region\'s textures: give it palette-backed '
+                          'or plain materials.', cs)
             rp.add_asset(plan['standin'])
         for k, e in enumerate(c.get('entities', [])):
             ep = f'{p}/entities/{k}'
@@ -316,7 +326,9 @@ def compile_world(source, lock=None, assets_dir=None):
                 if q['type'] == 'entity_ref' and pname in values and values[pname] not in entity_where:
                     raise err(f'{ep}/params/{pname}', f'No entity {values[pname]!r} in this world.', cs)
             asset = library.get(e['asset'], ep + '/asset', cs.file, 'entity') if 'asset' in e else None
-            if asset: rp.add_asset(asset)
+            if asset:
+                rp.add_asset(asset)
+                rt.add_asset(asset)
             ecoll = []
             if 'collision' in e:
                 casset = library.get(e['collision'], ep + '/collision', cs.file, 'collision')
@@ -404,7 +416,11 @@ def compile_world(source, lock=None, assets_dir=None):
         entry = lod_report[asset.name]
         if entry['off']:
             return None
-        meshes = rp.relocated_levels(asset, slot, row)
+        if asset.textured:
+            rt = region_textures[rp.name]
+            meshes = [rt.binary(asset, relocated_palette(asset, rp, slot, row), k) for k in range(1, len(asset.levels) + 1)]
+        else:
+            meshes = rp.relocated_levels(asset, slot, row)
         levels = list(zip(entry['distances'], meshes))
         if entry['cull'] is not None:
             levels.append((entry['cull'], None))
@@ -443,9 +459,40 @@ def compile_world(source, lock=None, assets_dir=None):
     palette = w.get('palette', {})
     slot, row = palette.get('swatch_slot', 14), palette.get('swatch_row', 0)
     nxt = palette.get('first', 0)
+    next8 = palette.get('first8', 14)
+    any_palette = any(rp.by_key for rp in region_palettes.values())
+    backdrops = {}
     for r in regions:
-        nxt = region_palettes[r].assign(nxt) if region_palettes[r].by_key or 'palettes' in w['regions'][r] else nxt
-        if not region_palettes[r].by_key and 'variants' in w['regions'][r]:
+        rspec = w['regions'][r]
+        if 'backdrop' in rspec:
+            bp = pointer(pointer('/regions', r), 'backdrop')
+            backdrops[r] = BD.build(rspec['backdrop'], bp, source.base)
+            vnames = list(rspec.get('variants') or {'default': {}})
+            for vn in backdrops[r].sky:
+                if vn not in vnames:
+                    raise WorldError(pointer(bp + '/sky', vn), f'Region {r!r} has no palette variant {vn!r}; its '
+                                     f'variants: {", ".join(vnames)}.')
+    for r in regions:
+        rp, rt = region_palettes[r], region_textures[r]
+        if rt.assets or r in backdrops:
+            # textures, then the backdrop's palette, after the entries' palettes in the region's range
+            first = rp.spec.get('palettes', {}).get('first', nxt)
+            extra = 0
+            if rt.assets:
+                rt.pack(warnings, first + rp.entry_palettes(), next8, (slot, row) if any_palette else None)
+                rp.tex4, rp.tex8, rp.texels = rt.palettes4(), rt.palettes8(), rt.texel_owners()
+                extra = len(rp.tex4)
+                if rp.tex8:
+                    next8 = min(rp.tex8) - 1
+            if r in backdrops:
+                rp.sky = backdrops[r]
+                if rp.sky.height:
+                    rp.backdrop = (first + rp.entry_palettes() + extra, rp.sky.colours)
+                    extra += 1
+            nxt = rp.assign(nxt, extra)
+        else:
+            nxt = region_palettes[r].assign(nxt) if region_palettes[r].by_key or 'palettes' in w['regions'][r] else nxt
+        if not region_palettes[r].by_key and not region_palettes[r].extra and 'variants' in w['regions'][r]:
             warnings.append({'code': 'variants_without_entries', 'region': r,
                              'message': 'The region has palette variants but no palette-backed material is drawn in it.'})
     taken = {}
@@ -457,16 +504,34 @@ def compile_world(source, lock=None, assets_dir=None):
                                  f'4-bit palette {pal}; regions never share palettes.')
             taken[pal] = r
     any_palette = any(rp.entries for rp in region_palettes.values())
+    low8 = [p for rp in region_palettes.values() for p in rp.tex8]
+    if low8 and taken and max(taken) >= 16 * min(low8):
+        raise WorldError('/palette', f'8-bit palette {min(low8)} (colours {256 * min(low8)}-{256 * min(low8) + 255}) '
+                         f'overlaps 4-bit palette {max(taken)}, which region {taken[max(taken)]!r} uses. Use fewer '
+                         '8-bit textures, palette.first8, or lower 4-bit palettes.')
 
     # ---- the pack's description
     variants_shown = {}
     pregions = []
     for r in regions:
         rp = region_palettes[r]
-        if rp.entries:
+        if rp.entries or rp.extra:
             rows, shown = rp.variants(warnings)
             variants_shown[r] = shown
-            pregions.append(P.Region(r, first_colour=rp.first_colour, variants=rows))
+            reg = P.Region(r, first_colour=rp.first_colour, variants=rows)
+            rt = region_textures[r]
+            if rt.packing:
+                reg.textures = rt.slot_textures(SWATCH if any_palette else b'')
+                reg.runs = [P.PaletteRun(pal * 256, rp.run_rows[q]) for q, pal in enumerate(sorted(rp.tex8))]
+                reg.animations = [a for _, a in rt.animations()]
+            if rp.sky:
+                bd = rp.sky
+                reg.sky = P.Sky(bd.elevations, rp.sky_rows, bd.mode(rp.backdrop[0]) if bd.height else 0,
+                                BD.ATLAS if bd.height else 0, BD.MAP if bd.height else 0, bd.rate if bd.height else 0.0,
+                                bd.horizon, bd.top, bd.height)
+                if bd.height:
+                    reg.backdrop = [P.VramCopy(BD.ATLAS, bd.atlas), P.VramCopy(BD.MAP, bd.map)]
+            pregions.append(reg)
         else:
             pregions.append(P.Region(r))
     group_of = {g: n for n, g in enumerate(groups)}
@@ -478,14 +543,23 @@ def compile_world(source, lock=None, assets_dir=None):
         cs = plan['source']
         c = cs.recipe
         rp = region_palettes[c['region']]
+        rt = region_textures[c['region']]
+
+        def mesh_of(asset):
+            if getattr(asset, 'textured', False):
+                return rt.binary(asset, relocated_palette(asset, rp, slot, row))
+            return rp.relocated(asset, slot, row)
         i, j = c['at']
         centre = (i * size + half, 0, j * size + half)
         cell = P.Cell(i, j, region=regions.index(c['region']), layers=list(plan['layers']))
         to_merge = {}
         for pl in plan['placements']:
-            binary = rp.relocated(pl['asset'], slot, row)
+            binary = mesh_of(pl['asset'])
             ground = bool(pl['spec'].get('ground'))
             if pl['spec'].get('merge'):
+                if struct.unpack_from('<I', binary, 12)[0]:
+                    raise err(f'{cs.path}/placements/{pl["k"]}/merge', f'Asset {pl["asset"].name!r} has repeating '
+                              'textures (a texture window table), which a merged mesh cannot keep. Do not merge it.', cs)
                 if pl['asset'].levels:
                     warnings.append({'code': 'lod_merged', 'cell': c['id'], 'placement': pl['spec']['id'],
                                      'message': 'A merged placement draws its level 0 only: merged meshes have '
@@ -523,7 +597,7 @@ def compile_world(source, lock=None, assets_dir=None):
         for e in plan['entities']:
             spec = e['spec']
             cell.entities.append(P.Entity(types.index(spec['type']), tuple(spec['position']), spec.get('yaw', 0),
-                                          spec.get('layer'), mesh=rp.relocated(e['asset'], slot, row) if e['asset'] else None,
+                                          spec.get('layer'), mesh=mesh_of(e['asset']) if e['asset'] else None,
                                           collision=e['collision']))
         cells.append(cell)
 
@@ -577,6 +651,12 @@ def compile_world(source, lock=None, assets_dir=None):
     report = make_report(source, world, data, plans, library, region_palettes, variants_shown, encoded, warnings,
                          new_lock, changes, merged_report, number_of, pad)
     report['paths'] = path_report
+    for r in regions:
+        entry = report['regions'][r]
+        if region_textures[r].packing:
+            entry['textures'] = region_textures[r].report()
+        if r in backdrops:
+            entry['backdrop'] = backdrops[r].report()
     report['lod'] = {n: s for n, s in lod_report.items()}
     if terrain:
         report['terrain'] = terrain.report

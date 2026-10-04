@@ -1,0 +1,28 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "warehouse",
+  "budget": {"vertices": 128, "triangles": 100},
+  "materials": {
+    "sheet": {"color": "#5f7f8c", "tag": "wall",
+              "texture": {"pattern": "stripes", "colors": ["#5f7f8c", "#4a6670"], "params": {"count": 8, "axis": "u"},
+                          "projection": "box", "scale": [2, 2]}},
+    "roof": {"color": "#6b5a50", "tag": "roof",
+             "texture": {"pattern": "stripes", "colors": ["#6b5a50", "#574840"], "params": {"count": 4, "axis": "v"},
+                         "projection": "box", "scale": [2, 2]}},
+    "door": {"color": "#c08a30", "palette": true, "tag": "door"},
+    "lamp": {"color": "#ffe8a0", "class": "emissive"}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.55},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {"id": "body", "op": "box", "size": [10, 5, 7], "open": ["bottom", "top"], "material": "sheet",
+     "transform": {"translate": [0, 2.5, 0]}},
+    {"id": "roof", "op": "box", "size": [10.6, 0.3, 7.6], "material": "roof",
+     "transform": {"translate": [0, 5.15, 0]}},
+    {"id": "door", "op": "box", "size": [3, 3.2, 0.1], "material": "door",
+     "transform": {"translate": [-2, 1.6, -3.58]}},
+    {"id": "lamp", "op": "box", "size": [0.6, 0.3, 0.3], "material": "lamp",
+     "transform": {"translate": [2, 3.8, -3.68]}}
+  ]
+}

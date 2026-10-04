@@ -1,0 +1,47 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "shopfront",
+  "budget": {"vertices": 256, "triangles": 200},
+  "sheets": {
+    "neon": {"image": "../art/neon.png"}
+  },
+  "materials": {
+    "brick": {"color": "#8c5a44", "tag": "wall",
+              "texture": {"pattern": "brick", "colors": ["#8c5a44", "#cfc2a8", "#7a4a36"],
+                          "params": {"courses": 4, "bricks": 2}, "projection": "box", "scale": [1, 0.5]}},
+    "roof": {"color": "#4a4f58", "tag": "roof",
+             "texture": {"pattern": "tile", "colors": ["#4a4f58", "#2e3238"], "params": {"count": 2},
+                         "projection": "box", "scale": [1, 1]}},
+    "window": {"color": "#30384a",
+               "texture": {"texels": ["0000000000000000",
+                                      "0111111111111110",
+                                      "0122222112222210",
+                                      "0122222112222210",
+                                      "0122222112222210",
+                                      "0122222112222210",
+                                      "0111111111111110",
+                                      "0122222112222210",
+                                      "0122222112222210",
+                                      "0122222112222210",
+                                      "0122222112222210",
+                                      "0111111111111110",
+                                      "0000000000000000"],
+                           "colors": ["#1c1c22", "#5a4a3a", "#30384a"], "projection": "fit"}},
+    "neon": {"color": "#ff5ab4", "class": "emissive",
+             "texture": {"sheet": "neon", "frames": ["bright", "dim", "bright", "edge_off"], "ticks": 9,
+                         "projection": "fit"}}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.55},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {"id": "body", "op": "box", "size": [6, 4, 4], "open": ["bottom", "top"], "material": "brick",
+     "transform": {"translate": [0, 2, 0]}},
+    {"id": "roof", "op": "box", "size": [6.4, 0.2, 4.4], "material": "roof",
+     "transform": {"translate": [0, 4.1, 0]}},
+    {"id": "window", "op": "box", "size": [3.2, 1.6, 0.1], "material": "window",
+     "transform": {"translate": [0, 1.5, -2.08]}},
+    {"id": "neon", "op": "box", "size": [2.4, 0.8, 0.1], "material": "neon",
+     "transform": {"translate": [0, 3.1, -2.08]}}
+  ]
+}

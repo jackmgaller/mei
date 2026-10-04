@@ -2,8 +2,7 @@
 JSON Schema (the subset kitcore.schema validates), and their validators.
 
 Unknown properties are errors, so a misspelled instruction never silently disappears. Properties
-reserved for later work (terrain in a cell file, region textures, audio and backdrops) are errors
-that say so.
+reserved for later work (terrain in a cell file, region audio) are errors that say so.
 """
 from kitcore.errors import KitError
 from kitcore.schema import number, integer, array, obj, choice, NAME, BOOL, COLOR, validator
@@ -155,6 +154,32 @@ CELL = dict(obj(CELL_PROPS,['id','at','region']),**{'x-unknown':{'terrain':CELL_
 CELL_FILE = dict(obj({'format':{'const':'mei-world-cell'},'version':{'const':1},**CELL_PROPS},
                      ['format','version','id','at','region']),**{'x-unknown':{'terrain':CELL_TERRAIN}})
 
+SLOTS = {'type':'string','pattern':r'^[0-9]{1,2}(-[0-9]{1,2})?(,[0-9]{1,2}(-[0-9]{1,2})?)*$',
+         'description':'Texture slots in order of preference: a range "13-6" (in that order) or a list "14,12,10-11". '
+                       'Slot 15 holds the fonts. Default "13-0".'}
+TEXTURES = obj({
+    'slots':SLOTS,
+    'budget':dict(integer(0,15*32768),description='Bytes of texture VRAM the region may use (tiles on the 8-texel grid); '
+                                                  'default: its slots (32,768 bytes a slot). Over it, the build fails naming the assets.'),
+})
+COLOR_MAP = {'type':'object','propertyNames':COLOR,'additionalProperties':COLOR,'maxProperties':255}
+SILHOUETTE = obj({
+    'image':dict(PATH,description='A PNG panorama 256, 512 or 1024 pixels wide and up to 128 tall; pixels with alpha below one half are sky. At most 15 colours (more are quantised).'),
+    'pattern':dict(choice('skyline','mountains'),description='A generated silhouette: "skyline" (blocks in colors[0], lit windows in colors[1], nearer blocks in colors[2..]) or "mountains" (one range per colour, far to near).'),
+    'width':dict(choice(256,512,1024),description='Patterns: pixels around the panorama.'),
+    'height':dict(integer(1,128),description='Patterns: pixels tall.'),
+    'colors':dict(array(COLOR,1,15),description='Patterns: the colours (see pattern).'),
+    'seed':integer(0,65535),
+    'horizon':dict(integer(0,127),description='Rows of the silhouette below the horizon (default 0: it stands on the horizon).'),
+    'repeat':dict(integer(1,8),description='Times the panorama goes around the circle (default: the count that turns it closest to the camera\'s rate).'),
+})
+BACKDROP = obj({
+    'elevations':dict(array(number(-89,89),1,64),description='Degrees above the horizon of the sky gradient\'s stops, increasing.'),
+    'sky':{'type':'object','propertyNames':NAME,'additionalProperties':array(COLOR,1,64),'maxProperties':64,
+           'description':'Per palette variant of the region: one colour per elevation. A variant not given takes the first one\'s colours times its surface multiply.'},
+    'silhouette':dict(SILHOUETTE,description='A distant skyline or mountains on tile plane BG1, scrolled with the camera\'s yaw and pitch.'),
+}, ['elevations','sky'])
+
 TINT = obj({'multiply':dict(COLOR,description='Each colour channel is multiplied by this colour / 255.')})
 VARIANT = obj({
     'surface':dict(TINT,description='Applied to every surface entry of the region.'),
@@ -162,13 +187,19 @@ VARIANT = obj({
     'colors':{'type':'object','propertyNames':{'type':'string','pattern':r'^[a-z][a-z0-9_]{0,47}(\.[a-z][a-z0-9_]{0,47})?$'},
               'additionalProperties':COLOR,'maxProperties':4080,
               'description':'Exact colours after the tints: "MATERIAL" (that material of every asset in the region) or "ASSET.MATERIAL".'},
+    'texels':{'type':'object','propertyNames':{'type':'string','pattern':r'^[a-z][a-z0-9_]{0,47}(\.[a-z][a-z0-9_]{0,47})?$'},
+              'additionalProperties':COLOR_MAP,'maxProperties':4096,
+              'description':'Exact colours of 4-bit textures after the tints: "MATERIAL" or "ASSET.MATERIAL" -> {texture colour: colour in this variant}.'},
+    'backdrop':dict(COLOR_MAP,description='Exact colours of the backdrop silhouette after the surface tint: {its colour: colour in this variant}.'),
 })
 REGION = dict(obj({
     'palettes':dict(obj({'first':integer(0,254),'count':integer(1,255)},['first']),
                     description='4-bit palettes the region\'s entries use: from first, count of them (default: as many as needed). Regions never overlap.'),
     'variants':{'type':'object','propertyNames':NAME,'additionalProperties':VARIANT,'maxProperties':64,
                 'description':'Named palette variants, in order; the kit does not know what they mean. Default: one, "default".'},
-}),**{'x-unknown':{k:f'Region {k} '+RESERVED for k in ('textures','audio','backdrop')}})
+    'textures':dict(TEXTURES,description='The region\'s texture set: its slots and VRAM budget (default: the world\'s textures).'),
+    'backdrop':dict(BACKDROP,description='A sky gradient and a horizon silhouette drawn by the plane chip behind the world (WORLDKIT.md, "Backdrops").'),
+}),**{'x-unknown':{'audio':'Region audio '+RESERVED}})
 
 WORLD = dict(obj({
     'format':{'const':'mei-world'},'version':{'const':1},'name':NAME,
@@ -181,7 +212,9 @@ WORLD = dict(obj({
         'surfaces':obj({'default':integer(0,255),
                         'tags':{'type':'object','propertyNames':NAME,'additionalProperties':integer(0,255),'maxProperties':256}}),
     }),
-    'palette':obj({'swatch_slot':integer(0,14),'swatch_row':integer(0,255),'first':integer(0,254)}),
+    'palette':obj({'swatch_slot':integer(0,14),'swatch_row':integer(0,255),'first':integer(0,254),
+                   'first8':dict(integer(1,14),description='The first 8-bit palette 8-bit textures take (regions take them downward; default 14).')}),
+    'textures':dict(TEXTURES,description='Every region\'s texture slots and VRAM budget, unless the region gives its own.'),
     'regions':{'type':'object','propertyNames':NAME,'additionalProperties':REGION,'maxProperties':255},
     'layers':{'type':'object','propertyNames':NAME,'additionalProperties':obj({'group':NAME,'on':BOOL}),'maxProperties':255},
     'cells':array(CELL,1,4096),

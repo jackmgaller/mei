@@ -1,0 +1,17 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "quay",
+  "materials": {
+    "concrete": {"color": "#9a968c", "tag": "ground",
+                 "texture": {"pattern": "speckle", "colors": ["#9a968c", "#86837a", "#aeaa9f"],
+                             "params": {"density": 0.3, "seed": 4}, "size": 32,
+                             "projection": "planar", "axis": "y", "scale": [4, 4]}}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "nodes": [
+    {"id": "surface", "op": "mesh", "material": "concrete",
+     "vertices": [[-16, 0, -16], [16, 0, -16], [16, 0, 16], [-16, 0, 16]],
+     "faces": [[0, 3, 2, 1]]}
+  ]
+}

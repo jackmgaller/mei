@@ -1,0 +1,16 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "crate",
+  "materials": {
+    "wood": {"color": "#a57a4e", "tag": "wall",
+             "texture": {"pattern": "planks", "colors": ["#a57a4e", "#5a3c24", "#93693f"],
+                         "params": {"boards": 4}, "projection": "box", "scale": [1, 1]}}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.55},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {"id": "body", "op": "box", "size": [1, 1, 1], "open": ["bottom"], "material": "wood",
+     "transform": {"translate": [0, 0.5, 0]}}
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "format": "mei-world",
+  "version": 1,
+  "name": "night_market",
+  "game": "market.game.mochi",
+  "assets": "assets",
+  "cell_dir": "cells",
+  "grid": {"cell_size": 32},
+  "collision": {"surfaces": {"default": 0, "tags": {"ground": 1, "wall": 3, "roof": 4, "floor": 1}}},
+  "runtime": {"depth": true, "perspective": true},
+  "textures": {"slots": "13-6"},
+  "regions": {
+    "market": {
+      "variants": {
+        "day": {},
+        "night": {
+          "surface": {"multiply": "#4a5a88"},
+          "texels": {"shopfront.window": {"#30384a": "#ffd27a"}},
+          "backdrop": {"#3a4250": "#ffd070"}
+        }
+      },
+      "backdrop": {
+        "elevations": [-8, 0, 6, 30, 70],
+        "sky": {
+          "day": ["#8a9298", "#e8dcc8", "#b8d0e8", "#6898d0", "#3060a8"],
+          "night": ["#141420", "#2a2440", "#1a1c3a", "#0c1028", "#04060f"]
+        },
+        "silhouette": {"pattern": "skyline", "width": 1024, "height": 40, "seed": 11,
+                       "colors": ["#5a6878", "#3a4250", "#485666"]}
+      }
+    },
+    "harbour": {
+      "variants": {
+        "day": {},
+        "night": {"surface": {"multiply": "#3e4c78"}}
+      },
+      "backdrop": {
+        "elevations": [-6, 0, 10, 50],
+        "sky": {
+          "day": ["#7d8a8c", "#d8e2e0", "#a0c4dc", "#4c84c0"],
+          "night": ["#10141c", "#202c40", "#121a34", "#050812"]
+        },
+        "silhouette": {"pattern": "mountains", "width": 512, "height": 36, "seed": 5,
+                       "colors": ["#7c8ea0", "#56687a"]}
+      }
+    }
+  }
+}
