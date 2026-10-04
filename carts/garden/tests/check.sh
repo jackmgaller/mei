@@ -19,6 +19,8 @@ done
 run 4 410
 run 6 260
 run 27 600
+. "$HERE/camera_cases.sh"
+. "$HERE/attach_cases.sh"
 run 30 510
 grep -h '^NOTE' "$O"/s*.log
 echo "all $n movement garden scenarios passed"

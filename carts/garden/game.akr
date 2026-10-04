@@ -132,6 +132,7 @@ fn draw_entities() {
                 let m = wp_entity_mesh(e)
                 if m == null || !wp_entity_live(e) { continue }
                 if e.type_id as s32 == COIN_TYPE && coin_taken(e.number as s32) { continue }
+                if attach_owns(e) { continue }         // attach_draw() draws it where it is now
                 var yaw = e.yaw
                 if e.type_id as s32 == COIN_TYPE { yaw = frame_angle(sim_t, 0.05) }
                 mesh_at(m, wp_entity_pos(e) - o, yaw)

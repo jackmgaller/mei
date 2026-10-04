@@ -27,7 +27,8 @@ enum T {
     PoundHang, PoundFall, PoundLand, DiveBoost, DiveMax, DiveVy, BellyDecel, RolloutVy,
     // slopes and surfaces
     SlideAngle, SlopeGrav, SlideFriction, SlideMax, SlopeWalk, BounceVy,
-    // camera
+    // attachments (attach.akr): poles, rails, movers
+    // camera (camera.akr)
     CamDist, CamHeight, CamPitch, CamOrbit, CamFollow,
 }
 
@@ -112,6 +113,8 @@ const TUNE: [len(T)]TuneDef = [
     TuneDef { name: "slide max",      unit: "m/s",  def: 16.0,  step: 0.5,  lo: 1.0,  hi: 40.0 },
     TuneDef { name: "slope on run",   unit: "x",    def: 0.5,   step: 0.05, lo: 0.0,  hi: 2.0 },
     TuneDef { name: "bounce vy",      unit: "m/s",  def: 18.0,  step: 0.5,  lo: 1.0,  hi: 40.0 },
+
+    // attachments: one row per T entry above, in the same order
 
     TuneDef { name: "cam distance",   unit: "m",    def: 6.5,   step: 0.25, lo: 1.0,  hi: 20.0 },
     TuneDef { name: "cam height",     unit: "m",    def: 1.2,   step: 0.1,  lo: 0.0,  hi: 5.0 },

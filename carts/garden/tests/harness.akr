@@ -20,6 +20,10 @@
 
 const TEST = 1
 
+// The workers' scenarios: the camera's are numbered 100-199, the attachments' 200-299.
+import "camera_cases.akr"
+import "attach_cases.akr"
+
 var pad_v: u32                 // the pad and stick for the next frame
 var stick_v: vec2
 var seen: [len(St)]s32         // the first frame each state was seen at the end of
@@ -149,7 +153,9 @@ fn test_init() {
         29 => { name = "kick alley: four kicks up"; place(vec3(25.4, 0.0, 105.0), EAST) }
         30 => { name = "camera sweep at the spawn: frame timing"; place_at_spawn(); cam_reset() }
         28 => { name = "crouch and crawl"; place(lane, EAST) }
-        else => { name = "picture" }
+        else => {
+            if !camera_case_init() && !attach_case_init() { name = "picture" }
+        }
     }
 }
 
@@ -187,7 +193,10 @@ fn scenario(f: s32) {
         28 => s_crouch(f)
         29 => s_alley(f)
         30 => s_sweep(f)
-        else => {}
+        else => {
+            camera_case(f)
+            attach_case(f)
+        }
     }
 }
 
