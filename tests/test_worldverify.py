@@ -8,6 +8,7 @@ measurements.
 """
 import copy
 import dataclasses
+import importlib.util
 import json
 import math
 import os
@@ -761,6 +762,65 @@ class DepthSampleTests(unittest.TestCase):
 
 
 @needs_tools
+@needs_tools
+@unittest.skipUnless(importlib.util.find_spec('PIL'), 'the night market\'s sheets need Pillow')
+class TextureViewTests(unittest.TestCase):
+    """A world with region texture sets (examples/worlds/night_market, depth and perspective):
+    each view enters its camera cell's region, textured faces without holes are judged whole and
+    faces with holes (the stall's lattice screens and emblem) per texel."""
+
+    @classmethod
+    def setUpClass(cls):
+        from worldkit.build import compile_source
+        root = Path(__file__).resolve().parents[1]
+        cls.pack = compile_source(str(root / 'examples/worlds/night_market/night_market.world.json'))[1].pack
+
+    def check(self):
+        return V.verify(self.pack, {'runtime': {'depth': True, 'perspective': True},
+                                    'sampling': {'max_views': 24}, 'ordering': {'depth_views': 24}},
+                        tools=F.tools())
+
+    def test_textured_faces_are_judged(self):
+        seen = []
+        real = V.RD.view_faces
+
+        def spy(*a, **k):
+            faces = real(*a, **k)
+            seen.extend(faces)
+            return faces
+        V.RD.view_faces = spy
+        V._jobs, jobs = (lambda: 1), V._jobs
+        try:
+            rep = self.check()
+        finally:
+            V.RD.view_faces, V._jobs = real, jobs
+        s = rep['summary']
+        if VERBOSE:
+            print(f'\nnight market: {s["tested_pixels"]} pixels tested, {s["coverage_errors"]} coverage errors')
+        self.assertEqual(rep['hard_failures'], [])
+        self.assertEqual(s['coverage_errors'], 0)
+        self.assertEqual((s['max_wrong_near_pixels']['value'], s['max_wrong_far_pixels']['value']), (0, 0))
+        self.assertTrue(any(f.texel is not None and f.definite for f in seen), 'faces with holes are judged per texel')
+        self.assertTrue(any(f.texel is None and f.definite and f.inst.key[0] == 'placement' for f in seen))
+
+    def test_judging_holes_by_the_outline_is_caught(self):
+        """With every texel taken as set, the lattice's holes show what is behind them, which the
+        check then reports: per-texel judgement is what makes the cutouts pass."""
+        real = V.RD.texel_classes
+        np = numpy
+
+        def outline(texel, pix):
+            return np.ones(len(pix), dtype=bool), np.zeros(len(pix), dtype=bool)
+        V.RD.texel_classes = outline
+        V._jobs, jobs = (lambda: 1), V._jobs
+        try:
+            rep = self.check()
+        finally:
+            V.RD.texel_classes, V._jobs = real, jobs
+        s = rep['summary']
+        self.assertGreater(s['coverage_errors'] + s['max_wrong_near_pixels']['value'], 0)
+
+
 class TimingTests(unittest.TestCase):
     def test_timing_is_reported(self):
         r = V.verify(encode(F.good_world()), {'sampling': {'max_views': 20}}, tools=F.tools())

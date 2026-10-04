@@ -1171,6 +1171,50 @@ class ConsoleTests(unittest.TestCase):
             self.assertGreater(drawn, 16)                    # 16 tiles, 2 sweeps' pieces and the props
             self.assertGreater(coarse, 0, 'far tiles are drawn at their coarse level')
 
+    @pillow
+    def test_textures_and_backdrops_on_the_console(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp, 'night_market')
+            no_policies(ex)
+            out = Path(tmp)/'out'
+            ex.build(out)
+            shutil.copy(ROOT/'tests'/'worldkit'/'market.akr', out/'market.akr')
+            env = dict(os.environ, MEI_STDLIB=str(ROOT/'stdlib'))
+            r = subprocess.run([str(COMPILER), str(out/'market.akr'), '-o', str(out/'cart.mei')], capture_output=True,
+                               text=True, env=env)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            (out/'shots').mkdir()
+            r = subprocess.run([str(RUNNER), str(out/'cart.mei'), '--frames', '48', '--dump-from', '5', '--dump-every',
+                                '6', str(out/'shots'/'v'), '--gpu-stats', str(out/'gpu.csv')], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            views = {}
+            for line in r.stdout.splitlines():
+                w = line.split()
+                if w and w[0] == 'view':
+                    views[int(w[1])] = dict(zip(w[2::2], map(int, w[3::2])))
+                elif w and w[0] == 'enter':
+                    enter = int(w[1])
+            self.assertEqual(sorted(views), list(range(8)))
+            if os.environ.get('WORLDKIT_VERBOSE'):
+                print('\nenter', enter, views)
+            self.assertGreater(enter, 5000)
+            self.assertGreater(views[1]['anim_copy_max'], views[1]['anim'], 'a frame change copies rows')
+            self.assertLess(max(v['anim'] for v in views.values()), 1000)
+            self.assertLess(max(v['backdrop'] for v in views.values()), 10000)
+            self.assertGreater(views[5]['enter'], 0, 'the harbour is entered')
+            pics = [(out/'shots'/f'v_{5 + 6 * k:05}.ppm').read_bytes().split(b'\n', 3)[3] for k in range(8)]
+            self.assertNotEqual(pics[0], pics[1], 'night recolours the textures and the sky')
+            self.assertNotEqual(pics[1], pics[4], 'turning scrolls the skyline')
+            # the sky: the top line is the gradient's top colours, from the backdrop (no cls)
+            top = lambda pic: tuple(pic[0:3])
+            self.assertEqual(top(pics[0]), top(pics[0][3 * 300:3 * 301]))
+            self.assertGreater(sum(top(pics[0])), sum(top(pics[1])) + 150, 'the day sky is brighter than the night')
+            # the GPU clears only when wp_backdrop_show() (planes_on()) runs, once a view: the plane
+            # chip erases every other frame
+            rows = (out/'gpu.csv').read_text().splitlines()
+            head = rows[0].split(',')
+            self.assertLessEqual(sum(int(r.split(',')[head.index('clears')]) for r in rows[1:]), 8)
+
     def test_multi_region_world_loads_and_draws_stand_ins(self):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp, 'two_districts')
