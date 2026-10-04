@@ -200,12 +200,18 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
         work=Path(tmp);name=recipe['name']
         (work/(name+'.bin')).write_bytes(binary)
         (work/(name+'.akr')).write_text(f'embed ASSET_{name.upper()}: Mesh = "{name}.bin"\n')
+        world=policy.get('scale','fit')=='world'
+        steps=policy['yaw_steps']
+        if 'yaw_range_degrees' in policy:
+            a,b=(math.radians(d) for d in policy['yaw_range_degrees'])
+            yaws=[a+(b-a)*step/(steps-1) for step in range(steps)]
+        else:
+            yaws=[-.65+math.tau*step/steps for step in range(steps)]
         for distance in policy['distances']:
             for pitch in policy['pitches']:
-                for step in range(policy['yaw_steps']):
-                    yaw=-.65+math.tau*step/policy['yaw_steps']
+                for yaw in yaws:
                     camera={'yaw':yaw,'pitch':pitch,'distance_scale':distance,'near':.1,'far':policy['far']}
-                    code=source(name,base['bounds'],yaw,pitch,distance_scale=distance)
+                    code=source(name,base['bounds'],yaw,pitch,distance_scale=distance,world=world)
                     code='\n'.join(line for line in code.splitlines() if 'text(' not in line)
                     code=code.replace('cls(rgb(24, 28, 36))','cls(0)\n    dither(false)')
                     code=re.sub(r'camera_clip\(0\.1, [^)]*\)',f"camera_clip(0.1, {policy['far']:.7f})",code)

@@ -212,6 +212,23 @@ radius). The original mesh is centered and uniformly fitted as in preview. FOV i
 60°, near depth is 0.1, and far depth defaults to 100 to exercise the normal ordering-table
 precision rather than only a tightly fitted preview range. Match `far` to the intended cart.
 
+Two policy settings narrow the cameras to how the asset is seen in a game:
+
+- `yaw_range_degrees: [from, to]` samples `yaw_steps` yaws evenly from `from` to `to` (both
+  included) instead of the whole circle. A camera at yaw 0 stands on the asset's −Z side looking
+  toward +Z, at 90 on the −X side. Use it for an asset seen from one side only, such as one
+  mounted on a wall: a fire escape on a building's +Z face is checked with yaws around 180, not
+  from inside the building. Pitches are already a list (`pitches`, −1.4 to 1.4 radians).
+- `scale: "world"` draws the mesh at its own size instead of fitting it into about 2 units; the
+  camera stands at `distances` × 2.6 × its own bounding-sphere radius. With the default fit, the
+  ordering table's 1,024 buckets over `far` are 0.1 fitted units, which for a 30-unit asset is a
+  1.5-unit step, much coarser than the 0.094 units a world's near pass sorts in (96 units over
+  1,024 buckets). At world scale the faces sort in the same 0.1-unit buckets as in a world with
+  `far` 100. Use it for large assets (a steel frame, a car park); set `far` to the world's near
+  range.
+
+`verify` takes them as `--yaw-range FROM,TO` and `--scale world`.
+
 For an exploratory check:
 
 ```sh

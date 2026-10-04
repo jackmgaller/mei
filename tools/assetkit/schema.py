@@ -23,7 +23,9 @@ PALETTE_LAYOUT = dict(obj({'slot':integer(0,14),'row':integer(0,255),'first':int
                       description='Where palette-backed materials live: swatch texels u 0-15 of row `row` in texture slot `slot` (default 14, 0); entries from 4-bit palette `first` (default 0).')
 VERIFICATION = obj({'required':BOOL,'yaw_steps':integer(4,120),
                     'pitches':array(number(-1.4,1.4),1,5),
-                    'distances':array(number(.8,3),1,3),'far':number(1,1000),'geometry':choice('error','warn')})
+                    'distances':array(number(.8,3),1,3),'far':number(1,1000),'geometry':choice('error','warn'),
+                    'yaw_range_degrees':dict(array(number(-360,360),2,2),description='Sample camera yaws from the first to the second (degrees, both included) instead of the whole circle: a camera at yaw 0 stands on the -Z side looking toward +Z, at 90 on the -X side. For an asset seen from one side only (one mounted on a wall).'),
+                    'scale':dict(choice('fit','world'),description='fit (default): the mesh scaled to about 2 units, as a prop. world: at its own size, so its faces sort in buckets of far/1024 units as in a world (far: the world\'s near range, about 96).')})
 
 
 def operation(name, props, required=(), common=None):

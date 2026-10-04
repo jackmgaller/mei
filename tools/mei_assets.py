@@ -139,6 +139,8 @@ def parser():
             cmd.add_argument('--distances',help='Comma-separated multipliers of the fitted camera distance.')
             cmd.add_argument('--far',type=float,help='Ordering-table far depth; default 100, matching Mei camera defaults.')
             cmd.add_argument('--geometry',choices=['error','warn'],help='Default error. warn explicitly permits geometric intersections while still enforcing visibility.')
+            cmd.add_argument('--yaw-range',help='Two camera yaws in degrees, FROM,TO: sample only that arc (an asset seen from one side).')
+            cmd.add_argument('--scale',choices=['fit','world'],help='fit (default): scaled to about 2 units; world: at its own size, sorting as in a world.')
     imp = sub.add_parser('import-obj',help='Convert OBJ geometry into an editable recipe; materials/UVs are not imported.')
     imp.add_argument('input')
     imp.add_argument('-o','--output',required=True)
@@ -179,6 +181,8 @@ def main(argv=None):
                 if args.yaw_steps is not None:profile['yaw_steps']=args.yaw_steps
                 if args.geometry is not None:profile['geometry']=args.geometry
                 if args.far is not None:profile['far']=args.far
+                if args.scale is not None:profile['scale']=args.scale
+                if args.yaw_range is not None:profile['yaw_range_degrees']=[float(n) for n in args.yaw_range.split(',')]
                 for key in ('pitches','distances'):
                     if getattr(args,key) is not None:profile[key]=[float(n) for n in getattr(args,key).split(',')]
                 if args.output and args.recipe!='-' and (Path(args.output).resolve()/'verification.json')==Path(args.recipe).resolve():

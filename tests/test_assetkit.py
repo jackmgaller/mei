@@ -800,6 +800,28 @@ class LodTests(unittest.TestCase):
             self.assertEqual([l['ok'] for l in r['lod']],[True,False])
 
 
+class PolicyTests(unittest.TestCase):
+    def test_world_scale_draws_the_mesh_at_its_own_size(self):
+        bounds = {'min':[-15,0,-1],'max':[15,10,1]}
+        self.assertIn('mat4_scale(vec3(1.0000000, 1.0000000, 1.0000000))',source('big',bounds,world=True))
+        self.assertIn('mat4_scale(vec3(0.0666667,',source('big',bounds))
+        for policy,path in (({'scale':'huge'},'/verification/scale'),({'yaw_range_degrees':[10]},'/verification/yaw_range_degrees')):
+            with self.assertRaises(AssetError) as e: compile_recipe(recipe(verification=policy))
+            self.assertEqual(e.exception.path,path)
+
+    @unittest.skipUnless(PROBE.exists() and COMPILER.exists() and importlib.util.find_spec('numpy'),
+                         'The Asset Checker needs NumPy, meic and mei-asset-probe.')
+    def test_yaw_range_and_world_scale(self):
+        from assetkit.visibility import verify
+        wall = recipe({'id':'panel','op':'box','size':[20,6,0.4],'open':['back'],'transform':{'translate':[0,3,0]}})
+        r = verify(wall,{'yaw_steps':5,'pitches':[0],'distances':[1],'yaw_range_degrees':[-60,60],'scale':'world'},
+                   None,COMPILER,PROBE)
+        self.assertTrue(r['ok'])
+        yaws = sorted({round(math.degrees(v['camera']['yaw']),6) for v in r['views']})
+        self.assertEqual(yaws,[-60,-30,0,30,60])
+        self.assertEqual(r['profile']['scale'],'world')
+
+
 @unittest.skipUnless(importlib.util.find_spec('numpy'),'Visibility verification needs NumPy.')
 class GeometryAuditTests(unittest.TestCase):
     def test_adjacent_triangles_are_not_intersections(self):

@@ -11,10 +11,11 @@ VIEWS = [('isometric',-0.65,-0.35),('front',0,0),('right',-math.pi/2,0),
          ('back',math.pi,0),('top',0,-math.pi/2),('rear_quarter',2.5,-0.35)]
 
 
-def source(name, bounds, yaw=-0.65, pitch=-0.35, view='isometric', distance_scale=1.0, load=False):
+def source(name, bounds, yaw=-0.65, pitch=-0.35, view='isometric', distance_scale=1.0, load=False, world=False):
     lo,hi = bounds['min'],bounds['max']
     center = [(a+b)/2 for a,b in zip(lo,hi)]
-    scale = min(8192,2/max(b-a for a,b in zip(lo,hi)))
+    # world: the mesh at its own size (the Asset Checker's world scale), else fitted to about 2 units
+    scale = 1.0 if world else min(8192,2/max(b-a for a,b in zip(lo,hi)))
     radius = math.sqrt(sum(((b-a)*scale/2)**2 for a,b in zip(lo,hi)))
     distance = max(1, radius*2.6)*distance_scale
     eye = (-math.sin(yaw)*math.cos(pitch)*distance,-math.sin(pitch)*distance,-math.cos(yaw)*math.cos(pitch)*distance)
