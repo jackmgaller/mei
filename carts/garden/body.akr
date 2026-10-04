@@ -1,6 +1,5 @@
 // The player drawn simply: a box the body's size with a nose toward its facing, coloured by
-// what it is doing, and a wing over it while gliding. (Replaced by the entity depth helper's
-// treatment when that is merged.)
+// what it is doing, and a wing over it while gliding, both drawn as objects (wp_draw_object).
 
 struct BoxMesh {
     hdr: Mesh
@@ -65,17 +64,37 @@ fn state_colour(s: St) -> u32 {
     return rgb(230, 90, 60)
 }
 
+var body_test_mode: s32       // the tests: 0 as an object, 1 on top of everything, 2 mesh_at
+var body_bounds: vec2          // wp_mesh_bounds(): radius and lowest point, worked out once
+var wing_bounds: vec2
+
+// The body and the wing as objects (wp_draw_object), based at the feet, not at the floor: so a
+// platform's top the player stands on never cuts it from a camera above it.
 fn body_draw() {
+    if body_bounds.x == 0.0 {
+        body_bounds = wp_mesh_bounds(&body_mesh.hdr)
+        wing_bounds = wp_mesh_bounds(&wing_mesh.hdr)
+    }
     let c = state_colour(pl.st)
     for f in 0..6 {
         for j in 0..4 { body_mesh.f[f].col[j] = c }
     }
-    let o = wp_view_origin()
-    var p = pl.pos - o
+    var p = pl.pos
     if pl.st == St.Crouch || pl.st == St.CrouchSlide {
         // squashed: draw half the body sunk into the floor
         p.y -= BODY_HEIGHT * 0.4
     }
-    mesh_at(&body_mesh.hdr, p, pl.yaw)
-    if pl.st == St.Glide { mesh_at(&wing_mesh.hdr, pl.pos - o + vec3(0.0, BODY_HEIGHT + 0.1, 0.0), pl.yaw) }
+    if body_test_mode == 1 {                   // the tests: always in front
+        depth_bias(-1000)
+        mesh_at(&body_mesh.hdr, p - wp_view_origin(), pl.yaw)
+        depth_bias(0)
+    } else if body_test_mode == 2 {            // the tests: as before the object rule
+        mesh_at(&body_mesh.hdr, p - wp_view_origin(), pl.yaw)
+    } else {
+        let _ = wp_draw_object(&body_mesh.hdr, p, pl.yaw, body_bounds.x, pl.pos.y + body_bounds.y)
+    }
+    if pl.st == St.Glide {
+        let w = pl.pos + vec3(0.0, BODY_HEIGHT + 0.1, 0.0)
+        let _ = wp_draw_object(&wing_mesh.hdr, w, pl.yaw, wing_bounds.x, w.y + wing_bounds.y)
+    }
 }

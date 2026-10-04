@@ -56,6 +56,7 @@ struct Mover {
     s: fixed
     yaw: fixed
     pos: vec3          // where it is this tick (world)
+    bounds: vec2       // wp_mesh_bounds() of its mesh: radius, lowest point
     vel: vec3          // how far it moved this tick (metres a tick)
 }
 
@@ -130,6 +131,7 @@ fn mover_add(e: *WpEntity) {
     m.e = e
     m.cb = wp_entity_coll(e)
     m.mesh = wp_entity_mesh(e)
+    if m.mesh != null { m.bounds = wp_mesh_bounds(m.mesh) }
     m.base = wp_entity_pos(e)
     m.path = null
     m.to = vec3(0.0, 0.0, 0.0)
@@ -636,9 +638,19 @@ fn attach_draw() {
         let m = &movers[k]
         if m.mesh == null || !wp_entity_live(m.e) { continue }
         if abs(m.pos.x - cam.eye.x) > 120.0 || abs(m.pos.z - cam.eye.z) > 120.0 { continue }
-        mesh_at(m.mesh, m.pos - o, m.yaw)
+        // A small mover (the gondola, the hook) is an object: keyed at its nearest point, so a
+        // platform it passes is not drawn over it. A large one (the train, 9 m) is not: keyed
+        // its radius nearer, it would draw over the viaduct and buildings in front of it, so it
+        // sorts face by face as the world does.
+        if m.bounds.x <= MOVER_OBJECT_RADIUS {
+            let _ = wp_draw_object(m.mesh, m.pos, m.yaw, m.bounds.x, m.pos.y + m.bounds.y)
+        } else {
+            mesh_at(m.mesh, m.pos - o, m.yaw)
+        }
     }
 }
+
+const MOVER_OBJECT_RADIUS: fixed = 4.0   // movers no larger are drawn as objects
 
 // True for an entity attach.akr draws itself (a mover, away from its placement).
 fn attach_owns(e: *WpEntity) -> bool { return e.type_id as s32 == GARDEN_TYPE_MOVER }

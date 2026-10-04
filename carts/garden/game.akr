@@ -119,8 +119,9 @@ fn collect_coins() {
 
 // ---- drawing
 
+// The entities' meshes as objects (wp_draw_object: keyed at their nearest point, so a coin
+// over a platform is not cut by its top); taken coins and what attach.akr draws are skipped.
 fn draw_entities() {
-    let o = wp_view_origin()
     let ci = wp_cell_index(cam.eye.x)
     let cj = wp_cell_index(cam.eye.z)
     for dj in -1..2 {
@@ -135,7 +136,9 @@ fn draw_entities() {
                 if attach_owns(e) { continue }         // attach_draw() draws it where it is now
                 var yaw = e.yaw
                 if e.type_id as s32 == COIN_TYPE { yaw = frame_angle(sim_t, 0.05) }
-                mesh_at(m, wp_entity_pos(e) - o, yaw)
+                let p = wp_entity_pos(e)
+                let b = wp_mesh_bounds(m)
+                let _ = wp_draw_object(m, p, yaw, b.x, p.y + b.y)
             }
         }
     }

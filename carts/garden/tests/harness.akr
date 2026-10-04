@@ -156,6 +156,9 @@ fn test_init() {
         33 => { name = "long jump up mound 15: stays on the slope"; slope_start(36.5) }
         34 => { name = "ground pound onto mound 15: stays on the slope"; place(vec3(36.5, 3.0, 23.0), NORTH) }
         35 => { name = "jumps and dives up mound 30: stays on the slope"; slope_start(39.5) }
+        36 => { name = "standing on the slide platform, close camera: the body is not cut"; place(vec3(51.0, 6.0, 29.0), WEST) }
+        37 => { name = "standing on the gondola, close camera: the body is not cut"; place(vec3(38.5, 4.0, 92.9), WEST) }
+        38 => { name = "standing on a kick wall's top, close camera: the body is not cut"; place(vec3(47.5, 10.0, 45.0), NORTH) }
         30 => { name = "camera sweep at the spawn: frame timing"; place_at_spawn(); cam_reset() }
         28 => { name = "crouch and crawl"; place(lane, EAST) }
         else => {
@@ -198,6 +201,7 @@ fn scenario(f: s32) {
         28 => s_crouch(f)
         29 => s_alley(f)
         30 => s_sweep(f)
+        36, 37, 38 => s_body_shown(f)
         31, 32, 33, 34, 35 => s_slope_moves(f)
         else => {
             camera_case(f)
@@ -694,6 +698,59 @@ fn s_slope_moves(f: s32) {
         expect(under_max < 0.05, "never under the floor", under_max)
         if SCENARIO == 34 { expect(was(St.PoundLand), "pounded", pl.pos.y) }
         expect(pl.pos.y > 0.5 || pl.st != St.Fall, "standing on the mound or past it", pl.pos.y)
+        done()
+    }
+}
+
+// A pixel of the picture presented last (the buffer that is not the back buffer), and whether
+// it is the body's red (230, 90, 60; dithered).
+fn shown_px(x: s32, y: s32) -> u32 {
+    var fb: u32 = 0x400000
+    if GPU_BACK == 0x400000 { fb = 0x425800 }
+    return (fb as *u16)[y * 320 + x] as u32
+}
+
+fn body_pixels() -> s32 {
+    var n = 0
+    for y in 36..220 {
+        for x in 0..320 {
+            let v = shown_px(x, y)
+            let r = (v & 31) as s32
+            let g = ((v >> 5) & 31) as s32
+            let b = ((v >> 10) & 31) as s32
+            if r >= 24 && g >= 8 && g <= 15 && b >= 5 && b <= 11 { n += 1 }
+        }
+    }
+    return n
+}
+
+// 36: the slide platform (2 x 2), 37: the gondola's deck (moving, so the counts differ a
+// little), 38: kick wall 4's top (1 x 12), where plain mesh_at() loses half the body.
+// Standing on a platform with the camera close and above: the body drawn as an object shows
+// as many pixels as the body forced in front of everything (nothing is truly in front of it
+// here), so the platform's top does not cut it. Also notes what plain mesh_at() shows.
+fn s_body_shown(f: s32) {
+    if f == 1 {
+        tv[T.CamDist] = 2.5
+        tv[T.CamPitch] = -0.8
+    }
+    if f == 60 { body_test_mode = 1 }
+    if f == 62 { t0 = body_pixels() }
+    if f == 62 { body_test_mode = 2 }
+    if f == 64 { t1 = body_pixels() }
+    if f == 64 { body_test_mode = 0 }
+    if f == 66 {
+        t2 = body_pixels()
+        note("body pixels, in front of everything", fixed(t0))
+        note("body pixels, mesh_at", fixed(t1))
+        note("body pixels, as an object", fixed(t2))
+        if SCENARIO == 37 {
+            for k in 0..mover_n { note("a mover's radius m (object if <= 4)", movers[k].bounds.x) }
+        }
+        expect(t0 > 400, "the body is in view", fixed(t0))
+        expect(t2 * 100 >= t0 * 97, "as an object: not cut", fixed(t2))
+        // the kick wall's top is two 12 m triangles: their centres sort nearer than the body
+        if SCENARIO == 38 { expect(t1 * 10 < t0 * 9, "mesh_at alone: cut", fixed(t1)) }
         done()
     }
 }

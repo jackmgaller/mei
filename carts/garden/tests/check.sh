@@ -19,6 +19,9 @@ done
 run 4 410
 run 6 260
 run 27 600
+for s in 36 37 38; do
+    run $s 100
+done
 . "$HERE/camera_cases.sh"
 . "$HERE/attach_cases.sh"
 run 30 510
