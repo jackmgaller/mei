@@ -151,6 +151,11 @@ fn test_init() {
         26 => { name = "a late frame runs the ticks it missed"; place(lane, EAST) }
         27 => { name = "tour: frame timing"; place(start, EAST); cam.lock = false }
         29 => { name = "kick alley: four kicks up"; place(vec3(25.4, 0.0, 105.0), EAST) }
+        31 => { name = "dive up mound 15, then A: stays on the slope"; slope_start(36.5) }
+        32 => { name = "dive up mound 15, then B (rollout): stays on the slope"; slope_start(36.5) }
+        33 => { name = "long jump up mound 15: stays on the slope"; slope_start(36.5) }
+        34 => { name = "ground pound onto mound 15: stays on the slope"; place(vec3(36.5, 3.0, 23.0), NORTH) }
+        35 => { name = "jumps and dives up mound 30: stays on the slope"; slope_start(39.5) }
         30 => { name = "camera sweep at the spawn: frame timing"; place_at_spawn(); cam_reset() }
         28 => { name = "crouch and crawl"; place(lane, EAST) }
         else => {
@@ -193,6 +198,7 @@ fn scenario(f: s32) {
         28 => s_crouch(f)
         29 => s_alley(f)
         30 => s_sweep(f)
+        31, 32, 33, 34, 35 => s_slope_moves(f)
         else => {
             camera_case(f)
             attach_case(f)
@@ -645,6 +651,49 @@ fn s_sweep(f: s32) {
         note("gpu peak, thousand cycles", y0)
         note("late ticks", fixed(timing.late))
         expect(timing.shown == 500, "ran", fixed(timing.ticks))
+        done()
+    }
+}
+
+// Running north up a mound: a regression test for the owner's report that a dive up a ramp
+// followed by a jump fell through the floor. Every frame the feet must be at or above the
+// floor under them (the floor found from above), and the run must end standing on something.
+fn slope_start(x: fixed) {
+    place(vec3(x, 0.0, 16.0), NORTH)
+    pl.fwd = mps(T.RunSpeed)
+}
+
+var under_max: fixed
+
+fn s_slope_moves(f: s32) {
+    stick_v = FWD
+    if wp_floor(pl.pos + vec3(0.0, 4.0, 0.0), 0.0) {
+        under_max = max(under_max, wp_hit.y - pl.pos.y)
+    }
+    if SCENARIO == 31 || SCENARIO == 32 {
+        if f == 6 { pad_v = B }
+        if f > 8 && f % 6 == 0 {
+            if SCENARIO == 31 { pad_v = A } else { pad_v = B }
+        }
+    }
+    if SCENARIO == 33 {
+        if f >= 4 && f < 8 { pad_v = R }
+        if f >= 6 && f < 8 { pad_v = R | A }
+    }
+    if SCENARIO == 34 {
+        stick_v = STILL
+        if f >= 10 && f < 25 { pad_v = A }
+        if f == 30 { pad_v = R }
+    }
+    if SCENARIO == 35 && f > 2 {
+        if f % 20 < 3 { pad_v = A }
+        if f % 20 == 10 { pad_v = B }
+    }
+    if f == 120 {
+        note("the most the feet went below the floor m", under_max)
+        expect(under_max < 0.05, "never under the floor", under_max)
+        if SCENARIO == 34 { expect(was(St.PoundLand), "pounded", pl.pos.y) }
+        expect(pl.pos.y > 0.5 || pl.st != St.Fall, "standing on the mound or past it", pl.pos.y)
         done()
     }
 }

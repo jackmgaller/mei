@@ -216,7 +216,7 @@ fn ground_move() -> bool {
 }
 
 // In the air: gravity (times gmul), then move; the head stops at ceilings. True when the feet
-// came down on a floor this tick.
+// came down on (or were overtaken by) a floor this tick.
 fn air_move(gmul: fixed) -> bool {
     let old_y = pl.pos.y
     pl.bonked = false
@@ -230,9 +230,11 @@ fn air_move(gmul: fixed) -> bool {
             pl.vel.y = 0.0
             pl.bonked = true
         }
-        return false
     }
-    if col_floor(vec3(pl.pos.x, old_y, pl.pos.z), 0.02) && col_y >= pl.pos.y {
+    // The feet come down on a floor they reached: one they fell to, or one that rose past
+    // them (a slope climbing faster than a low dive or rollout). Looked for from the higher
+    // of the two heights plus a step, since a slope ahead is above where the feet were.
+    if col_floor(vec3(pl.pos.x, max(old_y, pl.pos.y), pl.pos.z), BODY_STEP) && col_y >= pl.pos.y {
         pl.pos.y = col_y
         take_floor()
         return true
