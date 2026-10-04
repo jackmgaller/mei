@@ -442,6 +442,7 @@ def reference_check(pack, far_ring):
         if c.standin:
             meshes.add(c.standin)
     unverifiable = 0
+    textured = any(r.textures for r in pack.regions)
     for off in sorted(meshes):
         nv, nf, vo, fo = mesh_info(data[off:])
         for k in range(nf):
@@ -453,7 +454,8 @@ def reference_check(pack, far_ring):
                                'message': f'face {k} of the mesh at {off} names vertex {max(idx)} of {nv}'})
             uv = struct.unpack_from('<4H', data, at + 28)[:len(idx)]
             tex = data[at + 2]
-            if not checkable(flags, tex, uv):
+            if not checkable(flags, tex, uv) and not (textured and not flags & 8):
+                # (a textured pack: textured faces are judged whole or per texel, verify_render.py)
                 unverifiable += 1
     if unverifiable:
         warnings.append({'code': 'unverifiable_faces', 'faces': unverifiable,

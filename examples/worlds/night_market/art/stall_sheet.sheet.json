@@ -1,0 +1,10 @@
+{
+  "format": "mei-sheet",
+  "version": 1,
+  "cells": {
+    "ramen":  [0, 0, 32, 16],
+    "emblem": [32, 0, 16, 16],
+    "glow_a": [48, 0, 16, 16],
+    "glow_b": [48, 16, 16, 16]
+  }
+}

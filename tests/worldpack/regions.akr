@@ -1,0 +1,54 @@
+// Region resources (1.4): entering a region (texture set, every palette run, backdrop art),
+// variants loaded and blended across runs, animated textures copied when their frame changes.
+// Driven by tests/test_worldpack.py (RegionExtTests); PACK is a 1.4 pack built there.
+import "worldpack.akr"
+
+fn vram8(at: s32) -> s32 { return ((VRAM_TEXTURES + at) as *u8)[0] as s32 }
+fn colour(c: s32) -> s32 { return ((VRAM_PALETTE + c * 2) as *u16)[0] as s32 }
+
+fn show(label: *u8, a: s32, b: s32, c: s32) {
+    print(label)
+    print_char(' ')
+    print_int(a)
+    print_char(' ')
+    print_int(b)
+    print_char(' ')
+    print_int(c)
+    println("")
+}
+
+fn init() {
+    if !wp_open(PACK) {
+        println("open 0")
+        return
+    }
+    show("ext", (wp_region_ext(0) != null) as s32, wp_region_ext(0).run_count as s32, wp_region_ext(0).anim_count as s32)
+    wp_region_enter(0, 0)
+    // the texture set: slot 3 from row 0; the animated tile's frame 0 at texture-area byte 3 * 32768 + 128 * 8
+    show("texture", vram8(3 * 32768), vram8(3 * 32768 + 1), vram8(3 * 32768 + 128 * 8))
+    show("day", colour(17), colour(3584 + 1), colour(3584 + 2))
+    show("loaded", wp_region_loaded, 0, 0)
+    show("backdrop", ((0x460000) as *u8)[0] as s32, ((0x460000) as *u8)[3] as s32, 0)
+    wp_variant_load(0, 1)
+    show("night", colour(17), colour(3584 + 1), colour(3584 + 2))
+    wp_variant_blend(0, 0, 1, 0.5)
+    show("dusk", colour(17), colour(3584 + 1), colour(3584 + 2))
+    // frames 0, 1, 2 of 3, 4 ticks each: t 0 shows frame 0 (nothing to copy), t 4 frame 1, t 9 frame 2
+    let a = wp_animate(0)
+    let b = wp_animate(4)
+    show("frame1", a, b, vram8(3 * 32768 + 128 * 8))
+    let c = wp_animate(5)
+    let d = wp_animate(9)
+    show("frame2", c, d, vram8(3 * 32768 + 128 * 9))
+    let e = wp_animate(12)
+    show("frame0", e, wp_anim_copied, vram8(3 * 32768 + 128 * 8))
+    let t0 = cycle_count()
+    wp_animate(12)
+    let t1 = cycle_count()
+    wp_animate(16)
+    let t2 = cycle_count()
+    show("cost", t1 - t0, t2 - t1, 0)
+    println("done")
+}
+
+fn draw() { cls(0) }

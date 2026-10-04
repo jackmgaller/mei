@@ -68,11 +68,13 @@ class RenderError(RuntimeError):
 class MeshData:
     raw: list           # vertices (x, y, z) raw 16.16
     faces: list         # (flags, idx tuple, tex, palette, uv tuple)
-    size: int           # bytes from the mesh's start to its end
+    size: int           # bytes from the mesh's start to its end (its window table included)
+    windows: list = field(default_factory=list)     # the texture window table's halfwords
 
 
 def read_mesh(data, off):
     nv, nf, vo, fo = mesh_info(data[off:])
+    wo = struct.unpack_from('<I', data, off + 12)[0]
     raw = [struct.unpack_from('<3i', data, off + vo + 16 * k) for k in range(nv)]
     faces = []
     for k in range(nf):
@@ -82,7 +84,75 @@ def read_mesh(data, off):
         uv = struct.unpack_from('<4H', data, at + 28)
         n = 4 if flags & FACE_QUAD else 3
         faces.append((flags, idx[:n], tex, pal, uv[:n]))
-    return MeshData(raw, faces, max(vo + 16 * nv, fo + 36 * nf))
+    size = max(vo + 16 * nv, fo + 36 * nf)
+    windows = []
+    if wo:
+        used = max((tex >> 5 for flags, _, tex, _, _ in faces if flags & FACE_TEXTURED), default=0)
+        windows = list(struct.unpack_from(f'<{used}H', data, off + wo)) if used else []
+        if used:
+            size = max(size, wo + 2 * used)
+    return MeshData(raw, faces, size, windows)
+
+
+# ---- region texture sets (world packs with textures: docs/WORLDCHECKER.md, "Textures")
+
+class RegionTexels:
+    """Which texels of a region's texture set are not 0 (texel 0 draws nothing: a hole), per
+    slot as the GPU addresses it: 256 x 256 texels of a 4-bit slot, 256 x 128 of an 8-bit one."""
+
+    def __init__(self, region):
+        np = numpy()
+        self.slots = {}
+        for t in region.textures:
+            raw = np.frombuffer(t.data, dtype=np.uint8)
+            if t.four_bit:
+                rows = np.zeros(256 * 128, dtype=np.uint8)
+                rows[:min(len(raw), len(rows))] = raw[:len(rows)]
+                texels = np.stack(((rows & 15) != 0, (rows >> 4) != 0), axis=1).reshape(256, 256)
+            else:
+                rows = np.zeros(128 * 256, dtype=np.uint8)
+                rows[:min(len(raw), len(rows))] = raw[:len(rows)]
+                texels = (rows != 0).reshape(128, 256)
+            self.slots[t.slot] = texels
+            if not t.four_bit and len(raw) > 32768:
+                pass                    # an 8-bit texture running into the next slot: not written by the kit
+
+    def tile(self, tex, uv, windows):
+        """(texel array, window (su, sv) or None) a textured face samples: its window's tile, or
+        the slot (a texture drawn once: coordinates are slot texels)."""
+        np = numpy()
+        slot = self.slots.get(tex & 15)
+        if slot is None:
+            return np.zeros((1, 1), dtype=bool), None
+        k = tex >> 5
+        if k and k <= len(windows):
+            hw = windows[k - 1]
+            su, ou = 4 << (hw & 7), (hw >> 3 & 31) * 8
+            sv, ov = 4 << (hw >> 8 & 7), (hw >> 11 & 31) * 8
+            return slot[ov:ov + sv, ou:ou + su], (su, sv)
+        return slot, None
+
+    def solid(self, tex, uv, windows):
+        """Whether a face can never sample texel 0: every texel of its window's tile, or of its
+        corners' texel box, is set. Such a face covers exactly its outline's pixels."""
+        arr, win = self.tile(tex, uv, windows)
+        if win:
+            return bool(arr.all())
+        us, vs = [c & 255 for c in uv], [c >> 8 for c in uv]
+        box = arr[min(vs):max(vs) + 1, min(us):max(us) + 1]
+        return box.size > 0 and bool(box.all())
+
+
+def pack_texels(pack):
+    """{region number: RegionTexels} of the regions with texture sets (empty for other packs)."""
+    return {k: RegionTexels(r) for k, r in enumerate(pack.regions) if r.textures}
+
+
+def cell_region(pack, eye):
+    """The region of the cell holding eye, or None where there is no cell."""
+    (i, j), _, _ = pack.cell_of(round(eye[0] * ONE), round(eye[2] * ONE))
+    c = pack.cells.get((i, j))
+    return c.region if c else None
 
 
 def swatch_face(flags, tex, uv):
@@ -165,14 +235,30 @@ def mesh_bounds(data, off):
     return math.sqrt(r2) + 1 / 128, low or 0.0
 
 
-def identity_mesh(data, off, mesh, first):
-    """The mesh at `off` with face k drawn in ID first + k: untextured (swatch faces cover the
-    same pixels untextured), opaque, colours replaced; FACE_KEYED faces keep their bucket."""
+def id_tint(n):
+    """The tint word with which a white texel shows triangle ID n exactly: a texel of colour c
+    tinted t shows c t >> 7 per channel, so t = ceil(1024 k / 255) shows 5-bit value k
+    (tools/assetkit/visibility.py)."""
+    return sum(-(-1024 * ((n >> (5 * c)) & 31) // 255) << (8 * c) for c in range(3))
+
+
+def identity_mesh(data, off, mesh, first, cutouts=()):
+    """The mesh at `off` with face k drawn in ID first + k: untextured (swatch faces and faces of
+    textures without holes cover the same pixels untextured), opaque, colours replaced;
+    FACE_KEYED faces keep their bucket. Faces in cutouts (textures with holes) stay textured,
+    through palette 0, their tint carrying the ID: the verification cart loads the region's
+    texture set as a mask (every texel that is not 0 made 1) and colour 1 white."""
     out = bytearray(data[off:off + mesh.size])
     _, nf, _, fo, _ = struct.unpack_from('<HHIII', out)
     for k in range(nf):
         at = fo + 36 * k
         flags = out[at]
+        if k in cutouts:
+            out[at] = flags & ~FACE_SEMI
+            out[at + 1] = 0
+            out[at + 3] = 0
+            struct.pack_into('<4I', out, at + 12, *([id_tint(first + k)] * 4))
+            continue
         flags &= ~(FACE_TEXTURED | FACE_SEMI)
         out[at] = flags
         out[at + 1] = out[at + 2] = out[at + 3] = 0
@@ -185,10 +271,40 @@ def identity_mesh(data, off, mesh, first):
     return bytes(out)
 
 
-def identity_pack(data, insts, first_ids, meshes):
+def cutout_faces(texels, inst, mesh, pack):
+    """The faces of an instance whose textures have holes in its cell's region's texture set."""
+    tx = texels.get(pack.cells[inst.cell].region) if texels else None
+    if tx is None:
+        return set()
+    return {k for k, (flags, _, tex, _, uv) in enumerate(mesh.faces)
+            if flags & FACE_TEXTURED and not swatch_face(flags, tex, uv) and not tx.solid(tex, uv, mesh.windows)}
+
+
+def mask_bytes(data, four_bit):
+    """A texture's bytes with every texel that is not 0 made 1."""
+    np = numpy()
+    raw = np.frombuffer(data, dtype=np.uint8)
+    if four_bit:
+        return (((raw & 15) != 0).astype(np.uint8) | (((raw >> 4) != 0).astype(np.uint8) << 4)).tobytes()
+    return (raw != 0).astype(np.uint8).tobytes()
+
+
+def identity_pack(data, insts, first_ids, meshes, pack=None, texels=None):
     """A copy of the pack in which each instance in first_ids draws its own identity mesh,
-    appended to the pack (the instance's mesh field points at it)."""
+    appended to the pack (the instance's mesh field points at it). With texels (a textured
+    pack), faces with holes stay textured (identity_mesh()) and every region's texture records
+    point at masks of their textures, appended too."""
     out = bytearray(data)
+    if texels:
+        reg_off = struct.unpack_from('<I', data, 40)[0]
+        for k, r in enumerate(pack.regions):
+            ntex, to = struct.unpack_from('<H', data, reg_off + 32 * k + 4)[0], struct.unpack_from('<I', data, reg_off + 32 * k + 8)[0]
+            for t in range(ntex):
+                while len(out) % 4:
+                    out.append(0)
+                at = len(out)
+                out += mask_bytes(r.textures[t].data, r.textures[t].four_bit)
+                struct.pack_into('<I', out, to + 12 * t + 4, at)
     copies = {}             # a placement's own copy of its (shared) LOD set
     for inst in insts:
         if inst.key not in first_ids:
@@ -206,7 +322,8 @@ def identity_pack(data, insts, first_ids, meshes):
         while len(out) % 4:
             out.append(0)
         at = len(out)
-        out += identity_mesh(data, inst.mesh, meshes[inst.mesh], first_ids[inst.key])
+        cut = cutout_faces(texels, inst, meshes[inst.mesh], pack) if texels else ()
+        out += identity_mesh(data, inst.mesh, meshes[inst.mesh], first_ids[inst.key], cut)
         struct.pack_into('<I', out, field, at)
     while len(out) % 4:
         out.append(0)
@@ -255,7 +372,7 @@ embed VIEWS: VView = "views.bin"
 
 var vout: VOut
 var tick: s32
-
+{region_vars}
 // The entities' meshes by their own depth alone (runtime entity_drawing "mesh_at"); the default
 // draws them with wp_draw_entities() (docs/WORLDPACK.md, "Objects").
 fn draw_entities(eye: vec3) -> s32 {{
@@ -310,7 +427,7 @@ fn draw() {{
     for l in 0..nl {{
         if (v.on[l >> 5] >> ((l & 31) as u32)) & 1 != 0 {{ wp_layer_set(l, true) }}
     }}
-    cls(0)
+{region_lines}    cls(0)
 {depth_lines}    let eye = vec3(v.eye.x, v.eye.y, v.eye.z)
     let c0 = cycle_count()
     wp_draw(eye, v.yaw, v.pitch)
@@ -350,8 +467,9 @@ def view_record(view, layer_ids, entities, ident=False):
     for lid in layer_ids:
         on[lid >> 5] |= 1 << (lid & 31)
     eye = [round(c * ONE) for c in view['eye']]
+    region = view.get('region')
     return struct.pack('<4i2iII8I', *eye, 0, round(view['yaw'] * ONE), round(view['pitch'] * ONE),
-                       (1 if entities else 0) | (2 if ident else 0), 0, *on)
+                       (1 if entities else 0) | (2 if ident else 0), 0 if region is None else region + 1, *on)
 
 
 # How the cart walks its VIEWS records: in pairs (each view's measured frame, then its identity
@@ -390,10 +508,33 @@ def depth_init(rows):
         for slot, row in rows) + '}\n'
 
 
+# A textured pack (runtime 'textured'): each view enters its camera cell's region (VView.reserved
+# is the region + 1), as a game does with wp_region_enter(); identity frames load the identity
+# pack's mask textures and make colour 1 white. The region is entered again only when it or the
+# pack changes.
+REGION_VARS = 'var entered: s32 = -1\nvar white: [2]u16\n'
+REGION_LINES = '''    if v.reserved != 0 {{
+        var want = (v.reserved as s32) * 2
+        if ident {{ want += 1 }}
+        if want != entered {{
+            wp_region_enter((v.reserved - 1) as s32, 0)
+            entered = want
+        }}
+        wp_region_loaded = (v.reserved - 1) as s32
+        if ident {{
+            white[1] = 0x7FFF
+            load_palette(0, &white[0], 2)
+        }}
+    }}
+'''
+
+
 def _cart_source(runtime, rows, walk):
     near_far = runtime['near_far']
     depth, persp = runtime.get('depth', False), runtime.get('perspective', False)
-    return CART.format(depth_import=DEPTH.cart_import(depth, persp),
+    textured = runtime.get('textured', False)
+    return CART.format(region_vars=REGION_VARS if textured else '',
+                       region_lines=REGION_LINES.format() if textured else '',depth_import=DEPTH.cart_import(depth, persp),
                        depth_lines=DEPTH.cart_lines(depth, persp),
                        depth_init=depth_init(rows) if depth or persp else '',
                        far_ring=int(runtime['far_ring']),
@@ -531,7 +672,7 @@ def cell_mask(pack, cell, layers_on):
     return sum(1 << k for k, lid in enumerate(cell.layers) if lid in layers_on)
 
 
-def select(pack, by_cell, eye, vp, layers_on, runtime):
+def select(pack, by_cell, eye, vp, layers_on, runtime, region=None):
     """What wp_draw() (and the cart's entity loop) draws from eye: a list of (instance, pass,
     certain), certain False where a culling sphere is too close to a plane to say. The pass is
     'far', 'ground' (a ground placement, when the runtime draws ground first) or 'near'."""
@@ -566,6 +707,22 @@ def select(pack, by_cell, eye, vp, layers_on, runtime):
             if c is None:
                 continue
             mask = cell_mask(pack, c, layers_on)
+            if region is not None and c.region != region:
+                # wp_region_loaded: a near cell of another region draws its stand-in, near
+                for inst in by_cell.get((ci + di, cj + dj), ()):
+                    if inst.key[0] == 'standin':
+                        s = inst.sphere
+                        v = _sphere(planes, (s[0] / ONE + di * S, s[1] / ONE, s[2] / ONE + dj * S), s[3] / ONE)
+                        if v is not False:
+                            out.append((inst, 'near', v is True))
+                    elif inst.key[0] == 'entity' and runtime['draw_entities']:
+                        v = True
+                        if runtime['entity_drawing'] == 'object':
+                            s = inst.sphere
+                            v = _sphere(planes, (s[0] / ONE + di * S, s[1] / ONE, s[2] / ONE + dj * S), s[3] / ONE)
+                        if v is not False:
+                            out.append((inst, 'near', v is True))
+                continue
             cv = True
             if c.placements:
                 b = c.bounds
@@ -608,6 +765,7 @@ class Face:
     plane: tuple        # (N, D): depth w = D / (N . (u, v, 1))
     definite: bool      # drawn for certain and checkable: may be the expected face
     tol: float
+    texel: object = None    # a face with holes: (clip corners, texture coordinates, tile, window)
 
 
 def _clip_near(cs, near):
@@ -635,9 +793,11 @@ def _cross(a, b):
     return numpy().array((a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]))
 
 
-def view_faces(pack, meshes, view_insts, vp, origin, first_ids, near_planes):
+def view_faces(pack, meshes, view_insts, vp, origin, first_ids, near_planes, texels=None, region=None):
     """Faces (screen polygons with depth planes) of the instances a view draws. view_insts is a
-    list of (instance, pass, certain)."""
+    list of (instance, pass, certain). texels: pack_texels() of a textured pack, and region the
+    region the view entered: a textured face is checked whole when its texture has no holes,
+    per texel when it has (Face.texel), and not at all in a cell of another region."""
     np = numpy()
     S = 1 << pack.cell_shift
     half = S / 2
@@ -660,6 +820,7 @@ def view_faces(pack, meshes, view_insts, vp, origin, first_ids, near_planes):
         clip = world @ vp.T                    # x, y, z, w
         cxyw = clip[:, [0, 1, 3]]
         near = near_planes[pas]
+        tx = texels.get(pack.cells[inst.cell].region) if texels and pack.cells[inst.cell].region == region else None
         for k, (flags, idx, tex, pal, uv) in enumerate(mesh.faces):
             order = (idx[0], idx[1], idx[3], idx[2]) if len(idx) == 4 else idx
             cs = [tuple(cxyw[i]) for i in order]
@@ -695,9 +856,16 @@ def view_faces(pack, meshes, view_insts, vp, origin, first_ids, near_planes):
                 ln = float(np.linalg.norm(wn))
                 if ln > 0:
                     tol = abs(float((w3 - w0) @ wn)) / ln
+            ok = checkable(flags, tex, uv)
+            texel = None
+            if not ok and tx is not None and not flags & FACE_SEMI and len(idx) == 3:
+                ok = True
+                if not tx.solid(tex, uv, mesh.windows):
+                    tile, win = tx.tile(tex, uv, mesh.windows)
+                    texel = (np.array([cxyw[i] for i in idx]), np.array([(c & 255, c >> 8) for c in uv], dtype=float),
+                             tile, win)
             faces.append(Face(first + k, inst, k, pas, scr, (nrm, d),
-                              certain and not thin and convex and abs(d) > 1e-12 and checkable(flags, tex, uv),
-                              tol))
+                              certain and not thin and convex and abs(d) > 1e-12 and ok, tol, texel))
     return faces
 
 
@@ -769,6 +937,11 @@ class _Pass:
         if got is None:
             return
         pix, inside, z = got
+        sure = None
+        if f.texel is not None:
+            full, empty = texel_classes(f.texel, pix)
+            keep = ~empty
+            pix, inside, z, sure = pix[keep], inside[keep], z[keep], full[keep]
         # maybe-coverage: nearest and second nearest depth
         nearer = z < self.m1[pix]
         p2 = pix[nearer]
@@ -797,6 +970,8 @@ class _Pass:
             self.lo2[pix[rest]] = lo[rest]
         if f.definite:
             rob = (inside >= margin) & (z < self.r1[pix])
+            if sure is not None:
+                rob &= sure
             pr = pix[rob]
             self.r1[pr] = z[rob]
             self.rid[pr] = f.id
@@ -818,6 +993,61 @@ class _Pass:
         return exp.astype(np.int32), covered
 
 
+def _alpha(corners, a, b):
+    """Barycentric weights (n, 3), true in 3D (so perspective-correct), of the points of the
+    triangle with clip corners (x, y, w) seen at NDC (a, b)."""
+    np = numpy()
+    A = corners[None, :, 0] - a[:, None] * corners[None, :, 2]
+    B = corners[None, :, 1] - b[:, None] * corners[None, :, 2]
+    c = np.stack((A[:, 1] * B[:, 2] - A[:, 2] * B[:, 1], A[:, 2] * B[:, 0] - A[:, 0] * B[:, 2],
+                  A[:, 0] * B[:, 1] - A[:, 1] * B[:, 0]), axis=1)
+    s = c.sum(axis=1)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        return c / s[:, None]
+
+
+def texel_classes(texel, pix):
+    """For pixels of a face with holes: (sure to sample a set texel, sure to sample texel 0).
+    The texel the GPU samples is taken as anywhere within one texel plus one and a half pixels'
+    worth of texture coordinates of the true (perspective-correct) coordinate at the pixel's
+    centre: the GPU's spans divide every 16th pixel and step between, and its vertices are whole
+    pixels. A pixel whose box holds both kinds is neither."""
+    np = numpy()
+    corners, uv, tile, win = texel
+    px, py = pix % W, pix // W
+    a, b = (px + 0.5 - 160) / 160, (120 - py - 0.5) / 120
+    t0 = _alpha(corners, a, b) @ uv
+    tx = _alpha(corners, a + 2 / W, b) @ uv
+    ty = _alpha(corners, a, b - 2 / H) @ uv
+    reach = 1 + 1.5 * np.nan_to_num(np.maximum(np.abs(tx - t0).max(axis=1), np.abs(ty - t0).max(axis=1)), nan=1e9)
+    reach = np.minimum(reach, 1e6)
+    t0 = np.nan_to_num(t0, nan=0.0)
+    h, w = tile.shape
+    if win:
+        su, sv = win
+        big = np.tile(tile, (3, 3))
+        ou, ov = np.floor(t0[:, 0]) // su * su - su, np.floor(t0[:, 1]) // sv * sv - sv
+        u0, u1 = np.floor(t0[:, 0] - reach) - ou, np.floor(t0[:, 0] + reach) - ou
+        v0, v1 = np.floor(t0[:, 1] - reach) - ov, np.floor(t0[:, 1] + reach) - ov
+        wide = (u1 - u0 + 1 > su) | (v1 - v0 + 1 > sv)
+        src = big
+    else:
+        u0, u1 = np.floor(t0[:, 0] - reach), np.floor(t0[:, 0] + reach)
+        v0, v1 = np.floor(t0[:, 1] - reach), np.floor(t0[:, 1] + reach)
+        wide = np.zeros(len(pix), dtype=bool)
+        src = tile
+    sh, sw = src.shape
+    sat = np.zeros((sh + 1, sw + 1), dtype=np.int64)
+    sat[1:, 1:] = src.astype(np.int64).cumsum(0).cumsum(1)
+    cu0, cu1 = np.clip(u0, 0, sw - 1).astype(np.int64), np.clip(u1, 0, sw - 1).astype(np.int64)
+    cv0, cv1 = np.clip(v0, 0, sh - 1).astype(np.int64), np.clip(v1, 0, sh - 1).astype(np.int64)
+    count = sat[cv1 + 1, cu1 + 1] - sat[cv0, cu1 + 1] - sat[cv1 + 1, cu0] + sat[cv0, cu0]
+    area = (cu1 - cu0 + 1) * (cv1 - cv0 + 1)
+    full = (count == area) & ~wide
+    empty = (count == 0) & ~wide
+    return full, empty
+
+
 PASSES = ('far', 'ground', 'near')     # the reader's passes in drawing order, each over the last
 
 
@@ -833,7 +1063,7 @@ def compare_view(faces, actual, settings):
     if depth:
         # one pass: the far and ground passes, and the inversions between passes, do not exist
         passes = {'near': _Pass(depth)}
-        faces = [Face(f.id, f.inst, f.index, 'near', f.poly, f.plane, f.definite, f.tol) for f in faces]
+        faces = [Face(f.id, f.inst, f.index, 'near', f.poly, f.plane, f.definite, f.tol, f.texel) for f in faces]
     else:
         passes = {name: _Pass() for name in PASSES}
     for f in faces:

@@ -1149,6 +1149,115 @@ def path_query(op, path, arg, p=(0, 0, 0)):
     return struct.pack('<iiii4i', op, path, fx(arg), 0, *p, 0)
 
 
+def region_world(**over):
+    """A one-cell world whose region has a 1.4 extension: a texture in slot 3 (frame 0 of an
+    animated tile at row 8), main-run colours 16-31 by day and night, an extra run (an 8-bit
+    palette at colour 3584), the animated tile (3 frames of 2 rows of 4 bytes, 4 ticks each),
+    backdrop art and a sky."""
+    tex = bytearray(2048)
+    tex[0], tex[1] = 0x21, 0x43
+    tex[1024:1028] = bytes([0x11] * 4)
+    tex[1152:1156] = bytes([0x11] * 4)
+    day = [0] * 16
+    night = [0] * 16
+    day[1], night[1] = 1000, 2000
+    frames = b''.join(bytes([0x11 * (k + 1)] * 8) for k in range(3))
+    r = Region('market', textures=[P.Texture(3, bytes(tex), True)], first_colour=16,
+               variants=[('day', day), ('night', night)],
+               runs=[P.PaletteRun(3584, [[0, 31, 992], [0, 1, 32]])],
+               animations=[P.Animation(frames, 3, 4, 4, 2, 3 * 32768 + 128 * 8, 128)],
+               backdrop=[P.VramCopy(0x460000, bytes([9, 8, 7, 6]))],
+               sky=P.Sky([-0.1, 0.0, 0.5], [[0x102030, 0x405060, 0x708090], [1, 2, 3]], mode=0x302, atlas=0x460000,
+                         map=0x452000, rate=162.97, horizon=40, top=0, height=40))
+    for k, v in over.items():
+        setattr(r, k, v)
+    return World(cells=[Cell(0, 0)], cell_shift=5, regions=[r])
+
+
+class RegionExtTests(unittest.TestCase):
+    """Region extensions (1.4): palette runs, animated textures, the backdrop's sky record."""
+
+    def test_round_trip(self):
+        data = encode(region_world())
+        self.assertEqual(data, encode(region_world()), 'encoding is deterministic')
+        p = decode(data)
+        self.assertEqual((p.minor, struct.unpack_from('<H', data, 14)[0]), (4, 84))
+        r = p.regions[0]
+        self.assertEqual(r.textures[0].slot, 3)
+        self.assertEqual([(q.first_colour, q.variants) for q in r.runs], [(3584, [[0, 31, 992], [0, 1, 32]])])
+        a = r.animations[0]
+        self.assertEqual((a.frames, a.ticks, a.row_bytes, a.rows, a.vram, a.stride), (3, 4, 4, 2, 3 * 32768 + 1024, 128))
+        self.assertEqual(a.data[8:16], bytes([0x22] * 8))
+        s = r.sky
+        self.assertEqual((s.mode, s.atlas, s.map, s.horizon, s.top, s.height), (0x302, 0x460000, 0x452000, 40, 0, 40))
+        self.assertEqual(s.elevations, [fx(-0.1), 0, fx(0.5)])
+        self.assertEqual(s.colours, [[0x102030, 0x405060, 0x708090], [1, 2, 3]])
+        self.assertAlmostEqual(s.rate, 162.97, places=4)
+        self.assertEqual(r.backdrop[0].data, bytes([9, 8, 7, 6]))
+
+    def test_packs_without_extensions_stay_1_3(self):
+        plain = region_world(runs=[], animations=[], sky=None)
+        p = decode(encode(plain))
+        self.assertEqual((p.minor, struct.unpack_from('<H', encode(plain), 14)[0]), (3, 80))
+        self.assertEqual(p.regions[0].textures[0].slot, 3, 'textures and backdrop copies are 1.0 fields')
+        # a 1.3 reader reads a 1.4 pack as 1.3: the extension is reached only through header byte 80
+        data = bytearray(encode(region_world()))
+        struct.pack_into('<H', data, 6, 3)
+        old = decode(bytes(data))
+        self.assertEqual((old.regions[0].runs, old.regions[0].animations, old.regions[0].sky), ([], [], None))
+
+    def test_limits(self):
+        bad = [dict(runs=[P.PaletteRun(4090, [[0] * 8, [0] * 8])]),           # past colour 4095
+               dict(runs=[P.PaletteRun(3584, [[0, 1]])]),                       # one list for two variants
+               dict(animations=[P.Animation(b'\0' * 7, 3, 4, 4, 2, 0, 128)]),   # frames' bytes
+               dict(animations=[P.Animation(b'\0' * 24, 3, 0, 4, 2, 0, 128)]),  # ticks 0
+               dict(animations=[P.Animation(b'\0' * 24, 3, 4, 4, 2, 126, 128)]),  # a row past its stride
+               dict(sky=P.Sky([0.2, 0.1], [[1, 2], [3, 4]])),                   # elevations decrease
+               dict(sky=P.Sky([0.1], [[1]]))]                                   # one colour list, two variants
+        for over in bad:
+            with self.assertRaises(PackError, msg=over):
+                encode(region_world(**over))
+
+    def test_malformed_extensions_are_refused(self):
+        good = encode(region_world())
+        ext = struct.unpack_from('<I', good, 80)[0]
+        anim = struct.unpack_from('<I', good, ext + 8)[0]
+        sky = struct.unpack_from('<I', good, ext + 12)[0]
+        cases = {'header size': good[:14] + struct.pack('<H', 80) + good[16:],
+                 'anim ticks': good[:anim + 10] + struct.pack('<H', 0) + good[anim + 12:],
+                 'anim stride': good[:anim + 16] + struct.pack('<H', 100) + good[anim + 18:],
+                 'sky flags': good[:sky + 24] + struct.pack('<I', 0) + good[sky + 28:],
+                 'ext offset': good[:80] + struct.pack('<I', len(good)) + good[84:]}
+        for what, data in cases.items():
+            with self.assertRaises(PackError, msg=what):
+                decode(data)
+
+    @needs_tools
+    def test_the_reader_enters_regions_and_animates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lines = F.run_cart(tmp, 'regions.akr', {'PACK': ('u8', encode(region_world()))})
+        self.assertEqual(lines[-1], 'done')
+        vals = dict(l.split(' ', 1) for l in lines[:-1])
+        self.assertEqual(vals['ext'], '1 1 1')
+        self.assertEqual(vals['texture'], '33 67 17')
+        self.assertEqual(vals['day'], '1000 31 992')
+        self.assertEqual(vals['loaded'], '0 0 0')
+        self.assertEqual(vals['backdrop'], '9 6 0')
+        self.assertEqual(vals['night'], '2000 1 32')
+        dusk = list(map(int, vals['dusk'].split()))
+        for d, a, b in zip(dusk, (1000, 31, 992), (2000, 1, 32)):
+            for sh in (0, 5, 10):
+                self.assertLessEqual(abs(((d >> sh) & 31) - (((a >> sh) & 31) + ((b >> sh) & 31)) / 2), 1)
+        self.assertEqual(vals['frame1'], '0 1 34')        # t 0: frame 0 already there; t 4: frame 1 copied
+        self.assertEqual(vals['frame2'], '0 1 51')        # t 5: still frame 1; t 9: frame 2
+        self.assertEqual(vals['frame0'], '1 2 17')        # t 12: frame 0 again, its 2 rows
+        unchanged, changed = map(int, vals['cost'].split()[:2])
+        if VERBOSE:
+            print(f'\nwp_animate: {unchanged} cycles with no frame change, {changed} copying 2 rows of 4 bytes')
+        self.assertLess(unchanged, 400)
+        self.assertLess(changed, 1500)
+
+
 class PathEncoderTests(unittest.TestCase):
     def test_round_trip(self):
         w = path_world()

@@ -4,7 +4,7 @@
   "name": "stall",
   "budget": {"vertices": 256, "triangles": 200},
   "sheets": {
-    "signs": {"image": "../../../assets/art/stall_sheet.png"}
+    "signs": {"image": "../art/stall_sheet.png"}
   },
   "materials": {
     "brick": {"color": "#9c4f34", "tag": "wall",

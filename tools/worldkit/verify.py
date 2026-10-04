@@ -452,6 +452,7 @@ def _view_context(pack, names, cfg, rt, groups):
         by_cell.setdefault(inst.cell, []).append(inst)
     return {'pack': pack, 'names': names, 'cfg': cfg, 'rt': rt, 'groups': groups, 'insts': insts,
             'meshes': meshes, 'by_cell': by_cell, 'describe': _describe(names),
+            'texels': RD.pack_texels(pack) if rt.get('textured') else None,
             'lod_pack': any(p.get('lod') for c in pack.cells.values() for p in c.placements),
             'order_cfg': {**cfg['ordering'], 'near_band': cfg['thresholds']['near_band'], 'depth': rt['depth']}}
 
@@ -497,7 +498,7 @@ def _view_row(ctx, g, v, rec, rec2, out_dir, sample=None):
         row['stats']['depth']['untested_pixels'] = max(_untested(st), _untested(st2))
     sel = None
     if lod_pack:
-        sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
+        sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt, v.get('region'))
         row['heaviest'] = _heaviest(pack, sel, meshes, v['eye'], names)
     if rec2 is None:
         row['ordering'] = {'skipped': 'not in the ordering sample (depth mode)'}
@@ -506,8 +507,9 @@ def _view_row(ctx, g, v, rec, rec2, out_dir, sample=None):
         near_planes = {'near': rt['clip_near'], 'ground': rt['clip_near'],
                        'far': rt['clip_near'] if rt['depth'] else S / 2}
         if sel is None:
-            sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
-        faces = RD.view_faces(pack, meshes, sel, out2['vp'], out2['origin'], first, near_planes)
+            sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt, v.get('region'))
+        faces = RD.view_faces(pack, meshes, sel, out2['vp'], out2['origin'], first, near_planes,
+                              ctx['texels'], v.get('region'))
         cmp = RD.compare_view(faces, pic, order_cfg)
         issues, near_px, far_px = RD.witnesses(cmp, pic, order_cfg, describe, order_cfg['witnesses'])
         cov = int(cmp['coverage'].sum())
@@ -586,7 +588,8 @@ def _depth_mode_views(pool, ctx, groups, meshes, tools, out_dir):
         for g, (ginsts, gviews, first, ids_ok) in enumerate(groups):
             if not gviews:
                 continue
-            idps[g] = RD.identity_pack(pack.data, ginsts, first, meshes) if ids_ok else bytes(pack.data)
+            idps[g] = (RD.identity_pack(pack.data, ginsts, first, meshes, pack, ctx['texels']) if ids_ok
+                       else bytes(pack.data))
             t1 = time.perf_counter()
             recs, tm = RD.run_frames(bytes(pack.data), idps[g], [(v, False) for v in gviews], rt, tools,
                                      Path(tmp) / f'group{g}', swatch, jobs)
@@ -717,6 +720,8 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         return report
     S = 1 << pack.cell_shift
     rt = dict(cfg['runtime'])
+    if any(r.textures for r in pack.regions):
+        rt['textured'] = True       # each view enters its camera cell's region (verify_render.py)
     if rt['near_far'] is None:          # the pack's own (1.3), else the reader's default
         rt['near_far'] = pack.near_far / ONE if pack.near_far else 1.5 * S
     report['pack'] = {'sha256': hashlib.sha256(bytes(pack_bytes)).hexdigest(), 'bytes': len(pack_bytes),
@@ -787,6 +792,8 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
     views = thin(views, cfg['sampling']['max_views'])
     for k, v in enumerate(views):
         v['index'] = k
+        if rt.get('textured'):
+            v['region'] = RD.cell_region(pack, v['eye'])
     timing['sampling_seconds'] = time.perf_counter() - t0
     report['sampling'] = {'cameras': len(cams), 'sampled_views': sampled, 'thinned': sampled - len(views),
                           'layer_sets': [c[0] for c in combos],
@@ -829,7 +836,8 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
                 for g, (ginsts, gviews, first, ids_ok) in enumerate(groups):
                     if not gviews:
                         continue
-                    idp = RD.identity_pack(pack.data, ginsts, first, meshes) if ids_ok else bytes(pack.data)
+                    idp = (RD.identity_pack(pack.data, ginsts, first, meshes, pack, ctx['texels']) if ids_ok
+                           else bytes(pack.data))
                     work = Path(tmp) / f'group{g}'
                     work.mkdir()
                     t1 = time.perf_counter()

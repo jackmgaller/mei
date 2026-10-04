@@ -50,7 +50,8 @@ class Example:
     """A copy of an example world in a temporary directory, editable as JSON."""
 
     def __init__(self, tmp, name='test_room', keep_lock=False):
-        folder = {'test_room': 'test_room', 'two_districts': 'two_districts', 'shrine_grounds': 'shrine_grounds'}[name]
+        folder = {'test_room': 'test_room', 'two_districts': 'two_districts', 'shrine_grounds': 'shrine_grounds',
+                  'night_market': 'night_market'}[name]
         self.dir = Path(tmp)/folder
         shutil.copytree(EXAMPLES/folder, self.dir, ignore=None if keep_lock else shutil.ignore_patterns('*.ids.json'))
         self.world = self.dir/f'{name}.world.json'
@@ -877,6 +878,187 @@ class TerrainTests(unittest.TestCase):
                                   ['20', '30', '47', '100', '86', '77', '76', '20'])['floors']
         self.assertEqual([(p['y'], p['from']) for p in floors],
                          [(0, 'terrain'), (3, 'terrain'), (12, 'terrain'), (0, 'sweep')])
+
+
+pillow = unittest.skipUnless(importlib.util.find_spec('PIL'), 'the night market\'s sheets need Pillow')
+
+
+def rgb15_of(c):
+    return (int(c[1:3], 16) >> 3) | (int(c[3:5], 16) >> 3) << 5 | (int(c[5:7], 16) >> 3) << 10
+
+
+def tinted(c15, tint):
+    """A 15-bit colour times a tint, as palettes.multiply() does it on the expanded colour."""
+    ch = [((c15 >> s) & 31) for s in (0, 5, 10)]
+    ex = [(v << 3) | (v >> 2) for v in ch]
+    t = [int(tint[k:k + 2], 16) for k in (1, 3, 5)]
+    return sum((round(e * tt / 255) >> 3) << s for e, tt, s in zip(ex, t, (0, 5, 10)))
+
+
+def no_policies(ex):
+    """The asset recipes without required Asset Checker runs (depth stays: cutouts need it)."""
+    for a in ex.dir.glob('assets/*.asset.json'):
+        spec = json.loads(a.read_text())
+        if 'verification' in spec:
+            spec['verification']['required'] = False
+        a.write_text(json.dumps(spec))
+
+
+@pillow
+class TextureTests(unittest.TestCase):
+    """Textures in worlds (WORLDKIT.md, "Textures per region"), on the night market example."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.ex = Example(self.tmp.name, 'night_market')
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_textures_are_packed_per_region(self):
+        c = self.ex.compile()
+        pack = P.decode(c.pack)
+        self.assertEqual((pack.major, pack.minor), (1, 4))
+        market, harbour = (c.report['regions'][r]['textures'] for r in ('market', 'harbour'))
+        # every asset's tiles once per region, duplicates removed (the crate's planks are in both)
+        self.assertEqual(sorted(market['by_asset']), ['crate', 'paving', 'shopfront', 'stall'])
+        self.assertEqual(sorted(harbour['by_asset']), ['crate', 'quay', 'warehouse'])
+        self.assertEqual(market['tiles'], 14)
+        self.assertLess(market['tiles'], sum(a['tiles'] for a in market['by_asset'].values()) + 1)
+        self.assertEqual([s['slot'] for s in market['slots']], [12, 13])      # "13-6": 4-bit 13, 8-bit 12
+        self.assertEqual(market['palettes_8bit'], [14])
+        self.assertEqual([a['material'] for a in market['animations']], ['shopfront.neon', 'stall.lantern'])
+        self.assertEqual(harbour['animations'], [])
+        rm, rh = pack.regions
+        self.assertEqual(sorted(t.slot for t in rm.textures), [12, 13])
+        self.assertEqual([t.slot for t in rh.textures], [13])
+        self.assertEqual(len(rm.animations), 2)
+        self.assertEqual(rm.runs[0].first_colour, 14 * 256)
+        # disjoint palettes: textures after each region's entries, every region's set coexisting
+        pm, ph = (set(c.report['regions'][r]['palette']['palettes']) for r in ('market', 'harbour'))
+        self.assertFalse(pm & ph)
+        self.assertTrue(set(market['palettes_4bit']) <= pm and set(harbour['palettes_4bit']) <= ph)
+        # every textured face of a region's meshes reads that region's slots and palettes
+        for cell in pack.cells.values():
+            reg = pack.regions[cell.region]
+            slots = {t.slot for t in reg.textures} | {14}       # 14: the world's swatch
+            pals = {k // 16 for k in range(reg.first_colour, reg.first_colour + len(reg.variants[0][1]))}
+            for pl in cell.placements:
+                nv, nf, vo, fo = P.mesh_info(pack.data[pl['mesh']:])
+                for k in range(nf):
+                    at = pl['mesh'] + fo + 36 * k
+                    if pack.data[at] & 2:
+                        tex, pal = pack.data[at + 2], pack.data[at + 3]
+                        self.assertIn(tex & 15, slots)
+                        self.assertTrue(pal in pals if tex & 16 else 256 * pal == reg.runs[0].first_colour)
+
+    def test_night_variants_per_colour_and_by_multiply(self):
+        c = self.ex.compile()
+        pack = P.decode(c.pack)
+        rm = pack.regions[0]
+        (_, day), (_, night) = rm.variants
+        tint = '#4a5a88'
+        first = rm.first_colour
+        changed = [(d, n) for d, n in zip(day, night) if d != n]
+        self.assertTrue(changed)
+        lit = rgb15_of('#ffd27a')
+        self.assertIn(lit, night, 'the shop window texel is lit at night (texels)')
+        self.assertIn(rgb15_of('#ffd070'), night, 'the skyline\'s windows are lit at night (backdrop)')
+        # every other surface texture colour is its day colour times the surface tint
+        tex = c.report['regions']['market']['textures']
+        for pal in tex['palettes_4bit']:
+            for i in range(1, 16):
+                d, n = day[pal * 16 + i - first], night[pal * 16 + i - first]
+                if d and n not in (lit, d):
+                    self.assertEqual(n, tinted(d, tint))
+        # the 8-bit sign is emissive: its run keeps its colours; tinted when it is a surface
+        run = rm.runs[0]
+        self.assertEqual(run.variants[0], run.variants[1])
+        self.ex.edit(lambda a: a['materials']['sign'].pop('class'), 'assets/stall.asset.json')
+        run = P.decode(self.ex.compile().pack).regions[0].runs[0]
+        self.assertEqual(run.variants[1], [0] + [tinted(x, tint) for x in run.variants[0][1:]])
+
+    def test_variant_errors(self):
+        def texels(sel, src):
+            def f(w):
+                w['regions']['market']['variants']['night']['texels'] = {sel: {src: '#ffffff'}}
+            return f
+        for edit, msg in ((texels('kiosk.glass', '#000000'), 'No textured material'),
+                          (texels('shopfront.window', '#123456'), 'has no colour'),
+                          (texels('stall.sign', '#fff7d6'), '8-bit')):
+            ex = Example(self.tmp.name + f'/{len(msg)}', 'night_market')
+            ex.edit(edit)
+            with self.assertRaises(WorldError) as e:
+                ex.compile()
+            self.assertIn(msg, str(e.exception))
+
+    def test_a_region_over_its_budget_fails_naming_its_assets(self):
+        self.ex.edit(lambda w: w['regions']['market'].__setitem__('textures', {'budget': 2048}))
+        with self.assertRaises(WorldError) as e:
+            self.ex.compile()
+        msg = str(e.exception)
+        self.assertEqual(e.exception.path, '/regions/market/textures')
+        self.assertIn("Region 'market' needs 3,360 bytes", msg)
+        for name in ('stall', 'shopfront', 'crate', 'paving'):
+            self.assertIn(name, msg)
+        # within the budget but not in the slots given: one 4-bit slot cannot also hold the 8-bit sign
+        self.ex.edit(lambda w: w['regions']['market'].__setitem__('textures', {'slots': '13'}))
+        with self.assertRaises(WorldError) as e:
+            self.ex.compile()
+        self.assertIn('do not fit in its slots', str(e.exception))
+
+    def test_slots_and_swatch(self):
+        # the swatch's slot may hold region textures: the swatch row is kept and copied with them
+        self.ex.edit(lambda w: w.__setitem__('textures', {'slots': '14-12'}))
+        c = self.ex.compile()
+        rm = P.decode(c.pack).regions[0]
+        s14 = [t for t in rm.textures if t.slot == 14][0]
+        self.assertEqual(s14.data[:8], c.swatch)
+        for bad in ('15', '13-14,13'):
+            self.ex.edit(lambda w: w.__setitem__('textures', {'slots': bad}))
+            with self.assertRaises(WorldError):
+                self.ex.compile()
+
+    def test_stand_ins_and_merged_meshes(self):
+        self.ex.edit(lambda c: c.__setitem__('standin', 'crate'), 'cells/market.cell.json')
+        with self.assertRaises(WorldError) as e:
+            self.ex.compile()
+        self.assertIn('cannot use a region', str(e.exception))
+        self.ex.edit(lambda c: c.__setitem__('standin', 'block_far'), 'cells/market.cell.json')
+        self.ex.edit(lambda c: c['placements'][5].__setitem__('merge', True), 'cells/market.cell.json')
+        with self.assertRaises(WorldError) as e:
+            self.ex.compile()
+        self.assertIn('texture window', str(e.exception))
+
+    def test_backdrops(self):
+        c = self.ex.compile()
+        rm, rh = P.decode(c.pack).regions
+        self.assertEqual(len(rm.sky.elevations), 5)
+        self.assertEqual((rm.sky.height, rm.sky.horizon, rm.sky.top), (40, 40, 0))
+        self.assertEqual(rm.sky.colours[0][0], 0x98928a)              # '#8a9298' as 0xBBGGRR
+        self.assertEqual([cp.address for cp in rm.backdrop], [0x460000, 0x452000])
+        self.assertEqual(len(rm.backdrop[1].data), 128 * 32 * 2)       # a 128 x 32 map
+        self.assertEqual(rm.sky.mode & 0xFF00, (c.report['regions']['market']['palette']['palettes'][-1]) << 8)
+        bd = c.report['regions']['harbour']['backdrop']['silhouette']
+        self.assertEqual((bd['width'], bd['repeat']), (512, 3))
+        # a variant without sky colours: the first's, times its surface tint
+        self.ex.edit(lambda w: w['regions']['harbour']['backdrop']['sky'].pop('night'))
+        rh2 = P.decode(self.ex.compile().pack).regions[1]
+        day = rh2.sky.colours[0]
+        word = lambda c15: sum(((((c15 >> s) & 31) << 3 | ((c15 >> s) & 31) >> 2)) << (8 * k) for k, s in enumerate((0, 5, 10)))
+        self.assertEqual(len(rh2.sky.colours[1]), len(day))
+        self.assertNotEqual(rh2.sky.colours[1], day)
+        self.ex.edit(lambda w: w['regions']['harbour']['backdrop']['sky'].__setitem__('dusk', ['#000000'] * 4))
+        with self.assertRaises(WorldError):
+            self.ex.compile()
+
+    def test_untextured_worlds_are_unchanged(self):
+        for name in ('test_room', 'two_districts', 'shrine_grounds'):
+            c = compile_source(str(EXAMPLES/name/f'{name}.world.json'))[1]
+            p = P.decode(c.pack)
+            self.assertEqual((p.minor, struct.unpack_from('<H', c.pack, 14)[0]), (3, 80), name)
+            self.assertNotIn('wp_region_enter', c.akr)
+            self.assertNotIn('wpbackdrop', c.akr)
 
 
 @tools_built

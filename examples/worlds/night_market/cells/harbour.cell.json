@@ -5,7 +5,7 @@
     {"id": "ground", "asset": "quay", "position": [48, 0, 16], "ground": true, "collision": "self"},
     {"id": "shed", "asset": "warehouse", "position": [50, 0, 22], "collision": "self"},
     {"id": "crate_1", "asset": "crate", "position": [44, 0, 14], "collision": "self"},
-    {"id": "crate_2", "asset": "crate", "position": [45.2, 0, 14.3], "yaw": 25, "collision": "self"},
-    {"id": "crate_3", "asset": "crate", "position": [44.5, 1, 14.1], "yaw": 40, "collision": "self"}
+    {"id": "crate_2", "asset": "crate", "position": [46.5, 0, 14.3], "yaw": 25, "collision": "self"},
+    {"id": "crate_3", "asset": "crate", "position": [44, 1, 14], "collision": "self"}
   ]
 }
