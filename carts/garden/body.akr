@@ -21,9 +21,11 @@ fn state_colour(s: St) -> u32 {
 var body_test_mode: s32       // the tests: 1 draws the body alone (nothing else this frame)
 var body_test_wade: fixed     // the pose sheet: a water depth to wade in
 
-// How deep the feet are in water, for the wading walk (0: dry). The garden has no water yet;
-// a world with water answers here (the shrine's player.akr keeps it in pl_wade).
-fn body_wade() -> fixed { return body_test_wade }
+// How deep the feet are in water, for the wading walk (0: dry); the pose sheet sets its own.
+fn body_wade() -> fixed {
+    if body_test_wade > 0.0 { return body_test_wade }
+    return pl_wade
+}
 
 fn body_draw() {
     if body_test_mode == 1 { ot_clear() }      // the world's faces so far: dropped

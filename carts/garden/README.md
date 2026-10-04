@@ -35,6 +35,7 @@ carts/garden/
                                       generated garden.akr would clash with the cart's own)
   worlds.txt                          the garden's world and the shrine's (shrine/)
   shrine/                             the shrine slice: its world, style sheet and assets
+  body.akr, robot/                    the player drawn: the wind-up robot, its parts and poses
   world/
     STYLE.md                          the style sheet (world lead)
     garden.world.json, cells/         the world recipe (world lead)
