@@ -1,0 +1,578 @@
+// The movement garden's scenarios (tests/run.sh SCENARIO FRAMES OUT; tests/check.sh runs them
+// all). Each places the player in the test room, drives the pad and stick (reacting to what
+// the player does, so a press can come a set number of ticks after a landing or a wall), and
+// checks the outcome against the tuning: heights, distances, speeds, states and windows. A
+// check prints "OK what value"; a failed one prints "FAIL what value" and stops the run (exit
+// status 2). The last line of a passing run is "DONE n: name, k checks".
+//
+// The test room (examples/worlds/test_room): floor 20..44 in x and z at y 0; ledge block x
+// 24.5..27.5, z 34.5..37.5, top 2; climb wall x 28..36, z 41.75..42.25, 5 high; ramp x 36..40
+// rising to 2 toward +x, z 24.5..27.5; canopy x 30..34, z 28..32, underside at 3; gate x 30..34
+// at z 22. The open lane along +x is z = 23.3.
+//
+// Frames are ticks here (nothing runs late, which scenario 26 checks), so "n frames after" is
+// n ticks after. A scenario's code at frame f runs before that frame's ticks (input_pad): it
+// sees the state the frame before left, and its pad and stick are this frame's.
+
+const TEST = 1
+
+var pad_v: u32                 // the pad and stick for the next frame
+var stick_v: vec2
+var seen: [len(St)]s32         // the first frame each state was seen at the end of
+var checks: s32
+var name: *u8
+var apex: fixed                // the highest the feet have been since mark()
+var t0: s32                    // frames of events, per scenario
+var t1: s32
+var t2: s32
+var x0: fixed
+var y0: fixed
+var v0: fixed
+var reach9: s32 = -1
+var burned: bool
+
+const FWD: vec2 = vec2(0.0, 1.0)
+const BACK: vec2 = vec2(0.0, -1.0)
+const STILL: vec2 = vec2(0.0, 0.0)
+const LANE_Z: fixed = 23.3
+const EAST: fixed = 1.5708     // yaw facing +x
+const NORTH: fixed = 0.0       // yaw facing +z
+
+// The scenario runs before each frame's ticks: it sees the state at the end of the frame
+// before, and sets the pad and stick for this frame.
+fn input_pad(f: s32) -> u32 {
+    pad_v = 0
+    stick_v = STILL
+    scenario(f)
+    return pad_v
+}
+fn input_stick(_f: s32) -> vec2 { return stick_v }
+fn input_look(_f: s32) -> vec2 { return vec2(0.0, 0.0) }
+
+// ---- reporting
+
+fn report(word: *u8, what: *u8, v: fixed) {
+    print(word)
+    print(what)
+    print(" ")
+    print_fixed(v)
+    print("  (")
+    print(ST_NAMES[pl.st])
+    print(" at ")
+    print_fixed(pl.pos.x)
+    print_char(' ')
+    print_fixed(pl.pos.y)
+    print_char(' ')
+    print_fixed(pl.pos.z)
+    println(")")
+}
+
+fn expect(c: bool, what: *u8, v: fixed) {
+    if !c {
+        report("FAIL ", what, v)
+        assert(false)
+    }
+    checks += 1
+    report("OK ", what, v)
+}
+
+fn note(what: *u8, v: fixed) { report("NOTE ", what, v) }
+
+fn done() {
+    print("DONE ")
+    print_int(SCENARIO)
+    print(": ")
+    print(name)
+    print(", ")
+    print_int(checks)
+    println(" checks")
+}
+
+fn near(a: fixed, b: fixed, tol: fixed) -> bool { return abs(a - b) <= tol }
+fn speed_ms() -> fixed { return hspeed() * 60 }
+fn mark() { apex = pl.pos.y }
+fn seen_at(s: St) -> s32 { return seen[s] }
+fn was(s: St) -> bool { return seen[s] >= 0 }
+
+// The apex the discrete integration reaches from vy (m/s): vy^2/2g less half a tick's rise.
+fn apex_ticks(vy: fixed) -> fixed { return apex_of(vy) - vy / 120 }
+
+// ---- setting up
+
+fn place(p: vec3, yaw: fixed) {
+    player_place(p, yaw)
+    cam_reset()
+}
+
+fn test_init() {
+    for s in St { seen[s] = -1 }
+    cam.lock = true
+    t0 = -1
+    t1 = -1
+    t2 = -1
+    let lane = vec3(24.0, 0.0, LANE_Z)
+    match SCENARIO {
+        1 => { name = "run and stop"; place(vec3(21.0, 0.0, LANE_Z), EAST) }
+        2 => { name = "jump, held"; place(lane, EAST) }
+        3 => { name = "jump, tapped"; place(lane, EAST) }
+        4 => { name = "double jump, then the glider"; place(lane, EAST) }
+        5 => { name = "a late second press is a single jump"; place(lane, EAST) }
+        6 => { name = "jump, double, third, glide (running)"; place(vec3(20.5, 0.0, LANE_Z), EAST); pl.fwd = mps(T.RunSpeed) }
+        7 => { name = "glide mode third: no glider from the double"; place(lane, EAST); tv[T.GlideMode] = 0.0 }
+        8 => { name = "long jump"; place(vec3(21.0, 0.0, LANE_Z), EAST) }
+        9 => { name = "backflip"; place(vec3(28.0, 0.0, LANE_Z), EAST) }
+        10 => { name = "skid and side flip"; place(vec3(21.0, 0.0, LANE_Z), EAST) }
+        11 => { name = "wall kick, early press"; place(vec3(32.0, 0.0, 33.2), NORTH) }
+        12 => { name = "wall kick, late press"; place(vec3(32.0, 0.0, 33.2), NORTH) }
+        13 => { name = "wall slide, no press"; place(vec3(32.0, 0.0, 33.2), NORTH) }
+        14 => { name = "wall kick, press just before the wall"; place(vec3(32.0, 0.0, 33.2), NORTH) }
+        15 => { name = "ledge: hop, hang, climb, coin"; place(vec3(26.0, 0.0, 31.6), NORTH) }
+        16 => { name = "ledge: hang and drop"; place(vec3(26.0, 0.0, 31.6), NORTH) }
+        17 => { name = "ledge: a jump that clears it lands on top"; place(vec3(26.0, 0.0, 30.0), NORTH) }
+        18 => { name = "ceiling stops the head"; place(vec3(32.0, 0.0, 30.0), NORTH) }
+        19 => { name = "ground pound"; place(lane, EAST) }
+        20 => { name = "dive, belly slide, rollout"; place(vec3(21.0, 0.0, LANE_Z), EAST) }
+        21 => { name = "walk up the ramp"; place(vec3(33.0, 0.0, 26.0), EAST) }
+        22 => { name = "steep slope slides"; tv[T.SlideAngle] = 20.0; place(vec3(38.5, 2.0, 26.0), EAST) }
+        23 => { name = "slide surface"; surface_map[2] = SURF_SLIDE as u8; place(vec3(38.5, 2.0, 26.0), EAST) }
+        24 => { name = "bounce surface"; surface_map[1] = SURF_BOUNCE as u8; place(lane, EAST) }
+        25 => { name = "tuning menu and readout"; place(lane, EAST) }
+        26 => { name = "a late frame runs the ticks it missed"; place(lane, EAST) }
+        27 => { name = "tour: frame timing"; place(vec3(22.0, 0.0, 24.0), EAST); cam.lock = false }
+        28 => { name = "crouch and crawl"; place(lane, EAST) }
+        else => { name = "picture" }
+    }
+}
+
+// ---- each frame
+
+fn test_hook(f: s32) {
+    if seen[pl.st] < 0 { seen[pl.st] = f }
+    apex = max(apex, pl.pos.y)
+}
+
+fn scenario(f: s32) {
+    match SCENARIO {
+        1 => s_run(f)
+        2 => s_jump_held(f)
+        3 => s_jump_tapped(f)
+        4 => s_double(f)
+        5 => s_late_chain(f)
+        6 => s_triple(f)
+        7 => s_glide_mode(f)
+        8 => s_long(f)
+        9 => s_backflip(f)
+        10 => s_sideflip(f)
+        11, 12, 13, 14 => s_kick(f)
+        15, 16 => s_ledge(f)
+        17 => s_ledge_clear(f)
+        18 => s_ceiling(f)
+        19 => s_pound(f)
+        20 => s_dive(f)
+        21 => s_ramp(f)
+        22, 23 => s_slide(f)
+        24 => s_bounce(f)
+        25 => s_menu(f)
+        26 => s_late(f)
+        27 => s_tour(f)
+        28 => s_crouch(f)
+        else => {}
+    }
+}
+
+fn s_run(f: s32) {
+    if f < 120 { stick_v = FWD }
+    if reach9 < 0 && speed_ms() >= 9.0 { reach9 = f }
+    if f == 100 { expect(near(speed_ms(), tv[T.RunSpeed], 0.1), "top speed m/s", speed_ms()) }
+    if f == 110 { expect(reach9 >= 75 && reach9 <= 100, "ticks to 9 m/s", fixed(reach9)) }
+    if f == 120 { x0 = pl.pos.x }
+    if f == 250 {
+        expect(speed_ms() == 0.0 && pl.st == St.Ground, "stopped", speed_ms())
+        let want = tv[T.RunSpeed] * tv[T.RunSpeed] / (tv[T.StopDecel] * 2)
+        expect(near(pl.pos.x - x0, want, 0.25), "stopping distance m", pl.pos.x - x0)
+        done()
+    }
+}
+
+fn s_jump_held(f: s32) {
+    if f >= 10 && f < 70 { pad_v = A }
+    if f == 9 { mark() }
+    if f > 10 && t0 < 0 && pl.st == St.Ground { t0 = f }
+    if f == 80 {
+        expect(seen_at(St.Jump) == 10, "jump on the press", fixed(seen_at(St.Jump)))
+        expect(near(apex, apex_ticks(tv[T.JumpVy]), 0.03), "apex m", apex)
+        expect(t0 - 10 >= 40 && t0 - 10 <= 44, "ticks in the air", fixed(t0 - 10))
+        expect(pl.st == St.Ground && pl.pos.y == 0.0, "landed", pl.pos.y)
+        done()
+    }
+}
+
+fn s_jump_tapped(f: s32) {
+    if f >= 10 && f < 13 { pad_v = A }
+    if f == 9 { mark() }
+    if f == 60 {
+        expect(apex > 0.4 && apex < 1.0, "apex m, tapped", apex)
+        expect(pl.st == St.Ground, "landed", pl.pos.y)
+        done()
+    }
+}
+
+// Jump; two ticks after landing, jump again and hold: the double jump, then (mode either) the
+// glider at its apex.
+fn s_double(f: s32) {
+    if f >= 10 && f < 40 { pad_v = A }
+    if f > 10 && t0 < 0 && pl.st == St.Ground { t0 = f }
+    if t0 >= 0 && f >= t0 + 2 && f < t0 + 200 { pad_v = A }
+    if t0 >= 0 && f == t0 + 1 { mark() }
+    if t1 < 0 && pl.st == St.Glide {
+        t1 = f
+        expect(seen_at(St.DoubleJump) == t0 + 2, "double jump", fixed(seen_at(St.DoubleJump)))
+        expect(near(apex, apex_ticks(tv[T.DoubleVy]), 0.04), "double apex m", apex)
+        y0 = pl.pos.y
+        x0 = pl.pos.x
+    }
+    if t1 >= 0 && f == t1 + 60 {
+        expect(near(-pl.vel.y * 60, tv[T.GlideSink], 0.1), "glide sink m/s", -pl.vel.y * 60)
+        expect(near(speed_ms(), tv[T.GlideSpeed], 0.2), "glide speed m/s", speed_ms())
+        note("glide ratio so far", (pl.pos.x - x0) / (y0 - pl.pos.y))
+    }
+    if t1 >= 0 && t2 < 0 && pl.st == St.Ground { t2 = f }
+    if f == 400 {
+        expect(t2 > t1 && pl.pos.y == 0.0, "glided down to the floor", fixed(t2 - t1))
+        done()
+    }
+}
+
+fn s_late_chain(f: s32) {
+    if f >= 10 && f < 40 { pad_v = A }
+    if f > 10 && t0 < 0 && pl.st == St.Ground { t0 = f }
+    let late = ticks(T.ChainWindow) + 3
+    if t0 >= 0 && f >= t0 + late && f < t0 + late + 40 { pad_v = A }
+    if f == 160 {
+        expect(!was(St.DoubleJump) && seen_at(St.Jump) == 10, "no double jump", fixed(t0))
+        done()
+    }
+}
+
+// Running at full speed: jump, double (let go before its apex), third (held: the glider).
+fn s_triple(f: s32) {
+    stick_v = FWD
+    if f >= 2 && f < 30 { pad_v = A }
+    if t0 < 0 && f > 2 && pl.st == St.Ground { t0 = f }
+    if t0 >= 0 && f >= t0 + 1 && f < t0 + 9 { pad_v = A }
+    if t0 >= 0 && t1 < 0 && f > t0 + 1 && pl.st == St.Ground { t1 = f }
+    if t1 >= 0 && f >= t1 + 1 && f < t1 + 300 { pad_v = A }
+    if t1 >= 0 && f == t1 { mark() }
+    if t2 < 0 && pl.st == St.Glide {
+        t2 = f
+        expect(was(St.DoubleJump) && was(St.ThirdJump), "jump, double, third", fixed(seen_at(St.ThirdJump)))
+        let vy = tv[T.ThirdVy] + tv[T.RunSpeed] * tv[T.JumpSpeedAdd]
+        expect(near(apex, apex_ticks(vy), 0.1), "third apex m", apex)
+    }
+    if t2 >= 0 && f == t2 + 40 {
+        expect(near(speed_ms(), tv[T.GlideSpeed], 0.2), "glide speed m/s", speed_ms())
+        done()
+    }
+}
+
+fn s_glide_mode(f: s32) {
+    if f >= 10 && f < 40 { pad_v = A }
+    if f > 10 && t0 < 0 && pl.st == St.Ground { t0 = f }
+    if t0 >= 0 && f >= t0 + 2 { pad_v = A }
+    if f == 200 {
+        expect(was(St.DoubleJump) && !was(St.Glide), "double jump, no glider", fixed(seen_at(St.DoubleJump)))
+        done()
+    }
+}
+
+fn s_long(f: s32) {
+    if t0 < 0 || pl.st != St.Ground { stick_v = FWD }
+    if f >= 100 && f < 106 { pad_v = R }
+    if f >= 103 && f < 106 { pad_v = R | A }
+    if f == 102 {
+        expect(pl.st == St.CrouchSlide, "crouch slide", speed_ms())
+        v0 = pl.fwd
+    }
+    if f == 104 {
+        expect(pl.st == St.LongJump, "long jump", speed_ms())
+        x0 = pl.pos.x - pl.vel.x
+        let want = min((v0 - mps2(T.CrouchDecel)) * tv[T.LongMul], mps(T.LongMax)) * 60
+        expect(near(speed_ms(), want, 0.05), "long jump speed m/s", speed_ms())
+    }
+    if f > 103 && t0 < 0 && pl.st == St.Ground {
+        t0 = f
+        expect(pl.pos.x - x0 >= 6.0 && pl.pos.x - x0 <= 8.0, "long jump distance m", pl.pos.x - x0)
+    }
+    if f == 200 {
+        expect(t0 > 0, "landed", fixed(t0))
+        done()
+    }
+}
+
+fn s_backflip(f: s32) {
+    if f >= 5 && f < 30 { pad_v = R }
+    if f >= 10 && f < 60 { pad_v |= A }
+    if f == 9 {
+        expect(pl.st == St.Crouch, "crouch", pl.pos.y)
+        mark()
+        x0 = pl.pos.x
+    }
+    if f == 11 { expect(pl.st == St.Backflip, "backflip", pl.pos.y) }
+    if f > 10 && t0 < 0 && pl.st == St.Ground { t0 = f }
+    if f == 120 {
+        expect(near(apex, apex_ticks(tv[T.FlipVy]), 0.05), "backflip apex m", apex)
+        expect(x0 - pl.pos.x > 3.0, "went backward m", x0 - pl.pos.x)
+        done()
+    }
+}
+
+fn s_sideflip(f: s32) {
+    if f < 80 { stick_v = FWD }
+    if f >= 80 && f < 86 { stick_v = BACK }
+    if f >= 84 && f < 110 { pad_v = A }
+    if f == 81 { expect(pl.st == St.Skid, "skid", speed_ms()) }
+    if f == 83 { mark() }
+    if f == 85 {
+        expect(pl.st == St.SideFlip, "side flip", speed_ms())
+        expect(abs(wrap_angle(pl.yaw + EAST)) < 0.05, "facing back", pl.yaw)
+    }
+    if f == 160 {
+        expect(near(apex, apex_ticks(tv[T.FlipVy]), 0.05), "side flip apex m", apex)
+        done()
+    }
+}
+
+// Run north at the climb wall (its face at z 41.75), jump 3.5 m before it, touch it in the air.
+// 11: press 1 tick after touching; 12: 15 ticks after; 13: no press; 14: press 2 ticks before.
+fn s_kick(f: s32) {
+    if t0 < 0 { stick_v = FWD }
+    if t0 < 0 && f > 1 && pl.pos.z >= 38.2 && t2 < 0 { t2 = f }
+    if t2 >= 0 && f >= t2 && f < t2 + 14 { pad_v = A }
+    if SCENARIO == 14 && t0 < 0 && t2 >= 0 && f >= t2 + 16 {
+        let gap = 41.75 - BODY_RADIUS - pl.pos.z
+        if gap < pl.vel.z * 2 && gap >= pl.vel.z { pad_v = A }
+    }
+    if t0 < 0 && (pl.st == St.WallSlide || pl.kicks > 0) {
+        t0 = f
+        y0 = pl.pos.y
+        expect(near(pl.pos.z, 41.75 - BODY_RADIUS, 0.02), "on the wall z", pl.pos.z)
+        note("touched at height", pl.pos.y)
+    }
+    if t0 < 0 { return }
+    if SCENARIO == 11 && f == t0 { pad_v = A }
+    if SCENARIO == 12 && f == t0 + 14 { pad_v = A }
+    if t1 < 0 && pl.st == St.WallKick {
+        t1 = f
+        mark()
+        y0 = pl.pos.y
+        note("kick at ticks after touching", fixed(pl.kick_at))
+    }
+    if f == t0 + 90 {
+        if SCENARIO == 13 {
+            expect(pl.kicks == 0, "no kick", fixed(pl.kicks))
+            expect(seen_at(St.Fall) - seen_at(St.WallSlide) == ticks(T.KickSlide), "slid ticks", fixed(seen_at(St.Fall) - seen_at(St.WallSlide)))
+            expect(pl.st == St.Ground && pl.pos.y == 0.0, "down on the floor", pl.pos.y)
+        } else {
+            expect(pl.kicks == 1, "kicked", fixed(pl.kick_at))
+            if SCENARIO == 11 { expect(pl.kick_good && pl.kick_at == 1, "early: the better kick", fixed(pl.kick_at)) }
+            if SCENARIO == 12 { expect(!pl.kick_good && pl.kick_at == 15, "late: the lesser kick", fixed(pl.kick_at)) }
+            if SCENARIO == 14 { expect(pl.kick_good && pl.kick_at < 0, "buffered: the better kick", fixed(pl.kick_at)) }
+            var vy = tv[T.KickVyLate]
+            if pl.kick_good { vy = tv[T.KickVyGood] }
+            expect(near(apex - y0, apex_ticks(vy), 0.05), "height gained m", apex - y0)
+            expect(pl.pos.z < 40.0, "away from the wall", pl.pos.z)
+        }
+        done()
+    }
+}
+
+// Hop at the ledge block's south face (z 34.5): too low to land on it, so hang from its top.
+// 15: hold the stick toward it to climb, then walk to the coin; 16: R to drop.
+fn s_ledge(f: s32) {
+    let hanging = pl.st == St.LedgeHang || pl.st == St.LedgeClimb
+    if t0 < 0 && !hanging { stick_v = FWD }
+    if SCENARIO == 15 && hanging { stick_v = FWD }
+    if t2 < 0 && pl.pos.z >= 33.0 { t2 = f }
+    if t2 >= 0 && f >= t2 && f < t2 + 3 { pad_v = A }
+    if t0 < 0 && pl.st == St.LedgeHang {
+        t0 = f
+        expect(near(pl.pos.y, 2.0 - LEDGE_HANG, 0.001), "hanging below the top", pl.pos.y)
+    }
+    if SCENARIO == 16 && t0 >= 0 && f >= t0 + 12 && f < t0 + 14 { pad_v = R }
+    if SCENARIO == 15 && t1 < 0 && t0 >= 0 && pl.st == St.Ground {
+        t1 = f
+        expect(near(pl.pos.y, 2.0, 0.001), "climbed onto the top", pl.pos.y)
+        expect(seen_at(St.LedgeClimb) == t0 + LEDGE_GRAB_TICKS - 1, "climbed after the grab ticks", fixed(seen_at(St.LedgeClimb) - t0 + 1))
+    }
+    if SCENARIO == 15 && t1 >= 0 && coins == 0 { stick_v = FWD }
+    if f == 200 {
+        expect(t0 >= 0, "hung", fixed(t0))
+        if SCENARIO == 15 { expect(coins == 1, "the coin", fixed(coins)) }
+        if SCENARIO == 16 { expect(pl.st == St.Ground && pl.pos.y == 0.0 && !was(St.LedgeClimb), "dropped to the floor", pl.pos.y) }
+        done()
+    }
+}
+
+fn s_ledge_clear(f: s32) {
+    stick_v = vec2(0.0, 0.5)
+    if t2 < 0 && pl.pos.z >= 33.2 { t2 = f }
+    if t2 >= 0 && f >= t2 && f < t2 + 30 { pad_v = A }
+    if t2 >= 0 && t1 < 0 && f > t2 + 1 && pl.st == St.Ground {
+        t1 = f
+        expect(!was(St.LedgeHang) && near(pl.pos.y, 2.0, 0.001), "landed on top, no hang", pl.pos.y)
+        done()
+    }
+}
+
+fn s_ceiling(f: s32) {
+    if f >= 10 && f < 60 { pad_v = A }
+    if f == 9 { mark() }
+    if pl.bonked && t0 < 0 { t0 = f }
+    if f == 80 {
+        expect(t0 > 0, "bonked", fixed(t0))
+        expect(near(apex, 3.0 - BODY_HEIGHT - 0.01, 0.01), "head stopped at the canopy m", apex + BODY_HEIGHT)
+        done()
+    }
+}
+
+fn s_pound(f: s32) {
+    if f >= 10 && f < 40 { pad_v = A }
+    if t0 < 0 && f > 10 && pl.vel.y <= 0.0 { t0 = f }
+    if t0 >= 0 && f >= t0 + 1 && f < t0 + 3 { pad_v = R }
+    if f == t0 + 1 { y0 = pl.pos.y }
+    if t0 >= 0 && f == t0 + 2 { expect(pl.st == St.PoundSpin && pl.pos.y == y0, "spin holds still", pl.pos.y) }
+    if t1 < 0 && pl.st == St.PoundFall {
+        t1 = f
+        let n = seen_at(St.PoundFall) - seen_at(St.PoundSpin)
+        expect(n == ticks(T.PoundHang), "spin ticks", fixed(n))
+    }
+    if t1 >= 0 && f == t1 + 2 && pl.st == St.PoundFall { expect(near(-pl.vel.y * 60, tv[T.PoundFall], 0.01), "pound fall m/s", -pl.vel.y * 60) }
+    if t2 < 0 && pl.st == St.Ground && t1 >= 0 {
+        t2 = f
+        let n = f - 1 - seen_at(St.PoundLand)
+        expect(n == ticks(T.PoundLand), "landing ticks", fixed(n))
+    }
+    if f == 150 {
+        expect(t2 > 0 && pl.pos.y == 0.0, "down", pl.pos.y)
+        done()
+    }
+}
+
+fn s_dive(f: s32) {
+    if f < 60 { stick_v = FWD }
+    if f == 60 { pad_v = B }
+    if f == 60 { v0 = pl.fwd }
+    if f == 61 {
+        expect(pl.st == St.Dive, "dive", speed_ms())
+        expect(near(pl.fwd, min(v0 + mps(T.DiveBoost), mps(T.DiveMax)), 0.0001), "dive speed m/s", speed_ms())
+    }
+    if t0 < 0 && pl.st == St.BellySlide { t0 = f }
+    if t0 >= 0 && f == t0 + 5 { pad_v = A }
+    if t0 >= 0 && f == t0 + 5 { expect(pl.st == St.BellySlide, "belly slide", speed_ms()) }
+    if t0 >= 0 && f == t0 + 6 { expect(pl.st == St.Rollout, "rollout", speed_ms()) }
+    if f == 240 {
+        expect(pl.st == St.Ground && pl.pos.y == 0.0, "back on foot", speed_ms())
+        done()
+    }
+}
+
+fn s_ramp(f: s32) {
+    if t0 < 0 { stick_v = vec2(0.0, 0.5) }
+    if t0 < 0 && pl.pos.x >= 39.0 {
+        t0 = f
+        expect(pl.st == St.Ground && near(pl.pos.y, (pl.pos.x - 36.0) / 2, 0.02), "on the ramp y", pl.pos.y)
+        expect(speed_ms() < tv[T.RunSpeed] / 2 - 0.5, "slower uphill m/s", speed_ms())
+    }
+    if f == 200 {
+        expect(t0 > 0 && !was(St.Slide), "walked up, no slide", fixed(t0))
+        done()
+    }
+}
+
+fn s_slide(f: s32) {
+    if f == 1 { expect(pl.st == St.Slide, "sliding", pl.pos.y) }
+    if f == 150 {
+        expect(pl.pos.x < 35.0 && pl.st == St.Ground && pl.pos.y == 0.0, "slid off the ramp", pl.pos.x)
+        done()
+    }
+}
+
+fn s_bounce(f: s32) {
+    if f >= 10 && f < 15 { pad_v = A }
+    if t0 < 0 && pl.st == St.Bounce {
+        t0 = f
+        mark()
+        y0 = pl.pos.y
+    }
+    if t0 >= 0 && f == t0 + 40 {
+        expect(near(apex - y0, apex_ticks(tv[T.BounceVy]), 0.05), "bounce height m", apex - y0)
+        done()
+    }
+}
+
+fn s_menu(f: s32) {
+    if f == 5 || f == 29 { pad_v = START }
+    if f == 8 || f == 11 { pad_v = DOWN }
+    if f == 14 || f == 17 || f == 20 { pad_v = RIGHT }
+    if f == 23 { pad_v = RIGHT | X }
+    if f == 26 { pad_v = Y }
+    if f == 32 || f == 35 || f == 38 { pad_v = SELECT }
+    if f == 6 { expect(menu_open, "menu open", 0.0) }
+    if f == 12 { expect(menu_sel == T.RunDrag as s32, "chose run drag", fixed(menu_sel)) }
+    if f == 21 { expect(near(tv[T.RunDrag], 0.85, 0.001), "three steps up", tv[T.RunDrag]) }
+    if f == 24 { expect(near(tv[T.RunDrag], 1.35, 0.001), "ten steps up", tv[T.RunDrag]) }
+    if f == 27 { expect(tv[T.RunDrag] == TUNE[T.RunDrag].def, "back to the default", tv[T.RunDrag]) }
+    if f == 30 { expect(!menu_open, "menu closed", 0.0) }
+    if f == 33 { expect(readout == 1, "readout: state", 0.0) }
+    if f == 39 { expect(readout == 0, "readout: timing", 0.0) }
+    if f == 60 {
+        expect(timing.shown == 60 && timing.ticks == 60 && timing.late == 0, "60 shown, 60 ticks", fixed(timing.ticks))
+        expect(timing.cpu > 0 && timing.cpu < 500000 && timing.gpu > 0, "cpu and gpu measured", fixed(timing.cpu / 1000))
+        done()
+    }
+}
+
+// Spend 1.5 frames' cycles in one frame: the next update runs two ticks, and a jump window
+// measured in ticks still closes on time.
+fn s_late(f: s32) {
+    if f == 30 {
+        let c = cycle_count()
+        while cycle_count() - c < 750000 {}
+    }
+    if f == 32 {
+        expect(sim_t == 33, "ticks run, frames shown", fixed(sim_t))
+        expect(timing.late == 1 && timing.last_ticks == 2, "readout: one late", fixed(timing.late))
+        done()
+    }
+}
+
+// Run a loop of the room with jumps, kicks and a glide, and report the frame timing.
+fn s_tour(f: s32) {
+    let k = (f / 90) % 4
+    stick_v = vec2(0.6, 1.0)
+    if k == 1 { stick_v = vec2(-0.3, 1.0) }
+    if f % 45 < 20 { pad_v = A }
+    if f % 300 > 280 { pad_v = R }
+    if f >= 30 {
+        x0 = max(x0, fixed(timing.cpu / 100) / 10)
+        y0 = max(y0, fixed(timing.gpu / 100) / 10)
+    }
+    if f == 590 {
+        note("cpu peak, thousand cycles", x0)
+        note("gpu peak, thousand cycles", y0)
+        note("tris", fixed(timing.tris))
+        expect(timing.late == 0, "no late frames", fixed(timing.late))
+        expect(x0 < 250.0 && y0 < 500.0, "within half the budgets", x0)
+        done()
+    }
+}
+
+fn s_crouch(f: s32) {
+    if f >= 5 && f < 60 { pad_v = R }
+    if f >= 20 && f < 50 { stick_v = FWD }
+    if f == 6 { x0 = pl.pos.x }
+    if f == 10 { expect(pl.st == St.Crouch, "crouch", pl.pos.y) }
+    if f == 50 { expect(pl.st == St.Crouch && near(pl.pos.x - x0, tv[T.CrawlSpeed] * 30 / 60, 0.05), "crawled m", pl.pos.x - x0) }
+    if f == 61 { expect(pl.st == St.Ground, "up again", pl.pos.y) }
+    if f == 70 { done() }
+}

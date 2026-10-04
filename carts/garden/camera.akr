@@ -1,0 +1,48 @@
+// The follow camera (the camera worker's file): behind and above the player, turned by the
+// right stick (or the d-pad when the tuning menu is closed), recentred by L, and drawn in along
+// its line of sight when something is in the way. The rest (camera zones, keeping out of walls
+// and the kick alley) is to come.
+
+struct Cam {
+    eye: vec3          // world
+    target: vec3       // what it looks at (world)
+    yaw: fixed
+    pitch: fixed
+    lock: bool         // the tests hold the yaw still
+}
+
+var cam: Cam
+
+fn cam_reset() {
+    cam.yaw = pl.yaw
+    cam.pitch = tv[T.CamPitch]
+    cam.target = pl.pos + vec3(0.0, tv[T.CamHeight], 0.0)
+    cam_place()
+}
+
+// Each tick: turn by `turn` (-1..1, the stick or d-pad), recentre on L, follow the player's
+// facing slowly while it runs.
+fn cam_tick(turn: fixed, recentre: bool) {
+    cam.yaw = wrap_angle(cam.yaw + turn * rps(T.CamOrbit))
+    if recentre {
+        cam.yaw = pl.yaw
+    } else if !cam.lock && turn == 0.0 && pl.st == St.Ground {
+        let k = rps(T.CamFollow) * min(pl.fwd / max(mps(T.RunSpeed), 0.01), 1.0)
+        cam.yaw = wrap_angle(cam.yaw + wrap_angle(pl.yaw - cam.yaw) * k)
+    }
+    cam.pitch = tv[T.CamPitch]
+    let want = pl.pos + vec3(0.0, tv[T.CamHeight], 0.0)
+    cam.target = vec3(want.x, lerp(cam.target.y, want.y, 0.15), want.z)
+}
+
+// The eye from the target, yaw and pitch, pulled in to what blocks the view (once a frame).
+fn cam_place() {
+    let cp = cos(cam.pitch)
+    let f = vec3(sin(cam.yaw) * cp, sin(cam.pitch), cos(cam.yaw) * cp)
+    let eye = cam.target - f * tv[T.CamDist]
+    if wp_ray(cam.target, eye) {
+        cam.eye = cam.target + (eye - cam.target) * max(wp_hit.t - 0.04, 0.0)
+    } else {
+        cam.eye = eye
+    }
+}
