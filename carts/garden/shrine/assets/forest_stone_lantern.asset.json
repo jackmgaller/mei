@@ -1,0 +1,36 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "forest_stone_lantern",
+ "materials": {
+  "a": {
+   "color": "#8e887c",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "op": "box",
+   "size": [
+    0.8,
+    2.2,
+    0.8
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     1.1,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

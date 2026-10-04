@@ -1,0 +1,93 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "arch_torii_great",
+ "materials": {
+  "a": {
+   "color": "#d8462a",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "op": "box",
+   "size": [
+    0.9,
+    12,
+    0.9
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     -5,
+     6.0,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    0.9,
+    12,
+    0.9
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     5,
+     6.0,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    15,
+    0.9,
+    1.4
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     12.05,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    11,
+    0.6,
+    0.6
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     9.5,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

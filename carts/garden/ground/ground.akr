@@ -1,17 +1,37 @@
-// The world the garden runs on, and everything about it that is not the same in every world:
-// which generated file to import, how to open it, where the player starts and what its surface
-// bytes mean. Nothing else in the cart names a world.
+// The worlds the garden runs on, and everything about them that is not the same in every world:
+// which generated files to import, how to open each, where the player starts and what the
+// surface bytes mean. Nothing else in the cart names a world.
 //
-// This file is in a folder of its own on purpose: the world is named "garden", so the World
+// This file is in a folder of its own on purpose: one world is named "garden", so the World
 // Kit generates garden.akr, and an import looks next to the importing file first. From
 // carts/garden/ that would find the cart's own garden.akr; from here it finds the world's (in
 // the build's cart-worlds directory, which make passes with -I).
 //
-// Running on another world (the World Kit's test_room, say): change worlds.txt, the import,
-// world_load() and WORLD_SURFACES; GARDEN_* are the game schema's and stay.
+// Two worlds: the movement garden (GARDEN_WORLD_GARDEN, the city block) and the shrine
+// (GARDEN_WORLD_SHRINE, carts/garden/shrine). A door entity names the world it leads to.
 import "garden.akr"
+import "shrine.akr"
 
-fn world_load() -> bool { return world_garden_load() }
+var world_k: s32 = GARDEN_WORLD_GARDEN    // the world open now
+
+// Opens world k (a GARDEN_WORLD_ number). The shrine has water and a backdrop; the garden
+// has neither, so loading it closes the shrine's.
+fn world_load() -> bool {
+    if world_k == GARDEN_WORLD_SHRINE { return world_shrine_load() }
+    wp_water_close()
+    wp_backdrop_hide()
+    return world_garden_load()
+}
+
+// Whether the open world draws a backdrop (then the cart draws no cls()).
+fn world_backdrop() -> bool { return world_k == GARDEN_WORLD_SHRINE }
+
+// How deep the point is under water (0: not in water). The garden has none.
+fn world_water_depth(p: vec3) -> fixed {
+    if world_k != GARDEN_WORLD_SHRINE { return 0.0 }
+    if wp_water(p, 0.0) { return max(wp_water_hit.depth, 0.0) }
+    return 0.0
+}
 
 // Used only if the world has no spawn entity.
 const WORLD_SPAWN: vec3 = vec3(44.0, 0.0, 7.0)
@@ -25,8 +45,8 @@ fn world_spawn_yaw(e: *WpEntity) -> fixed {
     return p.yaw * PI / 180
 }
 
-// The surface bytes as the controller reads them (carts/garden/README.md, "Surfaces"): the
-// garden's recipe gives bounce 1 and slide 2, the same bytes.
+// The surface bytes as the controller reads them (carts/garden/README.md, "Surfaces"): both
+// worlds give bounce 1 and slide 2 (the shrine's water, 3, has no collision).
 const WORLD_SURFACES: [8]u8 = [0, 1, 2, 0, 0, 0, 0, 0]
 
 // The probe the kit classified collision for (the game schema's): the player's body.
@@ -34,3 +54,5 @@ const BODY_RADIUS: fixed = GARDEN_PROBE_RADIUS
 const BODY_HEIGHT: fixed = GARDEN_PROBE_HEIGHT
 const BODY_STEP: fixed = GARDEN_PROBE_STEP
 const COIN_TYPE = GARDEN_TYPE_COIN
+const RED_COIN_TYPE = GARDEN_TYPE_RED_COIN
+const DOOR_TYPE = GARDEN_TYPE_DOOR

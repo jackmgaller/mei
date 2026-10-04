@@ -1,0 +1,29 @@
+{
+  "format": "mei-world-ids",
+  "version": 1,
+  "world": "shrine",
+  "next_bit": 19,
+  "bits": {
+    "coin_side_hall_w": 0,
+    "coin_konbini": 1,
+    "red_log": 2,
+    "coin_corridor_w": 3,
+    "red_boulders": 4,
+    "red_spring": 5,
+    "red_walkway": 6,
+    "coin_treetop": 7,
+    "red_fox": 8,
+    "coin_side_hall_e": 9,
+    "coin_torii": 10,
+    "coin_gate": 11,
+    "coin_temple": 12,
+    "red_hollow_log": 13,
+    "red_stage": 14,
+    "coin_building": 15,
+    "coin_corridor_e": 16,
+    "coin_pagoda": 17,
+    "red_stream": 18
+  },
+  "retired": {},
+  "renamed": {}
+}

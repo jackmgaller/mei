@@ -1,0 +1,33 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "forest_platform",
+ "materials": {
+  "a": {
+   "color": "#8a6446",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "op": "box",
+   "size": [
+    7,
+    0.4,
+    7
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     -0.2,
+     0
+    ]
+   }
+  }
+ ]
+}

@@ -23,6 +23,7 @@ const TEST = 1
 // The workers' scenarios: the camera's are numbered 100-199, the attachments' 200-299.
 import "camera_cases.akr"
 import "attach_cases.akr"
+import "shrine_cases.akr"     // the shrine world's, 300-399
 
 var pad_v: u32                 // the pad and stick for the next frame
 var stick_v: vec2
@@ -57,6 +58,10 @@ fn input_pad(f: s32) -> u32 {
 }
 fn input_stick(_f: s32) -> vec2 { return stick_v }
 fn input_look(_f: s32) -> vec2 { return vec2(0.0, 0.0) }
+fn start_world() -> s32 {
+    if SCENARIO >= 300 && SCENARIO < 400 { return GARDEN_WORLD_SHRINE }
+    return GARDEN_WORLD_GARDEN
+}
 
 // ---- reporting
 
@@ -162,7 +167,7 @@ fn test_init() {
         30 => { name = "camera sweep at the spawn: frame timing"; place_at_spawn(); cam_reset() }
         28 => { name = "crouch and crawl"; place(lane, EAST) }
         else => {
-            if !camera_case_init() && !attach_case_init() { name = "picture" }
+            if !camera_case_init() && !attach_case_init() && !shrine_case_init() { name = "picture" }
         }
     }
 }
@@ -206,6 +211,7 @@ fn scenario(f: s32) {
         else => {
             camera_case(f)
             attach_case(f)
+            shrine_case(f)
         }
     }
 }

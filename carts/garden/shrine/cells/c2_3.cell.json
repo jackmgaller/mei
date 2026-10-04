@@ -1,0 +1,63 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c2_3",
+ "at": [
+  2,
+  3
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "stream_stone_0",
+   "asset": "water_stepping_stone_c",
+   "position": [
+    157.5,
+    213.0
+   ],
+   "collision": "water_stepping_stone_c_col"
+  },
+  {
+   "id": "stream_stone_1",
+   "asset": "water_stepping_stone_a",
+   "position": [
+    160.5,
+    211.5
+   ],
+   "yaw": 61,
+   "collision": "water_stepping_stone_a_col"
+  },
+  {
+   "id": "stream_stone_2",
+   "asset": "water_stepping_stone_b",
+   "position": [
+    163.5,
+    212.0
+   ],
+   "yaw": 122,
+   "collision": "water_stepping_stone_b_col"
+  },
+  {
+   "id": "forest_lantern_3",
+   "asset": "forest_stone_lantern",
+   "position": [
+    140,
+    236
+   ],
+   "collision": "forest_stone_lantern_col",
+   "merge": true
+  }
+ ],
+ "entities": [
+  {
+   "id": "red_stream",
+   "type": "red_coin",
+   "position": [
+    160.5,
+    211.5
+   ],
+   "asset": "coin_red",
+   "lift": 2.7
+  }
+ ]
+}

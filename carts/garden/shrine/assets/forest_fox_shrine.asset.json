@@ -1,0 +1,82 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "forest_fox_shrine",
+ "materials": {
+  "a": {
+   "color": "#d8462a",
+   "palette": true
+  },
+  "b": {
+   "color": "#3e4248",
+   "palette": true
+  },
+  "s": {
+   "color": "#8e887c",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "op": "box",
+   "size": [
+    4,
+    0.6,
+    5
+   ],
+   "material": "s",
+   "transform": {
+    "translate": [
+     0,
+     0.3,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    3,
+    2.4,
+    3.6
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     1.8,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    4.4,
+    1.5,
+    5.2
+   ],
+   "material": "b",
+   "transform": {
+    "translate": [
+     0,
+     3.75,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,202 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_0",
+ "at": [
+  0,
+  0
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "konbini",
+   "asset": "street_konbini",
+   "position": [
+    32,
+    7
+   ],
+   "yaw": 180,
+   "collision": "street_konbini_col"
+  },
+  {
+   "id": "pole_1",
+   "asset": "street_utility_pole",
+   "position": [
+    60,
+    12.8
+   ],
+   "collision": "street_utility_pole_col"
+  },
+  {
+   "id": "lamp_1",
+   "asset": "street_lamp",
+   "position": [
+    20,
+    30.6
+   ],
+   "yaw": 180,
+   "collision": "street_lamp_col"
+  },
+  {
+   "id": "lamp_2",
+   "asset": "street_lamp",
+   "position": [
+    56,
+    30.6
+   ],
+   "yaw": 180,
+   "collision": "street_lamp_col"
+  },
+  {
+   "id": "vending_1",
+   "asset": "street_vending_machine",
+   "position": [
+    52.0,
+    11.5
+   ],
+   "yaw": 180,
+   "collision": "street_vending_machine_col"
+  },
+  {
+   "id": "vending_2",
+   "asset": "street_vending_machine",
+   "position": [
+    53.2,
+    11.5
+   ],
+   "yaw": 180,
+   "collision": "street_vending_machine_col"
+  },
+  {
+   "id": "barrier_w0",
+   "asset": "street_barrier",
+   "position": [
+    3.0,
+    5
+   ],
+   "yaw": 90,
+   "collision": "street_barrier_col"
+  },
+  {
+   "id": "barrier_w1",
+   "asset": "street_barrier",
+   "position": [
+    3.0,
+    11
+   ],
+   "yaw": 90,
+   "collision": "street_barrier_col"
+  },
+  {
+   "id": "barrier_w2",
+   "asset": "street_barrier",
+   "position": [
+    3.0,
+    17
+   ],
+   "yaw": 90,
+   "collision": "street_barrier_col"
+  },
+  {
+   "id": "barrier_w3",
+   "asset": "street_barrier",
+   "position": [
+    3.0,
+    23
+   ],
+   "yaw": 90,
+   "collision": "street_barrier_col"
+  },
+  {
+   "id": "barrier_w4",
+   "asset": "street_barrier",
+   "position": [
+    3.0,
+    29
+   ],
+   "yaw": 90,
+   "collision": "street_barrier_col"
+  },
+  {
+   "id": "side_hall_w",
+   "asset": "arch_side_hall",
+   "position": [
+    63.0,
+    0.45,
+    56.0
+   ],
+   "yaw": 270,
+   "collision": "arch_side_hall_col"
+  },
+  {
+   "id": "fallen_log",
+   "asset": "forest_fallen_log",
+   "position": [
+    28,
+    58
+   ],
+   "yaw": 60,
+   "collision": "forest_fallen_log_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_utility_1",
+   "type": "pole",
+   "position": [
+    60,
+    12.8
+   ],
+   "params": {
+    "height": 8.5
+   }
+  },
+  {
+   "id": "door_garden",
+   "type": "door",
+   "position": [
+    32.0,
+    0.15,
+    14.6
+   ],
+   "params": {
+    "world": "garden",
+    "size": [
+     2.5,
+     2.6,
+     1.0
+    ]
+   }
+  },
+  {
+   "id": "coin_side_hall_w",
+   "type": "coin",
+   "position": [
+    63.0,
+    11.9,
+    56.0
+   ],
+   "asset": "coin"
+  },
+  {
+   "id": "coin_konbini",
+   "type": "coin",
+   "position": [
+    32.0,
+    5.8,
+    7.0
+   ],
+   "asset": "coin"
+  },
+  {
+   "id": "red_log",
+   "type": "red_coin",
+   "position": [
+    28,
+    58
+   ],
+   "asset": "coin_red",
+   "lift": 2.6
+  }
+ ]
+}

@@ -1,0 +1,87 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "forest_hollow_log_col",
+ "materials": {
+  "a": {
+   "color": "#5a4a3e",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "op": "box",
+   "size": [
+    16,
+    0.4,
+    3.2
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     0.2,
+     0
+    ]
+   }
+  },
+  {
+   "op": "box",
+   "size": [
+    16,
+    0.4,
+    3.2
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     3.0,
+     0
+    ]
+   }
+  },
+  {
+   "op": "box",
+   "size": [
+    16,
+    3.2,
+    0.4
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     1.6,
+     -1.4
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    16,
+    3.2,
+    0.4
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     1.6,
+     1.4
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

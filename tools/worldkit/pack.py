@@ -953,7 +953,8 @@ def encode(world, report=None):
             reach = max(max(abs(q[0]), abs(q[2])) for q in pts)
             if reach > half + overhang:
                 raise PackError(f'cell ({c.i}, {c.j}): a placement overhangs its cell by more '
-                                f'than {world.overhang} units')
+                                f'than {world.overhang} units (the placement at {p.position}, tag '
+                                f'{p.tag}, reaches {(reach - half) / 65536:.2f} units past the cell)')
             spheres.append((sc, sr))
             if p.layer is not None and p.layer not in names:
                 raise PackError(f'cell ({c.i}, {c.j}): placement layer {p.layer!r} not in the cell')

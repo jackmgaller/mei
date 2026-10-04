@@ -1,0 +1,3018 @@
+{
+ "format": "mei-world",
+ "version": 1,
+ "name": "shrine",
+ "game": "../world/garden.game.mochi",
+ "assets": "assets",
+ "cell_dir": "cells",
+ "grid": {
+  "cell_size": 64
+ },
+ "overhang": 24,
+ "collision": {
+  "surfaces": {
+   "default": 0,
+   "tags": {
+    "bounce": 1,
+    "slide": 2,
+    "water": 3
+   }
+  }
+ },
+ "regions": {
+  "shrine": {
+   "variants": {
+    "day": {},
+    "night": {
+     "surface": {
+      "multiply": "#4a5884"
+     },
+     "colors": {
+      "water": "#1c3050"
+     }
+    }
+   },
+   "backdrop": {
+    "elevations": [
+     -8,
+     0,
+     5,
+     24,
+     70
+    ],
+    "sky": {
+     "day": [
+      "#9aa4a0",
+      "#e8dcc0",
+      "#c4d8e8",
+      "#7aa8d8",
+      "#3a6cb0"
+     ],
+     "night": [
+      "#141420",
+      "#2a2440",
+      "#1a1c3a",
+      "#0c1028",
+      "#04060f"
+     ]
+    },
+    "silhouette": {
+     "pattern": "mountains",
+     "width": 1024,
+     "height": 48,
+     "seed": 23,
+     "colors": [
+      "#7a8a8c",
+      "#56685a",
+      "#3e5040"
+     ]
+    }
+   }
+  }
+ },
+ "runtime": {
+  "depth": true,
+  "perspective": true,
+  "near_far": 80
+ },
+ "verification": {
+  "thresholds": {
+   "cell_triangles": 12000,
+   "cell_placements": 400,
+   "standin_triangles": 400
+  }
+ },
+ "paths": {
+  "gully": {
+   "points": [
+    [
+     122.0,
+     0,
+     244.0
+    ],
+    [
+     124.0,
+     0,
+     226.0
+    ],
+    [
+     126.0,
+     0,
+     206.0
+    ]
+   ]
+  },
+  "trail_west": {
+   "points": [
+    [
+     46.0,
+     42.0
+    ],
+    [
+     36.0,
+     50.0
+    ],
+    [
+     26.0,
+     62.0
+    ],
+    [
+     18.0,
+     80.0
+    ],
+    [
+     16.0,
+     96.0
+    ],
+    [
+     14.0,
+     104.0
+    ]
+   ],
+   "drape": {
+    "step": 4,
+    "bed": {
+     "width": 3.0,
+     "depth": 0.3,
+     "falloff": 2
+    }
+   },
+   "sweep": {
+    "profile": [
+     [
+      -2.0,
+      -0.3
+     ],
+     [
+      -1.1,
+      0
+     ],
+     [
+      1.1,
+      0
+     ],
+     [
+      2.0,
+      -0.3
+     ]
+    ],
+    "materials": [
+     "earth",
+     "path",
+     "earth"
+    ],
+    "caps": true
+   }
+  },
+  "trail_spring": {
+   "points": [
+    [
+     20.0,
+     121.0
+    ],
+    [
+     26.0,
+     124.0
+    ],
+    [
+     32.0,
+     128.0
+    ]
+   ],
+   "drape": {
+    "step": 4,
+    "bed": {
+     "width": 3.0,
+     "depth": 0.3,
+     "falloff": 2
+    }
+   },
+   "sweep": {
+    "profile": [
+     [
+      -2.0,
+      -0.3
+     ],
+     [
+      -1.1,
+      0
+     ],
+     [
+      1.1,
+      0
+     ],
+     [
+      2.0,
+      -0.3
+     ]
+    ],
+    "materials": [
+     "earth",
+     "path",
+     "earth"
+    ],
+    "caps": true
+   }
+  },
+  "stairs_outcrop": {
+   "points": [
+    [
+     32.0,
+     5.0,
+     125.5
+    ],
+    [
+     32.0,
+     14.0,
+     136.2
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -2.3,
+      -0.8
+     ],
+     [
+      -1.5,
+      0
+     ],
+     [
+      1.5,
+      0
+     ],
+     [
+      2.3,
+      -0.8
+     ]
+    ],
+    "materials": [
+     "earth",
+     "steps",
+     "earth"
+    ],
+    "caps": true,
+    "stairs": {
+     "rise": 0.3
+    }
+   }
+  },
+  "trail_fox": {
+   "points": [
+    [
+     52.0,
+     218.0
+    ],
+    [
+     48.0,
+     228.0
+    ],
+    [
+     42.0,
+     240.0
+    ]
+   ],
+   "drape": {
+    "step": 4,
+    "bed": {
+     "width": 3.0,
+     "depth": 0.3,
+     "falloff": 2
+    }
+   },
+   "sweep": {
+    "profile": [
+     [
+      -2.0,
+      -0.3
+     ],
+     [
+      -1.1,
+      0
+     ],
+     [
+      1.1,
+      0
+     ],
+     [
+      2.0,
+      -0.3
+     ]
+    ],
+    "materials": [
+     "earth",
+     "path",
+     "earth"
+    ],
+    "caps": true
+   }
+  },
+  "torii_stairs_1": {
+   "points": [
+    [
+     38.0,
+     26.0,
+     244.0
+    ],
+    [
+     17.0,
+     38.0,
+     261.0
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -2.3,
+      -0.8
+     ],
+     [
+      -1.5,
+      0
+     ],
+     [
+      1.5,
+      0
+     ],
+     [
+      2.3,
+      -0.8
+     ]
+    ],
+    "materials": [
+     "earth",
+     "steps",
+     "earth"
+    ],
+    "caps": true
+   }
+  },
+  "torii_stairs_2": {
+   "points": [
+    [
+     18.0,
+     38.0,
+     267.0
+    ],
+    [
+     36.0,
+     50.0,
+     279.5
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -2.3,
+      -0.8
+     ],
+     [
+      -1.5,
+      0
+     ],
+     [
+      1.5,
+      0
+     ],
+     [
+      2.3,
+      -0.8
+     ]
+    ],
+    "materials": [
+     "earth",
+     "steps",
+     "earth"
+    ],
+    "caps": true
+   }
+  },
+  "stairs_east_1": {
+   "points": [
+    [
+     100.0,
+     50.0,
+     262.0
+    ],
+    [
+     118.0,
+     40.0,
+     248.0
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -2.3,
+      -0.8
+     ],
+     [
+      -1.5,
+      0
+     ],
+     [
+      1.5,
+      0
+     ],
+     [
+      2.3,
+      -0.8
+     ]
+    ],
+    "materials": [
+     "earth",
+     "steps",
+     "earth"
+    ],
+    "caps": true
+   }
+  },
+  "stairs_east_2": {
+   "points": [
+    [
+     118.0,
+     40.0,
+     245.0
+    ],
+    [
+     100.0,
+     28.0,
+     229.0
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -2.3,
+      -0.8
+     ],
+     [
+      -1.5,
+      0
+     ],
+     [
+      1.5,
+      0
+     ],
+     [
+      2.3,
+      -0.8
+     ]
+    ],
+    "materials": [
+     "earth",
+     "steps",
+     "earth"
+    ],
+    "caps": true
+   }
+  },
+  "stairs_east_3": {
+   "points": [
+    [
+     99.0,
+     28.0,
+     228.0
+    ],
+    [
+     82.0,
+     18.0,
+     214.0
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -2.3,
+      -0.8
+     ],
+     [
+      -1.5,
+      0
+     ],
+     [
+      1.5,
+      0
+     ],
+     [
+      2.3,
+      -0.8
+     ]
+    ],
+    "materials": [
+     "earth",
+     "steps",
+     "earth"
+    ],
+    "caps": true
+   }
+  },
+  "trail_sacred": {
+   "points": [
+    [
+     82.0,
+     211.0
+    ],
+    [
+     88.0,
+     208.0
+    ],
+    [
+     98.0,
+     208.0
+    ]
+   ],
+   "drape": {
+    "step": 4,
+    "bed": {
+     "width": 3.0,
+     "depth": 0.3,
+     "falloff": 2
+    }
+   },
+   "sweep": {
+    "profile": [
+     [
+      -2.0,
+      -0.3
+     ],
+     [
+      -1.1,
+      0
+     ],
+     [
+      1.1,
+      0
+     ],
+     [
+      2.0,
+      -0.3
+     ]
+    ],
+    "materials": [
+     "earth",
+     "path",
+     "earth"
+    ],
+    "caps": true
+   }
+  },
+  "trail_log": {
+   "points": [
+    [
+     104.0,
+     214.0
+    ],
+    [
+     110.0,
+     220.0
+    ],
+    [
+     112.0,
+     222.5
+    ]
+   ],
+   "drape": {
+    "step": 4,
+    "bed": {
+     "width": 3.0,
+     "depth": 0.3,
+     "falloff": 2
+    }
+   },
+   "sweep": {
+    "profile": [
+     [
+      -2.0,
+      -0.3
+     ],
+     [
+      -1.1,
+      0
+     ],
+     [
+      1.1,
+      0
+     ],
+     [
+      2.0,
+      -0.3
+     ]
+    ],
+    "materials": [
+     "earth",
+     "path",
+     "earth"
+    ],
+    "caps": true
+   }
+  },
+  "trail_falls": {
+   "points": [
+    [
+     132.0,
+     230.0
+    ],
+    [
+     138.0,
+     238.0
+    ],
+    [
+     144.0,
+     244.0
+    ]
+   ],
+   "drape": {
+    "step": 4,
+    "bed": {
+     "width": 3.0,
+     "depth": 0.3,
+     "falloff": 2
+    }
+   },
+   "sweep": {
+    "profile": [
+     [
+      -2.0,
+      -0.3
+     ],
+     [
+      -1.1,
+      0
+     ],
+     [
+      1.1,
+      0
+     ],
+     [
+      2.0,
+      -0.3
+     ]
+    ],
+    "materials": [
+     "earth",
+     "path",
+     "earth"
+    ],
+    "caps": true
+   }
+  },
+  "trail_stream_w": {
+   "points": [
+    [
+     144.0,
+     242.0
+    ],
+    [
+     148.0,
+     228.0
+    ],
+    [
+     153.0,
+     214.0
+    ]
+   ],
+   "drape": {
+    "step": 4,
+    "bed": {
+     "width": 3.0,
+     "depth": 0.3,
+     "falloff": 2
+    }
+   },
+   "sweep": {
+    "profile": [
+     [
+      -2.0,
+      -0.3
+     ],
+     [
+      -1.1,
+      0
+     ],
+     [
+      1.1,
+      0
+     ],
+     [
+      2.0,
+      -0.3
+     ]
+    ],
+    "materials": [
+     "earth",
+     "path",
+     "earth"
+    ],
+    "caps": true
+   }
+  },
+  "trail_stream_e": {
+   "points": [
+    [
+     167.0,
+     212.0
+    ],
+    [
+     174.0,
+     200.0
+    ],
+    [
+     178.0,
+     180.0
+    ],
+    [
+     178.0,
+     160.0
+    ],
+    [
+     180.0,
+     136.0
+    ],
+    [
+     180.0,
+     116.0
+    ],
+    [
+     180.0,
+     108.0
+    ]
+   ],
+   "drape": {
+    "step": 4,
+    "bed": {
+     "width": 3.0,
+     "depth": 0.3,
+     "falloff": 2
+    }
+   },
+   "sweep": {
+    "profile": [
+     [
+      -2.0,
+      -0.3
+     ],
+     [
+      -1.1,
+      0
+     ],
+     [
+      1.1,
+      0
+     ],
+     [
+      2.0,
+      -0.3
+     ]
+    ],
+    "materials": [
+     "earth",
+     "path",
+     "earth"
+    ],
+    "caps": true
+   }
+  },
+  "stream": {
+   "points": [
+    [
+     150.0,
+     246.0
+    ],
+    [
+     155.0,
+     230.0
+    ],
+    [
+     160.0,
+     212.0
+    ],
+    [
+     163.0,
+     190.0
+    ],
+    [
+     160.0,
+     162.0
+    ],
+    [
+     164.0,
+     134.0
+    ],
+    [
+     166.0,
+     114.0
+    ],
+    [
+     164.0,
+     104.0
+    ]
+   ],
+   "drape": {
+    "step": 4,
+    "downhill": true,
+    "bed": {
+     "width": 3.4,
+     "depth": 0.6,
+     "falloff": 2
+    }
+   },
+   "sweep": {
+    "profile": [
+     [
+      -2.6,
+      -0.6
+     ],
+     [
+      -1.7,
+      0
+     ],
+     [
+      1.7,
+      0
+     ],
+     [
+      2.6,
+      -0.6
+     ]
+    ],
+    "material": "water"
+   }
+  },
+  "terrace_steps": {
+   "points": [
+    [
+     95.0,
+     0.75,
+     70.0
+    ],
+    [
+     95.0,
+     5.0,
+     80.0
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -8.0,
+      -5.2
+     ],
+     [
+      -8.0,
+      0
+     ],
+     [
+      8.0,
+      0
+     ],
+     [
+      8.0,
+      -5.2
+     ]
+    ],
+    "material": "steps",
+    "stairs": {
+     "rise": 0.3
+    },
+    "caps": true
+   }
+  },
+  "bridge_1": {
+   "points": [
+    [
+     27.4,
+     14.0,
+     141.0
+    ],
+    [
+     25.42,
+     13.65,
+     141.87
+    ],
+    [
+     23.45,
+     13.5,
+     142.73
+    ],
+    [
+     21.48,
+     13.65,
+     143.59
+    ],
+    [
+     19.5,
+     14.0,
+     144.46
+    ]
+   ],
+   "raised": true,
+   "sweep": {
+    "profile": [
+     [
+      -0.85,
+      1.0
+     ],
+     [
+      -0.8,
+      -0.0
+     ],
+     [
+      0.8,
+      0.0
+     ],
+     [
+      0.85,
+      1.0
+     ]
+    ],
+    "materials": [
+     "rope",
+     "planks",
+     "rope"
+    ],
+    "double_sided": true
+   }
+  },
+  "bridge_2": {
+   "points": [
+    [
+     15.68,
+     14.0,
+     149.5
+    ],
+    [
+     15.34,
+     14.18,
+     153.25
+    ],
+    [
+     15.0,
+     14.7,
+     157.0
+    ],
+    [
+     14.66,
+     15.68,
+     160.75
+    ],
+    [
+     14.32,
+     17.0,
+     164.5
+    ]
+   ],
+   "raised": true,
+   "sweep": {
+    "profile": [
+     [
+      -0.85,
+      1.0
+     ],
+     [
+      -0.8,
+      -0.0
+     ],
+     [
+      0.8,
+      0.0
+     ],
+     [
+      0.85,
+      1.0
+     ]
+    ],
+    "materials": [
+     "rope",
+     "planks",
+     "rope"
+    ],
+    "double_sided": true
+   }
+  },
+  "bridge_3": {
+   "points": [
+    [
+     15.75,
+     17.0,
+     171.5
+    ],
+    [
+     17.38,
+     17.18,
+     174.75
+    ],
+    [
+     19.0,
+     17.7,
+     178.0
+    ],
+    [
+     20.62,
+     18.68,
+     181.25
+    ],
+    [
+     22.25,
+     20.0,
+     184.5
+    ]
+   ],
+   "raised": true,
+   "sweep": {
+    "profile": [
+     [
+      -0.85,
+      1.0
+     ],
+     [
+      -0.8,
+      -0.0
+     ],
+     [
+      0.8,
+      0.0
+     ],
+     [
+      0.85,
+      1.0
+     ]
+    ],
+    "materials": [
+     "rope",
+     "planks",
+     "rope"
+    ],
+    "double_sided": true
+   }
+  },
+  "bridge_4": {
+   "points": [
+    [
+     27.5,
+     20.0,
+     190.5
+    ],
+    [
+     29.25,
+     20.18,
+     191.75
+    ],
+    [
+     31.0,
+     20.7,
+     193.0
+    ],
+    [
+     32.75,
+     21.68,
+     194.25
+    ],
+    [
+     34.5,
+     23.0,
+     195.5
+    ]
+   ],
+   "raised": true,
+   "sweep": {
+    "profile": [
+     [
+      -0.85,
+      1.0
+     ],
+     [
+      -0.8,
+      -0.0
+     ],
+     [
+      0.8,
+      0.0
+     ],
+     [
+      0.85,
+      1.0
+     ]
+    ],
+    "materials": [
+     "rope",
+     "planks",
+     "rope"
+    ],
+    "double_sided": true
+   }
+  },
+  "bridge_5": {
+   "points": [
+    [
+     41.5,
+     23.0,
+     199.75
+    ],
+    [
+     43.75,
+     23.18,
+     200.88
+    ],
+    [
+     46.0,
+     23.7,
+     202.0
+    ],
+    [
+     48.25,
+     24.68,
+     203.12
+    ],
+    [
+     50.5,
+     26.0,
+     204.25
+    ]
+   ],
+   "raised": true,
+   "sweep": {
+    "profile": [
+     [
+      -0.85,
+      1.0
+     ],
+     [
+      -0.8,
+      -0.0
+     ],
+     [
+      0.8,
+      0.0
+     ],
+     [
+      0.85,
+      1.0
+     ]
+    ],
+    "materials": [
+     "rope",
+     "planks",
+     "rope"
+    ],
+    "double_sided": true
+   }
+  },
+  "bridge_6": {
+   "points": [
+    [
+     53.5,
+     26.0,
+     209.5
+    ],
+    [
+     53.12,
+     25.58,
+     211.88
+    ],
+    [
+     52.75,
+     25.4,
+     214.25
+    ],
+    [
+     52.38,
+     25.58,
+     216.62
+    ],
+    [
+     52.0,
+     26.0,
+     219.0
+    ]
+   ],
+   "raised": true,
+   "sweep": {
+    "profile": [
+     [
+      -0.85,
+      1.0
+     ],
+     [
+      -0.8,
+      -0.0
+     ],
+     [
+      0.8,
+      0.0
+     ],
+     [
+      0.85,
+      1.0
+     ]
+    ],
+    "materials": [
+     "rope",
+     "planks",
+     "rope"
+    ],
+    "double_sided": true
+   }
+  },
+  "bridge_stage": {
+   "points": [
+    [
+     42.5,
+     50.0,
+     276.5
+    ],
+    [
+     45.88,
+     51.08,
+     274.38
+    ],
+    [
+     49.25,
+     52.4,
+     272.25
+    ],
+    [
+     52.62,
+     54.08,
+     270.12
+    ],
+    [
+     56.0,
+     56.0,
+     268.0
+    ]
+   ],
+   "raised": true,
+   "sweep": {
+    "profile": [
+     [
+      -0.85,
+      1.0
+     ],
+     [
+      -0.8,
+      -0.0
+     ],
+     [
+      0.8,
+      0.0
+     ],
+     [
+      0.85,
+      1.0
+     ]
+    ],
+    "materials": [
+     "rope",
+     "planks",
+     "rope"
+    ],
+    "double_sided": true
+   }
+  },
+  "stage_stairs": {
+   "points": [
+    [
+     88.0,
+     56.0,
+     266.0
+    ],
+    [
+     100.0,
+     50.0,
+     263.0
+    ]
+   ],
+   "raised": true,
+   "sweep": {
+    "profile": [
+     [
+      -1.2,
+      -0.3
+     ],
+     [
+      -1.2,
+      0
+     ],
+     [
+      1.2,
+      0
+     ],
+     [
+      1.2,
+      -0.3
+     ],
+     [
+      -1.2,
+      -0.3
+     ]
+    ],
+    "material": "planks",
+    "stairs": {
+     "rise": 0.3
+    },
+    "caps": true
+   }
+  }
+ },
+ "terrain": {
+  "materials": {
+   "floor": {
+    "color": "#6e6236"
+   },
+   "moss": {
+    "color": "#5f7a34"
+   },
+   "earth": {
+    "color": "#6a4a30"
+   },
+   "litter": {
+    "color": "#8a5a30"
+   },
+   "rock": {
+    "color": "#6a665e"
+   },
+   "stone": {
+    "color": "#8e887c"
+   },
+   "gravel": {
+    "color": "#d4ccb8"
+   },
+   "paving": {
+    "color": "#b4ae9e"
+   },
+   "asphalt": {
+    "color": "#4a4a50"
+   },
+   "line": {
+    "color": "#e8e4d8"
+   },
+   "sidewalk": {
+    "color": "#b8b4a8"
+   },
+   "kerb": {
+    "color": "#a8a69e"
+   },
+   "path": {
+    "color": "#8a6a48"
+   },
+   "pond_bed": {
+    "color": "#4e4632"
+   },
+   "planks": {
+    "color": "#8a6446"
+   },
+   "rope": {
+    "color": "#c8b88a"
+   },
+   "steps": {
+    "color": "#9a9488"
+   },
+   "water": {
+    "color": "#3f7393",
+    "water": true,
+    "tag": "water"
+   }
+  },
+  "fields": {
+   "land": {
+    "spacing": 2,
+    "min": [
+     0,
+     0
+    ],
+    "max": [
+     192,
+     320
+    ],
+    "material": "floor",
+    "steep": {
+     "degrees": 38,
+     "material": "earth"
+    },
+    "tolerance": 0.12,
+    "lod": {
+     "distance": 28,
+     "tolerance": 0.8
+    },
+    "operations": [
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        62.18,
+        73.75,
+        24.41
+       ]
+      },
+      "height": -1.31,
+      "falloff": 24.41
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        102.89,
+        136.05,
+        14.93
+       ]
+      },
+      "height": 0.43,
+      "falloff": 14.93
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        7.2,
+        155.76,
+        15.12
+       ]
+      },
+      "height": -1.24,
+      "falloff": 15.12
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        81.51,
+        269.79,
+        15.98
+       ]
+      },
+      "height": -0.71,
+      "falloff": 15.98
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        120.47,
+        304.84,
+        23.23
+       ]
+      },
+      "height": -0.01,
+      "falloff": 23.23
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        187.44,
+        43.51,
+        27.74
+       ]
+      },
+      "height": -0.44,
+      "falloff": 27.74
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        27.7,
+        64.16,
+        18.94
+       ]
+      },
+      "height": 1.66,
+      "falloff": 18.94
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        34.7,
+        198.66,
+        24.22
+       ]
+      },
+      "height": -0.11,
+      "falloff": 24.22
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        105.17,
+        48.21,
+        14.95
+       ]
+      },
+      "height": -0.78,
+      "falloff": 14.95
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        130.64,
+        154.0,
+        19.03
+       ]
+      },
+      "height": 0.74,
+      "falloff": 19.03
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        87.01,
+        116.93,
+        26.71
+       ]
+      },
+      "height": 1.2,
+      "falloff": 26.71
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        46.87,
+        196.58,
+        22.4
+       ]
+      },
+      "height": 1.9,
+      "falloff": 22.4
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        140.05,
+        113.5,
+        29.68
+       ]
+      },
+      "height": -1.13,
+      "falloff": 29.68
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        80.28,
+        249.57,
+        16.43
+       ]
+      },
+      "height": 0.36,
+      "falloff": 16.43
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        7.53,
+        223.78,
+        26.23
+       ]
+      },
+      "height": 0.69,
+      "falloff": 26.23
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        168.09,
+        120.99,
+        25.12
+       ]
+      },
+      "height": 0.78,
+      "falloff": 25.12
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        111.34,
+        162.3,
+        27.44
+       ]
+      },
+      "height": 2.18,
+      "falloff": 27.44
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        91.03,
+        222.6,
+        14.97
+       ]
+      },
+      "height": 1.21,
+      "falloff": 14.97
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        124.25,
+        318.0,
+        27.15
+       ]
+      },
+      "height": -0.46,
+      "falloff": 27.15
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        74.07,
+        223.91,
+        14.36
+       ]
+      },
+      "height": 0.25,
+      "falloff": 14.36
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        32.27,
+        63.96,
+        14.94
+       ]
+      },
+      "height": 1.47,
+      "falloff": 14.94
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        24.83,
+        101.81,
+        20.26
+       ]
+      },
+      "height": 1.89,
+      "falloff": 20.26
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        15.47,
+        160.26,
+        22.79
+       ]
+      },
+      "height": 1.93,
+      "falloff": 22.79
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        157.3,
+        280.56,
+        18.45
+       ]
+      },
+      "height": 0.06,
+      "falloff": 18.45
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        68.88,
+        286.42,
+        29.32
+       ]
+      },
+      "height": -1.0,
+      "falloff": 29.32
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        33.83,
+        97.27,
+        17.73
+       ]
+      },
+      "height": 0.34,
+      "falloff": 17.73
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        113.11,
+        106.2,
+        14.07
+       ]
+      },
+      "height": 0.08,
+      "falloff": 14.07
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        70.9,
+        194.24,
+        29.25
+       ]
+      },
+      "height": 1.16,
+      "falloff": 29.25
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        98.97,
+        209.1,
+        24.82
+       ]
+      },
+      "height": -1.38,
+      "falloff": 24.82
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        172.71,
+        256.19,
+        27.99
+       ]
+      },
+      "height": 1.59,
+      "falloff": 27.99
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        75.34,
+        145.7,
+        15.66
+       ]
+      },
+      "height": 0.94,
+      "falloff": 15.66
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        11.95,
+        49.53,
+        17.34
+       ]
+      },
+      "height": -0.95,
+      "falloff": 17.34
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        65.29,
+        45.25,
+        14.0
+       ]
+      },
+      "height": -0.99,
+      "falloff": 14.0
+     },
+     {
+      "op": "add",
+      "area": {
+       "circle": [
+        19.48,
+        135.45,
+        14.41
+       ]
+      },
+      "height": 1.9,
+      "falloff": 14.41
+     },
+     {
+      "op": "add",
+      "area": {
+       "rect": [
+        0,
+        30,
+        20,
+        320
+       ]
+      },
+      "height": 5,
+      "falloff": 28
+     },
+     {
+      "op": "add",
+      "area": {
+       "rect": [
+        64,
+        164,
+        142,
+        172
+       ]
+      },
+      "height": 13,
+      "falloff": 26
+     },
+     {
+      "op": "add",
+      "area": {
+       "rect": [
+        0,
+        194,
+        192,
+        320
+       ]
+      },
+      "height": 6,
+      "falloff": 14
+     },
+     {
+      "op": "add",
+      "area": {
+       "rect": [
+        0,
+        296,
+        192,
+        320
+       ]
+      },
+      "height": 44,
+      "falloff": 88
+     },
+     {
+      "op": "smooth",
+      "passes": 2
+     },
+     {
+      "op": "carve",
+      "area": {
+       "polygon": [
+        [
+         4,
+         136
+        ],
+        [
+         26,
+         134
+        ],
+        [
+         44,
+         186
+        ],
+        [
+         64,
+         196
+        ],
+        [
+         66,
+         214
+        ],
+        [
+         40,
+         212
+        ],
+        [
+         8,
+         186
+        ]
+       ]
+      },
+      "height": 3.0,
+      "falloff": 10
+     },
+     {
+      "op": "set",
+      "area": {
+       "rect": [
+        36,
+        28,
+        156,
+        158
+       ]
+      },
+      "height": 0.45,
+      "falloff": 8
+     },
+     {
+      "op": "set",
+      "area": {
+       "rect": [
+        0,
+        0,
+        192,
+        32
+       ]
+      },
+      "height": 0
+     },
+     {
+      "op": "carve",
+      "area": {
+       "polygon": [
+        [
+         150,
+         32
+        ],
+        [
+         188,
+         32
+        ],
+        [
+         188,
+         106
+        ],
+        [
+         176,
+         108
+        ],
+        [
+         164,
+         104
+        ],
+        [
+         154,
+         98
+        ],
+        [
+         150,
+         88
+        ],
+        [
+         150,
+         60
+        ]
+       ]
+      },
+      "height": -1.1,
+      "falloff": 3
+     },
+     {
+      "op": "carve",
+      "area": {
+       "circle": [
+        176,
+        58,
+        9
+       ]
+      },
+      "height": -1.7,
+      "falloff": 6
+     },
+     {
+      "op": "carve",
+      "area": {
+       "circle": [
+        172,
+        86,
+        7
+       ]
+      },
+      "height": -1.6,
+      "falloff": 5
+     },
+     {
+      "op": "set",
+      "area": {
+       "rect": [
+        146,
+        46,
+        152,
+        56
+       ]
+      },
+      "height": 0.45
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        181.5,
+        109.5,
+        2.6
+       ]
+      },
+      "height": 0.6,
+      "falloff": 2
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        18,
+        112,
+        11
+       ]
+      },
+      "height": 4.0,
+      "falloff": 6
+     },
+     {
+      "op": "carve",
+      "area": {
+       "circle": [
+        18,
+        112,
+        6.5
+       ]
+      },
+      "height": 2.3,
+      "falloff": 2
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        32,
+        129,
+        5
+       ]
+      },
+      "height": 5.0,
+      "falloff": 5
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        48,
+        230,
+        15
+       ]
+      },
+      "height": 26.0,
+      "falloff": 8
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        15,
+        264,
+        4.5
+       ]
+      },
+      "height": 38.0,
+      "falloff": 5
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        39,
+        278,
+        4
+       ]
+      },
+      "height": 50.0,
+      "falloff": 5
+     },
+     {
+      "op": "carve",
+      "area": {
+       "rect": [
+        44,
+        266,
+        54,
+        284
+       ]
+      },
+      "height": 44.0,
+      "falloff": 3
+     },
+     {
+      "op": "ramp",
+      "from": [
+       72,
+       55,
+       284
+      ],
+      "to": [
+       72,
+       41,
+       262
+      ],
+      "width": 36,
+      "falloff": 5
+     },
+     {
+      "op": "set",
+      "area": {
+       "rect": [
+        54,
+        284,
+        92,
+        294
+       ]
+      },
+      "height": 55.0,
+      "falloff": 6
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        98.0,
+        208.0,
+        12
+       ]
+      },
+      "height": 12.0,
+      "falloff": 8
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        100,
+        262,
+        3.5
+       ]
+      },
+      "height": 50.0,
+      "falloff": 4
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        120,
+        246,
+        3.5
+       ]
+      },
+      "height": 40.0,
+      "falloff": 4
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        100,
+        228.5,
+        3.5
+       ]
+      },
+      "height": 28.0,
+      "falloff": 4
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        81,
+        213,
+        3.5
+       ]
+      },
+      "height": 18.0,
+      "falloff": 5
+     },
+     {
+      "op": "carve",
+      "area": {
+       "path": "gully",
+       "width": 8
+      },
+      "height": 7.0,
+      "falloff": 6
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        113,
+        223,
+        3.5
+       ]
+      },
+      "height": 15.0,
+      "falloff": 4
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        131,
+        229,
+        3.5
+       ]
+      },
+      "height": 15.0,
+      "falloff": 4
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        150.0,
+        246.0,
+        14
+       ]
+      },
+      "height": 18.4,
+      "falloff": 8
+     },
+     {
+      "op": "carve",
+      "area": {
+       "circle": [
+        150.0,
+        252.0,
+        7
+       ]
+      },
+      "height": 17.0,
+      "falloff": 2
+     },
+     {
+      "op": "cliff",
+      "area": {
+       "polygon": [
+        [
+         128,
+         258
+        ],
+        [
+         188,
+         258
+        ],
+        [
+         188,
+         320
+        ],
+        [
+         128,
+         320
+        ]
+       ]
+      },
+      "height": 18,
+      "material": "rock",
+      "overhang": 0.8,
+      "lip": 1.5
+     },
+     {
+      "op": "cliff",
+      "area": {
+       "rect": [
+        0,
+        32,
+        4,
+        320
+       ]
+      },
+      "height": 12,
+      "material": "rock"
+     },
+     {
+      "op": "cliff",
+      "area": {
+       "rect": [
+        188,
+        32,
+        192,
+        258
+       ]
+      },
+      "height": 12,
+      "material": "rock"
+     },
+     {
+      "op": "cliff",
+      "area": {
+       "rect": [
+        4,
+        300,
+        128,
+        320
+       ]
+      },
+      "height": 12,
+      "material": "rock"
+     },
+     {
+      "op": "cliff",
+      "area": {
+       "rect": [
+        0,
+        0,
+        14,
+        2
+       ]
+      },
+      "height": 3,
+      "material": "kerb"
+     },
+     {
+      "op": "cliff",
+      "area": {
+       "rect": [
+        50,
+        0,
+        110,
+        2
+       ]
+      },
+      "height": 3,
+      "material": "kerb"
+     },
+     {
+      "op": "cliff",
+      "area": {
+       "rect": [
+        168,
+        0,
+        192,
+        2
+       ]
+      },
+      "height": 3,
+      "material": "kerb"
+     },
+     {
+      "op": "cliff",
+      "area": {
+       "rect": [
+        0,
+        2,
+        192,
+        14
+       ]
+      },
+      "height": 0.15,
+      "material": "kerb"
+     },
+     {
+      "op": "cliff",
+      "area": {
+       "rect": [
+        0,
+        28,
+        192,
+        32
+       ]
+      },
+      "height": 0.15,
+      "material": "kerb"
+     },
+     {
+      "op": "cliff",
+      "area": {
+       "rect": [
+        44,
+        80,
+        146,
+        150
+       ]
+      },
+      "height": 4.55,
+      "material": "stone"
+     },
+     {
+      "op": "cliff",
+      "area": {
+       "circle": [
+        32,
+        141,
+        5.0
+       ]
+      },
+      "height": 9.0,
+      "material": "rock"
+     },
+     {
+      "op": "set",
+      "area": {
+       "circle": [
+        32,
+        141,
+        6.0
+       ]
+      },
+      "height": 14.0
+     },
+     {
+      "op": "bed",
+      "path": "stairs_outcrop",
+      "width": 4.0,
+      "depth": 0.6,
+      "falloff": 3
+     },
+     {
+      "op": "bed",
+      "path": "torii_stairs_1",
+      "width": 4.0,
+      "depth": 0.6,
+      "falloff": 3
+     },
+     {
+      "op": "bed",
+      "path": "torii_stairs_2",
+      "width": 4.0,
+      "depth": 0.6,
+      "falloff": 3
+     },
+     {
+      "op": "bed",
+      "path": "stairs_east_1",
+      "width": 4.0,
+      "depth": 0.6,
+      "falloff": 3
+     },
+     {
+      "op": "bed",
+      "path": "stairs_east_2",
+      "width": 4.0,
+      "depth": 0.6,
+      "falloff": 3
+     },
+     {
+      "op": "bed",
+      "path": "stairs_east_3",
+      "width": 4.0,
+      "depth": 0.6,
+      "falloff": 3
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        36,
+        32,
+        156,
+        158
+       ]
+      },
+      "material": "gravel"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        91.0,
+        32,
+        99.0,
+        70
+       ]
+      },
+      "material": "paving"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        92.0,
+        88,
+        98.0,
+        124
+       ]
+      },
+      "material": "paving"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        0,
+        14,
+        192,
+        28
+       ]
+      },
+      "material": "asphalt"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        0,
+        20,
+        192,
+        22
+       ]
+      },
+      "material": "line"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        0,
+        2,
+        192,
+        14
+       ]
+      },
+      "material": "sidewalk"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        0,
+        28,
+        192,
+        32
+       ]
+      },
+      "material": "sidewalk"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "circle": [
+        46,
+        236,
+        14
+       ]
+      },
+      "material": "moss"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "circle": [
+        98.0,
+        208.0,
+        11
+       ]
+      },
+      "material": "moss"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "circle": [
+        18,
+        112,
+        10
+       ]
+      },
+      "material": "moss"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "polygon": [
+        [
+         150,
+         30
+        ],
+        [
+         190,
+         30
+        ],
+        [
+         190,
+         108
+        ],
+        [
+         150,
+         108
+        ]
+       ]
+      },
+      "material": "pond_bed"
+     },
+     {
+      "op": "water",
+      "area": {
+       "polygon": [
+        [
+         148,
+         32
+        ],
+        [
+         188,
+         32
+        ],
+        [
+         188,
+         108
+        ],
+        [
+         150,
+         108
+        ],
+        [
+         148,
+         90
+        ]
+       ]
+      },
+      "level": 0.0,
+      "material": "water"
+     },
+     {
+      "op": "water",
+      "area": {
+       "circle": [
+        18,
+        112,
+        7.5
+       ]
+      },
+      "level": 3.4,
+      "material": "water"
+     },
+     {
+      "op": "water",
+      "area": {
+       "circle": [
+        150.0,
+        252.0,
+        8
+       ]
+      },
+      "level": 18.0,
+      "material": "water"
+     }
+    ]
+   }
+  }
+ },
+ "scatter": {
+  "forest_low": {
+   "assets": [
+    {
+     "asset": "tree_maple",
+     "weight": 4,
+     "collision": "tree_maple_col"
+    },
+    {
+     "asset": "tree_maple_small",
+     "weight": 2,
+     "collision": "tree_maple_small_col"
+    },
+    {
+     "asset": "tree_ginkgo",
+     "weight": 2,
+     "collision": "tree_ginkgo_col"
+    },
+    {
+     "asset": "tree_cedar",
+     "weight": 2,
+     "collision": "tree_cedar_col"
+    }
+   ],
+   "area": {
+    "rect": [
+     0,
+     0,
+     192,
+     214
+    ]
+   },
+   "spacing": 8,
+   "fill": 0.85,
+   "seed": 3,
+   "lift": -0.15,
+   "exclude": [
+    {
+     "rect": [
+      34,
+      0,
+      158,
+      160
+     ]
+    },
+    {
+     "polygon": [
+      [
+       146,
+       28
+      ],
+      [
+       192,
+       28
+      ],
+      [
+       192,
+       110
+      ],
+      [
+       146,
+       110
+      ]
+     ]
+    },
+    {
+     "circle": [
+      18,
+      112,
+      9
+     ]
+    },
+    {
+     "circle": [
+      48,
+      230,
+      16
+     ]
+    },
+    {
+     "circle": [
+      98.0,
+      208.0,
+      13
+     ]
+    },
+    {
+     "circle": [
+      150.0,
+      248.0,
+      13
+     ]
+    },
+    {
+     "rect": [
+      52,
+      256,
+      92,
+      292
+     ]
+    },
+    {
+     "circle": [
+      32,
+      141,
+      7
+     ]
+    },
+    {
+     "circle": [
+      15,
+      264,
+      4
+     ]
+    },
+    {
+     "circle": [
+      39,
+      278,
+      4
+     ]
+    },
+    {
+     "circle": [
+      28,
+      58,
+      5
+     ]
+    },
+    {
+     "circle": [
+      14,
+      90,
+      6
+     ]
+    },
+    {
+     "circle": [
+      16,
+      146,
+      4.5
+     ]
+    },
+    {
+     "circle": [
+      14,
+      168,
+      4.5
+     ]
+    },
+    {
+     "circle": [
+      24,
+      188,
+      4.5
+     ]
+    },
+    {
+     "circle": [
+      38,
+      198,
+      4.5
+     ]
+    },
+    {
+     "circle": [
+      54,
+      206,
+      4.5
+     ]
+    },
+    {
+     "rect": [
+      0,
+      0,
+      192,
+      34
+     ]
+    }
+   ],
+   "clearance": 1.6,
+   "max_slope": 34,
+   "chunk": 16,
+   "coarse": 26,
+   "cull": 60
+  },
+  "forest_high": {
+   "assets": [
+    {
+     "asset": "tree_cedar",
+     "weight": 5,
+     "collision": "tree_cedar_col"
+    },
+    {
+     "asset": "tree_maple",
+     "weight": 2,
+     "collision": "tree_maple_col"
+    },
+    {
+     "asset": "tree_ginkgo",
+     "weight": 1,
+     "collision": "tree_ginkgo_col"
+    }
+   ],
+   "area": {
+    "rect": [
+     0,
+     214,
+     192,
+     320
+    ]
+   },
+   "spacing": 8,
+   "fill": 0.85,
+   "seed": 5,
+   "lift": -0.15,
+   "exclude": [
+    {
+     "rect": [
+      34,
+      0,
+      158,
+      160
+     ]
+    },
+    {
+     "polygon": [
+      [
+       146,
+       28
+      ],
+      [
+       192,
+       28
+      ],
+      [
+       192,
+       110
+      ],
+      [
+       146,
+       110
+      ]
+     ]
+    },
+    {
+     "circle": [
+      18,
+      112,
+      9
+     ]
+    },
+    {
+     "circle": [
+      48,
+      230,
+      16
+     ]
+    },
+    {
+     "circle": [
+      98.0,
+      208.0,
+      13
+     ]
+    },
+    {
+     "circle": [
+      150.0,
+      248.0,
+      13
+     ]
+    },
+    {
+     "rect": [
+      52,
+      256,
+      92,
+      292
+     ]
+    },
+    {
+     "circle": [
+      32,
+      141,
+      7
+     ]
+    },
+    {
+     "circle": [
+      15,
+      264,
+      4
+     ]
+    },
+    {
+     "circle": [
+      39,
+      278,
+      4
+     ]
+    },
+    {
+     "circle": [
+      28,
+      58,
+      5
+     ]
+    },
+    {
+     "circle": [
+      14,
+      90,
+      6
+     ]
+    },
+    {
+     "circle": [
+      16,
+      146,
+      4.5
+     ]
+    },
+    {
+     "circle": [
+      14,
+      168,
+      4.5
+     ]
+    },
+    {
+     "circle": [
+      24,
+      188,
+      4.5
+     ]
+    },
+    {
+     "circle": [
+      38,
+      198,
+      4.5
+     ]
+    },
+    {
+     "circle": [
+      54,
+      206,
+      4.5
+     ]
+    },
+    {
+     "rect": [
+      0,
+      0,
+      192,
+      34
+     ]
+    }
+   ],
+   "clearance": 1.6,
+   "max_slope": 40,
+   "chunk": 16,
+   "coarse": 26,
+   "cull": 60
+  }
+ }
+}

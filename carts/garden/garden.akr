@@ -22,5 +22,6 @@ fn input_stick(_f: s32) -> vec2 { return stick() }
 fn input_look(_f: s32) -> vec2 { return stick2() }
 fn test_init() {}
 fn test_hook(_f: s32) {}
+fn start_world() -> s32 { return GARDEN_WORLD_GARDEN }    // the world the cart opens first
 
 import "game.akr"

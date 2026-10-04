@@ -1,0 +1,192 @@
+// The shrine world's scenarios (numbered 300-399), run by harness.akr in the shrine
+// (start_world()); check.sh runs the ones shrine_cases.sh lists. The route scenarios walk the
+// level as a list of legs: each leg puts the player on the floor at its start, facing its end,
+// and steers there with the stick through the camera (cc_stick); a jump leg presses A once the
+// player has run `at` metres (twice for a double jump), and passes when the player stands
+// again within `tol` of the end, no lower than `min_y`. A leg is a check; a scenario passes
+// when all of its legs do. They show every walk and jump of the route is possible with the
+// controller's default tuning.
+
+struct Leg {
+    from: vec3         // x, z of the start (y: 0 = on the floor there; else the height to start at)
+    to: vec3           // x, z of the end, and y: the lowest the feet may land (0 = no check)
+    kind: s32          // LEG_WALK, LEG_JUMP, LEG_DOUBLE, LEG_LONG
+    at: fixed          // jumps: metres run before A
+    tol: fixed         // how near the end to count as there
+}
+
+const LEG_WALK = 0
+const LEG_JUMP = 1
+const LEG_DOUBLE = 2
+const LEG_LONG = 3
+
+// The forest loop on foot, from the courtyard's west edge to the fox shrine's grove: the
+// trail, the fallen log, the spring's stones, the old stone stairs, the treetop walkway.
+const ROUTE_WEST: [16]Leg = [
+    Leg { from: vec3(48.0, 0.0, 40.0), to: vec3(36.0, 0.0, 50.0), kind: LEG_WALK, at: 0.0, tol: 1.5 },
+    Leg { from: vec3(36.0, 0.0, 50.0), to: vec3(26.0, 0.0, 62.0), kind: LEG_WALK, at: 0.0, tol: 1.5 },
+    Leg { from: vec3(26.0, 0.0, 62.0), to: vec3(18.0, 0.0, 80.0), kind: LEG_WALK, at: 0.0, tol: 1.5 },
+    Leg { from: vec3(18.0, 0.0, 80.0), to: vec3(16.0, 0.0, 96.0), kind: LEG_WALK, at: 0.0, tol: 1.5 },
+    Leg { from: vec3(16.0, 0.0, 96.0), to: vec3(16.0, 0.0, 101.0), kind: LEG_WALK, at: 0.0, tol: 1.0 },
+    Leg { from: vec3(16.0, 0.0, 101.0), to: vec3(16.0, 3.5, 105.5), kind: LEG_JUMP, at: 1.2, tol: 1.0 },
+    Leg { from: vec3(16.0, 0.0, 105.5), to: vec3(17.4, 3.5, 108.2), kind: LEG_JUMP, at: 0.5, tol: 1.0 },
+    Leg { from: vec3(17.4, 0.0, 108.2), to: vec3(19.0, 3.5, 110.9), kind: LEG_JUMP, at: 0.5, tol: 1.0 },
+    Leg { from: vec3(19.0, 0.0, 110.9), to: vec3(20.4, 3.5, 113.6), kind: LEG_JUMP, at: 0.5, tol: 1.0 },
+    Leg { from: vec3(20.4, 0.0, 113.6), to: vec3(21.4, 3.5, 116.4), kind: LEG_JUMP, at: 0.5, tol: 1.0 },
+    Leg { from: vec3(21.4, 0.0, 116.4), to: vec3(22.0, 3.5, 119.2), kind: LEG_JUMP, at: 0.5, tol: 1.0 },
+    Leg { from: vec3(22.0, 0.0, 119.2), to: vec3(23.0, 3.5, 122.5), kind: LEG_JUMP, at: 0.5, tol: 1.5 },
+    Leg { from: vec3(23.0, 0.0, 122.5), to: vec3(26.0, 0.0, 124.0), kind: LEG_WALK, at: 0.0, tol: 1.5 },
+    Leg { from: vec3(26.0, 0.0, 124.0), to: vec3(32.0, 0.0, 126.0), kind: LEG_WALK, at: 0.0, tol: 1.5 },
+    Leg { from: vec3(32.0, 0.0, 126.0), to: vec3(32.0, 13.5, 138.0), kind: LEG_WALK, at: 0.0, tol: 1.5 },
+    Leg { from: vec3(32.0, 0.0, 138.0), to: vec3(27.5, 13.5, 141.0), kind: LEG_WALK, at: 0.0, tol: 1.5 },
+]
+
+// The pond crossing, from the north shore to the landing by the courtyard's fence: stones,
+// two bobbing logs (movers: their tops are about 0.55 above the water), the zig-zag bridge
+// (its turns are the walk's waypoints), lily pads.
+const ROUTE_POND: [19]Leg = [
+    Leg { from: vec3(181.50, 0.0, 109.50), to: vec3(177.96, 0.3, 106.26), kind: LEG_JUMP, at: 1.2, tol: 1.0 },
+    Leg { from: vec3(177.96, 0.0, 106.26), to: vec3(175.52, 0.3, 104.04), kind: LEG_JUMP, at: 0.5, tol: 1.0 },
+    Leg { from: vec3(175.52, 0.0, 104.04), to: vec3(173.08, 0.3, 101.81), kind: LEG_JUMP, at: 0.5, tol: 1.0 },
+    Leg { from: vec3(173.08, 0.0, 101.81), to: vec3(169.06, 0.2, 98.37), kind: LEG_JUMP, at: 0.5, tol: 2.6 },
+    Leg { from: vec3(169.06, 0.6, 98.37), to: vec3(164.65, 0.3, 95.43), kind: LEG_JUMP, at: 1.9, tol: 1.0 },
+    Leg { from: vec3(164.65, 0.0, 95.43), to: vec3(160.24, 0.2, 92.49), kind: LEG_JUMP, at: 0.5, tol: 2.6 },
+    Leg { from: vec3(160.24, 0.6, 92.49), to: vec3(156.72, 0.3, 88.73), kind: LEG_JUMP, at: 1.9, tol: 1.0 },
+    Leg { from: vec3(156.72, 0.0, 88.73), to: vec3(155.10, 0.3, 85.85), kind: LEG_JUMP, at: 0.5, tol: 1.0 },
+    Leg { from: vec3(155.10, 0.0, 85.85), to: vec3(154.83, 0.3, 83.34), kind: LEG_JUMP, at: 0.5, tol: 1.0 },
+    Leg { from: vec3(154.83, 0.0, 83.34), to: vec3(152.63, 0.3, 79.34), kind: LEG_WALK, at: 0.0, tol: 0.6 },
+    Leg { from: vec3(152.63, 0.0, 79.34), to: vec3(156.02, 0.3, 75.83), kind: LEG_WALK, at: 0.0, tol: 0.6 },
+    Leg { from: vec3(156.02, 0.0, 75.83), to: vec3(153.88, 0.3, 71.44), kind: LEG_WALK, at: 0.0, tol: 0.6 },
+    Leg { from: vec3(153.88, 0.0, 71.44), to: vec3(157.21, 0.3, 68.32), kind: LEG_WALK, at: 0.0, tol: 0.6 },
+    Leg { from: vec3(157.21, 0.0, 68.32), to: vec3(155.92, 0.3, 64.94), kind: LEG_JUMP, at: 0.5, tol: 1.0 },
+    Leg { from: vec3(155.92, 0.0, 64.94), to: vec3(156.22, -0.1, 61.36), kind: LEG_JUMP, at: 0.5, tol: 1.0 },
+    Leg { from: vec3(156.22, 0.0, 61.36), to: vec3(156.20, -0.1, 57.56), kind: LEG_JUMP, at: 0.5, tol: 1.0 },
+    Leg { from: vec3(156.20, 0.0, 57.56), to: vec3(154.15, 0.3, 54.60), kind: LEG_JUMP, at: 0.5, tol: 1.0 },
+    Leg { from: vec3(154.15, 0.0, 54.60), to: vec3(150.00, 0.3, 51.50), kind: LEG_JUMP, at: 0.5, tol: 1.5 },
+    Leg { from: vec3(150.00, 0.0, 51.50), to: vec3(140.00, 0.3, 51.50), kind: LEG_WALK, at: 0.0, tol: 1.5 },
+]
+
+var sh_leg: s32
+var sh_t: s32              // ticks into the leg
+var sh_start: vec3
+var sh_air: bool
+var sh_presses: s32
+var sh_hold: bool
+var sh_fails: s32
+
+fn shrine_case_init() -> bool {
+    match SCENARIO {
+        300 => { name = "shrine: the spawn on the road, walk north through the great torii" }
+        301 => { name = "shrine: wading in the pond is slow, and no jump from deep water" }
+        302 => { name = "shrine: the forest loop, west: trail, spring, stairs" }
+        303 => { name = "shrine: the pond crossing, back to the courtyard" }
+        else => { return false }
+    }
+    cam.lock = false
+    sh_leg = -1
+    return true
+}
+
+fn shrine_case(f: s32) {
+    match SCENARIO {
+        300 => sh_spawn(f)
+        301 => sh_wade(f)
+        302 => sh_route(f, &ROUTE_WEST[0], len(ROUTE_WEST) as s32)
+        303 => sh_route(f, &ROUTE_POND[0], len(ROUTE_POND) as s32)
+        else => {}
+    }
+}
+
+// The floor under (x, z), from high up.
+fn sh_floor(x: fixed, z: fixed, from: fixed) -> fixed {
+    if wp_floor(vec3(x, from, z), 0.0) { return wp_hit.y }
+    return -100.0
+}
+
+fn sh_heading(to: vec3) -> fixed { return atan2(to.x - pl.pos.x, to.z - pl.pos.z) }
+
+fn sh_spawn(f: s32) {
+    if f == 0 {
+        expect(near(pl.pos.z, 8.0, 0.5), "spawn on the south sidewalk, z", pl.pos.z)
+        mark()
+    }
+    if f < 280 { stick_v = FWD }
+    if f == 280 {
+        expect(pl.pos.z > 44.0, "walked north through the torii, z", pl.pos.z)
+        expect(pl.st == St.Ground, "on the ground", pl.pos.y)
+        done()
+    }
+}
+
+fn sh_wade(f: s32) {
+    if f == 0 { place(vec3(176.0, -1.6, 58.0), WEST) }
+    if f < 120 { stick_v = FWD }
+    if f == 100 {
+        expect(pl_wade > 0.9, "deep in the pond, depth", pl_wade)
+        let v = speed_ms()
+        expect(v < tv[T.RunSpeed] * 0.5, "wading speed under half the run, m/s", v)
+        mark()
+    }
+    if f == 102 { pad_v = A }
+    if f == 120 {
+        expect(apex < pl.pos.y + 0.3, "no jump from deep water, rise", apex - pl.pos.y)
+        done()
+    }
+}
+
+// Runs the legs one after another; each must reach its end in 6 seconds.
+fn sh_route(f: s32, legs: *Leg, n: s32) {
+    if sh_leg < 0 || sh_leg >= n {
+        if sh_leg < 0 { sh_leg = 0; sh_begin(legs[0]) }
+        else { done(); return }
+    }
+    let lg = legs[sh_leg]
+    sh_t += 1
+    let to = vec3(lg.to.x, pl.pos.y, lg.to.z)
+    let d = length(vec3(to.x - pl.pos.x, 0.0, to.z - pl.pos.z))
+    let ran = length(vec3(pl.pos.x - sh_start.x, 0.0, pl.pos.z - sh_start.z))
+    if is_air(pl.st) || pl.st == St.Glide { sh_air = true }
+    if !sh_air {
+        if d > 0.3 { stick_v = cc_stick(sh_heading(to), 1.0) }
+    } else {
+        // in the air: steer by where the body would come down about 0.4 s from now
+        let ahead = pl.pos + vec3(pl.vel.x, 0.0, pl.vel.z) * 24
+        let err = vec3(to.x - ahead.x, 0.0, to.z - ahead.z)
+        let m = min(length(err), 1.0)
+        if m > 0.1 { stick_v = cc_stick(atan2(err.x, err.z), m) }
+    }
+    if lg.kind != LEG_WALK && sh_presses == 0 && ran >= lg.at { pad_v = A; sh_presses = 1; sh_hold = true }
+    else if sh_hold && (!sh_air || pl.vel.y > 0.0) { pad_v = A }       // held: the full jump
+    else if sh_hold { sh_hold = false }                                   // released at the apex
+    else if lg.kind == LEG_DOUBLE && sh_presses == 1 && sh_air { pad_v = A; sh_presses = 2; sh_hold = true }
+    var arrived = false
+    if lg.kind == LEG_WALK { arrived = d < lg.tol && pl.st == St.Ground }
+    else { arrived = sh_air && pl.st == St.Ground && sh_t > 4 }
+    if arrived {
+        if lg.kind != LEG_WALK {
+            expect(d < lg.tol, "landed at the end, off by", d)
+        } else {
+            expect(true, "reached the end of a walk, ticks", fixed(sh_t))
+        }
+        if lg.to.y != 0.0 { expect(pl.pos.y >= lg.to.y, "high enough, y", pl.pos.y) }
+        sh_leg += 1
+        if sh_leg < n { sh_begin(legs[sh_leg]) }
+        return
+    }
+    if sh_t > 360 {
+        report("FAIL ", "leg not finished, leg", fixed(sh_leg))
+        assert(false)
+    }
+}
+
+fn sh_begin(lg: Leg) {
+    var y = lg.from.y
+    if y == 0.0 { y = sh_floor(lg.from.x, lg.from.z, 90.0) }
+    place(vec3(lg.from.x, y, lg.from.z), atan2(lg.to.x - lg.from.x, lg.to.z - lg.from.z))
+    cam.lock = false
+    sh_start = pl.pos
+    sh_t = 0
+    sh_air = false
+    sh_presses = 0
+    sh_hold = false
+}

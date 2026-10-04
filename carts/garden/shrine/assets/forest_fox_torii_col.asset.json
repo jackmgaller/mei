@@ -1,0 +1,74 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "forest_fox_torii_col",
+ "materials": {
+  "a": {
+   "color": "#d8462a",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "op": "box",
+   "size": [
+    0.3,
+    3.6,
+    0.3
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     -1.45,
+     1.8,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    0.3,
+    3.6,
+    0.3
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     1.45,
+     1.8,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    3.8,
+    0.3,
+    0.4
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     3.45,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

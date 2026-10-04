@@ -1,0 +1,78 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "arch_corridor_hall_col",
+ "materials": {
+  "a": {
+   "color": "#d8462a",
+   "palette": true
+  },
+  "b": {
+   "color": "#3e4248",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "op": "box",
+   "size": [
+    30,
+    4.2,
+    10
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     2.1,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    33,
+    2.61,
+    13
+   ],
+   "material": "b",
+   "transform": {
+    "translate": [
+     0,
+     5.505,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    19.2,
+    3.19,
+    7.199999999999999
+   ],
+   "material": "b",
+   "transform": {
+    "translate": [
+     0,
+     8.405000000000001,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

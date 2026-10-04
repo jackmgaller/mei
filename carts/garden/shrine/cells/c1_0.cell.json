@@ -1,0 +1,175 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c1_0",
+ "at": [
+  1,
+  0
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "pole_2",
+   "asset": "street_utility_pole",
+   "position": [
+    84,
+    12.8
+   ],
+   "collision": "street_utility_pole_col"
+  },
+  {
+   "id": "pole_3",
+   "asset": "street_utility_pole",
+   "position": [
+    108,
+    12.8
+   ],
+   "collision": "street_utility_pole_col"
+  },
+  {
+   "id": "torii",
+   "asset": "arch_torii_great",
+   "position": [
+    95.0,
+    0.45,
+    36.0
+   ],
+   "collision": "arch_torii_great_col"
+  },
+  {
+   "id": "side_hall_e",
+   "asset": "arch_side_hall",
+   "position": [
+    127.0,
+    0.45,
+    56.0
+   ],
+   "yaw": 90,
+   "collision": "arch_side_hall_col"
+  },
+  {
+   "id": "lantern_cw0",
+   "asset": "forest_stone_lantern",
+   "position": [
+    89.0,
+    0.45,
+    46
+   ],
+   "collision": "forest_stone_lantern_col",
+   "merge": true
+  },
+  {
+   "id": "lantern_ce0",
+   "asset": "forest_stone_lantern",
+   "position": [
+    101.0,
+    0.45,
+    46
+   ],
+   "collision": "forest_stone_lantern_col",
+   "merge": true
+  },
+  {
+   "id": "lantern_cw1",
+   "asset": "forest_stone_lantern",
+   "position": [
+    89.0,
+    0.45,
+    58
+   ],
+   "collision": "forest_stone_lantern_col",
+   "merge": true
+  },
+  {
+   "id": "lantern_ce1",
+   "asset": "forest_stone_lantern",
+   "position": [
+    101.0,
+    0.45,
+    58
+   ],
+   "collision": "forest_stone_lantern_col",
+   "merge": true
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_utility_2",
+   "type": "pole",
+   "position": [
+    84,
+    12.8
+   ],
+   "params": {
+    "height": 8.5
+   }
+  },
+  {
+   "id": "pole_utility_3",
+   "type": "pole",
+   "position": [
+    108,
+    12.8
+   ],
+   "params": {
+    "height": 8.5
+   }
+  },
+  {
+   "id": "pole_torii_w",
+   "type": "pole",
+   "position": [
+    90.0,
+    0.45,
+    36.0
+   ],
+   "params": {
+    "height": 11.0
+   }
+  },
+  {
+   "id": "pole_torii_e",
+   "type": "pole",
+   "position": [
+    100.0,
+    0.45,
+    36.0
+   ],
+   "params": {
+    "height": 11.0
+   }
+  },
+  {
+   "id": "spawn",
+   "type": "spawn",
+   "position": [
+    95.0,
+    0.15,
+    8.0
+   ],
+   "params": {
+    "yaw": 0
+   }
+  },
+  {
+   "id": "coin_side_hall_e",
+   "type": "coin",
+   "position": [
+    127.0,
+    11.9,
+    56.0
+   ],
+   "asset": "coin"
+  },
+  {
+   "id": "coin_torii",
+   "type": "coin",
+   "position": [
+    95.0,
+    13.6,
+    36.0
+   ],
+   "asset": "coin"
+  }
+ ]
+}

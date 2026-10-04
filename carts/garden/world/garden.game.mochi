@@ -10,7 +10,7 @@ probe {
   floor_max_degrees = 40
 }
 
-worlds garden
+worlds garden, shrine
 
 // Where the player starts. yaw in degrees, as a placement's (0 faces +z, north).
 type spawn {
@@ -54,3 +54,13 @@ type camera_zone {
   mode: follow | fixed | rail
   look: vec3 = [0, 0, 0]
 }
+
+// A way into another world of the game: touching the box (size, rising from the placement)
+// loads that world and puts the player at its spawn.
+type door {
+  world: world
+  size:  vec3 = [2, 3, 2]
+}
+
+// A red coin: eight in a level, along its hardest route (the shrine's forest loop).
+saved type red_coin

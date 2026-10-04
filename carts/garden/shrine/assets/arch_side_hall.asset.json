@@ -1,0 +1,78 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "arch_side_hall",
+ "materials": {
+  "a": {
+   "color": "#d8462a",
+   "palette": true
+  },
+  "b": {
+   "color": "#3e4248",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "op": "box",
+   "size": [
+    34,
+    4.4,
+    10
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     2.2,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    37,
+    2.9250000000000003,
+    13
+   ],
+   "material": "b",
+   "transform": {
+    "translate": [
+     0,
+     5.862500000000001,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    21.599999999999998,
+    3.575,
+    7.199999999999999
+   ],
+   "material": "b",
+   "transform": {
+    "translate": [
+     0,
+     9.1125,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

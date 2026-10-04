@@ -45,6 +45,9 @@ fn wp_water_open(blob: *u8) {
     __wpw = (blob as u32 + 4) as *WpWaterTri
 }
 
+// No water: for a cart that opens a world without water after one with it.
+fn wp_water_close() { __wpw_count = 0 }
+
 // Whether world point p is under a water surface (or within above of it, above it): the
 // lowest surface over p.y - above at p's x and z. Sets wp_water_hit.
 fn wp_water(p: vec3, above: fixed) -> bool {

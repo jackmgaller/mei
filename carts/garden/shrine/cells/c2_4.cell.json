@@ -1,0 +1,22 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c2_4",
+ "at": [
+  2,
+  4
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "falls",
+   "asset": "water_falls",
+   "position": [
+    150.0,
+    17.6,
+    257.4
+   ],
+   "collision": "none"
+  }
+ ]
+}

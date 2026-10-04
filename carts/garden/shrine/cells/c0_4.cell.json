@@ -1,0 +1,177 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_4",
+ "at": [
+  0,
+  4
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "fox_torii_10",
+   "asset": "forest_fox_torii",
+   "position": [
+    22.25,
+    256.75
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_11",
+   "asset": "forest_fox_torii",
+   "position": [
+    20.75,
+    257.96
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_12",
+   "asset": "forest_fox_torii",
+   "position": [
+    19.25,
+    259.18
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_13",
+   "asset": "forest_fox_torii",
+   "position": [
+    17.75,
+    260.39
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_14",
+   "asset": "forest_fox_torii",
+   "position": [
+    18.82,
+    267.57
+   ],
+   "yaw": 55,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_15",
+   "asset": "forest_fox_torii",
+   "position": [
+    20.45,
+    268.7
+   ],
+   "yaw": 55,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_16",
+   "asset": "forest_fox_torii",
+   "position": [
+    22.09,
+    269.84
+   ],
+   "yaw": 55,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_17",
+   "asset": "forest_fox_torii",
+   "position": [
+    23.73,
+    270.98
+   ],
+   "yaw": 55,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_18",
+   "asset": "forest_fox_torii",
+   "position": [
+    25.36,
+    272.11
+   ],
+   "yaw": 55,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_19",
+   "asset": "forest_fox_torii",
+   "position": [
+    27.0,
+    273.25
+   ],
+   "yaw": 55,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_20",
+   "asset": "forest_fox_torii",
+   "position": [
+    28.64,
+    274.39
+   ],
+   "yaw": 55,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_21",
+   "asset": "forest_fox_torii",
+   "position": [
+    30.27,
+    275.52
+   ],
+   "yaw": 55,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_22",
+   "asset": "forest_fox_torii",
+   "position": [
+    31.91,
+    276.66
+   ],
+   "yaw": 55,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_23",
+   "asset": "forest_fox_torii",
+   "position": [
+    33.55,
+    277.8
+   ],
+   "yaw": 55,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_24",
+   "asset": "forest_fox_torii",
+   "position": [
+    35.18,
+    278.93
+   ],
+   "yaw": 55,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  }
+ ]
+}

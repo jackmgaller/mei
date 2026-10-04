@@ -1,0 +1,230 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c2_0",
+ "at": [
+  2,
+  0
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "building",
+   "asset": "street_building",
+   "position": [
+    139,
+    7
+   ],
+   "yaw": 180,
+   "collision": "street_building_col"
+  },
+  {
+   "id": "lamp_3",
+   "asset": "street_lamp",
+   "position": [
+    134,
+    30.6
+   ],
+   "yaw": 180,
+   "collision": "street_lamp_col"
+  },
+  {
+   "id": "lamp_4",
+   "asset": "street_lamp",
+   "position": [
+    172,
+    30.6
+   ],
+   "yaw": 180,
+   "collision": "street_lamp_col"
+  },
+  {
+   "id": "barrier_e0",
+   "asset": "street_barrier",
+   "position": [
+    189.0,
+    5
+   ],
+   "yaw": 90,
+   "collision": "street_barrier_col"
+  },
+  {
+   "id": "barrier_e1",
+   "asset": "street_barrier",
+   "position": [
+    189.0,
+    11
+   ],
+   "yaw": 90,
+   "collision": "street_barrier_col"
+  },
+  {
+   "id": "barrier_e2",
+   "asset": "street_barrier",
+   "position": [
+    189.0,
+    17
+   ],
+   "yaw": 90,
+   "collision": "street_barrier_col"
+  },
+  {
+   "id": "barrier_e3",
+   "asset": "street_barrier",
+   "position": [
+    189.0,
+    23
+   ],
+   "yaw": 90,
+   "collision": "street_barrier_col"
+  },
+  {
+   "id": "barrier_e4",
+   "asset": "street_barrier",
+   "position": [
+    189.0,
+    29
+   ],
+   "yaw": 90,
+   "collision": "street_barrier_col"
+  },
+  {
+   "id": "fence_c0",
+   "asset": "fence_bamboo_8",
+   "position": [
+    146.4,
+    0.45,
+    36
+   ],
+   "yaw": 90,
+   "collision": "fence_bamboo_8_col"
+  },
+  {
+   "id": "fence_c1",
+   "asset": "fence_bamboo_8",
+   "position": [
+    146.4,
+    0.45,
+    44
+   ],
+   "yaw": 90,
+   "collision": "fence_bamboo_8_col"
+  },
+  {
+   "id": "fence_c3",
+   "asset": "fence_bamboo_8",
+   "position": [
+    146.4,
+    0.45,
+    60
+   ],
+   "yaw": 90,
+   "collision": "fence_bamboo_8_col"
+  },
+  {
+   "id": "fence_r0",
+   "asset": "fence_bamboo_8",
+   "position": [
+    150,
+    0.15,
+    31.0
+   ],
+   "collision": "fence_bamboo_8_col"
+  },
+  {
+   "id": "fence_r1",
+   "asset": "fence_bamboo_8",
+   "position": [
+    158,
+    0.15,
+    31.0
+   ],
+   "collision": "fence_bamboo_8_col"
+  },
+  {
+   "id": "fence_r2",
+   "asset": "fence_bamboo_8",
+   "position": [
+    166,
+    0.15,
+    31.0
+   ],
+   "collision": "fence_bamboo_8_col"
+  },
+  {
+   "id": "fence_r3",
+   "asset": "fence_bamboo_8",
+   "position": [
+    174,
+    0.15,
+    31.0
+   ],
+   "collision": "fence_bamboo_8_col"
+  },
+  {
+   "id": "fence_r4",
+   "asset": "fence_bamboo_8",
+   "position": [
+    182,
+    0.15,
+    31.0
+   ],
+   "collision": "fence_bamboo_8_col"
+  },
+  {
+   "id": "fence_r5",
+   "asset": "fence_bamboo_8",
+   "position": [
+    190,
+    0.15,
+    31.0
+   ],
+   "collision": "fence_bamboo_8_col"
+  },
+  {
+   "id": "lily_pad_10",
+   "asset": "water_lily_pad",
+   "position": [
+    156.22,
+    0.0,
+    61.36
+   ],
+   "yaw": 170,
+   "collision": "water_lily_pad_col"
+  },
+  {
+   "id": "lily_pad_11",
+   "asset": "water_lily_pad_flower",
+   "position": [
+    156.2,
+    0.0,
+    57.56
+   ],
+   "yaw": 223,
+   "collision": "water_lily_pad_flower_col"
+  },
+  {
+   "id": "pond_stone_12",
+   "asset": "water_stepping_stone_a",
+   "position": [
+    154.15,
+    -1.1,
+    54.6
+   ],
+   "yaw": 84,
+   "collision": "water_stepping_stone_a_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "coin_building",
+   "type": "coin",
+   "position": [
+    139.0,
+    16.3,
+    7.0
+   ],
+   "asset": "coin"
+  }
+ ]
+}

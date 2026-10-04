@@ -1,0 +1,112 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "arch_gate_col",
+ "materials": {
+  "a": {
+   "color": "#d8462a",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "op": "box",
+   "size": [
+    7,
+    5,
+    8
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     -6.5,
+     2.5,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    7,
+    5,
+    8
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     6.5,
+     2.5,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    20,
+    2,
+    8
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     6,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    16,
+    4,
+    6
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     9,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    20,
+    1.5,
+    9
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     12.25,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

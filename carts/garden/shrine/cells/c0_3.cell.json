@@ -1,0 +1,210 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_3",
+ "at": [
+  0,
+  3
+ ],
+ "region": "shrine",
+ "placements": [
+  {
+   "id": "giant_4",
+   "asset": "tree_cedar_giant",
+   "position": [
+    38,
+    198
+   ],
+   "collision": "tree_cedar_giant_col"
+  },
+  {
+   "id": "deck_4",
+   "asset": "forest_platform",
+   "position": [
+    38,
+    23.0,
+    198
+   ],
+   "yaw": 63,
+   "collision": "forest_platform_col"
+  },
+  {
+   "id": "giant_5",
+   "asset": "tree_cedar_giant",
+   "position": [
+    54,
+    206
+   ],
+   "collision": "tree_cedar_giant_col"
+  },
+  {
+   "id": "deck_5",
+   "asset": "forest_platform",
+   "position": [
+    54,
+    26.0,
+    206
+   ],
+   "collision": "forest_platform_col"
+  },
+  {
+   "id": "fox_shrine",
+   "asset": "forest_fox_shrine",
+   "position": [
+    44.0,
+    242.0
+   ],
+   "collision": "forest_fox_shrine_col"
+  },
+  {
+   "id": "fox_statue_w",
+   "asset": "forest_fox_statue",
+   "position": [
+    40.0,
+    237.0
+   ],
+   "collision": "forest_fox_statue_col"
+  },
+  {
+   "id": "fox_statue_e",
+   "asset": "forest_fox_statue",
+   "position": [
+    48.0,
+    237.0
+   ],
+   "collision": "forest_fox_statue_col"
+  },
+  {
+   "id": "fox_torii_0",
+   "asset": "forest_fox_torii",
+   "position": [
+    37.25,
+    244.61
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_1",
+   "asset": "forest_fox_torii",
+   "position": [
+    35.75,
+    245.82
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_2",
+   "asset": "forest_fox_torii",
+   "position": [
+    34.25,
+    247.04
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_3",
+   "asset": "forest_fox_torii",
+   "position": [
+    32.75,
+    248.25
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_4",
+   "asset": "forest_fox_torii",
+   "position": [
+    31.25,
+    249.46
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_5",
+   "asset": "forest_fox_torii",
+   "position": [
+    29.75,
+    250.68
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_6",
+   "asset": "forest_fox_torii",
+   "position": [
+    28.25,
+    251.89
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_7",
+   "asset": "forest_fox_torii",
+   "position": [
+    26.75,
+    253.11
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_8",
+   "asset": "forest_fox_torii",
+   "position": [
+    25.25,
+    254.32
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  },
+  {
+   "id": "fox_torii_9",
+   "asset": "forest_fox_torii",
+   "position": [
+    23.75,
+    255.54
+   ],
+   "yaw": 309,
+   "collision": "forest_fox_torii_col",
+   "merge": true
+  }
+ ],
+ "entities": [
+  {
+   "id": "coin_treetop",
+   "type": "coin",
+   "position": [
+    56.2,
+    27.0,
+    206
+   ],
+   "asset": "coin"
+  },
+  {
+   "id": "red_fox",
+   "type": "red_coin",
+   "position": [
+    40.0,
+    237.0
+   ],
+   "asset": "coin_red",
+   "lift": 3.0
+  }
+ ]
+}

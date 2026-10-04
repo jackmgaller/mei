@@ -21,7 +21,9 @@ var frame_n: s32               // presented frames (update() calls): the tests' 
 var sim_t: s32                 // ticks simulated
 var last_frame: u32
 var coins: s32
-var coin_got: [8]u32           // a bit per entity number
+var red_coins: s32
+var coin_got: [8]u32           // a bit per entity number (of the world open now)
+var door_wait: bool            // standing in the door just come through: not taken again until left
 
 fn init() {
     // The depth buffer and perspective-correct textures (docs/RENDERING.md): everything is
@@ -29,6 +31,7 @@ fn init() {
     // plain mesh_at(), in any order.
     render_depth(true)
     render_perspective(true)
+    world_k = start_world()
     assert(world_load())
     tune_defaults()
     for k in 0..8 { surface_map[k] = WORLD_SURFACES[k] }
@@ -98,6 +101,7 @@ fn update() {
         sim_t += 1
     }
     collect_coins()
+    use_doors()
     cam_place()
     test_hook(frame_n)
     timing_frame()
@@ -114,13 +118,50 @@ fn collect_coins() {
     for k in 0..c.entity_count as s32 {
         let e = wp_cell_entity(c, k)
         let n = e.number as s32
-        if e.type_id as s32 != COIN_TYPE || coin_taken(n) || !wp_entity_live(e) { continue }
+        let ty = e.type_id as s32
+        if (ty != COIN_TYPE && ty != RED_COIN_TYPE) || coin_taken(n) || !wp_entity_live(e) { continue }
         let d = wp_entity_pos(e) - (pl.pos + vec3(0.0, BODY_HEIGHT / 2, 0.0))
         if abs(d.x) < 0.8 && abs(d.y) < 1.2 && abs(d.z) < 0.8 {
             coin_got[(n >> 5) & 7] |= (1 << (n & 31)) as u32
-            coins += 1
+            if ty == RED_COIN_TYPE { red_coins += 1 } else { coins += 1 }
         }
     }
+}
+
+// ---- doors (the world's door entities): walk into one to go to its world
+
+// Opens world k and starts the player at its spawn. Coins taken are the world's own, so they
+// start again (nothing is saved yet).
+fn world_switch(k: s32) {
+    world_k = k
+    assert(world_load())
+    for w in 0..8 { coin_got[w] = 0 }
+    coins = 0
+    red_coins = 0
+    attach_init()
+    place_at_spawn()
+    cam_reset()
+    door_wait = true
+}
+
+fn use_doors() {
+    let c = wp_cell_at(pl.pos)
+    if c == null { return }
+    var inside = false
+    for k in 0..c.entity_count as s32 {
+        let e = wp_cell_entity(c, k)
+        if e.type_id as s32 != DOOR_TYPE { continue }
+        let p = wp_entity_params(e) as *GardenDoor
+        let d = pl.pos - wp_entity_pos(e)
+        if abs(d.x) < p.size.x / 2 && abs(d.z) < p.size.z / 2 && d.y > -0.5 && d.y < p.size.y {
+            inside = true
+            if !door_wait {
+                world_switch(p.world as s32)
+                return
+            }
+        }
+    }
+    if !inside { door_wait = false }
 }
 
 // ---- drawing
@@ -138,10 +179,12 @@ fn draw_entities() {
                 let e = wp_cell_entity(c, k)
                 let m = wp_entity_mesh(e)
                 if m == null || !wp_entity_live(e) { continue }
-                if e.type_id as s32 == COIN_TYPE && coin_taken(e.number as s32) { continue }
+                let ty = e.type_id as s32
+                let coin = ty == COIN_TYPE || ty == RED_COIN_TYPE
+                if coin && coin_taken(e.number as s32) { continue }
                 if attach_owns(e) { continue }         // attach_draw() draws it where it is now
                 var yaw = e.yaw
-                if e.type_id as s32 == COIN_TYPE { yaw = frame_angle(sim_t, 0.05) }
+                if coin { yaw = frame_angle(sim_t, 0.05) }
                 mesh_at(m, wp_entity_pos(e) - o, yaw)
             }
         }
@@ -149,7 +192,7 @@ fn draw_entities() {
 }
 
 fn draw() {
-    cls(rgb(110, 150, 200))
+    if world_backdrop() { wp_backdrop_draw(cam.yaw, cam.pitch) } else { cls(rgb(110, 150, 200)) }
     wp_draw(cam.eye, cam.yaw, cam.pitch)
     draw_entities()
     attach_draw()

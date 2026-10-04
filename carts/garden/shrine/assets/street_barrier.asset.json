@@ -1,0 +1,91 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "street_barrier",
+  "sheets": {"street": {"image": "art/street_sheet.png"}},
+  "budget": {"triangles": 40},
+  "materials": {
+    "barricade": {
+      "color": "#f0c030",
+      "double_sided": true,
+      "texture": {"sheet": "street", "cell": "barrier", "projection": "fit"}
+    },
+    "lamp": {"color": "#f0a020", "class": "emissive"},
+    "cone": {
+      "color": "#e0502a",
+      "texture": {
+        "texels": [
+          "11111111", "11111111", "11111111", "22222222", "22222222", "11111111", "11111111",
+          "11111111"
+        ],
+        "colors": ["#e0502a", "#e0502a", "#eceae4"],
+        "projection": "cylindrical",
+        "scale": [1.1, 0.7]
+      }
+    },
+    "sign": {"color": "#fbfaf4", "texture": {"sheet": "street", "cell": "kouji", "projection": "fit"}},
+    "sign_back": {"color": "#8e8a84", "palette": true},
+    "stand": {"color": "#6a665e", "palette": true, "double_sided": true}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {
+      "id": "barricades",
+      "op": "mesh",
+      "vertices": [[-3.0, 1.2, 0.0], [3.0, 1.2, 0.0], [3.0, 0.0, 0.0], [-3.0, 0.0, 0.0]],
+      "faces": [[0, 1, 2, 3]],
+      "face_materials": ["barricade"]
+    },
+    {
+      "id": "blinkers",
+      "op": "mesh",
+      "vertices": [
+        [-2.0, 1.26, 0.0], [-1.93, 1.12, -0.07], [-2.07, 1.12, -0.07], [-1.93, 1.12, 0.07],
+        [-2.07, 1.12, 0.07], [0.0, 1.26, 0.0], [0.07, 1.12, -0.07], [-0.07, 1.12, -0.07],
+        [0.07, 1.12, 0.07], [-0.07, 1.12, 0.07], [2.0, 1.26, 0.0], [2.07, 1.12, -0.07],
+        [1.93, 1.12, -0.07], [2.07, 1.12, 0.07], [1.93, 1.12, 0.07]
+      ],
+      "faces": [
+        [0, 1, 2], [0, 3, 1], [0, 4, 3], [0, 2, 4], [5, 6, 7], [5, 8, 6], [5, 9, 8], [5, 7, 9],
+        [10, 11, 12], [10, 13, 11], [10, 14, 13], [10, 12, 14]
+      ],
+      "face_materials": [
+        "lamp", "lamp", "lamp", "lamp", "lamp", "lamp", "lamp", "lamp", "lamp", "lamp", "lamp",
+        "lamp"
+      ]
+    },
+    {
+      "id": "cones",
+      "op": "mesh",
+      "vertices": [
+        [1.6, 0.7, -0.55], [1.6525, 0.0, -0.3883], [1.77, 0.0, -0.55], [1.4625, 0.0, -0.4501],
+        [1.4625, 0.0, -0.6499], [1.6525, 0.0, -0.7117], [2.5, 0.7, -0.5], [2.5525, 0.0, -0.3383],
+        [2.67, 0.0, -0.5], [2.3625, 0.0, -0.4001], [2.3625, 0.0, -0.5999], [2.5525, 0.0, -0.6617]
+      ],
+      "faces": [
+        [0, 1, 2], [0, 3, 1], [0, 4, 3], [0, 5, 4], [0, 2, 5], [6, 7, 8], [6, 9, 7], [6, 10, 9],
+        [6, 11, 10], [6, 8, 11]
+      ],
+      "face_materials": ["cone", "cone", "cone", "cone", "cone", "cone", "cone", "cone", "cone", "cone"]
+    },
+    {
+      "id": "sign",
+      "op": "mesh",
+      "vertices": [
+        [-2.6, 1.2, -0.62], [-1.8, 1.2, -0.62], [-1.8, 0.2, -0.62], [-2.6, 0.2, -0.62],
+        [-2.6, 1.2, -0.58], [-1.8, 1.2, -0.58], [-1.8, 0.2, -0.58], [-2.6, 0.2, -0.58]
+      ],
+      "faces": [[0, 1, 2, 3], [4, 5, 1, 0], [3, 2, 6, 7], [7, 6, 5, 4], [7, 4, 0, 3], [2, 1, 5, 6]],
+      "face_materials": ["sign", "sign_back", "sign_back", "sign_back", "sign_back", "sign_back"]
+    },
+    {
+      "id": "stand",
+      "op": "mesh",
+      "vertices": [[-2.5, 0.0, -0.2], [-1.9, 0.0, -0.2], [-1.9, 0.7, -0.58], [-2.5, 0.7, -0.58]],
+      "faces": [[0, 1, 2, 3]],
+      "face_materials": ["stand"]
+    }
+  ],
+  "lod": {"cull": 90}
+}

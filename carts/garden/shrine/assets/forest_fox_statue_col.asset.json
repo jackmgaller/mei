@@ -1,0 +1,59 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "forest_fox_statue_col",
+ "materials": {
+  "s": {
+   "color": "#8e887c",
+   "palette": true
+  },
+  "w": {
+   "color": "#e8e4d8",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "op": "box",
+   "size": [
+    0.8,
+    1.0,
+    0.8
+   ],
+   "material": "s",
+   "transform": {
+    "translate": [
+     0,
+     0.5,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    0.5,
+    0.8,
+    0.6
+   ],
+   "material": "w",
+   "transform": {
+    "translate": [
+     0,
+     1.4,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

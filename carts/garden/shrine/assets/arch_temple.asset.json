@@ -1,0 +1,101 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "arch_temple",
+ "materials": {
+  "a": {
+   "color": "#8a6446",
+   "palette": true
+  },
+  "b": {
+   "color": "#3e4248",
+   "palette": true
+  },
+  "s": {
+   "color": "#8e887c",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "op": "box",
+   "size": [
+    52,
+    3.6,
+    24
+   ],
+   "material": "s",
+   "transform": {
+    "translate": [
+     0,
+     1.8,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    44,
+    8,
+    18
+   ],
+   "material": "a",
+   "transform": {
+    "translate": [
+     0,
+     7.6,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    52,
+    4,
+    24
+   ],
+   "material": "b",
+   "transform": {
+    "translate": [
+     0,
+     13.6,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "op": "box",
+   "size": [
+    30,
+    7,
+    12
+   ],
+   "material": "b",
+   "transform": {
+    "translate": [
+     0,
+     19.1,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}
