@@ -1,0 +1,204 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "se",
+ "at": [
+  1,
+  0
+ ],
+ "region": "garden",
+ "placements": [
+  {
+   "id": "ground",
+   "asset": "ground_se",
+   "position": [
+    96.0,
+    0.0,
+    32.0
+   ],
+   "collision": "ground_se_col",
+   "ground": true
+  },
+  {
+   "id": "utility_pole_4",
+   "asset": "street_utility_pole",
+   "position": [
+    92.0,
+    0.0,
+    56.0
+   ],
+   "collision": "street_utility_pole_col"
+  },
+  {
+   "id": "konbini",
+   "asset": "street_konbini",
+   "position": [
+    81.0,
+    0.0,
+    44.02490234375
+   ],
+   "collision": "street_konbini_col"
+  },
+  {
+   "id": "awning",
+   "asset": "street_awning",
+   "position": [
+    81.0,
+    2.449951171875,
+    53.75
+   ],
+   "collision": "street_awning_col"
+  },
+  {
+   "id": "vending_1",
+   "asset": "street_vending_machine",
+   "position": [
+    90.39990234375,
+    0.0,
+    48.0
+   ],
+   "collision": "street_vending_machine_col"
+  },
+  {
+   "id": "vending_2",
+   "asset": "street_vending_machine",
+   "position": [
+    90.39990234375,
+    0.0,
+    46.300048828125
+   ],
+   "collision": "street_vending_machine_col"
+  },
+  {
+   "id": "lamp_4",
+   "asset": "street_lamp",
+   "position": [
+    100.0,
+    0.0,
+    56.5
+   ],
+   "collision": "street_lamp_col"
+  },
+  {
+   "id": "shrine_hill",
+   "asset": "ground_shrine_hill",
+   "position": [
+    111.0,
+    0.0,
+    27.0
+   ],
+   "collision": "ground_shrine_hill_col"
+  },
+  {
+   "id": "shrine_steps",
+   "asset": "ground_shrine_steps",
+   "position": [
+    101.0,
+    0.0,
+    18.0
+   ],
+   "collision": "ground_shrine_steps_col"
+  },
+  {
+   "id": "torii",
+   "asset": "shrine_torii",
+   "position": [
+    101.0,
+    0.0,
+    2.39990234375
+   ],
+   "collision": "shrine_torii_col"
+  },
+  {
+   "id": "pagoda",
+   "asset": "shrine_pagoda",
+   "position": [
+    116.0,
+    10.0,
+    42.0
+   ],
+   "collision": "shrine_pagoda_col"
+  },
+  {
+   "id": "hall",
+   "asset": "shrine_hall",
+   "position": [
+    116.0,
+    10.0,
+    12.0
+   ],
+   "collision": "shrine_hall_col"
+  },
+  {
+   "id": "stall_1",
+   "asset": "shrine_stall",
+   "position": [
+    109.800048828125,
+    10.0,
+    27.0
+   ],
+   "collision": "shrine_stall_col",
+   "layer": "festival"
+  },
+  {
+   "id": "stall_2",
+   "asset": "shrine_stall",
+   "position": [
+    113.60009765625,
+    10.0,
+    27.0
+   ],
+   "collision": "shrine_stall_col",
+   "layer": "festival"
+  },
+  {
+   "id": "stall_3",
+   "asset": "shrine_stall",
+   "position": [
+    117.39990234375,
+    10.0,
+    27.0
+   ],
+   "collision": "shrine_stall_col",
+   "layer": "festival"
+  },
+  {
+   "id": "stall_4",
+   "asset": "shrine_stall",
+   "position": [
+    121.199951171875,
+    10.0,
+    27.0
+   ],
+   "collision": "shrine_stall_col",
+   "layer": "festival"
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_utility_4",
+   "type": "pole",
+   "position": [
+    92.0,
+    0.0,
+    56.0
+   ],
+   "params": {
+    "height": 9
+   }
+  },
+  {
+   "id": "coin_pagoda",
+   "type": "coin",
+   "position": [
+    116.0,
+    27.0,
+    42.0
+   ],
+   "asset": "coin",
+   "params": {
+    "time_window": "night"
+   }
+  }
+ ]
+}

@@ -1,0 +1,60 @@
+// The movement garden's game schema. The field names are the contract in
+// carts/garden/README.md ("Entities"); the Mochi types are the world lead's.
+
+game garden
+
+probe {
+  radius            = 0.3
+  height            = 1.6
+  step              = 0.32
+  floor_max_degrees = 40
+}
+
+worlds garden
+
+// Where the player starts. yaw in degrees, as a placement's (0 faces +z, north).
+type spawn {
+  yaw: fixed = 0
+}
+
+// The collectible. The position is the coin's centre.
+saved type coin {
+  time_window: any | day | night = any
+}
+
+// A vertical pole from the placement up, height in metres.
+type pole {
+  height: fixed
+}
+
+// Something to grind or hang from, along a World Kit path (not built yet). No rail is placed
+// until paths exist; these are where they go, in world coordinates (x, y, z), metres:
+//   wires_west      (6, 8.6, 72) (22, 8.6, 72) (38, 8.6, 72)   over the three west poles
+//   wire_east       (92, 8.6, 56) (122, 8.6, 72)               pole to pole, across the road
+//   overpass_rail   (47, 6, 75) (47, 6, 53)                    along the overpass, 1 m above it
+//   crane_jib       (110, 36, 109) (88, 36, 109)               the jib's top
+type rail {
+  path: name
+}
+
+// A moving platform. `to` is an offset from the placement (or `path` names a World Kit path
+// instead, once paths exist; "none" means no path). period and pause in ticks (60 a second);
+// pingpong goes there and back, loop restarts from the placement. The entity's `collision`
+// asset is the platform's, in its own frame.
+type mover {
+  to:     vec3 = [0, 0, 0]
+  path:   name = none
+  period: s16
+  pause:  s16 = 0
+  mode:   pingpong | loop = pingpong
+}
+
+// Inside the box the camera changes behaviour. The placement is the centre of the box's base;
+// size is (x, y, z) in metres, the box rising size.y from it. look is the direction the camera
+// faces in a fixed or rail zone (world axes, need not be unit length); [0, 0, 0] leaves it to
+// the game.
+type camera_zone {
+  size: vec3
+  mode: follow | fixed | rail
+  look: vec3 = [0, 0, 0]
+}

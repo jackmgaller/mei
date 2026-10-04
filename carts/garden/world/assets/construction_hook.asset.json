@@ -1,0 +1,109 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "construction_hook",
+ "materials": {
+  "con_hook": {
+   "color": "#d04030",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "mesh",
+   "vertices": [
+    [
+     -1.5,
+     0.0,
+     1.5
+    ],
+    [
+     1.5,
+     0.0,
+     1.5
+    ],
+    [
+     1.5,
+     0.0,
+     -1.5
+    ],
+    [
+     -1.5,
+     0.0,
+     -1.5
+    ],
+    [
+     -1.5,
+     -0.5,
+     -1.5
+    ],
+    [
+     1.5,
+     -0.5,
+     -1.5
+    ],
+    [
+     1.5,
+     -0.5,
+     1.5
+    ],
+    [
+     -1.5,
+     -0.5,
+     1.5
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     4,
+     7,
+     0,
+     3
+    ],
+    [
+     2,
+     1,
+     6,
+     5
+    ],
+    [
+     3,
+     2,
+     5,
+     4
+    ],
+    [
+     7,
+     6,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "con_hook",
+    "con_hook",
+    "con_hook",
+    "con_hook",
+    "con_hook",
+    "con_hook"
+   ]
+  }
+ ]
+}

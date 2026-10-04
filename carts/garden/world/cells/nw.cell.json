@@ -1,0 +1,325 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "nw",
+ "at": [
+  0,
+  1
+ ],
+ "region": "garden",
+ "placements": [
+  {
+   "id": "ground",
+   "asset": "ground_nw",
+   "position": [
+    32.0,
+    0.0,
+    96.0
+   ],
+   "collision": "ground_nw_col",
+   "ground": true
+  },
+  {
+   "id": "apartments",
+   "asset": "residential_apartments",
+   "position": [
+    14.5,
+    0.0,
+    106.0
+   ],
+   "collision": "residential_apartments_col"
+  },
+  {
+   "id": "fire_escape",
+   "asset": "residential_fire_escape",
+   "position": [
+    3.0,
+    0.0,
+    106.0
+   ],
+   "collision": "residential_fire_escape_col"
+  },
+  {
+   "id": "office",
+   "asset": "office_tower",
+   "position": [
+    40.0,
+    0.0,
+    109.0
+   ],
+   "collision": "office_tower_col"
+  },
+  {
+   "id": "water_tank",
+   "asset": "office_water_tank",
+   "position": [
+    47.0,
+    24.0,
+    105.0
+   ],
+   "collision": "office_water_tank_col"
+  },
+  {
+   "id": "ac_1",
+   "asset": "office_ac_unit",
+   "position": [
+    32.0,
+    24.0,
+    119.0
+   ],
+   "collision": "office_ac_unit_col"
+  },
+  {
+   "id": "ac_2",
+   "asset": "office_ac_unit",
+   "position": [
+    35.0,
+    24.0,
+    119.0
+   ],
+   "collision": "office_ac_unit_col"
+  },
+  {
+   "id": "ac_3",
+   "asset": "office_ac_unit",
+   "position": [
+    32.0,
+    24.0,
+    115.0
+   ],
+   "collision": "office_ac_unit_col"
+  },
+  {
+   "id": "ac_4",
+   "asset": "office_ac_unit",
+   "position": [
+    40.0,
+    24.0,
+    99.0
+   ],
+   "collision": "office_ac_unit_col"
+  },
+  {
+   "id": "viaduct",
+   "asset": "train_viaduct_west",
+   "position": [
+    32.0,
+    9.0,
+    79.0
+   ],
+   "collision": "train_viaduct_west_col"
+  },
+  {
+   "id": "pillar_6",
+   "asset": "train_pillar",
+   "position": [
+    6.0,
+    0.0,
+    79.0
+   ],
+   "collision": "train_pillar_col"
+  },
+  {
+   "id": "pillar_22",
+   "asset": "train_pillar",
+   "position": [
+    22.0,
+    0.0,
+    79.0
+   ],
+   "collision": "train_pillar_col"
+  },
+  {
+   "id": "pillar_38",
+   "asset": "train_pillar",
+   "position": [
+    38.0,
+    0.0,
+    79.0
+   ],
+   "collision": "train_pillar_col"
+  },
+  {
+   "id": "pillar_53",
+   "asset": "train_pillar",
+   "position": [
+    53.0,
+    0.0,
+    79.0
+   ],
+   "collision": "train_pillar_col"
+  },
+  {
+   "id": "overpass",
+   "asset": "train_overpass_north",
+   "position": [
+    47.0,
+    4.60009765625,
+    69.0
+   ],
+   "collision": "train_overpass_north_col"
+  },
+  {
+   "id": "overpass_stairs",
+   "asset": "train_overpass_stairs_north",
+   "position": [
+    47.0,
+    0.0,
+    81.0
+   ],
+   "collision": "train_overpass_stairs_north_col"
+  },
+  {
+   "id": "utility_pole_1",
+   "asset": "street_utility_pole",
+   "position": [
+    6.0,
+    0.0,
+    72.0
+   ],
+   "collision": "street_utility_pole_col"
+  },
+  {
+   "id": "utility_pole_2",
+   "asset": "street_utility_pole",
+   "position": [
+    22.0,
+    0.0,
+    72.0
+   ],
+   "collision": "street_utility_pole_col"
+  },
+  {
+   "id": "utility_pole_3",
+   "asset": "street_utility_pole",
+   "position": [
+    38.0,
+    0.0,
+    72.0
+   ],
+   "collision": "street_utility_pole_col"
+  },
+  {
+   "id": "lamp_2",
+   "asset": "street_lamp",
+   "position": [
+    54.0,
+    0.0,
+    71.5
+   ],
+   "collision": "street_lamp_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_utility_1",
+   "type": "pole",
+   "position": [
+    6.0,
+    0.0,
+    72.0
+   ],
+   "params": {
+    "height": 9
+   }
+  },
+  {
+   "id": "pole_utility_2",
+   "type": "pole",
+   "position": [
+    22.0,
+    0.0,
+    72.0
+   ],
+   "params": {
+    "height": 9
+   }
+  },
+  {
+   "id": "pole_utility_3",
+   "type": "pole",
+   "position": [
+    38.0,
+    0.0,
+    72.0
+   ],
+   "params": {
+    "height": 9
+   }
+  },
+  {
+   "id": "coin_office",
+   "type": "coin",
+   "position": [
+    47.0,
+    25.0,
+    119.0
+   ],
+   "asset": "coin"
+  },
+  {
+   "id": "train",
+   "type": "mover",
+   "position": [
+    31.0,
+    10.0,
+    79.0
+   ],
+   "asset": "train_car",
+   "collision": "train_car_col",
+   "params": {
+    "to": [
+     84,
+     0,
+     0
+    ],
+    "period": 900,
+    "pause": 120,
+    "mode": "pingpong"
+   }
+  },
+  {
+   "id": "gondola",
+   "type": "mover",
+   "position": [
+    38.5,
+    0.60009765625,
+    92.89990234375
+   ],
+   "asset": "office_gondola",
+   "collision": "office_gondola_col",
+   "params": {
+    "to": [
+     0,
+     23.4,
+     0
+    ],
+    "period": 600,
+    "pause": 90,
+    "mode": "pingpong"
+   }
+  },
+  {
+   "id": "kick_alley_camera",
+   "type": "camera_zone",
+   "position": [
+    26.5,
+    0.0,
+    106.0
+   ],
+   "params": {
+    "size": [
+     5,
+     16,
+     40
+    ],
+    "mode": "fixed",
+    "look": [
+     0,
+     0,
+     1
+    ]
+   }
+  }
+ ]
+}

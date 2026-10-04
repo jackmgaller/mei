@@ -1,0 +1,269 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "sw",
+ "at": [
+  0,
+  0
+ ],
+ "region": "garden",
+ "placements": [
+  {
+   "id": "ground",
+   "asset": "ground_sw",
+   "position": [
+    32.0,
+    0.0,
+    32.0
+   ],
+   "collision": "ground_sw_col",
+   "ground": true
+  },
+  {
+   "id": "car_park",
+   "asset": "residential_car_park",
+   "position": [
+    17.0,
+    0.0,
+    39.0
+   ],
+   "collision": "residential_car_park_col"
+  },
+  {
+   "id": "bathhouse",
+   "asset": "residential_bathhouse",
+   "position": [
+    17.0,
+    0.0,
+    12.0
+   ],
+   "collision": "residential_bathhouse_col"
+  },
+  {
+   "id": "overpass",
+   "asset": "train_overpass_south",
+   "position": [
+    47.0,
+    4.60009765625,
+    59.0
+   ],
+   "collision": "train_overpass_south_col"
+  },
+  {
+   "id": "overpass_stairs",
+   "asset": "train_overpass_stairs_south",
+   "position": [
+    37.0,
+    0.0,
+    56.0
+   ],
+   "collision": "train_overpass_stairs_south_col"
+  },
+  {
+   "id": "lamp_1",
+   "asset": "street_lamp",
+   "position": [
+    20.0,
+    0.0,
+    55.5
+   ],
+   "collision": "street_lamp_col"
+  },
+  {
+   "id": "kick_wall_1",
+   "asset": "park_kick_wall",
+   "position": [
+    35.5,
+    0.0,
+    40.0
+   ],
+   "collision": "park_kick_wall_col"
+  },
+  {
+   "id": "kick_wall_2",
+   "asset": "park_kick_wall",
+   "position": [
+    38.5,
+    0.0,
+    40.0
+   ],
+   "collision": "park_kick_wall_col"
+  },
+  {
+   "id": "kick_wall_3",
+   "asset": "park_kick_wall",
+   "position": [
+    42.5,
+    0.0,
+    40.0
+   ],
+   "collision": "park_kick_wall_col"
+  },
+  {
+   "id": "kick_wall_4",
+   "asset": "park_kick_wall",
+   "position": [
+    47.5,
+    0.0,
+    40.0
+   ],
+   "collision": "park_kick_wall_col"
+  },
+  {
+   "id": "mound_15",
+   "asset": "park_mound_15",
+   "position": [
+    36.25,
+    0.0,
+    24.0
+   ],
+   "collision": "park_mound_15_col"
+  },
+  {
+   "id": "mound_30",
+   "asset": "park_mound_30",
+   "position": [
+    39.75,
+    0.0,
+    24.0
+   ],
+   "collision": "park_mound_30_col"
+  },
+  {
+   "id": "mound_45",
+   "asset": "park_mound_45",
+   "position": [
+    43.25,
+    0.0,
+    24.0
+   ],
+   "collision": "park_mound_45_col"
+  },
+  {
+   "id": "mound_60",
+   "asset": "park_mound_60",
+   "position": [
+    46.75,
+    0.0,
+    24.0
+   ],
+   "collision": "park_mound_60_col"
+  },
+  {
+   "id": "slide",
+   "asset": "park_slide",
+   "position": [
+    51.25,
+    0.0,
+    23.0
+   ],
+   "collision": "park_slide_col"
+  },
+  {
+   "id": "trampoline",
+   "asset": "park_trampoline",
+   "position": [
+    38.0,
+    0.0,
+    12.0
+   ],
+   "collision": "park_trampoline_col"
+  },
+  {
+   "id": "tree_1",
+   "asset": "park_tree",
+   "position": [
+    36.5,
+    0.0,
+    49.5
+   ],
+   "collision": "park_tree_col"
+  },
+  {
+   "id": "tree_2",
+   "asset": "park_tree",
+   "position": [
+    52.0,
+    0.0,
+    49.5
+   ],
+   "collision": "park_tree_col"
+  },
+  {
+   "id": "tree_3",
+   "asset": "park_tree",
+   "position": [
+    36.5,
+    0.0,
+    4.5
+   ],
+   "collision": "park_tree_col"
+  },
+  {
+   "id": "tree_4",
+   "asset": "park_tree",
+   "position": [
+    51.5,
+    0.0,
+    4.5
+   ],
+   "collision": "park_tree_col"
+  },
+  {
+   "id": "bench_1",
+   "asset": "park_bench",
+   "position": [
+    40.5,
+    0.0,
+    3.199951171875
+   ],
+   "collision": "park_bench_col"
+  },
+  {
+   "id": "bench_2",
+   "asset": "park_bench",
+   "position": [
+    47.5,
+    0.0,
+    3.199951171875
+   ],
+   "collision": "park_bench_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_slide_ladder",
+   "type": "pole",
+   "position": [
+    51.25,
+    0.0,
+    30.39990234375
+   ],
+   "params": {
+    "height": 4
+   }
+  },
+  {
+   "id": "spawn",
+   "type": "spawn",
+   "position": [
+    44.0,
+    0.0,
+    7.0
+   ],
+   "params": {
+    "yaw": 0
+   }
+  },
+  {
+   "id": "coin_car_park",
+   "type": "coin",
+   "position": [
+    26.0,
+    13.0,
+    30.0
+   ],
+   "asset": "coin"
+  }
+ ]
+}
