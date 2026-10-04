@@ -73,6 +73,11 @@ example), growing as the moves need. It is where movement is tuned, so it has:
 - a **frame-timing readout**;
 - **wall-kick shafts of several widths**, to tune the wall jump against.
 
+The character and the collectible are drawn with the reader's `wp_draw_object()` (the
+character's bounds from `wp_mesh_bounds()` once, its feet as the base), not `mesh_at()`, so that
+the platform under them is not drawn over them ([WORLDPACK.md, "Objects"](WORLDPACK.md#objects)
+has the rule and what it does not handle).
+
 ## Build order
 
 1. The movement garden.

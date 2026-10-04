@@ -9,12 +9,13 @@ on each pixel. tools/worldkit/scene_probe.c records both after each presented fr
 
 The reference that the ID picture is compared with is independent of the runtime's drawing
 code: it takes the pack's meshes, placements, stand-ins and entities, selects what the reader
-should draw (the 3 x 3 near cells, the far ring of stand-ins, layer masks, sphere culling),
-clips every face to its pass's near plane in floating point, projects it with the camera matrix
-the cart used, and picks the nearest face at each pixel by true view depth. Only pixels where
-that choice cannot be changed by the runtime's rounding are compared: pixels at least
-`edge_margin` pixels inside the winning face and at least that far from every other face that
-could be nearer, with a depth difference larger than `depth_epsilon`. The reader's passes are
+should draw (the 3 x 3 near cells, the far ring of stand-ins, layer masks, sphere culling, the
+entities wp_draw_entities() culls), clips every face to its pass's near plane in floating point,
+projects it with the camera matrix the cart used, and picks the nearest face at each pixel by
+true view depth. Only pixels where that choice cannot be changed by the runtime's rounding are
+compared: pixels at least `edge_margin` pixels inside the winning face and at least that far
+from every other face that could be nearer, with a depth difference larger than
+`depth_epsilon`. The reader's passes are
 kept apart as the reader keeps them, each drawn over the one before: the far pass's stand-ins,
 then the ground pass (ground placements, when the pack has them and the runtime draws ground
 first), then the near pass (docs/WORLDPACK.md, "What a reader does"). Wherever a later pass's
@@ -122,9 +123,24 @@ def instances(pack):
                                 sphere=c.standin_bounds))
         for e in c.entities:
             if e['mesh']:
-                out.append(Instance(('entity', e['number']), (i, j), e['mesh'], e['off'] + 28, e['pos'],
-                                    yaw=e['yaw'] / ONE, mask=e['mask'], tag=e['type']))
+                r = mesh_bounds(pack.data, e['mesh'])[0]
+                p = e['pos']
+                out.append(Instance(('entity', e['number']), (i, j), e['mesh'], e['off'] + 28, p,
+                                    yaw=e['yaw'] / ONE, mask=e['mask'], tag=e['type'],
+                                    sphere=(p[0], p[1], p[2], round(r * ONE))))
     return out
+
+
+def mesh_bounds(data, off):
+    """wp_mesh_bounds(): the radius of the sphere around the mesh's origin that holds its vertices
+    (with the reader's 1/128 margin) and its lowest vertex's height, in units."""
+    nv, _, vo, _ = mesh_info(data[off:])
+    r2, low = 0.0, None
+    for k in range(nv):
+        x, y, z = (c / ONE for c in struct.unpack_from('<3i', data, off + vo + 16 * k))
+        r2 = max(r2, x * x + y * y + z * z)
+        low = y if low is None else min(low, y)
+    return math.sqrt(r2) + 1 / 128, low or 0.0
 
 
 def identity_mesh(data, off, mesh, first):
@@ -205,6 +221,8 @@ embed VIEWS: VView = "views.bin"
 var vout: VOut
 var tick: s32
 
+// The entities' meshes by their own depth alone (runtime entity_drawing "mesh_at"); the default
+// draws them with wp_draw_entities() (docs/WORLDPACK.md, "Objects").
 fn draw_entities(eye: vec3) -> s32 {{
     let ci = wp_cell_index(eye.x)
     let cj = wp_cell_index(eye.z)
@@ -248,6 +266,8 @@ fn draw() {{
     wp_clip_near = {clip_near}
     wp_near_far = {near_far}
     wp_ground_first = {ground_first}
+    wp_object_bias = {object_bias}
+    wp_object_squash = {object_squash}
     let nl = wp_layer_count()
     for l in 0..nl {{ wp_layer_set(l, false) }}
     for l in 0..nl {{
@@ -259,7 +279,9 @@ fn draw() {{
     wp_draw(eye, v.yaw, v.pitch)
     let c1 = cycle_count()
     var ne = 0
-    if v.flags & 1 != 0 {{ ne = draw_entities(eye) }}
+    if v.flags & 1 != 0 {{
+        if {objects} {{ ne = wp_draw_entities() }} else {{ ne = draw_entities(eye) }}
+    }}
     let c2 = cycle_count()
     vout.view = k >> 1
     vout.draw_cycles = c1 - c0
@@ -317,7 +339,10 @@ def run_cart(pack_bytes, id_bytes, views, runtime, tools, work):
     (work / 'check.akr').write_text(CART.format(far_ring=int(runtime['far_ring']),
                                                 clip_near=fixed_literal(runtime['clip_near']),
                                                 near_far=fixed_literal(near_far),
-                                                ground_first='true' if runtime['ground_first'] else 'false'))
+                                                ground_first='true' if runtime['ground_first'] else 'false',
+                                                objects='true' if runtime['entity_drawing'] == 'object' else 'false',
+                                                object_bias=fixed_literal(runtime['object_bias']),
+                                                object_squash=int(runtime['object_squash'])))
     t0 = time.perf_counter()
     _run([tools['compiler'], work / 'check.akr', '-o', work / 'check.mei', '--sym', work / 'check.sym'],
          'compiling the verification cart')
@@ -430,7 +455,12 @@ def select(pack, by_cell, eye, vp, layers_on, runtime):
                     continue
                 if kind == 'entity':
                     if runtime['draw_entities']:
-                        out.append((inst, 'near', True))
+                        v = True
+                        if runtime['entity_drawing'] == 'object':      # wp_draw_entities() culls
+                            s = inst.sphere
+                            v = _sphere(planes, (s[0] / ONE + di * S, s[1] / ONE, s[2] / ONE + dj * S), s[3] / ONE)
+                        if v is not False:
+                            out.append((inst, 'near', v is True))
                 elif kind == 'placement' and cv is not False:
                     s = inst.sphere
                     v = _sphere(planes, (s[0] / ONE + di * S, s[1] / ONE, s[2] / ONE + dj * S), s[3] / ONE)
@@ -679,6 +709,19 @@ def compare_view(faces, actual, settings):
                 drawn_depth=drawn_depth, inversion=inversion, ground_inversion=ground_inv,
                 ground_id=ground.rid, ground_depth=ground.r1, ambiguous=(~tested) & covered,
                 by_id=by_id, covered=covered)
+
+
+def entity_pixels(faces, cmp, actual):
+    """Entity faces in one view: the pixels the runtime drew with them and how many of those the
+    check decided; wrong-order pixels where an entity was drawn over a face truly in front of it,
+    and where something was drawn over an entity truly in front of it."""
+    np = numpy()
+    ids = np.array(sorted(f.id for f in faces if f.inst.key[0] == 'entity'), dtype=np.int32)
+    drawn = np.isin(actual, ids)
+    wrong = cmp['wrong']
+    return {'entity_pixels': int(drawn.sum()), 'entity_pixels_tested': int((drawn & cmp['tested']).sum()),
+            'entity_over_nearer_pixels': int((wrong & drawn).sum()),
+            'over_entity_pixels': int((wrong & ~drawn & np.isin(cmp['expected'], ids)).sum())}
 
 
 def witnesses(cmp, actual, settings, describe, limit):

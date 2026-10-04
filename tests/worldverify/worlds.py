@@ -2,8 +2,9 @@
 fault each. Built with tools/worldkit/pack.py at test time; nothing generated is committed.
 
 The plaza is one 32-unit cell (cell_shift 5) of 2-unit ground tiles with three box buildings
-standing on whole tiles, the tiles under them left out, so that every face pair the painter's
-algorithm meets is ordered correctly by average depth from anywhere above the ground.
+standing on whole tiles, the tiles under them left out, so that the face pairs the painter's
+algorithm meets are ordered correctly by average depth from the sampled cameras (not from all:
+a camera at eye height 4 units from the coin sees a tile drawn over a building's foot).
 """
 import os
 from pathlib import Path
@@ -19,7 +20,7 @@ import meshlib  # noqa: E402
 _spec = importlib.util.spec_from_file_location('worldpack_fixture', ROOT / 'tests' / 'worldpack' / 'fixture.py')
 _wp = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_wp)
-box_mesh, placed_tris = _wp.box_mesh, _wp.placed_tris
+box_mesh, placed_tris, coin_mesh = _wp.box_mesh, _wp.placed_tris, _wp.coin_mesh
 
 COMPILER = Path(os.environ.get('MEIC', ROOT / 'build/meic')).resolve()
 PROBE = Path(os.environ.get('SCENE_PROBE', ROOT / 'build/mei-scene-probe')).resolve()
@@ -244,6 +245,80 @@ def nearplane_world():
     a, b, cc, d = wall.vertex(-16, 0, 0), wall.vertex(16, 0, 0), wall.vertex(-16, 8, 0), wall.vertex(16, 8, 0)
     wall.quad([a, b, cc, d], [meshlib.rgb(160, 90, 90)])
     c.placements.append(Placement(wall.pack(), (16, 0, 24), tag=81))
+    return World(cells=[c], cell_shift=5)
+
+
+def ledge_world():
+    """test_room's ledge alone: ground (flagged ground) and a 3 x 2 x 3 block of triangles (tag
+    2), split as the Asset Kit splits a box, with a coin (entity 0) floating 0.2 above its top.
+    Drawn by their own depth alone (runtime entity_drawing 'mesh_at'), the top's two triangles
+    are drawn over the coin from many cameras close above it, none of which the sampling without
+    entity cameras makes."""
+    c = Cell(0, 0)
+    g = grid_mesh(-16, -16, 16, 16, 2.0, SAND)
+    c.placements.append(Placement(g, (16, 0, 16), tag=TAG_GROUND, ground=True))
+    c.collision += placed_tris(g, (16, 0, 16), 1, tag=TAG_GROUND)
+    m = _wp.tri_box_mesh((-1.5, 0, -1.5), (1.5, 2, 1.5), GREY)
+    c.placements.append(Placement(m, (16, 0, 16), tag=2))
+    c.collision += placed_tris(m, (16, 0, 16), 2, tag=2)
+    c.entities.append(Entity(1, (16, 2.5, 16), mesh=coin_mesh()))
+    return World(cells=[c], cell_shift=5)
+
+
+# The object world's places (see object_world()): each is (what, the coin's position).
+OBJECTS = {
+    'small_platform': (6.0, 2.0, 6.0),       # above a 4 x 4 platform 1.5 high, 0.2 clear of it
+    'large_near': (15.5, 1.5, 5.5),          # above a 12 x 12 platform 1 high (one quad on top)
+    'large_far': (24.5, 1.5, 14.5),
+    'behind_wall': (5.5, 0.5, 20.6),         # on the ground 0.3 behind a thin wall 2 high
+    'pair_a': (10.0, 0.5, 24.0),             # two coins on the ground, 0.5 apart
+    'pair_b': (10.4, 0.5, 24.3),
+    'under_slab': (24.0, 0.5, 24.0),         # on the ground under a slab at 2.2 .. 2.5
+    'figure': (18.0, 1.0, 8.0),              # a character-sized figure standing on the large one
+}
+
+
+def figure_mesh():
+    """A figure 1.85 high made of four separate boxes (legs, body, head and an arm held forward),
+    its origin at its feet: a mesh whose own faces need sorting, like a character's."""
+    m = meshlib.Mesh()
+    parts = [((-0.2, 0, -0.15), (0.2, 0.75, 0.15), meshlib.rgb(60, 60, 160)),
+             ((-0.3, 0.8, -0.18), (0.3, 1.5, 0.18), meshlib.rgb(200, 60, 60)),
+             ((-0.17, 1.55, -0.17), (0.17, 1.85, 0.17), meshlib.rgb(240, 200, 160)),
+             ((0.35, 1.2, -0.05), (0.5, 1.35, 0.5), meshlib.rgb(200, 60, 60))]
+    for lo, hi, colour in parts:
+        x0, y0, z0 = lo
+        x1, y1, z1 = hi
+        ctr = [(lo[k] + hi[k]) / 2 for k in range(3)]
+        for corners in ([(x0, y0, z0), (x1, y0, z0), (x1, y0, z1), (x0, y0, z1)],
+                        [(x0, y1, z0), (x1, y1, z0), (x1, y1, z1), (x0, y1, z1)],
+                        [(x0, y0, z0), (x1, y0, z0), (x1, y1, z0), (x0, y1, z0)],
+                        [(x0, y0, z1), (x1, y0, z1), (x1, y1, z1), (x0, y1, z1)],
+                        [(x0, y0, z0), (x0, y0, z1), (x0, y1, z1), (x0, y1, z0)],
+                        [(x1, y0, z0), (x1, y0, z1), (x1, y1, z1), (x1, y1, z0)]):
+            _wp._face(m, corners, colour, ctr)
+    return m.pack()
+
+
+def object_world():
+    """Small objects (coins, entity meshes) where sorting by average depth goes wrong: ground of
+    2-unit tiles (flagged ground) with a small platform, a large one, a thin wall, a slab held up
+    in the air, and coins on and around them (OBJECTS). Placement tags: 1 ground, 20 the small
+    platform, 21 the large one, 22 the wall, 23 the slab."""
+    c = Cell(0, 0)
+    g = grid_mesh(-16, -16, 16, 16, 2.0, SAND)
+    c.placements.append(Placement(g, (16, 0, 16), tag=TAG_GROUND, ground=True))
+    c.collision += placed_tris(g, (16, 0, 16), 1, tag=TAG_GROUND)
+    for tag, lo, hi, colour in ((20, (4, 0, 4), (8, 1.5, 8), meshlib.rgb(140, 140, 160)),
+                                (21, (14, 0, 4), (26, 1, 16), meshlib.rgb(120, 150, 120)),
+                                (22, (4, 0, 20), (7, 2, 20.2), meshlib.rgb(170, 90, 70)),
+                                (23, (22, 2.2, 22), (26, 2.5, 26), meshlib.rgb(90, 110, 170))):
+        m = box_mesh((0, 0, 0), tuple(hi[k] - lo[k] for k in range(3)), colour)
+        c.placements.append(Placement(m, lo, tag=tag))
+        c.collision += placed_tris(m, lo, 2, tag=tag)
+    for n, (name, pos) in enumerate(OBJECTS.items()):
+        m = figure_mesh() if name == 'figure' else coin_mesh(meshlib.rgb(250, 200 + 5 * n, 60))
+        c.entities.append(Entity(1, pos, yaw=0.3 * n, mesh=m))
     return World(cells=[c], cell_shift=5)
 
 

@@ -4,7 +4,7 @@
 // status 2. Scenario 1 is the whole run; scenarios 2 and 3 only hold the camera for pictures.
 //
 //   test_room (start: flying at (32, 3, 10), looking +Z, in front of the room's floor slab)
-//      3  check: cell 0,0, no floor under the camera
+//      3  check: cell 0,0, no floor under the camera, the coin (an entity mesh) drawn
 //      5..48  forward, flying: check: over the slab (floor at 0)
 //     50  A: walk; check: the camera dropped to the floor plus the probe height
 //     51..200  forward: check: the closed gate (z 22) stopped the camera
@@ -90,9 +90,9 @@ fn test_hook(f: s32) {
     }
     if SCENARIO != 1 { return }
     if f == 3 {
-        assert(world == 0 && cell_is(0, 0) && !wp_floor(eye, 0.0))
+        assert(world == 0 && cell_is(0, 0) && !wp_floor(eye, 0.0) && entities == 1)
         colour_before = palette_entry(WORLD_TEST_ROOM_LAB_SURFACE)
-        ok("start test_room cell 0,0, no floor below")
+        ok("start test_room cell 0,0, no floor below, the coin drawn")
     }
     if f == 48 {
         assert(!walking && near(eye.z, 21.0) && wp_floor(eye, 0.0) && near(wp_hit.y, 0.0))
