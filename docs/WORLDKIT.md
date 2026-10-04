@@ -397,7 +397,9 @@ the material tag's surface byte (`collision.surfaces`, as any tag's) in `wp_wate
 if wp_water(pl.pos, 0.0) { slow_by(wp_water_hit.depth) }
 ```
 
-It tests every water triangle's bounds (about 12 cycles each; the example's 512 triangles, all of
+A cart that opens a world without water after one with it calls `wp_water_close()` (the
+movement garden does, switching between the garden and the shrine). `wp_water()` tests every water
+triangle's bounds (about 12 cycles each; the example's 512 triangles, all of
 its water, cost about 6,000 cycles a query, and a game that queries once a frame from the feet
 can afford it). A material with `water` cannot be painted or used for a cliff's wall.
 `report.json`'s `terrain` has `water_triangles`.

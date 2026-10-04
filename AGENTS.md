@@ -65,7 +65,8 @@ Pass the tools to scripts the same way, for example
 
 Mei Demo, Sound Lab and World Viewer are built only on request (`make build/carts/demo.mei
 build/carts/soundlab.mei build/carts/worldview.mei`); `make` and `make web` leave them out. The
-movement garden is built by `make`, which therefore needs NumPy for its world.
+movement garden is built by `make`, which therefore needs NumPy for its worlds, and Pillow for
+the shrine world's textures (`carts/garden/shrine`, whose assets read PNG sheets).
 The Reference Renderer
 ([tests/reference_renderer/README.md](tests/reference_renderer/README.md)) builds its carts,
 probes and reports into `$(B)/reference_renderer/` on each run; `make test` runs its two
@@ -94,7 +95,8 @@ details; `carts/worldview/` is the example.
   generator. **NumPy and Pillow** for the Reference Renderer. **Pillow** too for the generators
   that draw: `gen_boot_duet`, `gen_boot_eclipse`, `gen_shell_assets`, `gen_lantern_assets`,
   `gen_orbs_assets`, `gen_weather_assets` and `meifont`, and for the Asset Kit's textures read
-  from PNG images and sheets (`examples/assets/stall`; recipes without images need it not).
+  from PNG images and sheets (`examples/assets/stall`, the shrine world's assets, so `make`;
+  recipes without images need it not).
   **SciPy** too for `gen_boot_duet` and `gen_soundlab_assets`.
 - Several generators draw with macOS system fonts (Avenir Next, Hiragino, Georgia, Optima and
   others). Their outputs are committed, so building and running Mei needs none of this.
@@ -173,6 +175,7 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_weather_assets.py` | `carts/weather/art/` and `carts/weather/art.akr` |
 | `gen_weather_audio.py` | `carts/weather/audio/` and `carts/weather/mu_data.akr` |
 | `gen_weather_tape.py` | `carts/weather/demo_tape.bin`, Mei Weather's sample broadcast |
+| `carts/garden/shrine/standins.py` | `carts/garden/shrine/assets/standin_c*.asset.json`, the shrine world's far-cell stand-ins, sampled from the world's floors (run it after changing the terrain or layout) |
 | `meinet/make_fixture.sh` | `tests/lang/data/broadcast.bin`, the canned broadcast the language tests replay (`meinet.py --fixture`) |
 
 Helpers the generators import, which write nothing themselves: `boot_audio.py`, `mei_adpcm.py`,

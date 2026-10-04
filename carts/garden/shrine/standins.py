@@ -17,8 +17,8 @@ OPEN_RECTS = [(36, 0, 156, 158), (0, 0, 192, 34), (52, 256, 92, 294)]
 OPEN_CIRCLES = [(48, 230, 14), (98, 208, 11), (150, 250, 11), (18, 112, 8)]
 WATER = [(148, 32, 188, 106)]
 CANOPY = 9.0            # how far the canopy stands above the ground
-COLOURS = {'maple': '#9c3822', 'scarlet': '#b4502c', 'ginkgo': '#b89430', 'cedar': '#2a4028',
-           'cedar2': '#3a5032', 'gravel': '#d4ccb8', 'roof': '#3e4248', 'water': '#3f7393', 'road': '#4a4a50',
+COLOURS = {'maple': '#82402a', 'scarlet': '#985434', 'ginkgo': '#9c8a3c', 'cedar': '#30442e',
+           'cedar2': '#40503a', 'gravel': '#d4ccb8', 'roof': '#3e4248', 'water': '#3f7393', 'road': '#4a4a50',
            'rock': '#6a665e'}
 
 def is_open(x, z):
