@@ -30,7 +30,17 @@ textured writers that look the face's window up (texture byte bits 5-7, 1-7 into
 __win_tab, 0 none) and put it into bits 16-31 of the second texture coordinate. Meshes without
 a table run exactly the instructions they did before (the lbu became a lw, the shli a shri).
 
-The three face loops are weak functions. With --planes the script writes
+__draw_faces_safe is the loop for a mesh with nothing to clip: every vertex inside the guard band
+and in front of the near plane (__xform's bit 1, or a bounding sphere: worldpack.akr), drawn
+without fog, texture windows or subdivision, into an arena with room for all its faces. It makes
+the same packets in the same order as the others, without their per-face near-plane, guard-band
+and arena tests, keeps the packet pointer in r15, and writes flat textured triangles and quads
+(the World Kit's faces) without the jump table (see safe_loop()).
+
+All the loops address __sv and __ot as immediates (gfx.akr declares both below 0x20000): r5-r8
+hold vertex offsets (index x 16), not pointers (see immediates()).
+
+The four face loops are weak functions. With --planes the script writes
 stdlib/planes_faces.akr instead: the same loops, which replace these in carts that import
 planes.akr, with one change: a face drawn while poly_upper() is on gets bit 26 (upper) in its
 packet's first colour word. The loop ORs __pu_bits (0, or 0x400 while poly_upper() is on) into
@@ -39,7 +49,7 @@ three bits of the blend byte instead of two. That costs 3 cycles a drawn face, a
 carts that use the plane chip.
 
 Run from the repository root: python3 tools/gen_faces_asm.py [--planes] [output path]"""
-import os, sys
+import os, re, sys
 
 PLANES = '--planes' in sys.argv
 if PLANES:
@@ -494,6 +504,7 @@ SUB_CALL = """.sub:
 def face_loop(name, sub, guard=True):
     """guard: test the guard-band marks (a loop without the test serves meshes that __xform
     found wholly inside the band; it still clips faces crossing the near plane)."""
+    start = len(out)
     e('%sasm fn %s(first: *Face, nf: s32) {' % ('' if PLANES else 'weak ', name))
     if sub:
         e(HEAD_SUB)
@@ -566,6 +577,36 @@ def face_loop(name, sub, guard=True):
                 key = (g if not fog else 1, t, q, fog) + (('w',) if win and t else ())
                 e('    .word %s' % labels[key])
     e('}')
+    immediates(start)
+
+
+def immediates(start):
+    """Rewrites the loop emitted from out[start] to address __sv and __ot as immediates (both lie
+    below 0x20000, see gfx.akr): r5-r8 hold vertex offsets (index x 16) instead of pointers, so
+    the adds of __sv (r3) go, and the ordering-table entry is [bucket x 4 + __ot]."""
+    text = '\n'.join(out[start:])
+    text = re.sub(r'\n    add  (r[5-8]), \1, r3(?=\n)', '', text)
+    text = re.sub(r'\n    la   r3, \{__sv\}(?=\n|$)', '', text)
+    text = re.sub(r'\[(r[5-8])\]', r'[\1+{__sv}]', text)
+    text = re.sub(r'\[(r[5-8])\+(\d+)\]', r'[\1+{__sv}+\2]', text)
+    old = """    la   r11, {__ot}
+    shli r10, r10, 2
+    add  r11, r11, r10
+    lw   r10, [r11]
+    ori  r13, r9, 0x20
+    shli r13, r13, 24
+    or   r10, r10, r13
+    sw   r10, [r15]
+    sw   r15, [r11]"""
+    assert text.count(old) == 1
+    text = text.replace(old, """    shli r11, r10, 2
+    lw   r10, [r11+{__ot}]
+    ori  r13, r9, 0x20
+    shli r13, r13, 24
+    or   r10, r10, r13
+    sw   r10, [r15]
+    sw   r15, [r11+{__ot}]""")
+    out[start:] = [text]
 
 
 # ---- the subdivision worklist (__sub_run), used by subdiv.akr
@@ -801,6 +842,266 @@ def subdiv_run():
     e('}')
 
 
+def safe_variant(g, t, q):
+    """A packet writer of the safe loops: as variant() without fog or windows, with the vertex
+    offsets (index x 16) in r5-r8 and the packet pointer kept in r15 (advanced at the end)."""
+    n = 4 if q else 3
+    stride = 4 * (1 + g + t)
+    size = 4 + (n if g else 1) * 4 + n * 4 + (n * 4 if t else 0)
+    label = '.s%d%d%d' % (g, t, q)
+    e('%s:   ; %s%s%s, %d bytes' % (label, 'gouraud ' if g else 'flat ', 'textured ' if t else '',
+                                  'quad' if q else 'triangle', size))
+    for k in range(n):
+        base = 8 + stride * k
+        if k == 0 or g:
+            e('    lw   r11, [r1+%d]' % (12 + 4 * k))
+            if k == 0:
+                e('    shri r12, r4, 8           ; blend mode%s -> bits 24-%d' % (' and upper' if PLANES else '',
+                                                                                   26 if PLANES else 25))
+                e('    andi r12, r12, %d' % (7 if PLANES else 3))
+                e('    shli r12, r12, 24')
+                e('    or   r11, r11, r12')
+            e('    sw   r11, [r15+%d]' % (base - 4))
+        e('    lw   r11, [%s+{__sv}+8]' % P[k])
+        e('    sw   r11, [r15+%d]' % base)
+        if t:
+            e('    lhu  r11, [r1+%d]' % (28 + 2 * k))
+            if k == 0:
+                e('    shri r12, r4, 16          ; slot, depth and palette -> bits 16-31')
+                e('    andi r12, r12, 0xFF1F')
+                e('    shli r12, r12, 16')
+                e('    or   r11, r11, r12')
+            e('    sw   r11, [r15+%d]' % (base + 4))
+    e('    addi r15, r15, %d' % size)
+    e('    jmp  .nextr')
+    return label
+
+
+def safe_loop():
+    """__draw_faces_safe: the face loop for a mesh whose every vertex is in front of the near
+    plane and inside the guard band (worldpack.akr proves it from a placement's bounding sphere,
+    __draw_mesh from what __xform found), drawn without fog, texture windows or subdivision, into
+    an arena with room for every face. It makes the same packets as __draw_faces, in the same
+    order, without the near-plane and guard-band tests and the per-face arena test, with __sv and
+    __ot addressed as immediates and the packet pointer kept in r15. Flat textured triangles that
+    are not keyed (the faces the World Kit makes) take a path of their own, with no jump table,
+    and so do flat textured quads; the others take the general path (.gen) and the jump table.
+
+    Registers across faces: r1 the face, r2 the end of the faces, r3 3 x near, r8 0xFF1F0000
+    (the texture byte and palette mask; quads and the table's writers use r8 and put it back at
+    .nextr), r15 the next packet."""
+    name = '__draw_faces_safe'
+    frame = 24
+    blend = 7 if PLANES else 3
+    pu = """    lw   r12, [r0+{__pu_bits}]  ; poly_upper(): 0x400, bit 2 of the blend byte
+    or   r4, r4, r12
+""" if PLANES else ''
+    e('%sasm fn %s(first: *Face, nf: s32) {' % ('' if PLANES else 'weak ', name))
+    e("""    beq  r2, r0, .ret
+    addi sp, sp, -@F@
+    sw   r9, [sp+0]
+    sw   r10, [sp+4]
+    sw   r11, [sp+8]
+    sw   r12, [sp+12]
+    sw   r13, [sp+16]
+    sw   ra, [sp+20]
+    shli r11, r2, 5
+    shli r2, r2, 2
+    add  r2, r2, r11
+    add  r2, r2, r1             ; the end of the faces (36 bytes each)
+    lw   r15, [r0+{__arena_ptr}]
+    lw   r3, [r0+{__cam_near}]
+    add  r12, r3, r3
+    add  r3, r12, r3            ; 3 near
+    li   r8, 0xFF1F0000
+.face:
+    lw   r4, [r1]               ; flags, blend, texture, palette
+    lhu  r5, [r1+4]
+    shli r5, r5, 4
+    lhu  r6, [r1+6]
+    shli r6, r6, 4
+    lhu  r7, [r1+8]
+    shli r7, r7, 4
+    ; back faces: nclip >= 0 (front faces are counter-clockwise on screen)
+    lw   r12, [r5+{__sv}+8]
+    lw   r11, [r6+{__sv}+8]     ; (r11 and r13 keep positions 1 and 2 for the flat triangle)
+    lw   r13, [r7+{__sv}+8]
+    nclip r12, r11, r13
+    bge  r12, r0, .back
+.front:
+    andi r12, r4, 39            ; keyed, quad, textured, Gouraud
+    addi r9, r0, 2
+    bne  r12, r9, .notri        ; not a flat textured triangle
+    lw   r10, [r5+{__sv}+12]
+    lw   r12, [r6+{__sv}+12]
+    add  r10, r10, r12
+    lw   r12, [r7+{__sv}+12]
+    add  r10, r10, r12
+    sub  r12, r10, r3           ; w0 + w1 + w2 - 3 near
+    lw   r6, [r0+{__ot_k3}]
+    lw   r10, [r0+{__ot_bias}]
+    otz  r10, r12, r6           ; ordering-table bucket
+@PU@    ; header and ordering-table insertion
+    shli r10, r10, 2
+    lw   r12, [r10+{__ot}]
+    andi r6, r4, 15
+    ori  r6, r6, 0x20
+    shli r6, r6, 24
+    or   r12, r12, r6
+    sw   r12, [r15]
+    sw   r15, [r10+{__ot}]
+    ; the packet: flat textured triangle, 32 bytes
+    lw   r12, [r1+12]
+    shri r6, r4, 8              ; blend mode -> bits 24 up
+    andi r6, r6, @B@
+    shli r6, r6, 24
+    or   r12, r12, r6
+    sw   r12, [r15+4]
+    lw   r12, [r5+{__sv}+8]
+    sw   r12, [r15+8]
+    lhu  r12, [r1+28]
+    and  r6, r4, r8             ; slot, depth and palette -> bits 16-31
+    or   r12, r12, r6
+    sw   r12, [r15+12]
+    sw   r11, [r15+16]
+    lhu  r12, [r1+30]
+    sw   r12, [r15+20]
+    sw   r13, [r15+24]
+    lhu  r12, [r1+32]
+    sw   r12, [r15+28]
+    addi r15, r15, 32
+.next:
+    addi r1, r1, 36
+    bltu r1, r2, .face
+    sw   r15, [r0+{__arena_ptr}]
+    lw   r9, [sp+0]
+    lw   r10, [sp+4]
+    lw   r11, [sp+8]
+    lw   r12, [sp+12]
+    lw   r13, [sp+16]
+    lw   ra, [sp+20]
+    addi sp, sp, @F@
+.ret:
+    ret
+.back:
+    andi r12, r4, 16            ; double-sided
+    beq  r12, r0, .next
+    jmp  .front
+.nextr:
+    li   r8, 0xFF1F0000
+    jmp  .next
+.notri:
+    addi r9, r0, 6
+    bne  r12, r9, .gen          ; not a flat textured quad either
+    lw   r10, [r5+{__sv}+12]
+    lw   r12, [r6+{__sv}+12]
+    add  r10, r10, r12
+    lw   r12, [r7+{__sv}+12]
+    add  r10, r10, r12
+    lhu  r7, [r1+10]
+    shli r7, r7, 4
+    lw   r12, [r7+{__sv}+12]
+    add  r10, r10, r12
+    lw   r6, [r0+{__cam_near}]
+    shli r6, r6, 2
+    sub  r12, r10, r6           ; w0 + w1 + w2 + w3 - 4 near
+    lw   r6, [r0+{__ot_k4}]
+    lw   r10, [r0+{__ot_bias}]
+    otz  r10, r12, r6           ; ordering-table bucket
+@PU@    shli r10, r10, 2
+    lw   r12, [r10+{__ot}]
+    andi r6, r4, 15
+    ori  r6, r6, 0x20
+    shli r6, r6, 24
+    or   r12, r12, r6
+    sw   r12, [r15]
+    sw   r15, [r10+{__ot}]
+    ; the packet: flat textured quad, 40 bytes
+    lw   r12, [r1+12]
+    shri r6, r4, 8              ; blend mode -> bits 24 up
+    andi r6, r6, @B@
+    shli r6, r6, 24
+    or   r12, r12, r6
+    sw   r12, [r15+4]
+    lw   r12, [r5+{__sv}+8]
+    sw   r12, [r15+8]
+    lhu  r12, [r1+28]
+    and  r6, r4, r8             ; slot, depth and palette -> bits 16-31
+    or   r12, r12, r6
+    sw   r12, [r15+12]
+    sw   r11, [r15+16]
+    lhu  r12, [r1+30]
+    sw   r12, [r15+20]
+    sw   r13, [r15+24]
+    lhu  r12, [r1+32]
+    sw   r12, [r15+28]
+    lw   r12, [r7+{__sv}+8]
+    sw   r12, [r15+32]
+    lhu  r12, [r1+34]
+    sw   r12, [r15+36]
+    addi r15, r15, 40
+    jmp  .next
+    ; any other face: as __draw_faces makes it
+.gen:
+    andi r12, r4, 32
+    bne  r12, r0, .keyed        ; FACE_KEYED: the bucket is in col[3]
+    lw   r10, [r5+{__sv}+12]
+    lw   r12, [r6+{__sv}+12]
+    add  r10, r10, r12
+    lw   r12, [r7+{__sv}+12]
+    add  r10, r10, r12          ; w0 + w1 + w2
+    andi r12, r4, 4
+    bne  r12, r0, .quad
+    sub  r12, r10, r3           ; w0 + w1 + w2 - 3 near
+    lw   r9, [r0+{__ot_k3}]
+.depth:
+    lw   r10, [r0+{__ot_bias}]
+    otz  r10, r12, r9           ; ordering-table bucket
+.dk:
+@PU@    shli r10, r10, 2
+    lw   r12, [r10+{__ot}]
+    andi r9, r4, 15
+    ori  r9, r9, 0x20
+    shli r9, r9, 24
+    or   r12, r12, r9
+    sw   r12, [r15]
+    sw   r15, [r10+{__ot}]
+    andi r12, r4, 7
+    shli r12, r12, 2
+    la   r9, .table
+    add  r9, r9, r12
+    lw   r9, [r9]
+    jr   r9
+.quad:
+    lhu  r8, [r1+10]
+    shli r8, r8, 4
+    lw   r12, [r8+{__sv}+12]
+    add  r10, r10, r12
+    lw   r12, [r0+{__cam_near}]
+    shli r12, r12, 2
+    sub  r12, r10, r12          ; w0 + w1 + w2 + w3 - 4 near
+    lw   r9, [r0+{__ot_k4}]
+    jmp  .depth
+.keyed:
+    lhu  r8, [r1+10]            ; (the fourth corner, for a quad's writer)
+    shli r8, r8, 4
+    lw   r10, [r0+{__ot_bias}]
+    lw   r9, [r1+24]
+    add  r10, r10, r9
+    bge  r10, r0, .k0
+    mov  r10, r0
+.k0:
+    slti r9, r10, 1024
+    bne  r9, r0, .dk
+    addi r10, r0, 1023
+    jmp  .dk""".replace('@F@', str(frame)).replace('@B@', str(blend)).replace('@PU@', pu))
+    labels = [safe_variant(idx & 1, (idx >> 1) & 1, (idx >> 2) & 1) for idx in range(8)]
+    e('    .align 4\n.table:')
+    for l in labels:
+        e('    .word %s' % l)
+    e('}')
+
+
 face_loop('__draw_faces', False)
 e('')
 e('// The same loop without the guard-band test, for meshes wholly inside the band.')
@@ -808,6 +1109,9 @@ face_loop('__draw_faces_in', False, guard=False)
 e('')
 e('// The same loop for carts that called subdivide(): see the header of gen_faces_asm.py.')
 face_loop('__draw_faces_sub', True)
+e('')
+e('// The loop for a mesh that needs no clipping at all: see safe_loop() in gen_faces_asm.py.')
+safe_loop()
 if not PLANES:
     subdiv_run()
 dst = sys.argv[1] if len(sys.argv) > 1 else os.path.join(root, 'stdlib', 'planes_faces.akr' if PLANES else 'faces.akr')

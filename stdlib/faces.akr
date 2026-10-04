@@ -13,39 +13,35 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     sw   r12, [sp+12]
     sw   r13, [sp+16]
     sw   ra, [sp+20]
-    la   r3, {__sv}
     beq  r2, r0, .done
 .face:
     lw   r4, [r1]               ; flags, blend, texture, palette
     lw   r9, [r0+{__cam_near}]
     lhu  r5, [r1+4]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r10, [r5+12]
+    lw   r10, [r5+{__sv}+12]
     blt  r10, r9, .nb
     lhu  r6, [r1+6]
     shli r6, r6, 4
-    add  r6, r6, r3
-    lw   r11, [r6+12]
+    lw   r11, [r6+{__sv}+12]
     blt  r11, r9, .near
     add  r10, r10, r11
     lhu  r7, [r1+8]
     shli r7, r7, 4
-    add  r7, r7, r3
-    lw   r11, [r7+12]
+    lw   r11, [r7+{__sv}+12]
     blt  r11, r9, .near
     add  r10, r10, r11          ; w0 + w1 + w2
-    lw   r11, [r5]
-    lw   r12, [r6]
+    lw   r11, [r5+{__sv}]
+    lw   r12, [r6+{__sv}]
     and  r11, r11, r12
-    lw   r12, [r7]
+    lw   r12, [r7+{__sv}]
     and  r11, r11, r12
     beq  r11, r0, .clip         ; a corner outside the guard band
     ; back faces: nclip >= 0 (front faces are counter-clockwise on screen). The positions
     ; are exact here: a corner outside the guard band went to .clip first.
-    lw   r12, [r5+8]
-    lw   r11, [r6+8]
-    lw   r13, [r7+8]
+    lw   r12, [r5+{__sv}+8]
+    lw   r11, [r6+{__sv}+8]
+    lw   r13, [r7+{__sv}+8]
     nclip r12, r11, r13
     blt  r12, r0, .front
     andi r11, r4, 16            ; double-sided
@@ -61,10 +57,9 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
 .quad:
     lhu  r8, [r1+10]
     shli r8, r8, 4
-    add  r8, r8, r3
-    lw   r11, [r8+12]
+    lw   r11, [r8+{__sv}+12]
     blt  r11, r9, .near
-    lw   r12, [r8]
+    lw   r12, [r8+{__sv}]
     beq  r12, r0, .clip         ; the fourth corner is outside the guard band
     add  r10, r10, r11
     shli r11, r9, 2
@@ -84,15 +79,13 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     andi r9, r4, 15
     or   r9, r9, r12            ; fog makes every face Gouraud (bits 15-16 leave the header)
     ; header and ordering-table insertion
-    la   r11, {__ot}
-    shli r10, r10, 2
-    add  r11, r11, r10
-    lw   r10, [r11]
+    shli r11, r10, 2
+    lw   r10, [r11+{__ot}]
     ori  r13, r9, 0x20
     shli r13, r13, 24
     or   r10, r10, r13
     sw   r10, [r15]
-    sw   r15, [r11]
+    sw   r15, [r11+{__ot}]
     ; dispatch on Gouraud/textured/quad (+ fog, + windows)
     andi r9, r9, 7
     shri r12, r12, 12           ; fog -> bit 3, windows -> bit 4
@@ -121,11 +114,11 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+12]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+16]
     jmp  .next
 .v1000:   ; gouraud triangle, 28 bytes
@@ -137,15 +130,15 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lw   r11, [r1+16]
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lw   r11, [r1+20]
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     jmp  .next
 .v0100:   ; flat textured triangle, 32 bytes
@@ -157,7 +150,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -165,11 +158,11 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 16
     or   r11, r11, r12
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lhu  r11, [r1+30]
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lhu  r11, [r1+32]
     sw   r11, [r15+28]
@@ -183,7 +176,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -193,13 +186,13 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r1+16]
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     lhu  r11, [r1+30]
     sw   r11, [r15+24]
     lw   r11, [r1+20]
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
@@ -213,13 +206,13 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+12]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+16]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+20]
     jmp  .next
 .v1010:   ; gouraud quad, 36 bytes
@@ -231,19 +224,19 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lw   r11, [r1+16]
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lw   r11, [r1+20]
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lw   r11, [r1+24]
     sw   r11, [r15+28]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+32]
     jmp  .next
 .v0110:   ; flat textured quad, 40 bytes
@@ -255,7 +248,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -263,15 +256,15 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 16
     or   r11, r11, r12
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lhu  r11, [r1+30]
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lhu  r11, [r1+32]
     sw   r11, [r15+28]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+34]
     sw   r11, [r15+36]
@@ -285,7 +278,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -295,19 +288,19 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r1+16]
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     lhu  r11, [r1+30]
     sw   r11, [r15+24]
     lw   r11, [r1+20]
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
     lw   r11, [r1+24]
     sw   r11, [r15+40]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+44]
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
@@ -321,28 +314,28 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     lw   r9, [r0+{__fog_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     jmp  .next
 .v1101:   ; gouraud textured triangle fog, 40 bytes
@@ -354,14 +347,14 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     lw   r9, [r0+{__fogt_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -371,19 +364,19 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     lhu  r11, [r1+30]
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
@@ -397,35 +390,35 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     lw   r9, [r0+{__fog_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r8+4]          ; fog amount
+    lw   r12, [r8+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+32]
     jmp  .next
 .v1111:   ; gouraud textured quad fog, 52 bytes
@@ -437,14 +430,14 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     lw   r9, [r0+{__fogt_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -454,28 +447,28 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     lhu  r11, [r1+30]
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r8+4]          ; fog amount
+    lw   r12, [r8+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+40]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+44]
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
@@ -489,7 +482,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -497,7 +490,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 16
     or   r11, r11, r12
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -510,7 +503,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     lhu  r11, [r1+30]
     or   r11, r11, r12
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lhu  r11, [r1+32]
     sw   r11, [r15+28]
@@ -524,7 +517,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -534,7 +527,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r1+16]
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -549,7 +542,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     sw   r11, [r15+24]
     lw   r11, [r1+20]
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
@@ -563,7 +556,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -571,7 +564,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 16
     or   r11, r11, r12
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -584,11 +577,11 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     lhu  r11, [r1+30]
     or   r11, r11, r12
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lhu  r11, [r1+32]
     sw   r11, [r15+28]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+34]
     sw   r11, [r15+36]
@@ -602,7 +595,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -612,7 +605,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r1+16]
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -627,13 +620,13 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     sw   r11, [r15+24]
     lw   r11, [r1+20]
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
     lw   r11, [r1+24]
     sw   r11, [r15+40]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+44]
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
@@ -647,14 +640,14 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     lw   r9, [r0+{__fogt_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -664,10 +657,10 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -682,10 +675,10 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
@@ -699,14 +692,14 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     lw   r9, [r0+{__fogt_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -716,10 +709,10 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -734,19 +727,19 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r8+4]          ; fog amount
+    lw   r12, [r8+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+40]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+44]
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
@@ -755,28 +748,24 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     ; corner 0 is behind the near plane: clip the face, unless they all are
     lhu  r5, [r1+6]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r11, [r5+12]
+    lw   r11, [r5+{__sv}+12]
     bge  r11, r9, .near
     lhu  r5, [r1+8]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r11, [r5+12]
+    lw   r11, [r5+{__sv}+12]
     bge  r11, r9, .near
     andi r11, r4, 4
     beq  r11, r0, .next
     lhu  r5, [r1+10]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r11, [r5+12]
+    lw   r11, [r5+{__sv}+12]
     blt  r11, r9, .next
 .near:
     addi r11, r0, 15
     lhu  r5, [r1+4]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]
+    lw   r12, [r5+{__sv}+12]           ; w
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -802,9 +791,8 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     and  r11, r11, r7
     lhu  r5, [r1+6]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]
+    lw   r12, [r5+{__sv}+12]           ; w
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -830,9 +818,8 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     and  r11, r11, r7
     lhu  r5, [r1+8]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]
+    lw   r12, [r5+{__sv}+12]           ; w
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -860,9 +847,8 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     beq  r12, r0, .near3
     lhu  r5, [r1+10]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]
+    lw   r12, [r5+{__sv}+12]           ; w
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -893,14 +879,12 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     call {__clip_face}     ; r1 = the face
     lw   r1, [sp+24]
     lw   r2, [sp+28]
-    la   r3, {__sv}
     jmp  .next
 .clip:
     addi r11, r0, 15
     lhu  r5, [r1+4]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r5, [r5+8]
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -923,8 +907,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     and  r11, r11, r7
     lhu  r5, [r1+6]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r5, [r5+8]
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -947,8 +930,7 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     and  r11, r11, r7
     lhu  r5, [r1+8]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r5, [r5+8]
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -973,9 +955,8 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     beq  r12, r0, .clip3
     lhu  r5, [r1+10]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]
+    lw   r12, [r5+{__sv}+12]           ; w
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -1006,7 +987,6 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     call {__clip_face}          ; r1 = the face
     lw   r1, [sp+24]
     lw   r2, [sp+28]
-    la   r3, {__sv}
 .next:
     addi r1, r1, 36
     addi r2, r2, -1
@@ -1065,33 +1045,29 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     sw   r12, [sp+12]
     sw   r13, [sp+16]
     sw   ra, [sp+20]
-    la   r3, {__sv}
     beq  r2, r0, .done
 .face:
     lw   r4, [r1]               ; flags, blend, texture, palette
     lw   r9, [r0+{__cam_near}]
     lhu  r5, [r1+4]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r10, [r5+12]
+    lw   r10, [r5+{__sv}+12]
     blt  r10, r9, .nb
     lhu  r6, [r1+6]
     shli r6, r6, 4
-    add  r6, r6, r3
-    lw   r11, [r6+12]
+    lw   r11, [r6+{__sv}+12]
     blt  r11, r9, .near
     add  r10, r10, r11
     lhu  r7, [r1+8]
     shli r7, r7, 4
-    add  r7, r7, r3
-    lw   r11, [r7+12]
+    lw   r11, [r7+{__sv}+12]
     blt  r11, r9, .near
     add  r10, r10, r11          ; w0 + w1 + w2
     ; back faces: nclip >= 0 (front faces are counter-clockwise on screen). The positions
     ; are exact here: a corner outside the guard band went to .clip first.
-    lw   r12, [r5+8]
-    lw   r11, [r6+8]
-    lw   r13, [r7+8]
+    lw   r12, [r5+{__sv}+8]
+    lw   r11, [r6+{__sv}+8]
+    lw   r13, [r7+{__sv}+8]
     nclip r12, r11, r13
     blt  r12, r0, .front
     andi r11, r4, 16            ; double-sided
@@ -1107,8 +1083,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
 .quad:
     lhu  r8, [r1+10]
     shli r8, r8, 4
-    add  r8, r8, r3
-    lw   r11, [r8+12]
+    lw   r11, [r8+{__sv}+12]
     blt  r11, r9, .near
     add  r10, r10, r11
     shli r11, r9, 2
@@ -1128,15 +1103,13 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     andi r9, r4, 15
     or   r9, r9, r12            ; fog makes every face Gouraud (bits 15-16 leave the header)
     ; header and ordering-table insertion
-    la   r11, {__ot}
-    shli r10, r10, 2
-    add  r11, r11, r10
-    lw   r10, [r11]
+    shli r11, r10, 2
+    lw   r10, [r11+{__ot}]
     ori  r13, r9, 0x20
     shli r13, r13, 24
     or   r10, r10, r13
     sw   r10, [r15]
-    sw   r15, [r11]
+    sw   r15, [r11+{__ot}]
     ; dispatch on Gouraud/textured/quad (+ fog, + windows)
     andi r9, r9, 7
     shri r12, r12, 12           ; fog -> bit 3, windows -> bit 4
@@ -1165,11 +1138,11 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+12]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+16]
     jmp  .next
 .v1000:   ; gouraud triangle, 28 bytes
@@ -1181,15 +1154,15 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lw   r11, [r1+16]
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lw   r11, [r1+20]
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     jmp  .next
 .v0100:   ; flat textured triangle, 32 bytes
@@ -1201,7 +1174,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -1209,11 +1182,11 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 16
     or   r11, r11, r12
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lhu  r11, [r1+30]
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lhu  r11, [r1+32]
     sw   r11, [r15+28]
@@ -1227,7 +1200,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -1237,13 +1210,13 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r1+16]
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     lhu  r11, [r1+30]
     sw   r11, [r15+24]
     lw   r11, [r1+20]
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
@@ -1257,13 +1230,13 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+12]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+16]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+20]
     jmp  .next
 .v1010:   ; gouraud quad, 36 bytes
@@ -1275,19 +1248,19 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lw   r11, [r1+16]
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lw   r11, [r1+20]
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lw   r11, [r1+24]
     sw   r11, [r15+28]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+32]
     jmp  .next
 .v0110:   ; flat textured quad, 40 bytes
@@ -1299,7 +1272,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -1307,15 +1280,15 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 16
     or   r11, r11, r12
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lhu  r11, [r1+30]
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lhu  r11, [r1+32]
     sw   r11, [r15+28]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+34]
     sw   r11, [r15+36]
@@ -1329,7 +1302,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -1339,19 +1312,19 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r1+16]
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     lhu  r11, [r1+30]
     sw   r11, [r15+24]
     lw   r11, [r1+20]
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
     lw   r11, [r1+24]
     sw   r11, [r15+40]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+44]
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
@@ -1365,28 +1338,28 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     lw   r9, [r0+{__fog_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     jmp  .next
 .v1101:   ; gouraud textured triangle fog, 40 bytes
@@ -1398,14 +1371,14 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     lw   r9, [r0+{__fogt_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -1415,19 +1388,19 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     lhu  r11, [r1+30]
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
@@ -1441,35 +1414,35 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     lw   r9, [r0+{__fog_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r8+4]          ; fog amount
+    lw   r12, [r8+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+32]
     jmp  .next
 .v1111:   ; gouraud textured quad fog, 52 bytes
@@ -1481,14 +1454,14 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     lw   r9, [r0+{__fogt_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -1498,28 +1471,28 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     lhu  r11, [r1+30]
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r8+4]          ; fog amount
+    lw   r12, [r8+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+40]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+44]
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
@@ -1533,7 +1506,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -1541,7 +1514,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 16
     or   r11, r11, r12
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -1554,7 +1527,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     lhu  r11, [r1+30]
     or   r11, r11, r12
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lhu  r11, [r1+32]
     sw   r11, [r15+28]
@@ -1568,7 +1541,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -1578,7 +1551,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r1+16]
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -1593,7 +1566,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     sw   r11, [r15+24]
     lw   r11, [r1+20]
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
@@ -1607,7 +1580,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -1615,7 +1588,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 16
     or   r11, r11, r12
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -1628,11 +1601,11 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     lhu  r11, [r1+30]
     or   r11, r11, r12
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lhu  r11, [r1+32]
     sw   r11, [r15+28]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+34]
     sw   r11, [r15+36]
@@ -1646,7 +1619,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -1656,7 +1629,7 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r1+16]
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -1671,13 +1644,13 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     sw   r11, [r15+24]
     lw   r11, [r1+20]
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
     lw   r11, [r1+24]
     sw   r11, [r15+40]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+44]
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
@@ -1691,14 +1664,14 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     lw   r9, [r0+{__fogt_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -1708,10 +1681,10 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -1726,10 +1699,10 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
@@ -1743,14 +1716,14 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     lw   r9, [r0+{__fogt_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -1760,10 +1733,10 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -1778,19 +1751,19 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r8+4]          ; fog amount
+    lw   r12, [r8+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+40]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+44]
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
@@ -1799,28 +1772,24 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     ; corner 0 is behind the near plane: clip the face, unless they all are
     lhu  r5, [r1+6]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r11, [r5+12]
+    lw   r11, [r5+{__sv}+12]
     bge  r11, r9, .near
     lhu  r5, [r1+8]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r11, [r5+12]
+    lw   r11, [r5+{__sv}+12]
     bge  r11, r9, .near
     andi r11, r4, 4
     beq  r11, r0, .next
     lhu  r5, [r1+10]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r11, [r5+12]
+    lw   r11, [r5+{__sv}+12]
     blt  r11, r9, .next
 .near:
     addi r11, r0, 15
     lhu  r5, [r1+4]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]
+    lw   r12, [r5+{__sv}+12]           ; w
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -1846,9 +1815,8 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     and  r11, r11, r7
     lhu  r5, [r1+6]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]
+    lw   r12, [r5+{__sv}+12]           ; w
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -1874,9 +1842,8 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     and  r11, r11, r7
     lhu  r5, [r1+8]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]
+    lw   r12, [r5+{__sv}+12]           ; w
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -1904,9 +1871,8 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     beq  r12, r0, .near3
     lhu  r5, [r1+10]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]
+    lw   r12, [r5+{__sv}+12]           ; w
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -1937,7 +1903,6 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     call {__clip_face}     ; r1 = the face
     lw   r1, [sp+24]
     lw   r2, [sp+28]
-    la   r3, {__sv}
     jmp  .next
 .next:
     addi r1, r1, 36
@@ -1997,21 +1962,18 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r12, [sp+12]
     sw   r13, [sp+16]
     sw   ra, [sp+20]
-    la   r3, {__sv}
     beq  r2, r0, .done
 .face:
     lw   r4, [r1]               ; flags, blend, texture, palette
     lw   r9, [r0+{__cam_near}]
     lhu  r5, [r1+4]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r10, [r5+12]
+    lw   r10, [r5+{__sv}+12]
     mov  r12, r10               ; nearest w
     mov  r13, r10               ; farthest w
     lhu  r6, [r1+6]
     shli r6, r6, 4
-    add  r6, r6, r3
-    lw   r11, [r6+12]
+    lw   r11, [r6+{__sv}+12]
     add  r10, r10, r11
     bge  r11, r12, .n1
     mov  r12, r11
@@ -2021,8 +1983,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
 .f1:
     lhu  r7, [r1+8]
     shli r7, r7, 4
-    add  r7, r7, r3
-    lw   r11, [r7+12]
+    lw   r11, [r7+{__sv}+12]
     add  r10, r10, r11          ; w0 + w1 + w2
     bge  r11, r12, .n2
     mov  r12, r11
@@ -2034,8 +1995,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     beq  r11, r0, .mm
     lhu  r8, [r1+10]
     shli r8, r8, 4
-    add  r8, r8, r3
-    lw   r11, [r8+12]
+    lw   r11, [r8+{__sv}+12]
     bge  r11, r12, .n3
     mov  r12, r11
 .n3:
@@ -2059,7 +2019,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     addi r11, r0, -32768
     sw   r11, [sp+40]
     sw   r11, [sp+48]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     shli r15, r11, 16
     sari r15, r15, 16
     sari r11, r11, 16
@@ -2079,7 +2039,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     bge  r3, r11, .bb0
     sw   r11, [sp+48]
 .bb0:
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     shli r15, r11, 16
     sari r15, r15, 16
     sari r11, r11, 16
@@ -2099,7 +2059,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     bge  r3, r11, .bb1
     sw   r11, [sp+48]
 .bb1:
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     shli r15, r11, 16
     sari r15, r15, 16
     sari r11, r11, 16
@@ -2121,7 +2081,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
 .bb2:
     andi r11, r4, 4
     beq  r11, r0, .bbq
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     shli r15, r11, 16
     sari r15, r15, 16
     sari r11, r11, 16
@@ -2142,7 +2102,6 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r11, [sp+48]
 .bb3:
 .bbq:
-    la   r3, {__sv}
     lw   r11, [sp+40]
     lw   r15, [r0+{__scr_x0}]
     blt  r11, r15, .next        ; all left of the screen (the cull rectangle)
@@ -2164,17 +2123,17 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
 .plain:
     sw   r0, [sp+24]
 .cull:
-    lw   r11, [r5]
-    lw   r12, [r6]
+    lw   r11, [r5+{__sv}]
+    lw   r12, [r6+{__sv}]
     and  r11, r11, r12
-    lw   r12, [r7]
+    lw   r12, [r7+{__sv}]
     and  r11, r11, r12
     beq  r11, r0, .gb         ; a corner outside the guard band
     ; back faces: nclip >= 0 (front faces are counter-clockwise on screen). The positions
     ; are exact here: a corner outside the guard band went to .clip first.
-    lw   r12, [r5+8]
-    lw   r11, [r6+8]
-    lw   r13, [r7+8]
+    lw   r12, [r5+{__sv}+8]
+    lw   r11, [r6+{__sv}+8]
+    lw   r13, [r7+{__sv}+8]
     nclip r12, r11, r13
     blt  r12, r0, .front
     andi r11, r4, 16            ; double-sided
@@ -2192,10 +2151,9 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
 .quad:
     lhu  r8, [r1+10]
     shli r8, r8, 4
-    add  r8, r8, r3
-    lw   r11, [r8+12]
+    lw   r11, [r8+{__sv}+12]
     blt  r11, r9, .next
-    lw   r12, [r8]
+    lw   r12, [r8+{__sv}]
     beq  r12, r0, .clip         ; the fourth corner is outside the guard band
     add  r10, r10, r11
     shli r11, r9, 2
@@ -2215,15 +2173,13 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     andi r9, r4, 15
     or   r9, r9, r12            ; fog makes every face Gouraud (bits 15-16 leave the header)
     ; header and ordering-table insertion
-    la   r11, {__ot}
-    shli r10, r10, 2
-    add  r11, r11, r10
-    lw   r10, [r11]
+    shli r11, r10, 2
+    lw   r10, [r11+{__ot}]
     ori  r13, r9, 0x20
     shli r13, r13, 24
     or   r10, r10, r13
     sw   r10, [r15]
-    sw   r15, [r11]
+    sw   r15, [r11+{__ot}]
     ; dispatch on Gouraud/textured/quad (+ fog, + windows)
     andi r9, r9, 7
     shri r12, r12, 12           ; fog -> bit 3, windows -> bit 4
@@ -2252,11 +2208,11 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+12]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+16]
     jmp  .next
 .v1000:   ; gouraud triangle, 28 bytes
@@ -2268,15 +2224,15 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lw   r11, [r1+16]
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lw   r11, [r1+20]
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     jmp  .next
 .v0100:   ; flat textured triangle, 32 bytes
@@ -2288,7 +2244,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -2296,11 +2252,11 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 16
     or   r11, r11, r12
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lhu  r11, [r1+30]
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lhu  r11, [r1+32]
     sw   r11, [r15+28]
@@ -2314,7 +2270,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -2324,13 +2280,13 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r1+16]
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     lhu  r11, [r1+30]
     sw   r11, [r15+24]
     lw   r11, [r1+20]
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
@@ -2344,13 +2300,13 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+12]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+16]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+20]
     jmp  .next
 .v1010:   ; gouraud quad, 36 bytes
@@ -2362,19 +2318,19 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lw   r11, [r1+16]
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lw   r11, [r1+20]
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lw   r11, [r1+24]
     sw   r11, [r15+28]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+32]
     jmp  .next
 .v0110:   ; flat textured quad, 40 bytes
@@ -2386,7 +2342,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -2394,15 +2350,15 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 16
     or   r11, r11, r12
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lhu  r11, [r1+30]
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lhu  r11, [r1+32]
     sw   r11, [r15+28]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+34]
     sw   r11, [r15+36]
@@ -2416,7 +2372,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -2426,19 +2382,19 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r1+16]
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     lhu  r11, [r1+30]
     sw   r11, [r15+24]
     lw   r11, [r1+20]
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
     lw   r11, [r1+24]
     sw   r11, [r15+40]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+44]
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
@@ -2452,28 +2408,28 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     lw   r9, [r0+{__fog_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     jmp  .next
 .v1101:   ; gouraud textured triangle fog, 40 bytes
@@ -2485,14 +2441,14 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     lw   r9, [r0+{__fogt_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -2502,19 +2458,19 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     lhu  r11, [r1+30]
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
@@ -2528,35 +2484,35 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     lw   r9, [r0+{__fog_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r8+4]          ; fog amount
+    lw   r12, [r8+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+32]
     jmp  .next
 .v1111:   ; gouraud textured quad fog, 52 bytes
@@ -2568,14 +2524,14 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     lw   r9, [r0+{__fogt_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -2585,28 +2541,28 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     lhu  r11, [r1+30]
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r8+4]          ; fog amount
+    lw   r12, [r8+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+40]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+44]
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
@@ -2620,7 +2576,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -2628,7 +2584,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 16
     or   r11, r11, r12
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -2641,7 +2597,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     lhu  r11, [r1+30]
     or   r11, r11, r12
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lhu  r11, [r1+32]
     sw   r11, [r15+28]
@@ -2655,7 +2611,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -2665,7 +2621,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r1+16]
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -2680,7 +2636,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r11, [r15+24]
     lw   r11, [r1+20]
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
@@ -2694,7 +2650,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -2702,7 +2658,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 16
     or   r11, r11, r12
     sw   r11, [r15+12]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -2715,11 +2671,11 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     lhu  r11, [r1+30]
     or   r11, r11, r12
     sw   r11, [r15+20]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+24]
     lhu  r11, [r1+32]
     sw   r11, [r15+28]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+34]
     sw   r11, [r15+36]
@@ -2733,7 +2689,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -2743,7 +2699,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r1+16]
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -2758,13 +2714,13 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r11, [r15+24]
     lw   r11, [r1+20]
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
     lw   r11, [r1+24]
     sw   r11, [r15+40]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+44]
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
@@ -2778,14 +2734,14 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     lw   r9, [r0+{__fogt_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -2795,10 +2751,10 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -2813,10 +2769,10 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
@@ -2830,14 +2786,14 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     lw   r9, [r0+{__fogt_col}]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r5+4]          ; fog amount
+    lw   r12, [r5+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     shri r12, r4, 8           ; blend mode -> bits 24-25
     andi r12, r12, 3
     shli r12, r12, 24
     or   r11, r11, r12
     sw   r11, [r15+4]
-    lw   r11, [r5+8]
+    lw   r11, [r5+{__sv}+8]
     sw   r11, [r15+8]
     lhu  r11, [r1+28]
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
@@ -2847,10 +2803,10 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r6+4]          ; fog amount
+    lw   r12, [r6+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+16]
-    lw   r11, [r6+8]
+    lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+20]
     shri r12, r4, 20          ; window index x 2
     andi r12, r12, 14
@@ -2865,19 +2821,19 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     sw   r11, [r15+24]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r7+4]          ; fog amount
+    lw   r12, [r7+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+28]
-    lw   r11, [r7+8]
+    lw   r11, [r7+{__sv}+8]
     sw   r11, [r15+32]
     lhu  r11, [r1+32]
     sw   r11, [r15+36]
     lw   r11, [r10]
     add  r10, r10, r13
-    lw   r12, [r8+4]          ; fog amount
+    lw   r12, [r8+{__sv}+4]          ; fog amount
     clerp r11, r9, r12        ; toward the fog colour
     sw   r11, [r15+40]
-    lw   r11, [r8+8]
+    lw   r11, [r8+{__sv}+8]
     sw   r11, [r15+44]
     lhu  r11, [r1+34]
     sw   r11, [r15+48]
@@ -2892,15 +2848,13 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     call {__subdivide_face}     ; r1 = the face
     lw   r1, [sp+28]
     lw   r2, [sp+32]
-    la   r3, {__sv}
     jmp  .next
 .nearsub:
     addi r11, r0, 15
     lhu  r5, [r1+4]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]
+    lw   r12, [r5+{__sv}+12]           ; w
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -2926,9 +2880,8 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     and  r11, r11, r7
     lhu  r5, [r1+6]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]
+    lw   r12, [r5+{__sv}+12]           ; w
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -2954,9 +2907,8 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     and  r11, r11, r7
     lhu  r5, [r1+8]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]
+    lw   r12, [r5+{__sv}+12]           ; w
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -2984,9 +2936,8 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     beq  r12, r0, .near3
     lhu  r5, [r1+10]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r12, [r5+12]           ; w
-    lw   r5, [r5+8]
+    lw   r12, [r5+{__sv}+12]           ; w
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -3017,14 +2968,12 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     call {__clip_face_sub}     ; r1 = the face
     lw   r1, [sp+28]
     lw   r2, [sp+32]
-    la   r3, {__sv}
     jmp  .next
 .clip:
     addi r11, r0, 15
     lhu  r5, [r1+4]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r5, [r5+8]
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -3047,8 +2996,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     and  r11, r11, r7
     lhu  r5, [r1+6]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r5, [r5+8]
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -3071,8 +3019,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     and  r11, r11, r7
     lhu  r5, [r1+8]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r5, [r5+8]
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -3097,8 +3044,7 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     beq  r12, r0, .clip3
     lhu  r5, [r1+10]
     shli r5, r5, 4
-    add  r5, r5, r3
-    lw   r5, [r5+8]
+    lw   r5, [r5+{__sv}+8]
     shli r6, r5, 16
     sari r6, r6, 16             ; x
     sari r5, r5, 16             ; y
@@ -3126,7 +3072,6 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     call {__clip_face}          ; r1 = the face
     lw   r1, [sp+28]
     lw   r2, [sp+32]
-    la   r3, {__sv}
 .next:
     addi r1, r1, 36
     addi r2, r2, -1
@@ -3174,6 +3119,410 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     .word .v1011
     .word .v1111w
     .word .v1111w
+}
+
+// The loop for a mesh that needs no clipping at all: see safe_loop() in gen_faces_asm.py.
+weak asm fn __draw_faces_safe(first: *Face, nf: s32) {
+    beq  r2, r0, .ret
+    addi sp, sp, -24
+    sw   r9, [sp+0]
+    sw   r10, [sp+4]
+    sw   r11, [sp+8]
+    sw   r12, [sp+12]
+    sw   r13, [sp+16]
+    sw   ra, [sp+20]
+    shli r11, r2, 5
+    shli r2, r2, 2
+    add  r2, r2, r11
+    add  r2, r2, r1             ; the end of the faces (36 bytes each)
+    lw   r15, [r0+{__arena_ptr}]
+    lw   r3, [r0+{__cam_near}]
+    add  r12, r3, r3
+    add  r3, r12, r3            ; 3 near
+    li   r8, 0xFF1F0000
+.face:
+    lw   r4, [r1]               ; flags, blend, texture, palette
+    lhu  r5, [r1+4]
+    shli r5, r5, 4
+    lhu  r6, [r1+6]
+    shli r6, r6, 4
+    lhu  r7, [r1+8]
+    shli r7, r7, 4
+    ; back faces: nclip >= 0 (front faces are counter-clockwise on screen)
+    lw   r12, [r5+{__sv}+8]
+    lw   r11, [r6+{__sv}+8]     ; (r11 and r13 keep positions 1 and 2 for the flat triangle)
+    lw   r13, [r7+{__sv}+8]
+    nclip r12, r11, r13
+    bge  r12, r0, .back
+.front:
+    andi r12, r4, 39            ; keyed, quad, textured, Gouraud
+    addi r9, r0, 2
+    bne  r12, r9, .notri        ; not a flat textured triangle
+    lw   r10, [r5+{__sv}+12]
+    lw   r12, [r6+{__sv}+12]
+    add  r10, r10, r12
+    lw   r12, [r7+{__sv}+12]
+    add  r10, r10, r12
+    sub  r12, r10, r3           ; w0 + w1 + w2 - 3 near
+    lw   r6, [r0+{__ot_k3}]
+    lw   r10, [r0+{__ot_bias}]
+    otz  r10, r12, r6           ; ordering-table bucket
+    ; header and ordering-table insertion
+    shli r10, r10, 2
+    lw   r12, [r10+{__ot}]
+    andi r6, r4, 15
+    ori  r6, r6, 0x20
+    shli r6, r6, 24
+    or   r12, r12, r6
+    sw   r12, [r15]
+    sw   r15, [r10+{__ot}]
+    ; the packet: flat textured triangle, 32 bytes
+    lw   r12, [r1+12]
+    shri r6, r4, 8              ; blend mode -> bits 24 up
+    andi r6, r6, 3
+    shli r6, r6, 24
+    or   r12, r12, r6
+    sw   r12, [r15+4]
+    lw   r12, [r5+{__sv}+8]
+    sw   r12, [r15+8]
+    lhu  r12, [r1+28]
+    and  r6, r4, r8             ; slot, depth and palette -> bits 16-31
+    or   r12, r12, r6
+    sw   r12, [r15+12]
+    sw   r11, [r15+16]
+    lhu  r12, [r1+30]
+    sw   r12, [r15+20]
+    sw   r13, [r15+24]
+    lhu  r12, [r1+32]
+    sw   r12, [r15+28]
+    addi r15, r15, 32
+.next:
+    addi r1, r1, 36
+    bltu r1, r2, .face
+    sw   r15, [r0+{__arena_ptr}]
+    lw   r9, [sp+0]
+    lw   r10, [sp+4]
+    lw   r11, [sp+8]
+    lw   r12, [sp+12]
+    lw   r13, [sp+16]
+    lw   ra, [sp+20]
+    addi sp, sp, 24
+.ret:
+    ret
+.back:
+    andi r12, r4, 16            ; double-sided
+    beq  r12, r0, .next
+    jmp  .front
+.nextr:
+    li   r8, 0xFF1F0000
+    jmp  .next
+.notri:
+    addi r9, r0, 6
+    bne  r12, r9, .gen          ; not a flat textured quad either
+    lw   r10, [r5+{__sv}+12]
+    lw   r12, [r6+{__sv}+12]
+    add  r10, r10, r12
+    lw   r12, [r7+{__sv}+12]
+    add  r10, r10, r12
+    lhu  r7, [r1+10]
+    shli r7, r7, 4
+    lw   r12, [r7+{__sv}+12]
+    add  r10, r10, r12
+    lw   r6, [r0+{__cam_near}]
+    shli r6, r6, 2
+    sub  r12, r10, r6           ; w0 + w1 + w2 + w3 - 4 near
+    lw   r6, [r0+{__ot_k4}]
+    lw   r10, [r0+{__ot_bias}]
+    otz  r10, r12, r6           ; ordering-table bucket
+    shli r10, r10, 2
+    lw   r12, [r10+{__ot}]
+    andi r6, r4, 15
+    ori  r6, r6, 0x20
+    shli r6, r6, 24
+    or   r12, r12, r6
+    sw   r12, [r15]
+    sw   r15, [r10+{__ot}]
+    ; the packet: flat textured quad, 40 bytes
+    lw   r12, [r1+12]
+    shri r6, r4, 8              ; blend mode -> bits 24 up
+    andi r6, r6, 3
+    shli r6, r6, 24
+    or   r12, r12, r6
+    sw   r12, [r15+4]
+    lw   r12, [r5+{__sv}+8]
+    sw   r12, [r15+8]
+    lhu  r12, [r1+28]
+    and  r6, r4, r8             ; slot, depth and palette -> bits 16-31
+    or   r12, r12, r6
+    sw   r12, [r15+12]
+    sw   r11, [r15+16]
+    lhu  r12, [r1+30]
+    sw   r12, [r15+20]
+    sw   r13, [r15+24]
+    lhu  r12, [r1+32]
+    sw   r12, [r15+28]
+    lw   r12, [r7+{__sv}+8]
+    sw   r12, [r15+32]
+    lhu  r12, [r1+34]
+    sw   r12, [r15+36]
+    addi r15, r15, 40
+    jmp  .next
+    ; any other face: as __draw_faces makes it
+.gen:
+    andi r12, r4, 32
+    bne  r12, r0, .keyed        ; FACE_KEYED: the bucket is in col[3]
+    lw   r10, [r5+{__sv}+12]
+    lw   r12, [r6+{__sv}+12]
+    add  r10, r10, r12
+    lw   r12, [r7+{__sv}+12]
+    add  r10, r10, r12          ; w0 + w1 + w2
+    andi r12, r4, 4
+    bne  r12, r0, .quad
+    sub  r12, r10, r3           ; w0 + w1 + w2 - 3 near
+    lw   r9, [r0+{__ot_k3}]
+.depth:
+    lw   r10, [r0+{__ot_bias}]
+    otz  r10, r12, r9           ; ordering-table bucket
+.dk:
+    shli r10, r10, 2
+    lw   r12, [r10+{__ot}]
+    andi r9, r4, 15
+    ori  r9, r9, 0x20
+    shli r9, r9, 24
+    or   r12, r12, r9
+    sw   r12, [r15]
+    sw   r15, [r10+{__ot}]
+    andi r12, r4, 7
+    shli r12, r12, 2
+    la   r9, .table
+    add  r9, r9, r12
+    lw   r9, [r9]
+    jr   r9
+.quad:
+    lhu  r8, [r1+10]
+    shli r8, r8, 4
+    lw   r12, [r8+{__sv}+12]
+    add  r10, r10, r12
+    lw   r12, [r0+{__cam_near}]
+    shli r12, r12, 2
+    sub  r12, r10, r12          ; w0 + w1 + w2 + w3 - 4 near
+    lw   r9, [r0+{__ot_k4}]
+    jmp  .depth
+.keyed:
+    lhu  r8, [r1+10]            ; (the fourth corner, for a quad's writer)
+    shli r8, r8, 4
+    lw   r10, [r0+{__ot_bias}]
+    lw   r9, [r1+24]
+    add  r10, r10, r9
+    bge  r10, r0, .k0
+    mov  r10, r0
+.k0:
+    slti r9, r10, 1024
+    bne  r9, r0, .dk
+    addi r10, r0, 1023
+    jmp  .dk
+.s000:   ; flat triangle, 20 bytes
+    lw   r11, [r1+12]
+    shri r12, r4, 8           ; blend mode -> bits 24-25
+    andi r12, r12, 3
+    shli r12, r12, 24
+    or   r11, r11, r12
+    sw   r11, [r15+4]
+    lw   r11, [r5+{__sv}+8]
+    sw   r11, [r15+8]
+    lw   r11, [r6+{__sv}+8]
+    sw   r11, [r15+12]
+    lw   r11, [r7+{__sv}+8]
+    sw   r11, [r15+16]
+    addi r15, r15, 20
+    jmp  .nextr
+.s100:   ; gouraud triangle, 28 bytes
+    lw   r11, [r1+12]
+    shri r12, r4, 8           ; blend mode -> bits 24-25
+    andi r12, r12, 3
+    shli r12, r12, 24
+    or   r11, r11, r12
+    sw   r11, [r15+4]
+    lw   r11, [r5+{__sv}+8]
+    sw   r11, [r15+8]
+    lw   r11, [r1+16]
+    sw   r11, [r15+12]
+    lw   r11, [r6+{__sv}+8]
+    sw   r11, [r15+16]
+    lw   r11, [r1+20]
+    sw   r11, [r15+20]
+    lw   r11, [r7+{__sv}+8]
+    sw   r11, [r15+24]
+    addi r15, r15, 28
+    jmp  .nextr
+.s010:   ; flat textured triangle, 32 bytes
+    lw   r11, [r1+12]
+    shri r12, r4, 8           ; blend mode -> bits 24-25
+    andi r12, r12, 3
+    shli r12, r12, 24
+    or   r11, r11, r12
+    sw   r11, [r15+4]
+    lw   r11, [r5+{__sv}+8]
+    sw   r11, [r15+8]
+    lhu  r11, [r1+28]
+    shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
+    andi r12, r12, 0xFF1F
+    shli r12, r12, 16
+    or   r11, r11, r12
+    sw   r11, [r15+12]
+    lw   r11, [r6+{__sv}+8]
+    sw   r11, [r15+16]
+    lhu  r11, [r1+30]
+    sw   r11, [r15+20]
+    lw   r11, [r7+{__sv}+8]
+    sw   r11, [r15+24]
+    lhu  r11, [r1+32]
+    sw   r11, [r15+28]
+    addi r15, r15, 32
+    jmp  .nextr
+.s110:   ; gouraud textured triangle, 40 bytes
+    lw   r11, [r1+12]
+    shri r12, r4, 8           ; blend mode -> bits 24-25
+    andi r12, r12, 3
+    shli r12, r12, 24
+    or   r11, r11, r12
+    sw   r11, [r15+4]
+    lw   r11, [r5+{__sv}+8]
+    sw   r11, [r15+8]
+    lhu  r11, [r1+28]
+    shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
+    andi r12, r12, 0xFF1F
+    shli r12, r12, 16
+    or   r11, r11, r12
+    sw   r11, [r15+12]
+    lw   r11, [r1+16]
+    sw   r11, [r15+16]
+    lw   r11, [r6+{__sv}+8]
+    sw   r11, [r15+20]
+    lhu  r11, [r1+30]
+    sw   r11, [r15+24]
+    lw   r11, [r1+20]
+    sw   r11, [r15+28]
+    lw   r11, [r7+{__sv}+8]
+    sw   r11, [r15+32]
+    lhu  r11, [r1+32]
+    sw   r11, [r15+36]
+    addi r15, r15, 40
+    jmp  .nextr
+.s001:   ; flat quad, 24 bytes
+    lw   r11, [r1+12]
+    shri r12, r4, 8           ; blend mode -> bits 24-25
+    andi r12, r12, 3
+    shli r12, r12, 24
+    or   r11, r11, r12
+    sw   r11, [r15+4]
+    lw   r11, [r5+{__sv}+8]
+    sw   r11, [r15+8]
+    lw   r11, [r6+{__sv}+8]
+    sw   r11, [r15+12]
+    lw   r11, [r7+{__sv}+8]
+    sw   r11, [r15+16]
+    lw   r11, [r8+{__sv}+8]
+    sw   r11, [r15+20]
+    addi r15, r15, 24
+    jmp  .nextr
+.s101:   ; gouraud quad, 36 bytes
+    lw   r11, [r1+12]
+    shri r12, r4, 8           ; blend mode -> bits 24-25
+    andi r12, r12, 3
+    shli r12, r12, 24
+    or   r11, r11, r12
+    sw   r11, [r15+4]
+    lw   r11, [r5+{__sv}+8]
+    sw   r11, [r15+8]
+    lw   r11, [r1+16]
+    sw   r11, [r15+12]
+    lw   r11, [r6+{__sv}+8]
+    sw   r11, [r15+16]
+    lw   r11, [r1+20]
+    sw   r11, [r15+20]
+    lw   r11, [r7+{__sv}+8]
+    sw   r11, [r15+24]
+    lw   r11, [r1+24]
+    sw   r11, [r15+28]
+    lw   r11, [r8+{__sv}+8]
+    sw   r11, [r15+32]
+    addi r15, r15, 36
+    jmp  .nextr
+.s011:   ; flat textured quad, 40 bytes
+    lw   r11, [r1+12]
+    shri r12, r4, 8           ; blend mode -> bits 24-25
+    andi r12, r12, 3
+    shli r12, r12, 24
+    or   r11, r11, r12
+    sw   r11, [r15+4]
+    lw   r11, [r5+{__sv}+8]
+    sw   r11, [r15+8]
+    lhu  r11, [r1+28]
+    shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
+    andi r12, r12, 0xFF1F
+    shli r12, r12, 16
+    or   r11, r11, r12
+    sw   r11, [r15+12]
+    lw   r11, [r6+{__sv}+8]
+    sw   r11, [r15+16]
+    lhu  r11, [r1+30]
+    sw   r11, [r15+20]
+    lw   r11, [r7+{__sv}+8]
+    sw   r11, [r15+24]
+    lhu  r11, [r1+32]
+    sw   r11, [r15+28]
+    lw   r11, [r8+{__sv}+8]
+    sw   r11, [r15+32]
+    lhu  r11, [r1+34]
+    sw   r11, [r15+36]
+    addi r15, r15, 40
+    jmp  .nextr
+.s111:   ; gouraud textured quad, 52 bytes
+    lw   r11, [r1+12]
+    shri r12, r4, 8           ; blend mode -> bits 24-25
+    andi r12, r12, 3
+    shli r12, r12, 24
+    or   r11, r11, r12
+    sw   r11, [r15+4]
+    lw   r11, [r5+{__sv}+8]
+    sw   r11, [r15+8]
+    lhu  r11, [r1+28]
+    shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
+    andi r12, r12, 0xFF1F
+    shli r12, r12, 16
+    or   r11, r11, r12
+    sw   r11, [r15+12]
+    lw   r11, [r1+16]
+    sw   r11, [r15+16]
+    lw   r11, [r6+{__sv}+8]
+    sw   r11, [r15+20]
+    lhu  r11, [r1+30]
+    sw   r11, [r15+24]
+    lw   r11, [r1+20]
+    sw   r11, [r15+28]
+    lw   r11, [r7+{__sv}+8]
+    sw   r11, [r15+32]
+    lhu  r11, [r1+32]
+    sw   r11, [r15+36]
+    lw   r11, [r1+24]
+    sw   r11, [r15+40]
+    lw   r11, [r8+{__sv}+8]
+    sw   r11, [r15+44]
+    lhu  r11, [r1+34]
+    sw   r11, [r15+48]
+    addi r15, r15, 52
+    jmp  .nextr
+    .align 4
+.table:
+    .word .s000
+    .word .s100
+    .word .s010
+    .word .s110
+    .word .s001
+    .word .s101
+    .word .s011
+    .word .s111
 }
 
 // The subdivision worklist of subdiv.akr: splits a face held in scratch vertices until
