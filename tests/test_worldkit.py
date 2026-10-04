@@ -186,7 +186,11 @@ class ValidationTests(unittest.TestCase):
     def test_world_errors(self):
         self.check(lambda w: w.update(regoins={}), '/regoins', 'Unknown property')
         self.check(lambda w: w.update(terrain={}), '/terrain/materials', 'Required')
-        self.check(lambda w: w['regions']['lab'].update(textures=[]), '/regions/lab/textures', 'reserved')
+        self.check(lambda w: w['regions']['lab'].update(audio=[]), '/regions/lab/audio', 'reserved')
+        self.check(lambda w: w['regions']['lab'].update(textures={'slots': '15'}), '/regions/lab/textures/slots',
+                   'fonts')
+        self.check(lambda w: w['regions']['lab'].update(backdrop={'elevations': [5, 0], 'sky': {'day': ['#000000'] * 2}}),
+                   '/regions/lab/backdrop/elevations', 'increase')
         self.check(lambda w: w.update(cell_dir='cells'), '/cells', 'not both')
         self.check(lambda w: w['grid'].update(cell_size=48), '/grid/cell_size')
         self.check(lambda w: w.update(collision={'pad': 0.1}), '/collision/pad', 'probe radius')

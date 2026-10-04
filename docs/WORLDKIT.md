@@ -8,10 +8,12 @@ scatter](#merged-scatter), [paths](#paths), [levels of detail](#levels-of-detail
 [Mochi](#game-data-and-stable-ids) or JSON, the ID lock file, and [terrain](#terrain): ground
 heightfields and profiles swept along paths) and [command line](#command-line)
 below; the **World Checker**, the in-level
-verification every build runs ([WORLDCHECKER.md](WORLDCHECKER.md)); three example worlds in
+verification every build runs ([WORLDCHECKER.md](WORLDCHECKER.md)); four example worlds in
 `examples/worlds/`; and make's rule for [a cart that uses worlds](#using-a-world-in-a-cart), with
-World Viewer (`carts/worldview/`) as its example. Not built yet: textures, audio banks and
-backdrops (see [Build order](#build-order) for where the stages stand). This document records
+World Viewer (`carts/worldview/`) as its example; [textures per region](#textures-per-region),
+night variants for them and [backdrops](#backdrops) on the plane chip, with a fourth example,
+`night_market`. Not built yet: audio banks and spreading a region swap over a seam (see
+[Region seams](#region-seams) and [Build order](#build-order) for where the stages stand). This document records
 the project owner's decisions (most of them made on 2026-10-03), proposes the rest, and lists
 what is still open. The game that motivates it is described in [PLATFORMER.md](PLATFORMER.md)
 and is not built. It depends on three things, all now in place:
@@ -159,12 +161,9 @@ These are Asset Kit features, not World Kit features. Each is generic: none ment
    same colour share an entry by default; a recipe may force separate ones (`"share": false`).
    The material manifest is written for every build, so a world build reads one shape of data
    for every asset.
-5. **Textures and UVs.** Regions own texture sets (decision 4). The Asset Kit authors textured
-   assets and packs them for a cart without a world ([ASSETKIT.md](ASSETKIT.md#textures)), but
-   the World Kit does not pack them per region yet: a world whose asset has textures fails with
-   an error saying so. Until it does, a region's texture set is empty, and the stage-3
-   texture-swap seam has nothing to swap; ASSETKIT.md's
-   [For a region packer](ASSETKIT.md#for-a-region-packer-the-world-kit) lists what it can reuse.
+5. **Done: textures and UVs.** Regions own texture sets (decision 4). The Asset Kit authors
+   textured assets ([ASSETKIT.md](ASSETKIT.md#textures)) and the World Kit packs them per region
+   ([Textures per region](#textures-per-region)).
    Repeating textures use the Prism Engine's per-polygon **texture windows** ([DECISIONS.md](DECISIONS.md#texture-windows)), which `mesh()` already sends from a
    mesh's window table: many small repeating tiles share one texture slot instead of a slot each.
 
@@ -387,16 +386,18 @@ the assets' (a kerb can share an entry with a building's stone), and a variant r
 object (default `"mode": "vertical"`, as the assets are; terrain is never turned, so
 `directional` is also allowed).
 
-**What textures will need** (the Asset Kit's textures are being built; terrain does not depend on
-them). A terrain material would add a texture reference and a projection: planar from above for
+**What textures will need** (asset textures are packed per region now, [Textures per
+region](#textures-per-region); terrain's are not built). A terrain material would add a texture reference and a projection: planar from above for
 ground (u = x / scale, v = z / scale, in world coordinates, so the pattern runs on across seams
 and tiles with no seam of its own), box projection for sweeps and banks (the axis nearest the face
 normal). The faces are already 4-bit textured faces, so the change is their slot, palette and UVs:
 UVs in world units need a repeating texture through a texture window (DECISIONS.md, "Texture
 windows"), whose range limits a face to 256 texels across, so large merged rectangles would be
 split (a `max_rect` per field) or the UV origin moved per face, which the window's wrap allows.
-The packer in `tools/kitcore/` would place terrain textures in the region's texture slots like an
-asset's. Nothing in the pack changes.
+The region packer (`worldkit/textures.py`) would take terrain's tiles as one more asset's (its
+`RegionTextures` collects tiles per region and writes meshes for the packing; terrain pieces
+would need their faces written with the packing's slot, palette and window instead of the
+swatch). Nothing in the pack changes.
 
 ### Costs and checking
 
@@ -811,8 +812,9 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | `overhang` | How far a placement may reach past its cell (default 8, at most half a cell) |
 | `collision.pad` | How far walls are copied past a cell's edge: at least, and by default, the probe radius |
 | `collision.surfaces` | Material `tag` to surface byte; untagged faces and unmapped tags get `default` (unmapped tags are listed in the warnings) |
-| `palette` | `swatch_slot` and `swatch_row` (default 14, 0): where the world's swatch row lives in VRAM; `first`: the first 4-bit palette regions are given (default 0) |
-| `regions` | Named regions in order (the pack's region numbers): optional `palettes` (`first`, `count`) and `variants`. `textures`, `audio` and `backdrop` are reserved and rejected for now |
+| `palette` | `swatch_slot` and `swatch_row` (default 14, 0): where the world's swatch row lives in VRAM; `first`: the first 4-bit palette regions are given (default 0); `first8`: the first 8-bit palette 8-bit textures take, regions taking them downward (default 14) |
+| `textures` | Every region's texture `slots` (a range `"13-6"` in order of preference, or a list `"14,12"`; default `"13-0"`) and VRAM `budget` (bytes; default the slots'), unless the region gives its own ([Textures per region](#textures-per-region)) |
+| `regions` | Named regions in order (the pack's region numbers): optional `palettes` (`first`, `count`), `variants` (with `texels` and `backdrop` colours for textures and the silhouette), `textures` and `backdrop` ([Backdrops](#backdrops)). `audio` is reserved and rejected for now |
 | `layers` | World-wide layer names in order (the pack's layer ids), each with an optional exclusive `group` and `on` (at start) |
 | `paths` | Named polylines in world coordinates, in order (the pack's path numbers): [Paths](#paths) |
 | `lod` | The switch distances of assets with levels of detail: `scale`, and per asset `distances`, `cull`, `band`, `off` ([Levels of detail](#levels-of-detail)) |
@@ -864,6 +866,152 @@ variant starts from the entries' own colours, multiplies surface and emissive en
 of every asset drawn in the region) or `ASSET.MATERIAL`. A name that matches nothing is an error;
 two names giving one shared entry two colours is an error that suggests `share: false`; recolouring
 an entry another material shares is a warning. The kit attaches no meaning to the names.
+
+### Textures per region
+
+Built (2026-10-04). A world may place Asset Kit assets with textures ([ASSETKIT.md](ASSETKIT.md#textures)).
+Every textured asset drawn in a region (placements and entity meshes) contributes its tiles to
+the region's **texture set**, which `tools/worldkit/textures.py` packs once with the kits' shared
+packer (`kitcore/texpack.py`, as `mei_assets.py pack` does):
+
+- **duplicates removed** across every asset the region uses (the same brick tile in two assets
+  is one tile; the night market's crate is one tile in each region that has crates);
+- **palettes shared** while their colours fit, 15 colours to a 4-bit palette and 255 to an 8-bit
+  one, but surface and emissive textures never share a palette (so a variant can tint them
+  differently; a tile used by both classes is tinted as emissive, with a warning);
+- **window-aligned tiles**: every tile at a multiple of 8 texels, repeating tiles reached through
+  texture windows;
+- **slots** from the region's `textures.slots` (else the world's, else `"13-0"`), in that order
+  of preference, never 15 (the fonts). Slot 14 holds the world's swatch row by default; a region
+  may still use it: the packer keeps the swatch's 16 × 1 texels free and the region's slot image
+  carries the swatch bytes.
+
+Each placed mesh is then written for the region's placement (`native_bytes()` with the region's
+packing; palette-backed materials of a textured asset go to the region's entries the same way),
+so a textured asset drawn in two regions is stored twice. Untextured assets are relocated as
+before, byte for byte.
+
+**Palettes.** A region's 4-bit texture palettes follow its palette-backed entries' palettes in
+its own range (`palettes.first`, `count`; still disjoint from every other region's), so its main
+colour run covers them and palette variants recolour them entry by entry. 8-bit texture palettes
+(256 colours each, 8-bit palette *p* is colours 256 *p* ..) are taken from `palette.first8`
+(default 14) downward, region after region, and stored as extra runs; the build fails if one
+would overlap a 4-bit palette a region uses.
+
+**VRAM budget.** A region may use its slots' 32,768 bytes each, or `textures.budget` bytes (tiles
+counted on the 8-texel grid, gutters included). Over it, or when the tiles do not fit in the
+slots, the build fails at `/regions/NAME/textures` with what the region needs and every asset's
+share:
+
+```
+Region 'market' needs 3,360 bytes of texture VRAM; that is over its budget (slots 13,12,..,6,
+budget 2,048 bytes). By asset: stall 2,176 bytes (8 tiles), shopfront 928 bytes (4 tiles),
+crate 128 bytes (1 tile), paving 128 bytes (1 tile). Use fewer or smaller textures, ...
+```
+
+`report.json` gives each region's `textures`: `vram_bytes` (the tiles) and
+`vram_bytes_allocated` (on the grid), `tiles`, each slot's rows and ROM bytes, the palettes, VRAM
+`by_asset`, and its animations (frames, ticks, ROM bytes, bytes a frame).
+
+**Night.** A variant's `surface.multiply` and `emissive.multiply` tint every colour of a 4-bit
+texture of that class, as they tint palette-backed entries; `texels` then sets exact colours:
+`"texels": {"shopfront.window": {"#30384a": "#ffd27a"}}` lights the shop window's panes (colours
+are compared at 15 bits; a colour the texture does not have is an error, as is a recolour of an
+8-bit texture). An entry shared with another texture changes with it (a warning). An 8-bit
+texture's whole palette is tinted by its class's multiply (`night: multiply`, as the manifest
+says): there is one tint per variant, not colours per entry. Both are stored per variant, so the
+reader loads or blends them like any other variant (`wp_variant_load()`, `wp_variant_blend()`).
+
+**Animated textures.** Each animated tile of the region (`"frames"` and `"ticks"` in its asset)
+has its frames in the pack in the tile's own layout; the reader copies a frame into the tile
+when it changes (`wp_animate(t)`, every placement in step). The texture set holds frame 0.
+
+**What is refused.** A stand-in with textures (a stand-in is drawn whichever region is loaded,
+so it cannot use a region's set), and a merged placement whose mesh has repeating textures (a
+merged mesh keeps no window table). Textured terrain is not built: terrain materials are
+palette-backed ([Materials, palettes and textures](#materials-palettes-and-textures) lists what it
+needs; its tiles would join the region's packing as one more asset's).
+
+**Cost** (the night market's market region, measured on the console, `tests/worldkit/market.akr`):
+2,434 bytes of tiles (3,360 on the grid) in slots 13 (4-bit) and 12 (8-bit), 6,528 bytes of ROM;
+entering it (`wp_region_enter()`: texels, palettes and the backdrop's 23,552 bytes of art) costs
+29,419 cycles, the harbour 10,580. Its two animations cost 259 cycles a frame while neither
+changes frame and up to 3,020 when the 33 × 17 neon sign does (17 rows of 17 bytes: rows that
+are not word-aligned copy a byte at a time). The scene's frames are 48,000–85,000 CPU and
+130,000–194,000 GPU cycles in depth and perspective mode.
+
+### Backdrops
+
+Built (2026-10-04). A region's `backdrop` is a sky and a horizon silhouette drawn by the Horizon
+Engine ([PLANES.md](PLANES.md)) behind the 3D world: no GPU cycles and no triangles, and with the
+plane chip erasing the frame to holes the GPU's 38,400-cycle `cls()` goes too.
+
+```json
+"backdrop": {
+  "elevations": [-8, 0, 6, 30, 70],
+  "sky": {"day":   ["#8a9298", "#e8dcc8", "#b8d0e8", "#6898d0", "#3060a8"],
+          "night": ["#141420", "#2a2440", "#1a1c3a", "#0c1028", "#04060f"]},
+  "silhouette": {"pattern": "skyline", "width": 1024, "height": 40, "seed": 11,
+                 "colors": ["#5a6878", "#3a4250", "#485666"]}
+}
+```
+
+- **Sky**: a gradient on the backdrop colour, one colour per stop for each palette variant (a
+  variant not given takes the first's colours times its `surface.multiply`), stops at
+  `elevations` (degrees above the horizon, increasing; below 0 is the haze under the horizon).
+- **Silhouette** (optional): a 4-bit panorama 256, 512 or 1024 pixels around and up to 128
+  tall, on tile plane BG1. From a PNG (`image`: transparent pixels are sky, at most 15 colours)
+  or generated (`pattern`: `skyline`, blocks with lit windows; `mountains`, ranges far to near;
+  deterministic by `seed`). Its 8 × 8 tiles are deduplicated into an atlas at plane page 12
+  (`0x460000`, planes.akr's `ATLAS_0`) and its map is 128 × 32 entries at most at `0x452000`
+  (`MAP_BG1`), both copied by `wp_region_enter()`. `horizon` gives the rows below the horizon
+  line (default 0: it stands on the horizon). Its colours are one 4-bit palette in the region's
+  range, so variants recolour it: the surface tint, then exact colours in the variant's
+  `backdrop` (the skyline's windows lit at night).
+
+**How it moves with the camera** (`stdlib/wpbackdrop.akr`, `wp_backdrop_draw(yaw, pitch)`): the
+camera has no roll, so the horizon is a screen line, 120 + *F* tan(pitch) with *F* = 207.8
+pixels a radian (the default 60° camera; `wp_backdrop_focal`). Each sky stop at elevation *e* is
+put on line 120 − *F* tan(*e* − pitch) and the line table interpolates between them, so tilting
+the camera slides the gradient exactly at the horizon and approximately away from it. The
+silhouette's horizon row is put on the horizon line and only its own rows are shown (BG1's
+window), so the plane's vertical wrap never shows a second copy. Horizontally it scrolls
+`rate` = width × `repeat` / 2π pixels a radian of yaw, its column 0 facing +Z at the screen's
+centre, turning the same way as the world. The world turns at *F* pixels a radian at the
+screen's centre, so a panorama matches it exactly only when width × repeat ≈ 2π *F* ≈ 1,306:
+`repeat` defaults to the whole number nearest that (1 for 1,024 pixels: 0.78 of the world's
+rate; 3 for 512: 1.18; 5 for 256: 0.98), and the report gives the ratio (`against_the_camera`).
+A tile plane scrolls by whole pixels and has no scale, which is why the rate is not exact; the
+affine plane BG2 could scale it but is left for the game's Mode 7 floor or water. Measured on
+the night market: the skyline moved 88 pixels for a 0.55-radian turn (0.55 × 162.97 = 89.6).
+
+**With depth mode.** The depth buffer orders polygons only; holes stay holes, so the planes show
+wherever no polygon is drawn ([RENDERING.md](RENDERING.md)). A cart draws no `cls()` (it would
+cover the planes) and calls `render_depth(true)` as before.
+
+**Cost.** `wp_backdrop_draw()` is about 5,300–5,500 CPU cycles a frame (the 240-line gradient
+and the scroll, five stops); planes.akr, which `wpbackdrop.akr` imports, adds 3 cycles a drawn
+face to `mesh()`. VRAM: the market skyline (1,024 × 40, 459 tiles) 15,360 bytes of atlas and
+8,192 of map; the harbour's mountains (512 × 36, 47 tiles) 2,048 and 4,096. GPU: none.
+
+### Region seams
+
+Entering a region (`wp_region_enter(k, v)`) copies its texture set, palettes and backdrop art at
+once and sets `wp_region_loaded = k`, so the near cells of every other region draw as their
+stand-ins (which carry no textures). That is all that is built. A seam where a player crosses
+into another region while seeing both still needs:
+
+- a swap spread over frames: one slot a frame with `wp_texture_load(k, t)` (about 56,000 cycles
+  a full slot), the palettes and backdrop last, while nothing on screen uses either region's
+  textures;
+- the seam's geometry (an underpass, an arcade) authored so that both regions' textured cells
+  are out of sight while the swap runs, and a check of that in the World Checker (views at the
+  seam must draw no textured cell of the region being replaced);
+- or slots split between regions (`textures.slots` per region, disjoint), so two neighbouring
+  regions' sets coexist and only the far ones swap, with the budget each then has.
+
+The World Checker already judges every view with its camera cell's region entered and the other
+regions' near cells as stand-ins.
 
 ### Merged scatter
 
@@ -1316,6 +1464,33 @@ and switch it; START: next world; Y: hide the overlay.
 It draws the live entities' meshes (the coin) with `wp_draw_entities()`
 ([Objects on platforms](#objects-on-platforms)).
 
+**A world with textures or a backdrop** ([Textures per region](#textures-per-region),
+[Backdrops](#backdrops)): its loader also enters the first region that has either
+(`wp_region_enter(k, 0)`), and `NAME.akr` imports `wpbackdrop.akr` when a region has a backdrop.
+The night market's test cart (`tests/worldkit/market.akr`) is the pattern:
+
+```
+import "night_market.akr"
+import "depth.akr"
+
+fn init() {
+    assert(world_night_market_load())                    // enters the market
+    wp_backdrop_show(WORLD_NIGHT_MARKET_REGION_MARKET)   // compositor on, sky and BG1 set up
+}
+
+fn draw() {
+    wp_animate(frame() as s32)                           // the neon sign and the lantern
+    wp_backdrop_draw(yaw, pitch)                         // no cls(): the planes are behind
+    render_depth(true)
+    render_perspective(true)
+    wp_draw(eye, yaw, pitch)
+}
+```
+
+and at dusk `wp_variant_blend(k, day, night, t)` with `wp_backdrop_variant(day, night, t)`; on
+crossing into another region, `wp_region_enter(k, v)` and `wp_backdrop_show(k)`. Screenshots of
+it, day and night, are in `examples/worlds/night_market/screenshots/`.
+
 **Open** (found while writing World Viewer; not built): a way to call "the open world's"
 generated functions without a branch per world (World Viewer's `world_load(k)` chooses between
 `world_test_room_load()` and `world_two_districts_load()`). The other item found then, a helper
@@ -1411,6 +1586,8 @@ stand-ins, a layer, palette variants and merged scatter, both checked by the Wor
 every build and walked through in World Viewer. Neither stage is built as the game: the movement
 garden cart, its character control and its camera zones are the game's
 ([PLATFORMER.md](PLATFORMER.md)), and stage 2's per-cell budgets have been measured only on the
-examples ([WORLDCHECKER.md](WORLDCHECKER.md#ground)). Stage 3 waits for textures.
+examples ([WORLDCHECKER.md](WORLDCHECKER.md#ground)). Stage 3's region resources are built
+(2026-10-04: texture sets, night variants, animated textures, backdrops; the example
+`night_market`, two regions); its seams are not ([Region seams](#region-seams)).
 Terrain (2026-10-04) is built, with a third example, `shrine_grounds`, the shape of the shrine
 grounds the garden's shrine hill is to grow into ([Terrain](#the-example-shrine-grounds)).

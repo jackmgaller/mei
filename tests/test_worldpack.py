@@ -185,8 +185,12 @@ class EncoderTests(unittest.TestCase):
         for name, data in cases.items():
             with self.subTest(name), self.assertRaises(PackError):
                 decode(data)
-        # a newer minor version is still read
-        decode(good[:6] + struct.pack('<H', 7) + good[8:])
+        # a newer minor version is still read (its header at least as long as 1.4's)
+        newer = encode(region_world())
+        decode(newer[:6] + struct.pack('<H', 7) + newer[8:])
+        # a 1.4 header's size is checked
+        with self.assertRaises(PackError):
+            decode(good[:6] + struct.pack('<H', 7) + good[8:])
         decode(good[:13] + bytes([0x02]) + good[14:])     # an ignorable flag 1.1 does not define
         # corrupt offsets anywhere in the cell table must be caught, never crash
         p = decode(good)

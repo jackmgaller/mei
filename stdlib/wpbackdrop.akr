@@ -100,8 +100,8 @@ fn wp_backdrop_variant(va: s32, vb: s32, t: fixed) {
     __wp_sky_t = t
 }
 
-// Sets the backdrop for this frame's camera (the yaw and pitch given to wp_draw()). About 4,000
-// cycles with a silhouette and four stops (the gradient's 240 lines are most of it).
+// Sets the backdrop for this frame's camera (the yaw and pitch given to wp_draw()). About 5,500
+// cycles with a silhouette and five stops (the gradient's 240 lines are most of it).
 fn wp_backdrop_draw(yaw: fixed, pitch: fixed) {
     let s = __wp_sky
     if s == null { return }

@@ -22,7 +22,8 @@ fn tex_frame_at(t: s32, count: s32, ticks: s32) -> s32 { return (t / ticks) % co
 
 // Copies one frame: `rows` rows of `row_bytes` from src to texture-area byte `vram`
 // (VRAM_TEXTURES + vram), rows `stride` bytes apart (128 in a 4-bit slot, 256 in an 8-bit one).
-// About 40 cycles a row plus the bytes (memcpy: 16 a step when both rows are word aligned).
+// About 70 cycles a row of 4 bytes; rows that are not word-aligned copy a byte at a time (about
+// 10 cycles a byte, memcpy).
 fn tex_frame_copy(src: *u8, vram: s32, rows: s32, row_bytes: s32, stride: s32) {
     var d = (VRAM_TEXTURES + vram) as *u8
     var s = src

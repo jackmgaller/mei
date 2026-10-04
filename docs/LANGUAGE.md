@@ -1086,8 +1086,9 @@ A function value in a vector register is first stored to the stack (3 cycles mor
 ## Standard library
 
 The prelude (`stdlib/prelude.akr`) imports every module below except the plane chip's
-(`planes.akr`), the depth buffer's (`depth.akr`) and the world pack reader (`worldpack.akr`),
-which a cart imports itself. Colours are `u32` words
+(`planes.akr`), the depth buffer's (`depth.akr`), the world pack reader (`worldpack.akr`),
+animated textures (`texanim.akr`) and world backdrops (`wpbackdrop.akr`), which a cart imports
+itself. Colours are `u32` words
 `0xBBGGRR` (red in the low byte, as the GPU expects); `rgb(r, g, b)` builds one.
 
 Where a function lives (each file's section below lists all of it):
@@ -1106,6 +1107,7 @@ Where a function lives (each file's section below lists all of it):
 | `str.akr` | strings: `strlen`, `streq`, `str_*`, `int_to_str` |
 | `task.akr`, `audio.akr`, `voice.akr`, `debug.akr`, `mem.akr`, `card.akr`, `broadcast.akr` | tasks, sound, debug output, memory, memory cards, broadcast |
 | `planes.akr`, `depth.akr`, `worldpack.akr` | not in the prelude: the plane chip; the depth buffer and perspective (`render_depth`, `render_perspective`, `depth_offset`); the world pack reader |
+| `texanim.akr`, `wpbackdrop.akr` | not in the prelude: animated textures' frames (`tex_frame_at`, `tex_frame_copy`); a world region's backdrop on the plane chip (`wp_backdrop_*`) |
 
 ### Frame and system (`runtime.akr`, `io.akr`)
 
@@ -1493,6 +1495,50 @@ fn draw() {
     mesh(TREES)                                // polygons in front of the planes
 }
 ```
+
+### Animated textures (`texanim.akr`) and world backdrops (`wpbackdrop.akr`)
+
+Neither is in the prelude. **`texanim.akr`** copies the frames of an animated texture
+([ASSETKIT.md](ASSETKIT.md#animated-textures)) into its tile: meshes are read in place from ROM,
+so a frame is changed by rewriting the tile's texels, and every face using it changes with it.
+
+| | |
+|---|---|
+| `tex_frame_at(t, count, ticks) -> s32` | the frame an animation of `count` frames, each shown `ticks` ticks, shows at tick `t` (a loop) |
+| `tex_frame_copy(src, vram, rows, row_bytes, stride)` | copies one frame: `rows` rows of `row_bytes` from `src` to `VRAM_TEXTURES + vram`, `stride` bytes apart (128 in a 4-bit slot, 256 in an 8-bit one); about 70 cycles a 4-byte row, rows not word-aligned a byte at a time |
+
+With an Asset Kit asset's constants (`ASSET_NAME_MATERIAL_AT`, `_FRAME_BYTES`, `_FRAMES`,
+`_TICKS`, `_ROW_BYTES`, `_ROWS`, `_VRAM`, `_STRIDE`):
+
+```
+import "stall.akr"
+import "texanim.akr"
+
+var lantern: s32 = 0                     // the frame in VRAM: asset_stall_load() loads frame 0
+
+fn update() {
+    let f = tex_frame_at(frame() as s32, ASSET_STALL_LANTERN_FRAMES, ASSET_STALL_LANTERN_TICKS)
+    if f != lantern {
+        tex_frame_copy(&ASSET_STALL_FRAMES[ASSET_STALL_LANTERN_AT + f * ASSET_STALL_LANTERN_FRAME_BYTES],
+                       ASSET_STALL_LANTERN_VRAM, ASSET_STALL_LANTERN_ROWS,
+                       ASSET_STALL_LANTERN_ROW_BYTES, ASSET_STALL_LANTERN_STRIDE)
+        lantern = f
+    }
+}
+```
+
+A world's animated textures need none of this: `worldpack.akr`'s `wp_animate(t)` advances every
+animation of the entered region (`wp_region_enter(k, v)`), and `wp_variant_load()` and
+`wp_variant_blend()` load and blend every palette run of a region, its 8-bit texture palettes
+included ([WORLDPACK.md](WORLDPACK.md#the-console-reader-stdlibworldpackakr)).
+
+**`wpbackdrop.akr`** (it imports `planes.akr` and `worldpack.akr`) shows a region's backdrop, a
+sky gradient and a horizon silhouette, on the plane chip ([WORLDKIT.md](WORLDKIT.md#backdrops)):
+`wp_backdrop_show(k)` (the compositor on, BG1 set up; false when the region has none),
+`wp_backdrop_draw(yaw, pitch)` every frame with the camera's yaw and pitch (about 5,500 cycles),
+`wp_backdrop_variant(va, vb, t)` (the sky's colours between two variants) and
+`wp_backdrop_hide()`. `wp_backdrop_focal` (207.8) is the camera's pixels a radian. A cart that
+shows a backdrop draws no `cls()`: the plane chip erases the frame to holes.
 
 ### The depth buffer and perspective (`depth.akr`)
 

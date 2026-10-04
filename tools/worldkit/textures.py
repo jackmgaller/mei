@@ -54,6 +54,8 @@ class RegionTextures:
         self.packing = None
         self.classes = {}           # tile key -> {'surface', 'emissive'}
         self.users = {}             # tile key -> [(asset, material)]
+        self.slots = (parse_slots(self.spec['slots'], pointer(self.path, 'slots')) if 'slots' in self.spec
+                      else list(DEFAULT_SLOTS))
 
     def add_asset(self, asset):
         if getattr(asset, 'textured', False):
@@ -86,7 +88,7 @@ class RegionTextures:
 
     def pack(self, warnings, first_palette, palette8, swatch):
         """Packs the region's tiles. swatch: (slot, row) of the world's swatch row, or None."""
-        slots = parse_slots(self.spec['slots'], pointer(self.path, 'slots')) if 'slots' in self.spec else list(DEFAULT_SLOTS)
+        slots = self.slots
         budget = self.spec.get('budget', len(slots) * SLOT_BYTES)
         tiles, seen = [], {}
         for a, material, tex in self.uses():

@@ -920,8 +920,9 @@ looping. Meshes are read in place from ROM, so frames are not chosen by rewritin
 texture has one tile in VRAM (frame 0 is loaded), and its frames are kept in ROM in the tile's
 own layout (`NAME.frames`), ready to be copied into the tile when the frame changes. All frames
 share one palette (they are quantised together). Every placement of the asset animates in step.
-The copying helper is not built yet; the manifest's `animations` (below) and the constants in
-`NAME.akr` are what it will use. Palette cycling (`palette_rotate`, `palette_lerp`) is the
+`stdlib/texanim.akr` copies a frame when it changes (`tex_frame_at`, `tex_frame_copy`, with the
+constants in `NAME.akr`: [LANGUAGE.md](LANGUAGE.md#animated-textures-texanimakr-and-world-backdrops-wpbackdropakr));
+a world's animations are advanced by `wp_animate()`. Palette cycling (`palette_rotate`, `palette_lerp`) is the
 cheaper alternative for flicker and glow.
 
 ### Placement: `build` and `pack`
@@ -1036,7 +1037,7 @@ The **material manifest** (`NAME.materials.json`) gains `textures`, the shape a 
 - `night`: what a day/night palette variant can do with the texture. `per_colour` (4-bit): each
   entry of its palette can be given its own night colour, as palette-backed entries are. `multiply`
   (8-bit): a region's night variant is to tint the whole 256-colour palette by one colour (each
-  channel times a factor), not entry by entry (planned, for the World Kit); the palette's colours
+  channel times a factor), not entry by entry (built in the World Kit); the palette's colours
   are `first_colour` + 1 onward.
 
 In `NAME.bin` a textured face has flag bit 1 set, texture byte `slot | 16 (4-bit) | window << 5`,
@@ -1095,12 +1096,14 @@ The sheet is authored art (drawn once with Pillow and committed; no generator re
 
 ### For a region packer (the World Kit)
 
-Packing textures per region is the World Kit's (not built yet: a world whose asset has textures
-fails with an error saying so). What it can use:
+Built (2026-10-04): the World Kit packs a region's textures with these pieces
+([WORLDKIT.md](WORLDKIT.md#textures-per-region), `tools/worldkit/textures.py`). What it uses:
 
-- `kitcore.texpack.pack(tiles, slots, first_palette, palette8, reserved)` → a `Packing`
-  (`placements` by tile key, `palettes`, `slot_image(slot)`, `encode(key, frame)`,
-  `palette_bytes(bits, palette)`, `summary()`); `Tile` and `Placement` are its records.
+- `kitcore.texpack.pack(tiles, slots, first_palette, palette8, reserved, group=None)` → a
+  `Packing` (`group`: tile key → a group, tiles sharing palettes only within one; the World Kit
+  keeps surface and emissive textures apart; without it packing is as before), with
+  `placements` by tile key, `palettes`, `slot_image(slot)`, `encode(key, frame)`,
+  `palette_bytes(bits, palette)` and `summary()`; `Tile` and `Placement` are its records.
 - `compile_recipe(recipe, folder)` gives the mesh with `mesh.textures['textures']` (material →
   `Texture`, whose `.tile` is the `Tile`), and `native_bytes(mesh, materials, lighting, packing)`
   writes the mesh for any packing that places its tiles; `texout.outputs()` writes the slot,

@@ -1,6 +1,6 @@
 # The world pack format
 
-**Version 1.3.** A world pack (`*.world.bin`) is the contract between the World Kit
+**Version 1.4.** A world pack (`*.world.bin`) is the contract between the World Kit
 ([WORLDKIT.md](WORLDKIT.md)), which writes packs, and the reader a cart runs, which reads them in
 place from ROM. This document is normative: a second encoder or reader can be written from it
 alone. The reference implementations are `tools/worldkit/pack.py` (encoder, decoder and an exact
@@ -19,8 +19,10 @@ What each part's status is:
 | [Objects](#objects): entity meshes, the game's own | (not part of the format) | – | yes: culled, keyed at their nearest point, nearer from above (in depth mode: culled only) |
 | Collision blocks (cells and entities) | specified | yes, with an exact oracle | yes: floor, ceiling, wall push, segment |
 | Entities and parameter records | specified | yes | yes: iteration, tracking, lookup by number |
-| Regions: palette variants, texture set | specified | yes | palettes loaded and blended; textures loaded at once only |
-| Regions: audio bank, backdrop | specified | yes | **specified, reader not yet implemented** |
+| Regions: palette variants, texture set | specified | yes | palettes loaded and blended; textures loaded at once (`wp_region_enter()`, or a texture at a time) |
+| Region extensions (1.4): palette runs, animated textures, the backdrop's sky | specified | yes | yes: every run loaded and blended, frames copied when they change, the sky and silhouette drawn by the plane chip (`wpbackdrop.akr`) |
+| Regions: backdrop copies | specified | yes | yes: copied on entering the region |
+| Regions: audio bank | specified | yes | **specified, reader not yet implemented** |
 | Mesh pool | the native mesh format | yes | drawn by `mesh()`'s face loops |
 
 ## Contents
@@ -82,13 +84,13 @@ What each part's status is:
 
 ## Versions
 
-The header holds a major and a minor version; this document is 1.3.
+The header holds a major and a minor version; this document is 1.4.
 
 - A reader refuses a pack whose **major** version it does not know.
 - A reader accepts a pack with the same major and a **higher minor** version and reads it as the
   minor version it knows. A minor version may only add: data reached through fields that are
   reserved (zero) in earlier minors, header bytes past those the earlier minors define (the
-  header says its own size: 1.2 defines 72, 1.3 80), and flag bits. It never changes the size or meaning of an existing field or
+  header says its own size: 1.2 defines 72, 1.3 80, 1.4 84), and flag bits. It never changes the size or meaning of an existing field or
   record.
 - Header **flags** bits 0–3 mark features a reader may ignore; bits 4–7 mark features a reader
   must understand, so a reader refuses a pack with a bit 4–7 set that it does not know. Version
@@ -124,6 +126,18 @@ differs from the 1.2 pack in its minor version, `header_size` and those 8 header
 offset moves by 8). The reader draws such a pack exactly as before: the one change on its path is a
 test of `lod_off` per cell.
 
+**1.4** adds [region extensions](#region-extensions-14): the header grows to 84 bytes with
+`region_ext_off`, which points at one 32-byte record per region holding its extra palette runs
+(8-bit texture palettes), its animated textures and its backdrop's sky record. A 1.3 reader reads
+a 1.4 pack as before: the region records, their texture sets, main palette runs and backdrop
+copies are 1.0 fields, so it loads the textures and the palettes of the main run, and sees no
+8-bit runs, no animations and no sky. A reader reads `region_ext_off` only in a pack whose minor
+version is at least 4 (and whose `header_size` is then at least 84). The reference encoder
+writes 1.4 only for a world that needs an extension (an 8-bit texture, an animated texture or a
+backdrop); every other world's pack is the 1.3 pack, byte for byte, as before 1.4 existed. A
+world whose textures are all 4-bit and still, without a backdrop, stays 1.3: its texture set
+and variants are 1.0 fields.
+
 ## Limits
 
 | What | Limit | Why |
@@ -148,10 +162,11 @@ test of `lod_off` per cell.
 ## Layout
 
 ```
-header         80 bytes at offset 0
+header         80 bytes at offset 0 (84 in 1.4)
 index          w x h u32: the offset of each grid square's cell, or 0
 layers         layer_count x 8 bytes
 regions        region_count x 32 bytes, each pointing at its textures, samples, palettes, backdrop
+region ext     (1.4) region_count x 32 bytes: palette runs, animated textures, the sky record
 paths          path_count x 48 bytes, then each path's points, 40 bytes each
 cells          96 bytes each, pointing at their placements, entities and collision block
   placements   48 bytes each
@@ -177,11 +192,11 @@ records, and a reader treats it like any other world.
 |---|---|---|---|
 | 0 | `[4]u8` | `magic` | `"MEIW"` (the `u32` 0x5749454D) |
 | 4 | `u16` | `major` | 1 |
-| 6 | `u16` | `minor` | 2 |
+| 6 | `u16` | `minor` | 4 (3 for a pack that needs no region extension) |
 | 8 | `u32` | `size` | the pack's length in bytes, a multiple of 4 |
 | 12 | `u8` | `cell_shift` | 4–7 |
 | 13 | `u8` | `flags` | see [Versions](#versions); bit 0 (1.1): some cell has a ground placement |
-| 14 | `u16` | `header_size` | 64 in 1.0 and 1.1, 72 in 1.2, 80 in 1.3; at least 64, at least 72 when `minor` ≥ 2, 80 when ≥ 3 |
+| 14 | `u16` | `header_size` | 64 in 1.0 and 1.1, 72 in 1.2, 80 in 1.3, 84 in 1.4; at least 64, at least 72 when `minor` ≥ 2, 80 when ≥ 3, 84 when ≥ 4 |
 | 16 | `s16` | `i0` | grid column of the index's first entry |
 | 18 | `s16` | `j0` | grid row of the index's first entry |
 | 20 | `u16` | `w` | index width (columns) |
@@ -201,6 +216,7 @@ records, and a reader treats it like any other world.
 | 68 | `u32` | `path_off` | (1.2) the path table, 0 when there are no paths |
 | 72 | `fixed` | `near_far` | (1.3) the near pass's far depth the world asks for, or 0 for the reader's default (1.5 cells) |
 | 76 | `u32` | `lod_slots` | (1.3) placements in cells that have a LOD table: the size of the level memory a reader may keep |
+| 80 | `u32` | `region_ext_off` | (1.4) `region_count` region extension records, or 0 |
 
 ## Index
 
@@ -251,8 +267,10 @@ VRAM split").
 
 **Texture** (12 bytes): `u8 slot` (0–15), `u8 flags` (bit 0: 4-bit), `u16` reserved,
 `u32 data` (offset), `u32 bytes`. The bytes are copied to the slot as `load_texture()` copies
-them (the GPU's layout, spec p. 11); a texture larger than one slot runs into the next slot, as an
-8-bit texture does.
+them (the GPU's layout, spec p. 11), from the slot's first byte; a texture larger than one slot
+runs into the next slot, as an 8-bit texture does. The World Kit writes one record per slot its
+region uses, from row 0 to the last row a tile uses, with the world's swatch row in it when the
+swatch shares the slot. A region's 4-bit texture palettes are part of its main palette run.
 
 **Palette variants.** Variant *v*'s colours are the `colour_count` `u16` 15-bit colours at
 `palette_off` + 4 × `variant_count` + 2 × `colour_count` × *v*. Loading variant *v* writes them to
@@ -264,10 +282,61 @@ the sample bytes, read in place: channels play from ROM), `u32 samples` (length 
 `u32 loop_start`, `u32 flags` (the `play_sample()` flags: `SND_16BIT`, `SND_ADPCM`, `SND_LOOP`,
 `SND_REVERB`).
 
-**Backdrop copy** (12 bytes; *specified, reader not yet implemented*): `u32 address` (a VRAM
-address: an atlas page, a plane map, a line table, `planes.akr`'s layout), `u32 data`,
-`u32 bytes`. A backdrop is the list of copies that put a region's plane-chip art in VRAM. How the
-planes are then set up (`plane()`, scroll rates) is the game's.
+**Backdrop copy** (12 bytes): `u32 address` (a VRAM address: an atlas page, a plane map, a line
+table, `planes.akr`'s layout), `u32 data`, `u32 bytes`. A backdrop is the list of copies that put
+a region's plane-chip art in VRAM; `wp_region_enter()` makes them. How the planes are then set up
+is the sky record's ([Region extensions](#region-extensions-14)), or the game's in a pack without
+one.
+
+### Region extensions (1.4)
+
+At `region_ext_off`, one record of 32 bytes per region, in region order:
+
+| Offset | Type | Field | |
+|---|---|---|---|
+| 0 | `u16` | `run_count` | extra palette runs |
+| 2 | `u16` | `anim_count` | animated textures |
+| 4 | `u32` | `run_off` | `run_count` × 8 bytes |
+| 8 | `u32` | `anim_off` | `anim_count` × 20 bytes |
+| 12 | `u32` | `sky_off` | the sky record (32 bytes), or 0 |
+| 16 | `[4]u32` | reserved | |
+
+**Palette run** (8 bytes): `u16 first_colour`, `u16 colours` (1–256), `u32 data`: the run's
+colours for each of the region's palette variants, variant by variant (`variant_count` ×
+`colours` `u16`). Loading variant *v* loads the main run and every run's *v*-th list; blending
+blends each. The World Kit stores an 8-bit texture palette (colour 0 and its colours) as a run,
+each variant's list its colours times that variant's tint. A region with runs has variants.
+
+**Animated texture** (20 bytes): `u32 data` (the frames: `frames` × `rows` × `row_bytes` bytes, a
+frame after another, each in the tile's own layout), `u32 vram` (the tile's first byte in the
+texture area: VRAM_TEXTURES + `vram`), `u16 frames` (at least 1), `u16 ticks` (1–255: each frame
+is shown that many ticks, looping), `u16 row_bytes`, `u16 rows`, `u16 stride` (128 in a 4-bit
+slot, 256 in an 8-bit one), `u16` reserved. Frame *k* is copied row by row: row *r* to `vram` +
+*r* × `stride`. Every row lies in the texture area and within its stride. At tick *t* the frame
+is (*t* / `ticks`) mod `frames`; the texture set holds frame 0.
+
+**Sky** (32 bytes): how the reader shows the region's backdrop.
+
+| Offset | Type | Field | |
+|---|---|---|---|
+| 0 | `u32` | `mode` | BG1_MODE for the silhouette: map size, 8 × 8 4-bit tiles, its palette |
+| 4 | `u32` | `atlas` | BG1_TILES: the silhouette's atlas page |
+| 8 | `u32` | `map` | BG1_MAP |
+| 12 | `fixed` | `rate` | plane pixels the silhouette scrolls a radian of yaw |
+| 16 | `s16` | `horizon` | the plane row put on the horizon |
+| 18 | `s16` | `top` | the plane row of the silhouette's first row |
+| 20 | `u16` | `height` | the silhouette's rows (0: no silhouette) |
+| 22 | `u16` | `stops` | the gradient's stops, 1–64 |
+| 24 | `u32` | `flags` | bit 0: a silhouette (set exactly when `height` is not 0) |
+| 28 | `u32` | `data` | `stops` `fixed` elevations (radians above the horizon, increasing), then each variant's `stops` `u32` colours (0xBBGGRR) |
+
+**What a reader does with it** (`stdlib/wpbackdrop.akr`): every frame, with the camera's yaw
+and pitch and the focal length *F* (207.8 pixels a radian for the default camera), stop *i* goes
+to screen line 120 − *F* tan(*e*ᵢ − pitch) and the backdrop colour is interpolated between the
+stops on every line (a line channel on BD_COLOR); the horizon is line *h* = 120 + *F* tan(pitch);
+BG1 scrolls to x = yaw × `rate` − 160 (yaw taken in [0, 2π)), y = `horizon` − *h*, and is shown
+only on lines `top` − y .. `top` + `height` − y − 1 (its window), so the map's vertical wrap
+never shows twice. [WORLDKIT.md](WORLDKIT.md#backdrops) explains the choice.
 
 ## Cells
 
@@ -904,6 +973,9 @@ and the length is the last `s`; levels of detail (1.3): the header's size and `n
 table and set in the pack, level counts, that only the last level may be the cull mark, that
 `in2` ≤ `at2` ≤ `out2` and each level's band clear of the next, every level mesh, and each cell's
 slots within `lod_slots`;
+region extensions (1.4): the header's size, every run's colours and variant lists, every
+animation's fields and that its rows lie in the texture area, the sky's stops, increasing
+elevations, colour lists and flags;
 every mesh's header, vertex and face extents; every collision block's grid, buckets and list
 entries; and that entity numbers, back-references and the directory agree. Any failure raises
 `PackError`; random corruption never makes it fail any other way (tested).
@@ -1037,7 +1109,10 @@ radius (2), and `WP_MAX_LOD` = 2,048 bytes of level memory, one per placement sl
 | `wp_entity(n)`, `wp_cell_entity(c, k)`, `wp_entity_pos(e)`, `wp_entity_live(e)`, `wp_entity_params(e)`, `wp_entity_mesh(e)`, `wp_entity_coll(e)` | entities |
 | `wp_track(p, radius, spawn, retire)`, `wp_track_clear(retire)` | spawn and retire as the area and layers change |
 | `wp_region_count()`, `wp_region_name(k)`, `wp_variant_name(k, v)` | region and palette variant names (the name accessors answer null for an index out of range) |
-| `wp_region(k)`, `wp_palette_load(k, v)`, `wp_palette_blend(k, va, vb, t)`, `wp_textures_load(k)`, `wp_texture_load(k, t)` | region palettes and textures (spreading a swap over frames is the game's: one `wp_texture_load` a frame) |
+| `wp_region(k)`, `wp_palette_load(k, v)`, `wp_palette_blend(k, va, vb, t)`, `wp_textures_load(k)`, `wp_texture_load(k, t)` | region palettes (the main run) and textures (spreading a swap over frames is the game's: one `wp_texture_load` a frame) |
+| `wp_region_enter(k, v)`, `wp_variant_load(k, v)`, `wp_variant_blend(k, va, vb, t)`, `wp_backdrop_load(k)`, `wp_region_ext(k)` | (1.4) entering a region: its texture set, variant *v* of every palette run, its backdrop art, its animations restarted, `wp_region_loaded = k`; variants over every run (a 256-colour run blends in about 9,700 cycles) |
+| `wp_animate(t) -> s32`, `wp_anim_copied` | (1.4) the entered region's animated textures at tick *t*: frames copied into their tiles when they change; how many changed, and the rows copied (about 125 cycles and 70 an animation whose frame did not change; a change copies its rows: 2 rows of 4 bytes about 140 cycles, the night market's neon sign, 17 rows of 17 bytes not word-aligned, about 2,800) |
+| `wp_backdrop_show(k)`, `wp_backdrop_draw(yaw, pitch)`, `wp_backdrop_variant(va, vb, t)`, `wp_backdrop_hide()`, `wp_backdrop_focal` | (1.4, `import "wpbackdrop.akr"`, which imports planes.akr) the region's sky and silhouette on the plane chip: compositor on, BG1 set up; each frame's lines and scroll (about 5,500 cycles); the sky's colours blended between variants |
 | `wp_path_count()`, `wp_path(n)`, `wp_path_find(name)`, `wp_path_name(p)`, `wp_path_points(p)`, `wp_path_point(p, k)`, `wp_path_length(p)` | paths (1.2; none in an older pack) by number or name (null when there is none), their points and length; `p.flags` (`WP_PATH_RAISED`, `WP_PATH_CLOSED`) and `p.surface` |
 | `wp_path_nearest(p, pos, reach)`, `wp_path_at(p, s)` | the nearest point on a path within reach (a grind check), the point at a length along it (a mover); answers in `wp_near`: `pos`, `dir`, `seg`, `t`, `s`, `dist2` |
 | `wp_path_draw(p, colour)` | the path as lines over the frame, after `wp_draw()` (a debug view) |
@@ -1050,8 +1125,9 @@ frame than the ordering table (mean: 155,461 → 157,583 on the tour of the park
 depth cost 14–24 cycles more each, less the two `ot_flush()` table resets it no longer makes.
 The GPU figures are in [LANGUAGE.md](LANGUAGE.md#the-depth-buffer-and-perspective-depthakr).
 
-Not implemented: reading audio banks and backdrops, swapping a region's textures across frames by
-itself, character control, cameras, goals and saving (the game's).
+Not implemented: reading audio banks, swapping a region's textures across frames by itself
+([WORLDKIT.md](WORLDKIT.md#region-seams)), character control, cameras, goals and saving (the
+game's).
 
 ## Extensions not made
 

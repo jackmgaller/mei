@@ -1282,8 +1282,8 @@ fn wp_region_enter(k: s32, v: s32) {
 
 // Advances the entered region's animated textures to tick t (frame() is the usual clock): each
 // one whose frame changed has the new frame copied into its tile. Returns how many changed.
-// About 150 cycles an animation that did not change, and a frame's rows when one did (a
-// 16 x 16 4-bit tile: 16 rows of 8 bytes, about 1,000 cycles).
+// About 125 cycles and 70 an animation whose frame did not change; a change copies the frame's
+// rows (2 rows of 4 bytes: about 140 cycles; 17 rows of 17 bytes, not word-aligned: about 2,800).
 fn wp_animate(t: s32) -> s32 {
     wp_anim_copied = 0
     let k = __wp_anim_region

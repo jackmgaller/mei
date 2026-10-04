@@ -222,9 +222,10 @@ cover a pixel, the ground and the far pass are behind it by the reader's design,
 ground face may, the far pass is. A stand-in truly in front of ground or near geometry is
 counted as a `pass_inversion`, not an error; ground truly in front of near geometry is a ground
 inversion ([Ground](#ground)). Faces whose plane passes through the eye (edge-on), thin faces,
-twisted quads, semi-transparent faces and textured faces that are not palette swatches may cover
-pixels but are never expected (a swatch face covers exactly the pixels of its untextured face,
-as in the Asset Checker).
+twisted quads and semi-transparent faces may cover pixels but are never expected; neither are
+textured faces that are not palette swatches in a pack without region texture sets (a swatch
+face covers exactly the pixels of its untextured face, as in the Asset Checker). A pack with
+texture sets is judged as [Textures](#textures) says.
 
 Then, at every decided pixel:
 
@@ -481,6 +482,33 @@ pixels the margin leaves undecided. The entity cameras at 1.5 units make the obj
 on screen that a sort error there shows in decided pixels; a game whose objects are smaller than
 the coin, or seen only from afar, has that much less checked.
 
+### Textures
+
+A pack with region texture sets ([WORLDKIT.md](WORLDKIT.md#textures-per-region)) is checked as a
+game draws it: every view enters its camera cell's region (`wp_region_enter()`, so the measured
+frame samples the real texels, at their real cost, and the near cells of other regions are drawn,
+and expected, as their stand-ins). The reference reads the region's texture set from the pack:
+
+- a textured face that can never sample texel 0 (every texel of its window's tile, or of its
+  corners' texel box, is set) covers exactly its outline's pixels, so the identity frame draws
+  it untextured and it is judged as a solid face;
+- a face whose texture has holes (a **cutout**) is judged **per texel**. The identity pack keeps
+  it textured, its texture records pointing at masks of the region's textures (every texel that
+  is not 0 made 1), colour 1 white and its ID in its tint, as the Asset Checker does. The
+  reference finds the texture coordinate at each pixel's centre from the face's true
+  (perspective-correct) barycentric weights and looks at every texel within one texel plus one
+  and a half pixels' worth of coordinates of it: all set, the face covers the pixel (and may be
+  the expected face); none set, it does not (what is behind is expected); both, the pixel is
+  undecided for that face. That allowance covers the GPU's span division and whole-pixel
+  vertices; the Asset Checker, which rasterises from the console's own projected vertices, needs
+  none.
+
+On the night market (124 views, depth and perspective, the stall's lattice screens and emblem
+with holes): 0 wrong-order pixels and 0 coverage errors over 2,317,781 tested pixels. Judging the
+cutouts by their outline instead gives coverage errors at once (366 pixels in its first view;
+`tests/test_worldverify.py`, `TextureViewTests`). A textured face in a cell of a region other than
+the view's is never expected (the game would not draw it with its own textures).
+
 ## Depth mode
 
 A game that draws its world with the depth buffer (`render_depth(true)`, [RENDERING.md](RENDERING.md))
@@ -681,7 +709,8 @@ with the number of floors.
 - **Sampling** is finite: views the sampler never makes are not checked; positions are where a
   body can stand by the pack's collision.
 - **Not checked yet:** the seam rule for region textures (no region texture drawn while slots
-  are swapped) and the overhang limit (the encoder enforces it); fog and the game's own drawing
+  are swapped: [WORLDKIT.md](WORLDKIT.md#region-seams)), the backdrop (the plane chip draws it
+  behind every polygon; the check judges polygons only) and the overhang limit (the encoder enforces it); fog and the game's own drawing
   beyond entity meshes.
 
 ## Where it plugs in
