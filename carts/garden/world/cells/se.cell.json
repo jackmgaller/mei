@@ -199,6 +199,18 @@
    "params": {
     "time_window": "night"
    }
+  },
+  {
+   "id": "rail_wire_east",
+   "type": "rail",
+   "position": [
+    92.0,
+    8.60009765625,
+    56.0
+   ],
+   "params": {
+    "path": "wire_east"
+   }
   }
  ]
 }

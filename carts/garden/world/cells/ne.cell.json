@@ -252,6 +252,18 @@
    "asset": "coin"
   },
   {
+   "id": "rail_crane_jib",
+   "type": "rail",
+   "position": [
+    110.0,
+    36.0,
+    109.0
+   ],
+   "params": {
+    "path": "crane_jib"
+   }
+  },
+  {
    "id": "crane_hook",
    "type": "mover",
    "position": [

@@ -268,14 +268,34 @@
    "asset": "train_car",
    "collision": "train_car_col",
    "params": {
-    "to": [
-     84,
-     0,
-     0
-    ],
+    "path": "train_route",
     "period": 900,
     "pause": 120,
     "mode": "pingpong"
+   }
+  },
+  {
+   "id": "rail_wires_west",
+   "type": "rail",
+   "position": [
+    6.0,
+    8.60009765625,
+    72.0
+   ],
+   "params": {
+    "path": "wires_west"
+   }
+  },
+  {
+   "id": "rail_overpass",
+   "type": "rail",
+   "position": [
+    47.0,
+    6.0,
+    74.0
+   ],
+   "params": {
+    "path": "overpass"
    }
   },
   {

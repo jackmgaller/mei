@@ -27,18 +27,14 @@ type pole {
   height: fixed
 }
 
-// Something to grind or hang from, along a World Kit path (not built yet). No rail is placed
-// until paths exist; these are where they go, in world coordinates (x, y, z), metres:
-//   wires_west      (6, 8.6, 72) (22, 8.6, 72) (38, 8.6, 72)   over the three west poles
-//   wire_east       (92, 8.6, 56) (122, 8.6, 72)               pole to pole, across the road
-//   overpass_rail   (47, 6, 75) (47, 6, 53)                    along the overpass, 1 m above it
-//   crane_jib       (110, 36, 109) (88, 36, 109)               the jib's top
+// Something to grind or hang from, along a World Kit path of the world file (`paths`). The
+// entity sits at the path's first point.
 type rail {
   path: name
 }
 
-// A moving platform. `to` is an offset from the placement (or `path` names a World Kit path
-// instead, once paths exist; "none" means no path). period and pause in ticks (60 a second);
+// A moving platform. `to` is an offset from the placement, or `path` names a World Kit path
+// that the entity's origin follows instead ("none": no path). period and pause in ticks (60 a second);
 // pingpong goes there and back, loop restarts from the placement. The entity's `collision`
 // asset is the platform's, in its own frame.
 type mover {

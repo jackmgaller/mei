@@ -19,5 +19,12 @@
   },
   "layers": {
     "festival": {}
+  },
+  "paths": {
+    "wires_west": {"points": [[6, 8.6, 72], [22, 8.6, 72], [38, 8.6, 72]], "raised": true},
+    "wire_east": {"points": [[92, 8.6, 56], [122, 8.6, 72]], "raised": true},
+    "overpass": {"points": [[47, 6, 74], [47, 6, 54]], "raised": true},
+    "crane_jib": {"points": [[110, 36, 109], [88, 36, 109]], "raised": true},
+    "train_route": {"points": [[31, 10, 79], [115, 10, 79]], "raised": true}
   }
 }
