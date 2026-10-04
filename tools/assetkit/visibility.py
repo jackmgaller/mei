@@ -24,12 +24,14 @@ from kitcore import depth as DEPTH
 from .compiler import compile_recipe, native_bytes
 from .geometry import AssetError
 from .geometry_audit import numpy, geometry_audit, face_ref
-from .preview import source, png_bytes
+from .preview import source, camera_numbers, png_bytes
+from .views import cameras, cutout_texels, select_views
 from .schema import validate, VERIFICATION
 
 ROOT=Path(__file__).resolve().parents[2]
 DEFAULT_PROFILE={'yaw_steps':24,'pitches':[-.35,0,.35],'distances':[1,1.5],'far':100,'geometry':'error','edge_margin':1.0}
 DEPTH_EPSILON=2/65536
+DEPTH_VIEWS=16                   # the views judged in depth mode (views.py)
 
 
 def identity_mesh(binary, cutouts=(), solid=False):
@@ -282,7 +284,8 @@ def compare(mesh, surfaces, actual, graph=True, margin=0.0, key=0.0):
             'issues':issues,'ordering_graph':graph_info},expected,actual,bad|coverage_bad
 
 
-DEPTH_SCOPE=('Opaque static mesh drawn with the depth buffer; sampled fitted cameras; native projected vertices and '
+DEPTH_SCOPE=('Opaque static mesh drawn with the depth buffer; fitted cameras of the sweep chosen to show every face it '
+             'sees (depth_views); native projected vertices and '
              'exact integer coverage; independent reciprocal-depth selection. Depth ties within two steps of the depth '
              'key (2/4096 of the depth) are allowed; surface intersections and ordering cycles are reported, not failed. '
              'Near/guard clipping and animation are not certified. Unobserved faces are not proven safe.')
@@ -355,7 +358,8 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
     policy.pop('required',None)
     validate(policy,VERIFICATION,'/verification')
     depth,perspective=policy.get('depth',False),policy.get('perspective',False)
-    geometry=geometry_audit(mesh)
+    if depth:policy.setdefault('depth_views',DEPTH_VIEWS)
+    geometry=geometry_audit(mesh,t_junctions=depth)
     original=native_bytes(mesh,materials,recipe.get('lighting',{}))
     # Textured faces are judged as solid faces, but those of textures with holes (cutouts), whose
     # coverage the reference takes from the real texels.
@@ -373,51 +377,73 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
             akr+='\n'.join(cart[1]).replace('asset_NAME_load',f'asset_{name}_load')+'\n'
         (work/(name+'.akr')).write_text(akr)
         world=policy.get('scale','fit')=='world'
-        steps=policy['yaw_steps']
-        if 'yaw_range_degrees' in policy:
-            a,b=(math.radians(d) for d in policy['yaw_range_degrees'])
-            yaws=[a+(b-a)*step/(steps-1) for step in range(steps)]
+        sweep=cameras(policy)
+        # One cart draws every view: the probe writes the view's index into asset_view, and the
+        # cart takes the camera from its table, the literals a cart for that camera alone has.
+        code=source(name,base['bounds'],world=world,load=bool(cart))
+        code='\n'.join(line for line in code.splitlines() if 'text(' not in line)
+        code=code.replace('cls(rgb(24, 28, 36))','cls(0)\n    dither(false)'+
+                          ('\n'+DEPTH.cart_lines(depth,perspective).rstrip() if depth or perspective else ''))
+        if depth or perspective:code=code.replace(f'import "{name}.akr"\n',f'import "{name}.akr"\n'+DEPTH.cart_import(depth,perspective))
+        code=re.sub(r'camera_clip\(0\.1, [^)]*\)',f"camera_clip(0.1, {policy['far']:.7f})",code)
+        table=[n for camera in sweep for n in camera_numbers(base['bounds'],*camera,world=world)]
+        code=re.sub(r'    camera_look\(.*\)\n','    let k = asset_view * 5\n    camera_look(vec3(ASSET_VIEWS[k], ASSET_VIEWS[k + 1], '
+                    'ASSET_VIEWS[k + 2]), ASSET_VIEWS[k + 3], ASSET_VIEWS[k + 4])\n',code)
+        code=code.replace('\nfn draw() {',f'\nconst ASSET_VIEWS: [{len(table)}]fixed = [{", ".join(table)}]\n'
+                          'var asset_view: s32\n\nfn draw() {')
+        (work/'check.akr').write_text(code+'\n')
+        run([compiler,work/'check.akr','-o',work/'check.mei','--sym',work/'check.sym'])
+        symbols={line.split()[1]:int(line.split()[0],16) for line in (work/'check.sym').read_text().splitlines() if len(line.split())==2}
+        if 'G___sv' not in symbols or 'G_asset_view' not in symbols:
+            raise AssetError('/verification/native','Compiler did not emit the __sv and asset_view diagnostic symbols.')
+        run([probe,work/'check.mei',work/'capture.bin',symbols['G___sv'],len(mesh.vertices),symbols['G_asset_view'],len(sweep)])
+        captures=(work/'capture.bin').read_bytes()
+        size=16+16*len(mesh.vertices)+320*240*2
+        if len(captures)!=size*len(sweep):raise AssetError('/verification/native','Invalid native probe capture.')
+        drawn=[]
+        for k in range(len(sweep)):
+            capture=captures[k*size:(k+1)*size]
+            if capture[:4]!=b'MAV1' or struct.unpack_from('<I',capture,4)[0]!=len(mesh.vertices):
+                raise AssetError('/verification/native','Invalid native probe capture.')
+            actual=np.frombuffer(capture,dtype='<u2',count=320*240,offset=16+16*len(mesh.vertices))
+            if int(actual.max())>len(mesh.faces):raise AssetError('/verification/native','Probe returned an invalid triangle ID.')
+            drawn.append(actual)
+        selection=None
+        if depth and policy['depth_views']<len(sweep):
+            # every camera of the sweep is drawn (cheap); the reference judges those that show every face
+            counts=np.stack([np.bincount(a,minlength=len(mesh.faces)+1)[1:] for a in drawn])
+            texels=None
+            if cutouts:
+                svs=[np.frombuffer(captures,dtype='<i4',count=len(mesh.vertices)*4,offset=k*size+16).reshape(-1,4) for k in range(len(sweep))]
+                texels=cutout_texels(np,mesh,svs,drawn,textured)
+            selection=select_views(np,counts,mesh,materials,base['bounds'],sweep,policy['depth_views'],cutouts,world,texels)
+            chosen=selection.pop('views')
         else:
-            yaws=[-.65+math.tau*step/steps for step in range(steps)]
-        for distance in policy['distances']:
-            for pitch in policy['pitches']:
-                for yaw in yaws:
-                    camera={'yaw':yaw,'pitch':pitch,'distance_scale':distance,'near':.1,'far':policy['far']}
-                    code=source(name,base['bounds'],yaw,pitch,distance_scale=distance,world=world,load=bool(cart))
-                    code='\n'.join(line for line in code.splitlines() if 'text(' not in line)
-                    code=code.replace('cls(rgb(24, 28, 36))','cls(0)\n    dither(false)'+
-                                      ('\n'+DEPTH.cart_lines(depth,perspective).rstrip() if depth or perspective else ''))
-                    if depth or perspective:code=code.replace(f'import "{name}.akr"\n',f'import "{name}.akr"\n'+DEPTH.cart_import(depth,perspective))
-                    code=re.sub(r'camera_clip\(0\.1, [^)]*\)',f"camera_clip(0.1, {policy['far']:.7f})",code)
-                    (work/'check.akr').write_text(code+'\n')
-                    run([compiler,work/'check.akr','-o',work/'check.mei','--sym',work/'check.sym'])
-                    symbols={line.split()[1]:int(line.split()[0],16) for line in (work/'check.sym').read_text().splitlines() if len(line.split())==2}
-                    if 'G___sv' not in symbols:raise AssetError('/verification/native','Compiler did not emit the __sv diagnostic symbol.')
-                    run([probe,work/'check.mei',work/'capture.bin',symbols['G___sv'],len(mesh.vertices)])
-                    capture=(work/'capture.bin').read_bytes()
-                    if (len(capture)!=16+16*len(mesh.vertices)+320*240*2 or capture[:4]!=b'MAV1'
-                            or struct.unpack_from('<I',capture,4)[0]!=len(mesh.vertices)):
-                        raise AssetError('/verification/native','Invalid native probe capture.')
-                    sv=np.frombuffer(capture,dtype='<i4',count=len(mesh.vertices)*4,offset=16).reshape(-1,4)
-                    actual=np.frombuffer(capture,dtype='<u2',count=320*240,offset=16+16*len(mesh.vertices))
-                    if int(actual.max())>len(mesh.faces):raise AssetError('/verification/native','Probe returned an invalid triangle ID.')
-                    surfaces=raster_surfaces(mesh,sv,materials,policy['edge_margin'],textured)
-                    row,expected,actual_ids,bad=compare(mesh,surfaces,actual,graph=not depth,margin=policy['edge_margin'],
-                                                        key=DEPTH.KEY_TOLERANCE if depth else 0.0)
-                    visible.update(row.pop('visible_faces'))
-                    row.update(index=len(views),camera=camera)
-                    row['native_triangles'],row['native_cpu_cycles']=struct.unpack_from('<II',capture,8)
-                    if root and (row['wrong_pixels'] or row['coverage_errors'] or row['ordering_graph']['cycle']) and len(images)<12:
-                        filename=f'visibility_{len(views):04}.png'
-                        (root/filename).write_bytes(diagnostic_png(expected,actual_ids,bad))
-                        row['image']=filename;images.append(filename)
-                    views.append(row)
+            chosen=list(range(len(sweep)))
+        for k in chosen:
+            yaw,pitch,distance=sweep[k]
+            camera={'yaw':yaw,'pitch':pitch,'distance_scale':distance,'near':.1,'far':policy['far']}
+            capture=captures[k*size:(k+1)*size]
+            sv=np.frombuffer(capture,dtype='<i4',count=len(mesh.vertices)*4,offset=16).reshape(-1,4)
+            actual=drawn[k]
+            surfaces=raster_surfaces(mesh,sv,materials,policy['edge_margin'],textured)
+            row,expected,actual_ids,bad=compare(mesh,surfaces,actual,graph=not depth,margin=policy['edge_margin'],
+                                                key=DEPTH.KEY_TOLERANCE if depth else 0.0)
+            visible.update(row.pop('visible_faces'))
+            row.update(index=len(views),camera=camera)
+            if selection is not None:row['sweep_index']=k
+            row['native_triangles'],row['native_cpu_cycles']=struct.unpack_from('<II',capture,8)
+            if root and (row['wrong_pixels'] or row['coverage_errors'] or row['ordering_graph']['cycle']) and len(images)<12:
+                filename=f'visibility_{len(views):04}.png'
+                (root/filename).write_bytes(diagnostic_png(expected,actual_ids,bad))
+                row['image']=filename;images.append(filename)
+            views.append(row)
     totals={key:sum(v[key] for v in views) for key in ('tested_pixels','undecided_pixels','undecided_wrong_pixels','wrong_pixels','coverage_errors','depth_ties')}
     cycles=sum(bool(v['ordering_graph']['cycle']) for v in views)
     geometry_ok=geometry['ok'] or policy['geometry']=='warn'
     if depth:
         # the depth test draws crossing surfaces right; duplicates and coplanar overlaps z-fight
-        geometry_ok=geometry_ok or not set(geometry['counts'])-{'surface_intersection'}
+        geometry_ok=geometry_ok or not set(geometry['counts'])-{'surface_intersection','t_junction'}
     # coverage is judged at every covered pixel: an asset all of whose pixels lie within the edge
     # margin (a thin pole) passes on coverage alone, and its tested_pixels say so
     covered=totals['tested_pixels']+totals['undecided_pixels']
@@ -429,7 +455,8 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
             'views':views,'images':images,
             **({'depth_mode':{'depth':depth,'perspective':perspective,'key_steps':DEPTH.KEY_STEPS,
                               'key_tolerance':DEPTH.KEY_TOLERANCE,
-                              'not_failures':['surface_intersection','ordering cycles']}}
+                              'not_failures':['surface_intersection','t_junction','ordering cycles'],
+                              **({'view_selection':selection} if selection is not None else {})}}
                if depth or perspective else {}),
             'native_tools':{'compiler_sha256':hashlib.sha256(compiler.read_bytes()).hexdigest(),
                             'probe_sha256':hashlib.sha256(probe.read_bytes()).hexdigest()},
