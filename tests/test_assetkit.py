@@ -136,6 +136,36 @@ class GeometryTests(unittest.TestCase):
         self.assertEqual(report['warnings'][0]['code'],'open_surface')
         self.assertEqual(report['warnings'][0]['count'],16)
 
+    def test_box_faces_can_be_left_out(self):
+        def normals(mesh):
+            out = []
+            for f in mesh.faces:
+                a,b,c = (mesh.vertices[i] for i in f.indices)
+                n = cross(sub(b,a),sub(c,a))
+                out.append(tuple(round(x/max(abs(v) for v in n)) for x in n))
+            return out
+        closed,_,_ = compile_recipe(recipe({'op':'box','size':[2,3,4]}))
+        mesh,_,report = compile_recipe(recipe({'op':'box','size':[2,3,4],'open':['bottom']}))
+        self.assertEqual(len(mesh.faces),10)
+        self.assertNotIn((0,-1,0),normals(mesh))
+        self.assertEqual(sorted(normals(mesh)),sorted(n for n in normals(closed) if n != (0,-1,0)))
+        self.assertEqual(report['warnings'][0]['code'],'open_surface')
+        # a tile: the top alone, its four corners only
+        mesh,_,_ = compile_recipe(recipe({'op':'box','size':[4,0.1,4],'open':['bottom','left','right','back','front'],
+                                          'transform':{'translate':[0,-0.05,0]}}))
+        self.assertEqual((len(mesh.faces),len(mesh.vertices)),(2,4))
+        self.assertEqual(set(normals(mesh)),{(0,1,0)})
+        self.assertTrue(all(abs(v[1]) < 1e-9 for v in mesh.vertices))
+        for side,n in (('top',(0,1,0)),('left',(-1,0,0)),('right',(1,0,0)),('back',(0,0,-1)),('front',(0,0,1))):
+            mesh,_,_ = compile_recipe(recipe({'op':'box','size':[1,1,1],'open':[side]}))
+            self.assertNotIn(n,normals(mesh),side)
+            self.assertEqual(len(mesh.faces),10)
+        for value,message in ((['bottom','bottom'],'once'),([],'1–5'),(['top','bottom','left','right','back','front'],'1–5'),
+                              (['under'],'one of')):
+            with self.subTest(value=value),self.assertRaisesRegex(AssetError,message) as error:
+                compile_recipe(recipe({'op':'box','size':[1,1,1],'open':value}))
+            self.assertEqual(error.exception.path,'/nodes/0/open' + ('/0' if value == ['under'] else ''))
+
     def test_duplicate_faces_are_reported(self):
         r = recipe({'op':'box','size':[1,1,1],'modifiers':[{'op':'array','count':2,'step':[0,0,0]}]})
         _,_,report = compile_recipe(r)
