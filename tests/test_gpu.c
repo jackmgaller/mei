@@ -811,7 +811,7 @@ static void test_budget(void) {
     CHECK_EQ(m->gpu_lag, 4);
     CHECK_EQ(mei_gpu_stats(m)->ticks, 2);
     CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 1);
-    CHECK_EQ(mei_gpu_stats(m)->cpu_cycles < 500000, 1);
+    CHECK_EQ(mei_gpu_stats(m)->cpu_cycles < MEI_CYCLES_PER_FRAME, 1);
 
     /* Three times: two ticks late. */
     if (!lag_load()) return;
@@ -844,11 +844,11 @@ static void test_budget(void) {
     if (!lag_load()) return;
     t = 0;
     wr32(m->ram + V_CLEARS, 52);                        /* 1,996,800 */
-    wr32(m->ram + V_SPIN, 200000);                      /* about 600,000 CPU cycles */
+    wr32(m->ram + V_SPIN, MEI_CYCLES_PER_FRAME * 2 / 5); /* about 1.2 budgets of CPU cycles */
     CHECK_EQ(ticks(4, &t), 0xA);                        /* late for the CPU only */
     CHECK_EQ(mei_gpu_stats(m)->ticks, 2);
     CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 0);
-    CHECK_EQ(mei_gpu_stats(m)->cpu_cycles > 500000 && mei_gpu_stats(m)->cpu_cycles < 1000000, 1);
+    CHECK_EQ(mei_gpu_stats(m)->cpu_cycles > MEI_CYCLES_PER_FRAME && mei_gpu_stats(m)->cpu_cycles < 2 * MEI_CYCLES_PER_FRAME, 1);
     CHECK_EQ(m->gpu_lag, 0);
     wr32(m->ram + V_CLEARS, 53);                        /* 2,035,200: one tick more */
     CHECK_EQ(ticks(6, &t), 0x24);                       /* frames from ticks 4 and 7 at ticks 6 and 9 */

@@ -297,7 +297,7 @@ world recipe declares and reports use per region.
 
 Swap cost: filling all 16 slots costs about 900,000 cycles (spec p. 11), so about 56,000 a slot
 (PLANES.md gives the same for a 32 KB atlas). A region's 8 slots are about 450,000 cycles, nearly
-a whole frame's 500,000. *Proposal:* swap one slot a frame (about 11% of the CPU) over 8 frames,
+half a frame's 1,000,000. *Proposal:* swap one slot a frame (about 6% of the CPU) over 8 frames,
 plus the region's palettes, while the player is inside a seam. During those frames nothing on
 screen may use region textures, which the kit can check (see [Verification](#verification)).
 
@@ -355,18 +355,21 @@ test per placement and per cell before calling `mesh*()`. The kit computes the b
 
 From LANGUAGE.md "Performance notes": a vertex is 26 cycles, a back-facing face about 48, a
 visible face about 130–163, a face clipped at the near plane about 4,000 and one clipped to the
-guard band about 3,000. Suppose world drawing gets 250,000 of the 500,000 CPU cycles (the spec's
-"What the budget buys" leaves half for game logic). For closed meshes with about one vertex per
-two faces and half the faces facing away, a submitted face costs about
-0.5 × 145 + 0.5 × 48 + 0.5 × 26 ≈ 110 cycles, so about 2,300 faces, of which about 1,150 are
-visible. Ten faces clipped near the camera take 40,000 of that. That leaves roughly 2,000 submitted
-faces a frame, near and far together.
+guard band about 3,000. Suppose world drawing gets 500,000 of the 1,000,000 CPU cycles (the
+spec's "What the budget buys" leaves half for game logic). For closed meshes with about one vertex
+per two faces and half the faces facing away, a submitted face costs about
+0.5 × 145 + 0.5 × 48 + 0.5 × 26 ≈ 110 cycles, so about 4,500 faces, of which about 2,250 are
+visible. Ten faces clipped near the camera take 40,000 of that. That leaves roughly 4,100 submitted
+faces a frame, near and far together. (This was 2,000 when the CPU had 500,000 cycles a tick,
+before [it went to 60 MHz](DECISIONS.md#the-cpu-at-60-mhz); the per-cell numbers below were set
+then.)
 
 For comparison, Tsumiki's Playroom ran at a median of 903 triangles, peak 1,555, with CPU at
-46% median and 67% peak (TSUMIKI.md, removed; in git history before `ad01707`).
+46% median and 67% peak of 500,000 cycles (TSUMIKI.md, removed; in git history before `ad01707`).
 
-The GPU is unlikely to bind first: 1,200 visible triangles cost 48,000 cycles of setup, and 2.5
-screens of textured fill (192,000 pixels × 2) cost 384,000, about 43% of the 1,000,000 budget.
+With the CPU at 1,000,000 the GPU binds about as soon: 2,250 visible triangles cost 90,000 cycles
+of setup, and 2.5 screens of textured fill (192,000 pixels × 2) cost 384,000, about 47% of the
+1,000,000 budget, with blended faces and overdraw beyond that.
 
 *Placeholder per-cell budgets:* near pass 1,600 faces, of which about four of the nine near cells
 are in view, so about 400 faces per cell as drawn from any one camera; far pass 400 faces, so

@@ -562,10 +562,10 @@ fn __rt_frame_end() {
     if __ui_tail != null { GPU_DRAW = __ui_head }
     __pad_prev = PAD1
     __pad2_prev = PAD2
-    __frame_cycles = 500000 - CYCLES
+    __frame_cycles = CPU_BUDGET - CYCLES
     let late = (FRAME - __frame_next) as s32
     __frames_dropped = late
-    if late > 0 { __frame_cycles += min(late, 4000) * 500000 }
+    if late > 0 { __frame_cycles += min(late, 2000) * CPU_BUDGET }
     __frame_next = FRAME + 1
     vsync()
 }

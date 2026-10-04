@@ -370,7 +370,7 @@ fn draw_debug() {
     sappend(b, "CPU ")
     sint(b, used)
     sappend(b, " (")
-    sint(b, used / 5000)
+    sint(b, used / (CPU_BUDGET / 100))
     sappend(b, "%) TRIS ")
     sint(b, tris)
     ftext(4, 227, b, rgb(255, 230, 120), false)

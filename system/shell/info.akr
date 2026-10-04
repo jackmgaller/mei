@@ -21,8 +21,8 @@ fn info_update() {
 fn info_draw() {
     sh_header("System")
     sh_panel(0, INFO_TOP - 6, 320, INFO_ROWS * INFO_ROW + 6)
-    info_row(0, "CPU", "32-bit RISC, 30 MHz")
-    info_row(1, "Budget", "500,000 cycles a frame")
+    info_row(0, "CPU", "32-bit RISC, 60 MHz")
+    info_row(1, "Budget", "1,000,000 cycles a frame")
     info_row(2, "RAM", "2 MB")
     info_row(3, "VRAM", "1 MB, 16 texture slots")
     info_row(4, "Polygons", "Prism Engine, 4,000 triangles")
@@ -45,9 +45,9 @@ fn info_draw() {
     let y = INFO_TOP + 10 * INFO_ROW + 7
     let bx = 248 + sh_ox
     sh_rect(bx, y, 52, 5, rgb(60, 64, 100), -1)
-    let w = clamp(used * 52 / 500000, 1, 52)
+    let w = clamp(used / (CPU_BUDGET / 52), 1, 52)
     var bc = SH_COOL
-    if used > 150000 { bc = SH_WARM }
+    if used > CPU_BUDGET * 3 / 10 { bc = SH_WARM }
     sh_rect(bx, y, w, 5, bc, -1)
     sh_footer("", "Back")
 }

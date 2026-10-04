@@ -89,7 +89,7 @@ asm fn task_resume(t: *Task) -> bool {
     lw   r7, [r5+4]
     lw   r8, [r5+0]
     bne  r6, r8, .clock
-    li   r8, 500000
+    li   r8, {CPU_BUDGET}
     mul  r6, r6, r8
     sub  r6, r6, r7
     sw   r6, [{t}+20]               ; start: cycle_count()

@@ -33,28 +33,28 @@ weak fn __rt_frame_end() {
     if __ui_tail != null { GPU_DRAW = __ui_head }
     __pad_prev = PAD1
     __pad2_prev = PAD2
-    __frame_cycles = 500000 - CYCLES
-    // A frame that ran over its budget ended in a later tick (FRAME counts every 500,000-cycle
+    __frame_cycles = CPU_BUDGET - CYCLES
+    // A frame that ran over its budget ended in a later tick (FRAME counts every CPU_BUDGET
     // budget, presented or not): count the budgets it used up in full. (After CYCLES is read,
     // so a frame on time reads exactly as before.)
     let late = (FRAME - __frame_next) as s32
     __frames_dropped = late
-    if late > 0 { __frame_cycles += min(late, 4000) * 500000 }
+    if late > 0 { __frame_cycles += min(late, 2000) * CPU_BUDGET }
     __frame_next = FRAME + 1
     vsync()
 }
 
-// CPU cycles used by the previous frame (of 500,000 a frame). A frame that ran over counts in
-// full: 500,000 for each budget it used up plus what it used of the last, so the number goes
-// above 500,000 instead of wrapping to a small one.
+// CPU cycles used by the previous frame (of CPU_BUDGET a frame). A frame that ran over counts
+// in full: CPU_BUDGET for each budget it used up plus what it used of the last, so the number
+// goes above CPU_BUDGET instead of wrapping to a small one.
 fn cpu_used() -> s32 { return __frame_cycles }
 
 // The frames the previous frame ran over by: 0 when it was on time, n when the picture before
-// it stayed on screen n more times (n extra 500,000-cycle budgets).
+// it stayed on screen n more times (n extra CPU_BUDGET budgets).
 fn frames_dropped() -> s32 { return __frames_dropped }
 
-// A cycle clock that keeps counting across frames and overruns: FRAME * 500,000 - CYCLES.
-// Differences between two readings are exact (the s32 wraps every 71 seconds; subtracting
+// A cycle clock that keeps counting across frames and overruns: FRAME * CPU_BUDGET - CYCLES.
+// Differences between two readings are exact (the s32 wraps every 35 seconds; subtracting
 // still works for spans shorter than that).
 asm fn cycle_count() -> s32 {
     li   r5, {FRAME}
@@ -63,7 +63,7 @@ asm fn cycle_count() -> s32 {
     lw   r7, [r5+4]                 ; CYCLES
     lw   r8, [r5+0]
     bne  r6, r8, .again             ; a new budget began in between
-    li   r1, 500000
+    li   r1, {CPU_BUDGET}
     mul  r1, r6, r1
     sub  r1, r1, r7
 }
@@ -73,6 +73,8 @@ fn tris_drawn() -> s32 { return __frame_tris }
 // Frames since reset.
 fn frame() -> u32 { return FRAME }
 
+// The CPU's cycles per tick (MEI_CYCLES_PER_FRAME in src/core/mei.h; a 60 MHz CPU).
+const CPU_BUDGET = 1000000
 // The GPU's cycles per tick (docs/DECISIONS.md, "GPU budget").
 const GPU_BUDGET = 1000000
 

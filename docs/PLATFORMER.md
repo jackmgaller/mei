@@ -54,7 +54,9 @@ Replaces the triple jump. To explore:
 The console ticks 60 times a second, and a frame that is on budget is shown every tick, so the
 target is 60 frames a second and one frame is 1/60 s. Measured on 2026-10-03 over 1,200 ticks
 each with `mei-headless --gpu-stats`: Sun & Moon Orbs and Lantern Lake both present a frame on
-every tick (Orbs: CPU median 256,000 of 500,000 cycles, GPU median 525,000 of 1,000,000).
+every tick (Orbs: CPU median 256,000 cycles, of 500,000 then and of 1,000,000 since the CPU went to
+60 MHz the same day ([DECISIONS.md](DECISIONS.md#the-cpu-at-60-mhz)); GPU median 525,000 of
+1,000,000).
 
 A frame that is over budget is shown late and lasts more than one tick
 ([DECISIONS.md, "Lag"](DECISIONS.md#lag)), and the pads are only read when a frame is presented.

@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/logo.png" alt="Mei" width="480"></p>
 
-Mei is a 3D fantasy console in the spirit of the PlayStation era: a 30 MHz RISC CPU, a vector
+Mei is a 3D fantasy console in the spirit of the PlayStation era: a 60 MHz RISC CPU, a vector
 unit, a 3D polygon processor (the Prism Engine) that only fills triangles, so affine-warped
 textures, wobbly vertices and dithered colour come from the hardware rules rather than filters,
 and a scrolling plane processor (the Horizon Engine) for skies, floors and backdrops. It has its
