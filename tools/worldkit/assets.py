@@ -89,10 +89,14 @@ class Library:
                 raise WorldError(path,f'No asset recipe {source}. Create it with tools/mei_assets.py init, or fix the name.',file)
             try:
                 recipe = jsonio.load(str(source),AssetError)
-                mesh,materials,report = compile_recipe(recipe)
+                mesh,materials,report = compile_recipe(recipe,source.parent)
             except (AssetError,OSError,ValueError,RecursionError) as error:
                 where = getattr(error,'path','/input')
                 raise WorldError(path,f'Asset {name!r} does not build: {where}: {error}',file) from error
+            if mesh.textures:
+                raise WorldError(path,f'Asset {name!r} has textured materials; packing textures per region is not '
+                                      'built in the World Kit yet (docs/ASSETKIT.md, "Textures"). Use mei_assets.py pack '
+                                      'for a cart without a world.',file)
             if recipe['name'] != name:
                 raise WorldError(path,f'{source} is named {recipe["name"]!r}; an asset file must be named after its recipe.',file)
             binary = native_bytes(mesh,materials,recipe.get('lighting',{}))

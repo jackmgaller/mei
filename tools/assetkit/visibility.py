@@ -32,29 +32,98 @@ DEFAULT_PROFILE={'yaw_steps':24,'pitches':[-.35,0,.35],'distances':[1,1.5],'far'
 DEPTH_EPSILON=2/65536
 
 
-def identity_mesh(binary):
+def identity_mesh(binary, cutouts=(), solid=False):
     """Keep geometry, flags, and ordering unchanged; replace color with RGB555 ID.
 
     A palette swatch face (4-bit, the same nonzero texel index at every corner) covers
     exactly the pixels of the untextured face: the GPU interpolates equal texture
     coordinates to that texel everywhere, only index 0 skips pixels, and mesh() sorts and
-    clips textured faces like untextured ones. Such faces are checked untextured."""
+    clips textured faces like untextured ones. Such faces are checked untextured; so is every
+    other textured face when solid (a texture without holes never samples index 0).
+
+    cutouts: faces whose texture has holes (texel 0). They stay textured, through palette 0,
+    whose colour 1 the verification cart makes white over a mask of the textures (every texel
+    that is not 0 becomes 1), and their tint carries the ID: a white texel tinted t shows
+    255 t >> 7 per channel, so t = ceil(1024 k / 255) shows 5-bit value k."""
     data=bytearray(binary)
     _,count,_,offset,_=struct.unpack_from('<HHIII',data)
     for i in range(count):
         at=offset+i*36
         flags=data[at]
+        n=i+1
+        color=((n&31)<<3)|(((n>>5)&31)<<11)|(((n>>10)&31)<<19)
+        if flags&2 and i in cutouts:
+            if flags&~19: raise AssetError('/verification','Only opaque triangle meshes are supported.')
+            data[at+3]=0
+            color=sum(-(-1024*((n>>(5*c))&31)//255)<<(8*c) for c in range(3))
+            struct.pack_into('<4I',data,at+12,*([color]*4))
+            continue
         if flags&2:
             uv=struct.unpack_from('<3H',data,at+28)
-            if not data[at+2]&16 or len(set(uv))!=1 or not 0<(uv[0]&255)<16:
+            if not solid and (not data[at+2]&16 or len(set(uv))!=1 or not 0<(uv[0]&255)<16):
                 raise AssetError('/verification','Textured faces are supported only as palette swatch faces.')
             flags&=~2;data[at]=flags;data[at+2]=data[at+3]=0
             struct.pack_into('<4H',data,at+28,0,0,0,0)
         if flags&~17: raise AssetError('/verification','Only opaque, untextured triangle meshes are supported.')
-        n=i+1
-        color=((n&31)<<3)|(((n>>5)&31)<<11)|(((n>>10)&31)<<19)
         struct.pack_into('<4I',data,offset+i*36+12,*([color]*4))
     return bytes(data)
+
+
+def reciprocal(w):
+    """The GPU's vertex reciprocal (RENDERING.md, "The depth test"): 2^40 / w (16.16), 2^28 below 1/16."""
+    return (1<<40)//w if w>=4096 else 1<<28
+
+
+def texel_coverage(np, v, uv, w, xx, yy, inside, area, texture):
+    """Which covered pixels of a textured triangle with depth sample a texel other than 0, as the
+    GPU samples (RENDERING.md, "Perspective-correct texturing"): exact planes of q-weighted u and
+    v, divided at each span's first pixel, every 16th and its last, stepped between with
+    truncation; affine when the scaled reciprocals are equal; then the texture window and the
+    texel. v, uv, w: the three corners as drawn (after the winding swap); texture: (slot, 4-bit,
+    window halfword, the texture area with every texel not 0 made 1)."""
+    slot,four,window,vram=texture
+    x,y=xx[inside],yy[inside]
+    def weights(px,py):
+        return [(int(v[(i+2)%3][0])-int(v[(i+1)%3][0]))*(py-int(v[(i+1)%3][1]))-(int(v[(i+2)%3][1])-int(v[(i+1)%3][1]))*(px-int(v[(i+1)%3][0])) for i in range(3)]
+    r=[reciprocal(int(k)) for k in w]
+    shift=0
+    while max(r)>>shift>=65536: shift+=1
+    q=[max(1,k>>shift) for k in r]
+    e=np.stack(weights(x,y),axis=1).astype(np.int64)
+    if len(set(q))>1:
+        x0=np.full(240,320,dtype=np.int64);x1=np.zeros(240,dtype=np.int64)
+        np.minimum.at(x0,y,x);np.maximum.at(x1,y,x)
+        x0,x1=x0[y],x1[y]
+        a=x0+(x-x0)//16*16;b=np.minimum(a+16,x1)
+        qv=[int(k) for k in q]
+        def corrected(px):
+            wts=[c.astype(object) for c in weights(px,y)]
+            Q=sum(wt*qk for wt,qk in zip(wts,qv))
+            out=[]
+            for axis in (0,1):
+                U=sum(wt*(qk*int(t[axis])) for wt,qk,t in zip(wts,qv,uv))
+                out.append(np.array(U*65536//Q,dtype=np.int64))
+            return out
+        sa,sb=corrected(a),corrected(b)
+        span=np.maximum(b-a,1)
+        def step(fa,fb):
+            d=fb-fa
+            return np.where(x==x1,fb,fa+(x-a)*(np.sign(d)*(np.abs(d)//span)))
+        u,t=(step(sa[k],sb[k])>>16 for k in (0,1))
+    else:
+        u=(e@np.array([int(c[0]) for c in uv],dtype=np.int64))//area
+        t=(e@np.array([int(c[1]) for c in uv],dtype=np.int64))//area
+    def windowed(c,k):
+        size=k&7
+        return c&255 if not size else ((k>>3&31)*8+c%min(4<<size,256))&255
+    u,t=windowed(u,window&255),windowed(t,window>>8)
+    if four:
+        texel=(vram[slot*32768+t*128+(u>>1)]>>((u&1)*4))&15
+    else:
+        texel=vram[(slot*32768+t*256+u)&0x7FFFF]
+    keep=inside.copy()
+    keep[inside]=texel!=0
+    return keep
 
 
 def cycle_witness(edges):
@@ -77,11 +146,12 @@ def cycle_witness(edges):
     return []
 
 
-def raster_surfaces(mesh, sv, materials, margin=0.0):
+def raster_surfaces(mesh, sv, materials, margin=0.0, textured=None):
     """Each front face's covered pixels (the GPU's integer top-left rule) and depths there, and,
     with a margin, each covered pixel's distance inside the face's outline ('inside', pixels) and
     the pixels within margin outside it with the face's plane depth extended there ('ring',
-    'ring_depth')."""
+    'ring_depth'). textured: {face: (corner texture coordinates as drawn, texture)} for faces
+    with cutouts, whose pixels on texel 0 are not covered (texel_coverage)."""
     np=numpy()
     packed=sv[:,2].astype(np.uint32)
     x=(packed&65535).astype(np.int32);x=np.where(x>=32768,x-65536,x)
@@ -98,6 +168,7 @@ def raster_surfaces(mesh, sv, materials, margin=0.0):
         a,b,c=vertices
         area=int((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]))
         if not area or (area>=0 and not materials[face.material].get('double_sided',False)):continue
+        swap=area<0
         if area<0:
             vertices=vertices[[0,2,1]];ids=[ids[0],ids[2],ids[1]];area=-area
         grow=int(math.ceil(margin))
@@ -113,6 +184,11 @@ def raster_surfaces(mesh, sv, materials, margin=0.0):
             weights.append(edge)
             ln=math.hypot(dx,dy)
             if ln:dist=np.minimum(dist,edge/ln)
+        outline=inside
+        if textured and i in textured and inside.any():
+            uv,texture=textured[i]
+            uv=[uv[0],uv[2],uv[1]] if swap else uv
+            inside=texel_coverage(np,vertices,uv,sv[ids,3],xx,yy,inside,area,texture)
         indices=(yy[inside]*320+xx[inside]).astype(np.int32)
         if not len(indices):continue
         bary=np.array([w[inside] for w in weights],dtype=float)/area
@@ -120,7 +196,7 @@ def raster_surfaces(mesh, sv, materials, margin=0.0):
         s={'face':i,'pixels':indices,'depth':z,'low':np.maximum(vertices.min(axis=0),[0,0]),'high':np.minimum(vertices.max(axis=0),[319,239])}
         if margin>0:
             s['inside']=dist[inside]
-            ring=(~inside)&(dist>-margin)
+            ring=(~outline)&(dist>-margin)
             s['ring']=(yy[ring]*320+xx[ring]).astype(np.int32)
             with np.errstate(divide='ignore',invalid='ignore'):
                 rz=1/np.sum((np.array([w[ring] for w in weights],dtype=float)/area)/depth[ids,None],axis=0)
@@ -231,26 +307,71 @@ def run(command):
     if result.returncode:raise AssetError('/verification/native',(result.stderr+'\n'+result.stdout).strip()[-4000:])
 
 
-def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
+def cutout_setup(np, mesh, original):
+    """For an asset with cutouts: the faces that have them, {face: (corner texture coordinates as
+    drawn, texture)} for the reference, and the files and Akari lines with which the
+    verification cart loads the texture area with every texel that is not 0 made 1, and colour
+    1 white."""
+    textures=mesh.textures['textures'] if mesh.textures else {}
+    holed={name for name,tex in textures.items() if tex.cutout}
+    faces={i for i,f in enumerate(mesh.faces) if f.material in holed}
+    if not faces: return set(),{},None
+    packing=mesh.textures['packing']
+    vram=np.zeros(16*32768,dtype=np.uint8);files={};lines=[]
+    for slot in packing.slots():
+        first,data=packing.slot_image(slot)
+        raw=np.frombuffer(data,dtype=np.uint8)
+        if packing.slot_bits[slot]==4:
+            mask=((raw&15)!=0).astype(np.uint8)|(((raw>>4)!=0).astype(np.uint8)<<4)
+            at=first*128
+        else:
+            mask=(raw!=0).astype(np.uint8);at=first*256
+        vram[slot*32768+at:slot*32768+at+len(mask)]=mask
+        files[f'mask{slot}.tex']=mask.tobytes()
+        lines.append(f'embed MASK{slot}: u8 = "mask{slot}.tex"')
+        lines.append(f'fn mask{slot}_load() {{ memcpy((VRAM_TEXTURES + {slot} * TEXTURE_SLOT_SIZE + {at}) as *u8, MASK{slot}, {len(mask)}) }}')
+    files['white.pal']=struct.pack('<2H',0,0x7FFF)
+    _,_,_,offset,windows=struct.unpack_from('<HHIII',original)
+    textured={}
+    for i in faces:
+        at=offset+i*36
+        tex=original[at+2]
+        k=tex>>5
+        window=struct.unpack_from('<H',original,windows+2*(k-1))[0] if k and windows else 0
+        uv=[(c&255,c>>8) for c in struct.unpack_from('<3H',original,at+28)]
+        textured[i]=(uv,(tex&15,bool(tex&16),window,vram))
+    lines.append('embed WHITE: u16 = "white.pal"')
+    lines+=['fn asset_NAME_load() {',*(f'    mask{slot}_load()' for slot in packing.slots()),'    load_palette(0, WHITE, 2)','}']
+    return faces,textured,(files,lines)
+
+
+def verify(recipe, profile=None, directory=None, compiler=None, probe=None, folder=None):
     np=numpy()
     compiler=Path(compiler or ROOT/'build/meic').resolve();probe=Path(probe or ROOT/'build/mei-asset-probe').resolve()
     for path in (compiler,probe):
         if not path.is_file():raise AssetError('/verification/native',f'Missing {path}. Run make build/meic build/mei-asset-probe.')
-    mesh,materials,base=compile_recipe(recipe)
+    mesh,materials,base=compile_recipe(recipe,folder)
     policy={**DEFAULT_PROFILE,**recipe.get('verification',{}),**(profile or {})}
     policy.pop('required',None)
     validate(policy,VERIFICATION,'/verification')
     depth,perspective=policy.get('depth',False),policy.get('perspective',False)
     geometry=geometry_audit(mesh)
     original=native_bytes(mesh,materials,recipe.get('lighting',{}))
-    binary=identity_mesh(original)
+    # Textured faces are judged as solid faces, but those of textures with holes (cutouts), whose
+    # coverage the reference takes from the real texels.
+    cutouts,textured,cart=cutout_setup(np,mesh,original)
+    binary=identity_mesh(original,cutouts,solid=True)
     root=Path(directory).resolve() if directory else None
     if root:root.mkdir(parents=True,exist_ok=True)
     views=[];visible=set();images=[]
     with tempfile.TemporaryDirectory(prefix='mei-verify-') as tmp:
         work=Path(tmp);name=recipe['name']
         (work/(name+'.bin')).write_bytes(binary)
-        (work/(name+'.akr')).write_text(f'embed ASSET_{name.upper()}: Mesh = "{name}.bin"\n')
+        akr=f'embed ASSET_{name.upper()}: Mesh = "{name}.bin"\n'
+        if cart:
+            for filename,data in cart[0].items():(work/filename).write_bytes(data)
+            akr+='\n'.join(cart[1]).replace('asset_NAME_load',f'asset_{name}_load')+'\n'
+        (work/(name+'.akr')).write_text(akr)
         world=policy.get('scale','fit')=='world'
         steps=policy['yaw_steps']
         if 'yaw_range_degrees' in policy:
@@ -262,7 +383,7 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
             for pitch in policy['pitches']:
                 for yaw in yaws:
                     camera={'yaw':yaw,'pitch':pitch,'distance_scale':distance,'near':.1,'far':policy['far']}
-                    code=source(name,base['bounds'],yaw,pitch,distance_scale=distance,world=world)
+                    code=source(name,base['bounds'],yaw,pitch,distance_scale=distance,world=world,load=bool(cart))
                     code='\n'.join(line for line in code.splitlines() if 'text(' not in line)
                     code=code.replace('cls(rgb(24, 28, 36))','cls(0)\n    dither(false)'+
                                       ('\n'+DEPTH.cart_lines(depth,perspective).rstrip() if depth or perspective else ''))
@@ -280,7 +401,7 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
                     sv=np.frombuffer(capture,dtype='<i4',count=len(mesh.vertices)*4,offset=16).reshape(-1,4)
                     actual=np.frombuffer(capture,dtype='<u2',count=320*240,offset=16+16*len(mesh.vertices))
                     if int(actual.max())>len(mesh.faces):raise AssetError('/verification/native','Probe returned an invalid triangle ID.')
-                    surfaces=raster_surfaces(mesh,sv,materials,policy['edge_margin'])
+                    surfaces=raster_surfaces(mesh,sv,materials,policy['edge_margin'],textured)
                     row,expected,actual_ids,bad=compare(mesh,surfaces,actual,graph=not depth,margin=policy['edge_margin'],
                                                         key=DEPTH.KEY_TOLERANCE if depth else 0.0)
                     visible.update(row.pop('visible_faces'))
@@ -318,7 +439,7 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
         from .compiler import level_recipe
         result['lod']=[]
         for k in range(1,len(recipe['lod'].get('levels',[]))+1):
-            level=verify(level_recipe(recipe,k),profile,root/f'lod{k}' if root else None,compiler,probe)
+            level=verify(level_recipe(recipe,k),profile,root/f'lod{k}' if root else None,compiler,probe,folder)
             result['lod'].append({'level':k,'ok':level['ok'],'faces':level['faces'],'totals':level['totals'],
                                   'geometry_ok':level['geometry']['ok'],'mesh_sha256':level['mesh_sha256']})
             result['ok']=result['ok'] and level['ok']

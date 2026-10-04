@@ -6,7 +6,8 @@ actual fixed-point geometry, reports costs and topology per part, and checks act
 visibility through Mei's compiler and GPU. Preview images help assess appearance; a numerical
 verification gate decides whether geometry and visibility pass.
 
-Modeling and ordinary builds use Python 3.10+ without third-party packages. Visibility
+Modeling and ordinary builds use Python 3.10+ without third-party packages; textures read from
+PNG images or sheets need Pillow ([Textures](#textures)). Visibility
 verification additionally requires NumPy and `meic` / `mei-asset-probe`; `make` builds the
 native tools. Preview rendering uses `meic` / `mei-headless`. No GUI, model service or network
 is involved in these checks. The visibility verification gate (`verify`) is called the **Asset
@@ -20,7 +21,8 @@ is in `tools/kitcore/`.
 # Discover the exact supported input contract.
 python3 tools/mei_assets.py schema
 
-# Start from a working recipe. Alternatives: vessel, cottage, kiosk (palette materials).
+# Start from a working recipe. Alternatives: vessel, cottage, kiosk (palette materials),
+# stall (textures; init copies its sheet beside the recipe).
 python3 tools/mei_assets.py init /tmp/robot.asset.json --example robot
 
 # Edit the JSON, preserving meaningful node IDs.
@@ -65,13 +67,14 @@ and an actionable `message`. Commands accepting a recipe also accept `-` to read
 | Command | Result |
 |---|---|
 | `schema` | Full JSON Schema, including supported operations and field bounds |
-| `init FILE [--example robot\|vessel\|cottage\|kiosk]` | Editable starter; refuses to overwrite unless `--force` |
+| `init FILE [--example robot\|vessel\|cottage\|kiosk\|stall]` | Editable starter (with the images it reads, beside it); refuses to overwrite unless `--force` |
 | `validate FILE [--strict]` | Schema, reference, geometry, fixed-point and budget checks |
 | `inspect FILE [--strict]` | Same checks, with full bounds and per-part report |
 | `verify FILE [-o DIR]` | Geometry checks plus native triangle-ID visibility and ordering-graph checks |
 | `build FILE -o DIR [--verify] [--preview] [--strict]` | Native and exchange artifacts; optional or recipe-mandated verification gate |
 | `preview FILE -o DIR [--verify] [--strict]` | Build plus six native renders and contact sheet |
 | `import-obj FILE -o RECIPE [--name NAME] [--force]` | Geometry-only OBJ import into an explicit `mesh` recipe |
+| `pack FILE... -o DIR [--name NAME] [--slots 14-0] [--palette 0] [--palette8 14]` | Several assets (or one) for a cart without a world: shared texture slots and palettes, one loader ([Placement](#placement-build-and-pack)) |
 
 `--strict` fails on topology warnings, useful for closed props. Omit it for intentionally open
 surfaces. Build/preview accept `--compiler PATH` and `--runner PATH` for other Mei builds.
@@ -150,8 +153,9 @@ result in `report.json`. The report records recipe, mesh, compiler and probe has
    topology reports still cover open/nonmanifold surfaces; use `--strict` when those should fail.
 2. **Coverage and identity:** a temporary diagnostic mesh gives every exported triangle a
    unique RGB555 ID. It keeps vertex positions, winding, face order, double-sided and Gouraud
-   flags. Palette-backed faces are checked untextured: see [Palette-backed
-   materials](#palette-backed-materials). Dithering is disabled and no HUD is drawn. The real
+   flags. Palette-backed and textured faces are checked untextured: see [Palette-backed
+   materials](#palette-backed-materials); faces with cutouts are judged per texel ([The Asset
+   Checker and textures](#the-asset-checker-and-textures)). Dithering is disabled and no HUD is drawn. The real
    core renders the ID buffer; `mei-asset-probe` captures its projected integer vertices and
    16.16 depths.
 3. **Expected visibility:** a separate CPU rasterizer uses those projected vertices and Mei's
@@ -325,8 +329,8 @@ Overrides on `verify` are exploratory; edit the recipe to change an enforced bui
 `--geometry warn` records geometric defects as warnings, but visibility and cycles still must
 pass. Use it explicitly for diagnosis, not to label intersecting geometry as clean.
 
-The gate currently covers opaque static meshes (untextured or palette-backed faces) and sampled
-fitted cameras. Near-plane or
+The gate currently covers opaque static meshes (untextured, palette-backed or textured faces,
+cutouts per texel in depth mode) and sampled fitted cameras. Near-plane or
 guard-band clipping is rejected as unsupported, not treated as a pass. Animation, arbitrary
 camera translations/FOVs, other ordering-table ranges, exact real-number visibility before
 projection, fully enclosed internal components and unobserved faces are not certified.
@@ -494,8 +498,8 @@ hold the fonts.
 **Verification.** The gate checks palette-backed faces as untextured faces with the same
 geometry, flags and order. That is exact: such a face covers precisely the pixels of the
 untextured face (only texel index 0 skips pixels, and swatch faces never sample it), and
-`mesh()` clips, culls and sorts textured faces like untextured ones. Any other textured face is
-rejected by the gate.
+`mesh()` clips, culls and sorts textured faces like untextured ones. Faces of a
+[texture](#textures) are judged the same way unless the texture has holes.
 
 ### Levels of detail
 
@@ -570,6 +574,7 @@ For an asset named `stool`, `build` produces:
 | `report.json` | Build costs, hashes, per-part diagnostics and optional native render results |
 | `stool.lod1.bin`, … | With `lod`: each coarser level's native mesh, embedded in `stool.akr` as `ASSET_STOOL_LOD1`, … |
 | `stool.materials.json` | Material manifest: palette entries, classes, tags and face ranges (below) |
+| `stool.slotK.tex`, `stool.tpal`, `stool.frames` | With textures: the texels of each slot used, the texture palettes and animation frames ([Outputs and the manifest](#outputs-and-the-manifest)) |
 
 Recipes with palette-backed materials also get:
 
@@ -663,91 +668,365 @@ colors and its global lighting toggle; it does not preserve procedural operation
 normals or a custom light direction when re-exported through that editor. Keep the recipe as
 the source of truth. The editor may impose additional object/coordinate limits on large recipes.
 
-Version 1 focuses on static meshes with solid colours, baked or palette-backed. Texture and UV
-authoring (see the proposal below), Boolean solids, skeletal animation, morph animation and
-automatic LOD generation are not included, and the repository has no other tool for them.
+Version 1 makes static meshes with solid colours, baked or palette-backed, and
+[textures](#textures). Boolean solids, skeletal animation, morph animation and automatic LOD
+generation are not included, and the repository has no other tool for them.
 
-## Textures (decided, not built)
+## Textures
 
-Decided by the owner on 2026-10-04, revising the earlier proposal now that the Prism Engine has
-an opt-in depth buffer and perspective-correct texturing ([RENDERING.md](RENDERING.md)): large
-textured faces no longer warp, and texel 0 can be a hole that the depth test handles correctly.
-Nothing below is built yet.
+Decided by the owner on 2026-10-04 (see [Decisions](#decisions)) and built: a material can carry
+a texture, drawn through palettes of its own. Textures are most useful with the opt-in depth
+buffer and perspective-correct texturing ([RENDERING.md](RENDERING.md)): large textured faces do
+not warp, and texel 0 can be a hole. They also draw without it, affinely, as any textured face
+does. The code is `tools/assetkit/textures.py` (sources, projections, splitting),
+`tools/assetkit/texout.py` (files and loader), `tools/assetkit/packer.py` (`pack`) and the packer
+the World Kit can share, `tools/kitcore/texpack.py`.
 
-**Sources.** A textured material takes its texels from one of:
+Patterns and texel grids need nothing beyond Python. Images and sheets are read with **Pillow**;
+without it a recipe that uses one fails with an error saying so.
 
-- a **pattern**: a named procedural pattern (brick, tile, planks, wood grain and the like), a few
-  parameters each, generated deterministically by the kit; for cheap repeating surfaces;
-- **texels** written in the recipe: rows of hex digits naming the material's `colors` (about
-  16×16; trims, icons, simple signs);
-- an **image**: a PNG file beside the recipe, or one cell of a **sheet** (below); for anything
-  detailed (signage, liveries, faces, panels).
+### Sources
+
+A textured material has a `texture` with exactly one source:
 
 ```json
-"brick":  {"color": "#a0522d", "class": "surface", "tag": "wall",
-           "texture": {"pattern": "brick", "colors": ["#a0522d", "#d8d0c0"],
-                       "params": {"courses": 4, "bond": 0.5}, "size": 16,
-                       "projection": "box", "scale": [0.5, 0.25]}},
-"ramen":  {"color": "#202020", "class": "emissive",
-           "texture": {"sheet": "signs", "cell": "ramen", "projection": "fit"}},
-"livery": {"color": "#e0e0d8",
-           "texture": {"image": "art/car_side.png", "bits": 8, "projection": "fit"}}
+"brick":  {"color": "#9c4f34", "tag": "wall",
+           "texture": {"pattern": "brick", "colors": ["#9c4f34", "#d6cbb4", "#86412b"],
+                       "params": {"courses": 4, "bricks": 2}, "projection": "box", "scale": [0.5, 0.25]}},
+"trim":   {"color": "#202020",
+           "texture": {"texels": ["0110", "1221", "1221", "0110"],
+                       "colors": ["#202020", "#e0c040", "#f0f0f0"], "projection": "fit"}},
+"poster": {"color": "#e0e0d8", "texture": {"image": "art/poster.png", "bits": 8, "projection": "fit"}},
+"sign":   {"color": "#d86030", "class": "emissive",
+           "texture": {"sheet": "signs", "cell": "ramen", "bits": 8, "projection": "fit"}},
+"glow":   {"color": "#d04a2c", "class": "emissive",
+           "texture": {"sheet": "signs", "frames": ["glow_a", "glow_b"], "ticks": 12,
+                       "projection": "cylindrical", "scale": [0.95, 0.3]}}
 ```
 
-**Sheets.** A sheet is one PNG holding many textures, declared once per recipe: either a uniform
-grid (`"sheets": {"signs": {"image": "art/signs.png", "grid": [32, 16]}}`, cells named by
-`[column, row]`) or named rectangles in a sidecar `NAME.sheet.json`. A sheet is only an authoring
-container: the kit slices it, and every cell it uses is packed like any other texture. The
-sheet's layout never becomes the VRAM layout.
+- **`pattern`**: generated by the kit, deterministically (integer hashes, no random numbers),
+  `size` texels square or `[width, height]` (default 16), in `colors` (default: the material's
+  colour). Every pattern repeats seamlessly when its divisions divide the size, and the kit
+  checks that they do.
 
-**Animated textures.** A texture may be a sequence of frames, written as cells of a sheet:
-`{"sheet": "neon", "frames": ["a", "b", "c"], "ticks": 8}` (each frame shown for 8 ticks,
-looping). Meshes are read in place from ROM, so frames are not selected by rewriting the faces:
-the packer gives the texture one tile in VRAM and keeps its frames in ROM, and a stdlib helper
-copies the current frame into that tile when it changes (a 16×16 4-bit frame is 128 bytes).
-Every placement of the asset animates in step. Palette cycling (shifting the colours of a
-texture's palette entries) is the cheaper alternative for flicker and glow, and stays available.
+  | Pattern | Colours | `params` (default) |
+  |---|---|---|
+  | `brick` | brick, mortar, a varied brick (optional) | `courses` 4, `bricks` 2 a course, `bond` 0.5 (a course's shift, in bricks), `mortar` 1 texel, `seed` 0 |
+  | `tile` | tile, grout, a second tile alternating as a checkerboard (optional) | `count` 2 a side, `grout` 1 |
+  | `planks` | wood, joint, alternate boards (optional), grain streaks (optional) | `boards` 4 (along u), `joint` 1, `seed` 0 (where each board's end joint falls) |
+  | `grain` | light, dark, a middle tone (optional) | `rings` 3 bands across u, `waves` 1 and `amplitude` 3 texels of waver along v, `seed` 0 |
+  | `checker` | two | `count` 2 squares a side |
+  | `stripes` | two or more, cycled | `count` 4, `axis` `u` (stripes across u) or `v` |
+  | `lattice` | bar, background | `count` 2 bars each way, `bar` 2 texels, `diagonal` false; with `clear` naming the background, a grille or fence |
+  | `speckle` | base, then flecks | `density` 0.25 of the texels, `seed` 0 |
 
-**Bit depth.** Textures are **4-bit by default** (one 16-colour palette per face, at most 15
-colours, since index 0 is reserved) so that every texture works with region palette variants for
-day and night. A texture may ask for **`"bits": 8`** (255 colours, twice the VRAM); its 256-entry
-palette is the kit's own, and a region's night variant applies to it as a single tint
-(`multiply`) rather than per-colour choices. The kit quantises images to the depth asked for,
-or keeps them exact when they already fit, and reports each texture's VRAM cost.
+- **`texels`**: rows of hex digits, top row first; digit k is `colors[k]` (up to 16 colours).
+- **`image`**: a PNG file, relative to the recipe's folder.
+- **`sheet`** with **`cell`**: one cell of a sheet. A sheet is one PNG holding many textures,
+  declared once in the recipe's root `sheets`: a uniform grid,
+  `"signs": {"image": "art/signs.png", "grid": [32, 16]}`, whose cells are named `[column, row]`,
+  or, without `grid`, named rectangles in a file beside the image with the same stem
+  (`art/signs.sheet.json`):
 
-**Placement (UVs).** UVs are generated per primitive, by `projection`:
+  ```json
+  {"format": "mei-sheet", "version": 1,
+   "cells": {"ramen": [0, 0, 32, 16], "emblem": [32, 0, 16, 16]}}
+  ```
 
-| Projection | Mapping |
+  A sheet is only an authoring container: the kit slices it, and every cell a recipe uses is
+  packed like any other texture. The sheet's layout never becomes the VRAM layout.
+- **`sheet`** with **`frames`** and **`ticks`**: an animated texture (below).
+
+A material with a texture may not set `palette` or `share` (its texture has palettes of its own);
+`class: "emissive"` makes its faces unshaded, as for palette-backed materials. The material's
+`color` remains its colour in the exchange files (`.obj`/`.mtl`, the Modeler project), which carry
+no textures. A textured face's vertex colour is the baked shade as a tint, 128 for unchanged, as
+for palette-backed faces.
+
+**Texture fields** (also in `schema`):
+
+| Field | Meaning |
 |---|---|
-| `planar` | along an axis (`axis`), `scale` world units per repeat |
-| `box` | by each face's dominant normal axis |
-| `cylindrical` | around Y |
-| `disc` | radially in a plane (`axis`): wheel faces, dials, round signs |
-| `fit` | the texture exactly covers each face it is on (its extent in the face's plane): a sign on a panel, a livery on a car side |
+| `pattern`, `params`, `size`, `colors` | a pattern and its parameters, size and colours |
+| `texels`, `colors` | a texel grid |
+| `image` | a PNG |
+| `sheet`, `cell` / `frames`, `ticks` | a sheet's cell, or an animation of its cells, each shown `ticks` ticks (1–255) |
+| `clear` | patterns and texel grids: this colour of `colors` is a hole (texel 0) |
+| `bits` | 4 (default) or 8 |
+| `projection` | `planar`, `box` (default), `cylindrical`, `disc` or `fit` |
+| `axis` | `planar` (default `z`) and `disc` (default `y`) |
+| `scale` | `[u, v]`: world units a repeat for `planar`, `box` and `cylindrical` (default `[1, 1]`); the world units the texture spans for `disc` (default the primitive's diameter); not for `fit` |
+| `offset` | `[u, v]` added, in repeats (fractions of the texture) |
+| `rotate` | 0, 90, 180 or 270: the texture turned clockwise on the surface |
+| `flip` | `u`, `v` or `both`: mirrored |
 
-Every projection takes `offset`, `rotate` (0, 90, 180, 270) and `flip` (mirroring, so the two
-sides of a car can share one texture). Hand-written per-vertex
-UVs exist only in explicit `mesh` nodes, the escape hatch for shapes nothing else fits.
+### Bit depth and quantisation
 
-**Cutouts.** In assets drawn with the depth buffer (policy `"depth": true`), a texture may have
-holes: transparent pixels of an image (alpha below one half) or a `"clear"` colour in texels
-become texel 0, which draws nothing and writes no depth (fences, railings, grilles, foliage). An
-asset without depth mode may not use cutouts. For faces with cutouts the Asset Checker renders the
-real texels and judges coverage per texel; other textured faces are judged as solid faces, as
-swatch faces are today. Semi-transparency stays per face (glass), not per texel.
+Textures are **4-bit** unless they ask for **`"bits": 8`**. A 4-bit texture has at most 15
+colours and an 8-bit one 255: index 0 is never a colour, since the GPU draws nothing for it. The
+kit converts every colour to the GPU's 15 bits; when the distinct 15-bit colours fit, they are
+kept exactly. Otherwise a median cut (boxes split along their widest channel at the median by
+texel count, each box's colour its mean) picks the colours and every texel takes the nearest one;
+the report gives `quantised_from` (the colours before). An image's pixels with alpha below one
+half are holes.
 
-**Who owns VRAM.** An asset declares the textures it uses; it does not place them. The **World
-Kit packs each region's textures**: it removes duplicates (one brick tile however many assets use
-it), packs tiles into texture slots at window-aligned origins, writes window tables and rewrites
-the faces' texture bytes, and fails the build with a report when a region's textures do not fit.
-A cart that uses assets without a world packs them with an Asset Kit command (`mei_assets.py
-pack`). Repeats rely on texture windows ([DECISIONS.md](DECISIONS.md#texture-windows)): a tile
-is stored once and repeats inside its window; a face spanning more than 255 texels of a pattern
-is split.
+VRAM is reported per texture (`vram_bytes`): rows of whole bytes, its gutter included (below),
+so a 16 × 16 4-bit pattern costs 128 bytes, a 32 × 16 8-bit sign drawn once 33 × 17 = 561. An
+8-bit texture is at most 128 texels tall (an 8-bit texture's rows 128 and on would be in the
+next slot), 127 when drawn once.
 
-**Cost.** Textured pixels cost the GPU twice a flat one, as palette-backed faces already do;
-perspective correction adds a little per triangle and per 16 pixels (RENDERING.md). Patterns and
-images add VRAM, not GPU time.
+### Projections
+
+Texture coordinates come from each corner's position in its **primitive's own coordinates**,
+before the node's modifiers and transform: an instance, array copy or rotated node keeps its
+texture on its faces, and taper or twist bend the texture with the surface. Scaling a node with
+its transform stretches its texture; size the primitive instead to keep the texel density.
+
+| Projection | Mapping | Repeats |
+|---|---|---|
+| `planar` | along `axis`, as seen from the front (`z`, from −Z), from +X (`x`) or from above (`y`); `scale` world units a repeat | yes |
+| `box` | each face by its dominant normal axis, seen from outside (each side of a box reads the right way round) | yes |
+| `cylindrical` | around the primitive's Y axis: u by angle, v by height. The repeats around are rounded to a whole number, about the circumference at the largest radius over `scale[0]`, so there is no seam | yes |
+| `disc` | in the plane across `axis`, centred on the primitive's origin, spanning its diameter (or `scale`): wheel faces, dials, round signs | no |
+| `fit` | the texture exactly covers each face it is on: each plane of the primitive (each source polygon of a `mesh` node) | no |
+
+Orientation, measured on the native renders: u runs to the right and v down as the face is seen
+from outside, with "up" the primitive's +Y (+Z for a face that looks straight up or down). A
+mirrored copy (the `mirror` modifier, a negative scale) is seen from its own outside too, so
+text on it still reads the right way round; `flip` mirrors on purpose. The texture repeats from
+the primitive's origin: at `offset` 0 a box centred on the origin has a repeat's edge through its
+middle; `offset` [0.5, 0.5] centres a repeat on it instead.
+
+**Hand UVs.** A `mesh` node may give `uvs`, one `[u, v]` per vertex in repeats (1 = the
+texture's width or height; 0, 0 its top-left): its textured faces use them instead of the
+projection. They are the escape hatch for shapes no projection fits. Whether they repeat is the
+material's projection's (a `fit` material's hand UVs stay within 0–1).
+
+### Repeats, texture windows and splitting
+
+A texture with a repeating projection is a **tile** that repeats through a **texture window**
+([DECISIONS.md](DECISIONS.md#texture-windows)): it is stored once and faces sample it modulo its
+size. Its width and height are therefore powers of two from 8 to 128. A mesh has at most **7
+windows**, so an asset can use at most 7 different repeating textures (an error says so); the
+same tile used by several materials is one window. Each face's coordinates are shifted by whole
+repeats so its first repeat starts at 0.
+
+Texture coordinates are 8 bits, so a face may span at most 255 texels of a tile (15 repeats of
+16 texels). A longer face is **split** along the lines u = kL and v = kL, L being the largest
+multiple of the tile size not above 255 (240 for 16 texels, 224 for 32, 192 for 64, 128 for 128):
+the same lines for every face of the texture, so two neighbours that both need cutting share
+their cuts. A neighbour that did not need cutting gets the new points on the edges it shares, so
+no T-junctions open. The report gives `split_faces`; the pieces count against the budget. A
+20-unit wall of a 16-texel brick at one unit a repeat (320 texels) is cut once along its length.
+
+A texture drawn once (`fit`, `disc`) is placed plainly with a one-texel **gutter** to its right
+and below that repeats its last column and row, because a face's coordinate can reach its width
+exactly at a corner. It is any size up to 255 × 255.
+
+### Cutouts
+
+A texture with holes (an image's transparent pixels, or the `clear` colour of a pattern or texel
+grid) draws nothing there and writes no depth: fences, grilles, railings, foliage, round signs.
+Cutouts draw correctly only with the depth buffer, so they are allowed only in assets whose
+policy says `"depth": true` (`"verification": {"required": true, "depth": true, "perspective":
+true}`); any other asset using one fails with an error at its texture. Draw such an asset with
+`render_depth(true)`. Semi-transparency stays per face (glass), not per texel.
+
+### Animated textures
+
+`{"sheet": "neon", "frames": ["a", "b", "c"], "ticks": 8}` is an animated texture: each frame a
+cell of the sheet, all the same size and with their holes in the same places, each shown 8 ticks,
+looping. Meshes are read in place from ROM, so frames are not chosen by rewriting faces: the
+texture has one tile in VRAM (frame 0 is loaded), and its frames are kept in ROM in the tile's
+own layout (`NAME.frames`), ready to be copied into the tile when the frame changes. All frames
+share one palette (they are quantised together). Every placement of the asset animates in step.
+The copying helper is not built yet; the manifest's `animations` (below) and the constants in
+`NAME.akr` are what it will use. Palette cycling (`palette_rotate`, `palette_lerp`) is the
+cheaper alternative for flicker and glow.
+
+### Placement: `build` and `pack`
+
+An asset declares its textures; where they go is a packer's business (`kitcore/texpack.py`).
+The packer removes duplicate tiles (equal texels, size, depth and window use: one brick tile
+however many materials or assets use it), gives tiles palettes (4-bit tiles share 16-colour
+palettes while their colours fit, first fit in order; 8-bit tiles share 256-colour ones), and
+places each tile in a slot at an origin that is a multiple of 8, as windows need. A slot holds
+tiles of one depth: 256 × 256 4-bit texels or 256 × 128 8-bit ones. Slot 15 and 4-bit palette
+255 (8-bit palette 15) hold the fonts and are never used. Textures that do not fit are an error
+naming the tile and the total.
+
+**`build`** places one asset's textures on its own, so that its mesh, preview and check work
+alone: in slots from `palette_layout.slot` (default 14) down to 0, then 14 down, the
+palette-backed swatch's 8 × 16-texel block reserved; 4-bit palettes after the swatch's (or from
+`palette_layout.first`); 8-bit palettes from 14 down. `palette_layout` may be given for a
+textured asset without palette-backed materials.
+
+**`pack`** places a set of assets together, for a cart that draws them without a world:
+
+```sh
+python3 tools/mei_assets.py pack examples/assets/stall.asset.json examples/assets/kiosk.asset.json \
+    -o build/street --name street --slots 10-14 --palette 0 --palette8 14
+```
+
+It compiles each recipe, packs all their tiles once into the slots given (a range `10-14`, which
+is also their order of preference, or a list `14,12`; default `14-0`), gives the palette-backed
+materials of each asset consecutive 4-bit palettes from `--palette` with one shared swatch at row
+0 of the first slot, then the 4-bit textures' palettes, and 8-bit palettes from `--palette8`
+down. It writes each mesh for that placement (`NAME.bin`, `NAME.lodK.bin`), the slots' texels
+(`street.slotK.tex`), the palettes (`street.tpal` for textures, `street.pal` and
+`street.swatch` for palette-backed materials), animation frames (`street.frames`), one
+`street.akr` that embeds every mesh and defines `street_load()`, and the manifest
+`street.pack.json`. It does not run the Asset Checker; `build` or `verify` each asset for that.
+
+```
+import "street.akr"
+import "depth.akr"
+
+fn init() { street_load() }        // texels, swatch and palettes into VRAM, once
+
+fn draw() {
+    cls(rgb(24, 28, 36))
+    render_depth(true)
+    camera_look(vec3(0.0, 1.5, -4.2), 0.0, -0.05)
+    mesh_at(ASSET_STALL, vec3(0.0, 0.0, 0.0), 0.0)
+    mesh_at(ASSET_KIOSK, vec3(4.0, 0.0, 2.0), 0.6)
+}
+```
+
+A slot's file holds the rows from its first used row to its last, whole rows (128 bytes a 4-bit
+row, 256 an 8-bit one), so a slot with one 33 × 17 8-bit sign costs 4,352 bytes of ROM. The
+loader copies them with `memcpy`; textures load before the swatch, which may share their slot.
+
+### Outputs and the manifest
+
+A textured asset's `build` adds `NAME.slotK.tex` (each slot used), `NAME.tpal` (the texture
+palettes, index 0 of each 0), `NAME.frames` (animations), and to `NAME.akr` their embeds and
+`asset_NAME_load()`, which a cart (and the preview cart) calls once:
+
+```
+// Textures: slots 13, 14; palettes 4-bit 0, 4-bit 1, 8-bit 14. Call asset_stall_load() before drawing.
+embed ASSET_STALL_TEX13: u8 = "stall.slot13.tex"
+embed ASSET_STALL_TEX14: u8 = "stall.slot14.tex"
+embed ASSET_STALL_TEXPAL: u16 = "stall.tpal"
+embed ASSET_STALL_FRAMES: u8 = "stall.frames"
+const ASSET_STALL_LANTERN_AT = 0                // and _FRAME_BYTES, _FRAMES, _TICKS, _ROW_BYTES,
+const ASSET_STALL_LANTERN_VRAM = 426040         // _ROWS, _STRIDE: the copy a helper will make
+fn asset_stall_load() { … }
+```
+
+`report.json` gains `textures`: textured triangles, `split_faces`, `windows`, the tiles, slots
+and palettes used, `vram_bytes` (the tiles) and `vram_bytes_allocated` (rounded to the 8-texel
+grid), and per texture its source, size, depth, colours, projection, `repeat`, `cutout`,
+`vram_bytes`, `quantised_from`, and `frames`, `ticks` and `rom_bytes` for an animation.
+
+The **material manifest** (`NAME.materials.json`) gains `textures`, the shape a packer reads
+(`pack`'s `NAME.pack.json` lists the same entries per asset):
+
+```json
+"textures": {
+  "slots": [{"slot": 13, "bits": 4, "file": "stall.slot13.tex", "first_row": 0, "rows": 17,
+             "stride": 128, "bytes": 2176}, …],
+  "palettes": {"file": "stall.tpal", "runs": [{"bits": 4, "first_colour": 0, "colours": 32, "offset": 0},
+                                             {"bits": 8, "first_colour": 3584, "colours": 18, "offset": 32}]},
+  "animations": [{"tile": "b0efae980a6dbfe3", "label": "lantern", "file": "stall.frames", "offset": 0,
+                  "frames": 2, "ticks": 12, "frame_bytes": 128, "row_bytes": 8, "rows": 16,
+                  "vram": 426040, "stride": 128}],
+  "windows": [562, 578, 594, 610, 626],
+  "list": [{"material": "lantern", "tile": "b0efae980a6dbfe3",
+            "source": {"sheet": "signs", "image": "art/stall_sheet.png", "sha256": "…", "frames": ["glow_a", "glow_b"]},
+            "width": 16, "height": 16, "bits": 4, "projection": "cylindrical", "repeat": true, "cutout": false,
+            "colours": ["#6b1010", …], "slot": 13, "x": 112, "y": 0, "gutter": 0, "window": 626,
+            "palette": 1, "first_colour": 16, "indices": {"#6b1010": 1, …}, "vram_bytes": 128,
+            "night": "per_colour", "faces": [[80, 100]], "frames": 2, "ticks": 12}, …]
+}
+```
+
+- `slots`: each slot file, the rows it covers and their stride; `palettes.runs`: where in
+  `NAME.tpal` (`offset`, in colours) each run of palette colours starts and which colours it
+  loads.
+- `animations`: per animated tile, its frames in `file` from `offset`, each `frame_bytes` long:
+  `rows` rows of `row_bytes`, to be copied to texture-area byte `vram` and every `stride` bytes
+  after (`VRAM_TEXTURES + vram`). Frame k starts at `offset + k × frame_bytes`.
+- `windows`: the mesh's window table, in order (window n is entry n − 1).
+- `list`: per textured material, its tile (`tile` is the content key that removes duplicates),
+  where it is (`slot`, `x`, `y` in texels, `gutter`), its window halfword (`null` when drawn
+  once), its palette (`palette`: a 4-bit palette 0–254 or an 8-bit one 0–14; `first_colour` its
+  colour 0) and which entry each colour has (`indices`), and the faces (half-open ranges of the
+  exported faces).
+- `night`: what a day/night palette variant can do with the texture. `per_colour` (4-bit): each
+  entry of its palette can be given its own night colour, as palette-backed entries are. `multiply`
+  (8-bit): a region's night variant is to tint the whole 256-colour palette by one colour (each
+  channel times a factor), not entry by entry (planned, for the World Kit); the palette's colours
+  are `first_colour` + 1 onward.
+
+In `NAME.bin` a textured face has flag bit 1 set, texture byte `slot | 16 (4-bit) | window << 5`,
+palette byte its palette, and texture coordinates `u | v << 8`: for a windowed tile the face's own
+coordinates (0–255, the window adds the origin), for a tile drawn once the coordinates plus its
+`x`, `y`.
+
+### The Asset Checker and textures
+
+Textured faces are judged as **solid faces**, as palette-backed faces are, except faces whose
+texture has holes. A texture without holes never samples texel 0, so its face covers exactly the
+pixels of the untextured face; such faces are drawn untextured in the identity cart, with the
+same geometry, flags and order.
+
+**Cutout faces are judged per texel.** The verification cart keeps them textured: it loads the
+packed texture area with every texel that is not 0 made 1, colour 1 white, and carries each
+face's ID in its tint (a white texel tinted t shows 255 t >> 7, so t = ⌈1024 k / 255⌉ shows the
+5-bit value k exactly). The reference rasteriser then samples the real texels the way the GPU
+does ([RENDERING.md](RENDERING.md#perspective-correct-texturing)): the vertex reciprocals 2^40 / w
+from the console's own projected depths, the exact q-weighted planes divided at each span's first
+pixel, every 16th and its last and stepped between with truncation (affine when the scaled
+reciprocals are equal), then the texture window and the texel. A pixel on texel 0 is not covered,
+so the faces behind it are expected there. Coverage is exact (0 coverage errors in the stall's 144
+views and the tests' fence), and replacing the per-texel coverage with the face's outline or with affine
+mapping gives thousands of coverage errors on the same views (`tests/test_assetkit.py`,
+`TextureCheckerTests`). Animations are checked with frame 0; their frames have their holes in the
+same places.
+
+### Cost
+
+Textured pixels cost the GPU twice a flat one, as palette-backed faces already do; perspective
+correction adds 24 cycles a triangle and 2 per divide (RENDERING.md). A mesh with a window table
+costs about 55 more CPU cycles a `mesh*()` call and 10 per visible windowed face (LANGUAGE.md,
+"Performance notes"). Measured with the stall's previews in depth mode, the same mesh with and
+without its textures (the frame's clears and HUD text included): isometric view 94,687 → 105,828
+GPU cycles (+12 %) and 20,776 → 24,547 CPU cycles (+18 %); front view 91,752 → 99,672 and
+19,760 → 23,296. Patterns and images add VRAM, not GPU time.
+
+### The example: `stall`
+
+[`stall`](../examples/assets/stall.asset.json) is a noodle stall with every kind of texture:
+`brick` (box), `planks` (planar, from above), `grain` (cylindrical, turned 90°), `stripes` on the
+awning, a 32 × 16 8-bit sign from a named cell of
+[`art/stall_sheet.png`](../examples/assets/art/stall_sheet.png) (`fit`), an emblem with
+transparent corners on a disc (`disc`, a cutout), lattice side screens (`fit`, a cutout through
+`clear`) and an animated lantern (two frames, cylindrical, emissive). It requires the Asset
+Checker in depth mode. Numbers (`build`): 144 triangles, 116 vertices, 8 tiles in slots 13 (4-bit)
+and 14 (8-bit), 1,507 bytes of texels (2,176 on the 8-texel grid), 4-bit palettes 0–1 and 8-bit
+palette 14, 5 windows, no split faces. Its check: 144 views, 0 wrong pixels, 0 coverage errors,
+14.3 s. Preview views: 99,000–107,300 GPU and 22,200–25,700 CPU cycles. Packed with the kiosk and
+drawn by a cart in depth and perspective mode (four views, from the stall a third of the screen
+to a close view filling it, the kiosk beside it): 109,154–200,638 GPU and 30,686–34,855 CPU
+cycles a frame. `tests/test_assetkit.py` packs and draws the same pair.
+
+The sheet is authored art (drawn once with Pillow and committed; no generator rewrites it).
+
+### For a region packer (the World Kit)
+
+Packing textures per region is the World Kit's (not built yet: a world whose asset has textures
+fails with an error saying so). What it can use:
+
+- `kitcore.texpack.pack(tiles, slots, first_palette, palette8, reserved)` → a `Packing`
+  (`placements` by tile key, `palettes`, `slot_image(slot)`, `encode(key, frame)`,
+  `palette_bytes(bits, palette)`, `summary()`); `Tile` and `Placement` are its records.
+- `compile_recipe(recipe, folder)` gives the mesh with `mesh.textures['textures']` (material →
+  `Texture`, whose `.tile` is the `Tile`), and `native_bytes(mesh, materials, lighting, packing)`
+  writes the mesh for any packing that places its tiles; `texout.outputs()` writes the slot,
+  palette and frame files and the loader lines for a packing.
+- A region's palette variants: 4-bit textures entry by entry (`night: per_colour`), 8-bit
+  textures by one tint over their palette (`night: multiply`).
 
 ## Decisions
 
@@ -770,8 +1049,12 @@ The project owner's decisions about the kit (2026-10-03), besides those describe
   PNG images and sheets now for detailed art; 4-bit by default, 8-bit per texture; UVs by
   projection or `fit`, hand UVs only in `mesh` nodes; cutouts in depth-mode assets; animated
   textures from sheet frames; the World Kit packs VRAM per region
-  ([Textures](#textures-decided-not-built)).
-- **Examples.** Of the four examples, only `kiosk` passes the Asset Checker (and requires it).
+  ([Textures](#textures)). Built as decided, with these details settled in the building: the
+  projections work in each primitive's own coordinates; repeating textures are 8–128 texels
+  (power-of-two) tiles, at most 7 an asset (a mesh's windows); textures drawn once carry a
+  one-texel gutter; `build` places one asset's textures itself and `pack` places a set's.
+- **Examples.** Of the five examples, `kiosk` and `stall` (in depth mode) pass the Asset
+  Checker (and require it).
   `robot`, `vessel` and `cottage` predate the gate and fail its geometry check with surface
   intersections (`verify`, October 2026); they remain as modelling examples. Three more recipes
   made while the kit was developed (`ion_cruise`, `sky_castle` and `clockwork_kraken`) also fail
@@ -785,13 +1068,21 @@ make test-assets
 
 This builds the native runner, compiler and diagnostic probe, and checks geometry, winding, transformations, quantization,
 schema failures, deterministic exports, OBJ import, output preservation on failure, and all
-four examples rendered from six angles by Mei. It pins the build outputs of legacy recipes byte
+five examples rendered from six angles by Mei. It pins the build outputs of legacy recipes byte
 for byte, checks palette entry assignment, the vertical bake under rotation, the manifest and
 `relocate`, and renders a palette-backed asset in the emulator while rewriting a surface entry
-and blending an emissive one with `palette_lerp`. With NumPy it also checks identical-color
+and blending an emissive one with `palette_lerp`. For textures it checks every pattern (and
+that its divisions are checked), texel grids and `clear`, quantisation (exact when colours fit,
+index 0 never used), 8-bit textures, images, grid and named sheets and animations (with Pillow),
+the error without Pillow, each projection's orientation, `offset`, `rotate` and `flip`, hand
+UVs, splitting without T-junctions, the 7-window limit, the native face bytes and tints, levels
+of detail sharing level 0's textures, the packer's duplicates, window-aligned origins, reserved
+swatch block, gutters, shared palettes and overflow errors, `pack` and `build`'s files, and
+draws texels and a packed pair in depth and perspective mode in the emulator. With NumPy it also checks identical-color
 occlusion, crossing-depth cycles, exact native coverage, palette-backed faces in the gate,
 the depth policy (a plate on a body and crossing faces pass, coplanar faces still fail),
-required-policy enforcement and
+required-policy enforcement, textured faces judged as solid faces, cutout coverage judged per
+texel (and that judging it by the outline fails), and
 preservation of prior artifacts on failed verification. It also runs as part of `make test` when
 Python is available. Pure Python tests can run independently; native render tests skip if
 the binaries are absent:
@@ -803,4 +1094,5 @@ python3 -m unittest discover -s tests -p test_assetkit.py -v
 Example recipes: [`robot`](../examples/assets/robot.asset.json),
 [`vessel`](../examples/assets/vessel.asset.json), [`cottage`](../examples/assets/cottage.asset.json),
 [`kiosk`](../examples/assets/kiosk.asset.json) (palette-backed and emissive materials, tags,
-vertical lighting and a required verification policy).
+vertical lighting and a required verification policy), [`stall`](../examples/assets/stall.asset.json)
+(textures of every kind, cutouts, an animation, depth mode).

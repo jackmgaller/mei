@@ -158,11 +158,13 @@ These are Asset Kit features, not World Kit features. Each is generic: none ment
    same colour share an entry by default; a recipe may force separate ones (`"share": false`).
    The material manifest is written for every build, so a world build reads one shape of data
    for every asset.
-5. **Textures and UVs.** Regions own texture sets (decision 4), but the Asset Kit cannot author
-   textured surfaces yet (decided, not built: [ASSETKIT.md](ASSETKIT.md#textures-decided-not-built)). Until it
-   can, a region's texture set is empty, and the stage-3 texture-swap seam has nothing to swap.
-   The planned basis for repeating pattern textures is the Prism Engine's per-polygon **texture
-   windows** ([DECISIONS.md](DECISIONS.md#texture-windows)), which `mesh()` already sends from a
+5. **Textures and UVs.** Regions own texture sets (decision 4). The Asset Kit authors textured
+   assets and packs them for a cart without a world ([ASSETKIT.md](ASSETKIT.md#textures)), but
+   the World Kit does not pack them per region yet: a world whose asset has textures fails with
+   an error saying so. Until it does, a region's texture set is empty, and the stage-3
+   texture-swap seam has nothing to swap; ASSETKIT.md's
+   [For a region packer](ASSETKIT.md#for-a-region-packer-the-world-kit) lists what it can reuse.
+   Repeating textures use the Prism Engine's per-polygon **texture windows** ([DECISIONS.md](DECISIONS.md#texture-windows)), which `mesh()` already sends from a
    mesh's window table: many small repeating tiles share one texture slot instead of a slot each.
 
 Two items earlier versions of this list carried are no longer Asset Kit changes: terrain belongs

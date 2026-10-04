@@ -52,8 +52,8 @@ self-checking scenarios (`carts/*/tests/check.sh`). `make B=DIR` builds into `DI
 **Python.** The emulator, the compilers, the system ROM and the carts build and run without
 Python: every generated file they use is committed. Python 3 runs the MeiNet gateway, the kits,
 the asset generators and `make web`'s cart packer. The Asset Kit and World Kit build recipes with
-the standard library alone (Python 3.10 or later); the Asset Checker and the World Checker need
-NumPy. The asset generators in `tools/` need NumPy, those that draw pictures need Pillow, and
+the standard library alone (Python 3.10 or later), but for Asset Kit textures read from PNG
+images, which need Pillow; the Asset Checker and the World Checker need NumPy. The asset generators in `tools/` need NumPy, those that draw pictures need Pillow, and
 the Duet boot theme's and Sound Lab's need SciPy too; several use macOS system fonts.
 
 ## Run
