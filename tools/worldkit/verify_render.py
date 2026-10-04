@@ -323,7 +323,8 @@ def identity_pack(data, insts, first_ids, meshes, pack=None, texels=None):
             out.append(0)
         at = len(out)
         cut = cutout_faces(texels, inst, meshes[inst.mesh], pack) if texels else ()
-        out += identity_mesh(data, inst.mesh, meshes[inst.mesh], first_ids[inst.key], cut)
+        args = (data, inst.mesh, meshes[inst.mesh], first_ids[inst.key])
+        out += identity_mesh(*args, cut) if cut else identity_mesh(*args)
         struct.pack_into('<I', out, field, at)
     while len(out) % 4:
         out.append(0)
