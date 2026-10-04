@@ -1,5 +1,5 @@
 // Attachments: poles, rails and wires, bounce things and movers (the attachments worker's
-// file). The controller calls these hooks; until they are written they change nothing.
+// file). The controller calls these hooks:
 //
 // - attach_init(): after the world is open and the player placed.
 // - attach_tick(): once a tick, before player_tick(): move the movers.
@@ -12,19 +12,633 @@
 // - attach_state_tick(ip): run St.Pole, St.Rail and St.Hang; return true when it ran the tick.
 // - attach_draw(), attach_owns(e): draw the entities attach.akr moves; game.akr's
 //   draw_entities() skips those attach_owns() claims.
+//
+// Movers (the game schema's `mover`): `period` is the ticks one leg takes (placement to `to`, or
+// along the whole `path`), `pause` the ticks held at each end. Pingpong goes there and back,
+// easing in and out of each leg (smoothstep: the top speed is 1.5 times the average, so the
+// train, 84 m in 900 ticks, peaks at 8.4 m/s); loop runs the leg at an even speed and starts
+// again from the placement (a closed path goes round). Their collision blocks answer in their
+// own frame: a query is moved by the mover's position and turned by its yaw.
+//
+// Standing on a mover carries the player by its movement each tick. Leaving it (a jump, or
+// walking off) keeps T.RideKeep of its velocity: the horizontal part as a drift added each tick
+// in the air until landing or a wall, the vertical part added to pl.vel.y once. A mover's top
+// rising into the body lifts the player onto it; its underside coming down onto the head
+// squeezes the player out sideways.
+//
+// Poles: touching one in the air grabs it. The stick (as the camera sees it: up, down, left,
+// right) climbs, slides down and goes round it; A kicks off away from it (St.WallKick: full
+// height, no jump cut); R lets go, and it is not grabbed again until the body has left it. Rails
+// (`rail` entities on World Kit paths): coming down onto one grinds along it (St.Rail); reaching
+// one at the hands hangs from it (St.Hang), moved along by the stick. A jumps off either; R
+// drops.
 
-fn attach_init() {}
-fn attach_tick() {}
-fn attach_carry() {}
+const MAX_MOVERS = 8
+const MAX_POLES = 16
+const MAX_RAILS = 16
+const POLE_HOLD: fixed = 0.5        // from the pole's axis to the body's: its radius and a pole's
+const HANG_BELOW: fixed = 1.75      // hanging: the feet this far below the rail (hands overhead)
+const LIFT_MAX: fixed = 0.8         // a mover's top this far into the body lifts the player
+const SQUEEZE_MAX: fixed = 12.0     // how far to look for room beside a mover pressing down
 
-fn attach_floor(_p: vec3, _above: fixed, found: bool) -> bool { return found }
-fn attach_ceiling(_p: vec3, _below: fixed, found: bool) -> bool { return found }
-fn attach_push(p: vec3, _r: fixed) -> vec3 { return p }
+struct Mover {
+    e: *WpEntity
+    cb: *WpColl        // its collision block (own frame), or null
+    mesh: *Mesh
+    path: *WpPath      // the path it follows, or null: base to base + to
+    base: vec3
+    to: vec3
+    period: s32
+    pause: s32
+    looped: bool
+    reach: fixed       // its block's half width and a margin: the box test for queries
+    c: fixed           // its yaw, as mesh_at() turns
+    s: fixed
+    yaw: fixed
+    pos: vec3          // where it is this tick (world)
+    vel: vec3          // how far it moved this tick (metres a tick)
+}
 
-fn attach_air_grab(_ip: *Pin) -> bool { return false }
-fn attach_state_tick(_ip: *Pin) -> bool { return false }
+struct Pole {
+    base: vec3
+    top: fixed         // world height of the top
+}
 
-fn attach_draw() {}
+var movers: [MAX_MOVERS]Mover
+var mover_n: s32
+var poles: [MAX_POLES]Pole
+var pole_n: s32
+var rails: [MAX_RAILS]*WpPath
+var rail_n: s32
+
+var att_t: s32                 // the movers' clock, ticks
+var any_near: bool             // some mover is within a few metres of the player this tick
+var ride: s32 = -1             // the mover stood on last tick
+var air_v: vec3                // a mover's velocity kept in the air (metres a tick)
+var pole_k: s32 = -1           // the pole held, or the last one let go of
+var pole_ang: fixed            // the direction from the pole's axis to the player (a yaw)
+var pole_regrab: s32
+var pole_turn: fixed           // going round the pole: 1 or -1 while the stick is held, else 0
+var pole_clear: bool           // the body has been out of the last pole's reach since leaving it
+var rail_k: s32 = -1           // the rail on, or the last one left
+var rail_s: fixed              // how far along its path
+var rail_v: fixed              // speed along it, metres a tick (negative: toward its start)
+var rail_regrab: s32
+
+// ---- set up
+
+fn attach_init() {
+    mover_n = 0
+    pole_n = 0
+    rail_n = 0
+    for n in 0..wp_pack.entity_count as s32 {
+        let e = wp_entity(n)
+        let ty = e.type_id as s32
+        if ty == GARDEN_TYPE_MOVER && mover_n < MAX_MOVERS {
+            mover_add(e)
+        } else if ty == GARDEN_TYPE_POLE && pole_n < MAX_POLES {
+            let p = wp_entity_params(e) as *GardenPole
+            let b = wp_entity_pos(e)
+            poles[pole_n] = Pole { base: b, top: b.y + p.height }
+            pole_n += 1
+        } else if ty == GARDEN_TYPE_RAIL && rail_n < MAX_RAILS {
+            let p = wp_entity_params(e) as *GardenRail
+            let pth = wp_path_find(pack_string(p.path))
+            if pth != null {
+                rails[rail_n] = pth
+                rail_n += 1
+            }
+        }
+    }
+    att_t = 0
+    ride = -1
+    air_v = vec3(0.0, 0.0, 0.0)
+    pole_k = -1
+    pole_clear = true
+    rail_k = -1
+    for k in 0..mover_n { mover_place(&movers[k], att_t) }
+    any_near = true                // until the first tick looks
+}
+
+// A name parameter's string.
+fn pack_string(off: u32) -> *u8 { return (wp_pack as u32 + off) as *u8 }
+
+fn mover_add(e: *WpEntity) {
+    let p = wp_entity_params(e) as *GardenMover
+    let m = &movers[mover_n]
+    mover_n += 1
+    m.e = e
+    m.cb = wp_entity_coll(e)
+    m.mesh = wp_entity_mesh(e)
+    m.base = wp_entity_pos(e)
+    m.path = null
+    m.to = vec3(0.0, 0.0, 0.0)
+    m.period = 60
+    m.pause = 0
+    m.looped = false
+    if p != null {
+        if p.path != 0 { m.path = wp_path_find(pack_string(p.path)) }
+        m.to = p.to
+        m.period = max(p.period as s32, 1)
+        m.pause = max(p.pause as s32, 0)
+        m.looped = p.mode == GardenMoverMode.Loop
+    }
+    m.yaw = e.yaw
+    m.c = cos(e.yaw)
+    m.s = sin(e.yaw)
+    m.reach = 1.0
+    if m.cb != null { m.reach = m.cb.half * 1.42 + 1.0 }
+    m.pos = m.base
+    m.vel = vec3(0.0, 0.0, 0.0)
+}
+
+// ---- movers
+
+// How far along its leg (0..1) a mover is at tick t.
+fn mover_u(m: *Mover, t: s32) -> fixed {
+    let leg = m.period
+    if m.looped {
+        let k = t % (leg + m.pause)
+        if k >= leg { return 1.0 }
+        return fixed(k) / leg
+    }
+    let k = t % ((leg + m.pause) * 2)
+    var u = 0.0
+    if k < leg {
+        u = fixed(k) / leg
+    } else if k < leg + m.pause {
+        return 1.0
+    } else if k < leg * 2 + m.pause {
+        u = 1.0 - fixed(k - leg - m.pause) / leg
+    } else {
+        return 0.0
+    }
+    return u * u * (3.0 - u * 2.0)
+}
+
+fn mover_place(m: *Mover, t: s32) {
+    let u = mover_u(m, t)
+    if m.path != null {
+        m.pos = wp_path_at(m.path, wp_path_length(m.path) * u)
+    } else {
+        m.pos = m.base + m.to * u
+    }
+}
+
+fn attach_tick() {
+    att_t += 1
+    if pole_regrab > 0 { pole_regrab -= 1 }
+    if rail_regrab > 0 { rail_regrab -= 1 }
+    if !pole_clear && pl.st != St.Pole && pole_k >= 0 {
+        let p = &poles[pole_k]
+        let r = tv[T.PoleReach] + 0.1
+        if abs(pl.pos.x - p.base.x) > r || abs(pl.pos.z - p.base.z) > r || standing(pl.st) { pole_clear = true }
+    }
+    // The collision hooks are called up to 30 times a tick: they look at the movers only when
+    // one is within reach of the player (3 m more than its block's, which covers a tick's
+    // movement and the ledge probes).
+    any_near = false
+    for k in 0..mover_n {
+        let m = &movers[k]
+        let old = m.pos
+        mover_place(m, att_t)
+        m.vel = m.pos - old
+        let r = m.reach + 3.0
+        if m.cb != null && abs(pl.pos.x - m.pos.x) < r && abs(pl.pos.z - m.pos.z) < r { any_near = true }
+    }
+}
+
+// World point p in mover m's frame, where it is now (or `at`).
+fn to_local(m: *Mover, p: vec3, at: vec3) -> vec3 {
+    let d = p - at
+    return vec3(m.c * d.x - m.s * d.z, d.y, m.s * d.x + m.c * d.z)
+}
+
+// A direction in m's frame turned into the world.
+fn to_world(m: *Mover, v: vec3) -> vec3 {
+    return vec3(m.c * v.x + m.s * v.z, v.y, m.c * v.z - m.s * v.x)
+}
+
+fn mover_near(m: *Mover, p: vec3) -> bool {
+    return m.cb != null && abs(p.x - m.pos.x) < m.reach && abs(p.z - m.pos.z) < m.reach
+}
+
+// ---- collision against the movers (after the world's answer)
+
+fn attach_floor(p: vec3, above: fixed, found: bool) -> bool {
+    if !any_near { return found }
+    var f = found
+    for k in 0..mover_n {
+        let m = &movers[k]
+        if !mover_near(m, p) { continue }
+        // A rising mover may have come up past the feet this tick: look that much higher.
+        if wp_coll_floor(m.cb, to_local(m, p, m.pos), above + max(m.vel.y, 0.0), 0) {
+            let y = wp_hit.y + m.pos.y
+            if !f || y > col_y {
+                col_y = y
+                col_n = to_world(m, wp_hit_normal())
+                col_surf = surface_map[wp_hit.surface & 7] as s32
+                f = true
+            }
+        }
+    }
+    return f
+}
+
+fn attach_ceiling(p: vec3, below: fixed, found: bool) -> bool {
+    if !any_near { return found }
+    var f = found
+    for k in 0..mover_n {
+        let m = &movers[k]
+        if !mover_near(m, p) { continue }
+        if wp_coll_ceiling(m.cb, to_local(m, p, m.pos), below + max(-m.vel.y, 0.0), 0) {
+            let y = wp_hit.y + m.pos.y
+            if !f || y < col_y {
+                col_y = y
+                f = true
+            }
+        }
+    }
+    return f
+}
+
+fn attach_push(p: vec3, r: fixed) -> vec3 {
+    if !any_near { return p }
+    var q = p
+    for k in 0..mover_n {
+        let m = &movers[k]
+        if !mover_near(m, q) { continue }
+        let a = to_local(m, q, m.pos)
+        let b = wp_coll_push(m.cb, a, r, 0)
+        if wp_hit.walls > 0 {
+            q = q + to_world(m, b - a)
+            let w = wp_hit.rec as *WpWall
+            note_wall(to_world(m, vec3(w.hx, 0.0, w.hz)), w.p.y)
+        }
+    }
+    return q
+}
+
+// ---- riding
+
+fn standing(s: St) -> bool {
+    return s == St.Ground || s == St.Skid || s == St.Crouch || s == St.CrouchSlide || s == St.Slide || s == St.PoundLand || s == St.BellySlide
+}
+
+// The mover whose top the feet stood on before it moved this tick, or -1.
+fn ridden() -> s32 {
+    for k in 0..mover_n {
+        let m = &movers[k]
+        if !mover_near(m, pl.pos) { continue }
+        let old = m.pos - m.vel
+        if wp_coll_floor(m.cb, to_local(m, pl.pos, old), 0.05, 0) && abs(wp_hit.y + old.y - pl.pos.y) <= 0.05 { return k }
+    }
+    return -1
+}
+
+fn attach_carry() {
+    let was = ride
+    let s = pl.st
+    ride = -1
+    if standing(s) { ride = ridden() }
+    if ride >= 0 {
+        let v = movers[ride].vel
+        if abs(v.x) + abs(v.y) + abs(v.z) < 2.0 { pl.pos = pl.pos + v }   // not a loop's jump back
+        air_v = vec3(0.0, 0.0, 0.0)
+        return
+    }
+    if s == St.LedgeHang || s == St.LedgeClimb { carry_ledge() }
+    if was >= 0 && is_air(s) {
+        // Left a mover: keep its velocity.
+        let v = movers[was].vel * tv[T.RideKeep]
+        air_v = vec3(v.x, 0.0, v.z)
+        pl.vel.y += v.y
+    }
+    if !is_air(s) { air_v = vec3(0.0, 0.0, 0.0) }
+    if air_v.x != 0.0 || air_v.z != 0.0 {
+        move_h(air_v.x, air_v.z)
+        if pl.wall_hit { air_v = vec3(0.0, 0.0, 0.0) }
+    }
+    if s != St.Pole && s != St.Rail && s != St.Hang { unoverlap() }
+}
+
+// Hanging from (or climbing onto) a mover's edge: move with it.
+fn carry_ledge() {
+    for k in 0..mover_n {
+        let m = &movers[k]
+        if !mover_near(m, pl.ledge_to) { continue }
+        let old = m.pos - m.vel
+        let at = pl.ledge_to + vec3(0.0, 0.05, 0.0)
+        if wp_coll_floor(m.cb, to_local(m, at, old), 0.0, 0) && abs(wp_hit.y + old.y - pl.ledge_to.y) <= 0.05 {
+            pl.pos = pl.pos + m.vel
+            pl.ledge_to = pl.ledge_to + m.vel
+            pl.ledge_from = pl.ledge_from + m.vel
+            return
+        }
+    }
+}
+
+// A mover that moved into the body: its top rising into it lifts the player onto it; its
+// underside coming down onto the head squeezes the player out to the side.
+fn unoverlap() {
+    for k in 0..mover_n {
+        let m = &movers[k]
+        if !mover_near(m, pl.pos) { continue }
+        let a = to_local(m, pl.pos, m.pos)
+        if wp_coll_floor(m.cb, a, LIFT_MAX, 0) {
+            let y = wp_hit.y + m.pos.y
+            if y > pl.pos.y {
+                pl.pos.y = y
+                if pl.vel.y < 0.0 { pl.vel.y = 0.0 }
+                continue
+            }
+        }
+        if wp_coll_ceiling(m.cb, a, 0.0, 0) && wp_hit.y + m.pos.y < pl.pos.y + BODY_HEIGHT {
+            squeeze(m, a)
+        }
+    }
+}
+
+const SQUEEZE_DIR: [4]vec3 = [vec3(0.0, 0.0, -1.0), vec3(0.0, 0.0, 1.0), vec3(-1.0, 0.0, 0.0), vec3(1.0, 0.0, 0.0)]
+
+// The nearest place along the mover's own axes where its underside is not over the head and
+// no world wall is in the way; the player is moved there.
+fn squeeze(m: *Mover, a: vec3) {
+    var d = 0.25
+    while d <= SQUEEZE_MAX {
+        for k in 0..4 {
+            let b = a + SQUEEZE_DIR[k] * d
+            if wp_coll_ceiling(m.cb, b, 0.0, 0) && wp_hit.y + m.pos.y < pl.pos.y + BODY_HEIGHT { continue }
+            let off = to_world(m, SQUEEZE_DIR[k] * (d + BODY_RADIUS + 0.05))
+            let p = pl.pos + off
+            let _ = wp_push(p + vec3(0.0, 0.9, 0.0), BODY_RADIUS)
+            if wp_hit.walls > 0 { continue }
+            pl.pos = p
+            return
+        }
+        d += 0.25
+    }
+}
+
+// ---- grabbing
+
+fn attach_air_grab(ip: *Pin) -> bool {
+    let k = pole_touch()
+    if k >= 0 {
+        grab_pole(k)
+        return true
+    }
+    return rail_touch()
+}
+
+// The pole the body touches (within T.PoleReach of its axis, below its top), or -1.
+fn pole_touch() -> s32 {
+    let r = tv[T.PoleReach]
+    for k in 0..pole_n {
+        if k == pole_k && (pole_regrab > 0 || !pole_clear) { continue }
+        let p = &poles[k]
+        let dx = pl.pos.x - p.base.x
+        let dz = pl.pos.z - p.base.z
+        if abs(dx) > r || abs(dz) > r { continue }
+        if dx * dx + dz * dz > r * r { continue }
+        if pl.pos.y < p.base.y - 1.0 || pl.pos.y > p.top - tv[T.PoleTop] + 0.3 { continue }
+        return k
+    }
+    return -1
+}
+
+fn grab_pole(k: s32) {
+    let p = &poles[k]
+    let d = pl.pos - p.base
+    if abs(d.x) + abs(d.z) > 0.01 { pole_ang = atan2(d.x, d.z) } else { pole_ang = wrap_angle(pl.yaw + PI) }
+    pole_k = k
+    pl.vel = vec3(0.0, 0.0, 0.0)
+    pl.fwd = 0.0
+    pl.glided = false
+    pl.glide_armed = false
+    air_v = vec3(0.0, 0.0, 0.0)
+    pole_turn = 0.0
+    enter(St.Pole)
+    pole_hold()
+}
+
+// Leaving the pole: it cannot be grabbed again for T.PoleRegrab ticks, nor before the body has
+// been out of its reach (or on the ground), so a player who lets go falls past it.
+fn pole_let_go() {
+    pole_regrab = ticks(T.PoleRegrab)
+    pole_clear = false
+}
+
+// Puts the body on the pole at pole_ang, its feet within the pole's height.
+fn pole_hold() {
+    let p = &poles[pole_k]
+    pl.pos.y = clamp(pl.pos.y, p.base.y, p.top - tv[T.PoleTop])
+    pl.pos.x = p.base.x + sin(pole_ang) * POLE_HOLD
+    pl.pos.z = p.base.z + cos(pole_ang) * POLE_HOLD
+    pl.yaw = wrap_angle(pole_ang + PI)
+}
+
+// A rail the feet came down onto (grind) or the hands reached (hang): true when grabbed.
+fn rail_touch() -> bool {
+    let r = tv[T.RailReach]
+    let probe = pl.pos + vec3(0.0, 0.9, 0.0)
+    for k in 0..rail_n {
+        if k == rail_k && rail_regrab > 0 { continue }
+        let pth = rails[k]
+        if !wp_path_nearest(pth, probe, 1.2) { continue }
+        let n = wp_near.pos
+        let dx = pl.pos.x - n.x
+        let dz = pl.pos.z - n.z
+        if abs(dx) > r || abs(dz) > r || dx * dx + dz * dz > r * r { continue }
+        let up = n.y - pl.pos.y
+        if pl.vel.y <= 0.0 && up >= -0.05 && up <= -pl.vel.y + 0.05 {
+            grab_rail(k, St.Rail)
+            return true
+        }
+        if up >= 1.2 && up <= 1.9 {
+            grab_rail(k, St.Hang)
+            return true
+        }
+    }
+    return false
+}
+
+// Onto rail k (wp_near holds the point touched).
+fn grab_rail(k: s32, s: St) {
+    let d = wp_near.dir
+    rail_k = k
+    rail_s = wp_near.s
+    let along = pl.vel.x * d.x + pl.vel.z * d.z
+    var sign = 1.0
+    if along < 0.0 || (along == 0.0 && dot(fwd_dir(pl.yaw), d) < 0.0) { sign = -1.0 }
+    if s == St.Rail {
+        rail_v = max(abs(along), mps(T.GrindMin)) * sign
+    } else {
+        rail_v = 0.0
+    }
+    pl.vel = vec3(0.0, 0.0, 0.0)
+    pl.glided = false
+    pl.glide_armed = false
+    air_v = vec3(0.0, 0.0, 0.0)
+    enter(s)
+    rail_hold()
+}
+
+fn rail_hold() {
+    let p = wp_path_at(rails[rail_k], rail_s)
+    if pl.st == St.Hang {
+        pl.pos = p - vec3(0.0, HANG_BELOW, 0.0)
+    } else {
+        pl.pos = p
+        let d = wp_near.dir
+        if rail_v < 0.0 { pl.yaw = yaw_of(-d) } else if rail_v > 0.0 { pl.yaw = yaw_of(d) }
+        pl.vel = d * rail_v
+        pl.fwd = abs(rail_v)
+    }
+}
+
+// ---- the attachments' states
+
+fn attach_state_tick(ip: *Pin) -> bool {
+    match pl.st {
+        Pole => st_pole(ip)
+        Rail => st_rail(ip)
+        Hang => st_hang(ip)
+        WallSlide => {
+            // A pole's own collision stops the body as a wall does: catch it on the slide's
+            // first tick.
+            if pl.t != 1 { return false }
+            let k = pole_touch()
+            if k < 0 { return false }
+            grab_pole(k)
+        }
+        else => { return false }
+    }
+    return true
+}
+
+// The stick as the camera sees it: x right, y up (away from the camera).
+fn stick_view(ip: *Pin) -> vec2 {
+    let f = fwd_dir(cam.yaw)
+    return vec2((ip.dir.x * f.z - ip.dir.z * f.x) * ip.mag, dot(ip.dir, f) * ip.mag)
+}
+
+fn st_pole(ip: *Pin) {
+    let p = &poles[pole_k]
+    if ip.ap {
+        // A kick away from the pole: full height whether A is held or not (St.WallKick has no
+        // jump cut), as Mario 64's.
+        pl.yaw = pole_ang
+        pl.fwd = mps(T.PoleJumpH)
+        pl.vel.y = mps(T.PoleJumpVy)
+        pl.chain_from = St.Ground
+        pole_let_go()
+        enter(St.WallKick)
+        set_hvel()
+        if air_move(1.0) { land() }
+        return
+    }
+    if ip.rp {
+        pole_let_go()
+        pl.fwd = 0.0
+        pl.vel = vec3(0.0, 0.0, 0.0)
+        enter(St.Fall)
+        return
+    }
+    let s = stick_view(ip)
+    if s.y > 0.2 {
+        pl.pos.y += mps(T.PoleClimb) * s.y
+    } else if s.y < -0.2 {
+        pl.pos.y += mps(T.PoleSlide) * s.y
+    }
+    if abs(s.x) > 0.2 {
+        // Round the pole: the way the stick points on screen when it was pushed, then on round
+        // the same way while it is held.
+        if pole_turn == 0.0 {
+            let f = fwd_dir(cam.yaw)
+            pole_turn = 1.0
+            if cos(pole_ang) * f.z + sin(pole_ang) * f.x < 0.0 { pole_turn = -1.0 }
+        }
+        pole_ang = wrap_angle(pole_ang + rps(T.PoleTurn) * s.x * pole_turn)
+    } else {
+        pole_turn = 0.0
+    }
+    pole_hold()
+    // Down at a floor: on foot.
+    if s.y < -0.2 && col_floor(pl.pos + vec3(0.0, 0.3, 0.0), 0.0) && col_y >= pl.pos.y - mps(T.PoleSlide) {
+        pl.pos.y = col_y
+        take_floor()
+        pl.chain_from = St.Ground
+        enter(St.Ground)
+    }
+}
+
+fn leave_rail(vy: fixed, s: St) {
+    rail_regrab = ticks(T.RailRegrab)
+    pl.vel.y = vy
+    pl.chain_from = St.Ground
+    enter(s)
+    set_hvel()
+}
+
+fn st_rail(ip: *Pin) {
+    let pth = rails[rail_k]
+    if ip.ap {
+        leave_rail(mps(T.GrindJumpVy), St.Jump)
+        return
+    }
+    if ip.rp {
+        leave_rail(0.0, St.Fall)
+        return
+    }
+    let _ = wp_path_at(pth, rail_s)
+    let d = wp_near.dir
+    rail_v -= d.y * mps2(T.Gravity)                     // downhill speeds it up
+    rail_v += dot(ip.dir, d) * ip.mag * mps2(T.GrindAccel)
+    let lo = mps(T.GrindMin)
+    let hi = mps(T.GrindMax)
+    if rail_v >= 0.0 { rail_v = clamp(rail_v, lo, hi) } else { rail_v = clamp(rail_v, -hi, -lo) }
+    rail_s += rail_v
+    if pth.flags & WP_PATH_CLOSED == 0 && (rail_s < 0.0 || rail_s > wp_path_length(pth)) {
+        // Off the end: on in the air at the same speed.
+        rail_s = clamp(rail_s, 0.0, wp_path_length(pth))
+        rail_hold()
+        leave_rail(0.0, St.Fall)
+        return
+    }
+    rail_hold()
+}
+
+fn st_hang(ip: *Pin) {
+    let pth = rails[rail_k]
+    if ip.ap {
+        pl.fwd = 0.0
+        leave_rail(mps(T.HangJumpVy), St.Jump)
+        return
+    }
+    if ip.rp {
+        pl.fwd = 0.0
+        leave_rail(0.0, St.Fall)
+        return
+    }
+    let _ = wp_path_at(pth, rail_s)
+    rail_v = dot(ip.dir, wp_near.dir) * ip.mag * mps(T.HangSpeed)
+    rail_s += rail_v
+    if pth.flags & WP_PATH_CLOSED == 0 { rail_s = clamp(rail_s, 0.0, wp_path_length(pth)) }
+    rail_hold()
+}
+
+// ---- drawing
+
+fn attach_draw() {
+    let o = wp_view_origin()
+    for k in 0..mover_n {
+        let m = &movers[k]
+        if m.mesh == null || !wp_entity_live(m.e) { continue }
+        if abs(m.pos.x - cam.eye.x) > 120.0 || abs(m.pos.z - cam.eye.z) > 120.0 { continue }
+        mesh_at(m.mesh, m.pos - o, m.yaw)
+    }
+}
 
 // True for an entity attach.akr draws itself (a mover, away from its placement).
-fn attach_owns(_e: *WpEntity) -> bool { return false }
+fn attach_owns(e: *WpEntity) -> bool { return e.type_id as s32 == GARDEN_TYPE_MOVER }
