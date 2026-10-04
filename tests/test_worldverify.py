@@ -52,7 +52,7 @@ class SettingsTests(unittest.TestCase):
     def test_defaults_and_unknown_keys(self):
         s = V.merge_settings({'thresholds': {'near_band': 8.0}})
         self.assertEqual(s['thresholds']['near_band'], 8.0)
-        self.assertEqual(s['thresholds']['gpu_cycles'], 800000)
+        self.assertEqual(s['thresholds']['gpu_cycles'], 1600000)   # 80% of the GPU's 2,000,000
         self.assertEqual(s['mode'], 'report')
         with self.assertRaises(V.SettingsError):
             V.merge_settings({'thresholds': {'nope': 1}})
@@ -270,7 +270,8 @@ class ViewTests(unittest.TestCase):
             self.assertGreater(v['ordering']['tested_pixels'], 70000)
 
     def test_over_budget_view_report_and_strict(self):
-        s = settings(VANTAGE_ONLY, vantage_points=[F.VANTAGE_OVERDRAW])
+        # the overdraw world's view is over 800,000 GPU cycles (not over the default 1,600,000)
+        s = settings(VANTAGE_ONLY, vantage_points=[F.VANTAGE_OVERDRAW], thresholds={'gpu_cycles': 800000})
         r = self.run_check(F.overdraw_world(), s)
         gpu = r['views'][0]['stats']['gpu_cycles']
         self.assertGreater(gpu, 800000)

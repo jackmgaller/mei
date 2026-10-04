@@ -1,0 +1,65 @@
+// Packets with depth (docs/RENDERING.md) built by hand and sent through the ordering table:
+// GPU_DEPTH and GPU_ZCLEAR from Akari, the test (a nearer quad drawn first stays in front),
+// a semi-transparent pane that tests without writing, the decal offset, and the cost the
+// frame is charged (gpu_used()).
+// frames: 3
+
+fn pos(x: s32, y: s32) -> u32 { return (x as u32 & 0xFFFF) | ((y as u32) << 16) }
+
+// A flat quad with depth (type 0x34, or 0x3C semi-transparent): colour, four corners, four depths.
+fn quad_z(x: s32, y: s32, size: s32, colour: u32, w: fixed, bucket: s32, semi: bool) {
+    let q = packet_alloc(10)
+    q[1] = colour
+    q[2] = pos(x, y)
+    q[3] = pos(x + size, y)
+    q[4] = pos(x, y + size)
+    q[5] = pos(x + size, y + size)
+    for i in 0..4 { q[6 + i] = bits(w) as u32 }
+    var t: u32 = 0x34
+    if semi { t = 0x3C }
+    ot_insert(q, t, bucket)
+}
+
+fn px(x: s32, y: s32) -> u32 { return (GPU_BACK as *u16)[y * 320 + x] as u32 }
+
+fn update() {
+    if frame() == 1 {
+        print_int(gpu_used())
+        println("")
+    }
+}
+
+fn draw() {
+    if frame() != 0 { return }
+    dither(false)
+    cls(0)
+    GPU_DEPTH = 1
+    GPU_ZCLEAR = 0
+    print_hex(GPU_DEPTH)
+    println("")
+    // red at w 1 in a far bucket (drawn first), green at w 2 in a near one (drawn after)
+    quad_z(10, 10, 20, 0x0000FF, 1.0, 900, false)
+    quad_z(20, 20, 20, 0x00FF00, 2.0, 100, false)
+    // a blue pane at w 4, semi-transparent (average), over both: it fails where they are
+    quad_z(0, 0, 50, 0xFF0000, 4.0, 50, true)
+    // a white decal (offset 2) coplanar with the green quad, drawn before it
+    quad_z(32, 32, 4, 0xFFFFFF | (2 << 27), 2.0, 950, false)
+    ot_flush()
+    GPU_DEPTH = 0
+    print_hex(px(25, 25))      // red: nearer, drawn first
+    println("")
+    print_hex(px(35, 25))      // green
+    println("")
+    print_hex(px(33, 33))      // the decal
+    println("")
+    print_hex(px(45, 45))      // the pane over the background
+    println("")
+}
+// expect: 1
+// expect: 1F
+// expect: 3E0
+// expect: 7FFF
+// expect: 3C00
+// cls and GPU_ZCLEAR 2 x 38,400; 8 triangles at 40 + 24; red 400, green 400 and the decal 16
+// pixels at 1 (passing or failing); the pane 700 failing at 1 and 1,800 passing at 2
+// expect: 82428

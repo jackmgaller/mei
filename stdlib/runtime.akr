@@ -75,8 +75,9 @@ fn frame() -> u32 { return FRAME }
 
 // The CPU's cycles per tick (MEI_CYCLES_PER_FRAME in src/core/mei.h; a 60 MHz CPU).
 const CPU_BUDGET = 1000000
-// The GPU's cycles per tick (docs/DECISIONS.md, "GPU budget").
-const GPU_BUDGET = 1000000
+// The GPU's cycles per tick (MEI_GPU_CYCLES_PER_FRAME in src/core/mei.h; a 120 MHz GPU,
+// docs/DECISIONS.md "GPU budget").
+const GPU_BUDGET = 2000000
 
 // GPU cycles the previous frame took to draw, by the cost table in docs/DECISIONS.md (40 a
 // triangle, 1-4 a pixel, 38,400 a clear). A frame over GPU_BUDGET for each tick it took is held

@@ -11,7 +11,7 @@
 #define MEI_AUDIO_RATE 22050
 #define MEI_FPS 60
 #define MEI_CYCLES_PER_FRAME 1000000   /* the CPU's budget per tick, 60 MHz (docs/DECISIONS.md) */
-#define MEI_GPU_CYCLES_PER_FRAME 1000000   /* the GPU's budget per tick (docs/DECISIONS.md) */
+#define MEI_GPU_CYCLES_PER_FRAME 2000000   /* the GPU's budget per tick, 120 MHz (docs/DECISIONS.md) */
 #define MEI_MAX_AUDIO_FRAMES 368   /* per 60 Hz tick: alternates 367 / 368 */
 
 /* Cart ROM (docs/DECISIONS.md, "Cart ROM"): the cart image is mapped at MEI_ROM_BASE in a
@@ -94,7 +94,7 @@ void mei_set_pad(Mei *m, int index, const MeiPadInput *in);
  * that tick's audio. Returns 1 if a new picture was presented (vsync),
  * 0 if the frame overran and the previous picture repeats: the CPU ran out of
  * cycles before vsync, or it reached vsync but the GPU has not finished the
- * frame (its modelled cycles exceed 1,000,000 per tick since the last present),
+ * frame (its modelled cycles exceed 2,000,000 per tick since the last present),
  * in which case the CPU waits at vsync and does not run. */
 int mei_run_frame(Mei *m);
 
@@ -110,6 +110,13 @@ typedef struct {
     uint32_t gpu_cycles;    /* modelled GPU cycles (the cost table in DECISIONS.md), saturated at 2^32-1 */
     uint32_t ticks;         /* ticks from the previous present to this one: 1 = on time */
     uint32_t gpu_lag;       /* of those, ticks the finished frame waited for the GPU */
+    /* depth and perspective (docs/RENDERING.md) */
+    uint32_t px_ztest;      /* pixels of depth-tested triangles, passed or failed (included in px[]) */
+    uint32_t px_zfail;      /* of those, pixels that failed the test (1 cycle each) */
+    uint32_t zclears;       /* GPU_ZCLEAR writes */
+    uint32_t tris_recip;    /* triangles charged the reciprocal setup (tested, or textured with depth) */
+    uint32_t px_persp;      /* pixels of triangles drawn perspective-correct (included in px[]) */
+    uint32_t persp_divs;    /* perspective divides */
 } MeiGpuStats;
 const MeiGpuStats *mei_gpu_stats(const Mei *m);
 

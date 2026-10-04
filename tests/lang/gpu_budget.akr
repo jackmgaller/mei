@@ -1,5 +1,5 @@
-// The GPU budget registers: light frames, then frames over 1,000,000 GPU cycles (27 clears of
-// 38,400 each = 1,036,800) that are shown a tick late.
+// The GPU budget registers: light frames, then frames over 2,000,000 GPU cycles (53 clears of
+// 38,400 each = 2,035,200) that are shown a tick late.
 // frames: 9
 var n: s32
 fn update() {
@@ -13,12 +13,12 @@ fn update() {
 fn draw() {
     n += 1
     if n >= 3 {
-        for i in 0..27 { cls(0) }
+        for i in 0..53 { cls(0) }
     }
 }
 // expect: 0 0 0
 // expect: 0 1 0
 // expect: 0 1 0
-// expect: 1036800 2 1
-// expect: 1036800 2 2
-// expect: 1036800 2 3
+// expect: 2035200 2 1
+// expect: 2035200 2 2
+// expect: 2035200 2 3

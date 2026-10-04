@@ -32,6 +32,8 @@
 #define IO_GPU_LOAD    0x014   /* extension, read-only: GPU cycles of the last presented frame */
 #define IO_GPU_TICKS   0x018   /* extension, read-only: ticks the last presented frame took */
 #define IO_GPU_LAG     0x01C   /* extension, read-only: ticks the GPU held a finished frame back */
+#define IO_GPU_DEPTH   0x020   /* extension: bit 0 tests packets with depth (0x30-0x3F) (docs/RENDERING.md) */
+#define IO_GPU_ZCLEAR  0x024   /* extension, write-only: fill the depth buffer with bits 0-15 */
 #define IO_AUDIO       0x100   /* channel n at IO_AUDIO + n * 0x20 */
 #define IO_AUD_ADDR    0x00
 #define IO_AUD_LEN     0x04
@@ -108,6 +110,12 @@
 #define GPU_CYCLES_TEX_X   2u    /* a textured pixel costs this many times as much */
 #define GPU_CYCLES_SEMI_X  2u    /* so does a semi-transparent one (textured and blended: 4) */
 #define GPU_CYCLES_CLEAR   (MEI_W * MEI_H / 2u)   /* GPU_CLEAR: half a cycle per pixel, 38,400 */
+/* Depth and perspective (docs/RENDERING.md, "Cost"). */
+#define GPU_CYCLES_ZFAIL   1u    /* a pixel that fails the depth test: its test only (early depth) */
+#define GPU_CYCLES_RECIP   24u   /* a triangle with depth that is tested or textured: three vertex reciprocals */
+#define GPU_CYCLES_DIVIDE  2u    /* each perspective divide (a span's start, every 16 pixels, its end) */
+#define GPU_CYCLES_ZCLEAR  (MEI_W * MEI_H / 2u)   /* GPU_ZCLEAR, as GPU_CLEAR: 38,400 */
+#define GPU_PERSP_SPAN     16    /* pixels between perspective divides */
 
 #define AUD_CHANNELS 16
 #define AUD_ADPCM_MAX_PITCH 0x100000u   /* ADPCM channels step at most 16.0 samples per output */
@@ -220,6 +228,8 @@ struct Mei {
     uint32_t frame_ticks;    /* ticks since the last present (or reset), counting this one */
     int gpu_wait;            /* the CPU reached vsync; the frame waits for the GPU to finish */
     uint32_t gpu_lag;        /* GPU_LAG: ticks since reset a finished frame waited for the GPU */
+    uint32_t gpu_depth;      /* GPU_DEPTH: bit 0 the depth test on */
+    uint16_t zbuf[MEI_W * MEI_H];   /* the depth buffer: on the GPU, not in VRAM, not CPU-addressable */
     uint16_t error_screen[MEI_W * MEI_H];
 
     /* Audio */
@@ -266,6 +276,7 @@ void cpu_run(Mei *m);   /* runs until cycles <= 0, vsync, or fault */
 void gpu_reset(Mei *m);
 void gpu_draw_list(Mei *m, uint32_t addr);   /* GPU_DRAW write; may raise a fault */
 void gpu_clear(Mei *m, uint32_t colour);     /* GPU_CLEAR write */
+void gpu_zclear(Mei *m, uint32_t value);     /* GPU_ZCLEAR write */
 void gpu_vsync(Mei *m);                      /* swap buffers, reset triangle count */
 uint32_t gpu_pixel_cycles(int kind);         /* cost model: cycles per pixel of kind gouraud|tex<<1|semi<<2 */
 uint32_t gpu_back_addr(const Mei *m);

@@ -165,7 +165,7 @@ static void present(Mei *m) {
 }
 
 /* The GPU budget (docs/DECISIONS.md, "GPU budget"): a frame the CPU has finished is presented
- * at the first vsync at which its modelled GPU cycles are at most 1,000,000 times the ticks
+ * at the first vsync at which its modelled GPU cycles are at most 2,000,000 times the ticks
  * since the last present, this one included. Until then the CPU waits at vsync. */
 int mei_run_frame(Mei *m) {
     int presented = 0;

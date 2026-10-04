@@ -1,4 +1,5 @@
-/* GPU tests: packet walking, rasterization rules, pixel pipeline, faults. */
+/* GPU tests: packet walking, rasterization rules, pixel pipeline, faults, the depth test and
+ * perspective (docs/RENDERING.md). */
 #include "machine.h"
 #include "asm.h"
 
@@ -653,7 +654,7 @@ static void test_cost_model(void) {
     for (int k = 0; k < 8; k++) CHECK_EQ(gpu_pixel_cycles(k), per_px[k]);
     CHECK_EQ(GPU_CYCLES_TRI, 40);
     CHECK_EQ(GPU_CYCLES_CLEAR, 38400);
-    CHECK_EQ(MEI_GPU_CYCLES_PER_FRAME, 1000000);
+    CHECK_EQ(MEI_GPU_CYCLES_PER_FRAME, 2000000);
 
     setup();
     CHECK_EQ(m->gpu_cycles, 38400);                     /* setup() clears once */
@@ -695,7 +696,7 @@ static void test_cost_model(void) {
     CHECK_EQ(m->gstat.tris_dropped, GPU_TRI_LIMIT);
 }
 
-/* ---- the GPU budget: lag when a frame's modelled cycles exceed 1,000,000 a tick ---- */
+/* ---- the GPU budget: lag when a frame's modelled cycles exceed 2,000,000 a tick ---- */
 
 #define V_COUNT  0x100   /* frames the CPU has started */
 #define V_CLEARS 0x104   /* GPU_CLEARs per frame */
@@ -759,27 +760,27 @@ static void test_budget(void) {
     int t = 0;
     /* Under budget: every tick presents; the registers read 0 before the first present. */
     if (!lag_load()) return;
-    wr32(m->ram + V_CLEARS, 26);                        /* 998,400 */
+    wr32(m->ram + V_CLEARS, 52);                        /* 1,996,800 */
     CHECK_EQ(ticks(4, &t), 0xF);
     CHECK_EQ(ram(V_COUNT), 4);
     CHECK_EQ(seen(1, 1), 0); CHECK_EQ(seen(1, 2), 0); CHECK_EQ(seen(1, 3), 0);
     CHECK_EQ(seen(2, 0), 0x100);                        /* latched at the first present (tick 0) */
-    CHECK_EQ(seen(2, 1), 998400); CHECK_EQ(seen(2, 2), 1); CHECK_EQ(seen(2, 3), 0);
+    CHECK_EQ(seen(2, 1), 1996800); CHECK_EQ(seen(2, 2), 1); CHECK_EQ(seen(2, 3), 0);
     CHECK_EQ(seen(4, 0), 0x102);
-    CHECK_EQ(mei_gpu_stats(m)->gpu_cycles, 998400);
+    CHECK_EQ(mei_gpu_stats(m)->gpu_cycles, 1996800);
     CHECK_EQ(mei_gpu_stats(m)->ticks, 1);
     CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 0);
 
     /* Exactly the budget presents on time; 40 cycles more is a tick late. */
     list_begin();
-    for (int i = 0; i < 40; i++) emit(0x20, 4, RGB(0, 0, 0), P(5, 5), P(5, 5), P(5, 5));   /* empty: 40 each */
+    for (int i = 0; i < 80; i++) emit(0x20, 4, RGB(0, 0, 0), P(5, 5), P(5, 5), P(5, 5));   /* empty: 40 each */
     wr32(m->ram + V_LIST, pk_first);
     CHECK_EQ(ticks(2, &t), 0x3);
-    CHECK_EQ(mei_gpu_stats(m)->gpu_cycles, 1000000);
+    CHECK_EQ(mei_gpu_stats(m)->gpu_cycles, 2000000);
     CHECK_EQ(mei_gpu_stats(m)->ticks, 1);
     emit(0x20, 4, RGB(0, 0, 0), P(5, 5), P(5, 5), P(5, 5));
     CHECK_EQ(ticks(2, &t), 0x2);                        /* the frame drawn in the first tick waits */
-    CHECK_EQ(mei_gpu_stats(m)->gpu_cycles, 1000040);
+    CHECK_EQ(mei_gpu_stats(m)->gpu_cycles, 2000040);
     CHECK_EQ(mei_gpu_stats(m)->ticks, 2);
     CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 1);
     CHECK_EQ(m->gpu_lag, 1);
@@ -788,7 +789,7 @@ static void test_budget(void) {
      * pads latch only at the present. */
     if (!lag_load()) return;
     t = 0;
-    wr32(m->ram + V_CLEARS, 52);                        /* 1,996,800 */
+    wr32(m->ram + V_CLEARS, 104);                       /* 3,993,600 */
     CHECK_EQ(ticks(1, &t), 0);                          /* frame 1 drawn, over budget */
     CHECK_EQ(ram(V_COUNT), 1);
     uint32_t pc = m->pc, frame0 = m->frame;
@@ -801,7 +802,7 @@ static void test_budget(void) {
     CHECK_EQ(ticks(1, &t), 0);                          /* frame 2 drawn in tick 2 */
     CHECK_EQ(ram(V_COUNT), 2);
     CHECK_EQ(seen(2, 0), 0x101);                        /* the pad of the present tick, not 0x100 */
-    CHECK_EQ(seen(2, 1), 1996800);
+    CHECK_EQ(seen(2, 1), 3993600);
     CHECK_EQ(seen(2, 2), 2);
     CHECK_EQ(seen(2, 3), 1);
     CHECK_EQ(ticks(5, &t), 0x15);                       /* ticks 3-7: presents at 3, 5, 7 */
@@ -816,16 +817,16 @@ static void test_budget(void) {
     /* Three times: two ticks late. */
     if (!lag_load()) return;
     t = 0;
-    wr32(m->ram + V_CLEARS, 78);                        /* 2,995,200 */
+    wr32(m->ram + V_CLEARS, 156);                       /* 5,990,400 */
     CHECK_EQ(ticks(9, &t), 0x124);                      /* presents at ticks 2, 5, 8 */
     CHECK_EQ(ram(V_COUNT), 3);
     CHECK_EQ(seen(2, 0), 0x102);
     CHECK_EQ(seen(3, 0), 0x105);
-    CHECK_EQ(seen(3, 1), 2995200);
+    CHECK_EQ(seen(3, 1), 5990400);
     CHECK_EQ(seen(3, 2), 3);
     CHECK_EQ(seen(3, 3), 4);
     CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 2);
-    wr32(m->ram + V_CLEARS, 79);                        /* 3,033,600: three ticks late */
+    wr32(m->ram + V_CLEARS, 157);                       /* 6,028,800: three ticks late */
     CHECK_EQ(ticks(4, &t), 0x8);                        /* frame 4 (from tick 9) at tick 12 */
     CHECK_EQ(mei_gpu_stats(m)->ticks, 4);
     CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 3);
@@ -834,23 +835,23 @@ static void test_budget(void) {
     CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_LOAD, &load), 0);
     CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_TICKS, &tk), 0);
     CHECK_EQ(lag, 6 + 3);
-    CHECK_EQ(load, 3033600);
+    CHECK_EQ(load, 6028800);
     CHECK_EQ(tk, 4);
     CHECK_EQ(bus_write32(m, IO_BASE + IO_GPU_LOAD, 0), -1);
     CHECK_EQ(m->fault.kind, MEI_FAULT_READ_ONLY);
     memset(&m->fault, 0, sizeof m->fault);
 
-    /* CPU overrun composes: a frame whose CPU work spans two ticks has 2,000,000 GPU cycles. */
+    /* CPU overrun composes: a frame whose CPU work spans two ticks has 4,000,000 GPU cycles. */
     if (!lag_load()) return;
     t = 0;
-    wr32(m->ram + V_CLEARS, 52);                        /* 1,996,800 */
+    wr32(m->ram + V_CLEARS, 104);                       /* 3,993,600 */
     wr32(m->ram + V_SPIN, MEI_CYCLES_PER_FRAME * 2 / 5); /* about 1.2 budgets of CPU cycles */
     CHECK_EQ(ticks(4, &t), 0xA);                        /* late for the CPU only */
     CHECK_EQ(mei_gpu_stats(m)->ticks, 2);
     CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 0);
     CHECK_EQ(mei_gpu_stats(m)->cpu_cycles > MEI_CYCLES_PER_FRAME && mei_gpu_stats(m)->cpu_cycles < 2 * MEI_CYCLES_PER_FRAME, 1);
     CHECK_EQ(m->gpu_lag, 0);
-    wr32(m->ram + V_CLEARS, 53);                        /* 2,035,200: one tick more */
+    wr32(m->ram + V_CLEARS, 105);                       /* 4,032,000: one tick more */
     CHECK_EQ(ticks(6, &t), 0x24);                       /* frames from ticks 4 and 7 at ticks 6 and 9 */
     CHECK_EQ(mei_gpu_stats(m)->ticks, 3);
     CHECK_EQ(mei_gpu_stats(m)->gpu_lag, 1);
@@ -858,7 +859,7 @@ static void test_budget(void) {
     CHECK_EQ(seen(4, 2), 3);                            /* frame 4 read frame 3's 3 */
 
     /* A reset clears the wait and the registers. */
-    wr32(m->ram + V_CLEARS, 200);
+    wr32(m->ram + V_CLEARS, 400);
     wr32(m->ram + V_SPIN, 0);
     ticks(2, &t);
     mei_reset(m);
@@ -873,7 +874,7 @@ static void test_list_walk(void) {
     setup(); list_begin();
     emit(0x00, 0);
     emit(0x10, 3, 0xDEADBEEF, 0, 0);
-    emit(0x30, 0);
+    emit(0x40, 0);         /* (0x30-0x3F are polygons with depth: test_depth) */
     emit(0x20, 4, RGB(255, 0, 0), P(0, 0), P(10, 0), P(0, 10));
     emit(0xFF, 0);
     emit(0x1F, 0);
@@ -1015,6 +1016,634 @@ static void test_error_screen(void) {
     }
 }
 
+/* ---- packets with depth: the depth test and perspective (docs/RENDERING.md) ---- */
+
+static uint16_t zat(int x, int y) { return m->zbuf[y * MEI_W + x]; }
+static uint32_t W16(double w) { return (uint32_t)(int32_t)(w * 65536.0); }   /* a view depth, 16.16 */
+
+/* The reference, written from RENDERING.md and brute force like ref_tri: the vertex reciprocal,
+ * the key, the test, the decal offset and the perspective spans. It counts what the cost table
+ * charges for. */
+static long long ref_recip(int32_t w) { return w >= 4096 ? (1LL << 40) / w : 1LL << 28; }
+static uint32_t ref_key(long long q) {
+    if (q < 4096) return 0;
+    int e = 0;
+    while ((q >> (e + 12)) > 1) e++;
+    return e > 15 ? 0xFFFF : (uint32_t)e << 12 | (uint32_t)((q >> e) & 0xFFF);
+}
+static long long ref_fails, ref_divs, ref_inside;
+
+typedef struct { int flags, mode, dither, slot, four, pal, ztest, zoff; } RefZ;
+
+static void ref_tri_z(uint16_t *fb, uint16_t *zb, RV a, RV b, RV c, const int32_t wv[3], const RefZ *o) {
+    long long rw[3] = {ref_recip(wv[0]), ref_recip(wv[1]), ref_recip(wv[2])};
+    long long area = edge(&a, &b, c.x, c.y);
+    if (area == 0) return;
+    if (area < 0) { RV t = b; b = c; c = t; long long r = rw[1]; rw[1] = rw[2]; rw[2] = r; area = -area; }
+    RV *V[3] = {&a, &b, &c};
+    int flags = o->flags, persp = 0;
+    long long q[3];
+    if (flags & 2) {
+        long long mx = rw[0];
+        for (int i = 1; i < 3; i++) if (rw[i] > mx) mx = rw[i];
+        int s = 0;
+        while ((mx >> s) > 65535) s++;
+        for (int i = 0; i < 3; i++) { q[i] = rw[i] >> s; if (q[i] < 1) q[i] = 1; }
+        persp = q[0] != q[1] || q[1] != q[2];
+    }
+    for (int y = 0; y < MEI_H; y++) {
+        int xl = -1, xr = -2;
+        long long W[MEI_W][3];
+        for (int x = 0; x < MEI_W; x++) {
+            int in = 1;
+            for (int i = 0; i < 3; i++) {
+                const RV *e0 = V[(i + 1) % 3], *e1 = V[(i + 2) % 3];
+                W[x][i] = edge(e0, e1, x, y);
+                if (W[x][i] < 0 || (W[x][i] == 0 && !top_left(e0, e1))) in = 0;
+            }
+            if (in) { if (xl < 0) xl = x; xr = x; }
+        }
+        if (xl < 0) continue;
+        long long S[2][MEI_W];   /* s at the divide points, 16.16 */
+        if (persp) {
+            ref_divs += 1 + (xr - xl + 15) / 16;
+            for (int x = xl; x <= xr; x++) {
+                if ((x - xl) % 16 && x != xr) continue;
+                __int128 Q = 0, U = 0, Vv = 0;
+                for (int i = 0; i < 3; i++) {
+                    Q += (__int128)q[i] * W[x][i];
+                    U += (__int128)q[i] * V[i]->c[3] * W[x][i];
+                    Vv += (__int128)q[i] * V[i]->c[4] * W[x][i];
+                }
+                S[0][x] = (long long)((U << 16) / Q);
+                S[1][x] = (long long)((Vv << 16) / Q);
+            }
+        }
+        for (int x = xl; x <= xr; x++) {
+            ref_inside++;
+            int at[5];
+            for (int k = 0; k < 5; k++) at[k] = (int)fdiv(W[x][0] * V[0]->c[k] + W[x][1] * V[1]->c[k] + W[x][2] * V[2]->c[k], area);
+            if (persp) {
+                for (int t = 0; t < 2; t++) {
+                    int p0 = xl + (x - xl) / 16 * 16, p1 = p0 + 16 < xr ? p0 + 16 : xr;
+                    long long s = (x == p0 || x == xr) ? S[t][x] : S[t][p0] + (x - p0) * ((S[t][p1] - S[t][p0]) / (p1 - p0));
+                    at[3 + t] = (int)(s >> 16);
+                }
+            }
+            uint16_t *zp = &zb[y * MEI_W + x];
+            uint32_t key = 0;
+            if (o->ztest) {
+                long long z = fdiv(W[x][0] * rw[0] + W[x][1] * rw[1] + W[x][2] * rw[2], area);
+                key = ref_key(z) + (uint32_t)o->zoff;
+                if (key > 0xFFFF) key = 0xFFFF;
+                if (key < *zp) { ref_fails++; continue; }
+            }
+            int col[3];
+            for (int k = 0; k < 3; k++) col[k] = (flags & 1) ? at[k] : a.c[k];
+            if (flags & 2) {
+                int u = ref_wrap(at[3], ref_win & 0xFF), v = ref_wrap(at[4], ref_win >> 8 & 0xFF), idx;
+                if (o->four) { int byt = slot_ptr(o->slot)[v * 128 + u / 2]; idx = (u & 1) ? byt >> 4 : byt & 15; idx += o->pal * 16; if ((idx & 15) == 0) continue; }
+                else { idx = m->vram[(TEXTURE_ADDR - VRAM_BASE) + ((o->slot * 0x8000 + v * 256 + u) & 0x7FFFF)]; if (!idx) continue; idx += (o->pal & 15) * 256; }
+                uint16_t t = rd16(m->vram + (PALETTE_ADDR - VRAM_BASE) + idx * 2);
+                for (int k = 0; k < 3; k++) {
+                    int c5 = (t >> (5 * k)) & 31, e = (c5 << 3) | (c5 >> 2);
+                    col[k] = e * col[k] / 128 > 255 ? 255 : e * col[k] / 128;
+                }
+            }
+            for (int k = 0; k < 3; k++) col[k] = (o->dither ? clampi(col[k] + DM[y & 3][x & 3], 0, 255) : col[k]) >> 3;
+            uint16_t *d = &fb[y * MEI_W + x];
+            if (flags & 8)
+                for (int k = 0; k < 3; k++) {
+                    int bg = (*d >> (5 * k)) & 31, f = col[k], mo = o->mode;
+                    int r = mo == 0 ? (bg + f) / 2 : mo == 1 ? bg + f : mo == 2 ? bg - f : bg + f / 4;
+                    col[k] = clampi(r, 0, 31);
+                }
+            *d = (uint16_t)(col[0] | col[1] << 5 | col[2] << 10);
+            if (o->ztest && !(flags & 8)) *zp = (uint16_t)key;
+        }
+    }
+}
+
+/* Emits a triangle packet with depth (type 0x30 | flags, flags without the quad bit). */
+static uint32_t emit_tri_z(int flags, const RV v[3], const int32_t wv[3], const RefZ *o) {
+    uint32_t w[13];
+    int n = 0;
+    for (int i = 0; i < 3; i++) {
+        if (i == 0 || (flags & 1)) w[n++] = RGB(v[i].c[0], v[i].c[1], v[i].c[2]) | (i == 0 ? (uint32_t)o->mode << 24 | (uint32_t)o->zoff << 27 : 0);
+        w[n++] = P(v[i].x, v[i].y);
+        if (flags & 2) w[n++] = i == 0 ? TEX0(v[i].c[3], v[i].c[4], o->slot, o->four, o->pal) : UV(v[i].c[3], v[i].c[4]) | (i == 1 ? ref_win << 16 : 0);
+    }
+    for (int i = 0; i < 3; i++) w[n++] = (uint32_t)wv[i];
+    uint32_t a = emit((uint32_t)(0x30 | flags), 0);
+    for (int i = 0; i < n; i++) wr32(m->ram + a + 4 + 4 * i, w[i]);
+    pk_next = a + 4 + 4 * (uint32_t)n;
+    return a;
+}
+
+static void test_depth_registers(void) {
+    setup();
+    uint32_t v = 7;
+    CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_DEPTH, &v), 0);
+    CHECK_EQ(v, 0);                                     /* off at reset */
+    CHECK_EQ(bus_write32(m, IO_BASE + IO_GPU_DEPTH, 0xFFFFFFFF), 0);
+    CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_DEPTH, &v), 0);
+    CHECK_EQ(v, 1);                                     /* bits 1-31 reserved, read 0 */
+    CHECK_EQ(bus_write32(m, IO_BASE + IO_GPU_DEPTH, 2), 0);
+    CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_DEPTH, &v), 0);
+    CHECK_EQ(v, 0);
+
+    m->gpu_cycles = 0;
+    CHECK_EQ(bus_write32(m, IO_BASE + IO_GPU_ZCLEAR, 0xABCD1234), 0);
+    CHECK_EQ(zat(0, 0), 0x1234);                        /* bits 0-15 */
+    CHECK_EQ(zat(319, 239), 0x1234);
+    CHECK_EQ(m->gpu_cycles, 38400);
+    CHECK_EQ(GPU_CYCLES_ZCLEAR, 38400);
+    CHECK_EQ(m->gstat.zclears, 1);
+    CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_ZCLEAR, &v), 0);
+    CHECK_EQ(v, 0);                                     /* write-only: reads 0 */
+
+    gpu_clear(m, 0x1F);                                 /* GPU_CLEAR and vsync leave it alone */
+    gpu_vsync(m);
+    CHECK_EQ(zat(160, 120), 0x1234);
+    CHECK_EQ(bus_read8(m, IO_BASE + IO_GPU_DEPTH, &v, 0), -1);
+    CHECK_EQ(m->fault.kind, MEI_FAULT_IO_WIDTH);
+    memset(&m->fault, 0, sizeof m->fault);
+    CHECK_EQ(bus_read32(m, IO_BASE + 0x28, &v), -1);    /* 0xFF0028-0xFF00FF stay unmapped */
+    CHECK_EQ(m->fault.kind, MEI_FAULT_UNMAPPED);
+    memset(&m->fault, 0, sizeof m->fault);
+
+    bus_write32(m, IO_BASE + IO_GPU_DEPTH, 1);
+    mei_reset(m);                                       /* a reset clears both */
+    memset(&m->fault, 0, sizeof m->fault);
+    CHECK_EQ(zat(160, 120), 0);
+    CHECK_EQ(m->gpu_depth, 0);
+}
+
+/* The vertex reciprocal and the key (golden values). */
+static void test_depth_key(void) {
+    struct { double w; uint16_t key; } g[] = {
+        {1.0, 0xC000}, {2.0, 0xB000}, {128.0, 0x5000}, {3.0, 0xA555}, {0.5, 0xD000}, {1.0 / 16, 0xFFFF},
+        {0.01, 0xFFFF}, {0.0, 0xFFFF}, {-5.0, 0xFFFF}, {4096.0, 0x0000}, {4095.0, 0x0001}, {30000.0, 0x0000},
+        {1.5, 0xB555}, {100.0, 0x547A},
+    };
+    for (unsigned i = 0; i < sizeof g / sizeof *g; i++) {
+        setup(); list_begin();
+        bus_write32(m, IO_BASE + IO_GPU_DEPTH, 1);
+        uint32_t w = W16(g[i].w);
+        emit(0x30, 7, RGB(255, 0, 0), P(0, 0), P(8, 0), P(0, 8), w, w, w);
+        list_draw();
+        CHECK_EQ(zat(1, 1), g[i].key);
+        CHECK_EQ(ref_key(ref_recip((int32_t)w)), g[i].key);
+    }
+    CHECK_EQ(ref_recip(0x7FFFFFFF), 512);               /* the farthest w */
+    CHECK_EQ(ref_recip(4096), 1 << 28);                 /* 1/16: the nearest */
+}
+
+/* With GPU_DEPTH off, an untextured packet with depth draws exactly as the plain one, costs the
+ * same and leaves the buffer alone; the depth words are read (and fault) like the others. */
+static void test_depth_off(void) {
+    static uint16_t ref[MEI_W * MEI_H];
+    static const int types[8] = {0x0, 0x1, 0x4, 0x5, 0x8, 0x9, 0xC, 0xD};
+    for (int t = 0; t < 8; t++) {
+        int ty = types[t], gouraud = ty & 1, nv = (ty & 4) ? 4 : 3;
+        uint32_t w[16];
+        int n = 0;
+        int pos[4][2] = {{10, 12}, {250, 30}, {40, 200}, {300, 220}};
+        for (int i = 0; i < nv; i++) {
+            if (i == 0 || gouraud) w[n++] = RGB(40 + 50 * i, 200 - 40 * i, 90) | (i == 0 ? 1u << 24 | 31u << 27 : 0);
+            w[n++] = P(pos[i][0], pos[i][1]);
+        }
+        uint64_t cost[2];
+        for (int depth = 0; depth < 2; depth++) {
+            setup(); list_begin();
+            gpu_clear(m, 0x1234);
+            m->gpu_cycles = 0;
+            uint32_t a = emit((uint32_t)(0x20 | depth << 4 | ty), 0);
+            for (int i = 0; i < n; i++) wr32(m->ram + a + 4 + 4 * i, w[i]);
+            if (depth) for (int i = 0; i < nv; i++) wr32(m->ram + a + 4 + 4 * (n + i), W16(1 + i));
+            list_draw();
+            cost[depth] = m->gpu_cycles;
+            if (!depth) memcpy(ref, back(), sizeof ref);
+            else {
+                CHECK_EQ(memcmp(ref, back(), sizeof ref), 0);
+                CHECK_EQ(zat(100, 100), 0);
+                CHECK_EQ(m->gstat.tris_recip, 0);
+                CHECK_EQ(m->gstat.px_ztest, 0);
+            }
+        }
+        CHECK_EQ(cost[1], cost[0]);
+    }
+    /* the largest packet with depth, 0x3F, is 1 + 16 words: its last depth word past the end of
+     * RAM faults there */
+    setup();
+    uint32_t a = RAM_SIZE - 4 * 16;
+    wr32(m->ram + a, 0x3Fu << 24 | 0xFFFFFF);
+    gpu_draw_list(m, a);
+    CHECK_EQ(m->fault.kind, MEI_FAULT_UNMAPPED);
+    CHECK_EQ(m->fault.addr, RAM_SIZE);
+    memset(m->ram + a, 0, 4 * 16);
+    setup();
+    a = RAM_SIZE - 4 * 17;
+    wr32(m->ram + a, 0x3Fu << 24 | 0xFFFFFF);
+    gpu_draw_list(m, a);
+    CHECK_EQ(m->fault.kind, MEI_FAULT_NONE);
+    memset(m->ram + a, 0, 4 * 17);
+}
+
+/* The test: nearer stays, ties go to the later packet, semi-transparent packets test but do not
+ * write, texel 0 writes neither, plain packets are neither tested nor written, the decal offset. */
+static void test_depth_test(void) {
+    const uint32_t W1 = W16(1), W2 = W16(2), W4 = W16(4);
+    setup(); list_begin();
+    bus_write32(m, IO_BASE + IO_GPU_DEPTH, 1);
+    m->gpu_cycles = 0;
+    emit(0x34, 9, RGB(255, 0, 0), P(0, 0), P(20, 0), P(0, 20), P(20, 20), W1, W1, W1, W1);           /* red, w 1 */
+    emit(0x34, 9, RGB(0, 255, 0), P(10, 10), P(30, 10), P(10, 30), P(30, 30), W2, W2, W2, W2);       /* green behind */
+    list_draw();
+    CHECK_EQ(px(15, 15), 31);
+    CHECK_EQ(px(25, 25), 31 << 5);
+    CHECK_EQ(px(25, 5), 0);
+    CHECK_EQ(zat(15, 15), 0xC000);
+    CHECK_EQ(zat(25, 25), 0xB000);
+    CHECK_EQ(zat(25, 5), 0);
+    CHECK_EQ(m->gstat.px_ztest, 800);
+    CHECK_EQ(m->gstat.px_zfail, 100);
+    CHECK_EQ(m->gstat.tris_recip, 4);
+    /* 4 triangles at 40 + 24, 700 pixels at 1, 100 failed at 1 */
+    CHECK_EQ(m->gpu_cycles, 4 * (40 + 24) + 700 + 100);
+
+    /* a nearer packet drawn later wins; a tie goes to the later packet */
+    list_begin();
+    emit(0x34, 9, RGB(0, 0, 255), P(20, 20), P(40, 20), P(20, 40), P(40, 40), W1, W1, W1, W1);       /* blue, w 1 over green */
+    emit(0x30, 7, RGB(255, 255, 0), P(0, 0), P(4, 0), P(0, 4), W1, W1, W1);                          /* yellow ties red */
+    list_draw();
+    CHECK_EQ(px(25, 25), 31 << 10);
+    CHECK_EQ(zat(25, 25), 0xC000);
+    CHECK_EQ(px(1, 1), 31 | 31 << 5);
+
+    /* a plain packet is neither tested nor written */
+    list_begin();
+    emit(0x24, 5, RGB(255, 255, 255), P(12, 12), P(18, 12), P(12, 18), P(18, 18));
+    list_draw();
+    CHECK_EQ(px(13, 13), 0x7FFF);
+    CHECK_EQ(zat(13, 13), 0xC000);
+
+    /* semi-transparent: tested, never written */
+    list_begin();
+    emit(0x3C, 9, RGB(0, 0, 255), P(0, 0), P(50, 0), P(0, 50), P(50, 50), W4, W4, W4, W4);   /* average, behind */
+    emit(0x3C, 9, RGB(0, 0, 255), P(44, 44), P(60, 44), P(44, 60), P(60, 60), W1, W1, W1, W1);
+    list_draw();
+    CHECK_EQ(px(5, 5), 31);                             /* red stays: the blend at w 4 failed */
+    CHECK_EQ(px(45, 2), 15 << 10);                      /* over the empty background: blended */
+    CHECK_EQ(zat(45, 2), 0);
+    CHECK_EQ(px(55, 55), 15 << 10);
+    CHECK_EQ(px(47, 47), 23 << 10);                     /* the two blends, both over nothing nearer */
+    CHECK_EQ(zat(47, 47), 0);
+
+    /* the decal offset (first colour word bits 27-31): a coplanar decal drawn after or before */
+    setup(); list_begin();
+    bus_write32(m, IO_BASE + IO_GPU_DEPTH, 1);
+    emit(0x34, 9, RGB(255, 0, 0), P(0, 0), P(40, 0), P(0, 40), P(40, 40), W2, W2, W2, W2);           /* wall */
+    emit(0x34, 9, RGB(0, 255, 0) | 2u << 27, P(10, 10), P(20, 10), P(10, 20), P(20, 20), W2, W2, W2, W2);   /* decal after */
+    emit(0x34, 9, RGB(0, 0, 255) | 2u << 27, P(60, 0), P(70, 0), P(60, 10), P(70, 10), W2, W2, W2, W2);    /* decal before */
+    emit(0x34, 9, RGB(255, 0, 0), P(50, 0), P(80, 0), P(50, 20), P(80, 20), W2, W2, W2, W2);          /* its wall */
+    list_draw();
+    CHECK_EQ(px(15, 15), 31 << 5);
+    CHECK_EQ(zat(15, 15), 0xB002);                      /* written with its offset */
+    CHECK_EQ(px(65, 5), 31 << 10);                      /* the wall after it failed */
+    CHECK_EQ(px(75, 5), 31);
+    CHECK_EQ(zat(75, 5), 0xB000);
+    list_begin();                                       /* the offset saturates at 0xFFFF */
+    emit(0x30, 7, RGB(255, 255, 255) | 31u << 27, P(100, 100), P(108, 100), P(100, 108), W16(0.01), W16(0.01), W16(0.01));
+    list_draw();
+    CHECK_EQ(zat(101, 101), 0xFFFF);
+
+    /* texel 0: neither colour nor key written (and it still costs as a passing pixel) */
+    setup(); list_begin();
+    bus_write32(m, IO_BASE + IO_GPU_DEPTH, 1);
+    memset(slot_ptr(3), 0, TEXTURE_SLOT_BYTES);
+    for (int i = 0; i < 256 * 256; i++) slot_ptr(3)[i] = (uint8_t)((i & 1) ? 0 : 5);   /* odd u: transparent */
+    set_pal(5, C15(31, 31, 31));
+    m->gpu_cycles = 0;
+    emit(0x32, 10, RGB(128, 128, 128), P(0, 0), TEX0(0, 0, 3, 0, 0), P(10, 0), UV(10, 0), P(0, 10), UV(0, 10), W1, W1, W1);
+    list_draw();
+    CHECK_EQ(px(0, 1), 0x7FFF);
+    CHECK_EQ(zat(0, 1), 0xC000);
+    CHECK_EQ(px(1, 1), 0);
+    CHECK_EQ(zat(1, 1), 0);
+    CHECK_EQ(m->gpu_cycles, 40 + 24 + 55 * 2);
+
+    /* a cleared value is a far limit: keys below it fail */
+    setup(); list_begin();
+    bus_write32(m, IO_BASE + IO_GPU_DEPTH, 1);
+    bus_write32(m, IO_BASE + IO_GPU_ZCLEAR, 0xB000);    /* w 2 */
+    emit(0x30, 7, RGB(255, 0, 0), P(0, 0), P(10, 0), P(0, 10), W4, W4, W4);
+    emit(0x30, 7, RGB(0, 255, 0), P(20, 0), P(30, 0), P(20, 10), W2, W2, W2);
+    list_draw();
+    CHECK_EQ(px(1, 1), 0);
+    CHECK_EQ(px(21, 1), 31 << 5);
+
+    /* GPU_DEPTH is read when a packet is drawn */
+    setup(); list_begin();
+    emit(0x30, 7, RGB(255, 0, 0), P(0, 0), P(10, 0), P(0, 10), W1, W1, W1);
+    list_draw();
+    CHECK_EQ(zat(1, 1), 0);
+    bus_write32(m, IO_BASE + IO_GPU_DEPTH, 1);
+    list_draw();
+    CHECK_EQ(zat(1, 1), 0xC000);
+}
+
+/* Early depth: a failing pixel costs 1 whatever its kind; the reciprocals are charged once a
+ * triangle whether for the test, perspective or both. */
+static void test_depth_cost(void) {
+    setup(); list_begin();
+    for (int i = 0; i < 256 * 256; i++) slot_ptr(0)[i] = 1;
+    set_pal(1, C15(10, 20, 30));
+    bus_write32(m, IO_BASE + IO_GPU_DEPTH, 1);
+    bus_write32(m, IO_BASE + IO_GPU_ZCLEAR, 0xFFFF);    /* everything fails */
+    const uint32_t W1 = W16(1);
+    struct { uint32_t type; int n; } k[] = {{0x30, 7}, {0x32, 10}, {0x38, 7}, {0x3A, 10}};
+    for (int i = 0; i < 4; i++) {
+        m->gpu_cycles = 0;
+        list_begin();
+        if (k[i].type & 2)
+            emit(k[i].type, 10, RGB(128, 128, 128), P(0, 0), TEX0(0, 0, 0, 0, 0), P(10, 0), UV(0, 0), P(0, 10), UV(0, 0), W1, W1, W1);
+        else emit(k[i].type, 7, RGB(128, 128, 128), P(0, 0), P(10, 0), P(0, 10), W1, W1, W1);
+        list_draw();
+        CHECK_EQ(m->gpu_cycles, 40 + 24 + 55);          /* 55 failed pixels at 1 */
+    }
+    CHECK_EQ(m->gstat.px_zfail, 4 * 55);
+    bus_write32(m, IO_BASE + IO_GPU_ZCLEAR, 0);         /* everything passes */
+    uint32_t pass[4] = {55, 110, 110, 220};
+    for (int i = 0; i < 4; i++) {
+        m->gpu_cycles = 0;
+        list_begin();
+        if (k[i].type & 2)
+            emit(k[i].type, 10, RGB(128, 128, 128), P(0, 0), TEX0(0, 0, 0, 0, 0), P(10, 0), UV(0, 0), P(0, 10), UV(0, 0), W1, W1, W1);
+        else emit(k[i].type, 7, RGB(128, 128, 128), P(0, 0), P(10, 0), P(0, 10), W1, W1, W1);
+        list_draw();
+        CHECK_EQ(m->gpu_cycles, 40 + 24 + pass[i]);     /* as a plain pixel: the test is free */
+        bus_write32(m, IO_BASE + IO_GPU_ZCLEAR, 0);
+        m->gpu_cycles = 0;
+    }
+    /* empty, off-screen and zero-area triangles with depth still pay their setup */
+    m->gpu_cycles = 0;
+    list_begin();
+    emit(0x30, 7, RGB(1, 1, 1), P(5, 5), P(5, 5), P(5, 5), W1, W1, W1);
+    emit(0x30, 7, RGB(1, 1, 1), P(-50, -50), P(-40, -50), P(-50, -40), W1, W1, W1);
+    list_draw();
+    CHECK_EQ(m->gpu_cycles, 2 * (40 + 24));
+    /* textured with depth, test off: perspective alone pays the reciprocals */
+    bus_write32(m, IO_BASE + IO_GPU_DEPTH, 0);
+    m->gpu_cycles = 0;
+    list_begin();
+    emit(0x32, 10, RGB(128, 128, 128), P(0, 0), TEX0(0, 0, 0, 0, 0), P(10, 0), UV(0, 0), P(0, 10), UV(0, 0), W1, W1, W1);
+    list_draw();
+    CHECK_EQ(m->gpu_cycles, 40 + 24 + 110);             /* equal depths: affine, no divides */
+    CHECK_EQ(GPU_CYCLES_RECIP, 24);
+    CHECK_EQ(GPU_CYCLES_DIVIDE, 2);
+    CHECK_EQ(GPU_CYCLES_ZFAIL, 1);
+}
+
+/* Random packets with depth of every kind against the reference, with the test on and off,
+ * drawn over a random depth buffer; then the counts the cost table charges. */
+static void test_depth_reference_random(void) {
+    static uint16_t ref[MEI_W * MEI_H], zref[MEI_W * MEI_H];
+    setup();
+    for (int i = 0; i < 0x10000; i++) slot_ptr(0)[i] = (uint8_t)(rnd(0, 255) * (rnd(0, 7) != 0));
+    for (int i = 0; i < 0x8000; i++) slot_ptr(15)[i] = (uint8_t)rnd(0, 255);
+    for (int i = 0; i < 4096; i++) set_pal(i, (uint16_t)rnd(0, 0x7FFF));
+    int mismatch = 0, zmismatch = 0;
+    long long cyc_bad = 0;
+    for (int iter = 0; iter < 400; iter++) {
+        RefZ o;
+        o.flags = rnd(0, 15) & ~4;
+        o.mode = rnd(0, 3);
+        o.dither = rnd(0, 1);
+        o.four = rnd(0, 1);
+        o.slot = o.four ? 15 : rnd(0, 1) * 15;
+        o.pal = o.four ? rnd(0, 255) : rnd(0, 15);
+        o.ztest = iter % 5 != 0;
+        o.zoff = rnd(0, 3) ? 0 : rnd(0, 31);
+        ref_win = (o.flags & 2) && rnd(0, 3) == 0 ? (uint32_t)rnd(0, 0xFFFF) : 0;
+        int big = iter % 4 == 0;
+        RV v[3];
+        int32_t wv[3];
+        for (int i = 0; i < 3; i++) {
+            v[i].x = big ? rnd(-2000, 2000) : rnd(-40, 360);
+            v[i].y = big ? rnd(-2000, 2000) : rnd(-40, 280);
+            for (int k = 0; k < 5; k++) v[i].c[k] = rnd(0, 3) == 0 ? 255 : rnd(0, 255);
+            int r = rnd(0, 9);
+            wv[i] = r == 0 ? rnd(-100, 5000) : r == 1 ? 0x7FFFFFFF - rnd(0, 1000) : rnd(1 << 14, 1 << 24);
+        }
+        if (iter % 7 == 0) wv[1] = wv[0];
+        if (iter % 11 == 0) wv[1] = wv[2] = wv[0];      /* equal depths: affine */
+        if (iter % 50 == 0) v[0].x = -32768, v[1].y = 32767;
+        next_frame();
+        gpu_clear(m, (uint32_t)rnd(0, 0x7FFF));
+        for (int i = 0; i < MEI_W * MEI_H; i++) m->zbuf[i] = (uint16_t)(rnd(0, 1) ? rnd(0, 0xFFFF) : 0);
+        m->gpu_ctrl = (uint32_t)o.dither;
+        m->gpu_depth = (uint32_t)o.ztest;
+        memcpy(ref, back(), sizeof ref);
+        memcpy(zref, m->zbuf, sizeof zref);
+        list_begin();
+        emit_tri_z(o.flags, v, wv, &o);
+        ref_fails = ref_divs = ref_inside = 0;
+        m->gpu_cycles = 0;
+        memset(&m->gstat, 0, sizeof m->gstat);
+        list_draw();
+        ref_tri_z(ref, zref, v[0], v[1], v[2], wv, &o);
+        if (memcmp(ref, back(), sizeof ref)) {
+            if (!mismatch) printf("  depth reference mismatch: iter %d flags %x\n", iter, o.flags);
+            mismatch++;
+        }
+        if (memcmp(zref, m->zbuf, sizeof zref)) {
+            if (!zmismatch) printf("  depth buffer mismatch: iter %d flags %x\n", iter, o.flags);
+            zmismatch++;
+        }
+        static const int per_px[8] = {1, 1, 2, 2, 2, 2, 4, 4};
+        int kind = (o.flags & 3) | (o.flags >> 1 & 4);
+        long long expect = 40 + (o.ztest || (o.flags & 2) ? 24 : 0) + (ref_inside - ref_fails) * per_px[kind] + ref_fails + 2 * ref_divs;
+        if ((long long)m->gpu_cycles != expect) {
+            if (!cyc_bad) printf("  depth cost mismatch: iter %d: %llu, expected %lld\n", iter, (unsigned long long)m->gpu_cycles, expect);
+            cyc_bad++;
+        }
+        if (m->gstat.persp_divs != ref_divs || m->gstat.px_zfail != ref_fails) cyc_bad++;
+    }
+    ref_win = 0;
+    m->gpu_depth = 0;
+    CHECK_EQ(mismatch, 0);
+    CHECK_EQ(zmismatch, 0);
+    CHECK_EQ(cyc_bad, 0);
+}
+
+/* Perspective: equal depths draw exactly as the plain packet; otherwise the spans divide every
+ * 16 pixels (golden pixels below freeze the rule); texture windows apply to the corrected u, v. */
+static void test_perspective(void) {
+    static uint16_t ref[MEI_W * MEI_H];
+    setup();
+    uint8_t *t = slot_ptr(2);
+    for (int i = 0; i < 0x10000; i++) t[i] = (uint8_t)(1 + (i & 255) % 15 + 15 * ((i >> 8) % 15));
+    for (int i = 1; i < 256; i++) set_pal(256 + i, (uint16_t)(i * 97 & 0x7FFF));
+    uint32_t col = RGB(128, 128, 128), w1 = W16(1), w4 = W16(4);
+    /* equal depths: the plain picture, every textured type, with and without a window */
+    static const int types[8] = {0x2, 0x3, 0x6, 0x7, 0xA, 0xB, 0xE, 0xF};
+    for (int k = 0; k < 16; k++) {
+        int ty = types[k & 7], gouraud = ty & 1, nv = (ty & 4) ? 4 : 3;
+        uint32_t win = k >= 8 ? 0x2A15 : 0;
+        int pos[4][2] = {{10, 10}, {300, 20}, {5, 230}, {290, 220}}, uv[4][2] = {{0, 0}, {255, 0}, {0, 255}, {255, 255}};
+        uint32_t w[16];
+        int n = 0;
+        for (int i = 0; i < nv; i++) {
+            if (i == 0 || gouraud) w[n++] = RGB(128 + 20 * i, 128, 100 + 30 * i);
+            w[n++] = P(pos[i][0], pos[i][1]);
+            w[n++] = i == 0 ? TEX0(0, 0, 2, 0, 1) : UV(uv[i][0], uv[i][1]) | (i == 1 ? win << 16 : 0);
+        }
+        for (int depth = 0; depth < 2; depth++) {
+            next_frame();
+            list_begin();
+            uint32_t a = emit((uint32_t)(0x20 | depth << 4 | ty), 0);
+            for (int i = 0; i < n; i++) wr32(m->ram + a + 4 + 4 * i, w[i]);
+            if (depth) for (int i = 0; i < nv; i++) wr32(m->ram + a + 4 + 4 * (n + i), w4);
+            memset(&m->gstat, 0, sizeof m->gstat);
+            list_draw();
+            if (!depth) memcpy(ref, back(), sizeof ref);
+            else {
+                CHECK_EQ(memcmp(ref, back(), sizeof ref), 0);
+                CHECK_EQ(m->gstat.persp_divs, 0);
+                CHECK_EQ(m->gstat.px_persp, 0);
+                CHECK_EQ(m->gstat.tris_recip, (uint32_t)(nv - 2));
+            }
+        }
+    }
+
+    /* unequal depths: a floor receding from w 1 (bottom) to w 4 (top), against the reference */
+    RefZ o = {2, 0, 0, 2, 0, 1, 0, 0};
+    RV q[4] = {{0, 0, {128, 128, 128, 0, 0}}, {319, 0, {128, 128, 128, 255, 0}},
+               {0, 239, {128, 128, 128, 0, 255}}, {319, 239, {128, 128, 128, 255, 255}}};
+    int32_t wq[4] = {(int32_t)w4, (int32_t)w4, (int32_t)w1, (int32_t)w1};
+    next_frame();
+    memcpy(ref, back(), sizeof ref);
+    static uint16_t zdummy[MEI_W * MEI_H];
+    ref_fails = ref_divs = ref_inside = 0;
+    list_begin();
+    emit(0x36, 13, col, P(0, 0), TEX0(0, 0, 2, 0, 1), P(319, 0), UV(255, 0),
+         P(0, 239), UV(0, 255), P(319, 239), UV(255, 255), w4, w4, w1, w1);
+    m->gpu_cycles = 0;
+    memset(&m->gstat, 0, sizeof m->gstat);
+    list_draw();
+    int32_t w012[3] = {wq[0], wq[1], wq[2]}, w123[3] = {wq[1], wq[2], wq[3]};
+    ref_tri_z(ref, zdummy, q[0], q[1], q[2], w012, &o);
+    ref_tri_z(ref, zdummy, q[1], q[2], q[3], w123, &o);
+    CHECK_EQ(memcmp(ref, back(), sizeof ref), 0);
+    CHECK_EQ(m->gstat.persp_divs, ref_divs);
+    CHECK_EQ(m->gstat.px_persp, ref_inside);
+    CHECK_EQ(m->gpu_cycles, 2 * (40 + 24) + ref_inside * 2 + ref_divs * 2);
+    CHECK_EQ(ref_inside, 76241);                        /* RENDERING.md's cost example */
+    CHECK_EQ(ref_divs, 5437);
+    CHECK_EQ(m->gpu_cycles, 163484);
+    /* golden pixels (docs/RENDERING.md, "Golden values"): the texel u, v at a pixel; the texture's
+     * index there is 1 + u % 15 + 15 * (v % 15) and its colour index * 97 */
+    static const struct { int x, y, u, v; } gold[] = {
+        {0, 0, 0, 0}, {15, 0, 11, 0}, {16, 0, 12, 0}, {17, 0, 13, 0}, {160, 0, 127, 0}, {318, 0, 254, 0},
+        {0, 60, 0, 146}, {16, 60, 7, 146}, {17, 60, 7, 146}, {200, 60, 91, 146}, {0, 119, 0, 203},
+        {160, 119, 51, 203}, {0, 120, 0, 204}, {160, 120, 52, 204}, {318, 120, 253, 204},
+        {17, 180, 4, 235}, {200, 180, 138, 235}, {16, 238, 12, 254}, {318, 238, 254, 254},
+    };
+    for (unsigned i = 0; i < sizeof gold / sizeof *gold; i++) {
+        int idx = 1 + gold[i].u % 15 + 15 * (gold[i].v % 15);
+        CHECK_EQ(px(gold[i].x, gold[i].y), (uint16_t)(idx * 97 & 0x7FFF));
+    }
+
+    /* the walker divides at a span's start, every 16 pixels and its end: 1 + ceil((n - 1) / 16) */
+    static const struct { int x0, x1; uint32_t divs; } spans[] = {{0, 0, 1}, {0, 1, 2}, {0, 16, 2}, {0, 17, 3}, {0, 32, 3}, {0, 33, 4}, {5, 300, 20}};
+    for (unsigned i = 0; i < sizeof spans / sizeof *spans; i++) {
+        next_frame(); list_begin();
+        memset(&m->gstat, 0, sizeof m->gstat);
+        int x0 = spans[i].x0, x1 = spans[i].x1 + 1;     /* one row: y 50 only */
+        emit(0x36, 13, col, P(x0, 50), TEX0(0, 0, 2, 0, 1), P(x1, 50), UV(255, 0),
+             P(x0, 51), UV(0, 255), P(x1, 51), UV(255, 255), w4, w1, w4, w1);
+        list_draw();
+        CHECK_EQ(m->gstat.persp_divs, spans[i].divs);
+        CHECK_EQ(m->gstat.px_persp, (uint32_t)(x1 - x0));
+    }
+
+    /* with the depth test: the reciprocals once, and a window over the corrected u, v */
+    next_frame(); list_begin();
+    for (int i = 0; i < MEI_W * MEI_H; i++) m->zbuf[i] = 0;
+    m->gpu_depth = 1;
+    ref_win = 0x1B0A;
+    o.ztest = 1;
+    memcpy(ref, back(), sizeof ref);
+    memcpy(zdummy, m->zbuf, sizeof zdummy);
+    ref_fails = ref_divs = ref_inside = 0;
+    emit(0x36, 13, col, P(0, 0), TEX0(0, 0, 2, 0, 1), P(319, 0), UV(255, 0) | ref_win << 16,
+         P(0, 239), UV(0, 255), P(319, 239), UV(255, 255), w4, w4, w1, w1);
+    m->gpu_cycles = 0;
+    list_draw();
+    ref_tri_z(ref, zdummy, q[0], q[1], q[2], w012, &o);
+    ref_tri_z(ref, zdummy, q[1], q[2], q[3], w123, &o);
+    CHECK_EQ(memcmp(ref, back(), sizeof ref), 0);
+    CHECK_EQ(memcmp(zdummy, m->zbuf, sizeof zdummy), 0);
+    CHECK_EQ(m->gpu_cycles, 2 * (40 + 24) + ref_inside * 2 + ref_divs * 2);
+    ref_win = 0;
+    m->gpu_depth = 0;
+}
+
+/* With the plane compositor on, packets with depth keep their layer bit; a failing pixel leaves
+ * the hole (or whatever was there). */
+static void test_depth_planes(void) {
+    setup();
+    m->pln_reg[PLN_CTRL / 4] = 1;
+    gpu_clear(m, PLN_HOLE);
+    m->gpu_depth = 1;
+    list_begin();
+    emit(0x30, 7, RGB(255, 0, 0) | 1u << 26, P(0, 0), P(20, 0), P(0, 20), W16(1), W16(1), W16(1));
+    emit(0x30, 7, RGB(0, 255, 0), P(0, 0), P(40, 0), P(0, 40), W16(2), W16(2), W16(2));
+    list_draw();
+    CHECK_EQ(px(1, 1), 0x8000 | 31);                    /* upper red */
+    CHECK_EQ(px(25, 1), 31 << 5);                       /* lower green */
+    CHECK_EQ(px(100, 100), PLN_HOLE);
+    list_begin();
+    emit(0x30, 7, RGB(0, 0, 255), P(50, 50), P(60, 50), P(50, 60), W16(1), W16(1), W16(1));
+    list_draw();
+    bus_write32(m, IO_BASE + IO_GPU_ZCLEAR, 0xFFFF);
+    list_begin();
+    emit(0x30, 7, RGB(255, 255, 255), P(0, 0), P(100, 0), P(0, 100), W16(1), W16(1), W16(1));
+    list_draw();
+    CHECK_EQ(px(1, 1), 0x8000 | 31);                    /* all failed: nothing changed */
+    CHECK_EQ(px(80, 5), PLN_HOLE);
+    m->gpu_depth = 0;
+    m->pln_reg[PLN_CTRL / 4] = 0;
+}
+
+static void bench_depth(void) {
+    setup();
+    for (int i = 0; i < 0x8000; i++) slot_ptr(0)[i] = (uint8_t)(i * 7 + 1);
+    for (int i = 0; i < 256; i++) set_pal(i, (uint16_t)(i * 97));
+    m->gpu_ctrl = 1;
+    for (int mode = 0; mode < 3; mode++) {   /* plain, depth-tested, depth-tested and perspective */
+        list_begin();
+        rng = 99;
+        for (int i = 0; i < 1000; i++) {
+            int x = rnd(0, 280), y = rnd(0, 200);
+            uint32_t wa = W16(2 + i % 7), wb = mode == 2 ? W16(3 + i % 5) : wa;
+            if (!mode) emit(0x2F - 8, 12, RGB(200, 128, 90), P(x, y), TEX0(0, 0, 0, 1, 3), RGB(128, 128, 128), P(x + 35, y + 2), UV(60, 0),
+                            RGB(90, 255, 128), P(x + 1, y + 36), UV(0, 60), RGB(128, 60, 200), P(x + 34, y + 37), UV(60, 60));
+            else emit(0x3F - 8, 16, RGB(200, 128, 90), P(x, y), TEX0(0, 0, 0, 1, 3), RGB(128, 128, 128), P(x + 35, y + 2), UV(60, 0),
+                      RGB(90, 255, 128), P(x + 1, y + 36), UV(0, 60), RGB(128, 60, 200), P(x + 34, y + 37), UV(60, 60), wa, wb, wa, wb);
+        }
+        m->gpu_depth = mode != 0;
+        int frames = 50;
+        clock_t t0 = clock();
+        for (int f = 0; f < frames; f++) { gpu_zclear(m, 0); list_draw(); m->gpu_status = 0; }
+        double ms = (double)(clock() - t0) * 1000.0 / CLOCKS_PER_SEC / frames;
+        static const char *names[] = {"plain", "depth-tested", "depth-tested, perspective"};
+        printf("  bench: 2,000 textured Gouraud dithered triangles, %s, in %.2f ms per frame\n", names[mode], ms);
+    }
+    m->gpu_depth = 0;
+}
+
 static void bench(void) {
     setup();
     for (int i = 0; i < 0x8000; i++) slot_ptr(0)[i] = (uint8_t)(i * 7 + 1);
@@ -1059,11 +1688,19 @@ int main(void) {
     test_cost_model();
     test_budget();
     test_list_walk();
+    test_depth_registers();
+    test_depth_key();
+    test_depth_off();
+    test_depth_test();
+    test_depth_cost();
+    test_depth_reference_random();
+    test_perspective();
+    test_depth_planes();
     test_buffers();
     test_error_screen();
     test_reference_random();
     test_long_thin();
-    if (!getenv("MEI_NO_BENCH")) bench();
+    if (!getenv("MEI_NO_BENCH")) { bench(); bench_depth(); }
     mei_destroy(m);
     printf("test_gpu: %d/%d checks passed\n", checks - fails, checks);
     return fails != 0;

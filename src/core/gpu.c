@@ -36,6 +36,8 @@ void gpu_reset(Mei *m) {
     m->back = 0;
     m->gpu_ctrl = 0;
     m->gpu_status = 0;
+    m->gpu_depth = 0;
+    memset(m->zbuf, 0, sizeof m->zbuf);
 }
 
 uint32_t gpu_back_addr(const Mei *m) { return m->back ? FB_B_ADDR : FB_A_ADDR; }
@@ -65,11 +67,19 @@ void gpu_clear(Mei *m, uint32_t colour) {
     for (int i = 0; i < MEI_W * MEI_H; i++) st16(fb + 2 * i, c);
 }
 
+/* GPU_ZCLEAR (docs/RENDERING.md): every key of the depth buffer becomes bits 0-15 (0 the farthest). */
+void gpu_zclear(Mei *m, uint32_t value) {
+    m->gstat.zclears++;
+    m->gpu_cycles += GPU_CYCLES_ZCLEAR;
+    for (int i = 0; i < MEI_W * MEI_H; i++) m->zbuf[i] = (uint16_t)value;
+}
+
 /* ---- rasterizer ---- */
 
 typedef struct {
     int32_t x, y;
     int32_t a[5];      /* r, g, b, u, v (each 0-255) */
+    int64_t rw;        /* packets with depth: the vertex reciprocal 2^40 / w, 512 to 2^28 */
 } Vtx;
 
 typedef struct {
@@ -84,6 +94,11 @@ typedef struct {
     uint16_t upper;    /* 0x8000: the packet draws into the PH layer (compositor on, colour bit 26) */
     const Mei *planes; /* compositor on and the packet blends: see planes_under() */
     PlnUnder *under;   /* this span's context (set per span when planes) */
+    int ztest;         /* a packet with depth, GPU_DEPTH on: test the depth buffer */
+    int zwrite;        /* ... and write it (opaque packets) */
+    uint32_t zoff;     /* the decal offset: first colour word bits 27-31, in key steps */
+    uint16_t *zbuf;
+    int persp;         /* a textured packet with depth: perspective-correct u, v */
 } Raster;
 
 static int64_t floor_div(int64_t n, int64_t d) {
@@ -117,13 +132,14 @@ typedef struct { int32_t q, qs; int64_t r, rs; } Dda;
 #define FORCE_INLINE inline
 #endif
 
-enum { F_GOURAUD = 1, F_TEXTURED = 2, F_SEMI = 4, F_DITHER = 8, F_WINDOW = 16 };
+enum { F_GOURAUD = 1, F_TEXTURED = 2, F_SEMI = 4, F_DITHER = 8, F_WINDOW = 16, F_ZTEST = 32, F_PERSP = 64 };
 
 static FORCE_INLINE int clamp255(int v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
 static FORCE_INLINE int clamp31(int v) { return v < 0 ? 0 : v > 31 ? 31 : v; }
 
-/* The pixel pipeline for one pixel: texel + tint, dither, blend, write. */
-static FORCE_INLINE void shade(const Raster *R, uint8_t *row, int x, const int8_t *dm,
+/* The pixel pipeline for one pixel: texel + tint, dither, blend, write. Returns 0 when the
+ * texel is index 0 (nothing written), 1 when the pixel was written. */
+static FORCE_INLINE int shade(const Raster *R, uint8_t *row, int x, const int8_t *dm,
                                int r, int g, int b, uint32_t u, uint32_t v, const int F) {
     if (F & F_TEXTURED) {
         const uint8_t *tex = R->vram + TEX_OFF;
@@ -132,7 +148,7 @@ static FORCE_INLINE void shade(const Raster *R, uint8_t *row, int x, const int8_
         else { u &= 255; v &= 255; }
         if (R->four) idx = (tex[R->slot + v * 128 + (u >> 1)] >> ((u & 1) * 4)) & 15;
         else idx = tex[(R->slot + v * 256 + u) & TEX_MASK];
-        if (idx == 0) return;
+        if (idx == 0) return 0;
         uint32_t t = ld16(R->vram + PAL_OFF + (R->pal + idx) * 2);
         r = expand5[t & 31] * r >> 7;
         g = expand5[(t >> 5) & 31] * g >> 7;
@@ -163,6 +179,7 @@ static FORCE_INLINE void shade(const Raster *R, uint8_t *row, int x, const int8_
     uint16_t out = (uint16_t)(r | g << 5 | b << 10) | R->upper;
     if (out == PLN_HOLE) out = 0x8400;   /* upper black: never a hole (blue 1 of 31) */
     st16(row + x * 2, out);
+    return 1;
 }
 
 /* Fast span: acc[k] holds attribute k in F-bit fixed point at x0, step[k] per pixel. */
@@ -224,8 +241,154 @@ static void span_exact(const Raster *R, uint8_t *row, int y, int x0, int x1, con
     }
 }
 
+/* ---- the depth test and perspective (docs/RENDERING.md) ----
+ *
+ * Each vertex of a packet with depth has a reciprocal r_i = 2^40 / w_i. 1/w is linear in screen
+ * space, so the inverse depth at a pixel is exactly floor(sum r_i E_i / area), stepped along
+ * the span like the other attributes (a quotient/remainder DDA in 64 bits). The depth test
+ * compares its 16-bit float key with the buffer's.
+ *
+ * Perspective: the reciprocals scaled to at most 16 bits, q_i, give three more planes,
+ * U = sum q_i u_i E_i, V = sum q_i v_i E_i and Q = sum q_i E_i. At a span's first pixel, every
+ * 16th pixel after it and its last, the walker divides: s = floor(U * 2^16 / Q) (16.16); the
+ * pixels between step s by the difference of the two ends over their distance, rounded toward
+ * zero. The texel is s >> 16. Everything is integer and the same on every host. */
+
+/* The 16-bit depth key of an inverse depth q (512 to 2^28): a float with a 4-bit exponent and a
+ * 12-bit mantissa; larger is nearer, 0 the farthest. */
+static FORCE_INLINE uint32_t zkey(int64_t q) {
+    if (q < 4096) return 0;
+    int e = 63 - __builtin_clzll((uint64_t)q) - 12;
+    if (e > 15) return 0xFFFF;
+    return (uint32_t)e << 12 | (uint32_t)((q >> e) & 0xFFF);
+}
+
+/* floor(U * 2^16 / Q) for 0 <= U, 0 < Q < 2^55, U / Q < 2^16: two 8-bit long-division steps. */
+static FORCE_INLINE int64_t persp_div(int64_t U, int64_t Q) {
+    int64_t q = U / Q, r = U - q * Q;
+    r <<= 8;
+    int64_t f1 = r / Q;
+    r = (r - f1 * Q) << 8;
+    return q << 16 | f1 << 8 | r / Q;
+}
+
+typedef struct {
+    int64_t area;
+    int64_t za, zb, zc, zqs, zrs;   /* the inverse-depth plane, and its DDA step along x */
+    int64_t pa[3], pb[3], pc[3];    /* the perspective planes U, V, Q */
+    uint32_t fails, divs;           /* out: pixels that failed the depth test, divides made */
+    int persp;                      /* out: drawn perspective-correct (the q_i were not all equal) */
+} TriExt;
+
+/* A span with the depth test (F_ZTEST), perspective (F_PERSP) or both. Colours, and u, v when not
+ * perspective, come from the fixed-point accumulators (acc != NULL) or the exact DDAs, as in
+ * span_fixed and span_exact; the two give identical values. */
+static FORCE_INLINE void span_ext(const Raster *R, uint8_t *row, int y, int x0, int x1,
+                                  const int64_t *acc, const int64_t *step, int sh, const Dda *d0,
+                                  TriExt *X, const int F) {
+    Raster L = *R;   /* local copy: framebuffer stores could otherwise alias *R */
+    PlnUnder pu;
+    if ((F & F_SEMI) && L.planes) { pu.m = L.planes; pu.y = y; pu.ready = 0; L.under = &pu; }
+    const int fast = acc != NULL;
+    const int64_t area = X->area;
+    int64_t a[5] = {0, 0, 0, 0, 0}, st[5] = {0, 0, 0, 0, 0};
+    Dda d[5] = {{0, 0, 0, 0}};
+    if (fast) for (int k = 0; k < 5; k++) { a[k] = acc[k]; st[k] = step[k]; }
+    else memcpy(d, d0, sizeof d);
+    const int8_t *dm = dither_m[y & 3];
+
+    int64_t zq = 0, zr = 0;
+    uint16_t *zrow = L.zbuf + (size_t)y * MEI_W;
+    uint32_t fails = 0;
+    if (F & F_ZTEST) {
+        int64_t n = X->za * x0 + X->zb * y + X->zc;
+        zq = floor_div(n, area);
+        zr = n - zq * area;
+    }
+
+    int64_t su = 0, sv = 0, dsu = 0, dsv = 0, nu = 0, nv = 0;
+    int64_t U0 = 0, V0 = 0, Q0 = 0;
+    int seg_end = x0;   /* the next divide point; the first is x0 itself */
+    if (F & F_PERSP) {
+        U0 = X->pa[0] * x0 + X->pb[0] * y + X->pc[0];
+        V0 = X->pa[1] * x0 + X->pb[1] * y + X->pc[1];
+        Q0 = X->pa[2] * x0 + X->pb[2] * y + X->pc[2];
+        su = persp_div(U0, Q0);
+        sv = persp_div(V0, Q0);
+        X->divs += 1 + (uint32_t)((x1 - x0 + GPU_PERSP_SPAN - 1) / GPU_PERSP_SPAN);
+    }
+
+    for (int x = x0; x <= x1; x++) {
+        if ((F & F_PERSP) && x == seg_end && x < x1) {   /* su, sv are exact here: divide at the next point */
+            int e = x + GPU_PERSP_SPAN < x1 ? x + GPU_PERSP_SPAN : x1;
+            int64_t dx = e - x0;
+            int64_t Qe = Q0 + X->pa[2] * dx;
+            nu = persp_div(U0 + X->pa[0] * dx, Qe);
+            nv = persp_div(V0 + X->pa[1] * dx, Qe);
+            dsu = (nu - su) / (e - x);   /* C division: rounded toward zero */
+            dsv = (nv - sv) / (e - x);
+            seg_end = e;
+        }
+        int r = L.flat[0], g = L.flat[1], b = L.flat[2];
+        uint32_t u = 0, v = 0;
+        if (F & F_GOURAUD) {
+            if (fast) { r = (int)((uint64_t)a[0] >> sh); g = (int)((uint64_t)a[1] >> sh); b = (int)((uint64_t)a[2] >> sh); }
+            else { r = d[0].q; g = d[1].q; b = d[2].q; }
+        }
+        if (F & F_PERSP) { u = (uint32_t)(su >> 16); v = (uint32_t)(sv >> 16); }
+        else if (F & F_TEXTURED) {
+            if (fast) { u = (uint32_t)((uint64_t)a[3] >> sh); v = (uint32_t)((uint64_t)a[4] >> sh); }
+            else { u = (uint32_t)d[3].q; v = (uint32_t)d[4].q; }
+        }
+        if (F & F_ZTEST) {
+            uint32_t key = zkey(zq) + L.zoff;
+            if (key > 0xFFFF) key = 0xFFFF;
+            if (key >= zrow[x]) {   /* early depth: a failing pixel goes no further */
+                if (shade(&L, row, x, dm, r, g, b, u, v, F & 31) && L.zwrite) zrow[x] = (uint16_t)key;
+            } else {
+                fails++;
+            }
+            zq += X->zqs;
+            zr += X->zrs;
+            if (zr >= area) { zr -= area; zq++; }
+        } else {
+            shade(&L, row, x, dm, r, g, b, u, v, F & 31);
+        }
+        if (fast) {
+            if (F & F_GOURAUD) { a[0] += st[0]; a[1] += st[1]; a[2] += st[2]; }
+            if ((F & F_TEXTURED) && !(F & F_PERSP)) { a[3] += st[3]; a[4] += st[4]; }
+        } else {
+            for (int k = 0; k < 5; k++) {
+                d[k].q += d[k].qs;
+                d[k].r += d[k].rs;
+                if (d[k].r >= area) { d[k].r -= area; d[k].q++; }
+            }
+        }
+        if (F & F_PERSP) {
+            if (x + 1 == seg_end) { su = nu; sv = nv; }
+            else { su += dsu; sv += dsv; }
+        }
+    }
+    X->fails += fails;
+}
+
+typedef void (*SpanExtFn)(const Raster *, uint8_t *, int, int, int, const int64_t *, const int64_t *, int,
+                          const Dda *, TriExt *);
+#define SPAN_EXT_DEF(F) static void span_ext_##F(const Raster *R, uint8_t *row, int y, int x0, int x1, \
+    const int64_t *acc, const int64_t *step, int sh, const Dda *d, TriExt *X) { \
+    span_ext(R, row, y, x0, x1, acc, step, sh, d, X, F); }
+#define SPAN_EXT_ENTRY(F) [F] = span_ext_##F,
+/* every flag set with F_ZTEST or F_PERSP (F_WINDOW and F_PERSP only with F_TEXTURED) */
+#define SPAN_EXT_LIST(X) \
+    X(32) X(33) X(34) X(35) X(36) X(37) X(38) X(39) X(40) X(41) X(42) X(43) X(44) X(45) X(46) X(47) \
+    X(50) X(51) X(54) X(55) X(58) X(59) X(62) X(63) X(66) X(67) X(70) X(71) X(74) X(75) X(78) X(79) \
+    X(82) X(83) X(86) X(87) X(90) X(91) X(94) X(95) X(98) X(99) X(102) X(103) X(106) X(107) X(110) \
+    X(111) X(114) X(115) X(118) X(119) X(122) X(123) X(126) X(127)
+SPAN_EXT_LIST(SPAN_EXT_DEF)
+static const SpanExtFn span_ext_fns[128] = { SPAN_EXT_LIST(SPAN_EXT_ENTRY) };
+
 /* Returns the number of pixels written (for the frame statistics). */
-static uint32_t draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vtx *v2) {
+static uint32_t draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vtx *v2, TriExt *X) {
     uint32_t filled = 0;
     int64_t area = (int64_t)(v1->x - v0->x) * (v2->y - v0->y) - (int64_t)(v1->y - v0->y) * (v2->x - v0->x);
     if (area == 0) return 0;
@@ -274,7 +437,26 @@ static uint32_t draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vt
     /* Attributes: N_k(p) = sum_i a_ik E_i(p) = NA x + NB y + NC. */
     int flags = (R->gouraud ? F_GOURAUD : 0) | (R->textured ? F_TEXTURED : 0) |
                 (R->semi ? F_SEMI : 0) | (R->dither ? F_DITHER : 0) | (R->window ? F_WINDOW : 0);
-    int lo = R->gouraud ? 0 : 3, hi = R->textured ? 5 : 3;
+    if (R->ztest) flags |= F_ZTEST;
+    if (R->persp) {
+        /* q_i: the reciprocals shifted right together until the largest fits 16 bits. Three
+         * equal ones make U / Q the affine value, so the triangle is drawn as a plain one. */
+        int64_t mx = V[0]->rw > V[1]->rw ? V[0]->rw : V[1]->rw, q[3];
+        if (V[2]->rw > mx) mx = V[2]->rw;
+        int s = 0;
+        while ((mx >> s) >= 65536) s++;
+        for (int i = 0; i < 3; i++) { q[i] = V[i]->rw >> s; if (q[i] < 1) q[i] = 1; }
+        if (q[0] != q[1] || q[1] != q[2]) {
+            flags |= F_PERSP;
+            X->persp = 1;
+            for (int p = 0; p < 3; p++) X->pa[p] = X->pb[p] = X->pc[p] = 0;
+            for (int i = 0; i < 3; i++) {
+                int64_t c[3] = {q[i] * V[i]->a[3], q[i] * V[i]->a[4], q[i]};
+                for (int p = 0; p < 3; p++) { X->pa[p] += c[p] * A[i]; X->pb[p] += c[p] * B[i]; X->pc[p] += c[p] * C[i]; }
+            }
+        }
+    }
+    int lo = R->gouraud ? 0 : 3, hi = (R->textured && !(flags & F_PERSP)) ? 5 : 3;
     int64_t NA[5] = {0}, NB[5] = {0}, NC[5] = {0}, gmax = 0;
     for (int k = lo; k < hi; k++) {
         for (int i = 0; i < 3; i++) {
@@ -306,7 +488,15 @@ static uint32_t draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vt
         }
     }
 
-    SpanFn fn = span_fns[flags];
+    SpanFn fn = span_fns[flags & 31];
+    SpanExtFn efn = span_ext_fns[flags];   /* NULL unless F_ZTEST or F_PERSP */
+    if (flags & F_ZTEST) {
+        X->za = X->zb = X->zc = 0;
+        for (int i = 0; i < 3; i++) { X->za += V[i]->rw * A[i]; X->zb += V[i]->rw * B[i]; X->zc += V[i]->rw * C[i]; }
+        X->zqs = floor_div(X->za, area);
+        X->zrs = X->za - X->zqs * area;
+    }
+    X->area = area;
     int32_t px = 0, py = INT32_MIN;   /* where acc[] was last evaluated */
     for (int32_t y = miny; y <= maxy; y++) {
         int32_t xl = minx, xr = maxx;
@@ -327,7 +517,8 @@ static uint32_t draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vt
                 d[k].q = (int32_t)q;
                 d[k].r = n - q * area;
             }
-            span_exact(R, row, y, xl, xr, d, area, flags);
+            if (efn) efn(R, row, y, xl, xr, NULL, NULL, 0, d, X);
+            else span_exact(R, row, y, xl, xr, d, area, flags);
             continue;
         }
         if (y == py + 1) {   /* walk from the previous row start, rounding up */
@@ -341,7 +532,8 @@ static uint32_t draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vt
         }
         px = xl;
         py = y;
-        fn(R, row, y, xl, xr, acc, sx_up, sh);
+        if (efn) efn(R, row, y, xl, xr, acc, sx_up, sh, NULL, X);
+        else fn(R, row, y, xl, xr, acc, sx_up, sh);
     }
     return filled;
 }
@@ -360,9 +552,11 @@ static int list_word(const Mei *m, uint32_t addr, uint32_t *out) {
 /* Draws one polygon packet; returns 0 if it faulted. */
 static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
     int gouraud = type & 1, textured = (type >> 1) & 1, quad = (type >> 2) & 1, semi = (type >> 3) & 1;
+    int depth = (type >> 4) & 1;   /* 0x30-0x3F: a view depth word per vertex follows (docs/RENDERING.md) */
     int nv = quad ? 4 : 3;
-    int nw = (gouraud ? nv : 1) + nv + (textured ? nv : 0);
-    uint32_t w[12];
+    int nw0 = (gouraud ? nv : 1) + nv + (textured ? nv : 0);
+    int nw = nw0 + (depth ? nv : 0);
+    uint32_t w[16];
     for (int k = 0; k < nw; k++) {
         uint32_t a = addr + 4 + 4 * (uint32_t)k;
         if (!list_word(m, a, &w[k])) { mei_raise(m, MEI_FAULT_UNMAPPED, a); return 0; }
@@ -383,6 +577,11 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
         if (i == 0) tex0 = t;
         vx[i].a[3] = t & 0xFF;
         vx[i].a[4] = (t >> 8) & 0xFF;
+        vx[i].rw = 0;
+        if (depth) {   /* the reciprocal of the view depth w (16.16): 2^40 / w, at most 2^28; w <= 0 is nearest */
+            int32_t wv = (int32_t)w[nw0 + i];
+            vx[i].rw = wv >= (1 << 12) ? ((int64_t)1 << 40) / wv : ((int64_t)1 << 28);
+        }
     }
 
     Raster R;
@@ -413,16 +612,33 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
     R.upper = (planes_on(m) && (col0 >> 26 & 1)) ? 0x8000 : 0;
     R.planes = (planes_on(m) && semi) ? m : NULL;
     R.under = NULL;
+    R.ztest = depth && (m->gpu_depth & 1);
+    R.zwrite = !semi;
+    R.zoff = depth ? col0 >> 27 : 0;
+    R.zbuf = m->zbuf;
+    R.persp = depth && textured;
+    int recip = R.ztest || R.persp;   /* the triangle needs its vertex reciprocals */
 
     for (int t = 0; t < (quad ? 2 : 1); t++) {
         if ((m->gpu_status & 0xFFFF) >= GPU_TRI_LIMIT) { m->gpu_status |= GPU_STATUS_DROPPED; m->gstat.tris_dropped++; continue; }
         m->gpu_status++;
-        uint32_t n = draw_tri(&R, &vx[t], &vx[t + 1], &vx[t + 2]);
+        TriExt X;
+        X.fails = X.divs = 0;
+        X.persp = 0;
+        uint32_t n = draw_tri(&R, &vx[t], &vx[t + 1], &vx[t + 2], &X);
         int kind = gouraud | textured << 1 | semi << 2;
         m->gstat.tris++;
         if (!n) m->gstat.tris_empty++;
         m->gstat.px[kind] += n;
-        m->gpu_cycles += GPU_CYCLES_TRI + (uint64_t)n * gpu_pixel_cycles(kind);
+        /* early depth: a pixel that fails the test costs only the test */
+        m->gpu_cycles += GPU_CYCLES_TRI + (uint64_t)(n - X.fails) * gpu_pixel_cycles(kind) +
+                         (uint64_t)X.fails * GPU_CYCLES_ZFAIL;
+        if (recip) {
+            m->gstat.tris_recip++;
+            m->gpu_cycles += GPU_CYCLES_RECIP + (uint64_t)X.divs * GPU_CYCLES_DIVIDE;
+        }
+        if (R.ztest) { m->gstat.px_ztest += n; m->gstat.px_zfail += X.fails; }
+        if (X.persp) { m->gstat.px_persp += n; m->gstat.persp_divs += X.divs; }
     }
     return 1;
 }
@@ -437,7 +653,7 @@ void gpu_draw_list(Mei *m, uint32_t addr) {
         uint32_t hdr;
         list_word(m, addr, &hdr);
         uint32_t type = hdr >> 24;
-        if ((type & 0xF0) == 0x20 && !draw_poly(m, addr, type)) return;
+        if ((type & 0xE0) == 0x20 && !draw_poly(m, addr, type)) return;   /* 0x20-0x3F: polygons */
         addr = hdr & 0xFFFFFF;
     }
 }
