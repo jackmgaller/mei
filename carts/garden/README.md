@@ -30,7 +30,9 @@ up, and the main session routes it.
 ```
 carts/garden/
   README.md, layout.py, layout.png    this contract and the sketch
-  garden.akr                          the cart (controller lead)
+  garden.akr, game.akr, ...           the cart (controller lead)
+  ground/ground.akr                   the only file that imports the world (the world's
+                                      generated garden.akr would clash with the cart's own)
   worlds.txt                          carts/garden/world/garden.world.json
   world/
     STYLE.md                          the style sheet (world lead)
@@ -41,9 +43,8 @@ carts/garden/
   tests/                              harness.akr, run.sh, check.sh (controller lead)
 ```
 
-The garden is an uninstalled cart like World Viewer (its world needs NumPy to build): add it to
-`UNINSTALLED_CARTS` in the Makefile, build it with `make build/carts/garden.mei`, and give it a
-`tests/check.sh` that `make test-carts` runs.
+The garden is an installed cart: `make` builds it (with its world, which needs NumPy) and the
+shell lists it as Movement Garden. Its `tests/check.sh` runs in `make test-carts`.
 
 ## World
 

@@ -40,8 +40,8 @@ MeiNet gateway's tests, then `test_assetkit.py`, `test_worldpack.py`, `test_worl
 check-generated` runs: the generators that need only the standard library, and
 `gen_adpcm_vectors.py` when NumPy is there, into a temporary directory, compared with the
 committed files). `make test-carts` runs `carts/lantern/tests/check.sh`,
-`carts/weather/tests/check.sh` and `test-world-carts`, which builds World Viewer (and so the
-example worlds) first. A cart's scenarios are Akari files built by `tools/cart_scenario.sh` from
+`carts/weather/tests/check.sh` and `test-world-carts`, which builds World Viewer and the
+movement garden (and so their worlds) first and runs both carts' `tests/check.sh`. A cart's scenarios are Akari files built by `tools/cart_scenario.sh` from
 the cart's `tests/harness.akr` and its game; `carts/*/tests/run.sh SCENARIO FRAMES OUT` runs one
 and writes `OUT.png`.
 
@@ -64,7 +64,8 @@ Pass the tools to scripts the same way, for example
 `MEIC=build-mine/meic RUN=build-mine/mei-headless tests/run_lang_tests.sh planes`.
 
 Mei Demo, Sound Lab and World Viewer are built only on request (`make build/carts/demo.mei
-build/carts/soundlab.mei build/carts/worldview.mei`); `make` and `make web` leave them out.
+build/carts/soundlab.mei build/carts/worldview.mei`); `make` and `make web` leave them out. The
+movement garden is built by `make`, which therefore needs NumPy for its world.
 The Reference Renderer
 ([tests/reference_renderer/README.md](tests/reference_renderer/README.md)) builds its carts,
 probes and reports into `$(B)/reference_renderer/` on each run; `make test` runs its two
@@ -88,7 +89,8 @@ details; `carts/worldview/` is the example.
   the MeiNet gateway and its tests, the web cart packer, and the generators `gen_stdlib_data`,
   `gen_faces_asm`, `gen_reverb_tables`, `gen_demo_assets` and `gen_weather_tape`.
 - **NumPy** for the Asset Checker (`mei_assets.py verify`) and the World Checker, and so for
-  building a cart that uses worlds (World Viewer) and for `make test-carts`; and for every other
+  building a cart that uses worlds (Movement Garden, World Viewer), so for `make`, and for `make
+  test-carts`; and for every other
   generator. **NumPy and Pillow** for the Reference Renderer. **Pillow** too for the generators
   that draw: `gen_boot_duet`, `gen_boot_eclipse`, `gen_shell_assets`, `gen_lantern_assets`,
   `gen_orbs_assets`, `gen_weather_assets` and `meifont`. **SciPy** too for `gen_boot_duet` and

@@ -15,6 +15,7 @@ What each part's status is:
 | Placements, stand-ins, layers | specified | yes | yes: drawing, culling, layer masks |
 | Ground placements (1.1) | specified | yes | yes: drawn first, in a pass of their own |
 | Paths (1.2) | specified | yes, with an exact oracle | yes: by number and name, nearest point, point at a length, lines for debugging |
+| [Objects](#objects): entity meshes, the game's own | (not part of the format) | – | yes: culled, keyed at their nearest point, nearer from above |
 | Collision blocks (cells and entities) | specified | yes, with an exact oracle | yes: floor, ceiling, wall push, segment |
 | Entities and parameter records | specified | yes | yes: iteration, tracking, lookup by number |
 | Regions: palette variants, texture set | specified | yes | palettes loaded and blended; textures loaded at once only |
@@ -34,16 +35,17 @@ What each part's status is:
 9. [Cells](#cells)
 10. [Placements](#placements)
 11. [Ground](#ground)
-12. [Entities](#entities)
-13. [Collision blocks](#collision-blocks)
-14. [Paths](#paths)
-15. [Meshes and strings](#meshes-and-strings)
-16. [What a reader does](#what-a-reader-does)
-17. [Validation](#validation)
-18. [Precision](#precision)
-19. [Costs](#costs)
-20. [The console reader](#the-console-reader-stdlibworldpackakr)
-21. [Extensions not made](#extensions-not-made)
+12. [Objects](#objects)
+13. [Entities](#entities)
+14. [Collision blocks](#collision-blocks)
+15. [Paths](#paths)
+16. [Meshes and strings](#meshes-and-strings)
+17. [What a reader does](#what-a-reader-does)
+18. [Validation](#validation)
+19. [Precision](#precision)
+20. [Costs](#costs)
+21. [The console reader](#the-console-reader-stdlibworldpackakr)
+22. [Extensions not made](#extensions-not-made)
 
 ## Conventions
 
@@ -368,6 +370,100 @@ whose region is not loaded, in the near pass), so there is nothing to flag. A me
 is ground when the props merged into it are (the World Kit merges ground and the rest apart).
 Terrain, when it is built ([WORLDKIT.md](WORLDKIT.md), "Terrain"), is ground by default.
 
+## Objects
+
+Ground-first drawing fixes the lowest open floor. A small object on a **raised** platform, or
+floating above one, has the same trouble in the near pass: the platform's top sorts by its
+average depth, which can be nearer than the object although the object is in front of the top at
+every pixel they share. This is not part of the format (nothing in the pack changes); it is how
+the reader draws a game's objects into the near pass: an entity's mesh, a pickup, the player's
+character. The World Checker's cameras aimed at entities ([WORLDCHECKER.md](WORLDCHECKER.md),
+"Entities") found it in the example `test_room`: the coin floating 0.2 above the 3 × 2 × 3
+`ledge`, drawn with `mesh_at()`, loses a wedge to the ledge's two top triangles from cameras
+above the ledge's top and within about 4 units (21 of 201 views aimed at it, 14,466 pixels;
+depth errors up to 1.7 units); the other camera kinds never looked at it closely enough.
+
+**What the reader does.** `wp_draw_object(m, pos, yaw, radius, base)` draws the mesh as
+`mesh_at()` would, after `wp_draw()`, with three differences:
+
+1. it culls the mesh by the sphere of `radius` around `pos` against the near pass's view volume;
+2. it sorts the mesh as a unit keyed at its nearest point: `depth_key(w, wp_object_squash)` with
+   *w* the view depth of `pos` less `radius`. The object's faces keep their own order, squashed
+   `wp_object_squash` times (default 2) toward *w*, so they do not interleave with a neighbour's;
+3. while the eye is above `base` (the world height of the object's lowest point: its feet), *w*
+   is moved `wp_object_bias` units nearer (default 1.5), but never nearer than the near plane.
+
+Why the bias is safe from above: with the eye and the object both above a level plane, any line
+of sight meets the object before the plane, so everything wholly below the object's base (the
+platform it stands on, its sides, the floor and anything lower) is truly behind it. Moving the
+object nearer can only be wrong against faces above its base. From below its base the platform's
+top faces away and is culled, and its sides can truly hide the object, so the object sorts by its
+nearest point alone.
+
+Why not the other ways, measured with the World Checker on a test world of eight objects (a coin
+above a 4 × 4 platform, two above a 12 × 12 platform, one on the ground 0.3 behind a thin wall,
+two 0.5 apart, one under a slab, and a 1.85-unit figure of four boxes standing on the large
+platform; 1,701 cameras at 0.6 to 6 units, pitches −60° to +15°; `tests/worldverify/worlds.py`,
+`object_world()`). Pixels where something was drawn over an object truly in front of it ("drawn
+over") and where an object was drawn over a face truly in front of it ("shows through"), in
+views (pixels):
+
+| | `mesh_at()` | the rule | bias alone (squash 1) | squash 4 | bias 0.75 | bias 2.5 |
+|---|---|---|---|---|---|---|
+| on the 4 × 4 platform: drawn over | 31 (6,687) | 0 | 0 | 0 | 0 | 0 |
+| on the 12 × 12 platform (two): drawn over | 152 (35,192) | 89 (5,599) | 54 (1,285) | 60 (1,956) | 104 (8,196) | 58 (1,535) |
+| behind the thin wall: shows through | 6 (88) | 153 (43,639) | 180 (65,945) | 166 (63,994) | 69 (13,731) | 163 (43,927) |
+| the pair, the coin under the slab | 0 | 0 | 70 (70,945) | 2 (17) | 0 | 2 (17) |
+| the figure: drawn over | 156 (32,694) | 78 (4,929) | 85 (5,929) | 26 (1,139) | 93 (8,861) | 47 (1,836) |
+| the figure: its own faces | 28 (2,522) | 24 (2,166) | 30 (2,524) | 33 (9,712) | 24 (2,166) | 25 (2,167) |
+
+- *A fixed bias without the key* (squash 1) pushes objects near the camera into the table's
+  first bucket: two coins within the bias of the near plane lose their order (70 views). Keying
+  each object as a unit at its nearest point keeps them in order there.
+- *A bias always*, not only from above, draws the coin over the ledge's side from cameras below
+  the ledge's top (`test_room`: 8 of 240 views, 897 pixels). *A bias of the object's size* (twice
+  its radius, from above) is enough for `test_room`'s ledge but ties the fix to the object rather
+  than to the face under it: the coin's 0.6 left 4,829 pixels drawn over coins in an earlier,
+  coins-only version of the test world, against 396 with 1.5, and a character's would be larger
+  than wanted.
+- *More squash* (4) puts the figure's own faces into a quarter of the buckets: four times the
+  pixels of the figure drawn wrongly over itself. *A larger bias* shows more through thin walls;
+  a smaller one leaves more of the large platform over its coins.
+
+**What it makes right.** From an eye above the object's base, every face wholly below the base
+whose average depth lies less than `wp_object_bias` + `radius` nearer than the object's centre:
+in practice a platform top up to about 4 units across (`test_room`'s 3 × 3 ledge: 0 errors from
+720 cameras at 0.6 to 10 units, where `mesh_at()` gives 54 views and 13,768 pixels), the floor,
+the platform's sides; and objects close together, which sort as units.
+
+**What it does not handle.**
+
+- A face above the object's base, truly in front of it and less than about `wp_object_bias` +
+  `radius` in depth from it, from an eye above the base: a thin wall, a post or railing, a
+  platform's edge rising above the object's feet, the underside or top of a platform seen through
+  from above, another object's mesh that is not drawn with `wp_draw_object()`. The object shows
+  through it (the coin 0.3 behind the wall above).
+- A platform top whose average depth lies farther than the bias from the object on it: tops more
+  than about 4 units across. Split them (the Asset Kit's `mesh` with smaller faces), or raise
+  `wp_object_bias` for that game, accepting more of the case above.
+- An object sunk into what it stands on, or standing on a slope that rises above its base nearby
+  (the slope is not wholly below the base).
+- From below the object's base, a large face above the base and behind the object sorts by
+  average depth as before.
+- The object's own faces still sort among themselves by average depth, squashed: a non-convex
+  character needs to be modelled for that, as any mesh does (the Asset Checker).
+
+So the authoring rule, with the ground's: **objects stand on platform tops no more than about 4
+units across a face, and keep 1.5 units (`wp_object_bias`) clear of thin geometry in front of
+them where the camera looks down on them.**
+
+`wp_draw_entities()` draws the live entities' meshes of the 3 × 3 near cells this way, each culled
+and keyed by its mesh's bounds (`wp_mesh_bounds()`, a scan of its vertices each time); a game
+drawing its own character works the bounds out once (`wp_mesh_bounds(HERO)`: radius and lowest
+point) and passes them with the character's position every frame:
+`wp_draw_object(HERO, pos, yaw, b.x, pos.y + b.y)`. The same call suits any object the game
+draws at a world position; `wp_object_bias` and `wp_object_squash` can be set before each call.
+
 ## Entities
 
 64 bytes; game data the reader iterates but does not interpret.
@@ -646,7 +742,8 @@ sphere: first the **ground pass**, their ground placements, flushed when any was
 ([Ground](#ground)); then the **near pass**, the rest. A sphere is culled when it lies wholly
 outside one of the six planes of the view volume. The near set is convex, so along any line of
 sight near geometry comes before far; it is chosen around the camera, which may trail the player.
-A near cell whose region is not loaded is drawn as its stand-in, in the near pass.
+A near cell whose region is not loaded is drawn as its stand-in, in the near pass. The game's
+objects join the near pass after it ([Objects](#objects)).
 
 **Paths.** A reader answers the two queries above ([Paths](#paths)) on a path it holds by
 number or by name.
@@ -748,6 +845,9 @@ Drawing, cycles:
 | the demonstration views: 4 near cells, 8–11 placements (ground of 64 quads a cell), a stand-in | 84,000–93,000 for 310–460 triangles |
 | the ground pass, in a view that draws ground (the flush, a second look at the near cells) | about 2,000 (2,068 and 2,289 on average over the example worlds' views) |
 | a 1.1 pack without ground, against the 1.0 reader | 58–88 more a view (the example worlds) |
+| `wp_draw_object()` with the bounds known, against `mesh_at()` (the example coin: 22 vertices, 40 triangles) | 5,052 against 4,801 drawn; 235 culled (`mesh_at()` out of view: 2,603) |
+| `wp_mesh_bounds()` | about 17 a vertex and 260 more (the coin: 710) |
+| `wp_draw_entities()`, per entity with a mesh (the cell walk, layer test, bounds and `wp_draw_object()`) | the coin: 6,201 drawn, 1,384 culled |
 
 The fixed cost per placement drawn matters for budgets: 100 small props drawn cost 50,000 cycles
 before their faces. Placements should be assets of tens of faces or more; scatter of tiny props is
@@ -767,8 +867,12 @@ largest radius (2). World positions in and out are `fixed` world coordinates.
 | `wp_layer_count()`, `wp_layer_name(id)`, `wp_layer_find(name)`, `wp_layer_on(id)`, `wp_layer_set(id, on)`, `wp_cell_mask(c)` | layers (exclusive groups applied) |
 | `wp_pad()` | the header's `pad`: how far walls are copied past a cell, the largest radius `wp_push` answers for exactly |
 | `wp_draw(eye, yaw, pitch)` | the far, ground and near passes; leaves the near camera set, relative to `wp_view_origin()` |
+| `wp_draw_object(m, pos, yaw, radius, base) -> bool` | after `wp_draw()`: an object's mesh at a world position, culled by its sphere, keyed at its nearest point, nearer while the eye is above `base` ([Objects](#objects)) |
+| `wp_draw_entities() -> s32`, `wp_entity_draw(e) -> bool` | the live entities' meshes in the near cells (or one entity's mesh) through `wp_draw_object()`; how many were drawn |
+| `wp_mesh_bounds(m) -> vec2` | a mesh's radius around its origin and its lowest vertex's height (a scan) |
 | `wp_view_origin()` | where this frame is drawn around: draw the game's own meshes at `pos − wp_view_origin()` |
 | `wp_clip_near`, `wp_near_far`, `wp_far_ring`, `wp_region_loaded`, `wp_ground_first` | settings (0.1, 1.5 cells, 3, −1 = any, true; false draws ground in the near pass, as 1.0 did) |
+| `wp_object_bias`, `wp_object_squash` | `wp_draw_object()`'s settings: units nearer from above (1.5); squash of the object's own depths (2; 1: no key, the bias alone) |
 | `wp_stats` | near cells, placements looked at and drawn, stand-ins drawn, ground placements drawn, last `wp_draw` |
 | `wp_floor(p, above)`, `wp_ceiling(p, below)`, `wp_push(p, radius)`, `wp_ray(a, b)` | collision in the world; answers in `wp_hit` |
 | `wp_coll_floor`, `wp_coll_ceiling`, `wp_coll_push`, `wp_coll_ray` | the same against one block, in its frame (an entity's: `wp_entity_coll(e)`) |
@@ -804,3 +908,10 @@ version (a reserved field or a flag) unless noted.
   a lower one) and ground per face rather than per placement. Neither would stop ground from
   being drawn under what it truly hides, which is the larger limit ([Ground](#ground)).
 - **Compression.** ROM is read in place, so packs are stored as they are used.
+- **Entity bounds.** The entity record's reserved words could hold its mesh's radius and lowest
+  point, which `wp_draw_entities()` finds by scanning the mesh every frame (710 cycles for the
+  example coin, about an eighth of drawing it). A minor version: a reader would scan where they are
+  zero.
+- **A sort hint per entity or placement** (a bias of its own). The reader's rule needs none for
+  the cases it handles, and a hint on the object would not fix the thin wall in front of it, which
+  depends on the wall.

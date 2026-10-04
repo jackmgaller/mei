@@ -727,6 +727,34 @@ that such a name is a path: `name` parameters mean what the game says. The reade
 and their costs are in [WORLDPACK.md](WORLDPACK.md#paths): a grind check against a rail of a few
 segments is about 300–450 cycles.
 
+### Objects on platforms
+
+Entities' meshes and the game's own objects (pickups, the player's character) are drawn after
+`wp_draw()` into the near pass, and there a raised platform's top sorts by its average depth, which
+can be nearer than an object standing or floating on it: the example `test_room`'s coin above the
+`ledge` lost a wedge to the ledge's top from cameras close above it. The reader's
+`wp_draw_object()` and `wp_draw_entities()` draw an object as a unit keyed at its nearest point,
+and 1.5 units nearer while the eye is above the object's base, which is never wrong against what
+lies wholly below the base (WORLDPACK.md, "Objects", has the rule, the measurements and every case
+it does not handle). It is the game's way of drawing entities: World Viewer and the World
+Checker's verification cart use `wp_draw_entities()`.
+
+**The rule for authors: a platform top that objects stand or float on is no more than about 4
+units across a face (split larger tops into smaller faces), and an object keeps about 1.5 units
+(`wp_object_bias`) clear of thin geometry in front of it (walls, posts, railings, the platform
+above it) where the camera looks down on it.** Closer than that, the object shows through. The
+World Checker aims cameras at every entity with a mesh (WORLDCHECKER.md, "Entities") and reports
+both: something drawn over an entity truly in front of it, and an entity drawn over a face truly
+in front of it.
+
+An object's own mesh is checked by its asset's policy, which should look at it the way the game
+will: `test_room`'s coin now asks for 24 yaws, five pitches (−0.9 to 0.9 radians) and three
+distances (360 views; it had four level views at one distance). That policy found a fault in it:
+the Asset Kit's `cylinder` fans each cap from one rim vertex, and those sliver triangles sort far
+from where they meet the 0.08-unit rim, which was drawn over the caps in 9 pixels of 5 views. The
+coin is now an explicit `mesh` whose caps fan from their centres (22 vertices, 40 triangles; it
+passes); the World Checker decides 60.0% of its pixels in the views aimed at it, from 57.5%.
+
 ## Collision
 
 **Decided: authored separately as simpler geometry.** Render meshes are detailed (window frames,
@@ -915,8 +943,8 @@ fn init() { assert(world_test_room_load()) }
    report-only unless the recipe says `enforce`, and make prints two lines per world:
 
    ```
-   world test_room: 1 cell, 10,712 bytes, 0 warnings -> build/worlds/examples/worlds/test_room
-     World Checker (report): 132 views, 0 hard failures, 0 over thresholds; peaks 45 tris, CPU 40,573, GPU 197,952 cycles; build/worlds/examples/worlds/test_room/verification/world-check.json
+   world test_room: 1 cell, 10,888 bytes, 0 warnings -> build/worlds/examples/worlds/test_room
+     World Checker (report): 333 views, 0 hard failures, 0 over thresholds; peaks 49 tris, CPU 41,830, GPU 315,256 cycles; build/worlds/examples/worlds/test_room/verification/world-check.json
    ```
 
    An invalid recipe stops make with the kit's errors, one per line (`file:line:column: JSON
@@ -927,7 +955,10 @@ fn init() { assert(world_test_room_load()) }
    built from different game schemas, are an error;
 3. compiles the cart with `meic -I build/cart-worlds/NAME`: an import that is not next to the
    importing file is looked for there before the standard library
-   ([LANGUAGE.md](LANGUAGE.md#building-and-running)).
+   ([LANGUAGE.md](LANGUAGE.md#building-and-running)). Because the importing file's own folder
+   comes first, a world must not share its name with a file in the folder that imports it: a
+   world named `garden` generates `garden.akr`, which `carts/garden/garden.akr` would shadow.
+   The garden imports its world from `carts/garden/ground/ground.akr` for this reason.
 
 A world is rebuilt when its recipe, a cell file, its game schema, its ID lock file, an asset
 recipe, its cell or asset folder (a file added or removed), or the kit's Python changes:
@@ -953,11 +984,13 @@ layer (`wp_variant_name`, `wp_layer_name`), and draws the world's paths as yello
 look; L and R: down and up; A: walk or fly; B: next palette variant; SELECT and X: choose a layer
 and switch it; START: next world; Y: hide the overlay.
 
-**Open** (found while writing World Viewer; neither is built): a helper that draws the live
-entities' meshes in the near cells, which every game that draws entities writes for itself
-(World Viewer's `draw_entities()`, the World Checker's verification cart); and a way to call
-"the open world's" generated functions without a branch per world (World Viewer's
-`world_load(k)` chooses between `world_test_room_load()` and `world_two_districts_load()`).
+It draws the live entities' meshes (the coin) with `wp_draw_entities()`
+([Objects on platforms](#objects-on-platforms)).
+
+**Open** (found while writing World Viewer; not built): a way to call "the open world's"
+generated functions without a branch per world (World Viewer's `world_load(k)` chooses between
+`world_test_room_load()` and `world_two_districts_load()`). The other item found then, a helper
+that draws the live entities' meshes in the near cells, is `wp_draw_entities()`.
 
 ## Open questions
 

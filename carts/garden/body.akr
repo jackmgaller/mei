@@ -1,0 +1,100 @@
+// The player drawn simply: a box the body's size with a nose toward its facing, coloured by
+// what it is doing, and a wing over it while gliding, both drawn as objects (wp_draw_object).
+
+struct BoxMesh {
+    hdr: Mesh
+    v: [16]vec4
+    f: [12]Face
+}
+
+var body_mesh: BoxMesh
+var wing_mesh: BoxMesh
+
+// The six faces of a box of corners 0-7 (bit 0: +x, bit 1: +y, bit 2: +z), each in strip order
+// seen from outside: bottom-left, bottom-right, top-left, top-right.
+const BOX_FACES: [24]u16 = [1, 5, 3, 7,  4, 0, 6, 2,  5, 4, 7, 6,  0, 1, 2, 3,  2, 3, 6, 7,  1, 0, 5, 4]
+
+fn box_into(m: *BoxMesh, k: s32, lo: vec3, hi: vec3, colour: u32) {
+    for c in 0..8 {
+        var x = lo.x
+        var y = lo.y
+        var z = lo.z
+        if c & 1 != 0 { x = hi.x }
+        if c & 2 != 0 { y = hi.y }
+        if c & 4 != 0 { z = hi.z }
+        m.v[k * 8 + c] = vec4(x, y, z, 1.0)
+    }
+    for f in 0..6 {
+        let face = &m.f[k * 6 + f]
+        face.flags = (FACE_QUAD | FACE_DOUBLE) as u8
+        for j in 0..4 {
+            face.idx[j] = (BOX_FACES[f * 4 + j] as s32 + k * 8) as u16
+            face.col[j] = colour
+        }
+    }
+}
+
+fn mesh_header(m: *BoxMesh, boxes: s32) {
+    m.hdr.nverts = (boxes * 8) as u16
+    m.hdr.nfaces = (boxes * 6) as u16
+    m.hdr.verts = 16
+    m.hdr.faces = 16 + 16 * 16
+    m.hdr.windows = 0
+}
+
+fn body_init() {
+    let r = BODY_RADIUS
+    box_into(&body_mesh, 0, vec3(-r, 0.0, -r), vec3(r, BODY_HEIGHT, r), rgb(230, 90, 60))
+    box_into(&body_mesh, 1, vec3(-0.1, BODY_HEIGHT * 0.6, r), vec3(0.1, BODY_HEIGHT * 0.75, r + 0.25), rgb(250, 230, 120))
+    mesh_header(&body_mesh, 2)
+    box_into(&wing_mesh, 0, vec3(-1.4, 0.0, -0.3), vec3(1.4, 0.06, 0.4), rgb(120, 200, 240))
+    mesh_header(&wing_mesh, 1)
+}
+
+fn state_colour(s: St) -> u32 {
+    if s == St.WallSlide { return rgb(250, 160, 40) }
+    if s == St.WallKick {
+        if pl.kick_good { return rgb(120, 240, 120) }
+        return rgb(200, 200, 90)
+    }
+    if s == St.Glide { return rgb(110, 170, 250) }
+    if s == St.LedgeHang || s == St.LedgeClimb { return rgb(200, 120, 230) }
+    if s >= St.PoundSpin && s <= St.PoundLand { return rgb(140, 90, 60) }
+    if s == St.Dive || s == St.BellySlide { return rgb(240, 120, 170) }
+    return rgb(230, 90, 60)
+}
+
+var body_test_mode: s32       // the tests: 0 as an object, 1 on top of everything, 2 mesh_at
+var body_bounds: vec2          // wp_mesh_bounds(): radius and lowest point, worked out once
+var wing_bounds: vec2
+
+// The body and the wing as objects (wp_draw_object), based at the feet, not at the floor: so a
+// platform's top the player stands on never cuts it from a camera above it.
+fn body_draw() {
+    if body_bounds.x == 0.0 {
+        body_bounds = wp_mesh_bounds(&body_mesh.hdr)
+        wing_bounds = wp_mesh_bounds(&wing_mesh.hdr)
+    }
+    let c = state_colour(pl.st)
+    for f in 0..6 {
+        for j in 0..4 { body_mesh.f[f].col[j] = c }
+    }
+    var p = pl.pos
+    if pl.st == St.Crouch || pl.st == St.CrouchSlide {
+        // squashed: draw half the body sunk into the floor
+        p.y -= BODY_HEIGHT * 0.4
+    }
+    if body_test_mode == 1 {                   // the tests: always in front
+        depth_bias(-1000)
+        mesh_at(&body_mesh.hdr, p - wp_view_origin(), pl.yaw)
+        depth_bias(0)
+    } else if body_test_mode == 2 {            // the tests: as before the object rule
+        mesh_at(&body_mesh.hdr, p - wp_view_origin(), pl.yaw)
+    } else {
+        let _ = wp_draw_object(&body_mesh.hdr, p, pl.yaw, body_bounds.x, pl.pos.y + body_bounds.y)
+    }
+    if pl.st == St.Glide {
+        let w = pl.pos + vec3(0.0, BODY_HEIGHT + 0.1, 0.0)
+        let _ = wp_draw_object(&wing_mesh.hdr, w, pl.yaw, wing_bounds.x, w.y + wing_bounds.y)
+    }
+}

@@ -86,10 +86,12 @@ $(foreach w,$(WORLD_RECIPES),$(eval $(call WORLD_RULE,$(w))))
 $(foreach c,$(WORLD_CARTS),$(eval $(call WORLD_CART_RULE,$(c))))
 -include $(foreach w,$(WORLD_RECIPES),$(dir $(call WORLD_BUILT,$(w)))build.d)
 
-# Part of test-carts: World Viewer's scripted run, then the rules above (tests/world_carts.sh).
+# Part of test-carts: World Viewer's scripted run, the movement garden's scenarios, then the
+# rules above (tests/world_carts.sh).
 .PHONY: test-world-carts
-test-world-carts: $(B)/carts/worldview.mei
+test-world-carts: $(B)/carts/worldview.mei $(B)/carts/garden.mei
 	MEIC=$(B)/meic RUN=$(B)/mei-headless WORLDS=$(B)/cart-worlds/worldview carts/worldview/tests/check.sh
+	MEIC=$(B)/meic RUN=$(B)/mei-headless WORLDS=$(B)/cart-worlds/garden carts/garden/tests/check.sh
 	B=$(B) PYTHONDONTWRITEBYTECODE=1 tests/world_carts.sh
 test-carts: test-world-carts
 

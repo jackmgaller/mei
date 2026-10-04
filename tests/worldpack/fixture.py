@@ -59,6 +59,51 @@ def box_mesh(lo, hi, colour):
     return m.pack()
 
 
+def tri_box_mesh(lo, hi, colour):
+    """A closed box of 12 triangles, each side split along the diagonal the Asset Kit uses."""
+    m = meshlib.Mesh()
+    x0, y0, z0 = lo
+    x1, y1, z1 = hi
+    ctr = [(lo[k] + hi[k]) / 2 for k in range(3)]
+    for a, b, c, d in ([(x0, y0, z0), (x1, y0, z0), (x1, y0, z1), (x0, y0, z1)],
+                       [(x0, y1, z1), (x0, y1, z0), (x1, y1, z0), (x1, y1, z1)],
+                       [(x0, y0, z0), (x1, y0, z0), (x1, y1, z0), (x0, y1, z0)],
+                       [(x0, y0, z1), (x1, y0, z1), (x1, y1, z1), (x0, y1, z1)],
+                       [(x0, y0, z0), (x0, y0, z1), (x0, y1, z1), (x0, y1, z0)],
+                       [(x1, y0, z0), (x1, y0, z1), (x1, y1, z1), (x1, y1, z0)]):
+        for t in ((a, b, c), (a, c, d)):
+            u = [t[1][k] - t[0][k] for k in range(3)]
+            v = [t[2][k] - t[0][k] for k in range(3)]
+            n = (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
+            fc = [sum(p[k] for p in t) / 3 - ctr[k] for k in range(3)]
+            if sum(n[k] * fc[k] for k in range(3)) > 0:      # a front face's normal points in
+                t = (t[0], t[2], t[1])
+            m.tri([m.vertex(*p) for p in t], [colour])
+    return m.pack()
+
+
+def coin_mesh(colour=meshlib.rgb(250, 210, 60), segments=10, r=0.3, h=0.08):
+    """An upright disc like the example worlds' coin (radius 0.3, 0.08 thick, facing z), its
+    caps fanned from their centres: a convex mesh, its origin at its centre."""
+    m = meshlib.Mesh()
+    rim = [(r * math.cos(math.tau * k / segments), r * math.sin(math.tau * k / segments)) for k in range(segments)]
+
+    def tri(a, b, c):
+        # Mei's front faces: (b - a) x (c - a) points into the mesh
+        u = [b[k] - a[k] for k in range(3)]
+        v = [c[k] - a[k] for k in range(3)]
+        n = (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
+        if sum(n[k] * (a[k] + b[k] + c[k]) for k in range(3)) > 0:
+            b, c = c, b
+        m.tri([m.vertex(*a), m.vertex(*b), m.vertex(*c)], [colour])
+    for k in range(segments):
+        (x0, y0), (x1, y1) = rim[k], rim[(k + 1) % segments]
+        for z in (-h / 2, h / 2):
+            tri((0, 0, z), (x0, y0, z), (x1, y1, z))
+        _face(m, [(x0, y0, -h / 2), (x1, y1, -h / 2), (x1, y1, h / 2), (x0, y0, h / 2)], colour, (0, 0, 0))
+    return m.pack()
+
+
 def ramp_mesh(x0, x1, z0, z1, h, colour):
     """A wedge rising from y 0 at x0 to y h at x1 (its slope, two sides and the back)."""
     m = meshlib.Mesh()

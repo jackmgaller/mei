@@ -1,0 +1,26 @@
+// The movement garden - where the platformer's movement is tuned (docs/PLATFORMER.md;
+// carts/garden/README.md is the contract between the teams building it).
+//
+// Stick: run. A: jump (again on landing: double, then third; hold through the apex of the
+// double or third for the glider). B: dive (A or B on landing: roll out). R: crouch; while
+// running, a crouch slide, then A for a long jump; crouched, A for a backflip; in the air, a
+// ground pound. Into a wall in the air: slide down it, A to kick off (early is better). At a
+// ledge: hang, then stick toward it or A to climb, R to drop. Right stick (or the d-pad): turn
+// the camera; L: behind the player. Y: back to the start.
+// START: the tuning menu (d-pad: choose and change, X: ten steps, Y: the default).
+// SELECT: the readout (timing and state, state, none).
+//
+// This file is the cart's entry point; the game is in game.akr so that the tests can import
+// it with scripted input (tests/).
+cart "Movement Garden", "MEI-GARDEN"
+
+const TEST = 0
+
+// Input sources (test entry points replace these with scripted input).
+fn input_pad(_f: s32) -> u32 { return PAD1 }
+fn input_stick(_f: s32) -> vec2 { return stick() }
+fn input_look(_f: s32) -> vec2 { return stick2() }
+fn test_init() {}
+fn test_hook(_f: s32) {}
+
+import "game.akr"

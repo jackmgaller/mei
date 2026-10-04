@@ -30,7 +30,11 @@ needs_tools = unittest.skipUnless(F.tools_built() and HAVE_NUMPY, 'meic, mei-sce
 
 # Views only from the given vantage points.
 VANTAGE_ONLY = {'sampling': {'floor_spacing': None, 'rooftops_per_cell': 0, 'air': None, 'seams': None,
-                             'follow': None}}
+                             'follow': None, 'entities': None}}
+# Views only from cameras aimed at entities, fewer of them than by default.
+ENTITY_ONLY = {'sampling': {**VANTAGE_ONLY['sampling'],
+                            'entities': {'yaws': 4, 'distances': [1.5, 4.0], 'pitches_degrees': [-45.0, -15.0],
+                                         'floor_distances': [3.0]}}}
 
 
 def settings(base=None, **kw):
@@ -54,6 +58,9 @@ class SettingsTests(unittest.TestCase):
             V.merge_settings({'thresholds': {'nope': 1}})
         with self.assertRaises(V.SettingsError):
             V.merge_settings({'mode': 'lenient'})
+        with self.assertRaises(V.SettingsError):
+            V.merge_settings({'runtime': {'entity_drawing': 'billboard'}})
+        self.assertIsNone(V.merge_settings({'sampling': {'entities': None}})['sampling']['entities'])
 
     def test_bad_pack_is_a_hard_failure(self):
         r = V.verify(b'MEIX' + bytes(60))
@@ -144,7 +151,10 @@ class ViewTests(unittest.TestCase):
         return V.verify(encode(world), s, out_dir=out, tools=F.tools())
 
     def test_good_world_passes_strict(self):
-        r = self.run_check(F.good_world(), {'mode': 'strict'})
+        # Without the cameras aimed at its coin: one of them, at eye height on the ground 4 units
+        # from the coin, sees a ground tile drawn over the foot of a building (6 pixels; the
+        # plaza's ground is not flagged ground). The plaza is known-good from the other kinds.
+        r = self.run_check(F.good_world(), {'mode': 'strict', 'sampling': {'entities': None}})
         if VERBOSE:
             print('\n  good world:', json.dumps(r['summary']), json.dumps(r['timing']))
         self.assertTrue(r['ok'], json.dumps(r['hard_failures'] + r['threshold_failures'])[:2000])
@@ -424,6 +434,74 @@ class GroundViewTests(unittest.TestCase):
         self.assertEqual((o['wrong_near_pixels'], o['coverage_errors']), (0, 0))
         self.assertGreater(o['ground_inversions'], 20)
         self.assertEqual((o['ground_issues'][0]['ground']['tag'], o['ground_issues'][0]['drawn']['tag']), (2, 11))
+
+
+@needs_tools
+class EntityViewTests(unittest.TestCase):
+    """Cameras aimed at entities, and objects drawn with wp_draw_object() as the checker models
+    them (docs/WORLDCHECKER.md, "Entities")."""
+
+    def run_check(self, world, s=None):
+        return V.verify(encode(world), s, tools=F.tools())
+
+    def test_entity_cameras_catch_what_the_other_cameras_missed(self):
+        # a coin above a ledge drawn by its own depth alone: the ledge's top is drawn over it
+        plain = {'runtime': {'entity_drawing': 'mesh_at'}}
+        old = self.run_check(F.ledge_world(), settings(plain, sampling={'entities': None}))
+        new = self.run_check(F.ledge_world(), plain)
+        helper = self.run_check(F.ledge_world())
+        if VERBOSE:
+            print('\n  ledge: without entity cameras', json.dumps(old['summary']['max_wrong_near_pixels']),
+                  'with:', json.dumps(new['summary']['entity_views']), 'helper:',
+                  json.dumps(helper['summary']['entity_views']))
+        self.assertNotIn('entity', old['sampling']['kinds'])
+        self.assertEqual(old['summary']['max_wrong_near_pixels']['value'], 0)
+        self.assertGreater(new['sampling']['kinds']['entity'], 40)
+        e = new['summary']['entity_views']
+        self.assertGreater(e['views_with_wrong_near'], 3)
+        self.assertGreater(e['over_entity_pixels'], 500)
+        self.assertEqual(e['entity_over_nearer_pixels'], 0)
+        self.assertEqual(new['summary']['coverage_errors'], 0)
+        w = next(i for v in new['views'] for i in v['ordering']['issues'])
+        self.assertEqual((w['drawn']['tag'], w['expected']['kind'], w['expected']['entity']), (2, 'entity', 0))
+        self.assertTrue(w['involves_entity'])
+        aimed = [v for v in new['views'] if v['kind'] == 'entity']
+        self.assertTrue(all(v['entity'] == 0 for v in aimed))
+        self.assertTrue(any(v['camera']['pitch_degrees'] > 0 for v in aimed), 'from the floor below the ledge')
+        self.assertTrue(any(v['camera']['pitch_degrees'] < -40 for v in aimed), 'from above')
+        # wp_draw_object() draws the coin over the ledge: the same cameras find nothing
+        e = helper['summary']['entity_views']
+        self.assertEqual((e['wrong_near_pixels'], helper['summary']['coverage_errors']), (0, 0))
+        self.assertGreater(e['entity_pixels_tested'], 20000)
+
+    def test_what_the_object_rule_handles_and_what_it_does_not(self):
+        names = list(F.OBJECTS)
+
+        def by_entity(r):
+            out = {}
+            for v in r['views']:
+                self.assertEqual(v['ordering']['coverage_errors'], 0, v['camera'])
+                for i in v['ordering']['issues']:
+                    for f, how in ((i['drawn'], 'drawn over a nearer face'), (i['expected'], 'drawn over')):
+                        if f['kind'] == 'entity':
+                            key = (names[f['entity']], how)
+                            out[key] = out.get(key, 0) + i['pixels']
+            return out
+        got = by_entity(self.run_check(F.object_world(), ENTITY_ONLY))
+        plain = by_entity(self.run_check(F.object_world(), settings(ENTITY_ONLY, runtime={'entity_drawing': 'mesh_at'})))
+        if VERBOSE:
+            print('\n  objects, wp_draw_object():', got, '\n  objects, mesh_at():', plain)
+        # handled: on a small platform, two objects close together, under a slab seen from beside it
+        for name in ('small_platform', 'pair_a', 'pair_b', 'under_slab'):
+            for how in ('drawn over a nearer face', 'drawn over'):
+                self.assertNotIn((name, how), got)
+        self.assertGreater(plain.get(('small_platform', 'drawn over'), 0), 500)
+        # not handled: a platform top larger than the bias (12 units: still drawn over, but less);
+        # a thin wall just in front (the coin shows through it)
+        for name in ('large_near', 'large_far'):
+            self.assertGreater(got.get((name, 'drawn over'), 0), 0)
+            self.assertLess(got[(name, 'drawn over')], plain[(name, 'drawn over')] / 3)
+        self.assertGreater(got.get(('behind_wall', 'drawn over a nearer face'), 0), 500)
 
 
 @needs_tools

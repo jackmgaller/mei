@@ -1,0 +1,287 @@
+// The camera's scenarios (numbered 100-199), run by harness.akr; check.sh runs the ones
+// camera_cases.sh lists. They use the harness's helpers: place(), pad_v, stick_v, expect(),
+// note(), done(), seen_at(), was(), mark() and apex.
+//
+// All of them run the camera unlocked (cam.lock false), so the stick is turned by the camera's
+// yaw as in play: cc_stick() gives the stick for a direction in the world. Every frame,
+// cc_watch() checks that the eye can see the player's head (a wp_ray from the head to the eye
+// finds nothing) and keeps the largest step of the eye in a frame. A frame where something came
+// between them pulls the eye in at once (a snap): those are counted, not measured.
+
+var cc_prev: vec3              // the eye and the feet the frame before
+var cc_prev_feet: vec3
+var cc_step: fixed             // the largest step of the eye in a frame
+var cc_extra: fixed            // the largest step of the eye beyond the feet's in a frame
+var cc_cost: s32               // the camera's largest cost in a frame, cycles
+var cc_snaps: s32              // frames the eye was pulled in at once by more than 0.5 m
+var cc_reach: fixed
+var cc_frames: s32             // frames watched
+var cc_y: fixed
+var cc_n: s32
+
+const KICK_ALLEY: vec3 = vec3(26.5, 0.0, 106.0)
+
+// The stick that runs toward world heading `a` (yaw) at `m` of full tilt, through the camera.
+fn cc_stick(a: fixed, m: fixed) -> vec2 {
+    let d = wrap_angle(a - cam.yaw)
+    return vec2(sin(d) * m, cos(d) * m)
+}
+
+fn cc_place(p: vec3, yaw: fixed) {
+    cam.lock = false
+    place(p, yaw)
+    cc_prev = cam.eye
+    cc_prev_feet = pl.pos
+    cc_reach = cam.reach
+}
+
+// After setting cam.yaw by hand: place the eye again, from where the frames are measured.
+fn cc_moved() {
+    cam.reach = 1000.0
+    cam_place()
+    cc_prev = cam.eye
+    cc_reach = cam.reach
+}
+
+// Each frame: the eye sees the head; the steps the eye takes.
+fn cc_watch(f: s32) {
+    if wp_ray(cam_head(), cam.eye) {
+        expect(false, "the eye sees the head, t", wp_hit.t)
+    }
+    if f > 0 && cam.reach < cc_reach - 0.5 {
+        cc_snaps += 1
+    } else if f > 0 {
+        let s = length(cam.eye - cc_prev)
+        cc_step = max(cc_step, s)
+        cc_extra = max(cc_extra, s - length(pl.pos - cc_prev_feet))
+    }
+    cc_reach = cam.reach
+    cc_cost = max(cc_cost, cam.cycles)
+    cc_frames += 1
+    cc_prev = cam.eye
+    cc_prev_feet = pl.pos
+}
+
+// The player's middle is within `a` radians of the middle of the view.
+fn cc_framed(a: fixed) -> bool {
+    let cp = cos(cam.pitch)
+    let fw = vec3(sin(cam.yaw) * cp, sin(cam.pitch), cos(cam.yaw) * cp)
+    let v = pl.pos + vec3(0.0, 0.8, 0.0) - cam.eye
+    let l = length(v)
+    if l < 0.3 { return false }
+    return dot(v / l, fw) >= cos(a)
+}
+
+fn cc_report() {
+    note("frames watched, eye always clear", fixed(cc_frames))
+    note("largest eye step m (not snaps)", cc_step)
+    note("snaps", fixed(cc_snaps))
+    note("camera cost, largest, thousand cycles", fixed(cc_cost / 100) / 10)
+}
+
+fn camera_case_init() -> bool {
+    match SCENARIO {
+        100 => {
+            // the office's south face (z 94) on the left; the camera starts looking south-east,
+            // so its eye would be inside the office
+            name = "camera: run east along the office's south wall"
+            cc_place(vec3(30.0, 0.0, 93.0), EAST)
+            cam.yaw = 2.36
+            cc_moved()
+        }
+        101 => {
+            name = "camera: run north past kick wall 4, looked at across it"
+            cc_place(vec3(48.7, 0.0, 32.0), NORTH)
+            cam.yaw = 0.9
+            cc_moved()
+        }
+        102 => { name = "camera: kick alley, kicks up"; cc_place(vec3(25.4, 0.0, 105.0), EAST) }
+        103 => { name = "camera: the kick alley's zone takes over and lets go"; cc_place(vec3(26.5, 0.0, 84.0), NORTH) }
+        104 => {
+            name = "camera: turns behind a runner, not a stander"
+            cc_place(vec3(34.0, 0.0, LANE_Z), EAST)
+            cam.yaw = EAST + 1.2
+            cc_moved()
+        }
+        105 => { name = "camera: a jump does not move the eye up and down"; cc_place(vec3(40.0, 0.0, LANE_Z), EAST) }
+        106 => { name = "camera: L swings behind the player"; cc_place(vec3(40.0, 0.0, LANE_Z), EAST); cam.yaw = 0.0; cc_moved() }
+        107 => { name = "camera: up mound 15, the eye follows the ground"; cc_place(vec3(36.5, 0.0, 14.0), NORTH) }
+        108 => { name = "camera: double jump and glide"; cc_place(vec3(34.0, 0.0, LANE_Z), EAST) }
+        else => { return false }
+    }
+    return true
+}
+
+fn camera_case(f: s32) {
+    match SCENARIO {
+        100 => c_office_wall(f)
+        101 => c_kick_wall(f)
+        102 => c_alley(f)
+        103 => c_zone(f)
+        104 => c_follow(f)
+        105 => c_jump(f)
+        106 => c_recentre(f)
+        107 => c_mound(f)
+        108 => c_glide(f)
+        else => {}
+    }
+}
+
+fn c_office_wall(f: s32) {
+    cc_watch(f)
+    if f < 150 { stick_v = cc_stick(EAST, 1.0) }
+    if f == 1 { expect(cam.blocked && length(cam.eye - cam_head()) < 3.0, "pulled in at the start m", length(cam.eye - cam_head())) }
+    if f > 0 && f < 150 { expect(cc_framed(0.4), "the player framed", cam.pitch) }
+    if f == 150 {
+        expect(abs(wrap_angle(cam.yaw - EAST)) < 0.5, "turned behind m", cam.yaw)
+        expect(cam.eye.z < 94.0 - 0.1, "the eye south of the wall", cam.eye.z)
+    }
+    if f == 200 {
+        expect(cc_extra < 1.0, "the eye steps beyond the player's m", cc_extra)
+        cc_report()
+        done()
+    }
+}
+
+// Kick wall 4 is x 47..48, z 34..46, 8 high; the player runs north along its east face with
+// the camera looking north-east, so the wall comes between them.
+fn c_kick_wall(f: s32) {
+    cc_watch(f)
+    if f < 150 { stick_v = cc_stick(NORTH, 1.0) }
+    if f == 150 { expect(pl.pos.z > 46.0, "past the wall z", pl.pos.z) }
+    if f > 0 && f < 150 { expect(cc_framed(0.4), "the player framed", cam.pitch) }
+    if f == 200 {
+        expect(cc_extra < 1.0, "the eye steps beyond the player's m", cc_extra)
+        expect(cc_snaps <= 2, "snaps", fixed(cc_snaps))
+        cc_report()
+        done()
+    }
+}
+
+var cc_kick_y: [8]fixed
+
+// As the harness's scenario 29, with the camera free: jump at the office's wall (x 28), press
+// A on every wall touched. The zone holds the view: from the south, along the alley, inside it.
+fn c_alley(f: s32) {
+    cc_watch(f)
+    if t2 < 0 { stick_v = cc_stick(EAST, 1.0) }
+    if t1 < 0 && pl.pos.x >= 26.0 { t1 = f }
+    if t1 >= 0 && f >= t1 && f < t1 + 4 { pad_v = A }
+    if pl.st == St.WallSlide {
+        pad_v = A
+        if t2 < 0 { t2 = f }
+    }
+    if pl.st == St.WallKick && pl.t == 1 && pl.kicks <= 8 { cc_kick_y[pl.kicks - 1] = pl.pos.y }
+    if f == 1 { expect(cam.zone >= 0 && cam.w == 1.0, "in the zone from the start", cam.w) }
+    if f > 0 && pl.pos.x > 25.0 && pl.pos.x < 28.0 && pl.pos.y < 13.0 {
+        expect(cam.eye.x > 25.0 + 0.1 && cam.eye.x < 28.0 - 0.1 && cam.eye.z < pl.pos.z, "the eye in the alley, south of the player", cam.eye.x)
+        expect(cc_framed(0.4), "the player framed", cam.pitch)
+        expect(cam.w < 1.0 || abs(cam.yaw) < 0.01, "looking north", cam.yaw)
+    }
+    if f == 240 {
+        expect(pl.kicks >= 4, "kicks", fixed(pl.kicks))
+        expect(apex > 10.0, "apex m", apex)
+        expect(cc_step < 0.8, "the eye's largest step m", cc_step)
+        cc_report()
+        done()
+    }
+}
+
+// From the alley's south mouth, run north into the zone, then back south out of it.
+fn c_zone(f: s32) {
+    cc_watch(f)
+    if f < 70 { stick_v = cc_stick(NORTH, 1.0) }
+    if f >= 100 && f < 200 { stick_v = cc_stick(PI, 1.0) }
+    if f == 1 { expect(cam.zone < 0 && cam.w == 0.0, "not in the zone", pl.pos.z) }
+    if t0 < 0 && cam.w > 0.0 {
+        t0 = f
+        expect(pl.pos.z >= 86.0, "the zone starts at its box", pl.pos.z)
+    }
+    if t1 < 0 && cam.w == 1.0 { t1 = f }
+    if f == 95 {
+        expect(t1 > t0 && t1 - t0 <= 45, "eased in, ticks", fixed(t1 - t0))
+        expect(abs(cam.yaw) < 0.05, "looking north", cam.yaw)
+    }
+    if f > 100 && t2 < 0 && cam.w == 0.0 {
+        t2 = f
+        expect(pl.pos.z < 86.0 && cam.zone < 0, "let go", pl.pos.z)
+    }
+    if f > 0 { expect(cc_framed(0.4), "the player framed", cam.pitch) }
+    if f == 260 {
+        expect(t2 > 0, "out of the zone", fixed(t2))
+        expect(cc_step < 0.8, "the eye's largest step m", cc_step)
+        cc_report()
+        done()
+    }
+}
+
+fn c_follow(f: s32) {
+    cc_watch(f)
+    if f == 1 { cc_y = cam.yaw }
+    if f == 40 { expect(cam.yaw == cc_y, "standing: the camera stays", cam.yaw) }
+    if f >= 40 && f < 220 { stick_v = cc_stick(EAST, 1.0) }
+    if f == 220 {
+        expect(abs(wrap_angle(cam.yaw - EAST)) < 0.15, "behind the runner", wrap_angle(cam.yaw - EAST))
+        expect(cc_step < 0.4, "the eye's largest step m", cc_step)
+        cc_report()
+        done()
+    }
+}
+
+fn c_jump(f: s32) {
+    cc_watch(f)
+    if f == 9 { cc_y = cam.eye.y; y0 = 0.0 }
+    if f >= 10 && f < 70 { pad_v = A }
+    if f > 10 && f < 60 {
+        y0 = max(y0, abs(cam.eye.y - cc_y))
+        expect(cc_framed(0.4), "the player framed", cam.pitch)
+    }
+    if f == 80 {
+        expect(apex > 2.0, "jumped m", apex)
+        expect(y0 < 0.01, "the eye's height moved m", y0)
+        cc_report()
+        done()
+    }
+}
+
+fn c_recentre(f: s32) {
+    cc_watch(f)
+    if f == 10 { pad_v = L }
+    if f == 12 { expect(abs(wrap_angle(cam.yaw - EAST)) > 0.5, "swinging, not snapped", cam.yaw) }
+    if f == 60 {
+        expect(abs(wrap_angle(cam.yaw - EAST)) < 0.01, "behind the player", cam.yaw)
+        expect(cc_step < 0.6, "the eye's largest step m", cc_step)
+        cc_report()
+        done()
+    }
+}
+
+// Up mound 15 (14 degrees, 3 m high at z 30) at half stick: the camera's height follows.
+fn c_mound(f: s32) {
+    cc_watch(f)
+    if f < 200 && pl.pos.z < 28.0 { stick_v = cc_stick(NORTH, 0.5) }
+    if f > 0 { expect(cc_framed(0.4), "the player framed", cam.pitch) }
+    if f == 240 {
+        expect(pl.pos.y > 2.5, "on top m", pl.pos.y)
+        expect(near(cam.fy, pl.pos.y + tv[T.CamHeight], 0.05), "the focus at the new height m", cam.fy - pl.pos.y)
+        expect(cc_step < 0.4 && cc_snaps == 0, "the eye's largest step m", cc_step)
+        cc_report()
+        done()
+    }
+}
+
+// Jump, double jump and hold A: the glider. The player stays in view all the way down.
+fn c_glide(f: s32) {
+    cc_watch(f)
+    stick_v = cc_stick(EAST, 1.0)
+    if f >= 10 && f < 40 { pad_v = A }
+    if f > 10 && t0 < 0 && pl.st == St.Ground { t0 = f }
+    if t0 >= 0 && f >= t0 + 2 { pad_v = A }
+    if f > 0 { expect(cc_framed(0.4), "the player framed", cam.pitch) }
+    if f == 300 {
+        expect(was(St.Glide), "glided", fixed(seen_at(St.Glide)))
+        expect(cc_step < 0.4 && cc_snaps == 0, "the eye's largest step m", cc_step)
+        cc_report()
+        done()
+    }
+}

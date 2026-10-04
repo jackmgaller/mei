@@ -1,0 +1,154 @@
+// The movement garden's frame loop: input, the ticks, the camera, drawing.
+//
+// Movement runs once per tick, not per presented frame: when a frame was late (the FRAME
+// register moved on more than one), update() runs the ticks it missed, so a window of n ticks
+// is the same length of time whether or not frames were dropped. The pads are read once per
+// presented frame, so a press counts on the first of those ticks.
+import "ground/ground.akr"
+import "tuning.akr"
+import "player.akr"
+import "camera.akr"
+import "attach.akr"
+import "body.akr"
+import "hud.akr"
+
+const MAX_CATCH_UP = 4         // ticks run at most in one update()
+
+var pad_now: u32
+var pad_prev: u32
+var frame_n: s32               // presented frames (update() calls): the tests' clock
+var sim_t: s32                 // ticks simulated
+var last_frame: u32
+var coins: s32
+var coin_got: [8]u32           // a bit per entity number
+
+fn init() {
+    assert(world_load())
+    tune_defaults()
+    for k in 0..8 { surface_map[k] = WORLD_SURFACES[k] }
+    body_init()
+    place_at_spawn()
+    attach_init()
+    cam_reset()
+    timing_start()
+    last_frame = FRAME
+    test_init()
+}
+
+// The world's spawn entity if it has one, else ground.akr's position.
+fn place_at_spawn() {
+    let ty = world_spawn_type()
+    if ty >= 0 {
+        for n in 0..wp_pack.entity_count as s32 {
+            let e = wp_entity(n)
+            if e.type_id as s32 == ty {
+                player_place(wp_entity_pos(e), world_spawn_yaw(e))
+                return
+            }
+        }
+    }
+    player_place(WORLD_SPAWN, WORLD_SPAWN_YAW)
+}
+
+fn held(b: u32) -> bool { return pad_now & b != 0 }
+fn pressed(b: u32) -> bool { return pad_now & ~pad_prev & b != 0 }
+
+// The stick turned into the world by the camera's yaw; buttons as they are this frame.
+fn read_input(s: vec2) {
+    let f = fwd_dir(cam.yaw)
+    let right = vec3(f.z, 0.0, -f.x)
+    let d = f * s.y + right * s.x
+    let m = min(length(vec3(s.x, s.y, 0.0)), 1.0)
+    pin.mag = m
+    if m > 0.0 { pin.dir = normalize(d) } else { pin.dir = vec3(0.0, 0.0, 0.0) }
+    pin.a = held(A)
+    pin.ap = pressed(A)
+    pin.bp = pressed(B)
+    pin.r = held(R)
+    pin.rp = pressed(R)
+}
+
+fn update() {
+    pad_prev = pad_now
+    pad_now = input_pad(frame_n)
+    let s = input_stick(frame_n)
+    var look = input_look(frame_n)
+    menu_update(pad_now, pad_prev)
+    if !menu_open {
+        if held(LEFT) { look.x = -1.0 }
+        if held(RIGHT) { look.x = 1.0 }
+    }
+    if pressed(Y) && !menu_open { player_respawn() }
+    read_input(s)
+    let n = clamp((FRAME - last_frame) as s32, 1, MAX_CATCH_UP)
+    last_frame = FRAME
+    for k in 0..n {
+        attach_tick()
+        player_tick(&pin)
+        cam_tick(look.x, k == 0 && pressed(L))
+        pin.ap = false
+        pin.bp = false
+        pin.rp = false
+        sim_t += 1
+    }
+    collect_coins()
+    cam_place()
+    test_hook(frame_n)
+    timing_frame()
+    frame_n += 1
+}
+
+// ---- coins (the world's coin entities): touch one to take it
+
+fn coin_taken(n: s32) -> bool { return coin_got[(n >> 5) & 7] & (1 << (n & 31)) as u32 != 0 }
+
+fn collect_coins() {
+    let c = wp_cell_at(pl.pos)
+    if c == null { return }
+    for k in 0..c.entity_count as s32 {
+        let e = wp_cell_entity(c, k)
+        let n = e.number as s32
+        if e.type_id as s32 != COIN_TYPE || coin_taken(n) || !wp_entity_live(e) { continue }
+        let d = wp_entity_pos(e) - (pl.pos + vec3(0.0, BODY_HEIGHT / 2, 0.0))
+        if abs(d.x) < 0.8 && abs(d.y) < 1.2 && abs(d.z) < 0.8 {
+            coin_got[(n >> 5) & 7] |= (1 << (n & 31)) as u32
+            coins += 1
+        }
+    }
+}
+
+// ---- drawing
+
+// The entities' meshes as objects (wp_draw_object: keyed at their nearest point, so a coin
+// over a platform is not cut by its top); taken coins and what attach.akr draws are skipped.
+fn draw_entities() {
+    let ci = wp_cell_index(cam.eye.x)
+    let cj = wp_cell_index(cam.eye.z)
+    for dj in -1..2 {
+        for di in -1..2 {
+            let c = wp_cell(ci + di, cj + dj)
+            if c == null { continue }
+            for k in 0..c.entity_count as s32 {
+                let e = wp_cell_entity(c, k)
+                let m = wp_entity_mesh(e)
+                if m == null || !wp_entity_live(e) { continue }
+                if e.type_id as s32 == COIN_TYPE && coin_taken(e.number as s32) { continue }
+                if attach_owns(e) { continue }         // attach_draw() draws it where it is now
+                var yaw = e.yaw
+                if e.type_id as s32 == COIN_TYPE { yaw = frame_angle(sim_t, 0.05) }
+                let p = wp_entity_pos(e)
+                let b = wp_mesh_bounds(m)
+                let _ = wp_draw_object(m, p, yaw, b.x, p.y + b.y)
+            }
+        }
+    }
+}
+
+fn draw() {
+    cls(rgb(110, 150, 200))
+    wp_draw(cam.eye, cam.yaw, cam.pitch)
+    draw_entities()
+    attach_draw()
+    body_draw()
+    hud_draw()
+}
