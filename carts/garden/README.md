@@ -30,7 +30,9 @@ up, and the main session routes it.
 ```
 carts/garden/
   README.md, layout.py, layout.png    this contract and the sketch
-  garden.akr                          the cart (controller lead)
+  garden.akr, game.akr, ...           the cart (controller lead)
+  ground/ground.akr                   the only file that imports the world (the world's
+                                      generated garden.akr would clash with the cart's own)
   worlds.txt                          carts/garden/world/garden.world.json
   world/
     STYLE.md                          the style sheet (world lead)

@@ -40,8 +40,8 @@ MeiNet gateway's tests, then `test_assetkit.py`, `test_worldpack.py`, `test_worl
 check-generated` runs: the generators that need only the standard library, and
 `gen_adpcm_vectors.py` when NumPy is there, into a temporary directory, compared with the
 committed files). `make test-carts` runs `carts/lantern/tests/check.sh`,
-`carts/weather/tests/check.sh` and `test-world-carts`, which builds World Viewer (and so the
-example worlds) first. A cart's scenarios are Akari files built by `tools/cart_scenario.sh` from
+`carts/weather/tests/check.sh` and `test-world-carts`, which builds World Viewer and the
+movement garden (and so their worlds) first and runs both carts' `tests/check.sh`. A cart's scenarios are Akari files built by `tools/cart_scenario.sh` from
 the cart's `tests/harness.akr` and its game; `carts/*/tests/run.sh SCENARIO FRAMES OUT` runs one
 and writes `OUT.png`.
 
@@ -63,8 +63,8 @@ rather than failed.
 Pass the tools to scripts the same way, for example
 `MEIC=build-mine/meic RUN=build-mine/mei-headless tests/run_lang_tests.sh planes`.
 
-Mei Demo, Sound Lab and World Viewer are built only on request (`make build/carts/demo.mei
-build/carts/soundlab.mei build/carts/worldview.mei`); `make` and `make web` leave them out.
+Mei Demo, Sound Lab, World Viewer and the movement garden are built only on request (`make
+build/carts/demo.mei build/carts/soundlab.mei build/carts/worldview.mei build/carts/garden.mei`); `make` and `make web` leave them out.
 The Reference Renderer
 ([tests/reference_renderer/README.md](tests/reference_renderer/README.md)) builds its carts,
 probes and reports into `$(B)/reference_renderer/` on each run; `make test` runs its two

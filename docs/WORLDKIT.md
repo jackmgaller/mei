@@ -927,7 +927,10 @@ fn init() { assert(world_test_room_load()) }
    built from different game schemas, are an error;
 3. compiles the cart with `meic -I build/cart-worlds/NAME`: an import that is not next to the
    importing file is looked for there before the standard library
-   ([LANGUAGE.md](LANGUAGE.md#building-and-running)).
+   ([LANGUAGE.md](LANGUAGE.md#building-and-running)). Because the importing file's own folder
+   comes first, a world must not share its name with a file in the folder that imports it: a
+   world named `garden` generates `garden.akr`, which `carts/garden/garden.akr` would shadow.
+   The garden imports its world from `carts/garden/ground/ground.akr` for this reason.
 
 A world is rebuilt when its recipe, a cell file, its game schema, its ID lock file, an asset
 recipe, its cell or asset folder (a file added or removed), or the kit's Python changes:
