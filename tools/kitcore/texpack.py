@@ -179,15 +179,19 @@ class Packing:
                 'palettes_8bit': sorted(p for b, p in self.palettes if b == 8)}
 
 
-def assign_palettes(tiles, bits, first, last, path):
-    """First fit: each tile's colours join the first palette that can hold them all."""
+def assign_palettes(tiles, bits, first, last, path, group=None):
+    """First fit: each tile's colours join the first palette that can hold them all (and, with
+    group, whose tiles are in the tile's group: group(key) -> any hashable)."""
     cap = 15 if bits == 4 else 255
-    palettes, of = [], {}
+    palettes, of, groups = [], {}, []
     for key, tile in tiles.items():
         colours = tile.colours()
+        mine = group(key) if group else None
         if len(colours) > cap:
             raise KitError(path, f'{tile.name}: {len(colours)} colours; a {bits}-bit texture has at most {cap}.')
         for k, pal in enumerate(palettes):
+            if groups[k] != mine:
+                continue
             new = [c for c in colours if c not in pal]
             if len(pal)+len(new) <= cap:
                 pal += new
@@ -195,6 +199,7 @@ def assign_palettes(tiles, bits, first, last, path):
                 break
         else:
             palettes.append(list(colours))
+            groups.append(mine)
             of[key] = len(palettes)-1
     numbers = [first+k if bits == 4 else first-k for k in range(len(palettes))]
     if numbers and (numbers[-1] > last if bits == 4 else numbers[-1] < last):
@@ -203,13 +208,16 @@ def assign_palettes(tiles, bits, first, last, path):
     return {key: numbers[k] for key, k in of.items()}, {numbers[k]: pal for k, pal in enumerate(palettes)}
 
 
-def pack(tiles, slots=tuple(range(14, -1, -1)), first_palette=0, palette8=14, reserved=(), path='/textures'):
+def pack(tiles, slots=tuple(range(14, -1, -1)), first_palette=0, palette8=14, reserved=(), path='/textures',
+         group=None):
     """tiles: an iterable of Tile (equal keys are one tile). slots: the slots to use, in order of
     preference (never 15). first_palette: the first 4-bit palette for 4-bit tiles (they take
     consecutive ones). palette8: the first 8-bit palette (8-bit tiles take it and those below);
     8-bit palette p covers 4-bit palettes 16p-16p+15, which no 4-bit tile may use. reserved:
     (slot, x, y, width, height) rectangles in 4-bit texels that no tile may use (a swatch); a
-    slot with one holds 4-bit tiles only."""
+    slot with one holds 4-bit tiles only. group: tile key -> a group; tiles share palettes only
+    within their group (the World Kit keeps surface and emissive textures apart, so a palette
+    variant can tint them differently)."""
     unique = {}
     for tile in tiles:
         unique.setdefault(tile.key, tile)
@@ -217,10 +225,10 @@ def pack(tiles, slots=tuple(range(14, -1, -1)), first_palette=0, palette8=14, re
         raise KitError(path, 'Texture slot 15 holds the fonts.')
     four = {k: t for k, t in unique.items() if t.bits == 4}
     eight = {k: t for k, t in unique.items() if t.bits == 8}
-    pal8, palettes8 = assign_palettes(eight, 8, palette8, 0, path)
+    pal8, palettes8 = assign_palettes(eight, 8, palette8, 0, path, group)
     lowest8 = min(palettes8) if palettes8 else 16
     limit4 = min(FONT_PALETTE, 16*lowest8)-1
-    pal4, palettes4 = assign_palettes(four, 4, first_palette, limit4, path)
+    pal4, palettes4 = assign_palettes(four, 4, first_palette, limit4, path, group)
     if four and first_palette > limit4:
         raise KitError(path, f'4-bit palette {first_palette} lies in 8-bit palette {first_palette//16}, used by an 8-bit texture.')
     palettes = {**{(4, p): c for p, c in palettes4.items()}, **{(8, p): c for p, c in palettes8.items()}}

@@ -28,8 +28,10 @@ import struct
 
 MAGIC = b'MEIW'
 VERSION_MAJOR = 1
-VERSION_MINOR = 3
+VERSION_MINOR = 4           # the newest minor this module writes and reads
 HEADER_SIZE = 80            # 64 in 1.0 and 1.1; 1.2 adds path_count and path_off; 1.3 near_far, lod_slots
+HEADER_SIZE_1_4 = 84        # 1.4 adds region_ext_off
+MINOR_PLAIN = 3             # the minor version written for a pack that needs no 1.4 region extension
 HEADER_SIZE_1_2 = 72
 MIN_HEADER_SIZE = 64
 CELL_SIZE = 96
@@ -48,6 +50,11 @@ PATH_SIZE = 48
 PATH_POINT_SIZE = 40
 LOD_HEAD_SIZE = 8
 LOD_LEVEL_SIZE = 16
+REGION_EXT_SIZE = 32        # (1.4) per region: palette runs, animated textures, the backdrop's planes
+RUN_SIZE = 8
+ANIM_SIZE = 20
+SKY_SIZE = 32
+SKY_SILHOUETTE = 1          # sky flags bit 0: a silhouette on plane BG1
 
 ONE = 65536
 NO_LAYER = 0xFF
@@ -211,6 +218,47 @@ class VramCopy:
 
 
 @dataclass
+class PaletteRun:
+    """(1.4) Palette colours beyond the region's main run (an 8-bit texture's 256-colour
+    palette): one list of colours per palette variant of the region, in the variants' order."""
+    first_colour: int
+    variants: list
+
+
+@dataclass
+class Animation:
+    """(1.4) An animated texture: `frames` frames in `data`, each `rows` rows of `row_bytes`,
+    copied to texture-area byte `vram` (VRAM_TEXTURES + vram) with rows `stride` bytes apart,
+    each shown `ticks` ticks."""
+    data: bytes
+    frames: int
+    ticks: int
+    row_bytes: int
+    rows: int
+    vram: int
+    stride: int
+
+
+@dataclass
+class Sky:
+    """(1.4) How the reader sets up the plane chip for a region's backdrop, whose art the
+    region's backdrop copies put in VRAM (WORLDPACK.md, "Backdrops"): a sky gradient on the
+    backdrop colour by elevation (radians above the horizon, increasing), one colour (0xBBGGRR)
+    per stop for each palette variant; and optionally a silhouette on tile plane BG1 (`mode`,
+    `atlas`, `map`: the plane's registers), scrolled `rate` pixels a radian of yaw, its plane
+    row `horizon` on the horizon, its rows `top` .. `top + height - 1` shown."""
+    elevations: list            # radians (floats, or raw ints), increasing
+    colours: list               # per variant: [0xBBGGRR] * len(elevations)
+    mode: int = 0
+    atlas: int = 0
+    map: int = 0
+    rate: float = 0.0
+    horizon: int = 0
+    top: int = 0
+    height: int = 0             # 0: no silhouette
+
+
+@dataclass
 class Region:
     name: str = 'default'
     textures: list = field(default_factory=list)
@@ -218,6 +266,14 @@ class Region:
     variants: list = field(default_factory=list)     # (name, [15-bit colours])
     samples: list = field(default_factory=list)
     backdrop: list = field(default_factory=list)     # VramCopy
+    runs: list = field(default_factory=list)         # PaletteRun (1.4)
+    animations: list = field(default_factory=list)   # Animation (1.4)
+    sky: object = None                               # Sky (1.4)
+
+    @property
+    def extended(self):
+        """Whether the region needs the 1.4 region extension."""
+        return bool(self.runs or self.animations or self.sky)
 
 
 @dataclass
@@ -776,7 +832,7 @@ def encode(world, report=None):
                     cell_layers[key].append(t['layer'])
 
     out = _Out()
-    out.reserve(HEADER_SIZE)
+    out.reserve(HEADER_SIZE_1_4 if any(r.extended for r in world.regions) else HEADER_SIZE)
     strings = {}
     pending_strings = []        # (patch offset, text)
 
@@ -843,6 +899,12 @@ def encode(world, report=None):
             blob_ref(bd_off + VRAM_COPY_SIZE * b + 4, cp.data)
         out.patch(at + 4, 'HHIIHHHHII', len(r.textures), len(r.samples), tex_off, smp_off,
                   nvar, ncol, r.first_colour, len(r.backdrop), pal_off, bd_off)
+
+    extended = any(r.extended for r in world.regions)
+    ext_off = out.reserve(REGION_EXT_SIZE * len(world.regions)) if extended else 0
+    for k, r in enumerate(world.regions):
+        if extended:
+            _write_region_ext(out, ext_off + REGION_EXT_SIZE * k, r, blob_ref)
 
     path_off = _write_paths(out, world.paths, string_ref)
 
@@ -999,11 +1061,14 @@ def encode(world, report=None):
     near_far = fx(world.near_far) if world.near_far is not None else 0
     if world.near_far is not None and not 0 < near_far <= 2048 * ONE:
         raise PackError('near_far must be more than 0 and at most 2048 units')
-    out.patch(0, '4sHHIBBHhhHHIiiHHIIIIIIIIiI', MAGIC, VERSION_MAJOR, VERSION_MINOR, len(out.b),
-              shift, FLAG_GROUND if any_ground else 0, HEADER_SIZE, i0, j0, gw, gh, index_off, pad, overhang,
+    out.patch(0, '4sHHIBBHhhHHIiiHHIIIIIIIIiI', MAGIC, VERSION_MAJOR, VERSION_MINOR if extended else MINOR_PLAIN,
+              len(out.b), shift, FLAG_GROUND if any_ground else 0, HEADER_SIZE_1_4 if extended else HEADER_SIZE,
+              i0, j0, gw, gh, index_off, pad, overhang,
               len(world.regions), len(world.layers), region_off, layer_off,
               len(entity_records), ent_dir, len(mesh_order), mesh_dir, len(world.paths), path_off,
               near_far, lod_slots)
+    if extended:
+        out.patch(HEADER_SIZE, 'I', ext_off)
     if report is not None:
         report['layers'] = dict(layer_id)
         report['cell_layers'] = {k: list(v) for k, v in cell_layers.items()}
@@ -1239,6 +1304,14 @@ def decode(data):
             addr, do, n = r.u('3I', bo + VRAM_COPY_SIZE * b, 'backdrop copy')
             bds.append(VramCopy(addr, r.blob(do, n, 'backdrop copy')))
         regions.append(Region(r.string(no, 'region'), texs, first, variants, smps, bds))
+    if minor >= 4:
+        if hs < HEADER_SIZE_1_4:
+            raise PackError(f'a 1.{minor} header is at least {HEADER_SIZE_1_4} bytes')
+        ext_off = r.u('I', HEADER_SIZE, 'header')[0]
+        if ext_off:
+            r.table(ext_off, nreg, REGION_EXT_SIZE, 'region extensions', hs)
+            for k, reg in enumerate(regions):
+                _decode_region_ext(r, ext_off + REGION_EXT_SIZE * k, reg, hs)
 
     meshes = []
     for k in range(nmesh):
@@ -1333,6 +1406,75 @@ def decode(data):
         raise PackError('entity count disagrees with the cells')
     return Pack(data, major, minor, shift, i0, j0, gw, gh, pad, overhang, layers, regions, cells,
                 ents, meshes, paths, near_far, lod_slots)
+
+
+def _write_region_ext(out, at, r, blob_ref):
+    """(1.4) A region's extension record: palette runs, animated textures and the sky record."""
+    nvar = len(r.variants)
+    if r.runs and not nvar:
+        raise PackError(f'region {r.name!r}: palette runs need the region\'s palette variants')
+    run_off = out.reserve(RUN_SIZE * len(r.runs)) if r.runs else 0
+    for q, run in enumerate(r.runs):
+        n = len(run.variants[0]) if run.variants else 0
+        if len(run.variants) != nvar or any(len(v) != n for v in run.variants) or not 0 < n <= 256 \
+                or run.first_colour + n > 4096:
+            raise PackError(f'region {r.name!r}: a palette run needs 1-256 colours for each palette variant')
+        out.patch(run_off + RUN_SIZE * q, 'HHI', run.first_colour, n, 0)
+        blob_ref(run_off + RUN_SIZE * q + 4, b''.join(struct.pack(f'<{n}H', *v) for v in run.variants))
+    anim_off = out.reserve(ANIM_SIZE * len(r.animations)) if r.animations else 0
+    for q, a in enumerate(r.animations):
+        if not (1 <= a.frames <= 0xFFFF and 1 <= a.ticks <= 255 and a.rows >= 1 and 1 <= a.row_bytes <= a.stride
+                and len(a.data) == a.frames * a.rows * a.row_bytes and a.stride in (128, 256)
+                and (a.vram % a.stride) + a.row_bytes <= a.stride and 0 <= a.vram
+                and a.vram + (a.rows - 1) * a.stride + a.row_bytes <= 16 * 32768):
+            raise PackError(f'region {r.name!r}: bad animated texture')
+        out.patch(anim_off + ANIM_SIZE * q, 'II6H', 0, a.vram, a.frames, a.ticks, a.row_bytes, a.rows, a.stride, 0)
+        blob_ref(anim_off + ANIM_SIZE * q, a.data)
+    sky_off = 0
+    if r.sky:
+        s = r.sky
+        n = len(s.elevations)
+        if not 1 <= n <= 64 or len(s.colours) != max(nvar, 1) or any(len(c) != n for c in s.colours):
+            raise PackError(f'region {r.name!r}: a sky needs 1-64 stops and one colour list per palette variant')
+        raw = [e if isinstance(e, int) else fx(e) for e in s.elevations]
+        if any(b <= a for a, b in zip(raw, raw[1:])):
+            raise PackError(f'region {r.name!r}: sky elevations must increase')
+        sky_off = out.reserve(SKY_SIZE)
+        out.patch(sky_off, 'IIIihhHHII', s.mode, s.atlas, s.map, fx(s.rate), s.horizon, s.top, s.height, n,
+                  SKY_SILHOUETTE if s.height else 0, 0)
+        blob_ref(sky_off + 28, struct.pack(f'<{n}i', *raw) + b''.join(struct.pack(f'<{n}I', *c) for c in s.colours))
+    out.patch(at, 'HHIII4I', len(r.runs), len(r.animations), run_off, anim_off, sky_off, 0, 0, 0, 0)
+
+
+def _decode_region_ext(r, at, reg, hs):
+    nrun, nanim, run_off, anim_off, sky_off = r.u('HHIII', at, 'region extension')
+    nvar = len(reg.variants)
+    r.table(run_off, nrun, RUN_SIZE, 'palette runs', hs)
+    r.table(anim_off, nanim, ANIM_SIZE, 'animated textures', hs)
+    for q in range(nrun):
+        first, n, do = r.u('HHI', run_off + RUN_SIZE * q, 'palette run')
+        if n == 0 or n > 256 or first + n > 4096 or not nvar:
+            raise PackError('palette run: bad colours, or a region without palette variants')
+        r.blob(do, 2 * n * nvar, 'palette run')
+        reg.runs.append(PaletteRun(first, [list(r.u(f'{n}H', do + 2 * n * v, 'palette run')) for v in range(nvar)]))
+    for q in range(nanim):
+        do, vram, frames, ticks, rb, rows, stride, _ = r.u('II6H', anim_off + ANIM_SIZE * q, 'animated texture')
+        if frames == 0 or rows == 0 or not 1 <= ticks <= 255 or stride not in (128, 256) or not 1 <= rb <= stride:
+            raise PackError('animated texture: bad fields')
+        if (vram % stride) + rb > stride or vram + (rows - 1) * stride + rb > 16 * 32768:
+            raise PackError('animated texture: its tile runs past the texture area')
+        reg.animations.append(Animation(r.blob(do, frames * rows * rb, 'animated texture'), frames, ticks, rb, rows,
+                                        vram, stride))
+    if sky_off:
+        r.table(sky_off, 1, SKY_SIZE, 'sky', hs)
+        mode, atlas, mp, rate, horizon, top, height, n, flags, do = r.u('IIIihhHHII', sky_off, 'sky')
+        if not 1 <= n <= 64 or bool(flags & SKY_SILHOUETTE) != bool(height):
+            raise PackError('sky: bad stops or silhouette')
+        raw = list(r.u(f'{n}i', do, 'sky stops'))
+        if any(b <= a for a, b in zip(raw, raw[1:])):
+            raise PackError('sky: elevations do not increase')
+        cols = [list(r.u(f'{n}I', do + 4 * n * (1 + v), 'sky colours')) for v in range(max(nvar, 1))]
+        reg.sky = Sky(raw, cols, mode, atlas, mp, rate / ONE, horizon, top, height)
 
 
 def _decode_lod(r, so, hs, mesh_at):

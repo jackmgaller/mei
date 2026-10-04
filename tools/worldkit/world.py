@@ -635,7 +635,7 @@ def make_report(source, world, data, plans, library, region_palettes, variants_s
         'ok': True, 'format': 'mei-world-report', 'version': 1, 'name': source.world['name'],
         'recipe_sha256': jsonio.sha256({'world': source.world, 'cells': [cs.recipe for cs in source.cells]}),
         'game_sha256': jsonio.sha256(source.game),
-        'pack': {'bytes': len(data), 'version': f'{P.VERSION_MAJOR}.{P.VERSION_MINOR}', 'cells': len(world.cells),
+        'pack': {'bytes': len(data), 'version': f'{decoded.major}.{decoded.minor}', 'cells': len(world.cells),
                  'cell_size': 1 << world.cell_shift, 'meshes': len(decoded.meshes), 'mesh_pool_bytes': mesh_pool,
                  'entities': len(decoded.entities), 'layers': [l.name for l in world.layers],
                  'coll_pad': pad, 'overhang': world.overhang,

@@ -1,0 +1,35 @@
+// Animated textures (docs/ASSETKIT.md, "Animated textures"): a texture whose frames are kept in
+// ROM in its tile's own layout and copied into the tile in VRAM when the frame changes. Meshes
+// are read in place, so the faces never change; every face using the tile animates in step.
+//
+// Not part of the prelude: `import "texanim.akr"` (worldpack.akr imports it for wp_animate()).
+// With an Asset Kit asset's constants (asset_NAME_load() has loaded frame 0):
+//
+//   var lantern: s32 = 0                                  // the frame in VRAM now
+//   fn update() {
+//       let f = tex_frame_at(frame() as s32, ASSET_STALL_LANTERN_FRAMES, ASSET_STALL_LANTERN_TICKS)
+//       if f != lantern {
+//           tex_frame_copy(&ASSET_STALL_FRAMES[ASSET_STALL_LANTERN_AT + f * ASSET_STALL_LANTERN_FRAME_BYTES],
+//                          ASSET_STALL_LANTERN_VRAM, ASSET_STALL_LANTERN_ROWS,
+//                          ASSET_STALL_LANTERN_ROW_BYTES, ASSET_STALL_LANTERN_STRIDE)
+//           lantern = f
+//       }
+//   }
+
+// The frame (0 .. count - 1) an animation of `count` frames, each shown `ticks` ticks, shows at
+// tick t (t >= 0; a loop).
+fn tex_frame_at(t: s32, count: s32, ticks: s32) -> s32 { return (t / ticks) % count }
+
+// Copies one frame: `rows` rows of `row_bytes` from src to texture-area byte `vram`
+// (VRAM_TEXTURES + vram), rows `stride` bytes apart (128 in a 4-bit slot, 256 in an 8-bit one).
+// About 40 cycles a row plus the bytes (memcpy: 16 a step when both rows are word aligned).
+fn tex_frame_copy(src: *u8, vram: s32, rows: s32, row_bytes: s32, stride: s32) {
+    var d = (VRAM_TEXTURES + vram) as *u8
+    var s = src
+    let n = row_bytes as u32
+    for r in 0..rows {
+        memcpy(d, s, n)
+        d = d + stride
+        s = s + row_bytes
+    }
+}

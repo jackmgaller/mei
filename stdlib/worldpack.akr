@@ -26,6 +26,8 @@
 // a cart's own maths on world positions (length(), dot()) still overflows past about 181.
 // One pack is open at a time; an interior is another pack (wp_open it at the door).
 
+import "texanim.akr"       // (wp_animate(), below)
+
 // ---- the format (docs/WORLDPACK.md); every *_off is a byte offset from the pack's start
 
 struct WpHeader {
@@ -1109,7 +1111,7 @@ fn __wp_track_change(c: *WpCell, from: u32, to: u32, f: fn(*WpEntity)) {
     }
 }
 
-// ---- regions (palettes and textures; the rest is specified, not read yet)
+// ---- regions (palettes and textures; audio banks are specified, not read yet)
 
 fn wp_region(k: s32) -> *WpRegion {
     return (__wp_base + wp_pack.region_off) as *WpRegion + k
@@ -1165,6 +1167,143 @@ fn wp_texture_load(k: s32, t: s32) {
     if t < 0 || t >= r.texture_count as s32 { return }
     let x = (__wp_base + r.texture_off) as *WpTexture + t
     load_texture(x.slot as s32, (__wp_base + x.data) as *u8, x.bytes as s32)
+}
+
+// ---- region resources (1.4): every palette run, animated textures, backdrop art; entering a region
+//
+// A region's palette variants cover its main run (palette-backed entries and 4-bit texture
+// palettes) and, in a 1.4 pack, extra runs (8-bit texture palettes). wp_variant_load() and
+// wp_variant_blend() treat them all; wp_palette_load() and wp_palette_blend() the main run only.
+
+struct WpRegionExt {
+    run_count: u16
+    anim_count: u16
+    run_off: u32       // run_count WpRun records
+    anim_off: u32      // anim_count WpAnim records
+    sky_off: u32       // the backdrop's plane set-up (wpbackdrop.akr), or 0
+    reserved0: u32
+    reserved1: u32
+    reserved2: u32
+    reserved3: u32
+}
+
+struct WpRun {
+    first_colour: u16
+    colours: u16
+    data: u32          // variant_count x colours u16, variant by variant
+}
+
+struct WpAnim {
+    data: u32          // frames x rows x row_bytes bytes, frame by frame
+    vram: u32          // the tile's first byte in the texture area (VRAM_TEXTURES + vram)
+    frames: u16
+    ticks: u16
+    row_bytes: u16
+    rows: u16
+    stride: u16
+    reserved: u16
+}
+
+struct WpBackdropCopy {
+    address: u32       // a VRAM address (an atlas page, a plane map)
+    data: u32
+    bytes: u32
+}
+
+const WP_MAX_ANIM = 64     // animated textures wp_animate() keeps track of in the entered region
+var __wp_anim_shown: [WP_MAX_ANIM]s32   // the frame in VRAM, -1: unknown
+var __wp_anim_region: s32 = -1          // the region whose frames __wp_anim_shown tracks
+var wp_anim_copied: s32    // the rows wp_animate() copied last time (a cost measure)
+
+// Region k's 1.4 extension record, or null (an older pack, or a pack that needs none).
+fn wp_region_ext(k: s32) -> *WpRegionExt {
+    if k < 0 || k >= wp_pack.region_count as s32 { return null }
+    if wp_pack.minor < 4 || wp_pack.header_size < 84 { return null }
+    let off = ((__wp_base + 80) as *u32)[0]
+    if off == 0 { return null }
+    return (__wp_base + off) as *WpRegionExt + k
+}
+
+// Loads palette variant v of region k: its main run and every extra run (8-bit texture palettes).
+fn wp_variant_load(k: s32, v: s32) {
+    wp_palette_load(k, v)
+    let e = wp_region_ext(k)
+    if e == null { return }
+    let r = wp_region(k)
+    if v < 0 || v >= r.variant_count as s32 { return }
+    for q in 0..e.run_count as s32 {
+        let run = (__wp_base + e.run_off) as *WpRun + q
+        let n = run.colours as s32
+        load_palette(run.first_colour as s32, (__wp_base + run.data) as *u16 + v * n, n)
+    }
+}
+
+// Writes region k's colours blended from variant va toward vb by t, every run (palette_lerp:
+// about 38 cycles a colour; an 8-bit texture's palette is 256 colours, about 9,700 cycles).
+fn wp_variant_blend(k: s32, va: s32, vb: s32, t: fixed) {
+    wp_palette_blend(k, va, vb, t)
+    let e = wp_region_ext(k)
+    if e == null { return }
+    let r = wp_region(k)
+    if va < 0 || vb < 0 || va >= r.variant_count as s32 || vb >= r.variant_count as s32 { return }
+    for q in 0..e.run_count as s32 {
+        let run = (__wp_base + e.run_off) as *WpRun + q
+        let n = run.colours as s32
+        let cols = (__wp_base + run.data) as *u16
+        palette_lerp(run.first_colour as s32, cols + va * n, cols + vb * n, n, t)
+    }
+}
+
+// Copies region k's backdrop art (its backdrop copies: tile atlases, plane maps) into VRAM.
+// Setting up the planes to show it is wpbackdrop.akr's wp_backdrop_show().
+fn wp_backdrop_load(k: s32) {
+    let r = wp_region(k)
+    for b in 0..r.backdrop_count as s32 {
+        let c = (__wp_base + r.backdrop_off) as *WpBackdropCopy + b
+        memcpy(c.address as *u8, (__wp_base + c.data) as *u8, c.bytes)
+    }
+}
+
+// Makes region k the loaded region: copies its texture set and backdrop art into VRAM, loads
+// palette variant v (every run), restarts its animated textures from frame 0 (the frame the
+// texture set holds) and sets wp_region_loaded = k, so near cells of other regions, whose
+// textures are not loaded, draw as their stand-ins. About 56,000 cycles a 32 KB texture slot:
+// call it where the player cannot see a region's textured cells, or spread a swap over frames
+// with wp_texture_load() (WORLDKIT.md, "Region seams").
+fn wp_region_enter(k: s32, v: s32) {
+    if k < 0 || k >= wp_pack.region_count as s32 { return }
+    wp_textures_load(k)
+    wp_variant_load(k, v)
+    wp_backdrop_load(k)
+    for q in 0..WP_MAX_ANIM { __wp_anim_shown[q] = 0 }
+    __wp_anim_region = k
+    wp_region_loaded = k
+}
+
+// Advances the entered region's animated textures to tick t (frame() is the usual clock): each
+// one whose frame changed has the new frame copied into its tile. Returns how many changed.
+// About 150 cycles an animation that did not change, and a frame's rows when one did (a
+// 16 x 16 4-bit tile: 16 rows of 8 bytes, about 1,000 cycles).
+fn wp_animate(t: s32) -> s32 {
+    wp_anim_copied = 0
+    let k = __wp_anim_region
+    if k < 0 { return 0 }
+    let e = wp_region_ext(k)
+    if e == null { return 0 }
+    var changed = 0
+    for q in 0..min(e.anim_count as s32, WP_MAX_ANIM) {
+        let a = (__wp_base + e.anim_off) as *WpAnim + q
+        let f = tex_frame_at(t, a.frames as s32, a.ticks as s32)
+        if f != __wp_anim_shown[q] {
+            let rows = a.rows as s32
+            let rb = a.row_bytes as s32
+            tex_frame_copy((__wp_base + a.data + (f * rows * rb) as u32) as *u8, a.vram as s32, rows, rb, a.stride as s32)
+            __wp_anim_shown[q] = f
+            wp_anim_copied += rows
+            changed += 1
+        }
+    }
+    return changed
 }
 
 // ---- paths (1.2): named polylines in world coordinates, one table per world
