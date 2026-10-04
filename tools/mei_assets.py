@@ -28,8 +28,18 @@ def load(path):
     return jsonio.load(path,AssetError)
 
 
-def artifacts(recipe, mesh, materials, report):
+def drawn_with(recipe, mesh, drawn=None):
+    """(depth, perspective) a preview draws with: build/preview --depth and --perspective, else a
+    textured asset's policy depth (with perspective). An untextured asset's policy alone does not
+    change its preview, so the files of recipes made before depth mode stay the same."""
+    if drawn:
+        return drawn.get('depth',False),drawn.get('perspective',False) or None
+    return bool(mesh.textures) and recipe.get('verification',{}).get('depth',False),None
+
+
+def artifacts(recipe, mesh, materials, report, drawn=None):
     name = recipe['name']
+    depth,perspective = drawn_with(recipe,mesh,drawn)
     binary = native_bytes(mesh,materials,recipe.get('lighting',{}))
     import hashlib
     report['mesh_sha256'] = hashlib.sha256(binary).hexdigest()
@@ -41,7 +51,7 @@ def artifacts(recipe, mesh, materials, report):
         name+'.obj':('mtllib '+name+'.mtl\n'+obj_text(mesh,materials)).encode(),
         name+'.mtl':''.join('newmtl '+key+'\nKd '+' '.join(f'{int(mat["color"][i:i+2],16)/255:.6f}' for i in (1,3,5))+'\n\n' for key,mat in sorted(materials.items())).encode(),
         'preview.akr':source(name,report['bounds'],load=bool(mesh.palette or mesh.textures),
-                             depth=bool(mesh.textures) and recipe.get('verification',{}).get('depth',False)).encode(),
+                             depth=depth,perspective=perspective).encode(),
         'report.json':(json.dumps(report,indent=2)+'\n').encode(),
     }
     # Every build has a manifest; only palette-backed meshes have palettes and a swatch, so
@@ -71,9 +81,13 @@ def folder(input_path):
     return Path(input_path).resolve().parent if input_path and input_path != '-' else None
 
 
-def build(recipe, directory, preview=False, compiler=None, runner=None, input_path=None, verification=False, probe=None):
+def build(recipe, directory, preview=False, compiler=None, runner=None, input_path=None, verification=False, probe=None,
+          drawn=None):
+    """drawn: {'depth': True, 'perspective': True} or part of it (build/preview --depth and
+    --perspective): the asset is drawn so, as in a world whose runtime says so. Its preview draws
+    so, and the Asset Checker judges it so (where the recipe's policy does not set them)."""
     mesh,materials,report = compile_recipe(recipe,folder(input_path))
-    files = artifacts(recipe,mesh,materials,report)
+    files = artifacts(recipe,mesh,materials,report,drawn)
     directory = Path(directory).resolve()
     if input_path and input_path != '-':
         source_path = Path(input_path).resolve()
@@ -86,7 +100,9 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
         policy=recipe.get('verification')
         if verification or (policy is not None and policy.get('required',True)):
             from assetkit.visibility import verify
-            checked=verify(recipe,directory=stage,compiler=compiler,probe=probe,folder=folder(input_path))
+            policy=recipe.get('verification',{})
+            profile={k:True for k in ('depth','perspective') if (drawn or {}).get(k) and k not in policy}
+            checked=verify(recipe,profile or None,directory=stage,compiler=compiler,probe=probe,folder=folder(input_path))
             if not checked['ok']:
                 failure=directory/'verification.failed.json'
                 if input_path and input_path!='-' and Path(input_path).resolve()==failure:
@@ -103,7 +119,7 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
             report['verification']=checked
         if preview:
             report['preview'] = render(stage,recipe['name'],report['bounds'],compiler,runner,bool(mesh.palette or mesh.textures),
-                                       bool(mesh.textures) and recipe.get('verification',{}).get('depth',False))
+                                       *drawn_with(recipe,mesh,drawn))
             report['preview']['contact'] = str(directory/'contact.png')
         (stage/'report.json').write_text(json.dumps(report,indent=2)+'\n')
         generated = sorted(p.name for p in stage.iterdir())
@@ -184,6 +200,8 @@ def parser():
             cmd.add_argument('--runner',type=Path,default=ROOT/'build'/'mei-headless')
             cmd.add_argument('--verify',action='store_true',help='Block export on geometry or triangle-visibility failures; also enforced by recipe verification.required.')
             cmd.add_argument('--probe',type=Path,default=ROOT/'build'/'mei-asset-probe')
+            cmd.add_argument('--depth',action='store_true',help='The asset is drawn with the depth buffer, as in a world whose runtime says so: preview so, and verify in depth mode where the recipe\'s policy does not set depth.')
+            cmd.add_argument('--perspective',action='store_true',help='The asset is drawn with perspective-correct texturing (preview so; policy perspective where the recipe does not set it).')
         elif name=='verify':
             cmd.add_argument('-o','--output',help='Save verification.json and triangle-ID difference images.')
             cmd.add_argument('--compiler',type=Path,default=ROOT/'build'/'meic')
@@ -198,6 +216,7 @@ def parser():
             cmd.add_argument('--scale',choices=['fit','world'],help='fit (default): scaled to about 2 units; world: at its own size, sorting as in a world.')
             cmd.add_argument('--depth',action='store_true',help='Judge the asset as drawn with the depth buffer (policy depth: true).')
             cmd.add_argument('--perspective',action='store_true',help='Draw it with perspective-correct texturing (policy perspective: true).')
+            cmd.add_argument('--depth-views',type=int,help='With depth: the views of the sweep judged (default 16; more if needed to judge every face drawn).')
     pk = sub.add_parser('pack',help='Pack several assets (or one) for a cart without a world: shared texture slots and palettes, one loader.')
     pk.add_argument('recipes',nargs='+',help='Recipe JSON paths.')
     pk.add_argument('-o','--output',required=True,help='Dedicated generated-output directory.')
@@ -245,8 +264,9 @@ def main(argv=None):
                 output(dict(report,ok=False,errors=[{'path':'/nodes','message':'Topology warnings rejected by --strict.'}]))
                 return 1
             if args.command in ('build','preview'):
+                drawn = {k:True for k in ('depth','perspective') if getattr(args,k)}
                 report = build(recipe,args.output,args.command == 'preview' or args.preview,
-                               args.compiler.resolve(),args.runner.resolve(),args.recipe,args.verify,args.probe.resolve())
+                               args.compiler.resolve(),args.runner.resolve(),args.recipe,args.verify,args.probe.resolve(),drawn)
             elif args.command=='verify':
                 from assetkit.visibility import verify
                 profile={}
@@ -255,6 +275,7 @@ def main(argv=None):
                 if args.far is not None:profile['far']=args.far
                 if args.scale is not None:profile['scale']=args.scale
                 if args.edge_margin is not None:profile['edge_margin']=args.edge_margin
+                if args.depth_views is not None:profile['depth_views']=args.depth_views
                 if args.depth:profile['depth']=True
                 if args.perspective:profile['perspective']=True
                 if args.yaw_range is not None:profile['yaw_range_degrees']=[float(n) for n in args.yaw_range.split(',')]

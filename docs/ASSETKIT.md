@@ -71,14 +71,18 @@ and an actionable `message`. Commands accepting a recipe also accept `-` to read
 | `validate FILE [--strict]` | Schema, reference, geometry, fixed-point and budget checks |
 | `inspect FILE [--strict]` | Same checks, with full bounds and per-part report |
 | `verify FILE [-o DIR]` | Geometry checks plus native triangle-ID visibility and ordering-graph checks |
-| `build FILE -o DIR [--verify] [--preview] [--strict]` | Native and exchange artifacts; optional or recipe-mandated verification gate |
-| `preview FILE -o DIR [--verify] [--strict]` | Build plus six native renders and contact sheet |
+| `build FILE -o DIR [--verify] [--preview] [--strict] [--depth] [--perspective]` | Native and exchange artifacts; optional or recipe-mandated verification gate |
+| `preview FILE -o DIR [--verify] [--strict] [--depth] [--perspective]` | Build plus six native renders and contact sheet |
 | `import-obj FILE -o RECIPE [--name NAME] [--force]` | Geometry-only OBJ import into an explicit `mesh` recipe |
 | `pack FILE... -o DIR [--name NAME] [--slots 14-0] [--palette 0] [--palette8 14]` | Several assets (or one) for a cart without a world: shared texture slots and palettes, one loader ([Placement](#placement-build-and-pack)) |
 
 `--strict` fails on topology warnings, useful for closed props. Omit it for intentionally open
 surfaces. Build/preview accept `--compiler PATH` and `--runner PATH` for other Mei builds.
-Verification accepts `--compiler PATH` and `--probe PATH`.
+Verification accepts `--compiler PATH` and `--probe PATH`. `--depth` and `--perspective` on build and
+preview say the asset is drawn with the depth buffer and perspective texturing, as in a world whose
+`runtime` says so: the preview cart draws so (`preview.akr` and the six views), and the Asset
+Checker runs in [depth mode](#depth-mode) where the recipe's policy does not set `depth` or
+`perspective` itself. Without them an untextured asset previews as before, whatever its world.
 Use a dedicated generated-output directory: builds replace their own filenames there.
 Validation, serialization and optional rendering finish in a staging directory before outputs
 are replaced; failed geometry checks or renders leave the previous build's files intact.
@@ -157,7 +161,13 @@ result in `report.json`. The report records recipe, mesh, compiler and probe has
    materials](#palette-backed-materials); faces with cutouts are judged per texel ([The Asset
    Checker and textures](#the-asset-checker-and-textures)). Dithering is disabled and no HUD is drawn. The real
    core renders the ID buffer; `mei-asset-probe` captures its projected integer vertices and
-   16.16 depths.
+   16.16 depths. One check cart is compiled per asset (per level of detail): it holds every
+   camera's numbers in a table, the same literals a cart for one camera would have, and draws the
+   camera whose index is in its `asset_view` global. The probe runs it once per camera, each time
+   on a machine made fresh as `mei_create()` makes one, with the index written into RAM before the
+   first frame, so each view's capture is the one a cart compiled for that camera alone gives. Of
+   a view's numbers only `native_cpu_cycles` differs from such a cart's: 35 or 36 cycles more, for
+   reading the table.
 3. **Expected visibility:** a separate CPU rasterizer uses those projected vertices and Mei's
    exact integer top-left pixel-coverage rule, then selects the nearest triangle by reciprocal
    depth. Coverage is checked at every pixel, including triangle boundaries. Depth order is
@@ -215,7 +225,9 @@ policy, and the checker judges it as the depth test draws it:
 "verification": {"required": true, "depth": true, "perspective": true}
 ```
 
-(`verify --depth --perspective` for one run.) Both default to false, and an asset without them is
+(`verify --depth --perspective` for one run; `preview --depth --perspective` previews and checks so,
+as in a depth-mode world; `depth_views` or `verify --depth-views N` sets how many views are judged,
+below.) Both default to false, and an asset without them is
 checked exactly as before, its report byte for byte the same. A world recipe with
 `"runtime": {"depth": true}` checks its assets so unless their policy says otherwise
 ([WORLDKIT.md](WORLDKIT.md#depth-mode)). With `depth`:
@@ -233,7 +245,24 @@ checked exactly as before, its report byte for byte the same. A world recipe wit
   crossing) and ordering cycles (the graph is not built). They are still listed in `geometry`.
   **Still failures:** duplicate faces and coplanar overlaps, which fight in the depth buffer as
   they did in a bucket, coverage errors, and the budgets and levels of detail as before.
-- The report adds `depth_mode`: the settings, `key_steps` and `key_tolerance`.
+- **Duplicates and coplanar overlaps are geometry checks**, judged on the mesh without rendering
+  (the depth test ties such faces, so no view could fail them: a planted coplanar overlap has 0
+  wrong pixels in its views). The tolerances, on the 16.16-quantised mesh: a *duplicate* is a
+  face with the same three vertex indices as an earlier one; a *coplanar overlap* is two faces
+  whose unit normals are parallel (cross product below 10^-8), every vertex of each within 2^-18
+  units of the other's plane, and whose intersection in that plane has an area above 2^-36 square
+  units (sharing an edge or a corner is not an overlap). Faces a little apart (a sign 1 mm off a
+  wall) are neither: they tie only from far enough away, which the depth key's precision
+  ([RENDERING.md](RENDERING.md)) and the game's distances decide, not the asset.
+- **T-junctions are reported** (`t_junction` in `geometry`, with both faces): a vertex within
+  2^-16 units (one step of the 16.16 coordinates) of the inside of another face's edge, not a
+  corner of that face. The two faces' edges are rasterised from different corners and can leave a
+  crack of background pixels along the edge, which no view can catch: the reference draws the
+  same crack. Not a failure (`street_utility_pole` in the garden has 4, its insulators standing on
+  the cross-arm's edge); split the edge at the vertex. Without depth the audit does not look for
+  them, so its findings are as before.
+- **Fewer views are judged** (below): `depth_views`, default 16.
+- The report adds `depth_mode`: the settings, `key_steps`, `key_tolerance` and `view_selection`.
 - `render_depth(true)` brings perspective with it (`stdlib/depth.akr`), so `depth` without
   `perspective` draws as with both.
 
@@ -251,11 +280,61 @@ sake, and recipe order ("a sign before its wall"). Measured with the default pro
 | `cottage` | no, 28,514, 144 | no, 0 | 36 coplanar overlaps |
 | `two_districts`' `torii` | no, 3,183, 132 | no, 0 | 10 coplanar overlaps |
 
-**Time.** Without and with depth: `kiosk` 5.5 s and 5.6 s, `coin` 11.5 s and 13.1 s, `robot`
-21.0 s and 13.2 s (no ordering graph). Most of it is `meic` compiling one cart per view (2.9 s of
-`kiosk`'s 5.5; 3.5 s with depth, which compiles `depth.akr` and its face loops too) and about a
-fifth the probe. The easy win, not taken: compile the cart once and let the probe write each
-view's camera into RAM, as the World Checker's cart reads its views from embedded data.
+(The table was measured judging all 144 views; judging the chosen views gives the same verdicts
+and counts: `vessel` 18 views, `robot` 18, `cottage` 19, `kiosk` 16.)
+
+**The views judged in depth mode.** Ordering-table mistakes depend on the exact camera, so without
+depth every view of the sweep is judged. With depth what the views are for is coverage: that the
+console draws every face, and every texel of a cutout face, where the reference expects it, and a
+face's coverage can only be judged where it is drawn. Drawing a view is cheap (the probe runs the
+one cart for every camera of the sweep, about 3 ms each); judging one is not (the reference
+rasteriser, in Python, 10–50 ms). So every view of the sweep is drawn, and the reference judges
+those that `tools/assetkit/views.py` chooses from what the console drew:
+
+1. For each view of the sweep, the pixels of each face in its triangle-ID buffer and, for cutout
+   faces, the texels they show (texture coordinates interpolated linearly from the projected
+   corners: off by a texel here and there, enough to choose by).
+2. A view *shows a face well* when it draws at least half the face's largest count over the sweep
+   (a cutout face: 90 %).
+3. A greedy cover, deterministic: take the view that draws the most faces and cutout texels no
+   chosen view draws; on a tie the one showing well the most faces none shows well yet; then the
+   most shown well only once; then the most pixels; then the earliest. It goes on until every face
+   and cutout texel the sweep draws is drawn, and then up to `depth_views` views.
+4. A face the console draws in no view could be one it fails to draw. For each such face that an
+   estimate made without the console sees (points about 1.2 % of the bounding radius apart over
+   the faces, projected into a 160 × 120 depth buffer; at least 4 pixels in some view), the view
+   the estimate shows it best in is judged too.
+
+So the judged views draw every face the 144 draw: `observed_faces` is the same as with every
+view judged, and `view_selection` says so (`faces_drawn_by_sweep`, `faces_drawn_by_views`, the
+faces shown well once and twice, the cutout texels, `suspect_faces`). The count goes above
+`depth_views` only when the cover needs it: over the garden's 41 checked assets, the stall and
+the kiosk (59 levels of detail; `coin`'s policy has 4 views), 16 views draw every face but in the
+two viaducts (each of whose small rail posts shows in a few views only: 21 and 20 views) and the
+stall (18, for its cutout texels); about 5,700 of the levels' 5,741 drawn faces are also shown
+well. A judged view is the same row as in the full sweep (with its `sweep_index`).
+`"depth_views": 144` (or `verify --depth-views 144`) judges every view, which reproduces the
+earlier depth-mode report.
+
+Planted faults, in depth mode with the 16 views (`tests/test_assetkit.py`, `CheckViewTests`): a
+plate face the console does not draw (a *missing face*: 1,745 wrong pixels, the body behind it
+showing, and it is a suspect face); a plate face drawn with one corner moved to another vertex (a
+*crack*: 773 coverage errors); one byte of a fence's cutout mask cleared (a *cutout hole* where
+the texture has none: 658 coverage errors); a *duplicate face* and a *coplanar overlap* (geometry
+failures, 0 wrong pixels); a *T-junction* (reported). A crack or T-junction in the asset itself,
+which the console and the reference draw alike, is not a rendering fault; a gap shows as open
+edges in the topology report (`--strict` fails on them) and a T-junction as above.
+
+**Time.** The garden's 41 assets that require the check (`carts/garden/world/assets/`, 57 levels of
+detail), each checked on its own, two at a time, from cold (no cache), October 2026: in depth mode
+339.7 s before the one cart and the view selection, 16.3 s after (20.8 times faster; the median
+asset 24 times, `park_bench` 5.5 s to 0.18 s, `residential_car_park` 19.9 s to 1.6 s, `coin`, whose
+policy has 4 views, 2.2 times); without depth, every view still judged, 305.2 s and 58.4 s (5.2
+times, from the one cart alone). `kiosk`: 6.1 s and 0.30 s with depth, 5.3 s and 1.1 s without.
+`stall`: 7.0 s and 0.66 s. The verdicts are the same in all of them; without depth the reports
+are too, but for `native_cpu_cycles` (above) and the probe's hash. What a depth-mode check spends
+now: the probe drawing the 144 views (about 3 ms each), the reference judging 16 (10–50 ms each),
+the geometry audit and Python's start.
 
 ### Reports and repairs
 
@@ -336,7 +415,8 @@ camera translations/FOVs, other ordering-table ranges, exact real-number visibil
 projection, fully enclosed internal components and unobserved faces are not certified.
 The report states coverage and unobserved-face counts. It is a strong finite regression gate,
 not a proof for every possible camera or pose. Assets drawn with the depth buffer are checked
-in [depth mode](#depth-mode).
+in [depth mode](#depth-mode), where every camera of the sweep is drawn but only the views that
+draw every face (16 by default, `depth_views`) are judged.
 
 ### Coordinates and transforms
 
@@ -1005,8 +1085,8 @@ transparent corners on a disc (`disc`, a cutout), lattice side screens (`fit`, a
 `clear`) and an animated lantern (two frames, cylindrical, emissive). It requires the Asset
 Checker in depth mode. Numbers (`build`): 144 triangles, 116 vertices, 8 tiles in slots 13 (4-bit)
 and 14 (8-bit), 1,507 bytes of texels (2,176 on the 8-texel grid), 4-bit palettes 0–1 and 8-bit
-palette 14, 5 windows, no split faces. Its check: 144 views, 0 wrong pixels, 0 coverage errors,
-14.3 s. Preview views: 99,000–107,300 GPU and 22,200–25,700 CPU cycles. Packed with the kiosk and
+palette 14, 5 windows, no split faces. Its check: 18 of the 144 views judged, 0 wrong pixels, 0 coverage errors,
+0.7 s (14.3 s judging every view, one cart each). Preview views: 99,000–107,300 GPU and 22,200–25,700 CPU cycles. Packed with the kiosk and
 drawn by a cart in depth and perspective mode (four views, from the stall a third of the screen
 to a close view filling it, the kiosk beside it): 109,154–200,638 GPU and 30,686–34,855 CPU
 cycles a frame. `tests/test_assetkit.py` packs and draws the same pair.
@@ -1082,8 +1162,10 @@ draws texels and a packed pair in depth and perspective mode in the emulator. Wi
 occlusion, crossing-depth cycles, exact native coverage, palette-backed faces in the gate,
 the depth policy (a plate on a body and crossing faces pass, coplanar faces still fail),
 required-policy enforcement, textured faces judged as solid faces, cutout coverage judged per
-texel (and that judging it by the outline fails), and
-preservation of prior artifacts on failed verification. It also runs as part of `make test` when
+texel (and that judging it by the outline fails),
+preservation of prior artifacts on failed verification, that the one check cart draws each
+camera as a cart of its own did, that depth mode's 16 views draw every face the 144 do and are
+rows of the full sweep, the planted faults of [Depth mode](#depth-mode), and `preview --depth`. It also runs as part of `make test` when
 Python is available. Pure Python tests can run independently; native render tests skip if
 the binaries are absent:
 
