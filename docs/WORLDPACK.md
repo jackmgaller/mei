@@ -817,7 +817,10 @@ pass draws over it. Then the 3 × 3 cells around the camera's cell, with the ran
 [0.1, 1.5 *S*] by default, each cell culled by its `bounds`, then each present placement by its
 sphere: first the **ground pass**, their ground placements, flushed when any was drawn
 ([Ground](#ground)); then the **near pass**, the rest. A sphere is culled when it lies wholly
-outside one of the six planes of the view volume. The near set is convex, so along any line of
+outside one of the six planes of the view volume. A sphere in view that also lies inside the
+guard band (screen x and y within -1000..999, with room to spare) and in front of the near plane
+by 1/16 unit needs no clipping, so its mesh is drawn by the loops that skip the per-vertex and
+per-face clipping tests (`__draw_mesh_safe`; the same packets). The near set is convex, so along any line of
 sight near geometry comes before far; it is chosen around the camera, which may trail the player.
 A near cell whose region is not loaded is drawn as its stand-in, in the near pass. The game's
 objects join the near pass after it ([Objects](#objects)).
@@ -827,6 +830,24 @@ Each present placement in view is drawn at the level of detail its distance choo
 
 **Paths.** A reader answers the two queries above ([Paths](#paths)) on a path it holds by
 number or by name.
+
+### Faces in one bucket
+
+The near pass sorts by an ordering table of 1,024 buckets over its range (0.094 units a bucket for
+the default 96 units). Faces in one bucket are not sorted among themselves: a bucket is a list to
+which each face is added at the head, and the GPU draws it from the head, so **the face submitted
+first is drawn last, on top**, whatever their depths (`tests/test_worldpack.py`,
+`BucketRuleTests`: of two overlapping quads 0.0001 units apart, the farther, submitted first, is
+the one on screen, within one mesh and across two `mesh_at()` calls). `wp_draw()` submits in a
+fixed order: the far pass's stand-ins (flushed), the ground pass (flushed), then the near cells
+by row and column (*dj* then *di*, from −1 to 1), each cell's placements in their order in the
+cell (as the recipe lists them), each mesh's faces in their order in the mesh (an Asset Kit
+asset's: its recipe's order, [ASSETKIT.md](ASSETKIT.md#automated-visibility-gate)). The cart's
+own meshes come after `wp_draw()`, so in a shared bucket the world's faces are drawn over them;
+`wp_draw_object()`'s keys and biases move an object out of the shared buckets. Within one asset
+this is a rule recipes may rely on (a sign earlier than the wall it hangs on wins their ties);
+between placements it depends on the placements' order and the cells' and should not be relied
+on: the World Checker judges what is drawn either way.
 
 **Entities.** A tracked area is the cells within a radius (0–2) of a point. An entity is active
 while its cell is in the area and it is present. Each update retires the entities that stopped
@@ -935,6 +956,13 @@ Drawing, cycles:
 | `wp_mesh_bounds()` | about 17 a vertex and 260 more (the coin: 710) |
 | `wp_draw_entities()`, per entity with a mesh (the cell walk, layer test, bounds and `wp_draw_object()`) | the coin: 6,201 drawn, 1,384 culled |
 
+The table predates the loops for meshes with nothing to clip and the cache of entity bounds
+(2026-10). With them, `tests/test_worldpack.py`'s cost cart (100 small boxes as placements; run
+with `WORLDPACK_VERBOSE=1`) draws its street view in 288,066 cycles instead of 330,949 and its view
+from above in 884,664 instead of 1,021,530; with its detailed assets, the movement garden's
+heaviest World Checker view (2,003 triangles) takes 432,968 instead of 556,288, and its 600 views
+197,009 on average instead of 238,294, with the same pictures.
+
 The fixed cost per placement drawn matters for budgets: 100 small props drawn cost 50,000 cycles
 before their faces. A level of detail pays when its mesh saves more than its choice costs (135
 cycles, about one visible face), and a cull mark saves the whole draw (about 500 cycles plus the
@@ -1000,9 +1028,10 @@ version (a reserved field or a flag) unless noted.
   being drawn under what it truly hides, which is the larger limit ([Ground](#ground)).
 - **Compression.** ROM is read in place, so packs are stored as they are used.
 - **Entity bounds.** The entity record's reserved words could hold its mesh's radius and lowest
-  point, which `wp_draw_entities()` finds by scanning the mesh every frame (710 cycles for the
-  example coin, about an eighth of drawing it). A minor version: a reader would scan where they are
-  zero.
+  point, which `wp_entity_draw()` finds by scanning the mesh (710 cycles for the example coin,
+  about an eighth of drawing it); the reader keeps the last scan of up to 16 meshes (by address,
+  emptied by `wp_open()`), so it scans a mesh again only when another evicts it. A minor version:
+  a reader would scan where they are zero.
 - **A sort hint per entity or placement** (a bias of its own). The reader's rule needs none for
   the cases it handles, and a hint on the object would not fix the thin wall in front of it, which
   depends on the wall.

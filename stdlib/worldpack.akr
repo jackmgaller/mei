@@ -244,9 +244,12 @@ var __wp_index: *u32
 var __wp_layer_on: [32]u8
 var __wp_origin: vec3
 var __wp_planes: [6]vec4
+var __wp_safe_planes: [5]vec4  // a sphere inside all five needs no clipping (__wp_safe)
 var __wp_track_n: s32
 var __wp_track_cell: [WP_MAX_TRACK]u32
 var __wp_track_mask: [WP_MAX_TRACK]u32
+var __wp_bkey: [16]u32         // wp_entity_draw()'s cache of wp_mesh_bounds(), by mesh address
+var __wp_bval: [16]vec2
 
 // ---- opening a pack
 
@@ -282,6 +285,7 @@ fn wp_open(pack: *u8) -> bool {
     wp_near_far = __wp_half * 3
     __wp_lod_open(h)
     __wp_track_n = 0
+    mem_fill(&__wp_bkey[0] as *u8, 0, 64)
     mem_fill(&__wp_layer_on[0], 0, 32)
     let layers = (__wp_base + h.layer_off) as *WpLayer
     for k in 0..h.layer_count as s32 {
@@ -451,41 +455,129 @@ fn __wp_frustum(near: fixed, far: fixed) {
     __wp_planes[3] = (r3 - r1) * ky
     __wp_planes[4] = r3 - vec4(0.0, 0.0, 0.0, near)
     __wp_planes[5] = vec4(0.0, 0.0, 0.0, far) - r3
+    // Inside these, every vertex projects inside the guard band (screen x and y in -1000..999,
+    // where x = 160 + 160 X / w and y = 120 - 120 Y / w: X / w in -7.25..5.24, Y / w in
+    // -7.33..9.33) and lies in front of the near plane, with room to spare for rounding.
+    __wp_safe_planes[0] = __wp_unit(r0 + r3 * 7)
+    __wp_safe_planes[1] = __wp_unit(r3 * 5 - r0)
+    __wp_safe_planes[2] = __wp_unit(r1 + r3 * 7)
+    __wp_safe_planes[3] = __wp_unit(r3 * 9 - r1)
+    __wp_safe_planes[4] = r3 - vec4(0.0, 0.0, 0.0, near + 0.0625)
 }
 
-// Whether a sphere (x, y, z, radius), relative to the frame's origin, touches the view volume.
-fn __wp_visible(s: vec4) -> bool {
-    let p = vec4(s.x, s.y, s.z, 1.0)
-    let nr = -s.w
-    if dot(__wp_planes[0], p) < nr { return false }
-    if dot(__wp_planes[1], p) < nr { return false }
-    if dot(__wp_planes[2], p) < nr { return false }
-    if dot(__wp_planes[3], p) < nr { return false }
-    if dot(__wp_planes[4], p) < nr { return false }
-    if dot(__wp_planes[5], p) < nr { return false }
-    return true
+// A plane scaled so that its normal (x, y, z) is unit.
+fn __wp_unit(p: vec4) -> vec4 {
+    return p * (1.0 / sqrt(p.x * p.x + p.y * p.y + p.z * p.z))
 }
 
-// Draws a mesh turned by (cos, sin) and moved by t, with the current camera: mesh_at()'s
-// matrix, multiplied out without the mat4 product.
-fn __wp_mesh(m: *Mesh, t: vec4, c: fixed, s: fixed) {
+// Whether a sphere in view (as __wp_visible) needs no clipping: inside the guard band and in
+// front of the near plane, by a margin (__wp_safe_planes): dot(plane, (x, y, z, 1)) >= radius +
+// 0.0625 for all five. Its meshes go to __draw_mesh_safe.
+asm fn __wp_safe(s: vec4) -> bool {
+    vget r2, v0, 3
+    addi r2, r2, 4096           ; radius + 0.0625
+    addi r3, r0, 65536
+    vset v0, r3, 3              ; (x, y, z, 1)
+    la   r4, {__wp_safe_planes}
+    vld  v1, [r4+64]            ; the near plane first: the likeliest to fail
+    vdot r3, v1, v0
+    blt  r3, r2, .no
+    vld  v1, [r4+0]
+    vdot r3, v1, v0
+    blt  r3, r2, .no
+    vld  v1, [r4+16]
+    vdot r3, v1, v0
+    blt  r3, r2, .no
+    vld  v1, [r4+32]
+    vdot r3, v1, v0
+    blt  r3, r2, .no
+    vld  v1, [r4+48]
+    vdot r3, v1, v0
+    blt  r3, r2, .no
+    addi r1, r0, 1
+    ret
+.no:
+    mov  r1, r0
+}
+
+// Whether a sphere (x, y, z, radius), relative to the frame's origin, touches the view volume:
+// dot(plane, (x, y, z, 1)) >= -radius for all six planes.
+asm fn __wp_visible(s: vec4) -> bool {
+    vget r2, v0, 3
+    sub  r2, r0, r2             ; -radius
+    addi r3, r0, 65536
+    vset v0, r3, 3              ; (x, y, z, 1)
+    la   r4, {__wp_planes}
+    vld  v1, [r4+0]
+    vdot r3, v1, v0
+    blt  r3, r2, .no
+    vld  v1, [r4+16]
+    vdot r3, v1, v0
+    blt  r3, r2, .no
+    vld  v1, [r4+32]
+    vdot r3, v1, v0
+    blt  r3, r2, .no
+    vld  v1, [r4+48]
+    vdot r3, v1, v0
+    blt  r3, r2, .no
+    vld  v1, [r4+64]
+    vdot r3, v1, v0
+    blt  r3, r2, .no
+    vld  v1, [r4+80]
+    vdot r3, v1, v0
+    blt  r3, r2, .no
+    addi r1, r0, 1
+    ret
+.no:
+    mov  r1, r0
+}
+
+// mesh_at()'s matrix for a mesh turned by (cos, sin) and moved by t, with the current camera,
+// multiplied out without the mat4 product: row k of __vp, v, becomes
+// (v.x c - v.z s, v.y, v.x s + v.z c, dot(v, (t.x, t.y, t.z, 1))).
+asm fn __wp_mvp(dst: *mat4, t: vec4, c: fixed, s: fixed) {
+    addi r4, r0, 65536
+    vset v0, r4, 3              ; (t.x, t.y, t.z, 1)
+    la   r4, {__vp}
+    addi r5, {dst}, 64
+.row:
+    vld  v1, [r4+0]
+    vdot r8, v1, v0
+    vset v1, r8, 3
+    vget r6, v1, 0
+    vget r7, v1, 2
+    fmul r8, r6, {c}
+    fmul r6, r6, {s}
+    vset v2, r6, 0              ; (x s, kept)
+    fmul r6, r7, {s}
+    sub  r8, r8, r6
+    vset v1, r8, 0
+    vget r6, v2, 0
+    fmul r7, r7, {c}
+    add  r6, r6, r7
+    vset v1, r6, 2
+    vst  v1, [{dst}+0]
+    addi r4, r4, 16
+    addi {dst}, {dst}, 16
+    bne  {dst}, r5, .row
+}
+
+// Draws a mesh turned by (cos, sin) and moved by t, with the current camera.
+fn __wp_mesh(m: *Mesh, t: vec4, c: fixed, s: fixed, safe: bool) {
     var mvp: mat4
-    let t1 = vec4(t.x, t.y, t.z, 1.0)
-    let v0 = __vp[0]
-    mvp[0] = vec4(v0.x * c - v0.z * s, v0.y, v0.x * s + v0.z * c, dot(v0, t1))
-    let v1 = __vp[1]
-    mvp[1] = vec4(v1.x * c - v1.z * s, v1.y, v1.x * s + v1.z * c, dot(v1, t1))
-    let v2 = __vp[2]
-    mvp[2] = vec4(v2.x * c - v2.z * s, v2.y, v2.x * s + v2.z * c, dot(v2, t1))
-    let v3 = __vp[3]
-    mvp[3] = vec4(v3.x * c - v3.z * s, v3.y, v3.x * s + v3.z * c, dot(v3, t1))
-    __draw_mesh(m, mvp)
+    __wp_mvp(&mvp, t, c, s)
+    if safe {
+        __draw_mesh_safe(m, mvp)
+    } else {
+        __draw_mesh(m, mvp)
+    }
 }
 
 fn __wp_standin(c: *WpCell, di: s32, dj: s32) {
     let off = vec4(fixed(di << __wp_shift), 0.0, fixed(dj << __wp_shift), 0.0)
-    if !__wp_visible(c.standin_bounds + off) { return }
-    __wp_mesh((__wp_base + c.standin_off) as *Mesh, off, 1.0, 0.0)
+    let sb = c.standin_bounds + off
+    if !__wp_visible(sb) { return }
+    __wp_mesh((__wp_base + c.standin_off) as *Mesh, off, 1.0, 0.0, __wp_safe(sb))
     wp_stats.standins += 1
 }
 
@@ -502,11 +594,12 @@ fn __wp_placements(c: *WpCell, di: s32, dj: s32, k0: s32, k1: s32) -> s32 {
     var drawn = 0
     for k in k0..k1 {
         let pm = p.mask as u32
-        if (pm == 0 || pm & mask != 0) && __wp_visible(p.sphere + off) {
+        let ps = p.sphere + off
+        if (pm == 0 || pm & mask != 0) && __wp_visible(ps) {
             var m = p.mesh
             if lod { m = __wp_lod_mesh(c, k, p, off) }
             if m != 0 {
-                __wp_mesh((__wp_base + m) as *Mesh, p.pos + off, p.cos, p.sin)
+                __wp_mesh((__wp_base + m) as *Mesh, p.pos + off, p.cos, p.sin, __wp_safe(ps))
                 drawn += 1
             }
         }
@@ -567,23 +660,26 @@ asm fn __wp_scan(v: *vec4, n: s32) -> vec2 {
 // Draws mesh m at world position pos turned by yaw (as mesh_at() would, relative to
 // wp_view_origin()), as an object standing on or floating above the world: an entity's mesh, a
 // pickup, the player's character. Call it after wp_draw(), in the same frame. radius: the sphere
-// around pos that holds the mesh (culled against the near pass's view volume; 0: never culled,
-// and keyed at pos); base: the world height of its lowest point (its feet). Returns whether it
+// around pos that holds the mesh (culled against the near pass's view volume, and drawn without
+// clipping tests when it needs none, so it must hold every vertex; 0: never culled, and keyed at
+// pos); base: the world height of its lowest point (its feet). Returns whether it
 // was drawn. Leaves depth_key off; adds to the cart's own depth_bias.
 fn wp_draw_object(m: *Mesh, pos: vec3, yaw: fixed, radius: fixed, base: fixed) -> bool {
     let t = pos - __wp_origin
-    if radius > 0.0 && !__wp_visible(vec4(t.x, t.y, t.z, radius)) { return false }
+    let ts = vec4(t.x, t.y, t.z, radius)
+    if radius > 0.0 && !__wp_visible(ts) { return false }
+    let safe = radius > 0.0 && __wp_safe(ts)
     let near = view_depth(t) - radius
     var w = near
     if __wp_eye_y > base { w -= min(wp_object_bias, max(w - wp_clip_near, 0.0)) }
     if wp_object_squash > 1 {
         depth_key(w, wp_object_squash)
-        __wp_mesh(m, vec4(t.x, t.y, t.z, 0.0), cos(yaw), sin(yaw))
+        __wp_mesh(m, vec4(t.x, t.y, t.z, 0.0), cos(yaw), sin(yaw), safe)
         depth_key_off()
     } else {
         let user = __ot_user        // no key: the bias alone
         depth_bias(user - ((near - w) * buckets_per_unit()) as s32)
-        __wp_mesh(m, vec4(t.x, t.y, t.z, 0.0), cos(yaw), sin(yaw))
+        __wp_mesh(m, vec4(t.x, t.y, t.z, 0.0), cos(yaw), sin(yaw), safe)
         depth_bias(user)
     }
     return true
@@ -594,7 +690,12 @@ fn wp_draw_object(m: *Mesh, pos: vec3, yaw: fixed, radius: fixed, base: fixed) -
 fn wp_entity_draw(e: *WpEntity) -> bool {
     if e.mesh == 0 || !wp_entity_live(e) { return false }
     let m = (__wp_base + e.mesh) as *Mesh
-    let b = wp_mesh_bounds(m)
+    let k = ((m as u32) >> 4) & 15
+    if __wp_bkey[k] != m as u32 {
+        __wp_bval[k] = wp_mesh_bounds(m)
+        __wp_bkey[k] = m as u32
+    }
+    let b = __wp_bval[k]
     let p = wp_entity_pos(e)
     return wp_draw_object(m, p, e.yaw, b.x, p.y + b.y)
 }

@@ -821,6 +821,33 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(yaws,[-60,-30,0,30,60])
         self.assertEqual(r['profile']['scale'],'world')
 
+    @unittest.skipUnless(PROBE.exists() and COMPILER.exists() and importlib.util.find_spec('numpy'),
+                         'The Asset Checker needs NumPy, meic and mei-asset-probe.')
+    def test_edge_margin(self):
+        from assetkit.visibility import verify
+        # thin slats in front of a rail: they truly mis-sort, near their edges and inside them
+        nodes = [{'id':'rail','op':'box','size':[4,0.15,0.1],'transform':{'translate':[0,0.8,0]}}]
+        for i in range(5):
+            nodes.append({'id':f's{i}','op':'box','size':[0.04,1.0,0.25],'transform':{'translate':[-1.8+0.9*i,0.5,0.2]}})
+        fence = recipe(); fence['nodes'] = nodes
+        cams = {'yaw_steps':8,'pitches':[-0.35,0],'distances':[1]}
+        exact = verify(fence,{**cams,'edge_margin':0},None,COMPILER,PROBE)['totals']
+        loose = verify(fence,cams,None,COMPILER,PROBE)
+        self.assertEqual(loose['profile']['edge_margin'],1.0,'the default is the World Checker\'s')
+        t = loose['totals']
+        self.assertEqual(exact['undecided_pixels'],0)
+        self.assertGreater(exact['wrong_pixels'],t['wrong_pixels'])
+        # the margin hides wrong pixels near outlines, and says how many
+        self.assertGreater(t['undecided_wrong_pixels'],0)
+        self.assertEqual(t['wrong_pixels']+t['undecided_wrong_pixels'],exact['wrong_pixels'])
+        self.assertEqual(t['tested_pixels']+t['undecided_pixels'],exact['tested_pixels'])
+        self.assertEqual(t['coverage_errors'],exact['coverage_errors'])
+        # a pole no wider than the margin: nothing decided, coverage judged, a pass
+        pole = verify(recipe({'op':'box','size':[0.03,3,0.03]}),{**cams,'distances':[1.5]},None,COMPILER,PROBE)
+        self.assertTrue(pole['ok'])
+        self.assertEqual(pole['totals']['tested_pixels'],0)
+        self.assertGreater(pole['totals']['undecided_pixels'],0)
+
 
 @unittest.skipUnless(importlib.util.find_spec('numpy'),'Visibility verification needs NumPy.')
 class GeometryAuditTests(unittest.TestCase):

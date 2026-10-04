@@ -1863,7 +1863,7 @@ Measured with the `CYCLES` register (1,000,000 cycles per frame):
 | Operation | Cycles |
 |---|---|
 | frame overhead (ordering-table reset, submit) | about 1,500 |
-| vertex transform in `mesh()` | 26 per vertex (40 with fog), including the guard-band mark |
+| vertex transform in `mesh()` | 29 per vertex (40 with fog), including the guard-band mark and the near-plane check |
 | guard-band test, in a mesh with a vertex outside the band | about 9 more per face |
 | a face clipped to the guard band | about 3,000, including drawing its pieces |
 | the sort-key check per visible face | 2 (a `FACE_KEYED` face about 8 more, instead of `otz`) |
@@ -1871,6 +1871,7 @@ Measured with the `CYCLES` register (1,000,000 cycles per frame):
 | face crossing the near plane | about 100 when its corners show it lies beyond one side of the view; about 1,000 when that only shows once it is clipped to the plane (or it faces away); about 4,000 when it is clipped and drawn, including its pieces |
 | face in `mesh()`, back-facing | about 48 |
 | visible flat quad / Gouraud textured quad | about 130 / 163 (triangles a little less) |
+| a mesh with nothing to clip (every vertex inside the guard band and in front of the near plane; no fog, `subdivide()` or texture windows) | its faces go to a loop without those tests: back-facing 37 against 50, a visible flat textured triangle 96 against 138, a flat quad 125 against 131, a Gouraud textured quad 157 against 163 (120 faces of one `mesh_at()` call, the call included) |
 | fog | about 8–11 more per visible face vertex |
 | `text()` | about 105 per character |
 | `font_text()` | about 45 per glyph plus about 300 a call (`ALIGN_CENTRE`/`ALIGN_RIGHT`: about 30 more per character, to measure the line) |
