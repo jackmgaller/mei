@@ -1,0 +1,828 @@
+// The player's robot: Asset Kit parts (robot/*.asset.json, packed into robot/art/) posed at
+// run time. Each state of player.akr (and attach.akr's) gives a target pose, computed from the
+// state, its ticks (pl.t) and the movement; the pose drawn eases toward it a little each tick,
+// so changes of state blend. Flips and spins are whole-body angles that end at a full turn, so
+// they blend back to upright without unwinding. Nothing here changes the movement: it reads pl
+// and draws.
+//
+// The rig, in the robot's own frame (y up, facing +Z, the feet at 0): the hips HIP_Y up, the
+// torso on them, the head on the torso's NECK_Y, the arms from the shoulders (+-SHOULDER_X,
+// SHOULDER_Y on the torso), the legs from +-HIP_X. Arms and legs are rods that telescope (their
+// length scales), with a hand or foot at the end. Side 0 is +X, side 1 is -X.
+//
+// The eyes and the antenna's gem are a small mesh in RAM (rb_face), rewritten each frame: the
+// eyes change shape (open, blink, happy, wide, squint) and the gem shows the state's colour as
+// the stand-in box did (the wall kick: green when good).
+import "art/robot_parts.akr"
+
+const HIP_Y: fixed = 0.325     // leg rod 0.22 + the ankle 0.105 above the sole
+const HIP_X: fixed = 0.11
+const SHOULDER_X: fixed = 0.235
+const SHOULDER_Y: fixed = 0.27
+const NECK_Y: fixed = 0.39
+const ARM_ROD: fixed = 0.2     // robot_arm.bin's length at scale 1
+const LEG_ROD: fixed = 0.22
+const CENTRE_Y: fixed = 0.62   // flips and dives turn the body about this height
+const GEM_Y: fixed = 0.66      // the gem above the neck
+const SOLE_GAP: fixed = 0.015  // the soles this far over the floor, clear of its depth
+
+enum Eyes { Open, Blink, Happy, Wide, Squint }
+
+struct Pose {
+    lift: fixed        // the whole robot up (m)
+    pitch: fixed       // whole body about CENTRE_Y: + leans forward (a front flip goes to TAU)
+    roll: fixed        // + leans to -X
+    spin: fixed        // a twirl about the up axis
+    turn: fixed        // the body turned from the facing (sideways on a rail)
+    lean: fixed        // the torso forward from the hips
+    twist: fixed       // the torso about its axis
+    head_p: fixed      // + looks up
+    head_y: fixed      // + looks to +X
+    arm_p: [2]fixed    // + swings the hand forward (PI: straight up)
+    arm_r: [2]fixed    // + raises the arm outward
+    arm_l: [2]fixed    // rod scale
+    leg_p: [2]fixed    // + swings the foot forward
+    leg_r: [2]fixed    // + outward
+    leg_l: [2]fixed
+    foot_p: [2]fixed   // + toe up
+}
+
+struct Robot {
+    cur: Pose          // drawn
+    want: Pose         // this tick's target
+    last_t: s32        // sim_t when last drawn
+    last_st: St
+    last_pos: vec3
+    last_yaw: fixed
+    phase: fixed       // the run cycle, radians
+    land_t: s32        // ticks since the feet came down (1000: long ago)
+    idle_t: s32        // ticks standing still
+    blink_t: s32       // ticks to the next blink
+    eyes: Eyes
+    yaw_rate: fixed    // radians a tick, eased
+    vy: fixed          // metres a tick, from the position
+    hs: fixed          // horizontal speed, metres a tick
+    gem_off: vec3      // the gem's sway (robot frame)
+    gem_vel: vec3
+    blend: fixed       // how far cur goes toward want per tick
+    prop_on: bool
+    prop_a: fixed
+    key_a: fixed       // the wind-up key in his back, turning faster the faster he goes
+    started: bool
+}
+
+var rb: Robot
+var robot_cpu: s32             // CPU cycles the last robot_draw() took
+var robot_hold: bool           // the tests: the pose held still (the clocks stopped)
+
+// ---- the eyes and gem (RAM mesh): 4 eye quads (2 an eye), the gem's 8 triangles
+
+struct FaceMesh {
+    hdr: Mesh
+    v: [22]vec4
+    f: [12]Face
+}
+
+var rb_face: FaceMesh
+
+const EYE_X: fixed = 0.085
+const EYE_Y: fixed = 0.235
+const EYE_Z: fixed = 0.262
+const EYE_COL: u32 = 0xFFF05E      // 0xBBGGRR: cyan
+const GEM_R: fixed = 0.055
+
+fn rb_face_init() {
+    let m = &rb_face
+    m.hdr.nverts = 22
+    m.hdr.nfaces = 12
+    m.hdr.verts = 16
+    m.hdr.faces = 16 + 22 * 16
+    m.hdr.windows = 0
+    for q in 0..4 {
+        let f = &m.f[q]
+        f.flags = (FACE_QUAD | FACE_DOUBLE) as u8
+        for j in 0..4 {
+            f.idx[j] = (q * 4 + j) as u16
+            f.col[j] = EYE_COL
+        }
+    }
+    // The gem: an octahedron, vertices 16 (top), 17 (bottom), 18-21 round the middle.
+    for k in 0..8 {
+        let f = &m.f[4 + k]
+        f.flags = 0
+        let a = 18 + (k & 3)
+        let b = 18 + ((k + 1) & 3)
+        if k < 4 {
+            f.idx[0] = 16
+            f.idx[1] = b as u16
+            f.idx[2] = a as u16
+        } else {
+            f.idx[0] = 17
+            f.idx[1] = a as u16
+            f.idx[2] = b as u16
+        }
+    }
+}
+
+// One eye quad: corners bottom-left, bottom-right, top-left, top-right (strip order, seen from
+// the front).
+fn eye_quad(q: s32, bl: vec2, br: vec2, tl: vec2, tr: vec2) {
+    let v = &rb_face.v[q * 4]
+    v[0] = vec4(bl.x, bl.y, EYE_Z, 1.0)
+    v[1] = vec4(br.x, br.y, EYE_Z, 1.0)
+    v[2] = vec4(tl.x, tl.y, EYE_Z, 1.0)
+    v[3] = vec4(tr.x, tr.y, EYE_Z, 1.0)
+}
+
+// A bar from a to b, w wide.
+fn eye_bar(q: s32, a: vec2, b: vec2, w: fixed) {
+    let d = b - a
+    let l = max(length(vec3(d.x, d.y, 0.0)), 0.001)
+    let n = vec2(-d.y / l * w, d.x / l * w)
+    eye_quad(q, a - n, a + n, b - n, b + n)
+}
+
+fn rb_eyes(e: Eyes, look: vec2) {
+    for s in 0..2 {
+        var sx = EYE_X
+        if s == 1 { sx = -EYE_X }
+        let c = vec2(sx + look.x, EYE_Y + look.y)
+        let q = s * 2
+        match e {
+            Open => {
+                eye_quad(q, c + vec2(-0.028, -0.05), c + vec2(0.0, -0.055), c + vec2(-0.028, 0.05), c + vec2(0.0, 0.055))
+                eye_quad(q + 1, c + vec2(0.0, -0.055), c + vec2(0.028, -0.05), c + vec2(0.0, 0.055), c + vec2(0.028, 0.05))
+            }
+            Blink => {
+                eye_quad(q, c + vec2(-0.034, -0.008), c + vec2(0.0, -0.008), c + vec2(-0.034, 0.008), c + vec2(0.0, 0.008))
+                eye_quad(q + 1, c + vec2(0.0, -0.008), c + vec2(0.034, -0.008), c + vec2(0.0, 0.008), c + vec2(0.034, 0.008))
+            }
+            Happy => {
+                eye_bar(q, c + vec2(-0.042, -0.02), c + vec2(0.0, 0.025), 0.011)
+                eye_bar(q + 1, c + vec2(0.0, 0.025), c + vec2(0.042, -0.02), 0.011)
+            }
+            Wide => {
+                eye_quad(q, c + vec2(-0.04, -0.055), c + vec2(0.0, -0.068), c + vec2(-0.04, 0.055), c + vec2(0.0, 0.068))
+                eye_quad(q + 1, c + vec2(0.0, -0.068), c + vec2(0.04, -0.055), c + vec2(0.0, 0.068), c + vec2(0.04, 0.055))
+            }
+            Squint => {
+                // > <: the point toward the nose
+                var p = 0.035
+                if s == 0 { p = -0.035 }
+                eye_bar(q, c + vec2(-p, 0.03), c + vec2(p * 0.4, 0.0), 0.01)
+                eye_bar(q + 1, c + vec2(p * 0.4, 0.0), c + vec2(-p, -0.03), 0.01)
+            }
+        }
+    }
+}
+
+fn shade(c: u32, k: s32) -> u32 {
+    let r = (((c & 255) as s32) * k) >> 8
+    let g = ((((c >> 8) & 255) as s32) * k) >> 8
+    let b = ((((c >> 16) & 255) as s32) * k) >> 8
+    return (min(r, 255) | (min(g, 255) << 8) | (min(b, 255) << 16)) as u32
+}
+
+fn rb_gem(col: u32, off: vec3) {
+    let m = &rb_face
+    let c = vec3(off.x, GEM_Y + off.y, off.z - 0.02)
+    m.v[16] = vec4(c.x, c.y + GEM_R * 1.3, c.z, 1.0)
+    m.v[17] = vec4(c.x, c.y - GEM_R, c.z, 1.0)
+    m.v[18] = vec4(c.x + GEM_R, c.y, c.z, 1.0)
+    m.v[19] = vec4(c.x, c.y, c.z + GEM_R, 1.0)
+    m.v[20] = vec4(c.x - GEM_R, c.y, c.z, 1.0)
+    m.v[21] = vec4(c.x, c.y, c.z - GEM_R, 1.0)
+    let hi = shade(col, 300)
+    let mid = shade(col, 230)
+    let lo = shade(col, 150)
+    for k in 0..8 {
+        var c2 = mid
+        if k == 0 || k == 3 { c2 = hi }
+        if k >= 4 { c2 = lo }
+        m.f[4 + k].col[0] = c2
+    }
+}
+
+// ---- helpers
+
+fn ease(x: fixed) -> fixed {
+    let t = clamp(x, 0.0, 1.0)
+    return t * t * (3.0 - t * 2.0)
+}
+
+// 0..1 over the first n ticks of the state.
+fn st_k(n: s32) -> fixed { return clamp(fixed(pl.t) / max(n, 1), 0.0, 1.0) }
+
+fn sym_arms(p: *Pose, ap: fixed, ar: fixed, al: fixed) {
+    p.arm_p[0] = ap
+    p.arm_p[1] = ap
+    p.arm_r[0] = ar
+    p.arm_r[1] = ar
+    p.arm_l[0] = al
+    p.arm_l[1] = al
+}
+
+fn sym_legs(p: *Pose, lp: fixed, lr: fixed, ll: fixed) {
+    p.leg_p[0] = lp
+    p.leg_p[1] = lp
+    p.leg_r[0] = lr
+    p.leg_r[1] = lr
+    p.leg_l[0] = ll
+    p.leg_l[1] = ll
+}
+
+// The arm of side s reaching about a point (dy up, dz forward) from its shoulder, in the torso's
+// frame, splayed out by `out` (radians) so that it clears the head.
+fn reach(p: *Pose, s: s32, dy: fixed, dz: fixed, out: fixed) {
+    p.arm_p[s] = atan2(dz, -dy)
+    p.arm_r[s] = out
+    p.arm_l[s] = clamp(length(vec3(0.0, dy, dz)) / (ARM_ROD * cos(out)), 0.5, 4.0)
+}
+
+fn rest(p: *Pose) {
+    sym_arms(p, 0.0, 0.18, 1.0)
+    sym_legs(p, 0.0, 0.0, 1.0)
+}
+
+// Tucked into a ball, for flips and rolls.
+fn tuck(p: *Pose) {
+    sym_arms(p, 1.3, 0.35, 0.8)
+    sym_legs(p, 1.3, 0.15, 0.6)
+    p.foot_p[0] = -0.6
+    p.foot_p[1] = -0.6
+    p.lean = 0.3
+    p.head_p = -0.2
+}
+
+// Falling: arms up and waving, legs apart and kicking.
+fn fall_pose(p: *Pose, t: s32) {
+    let w = frame_wave(t, 14)
+    p.arm_p[0] = 3.0 + w * 0.35
+    p.arm_p[1] = 3.0 - w * 0.35
+    p.arm_r[0] = 0.75
+    p.arm_r[1] = 0.75
+    p.leg_p[0] = 0.3 + w * 0.3
+    p.leg_p[1] = -0.1 - w * 0.3
+    p.leg_r[0] = 0.12
+    p.leg_r[1] = 0.12
+    p.head_p = -0.25
+}
+
+// The run (and walk, and wade) cycle at k (0..1 of the run speed); the phase advances with the
+// distance run.
+fn run_pose(p: *Pose, k: fixed, wade: fixed) {
+    let s = sin(rb.phase)
+    let c = cos(rb.phase)
+    var a = 0.35 + k * 0.65
+    if k < 0.02 { a = 0.0 }
+    p.leg_p[0] = s * 0.85 * a
+    p.leg_p[1] = -s * 0.85 * a
+    // the leg swinging forward lifts its foot a little (a shorter rod)
+    p.leg_l[0] = 1.0 - max(c, 0.0) * 0.25 * a
+    p.leg_l[1] = 1.0 - max(-c, 0.0) * 0.25 * a
+    p.foot_p[0] = s * 0.4 * a
+    p.foot_p[1] = -s * 0.4 * a
+    p.arm_p[0] = -s * 0.9 * a - 0.15 * k
+    p.arm_p[1] = s * 0.9 * a - 0.15 * k
+    p.arm_r[0] = 0.25 + 0.1 * k
+    p.arm_r[1] = 0.25 + 0.1 * k
+    p.lift = abs(c) * 0.05 * a - 0.02 * a
+    p.lean = 0.28 * k
+    p.head_p = 0.12 * k
+    p.twist = s * 0.18 * a
+    p.roll = clamp(-rb.yaw_rate * 6.0 * k, -0.35, 0.35)
+    if wade > 0.05 {
+        // wading: arms held up out of the water, knees high
+        let w = clamp(wade / 0.8, 0.0, 1.0)
+        p.arm_p[0] = lerp(p.arm_p[0], 3.1 + s * 0.2, w)
+        p.arm_p[1] = lerp(p.arm_p[1], 3.1 - s * 0.2, w)
+        p.arm_r[0] = lerp(p.arm_r[0], 0.6, w)
+        p.arm_r[1] = lerp(p.arm_r[1], 0.6, w)
+        p.arm_l[0] = lerp(p.arm_l[0], 1.3, w)
+        p.arm_l[1] = lerp(p.arm_l[1], 1.3, w)
+        p.leg_p[0] = lerp(p.leg_p[0], max(s, -0.3) * 1.2 * max(a, 0.4), w)
+        p.leg_p[1] = lerp(p.leg_p[1], max(-s, -0.3) * 1.2 * max(a, 0.4), w)
+        p.lean = lerp(p.lean, -0.05, w)
+        p.head_p = lerp(p.head_p, 0.25, w)
+    }
+}
+
+// ---- the target pose for this tick
+
+fn want_pose(wade: fixed) {
+    rb.want = Pose {}
+    let p = &rb.want
+    rest(p)
+    rb.eyes = Eyes.Open
+    rb.prop_on = false
+    rb.blend = 0.3
+    let s = pl.st
+    let t = pl.t
+    let k = clamp(pl.fwd * 60 / 9.6, 0.0, 1.0)
+    let falling = rb.vy < -0.05
+    match s {
+        Ground => {
+            if rb.idle_t > 4 && k < 0.02 {
+                // idle: breathing, a look round now and then, a sway of the arms
+                let b = frame_wave(rb.idle_t, 150)
+                p.lift = b * 0.012
+                p.lean = b * 0.03
+                p.arm_r[0] = 0.18 + b * 0.05
+                p.arm_r[1] = 0.18 + b * 0.05
+                if rb.idle_t > 150 {
+                    let look = frame_wave(rb.idle_t - 150, 420)
+                    p.head_y = look * 0.55
+                    p.head_p = 0.1 + frame_wave(rb.idle_t, 233) * 0.08
+                    p.twist = look * 0.15
+                }
+                if rb.idle_t > 600 {
+                    // bored: a little hop of the antenna and a foot tap
+                    p.foot_p[0] = max(frame_wave(rb.idle_t, 24), 0.0) * 0.35
+                }
+            } else {
+                run_pose(p, k, wade)
+            }
+            if rb.land_t < 14 && wade < 0.3 {
+                // landing: a squash, arms out
+                let q = 1.0 - ease(fixed(rb.land_t) / 14)
+                p.lift -= 0.11 * q
+                for i in 0..2 {
+                    p.leg_l[i] = p.leg_l[i] - 0.45 * q
+                    p.arm_r[i] = p.arm_r[i] + 0.7 * q
+                }
+                p.lean += 0.25 * q
+                p.head_p -= 0.2 * q
+                rb.blend = 0.6
+            }
+        }
+        Skid => {
+            p.lean = -0.4
+            p.head_p = 0.2
+            sym_arms(p, 0.9, 0.7, 1.0)
+            p.leg_p[0] = 0.55
+            p.leg_p[1] = 0.2
+            p.leg_l[1] = 0.8
+            p.foot_p[0] = 0.4
+            p.lift = -0.04
+            rb.eyes = Eyes.Squint
+        }
+        Crouch => {
+            sym_legs(p, 0.2, 0.25, 0.45)
+            p.lift = -0.13
+            p.lean = 0.2
+            sym_arms(p, 0.6, 0.3, 0.8)
+            if k > 0.01 {
+                let w = sin(rb.phase)
+                p.leg_p[0] = 0.2 + w * 0.3
+                p.leg_p[1] = 0.2 - w * 0.3
+            }
+        }
+        CrouchSlide => {
+            p.leg_p[0] = 0.7
+            p.leg_p[1] = -0.1
+            p.leg_l[0] = 0.55
+            p.leg_l[1] = 0.45
+            p.lift = -0.12
+            p.lean = 0.35
+            sym_arms(p, -0.7, 0.45, 1.0)
+            rb.eyes = Eyes.Happy
+        }
+        Slide => {
+            // surfing down sideways
+            p.turn = 1.2
+            sym_arms(p, 0.3, 1.2, 1.0)
+            p.leg_r[0] = 0.3
+            p.leg_r[1] = 0.3
+            p.leg_l[0] = 0.8
+            p.leg_l[1] = 0.8
+            p.lift = -0.06
+            p.head_y = -0.9
+            p.roll = 0.15 * frame_wave(t, 40)
+            rb.eyes = Eyes.Happy
+        }
+        Jump => {
+            if falling && t > 6 {
+                fall_pose(p, t)
+            } else {
+                // one knee up, the other leg back, the arm of the other side up
+                p.leg_p[0] = 1.1
+                p.leg_l[0] = 0.6
+                p.leg_p[1] = -0.35
+                p.foot_p[1] = -0.5
+                p.arm_p[1] = 2.7
+                p.arm_r[1] = 0.85
+                p.arm_p[0] = -0.6
+                p.arm_r[0] = 0.4
+                p.head_p = 0.25
+                p.lean = -0.05
+            }
+            rb.blend = 0.45
+        }
+        DoubleJump => {
+            // a front somersault, then spread out
+            let q = ease(st_k(30))
+            if q < 1.0 {
+                tuck(p)
+            } else if falling {
+                fall_pose(p, t)
+            } else {
+                sym_arms(p, 2.2, 0.9, 1.1)
+                sym_legs(p, 0.2, 0.25, 1.0)
+            }
+            p.pitch = TAU * q
+            rb.eyes = Eyes.Happy
+            rb.blend = 0.55
+        }
+        ThirdJump => {
+            // a twirl, arms out
+            let q = ease(st_k(44))
+            p.spin = TAU * 2 * q
+            sym_arms(p, 0.0, 1.45, 1.15)
+            sym_legs(p, 0.0, 0.05, 1.0)
+            p.foot_p[0] = -0.6
+            p.foot_p[1] = -0.6
+            p.head_p = 0.3
+            if q >= 1.0 && falling { fall_pose(p, t) }
+            rb.eyes = Eyes.Happy
+            rb.blend = 0.55
+        }
+        LongJump => {
+            p.pitch = 0.9
+            p.head_p = 0.6
+            sym_arms(p, 2.9, 0.25, 1.15)
+            p.leg_p[0] = -0.5
+            p.leg_p[1] = -0.2
+            p.leg_l[1] = 0.8
+            p.foot_p[0] = -0.7
+            p.foot_p[1] = -0.7
+            rb.eyes = Eyes.Happy
+        }
+        Backflip => {
+            let q = ease(st_k(40))
+            if q < 1.0 { tuck(p) } else { fall_pose(p, t) }
+            p.pitch = -TAU * q
+            rb.eyes = Eyes.Wide
+            rb.blend = 0.55
+        }
+        SideFlip => {
+            let q = ease(st_k(36))
+            sym_arms(p, 0.2, 1.3, 1.0)
+            sym_legs(p, 0.3, 0.3, 0.8)
+            p.roll = -TAU * q
+            if q >= 1.0 { fall_pose(p, t) }
+            rb.eyes = Eyes.Happy
+            rb.blend = 0.55
+        }
+        Fall => {
+            fall_pose(p, t)
+            if rb.vy < -0.2 { rb.eyes = Eyes.Wide }
+        }
+        WallKick => {
+            // off the wall: arms flung out, one leg still kicking back; a good kick twirls
+            sym_arms(p, 0.5, 1.5, 1.1)
+            p.leg_p[0] = -0.8
+            p.leg_p[1] = 0.6
+            p.leg_l[1] = 0.6
+            p.foot_p[0] = -0.6
+            p.head_p = 0.3
+            if pl.kick_good {
+                p.spin = TAU * ease(st_k(24))
+                rb.eyes = Eyes.Happy
+            } else {
+                rb.eyes = Eyes.Squint
+            }
+            if t > 26 && falling { fall_pose(p, t) }
+            rb.blend = 0.6
+        }
+        Bounce => {
+            // a star
+            sym_arms(p, 0.0, 2.3, 1.2)
+            sym_legs(p, 0.0, 0.5, 1.1)
+            p.head_p = 0.4
+            if falling { fall_pose(p, t) }
+            rb.eyes = Eyes.Happy
+            rb.blend = 0.5
+        }
+        Rollout => {
+            let q = ease(st_k(22))
+            if q < 1.0 { tuck(p) } else { fall_pose(p, t) }
+            p.pitch = TAU * q
+            rb.blend = 0.55
+        }
+        Glide => {
+            // the propeller out of the head, arms out like wings, legs dangling
+            rb.prop_on = true
+            sym_arms(p, -0.25, 1.25, 1.2)
+            let w = frame_wave(t, 50)
+            p.leg_p[0] = 0.15 + w * 0.15
+            p.leg_p[1] = 0.15 - w * 0.15
+            p.foot_p[0] = -0.5
+            p.foot_p[1] = -0.5
+            p.lean = 0.15
+            p.head_p = 0.1
+            p.roll = clamp(-rb.yaw_rate * 10.0, -0.5, 0.5)
+            p.lift = 0.03 * frame_wave(t, 70)
+            rb.eyes = Eyes.Happy
+        }
+        WallSlide => {
+            // hands and a foot on the wall, leaning back, scrubbing down
+            let w = frame_wave(t, 10)
+            p.arm_p[0] = 2.0 + w * 0.12
+            p.arm_p[1] = 2.0 - w * 0.12
+            p.arm_r[0] = 0.45
+            p.arm_r[1] = 0.45
+            p.arm_l[0] = 1.3
+            p.arm_l[1] = 1.3
+            p.leg_p[0] = 0.7
+            p.leg_l[0] = 0.75
+            p.leg_p[1] = 0.1
+            p.foot_p[0] = 0.7
+            p.lean = -0.2
+            p.pitch = -0.12
+            p.head_p = 0.3
+            p.head_y = 0.5
+            rb.eyes = Eyes.Squint
+        }
+        LedgeHang => {
+            // hanging by stretched arms from the ledge, legs swinging
+            p.lift = 0.25
+            let up = LEDGE_HANG - 0.04 - (p.lift + HIP_Y + SHOULDER_Y)
+            reach(p, 0, up, 0.3, 0.3)
+            reach(p, 1, up, 0.3, 0.3)
+            let w = frame_wave(t, 80)
+            p.leg_p[0] = 0.15 + w * 0.2
+            p.leg_p[1] = 0.05 + w * 0.2
+            p.foot_p[0] = -0.4
+            p.foot_p[1] = -0.4
+            p.head_p = 0.4
+            rb.blend = 0.6
+        }
+        LedgeClimb => {
+            // the hands stay on the ledge while the body comes up, then push it over
+            let up = pl.ledge_to.y - 0.04 - (pl.pos.y + HIP_Y + SHOULDER_Y)
+            let fz = clamp(dot(pl.ledge_to - pl.pos, fwd_dir(pl.yaw)), 0.05, 0.6)
+            if up > 0.1 {
+                reach(p, 0, up, fz, 0.3)
+                reach(p, 1, up, fz, 0.3)
+            } else {
+                sym_arms(p, 0.9, 0.3, 1.0)
+            }
+            sym_legs(p, 1.2, 0.15, 0.6)
+            p.lean = 0.35
+            rb.eyes = Eyes.Squint
+            rb.blend = 0.6
+        }
+        PoundSpin => {
+            tuck(p)
+            p.pitch = TAU * st_k(ticks(T.PoundHang))
+            rb.blend = 0.8
+        }
+        PoundFall => {
+            sym_arms(p, 2.9, 0.9, 1.1)
+            sym_legs(p, 0.0, 0.0, 1.15)
+            p.foot_p[0] = -0.3
+            p.foot_p[1] = -0.3
+            rb.eyes = Eyes.Squint
+            rb.blend = 0.7
+        }
+        PoundLand => {
+            let q = 1.0 - ease(st_k(12))
+            sym_legs(p, 0.1, 0.4, 1.0 - 0.5 * q)
+            p.lift = -0.13 * q
+            sym_arms(p, 0.2, 0.4 + 1.2 * q, 1.0)
+            p.lean = 0.3 * q
+            rb.eyes = Eyes.Squint
+            rb.blend = 0.8
+        }
+        Dive => {
+            p.pitch = HALF_PI * ease(st_k(8))
+            p.head_p = 0.9
+            sym_arms(p, 3.0, 0.2, 1.2)
+            sym_legs(p, -0.15, 0.08, 1.0)
+            p.foot_p[0] = -0.8
+            p.foot_p[1] = -0.8
+            rb.eyes = Eyes.Wide
+            rb.blend = 0.5
+        }
+        BellySlide => {
+            p.pitch = HALF_PI
+            p.lift = -(CENTRE_Y - 0.24)
+            p.head_p = 1.0
+            sym_arms(p, 2.9, 0.4, 1.1)
+            let w = frame_wave(t, 16) * clamp(pl.fwd * 20, 0.0, 1.0)
+            p.leg_p[0] = -0.2 + w * 0.3
+            p.leg_p[1] = -0.2 - w * 0.3
+            p.foot_p[0] = -0.8
+            p.foot_p[1] = -0.8
+            rb.eyes = Eyes.Happy
+        }
+        Pole => {
+            // hugging the pole, climbing hand over hand while it moves
+            let w = sin(rb.phase)
+            reach(p, 0, 0.12 + w * 0.12, 0.36, -0.3)
+            reach(p, 1, 0.12 - w * 0.12, 0.36, -0.3)
+            p.leg_p[0] = 0.9 - w * 0.25
+            p.leg_p[1] = 0.9 + w * 0.25
+            p.leg_r[0] = -0.1
+            p.leg_r[1] = -0.1
+            p.leg_l[0] = 0.75
+            p.leg_l[1] = 0.75
+            p.foot_p[0] = -0.4
+            p.foot_p[1] = -0.4
+            p.lean = 0.15
+            p.head_p = 0.35
+        }
+        Rail => {
+            // grinding sideways, balancing
+            p.turn = HALF_PI
+            let w = frame_wave(t, 45)
+            sym_arms(p, 0.0, 1.35, 1.1)
+            p.arm_r[0] = 1.35 + w * 0.3
+            p.arm_r[1] = 1.35 - w * 0.3
+            sym_legs(p, 0.0, 0.32, 0.8)
+            p.lift = -0.03
+            p.roll = 0.12 * w
+            p.lean = 0.12
+            p.head_y = -HALF_PI * 0.8
+            rb.eyes = Eyes.Happy
+        }
+        Hang => {
+            // from the rail by stretched arms, shuffling hand over hand along it
+            p.lift = 0.45
+            let up = HANG_BELOW - 0.04 - (p.lift + HIP_Y + SHOULDER_Y)
+            let w = sin(rb.phase) * clamp(rb.hs * 30, 0.0, 1.0)
+            reach(p, 0, up, 0.05 + w * 0.15, 0.32)
+            reach(p, 1, up, 0.05 - w * 0.15, 0.32)
+            let sw = frame_wave(t, 70)
+            p.leg_p[0] = 0.1 + sw * 0.2 + w * 0.3
+            p.leg_p[1] = 0.1 + sw * 0.2 - w * 0.3
+            p.foot_p[0] = -0.4
+            p.foot_p[1] = -0.4
+            p.head_p = 0.2
+        }
+    }
+}
+
+// ---- moving the pose on by n ticks
+
+fn ang_to(a: fixed, b: fixed, k: fixed) -> fixed { return a + wrap_angle(b - a) * k }
+
+fn blend_pose(c: *Pose, w: *Pose, k: fixed) {
+    c.lift = lerp(c.lift, w.lift, k)
+    c.pitch = wrap_angle(ang_to(c.pitch, w.pitch, k))
+    c.roll = wrap_angle(ang_to(c.roll, w.roll, k))
+    c.spin = wrap_angle(ang_to(c.spin, w.spin, k))
+    c.turn = ang_to(c.turn, w.turn, k)
+    c.lean = lerp(c.lean, w.lean, k)
+    c.twist = lerp(c.twist, w.twist, k)
+    c.head_p = lerp(c.head_p, w.head_p, k)
+    c.head_y = lerp(c.head_y, w.head_y, k)
+    for i in 0..2 {
+        c.arm_p[i] = ang_to(c.arm_p[i], w.arm_p[i], k)
+        c.arm_r[i] = lerp(c.arm_r[i], w.arm_r[i], k)
+        c.arm_l[i] = lerp(c.arm_l[i], w.arm_l[i], k)
+        c.leg_p[i] = lerp(c.leg_p[i], w.leg_p[i], k)
+        c.leg_r[i] = lerp(c.leg_r[i], w.leg_r[i], k)
+        c.leg_l[i] = lerp(c.leg_l[i], w.leg_l[i], k)
+        c.foot_p[i] = lerp(c.foot_p[i], w.foot_p[i], k)
+    }
+}
+
+fn rb_air(s: St) -> bool { return is_air(s) || s == St.WallSlide || s == St.LedgeHang || s == St.Hang }
+
+// One tick of the robot's own clocks, then the pose toward its target.
+fn rb_tick(wade: fixed) {
+    let s = pl.st
+    let d = pl.pos - rb.last_pos
+    rb.vy = d.y
+    rb.hs = tlen(vec3(d.x, 0.0, d.z))
+    rb.yaw_rate = lerp(rb.yaw_rate, wrap_angle(pl.yaw - rb.last_yaw), 0.25)
+    if rb_air(rb.last_st) && !rb_air(s) && s != St.LedgeClimb { rb.land_t = 0 }
+    rb.land_t = min(rb.land_t + 1, 1000)
+    if s == St.Ground && pl.fwd < 0.003 { rb.idle_t += 1 } else { rb.idle_t = 0 }
+    // the run cycle: a stride of 0.9 m at a walk to 2 m at a run
+    var dist = pl.fwd
+    if s == St.Pole || s == St.Hang { dist = abs(d.y) + rb.hs }
+    if s == St.Crouch { dist = pl.fwd * 3 }
+    let stride = 0.9 + pl.fwd * 60 * 0.115
+    rb.phase = wrap_angle(rb.phase + dist * TAU / stride)
+    // the gem's spring: pulled back by the body's acceleration
+    let acc = vec3(d.x, d.y, d.z) - rb.gem_vel
+    rb.gem_vel = d
+    let cy = cos(pl.yaw)
+    let sy = sin(pl.yaw)
+    let la = vec3(acc.x * cy - acc.z * sy, acc.y, acc.x * sy + acc.z * cy)
+    rb.gem_off = rb.gem_off * 0.8 - la * 0.6
+    rb.gem_off = vec3(clamp(rb.gem_off.x, -0.04, 0.04), clamp(rb.gem_off.y, -0.03, 0.03), clamp(rb.gem_off.z, -0.04, 0.04))
+    rb.last_pos = pl.pos
+    rb.last_yaw = pl.yaw
+    rb.last_st = s
+    want_pose(wade)
+    blend_pose(&rb.cur, &rb.want, rb.blend)
+    if rb.blink_t > 0 { rb.blink_t -= 1 } else { rb.blink_t = 150 + (sim_t * 37) % 180 }
+    if rb.prop_on { rb.prop_a = wrap_angle(rb.prop_a + 0.9) }
+    rb.key_a = wrap_angle(rb.key_a + 0.03 + min(pl.fwd + rb.hs, 0.3) * 1.5)
+}
+
+// ---- drawing
+
+// A joint turned about Y (ry), then about X (rx): the torso on the hips, the head on the torso.
+fn joint_yx(parent: mat4, t: vec3, ry: fixed, rx: fixed) -> mat4 {
+    let cy = cos(ry)
+    let sy = sin(ry)
+    let cx = cos(rx)
+    let sx = sin(rx)
+    var m: mat4
+    m[0] = vec4(cy, -sy * sx, sy * cx, t.x)
+    m[1] = vec4(0.0, cx, sx, t.y)
+    m[2] = vec4(-sy, -cy * sx, cy * cx, t.z)
+    m[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    return parent * m
+}
+
+// A limb's joint at t: the limb (along -Y) turned out sideways about Z (rz), then swung about X
+// (rx), so that it stays out to the side however far it swings; its Y axis scaled by sy.
+fn joint(parent: mat4, t: vec3, rz: fixed, rx: fixed, sy: fixed) -> mat4 {
+    let cz = cos(rz)
+    let sz = sin(rz)
+    let cx = cos(rx)
+    let sx = sin(rx)
+    var m: mat4
+    m[0] = vec4(cz, -sz * sy, 0.0, t.x)
+    m[1] = vec4(cx * sz, cx * cz * sy, sx, t.y)
+    m[2] = vec4(-sx * sz, -sx * cz * sy, cx, t.z)
+    m[3] = vec4(0.0, 0.0, 0.0, 1.0)
+    return parent * m
+}
+
+// m with its Y axis scaled by s (a rod's length).
+fn stretch_y(m: mat4, s: fixed) -> mat4 {
+    var r = m
+    for i in 0..3 { r[i].y = m[i].y * s }
+    return r
+}
+
+// m moved d along its own Y axis.
+fn slide_y(m: mat4, d: fixed) -> mat4 {
+    var r = m
+    for i in 0..3 { r[i].w = m[i].w + m[i].y * d }
+    return r
+}
+
+fn robot_init() {
+    robot_parts_load()
+    rb_face_init()
+    rb = Robot {}
+    rb.cur = Pose {}
+    rest(&rb.cur)
+    rb.land_t = 1000
+    rb.blink_t = 90
+}
+
+// Draws the robot at the player (p: the feet relative to the view origin). wade: how deep the
+// feet are in water. gem: the gem's colour.
+fn robot_draw(p: vec3, wade: fixed, gem: u32) {
+    let c0 = cycle_count()
+    if !rb.started {
+        rb.started = true
+        rb.last_t = sim_t
+        rb.last_pos = pl.pos
+        rb.last_yaw = pl.yaw
+        rb.last_st = pl.st
+        want_pose(wade)
+        rb.cur = rb.want
+    }
+    let n = clamp(sim_t - rb.last_t, 0, 4)
+    rb.last_t = sim_t
+    if !robot_hold { for i in 0..n { rb_tick(wade) } }
+    let c = &rb.cur
+
+    var root = mat4_translate(p + vec3(0.0, c.lift + CENTRE_Y + SOLE_GAP, 0.0)) * mat4_rotate_y(pl.yaw + c.turn + c.spin)
+    if c.pitch != 0.0 { root = root * mat4_rotate_x(-c.pitch) }
+    if c.roll != 0.0 { root = root * mat4_rotate_z(c.roll) }
+    let hips = root * mat4_translate(vec3(0.0, HIP_Y - CENTRE_Y, 0.0))
+    let torso = joint_yx(hips, vec3(0.0, 0.0, 0.0), c.twist, -c.lean)
+    mesh_xf(ASSET_ROBOT_TORSO, torso)
+    mesh_xf(ASSET_ROBOT_KEY, joint(torso, vec3(0.0, 0.19, -0.205), rb.key_a, 0.0, 1.0))
+    let head = joint_yx(torso, vec3(0.0, NECK_Y, 0.0), c.head_y - c.twist, c.head_p)
+    mesh_xf(ASSET_ROBOT_HEAD, head)
+    var e = rb.eyes
+    if e == Eyes.Open && rb.blink_t < 6 { e = Eyes.Blink }
+    rb_eyes(e, vec2(c.head_y * -0.02, 0.0))
+    rb_gem(gem, rb.gem_off)
+    mesh_xf(&rb_face.hdr, head)
+    if rb.prop_on {
+        mesh_xf(ASSET_ROBOT_PROP, joint_yx(head, vec3(0.0, GEM_Y + 0.07, -0.02), rb.prop_a, 0.0))
+    }
+    for s in 0..2 {
+        var sg = 1.0
+        if s == 1 { sg = -1.0 }
+        let arm = joint(torso, vec3(SHOULDER_X * sg, SHOULDER_Y, 0.0), c.arm_r[s] * sg, c.arm_p[s], 1.0)
+        mesh_xf(ASSET_ROBOT_ARM, stretch_y(arm, c.arm_l[s]))
+        mesh_xf(ASSET_ROBOT_HAND, slide_y(arm, -ARM_ROD * c.arm_l[s]))
+        let leg = joint(hips, vec3(HIP_X * sg, 0.0, 0.0), c.leg_r[s] * sg, c.leg_p[s], 1.0)
+        mesh_xf(ASSET_ROBOT_LEG, stretch_y(leg, c.leg_l[s]))
+        mesh_xf(ASSET_ROBOT_FOOT, joint(leg, vec3(0.0, -LEG_ROD * c.leg_l[s], 0.0), 0.0, c.foot_p[s], 1.0))
+    }
+    robot_cpu = cycle_count() - c0
+}

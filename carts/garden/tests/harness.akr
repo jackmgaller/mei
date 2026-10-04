@@ -703,7 +703,7 @@ fn s_slope_moves(f: s32) {
 }
 
 // A pixel of the picture presented last (the buffer that is not the back buffer), and whether
-// it is the body's red (230, 90, 60; dithered).
+// it is the robot's red shell (230, 90, 60, lit and dithered).
 fn shown_px(x: s32, y: s32) -> u32 {
     var fb: u32 = 0x400000
     if GPU_BACK == 0x400000 { fb = 0x425800 }
@@ -718,7 +718,7 @@ fn body_pixels() -> s32 {
             let r = (v & 31) as s32
             let g = ((v >> 5) & 31) as s32
             let b = ((v >> 10) & 31) as s32
-            if r >= 24 && g >= 8 && g <= 15 && b >= 5 && b <= 11 { n += 1 }
+            if r >= 12 && g * 2 <= r + 1 && g * 4 >= r && b * 3 <= r + 1 { n += 1 }
         }
     }
     return n
@@ -733,6 +733,7 @@ fn s_body_shown(f: s32) {
         tv[T.CamDist] = 2.5
         tv[T.CamPitch] = -0.8
     }
+    if f == 50 { robot_hold = true }           // the robot's pose still: its idle and key move
     if f == 60 { body_test_mode = 1 }
     if f == 62 { t0 = body_pixels() }
     if f == 62 { body_test_mode = 0 }

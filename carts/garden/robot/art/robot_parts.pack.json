@@ -1,0 +1,63 @@
+{
+  "format": "mei-asset-pack",
+  "version": 1,
+  "name": "robot_parts",
+  "assets": [
+    {
+      "name": "robot_arm",
+      "mesh": "robot_arm.bin",
+      "levels": [],
+      "vertices": 8,
+      "triangles": 8
+    },
+    {
+      "name": "robot_foot",
+      "mesh": "robot_foot.bin",
+      "levels": [],
+      "vertices": 16,
+      "triangles": 28
+    },
+    {
+      "name": "robot_hand",
+      "mesh": "robot_hand.bin",
+      "levels": [],
+      "vertices": 14,
+      "triangles": 24
+    },
+    {
+      "name": "robot_head",
+      "mesh": "robot_head.bin",
+      "levels": [],
+      "vertices": 72,
+      "triangles": 110
+    },
+    {
+      "name": "robot_key",
+      "mesh": "robot_key.bin",
+      "levels": [],
+      "vertices": 20,
+      "triangles": 28
+    },
+    {
+      "name": "robot_leg",
+      "mesh": "robot_leg.bin",
+      "levels": [],
+      "vertices": 8,
+      "triangles": 8
+    },
+    {
+      "name": "robot_prop",
+      "mesh": "robot_prop.bin",
+      "levels": [],
+      "vertices": 34,
+      "triangles": 52
+    },
+    {
+      "name": "robot_torso",
+      "mesh": "robot_torso.bin",
+      "levels": [],
+      "vertices": 35,
+      "triangles": 66
+    }
+  ]
+}

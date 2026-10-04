@@ -1,0 +1,74 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "robot_prop",
+ "budget": {
+  "vertices": 128,
+  "triangles": 60
+ },
+ "lighting": {
+  "direction": [
+   0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "gold": {
+   "color": "#ffd25a"
+  },
+  "blade": {
+   "color": "#5ec8e6"
+  }
+ },
+ "nodes": [
+  {
+   "id": "hub",
+   "op": "cylinder",
+   "radius": 0.035,
+   "height": 0.05,
+   "segments": 5,
+   "material": "gold"
+  },
+  {
+   "id": "blades",
+   "op": "group",
+   "children": [
+    {
+     "id": "blade",
+     "op": "box",
+     "size": [
+      0.3,
+      0.014,
+      0.08
+     ],
+     "material": "blade",
+     "transform": {
+      "rotate": [
+       12,
+       0,
+       0
+      ],
+      "translate": [
+       0.18,
+       0.02,
+       0
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "radial",
+     "count": 3
+    }
+   ]
+  }
+ ]
+}

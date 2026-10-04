@@ -1,0 +1,13 @@
+// Mei Asset Kit pack: robot_arm, robot_foot, robot_hand, robot_head, robot_key, robot_leg, robot_prop, robot_torso. Call robot_parts_load() once before drawing.
+embed ASSET_ROBOT_ARM: Mesh = "robot_arm.bin"
+embed ASSET_ROBOT_FOOT: Mesh = "robot_foot.bin"
+embed ASSET_ROBOT_HAND: Mesh = "robot_hand.bin"
+embed ASSET_ROBOT_HEAD: Mesh = "robot_head.bin"
+embed ASSET_ROBOT_KEY: Mesh = "robot_key.bin"
+embed ASSET_ROBOT_LEG: Mesh = "robot_leg.bin"
+embed ASSET_ROBOT_PROP: Mesh = "robot_prop.bin"
+embed ASSET_ROBOT_TORSO: Mesh = "robot_torso.bin"
+
+// Copies the textures, the swatch and the palettes into VRAM.
+fn robot_parts_load() {
+}

@@ -1,0 +1,50 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "robot_arm",
+ "budget": {
+  "vertices": 128,
+  "triangles": 16
+ },
+ "lighting": {
+  "direction": [
+   0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "grey": {
+   "color": "#6c7682"
+  }
+ },
+ "nodes": [
+  {
+   "id": "rod",
+   "op": "cylinder",
+   "radius": 0.04,
+   "height": 0.2,
+   "segments": 4,
+   "caps": false,
+   "material": "grey",
+   "transform": {
+    "rotate": [
+     0,
+     45,
+     0
+    ],
+    "translate": [
+     0,
+     -0.1,
+     0
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,58 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "robot_torso",
+ "budget": {
+  "vertices": 128,
+  "triangles": 90
+ },
+ "lighting": {
+  "direction": [
+   0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "shell_s": {
+   "color": "#e65a3c",
+   "smooth": true
+  }
+ },
+ "nodes": [
+  {
+   "id": "egg",
+   "op": "lathe",
+   "material": "shell_s",
+   "segments": 7,
+   "profile": [
+    [
+     0.14,
+     -0.08
+    ],
+    [
+     0.225,
+     0.04
+    ],
+    [
+     0.225,
+     0.22
+    ],
+    [
+     0.15,
+     0.36
+    ],
+    [
+     0.07,
+     0.41
+    ]
+   ]
+  }
+ ]
+}

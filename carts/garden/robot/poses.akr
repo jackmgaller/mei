@@ -1,0 +1,103 @@
+// The robot's pose sheet: the garden with the player held in one state after another, each for
+// HOLD frames, seen from the front quarter (or from behind, the game's view, with VIEW = 1).
+// robot/sheet.sh builds it, saves the last frame of each pose and lays them out in a contact
+// sheet; the wrapper it writes names the cart and VIEW. It prints the robot's CPU and GPU cycles per pose.
+const TEST = 1
+const HOLD = 48
+
+fn input_pad(_f: s32) -> u32 { return 0 }
+fn input_stick(_f: s32) -> vec2 { return vec2(0.0, 0.0) }
+fn input_look(_f: s32) -> vec2 { return vec2(0.0, 0.0) }
+
+struct PoseShot {
+    name: *u8
+    st: St
+    t: s32           // pl.t held
+    fwd: fixed       // m/s
+    up: fixed        // the feet above the floor
+    wade: fixed
+}
+
+const SHOTS: [16]PoseShot = [
+    PoseShot { name: "idle", st: St.Ground, t: 0, fwd: 0.0, up: 0.0, wade: 0.0 },
+    PoseShot { name: "run", st: St.Ground, t: 0, fwd: 9.6, up: 0.0, wade: 0.0 },
+    PoseShot { name: "jump", st: St.Jump, t: 4, fwd: 0.0, up: 0.8, wade: 0.0 },
+    PoseShot { name: "double jump", st: St.DoubleJump, t: 11, fwd: 0.0, up: 0.8, wade: 0.0 },
+    PoseShot { name: "fall", st: St.Fall, t: 10, fwd: 0.0, up: 0.8, wade: 0.0 },
+    PoseShot { name: "land", st: St.Ground, t: 0, fwd: 0.0, up: 0.0, wade: 0.0 },
+    PoseShot { name: "dive", st: St.Dive, t: 12, fwd: 0.0, up: 0.6, wade: 0.0 },
+    PoseShot { name: "belly slide", st: St.BellySlide, t: 6, fwd: 3.0, up: 0.0, wade: 0.0 },
+    PoseShot { name: "wall slide", st: St.WallSlide, t: 6, fwd: 0.0, up: 0.6, wade: 0.0 },
+    PoseShot { name: "wall kick", st: St.WallKick, t: 7, fwd: 0.0, up: 0.8, wade: 0.0 },
+    PoseShot { name: "ledge hang", st: St.LedgeHang, t: 20, fwd: 0.0, up: 0.5, wade: 0.0 },
+    PoseShot { name: "pole", st: St.Pole, t: 20, fwd: 0.0, up: 0.6, wade: 0.0 },
+    PoseShot { name: "rail", st: St.Rail, t: 20, fwd: 0.0, up: 0.3, wade: 0.0 },
+    PoseShot { name: "hang", st: St.Hang, t: 20, fwd: 0.0, up: 0.0, wade: 0.0 },
+    PoseShot { name: "glide", st: St.Glide, t: 20, fwd: 0.0, up: 0.8, wade: 0.0 },
+    PoseShot { name: "wading", st: St.Ground, t: 0, fwd: 2.0, up: 0.0, wade: 0.7 },
+]
+
+var spot: vec3
+var spot_yaw: fixed
+var cpu_sum: s32
+var cpu_n: s32
+var gpu_robot: s32
+
+fn test_init() {
+    readout = 2
+    spot = pl.pos
+    spot_yaw = pl.yaw
+}
+
+fn test_hook(f: s32) {
+    let k = min(f / HOLD, len(SHOTS) - 1)
+    let i = f % HOLD
+    let s = &SHOTS[k]
+    pl.st = s.st
+    pl.t = s.t
+    pl.fwd = s.fwd / 60
+    pl.yaw = spot_yaw
+    pl.kick_good = true
+    pl.pos = spot + vec3(0.0, s.up, 0.0)
+    if s.st == St.Hang { pl.pos.y += 0.6 }
+    pl.vel = vec3(0.0, 0.0, 0.0)
+    body_test_wade = s.wade
+    if k == 0 && i == 0 { rb.idle_t = 0 }
+    if k == 5 && i == HOLD - 5 { rb.land_t = 0 }
+    if k == 4 { rb.last_pos.y = pl.pos.y + 0.3 }          // falling fast: the wide eyes
+    // the robot drawn alone for one frame of each pose: the GPU's cost of it (and a clear)
+    body_test_mode = 0
+    if i == HOLD - 8 { body_test_mode = 1 }
+    if i == HOLD - 7 {
+        gpu_robot = gpu_used()
+        print(s.name)
+        print(": cpu ")
+        print_int(robot_cpu)
+        print(", gpu (robot and a clear) ")
+        print_int(gpu_robot)
+        println("")
+    }
+    if i > 4 {
+        cpu_sum += robot_cpu
+        cpu_n += 1
+    }
+    if f == HOLD * len(SHOTS) - 1 {
+        print("robot cpu, mean over the poses: ")
+        print_int(cpu_sum / max(cpu_n, 1))
+        println("")
+    }
+    // the view: the front quarter, or behind as the game sees him
+    var a = spot_yaw + 0.65
+    var d: fixed = 2.1
+    if VIEW == 1 {
+        a = spot_yaw + PI
+        d = 3.4
+    }
+    var c = pl.pos + vec3(0.0, 0.65, 0.0)
+    if s.st == St.LedgeHang || s.st == St.Hang { c.y += 0.45 }
+    cam.eye = c + vec3(sin(a) * d, 0.45, cos(a) * d)
+    cam.yaw = wrap_angle(a + PI)
+    cam.pitch = -0.2
+}
+
+import "../game.akr"

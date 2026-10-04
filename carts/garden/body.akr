@@ -1,55 +1,9 @@
-// The player drawn simply: a box the body's size with a nose toward its facing, coloured by
-// what it is doing, and a wing over it while gliding.
+// The player drawn: the robot (robot/robot.akr), posed by what it is doing. The gem on its
+// antenna shows the state's colour, as the stand-in box's colour did (a good wall kick green, a
+// late one yellow-green).
+import "robot/robot.akr"
 
-struct BoxMesh {
-    hdr: Mesh
-    v: [16]vec4
-    f: [12]Face
-}
-
-var body_mesh: BoxMesh
-var wing_mesh: BoxMesh
-
-// The six faces of a box of corners 0-7 (bit 0: +x, bit 1: +y, bit 2: +z), each in strip order
-// seen from outside: bottom-left, bottom-right, top-left, top-right.
-const BOX_FACES: [24]u16 = [1, 5, 3, 7,  4, 0, 6, 2,  5, 4, 7, 6,  0, 1, 2, 3,  2, 3, 6, 7,  1, 0, 5, 4]
-
-fn box_into(m: *BoxMesh, k: s32, lo: vec3, hi: vec3, colour: u32) {
-    for c in 0..8 {
-        var x = lo.x
-        var y = lo.y
-        var z = lo.z
-        if c & 1 != 0 { x = hi.x }
-        if c & 2 != 0 { y = hi.y }
-        if c & 4 != 0 { z = hi.z }
-        m.v[k * 8 + c] = vec4(x, y, z, 1.0)
-    }
-    for f in 0..6 {
-        let face = &m.f[k * 6 + f]
-        face.flags = (FACE_QUAD | FACE_DOUBLE) as u8
-        for j in 0..4 {
-            face.idx[j] = (BOX_FACES[f * 4 + j] as s32 + k * 8) as u16
-            face.col[j] = colour
-        }
-    }
-}
-
-fn mesh_header(m: *BoxMesh, boxes: s32) {
-    m.hdr.nverts = (boxes * 8) as u16
-    m.hdr.nfaces = (boxes * 6) as u16
-    m.hdr.verts = 16
-    m.hdr.faces = 16 + 16 * 16
-    m.hdr.windows = 0
-}
-
-fn body_init() {
-    let r = BODY_RADIUS
-    box_into(&body_mesh, 0, vec3(-r, 0.0, -r), vec3(r, BODY_HEIGHT, r), rgb(230, 90, 60))
-    box_into(&body_mesh, 1, vec3(-0.1, BODY_HEIGHT * 0.6, r), vec3(0.1, BODY_HEIGHT * 0.75, r + 0.25), rgb(250, 230, 120))
-    mesh_header(&body_mesh, 2)
-    box_into(&wing_mesh, 0, vec3(-1.4, 0.0, -0.3), vec3(1.4, 0.06, 0.4), rgb(120, 200, 240))
-    mesh_header(&wing_mesh, 1)
-}
+fn body_init() { robot_init() }
 
 fn state_colour(s: St) -> u32 {
     if s == St.WallSlide { return rgb(250, 160, 40) }
@@ -61,24 +15,17 @@ fn state_colour(s: St) -> u32 {
     if s == St.LedgeHang || s == St.LedgeClimb { return rgb(200, 120, 230) }
     if s >= St.PoundSpin && s <= St.PoundLand { return rgb(140, 90, 60) }
     if s == St.Dive || s == St.BellySlide { return rgb(240, 120, 170) }
-    return rgb(230, 90, 60)
+    return rgb(255, 205, 80)
 }
 
 var body_test_mode: s32       // the tests: 1 draws the body alone (nothing else this frame)
+var body_test_wade: fixed     // the pose sheet: a water depth to wade in
 
-// The body, and the wing over it while gliding.
+// How deep the feet are in water, for the wading walk (0: dry). The garden has no water yet;
+// a world with water answers here (the shrine's player.akr keeps it in pl_wade).
+fn body_wade() -> fixed { return body_test_wade }
+
 fn body_draw() {
-    let c = state_colour(pl.st)
-    for f in 0..6 {
-        for j in 0..4 { body_mesh.f[f].col[j] = c }
-    }
     if body_test_mode == 1 { ot_clear() }      // the world's faces so far: dropped
-    let o = wp_view_origin()
-    var p = pl.pos - o
-    if pl.st == St.Crouch || pl.st == St.CrouchSlide {
-        // squashed: draw half the body sunk into the floor
-        p.y -= BODY_HEIGHT * 0.4
-    }
-    mesh_at(&body_mesh.hdr, p, pl.yaw)
-    if pl.st == St.Glide { mesh_at(&wing_mesh.hdr, pl.pos - o + vec3(0.0, BODY_HEIGHT + 0.1, 0.0), pl.yaw) }
+    robot_draw(pl.pos - wp_view_origin(), body_wade(), state_colour(pl.st))
 }

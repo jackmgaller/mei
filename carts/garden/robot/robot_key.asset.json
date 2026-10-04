@@ -1,0 +1,94 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "robot_key",
+ "budget": {
+  "vertices": 128,
+  "triangles": 32
+ },
+ "lighting": {
+  "direction": [
+   0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "gold": {
+   "color": "#ffd25a"
+  }
+ },
+ "nodes": [
+  {
+   "id": "stem",
+   "op": "cylinder",
+   "radius": 0.016,
+   "height": 0.09,
+   "segments": 4,
+   "caps": false,
+   "material": "gold",
+   "transform": {
+    "rotate": [
+     90,
+     45,
+     0
+    ],
+    "translate": [
+     0,
+     0,
+     -0.045
+    ]
+   }
+  },
+  {
+   "id": "bow",
+   "op": "extrude",
+   "material": "gold",
+   "depth": 0.03,
+   "points": [
+    [
+     -0.1,
+     -0.045
+    ],
+    [
+     0.0,
+     -0.015
+    ],
+    [
+     0.1,
+     -0.045
+    ],
+    [
+     0.1,
+     0.045
+    ],
+    [
+     0.0,
+     0.015
+    ],
+    [
+     -0.1,
+     0.045
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     0,
+     -0.125
+    ]
+   }
+  }
+ ]
+}

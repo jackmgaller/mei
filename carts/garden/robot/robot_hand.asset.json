@@ -1,0 +1,49 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "robot_hand",
+ "budget": {
+  "vertices": 128,
+  "triangles": 30
+ },
+ "lighting": {
+  "direction": [
+   0.35,
+   0.85,
+   -0.45
+  ],
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "cream": {
+   "color": "#f4ead2"
+  }
+ },
+ "nodes": [
+  {
+   "id": "mitt",
+   "op": "sphere",
+   "radius": 0.08,
+   "rings": 3,
+   "segments": 6,
+   "material": "cream",
+   "transform": {
+    "scale": [
+     0.9,
+     1.0,
+     1.0
+    ],
+    "translate": [
+     0,
+     -0.06,
+     0.0
+    ]
+   }
+  }
+ ]
+}
