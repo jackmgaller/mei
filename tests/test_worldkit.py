@@ -10,6 +10,7 @@ World Checker (build(checker='skip')) or sample a few views, except test_report_
 which runs it in full; the checker's own suite is tests/test_worldverify.py.
 """
 import importlib.util
+import math
 import json
 import os
 from pathlib import Path
@@ -49,7 +50,7 @@ class Example:
     """A copy of an example world in a temporary directory, editable as JSON."""
 
     def __init__(self, tmp, name='test_room', keep_lock=False):
-        folder = {'test_room': 'test_room', 'two_districts': 'two_districts'}[name]
+        folder = {'test_room': 'test_room', 'two_districts': 'two_districts', 'shrine_grounds': 'shrine_grounds'}[name]
         self.dir = Path(tmp)/folder
         shutil.copytree(EXAMPLES/folder, self.dir, ignore=None if keep_lock else shutil.ignore_patterns('*.ids.json'))
         self.world = self.dir/f'{name}.world.json'
@@ -119,7 +120,9 @@ class CliTests(unittest.TestCase):
         self.assertEqual(schema['properties']['format'], {'const': 'mei-world'})
         self.assertIn('cell_file', schema['$defs'])
         self.assertIn('game', schema['$defs'])
-        self.assertIn('terrain', schema['x-unknown'])
+        self.assertIn('terrain', schema['properties'])
+        self.assertIn('terrain', schema['$defs']['cell_file']['x-unknown'])
+        self.assertIn('sweep', schema['properties']['paths']['additionalProperties']['properties'])
         code, schema = cli('schema', '--game', EXAMPLES/'test_room'/'garden.game.mochi')
         self.assertEqual(code, 0)
         branches = schema['properties']['cells']['items']['properties']['entities']['items']['oneOf']
@@ -181,7 +184,7 @@ class ValidationTests(unittest.TestCase):
 
     def test_world_errors(self):
         self.check(lambda w: w.update(regoins={}), '/regoins', 'Unknown property')
-        self.check(lambda w: w.update(terrain={}), '/terrain', 'reserved')
+        self.check(lambda w: w.update(terrain={}), '/terrain/materials', 'Required')
         self.check(lambda w: w['regions']['lab'].update(textures=[]), '/regions/lab/textures', 'reserved')
         self.check(lambda w: w.update(cell_dir='cells'), '/cells', 'not both')
         self.check(lambda w: w['grid'].update(cell_size=48), '/grid/cell_size')
@@ -317,7 +320,7 @@ class IdTests(unittest.TestCase):
                 compile_source(str(ex.world))
 
     def test_committed_example_locks_match_their_recipes(self):
-        for name in ('test_room', 'two_districts'):
+        for name in ('test_room', 'two_districts', 'shrine_grounds'):
             with self.subTest(world=name), tempfile.TemporaryDirectory() as tmp:
                 ex = Example(tmp, name, keep_lock=True)
                 self.assertTrue(ex.lock.exists())
@@ -607,6 +610,275 @@ class BuildTests(unittest.TestCase):
             self.assertEqual(report['assets']['ramp']['verification'], 'none')
 
 
+class TerrainWorld:
+    """A world of terrain only, in a temporary directory: cells of 32 units over [0, 64)^2 and the
+    test game schema, with a terrain and paths given by the test."""
+
+    def __init__(self, tmp, terrain=None, paths=None, cells=((0, 0), (1, 0), (0, 1), (1, 1)), size=32, **extra):
+        self.dir = Path(tmp)
+        (self.dir/'assets').mkdir(exist_ok=True)
+        shutil.copy(ROOT/'tests'/'worldkit'/'garden.game.json', self.dir)
+        w = {'format': 'mei-world', 'version': 1, 'name': 'terrain_test', 'game': 'garden.game.json',
+             'assets': 'assets', 'grid': {'cell_size': size},
+             'regions': {'r': {'variants': {'day': {}, 'night': {'surface': {'multiply': '#404080'}}}}},
+             'cells': [{'id': f'c{i}_{j}', 'at': [i, j], 'region': 'r'} for i, j in cells], **extra}
+        if terrain is not None: w['terrain'] = terrain
+        if paths is not None: w['paths'] = paths
+        self.world = self.dir/'terrain_test.world.json'
+        self.world.write_text(json.dumps(w))
+
+    def compile(self):
+        return compile_source(str(self.world))[1]
+
+
+MATERIALS = {'grass': {'color': '#508040', 'tag': 'grass'}, 'earth': {'color': '#806040'},
+             'stone': {'color': '#a0a0a0', 'tag': 'stone'}}
+
+
+def field(**kw):
+    return {'materials': MATERIALS, 'fields': {'main': dict({'spacing': 2, 'min': [0, 0], 'max': [64, 64],
+                                                             'material': 'grass'}, **kw)}}
+
+
+def mesh_world_triangles(compiled, cell, mesh):
+    """A cell-local native mesh's triangles in world coordinates (floats)."""
+    S = 1 << compiled.world.cell_shift
+    cx, cz = cell.i * S + S / 2, cell.j * S + S / 2
+    return [tuple((float(p[0]) + cx, float(p[1]), float(p[2]) + cz) for p in t) for t in P.mesh_triangles(mesh)]
+
+
+def t_junctions(tris):
+    """Vertices lying strictly inside another triangle's edge (seen in 3D, within 1e-6)."""
+    verts = {v for t in tris for v in t}
+    found = []
+    for t in tris:
+        for e in range(3):
+            a, b = t[e], t[(e + 1) % 3]
+            ab = [b[k] - a[k] for k in range(3)]
+            ll = sum(c * c for c in ab)
+            for v in verts:
+                if v in (a, b): continue
+                s = sum((v[k] - a[k]) * ab[k] for k in range(3)) / ll
+                if 1e-9 < s < 1 - 1e-9 and sum((a[k] + ab[k] * s - v[k]) ** 2 for k in range(3)) < 1e-12:
+                    found.append((a, b, v))
+    return found
+
+
+class TerrainTests(unittest.TestCase):
+    """Ground heightfields and sweeps (WORLDKIT.md, "Terrain")."""
+
+    def error(self, tmp, **kw):
+        with self.assertRaises(WorldError) as caught:
+            TerrainWorld(tmp, **kw).compile()
+        return caught.exception
+
+    def test_errors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            e = self.error(tmp, terrain=field(material='moss'))
+            self.assertEqual((e.path, 'No terrain material' in str(e)), ('/terrain/fields/main/material', True))
+            e = self.error(tmp, terrain=field(min=[1, 0]))
+            self.assertEqual(e.path, '/terrain/fields/main/min/0')
+            e = self.error(tmp, terrain=field(operations=[{'op': 'set', 'height': 1, 'area': {'rect': [0, 0, 4, 4], 'circle': [1, 1, 1]}}]))
+            self.assertEqual(e.path, '/terrain/fields/main/operations/0/area')
+            e = self.error(tmp, terrain=field(operations=[{'op': 'bed', 'path': 'nowhere', 'width': 2}]))
+            self.assertEqual(e.path, '/terrain/fields/main/operations/0/path')
+            e = self.error(tmp, terrain=field(operations=[{'op': 'hole', 'falloff': 2}]))
+            self.assertEqual(e.path, '/terrain/fields/main/operations/0/falloff')
+            e = self.error(tmp, terrain=field(tile=32, spacing=0.5))
+            self.assertEqual(e.path, '/terrain/fields/main/tile')
+            two = field()
+            two['fields']['other'] = {'spacing': 2, 'min': [64, 0], 'max': [70, 8], 'material': 'grass'}
+            e = self.error(tmp, terrain=two)
+            self.assertIn('overlap or touch', str(e))
+            sweep = {'points': [[2, 0, 2], [30, 0, 2]], 'sweep': {'profile': [[-1, 0], [1, 0]], 'material': 'stone'}}
+            e = self.error(tmp, paths={'p': sweep})
+            self.assertEqual(e.path, '/paths')
+            e = self.error(tmp, terrain=field(), paths={'p': dict(sweep, points=[[2, 0, 2], [30, 0, 2], [2, 0, 4]])})
+            self.assertEqual(e.path, '/paths/p/points/1')
+            e = self.error(tmp, terrain=field(), paths={'p': dict(sweep, sweep={'profile': [[-1, 0], [1, 0], [2, -1]], 'materials': ['stone']})})
+            self.assertEqual(e.path, '/paths/p/sweep/materials')
+            # terrain stays reserved in a cell
+            w = json.loads(TerrainWorld(tmp).world.read_text())
+            w['cells'][0]['terrain'] = {}
+            (Path(tmp)/'cell.world.json').write_text(json.dumps(w))
+            with self.assertRaisesRegex(WorldError, 'Terrain in a cell is reserved'):
+                compile_source(str(Path(tmp)/'cell.world.json'))
+
+    def test_operations_shape_the_samples(self):
+        ops = [{'op': 'set', 'area': {'rect': [0, 0, 20, 64]}, 'height': 2},
+               {'op': 'add', 'area': {'circle': [40, 40, 4]}, 'height': 3},
+               {'op': 'carve', 'area': {'circle': [10, 50, 4]}, 'height': -1, 'falloff': 4},
+               {'op': 'fill', 'area': {'rect': [44, 0, 64, 10]}, 'height': 1.5},
+               {'op': 'ramp', 'from': [24, 0, 20], 'to': [36, 6, 20], 'width': 4},
+               {'op': 'terrace', 'area': {'rect': [50, 30, 64, 64]}, 'step': 1},
+               {'op': 'paint', 'area': {'rect': [0, 0, 8, 8]}, 'material': 'stone'},
+               {'op': 'hole', 'area': {'rect': [56, 56, 64, 64]}}]
+        with tempfile.TemporaryDirectory() as tmp:
+            c = TerrainWorld(tmp, terrain=field(operations=ops, height=0.25)).compile()
+            f = c.terrain.fields['main']
+            h = lambda x, z: f.h(x // 2, z // 2)
+            self.assertEqual(h(10, 10), 2)                  # set
+            self.assertEqual(h(40, 40), 3.25)               # add inside the circle
+            self.assertEqual(h(40, 46), 0.25)               # outside it
+            self.assertEqual(h(10, 50), -1)                 # carve
+            self.assertTrue(-1 < h(10, 56) < 2)             # its falloff (4 outside the radius)
+            self.assertEqual(h(10, 60), 2)                  # past the falloff: as set
+            self.assertEqual(h(50, 4), 1.5)                 # fill
+            self.assertEqual((h(24, 20), h(30, 20), h(36, 20)), (0, 3, 6))   # ramp
+            self.assertEqual(h(30, 24), 0.25)               # beside it
+            self.assertEqual(f.materials[1][1], 'stone')
+            self.assertEqual(f.materials[30][30], None)
+            self.assertEqual(c.report['terrain']['fields']['main']['holes'], 16)
+            # terrace: smooth heights become flats a step apart, joined by banks
+            t = TerrainWorld(tmp, terrain=field(operations=[
+                {'op': 'ramp', 'from': [0, 0, 32], 'to': [64, 4, 32], 'width': 64},
+                {'op': 'terrace', 'step': 1, 'bank': 0.5}])).compile().terrain.fields['main']
+            row = [t.h(x, 16) for x in range(33)]
+            self.assertEqual(row[0], 0)
+            self.assertEqual(row[2], 0)                     # 0.125 terraced to the flat at 0
+            self.assertEqual(row[12], 1)                    # 1.5: the end of the flat at 1 (bank: the top half)
+            self.assertEqual(row[14], 1.5)                  # 1.75: halfway up the bank
+            self.assertEqual(row[18], 2)
+            # smooth: a spike spreads to its neighbours
+            s = TerrainWorld(tmp, terrain=field(operations=[{'op': 'add', 'area': {'circle': [32, 32, 0.5]}, 'height': 16},
+                                                            {'op': 'smooth'}])).compile().terrain.fields['main']
+            self.assertEqual((s.h(16, 16), s.h(17, 16), s.h(17, 17)), (4, 2, 1))
+
+    def test_heights_file_and_bed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rows = '\n'.join(' '.join(str(0.5 * x) for x in range(5)) for _ in range(5))
+            (Path(tmp)/'g.heights').write_text('# a plane rising along x\n' + rows + '\n')
+            t = field(heights='g.heights', min=[0, 0], max=[8, 8])
+            c = TerrainWorld(tmp, terrain=t, cells=((0, 0),)).compile()
+            self.assertEqual([c.terrain.fields['main'].h(x, 2) for x in range(5)], [0, 0.5, 1, 1.5, 2])
+            self.assertEqual(c.report['terrain']['fields']['main']['triangles'], [2], 'a plane is one rectangle')
+            self.assertEqual(c.terrain_files, [str((Path(tmp)/'g.heights').resolve())])
+            (Path(tmp)/'g.heights').write_text('0 0 0\n')
+            with self.assertRaisesRegex(WorldError, 'a row has 5'):
+                TerrainWorld(tmp, terrain=t, cells=((0, 0),)).compile()
+            # a bed: the ground along a path set to its line, less the depth; square at the ends
+            path = {'p': {'points': [[8, 2, 32], [56, 2, 32]]}}
+            b = TerrainWorld(tmp, terrain=field(operations=[{'op': 'bed', 'path': 'p', 'width': 4, 'depth': 0.5, 'falloff': 2}]),
+                             paths=path).compile().terrain.fields['main']
+            self.assertEqual([b.h(16, 16), b.h(16, 17), b.h(16, 18)], [1.5, 1.5, 0])
+            self.assertEqual(b.h(4, 16), 1.5)               # on the end
+            self.assertEqual(b.h(3, 16), 0)                 # past it: the bed ends square
+
+    def test_flat_ground_is_two_triangles_a_tile_and_seams_match(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            flat = TerrainWorld(tmp, terrain=field()).compile()
+            self.assertEqual(flat.report['terrain']['fields']['main']['triangles'], [8])
+            self.assertEqual(flat.report['terrain']['fields']['main']['tiles'], 4)
+            ops = [{'op': 'add', 'area': {'circle': [30, 34, 6]}, 'height': 9, 'falloff': 14},
+                   {'op': 'terrace', 'step': 3, 'bank': 0.3},
+                   {'op': 'carve', 'area': {'circle': [12, 50, 5]}, 'height': -1.5, 'falloff': 3},
+                   {'op': 'paint', 'area': {'rect': [40, 0, 64, 20]}, 'material': 'stone'},
+                   {'op': 'hole', 'area': {'rect': [58, 58, 64, 64]}}]
+            c = TerrainWorld(tmp, terrain=field(operations=ops, steep={'degrees': 30, 'material': 'earth'},
+                                                lod={'distance': 40, 'tolerance': 0.4})).compile()
+            rep = c.report['terrain']['fields']['main']
+            self.assertLess(rep['triangles'][0], rep['full_triangles'])
+            self.assertLess(rep['triangles'][1], rep['triangles'][0])
+            self.assertIn('earth', rep['materials'])
+            S = 32
+            levels = {}          # (cell, level) -> world triangles of the cell's field pieces
+            for cell in c.world.cells:
+                for pl in cell.placements:
+                    if pl.tag != 0xFFFE: continue
+                    self.assertEqual((pl.position, pl.yaw, pl.ground), ((cell.i * S + 16, 0, cell.j * S + 16), 0, True))
+                    meshes = [pl.mesh] + ([m for _, m in pl.lod.levels] if pl.lod else [pl.mesh])
+                    for lv, m in enumerate(meshes[:2]):
+                        levels.setdefault(((cell.i, cell.j), lv), []).extend(mesh_world_triangles(c, cell, m))
+            self.assertTrue(any(pl.lod for cell in c.world.cells for pl in cell.placements))
+            # no T-junctions inside a cell's pieces at either level
+            for key, tris in levels.items():
+                self.assertEqual(t_junctions(tris), [], key)
+            # across every seam, at every pair of levels, both sides have the same points on it
+            def on(tris, axis, v):
+                return {p for t in tris for p in t if abs(p[axis] - v) < 1e-9}
+            for (a, b, axis, v) in (((0, 0), (1, 0), 0, 32), ((0, 1), (1, 1), 0, 32), ((0, 0), (0, 1), 2, 32), ((1, 0), (1, 1), 2, 32)):
+                for la in (0, 1):
+                    for lb in (0, 1):
+                        self.assertEqual(on(levels[(a, la)], axis, v), on(levels[(b, lb)], axis, v), (a, b, la, lb))
+            # collision is the level-0 faces, in world coordinates, floors and walls by the probe's angle
+            n = sum(len([t for t in cell.collision if t.tag == 0xFFFE]) for cell in c.world.cells)
+            self.assertEqual(n, rep['triangles'][0])
+            kinds = [P.classify(P.front_normal(t.a, t.b, t.c), math.cos(math.radians(40)), math.cos(math.radians(45)))
+                     for cell in c.world.cells for t in cell.collision]
+            self.assertIn(P.KIND_WALL, kinds)
+            self.assertNotIn(P.KIND_CEILING, kinds)
+
+    def test_sweeps_cut_at_seams_with_stairs_and_caps(self):
+        paths = {'walk': {'points': [[4, 0, 10], [60, 0, 10]], 'tag': 'path',
+                          'sweep': {'profile': [[-1.5, -0.3], [-1, 0], [1, 0], [1.5, -0.3]],
+                                    'materials': ['earth', 'stone', 'earth'], 'caps': True}},
+                 'steps': {'points': [[48, 0, 40], [48, 3, 52]], 'raised': True,
+                           'sweep': {'profile': [[-1, 0], [1, 0]], 'material': 'stone', 'stairs': {'rise': 0.25}}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            c = TerrainWorld(tmp, terrain={'materials': MATERIALS}, paths=paths).compile()
+            rep = c.report['terrain']['sweeps']
+            self.assertEqual(rep['walk']['cells'], {'0,0': 8, '1,0': 8})        # 3 edges x 2 strip faces + a cap of 2
+            self.assertEqual(rep['steps']['steps'], 12)                          # 3 / 0.25 risers
+            self.assertEqual(rep['steps']['triangles'], 13 * 2 + 12 * 2)
+            self.assertFalse(rep['steps']['ground'])
+            by_cell = {(cell.i, cell.j): cell for cell in c.world.cells}
+            tris = {k: mesh_world_triangles(c, by_cell[k], pl.mesh) for k in by_cell
+                    for pl in by_cell[k].placements if pl.tag == 0xFFFD and k[1] == 0}
+            seam = lambda ts: {p for t in ts for p in t if p[0] == 32}
+            self.assertEqual(seam(tris[(0, 0)]), seam(tris[(1, 0)]))
+            self.assertEqual(len(seam(tris[(0, 0)])), 4)
+            # stairs: treads are floors at most rise apart, risers walls
+            fc = math.cos(math.radians(40))
+            steps = [t for t in by_cell[(1, 1)].collision if t.tag == 0xFFFD]
+            floors = sorted({round(float(t.a[1]), 4) for t in steps if P.classify(P.front_normal(t.a, t.b, t.c), fc, fc) == P.KIND_FLOOR})
+            self.assertEqual(len(floors), 13)
+            self.assertLessEqual(max(b - a for a, b in zip(floors, floors[1:])), 0.25)
+            self.assertTrue(any(P.classify(P.front_normal(t.a, t.b, t.c), fc, fc) == P.KIND_WALL for t in steps))
+            # every face faces out: the top of the walk faces up
+            top = [t for t in by_cell[(0, 0)].collision if t.tag == 0xFFFD and abs(float(t.a[1])) < 1e-9
+                   and abs(float(t.b[1])) < 1e-9 and abs(float(t.c[1])) < 1e-9]
+            self.assertTrue(top and all(P.front_normal(t.a, t.b, t.c)[1] > 0 for t in top))
+
+    def test_materials_join_region_palettes_and_variants(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            w = TerrainWorld(tmp, terrain=field(operations=[{'op': 'paint', 'area': {'rect': [0, 0, 8, 8]}, 'material': 'stone'}]))
+            spec = json.loads(w.world.read_text())
+            spec['regions']['r']['variants']['night']['colors'] = {'terrain.stone': '#102030', 'grass': '#000800'}
+            w.world.write_text(json.dumps(spec))
+            c = w.compile()
+            palette = c.report['regions']['r']['palette']
+            self.assertEqual([e['materials'] for e in palette['entries']], [['terrain.grass'], ['terrain.stone']])
+            night = c.report['regions']['r']['variants']['night']
+            self.assertEqual(sorted(night.values()), ['#000800', '#102030'])
+            self.assertIn('terrain_material_unused', [x['code'] for x in c.report['warnings']])
+            # every terrain face is a palette swatch face moved to the region's entries
+            for cell in c.world.cells:
+                for pl in cell.placements:
+                    for k in range(P.mesh_info(pl.mesh)[1]):
+                        at = P.mesh_info(pl.mesh)[3] + 36 * k
+                        self.assertTrue(pl.mesh[at] & 2 and pl.mesh[at + 2] & 16)
+                        self.assertIn(pl.mesh[at + 3] * 16 + (pl.mesh[at + 28] & 15), (1, 2))
+
+    def test_worlds_without_terrain_report_none(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            c = Example(tmp).compile()
+            self.assertNotIn('terrain', c.report)
+            self.assertIsNone(c.terrain)
+
+    def test_example_shrine_grounds(self):
+        c = compile_source(str(EXAMPLES/'shrine_grounds'/'shrine_grounds.world.json'))[1]
+        rep = c.report['terrain']
+        f = rep['fields']['grounds']
+        self.assertEqual((f['quads'], f['tiles']), (4096, 16))
+        self.assertLess(f['triangles'][0], f['full_triangles'] // 3)
+        self.assertEqual(rep['sweeps']['sando']['steps'], 40)
+        self.assertLessEqual(max(cell['triangles']['most'] for cell in c.report['cells']), 2000)
+        floors = mei_world.floors(str(EXAMPLES/'shrine_grounds'/'shrine_grounds.world.json'),
+                                  ['20', '30', '47', '100', '86', '77', '76', '20'])['floors']
+        self.assertEqual([(p['y'], p['from']) for p in floors],
+                         [(0, 'terrain'), (3, 'terrain'), (12, 'terrain'), (0, 'sweep')])
+
+
 @tools_built
 class ConsoleTests(unittest.TestCase):
     def run_cart(self, out, cart, frames=2, dump=None):
@@ -690,6 +962,32 @@ class ConsoleTests(unittest.TestCase):
             day, night = ((out/v['image']).read_bytes() for v in views[:2])
             self.assertNotEqual(day, night, 'the night variant recolours the scene')
             self.assertEqual(sorted(p.name for p in out.iterdir() if p.name.startswith('.')), [])
+
+    def test_terrain_example_collides_and_draws_on_the_console(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)/'shrine_grounds'
+            shutil.copytree(EXAMPLES/'shrine_grounds', folder, ignore=shutil.ignore_patterns('*.ids.json'))
+            out = Path(tmp)/'out'
+            for a in folder.glob('assets/*.asset.json'):     # no NumPy needed: drop the policies
+                spec = json.loads(a.read_text())
+                spec.pop('verification', None)
+                a.write_text(json.dumps(spec))
+            build(str(folder/'shrine_grounds.world.json'), out, COMPILER, RUNNER, PROBE, checker='skip')
+            got = self.run_cart(out, 'shrine.akr')
+            fx = lambda v: ['1', str(P.fx(v))]
+            self.assertEqual(got['ground'], fx(0))
+            self.assertEqual(got['tier1'], fx(3))
+            self.assertEqual(got['tier2'], fx(6))
+            self.assertEqual(got['summit'], fx(12))
+            self.assertEqual(got['pond'], fx(-1.4))
+            self.assertEqual(got['sando'], fx(0))
+            self.assertEqual(got['tread'], fx(6))
+            self.assertEqual(got['back_path'][0], '1')
+            self.assertLessEqual(abs(int(got['back_path'][1]) - P.fx(3)), 2)      # on its slope, rounded
+            near, drawn, ground, coarse = map(int, got['draw'])
+            self.assertEqual(near, 4)
+            self.assertGreater(drawn, 16)                    # 16 tiles, 2 sweeps' pieces and the props
+            self.assertGreater(coarse, 0, 'far tiles are drawn at their coarse level')
 
     def test_multi_region_world_loads_and_draws_stand_ins(self):
         with tempfile.TemporaryDirectory() as tmp:

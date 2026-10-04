@@ -5,12 +5,13 @@
 console reader `stdlib/worldpack.akr`; the tool, `tools/mei_world.py`, with the [recipe
 format](#recipe-format) (cells, regions and palette variants, layers, [ground](#ground), [merged
 scatter](#merged-scatter), [paths](#paths), [levels of detail](#levels-of-detail), collision, game data in
-[Mochi](#game-data-and-stable-ids) or JSON, the ID lock file) and [command line](#command-line)
+[Mochi](#game-data-and-stable-ids) or JSON, the ID lock file, and [terrain](#terrain): ground
+heightfields and profiles swept along paths) and [command line](#command-line)
 below; the **World Checker**, the in-level
-verification every build runs ([WORLDCHECKER.md](WORLDCHECKER.md)); two example worlds in
+verification every build runs ([WORLDCHECKER.md](WORLDCHECKER.md)); three example worlds in
 `examples/worlds/`; and make's rule for [a cart that uses worlds](#using-a-world-in-a-cart), with
-World Viewer (`carts/worldview/`) as its example. Not built yet: terrain's geometry (ground
-heightfields, swept paths), textures, audio banks and backdrops (see [Build order](#build-order) for where the stages stand). This document records
+World Viewer (`carts/worldview/`) as its example. Not built yet: textures, audio banks and
+backdrops (see [Build order](#build-order) for where the stages stand). This document records
 the project owner's decisions (most of them made on 2026-10-03), proposes the rest, and lists
 what is still open. The game that motivates it is described in [PLATFORMER.md](PLATFORMER.md)
 and is not built. It depends on three things, all now in place:
@@ -219,25 +220,235 @@ looks them up by number or name and answers the nearest point on a path (a grind
 point at a length along it (a mover). They make no geometry: a rail, a wire or a jib is drawn and
 collided with by assets placed along it.
 
-**Not built: terrain geometry,** ground heightfields and profiles swept along paths (roads,
-kerbs, rails made by the kit). What is reserved for it, so nothing built first blocks it:
+**Built: terrain geometry** (`tools/worldkit/terrain.py`): ground heightfields in the world
+recipe's `terrain` property, and profiles swept along paths in a path's `sweep`. Both are made in
+world coordinates and cut per cell by the kit; what reaches the pack is what it already held,
+with no format change: ordinary native meshes placed at their cell's centre (yaw 0, cell-local
+vertices, as merged scatter is) and collision triangles in world coordinates. Worlds without
+terrain build exactly as before, byte for byte. The example is
+[`examples/worlds/shrine_grounds`](../examples/worlds/shrine_grounds) ([below](#the-example-shrine-grounds)).
 
-- The world recipe reserves a top-level `terrain` property (an error today, with a message
-  saying so), and a cell file the same, so terrain can be world-wide (cut per cell by the kit) or,
-  if that ever proves useful, per cell.
-- The generated geometry is an ordinary native mesh per cell plus collision triangles in world
-  coordinates, which the pack already holds: a cell's stand-in, placements and collision block
-  take it with no format change. A terrain piece would be packed as a placement at its cell's
-  centre whose mesh is in cell-local coordinates (yaw 0), as a merged mesh of small scatter props
-  would be.
-- Terrain is ground by default ([Ground](#ground)): a heightfield is the open floor that
-  ground-first drawing is for, and a swept path lying on it is too. A raised path (a bridge, a
-  viaduct) is not: a path says so with `raised`, which the pack already carries.
-- Materials and palette entries of terrain would be declared in the world recipe and packed into
-  region palettes by the same packer as asset entries, so a path's kerb can share an entry with
-  a building's stone.
-- A swept path would add a profile (and its materials) to a path of the recipe, and the kit
-  would generate its mesh per cell and its collision; the path itself stays world data as now.
+### Heightfields
+
+```json
+"terrain": {
+  "materials": {
+    "grass":  {"color": "#5f8f3e"},
+    "earth":  {"color": "#86684a"},
+    "gravel": {"color": "#b9b2a2", "tag": "gravel"}
+  },
+  "fields": {
+    "grounds": {
+      "spacing": 2, "min": [0, 0], "max": [128, 128],
+      "material": "grass", "steep": {"degrees": 38, "material": "earth"},
+      "lod": {"distance": 64, "tolerance": 0.3},
+      "operations": [
+        {"op": "set", "area": {"rect": [44, 50, 114, 116]}, "height": 3, "falloff": 2},
+        {"op": "ramp", "from": [28, 0, 64], "to": [46, 3, 64], "width": 6, "falloff": 2},
+        {"op": "carve", "area": {"circle": [22, 82, 9]}, "height": -1.4, "falloff": 4},
+        {"op": "bed", "path": "sando", "width": 5, "depth": 0.6, "falloff": 3}
+      ]
+    }
+  }
+}
+```
+
+A **field** is a grid of height samples `spacing` units apart over the rectangle from `min` to
+`max` (x, z), each quad between four samples taking a material. Its heights start at `height`
+(default 0) or come from a `heights` file; then its `operations` change them, in order.
+
+| Field property | Meaning |
+|---|---|
+| `spacing` | 0.5, 1, 2, 4 or 8 units between samples. Cells and tiles are whole numbers of quads |
+| `min`, `max` | The rectangle, corners multiples of `spacing`. Quads over no cell are left out (a warning, `terrain_outside_cells`) |
+| `height` / `heights` | The starting height of every sample, or a text file of them (below); not both |
+| `material` | The terrain material of every quad not painted |
+| `steep` | `{"degrees", "material"}`: unpainted quads steeper than that take the material (a bank, a cliff) |
+| `operations` | Below |
+| `tile` | Units per side of a tile, the unit of one mesh and one placement: at most a cell and 32 quads. Default: a cell, or 16 quads if that is less |
+| `tolerance` | How far (units) level 0 may stray from the samples where quads merge (below). Default 0.01 |
+| `lod` | `{"distance", "tolerance" (default 0.25), "band" (default 2)}`: a coarser level of every tile, drawn from that distance |
+| `shading` | `smooth` (default: each corner shaded by the field's normal at that sample, so shading runs on across seams) or `flat` |
+| `ground`, `collision` | Drawn in the ground pass; its faces are collision. Both default true |
+
+Fields may not overlap or touch: make one field, or leave a gap. **The heights file** is text, one
+line per row of samples from z = `min` to `max`, each row's samples from x = `min` to `max`
+separated by spaces, `#` starting a comment; a field of 64 × 50 quads has 51 lines of 65 numbers.
+*Decided here: a text grid, not a PNG heightmap.* Agents author terrain, and they read and edit
+text line by line; a text grid diffs and reviews in git, carries metres exactly with no scale
+or bit depth to choose, and needs nothing beyond the standard library (the kits build recipes
+without Pillow). Most terrain needs no file at all: the operations below describe it in a few
+lines, which is what an agent should reach for first. A painted heightmap can be converted to the
+text grid by a script when a person wants to paint one.
+
+**Operations.** Each acts within an `area` (omitted: the whole field) and fades out over
+`falloff` units outside it (a smoothstep; default 0, a hard edge). An area is exactly one of
+`{"rect": [x0, z0, x1, z1]}`, `{"circle": [x, z, radius]}`, `{"polygon": [[x, z], ...]}` (even-odd)
+or `{"path": NAME, "width": w}` (within w / 2 of a path of the world file, seen from above).
+
+| `op` | What it does |
+|---|---|
+| `set` | Flattens the area to `height` (a terrace, a courtyard, a plinth) |
+| `add` | Raises the area by `height` (negative lowers it): with a falloff, a hill |
+| `carve` | Lowers to at most `height` (a pond, a cutting); lower ground is left alone |
+| `fill` | Raises to at least `height`; higher ground is left alone |
+| `ramp` | Along the centre line `from` → `to` (`[x, y, z]` each), `width` across: the ground set to the line's height (a ramp between terraces) |
+| `terrace` | Heights become flats `step` apart from `base` (default 0), joined by banks that take the top `bank` fraction of each step (default 0.25): a smooth hill becomes a stepped one |
+| `smooth` | `passes` (default 1) of a 3 × 3 blur |
+| `bed` | Along a path, within `width`: the ground set to the path's line less `depth` (the bed a sweep lies in; it cuts and fills). An open path's bed ends square at its ends |
+| `paint` | The quads whose centres lie in the area take `material` (no falloff) |
+| `hole` | The quads whose centres lie in the area are left out (no falloff) |
+
+Heights are rounded to 16.16 after the last operation. `report.json`'s `terrain` has, per field,
+samples, quads, holes, the height range, tiles, triangles per level and per cell, vertices,
+triangles per material and `full_triangles` (two per quad, for comparison);
+`mei_world.py floor FILE X Z ...` answers the highest floor under points, from terrain, sweeps
+and placements, for setting things on the ground.
+
+**How a field is cut and simplified.** The field is cut into tiles aligned to the world's lattice
+(a tile never crosses a cell edge). In each tile the quads are merged greedily, row by row, into
+rectangles that share a material and are flat: every sample within `tolerance` of the patch
+through the rectangle's corners, the patch's twist (how far its two triangles part from it)
+included. Flat ground, a terrace's top and an evenly sloping ramp each become a few rectangles;
+a single quad that is not flat is two triangles, split along the diagonal that makes both the
+same kind for the body (both floors or both walls by the game's `floor_max_degrees`, so that no
+steep sliver lies between two floors where they meet), then along the shorter rise. A rectangle
+with only its own four corners on its edges is two triangles. One with more (the corners of
+smaller neighbours) is zipped between its two long sides when the extra points lie on those
+alone, and otherwise fanned from its centre, so no vertex lies in the middle of another face's
+edge: there are no T-junctions in a tile. Across a tile edge both tiles use the same points:
+every corner either tile has on that edge, at any level of detail. So the seams match by
+construction, at every pair of levels, and the coarse level keeps its tile's edge points.
+
+The coarse level is the same merge with the `lod` tolerance; each tile carries it as a
+[level of detail](#levels-of-detail) (switching at `distance` from the tile's centre, with
+`band`) when it has fewer faces. Collision is always level 0, in world coordinates, with each
+material's `tag` as its surface; it is tagged 0xFFFE (sweeps 0xFFFD) where an asset placement
+carries its number, and the report's `placement_tags` names them `terrain` and `sweeps`. A cell
+with terrain holds at most 65,533 placements of its own.
+
+### Sweeps
+
+```json
+"paths": {
+  "sando": {"points": [[76, 0, 4], [76, 0, 40], [76, 12, 74], [76, 12, 84]],
+            "sweep": {"profile": [[-3.2, -0.6], [-2, 0], [2, 0], [3.2, -0.6]],
+                      "materials": ["stone_dark", "stone", "stone_dark"],
+                      "stairs": {"rise": 0.3}, "caps": true}}
+}
+```
+
+A path's `sweep` carries a **profile** along it: points `[x, y]` across the path, x to the right
+of its direction and y up from its line, each edge facing to its left (an edge drawn left to right
+faces up). `material` gives every edge one terrain material, `materials` one each. The path stays
+world data as before ([Paths](#paths)); the sweep adds geometry and collision.
+
+| Sweep property | Meaning |
+|---|---|
+| `profile` | 2–64 points; consecutive points differ |
+| `material` / `materials` | Terrain materials: one for all edges, or one per edge |
+| `stairs` | `{"rise": r}`: each sloping segment climbs in equal steps no higher than r instead of a slope (a run of 3 m with `rise` 0.3 is 10 risers between 11 treads; the path's points are the landings) |
+| `caps` | Close an open path's two ends with the profile's outline, fanned from its first point. Default false |
+| `ground` | Drawn in the ground pass. Default: true unless the path is `raised` |
+| `collision` | Its faces are collision triangles. Default true |
+
+Cross-sections are made at the path's points (mitred at a corner, so the profile keeps its width;
+a turn of more than 120° is an error), where its line crosses a cell edge, and at both heights of
+every riser. The strip between two cross-sections goes to the cell holding the middle of its line,
+so a cross-section on a seam is shared and the two cells' pieces meet there exactly. A sweep may
+reach past its cell by at most the world's `overhang` (an error names the point). The line is the
+path's own: a sweep lies on the ground because the ground is shaped to it, with a `bed`, not
+because it follows the ground. One sweep piece is a placement per cell per path.
+
+**Lying on the ground: the bed.** A sweep lying on terrain and the terrain under it would be
+coplanar and fight in the depth buffer (RENDERING.md, "Precision": a floor seen at 11° needs about
+39 cm of separation at 128 units). So the profile's top is the path's line, its sides slope down
+below it, and a `bed` operation lowers the ground under the path by more than the sides go down.
+The rule that keeps the ground out of the sweep's top: the bed's `width` covers the top's width,
+since the ground between two samples is their interpolation, and the samples within a quad of the
+top's edge must be at the bed's height; the profile's sides should reach as far as the bed and its
+falloff, so that the ditch is covered. In the example the sando's top is 4 m wide, its sides
+slope 26° to 3.2 m out and 0.6 m down, and its bed is 5 m wide, 0.6 m deep with a falloff of 3:
+the ground under the top is 0.6 m below the path's line, so 0.6 m below the flat part and at
+least 0.3 m below every tread (a tread lies at most one rise below the line). Sides gentler than the game's slide angle
+let the body walk on and off the path; steep sides are walls it cannot step over.
+
+### Materials, palettes and textures
+
+Terrain materials are declared in `terrain.materials` with an Asset Kit material's `color`,
+`class` (`surface` or `emissive`), `tag` and `share`, and are always palette-backed: a face is a
+4-bit textured face sampling one texel of the world's swatch, tinted by its baked shade. Their
+entries join the palette of each region that draws them, as one more asset named `terrain` would
+([Palettes per region](#palettes-per-region)): entries of the same class and colour share with
+the assets' (a kerb can share an entry with a building's stone), and a variant recolours them by
+`MATERIAL` or `terrain.MATERIAL`. Shading is baked by `terrain.lighting`, an Asset Kit lighting
+object (default `"mode": "vertical"`, as the assets are; terrain is never turned, so
+`directional` is also allowed).
+
+**What textures will need** (the Asset Kit's textures are being built; terrain does not depend on
+them). A terrain material would add a texture reference and a projection: planar from above for
+ground (u = x / scale, v = z / scale, in world coordinates, so the pattern runs on across seams
+and tiles with no seam of its own), box projection for sweeps and banks (the axis nearest the face
+normal). The faces are already 4-bit textured faces, so the change is their slot, palette and UVs:
+UVs in world units need a repeating texture through a texture window (DECISIONS.md, "Texture
+windows"), whose range limits a face to 256 texels across, so large merged rectangles would be
+split (a `max_rect` per field) or the UV origin moved per face, which the window's wrap allows.
+The packer in `tools/kitcore/` would place terrain textures in the region's texture slots like an
+asset's. Nothing in the pack changes.
+
+### Costs and checking
+
+Every tile and sweep piece is an ordinary placement: about 500 cycles of the reader's per
+placement cost, its vertices and faces, and a bounding sphere for culling; ROM is the native mesh
+format's 16 + 16 × vertices + 36 × faces bytes. The World Checker checks terrain as any other
+ground, from the pack: cracks and mismatched edges at seams (the seams are shared exactly, so it
+finds none there), coverage, budgets per view and per cell, wrong-order pixels. It needs no
+change for terrain. What it does find on terrain are narrow walls between floors: where a steep
+face's tip meets floors on both sides (a sweep's steep side, a cap, a bank cut by a bed), a point
+query falls through for a few centimetres. The diagonal rule above removes the ones inside a
+single quad; the rest are the recipe's shapes, and a gentler side or bank removes them.
+
+### The example: shrine grounds
+
+[`examples/worlds/shrine_grounds`](../examples/worlds/shrine_grounds): 128 × 128 units in four
+64-unit cells, drawn in depth mode, on the movement garden's game schema. A hill rises in four
+terraces (3, 6, 9 and 12 m, banks of 2 m, walls) to a summit court with the shrine hall; a stone
+sando with 40 steps climbs the front, a gravel path winds up the back through trees, two ramps
+(10° and 27°) and a slide slope (37°) cross the west terraces; a pond, a storehouse and a
+cemetery on a gravel plinth sit on the lower ground. Its numbers (`report.json` and the World
+Checker, default settings, 512 views):
+
+| | |
+|---|---|
+| Field | 4,096 quads at 2 m in 16 tiles; level 0 2,079 triangles (25% of 8,192), coarse level 1,485 |
+| Sweeps | sando 508 triangles (40 risers), back path 46 |
+| Cells, triangles drawn | 296, 802, 1,430, 1,602 (the threshold is set to 2,000) |
+| Pack | 551,744 bytes |
+| Views: triangles | median 603, peak 1,803 (of 4,000) |
+| Views: GPU cycles | median 250,238, peak 412,212 (of 2,000,000) |
+| Views: draw CPU cycles | median 177,986, peak 404,990 (of 1,000,000) |
+| Coarse tiles drawn | in 249 views, 878 placements |
+| Coverage errors, wrong-order pixels | 0, 0 |
+| Static findings | 7 cracks of the kind above (2 at the sweeps' caps, 5 where beds cut banks and ramps); none on a seam |
+
+The movement garden's controller (carts/garden, built against this world with its world import
+changed) walks it as designed: up the 10° and 27° ramps onto the terraces; held at the foot of a
+56° bank (walls); sliding back off the 37° slope (over its 30° slide angle) and off it when
+standing on it; up all 40 steps (0.3 m risers, a 0.32 m step) to y = 12; along the back path to
+the summit; and across the sando from the side, down its bed and up its 26° side. Screenshots
+are in [`examples/worlds/shrine_grounds/screenshots`](../examples/worlds/shrine_grounds/screenshots).
+
+### Corrections to the reserved design
+
+- **Several placements a cell, not one.** The reservation had one terrain piece per cell; a tile
+  (by default 16 quads, 32 m at 2 m spacing) is the unit instead, so culling and levels of detail
+  work on pieces of a useful size and a cell of 128 units at 1 m stays inside the 2,048 vertices
+  of a mesh.
+- **Terrain in a cell file stays reserved** (an error that says to put terrain in the world
+  file): nothing has needed it.
+- **Sweeps follow their path's line, not the ground.** The ground is shaped to the path with a
+  `bed`; a sweep that drapes itself over the ground would need the ground before the beds that
+  depend on it.
 
 ## Streaming without a disc
 
@@ -606,7 +817,7 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | `runtime.near_far` | The near pass's far depth the pack asks the reader for (units; default 1.5 cells). `wp_open()` sets `wp_near_far` to it and the World Checker measures with it |
 | `runtime.depth`, `runtime.perspective` | The game draws the world with the depth buffer, and with perspective-correct texturing (`render_depth(true)`, `render_perspective(true)`; default false). Not stored in the pack: the checkers judge the world and its assets so ([Depth mode](#depth-mode)) |
 | `verification` | The World Checker's per-world settings: `mode` (`report`, the default, or `enforce`) and `thresholds` |
-| `terrain` | Reserved ([Terrain](#terrain)); rejected for now |
+| `terrain` | Terrain materials, their `lighting`, and ground heightfields (`fields`): [Terrain](#terrain). Sweeps are in `paths` |
 
 A **placement** is an `id` (unique in its cell; reports and the pack's 16-bit tag follow it), an
 `asset`, a `position` (world coordinates, in the cell), `yaw` (degrees, as `mesh_at()`), an
@@ -757,8 +968,9 @@ exported as `WORLD_NAME_NEAR_FAR`.
 
 `paths` in the world file names polylines in world coordinates: a rail to grind or hang from, a
 wire between two poles, a crane's jib, a train's route. The kit attaches no meaning to them and
-makes no geometry from them; it checks them, packs them once per world ([WORLDPACK.md](WORLDPACK.md#paths)
-says why not per cell) and exports their numbers:
+makes no geometry from them unless a path has a `sweep` ([Terrain](#sweeps)); it checks them,
+packs them once per world ([WORLDPACK.md](WORLDPACK.md#paths) says why not per cell) and exports
+their numbers:
 
 ```json
 "paths": {
@@ -770,7 +982,8 @@ says why not per cell) and exports their numbers:
 | Property | Meaning |
 |---|---|
 | `points` | 2–4,095 points `[x, y, z]`, world coordinates, in order; no point may repeat the one before it. A path may cross cell seams and leave the cells (a warning, `path_outside_cells`) |
-| `raised` | Not lying on the ground (a rail, a wire, a jib). Default false. Carried to the pack for the game, and for swept geometry later |
+| `raised` | Not lying on the ground (a rail, a wire, a jib). Default false. Carried to the pack for the game; a raised path's sweep is not ground |
+| `sweep` | A profile carried along the path: geometry and collision the kit makes ([Sweeps](#sweeps)) |
 | `closed` | A loop: the last point joins the first (do not repeat it). Default false |
 | `tag` | A surface tag, mapped to the pack's surface byte by `collision.surfaces` as material tags are (unmapped tags get `default` and are listed in the warnings) |
 
@@ -875,7 +1088,7 @@ For a world named `city` of a game named `game`, `build` produces:
 | `game.game.akr` | The game's type numbers, world numbers, probe constants, parameter `struct`s and `enum`s, imported by every world of the game; make links one copy per game for a cart's worlds, so a cart compiles it once ([Using a world in a cart](#using-a-world-in-a-cart)) |
 | `city.swatch` | The 8-byte palette swatch row, when any material is palette-backed |
 | `city.ids.json` | A copy of the ID lock file (the lock itself is written beside the recipe) |
-| `source/` | The world file, cell files and every asset recipe used, as built, and the game schema exactly as written (Mochi comments kept; the report's `game_sha256` is the hash of its JSON form, so comments and layout do not change it) |
+| `source/` | The world file, cell files, terrain heights files and every asset recipe used, as built, and the game schema exactly as written (Mochi comments kept; the report's `game_sha256` is the hash of its JSON form, so comments and layout do not change it) |
 | `report.json` | Per cell and region: triangles (always and per layer), placements, merged meshes, ground placements, collision triangles by kind, bytes, palettes and variants, entity numbers, paths, levels of detail, ID changes, recipe, game and asset hashes and Asset Checker results, warnings; and `verification`, the World Checker's summary, failures and static results, whose row per sampled view stays in `verification/world-check.json` (named by `verification.views_report`), or why it did not run (`ran: false`, with `skipped` for `--world-checker skip`) |
 
 With `preview` (or `build --preview`) there is also `preview/`: for every region, its busiest
@@ -971,11 +1184,12 @@ contract](#build-outputs-and-the-runtime-contract)).
 |---|---|
 | `schema [--game FILE]` | The world recipe's JSON Schema (cell files and game schemas under `$defs`, Mochi under `$defs/game/x-mochi`), with the game's entity types (Mochi or JSON) folded in when given |
 | `convert FILE [-o OUT] [--force]` | A game schema in the other form: JSON to canonical Mochi, or a `.mochi` file to JSON. Without `-o`, the result holds the `text` (Mochi) or `game` (JSON) |
-| `init DIR [--example room\|city] [--force]` | Copies an example world (world file, cells, game schema, asset recipes) into a new directory |
+| `init DIR [--example room\|city\|terrain] [--force]` | Copies an example world (world file, cells, game schema, asset recipes) into a new directory |
 | `validate FILE` | Every static check: schemas, references, game data, IDs, palettes, that every asset compiles and that the pack can hold the world; the ID changes a build would make |
 | `inspect FILE [--cell ID]` | The same, with the full report: per cell and per region costs, palettes and variants, entity numbers, asset hashes, warnings |
 | `build FILE -o DIR [--locked] [--preview] [--world-checker full\|skip\|N]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam |
 | `preview FILE -o DIR [--cell ID] [--locked] [--world-checker full\|skip\|N]` | `build`, plus native renders of a cell per region and palette variant (`--cell` picks the cell) |
+| `floor FILE X Z [X Z ...]` | The highest floor under each point, from the world's collision as the kit builds it: `{"at", "y", "from"}`, `from` being `terrain`, `sweep` or a placement's ID (`y` null: none). For setting placements and entities on the ground |
 
 `--world-checker` is for quick builds, such as the World Kit's own tests: `full` (the default)
 runs the World Checker with the world's settings; `skip` does not run it, and `report.json`
@@ -1022,8 +1236,10 @@ gate in an exclusive pair of layers, a collectible with a required Asset Checker
 trigger whose parameters use every kind of reference) and
 [`examples/worlds/two_districts`](../examples/worlds/two_districts) (four cells in two regions with
 day and night variants, stand-ins, a far cell, merged scatter, a festival layer, a `share: false`
-material). `make test-world` (also part of `make test`) runs `tests/test_worldkit.py`, which builds
-both and runs them on the console, and `tests/test_mochi.py`.
+material), and [`examples/worlds/shrine_grounds`](../examples/worlds/shrine_grounds) (terrain:
+a terraced hill, a pond, swept paths and stairs, in depth mode; [Terrain](#the-example-shrine-grounds)).
+`make test-world` (also part of `make test`) runs `tests/test_worldkit.py`, which builds them and
+runs them on the console, and `tests/test_mochi.py`.
 
 ## Using a world in a cart
 
@@ -1069,8 +1285,8 @@ fn init() { assert(world_test_room_load()) }
    The garden imports its world from `carts/garden/ground/ground.akr` for this reason.
 
 A world is rebuilt when its recipe, a cell file, its game schema, its ID lock file, an asset
-recipe, its cell or asset folder (a file added or removed), or the kit's Python changes:
-`build.d` beside the build records what the build read. A kit change can change any output, so
+recipe, a terrain heights file, its cell or asset folder (a file added or removed), or the
+kit's Python changes: `build.d` beside the build records what the build read. A kit change can change any output, so
 it rebuilds every world, but the checkers' results are kept in `build/kit-cache/` by a hash of
 their inputs, so a rebuild checks again only the assets and pack whose inputs changed: with
 nothing changed but the build's own Python, the garden rebuilds in seconds. Editing the cart's
@@ -1149,8 +1365,10 @@ lifted out later, once a second game wants the same one.
 
 Settled differently from this document's earlier recommendation (terrain operations in the Asset
 Kit): terrain belongs to the World Kit ([Terrain](#terrain)), described in world coordinates and
-cut per cell by the kit, so seams match by construction instead of by a seam check. Until it is
-built, ground can be written as an explicit Asset Kit `mesh` per cell.
+cut per cell by the kit, so seams match by construction instead of by a seam check. Built: the
+operations are `set`, `add`, `carve`, `fill`, `ramp`, `terrace`, `smooth`, `bed`, `paint` and
+`hole` ([Heightfields](#heightfields)). Open: noise or erosion (the recipe has no random
+generation, so it would need a seed), and a sweep that drapes itself over the ground.
 
 ### 5. What the World Checker samples and what fails
 
@@ -1192,3 +1410,5 @@ every build and walked through in World Viewer. Neither stage is built as the ga
 garden cart, its character control and its camera zones are the game's
 ([PLATFORMER.md](PLATFORMER.md)), and stage 2's per-cell budgets have been measured only on the
 examples ([WORLDCHECKER.md](WORLDCHECKER.md#ground)). Stage 3 waits for textures.
+Terrain (2026-10-04) is built, with a third example, `shrine_grounds`, the shape of the shrine
+grounds the garden's shrine hill is to grow into ([Terrain](#the-example-shrine-grounds)).

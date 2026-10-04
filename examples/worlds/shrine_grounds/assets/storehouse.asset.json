@@ -1,0 +1,19 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "storehouse",
+  "materials": {
+    "plaster": {"color": "#e6e0d2", "palette": true, "tag": "wall"},
+    "skirt": {"color": "#4c4c4e", "palette": true, "tag": "wall"},
+    "tile": {"color": "#3a3f48", "palette": true, "tag": "roof"}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "nodes": [
+    {"id": "body", "op": "box", "size": [4, 4, 6], "open": ["bottom", "top"], "material": "plaster",
+     "transform": {"translate": [0, 2, 0]}},
+    {"id": "skirt", "op": "box", "size": [4.2, 0.9, 6.2], "open": ["bottom", "top"], "material": "skirt",
+     "transform": {"translate": [0, 0.45, 0]}},
+    {"id": "roof", "op": "extrude", "points": [[-2.7, 0], [2.7, 0], [0, 1.6]], "depth": 6.8, "material": "tile",
+     "transform": {"translate": [0, 4, -3.4]}}
+  ]
+}

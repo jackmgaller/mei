@@ -19,7 +19,7 @@ from worldkit import mochi
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT/'examples'/'worlds'
-EXAMPLE_WORLDS = {'room':'test_room','city':'two_districts'}
+EXAMPLE_WORLDS = {'room':'test_room','city':'two_districts','terrain':'shrine_grounds'}
 
 
 def summary(report, cell=None):
@@ -58,6 +58,42 @@ def convert(source, output=None, force=False):
     return {'ok':True,'format':to,'output':str(target.resolve())}
 
 
+def floors(recipe, points, assets=None):
+    """The highest floor under each point (x, z), from the world's collision as the kit builds it
+    (terrain, sweeps and placements), for putting things on the ground."""
+    import math
+    from worldkit import pack as P
+    from worldkit.terrain import TAG_FIELD, TAG_SWEEP
+    if len(points) % 2:
+        raise WorldError('/arguments','Give points as X Z pairs.')
+    source,compiled = compile_source(recipe,assets)
+    fc = math.cos(math.radians(compiled.world.floor_max_degrees))
+    names = {}
+    for cs in source.cells:
+        for k,pl in enumerate(cs.recipe.get('placements',[])): names[(tuple(cs.recipe['at']),k)] = pl['id']
+    tris = []
+    for cell in compiled.world.cells:
+        for t in cell.collision:
+            v = [tuple(float(c) for c in p) for p in (t.a,t.b,t.c)]
+            n = P.front_normal(*v)
+            ln = math.sqrt(P.dot3(n,n))
+            if ln and n[1]/ln >= fc: tris.append((v,n,t,(cell.i,cell.j)))
+    out = []
+    for k in range(0,len(points),2):
+        x,z = float(points[k]),float(points[k+1])
+        best = None
+        for v,n,t,cell in tris:
+            sides = [(v[(e+1)%3][0]-v[e][0])*(z-v[e][2])-(v[(e+1)%3][2]-v[e][2])*(x-v[e][0]) for e in range(3)]
+            if not (all(s >= -1e-9 for s in sides) or all(s <= 1e-9 for s in sides)): continue
+            y = v[0][1]-(n[0]*(x-v[0][0])+n[2]*(z-v[0][2]))/n[1]
+            if best is None or y > best[0]:
+                what = ('terrain' if t.tag == TAG_FIELD else 'sweep' if t.tag == TAG_SWEEP else
+                        names.get((cell,t.tag),'placement'))
+                best = (y,what)
+        out.append({'at':[x,z],'y':round(best[0],4) if best else None,'from':best[1] if best else None})
+    return {'ok':True,'floors':out}
+
+
 ArgumentParser = parser_class(WorldError)
 
 
@@ -74,6 +110,10 @@ def parser():
     i.add_argument('output')
     i.add_argument('--example',choices=sorted(EXAMPLE_WORLDS),default='room')
     i.add_argument('--force',action='store_true')
+    f = sub.add_parser('floor',help='The highest floor under points (X Z pairs): terrain, a sweep or a placement\'s collision.')
+    f.add_argument('recipe',help='World recipe path.')
+    f.add_argument('points',nargs='+',help='X Z X Z ...: world coordinates seen from above.')
+    f.add_argument('--assets',type=Path,help='Use this asset directory instead of the recipe\'s.')
     for name,text in (('validate','Check the recipe, its cells, game data, IDs and assets, and that the pack can hold it.'),
                       ('inspect','validate, plus per-cell and per-region costs, palettes and warnings.'),
                       ('build','Build the pack, its Akari imports, the ID lock file and report.json.'),
@@ -107,6 +147,8 @@ def main(argv=None):
             jsonio.output(convert(args.game,args.output,args.force))
         elif args.command == 'init':
             jsonio.output(init(args.output,args.example,args.force))
+        elif args.command == 'floor':
+            jsonio.output(floors(args.recipe,args.points,args.assets))
         elif args.command in ('build','preview'):
             jsonio.output(build(args.recipe,args.output,args.compiler.resolve(),args.runner.resolve(),
                                 args.probe.resolve(),args.locked,args.assets,

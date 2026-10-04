@@ -21,6 +21,7 @@ from . import ids, merge
 from . import pack as P
 from .assets import Library, collision_triangles, relative
 from .palettes import RegionPalette
+from .terrain import TAG_FIELD, TAG_SWEEP, compile_terrain
 from .schema import (WorldError, validate_world, validate_cell_file, validate_game, param_schema, obj,
                      AKARI_KEYWORDS)
 
@@ -152,6 +153,17 @@ class Compiled:
     library: Library
     world: object = None
     encoded: dict = field(default_factory=dict)
+    terrain_files: list = field(default_factory=list)   # heights files the terrain read
+    terrain: object = None                              # terrain.Result, or None
+
+
+@dataclass
+class TerrainAsset:
+    """What RegionPalette needs of the terrain to give its materials region entries: a name
+    (owners read "terrain.MATERIAL"), a manifest's entries and, to relocate, a mesh."""
+    name: str
+    manifest: dict
+    binary: bytes = b''
 
 
 def cell_shift(size):
@@ -232,6 +244,9 @@ def compile_world(source, lock=None, assets_dir=None):
                 warnings.append({'code': 'no_standin', 'cell': cs.recipe['id'],
                                  'message': 'The cell has no stand-in; it disappears beyond the near ring.'})
 
+    # ---- terrain: heightfields and sweeps, made in world coordinates and cut per cell
+    terrain = compile_terrain(w, source.base, size, seen_at, surface_of, warnings, overhang, probe["floor_max_degrees"])
+
     # ---- assets, collision and placements per cell
     region_palettes = {r: RegionPalette(r, w['regions'][r], pointer('/regions', r)) for r in regions}
     used_layers = set()
@@ -310,6 +325,11 @@ def compile_world(source, lock=None, assets_dir=None):
         if len(plan['layers']) > P.MAX_CELL_LAYERS:
             raise err(p, f'Cell {c["id"]!r} uses {len(plan["layers"])} layers ({", ".join(plan["layers"])}); '
                       f'a cell holds at most {P.MAX_CELL_LAYERS}.', cs)
+        if terrain and (i, j) in terrain.pieces:
+            if len(c.get('placements', [])) > TAG_SWEEP:
+                raise err(p + '/placements', f'At most {TAG_SWEEP:,} placements in a cell with terrain: '
+                          'the tags above are the terrain\'s.', cs)
+            plan['collision'].extend(terrain.collision.get((i, j), []))
         plan['collision'], plan['stripped'] = strip_resting(plan['collision'], probe)
         return plan
 
@@ -324,6 +344,25 @@ def compile_world(source, lock=None, assets_dir=None):
     for lname in layer_names:
         if lname not in used_layers:
             warnings.append({'code': 'unused_layer', 'layer': lname, 'message': 'No placement or entity uses this layer.'})
+
+    # terrain materials join each region's palette as one asset named "terrain" would
+    terrain_assets = {}
+    if terrain:
+        region_of = {tuple(cs.recipe['at']): cs.recipe['region'] for cs in source.cells}
+        used = {}
+        for key, pieces in terrain.pieces.items():
+            for piece in pieces:
+                used.setdefault(region_of[key], set()).update(piece.materials)
+        for r in regions:
+            if r not in used:
+                continue
+            entries = []
+            for e in terrain.palette['entries']:
+                mats = [m for m in e['materials'] if m in used[r]]
+                if mats:
+                    entries.append(dict(e, materials=mats))
+            terrain_assets[r] = TerrainAsset('terrain', {'entries': entries})
+            region_palettes[r].add_asset(terrain_assets[r])
 
     # ---- levels of detail: the switch distances per asset (the recipe's, then the world's)
     lod_cfg = w.get('lod', {})
@@ -466,6 +505,18 @@ def compile_world(source, lock=None, assets_dir=None):
             entry = {'layer': lname, 'placements': [pl['spec']['id'] for _, pl in items], 'meshes': len(meshes)}
             if ground: entry['ground'] = True
             merged_report.setdefault(c['id'], []).append(entry)
+        for piece in (terrain.pieces.get((i, j), []) if terrain else []):
+            ta = terrain_assets[c['region']]
+            lod = None
+            if piece.levels:
+                lod = P.Lod([(d, rp.relocated(TerrainAsset(ta.name, ta.manifest, m), slot, row)) for d, m in piece.levels],
+                            piece.band)
+                try:
+                    P.lod_rows(lod)
+                except P.PackError as error:
+                    raise WorldError(pointer('/terrain/fields', piece.name) + '/lod', f'{error}.') from error
+            cell.placements.append(P.Placement(rp.relocated(TerrainAsset(ta.name, ta.manifest, piece.mesh), slot, row),
+                                               centre, 0.0, None, piece.tag, piece.ground, lod))
         if plan['standin']:
             cell.standin = rp.relocated(plan['standin'], slot, row)
         cell.collision = plan['collision']
@@ -527,7 +578,21 @@ def compile_world(source, lock=None, assets_dir=None):
                          new_lock, changes, merged_report, number_of, pad)
     report['paths'] = path_report
     report['lod'] = {n: s for n, s in lod_report.items()}
+    if terrain:
+        report['terrain'] = terrain.report
+        for entry, plan in zip(report['cells'], plans):
+            pieces = terrain.pieces.get(tuple(entry['at']), [])
+            if not pieces:
+                continue
+            tags = entry['collision']['placement_tags']
+            for piece in pieces:
+                tags[str(piece.tag)] = 'terrain' if piece.tag == TAG_FIELD else 'sweeps'
+            entry['terrain'] = {'pieces': len(pieces), 'triangles': sum(p.faces for p in pieces),
+                                'coarse_triangles': sum(p.level_faces[-1] for p in pieces),
+                                'collision_triangles': len(terrain.collision.get(tuple(entry['at']), []))}
     compiled = Compiled(data, report, '', '', SWATCH if any_palette else b'', new_lock, changes, library, world, encoded)
+    compiled.terrain_files = terrain.files if terrain else []
+    compiled.terrain = terrain
     from .akr import world_source, game_source
     compiled.akr = world_source(source, compiled, region_palettes, slot, row, number_of, groups)
     compiled.game_akr = game_source(game)
