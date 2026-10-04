@@ -1,0 +1,30 @@
+// Attachments: poles, rails and wires, bounce things and movers (the attachments worker's
+// file). The controller calls these hooks; until they are written they change nothing.
+//
+// - attach_init(): after the world is open and the player placed.
+// - attach_tick(): once a tick, before player_tick(): move the movers.
+// - attach_carry(): at the start of player_tick(): carry a player standing on a mover.
+// - attach_floor/ceiling/push: after the world's answer, let the movers' blocks answer too
+//   (their surface byte through surface_map; set col_y, col_n, col_surf for a floor, call
+//   note_wall() for a wall that pushed).
+// - attach_air_grab(ip): in the air, after moving: grab a pole or a rail (enter St.Pole,
+//   St.Rail or St.Hang) and return true.
+// - attach_state_tick(ip): run St.Pole, St.Rail and St.Hang; return true when it ran the tick.
+// - attach_draw(), attach_owns(e): draw the entities attach.akr moves; game.akr's
+//   draw_entities() skips those attach_owns() claims.
+
+fn attach_init() {}
+fn attach_tick() {}
+fn attach_carry() {}
+
+fn attach_floor(_p: vec3, _above: fixed, found: bool) -> bool { return found }
+fn attach_ceiling(_p: vec3, _below: fixed, found: bool) -> bool { return found }
+fn attach_push(p: vec3, _r: fixed) -> vec3 { return p }
+
+fn attach_air_grab(_ip: *Pin) -> bool { return false }
+fn attach_state_tick(_ip: *Pin) -> bool { return false }
+
+fn attach_draw() {}
+
+// True for an entity attach.akr draws itself (a mover, away from its placement).
+fn attach_owns(_e: *WpEntity) -> bool { return false }

@@ -1,0 +1,789 @@
+// The character: Mario 64's base moves with a glider in place of the triple jump, and a wall
+// kick that sits between Mario 64's and Sunshine's (docs/PLATFORMER.md). One tick of movement
+// per call of player_tick(); every window is counted in ticks (1/60 s), whatever the frame
+// rate. All numbers are in tuning.akr.
+//
+// The body is the game schema's probe: an upright cylinder of BODY_RADIUS from the feet
+// (pl.pos) up BODY_HEIGHT. Collision goes through stdlib/worldpack.akr (col_floor, col_push,
+// col_ceiling below), and through attach.akr for things that move.
+//
+// Velocity is in metres a tick. On foot and in the air the player moves along its facing
+// (pl.yaw) at pl.fwd, as in Mario 64; slides keep a free horizontal velocity (pl.vel).
+
+enum St {
+    Ground, Skid, Crouch, CrouchSlide, Slide,
+    Jump, DoubleJump, ThirdJump, LongJump, Backflip, SideFlip, Fall, WallKick, Bounce, Rollout,
+    Glide, WallSlide, LedgeHang, LedgeClimb, PoundSpin, PoundFall, PoundLand, Dive, BellySlide,
+    Pole, Rail, Hang,              // attach.akr's
+}
+
+const ST_NAMES: [len(St)]*u8 = [
+    "ground", "skid", "crouch", "crouch slide", "slide",
+    "jump", "double jump", "third jump", "long jump", "backflip", "side flip", "fall",
+    "wall kick", "bounce", "rollout",
+    "glide", "wall slide", "ledge hang", "ledge climb", "pound spin", "pound fall",
+    "pound land", "dive", "belly slide",
+    "pole", "rail", "hang",
+]
+
+// Surface bytes (carts/garden/README.md, "Surfaces"), after ground.akr's map.
+const SURF_NORMAL = 0
+const SURF_BOUNCE = 1
+const SURF_SLIDE = 2
+
+const SKID_ANGLE: fixed = 1.75         // stick this far (radians) from the facing turns you round
+const DIVE_MIN: fixed = 0.0167         // a dive from the ground needs 1 m/s
+const LEDGE_HANG: fixed = 1.5          // hanging: the feet this far below the ledge
+const LEDGE_GRAB_TICKS = 8             // a hang lasts at least this long before climbing
+
+// What the stick and buttons ask for this tick.
+struct Pin {
+    dir: vec3          // where the stick points in the world (unit, horizontal), or zero
+    mag: fixed         // how far, 0..1
+    a: bool            // A (jump) held
+    ap: bool           // A pressed this tick
+    bp: bool           // B (dive) pressed
+    r: bool            // R (crouch, ground pound) held
+    rp: bool           // R pressed
+}
+
+struct Player {
+    pos: vec3          // the feet (world)
+    vel: vec3          // metres a tick
+    yaw: fixed
+    fwd: fixed         // speed along yaw, metres a tick
+    st: St
+    t: s32             // ticks in this state
+    chain_from: St     // the jump last landed from (Jump, DoubleJump: the next can chain)
+    land_t: s32        // ticks since landing
+    floor_n: vec3      // the floor under the feet: its normal and surface byte
+    floor_surf: s32
+    wall_hit: bool     // a wall pushed the body this tick
+    wall_n: vec3       // its horizontal normal, and its normal's y
+    wall_ny: fixed
+    bonked: bool       // the head hit a ceiling this tick
+    kick_n: vec3       // the wall being slid down or hung from
+    kick_in: vec3      // the direction the player came in at it
+    kick_speed: fixed
+    last_wall: vec3    // the wall last left, which cannot be grabbed for regrab_t ticks
+    regrab_t: s32
+    a_air: s32         // ticks since A was pressed in the air (a press before a wall)
+    glide_armed: bool  // A held since take-off
+    glided: bool       // the glider was used this time in the air
+    ledge_to: vec3
+    ledge_from: vec3
+    spawn: vec3
+    spawn_yaw: fixed
+    // for the readouts and the tests
+    kicks: s32
+    kick_good: bool
+    kick_at: s32       // ticks after touching the wall that the last kick came (negative: early)
+}
+
+var pl: Player
+var pin: Pin
+var surface_map: [8]u8
+
+// What the last col_* query found.
+var col_y: fixed
+var col_n: vec3
+var col_surf: s32
+
+fn fwd_dir(yaw: fixed) -> vec3 { return vec3(sin(yaw), 0.0, cos(yaw)) }
+fn yaw_of(v: vec3) -> fixed { return atan2(v.x, v.z) }
+// Lengths of velocities (metres a tick) are taken scaled up: the square of a few
+// centimetres is below fixed point's 1/65536.
+fn tlen(v: vec3) -> fixed { return length(v * 256.0) / 256 }
+fn tnorm(v: vec3) -> vec3 { return normalize(v * 256.0) }
+fn hspeed() -> fixed { return tlen(vec3(pl.vel.x, 0.0, pl.vel.z)) }
+fn is_air(s: St) -> bool { return s >= St.Jump && s <= St.Glide || s == St.PoundSpin || s == St.PoundFall || s == St.Dive }
+
+fn enter(s: St) {
+    pl.st = s
+    pl.t = 0
+}
+
+fn set_hvel() {
+    pl.vel.x = sin(pl.yaw) * pl.fwd
+    pl.vel.z = cos(pl.yaw) * pl.fwd
+}
+
+fn player_place(p: vec3, yaw: fixed) {
+    pl = Player {}
+    pl.pos = p
+    pl.yaw = yaw
+    pl.spawn = p
+    pl.spawn_yaw = yaw
+    pl.land_t = 1000
+    pl.a_air = 1000
+    pl.floor_n = vec3(0.0, 1.0, 0.0)
+    if col_floor(p + vec3(0.0, 0.5, 0.0), 0.0) {
+        pl.pos.y = col_y
+        take_floor()
+        enter(St.Ground)
+    } else {
+        enter(St.Fall)
+    }
+}
+
+fn player_respawn() { player_place(pl.spawn, pl.spawn_yaw) }
+
+// ---- collision (the world, then attach.akr's moving things)
+
+fn col_floor(p: vec3, above: fixed) -> bool {
+    var found = false
+    if wp_floor(p, above) {
+        col_y = wp_hit.y
+        col_n = wp_hit_normal()
+        col_surf = surface_map[wp_hit.surface & 7] as s32
+        found = true
+    }
+    return attach_floor(p, above, found)
+}
+
+fn col_ceiling(p: vec3, below: fixed) -> bool {
+    var found = false
+    if wp_ceiling(p, below) {
+        col_y = wp_hit.y
+        found = true
+    }
+    return attach_ceiling(p, below, found)
+}
+
+// A wall pushed the body: remember it for wall kicks and ledges.
+fn note_wall(n: vec3, ny: fixed) {
+    pl.wall_hit = true
+    pl.wall_n = n
+    pl.wall_ny = ny
+}
+
+fn col_push(p: vec3, r: fixed) -> vec3 {
+    let q = wp_push(p, r)
+    if wp_hit.walls > 0 {
+        let w = wp_hit.rec as *WpWall
+        note_wall(vec3(w.hx, 0.0, w.hz), w.p.y)
+    }
+    return attach_push(q, r)
+}
+
+fn take_floor() {
+    pl.floor_n = col_n
+    pl.floor_surf = col_surf
+}
+
+// The heights above the feet at which walls push the body: just over a step, the middle, the
+// shoulders.
+const PUSH_H: [3]fixed = [0.36, 0.9, 1.4]
+
+// Moves the body horizontally in steps of at most 12 cm, pushed out of walls at each.
+fn move_h(dx: fixed, dz: fixed) {
+    pl.wall_hit = false
+    let n = min(((abs(dx) + abs(dz)) / 0.12) as s32 + 1, 8)
+    let sx = dx / n
+    let sz = dz / n
+    var p = pl.pos
+    for i in 0..n {
+        p.x += sx
+        p.z += sz
+        for k in 0..3 {
+            let q = col_push(vec3(p.x, p.y + PUSH_H[k], p.z), BODY_RADIUS)
+            p.x = q.x
+            p.z = q.z
+        }
+    }
+    pl.pos = p
+}
+
+// On the ground: move by vel, then stand on the floor within a step up or a slope's drop down.
+// False when there is none: the player is falling now.
+fn ground_move() -> bool {
+    move_h(pl.vel.x, pl.vel.z)
+    let snap = 0.06 + (abs(pl.vel.x) + abs(pl.vel.z)) * 1.2
+    if col_floor(pl.pos, BODY_STEP) && col_y >= pl.pos.y - snap {
+        pl.pos.y = col_y
+        take_floor()
+        return true
+    }
+    let h = hspeed()
+    if h > 0.0001 {
+        pl.yaw = yaw_of(pl.vel)
+    }
+    pl.fwd = h
+    pl.vel.y = 0.0
+    pl.glide_armed = false
+    enter(St.Fall)
+    return false
+}
+
+// In the air: gravity (times gmul), then move; the head stops at ceilings. True when the feet
+// came down on a floor this tick.
+fn air_move(gmul: fixed) -> bool {
+    let old_y = pl.pos.y
+    pl.bonked = false
+    pl.vel.y = max(pl.vel.y - mps2(T.Gravity) * gmul, -mps(T.FallMax))
+    move_h(pl.vel.x, pl.vel.z)
+    pl.pos.y += pl.vel.y
+    if pl.vel.y > 0.0 {
+        let head = pl.pos.y + BODY_HEIGHT
+        if col_ceiling(vec3(pl.pos.x, head, pl.pos.z), pl.vel.y + 0.02) && col_y < head {
+            pl.pos.y = col_y - BODY_HEIGHT - 0.01
+            pl.vel.y = 0.0
+            pl.bonked = true
+        }
+        return false
+    }
+    if col_floor(vec3(pl.pos.x, old_y, pl.pos.z), 0.02) && col_y >= pl.pos.y {
+        pl.pos.y = col_y
+        take_floor()
+        return true
+    }
+    return false
+}
+
+fn steep() -> bool {
+    return pl.floor_surf == SURF_SLIDE || pl.floor_n.y < cos(rad_of(T.SlideAngle))
+}
+
+// ---- the tick
+
+fn player_tick(ip: *Pin) {
+    pl.t += 1
+    pl.land_t = min(pl.land_t + 1, 1000)
+    if pl.regrab_t > 0 { pl.regrab_t -= 1 }
+    attach_carry()
+    if !attach_state_tick(ip) {
+        match pl.st {
+            Ground => st_ground(ip)
+            Skid => st_skid(ip)
+            Crouch => st_crouch(ip)
+            CrouchSlide => st_crouch_slide(ip)
+            Slide => st_slide(ip)
+            Jump, DoubleJump, ThirdJump, LongJump, Backflip, SideFlip, Fall, WallKick, Bounce, Rollout => st_air(ip)
+            Glide => st_glide(ip)
+            WallSlide => st_wall_slide(ip)
+            LedgeHang => st_ledge_hang(ip)
+            LedgeClimb => st_ledge_climb()
+            PoundSpin => st_pound_spin()
+            PoundFall => st_pound_fall()
+            PoundLand => st_pound_land()
+            Dive => st_dive(ip)
+            BellySlide => st_belly_slide(ip)
+            Pole, Rail, Hang => {}
+        }
+    }
+    if pl.pos.y < pl.spawn.y - 40.0 { player_respawn() }
+}
+
+// ---- on foot
+
+fn st_ground(ip: *Pin) {
+    if ip.ap {
+        jump(ip)
+        return
+    }
+    if ip.bp && pl.fwd >= DIVE_MIN {
+        start_dive(true)
+        return
+    }
+    if ip.rp {
+        if pl.fwd >= mps(T.SlideMin) {
+            enter(St.CrouchSlide)
+        } else {
+            pl.fwd = 0.0
+            enter(St.Crouch)
+        }
+        set_hvel()
+        let _ = ground_move()
+        return
+    }
+    if steep() {
+        set_hvel()
+        enter(St.Slide)
+        st_slide(ip)
+        return
+    }
+    if ip.mag > 0.0 {
+        let target = yaw_of(ip.dir)
+        let d = wrap_angle(target - pl.yaw)
+        if abs(d) > SKID_ANGLE && pl.fwd >= mps(T.SkidSpeed) {
+            enter(St.Skid)
+            st_skid(ip)
+            return
+        }
+        if pl.fwd < 0.0167 {
+            pl.yaw = target                    // under 1 m/s: face the stick at once
+        } else {
+            let tr = rps(T.TurnRate)
+            pl.yaw = wrap_angle(pl.yaw + clamp(d, -tr, tr))
+        }
+        let top = mps(T.RunSpeed) * ip.mag
+        if pl.fwd < top {
+            let a = mps2(T.RunAccel) - pl.fwd * tv[T.RunDrag] / 60
+            pl.fwd = min(pl.fwd + max(a, mps2(T.RunAccel) / 8), top)
+        } else {
+            pl.fwd = max(pl.fwd - mps2(T.StopDecel), top)
+        }
+        // A slope speeds a runner up downhill and slows one uphill.
+        let dir = fwd_dir(pl.yaw)
+        let down = dir.x * pl.floor_n.x + dir.z * pl.floor_n.z
+        pl.fwd = max(pl.fwd + down * mps2(T.Gravity) * tv[T.SlopeWalk], 0.0)
+    } else {
+        pl.fwd = max(pl.fwd - mps2(T.StopDecel), 0.0)
+    }
+    set_hvel()
+    let _ = ground_move()
+}
+
+fn st_skid(ip: *Pin) {
+    if ip.ap {
+        jump(ip)
+        return
+    }
+    pl.fwd -= mps2(T.SkidDecel)
+    if pl.fwd <= 0.0 {
+        pl.fwd = 0.0
+        if ip.mag > 0.0 { pl.yaw = yaw_of(ip.dir) }
+        enter(St.Ground)
+    }
+    set_hvel()
+    let _ = ground_move()
+}
+
+fn st_crouch(ip: *Pin) {
+    if ip.ap {
+        jump(ip)
+        return
+    }
+    if !ip.r {
+        enter(St.Ground)
+    } else if ip.mag > 0.0 {
+        let tr = rps(T.TurnRate)
+        pl.yaw = wrap_angle(pl.yaw + clamp(wrap_angle(yaw_of(ip.dir) - pl.yaw), -tr, tr))
+        pl.fwd = mps(T.CrawlSpeed) * ip.mag
+    } else {
+        pl.fwd = 0.0
+    }
+    set_hvel()
+    let _ = ground_move()
+}
+
+fn st_crouch_slide(ip: *Pin) {
+    if ip.ap {
+        jump(ip)
+        return
+    }
+    pl.fwd = max(pl.fwd - mps2(T.CrouchDecel), 0.0)
+    if ip.mag > 0.0 {
+        let tr = rps(T.TurnRate) / 5
+        pl.yaw = wrap_angle(pl.yaw + clamp(wrap_angle(yaw_of(ip.dir) - pl.yaw), -tr, tr))
+    }
+    if !ip.r {
+        enter(St.Ground)
+    } else if pl.fwd == 0.0 {
+        enter(St.Crouch)
+    }
+    set_hvel()
+    let _ = ground_move()
+}
+
+// Down a steep floor (steeper than the slide angle) or a slide surface: gravity along the
+// slope, a little friction and steering; it ends where the floor is gentle again.
+fn st_slide(ip: *Pin) {
+    if ip.ap {
+        pl.fwd = hspeed()
+        enter(St.Ground)
+        jump(ip)
+        return
+    }
+    let n = pl.floor_n
+    var v = vec3(pl.vel.x, 0.0, pl.vel.z)
+    v = v + vec3(n.x, 0.0, n.z) * (mps2(T.Gravity) * tv[T.SlopeGrav])
+    v = v + ip.dir * (mps2(T.SlideFriction) * ip.mag)
+    let s = tlen(v)
+    let fr = mps2(T.SlideFriction)
+    if s > fr {
+        v = v * ((s - fr) / s)
+    } else {
+        v = vec3(0.0, 0.0, 0.0)
+    }
+    let mx = mps(T.SlideMax)
+    if s > mx { v = v * (mx / s) }
+    pl.vel.x = v.x
+    pl.vel.z = v.z
+    if s > 0.001 { pl.yaw = yaw_of(v) }
+    pl.fwd = tlen(v)
+    if !ground_move() { return }
+    if !steep() { enter(St.Ground) }
+}
+
+// ---- jumps
+
+fn jump(ip: *Pin) {
+    pl.glide_armed = true
+    pl.glided = false
+    pl.a_air = 1000
+    let f = max(pl.fwd, 0.0)
+    let add = f * tv[T.JumpSpeedAdd]
+    let s = pl.st
+    if s == St.Crouch {
+        pl.vel.y = mps(T.FlipVy)
+        pl.fwd = -mps(T.FlipBack)
+        enter(St.Backflip)
+    } else if s == St.CrouchSlide && f >= mps(T.LongMin) {
+        pl.vel.y = mps(T.LongVy)
+        pl.fwd = min(f * tv[T.LongMul], mps(T.LongMax))
+        enter(St.LongJump)
+    } else if s == St.Skid {
+        if ip.mag > 0.0 { pl.yaw = yaw_of(ip.dir) } else { pl.yaw = wrap_angle(pl.yaw + PI) }
+        pl.vel.y = mps(T.FlipVy)
+        pl.fwd = mps(T.SideFlip)
+        enter(St.SideFlip)
+    } else if pl.land_t <= ticks(T.ChainWindow) && pl.chain_from == St.Jump {
+        pl.vel.y = mps(T.DoubleVy) + add
+        enter(St.DoubleJump)
+    } else if pl.land_t <= ticks(T.ChainWindow) && pl.chain_from == St.DoubleJump && f >= mps(T.ThirdSpeed) {
+        pl.vel.y = mps(T.ThirdVy) + add
+        enter(St.ThirdJump)
+    } else {
+        pl.vel.y = mps(T.JumpVy) + add
+        enter(St.Jump)
+    }
+    pl.chain_from = St.Ground
+    set_hvel()
+    if air_move(1.0) { land() }
+}
+
+// The glider comes out at the apex of the double or third jump (by T.GlideMode) while the
+// button has been held since take-off, once each time in the air.
+fn can_glide() -> bool {
+    if pl.glided || !pl.glide_armed || pl.vel.y > 0.0 { return false }
+    let m = ticks(T.GlideMode)
+    if pl.st == St.DoubleJump { return m != GLIDE_THIRD }
+    if pl.st == St.ThirdJump { return m != GLIDE_DOUBLE }
+    return false
+}
+
+fn st_air(ip: *Pin) {
+    let s = pl.st
+    if !ip.a { pl.glide_armed = false }
+    if ip.ap { pl.a_air = 0 } else { pl.a_air = min(pl.a_air + 1, 1000) }
+    if ip.rp {
+        start_pound()
+        return
+    }
+    if ip.bp && s != St.LongJump {
+        start_dive(false)
+        return
+    }
+    if can_glide() {
+        pl.glided = true
+        enter(St.Glide)
+        st_glide(ip)
+        return
+    }
+    var ctrl = 1.0
+    if s == St.LongJump || s == St.Backflip || s == St.SideFlip { ctrl = 0.35 }
+    let before = pl.fwd
+    if ip.mag > 0.0 {
+        let d = wrap_angle(yaw_of(ip.dir) - pl.yaw)
+        pl.fwd += mps2(T.AirAccel) * cos(d) * (ip.mag * ctrl)
+        let tr = rps(T.AirTurn) * (ip.mag * ctrl)
+        pl.yaw = wrap_angle(pl.yaw + clamp(d, -tr, tr))
+    }
+    var cap = mps(T.AirMax)
+    if s == St.LongJump { cap = mps(T.LongMax) }
+    // The stick cannot push past the cap; above it (a kick, a long jump) the speed decays.
+    if pl.fwd > cap { pl.fwd = max(min(pl.fwd, before) - mps2(T.AirDrag), cap) }
+    pl.fwd = max(pl.fwd, -mps(T.AirMax) / 2)
+    var g = 1.0
+    if (s == St.Jump || s == St.DoubleJump || s == St.ThirdJump) && !ip.a && pl.vel.y > 0.0 {
+        g = tv[T.JumpCut]
+    }
+    set_hvel()
+    if air_move(g) {
+        land()
+        return
+    }
+    if pl.wall_hit { air_wall() }
+    if is_air(pl.st) { let _ = attach_air_grab(ip) }
+}
+
+fn land() {
+    pl.vel.y = 0.0
+    pl.glided = false
+    if pl.floor_surf == SURF_BOUNCE && pl.st != St.LedgeClimb {
+        var vy = mps(T.BounceVy)
+        if pl.st == St.PoundFall { vy = vy * 5 / 4 }
+        pl.vel.y = vy
+        pl.glide_armed = false
+        enter(St.Bounce)
+        return
+    }
+    let s = pl.st
+    pl.chain_from = St.Ground
+    if s == St.PoundFall {
+        pl.fwd = 0.0
+        enter(St.PoundLand)
+    } else if s == St.Dive {
+        enter(St.BellySlide)
+    } else {
+        if s == St.Jump || s == St.DoubleJump || s == St.ThirdJump {
+            pl.chain_from = s
+            pl.land_t = 0
+        }
+        pl.fwd = max(pl.fwd, 0.0)
+        enter(St.Ground)
+    }
+}
+
+fn st_glide(ip: *Pin) {
+    if !ip.a {
+        enter(St.Fall)
+        st_air(ip)
+        return
+    }
+    if ip.rp {
+        start_pound()
+        return
+    }
+    if ip.bp {
+        start_dive(false)
+        return
+    }
+    if ip.mag > 0.0 {
+        let tr = rps(T.GlideTurn) * ip.mag
+        pl.yaw = wrap_angle(pl.yaw + clamp(wrap_angle(yaw_of(ip.dir) - pl.yaw), -tr, tr))
+    }
+    let e = rps(T.GlideEase)
+    pl.fwd += (mps(T.GlideSpeed) - pl.fwd) * e
+    pl.vel.y += (-mps(T.GlideSink) - pl.vel.y) * e
+    set_hvel()
+    if air_move(0.0) {
+        land()
+        return
+    }
+    if pl.wall_hit { air_wall() }
+}
+
+// ---- walls and ledges
+
+// The body touched a wall in the air: a ledge to hang from (falling, the top within reach), or
+// a wall upright enough to slide down and kick off.
+fn air_wall() {
+    let n = pl.wall_n
+    let approach = -(pl.vel.x * n.x + pl.vel.z * n.z)
+    if approach <= 0.0 { return }
+    if pl.regrab_t > 0 && dot(n, pl.last_wall) > 0.9 { return }
+    let ly = ledge_top()
+    if ly > -999.0 {
+        // A ledge in reach: a jump still rising fast enough to clear it carries on (the wall
+        // holds the body back until the feet are over the top); otherwise hang from it.
+        let vy = pl.vel.y
+        if vy > 0.0 && pl.pos.y + vy * vy / (mps2(T.Gravity) * 2) >= ly + 0.12 { return }
+        grab_ledge(ly)
+        return
+    }
+    if abs(pl.wall_ny) > sin(rad_of(T.KickTilt)) { return }
+    if approach < mps(T.KickMinSpeed) { return }
+    let hv = vec3(pl.vel.x, 0.0, pl.vel.z)
+    pl.kick_speed = tlen(hv)
+    pl.kick_in = tnorm(hv)
+    pl.kick_n = n
+    pl.vel = vec3(0.0, -mps(T.WallFall0), 0.0)
+    pl.fwd = 0.0
+    pl.yaw = yaw_of(-n)
+    enter(St.WallSlide)
+    if pl.a_air <= ticks(T.KickBuffer) { kick(-pl.a_air) }
+}
+
+// Kicks off the wall `at` ticks after touching it (negative: the press came that much before).
+// Within the early window: the better kick, higher and keeping the run speed.
+fn kick(at: s32) {
+    let n = pl.kick_n
+    let good = at < ticks(T.KickEarly)
+    var r = pl.kick_in - n * (dot(pl.kick_in, n) * 2)
+    r = vec3(r.x, 0.0, r.z)
+    if dot(r, n) < 0.5 { r = normalize(r) + n }
+    r = normalize(r)
+    pl.yaw = yaw_of(r)
+    if good {
+        pl.vel.y = mps(T.KickVyGood)
+        pl.fwd = max(pl.kick_speed, mps(T.KickHGood))
+    } else {
+        pl.vel.y = mps(T.KickVyLate)
+        pl.fwd = mps(T.KickHLate)
+    }
+    pl.last_wall = n
+    pl.regrab_t = ticks(T.KickRegrab)
+    pl.kicks += 1
+    pl.kick_good = good
+    pl.kick_at = at
+    pl.glide_armed = false
+    pl.a_air = 1000
+    enter(St.WallKick)
+    set_hvel()
+}
+
+fn leave_wall(push: fixed) {
+    let n = pl.kick_n
+    pl.last_wall = n
+    pl.regrab_t = ticks(T.KickRegrab)
+    pl.yaw = yaw_of(n)
+    pl.fwd = push
+    pl.vel.y = 0.0
+    pl.glide_armed = false
+    enter(St.Fall)
+    set_hvel()
+}
+
+// Sliding down a wall: a press kicks off (better in the first T.KickEarly ticks); the slide
+// speeds up from T.WallFall0 to T.WallFall1 and lets go after T.KickSlide ticks.
+fn st_wall_slide(ip: *Pin) {
+    if ip.ap {
+        kick(pl.t)
+        return
+    }
+    if ip.rp || pl.t >= ticks(T.KickSlide) {
+        leave_wall(0.02)
+        return
+    }
+    let n = pl.kick_n
+    let k = fixed(pl.t) / max(ticks(T.KickSlide), 1)
+    let fall = lerp(tv[T.WallFall0], tv[T.WallFall1], k) / 60
+    pl.vel = vec3(-n.x * 0.01, -fall, -n.z * 0.01)
+    if air_move(0.0) {
+        pl.fwd = 0.0
+        pl.chain_from = St.Ground
+        enter(St.Ground)
+        return
+    }
+    if !pl.wall_hit { leave_wall(0.0) }        // slid off the wall's end
+}
+
+// The height of a floor within reach just beyond the wall touched, with room to stand on it
+// (T.LedgeLow..T.LedgeHigh above the feet), or -1000.
+fn ledge_top() -> fixed {
+    let n = pl.wall_n
+    let f = pl.pos - n * (BODY_RADIUS + 0.15)
+    if !col_floor(vec3(f.x, pl.pos.y + tv[T.LedgeHigh], f.z), 0.0) { return -1000.0 }
+    let ly = col_y
+    if ly < pl.pos.y + tv[T.LedgeLow] || col_n.y < 0.8 { return -1000.0 }
+    if col_ceiling(vec3(f.x, ly + 0.05, f.z), 0.0) && col_y < ly + BODY_HEIGHT { return -1000.0 }
+    return ly
+}
+
+fn grab_ledge(ly: fixed) {
+    let n = pl.wall_n
+    let f = pl.pos - n * (BODY_RADIUS + 0.15)
+    pl.ledge_to = vec3(f.x, ly, f.z)
+    pl.kick_n = n
+    pl.vel = vec3(0.0, 0.0, 0.0)
+    pl.fwd = 0.0
+    pl.yaw = yaw_of(-n)
+    pl.pos.y = ly - LEDGE_HANG
+    enter(St.LedgeHang)
+}
+
+fn st_ledge_hang(ip: *Pin) {
+    pl.vel = vec3(0.0, 0.0, 0.0)
+    if pl.t < LEDGE_GRAB_TICKS { return }
+    let n = pl.kick_n
+    let toward = ip.mag > 0.5 && dot(ip.dir, n) < -0.5
+    let away = ip.mag > 0.5 && dot(ip.dir, n) > 0.5
+    if ip.ap || toward {
+        pl.ledge_from = pl.pos
+        enter(St.LedgeClimb)
+    } else if ip.rp || away {
+        pl.pos = pl.pos + n * 0.05
+        leave_wall(0.0)
+    }
+}
+
+// Up over T.LedgeClimb ticks: the first 60 % straight up, the rest onto the top.
+fn st_ledge_climb() {
+    let n = max(ticks(T.LedgeClimb), 1)
+    let k = fixed(min(pl.t, n)) / n
+    let a = pl.ledge_from
+    let b = pl.ledge_to
+    if k < 0.6 {
+        pl.pos = vec3(a.x, lerp(a.y, b.y, k / 0.6), a.z)
+    } else {
+        let u = (k - 0.6) / 0.4
+        pl.pos = vec3(lerp(a.x, b.x, u), b.y, lerp(a.z, b.z, u))
+    }
+    if pl.t >= n {
+        pl.pos = b
+        if col_floor(b + vec3(0.0, 0.1, 0.0), 0.0) { take_floor() }
+        pl.chain_from = St.Ground
+        enter(St.Ground)
+    }
+}
+
+// ---- ground pound and dive
+
+fn start_pound() {
+    pl.vel = vec3(0.0, 0.0, 0.0)
+    pl.fwd = 0.0
+    enter(St.PoundSpin)
+}
+
+fn st_pound_spin() {
+    pl.vel = vec3(0.0, 0.0, 0.0)
+    if pl.t >= ticks(T.PoundHang) {
+        pl.vel.y = -mps(T.PoundFall)
+        enter(St.PoundFall)
+    }
+}
+
+fn st_pound_fall() {
+    pl.vel = vec3(0.0, -mps(T.PoundFall), 0.0)
+    if air_move(0.0) { land() }
+}
+
+fn st_pound_land() {
+    pl.vel = vec3(0.0, 0.0, 0.0)
+    let _ = ground_move()
+    if pl.st == St.PoundLand && pl.t >= ticks(T.PoundLand) { enter(St.Ground) }
+}
+
+fn start_dive(ground: bool) {
+    pl.fwd = min(max(pl.fwd, 0.0) + mps(T.DiveBoost), mps(T.DiveMax))
+    if ground {
+        pl.vel.y = mps(T.DiveVy)
+    } else {
+        pl.vel.y = max(pl.vel.y, mps(T.DiveVy))
+    }
+    pl.glide_armed = false
+    enter(St.Dive)
+    set_hvel()
+}
+
+fn st_dive(ip: *Pin) {
+    if ip.mag > 0.0 {
+        let tr = rps(T.AirTurn) / 3 * ip.mag
+        pl.yaw = wrap_angle(pl.yaw + clamp(wrap_angle(yaw_of(ip.dir) - pl.yaw), -tr, tr))
+    }
+    set_hvel()
+    if air_move(1.0) {
+        land()
+        return
+    }
+    if pl.wall_hit {                           // a bonk: drop
+        pl.fwd = 0.0
+        enter(St.Fall)
+    }
+}
+
+fn st_belly_slide(ip: *Pin) {
+    if (ip.ap || ip.bp) && pl.t > 2 {
+        pl.vel.y = mps(T.RolloutVy)
+        pl.glide_armed = false
+        enter(St.Rollout)
+        set_hvel()
+        return
+    }
+    pl.fwd = max(pl.fwd - mps2(T.BellyDecel), 0.0)
+    set_hvel()
+    if !ground_move() { return }
+    if pl.fwd == 0.0 && pl.t > 20 { enter(St.Ground) }
+}

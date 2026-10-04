@@ -1,0 +1,214 @@
+// What is drawn over the world: the tuning menu (START), the frame-timing readout and the
+// player's state (SELECT cycles: timing and state, state only, nothing), and a note for each
+// wall kick.
+//
+// Menu: d-pad up/down chooses a number, left/right changes it (hold X for ten steps at a
+// time), Y puts it back to its default. The player still runs, so a change can be tried at
+// once.
+
+var menu_open: bool
+var menu_sel: s32
+var menu_top: s32
+var menu_rep: KeyRepeat
+var readout: s32               // 0 timing and state, 1 state, 2 nothing
+
+const MENU_ROWS = 17
+
+// ---- the timing readout's numbers (timing_frame() once a presented frame)
+
+struct Timing {
+    shown: s32         // presented frames
+    ticks: s32         // ticks (the FRAME register) since the cart started
+    late: s32          // ticks in which no new frame was presented
+    last_ticks: s32    // ticks the last frame was on screen
+    cpu: s32           // CPU cycles of the last frame (of 500,000)
+    gpu: s32           // GPU cycles of the last frame (of 1,000,000)
+    cpu_peak: s32      // the most of each over the last second
+    gpu_peak: s32
+    cpu_win: s32
+    gpu_win: s32
+    win_t: s32
+    tris: s32
+}
+
+var timing: Timing
+var frame0: u32
+
+fn timing_start() { frame0 = FRAME }
+
+fn timing_frame() {
+    timing.shown += 1
+    timing.ticks = (FRAME - frame0) as s32 + 1
+    timing.late = timing.ticks - timing.shown
+    timing.last_ticks = frame_ticks()
+    timing.cpu = cpu_used()
+    timing.gpu = gpu_used()
+    timing.tris = tris_drawn()
+    timing.cpu_win = max(timing.cpu_win, timing.cpu)
+    timing.gpu_win = max(timing.gpu_win, timing.gpu)
+    timing.win_t += 1
+    if timing.win_t >= 60 {
+        timing.cpu_peak = timing.cpu_win
+        timing.gpu_peak = timing.gpu_win
+        timing.cpu_win = 0
+        timing.gpu_win = 0
+        timing.win_t = 0
+    }
+}
+
+// ---- the menu
+
+fn menu_update(now: u32, prev: u32) {
+    let pressed = now & ~prev
+    if pressed & START != 0 { menu_open = !menu_open }
+    if pressed & SELECT != 0 { readout = (readout + 1) % 3 }
+    if !menu_open { return }
+    let act = key_repeat(&menu_rep, now & (UP | DOWN | LEFT | RIGHT))
+    let n = len(T) as s32
+    if act & UP != 0 { menu_sel = (menu_sel + n - 1) % n }
+    if act & DOWN != 0 { menu_sel = (menu_sel + 1) % n }
+    let t = menu_sel as T
+    var step = TUNE[t].step
+    if now & X != 0 { step = step * 10 }
+    if act & LEFT != 0 { tune_set(t, tv[t] - step) }
+    if act & RIGHT != 0 { tune_set(t, tv[t] + step) }
+    if pressed & Y != 0 { tv[t] = TUNE[t].def }
+    if menu_sel < menu_top { menu_top = menu_sel }
+    if menu_sel >= menu_top + MENU_ROWS { menu_top = menu_sel - MENU_ROWS + 1 }
+}
+
+// ---- drawing
+
+fn ink() -> u32 { return rgb(255, 255, 255) }
+fn dim() -> u32 { return rgb(150, 180, 200) }
+fn hot() -> u32 { return rgb(255, 208, 112) }
+
+// A fixed value with two decimals; returns the x after it.
+fn text_fixed(x: s32, y: s32, f: fixed, colour: u32) -> s32 {
+    var v = (abs(f) * 100.0 + 0.5) as s32
+    var nx = x
+    if f < 0.0 && v != 0 {
+        text(nx, y, "-", colour)
+        nx += 8
+    }
+    nx = text_int(nx, y, v / 100, colour)
+    text(nx, y, ".", colour)
+    if v % 100 < 10 {
+        text(nx + 8, y, "0", colour)
+        return text_int(nx + 16, y, v % 100, colour)
+    }
+    return text_int(nx + 8, y, v % 100, colour)
+}
+
+// A number with thousands separators (500,000); returns the x after it.
+fn text_thousands(x: s32, y: s32, n: s32, colour: u32) -> s32 {
+    if n < 1000 { return text_int(x, y, n, colour) }
+    var nx = text_thousands(x, y, n / 1000, colour)
+    text(nx, y, ",", colour)
+    let r = n % 1000
+    nx += 8
+    if r < 100 {
+        text(nx, y, "0", colour)
+        nx += 8
+    }
+    if r < 10 {
+        text(nx, y, "0", colour)
+        nx += 8
+    }
+    return text_int(nx, y, r, colour)
+}
+
+// A bar w pixels long for used of budget, red past it.
+fn budget_bar(x: s32, y: s32, w: s32, used: s32, budget: s32) {
+    rect(x, y, w, 6, rgb(40, 50, 60))
+    let fill = min(used / (budget / w), w)
+    var c = rgb(110, 210, 120)
+    if used > budget * 3 / 4 { c = rgb(240, 200, 80) }
+    if used > budget { c = rgb(240, 80, 70) }
+    if fill > 0 { rect(x, y, fill, 6, c) }
+}
+
+fn hud_draw() {
+    if readout == 0 { draw_timing() }
+    if readout <= 1 { draw_state() }
+    if menu_open { draw_menu() }
+}
+
+fn draw_timing() {
+    rect_blend(0, 0, 320, 34, rgb(24, 32, 40), BLEND_HALF)
+    text(2, 2, "tick", dim())
+    text_thousands(40, 2, timing.ticks, ink())
+    text(108, 2, "shown", dim())
+    text_thousands(156, 2, timing.shown, ink())
+    text(220, 2, "late", dim())
+    text_int(260, 2, timing.late, ink())
+    if timing.last_ticks > 1 {
+        text(284, 2, "+", hot())
+        text_int(292, 2, timing.last_ticks - 1, hot())
+    }
+    text(2, 12, "cpu", dim())
+    text_thousands(34, 12, timing.cpu, ink())
+    budget_bar(112, 13, 100, timing.cpu, 500000)
+    text(216, 12, "pk", dim())
+    text_thousands(236, 12, timing.cpu_peak, ink())
+    text(2, 22, "gpu", dim())
+    text_thousands(34, 22, timing.gpu, ink())
+    budget_bar(112, 23, 100, timing.gpu, GPU_BUDGET)
+    text(216, 22, "pk", dim())
+    text_thousands(236, 22, timing.gpu_peak, ink())
+}
+
+fn draw_state() {
+    let y = 224
+    rect_blend(0, y - 2, 320, 18, rgb(24, 32, 40), BLEND_HALF)
+    text(2, y, ST_NAMES[pl.st], ink())
+    var x = text_fixed(112, y, hspeed() * 60, ink())
+    text(x, y, "m/s", dim())
+    text(176, y, "y", dim())
+    text_fixed(188, y, pl.pos.y, ink())
+    if pl.kicks > 0 {
+        text(240, y, "kick", dim())
+        x = text_int(276, y, pl.kick_at, ink())
+        if pl.kick_good { text(x + 4, y, "G", rgb(120, 240, 120)) } else { text(x + 4, y, "L", hot()) }
+    }
+}
+
+fn draw_menu() {
+    let x0 = 8
+    let y0 = 40
+    rect_blend(x0 - 4, y0 - 4, 312 - x0, MENU_ROWS * 9 + 26, rgb(10, 14, 22), BLEND_HALF)
+    for r in 0..MENU_ROWS {
+        let k = menu_top + r
+        if k >= len(T) as s32 { break }
+        let t = k as T
+        let y = y0 + r * 9
+        var c = dim()
+        if k == menu_sel {
+            c = hot()
+            text(x0, y, ">", c)
+        }
+        text(x0 + 10, y, TUNE[t].name, c)
+        if t == T.GlideMode {
+            text(x0 + 140, y, GLIDE_MODE_NAMES[clamp(ticks(t), 0, 2)], ink())
+        } else if TUNE[t].step >= 1.0 {
+            text_int(x0 + 140, y, tv[t] as s32, ink())
+        } else {
+            text_fixed(x0 + 140, y, tv[t], ink())
+        }
+        text(x0 + 212, y, TUNE[t].unit, dim())
+        if tv[t] != TUNE[t].def { text(x0 + 260, y, "*", hot()) }
+    }
+    // what the numbers come to
+    let y = y0 + MENU_ROWS * 9 + 4
+    text(x0, y, "apex", dim())
+    var x = text_fixed(x0 + 36, y, apex_of(tv[T.JumpVy]), ink())
+    x = text_fixed(x + 8, y, apex_of(tv[T.DoubleVy]), ink())
+    x = text_fixed(x + 8, y, apex_of(tv[T.ThirdVy]), ink())
+    text(x + 8, y, "glide", dim())
+    x = text_fixed(x + 56, y, glide_ratio(), ink())
+    text(x, y, ":1", dim())
+    let y2 = y + 10
+    text(x0, y2, "long jump", dim())
+    x = text_fixed(x0 + 80, y2, reach_of(tv[T.LongVy], min(tv[T.RunSpeed] * tv[T.LongMul], tv[T.LongMax])), ink())
+    text(x, y2, "m", dim())
+}

@@ -1,0 +1,156 @@
+// Every movement number, adjustable in the game (the tuning menu, hud.akr). Values are in the
+// units a person thinks in: metres, metres a second (m/s), m/s per second (m/s2), radians a
+// second (r/s), degrees, multipliers (x) and ticks (t, 1/60 s; timing windows are counted in
+// ticks, never in presented frames). The defaults start from Super Mario 64, where one unit
+// is about a centimetre and the game runs at 30 frames a second: u/f x 0.3 = m/s, and
+// u/f per frame x 9 = m/s2.
+//
+// The code reads them through mps() (m/s -> metres a tick), mps2() (m/s2 -> metres a tick per
+// tick), rps() (r/s -> radians a tick) and ticks().
+
+enum T {
+    // running
+    RunSpeed, RunAccel, RunDrag, StopDecel, TurnRate, SkidSpeed, SkidDecel, CrawlSpeed,
+    // jumping
+    Gravity, FallMax, JumpVy, JumpSpeedAdd, JumpCut, DoubleVy, ChainWindow, ThirdVy, ThirdSpeed,
+    AirAccel, AirTurn, AirMax, AirDrag,
+    // crouch moves
+    SlideMin, CrouchDecel, LongVy, LongMul, LongMax, LongMin, FlipVy, FlipBack, SideFlip,
+    // glider
+    GlideMode, GlideSpeed, GlideSink, GlideTurn, GlideEase,
+    // wall kick
+    KickEarly, KickSlide, KickBuffer, KickVyGood, KickHGood, KickVyLate, KickHLate,
+    WallFall0, WallFall1, KickMinSpeed, KickTilt, KickRegrab,
+    // ledges
+    LedgeLow, LedgeHigh, LedgeClimb,
+    // ground pound and dive
+    PoundHang, PoundFall, PoundLand, DiveBoost, DiveMax, DiveVy, BellyDecel, RolloutVy,
+    // slopes and surfaces
+    SlideAngle, SlopeGrav, SlideFriction, SlideMax, SlopeWalk, BounceVy,
+    // attachments (attach.akr): poles, rails, movers
+    // camera (camera.akr)
+    CamDist, CamHeight, CamPitch, CamOrbit, CamFollow,
+}
+
+struct TuneDef {
+    name: *u8
+    unit: *u8
+    def: fixed
+    step: fixed
+    lo: fixed
+    hi: fixed
+}
+
+const TUNE: [len(T)]TuneDef = [
+    TuneDef { name: "run speed",      unit: "m/s",  def: 9.6,   step: 0.1,  lo: 1.0,  hi: 30.0 },
+    TuneDef { name: "run accel",      unit: "m/s2", def: 9.9,   step: 0.1,  lo: 0.5,  hi: 60.0 },
+    TuneDef { name: "run drag",       unit: "/s",   def: 0.7,   step: 0.05, lo: 0.0,  hi: 5.0 },
+    TuneDef { name: "stop decel",     unit: "m/s2", def: 9.0,   step: 0.5,  lo: 0.5,  hi: 80.0 },
+    TuneDef { name: "turn rate",      unit: "r/s",  def: 5.9,   step: 0.1,  lo: 0.5,  hi: 30.0 },
+    TuneDef { name: "skid above",     unit: "m/s",  def: 4.8,   step: 0.1,  lo: 0.0,  hi: 30.0 },
+    TuneDef { name: "skid decel",     unit: "m/s2", def: 18.0,  step: 0.5,  lo: 1.0,  hi: 80.0 },
+    TuneDef { name: "crawl speed",    unit: "m/s",  def: 1.5,   step: 0.1,  lo: 0.0,  hi: 5.0 },
+
+    TuneDef { name: "gravity",        unit: "m/s2", def: 36.0,  step: 0.5,  lo: 5.0,  hi: 100.0 },
+    TuneDef { name: "fall max",       unit: "m/s",  def: 22.5,  step: 0.5,  lo: 2.0,  hi: 40.0 },
+    TuneDef { name: "jump vy",        unit: "m/s",  def: 12.6,  step: 0.1,  lo: 2.0,  hi: 30.0 },
+    TuneDef { name: "jump +speed",    unit: "x",    def: 0.25,  step: 0.05, lo: 0.0,  hi: 1.0 },
+    TuneDef { name: "jump cut grav",  unit: "x",    def: 4.0,   step: 0.25, lo: 1.0,  hi: 10.0 },
+    TuneDef { name: "double vy",      unit: "m/s",  def: 15.6,  step: 0.1,  lo: 2.0,  hi: 30.0 },
+    TuneDef { name: "chain window",   unit: "t",    def: 10.0,  step: 1.0,  lo: 0.0,  hi: 60.0 },
+    TuneDef { name: "third vy",       unit: "m/s",  def: 18.0,  step: 0.1,  lo: 2.0,  hi: 30.0 },
+    TuneDef { name: "third above",    unit: "m/s",  def: 6.0,   step: 0.1,  lo: 0.0,  hi: 30.0 },
+    TuneDef { name: "air accel",      unit: "m/s2", def: 13.5,  step: 0.5,  lo: 0.0,  hi: 60.0 },
+    TuneDef { name: "air turn",       unit: "r/s",  def: 1.5,   step: 0.1,  lo: 0.0,  hi: 10.0 },
+    TuneDef { name: "air max",        unit: "m/s",  def: 9.6,   step: 0.1,  lo: 1.0,  hi: 30.0 },
+    TuneDef { name: "air drag",       unit: "m/s2", def: 9.0,   step: 0.5,  lo: 0.0,  hi: 60.0 },
+
+    TuneDef { name: "c.slide above",  unit: "m/s",  def: 2.0,   step: 0.1,  lo: 0.0,  hi: 20.0 },
+    TuneDef { name: "c.slide decel",  unit: "m/s2", def: 6.0,   step: 0.5,  lo: 0.5,  hi: 60.0 },
+    TuneDef { name: "long vy",        unit: "m/s",  def: 9.0,   step: 0.1,  lo: 1.0,  hi: 30.0 },
+    TuneDef { name: "long x speed",   unit: "x",    def: 1.5,   step: 0.05, lo: 0.5,  hi: 3.0 },
+    TuneDef { name: "long max",       unit: "m/s",  def: 14.4,  step: 0.1,  lo: 1.0,  hi: 30.0 },
+    TuneDef { name: "long above",     unit: "m/s",  def: 3.0,   step: 0.1,  lo: 0.0,  hi: 20.0 },
+    TuneDef { name: "flip vy",        unit: "m/s",  def: 18.6,  step: 0.1,  lo: 2.0,  hi: 30.0 },
+    TuneDef { name: "backflip back",  unit: "m/s",  def: 4.8,   step: 0.1,  lo: 0.0,  hi: 15.0 },
+    TuneDef { name: "sideflip speed", unit: "m/s",  def: 2.4,   step: 0.1,  lo: 0.0,  hi: 15.0 },
+
+    TuneDef { name: "glide deploy",   unit: "mode", def: 2.0,   step: 1.0,  lo: 0.0,  hi: 2.0 },
+    TuneDef { name: "glide speed",    unit: "m/s",  def: 8.0,   step: 0.1,  lo: 1.0,  hi: 30.0 },
+    TuneDef { name: "glide sink",     unit: "m/s",  def: 2.0,   step: 0.1,  lo: 0.1,  hi: 15.0 },
+    TuneDef { name: "glide turn",     unit: "r/s",  def: 2.0,   step: 0.1,  lo: 0.1,  hi: 10.0 },
+    TuneDef { name: "glide ease",     unit: "/s",   def: 4.0,   step: 0.25, lo: 0.25, hi: 30.0 },
+
+    TuneDef { name: "kick early",     unit: "t",    def: 8.0,   step: 1.0,  lo: 0.0,  hi: 60.0 },
+    TuneDef { name: "kick slide",     unit: "t",    def: 30.0,  step: 1.0,  lo: 1.0,  hi: 240.0 },
+    TuneDef { name: "kick buffer",    unit: "t",    def: 2.0,   step: 1.0,  lo: 0.0,  hi: 20.0 },
+    TuneDef { name: "kick vy good",   unit: "m/s",  def: 15.6,  step: 0.1,  lo: 1.0,  hi: 30.0 },
+    TuneDef { name: "kick h good",    unit: "m/s",  def: 7.2,   step: 0.1,  lo: 0.0,  hi: 30.0 },
+    TuneDef { name: "kick vy late",   unit: "m/s",  def: 11.4,  step: 0.1,  lo: 1.0,  hi: 30.0 },
+    TuneDef { name: "kick h late",    unit: "m/s",  def: 6.0,   step: 0.1,  lo: 0.0,  hi: 30.0 },
+    TuneDef { name: "wall fall 0",    unit: "m/s",  def: 0.6,   step: 0.1,  lo: 0.0,  hi: 20.0 },
+    TuneDef { name: "wall fall end",  unit: "m/s",  def: 4.5,   step: 0.1,  lo: 0.0,  hi: 20.0 },
+    TuneDef { name: "kick approach",  unit: "m/s",  def: 2.0,   step: 0.1,  lo: 0.0,  hi: 20.0 },
+    TuneDef { name: "kick wall tilt", unit: "deg",  def: 20.0,  step: 1.0,  lo: 0.0,  hi: 50.0 },
+    TuneDef { name: "kick regrab",    unit: "t",    def: 8.0,   step: 1.0,  lo: 0.0,  hi: 60.0 },
+
+    TuneDef { name: "ledge low",      unit: "m",    def: 0.8,   step: 0.05, lo: 0.0,  hi: 3.0 },
+    TuneDef { name: "ledge high",     unit: "m",    def: 1.75,  step: 0.05, lo: 0.5,  hi: 3.0 },
+    TuneDef { name: "ledge climb",    unit: "t",    def: 16.0,  step: 1.0,  lo: 1.0,  hi: 120.0 },
+
+    TuneDef { name: "pound hang",     unit: "t",    def: 16.0,  step: 1.0,  lo: 0.0,  hi: 60.0 },
+    TuneDef { name: "pound fall",     unit: "m/s",  def: 15.0,  step: 0.5,  lo: 1.0,  hi: 40.0 },
+    TuneDef { name: "pound land",     unit: "t",    def: 12.0,  step: 1.0,  lo: 0.0,  hi: 60.0 },
+    TuneDef { name: "dive boost",     unit: "m/s",  def: 4.5,   step: 0.1,  lo: 0.0,  hi: 20.0 },
+    TuneDef { name: "dive max",       unit: "m/s",  def: 14.4,  step: 0.1,  lo: 1.0,  hi: 30.0 },
+    TuneDef { name: "dive vy",        unit: "m/s",  def: 3.0,   step: 0.1,  lo: 0.0,  hi: 20.0 },
+    TuneDef { name: "belly decel",    unit: "m/s2", def: 7.0,   step: 0.5,  lo: 0.5,  hi: 60.0 },
+    TuneDef { name: "rollout vy",     unit: "m/s",  def: 9.0,   step: 0.1,  lo: 1.0,  hi: 30.0 },
+
+    TuneDef { name: "slide angle",    unit: "deg",  def: 30.0,  step: 1.0,  lo: 0.0,  hi: 45.0 },
+    TuneDef { name: "slope grav",     unit: "x",    def: 1.0,   step: 0.05, lo: 0.0,  hi: 3.0 },
+    TuneDef { name: "slide friction", unit: "m/s2", def: 3.0,   step: 0.25, lo: 0.0,  hi: 40.0 },
+    TuneDef { name: "slide max",      unit: "m/s",  def: 16.0,  step: 0.5,  lo: 1.0,  hi: 40.0 },
+    TuneDef { name: "slope on run",   unit: "x",    def: 0.5,   step: 0.05, lo: 0.0,  hi: 2.0 },
+    TuneDef { name: "bounce vy",      unit: "m/s",  def: 18.0,  step: 0.5,  lo: 1.0,  hi: 40.0 },
+
+    // attachments: one row per T entry above, in the same order
+
+    TuneDef { name: "cam distance",   unit: "m",    def: 6.5,   step: 0.25, lo: 1.0,  hi: 20.0 },
+    TuneDef { name: "cam height",     unit: "m",    def: 1.2,   step: 0.1,  lo: 0.0,  hi: 5.0 },
+    TuneDef { name: "cam pitch",      unit: "rad",  def: -0.3,  step: 0.02, lo: -1.4, hi: 0.5 },
+    TuneDef { name: "cam orbit",      unit: "r/s",  def: 2.5,   step: 0.1,  lo: 0.1,  hi: 10.0 },
+    TuneDef { name: "cam follow",     unit: "/s",   def: 1.0,   step: 0.1,  lo: 0.0,  hi: 10.0 },
+]
+
+// The glider's deploy modes (T.GlideMode).
+const GLIDE_THIRD = 0      // only from the third jump: hold the button through its apex
+const GLIDE_DOUBLE = 1     // only from the double jump: hold the button through its apex
+const GLIDE_EITHER = 2
+
+const GLIDE_MODE_NAMES: [3]*u8 = ["third", "double", "either"]
+
+var tv: [len(T)]fixed
+
+fn tune_defaults() {
+    for t in T { tv[t] = TUNE[t].def }
+}
+
+fn tune_set(t: T, v: fixed) { tv[t] = clamp(v, TUNE[t].lo, TUNE[t].hi) }
+
+fn mps(t: T) -> fixed { return tv[t] / 60 }        // m/s -> metres a tick
+fn mps2(t: T) -> fixed { return tv[t] / 3600 }     // m/s2 -> metres a tick per tick
+fn rps(t: T) -> fixed { return tv[t] / 60 }        // radians a second -> radians a tick
+fn ticks(t: T) -> s32 { return tv[t] as s32 }
+fn rad_of(t: T) -> fixed { return tv[t] * PI / 180 }
+
+// ---- what the numbers come to (shown under the menu)
+
+// The apex of a jump from rest at vy (m/s) under gravity: vy^2 / 2g.
+fn apex_of(vy: fixed) -> fixed { return vy * vy / (tv[T.Gravity] * 2) }
+
+// Horizontal distance of a jump at vy (m/s) and h (m/s) landing at the height it left.
+fn reach_of(vy: fixed, h: fixed) -> fixed { return h * vy * 2 / tv[T.Gravity] }
+
+// Metres forward per metre lost, gliding.
+fn glide_ratio() -> fixed { return tv[T.GlideSpeed] / tv[T.GlideSink] }

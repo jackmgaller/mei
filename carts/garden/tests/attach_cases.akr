@@ -1,0 +1,10 @@
+// The attachments' scenarios (numbered 200-299), run by harness.akr; check.sh runs the ones
+// attach_cases.sh lists. They use the harness's helpers: place(), pad_v, stick_v, expect(),
+// note(), done(), seen_at(), was(), mark() and apex.
+
+// Set up scenario SCENARIO (set `name`, place the player) if it is one of these.
+fn attach_case_init() -> bool { return false }
+
+// Before each frame's ticks (the harness's scenario(): it sees the state the frame before
+// left, and sets this frame's pad_v and stick_v).
+fn attach_case(_f: s32) {}
