@@ -7,6 +7,7 @@
   2
  ],
  "region": "shrine",
+ "standin": "standin_c0_2",
  "placements": [
   {
    "id": "wall_corner_44_149",
@@ -27,8 +28,7 @@
     5.0,
     149.4
    ],
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_n_1",
@@ -38,8 +38,7 @@
     5.0,
     149.4
    ],
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_w_6",
@@ -50,8 +49,7 @@
     133.0
    ],
    "yaw": 90,
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_w_7",
@@ -62,8 +60,7 @@
     141.0
    ],
    "yaw": 90,
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_w_8",
@@ -74,8 +71,7 @@
     147.0
    ],
    "yaw": 90,
-   "collision": "arch_wall_4_col",
-   "merge": true
+   "collision": "arch_wall_4_col"
   },
   {
    "id": "giant_1",
@@ -155,8 +151,7 @@
     36,
     150
    ],
-   "collision": "forest_stone_lantern_col",
-   "merge": true
+   "collision": "forest_stone_lantern_col"
   }
  ],
  "entities": [

@@ -7,6 +7,7 @@
   1
  ],
  "region": "shrine",
+ "standin": "standin_c2_1",
  "placements": [
   {
    "id": "fence_c4",
@@ -49,8 +50,7 @@
     5.0,
     80.6
    ],
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_se_4",
@@ -60,8 +60,7 @@
     5.0,
     80.6
    ],
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_e_0",
@@ -72,8 +71,7 @@
     85.0
    ],
    "yaw": 90,
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_e_1",
@@ -84,8 +82,7 @@
     93.0
    ],
    "yaw": 90,
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_e_2",
@@ -96,8 +93,7 @@
     101.0
    ],
    "yaw": 90,
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_e_3",
@@ -108,8 +104,7 @@
     109.0
    ],
    "yaw": 90,
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_e_4",
@@ -120,8 +115,7 @@
     117.0
    ],
    "yaw": 90,
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_e_5",
@@ -132,8 +126,7 @@
     125.0
    ],
    "yaw": 90,
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "corridor_e",
@@ -282,7 +275,7 @@
    "type": "coin",
    "position": [
     129.0,
-    15.5,
+    15.3,
     108.0
    ],
    "asset": "coin"

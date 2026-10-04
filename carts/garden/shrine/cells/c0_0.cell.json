@@ -7,6 +7,7 @@
   0
  ],
  "region": "shrine",
+ "standin": "standin_c0_0",
  "placements": [
   {
    "id": "konbini",
@@ -173,7 +174,7 @@
    "type": "coin",
    "position": [
     63.0,
-    11.9,
+    11.7,
     56.0
    ],
    "asset": "coin"

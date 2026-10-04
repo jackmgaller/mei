@@ -7,6 +7,7 @@
   3
  ],
  "region": "shrine",
+ "standin": "standin_c0_3",
  "placements": [
   {
    "id": "giant_4",
@@ -82,8 +83,7 @@
     244.61
    ],
    "yaw": 309,
-   "collision": "forest_fox_torii_col",
-   "merge": true
+   "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_1",
@@ -93,8 +93,7 @@
     245.82
    ],
    "yaw": 309,
-   "collision": "forest_fox_torii_col",
-   "merge": true
+   "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_2",
@@ -104,8 +103,7 @@
     247.04
    ],
    "yaw": 309,
-   "collision": "forest_fox_torii_col",
-   "merge": true
+   "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_3",
@@ -115,8 +113,7 @@
     248.25
    ],
    "yaw": 309,
-   "collision": "forest_fox_torii_col",
-   "merge": true
+   "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_4",
@@ -126,8 +123,7 @@
     249.46
    ],
    "yaw": 309,
-   "collision": "forest_fox_torii_col",
-   "merge": true
+   "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_5",
@@ -137,8 +133,7 @@
     250.68
    ],
    "yaw": 309,
-   "collision": "forest_fox_torii_col",
-   "merge": true
+   "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_6",
@@ -148,8 +143,7 @@
     251.89
    ],
    "yaw": 309,
-   "collision": "forest_fox_torii_col",
-   "merge": true
+   "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_7",
@@ -159,8 +153,7 @@
     253.11
    ],
    "yaw": 309,
-   "collision": "forest_fox_torii_col",
-   "merge": true
+   "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_8",
@@ -170,8 +163,7 @@
     254.32
    ],
    "yaw": 309,
-   "collision": "forest_fox_torii_col",
-   "merge": true
+   "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_9",
@@ -181,8 +173,7 @@
     255.54
    ],
    "yaw": 309,
-   "collision": "forest_fox_torii_col",
-   "merge": true
+   "collision": "forest_fox_torii_col"
   }
  ],
  "entities": [

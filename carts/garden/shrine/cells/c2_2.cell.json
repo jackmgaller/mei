@@ -7,6 +7,7 @@
   2
  ],
  "region": "shrine",
+ "standin": "standin_c2_2",
  "placements": [
   {
    "id": "wall_corner_145_149",
@@ -27,8 +28,7 @@
     5.0,
     149.4
    ],
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_n_11",
@@ -38,8 +38,7 @@
     5.0,
     149.4
    ],
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_n_12",
@@ -49,8 +48,7 @@
     5.0,
     149.4
    ],
-   "collision": "arch_wall_4_col",
-   "merge": true
+   "collision": "arch_wall_4_col"
   },
   {
    "id": "wall_e_6",
@@ -61,8 +59,7 @@
     133.0
    ],
    "yaw": 90,
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_e_7",
@@ -73,8 +70,7 @@
     141.0
    ],
    "yaw": 90,
-   "collision": "arch_wall_8_col",
-   "merge": true
+   "collision": "arch_wall_8_col"
   },
   {
    "id": "wall_e_8",
@@ -85,8 +81,7 @@
     147.0
    ],
    "yaw": 90,
-   "collision": "arch_wall_4_col",
-   "merge": true
+   "collision": "arch_wall_4_col"
   },
   {
    "id": "pagoda",
@@ -105,8 +100,7 @@
     168,
     150
    ],
-   "collision": "forest_stone_lantern_col",
-   "merge": true
+   "collision": "forest_stone_lantern_col"
   }
  ],
  "entities": [
@@ -115,7 +109,7 @@
    "type": "coin",
    "position": [
     134.0,
-    34.0,
+    27.2,
     136.0
    ],
    "asset": "coin"
