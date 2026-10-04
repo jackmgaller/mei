@@ -1531,5 +1531,154 @@ class TextureCheckerTests(unittest.TestCase):
                          'textured faces must not hide ordering errors')
 
 
+# ---------------------------------------------------------------------------------------------
+# One check cart per asset, and the views judged in depth mode (docs/ASSETKIT.md, "Depth mode")
+
+@unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
+class CheckViewTests(unittest.TestCase):
+    DEPTH = {'depth':True,'perspective':True}
+
+    def checked(self, r, profile=None):
+        from assetkit.visibility import verify
+        return verify(r,profile,compiler=COMPILER,probe=PROBE)
+
+    def detailed(self):
+        """A body with a plate, a post and a fin: faces seen from few cameras."""
+        return recipe() | {'nodes':[
+            {'id':'body','op':'box','size':[2,1.2,1]},
+            {'id':'plate','op':'box','size':[.6,.4,.06],'transform':{'translate':[0,.2,-.54]}},
+            {'id':'post','op':'cylinder','radius':.08,'height':.8,'segments':6,'transform':{'translate':[.7,1.05,0]}},
+            {'id':'fin','op':'box','size':[.04,.3,.5],'transform':{'translate':[-.8,.8,0]}}]}
+
+    def test_one_cart_draws_each_camera_as_its_own_cart_did(self):
+        # yaw_steps 8 includes the 4 cameras of yaw_steps 4: the same rows, from another table index
+        four = self.checked(recipe(),{'yaw_steps':4,'pitches':[-.35],'distances':[1]})
+        eight = self.checked(recipe(),{'yaw_steps':8,'pitches':[-.35],'distances':[1]})
+        strip = lambda row: {k:v for k,v in row.items() if k != 'index'}
+        self.assertEqual([strip(v) for v in four['views']],[strip(v) for v in eight['views'][::2]])
+
+    def test_depth_mode_judges_views_that_draw_every_face(self):
+        r = self.detailed()
+        full = self.checked(r,{**self.DEPTH,'depth_views':144})
+        report = self.checked(r,self.DEPTH)
+        selection = report['depth_mode']['view_selection']
+        self.assertTrue(report['ok'],report['totals'])
+        self.assertEqual(report['profile']['depth_views'],16)
+        self.assertEqual(report['totals']['views'],16)
+        self.assertEqual(selection['candidates'],144)
+        self.assertEqual(selection['faces_drawn_by_views'],selection['faces_drawn_by_sweep'])
+        self.assertEqual(report['observed_faces'],full['observed_faces'])
+        self.assertEqual(full['totals']['views'],144)
+        # the judged views are rows of the full sweep, unchanged
+        rows = {v['index']:v for v in full['views']}
+        for v in report['views']:
+            self.assertEqual({k:x for k,x in v.items() if k not in ('index','sweep_index','image')},
+                             {k:x for k,x in rows[v['sweep_index']].items() if k not in ('index','image')})
+        # without depth every camera is still judged, and the report is as before
+        plain = self.checked(r)
+        self.assertEqual(plain['totals']['views'],144)
+        self.assertNotIn('depth_views',plain['profile'])
+        self.assertTrue(all('sweep_index' not in v for v in plain['views']))
+
+    def test_planted_geometry_faults_fail_without_rendering_help(self):
+        # duplicate faces and coplanar overlaps z-fight in the depth buffer: geometry checks
+        dup = recipe({'op':'mesh','vertices':[[0,0,0],[2,0,0],[0,2,0]],'faces':[[0,1,2],[0,1,2]]})
+        report = self.checked(dup,self.DEPTH)
+        self.assertFalse(report['ok'])
+        self.assertIn('duplicate_face',report['geometry']['counts'])
+        coplanar = recipe({'op':'mesh','vertices':[[0,0,0],[2,0,0],[0,2,0],[.2,.2,0],[1,.2,0],[.2,1,0]],
+                           'faces':[[0,1,2],[3,4,5]]})
+        report = self.checked(coplanar,self.DEPTH)
+        self.assertFalse(report['ok'])
+        self.assertIn('coplanar_overlap',report['geometry']['counts'])
+        self.assertEqual(report['totals']['wrong_pixels'],0,'the depth test ties them: rendering alone passes them')
+        # a T-junction: vertex 4 on the edge 1-2 of the first face, which does not share it
+        t = recipe({'op':'mesh','vertices':[[0,0,0],[2,0,0],[2,2,0],[0,2,0],[2,1,0],[3,0,0],[3,2,0]],
+                    'faces':[[0,1,2,3],[1,5,4],[4,5,6],[4,6,2]]})
+        report = self.checked(t,self.DEPTH)
+        self.assertEqual(report['geometry']['counts'],{'t_junction':1})
+        self.assertEqual(report['geometry']['findings'][0]['b']['face'] in (0,1),True)
+        self.assertNotIn('t_junction',json.dumps(self.checked(t)['geometry']),'without depth the audit is as before')
+
+    @unittest.skipUnless(RUNNER.exists(),'Needs mei-headless.')
+    def test_preview_depth_previews_and_checks_as_drawn_with_depth(self):
+        # a plate on a body: an ordering-table failure, drawn right by the depth test
+        from mei_assets import VerificationFailure
+        r = NativeVisibilityGateTests().overlap()
+        r['verification'] = {'required':True,'yaw_steps':4,'pitches':[0],'distances':[1]}
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(VerificationFailure):
+                build(r,tmp,True,COMPILER,RUNNER,probe=PROBE)
+            report = build(r,tmp,True,COMPILER,RUNNER,probe=PROBE,drawn={'depth':True,'perspective':True})
+            self.assertTrue(report['verification']['ok'])
+            self.assertTrue(report['verification']['profile']['depth'])
+            for name in ('preview.akr','view_front.akr'):
+                self.assertIn('render_depth(true)',(Path(tmp)/name).read_text())
+            self.assertTrue(all(v['stats']['px_ztest'] > 0 for v in report['preview']['views']))
+        # without the flags an untextured asset's files are as before
+        self.assertNotIn('depth',source('test',{'min':[0,0,0],'max':[1,1,1]}))
+
+    def planted(self, r, tamper=None, cutout=None):
+        """The Asset Checker in depth mode with the console drawing a tampered mesh (or mask)."""
+        from assetkit import visibility
+        identity, setup = visibility.identity_mesh, visibility.cutout_setup
+        def tampered(*a, **k):
+            return tamper(bytearray(identity(*a,**k)))
+        def masked(*a, **k):
+            faces,textured,cart = setup(*a,**k)
+            return faces,textured,(cutout(dict(cart[0])),cart[1])
+        try:
+            if tamper: visibility.identity_mesh = tampered
+            if cutout: visibility.cutout_setup = masked
+            return self.checked(r,self.DEPTH)
+        finally:
+            visibility.identity_mesh, visibility.cutout_setup = identity, setup
+
+    def test_planted_drawing_faults_are_caught_in_the_judged_views(self):
+        r = self.detailed()
+        mesh,_,_ = compile_recipe(r)
+        plate = next(i for i,f in enumerate(mesh.faces) if f.part == 'plate' and f.indices[0] != f.indices[1])
+        offset = struct.unpack_from('<I',native_bytes(*compile_recipe(r)[:2],{}),8)[0]
+        def face(i):
+            return offset+36*i
+        def missing(data):
+            # the console never draws a plate face (its corners collapsed)
+            a = face(plate)
+            struct.pack_into('<3H',data,a+4,*([struct.unpack_from('<H',data,a+4)[0]]*3))
+            return bytes(data)
+        def crack(data):
+            # one corner of a plate face moved to another of the plate's vertices: a gap
+            a = face(plate)
+            corners = struct.unpack_from('<3H',data,a+4)
+            others = sorted({v for f in mesh.faces if f.part == 'plate' for v in f.indices}-set(corners))
+            struct.pack_into('<H',data,a+8,others[0])
+            return bytes(data)
+        clean = self.checked(r,self.DEPTH)
+        self.assertTrue(clean['ok'])
+        for name,tamper in (('missing face',missing),('crack',crack)):
+            report = self.planted(r,tamper)
+            self.assertFalse(report['ok'],name)
+            # where the plate face is missing the body behind it shows: wrong pixels, or nothing: coverage
+            self.assertGreater(report['totals']['coverage_errors']+report['totals']['wrong_pixels'],100,name)
+            self.assertEqual(report['geometry']['counts'],{})
+        # the face the console never draws is a suspect: the reference judges the view the estimate shows it best in
+        self.assertEqual(self.planted(r,missing)['depth_mode']['view_selection']['suspect_faces'],[plate])
+        # a cutout hole where there should be none: one texel of the fence's mask cleared
+        fence = TextureCheckerTests().fence()
+        fence['verification'] = {'required':True,**self.DEPTH}
+        self.assertTrue(self.checked(fence)['ok'])
+        def hole(files):
+            name = next(n for n in files if n.startswith('mask'))
+            mask = bytearray(files[name])
+            k = next(i for i in range(len(mask)//2,len(mask)) if mask[i])
+            mask[k] = 0
+            files[name] = bytes(mask)
+            return files
+        report = self.planted(fence,cutout=hole)
+        self.assertFalse(report['ok'])
+        self.assertGreater(report['totals']['coverage_errors'],0)
+        self.assertLessEqual(report['totals']['views'],24)
+
+
 if __name__ == '__main__':
     unittest.main()

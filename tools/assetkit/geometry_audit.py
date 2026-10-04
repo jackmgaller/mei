@@ -33,7 +33,7 @@ def clip_polygon(subject, clip, eps):
     return result
 
 
-def geometry_audit(mesh, limit=200):
+def geometry_audit(mesh, limit=200, t_junctions=False):
     np=numpy()
     triangles=np.array([[mesh.vertices[i] for i in f.indices] for f in mesh.faces],dtype=float)
     normals=np.cross(triangles[:,1]-triangles[:,0],triangles[:,2]-triangles[:,0])
@@ -84,6 +84,46 @@ def geometry_audit(mesh, limit=200):
             aa,bb=np.array(a)@axis,np.array(b)@axis
             if min(max(aa),max(bb))-max(min(aa),min(bb))>eps:
                 issue('surface_intersection',i,j,'Surfaces cross. Split/trim them at the intersection and remove buried faces, or join the components.')
+    scope='Triangle duplicates, positive-area coplanar overlaps and proper surface crossings after 16.16 quantization; boundary contact is allowed. Containment is not certified.'
+    if t_junctions:
+        for v,(i,j) in t_junction_pairs(np,mesh):
+            issue('t_junction',i,j,f'Vertex {v} of the first face lies inside an edge of the second, which does not share it: '
+                                   'the two can leave a crack of background pixels between them. Split that edge at the vertex.')
+        scope+=' T-junctions: a vertex within 2^-16 units of the inside of another face\'s edge.'
     return {'ok':not counts,'counts':dict(counts),'findings':findings,
             'truncated':sum(counts.values())>len(findings),
-            'scope':'Triangle duplicates, positive-area coplanar overlaps and proper surface crossings after 16.16 quantization; boundary contact is allowed. Containment is not certified.'}
+            'scope':scope}
+
+
+def t_junction_pairs(np, mesh):
+    """[(vertex, (a face using it, a face with an edge it lies inside of))]: the vertex is within
+    T_JUNCTION (2^-16 units, one step of the 16.16 coordinates) of the edge's line, strictly
+    between its ends (projected), and is not a corner of that face."""
+    V=np.array(mesh.vertices,dtype=float)
+    edges={}
+    for i,f in enumerate(mesh.faces):
+        for k in range(3):
+            edges.setdefault(tuple(sorted((f.indices[k],f.indices[(k+1)%3]))),i)
+    uses={}
+    for i,f in enumerate(mesh.faces):
+        for v in f.indices: uses.setdefault(v,i)
+    keys=sorted(edges)
+    out=[]
+    for start in range(0,len(keys),256):
+        batch=np.array(keys[start:start+256])
+        a,b=V[batch[:,0]],V[batch[:,1]]
+        d=b-a
+        length2=np.einsum('ex,ex->e',d,d)
+        rel=V[None,:,:]-a[:,None,:]
+        t=np.einsum('evx,ex->ev',rel,d)/np.where(length2>0,length2,1)[:,None]
+        off=rel-t[:,:,None]*d[:,None,:]
+        near=np.einsum('evx,evx->ev',off,off)<=T_JUNCTION**2
+        inside=(t>0)&(t<1)&near&(length2[:,None]>0)
+        for e,v in zip(*np.nonzero(inside)):
+            owner=edges[tuple(batch[e])]
+            if v in uses and v not in mesh.faces[owner].indices:
+                out.append((int(v),(uses[v],owner)))
+    return sorted(out,key=lambda x:(x[1],x[0]))
+
+
+T_JUNCTION=1/65536
