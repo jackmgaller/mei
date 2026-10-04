@@ -381,11 +381,10 @@ def depth_init(rows):
         for slot, row in rows) + '}\n'
 
 
-def run_cart(pack_bytes, id_bytes, views, runtime, tools, work, max_faces=0, rows=()):
+def run_cart(pack_bytes, id_bytes, views, runtime, tools, work, rows=()):
     """Compiles the verification cart for these views (dicts with eye, yaw, pitch, layers, a
     list of layer ids) and runs it on mei-scene-probe. Returns ([(stats, out, picture or None)]
-    per frame, timings). In depth mode, max_faces: the most faces in any mesh drawn (the arena
-    reserve, kitcore/depth.py), rows: swatch_rows()."""
+    per frame, timings). rows (depth mode): swatch_rows() of the meshes drawn."""
     np = numpy()
     work = Path(work)
     (work / 'pack.bin').write_bytes(pack_bytes)
@@ -395,7 +394,7 @@ def run_cart(pack_bytes, id_bytes, views, runtime, tools, work, max_faces=0, row
     near_far = runtime['near_far']
     depth, persp = runtime.get('depth', False), runtime.get('perspective', False)
     (work / 'check.akr').write_text(CART.format(depth_import=DEPTH.cart_import(depth, persp),
-                                                depth_lines=DEPTH.cart_lines(tools['compiler'], depth, persp, max_faces),
+                                                depth_lines=DEPTH.cart_lines(depth, persp),
                                                 depth_init=depth_init(rows) if depth or persp else '',
                                                 far_ring=int(runtime['far_ring']),
                                                 clip_near=fixed_literal(runtime['clip_near']),
@@ -407,8 +406,7 @@ def run_cart(pack_bytes, id_bytes, views, runtime, tools, work, max_faces=0, row
                                                 lod='true' if runtime['lod'] else 'false',
                                                 lod_fine='true' if runtime['lod_fine'] else 'false'))
     t0 = time.perf_counter()
-    _run([tools['compiler'], work / 'check.akr', '-o', work / 'check.mei', '--sym', work / 'check.sym',
-          *DEPTH.include_args(tools['compiler'], depth, persp)],
+    _run([tools['compiler'], work / 'check.akr', '-o', work / 'check.mei', '--sym', work / 'check.sym'],
          'compiling the verification cart')
     t1 = time.perf_counter()
     symbols = {}

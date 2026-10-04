@@ -229,8 +229,9 @@ checked exactly as before, its report byte for byte the same. A world recipe wit
   crossing) and ordering cycles (the graph is not built). They are still listed in `geometry`.
   **Still failures:** duplicate faces and coplanar overlaps, which fight in the depth buffer as
   they did in a bucket, coverage errors, and the budgets and levels of detail as before.
-- The report adds `depth_mode`: the settings, `key_steps`, `key_tolerance` and whether the depth
-  stand-in was used (below).
+- The report adds `depth_mode`: the settings, `key_steps` and `key_tolerance`.
+- `render_depth(true)` brings perspective with it (`stdlib/depth.akr`), so `depth` without
+  `perspective` draws as with both.
 
 So the authoring rules made for the ordering table apply only without depth: splitting long
 faces, keeping details clear of surfaces, removing crossing faces and buried parts for ordering's
@@ -246,15 +247,11 @@ sake, and recipe order ("a sign before its wall"). Measured with the default pro
 | `cottage` | no, 28,514, 144 | no, 0 | 36 coplanar overlaps |
 | `two_districts`' `torii` | no, 3,183, 132 | no, 0 | 10 coplanar overlaps |
 
-**Time.** The check costs the same in both modes: `kiosk` 5.5 s and 5.2 s, `coin` 11.5 s and
-12.0 s, `robot` 21.0 s and 14.0 s (no ordering graph). About 55% of it is `meic` compiling one
-cart per view (2.9 s of `kiosk`'s 5.5; with depth 0.1–0.6 s more, the face loops being larger)
-and 25% the probe. The easy win, not taken: compile the cart once and let the probe write each
+**Time.** Without and with depth: `kiosk` 5.5 s and 5.6 s, `coin` 11.5 s and 13.1 s, `robot`
+21.0 s and 13.2 s (no ordering graph). Most of it is `meic` compiling one cart per view (2.9 s of
+`kiosk`'s 5.5; 3.5 s with depth, which compiles `depth.akr` and its face loops too) and about a
+fifth the probe. The easy win, not taken: compile the cart once and let the probe write each
 view's camera into RAM, as the World Checker's cart reads its views from embedded data.
-
-**The depth stand-in.** Until `stdlib/depth.akr` is merged the cart compiles against
-`tests/depth_shim/` (the depth prototype's face loops behind the same API, `meic -I`);
-`tools/kitcore/depth.py` picks it only while the standard library has no `render_depth()`.
 
 ### Reports and repairs
 

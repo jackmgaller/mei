@@ -491,14 +491,18 @@ is on). In depth mode:
 
 - **The verification cart** imports `depth.akr` and calls `render_depth(true)` (and
   `render_perspective(true)`) at the start of each frame, after `cls()`; `wp_draw()` and
-  `wp_draw_entities()` then draw with depth. It fills the texel rows the pack's palette swatch
+  `wp_draw_entities()` then draw as `stdlib/depth.akr` defines: every pass into its tables
+  without flushes or a ground pass, opaque faces nearest first, over one clip range, and objects
+  by their own faces' depths. `render_depth(true)` brings perspective with it (every face is a
+  packet with depth), so `depth` without `perspective` draws as with both. It fills the texel rows the pack's palette swatch
   faces read with a nonzero texel, because the cart has the pack but not the world's swatch
   (`NAME.swatch`, which a game copies to VRAM): with transparent texels those faces would write
   no depth and nothing behind them would fail the test. Each view's `stats` add `depth`, the
   frame's depth and perspective counts, and the GPU cycles include the depth clear (38,400).
 - **One pass.** The depth test orders the far pass's stand-ins, the ground pass and the near pass
   among each other by depth, so the reference judges every face it selects in one pass by its
-  depth (the selection and each pass's near plane are as before). Ground inversions and pass
+  depth. The selection is as before; the stand-ins are clipped at the near pass's near plane, as
+  `wp_draw()` then draws them. Ground inversions and pass
   inversions cannot occur, and the static `ground_hides` and `ground_over_ground` warnings are
   not made. What is still judged as before: coverage, the budgets and the collision checks.
 - **Ordering is a regression check.** A pixel's expected face is decided only where it is
@@ -520,7 +524,7 @@ is on). In depth mode:
 
 Measured on the movement garden (`carts/garden/world/garden.world.json`, built from a copy with
 `"runtime": {"depth": true, "perspective": true}`; the garden's own recipe is unchanged), default
-settings, 600 views each, with the depth stand-in below:
+settings, 600 views each:
 
 | | Ordering table | Depth mode | Depth mode with entity cameras |
 |---|---|---|---|
@@ -529,25 +533,21 @@ settings, 600 views each, with the depth stand-in below:
 | entity over a nearer face / something over an entity | 16,810 / 0 | – | 0 / 0 |
 | coverage errors, ground inversions | 0, 0 | 0, 0 | 0, 0 |
 | decided pixels | 27,984,074 | 28,130,761 | 27,992,526 |
-| GPU cycles a view, peak / median | 630,100 / 237,352 | 644,249 / 310,121 | 756,876 / 312,119 |
-| draw CPU cycles a view, peak / median | 454,678 / 178,965 | 498,820 / 190,823 | 476,016 / 185,120 |
-| depth-tested pixels, of them failed | – | 49,939,990, 109,133 | 54,235,756, 126,781 |
+| GPU cycles a view, peak / median | 630,100 / 237,352 | 502,005 / 287,086 | 575,601 / 285,079 |
+| draw CPU cycles a view, peak / median | 454,678 / 178,965 | 504,318 / 188,994 | 482,417 / 183,566 |
+| depth-tested pixels, of them failed | – | 49,939,990, 16,243,597 | 54,235,756, 20,886,416 |
 | threshold failures (report mode) | 112: `wrong_order_near` 111, `cell_triangles` 1 | 1: `cell_triangles` | 1 |
 
 The same 600 views with other tolerances (the depth mode with entity cameras): `depth_epsilon`
-alone, 748 near and 782 far wrong-order pixels in 217 views; with 2 key steps, 612 and 645 in
-200; with half a pixel of slope alone, 0; with both (the default), 0. So the console's whole-pixel
+alone, 719 near and 761 far wrong-order pixels in 217 views; with 2 key steps, 583 and 626 in
+197; with half a pixel of slope alone, 0; with both (the default), 0. So the console's whole-pixel
 vertices, not the key's 16 bits, are what the tolerance has to absorb, as RENDERING.md's
 precision table says; the allowance costs 0.13% of the decided pixels (27,992,526 against
 28,030,606 with `depth_epsilon` alone).
 
-**The depth stand-in.** Until the standard library's `stdlib/depth.akr` is merged the cart
-compiles against `tests/depth_shim/` (`meic -I`), the depth prototype's face loops behind the same
-API; `tools/kitcore/depth.py` uses it only while the standard library has no `render_depth()`.
-It files faces back to front as the ordering table always did, so few pixels fail the test and
-the GPU cycles above are an upper bound: the real face loops are to submit opaque faces nearest
-first, which early depth makes cheaper. With it every textured face is perspective-correct, so
-`depth` without `perspective` is checked as with both.
+The peak falls because nearest-first drawing lets early depth reject a third of the tested
+pixels at 1 cycle; the median rises by the depth clear (38,400), the reciprocals and the
+perspective divides.
 
 ## Timing
 

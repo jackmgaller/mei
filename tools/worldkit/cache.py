@@ -8,12 +8,12 @@ Nothing in the cache is ever trusted beyond its key, and a key covers all of a r
     and the recipe's materials, prototypes, lighting, budget and verification policy, in their
     order; the policy's depth and perspective included, the world's where the recipe sets
     neither) and its compiled mesh's bytes, the Python source of the checker and of every tools/
-    module it imports, meic, mei-asset-probe, the standard library meic compiles with and the
-    depth stand-in (tests/depth_shim/), and the Python and NumPy versions.
+    module it imports, meic, mei-asset-probe, the standard library meic compiles with, and the
+    Python and NumPy versions.
     World Checker result: the pack's bytes, the world's name, verification settings, game probe,
     --world-checker option and runtime (depth, perspective), the source of the checker and its
     imports, meic, mei-headless, mei-scene-probe (beside meic, and the checker's defaults), the
-    standard library and the depth stand-in, Python and NumPy.
+    standard library, Python and NumPy.
 
 A cache hit returns the stored result unchanged; tests/test_worldcache.py checks that a hit
 equals a fresh run and that a change to any input misses. The checks also run in parallel
@@ -32,7 +32,6 @@ import sys
 import tempfile
 
 TOOLS = Path(__file__).resolve().parents[1]
-SHIM = TOOLS.parent/'tests'/'depth_shim'   # kitcore/depth.py's stand-in for stdlib/depth.akr, while it is used
 VERSION = 1                       # bump to drop every existing entry
 WORLD_ENTRIES = 4                 # World Checker results kept per world name
 
@@ -179,7 +178,6 @@ class AssetVerdicts:
             p = self.probe or visibility.ROOT/'build/mei-asset-probe'
             self._common = {'version':VERSION,'code':code_hash(visibility.__file__),
                             'meic':file_hash(c),'probe':file_hash(p),'stdlib':tree_hash(stdlib_dir(c)),
-                            'depth_shim':tree_hash(SHIM),
                             **runtime_versions()}
         return self._common
 
@@ -251,7 +249,7 @@ def world_key(context, verify_module):
                    'pack':file_hash(context['pack']),
                    'settings':{k:context.get(k) for k in ('world','mode','thresholds','probe','checker','runtime')},
                    'natives':{k:file_hash(v) if v else None for k,v in natives.items()},
-                   'stdlib':tree_hash(std),'depth_shim':tree_hash(SHIM),**runtime_versions()})
+                   'stdlib':tree_hash(std),**runtime_versions()})
 
 
 def checked_world(check, context, directory, verify_module):

@@ -265,11 +265,11 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
                     code=source(name,base['bounds'],yaw,pitch,distance_scale=distance,world=world)
                     code='\n'.join(line for line in code.splitlines() if 'text(' not in line)
                     code=code.replace('cls(rgb(24, 28, 36))','cls(0)\n    dither(false)'+
-                                      ('\n'+DEPTH.cart_lines(compiler,depth,perspective,len(mesh.faces)).rstrip() if depth or perspective else ''))
+                                      ('\n'+DEPTH.cart_lines(depth,perspective).rstrip() if depth or perspective else ''))
                     if depth or perspective:code=code.replace(f'import "{name}.akr"\n',f'import "{name}.akr"\n'+DEPTH.cart_import(depth,perspective))
                     code=re.sub(r'camera_clip\(0\.1, [^)]*\)',f"camera_clip(0.1, {policy['far']:.7f})",code)
                     (work/'check.akr').write_text(code+'\n')
-                    run([compiler,work/'check.akr','-o',work/'check.mei','--sym',work/'check.sym',*DEPTH.include_args(compiler,depth,perspective)])
+                    run([compiler,work/'check.akr','-o',work/'check.mei','--sym',work/'check.sym'])
                     symbols={line.split()[1]:int(line.split()[0],16) for line in (work/'check.sym').read_text().splitlines() if len(line.split())==2}
                     if 'G___sv' not in symbols:raise AssetError('/verification/native','Compiler did not emit the __sv diagnostic symbol.')
                     run([probe,work/'check.mei',work/'capture.bin',symbols['G___sv'],len(mesh.vertices)])
@@ -308,7 +308,6 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
             'views':views,'images':images,
             **({'depth_mode':{'depth':depth,'perspective':perspective,'key_steps':DEPTH.KEY_STEPS,
                               'key_tolerance':DEPTH.KEY_TOLERANCE,
-                              'stand_in':DEPTH.uses_shim(compiler) if depth or perspective else False,
                               'not_failures':['surface_intersection','ordering cycles']}}
                if depth or perspective else {}),
             'native_tools':{'compiler_sha256':hashlib.sha256(compiler.read_bytes()).hexdigest(),

@@ -485,7 +485,9 @@ def _view_row(ctx, g, v, rec, rec2, out_dir):
         sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
         row['heaviest'] = _heaviest(pack, sel, meshes, v['eye'], names)
     if cfg['ordering']['enabled'] and ids_ok:
-        near_planes = {'near': rt['clip_near'], 'ground': rt['clip_near'], 'far': S / 2}
+        # in depth mode wp_draw() draws the stand-ins over the near pass's clip range too
+        near_planes = {'near': rt['clip_near'], 'ground': rt['clip_near'],
+                       'far': rt['clip_near'] if rt['depth'] else S / 2}
         if sel is None:
             sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
         faces = RD.view_faces(pack, meshes, sel, out2['vp'], out2['origin'], first, near_planes)
@@ -676,7 +678,6 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
                 work.mkdir()
                 t1 = time.perf_counter()
                 recs, tm = RD.run_cart(bytes(pack.data), idp, gviews, rt, tools, work,
-                                       max((len(m.faces) for m in meshes.values()), default=0),
                                        RD.swatch_rows(meshes.values()))
                 t_native += time.perf_counter() - t1
                 compile_s += tm['compile_seconds']
