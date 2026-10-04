@@ -468,6 +468,8 @@ fn want_pose(wade: fixed) {
             let q = ease(st_k(36))
             sym_arms(p, 0.2, 1.3, 1.0)
             sym_legs(p, 0.3, 0.3, 0.8)
+            // side on to the arc, looking out of it, turning over in its plane
+            p.turn = HALF_PI
             p.roll = TAU * q
             if q >= 1.0 { fall_pose(p, t) }
             rb.eyes = Eyes.Happy
