@@ -178,7 +178,11 @@ fn draw() {
     if variant == 0 { cls(rgb(110, 150, 200)) } else { cls(rgb(20, 24, 48)) }
     wp_draw(eye, yaw, pitch)
     draw_entities()
-    if overlay { draw_overlay() }
+    if overlay {
+        // the world's paths (rails, wires, routes), as lines over the picture
+        for k in 0..wp_path_count() { wp_path_draw(wp_path(k), rgb(255, 220, 60)) }
+        draw_overlay()
+    }
 }
 
 fn ink() -> u32 { return rgb(255, 255, 255) }

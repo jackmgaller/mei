@@ -1,0 +1,105 @@
+// Runs path queries against a world pack and prints each answer, for tests/test_worldpack.py to
+// compare with tools/worldkit/pack.py (path_nearest, path_at); then times them. The test's
+// wrapper embeds PACK (the pack) and QUERIES (WpPathQuery records) and imports this.
+
+import "worldpack.akr"
+
+struct WpPathQuery {
+    op: s32            // 0 nearest, 1 at, 2 nothing (for timing the call)
+    path: s32          // the path's number
+    arg: fixed         // nearest: reach; at: the length along the path
+    reserved: s32
+    p: vec4            // nearest: the point (w = 0)
+}
+
+fn sp(v: s32) {
+    print_char(' ')
+    print_int(v)
+}
+
+fn near_line() {
+    sp(wp_near.seg)
+    sp(bits(wp_near.t))
+    sp(bits(wp_near.s))
+    sp(bits(wp_near.pos.x))
+    sp(bits(wp_near.pos.y))
+    sp(bits(wp_near.pos.z))
+    sp(bits(wp_near.dist2))
+}
+
+fn run(k: s32) -> bool {
+    let r = &QUERIES[k]
+    if r.op == 2 { return false }
+    let pth = wp_path(r.path)
+    if r.op == 0 { return wp_path_nearest(pth, vec3(r.p.x, r.p.y, r.p.z), r.arg) }
+    wp_path_at(pth, r.arg)
+    return true
+}
+
+fn init() {
+    assert(wp_open(PACK))
+    let n = wp_path_count()
+    print("paths")
+    sp(n)
+    println("")
+    for k in 0..n {
+        let pth = wp_path(k)
+        print(wp_path_name(pth))
+        sp(wp_path_points(pth))
+        sp(pth.point_count as s32)
+        sp(bits(wp_path_length(pth)))
+        sp(pth.flags as s32)
+        sp(pth.surface as s32)
+        let q = wp_path_point(pth, 1)
+        sp(bits(q.x))
+        sp(bits(q.y))
+        sp(bits(q.z))
+        println("")
+    }
+    print("find")
+    sp(wp_path_find("rail") as s32 - wp_path(0) as s32)
+    sp((wp_path_find("nope") == null) as s32)
+    sp((wp_path(n) == null) as s32)
+    sp((wp_path(-1) == null) as s32)
+    println("")
+}
+
+var next: s32
+
+// 100 answers a frame (the debug console takes so much a frame), then the times.
+fn draw() {
+    let nq = len(QUERIES) as s32
+    if next > nq { return }
+    if next < nq {
+        let end = min(next + 100, nq)
+        for k in next..end {
+            let found = run(k)
+            print_int(found as s32)
+            if found { near_line() }
+            println("")
+        }
+        next = end
+        return
+    }
+    next += 1
+    // cycles a query of each kind, the call to run() and cycle_count() included
+    var c0 = 0
+    for op in 0..3 {
+        var count = 0
+        var cycles = 0
+        for k in 0..nq {
+            if QUERIES[k].op == op {
+                c0 = cycle_count()
+                run(k)
+                cycles += cycle_count() - c0
+                count += 1
+            }
+        }
+        print("time")
+        sp(op)
+        sp(count)
+        sp(cycles)
+        println("")
+    }
+    println("done")
+}

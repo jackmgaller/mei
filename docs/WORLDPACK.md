@@ -1,6 +1,6 @@
 # The world pack format
 
-**Version 1.1.** A world pack (`*.world.bin`) is the contract between the World Kit
+**Version 1.2.** A world pack (`*.world.bin`) is the contract between the World Kit
 ([WORLDKIT.md](WORLDKIT.md)), which writes packs, and the reader a cart runs, which reads them in
 place from ROM. This document is normative: a second encoder or reader can be written from it
 alone. The reference implementations are `tools/worldkit/pack.py` (encoder, decoder and an exact
@@ -14,6 +14,7 @@ What each part's status is:
 | Header, index, cells | specified | yes | yes |
 | Placements, stand-ins, layers | specified | yes | yes: drawing, culling, layer masks |
 | Ground placements (1.1) | specified | yes | yes: drawn first, in a pass of their own |
+| Paths (1.2) | specified | yes, with an exact oracle | yes: by number and name, nearest point, point at a length, lines for debugging |
 | Collision blocks (cells and entities) | specified | yes, with an exact oracle | yes: floor, ceiling, wall push, segment |
 | Entities and parameter records | specified | yes | yes: iteration, tracking, lookup by number |
 | Regions: palette variants, texture set | specified | yes | palettes loaded and blended; textures loaded at once only |
@@ -35,13 +36,14 @@ What each part's status is:
 11. [Ground](#ground)
 12. [Entities](#entities)
 13. [Collision blocks](#collision-blocks)
-14. [Meshes and strings](#meshes-and-strings)
-15. [What a reader does](#what-a-reader-does)
-16. [Validation](#validation)
-17. [Precision](#precision)
-18. [Costs](#costs)
-19. [The console reader](#the-console-reader-stdlibworldpackakr)
-20. [Extensions not made](#extensions-not-made)
+14. [Paths](#paths)
+15. [Meshes and strings](#meshes-and-strings)
+16. [What a reader does](#what-a-reader-does)
+17. [Validation](#validation)
+18. [Precision](#precision)
+19. [Costs](#costs)
+20. [The console reader](#the-console-reader-stdlibworldpackakr)
+21. [Extensions not made](#extensions-not-made)
 
 ## Conventions
 
@@ -76,13 +78,13 @@ What each part's status is:
 
 ## Versions
 
-The header holds a major and a minor version; this document is 1.1.
+The header holds a major and a minor version; this document is 1.2.
 
 - A reader refuses a pack whose **major** version it does not know.
 - A reader accepts a pack with the same major and a **higher minor** version and reads it as the
   minor version it knows. A minor version may only add: data reached through fields that are
-  reserved (zero) in earlier minors, header bytes past the 64 this version defines (the header
-  says its own size), and flag bits. It never changes the size or meaning of an existing field or
+  reserved (zero) in earlier minors, header bytes past those the earlier minors define (the
+  header says its own size: 1.2 defines 72), and flag bits. It never changes the size or meaning of an existing field or
   record.
 - Header **flags** bits 0–3 mark features a reader may ignore; bits 4–7 mark features a reader
   must understand, so a reader refuses a pack with a bit 4–7 set that it does not know. Version
@@ -96,6 +98,16 @@ ground sorted by its own depth), not a misreading; nothing else about the pack c
 way round, a 1.0 pack reads as a pack without ground: a 1.1 reader reads the three fields only in
 a pack whose minor version is at least 1. A 1.1 pack without ground differs from a 1.0 pack only
 in its minor version.
+
+**1.2** adds [paths](#paths): the header grows to 72 bytes (`header_size` 72) with `path_count`
+and `path_off`, which point at a table of named polylines. It is a minor version because it only
+adds header bytes past the 64 that 1.1 defines and data reached through them: a 1.1 reader, which
+finds everything through offsets, reads a 1.2 pack as before and sees no paths. The other way
+round, a reader reads the path words only when the minor version is at least 2 (a 1.2 pack's
+`header_size` must then be at least 72), so a 1.0 or 1.1 pack has no paths. A 1.2 pack of a world
+without paths has `path_count` and `path_off` 0; it differs from the 1.1 pack of the same world in
+its minor version, its `header_size` and those 8 bytes, and so in every offset after the header,
+which moves by 8.
 
 ## Limits
 
@@ -114,14 +126,16 @@ in its minor version.
 | `pad` | 0 to *S*/2 | Wall pushes reach at most `pad` (below) |
 | `overhang` | 0 to *S*/2 | How far placements may reach past their cell; the encoder enforces it |
 | Mesh | the native format: at most 2,048 vertices | `mesh()` |
+| Paths | `u32` count; 2–4,096 stored points each; a path at most 16,384 units long; points within ±32,767 units | Keeps the nearest-point query's products inside `fixed` ([Paths](#paths)) |
 
 ## Layout
 
 ```
-header         64 bytes at offset 0
+header         72 bytes at offset 0
 index          w x h u32: the offset of each grid square's cell, or 0
 layers         layer_count x 8 bytes
 regions        region_count x 32 bytes, each pointing at its textures, samples, palettes, backdrop
+paths          path_count x 48 bytes, then each path's points, 40 bytes each
 cells          96 bytes each, pointing at their placements, entities and collision block
   placements   48 bytes each
   entities     64 bytes each
@@ -145,11 +159,11 @@ records, and a reader treats it like any other world.
 |---|---|---|---|
 | 0 | `[4]u8` | `magic` | `"MEIW"` (the `u32` 0x5749454D) |
 | 4 | `u16` | `major` | 1 |
-| 6 | `u16` | `minor` | 0 |
+| 6 | `u16` | `minor` | 2 |
 | 8 | `u32` | `size` | the pack's length in bytes, a multiple of 4 |
 | 12 | `u8` | `cell_shift` | 4–7 |
 | 13 | `u8` | `flags` | see [Versions](#versions); bit 0 (1.1): some cell has a ground placement |
-| 14 | `u16` | `header_size` | 64 in 1.0 and 1.1; at least 64 |
+| 14 | `u16` | `header_size` | 64 in 1.0 and 1.1, 72 in 1.2; at least 64, and at least 72 when `minor` ≥ 2 |
 | 16 | `s16` | `i0` | grid column of the index's first entry |
 | 18 | `s16` | `j0` | grid row of the index's first entry |
 | 20 | `u16` | `w` | index width (columns) |
@@ -165,6 +179,8 @@ records, and a reader treats it like any other world.
 | 52 | `u32` | `entity_dir_off` | 0 when there are no entities |
 | 56 | `u32` | `mesh_count` | |
 | 60 | `u32` | `mesh_dir_off` | 0 when there are no meshes |
+| 64 | `u32` | `path_count` | (1.2) |
+| 68 | `u32` | `path_off` | (1.2) the path table, 0 when there are no paths |
 
 ## Index
 
@@ -513,6 +529,69 @@ into a neighbour gets the neighbour's bit for the same layer id, which the encod
 neighbour's layer list). A query skips triangles whose bit is off. An entity's block has no layers
 (its masks are 0).
 
+## Paths
+
+A path is a named polyline in world coordinates: a rail to grind or hang from, a wire between
+poles, a crane's jib, a train's route. The format attaches no meaning to it: a game's entities
+name the path they use (a `name` parameter), or the game uses the path numbers the World Kit
+exports. A path is **raised** (not lying on the ground: a rail, a wire) or not, and **closed** (a
+loop) or open, and carries a surface byte, from its tag as a collision triangle's comes from its
+material's tag. Paths are neither drawn nor collided with: what a rail looks like and how it is
+stood on are an asset's, and later swept terrain's ([WORLDKIT.md](WORLDKIT.md#terrain)).
+
+**Stored once per world, not per cell.** The path table hangs off the header and its points are
+world coordinates. Paths are few (tens in a level) and short (a rail is a few segments); a game
+asks about one path it already holds (the rail the player is near or on, the route a train
+follows), not about everything in a cell; and an entity names a whole path, not a piece of one.
+Clipping paths per cell would cut a rail crossing a seam into pieces in two cells, so a grind
+check at the seam would ask both and join the answers, and a train's length along its route would
+be stitched across cells, for no saving: a path costs 48 bytes and 40 a point. The price of world
+coordinates is the overflow limit below, which the box test and the limits keep clear of.
+
+### Path record (48 bytes)
+
+`path_count` records at `path_off`; a path's **number** is its position (the recipe's order).
+
+| Offset | Type | Field | |
+|---|---|---|---|
+| 0 | `u32` | `name` | offset of a NUL-terminated ASCII name, distinct among the paths |
+| 4 | `u32` | `point_count` | stored points, 2–4,096: a closed path stores its first point again at the end |
+| 8 | `u32` | `point_off` | `point_count` point records |
+| 12 | `u8` | `flags` | bit 0: raised; bit 1: closed; bits 2–7 reserved |
+| 13 | `u8` | `surface` | the game's surface byte |
+| 14 | `u16` | reserved | |
+| 16 | row | `lo` | the smallest *x*, *y*, *z* of its points; *w*: its **length**, the last point's `s` |
+| 32 | row | `hi` | the largest *x*, *y*, *z* of its points; *w* 0 |
+
+### Point record (40 bytes)
+
+| Offset | Type | Field | |
+|---|---|---|---|
+| 0 | row | `pos` | the point (*x*, *y*, *z*, 0), world coordinates |
+| 16 | row | `dir` | (*u*ˣ, *u*ʸ, *u*ᶻ, 0): the unit direction of the segment from this point to the next; zero for the last point |
+| 32 | `fixed` | `s` | the length along the path to this point: 0 for the first, else the previous point's `s` + `len` |
+| 36 | `fixed` | `len` | the length of the segment to the next point, more than 0; 0 for the last point |
+
+A path of *n* stored points has segments 0 .. *n* − 2, segment *k* from point *k* to point *k* + 1.
+The *w* lanes of `pos` and `dir` are 0 so that `dot(q − pos, dir)` and `q − pos − dir t` use only
+*x*, *y* and *z*. The reference encoder computes them from the points rounded to `fixed` (raw):
+`len` = round(√(**d** · **d**)), with **d** the raw difference, exactly (an integer square root, so
+every machine gets the same bytes); `dir` = round(**d** / |**d**|) componentwise; `s` the sum of
+the `len`s before. A segment whose rounded length is 0 is refused.
+
+**Nearest point** (`wp_path_nearest(path, p, reach)`): for each segment, with **d** = **p** −
+`pos`, *t* = clamp(**d** · `dir`, 0, `len`), the nearest point **c** = `pos` + `dir` *t* and
+**e** = **p** − **c**: the segment counts when |*e*ˣ|, |*e*ʸ| and |*e*ᶻ| are all less than
+`reach`, and the answer is the counting segment with the smallest **e** · **e** (ties: the first),
+with its *t*, *s* = its `s` + *t*, **c** and **e** · **e**. A point outside the box [`lo` −
+`reach`, `hi` + `reach`] has no answer, which a reader may decide first. With `reach` at most 100,
+**e** · **e** ≤ 30,000; inside the box |**d**| is at most the path's length plus 1.8 `reach`, so
+**d** · `dir` stays inside `fixed` for a path of up to 16,384 units.
+
+**Point at a length** (`wp_path_at(path, s)`): a closed path takes *s* modulo its length, an open
+one clamps *s* to 0 .. length; the segment is the last *k* (0 .. *n* − 2) whose `s` ≤ *s*, and the
+point `pos` + `dir` (*s* − `s`).
+
 ## Meshes and strings
 
 The **mesh pool** holds native Mei meshes (LANGUAGE.md, "Mesh format"), each 4-byte aligned and
@@ -569,6 +648,9 @@ outside one of the six planes of the view volume. The near set is convex, so alo
 sight near geometry comes before far; it is chosen around the camera, which may trail the player.
 A near cell whose region is not loaded is drawn as its stand-in, in the near pass.
 
+**Paths.** A reader answers the two queries above ([Paths](#paths)) on a path it holds by
+number or by name.
+
 **Entities.** A tracked area is the cells within a radius (0–2) of a point. An entity is active
 while its cell is in the area and it is present. Each update retires the entities that stopped
 being active (their cell left, or their layer went off), then spawns the ones that started.
@@ -580,7 +662,9 @@ reference for a tool's own checks: the magic, versions and flags; that the size 
 table lies inside the pack and is aligned; that every index entry's cell names its own square;
 layer ids and masks against the cell's layer list; that ground placements come first in their
 cells and agree with `ground_count` and the header's flag; region, mesh, string and parameter
-references;
+references; paths (1.2): distinct names, point counts, that each point's `s` and `len` add up,
+that the last point has no segment, a closed path ends where it starts, the box holds every point
+and the length is the last `s`;
 every mesh's header, vertex and face extents; every collision block's grid, buckets and list
 entries; and that entity numbers, back-references and the directory agree. Any failure raises
 `PackError`; random corruption never makes it fail any other way (tested).
@@ -589,7 +673,9 @@ The console reader checks only the magic, the version and flags, the cell shift 
 (`wp_open()`), since a pack in ROM was validated when it was built. The encoder refuses what the
 format cannot hold: degenerate triangles, coordinates past the limits, placements or entities
 outside their cell, placements that overhang by more than `overhang`, more than 8 layers in a cell,
-unknown or duplicate layers, too many triangles in a bucket.
+unknown or duplicate layers, too many triangles in a bucket; paths with fewer than 2 points (3 when
+closed), a segment of no length, more than 4,096 stored points, longer than 16,384 units, or a
+name used twice.
 
 ## Precision
 
@@ -608,6 +694,12 @@ compared; about three quarters are.
 | wall push | same walls | position 1.1 × 10⁻⁴ units |
 | segment | same triangle | *t* × (distance across the plane) 9.4 × 10⁻⁴ |
 | an entity's own block (floor, ceiling, push, segment) | same | as above |
+
+Paths are compared the same way (`PathTests`): 900 nearest-point and point-at-length queries on
+random paths of 1–8 segments in and around a 64-unit cell, some closed, against
+`pack.path_nearest()` and `pack.path_at()` in exact arithmetic, skipping answers within 0.003
+units of changing (about a quarter): the same segment every time, and positions, lengths along
+and squared distances within 7.7 × 10⁻⁴ units.
 
 A segment's hit position is **a** + (**b** − **a**) *t* with *t* from one `fdiv`, so it carries
 about (segment length) × 2⁻¹⁶ of error (a ray straight down 11 units onto a roof at 3.5 reports
@@ -629,6 +721,18 @@ ceilings a bucket). Means over 400 random points, cycles:
 | `wp_push`, radius 0.5 | 382 | |
 | `wp_ray`, 3.7 units | 3,078 | Tsumiki's `tk_raycast`: about 900 short, 4,400 across 41 solids |
 | `wp_ray`, 15 units | 8,924 | |
+
+Paths, measured by `tests/test_worldpack.py` (`PathTests.test_costs`, with
+`WORLDPACK_VERBOSE=1`) on rails of 1, 4 and 16 segments, the call itself taken off, cycles:
+
+| Query | Cycles |
+|---|---|
+| `wp_path_nearest`, the point out of reach (the box test) | 117 |
+| `wp_path_nearest`, a grind check by the rail (reach 0.6): 1, 4, 16 segments | 297, 437, 942 (about 255, and 43 a segment) |
+| `wp_path_at`: 1, 4, 16 segments (a binary search) | 183, 212, 241 |
+
+A per-frame grind check against the rails near the player costs a few hundred cycles each;
+checking every path of a level of tens of paths, most rejected by the box, a few thousand.
 
 A segment visits about (length / bucket size) × 2 buckets and tests each triangle in them (about
 45 cycles a triangle that it misses), so camera rays are the expensive query: a follow camera's
@@ -673,13 +777,16 @@ largest radius (2). World positions in and out are `fixed` world coordinates.
 | `wp_track(p, radius, spawn, retire)`, `wp_track_clear(retire)` | spawn and retire as the area and layers change |
 | `wp_region_count()`, `wp_region_name(k)`, `wp_variant_name(k, v)` | region and palette variant names (the name accessors answer null for an index out of range) |
 | `wp_region(k)`, `wp_palette_load(k, v)`, `wp_palette_blend(k, va, vb, t)`, `wp_textures_load(k)`, `wp_texture_load(k, t)` | region palettes and textures (spreading a swap over frames is the game's: one `wp_texture_load` a frame) |
+| `wp_path_count()`, `wp_path(n)`, `wp_path_find(name)`, `wp_path_name(p)`, `wp_path_points(p)`, `wp_path_point(p, k)`, `wp_path_length(p)` | paths (1.2; none in an older pack) by number or name (null when there is none), their points and length; `p.flags` (`WP_PATH_RAISED`, `WP_PATH_CLOSED`) and `p.surface` |
+| `wp_path_nearest(p, pos, reach)`, `wp_path_at(p, s)` | the nearest point on a path within reach (a grind check), the point at a length along it (a mover); answers in `wp_near`: `pos`, `dir`, `seg`, `t`, `s`, `dist2` |
+| `wp_path_draw(p, colour)` | the path as lines over the frame, after `wp_draw()` (a debug view) |
 
 Not implemented: reading audio banks and backdrops, swapping a region's textures across frames by
 itself, character control, cameras, goals and saving (the game's).
 
 ## Extensions not made
 
-Each was left out because version 1.1 is clearly sufficient without it; each fits as a minor
+Each was left out because version 1.2 is clearly sufficient without it; each fits as a minor
 version (a reserved field or a flag) unless noted.
 
 - **Pitch, roll and scale on placements.** Yaw covers buildings and props on level ground; a

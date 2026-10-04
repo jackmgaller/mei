@@ -76,6 +76,17 @@ class Example:
         return build(str(self.world), out, COMPILER, RUNNER, PROBE, checker=checker, **kw)
 
 
+def add_paths(w):
+    """Paths for the test room: a raised rail along the ledge (10 units), a closed loop and a wire
+    that leaves the world; the trigger's name parameter names the rail."""
+    w['paths'] = {
+        'rail': {'points': [[22, 2, 36], [30, 2, 36], [30, 2, 38]], 'raised': True, 'tag': 'roof'},
+        'loop': {'points': [[10, 0, 10], [20, 0, 10], [20, 0, 20], [10, 0, 20]], 'closed': True},
+        'wire': {'points': [[60, 6, 10], [70, 6, 10]], 'raised': True, 'tag': 'rope'},
+    }
+    w['cells'][0]['entities'][1]['params']['event'] = 'rail'
+
+
 def build_without_asset_checker(example, out, **kw):
     """build(), with the coin's Asset Checker policy dropped so the test needs no NumPy."""
     example.edit(lambda a: a.pop('verification', None), 'assets/coin.asset.json')
@@ -206,6 +217,21 @@ class ValidationTests(unittest.TestCase):
                    '/types/trigger/params/len', 'keyword', rel='garden.game.json', file='garden.game.json')
         self.check(lambda g: g['types']['trigger']['params']['time_window'].update(default='dusk'),
                    '/types/trigger/params/time_window/default', rel='garden.game.json')
+
+    def test_path_errors(self):
+        def paths(spec):
+            return lambda w: w.update(paths=spec)
+        line = [[1, 1, 1], [5, 1, 1]]
+        self.check(paths({'rail': {'points': [[1, 1, 1]]}}), '/paths/rail/points', '2–4095 items')
+        self.check(paths({'rail': {'points': line, 'raised': 1}}), '/paths/rail/raised')
+        self.check(paths({'rail': {'points': line, 'width': 1}}), '/paths/rail/width', 'Unknown property')
+        self.check(paths({'Rail': {'points': line}}), '/paths/Rail')
+        self.check(paths({'rail': {'points': [[1, 1, 1], [1, 1, 1], [2, 1, 1]]}}), '/paths/rail/points/1', 'repeats')
+        self.check(paths({'rail': {'points': line, 'closed': True}}), '/paths/rail/points', 'at least 3')
+        self.check(paths({'rail': {'points': [[1, 1, 1], [5, 1, 1], [5, 1, 5], [1, 1, 1]], 'closed': True}}),
+                   '/paths/rail/points/3', 'do not repeat')
+        self.check(paths({'rail': {'points': [[0, 0, 0], [16000, 0, 0], [16000, 0, 900]]}}), '/paths/rail',
+                   'longer than')
 
     def test_cell_file_errors_name_the_file(self):
         self.check(lambda c: c.update(id='downtown_z'), '/id', 'named after its cell', rel='cells/downtown_a.cell.json',
@@ -459,7 +485,7 @@ class BuildTests(unittest.TestCase):
             self.assertEqual((cell.ground_count, cell.placements[0]['ground'], cell.placements[0]['tag']), (1, True, 0))
             self.assertEqual([p['ground'] for p in cell.placements[1:]], [False] * 6)
             self.assertEqual(c.report['cells'][0]['ground_placements'], 1)
-            self.assertEqual(c.report['pack']['version'], '1.1')
+            self.assertEqual(c.report['pack']['version'], '1.2')
             ex.edit(lambda w: w['cells'][0]['placements'][0].update(ground='yes'))
             with self.assertRaises(WorldError) as cm:
                 ex.compile()
@@ -473,6 +499,31 @@ class BuildTests(unittest.TestCase):
             self.assertEqual([(m.get('ground', False), len(m['placements'])) for m in a['merged']], [(False, 5), (True, 3)])
             pls = P.decode(c.pack).cells[(0, 0)].placements
             self.assertEqual([(p['tag'], p['ground']) for p in pls if p['ground']], [(0, True), (0xFFFF, True)])
+
+    def test_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            ex.edit(add_paths)
+            c = ex.compile()
+            pack = P.decode(c.pack)
+            self.assertEqual([p['name'] for p in pack.paths], ['rail', 'loop', 'wire'])
+            rail, loop, wire = pack.paths
+            self.assertEqual((rail['raised'], rail['closed'], rail['surface']), (True, False, 4))
+            self.assertEqual((loop['raised'], loop['closed'], loop['surface'], len(loop['points'])), (False, True, 0, 5))
+            self.assertEqual(rail['length'], P.fx(10))
+            self.assertEqual(c.report['paths']['rail'], {'number': 0, 'points': 3, 'segments': 2, 'length': 10.0,
+                                                         'raised': True, 'closed': False, 'surface': 4})
+            self.assertEqual(c.report['paths']['loop']['segments'], 4)
+            self.assertIn('const WORLD_TEST_ROOM_PATH_WIRE = 2', c.akr)
+            self.assertIn('const WORLD_TEST_ROOM_PATHS = 3', c.akr)
+            outside = [w for w in c.report['warnings'] if w['code'] == 'path_outside_cells']
+            self.assertEqual([(w['path'], w['points']) for w in outside], [('wire', [1])])
+            self.assertIn('rope', next(w for w in c.report['warnings'] if w['code'] == 'unmapped_tags')['tags'])
+        with tempfile.TemporaryDirectory() as tmp:
+            # a world without paths has an empty path table, and the same pack otherwise
+            c = Example(tmp).compile()
+            self.assertEqual((P.decode(c.pack).paths, c.report['paths']), ([], {}))
+            self.assertNotIn('PATH', c.akr)
 
     def test_assets_must_pass_their_own_policy(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -551,6 +602,20 @@ class ConsoleTests(unittest.TestCase):
             pixels = {data[k:k + 3] for k in range(0, len(data), 3)}
             self.assertGreater(len(pixels), 6)
             self.assertNotEqual(data[(200 * 320 + 160) * 3:(200 * 320 + 160) * 3 + 3], bytes([40, 60, 120]))
+
+    def test_paths_on_the_console(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            ex.edit(add_paths)
+            out = Path(tmp)/'out'
+            build_without_asset_checker(ex, out)
+            got = self.run_cart(out, 'room_paths.akr', frames=1)
+            fx = lambda v: str(P.fx(v))
+            self.assertEqual(got['paths'], ['3', '3', '3', '1'])
+            self.assertEqual(got['by_name'], ['1', '1', '4', '0'])
+            self.assertEqual(got['grind'], ['1', '1', fx(9), fx(0.25)])
+            self.assertEqual(got['no_grind'], ['0', '0', '0', '0'])
+            self.assertEqual(got['loop'], [fx(15), fx(10), '0', fx(40)])
 
     def test_preview_renders_each_region_and_variant(self):
         with tempfile.TemporaryDirectory() as tmp:

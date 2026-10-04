@@ -38,7 +38,7 @@ class EncoderTests(unittest.TestCase):
         data = encode(w, rep)
         self.assertEqual(data, encode(F.demo_world()), 'encoding is deterministic')
         p = decode(data)
-        self.assertEqual((p.major, p.minor, p.cell_shift), (1, 1, 6))
+        self.assertEqual((p.major, p.minor, p.cell_shift), (1, 2, 6))
         self.assertEqual(set(p.cells), {(0, 0), (1, 0), (0, 1), (1, 1), (5, 0)})
         self.assertEqual([l[0] for l in p.layers], ['gate', 'bridge_up', 'bridge_down'])
         self.assertEqual([l[1:] for l in p.layers], [(255, False), (0, True), (0, False)])
@@ -844,6 +844,229 @@ class CostTests(unittest.TestCase):
         culled = got['culled'][0]
         self.assertEqual(culled[2], 0)
         self.assertLess(culled[0] / culled[1], 100, 'cycles per placement culled')
+
+
+def path_world(seed=0, cell_shift=6):
+    """A one-cell world with paths only: random polylines in the cell and over its edges, some
+    closed, some raised, after a rail named "rail" (paths.akr looks it up by name)."""
+    rng = random.Random(seed)
+    S = 1 << cell_shift
+    paths = [P.Path('rail', [(4, 3, 4), (20, 3, 4), (20, 6, 30), (40.5, 6.25, 30)], raised=True, surface=7)]
+    for k in range(7):
+        n = rng.randrange(2, 9)
+        pts = []
+        while len(pts) < n:
+            q = (round(rng.uniform(-8, S + 8), 3), round(rng.uniform(0, 12), 3), round(rng.uniform(-8, S + 8), 3))
+            if not pts or q != pts[-1]:
+                pts.append(q)
+        paths.append(P.Path(f'p{k}', pts, raised=k % 2 == 1, closed=n >= 3 and k % 3 == 0, surface=k))
+    return World(cells=[Cell(0, 0)], cell_shift=cell_shift, paths=paths)
+
+
+def path_query(op, path, arg, p=(0, 0, 0)):
+    """One WpPathQuery record (paths.akr); p is raw."""
+    return struct.pack('<iiii4i', op, path, fx(arg), 0, *p, 0)
+
+
+class PathEncoderTests(unittest.TestCase):
+    def test_round_trip(self):
+        w = path_world()
+        data = encode(w)
+        pack = decode(data)
+        self.assertEqual(struct.unpack_from('<HH', data, 4), (1, 2))
+        self.assertEqual(struct.unpack_from('<H', data, 14)[0], 72)
+        self.assertEqual(struct.unpack_from('<I', data, 64)[0], len(w.paths))
+        self.assertEqual([p['name'] for p in pack.paths], [p.name for p in w.paths])
+        for src, got in zip(w.paths, pack.paths):
+            with self.subTest(path=src.name):
+                stored = list(src.points) + ([src.points[0]] if src.closed else [])
+                self.assertEqual([tuple(q['pos']) for q in got['points']], [F.raw(q) for q in stored])
+                self.assertEqual((got['raised'], got['closed'], got['surface']), (src.raised, src.closed, src.surface))
+                exact = sum(math.dist(a, b) for a, b in zip(stored, stored[1:]))
+                self.assertAlmostEqual(got['length'] / ONE, exact, delta=len(stored) / ONE)
+                for a, b in zip(got['points'], got['points'][1:]):
+                    self.assertEqual(b['s'], a['s'] + a['len'])
+                    self.assertAlmostEqual(math.hypot(*a['dir']) / ONE, 1.0, delta=4 / ONE)
+                self.assertEqual((got['points'][-1]['len'], got['points'][-1]['dir']), (0, (0, 0, 0)))
+        # strings are stored once: an entity's name parameter "rail" is the path's own name string
+        w.cells[0].entities.append(Entity(0, (8, 0, 8), params=P.pack_params([('name', 0)]), names=[(0, 'rail')]))
+        data = encode(w)
+        pack = decode(data)
+        name_off = struct.unpack_from('<I', data, struct.unpack_from('<I', data, 68)[0])[0]
+        self.assertEqual(struct.unpack_from('<I', pack.cells[(0, 0)].entities[0]['params'])[0], name_off)
+
+    def test_worlds_without_paths_and_older_packs(self):
+        data = encode(tiny_world())
+        self.assertEqual(struct.unpack_from('<II', data, 64), (0, 0))
+        self.assertEqual(decode(data).paths, [])
+        # read as 1.1: the header's words past 64 are not 1.1's, and are ignored
+        with_paths = encode(path_world())
+        self.assertEqual(decode(with_paths[:6] + struct.pack('<H', 1) + with_paths[8:]).paths, [])
+        # a 1.2 header holds the path words
+        short = bytearray(with_paths)
+        struct.pack_into('<H', short, 14, 64)
+        with self.assertRaisesRegex(PackError, 'header'):
+            decode(bytes(short))
+
+    def test_limits(self):
+        def bad(paths, message):
+            with self.subTest(message=message), self.assertRaisesRegex(PackError, message):
+                encode(World(cells=[Cell(0, 0)], paths=paths))
+        bad([P.Path('a', [(1, 1, 1)])], 'at least 2 points')
+        bad([P.Path('a', [(1, 1, 1), (2, 1, 1)], closed=True)], 'closed path has at least 3')
+        bad([P.Path('a', [(1, 1, 1), (1, 1, 1)])], 'no length')
+        bad([P.Path('a', [(1, 1, 1), (1, 1, 1 + 1e-6)])], 'no length')
+        bad([P.Path('a', [(0, 0, 0), (16000, 0, 0), (16000, 0, 900)])], 'longer than')
+        bad([P.Path('a', [(0, 0, 0), (1, 0, 0)], surface=256)], 'surface')
+        bad([P.Path('a', [(0, 0, 0), (1, 0, 0)]), P.Path('a', [(0, 0, 0), (2, 0, 0)])], 'distinct')
+        bad([P.Path('a', [(0, 0, 0), (40000, 0, 0)])], 'beyond|fit')
+        encode(World(cells=[Cell(0, 0)], paths=[P.Path('a', [(0, 0, 0), (16000, 0, 0), (16000, 0, 300)])]))
+
+    def test_malformed_paths_are_refused(self):
+        good = encode(path_world())
+        table = struct.unpack_from('<I', good, 68)[0]
+        pts = struct.unpack_from('<I', good, table + 8)[0]
+        closed = next(k for k, p in enumerate(path_world().paths) if p.closed)
+        cpts = struct.unpack_from('<I', good, table + P.PATH_SIZE * closed + 8)[0]
+        cases = [(68, '<I', 3), (68, '<I', len(good)), (64, '<I', 1000), (table + 4, '<I', 1),
+                 (table + 4, '<I', 9999), (table + 8, '<I', 0), (table, '<I', 0),
+                 (pts + 32, '<i', 5), (pts + 36, '<i', 0), (pts + 36, '<i', 12345),
+                 (pts + P.PATH_POINT_SIZE * 3 + 36, '<i', 7), (pts + P.PATH_POINT_SIZE * 3 + 16, '<i', 7),
+                 (table + 28, '<i', 1), (table + 16, '<i', fx(100)), (cpts, '<i', fx(63))]
+        for at, fmt, value in cases:
+            bad = bytearray(good)
+            struct.pack_into(fmt, bad, at, value)
+            with self.subTest(at=at, value=value), self.assertRaises(PackError):
+                decode(bytes(bad))
+        rng = random.Random(4)
+        for _ in range(300):        # random byte flips: either decodes or raises PackError
+            bad = bytearray(good)
+            bad[rng.randrange(64, table + 600)] = rng.randrange(256)
+            try:
+                decode(bytes(bad))
+            except PackError:
+                pass
+
+    def test_oracle(self):
+        rail = decode(encode(path_world())).paths[0]
+        (k, t, s, c, d2), margin = P.path_nearest(rail, F.raw((12, 4, 5)), 2)
+        self.assertEqual((k, t, s, c, d2), (0, 8, 8, (12, 3, 4), 2))
+        self.assertIsNone(P.path_nearest(rail, F.raw((12, 4, 5)), 1)[0])
+        self.assertEqual(P.path_at(rail, 3), (0, (7, 3, 4)))
+        self.assertEqual(P.path_at(rail, -5), (0, (4, 3, 4)))
+        self.assertEqual(P.path_at(rail, 999)[0], 2)
+
+
+@needs_tools
+class PathTests(unittest.TestCase):
+    """wp_path_nearest() and wp_path_at() on the console against exact arithmetic."""
+
+    EPS = 0.003          # answers whose decisions lie closer than this to changing are not compared
+    PTOL = 0.003         # position, lengths along and squared distance
+
+    def run_paths(self, data, recs):
+        with tempfile.TemporaryDirectory() as tmp:
+            lines = F.run_cart(tmp, 'paths.akr', {'PACK': ('u8', data), 'QUERIES': ('WpPathQuery', b''.join(recs))},
+                               frames=len(recs) // 100 + 3)
+        self.assertEqual(lines[-1], 'done')
+        return lines
+
+    def test_queries_match_the_oracle(self):
+        w = path_world(3)
+        data = encode(w)
+        pack = decode(data)
+        rng = random.Random(7)
+        recs, checks = [], []
+        for _ in range(900):
+            k = rng.randrange(len(w.paths))
+            path = pack.paths[k]
+            L = path['length'] / ONE
+            if rng.random() < 0.7:
+                reach = rng.choice([0.25, 0.6, 1.5, 4.0, 20.0])
+                _, base = P.path_at(path, rng.uniform(0, L))
+                rq = F.raw(tuple(float(base[i]) + rng.uniform(-1.2, 1.2) * reach for i in range(3)))
+                recs.append(path_query(0, k, reach, rq))
+                checks.append(('near',) + P.path_nearest(path, rq, Fraction(fx(reach), ONE)))
+            else:
+                s = rng.uniform(-L, 2 * L) if path['closed'] else rng.uniform(-1, L + 1)
+                if rng.random() < 0.1:
+                    s = rng.choice([0.0, L, -L, 2 * L]) if path['closed'] else rng.choice([0.0, L])
+                recs.append(path_query(1, k, s))
+                sm = s % L if path['closed'] else min(max(s, 0), L)
+                margin = min(abs(sm - q['s'] / ONE) for q in path['points'])
+                if path['closed']:
+                    margin = min(margin, abs(s - round(s / L) * L))
+                checks.append(('at', P.path_at(path, Fraction(fx(s), ONE)), margin))
+        lines = self.run_paths(data, recs)
+        self.assertEqual(lines[0], f'paths {len(w.paths)}')
+        for src, got, line in zip(w.paths, pack.paths, lines[1:]):
+            want = [src.name, len(src.points), len(got['points']), got['length'], got['flags'], src.surface,
+                    *got['points'][1]['pos']]
+            self.assertEqual(line.split(), [str(x) for x in want])
+        self.assertEqual(lines[1 + len(w.paths)], 'find 0 1 1 1')
+        answers = lines[2 + len(w.paths):2 + len(w.paths) + len(recs)]
+        compared = worst = 0
+        for (kind, want, margin), line in zip(checks, answers):
+            if margin < self.EPS:
+                continue
+            f = [int(x) for x in line.split()]
+            if kind == 'near':
+                self.assertEqual(f[0], 1 if want else 0, line)
+                if not want:
+                    continue
+                k, t, s, c, d2 = want
+                self.assertEqual(f[1], k, line)
+                err = max(abs(f[2] / ONE - float(t)), abs(f[3] / ONE - float(s)), abs(f[7] / ONE - float(d2)),
+                          *(abs(f[4 + i] / ONE - float(c[i])) for i in range(3)))
+            else:
+                k, c = want
+                self.assertEqual(f[:2], [1, k], line)
+                err = max(abs(f[4 + i] / ONE - float(c[i])) for i in range(3))
+            compared += 1
+            worst = max(worst, err)
+            self.assertLess(err, self.PTOL, line)
+        if VERBOSE:
+            print(f'\n  paths: {compared} of {len(recs)} answers compared, largest error {worst:.2e} units')
+        self.assertGreater(compared, len(recs) * 3 // 4)
+
+    def test_drawn_as_lines(self):
+        w = World(cells=[Cell(0, 0)], paths=[P.Path('rail', [(20, 2, 20), (40, 2, 20), (40, 4, 40)])])
+        with tempfile.TemporaryDirectory() as tmp:
+            dump = Path(tmp) / 'shot.ppm'
+            F.run_cart(tmp, 'path_draw.akr', {'PACK': ('u8', encode(w))}, frames=2, dump=dump)
+            width, height, px = F.read_ppm(dump)
+        yellow = sum(1 for k in range(width * height) if px[3 * k] > 200 and px[3 * k + 1] > 150 and px[3 * k + 2] < 100)
+        self.assertGreater(yellow, 60)
+
+    def test_older_pack_has_no_paths(self):
+        data = encode(path_world())
+        lines = self.run_paths(data[:6] + struct.pack('<H', 1) + data[8:], [])
+        self.assertEqual(lines[0], 'paths 0')
+
+    def test_costs(self):
+        """Cycles of wp_path_nearest() for a grind check by a rail of 1, 4 and 16 segments and out
+        of reach of it, and of wp_path_at()."""
+        got = {}
+        for segs in (1, 4, 16):
+            w = World(cells=[Cell(0, 0)],
+                      paths=[P.Path('rail', [(4 + 2 * k, 3 + 0.1 * k, 4 + (k % 2)) for k in range(segs + 1)])])
+            rng = random.Random(segs)
+            sets = [[path_query(0, 0, 0.6, F.raw((rng.uniform(4, 4 + 2 * segs), 3.5, 4.5))) for _ in range(50)],
+                    [path_query(0, 0, 0.6, F.raw((40, 3, 40))) for _ in range(50)],
+                    [path_query(1, 0, rng.uniform(0, 2 * segs)) for _ in range(50)],
+                    [path_query(2, 0, 0) for _ in range(50)]]
+            row = []
+            for op, recs in zip((0, 0, 1, 2), sets):
+                lines = self.run_paths(encode(w), recs)
+                f = next(l.split() for l in lines if l.startswith(f'time {op}'))
+                row.append(int(f[3]) / int(f[2]))
+            got[segs] = [t - row[3] for t in row[:3]]      # the call itself taken off
+        if VERBOSE:
+            print('\n  ' + '\n  '.join(f'{s:2} segments: nearest {a:.0f}, out of reach {b:.0f}, at {c:.0f} cycles'
+                                       for s, (a, b, c) in got.items()))
+        self.assertLess(got[1][1], 200)
+        self.assertLess(got[4][0], 800)
+        self.assertLess(got[16][0], 2500)
 
 
 if __name__ == '__main__':

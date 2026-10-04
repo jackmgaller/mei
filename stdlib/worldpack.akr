@@ -47,6 +47,8 @@ struct WpHeader {
     entity_dir_off: u32
     mesh_count: u32
     mesh_dir_off: u32
+    path_count: u32    // 1.2 (header_size 72): read only through wp_path_count()
+    path_off: u32
 }
 
 struct WpLayer {
@@ -931,4 +933,163 @@ fn wp_texture_load(k: s32, t: s32) {
     if t < 0 || t >= r.texture_count as s32 { return }
     let x = (__wp_base + r.texture_off) as *WpTexture + t
     load_texture(x.slot as s32, (__wp_base + x.data) as *u8, x.bytes as s32)
+}
+
+// ---- paths (1.2): named polylines in world coordinates, one table per world
+//
+// A rail to grind, a wire, a crane's jib, a train's route: the kit attaches no meaning to them.
+// An entity names its path in a name parameter: wp_path_find(world_NAME_string(params.path)).
+
+struct WpPath {
+    name: u32
+    point_count: u32   // stored points; a closed path stores its first point again at the end
+    point_off: u32
+    flags: u8          // WP_PATH_RAISED, WP_PATH_CLOSED
+    surface: u8        // the surface byte of its tag
+    reserved: u16
+    lo: vec4           // the box of its points (world); lo.w: its length
+    hi: vec4
+}
+
+struct WpPathPoint {
+    pos: vec4          // world (w = 0)
+    dir: vec4          // the unit direction of the segment to the next point (w = 0); zero for the last
+    s: fixed           // the length along the path to this point
+    len: fixed         // the segment's length; 0 for the last
+}
+
+const WP_PATH_RAISED = 1
+const WP_PATH_CLOSED = 2
+
+// What the last wp_path_nearest() or wp_path_at() found.
+struct WpNear {
+    pos: vec3          // the point on the path (world)
+    dir: vec3          // the unit direction of its segment
+    seg: s32           // the segment, from point seg to point seg + 1
+    t: fixed           // how far along that segment (units)
+    s: fixed           // how far along the path (units)
+    dist2: fixed       // wp_path_nearest: the squared distance from the query point
+}
+
+var wp_near: WpNear
+
+// The number of paths in the open pack (0 before version 1.2).
+fn wp_path_count() -> s32 {
+    if wp_pack.minor < 2 || wp_pack.header_size < 72 { return 0 }
+    return wp_pack.path_count as s32
+}
+
+// Path n (as the world's PATH_ constants number them), or null.
+fn wp_path(n: s32) -> *WpPath {
+    if n < 0 || n >= wp_path_count() { return null }
+    return (__wp_base + wp_pack.path_off) as *WpPath + n
+}
+
+// The path with this name, or null. A name parameter's string is the path's own when the kit
+// wrote both, so the comparison is usually one pointer test.
+fn wp_path_find(name: *u8) -> *WpPath {
+    var pth = (__wp_base + wp_pack.path_off) as *WpPath
+    for k in 0..wp_path_count() {
+        let pn = (__wp_base + pth.name) as *u8
+        if pn == name || streq(pn, name) { return pth }
+        pth = pth + 1
+    }
+    return null
+}
+
+fn wp_path_name(pth: *WpPath) -> *u8 { return (__wp_base + pth.name) as *u8 }
+
+// Its points as the recipe gives them (a closed path's repeat of its first point not counted).
+fn wp_path_points(pth: *WpPath) -> s32 {
+    var n = pth.point_count as s32
+    if pth.flags & WP_PATH_CLOSED != 0 { n -= 1 }
+    return n
+}
+
+// Point k (0 .. pth.point_count - 1), world.
+fn wp_path_point(pth: *WpPath, k: s32) -> vec3 {
+    let q = (__wp_base + pth.point_off) as *WpPathPoint + k
+    return vec3(q.pos.x, q.pos.y, q.pos.z)
+}
+
+fn wp_path_length(pth: *WpPath) -> fixed { return pth.lo.w }
+
+// The nearest point to world point p on the path, among segments whose nearest point lies
+// within reach of p in each of x, y and z (reach at most 100 units): true with wp_near set, or
+// false. A box test first rejects a path that is out of reach: about 120 cycles; otherwise
+// about 250 and 45 a segment (docs/WORLDPACK.md, "Costs").
+fn wp_path_nearest(pth: *WpPath, p: vec3, reach: fixed) -> bool {
+    let r = min(reach, 100.0)
+    if p.x < pth.lo.x - r || p.x > pth.hi.x + r || p.z < pth.lo.z - r || p.z > pth.hi.z + r { return false }
+    if p.y < pth.lo.y - r || p.y > pth.hi.y + r { return false }
+    let q = vec4(p.x, p.y, p.z, 0.0)
+    var pt = (__wp_base + pth.point_off) as *WpPathPoint
+    var best = -1
+    var bd = 0.0
+    var bt = 0.0
+    for k in 0..pth.point_count as s32 - 1 {
+        let d = q - pt.pos
+        let t = clamp(dot(d, pt.dir), 0.0, pt.len)
+        let e = d - pt.dir * t
+        if abs(e.x) < r && abs(e.y) < r && abs(e.z) < r {
+            let d2 = dot(e, e)
+            if best < 0 || d2 < bd {
+                best = k
+                bd = d2
+                bt = t
+            }
+        }
+        pt = pt + 1
+    }
+    if best < 0 { return false }
+    __wp_near_set(pth, best, bt)
+    wp_near.dist2 = bd
+    return true
+}
+
+// The point at length s along the path (world), with wp_near set (dist2 = 0): a closed path
+// wraps s, an open one clamps it to its ends. For something moving along a path (a train).
+fn wp_path_at(pth: *WpPath, s: fixed) -> vec3 {
+    let total = pth.lo.w
+    var u = s
+    if pth.flags & WP_PATH_CLOSED != 0 && (u < 0.0 || u >= total) {
+        u = u - total * fixed((u / total) as s32)
+        if u < 0.0 { u += total }
+        if u >= total { u -= total }
+    }
+    u = clamp(u, 0.0, total)
+    // the last segment that starts at or before u
+    let pts = (__wp_base + pth.point_off) as *WpPathPoint
+    var lo = 0
+    var hi = pth.point_count as s32 - 2
+    while lo < hi {
+        let mid = (lo + hi + 1) >> 1
+        if pts[mid].s <= u { lo = mid } else { hi = mid - 1 }
+    }
+    __wp_near_set(pth, lo, u - pts[lo].s)
+    wp_near.dist2 = 0.0
+    return wp_near.pos
+}
+
+// Draws the path as one-pixel lines over the frame (a debug view: the lines go on top of
+// everything, and a segment with an end behind the near plane is left out). Call it after
+// wp_draw(), whose camera it uses.
+fn wp_path_draw(pth: *WpPath, colour: u32) {
+    var pt = (__wp_base + pth.point_off) as *WpPathPoint
+    var a = project_point(vec3(pt.pos.x, pt.pos.y, pt.pos.z) - __wp_origin)
+    for k in 1..pth.point_count as s32 {
+        pt = pt + 1
+        let b = project_point(vec3(pt.pos.x, pt.pos.y, pt.pos.z) - __wp_origin)
+        if a.z >= 0 && b.z >= 0 { line(a.x, a.y, b.x, b.y, colour) }
+        a = b
+    }
+}
+
+fn __wp_near_set(pth: *WpPath, k: s32, t: fixed) {
+    let b = (__wp_base + pth.point_off) as *WpPathPoint + k
+    wp_near.seg = k
+    wp_near.t = t
+    wp_near.s = b.s + t
+    wp_near.dir = vec3(b.dir.x, b.dir.y, b.dir.z)
+    wp_near.pos = vec3(b.pos.x + b.dir.x * t, b.pos.y + b.dir.y * t, b.pos.z + b.dir.z * t)
 }

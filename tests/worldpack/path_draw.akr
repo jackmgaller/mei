@@ -1,0 +1,12 @@
+// Draws path 0 of PACK (embedded by the test's wrapper) as lines with wp_path_draw(), from a
+// camera in front of it; tests/test_worldpack.py counts the yellow pixels in the dump.
+
+import "worldpack.akr"
+
+fn init() { assert(wp_open(PACK)) }
+
+fn draw() {
+    cls(0)
+    wp_draw(vec3(30.0, 6.0, 5.0), 0.0, -0.2)
+    wp_path_draw(wp_path(0), rgb(255, 220, 60))
+}
