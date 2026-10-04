@@ -43,9 +43,8 @@ carts/garden/
   tests/                              harness.akr, run.sh, check.sh (controller lead)
 ```
 
-The garden is an uninstalled cart like World Viewer (its world needs NumPy to build): add it to
-`UNINSTALLED_CARTS` in the Makefile, build it with `make build/carts/garden.mei`, and give it a
-`tests/check.sh` that `make test-carts` runs.
+The garden is an installed cart: `make` builds it (with its world, which needs NumPy) and the
+shell lists it as Movement Garden. Its `tests/check.sh` runs in `make test-carts`.
 
 ## World
 

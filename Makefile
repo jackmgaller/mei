@@ -43,7 +43,7 @@ $(B)/system.mei: $(shell find system -type f 2>/dev/null | sed 's/ /\\ /g') $(ST
 ASM_CARTS  := $(patsubst carts/asm/%.s,$(B)/carts/%.mei,$(wildcard carts/asm/*.s))
 LANG_CARTS := $(foreach d,$(wildcard carts/*/),$(if $(call SRC_EXT,$(d)$(notdir $(d:/=))),$(B)/carts/$(notdir $(d:/=)).mei))
 # Uninstalled carts remain available through their explicit build targets.
-UNINSTALLED_CARTS := demo soundlab worldview garden
+UNINSTALLED_CARTS := demo soundlab worldview
 CARTS := $(filter-out $(UNINSTALLED_CARTS:%=$(B)/carts/%.mei),$(LANG_CARTS) $(ASM_CARTS))
 carts: $(CARTS)
 

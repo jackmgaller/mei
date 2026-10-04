@@ -63,8 +63,9 @@ rather than failed.
 Pass the tools to scripts the same way, for example
 `MEIC=build-mine/meic RUN=build-mine/mei-headless tests/run_lang_tests.sh planes`.
 
-Mei Demo, Sound Lab, World Viewer and the movement garden are built only on request (`make
-build/carts/demo.mei build/carts/soundlab.mei build/carts/worldview.mei build/carts/garden.mei`); `make` and `make web` leave them out.
+Mei Demo, Sound Lab and World Viewer are built only on request (`make build/carts/demo.mei
+build/carts/soundlab.mei build/carts/worldview.mei`); `make` and `make web` leave them out. The
+movement garden is built by `make`, which therefore needs NumPy for its world.
 The Reference Renderer
 ([tests/reference_renderer/README.md](tests/reference_renderer/README.md)) builds its carts,
 probes and reports into `$(B)/reference_renderer/` on each run; `make test` runs its two
@@ -88,7 +89,8 @@ details; `carts/worldview/` is the example.
   the MeiNet gateway and its tests, the web cart packer, and the generators `gen_stdlib_data`,
   `gen_faces_asm`, `gen_reverb_tables`, `gen_demo_assets` and `gen_weather_tape`.
 - **NumPy** for the Asset Checker (`mei_assets.py verify`) and the World Checker, and so for
-  building a cart that uses worlds (World Viewer) and for `make test-carts`; and for every other
+  building a cart that uses worlds (Movement Garden, World Viewer), so for `make`, and for `make
+  test-carts`; and for every other
   generator. **NumPy and Pillow** for the Reference Renderer. **Pillow** too for the generators
   that draw: `gen_boot_duet`, `gen_boot_eclipse`, `gen_shell_assets`, `gen_lantern_assets`,
   `gen_orbs_assets`, `gen_weather_assets` and `meifont`. **SciPy** too for `gen_boot_duet` and
