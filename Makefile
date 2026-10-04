@@ -181,10 +181,13 @@ rendercheck: $(B)/meic $(B)/mei-headless $(B)/libmeicore.a
 	$(RR_RUN) $(RR)/geometry_check.py
 	$(RR_RUN) $(RR)/fuzz.py
 	$(RR_RUN) $(RR)/planes_check.py --cases 64
+	$(RR_RUN) $(RR)/depth_check.py
+	$(RR_RUN) $(RR)/depth_fuzz.py
 rendercheck-motion: $(B)/meic $(B)/mei-headless $(B)/libmeicore.a
 	$(RR_RUN) $(RR)/motion_check.py --frames 128
 	$(RR_RUN) $(RR)/texture_check.py
 	$(RR_RUN) $(RR)/plane_motion_check.py
+	$(RR_RUN) $(RR)/depth_check.py --motion 48 --out $(B)/reference_renderer/depth_motion
 
 .PHONY: test-assets
 test-assets: $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe
