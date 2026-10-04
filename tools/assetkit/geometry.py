@@ -19,6 +19,17 @@ class Face:
     indices: tuple
     material: str = "default"
     part: str = ""
+    # Texturing: each corner's position in its primitive's own coordinates (before modifiers and
+    # transforms), the primitive's source polygon (mesh nodes), and hand-written UVs (mesh nodes).
+    local: tuple = None
+    polygon: int = None
+    uv: tuple = None
+    uvf: tuple = None            # texel coordinates per corner (floats), from the projection
+    texcoords: tuple = None      # set on the final mesh: integer texel coordinates per corner
+
+    def copy(self, indices, reverse=False):
+        flip = (lambda t: tuple(reversed(t)) if t is not None else None) if reverse else (lambda t: t)
+        return Face(indices, self.material, self.part, flip(self.local), self.polygon, flip(self.uv))
 
 
 @dataclass
@@ -27,18 +38,19 @@ class Mesh:
     faces: list = field(default_factory=list)
     palette: dict = None   # set on the final mesh only: the palette entry assignment, if any
     levels: list = None    # set on the final mesh of a recipe with lod: [(mesh, report)] of levels 1..
+    textures: dict = None  # set on the final mesh of a textured recipe (assetkit/textures.py)
 
     def append(self, other):
         offset = len(self.vertices)
         self.vertices.extend(other.vertices)
-        self.faces.extend(Face(tuple(i + offset for i in f.indices), f.material, f.part) for f in other.faces)
+        self.faces.extend(f.copy(tuple(i + offset for i in f.indices)) for f in other.faces)
         # Bound intermediate expansion too: arrays of arrays must not exhaust memory.
         if len(self.vertices) > 65536 or len(self.faces) > 65536:
             raise AssetError("/nodes", "Intermediate geometry exceeds 65,536 vertices or triangles; reduce repetition/detail.")
 
     def mapped(self, fn, reverse=False):
         return Mesh([fn(v) for v in self.vertices], [
-            Face(tuple(reversed(f.indices)) if reverse else f.indices, f.material, f.part) for f in self.faces])
+            f.copy(tuple(reversed(f.indices)), True) if reverse else f.copy(f.indices) for f in self.faces])
 
     def bounds(self):
         return ([min(v[k] for v in self.vertices) for k in range(3)],
@@ -166,7 +178,7 @@ def loft(sections, caps, path):
     return mesh
 
 
-def explicit_mesh(vertices, faces, path, face_materials=None):
+def explicit_mesh(vertices, faces, path, face_materials=None, uvs=None):
     mesh = Mesh([tuple(v) for v in vertices])
     for k, ids in enumerate(faces):
         at = f"{path}/faces/{k}"
@@ -190,7 +202,9 @@ def explicit_mesh(vertices, faces, path, face_materials=None):
             a,b,c = (points[i] for i in tri)
             if dot(cross(sub(b,a), sub(c,a)), normal) < 0:
                 tri = tuple(reversed(tri))
-            mesh.faces.append(Face(tuple(ids[i] for i in tri), face_materials[k] if face_materials else 'default'))
+            corners = tuple(ids[i] for i in tri)
+            mesh.faces.append(Face(corners, face_materials[k] if face_materials else 'default', polygon=k,
+                                   uv=tuple(tuple(uvs[i]) for i in corners) if uvs else None))
     return mesh
 
 
@@ -230,8 +244,17 @@ def modify(mesh, spec, path):
             for face in mesh.faces:
                 a,b,c = face.indices
                 ab,bc,ca = midpoint(a,b),midpoint(b,c),midpoint(c,a)
-                result.faces.extend(Face(t,face.material,face.part) for t in
-                                    ((a,ab,ca),(ab,b,bc),(ca,bc,c),(ab,bc,ca)))
+                corners = [(face.local[k] if face.local else None, face.uv[k] if face.uv else None) for k in range(3)]
+                def mid(j,k):
+                    (pj,uj),(pk,uk) = corners[j],corners[k]
+                    return (mul(add(pj,pk),0.5) if pj else None, mul(add(uj,uk),0.5) if uj else None)
+                c_ab,c_bc,c_ca = mid(0,1),mid(1,2),mid(2,0)
+                for t,cs in (((a,ab,ca),(corners[0],c_ab,c_ca)),((ab,b,bc),(c_ab,corners[1],c_bc)),
+                             ((ca,bc,c),(c_ca,c_bc,corners[2])),((ab,bc,ca),(c_ab,c_bc,c_ca))):
+                    piece = Face(t,face.material,face.part,None,face.polygon,None)
+                    if face.local: piece.local = tuple(p for p,_ in cs)
+                    if face.uv: piece.uv = tuple(u for _,u in cs)
+                    result.faces.append(piece)
             mesh = result
         return mesh
     if op in ('taper','twist'):
