@@ -24,6 +24,7 @@ for s in 36 37 38; do
 done
 . "$HERE/camera_cases.sh"
 . "$HERE/attach_cases.sh"
+. "$HERE/shrine_cases.sh"
 run 30 510
 grep -h '^NOTE' "$O"/s*.log
 echo "all $n movement garden scenarios passed"

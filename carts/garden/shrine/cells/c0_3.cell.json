@@ -46,6 +46,7 @@
     26.0,
     206
    ],
+   "yaw": 352,
    "collision": "forest_platform_col"
   },
   {
@@ -79,100 +80,100 @@
    "id": "fox_torii_0",
    "asset": "forest_fox_torii",
    "position": [
-    37.25,
-    244.61
+    37.28,
+    244.62
    ],
-   "yaw": 309,
+   "yaw": 311,
    "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_1",
    "asset": "forest_fox_torii",
    "position": [
-    35.75,
-    245.82
+    35.85,
+    245.85
    ],
-   "yaw": 309,
+   "yaw": 311,
    "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_2",
    "asset": "forest_fox_torii",
    "position": [
-    34.25,
-    247.04
+    34.42,
+    247.08
    ],
-   "yaw": 309,
+   "yaw": 311,
    "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_3",
    "asset": "forest_fox_torii",
    "position": [
-    32.75,
-    248.25
+    32.98,
+    248.32
    ],
-   "yaw": 309,
+   "yaw": 311,
    "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_4",
    "asset": "forest_fox_torii",
    "position": [
-    31.25,
-    249.46
+    31.55,
+    249.55
    ],
-   "yaw": 309,
+   "yaw": 311,
    "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_5",
    "asset": "forest_fox_torii",
    "position": [
-    29.75,
-    250.68
+    30.12,
+    250.78
    ],
-   "yaw": 309,
+   "yaw": 311,
    "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_6",
    "asset": "forest_fox_torii",
    "position": [
-    28.25,
-    251.89
+    28.68,
+    252.02
    ],
-   "yaw": 309,
+   "yaw": 311,
    "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_7",
    "asset": "forest_fox_torii",
    "position": [
-    26.75,
-    253.11
+    27.25,
+    253.25
    ],
-   "yaw": 309,
+   "yaw": 311,
    "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_8",
    "asset": "forest_fox_torii",
    "position": [
-    25.25,
-    254.32
+    25.82,
+    254.48
    ],
-   "yaw": 309,
+   "yaw": 311,
    "collision": "forest_fox_torii_col"
   },
   {
    "id": "fox_torii_9",
    "asset": "forest_fox_torii",
    "position": [
-    23.75,
-    255.54
+    24.38,
+    255.72
    ],
-   "yaw": 309,
+   "yaw": 311,
    "collision": "forest_fox_torii_col"
   }
  ],
@@ -195,7 +196,7 @@
     237.0
    ],
    "asset": "coin_red",
-   "lift": 3.0
+   "lift": 2.9
   }
  ]
 }

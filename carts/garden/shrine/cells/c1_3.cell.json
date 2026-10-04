@@ -26,7 +26,7 @@
     14.6,
     226.0
    ],
-   "yaw": 72,
+   "yaw": 342,
    "collision": "forest_hollow_log_col"
   },
   {
@@ -45,7 +45,7 @@
    "type": "red_coin",
    "position": [
     122.0,
-    15.8,
+    16.2,
     226.0
    ],
    "asset": "coin_red"

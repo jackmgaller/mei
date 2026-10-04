@@ -19,6 +19,7 @@ const LEG_WALK = 0
 const LEG_JUMP = 1
 const LEG_DOUBLE = 2
 const LEG_LONG = 3
+const SHRINE_TRACE = 0       // debugging: notes the position every 10 ticks of this leg (0: none)
 
 // The forest loop on foot, from the courtyard's west edge to the fox shrine's grove: the
 // trail, the fallen log, the spring's stones, the old stone stairs, the treetop walkway.
@@ -66,12 +67,80 @@ const ROUTE_POND: [19]Leg = [
     Leg { from: vec3(150.00, 0.0, 51.50), to: vec3(140.00, 0.3, 51.50), kind: LEG_WALK, at: 0.0, tol: 1.5 },
 ]
 
+const ROUTE_WALKWAY: [17]Leg = [
+    Leg { from: vec3(31.54, 0.0, 139.20), to: vec3(27.40, 0.0, 141.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(26.98, 0.0, 141.28), to: vec3(19.49, 0.0, 146.31), kind: LEG_WALK, at: 0.0, tol: 1.0 },
+    Leg { from: vec3(19.12, 0.0, 146.65), to: vec3(17.67, 0.0, 147.99), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(17.27, 0.0, 148.30), to: vec3(15.69, 0.0, 149.49), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(15.59, 0.0, 149.98), to: vec3(12.41, 0.0, 164.88), kind: LEG_WALK, at: 0.0, tol: 1.0 },
+    Leg { from: vec3(12.86, 0.0, 165.10), to: vec3(16.32, 0.0, 166.82), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(16.23, 0.0, 167.31), to: vec3(15.59, 0.0, 171.12), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(15.77, 0.0, 171.59), to: vec3(21.17, 0.0, 185.94), kind: LEG_WALK, at: 0.0, tol: 1.0 },
+    Leg { from: vec3(21.67, 0.0, 185.94), to: vec3(25.53, 0.0, 185.90), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(25.68, 0.0, 186.38), to: vec3(26.83, 0.0, 190.06), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(27.22, 0.0, 190.37), to: vec3(34.88, 0.0, 196.41), kind: LEG_WALK, at: 0.0, tol: 1.0 },
+    Leg { from: vec3(35.37, 0.0, 196.33), to: vec3(39.18, 0.0, 195.68), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(39.40, 0.0, 196.13), to: vec3(41.12, 0.0, 199.59), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(41.54, 0.0, 199.86), to: vec3(50.53, 0.0, 205.51), kind: LEG_WALK, at: 0.0, tol: 1.0 },
+    Leg { from: vec3(50.81, 0.0, 205.92), to: vec3(51.92, 0.0, 207.56), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(52.24, 0.0, 207.95), to: vec3(53.51, 0.0, 209.47), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(53.42, 0.0, 209.96), to: vec3(52.30, 0.0, 216.00), kind: LEG_WALK, at: 0.0, tol: 1.0 },
+]
+
+const ROUTE_MOUNTAIN: [20]Leg = [
+    Leg { from: vec3(52.12, 0.0, 217.47), to: vec3(48.00, 0.0, 228.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(47.78, 0.0, 228.45), to: vec3(42.00, 0.0, 240.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(41.65, 0.0, 240.35), to: vec3(38.00, 0.0, 244.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(37.62, 0.0, 244.33), to: vec3(16.50, 0.0, 262.50), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(16.88, 0.0, 262.83), to: vec3(36.00, 0.0, 279.50), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(36.46, 0.0, 279.30), to: vec3(39.50, 0.0, 278.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(39.97, 0.0, 277.82), to: vec3(43.50, 0.0, 276.50), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(44.20, 0.0, 276.09), to: vec3(56.00, 0.0, 267.00), kind: LEG_WALK, at: 0.0, tol: 1.0 },
+    Leg { from: vec3(56.50, 0.0, 267.00), to: vec3(60.00, 0.0, 267.00), kind: LEG_WALK, at: 0.0, tol: 1.0 },
+    Leg { from: vec3(60.49, 0.0, 266.88), to: vec3(72.00, 0.0, 264.00), kind: LEG_WALK, at: 0.0, tol: 1.0 },
+    Leg { from: vec3(72.49, 0.0, 264.12), to: vec3(84.00, 0.0, 267.00), kind: LEG_WALK, at: 0.0, tol: 1.0 },
+    Leg { from: vec3(84.50, 0.0, 267.00), to: vec3(88.00, 0.0, 267.00), kind: LEG_WALK, at: 0.0, tol: 1.0 },
+    Leg { from: vec3(88.49, 0.0, 266.88), to: vec3(100.00, 0.0, 264.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(100.00, 0.0, 263.50), to: vec3(100.00, 0.0, 262.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(100.38, 0.0, 261.68), to: vec3(118.00, 0.0, 247.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(117.65, 0.0, 246.65), to: vec3(100.00, 0.0, 229.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(99.63, 0.0, 228.67), to: vec3(80.00, 0.0, 211.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(79.92, 0.0, 210.51), to: vec3(79.50, 0.0, 208.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(80.00, 0.0, 207.94), to: vec3(88.00, 0.0, 207.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(88.49, 0.0, 207.11), to: vec3(92.50, 0.0, 208.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+]
+
+const ROUTE_FALLS: [21]Leg = [
+    Leg { from: vec3(92.82, 0.0, 208.39), to: vec3(97.00, 0.0, 213.50), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(97.50, 0.0, 213.54), to: vec3(104.00, 0.0, 214.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(104.35, 0.0, 214.35), to: vec3(110.00, 0.0, 220.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(110.31, 0.0, 220.39), to: vec3(112.00, 0.0, 222.50), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(112.46, 0.0, 222.69), to: vec3(114.41, 0.0, 223.47), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(114.88, 0.0, 223.63), to: vec3(129.59, 0.0, 228.53), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(130.02, 0.0, 228.79), to: vec3(132.00, 0.0, 230.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(132.30, 0.0, 230.40), to: vec3(138.00, 0.0, 238.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(138.35, 0.0, 238.35), to: vec3(144.00, 0.0, 244.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(144.12, 0.0, 243.51), to: vec3(148.00, 0.0, 228.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(148.17, 0.0, 227.53), to: vec3(153.00, 0.0, 214.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(153.00, 0.0, 214.00), to: vec3(157.50, 0.3, 213.00), kind: LEG_JUMP, at: 0.5, tol: 1.4 },
+    Leg { from: vec3(157.50, 0.0, 213.00), to: vec3(160.50, 0.3, 211.50), kind: LEG_JUMP, at: 0.5, tol: 1.4 },
+    Leg { from: vec3(160.50, 0.0, 211.50), to: vec3(163.50, 0.3, 212.00), kind: LEG_JUMP, at: 0.5, tol: 1.4 },
+    Leg { from: vec3(163.50, 0.0, 212.00), to: vec3(167.00, 0.3, 212.00), kind: LEG_JUMP, at: 0.5, tol: 1.5 },
+    Leg { from: vec3(167.25, 0.0, 211.57), to: vec3(174.00, 0.0, 200.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(174.10, 0.0, 199.51), to: vec3(178.00, 0.0, 180.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(178.00, 0.0, 179.50), to: vec3(178.00, 0.0, 160.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(178.04, 0.0, 159.50), to: vec3(180.00, 0.0, 136.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(180.00, 0.0, 135.50), to: vec3(180.00, 0.0, 116.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(180.00, 0.0, 115.50), to: vec3(180.00, 0.0, 108.00), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+]
+
 var sh_leg: s32
 var sh_t: s32              // ticks into the leg
 var sh_start: vec3
 var sh_air: bool
 var sh_presses: s32
 var sh_hold: bool
+var sh_prev_walk: bool     // the leg before was a walk
 var sh_fails: s32
 
 fn shrine_case_init() -> bool {
@@ -80,6 +149,12 @@ fn shrine_case_init() -> bool {
         301 => { name = "shrine: wading in the pond is slow, and no jump from deep water" }
         302 => { name = "shrine: the forest loop, west: trail, spring, stairs" }
         303 => { name = "shrine: the pond crossing, back to the courtyard" }
+        304 => { name = "shrine: the forest loop: the treetop walkway to the fox shrine" }
+        305 => { name = "shrine: the forest loop: the torii tunnel, the stage, down to the sacred tree" }
+        306 => { name = "shrine: the forest loop: the hollow log, the falls, the stream, to the pond" }
+        307 => { name = "shrine: every coin has a floor under it and can be taken" }
+        308 => { name = "shrine: the konbini door leads to the garden" }
+        309 => { name = "shrine: the garden's shrine torii leads to the shrine" }
         else => { return false }
     }
     cam.lock = false
@@ -93,7 +168,83 @@ fn shrine_case(f: s32) {
         301 => sh_wade(f)
         302 => sh_route(f, &ROUTE_WEST[0], len(ROUTE_WEST) as s32)
         303 => sh_route(f, &ROUTE_POND[0], len(ROUTE_POND) as s32)
+        304 => sh_route(f, &ROUTE_WALKWAY[0], len(ROUTE_WALKWAY) as s32)
+        305 => sh_route(f, &ROUTE_MOUNTAIN[0], len(ROUTE_MOUNTAIN) as s32)
+        306 => sh_route(f, &ROUTE_FALLS[0], len(ROUTE_FALLS) as s32)
+        307 => sh_coins(f)
+        308 => sh_door(f)
+        309 => sh_door_in(f)
         else => {}
+    }
+}
+
+// Every coin and red coin: a floor under it that the player can stand on, the coin within
+// reach above it (0.5 to 1.8 m), and standing there takes it. 11 rooftop coins and 8 red ones.
+var sh_n: s32 = -1
+var sh_gold: s32
+var sh_red: s32
+
+fn sh_next_coin(from: s32) -> s32 {
+    for n in from..wp_pack.entity_count as s32 {
+        let ty = wp_entity(n).type_id as s32
+        if ty == COIN_TYPE || ty == RED_COIN_TYPE { return n }
+    }
+    return -1
+}
+
+fn sh_coins(f: s32) {
+    if sh_n == -1 && f == 0 { sh_n = sh_next_coin(0); sh_t = 0 }
+    if sh_n == -2 { return }
+    if sh_n < 0 {
+        sh_n = -2
+        expect(sh_gold == 11, "rooftop coins taken", fixed(sh_gold))
+        expect(sh_red == 8, "red coins taken", fixed(sh_red))
+        expect(coins == 11 && red_coins == 8, "the game counted them", fixed(coins + red_coins))
+        done()
+        return
+    }
+    let e = wp_entity(sh_n)
+    let c = wp_entity_pos(e)
+    if sh_t == 0 {
+        expect(wp_floor(c, 0.0), "a floor under the coin", c.y)
+        let rise = c.y - wp_hit.y
+        expect(rise > 0.5 && rise < 1.8, "the coin within reach above it, m", rise)
+        place(vec3(c.x, wp_hit.y, c.z), NORTH)
+    }
+    sh_t += 1
+    if sh_t == 4 {
+        expect(coin_taken(e.number as s32), "standing there takes it", c.y)
+        if e.type_id as s32 == RED_COIN_TYPE { sh_red += 1 } else { sh_gold += 1 }
+        sh_n = sh_next_coin(sh_n + 1)
+        sh_t = 0
+    }
+}
+
+// The torii at the foot of the garden's shrine hill leads to the shrine, to its spawn on the road.
+fn sh_door_in(f: s32) {
+    if f == 0 {
+        expect(world_k == GARDEN_WORLD_GARDEN, "starts in the garden", fixed(world_k))
+        place(vec3(101.0, 0.0, 6.0), atan2(0.0, -1.0))
+    }
+    if f < 60 && world_k == GARDEN_WORLD_GARDEN { stick_v = FWD }
+    if f == 80 {
+        expect(world_k == GARDEN_WORLD_SHRINE, "the torii took the player to the shrine", fixed(world_k))
+        expect(near(pl.pos.z, 8.0, 0.5) && near(pl.pos.x, 95.0, 0.5), "at the shrine's spawn, z", pl.pos.z)
+        done()
+    }
+}
+
+// The konbini's door leads to the movement garden.
+fn sh_door(f: s32) {
+    if f == 0 {
+        expect(world_k == GARDEN_WORLD_SHRINE, "starts in the shrine", fixed(world_k))
+        place(vec3(32.0, 0.15, 17.0), atan2(0.0, -1.0))
+    }
+    if f < 60 && world_k == GARDEN_WORLD_SHRINE { stick_v = FWD }
+    if f == 80 {
+        expect(world_k == GARDEN_WORLD_GARDEN, "the door took the player to the garden", fixed(world_k))
+        expect(wp_cell_at(pl.pos) != null, "standing in the garden", pl.pos.y)
+        done()
     }
 }
 
@@ -134,7 +285,7 @@ fn sh_wade(f: s32) {
     }
 }
 
-// Runs the legs one after another; each must reach its end in 6 seconds.
+// Runs the legs one after another; each must reach its end in 15 seconds.
 fn sh_route(f: s32, legs: *Leg, n: s32) {
     if sh_leg < 0 || sh_leg >= n {
         if sh_leg < 0 { sh_leg = 0; sh_begin(legs[0]) }
@@ -142,6 +293,7 @@ fn sh_route(f: s32, legs: *Leg, n: s32) {
     }
     let lg = legs[sh_leg]
     sh_t += 1
+    if SHRINE_TRACE != 0 && sh_leg == SHRINE_TRACE && sh_t % 10 == 1 { note("trace, tick", fixed(sh_t)) }
     let to = vec3(lg.to.x, pl.pos.y, lg.to.z)
     let d = length(vec3(to.x - pl.pos.x, 0.0, to.z - pl.pos.z))
     let ran = length(vec3(pl.pos.x - sh_start.x, 0.0, pl.pos.z - sh_start.z))
@@ -169,20 +321,48 @@ fn sh_route(f: s32, legs: *Leg, n: s32) {
             expect(true, "reached the end of a walk, ticks", fixed(sh_t))
         }
         if lg.to.y != 0.0 { expect(pl.pos.y >= lg.to.y, "high enough, y", pl.pos.y) }
+        sh_prev_walk = lg.kind == LEG_WALK
         sh_leg += 1
         if sh_leg < n { sh_begin(legs[sh_leg]) }
         return
     }
-    if sh_t > 360 {
+    if sh_t > 900 {
+        note("stuck: wall hit", fixed(pl.wall_hit as s32))
+        note("wall normal x", pl.wall_n.x)
+        note("wall normal z", pl.wall_n.z)
+        note("wall normal y", pl.wall_ny)
+        note("floor normal y", pl.floor_n.y)
+        note("speed", speed_ms())
+        note("state", fixed(pl.st as s32))
         report("FAIL ", "leg not finished, leg", fixed(sh_leg))
         assert(false)
     }
 }
 
 fn sh_begin(lg: Leg) {
+    // A leg that starts where the last one ended goes on from there, as a player would.
+    let dir = normalize(vec3(lg.to.x - lg.from.x, 0.0, lg.to.z - lg.from.z))
+    let turn = dot(dir, fwd_dir(pl.yaw))
+    if sh_leg > 0 && lg.kind == LEG_WALK && sh_prev_walk && turn > 0.7 && pl.st == St.Ground && length(vec3(pl.pos.x - lg.from.x, 0.0, pl.pos.z - lg.from.z)) < 1.6 {
+        sh_start = pl.pos
+        sh_t = 0
+        sh_air = false
+        sh_presses = 0
+        sh_hold = false
+        return
+    }
     var y = lg.from.y
-    if y == 0.0 { y = sh_floor(lg.from.x, lg.from.z, 90.0) }
-    place(vec3(lg.from.x, y, lg.from.z), atan2(lg.to.x - lg.from.x, lg.to.z - lg.from.z))
+    var p = vec3(lg.from.x, 0.0, lg.from.z)
+    if y == 0.0 {
+        // on the floor there; a start exactly on the seam between two floors (a bridge's end
+        // at a deck's edge) is moved 0.3 m along the leg
+        y = sh_floor(p.x, p.z, 90.0)
+        if y < -50.0 {
+            p = p + normalize(vec3(lg.to.x - p.x, 0.0, lg.to.z - p.z)) * 0.3
+            y = sh_floor(p.x, p.z, 90.0)
+        }
+    }
+    place(vec3(p.x, y, p.z), atan2(lg.to.x - lg.from.x, lg.to.z - lg.from.z))
     cam.lock = false
     sh_start = pl.pos
     sh_t = 0

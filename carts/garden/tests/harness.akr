@@ -59,7 +59,7 @@ fn input_pad(f: s32) -> u32 {
 fn input_stick(_f: s32) -> vec2 { return stick_v }
 fn input_look(_f: s32) -> vec2 { return vec2(0.0, 0.0) }
 fn start_world() -> s32 {
-    if SCENARIO >= 300 && SCENARIO < 400 { return GARDEN_WORLD_SHRINE }
+    if SCENARIO >= 300 && SCENARIO < 400 && SCENARIO != 309 { return GARDEN_WORLD_SHRINE }
     return GARDEN_WORLD_GARDEN
 }
 
