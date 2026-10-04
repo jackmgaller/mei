@@ -140,7 +140,67 @@ def compile_recipe(recipe):
         if 'share' in mat and not palette_backed(mat):
             raise AssetError(f'/materials/{name}/share','share only applies to palette-backed materials. Set palette: true, or remove share.')
     mesh.palette = assign_palette(mesh,materials,recipe)
-    return mesh, materials, report(mesh,recipe,budget,materials)
+    result = report(mesh,recipe,budget,materials)
+    if 'lod' in recipe:
+        mesh.levels = compile_levels(recipe,mesh)
+        result['lod'] = lod_summary(recipe,mesh,result)
+    return mesh, materials, result
+
+
+DEFAULT_BAND = 1.0
+
+
+def level_recipe(recipe, k):
+    """The recipe of level k of an asset with lod: level 0 is the recipe's own nodes; level k
+    takes lod.levels[k - 1]'s nodes, with everything else (materials, prototypes, lighting,
+    palette layout, budget, verification) the recipe's own."""
+    out = {key:value for key,value in recipe.items() if key != 'lod'}
+    if k: out['nodes'] = recipe['lod']['levels'][k-1]['nodes']
+    return out
+
+
+def compile_levels(recipe, base):
+    """Levels 1.. of a recipe with lod, each compiled as a recipe of its own: [(mesh, report)].
+    Checks the switch distances."""
+    lod = recipe['lod']
+    levels = lod.get('levels',[])
+    band = lod.get('band',DEFAULT_BAND)
+    marks = [0]+[level['distance'] for level in levels]+([lod['cull']] if 'cull' in lod else [])
+    for k in range(1,len(marks)):
+        where = f'/lod/levels/{k-1}/distance' if k <= len(levels) else '/lod/cull'
+        if marks[k] <= marks[k-1]:
+            raise AssetError(where,'Switch distances increase from level to level, and cull lies beyond the last.')
+        if marks[k]-marks[k-1] <= 2*band:
+            raise AssetError(where,f'Switch distances lie more than twice the band ({band}) apart, so the hysteresis of '
+                                   'one switch never reaches the next. Space them out or narrow lod.band.')
+    out = []
+    for k in range(1,len(levels)+1):
+        try:
+            mesh,_,rep = compile_recipe(level_recipe(recipe,k))
+        except AssetError as error:
+            path = error.path if error.path.startswith('/budget') else f'/lod/levels/{k-1}'+error.path
+            raise AssetError(path,f'Level {k}: {error}') from error
+        # Every level draws through level 0's palette entries, so one palette serves them all.
+        own = base.palette['by_material'] if base.palette else {}
+        for name in sorted({f.material for f in mesh.faces}):
+            if mesh.palette and name in mesh.palette['by_material'] and name not in own:
+                raise AssetError(f'/lod/levels/{k-1}/nodes',f'Level {k} draws palette-backed material {name!r}, which '
+                                 'level 0 does not use: every level shares level 0\'s palette entries.')
+        mesh.palette = base.palette if mesh.palette else None
+        out.append((mesh,rep))
+    return out
+
+
+def lod_summary(recipe, mesh, base):
+    """Triangles, vertices and switch distances per level, for the report."""
+    lod = recipe['lod']
+    rows = [{'level':0,'distance':0,'triangles':base['triangles'],'vertices':base['vertices']}]
+    for k,(m,rep) in enumerate(mesh.levels,1):
+        rows.append({'level':k,'distance':lod['levels'][k-1]['distance'],'triangles':rep['triangles'],'vertices':rep['vertices']})
+        if rep['triangles'] >= rows[-2]['triangles']:
+            base['warnings'].append({'code':'lod_not_simpler','level':k,'count':rep['triangles'],
+                                     'message':f'Level {k} has no fewer triangles than level {k-1}.'})
+    return {'levels':rows,'cull':lod.get('cull'),'band':lod.get('band',DEFAULT_BAND)}
 
 
 DEFAULT_LAYOUT = {'slot':14,'row':0,'first':0}

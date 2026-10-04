@@ -1,10 +1,10 @@
 # Mei World Kit
 
-**Status: design, partly built.** What exists: the pack format, version 1.2
+**Status: design, partly built.** What exists: the pack format, version 1.3
 ([WORLDPACK.md](WORLDPACK.md), normative) with its reference encoder `tools/worldkit/pack.py`; the
 console reader `stdlib/worldpack.akr`; the tool, `tools/mei_world.py`, with the [recipe
 format](#recipe-format) (cells, regions and palette variants, layers, [ground](#ground), [merged
-scatter](#merged-scatter), [paths](#paths), collision, game data in
+scatter](#merged-scatter), [paths](#paths), [levels of detail](#levels-of-detail), collision, game data in
 [Mochi](#game-data-and-stable-ids) or JSON, the ID lock file) and [command line](#command-line)
 below; the **World Checker**, the in-level
 verification every build runs ([WORLDCHECKER.md](WORLDCHECKER.md)); two example worlds in
@@ -598,6 +598,8 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | `regions` | Named regions in order (the pack's region numbers): optional `palettes` (`first`, `count`) and `variants`. `textures`, `audio` and `backdrop` are reserved and rejected for now |
 | `layers` | World-wide layer names in order (the pack's layer ids), each with an optional exclusive `group` and `on` (at start) |
 | `paths` | Named polylines in world coordinates, in order (the pack's path numbers): [Paths](#paths) |
+| `lod` | The switch distances of assets with levels of detail: `scale`, and per asset `distances`, `cull`, `band`, `off` ([Levels of detail](#levels-of-detail)) |
+| `runtime.near_far` | The near pass's far depth the pack asks the reader for (units; default 1.5 cells). `wp_open()` sets `wp_near_far` to it and the World Checker measures with it |
 | `verification` | The World Checker's per-world settings: `mode` (`report`, the default, or `enforce`) and `thresholds` |
 | `terrain` | Reserved ([Terrain](#terrain)); rejected for now |
 
@@ -697,6 +699,51 @@ warns of geometry an upward ground face can hide (`ground_hides`) and of ground 
 ground (`ground_over_ground`), and counts the pixels where the ground truly hides what is drawn
 over it (`ground_inversion`, a threshold).
 
+### Levels of detail
+
+An asset whose recipe has `lod` ([ASSETKIT.md](ASSETKIT.md#levels-of-detail)) is placed with all
+its levels: the pack stores its coarser meshes, its switch distances and its cull distance once
+per asset, and the reader draws each placement at the level its distance from the eye chooses,
+with a hysteresis band so a camera hovering at a switch distance does not make it flicker between
+levels ([WORLDPACK.md](WORLDPACK.md#levels-of-detail)). Placements need nothing; collision always
+comes from the placement's collision asset, whatever level is drawn. The distances are data, in
+the asset's recipe and, for one world, in the world file:
+
+```json
+"lod": {"scale": 0.8,
+        "assets": {"shop": {"distances": [20, 40], "cull": 80},
+                   "lamp_post": {"cull": null, "band": 2},
+                   "station": {"off": true}}}
+```
+
+| Property | Meaning |
+|---|---|
+| `scale` | Multiplies every asset's switch and cull distances (not the band): one knob for the whole world. Default 1 |
+| `assets.NAME.distances` | Replaces the recipe's switch distances, one per level after level 0 |
+| `assets.NAME.cull` | Replaces the recipe's cull distance; `null` removes it |
+| `assets.NAME.band` | Replaces the recipe's band |
+| `assets.NAME.off` | Draw this asset's level 0 always in this world |
+
+Distances must increase by more than twice the band and stay within 1,400 units; an error points
+at the asset's entry (or at `/lod/scale`). Naming an asset without `lod`, or one nothing draws, is
+a warning (`lod_unused`). A merged placement (`"merge": true`) draws its level 0 only: merged
+meshes have no levels (`lod_merged`). `report.json` lists, per asset with levels, the distances,
+cull and band the pack holds and each level's triangles (`lod`), and the asset summaries carry the
+recipe's per-level report.
+
+Levels of detail are kept apart from stand-ins (WORLDPACK.md says why): stand-ins replace whole
+far cells, levels replace single placements inside the near cells. In a small world all of whose
+cells are near (the movement garden), only levels of detail reduce what is drawn. The World
+Checker judges the levels the reader actually draws, in its worst case (the finest level the band
+allows), and checks each view's triangles and draw cycles against its budgets, naming the
+heaviest placements drawn (with their distance and level) when a view is over
+([WORLDCHECKER.md](WORLDCHECKER.md#levels-of-detail)).
+
+`runtime.near_far` sets the near pass's far depth for the world. The default, 1.5 cells, is 96
+units in 64-unit cells; a shorter one draws less but brings the edge where placements appear
+nearer. It is stored in the pack, so the cart and the World Checker draw with the same range, and
+exported as `WORLD_NAME_NEAR_FAR`.
+
 ### Paths
 
 `paths` in the world file names polylines in world coordinates: a rail to grind or hang from, a
@@ -783,12 +830,12 @@ For a world named `city` of a game named `game`, `build` produces:
 | File | Purpose |
 |---|---|
 | `city.world.bin` | The pack: index, regions, cells, mesh pool, collision, entity records |
-| `city.akr` | `embed WORLD_CITY: u8 = "city.world.bin"`; `world_city_load()` (opens the pack, copies the swatch, loads every region's first variant); constants for regions, variants, colour ranges (`_SURFACE`, `_EMISSIVE` and their counts), layers, paths, entity numbers and saved bits; `world_city_string()` for `name` parameters |
+| `city.akr` | `embed WORLD_CITY: u8 = "city.world.bin"`; `world_city_load()` (opens the pack, copies the swatch, loads every region's first variant); constants for regions, variants, colour ranges (`_SURFACE`, `_EMISSIVE` and their counts), layers, paths, the near range (`_NEAR_FAR`, when the recipe sets it), entity numbers and saved bits; `world_city_string()` for `name` parameters |
 | `game.game.akr` | The game's type numbers, world numbers, probe constants, parameter `struct`s and `enum`s, imported by every world of the game; make links one copy per game for a cart's worlds, so a cart compiles it once ([Using a world in a cart](#using-a-world-in-a-cart)) |
 | `city.swatch` | The 8-byte palette swatch row, when any material is palette-backed |
 | `city.ids.json` | A copy of the ID lock file (the lock itself is written beside the recipe) |
 | `source/` | The world file, cell files and every asset recipe used, as built, and the game schema exactly as written (Mochi comments kept; the report's `game_sha256` is the hash of its JSON form, so comments and layout do not change it) |
-| `report.json` | Per cell and region: triangles (always and per layer), placements, merged meshes, ground placements, collision triangles by kind, bytes, palettes and variants, entity numbers, paths, ID changes, recipe, game and asset hashes and Asset Checker results, warnings; and `verification`, the World Checker's summary, failures and static results, whose row per sampled view stays in `verification/world-check.json` (named by `verification.views_report`), or why it did not run (`ran: false`, with `skipped` for `--world-checker skip`) |
+| `report.json` | Per cell and region: triangles (always and per layer), placements, merged meshes, ground placements, collision triangles by kind, bytes, palettes and variants, entity numbers, paths, levels of detail, ID changes, recipe, game and asset hashes and Asset Checker results, warnings; and `verification`, the World Checker's summary, failures and static results, whose row per sampled view stays in `verification/world-check.json` (named by `verification.views_report`), or why it did not run (`ran: false`, with `skipped` for `--world-checker skip`) |
 
 With `preview` (or `build --preview`) there is also `preview/`: for every region, its busiest
 cell seen from a fixed camera above its south edge, once per palette variant, drawn by the real
@@ -812,8 +859,8 @@ outputs to the World Checker through one seam, `worldkit.build.run_gate(context)
 its result in the report. In `report` mode nothing fails; in `enforce` mode a failed check leaves
 the previous build in place with `verification.failed.json`.
 
-**The pack format is specified in [WORLDPACK.md](WORLDPACK.md)** (version 1.2), byte by byte:
-header, sparse index, layers, regions, paths, cells, placements, entities and their parameter
+**The pack format is specified in [WORLDPACK.md](WORLDPACK.md)** (version 1.3), byte by byte:
+header, sparse index, layers, regions, paths, cells, placements and their levels of detail, entities and their parameter
 records, collision blocks with precomputed rows and a lookup grid, and the mesh pool (meshes stay in the
 native format). `tools/worldkit/pack.py` is the reference encoder and decoder the kit builds on,
 and `stdlib/worldpack.akr` the console reader. What the reader does each frame (cells from the

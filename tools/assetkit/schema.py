@@ -55,6 +55,13 @@ NODE = {'oneOf':[
     operation('group', {'children':array(ref('node'),1,128)}, ['children'], COMMON),
     operation('instance', {'ref':NAME}, ['ref'], COMMON),
 ]}
+LOD = dict(obj({
+    'levels':dict(array(obj({'distance':dict(POS,description='Drawn from this distance (units, from the viewer to the placed mesh\'s centre) out to the next level\'s.'),
+                             'nodes':array(ref('node'),1,128)},['distance','nodes']),1,7),
+                  description='Coarser levels after the recipe\'s own nodes (level 0), at increasing distances. Each shares the recipe\'s materials, prototypes, lighting, budget and verification policy.'),
+    'cull':dict(POS,description='Not drawn at all from this distance on. Default: never culled by distance.'),
+    'band':dict(number(0,1000),description='Hysteresis (units): a level changes only once the distance is this far past its switch distance. Default 1.'),
+}),description='Levels of detail: simpler meshes for the same asset farther away. Generic; a consumer such as the World Kit chooses the level.')
 SCHEMA = {
     '$schema':'https://json-schema.org/draft/2020-12/schema',
     'title':'Mei agent asset recipe v1',
@@ -69,6 +76,7 @@ SCHEMA = {
         'palette_layout':PALETTE_LAYOUT,
         'budget':obj({'vertices':integer(3,2048),'triangles':integer(1,4000)}),
         'verification':VERIFICATION,
+        'lod':LOD,
     }, ['format','version','name','nodes']),
     '$defs':{'node':NODE},
 }

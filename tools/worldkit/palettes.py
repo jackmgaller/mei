@@ -88,6 +88,11 @@ class RegionPalette:
         if not asset.manifest.get('entries'): return asset.binary
         return relocate(asset.binary,self.mapping(asset),slot,row)
 
+    def relocated_levels(self, asset, slot, row):
+        """The asset's levels of detail 1.., moved like level 0 (they share its palette entries)."""
+        if not asset.manifest.get('entries'): return list(asset.levels)
+        return [relocate(b,self.mapping(asset),slot,row) for b in asset.levels]
+
     def variants(self, warnings):
         """[(name, [15-bit colour] * colours)] for the pack, and their colours for the report."""
         specs = self.spec.get('variants') or {'default':{}}

@@ -1,0 +1,73 @@
+// Level-of-detail choices and their cost, for tests/test_worldpack.py. The wrapper embeds PACK
+// and QUERIES (WpLodQuery records) and imports this. Each query asks the reader which mesh it
+// would draw for one placement from one eye, in order, so the hysteresis state carries from one
+// query to the next as it does from frame to frame; the test replays the same sequence through
+// tools/worldkit/pack.py's lod_level(). Then wp_draw() is timed with and without levels.
+
+import "worldpack.akr"
+
+struct WpLodQuery {
+    eye: vec4          // world
+    flags: s32         // bit 0: wp_lod_fine; bit 1: wp_lod_reset() first
+    i: s32             // the placement's cell
+    j: s32
+    k: s32             // and its number there
+}
+
+fn sp(v: s32) {
+    print_char(' ')
+    print_int(v)
+}
+
+var next: s32
+
+fn query(r: *WpLodQuery) -> s32 {
+    if r.flags & 2 != 0 { wp_lod_reset() }
+    wp_lod_fine = r.flags & 1 != 0
+    let c = wp_cell(r.i, r.j)
+    let o = wp_cell_centre(c)
+    // as wp_draw() sets it, with the placement's own cell as the frame's origin (off = 0)
+    __wp_eye = vec4(r.eye.x - o.x, r.eye.y, r.eye.z - o.z, 0.0)
+    let p = (__wp_base + c.placement_off) as *WpPlacement + r.k
+    let m = __wp_lod_mesh(c, r.k, p, vec4(0.0, 0.0, 0.0, 0.0))
+    wp_lod_fine = false
+    return m as s32
+}
+
+fn view(label: *u8, lod: bool) {
+    wp_lod = lod
+    wp_lod_reset()
+    let c0 = cycle_count()
+    wp_draw(vec3(PACK_EYE_X, 2.0, PACK_EYE_Z), PACK_EYE_YAW, -0.1)
+    let c = cycle_count() - c0
+    print(label)
+    sp(c)
+    sp(wp_stats.placements)
+    sp(wp_stats.drawn)
+    sp(wp_stats.coarse)
+    sp(wp_stats.lod_culled)
+    println("")
+    wp_lod = true
+}
+
+fn init() { assert(wp_open(PACK)) }
+
+// 100 answers a frame (the debug console takes so much a frame), then the draws.
+fn draw() {
+    cls(0)
+    let nq = len(QUERIES) as s32
+    if next < nq {
+        let end = min(next + 100, nq)
+        for k in next..end {
+            print("q")
+            sp(query(&QUERIES[k]))
+            println("")
+        }
+        next = end
+        return
+    }
+    if next == nq { view("lod", true) }
+    if next == nq + 1 { view("flat", false) }
+    if next == nq + 2 { println("done") }
+    next += 1
+}

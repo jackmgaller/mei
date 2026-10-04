@@ -727,6 +727,79 @@ class VisibilityOracleTests(unittest.TestCase):
         self.assertTrue((images[0]==images[1]).all())
 
 
+def lod_recipe(**lod):
+    r = recipe({'id':'body','op':'sphere','radius':1,'rings':6,'segments':12,'material':'paint'},
+               materials={'paint':{'color':'#c04020','palette':True},'trim':{'color':'#202020'}})
+    r['lod'] = {'levels':[{'distance':12,'nodes':[{'id':'body','op':'sphere','radius':1,'rings':3,'segments':6,'material':'paint'}]},
+                          {'distance':30,'nodes':[{'id':'body','op':'box','size':[1.6,1.6,1.6],'material':'trim'}]}],
+                'cull':60,**lod}
+    return r
+
+
+class LodTests(unittest.TestCase):
+    def test_levels_compile_and_report_triangles(self):
+        mesh,materials,report = compile_recipe(lod_recipe())
+        rows = report['lod']['levels']
+        self.assertEqual([(r['level'],r['distance']) for r in rows],[(0,0),(1,12),(2,30)])
+        self.assertEqual([r['triangles'] for r in rows],[len(mesh.faces)]+[len(m.faces) for m,_ in mesh.levels])
+        self.assertEqual((report['lod']['cull'],report['lod']['band']),(60,1.0))
+        self.assertGreater(rows[0]['triangles'],rows[1]['triangles'])
+        # every level draws through level 0's palette entries
+        self.assertIs(mesh.levels[0][0].palette,mesh.palette)
+        self.assertIsNone(mesh.levels[1][0].palette)
+        # a recipe without lod reports as before
+        self.assertNotIn('lod',compile_recipe(recipe())[2])
+
+    def test_lod_errors(self):
+        r = lod_recipe()
+        r['lod']['levels'][1]['distance'] = 12
+        with self.assertRaisesRegex(AssetError,'increase') as e: compile_recipe(r)
+        self.assertEqual(e.exception.path,'/lod/levels/1/distance')
+        with self.assertRaisesRegex(AssetError,'twice the band') as e: compile_recipe(lod_recipe(band=10))
+        with self.assertRaises(AssetError) as e: compile_recipe(lod_recipe(cull=25))
+        self.assertEqual(e.exception.path,'/lod/cull')
+        r = lod_recipe()
+        r['lod']['levels'][0]['nodes'][0]['op'] = 'blob'
+        with self.assertRaises(AssetError) as e: compile_recipe(r)
+        self.assertTrue(e.exception.path.startswith('/lod/levels/0/nodes/0'),e.exception.path)
+        r = lod_recipe()
+        r['materials']['glow'] = {'color':'#ffff00','class':'emissive'}
+        r['lod']['levels'][0]['nodes'][0]['material'] = 'glow'
+        with self.assertRaisesRegex(AssetError,'level 0') as e: compile_recipe(r)
+        self.assertEqual(e.exception.path,'/lod/levels/0/nodes')
+        r = lod_recipe()
+        r['lod']['levels'][0]['nodes'][0]['rings'] = 8
+        r['lod']['levels'][0]['nodes'][0]['segments'] = 16
+        self.assertIn('lod_not_simpler',[w['code'] for w in compile_recipe(r)[2]['warnings']])
+
+    def test_build_writes_each_level(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            report = build(lod_recipe(),tmp)
+            for k in (1,2):
+                self.assertTrue(Path(tmp,f'test.lod{k}.bin').is_file())
+            akr = Path(tmp,'test.akr').read_text()
+            self.assertIn('embed ASSET_TEST_LOD2: Mesh = "test.lod2.bin"',akr)
+            self.assertEqual(report['lod']['levels'][2]['triangles'],12)
+            self.assertEqual(struct.unpack_from('<H',Path(tmp,'test.lod2.bin').read_bytes(),2)[0],12)
+
+    @unittest.skipUnless(PROBE.exists() and COMPILER.exists() and importlib.util.find_spec('numpy'),
+                         'The Asset Checker needs NumPy, meic and mei-asset-probe.')
+    def test_asset_checker_judges_every_level(self):
+        from assetkit.visibility import verify
+        with tempfile.TemporaryDirectory() as tmp:
+            r = verify(lod_recipe(),{'yaw_steps':4,'pitches':[0],'distances':[1.5]},tmp,COMPILER,PROBE)
+            self.assertTrue(r['ok'])
+            self.assertEqual([(l['level'],l['ok']) for l in r['lod']],[(1,True),(2,True)])
+            self.assertEqual(r['lod'][1]['faces'],12)
+            self.assertTrue(Path(tmp,'lod2','verification.json').is_file())
+            # a level that fails fails the asset
+            bad = lod_recipe()
+            bad['lod']['levels'][1]['nodes'].append({'id':'twin','op':'box','size':[1.6,1.6,1.6],'material':'trim'})
+            r = verify(bad,{'yaw_steps':4,'pitches':[0],'distances':[1.5]},None,COMPILER,PROBE)
+            self.assertFalse(r['ok'])
+            self.assertEqual([l['ok'] for l in r['lod']],[True,False])
+
+
 @unittest.skipUnless(importlib.util.find_spec('numpy'),'Visibility verification needs NumPy.')
 class GeometryAuditTests(unittest.TestCase):
     def test_adjacent_triangles_are_not_intersections(self):

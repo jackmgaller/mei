@@ -48,6 +48,10 @@ def artifacts(recipe, mesh, materials, report):
     if mesh.palette:
         files[name+'.pal'] = palette_bytes(mesh)
         files[name+'.swatch'] = SWATCH
+    # Levels of detail: a mesh each, embedded after level 0 (they share its palette entries).
+    for k,(level,_) in enumerate(mesh.levels or [],1):
+        files[f'{name}.lod{k}.bin'] = native_bytes(level,materials,recipe.get('lighting',{}))
+        files[name+'.akr'] += f'embed ASSET_{name.upper()}_LOD{k}: Mesh = "{name}.lod{k}.bin"\n'.encode()
     return files
 
 

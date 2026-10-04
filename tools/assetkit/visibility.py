@@ -243,5 +243,14 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
             'native_tools':{'compiler_sha256':hashlib.sha256(compiler.read_bytes()).hexdigest(),
                             'probe_sha256':hashlib.sha256(probe.read_bytes()).hexdigest()},
             'scope':'Opaque static mesh; sampled fitted cameras; native projected vertices and exact integer coverage; independent reciprocal-depth selection. Depth ties within two normalized 16.16 units are allowed. Near/guard clipping and animation are not certified. Unobserved faces are not proven safe.'}
+    if 'lod' in recipe:
+        # Each level of detail is checked as an asset of its own, with the same policy.
+        from .compiler import level_recipe
+        result['lod']=[]
+        for k in range(1,len(recipe['lod'].get('levels',[]))+1):
+            level=verify(level_recipe(recipe,k),profile,root/f'lod{k}' if root else None,compiler,probe)
+            result['lod'].append({'level':k,'ok':level['ok'],'faces':level['faces'],'totals':level['totals'],
+                                  'geometry_ok':level['geometry']['ok'],'mesh_sha256':level['mesh_sha256']})
+            result['ok']=result['ok'] and level['ok']
     if root:(root/'verification.json').write_text(json.dumps(result,indent=2)+'\n')
     return result

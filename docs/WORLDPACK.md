@@ -1,6 +1,6 @@
 # The world pack format
 
-**Version 1.2.** A world pack (`*.world.bin`) is the contract between the World Kit
+**Version 1.3.** A world pack (`*.world.bin`) is the contract between the World Kit
 ([WORLDKIT.md](WORLDKIT.md)), which writes packs, and the reader a cart runs, which reads them in
 place from ROM. This document is normative: a second encoder or reader can be written from it
 alone. The reference implementations are `tools/worldkit/pack.py` (encoder, decoder and an exact
@@ -15,6 +15,7 @@ What each part's status is:
 | Placements, stand-ins, layers | specified | yes | yes: drawing, culling, layer masks |
 | Ground placements (1.1) | specified | yes | yes: drawn first, in a pass of their own |
 | Paths (1.2) | specified | yes, with an exact oracle | yes: by number and name, nearest point, point at a length, lines for debugging |
+| Levels of detail, near range (1.3) | specified | yes, with the exact level rule | yes: a level per placement with hysteresis; the pack's near range |
 | [Objects](#objects): entity meshes, the game's own | (not part of the format) | – | yes: culled, keyed at their nearest point, nearer from above |
 | Collision blocks (cells and entities) | specified | yes, with an exact oracle | yes: floor, ceiling, wall push, segment |
 | Entities and parameter records | specified | yes | yes: iteration, tracking, lookup by number |
@@ -34,18 +35,19 @@ What each part's status is:
 8. [Regions](#regions)
 9. [Cells](#cells)
 10. [Placements](#placements)
-11. [Ground](#ground)
-12. [Objects](#objects)
-13. [Entities](#entities)
-14. [Collision blocks](#collision-blocks)
-15. [Paths](#paths)
-16. [Meshes and strings](#meshes-and-strings)
-17. [What a reader does](#what-a-reader-does)
-18. [Validation](#validation)
-19. [Precision](#precision)
-20. [Costs](#costs)
-21. [The console reader](#the-console-reader-stdlibworldpackakr)
-22. [Extensions not made](#extensions-not-made)
+11. [Levels of detail](#levels-of-detail)
+12. [Ground](#ground)
+13. [Objects](#objects)
+14. [Entities](#entities)
+15. [Collision blocks](#collision-blocks)
+16. [Paths](#paths)
+17. [Meshes and strings](#meshes-and-strings)
+18. [What a reader does](#what-a-reader-does)
+19. [Validation](#validation)
+20. [Precision](#precision)
+21. [Costs](#costs)
+22. [The console reader](#the-console-reader-stdlibworldpackakr)
+23. [Extensions not made](#extensions-not-made)
 
 ## Conventions
 
@@ -80,13 +82,13 @@ What each part's status is:
 
 ## Versions
 
-The header holds a major and a minor version; this document is 1.2.
+The header holds a major and a minor version; this document is 1.3.
 
 - A reader refuses a pack whose **major** version it does not know.
 - A reader accepts a pack with the same major and a **higher minor** version and reads it as the
   minor version it knows. A minor version may only add: data reached through fields that are
   reserved (zero) in earlier minors, header bytes past those the earlier minors define (the
-  header says its own size: 1.2 defines 72), and flag bits. It never changes the size or meaning of an existing field or
+  header says its own size: 1.2 defines 72, 1.3 80), and flag bits. It never changes the size or meaning of an existing field or
   record.
 - Header **flags** bits 0–3 mark features a reader may ignore; bits 4–7 mark features a reader
   must understand, so a reader refuses a pack with a bit 4–7 set that it does not know. Version
@@ -111,6 +113,17 @@ without paths has `path_count` and `path_off` 0; it differs from the 1.1 pack of
 its minor version, its `header_size` and those 8 bytes, and so in every offset after the header,
 which moves by 8.
 
+**1.3** adds [levels of detail](#levels-of-detail) and the near range: the header grows to 80
+bytes with `near_far` and `lod_slots`, and a cell's first two reserved words become `lod_off` and
+`lod_first`. A placement's `mesh` stays its full-detail mesh (level 0), so a 1.2 reader draws a
+1.3 pack as it always did, every placement at full detail and with its own near range: the right
+picture, at the old cost. A 1.3 reader reads the four words only in a pack whose minor version is
+at least 3 (and whose `header_size` is then at least 80), so older packs have no levels and the
+default near range. A 1.3 pack of a world without levels or a near range has the four words 0; it
+differs from the 1.2 pack in its minor version, `header_size` and those 8 header bytes (every later
+offset moves by 8). The reader draws such a pack exactly as before: the one change on its path is a
+test of `lod_off` per cell.
+
 ## Limits
 
 | What | Limit | Why |
@@ -129,17 +142,20 @@ which moves by 8.
 | `overhang` | 0 to *S*/2 | How far placements may reach past their cell; the encoder enforces it |
 | Mesh | the native format: at most 2,048 vertices | `mesh()` |
 | Paths | `u32` count; 2–4,096 stored points each; a path at most 16,384 units long; points within ±32,767 units | Keeps the nearest-point query's products inside `fixed` ([Paths](#paths)) |
+| Levels of detail | 1–8 levels after level 0 in a set (the cull mark included); switch distances plus the band at most 1,400 units | (distance / 8)² stays inside `fixed` |
+| `near_far` | 0 (the default, 1.5 cells) or more than 0 up to 2,048 units | |
 
 ## Layout
 
 ```
-header         72 bytes at offset 0
+header         80 bytes at offset 0
 index          w x h u32: the offset of each grid square's cell, or 0
 layers         layer_count x 8 bytes
 regions        region_count x 32 bytes, each pointing at its textures, samples, palettes, backdrop
 paths          path_count x 48 bytes, then each path's points, 40 bytes each
 cells          96 bytes each, pointing at their placements, entities and collision block
   placements   48 bytes each
+  LOD table    placement_count x u32, when a placement has levels of detail; LOD sets, pooled
   entities     64 bytes each
   collision    a 48-byte block header, floor, wall and ceiling records, buckets, a u16 list
 entity dir     entity_count x u32: the offset of entity number n's record
@@ -165,7 +181,7 @@ records, and a reader treats it like any other world.
 | 8 | `u32` | `size` | the pack's length in bytes, a multiple of 4 |
 | 12 | `u8` | `cell_shift` | 4–7 |
 | 13 | `u8` | `flags` | see [Versions](#versions); bit 0 (1.1): some cell has a ground placement |
-| 14 | `u16` | `header_size` | 64 in 1.0 and 1.1, 72 in 1.2; at least 64, and at least 72 when `minor` ≥ 2 |
+| 14 | `u16` | `header_size` | 64 in 1.0 and 1.1, 72 in 1.2, 80 in 1.3; at least 64, at least 72 when `minor` ≥ 2, 80 when ≥ 3 |
 | 16 | `s16` | `i0` | grid column of the index's first entry |
 | 18 | `s16` | `j0` | grid row of the index's first entry |
 | 20 | `u16` | `w` | index width (columns) |
@@ -183,6 +199,8 @@ records, and a reader treats it like any other world.
 | 60 | `u32` | `mesh_dir_off` | 0 when there are no meshes |
 | 64 | `u32` | `path_count` | (1.2) |
 | 68 | `u32` | `path_off` | (1.2) the path table, 0 when there are no paths |
+| 72 | `fixed` | `near_far` | (1.3) the near pass's far depth the world asks for, or 0 for the reader's default (1.5 cells) |
+| 76 | `u32` | `lod_slots` | (1.3) placements in cells that have a LOD table: the size of the level memory a reader may keep |
 
 ## Index
 
@@ -273,7 +291,9 @@ planes are then set up (`plane()`, scroll rates) is the game's.
 | 68 | `u32` | `entity_first` | the number of its first entity: its entities are `entity_first` .. + `entity_count` − 1 |
 | 72 | `u32` | `coll_off` | its collision block, or 0 |
 | 76 | `u32` | `ground_count` | (1.1) its first `ground_count` placements are ground, the rest are not |
-| 80 | `[4]u32` | reserved | |
+| 80 | `u32` | `lod_off` | (1.3) its LOD table: `placement_count` `u32` LOD set offsets, 0 for a placement without levels; or 0 |
+| 84 | `u32` | `lod_first` | (1.3) the level-memory slot of its placement 0: placement *k*'s is `lod_first` + *k* (< `lod_slots`) |
+| 88 | `[2]u32` | reserved | |
 
 ## Placements
 
@@ -290,13 +310,70 @@ planes are then set up (`plane()`, scroll rates) is the game's.
 | 45 | `u8` | `flags` | bit 0 (1.1): ground; bits 1–7 reserved |
 | 46 | `u16` | `tag` | the encoder's number for it (for reports and tests) |
 
-The sphere must contain every vertex of the mesh as drawn with the stored `cos` and `sin`. The
+The sphere must contain every vertex of the mesh, and of each of its levels of detail, as drawn
+with the stored `cos` and `sin`. The
 reference encoder takes the centre of the vertices' box and the largest distance from it, plus
 2/65,536. The mesh's vertices may reach at most `overhang` past the cell's square, and `pos`
 lies in the square.
 
 A cell's ground placements come first in its list: placement *k* has the ground bit exactly when
 *k* < `ground_count`. The reference encoder files them so, each group in the order it was given.
+
+## Levels of detail
+
+A placement may have **levels of detail**: coarser meshes drawn from given distances out, and
+last, optionally, a distance past which it is not drawn at all (the **cull mark**). Level 0 is the
+placement's `mesh`. The distance is from the eye to the centre of the placement's `sphere`, which
+holds every level, so culling is the same whichever level is drawn.
+
+**LOD set** (8 bytes and 16 a level), pointed at from the cell's LOD table; the reference encoder
+stores each distinct set once, so every placement of one asset shares one:
+
+| Offset | Type | Field | |
+|---|---|---|---|
+| 0 | `u8` | `count` | levels after level 0, the cull mark included: 1–8 |
+| 1 | `u8` | `flags` | bit 0: the last level is the cull mark; bits 1–7 reserved |
+| 2 | `u16` | reserved | |
+| 4 | `fixed` | `band` | the hysteresis band, units (informative: the rows hold it) |
+| 8 + 16 (*k* − 1) | `fixed` ×3, `u32` | `at2`, `out2`, `in2`, `mesh` | level *k*: ((*d*ₖ)/8)², ((*d*ₖ + band)/8)², ((*d*ₖ − band)/8)², its mesh (0 for the cull mark) |
+
+*d*ₖ is level *k*'s switch distance. The encoder rounds *d* to `fixed` and squares exactly:
+`at2` = round(*D*² / (64 × 65,536)) with *D* the raw distance. Distances increase by more than
+twice the band from level to level (and the first is more than twice the band), so each level's
+band lies clear of the next: `in2` ≤ `at2` ≤ `out2` < the next level's `in2`.
+
+**Choosing a level.** With the eye relative to the frame's origin and the sphere centre relative
+to the same origin, **q** = (centre − eye) × 0.125 (the CPU's `fmul`, lane by lane) and
+*d²* = **q** · **q** (`vdot`: the exact sum, shifted right 16). Over the set's levels in order:
+*plain* counts the levels with *d²* ≥ `at2`, *lo* those with *d²* ≥ `out2` and *hi* those with
+*d²* ≥ `in2`; *lo* ≤ *plain* ≤ *hi*. The level drawn is:
+
+- *plain* when the reader does not know the level it drew this placement at last (the first
+  frame, a reset, a slot past the reader's memory);
+- otherwise that level, clamped to [*lo*, *hi*]: it moves to a coarser level only once the eye is
+  `band` past the switch distance, and back only once it is `band` inside it, so an eye hovering
+  at a switch distance does not flip the level every frame (**hysteresis**);
+- *lo*, the finest level the band allows, in the reader's worst-case mode (the World Checker's).
+
+Level *k* > 0 draws the set's level *k* mesh; the cull mark draws nothing. `pack.lod_level()` and
+`pack.lod_d2()` are the rule in exact integer arithmetic; the console reader agrees with them
+bit for bit (`tests/test_worldpack.py`, `LodTests`).
+
+**Kept apart from stand-ins.** A stand-in is a whole cell's low-detail mesh, authored per cell,
+drawn in the far pass for cells 2 or more away, with its own clip range and ordering table;
+levels of detail are per placement, authored per asset and shared by every placement of it, and
+chosen inside the near pass by distance. They answer different distances (a far cell is at least a
+cell away; a placement switches at a few tens of units, inside the near set) and different
+granularity (a cell's skyline against one building's detail), and in a small world where every
+cell is near (the garden's 2 × 2 cells of 64 units) stand-ins draw nothing and only levels of
+detail help. Folding the stand-in into the levels would make a cell's far picture the sum of its
+placements' coarsest levels, which costs the per-placement draw (about 500 cycles each) that one
+merged stand-in avoids. So the two stay separate; an asset's coarsest level can be the cull mark,
+which is what a stand-in already stands for once the cell is far.
+
+**The near range.** `near_far` lets a world choose the near pass's far depth (`wp_open()` sets
+`wp_near_far` to it; a cart may still change it), so the World Checker measures with the range the
+cart will draw with.
 
 ## Ground
 
@@ -745,6 +822,9 @@ sight near geometry comes before far; it is chosen around the camera, which may 
 A near cell whose region is not loaded is drawn as its stand-in, in the near pass. The game's
 objects join the near pass after it ([Objects](#objects)).
 
+Each present placement in view is drawn at the level of detail its distance chooses
+([Levels of detail](#levels-of-detail)), or not at all past its cull mark.
+
 **Paths.** A reader answers the two queries above ([Paths](#paths)) on a path it holds by
 number or by name.
 
@@ -761,7 +841,10 @@ layer ids and masks against the cell's layer list; that ground placements come f
 cells and agree with `ground_count` and the header's flag; region, mesh, string and parameter
 references; paths (1.2): distinct names, point counts, that each point's `s` and `len` add up,
 that the last point has no segment, a closed path ends where it starts, the box holds every point
-and the length is the last `s`;
+and the length is the last `s`; levels of detail (1.3): the header's size and `near_far`, each LOD
+table and set in the pack, level counts, that only the last level may be the cull mark, that
+`in2` ≤ `at2` ≤ `out2` and each level's band clear of the next, every level mesh, and each cell's
+slots within `lod_slots`;
 every mesh's header, vertex and face extents; every collision block's grid, buckets and list
 entries; and that entity numbers, back-references and the directory agree. Any failure raises
 `PackError`; random corruption never makes it fail any other way (tested).
@@ -772,7 +855,8 @@ format cannot hold: degenerate triangles, coordinates past the limits, placement
 outside their cell, placements that overhang by more than `overhang`, more than 8 layers in a cell,
 unknown or duplicate layers, too many triangles in a bucket; paths with fewer than 2 points (3 when
 closed), a segment of no length, more than 4,096 stored points, longer than 16,384 units, or a
-name used twice.
+name used twice; LOD sets with no levels or more than 8, a cull mark that is not last, switch
+distances closer than twice the band or past 1,400 units; a `near_far` of 0 or past 2,048.
 
 ## Precision
 
@@ -845,20 +929,26 @@ Drawing, cycles:
 | the demonstration views: 4 near cells, 8–11 placements (ground of 64 quads a cell), a stand-in | 84,000–93,000 for 310–460 triangles |
 | the ground pass, in a view that draws ground (the flush, a second look at the near cells) | about 2,000 (2,068 and 2,289 on average over the example worlds' views) |
 | a 1.1 pack without ground, against the 1.0 reader | 58–88 more a view (the example worlds) |
+| choosing a placement's level of detail (in view, with a LOD set) | about 135 a placement drawn (`LodTests.test_drawing_and_cost`: 45 placements drawn, 84,945 cycles against 78,864 with the same meshes at every level) |
+| a 1.3 pack without levels, against the 1.2 reader | 53–471 more a view (a test of `lod_off` a cell and of the mesh a placement; the example worlds and the garden: 239 on average over the garden's 600 views, whose peak is 476,000), the same triangles, GPU cycles and pictures in every view |
 | `wp_draw_object()` with the bounds known, against `mesh_at()` (the example coin: 22 vertices, 40 triangles) | 5,052 against 4,801 drawn; 235 culled (`mesh_at()` out of view: 2,603) |
 | `wp_mesh_bounds()` | about 17 a vertex and 260 more (the coin: 710) |
 | `wp_draw_entities()`, per entity with a mesh (the cell walk, layer test, bounds and `wp_draw_object()`) | the coin: 6,201 drawn, 1,384 culled |
 
 The fixed cost per placement drawn matters for budgets: 100 small props drawn cost 50,000 cycles
-before their faces. Placements should be assets of tens of faces or more; scatter of tiny props is
+before their faces. A level of detail pays when its mesh saves more than its choice costs (135
+cycles, about one visible face), and a cull mark saves the whole draw (about 500 cycles plus the
+faces): in the same test, 60 boxes with levels and a cull mark drew 29 of 45 in view, 61,958
+cycles against 78,864 at full detail. Placements should be assets of tens of faces or more; scatter of tiny props is
 better merged into one mesh per cell (see [Extensions](#extensions-not-made)).
 
 ## The console reader (`stdlib/worldpack.akr`)
 
 Not part of the prelude: `import "worldpack.akr"`. It holds one pack open, keeps no storage per
-placement or entity (spawning is by callback, drawing straight into the packet arena), and has one
-fixed capacity, `WP_MAX_TRACK` = 25 cells, which is every cell `wp_track()` can reach at its
-largest radius (2). World positions in and out are `fixed` world coordinates.
+entity (spawning is by callback, drawing straight into the packet arena), and has two fixed
+capacities: `WP_MAX_TRACK` = 25 cells, which is every cell `wp_track()` can reach at its largest
+radius (2), and `WP_MAX_LOD` = 2,048 bytes of level memory, one per placement slot (`lod_first` +
+*k*), for the hysteresis; a placement whose slot lies past it is drawn at the plain level. World positions in and out are `fixed` world coordinates.
 
 | | |
 |---|---|
@@ -871,9 +961,10 @@ largest radius (2). World positions in and out are `fixed` world coordinates.
 | `wp_draw_entities() -> s32`, `wp_entity_draw(e) -> bool` | the live entities' meshes in the near cells (or one entity's mesh) through `wp_draw_object()`; how many were drawn |
 | `wp_mesh_bounds(m) -> vec2` | a mesh's radius around its origin and its lowest vertex's height (a scan) |
 | `wp_view_origin()` | where this frame is drawn around: draw the game's own meshes at `pos − wp_view_origin()` |
-| `wp_clip_near`, `wp_near_far`, `wp_far_ring`, `wp_region_loaded`, `wp_ground_first` | settings (0.1, 1.5 cells, 3, −1 = any, true; false draws ground in the near pass, as 1.0 did) |
+| `wp_clip_near`, `wp_near_far`, `wp_far_ring`, `wp_region_loaded`, `wp_ground_first` | settings (0.1, the pack's `near_far` or 1.5 cells, 3, −1 = any, true; false draws ground in the near pass, as 1.0 did) |
+| `wp_lod`, `wp_lod_fine`, `wp_lod_reset()` | levels of detail (1.3): on (true; false draws every placement's level 0, as 1.2 did); the finest level the band allows, without memory (false; the World Checker's worst case); forget the levels drawn (after the camera jumps) |
 | `wp_object_bias`, `wp_object_squash` | `wp_draw_object()`'s settings: units nearer from above (1.5); squash of the object's own depths (2; 1: no key, the bias alone) |
-| `wp_stats` | near cells, placements looked at and drawn, stand-ins drawn, ground placements drawn, last `wp_draw` |
+| `wp_stats` | near cells, placements looked at and drawn, stand-ins drawn, ground placements drawn, placements drawn at a coarser level (`coarse`) and culled by their LOD set (`lod_culled`), last `wp_draw` |
 | `wp_floor(p, above)`, `wp_ceiling(p, below)`, `wp_push(p, radius)`, `wp_ray(a, b)` | collision in the world; answers in `wp_hit` |
 | `wp_coll_floor`, `wp_coll_ceiling`, `wp_coll_push`, `wp_coll_ray` | the same against one block, in its frame (an entity's: `wp_entity_coll(e)`) |
 | `wp_hit_normal()` | the unit front normal of what was hit |
@@ -890,7 +981,7 @@ itself, character control, cameras, goals and saving (the game's).
 
 ## Extensions not made
 
-Each was left out because version 1.2 is clearly sufficient without it; each fits as a minor
+Each was left out because version 1.3 is clearly sufficient without it; each fits as a minor
 version (a reserved field or a flag) unless noted.
 
 - **Pitch, roll and scale on placements.** Yaw covers buildings and props on level ground; a

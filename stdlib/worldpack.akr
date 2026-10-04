@@ -53,6 +53,8 @@ struct WpHeader {
     mesh_dir_off: u32
     path_count: u32    // 1.2 (header_size 72): read only through wp_path_count()
     path_off: u32
+    near_far: fixed    // 1.3 (header_size 80): the near pass's far depth, or 0 for 1.5 cells
+    lod_slots: u32     // 1.3: placements in cells with a LOD table
 }
 
 struct WpLayer {
@@ -101,7 +103,9 @@ struct WpCell {
     entity_first: u32  // the global number of its first entity
     coll_off: u32
     ground_count: u32  // 1.1: its first ground_count placements are ground (0 in a 1.0 pack)
-    reserved: [4]u32
+    lod_off: u32       // 1.3: a LOD set offset per placement (0: none), or 0 (reserved before 1.3)
+    lod_first: u32     // 1.3: the reader's level memory slot of its first placement
+    reserved: [2]u32
 }
 
 struct WpPlacement {
@@ -205,6 +209,8 @@ struct WpStats {
     drawn: s32         // placements drawn (ground included)
     standins: s32      // stand-ins drawn
     ground: s32        // ground placements drawn in the ground pass
+    coarse: s32        // placements drawn at a level of detail other than 0
+    lod_culled: s32    // placements in view not drawn: beyond their LOD cull distance
 }
 
 // ---- state and settings
@@ -220,7 +226,11 @@ var wp_ground_first: bool = true  // draw ground placements in a pass of their o
 var wp_object_bias: fixed = 1.5  // wp_draw_object(): units nearer it sorts an object the eye is above
 var wp_object_squash: s32 = 2    // wp_draw_object(): how much it squashes an object's own depths
 
+var wp_lod: bool = true    // levels of detail (1.3); false draws every placement's level 0
+var wp_lod_fine: bool      // draw the finest level the hysteresis band allows (the World Checker)
+
 var __wp_ground: bool      // the pack is 1.1 or later and has ground placements
+var __wp_eye: vec4         // the last wp_draw()'s eye, relative to its origin (w = 0)
 var __wp_eye_y: fixed      // the last wp_draw()'s eye height (world)
 
 var __wp_base: u32
@@ -270,6 +280,7 @@ fn wp_open(pack: *u8) -> bool {
     __wp_h = h.h as u32
     __wp_index = (__wp_base + h.index_off) as *u32
     wp_near_far = __wp_half * 3
+    __wp_lod_open(h)
     __wp_track_n = 0
     mem_fill(&__wp_layer_on[0], 0, 32)
     let layers = (__wp_base + h.layer_off) as *WpLayer
@@ -377,6 +388,7 @@ fn wp_draw(eye: vec3, yaw: fixed, pitch: fixed) {
     __wp_origin = vec3(fixed(ci << __wp_shift) + __wp_half, 0.0, fixed(cj << __wp_shift) + __wp_half)
     let local = eye - __wp_origin
     __wp_eye_y = eye.y
+    __wp_eye = vec4(local.x, local.y, local.z, 0.0)
     wp_stats = WpStats {}
     let size = __wp_half * 2
     let r = wp_far_ring
@@ -486,12 +498,17 @@ fn __wp_placements(c: *WpCell, di: s32, dj: s32, k0: s32, k1: s32) -> s32 {
     let mask = wp_cell_mask(c)
     var p = (__wp_base + c.placement_off) as *WpPlacement + k0
     wp_stats.placements += k1 - k0
+    let lod = wp_lod && c.lod_off != 0
     var drawn = 0
     for k in k0..k1 {
         let pm = p.mask as u32
         if (pm == 0 || pm & mask != 0) && __wp_visible(p.sphere + off) {
-            __wp_mesh((__wp_base + p.mesh) as *Mesh, p.pos + off, p.cos, p.sin)
-            drawn += 1
+            var m = p.mesh
+            if lod { m = __wp_lod_mesh(c, k, p, off) }
+            if m != 0 {
+                __wp_mesh((__wp_base + m) as *Mesh, p.pos + off, p.cos, p.sin)
+                drawn += 1
+            }
         }
         p = p + 1
     }
@@ -1204,4 +1221,73 @@ fn __wp_near_set(pth: *WpPath, k: s32, t: fixed) {
     wp_near.s = b.s + t
     wp_near.dir = vec3(b.dir.x, b.dir.y, b.dir.z)
     wp_near.pos = vec3(b.pos.x + b.dir.x * t, b.pos.y + b.dir.y * t, b.pos.z + b.dir.z * t)
+}
+
+// ---- levels of detail (1.3; docs/WORLDPACK.md, "Levels of detail")
+//
+// A placement whose cell has a LOD table may name a LOD set: coarser meshes from given distances
+// out (and, last, a distance past which it is not drawn). The distance is from the eye to the
+// placement's sphere centre. Each level switch has a hysteresis band: a placement drawn at level
+// L stays there until the eye is band units past a switch distance, so a camera hovering at one
+// does not flip the level every frame. The level drawn is remembered per placement (one byte, in
+// a table of WP_MAX_LOD; a placement past it uses the plain distances, without hysteresis).
+
+const WP_MAX_LOD = 2048    // placements whose level the reader remembers
+
+struct WpLodSet {
+    count: u8          // levels after level 0, the cull mark included
+    flags: u8          // bit 0: the last level is the cull mark (mesh 0)
+    reserved: u16
+    band: fixed        // the hysteresis band, units (informative: the rows below hold it)
+}
+
+struct WpLodLevel {
+    at2: fixed         // (distance / 8)^2: the level starts here
+    out2: fixed        // ((distance + band) / 8)^2: a finer level gives way to it here
+    in2: fixed         // ((distance - band) / 8)^2: it gives way to the finer level below here
+    mesh: u32          // 0: not drawn (the cull mark)
+}
+
+var __wp_lod_state: [WP_MAX_LOD]u8   // per slot: 0 unknown, else the level drawn last + 1
+
+fn __wp_lod_open(h: *WpHeader) {
+    mem_fill(&__wp_lod_state[0], 0, WP_MAX_LOD)
+    if h.minor >= 3 && h.header_size >= 80 && h.near_far > 0.0 { wp_near_far = h.near_far }
+}
+
+// Forgets the levels drawn, so the next frame chooses by the plain distances (after a jump of
+// the camera, say).
+fn wp_lod_reset() { mem_fill(&__wp_lod_state[0], 0, WP_MAX_LOD) }
+
+// The mesh to draw for placement k of cell c (p, in view, its cell offset off), or 0.
+fn __wp_lod_mesh(c: *WpCell, k: s32, p: *WpPlacement, off: vec4) -> u32 {
+    let so = ((__wp_base + c.lod_off) as *u32)[k]
+    if so == 0 { return p.mesh }
+    let set = (__wp_base + so) as *WpLodSet
+    let d = p.sphere + off - __wp_eye
+    let q = vec4(d.x, d.y, d.z, 0.0) * 0.125
+    let d2 = dot(q, q)
+    var r = (set as u32 + 8) as *WpLodLevel
+    var plain = 0
+    var lo = 0
+    var hi = 0
+    for n in 0..set.count as s32 {
+        if d2 < r.in2 { break }
+        hi += 1
+        if d2 >= r.at2 { plain += 1 }
+        if d2 >= r.out2 { lo += 1 }
+        r = r + 1
+    }
+    let slot = c.lod_first as s32 + k
+    var level = plain
+    if wp_lod_fine {
+        level = lo
+    } else if slot < WP_MAX_LOD && __wp_lod_state[slot] != 0 {
+        level = clamp(__wp_lod_state[slot] as s32 - 1, lo, hi)
+    }
+    if slot < WP_MAX_LOD { __wp_lod_state[slot] = (level + 1) as u8 }
+    if level == 0 { return p.mesh }
+    let m = ((set as u32 + 8) as *WpLodLevel + (level - 1)).mesh
+    if m == 0 { wp_stats.lod_culled += 1 } else { wp_stats.coarse += 1 }
+    return m
 }

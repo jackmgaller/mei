@@ -33,14 +33,14 @@ import subprocess
 import tempfile
 import time
 
-from .pack import ONE, mesh_info
+from .pack import ONE, mesh_info, lod_level, lod_d2
 from .verify_shared import numpy, id_colour, diagnostic_png
 
 W, H = 320, 240
 MAX_ID = 32767
 FACE_GOURAUD, FACE_TEXTURED, FACE_QUAD, FACE_SEMI, FACE_DOUBLE, FACE_KEYED = 1, 2, 4, 8, 16, 32
 VIEW_SIZE = 64          # bytes of a VView record in the cart
-OUT_SIZE = 128          # bytes of the cart's VOut block
+OUT_SIZE = 136          # bytes of the cart's VOut block
 STATS_WORDS = 18
 STATS_NAMES = ('tris', 'tris_empty', 'tris_dropped', 'px0', 'px1', 'px2', 'px3', 'px4', 'px5', 'px6',
                'px7', 'clears', 'lists', 'cpu_cycles', 'gpu_cycles', 'ticks', 'gpu_lag', 'zero')
@@ -104,6 +104,9 @@ class Instance:
     tag: int = None
     sphere: tuple = None
     ground: bool = False    # a ground placement (pack 1.1): drawn in the ground pass
+    level: int = 0          # (pack 1.3) the level of detail this instance is of its placement
+    lod: dict = None        # the placement's decoded LOD set, when it has one
+    lod_field: int = None   # the offset of the placement's entry in its cell's LOD table
 
 
 def instances(pack):
@@ -115,9 +118,18 @@ def instances(pack):
         for k, p in enumerate(c.placements):
             if pl_off is None:
                 pl_off = struct.unpack_from('<I', pack.data, c.off + 56)[0]
+            lod = p.get('lod')
             out.append(Instance(('placement', i, j, k), (i, j), p['mesh'], pl_off + 48 * k + 40, p['pos'],
                                 p['cos'], p['sin'], mask=p['mask'], tag=p['tag'], sphere=p['sphere'],
-                                ground=p.get('ground', False)))
+                                ground=p.get('ground', False), lod=lod, lod_field=p.get('lod_field')))
+            # each coarser level of detail is an instance of its own (the cull mark draws nothing)
+            for level, row in enumerate(lod['rows'] if lod else (), 1):
+                if row[3]:
+                    out.append(Instance(('placement', i, j, k, level), (i, j), row[3],
+                                        lod['off'] + 8 + 16 * (level - 1) + 12, p['pos'], p['cos'], p['sin'],
+                                        mask=p['mask'], tag=p['tag'], sphere=p['sphere'],
+                                        ground=p.get('ground', False), level=level, lod=lod,
+                                        lod_field=p['lod_field']))
         if c.standin:
             out.append(Instance(('standin', i, j), (i, j), c.standin, c.off + 48, (0, 0, 0),
                                 sphere=c.standin_bounds))
@@ -167,14 +179,25 @@ def identity_pack(data, insts, first_ids, meshes):
     """A copy of the pack in which each instance in first_ids draws its own identity mesh,
     appended to the pack (the instance's mesh field points at it)."""
     out = bytearray(data)
+    copies = {}             # a placement's own copy of its (shared) LOD set
     for inst in insts:
         if inst.key not in first_ids:
             continue
+        field = inst.field
+        if inst.level:
+            if inst.lod_field not in copies:
+                so, n = inst.lod['off'], len(inst.lod['rows'])
+                while len(out) % 4:
+                    out.append(0)
+                copies[inst.lod_field] = len(out)
+                out += data[so:so + 8 + 16 * n]
+                struct.pack_into('<I', out, inst.lod_field, copies[inst.lod_field])
+            field = copies[inst.lod_field] + 8 + 16 * (inst.level - 1) + 12
         while len(out) % 4:
             out.append(0)
         at = len(out)
         out += identity_mesh(data, inst.mesh, meshes[inst.mesh], first_ids[inst.key])
-        struct.pack_into('<I', out, inst.field, at)
+        struct.pack_into('<I', out, field, at)
     while len(out) % 4:
         out.append(0)
     struct.pack_into('<I', out, 8, len(out))
@@ -210,6 +233,8 @@ struct VOut {{
     standins: s32
     entities: s32
     ground: s32         // ground placements drawn
+    coarse: s32         // placements drawn at a level of detail other than 0
+    lod_culled: s32     // placements in view not drawn: past their LOD cull distance
     origin: vec4
     vp: mat4
 }}
@@ -268,6 +293,8 @@ fn draw() {{
     wp_ground_first = {ground_first}
     wp_object_bias = {object_bias}
     wp_object_squash = {object_squash}
+    wp_lod = {lod}
+    wp_lod_fine = {lod_fine}
     let nl = wp_layer_count()
     for l in 0..nl {{ wp_layer_set(l, false) }}
     for l in 0..nl {{
@@ -294,6 +321,8 @@ fn draw() {{
     vout.standins = wp_stats.standins
     vout.entities = ne
     vout.ground = wp_stats.ground
+    vout.coarse = wp_stats.coarse
+    vout.lod_culled = wp_stats.lod_culled
     let o = wp_view_origin()
     vout.origin = vec4(o.x, o.y, o.z, 0.0)
     vout.vp = __vp
@@ -342,7 +371,9 @@ def run_cart(pack_bytes, id_bytes, views, runtime, tools, work):
                                                 ground_first='true' if runtime['ground_first'] else 'false',
                                                 objects='true' if runtime['entity_drawing'] == 'object' else 'false',
                                                 object_bias=fixed_literal(runtime['object_bias']),
-                                                object_squash=int(runtime['object_squash'])))
+                                                object_squash=int(runtime['object_squash']),
+                                                lod='true' if runtime['lod'] else 'false',
+                                                lod_fine='true' if runtime['lod_fine'] else 'false'))
     t0 = time.perf_counter()
     _run([tools['compiler'], work / 'check.akr', '-o', work / 'check.mei', '--sym', work / 'check.sym'],
          'compiling the verification cart')
@@ -369,13 +400,14 @@ def run_cart(pack_bytes, id_bytes, views, runtime, tools, work):
     for _ in range(count):
         stats = dict(zip(STATS_NAMES, struct.unpack_from(f'<{STATS_WORDS}I', cap, at)))
         at += 4 * STATS_WORDS
-        o = struct.unpack_from('<12i', cap, at)
-        origin = struct.unpack_from('<4i', cap, at + 48)
-        vp = struct.unpack_from('<16i', cap, at + 64)
+        o = struct.unpack_from('<14i', cap, at)
+        origin = struct.unpack_from('<4i', cap, at + 56)
+        vp = struct.unpack_from('<16i', cap, at + 72)
         at += OUT_SIZE
         out = dict(request=o[0] & 0xFFFFFFFF, view=o[1], draw_cycles=o[2], entity_cycles=o[3],
                    arena_bytes=o[4], arena_left=o[5], near_cells=o[6], placements=o[7], drawn=o[8],
-                   standins=o[9], entities=o[10], ground=o[11], origin=[c / ONE for c in origin[:3]],
+                   standins=o[9], entities=o[10], ground=o[11], coarse=o[12], lod_culled=o[13],
+                   origin=[c / ONE for c in origin[:3]],
                    vp=np.array(vp, dtype=float).reshape(4, 4) / ONE)
         pic = None
         if out['request'] & 2:
@@ -439,6 +471,11 @@ def select(pack, by_cell, eye, vp, layers_on, runtime):
                     if v is not False:
                         out.append((inst, 'far', v is True))
     planes = _planes(vp, runtime['clip_near'], runtime['near_far'])
+    # levels of detail, as the reader chooses them: from a fresh frame (the cart opens the pack for
+    # every view), by the plain distances, or the finest the band allows (runtime lod_fine)
+    eye_raw = [round(c * ONE) for c in eye]
+    eye_local = (eye_raw[0] - ((ci << pack.cell_shift) * ONE + round(half * ONE)), eye_raw[1],
+                 eye_raw[2] - ((cj << pack.cell_shift) * ONE + round(half * ONE)))
     for dj in (-1, 0, 1):
         for di in (-1, 0, 1):
             c = pack.cells.get((ci + di, cj + dj))
@@ -463,6 +500,13 @@ def select(pack, by_cell, eye, vp, layers_on, runtime):
                             out.append((inst, 'near', v is True))
                 elif kind == 'placement' and cv is not False:
                     s = inst.sphere
+                    if inst.lod is not None:
+                        level = 0
+                        if runtime['lod']:
+                            d2 = lod_d2(s, eye_local, (di * S * ONE, 0, dj * S * ONE))
+                            level = lod_level(inst.lod['rows'], d2, fine=runtime['lod_fine'])
+                        if level != inst.level:
+                            continue
                     v = _sphere(planes, (s[0] / ONE + di * S, s[1] / ONE, s[2] / ONE + dj * S), s[3] / ONE)
                     if v is not False:
                         pas = 'ground' if inst.ground and runtime['ground_first'] else 'near'

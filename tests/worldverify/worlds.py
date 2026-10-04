@@ -13,7 +13,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools'))
 import importlib.util  # noqa: E402
-from worldkit.pack import World, Cell, Placement, Tri, Entity, encode  # noqa: E402
+from worldkit.pack import World, Cell, Placement, Tri, Entity, Lod, encode  # noqa: E402
 import meshlib  # noqa: E402
 
 # the world pack tests' mesh helpers (tests/worldpack/fixture.py)
@@ -85,6 +85,20 @@ def good_world():
     c = plaza()
     c.entities.append(Entity(1, (12, 1, 14), mesh=box_mesh((-0.3, 0, -0.3), (0.3, 0.6, 0.3), meshlib.rgb(250, 220, 0))))
     return World(cells=[c], cell_shift=5)
+
+
+def lod_world():
+    """The good plaza whose buildings have levels of detail: a lower box from 10 units, a lower
+    one still from 18, and none past 26 (the cull), so the sampled cameras see every level."""
+    w = good_world()
+    for p in w.cells[0].placements:
+        if p.tag >= TAG_BOX:
+            n = p.tag - TAG_BOX
+            bx, bz, wd, d, h = BOXES[n]
+            mid = box_mesh((-wd / 2, 0, -d / 2), (wd / 2, h * 0.75, d / 2), meshlib.rgb(90, 150 + 30 * n, 70))
+            low = box_mesh((-wd / 2, 0, -d / 2), (wd / 2, h * 0.5, d / 2), meshlib.rgb(70, 90, 150 + 30 * n))
+            p.lod = Lod([(10, mid), (18, low), (26, None)], band=1.0)
+    return w
 
 
 def crack_world():

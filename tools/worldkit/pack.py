@@ -28,8 +28,9 @@ import struct
 
 MAGIC = b'MEIW'
 VERSION_MAJOR = 1
-VERSION_MINOR = 2
-HEADER_SIZE = 72            # 64 in 1.0 and 1.1; 1.2 adds path_count and path_off
+VERSION_MINOR = 3
+HEADER_SIZE = 80            # 64 in 1.0 and 1.1; 1.2 adds path_count and path_off; 1.3 near_far, lod_slots
+HEADER_SIZE_1_2 = 72
 MIN_HEADER_SIZE = 64
 CELL_SIZE = 96
 PLACEMENT_SIZE = 48
@@ -45,6 +46,8 @@ SAMPLE_SIZE = 20
 VRAM_COPY_SIZE = 12
 PATH_SIZE = 48
 PATH_POINT_SIZE = 40
+LOD_HEAD_SIZE = 8
+LOD_LEVEL_SIZE = 16
 
 ONE = 65536
 NO_LAYER = 0xFF
@@ -65,6 +68,9 @@ PATH_RAISED = 1             # path flags bit 0 (1.2): raised, not lying on the g
 PATH_CLOSED = 2             # path flags bit 1 (1.2): a loop (its last stored point repeats its first)
 MAX_PATH_POINTS = 4096      # stored points of one path
 MAX_PATH_LENGTH = 16384     # units: keeps every product the reader forms inside fixed range
+MAX_LOD_LEVELS = 8          # levels after level 0 in one LOD set, the cull mark included
+MAX_LOD_DISTANCE = 1400     # units: (distance / 8)^2 stays inside fixed range
+LOD_CULL = 1                # LOD set flags bit 0 (1.3): the last mark culls (its mesh is 0)
 
 KIND_FLOOR, KIND_WALL, KIND_CEILING = 0, 1, 2
 KIND_NAMES = ('floor', 'wall', 'ceiling')
@@ -134,6 +140,17 @@ class Placement:
     layer: str = None
     tag: int = 0
     ground: bool = False
+    lod: object = None      # Lod (1.3): coarser meshes farther away; mesh is level 0
+
+
+@dataclass
+class Lod:
+    """A placement's levels of detail (WORLDPACK.md, "Levels of detail"): levels[k - 1] =
+    (distance, mesh) for level k, from that distance (units from the viewer to the placement's
+    sphere centre) on; a mesh of None is "not drawn" and may only be the last (a cull distance).
+    band: the hysteresis, units."""
+    levels: list
+    band: float = 1.0
 
 
 @dataclass
@@ -226,6 +243,7 @@ class World:
     floor_max_degrees: float = 45.0
     ceiling_max_degrees: float = 45.0
     paths: list = field(default_factory=list)       # Path (1.2)
+    near_far: float = None                          # (1.3) the near pass's far depth; None: 1.5 cells
 
 
 # ---- meshes
@@ -630,6 +648,59 @@ def _write_paths(out, paths, string_ref):
     return table
 
 
+# ---- levels of detail
+
+def lod_square(d):
+    """(d / 8)^2 as raw 16.16 for a distance d in units, from d rounded to 16.16 first."""
+    D = fx(d)
+    return rnd(Fraction(D * D, 64 * ONE))
+
+
+def lod_rows(lod):
+    """A Lod's level rows: [(at2, out2, in2, mesh or None)], checked."""
+    if not 1 <= len(lod.levels) <= MAX_LOD_LEVELS:
+        raise PackError(f'a LOD set has 1..{MAX_LOD_LEVELS} levels after level 0')
+    band = lod.band
+    if band < 0:
+        raise PackError('LOD band below 0')
+    prev = 0
+    rows = []
+    for k, (d, mesh) in enumerate(lod.levels):
+        if mesh is None and k != len(lod.levels) - 1:
+            raise PackError('only the last LOD level may cull (no mesh)')
+        if mesh is not None:
+            mesh_info(mesh)
+        if d - band <= prev + band or d + band > MAX_LOD_DISTANCE:
+            raise PackError(f'LOD distance {d}: distances increase by more than twice the band ({band}), '
+                            f'and stay within {MAX_LOD_DISTANCE} units with the band')
+        prev = d
+        rows.append((lod_square(d), lod_square(d + band), lod_square(d - band), mesh))
+    return rows
+
+
+def lod_level(rows, d2, state=None, fine=False):
+    """The level the reader draws (0 .. len(rows)) for d2, the squared distance / 64 as raw (what
+    the reader computes), given the level drawn before (state, None when unknown): with no state
+    the plain thresholds; with one, the level kept within the hysteresis band; fine: the finest
+    level the band allows (the World Checker's worst case)."""
+    plain = sum(1 for r in rows if d2 >= r[0])
+    lo = sum(1 for r in rows if d2 >= r[1])       # past (d + band): must be at least this coarse
+    hi = sum(1 for r in rows if d2 >= r[2])       # past (d - band): may be this coarse
+    if fine:
+        return lo
+    if state is None:
+        return plain
+    return min(max(state, lo), hi)
+
+
+def lod_d2(sphere, eye_local, off=(0, 0, 0)):
+    """The reader's d2 for a placement sphere (raw, cell-local) seen from eye_local (raw,
+    relative to the same cell's centre after off): q = (centre + off - eye) * 0.125 with the CPU's
+    fmul, then vdot's exact sum shifted right 16."""
+    q = [fmul(sphere[i] + off[i] - eye_local[i], ONE // 8) for i in range(3)]
+    return (q[0] * q[0] + q[1] * q[1] + q[2] * q[2]) >> 16
+
+
 # ---- the encoder
 
 def encode(world, report=None):
@@ -780,6 +851,8 @@ def encode(world, report=None):
         return lambda name: 0 if name is None else 1 << names.index(name)
 
     any_ground = False
+    lod_pool = {}               # (band, rows) -> offset of the pooled LOD set
+    lod_slots = 0               # placements in cells with a LOD table: the reader's level memory
     entity_numbers = []         # (cell (i, j), k)
     entity_records = []         # offsets
     cell_offs = {}
@@ -791,6 +864,7 @@ def encode(world, report=None):
         mask_of = mask_for(key)
         cx, cz = (c.i << shift) * ONE + half, (c.j << shift) * ONE + half
         at = out.reserve(CELL_SIZE)
+        lod_sets = []
         cell_offs[key] = at
         # placements
         spheres = []
@@ -807,6 +881,11 @@ def encode(world, report=None):
             verts = [tuple(fx(x) for x in v) for v in mesh_vertices(p.mesh)]
             if not verts:
                 raise PackError('placement mesh has no vertices')
+            rows = lod_rows(p.lod) if p.lod is not None else None
+            lod_sets.append(rows)
+            for r in rows or ():        # the sphere and the overhang hold every level
+                if r[3] is not None:
+                    verts += [tuple(fx(x) for x in v) for v in mesh_vertices(r[3])]
             pts = [tuple(a + b for a, b in zip(_rotate(v, cs, sn), local)) for v in verts]
             sc, sr = _sphere_of_points(pts)
             reach = max(max(abs(q[0]), abs(q[2])) for q in pts)
@@ -823,6 +902,25 @@ def encode(world, report=None):
         pl_off = out.put(bytes(prec)) if placements else 0
         for k, p in enumerate(placements):
             mesh_ref(pl_off + PLACEMENT_SIZE * k + 40, p.mesh)
+        # levels of detail (1.3): a table of set offsets per placement, sets pooled per pack
+        lod_off, lod_first = 0, 0
+        if any(r is not None for r in lod_sets):
+            lod_off = out.reserve(4 * len(placements))
+            lod_first = lod_slots
+            lod_slots += len(placements)
+            for k, rows in enumerate(lod_sets):
+                if rows is None:
+                    continue
+                band = fx(placements[k].lod.band)
+                pool_key = (band, tuple((a, b, d, m) for a, b, d, m in rows))
+                if pool_key not in lod_pool:
+                    so = out.reserve(LOD_HEAD_SIZE + LOD_LEVEL_SIZE * len(rows))
+                    out.patch(so, 'BBHi', len(rows), LOD_CULL if rows[-1][3] is None else 0, 0, band)
+                    for q, (a, b, d, m) in enumerate(rows):
+                        out.patch(so + LOD_HEAD_SIZE + LOD_LEVEL_SIZE * q, '3iI', a, b, d, 0)
+                        mesh_ref(so + LOD_HEAD_SIZE + LOD_LEVEL_SIZE * q + 12, m)
+                    lod_pool[pool_key] = so
+                out.patch(lod_off + 4 * k, 'I', lod_pool[pool_key])
         bounds = _sphere_of_spheres(spheres) if spheres else ([0, 0, 0], 0)
         sb = ([0, 0, 0], 0)
         if c.standin is not None:
@@ -872,7 +970,7 @@ def encode(world, report=None):
         lay = [layer_id[n] for n in names] + [NO_LAYER] * (MAX_CELL_LAYERS - len(names))
         out.patch(at, 'hhHBB8B4i4iIIIIIII5I', c.i, c.j, c.region, len(names), 0, *lay,
                   *bounds[0], bounds[1], *sb[0], sb[1], 0, len(c.placements), pl_off,
-                  len(c.entities), en_off, first, coll_off, ground_count, 0, 0, 0, 0)
+                  len(c.entities), en_off, first, coll_off, ground_count, lod_off, lod_first, 0, 0)
         if c.standin is not None:
             mesh_ref(at + 48, c.standin)
 
@@ -898,10 +996,14 @@ def encode(world, report=None):
             strings[text] = out.put(raw + b'\0', 1)
         out.patch(at, 'I', strings[text])
     out.align(4)
-    out.patch(0, '4sHHIBBHhhHHIiiHHIIIIIIII', MAGIC, VERSION_MAJOR, VERSION_MINOR, len(out.b),
+    near_far = fx(world.near_far) if world.near_far is not None else 0
+    if world.near_far is not None and not 0 < near_far <= 2048 * ONE:
+        raise PackError('near_far must be more than 0 and at most 2048 units')
+    out.patch(0, '4sHHIBBHhhHHIiiHHIIIIIIIIiI', MAGIC, VERSION_MAJOR, VERSION_MINOR, len(out.b),
               shift, FLAG_GROUND if any_ground else 0, HEADER_SIZE, i0, j0, gw, gh, index_off, pad, overhang,
               len(world.regions), len(world.layers), region_off, layer_off,
-              len(entity_records), ent_dir, len(mesh_order), mesh_dir, len(world.paths), path_off)
+              len(entity_records), ent_dir, len(mesh_order), mesh_dir, len(world.paths), path_off,
+              near_far, lod_slots)
     if report is not None:
         report['layers'] = dict(layer_id)
         report['cell_layers'] = {k: list(v) for k, v in cell_layers.items()}
@@ -909,6 +1011,8 @@ def encode(world, report=None):
         report['cells'] = dict(cell_offs)
         report['meshes'] = len(mesh_order)
         report['paths'] = {p.name: k for k, p in enumerate(world.paths)}
+        report['lod_slots'] = lod_slots
+        report['lod_sets'] = len(lod_pool)
     return bytes(out.b)
 
 
@@ -967,6 +1071,8 @@ class Pack:
     entities: list      # record offsets
     meshes: list        # offsets
     paths: list = field(default_factory=list)   # dicts (1.2): name, flags, surface, lo, hi, length, points
+    near_far: int = 0       # (1.3) raw; 0: the reader's default (1.5 cells)
+    lod_slots: int = 0      # (1.3)
 
     def cell_of(self, x, z):
         """(i, j) of the cell holding raw world point (x, z), and its local x and z."""
@@ -1090,6 +1196,13 @@ def decode(data):
     if nreg == 0:
         raise PackError('no regions')
     paths = _decode_paths(r, minor, hs)
+    near_far, lod_slots = 0, 0
+    if minor >= 3:
+        if hs < HEADER_SIZE:
+            raise PackError(f'a 1.{minor} header is at least {HEADER_SIZE} bytes')
+        near_far, lod_slots = r.u('iI', 72, 'header')
+        if near_far < 0 or near_far > 2048 * ONE:
+            raise PackError('bad near_far')
     layers = []
     for k in range(nlay):
         no, grp, fl, _ = r.u('IBBH', lay_off + LAYER_SIZE * k, 'layer')
@@ -1178,7 +1291,18 @@ def decode(data):
             if ground != (p < nground):
                 raise PackError(f'cell ({ci}, {cj}): the ground placements are not the first {nground}')
             pls.append(dict(sphere=pv[0:4], pos=pv[4:7], cos=pv[8], sin=pv[9],
-                            mesh=mesh_at(pv[10], 'placement'), mask=pv[11], tag=pv[13], ground=ground))
+                            mesh=mesh_at(pv[10], 'placement'), mask=pv[11], tag=pv[13], ground=ground, lod=None))
+        lod_off, lod_first = (v[29], v[30]) if minor >= 3 else (0, 0)
+        if lod_off:
+            r.table(lod_off, npl, 4, f'cell ({ci}, {cj}) LOD table', hs)
+            if npl == 0 or lod_first + npl > lod_slots:
+                raise PackError(f'cell ({ci}, {cj}): LOD slots out of range')
+            for p in range(npl):
+                so = r.u('I', lod_off + 4 * p, 'LOD table')[0]
+                if so:
+                    pls[p]['lod'] = _decode_lod(r, so, hs, mesh_at)
+                    pls[p]['lod_field'] = lod_off + 4 * p
+                    pls[p]['lod_slot'] = lod_first + p
         ens = []
         for e in range(nen):
             ea = eno + ENTITY_SIZE * e
@@ -1208,7 +1332,28 @@ def decode(data):
     if len(by_off) != nent:
         raise PackError('entity count disagrees with the cells')
     return Pack(data, major, minor, shift, i0, j0, gw, gh, pad, overhang, layers, regions, cells,
-                ents, meshes, paths)
+                ents, meshes, paths, near_far, lod_slots)
+
+
+def _decode_lod(r, so, hs, mesh_at):
+    """A LOD set (1.3): {'off', 'band', 'cull', 'rows': [(at2, out2, in2, mesh offset)]}."""
+    r.table(so, 1, LOD_HEAD_SIZE, 'LOD set', hs)
+    n, flags, _, band = r.u('BBHi', so, 'LOD set')
+    if not 1 <= n <= MAX_LOD_LEVELS or band < 0:
+        raise PackError('LOD set: bad level count or band')
+    r.table(so, 1, LOD_HEAD_SIZE + LOD_LEVEL_SIZE * n, 'LOD set', hs)
+    rows = []
+    prev_out = -1
+    for q in range(n):
+        at2, out2, in2, mo = r.u('3iI', so + LOD_HEAD_SIZE + LOD_LEVEL_SIZE * q, 'LOD level')
+        last_cull = flags & LOD_CULL and q == n - 1
+        if (mo == 0) != bool(last_cull):
+            raise PackError('LOD set: a level without a mesh that is not the cull mark')
+        if not prev_out < in2 <= at2 <= out2:
+            raise PackError('LOD set: switch distances out of order')
+        prev_out = out2
+        rows.append((at2, out2, in2, mesh_at(mo, 'LOD level')))
+    return {'off': so, 'band': band, 'cull': bool(flags & LOD_CULL), 'rows': rows}
 
 
 def _decode_paths(r, minor, hs):
@@ -1217,8 +1362,8 @@ def _decode_paths(r, minor, hs):
     path ends where it starts, the box holds every point)."""
     if minor < 2:
         return []
-    if hs < HEADER_SIZE:
-        raise PackError(f'a 1.{minor} header is at least {HEADER_SIZE} bytes')
+    if hs < HEADER_SIZE_1_2:
+        raise PackError(f'a 1.{minor} header is at least {HEADER_SIZE_1_2} bytes')
     count, table = r.u('II', 64, 'header')
     r.table(table, count, PATH_SIZE, 'paths', hs)
     if count and table == 0:

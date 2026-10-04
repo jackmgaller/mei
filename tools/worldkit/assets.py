@@ -29,6 +29,7 @@ class Asset:
     shown: str = ''                      # the recipe path as reports show it (relative to the world)
     verification: dict = None            # the Asset Checker's result, when it ran
     uses: list = field(default_factory=list)
+    levels: list = field(default_factory=list)   # native meshes of levels of detail 1.. (recipe lod)
 
     @property
     def triangles(self): return self.report['triangles']
@@ -52,6 +53,7 @@ class Asset:
                'verification':('passed' if self.verification and self.verification['ok'] else
                                'required' if self.policy_required else 'none'),
                'used_as':sorted(set(self.uses))}
+        if 'lod' in self.report: out['lod'] = self.report['lod']
         return out
 
 
@@ -87,6 +89,7 @@ class Library:
             manifest = material_manifest(mesh,materials,recipe)
             tags = [materials[f.material].get('tag') for f in mesh.faces]
             self.assets[name] = Asset(name,str(source),recipe,binary,manifest,report,tags,relative(source,self.base_path))
+            self.assets[name].levels = [native_bytes(m,materials,recipe.get('lighting',{})) for m,_ in mesh.levels or []]
         asset = self.assets[name]
         asset.uses.append(use)
         return asset

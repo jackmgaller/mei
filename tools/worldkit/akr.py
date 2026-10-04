@@ -73,6 +73,9 @@ def world_source(source, compiled, palettes, slot, row, numbers, groups):
     if layers:
         lines += ['','// Layers (wp_layer_set(id, on)); exclusive groups switch each other off.']
         for k,lname in enumerate(layers): lines.append(f'const WORLD_{N}_LAYER_{upper(lname)} = {k}')
+    if 'near_far' in w.get('runtime',{}):
+        lines += ['',f'// The near pass\'s far depth the pack asks for (wp_open() sets wp_near_far to it).',
+                  f'const WORLD_{N}_NEAR_FAR: fixed = {float(w["runtime"]["near_far"])}']
     paths = list(w.get('paths',{}))
     if paths:
         lines += ['','// Paths (wp_path(n); by name: wp_path_find(name)), in the order of the recipe.']

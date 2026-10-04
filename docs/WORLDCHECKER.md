@@ -41,7 +41,7 @@ are measured and listed, and nothing fails on them.
 
 | Hard failures (every mode) | Threshold failures (strict mode only) |
 |---|---|
-| a pack that does not decode | a view over `gpu_cycles` or `draw_cpu_cycles` |
+| a pack that does not decode | a view over `gpu_cycles`, `draw_cpu_cycles` or `view_triangles` |
 | a view with dropped triangles (over the GPU's 4,000) | wrong-order pixels in the near band over `near_wrong_pixels` |
 | a view that filled the packet arena | wrong-order pixels elsewhere over `far_wrong_fraction` of the screen |
 | a collision crack or mismatched floor edge | coverage errors over `coverage_pixels` |
@@ -72,6 +72,7 @@ are WORLDKIT.md's placeholders.
 | `thresholds.ground_inversion_pixels` | 0 | per view: pixels where ground truly hides what is drawn over it |
 | `thresholds.gpu_cycles` | 800,000 | 80% of the GPU's budget |
 | `thresholds.draw_cpu_cycles` | 300,000 | 60% of the CPU's: `wp_draw()` plus entity meshes |
+| `thresholds.view_triangles` | 2,000 | triangles submitted per view (WORLDKIT.md, "A frame budget") |
 | `thresholds.cell_triangles`, `cell_placements`, `standin_triangles` | 1,600, 100, 32 | every layer on |
 | `sampling.floor_spacing` | 16 | grid spacing over each cell's floors (`null`: none) |
 | `sampling.yaws`, `yaw_offset_degrees` | 4, 22.5 | directions per position |
@@ -84,7 +85,7 @@ are WORLDKIT.md's placeholders.
 | `sampling.layer_combinations` | true | |
 | `sampling.max_views` | 600 | views after layer combinations; thinned evenly per kind; vantage points always kept |
 | `vantage_points` | [] | `{"position": [x, y, z], "yaw": deg, "pitch": deg}` |
-| `runtime` | far ring 3, near 0.1, near far 1.5 cells, entities drawn, ground first, entity drawing `object`, object bias 1.5, object squash 2 | what the game sets on the reader (`ground_first`: `wp_ground_first`; `entity_drawing`: `object`, through `wp_draw_entities()`, or `mesh_at`, each live entity's mesh by its own depth; `object_bias`, `object_squash`: `wp_object_bias`, `wp_object_squash`) |
+| `runtime` | far ring 3, near 0.1, near far 1.5 cells, entities drawn, ground first, entity drawing `object`, object bias 1.5, object squash 2, levels of detail on, worst case | what the game sets on the reader (`near_far`: `null` takes the pack's own, else 1.5 cells; `lod`: `wp_lod`; `lod_fine`: `wp_lod_fine`, the finest level the hysteresis band allows; `ground_first`: `wp_ground_first`; `entity_drawing`: `object`, through `wp_draw_entities()`, or `mesh_at`, each live entity's mesh by its own depth; `object_bias`, `object_squash`: `wp_object_bias`, `wp_object_squash`) |
 | `ordering` | on; edge margin 1 px; depth epsilon 0.001 | see [Ordering](#ordering-check-3) |
 | `collision` | 4 samples a unit, rays of 32 units, 50 findings | |
 | `images` | 6 | diagnostic pictures of the worst views |
@@ -154,7 +155,7 @@ calls `wp_draw()`, then draws the live entities' meshes in the 3 × 3 near cells
 with `wp_draw_entities()` (runtime `entity_drawing` `object`, the default), or each with
 `mesh_at(mesh, pos − wp_view_origin(), yaw)` (`mesh_at`, for a game that draws them so).
 `mei-scene-probe` links the core, runs the cart and after each presented frame records the
-frame's GPU statistics, a 128-byte block the cart fills (cycles around `wp_draw()` and the
+frame's GPU statistics, a 136-byte block the cart fills (cycles around `wp_draw()` and the
 entity loop, packet arena bytes used and left, the reader's `wp_stats`, the view origin and the
 camera matrix) and, for identity frames, the picture. A frame over budget shows late; the probe
 counts presented frames, so lag does not shift views. Per view the report has:
@@ -167,9 +168,29 @@ counts presented frames, so lag does not shift views. Per view the report has:
 | `triangles`, `triangles_dropped` | as the GPU counted them |
 | `arena_bytes`, `arena_full` | full: fewer bytes left than a quad's packet (the face loops stop there) |
 | `placements_drawn`, `ground_drawn`, `standins_drawn`, `entities_drawn` | `ground_drawn`: ground placements, in the ground pass |
+| `coarse_drawn`, `lod_culled` | placements drawn at a level of detail other than 0; in view but past their cull distance |
+
+In a pack with levels of detail each view also has `heaviest`: the five placements it drew with the
+most faces, each with its cell, number, tag (and name), faces, distance from the eye, the level
+drawn and how many levels it has; a budget failure (`gpu_cycles`, `draw_cpu_cycles`,
+`view_triangles`) carries the first three, which say what to give levels or nearer switch
+distances. The summary's `lod` adds up the views with coarse placements, the placements drawn
+coarse and culled, and the most triangles in a view (`null` for a pack without levels).
 
 The measured frame and the identity frame differ only in colours and texture flags, so they
 submit the same triangles.
+
+### Levels of detail
+
+The verification cart opens the pack for every view, so the reader has no memory of earlier
+levels, and with `runtime.lod_fine` (the default) it draws each placement at the finest level the
+hysteresis band allows: the worst case for the budgets, which a game hovering at a switch
+distance can reach. The reference chooses the same levels with the reader's exact rule
+(`pack.lod_level()` over `pack.lod_d2()`, integer arithmetic), and every coarser level is an
+instance of its own in the identity pack (each placement gets its own copy of its LOD set there),
+so the ordering check judges the levels actually drawn. `tests/test_worldverify.py` checks a
+plaza whose buildings have two coarser levels and a cull distance: no coverage errors, coarse
+levels drawn in most views. `runtime.lod: false` checks the world at full detail.
 
 ## Ordering (check 3)
 

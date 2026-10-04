@@ -485,7 +485,7 @@ class BuildTests(unittest.TestCase):
             self.assertEqual((cell.ground_count, cell.placements[0]['ground'], cell.placements[0]['tag']), (1, True, 0))
             self.assertEqual([p['ground'] for p in cell.placements[1:]], [False] * 6)
             self.assertEqual(c.report['cells'][0]['ground_placements'], 1)
-            self.assertEqual(c.report['pack']['version'], '1.2')
+            self.assertEqual(c.report['pack']['version'], '1.3')
             ex.edit(lambda w: w['cells'][0]['placements'][0].update(ground='yes'))
             with self.assertRaises(WorldError) as cm:
                 ex.compile()
@@ -524,6 +524,49 @@ class BuildTests(unittest.TestCase):
             c = Example(tmp).compile()
             self.assertEqual((P.decode(c.pack).paths, c.report['paths']), ([], {}))
             self.assertNotIn('PATH', c.akr)
+
+    def test_levels_of_detail(self):
+        def add_lod(a):
+            a['lod'] = {'levels': [{'distance': 20, 'nodes': [{'id': 'top', 'op': 'box', 'size': [3, 2, 3], 'open': ['bottom'],
+                                                                'transform': {'translate': [0, 1, 0]}, 'material': 'stone'}]}],
+                        'cull': 50, 'band': 2}
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            ex.edit(add_lod, 'assets/ledge_block.asset.json')
+            ex.edit(lambda w: w.update(runtime={'near_far': 48}))
+            c = ex.compile()
+            pack = P.decode(c.pack)
+            self.assertEqual(pack.near_far, P.fx(48))
+            self.assertIn('const WORLD_TEST_ROOM_NEAR_FAR: fixed = 48.0', c.akr)
+            ledge = [p for p in pack.cells[(0, 0)].placements if p['tag'] == 2][0]
+            rows = ledge['lod']['rows']
+            self.assertEqual([r[0] for r in rows], [P.lod_square(20), P.lod_square(50)])
+            self.assertEqual(rows[1][3], 0)
+            self.assertEqual(len(P.mesh_triangles(c.pack[rows[0][3]:])), 10)
+            self.assertEqual(c.report['lod']['ledge_block'], {'distances': [20], 'cull': 50, 'band': 2, 'off': False,
+                                                              'triangles': [12, 10]})
+            self.assertEqual(c.report['assets']['ledge_block']['lod']['levels'][1]['triangles'], 10)
+            self.assertEqual(sum(1 for p in pack.cells[(0, 0)].placements if p['lod']), 1)
+            # the world's own distances and scale
+            ex.edit(lambda w: w.update(lod={'scale': 0.5, 'assets': {'ledge_block': {'distances': [30], 'cull': None}}}))
+            c = ex.compile()
+            self.assertEqual(c.report['lod']['ledge_block']['distances'], [15])
+            self.assertEqual(len([p for p in P.decode(c.pack).cells[(0, 0)].placements if p['lod']][0]['lod']['rows']), 1)
+            ex.edit(lambda w: w.update(lod={'assets': {'ledge_block': {'off': True}, 'ramp': {'band': 1}}}))
+            c = ex.compile()
+            self.assertFalse(any(p['lod'] for p in P.decode(c.pack).cells[(0, 0)].placements))
+            self.assertIn('lod_unused', [w['code'] for w in c.report['warnings']])
+            for spec, path in (({'assets': {'ledge_block': {'distances': [10, 20]}}}, '/lod/assets/ledge_block/distances'),
+                               ({'assets': {'ledge_block': {'distances': [48]}}}, '/lod/assets/ledge_block'),
+                               ({'scale': 0.1}, '/lod/scale')):
+                ex.edit(lambda w: w.update(lod=spec))
+                with self.assertRaises(WorldError) as cm:
+                    ex.compile()
+                self.assertEqual(cm.exception.path, path)
+        with tempfile.TemporaryDirectory() as tmp:
+            c = Example(tmp).compile()
+            pack = P.decode(c.pack)
+            self.assertEqual((pack.near_far, pack.lod_slots, c.report['lod']), (0, 0, {}))
 
     def test_assets_must_pass_their_own_policy(self):
         with tempfile.TemporaryDirectory() as tmp:

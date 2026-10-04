@@ -394,6 +394,42 @@ untextured face (only texel index 0 skips pixels, and swatch faces never sample 
 `mesh()` clips, culls and sorts textured faces like untextured ones. Any other textured face is
 rejected by the gate.
 
+### Levels of detail
+
+`lod` gives an asset simpler meshes for farther away. Level 0 is the recipe's own `nodes`; each
+entry of `lod.levels` is a coarser level with its own `nodes` and the `distance` (units, from the
+viewer to the placed mesh) from which it is drawn. Every level shares the recipe's materials,
+prototypes, lighting, palette layout, budget and verification policy:
+
+```json
+"lod": {
+  "levels": [
+    {"distance": 24, "nodes": [{"id": "body", "op": "box", "size": [6, 9, 5], "open": ["bottom"],
+                                "material": "brick", "transform": {"translate": [0, 4.5, 0]}}]},
+    {"distance": 48, "nodes": [{"id": "body", "op": "box", "size": [6, 9, 5], "open": ["bottom", "back"],
+                                "material": "brick", "transform": {"translate": [0, 4.5, 0]}}]}
+  ],
+  "cull": 90,
+  "band": 1
+}
+```
+
+| Property | Meaning |
+|---|---|
+| `levels` | 1–7 coarser levels, distances increasing |
+| `cull` | Not drawn at all from this distance on (beyond the last level). Default: never culled |
+| `band` | Hysteresis in units, default 1: a consumer changes level only once the distance is this far past a switch distance. Distances (and the cull) must lie more than twice the band apart, and the first more than twice the band from 0 |
+
+A level may draw only palette-backed materials that level 0 draws: every level uses level 0's
+palette entries, so one palette and one relocation serve them all. A level with no fewer
+triangles than the one before is a warning (`lod_not_simpler`). The report's `lod` lists each
+level's distance, triangles and vertices, with `cull` and `band`. `build` writes each level as
+`NAME.lodK.bin` (K from 1) and embeds it in `NAME.akr` as `ASSET_NAME_LODK`. `verify` checks
+every level as an asset of its own with the same policy (pictures under `lodK/`), lists the
+levels' results under `lod`, and fails if any level fails. Choosing the level is the consumer's:
+the World Kit stores the distances in the pack and the reader chooses per placement
+([WORLDKIT.md](WORLDKIT.md#levels-of-detail)).
+
 ### Budgets and diagnostics
 
 The default asset budget is 2,048 vertices and 2,000 triangles. The vertex cap matches Mei's
@@ -428,6 +464,7 @@ For an asset named `stool`, `build` produces:
 | `stool.model.json` | Explicit geometry in Mei Modeler's project format |
 | `preview.akr` | Standalone camera-fitted preview cart source |
 | `report.json` | Build costs, hashes, per-part diagnostics and optional native render results |
+| `stool.lod1.bin`, … | With `lod`: each coarser level's native mesh, embedded in `stool.akr` as `ASSET_STOOL_LOD1`, … |
 | `stool.materials.json` | Material manifest: palette entries, classes, tags and face ranges (below) |
 
 Recipes with palette-backed materials also get:

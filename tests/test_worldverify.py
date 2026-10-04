@@ -270,6 +270,27 @@ class ViewTests(unittest.TestCase):
         ok = self.run_check(F.overdraw_world(), settings(s, mode='strict', thresholds={'gpu_cycles': 1200000}))
         self.assertNotIn('gpu_cycles', codes(ok['threshold_failures']))
 
+    def test_levels_of_detail_are_judged_as_drawn(self):
+        s = {'sampling': {'entities': None}}
+        r = self.run_check(F.lod_world(), s)
+        lod = r['summary']['lod']
+        if VERBOSE:
+            print('\n  LOD world:', json.dumps(lod), r['summary']['coverage_errors'])
+        self.assertGreater(lod['coarse_drawn'], 10)
+        self.assertGreater(lod['lod_culled'], 0)
+        self.assertEqual(r['summary']['coverage_errors'], 0, 'the reference draws the levels the reader drew')
+        self.assertGreater(r['summary']['tested_pixels'], 20 * 50000)
+        flat = self.run_check(F.lod_world(), settings(s, runtime={'lod': False}))
+        self.assertEqual((flat['summary']['lod']['coarse_drawn'], flat['summary']['lod']['lod_culled']), (0, 0))
+        self.assertEqual(flat['summary']['coverage_errors'], 0)
+        self.assertGreaterEqual(flat['summary']['max_triangles']['value'], r['summary']['max_triangles']['value'])
+        # a triangle budget failure names the heaviest placements drawn, with their level and distance
+        tight = self.run_check(F.lod_world(), settings(s, thresholds={'view_triangles': 20}))
+        f = [f for f in tight['threshold_failures'] if f['code'] == 'view_triangles'][0]
+        self.assertTrue(f['heaviest'])
+        self.assertEqual(set(f['heaviest'][0]), {'cell', 'placement', 'tag', 'faces', 'distance', 'level', 'levels'})
+        self.assertIsNone(self.run_check(F.good_world(), s)['summary']['lod'])
+
     def test_dropped_triangles_fail_in_every_mode(self):
         s = settings(VANTAGE_ONLY, vantage_points=[F.VANTAGE_DROPPED])
         r = self.run_check(F.dropped_world(), s)

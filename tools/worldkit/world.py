@@ -325,6 +325,52 @@ def compile_world(source, lock=None, assets_dir=None):
         if lname not in used_layers:
             warnings.append({'code': 'unused_layer', 'layer': lname, 'message': 'No placement or entity uses this layer.'})
 
+    # ---- levels of detail: the switch distances per asset (the recipe's, then the world's)
+    lod_cfg = w.get('lod', {})
+    lod_report = {}
+    for aname in lod_cfg.get('assets', {}):
+        if aname not in library.assets or not library.assets[aname].levels:
+            warnings.append({'code': 'lod_unused', 'asset': aname, 'message': 'lod.assets names an asset that '
+                             'no placement draws, or whose recipe has no lod.'})
+
+    def lod_of(asset, rp, slot, row):
+        if not asset.levels:
+            return None
+        if asset.name not in lod_report:
+            spec = dict(asset.recipe['lod'])
+            over = lod_cfg.get('assets', {}).get(asset.name, {})
+            ap = pointer('/lod/assets', asset.name)
+            distances = [lv['distance'] for lv in spec.get('levels', [])]
+            if 'distances' in over:
+                if len(over['distances']) != len(distances):
+                    raise WorldError(ap + '/distances', f'Asset {asset.name!r} has {len(distances)} levels after '
+                                     f'level 0; give one distance for each.')
+                distances = list(over['distances'])
+            cull = over['cull'] if 'cull' in over else spec.get('cull')
+            band = over.get('band', spec.get('band', 1.0))
+            scale = lod_cfg.get('scale', 1.0)
+            distances = [d * scale for d in distances]
+            cull = cull * scale if cull is not None else None
+            marks = distances + ([cull] if cull is not None else [])
+            entry = {'distances': distances, 'cull': cull, 'band': band, 'off': bool(over.get('off')),
+                     'triangles': [r['triangles'] for r in asset.report['lod']['levels']]}
+            prev = 0
+            for d in ([] if over.get('off') else marks):
+                if d - band <= prev + band or d + band > P.MAX_LOD_DISTANCE:
+                    raise WorldError(ap if over else '/lod/scale', f'Asset {asset.name!r}: switch distances '
+                                     f'{marks} must increase by more than twice the band ({band}) and stay '
+                                     f'within {P.MAX_LOD_DISTANCE} units.')
+                prev = d
+            lod_report[asset.name] = entry
+        entry = lod_report[asset.name]
+        if entry['off']:
+            return None
+        meshes = rp.relocated_levels(asset, slot, row)
+        levels = list(zip(entry['distances'], meshes))
+        if entry['cull'] is not None:
+            levels.append((entry['cull'], None))
+        return P.Lod(levels, entry['band'])
+
     # ---- paths: named polylines in world coordinates, stored once per world (WORLDPACK.md, "Paths")
     paths, path_report = [], {}
     for pname, spec in w.get('paths', {}).items():
@@ -401,10 +447,15 @@ def compile_world(source, lock=None, assets_dir=None):
             binary = rp.relocated(pl['asset'], slot, row)
             ground = bool(pl['spec'].get('ground'))
             if pl['spec'].get('merge'):
+                if pl['asset'].levels:
+                    warnings.append({'code': 'lod_merged', 'cell': c['id'], 'placement': pl['spec']['id'],
+                                     'message': 'A merged placement draws its level 0 only: merged meshes have '
+                                                'no levels of detail.'})
                 to_merge.setdefault((pl['spec'].get('layer'), ground), []).append((binary, pl))
                 continue
             cell.placements.append(P.Placement(binary, tuple(pl['spec']['position']), pl['yaw'],
-                                               pl['spec'].get('layer'), pl['k'], ground))
+                                               pl['spec'].get('layer'), pl['k'], ground,
+                                               lod_of(pl['asset'], rp, slot, row)))
         # merged props: one mesh per layer, ground and the rest apart (a merged ground mesh is a
         # ground placement, the way a terrain piece is)
         for (lname, ground), items in sorted(to_merge.items(),
@@ -426,6 +477,7 @@ def compile_world(source, lock=None, assets_dir=None):
         cells.append(cell)
 
     world = P.World(cells=cells, cell_shift=shift, layers=players, regions=pregions, coll_pad=pad,
+                    near_far=w.get('runtime', {}).get('near_far'),
                     overhang=overhang, floor_max_degrees=probe['floor_max_degrees'],
                     ceiling_max_degrees=probe.get('ceiling_max_degrees', DEFAULT_CEILING_DEGREES), paths=paths)
 
@@ -474,6 +526,7 @@ def compile_world(source, lock=None, assets_dir=None):
     report = make_report(source, world, data, plans, library, region_palettes, variants_shown, encoded, warnings,
                          new_lock, changes, merged_report, number_of, pad)
     report['paths'] = path_report
+    report['lod'] = {n: s for n, s in lod_report.items()}
     compiled = Compiled(data, report, '', '', SWATCH if any_palette else b'', new_lock, changes, library, world, encoded)
     from .akr import world_source, game_source
     compiled.akr = world_source(source, compiled, region_palettes, slot, row, number_of, groups)

@@ -38,7 +38,7 @@ class EncoderTests(unittest.TestCase):
         data = encode(w, rep)
         self.assertEqual(data, encode(F.demo_world()), 'encoding is deterministic')
         p = decode(data)
-        self.assertEqual((p.major, p.minor, p.cell_shift), (1, 2, 6))
+        self.assertEqual((p.major, p.minor, p.cell_shift), (1, 3, 6))
         self.assertEqual(set(p.cells), {(0, 0), (1, 0), (0, 1), (1, 1), (5, 0)})
         self.assertEqual([l[0] for l in p.layers], ['gate', 'bridge_up', 'bridge_down'])
         self.assertEqual([l[1:] for l in p.layers], [(255, False), (0, True), (0, False)])
@@ -924,6 +924,182 @@ class CostTests(unittest.TestCase):
         self.assertLess(culled[0] / culled[1], 100, 'cycles per placement culled')
 
 
+def lod_world(seed=0, n=30, share=True):
+    """One 64-unit cell of boxes, most with levels of detail (two coarser boxes and, for some, a
+    cull distance), a few without, sets shared between placements when share is set."""
+    rng = random.Random(seed)
+    tall = F.box_mesh((-1, 0, -1), (1, 4, 1), meshlib_rgb(200, 200, 200))
+    mid = F.box_mesh((-1, 0, -1), (1, 3, 1), meshlib_rgb(200, 120, 60))
+    low = F.box_mesh((-1, 0, -1), (1, 2, 1), meshlib_rgb(60, 120, 200))
+    sets = [P.Lod([(12, mid), (24, low)], band=1.0), P.Lod([(8, mid), (20, low), (40, None)], band=2.0),
+            P.Lod([(15.5, low), (30, None)], band=0.5)]
+    pls = []
+    for k in range(n):
+        lod = None if k % 7 == 3 else (sets[k % 3] if share else P.Lod(list(sets[k % 3].levels), sets[k % 3].band))
+        pls.append(Placement(tall, (rng.uniform(4, 60), 0, rng.uniform(4, 60)), rng.choice([0, 90, 30]), tag=k,
+                             ground=k % 11 == 5, lod=lod))
+    return World(cells=[Cell(0, 0, placements=pls), Cell(1, 0, placements=[Placement(tall, (70, 0, 10))])])
+
+
+class LodEncoderTests(unittest.TestCase):
+    def test_round_trip_and_pooling(self):
+        w = lod_world()
+        data = encode(w)
+        pack = decode(data)
+        self.assertEqual((pack.minor, struct.unpack_from('<H', data, 14)[0]), (3, 80))
+        c = pack.cells[(0, 0)]
+        ordered = [p for p in w.cells[0].placements if p.ground] + [p for p in w.cells[0].placements if not p.ground]
+        offs = set()
+        for src, got in zip(ordered, c.placements):
+            self.assertEqual(got['tag'], src.tag)
+            if src.lod is None:
+                self.assertIsNone(got['lod'])
+                continue
+            rows = got['lod']['rows']
+            self.assertEqual(len(rows), len(src.lod.levels))
+            for (d, m), (at2, out2, in2, mo) in zip(src.lod.levels, rows):
+                self.assertEqual(at2, P.lod_square(d))
+                self.assertEqual((out2, in2), (P.lod_square(d + src.lod.band), P.lod_square(d - src.lod.band)))
+                self.assertEqual(mo == 0, m is None)
+                if m is not None:
+                    self.assertEqual(data[mo:mo + len(m)], m)
+            offs.add(got['lod']['off'])
+        self.assertEqual(len(offs), 3, 'one set per distinct set, shared')
+        self.assertEqual(pack.lod_slots, len(c.placements))
+        self.assertIsNone(pack.cells[(1, 0)].placements[0]['lod'])
+        self.assertEqual(struct.unpack_from('<II', data, pack.cells[(1, 0)].off + 80), (0, 0))
+        # the sphere holds every level (here level 0, the tallest)
+        self.assertEqual(c.placements[0]['sphere'], decode(encode(World(cells=[Cell(0, 0, placements=[
+            Placement(ordered[0].mesh, ordered[0].position, ordered[0].yaw)])]))).cells[(0, 0)].placements[0]['sphere'])
+
+    def test_without_levels_and_older_packs(self):
+        plain = World(cells=[Cell(0, 0, placements=[Placement(F.box_mesh((-1, 0, -1), (1, 2, 1), 1), (8, 0, 8))])])
+        data = encode(plain)
+        pack = decode(data)
+        self.assertEqual((pack.near_far, pack.lod_slots), (0, 0))
+        self.assertEqual(struct.unpack_from('<iI', data, 72), (0, 0))
+        # read as 1.2: the cell's LOD words are reserved there and the header's are past 72
+        lod = encode(lod_world())
+        old = decode(lod[:6] + struct.pack('<H', 2) + lod[8:])
+        self.assertTrue(all(p['lod'] is None for p in old.cells[(0, 0)].placements))
+        self.assertEqual((old.near_far, old.lod_slots), (0, 0))
+        nf = World(cells=plain.cells, near_far=48)
+        self.assertEqual(decode(encode(nf)).near_far, fx(48))
+
+    def test_limits(self):
+        m = F.box_mesh((-1, 0, -1), (1, 2, 1), 1)
+        for lod, message in ((P.Lod([]), 'levels'), (P.Lod([(10, m)] * 9), 'levels'),
+                             (P.Lod([(10, None), (20, m)]), 'only the last'), (P.Lod([(10, m), (10, m)]), 'increase'),
+                             (P.Lod([(10, m), (13, m)], band=2), 'increase'), (P.Lod([(3, m)], band=2), 'increase'),
+                             (P.Lod([(1500, m)]), 'within'), (P.Lod([(10, m)], band=-1), 'band')):
+            with self.subTest(message=message), self.assertRaisesRegex(PackError, message):
+                encode(World(cells=[Cell(0, 0, placements=[Placement(m, (8, 0, 8), lod=lod)])]))
+        with self.assertRaisesRegex(PackError, 'near_far'):
+            encode(World(cells=[Cell(0, 0)], near_far=0))
+
+    def test_malformed_levels_are_refused(self):
+        good = encode(lod_world())
+        pack = decode(good)
+        c = pack.cells[(0, 0)]
+        p = next(p for p in c.placements if p['lod'] and p['lod']['cull'])
+        so = p['lod']['off']
+        cases = [(c.off + 84, '<I', 999), (c.off + 80, '<I', len(good)), (76, '<I', 3), (p['lod_field'], '<I', 6),
+                 (so, '<B', 0), (so, '<B', 9), (so + 1, '<B', 0), (so + 8 + 16 + 8, '<i', 0),
+                 (so + 8, '<i', fx(10000)), (so + 8 + 12, '<I', 0), (72, '<i', -5)]
+        for at, fmt, value in cases:
+            bad = bytearray(good)
+            struct.pack_into(fmt, bad, at, value)
+            with self.subTest(at=at, value=value), self.assertRaises(PackError):
+                decode(bytes(bad))
+        short = bytearray(good)
+        struct.pack_into('<H', short, 14, 72)
+        with self.assertRaisesRegex(PackError, 'header'):
+            decode(bytes(short))
+
+    def test_level_rule(self):
+        rows = P.lod_rows(P.Lod([(10, b'x' * 0 or F.box_mesh((0, 0, 0), (1, 1, 1), 1)), (20, None)], band=2))
+        d = lambda u: P.lod_square(u)
+        self.assertEqual([P.lod_level(rows, d(u)) for u in (0, 9.9, 10, 19.9, 20, 50)], [0, 0, 1, 1, 2, 2])
+        # inside the band the level drawn before is kept; past it, it changes
+        self.assertEqual([P.lod_level(rows, d(u), 0) for u in (9, 11.9, 12, 15)], [0, 0, 1, 1])
+        self.assertEqual([P.lod_level(rows, d(u), 1) for u in (15, 8.1, 7.9)], [1, 1, 0])
+        self.assertEqual([P.lod_level(rows, d(u), 2) for u in (25, 18.1, 17.9)], [2, 2, 1])
+        self.assertEqual([P.lod_level(rows, d(u), fine=True) for u in (11.9, 12, 21.9, 22)], [0, 1, 1, 2])
+
+
+@needs_tools
+class LodTests(unittest.TestCase):
+    """The reader's level choices against lod_level(), replayed in order; its cost."""
+
+    def run_lod(self, w, recs, eye=(32.0, 32.0, 0.0)):
+        consts = {'PACK_EYE_X': f'{eye[0]:.4f}', 'PACK_EYE_Z': f'{eye[1]:.4f}', 'PACK_EYE_YAW': f'{eye[2]:.4f}'}
+        with tempfile.TemporaryDirectory() as tmp:
+            lines = F.run_cart(tmp, 'lod.akr', {'PACK': ('u8', encode(w)), 'QUERIES': ('WpLodQuery', b''.join(recs))},
+                               consts, frames=len(recs) // 100 + 5)
+        self.assertEqual(lines[-1], 'done')
+        return lines
+
+    def test_choices_match_the_rule(self):
+        w = lod_world(2)
+        data = encode(w)
+        pack = decode(data)
+        cell = pack.cells[(0, 0)]
+        rng = random.Random(3)
+        recs, want = [], []
+        state = {}
+        targets = [k for k, p in enumerate(cell.placements) if p['lod']]
+        for walk in range(12):
+            k = rng.choice(targets)
+            p = cell.placements[k]
+            s = p['sphere']
+            start = rng.uniform(0, 50)
+            fine = walk % 5 == 4
+            for step in range(60):
+                # toward and away from the placement, hovering about switch distances
+                dist = abs(start + 25 * math.sin(step / 6) + rng.uniform(-0.6, 0.6))
+                ang = rng.uniform(0, math.tau) if step == 0 else ang
+                eye = (s[0] / ONE + 32 + dist * math.cos(ang), 1.5, s[2] / ONE + 32 + dist * math.sin(ang))
+                flags = (1 if fine else 0) | (2 if rng.random() < 0.03 else 0)
+                if flags & 2:
+                    state = {}
+                raw = F.raw(eye)
+                local = (raw[0] - 32 * ONE, raw[1], raw[2] - 32 * ONE)
+                d2 = P.lod_d2(s, local)
+                rows = p['lod']['rows']
+                level = P.lod_level(rows, d2, state.get(p['lod_slot']), fine)
+                state[p['lod_slot']] = level
+                want.append(p['mesh'] if level == 0 else rows[level - 1][3])
+                recs.append(struct.pack('<4i4i', *raw, 0, flags, 0, 0, k))
+        lines = self.run_lod(w, recs)
+        got = [int(l.split()[1]) for l in lines if l.startswith('q ')]
+        self.assertEqual(got, want)
+        self.assertGreater(len(set(got)), 3, 'every level and the cull mark are exercised')
+
+    def test_drawing_and_cost(self):
+        w = lod_world(5, n=60)
+        # with the levels drawn, from the middle of the cell
+        lines = self.run_lod(w, [], eye=(32.0, 2.0, 0.0))
+        got = {l.split()[0]: [int(x) for x in l.split()[1:]] for l in lines if l.split()[0] in ('lod', 'flat')}
+        lod, flat = got['lod'], got['flat']
+        self.assertEqual(lod[1], flat[1])
+        self.assertGreater(lod[3], 5)
+        self.assertGreater(lod[4], 0)
+        self.assertEqual(lod[2] + lod[4], flat[2])
+        self.assertEqual(flat[3:], [0, 0])
+        # the cost of choosing: every set's levels the same mesh as level 0, so only the choice differs
+        same = lod_world(5, n=60)
+        for p in same.cells[0].placements:
+            if p.lod:
+                p.lod = P.Lod([(d, p.mesh) for d, _ in p.lod.levels], p.lod.band)
+        lines = self.run_lod(same, [], eye=(32.0, 2.0, 0.0))
+        got = {l.split()[0]: [int(x) for x in l.split()[1:]] for l in lines if l.split()[0] in ('lod', 'flat')}
+        per = (got['lod'][0] - got['flat'][0]) / got['lod'][2]
+        if VERBOSE:
+            print(f'\n  LOD choice: {per:.0f} cycles a placement drawn ({got["lod"][2]} drawn, '
+                  f'{got["lod"][0]} against {got["flat"][0]} cycles)')
+        self.assertLess(per, 200)
+
+
 def path_world(seed=0, cell_shift=6):
     """A one-cell world with paths only: random polylines in the cell and over its edges, some
     closed, some raised, after a rail named "rail" (paths.akr looks it up by name)."""
@@ -951,8 +1127,8 @@ class PathEncoderTests(unittest.TestCase):
         w = path_world()
         data = encode(w)
         pack = decode(data)
-        self.assertEqual(struct.unpack_from('<HH', data, 4), (1, 2))
-        self.assertEqual(struct.unpack_from('<H', data, 14)[0], 72)
+        self.assertEqual(struct.unpack_from('<HH', data, 4), (1, 3))
+        self.assertEqual(struct.unpack_from('<H', data, 14)[0], 80)
         self.assertEqual(struct.unpack_from('<I', data, 64)[0], len(w.paths))
         self.assertEqual([p['name'] for p in pack.paths], [p.name for p in w.paths])
         for src, got in zip(w.paths, pack.paths):

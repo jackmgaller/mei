@@ -59,6 +59,7 @@ DEFAULTS = {
         'ground_inversion_pixels': 0,   # per view: pixels where ground truly hides what is drawn over it
         'gpu_cycles': 800000,           # per view (80% of 1,000,000)
         'draw_cpu_cycles': 300000,      # wp_draw() plus entity meshes per view (60% of 500,000)
+        'view_triangles': 2000,         # triangles submitted per view (WORLDKIT.md, "A frame budget")
         'cell_triangles': 1600,
         'cell_placements': 100,
         'standin_triangles': 32,
@@ -80,7 +81,7 @@ DEFAULTS = {
     },
     'vantage_points': [],               # {"position": [x, y, z], "yaw": deg, "pitch": deg}
     'runtime': {'far_ring': 3, 'clip_near': 0.1, 'near_far': None, 'draw_entities': True, 'ground_first': True,
-                'entity_drawing': 'object', 'object_bias': 1.5, 'object_squash': 2},
+                'entity_drawing': 'object', 'object_bias': 1.5, 'object_squash': 2, 'lod': True, 'lod_fine': True},
     'ordering': {'enabled': True, 'edge_margin': 1.0, 'depth_epsilon': 0.001, 'witnesses': 8},
     'collision': {'crack_samples_per_unit': 4.0, 'solid_ray_length': 32.0, 'findings': 50},
     'images': 6,
@@ -429,8 +430,8 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         return report
     S = 1 << pack.cell_shift
     rt = dict(cfg['runtime'])
-    if rt['near_far'] is None:
-        rt['near_far'] = 1.5 * S
+    if rt['near_far'] is None:          # the pack's own (1.3), else the reader's default
+        rt['near_far'] = pack.near_far / ONE if pack.near_far else 1.5 * S
     report['pack'] = {'sha256': hashlib.sha256(bytes(pack_bytes)).hexdigest(), 'bytes': len(pack_bytes),
                       'cells': len(pack.cells), 'cell_size': S, 'layers': [l[0] for l in pack.layers]}
 
@@ -514,6 +515,7 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
     for inst in insts:
         by_cell.setdefault(inst.cell, []).append(inst)
     describe = _describe(names)
+    lod_pack = any(p.get('lod') for c in pack.cells.values() for p in c.placements)
     order_cfg = {**cfg['ordering'], 'near_band': th['near_band']}
     rows = []
     images = []
@@ -556,11 +558,17 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
                                 'arena_bytes': out['arena_bytes'],
                                 'arena_full': min(out['arena_left'], out2['arena_left']) < RD.ARENA_FULL,
                                 'placements_drawn': out['drawn'], 'ground_drawn': out['ground'],
-                                'standins_drawn': out['standins'], 'entities_drawn': out['entities']}
+                                'standins_drawn': out['standins'], 'entities_drawn': out['entities'],
+                                'coarse_drawn': out['coarse'], 'lod_culled': out['lod_culled']}
+                sel = None
+                if lod_pack:
+                    sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
+                    row['heaviest'] = _heaviest(pack, sel, meshes, v['eye'], names)
                 t1 = time.perf_counter()
                 if cfg['ordering']['enabled'] and ids_ok:
                     near_planes = {'near': rt['clip_near'], 'ground': rt['clip_near'], 'far': S / 2}
-                    sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
+                    if sel is None:
+                        sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
                     faces = RD.view_faces(pack, meshes, sel, out2['vp'], out2['origin'], first, near_planes)
                     cmp = RD.compare_view(faces, pic, order_cfg)
                     issues, near_px, far_px = RD.witnesses(cmp, pic, order_cfg, describe, order_cfg['witnesses'])
@@ -612,10 +620,13 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         if s['arena_full']:
             report['hard_failures'].append({'check': 'views', 'code': 'arena_full', **where, 'value': s['arena_bytes']})
         for code, value, limit in (('gpu_cycles', s['gpu_cycles'], th['gpu_cycles']),
-                                   ('draw_cpu_cycles', s['draw_cpu_cycles'], th['draw_cpu_cycles'])):
+                                   ('draw_cpu_cycles', s['draw_cpu_cycles'], th['draw_cpu_cycles']),
+                                   ('view_triangles', s['triangles'], th['view_triangles'])):
             if limit is not None and value > limit:
-                report['threshold_failures'].append({'check': 'budget', 'code': code, **where, 'value': value,
-                                                     'limit': limit})
+                f = {'check': 'budget', 'code': code, **where, 'value': value, 'limit': limit}
+                if 'heaviest' in r:         # what to give levels of detail, or farther switch distances
+                    f['heaviest'] = r['heaviest'][:3]
+                report['threshold_failures'].append(f)
         if 'skipped' in o:
             continue
         if o['wrong_near_pixels'] > th['near_wrong_pixels']:
@@ -655,6 +666,7 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         'max_ground_inversions': worst('gi', lambda r: r['ordering'].get('ground_inversions')),
         'tested_pixels': sum(r['ordering'].get('tested_pixels', 0) for r in rows),
         'entity_views': _entity_summary(rows),
+        'lod': _lod_summary(rows) if lod_pack else None,
         'hard_failures': len(report['hard_failures']),
         'threshold_failures': len(report['threshold_failures']),
     }
@@ -678,6 +690,37 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         out.mkdir(parents=True, exist_ok=True)
         (out / 'world-check.json').write_text(json.dumps(report, indent=1) + '\n')
     return report
+
+
+def _heaviest(pack, sel, meshes, eye, names, n=5):
+    """The placements drawn in a view with the most faces, what a budget failure points at: each
+    with its distance from the eye, the level of detail drawn and how many levels it has."""
+    S = 1 << pack.cell_shift
+    pl = (names or {}).get('placements', {})
+    out = []
+    for inst, pas, _ in sel:
+        if inst.key[0] != 'placement':
+            continue
+        c = inst.sphere
+        w = (c[0] / ONE + inst.cell[0] * S + S / 2, c[1] / ONE, c[2] / ONE + inst.cell[1] * S + S / 2)
+        out.append((len(meshes[inst.mesh].faces), inst, math.dist(w, eye)))
+    out.sort(key=lambda t: (-t[0], t[1].key))
+    rows = []
+    for faces, inst, dist in out[:n]:
+        row = {'cell': list(inst.cell), 'placement': inst.key[3], 'tag': inst.tag, 'faces': faces,
+               'distance': round(dist, 2), 'level': inst.level, 'levels': 1 + len(inst.lod['rows']) if inst.lod else 1}
+        if str(inst.tag) in pl:
+            row['name'] = pl[str(inst.tag)]
+        rows.append(row)
+    return rows
+
+
+def _lod_summary(rows):
+    """Levels of detail over the views: how many placements were drawn coarser or culled."""
+    return {'views_with_coarse': sum(1 for r in rows if r['stats']['coarse_drawn']),
+            'coarse_drawn': sum(r['stats']['coarse_drawn'] for r in rows),
+            'lod_culled': sum(r['stats']['lod_culled'] for r in rows),
+            'max_triangles': max((r['stats']['triangles'] for r in rows), default=0)}
 
 
 def _entity_summary(rows):
