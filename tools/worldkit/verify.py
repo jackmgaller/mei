@@ -21,7 +21,8 @@ Three groups of checks, all from the pack alone (plus optional names for reports
 3. Ordering: each view's triangle-ID picture against an independent reference that resolves
    true depth (verify_render.py), with the reader's passes (far stand-ins, ground, near) kept
    apart as the reader draws them; in depth mode (runtime depth: the game draws with the depth
-   buffer) one pass, a regression check of the depth test.
+   buffer) one pass, a regression check of the depth test, on a sample of the views
+   (ordering.depth_views, ordering_sample()) while the budgets are measured on every view.
 
 Hard failures in every mode: dropped triangles, a full packet arena, static collision errors
 and broken references. Thresholds (budgets, wrong-order pixels, stand-ins) fail the check only
@@ -86,7 +87,8 @@ DEFAULTS = {
     'runtime': {'far_ring': 3, 'clip_near': 0.1, 'near_far': None, 'draw_entities': True, 'ground_first': True,
                 'entity_drawing': 'object', 'object_bias': 1.5, 'object_squash': 2, 'lod': True, 'lod_fine': True,
                 'depth': False, 'perspective': False},     # render_depth(), render_perspective()
-    'ordering': {'enabled': True, 'edge_margin': 1.0, 'depth_epsilon': 0.001, 'witnesses': 8},
+    'ordering': {'enabled': True, 'edge_margin': 1.0, 'depth_epsilon': 0.001, 'witnesses': 8,
+                 'depth_views': 60},        # depth mode: views given the pixel comparison (None: all)
     'collision': {'crack_samples_per_unit': 4.0, 'solid_ray_length': 32.0, 'findings': 50},
     'images': 6,
 }
@@ -120,6 +122,9 @@ def merge_settings(settings):
     for k in ('depth', 'perspective'):
         if not isinstance(out['runtime'][k], bool):
             raise SettingsError(f'/runtime/{k}', 'must be true or false')
+    n = out['ordering']['depth_views']
+    if n is not None and (isinstance(n, bool) or not isinstance(n, int) or n < 1):
+        raise SettingsError('/ordering/depth_views', 'must be a positive whole number or null')
     # Depth mode: the cameras aimed at entities look for what the ordering table gets wrong
     # around small objects, which the depth test does not; they are off unless asked for.
     if out['runtime']['depth'] and 'entities' not in ((settings or {}).get('sampling') or {}):
@@ -129,10 +134,13 @@ def merge_settings(settings):
 
 def shown_settings(cfg):
     """The settings as the report lists them: runtime depth and perspective only when either is
-    on, so that a report without them is the one the checker made before they existed."""
+    on, and ordering depth_views only in depth mode, so that a report without them is the one the
+    checker made before they existed."""
     out = copy.deepcopy(cfg)
     if not (cfg['runtime']['depth'] or cfg['runtime']['perspective']):
         del out['runtime']['depth'], out['runtime']['perspective']
+    if not cfg['runtime']['depth']:
+        del out['ordering']['depth_views']
     return out
 
 
@@ -448,16 +456,19 @@ def _view_context(pack, names, cfg, rt, groups):
             'order_cfg': {**cfg['ordering'], 'near_band': cfg['thresholds']['near_band'], 'depth': rt['depth']}}
 
 
-def _view_row(ctx, g, v, rec, rec2, out_dir):
+def _view_row(ctx, g, v, rec, rec2, out_dir, sample=None):
     """One view's row of the report from its two recorded frames, and its diagnostic entry
-    (score, index, comparison, picture) when it has ordering findings and out_dir is set."""
+    (score, index, comparison, picture) when it has ordering findings and out_dir is set. In
+    depth mode, rec2 is None for a view outside the ordering sample, and `sample` says why a
+    view in it was chosen."""
     pack, names, cfg, rt = ctx['pack'], ctx['names'], ctx['cfg'], ctx['rt']
     meshes, by_cell, describe = ctx['meshes'], ctx['by_cell'], ctx['describe']
     lod_pack, order_cfg = ctx['lod_pack'], ctx['order_cfg']
     first, ids_ok = ctx['groups'][g]
     S = 1 << pack.cell_shift
     st, out, _ = rec
-    st2, out2, pic = rec2
+    # rec2 None: depth mode, a view outside the ordering sample, measured only
+    st2, out2, pic = rec2 if rec2 is not None else rec
     diag = None
     row = {'index': v['index'], 'kind': v['kind'],
            'camera': {'eye': v['eye'], 'yaw_degrees': round(math.degrees(v['yaw']), 3),
@@ -480,11 +491,17 @@ def _view_row(ctx, g, v, rec, rec2, out_dir):
                     'coarse_drawn': out['coarse'], 'lod_culled': out['lod_culled']}
     if rt['depth'] or rt['perspective']:
         row['stats']['depth'] = {k: st[k] for k in RD.DEPTH_STATS}
+    if rt['depth']:
+        # pixels the measured frame drew without the depth test (every face is depth-tested in
+        # depth mode), and the identity frame's when there is one
+        row['stats']['depth']['untested_pixels'] = max(_untested(st), _untested(st2))
     sel = None
     if lod_pack:
         sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
         row['heaviest'] = _heaviest(pack, sel, meshes, v['eye'], names)
-    if cfg['ordering']['enabled'] and ids_ok:
+    if rec2 is None:
+        row['ordering'] = {'skipped': 'not in the ordering sample (depth mode)'}
+    elif cfg['ordering']['enabled'] and ids_ok:
         # in depth mode wp_draw() draws the stand-ins over the near pass's clip range too
         near_planes = {'near': rt['clip_near'], 'ground': rt['clip_near'],
                        'far': rt['clip_near'] if rt['depth'] else S / 2}
@@ -502,6 +519,8 @@ def _view_row(ctx, g, v, rec, rec2, out_dir):
                            'wrong_near_pixels': near_px, 'wrong_far_pixels': far_px,
                            'coverage_errors': cov, 'pass_inversions': int(cmp['inversion'].sum()),
                            'ground_inversions': ginv, 'faces': len(faces), **ent, 'issues': issues}
+        if sample:
+            row['ordering']['sample'] = sample
         if ginv:
             row['ordering']['ground_issues'] = RD.ground_witnesses(cmp, describe,
                                                                    order_cfg['witnesses'])
@@ -517,6 +536,11 @@ def _view_row(ctx, g, v, rec, rec2, out_dir):
     return row, diag
 
 
+def _untested(st):
+    """Pixels a frame drew without the depth test: every kind's pixels less the depth-tested."""
+    return sum(st[f'px{k}'] for k in range(8)) - st['px_ztest']
+
+
 _WORKER = {}
 
 
@@ -528,12 +552,12 @@ def _view_worker(task):
     return _view_row(_WORKER['ctx'], *task)
 
 
-def _view_rows(pool, ctx, tasks):
+def _view_rows(pool, ctx, tasks, chunksize=4):
     """_view_row() of each task, in order: in the pool's workers, or here when there is no
     pool or it cannot run (a script that starts the check without `if __name__ == '__main__'`)."""
     if pool:
         try:
-            return list(pool.map(_view_worker, tasks, chunksize=4))
+            return list(pool.map(_view_worker, tasks, chunksize=chunksize))
         except (BrokenProcessPool, OSError, RuntimeError):
             pass
     return [_view_row(ctx, *t) for t in tasks]
@@ -545,6 +569,133 @@ def _jobs():
         return max(1, int(os.environ['MEI_KIT_JOBS']))
     except (KeyError, ValueError):
         return os.cpu_count() or 1
+
+
+def _depth_mode_views(pool, ctx, groups, meshes, tools, out_dir):
+    """Depth mode's views (docs/WORLDCHECKER.md, "Depth mode"): every view's measured frame, for
+    the budgets; then the identity frames and the pixel comparison of the ordering sample alone.
+    Returns (rows, diagnostic entries, {index: why sampled}, (native, compile, emulator,
+    reference seconds))."""
+    pack, cfg, rt = ctx['pack'], ctx['cfg'], ctx['rt']
+    swatch = RD.swatch_rows(meshes.values())
+    jobs = _jobs()
+    t_native = t_ref = compile_s = run_s = 0.0
+    group_of, measured, rows = {}, {}, {}
+    with tempfile.TemporaryDirectory(prefix='mei-world-check-') as tmp:
+        idps = {}
+        for g, (ginsts, gviews, first, ids_ok) in enumerate(groups):
+            if not gviews:
+                continue
+            idps[g] = RD.identity_pack(pack.data, ginsts, first, meshes) if ids_ok else bytes(pack.data)
+            t1 = time.perf_counter()
+            recs, tm = RD.run_frames(bytes(pack.data), idps[g], [(v, False) for v in gviews], rt, tools,
+                                     Path(tmp) / f'group{g}', swatch, jobs)
+            t_native += time.perf_counter() - t1
+            compile_s += tm['compile_seconds']
+            run_s += tm['run_seconds']
+            for v, rec in zip(gviews, recs):
+                group_of[v['index']], measured[v['index']] = (g, v), rec
+                rows[v['index']] = _view_row(ctx, g, v, rec, None, False)[0]
+        ordered = [rows[k] for k in sorted(rows)]
+        chosen = ordering_sample(ordered, cfg['ordering']['depth_views']) if cfg['ordering']['enabled'] else {}
+        diag = []
+        for g, (ginsts, gviews, first, ids_ok) in enumerate(groups):
+            mine = [v for v in gviews if v['index'] in chosen]
+            if not mine:
+                continue
+            t1 = time.perf_counter()
+            recs, tm = RD.run_frames(bytes(pack.data), idps[g], [(v, True) for v in mine], rt, tools,
+                                     Path(tmp) / f'group{g}-ids', swatch, jobs)
+            t_native += time.perf_counter() - t1
+            compile_s += tm['compile_seconds']
+            run_s += tm['run_seconds']
+            tasks = [(g, v, measured[v['index']], rec, bool(out_dir), chosen[v['index']])
+                     for v, rec in zip(mine, recs)]
+            t1 = time.perf_counter()
+            for row, d in _view_rows(pool, ctx, tasks, 1):
+                rows[row['index']] = row
+                if d:
+                    diag.append(d)
+            t_ref += time.perf_counter() - t1
+    return [rows[k] for k in sorted(rows)], diag, chosen, (t_native, compile_s, run_s, t_ref)
+
+
+def _spread_key(k):
+    """k's place in the binary van der Corput sequence: walking 0, 1, 2, ... in this order
+    visits the halves, then the quarters, then the eighths of the range, and so on."""
+    out, f = 0.0, 0.5
+    while k:
+        out += f * (k & 1)
+        k >>= 1
+        f /= 2
+    return out
+
+
+def _strata(r):
+    k, ls, c = r['kind'], r['layer_set'], tuple(r['camera']['cell'])
+    return {('kind', k), ('layer_set', ls), ('cell', c), ('kind+layer_set', k, ls), ('kind+cell', k, c),
+            ('cell+layer_set', c, ls)}
+
+
+def ordering_sample(rows, n):
+    """Depth mode's ordering sample: the views (rows with their measured stats, in view order)
+    that get the pixel comparison, as {view index: why}, in the order chosen. Deterministic:
+
+    1. 'vantage': every authored vantage point;
+    2. 'most gpu_cycles', 'most draw_cpu_cycles', 'most triangles', 'most arena_bytes': the
+       worst view by each budget (the most faces, depth tests and overlap);
+    3. 'stratum': then, greedily, the view that adds the most strata not yet in the sample
+       (its kind, layer set, camera cell, and each pair of them), until every stratum is in;
+    4. 'heaviest' and 'spread', taking turns: the views with the most triangles, and the views
+       in van der Corput order of their index (evenly over the sampled order: kinds, cells).
+
+    Ties go to the earlier view in the van der Corput order. n None: every view ('every view')."""
+    if n is None or n >= len(rows):
+        return {r['index']: 'every view' for r in rows}
+    chosen = {}
+
+    def take(r, why):
+        if r['index'] not in chosen and len(chosen) < n:
+            chosen[r['index']] = why
+    for r in rows:
+        if r['kind'] == 'vantage':
+            take(r, 'vantage')
+    for key in ('gpu_cycles', 'draw_cpu_cycles', 'triangles', 'arena_bytes'):
+        take(max(rows, key=lambda r: (r['stats'][key], -r['index'])), f'most {key}')
+    spread = sorted(rows, key=lambda r: (_spread_key(r['index']), r['index']))
+    by_index = {r['index']: r for r in rows}
+    covered = set()
+    for k in chosen:
+        covered |= _strata(by_index[k])
+    while len(chosen) < n:
+        best, gain = None, 0
+        for r in spread:
+            if r['index'] not in chosen:
+                g = len(_strata(r) - covered)
+                if g > gain:
+                    best, gain = r, g
+        if best is None:
+            break
+        take(best, 'stratum')
+        covered |= _strata(best)
+    heavy = iter(sorted(rows, key=lambda r: (-r['stats']['triangles'], r['index'])))
+    even = iter(spread)
+    turn = 0
+    while len(chosen) < n:
+        source, why = (heavy, 'heaviest') if turn % 2 == 0 else (even, 'spread')
+        turn += 1
+        for r in source:
+            if r['index'] not in chosen:
+                take(r, why)
+                break
+    return chosen
+
+
+def _sample_summary(chosen, views):
+    why = {}
+    for w in chosen.values():
+        why[w] = why.get(w, 0) + 1
+    return {'views': len(chosen), 'of': views, 'chosen': dict(sorted(why.items()))}
 
 
 def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
@@ -669,28 +820,33 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         pool = ProcessPoolExecutor(jobs, initializer=_view_worker_init,
                                    initargs=(bytes(pack_bytes), names, cfg, rt, firsts))
     try:
-        with tempfile.TemporaryDirectory(prefix='mei-world-check-') as tmp:
-            for g, (ginsts, gviews, first, ids_ok) in enumerate(groups):
-                if not gviews:
-                    continue
-                idp = RD.identity_pack(pack.data, ginsts, first, meshes) if ids_ok else bytes(pack.data)
-                work = Path(tmp) / f'group{g}'
-                work.mkdir()
-                t1 = time.perf_counter()
-                recs, tm = RD.run_cart(bytes(pack.data), idp, gviews, rt, tools, work,
-                                       RD.swatch_rows(meshes.values()))
-                t_native += time.perf_counter() - t1
-                compile_s += tm['compile_seconds']
-                run_s += tm['run_seconds']
-                tasks = [(g, v, recs[2 * k], recs[2 * k + 1], bool(out_dir)) for k, v in enumerate(gviews)]
-                t1 = time.perf_counter()
-                for row, d in _view_rows(pool, ctx, tasks):
-                    rows.append(row)
-                    if d:
-                        diag.append(d)
-                        diag.sort(key=lambda d: (-d[0][0], -d[0][1], d[1]))
-                        del diag[cfg['images']:]
-                t_ref += time.perf_counter() - t1
+        if rt['depth']:
+            rows, diag, chosen, tm = _depth_mode_views(pool, ctx, groups, meshes, tools, out_dir)
+            t_native, compile_s, run_s, t_ref = tm
+            report['sampling']['ordering_sample'] = _sample_summary(chosen, len(rows))
+        else:
+            with tempfile.TemporaryDirectory(prefix='mei-world-check-') as tmp:
+                for g, (ginsts, gviews, first, ids_ok) in enumerate(groups):
+                    if not gviews:
+                        continue
+                    idp = RD.identity_pack(pack.data, ginsts, first, meshes) if ids_ok else bytes(pack.data)
+                    work = Path(tmp) / f'group{g}'
+                    work.mkdir()
+                    t1 = time.perf_counter()
+                    recs, tm = RD.run_cart(bytes(pack.data), idp, gviews, rt, tools, work,
+                                           RD.swatch_rows(meshes.values()))
+                    t_native += time.perf_counter() - t1
+                    compile_s += tm['compile_seconds']
+                    run_s += tm['run_seconds']
+                    tasks = [(g, v, recs[2 * k], recs[2 * k + 1], bool(out_dir)) for k, v in enumerate(gviews)]
+                    t1 = time.perf_counter()
+                    for row, d in _view_rows(pool, ctx, tasks):
+                        rows.append(row)
+                        if d:
+                            diag.append(d)
+                            diag.sort(key=lambda d: (-d[0][0], -d[0][1], d[1]))
+                            del diag[cfg['images']:]
+                    t_ref += time.perf_counter() - t1
     finally:
         if pool:
             pool.shutdown(cancel_futures=True)
@@ -716,6 +872,11 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
                                             'value': s['triangles_dropped']})
         if s['arena_full']:
             report['hard_failures'].append({'check': 'views', 'code': 'arena_full', **where, 'value': s['arena_bytes']})
+        if rt['depth'] and (s['depth']['untested_pixels'] or s['depth']['zclears'] < 1):
+            # depth mode on every view: the frame drew without the depth test, or never cleared it
+            report['hard_failures'].append({'check': 'views', 'code': 'depth_untested', **where,
+                                            'value': s['depth']['untested_pixels'],
+                                            'zclears': s['depth']['zclears']})
         for code, value, limit in (('gpu_cycles', s['gpu_cycles'], th['gpu_cycles']),
                                    ('draw_cpu_cycles', s['draw_cpu_cycles'], th['draw_cpu_cycles']),
                                    ('view_triangles', s['triangles'], th['view_triangles'])):

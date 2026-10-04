@@ -7,9 +7,12 @@ they are skipped when those have not been built) and NumPy. WORLDCHECK_VERBOSE=1
 measurements.
 """
 import copy
+import dataclasses
 import json
+import math
 import os
 from pathlib import Path
+import struct
 import sys
 import tempfile
 import unittest
@@ -18,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / 'worldverify'))
 import worlds as F  # noqa: E402
 from worldkit import verify as V  # noqa: E402
 from worldkit import verify_static as ST  # noqa: E402
-from worldkit.pack import decode, encode, World, Cell, Tri  # noqa: E402
+from worldkit.pack import decode, encode, World, Cell, Tri, Placement  # noqa: E402
 
 VERBOSE = os.environ.get('WORLDCHECK_VERBOSE')
 try:
@@ -559,11 +562,40 @@ class DepthModeTests(unittest.TestCase):
         self.assertEqual(kept['sampling']['entities']['yaws'], 2)
         with self.assertRaises(V.SettingsError):
             V.merge_settings({'runtime': {'depth': 'yes'}})
+        self.assertEqual(d['ordering']['depth_views'], 60)
+        for bad in (0, -3, 2.5, True, 'all'):
+            with self.assertRaises(V.SettingsError):
+                V.merge_settings({'ordering': {'depth_views': bad}})
+        self.assertIsNone(V.merge_settings({'ordering': {'depth_views': None}})['ordering']['depth_views'])
+        # listed in the report only in depth mode
+        self.assertNotIn('depth_views', V.shown_settings(plain)['ordering'])
+        self.assertIn('depth_views', V.shown_settings(d)['ordering'])
+
+    def test_ordering_sample(self):
+        """Deterministic, every stratum and the worst budgets in, the size asked for."""
+        rows = []
+        for k in range(200):
+            rows.append({'index': k, 'kind': ('eye', 'follow', 'seam', 'air')[k % 4] if k != 150 else 'vantage',
+                         'layer_set': ('none', 'night')[(k // 4) % 2], 'camera': {'cell': [k % 3, (k // 3) % 2]},
+                         'stats': {'gpu_cycles': (k * 37) % 199, 'draw_cpu_cycles': (k * 53) % 197,
+                                   'triangles': (k * 11) % 193, 'arena_bytes': k}})
+        got = V.ordering_sample(rows, 30)
+        self.assertEqual(got, V.ordering_sample(rows, 30))
+        self.assertEqual(len(got), 30)
+        self.assertEqual(got[150], 'vantage')
+        for key in ('gpu_cycles', 'draw_cpu_cycles', 'triangles', 'arena_bytes'):
+            worst = max(rows, key=lambda r: (r['stats'][key], -r['index']))['index']
+            self.assertIn(worst, got)
+        every = set().union(*(V._strata(r) for r in rows))
+        self.assertEqual(set().union(*(V._strata(rows[k]) for k in got)), every)
+        self.assertEqual(set(V.ordering_sample(rows, None).values()), {'every view'})
+        self.assertEqual(len(V.ordering_sample(rows[:20], 30)), 20)
 
     def test_interpenetrating_geometry_and_objects_on_big_platforms(self):
         s = settings(ENTITY_ONLY, vantage_points=F.VANTAGE_DEPTH, mode='strict')
         plain = self.run_check(F.depth_world(), s)
-        depth = self.run_check(F.depth_world(), settings(s, runtime={'depth': True, 'perspective': True}))
+        depth = self.run_check(F.depth_world(), settings(s, runtime={'depth': True, 'perspective': True},
+                                                         ordering={'depth_views': None}))     # every view
         if VERBOSE:
             print('\n  depth world, ordering table:', json.dumps(plain['summary']),
                   '\n  depth buffer:', json.dumps(depth['summary']))
@@ -603,6 +635,129 @@ class DepthModeTests(unittest.TestCase):
                                'runtime': {'depth': True}, 'compiler': str(F.COMPILER)})
         self.assertTrue(r['settings']['runtime']['depth'])
         self.assertFalse(r['settings']['runtime']['perspective'])
+
+
+DEPTH = {'runtime': {'depth': True, 'perspective': True}}
+
+
+@needs_tools
+class DepthSampleTests(unittest.TestCase):
+    """Depth mode's ordering sample (docs/WORLDCHECKER.md, "The ordering sample"): budgets on
+    every view, the pixel comparison on a sample, and the planted faults it must still catch."""
+
+    def run_check(self, world, s=None):
+        return V.verify(encode(world), settings(DEPTH, **(s or {})), tools=F.tools())
+
+    def test_sample_rows_equal_the_full_check(self):
+        full = self.run_check(F.good_world(), {'ordering': {'depth_views': None}})
+        part = self.run_check(F.good_world(), {'ordering': {'depth_views': 12}})
+        self.assertGreater(len(full['views']), 40)
+        self.assertEqual(part['sampling']['ordering_sample']['views'], 12)
+        sampled = 0
+        for a, b in zip(full['views'], part['views']):
+            sa, sb = dict(a['stats']), dict(b['stats'])
+            self.assertEqual(sa.pop('frame_cpu_cycles') > 0, sb.pop('frame_cpu_cycles') > 0)
+            self.assertEqual(sa, sb)                 # every view measured, the same budgets
+            self.assertEqual(sb['depth']['untested_pixels'], 0)
+            if 'skipped' in b['ordering']:
+                continue
+            sampled += 1
+            ob = dict(b['ordering'])
+            self.assertIn(ob.pop('sample'), ('vantage', 'stratum', 'heaviest', 'spread') +
+                          tuple('most ' + k for k in ('gpu_cycles', 'draw_cpu_cycles', 'triangles', 'arena_bytes')))
+            oa = dict(a['ordering'])
+            oa.pop('sample')
+            self.assertEqual(oa, ob)                 # a sampled view is judged as in the full check
+        self.assertEqual(sampled, 12)
+        self.assertTrue(part['ok'])
+
+    def test_crack_between_cells(self):
+        """Holes and seams are the static checks' (every boundary edge, not sampled views)."""
+        a, b = F.plaza(0, 0, boxes=[]), F.plaza(1, 0, boxes=[])
+        b.placements = [dataclasses.replace(p, position=(p.position[0] + 0.1, *p.position[1:])) for p in b.placements]
+        g = F.grid_mesh(-16, -16, 16, 16, 2.0, F.SAND)
+        b.collision = F.placed_tris(g, (48.1, 0, 16), 1, tag=F.TAG_GROUND)
+        for world, code in ((World(cells=[a, b], cell_shift=5), 'crack'), (F.seam_world(), 'edge_mismatch')):
+            r = self.run_check(world, {'ordering': {'depth_views': 4}})
+            self.assertFalse(r['ok'])
+            found = [f for f in r['hard_failures'] if f['code'] == code]
+            self.assertTrue(found, codes(r['hard_failures']))
+            self.assertTrue(any(abs(f['at'][0] - 32) < 0.2 for f in found), found)
+
+    def test_missing_face(self):
+        """A face the runtime does not draw (planted in the identity pack: its corners made one):
+        coverage errors in the sampled views that see it, the same counts as the full check."""
+        target = 120                                 # a ground tile in the middle of the plaza
+        real = V.RD.identity_mesh
+
+        def drop(data, off, mesh, first):
+            out = bytearray(real(data, off, mesh, first))
+            if len(mesh.faces) > 200:                # the ground's mesh
+                _, nf, _, fo, _ = struct.unpack_from('<HHIII', out)
+                at = fo + 36 * target
+                i0 = out[at + 4:at + 6]
+                out[at + 4:at + 12] = i0 * 4
+            return bytes(out)
+        V.RD.identity_mesh = drop
+        try:
+            full = self.run_check(F.good_world(), {'ordering': {'depth_views': None}})
+            part = self.run_check(F.good_world(), {'ordering': {'depth_views': 12}})
+        finally:
+            V.RD.identity_mesh = real
+        seen = {v['index']: v['ordering']['coverage_errors'] for v in full['views'] if v['ordering']['coverage_errors']}
+        got = {v['index']: v['ordering']['coverage_errors'] for v in part['views']
+               if 'skipped' not in v['ordering'] and v['ordering']['coverage_errors']}
+        if VERBOSE:
+            print(f'\n  missing face: {len(seen)} of {len(full["views"])} views see it, the sample caught {len(got)}')
+        self.assertTrue(got)
+        self.assertEqual(got, {k: seen[k] for k in got})
+        self.assertIn('coverage', codes(part['threshold_failures']))
+
+    def test_over_budget_view_outside_the_sample(self):
+        """Budgets are judged on every view, sampled or not."""
+        base = self.run_check(F.good_world(), {'ordering': {'depth_views': 6}})
+        unsampled = [v for v in base['views'] if 'skipped' in v['ordering']]
+        limit = sorted(v['stats']['gpu_cycles'] for v in base['views'])[-10]
+        r = self.run_check(F.good_world(), {'ordering': {'depth_views': 6}, 'thresholds': {'gpu_cycles': limit},
+                                            'mode': 'strict'})
+        over = {v['index'] for v in r['views'] if v['stats']['gpu_cycles'] > limit}
+        failed = {f['view'] for f in r['threshold_failures'] if f['code'] == 'gpu_cycles'}
+        self.assertEqual(failed, over)
+        self.assertTrue(over & {v['index'] for v in unsampled})
+        self.assertFalse(r['ok'])
+
+    def test_depth_test_off_in_one_view(self):
+        """A broken depth rule in a single view: the cheap check on every view's statistics
+        catches it wherever it is, and the pixel comparison too where the view is sampled."""
+        base = self.run_check(F.good_world(), {'ordering': {'depth_views': 6}})
+        rows = base['views']
+        inside = next(v['index'] for v in rows if v['ordering'].get('sample') == 'most gpu_cycles')
+        outside = next(v['index'] for v in rows if 'skipped' in v['ordering'])
+        cams = {tuple(rows[k]['camera']['eye']) + (rows[k]['camera']['yaw_degrees'], rows[k]['layer_set'])
+                for k in (inside, outside)}
+        real_record, real_lines = V.RD.view_record, V.RD.DEPTH.cart_lines
+
+        def record(view, layer_ids, entities, ident=False):
+            out = bytearray(real_record(view, layer_ids, entities, ident))
+            key = tuple(view['eye']) + (round(math.degrees(view['yaw']), 3), view['layer_set'])
+            if key in cams:
+                out[28:32] = (1).to_bytes(4, 'little')          # VView.reserved
+            return bytes(out)
+
+        def lines(depth, perspective, indent='    '):
+            # the GPU's depth test off for this frame's lists; depth.akr still draws nearest first
+            return real_lines(depth, perspective, indent) + indent + 'if v.reserved != 0 { GPU_DEPTH = 0 }\n'
+        V.RD.view_record, V.RD.DEPTH.cart_lines = record, lines
+        try:
+            r = self.run_check(F.good_world(), {'ordering': {'depth_views': 6}})
+        finally:
+            V.RD.view_record, V.RD.DEPTH.cart_lines = real_record, real_lines
+        broken = {f['view'] for f in r['hard_failures'] if f['code'] == 'depth_untested'}
+        self.assertEqual(broken, {inside, outside})
+        o = r['views'][inside]['ordering']
+        self.assertGreater(o['wrong_near_pixels'] + o['wrong_far_pixels'], 100, o)
+        self.assertIn('skipped', r['views'][outside]['ordering'])
+        self.assertFalse(r['ok'])
 
 
 @needs_tools

@@ -46,6 +46,7 @@ are measured and listed, and nothing fails on them.
 | a pack that does not decode | a view over `gpu_cycles`, `draw_cpu_cycles` or `view_triangles` |
 | a view with dropped triangles (over the GPU's 4,000) | wrong-order pixels in the near band over `near_wrong_pixels` |
 | a view that filled the packet arena | wrong-order pixels elsewhere over `far_wrong_fraction` of the screen |
+| in depth mode, a view drawn without the depth test (`depth_untested`) | |
 | a collision crack or mismatched floor edge | coverage errors over `coverage_pixels` |
 | | ground inversions over `ground_inversion_pixels` ([Ground](#ground)) |
 | an entity origin inside solid collision | a cell over `cell_triangles`, `cell_placements`, `standin_triangles` |
@@ -89,6 +90,7 @@ are WORLDKIT.md's placeholders.
 | `vantage_points` | [] | `{"position": [x, y, z], "yaw": deg, "pitch": deg}` |
 | `runtime` | far ring 3, near 0.1, near far 1.5 cells, entities drawn, ground first, entity drawing `object`, object bias 1.5, object squash 2, levels of detail on, worst case | what the game sets on the reader (`near_far`: `null` takes the pack's own, else 1.5 cells; `lod`: `wp_lod`; `lod_fine`: `wp_lod_fine`, the finest level the hysteresis band allows; `ground_first`: `wp_ground_first`; `entity_drawing`: `object`, through `wp_draw_entities()`, or `mesh_at`, each live entity's mesh by its own depth; `object_bias`, `object_squash`: `wp_object_bias`, `wp_object_squash`; `depth`, `perspective`: false, the game calls `render_depth(true)`, `render_perspective(true)`, [Depth mode](#depth-mode)) |
 | `ordering` | on; edge margin 1 px; depth epsilon 0.001 | see [Ordering](#ordering-check-3); in depth mode also the depth key's tolerance |
+| `ordering.depth_views` | 60 | depth mode only: views given the pixel comparison ([The ordering sample](#the-ordering-sample)); `null`: every view. Listed in the report only in depth mode |
 | `collision` | 4 samples a unit, rays of 32 units, 50 findings | |
 | `images` | 6 | diagnostic pictures of the worst views |
 
@@ -168,7 +170,7 @@ counts presented frames, so lag does not shift views. Per view the report has:
 | `frame_cpu_cycles` | the whole frame |
 | `gpu_cycles` | the frame's GPU cycles (including the clear, 38,400) |
 | `triangles`, `triangles_dropped` | as the GPU counted them |
-| `depth` | in depth mode only: the frame's `px_ztest`, `px_zfail`, `zclears`, `tris_recip`, `px_persp`, `persp_divs` ([RENDERING.md](RENDERING.md#frame-statistics)) |
+| `depth` | in depth mode only: the frame's `px_ztest`, `px_zfail`, `zclears`, `tris_recip`, `px_persp`, `persp_divs` ([RENDERING.md](RENDERING.md#frame-statistics)), and with `runtime.depth` `untested_pixels`: pixels drawn without the depth test (all pixels less `px_ztest`; 0 in a correct frame) |
 | `arena_bytes`, `arena_full` | full: fewer bytes left than a quad's packet (the face loops stop there) |
 | `placements_drawn`, `ground_drawn`, `standins_drawn`, `entities_drawn` | `ground_drawn`: ground placements, in the ground pass |
 | `coarse_drawn`, `lod_culled` | placements drawn at a level of detail other than 0; in view but past their cull distance |
@@ -504,7 +506,8 @@ is on). In depth mode:
   depth. The selection is as before; the stand-ins are clipped at the near pass's near plane, as
   `wp_draw()` then draws them. Ground inversions and pass
   inversions cannot occur, and the static `ground_hides` and `ground_over_ground` warnings are
-  not made. What is still judged as before: coverage, the budgets and the collision checks.
+  not made. What is still judged as before: coverage, the budgets and the collision checks; the
+  budgets on every view, coverage and order on the [ordering sample](#the-ordering-sample).
 - **Ordering is a regression check.** A pixel's expected face is decided only where it is
   nearer than every other face that may cover the pixel by more than the depth key's precision
   and the console's rounding, so a wrong-order pixel is a fault of the depth test or the face
@@ -524,7 +527,8 @@ is on). In depth mode:
 
 Measured on the movement garden (`carts/garden/world/garden.world.json`, built from a copy with
 `"runtime": {"depth": true, "perspective": true}`; the garden's own recipe is unchanged), default
-settings, 600 views each:
+settings, 600 views each, every one compared (before the ordering sample; `ordering.depth_views`
+`null` gives the same today):
 
 | | Ordering table | Depth mode | Depth mode with entity cameras |
 |---|---|---|---|
@@ -549,6 +553,103 @@ The peak falls because nearest-first drawing lets early depth reject a third of 
 pixels at 1 cycle; the median rises by the depth clear (38,400), the reciprocals and the
 perspective divides.
 
+### The ordering sample
+
+The table above has no wrong-order pixel in 600 views: with the depth buffer, ordering is a
+regression check of the console, not a property of the world, and most of a full check's time
+went into it (the reference, about 90% of it). So in depth mode the checker splits the views'
+work:
+
+- **Budgets on every view.** The cart draws each sampled view once, from the pack as built, and
+  the probe records its statistics: every view has its `stats` (and `heaviest`), and the budget
+  thresholds, `triangles_dropped` and `arena_full` are judged on every view, as before. The cart
+  walks its view records one frame each (bit 1 of a record's flags draws it from the identity
+  pack), and the frames are cut into up to `MEI_KIT_JOBS` runs of `mei-scene-probe` side by side
+  (one cart each; every frame opens the pack and clears, so a frame's record does not depend on
+  the frames before it). On the garden every statistic is the one the paired cart gave except
+  `frame_cpu_cycles`, 2 cycles less a frame (the cart's own frame code).
+- **`depth_untested`** (a hard failure, every view): a frame that drew pixels without the depth
+  test (`stats.depth.untested_pixels`: all its pixels less `px_ztest`) or never cleared the depth
+  buffer (`zclears` 0). In depth mode every face is a packet with depth, so a correct frame has
+  none; this is the cheap check of the depth rule on the views the sample leaves out.
+- **The pixel comparison on a sample.** Coverage and order, with everything the sections above
+  say, on `ordering.depth_views` views (default 60, `null` for every view), drawn a second time
+  from the identity pack. A sampled view's row is the one the full check gives (on the garden:
+  all 60, and all 600 with `null`, equal to the checker before the sample); the others have
+  `"ordering": {"skipped": "not in the ordering sample (depth mode)"}`, and the summary's sums
+  (`tested_pixels`, `coverage_errors`) are over the sample. A sampled row's `ordering.sample`
+  says why it was chosen, and `sampling.ordering_sample` counts them: `{"views", "of",
+  "chosen"}`.
+
+The sample is chosen after the budgets are measured, deterministically (`ordering_sample()` in
+`verify.py`), in this order until it is full:
+
+1. `vantage`: every authored vantage point;
+2. `most gpu_cycles`, `most draw_cpu_cycles`, `most triangles`, `most arena_bytes`: the worst
+   view by each budget (the most faces, depth tests and overlap; one view can be several);
+3. `stratum`: greedily, the view that adds the most strata not yet sampled, where a view's strata
+   are its kind, its layer set, its camera cell and each pair of these, until every stratum
+   is in (so every kind of camera, seam cameras included, in every cell and layer set);
+4. `heaviest` and `spread`, taking turns: the views with the most triangles, and the views in
+   the van der Corput order of their index (halves, then quarters, then eighths of the view list,
+   which runs through the kinds in the order above and, within each, the cells).
+
+Ties go to the earlier view in that van der Corput order. On the garden: 17 strata views, 20
+heaviest, 20 spread and 3 worst-budget views; all five kinds (27 eye, 15 follow, 7 rooftop, 7 air,
+4 seam), both layer sets (31, 29) and all four cells (14 to 17 each); 2.4 million decided pixels.
+
+**What a sample catches, and what it cannot.** A fault of the depth test, the face loops,
+clipping or culling shows in every view that meets its cause, and those are many: the sample
+catches it where any of its 60 views does, and reports it exactly as the full check would. A
+fault that shows from a few cameras only (one face missing in one place, a culling error at one
+position) is caught only if one of those views is sampled: the garden's largest face left out of
+the identity pack is seen by 87 of the 600 views and caught in 21 of the 60; one ground tile of
+the plaza is seen by 13 of 60 views and caught in 3 of a 12-view sample. A fault confined to one
+view is caught with a probability of about the sample's share (10% of 600), unless the view is
+among the worst budgets. A broken depth rule in a single view is caught wherever it is by
+`depth_untested` when the test is off; a subtler one (the test on but wrong) only in sampled
+views. As before, nothing within `edge_margin` of an outline is judged in either mode.
+
+**Holes and seams** are the static checks' (check 1), which depth mode does not change and does
+not sample: cracks and mismatched floor edges along every boundary edge of the collision, inside
+cells and across seams, with every layer off and each layer alone. That is where a hole a player
+falls through is, and it is exact at the sampled points, where a pixel check is not: a gap in the
+world's geometry is in the reference too, so it is never a coverage error, and a crack narrower
+than a pixel along two faces' shared edge is within `edge_margin` of both. What the pixel check
+adds at a seam is the runtime drawing a cell's geometry wrongly (missing, culled, misplaced),
+which shows in many views near the seam; the strata put a seam camera of every cell with seams
+into the sample (4 of the garden's 21).
+
+What depth mode no longer computes: the far and ground passes of the reference (one pass), pass
+and ground inversions (the fields stay, always 0), the second-nearest depth the ordering table's
+rule needs, and the identity frames of views outside the sample.
+
+Measured on the movement garden in depth mode (the copy above; 600 views; the same pack; on an
+Apple-silicon Mac with 8 cores under a load average of about 30, so wall times are approximate
+and CPU time is the steadier measure):
+
+| | Before | Ordering sample (60) | Every view (`null`) |
+|---|---|---|---|
+| World Checker, wall seconds | 23.5–23.9 (67.5 under heavier load) | 4.6–4.75 | 16.4 |
+| CPU seconds (all processes) | 104–105 | 15.1–15.4 | 69.6 |
+| reference / emulator / static seconds (one run) | 15.2 / 3.9 / 1.2 | 2.6 / 2.3 (summed over the runs; 0.5 wall) / 1.2 | – |
+| in a cold-cache `mei_world.py build` | – | 5.2 | – |
+
+Besides the sample: half the frames, the runs side by side, the far and ground passes left out,
+and the reference's per-face polygon arithmetic without `np.roll()` and `np.cross()` (the same
+operations, so every result is bit for bit the same; this speeds up the check without depth too).
+
+Planted faults, in depth mode with the default sample (`DepthSampleTests` in
+`tests/test_worldverify.py` plants each in the plaza; the garden numbers are from the same plants):
+
+| Fault | Found |
+|---|---|
+| a crack between cells: two plaza cells, the second's ground 0.1 units off the seam | `crack` hard failures on the seam (static) |
+| corners that disagree across a seam (`seam_world()`) | `edge_mismatch` on the seam (static) |
+| a missing face: the garden's largest face (800 square units) collapsed in the identity pack | 21 sampled views, 101,735 coverage-error pixels (87 views, 445,577, with every view compared) |
+| an over-budget view: `gpu_cycles` 400,000 | all 46 views over it, 31 of them outside the sample |
+| the depth test off in one view (`GPU_DEPTH = 0` after `render_depth(true)`), a sampled and an unsampled one | `depth_untested` in both (98,858 and 37,957 pixels); in the sampled view also 27 near and 4,763 far wrong-order pixels |
+
 ## Timing
 
 Measured on an Apple-silicon Mac with `make` defaults:
@@ -563,6 +664,7 @@ Measured on an Apple-silicon Mac with `make` defaults:
 | the plaza with default sampling (60 views) | 1.5 |
 | the demonstration world, every sampled view (3,005: 601 cameras × layer sets) | 67 |
 | `test_room` / `two_districts` examples, default settings (333 / 416 views; before the cameras aimed at entities, 132 / 416: 1.4 / 6.3 on the same machine) | 4.3 / 6.6 |
+| the movement garden in depth mode, 600 views, 60 compared ([The ordering sample](#the-ordering-sample)) | 4.6–4.75 (under load; 23.5–23.9 comparing all 600 before) |
 
 Hence `max_views` 600 (about 15–20 seconds a world). The reference dominates; NumPy work per
 face is the cost, so dense views cost more. Sampling and static checks are pure Python and grow

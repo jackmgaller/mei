@@ -31,6 +31,7 @@ every other by more than the depth key's precision and half a pixel of each face
 
 See docs/WORLDCHECKER.md for what is and is not exact.
 """
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 import math
 from pathlib import Path
@@ -224,7 +225,7 @@ struct VView {{
     eye: vec4
     yaw: fixed
     pitch: fixed
-    flags: u32          // bit 0: draw entity meshes
+    flags: u32          // bit 0: draw entity meshes{flag_note}
     reserved: u32
     on: [8]u32          // layers switched on (bit k of word k >> 5)
 }}
@@ -283,12 +284,12 @@ fn draw() {{
     vout.request = 0
     let k = tick - 1
     tick += 1
-    if k < 0 || k >= 2 * (len(VIEWS) as s32) {{
+    if k < 0 || k >= {frames} {{
         cls(0)
         return
     }}
-    let v = &VIEWS[k >> 1]
-    let ident = (k & 1) == 1
+    let v = &VIEWS[{view_of_k}]
+    let ident = {ident}
     if ident {{
         assert(wp_open(IDPACK))
         dither(false)
@@ -319,7 +320,7 @@ fn draw() {{
         if {objects} {{ ne = wp_draw_entities() }} else {{ ne = draw_entities(eye) }}
     }}
     let c2 = cycle_count()
-    vout.view = k >> 1
+    vout.view = {view_of_k}
     vout.draw_cycles = c1 - c0
     vout.entity_cycles = c2 - c1
     vout.arena_bytes = (__arena_ptr as s32) - (&__arena[0] as s32)
@@ -344,13 +345,21 @@ def fixed_literal(v):
     return f'{v:.7f}'
 
 
-def view_record(view, layer_ids, entities):
+def view_record(view, layer_ids, entities, ident=False):
     on = [0] * 8
     for lid in layer_ids:
         on[lid >> 5] |= 1 << (lid & 31)
     eye = [round(c * ONE) for c in view['eye']]
     return struct.pack('<4i2iII8I', *eye, 0, round(view['yaw'] * ONE), round(view['pitch'] * ONE),
-                       1 if entities else 0, 0, *on)
+                       (1 if entities else 0) | (2 if ident else 0), 0, *on)
+
+
+# How the cart walks its VIEWS records: in pairs (each view's measured frame, then its identity
+# frame: run_cart()), or one frame a record, the record's flags bit 1 choosing the identity pack
+# (run_frames(), depth mode's schedule).
+PAIRED = dict(frames='2 * (len(VIEWS) as s32)', view_of_k='k >> 1', ident='(k & 1) == 1', flag_note='')
+SINGLE = dict(frames='len(VIEWS) as s32', view_of_k='k', ident='v.flags & 2 != 0',
+              flag_note=', bit 1: draw from IDPACK')
 
 
 def _run(cmd, what, timeout=600):
@@ -381,30 +390,32 @@ def depth_init(rows):
         for slot, row in rows) + '}\n'
 
 
-def run_cart(pack_bytes, id_bytes, views, runtime, tools, work, rows=()):
-    """Compiles the verification cart for these views (dicts with eye, yaw, pitch, layers, a
-    list of layer ids) and runs it on mei-scene-probe. Returns ([(stats, out, picture or None)]
-    per frame, timings). rows (depth mode): swatch_rows() of the meshes drawn."""
-    np = numpy()
-    work = Path(work)
-    (work / 'pack.bin').write_bytes(pack_bytes)
-    (work / 'idpack.bin').write_bytes(id_bytes)
-    (work / 'views.bin').write_bytes(b''.join(view_record(v, v['layers'], runtime['draw_entities'])
-                                              for v in views))
+def _cart_source(runtime, rows, walk):
     near_far = runtime['near_far']
     depth, persp = runtime.get('depth', False), runtime.get('perspective', False)
-    (work / 'check.akr').write_text(CART.format(depth_import=DEPTH.cart_import(depth, persp),
-                                                depth_lines=DEPTH.cart_lines(depth, persp),
-                                                depth_init=depth_init(rows) if depth or persp else '',
-                                                far_ring=int(runtime['far_ring']),
-                                                clip_near=fixed_literal(runtime['clip_near']),
-                                                near_far=fixed_literal(near_far),
-                                                ground_first='true' if runtime['ground_first'] else 'false',
-                                                objects='true' if runtime['entity_drawing'] == 'object' else 'false',
-                                                object_bias=fixed_literal(runtime['object_bias']),
-                                                object_squash=int(runtime['object_squash']),
-                                                lod='true' if runtime['lod'] else 'false',
-                                                lod_fine='true' if runtime['lod_fine'] else 'false'))
+    return CART.format(depth_import=DEPTH.cart_import(depth, persp),
+                       depth_lines=DEPTH.cart_lines(depth, persp),
+                       depth_init=depth_init(rows) if depth or persp else '',
+                       far_ring=int(runtime['far_ring']),
+                       clip_near=fixed_literal(runtime['clip_near']),
+                       near_far=fixed_literal(near_far),
+                       ground_first='true' if runtime['ground_first'] else 'false',
+                       objects='true' if runtime['entity_drawing'] == 'object' else 'false',
+                       object_bias=fixed_literal(runtime['object_bias']),
+                       object_squash=int(runtime['object_squash']),
+                       lod='true' if runtime['lod'] else 'false',
+                       lod_fine='true' if runtime['lod_fine'] else 'false', **walk)
+
+
+def _compile_and_run(pack_bytes, id_bytes, records, source, frames, tools, work):
+    """Writes the cart's files into work, compiles the cart and runs it until `frames` frames
+    after the first are presented. Returns (the capture's bytes, compile seconds, run seconds)."""
+    work = Path(work)
+    work.mkdir(parents=True, exist_ok=True)
+    (work / 'pack.bin').write_bytes(pack_bytes)
+    (work / 'idpack.bin').write_bytes(id_bytes)
+    (work / 'views.bin').write_bytes(records)
+    (work / 'check.akr').write_text(source)
     t0 = time.perf_counter()
     _run([tools['compiler'], work / 'check.akr', '-o', work / 'check.mei', '--sym', work / 'check.sym'],
          'compiling the verification cart')
@@ -416,11 +427,15 @@ def run_cart(pack_bytes, id_bytes, views, runtime, tools, work, rows=()):
             symbols[parts[1]] = int(parts[0], 16)
     if 'G_vout' not in symbols:
         raise RenderError('the compiler did not emit the vout symbol')
-    frames = 1 + 2 * len(views)
-    _run([tools['probe'], work / 'check.mei', work / 'capture.bin', frames, symbols['G_vout'], OUT_SIZE],
+    _run([tools['probe'], work / 'check.mei', work / 'capture.bin', 1 + frames, symbols['G_vout'], OUT_SIZE],
          'running the verification cart')
     t2 = time.perf_counter()
-    cap = (work / 'capture.bin').read_bytes()
+    return (work / 'capture.bin').read_bytes(), t1 - t0, t2 - t1
+
+
+def _records(cap, expected):
+    """The recorded frames of a capture: [(stats, out, picture or None)]."""
+    np = numpy()
     if cap[:4] != b'MSP2':
         raise RenderError('mei-scene-probe wrote no capture')
     count, size = struct.unpack_from('<II', cap, 4)
@@ -445,9 +460,47 @@ def run_cart(pack_bytes, id_bytes, views, runtime, tools, work, rows=()):
             pic = np.frombuffer(cap, dtype='<u2', count=W * H, offset=at).astype(np.int32)
             at += 2 * W * H
         records.append((stats, out, pic))
-    if len(records) != 2 * len(views):
-        raise RenderError(f'the verification cart recorded {len(records)} frames, expected {2 * len(views)}')
-    return records, {'compile_seconds': t1 - t0, 'run_seconds': t2 - t1}
+    if len(records) != expected:
+        raise RenderError(f'the verification cart recorded {len(records)} frames, expected {expected}')
+    return records
+
+
+def run_cart(pack_bytes, id_bytes, views, runtime, tools, work, rows=()):
+    """Compiles the verification cart for these views (dicts with eye, yaw, pitch, layers, a
+    list of layer ids) and runs it on mei-scene-probe. Returns ([(stats, out, picture or None)]
+    per frame, timings). rows (depth mode): swatch_rows() of the meshes drawn."""
+    records = b''.join(view_record(v, v['layers'], runtime['draw_entities']) for v in views)
+    cap, tc, tr = _compile_and_run(pack_bytes, id_bytes, records, _cart_source(runtime, rows, PAIRED),
+                                   2 * len(views), tools, work)
+    return _records(cap, 2 * len(views)), {'compile_seconds': tc, 'run_seconds': tr}
+
+
+def run_frames(pack_bytes, id_bytes, frames, runtime, tools, work, rows=(), jobs=1):
+    """Depth mode's schedule: one recorded frame for each (view, ident) of frames, from IDPACK
+    with its picture where ident is true, else from PACK (measured). With jobs > 1 the frames
+    are cut into up to that many runs of the probe, side by side, each with its own cart: every
+    frame opens the pack afresh and clears, so what a frame records does not depend on the frames
+    before it. Returns ([(stats, out, picture or None)] per frame, in order, and the timings
+    summed over the runs)."""
+    if not frames:
+        return [], {'compile_seconds': 0.0, 'run_seconds': 0.0}
+    source = _cart_source(runtime, rows, SINGLE)
+    n = max(1, min(jobs, len(frames) // 16))
+    cuts = [len(frames) * k // n for k in range(n + 1)]
+
+    def one(k):
+        part = frames[cuts[k]:cuts[k + 1]]
+        records = b''.join(view_record(v, v['layers'], runtime['draw_entities'], ident) for v, ident in part)
+        cap, tc, tr = _compile_and_run(pack_bytes, id_bytes, records, source, len(part), tools,
+                                       Path(work) / f'run{k}')
+        return _records(cap, len(part)), tc, tr
+    if n == 1:
+        done = [one(0)]
+    else:
+        with ThreadPoolExecutor(n) as pool:
+            done = list(pool.map(one, range(n)))
+    return ([r for recs, _, _ in done for r in recs],
+            {'compile_seconds': sum(d[1] for d in done), 'run_seconds': sum(d[2] for d in done)})
 
 
 # ---- the reference
@@ -572,6 +625,16 @@ def _clip_near(cs, near):
     return out
 
 
+def _next(a):
+    """np.roll(a, -1) of a short 1-D array, without its overhead."""
+    return numpy().concatenate((a[1:], a[:1]))
+
+
+def _cross(a, b):
+    """np.cross() of two 3-vectors, with the same operations, without its overhead."""
+    return numpy().array((a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]))
+
+
 def view_faces(pack, meshes, view_insts, vp, origin, first_ids, near_planes):
     """Faces (screen polygons with depth planes) of the instances a view draws. view_insts is a
     list of (instance, pass, certain)."""
@@ -607,8 +670,9 @@ def view_faces(pack, meshes, view_insts, vp, origin, first_ids, near_planes):
                 continue
             scr = np.array([(160 + 160 * q[0] / q[2] - 0.5, 120 - 120 * q[1] / q[2] - 0.5) for q in poly])
             xs, ys = scr[:, 0], scr[:, 1]
-            area = 0.5 * float(np.sum(xs * np.roll(ys, -1) - np.roll(xs, -1) * ys))
-            perim = float(np.sum(np.hypot(np.roll(xs, -1) - xs, np.roll(ys, -1) - ys)))
+            xs1, ys1 = _next(xs), _next(ys)
+            area = 0.5 * float(np.sum(xs * ys1 - xs1 * ys))
+            perim = float(np.sum(np.hypot(xs1 - xs, ys1 - ys)))
             thin = perim == 0 or 2 * abs(area) / perim < 1.5
             if not thin and area > 0 and not flags & FACE_DOUBLE:
                 continue                       # a back face (the runtime culls nclip >= 0)
@@ -621,13 +685,13 @@ def view_faces(pack, meshes, view_insts, vp, origin, first_ids, near_planes):
             else:
                 convex = True
             a0, a1, a2 = (np.array(cxyw[i]) for i in idx[:3])
-            nrm = np.cross(a1 - a0, a2 - a0)
+            nrm = _cross(a1 - a0, a2 - a0)
             d = float(nrm @ a0)
             tol = 0.0
             if len(idx) == 4:
                 w3 = world[idx[3], :3]
                 w0, w1, w2 = (world[i, :3] for i in idx[:3])
-                wn = np.cross(w1 - w0, w2 - w0)
+                wn = _cross(w1 - w0, w2 - w0)
                 ln = float(np.linalg.norm(wn))
                 if ln > 0:
                     tol = abs(float((w3 - w0) @ wn)) / ln
@@ -654,7 +718,7 @@ def _face_pixels(f, margin):
         return None
     yy, xx = np.mgrid[y0:y1 + 1, x0:x1 + 1]
     n = len(xs)
-    area = float(np.sum(xs * np.roll(ys, -1) - np.roll(xs, -1) * ys))
+    area = float(np.sum(xs * _next(ys) - _next(xs) * ys))
     sign = 1.0 if area >= 0 else -1.0
     inside = np.full(xx.shape, np.inf)
     for i in range(n):
@@ -708,11 +772,13 @@ class _Pass:
         # maybe-coverage: nearest and second nearest depth
         nearer = z < self.m1[pix]
         p2 = pix[nearer]
-        self.m2[p2] = self.m1[p2]
+        if not self.depth:          # depth mode decides by the lo depths below instead
+            self.m2[p2] = self.m1[p2]
         self.m1[p2] = z[nearer]
         self.mid[p2] = f.id
-        rest = ~nearer & (z < self.m2[pix])
-        self.m2[pix[rest]] = z[rest]
+        if not self.depth:
+            rest = ~nearer & (z < self.m2[pix])
+            self.m2[pix[rest]] = z[rest]
         if self.depth:
             key, snap = self.depth
             nrm, d = f.plane
@@ -764,9 +830,12 @@ def compare_view(faces, actual, settings):
     eps = settings['depth_epsilon']
     tol_extra = max((f.tol for f in faces), default=0.0)
     depth = (DEPTH.KEY_TOLERANCE, DEPTH.SNAP_PIXELS) if settings.get('depth') else None
-    passes = {name: _Pass(depth if name == 'near' else None) for name in PASSES}
     if depth:
+        # one pass: the far and ground passes, and the inversions between passes, do not exist
+        passes = {'near': _Pass(depth)}
         faces = [Face(f.id, f.inst, f.index, 'near', f.poly, f.plane, f.definite, f.tol) for f in faces]
+    else:
+        passes = {name: _Pass() for name in PASSES}
     for f in faces:
         passes[f.pass_].add(f, margin)
     # each pixel's expected face comes from the last pass that may cover it (its top pass)
@@ -774,6 +843,8 @@ def compare_view(faces, actual, settings):
     depth_e = np.full(W * H, np.inf)
     top = np.full(W * H, -1, dtype=np.int32)
     for rank, name in enumerate(PASSES):
+        if name not in passes:
+            continue
         exp_p, cov_p = passes[name].expected(eps + tol_extra)
         expected = np.where(cov_p, exp_p, expected)
         depth_e = np.where(cov_p, passes[name].r1, depth_e)
@@ -812,14 +883,20 @@ def compare_view(faces, actual, settings):
     # surely covers the pixel and is truly nearer than the later pass's expected face. Stand-ins
     # in front of ground or near geometry; ground in front of the near pass (ground-first drawing
     # puts what stands on the ground over it, so whatever the ground truly hides shows through).
-    sure = tested & (actual == expected) & (expected > 0)
-    far, ground = passes['far'], passes['ground']
-    inversion = sure & (top > rank_of['far']) & (far.r1 < depth_e - eps - tol_extra)
-    ground_inv = sure & (top == rank_of['near']) & (ground.r1 < depth_e - eps - tol_extra)
+    if depth:
+        none = np.zeros(W * H, dtype=bool)
+        inversion = ground_inv = none
+        ground_id, ground_depth = np.zeros(W * H, dtype=np.int32), np.full(W * H, np.inf)
+    else:
+        sure = tested & (actual == expected) & (expected > 0)
+        far, ground = passes['far'], passes['ground']
+        inversion = sure & (top > rank_of['far']) & (far.r1 < depth_e - eps - tol_extra)
+        ground_inv = sure & (top == rank_of['near']) & (ground.r1 < depth_e - eps - tol_extra)
+        ground_id, ground_depth = ground.rid, ground.r1
     covered = top >= 0
     return dict(expected=expected, tested=tested, wrong=wrong, coverage=coverage, depth=depth_e,
                 drawn_depth=drawn_depth, inversion=inversion, ground_inversion=ground_inv,
-                ground_id=ground.rid, ground_depth=ground.r1, ambiguous=(~tested) & covered,
+                ground_id=ground_id, ground_depth=ground_depth, ambiguous=(~tested) & covered,
                 by_id=by_id, covered=covered)
 
 
