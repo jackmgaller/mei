@@ -725,10 +725,9 @@ fn body_pixels() -> s32 {
 }
 
 // 36: the slide platform (2 x 2), 37: the gondola's deck (moving, so the counts differ a
-// little), 38: kick wall 4's top (1 x 12), where plain mesh_at() loses half the body.
-// Standing on a platform with the camera close and above: the body drawn as an object shows
-// as many pixels as the body forced in front of everything (nothing is truly in front of it
-// here), so the platform's top does not cut it. Also notes what plain mesh_at() shows.
+// little), 38: kick wall 4's top (1 x 12), which cut half the body under the ordering table.
+// Standing on a platform with the camera close and above: nothing is in front of the body, so
+// it shows as many pixels with the world drawn as drawn alone with the same camera.
 fn s_body_shown(f: s32) {
     if f == 1 {
         tv[T.CamDist] = 2.5
@@ -736,21 +735,13 @@ fn s_body_shown(f: s32) {
     }
     if f == 60 { body_test_mode = 1 }
     if f == 62 { t0 = body_pixels() }
-    if f == 62 { body_test_mode = 2 }
-    if f == 64 { t1 = body_pixels() }
-    if f == 64 { body_test_mode = 0 }
-    if f == 66 {
+    if f == 62 { body_test_mode = 0 }
+    if f == 64 {
         t2 = body_pixels()
-        note("body pixels, in front of everything", fixed(t0))
-        note("body pixels, mesh_at", fixed(t1))
-        note("body pixels, as an object", fixed(t2))
-        if SCENARIO == 37 {
-            for k in 0..mover_n { note("a mover's radius m (object if <= 4)", movers[k].bounds.x) }
-        }
+        note("body pixels, drawn alone", fixed(t0))
+        note("body pixels, with the world", fixed(t2))
         expect(t0 > 400, "the body is in view", fixed(t0))
-        expect(t2 * 100 >= t0 * 97, "as an object: not cut", fixed(t2))
-        // the kick wall's top is two 12 m triangles: their centres sort nearer than the body
-        if SCENARIO == 38 { expect(t1 * 10 < t0 * 9, "mesh_at alone: cut", fixed(t1)) }
+        expect(t2 * 100 >= t0 * 97, "not cut by the platform", fixed(t2))
         done()
     }
 }

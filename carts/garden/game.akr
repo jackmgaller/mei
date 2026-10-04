@@ -4,6 +4,7 @@
 // register moved on more than one), update() runs the ticks it missed, so a window of n ticks
 // is the same length of time whether or not frames were dropped. The pads are read once per
 // presented frame, so a press counts on the first of those ticks.
+import "depth.akr"
 import "ground/ground.akr"
 import "tuning.akr"
 import "player.akr"
@@ -23,6 +24,11 @@ var coins: s32
 var coin_got: [8]u32           // a bit per entity number
 
 fn init() {
+    // The depth buffer and perspective-correct textures (docs/RENDERING.md): everything is
+    // hidden per pixel, so the world, the player, the entities and the movers are drawn with
+    // plain mesh_at(), in any order.
+    render_depth(true)
+    render_perspective(true)
     assert(world_load())
     tune_defaults()
     for k in 0..8 { surface_map[k] = WORLD_SURFACES[k] }
@@ -119,9 +125,9 @@ fn collect_coins() {
 
 // ---- drawing
 
-// The entities' meshes as objects (wp_draw_object: keyed at their nearest point, so a coin
-// over a platform is not cut by its top); taken coins and what attach.akr draws are skipped.
+// The entities' meshes in the near cells; taken coins and what attach.akr draws are skipped.
 fn draw_entities() {
+    let o = wp_view_origin()
     let ci = wp_cell_index(cam.eye.x)
     let cj = wp_cell_index(cam.eye.z)
     for dj in -1..2 {
@@ -136,9 +142,7 @@ fn draw_entities() {
                 if attach_owns(e) { continue }         // attach_draw() draws it where it is now
                 var yaw = e.yaw
                 if e.type_id as s32 == COIN_TYPE { yaw = frame_angle(sim_t, 0.05) }
-                let p = wp_entity_pos(e)
-                let b = wp_mesh_bounds(m)
-                let _ = wp_draw_object(m, p, yaw, b.x, p.y + b.y)
+                mesh_at(m, wp_entity_pos(e) - o, yaw)
             }
         }
     }
