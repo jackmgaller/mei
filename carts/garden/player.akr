@@ -91,7 +91,11 @@ var col_surf: s32
 
 fn fwd_dir(yaw: fixed) -> vec3 { return vec3(sin(yaw), 0.0, cos(yaw)) }
 fn yaw_of(v: vec3) -> fixed { return atan2(v.x, v.z) }
-fn hspeed() -> fixed { return length(vec3(pl.vel.x, 0.0, pl.vel.z)) }
+// Lengths of velocities (metres a tick) are taken scaled up: the square of a few
+// centimetres is below fixed point's 1/65536.
+fn tlen(v: vec3) -> fixed { return length(v * 256.0) / 256 }
+fn tnorm(v: vec3) -> vec3 { return normalize(v * 256.0) }
+fn hspeed() -> fixed { return tlen(vec3(pl.vel.x, 0.0, pl.vel.z)) }
 fn is_air(s: St) -> bool { return s >= St.Jump && s <= St.Glide || s == St.PoundSpin || s == St.PoundFall || s == St.Dive }
 
 fn enter(s: St) {
@@ -395,7 +399,7 @@ fn st_slide(ip: *Pin) {
     var v = vec3(pl.vel.x, 0.0, pl.vel.z)
     v = v + vec3(n.x, 0.0, n.z) * (mps2(T.Gravity) * tv[T.SlopeGrav])
     v = v + ip.dir * (mps2(T.SlideFriction) * ip.mag)
-    let s = length(v)
+    let s = tlen(v)
     let fr = mps2(T.SlideFriction)
     if s > fr {
         v = v * ((s - fr) / s)
@@ -407,7 +411,7 @@ fn st_slide(ip: *Pin) {
     pl.vel.x = v.x
     pl.vel.z = v.z
     if s > 0.001 { pl.yaw = yaw_of(v) }
-    pl.fwd = length(v)
+    pl.fwd = tlen(v)
     if !ground_move() { return }
     if !steep() { enter(St.Ground) }
 }
@@ -582,8 +586,8 @@ fn air_wall() {
     if abs(pl.wall_ny) > sin(rad_of(T.KickTilt)) { return }
     if approach < mps(T.KickMinSpeed) { return }
     let hv = vec3(pl.vel.x, 0.0, pl.vel.z)
-    pl.kick_speed = length(hv)
-    pl.kick_in = normalize(hv)
+    pl.kick_speed = tlen(hv)
+    pl.kick_in = tnorm(hv)
     pl.kick_n = n
     pl.vel = vec3(0.0, -mps(T.WallFall0), 0.0)
     pl.fwd = 0.0

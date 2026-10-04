@@ -13,11 +13,12 @@ run() {       # scenario frames
     grep "^DONE" "$O/s$1.log"
     n=$((n + 1))
 }
-for s in 1 2 3 5 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 28; do
+for s in 1 2 3 5 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 28 29; do
     run $s 260
 done
 run 4 410
 run 6 260
 run 27 600
+run 30 510
 grep -h '^NOTE' "$O"/s*.log
 echo "all $n movement garden scenarios passed"

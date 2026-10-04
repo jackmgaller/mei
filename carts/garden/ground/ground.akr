@@ -1,0 +1,36 @@
+// The world the garden runs on, and everything about it that is not the same in every world:
+// which generated file to import, how to open it, where the player starts and what its surface
+// bytes mean. Nothing else in the cart names a world.
+//
+// This file is in a folder of its own on purpose: the world is named "garden", so the World
+// Kit generates garden.akr, and an import looks next to the importing file first. From
+// carts/garden/ that would find the cart's own garden.akr; from here it finds the world's (in
+// the build's cart-worlds directory, which make passes with -I).
+//
+// Running on another world (the World Kit's test_room, say): change worlds.txt, the import,
+// world_load() and WORLD_SURFACES; GARDEN_* are the game schema's and stay.
+import "garden.akr"
+
+fn world_load() -> bool { return world_garden_load() }
+
+// Used only if the world has no spawn entity.
+const WORLD_SPAWN: vec3 = vec3(44.0, 0.0, 7.0)
+const WORLD_SPAWN_YAW: fixed = 0.0
+fn world_spawn_type() -> s32 { return GARDEN_TYPE_SPAWN }
+
+// The spawn entity's facing: its yaw parameter, in degrees (0 faces +z, north).
+fn world_spawn_yaw(e: *WpEntity) -> fixed {
+    let p = wp_entity_params(e) as *GardenSpawn
+    if p == null { return e.yaw }
+    return p.yaw * PI / 180
+}
+
+// The surface bytes as the controller reads them (carts/garden/README.md, "Surfaces"): the
+// garden's recipe gives bounce 1 and slide 2, the same bytes.
+const WORLD_SURFACES: [8]u8 = [0, 1, 2, 0, 0, 0, 0, 0]
+
+// The probe the kit classified collision for (the game schema's): the player's body.
+const BODY_RADIUS: fixed = GARDEN_PROBE_RADIUS
+const BODY_HEIGHT: fixed = GARDEN_PROBE_HEIGHT
+const BODY_STEP: fixed = GARDEN_PROBE_STEP
+const COIN_TYPE = GARDEN_TYPE_COIN

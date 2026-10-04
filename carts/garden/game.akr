@@ -4,7 +4,7 @@
 // register moved on more than one), update() runs the ticks it missed, so a window of n ticks
 // is the same length of time whether or not frames were dropped. The pads are read once per
 // presented frame, so a press counts on the first of those ticks.
-import "ground.akr"
+import "ground/ground.akr"
 import "tuning.akr"
 import "player.akr"
 import "camera.akr"
@@ -42,7 +42,7 @@ fn place_at_spawn() {
         for n in 0..wp_pack.entity_count as s32 {
             let e = wp_entity(n)
             if e.type_id as s32 == ty {
-                player_place(wp_entity_pos(e), e.yaw)
+                player_place(wp_entity_pos(e), world_spawn_yaw(e))
                 return
             }
         }
