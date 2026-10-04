@@ -22,7 +22,7 @@ from .preview import source, png_bytes
 from .schema import validate, VERIFICATION
 
 ROOT=Path(__file__).resolve().parents[2]
-DEFAULT_PROFILE={'yaw_steps':24,'pitches':[-.35,0,.35],'distances':[1,1.5],'far':100,'geometry':'error'}
+DEFAULT_PROFILE={'yaw_steps':24,'pitches':[-.35,0,.35],'distances':[1,1.5],'far':100,'geometry':'error','edge_margin':1.0}
 DEPTH_EPSILON=2/65536
 
 
@@ -71,7 +71,11 @@ def cycle_witness(edges):
     return []
 
 
-def raster_surfaces(mesh, sv, materials):
+def raster_surfaces(mesh, sv, materials, margin=0.0):
+    """Each front face's covered pixels (the GPU's integer top-left rule) and depths there, and,
+    with a margin, each covered pixel's distance inside the face's outline ('inside', pixels) and
+    the pixels within margin outside it with the face's plane depth extended there ('ring',
+    'ring_depth')."""
     np=numpy()
     packed=sv[:,2].astype(np.uint32)
     x=(packed&65535).astype(np.int32);x=np.where(x>=32768,x-65536,x)
@@ -90,25 +94,41 @@ def raster_surfaces(mesh, sv, materials):
         if not area or (area>=0 and not materials[face.material].get('double_sided',False)):continue
         if area<0:
             vertices=vertices[[0,2,1]];ids=[ids[0],ids[2],ids[1]];area=-area
-        low=np.maximum(vertices.min(axis=0),[0,0]);high=np.minimum(vertices.max(axis=0),[319,239])
+        grow=int(math.ceil(margin))
+        low=np.maximum(vertices.min(axis=0)-grow,[0,0]);high=np.minimum(vertices.max(axis=0)+grow,[319,239])
         if np.any(low>high):continue
         yy,xx=np.mgrid[low[1]:high[1]+1,low[0]:high[0]+1]
-        inside=np.ones(xx.shape,dtype=bool);weights=[]
+        inside=np.ones(xx.shape,dtype=bool);weights=[];dist=np.full(xx.shape,np.inf)
         for j in range(3):
             a,b=vertices[(j+1)%3],vertices[(j+2)%3]
             dx,dy=b-a
             edge=dx*(yy-a[1])-dy*(xx-a[0])
             inside &= edge>=0 if dy<0 or (dy==0 and dx>0) else edge>0
             weights.append(edge)
+            ln=math.hypot(dx,dy)
+            if ln:dist=np.minimum(dist,edge/ln)
         indices=(yy[inside]*320+xx[inside]).astype(np.int32)
         if not len(indices):continue
         bary=np.array([w[inside] for w in weights],dtype=float)/area
         z=1/np.sum(bary/depth[ids,None],axis=0)
-        surfaces.append({'face':i,'pixels':indices,'depth':z,'low':low,'high':high})
+        s={'face':i,'pixels':indices,'depth':z,'low':np.maximum(vertices.min(axis=0),[0,0]),'high':np.minimum(vertices.max(axis=0),[319,239])}
+        if margin>0:
+            s['inside']=dist[inside]
+            ring=(~inside)&(dist>-margin)
+            s['ring']=(yy[ring]*320+xx[ring]).astype(np.int32)
+            with np.errstate(divide='ignore',invalid='ignore'):
+                rz=1/np.sum((np.array([w[ring] for w in weights],dtype=float)/area)/depth[ids,None],axis=0)
+            # past the plane's horizon the extended depth means nothing: count it as nearest
+            s['ring_depth']=np.where(np.isfinite(rz)&(rz>0),rz,0.0)
+        surfaces.append(s)
     return surfaces
 
 
-def compare(mesh, surfaces, actual, graph=True):
+def compare(mesh, surfaces, actual, graph=True, margin=0.0):
+    """The view's verdict. With a margin (the World Checker's edge_margin), a pixel's depth order
+    is judged only where the nearest face covers it at least `margin` pixels inside its outline
+    and is nearer, by more than DEPTH_EPSILON, than every other face that comes within `margin`
+    of the pixel; other differing pixels are `undecided_pixels`. Coverage is always exact."""
     np=numpy()
     nearest=np.full(320*240,np.inf);expected=np.full(320*240,-1,dtype=np.int32)
     actual_depth=np.full(320*240,np.inf)
@@ -120,13 +140,28 @@ def compare(mesh, surfaces, actual, graph=True):
         matched=actual[pixels]==s['face']
         actual_depth[pixels[matched]]=z[matched]
     covered=expected>=0
+    decided=np.ones(320*240,dtype=bool)
+    if margin>0:
+        deep=np.zeros(320*240,dtype=bool)
+        for s in surfaces:
+            own=expected[s['pixels']]==s['face']
+            deep[s['pixels'][own]]=s['inside'][own]>=margin
+        # the nearest depth of any other face within the margin of each pixel
+        rival=np.full(320*240,np.inf)
+        for s in surfaces:
+            for pix,z in ((s['pixels'],s['depth']),(s['ring'],s['ring_depth'])):
+                other=expected[pix]!=s['face']
+                np.minimum.at(rival,pix[other],z[other])
+        decided=deep&(rival>nearest+DEPTH_EPSILON)
     coverage_bad=(covered!=(actual>=0))|((actual>=0)&~np.isfinite(actual_depth))
     differences=covered&(actual>=0)&(actual!=expected)&~coverage_bad
     delta=np.zeros(len(actual))
     comparable=differences&np.isfinite(actual_depth)
     delta[comparable]=actual_depth[comparable]-nearest[comparable]
-    bad=comparable&(delta>DEPTH_EPSILON)
-    ties=differences&~bad
+    wrong=comparable&(delta>DEPTH_EPSILON)
+    bad=wrong&decided
+    undecided=wrong&~decided
+    ties=differences&~wrong
     pairs=Counter(zip(actual[bad].tolist(),expected[bad].tolist()))
     issues=[]
     for (front,behind),pixels in pairs.most_common(32):
@@ -156,7 +191,8 @@ def compare(mesh, surfaces, actual, graph=True):
         cycle=cycle_witness(edges)
         graph_info={'edges':sum(len(v) for v in edges.values()),
                     'cycle':[face_ref(mesh,i) for i in cycle],'crossing_pairs':crossings}
-    return {'tested_pixels':int(covered.sum()),'wrong_pixels':int(bad.sum()),
+    return {'tested_pixels':int((covered&decided).sum()),'undecided_pixels':int((covered&~decided).sum()),
+            'undecided_wrong_pixels':int(undecided.sum()),'wrong_pixels':int(bad.sum()),
             'coverage_errors':int(coverage_bad.sum()),'depth_ties':int(ties.sum()),
             'visible_faces':sorted(set(expected[covered].tolist())),
             'issues':issues,'ordering_graph':graph_info},expected,actual,bad|coverage_bad
@@ -227,8 +263,8 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
                     sv=np.frombuffer(capture,dtype='<i4',count=len(mesh.vertices)*4,offset=16).reshape(-1,4)
                     actual=np.frombuffer(capture,dtype='<u2',count=320*240,offset=16+16*len(mesh.vertices))
                     if int(actual.max())>len(mesh.faces):raise AssetError('/verification/native','Probe returned an invalid triangle ID.')
-                    surfaces=raster_surfaces(mesh,sv,materials)
-                    row,expected,actual_ids,bad=compare(mesh,surfaces,actual)
+                    surfaces=raster_surfaces(mesh,sv,materials,policy['edge_margin'])
+                    row,expected,actual_ids,bad=compare(mesh,surfaces,actual,margin=policy['edge_margin'])
                     visible.update(row.pop('visible_faces'))
                     row.update(index=len(views),camera=camera)
                     row['native_triangles'],row['native_cpu_cycles']=struct.unpack_from('<II',capture,8)
@@ -237,10 +273,13 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
                         (root/filename).write_bytes(diagnostic_png(expected,actual_ids,bad))
                         row['image']=filename;images.append(filename)
                     views.append(row)
-    totals={key:sum(v[key] for v in views) for key in ('tested_pixels','wrong_pixels','coverage_errors','depth_ties')}
+    totals={key:sum(v[key] for v in views) for key in ('tested_pixels','undecided_pixels','undecided_wrong_pixels','wrong_pixels','coverage_errors','depth_ties')}
     cycles=sum(bool(v['ordering_graph']['cycle']) for v in views)
     geometry_ok=geometry['ok'] or policy['geometry']=='warn'
-    ok=geometry_ok and totals['tested_pixels']>0 and not totals['wrong_pixels'] and not totals['coverage_errors'] and not cycles
+    # coverage is judged at every covered pixel: an asset all of whose pixels lie within the edge
+    # margin (a thin pole) passes on coverage alone, and its tested_pixels say so
+    covered=totals['tested_pixels']+totals['undecided_pixels']
+    ok=geometry_ok and covered>0 and not totals['wrong_pixels'] and not totals['coverage_errors'] and not cycles
     result={'ok':ok,'format':'mei-visibility-report','version':1,'name':name,'profile':policy,
             'recipe_sha256':base['recipe_sha256'],'mesh_sha256':hashlib.sha256(original).hexdigest(),
             'depth_epsilon':DEPTH_EPSILON,'geometry':geometry,'totals':{**totals,'views':len(views),'cyclic_views':cycles},

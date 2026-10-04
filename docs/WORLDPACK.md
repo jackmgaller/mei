@@ -828,6 +828,24 @@ Each present placement in view is drawn at the level of detail its distance choo
 **Paths.** A reader answers the two queries above ([Paths](#paths)) on a path it holds by
 number or by name.
 
+### Faces in one bucket
+
+The near pass sorts by an ordering table of 1,024 buckets over its range (0.094 units a bucket for
+the default 96 units). Faces in one bucket are not sorted among themselves: a bucket is a list to
+which each face is added at the head, and the GPU draws it from the head, so **the face submitted
+first is drawn last, on top**, whatever their depths (`tests/test_worldpack.py`,
+`BucketRuleTests`: of two overlapping quads 0.0001 units apart, the farther, submitted first, is
+the one on screen, within one mesh and across two `mesh_at()` calls). `wp_draw()` submits in a
+fixed order: the far pass's stand-ins (flushed), the ground pass (flushed), then the near cells
+by row and column (*dj* then *di*, from −1 to 1), each cell's placements in their order in the
+cell (as the recipe lists them), each mesh's faces in their order in the mesh (an Asset Kit
+asset's: its recipe's order, [ASSETKIT.md](ASSETKIT.md#automated-visibility-gate)). The cart's
+own meshes come after `wp_draw()`, so in a shared bucket the world's faces are drawn over them;
+`wp_draw_object()`'s keys and biases move an object out of the shared buckets. Within one asset
+this is a rule recipes may rely on (a sign earlier than the wall it hangs on wins their ties);
+between placements it depends on the placements' order and the cells' and should not be relied
+on: the World Checker judges what is drawn either way.
+
 **Entities.** A tracked area is the cells within a radius (0–2) of a point. An entity is active
 while its cell is in the area and it is present. Each update retires the entities that stopped
 being active (their cell left, or their layer went off), then spawns the ones that started.

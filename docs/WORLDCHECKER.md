@@ -238,6 +238,20 @@ and the largest depth error. Each view reports `tested_pixels`, `tested_backgrou
 `over_entity_pixels` (something drawn over an entity truly in front of it). The summary's
 `entity_views` adds these up over the views aimed at entities.
 
+The Asset Checker judges depth order with the same `edge_margin` rule and default
+([ASSETKIT.md](ASSETKIT.md#what-is-checked)), so an asset that passes it is not failed in a level
+for the same 1-pixel edge flips, and both report what the margin leaves undecided.
+
+**Collision edges of long thin floors.** The static check finds a floor's boundary edges by
+looking for the exactly opposite edge row with the same ends, the ends worked out from the rounded
+rows. Where two edge lines meet at a small angle (the long sides and the diagonal of a 2 × 50
+quad meet at about 2.3°), the worked-out corner slides along them by much more than the rows'
+rounding (0.0033 units there), so the tolerance on each end grows with 1 / sin of the angle at
+it: 2/1000 unit plus (1 + half the triangle's longest edge) raw units over the sine (0.012 for the
+2 × 50 quad). With an absolute tolerance such a diagonal was taken for two boundary edges facing
+each other, an `edge_mismatch`. A real gap along such an edge is still found as a crack (a 0.05
+gap at the end of the diagonal is).
+
 ### What is exact, and the evidence
 
 Every pixel the reference decides is judged exactly, for every class of view: cameras anywhere

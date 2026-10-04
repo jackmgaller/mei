@@ -156,17 +156,50 @@ result in `report.json`. The report records recipe, mesh, compiler and probe has
    16.16 depths.
 3. **Expected visibility:** a separate CPU rasterizer uses those projected vertices and Mei's
    exact integer top-left pixel-coverage rule, then selects the nearest triangle by reciprocal
-   depth. Every covered pixel is checked, including triangle boundaries. Colors and lighting
-   do not decide pass/fail; identically colored surfaces still produce distinct IDs.
+   depth. Coverage is checked at every pixel, including triangle boundaries. Depth order is
+   judged at every pixel the policy's `edge_margin` decides (below). Colors and lighting do not
+   decide pass/fail; identically colored surfaces still produce distinct IDs.
 4. **Ordering constraints:** overlapping covered triangles create far-before-near relationships.
    Reports include conflicts whose order reverses across the overlap and actual directed-cycle
    witnesses. Such cycles cannot be solved by finding a different simple draw order for those
    triangles. The graph is conservative: it includes surfaces hidden behind other surfaces.
 
-A pass requires nonzero tested coverage, no geometry errors under the selected policy, zero
+A pass requires covered pixels, no geometry errors under the selected policy, zero
 wrong-depth pixels, zero coverage discrepancies and no ordering cycles. Two triangles within
 two normalized 16.16 depth units are treated as a depth tie; ties are counted explicitly.
 This tolerance does not suppress geometric duplicates or coplanar-overlap errors.
+
+**The edge margin.** `edge_margin` (pixels, default 1, the World Checker's `ordering.edge_margin`)
+says where depth order is judged: at a pixel the nearest face covers at least that far inside its
+outline, and only when it is nearer, by more than the depth tie, than every other face that comes
+within that distance of the pixel (its plane extended there). The other covered pixels are
+`undecided_pixels`. A thin face seen edge-on is less than two pixels wide and so wholly undecided,
+and a pixel where two faces' outlines meet is decided by neither: the 1–3 pixel flips at such
+places no longer fail an asset that the World Checker would pass in a level. What a margin can
+hide: a real mis-sort confined to the margin (faces overlapping by less than about two pixels,
+the edges of thin parts) is not reported, and inside the band it is not judged at all. The report
+says how much: `undecided_wrong_pixels` counts the pixels within the margin where the drawn face
+is truly behind the expected one, so `wrong_pixels` + `undecided_wrong_pixels` is the count at
+`edge_margin` 0, and `tested_pixels` + `undecided_pixels` is every covered pixel. A pass needs
+covered pixels, not decided ones: an asset no wider than about two pixels in every view (a thin
+pole at the fitted scale) has its depth order judged nowhere, which its `tested_pixels` of 0 shows;
+check such an asset with `scale: "world"` or a smaller `edge_margin` if its order matters. `edge_margin: 0`
+judges every pixel, as before. Coverage errors are judged at every pixel whatever the margin, and
+the ordering graph and its cycles take no margin. `verify --edge-margin N` sets it for one run.
+
+**Faces in one bucket.** The ordering table has 1,024 buckets over the camera's range, about 0.1
+units each at `far` 100 and in a world's near pass. Faces whose average depths fall in one bucket
+are not sorted among themselves: the face submitted first is drawn last, on top, even when it is
+the farther ([WORLDPACK.md](WORLDPACK.md#faces-in-one-bucket); LANGUAGE.md says the same of keyed
+faces). An asset's faces are submitted in the order the recipe produces them: its `nodes` in
+order, each node's faces in the order its operation makes them, a group's children in order.
+So when two faces of one asset lie closer in depth than a
+bucket and overlap on screen (a sign on a wall, a stripe painted on a floor), the one that must
+show is the one earlier in the recipe: put the sign's node before the wall's. The Asset Checker
+judges the result (a depth difference above the tie tolerance drawn the wrong way is a wrong
+pixel), so a recipe that relies on the rule is checked, not trusted. The rule holds only within
+a bucket: from a camera at which the two faces' average depths fall in different buckets they
+are sorted by depth, so the order cannot rescue faces that truly cross.
 
 ### Reports and repairs
 

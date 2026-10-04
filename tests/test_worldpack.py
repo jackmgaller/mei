@@ -1100,6 +1100,33 @@ class LodTests(unittest.TestCase):
         self.assertLess(per, 200)
 
 
+@needs_tools
+class BucketRuleTests(unittest.TestCase):
+    """Faces in one ordering-table bucket: the one submitted first is drawn last, on top, even
+    when it is the farther; within a mesh that is the earlier face, across calls the earlier
+    call's (docs/WORLDPACK.md, "Faces in one bucket")."""
+
+    def test_first_submitted_is_drawn_on_top(self):
+        red, blue = meshlib_rgb(250, 0, 0), meshlib_rgb(0, 0, 250)
+
+        def quad(m, z, colour):
+            m.quad([m.vertex(-1, -1, z), m.vertex(1, -1, z), m.vertex(-1, 1, z), m.vertex(1, 1, z)], [colour])
+        two, first, second = F.meshlib.Mesh(), F.meshlib.Mesh(), F.meshlib.Mesh()
+        quad(two, 0.0001, red)          # face 0: farther, by much less than a bucket (0.098)
+        quad(two, 0.0, blue)            # face 1: nearer
+        quad(first, 0.0001, red)
+        quad(second, 0.0, blue)
+        embeds = {'TWO': ('Mesh', two.pack()), 'FIRST': ('Mesh', first.pack()), 'SECOND': ('Mesh', second.pack())}
+        for mode in (0, 1):
+            with tempfile.TemporaryDirectory() as tmp:
+                dump = Path(tmp) / 'shot.ppm'
+                F.run_cart(tmp, 'bucket.akr', embeds, {'MODE': mode}, frames=2, dump=dump)
+                w, h, px = F.read_ppm(dump)
+            k = 3 * (h // 2 * w + w // 2)
+            with self.subTest(mode=mode):
+                self.assertEqual((px[k] > 128, px[k + 2] > 128), (True, False), 'the first submitted (red) is on top')
+
+
 def path_world(seed=0, cell_shift=6):
     """A one-cell world with paths only: random polylines in the cell and over its edges, some
     closed, some raised, after a rail named "rail" (paths.akr looks it up by name)."""
