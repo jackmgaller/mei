@@ -1,0 +1,70 @@
+// depth.akr with planes.akr: a cart can import both. With the depth test on, a face drawn while
+// poly_upper() is on is upper (bit 26 of its packet's first colour word) in a packet with depth,
+// and the decal offset lands in bits 27-31 beside it; with both modes off, the plane chip's own
+// face loops draw as before. The nearer (upper) quad is in front where they overlap.
+// frames: 2
+// pixel: 160 120 7C00
+// pixel: 100 120 001F
+
+import "planes.akr"
+import "depth.akr"
+
+struct Quad { hdr: Mesh, v: [4]vec4, f: [1]Face }
+var near: Quad       // blue, nearer, upper
+var far: Quad        // red, farther, lower
+
+fn quad(m: *Quad, x0: fixed, x1: fixed, z: fixed, colour: u32) {
+    m.hdr.nverts = 4
+    m.hdr.nfaces = 1
+    m.hdr.verts = 16
+    m.hdr.faces = 16 + 64
+    m.v[0] = vec4(x0, -1.0, z, 1.0)
+    m.v[1] = vec4(x1, -1.0, z, 1.0)
+    m.v[2] = vec4(x0, 1.0, z, 1.0)
+    m.v[3] = vec4(x1, 1.0, z, 1.0)
+    m.f[0].flags = FACE_QUAD as u8
+    m.f[0].col[0] = colour
+    m.f[0].idx[1] = 1
+    m.f[0].idx[2] = 2
+    m.f[0].idx[3] = 3
+}
+
+fn show(p: *u32) {
+    print_hex(p[0] >> 24)
+    print(" ")
+    print_hex(p[1] >> 24)
+    println("")
+}
+
+fn init() {
+    dither(false)
+    quad(&near, -0.5, 1.5, 3.0, 0xFF0000)
+    quad(&far, -2.0, 0.5, 5.0, 0x0000FF)
+    camera(vec3(0.0, 0.0, 0.0), 0.0)
+}
+
+fn draw() {
+    cls(0)
+    render_depth(true)
+    var n = arena_used()
+    poly_upper(true)
+    depth_offset(3)
+    mesh(&near.hdr)
+    depth_offset(0)
+    poly_upper(false)
+    if frame() == 0 { show(&__arena[n]) }      // type 0x34; upper (4) and offset 3 (0x18)
+    n = arena_used()
+    mesh(&far.hdr)
+    if frame() == 0 { show(&__arena[n]) }      // type 0x34, lower
+    if frame() != 0 { return }
+    render_depth(false)
+    n = arena_used()
+    poly_upper(true)
+    mesh(&near.hdr)
+    poly_upper(false)
+    show(&__arena[n])                          // the plane chip's loops: type 0x24, upper
+    render_depth(true)
+}
+// expect: 34 1C
+// expect: 34 0
+// expect: 24 4

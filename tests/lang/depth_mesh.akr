@@ -1,0 +1,115 @@
+// depth.akr: render_depth() and mesh*(). Two quads that cross each other draw with the line
+// where they meet (the ordering table could only put one in front of the other), a decal
+// (depth_offset) shows on a wall drawn after it, and the packet list the frame draws holds the
+// opaque faces nearest first, then the semi-transparent ones back to front, then what
+// ot_insert() added. With the test off again, mesh*() makes the plain packets it always did.
+// frames: 3
+// pixel: 100 120 001F
+// pixel: 220 120 7C00
+// pixel: 160 60 7FFF
+// pixel: 150 60 03E0
+
+import "depth.akr"
+
+struct Quad { hdr: Mesh, v: [4]vec4, f: [1]Face }
+var a: Quad          // red, slanted: nearer on the left
+var b: Quad          // blue, facing the camera at z 4
+var wall: Quad       // green, at z 6, above them
+var sign: Quad       // white, coplanar with the wall (a decal)
+var glass: Quad      // semi-transparent, at z 3 and z 5
+var glass2: Quad
+
+fn quad(m: *Quad, x0: fixed, y0: fixed, z0: fixed, x1: fixed, y1: fixed, z1: fixed, colour: u32) {
+    m.hdr.nverts = 4
+    m.hdr.nfaces = 1
+    m.hdr.verts = 16
+    m.hdr.faces = 16 + 64
+    m.v[0] = vec4(x0, y0, z0, 1.0)
+    m.v[1] = vec4(x1, y0, z1, 1.0)
+    m.v[2] = vec4(x0, y1, z0, 1.0)
+    m.v[3] = vec4(x1, y1, z1, 1.0)
+    m.f[0].flags = FACE_QUAD as u8
+    m.f[0].col[0] = colour
+    m.f[0].idx[0] = 0
+    m.f[0].idx[1] = 1
+    m.f[0].idx[2] = 2
+    m.f[0].idx[3] = 3
+}
+
+fn init() {
+    dither(false)
+    quad(&a, -2.0, -1.0, 2.0, 2.0, 0.0, 6.0, 0x0000FF)
+    quad(&b, -2.0, -1.0, 4.0, 2.0, 0.0, 4.0, 0xFF0000)
+    quad(&wall, -3.0, 0.5, 6.0, 3.0, 3.0, 6.0, 0x00FF00)
+    quad(&sign, -0.25, 1.0, 6.0, 0.25, 2.0, 6.0, 0xFFFFFF)
+    quad(&glass, 3.0, -1.0, 3.0, 4.0, 0.0, 3.0, 0xFFFFFF)
+    glass.f[0].flags = (FACE_QUAD | FACE_SEMI) as u8
+    quad(&glass2, 3.0, -1.0, 5.0, 4.0, 0.0, 5.0, 0xFFFFFF)
+    glass2.f[0].flags = (FACE_QUAD | FACE_SEMI) as u8
+    camera(vec3(0.0, 0.0, 0.0), 0.0)
+}
+
+var extra: [3]u32
+
+// The packets the frame's list holds, in drawing order: type, then the first corner's w (whole
+// units) for packets with depth.
+fn walk() {
+    var p = __ot[OT_SIZE - 1]
+    while p & 0xFFFFFF != 0xFFFFFF {
+        let q = (p & 0xFFFFFF) as *u32
+        let t = q[0] >> 24
+        if t != 0 {
+            print_hex(t)
+            if t >= 0x30 {
+                print(" ")
+                print_int(from_bits(q[6] as s32) as s32)      // flat quad: 6 words, then 4 w
+            }
+            println("")
+        }
+        p = q[0]
+    }
+}
+
+fn draw() {
+    cls(0)
+    render_depth(true)
+    if frame() == 0 {
+        print_int(depth_on() as s32)
+        println("")
+    }
+    mesh(&glass.hdr)
+    mesh(&wall.hdr)
+    depth_offset(2)
+    mesh(&sign.hdr)          // drawn before the wall in the list (nearer first), but coplanar
+    depth_offset(0)
+    mesh(&a.hdr)
+    mesh(&b.hdr)
+    mesh(&glass2.hdr)
+    if frame() != 0 { return }
+    extra[0] = 0
+    ot_insert(&extra[0], 0x01, 500)     // (an unknown type: skipped)
+    walk()
+    render_depth(false)
+    print_int(depth_on() as s32)
+    println("")
+    let n = arena_used()
+    mesh(&b.hdr)
+    print_int(arena_used() - n)         // words: a flat quad without depth
+    println("")
+    print_hex(__arena[n] >> 24)
+    println("")
+}
+// expect: 1
+// opaque, nearest bucket first (the red and blue quads both average z 4: within a bucket the
+// later face comes first; the sign's offset does not change its bucket), then the glass back to
+// front, then the frame's table
+// expect: 34 4
+// expect: 34 2
+// expect: 34 6
+// expect: 34 6
+// expect: 3C 5
+// expect: 3C 3
+// expect: 1
+// expect: 0
+// expect: 6
+// expect: 24

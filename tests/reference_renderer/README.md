@@ -8,17 +8,23 @@ the expected image is. Every comparison is exact: one pixel off is a failure.
 
 It is one of three checkers ([DECISIONS.md](../../docs/DECISIONS.md), "The kits and the first
 open-world game"): the Asset Checker judges one asset, the World Checker a level, and the
-Reference Renderer the console (CPU, standard library, Prism Engine and Horizon Engine).
+Reference Renderer the console (CPU, standard library, Prism Engine and Horizon Engine). It
+models both of the Prism Engine's modes: the ordering-table mode of the v0.1 spec, and the depth
+buffer with perspective-correct texturing ([RENDERING.md](../../docs/RENDERING.md)), including
+the GPU cost table, cycle for cycle.
 
 ```sh
-make rendercheck            # stress scene, subdivision, GPU fuzzing, plane compositor
-make rendercheck-motion     # moving meshes, animated textures, moving planes
+make rendercheck            # stress scene, subdivision, GPU fuzzing, plane compositor,
+                            # depth scenes, depth fuzzing
+make rendercheck-motion     # moving meshes, animated textures, moving planes, depth in motion
 make B=build-mine rendercheck   # everything built into build-mine/ instead of build/
 ```
 
-On an Apple M1 Pro, `make rendercheck` takes about a minute from a clean build directory (the
-plane compositor 46 s, the fuzzer 13 s, the stress scene 4 s, subdivision 1 s) and
-`make rendercheck-motion` about 35 s. `make test` runs the stress scene and subdivision checks
+On an Apple M1 Pro, `make rendercheck` takes about 80 s with the native tools built (55 s
+before the depth checks were added: the plane compositor is most of it, the depth fuzzer about
+20 s, the fuzzer 12 s, the stress scene and the depth scenes 4 s each, subdivision 1 s) and
+`make rendercheck-motion` about 41 s (6 s of it the depth scenes with 48 frames of motion).
+Times vary with the machine's load. `make test` runs the stress scene and subdivision checks
 (about 5 s) when NumPy and Pillow are installed, and writes their output to
 `$(B)/reference_renderer/test.log`.
 
@@ -44,15 +50,18 @@ import `tools/meshlib.py`, the native mesh writer.
 | `motion_check.py` | A moving, textured, subdivided and near-clipped mesh scene over a full 64-step loop |
 | `texture_check.py` | Animated textures and palettes on sprites, mapped to presented frames |
 | `plane_motion_check.py` | One Mei instance over 24 frames of moving, animated planes |
-| `gpu_probe.c`, `planes_probe.c`, `plane_motion_probe.c` | Replay probes: load packets, VRAM and plane registers straight into the core (`libmeicore.a`) and dump the buffers |
+| `depth.py` | The depth and perspective mode from RENDERING.md: the vertex reciprocal, the key, the test, decal offsets, perspective spans, the cost table and the frame statistics, as a GPU state that takes register writes |
+| `depth_check.py` | Twelve views in the depth mode, GPU only and end to end through a cart, with the cycle budget; `--motion N` adds frames of camera motion |
+| `depth_fuzz.py` | Adversarial frames of packets with depth, compared in framebuffer, depth buffer and every cost counter, with four negative controls |
+| `gpu_probe.c`, `planes_probe.c`, `plane_motion_probe.c`, `depth_probe.c` | Replay probes: load packets, VRAM and plane registers straight into the core (`libmeicore.a`) and dump the buffers (`depth_probe.c` also the depth buffer and the GPU's counters, after register writes made through the bus) |
 | `common.py` | Paths and builds: the build directory (`MEI_BUILD`, which `make B=...` sets), compiling probes and carts |
 
 Each script runs on its own from anywhere (`python3 tests/reference_renderer/fuzz.py --help`);
 it builds the native tools it needs with `make` into the build directory `MEI_BUILD` names
 (default `build`). `oracle.py` checks the scene `gen_scene.py` last wrote, so run that first.
 The carts can be played: `build/mei build/reference_renderer/scene.mei` (A and B change the
-view), `subdivision.mei` (A), `motion.mei` (A pauses) and `textures.mei` (hold A to overload the
-GPU).
+view), `subdivision.mei` (A), `motion.mei` (A pauses), `textures.mei` (hold A to overload the
+GPU) and `depth.mei` (the depth views in turn; A pauses).
 
 ## How the reference works
 
@@ -70,11 +79,36 @@ again, in its own code:
   texture windows; tint, dithering, RGB555 quantization and the four blend modes, all as
   [DECISIONS.md](../../docs/DECISIONS.md) states them.
 
+`depth.py` models packets with depth from [RENDERING.md](../../docs/RENDERING.md) alone,
+not from `src/core/gpu.c` or the reference in `tests/test_gpu.c`:
+
+- **Depth**: the vertex reciprocal 2⁴⁰ ÷ *w* (2²⁸ for *w* below 1/16, zero and negative
+  included), the inverse depth `floor(Σ rᵢEᵢ ÷ area)` from the same exact weights as the
+  colours, the 16-bit key (exponent found by comparison, not by a logarithm), the decal offset
+  with its saturation, the test with ties to the later packet, opaque packets writing and
+  semi-transparent ones not, and texel 0 neither drawing nor writing. `GPU_DEPTH` and
+  `GPU_ZCLEAR` are register writes to a GPU state that lasts across lists and frames.
+- **Perspective**: q*ᵢ* scaled to 16 bits, the affine case when they are equal, each row's span
+  from its first to its last covered pixel, divides at the span's start, every 16th pixel and
+  its end in Python's unbounded integers (no 128-bit splitting), truncated steps between them,
+  then the old texture window, palette and index-0 rules.
+- **Cost**: every term of the cost table (40 a triangle, 24 for the reciprocals, 1 a failing
+  pixel, 1/2/2/4 a passing or untested one, 2 a divide, 38,400 a clear or depth clear) and the
+  six new frame statistics, compared with Mei's exactly.
+- **Golden values**: run on its own (and at the start of `depth_check.py`), `depth.py` checks
+  itself against RENDERING.md's key table and every texel of its perspective table, with that
+  receding floor's 5,437 divides and 163,484 cycles.
+
+It shares `oracle.py`'s dither matrix and texture-window function and `planes_check.py`'s
+compositor (for blends over holes and for the displayed picture), and its rasterizer is written
+the same way as `oracle.render`'s, though separately.
+
 The contract is the public mesh and clipping API and the rounding, fill, palette, tint, dither,
-window and blending rules in DECISIONS.md. Where the reference matches Mei, Mei follows its own
-rules. That does not mean the rules look natural: affine texture warp, nearest-neighbour
-aliasing, pixel snapping and average-depth ordering artefacts appear in both images, because
-the reference keeps them on purpose.
+window and blending rules in DECISIONS.md, and RENDERING.md for packets with depth. Where the
+reference matches Mei, Mei follows its own rules. That does not mean the rules look natural:
+affine texture warp (and the drift between perspective divides), nearest-neighbour aliasing,
+pixel snapping, average-depth ordering artefacts and depth-key ties appear in both images,
+because the reference keeps them on purpose.
 
 **What it does not share with Mei.** No Akari code, no C code, no packets and no pixels. The
 expected inputs are authored in Python: meshes, matrices and animation formulas, subdivision
@@ -198,12 +232,69 @@ captures three buffers per frame: the display before vsync (must still be the pr
 after vsync (must match the reference), and the new back buffer after auto-erase (must be all
 holes). Frame-to-frame differences are compared too.
 
+### Depth scenes (`depth_check.py`)
+
+Twelve views in the depth mode, authored as faces in world space: `interpenetrate` (two boxes
+through each other, a large triangle through both and the floor, two crossed quads),
+`platform` (a single 80 × 80-unit floor face with a platform, boxes and a pillar on it: the case
+an ordering table gets wrong), the same farthest first (`platform_far_first`) and with a far
+limit (`platform_far_limit`, `GPU_ZCLEAR` 0x7400: nothing past 25.6 units), `decals` (posters on
+a wall and markings on a grazing floor with offsets 0, 2 and 8, drawn before and after their
+surface), `glass` (three translucent panes in three blend modes, one textured, over opaque
+boxes, and an opaque box drawn after them), `corridor` (a grazing textured floor and walls 60
+units long), `corridor_test_off` (the same back to front with `GPU_DEPTH` off: perspective
+alone), `near_clip` (a box, a wall and a triangle through the near plane), `planes` (the plane
+chip on: polygons with depth in both layers, intersecting, a blended pane over holes and an
+upper one over lower pixels, a translucent water plane between the layers) and
+`overload_near_first` / `overload_far_first` (14 textured layers: 1,259,289 cycles nearest first,
+2,227,054 farthest first). Every view ends with an interface drawn untested with plain packets.
+
+The script does the geometry itself (camera, near clipping at 0.5 with the clipped vertices at
+*w* = 0.5, projection, the depth word, back-face culling, the order), so the packets are its
+own; what it checks is the GPU. Each view is compared twice:
+
+1. **GPU only**: `depth_probe.c` makes the view's register writes through Mei's bus and
+   returns the framebuffer, the depth buffer, the displayed picture and the GPU's counters.
+2. **End to end**: a cart (`depth.mei`) holds every view's register writes and packet lists,
+   relocates the lists into RAM at start-up and plays one view a frame in `mei-headless`. Each
+   presented picture and its `--gpu-stats` row (cycles and the six depth counters) must match a
+   reference GPU that keeps its state across frames, and each frame must take the ticks the
+   2,000,000-cycle budget gives it: `overload_far_first` takes 2, the others 1.
+
+It also checks that the order changes the cost and not the picture: nearest first is cheaper
+on the platform and fits the budget in the overload, where both orders give the same picture
+(the platform's two orders differ in 2 pixels, ties where faces touch). `--motion N` (48 in
+`make rendercheck-motion`) adds frames of a camera moving over the platform, every fourth
+without `GPU_ZCLEAR`, so the depth buffer carries over from the frame before; drawing those
+frames over a cleared buffer instead must change the picture (16,256 pixels over the 48).
+
+### Depth fuzzing (`depth_fuzz.py`)
+
+32 frames of 36 packets each: every kind with depth (`0x30`–`0x3F`) twice and four without,
+in random order, in two lists with `GPU_DEPTH` switched between them (on, off, or changed for
+the second list), after `GPU_ZCLEAR` with 0, 0xFFFF or a random far limit, both dither
+settings, and reserved `GPU_DEPTH` bits set. View depths come in six styles: one *w* for all
+vertices (the affine case), steep perspective (1/8 to 64 units), clamped (1/16 or nearer, zero,
+negative, −2³¹), far (keys of 0, the largest *w*), reciprocals that differ but scale to equal q,
+and anything in range. A third of the packets have a decal offset (1, 2, 8 or 31); positions
+are on screen, overlapping in one block, off it, collinear and across the full signed 16-bit
+range; half the textured packets have a texture window. Framebuffer, depth buffer and all eight
+counters must agree. Each packet with depth is then replayed alone (1,024 more frames), over a
+cleared buffer or over a far limit taken from the finished frame: 162,201,600 pixel comparisons.
+
+Four negative controls run the reference with one rule changed against the first eight frames,
+and must disagree with Mei: ties to the earlier packet (10,871 pixels), semi-transparent packets
+writing the depth buffer (396,833), a divide every 8 pixels (17,310), and failing pixels charged
+in full (the cycle count differs in 7 of the 8 frames).
+
 ## Reading a failure
 
 Every check prints one JSON line per case and writes `report.json` in its folder under
 `$(B)/reference_renderer/` (`scene/`, `subdivision/`, `fuzz/`, `planes/`, `planes_feedback/`,
-`motion/`, `textures/`, `plane_motion/`). `different_pixels` is the count that must be zero;
-`max_channel_error` and `bbox` say how far off and where. Beside each report:
+`motion/`, `textures/`, `plane_motion/`, `depth/`, `depth_motion/`, `depth_fuzz/`).
+`different_pixels` is the count that must be zero; `max_channel_error` and `bbox` say how far
+off and where. The depth checks count `framebuffer`, `depth_buffer` and `display` pixels apart
+and list each counter that differs as `[reference, Mei]` under `stats`. Beside each report:
 
 - `NAME_oracle.png` (or `_reference.png`), `NAME_mei.png` and `NAME_diff.png` (differing pixels
   in pink), and a labelled side-by-side `NAME_comparison.png`, scaled with nearest-neighbour
@@ -211,16 +302,20 @@ Every check prints one JSON line per case and writes `report.json` in its folder
 - for the stress scene, `NAME_gpu.png` (the GPU-only replay), the replay fixture
   `NAME.packets` and Mei's GPU statistics; for the fuzzer, each failing scene's packets as JSON
   and as a probe fixture, which `gpu_probe` replays on its own (`gpu_probe FIXTURE OUT.rgb555`);
+- for the depth checks, each view's or failing frame's `depth_probe` fixture (`NAME.bin`,
+  replayed with `depth_probe FIXTURE OUT`), `NAME_gpu.png` and `NAME_depth.png` (the reference's
+  depth buffer, its keys' high bytes as grey: nearer is lighter);
 - for the checks over time, contact sheets and animated GIF or WebP previews of reference, Mei
   and difference (the previews' colours are quantized: the PNGs and JSON are the evidence).
 
 To decide who is wrong: a mismatch in the end-to-end image but not the GPU-only one is the
 standard library's geometry (or the reference's model of it); one in both is the GPU or the
 reference's pixel rules; a mismatch in a single fuzzed packet names the packet kind. Then check
-the rule in DECISIONS.md, LANGUAGE.md or PLANES.md: if the reference departs from the documented
-rule, fix the reference; if Mei does, it is a console or standard library defect. The two
-defects below were found this way; so was one reference error (the `mat4_mul` rounding above,
-which disagreed on two motion steps until the reference followed the documented operator).
+the rule in DECISIONS.md, LANGUAGE.md, PLANES.md or RENDERING.md: if the reference departs from
+the documented rule, fix the reference; if Mei does, it is a console or standard library
+defect. The two defects below were found this way; so was one reference error (the `mat4_mul`
+rounding above, which disagreed on two motion steps until the reference followed the documented
+operator).
 
 ## What it found
 
@@ -261,7 +356,8 @@ pixels of plane case 0 differ.
 
 ## Results
 
-On 2026-10-03, against this tree, every check passes with no differing pixel:
+On 2026-10-03 (the depth checks on 2026-10-04), against this tree, every check passes with no
+differing pixel:
 
 | Check | Compared | Result |
 |---|---|---|
@@ -273,10 +369,21 @@ On 2026-10-03, against this tree, every check passes with no differing pixel:
 | Motion | 128 frames, 127 deltas, 90 frames with near clipping, 4–7 wall pieces, 16 held ticks | 0 different |
 | Animated textures | 96 normal frames; 22 overloaded frames over 64 ticks (42 waiting for the GPU) | 0 different, 0 mapping or held-frame errors |
 | Plane motion | 24 frames × 3 buffers: 5,529,600 pixels | 0 different, early-latch, auto-erase or delta errors |
+| Depth scenes | 12 views: framebuffer, depth buffer, display and 8 counters GPU only; picture, counters and ticks end to end | 0 different; 150,365–2,227,054 GPU cycles a frame, `overload_far_first` 2 ticks |
+| Depth motion | 48 frames end to end, 12 without `GPU_ZCLEAR` | 0 different; 179,561–295,193 GPU cycles a frame |
+| Depth fuzzing | 32 frames of 36 packets, 1,024 packets with depth also alone: 162,201,600 pixels and every counter | 0 different |
 
 The negative controls fire: a stale frame would show 1,805,872 wrong pixels across the motion
 run; the stale texture and late palette at texture frame 8 give 17,991 and 16,713; and a
 reference that ignores texture windows disagrees with Mei in the 32 fuzzed scenes that use them.
+The depth fuzzer's four mutant references disagree with Mei (above), and the motion frames drawn
+over a cleared depth buffer differ from the carried-over ones in 16,256 pixels.
+
+The depth model agrees with RENDERING.md's golden values, and Mei with the spec everywhere the
+checks looked. The spec's cost table leaves two things to inference, which the reference and
+Mei read the same way: the 24-cycle reciprocal setup is charged for a triangle with no pixels
+too (zero-area and off-screen, as the 40-cycle setup is), and a perspective triangle's divides
+are charged for every span whatever its pixels' depth test results.
 
 ## Limits
 
@@ -290,5 +397,11 @@ random low cameras, judged by `oracle.py`) matched exactly with 2-unit tiles but
 with 8- and 16-unit tiles where Mei drops a ground tile under the camera that the reference
 draws, double-sided or not, textured or not. Not covered: custom depth
 keys and bias, the plane compositor driven through the standard library's plane functions
-(`tests/test_planes.c` covers much of that), perspective-correct texturing (Mei's affine mapping
-is intended), and the SDL and web presentation paths.
+(`tests/test_planes.c` covers much of that), and the SDL and web presentation paths.
+
+The depth checks test the GPU, not the standard library: `depth_check.py` makes its own packets
+(its geometry is its own, not a model of `mesh()`), and its cart plays them from data. The
+standard library's depth API (`stdlib/depth.akr`) is not built yet; when it is, the views can be
+drawn with `mesh*()` under `render_depth(true)` and `render_perspective(true)`, with
+`oracle.py`'s geometry extended to the new face loops and order. The triangle limit and lists
+that fault are not in the depth fuzzer (the old fuzzer and `tests/test_gpu.c` cover them).
