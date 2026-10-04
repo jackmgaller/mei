@@ -20,6 +20,8 @@
   "layers": {
     "festival": {}
   },
+  "runtime": {"depth": true, "perspective": true},
+  "verification": {"thresholds": {"cell_triangles": 2400}},
   "paths": {
     "wires_west": {"points": [[6, 8.6, 72], [22, 8.6, 72], [38, 8.6, 72]], "raised": true},
     "wire_east": {"points": [[92, 8.6, 56], [122, 8.6, 72]], "raised": true},
