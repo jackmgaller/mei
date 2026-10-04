@@ -17,7 +17,11 @@ var world_k: s32 = GARDEN_WORLD_GARDEN    // the world open now
 // Opens world k (a GARDEN_WORLD_ number). The shrine has water and a backdrop; the garden
 // has neither, so loading it closes the shrine's.
 fn world_load() -> bool {
-    if world_k == GARDEN_WORLD_SHRINE { return world_shrine_load() }
+    if world_k == GARDEN_WORLD_SHRINE {
+        if !world_shrine_load() { return false }
+        wp_backdrop_show(0)        // the compositor erases each frame, since the cart draws no cls()
+        return true
+    }
     wp_water_close()
     wp_backdrop_hide()
     return world_garden_load()
