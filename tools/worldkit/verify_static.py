@@ -145,30 +145,55 @@ def _height(t, x, z):
     return (a * x * ONE + b * z * ONE) / ONE / ONE + c / ONE
 
 
-def _same_ends(a, b, tol=2e-3):
-    (p, q), (r, s) = a, b
-    close = lambda u, v: abs(u[0] - v[0]) <= tol and abs(u[2] - v[2]) <= tol  # noqa: E731
-    return (close(p, r) and close(q, s)) or (close(p, s) and close(q, r))
+def _same_ends(a, b):
+    """Whether boundary edges a and b ((p, q, tol_p, tol_q)) have the same ends, each within the
+    larger of the two ends' tolerances."""
+    (p, q, tp, tq), (r, s, tr, ts) = a, b
+    close = lambda u, v, t: abs(u[0] - v[0]) <= t and abs(u[2] - v[2]) <= t  # noqa: E731
+    return (close(p, r, max(tp, tr)) and close(q, s, max(tq, ts))) or (close(p, s, max(tp, ts)) and close(q, r, max(tq, tr)))
+
+
+def _corner_tol(t, e):
+    """How far (units) corner e of floor t, worked out from its rounded edge rows (where edge
+    lines e - 1 and e meet), can lie from the true corner: 2/1000 of a unit, plus the rows'
+    rounding (half a raw unit in k, and half a raw unit of the unit normal times the distance from
+    the edge's midpoint, at most its length) divided by the sine of the angle between the two
+    lines (a raw unit and half the longest edge's raw units, over the sine). A long thin triangle
+    meets its long edges at a small angle, so its corners slide along them by much more than 2/1000
+    (0.0033 units for a 2 x 50 quad's diagonal, whose tolerance this makes 0.012)."""
+    (a1, b1, _), (a2, b2, _) = t.rows[1][e - 1], t.rows[1][e]
+    l1, l2 = math.hypot(a1, b1), math.hypot(a2, b2)
+    sin = abs(a1 * b2 - a2 * b1) / (l1 * l2) if l1 and l2 else 0.0
+    v = t.verts
+    reach = max(math.hypot(v[k][0] - v[k - 1][0], v[k][2] - v[k - 1][2]) for k in range(3))
+    delta = (1 + reach / 2) / ONE
+    return 2e-3 + (delta / sin if sin > 1e-9 else float('inf'))
 
 
 def _boundary_edges(floors):
     """Edges of floors with no neighbour across them: no other floor has the exactly opposite
-    edge row with the same ends (a row says only which line; the corners, worked out from the
-    rounded rows, agree to well within 2/1000 of a unit)."""
+    edge row (the encoder makes rows of a shared edge exactly opposite, so the two lie on one
+    line) with the same ends. The ends are worked out from the rounded rows; how closely they agree
+    depends on the angles at the corners (_corner_tol)."""
     edges = {}
+    tols = {}
     for t in floors:
         if t.verts is None:
             continue
+        tc = [_corner_tol(t, e) for e in range(3)]
+        tols[id(t)] = tc
         for e, row in enumerate(t.rows[1]):
-            edges.setdefault(row, []).append((t.verts[e], t.verts[(e + 1) % 3]))
+            edges.setdefault(row, []).append((t.verts[e], t.verts[(e + 1) % 3], tc[e], tc[(e + 1) % 3]))
     out = []
     for t in floors:
         if t.verts is None:
             continue
+        tc = tols[id(t)]
         for e, row in enumerate(t.rows[1]):
             # edge e runs between the corners where edge lines e-1/e and e/e+1 meet
             p, q = t.verts[e], t.verts[(e + 1) % 3]
-            if any(_same_ends((p, q), o) for o in edges.get((-row[0], -row[1], -row[2]), ())):
+            mine = (p, q, tc[e], tc[(e + 1) % 3])
+            if any(_same_ends(mine, o) for o in edges.get((-row[0], -row[1], -row[2]), ())):
                 continue
             out.append((t, row, p, q))
     return out

@@ -1,0 +1,17 @@
+// The within-bucket rule (docs/WORLDPACK.md, "Faces in one bucket"): the wrapper embeds TWO (a
+// mesh of two overlapping quads in one ordering-table bucket, the first farther), FIRST and
+// SECOND (the same quads as meshes of their own) and sets MODE: 0 draws TWO, 1 draws FIRST then
+// SECOND. tests/test_worldpack.py reads the middle pixel of the dump.
+
+fn draw() {
+    cls(0)
+    dither(false)
+    camera_clip(0.1, 100.0)
+    camera_look(vec3(0.0, 0.0, -5.0), 0.0, 0.0)
+    if MODE == 0 {
+        mesh_at(TWO, vec3(0.0, 0.0, 0.0), 0.0)
+    } else {
+        mesh_at(FIRST, vec3(0.0, 0.0, 0.0), 0.0)
+        mesh_at(SECOND, vec3(0.0, 0.0, 0.0), 0.0)
+    }
+}

@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / 'worldverify'))
 import worlds as F  # noqa: E402
 from worldkit import verify as V  # noqa: E402
 from worldkit import verify_static as ST  # noqa: E402
-from worldkit.pack import decode, encode, World, Cell  # noqa: E402
+from worldkit.pack import decode, encode, World, Cell, Tri  # noqa: E402
 
 VERBOSE = os.environ.get('WORLDCHECK_VERBOSE')
 try:
@@ -127,6 +127,21 @@ class StaticTests(unittest.TestCase):
         a, b = F.plaza(0, 0, boxes=[]), F.plaza(1, 0, boxes=[])
         found, _ = self.check_static(World(cells=[a, b], cell_shift=5))
         self.assertEqual(found, [])
+
+    def test_long_thin_floors_are_not_mismatched(self):
+        # A quad's two triangles share their diagonal; for a long thin quad the corners worked out
+        # from the rounded rows slide along it (0.003 units at 2 x 50), which an absolute
+        # tolerance took for mismatched edges.
+        def quad(w, l, x0=3.3, z0=4.1, dz=0.0):
+            a, b, c, d = (x0, 0, z0), (x0 + w, 0, z0), (x0, 0, z0 + l), (x0 + w, 0, z0 + l)
+            return World(cells=[Cell(0, 0, collision=[Tri(a, b, c, 1, tag=1),
+                                                      Tri(b, d, (c[0], 0, c[2] + dz), 1, tag=2)])], cell_shift=6)
+        for w, l in ((2, 50), (1, 60), (0.25, 30), (50, 2), (8, 8)):
+            with self.subTest(w=w, l=l):
+                self.assertEqual(self.check_static(quad(w, l))[0], [])
+        # a real gap along the diagonal is still found
+        found, _ = self.check_static(quad(2, 50, dz=0.05))
+        self.assertEqual({(f['code'], f['floor_tag'], f['beyond_tag']) for f in found}, {('crack', 1, 2), ('crack', 2, 1)})
 
     def test_entity_in_a_wall(self):
         _, ents = self.check_static(F.entity_wall_world())
