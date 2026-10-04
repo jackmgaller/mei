@@ -668,9 +668,11 @@ or keeps them exact when they already fit, and reports each texture's VRAM cost.
 | `planar` | along an axis (`axis`), `scale` world units per repeat |
 | `box` | by each face's dominant normal axis |
 | `cylindrical` | around Y |
+| `disc` | radially in a plane (`axis`): wheel faces, dials, round signs |
 | `fit` | the texture exactly covers each face it is on (its extent in the face's plane): a sign on a panel, a livery on a car side |
 
-Every projection takes `offset`, `rotate` (0, 90, 180, 270) and `flip`. Hand-written per-vertex
+Every projection takes `offset`, `rotate` (0, 90, 180, 270) and `flip` (mirroring, so the two
+sides of a car can share one texture). Hand-written per-vertex
 UVs exist only in explicit `mesh` nodes, the escape hatch for shapes nothing else fits.
 
 **Cutouts.** In assets drawn with the depth buffer (policy `"depth": true`), a texture may have
