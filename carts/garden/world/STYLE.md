@@ -115,7 +115,7 @@ below, which is a ceiling, not a target.
 | Train | viaduct 120 per half, pillar 16 (x8), station 220, station stairs 140, overpass 60 per half, overpass stairs 100 each, train car 140 |
 | Street | utility pole 24 (x5), konbini 200, awning 40, vending machine 24 (x2), street lamp 24 (x4) |
 | Shrine | torii 80, pagoda 300, hall 200, stall 60 (x4, festival layer) |
-| Park | kick wall 16 (x4), mounds 24 each, slide 100, trampoline 24, tree 40 (x4), bench 24 (x2) |
+| Park | kick wall 52 (x4; a banded wall that passes the Asset Checker needs that), mounds 24 each, slide 100, trampoline 24, tree 40 (x4), bench 24 (x2) |
 | Ground (world lead) | ground 80 per cell, shrine hill 200, shrine steps 140 |
 
 Repeated props (poles, lamps, AC units, trees) are cheap and may later be merged (`"merge":
