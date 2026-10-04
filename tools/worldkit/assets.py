@@ -52,6 +52,8 @@ class Asset:
                'palette_entries':len(self.manifest.get('entries',[])),
                'verification':('passed' if self.verification and self.verification['ok'] else
                                'required' if self.policy_required else 'none'),
+               **({'verified_with':self.verification['drawn_with']}
+                  if self.verification and 'drawn_with' in self.verification else {}),
                'used_as':sorted(set(self.uses))}
         if 'lod' in self.report: out['lod'] = self.report['lod']
         return out
@@ -69,6 +71,14 @@ class Library:
         self.directory = Path(directory)
         self.base_path = base_path
         self.assets = {}
+
+    @staticmethod
+    def policy_recipe(asset, runtime):
+        """The recipe the Asset Checker runs: the asset's own, its policy given the world's
+        depth and perspective where it does not set them itself."""
+        extra = {k:True for k in ('depth','perspective') if (runtime or {}).get(k)
+                 and k not in asset.recipe['verification']}
+        return {**asset.recipe,'verification':{**asset.recipe['verification'],**extra}} if extra else asset.recipe
 
     def get(self, name, path, file=None, use='placement'):
         if name in ('self','none'):
@@ -94,12 +104,14 @@ class Library:
         asset.uses.append(use)
         return asset
 
-    def verify(self, compiler, probe, cache=None):
+    def verify(self, compiler, probe, cache=None, runtime=None):
         """Runs the Asset Checker for every asset whose recipe requires it; any failure fails.
         The checks run in parallel, and with a cache directory unchanged assets are not checked
-        again (worldkit/cache.py); the verdicts are the ones a serial run gives."""
+        again (worldkit/cache.py); the verdicts are the ones a serial run gives. runtime: the
+        world's runtime.depth and runtime.perspective, which become each policy's depth and
+        perspective where the recipe does not set them (the world draws its assets so)."""
         from .cache import AssetVerdicts
-        required = {name:asset.recipe for name,asset in self.assets.items() if asset.policy_required}
+        required = {name:self.policy_recipe(asset,runtime) for name,asset in self.assets.items() if asset.policy_required}
         outcomes = AssetVerdicts(cache,compiler,probe).run(required)
         for name,asset in sorted(self.assets.items()):
             if not asset.policy_required: continue
@@ -108,6 +120,8 @@ class Library:
                 raise WorldError('/assets',f'Asset {name!r}: the Asset Checker could not run: {error} '
                                  '(it needs NumPy and build/mei-asset-probe; pass --compiler/--probe).') from error
             asset.verification = {'ok':result['ok'],'views':result['views']}
+            drawn = {k:v for k,v in required[name]['verification'].items() if k in ('depth','perspective') and v}
+            if drawn: asset.verification['drawn_with'] = drawn
             if not result['ok']:
                 raise WorldError('/assets',f'Asset {name!r} fails its own verification policy. Run '
                                  f'tools/mei_assets.py verify {asset.file} and repair it.')

@@ -888,9 +888,9 @@ class GeometryAuditTests(unittest.TestCase):
 class NativeVisibilityGateTests(unittest.TestCase):
     profile={'yaw_steps':4,'pitches':[0],'distances':[1]}
 
-    def checked(self,r,**kw):
+    def checked(self,r,profile_extra=None,**kw):
         from assetkit.visibility import verify
-        return verify(r,self.profile,compiler=COMPILER,probe=PROBE,**kw)
+        return verify(r,{**self.profile,**(profile_extra or {})},compiler=COMPILER,probe=PROBE,**kw)
 
     def overlap(self):
         r=recipe()
@@ -984,8 +984,33 @@ class NativeVisibilityGateTests(unittest.TestCase):
 
     def test_invalid_profile_cannot_silently_reduce_coverage(self):
         from assetkit.visibility import verify
-        for overrides in ({'yaw_steps':0},{'pitches':[]},{'distances':[float('nan')]},{'geometry':'ignore'}):
+        for overrides in ({'yaw_steps':0},{'pitches':[]},{'distances':[float('nan')]},{'geometry':'ignore'},
+                          {'depth':1},{'perspective':'yes'}):
             with self.assertRaises(AssetError):verify(recipe(),overrides,compiler=COMPILER,probe=PROBE)
+
+    def test_depth_policy_judges_the_asset_as_the_depth_buffer_draws_it(self):
+        # docs/ASSETKIT.md, "Depth mode": the depth test orders faces per pixel, so a plate on a
+        # body and two crossing faces pass; ordering is a regression check (0 wrong pixels).
+        depth={'depth':True,'perspective':True}
+        plain=self.checked(self.overlap())
+        self.assertNotIn('depth_mode',plain,'a report without depth is as before')
+        report=self.checked(dict(self.overlap(),verification={'required':True,**depth}))
+        self.assertTrue(report['ok'])
+        self.assertEqual((report['totals']['wrong_pixels'],report['totals']['coverage_errors']),(0,0))
+        self.assertEqual(report['profile']['depth'],True)
+        self.assertEqual(report['depth_mode']['key_steps'],2)
+        self.assertGreater(report['totals']['tested_pixels'],plain['totals']['tested_pixels']/2)
+        crossing=recipe({'op':'mesh','vertices':[[-1,-1,-.2],[1,-1,.2],[0,1,0],[-1,-1,.2],[1,-1,-.2]],
+                         'faces':[[0,1,2],[3,4,2]]},materials={'default':{'color':'#ffffff','double_sided':True}})
+        self.assertFalse(self.checked(crossing)['ok'])
+        report=self.checked(crossing,profile_extra=depth)
+        self.assertTrue(report['ok'],report['totals'])
+        self.assertEqual(report['geometry']['counts'],{'surface_intersection':1},'still reported')
+        self.assertEqual(report['totals']['cyclic_views'],0)
+        # what the depth buffer does not fix still fails: coplanar overlaps (z-fighting)
+        coplanar=recipe({'op':'mesh','vertices':[[0,0,0],[2,0,0],[0,2,0],[.2,.2,0],[1,.2,0],[.2,1,0]],
+                         'faces':[[0,1,2],[3,4,5]]})
+        self.assertFalse(self.checked(coplanar,profile_extra=depth)['ok'])
 
 
 if __name__ == '__main__':

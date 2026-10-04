@@ -132,6 +132,17 @@ class AssetVerdictTests(unittest.TestCase):
         self.assertNotEqual(k, changed(lambda r: r['materials']['a'].__setitem__('color', '#102031')))
         self.assertNotEqual(k, changed(lambda r: r['verification'].__setitem__('yaw_steps', 5)))  # the policy
         self.assertNotEqual(k, changed(lambda r: r['verification'].__setitem__('edge_margin', 0.5)))
+        self.assertNotEqual(k, changed(lambda r: r['verification'].__setitem__('depth', True)))   # depth mode
+        self.assertNotEqual(k, changed(lambda r: r['verification'].__setitem__('perspective', True)))
+        # a depth world's assets are checked in depth mode, under another key
+        from worldkit.assets import Library, Asset
+        asset = Asset('box', 'box.asset.json', base, b'', {}, {}, [])
+        self.assertNotEqual(k, self.key(Library.policy_recipe(asset, {'depth': True})))
+        self.assertEqual(k, self.key(Library.policy_recipe(asset, {})))
+        mine = json.loads(json.dumps(base))
+        mine['verification']['depth'] = False
+        self.assertFalse(Library.policy_recipe(Asset('box', '', mine, b'', {}, {}, []), {'depth': True})['verification']['depth'],
+                         "the recipe's own setting wins")
         self.assertNotEqual(k, changed(lambda r: r.__setitem__('materials', dict(reversed(r['materials'].items())))))
         # the native tools and the standard library meic compiles with
         for name, source in (('compiler', COMPILER), ('probe', PROBE)):
@@ -220,7 +231,7 @@ class WorldCheckTests(unittest.TestCase):
         k = cache.world_key(context, verify)
         self.assertEqual(k, cache.world_key(dict(context), verify))
         for field, value in (('mode', 'enforce'), ('thresholds', {'gpu_cycles': 1}), ('probe', {'radius': 0.4}),
-                             ('checker', 100), ('world', 'other')):
+                             ('checker', 100), ('world', 'other'), ('runtime', {'depth': True})):
             self.assertNotEqual(k, cache.world_key({**context, field: value}, verify), field)
         other = self.tmp/'other.world.bin'
         other.write_bytes(pack.read_bytes()+b'\0')

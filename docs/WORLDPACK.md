@@ -849,6 +849,17 @@ this is a rule recipes may rely on (a sign earlier than the wall it hangs on win
 between placements it depends on the placements' order and the cells' and should not be relied
 on: the World Checker judges what is drawn either way.
 
+**Not with the depth buffer.** All of this is about the ordering table alone. A game that draws
+with the depth buffer (`render_depth(true)`, [RENDERING.md](RENDERING.md)) has its opaque faces
+ordered per pixel by depth, whatever bucket or order they were submitted in; only faces whose
+depths at a pixel are within about two steps of the depth key (2/4,096 of the depth, more at a
+grazing angle) still tie, and a tie still goes to the later packet. So the rule above, and the
+recipe orders that rely on it ("a sign before its wall"), apply only without depth; a decal on a
+coplanar wall needs the decal offset instead. Semi-transparent faces are not depth-written and
+are still drawn by the table. A world says it is drawn with depth in its recipe
+(`"runtime": {"depth": true}`, [WORLDKIT.md](WORLDKIT.md#depth-mode)), and the World Checker
+then judges it so.
+
 **Entities.** A tracked area is the cells within a radius (0–2) of a point. An entity is active
 while its cell is in the area and it is present. Each update retires the entities that stopped
 being active (their cell left, or their layer went off), then spawns the ones that started.

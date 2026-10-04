@@ -6,10 +6,11 @@
  *   mei-scene-probe cart.mei out.bin frames ram-address ram-bytes
  *
  * The RAM block's first word is the cart's request: bit 0 set means "record this frame", bit 1
- * "and its picture". The output is "MSP1", the number of records, the block size, then per
- * record: the frame's MeiGpuStats as 18 u32 (tris, tris_empty, tris_dropped, px[8], clears,
- * lists, cpu_cycles, gpu_cycles, ticks, gpu_lag, then 0), the RAM block, and 320 x 240 u16
- * pixels if bit 1 was set. Exit 0, or 1 on a bad argument or I/O error, or 2 if the cart
+ * "and its picture". The output is "MSP2", the number of records, the block size, then per
+ * record: the frame's MeiGpuStats as 24 u32 (tris, tris_empty, tris_dropped, px[8], clears,
+ * lists, cpu_cycles, gpu_cycles, ticks, gpu_lag, then 0, then the depth and perspective counts
+ * px_ztest, px_zfail, zclears, tris_recip, px_persp, persp_divs), the RAM block, and 320 x 240
+ * u16 pixels if bit 1 was set. Exit 0, or 1 on a bad argument or I/O error, or 2 if the cart
  * faulted or stopped presenting frames (with a message on stderr). The cart's debug output goes
  * to stderr. No emulator behaviour is changed: this only reads state between frames. */
 #include "machine.h"
@@ -51,7 +52,7 @@ int main(int argc, char **argv) {
     mei_set_debug_output(m, debug_out, NULL);
     FILE *out = fopen(argv[2], "wb");
     if (!out) { perror(argv[2]); mei_destroy(m); return 1; }
-    fwrite("MSP1", 1, 4, out);
+    fwrite("MSP2", 1, 4, out);
     put32(out, 0);
     put32(out, (uint32_t)bytes);
     uint32_t records = 0;
@@ -79,6 +80,8 @@ int main(int argc, char **argv) {
         for (int k = 0; k < 8; k++) put32(out, g->px[k]);
         put32(out, g->clears); put32(out, g->lists); put32(out, g->cpu_cycles);
         put32(out, g->gpu_cycles); put32(out, g->ticks); put32(out, g->gpu_lag); put32(out, 0);
+        put32(out, g->px_ztest); put32(out, g->px_zfail); put32(out, g->zclears);
+        put32(out, g->tris_recip); put32(out, g->px_persp); put32(out, g->persp_divs);
         fwrite(m->ram + address, 1, bytes, out);
         if (want_rec & 2) {
             const uint16_t *pixels = mei_display(m);

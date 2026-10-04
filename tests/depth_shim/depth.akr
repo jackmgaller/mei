@@ -1,0 +1,41 @@
+// A stand-in for the standard library's depth mode (docs/RENDERING.md), used by the Asset and
+// World Checkers' verification carts until stdlib/depth.akr is merged. Not part of the standard
+// library: the checkers compile with `-I tests/depth_shim` only while stdlib/depth.akr is
+// missing (tools/kitcore/depth.py), so the real one replaces it as soon as it lands. Delete this
+// folder then.
+//
+// The API is the standard library's contract: render_depth(on) and render_perspective(on). The
+// face loops are the depth prototype's (depth_faces.akr: `tools/gen_faces_asm.py --depth` at
+// commit cc8f47a, identical to its loops but for the packet type, the decal offset and the
+// vertices' w), so once this file is imported every face of mesh*() is a packet with depth
+// (0x30-0x3F): textured faces are always perspective-correct, whatever render_perspective()
+// says. Faces are still filed back to front by the ordering table (the real loops are to file
+// opaque faces nearest first), so GPU cycles measured with it are an upper bound.
+//
+// Differences from the real thing, all on the checkers' side: the depth buffer is cleared by
+// render_depth(true) itself, which the checkers' carts call at the start of every draw(); and
+// __draw_faces_safe's packets are up to 68 bytes where gfx.akr's __arena_room() reserves 52, so
+// the carts lower __arena_end by depth_shim_reserve(the most faces in a mesh).
+
+import "depth_faces.akr"
+
+var __z_off: u32                  // the decal offset, bits 27-31 of a packet's first colour word
+var __depth_on: bool
+var __persp_on: bool
+
+// Depth-tests the faces of the following mesh*() calls (and clears the depth buffer).
+fn render_depth(on: bool) {
+    __depth_on = on
+    GPU_DEPTH = on as u32
+    if on { GPU_ZCLEAR = 0 }
+}
+
+// Perspective-correct texturing. With this stand-in every textured face is drawn so once it is
+// imported; the flag is only kept.
+fn render_perspective(on: bool) { __persp_on = on }
+
+// Lowers this frame's packet arena end by 16 bytes a face of the largest mesh drawn, so that
+// __draw_faces_safe's 68-byte packets fit where __arena_room() counted 52.
+fn depth_shim_reserve(faces: s32) {
+    __arena_end = &__arena[0] + (ARENA_WORDS - faces * 4)
+}

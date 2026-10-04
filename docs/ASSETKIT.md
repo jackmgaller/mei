@@ -187,7 +187,8 @@ check such an asset with `scale: "world"` or a smaller `edge_margin` if its orde
 judges every pixel, as before. Coverage errors are judged at every pixel whatever the margin, and
 the ordering graph and its cycles take no margin. `verify --edge-margin N` sets it for one run.
 
-**Faces in one bucket.** The ordering table has 1,024 buckets over the camera's range, about 0.1
+**Faces in one bucket** (without the depth buffer; see [Depth mode](#depth-mode)). The ordering
+table has 1,024 buckets over the camera's range, about 0.1
 units each at `far` 100 and in a world's near pass. Faces whose average depths fall in one bucket
 are not sorted among themselves: the face submitted first is drawn last, on top, even when it is
 the farther ([WORLDPACK.md](WORLDPACK.md#faces-in-one-bucket); LANGUAGE.md says the same of keyed
@@ -200,6 +201,60 @@ judges the result (a depth difference above the tie tolerance drawn the wrong wa
 pixel), so a recipe that relies on the rule is checked, not trusted. The rule holds only within
 a bucket: from a camera at which the two faces' average depths fall in different buckets they
 are sorted by depth, so the order cannot rescue faces that truly cross.
+
+### Depth mode
+
+An asset that a game draws with the depth buffer ([RENDERING.md](RENDERING.md)) says so in its
+policy, and the checker judges it as the depth test draws it:
+
+```json
+"verification": {"required": true, "depth": true, "perspective": true}
+```
+
+(`verify --depth --perspective` for one run.) Both default to false, and an asset without them is
+checked exactly as before, its report byte for byte the same. A world recipe with
+`"runtime": {"depth": true}` checks its assets so unless their policy says otherwise
+([WORLDKIT.md](WORLDKIT.md#depth-mode)). With `depth`:
+
+- The verification cart imports `depth.akr` and calls `render_depth(true)` (and
+  `render_perspective(true)`) before drawing; coverage and the expected face come from the same
+  native projected vertices as before.
+- **Depth order is a regression check.** Two faces are a tie at a pixel unless the farther is
+  more than **2 steps of the depth key** behind the nearer (2/4,096 of its depth; a step is at most
+  1/4,096 of 1/*w*, and a tie goes to the later packet), so a wrong pixel is a fault of the depth
+  test or the face loops, not of the asset: it should be 0. No allowance for vertex rounding is
+  needed, as the reference rasterises from the console's own projected vertices. `edge_margin`
+  applies as before.
+- **Not failures:** `surface_intersection` (the depth test draws crossing faces right along their
+  crossing) and ordering cycles (the graph is not built). They are still listed in `geometry`.
+  **Still failures:** duplicate faces and coplanar overlaps, which fight in the depth buffer as
+  they did in a bucket, coverage errors, and the budgets and levels of detail as before.
+- The report adds `depth_mode`: the settings, `key_steps`, `key_tolerance` and whether the depth
+  stand-in was used (below).
+
+So the authoring rules made for the ordering table apply only without depth: splitting long
+faces, keeping details clear of surfaces, removing crossing faces and buried parts for ordering's
+sake, and recipe order ("a sign before its wall"). Measured with the default profile (144 views;
+`coin` 360):
+
+| Asset | Without depth: ok, wrong pixels, cyclic views | With depth: ok, wrong pixels | What still fails with depth |
+|---|---|---|---|
+| `kiosk` | yes, 0, 0 | yes, 0 | |
+| `test_room`'s `coin` | yes, 0, 0 | yes, 0 | |
+| `vessel` | no, 4,892, 144 | **yes**, 0 | |
+| `robot` | no, 1,205, 140 | no, 0 | 8 coplanar overlaps |
+| `cottage` | no, 28,514, 144 | no, 0 | 36 coplanar overlaps |
+| `two_districts`' `torii` | no, 3,183, 132 | no, 0 | 10 coplanar overlaps |
+
+**Time.** The check costs the same in both modes: `kiosk` 5.5 s and 5.2 s, `coin` 11.5 s and
+12.0 s, `robot` 21.0 s and 14.0 s (no ordering graph). About 55% of it is `meic` compiling one
+cart per view (2.9 s of `kiosk`'s 5.5; with depth 0.1–0.6 s more, the face loops being larger)
+and 25% the probe. The easy win, not taken: compile the cart once and let the probe write each
+view's camera into RAM, as the World Checker's cart reads its views from embedded data.
+
+**The depth stand-in.** Until `stdlib/depth.akr` is merged the cart compiles against
+`tests/depth_shim/` (the depth prototype's face loops behind the same API, `meic -I`);
+`tools/kitcore/depth.py` picks it only while the standard library has no `render_depth()`.
 
 ### Reports and repairs
 
@@ -279,7 +334,8 @@ guard-band clipping is rejected as unsupported, not treated as a pass. Animation
 camera translations/FOVs, other ordering-table ranges, exact real-number visibility before
 projection, fully enclosed internal components and unobserved faces are not certified.
 The report states coverage and unobserved-face counts. It is a strong finite regression gate,
-not a proof for every possible camera or pose. No runtime depth buffer is added to Mei.
+not a proof for every possible camera or pose. Assets drawn with the depth buffer are checked
+in [depth mode](#depth-mode).
 
 ### Coordinates and transforms
 
@@ -493,8 +549,9 @@ signed volume generate a winding warning. Repetitions retain their source part p
 report points back to the recipe that needs changing. Topology checks are per part and do not
 detect all inter-part intersections or every self-intersection caused by deformation.
 
-There is no depth buffer in Mei. Large overlapping triangles and details close to a surface
-can obscure one another even when the mesh is topologically valid. Subdivide selected large
+Without the depth buffer ([Depth mode](#depth-mode) is the alternative), large overlapping
+triangles and details close to a surface can obscure one another even when the mesh is
+topologically valid. Subdivide selected large
 surfaces, give decorations enough separation, and inspect native renders. The generated
 preview uses a fitted camera and tight clip range for ordering-table precision. It scales and
 centers the original exported mesh for viewing without changing the exported world units.
@@ -728,6 +785,7 @@ for byte, checks palette entry assignment, the vertical bake under rotation, the
 `relocate`, and renders a palette-backed asset in the emulator while rewriting a surface entry
 and blending an emissive one with `palette_lerp`. With NumPy it also checks identical-color
 occlusion, crossing-depth cycles, exact native coverage, palette-backed faces in the gate,
+the depth policy (a plate on a body and crossing faces pass, coplanar faces still fail),
 required-policy enforcement and
 preservation of prior artifacts on failed verification. It also runs as part of `make test` when
 Python is available. Pure Python tests can run independently; native render tests skip if

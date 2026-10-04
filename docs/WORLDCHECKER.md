@@ -7,7 +7,8 @@ from outside. The World Checker looks at a level from inside, from where a playe
 glide and look, on the real runtime (`stdlib/worldpack.akr`) and the real console core.
 
 It needs only a built pack ([WORLDPACK.md](WORLDPACK.md)) and a settings object, so it runs on a
-pack from `tools/worldkit/pack.py` as well as on one from `mei_world.py build`.
+pack from `tools/worldkit/pack.py` as well as on one from `mei_world.py build`. A world that the
+game draws with the depth buffer is checked in [depth mode](#depth-mode) (`runtime.depth`).
 
 ```sh
 make build/meic build/mei-scene-probe
@@ -31,6 +32,7 @@ report = check_world(context)     # what worldkit.build.run_gate() calls
 | Verification cart, identity packs, the ordering reference | `tools/worldkit/verify_render.py` |
 | What it takes from the Asset Kit (one place, to move to `tools/kitcore/`) | `tools/worldkit/verify_shared.py` |
 | The probe: runs the cart, records each frame | `tools/worldkit/scene_probe.c` (`make build/mei-scene-probe`) |
+| Depth mode's cart lines and tolerance, shared with the Asset Checker | `tools/kitcore/depth.py` |
 | Tests | `tests/test_worldverify.py`, worlds in `tests/worldverify/worlds.py` |
 
 ## Outcome
@@ -81,12 +83,12 @@ are WORLDKIT.md's placeholders.
 | `sampling.rooftops_per_cell`, `roof_pitches_degrees` | 2, [−20] | |
 | `sampling.air` | height 4, reach 48 | between rooftops (`null`: none) |
 | `sampling.seams` | spacing 32 | on cell seams (`null`: none) |
-| `sampling.entities` | yaws 6, distances [1.5, 4, 8], pitches [−55, −30, −10], floor distances [2.5, 6] | cameras aimed at each entity with a mesh (`null`: none; [Entities](#entities)) |
+| `sampling.entities` | yaws 6, distances [1.5, 4, 8], pitches [−55, −30, −10], floor distances [2.5, 6] | cameras aimed at each entity with a mesh (`null`: none; [Entities](#entities)). In depth mode the default is `null` |
 | `sampling.layer_combinations` | true | |
 | `sampling.max_views` | 600 | views after layer combinations; thinned evenly per kind; vantage points always kept |
 | `vantage_points` | [] | `{"position": [x, y, z], "yaw": deg, "pitch": deg}` |
-| `runtime` | far ring 3, near 0.1, near far 1.5 cells, entities drawn, ground first, entity drawing `object`, object bias 1.5, object squash 2, levels of detail on, worst case | what the game sets on the reader (`near_far`: `null` takes the pack's own, else 1.5 cells; `lod`: `wp_lod`; `lod_fine`: `wp_lod_fine`, the finest level the hysteresis band allows; `ground_first`: `wp_ground_first`; `entity_drawing`: `object`, through `wp_draw_entities()`, or `mesh_at`, each live entity's mesh by its own depth; `object_bias`, `object_squash`: `wp_object_bias`, `wp_object_squash`) |
-| `ordering` | on; edge margin 1 px; depth epsilon 0.001 | see [Ordering](#ordering-check-3) |
+| `runtime` | far ring 3, near 0.1, near far 1.5 cells, entities drawn, ground first, entity drawing `object`, object bias 1.5, object squash 2, levels of detail on, worst case | what the game sets on the reader (`near_far`: `null` takes the pack's own, else 1.5 cells; `lod`: `wp_lod`; `lod_fine`: `wp_lod_fine`, the finest level the hysteresis band allows; `ground_first`: `wp_ground_first`; `entity_drawing`: `object`, through `wp_draw_entities()`, or `mesh_at`, each live entity's mesh by its own depth; `object_bias`, `object_squash`: `wp_object_bias`, `wp_object_squash`; `depth`, `perspective`: false, the game calls `render_depth(true)`, `render_perspective(true)`, [Depth mode](#depth-mode)) |
+| `ordering` | on; edge margin 1 px; depth epsilon 0.001 | see [Ordering](#ordering-check-3); in depth mode also the depth key's tolerance |
 | `collision` | 4 samples a unit, rays of 32 units, 50 findings | |
 | `images` | 6 | diagnostic pictures of the worst views |
 
@@ -166,6 +168,7 @@ counts presented frames, so lag does not shift views. Per view the report has:
 | `frame_cpu_cycles` | the whole frame |
 | `gpu_cycles` | the frame's GPU cycles (including the clear, 38,400) |
 | `triangles`, `triangles_dropped` | as the GPU counted them |
+| `depth` | in depth mode only: the frame's `px_ztest`, `px_zfail`, `zclears`, `tris_recip`, `px_persp`, `persp_divs` ([RENDERING.md](RENDERING.md#frame-statistics)) |
 | `arena_bytes`, `arena_full` | full: fewer bytes left than a quad's packet (the face loops stop there) |
 | `placements_drawn`, `ground_drawn`, `standins_drawn`, `entities_drawn` | `ground_drawn`: ground placements, in the ground pass |
 | `coarse_drawn`, `lod_culled` | placements drawn at a level of detail other than 0; in view but past their cull distance |
@@ -311,8 +314,9 @@ Evidence (the tests and the sweeps behind them):
 
 ### Ground
 
-A world pack 1.1 marks some placements as ground, and the reader draws them in a pass of their
-own before the rest near the camera ([WORLDPACK.md](WORLDPACK.md), "Ground"). That order is the
+(Without the depth buffer. In [depth mode](#depth-mode) the depth test draws ground in its place,
+and none of this section applies.) A world pack 1.1 marks some placements as ground, and the
+reader draws them in a pass of their own before the rest near the camera ([WORLDPACK.md](WORLDPACK.md), "Ground"). That order is the
 design, not an error, so the reference reproduces it exactly: ground placements go into a ground
 pass between the far and near passes, which keeps the same three per-pixel depths as the others.
 A ground face is then the expected face only where no near-pass face may cover the pixel; where
@@ -413,6 +417,7 @@ bollards.
 
 ### Entities
 
+(Without the depth buffer; in [depth mode](#depth-mode) these cameras are off by default.)
 Cameras aimed at entities (`sampling.entities`) look at what the other kinds pass by: a coin on a
 ledge is a few pixels from a camera at eye height 16 units away, and none of the sampled cameras
 was close above it. The verification cart draws the entities as the game draws them, through
@@ -473,6 +478,76 @@ rounding (the reason the margin is 1): about one erring view in five had its err
 pixels the margin leaves undecided. The entity cameras at 1.5 units make the object large enough
 on screen that a sort error there shows in decided pixels; a game whose objects are smaller than
 the coin, or seen only from afar, has that much less checked.
+
+## Depth mode
+
+A game that draws its world with the depth buffer (`render_depth(true)`, [RENDERING.md](RENDERING.md))
+says so in its recipe, `"runtime": {"depth": true}` (and `"perspective": true` for
+perspective-correct texturing), and the build passes it to the checker as `runtime.depth` and
+`runtime.perspective`; `verify.py --settings` takes them the same way. Both default to false, and
+a world without them is checked exactly as before: its report is byte for byte the one the
+checker gave before depth mode existed (the settings list `depth` and `perspective` only when one
+is on). In depth mode:
+
+- **The verification cart** imports `depth.akr` and calls `render_depth(true)` (and
+  `render_perspective(true)`) at the start of each frame, after `cls()`; `wp_draw()` and
+  `wp_draw_entities()` then draw with depth. It fills the texel rows the pack's palette swatch
+  faces read with a nonzero texel, because the cart has the pack but not the world's swatch
+  (`NAME.swatch`, which a game copies to VRAM): with transparent texels those faces would write
+  no depth and nothing behind them would fail the test. Each view's `stats` add `depth`, the
+  frame's depth and perspective counts, and the GPU cycles include the depth clear (38,400).
+- **One pass.** The depth test orders the far pass's stand-ins, the ground pass and the near pass
+  among each other by depth, so the reference judges every face it selects in one pass by its
+  depth (the selection and each pass's near plane are as before). Ground inversions and pass
+  inversions cannot occur, and the static `ground_hides` and `ground_over_ground` warnings are
+  not made. What is still judged as before: coverage, the budgets and the collision checks.
+- **Ordering is a regression check.** A pixel's expected face is decided only where it is
+  nearer than every other face that may cover the pixel by more than the depth key's precision
+  and the console's rounding, so a wrong-order pixel is a fault of the depth test or the face
+  loops, never of the world: it should be 0. The tolerance (`tools/kitcore/depth.py`): the
+  farther face must be more than **2 key steps** of the nearer's depth behind it (a step is at
+  most 1/4,096 of 1/*w*: two faces closer than that can share a key, and a tie goes to the later
+  packet), plus **half a pixel of each face's depth slope** (the reference projects vertices
+  exactly, the console to whole pixels, so a face's plane of 1/*w* is off by up to half a pixel's
+  worth of its gradient; RENDERING.md's floor at 11° needs about ten key steps for this reason),
+  plus `depth_epsilon` and the face's non-planarity as before. Coplanar faces (a decal on a wall
+  without a decal offset) are depth ties: undecided, not reported, as before.
+- **Entities.** `wp_draw_object()`'s key and bias change only the order, which the depth test
+  makes irrelevant, so `object_bias`, `object_squash`, `ground_first` and `entity_drawing` no
+  longer change what the reference expects; the cameras aimed at entities (`sampling.entities`)
+  were added to catch the ordering table's errors around small objects and are off by default.
+  Set `sampling.entities` to turn them on. `edge_margin` stays 1: coverage still rounds the same.
+
+Measured on the movement garden (`carts/garden/world/garden.world.json`, built from a copy with
+`"runtime": {"depth": true, "perspective": true}`; the garden's own recipe is unchanged), default
+settings, 600 views each, with the depth stand-in below:
+
+| | Ordering table | Depth mode | Depth mode with entity cameras |
+|---|---|---|---|
+| views (aimed at entities) | 600 (187) | 600 (0) | 600 (187) |
+| wrong-order pixels, near / far (views) | 40,394 / 4,714 (239) | 0 / 0 (0) | 0 / 0 (0) |
+| entity over a nearer face / something over an entity | 16,810 / 0 | – | 0 / 0 |
+| coverage errors, ground inversions | 0, 0 | 0, 0 | 0, 0 |
+| decided pixels | 27,984,074 | 28,130,761 | 27,992,526 |
+| GPU cycles a view, peak / median | 630,100 / 237,352 | 644,249 / 310,121 | 756,876 / 312,119 |
+| draw CPU cycles a view, peak / median | 454,678 / 178,965 | 498,820 / 190,823 | 476,016 / 185,120 |
+| depth-tested pixels, of them failed | – | 49,939,990, 109,133 | 54,235,756, 126,781 |
+| threshold failures (report mode) | 112: `wrong_order_near` 111, `cell_triangles` 1 | 1: `cell_triangles` | 1 |
+
+The same 600 views with other tolerances (the depth mode with entity cameras): `depth_epsilon`
+alone, 748 near and 782 far wrong-order pixels in 217 views; with 2 key steps, 612 and 645 in
+200; with half a pixel of slope alone, 0; with both (the default), 0. So the console's whole-pixel
+vertices, not the key's 16 bits, are what the tolerance has to absorb, as RENDERING.md's
+precision table says; the allowance costs 0.13% of the decided pixels (27,992,526 against
+28,030,606 with `depth_epsilon` alone).
+
+**The depth stand-in.** Until the standard library's `stdlib/depth.akr` is merged the cart
+compiles against `tests/depth_shim/` (`meic -I`), the depth prototype's face loops behind the same
+API; `tools/kitcore/depth.py` uses it only while the standard library has no `render_depth()`.
+It files faces back to front as the ordering table always did, so few pixels fail the test and
+the GPU cycles above are an upper bound: the real face loops are to submit opaque faces nearest
+first, which early depth makes cheaper. With it every textured face is perspective-correct, so
+`depth` without `perspective` is checked as with both.
 
 ## Timing
 

@@ -604,6 +604,7 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | `paths` | Named polylines in world coordinates, in order (the pack's path numbers): [Paths](#paths) |
 | `lod` | The switch distances of assets with levels of detail: `scale`, and per asset `distances`, `cull`, `band`, `off` ([Levels of detail](#levels-of-detail)) |
 | `runtime.near_far` | The near pass's far depth the pack asks the reader for (units; default 1.5 cells). `wp_open()` sets `wp_near_far` to it and the World Checker measures with it |
+| `runtime.depth`, `runtime.perspective` | The game draws the world with the depth buffer, and with perspective-correct texturing (`render_depth(true)`, `render_perspective(true)`; default false). Not stored in the pack: the checkers judge the world and its assets so ([Depth mode](#depth-mode)) |
 | `verification` | The World Checker's per-world settings: `mode` (`report`, the default, or `enforce`) and `thresholds` |
 | `terrain` | Reserved ([Terrain](#terrain)); rejected for now |
 
@@ -662,6 +663,10 @@ culling (one sphere). Collision is unchanged: each merged prop keeps its own. Th
 new record. `report.json` lists what was merged per cell.
 
 ### Ground
+
+Ground matters only without the depth buffer: in a world drawn with it ([Depth mode](#depth-mode))
+the depth test draws what stands on the ground in front of it, and `ground` changes no picture
+(the flag is still stored; drawing ground first does no harm under the depth test).
 
 `"ground": true` on a placement makes it **ground**: the reader draws the near cells' ground in a
 pass of its own before everything else near the camera, so nothing standing on it can be drawn
@@ -780,6 +785,9 @@ segments is about 300–450 cycles.
 
 ### Objects on platforms
 
+(Without the depth buffer. In [depth mode](#depth-mode) objects, platforms and thin walls are
+ordered per pixel, and the rule below does not apply.)
+
 Entities' meshes and the game's own objects (pickups, the player's character) are drawn after
 `wp_draw()` into the near pass, and there a raised platform's top sorts by its average depth, which
 can be nearer than an object standing or floating on it: the example `test_room`'s coin above the
@@ -805,6 +813,35 @@ the Asset Kit's `cylinder` fans each cap from one rim vertex, and those sliver t
 from where they meet the 0.08-unit rim, which was drawn over the caps in 9 pixels of 5 views. The
 coin is now an explicit `mesh` whose caps fan from their centres (22 vertices, 40 triangles; it
 passes); the World Checker decides 60.0% of its pixels in the views aimed at it, from 57.5%.
+
+### Depth mode
+
+A game that draws the world with the depth buffer ([RENDERING.md](RENDERING.md)) says so in the
+recipe:
+
+```json
+"runtime": {"depth": true, "perspective": true}
+```
+
+and calls `render_depth(true)` and `render_perspective(true)` itself (the recipe does not turn
+them on: it is not stored in the pack, and the game decides how it draws). The build then:
+
+- runs every required Asset Checker policy with `depth` and `perspective` as the world's, unless
+  the asset's recipe sets them itself ([ASSETKIT.md](ASSETKIT.md#depth-mode)); `report.json`'s
+  `assets` entry says `verified_with` for those;
+- runs the World Checker in depth mode ([WORLDCHECKER.md](WORLDCHECKER.md#depth-mode)): every
+  pass judged as one by depth, ordering a regression check, no cameras aimed at entities by
+  default, no ground warnings; coverage, budgets and collision as before.
+
+What the depth buffer makes unnecessary for such a world: flagging ground
+([Ground](#ground)), the platform and clearance rule for objects ([Objects on
+platforms](#objects-on-platforms)), recipe order between overlapping faces
+([WORLDPACK.md](WORLDPACK.md#faces-in-one-bucket)), and keeping assets free of crossing faces.
+What it does not: coplanar faces still fight (use the decal offset), semi-transparent faces are
+still drawn by the ordering table, back to front, and collision, budgets and coverage are
+checked as before. The movement garden built this way comes back from the World Checker with no
+wrong-order pixel in 600 views, against 45,108 in 239 views without
+([WORLDCHECKER.md](WORLDCHECKER.md#depth-mode)).
 
 ## Collision
 

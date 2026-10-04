@@ -336,5 +336,24 @@ def object_world():
     return World(cells=[c], cell_shift=5)
 
 
+def depth_world():
+    """object_world() with what only a depth buffer draws right (docs/RENDERING.md): two boxes
+    crossing each other in an X (tags 31 and 32, interpenetrating), and a crate sunk 0.3 units
+    through the ground (tag 30, not ground). Seen from VANTAGE_DEPTH."""
+    w = object_world()
+    c = w.cells[0]
+    for tag, lo, size, colour in ((31, (8.0, 0.0, 12.7), (5.0, 1.0, 0.6), meshlib.rgb(200, 120, 40)),
+                                  (32, (10.2, 0.0, 10.5), (0.6, 1.4, 5.0), meshlib.rgb(40, 120, 200)),
+                                  (30, (27.0, -0.3, 22.0), (2.0, 1.5, 2.0), meshlib.rgb(200, 60, 60))):
+        c.placements.append(Placement(box_mesh((0, 0, 0), size, colour), lo, tag=tag))
+    return w
+
+
+VANTAGE_DEPTH = [{'position': [10.5, 2.5, 7.0], 'yaw': 10.0, 'pitch': -20.0},      # the X
+                 {'position': [13.0, 1.8, 9.0], 'yaw': -60.0, 'pitch': -15.0},
+                 {'position': [28.0, 1.6, 17.0], 'yaw': 0.0, 'pitch': -12.0},      # the sunk crate
+                 {'position': [20.0, 4.0, 0.5], 'yaw': 0.0, 'pitch': -30.0}]       # the large platform
+
+
 def pack_of(world):
     return encode(world)

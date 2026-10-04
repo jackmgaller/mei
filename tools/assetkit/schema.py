@@ -26,6 +26,8 @@ VERIFICATION = obj({'required':BOOL,'yaw_steps':integer(4,120),
                     'distances':array(number(.8,3),1,3),'far':number(1,1000),'geometry':choice('error','warn'),
                     'yaw_range_degrees':dict(array(number(-360,360),2,2),description='Sample camera yaws from the first to the second (degrees, both included) instead of the whole circle: a camera at yaw 0 stands on the -Z side looking toward +Z, at 90 on the -X side. For an asset seen from one side only (one mounted on a wall).'),
                     'edge_margin':dict(number(0,4),description='Pixels: depth order is judged only where the nearest face covers a pixel at least this far inside and no other face within this distance is nearer, as the World Checker\'s ordering.edge_margin (default 1). 0 judges every pixel. Coverage is always exact.'),
+                    'depth':dict(BOOL,description='The asset is drawn with the depth buffer (render_depth(true), docs/RENDERING.md): depth order is judged as the depth test draws it, with a tie tolerance of two steps of the depth key; surface intersections and ordering cycles are reported but do not fail; coplanar overlaps and duplicates still do. Default false.'),
+                    'perspective':dict(BOOL,description='The asset is drawn with perspective-correct texturing (render_perspective(true)); the verification cart draws so. Default false.'),
                     'scale':dict(choice('fit','world'),description='fit (default): the mesh scaled to about 2 units, as a prop. world: at its own size, so its faces sort in buckets of far/1024 units as in a world (far: the world\'s near range, about 96).')})
 
 
