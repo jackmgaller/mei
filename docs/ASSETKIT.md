@@ -255,7 +255,7 @@ as in the stool example. A node's own translation happens **after** its modifier
 
 | `op` | Required fields | Optional fields / convention |
 |---|---|---|
-| `box` | `size: [x,y,z]` | Centered at the origin |
+| `box` | `size: [x,y,z]` | Centered at the origin; `open`: sides to leave out, from `top` (+Y), `bottom` (−Y), `left` (−X), `right` (+X), `back` (−Z), `front` (+Z) |
 | `sphere` | `radius` | `rings: 6`, `segments: 12`; scale for an ellipsoid |
 | `cylinder` | `radius`, `height` | `segments: 12`, `caps: true`; centered, along Y |
 | `cone` | `radius`, `height` | Same as cylinder; tip at +height/2 |
@@ -265,6 +265,13 @@ as in the stool example. A node's own translation happens **after** its modifier
 | `mesh` | `vertices: [[x,y,z],…]`, `faces: [[index,…],…]` | Zero-based indices; planar simple polygons are triangulated; outward right-handed winding; optional `face_materials` gives one material name per source polygon |
 | `group` | `children: [node,…]` | Combined geometry; material inherited by children lacking an explicit material |
 | `instance` | `ref` | Reference to a node in the root `prototypes` object; explicit instance material overrides the whole referenced component |
+
+A box's `open` sides are left out with the vertices only they use: `["bottom"]` for a building
+or a block standing on the ground, whose underside nobody sees and which would otherwise sort
+against the ground under it; `["bottom", "left", "right", "back", "front"]` for a flat ground
+tile, its top alone (a box of any height, moved down by half of it, puts the top at 0). At least
+one side stays; each is named once. An open box is an open surface, so it gets the
+`open_surface` topology warning (and fails `--strict`), as any intentionally open mesh does.
 
 Extrusion supports concave outlines through ear-clipping triangulation. Outline holes,
 self-crossings, repeated endpoint vertices, and duplicate/collinear adjacent points are not

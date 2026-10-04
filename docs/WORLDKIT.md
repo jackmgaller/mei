@@ -682,9 +682,11 @@ Ground-first drawing draws whatever a ground face truly hides over it, so:
 | | anything seen from below |
 
 Ground meshes are best surfaces rather than solids: the sides of a ground slab lie under its
-neighbours' tops, and ground faces that overlap are sorted among themselves as before. The Asset
-Kit's `box` has no option to leave faces out, so a ground piece is an explicit `mesh` of upward
-faces only, as the examples' `ground_tile` and `room_floor` are. The same goes for faces inside
+neighbours' tops, and ground faces that overlap are sorted among themselves as before. A ground
+piece is a `box` with every side but its top left out (`"open": ["bottom", "left", "right",
+"back", "front"]`, [ASSETKIT.md](ASSETKIT.md#geometry-operations)), or an explicit `mesh` of
+upward faces only, as the examples' `ground_tile` and `room_floor` are; a building or block
+standing on the ground is a box with `"open": ["bottom"]`. The same goes for faces inside
 an asset that nothing can see, such as the top of a body under the roof sitting on it: they still
 sort, and can be drawn over what covers them. The examples' `shop` is one `mesh` shell whose
 window, sign and roof edge are bands of its walls (`face_materials`), with no bottom, and passes
