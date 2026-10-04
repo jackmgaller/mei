@@ -26,6 +26,9 @@ from assetkit.schema import SCHEMA, validate
 from assetkit.preview import source
 from mei_assets import build
 
+PILLOW = importlib.util.find_spec('PIL') is not None
+NUMPY = importlib.util.find_spec('numpy') is not None
+
 
 def recipe(node=None, **extra):
     return {'format':'mei-asset','version':1,'name':'test',
@@ -252,10 +255,13 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(AssetError): import_obj('v 0 0 0\nf 0 1 2','bad')
 
     def test_examples_validate_without_warnings(self):
-        for path in (ROOT/'examples/assets').glob('*.json'):
+        for path in (ROOT/'examples/assets').glob('*.asset.json'):
+            if path.name == 'stall.asset.json' and not PILLOW: continue
             with self.subTest(path=path.name):
-                _,_,report = compile_recipe(json.loads(path.read_text()))
-                self.assertEqual(report['warnings'],[])
+                _,_,report = compile_recipe(json.loads(path.read_text()),path.parent)
+                # the stall's screens, posts and lantern are open surfaces on purpose
+                allowed = {'open_surface'} if path.name == 'stall.asset.json' else set()
+                self.assertEqual([w for w in report['warnings'] if w['code'] not in allowed],[])
 
 
 class CLITests(unittest.TestCase):
@@ -685,9 +691,10 @@ class NativeRenderTests(unittest.TestCase):
             self.assertEqual(path.read_text(),contents)
 
     def test_examples_render_in_real_mei_without_dropped_triangles(self):
-        for path in (ROOT/'examples/assets').glob('*.json'):
+        for path in (ROOT/'examples/assets').glob('*.asset.json'):
+            if path.name == 'stall.asset.json' and not (PILLOW and NUMPY): continue
             with self.subTest(asset=path.name), tempfile.TemporaryDirectory() as tmp:
-                report = build(json.loads(path.read_text()),tmp,True,COMPILER,RUNNER,probe=PROBE)
+                report = build(json.loads(path.read_text()),tmp,True,COMPILER,RUNNER,input_path=str(path),probe=PROBE)
                 self.assertEqual((Path(tmp)/'contact.png').read_bytes()[:8],b'\x89PNG\r\n\x1a\n')
                 for view in report['preview']['views']:
                     self.assertGreater(view['stats']['tris'],0)
@@ -1011,6 +1018,517 @@ class NativeVisibilityGateTests(unittest.TestCase):
         coplanar=recipe({'op':'mesh','vertices':[[0,0,0],[2,0,0],[0,2,0],[.2,.2,0],[1,.2,0],[.2,1,0]],
                          'faces':[[0,1,2],[3,4,5]]})
         self.assertFalse(self.checked(coplanar,profile_extra=depth)['ok'])
+
+
+# ---------------------------------------------------------------------------------------------
+# Textures (docs/ASSETKIT.md, "Textures")
+
+DEPTH_POLICY = {'required':False,'depth':True,'perspective':True}
+
+
+def textured(texture, node=None, **extra):
+    """A recipe whose default material has a texture."""
+    return recipe(node,**{'materials':{'default':{'color':'#808080','texture':texture}},
+                          'lighting':{'bake':False},**extra})
+
+
+def quad(width=2.0, height=1.0, z=0.0, **extra):
+    """A quad facing -Z (the front camera)."""
+    return {'id':'panel','op':'mesh','vertices':[[-width/2,-height/2,z],[width/2,-height/2,z],
+                                                 [width/2,height/2,z],[-width/2,height/2,z]],
+            'faces':[[3,2,1,0]],**extra}
+
+
+def corners(mesh):
+    """face -> {(rounded position): texture coordinate}."""
+    out = []
+    for f in mesh.faces:
+        out.append({tuple(round(c,4) for c in mesh.vertices[i]):uv for i,uv in zip(f.indices,f.texcoords)})
+    return out
+
+
+def write_png(path, rows):
+    from PIL import Image
+    image = Image.new('RGBA',(len(rows[0]),len(rows)))
+    image.putdata([p for row in rows for p in row])
+    image.save(path)
+
+
+class TextureSourceTests(unittest.TestCase):
+    def test_patterns_are_deterministic_and_check_their_divisions(self):
+        from assetkit.textures import PATTERNS
+        for name in PATTERNS:
+            with self.subTest(pattern=name):
+                r = textured({'pattern':name,'colors':['#a0522d','#d8d0c0','#704020','#302010']})
+                a,_,_ = compile_recipe(r); b,_,_ = compile_recipe(copy.deepcopy(r))
+                self.assertEqual(a.textures['textures']['default'].tile.frames,b.textures['textures']['default'].tile.frames)
+                self.assertEqual((a.textures['textures']['default'].width,a.textures['textures']['default'].height),(16,16))
+        with self.assertRaisesRegex(AssetError,'divide') as error:
+            compile_recipe(textured({'pattern':'brick','colors':['#a0522d','#d8d0c0'],'params':{'courses':3}}))
+        self.assertEqual(error.exception.path,'/materials/default/texture/params/courses')
+        with self.assertRaises(AssetError) as error:
+            compile_recipe(textured({'pattern':'brick','colors':['#a0522d','#d8d0c0'],'params':{'rows':4}}))
+        self.assertEqual(error.exception.path,'/materials/default/texture/params/rows')
+
+    def test_texel_grid_colours_and_clear(self):
+        grid = {'texels':['0110','1221','1221','0110'],'colors':['#000000','#ff0000','#00ff00'],'projection':'fit'}
+        mesh,_,_ = compile_recipe(textured(grid))
+        tex = mesh.textures['textures']['default']
+        self.assertEqual((tex.width,tex.height,tex.cutout,tex.quantised),(4,4,False,False))
+        self.assertEqual(tex.tile.frames[0][1],[0x1f,0x3e0,0x3e0,0x1f])     # rgb15 red, green
+        # a clear colour is a hole; holes need the depth buffer
+        holed = dict(grid,clear='#000000')
+        with self.assertRaisesRegex(AssetError,'depth buffer') as error:
+            compile_recipe(textured(holed))
+        self.assertEqual(error.exception.path,'/materials/default/texture')
+        mesh,_,_ = compile_recipe(textured(holed,verification=DEPTH_POLICY))
+        tex = mesh.textures['textures']['default']
+        self.assertTrue(tex.cutout)
+        self.assertEqual(tex.tile.frames[0][0],[None,0x1f,0x1f,None])
+        for bad,path in (({**grid,'texels':['01','012']},'/texels'),({**grid,'texels':['0123']},'/texels'),
+                         ({**grid,'clear':'#123456'},'/clear'),({**grid,'params':{}},'/params'),
+                         ({**grid,'image':'x.png'},''),({**grid,'axis':'x'},'/axis'),({**grid,'scale':[1,1]},'/scale')):
+            with self.subTest(bad=bad), self.assertRaises(AssetError) as error:
+                compile_recipe(textured(bad))
+            self.assertEqual(error.exception.path,'/materials/default/texture'+path)
+
+    def test_quantisation_is_exact_when_colours_fit_and_reserves_index_zero(self):
+        from assetkit.textures import quantise
+        few = [[[(x*16,0,0) for x in range(15)]]]
+        out,before,quantised = quantise(few,15)
+        self.assertEqual((before,quantised),(15,False))
+        self.assertEqual(out[0][0],[(x*16)>>3 for x in range(15)])
+        many = [[[(x*8,y*8,0) for x in range(8)] for y in range(8)]]
+        out,before,quantised = quantise(many,15)
+        self.assertEqual((before,quantised),(64,True))
+        self.assertLessEqual(len({c for row in out[0] for c in row}),15)
+        self.assertEqual(out,quantise(copy.deepcopy(many),15)[0])          # deterministic
+        # placed: indices 1-15, never 0
+        texels = ['0123456789abcdef']*16
+        r = textured({'texels':texels,'colors':[f'#{k*16:02x}{255-k*16:02x}40' for k in range(16)],'projection':'fit'})
+        mesh,_,report = compile_recipe(r)
+        place = mesh.textures['packing'].placements[mesh.textures['textures']['default'].tile.key]
+        self.assertEqual(report['textures']['list'][0]['quantised_from'],16)
+        self.assertEqual(sorted(set(place.index.values())),list(range(1,16)))
+
+    def test_eight_bit_textures_keep_255_colours_and_cost_twice(self):
+        colours = [f'#{k*16:02x}{k*16:02x}{k*16:02x}' for k in range(16)]
+        rows = ['0123456789abcdef']*8
+        four,_,rep4 = compile_recipe(textured({'texels':rows,'colors':colours,'projection':'fit'}))
+        eight,_,rep8 = compile_recipe(textured({'texels':rows,'colors':colours,'projection':'fit','bits':8}))
+        self.assertEqual(rep4['textures']['list'][0]['colours'],15)
+        self.assertEqual(rep8['textures']['list'][0]['colours'],16)
+        self.assertEqual(rep8['textures']['list'][0]['vram_bytes'],17*9)     # with the gutter
+        self.assertEqual(rep4['textures']['list'][0]['vram_bytes'],9*9)      # 4-bit rows of whole bytes
+        packing = eight.textures['packing']
+        self.assertEqual(packing.slot_bits,{14:8})
+        self.assertEqual(sorted(packing.palettes),[(8,14)])
+        flags,_,tex,palette,*_ = faces_of(native_bytes(eight,{'default':{'color':'#808080','texture':{}}},{'bake':False}))[0]
+        self.assertEqual((flags&2,tex&16,tex&15,palette),(2,0,14,14))
+        manifest = material_manifest(eight,{'default':{'color':'#808080'}},textured({}))
+        self.assertEqual(manifest['textures']['list'][0]['night'],'multiply')
+        self.assertEqual(manifest['textures']['list'][0]['first_colour'],14*256)
+
+    @unittest.skipUnless(PILLOW,'Image import needs Pillow.')
+    def test_images_sheets_and_animations(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            red,blue,clear = (255,0,0,255),(0,0,255,255),(0,0,0,0)
+            write_png(Path(tmp,'icon.png'),[[red,clear],[blue,red]])
+            mesh,_,_ = compile_recipe(textured({'image':'icon.png','projection':'fit'},verification=DEPTH_POLICY),tmp)
+            tex = mesh.textures['textures']['default']
+            self.assertEqual(tex.tile.frames[0],[[0x1f,None],[0x7c00,0x1f]])
+            self.assertTrue(tex.cutout)
+            self.assertEqual(tex.source['sha256'],__import__('hashlib').sha256(Path(tmp,'icon.png').read_bytes()).hexdigest())
+            # a uniform grid: cells by [column, row]
+            write_png(Path(tmp,'grid.png'),[[red]*2+[blue]*2]*2)
+            sheets = {'s':{'image':'grid.png','grid':[2,2]}}
+            mesh,_,_ = compile_recipe(textured({'sheet':'s','cell':[1,0],'projection':'fit'},sheets=sheets),tmp)
+            self.assertEqual(mesh.textures['textures']['default'].tile.frames[0],[[0x7c00]*2]*2)
+            with self.assertRaisesRegex(AssetError,'columns'):
+                compile_recipe(textured({'sheet':'s','cell':[2,0],'projection':'fit'},sheets=sheets),tmp)
+            # named rectangles in grid.sheet.json beside the image; an animation of two frames
+            Path(tmp,'grid.sheet.json').write_text(json.dumps({'format':'mei-sheet','version':1,
+                                                                'cells':{'a':[0,0,2,2],'b':[2,0,2,2]}}))
+            named = {'s':{'image':'grid.png'}}
+            anim = {'sheet':'s','frames':['a','b'],'ticks':8,'projection':'fit'}
+            mesh,mats,report = compile_recipe(textured(anim,sheets=named),tmp)
+            self.assertEqual(len(mesh.textures['textures']['default'].tile.frames),2)
+            self.assertEqual(report['textures']['list'][0]['frames'],2)
+            manifest = material_manifest(mesh,mats,textured(anim,sheets=named))
+            animation = manifest['textures']['animations'][0]
+            self.assertEqual({k:animation[k] for k in ('frames','ticks','rows','row_bytes','stride')},
+                             {'frames':2,'ticks':8,'rows':3,'row_bytes':2,'stride':128})
+            place = mesh.textures['packing'].placements[animation['tile']]
+            self.assertEqual(animation['vram'],place.slot*32768+place.y*128+place.x//2)
+            with self.assertRaisesRegex(AssetError,'ticks'):
+                compile_recipe(textured({'sheet':'s','frames':['a','b'],'projection':'fit'},sheets=named),tmp)
+            with self.assertRaisesRegex(AssetError,'no cell'):
+                compile_recipe(textured({'sheet':'s','cell':'c','projection':'fit'},sheets=named),tmp)
+            # frames whose holes differ are refused
+            write_png(Path(tmp,'grid.png'),[[red,clear,blue,blue],[red]*2+[blue]*2])
+            with self.assertRaisesRegex(AssetError,'holes'):
+                compile_recipe(textured(anim,sheets=named,verification=DEPTH_POLICY),tmp)
+            Path(tmp,'notpng.png').write_text('hello')
+            with self.assertRaises(AssetError):
+                compile_recipe(textured({'image':'notpng.png','projection':'fit'}),tmp)
+
+    def test_missing_pillow_is_a_clear_error(self):
+        saved = sys.modules.get('PIL')
+        sys.modules['PIL'] = None
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                Path(tmp,'x.png').write_bytes(b'')
+                with self.assertRaisesRegex(AssetError,'Pillow'):
+                    compile_recipe(textured({'image':'x.png','projection':'fit'}),tmp)
+        finally:
+            if saved is None: del sys.modules['PIL']
+            else: sys.modules['PIL'] = saved
+
+
+class TextureProjectionTests(unittest.TestCase):
+    def test_box_projection_reads_from_outside_on_every_side(self):
+        r = textured({'pattern':'checker','colors':['#000000','#ffffff'],'projection':'box','offset':[.5,.5]},
+                     {'id':'cube','op':'box','size':[1,1,1]})
+        mesh,_,_ = compile_recipe(r)
+        # front face (-Z): left edge u 0, right edge u 16, top v 0
+        front = {}
+        for f in corners(mesh):
+            if all(p[2] == -.5 for p in f): front.update(f)
+        self.assertEqual(front[(-.5,.5,-.5)],(0,0))
+        self.assertEqual(front[(.5,-.5,-.5)],(16,16))
+        right = {}
+        for f in corners(mesh):
+            if all(p[0] == .5 for p in f): right.update(f)
+        self.assertEqual(right[(.5,.5,-.5)],(0,0))           # seen from +X, -Z is on the left
+        top = {}
+        for f in corners(mesh):
+            if all(p[1] == .5 for p in f): top.update(f)
+        self.assertEqual(top[(-.5,.5,.5)],(0,0))             # from above, +Z is up
+
+    def test_planar_scale_offset_and_flip(self):
+        base = {'pattern':'checker','colors':['#000000','#ffffff'],'projection':'planar','axis':'z','scale':[2,1]}
+        def uv(texture):
+            mesh,_,_ = compile_recipe(textured(texture,quad(2,1)))
+            return {k:v for f in corners(mesh) for k,v in f.items()}
+        plain = uv(base)
+        left,right,top = plain[(-1,-.5,0)],plain[(1,-.5,0)],plain[(-1,.5,0)]
+        self.assertEqual(right[0]-left[0],16)                # 2 units at 2 a repeat: one repeat
+        self.assertEqual(top[1]-left[1],-16)                 # v runs down; 1 unit at 1 a repeat
+        self.assertEqual(left[0]%16,8)                       # anchored at the primitive's origin (x -1: half a repeat)
+        shifted = uv({**base,'offset':[.25,0]})
+        self.assertEqual((shifted[(-1,-.5,0)][0]-left[0])%16,4)
+        flipped = uv({**base,'flip':'u'})
+        self.assertEqual(flipped[(1,-.5,0)][0]-flipped[(-1,-.5,0)][0],-16)
+
+    def test_fit_covers_each_face_exactly(self):
+        sign = {'texels':['01']*4,'colors':['#000000','#ffffff'],'projection':'fit'}
+        mesh,_,_ = compile_recipe(textured(sign,quad(3,1)))
+        uv = {k:v for f in corners(mesh) for k,v in f.items()}
+        self.assertEqual(uv,{(-1.5,-.5,0):(0,4),(1.5,-.5,0):(2,4),(1.5,.5,0):(2,0),(-1.5,.5,0):(0,0)})
+        mesh,_,_ = compile_recipe(textured({**sign,'rotate':90},quad(3,1)))
+        uv = {k:v for f in corners(mesh) for k,v in f.items()}
+        self.assertEqual(uv[(-1.5,.5,0)],(0,4))              # turned clockwise: the texture's bottom-left is top left
+        mesh,_,_ = compile_recipe(textured({**sign,'flip':'u'},quad(3,1)))
+        uv = {k:v for f in corners(mesh) for k,v in f.items()}
+        self.assertEqual(uv[(-1.5,.5,0)],(2,0))
+        with self.assertRaisesRegex(AssetError,'drawn once'):
+            compile_recipe(textured({**sign,'offset':[.5,0]},quad(3,1)))
+
+    def test_cylindrical_rounds_repeats_around_and_disc_centres(self):
+        r = textured({'pattern':'stripes','colors':['#000000','#ffffff'],'projection':'cylindrical','scale':[1,1]},
+                     {'id':'drum','op':'cylinder','radius':1,'height':1,'segments':12,'caps':False})
+        mesh,_,_ = compile_recipe(r)
+        # around = round(2 pi / 1) = 6 repeats: each of 12 segments spans half a repeat, 8 texels
+        for f in mesh.faces:
+            us = [u for u,_ in f.texcoords]
+            self.assertEqual(max(us)-min(us),8)
+        r = textured({'texels':['01']*2,'colors':['#000000','#ffffff'],'projection':'disc','axis':'y'},
+                     {'id':'cap','op':'cylinder','radius':1,'height':.1,'segments':8})
+        mesh,_,_ = compile_recipe(r)
+        top = [f for f in corners(mesh) if all(p[1] == .05 for p in f)]
+        uv = {k:v for f in top for k,v in f.items()}
+        self.assertEqual(uv[(1.0,.05,0.0)],(2,1))            # +X: the right edge, centre row
+        self.assertEqual(uv[(-1.0,.05,0.0)],(0,1))
+
+    def test_hand_uvs_in_mesh_nodes(self):
+        node = quad(2,1,uvs=[[0,1],[2,1],[2,0],[0,0]])
+        mesh,_,_ = compile_recipe(textured({'pattern':'checker','colors':['#000000','#ffffff'],'projection':'planar'},node))
+        uv = {k:v for f in corners(mesh) for k,v in f.items()}
+        self.assertEqual(uv[(1,-.5,0)],(32,16))
+        with self.assertRaisesRegex(AssetError,'one'):
+            compile_recipe(textured({'pattern':'checker','colors':['#000000','#ffffff']},quad(uvs=[[0,0]]*3)))
+
+    def test_long_faces_are_split_without_t_junctions(self):
+        # a 20 x 1 strip at 16 texels a unit spans 320 texels: more than the GPU's 255
+        node = {'id':'strip','op':'box','size':[20,1,1]}
+        mesh,_,report = compile_recipe(textured({'pattern':'brick','colors':['#a0522d','#d8d0c0'],
+                                                 'projection':'box','scale':[1,1]},node))
+        self.assertGreater(report['textures']['split_faces'],0)
+        self.assertEqual(report['triangles'],12+report['textures']['split_faces'])
+        for f in mesh.faces:
+            self.assertLessEqual(max(max(u,v) for u,v in f.texcoords),255)
+            self.assertGreaterEqual(min(min(u,v) for u,v in f.texcoords),0)
+        # no vertex lies inside another face's edge
+        for f in mesh.faces:
+            for k in range(3):
+                a,b = (mesh.vertices[f.indices[j]] for j in (k,(k+1)%3))
+                for i,p in enumerate(mesh.vertices):
+                    if i in f.indices: continue
+                    ab,ap = sub(b,a),sub(p,a)
+                    if dot(cross(ab,ap),cross(ab,ap)) < 1e-12 and 0 < dot(ap,ab) < dot(ab,ab):
+                        self.fail(f'T-junction: vertex {i} on an edge of face {f.indices}')
+        # the volume is unchanged
+        self.assertAlmostEqual(volume(mesh),20.0,places=6)
+        # a short box is not split
+        _,_,report = compile_recipe(textured({'pattern':'brick','colors':['#a0522d','#d8d0c0']},{'id':'b','op':'box','size':[2,1,1]}))
+        self.assertEqual(report['textures']['split_faces'],0)
+
+    def test_at_most_seven_repeating_textures(self):
+        materials = {f'm{k}':{'color':'#808080','texture':{'pattern':'checker','colors':['#000000',f'#0000{k*16:02x}']}}
+                     for k in range(8)}
+        nodes = [{'id':f'b{k}','op':'box','size':[1,1,1],'material':f'm{k}','transform':{'translate':[2*k,0,0]}} for k in range(8)]
+        with self.assertRaisesRegex(AssetError,'7 texture') as error:
+            compile_recipe(recipe(**{'materials':materials}) | {'nodes':nodes})
+        self.assertEqual(error.exception.path,'/materials')
+        mesh,_,report = compile_recipe(recipe(**{'materials':dict(list(materials.items())[:7])}) | {'nodes':nodes[:7]})
+        self.assertEqual(report['textures']['windows'],7)
+
+    def test_native_faces_windows_and_tints(self):
+        r = recipe(**{'materials':{'wall':{'color':'#808080','texture':{'pattern':'brick','colors':['#a0522d','#d8d0c0']}},
+                                   'sign':{'color':'#808080','class':'emissive','texture':{'texels':['01'],'colors':['#000000','#ffffff'],'projection':'fit'}}},
+                      'lighting':{'mode':'vertical','ambient':.5}}) | {'nodes':[
+            {'id':'wall','op':'box','size':[1,1,1],'material':'wall'},
+            {'id':'sign','op':'mesh','material':'sign','vertices':[[-1,1,-1],[1,1,-1],[1,2,-1],[-1,2,-1]],'faces':[[0,1,2,3]]}]}
+        mesh,mats,_ = compile_recipe(r)
+        binary = native_bytes(mesh,mats,r['lighting'])
+        packing = mesh.textures['packing']
+        wall = packing.placements[mesh.textures['textures']['wall'].tile.key]
+        sign = packing.placements[mesh.textures['textures']['sign'].tile.key]
+        _,_,_,_,table = struct.unpack_from('<HHIII',binary)
+        self.assertEqual(struct.unpack_from('<H',binary,table)[0],wall.halfword())
+        for face,(flags,_,tex,palette,*rest) in zip(mesh.faces,faces_of(binary)):
+            colours,uvs = rest[4:8],rest[8:12]
+            self.assertEqual(flags&2,2)
+            place = wall if face.material == 'wall' else sign
+            self.assertEqual((tex&15,bool(tex&16),palette),(place.slot,True,place.palette))
+            if face.material == 'wall':
+                self.assertEqual(tex>>5,1)
+                self.assertTrue(all((uv&255) <= 255 for uv in uvs))
+            else:
+                self.assertEqual(tex>>5,0)
+                self.assertEqual(colours[0],0x808080)               # emissive: unshaded tint
+                self.assertTrue(all(sign.x <= (uv&255) <= sign.x+2 and sign.y <= uv>>8 <= sign.y+1 for uv in uvs[:3]))
+        sides = [rest[4] for f,(_,_,_,_,*rest) in zip(mesh.faces,faces_of(binary))
+                 if f.material == 'wall' and all(abs(mesh.vertices[i][0]-.5) < 1e-9 for i in f.indices)]
+        self.assertEqual(sides,[0x606060]*2)                        # a wall shades 0.75: tint 96
+
+    def test_levels_of_detail_share_level_zero_textures(self):
+        brick = {'pattern':'brick','colors':['#a0522d','#d8d0c0']}
+        r = recipe(**{'materials':{'brick':{'color':'#a0522d','texture':brick},
+                                   'other':{'color':'#808080','texture':{**brick,'colors':['#000000','#ffffff']}}}}) | {
+            'nodes':[{'id':'b','op':'box','size':[1,1,1],'material':'brick'}],
+            'lod':{'levels':[{'distance':10,'nodes':[{'id':'b','op':'box','size':[1,1,1],'material':'brick','open':['bottom']}]}]}}
+        mesh,_,_ = compile_recipe(r)
+        self.assertIs(mesh.levels[0][0].textures['packing'],mesh.textures['packing'])
+        r['lod']['levels'][0]['nodes'][0]['material'] = 'other'
+        with self.assertRaisesRegex(AssetError,'level 0') as error:
+            compile_recipe(r)
+        self.assertEqual(error.exception.path,'/lod/levels/0/nodes')
+
+
+class TexturePackingTests(unittest.TestCase):
+    def tile(self, w, h, colour=1, bits=4, window=False):
+        from kitcore.texpack import Tile
+        return Tile(w,h,bits,[[[colour]*w for _ in range(h)]],window=window,name=f'{w}x{h}')
+
+    def test_duplicates_window_origins_palettes_and_reserved_space(self):
+        from kitcore.texpack import pack
+        tiles = [self.tile(16,16,1,window=True),self.tile(16,16,1,window=True),self.tile(32,8,2),self.tile(5,7,3)]
+        packing = pack(tiles,slots=[14],reserved=[(14,0,0,16,8)])
+        self.assertEqual(len(packing.placements),3)                  # the two equal tiles are one
+        for key,place in packing.placements.items():
+            self.assertEqual((place.x%8,place.y%8),(0,0))
+            self.assertFalse(place.x < 16 and place.y < 8,'the reserved swatch block is free')
+        self.assertEqual(sorted(packing.palettes),[(4,0)])            # three colours share one palette
+        self.assertEqual(packing.palettes[4,0],[1,2,3])
+        first,data = packing.slot_image(14)
+        place = packing.placements[tiles[3].key]
+        # the gutter repeats the last column and row of a tile drawn once
+        row = (place.y+7-first)*128+place.x//2
+        self.assertEqual(data[row:row+3],bytes([0x33,0x33,0x33]))
+        with self.assertRaisesRegex(Exception,'slot 15'):
+            pack(tiles,slots=[15])
+
+    def test_overflow_is_a_clear_error(self):
+        from kitcore.errors import KitError
+        from kitcore.texpack import pack
+        tiles = [self.tile(128,128,k+1,bits=8,window=True) for k in range(3)]
+        with self.assertRaisesRegex(KitError,'do not fit in slots \\[13\\]'):
+            pack(tiles,slots=[13])
+        packing = pack(tiles,slots=[13,12])
+        self.assertEqual(packing.slot_bits,{13:8,12:8})
+        many = [self.tile(8,8,k+1) for k in range(16)]
+        with self.assertRaisesRegex(KitError,'at most 15'):
+            pack([__import__('kitcore.texpack',fromlist=['Tile']).Tile(16,1,4,[[list(range(1,17))]],name='x')],slots=[14])
+        self.assertEqual(len({p for b,p in pack(many,slots=[14]).palettes}),2)    # 16 colours: two palettes
+
+    @unittest.skipUnless(PILLOW,'The stall example reads a PNG sheet (Pillow).')
+    def test_pack_command_shares_textures_and_palettes(self):
+        stall = ROOT/'examples/assets/stall.asset.json'
+        with tempfile.TemporaryDirectory() as tmp:
+            twin = json.loads(stall.read_text()); twin['name'] = 'twin'
+            twin['sheets']['signs']['image'] = str(ROOT/'examples/assets/art/stall_sheet.png')
+            Path(tmp,'twin.asset.json').write_text(json.dumps(twin))
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'pack',str(stall),str(Path(tmp,'twin.asset.json')),
+                                     str(ROOT/'examples/assets/kiosk.asset.json'),'-o',str(Path(tmp,'out')),'--name','street',
+                                     '--slots','12-14'],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stdout)
+            out = json.loads(result.stdout)
+            plain = json.loads(stall.read_text())
+            plain['verification'] = {'required':False,'depth':True,'perspective':True}
+            single = build(plain,Path(tmp,'single'),input_path=str(stall))
+            self.assertEqual(out['textures']['tiles'],single['textures']['tiles'])    # the twin adds nothing
+            manifest = json.loads(Path(tmp,'out/street.pack.json').read_text())
+            self.assertEqual([a['name'] for a in manifest['assets']],['stall','twin','kiosk'])
+            self.assertEqual(manifest['swatch']['slot'],12)
+            self.assertEqual(manifest['assets'][2]['palette']['palettes'],[0])
+            self.assertTrue(all(t['slot'] in (12,13,14) for t in manifest['assets'][0]['textures']))
+            akr = Path(tmp,'out/street.akr').read_text()
+            for line in ('embed ASSET_STALL: Mesh = "stall.bin"','fn street_load() {','const STREET_STALL_LANTERN_FRAMES = 2'):
+                self.assertIn(line,akr)
+            # the stall and its twin draw the same faces from the same places
+            self.assertEqual(Path(tmp,'out/stall.bin').read_bytes(),Path(tmp,'out/twin.bin').read_bytes())
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'pack',str(stall),'-o',str(Path(tmp,'small')),
+                                     '--slots','14,13'],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stdout)
+            # three 8-bit 128 x 128 textures: an 8-bit slot holds two
+            bigs = []
+            for k in range(3):
+                big = textured({'pattern':'checker','colors':['#000000',f'#0000{k*8+8:02x}'],'size':128,'bits':8})|{'name':f'big{k}'}
+                Path(tmp,f'big{k}.asset.json').write_text(json.dumps(big))
+                bigs.append(str(Path(tmp,f'big{k}.asset.json')))
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'pack',*bigs,'-o',str(Path(tmp,'over')),
+                                     '--slots','14'],capture_output=True,text=True)
+            self.assertEqual(result.returncode,1)
+            self.assertIn('do not fit',json.loads(result.stdout)['errors'][0]['message'])
+
+    def test_build_writes_texture_files_manifest_and_loader(self):
+        r = recipe(**{'materials':{'default':{'color':'#a0522d','tag':'wall','texture':{'pattern':'brick','colors':['#a0522d','#d8d0c0']}},
+                                   'neon':{'color':'#ff3fa4','class':'emissive'}}}) | {'nodes':[
+            {'id':'b','op':'box','size':[1,1,1]},{'id':'n','op':'box','size':[.2,.2,.2],'material':'neon','transform':{'translate':[0,1,0]}}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            report = build(r,tmp)
+            self.assertIn('test.slot14.tex',report['files'])
+            self.assertIn('test.tpal',report['files'])
+            manifest = json.loads(Path(tmp,'test.materials.json').read_text())
+            entry = manifest['textures']['list'][0]
+            self.assertEqual((entry['slot'],entry['palette'],entry['repeat'],entry['night']),(14,1,True,'per_colour'))
+            self.assertEqual(manifest['textures']['windows'],[entry['window']])
+            self.assertEqual(entry['faces'],[[0,12]])
+            self.assertFalse(entry['x'] < 16 and entry['y'] < 8,'the swatch block is reserved')
+            akr = Path(tmp,'test.akr').read_text()
+            load = akr[akr.index('fn asset_test_load()'):]
+            self.assertLess(load.index('ASSET_TEST_TEX14'),load.index('ASSET_TEST_SWATCH'),'textures load before the swatch')
+            self.assertEqual(Path(tmp,'test.tpal').read_bytes()[:2],b'\0\0')
+
+
+@unittest.skipUnless(COMPILER.exists() and RUNNER.exists(),'Build Mei for native rendering tests.')
+class NativeTextureTests(unittest.TestCase):
+    def test_texels_reach_the_screen(self):
+        # a 2 x 2 fit texture on a quad facing the camera: each quarter of the quad shows its texel
+        colours = ['#ff0000','#00ff00','#0000ff','#ffff00']
+        r = textured({'texels':['01','23'],'colors':colours,'projection':'fit'},quad(2,2))
+        with tempfile.TemporaryDirectory() as tmp:
+            build(r,tmp)
+            Path(tmp,'cart.akr').write_text('''cart "Texture test"
+import "test.akr"
+
+fn init() { asset_test_load() }
+
+fn draw() {
+    cls(0)
+    dither(false)
+    camera(vec3(0.0, 0.0, -3.0), 0.0)
+    mesh(ASSET_TEST)
+}
+''')
+            subprocess.run([str(COMPILER),str(Path(tmp,'cart.akr')),'-o',str(Path(tmp,'cart.mei'))],check=True,capture_output=True)
+            subprocess.run([str(RUNNER),str(Path(tmp,'cart.mei')),'--frames','4','--dump',str(Path(tmp,'out.ppm'))],check=True,capture_output=True)
+            pixels = Path(tmp,'out.ppm').read_bytes().split(b'\n',3)[3]
+            def at(x,y): return tuple(pixels[(y*320+x)*3:(y*320+x)*3+3])
+            self.assertEqual([at(130,90),at(190,90),at(130,150),at(190,150)],
+                             [(255,0,0),(0,255,0),(0,0,255),(255,255,0)])
+
+    @unittest.skipUnless(PILLOW,'The stall example reads a PNG sheet (Pillow).')
+    def test_packed_example_draws_in_depth_and_perspective_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'pack',str(ROOT/'examples/assets/stall.asset.json'),
+                                     str(ROOT/'examples/assets/kiosk.asset.json'),'-o',tmp,'--name','street'],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stdout)
+            Path(tmp,'cart.akr').write_text('''cart "Pack test"
+import "street.akr"
+import "depth.akr"
+
+fn init() { street_load() }
+
+fn draw() {
+    cls(rgb(24, 28, 36))
+    render_depth(true)
+    render_perspective(true)
+    camera_look(vec3(0.0, 1.5, -4.2), 0.0, -0.05)
+    mesh_at(ASSET_STALL, vec3(0.0, 0.0, 0.0), 0.0)
+    mesh_at(ASSET_KIOSK, vec3(4.0, 0.0, 2.0), 0.6)
+}
+''')
+            subprocess.run([str(COMPILER),str(Path(tmp,'cart.akr')),'-o',str(Path(tmp,'cart.mei'))],check=True,capture_output=True)
+            subprocess.run([str(RUNNER),str(Path(tmp,'cart.mei')),'--frames','4','--dump',str(Path(tmp,'out.ppm')),
+                            '--gpu-stats',str(Path(tmp,'stats.csv'))],check=True,capture_output=True)
+            from kitcore.native import last_frame_stats
+            stats = last_frame_stats(Path(tmp,'stats.csv'))
+            self.assertGreater(stats['px_tex'],10000)
+            self.assertGreater(stats['px_persp'],0)
+            self.assertEqual(stats['tris_dropped'],0)
+
+
+@unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'The Asset Checker needs NumPy, meic and mei-asset-probe.')
+class TextureCheckerTests(unittest.TestCase):
+    profile = {'yaw_steps':6,'pitches':[-.3,.2],'distances':[1]}
+
+    def fence(self):
+        """A cutout lattice in front of a brick block, in depth mode."""
+        return recipe(**{'materials':{
+            'wall':{'color':'#a0522d','texture':{'pattern':'brick','colors':['#a0522d','#d8d0c0'],'scale':[.5,.5]}},
+            'fence':{'color':'#304050','double_sided':True,'texture':{'pattern':'lattice','colors':['#304050','#000000'],
+                     'clear':'#000000','params':{'count':2,'bar':3,'diagonal':True},'projection':'fit'}}},
+            'lighting':{'mode':'vertical'},'verification':{'required':True,'depth':True,'perspective':True,**self.profile}}) | {'nodes':[
+            {'id':'block','op':'box','size':[1,1,1],'material':'wall','transform':{'translate':[0,.5,.6]}},
+            {'id':'fence','op':'mesh','material':'fence','vertices':[[-1,0,-.2],[1,0,-.2],[1,1.2,-.2],[-1,1.2,-.2]],'faces':[[0,1,2,3]]}]}
+
+    def test_cutout_coverage_is_judged_per_texel(self):
+        from assetkit import visibility
+        report = visibility.verify(self.fence(),compiler=COMPILER,probe=PROBE)
+        self.assertTrue(report['ok'],report['totals'])
+        self.assertEqual((report['totals']['coverage_errors'],report['totals']['wrong_pixels']),(0,0))
+        # the reference really reads the texels: judged as a solid face, the same views fail
+        real = visibility.texel_coverage
+        try:
+            visibility.texel_coverage = lambda np,v,uv,w,xx,yy,inside,area,texture: inside
+            solid = visibility.verify(self.fence(),compiler=COMPILER,probe=PROBE)
+        finally:
+            visibility.texel_coverage = real
+        self.assertFalse(solid['ok'])
+        self.assertGreater(solid['totals']['coverage_errors'],1000)
+
+    def test_textured_faces_without_holes_are_judged_as_solid_faces(self):
+        from assetkit import visibility
+        r = textured({'pattern':'brick','colors':['#a0522d','#d8d0c0']},verification={'required':True,**self.profile})
+        report = visibility.verify(r,compiler=COMPILER,probe=PROBE)
+        self.assertTrue(report['ok'])
+        self.assertNotIn('depth_mode',report)
+        overlap = textured({'pattern':'brick','colors':['#a0522d','#d8d0c0']}) | {'nodes':[
+            {'id':'body','op':'box','size':[2,2,.6]},{'id':'plate','op':'box','size':[1,1,.08],'transform':{'translate':[0,0,-.36]}}]}
+        self.assertFalse(visibility.verify(overlap,self.profile,compiler=COMPILER,probe=PROBE)['ok'],
+                         'textured faces must not hide ordering errors')
 
 
 if __name__ == '__main__':

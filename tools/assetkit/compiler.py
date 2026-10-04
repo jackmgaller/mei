@@ -9,6 +9,7 @@ from meshlib import Mesh as NativeMesh, rgb
 from .geometry import (AssetError, Mesh, Face, add, sub, cross, dot, norm, extrude,
                        lathe, loft, explicit_mesh, transform, modify)
 from .schema import validate
+from . import textures as TEX, texout
 
 
 SIDE_AXES = {'right':(0,1),'left':(0,-1),'top':(1,1),'bottom':(1,-1),'front':(2,1),'back':(2,-1)}
@@ -29,10 +30,11 @@ def open_box(mesh, sides, path):
     used = sorted({i for f in kept for i in f.indices})
     new = {old:k for k,old in enumerate(used)}
     return Mesh([mesh.vertices[i] for i in used],
-                [Face(tuple(new[i] for i in f.indices),f.material,f.part) for f in kept])
+                [f.copy(tuple(new[i] for i in f.indices)) for f in kept])
 
 
-def compile_recipe(recipe):
+def compile_recipe(recipe, base=None):
+    """base: the folder image paths are relative to (the recipe's own; default the current one)."""
     validate(recipe)
     materials = {'default':{'color':'#c4cad4'}, **recipe.get('materials',{})}
     prototypes = recipe.get('prototypes',{})
@@ -79,7 +81,9 @@ def compile_recipe(recipe):
                 for i,name in enumerate(face_materials):
                     if name not in materials:
                         raise AssetError(f'{path}/face_materials/{i}',f'Unknown material {name!r}.')
-            mesh = explicit_mesh(spec['vertices'],spec['faces'],path,face_materials)
+            if 'uvs' in spec and len(spec['uvs']) != len(spec['vertices']):
+                raise AssetError(path+'/uvs','Provide one [u, v] per vertex.')
+            mesh = explicit_mesh(spec['vertices'],spec['faces'],path,face_materials,spec.get('uvs'))
         elif op == 'group':
             mesh = Mesh()
             for i,child in enumerate(spec['children']):
@@ -96,6 +100,7 @@ def compile_recipe(recipe):
                 if op != 'mesh' or 'face_materials' not in spec:
                     face.material = material
                 face.part = label.lstrip('/')
+                face.local = tuple(mesh.vertices[i] for i in face.indices)
         for i,modifier in enumerate(spec.get('modifiers',[])):
             mesh = modify(mesh,modifier,f'{path}/modifiers/{i}')
         return transform(mesh,spec.get('transform',{}),path+'/transform')
@@ -103,6 +108,13 @@ def compile_recipe(recipe):
     mesh = Mesh()
     for i,spec in enumerate(recipe['nodes']):
         mesh.append(node(spec,f'/nodes/{i}'))
+    # Textures: texel coordinates from each primitive's own coordinates, then faces of repeating
+    # textures cut to fit the GPU's 8-bit coordinates (assetkit/textures.py).
+    textures, split_faces = {}, 0
+    if any('texture' in materials[f.material] for f in mesh.faces):
+        textures = TEX.load(recipe,materials,base,{f.material for f in mesh.faces})
+        TEX.project(mesh,textures)
+        split_faces = TEX.split(mesh,textures)
     # Export precisely the geometry we audit, including fixed-point quantization.
     vertices, table, remap = [],{},{}
     used = sorted({i for face in mesh.faces for i in face.indices})
@@ -139,10 +151,13 @@ def compile_recipe(recipe):
             raise AssetError(f'/materials/{name}/palette','Emissive materials are always drawn through palette entries of their own. Remove palette: false, or use class "surface".')
         if 'share' in mat and not palette_backed(mat):
             raise AssetError(f'/materials/{name}/share','share only applies to palette-backed materials. Set palette: true, or remove share.')
-    mesh.palette = assign_palette(mesh,materials,recipe)
+    mesh.palette = assign_palette(mesh,materials,recipe,bool(textures))
+    if textures:
+        mesh.textures = TEX.finish(mesh,textures,recipe,{**DEFAULT_LAYOUT,**recipe.get('palette_layout',{})})
+        mesh.textures['split_faces'] = split_faces
     result = report(mesh,recipe,budget,materials)
     if 'lod' in recipe:
-        mesh.levels = compile_levels(recipe,mesh)
+        mesh.levels = compile_levels(recipe,mesh,base)
         result['lod'] = lod_summary(recipe,mesh,result)
     return mesh, materials, result
 
@@ -159,7 +174,7 @@ def level_recipe(recipe, k):
     return out
 
 
-def compile_levels(recipe, base):
+def compile_levels(recipe, base, folder=None):
     """Levels 1.. of a recipe with lod, each compiled as a recipe of its own: [(mesh, report)].
     Checks the switch distances."""
     lod = recipe['lod']
@@ -176,7 +191,7 @@ def compile_levels(recipe, base):
     out = []
     for k in range(1,len(levels)+1):
         try:
-            mesh,_,rep = compile_recipe(level_recipe(recipe,k))
+            mesh,_,rep = compile_recipe(level_recipe(recipe,k),folder)
         except AssetError as error:
             path = error.path if error.path.startswith('/budget') else f'/lod/levels/{k-1}'+error.path
             raise AssetError(path,f'Level {k}: {error}') from error
@@ -187,6 +202,14 @@ def compile_levels(recipe, base):
                 raise AssetError(f'/lod/levels/{k-1}/nodes',f'Level {k} draws palette-backed material {name!r}, which '
                                  'level 0 does not use: every level shares level 0\'s palette entries.')
         mesh.palette = base.palette if mesh.palette else None
+        if mesh.textures:
+            # ... and level 0's textures, where level 0 put them
+            own = {t.tile.key for t in base.textures['textures'].values()} if base.textures else set()
+            for name,tex in mesh.textures['textures'].items():
+                if tex.tile.key not in own:
+                    raise AssetError(f'/lod/levels/{k-1}/nodes',f'Level {k} draws the texture of {name!r}, which level 0 '
+                                     'does not use: every level shares level 0\'s textures.')
+            mesh.textures['packing'] = base.textures['packing']
         out.append((mesh,rep))
     return out
 
@@ -207,6 +230,7 @@ DEFAULT_LAYOUT = {'slot':14,'row':0,'first':0}
 
 
 def palette_backed(mat):
+    if 'texture' in mat: return False     # a textured material draws through its texture's palette
     return mat.get('palette',mat.get('class','surface') == 'emissive')
 
 
@@ -215,7 +239,7 @@ def rgb15(color):
     return (r>>3)|((g>>3)<<5)|((b>>3)<<10)
 
 
-def assign_palette(mesh, materials, recipe):
+def assign_palette(mesh, materials, recipe, textured=False):
     """One 4-bit palette entry per distinct (class, colour) among the palette-backed materials
     the mesh uses, and one of its own for each material with share: false: surface entries
     first, then emissive, indices 1-15 of consecutive palettes. Index 0 is never assigned (the
@@ -230,7 +254,7 @@ def assign_palette(mesh, materials, recipe):
                 if key not in owners: keys.append(key)
                 owners[key].append(name)
     if not keys:
-        if 'palette_layout' in recipe:
+        if 'palette_layout' in recipe and not textured:
             raise AssetError('/palette_layout','No material the mesh uses is drawn through the palette. Set palette: true (or class "emissive") on a material, or remove palette_layout.')
         return None
     layout = {**DEFAULT_LAYOUT,**recipe.get('palette_layout',{})}
@@ -287,7 +311,22 @@ def material_manifest(mesh, materials, recipe):
                                     'faces':face_runs(mesh,lambda f: f.material == key)}
     tags = sorted({materials[key]['tag'] for key in used if 'tag' in materials[key]})
     result['tags'] = {tag:face_runs(mesh,lambda f: materials[f.material].get('tag') == tag) for tag in tags}
+    if mesh.textures:
+        _,_,_,section = texture_outputs(name,mesh)
+        packing = mesh.textures['packing']
+        result['textures'] = {**section,'windows':[packing.placements[k].halfword() for k in window_order(mesh,packing)],
+                              'list':texout.texture_entries(mesh,packing,face_runs)}
     return result
+
+
+def window_order(mesh, packing):
+    """The tiles in the order of the mesh's window table (first use by a face)."""
+    keys = []
+    for face in mesh.faces:
+        tex = mesh.textures['textures'].get(face.material)
+        if tex and packing.placements[tex.tile.key].window and tex.tile.key not in keys:
+            keys.append(tex.tile.key)
+    return keys
 
 
 def palette_bytes(mesh):
@@ -302,29 +341,50 @@ def palette_bytes(mesh):
 SWATCH = bytes(2*j|(2*j+1)<<4 for j in range(8))
 
 
+def texture_outputs(name, mesh, packing=None):
+    """(files, embed lines, loader lines, manifest) of a textured asset's own placement."""
+    packing = packing or mesh.textures['packing']
+    animations, seen = [], set()
+    for material,tex in mesh.textures['textures'].items():
+        if len(tex.tile.frames) > 1 and tex.tile.key not in seen:
+            seen.add(tex.tile.key)
+            animations.append((tex.tile.key,material,tex.ticks))
+    return texout.outputs(name,'ASSET_'+name.upper(),packing,animations)
+
+
 def import_source(name, mesh):
-    """The generated Akari import. Assets without palette materials keep the original two lines."""
+    """The generated Akari import. Assets without palette materials or textures keep the original
+    two lines."""
     upper = name.upper()
     text = f'// Mei Asset Kit: {len(mesh.vertices)} vertices, {len(mesh.faces)} triangles.\nembed ASSET_{upper}: Mesh = "{name}.bin"\n'
     palette = mesh.palette
-    if not palette: return text
-    layout, first = palette['layout'], palette['palettes'][0]*16
-    lines = ['',f'// Palette-backed materials: 4-bit palettes {palette["palettes"][0]}-{palette["palettes"][-1]} '
-             f'(colours {first}-{first+16*len(palette["palettes"])-1}),',
-             f'// swatch texels u 0-15 of row {layout["row"]} in texture slot {layout["slot"]}. Call asset_{name}_load() before drawing.',
-             f'embed ASSET_{upper}_PALETTE: u16 = "{name}.pal"',
-             f'embed ASSET_{upper}_SWATCH: u8 = "{name}.swatch"',
-             f'const ASSET_{upper}_COLOUR = {first}']
-    for kind in ('surface','emissive'):
-        colours = [e['colour'] for e in palette['entries'] if e['class'] == kind]
-        if colours:
-            lines += [f'const ASSET_{upper}_{kind.upper()} = {colours[0]}',
-                      f'const ASSET_{upper}_{kind.upper()}_COUNT = {colours[-1]-colours[0]+1}']
-    lines += ['','// Copies the swatch texels and the default palette colours into VRAM.',
-              f'fn asset_{name}_load() {{',
-              f'    memcpy((VRAM_TEXTURES + {layout["slot"]} * TEXTURE_SLOT_SIZE + {layout["row"]*128}) as *u8, ASSET_{upper}_SWATCH, {len(SWATCH)})',
-              f'    load_palette(ASSET_{upper}_COLOUR, ASSET_{upper}_PALETTE, len(ASSET_{upper}_PALETTE))',
-              '}','']
+    if not palette and not mesh.textures: return text
+    lines, body = [], []
+    if mesh.textures:
+        packing = mesh.textures['packing']
+        _,embeds,body,_ = texture_outputs(name,mesh)
+        pals = ', '.join(f'{b}-bit {p}' for b,p in sorted(packing.palettes))
+        lines += ['',f'// Textures: slots {", ".join(map(str,packing.slots()))}; palettes {pals}. Call asset_{name}_load() before drawing.',
+                  *embeds]
+    if palette:
+        layout, first = palette['layout'], palette['palettes'][0]*16
+        lines += ['',f'// Palette-backed materials: 4-bit palettes {palette["palettes"][0]}-{palette["palettes"][-1]} '
+                 f'(colours {first}-{first+16*len(palette["palettes"])-1}),',
+                 f'// swatch texels u 0-15 of row {layout["row"]} in texture slot {layout["slot"]}. Call asset_{name}_load() before drawing.',
+                 f'embed ASSET_{upper}_PALETTE: u16 = "{name}.pal"',
+                 f'embed ASSET_{upper}_SWATCH: u8 = "{name}.swatch"',
+                 f'const ASSET_{upper}_COLOUR = {first}']
+        for kind in ('surface','emissive'):
+            colours = [e['colour'] for e in palette['entries'] if e['class'] == kind]
+            if colours:
+                lines += [f'const ASSET_{upper}_{kind.upper()} = {colours[0]}',
+                          f'const ASSET_{upper}_{kind.upper()}_COUNT = {colours[-1]-colours[0]+1}']
+        # textures first: the swatch may share their slot
+        body = body+[f'    memcpy((VRAM_TEXTURES + {layout["slot"]} * TEXTURE_SLOT_SIZE + {layout["row"]*128}) as *u8, ASSET_{upper}_SWATCH, {len(SWATCH)})',
+                     f'    load_palette(ASSET_{upper}_COLOUR, ASSET_{upper}_PALETTE, len(ASSET_{upper}_PALETTE))']
+    what = ('the swatch texels and the default palette colours' if not mesh.textures else
+            'the textures and their palettes' if not palette else 'the textures, the swatch and their palettes')
+    lines += ['',f'// Copies {what} into VRAM.',f'fn asset_{name}_load() {{',*body,'}','']
     return text+'\n'.join(lines)
 
 
@@ -406,6 +466,13 @@ def report(mesh, recipe, budget, materials=None):
     if tagged:
         result['tags'] = dict(sorted(Counter(materials[f.material]['tag'] for f in mesh.faces
                                              if 'tag' in materials[f.material]).items()))
+    if mesh.textures:
+        packing = mesh.textures['packing']
+        result['textures'] = {'textured_triangles':sum(f.material in mesh.textures['textures'] for f in mesh.faces),
+                              'split_faces':mesh.textures.get('split_faces',0),
+                              'windows':len(window_order(mesh,packing)),
+                              **packing.summary(),
+                              'list':[t.summary() for t in mesh.textures['textures'].values()]}
     return result
 
 
@@ -420,9 +487,13 @@ def shading(lighting):
     return lambda n: ambient+(1-ambient)*max(0,dot(n,light))
 
 
-def native_bytes(mesh, materials, lighting):
+def native_bytes(mesh, materials, lighting, packing=None):
+    """The native mesh. packing: where the textures are (kitcore.texpack.Packing); default the
+    asset's own placement (mesh.textures['packing'])."""
     shade_of = shading(lighting)
     palette = mesh.palette
+    textures = mesh.textures['textures'] if mesh.textures else {}
+    if textures and packing is None: packing = mesh.textures['packing']
     normals, smooth = [],defaultdict(lambda: (0,0,0))
     for face in mesh.faces:
         a,b,c = (mesh.vertices[i] for i in face.indices)
@@ -436,17 +507,29 @@ def native_bytes(mesh, materials, lighting):
     for face,normal in zip(mesh.faces,normals):
         mat = materials[face.material]
         entry = palette['by_material'].get(face.material) if palette else None
-        # A palette-backed face samples a solid swatch texel, tinted by the shade (128 = 1).
-        color = (128,128,128) if entry else tuple(int(mat['color'][k:k+2],16) for k in (1,3,5))
+        tex = textures.get(face.material)
+        # A palette-backed face samples a solid swatch texel, tinted by the shade (128 = 1);
+        # a textured face its texture's texels, likewise.
+        color = (128,128,128) if entry or tex else tuple(int(mat['color'][k:k+2],16) for k in (1,3,5))
         colors = []
         for i in face.indices:
             n = norm(smooth[face.part,face.material,i]) if mat.get('smooth',False) else normal
             # Emissive surfaces are never shaded: their brightness is their palette entry's.
-            shade = 1 if entry and entry['class'] == 'emissive' else shade_of(n)
+            shade = 1 if (entry or tex) and mat.get('class','surface') == 'emissive' else shade_of(n)
             colors.append(rgb(*(max(0,min(255,round(c*shade))) for c in color)))
         # Mei's front faces have cross . outward < 0. Color order follows indices.
         flags = 16 if mat.get('double_sided',False) else 0
-        if entry:
+        if tex:
+            place = packing.placements[tex.tile.key]
+            if place.window:
+                window = result.window(u=(place.width,place.x),v=(place.height,place.y))
+                uvs = list(face.texcoords)
+            else:
+                window = 0
+                uvs = [(u+place.x,v+place.y) for u,v in face.texcoords]
+            result.tri(list(reversed(face.indices)),list(reversed(colors)),list(reversed(uvs)),flags,
+                       slot=place.slot,four_bit=place.bits == 4,palette=place.palette,window=window)
+        elif entry:
             uv = (entry['index'],palette['layout']['row'])
             result.tri(list(reversed(face.indices)),list(reversed(colors)),[uv]*3,flags,
                        slot=palette['layout']['slot'],four_bit=True,palette=entry['palette'])
