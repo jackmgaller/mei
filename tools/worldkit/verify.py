@@ -26,6 +26,8 @@ Hard failures in every mode: dropped triangles, a full packet arena, static coll
 and broken references. Thresholds (budgets, wrong-order pixels, stand-ins) fail the check only
 in strict mode; in report mode (the default) they are reported.
 """
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 import copy
 import hashlib
 import json
@@ -412,6 +414,116 @@ def _groups(pack, insts, meshes, views, ring):
     return out
 
 
+def _view_context(pack, names, cfg, rt, groups):
+    """What the ordering check of each view needs, rebuilt from the pack in a worker process."""
+    insts = RD.instances(pack)
+    meshes = {}
+    for inst in insts:
+        if inst.mesh not in meshes:
+            meshes[inst.mesh] = RD.read_mesh(pack.data, inst.mesh)
+    by_cell = {}
+    for inst in insts:
+        by_cell.setdefault(inst.cell, []).append(inst)
+    return {'pack': pack, 'names': names, 'cfg': cfg, 'rt': rt, 'groups': groups, 'insts': insts,
+            'meshes': meshes, 'by_cell': by_cell, 'describe': _describe(names),
+            'lod_pack': any(p.get('lod') for c in pack.cells.values() for p in c.placements),
+            'order_cfg': {**cfg['ordering'], 'near_band': cfg['thresholds']['near_band']}}
+
+
+def _view_row(ctx, g, v, rec, rec2, out_dir):
+    """One view's row of the report from its two recorded frames, and its diagnostic entry
+    (score, index, comparison, picture) when it has ordering findings and out_dir is set."""
+    pack, names, cfg, rt = ctx['pack'], ctx['names'], ctx['cfg'], ctx['rt']
+    meshes, by_cell, describe = ctx['meshes'], ctx['by_cell'], ctx['describe']
+    lod_pack, order_cfg = ctx['lod_pack'], ctx['order_cfg']
+    first, ids_ok = ctx['groups'][g]
+    S = 1 << pack.cell_shift
+    st, out, _ = rec
+    st2, out2, pic = rec2
+    diag = None
+    row = {'index': v['index'], 'kind': v['kind'],
+           'camera': {'eye': v['eye'], 'yaw_degrees': round(math.degrees(v['yaw']), 3),
+                      'pitch_degrees': round(math.degrees(v['pitch']), 3), 'cell': v['cell']},
+           'layer_set': v['layer_set'],
+           'layers': [pack.layers[l][0] for l in v['layers']]}
+    for k2 in ('vantage', 'entity'):
+        if k2 in v:
+            row[k2] = v[k2]
+    row['stats'] = {'draw_cpu_cycles': out['draw_cycles'] + out['entity_cycles'],
+                    'wp_draw_cycles': out['draw_cycles'], 'entity_cycles': out['entity_cycles'],
+                    'frame_cpu_cycles': st['cpu_cycles'], 'gpu_cycles': st['gpu_cycles'],
+                    'triangles': st['tris'],
+                    'triangles_dropped': max(st['tris_dropped'], st2['tris_dropped']),
+                    'arena_bytes': out['arena_bytes'],
+                    'arena_full': min(out['arena_left'], out2['arena_left']) < RD.ARENA_FULL,
+                    'placements_drawn': out['drawn'], 'ground_drawn': out['ground'],
+                    'standins_drawn': out['standins'], 'entities_drawn': out['entities'],
+                    'coarse_drawn': out['coarse'], 'lod_culled': out['lod_culled']}
+    sel = None
+    if lod_pack:
+        sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
+        row['heaviest'] = _heaviest(pack, sel, meshes, v['eye'], names)
+    if cfg['ordering']['enabled'] and ids_ok:
+        near_planes = {'near': rt['clip_near'], 'ground': rt['clip_near'], 'far': S / 2}
+        if sel is None:
+            sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
+        faces = RD.view_faces(pack, meshes, sel, out2['vp'], out2['origin'], first, near_planes)
+        cmp = RD.compare_view(faces, pic, order_cfg)
+        issues, near_px, far_px = RD.witnesses(cmp, pic, order_cfg, describe, order_cfg['witnesses'])
+        cov = int(cmp['coverage'].sum())
+        ginv = int(cmp['ground_inversion'].sum())
+        ent = RD.entity_pixels(faces, cmp, pic)
+        row['ordering'] = {'tested_pixels': int((cmp['tested'] & cmp['covered']).sum()),
+                           'tested_background': int((cmp['tested'] & ~cmp['covered']).sum()),
+                           'undecided_pixels': int(cmp['ambiguous'].sum()),
+                           'wrong_near_pixels': near_px, 'wrong_far_pixels': far_px,
+                           'coverage_errors': cov, 'pass_inversions': int(cmp['inversion'].sum()),
+                           'ground_inversions': ginv, 'faces': len(faces), **ent, 'issues': issues}
+        if ginv:
+            row['ordering']['ground_issues'] = RD.ground_witnesses(cmp, describe,
+                                                                   order_cfg['witnesses'])
+        if cov:
+            p = int(RD.numpy().flatnonzero(cmp['coverage'])[0])
+            row['ordering']['coverage_sample'] = {'pixel': [p % RD.W, p // RD.W], 'drawn_id': int(pic[p]),
+                                                  'expected_id': int(cmp['expected'][p])}
+        if out_dir and (near_px or far_px or cov or ginv):
+            diag = ((near_px + ginv, far_px + cov), v['index'], cmp, pic)
+    else:
+        row['ordering'] = {'skipped': 'disabled' if ids_ok else
+                           f'more than {RD.MAX_ID} faces within reach of this camera cell'}
+    return row, diag
+
+
+_WORKER = {}
+
+
+def _view_worker_init(pack_bytes, names, cfg, rt, groups):
+    _WORKER['ctx'] = _view_context(decode(pack_bytes), names, cfg, rt, groups)
+
+
+def _view_worker(task):
+    return _view_row(_WORKER['ctx'], *task)
+
+
+def _view_rows(pool, ctx, tasks):
+    """_view_row() of each task, in order: in the pool's workers, or here when there is no
+    pool or it cannot run (a script that starts the check without `if __name__ == '__main__'`)."""
+    if pool:
+        try:
+            return list(pool.map(_view_worker, tasks, chunksize=4))
+        except (BrokenProcessPool, OSError, RuntimeError):
+            pass
+    return [_view_row(ctx, *t) for t in tasks]
+
+
+def _jobs():
+    """Worker processes for the ordering checks: $MEI_KIT_JOBS, else the number of cores."""
+    try:
+        return max(1, int(os.environ['MEI_KIT_JOBS']))
+    except (KeyError, ValueError):
+        return os.cpu_count() or 1
+
+
 def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
     """Checks a world pack. Returns the report (a JSON-ready dict); see docs/WORLDCHECKER.md.
     Raises SettingsError for bad settings and RD.RenderError when the native tools fail."""
@@ -511,102 +623,62 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
     for inst in insts:
         if inst.mesh not in meshes:
             meshes[inst.mesh] = RD.read_mesh(pack.data, inst.mesh)
-    by_cell = {}
-    for inst in insts:
-        by_cell.setdefault(inst.cell, []).append(inst)
-    describe = _describe(names)
-    lod_pack = any(p.get('lod') for c in pack.cells.values() for p in c.placements)
-    order_cfg = {**cfg['ordering'], 'near_band': th['near_band']}
+    groups = []
+    for ginsts, gviews in _groups(pack, insts, meshes, views, ring):
+        first, nid = {}, 1
+        for inst in ginsts:
+            first[inst.key] = nid
+            nid += len(meshes[inst.mesh].faces)
+        groups.append((ginsts, gviews, first, nid - 1 <= RD.MAX_ID))
+    firsts = [(first, ids_ok) for _, _, first, ids_ok in groups]
+    ctx = _view_context(pack, names, cfg, rt, firsts)
     rows = []
     images = []
     t_native = t_ref = 0.0
     compile_s = run_s = 0.0
     diag = []
-    with tempfile.TemporaryDirectory(prefix='mei-world-check-') as tmp:
-        for g, (ginsts, gviews) in enumerate(_groups(pack, insts, meshes, views, ring)):
-            if not gviews:
-                continue
-            first, nid = {}, 1
-            for inst in ginsts:
-                first[inst.key] = nid
-                nid += len(meshes[inst.mesh].faces)
-            ids_ok = nid - 1 <= RD.MAX_ID
-            idp = RD.identity_pack(pack.data, ginsts, first, meshes) if ids_ok else bytes(pack.data)
-            work = Path(tmp) / f'group{g}'
-            work.mkdir()
-            t1 = time.perf_counter()
-            recs, tm = RD.run_cart(bytes(pack.data), idp, gviews, rt, tools, work)
-            t_native += time.perf_counter() - t1
-            compile_s += tm['compile_seconds']
-            run_s += tm['run_seconds']
-            for k, v in enumerate(gviews):
-                st, out, _ = recs[2 * k]
-                st2, out2, pic = recs[2 * k + 1]
-                row = {'index': v['index'], 'kind': v['kind'],
-                       'camera': {'eye': v['eye'], 'yaw_degrees': round(math.degrees(v['yaw']), 3),
-                                  'pitch_degrees': round(math.degrees(v['pitch']), 3), 'cell': v['cell']},
-                       'layer_set': v['layer_set'],
-                       'layers': [pack.layers[l][0] for l in v['layers']]}
-                for k2 in ('vantage', 'entity'):
-                    if k2 in v:
-                        row[k2] = v[k2]
-                row['stats'] = {'draw_cpu_cycles': out['draw_cycles'] + out['entity_cycles'],
-                                'wp_draw_cycles': out['draw_cycles'], 'entity_cycles': out['entity_cycles'],
-                                'frame_cpu_cycles': st['cpu_cycles'], 'gpu_cycles': st['gpu_cycles'],
-                                'triangles': st['tris'],
-                                'triangles_dropped': max(st['tris_dropped'], st2['tris_dropped']),
-                                'arena_bytes': out['arena_bytes'],
-                                'arena_full': min(out['arena_left'], out2['arena_left']) < RD.ARENA_FULL,
-                                'placements_drawn': out['drawn'], 'ground_drawn': out['ground'],
-                                'standins_drawn': out['standins'], 'entities_drawn': out['entities'],
-                                'coarse_drawn': out['coarse'], 'lod_culled': out['lod_culled']}
-                sel = None
-                if lod_pack:
-                    sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
-                    row['heaviest'] = _heaviest(pack, sel, meshes, v['eye'], names)
+    # The views' ordering checks are independent: with more than one job they run in worker
+    # processes, and their rows are put back in view order, as one process would make them.
+    jobs = min(_jobs(), len(views) // 8)
+    pool = None
+    if jobs > 1:
+        pool = ProcessPoolExecutor(jobs, initializer=_view_worker_init,
+                                   initargs=(bytes(pack_bytes), names, cfg, rt, firsts))
+    try:
+        with tempfile.TemporaryDirectory(prefix='mei-world-check-') as tmp:
+            for g, (ginsts, gviews, first, ids_ok) in enumerate(groups):
+                if not gviews:
+                    continue
+                idp = RD.identity_pack(pack.data, ginsts, first, meshes) if ids_ok else bytes(pack.data)
+                work = Path(tmp) / f'group{g}'
+                work.mkdir()
                 t1 = time.perf_counter()
-                if cfg['ordering']['enabled'] and ids_ok:
-                    near_planes = {'near': rt['clip_near'], 'ground': rt['clip_near'], 'far': S / 2}
-                    if sel is None:
-                        sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
-                    faces = RD.view_faces(pack, meshes, sel, out2['vp'], out2['origin'], first, near_planes)
-                    cmp = RD.compare_view(faces, pic, order_cfg)
-                    issues, near_px, far_px = RD.witnesses(cmp, pic, order_cfg, describe, order_cfg['witnesses'])
-                    cov = int(cmp['coverage'].sum())
-                    ginv = int(cmp['ground_inversion'].sum())
-                    ent = RD.entity_pixels(faces, cmp, pic)
-                    row['ordering'] = {'tested_pixels': int((cmp['tested'] & cmp['covered']).sum()),
-                                       'tested_background': int((cmp['tested'] & ~cmp['covered']).sum()),
-                                       'undecided_pixels': int(cmp['ambiguous'].sum()),
-                                       'wrong_near_pixels': near_px, 'wrong_far_pixels': far_px,
-                                       'coverage_errors': cov, 'pass_inversions': int(cmp['inversion'].sum()),
-                                       'ground_inversions': ginv, 'faces': len(faces), **ent, 'issues': issues}
-                    if ginv:
-                        row['ordering']['ground_issues'] = RD.ground_witnesses(cmp, describe,
-                                                                               order_cfg['witnesses'])
-                    if cov:
-                        p = int(RD.numpy().flatnonzero(cmp['coverage'])[0])
-                        row['ordering']['coverage_sample'] = {'pixel': [p % RD.W, p // RD.W], 'drawn_id': int(pic[p]),
-                                                              'expected_id': int(cmp['expected'][p])}
-                    if out_dir and (near_px or far_px or cov or ginv):
-                        diag.append(((near_px + ginv, far_px + cov), v['index'], cmp, pic))
+                recs, tm = RD.run_cart(bytes(pack.data), idp, gviews, rt, tools, work)
+                t_native += time.perf_counter() - t1
+                compile_s += tm['compile_seconds']
+                run_s += tm['run_seconds']
+                tasks = [(g, v, recs[2 * k], recs[2 * k + 1], bool(out_dir)) for k, v in enumerate(gviews)]
+                t1 = time.perf_counter()
+                for row, d in _view_rows(pool, ctx, tasks):
+                    rows.append(row)
+                    if d:
+                        diag.append(d)
                         diag.sort(key=lambda d: (-d[0][0], -d[0][1], d[1]))
                         del diag[cfg['images']:]
-                else:
-                    row['ordering'] = {'skipped': 'disabled' if ids_ok else
-                                       f'more than {RD.MAX_ID} faces within reach of this camera cell'}
                 t_ref += time.perf_counter() - t1
-                rows.append(row)
-        rows.sort(key=lambda r: r['index'])
-        if out_dir and cfg['images']:
-            out = Path(out_dir)
-            out.mkdir(parents=True, exist_ok=True)
-            diag.sort(key=lambda d: (-d[0][0], -d[0][1], d[1]))
-            for score, idx, cmp, pic in diag[:cfg['images']]:
-                fn = f'view_{idx:04}.png'
-                (out / fn).write_bytes(RD.diagnostic_image(cmp, pic))
-                images.append(fn)
-                rows[idx]['image'] = fn
+    finally:
+        if pool:
+            pool.shutdown(cancel_futures=True)
+    rows.sort(key=lambda r: r['index'])
+    if out_dir and cfg['images']:
+        out = Path(out_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        diag.sort(key=lambda d: (-d[0][0], -d[0][1], d[1]))
+        for score, idx, cmp, pic in diag[:cfg['images']]:
+            fn = f'view_{idx:04}.png'
+            (out / fn).write_bytes(RD.diagnostic_image(cmp, pic))
+            images.append(fn)
+            rows[idx]['image'] = fn
     report['views'] = rows
     report['images'] = images
 
@@ -666,7 +738,7 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         'max_ground_inversions': worst('gi', lambda r: r['ordering'].get('ground_inversions')),
         'tested_pixels': sum(r['ordering'].get('tested_pixels', 0) for r in rows),
         'entity_views': _entity_summary(rows),
-        'lod': _lod_summary(rows) if lod_pack else None,
+        'lod': _lod_summary(rows) if ctx['lod_pack'] else None,
         'hard_failures': len(report['hard_failures']),
         'threshold_failures': len(report['threshold_failures']),
     }
