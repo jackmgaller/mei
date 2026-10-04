@@ -14,6 +14,8 @@ python3 tools/gen_faces_asm.py "$tmp/faces.akr" >/dev/null || fail=1
 same stdlib/faces.akr "$tmp/faces.akr"
 python3 tools/gen_faces_asm.py --planes "$tmp/planes_faces.akr" >/dev/null || fail=1
 same stdlib/planes_faces.akr "$tmp/planes_faces.akr"
+python3 tools/gen_faces_asm.py --depth "$tmp/depth_faces.akr" >/dev/null || fail=1
+same stdlib/depth_faces.akr "$tmp/depth_faces.akr"
 python3 tools/gen_stdlib_data.py "$tmp" >/dev/null || fail=1
 same stdlib/font_data.akr "$tmp/font_data.akr"
 same stdlib/sin_table.akr "$tmp/sin_table.akr"

@@ -1,0 +1,185 @@
+// depth.akr: every way mesh*() makes a face, with depth. For each: the first packet's type, the
+// words it took, and its corners' w (whole units, after the usual words). The safe loop's own
+// flat textured triangle and quad, its general path (Gouraud), a semi-transparent face (into the
+// back-to-front table), fog (every face Gouraud), a mesh with texture windows, a face clipped to
+// the near plane and the guard band (its pieces carry the clipped corners' depths), subdivide()
+// (ignored: the textures are perspective-correct), and render_perspective() alone (packets with
+// depth in the frame's own table, untested).
+// frames: 2
+
+import "depth.akr"
+
+struct M1 { hdr: Mesh, v: [4]vec4, f: [1]Face, win: [2]u16 }
+var m: M1
+
+fn quad(flags: s32, z0: fixed, z1: fixed) {
+    m.hdr.nverts = 4
+    m.hdr.nfaces = 1
+    m.hdr.verts = 16
+    m.hdr.faces = 16 + 64
+    m.hdr.windows = 0
+    m.v[0] = vec4(-1.0, -1.0, z0, 1.0)
+    m.v[1] = vec4(1.0, -1.0, z0, 1.0)
+    m.v[2] = vec4(-1.0, 1.0, z1, 1.0)
+    m.v[3] = vec4(1.0, 1.0, z1, 1.0)
+    m.f[0] = Face {}
+    m.f[0].flags = (flags | FACE_QUAD | FACE_DOUBLE) as u8
+    for i in 0..4 {
+        m.f[0].idx[i] = i as u16
+        m.f[0].col[i] = 0x808080
+    }
+    m.f[0].uv[1] = 0x00FF
+    m.f[0].uv[2] = 0xFF00
+    m.f[0].uv[3] = 0xFFFF
+}
+
+fn tri(z: fixed) {
+    quad(FACE_TEXTURED, z, z)
+    m.f[0].flags = (FACE_TEXTURED | FACE_DOUBLE) as u8
+}
+
+// The words of a packet of type t before its corners' w, and its corners.
+fn head_words(t: u32) -> s32 {
+    let corners = 3 + ((t >> 2) & 1) as s32
+    var words = 2 + corners
+    if t & 1 != 0 { words += corners - 1 }
+    if t & 2 != 0 { words += corners }
+    return words
+}
+fn corners_of(t: u32) -> s32 { return 3 + ((t >> 2) & 1) as s32 }
+
+// Draws m and prints its first packet: type, words, and the w of its corners.
+fn one(name: *u8) {
+    let n = arena_used()
+    mesh(&m.hdr)
+    let p = &__arena[n]
+    let t = p[0] >> 24
+    print(name)
+    print(": ")
+    print_hex(t)
+    print(" ")
+    print_int(arena_used() - n)
+    if t >= 0x30 {
+        for k in 0..corners_of(t) {
+            print(" ")
+            print_int(from_bits(p[head_words(t) + k] as s32) as s32)
+        }
+    }
+    println("")
+}
+
+// The packets of a list from head up to (not including) stop.
+fn count(head: u32, stop: u32) -> s32 {
+    var p = head
+    var n = 0
+    while p & 0xFFFFFF != stop {
+        let q = (p & 0xFFFFFF) as *u32
+        if q[0] >> 24 != 0 { n += 1 }
+        p = q[0]
+    }
+    return n
+}
+
+// The packets with depth made in the arena from word n on, and their nearest corner's w x 100.
+fn pieces(n: s32) {
+    var lo = 1000000
+    var i = n
+    var c = 0
+    while i < arena_used() {
+        let q = &__arena[i]
+        let t = q[0] >> 24
+        var words = head_words(t)
+        if t >= 0x30 {
+            for k in 0..corners_of(t) { lo = min(lo, (from_bits(q[words + k] as s32) * 100) as s32) }
+            c += 1
+            words += corners_of(t)
+        }
+        i += words
+    }
+    print_int(c)
+    print(" pieces, nearest w x 100: ")
+    print_int(lo)
+    println("")
+}
+
+fn init() {
+    dither(false)
+    camera(vec3(0.0, 0.0, 0.0), 0.0)
+}
+
+fn draw() {
+    cls(0)
+    if frame() == 1 {
+        render_perspective(true)
+        print_hex(GPU_DEPTH)
+        println("")
+        quad(FACE_TEXTURED, 4.0, 8.0)
+        one("perspective alone")
+        print_int((__ot[OT_SIZE - 1] == &__zo[0] as u32) as s32)
+        println("")
+        render_perspective(false)
+        one("off")
+        return
+    }
+    if frame() != 0 { return }
+    render_depth(true)
+    render_perspective(true)
+    tri(4.0)
+    one("safe flat textured triangle")
+    quad(FACE_TEXTURED, 4.0, 8.0)
+    one("safe flat textured quad")
+    quad(FACE_TEXTURED | FACE_GOURAUD, 4.0, 8.0)
+    one("safe Gouraud textured quad")
+    quad(FACE_SEMI, 5.0, 6.0)
+    one("semi-transparent")
+    print_int(count(&__zt[1023] as u32, &__zt[0] as u32))     // in the back-to-front table
+    print(" ")
+    print_int(count(&__zo[0] as u32, &__zt[1023] as u32))     // the opaque ones so far
+    println("")
+    fog(0xFFFFFF, 2.0, 20.0)
+    quad(0, 4.0, 8.0)
+    one("fog")
+    fog_off()
+    quad(FACE_TEXTURED, 4.0, 8.0)
+    m.hdr.windows = 16 + 64 + 36
+    m.win[0] = tex_window(2, 8, 3, 16)
+    m.f[0].tex = (1 << 5) as u8
+    one("window")
+    print_int((__arena[arena_used() - 14 + 5] >> 16 == tex_window(2, 8, 3, 16)) as s32)
+    println("")
+    // a floor from behind the camera to z 10, below it: crosses the near plane
+    quad(0, -3.0, 10.0)
+    for i in 0..4 { m.v[i].y = -1.0 }
+    let n = arena_used()
+    mesh(&m.hdr)
+    print("clipped: ")
+    pieces(n)
+    // subdivide() is ignored in depth mode (the textures are perspective-correct): one packet
+    render_perspective(false)
+    subdivide(2)
+    quad(FACE_TEXTURED, 0.5, 3.0)
+    for i in 0..4 { m.v[i].y = -0.5 }
+    let k = arena_used()
+    mesh(&m.hdr)
+    subdivide(0)
+    print("subdivided: ")
+    print_hex(__arena[k] >> 24)
+    print(" ")
+    print_int(arena_used() - k)
+    println("")
+    render_depth(false)              // (so that the next frame starts with the test off)
+}
+// expect: safe flat textured triangle: 32 11 4 4 4
+// expect: safe flat textured quad: 36 14 4 4 8 8
+// expect: safe Gouraud textured quad: 37 17 4 4 8 8
+// expect: semi-transparent: 3C 10 5 5 6 6
+// expect: 1 3
+// expect: fog: 35 13 4 4 8 8
+// expect: window: 36 14 4 4 8 8
+// expect: 1
+// expect: clipped: 2 pieces, nearest w x 100: 23
+// expect: subdivided: 36 14
+// expect: 0
+// expect: perspective alone: 36 14 4 4 8 8
+// expect: 0
+// expect: off: 26 10
