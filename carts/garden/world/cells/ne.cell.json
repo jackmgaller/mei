@@ -1,0 +1,276 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "ne",
+ "at": [
+  1,
+  1
+ ],
+ "region": "garden",
+ "placements": [
+  {
+   "id": "ground",
+   "asset": "ground_ne",
+   "position": [
+    96.0,
+    0.0,
+    96.0
+   ],
+   "collision": "ground_ne_col",
+   "ground": true
+  },
+  {
+   "id": "steel_frame",
+   "asset": "construction_steel_frame",
+   "position": [
+    88.0,
+    0.0,
+    108.0
+   ],
+   "collision": "construction_steel_frame_col"
+  },
+  {
+   "id": "scaffold_1",
+   "asset": "construction_scaffold_pole",
+   "position": [
+    75.0,
+    0.0,
+    121.0
+   ],
+   "collision": "construction_scaffold_pole_col"
+  },
+  {
+   "id": "scaffold_2",
+   "asset": "construction_scaffold_pole",
+   "position": [
+    101.0,
+    0.0,
+    121.0
+   ],
+   "collision": "construction_scaffold_pole_col"
+  },
+  {
+   "id": "scaffold_3",
+   "asset": "construction_scaffold_pole",
+   "position": [
+    75.0,
+    0.0,
+    95.0
+   ],
+   "collision": "construction_scaffold_pole_col"
+  },
+  {
+   "id": "scaffold_4",
+   "asset": "construction_scaffold_pole",
+   "position": [
+    101.0,
+    0.0,
+    95.0
+   ],
+   "collision": "construction_scaffold_pole_col"
+  },
+  {
+   "id": "crane",
+   "asset": "construction_crane",
+   "position": [
+    106.0,
+    0.0,
+    109.0
+   ],
+   "collision": "construction_crane_col"
+  },
+  {
+   "id": "viaduct",
+   "asset": "train_viaduct_east",
+   "position": [
+    96.0,
+    9.0,
+    79.0
+   ],
+   "collision": "train_viaduct_east_col"
+  },
+  {
+   "id": "pillar_74",
+   "asset": "train_pillar",
+   "position": [
+    74.0,
+    0.0,
+    79.0
+   ],
+   "collision": "train_pillar_col"
+  },
+  {
+   "id": "pillar_90",
+   "asset": "train_pillar",
+   "position": [
+    90.0,
+    0.0,
+    79.0
+   ],
+   "collision": "train_pillar_col"
+  },
+  {
+   "id": "pillar_106",
+   "asset": "train_pillar",
+   "position": [
+    106.0,
+    0.0,
+    79.0
+   ],
+   "collision": "train_pillar_col"
+  },
+  {
+   "id": "pillar_122",
+   "asset": "train_pillar",
+   "position": [
+    122.0,
+    0.0,
+    79.0
+   ],
+   "collision": "train_pillar_col"
+  },
+  {
+   "id": "station",
+   "asset": "train_station",
+   "position": [
+    86.0,
+    0.0,
+    85.5
+   ],
+   "collision": "train_station_col"
+  },
+  {
+   "id": "station_stairs",
+   "asset": "train_station_stairs",
+   "position": [
+    111.0,
+    0.0,
+    85.5
+   ],
+   "collision": "train_station_stairs_col"
+  },
+  {
+   "id": "utility_pole_5",
+   "asset": "street_utility_pole",
+   "position": [
+    122.0,
+    0.0,
+    72.0
+   ],
+   "collision": "street_utility_pole_col"
+  },
+  {
+   "id": "lamp_3",
+   "asset": "street_lamp",
+   "position": [
+    100.0,
+    0.0,
+    71.5
+   ],
+   "collision": "street_lamp_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_scaffold_1",
+   "type": "pole",
+   "position": [
+    75.0,
+    0.0,
+    121.0
+   ],
+   "params": {
+    "height": 30
+   }
+  },
+  {
+   "id": "pole_scaffold_2",
+   "type": "pole",
+   "position": [
+    101.0,
+    0.0,
+    121.0
+   ],
+   "params": {
+    "height": 30
+   }
+  },
+  {
+   "id": "pole_scaffold_3",
+   "type": "pole",
+   "position": [
+    75.0,
+    0.0,
+    95.0
+   ],
+   "params": {
+    "height": 30
+   }
+  },
+  {
+   "id": "pole_scaffold_4",
+   "type": "pole",
+   "position": [
+    101.0,
+    0.0,
+    95.0
+   ],
+   "params": {
+    "height": 30
+   }
+  },
+  {
+   "id": "pole_utility_5",
+   "type": "pole",
+   "position": [
+    122.0,
+    0.0,
+    72.0
+   ],
+   "params": {
+    "height": 9
+   }
+  },
+  {
+   "id": "coin_steel_frame",
+   "type": "coin",
+   "position": [
+    88.0,
+    31.0,
+    119.0
+   ],
+   "asset": "coin"
+  },
+  {
+   "id": "coin_crane",
+   "type": "coin",
+   "position": [
+    113.0,
+    37.0,
+    109.0
+   ],
+   "asset": "coin"
+  },
+  {
+   "id": "crane_hook",
+   "type": "mover",
+   "position": [
+    93.0,
+    1.5,
+    109.0
+   ],
+   "asset": "construction_hook",
+   "collision": "construction_hook_col",
+   "params": {
+    "to": [
+     0,
+     31,
+     0
+    ],
+    "period": 720,
+    "pause": 120,
+    "mode": "pingpong"
+   }
+  }
+ ]
+}

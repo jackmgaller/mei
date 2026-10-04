@@ -1,0 +1,83 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "train_overpass_stairs_south_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "mesh",
+   "vertices": [
+    [
+     -7.0,
+     0.0,
+     -2.0
+    ],
+    [
+     7.0,
+     5.0,
+     -2.0
+    ],
+    [
+     7.0,
+     0.0,
+     -2.0
+    ],
+    [
+     7.0,
+     0.0,
+     2.0
+    ],
+    [
+     7.0,
+     5.0,
+     2.0
+    ],
+    [
+     -7.0,
+     0.0,
+     2.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2
+    ],
+    [
+     3,
+     4,
+     5
+    ],
+    [
+     5,
+     4,
+     1,
+     0
+    ],
+    [
+     4,
+     3,
+     2,
+     1
+    ]
+   ],
+   "face_materials": [
+    "solid",
+    "solid",
+    "solid",
+    "solid"
+   ]
+  }
+ ]
+}

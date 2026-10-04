@@ -1,0 +1,15 @@
+{
+  "format": "mei-world-ids",
+  "version": 1,
+  "world": "garden",
+  "next_bit": 5,
+  "bits": {
+    "coin_steel_frame": 0,
+    "coin_crane": 1,
+    "coin_office": 2,
+    "coin_pagoda": 3,
+    "coin_car_park": 4
+  },
+  "retired": {},
+  "renamed": {}
+}

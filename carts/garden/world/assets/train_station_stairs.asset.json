@@ -1,0 +1,87 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "train_station_stairs",
+ "materials": {
+  "trn_station": {
+   "color": "#b6aa98",
+   "palette": true
+  },
+  "trn_station_roof": {
+   "color": "#8a8478",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "mesh",
+   "vertices": [
+    [
+     -11.0,
+     0.0,
+     -3.5
+    ],
+    [
+     -11.0,
+     10.0,
+     -3.5
+    ],
+    [
+     11.0,
+     0.0,
+     -3.5
+    ],
+    [
+     11.0,
+     0.0,
+     3.5
+    ],
+    [
+     -11.0,
+     10.0,
+     3.5
+    ],
+    [
+     -11.0,
+     0.0,
+     3.5
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2
+    ],
+    [
+     3,
+     4,
+     5
+    ],
+    [
+     2,
+     1,
+     4,
+     3
+    ],
+    [
+     1,
+     0,
+     5,
+     4
+    ]
+   ],
+   "face_materials": [
+    "trn_station",
+    "trn_station",
+    "trn_station_roof",
+    "trn_station"
+   ]
+  }
+ ]
+}
