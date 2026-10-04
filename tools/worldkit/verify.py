@@ -15,8 +15,9 @@ Three groups of checks, all from the pack alone (plus optional names for reports
    and per-region counts against budgets.
 2. Sampled views on the real runtime (stdlib/worldpack.akr on the headless core): cameras on
    walkable floors at eye height and behind a follow camera, on each cell's highest floors, in
-   the air between rooftops, at authored vantage points and on cell seams, for each layer
-   combination; CPU and GPU cycles, triangles submitted and dropped, packet arena use.
+   the air between rooftops, aimed at each entity that has a mesh, at authored vantage points and
+   on cell seams, for each layer combination; CPU and GPU cycles, triangles submitted and
+   dropped, packet arena use.
 3. Ordering: each view's triangle-ID picture against an independent reference that resolves
    true depth (verify_render.py), with the reader's passes (far stand-ins, ground, near) kept
    apart as the reader draws them.
@@ -72,11 +73,14 @@ DEFAULTS = {
         'roof_pitches_degrees': [-20.0],
         'air': {'height': 4.0, 'reach': 48.0},           # None: no cameras between rooftops
         'seams': {'spacing': 32.0},                      # None: no seam cameras
+        'entities': {'yaws': 6, 'distances': [1.5, 4.0, 8.0], 'pitches_degrees': [-55.0, -30.0, -10.0],
+                     'floor_distances': [2.5, 6.0]},     # None: no cameras aimed at entities
         'layer_combinations': True,
         'max_views': 600,
     },
     'vantage_points': [],               # {"position": [x, y, z], "yaw": deg, "pitch": deg}
-    'runtime': {'far_ring': 3, 'clip_near': 0.1, 'near_far': None, 'draw_entities': True, 'ground_first': True},
+    'runtime': {'far_ring': 3, 'clip_near': 0.1, 'near_far': None, 'draw_entities': True, 'ground_first': True,
+                'entity_drawing': 'object', 'object_bias': 1.5, 'object_squash': 2},
     'ordering': {'enabled': True, 'edge_margin': 1.0, 'depth_epsilon': 0.001, 'witnesses': 8},
     'collision': {'crack_samples_per_unit': 4.0, 'solid_ray_length': 32.0, 'findings': 50},
     'images': 6,
@@ -106,6 +110,8 @@ def merge_settings(settings):
     walk(out, settings or {}, '')
     if out['mode'] not in ('report', 'strict'):
         raise SettingsError('/mode', "must be 'report' or 'strict'")
+    if out['runtime']['entity_drawing'] not in ('object', 'mesh_at'):
+        raise SettingsError('/runtime/entity_drawing', "must be 'object' or 'mesh_at'")
     return out
 
 
@@ -246,12 +252,56 @@ def sample_views(pack, tris, settings):
                         for h, t in _standing(floors, ceilings, x, z, probe['height'], *room)[:1]:
                             for y2 in (yaw, yaw + math.pi / 2):
                                 add('seam', (x, h + eye_h, z), y2, 0.0)
+    ents = smp.get('entities')
+    if ents:
+        _entity_cameras(pack, grid, floors, ceilings, probe, eye_h, ents, add)
     for k, vp in enumerate(settings['vantage_points']):
         add('vantage', vp['position'], math.radians(vp.get('yaw', 0.0)), math.radians(vp.get('pitch', 0.0)),
             {'vantage': k})
     for v in views:
         v['cell'] = [math.floor(v['eye'][0]) >> pack.cell_shift, math.floor(v['eye'][2]) >> pack.cell_shift]
     return views
+
+
+def _entity_cameras(pack, grid, floors, ceilings, probe, eye_h, ents, add):
+    """Cameras aimed at each entity that has a mesh, at the middle of its mesh's height: around
+    it at each distance and pitch (from above, like a follow camera; pulled in front of anything
+    between them, as a follow camera is), and from eye height on the floors around it (from below
+    a ledge it stands on, too)."""
+    S = 1 << pack.cell_shift
+    nyaw = max(1, ents['yaws'])
+    for (i, j) in sorted(pack.cells, key=lambda ij: (ij[1], ij[0])):
+        c = pack.cells[(i, j)]
+        for e in c.entities:
+            if not e['mesh']:
+                continue
+            ys = [v[1] / ONE for v in RD.read_mesh(pack.data, e['mesh']).raw]
+            radius = RD.mesh_bounds(pack.data, e["mesh"])[0]
+            t = (i * S + S / 2 + e['pos'][0] / ONE, e['pos'][1] / ONE + (min(ys) + max(ys)) / 2,
+                 j * S + S / 2 + e['pos'][2] / ONE)
+            layer = c.layers[e['mask'].bit_length() - 1] if e['mask'] else None
+            extra = {'entity': e['number'], 'entity_layer': layer}
+            yaws = [2 * math.pi * (k + 0.25) / nyaw for k in range(nyaw)]
+            for d in ents['distances']:
+                for pd in ents['pitches_degrees']:
+                    p = math.radians(pd)
+                    for yaw in yaws:
+                        fwd = (math.sin(yaw) * math.cos(p), math.sin(p), math.cos(yaw) * math.cos(p))
+                        seg = [-fwd[k] * d for k in range(3)]
+                        hit = ST.first_hit(grid, t, seg)
+                        s = 1.0 if hit is None else max(0.0, hit[0] - 0.3 / d)
+                        if s * d < radius + 0.3:
+                            continue            # no room for the camera outside the object
+                        add('entity', tuple(t[k] + seg[k] * s for k in range(3)), yaw, p, extra)
+            for r in ents['floor_distances']:
+                for a in yaws:
+                    x, z = t[0] + math.sin(a) * r, t[2] + math.cos(a) * r
+                    for h, _ in _standing(floors, ceilings, x, z, probe['height'], grid, probe['radius']):
+                        eye = (x, h + eye_h, z)
+                        if abs(eye[1] - t[1]) > 2 * r:
+                            continue
+                        add('entity', eye, math.atan2(t[0] - x, t[2] - z),
+                            math.atan2(t[1] - eye[1], math.hypot(t[0] - x, t[2] - z)), extra)
 
 
 def thin(views, cap):
@@ -437,6 +487,8 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
     views = []
     for cam in cams:
         for name, on in combos:
+            if cam.get('entity_layer') is not None and cam['entity_layer'] not in on:
+                continue                    # the entity aimed at is not there
             if on:
                 ci, cj = cam['cell']
                 if not any(max(abs(a - ci), abs(b - cj)) <= max(1, ring)
@@ -493,8 +545,9 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
                                   'pitch_degrees': round(math.degrees(v['pitch']), 3), 'cell': v['cell']},
                        'layer_set': v['layer_set'],
                        'layers': [pack.layers[l][0] for l in v['layers']]}
-                if 'vantage' in v:
-                    row['vantage'] = v['vantage']
+                for k2 in ('vantage', 'entity'):
+                    if k2 in v:
+                        row[k2] = v[k2]
                 row['stats'] = {'draw_cpu_cycles': out['draw_cycles'] + out['entity_cycles'],
                                 'wp_draw_cycles': out['draw_cycles'], 'entity_cycles': out['entity_cycles'],
                                 'frame_cpu_cycles': st['cpu_cycles'], 'gpu_cycles': st['gpu_cycles'],
@@ -513,12 +566,13 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
                     issues, near_px, far_px = RD.witnesses(cmp, pic, order_cfg, describe, order_cfg['witnesses'])
                     cov = int(cmp['coverage'].sum())
                     ginv = int(cmp['ground_inversion'].sum())
+                    ent = RD.entity_pixels(faces, cmp, pic)
                     row['ordering'] = {'tested_pixels': int((cmp['tested'] & cmp['covered']).sum()),
                                        'tested_background': int((cmp['tested'] & ~cmp['covered']).sum()),
                                        'undecided_pixels': int(cmp['ambiguous'].sum()),
                                        'wrong_near_pixels': near_px, 'wrong_far_pixels': far_px,
                                        'coverage_errors': cov, 'pass_inversions': int(cmp['inversion'].sum()),
-                                       'ground_inversions': ginv, 'faces': len(faces), 'issues': issues}
+                                       'ground_inversions': ginv, 'faces': len(faces), **ent, 'issues': issues}
                     if ginv:
                         row['ordering']['ground_issues'] = RD.ground_witnesses(cmp, describe,
                                                                                order_cfg['witnesses'])
@@ -600,6 +654,7 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         'coverage_errors': sum(r['ordering'].get('coverage_errors', 0) for r in rows),
         'max_ground_inversions': worst('gi', lambda r: r['ordering'].get('ground_inversions')),
         'tested_pixels': sum(r['ordering'].get('tested_pixels', 0) for r in rows),
+        'entity_views': _entity_summary(rows),
         'hard_failures': len(report['hard_failures']),
         'threshold_failures': len(report['threshold_failures']),
     }
@@ -623,6 +678,24 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         out.mkdir(parents=True, exist_ok=True)
         (out / 'world-check.json').write_text(json.dumps(report, indent=1) + '\n')
     return report
+
+
+def _entity_summary(rows):
+    """The views aimed at entities (kind 'entity'), in sum: how much of the entities' drawn
+    pixels the ordering check could judge, and what it found."""
+    out = {'views': 0, 'views_with_wrong_near': 0, 'wrong_near_pixels': 0, 'undecided_pixels': 0,
+           'entity_pixels': 0, 'entity_pixels_tested': 0, 'entity_over_nearer_pixels': 0, 'over_entity_pixels': 0}
+    for r in rows:
+        o = r['ordering']
+        if r['kind'] != 'entity' or 'skipped' in o:
+            continue
+        out['views'] += 1
+        out['views_with_wrong_near'] += o['wrong_near_pixels'] > 0
+        out['wrong_near_pixels'] += o['wrong_near_pixels']
+        out['undecided_pixels'] += o['undecided_pixels']
+        for k in ('entity_pixels', 'entity_pixels_tested', 'entity_over_nearer_pixels', 'over_entity_pixels'):
+            out[k] += o[k]
+    return out
 
 
 def _first(issues, cls):

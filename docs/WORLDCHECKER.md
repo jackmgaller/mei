@@ -80,10 +80,11 @@ are WORLDKIT.md's placeholders.
 | `sampling.rooftops_per_cell`, `roof_pitches_degrees` | 2, [−20] | |
 | `sampling.air` | height 4, reach 48 | between rooftops (`null`: none) |
 | `sampling.seams` | spacing 32 | on cell seams (`null`: none) |
+| `sampling.entities` | yaws 6, distances [1.5, 4, 8], pitches [−55, −30, −10], floor distances [2.5, 6] | cameras aimed at each entity with a mesh (`null`: none; [Entities](#entities)) |
 | `sampling.layer_combinations` | true | |
 | `sampling.max_views` | 600 | views after layer combinations; thinned evenly per kind; vantage points always kept |
 | `vantage_points` | [] | `{"position": [x, y, z], "yaw": deg, "pitch": deg}` |
-| `runtime` | far ring 3, near 0.1, near far 1.5 cells, entities drawn, ground first | what the game sets on the reader (`ground_first`: `wp_ground_first`) |
+| `runtime` | far ring 3, near 0.1, near far 1.5 cells, entities drawn, ground first, entity drawing `object`, object bias 1.5, object squash 2 | what the game sets on the reader (`ground_first`: `wp_ground_first`; `entity_drawing`: `object`, through `wp_draw_entities()`, or `mesh_at`, each live entity's mesh by its own depth; `object_bias`, `object_squash`: `wp_object_bias`, `wp_object_squash`) |
 | `ordering` | on; edge margin 1 px; depth epsilon 0.001 | see [Ordering](#ordering-check-3) |
 | `collision` | 4 samples a unit, rays of 32 units, 50 findings | |
 | `images` | 6 | diagnostic pictures of the worst views |
@@ -135,6 +136,11 @@ Cameras come from the pack's floors:
 - **air**: midway between rooftops 4 to 48 units apart, 4 units above the higher, looking along,
   across and back (the glider);
 - **seam**: on both sides of each seam between cells, looking along and across it;
+- **entity**: aimed at the middle of the mesh of each entity that has one: from each distance, pitch
+  and yaw around it (from above, as a follow camera looks at what the player stands near; pulled
+  in front of anything between, as a follow camera is), and from eye height on the floors at the
+  floor distances around it, in the yaws' directions (from below a ledge it stands on, too). An
+  entity in a layer is viewed only with layer sets that have its layer on ([Entities](#entities));
 - **vantage**: as given.
 
 Each view is repeated for each layer set: all off, each layer alone, and the largest set the
@@ -144,13 +150,14 @@ layer), where a cell with those layers is within reach of the camera.
 A generated verification cart (`verify_render.py`) opens the pack with `stdlib/worldpack.akr`
 and draws each view twice on the headless core: once from the pack as built, measured, and once
 from an identity pack for the ordering check. It sets the reader's settings and layers, clears,
-calls `wp_draw()`, then draws the live entities' meshes in the 3 × 3 near cells as a game would
-(`mesh_at(mesh, pos − wp_view_origin(), yaw)`). `mei-scene-probe` links the core, runs the cart
-and after each presented frame records the frame's GPU statistics, a 128-byte block the cart
-fills (cycles around `wp_draw()` and the entity loop, packet arena bytes used and left, the
-reader's `wp_stats`, the view origin and the camera matrix) and, for identity frames, the
-picture. A frame over budget shows late; the probe counts presented frames, so lag does not
-shift views. Per view the report has:
+calls `wp_draw()`, then draws the live entities' meshes in the 3 × 3 near cells as a game would:
+with `wp_draw_entities()` (runtime `entity_drawing` `object`, the default), or each with
+`mesh_at(mesh, pos − wp_view_origin(), yaw)` (`mesh_at`, for a game that draws them so).
+`mei-scene-probe` links the core, runs the cart and after each presented frame records the
+frame's GPU statistics, a 128-byte block the cart fills (cycles around `wp_draw()` and the
+entity loop, packet arena bytes used and left, the reader's `wp_stats`, the view origin and the
+camera matrix) and, for identity frames, the picture. A frame over budget shows late; the probe
+counts presented frames, so lag does not shift views. Per view the report has:
 
 | `stats` | |
 |---|---|
@@ -204,7 +211,11 @@ Wrong-order pixels are **near** when the visible surface is nearer than `near_ba
 face belongs to an entity, otherwise **far**. Witnesses group them by (drawn face, expected face)
 with the cell, placement number, tag (and name), face number, a sample pixel, the visible depth
 and the largest depth error. Each view reports `tested_pixels`, `tested_background` and
-`undecided_pixels`, so how much was checked is always visible.
+`undecided_pixels`, so how much was checked is always visible, and, for entities,
+`entity_pixels` (drawn with an entity's faces), `entity_pixels_tested` (of those, decided),
+`entity_over_nearer_pixels` (wrong order: an entity drawn over a face truly in front of it) and
+`over_entity_pixels` (something drawn over an entity truly in front of it). The summary's
+`entity_views` adds these up over the views aimed at entities.
 
 ### What is exact, and the evidence
 
@@ -365,6 +376,69 @@ left in `two_districts` is inside the torii (its tie passes through its posts, w
 Checker reports as surface intersections; not yet remodelled) and 2 pixels inside the merged
 bollards.
 
+### Entities
+
+Cameras aimed at entities (`sampling.entities`) look at what the other kinds pass by: a coin on a
+ledge is a few pixels from a camera at eye height 16 units away, and none of the sampled cameras
+was close above it. The verification cart draws the entities as the game draws them, through
+`wp_draw_entities()` ([WORLDPACK.md](WORLDPACK.md), "Objects"): each culled by the sphere of its
+mesh's bounds, keyed at its nearest point and, from above its base, 1.5 units nearer. The
+reference models what changes the picture's coverage exactly: an entity whose sphere is culled
+is not drawn, and one within 1/64 unit of a plane is "unsure" (its faces may cover pixels but are
+never expected), as for placements. The key and the bias change only the order, and the
+reference's expected face is the truly nearest one, so the rule's intended effect (an object in
+front of the platform under it) is correct by true depth and is not reported, while everything
+it gets wrong is: an entity drawn over a face truly in front of it (a thin wall just in front)
+and a face drawn over an entity (a platform top too large for the bias) are wrong-order pixels,
+near by definition (either face is an entity's), and counted apart in each view.
+
+Evidence (`tests/test_worldverify.py`, `EntityViewTests`; worlds in `tests/worldverify/worlds.py`):
+
+- `ledge_world()`, test_room's ledge and coin alone, drawn with `mesh_at`: the default sampling
+  without entity cameras (44 views) reports nothing; with them (66 cameras aimed at the coin), 8
+  views and 3,808 pixels of the ledge's top over the coin. Drawn with `wp_draw_entities()`, the
+  same cameras find nothing.
+- `object_world()`: the cases WORLDPACK.md's "Objects" claims are handled come back clean (a coin
+  on a 4 × 4 platform, two coins 0.5 apart, a coin under a slab), and the ones it does not handle
+  are reported: a coin on a 12 × 12 platform still overdrawn (less than with `mesh_at`), a coin
+  0.3 behind a thin wall drawn over it.
+
+Measured on the example worlds, default settings, before (the sampling without entity cameras,
+`test_room`'s coin as it was, entities drawn with `mesh_at()`) and after (the coin remodelled,
+[WORLDKIT.md](WORLDKIT.md), and drawn with `wp_draw_entities()`):
+
+| | `test_room` before | entity cameras, coin and drawing as before | after | `two_districts` before | after |
+|---|---|---|---|---|---|
+| views (of them aimed at entities) | 132 | 333 (201) | 333 (201) | 416 | 416 (0) |
+| views with wrong-order pixels in the near band | 0 | 21 | 0 | 19 | 19 |
+| near-band wrong-order pixels | 0 | 14,466 (all ledge over coin) | 0 | 348 | 348 |
+| entity pixels drawn, decided | – | 203,244, 116,970 (57.5%) | 223,890, 134,394 (60.0%) | – | – |
+| undecided pixels in the entity views | – | 619,473 | 616,218 | – | – |
+| the check's time (seconds) | 1.4 | 4.7 | 4.3 | 6.3 | 6.6 |
+
+`two_districts`' coins have no mesh, so it has no entity cameras; its 19 views are the torii and
+the bollards, as before ([Ground](#ground)). The remodelled coin drawn with `mesh_at()` still
+gives 24 views and 12,981 pixels: the coin's fault and the drawing's were separate.
+
+**Undecided pixels.** The views aimed at entities leave about 3,100 pixels a view undecided,
+against about 1,900 in the other kinds, and 40% of the entities' own pixels. At one camera that
+sees the coin edge on (eye (23.17, 3.2, 38.83), yaw 135°, pitch −10°), 3,570 of the view's 4,364
+undecided pixels are within `edge_margin` of a face's outline, 659 are where the nearest face is
+a thin one (never expected) and 135 near another face's outline; none are depth ties. The coin
+is small (15 to 200 pixels across), its 0.08-unit rim is a band of thin faces seen from the side,
+and its old caps were fans from one rim vertex, all slivers: 24 of its 30 faces in view there
+could not be expected, and 200 of its 522 pixels were decided. The remodelled coin's caps fan
+from their centres (204 of 567 there; 57.5% to 60.0% over all the entity views).
+
+Whether that hides errors: a mis-sort draws the wrong face over the whole overlap of the two
+faces, so it is missed only when that overlap lies within about a pixel of outlines. Rerun with
+`edge_margin` 0.5 (exploratory), the 201 entity views of `test_room` before give 27 views and
+17,244 wrong pixels instead of 21 and 14,466, and 123 coverage errors that are the runtime's
+rounding (the reason the margin is 1): about one erring view in five had its error only in
+pixels the margin leaves undecided. The entity cameras at 1.5 units make the object large enough
+on screen that a sort error there shows in decided pixels; a game whose objects are smaller than
+the coin, or seen only from afar, has that much less checked.
+
 ## Timing
 
 Measured on an Apple-silicon Mac with `make` defaults:
@@ -378,7 +452,7 @@ Measured on an Apple-silicon Mac with `make` defaults:
 | static checks: plaza / demonstration world / bench world | 0.01 / 0.13 / 1.4 |
 | the plaza with default sampling (60 views) | 1.5 |
 | the demonstration world, every sampled view (3,005: 601 cameras × layer sets) | 67 |
-| `test_room` / `two_districts` examples, default settings (132 / 416 views) | 2.0 / 7.6 |
+| `test_room` / `two_districts` examples, default settings (333 / 416 views; before the cameras aimed at entities, 132 / 416: 1.4 / 6.3 on the same machine) | 4.3 / 6.6 |
 
 Hence `max_views` 600 (about 15–20 seconds a world). The reference dominates; NumPy work per
 face is the cost, so dense views cost more. Sampling and static checks are pure Python and grow
