@@ -176,6 +176,12 @@
  ],
  "entities": [
   {
+   "id": "door_shrine",
+   "type": "door",
+   "position": [101.0, 0.0, 1.2],
+   "params": {"world": "shrine", "size": [7.0, 3.0, 1.2]}
+  },
+  {
    "id": "pole_utility_4",
    "type": "pole",
    "position": [

@@ -1,0 +1,129 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "water_stepping_stone_b_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.8965,
+     1.6,
+     0.8993
+    ],
+    [
+     -0.5546,
+     1.6,
+     0.8749
+    ],
+    [
+     -1.2492,
+     1.6,
+     -0.3043
+    ],
+    [
+     -0.1576,
+     1.6,
+     -1.0025
+    ],
+    [
+     1.1108,
+     1.6,
+     -0.382
+    ],
+    [
+     0.8965,
+     0.0,
+     0.8993
+    ],
+    [
+     -0.5546,
+     0.0,
+     0.8749
+    ],
+    [
+     -1.2492,
+     0.0,
+     -0.3043
+    ],
+    [
+     -0.1576,
+     0.0,
+     -1.0025
+    ],
+    [
+     1.1108,
+     0.0,
+     -0.382
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     3,
+     2,
+     1,
+     0
+    ],
+    [
+     0,
+     1,
+     6,
+     5
+    ],
+    [
+     1,
+     2,
+     7,
+     6
+    ],
+    [
+     2,
+     3,
+     8,
+     7
+    ],
+    [
+     3,
+     4,
+     9,
+     8
+    ],
+    [
+     4,
+     0,
+     5,
+     9
+    ]
+   ],
+   "face_materials": [
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid"
+   ]
+  }
+ ],
+ "budget": {
+  "vertices": 256,
+  "triangles": 64
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

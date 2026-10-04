@@ -1,0 +1,24 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "street_lamp_col",
+  "materials": {"solid": {"color": "#ffffff", "palette": true}},
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {
+      "id": "pole",
+      "op": "mesh",
+      "vertices": [
+        [0.13, 6.0, 0.0], [0.065, 6.0, 0.1126], [0.065, 0.0, 0.1126], [0.13, 0.0, 0.0],
+        [-0.065, 6.0, 0.1126], [-0.065, 0.0, 0.1126], [-0.13, 6.0, 0.0], [-0.13, 0.0, 0.0],
+        [-0.065, 6.0, -0.1126], [-0.065, 0.0, -0.1126], [0.065, 6.0, -0.1126], [0.065, 0.0, -0.1126]
+      ],
+      "faces": [
+        [0, 1, 2, 3], [1, 4, 5, 2], [4, 6, 7, 5], [6, 8, 9, 7], [8, 10, 11, 9], [10, 0, 3, 11],
+        [10, 8, 6, 4, 1, 0]
+      ],
+      "face_materials": ["solid", "solid", "solid", "solid", "solid", "solid", "solid"]
+    }
+  ]
+}

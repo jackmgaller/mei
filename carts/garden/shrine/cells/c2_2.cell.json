@@ -1,0 +1,118 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c2_2",
+ "at": [
+  2,
+  2
+ ],
+ "region": "shrine",
+ "standin": "standin_c2_2",
+ "placements": [
+  {
+   "id": "wall_corner_145_149",
+   "asset": "arch_wall_corner",
+   "position": [
+    145.4,
+    5.0,
+    149.4
+   ],
+   "collision": "arch_wall_corner_col",
+   "merge": true
+  },
+  {
+   "id": "wall_n_10",
+   "asset": "arch_wall_8",
+   "position": [
+    129.0,
+    5.0,
+    149.4
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_n_11",
+   "asset": "arch_wall_8",
+   "position": [
+    137.0,
+    5.0,
+    149.4
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_n_12",
+   "asset": "arch_wall_4",
+   "position": [
+    143.0,
+    5.0,
+    149.4
+   ],
+   "collision": "arch_wall_4_col"
+  },
+  {
+   "id": "wall_e_6",
+   "asset": "arch_wall_8",
+   "position": [
+    145.4,
+    5.0,
+    133.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_e_7",
+   "asset": "arch_wall_8",
+   "position": [
+    145.4,
+    5.0,
+    141.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_e_8",
+   "asset": "arch_wall_4",
+   "position": [
+    145.4,
+    5.0,
+    147.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_4_col"
+  },
+  {
+   "id": "pagoda",
+   "asset": "arch_pagoda",
+   "position": [
+    134.0,
+    5.0,
+    136.0
+   ],
+   "collision": "arch_pagoda_col"
+  },
+  {
+   "id": "forest_lantern_4",
+   "asset": "forest_stone_lantern",
+   "position": [
+    168,
+    150
+   ],
+   "collision": "forest_stone_lantern_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "coin_pagoda",
+   "type": "coin",
+   "position": [
+    134.0,
+    27.2,
+    136.0
+   ],
+   "asset": "coin"
+  }
+ ]
+}

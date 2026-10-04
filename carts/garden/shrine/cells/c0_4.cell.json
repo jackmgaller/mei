@@ -1,0 +1,193 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_4",
+ "at": [
+  0,
+  4
+ ],
+ "region": "shrine",
+ "standin": "standin_c0_4",
+ "placements": [
+  {
+   "id": "fox_torii_10",
+   "asset": "forest_fox_torii",
+   "position": [
+    22.95,
+    256.95
+   ],
+   "yaw": 311,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_11",
+   "asset": "forest_fox_torii",
+   "position": [
+    21.52,
+    258.18
+   ],
+   "yaw": 311,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_12",
+   "asset": "forest_fox_torii",
+   "position": [
+    20.08,
+    259.42
+   ],
+   "yaw": 311,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_13",
+   "asset": "forest_fox_torii",
+   "position": [
+    18.65,
+    260.65
+   ],
+   "yaw": 311,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_14",
+   "asset": "forest_fox_torii",
+   "position": [
+    17.22,
+    261.88
+   ],
+   "yaw": 311,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_15",
+   "asset": "forest_fox_torii",
+   "position": [
+    17.25,
+    263.15
+   ],
+   "yaw": 49,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_16",
+   "asset": "forest_fox_torii",
+   "position": [
+    18.75,
+    264.46
+   ],
+   "yaw": 49,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_17",
+   "asset": "forest_fox_torii",
+   "position": [
+    20.25,
+    265.77
+   ],
+   "yaw": 49,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_18",
+   "asset": "forest_fox_torii",
+   "position": [
+    21.75,
+    267.08
+   ],
+   "yaw": 49,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_19",
+   "asset": "forest_fox_torii",
+   "position": [
+    23.25,
+    268.38
+   ],
+   "yaw": 49,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_20",
+   "asset": "forest_fox_torii",
+   "position": [
+    24.75,
+    269.69
+   ],
+   "yaw": 49,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_21",
+   "asset": "forest_fox_torii",
+   "position": [
+    26.25,
+    271.0
+   ],
+   "yaw": 49,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_22",
+   "asset": "forest_fox_torii",
+   "position": [
+    27.75,
+    272.31
+   ],
+   "yaw": 49,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_23",
+   "asset": "forest_fox_torii",
+   "position": [
+    29.25,
+    273.62
+   ],
+   "yaw": 49,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_24",
+   "asset": "forest_fox_torii",
+   "position": [
+    30.75,
+    274.92
+   ],
+   "yaw": 49,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_25",
+   "asset": "forest_fox_torii",
+   "position": [
+    32.25,
+    276.23
+   ],
+   "yaw": 49,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_26",
+   "asset": "forest_fox_torii",
+   "position": [
+    33.75,
+    277.54
+   ],
+   "yaw": 49,
+   "collision": "forest_fox_torii_col"
+  },
+  {
+   "id": "fox_torii_27",
+   "asset": "forest_fox_torii",
+   "position": [
+    35.25,
+    278.85
+   ],
+   "yaw": 49,
+   "collision": "forest_fox_torii_col"
+  }
+ ]
+}

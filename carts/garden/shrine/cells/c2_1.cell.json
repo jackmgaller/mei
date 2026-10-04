@@ -1,0 +1,284 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c2_1",
+ "at": [
+  2,
+  1
+ ],
+ "region": "shrine",
+ "standin": "standin_c2_1",
+ "placements": [
+  {
+   "id": "fence_c4",
+   "asset": "fence_bamboo_8",
+   "position": [
+    146.4,
+    0.45,
+    68
+   ],
+   "yaw": 90,
+   "collision": "fence_bamboo_8_col"
+  },
+  {
+   "id": "fence_c5",
+   "asset": "fence_bamboo_8",
+   "position": [
+    146.4,
+    0.45,
+    76
+   ],
+   "yaw": 90,
+   "collision": "fence_bamboo_8_col"
+  },
+  {
+   "id": "wall_corner_145_80",
+   "asset": "arch_wall_corner",
+   "position": [
+    145.4,
+    5.0,
+    80.6
+   ],
+   "collision": "arch_wall_corner_col",
+   "merge": true
+  },
+  {
+   "id": "wall_se_3",
+   "asset": "arch_wall_8",
+   "position": [
+    133.0,
+    5.0,
+    80.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_se_4",
+   "asset": "arch_wall_8",
+   "position": [
+    141.0,
+    5.0,
+    80.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_e_0",
+   "asset": "arch_wall_8",
+   "position": [
+    145.4,
+    5.0,
+    85.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_e_1",
+   "asset": "arch_wall_8",
+   "position": [
+    145.4,
+    5.0,
+    93.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_e_2",
+   "asset": "arch_wall_8",
+   "position": [
+    145.4,
+    5.0,
+    101.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_e_3",
+   "asset": "arch_wall_8",
+   "position": [
+    145.4,
+    5.0,
+    109.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_e_4",
+   "asset": "arch_wall_8",
+   "position": [
+    145.4,
+    5.0,
+    117.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_e_5",
+   "asset": "arch_wall_8",
+   "position": [
+    145.4,
+    5.0,
+    125.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "corridor_e",
+   "asset": "arch_corridor_hall",
+   "position": [
+    129.0,
+    5.0,
+    108.0
+   ],
+   "yaw": 90,
+   "collision": "arch_corridor_hall_col"
+  },
+  {
+   "id": "pond_stone_0",
+   "asset": "water_stepping_stone_a",
+   "position": [
+    177.96,
+    -1.1,
+    106.26
+   ],
+   "collision": "water_stepping_stone_a_col"
+  },
+  {
+   "id": "pond_stone_1",
+   "asset": "water_stepping_stone_b",
+   "position": [
+    175.52,
+    -1.1,
+    104.04
+   ],
+   "yaw": 37,
+   "collision": "water_stepping_stone_b_col"
+  },
+  {
+   "id": "pond_stone_2",
+   "asset": "water_stepping_stone_c",
+   "position": [
+    173.08,
+    -1.1,
+    101.81
+   ],
+   "yaw": 74,
+   "collision": "water_stepping_stone_c_col"
+  },
+  {
+   "id": "pond_stone_4",
+   "asset": "water_stepping_stone_b",
+   "position": [
+    164.65,
+    -1.1,
+    95.43
+   ],
+   "yaw": 148,
+   "collision": "water_stepping_stone_b_col"
+  },
+  {
+   "id": "pond_stone_6",
+   "asset": "water_stepping_stone_a",
+   "position": [
+    156.72,
+    -1.1,
+    88.73
+   ],
+   "yaw": 222,
+   "collision": "water_stepping_stone_a_col"
+  },
+  {
+   "id": "pond_stone_7",
+   "asset": "water_stepping_stone_b",
+   "position": [
+    155.1,
+    -1.1,
+    85.85
+   ],
+   "yaw": 259,
+   "collision": "water_stepping_stone_b_col"
+  },
+  {
+   "id": "zigzag_bridge",
+   "asset": "water_zigzag_bridge",
+   "position": [
+    154.64,
+    0.0,
+    75.61
+   ],
+   "yaw": 171,
+   "collision": "water_zigzag_bridge_col"
+  },
+  {
+   "id": "pond_stone_9",
+   "asset": "water_stepping_stone_a",
+   "position": [
+    155.92,
+    -1.1,
+    64.94
+   ],
+   "yaw": 333,
+   "collision": "water_stepping_stone_a_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "bob_log_3",
+   "type": "mover",
+   "position": [
+    169.06,
+    0.0,
+    98.37
+   ],
+   "yaw": 146,
+   "asset": "water_bob_log",
+   "collision": "water_bob_log_col",
+   "params": {
+    "to": [
+     0,
+     -0.25,
+     0
+    ],
+    "period": 151,
+    "mode": "pingpong"
+   }
+  },
+  {
+   "id": "bob_log_5",
+   "type": "mover",
+   "position": [
+    160.24,
+    0.0,
+    92.49
+   ],
+   "yaw": 146,
+   "asset": "water_bob_log",
+   "collision": "water_bob_log_col",
+   "params": {
+    "to": [
+     0,
+     -0.25,
+     0
+    ],
+    "period": 185,
+    "mode": "pingpong"
+   }
+  },
+  {
+   "id": "coin_corridor_e",
+   "type": "coin",
+   "position": [
+    129.0,
+    15.3,
+    108.0
+   ],
+   "asset": "coin"
+  }
+ ]
+}

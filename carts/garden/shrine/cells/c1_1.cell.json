@@ -1,0 +1,155 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c1_1",
+ "at": [
+  1,
+  1
+ ],
+ "region": "shrine",
+ "standin": "standin_c1_1",
+ "placements": [
+  {
+   "id": "gate",
+   "asset": "arch_gate",
+   "position": [
+    95.0,
+    5.0,
+    84.0
+   ],
+   "collision": "arch_gate_col"
+  },
+  {
+   "id": "wall_sw_2",
+   "asset": "arch_wall_8",
+   "position": [
+    65.0,
+    5.0,
+    80.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_sw_3",
+   "asset": "arch_wall_8",
+   "position": [
+    73.0,
+    5.0,
+    80.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_sw_4",
+   "asset": "arch_wall_8",
+   "position": [
+    81.0,
+    5.0,
+    80.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_se_0",
+   "asset": "arch_wall_8",
+   "position": [
+    109.0,
+    5.0,
+    80.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_se_1",
+   "asset": "arch_wall_8",
+   "position": [
+    117.0,
+    5.0,
+    80.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_se_2",
+   "asset": "arch_wall_8",
+   "position": [
+    125.0,
+    5.0,
+    80.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "lantern_tw0",
+   "asset": "forest_stone_lantern",
+   "position": [
+    88.0,
+    5.0,
+    94
+   ],
+   "collision": "forest_stone_lantern_col"
+  },
+  {
+   "id": "lantern_te0",
+   "asset": "forest_stone_lantern",
+   "position": [
+    102.0,
+    5.0,
+    94
+   ],
+   "collision": "forest_stone_lantern_col"
+  },
+  {
+   "id": "lantern_tw1",
+   "asset": "forest_stone_lantern",
+   "position": [
+    88.0,
+    5.0,
+    104
+   ],
+   "collision": "forest_stone_lantern_col"
+  },
+  {
+   "id": "lantern_te1",
+   "asset": "forest_stone_lantern",
+   "position": [
+    102.0,
+    5.0,
+    104
+   ],
+   "collision": "forest_stone_lantern_col"
+  },
+  {
+   "id": "lantern_tw2",
+   "asset": "forest_stone_lantern",
+   "position": [
+    88.0,
+    5.0,
+    114
+   ],
+   "collision": "forest_stone_lantern_col"
+  },
+  {
+   "id": "lantern_te2",
+   "asset": "forest_stone_lantern",
+   "position": [
+    102.0,
+    5.0,
+    114
+   ],
+   "collision": "forest_stone_lantern_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "coin_gate",
+   "type": "coin",
+   "position": [
+    95.0,
+    18.8,
+    84.0
+   ],
+   "asset": "coin"
+  }
+ ]
+}

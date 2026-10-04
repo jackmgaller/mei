@@ -1,0 +1,58 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "street_utility_pole",
+  "sheets": {"street": {"image": "art/street_sheet.png"}},
+  "budget": {"triangles": 30},
+  "materials": {
+    "concrete": {
+      "color": "#a8a69e",
+      "texture": {"sheet": "street", "cell": "pole", "projection": "cylindrical", "scale": [1.2, 9.0]}
+    },
+    "cap": {"color": "#8e8a84", "palette": true},
+    "steel": {"color": "#6a665e", "palette": true},
+    "transformer": {"color": "#8e8a84", "palette": true}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {
+      "id": "pole",
+      "op": "mesh",
+      "vertices": [
+        [-0.1236, 9.0, 0.0402], [-0.1807, 0.0, 0.0587], [0.0, 0.0, 0.19], [0.0, 9.0, 0.13],
+        [-0.0764, 9.0, -0.1052], [-0.1117, 0.0, -0.1537], [0.0764, 9.0, -0.1052],
+        [0.1117, 0.0, -0.1537], [0.1236, 9.0, 0.0402], [0.1807, 0.0, 0.0587]
+      ],
+      "faces": [
+        [0, 1, 2], [3, 0, 2], [4, 5, 1], [0, 4, 1], [6, 7, 5], [4, 6, 5], [8, 9, 7], [6, 8, 7],
+        [3, 2, 9], [8, 3, 9], [8, 6, 4, 0, 3]
+      ],
+      "face_materials": [
+        "concrete", "concrete", "concrete", "concrete", "concrete", "concrete", "concrete",
+        "concrete", "concrete", "concrete", "cap"
+      ]
+    },
+    {
+      "id": "crossarm",
+      "op": "mesh",
+      "vertices": [
+        [-0.95, 8.35, 0.0], [0.95, 8.35, 0.0], [0.95, 8.25, -0.06], [-0.95, 8.25, -0.06],
+        [-0.95, 8.25, 0.06], [0.95, 8.25, 0.06]
+      ],
+      "faces": [[0, 1, 2, 3], [4, 5, 1, 0], [3, 2, 5, 4]],
+      "face_materials": ["steel", "steel", "steel"]
+    },
+    {
+      "id": "transformer",
+      "op": "mesh",
+      "vertices": [
+        [-0.24, 7.25, 0.56], [0.24, 7.25, 0.56], [0.24, 7.25, 0.08], [-0.24, 7.25, 0.08],
+        [-0.24, 6.55, 0.08], [0.24, 6.55, 0.08], [0.24, 6.55, 0.56], [-0.24, 6.55, 0.56]
+      ],
+      "faces": [[0, 1, 2, 3], [4, 5, 6, 7], [7, 6, 1, 0], [7, 0, 3, 4], [5, 2, 1, 6]],
+      "face_materials": ["transformer", "transformer", "transformer", "transformer", "transformer"]
+    }
+  ],
+  "lod": {"cull": 110}
+}

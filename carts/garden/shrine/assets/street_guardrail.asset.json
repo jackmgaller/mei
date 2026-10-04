@@ -1,0 +1,47 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "street_guardrail",
+  "budget": {"triangles": 24},
+  "materials": {
+    "beam": {
+      "color": "#eceae4",
+      "texture": {
+        "texels": ["0", "1", "2", "1", "0", "1", "2", "3"],
+        "colors": ["#eceae4", "#c8c4b8", "#a8a69e", "#d8d4c8"],
+        "projection": "fit"
+      }
+    },
+    "rail": {"color": "#c8c4b8", "palette": true},
+    "post": {"color": "#eceae4", "palette": true}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {
+      "id": "beam",
+      "op": "mesh",
+      "vertices": [
+        [-2.0, 0.86, -0.16], [2.0, 0.86, -0.16], [2.0, 0.52, -0.16], [-2.0, 0.52, -0.16],
+        [-2.0, 0.52, -0.08], [2.0, 0.52, -0.08], [2.0, 0.86, -0.08], [-2.0, 0.86, -0.08]
+      ],
+      "faces": [[0, 1, 2, 3], [4, 5, 6, 7], [7, 6, 1, 0], [3, 2, 5, 4]],
+      "face_materials": ["beam", "rail", "rail", "rail"]
+    },
+    {
+      "id": "posts",
+      "op": "mesh",
+      "vertices": [
+        [-1.0, 0.94, 0.075], [-1.065, 0.94, -0.0375], [-1.065, 0.0, -0.0375], [-1.0, 0.0, 0.075],
+        [-0.935, 0.94, -0.0375], [-0.935, 0.0, -0.0375], [1.0, 0.94, 0.075], [0.935, 0.94, -0.0375],
+        [0.935, 0.0, -0.0375], [1.0, 0.0, 0.075], [1.065, 0.94, -0.0375], [1.065, 0.0, -0.0375]
+      ],
+      "faces": [
+        [0, 1, 2, 3], [1, 4, 5, 2], [4, 0, 3, 5], [4, 1, 0], [6, 7, 8, 9], [7, 10, 11, 8],
+        [10, 6, 9, 11], [10, 7, 6]
+      ],
+      "face_materials": ["post", "post", "post", "post", "post", "post", "post", "post"]
+    }
+  ],
+  "lod": {"cull": 70}
+}

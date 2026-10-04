@@ -1,0 +1,35 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "arch_wall_8_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "mesh",
+   "vertices": [
+    [-4.0,2.6,0.4],[0.0,2.6,0.4],[0.0,2.6,-0.4],[-4.0,2.6,-0.4],[4.0,2.6,0.4],[4.0,2.6,-0.4],
+    [-4.0,0.0,-0.4],[0.0,0.0,-0.4],[0.0,0.0,0.4],[-4.0,0.0,0.4],[4.0,0.0,-0.4],[4.0,0.0,0.4]
+   ],
+   "faces": [
+    [0,1,2,3],[1,4,5,2],[6,7,8,9],[7,10,11,8],[3,2,7,6],[2,5,10,7],[9,8,1,0],[8,11,4,1],[6,9,0,3],
+    [5,4,11,10]
+   ],
+   "face_materials": ["solid", "solid", "solid", "solid", "solid", "solid", "solid", "solid", "solid", "solid"]
+  }
+ ]
+}

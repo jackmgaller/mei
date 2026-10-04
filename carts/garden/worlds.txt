@@ -1,2 +1,3 @@
 # The world the garden runs on (docs/WORLDKIT.md, "Using a world in a cart").
 carts/garden/world/garden.world.json
+carts/garden/shrine/shrine.world.json

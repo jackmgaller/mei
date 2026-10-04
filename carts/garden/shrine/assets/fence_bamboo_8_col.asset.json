@@ -1,0 +1,47 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "fence_bamboo_8_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "wall",
+   "op": "box",
+   "size": [
+    8.0,
+    10.0,
+    0.4
+   ],
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     5.0,
+     0
+    ]
+   }
+  }
+ ],
+ "budget": {
+  "vertices": 256,
+  "triangles": 64
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ }
+}

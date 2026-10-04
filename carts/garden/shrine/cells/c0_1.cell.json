@@ -1,0 +1,242 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_1",
+ "at": [
+  0,
+  1
+ ],
+ "region": "shrine",
+ "standin": "standin_c0_1",
+ "placements": [
+  {
+   "id": "wall_corner_44_80",
+   "asset": "arch_wall_corner",
+   "position": [
+    44.6,
+    5.0,
+    80.6
+   ],
+   "collision": "arch_wall_corner_col",
+   "merge": true
+  },
+  {
+   "id": "wall_sw_0",
+   "asset": "arch_wall_8",
+   "position": [
+    49.0,
+    5.0,
+    80.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_sw_1",
+   "asset": "arch_wall_8",
+   "position": [
+    57.0,
+    5.0,
+    80.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_w_0",
+   "asset": "arch_wall_8",
+   "position": [
+    44.6,
+    5.0,
+    85.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_w_1",
+   "asset": "arch_wall_8",
+   "position": [
+    44.6,
+    5.0,
+    93.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_w_2",
+   "asset": "arch_wall_8",
+   "position": [
+    44.6,
+    5.0,
+    101.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_w_3",
+   "asset": "arch_wall_8",
+   "position": [
+    44.6,
+    5.0,
+    109.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_w_4",
+   "asset": "arch_wall_8",
+   "position": [
+    44.6,
+    5.0,
+    117.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_w_5",
+   "asset": "arch_wall_8",
+   "position": [
+    44.6,
+    5.0,
+    125.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "corridor_w",
+   "asset": "arch_corridor_hall",
+   "position": [
+    61.0,
+    5.0,
+    108.0
+   ],
+   "yaw": 270,
+   "collision": "arch_corridor_hall_col"
+  },
+  {
+   "id": "mossy_boulder_0",
+   "asset": "forest_boulder_big",
+   "position": [
+    14,
+    88
+   ],
+   "yaw": 10,
+   "collision": "self"
+  },
+  {
+   "id": "mossy_boulder_1",
+   "asset": "forest_boulder",
+   "position": [
+    19,
+    92
+   ],
+   "yaw": 70,
+   "collision": "self"
+  },
+  {
+   "id": "mossy_boulder_2",
+   "asset": "forest_boulder",
+   "position": [
+    11,
+    93
+   ],
+   "yaw": 140,
+   "collision": "self"
+  },
+  {
+   "id": "spring_stone_0",
+   "asset": "water_stepping_stone_a",
+   "position": [
+    16.0,
+    105.5
+   ],
+   "collision": "water_stepping_stone_a_col"
+  },
+  {
+   "id": "spring_stone_1",
+   "asset": "water_stepping_stone_b",
+   "position": [
+    17.4,
+    108.2
+   ],
+   "yaw": 47,
+   "collision": "water_stepping_stone_b_col"
+  },
+  {
+   "id": "spring_stone_2",
+   "asset": "water_stepping_stone_c",
+   "position": [
+    19.0,
+    110.9
+   ],
+   "yaw": 94,
+   "collision": "water_stepping_stone_c_col"
+  },
+  {
+   "id": "spring_stone_3",
+   "asset": "water_stepping_stone_a",
+   "position": [
+    20.4,
+    113.6
+   ],
+   "yaw": 141,
+   "collision": "water_stepping_stone_a_col"
+  },
+  {
+   "id": "spring_stone_4",
+   "asset": "water_stepping_stone_b",
+   "position": [
+    21.4,
+    116.4
+   ],
+   "yaw": 188,
+   "collision": "water_stepping_stone_b_col"
+  },
+  {
+   "id": "spring_stone_5",
+   "asset": "water_stepping_stone_c",
+   "position": [
+    22.0,
+    119.2
+   ],
+   "yaw": 235,
+   "collision": "water_stepping_stone_c_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "coin_corridor_w",
+   "type": "coin",
+   "position": [
+    61.0,
+    15.3,
+    108.0
+   ],
+   "asset": "coin"
+  },
+  {
+   "id": "red_boulders",
+   "type": "red_coin",
+   "position": [
+    14,
+    88
+   ],
+   "asset": "coin_red",
+   "lift": 3.25
+  },
+  {
+   "id": "red_spring",
+   "type": "red_coin",
+   "position": [
+    19.0,
+    110.9
+   ],
+   "asset": "coin_red",
+   "lift": 2.7
+  }
+ ]
+}

@@ -248,7 +248,20 @@ fn steep() -> bool {
 
 // ---- the tick
 
+// ---- wading: water slows the player on foot with its depth; from deep water it cannot jump.
+// There is no swimming (the shrine's pond: carts/garden/shrine/README.md).
+const WADE_FULL: fixed = 1.2           // at this depth (m) and deeper, the slowest
+const WADE_SLOW: fixed = 0.35          // the run speed kept there
+const WADE_NO_JUMP: fixed = 1.0        // no jump from deeper than this
+var pl_wade: fixed                     // how deep the feet are in water (0: dry)
+
+fn wade_mul() -> fixed {
+    let t = clamp(pl_wade / WADE_FULL, 0.0, 1.0)
+    return 1.0 - (1.0 - WADE_SLOW) * t
+}
+
 fn player_tick(ip: *Pin) {
+    pl_wade = world_water_depth(pl.pos)
     pl.t += 1
     pl.land_t = min(pl.land_t + 1, 1000)
     if pl.regrab_t > 0 { pl.regrab_t -= 1 }
@@ -279,7 +292,7 @@ fn player_tick(ip: *Pin) {
 // ---- on foot
 
 fn st_ground(ip: *Pin) {
-    if ip.ap {
+    if ip.ap && pl_wade < WADE_NO_JUMP {
         jump(ip)
         return
     }
@@ -318,7 +331,7 @@ fn st_ground(ip: *Pin) {
             let tr = rps(T.TurnRate)
             pl.yaw = wrap_angle(pl.yaw + clamp(d, -tr, tr))
         }
-        let top = mps(T.RunSpeed) * ip.mag
+        let top = mps(T.RunSpeed) * ip.mag * wade_mul()
         if pl.fwd < top {
             let a = mps2(T.RunAccel) - pl.fwd * tv[T.RunDrag] / 60
             pl.fwd = min(pl.fwd + max(a, mps2(T.RunAccel) / 8), top)

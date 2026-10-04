@@ -1,0 +1,169 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_2",
+ "at": [
+  0,
+  2
+ ],
+ "region": "shrine",
+ "standin": "standin_c0_2",
+ "placements": [
+  {
+   "id": "wall_corner_44_149",
+   "asset": "arch_wall_corner",
+   "position": [
+    44.6,
+    5.0,
+    149.4
+   ],
+   "collision": "arch_wall_corner_col",
+   "merge": true
+  },
+  {
+   "id": "wall_n_0",
+   "asset": "arch_wall_8",
+   "position": [
+    49.0,
+    5.0,
+    149.4
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_n_1",
+   "asset": "arch_wall_8",
+   "position": [
+    57.0,
+    5.0,
+    149.4
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_w_6",
+   "asset": "arch_wall_8",
+   "position": [
+    44.6,
+    5.0,
+    133.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_w_7",
+   "asset": "arch_wall_8",
+   "position": [
+    44.6,
+    5.0,
+    141.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "wall_w_8",
+   "asset": "arch_wall_4",
+   "position": [
+    44.6,
+    5.0,
+    147.0
+   ],
+   "yaw": 90,
+   "collision": "arch_wall_4_col"
+  },
+  {
+   "id": "giant_1",
+   "asset": "tree_cedar_giant",
+   "position": [
+    16,
+    146
+   ],
+   "collision": "tree_cedar_giant_col"
+  },
+  {
+   "id": "deck_1",
+   "asset": "forest_platform",
+   "position": [
+    16,
+    14.0,
+    146
+   ],
+   "yaw": 355,
+   "collision": "forest_platform_col"
+  },
+  {
+   "id": "giant_2",
+   "asset": "tree_cedar_giant",
+   "position": [
+    14,
+    168
+   ],
+   "collision": "tree_cedar_giant_col"
+  },
+  {
+   "id": "deck_2",
+   "asset": "forest_platform",
+   "position": [
+    14,
+    17.0,
+    168
+   ],
+   "yaw": 27,
+   "collision": "forest_platform_col"
+  },
+  {
+   "id": "giant_3",
+   "asset": "tree_cedar_giant",
+   "position": [
+    24,
+    188
+   ],
+   "collision": "tree_cedar_giant_col"
+  },
+  {
+   "id": "deck_3",
+   "asset": "forest_platform",
+   "position": [
+    24,
+    20.0,
+    188
+   ],
+   "yaw": 54,
+   "collision": "forest_platform_col"
+  },
+  {
+   "id": "post_outcrop",
+   "asset": "forest_bridge_post",
+   "position": [
+    27.4,
+    14.0,
+    141
+   ],
+   "yaw": 270,
+   "collision": "forest_bridge_post_col"
+  },
+  {
+   "id": "forest_lantern_0",
+   "asset": "forest_stone_lantern",
+   "position": [
+    36,
+    150
+   ],
+   "collision": "forest_stone_lantern_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "red_walkway",
+   "type": "red_coin",
+   "position": [
+    26.2,
+    21.0,
+    188
+   ],
+   "asset": "coin_red"
+  }
+ ]
+}

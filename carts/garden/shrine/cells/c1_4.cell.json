@@ -1,0 +1,35 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c1_4",
+ "at": [
+  1,
+  4
+ ],
+ "region": "shrine",
+ "standin": "standin_c1_4",
+ "placements": [
+  {
+   "id": "stage",
+   "asset": "forest_stage_hall",
+   "position": [
+    72.0,
+    56.0,
+    272.0
+   ],
+   "collision": "forest_stage_hall_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "red_stage",
+   "type": "red_coin",
+   "position": [
+    72.0,
+    57.0,
+    263.0
+   ],
+   "asset": "coin_red"
+  }
+ ]
+}
