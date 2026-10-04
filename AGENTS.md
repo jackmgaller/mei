@@ -93,8 +93,9 @@ details; `carts/worldview/` is the example.
   test-carts`; and for every other
   generator. **NumPy and Pillow** for the Reference Renderer. **Pillow** too for the generators
   that draw: `gen_boot_duet`, `gen_boot_eclipse`, `gen_shell_assets`, `gen_lantern_assets`,
-  `gen_orbs_assets`, `gen_weather_assets` and `meifont`. **SciPy** too for `gen_boot_duet` and
-  `gen_soundlab_assets`.
+  `gen_orbs_assets`, `gen_weather_assets` and `meifont`, and for the Asset Kit's textures read
+  from PNG images and sheets (`examples/assets/stall`; recipes without images need it not).
+  **SciPy** too for `gen_boot_duet` and `gen_soundlab_assets`.
 - Several generators draw with macOS system fonts (Avenir Next, Hiragino, Georgia, Optima and
   others). Their outputs are committed, so building and running Mei needs none of this.
 

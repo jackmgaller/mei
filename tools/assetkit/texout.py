@@ -1,7 +1,5 @@
 """The files, Akari loader and manifest entries for placed textures (a kitcore.texpack.Packing):
 written by `build` for one asset (its own placement) and by `pack` for a set."""
-import struct
-
 from kitcore.texpack import SLOT_BYTES
 
 
@@ -92,7 +90,3 @@ def texture_entries(mesh, packing, face_runs):
             entry['ticks'] = tex.ticks
         out.append(entry)
     return out
-
-
-def words(values):
-    return struct.pack(f'<{len(values)}H', *values)

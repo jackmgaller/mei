@@ -8,9 +8,10 @@ The order of work in compile_recipe():
    for a hole), quantised to 15 or 255 colours.
 2. `project(mesh, ...)`: texel coordinates (floats) for each corner of each textured face, from
    the corners' positions in their primitive's own coordinates (`Face.local`).
-3. `split(mesh, ...)`: faces of a repeating texture are cut along the lines u = kL and v = kL
-   (L the largest multiple of the tile size not above 255), so every piece fits the GPU's 8-bit
-   texture coordinates; the cuts are the same for every face, so neighbours share them.
+3. `split(mesh, ...)`: faces of a repeating texture that span more than 255 texels are cut
+   along the lines u = kL and v = kL (L the largest multiple of the tile size not above 255), so
+   every piece fits the GPU's 8-bit texture coordinates; the lines are the same for every face,
+   and uncut neighbours get the cut points on their shared edges.
 4. (the vertices are quantised to 16.16)
 5. `finish(mesh, ...)`: integer texel coordinates per face, the tiles, and the default
    placement (kitcore/texpack.py) that `build` writes.
@@ -20,11 +21,10 @@ import json
 import math
 from pathlib import Path
 
-from kitcore.texpack import Tile, pack as pack_tiles, WINDOW_SIZES
+from kitcore.texpack import Tile, pack as pack_tiles
 from .geometry import AssetError, add, sub, mul, cross, dot, norm
 
-REPEATING = ('planar', 'box', 'cylindrical')
-PROJECTIONS = REPEATING+('disc', 'fit')
+REPEATING = ('planar', 'box', 'cylindrical')    # the others (disc, fit) draw a texture once
 MAX_WINDOWS = 7
 
 
@@ -56,10 +56,6 @@ def mix(*values):
 # Patterns: name -> (parameters with defaults and ranges, minimum colours, function). A function
 # returns rows of indices into the texture's `colors`. Every pattern tiles seamlessly when its
 # divisions divide the size (checked).
-
-def _param_spec(**spec):
-    return spec
-
 
 def _divides(n, parts, what, path):
     if n % parts:
@@ -151,7 +147,8 @@ def lattice(w, h, p, n, path):
     sw = _divides(w, p['count'], 'count', path+'/count')
     sh = _divides(h, p['count'], 'count', path+'/count')
     if p['diagonal']:
-        _divides(w, h, 'height', path) if w != h else None
+        if h % sw:
+            raise AssetError(path+'/count', f'A diagonal lattice repeats every {sw} texels both ways: the height ({h}) must be a multiple.')
         return [[0 if (x+y) % sw < p['bar'] or (x-y) % sw < p['bar'] else 1 for x in range(w)] for y in range(h)]
     return [[0 if x % sw < p['bar'] or y % sh < p['bar'] else 1 for x in range(w)] for y in range(h)]
 

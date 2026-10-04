@@ -44,8 +44,9 @@ All PS1-authentic unless noted.
   state their expected output in `// expect:` lines are still to do.
 - **The kits' next pieces**, planned in their documents: terrain, region textures, audio banks
   and backdrops, `verify` and `standin-draft` in the World Kit
-  ([WORLDKIT.md](WORLDKIT.md#command-line)); textures and UVs in the Asset Kit, built on texture
-  windows ([ASSETKIT.md](ASSETKIT.md#textures-decided-not-built)).
+  ([WORLDKIT.md](WORLDKIT.md#command-line)); packing the Asset Kit's textures per region in the
+  World Kit, and the runtime helper that copies animated texture frames
+  ([ASSETKIT.md](ASSETKIT.md#textures)).
 - **`mei-headless`:**
   - `--arg name=value`, so one build serves a parameter sweep;
   - `--rev HEAD` for before/after runs;
