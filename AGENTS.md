@@ -36,8 +36,8 @@ tests/run_lang_tests.sh planes    # only the language tests whose name contains 
 
 `make test` runs the suites in this order: the C unit tests, `tests/run_lang_tests.sh`, the
 MeiNet gateway's tests, then `test_assetkit.py`, `test_worldpack.py`, `test_worldkit.py`,
-`test_mochi.py` and `test_worldverify.py`, and last `tools/check_generated.sh` (what `make
-check-generated` runs: the generators that need only the standard library, and
+`test_mochi.py`, `test_worldverify.py` and `test_worldcache.py`, and last
+`tools/check_generated.sh` (what `make check-generated` runs: the generators that need only the standard library, and
 `gen_adpcm_vectors.py` when NumPy is there, into a temporary directory, compared with the
 committed files). `make test-carts` runs `carts/lantern/tests/check.sh`,
 `carts/weather/tests/check.sh` and `test-world-carts`, which builds World Viewer and the

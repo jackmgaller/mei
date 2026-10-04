@@ -4,10 +4,12 @@
     world_cart.py build RECIPE BUILD_DIR
         Builds one world recipe with tools/mei_world.py into BUILD_DIR/worlds/<the recipe's
         folder>/, using BUILD_DIR's meic, mei-headless and mei-asset-probe (the World Checker
-        finds mei-scene-probe beside meic). Prints a two-line summary, or the kit's errors one
-        per line; exits 0 or 1. On success it writes build.json there (the kit's result, make's
-        target) and build.d (make's dependencies: the recipe, its cells, game schema, ID lock
-        file and asset recipes, and the cell and asset folders, so an added file counts too).
+        finds mei-scene-probe beside meic), keeping the checkers' results in BUILD_DIR/kit-cache/
+        so that a rebuild checks only what changed (tools/worldkit/cache.py). Prints a two-line
+        summary, or the kit's errors one per line; exits 0 or 1. On success it writes build.json
+        there (the kit's result, make's target) and build.d (make's dependencies: the recipe, its
+        cells, game schema, ID lock file and asset recipes, and the cell and asset folders, so an
+        added file counts too).
 
     world_cart.py link IMPORT_DIR BUILD_DIR RECIPE...
         Fills IMPORT_DIR, which make passes to meic with -I, with symbolic links to each built
@@ -99,7 +101,8 @@ def build(recipe, build_dir):
     out.mkdir(parents=True, exist_ok=True)
     b = Path(build_dir)
     args = [sys.executable, str(ROOT/'tools'/'mei_world.py'), 'build', recipe, '-o', str(out),
-            '--compiler', str(b/'meic'), '--runner', str(b/'mei-headless'), '--probe', str(b/'mei-asset-probe')]
+            '--compiler', str(b/'meic'), '--runner', str(b/'mei-headless'), '--probe', str(b/'mei-asset-probe'),
+            '--cache', str(b/'kit-cache')]
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
     r = subprocess.run(args, capture_output=True, text=True, env=env)
     try:

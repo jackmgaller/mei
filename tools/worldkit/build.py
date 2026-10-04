@@ -44,12 +44,14 @@ def checker_option(value):
     return int(text)
 
 
-def run_gate(context):
+def run_gate(context, cache=None):
     """The seam for the World Checker (tools/worldkit/verify.py, built separately). It receives
     the staged outputs and the world's settings and returns a result dict with at least `ok`.
     Thresholds are per-world settings (the recipe's verification.thresholds, defaults from the
     checker); the mode is "report" (the default: findings are recorded, nothing fails) or
-    "enforce". Until the checker is installed the build records that it did not run."""
+    "enforce". Until the checker is installed the build records that it did not run. With a
+    cache directory an unchanged pack, checked the same way, is not checked again
+    (worldkit/cache.py)."""
     try:
         from . import verify
     except ImportError:
@@ -60,7 +62,8 @@ def run_gate(context):
         # Only on request (build --world-checker skip), and recorded as such in report.json.
         return {'ran':False,'ok':None,'mode':context['mode'],'skipped':True,
                 'reason':'Skipped on request (--world-checker skip): this build is not verified.'}
-    result = dict(verify.check_world(context))
+    from .cache import checked_world
+    result = dict(checked_world(verify.check_world,context,cache,verify))
     result.setdefault('ran',True)
     result['mode'] = context['mode']
     if isinstance(context.get('checker'),int):
@@ -71,10 +74,11 @@ def run_gate(context):
 
 
 def build(path, directory, compiler=None, runner=None, probe=None, locked=False, assets_dir=None, preview=False,
-          cell=None, checker='full'):
+          cell=None, checker='full', cache=None):
     """`checker` is how the World Checker runs: 'full' (the world's own settings), 'skip', or
     a number of views to sample at most, for a quick check. A world whose recipe says
-    verification.mode "enforce" builds only with the full check."""
+    verification.mode "enforce" builds only with the full check. `cache` is a directory for
+    the checkers' results (worldkit/cache.py), or None to run every check."""
     checker = checker_option(checker)
     source, compiled = compile_source(path,assets_dir)
     settings = source.world.get('verification',{})
@@ -86,7 +90,7 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
         raise WorldError('/cells',f'The ID lock file would change ({compiled.lock_changes}); --locked forbids it. '
                          'Build without --locked and commit NAME.ids.json.')
     # Every asset's own verification policy must pass before anything is written.
-    compiled.library.verify(compiler,probe)
+    compiled.library.verify(compiler,probe,cache)
     for asset_name,asset in compiled.library.assets.items():
         compiled.report['assets'][asset_name] = asset.summary()
     files = {f'{name}.world.bin':compiled.pack,f'{name}.akr':compiled.akr.encode(),
@@ -116,7 +120,7 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
                    'mode':settings.get('mode','report'),'thresholds':settings.get('thresholds',{}),
                    'probe':source.game['probe'],'report':compiled.report,'checker':checker,
                    'compiler':str(compiler) if compiler else None,'runner':str(runner) if runner else None}
-        gate = run_gate(context)
+        gate = run_gate(context,cache)
         # Wall-clock timings would make report.json differ between identical builds.
         timing = gate.pop('timing',None)
         # report.json keeps the checker's summary and failures; its row per sampled view (over

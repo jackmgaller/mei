@@ -93,6 +93,8 @@ def parser():
             cmd.add_argument('--compiler',type=Path,default=ROOT/'build'/'meic')
             cmd.add_argument('--runner',type=Path,default=ROOT/'build'/'mei-headless')
             cmd.add_argument('--probe',type=Path,default=ROOT/'build'/'mei-asset-probe')
+            cmd.add_argument('--cache',type=Path,help='Keep the Asset and World Checkers\' results in this directory '
+                                                      'and reuse them while their inputs are unchanged.')
     return p
 
 
@@ -109,7 +111,7 @@ def main(argv=None):
             jsonio.output(build(args.recipe,args.output,args.compiler.resolve(),args.runner.resolve(),
                                 args.probe.resolve(),args.locked,args.assets,
                                 args.command == 'preview' or args.preview,getattr(args,'cell',None),
-                                args.world_checker))
+                                args.world_checker,args.cache))
         else:
             _,compiled = compile_source(args.recipe,args.assets)
             report = compiled.report

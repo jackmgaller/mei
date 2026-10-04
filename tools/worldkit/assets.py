@@ -94,17 +94,20 @@ class Library:
         asset.uses.append(use)
         return asset
 
-    def verify(self, compiler, probe):
-        """Runs the Asset Checker for every asset whose recipe requires it; any failure fails."""
-        from assetkit.visibility import verify
+    def verify(self, compiler, probe, cache=None):
+        """Runs the Asset Checker for every asset whose recipe requires it; any failure fails.
+        The checks run in parallel, and with a cache directory unchanged assets are not checked
+        again (worldkit/cache.py); the verdicts are the ones a serial run gives."""
+        from .cache import AssetVerdicts
+        required = {name:asset.recipe for name,asset in self.assets.items() if asset.policy_required}
+        outcomes = AssetVerdicts(cache,compiler,probe).run(required)
         for name,asset in sorted(self.assets.items()):
             if not asset.policy_required: continue
-            try:
-                result = verify(asset.recipe,compiler=compiler,probe=probe)
-            except (AssetError,OSError,ValueError) as error:
+            result,error = outcomes[name]
+            if error:
                 raise WorldError('/assets',f'Asset {name!r}: the Asset Checker could not run: {error} '
                                  '(it needs NumPy and build/mei-asset-probe; pass --compiler/--probe).') from error
-            asset.verification = {'ok':result['ok'],'views':len(result.get('views',[]))}
+            asset.verification = {'ok':result['ok'],'views':result['views']}
             if not result['ok']:
                 raise WorldError('/assets',f'Asset {name!r} fails its own verification policy. Run '
                                  f'tools/mei_assets.py verify {asset.file} and repair it.')

@@ -65,8 +65,11 @@ $(foreach c,$(LANG_CARTS),$(eval $(call LANG_CART_RULE,$(notdir $(c:.mei=)))))
 # lists World Kit recipes, one repository path per line (# starts a comment). Each recipe is
 # built once into $(B)/worlds/<its folder>/ (the World Checker runs, report-only, and prints a
 # summary); tools/world_cart.py writes the sources it read to build.d, so editing any of them
-# rebuilds it. The cart's worlds and their games' GAME.game.akr are linked into
-# $(B)/cart-worlds/NAME/, which meic searches for imports (-I).
+# rebuilds it, as does an edit to the kit's Python (it can change any output). The Asset and
+# World Checkers' results are kept in $(B)/kit-cache/ by a hash of their inputs
+# (tools/worldkit/cache.py), so such a rebuild checks again only what changed. The cart's
+# worlds and their games' GAME.game.akr are linked into $(B)/cart-worlds/NAME/, which meic
+# searches for imports (-I).
 WORLD_CARTS := $(foreach c,$(LANG_CARTS),$(if $(wildcard carts/$(notdir $(c:.mei=))/worlds.txt),$(notdir $(c:.mei=))))
 CART_WORLDS = $(strip $(shell sed -e 's/\#.*//' carts/$(1)/worlds.txt))
 WORLD_BUILT = $(B)/worlds/$(patsubst %/,%,$(dir $(1)))/build.json
@@ -144,6 +147,7 @@ test: $(TESTS) $(B)/meiasm $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe $(B)
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldkit.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldkit.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_mochi.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_mochi.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldverify.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless SCENE_PROBE=$(B)/mei-scene-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldverify.py; fi
+	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldcache.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe SCENE_PROBE=$(B)/mei-scene-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldcache.py; fi
 	@if command -v python3 >/dev/null 2>&1 && python3 -c 'import numpy, PIL' 2>/dev/null; then echo "== tests/reference_renderer: stress scene, subdivision"; mkdir -p $(B)/reference_renderer; { $(RR_RUN) $(RR)/gen_scene.py && $(RR_RUN) $(RR)/oracle.py && $(RR_RUN) $(RR)/geometry_check.py; } > $(B)/reference_renderer/test.log 2>&1 || { tail -5 $(B)/reference_renderer/test.log; echo "FAILED: see $(B)/reference_renderer/test.log"; exit 1; }; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tools/check_generated.sh"; PYTHONDONTWRITEBYTECODE=1 ./tools/check_generated.sh; fi
 

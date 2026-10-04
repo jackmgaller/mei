@@ -862,6 +862,24 @@ outputs to the World Checker through one seam, `worldkit.build.run_gate(context)
 its result in the report. In `report` mode nothing fails; in `enforce` mode a failed check leaves
 the previous build in place with `verification.failed.json`.
 
+The checks run in parallel, one worker process per core (`MEI_KIT_JOBS=N` sets the number): the
+Asset Checker per asset and per level of detail, and the World Checker's ordering comparison per
+view. The results, and so `report.json`, are the ones a serial run gives. With `--cache DIR`
+(make passes `$(B)/kit-cache`) the build also keeps each Asset Checker verdict and the World
+Checker's result there, by a SHA-256 of everything the result depends on, and reuses them while
+it is unchanged (`tools/worldkit/cache.py`):
+
+| Result | Its key |
+|---|---|
+| Asset Checker verdict, per level of detail | The level's recipe (its nodes; the recipe's materials, prototypes, lighting, budget and verification policy, in their order) and its compiled mesh's bytes, the source of `assetkit/visibility.py` and every `tools/` module it imports, `meic`, `mei-asset-probe`, the standard library `meic` compiles with, the Python and NumPy versions |
+| World Checker result, with its `verification/` files | The pack's bytes, the world's name, verification mode and thresholds, the game's probe and `--world-checker`; the source of `worldkit/verify.py` and its imports, `meic`, `mei-headless`, `mei-scene-probe`, the standard library, Python and NumPy |
+
+A reused World Checker result records `verification_timing: {"cached": true}` in the build's
+result instead of its timings; nothing else differs. Errors (a missing tool) are never kept.
+The cache keeps the four most recent World Checker results per world and every verdict (a line
+of JSON each); deleting the directory is always safe. `tests/test_worldcache.py` checks that
+cached and parallel results equal a serial run's and that a change to any key input misses.
+
 **The pack format is specified in [WORLDPACK.md](WORLDPACK.md)** (version 1.3), byte by byte:
 header, sparse index, layers, regions, paths, cells, placements and their levels of detail, entities and their parameter
 records, collision blocks with precomputed rows and a lookup grid, and the mesh pool (meshes stay in the
@@ -907,7 +925,9 @@ Parallel to `mei_assets.py`: JSON on stdout for successes and failures (an error
 `message` and, as in [Recipe format](#recipe-format), `file`, `line` and `column` where they
 apply), exit 0 or 1, `-` for
 stdin (relative paths then resolve from the current directory), `--compiler`, `--runner` and
-`--probe` to use other builds, `--assets DIR` to use another asset directory.
+`--probe` to use other builds, `--assets DIR` to use another asset directory, and for `build` and
+`preview`, `--cache DIR` to keep and reuse the checkers' results ([Build outputs and the runtime
+contract](#build-outputs-and-the-runtime-contract)).
 
 | Command | Result |
 |---|---|
@@ -1012,8 +1032,11 @@ fn init() { assert(world_test_room_load()) }
 
 A world is rebuilt when its recipe, a cell file, its game schema, its ID lock file, an asset
 recipe, its cell or asset folder (a file added or removed), or the kit's Python changes:
-`build.d` beside the build records what the build read. Editing the cart's own files rebuilds
-only the cart. A recipe edit that adds a saved entity updates the ID lock file beside the recipe,
+`build.d` beside the build records what the build read. A kit change can change any output, so
+it rebuilds every world, but the checkers' results are kept in `build/kit-cache/` by a hash of
+their inputs, so a rebuild checks again only the assets and pack whose inputs changed: with
+nothing changed but the build's own Python, the garden rebuilds in seconds. Editing the cart's
+own files rebuilds only the cart. A recipe edit that adds a saved entity updates the ID lock file beside the recipe,
 which is then committed with it. Packs stay in the build directory; `make B=DIR` builds them
 into `DIR/worlds/`. Building a world needs Python 3.10 or later and NumPy (for the Asset and
 World Checkers).
