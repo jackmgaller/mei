@@ -542,6 +542,70 @@ class EntityViewTests(unittest.TestCase):
 
 
 @needs_tools
+class DepthModeTests(unittest.TestCase):
+    """A world drawn with the depth buffer (runtime depth; docs/WORLDCHECKER.md, "Depth mode"):
+    one pass judged by true depth, ordering a regression check that should find nothing."""
+
+    def run_check(self, world, s=None):
+        return V.verify(encode(world), s, tools=F.tools())
+
+    def test_defaults_and_settings(self):
+        plain = V.merge_settings({})
+        self.assertFalse(plain['runtime']['depth'])
+        self.assertIsNotNone(plain['sampling']['entities'])
+        d = V.merge_settings({'runtime': {'depth': True}})
+        self.assertIsNone(d['sampling']['entities'], 'entity cameras are off by default in depth mode')
+        kept = V.merge_settings({'runtime': {'depth': True}, 'sampling': {'entities': {'yaws': 2}}})
+        self.assertEqual(kept['sampling']['entities']['yaws'], 2)
+        with self.assertRaises(V.SettingsError):
+            V.merge_settings({'runtime': {'depth': 'yes'}})
+
+    def test_interpenetrating_geometry_and_objects_on_big_platforms(self):
+        s = settings(ENTITY_ONLY, vantage_points=F.VANTAGE_DEPTH, mode='strict')
+        plain = self.run_check(F.depth_world(), s)
+        depth = self.run_check(F.depth_world(), settings(s, runtime={'depth': True, 'perspective': True}))
+        if VERBOSE:
+            print('\n  depth world, ordering table:', json.dumps(plain['summary']),
+                  '\n  depth buffer:', json.dumps(depth['summary']))
+        # without depth: what the ordering table gets wrong is reported, and the report has no
+        # depth settings or statistics
+        self.assertFalse(plain['ok'])
+        self.assertNotIn('depth', plain['settings']['runtime'])
+        self.assertNotIn('depth', plain['views'][0]['stats'])
+        wrong = {}
+        for v in plain['views']:
+            for i in v['ordering']['issues']:
+                key = (i['drawn'].get('tag', i['drawn']['kind']), i['expected'].get('tag', i['expected']['kind']))
+                wrong[key] = wrong.get(key, 0) + i['pixels']
+        self.assertTrue(any({31, 32} == set(k) for k in wrong), wrong)      # the crossing boxes
+        self.assertTrue(any(k[1] == 'entity' for k in wrong), wrong)         # objects drawn over
+        self.assertGreater(sum(v['ordering']['ground_inversions'] for v in plain['views']), 0)  # the crate
+        # with depth: nothing wrong, every view checked, the same views and cameras
+        self.assertTrue(depth['ok'], depth['threshold_failures'][:3])
+        self.assertEqual(depth['summary']['views'], plain['summary']['views'])
+        for v in depth['views']:
+            o = v['ordering']
+            self.assertEqual((o['wrong_near_pixels'], o['wrong_far_pixels'], o['coverage_errors'],
+                              o['ground_inversions'], o['pass_inversions']), (0, 0, 0, 0, 0), v['camera'])
+            self.assertGreater(o['tested_pixels'], 5000)
+            st = v['stats']['depth']
+            self.assertEqual(st['zclears'], 1)
+            self.assertGreater(st['px_ztest'], 0)
+        self.assertEqual(depth['settings']['runtime']['depth'], True)
+        self.assertEqual(depth['static']['warnings'], [], 'no ground warnings in depth mode')
+        self.assertTrue(any(w['code'].startswith('ground') for w in plain['static']['warnings']))
+
+    def test_check_world_passes_the_runtime(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / 'w.world.bin'
+            p.write_bytes(encode(F.good_world()))
+            r = V.check_world({'pack': str(p), 'mode': 'report', 'thresholds': {}, 'checker': 10,
+                               'runtime': {'depth': True}, 'compiler': str(F.COMPILER)})
+        self.assertTrue(r['settings']['runtime']['depth'])
+        self.assertFalse(r['settings']['runtime']['perspective'])
+
+
+@needs_tools
 class TimingTests(unittest.TestCase):
     def test_timing_is_reported(self):
         r = V.verify(encode(F.good_world()), {'sampling': {'max_views': 20}}, tools=F.tools())

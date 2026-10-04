@@ -4,6 +4,11 @@ The native probe supplies projected integer XY and 16.16 W from the real vertex
 pipeline. Coverage is evaluated independently with the GPU's integer top-left
 rule. Visibility is selected by reciprocal depth, not ordering-table buckets.
 Colors, lighting and screenshot interpretation play no part in pass/fail.
+
+With the policy's `depth` (the asset is drawn with the depth buffer, docs/RENDERING.md) the cart
+draws as such a game does and depth order is a regression check of the depth test: faces count
+as a tie unless their depths differ by more than the depth key's precision (kitcore/depth.py),
+surface intersections and ordering cycles are not failures, coplanar overlaps still are.
 """
 from collections import Counter, defaultdict
 import hashlib
@@ -15,6 +20,7 @@ import struct
 import subprocess
 import tempfile
 
+from kitcore import depth as DEPTH
 from .compiler import compile_recipe, native_bytes
 from .geometry import AssetError
 from .geometry_audit import numpy, geometry_audit, face_ref
@@ -124,11 +130,13 @@ def raster_surfaces(mesh, sv, materials, margin=0.0):
     return surfaces
 
 
-def compare(mesh, surfaces, actual, graph=True, margin=0.0):
+def compare(mesh, surfaces, actual, graph=True, margin=0.0, key=0.0):
     """The view's verdict. With a margin (the World Checker's edge_margin), a pixel's depth order
     is judged only where the nearest face covers it at least `margin` pixels inside its outline
     and is nearer, by more than DEPTH_EPSILON, than every other face that comes within `margin`
-    of the pixel; other differing pixels are `undecided_pixels`. Coverage is always exact."""
+    of the pixel; other differing pixels are `undecided_pixels`. Coverage is always exact. key
+    (depth mode: kitcore.depth.KEY_TOLERANCE): two depths are a tie unless the farther exceeds
+    the nearer by more than this fraction of it, besides DEPTH_EPSILON."""
     np=numpy()
     nearest=np.full(320*240,np.inf);expected=np.full(320*240,-1,dtype=np.int32)
     actual_depth=np.full(320*240,np.inf)
@@ -152,13 +160,13 @@ def compare(mesh, surfaces, actual, graph=True, margin=0.0):
             for pix,z in ((s['pixels'],s['depth']),(s['ring'],s['ring_depth'])):
                 other=expected[pix]!=s['face']
                 np.minimum.at(rival,pix[other],z[other])
-        decided=deep&(rival>nearest+DEPTH_EPSILON)
+        decided=deep&(rival>nearest*(1+key)+DEPTH_EPSILON) if key else deep&(rival>nearest+DEPTH_EPSILON)
     coverage_bad=(covered!=(actual>=0))|((actual>=0)&~np.isfinite(actual_depth))
     differences=covered&(actual>=0)&(actual!=expected)&~coverage_bad
     delta=np.zeros(len(actual))
     comparable=differences&np.isfinite(actual_depth)
     delta[comparable]=actual_depth[comparable]-nearest[comparable]
-    wrong=comparable&(delta>DEPTH_EPSILON)
+    wrong=comparable&(delta>nearest*key+DEPTH_EPSILON) if key else comparable&(delta>DEPTH_EPSILON)
     bad=wrong&decided
     undecided=wrong&~decided
     ties=differences&~wrong
@@ -198,6 +206,12 @@ def compare(mesh, surfaces, actual, graph=True, margin=0.0):
             'issues':issues,'ordering_graph':graph_info},expected,actual,bad|coverage_bad
 
 
+DEPTH_SCOPE=('Opaque static mesh drawn with the depth buffer; sampled fitted cameras; native projected vertices and '
+             'exact integer coverage; independent reciprocal-depth selection. Depth ties within two steps of the depth '
+             'key (2/4096 of the depth) are allowed; surface intersections and ordering cycles are reported, not failed. '
+             'Near/guard clipping and animation are not certified. Unobserved faces are not proven safe.')
+
+
 def diagnostic_png(expected,actual,bad):
     np=numpy()
     def paint(ids):
@@ -226,6 +240,7 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
     policy={**DEFAULT_PROFILE,**recipe.get('verification',{}),**(profile or {})}
     policy.pop('required',None)
     validate(policy,VERIFICATION,'/verification')
+    depth,perspective=policy.get('depth',False),policy.get('perspective',False)
     geometry=geometry_audit(mesh)
     original=native_bytes(mesh,materials,recipe.get('lighting',{}))
     binary=identity_mesh(original)
@@ -249,7 +264,9 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
                     camera={'yaw':yaw,'pitch':pitch,'distance_scale':distance,'near':.1,'far':policy['far']}
                     code=source(name,base['bounds'],yaw,pitch,distance_scale=distance,world=world)
                     code='\n'.join(line for line in code.splitlines() if 'text(' not in line)
-                    code=code.replace('cls(rgb(24, 28, 36))','cls(0)\n    dither(false)')
+                    code=code.replace('cls(rgb(24, 28, 36))','cls(0)\n    dither(false)'+
+                                      ('\n'+DEPTH.cart_lines(depth,perspective).rstrip() if depth or perspective else ''))
+                    if depth or perspective:code=code.replace(f'import "{name}.akr"\n',f'import "{name}.akr"\n'+DEPTH.cart_import(depth,perspective))
                     code=re.sub(r'camera_clip\(0\.1, [^)]*\)',f"camera_clip(0.1, {policy['far']:.7f})",code)
                     (work/'check.akr').write_text(code+'\n')
                     run([compiler,work/'check.akr','-o',work/'check.mei','--sym',work/'check.sym'])
@@ -264,7 +281,8 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
                     actual=np.frombuffer(capture,dtype='<u2',count=320*240,offset=16+16*len(mesh.vertices))
                     if int(actual.max())>len(mesh.faces):raise AssetError('/verification/native','Probe returned an invalid triangle ID.')
                     surfaces=raster_surfaces(mesh,sv,materials,policy['edge_margin'])
-                    row,expected,actual_ids,bad=compare(mesh,surfaces,actual,margin=policy['edge_margin'])
+                    row,expected,actual_ids,bad=compare(mesh,surfaces,actual,graph=not depth,margin=policy['edge_margin'],
+                                                        key=DEPTH.KEY_TOLERANCE if depth else 0.0)
                     visible.update(row.pop('visible_faces'))
                     row.update(index=len(views),camera=camera)
                     row['native_triangles'],row['native_cpu_cycles']=struct.unpack_from('<II',capture,8)
@@ -276,6 +294,9 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
     totals={key:sum(v[key] for v in views) for key in ('tested_pixels','undecided_pixels','undecided_wrong_pixels','wrong_pixels','coverage_errors','depth_ties')}
     cycles=sum(bool(v['ordering_graph']['cycle']) for v in views)
     geometry_ok=geometry['ok'] or policy['geometry']=='warn'
+    if depth:
+        # the depth test draws crossing surfaces right; duplicates and coplanar overlaps z-fight
+        geometry_ok=geometry_ok or not set(geometry['counts'])-{'surface_intersection'}
     # coverage is judged at every covered pixel: an asset all of whose pixels lie within the edge
     # margin (a thin pole) passes on coverage alone, and its tested_pixels say so
     covered=totals['tested_pixels']+totals['undecided_pixels']
@@ -285,9 +306,13 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None):
             'depth_epsilon':DEPTH_EPSILON,'geometry':geometry,'totals':{**totals,'views':len(views),'cyclic_views':cycles},
             'faces':len(mesh.faces),'observed_faces':len(visible),'unobserved_faces':len(mesh.faces)-len(visible),
             'views':views,'images':images,
+            **({'depth_mode':{'depth':depth,'perspective':perspective,'key_steps':DEPTH.KEY_STEPS,
+                              'key_tolerance':DEPTH.KEY_TOLERANCE,
+                              'not_failures':['surface_intersection','ordering cycles']}}
+               if depth or perspective else {}),
             'native_tools':{'compiler_sha256':hashlib.sha256(compiler.read_bytes()).hexdigest(),
                             'probe_sha256':hashlib.sha256(probe.read_bytes()).hexdigest()},
-            'scope':'Opaque static mesh; sampled fitted cameras; native projected vertices and exact integer coverage; independent reciprocal-depth selection. Depth ties within two normalized 16.16 units are allowed. Near/guard clipping and animation are not certified. Unobserved faces are not proven safe.'}
+            'scope':DEPTH_SCOPE if depth else 'Opaque static mesh; sampled fitted cameras; native projected vertices and exact integer coverage; independent reciprocal-depth selection. Depth ties within two normalized 16.16 units are allowed. Near/guard clipping and animation are not certified. Unobserved faces are not proven safe.'}
     if 'lod' in recipe:
         # Each level of detail is checked as an asset of its own, with the same policy.
         from .compiler import level_recipe

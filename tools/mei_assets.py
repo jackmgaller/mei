@@ -142,6 +142,8 @@ def parser():
             cmd.add_argument('--yaw-range',help='Two camera yaws in degrees, FROM,TO: sample only that arc (an asset seen from one side).')
             cmd.add_argument('--edge-margin',type=float,help='Pixels near a face outline left undecided (default 1, as the World Checker; 0: every pixel).')
             cmd.add_argument('--scale',choices=['fit','world'],help='fit (default): scaled to about 2 units; world: at its own size, sorting as in a world.')
+            cmd.add_argument('--depth',action='store_true',help='Judge the asset as drawn with the depth buffer (policy depth: true).')
+            cmd.add_argument('--perspective',action='store_true',help='Draw it with perspective-correct texturing (policy perspective: true).')
     imp = sub.add_parser('import-obj',help='Convert OBJ geometry into an editable recipe; materials/UVs are not imported.')
     imp.add_argument('input')
     imp.add_argument('-o','--output',required=True)
@@ -184,6 +186,8 @@ def main(argv=None):
                 if args.far is not None:profile['far']=args.far
                 if args.scale is not None:profile['scale']=args.scale
                 if args.edge_margin is not None:profile['edge_margin']=args.edge_margin
+                if args.depth:profile['depth']=True
+                if args.perspective:profile['perspective']=True
                 if args.yaw_range is not None:profile['yaw_range_degrees']=[float(n) for n in args.yaw_range.split(',')]
                 for key in ('pitches','distances'):
                     if getattr(args,key) is not None:profile[key]=[float(n) for n in getattr(args,key).split(',')]

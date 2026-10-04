@@ -572,7 +572,7 @@ class BuildTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp)
             # Two boxes that cut through each other fail the Asset Checker's geometry audit.
-            ex.edit(lambda a: a['nodes'].append({'id': 'spike', 'op': 'box', 'size': [3, 0.2, 0.2],
+            ex.edit(lambda a: a['nodes'].append({'id': 'spike', 'op': 'box', 'size': [3.4, 0.2, 0.2],
                                                  'material': 'stone', 'transform': {'translate': [0, 1, 0]}}),
                     'assets/ledge_block.asset.json')
             ex.edit(lambda a: a.update(verification={'required': True, 'yaw_steps': 4, 'pitches': [0], 'distances': [1.5]}),
@@ -583,6 +583,21 @@ class BuildTests(unittest.TestCase):
             with self.assertRaisesRegex(WorldError, 'ledge_block'):
                 ex.build(Path(tmp)/'out')
             self.assertFalse((Path(tmp)/'out'/'test_room.world.bin').exists())
+            # In a world drawn with the depth buffer the crossing boxes are drawn right: its assets
+            # are checked in depth mode, and so is the world (docs/WORLDKIT.md, "Depth mode").
+            ex.edit(lambda w: w.update(runtime={'depth': True, 'perspective': True}))
+            if not (COMPILER.parent/'mei-scene-probe').exists():
+                return
+            report = ex.build(Path(tmp)/'out', checker=8)
+            self.assertEqual(report['assets']['ledge_block']['verified_with'], {'depth': True, 'perspective': True})
+            self.assertNotIn('verified_with', report['assets']['ramp'])
+            settings = report['verification']['settings']['runtime']
+            self.assertEqual((settings['depth'], settings['perspective']), (True, True))
+            self.assertEqual(report['verification']['summary']['views'], 8)
+            # an asset's own policy wins over the world's
+            ex.edit(lambda a: a['verification'].update(depth=False), 'assets/ledge_block.asset.json')
+            with self.assertRaisesRegex(WorldError, 'ledge_block'):
+                ex.build(Path(tmp)/'out', checker=8)
 
     @checker_ready
     def test_required_policies_run_and_are_recorded(self):

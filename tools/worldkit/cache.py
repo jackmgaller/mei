@@ -6,13 +6,14 @@ Nothing in the cache is ever trusted beyond its key, and a key covers all of a r
 
     Asset Checker verdict, per level of detail: the level's recipe (level_recipe(): its nodes,
     and the recipe's materials, prototypes, lighting, budget and verification policy, in their
-    order) and its compiled mesh's bytes, the Python source of the checker and of every tools/
+    order; the policy's depth and perspective included, the world's where the recipe sets
+    neither) and its compiled mesh's bytes, the Python source of the checker and of every tools/
     module it imports, meic, mei-asset-probe, the standard library meic compiles with, and the
     Python and NumPy versions.
-    World Checker result: the pack's bytes, the world's name, verification settings, game probe
-    and --world-checker option, the source of the checker and its imports, meic, mei-headless,
-    mei-scene-probe (beside meic, and the checker's defaults), the standard library, Python and
-    NumPy.
+    World Checker result: the pack's bytes, the world's name, verification settings, game probe,
+    --world-checker option and runtime (depth, perspective), the source of the checker and its
+    imports, meic, mei-headless, mei-scene-probe (beside meic, and the checker's defaults), the
+    standard library, Python and NumPy.
 
 A cache hit returns the stored result unchanged; tests/test_worldcache.py checks that a hit
 equals a fresh run and that a change to any input misses. The checks also run in parallel
@@ -246,7 +247,7 @@ def world_key(context, verify_module):
     std = stdlib_dir(compiler or tools['compiler'])
     return key_of({'version':VERSION,'code':code_hash(verify_module.__file__),
                    'pack':file_hash(context['pack']),
-                   'settings':{k:context.get(k) for k in ('world','mode','thresholds','probe','checker')},
+                   'settings':{k:context.get(k) for k in ('world','mode','thresholds','probe','checker','runtime')},
                    'natives':{k:file_hash(v) if v else None for k,v in natives.items()},
                    'stdlib':tree_hash(std),**runtime_versions()})
 

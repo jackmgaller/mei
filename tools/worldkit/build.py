@@ -90,7 +90,8 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
         raise WorldError('/cells',f'The ID lock file would change ({compiled.lock_changes}); --locked forbids it. '
                          'Build without --locked and commit NAME.ids.json.')
     # Every asset's own verification policy must pass before anything is written.
-    compiled.library.verify(compiler,probe,cache)
+    runtime = {k:v for k,v in source.world.get('runtime',{}).items() if k in ('depth','perspective') and v}
+    compiled.library.verify(compiler,probe,cache,runtime)
     for asset_name,asset in compiled.library.assets.items():
         compiled.report['assets'][asset_name] = asset.summary()
     files = {f'{name}.world.bin':compiled.pack,f'{name}.akr':compiled.akr.encode(),
@@ -119,6 +120,7 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
         context = {'world':name,'stage':str(stage),'pack':str(stage/f'{name}.world.bin'),'akr':str(stage/f'{name}.akr'),
                    'mode':settings.get('mode','report'),'thresholds':settings.get('thresholds',{}),
                    'probe':source.game['probe'],'report':compiled.report,'checker':checker,
+                   **({'runtime':runtime} if runtime else {}),
                    'compiler':str(compiler) if compiler else None,'runner':str(runner) if runner else None}
         gate = run_gate(context,cache)
         # Wall-clock timings would make report.json differ between identical builds.

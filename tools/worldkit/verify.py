@@ -20,7 +20,8 @@ Three groups of checks, all from the pack alone (plus optional names for reports
    dropped, packet arena use.
 3. Ordering: each view's triangle-ID picture against an independent reference that resolves
    true depth (verify_render.py), with the reader's passes (far stand-ins, ground, near) kept
-   apart as the reader draws them.
+   apart as the reader draws them; in depth mode (runtime depth: the game draws with the depth
+   buffer) one pass, a regression check of the depth test.
 
 Hard failures in every mode: dropped triangles, a full packet arena, static collision errors
 and broken references. Thresholds (budgets, wrong-order pixels, stand-ins) fail the check only
@@ -83,7 +84,8 @@ DEFAULTS = {
     },
     'vantage_points': [],               # {"position": [x, y, z], "yaw": deg, "pitch": deg}
     'runtime': {'far_ring': 3, 'clip_near': 0.1, 'near_far': None, 'draw_entities': True, 'ground_first': True,
-                'entity_drawing': 'object', 'object_bias': 1.5, 'object_squash': 2, 'lod': True, 'lod_fine': True},
+                'entity_drawing': 'object', 'object_bias': 1.5, 'object_squash': 2, 'lod': True, 'lod_fine': True,
+                'depth': False, 'perspective': False},     # render_depth(), render_perspective()
     'ordering': {'enabled': True, 'edge_margin': 1.0, 'depth_epsilon': 0.001, 'witnesses': 8},
     'collision': {'crack_samples_per_unit': 4.0, 'solid_ray_length': 32.0, 'findings': 50},
     'images': 6,
@@ -115,6 +117,22 @@ def merge_settings(settings):
         raise SettingsError('/mode', "must be 'report' or 'strict'")
     if out['runtime']['entity_drawing'] not in ('object', 'mesh_at'):
         raise SettingsError('/runtime/entity_drawing', "must be 'object' or 'mesh_at'")
+    for k in ('depth', 'perspective'):
+        if not isinstance(out['runtime'][k], bool):
+            raise SettingsError(f'/runtime/{k}', 'must be true or false')
+    # Depth mode: the cameras aimed at entities look for what the ordering table gets wrong
+    # around small objects, which the depth test does not; they are off unless asked for.
+    if out['runtime']['depth'] and 'entities' not in ((settings or {}).get('sampling') or {}):
+        out['sampling']['entities'] = None
+    return out
+
+
+def shown_settings(cfg):
+    """The settings as the report lists them: runtime depth and perspective only when either is
+    on, so that a report without them is the one the checker made before they existed."""
+    out = copy.deepcopy(cfg)
+    if not (cfg['runtime']['depth'] or cfg['runtime']['perspective']):
+        del out['runtime']['depth'], out['runtime']['perspective']
     return out
 
 
@@ -427,7 +445,7 @@ def _view_context(pack, names, cfg, rt, groups):
     return {'pack': pack, 'names': names, 'cfg': cfg, 'rt': rt, 'groups': groups, 'insts': insts,
             'meshes': meshes, 'by_cell': by_cell, 'describe': _describe(names),
             'lod_pack': any(p.get('lod') for c in pack.cells.values() for p in c.placements),
-            'order_cfg': {**cfg['ordering'], 'near_band': cfg['thresholds']['near_band']}}
+            'order_cfg': {**cfg['ordering'], 'near_band': cfg['thresholds']['near_band'], 'depth': rt['depth']}}
 
 
 def _view_row(ctx, g, v, rec, rec2, out_dir):
@@ -455,16 +473,21 @@ def _view_row(ctx, g, v, rec, rec2, out_dir):
                     'triangles': st['tris'],
                     'triangles_dropped': max(st['tris_dropped'], st2['tris_dropped']),
                     'arena_bytes': out['arena_bytes'],
-                    'arena_full': min(out['arena_left'], out2['arena_left']) < RD.ARENA_FULL,
+                    'arena_full': min(out['arena_left'], out2['arena_left']) < (
+                        RD.ARENA_FULL_DEPTH if rt['depth'] or rt['perspective'] else RD.ARENA_FULL),
                     'placements_drawn': out['drawn'], 'ground_drawn': out['ground'],
                     'standins_drawn': out['standins'], 'entities_drawn': out['entities'],
                     'coarse_drawn': out['coarse'], 'lod_culled': out['lod_culled']}
+    if rt['depth'] or rt['perspective']:
+        row['stats']['depth'] = {k: st[k] for k in RD.DEPTH_STATS}
     sel = None
     if lod_pack:
         sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
         row['heaviest'] = _heaviest(pack, sel, meshes, v['eye'], names)
     if cfg['ordering']['enabled'] and ids_ok:
-        near_planes = {'near': rt['clip_near'], 'ground': rt['clip_near'], 'far': S / 2}
+        # in depth mode wp_draw() draws the stand-ins over the near pass's clip range too
+        near_planes = {'near': rt['clip_near'], 'ground': rt['clip_near'],
+                       'far': rt['clip_near'] if rt['depth'] else S / 2}
         if sel is None:
             sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt)
         faces = RD.view_faces(pack, meshes, sel, out2['vp'], out2['origin'], first, near_planes)
@@ -531,7 +554,8 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
     cfg = merge_settings(settings)
     th = cfg['thresholds']
     tools = {**default_tools(), **(tools or {})}
-    report = {'format': 'mei-world-check', 'version': 1, 'ok': False, 'mode': cfg['mode'], 'settings': cfg,
+    report = {'format': 'mei-world-check', 'version': 1, 'ok': False, 'mode': cfg['mode'],
+              'settings': shown_settings(cfg),
               'hard_failures': [], 'threshold_failures': []}
     timing = {}
     try:
@@ -564,7 +588,7 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         ncrack += n
     ents, nent = ST.entity_check(pack, tris, cfg['collision'], lim)
     ref_err, ref_warn = ST.reference_check(pack, rt['far_ring'])
-    if rt['ground_first']:
+    if rt['ground_first'] and not rt['depth']:     # the depth test draws ground in its place
         ref_warn += ST.ground_check(pack, rt['near_far'], lim)
     cells, regions = ST.counts(pack)
     static['collision'] = {'triangles': len(tris), 'boundary_edges': nedges, 'findings': cracks[:lim],
@@ -653,7 +677,8 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
                 work = Path(tmp) / f'group{g}'
                 work.mkdir()
                 t1 = time.perf_counter()
-                recs, tm = RD.run_cart(bytes(pack.data), idp, gviews, rt, tools, work)
+                recs, tm = RD.run_cart(bytes(pack.data), idp, gviews, rt, tools, work,
+                                       RD.swatch_rows(meshes.values()))
                 t_native += time.perf_counter() - t1
                 compile_s += tm['compile_seconds']
                 run_s += tm['run_seconds']
@@ -743,7 +768,7 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         'threshold_failures': len(report['threshold_failures']),
     }
     report['ok'] = not report['hard_failures'] and (cfg['mode'] == 'report' or not report['threshold_failures'])
-    report['scope'] = ('Static collision checks use the reader\'s exact floor query at sampled points. '
+    report['scope'] = (DEPTH_SCOPE if rt['depth'] else 'Static collision checks use the reader\'s exact floor query at sampled points. '
                        'Views are sampled, not exhaustive. Ordering compares pixels at least edge_margin '
                        'pixels inside the nearest face and clear of every other face that could be nearer; '
                        'other pixels are counted as undecided. Ground placements are expected behind '
@@ -762,6 +787,15 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         out.mkdir(parents=True, exist_ok=True)
         (out / 'world-check.json').write_text(json.dumps(report, indent=1) + '\n')
     return report
+
+
+DEPTH_SCOPE = ('Static collision checks use the reader\'s exact floor query at sampled points. Views are '
+               'sampled, not exhaustive. Depth mode: every pass is judged as one, by depth, as the depth test '
+               'draws it; ordering compares pixels at least edge_margin pixels inside the nearest face where it '
+               'is nearer than every other face by more than two steps of the depth key and half a pixel of '
+               'each face\'s depth slope; other pixels, coplanar faces among them, are counted as undecided. '
+               'Semi-transparent and non-swatch textured faces are never the expected face. '
+               'See docs/WORLDCHECKER.md.')
 
 
 def _heaviest(pack, sel, meshes, eye, names, n=5):
@@ -823,13 +857,17 @@ def check_world(context):
     ('report' or 'enforce', which is this checker's 'strict') and 'thresholds', the game's
     'probe', the staging directory ('stage', where the report and images go, under
     verification/) and optionally the 'compiler' to use (mei-scene-probe is looked for beside
-    it), and 'checker' (a number: sample at most that many views; build --world-checker N).
+    it), 'checker' (a number: sample at most that many views; build --world-checker N) and
+    'runtime' (the recipe's runtime: depth and perspective, how the game draws the world).
     Returns the report, or {'ok': False, 'errors': [...]} when the check could not run."""
     mode = context.get('mode') or 'report'
     settings = {'mode': 'strict' if mode == 'enforce' else mode,
                 'thresholds': dict(context.get('thresholds') or {})}
     if isinstance(context.get('checker'), int):     # build --world-checker N: a reduced sample
         settings['sampling'] = {'max_views': context['checker']}
+    runtime = {k: bool(v) for k, v in (context.get('runtime') or {}).items() if k in ('depth', 'perspective')}
+    if runtime:                                     # the recipe's runtime.depth, runtime.perspective
+        settings['runtime'] = runtime
     probe = {k: v for k, v in (context.get('probe') or {}).items() if k in DEFAULTS['probe']}
     if probe:
         settings['probe'] = {**DEFAULTS['probe'], **probe}
