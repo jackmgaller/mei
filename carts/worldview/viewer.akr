@@ -46,6 +46,7 @@ var overlay = true
 var message: *u8           // a short note in the overlay ("no floor below")
 var message_t: s32
 var tick: s32
+var entities: s32          // entity meshes drawn in the last frame
 
 var pad_now: u32
 var pad_prev: u32
@@ -156,28 +157,10 @@ fn update() {
 
 // ---- drawing
 
-// The entities' own meshes (a coin), which wp_draw() leaves to the game, in the 3 x 3 cells.
-fn draw_entities() {
-    let o = wp_view_origin()
-    let ci = wp_cell_index(eye.x)
-    let cj = wp_cell_index(eye.z)
-    for dj in -1..2 {
-        for di in -1..2 {
-            let c = wp_cell(ci + di, cj + dj)
-            if c == null { continue }
-            for k in 0..c.entity_count as s32 {
-                let e = wp_cell_entity(c, k)
-                let m = wp_entity_mesh(e)
-                if m != null && wp_entity_live(e) { mesh_at(m, wp_entity_pos(e) - o, e.yaw) }
-            }
-        }
-    }
-}
-
 fn draw() {
     if variant == 0 { cls(rgb(110, 150, 200)) } else { cls(rgb(20, 24, 48)) }
     wp_draw(eye, yaw, pitch)
-    draw_entities()
+    entities = wp_draw_entities()      // the entities' meshes (a coin): wp_draw() leaves them
     if overlay { draw_overlay() }
 }
 

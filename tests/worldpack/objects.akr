@@ -1,0 +1,56 @@
+// Objects drawn into the world (docs/WORLDPACK.md, "Objects"): one fixed view of PACK on every
+// frame, the camera at (EX, EY, EZ) looking along YAW and PITCH, its entities' meshes drawn as
+// MODE says: 0 with mesh_at() (sorted by their own depth alone), 1 with wp_draw_entities(), 2 with
+// wp_draw_object() and bounds worked out once (as a game draws its character), 3 not at all.
+// Prints how many it drew and the cycles that took, and what wp_mesh_bounds() costs. A test
+// fixture, not a game: the wrapper tests/test_worldpack.py writes defines the constants and
+// embeds PACK.
+
+import "worldpack.akr"
+
+var bounds: [4]vec2
+
+fn init() {
+    assert(wp_open(PACK))
+    wp_object_bias = BIAS
+    dither(false)
+    let c = wp_cell(0, 0)
+    for k in 0..c.entity_count as s32 { bounds[k] = wp_mesh_bounds(wp_entity_mesh(wp_cell_entity(c, k))) }
+}
+
+fn draw() {
+    cls(rgb(0, 0, 0))
+    wp_draw(vec3(EX, EY, EZ), YAW, PITCH)
+    let c = wp_cell(0, 0)
+    var n = 0
+    let c0 = cycle_count()
+    if MODE == 0 {
+        for k in 0..c.entity_count as s32 {
+            let e = wp_cell_entity(c, k)
+            mesh_at(wp_entity_mesh(e), wp_entity_pos(e) - wp_view_origin(), e.yaw)
+            n += 1
+        }
+    } else if MODE == 1 {
+        n = wp_draw_entities()
+    } else if MODE == 2 {
+        for k in 0..c.entity_count as s32 {
+            let e = wp_cell_entity(c, k)
+            let p = wp_entity_pos(e)
+            if wp_draw_object(wp_entity_mesh(e), p, e.yaw, bounds[k].x, p.y + bounds[k].y) { n += 1 }
+        }
+    }
+    let c1 = cycle_count()
+    let b = wp_mesh_bounds(wp_entity_mesh(wp_cell_entity(c, 0)))
+    let c2 = cycle_count()
+    print("drawn ")
+    print_int(n)
+    print(" cycles ")
+    print_int(c1 - c0)
+    print(" bounds ")
+    print_int(c2 - c1)
+    print(" ")
+    print_int((b.x * 1000.0) as s32)
+    print(" ")
+    print_int((b.y * 1000.0) as s32)
+    println("")
+}

@@ -1,19 +1,23 @@
 // The world pack reader (docs/WORLDPACK.md): a world of square cells read in place from ROM.
 // It answers geometric questions only: which cell holds a point, what to draw (far stand-ins,
 // then the near ground, then the rest near the camera; culled by bounding sphere, layers applied,
-// camera-relative), what is under, above or beside
-// a point, where a segment first hits, and which entities become active or inactive. What
-// entities, surfaces and layers mean is the game's.
+// camera-relative), how to draw small objects into it (entities, the player's character), what is
+// under, above or beside a point, where a segment first hits, and which entities become active or
+// inactive. What entities, surfaces and layers mean is the game's.
 //
 // Not part of the prelude: a cart that reads a pack says `import "worldpack.akr"`.
 //
 //   embed CITY: u8 = "city.world.bin"
-//   fn init() { wp_open(CITY) }
+//   var hero_b: vec2                                   // the hero mesh's radius and lowest point
+//   fn init() {
+//       wp_open(CITY)
+//       hero_b = wp_mesh_bounds(HERO)
+//   }
 //   fn draw() {
 //       cls(SKY)
 //       wp_draw(eye, yaw, pitch)                       // the world, around the camera's cell
-//       let o = wp_view_origin()                       // the frame's origin: draw relative to it
-//       mesh_at(HERO, hero_pos - o, hero_yaw)
+//       wp_draw_entities()                             // the live entities' meshes
+//       wp_draw_object(HERO, hero_pos, hero_yaw, hero_b.x, hero_pos.y + hero_b.y)
 //   }
 //
 // Coordinates given to and returned by wp_* functions are world coordinates (fixed, Y up). The
@@ -211,8 +215,11 @@ var wp_near_far: fixed     // the near pass's far depth (wp_open: 1.5 cells)
 var wp_far_ring: s32 = 3   // the far pass draws stand-ins out to this many cells (< 2: none)
 var wp_region_loaded: s32 = -1  // near cells of other regions draw as stand-ins (-1: any)
 var wp_ground_first: bool = true  // draw ground placements in a pass of their own, first
+var wp_object_bias: fixed = 1.5  // wp_draw_object(): units nearer it sorts an object the eye is above
+var wp_object_squash: s32 = 2    // wp_draw_object(): how much it squashes an object's own depths
 
 var __wp_ground: bool      // the pack is 1.1 or later and has ground placements
+var __wp_eye_y: fixed      // the last wp_draw()'s eye height (world)
 
 var __wp_base: u32
 var __wp_shift: s32
@@ -367,6 +374,7 @@ fn wp_draw(eye: vec3, yaw: fixed, pitch: fixed) {
     let cj = wp_cell_index(eye.z)
     __wp_origin = vec3(fixed(ci << __wp_shift) + __wp_half, 0.0, fixed(cj << __wp_shift) + __wp_half)
     let local = eye - __wp_origin
+    __wp_eye_y = eye.y
     wp_stats = WpStats {}
     let size = __wp_half * 2
     let r = wp_far_ring
@@ -487,6 +495,110 @@ fn __wp_placements(c: *WpCell, di: s32, dj: s32, k0: s32, k1: s32) -> s32 {
     }
     wp_stats.drawn += drawn
     return drawn
+}
+
+// ---- objects in the world (docs/WORLDPACK.md, "Objects")
+//
+// A small object drawn in the near pass sorts badly against the large faces it stands on or
+// floats above: a platform's top sorts by its average depth, which can be nearer than the object
+// although the object is in front of it at every pixel they share. wp_draw_object() draws an
+// object's mesh as a unit keyed at its nearest point (depth_key, squashed wp_object_squash times),
+// and, while the eye is above the object's base, wp_object_bias units nearer still (never nearer
+// than the near plane). wp_object_squash 1 keeps the object's own depths and shifts them by the
+// bias alone. Whatever lies wholly below the base is behind the object from such an eye, so the
+// bias cannot be wrong against it; what it gets wrong is a face above the base truly in front of
+// the object and less than about wp_object_bias + its radius from it (a thin wall, a post, a
+// platform seen through from above).
+
+// The sphere around a mesh's origin that holds its vertices, as a radius (x), and its lowest
+// vertex's height (y), in its own units: what wp_draw_object() wants, for a mesh the cart draws
+// often (its character's), worked out once. A scan of the vertices: about 17 cycles each and 260
+// more.
+fn wp_mesh_bounds(m: *Mesh) -> vec2 {
+    let s = __wp_scan((m as u32 + m.verts) as *vec4, m.nverts as s32)
+    return vec2(sqrt(max(s.x - 1.0, 0.0)) + 0.0078125, s.y)      // (vertices have w = 1)
+}
+
+// The largest dot(v, v) (x) and the lowest y (y) of n vertices.
+asm fn __wp_scan(v: *vec4, n: s32) -> vec2 {
+    vsub v0, v0, v0
+    beq  {n}, r0, .done
+    vld  v0, [{v}+0]
+    vget r7, v0, 1              ; the lowest y so far
+    mov  r6, r0                 ; the largest square so far
+    shli r5, {n}, 4
+    add  r5, r5, {v}            ; the end
+.loop:
+    vld  v0, [{v}+0]
+    vdot r8, v0, v0
+    bge  r6, r8, .a
+    mov  r6, r8
+.a:
+    vget r8, v0, 1
+    bge  r8, r7, .b
+    mov  r7, r8
+.b:
+    addi {v}, {v}, 16
+    bltu {v}, r5, .loop
+    vset v0, r6, 0
+    vset v0, r7, 1
+.done:
+}
+
+// Draws mesh m at world position pos turned by yaw (as mesh_at() would, relative to
+// wp_view_origin()), as an object standing on or floating above the world: an entity's mesh, a
+// pickup, the player's character. Call it after wp_draw(), in the same frame. radius: the sphere
+// around pos that holds the mesh (culled against the near pass's view volume; 0: never culled,
+// and keyed at pos); base: the world height of its lowest point (its feet). Returns whether it
+// was drawn. Leaves depth_key off; adds to the cart's own depth_bias.
+fn wp_draw_object(m: *Mesh, pos: vec3, yaw: fixed, radius: fixed, base: fixed) -> bool {
+    let t = pos - __wp_origin
+    if radius > 0.0 && !__wp_visible(vec4(t.x, t.y, t.z, radius)) { return false }
+    let near = view_depth(t) - radius
+    var w = near
+    if __wp_eye_y > base { w -= min(wp_object_bias, max(w - wp_clip_near, 0.0)) }
+    if wp_object_squash > 1 {
+        depth_key(w, wp_object_squash)
+        __wp_mesh(m, vec4(t.x, t.y, t.z, 0.0), cos(yaw), sin(yaw))
+        depth_key_off()
+    } else {
+        let user = __ot_user        // no key: the bias alone
+        depth_bias(user - ((near - w) * buckets_per_unit()) as s32)
+        __wp_mesh(m, vec4(t.x, t.y, t.z, 0.0), cos(yaw), sin(yaw))
+        depth_bias(user)
+    }
+    return true
+}
+
+// Draws an entity's mesh with wp_draw_object(), if it has one and is live; its sphere and base
+// come from its mesh (wp_mesh_bounds) and its position. Returns whether it was drawn.
+fn wp_entity_draw(e: *WpEntity) -> bool {
+    if e.mesh == 0 || !wp_entity_live(e) { return false }
+    let m = (__wp_base + e.mesh) as *Mesh
+    let b = wp_mesh_bounds(m)
+    let p = wp_entity_pos(e)
+    return wp_draw_object(m, p, e.yaw, b.x, p.y + b.y)
+}
+
+// Draws the meshes of the live entities in the 3 x 3 cells the last wp_draw() drew (culled, as
+// wp_entity_draw()). Returns how many it drew. A game that spawns its entities as objects of its
+// own draws those instead, with wp_draw_object().
+fn wp_draw_entities() -> s32 {
+    let ci = wp_cell_index(__wp_origin.x)
+    let cj = wp_cell_index(__wp_origin.z)
+    var n = 0
+    for dj in -1..2 {
+        for di in -1..2 {
+            let c = wp_cell(ci + di, cj + dj)
+            if c == null || c.entity_count == 0 { continue }
+            var e = (__wp_base + c.entity_off) as *WpEntity
+            for k in 0..c.entity_count as s32 {
+                if e.mesh != 0 && wp_entity_draw(e) { n += 1 }
+                e = e + 1
+            }
+        }
+    }
+    return n
 }
 
 // ---- collision in a block's own frame

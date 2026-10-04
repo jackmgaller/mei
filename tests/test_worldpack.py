@@ -815,6 +815,84 @@ class GroundTests(unittest.TestCase):
         self.assertEqual((old_line, old_red), (off_line, off_red), 'a 1.0 reading is one near pass')
 
 
+GREEN = meshlib_rgb(40, 250, 40)
+
+
+def object_test_world(platform=True, coin=True, pair=False):
+    """A ledge like test_room's (a 3 x 2 x 3 block of triangles, grey) on ground (flagged ground,
+    blue), and a coin (an entity, green; fixture.coin_mesh()) floating 0.2 above it, for
+    tests/worldpack/objects.akr. pair adds a second coin (red) beside the first."""
+    c = Cell(0, 0)
+    g = F.meshlib.Mesh()
+    a, b, cc, d = g.vertex(-16, 0, -16), g.vertex(16, 0, -16), g.vertex(-16, 0, 16), g.vertex(16, 0, 16)
+    g.quad([a, b, cc, d], [meshlib_rgb(40, 40, 200)])
+    c.placements.append(Placement(g.pack(), (16, 0, 16), tag=1, ground=True))
+    if platform:
+        c.placements.append(Placement(F.tri_box_mesh((-1.5, 0, -1.5), (1.5, 2, 1.5), meshlib_rgb(140, 140, 140)),
+                                      (16, 0, 16), tag=2))
+    if coin:
+        c.entities.append(Entity(1, (16, 2.5, 16), mesh=F.coin_mesh(GREEN)))
+    if pair:
+        c.entities.append(Entity(1, (16.45, 2.5, 16.3), mesh=F.coin_mesh(meshlib_rgb(250, 40, 40))))
+    return World(cells=[c], cell_shift=5)
+
+
+@needs_tools
+class ObjectTests(unittest.TestCase):
+    """wp_draw_object() on the console (tests/worldpack/objects.akr): a coin above a ledge is
+    overdrawn by the ledge's top when sorted by its own depth, and whole when drawn as an object;
+    from below the ledge's top the ledge's side still hides it."""
+    ABOVE = (16.812, 3.1339, 14.9097, 323.325, -25.0)     # 1.5 units from the coin, above it
+    FOLLOW = (13.4, 4.6, 19.5, 143.3, -25.0)             # a follow camera's distance
+    BELOW = (13.6, 1.8, 15.5, 76.0, 12.0)                # below the ledge's top, looking up
+
+    def shot(self, view, mode, platform=True):
+        ex, ey, ez, yd, pd = view
+        with tempfile.TemporaryDirectory() as tmp:
+            dump = Path(tmp) / 'shot.ppm'
+            lines = F.run_cart(tmp, 'objects.akr', {'PACK': ('u8', encode(object_test_world(platform=platform)))},
+                               {'MODE': mode, 'EX': ex, 'EY': ey, 'EZ': ez, 'YAW': math.radians(yd),
+                                'PITCH': math.radians(pd), 'BIAS': 1.5}, frames=2, dump=dump)
+            w, h, px = F.read_ppm(dump)
+        green = sum(1 for k in range(w * h) if px[3 * k + 1] > 200 and px[3 * k] < 100)
+        f = lines[-1].split()       # drawn N cycles C bounds C radius low (thousandths)
+        st = dict(zip(f[0:6:2], (int(x) for x in f[1:6:2])))
+        st['radius'], st['low'] = int(f[6]), int(f[7])
+        return green, st
+
+    def test_an_object_on_a_ledge(self):
+        for name, view in (('above', self.ABOVE), ('follow', self.FOLLOW), ('below', self.BELOW)):
+            alone, _ = self.shot(view, 1, platform=False)
+            plain, st0 = self.shot(view, 0)
+            entities, st1 = self.shot(view, 1)
+            character, st2 = self.shot(view, 2)
+            if VERBOSE:
+                print(f'\n  {name}: coin alone {alone}, mesh_at {plain}, wp_draw_entities {entities}, '
+                      f'wp_draw_object {character}; cycles {st0["cycles"]}, {st1["cycles"]}, {st2["cycles"]}, '
+                      f'wp_mesh_bounds {st1["bounds"]}')
+            self.assertGreater(alone, 300)
+            self.assertEqual(entities, character)
+            self.assertEqual((st0['drawn'], st1['drawn'], st2['drawn']), (1, 1, 1))
+            if name == 'below':
+                self.assertEqual(entities, plain, 'from below the top, sorted as before')
+                self.assertLess(entities, alone - 50, 'the ledge hides the bottom of the coin')
+            else:
+                self.assertEqual(entities, alone, 'the whole coin is drawn over the ledge')
+                self.assertLess(plain, alone - 40, 'by its own depth, the top is drawn over the coin')
+        # the costs: wp_draw_object() over mesh_at(), and the bounds scan (100 vertices)
+        self.assertLess(st2['cycles'] - st0['cycles'], 400)
+        self.assertLess(st1['bounds'], 100 * 18 + 300)
+        self.assertEqual((st1['radius'], st1['low']), (310, -286))     # sqrt(0.3^2 + 0.04^2) + 1/128
+
+    def test_an_object_out_of_view_is_culled(self):
+        _, st = self.shot((16.0, 3.0, 22.0, 0.0, 0.0), 1)        # looking away from the coin
+        _, st0 = self.shot((16.0, 3.0, 22.0, 0.0, 0.0), 0)
+        if VERBOSE:
+            print(f'\n  culled: wp_draw_entities {st["cycles"]} cycles, mesh_at {st0["cycles"]}')
+        self.assertEqual((st['drawn'], st0['drawn']), (0, 1))
+        self.assertLess(st['cycles'], st0['cycles'] - st['bounds'] / 2)     # most of it the bounds scan
+
+
 class CostTests(unittest.TestCase):
     """Cycles per query and per frame in fixture.bench_world(): a 64-unit cell holds 2,128
     floors, 320 walls and 80 ceilings (a heightfield of 2-unit quads and 40 buildings), and 100
