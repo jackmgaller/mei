@@ -41,13 +41,14 @@ const MAX_MESH_VERTS = 2048
 // ---- state
 
 var __ot: [1024]u32
+var __sv: [2192]ivec4      // transformed vertices (see __xform); 2048.. is subdiv.akr scratch,
+                           // 2176.. clip.akr scratch. Declared early, so that it and __ot lie
+                           // within an immediate's reach (__draw_faces_safe addresses them so).
 var __arena: [40960]u32
 var __arena_ptr: *u32
 var __arena_end: *u32
 var __ui_head: u32
 var __ui_tail: *u32
-var __sv: [2192]ivec4      // transformed vertices (see __xform); 2048.. is subdiv.akr scratch,
-                           // 2176.. clip.akr scratch
 var __vp: mat4             // view-projection matrix
 var __fx: fixed = 1.299
 var __fy: fixed = 1.732
@@ -118,8 +119,10 @@ import "clip.akr"
 // Transforms n vertices by the matrix and projects them into __sv, three at a time (vxp3):
 // lane 0 is 1 when screen x and y are both within -1000..999 (the guard band, see clip.akr)
 // and 0 otherwise, lane 1 the fog amount 0..1.0 (16.16; unused without fog), lane 2 the
-// packed screen position (x & 0xFFFF) | (y << 16), lane 3 the view depth w. Returns 1 when
-// every vertex is inside the guard band. 26 cycles per vertex, 40 with fog.
+// packed screen position (x & 0xFFFF) | (y << 16), lane 3 the view depth w. Returns bit 0 set
+// when every vertex is inside the guard band and, without fog, bit 1 set when every vertex is
+// in front of the near plane (w >= near; with fog bit 1 is 0). 29 cycles per vertex, 40 with
+// fog.
 asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) -> s32 {
     vld  v4, [{m}+0]
     vld  v5, [{m}+16]
@@ -136,6 +139,8 @@ asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) -> s32 {
     sw   r12, [sp+12]
     addi r9, r0, 2000           ; x + 1000 < 2000 unsigned: -1000 <= x <= 999
     addi r10, r0, 1             ; all inside so far
+    lw   r11, [r0+{__cam_near}]
+    mov  r12, r0                ; none behind the near plane so far
     vsub v3, v3, v3
     addi r7, r0, 1000
     vset v3, r7, 0
@@ -160,6 +165,9 @@ asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) -> s32 {
     and  r7, r7, r8
     vset v0, r7, 0
     and  r10, r10, r7
+    vget r8, v0, 3
+    slt  r8, r8, r11            ; behind the near plane
+    or   r12, r12, r8
     vadd v1, v1, v3           ; x + 1000, y + 1000
     vget r7, v1, 0
     sltu r7, r7, r9             ; x in the guard band
@@ -168,6 +176,9 @@ asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) -> s32 {
     and  r7, r7, r8
     vset v1, r7, 0
     and  r10, r10, r7
+    vget r8, v1, 3
+    slt  r8, r8, r11            ; behind the near plane
+    or   r12, r12, r8
     vadd v2, v2, v3           ; x + 1000, y + 1000
     vget r7, v2, 0
     sltu r7, r7, r9             ; x in the guard band
@@ -176,6 +187,9 @@ asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) -> s32 {
     and  r7, r7, r8
     vset v2, r7, 0
     and  r10, r10, r7
+    vget r8, v2, 3
+    slt  r8, r8, r11            ; behind the near plane
+    or   r12, r12, r8
     vst  v0, [{dst}+0]
     bgeu {src}, r6, .part     ; (only the last one or two)
     vst  v1, [{dst}+16]
@@ -185,7 +199,7 @@ asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) -> s32 {
     bltu {src}, r6, .loop
 .tail:
     ; one or two left: through the same code, padded with copies that are not stored
-    beq  {src}, r5, .end
+    beq  {src}, r5, .nend
     vld  v0, [{src}+0]
     vmov v1, v0
     vmov v2, v0
@@ -195,8 +209,12 @@ asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) -> s32 {
     jmp  .x
 .part:
     addi r7, {src}, 16
-    beq  r7, r5, .end
+    beq  r7, r5, .nend
     vst  v1, [{dst}+16]
+.nend:
+    xori r12, r12, 1
+    shli r12, r12, 1
+    or   r10, r10, r12          ; bit 1: none behind the near plane
     jmp  .end
 .fog:
     lw   r11, [r0+{__fog_near}]
@@ -302,6 +320,65 @@ asm fn __xform(src: *vec4, n: s32, dst: *ivec4, m: *mat4) -> s32 {
     addi sp, sp, 16
 }
 
+// __xform for a mesh that needs no clipping (__draw_mesh_safe): lanes 2 and 3 as __xform writes
+// them (the packed screen position and w), lanes 0 and 1 the screen x and y, no guard-band mark
+// and no fog amount. 17 cycles per vertex.
+asm fn __xform_safe(src: *vec4, n: s32, dst: *ivec4, m: *mat4) {
+    vld  v4, [{m}+0]
+    vld  v5, [{m}+16]
+    vld  v6, [{m}+32]
+    vld  v7, [{m}+48]
+    shli r5, {n}, 4
+    add  r5, r5, {src}          ; the end of the vertices
+    addi r6, r5, -32            ; three or more are left while src < end - 32
+    bgeu {src}, r6, .tail
+.loop:
+    vld  v0, [{src}+0]
+    vld  v1, [{src}+16]
+    vld  v2, [{src}+32]
+    vxp3 v0, v0
+    vst  v0, [{dst}+0]
+    vst  v1, [{dst}+16]
+    vst  v2, [{dst}+32]
+    addi {src}, {src}, 48
+    addi {dst}, {dst}, 48
+    bltu {src}, r6, .loop
+.tail:
+    ; one or two left
+    beq  {src}, r5, .end
+    vld  v0, [{src}+0]
+    vmov v1, v0
+    addi r7, {src}, 16
+    beq  r7, r5, .one
+    vld  v1, [{src}+16]
+.one:
+    vxp3 v0, v0
+    vst  v0, [{dst}+0]
+    beq  r7, r5, .end
+    vst  v1, [{dst}+16]
+.end:
+}
+
+// Whether the packet arena has room for nf faces of the largest kind (52 bytes each): then
+// __draw_faces_safe need not test it face by face.
+fn __arena_room(nf: s32) -> bool { return ((__arena_end as u32) - (__arena_ptr as u32)) as s32 >= nf * 52 }
+
+// Draws a mesh that the caller knows needs no clipping: every vertex in front of the near plane
+// and inside the guard band (worldpack.akr proves it from a placement's bounding sphere). The
+// same packets as __draw_mesh, made by the loops that skip those tests (__xform_safe,
+// __draw_faces_safe); a mesh with texture windows, fog, subdivide() or too little packet memory
+// left for all its faces goes to __draw_mesh instead.
+fn __draw_mesh_safe(m: *Mesh, mvp: mat4) {
+    let nf = m.nfaces as s32
+    if m.windows != 0 || __fog_on != 0 || __subdiv > 0 || m.nverts as s32 > MAX_MESH_VERTS || !__arena_room(nf) {
+        __draw_mesh(m, mvp)
+        return
+    }
+    let base = m as u32
+    __xform_safe((base + m.verts) as *vec4, m.nverts as s32, &__sv[0], &mvp)
+    __draw_faces_safe((base + m.faces) as *Face, nf)
+}
+
 // Shifts the ordering-table buckets of the following mesh() calls: negative values draw
 // later (nearer). Use it to keep an object in front of large polygons it stands on.
 fn depth_bias(buckets: s32) {
@@ -381,8 +458,10 @@ fn __draw_mesh(m: *Mesh, mvp: mat4) {
         __sub_src = (base + m.verts) as *vec4
         __sub_mvp = mvp
         __draw_faces_sub((base + m.faces) as *Face, m.nfaces as s32)
-    } else if inside == 0 {
+    } else if inside & 1 == 0 {
         __draw_faces((base + m.faces) as *Face, m.nfaces as s32)
+    } else if inside == 3 && __fog_on == 0 && __arena_room(m.nfaces as s32) {
+        __draw_faces_safe((base + m.faces) as *Face, m.nfaces as s32)  // nothing to clip at all
     } else {
         __draw_faces_in((base + m.faces) as *Face, m.nfaces as s32)   // no vertex to clip
     }
@@ -403,7 +482,7 @@ fn __draw_mesh_win(m: *Mesh, mvp: mat4) {
         __sub_src = src
         __sub_mvp = mvp
         __draw_faces_sub((base + m.faces) as *Face, m.nfaces as s32)
-    } else if inside == 0 {
+    } else if inside & 1 == 0 {
         __draw_faces((base + m.faces) as *Face, m.nfaces as s32)
     } else {
         __draw_faces_in((base + m.faces) as *Face, m.nfaces as s32)
