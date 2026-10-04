@@ -1,0 +1,73 @@
+// World water (docs/WORLDKIT.md, "Water"): the surfaces of a world's ponds and streams, for a
+// game that wades. The World Kit writes NAME.water.bin when a world has water; NAME.akr embeds
+// it, imports this file and calls wp_water_open() in world_NAME_load().
+//
+//   if wp_water(feet, 0.0) {          // the feet are below a water surface here
+//       let deep = wp_water_hit.depth  // how far below (units)
+//       // slow the player by deep, splash on wp_water_hit.surface ...
+//   }
+//
+// The blob: u32 count, then per upward water triangle 14 words: its bounds x0, z0, x1, z1;
+// corner a (x, y, z); edges b - a and c - a (x, z); the plane's slopes dy/dx and dy/dz (all
+// fixed, world units); the surface byte. A query tests the bounds of every triangle (about 12
+// cycles each) and the edges of those that hold the point: a pond of a few rectangles and a
+// stream of a few dozen segments cost a few hundred cycles.
+
+struct WpWaterTri {
+    x0: fixed
+    z0: fixed
+    x1: fixed
+    z1: fixed
+    ax: fixed
+    ay: fixed
+    az: fixed
+    bx: fixed
+    bz: fixed
+    cx: fixed
+    cz: fixed
+    sx: fixed
+    sz: fixed
+    surface: s32
+}
+
+struct WpWaterHit {
+    level: fixed       // the surface's height at the point
+    depth: fixed       // level - p.y: how far the point is under it
+    surface: s32       // the water material's surface byte
+}
+
+var wp_water_hit: WpWaterHit
+var __wpw_count: s32
+var __wpw: *WpWaterTri
+
+fn wp_water_open(blob: *u8) {
+    __wpw_count = (blob as *u32)[0] as s32
+    __wpw = (blob as u32 + 4) as *WpWaterTri
+}
+
+// Whether world point p is under a water surface (or within above of it, above it): the
+// lowest surface over p.y - above at p's x and z. Sets wp_water_hit.
+fn wp_water(p: vec3, above: fixed) -> bool {
+    var found = false
+    for k in 0..__wpw_count {
+        let t = &__wpw[k]
+        if p.x < t.x0 || p.x > t.x1 || p.z < t.z0 || p.z > t.z1 { continue }
+        let px = p.x - t.ax
+        let pz = p.z - t.az
+        // the point's side of each edge: a-b, b-c, c-a (seen from above)
+        let s1 = t.bx * pz - t.bz * px
+        let s2 = (t.cx - t.bx) * (pz - t.bz) - (t.cz - t.bz) * (px - t.bx)
+        let s3 = (0.0 - t.cx) * (pz - t.cz) + t.cz * (px - t.cx)
+        let inside = (s1 >= 0.0 && s2 >= 0.0 && s3 >= 0.0) || (s1 <= 0.0 && s2 <= 0.0 && s3 <= 0.0)
+        if !inside { continue }
+        let level = t.ay + t.sx * px + t.sz * pz
+        if level < p.y - above { continue }
+        if !found || level < wp_water_hit.level {
+            wp_water_hit.level = level
+            wp_water_hit.surface = t.surface
+            found = true
+        }
+    }
+    if found { wp_water_hit.depth = wp_water_hit.level - p.y }
+    return found
+}

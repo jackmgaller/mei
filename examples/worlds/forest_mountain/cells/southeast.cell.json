@@ -1,0 +1,58 @@
+{
+  "format": "mei-world-cell",
+  "version": 1,
+  "id": "southeast",
+  "at": [
+    1,
+    0
+  ],
+  "region": "forest",
+  "placements": [
+    {
+      "id": "gate",
+      "asset": "shrine_torii",
+      "position": [
+        112,
+        18
+      ],
+      "collision": "shrine_torii_col"
+    },
+    {
+      "id": "lamp_1",
+      "asset": "street_lamp",
+      "position": [
+        108,
+        24
+      ],
+      "collision": "street_lamp_col"
+    },
+    {
+      "id": "lamp_2",
+      "asset": "street_lamp",
+      "position": [
+        116,
+        22
+      ],
+      "collision": "street_lamp_col"
+    },
+    {
+      "id": "trail_rock_1",
+      "asset": "boulder",
+      "position": [
+        102.5,
+        38
+      ],
+      "collision": "self"
+    }
+  ],
+  "entities": [
+    {
+      "id": "start",
+      "type": "spawn",
+      "position": [
+        112,
+        8
+      ]
+    }
+  ]
+}

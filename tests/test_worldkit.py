@@ -864,6 +864,125 @@ class TerrainTests(unittest.TestCase):
                         self.assertTrue(pl.mesh[at] & 2 and pl.mesh[at + 2] & 16)
                         self.assertIn(pl.mesh[at + 3] * 16 + (pl.mesh[at + 28] & 15), (1, 2))
 
+    def test_cliffs_make_walls_and_sheets_keep_their_own_edges(self):
+        ops = [{'op': 'ramp', 'from': [32, 0, 0], 'to': [32, 8, 64], 'width': 100},
+               {'op': 'cliff', 'area': {'rect': [0, 40, 64, 64]}, 'height': 6, 'material': 'stone',
+                'overhang': 0.5, 'lip': 1},
+               # after the cliff: a ramp on the low sheet only, up to the cliff's foot
+               {'op': 'ramp', 'from': [10, 0, 30], 'to': [10, 5, 40], 'width': 8}]
+        with tempfile.TemporaryDirectory() as tmp:
+            c = TerrainWorld(tmp, terrain=field(operations=ops)).compile()
+            f = c.terrain.fields['main']
+            rep = c.report['terrain']['fields']['main']
+            self.assertGreater(rep['cliff_triangles'], 0)
+            # the edge's samples hold a height per sheet: the low ramp's top did not move the top
+            self.assertEqual(f.h(5, 20, 0.0), 5)              # x 10, z 40: the low sheet, at the ramp's end
+            self.assertEqual(f.h(5, 20, 6.0), 5)              # the top sheet: still the first ramp's 5
+            self.assertEqual(f.h(10, 20, 0.0), f.h(10, 20, 6.0))   # away from the second ramp: the same
+            # the top's edge points move out over the wall by the overhang (toward -z, the low side)
+            self.assertEqual(f.disp[((10, 20), 6.0)], (0.0, -0.5))
+            # walls are part of the tile meshes with no T-junctions, and are collision (some ceiling-ish
+            # at the lip, the rest walls)
+            for cell in c.world.cells:
+                tris = []
+                for pl in cell.placements:
+                    if pl.tag == 0xFFFE:
+                        tris += mesh_world_triangles(c, cell, pl.mesh)
+                self.assertEqual(t_junctions(tris), [], (cell.i, cell.j))
+            fc = math.cos(math.radians(40))
+            kinds = {P.classify(P.front_normal(t.a, t.b, t.c), fc, math.cos(math.radians(45)))
+                     for cell in c.world.cells for t in cell.collision}
+            self.assertIn(P.KIND_WALL, kinds)
+            top = c.terrain.floors().at(30, 50)
+            self.assertAlmostEqual(top[0], 8 * 50 / 64 + 6, places=3)
+
+    def test_water_is_semi_transparent_without_collision_and_answers_wp_water(self):
+        ops = [{'op': 'carve', 'area': {'circle': [20, 20, 6]}, 'height': -1, 'falloff': 2},
+               {'op': 'water', 'area': {'circle': [20, 20, 12]}, 'level': -0.25, 'material': 'pond'}]
+        mats = dict(MATERIALS, pond={'color': '#3060a0', 'water': True, 'tag': 'stone'})
+        t = {'materials': mats, 'fields': {'main': {'spacing': 2, 'min': [0, 0], 'max': [64, 64],
+                                                    'material': 'grass', 'operations': ops}}}
+        paths = {'creek': {'points': [[40, 1, 2], [40, 0.5, 60]],
+                           'sweep': {'profile': [[-1, 0], [1, 0]], 'material': 'pond'}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            c = TerrainWorld(tmp, terrain=t, paths=paths).compile()
+            self.assertGreater(c.report['terrain']['fields']['main']['water_triangles'], 0)
+            self.assertEqual(c.terrain.water_level(20, 20), -0.25)
+            self.assertIsNone(c.terrain.water_level(60, 60))
+            self.assertAlmostEqual(c.terrain.water_level(40, 31), 0.75, places=3)
+            semi = 0
+            for cell in c.world.cells:
+                for pl in cell.placements:
+                    nf, fo = P.mesh_info(pl.mesh)[1], P.mesh_info(pl.mesh)[3]
+                    semi += sum(1 for k in range(nf) if pl.mesh[fo + 36 * k] & 8)
+                self.assertFalse(any(t.tag == 0xFFFD for t in cell.collision), 'water sweeps have no collision')
+            self.assertEqual(semi, len(c.terrain.water))
+            self.assertEqual(len(c.water), 4 + 56 * len(c.terrain.water))
+            self.assertIn('wpwater.akr', c.akr)
+            self.assertEqual(struct.unpack_from('<I', c.water)[0], len(c.terrain.water))
+            with self.assertRaisesRegex(WorldError, 'not a water material'):
+                TerrainWorld(tmp, terrain=field(operations=[{'op': 'water', 'level': 0, 'material': 'grass'}])).compile()
+
+    def test_draped_paths_follow_the_ground_and_cut_their_bed(self):
+        ops = [{'op': 'ramp', 'from': [0, 0, 32], 'to': [64, 8, 32], 'width': 100}]
+        paths = {'trail': {'points': [[4, 30], [60, 30]], 'drape': {'smooth': 0, 'bed': {'width': 2, 'depth': 0.25}},
+                           'sweep': {'profile': [[-1, 0], [1, 0]], 'material': 'stone'}},
+                 'stream': {'points': [[60, 50], [30, 50], [4, 50]], 'drape': {'downhill': True, 'step': 4}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            c = TerrainWorld(tmp, terrain=field(operations=ops), paths=paths).compile()
+            line = c.terrain.paths['trail']
+            self.assertEqual(len(line), 29)                         # every 2 units
+            self.assertTrue(all(abs(y - x / 8) < 1e-3 for x, y, z in line))
+            f = c.terrain.fields['main']
+            self.assertAlmostEqual(f.h(16, 15), 32 / 8 - 0.25, places=3)   # its bed under it
+            self.assertEqual(c.report['paths']['trail']['points'], 29)
+            ys = [y for _, y, _ in c.terrain.paths['stream']]
+            self.assertEqual(ys, sorted(ys, reverse=True))
+            bad = dict(paths, plain={'points': [[1, 2], [3, 4]]})
+            with self.assertRaisesRegex(WorldError, r'\[x, z\] only on a draped path'):
+                TerrainWorld(tmp, terrain=field(operations=ops), paths=bad).compile()
+            bed = field(operations=ops + [{'op': 'bed', 'path': 'trail', 'width': 2}])
+            with self.assertRaisesRegex(WorldError, 'cuts its own bed'):
+                TerrainWorld(tmp, terrain=bed, paths=paths).compile()
+
+    def test_things_set_on_the_ground_and_scatter(self):
+        ops = [{'op': 'ramp', 'from': [0, 0, 32], 'to': [64, 8, 32], 'width': 100},
+               {'op': 'water', 'area': {'circle': [50, 50, 6]}, 'level': 9, 'material': 'pond'}]
+        mats = dict(MATERIALS, pond={'color': '#3060a0', 'water': True})
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)          # for its assets
+            shutil.copytree(ex.dir/'assets', Path(tmp)/'w'/'assets')
+            t = {'materials': mats, 'fields': {'main': {'spacing': 2, 'min': [0, 0], 'max': [64, 64],
+                                                        'material': 'grass', 'operations': ops}}}
+            scatter = {'blocks': {'assets': [{'asset': 'ledge_block', 'weight': 2}, {'asset': 'coin'}],
+                                  'area': {'rect': [0, 0, 64, 64]}, 'spacing': 6, 'seed': 5, 'cull': 40,
+                                  'exclude': [{'circle': [16, 16, 8]}], 'clearance': 2}}
+            paths = {'walk': {'points': [[2, 1, 40], [62, 7.5, 40]],
+                              'sweep': {'profile': [[-1, 0], [1, 0]], 'material': 'stone'}}}
+            w = TerrainWorld(Path(tmp)/'w', terrain=t, paths=paths, scatter=scatter)
+            spec = json.loads(w.world.read_text())
+            spec['cells'][0]['placements'] = [{'id': 'p', 'asset': 'ledge_block', 'position': [8, 8], 'lift': -0.5,
+                                               'collision': 'none'},
+                                              {'id': 'q', 'asset': 'ledge_block', 'position': [8, 50, 12], 'drop': True,
+                                               'collision': 'none'}]
+            w.world.write_text(json.dumps(spec))
+            c = w.compile()
+            pls = {p.tag: p for p in c.world.cells[0].placements}
+            self.assertAlmostEqual(pls[0].position[1], 1 - 0.5, places=3)
+            self.assertAlmostEqual(pls[1].position[1], 1, places=3)
+            rep = c.report['scatter']['blocks']
+            self.assertGreater(rep['placed'], 20)
+            self.assertTrue({'excluded', 'water', 'sweep'} <= set(rep['dropped']))
+            chunks = [p for cell in c.world.cells for p in cell.placements if p.tag == 0xFFFC]
+            self.assertEqual(len(chunks), rep['chunks'])
+            self.assertTrue(all(p.lod and p.lod.levels[-1] == (40, None) for p in chunks))
+            again = w.compile()
+            self.assertEqual(again.pack, c.pack, 'the same recipe scatters the same props')
+            spec['cells'][0]['placements'][0]['position'] = [8, 1, 8]
+            w.world.write_text(json.dumps(spec))
+            with self.assertRaisesRegex(WorldError, 'lift raises'):
+                w.compile()
+
     def test_worlds_without_terrain_report_none(self):
         with tempfile.TemporaryDirectory() as tmp:
             c = Example(tmp).compile()
@@ -1218,6 +1337,31 @@ class ConsoleTests(unittest.TestCase):
             rows = (out/'gpu.csv').read_text().splitlines()
             head = rows[0].split(',')
             self.assertLessEqual(sum(int(r.split(',')[head.index('clears')]) for r in rows[1:]), 8)
+
+    def test_cliffs_water_and_scatter_on_the_console(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)/'forest_mountain'
+            shutil.copytree(EXAMPLES/'forest_mountain', folder, ignore=shutil.ignore_patterns('*.ids.json', 'screenshots'))
+            out = Path(tmp)/'out'
+            for a in folder.glob('assets/*.asset.json'):     # no NumPy needed: drop the policies
+                spec = json.loads(a.read_text())
+                spec.pop('verification', None)
+                a.write_text(json.dumps(spec))
+            report = build(str(folder/'forest_mountain.world.json'), out, COMPILER, RUNNER, PROBE, checker='skip')
+            self.assertTrue((out/'forest_mountain.water.bin').is_file())
+            got = self.run_cart(out, 'forest.akr')
+            fx = lambda v: str(P.fx(v))
+            self.assertEqual(got['plateau'][0], '1')
+            self.assertGreater(int(got['plateau'][1]), P.fx(40))            # the cliff's top sheet
+            self.assertEqual(got['below_cliff'][0], '1')
+            self.assertLess(int(got['below_cliff'][1]), P.fx(20))
+            self.assertEqual(got['trail'], ['1', '0'])                       # the draped trail at the gate
+            self.assertEqual(got['pond'], ['1', fx(1.4), '3'])               # level, surface byte (tag water: 3)
+            self.assertEqual(got['pool'], ['1', fx(12.2), '3'])
+            self.assertEqual(got['dry'][0], '0')
+            near, drawn, coarse, culled = map(int, got['draw'])
+            self.assertGreater(culled, 0, 'far forest chunks are culled')
+            self.assertGreater(report['scatter']['forest']['placed'], 200)
 
     def test_multi_region_world_loads_and_draws_stand_ins(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -1,0 +1,16 @@
+{
+  "format": "mei-world-ids",
+  "version": 1,
+  "world": "forest_mountain",
+  "next_bit": 6,
+  "bits": {
+    "coin_ford": 0,
+    "coin_pool": 1,
+    "coin_switchback": 2,
+    "coin_stream": 3,
+    "coin_summit": 4,
+    "coin_pond": 5
+  },
+  "retired": {},
+  "renamed": {}
+}

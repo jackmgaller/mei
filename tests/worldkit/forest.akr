@@ -1,0 +1,61 @@
+// The World Kit's forest_mountain example on the console: tests/test_worldkit.py builds
+// examples/worlds/forest_mountain, copies this cart next to the outputs and runs it headless.
+// Floors on the plateau, under the cliff and on the draped trail; water (wpwater.akr) in the
+// pond, the plunge pool and the ford.
+
+cart "World Kit Forest Mountain"
+import "forest_mountain.akr"
+import "depth.akr"
+
+fn floor_at(label: *u8, x: fixed, z: fixed) {
+    let found = wp_floor(vec3(x, 80.0, z), 0.0)
+    print(label)
+    print_char(' ')
+    print_int(found as s32)
+    print_char(' ')
+    print_int(bits(wp_hit.y))
+    println("")
+}
+
+fn water_at(label: *u8, x: fixed, y: fixed, z: fixed) {
+    let found = wp_water(vec3(x, y, z), 0.0)
+    print(label)
+    print_char(' ')
+    print_int(found as s32)
+    print_char(' ')
+    print_int(bits(wp_water_hit.level))
+    print_char(' ')
+    print_int(wp_water_hit.surface)
+    println("")
+}
+
+fn init() {
+    assert(world_forest_mountain_load())
+    floor_at("plateau", 110.0, 170.0)
+    floor_at("below_cliff", 40.0, 110.0)
+    floor_at("trail", 112.0, 12.0)
+    water_at("pond", 34.0, 0.5, 38.0)
+    water_at("pool", 90.0, 11.5, 108.0)
+    water_at("dry", 20.0, 5.0, 20.0)
+}
+
+var frame: s32
+
+fn draw() {
+    cls(rgb(150, 186, 220))
+    render_depth(true)
+    render_perspective(true)
+    wp_draw(vec3(113.0, 2.2, 4.0), -0.35, 0.03)
+    if frame == 0 {
+        print("draw ")
+        print_int(wp_stats.near_cells)
+        print_char(' ')
+        print_int(wp_stats.drawn)
+        print_char(' ')
+        print_int(wp_stats.coarse)
+        print_char(' ')
+        print_int(wp_stats.lod_culled)
+        println("")
+    }
+    frame += 1
+}

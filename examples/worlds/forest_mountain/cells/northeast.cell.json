@@ -1,0 +1,22 @@
+{
+  "format": "mei-world-cell",
+  "version": 1,
+  "id": "northeast",
+  "at": [
+    1,
+    2
+  ],
+  "region": "forest",
+  "entities": [
+    {
+      "id": "coin_stream",
+      "type": "coin",
+      "position": [
+        97,
+        160
+      ],
+      "lift": 1.0,
+      "asset": "coin"
+    }
+  ]
+}

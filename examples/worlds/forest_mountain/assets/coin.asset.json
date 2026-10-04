@@ -1,0 +1,47 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "coin",
+  "materials": {
+    "gold": {
+      "color": "#ffd040",
+      "class": "emissive",
+      "tag": "pickup"
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "nodes": [
+    {
+      "id": "disc",
+      "op": "cylinder",
+      "radius": 0.3,
+      "height": 0.08,
+      "segments": 10,
+      "material": "gold",
+      "transform": {
+        "rotate": [
+          90,
+          0,
+          0
+        ]
+      }
+    }
+  ],
+  "budget": {
+    "vertices": 64,
+    "triangles": 64
+  },
+  "verification": {
+    "required": true,
+    "yaw_steps": 4,
+    "pitches": [
+      0
+    ],
+    "distances": [
+      1.5
+    ]
+  }
+}

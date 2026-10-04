@@ -1087,8 +1087,8 @@ A function value in a vector register is first stored to the stack (3 cycles mor
 
 The prelude (`stdlib/prelude.akr`) imports every module below except the plane chip's
 (`planes.akr`), the depth buffer's (`depth.akr`), the world pack reader (`worldpack.akr`),
-animated textures (`texanim.akr`) and world backdrops (`wpbackdrop.akr`), which a cart imports
-itself. Colours are `u32` words
+animated textures (`texanim.akr`), world backdrops (`wpbackdrop.akr`) and world water
+(`wpwater.akr`), which a cart imports itself. Colours are `u32` words
 `0xBBGGRR` (red in the low byte, as the GPU expects); `rgb(r, g, b)` builds one.
 
 Where a function lives (each file's section below lists all of it):
@@ -1107,7 +1107,7 @@ Where a function lives (each file's section below lists all of it):
 | `str.akr` | strings: `strlen`, `streq`, `str_*`, `int_to_str` |
 | `task.akr`, `audio.akr`, `voice.akr`, `debug.akr`, `mem.akr`, `card.akr`, `broadcast.akr` | tasks, sound, debug output, memory, memory cards, broadcast |
 | `planes.akr`, `depth.akr`, `worldpack.akr` | not in the prelude: the plane chip; the depth buffer and perspective (`render_depth`, `render_perspective`, `depth_offset`); the world pack reader |
-| `texanim.akr`, `wpbackdrop.akr` | not in the prelude: animated textures' frames (`tex_frame_at`, `tex_frame_copy`); a world region's backdrop on the plane chip (`wp_backdrop_*`) |
+| `texanim.akr`, `wpbackdrop.akr`, `wpwater.akr` | not in the prelude: animated textures' frames (`tex_frame_at`, `tex_frame_copy`); a world region's backdrop on the plane chip (`wp_backdrop_*`); a world's water surfaces (`wp_water`) |
 
 ### Frame and system (`runtime.akr`, `io.akr`)
 
@@ -1539,6 +1539,13 @@ sky gradient and a horizon silhouette, on the plane chip ([WORLDKIT.md](WORLDKIT
 `wp_backdrop_variant(va, vb, t)` (the sky's colours between two variants) and
 `wp_backdrop_hide()`. `wp_backdrop_focal` (207.8) is the camera's pixels a radian. A cart that
 shows a backdrop draws no `cls()`: the plane chip erases the frame to holes.
+
+**`wpwater.akr`** answers where a world's water is ([WORLDKIT.md](WORLDKIT.md#water)). A world
+with water imports it from its `NAME.akr`, which opens the world's `NAME.water.bin` in
+`world_NAME_load()`. `wp_water(p, above)` is true when point `p` is under a water surface, or
+within `above` units over one, and sets `wp_water_hit`: `level` (the surface's height there),
+`depth` (`level - p.y`) and `surface` (the water material's surface byte). It tests every water
+triangle's bounds, about 12 cycles each.
 
 ### The depth buffer and perspective (`depth.akr`)
 

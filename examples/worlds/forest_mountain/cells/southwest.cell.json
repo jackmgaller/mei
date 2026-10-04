@@ -1,0 +1,22 @@
+{
+  "format": "mei-world-cell",
+  "version": 1,
+  "id": "southwest",
+  "at": [
+    0,
+    0
+  ],
+  "region": "forest",
+  "entities": [
+    {
+      "id": "coin_pond",
+      "type": "coin",
+      "position": [
+        34,
+        38
+      ],
+      "lift": 0.8,
+      "asset": "coin"
+    }
+  ]
+}

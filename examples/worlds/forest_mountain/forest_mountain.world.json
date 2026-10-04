@@ -1,0 +1,88 @@
+{
+  "format": "mei-world",
+  "version": 1,
+  "name": "forest_mountain",
+  "game": "garden.game.mochi",
+  "assets": "assets",
+  "cell_dir": "cells",
+  "grid": {"cell_size": 64},
+  "collision": {"surfaces": {"default": 0, "tags": {"water": 3}}},
+  "regions": {
+    "forest": {
+      "variants": {
+        "day": {},
+        "night": {"surface": {"multiply": "#4a5884"}, "colors": {"water": "#1c3050"}}
+      }
+    }
+  },
+  "runtime": {"depth": true, "perspective": true},
+  "verification": {"thresholds": {"cell_triangles": 4000}},
+  "paths": {
+    "trail_low": {"points": [[112, 12], [104, 34], [86, 54], [77, 70]],
+                  "drape": {"bed": {"width": 3.2, "depth": 0.3, "falloff": 2}},
+                  "sweep": {"profile": [[-2.2, -0.3], [-1.2, 0], [1.2, 0], [2.2, -0.3]],
+                            "materials": ["earth", "gravel", "earth"], "caps": true}},
+    "trail_high": {"points": [[69, 78], [44, 88], [18, 100], [10, 116], [20, 136], [6, 156], [18, 176], [12, 190]],
+                   "drape": {"bed": {"width": 3.2, "depth": 0.3, "falloff": 2}},
+                   "sweep": {"profile": [[-2.2, -0.3], [-1.2, 0], [1.2, 0], [2.2, -0.3]],
+                             "materials": ["earth", "gravel", "earth"], "caps": true}},
+    "stream_high": {"points": [[100, 184], [94, 150], [90, 115]],
+                    "drape": {"downhill": true, "bed": {"width": 3, "depth": 0.5, "falloff": 2}},
+                    "sweep": {"profile": [[-2.6, -0.5], [-1.6, 0], [1.6, 0], [2.6, -0.5]], "material": "water"}},
+    "falls": {"points": [[90, 31, 113], [90, 12.2, 110]],
+              "sweep": {"profile": [[-1.6, 0], [1.6, 0]], "material": "water", "double_sided": true}},
+    "stream_low": {"points": [[88, 101], [82, 84], [64, 64], [44, 48]],
+                   "drape": {"downhill": true, "bed": {"width": 3, "depth": 0.5, "falloff": 2}},
+                   "sweep": {"profile": [[-2.6, -0.5], [-1.6, 0], [1.6, 0], [2.6, -0.5]], "material": "water"}}
+  },
+  "terrain": {
+    "materials": {
+      "grass": {"color": "#7c8a3c"},
+      "moss": {"color": "#5f7a34"},
+      "earth": {"color": "#7a5a3c"},
+      "gravel": {"color": "#a89e88"},
+      "rock": {"color": "#6e6a66", "tag": "rock"},
+      "pond_bed": {"color": "#4e4632"},
+      "water": {"color": "#3f7393", "water": true, "tag": "water"}
+    },
+    "fields": {
+      "mountain": {
+        "spacing": 2, "min": [0, 0], "max": [128, 192],
+        "material": "grass",
+        "steep": {"degrees": 36, "material": "earth"},
+        "lod": {"distance": 48, "tolerance": 0.3},
+        "operations": [
+          {"op": "ramp", "from": [64, 0, 30], "to": [64, 24, 150], "width": 400},
+          {"op": "set", "area": {"rect": [0, 150, 128, 192]}, "height": 24},
+          {"op": "add", "area": {"circle": [100, 60, 12]}, "height": 3, "falloff": 16},
+          {"op": "add", "area": {"circle": [26, 64, 10]}, "height": 2.5, "falloff": 14},
+          {"op": "cliff", "area": {"polygon": [[24, 116], [60, 122], [90, 114], [128, 120], [128, 192], [24, 192]]},
+           "height": 14, "material": "rock", "overhang": 0.8, "lip": 1.5},
+          {"op": "ramp", "from": [12, 15.6, 108], "to": [12, 38, 192], "width": 24},
+          {"op": "add", "area": {"rect": [60, 150, 128, 192]}, "height": 3, "falloff": 12},
+          {"op": "paint", "area": {"rect": [24, 116, 128, 192]}, "material": "moss"},
+          {"op": "carve", "area": {"circle": [90, 108, 4]}, "height": 11, "falloff": 3},
+          {"op": "carve", "area": {"circle": [34, 38, 9]}, "height": 0.4, "falloff": 4},
+          {"op": "paint", "area": {"circle": [34, 38, 11]}, "material": "pond_bed"},
+          {"op": "water", "area": {"circle": [34, 38, 16]}, "level": 1.4, "material": "water"},
+          {"op": "water", "area": {"circle": [90, 108, 8]}, "level": 12.2, "material": "water"}
+        ]
+      }
+    }
+  },
+  "scatter": {
+    "forest": {
+      "assets": [{"asset": "maple", "weight": 3, "collision": "park_tree_col"},
+                 {"asset": "park_tree", "weight": 2, "collision": "park_tree_col"}],
+      "area": {"rect": [0, 0, 128, 192]},
+      "spacing": 7, "fill": 0.8, "seed": 11, "lift": -0.15,
+      "exclude": [{"circle": [112, 10, 9]}, {"circle": [62, 170, 12]}, {"rect": [0, 116, 24, 192]}],
+      "clearance": 1.5, "max_slope": 32, "chunk": 16, "cull": 48, "coarse": 22
+    },
+    "rocks": {
+      "assets": [{"asset": "boulder", "collision": "self"}],
+      "area": {"rect": [0, 0, 128, 192]},
+      "spacing": 11, "fill": 0.35, "seed": 4, "clearance": 1, "chunk": 32, "cull": 36
+    }
+  }
+}

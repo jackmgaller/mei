@@ -1,0 +1,32 @@
+{
+  "format": "mei-world-cell",
+  "version": 1,
+  "id": "middleeast",
+  "at": [
+    1,
+    1
+  ],
+  "region": "forest",
+  "entities": [
+    {
+      "id": "coin_ford",
+      "type": "coin",
+      "position": [
+        73,
+        74
+      ],
+      "lift": 1.2,
+      "asset": "coin"
+    },
+    {
+      "id": "coin_pool",
+      "type": "coin",
+      "position": [
+        90,
+        108
+      ],
+      "lift": 1.0,
+      "asset": "coin"
+    }
+  ]
+}

@@ -143,7 +143,7 @@ def link(import_dir, build_dir, recipes):
                   'different game schemas; give them one GAME.game.mochi.', file=sys.stderr)
             return 1
         games.setdefault(game, (recipe, akr))
-        for f in (f'{name}.akr', f'{name}.world.bin', f'{name}.swatch', f'{game}.game.akr'):
+        for f in (f'{name}.akr', f'{name}.world.bin', f'{name}.swatch', f'{name}.water.bin', f'{game}.game.akr'):
             if (out/f).exists(): links.setdefault(f, out/f)
         worlds.append({'name': name, 'game': game, 'recipe': recipe, 'output': str(out)})
     for f, target in links.items():

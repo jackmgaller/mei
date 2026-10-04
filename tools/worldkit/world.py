@@ -23,7 +23,8 @@ from .assets import Library, collision_triangles, relative
 from .palettes import RegionPalette
 from .textures import RegionTextures, relocated_palette
 from . import backdrop as BD
-from .terrain import TAG_FIELD, TAG_SWEEP, compile_terrain
+from .terrain import TAG_FIELD, TAG_SWEEP, TAG_SCATTER, compile_terrain, q16
+from .scatter import scatter_items
 from .schema import (WorldError, validate_world, validate_cell_file, validate_game, param_schema, obj,
                      AKARI_KEYWORDS)
 
@@ -157,6 +158,7 @@ class Compiled:
     encoded: dict = field(default_factory=dict)
     terrain_files: list = field(default_factory=list)   # heights files the terrain read
     terrain: object = None                              # terrain.Result, or None
+    water: bytes = b''                                  # NAME.water.bin (wp_water()), or empty
 
 
 @dataclass
@@ -248,6 +250,26 @@ def compile_world(source, lock=None, assets_dir=None):
 
     # ---- terrain: heightfields and sweeps, made in world coordinates and cut per cell
     terrain = compile_terrain(w, source.base, size, seen_at, surface_of, warnings, overhang, probe["floor_max_degrees"])
+    scattered, scatter_report = scatter_items(w, terrain, size, seen_at, warnings)
+
+    def on_ground(spec, path, cs):
+        """A placement's or entity's position: as given, or on the ground ([x, z], or drop) and
+        lifted (WORLDKIT.md, "On the ground")."""
+        pos = spec['position']
+        drop = spec.get('drop', False)
+        if len(pos) == 3 and not drop:
+            if 'lift' in spec:
+                raise err(path + '/lift', 'lift raises what is put on the ground: give the position as [x, z], or drop.', cs)
+            return tuple(pos)
+        if not terrain:
+            raise err(path + '/position', 'Putting things on the ground ([x, z] or drop) needs terrain: a field or a sweep.', cs)
+        if drop and len(pos) == 2:
+            raise err(path + '/drop', 'drop lowers [x, y, z] to the floor below y; [x, z] is on the ground already.', cs)
+        hit = terrain.floors().at(pos[0], pos[-1], pos[1] if drop else None)
+        if hit is None:
+            raise err(path + '/position', f'No terrain or sweep floor under ({pos[0]:g}, {pos[-1]:g})'
+                      + (f' at or below {pos[1]:g}.' if drop else '.'), cs)
+        return (pos[0], q16(hit[0] + spec.get('lift', 0.0)), pos[-1])
 
     # ---- assets, collision and placements per cell
     region_palettes = {r: RegionPalette(r, w['regions'][r], pointer('/regions', r)) for r in regions}
@@ -261,7 +283,7 @@ def compile_world(source, lock=None, assets_dir=None):
         rp = region_palettes[c['region']]
         rt = region_textures[c['region']]
         plan = {'source': cs, 'placements': [], 'merged': {}, 'collision': [], 'entities': [], 'layers': [],
-                'stripped': 0, 'standin': None}
+                'stripped': 0, 'standin': None, 'scatter': []}
 
         def use_layer(lname, path):
             if lname not in w.get('layers', {}):
@@ -285,7 +307,8 @@ def compile_world(source, lock=None, assets_dir=None):
             asset = library.get(pl['asset'], pp + '/asset', cs.file)
             rp.add_asset(asset)
             rt.add_asset(asset)
-            inside(pl['position'], pp + '/position', 'Placement')
+            pos = on_ground(pl, pp, cs)
+            inside(pos, pp + '/position', 'Placement')
             if 'layer' in pl: use_layer(pl['layer'], pp + '/layer')
             yaw = pl.get('yaw', 0)
             if yaw % 360 and not asset.vertical:
@@ -300,9 +323,20 @@ def compile_world(source, lock=None, assets_dir=None):
                 casset = asset if coll == 'self' else library.get(coll, pp + '/collision', cs.file, 'collision')
                 tris = collision_triangles(casset, surface_of)
             for a, b, cc, surface in tris:
-                corners = [tuple(x + o for x, o in zip(turn(v, yaw), pl['position'])) for v in (a, b, cc)]
+                corners = [tuple(x + o for x, o in zip(turn(v, yaw), pos)) for v in (a, b, cc)]
                 plan['collision'].append(P.Tri(*corners, surface=surface, layer=pl.get('layer'), tag=k))
-            plan['placements'].append({'k': k, 'spec': pl, 'asset': asset, 'yaw': yaw})
+            plan['placements'].append({'k': k, 'spec': pl, 'asset': asset, 'yaw': yaw, 'pos': pos})
+        for it in scattered.get((i, j), []):
+            asset = library.get(it.asset, it.path + '/asset', None, 'scatter')
+            rp.add_asset(asset)
+            rt.add_asset(asset)
+            if it.layer: use_layer(it.layer, it.path)
+            if it.collision != 'none':
+                casset = asset if it.collision == 'self' else library.get(it.collision, it.path + '/collision', None, 'collision')
+                for a, b, cc, surface in collision_triangles(casset, surface_of):
+                    corners = [tuple(x + o for x, o in zip(turn(v, it.yaw), it.position)) for v in (a, b, cc)]
+                    plan['collision'].append(P.Tri(*corners, surface=surface, layer=it.layer, tag=TAG_SCATTER))
+            plan['scatter'].append((it, asset))
         if 'standin' in c:
             plan['standin'] = library.get(c['standin'], p + '/standin', cs.file, 'standin')
             if plan['standin'].textured:
@@ -314,7 +348,8 @@ def compile_world(source, lock=None, assets_dir=None):
             ep = f'{p}/entities/{k}'
             if e['type'] not in game['types']:
                 raise err(ep + '/type', f'No entity type {e["type"]!r} in the game schema. Types: {", ".join(types)}.', cs)
-            inside(e['position'], ep + '/position', 'Entity')
+            epos = on_ground(e, ep, cs)
+            inside(epos, ep + '/position', 'Entity')
             if 'layer' in e: use_layer(e['layer'], ep + '/layer')
             spec = game['types'][e['type']]
             params = spec.get('params', {})
@@ -333,13 +368,13 @@ def compile_world(source, lock=None, assets_dir=None):
             if 'collision' in e:
                 casset = library.get(e['collision'], ep + '/collision', cs.file, 'collision')
                 ecoll = [P.Tri(a, b, cc, surface=s, tag=k) for a, b, cc, s in collision_triangles(casset, surface_of)]
-            plan['entities'].append({'k': k, 'spec': e, 'asset': asset, 'collision': ecoll, 'values': values})
+            plan['entities'].append({'k': k, 'spec': e, 'asset': asset, 'collision': ecoll, 'values': values, 'pos': epos})
         if len(plan['layers']) > P.MAX_CELL_LAYERS:
             raise err(p, f'Cell {c["id"]!r} uses {len(plan["layers"])} layers ({", ".join(plan["layers"])}); '
                       f'a cell holds at most {P.MAX_CELL_LAYERS}.', cs)
         if terrain and (i, j) in terrain.pieces:
-            if len(c.get('placements', [])) > TAG_SWEEP:
-                raise err(p + '/placements', f'At most {TAG_SWEEP:,} placements in a cell with terrain: '
+            if len(c.get('placements', [])) > TAG_SCATTER:
+                raise err(p + '/placements', f'At most {TAG_SCATTER:,} placements in a cell with terrain: '
                           'the tags above are the terrain\'s.', cs)
             plan['collision'].extend(terrain.collision.get((i, j), []))
         plan['collision'], plan['stripped'] = strip_resting(plan['collision'], probe)
@@ -430,7 +465,15 @@ def compile_world(source, lock=None, assets_dir=None):
     paths, path_report = [], {}
     for pname, spec in w.get('paths', {}).items():
         pp = pointer('/paths', pname)
-        pts = [tuple(q) for q in spec['points']]
+        if 'drape' in spec:
+            pts = list(terrain.paths[pname]) if terrain else []
+            if not terrain:
+                raise WorldError(pp + '/drape', 'A draped path lies on terrain: declare a field in terrain.fields.')
+        else:
+            short = [k for k, q in enumerate(spec['points']) if len(q) != 3]
+            if short:
+                raise WorldError(f'{pp}/points/{short[0]}', 'A point is [x, y, z]; [x, z] only on a draped path (drape).')
+            pts = [tuple(q) for q in spec['points']]
         closed = bool(spec.get('closed'))
         for k in range(1, len(pts)):
             if pts[k] == pts[k - 1]:
@@ -566,19 +609,61 @@ def compile_world(source, lock=None, assets_dir=None):
                                                 'no levels of detail.'})
                 to_merge.setdefault((pl['spec'].get('layer'), ground), []).append((binary, pl))
                 continue
-            cell.placements.append(P.Placement(binary, tuple(pl['spec']['position']), pl['yaw'],
+            cell.placements.append(P.Placement(binary, tuple(pl['pos']), pl['yaw'],
                                                pl['spec'].get('layer'), pl['k'], ground,
                                                lod_of(pl['asset'], rp, slot, row)))
         # merged props: one mesh per layer, ground and the rest apart (a merged ground mesh is a
         # ground placement, the way a terrain piece is)
         for (lname, ground), items in sorted(to_merge.items(),
                                              key=lambda kv: (kv[0][0] is not None, kv[0][0] or '', kv[0][1])):
-            meshes = merge.merge([(b, pl['spec']['position'], pl['yaw']) for b, pl in items], centre)
+            meshes = merge.merge([(b, pl['pos'], pl['yaw']) for b, pl in items], centre)
             for m in meshes:
                 cell.placements.append(P.Placement(m, centre, 0.0, lname, 0xFFFF, ground))
             entry = {'layer': lname, 'placements': [pl['spec']['id'] for _, pl in items], 'meshes': len(meshes)}
             if ground: entry['ground'] = True
             merged_report.setdefault(c['id'], []).append(entry)
+        # scatter: each chunk's props merged into one mesh (or more, split between props), with a
+        # coarser level of its assets' level 1 and a cull distance when the scatter asks
+        chunks = {}
+        for it, asset in plan['scatter']:
+            chunks.setdefault(it.chunk, []).append((it, asset))
+        for (sname, lname, ci, cj), items in sorted(chunks.items(), key=lambda kv: (kv[0][0], kv[0][1] or '', kv[0][2], kv[0][3])):
+            sc = w['scatter'][sname]
+            batches, cur, nv, nf = [], [], 0, 0
+            for it, asset in items:
+                binary = mesh_of(asset)
+                if struct.unpack_from('<I', binary, 12)[0]:
+                    raise WorldError(it.path + '/asset', f'Asset {asset.name!r} has repeating textures (a texture window '
+                                     'table), which a merged chunk cannot keep. Scatter assets without them.')
+                v, f = struct.unpack_from('<HH', binary)
+                if cur and (nv + v > merge.MAX_VERTICES or nf + f > merge.MAX_FACES):
+                    batches.append(cur)
+                    cur, nv, nf = [], 0, 0
+                cur.append((it, asset, binary))
+                nv, nf = nv + v, nf + f
+            if cur: batches.append(cur)
+            for batch in batches:
+                mesh = merge.merge([(b, it.position, it.yaw) for it, _, b in batch], centre)[0]
+                levels = []
+                if 'coarse' in sc:
+                    coarse = []
+                    for it, asset, b in batch:
+                        lv = (rt.binary(asset, relocated_palette(asset, rp, slot, row), 1) if asset.textured
+                              else rp.relocated_levels(asset, slot, row)[0]) if asset.levels else b
+                        coarse.append((lv, it.position, it.yaw))
+                    levels.append((sc['coarse'], merge.merge(coarse, centre)[0]))
+                if 'cull' in sc:
+                    levels.append((sc['cull'], None))
+                lod = P.Lod(levels, 2.0) if levels else None
+                if lod:
+                    try:
+                        P.lod_rows(lod)
+                    except P.PackError as error:
+                        raise WorldError(pointer('/scatter', sname), f'coarse and cull: {error}.') from error
+                cell.placements.append(P.Placement(mesh, centre, 0.0, lname, TAG_SCATTER, False, lod))
+                srep = scatter_report[sname]
+                srep['chunks'] = srep.get('chunks', 0) + 1
+                srep['triangles'] = srep.get('triangles', 0) + struct.unpack_from('<H', mesh, 2)[0]
         for piece in (terrain.pieces.get((i, j), []) if terrain else []):
             ta = terrain_assets[c['region']]
             lod = None
@@ -596,7 +681,7 @@ def compile_world(source, lock=None, assets_dir=None):
         cell.collision = plan['collision']
         for e in plan['entities']:
             spec = e['spec']
-            cell.entities.append(P.Entity(types.index(spec['type']), tuple(spec['position']), spec.get('yaw', 0),
+            cell.entities.append(P.Entity(types.index(spec['type']), tuple(e['pos']), spec.get('yaw', 0),
                                           spec.get('layer'), mesh=mesh_of(e['asset']) if e['asset'] else None,
                                           collision=e['collision']))
         cells.append(cell)
@@ -667,16 +752,37 @@ def compile_world(source, lock=None, assets_dir=None):
             tags = entry['collision']['placement_tags']
             for piece in pieces:
                 tags[str(piece.tag)] = 'terrain' if piece.tag == TAG_FIELD else 'sweeps'
+            if any(it for it in scattered.get(tuple(entry['at']), [])):
+                tags[str(TAG_SCATTER)] = 'scatter'
             entry['terrain'] = {'pieces': len(pieces), 'triangles': sum(p.faces for p in pieces),
                                 'coarse_triangles': sum(p.level_faces[-1] for p in pieces),
                                 'collision_triangles': len(terrain.collision.get(tuple(entry['at']), []))}
     compiled = Compiled(data, report, '', '', SWATCH if any_palette else b'', new_lock, changes, library, world, encoded)
     compiled.terrain_files = terrain.files if terrain else []
+    if scatter_report:
+        report['scatter'] = scatter_report
+    compiled.water = water_blob(terrain.water) if terrain and terrain.water else b''
     compiled.terrain = terrain
     from .akr import world_source, game_source
     compiled.akr = world_source(source, compiled, region_palettes, slot, row, number_of, groups)
     compiled.game_akr = game_source(game)
     return compiled
+
+
+def water_blob(tris):
+    """NAME.water.bin for stdlib/wpwater.akr: u32 count, then per upward water triangle 14
+    s32 (16.16 unless said): its bounds x0, z0, x1, z1; corner a (x, y, z); edges b - a and c - a
+    (x, z); the plane's slopes dy/dx and dy/dz; the surface byte (an integer)."""
+    out = [struct.pack('<I', len(tris))]
+    for a, b, c, surface in tris:
+        n = ((b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]),
+             (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]),
+             (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]))
+        xs, zs = [p[0] for p in (a, b, c)], [p[2] for p in (a, b, c)]
+        words = [min(xs), min(zs), max(xs), max(zs), a[0], a[1], a[2], b[0] - a[0], b[2] - a[2],
+                 c[0] - a[0], c[2] - a[2], -n[0] / n[1], -n[2] / n[1]]
+        out.append(struct.pack('<14i', *(P.fx(v) for v in words), surface))
+    return b''.join(out)
 
 
 SWATCH = bytes(2 * j | (2 * j + 1) << 4 for j in range(8))

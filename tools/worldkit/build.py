@@ -97,6 +97,7 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
     files = {f'{name}.world.bin':compiled.pack,f'{name}.akr':compiled.akr.encode(),
              f'{game}.game.akr':compiled.game_akr.encode(),f'{name}.ids.json':jsonio.pretty(compiled.lock).encode()}
     if compiled.swatch: files[f'{name}.swatch'] = compiled.swatch
+    if compiled.water: files[f'{name}.water.bin'] = compiled.water
     snapshot = {'source/'+(source.world_path.name if source.world_path else f'{name}.world.json'):jsonio.pretty(source.world).encode(),
                 # The game schema exactly as written, comments included. report.json's game_sha256
                 # is the hash of its JSON form, which this file parses to.

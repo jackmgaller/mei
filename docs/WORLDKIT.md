@@ -6,9 +6,10 @@ console reader `stdlib/worldpack.akr`; the tool, `tools/mei_world.py`, with the 
 format](#recipe-format) (cells, regions and palette variants, layers, [ground](#ground), [merged
 scatter](#merged-scatter), [paths](#paths), [levels of detail](#levels-of-detail), collision, game data in
 [Mochi](#game-data-and-stable-ids) or JSON, the ID lock file, and [terrain](#terrain): ground
-heightfields and profiles swept along paths) and [command line](#command-line)
+heightfields with cliffs and water, profiles swept along paths, draped paths, things set on the
+ground and [scatter](#scatter)) and [command line](#command-line)
 below; the **World Checker**, the in-level
-verification every build runs ([WORLDCHECKER.md](WORLDCHECKER.md)); four example worlds in
+verification every build runs ([WORLDCHECKER.md](WORLDCHECKER.md)); five example worlds in
 `examples/worlds/`; and make's rule for [a cart that uses worlds](#using-a-world-in-a-cart), with
 World Viewer (`carts/worldview/`) as its example; [textures per region](#textures-per-region),
 night variants for them and [backdrops](#backdrops) on the plane chip, with a fourth example,
@@ -229,6 +230,14 @@ vertices, as merged scatter is) and collision triangles in world coordinates. Wo
 terrain build exactly as before, byte for byte. The example is
 [`examples/worlds/shrine_grounds`](../examples/worlds/shrine_grounds) ([below](#the-example-shrine-grounds)).
 
+**Built on it:** [cliffs](#cliffs) (vertical faces and overhangs a heightfield cannot make),
+[water](#water) (ponds, streams and waterfalls, semi-transparent, and a query for wading),
+[draped paths](#draped-paths) (a trail that follows the ground and cuts its own bed),
+[things set on the ground](#on-the-ground) and seeded [scatter](#scatter). The example using all
+four is [`examples/worlds/forest_mountain`](../examples/worlds/forest_mountain)
+([below](#the-example-forest-mountain)). Worlds that use none of them build as before, byte for
+byte.
+
 ### Heightfields
 
 ```json
@@ -299,6 +308,8 @@ or `{"path": NAME, "width": w}` (within w / 2 of a path of the world file, seen 
 | `bed` | Along a path, within `width`: the ground set to the path's line less `depth` (the bed a sweep lies in; it cuts and fills). An open path's bed ends square at its ends |
 | `paint` | The quads whose centres lie in the area take `material` (no falloff) |
 | `hole` | The quads whose centres lie in the area are left out (no falloff) |
+| `cliff` | The quads whose centres lie in the area move up by `height` (down if negative) as one sheet, joined to the rest by vertical walls of `material` (default: the `steep` material, else the field's); `overhang` and `lip` make the top jut out ([Cliffs](#cliffs)). No falloff |
+| `water` | A flat water surface at `level` on every quad of the area with a corner below it, in a `water` material ([Water](#water)). No falloff |
 
 Heights are rounded to 16.16 after the last operation. `report.json`'s `terrain` has, per field,
 samples, quads, holes, the height range, tiles, triangles per level and per cell, vertices,
@@ -324,9 +335,72 @@ construction, at every pair of levels, and the coarse level keeps its tile's edg
 The coarse level is the same merge with the `lod` tolerance; each tile carries it as a
 [level of detail](#levels-of-detail) (switching at `distance` from the tile's centre, with
 `band`) when it has fewer faces. Collision is always level 0, in world coordinates, with each
-material's `tag` as its surface; it is tagged 0xFFFE (sweeps 0xFFFD) where an asset placement
-carries its number, and the report's `placement_tags` names them `terrain` and `sweeps`. A cell
-with terrain holds at most 65,533 placements of its own.
+material's `tag` as its surface; it is tagged 0xFFFE (sweeps 0xFFFD, scatter 0xFFFC) where an
+asset placement carries its number, and the report's `placement_tags` names them `terrain`,
+`sweeps` and `scatter`. A cell with terrain holds at most 65,532 placements of its own.
+
+### Cliffs
+
+```json
+{"op": "cliff", "area": {"polygon": [[24, 116], [60, 122], [90, 114], [128, 120], [128, 192], [24, 192]]},
+ "height": 14, "material": "rock", "overhang": 0.8, "lip": 1.5}
+```
+
+A heightfield has one height per sample, so its steepest bank spans a quad (a 2 m spacing makes
+a 14 m rise at least 2 m deep). A `cliff` cuts the field instead: the quads whose centres lie in
+the area become a **sheet** moved up by `height`, and along every quad edge between two sheets a
+vertical wall joins them. The samples on such an edge keep one height per sheet, so later
+operations act on each sheet separately: a `set`, `ramp` or `carve` after the cliff shapes the
+plateau and the ground below on their own terms (an absolute height is the sheet's own), and
+`smooth` and falloffs never blend the top into the foot. An operation changes a sheet's copy of
+an edge sample only where a quad of that sheet is in its area or falloff (or the operation has
+no area). A negative height lowers the area instead (a pit, a quarry face).
+
+`overhang` (at most half the spacing) moves the top sheet's edge points out over the wall by that
+much, along the average of their edges' outward normals; the wall rises upright to `lip` below the
+top, then leans out to the moved edge, so the top band juts over the face: a waterfall's lip, a
+ledge that hides the wall from above. The walls are steep faces of the wall material (collision
+walls by `floor_max_degrees`) and share their points with both sheets' tiles, so there are no
+cracks between wall and ground. A cliff's area follows quad edges, so its outline is stepped at
+the spacing seen from above: a polygon traced at an angle gives a stair-stepped wall line.
+`report.json`'s field entry has `cliff_triangles`.
+
+### Water
+
+```json
+"materials": {"water": {"color": "#3f7393", "water": true, "tag": "water"}},
+...
+{"op": "water", "area": {"circle": [34, 38, 16]}, "level": 1.4, "material": "water"}
+```
+
+A terrain material with `"water": true` is water: its faces are semi-transparent (the GPU's half
+blend, drawn by the ordering table back to front in depth mode too), have no collision and are
+never ground. Water comes three ways:
+
+- **A `water` operation**, for ponds and pools: a flat surface at `level` over every quad of its
+  area that has a corner below it, merged into rectangles per tile as the ground is. Carve the
+  bed first and give the water the carve's height plus the depth you want; the area may be loose
+  (the surface stops where the ground rises above it).
+- **A water sweep**, for streams: a path whose sweep's material is water, usually
+  [draped](#draped-paths) with `downhill` so it never runs uphill, cutting its own bed.
+- **A waterfall**: a short sweep of a single upright profile edge hanging from a cliff's lip to
+  the pool below, with `"double_sided": true` so it is drawn from behind too.
+
+The body walks through water and stands on the bed under it. The game decides what water does
+(the movement garden wades: it slows with depth, no swimming), and for that the kit writes
+`NAME.water.bin`, every upward water face of the world (the pond, the pool, the streams' tops),
+which `NAME.akr` embeds and opens. `stdlib/wpwater.akr`'s `wp_water(p, above)` answers whether a
+point is under a water surface, with the surface's `level`, the `depth` of the point below it and
+the material tag's surface byte (`collision.surfaces`, as any tag's) in `wp_water_hit`:
+
+```
+if wp_water(pl.pos, 0.0) { slow_by(wp_water_hit.depth) }
+```
+
+It tests every water triangle's bounds (about 12 cycles each; the example's 512 triangles, all of
+its water, cost about 6,000 cycles a query, and a game that queries once a frame from the feet
+can afford it). A material with `water` cannot be painted or used for a cliff's wall.
+`report.json`'s `terrain` has `water_triangles`.
 
 ### Sweeps
 
@@ -350,16 +424,18 @@ world data as before ([Paths](#paths)); the sweep adds geometry and collision.
 | `material` / `materials` | Terrain materials: one for all edges, or one per edge |
 | `stairs` | `{"rise": r}`: each sloping segment climbs in equal steps no higher than r instead of a slope (a run of 3 m with `rise` 0.3 is 10 risers between 11 treads; the path's points are the landings) |
 | `caps` | Close an open path's two ends with the profile's outline, fanned from its first point. Default false |
-| `ground` | Drawn in the ground pass. Default: true unless the path is `raised` |
-| `collision` | Its faces are collision triangles. Default true |
+| `ground` | Drawn in the ground pass. Default: true unless the path is `raised` or its material is water |
+| `collision` | Its faces are collision triangles. Default true; water never has collision |
+| `double_sided` | Its faces are drawn from both sides (a waterfall seen from behind). Default false |
 
 Cross-sections are made at the path's points (mitred at a corner, so the profile keeps its width;
 a turn of more than 120° is an error), where its line crosses a cell edge, and at both heights of
 every riser. The strip between two cross-sections goes to the cell holding the middle of its line,
 so a cross-section on a seam is shared and the two cells' pieces meet there exactly. A sweep may
 reach past its cell by at most the world's `overhang` (an error names the point). The line is the
-path's own: a sweep lies on the ground because the ground is shaped to it, with a `bed`, not
-because it follows the ground. One sweep piece is a placement per cell per path.
+path's own: a sweep lies on the ground because the ground is shaped to it, with a `bed`, or
+because the path is [draped](#draped-paths) over the ground. One sweep piece is a placement per
+cell per path.
 
 **Lying on the ground: the bed.** A sweep lying on terrain and the terrain under it would be
 coplanar and fight in the depth buffer (RENDERING.md, "Precision": a floor seen at 11° needs about
@@ -373,6 +449,94 @@ slope 26° to 3.2 m out and 0.6 m down, and its bed is 5 m wide, 0.6 m deep with
 the ground under the top is 0.6 m below the path's line, so 0.6 m below the flat part and at
 least 0.3 m below every tread (a tread lies at most one rise below the line). Sides gentler than the game's slide angle
 let the body walk on and off the path; steep sides are walls it cannot step over.
+
+### Draped paths
+
+```json
+"trail_low": {"points": [[112, 12], [104, 34], [86, 54], [77, 70]],
+              "drape": {"bed": {"width": 3.2, "depth": 0.3, "falloff": 2}},
+              "sweep": {"profile": [[-2.2, -0.3], [-1.2, 0], [1.2, 0], [2.2, -0.3]],
+                        "materials": ["earth", "gravel", "earth"], "caps": true}}
+```
+
+A path with `drape` lies on the terrain: its points need only x and z (`[x, z]`; a `y` is
+ignored), and the kit resamples its line every `step` units and gives each point the height of
+the ground there (the highest field), as the fields' operations left it. Then it smooths the
+heights, lifts them, and cuts the path's own bed into every field before the heights are final.
+The pack stores the draped line, so the game's path queries follow the ground too. Paths drape in
+the world file's order (a later one lies in an earlier one's bed where they cross).
+
+| `drape` property | Meaning |
+|---|---|
+| `step` | Resample every `step` units. Default: the finest field's spacing |
+| `smooth` | Passes of a 1-2-1 smoothing along the line. Default 2 |
+| `lift` | Added to the ground's height. Default 0 |
+| `downhill` | The line never rises from its first point to its last: where the ground rises, the bed cuts through it (a stream). Default false |
+| `bed` | `{"width", "depth", "falloff"}`: the `bed` operation along the draped line, so the sweep lies in it ([the bed rule](#sweeps)). A field's `bed` operation may not name a draped path |
+
+For a trail, a bed as wide as the sweep's top and as deep as its sides go down keeps the ground
+out of the sweep, as for a sando. `report.json`'s `terrain.draped` has the number of points of
+each draped path. Draping uses the fields only (sweeps and placements are not ground for it), and
+a draped path must pass over a field at every point.
+
+### On the ground
+
+A placement's or an entity's `position` may be `[x, z]`: it stands on the ground, at the highest
+terrain or sweep floor there (collision floors of the fields and sweeps, not of placements). Or
+it is `[x, y, z]` with `"drop": true`: at the highest such floor at or below `y` (on a lower
+terrace, under an overhang). `lift` is added after either (a coin floating 1 m up; a tree sunk
+0.15 m into a slope), and is an error with a plain `[x, y, z]`. A position with no floor under it
+is an error naming the point. (`mei_world.py floor FILE X Z ...` answers the highest floor under
+points from the command line, placements' floors included.)
+
+### Scatter
+
+```json
+"scatter": {
+  "forest": {
+    "assets": [{"asset": "maple", "weight": 3, "collision": "park_tree_col"},
+               {"asset": "park_tree", "weight": 2, "collision": "park_tree_col"}],
+    "area": {"rect": [0, 0, 128, 192]},
+    "spacing": 7, "fill": 0.8, "seed": 11, "lift": -0.15,
+    "exclude": [{"circle": [112, 10, 9]}, {"rect": [0, 116, 24, 192]}],
+    "clearance": 1.5, "max_slope": 32, "chunk": 16, "cull": 48, "coarse": 22
+  }
+}
+```
+
+The world file's `scatter` sets props over an area by density, on the ground, with no
+placements to write. Each is laid on a lattice of `spacing`-unit squares (the world's, so editing
+one part of an area does not move the rest): a square keeps a candidate with probability `fill`,
+moved from its centre by up to `jitter` of the spacing; the candidate is dropped outside the
+area, in an exclusion, within `clearance` of any sweep's edge (trails and streams clear
+themselves), over water, where it would not stand on what `on` allows, or on ground steeper than
+`max_slope`. The asset is chosen by weight, the yaw at random in whole degrees. Every choice comes
+from SHA-256 of the seed, the scatter's name and the square, so the same recipe scatters the same
+props everywhere, and each prop's ID (`NAME_I_J`) lasts while its square keeps it.
+
+| Property | Meaning |
+|---|---|
+| `assets` | 1–32 of `{"asset", "weight" (default 1), "collision" ("self", "none" (default) or a collision asset), "lift"}` |
+| `area`, `exclude` | An area as the operations' (`rect`, `circle`, `polygon`, `path` with `width`); up to 256 exclusions |
+| `spacing`, `fill`, `jitter`, `seed` | About how far apart; the fraction kept (default 1); how far from the square's centre (default 0.8); the pattern (default 0) |
+| `clearance`, `max_slope`, `on` | Kept off sweeps by this much (default 1); not on ground steeper than this (degrees, default 35); `terrain` (default), `sweeps` or `both` |
+| `yaw`, `lift`, `layer` | Degrees or `"random"` (default); added to the height on the ground; a layer of the world |
+| `chunk` | Props are merged per square of 4, 8, 16 (default), 32 or 64 units: one placement each |
+| `coarse`, `cull` | From `coarse` units a chunk draws its assets' level 1 (assets with [`lod`](#levels-of-detail)); from `cull` units it is not drawn |
+
+**Budgets.** A forest of placed trees would cost the reader about 500 cycles a tree; scatter
+merges each cell's props per scatter, layer and chunk into one mesh at the cell's centre ([merged
+scatter](#merged-scatter), split between props at 2,048 vertices or 4,000 faces), and gives it
+the chunk's levels: the merged level 1 of its assets from `coarse` and nothing from `cull`, with
+a band of 2. So a forest costs the chunks near the eye at full detail, a ring beyond them coarse,
+and nothing past `cull`. Each prop keeps its own collision (tagged 0xFFFC). Assets with
+repeating textures cannot be scattered (a merged chunk has no texture window table). The World
+Checker judges scatter like any placement: a cell's `cell_triangles` counts every chunk's level 0,
+so a forest's cells need that threshold raised, while its views' budgets see the levels actually
+drawn. A chunk smaller than a cell culls more finely; a larger one costs fewer placements.
+`report.json`'s `scatter` lists per scatter what was placed, per asset and per cell, the
+candidates dropped and why, the chunks and their triangles; a scatter that places nothing is a
+warning (`scatter_empty`).
 
 ### Materials, palettes and textures
 
@@ -426,11 +590,11 @@ Checker, default settings, 512 views):
 | Field | 4,096 quads at 2 m in 16 tiles; level 0 2,079 triangles (25% of 8,192), coarse level 1,485 |
 | Sweeps | sando 508 triangles (40 risers), back path 46 |
 | Cells, triangles drawn | 296, 802, 1,430, 1,602 (the threshold is set to 2,000) |
-| Pack | 551,744 bytes |
-| Views: triangles | median 603, peak 1,803 (of 4,000) |
-| Views: GPU cycles | median 250,238, peak 412,212 (of 2,000,000) |
-| Views: draw CPU cycles | median 177,986, peak 404,990 (of 1,000,000) |
-| Coarse tiles drawn | in 249 views, 878 placements |
+| Pack | 547,680 bytes |
+| Views: triangles | median 617, peak 1,800 (of 4,000) |
+| Views: GPU cycles | median 250,198, peak 411,876 (of 1,600,000) |
+| Views: draw CPU cycles | median 180,660, peak 402,670 (of 600,000) |
+| Coarse tiles drawn | in 250 views, 873 placements |
 | Coverage errors, wrong-order pixels | 0, 0 |
 | Static findings | 7 cracks of the kind above (2 at the sweeps' caps, 5 where beds cut banks and ramps); none on a seam |
 
@@ -441,6 +605,45 @@ standing on it; up all 40 steps (0.3 m risers, a 0.32 m step) to y = 12; along t
 the summit; and across the sando from the side, down its bed and up its 26° side. Screenshots
 are in [`examples/worlds/shrine_grounds/screenshots`](../examples/worlds/shrine_grounds/screenshots).
 
+### The example: forest mountain
+
+[`examples/worlds/forest_mountain`](../examples/worlds/forest_mountain): 128 × 192 units in six
+64-unit cells, depth mode, on the movement garden's game schema (the same `garden.game.mochi` as
+shrine grounds'). A torii at the south gate; a draped gravel trail climbs a wooded slope to a
+ford; a stream, draped downhill with its own bed, comes down from a pool under a 14 m cliff band
+(rock, overhang 0.8, lip 1.5) that crosses the world east of x = 24, where a 19 m waterfall (a
+double-sided water sweep) falls from the lip; a second trail climbs the switchbacks west of the
+cliff to the plateau and its shrine hall; a pond (a carve and a water operation) lies to the
+south-west. 302 trees and 70 boulders are scattered, clear of the trails, streams, water, the
+gate's clearing and the switchbacks. Placements and coins are given as `[x, z]` (coins with a
+`lift`). Its numbers (`report.json` and the World Checker, default settings except
+`cell_triangles` 4,000, 600 views):
+
+| | |
+|---|---|
+| Field | 6,144 quads at 2 m in 24 tiles; level 0 5,493 triangles (of 12,288), 394 of them cliff walls, 68 water; coarse level 3,187 |
+| Sweeps | trails 226 and 514 triangles (draped to 37 and 84 points), streams 222 and 222, waterfall 2 |
+| Water | 512 upward triangles in `forest_mountain.water.bin` (28,676 bytes) |
+| Scatter | forest: 302 trees in 90 chunks of 16, 10,500 triangles at level 0 (dropped: 45 excluded, 40 near a sweep, 11 over water, 2 steep, 25 outside the area, 1 with no floor); rocks: 70 in 24 chunks of 32, 1,400 triangles |
+| Cells, triangles drawn | 2,528 to 3,803 (threshold 4,000) |
+| Pack | 2,091,904 bytes |
+| Views: triangles | median 1,242, peak 3,131 (of 4,000) |
+| Views: GPU cycles | median 331,526, peak 563,538 (of 1,600,000) |
+| Views: draw CPU cycles | median 314,926, peak 620,135 (of 600,000: 3 views over, in report mode) |
+| Coarse and culled | coarse placements drawn in 529 views (4,635); 8,516 placements culled by distance |
+| Coverage errors, wrong-order pixels | 0, 0 |
+| Static findings | 10 cracks of the kind [above](#costs-and-checking): 3 at scattered props' collision on slopes, 4 at the upper trail's switchback mitres, 2 at a boulder placed on the trail, 1 at the pond's bank; none on a seam. 4 far cells without stand-ins |
+
+The far forest is culled, not drawn coarse, past 48 units: from the plateau the far slope shows
+bare ground, which a backdrop or stand-ins would cover. The movement garden's controller, built
+against this world, walks the draped lower trail from the gate to the ford's bank (y 8.46);
+wades the ford, 34 ticks in water, `wp_water` reporting 0.5 m at the deepest; is held at the foot
+of the cliff band (z 117.7 against the wall at 118, pushed by walls for 486 ticks); and climbs the
+switchbacks to the plateau (highest y 38.0). The console test (`tests/worldkit/forest.akr`) reads
+floors on the plateau, under the cliff and on the trail, and the pond's and pool's water.
+Screenshots, with a top-down view of the collision, are in
+[`examples/worlds/forest_mountain/screenshots`](../examples/worlds/forest_mountain/screenshots).
+
 ### Corrections to the reserved design
 
 - **Several placements a cell, not one.** The reservation had one terrain piece per cell; a tile
@@ -449,9 +652,10 @@ are in [`examples/worlds/shrine_grounds/screenshots`](../examples/worlds/shrine_
   of a mesh.
 - **Terrain in a cell file stays reserved** (an error that says to put terrain in the world
   file): nothing has needed it.
-- **Sweeps follow their path's line, not the ground.** The ground is shaped to the path with a
-  `bed`; a sweep that drapes itself over the ground would need the ground before the beds that
-  depend on it.
+- **Sweeps follow their path's line, or drape.** The ground is shaped to the path with a `bed`,
+  or a [draped](#draped-paths) path takes its heights from the ground as the operations left it
+  and then cuts its own bed, so the order the reservation worried about (the ground before the
+  beds that depend on it) is the build's order.
 
 ## Streaming without a disc
 
@@ -822,9 +1026,11 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | `runtime.depth`, `runtime.perspective` | The game draws the world with the depth buffer, and with perspective-correct texturing (`render_depth(true)`, `render_perspective(true)`; default false). Not stored in the pack: the checkers judge the world and its assets so ([Depth mode](#depth-mode)) |
 | `verification` | The World Checker's per-world settings: `mode` (`report`, the default, or `enforce`) and `thresholds` |
 | `terrain` | Terrain materials, their `lighting`, and ground heightfields (`fields`): [Terrain](#terrain). Sweeps are in `paths` |
+| `scatter` | Seeded props over areas, set on the ground and merged per chunk: [Scatter](#scatter) |
 
 A **placement** is an `id` (unique in its cell; reports and the pack's 16-bit tag follow it), an
-`asset`, a `position` (world coordinates, in the cell), `yaw` (degrees, as `mesh_at()`), an
+`asset`, a `position` (world coordinates, in the cell; `[x, z]` or `drop` sets it on the ground,
+[On the ground](#on-the-ground)), `yaw` (degrees, as `mesh_at()`), an
 optional `layer`, `merge` and `ground` (below) and a required `collision`: `"self"` (the asset's
 own mesh), `"none"`, or a companion collision asset recipe placed the same way. Requiring it
 makes an agent decide for every asset. An **entity** is an `id` (world-wide), a game `type`, a
@@ -1131,7 +1337,8 @@ their numbers:
 
 | Property | Meaning |
 |---|---|
-| `points` | 2–4,095 points `[x, y, z]`, world coordinates, in order; no point may repeat the one before it. A path may cross cell seams and leave the cells (a warning, `path_outside_cells`) |
+| `points` | 2–4,095 points `[x, y, z]`, world coordinates, in order; no point may repeat the one before it. A path may cross cell seams and leave the cells (a warning, `path_outside_cells`). A draped path's points may be `[x, z]` |
+| `drape` | The path lies on the terrain and may cut its own bed; the pack stores the draped line ([Draped paths](#draped-paths)) |
 | `raised` | Not lying on the ground (a rail, a wire, a jib). Default false. Carried to the pack for the game; a raised path's sweep is not ground |
 | `sweep` | A profile carried along the path: geometry and collision the kit makes ([Sweeps](#sweeps)) |
 | `closed` | A loop: the last point joins the first (do not repeat it). Default false |
@@ -1237,6 +1444,7 @@ For a world named `city` of a game named `game`, `build` produces:
 | `city.akr` | `embed WORLD_CITY: u8 = "city.world.bin"`; `world_city_load()` (opens the pack, copies the swatch, loads every region's first variant); constants for regions, variants, colour ranges (`_SURFACE`, `_EMISSIVE` and their counts), layers, paths, the near range (`_NEAR_FAR`, when the recipe sets it), entity numbers and saved bits; `world_city_string()` for `name` parameters |
 | `game.game.akr` | The game's type numbers, world numbers, probe constants, parameter `struct`s and `enum`s, imported by every world of the game; make links one copy per game for a cart's worlds, so a cart compiles it once ([Using a world in a cart](#using-a-world-in-a-cart)) |
 | `city.swatch` | The 8-byte palette swatch row, when any material is palette-backed |
+| `city.water.bin` | The world's upward water faces, when it has water, for `wpwater.akr`'s `wp_water()` ([Water](#water)); `city.akr` embeds it and opens it in `world_city_load()` |
 | `city.ids.json` | A copy of the ID lock file (the lock itself is written beside the recipe) |
 | `source/` | The world file, cell files, terrain heights files and every asset recipe used, as built, and the game schema exactly as written (Mochi comments kept; the report's `game_sha256` is the hash of its JSON form, so comments and layout do not change it) |
 | `report.json` | Per cell and region: triangles (always and per layer), placements, merged meshes, ground placements, collision triangles by kind, bytes, palettes and variants, entity numbers, paths, levels of detail, ID changes, recipe, game and asset hashes and Asset Checker results, warnings; and `verification`, the World Checker's summary, failures and static results, whose row per sampled view stays in `verification/world-check.json` (named by `verification.views_report`), or why it did not run (`ran: false`, with `skipped` for `--world-checker skip`) |
@@ -1387,7 +1595,10 @@ trigger whose parameters use every kind of reference) and
 [`examples/worlds/two_districts`](../examples/worlds/two_districts) (four cells in two regions with
 day and night variants, stand-ins, a far cell, merged scatter, a festival layer, a `share: false`
 material), and [`examples/worlds/shrine_grounds`](../examples/worlds/shrine_grounds) (terrain:
-a terraced hill, a pond, swept paths and stairs, in depth mode; [Terrain](#the-example-shrine-grounds)).
+a terraced hill, a pond, swept paths and stairs, in depth mode; [Terrain](#the-example-shrine-grounds)) and
+[`examples/worlds/forest_mountain`](../examples/worlds/forest_mountain) (a cliff band with an
+overhang, a pond, streams and a waterfall, draped trails, scatter, things set on the ground, in
+depth mode; [Terrain](#the-example-forest-mountain)).
 `make test-world` (also part of `make test`) runs `tests/test_worldkit.py`, which builds them and
 runs them on the console, and `tests/test_mochi.py`.
 
@@ -1591,3 +1802,5 @@ examples ([WORLDCHECKER.md](WORLDCHECKER.md#ground)). Stage 3's region resources
 `night_market`, two regions); its seams are not ([Region seams](#region-seams)).
 Terrain (2026-10-04) is built, with a third example, `shrine_grounds`, the shape of the shrine
 grounds the garden's shrine hill is to grow into ([Terrain](#the-example-shrine-grounds)).
+Cliffs, water, draped paths, things set on the ground and scatter (2026-10-04) are built, with a
+second terrain example, `forest_mountain` ([Terrain](#the-example-forest-mountain)).

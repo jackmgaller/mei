@@ -19,6 +19,7 @@ class WorldError(KitError):
 
 NUM = number(-32767,32767)
 VEC = array(NUM,3,3)
+GROUND_VEC = array(NUM,2,3)
 POS = dict(number(0,32767), exclusiveMinimum=0)
 PATH = {'type':'string','minLength':1,'description':'A file path, relative to the world recipe.'}
 ASSET = dict(NAME,description='An Asset Kit recipe: ASSETS/NAME.asset.json.')
@@ -30,7 +31,9 @@ AKARI_KEYWORDS = {'fn','var','let','const','struct','enum','if','else','while','
 PLACEMENT = obj({
     'id':dict(NAME,description='Stable within the cell; reports and witnesses name it.'),
     'asset':ASSET,
-    'position':dict(VEC,description='World coordinates of the asset origin; must lie in the cell.'),
+    'position':dict(GROUND_VEC,description='World coordinates of the asset origin; must lie in the cell. [x, z]: on the ground (the highest terrain or sweep floor there).'),
+    'drop':dict(BOOL,description='With [x, y, z]: dropped to the highest terrain or sweep floor at or below y (under an overhang, on a lower terrace). Default false.'),
+    'lift':dict(NUM,description='Added to y after [x, z] or drop puts it on the ground (negative sinks it: a tree on a slope). Default 0.'),
     'yaw':YAW,
     'layer':dict(NAME,description='A layer of the world: drawn (and collided with) only while it is on.'),
     'collision':{'type':'string','pattern':r'^[a-z][a-z0-9_]{0,47}$',
@@ -42,7 +45,9 @@ PLACEMENT = obj({
 ENTITY = obj({
     'id':dict(NAME,description='Stable across the world; saved bits and entity_ref parameters follow it.'),
     'type':dict(NAME,description='A type of the game schema.'),
-    'position':VEC,
+    'position':dict(GROUND_VEC,description='World coordinates; [x, z]: on the ground, as a placement\'s.'),
+    'drop':dict(BOOL,description='With [x, y, z]: dropped to the floor at or below y, as a placement\'s.'),
+    'lift':dict(NUM,description='Added to y on the ground: a coin\'s height above it. Default 0.'),
     'yaw':YAW,
     'layer':NAME,
     'asset':dict(ASSET,description='A mesh the game may draw for it.'),
@@ -82,6 +87,12 @@ TERRAIN_OP = {'oneOf':[
     terrain_op('bed',{'path':dict(NAME,description='A path of the world file.'),
                       'width':dict(POS,description='The bed\'s width across the path (units); the falloff blends beyond it.'),
                       'depth':dict(number(-64,64),description='How far below the path\'s line the bed lies. Default 0.')},['path','width']),
+    terrain_op('cliff',{'height':dict(NUM,description='How far the area\'s quads move up (negative: down) as one sheet; a wall joins them to their neighbours along quad edges.'),
+                        'material':dict(NAME,description='The wall\'s terrain material. Default: the field\'s steep material, else its own.'),
+                        'overhang':dict(number(0,4),description='How far the top juts out over the wall (units, at most half the spacing). Default 0.'),
+                        'lip':dict(POS,description='With an overhang: the height of the jutting band at the top. Default 1.')},['height']),
+    terrain_op('water',{'level':dict(NUM,description='The surface\'s height: water lies on every quad of the area with a corner below it.'),
+                        'material':dict(NAME,description='A terrain material with "water": true.')},['level','material']),
     terrain_op('paint',{'material':dict(NAME,description='A terrain material for the quads whose centres lie in the area.')},['material']),
     terrain_op('hole',{}),
 ]}
@@ -112,6 +123,7 @@ TERRAIN_MATERIAL = obj({
     'class':dict(choice('surface','emissive'),description='As an Asset Kit material\'s. Default surface.'),
     'tag':dict(NAME,description='A surface tag, mapped to the collision surface byte by collision.surfaces.'),
     'share':dict(BOOL,description='As an Asset Kit material\'s: false gives the material a palette entry of its own. Default true.'),
+    'water':dict(BOOL,description='Water: semi-transparent (half blend), no collision, not ground; its upward faces answer the reader\'s wp_water() with the tag\'s surface byte. For water operations and water sweeps. Default false.'),
 }, ['color'])
 SWEEP = obj({
     'profile':dict(array(array(NUM,2,2),2,64),description='[[x, y], ...]: the cross-section, x to the right of the path\'s direction, y up from its line. Each edge faces to its left (an edge drawn from left to right faces up).'),
@@ -121,8 +133,41 @@ SWEEP = obj({
                   description='Steps instead of a slope: each segment of the path climbs in equal steps no higher than rise.'),
     'caps':dict(BOOL,description='Close the ends of an open path with the profile\'s outline, fanned from its first point. Default false.'),
     'ground':dict(BOOL,description='Drawn in the ground pass. Default: true unless the path is raised.'),
-    'collision':dict(BOOL,description='The sweep\'s faces are collision triangles. Default true.'),
+    'collision':dict(BOOL,description='The sweep\'s faces are collision triangles. Default true (water: never).'),
+    'double_sided':dict(BOOL,description='Faces drawn from both sides (a waterfall seen from behind). Default false.'),
 }, ['profile'])
+DRAPE = obj({
+    'step':dict(POS,description='The line is resampled every step units (default: the finest field spacing).'),
+    'smooth':dict(integer(0,16),description='Passes of a 1-2-1 smoothing of the heights along the line. Default 2.'),
+    'lift':dict(NUM,description='Added to the ground\'s height. Default 0.'),
+    'downhill':dict(BOOL,description='The line never rises from its first point to its last (a stream): where the ground rises, the bed cuts through. Default false.'),
+    'bed':dict(obj({'width':POS,'depth':number(-64,64),'falloff':number(0,1024)},['width']),
+               description='Cut the path\'s own bed after the fields\' operations: as the bed operation (width across, depth below the line, falloff).'),
+})
+SCATTER_ASSET = obj({
+    'asset':ASSET,
+    'weight':dict(number(0.001,1000),description='How often it is chosen against the others. Default 1.'),
+    'collision':{'type':'string','pattern':r'^[a-z][a-z0-9_]{0,47}$','description':'"self", "none" (default) or a companion collision asset.'},
+    'lift':dict(NUM,description='Added to its height on the ground. Default the scatter\'s lift.'),
+}, ['asset'])
+SCATTER = obj({
+    'assets':dict(array(SCATTER_ASSET,1,32),description='What is scattered, chosen by weight.'),
+    'area':dict(AREA,description='Where (required).'),
+    'spacing':dict(POS,description='About how far apart (units): one candidate per spacing x spacing square of the world\'s lattice.'),
+    'fill':dict(number(0,1),description='The fraction of candidates kept. Default 1.'),
+    'jitter':dict(number(0,1),description='How far a candidate moves from its square\'s centre, as a fraction of the spacing. Default 0.8.'),
+    'seed':dict(integer(0,2**31-1),description='Changes the pattern. Default 0.'),
+    'exclude':dict(array(AREA,1,256),description='Areas left empty (clearings, a trail\'s corridor).'),
+    'clearance':dict(number(0,64),description='Kept clear of every sweep\'s edge (units). Default 1.'),
+    'max_slope':dict(number(0,90),description='Not on ground steeper than this (degrees). Default 35.'),
+    'on':dict(choice('terrain','sweeps','both'),description='What it may stand on: terrain fields, sweeps, or both. Default terrain.'),
+    'yaw':dict({'anyOf':[NUM,{'enum':['random']}]},description='Degrees, or "random" (default).'),
+    'lift':dict(NUM,description='Added to the height on the ground (negative sinks the base on a slope). Default 0.'),
+    'layer':NAME,
+    'chunk':dict(choice(4,8,16,32,64),description='Props are merged per chunk of this many units a side (one placement, one cull sphere). Default 16.'),
+    'cull':dict(POS,description='Chunks are not drawn from this distance (units, eye to the chunk\'s centre).'),
+    'coarse':dict(POS,description='From this distance chunks draw their assets\' level 1 (assets with lod).'),
+}, ['assets','area','spacing'])
 TERRAIN = obj({
     'materials':{'type':'object','propertyNames':NAME,'additionalProperties':TERRAIN_MATERIAL,'maxProperties':128,
                  'description':'Terrain materials, drawn through palette entries of the cell\'s region as palette-backed asset materials are ("NAME" or "terrain.NAME" in a variant\'s colors).'},
@@ -133,7 +178,8 @@ TERRAIN = obj({
 }, ['materials'])
 
 PATH_SPEC = obj({
-    'points':dict(array(VEC,2,4095),description='World coordinates, in order; consecutive points differ. A closed path joins the last back to the first (do not repeat it).'),
+    'points':dict(array(GROUND_VEC,2,4095),description='World coordinates, in order; consecutive points differ. A closed path joins the last back to the first (do not repeat it). A draped path\'s points may be [x, z].'),
+    'drape':dict(DRAPE,description='The path lies on the terrain: its heights are the ground\'s along it (resampled), and it may cut its own bed. The pack stores the draped line.'),
     'raised':dict(BOOL,description='Raised: not lying on the ground (a rail, a wire, a jib). Carried to the pack for the game; a raised path\'s sweep is not ground. Default false.'),
     'closed':dict(BOOL,description='A loop: the last point joins the first. Default false.'),
     'tag':dict(NAME,description='A surface tag, mapped to the pack\'s surface byte by collision.surfaces as material tags are.'),
@@ -237,6 +283,8 @@ WORLD = dict(obj({
     'verification':obj({'mode':choice('report','enforce'),
                         'thresholds':{'type':'object','propertyNames':NAME,'additionalProperties':{},
                                       'description':'Per-world World Checker settings (defaults from the kit).'}}),
+    'scatter':{'type':'object','propertyNames':NAME,'additionalProperties':SCATTER,'maxProperties':256,
+               'description':'Seeded props over an area, set on the ground, cut per cell and merged per chunk (WORLDKIT.md, "Scatter").'},
     'terrain':dict(TERRAIN,description='Ground heightfields and their materials (WORLDKIT.md, "Terrain"); profiles swept along paths are in paths.'),
 }, ['format','version','name','game','assets','grid','regions']))
 

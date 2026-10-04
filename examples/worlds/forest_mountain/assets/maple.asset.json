@@ -1,0 +1,24 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "maple",
+  "materials": {
+    "bark": {"color": "#5a3e2c", "palette": true, "tag": "wood"},
+    "leaves": {"color": "#c8562a", "palette": true}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "nodes": [
+    {"id": "trunk", "op": "cylinder", "radius": 0.22, "height": 2.4, "segments": 5, "caps": false, "material": "bark",
+     "transform": {"translate": [0, 1.2, 0]}},
+    {"id": "crown", "op": "sphere", "radius": 2.1, "rings": 3, "segments": 6, "material": "leaves",
+     "transform": {"translate": [0, 3.9, 0], "scale": [1, 0.85, 1]}}
+  ],
+  "lod": {
+    "levels": [
+      {"distance": 36, "nodes": [
+        {"id": "crown", "op": "cone", "radius": 2.0, "height": 4.2, "segments": 4, "caps": false, "material": "leaves",
+         "transform": {"translate": [0, 3.4, 0]}}
+      ]}
+    ]
+  }
+}
