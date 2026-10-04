@@ -1,0 +1,62 @@
+{
+  "format": "mei-world-cell",
+  "version": 1,
+  "id": "southwest",
+  "at": [
+    0,
+    0
+  ],
+  "region": "shrine",
+  "placements": [
+    {
+      "id": "tree_w1",
+      "asset": "park_tree",
+      "position": [
+        8,
+        0,
+        40
+      ],
+      "collision": "park_tree_col"
+    },
+    {
+      "id": "tree_w2",
+      "asset": "park_tree",
+      "position": [
+        14,
+        0,
+        52
+      ],
+      "collision": "park_tree_col"
+    },
+    {
+      "id": "tree_w3",
+      "asset": "park_tree",
+      "position": [
+        6,
+        0,
+        58
+      ],
+      "collision": "park_tree_col"
+    },
+    {
+      "id": "tree_s1",
+      "asset": "park_tree",
+      "position": [
+        30,
+        0,
+        20
+      ],
+      "collision": "park_tree_col"
+    },
+    {
+      "id": "tree_s2",
+      "asset": "park_tree",
+      "position": [
+        50,
+        0,
+        14
+      ],
+      "collision": "park_tree_col"
+    }
+  ]
+}

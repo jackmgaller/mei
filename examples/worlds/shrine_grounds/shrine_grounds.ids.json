@@ -1,0 +1,16 @@
+{
+  "format": "mei-world-ids",
+  "version": 1,
+  "world": "shrine_grounds",
+  "next_bit": 6,
+  "bits": {
+    "coin_summit": 0,
+    "coin_pond": 1,
+    "coin_tier1": 2,
+    "coin_tier2": 3,
+    "coin_tier3": 4,
+    "coin_cemetery": 5
+  },
+  "retired": {},
+  "renamed": {}
+}

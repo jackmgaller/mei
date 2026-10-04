@@ -1,0 +1,114 @@
+{
+  "format": "mei-world-cell",
+  "version": 1,
+  "id": "northwest",
+  "at": [
+    0,
+    1
+  ],
+  "region": "shrine",
+  "placements": [
+    {
+      "id": "pond",
+      "asset": "pond_water",
+      "position": [
+        22,
+        -0.3,
+        82
+      ],
+      "collision": "none"
+    },
+    {
+      "id": "storehouse",
+      "asset": "storehouse",
+      "position": [
+        16,
+        0,
+        112
+      ],
+      "collision": "self"
+    },
+    {
+      "id": "tree_nw1",
+      "asset": "park_tree",
+      "position": [
+        34,
+        0,
+        100
+      ],
+      "collision": "park_tree_col"
+    },
+    {
+      "id": "tree_nw2",
+      "asset": "park_tree",
+      "position": [
+        38,
+        0,
+        122
+      ],
+      "collision": "park_tree_col"
+    },
+    {
+      "id": "tree_t3a",
+      "asset": "park_tree",
+      "position": [
+        62.5,
+        9,
+        80
+      ],
+      "collision": "park_tree_col"
+    },
+    {
+      "id": "tree_t3b",
+      "asset": "park_tree",
+      "position": [
+        62.5,
+        9,
+        88
+      ],
+      "collision": "park_tree_col"
+    }
+  ],
+  "entities": [
+    {
+      "id": "coin_pond",
+      "type": "coin",
+      "position": [
+        22,
+        0.6,
+        82
+      ],
+      "asset": "coin"
+    },
+    {
+      "id": "coin_tier1",
+      "type": "coin",
+      "position": [
+        47,
+        4,
+        100
+      ],
+      "asset": "coin"
+    },
+    {
+      "id": "coin_tier2",
+      "type": "coin",
+      "position": [
+        55,
+        7,
+        104
+      ],
+      "asset": "coin"
+    },
+    {
+      "id": "coin_tier3",
+      "type": "coin",
+      "position": [
+        63,
+        10,
+        70
+      ],
+      "asset": "coin"
+    }
+  ]
+}

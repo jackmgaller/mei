@@ -1,0 +1,12 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "pond_water",
+  "materials": {
+    "water": {"color": "#3f7393", "palette": true, "tag": "water"}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "nodes": [
+    {"id": "surface", "op": "cylinder", "radius": 11.6, "height": 0.1, "segments": 24, "material": "water"}
+  ]
+}

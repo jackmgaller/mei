@@ -89,6 +89,9 @@ def depfile(recipe, out):
     deps.append(assets)
     if assets.is_dir():
         deps += sorted(p for p in assets.iterdir() if p.is_file() and p.name.endswith('.asset.json'))
+    for spec in source.world.get('terrain', {}).get('fields', {}).values():
+        if 'heights' in spec:
+            deps.append((source.base/spec['heights']).resolve())
     names = []
     for d in deps:
         if d and Path(d).exists() and rel(d) not in names: names.append(rel(d))

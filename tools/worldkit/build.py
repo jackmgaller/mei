@@ -106,8 +106,12 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
             snapshot['source/'+source.world['cell_dir'].strip('/')+'/'+Path(cs.file).name] = jsonio.pretty(cs.recipe).encode()
     for asset_name,asset in sorted(compiled.library.assets.items()):
         snapshot[f'source/{Path(source.world["assets"]).name or "assets"}/{asset_name}.asset.json'] = jsonio.pretty(asset.recipe).encode()
+    for f in compiled.terrain_files:
+        # a terrain field's heights file, at its path relative to the world file
+        rel = Path(f).relative_to(source.base) if Path(f).is_relative_to(source.base) else Path(Path(f).name)
+        snapshot['source/'+rel.as_posix()] = Path(f).read_bytes()
     sources = ([source.world_path,source.game_path,lock_path(source)]+[cs.file for cs in source.cells]
-               +[a.file for a in compiled.library.assets.values()])
+               +[a.file for a in compiled.library.assets.values()]+list(compiled.terrain_files))
     directory = Path(directory).resolve()
     staged.guard(directory,list(files)+['report.json','source','preview'],sources,error=WorldError)
     for s in sources:
