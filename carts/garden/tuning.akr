@@ -28,6 +28,9 @@ enum T {
     // slopes and surfaces
     SlideAngle, SlopeGrav, SlideFriction, SlideMax, SlopeWalk, BounceVy,
     // attachments (attach.akr): poles, rails, movers
+    PoleReach, PoleTop, PoleClimb, PoleSlide, PoleTurn, PoleJumpVy, PoleJumpH, PoleRegrab,
+    RailReach, GrindMin, GrindMax, GrindAccel, GrindJumpVy, HangSpeed, HangJumpVy, RailRegrab,
+    RideKeep,
     // camera (camera.akr)
     CamDist, CamHeight, CamPitch, CamOrbit, CamFollow,
 }
@@ -115,6 +118,23 @@ const TUNE: [len(T)]TuneDef = [
     TuneDef { name: "bounce vy",      unit: "m/s",  def: 18.0,  step: 0.5,  lo: 1.0,  hi: 40.0 },
 
     // attachments: one row per T entry above, in the same order
+    TuneDef { name: "pole reach",     unit: "m",    def: 0.65,  step: 0.05, lo: 0.3,  hi: 1.5 },
+    TuneDef { name: "pole top",       unit: "m",    def: 1.2,   step: 0.05, lo: 0.0,  hi: 2.0 },
+    TuneDef { name: "pole climb",     unit: "m/s",  def: 3.0,   step: 0.1,  lo: 0.2,  hi: 15.0 },
+    TuneDef { name: "pole slide",     unit: "m/s",  def: 6.0,   step: 0.1,  lo: 0.2,  hi: 20.0 },
+    TuneDef { name: "pole turn",      unit: "r/s",  def: 3.0,   step: 0.1,  lo: 0.1,  hi: 15.0 },
+    TuneDef { name: "pole jump vy",   unit: "m/s",  def: 12.6,  step: 0.1,  lo: 1.0,  hi: 30.0 },
+    TuneDef { name: "pole jump h",    unit: "m/s",  def: 6.0,   step: 0.1,  lo: 0.0,  hi: 20.0 },
+    TuneDef { name: "pole regrab",    unit: "t",    def: 15.0,  step: 1.0,  lo: 0.0,  hi: 120.0 },
+    TuneDef { name: "rail reach",     unit: "m",    def: 0.5,   step: 0.05, lo: 0.1,  hi: 1.2 },
+    TuneDef { name: "grind min",      unit: "m/s",  def: 6.0,   step: 0.1,  lo: 0.5,  hi: 30.0 },
+    TuneDef { name: "grind max",      unit: "m/s",  def: 14.0,  step: 0.1,  lo: 1.0,  hi: 40.0 },
+    TuneDef { name: "grind accel",    unit: "m/s2", def: 6.0,   step: 0.5,  lo: 0.0,  hi: 60.0 },
+    TuneDef { name: "grind jump vy",  unit: "m/s",  def: 12.6,  step: 0.1,  lo: 1.0,  hi: 30.0 },
+    TuneDef { name: "hang speed",     unit: "m/s",  def: 2.5,   step: 0.1,  lo: 0.1,  hi: 10.0 },
+    TuneDef { name: "hang jump vy",   unit: "m/s",  def: 9.0,   step: 0.1,  lo: 1.0,  hi: 30.0 },
+    TuneDef { name: "rail regrab",    unit: "t",    def: 15.0,  step: 1.0,  lo: 0.0,  hi: 120.0 },
+    TuneDef { name: "ride keep",      unit: "x",    def: 1.0,   step: 0.05, lo: 0.0,  hi: 1.0 },
 
     TuneDef { name: "cam distance",   unit: "m",    def: 6.5,   step: 0.25, lo: 1.0,  hi: 20.0 },
     TuneDef { name: "cam height",     unit: "m",    def: 1.2,   step: 0.1,  lo: 0.0,  hi: 5.0 },

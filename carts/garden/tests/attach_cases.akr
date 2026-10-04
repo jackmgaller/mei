@@ -1,10 +1,428 @@
 // The attachments' scenarios (numbered 200-299), run by harness.akr; check.sh runs the ones
 // attach_cases.sh lists. They use the harness's helpers: place(), pad_v, stick_v, expect(),
 // note(), done(), seen_at(), was(), mark() and apex.
+//
+// Where they run (carts/garden/world): utility pole 1 at (6, 0, 72), 9 m, with the street south
+// of it; the gondola at (38.5, 0.6, 92.9), its deck 11 x 1.8 m, rising 23.4 m; the train at
+// (31, 10, 79), its roof 3.8 m up, 22 x 3 m, running 84 m east. The rails (wires_west along
+// z 72 at 8.6 m, overpass along x 47 at 6 m) are run only when the world has them.
+
+var pole0: s32                 // the pole or mover a scenario uses
+var mv: s32
+var ang0: fixed
+var dev: fixed                 // the largest difference seen
+var bad: s32                   // frames something was wrong
+var px: fixed                  // the player's x the frame before
+var cyc0: s32                  // cycles measured
+var cyc1: s32
+var cyc2: s32
+
+fn pole_near(x: fixed, z: fixed) -> s32 {
+    for k in 0..pole_n {
+        if abs(poles[k].base.x - x) < 0.5 && abs(poles[k].base.z - z) < 0.5 { return k }
+    }
+    return -1
+}
+
+fn mover_near_base(x: fixed, z: fixed) -> s32 {
+    for k in 0..mover_n {
+        if abs(movers[k].base.x - x) < 1.0 && abs(movers[k].base.z - z) < 1.0 { return k }
+    }
+    return -1
+}
+
+fn rail_named(s: *u8) -> s32 {
+    for k in 0..rail_n {
+        if streq(wp_path_name(rails[k]), s) { return k }
+    }
+    return -1
+}
+
+// Puts the player in the air at p, falling from rest (place() would stand it on the floor
+// below).
+fn place_air(p: vec3, yaw: fixed) {
+    place(p, yaw)
+    pl.pos = p
+    pl.vel = vec3(0.0, 0.0, 0.0)
+    enter(St.Fall)
+}
+
+fn movers_at(t: s32) {
+    att_t = t
+    for k in 0..mover_n { mover_place(&movers[k], t) }
+}
 
 // Set up scenario SCENARIO (set `name`, place the player) if it is one of these.
-fn attach_case_init() -> bool { return false }
+fn attach_case_init() -> bool {
+    pole0 = pole_near(6.0, 72.0)
+    mv = -1
+    match SCENARIO {
+        200 => { name = "pole: grab from a jump, climb to the top, jump off"; place(vec3(6.0, 0.0, 69.5), NORTH) }
+        201 => { name = "pole: go round it, let go with R"; place(vec3(6.0, 0.0, 69.5), NORTH) }
+        202 => { name = "pole: slide down to the floor"; place(vec3(6.0, 0.0, 69.5), NORTH) }
+        203 => {
+            name = "gondola: ride it up and down"
+            mv = mover_near_base(38.5, 92.9)
+            place(vec3(38.5, 0.7, 92.9), NORTH)
+        }
+        204 => {
+            name = "train: ride it, jump up, land on it again"
+            mv = mover_near_base(31.0, 79.0)
+            place(vec3(31.0, 14.0, 79.0), EAST)
+        }
+        205 => {
+            name = "train: jump off it sideways, keeping its speed"
+            mv = mover_near_base(31.0, 79.0)
+            place(vec3(31.0, 14.0, 79.0), EAST)
+        }
+        206 => {
+            name = "gondola: rising into the player lifts it on"
+            mv = mover_near_base(38.5, 92.9)
+            place(vec3(40.0, 0.0, 92.9), NORTH)
+        }
+        207 => {
+            name = "gondola: coming down onto the player squeezes it out"
+            mv = mover_near_base(38.5, 92.9)
+            movers_at(700)
+            place(vec3(40.0, 0.0, 92.9), NORTH)
+        }
+        208 => {
+            name = "rail: land on it and grind, jump, grind off its end"
+            place_air(vec3(47.0, 7.0, 72.0), PI)
+            pl.fwd = 0.05             // 3 m/s
+            set_hvel()
+        }
+        209 => {
+            name = "wire: hang, move along, drop"
+            place_air(vec3(14.0, 6.9, 72.0), EAST)
+        }
+        211 => { name = "pole to wire: kick off the top onto the wire, grind it"; place(vec3(6.0, 0.0, 69.5), NORTH) }
+        210 => {
+            name = "cycles a tick on the train"
+            mv = mover_near_base(31.0, 79.0)
+            place(vec3(31.0, 14.0, 79.0), EAST)
+        }
+        else => { return false }
+    }
+    if SCENARIO >= 203 && SCENARIO <= 207 || SCENARIO == 210 { assert(mv >= 0) }
+    assert(pole0 >= 0)
+    return true
+}
 
 // Before each frame's ticks (the harness's scenario(): it sees the state the frame before
 // left, and sets this frame's pad_v and stick_v).
-fn attach_case(_f: s32) {}
+fn attach_case(f: s32) {
+    match SCENARIO {
+        200, 201, 202 => a_pole(f)
+        211 => a_pole_wire(f)
+        203 => a_gondola(f)
+        204, 205 => a_train(f)
+        206 => a_lift(f)
+        207 => a_squeeze(f)
+        208 => a_grind(f)
+        209 => a_hang(f)
+        210 => a_cost(f)
+        else => {}
+    }
+}
+
+fn axis_dist() -> fixed {
+    let p = poles[pole0].base
+    return length(vec3(pl.pos.x - p.x, 0.0, pl.pos.z - p.z))
+}
+
+// Run north at pole 1 and jump: grab it. 200: climb to the top and jump off; 201: go round it
+// with the stick right, then R; 202: slide down with the stick back.
+fn a_pole(f: s32) {
+    if t0 < 0 { stick_v = FWD }
+    if f >= 5 && f < 25 { pad_v = A }
+    if t0 < 0 && pl.st == St.Pole {
+        t0 = f
+        expect(pole_k == pole0, "grabbed pole 1", fixed(pole_k))
+        expect(near(axis_dist(), POLE_HOLD, 0.01), "held at the axis distance m", axis_dist())
+        note("grabbed at height", pl.pos.y)
+        ang0 = pole_ang
+    }
+    if t0 < 0 {
+        if f == 100 { expect(false, "grabbed by frame 100", 0.0) }
+        return
+    }
+    let top = poles[pole0].top - tv[T.PoleTop]
+    if SCENARIO == 200 {
+        if f < t0 + 200 { stick_v = FWD }
+        if f == t0 + 10 { expect(pl.st == St.Pole && pl.pos.y > y0, "climbing", pl.pos.y) }
+        if f == t0 + 1 { y0 = pl.pos.y }
+        if f == t0 + 199 { expect(pl.st == St.Pole && near(pl.pos.y, top, 0.001), "at the top (feet) m", pl.pos.y) }
+        if f == t0 + 200 {
+            pad_v = A
+            mark()
+            y0 = pl.pos.y
+        }
+        if f == t0 + 201 { expect(pl.st == St.WallKick, "kicked off", pl.vel.y * 60) }
+        if f == t0 + 230 { expect(axis_dist() > 2.0 && pl.pos.z < 72.0, "away from the pole (south) m", axis_dist()) }
+        if t1 < 0 && f > t0 + 201 && pl.st == St.Ground { t1 = f }
+        if f == t0 + 330 {
+            expect(near(apex - y0, apex_ticks(tv[T.PoleJumpVy]), 0.05), "jump height m", apex - y0)
+            expect(t1 > 0, "landed", fixed(t1 - t0))
+            done()
+        }
+    } else if SCENARIO == 201 {
+        if f > t0 && f <= t0 + 30 { stick_v = vec2(1.0, 0.0) }
+        if f == t0 + 31 {
+            let d = wrap_angle(pole_ang - ang0)
+            expect(near(abs(d), tv[T.PoleTurn] / 2, 0.02), "turned round it rad", d)
+            expect(pl.pos.x > poles[pole0].base.x + 0.3, "to the right as seen (east) x", pl.pos.x)
+        }
+        if f == t0 + 40 { pad_v = R }
+        if f == t0 + 41 { expect(pl.st == St.Fall, "let go", pl.pos.y) }
+        if f > t0 + 41 && f < t0 + 100 && pl.st == St.Pole { expect(false, "not grabbed again", fixed(f - t0)) }
+        if f == t0 + 100 {
+            expect(pl.st == St.Ground && pl.pos.y == 0.0, "down on the floor", pl.pos.y)
+            done()
+        }
+    } else {
+        if f > t0 + 10 { stick_v = BACK }
+        if t1 < 0 && pl.st == St.Ground { t1 = f }
+        if f == t0 + 60 {
+            expect(t1 > 0 && pl.pos.y == 0.0, "slid down onto the floor", pl.pos.y)
+            done()
+        }
+    }
+}
+
+// Stand on the gondola: its deck's height and the feet's agree within a centimetre all the
+// way up, over the pause and on the way down.
+fn a_gondola(f: s32) {
+    let m = &movers[mv]
+    if f >= 1 {
+        if pl.st != St.Ground { bad += 1 }
+        dev = max(dev, abs(pl.pos.y - m.pos.y))
+    }
+    if f == 1 { expect(near(pl.pos.y, m.pos.y, 0.001), "standing on the deck", pl.pos.y) }
+    if f == 640 { expect(near(pl.pos.y, m.base.y + m.to.y, 0.01), "at the top m", pl.pos.y) }
+    if f == 1000 {
+        expect(pl.pos.y < m.base.y + m.to.y - 5.0, "coming down", pl.pos.y)
+        expect(bad == 0, "on foot every frame", fixed(bad))
+        expect(dev <= 0.01, "feet within 1 cm of the deck m", dev)
+        done()
+    }
+}
+
+// Ride the train east. 204: jump straight up near its top speed and land on it again;
+// 205: jump off to the south (stick right of the camera), keeping its speed.
+fn a_train(f: s32) {
+    let m = &movers[mv]
+    let rel = pl.pos.x - m.pos.x
+    if f == 2 { x0 = rel }
+    if f >= 2 && f < 420 {
+        if pl.st != St.Ground { bad += 1 }
+        dev = max(dev, abs(rel - x0))
+    }
+    if f == 400 {
+        let v = (pl.pos.x - px) * 60
+        note("train speed m/s", m.vel.x * 60)
+        expect(near(v, m.vel.x * 60, 0.01) && m.vel.x * 60 > 7.0, "carried at its speed m/s", v)
+        expect(bad == 0 && dev <= 0.01, "on its roof, not slipping m", dev)
+    }
+    px = pl.pos.x
+    if SCENARIO == 204 {
+        if f == 420 {
+            pad_v = A
+            x0 = rel
+        }
+        if f > 421 && t0 < 0 && pl.st == St.Ground { t0 = f }
+        if f == 430 { expect(is_air(pl.st) && abs(rel - x0) < 0.2, "in the air over the same spot m", rel - x0) }
+        if f == 500 {
+            expect(t0 > 0 && near(pl.pos.y, m.pos.y + 3.8, 0.05), "landed on the roof again", pl.pos.y)
+            note("landed this far from the take-off spot m", rel - x0)
+            done()
+        }
+    } else {
+        if f >= 410 && t0 < 0 { stick_v = vec2(1.0, 0.0) }
+        if f == 420 { pad_v = A }
+        if f == 429 { x0 = pl.pos.x }
+        if f == 430 {
+            let v = (pl.pos.x - x0) * 60
+            expect(is_air(pl.st) && near(v, m.vel.x * 60 * tv[T.RideKeep], 0.3), "in the air, keeps the train's speed east m/s", v)
+        }
+        if t0 < 0 && f > 422 && pl.st == St.Ground { t0 = f }
+        if f == 560 {
+            expect(t0 > 0 && pl.pos.z < 77.0, "landed off the train, south of it z", pl.pos.z)
+            note("landed at height", pl.pos.y)
+            done()
+        }
+    }
+}
+
+// Standing at the gondola's foot inside its deck: as it rises the player is lifted onto it
+// and ridden up.
+fn a_lift(f: s32) {
+    let m = &movers[mv]
+    if f == 0 { expect(pl.pos.y == 0.0, "standing on the street inside the deck", pl.pos.y) }
+    if f == 3 { expect(near(pl.pos.y, m.pos.y, 0.001), "lifted onto the deck", pl.pos.y) }
+    if f == 200 {
+        expect(pl.st == St.Ground && near(pl.pos.y, m.pos.y, 0.01) && pl.pos.y > 3.0, "riding it up m", pl.pos.y)
+        done()
+    }
+}
+
+// Standing under the gondola as it comes down: when its underside reaches the head the player
+// is squeezed out, never inside it.
+fn a_squeeze(f: s32) {
+    let m = &movers[mv]
+    let under = m.pos.y - 0.3
+    let inside = abs(pl.pos.x - m.pos.x) < 5.5 && abs(pl.pos.z - m.pos.z) < 0.9
+    if f >= 1 && inside && under < pl.pos.y + BODY_HEIGHT - 0.01 {
+        bad += 1
+        if bad == 1 { note("inside at frame", fixed(f)) }
+    }
+    if t0 < 0 && !inside { t0 = f }
+    if f == 650 {
+        expect(t0 > 0 && bad == 0, "squeezed out, never inside", fixed(bad))
+        expect(pl.st == St.Ground && pl.pos.y == 0.0, "on the street", pl.pos.y)
+        expect(near(m.pos.y, m.base.y, 0.001), "the gondola is down", m.pos.y)
+        note("out at z", pl.pos.z)
+        done()
+    }
+}
+
+// Fall onto the overpass rail moving south: grind it at least at the minimum speed, jump,
+// and grind off its far end.
+fn a_grind(f: s32) {
+    let k = rail_named("overpass")
+    if k < 0 {
+        if f == 1 {
+            note("no overpass rail in this world: skipped", 0.0)
+            done()
+        }
+        return
+    }
+    let pth = rails[k]
+    if t0 < 0 && pl.st == St.Rail {
+        t0 = f
+        expect(rail_k == k && near(pl.pos.x, 47.0, 0.001) && near(pl.pos.y, 6.0, 0.01), "grinding on the rail", pl.pos.y)
+        expect(rail_v * 60 >= tv[T.GrindMin] - 0.01, "at least the minimum speed m/s", rail_v * 60)
+        z0_set()
+    }
+    if t0 < 0 {
+        if f == 60 { expect(false, "on the rail by frame 60", pl.pos.y) }
+        return
+    }
+    if f == t0 + 20 { expect(pl.st == St.Rail && pl.pos.z < y0 - 1.5, "moving south along it z", pl.pos.z) }
+    if f >= t0 + 20 && f < t0 + 60 { pad_v = A }
+    if f == t0 + 20 {
+        mark()
+        x0 = pl.pos.y
+    }
+    if f == t0 + 21 { expect(pl.st == St.Jump, "jumped off the rail", pl.vel.y * 60) }
+    if f == t0 + 90 { expect(near(apex - x0, apex_ticks(tv[T.GrindJumpVy]), 0.1), "jump height m", apex - x0) }
+    if t2 < 0 && f > t0 + 21 && pl.st == St.Rail {
+        t2 = f
+        note("on the rail again after the jump, z", pl.pos.z)
+    }
+    if t1 < 0 && f > t0 + 21 && pl.st == St.Fall { t1 = f }
+    if f == 400 {
+        let end = wp_path_point(pth, wp_path_points(pth) - 1)
+        expect(t1 > 0 && pl.pos.z < end.z + 0.5, "ground off the end", pl.pos.z)
+        done()
+    }
+}
+
+fn z0_set() { y0 = pl.pos.z }
+
+// Just under the west wires: the hands reach them and hang; the stick moves along (east);
+// R drops to the street.
+fn a_hang(f: s32) {
+    let k = rail_named("wires_west")
+    if k < 0 {
+        if f == 1 {
+            note("no west wires in this world: skipped", 0.0)
+            done()
+        }
+        return
+    }
+    if t0 < 0 && pl.st == St.Hang {
+        t0 = f
+        expect(near(pl.pos.y, 8.6 - HANG_BELOW, 0.01), "hanging below the wire", pl.pos.y)
+        x0 = pl.pos.x
+    }
+    if t0 < 0 {
+        if f == 30 { expect(false, "hanging by frame 30", pl.pos.y) }
+        return
+    }
+    if f > t0 && f <= t0 + 60 { stick_v = FWD }
+    if f == t0 + 61 { expect(near(pl.pos.x - x0, tv[T.HangSpeed], 0.05), "moved along a second m", pl.pos.x - x0) }
+    if f == t0 + 70 { pad_v = R }
+    if f == t0 + 71 { expect(pl.st == St.Fall, "dropped", pl.pos.y) }
+    if f == t0 + 160 {
+        expect(pl.st == St.Ground && pl.pos.y < 1.0, "down on the street", pl.pos.y)
+        done()
+    }
+}
+
+// Riding the train: the cycles of the movers' tick and of the player's tick on it, and of the
+// hooks the player's collision calls (near the train, and far from every mover).
+fn a_cost(f: s32) {
+    if f >= 10 && f < 70 {
+        let c0 = cycle_count()
+        attach_tick()
+        let c1 = cycle_count()
+        player_tick(&pin)
+        let c2 = cycle_count()
+        cyc0 = max(cyc0, c1 - c0)
+        cyc1 = max(cyc1, c2 - c1)
+    }
+    if f == 70 {
+        let c0 = cycle_count()
+        let _ = attach_floor(pl.pos, BODY_STEP, true)
+        let c1 = cycle_count()
+        let _ = attach_push(pl.pos + vec3(0.0, 0.9, 0.0), BODY_RADIUS)
+        let c2 = cycle_count()
+        any_near = false                       // as it is away from every mover
+        let _ = attach_floor(vec3(40.0, 0.0, 8.0), BODY_STEP, true)
+        any_near = true
+        let c3 = cycle_count()
+        let _ = attach_air_grab(&pin)
+        let c4 = cycle_count()
+        note("movers' tick, cycles", fixed(cyc0))
+        note("player's tick riding the train, cycles", fixed(cyc1))
+        note("attach_floor near the train, cycles", fixed(c1 - c0))
+        note("attach_push near the train, cycles", fixed(c2 - c1))
+        note("attach_floor far from movers, cycles", fixed(c3 - c2))
+        note("attach_air_grab (poles, rails), cycles", fixed(c4 - c3))
+        expect(cyc0 + cyc1 < 30000, "under 30,000 cycles", fixed(cyc0 + cyc1))
+        done()
+    }
+}
+
+// Climb pole 1, go round to its east side (the stick right, a quarter turn), kick off east:
+// the feet come down on the west wires and grind along them.
+fn a_pole_wire(f: s32) {
+    let k = rail_named("wires_west")
+    if k < 0 {
+        if f == 1 {
+            note("no west wires in this world: skipped", 0.0)
+            done()
+        }
+        return
+    }
+    if t0 < 0 { stick_v = FWD }
+    if f >= 5 && f < 25 { pad_v = A }
+    if t0 < 0 && pl.st == St.Pole { t0 = f }
+    if t0 < 0 { return }
+    if f < t0 + 190 { stick_v = FWD }
+    if f >= t0 + 190 && f < t0 + 221 { stick_v = vec2(1.0, 0.0) }
+    if f == t0 + 222 {
+        expect(near(pole_ang, HALF_PI, 0.1), "on the pole's east side", pole_ang)
+        pad_v = A
+    }
+    if t1 < 0 && pl.st == St.Rail {
+        t1 = f
+        expect(rail_k == k && near(pl.pos.y, 8.6, 0.01), "grinding the wire", pl.pos.x)
+        note("ticks from the kick to the wire", fixed(f - t0 - 222))
+    }
+    if f == t0 + 300 {
+        expect(t1 > 0 && pl.st == St.Rail && rail_v > 0.0, "still grinding east", pl.pos.x)
+        done()
+    }
+}
