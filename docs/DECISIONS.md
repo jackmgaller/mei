@@ -16,14 +16,14 @@ is deterministic.
 | Compressed audio | A PS1-SPU-style 4-bit ADPCM (3.5 : 1 against 16-bit), selected per channel; see [Audio upgrade](#audio-upgrade-adpcm-16-channels-reverb). |
 | Standard library location | Compiled into each cart (counts against its ROM size). |
 | Culling/clipping helpers | Four geometry instructions in the reserved opcodes 19–1B and 1F: a back-face test, an ordering-table depth, a colour blend and a three-vertex transform (see [Geometry instructions](#geometry-instructions)). The CPU has 63 instructions. Clipping stays in software. |
-| Fill rate | Budgeted: the GPU, named the **Prism Engine** (the 3D polygon processor), has 1,000,000 cycles a tick (a 60 MHz GPU beside the 30 MHz CPU), charged by a cost table (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a clear). A frame over budget is shown late, never cut short; the triangle limit is raised to 4,000 as a backstop. See [GPU budget](#gpu-budget). The plane chip, the **Horizon Engine** (the scrolling plane processor, [PLANES.md](PLANES.md)), costs the GPU nothing. |
+| Fill rate | Budgeted: the GPU, named the **Prism Engine** (the 3D polygon processor), has 1,000,000 cycles a tick (a 60 MHz GPU; the CPU too since [2026-10-03](#the-cpu-at-60-mhz)), charged by a cost table (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a clear). A frame over budget is shown late, never cut short; the triangle limit is raised to 4,000 as a backstop. See [GPU budget](#gpu-budget). The plane chip, the **Horizon Engine** (the scrolling plane processor, [PLANES.md](PLANES.md)), costs the GPU nothing. |
 | Controller count | Two. Each also has a **Select** button (bit 11 of `PAD1`/`PAD2`), added to the spec's eleven. |
 
 ## Details filled in
 
 **Frames and ticks.** The core runs in 60 Hz ticks. Each tick gives the CPU a fresh
-500,000-cycle budget. An instruction runs if any budget remains, so the counter can go
-slightly negative; the deficit is not carried over. `vsync` ends the tick: the buffers
+1,000,000-cycle budget (500,000 before [the CPU went to 60 MHz](#the-cpu-at-60-mhz)). An
+instruction runs if any budget remains, so the counter can go slightly negative; the deficit is not carried over. `vsync` ends the tick: the buffers
 swap, the triangle count resets and input is latched. If the budget runs out first, the
 front buffer is unchanged (the previous picture repeats) and the CPU resumes next tick.
 A frame whose GPU work is over the GPU's budget is also shown late: the CPU waits at its
@@ -188,8 +188,9 @@ do it in 6 cycles, so it would save at most 2, while fog works on packed colours
 
 The GPU is the **Prism Engine** (Prism for short), Mei's 3D polygon processor. The spec leaves
 its fill rate open and caps it at 2,000 triangles a frame. Mei gives Prism a cycle budget like
-the CPU's instead: it is a 60 MHz chip beside the 30 MHz CPU, so it has **1,000,000 GPU cycles
-per tick**. A frame that needs more is shown late, as on the PlayStation, where a heavy scene
+the CPU's instead: it is a 60 MHz chip (beside a 30 MHz CPU when this was decided; the CPU has
+been 60 MHz too since [2026-10-03](#the-cpu-at-60-mhz)), so it has **1,000,000 GPU cycles per
+tick**. A frame that needs more is shown late, as on the PlayStation, where a heavy scene
 slows the game down rather than losing polygons. The triangle limit stays as a backstop (the
 packet list needs a bound anyway), raised to **4,000**. The plane chip, the **Horizon Engine**
 (Horizon, the scrolling plane processor; [PLANES.md](PLANES.md)), is a separate chip and costs
@@ -671,3 +672,62 @@ Three tools check the work, each under its own name:
   128 MB reserved. Bank switching, a disc device and a depth buffer were considered and left out.
 - **VRAM stays 1 MB** and the ordering table stays a cart convention. Both are to be revisited
   only if a second region or a real district shows they cannot work.
+
+## The CPU at 60 MHz
+
+On 2026-10-03 the project owner doubled the CPU's clock: **30 MHz → 60 MHz, 500,000 →
+1,000,000 cycles a tick** (`MEI_CYCLES_PER_FRAME` in `src/core/mei.h`, `CPU_BUDGET` in
+`stdlib/runtime.akr`). Only the CPU changes: the Prism Engine keeps its 1,000,000 GPU cycles a
+tick, the cost table and the 4,000-triangle backstop, and RAM (2 MB) and VRAM (1 MB) stay as
+they are. Every instruction costs the cycles it did. This supersedes the CPU figure in the
+published v0.1 spec (`spec-v0.1.pdf`, `spec-v0.1.txt`), which is left as published.
+
+**Why.** The flagship platformer's first detailed city block drew at up to about 556,000 CPU
+cycles a frame, over the old budget, and the game is to run at 60 frames a second with more
+detail than that: a "PS1.5", like the extra CPU of the N64 and Saturn generation. The GPU
+budget was already twice the CPU's (a 60 MHz chip; [GPU budget](#gpu-budget)), so the two units
+now have the same clock.
+
+**Condition: the hosts still run it at full speed.** Measured before the change on an Apple
+M1 Pro, with two builds of the same core differing only in the constant. The worst case is a
+cart that uses its whole CPU budget every tick (a busy loop of loads, stores, multiplies and
+branches that never reaches `vsync`), and the same with the GPU near its budget as well
+(434,000 or 934,000 CPU cycles a frame, then six blended Gouraud full-screen rectangles,
+960,000 GPU cycles). Host milliseconds per tick, against the 16.7 ms a tick lasts, best of
+three runs of 600–1,200 ticks:
+
+| Cart | Native `mei-headless`, 500k | 1M | WebAssembly in Chromium 152, 500k | 1M |
+|---|---|---|---|---|
+| Busy loop, integer and memory | 4.05 | 7.38 | 1.99 | 4.06 |
+| Busy loop, vector unit (`mat4_mul`, `dot`) | 2.76 | 5.27 | 1.90 | 3.80 |
+| Busy loop and 960,000 GPU cycles | 3.93 | 7.36 | 3.25 | 5.04 |
+| Movement Garden tour (scenario 27) | 1.69 | 1.65 | 1.24 | 1.23 |
+| Movement Garden camera sweep (scenario 30) | 2.32 | 2.32 | 1.68 | 1.65 |
+
+The native figures are the Makefile's build (`-O2 -g`). The browser figures are the core
+compiled with Emscripten 6.0.10 at the web build's `-O3` and timed in the Claude desktop app's
+Chromium (Node's V8 gives the same within 5%); they leave out `sdl_main.c`'s presenting and
+audio, which the CPU's clock does not change. At 1,000,000 cycles the worst case takes 44% of a
+tick natively and 30% in the browser, so both hold 60 ticks a second with more than twice the
+time to spare.
+
+**What changed with it.**
+
+- `cpu_used()`, `cycle_count()` and the task clock in `stdlib/task.akr` count in `CPU_BUDGET`.
+  `cycle_count()`'s s32 now wraps every 35 seconds instead of 71, and `cpu_used()` counts at
+  most 2,000 overrun budgets instead of 4,000 so that it cannot overflow.
+- The readouts drawn against the budget use `CPU_BUDGET`: the shell's System page (which now
+  reads 60 MHz and 1,000,000 cycles), Movement Garden's timing bar, and the CPU percentage in
+  the debug lines of Lantern Lake and Sun & Moon Orbs.
+- The World Checker's `draw_cpu_cycles` threshold is 600,000, still 60% of the CPU.
+- Thresholds that are a cart's own tuning rather than a share of the budget stay as they were,
+  so the cart behaves the same: Sun & Moon Orbs' subdivision governor (`SUB_CPU_HIGH`,
+  `SUB_CPU_LOW`).
+
+**Existing carts.** Frames are unchanged except where a frame used to run over the CPU budget
+and where a readout draws the budget. Compared frame by frame over every scenario of `make
+test-carts` and 600 ticks of each built cart and the system ROM: each Lantern Lake scenario had
+one frame over 500,000 cycles and now has none, so it presents one more frame and the rest of
+the run is a frame ahead; Movement Garden's scenarios 36–38 (which time `mesh_at` on purpose)
+present 94 frames of 100 instead of 88; and Movement Garden's timing bar is half as long. Mei
+Weather, World Viewer, Sun & Moon Orbs, Features and the system ROM are unchanged.

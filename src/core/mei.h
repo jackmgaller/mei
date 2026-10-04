@@ -10,7 +10,7 @@
 #define MEI_H 240
 #define MEI_AUDIO_RATE 22050
 #define MEI_FPS 60
-#define MEI_CYCLES_PER_FRAME 500000
+#define MEI_CYCLES_PER_FRAME 1000000   /* the CPU's budget per tick, 60 MHz (docs/DECISIONS.md) */
 #define MEI_GPU_CYCLES_PER_FRAME 1000000   /* the GPU's budget per tick (docs/DECISIONS.md) */
 #define MEI_MAX_AUDIO_FRAMES 368   /* per 60 Hz tick: alternates 367 / 368 */
 
@@ -90,7 +90,7 @@ const char *mei_cart_title(const Mei *m);
 /* Latest input from the platform; latched into PAD/STICK registers at vsync. */
 void mei_set_pad(Mei *m, int index, const MeiPadInput *in);
 
-/* Runs one 60 Hz tick: up to 500,000 cycles or until vsync, then produces
+/* Runs one 60 Hz tick: up to 1,000,000 cycles or until vsync, then produces
  * that tick's audio. Returns 1 if a new picture was presented (vsync),
  * 0 if the frame overran and the previous picture repeats: the CPU ran out of
  * cycles before vsync, or it reached vsync but the GPU has not finished the

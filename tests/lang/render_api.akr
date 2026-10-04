@@ -71,12 +71,12 @@ fn draw() {
     if n == 3 {
         print("after an overrun: dropped ")
         print_int(frames_dropped())
-        if cpu_used() > 500000 && cpu_used() < 1000000 { println(", cpu over a budget") }
+        if cpu_used() > CPU_BUDGET && cpu_used() < 2 * CPU_BUDGET { println(", cpu over a budget") }
     }
     if n == 4 {
         print("on time: dropped ")
         print_int(frames_dropped())
-        if cpu_used() < 500000 { println(", cpu within the budget") }
+        if cpu_used() < CPU_BUDGET { println(", cpu within the budget") }
     }
 }
 
@@ -149,10 +149,10 @@ fn check_tables() {
     println("cycle clock ok")                        // expect: cycle clock ok
 }
 
-// About 1.3 budgets of work: this frame runs over by one.
+// About 1.2 budgets of work: this frame runs over by one.
 fn burn() {
     let c0 = cycle_count()
-    while cycle_count() - c0 < 600000 { }
+    while cycle_count() - c0 < CPU_BUDGET * 6 / 5 { }
 }
 
 // (frames 3 and 4, after check_tables)

@@ -21,7 +21,7 @@ struct Timing {
     ticks: s32         // ticks (the FRAME register) since the cart started
     late: s32          // ticks in which no new frame was presented
     last_ticks: s32    // ticks the last frame was on screen
-    cpu: s32           // CPU cycles of the last frame (of 500,000)
+    cpu: s32           // CPU cycles of the last frame (of CPU_BUDGET)
     gpu: s32           // GPU cycles of the last frame (of 1,000,000)
     cpu_peak: s32      // the most of each over the last second
     gpu_peak: s32
@@ -148,7 +148,7 @@ fn draw_timing() {
     }
     text(2, 12, "cpu", dim())
     text_thousands(34, 12, timing.cpu, ink())
-    budget_bar(112, 13, 100, timing.cpu, 500000)
+    budget_bar(112, 13, 100, timing.cpu, CPU_BUDGET)
     text(216, 12, "pk", dim())
     text_thousands(236, 12, timing.cpu_peak, ink())
     text(2, 22, "gpu", dim())

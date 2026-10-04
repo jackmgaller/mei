@@ -1110,9 +1110,9 @@ Where a function lives (each file's section below lists all of it):
 
 | | |
 |---|---|
-| `cpu_used() -> s32` | cycles used by the previous frame (of 500,000); a frame that ran over counts every budget it used up, so it reads above 500,000 |
+| `cpu_used() -> s32` | cycles used by the previous frame (of `CPU_BUDGET` = 1,000,000 a tick); a frame that ran over counts every budget it used up, so it reads above 1,000,000 |
 | `frames_dropped() -> s32` | how many budgets the previous frame ran over by: 0 when it was on time, n when the picture before it stayed up n more times |
-| `cycle_count() -> s32` | a cycle clock that keeps counting across frames and overruns (`FRAME × 500,000 − CYCLES`); differences between readings are exact for spans under 71 seconds |
+| `cycle_count() -> s32` | a cycle clock that keeps counting across frames and overruns (`FRAME × CPU_BUDGET − CYCLES`); differences between readings are exact for spans under 35 seconds |
 | `tris_drawn() -> s32` | 3D triangles drawn in the previous frame |
 | `gpu_used() -> s32` | GPU cycles the previous frame took to draw (of `GPU_BUDGET` = 1,000,000 a tick), by the cost table in `DECISIONS.md` (40 a triangle, 1 a pixel, ×2 textured, ×2 semi-transparent, 38,400 a `cls`); a frame over the budget is shown late, so a cart can lower its detail as this nears the budget |
 | `frame_ticks() -> s32` | ticks the previous frame took: 1 on time, n when the picture before it stayed up n − 1 more times because the CPU or the GPU ran over |
@@ -1123,7 +1123,7 @@ Where a function lives (each file's section below lists all of it):
 | `frame_angle(t, speed) -> fixed` | `t × speed` (radians per frame) reduced to 0..TAU, exactly |
 | `vsync()` | end the frame now (low level: skips the ordering table and pad bookkeeping) |
 | registers | `GPU_DRAW GPU_CLEAR GPU_CTRL GPU_STATUS GPU_BACK GPU_LOAD GPU_TICKS GPU_LAG PAD1 PAD2 STICK1_X STICK1_Y STICK2_X STICK2_Y FRAME CYCLES RAND DEBUG SYS_TIME SYS_DATE` |
-| constants | `AUDIO_BASE VRAM_PALETTE VRAM_TEXTURES TEXTURE_SLOT_SIZE SCREEN_W SCREEN_H GPU_BUDGET` |
+| constants | `AUDIO_BASE VRAM_PALETTE VRAM_TEXTURES TEXTURE_SLOT_SIZE SCREEN_W SCREEN_H CPU_BUDGET GPU_BUDGET` |
 
 `cpu_used()` and `frames_dropped()` measure from one `vsync` to the next, so the frame after one
 the GPU held back counts the wait as well; `gpu_lag()` tells the two apart.
@@ -1858,7 +1858,7 @@ colour because their colour is a tint.
 
 ## Performance notes
 
-Measured with the `CYCLES` register (500,000 cycles per frame):
+Measured with the `CYCLES` register (1,000,000 cycles per frame):
 
 | Operation | Cycles |
 |---|---|

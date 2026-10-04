@@ -5,7 +5,7 @@ A 3D fantasy console modelled on PlayStation-era hardware, implemented from
 (text copy in [`docs/spec-v0.1.txt`](spec-v0.1.txt)).
 
 - 320×240 at 60 fps, 15-bit colour, 4×4 ordered dither
-- 32-bit RISC CPU, 63 instructions, 500,000 cycles per frame
+- 32-bit RISC CPU at 60 MHz, 63 instructions, 1,000,000 cycles per frame
 - A vector unit with eight 4-lane 16.16 registers (`vxfm`, `vproj`, …) and GTE-style geometry
   instructions (`vxp3`, `nclip`, `otz`, `clerp`; see [`DECISIONS.md`](DECISIONS.md#geometry-instructions))
 - The **Prism Engine**, the 3D polygon processor (the spec's GPU), which only fills 2D

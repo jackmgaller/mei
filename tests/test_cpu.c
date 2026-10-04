@@ -916,7 +916,8 @@ static void test_vsync_and_overrun(void) {
     EQ(M->frame, 3);
 
     begin("overrun");
-    li(1, 200000);
+    const int spin = MEI_CYCLES_PER_FRAME * 2 / 5;   /* 3 cycles a pass: 1.2 budgets */
+    li(1, spin);
     int loop = N;
     e(I(ADDI, 1, 1, -1));
     e(I(BNE, 1, 0, loop - (N + 1)));
@@ -934,7 +935,7 @@ static void test_vsync_and_overrun(void) {
     EQ(mei_run_frame(M), 1);                 /* resumes with a fresh budget */
     EQ(M->r[2], 1);
     EQ(M->r[1], 0);
-    EQ(cost(), (2 + 200000 + 199999 * 2 + 1 + 1 + 1) - used1);
+    EQ(cost(), (2 + spin + (spin - 1) * 2 + 1 + 1 + 1) - used1);
     EQ(M->frame, 2);
 }
 
@@ -951,8 +952,8 @@ static void test_system_regs(void) {
     for (int i = 0; i < 10; i++) e(R(ADD, 0, 0, 0));
     e(I(LW, 2, 9, IO_SYS_CYCLES));
     exec();
-    EQ(M->r[1], 499999);
-    EQ(M->r[2], 499999 - 2 - 10);
+    EQ(M->r[1], MEI_CYCLES_PER_FRAME - 1);
+    EQ(M->r[2], MEI_CYCLES_PER_FRAME - 1 - 2 - 10);
 
     begin("FRAME");
     e(U(LUI, 9, IO_HI));

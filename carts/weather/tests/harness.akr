@@ -195,7 +195,7 @@ fn perf_report() {
 fn test_hook(f: s32) {
     scen_t = f
     perf()
-    var slow = 450000
+    var slow = CPU_BUDGET * 9 / 10
     if P3 > 0 { slow = P3 }                 // P="... ... N": report frames over N cycles
     if f > 3 && (cpu_used() > slow || frames_dropped() > 0) {
         print("SLOW frame ")
@@ -335,7 +335,7 @@ fn test_hook(f: s32) {
         12 => {
             if f == 4900 {
                 perf_report()
-                assert(cpu_max < 500000, "frame budget")
+                assert(cpu_max < CPU_BUDGET, "frame budget")
                 assert(tri_max < 2000, "triangle budget")
                 println("OK 12 sweep")
             }

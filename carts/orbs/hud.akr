@@ -187,7 +187,7 @@ fn draw_debug() {
     let used = cpu_used()
     text(4, 230, "CPU", rgb(255, 230, 120))
     var x = text_int(36, 230, used, rgb(255, 230, 120))
-    x = text_int(x + 8, 230, used / 5000, rgb(255, 230, 120))
+    x = text_int(x + 8, 230, used / (CPU_BUDGET / 100), rgb(255, 230, 120))
     text(x, 230, "%", rgb(255, 230, 120))
     text_int(200, 230, tris_drawn(), rgb(160, 220, 255))
     text(240, 230, "TRIS", rgb(160, 220, 255))

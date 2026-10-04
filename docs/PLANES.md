@@ -1004,7 +1004,8 @@ as recommended for the build. Questions 1 and 3 have new findings from the port.
    [DECISIONS.md, "GPU budget"](DECISIONS.md#gpu-budget)).
    - The cost table above is the official one: 40 a triangle, 1 a pixel, ×2 textured, ×2
      blended, 38,400 a clear.
-   - The budget is twice the 500k recommended: a 60 MHz GPU beside the 30 MHz CPU. Every cart
+   - The budget is twice the 500k recommended: a 60 MHz GPU beside the 30 MHz CPU (the CPU went
+     to 60 MHz too on 2026-10-03: DECISIONS.md, "The CPU at 60 MHz"). Every cart
      then fits as it is, ported or not, with the GPU as the unit a cart grows into rather than
      the one it starts against. Measured on the console, no frame of any cart lags; the highest
      are Lantern Lake's map menu (866k), the Eclipse boot (748k), Check-In! (589k), Sun & Moon
