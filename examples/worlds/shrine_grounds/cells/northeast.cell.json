@@ -1,0 +1,95 @@
+{
+  "format": "mei-world-cell",
+  "version": 1,
+  "id": "northeast",
+  "at": [
+    1,
+    1
+  ],
+  "region": "shrine",
+  "placements": [
+    {
+      "id": "hall",
+      "asset": "shrine_hall",
+      "position": [
+        79,
+        12,
+        88
+      ],
+      "collision": "shrine_hall_col"
+    },
+    {
+      "id": "bench_1",
+      "asset": "park_bench",
+      "position": [
+        70,
+        12,
+        78
+      ],
+      "yaw": 90,
+      "collision": "park_bench_col"
+    },
+    {
+      "id": "tree_t2a",
+      "asset": "park_tree",
+      "position": [
+        104,
+        6,
+        70
+      ],
+      "collision": "park_tree_col"
+    },
+    {
+      "id": "tree_t2b",
+      "asset": "park_tree",
+      "position": [
+        104,
+        6,
+        84
+      ],
+      "collision": "park_tree_col"
+    },
+    {
+      "id": "tree_t1a",
+      "asset": "park_tree",
+      "position": [
+        70,
+        3,
+        114.5
+      ],
+      "collision": "park_tree_col"
+    },
+    {
+      "id": "tree_t1b",
+      "asset": "park_tree",
+      "position": [
+        84,
+        3,
+        114.5
+      ],
+      "collision": "park_tree_col"
+    },
+    {
+      "id": "tree_t1c",
+      "asset": "park_tree",
+      "position": [
+        96,
+        3,
+        114.5
+      ],
+      "collision": "park_tree_col"
+    }
+  ],
+  "entities": [
+    {
+      "id": "coin_summit",
+      "type": "coin",
+      "position": [
+        86,
+        13.5,
+        77
+      ],
+      "asset": "coin"
+    }
+  ]
+}

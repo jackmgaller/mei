@@ -1,0 +1,63 @@
+{
+  "format": "mei-world",
+  "version": 1,
+  "name": "shrine_grounds",
+  "game": "garden.game.mochi",
+  "assets": "assets",
+  "cell_dir": "cells",
+  "grid": {"cell_size": 64},
+  "regions": {
+    "shrine": {
+      "variants": {
+        "day": {},
+        "night": {"surface": {"multiply": "#4a5884"}, "colors": {"water": "#22345a"}}
+      }
+    }
+  },
+  "runtime": {"depth": true, "perspective": true},
+  "verification": {"thresholds": {"cell_triangles": 2000}},
+  "paths": {
+    "sando": {"points": [[76, 0, 4], [76, 0, 40], [76, 12, 74], [76, 12, 84]],
+              "sweep": {"profile": [[-3.2, -0.6], [-2, 0], [2, 0], [3.2, -0.6]],
+                        "materials": ["stone_dark", "stone", "stone_dark"],
+                        "stairs": {"rise": 0.3}, "caps": true}},
+    "back_path": {"points": [[122, 0, 36], [116, 3, 56], [111, 3, 80], [100, 6, 108], [80, 9, 102], [71, 12, 92],
+                             [74, 12, 86]],
+                  "sweep": {"profile": [[-2.2, -0.45], [-1.2, 0], [1.2, 0], [2.2, -0.45]],
+                            "materials": ["earth", "gravel", "earth"], "caps": true}}
+  },
+  "terrain": {
+    "materials": {
+      "grass": {"color": "#5f8f3e"},
+      "earth": {"color": "#86684a"},
+      "gravel": {"color": "#b9b2a2"},
+      "stone": {"color": "#a29d94"},
+      "stone_dark": {"color": "#716c65"},
+      "pond_bed": {"color": "#55503e"}
+    },
+    "fields": {
+      "grounds": {
+        "spacing": 2, "min": [0, 0], "max": [128, 128],
+        "material": "grass",
+        "steep": {"degrees": 38, "material": "earth"},
+        "lod": {"distance": 64, "tolerance": 0.3},
+        "operations": [
+          {"op": "set", "area": {"rect": [44, 50, 114, 116]}, "height": 3, "falloff": 2},
+          {"op": "set", "area": {"rect": [52, 58, 106, 110]}, "height": 6, "falloff": 2},
+          {"op": "set", "area": {"rect": [60, 66, 98, 104]}, "height": 9, "falloff": 2},
+          {"op": "set", "area": {"rect": [68, 74, 90, 98]}, "height": 12, "falloff": 2},
+          {"op": "ramp", "from": [28, 0, 64], "to": [46, 3, 64], "width": 6, "falloff": 2},
+          {"op": "ramp", "from": [46, 3, 80], "to": [52, 6, 80], "width": 5, "falloff": 2},
+          {"op": "ramp", "from": [56, 6, 94], "to": [60, 9, 94], "width": 5, "falloff": 1.5},
+          {"op": "carve", "area": {"circle": [22, 82, 9]}, "height": -1.4, "falloff": 4},
+          {"op": "paint", "area": {"circle": [22, 82, 11]}, "material": "pond_bed"},
+          {"op": "set", "area": {"rect": [92, 14, 118, 34]}, "height": 1, "falloff": 3},
+          {"op": "paint", "area": {"rect": [94, 16, 116, 32]}, "material": "gravel"},
+          {"op": "paint", "area": {"rect": [68, 74, 90, 98]}, "material": "gravel"},
+          {"op": "bed", "path": "sando", "width": 5, "depth": 0.6, "falloff": 3},
+          {"op": "bed", "path": "back_path", "width": 3.6, "depth": 0.45, "falloff": 3}
+        ]
+      }
+    }
+  }
+}

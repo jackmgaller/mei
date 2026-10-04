@@ -1,0 +1,15 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "gravestone",
+  "materials": {
+    "stone": {"color": "#8e8d88", "palette": true, "tag": "stone"}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "nodes": [
+    {"id": "base", "op": "box", "size": [0.7, 0.2, 0.45], "open": ["bottom"], "material": "stone",
+     "transform": {"translate": [0, 0.1, 0]}},
+    {"id": "stone", "op": "box", "size": [0.4, 1.0, 0.22], "open": ["bottom"], "material": "stone",
+     "transform": {"translate": [0, 0.7, 0]}}
+  ]
+}

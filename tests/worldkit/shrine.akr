@@ -1,0 +1,50 @@
+// The World Kit's terrain example on the console: tests/test_worldkit.py builds
+// examples/worlds/shrine_grounds, copies this cart next to the outputs and runs it headless.
+// Floors under points on the ground, a terrace, the summit, a stair tread and the back path.
+
+cart "World Kit Shrine Grounds"
+import "shrine_grounds.akr"
+import "depth.akr"
+
+fn floor_at(label: *u8, x: fixed, z: fixed) {
+    let found = wp_floor(vec3(x, 30.0, z), 0.0)
+    print(label)
+    print_char(' ')
+    print_int(found as s32)
+    print_char(' ')
+    print_int(bits(wp_hit.y))
+    println("")
+}
+
+fn init() {
+    assert(world_shrine_grounds_load())
+    floor_at("ground", 20.0, 30.0)
+    floor_at("tier1", 47.0, 100.0)
+    floor_at("tier2", 55.0, 100.0)
+    floor_at("summit", 86.0, 77.0)
+    floor_at("pond", 22.0, 82.0)
+    floor_at("sando", 76.0, 20.0)
+    floor_at("tread", 76.0, 57.1)
+    floor_at("back_path", 111.0, 80.0)
+}
+
+var frame: s32
+
+fn draw() {
+    cls(rgb(150, 186, 220))
+    render_depth(true)
+    render_perspective(true)
+    wp_draw(vec3(6.0, 34.0, 4.0), 0.785, -0.42)
+    if frame == 0 {
+        print("draw ")
+        print_int(wp_stats.near_cells)
+        print_char(' ')
+        print_int(wp_stats.drawn)
+        print_char(' ')
+        print_int(wp_stats.ground)
+        print_char(' ')
+        print_int(wp_stats.coarse)
+        println("")
+    }
+    frame += 1
+}

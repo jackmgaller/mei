@@ -2,7 +2,8 @@
 JSON Schema (the subset kitcore.schema validates), and their validators.
 
 Unknown properties are errors, so a misspelled instruction never silently disappears. Properties
-reserved for later work (terrain, region textures, audio and backdrops) are errors that say so.
+reserved for later work (terrain in a cell file, region textures, audio and backdrops) are errors
+that say so.
 """
 from kitcore.errors import KitError
 from kitcore.schema import number, integer, array, obj, choice, NAME, BOOL, COLOR, validator
@@ -52,11 +53,92 @@ ENTITY = obj({
     'was':dict(NAME,description='The ID this entity had before a rename: it keeps that ID\'s saved bit.'),
 }, ['id','type','position'])
 
+XZ = array(NUM,2,2)
+AREA = dict(obj({
+    'rect':dict(array(NUM,4,4),description='[x0, z0, x1, z1]: the rectangle between two corners.'),
+    'circle':dict(array(NUM,3,3),description='[x, z, radius].'),
+    'polygon':dict(array(XZ,3,256),description='[[x, z], ...]: a simple polygon (even-odd inside).'),
+    'path':dict(NAME,description='A path of the world file: within width / 2 of its line, seen from above.'),
+    'width':dict(POS,description='With path: the band\'s width (units).'),
+}),description='Where an operation acts, seen from above (world x and z): exactly one of rect, circle, polygon or path. Omitted: the whole field.')
+FALLOFF = dict(number(0,1024),description='Units outside the area over which the operation fades out (smoothstep). Default 0: a hard edge.')
+
+
+def terrain_op(name, props, required=()):
+    return obj(dict({'op':{'const':name},'area':AREA,'falloff':FALLOFF},**props),['op',*required])
+
+
+TERRAIN_OP = {'oneOf':[
+    terrain_op('set',{'height':dict(NUM,description='Flatten the area to this height.')},['height']),
+    terrain_op('add',{'height':dict(NUM,description='Raise (or, negative, lower) the area by this much.')},['height']),
+    terrain_op('carve',{'height':dict(NUM,description='Lower the area to at most this height (a pond, a cut); lower ground is left alone.')},['height']),
+    terrain_op('fill',{'height':dict(NUM,description='Raise the area to at least this height; higher ground is left alone.')},['height']),
+    terrain_op('ramp',{'from':dict(VEC,description='[x, y, z]: one end of the ramp\'s centre line and its height there.'),
+                       'to':dict(VEC,description='[x, y, z]: the other end.'),
+                       'width':dict(POS,description='Across the centre line (units).')},['from','to','width']),
+    terrain_op('terrace',{'step':dict(POS,description='Height of each terrace (units).'),
+                          'bank':dict(number(0.01,1),description='The fraction of each step\'s rise left as a slope between two flats. Default 0.25.'),
+                          'base':dict(NUM,description='A height at which a flat begins. Default 0.')},['step']),
+    terrain_op('smooth',{'passes':dict(integer(1,16),description='Passes of a 3 x 3 blur of the samples. Default 1.')}),
+    terrain_op('bed',{'path':dict(NAME,description='A path of the world file.'),
+                      'width':dict(POS,description='The bed\'s width across the path (units); the falloff blends beyond it.'),
+                      'depth':dict(number(-64,64),description='How far below the path\'s line the bed lies. Default 0.')},['path','width']),
+    terrain_op('paint',{'material':dict(NAME,description='A terrain material for the quads whose centres lie in the area.')},['material']),
+    terrain_op('hole',{}),
+]}
+FIELD_LOD = obj({
+    'distance':dict(POS,description='From this distance (units, viewer to a tile\'s centre) the coarse level is drawn.'),
+    'tolerance':dict(POS,description='How far (units) the coarse level may stray from the samples. Default 0.25.'),
+    'band':dict(number(0,1000),description='Hysteresis (units). Default 2.'),
+}, ['distance'])
+HEIGHTFIELD = obj({
+    'spacing':dict(choice(0.5,1,2,4,8),description='Units between samples.'),
+    'min':dict(XZ,description='[x, z]: the field\'s low corner, a multiple of spacing.'),
+    'max':dict(XZ,description='[x, z]: the high corner, a multiple of spacing.'),
+    'height':dict(NUM,description='The starting height of every sample. Default 0.'),
+    'heights':dict(PATH,description='A text file of starting heights instead: one line per row of samples from z = min to max, each x = min to max, numbers separated by spaces; # starts a comment.'),
+    'material':dict(NAME,description='The terrain material of every quad not painted.'),
+    'steep':dict(obj({'degrees':number(1,89),'material':NAME},['degrees','material']),
+                 description='Unpainted quads steeper than degrees take this material (a bank, a cliff).'),
+    'operations':dict(array(TERRAIN_OP,0,1024),description='Applied in order to the samples (paint and hole to the quads).'),
+    'tile':dict(choice(4,8,16,32,64,128),description='Units per side of a tile: one mesh and one placement. At most a cell and 32 quads. Default: a cell, or 16 quads if that is less.'),
+    'tolerance':dict(number(0,1),description='How far (units) level 0 may stray from the samples where flat or evenly sloping quads are merged. Default 0.001.'),
+    'shading':dict(choice('smooth','flat'),description='smooth (default): each sample shaded by the field\'s normal there, so shading runs on across seams; flat: each face by its own.'),
+    'ground':dict(BOOL,description='Drawn in the ground pass (WORLDKIT.md, "Ground"). Default true.'),
+    'collision':dict(BOOL,description='The field\'s faces are collision triangles. Default true.'),
+    'lod':dict(FIELD_LOD,description='A coarser level of every tile, for distance.'),
+}, ['spacing','min','max','material'])
+TERRAIN_MATERIAL = obj({
+    'color':COLOR,
+    'class':dict(choice('surface','emissive'),description='As an Asset Kit material\'s. Default surface.'),
+    'tag':dict(NAME,description='A surface tag, mapped to the collision surface byte by collision.surfaces.'),
+    'share':dict(BOOL,description='As an Asset Kit material\'s: false gives the material a palette entry of its own. Default true.'),
+}, ['color'])
+SWEEP = obj({
+    'profile':dict(array(array(NUM,2,2),2,64),description='[[x, y], ...]: the cross-section, x to the right of the path\'s direction, y up from its line. Each edge faces to its left (an edge drawn from left to right faces up).'),
+    'material':dict(NAME,description='The terrain material of every edge of the profile.'),
+    'materials':dict(array(NAME,1,63),description='One terrain material per edge of the profile, instead of material.'),
+    'stairs':dict(obj({'rise':dict(POS,description='The highest a step may be (units).')},['rise']),
+                  description='Steps instead of a slope: each segment of the path climbs in equal steps no higher than rise.'),
+    'caps':dict(BOOL,description='Close the ends of an open path with the profile\'s outline, fanned from its first point. Default false.'),
+    'ground':dict(BOOL,description='Drawn in the ground pass. Default: true unless the path is raised.'),
+    'collision':dict(BOOL,description='The sweep\'s faces are collision triangles. Default true.'),
+}, ['profile'])
+TERRAIN = obj({
+    'materials':{'type':'object','propertyNames':NAME,'additionalProperties':TERRAIN_MATERIAL,'maxProperties':128,
+                 'description':'Terrain materials, drawn through palette entries of the cell\'s region as palette-backed asset materials are ("NAME" or "terrain.NAME" in a variant\'s colors).'},
+    'lighting':dict(obj({'direction':VEC,'ambient':number(0,1),'mode':choice('directional','vertical')}),
+                    description='The baked shading of fields and sweeps, as an Asset Kit recipe\'s lighting. Default vertical.'),
+    'fields':{'type':'object','propertyNames':NAME,'additionalProperties':HEIGHTFIELD,'maxProperties':64,
+              'description':'Ground heightfields in world coordinates, cut per cell by the kit. Fields may not overlap or touch.'},
+}, ['materials'])
+
 PATH_SPEC = obj({
     'points':dict(array(VEC,2,4095),description='World coordinates, in order; consecutive points differ. A closed path joins the last back to the first (do not repeat it).'),
-    'raised':dict(BOOL,description='Raised: not lying on the ground (a rail, a wire, a jib). Carried to the pack for the game and for swept geometry later. Default false.'),
+    'raised':dict(BOOL,description='Raised: not lying on the ground (a rail, a wire, a jib). Carried to the pack for the game; a raised path\'s sweep is not ground. Default false.'),
     'closed':dict(BOOL,description='A loop: the last point joins the first. Default false.'),
     'tag':dict(NAME,description='A surface tag, mapped to the pack\'s surface byte by collision.surfaces as material tags are.'),
+    'sweep':dict(SWEEP,description='A profile swept along the path: geometry and collision the kit makes and cuts per cell (WORLDKIT.md, "Terrain"), in the world\'s terrain materials.'),
 }, ['points'])
 
 RESERVED = 'is reserved for a later version of the World Kit and not supported yet.'
@@ -68,9 +150,10 @@ CELL_PROPS = {
     'placements':array(PLACEMENT,0,4096),
     'entities':array(ENTITY,0,4096),
 }
-CELL = dict(obj(CELL_PROPS,['id','at','region']),**{'x-unknown':{'terrain':'Terrain '+RESERVED}})
+CELL_TERRAIN = 'Terrain in a cell '+RESERVED+' Put terrain in the world file: it is cut per cell by the kit.'
+CELL = dict(obj(CELL_PROPS,['id','at','region']),**{'x-unknown':{'terrain':CELL_TERRAIN}})
 CELL_FILE = dict(obj({'format':{'const':'mei-world-cell'},'version':{'const':1},**CELL_PROPS},
-                     ['format','version','id','at','region']),**{'x-unknown':{'terrain':'Terrain '+RESERVED}})
+                     ['format','version','id','at','region']),**{'x-unknown':{'terrain':CELL_TERRAIN}})
 
 TINT = obj({'multiply':dict(COLOR,description='Each colour channel is multiplied by this colour / 255.')})
 VARIANT = obj({
@@ -121,7 +204,8 @@ WORLD = dict(obj({
     'verification':obj({'mode':choice('report','enforce'),
                         'thresholds':{'type':'object','propertyNames':NAME,'additionalProperties':{},
                                       'description':'Per-world World Checker settings (defaults from the kit).'}}),
-}, ['format','version','name','game','assets','grid','regions']),**{'x-unknown':{'terrain':'Terrain '+RESERVED}})
+    'terrain':dict(TERRAIN,description='Ground heightfields and their materials (WORLDKIT.md, "Terrain"); profiles swept along paths are in paths.'),
+}, ['format','version','name','game','assets','grid','regions']))
 
 
 def field(kind, default, **extra):

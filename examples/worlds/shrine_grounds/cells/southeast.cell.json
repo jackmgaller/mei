@@ -1,0 +1,311 @@
+{
+  "format": "mei-world-cell",
+  "version": 1,
+  "id": "southeast",
+  "at": [
+    1,
+    0
+  ],
+  "region": "shrine",
+  "placements": [
+    {
+      "id": "torii_gate",
+      "asset": "shrine_torii",
+      "position": [
+        76,
+        0,
+        10
+      ],
+      "collision": "shrine_torii_col"
+    },
+    {
+      "id": "torii_stairs",
+      "asset": "shrine_torii",
+      "position": [
+        76,
+        0,
+        34
+      ],
+      "collision": "shrine_torii_col"
+    },
+    {
+      "id": "lamp_1",
+      "asset": "street_lamp",
+      "position": [
+        70.5,
+        0,
+        16
+      ],
+      "collision": "street_lamp_col"
+    },
+    {
+      "id": "lamp_2",
+      "asset": "street_lamp",
+      "position": [
+        81.5,
+        0,
+        16
+      ],
+      "collision": "street_lamp_col"
+    },
+    {
+      "id": "lamp_3",
+      "asset": "street_lamp",
+      "position": [
+        70.5,
+        0,
+        26
+      ],
+      "collision": "street_lamp_col"
+    },
+    {
+      "id": "lamp_4",
+      "asset": "street_lamp",
+      "position": [
+        81.5,
+        0,
+        26
+      ],
+      "collision": "street_lamp_col"
+    },
+    {
+      "id": "tree_e1",
+      "asset": "park_tree",
+      "position": [
+        124,
+        0,
+        26
+      ],
+      "collision": "park_tree_col"
+    },
+    {
+      "id": "tree_e2",
+      "asset": "park_tree",
+      "position": [
+        126,
+        0,
+        52
+      ],
+      "collision": "park_tree_col"
+    },
+    {
+      "id": "grave_0_0",
+      "asset": "gravestone",
+      "position": [
+        97.5,
+        1,
+        20
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_0_1",
+      "asset": "gravestone",
+      "position": [
+        101.0,
+        1,
+        20
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_0_2",
+      "asset": "gravestone",
+      "position": [
+        104.5,
+        1,
+        20
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_0_3",
+      "asset": "gravestone",
+      "position": [
+        108.0,
+        1,
+        20
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_0_4",
+      "asset": "gravestone",
+      "position": [
+        111.5,
+        1,
+        20
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_0_5",
+      "asset": "gravestone",
+      "position": [
+        115.0,
+        1,
+        20
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_1_0",
+      "asset": "gravestone",
+      "position": [
+        97.5,
+        1,
+        24
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_1_1",
+      "asset": "gravestone",
+      "position": [
+        101.0,
+        1,
+        24
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_1_2",
+      "asset": "gravestone",
+      "position": [
+        104.5,
+        1,
+        24
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_1_3",
+      "asset": "gravestone",
+      "position": [
+        108.0,
+        1,
+        24
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_1_4",
+      "asset": "gravestone",
+      "position": [
+        111.5,
+        1,
+        24
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_1_5",
+      "asset": "gravestone",
+      "position": [
+        115.0,
+        1,
+        24
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_2_0",
+      "asset": "gravestone",
+      "position": [
+        97.5,
+        1,
+        28
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_2_1",
+      "asset": "gravestone",
+      "position": [
+        101.0,
+        1,
+        28
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_2_2",
+      "asset": "gravestone",
+      "position": [
+        104.5,
+        1,
+        28
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_2_3",
+      "asset": "gravestone",
+      "position": [
+        108.0,
+        1,
+        28
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_2_4",
+      "asset": "gravestone",
+      "position": [
+        111.5,
+        1,
+        28
+      ],
+      "collision": "self",
+      "merge": true
+    },
+    {
+      "id": "grave_2_5",
+      "asset": "gravestone",
+      "position": [
+        115.0,
+        1,
+        28
+      ],
+      "collision": "self",
+      "merge": true
+    }
+  ],
+  "entities": [
+    {
+      "id": "start",
+      "type": "spawn",
+      "position": [
+        76,
+        0,
+        6
+      ]
+    },
+    {
+      "id": "coin_cemetery",
+      "type": "coin",
+      "position": [
+        105,
+        2,
+        24
+      ],
+      "asset": "coin"
+    }
+  ]
+}
