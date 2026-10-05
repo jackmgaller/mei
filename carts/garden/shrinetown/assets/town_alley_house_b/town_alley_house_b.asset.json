@@ -1,0 +1,1062 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "town_alley_house_b",
+ "sheets": {
+  "town_common": {
+   "image": "../town_alley_house_a/art/town_common.png"
+  },
+  "alley": {
+   "image": "../town_alley_house_a/art/alley.png"
+  },
+  "shopfront": {
+   "image": "../town_shop_2f_a/art/shopfront.png"
+  }
+ },
+ "budget": {
+  "triangles": 120
+ },
+ "materials": {
+  "mortar": {
+   "color": "#b2aea4",
+   "tag": "wall",
+   "texture": {
+    "sheet": "town_common",
+    "cell": "plaster_grey",
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ]
+   }
+  },
+  "tin": {
+   "color": "#868c90",
+   "tag": "wall",
+   "texture": {
+    "sheet": "town_common",
+    "cell": "tin",
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ]
+   }
+  },
+  "tin_roof": {
+   "color": "#8a3a2a",
+   "tag": "roof",
+   "texture": {
+    "sheet": "town_common",
+    "cell": "tin_red",
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ]
+   }
+  },
+  "tin_roof_ds": {
+   "color": "#8a3a2a",
+   "tag": "roof",
+   "double_sided": true,
+   "texture": {
+    "sheet": "town_common",
+    "cell": "tin_red",
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ]
+   }
+  },
+  "gutter": {
+   "color": "#8e9498",
+   "palette": true
+  },
+  "soffit": {
+   "color": "#5a4a3e",
+   "palette": true
+  },
+  "footing": {
+   "color": "#8e887c",
+   "palette": true
+  },
+  "slab": {
+   "color": "#a8a49a",
+   "palette": true
+  },
+  "rail": {
+   "color": "#c4c8cc",
+   "double_sided": true,
+   "texture": {
+    "sheet": "alley",
+    "cell": "rail",
+    "projection": "fit"
+   }
+  },
+  "balcony_door": {
+   "color": "#4e6a7a",
+   "texture": {
+    "sheet": "alley",
+    "cell": "balcony_door",
+    "projection": "fit"
+   }
+  },
+  "hisashi": {
+   "color": "#6a7078",
+   "palette": true,
+   "tag": "roof"
+  },
+  "antenna": {
+   "color": "#7a7e84",
+   "double_sided": true,
+   "texture": {
+    "sheet": "shopfront",
+    "cell": "antenna",
+    "projection": "fit"
+   }
+  },
+  "genkan": {
+   "color": "#c4c8cc",
+   "tag": "door",
+   "texture": {
+    "sheet": "alley",
+    "cell": "genkan",
+    "projection": "fit"
+   }
+  },
+  "win_grille": {
+   "color": "#c8d0d0",
+   "texture": {
+    "sheet": "alley",
+    "cell": "win_grille",
+    "projection": "fit"
+   }
+  },
+  "win_small": {
+   "color": "#c8d0d0",
+   "texture": {
+    "sheet": "alley",
+    "cell": "win_small",
+    "projection": "fit"
+   }
+  },
+  "win_dark": {
+   "color": "#4e6a7a",
+   "texture": {
+    "sheet": "alley",
+    "cell": "win_dark",
+    "projection": "fit"
+   }
+  },
+  "win_lit": {
+   "color": "#e8cc94",
+   "class": "emissive",
+   "tag": "window",
+   "texture": {
+    "sheet": "alley",
+    "cell": "win_lit",
+    "projection": "fit"
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "walls",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.75,
+     6.459,
+     -4.25
+    ],
+    [
+     4.75,
+     6.459,
+     -4.25
+    ],
+    [
+     4.75,
+     0.3,
+     -4.25
+    ],
+    [
+     -4.75,
+     0.3,
+     -4.25
+    ],
+    [
+     -4.75,
+     0.3,
+     4.25
+    ],
+    [
+     4.75,
+     0.3,
+     4.25
+    ],
+    [
+     4.75,
+     6.921,
+     4.25
+    ],
+    [
+     -4.75,
+     6.921,
+     4.25
+    ],
+    [
+     4.75,
+     0.0,
+     -4.25
+    ],
+    [
+     -4.75,
+     0.0,
+     -4.25
+    ],
+    [
+     -4.75,
+     0.0,
+     4.25
+    ],
+    [
+     4.75,
+     0.0,
+     4.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     4,
+     7,
+     0,
+     3
+    ],
+    [
+     2,
+     1,
+     6,
+     5
+    ],
+    [
+     3,
+     2,
+     8,
+     9
+    ],
+    [
+     10,
+     11,
+     5,
+     4
+    ],
+    [
+     9,
+     10,
+     4,
+     3
+    ],
+    [
+     2,
+     5,
+     11,
+     8
+    ]
+   ],
+   "face_materials": [
+    "mortar",
+    "mortar",
+    "tin",
+    "tin",
+    "footing",
+    "footing",
+    "footing",
+    "footing"
+   ],
+   "decals": [
+    {
+     "id": "genkan",
+     "face": 0,
+     "material": "genkan",
+     "size": [
+      1.7,
+      2.0
+     ],
+     "at": [
+      2.65,
+      1.31
+     ]
+    },
+    {
+     "id": "front_low",
+     "face": 0,
+     "material": "win_grille",
+     "size": [
+      1.6,
+      0.9
+     ],
+     "at": [
+      -1.6,
+      1.45
+     ]
+    },
+    {
+     "id": "balcony_door",
+     "face": 0,
+     "material": "balcony_door",
+     "size": [
+      1.8,
+      1.9
+     ],
+     "at": [
+      -1.8,
+      3.87
+     ]
+    },
+    {
+     "id": "up_r",
+     "face": 0,
+     "material": "win_lit",
+     "size": [
+      1.6,
+      0.9
+     ],
+     "at": [
+      2.6,
+      4.35
+     ]
+    },
+    {
+     "id": "back_low",
+     "face": 1,
+     "material": "win_grille",
+     "size": [
+      1.6,
+      0.9
+     ],
+     "at": [
+      2.4,
+      1.45
+     ]
+    },
+    {
+     "id": "back_up",
+     "face": 1,
+     "material": "win_dark",
+     "size": [
+      1.6,
+      0.9
+     ],
+     "at": [
+      -1.6,
+      4.35
+     ]
+    },
+    {
+     "id": "bath",
+     "face": 3,
+     "material": "win_small",
+     "size": [
+      0.6,
+      0.6
+     ],
+     "at": [
+      2.4,
+      1.75
+     ]
+    }
+   ]
+  },
+  {
+   "id": "roof",
+   "op": "mesh",
+   "vertices": [
+    [
+     -5.05,
+     7.0,
+     4.6
+    ],
+    [
+     5.05,
+     7.0,
+     4.6
+    ],
+    [
+     5.05,
+     6.5,
+     -4.6
+    ],
+    [
+     -5.05,
+     6.5,
+     -4.6
+    ],
+    [
+     -5.05,
+     6.38,
+     -4.6
+    ],
+    [
+     5.05,
+     6.38,
+     -4.6
+    ],
+    [
+     5.05,
+     6.88,
+     4.6
+    ],
+    [
+     -5.05,
+     6.88,
+     4.6
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ],
+    [
+     3,
+     2,
+     5,
+     4
+    ],
+    [
+     2,
+     1,
+     6,
+     5
+    ],
+    [
+     1,
+     0,
+     7,
+     6
+    ],
+    [
+     0,
+     3,
+     4,
+     7
+    ]
+   ],
+   "face_materials": [
+    "tin_roof",
+    "soffit",
+    "gutter",
+    "gutter",
+    "gutter",
+    "gutter"
+   ]
+  },
+  {
+   "id": "balcony",
+   "op": "box",
+   "size": [
+    4.8,
+    0.16,
+    0.98
+   ],
+   "material": "slab",
+   "open": [
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     -1.8,
+     2.82,
+     -4.71
+    ]
+   }
+  },
+  {
+   "id": "rail",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.15,
+     3.8,
+     -5.15
+    ],
+    [
+     0.55,
+     3.8,
+     -5.15
+    ],
+    [
+     0.55,
+     2.86,
+     -5.15
+    ],
+    [
+     -4.15,
+     2.86,
+     -5.15
+    ],
+    [
+     -4.15,
+     2.86,
+     -4.28
+    ],
+    [
+     -4.15,
+     3.8,
+     -4.28
+    ],
+    [
+     0.55,
+     3.8,
+     -4.28
+    ],
+    [
+     0.55,
+     2.86,
+     -4.28
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     3,
+     4,
+     5,
+     0
+    ],
+    [
+     1,
+     6,
+     7,
+     2
+    ]
+   ],
+   "face_materials": [
+    "rail",
+    "rail",
+    "rail"
+   ]
+  },
+  {
+   "id": "hisashi",
+   "op": "mesh",
+   "vertices": [
+    [
+     1.5,
+     2.6,
+     -4.23
+    ],
+    [
+     3.8,
+     2.6,
+     -4.23
+    ],
+    [
+     3.8,
+     2.46,
+     -4.8
+    ],
+    [
+     1.5,
+     2.46,
+     -4.8
+    ],
+    [
+     3.8,
+     2.38,
+     -4.8
+    ],
+    [
+     1.5,
+     2.38,
+     -4.8
+    ],
+    [
+     3.8,
+     2.52,
+     -4.23
+    ],
+    [
+     1.5,
+     2.52,
+     -4.23
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     3,
+     2,
+     4,
+     5
+    ],
+    [
+     5,
+     4,
+     6,
+     7
+    ],
+    [
+     0,
+     3,
+     5,
+     7
+    ],
+    [
+     6,
+     4,
+     2,
+     1
+    ]
+   ],
+   "face_materials": [
+    "hisashi",
+    "gutter",
+    "soffit",
+    "gutter",
+    "gutter"
+   ]
+  },
+  {
+   "id": "antenna",
+   "op": "mesh",
+   "vertices": [
+    [
+     -3.3,
+     8.4413,
+     2.6
+    ],
+    [
+     -1.9,
+     8.4413,
+     2.6
+    ],
+    [
+     -1.9,
+     6.8413,
+     2.6
+    ],
+    [
+     -3.3,
+     6.8413,
+     2.6
+    ],
+    [
+     -2.6,
+     8.4413,
+     1.9
+    ],
+    [
+     -2.6,
+     8.4413,
+     3.3
+    ],
+    [
+     -2.6,
+     6.8413,
+     3.3
+    ],
+    [
+     -2.6,
+     6.8413,
+     1.9
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ]
+   ],
+   "face_materials": [
+    "antenna",
+    "antenna"
+   ]
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 16,
+    "nodes": [
+     {
+      "id": "walls",
+      "op": "mesh",
+      "vertices": [
+       [
+        -4.75,
+        6.459,
+        -4.25
+       ],
+       [
+        4.75,
+        6.459,
+        -4.25
+       ],
+       [
+        4.75,
+        0.0,
+        -4.25
+       ],
+       [
+        -4.75,
+        0.0,
+        -4.25
+       ],
+       [
+        -4.75,
+        0.0,
+        4.25
+       ],
+       [
+        4.75,
+        0.0,
+        4.25
+       ],
+       [
+        4.75,
+        6.921,
+        4.25
+       ],
+       [
+        -4.75,
+        6.921,
+        4.25
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ],
+       [
+        4,
+        5,
+        6,
+        7
+       ],
+       [
+        4,
+        7,
+        0,
+        3
+       ],
+       [
+        2,
+        1,
+        6,
+        5
+       ]
+      ],
+      "face_materials": [
+       "mortar",
+       "mortar",
+       "tin",
+       "tin"
+      ],
+      "decals": [
+       {
+        "id": "genkan",
+        "face": 0,
+        "material": "genkan",
+        "size": [
+         1.7,
+         2.0
+        ],
+        "at": [
+         2.65,
+         1.31
+        ]
+       },
+       {
+        "id": "balcony_door",
+        "face": 0,
+        "material": "balcony_door",
+        "size": [
+         1.8,
+         1.9
+        ],
+        "at": [
+         -1.8,
+         3.87
+        ]
+       }
+      ]
+     },
+     {
+      "id": "roof",
+      "op": "mesh",
+      "vertices": [
+       [
+        -5.05,
+        7.0,
+        4.6
+       ],
+       [
+        5.05,
+        7.0,
+        4.6
+       ],
+       [
+        5.05,
+        6.5,
+        -4.6
+       ],
+       [
+        -5.05,
+        6.5,
+        -4.6
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "face_materials": [
+       "tin_roof_ds"
+      ]
+     },
+     {
+      "id": "balcony",
+      "op": "mesh",
+      "vertices": [
+       [
+        -4.2,
+        2.9,
+        -4.22
+       ],
+       [
+        0.6,
+        2.9,
+        -4.22
+       ],
+       [
+        0.6,
+        2.9,
+        -5.2
+       ],
+       [
+        -4.2,
+        2.9,
+        -5.2
+       ],
+       [
+        -4.15,
+        3.8,
+        -5.15
+       ],
+       [
+        0.55,
+        3.8,
+        -5.15
+       ],
+       [
+        0.55,
+        2.86,
+        -5.15
+       ],
+       [
+        -4.15,
+        2.86,
+        -5.15
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ],
+       [
+        4,
+        5,
+        6,
+        7
+       ]
+      ],
+      "face_materials": [
+       "slab",
+       "rail"
+      ]
+     }
+    ]
+   },
+   {
+    "distance": 40,
+    "nodes": [
+     {
+      "id": "walls",
+      "op": "mesh",
+      "vertices": [
+       [
+        -4.75,
+        6.459,
+        -4.25
+       ],
+       [
+        4.75,
+        6.459,
+        -4.25
+       ],
+       [
+        4.75,
+        0.0,
+        -4.25
+       ],
+       [
+        -4.75,
+        0.0,
+        -4.25
+       ],
+       [
+        -4.75,
+        0.0,
+        4.25
+       ],
+       [
+        4.75,
+        0.0,
+        4.25
+       ],
+       [
+        4.75,
+        6.921,
+        4.25
+       ],
+       [
+        -4.75,
+        6.921,
+        4.25
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ],
+       [
+        4,
+        5,
+        6,
+        7
+       ],
+       [
+        4,
+        7,
+        0,
+        3
+       ],
+       [
+        2,
+        1,
+        6,
+        5
+       ]
+      ],
+      "face_materials": [
+       "mortar",
+       "mortar",
+       "tin",
+       "tin"
+      ]
+     },
+     {
+      "id": "roof",
+      "op": "mesh",
+      "vertices": [
+       [
+        -5.05,
+        7.0,
+        4.6
+       ],
+       [
+        5.05,
+        7.0,
+        4.6
+       ],
+       [
+        5.05,
+        6.5,
+        -4.6
+       ],
+       [
+        -5.05,
+        6.5,
+        -4.6
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "face_materials": [
+       "tin_roof"
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}
