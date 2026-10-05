@@ -1,0 +1,25 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "town_aircon_pipes",
+  "budget": {"triangles": 44},
+  "materials": {
+    "front": {"color": "#eceae4", "texture": {"image": "art/aircon_front.png", "projection": "fit"}},
+    "casing": {"color": "#c8c4b8", "palette": true},
+    "rail": {"color": "#565c64", "palette": true},
+    "pipe": {"color": "#b4ae9e", "palette": true}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {"id": "rail", "op": "box", "size": [0.7, 0.1, 0.22], "material": "rail", "open": ["bottom"],
+     "transform": {"translate": [0, 0.05, -0.02]}},
+    {"id": "unit", "op": "box", "size": [0.78, 0.55, 0.28], "material": "casing", "open": ["bottom"],
+     "faces": {"back": "front"}, "transform": {"translate": [0, 0.375, -0.02]}},
+    {"id": "run", "op": "box", "size": [0.4, 0.06, 0.04], "material": "pipe",
+     "open": ["left"], "transform": {"translate": [0.58, 0.3, 0.06]}},
+    {"id": "riser", "op": "box", "size": [0.1, 0.8, 0.12], "material": "pipe", "open": ["bottom"],
+     "transform": {"translate": [0.78, 0.67, 0.06]}}
+  ],
+  "lod": {"cull": 50}
+}
