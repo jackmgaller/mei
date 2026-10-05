@@ -5,9 +5,6 @@
  "materials": {
   "conc": {
    "color": "#c8c4b8"
-  },
-  "conc_dark": {
-   "color": "#8a8680"
   }
  },
  "lighting": {
@@ -19,32 +16,15 @@
    "id": "b0",
    "op": "box",
    "size": [
-    12,
-    1.0,
-    18.439
+    0.8,
+    1.05,
+    12.112
    ],
    "material": "conc",
    "transform": {
     "translate": [
-     0,
-     8.5,
-     0
-    ]
-   }
-  },
-  {
-   "id": "b1",
-   "op": "box",
-   "size": [
-    0.3,
-    1.2,
-    18.439
-   ],
-   "material": "conc_dark",
-   "transform": {
-    "translate": [
-     -5.85,
-     9.6,
+     -4.0,
+     6.925,
      0
     ]
    },
@@ -53,18 +33,18 @@
    ]
   },
   {
-   "id": "b2",
+   "id": "b1",
    "op": "box",
    "size": [
-    0.3,
-    1.2,
-    18.439
+    0.8,
+    1.05,
+    12.112
    ],
-   "material": "conc_dark",
+   "material": "conc",
    "transform": {
     "translate": [
-     5.85,
-     9.6,
+     4.0,
+     6.925,
      0
     ]
    },

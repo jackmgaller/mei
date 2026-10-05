@@ -2,21 +2,21 @@
  "alley_houses": 24,
  "machiya": 10,
  "poles": 21,
- "rails": 9,
- "placements": 156,
+ "rails": 7,
+ "placements": 173,
  "placements_per_cell": {
-  "c0_0": 15,
-  "c0_1": 15,
-  "c1_0": 20,
+  "c0_0": 19,
+  "c0_1": 17,
+  "c1_0": 22,
   "c1_1": 20,
-  "c2_0": 22,
+  "c2_0": 23,
   "c2_1": 21,
-  "c3_0": 11,
+  "c3_0": 13,
   "c3_1": 9,
-  "c4_0": 9,
-  "c4_1": 14
+  "c4_0": 13,
+  "c4_1": 16
  },
- "recipes": 105,
+ "recipes": 120,
  "glides": {
   "G1 building roof -> east side hall (11.6)": {
    "distance": 24.0,

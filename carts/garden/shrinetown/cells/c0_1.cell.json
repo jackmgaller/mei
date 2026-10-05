@@ -157,6 +157,26 @@
     84.0
    ],
    "collision": "self"
+  },
+  {
+   "id": "neighbour_w2",
+   "asset": "gbt_neighbour_14",
+   "position": [
+    0.2,
+    0,
+    88.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "hoarding_w",
+   "asset": "gbt_hoarding",
+   "position": [
+    0.2,
+    0,
+    111.0
+   ],
+   "collision": "self"
   }
  ],
  "entities": [

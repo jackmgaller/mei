@@ -259,12 +259,23 @@
    "collision": "self"
   },
   {
+   "id": "viaduct_end",
+   "asset": "gbc_viaduct_end",
+   "position": [
+    315.5,
+    9.0,
+    142.143
+   ],
+   "collision": "self",
+   "yaw": 49.4
+  },
+  {
    "id": "viaduct_span",
    "asset": "gbc_viaduct_span",
    "position": [
-    313.0,
+    310.75,
     0.0,
-    140.0
+    138.071
    ],
    "collision": "self",
    "yaw": 49.4
@@ -300,30 +311,6 @@
     173
    ],
    "asset": "gbc_coin"
-  },
-  {
-   "id": "core_rail_viaduct_parapet_w",
-   "type": "rail",
-   "position": [
-    302.193,
-    10.2,
-    138.442
-   ],
-   "params": {
-    "path": "core_viaduct_parapet_w"
-   }
-  },
-  {
-   "id": "core_rail_viaduct_parapet_e",
-   "type": "rail",
-   "position": [
-    309.807,
-    10.2,
-    129.558
-   ],
-   "params": {
-    "path": "core_viaduct_parapet_e"
-   }
   }
  ]
 }

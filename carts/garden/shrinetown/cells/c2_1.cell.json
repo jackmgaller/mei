@@ -490,30 +490,6 @@
     66
    ],
    "asset": "gbt_coin"
-  },
-  {
-   "id": "rail_string_torii_w",
-   "type": "rail",
-   "position": [
-    155,
-    13.8,
-    124
-   ],
-   "params": {
-    "path": "string_torii_w"
-   }
-  },
-  {
-   "id": "rail_string_torii_e",
-   "type": "rail",
-   "position": [
-    165,
-    13.8,
-    124
-   ],
-   "params": {
-    "path": "string_torii_e"
-   }
   }
  ]
 }

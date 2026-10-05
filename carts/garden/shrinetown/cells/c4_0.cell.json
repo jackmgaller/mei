@@ -101,6 +101,46 @@
     32.0
    ],
    "collision": "self"
+  },
+  {
+   "id": "neighbour_s7",
+   "asset": "gbt_neighbour",
+   "position": [
+    272.0,
+    0,
+    0.2
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "neighbour_s8",
+   "asset": "gbt_neighbour_8",
+   "position": [
+    304.0,
+    0,
+    0.2
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "neighbour_e0",
+   "asset": "gbt_neighbour_9",
+   "position": [
+    319.8,
+    0,
+    18.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "neighbour_e1",
+   "asset": "gbt_neighbour_11",
+   "position": [
+    319.8,
+    0,
+    54.0
+   ],
+   "collision": "self"
   }
  ],
  "entities": []

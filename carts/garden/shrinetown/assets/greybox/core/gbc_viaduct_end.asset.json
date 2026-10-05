@@ -1,10 +1,10 @@
 {
  "format": "mei-asset",
  "version": 1,
- "name": "gbc_sake_brewery",
+ "name": "gbc_viaduct_end",
  "materials": {
-  "white": {
-   "color": "#e8e2d2"
+  "conc_dark": {
+   "color": "#8a8680"
   }
  },
  "lighting": {
@@ -16,16 +16,16 @@
    "id": "b0",
    "op": "box",
    "size": [
-    18,
-    16.699,
-    12
+    12.6,
+    5.5,
+    0.4
    ],
-   "material": "white",
+   "material": "conc_dark",
    "transform": {
     "translate": [
      0,
-     8.349,
-     0
+     2.75,
+     -0.2
     ]
    },
    "open": [
