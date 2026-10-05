@@ -634,7 +634,7 @@ for i in range(5):
     for j in (4, 5):
         cid = f'c{i}_{j}'
         c = CELLS.get(cid, {'placements': [], 'entities': []})
-        body = {'format': 'mei-world-cell', 'version': 1, 'id': cid, 'at': [i, j], 'region': 'shrine_town',
+        body = {'format': 'mei-world-cell', 'version': 1, 'id': cid, 'at': [i, j], 'region': L.region_of(i, j),
                 'placements': c['placements']}
         if c['entities']: body['entities'] = c['entities']
         dump(TOWN / 'cells' / f'{cid}.cell.json', body)

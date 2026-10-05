@@ -15,12 +15,16 @@ are together (DESIGN.md, "The joined grey box"):
 - the routes that cross a row seam as one path each (the woods trail, the canal path through the
   park and the bamboo, the stream from the falls pool to the pond);
 - the world's settings: assets from the regions' folders and the real pagoda's collision, layers,
-  levels of detail, stand-ins and the World Checker's thresholds.
+  levels of detail, stand-ins, the World Checker's thresholds, and the two texture regions
+  (TEXTURES.md; which cell is in which is layout.region_of()).
 """
 import json
+import sys
 from pathlib import Path
 
 ST = Path(__file__).resolve().parent
+sys.path.insert(0, str(ST))
+import layout as L
 OUT = ST / 'shrinetown.world.json'
 HEIGHTS = 'shrinetown.heights.txt'
 
@@ -105,6 +109,16 @@ cell_caps['c3_2'] = {'triangles': 110}
 STANDINS = {'distance': 128, 'sweeps': True, 'triangles': 90, 'ground': 32, 'cells': cell_caps}
 
 shrine = json.loads((ST.parent / 'shrine' / 'shrine.world.json').read_text())
+
+# ---- texture regions (TEXTURES.md): the town (rows 0-1) and the shrine (rows 2-5). Each has its own
+# texture set in slots 13-0 (slot 14 holds the swatch row, 15 the fonts); entering one loads its set
+# over the other's. The budgets are the plan's totals, each zone's allowance and the ground's:
+# 380 KB of the town's 448 (15% free) and 300 KB of the shrine's (a third free). The shrine's palette
+# variants (day, night) and backdrop for both, so the sky does not change at the boundary.
+TEXTURE_BUDGETS = {'town': 380 * 1024, 'shrine': 300 * 1024}
+regions = {r: {'textures': {'slots': '13-0', 'budget': TEXTURE_BUDGETS[r]},
+               'variants': shrine['regions']['shrine']['variants'],
+               'backdrop': shrine['regions']['shrine']['backdrop']} for r in L.REGIONS}
 world = {
     'format': 'mei-world', 'version': 1, 'name': 'shrinetown',
     'game': '../world/garden.game.mochi',
@@ -113,8 +127,7 @@ world = {
     'cell_dir': 'cells',
     'grid': {'cell_size': 64}, 'overhang': 32,
     'collision': town['collision'],
-    'regions': {'shrine_town': {'variants': shrine['regions']['shrine']['variants'],
-                                'backdrop': shrine['regions']['shrine']['backdrop']}},
+    'regions': regions,
     'runtime': {'depth': True, 'perspective': True, 'near_far': 192},
     'verification': {'thresholds': {'cell_triangles': 12000, 'cell_placements': 400, 'standin_triangles': 140}},
     'layers': layers,

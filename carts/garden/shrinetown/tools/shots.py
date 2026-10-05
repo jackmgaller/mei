@@ -37,6 +37,8 @@ fn init() {{
     render_depth(true)
     render_perspective(true)
     assert(world_shrinetown_load())
+    let c = wp_cell_at(vec3({x:.3f}, {y:.3f}, {z:.3f}))     // the camera's region, as the game enters it
+    if c != null {{ wp_region_enter(c.region as s32, 0) }}
 }}
 fn update() {{}}
 fn draw() {{

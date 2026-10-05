@@ -16,7 +16,7 @@ there or pass the path). Rerun it rather than editing its outputs.
 |---|---|
 | `assets/greybox/core/gen_core.py` | the generator |
 | `assets/greybox/core/gbc_*.asset.json` | 68 box recipes, all prefixed `gbc_` (collision `self`, trees: trunk-only `gbc_trunk_*_col`) |
-| `cells/c0_2` … `c4_3` | placements and entities of the ten core cells, region `shrine_town` |
+| `cells/c0_2` … `c4_3` | placements and entities of the ten core cells, region `shrine` (`layout.region_of`, TEXTURES.md) |
 | `parts/core.json` | paths (sweeps and rails), layers, terrain materials and the core field, scatter |
 | `parts/core_heights.txt` | the field's starting heights: layout.height on a 2 m grid, x 0–320, z 128–256 |
 | `test_core.world.json`, `shrinetown_core.ids.json` | the throwaway world over the core rows and its ID lock |

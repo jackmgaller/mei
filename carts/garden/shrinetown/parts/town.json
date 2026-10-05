@@ -1,7 +1,8 @@
 {
  "about": "Shrine town grey box, region town (z 0-128): world-level entries in the world recipe's format. Written by notes/gen_town.py; see notes/town.md.",
  "regions": {
-  "shrine_town": {}
+  "town": {},
+  "shrine": {}
  },
  "layers": {
   "ladder_e": {}
