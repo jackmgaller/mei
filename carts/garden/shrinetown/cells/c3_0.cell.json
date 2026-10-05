@@ -93,26 +93,6 @@
    "collision": "self"
   },
   {
-   "id": "tyre_steps",
-   "asset": "gbt_tyre_steps",
-   "position": [
-    249.0,
-    0,
-    25.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "tyre_steps_2",
-   "asset": "gbt_tyre_steps_2",
-   "position": [
-    249.0,
-    0,
-    28.0
-   ],
-   "collision": "self"
-  },
-  {
    "id": "edge_s4",
    "asset": "gbt_edge_fence_3",
    "position": [
@@ -141,6 +121,48 @@
     0.2
    ],
    "collision": "self"
+  },
+  {
+   "id": "pool",
+   "asset": "school_pool",
+   "position": [
+    227.0,
+    0.0,
+    31.0
+   ],
+   "collision": "school_pool_col"
+  },
+  {
+   "id": "goal_0",
+   "asset": "sports_goal",
+   "position": [
+    247.0,
+    0.0,
+    35.0
+   ],
+   "yaw": 270,
+   "collision": "sports_goal_col"
+  },
+  {
+   "id": "tyres_0",
+   "asset": "sports_tyre_steps",
+   "position": [
+    249.0,
+    0.0,
+    25.0
+   ],
+   "collision": "sports_tyre_steps_col"
+  },
+  {
+   "id": "tyres_1",
+   "asset": "sports_tyre_steps",
+   "position": [
+    249.0,
+    0.0,
+    28.0
+   ],
+   "yaw": 180,
+   "collision": "sports_tyre_steps_col"
   }
  ],
  "entities": [
@@ -203,6 +225,18 @@
    ],
    "params": {
     "path": "wire_konbini"
+   }
+  },
+  {
+   "id": "rail_goal_0_bar",
+   "type": "rail",
+   "position": [
+    247.95,
+    2.25,
+    32.5
+   ],
+   "params": {
+    "path": "goal_0_bar"
    }
   }
  ]

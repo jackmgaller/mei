@@ -73,16 +73,6 @@
    "collision": "gbt_viaduct_164_col"
   },
   {
-   "id": "climbing_frame",
-   "asset": "gbt_climbing_frame",
-   "position": [
-    269.0,
-    0,
-    33.0
-   ],
-   "collision": "self"
-  },
-  {
    "id": "edge_s5",
    "asset": "gbt_edge_fence_4",
    "position": [
@@ -141,7 +131,121 @@
     54.0
    ],
    "collision": "self"
+  },
+  {
+   "id": "goal_1",
+   "asset": "sports_goal",
+   "position": [
+    289.0,
+    0.0,
+    35.0
+   ],
+   "yaw": 90,
+   "collision": "sports_goal_col"
+  },
+  {
+   "id": "climbing_frame",
+   "asset": "sports_climbing_frame",
+   "position": [
+    269.0,
+    0.0,
+    33.0
+   ],
+   "collision": "sports_climbing_frame_col"
+  },
+  {
+   "id": "bench_ground0",
+   "asset": "town_bench",
+   "position": [
+    256.0,
+    0.0,
+    53.5
+   ],
+   "collision": "town_bench_col"
+  },
+  {
+   "id": "bench_ground1",
+   "asset": "town_bench",
+   "position": [
+    262.0,
+    0.0,
+    53.5
+   ],
+   "collision": "town_bench_col"
   }
  ],
- "entities": []
+ "entities": [
+  {
+   "id": "rail_goal_1_bar",
+   "type": "rail",
+   "position": [
+    288.05,
+    2.25,
+    37.5
+   ],
+   "params": {
+    "path": "goal_1_bar"
+   }
+  },
+  {
+   "id": "pole_frame_0",
+   "type": "pole",
+   "position": [
+    266.8,
+    0.0,
+    35.0
+   ],
+   "params": {
+    "height": 4.38
+   }
+  },
+  {
+   "id": "pole_frame_1",
+   "type": "pole",
+   "position": [
+    267.9,
+    0.0,
+    35.0
+   ],
+   "params": {
+    "height": 4.38
+   }
+  },
+  {
+   "id": "pole_frame_2",
+   "type": "pole",
+   "position": [
+    270.1,
+    0.0,
+    35.0
+   ],
+   "params": {
+    "height": 4.38
+   }
+  },
+  {
+   "id": "pole_frame_3",
+   "type": "pole",
+   "position": [
+    271.2,
+    0.0,
+    35.0
+   ],
+   "params": {
+    "height": 4.38
+   }
+  },
+  {
+   "id": "rail_frame_ladder",
+   "type": "rail",
+   "position": [
+    269.0,
+    2.2,
+    30.8
+   ],
+   "params": {
+    "path": "frame_ladder"
+   }
+  }
+ ]
 }

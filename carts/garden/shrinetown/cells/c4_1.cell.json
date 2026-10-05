@@ -50,96 +50,6 @@
    "collision": "gbt_viaduct_165_col"
   },
   {
-   "id": "pole_road280",
-   "asset": "gbt_utility_pole",
-   "position": [
-    280.0,
-    0.0,
-    104.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "overpass",
-   "asset": "gbt_overpass",
-   "position": [
-    262,
-    0,
-    111
-   ],
-   "collision": "gbt_overpass_col"
-  },
-  {
-   "id": "school",
-   "asset": "gbt_school",
-   "position": [
-    273.0,
-    0,
-    71.0
-   ],
-   "collision": "gbt_school_col"
-  },
-  {
-   "id": "school_stair",
-   "asset": "gbt_school_stair",
-   "position": [
-    289.25,
-    0,
-    67
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "zelkova_0",
-   "asset": "gbt_tree_zelkova",
-   "position": [
-    280,
-    0.0,
-    100
-   ],
-   "collision": "gbt_tree_zelkova_col"
-  },
-  {
-   "id": "zelkova_1",
-   "asset": "gbt_tree_zelkova",
-   "position": [
-    286,
-    0.0,
-    100
-   ],
-   "collision": "gbt_tree_zelkova_col"
-  },
-  {
-   "id": "zelkova_2",
-   "asset": "gbt_tree_zelkova",
-   "position": [
-    292,
-    0.0,
-    100
-   ],
-   "collision": "gbt_tree_zelkova_col"
-  },
-  {
-   "id": "zelkova_3",
-   "asset": "gbt_tree_zelkova",
-   "position": [
-    310,
-    0.0,
-    100
-   ],
-   "collision": "gbt_tree_zelkova_col"
-  },
-  {
-   "id": "zelkova_4",
-   "asset": "gbt_tree_zelkova",
-   "position": [
-    316,
-    0.0,
-    100
-   ],
-   "collision": "gbt_tree_zelkova_col"
-  },
-  {
    "id": "edge_e1",
    "asset": "gbt_edge_fence_6",
    "position": [
@@ -168,6 +78,81 @@
     111.0
    ],
    "collision": "self"
+  },
+  {
+   "id": "schoolhouse",
+   "asset": "schoolhouse",
+   "position": [
+    273.0,
+    0.0,
+    71.0
+   ],
+   "collision": "schoolhouse_col"
+  },
+  {
+   "id": "overpass",
+   "asset": "overpass",
+   "position": [
+    262.0,
+    0.0,
+    111.0
+   ],
+   "yaw": 90,
+   "collision": "overpass_col"
+  },
+  {
+   "id": "pole_road280",
+   "asset": "town_utility_pole_transformer",
+   "position": [
+    280.0,
+    0.0,
+    104.0
+   ],
+   "yaw": 90,
+   "collision": "town_utility_pole_transformer_col"
+  },
+  {
+   "id": "zelkova_s0",
+   "asset": "tree_zelkova",
+   "position": [
+    268.0,
+    0.0,
+    97.0
+   ],
+   "collision": "tree_zelkova_col"
+  },
+  {
+   "id": "zelkova_s1",
+   "asset": "tree_zelkova",
+   "position": [
+    275.0,
+    0.0,
+    97.0
+   ],
+   "yaw": 37,
+   "collision": "tree_zelkova_col"
+  },
+  {
+   "id": "zelkova_s2",
+   "asset": "tree_zelkova",
+   "position": [
+    282.0,
+    0.0,
+    97.0
+   ],
+   "yaw": 74,
+   "collision": "tree_zelkova_col"
+  },
+  {
+   "id": "zelkova_s3",
+   "asset": "tree_zelkova",
+   "position": [
+    289.0,
+    0.0,
+    97.0
+   ],
+   "yaw": 111,
+   "collision": "tree_zelkova_col"
   }
  ],
  "entities": [
@@ -181,6 +166,30 @@
    ],
    "params": {
     "height": 9.0
+   }
+  },
+  {
+   "id": "pole_school_flag",
+   "type": "pole",
+   "position": [
+    279.0,
+    0.0,
+    69.0
+   ],
+   "params": {
+    "height": 9.1
+   }
+  },
+  {
+   "id": "rail_overpass_rail_e",
+   "type": "rail",
+   "position": [
+    277.7,
+    1.265,
+    125.95
+   ],
+   "params": {
+    "path": "overpass_rail_e"
    }
   }
  ]

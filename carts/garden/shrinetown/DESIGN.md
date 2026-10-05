@@ -1051,3 +1051,35 @@ present (`tools/views.py`): README.md, "What it costs".
 - **The pagoda from the spawn.** With the real pagoda on the terrace at 15, only its finial's
   top clears the arcade gate (section 1.3).
 - **G5** (12.2, the pagoda terrace).
+
+### 12.5 Placing the real assets (PLACE_SPLIT)
+
+Each placement zone's logic is in `place/ZONE.py`. The generators call it through
+`place/__init__.py` (`apply(STAGE, globals())`), just before `notes/gen_town.py` and
+`make_world.py` write. Each zone's changes to the grey box follow.
+
+#### East (the school, the overpass, the front road's east part, the culvert)
+
+`place/east.py`. It also places the pool and the sports ground. They lie south of z 40, but they
+are the school's.
+
+| Where | Grey box | Real asset | Why, and what it changes |
+|---|---|---|---|
+| School | a 30 × 30 box to 18.9; one 26° ramp up its east face from z 48 (x 288–290.5) | `schoolhouse` at (273, 71): an L. The classroom block is x 259–283, z 75–86, roof 18.9; the wing x 259–267, z 59–75, roof 15.18; the clock tower rises to 22.3; the fire stair is on the east end | The roof to stand on is the block's 11 m depth. The fire stair's foot is at (283.8, 76.3), reached from the sports ground across open yard. A paved strip (x 281–287, z 52–76) marks the way. The flagpole is a pole at (279, 69), 9.1 m |
+| G9 | take-off at (273, 70) after a 4 m run | take-off at (273, 80), a jump on the spot (`shrinetown_cases.akr`) | (273, 70) is now the porch's roof (6.0). From (273, 80), a run-up carries the first jump over the north parapet. Scenario 418 lands at (276, 150), height 3.6 |
+| Gym | box x 214–238, z 64–94, 9.0 | `school_gym` at (226, 79), yaw 270, entrance east | The same footprint, crown 9.0. Its roof is a bonus route (canopy 3.45, eave 7.4) |
+| Pool | terrain cut x 214–240, z 22–40 to −1.2 | `school_pool` at (227, 31); cut x 216–238, z 26–36 to −1.3; water −0.3 | The cut is the asset's tank opening. The liner's floor is 0.1 above the cut, so the two do not z-fight |
+| Tyre steps | two boxes, 0.8 and 1.6 | `sports_tyre_steps` × 2 at (249, 25) and (249, 28) | Tops 0.35–0.67 |
+| Climbing frame | box to 2.6 | `sports_climbing_frame` at (269, 33) | Four climbing poles to 4.38. The overhead ladder's hang rail is at 2.2, not the generator's 2.3, which is inside its collision (2.24–2.48) |
+| Goals | none | `sports_goal` at (247, 35) yaw 270 and (289, 35) yaw 90 | The crossbars (2.25) are rails |
+| Overpass | deck and two ramps, no rails | `overpass` at (262, 111), yaw 90 | The same deck (7.0) and stair feet. Two handrail rails at 8.12: each runs down one stair, along one side of the deck and down the other stair. The deck's collision is split where the stairs meet it, so there is no T-junction. The sign's texture is 128 × 48 (TEXTURES.md) |
+| Road poles at x 220, 250, 280 | boxes | `town_utility_pole_transformer`, yaw 90 | Wire points at 8.0 |
+| Trees | maples at (216, 122) and (248, 121); zelkovas at z 100, x 280–316 | `tree_zelkova` in the maples' places, and four at z 97, x 268–289 | One leaf sheet for the whole zone. At z 100, and east of x 290, the 6 m crowns reached the wires and the viaduct's deck |
+| Props | none | school-zone signs at (244, 101.5), a curve mirror at the gym's corner, a hydrant, and two benches by the sports ground | |
+| Culvert | road slab and channel | unchanged | No real asset |
+
+The school's collision is split where the fire stair's top landing meets the roof, so there is
+no T-junction. Scenarios 400–446 pass. The worst view measured in the zone is 1,145 triangles,
+296,281 draw CPU cycles and 606,074 GPU cycles. The zone's textures are 24,864 bytes of its
+26,624. The pool and the sports ground add 4,352 bytes, which `tools/textures.py` counts as the
+station's because they are south of z 40.

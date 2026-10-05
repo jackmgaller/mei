@@ -30,26 +30,6 @@
    "collision": "self"
   },
   {
-   "id": "pole_road220",
-   "asset": "gbt_utility_pole",
-   "position": [
-    220.0,
-    0.0,
-    104.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "pole_road250",
-   "asset": "gbt_utility_pole",
-   "position": [
-    250.0,
-    0.0,
-    104.0
-   ],
-   "collision": "self"
-  },
-  {
    "id": "pole_konbini1",
    "asset": "gbt_utility_pole",
    "position": [
@@ -71,33 +51,89 @@
   },
   {
    "id": "gym",
-   "asset": "gbt_gym",
+   "asset": "school_gym",
    "position": [
     226.0,
-    0,
+    0.0,
     79.0
    ],
-   "collision": "gbt_gym_col"
+   "yaw": 270,
+   "collision": "school_gym_col"
   },
   {
-   "id": "maple_0",
-   "asset": "gbt_tree_maple",
+   "id": "pole_road220",
+   "asset": "town_utility_pole_transformer",
    "position": [
-    216,
-    0.746,
-    122
+    220.0,
+    0.0,
+    104.0
    ],
-   "collision": "gbt_tree_maple_col"
+   "yaw": 90,
+   "collision": "town_utility_pole_transformer_col"
   },
   {
-   "id": "maple_1",
-   "asset": "gbt_tree_maple",
+   "id": "pole_road250",
+   "asset": "town_utility_pole_transformer",
    "position": [
-    248,
-    1.65,
-    121
+    250.0,
+    0.0,
+    104.0
    ],
-   "collision": "gbt_tree_maple_col"
+   "yaw": 90,
+   "collision": "town_utility_pole_transformer_col"
+  },
+  {
+   "id": "zelkova_n0",
+   "asset": "tree_zelkova",
+   "position": [
+    216.0,
+    0.0,
+    122.0
+   ],
+   "collision": "tree_zelkova_col"
+  },
+  {
+   "id": "zelkova_n1",
+   "asset": "tree_zelkova",
+   "position": [
+    248.0,
+    0.0,
+    121.0
+   ],
+   "collision": "tree_zelkova_col"
+  },
+  {
+   "id": "signs_school",
+   "asset": "town_road_signs",
+   "position": [
+    244.0,
+    0.0,
+    101.5
+   ],
+   "yaw": 180,
+   "collision": "none"
+  },
+  {
+   "id": "mirror_gym",
+   "asset": "traffic_mirror",
+   "position": [
+    240.0,
+    0.0,
+    95.5
+   ],
+   "yaw": 225,
+   "collision": "traffic_mirror_col"
+  },
+  {
+   "id": "hydrant_road",
+   "asset": "firepost",
+   "position": [
+    232.0,
+    0.0,
+    102.6
+   ],
+   "yaw": 180,
+   "collision": "firepost_col"
   }
  ],
  "entities": [
@@ -169,6 +205,18 @@
     86.25
    ],
    "asset": "gbt_coin"
+  },
+  {
+   "id": "rail_overpass_rail_w",
+   "type": "rail",
+   "position": [
+    246.3,
+    1.265,
+    96.05
+   ],
+   "params": {
+    "path": "overpass_rail_w"
+   }
   }
  ]
 }
