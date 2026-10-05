@@ -1,0 +1,179 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "town_road_signs",
+ "budget": {
+  "vertices": 120,
+  "triangles": 40
+ },
+ "sheets": {
+  "signs": {
+   "image": "../town_signs_sheet/town_signs.png"
+  }
+ },
+ "materials": {
+  "tomare": {
+   "color": "#f4f1e6",
+   "texture": {
+    "sheet": "signs",
+    "cell": "tomare",
+    "projection": "fit"
+   }
+  },
+  "speed30": {
+   "color": "#f4f1e6",
+   "texture": {
+    "sheet": "signs",
+    "cell": "speed30",
+    "projection": "fit"
+   }
+  },
+  "school": {
+   "color": "#f4f1e6",
+   "texture": {
+    "sheet": "signs",
+    "cell": "school",
+    "projection": "fit"
+   }
+  },
+  "steel": {
+   "color": "#a8a69e",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "pole_stop",
+   "op": "box",
+   "size": [
+    0.07,
+    2.5,
+    0.07
+   ],
+   "material": "steel",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -0.9,
+     1.24,
+     0.055
+    ]
+   }
+  },
+  {
+   "id": "stop",
+   "op": "extrude",
+   "material": "steel",
+   "faces": {
+    "back": "tomare"
+   },
+   "depth": 0.03,
+   "points": [
+    [
+     -0.45,
+     0.39
+    ],
+    [
+     0.45,
+     0.39
+    ],
+    [
+     0.0,
+     -0.39
+    ]
+   ],
+   "transform": {
+    "translate": [
+     -0.9,
+     2.1,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "pole_30",
+   "op": "box",
+   "size": [
+    0.07,
+    2.5,
+    0.07
+   ],
+   "material": "steel",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.9,
+     1.24,
+     0.055
+    ]
+   }
+  },
+  {
+   "id": "limit_30",
+   "op": "box",
+   "size": [
+    0.56,
+    0.56,
+    0.03
+   ],
+   "material": "steel",
+   "open": [
+    "left",
+    "right",
+    "top",
+    "bottom"
+   ],
+   "faces": {
+    "back": "speed30"
+   },
+   "transform": {
+    "translate": [
+     0.9,
+     2.2,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "school",
+   "op": "box",
+   "size": [
+    0.6,
+    0.6,
+    0.03
+   ],
+   "material": "steel",
+   "open": [
+    "left",
+    "right",
+    "top",
+    "bottom"
+   ],
+   "faces": {
+    "back": "school"
+   },
+   "transform": {
+    "translate": [
+     0.9,
+     1.55,
+     0.0
+    ]
+   }
+  }
+ ]
+}
