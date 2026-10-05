@@ -1,0 +1,6 @@
+[
+  {"name": "bow", "eye": [-14, 9, -24], "target": [0, 3.5, -4]},
+  {"name": "starboard", "eye": [22, 6, -4], "target": [0, 3.5, -2]},
+  {"name": "stern", "eye": [-12, 8, 26], "target": [0, 4, 6]},
+  {"name": "foredeck", "eye": [5, 8, -12], "target": [0, 4, -4]}
+]
