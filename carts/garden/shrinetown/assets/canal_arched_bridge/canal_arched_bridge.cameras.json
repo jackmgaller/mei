@@ -1,0 +1,9 @@
+[
+  {"name": "park_10m", "eye": [-12, 1.6, -7], "target": [0, 0.8, 0]},
+  {"name": "approach", "eye": [-9, 1.6, 0.2], "target": [0, 1.4, 0]},
+  {"name": "crown", "eye": [0, 2.85, 0.4], "target": [5, 0.8, -0.2]},
+  {"name": "wading", "eye": [0, -0.2, -9], "target": [0, 0.6, 0]},
+  {"name": "kasagi_top", "eye": [-4.6, 2.6, -1.4], "target": [0, 2.4, -1.4]},
+  {"name": "lane_30m", "eye": [18, 1.6, -24], "target": [0, 0.8, 0]},
+  {"name": "yagura_above", "eye": [-24, 9, -6], "target": [0, 0.6, 0]}
+]

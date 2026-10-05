@@ -1,0 +1,30 @@
+{
+ "format": "mei-sheet",
+ "version": 1,
+ "cells": {
+  "plate_kanji": [
+   0,
+   0,
+   32,
+   64
+  ],
+  "plate_kana": [
+   32,
+   0,
+   32,
+   64
+  ],
+  "plate_water": [
+   64,
+   0,
+   32,
+   64
+  ],
+  "plate_year": [
+   96,
+   0,
+   32,
+   64
+  ]
+ }
+}
