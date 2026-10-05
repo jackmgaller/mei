@@ -1,0 +1,1368 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "vending_machine",
+ "budget": {
+  "vertices": 400,
+  "triangles": 400
+ },
+ "materials": {
+  "blue": {
+   "color": "#2f7fc1",
+   "tag": "body"
+  },
+  "white": {
+   "color": "#eef0ee"
+  },
+  "dark": {
+   "color": "#1c1e28"
+  },
+  "chrome": {
+   "color": "#aeb6c2"
+  },
+  "window": {
+   "color": "#2a2c38",
+   "texture": {
+    "image": "art/window.png",
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "header": {
+   "color": "#2a5fa8",
+   "texture": {
+    "image": "art/header.png",
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "buttons": {
+   "color": "#46d070",
+   "texture": {
+    "image": "art/buttons.png",
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "panel": {
+   "color": "#d9dde4",
+   "texture": {
+    "image": "art/panel.png",
+    "projection": "fit"
+   }
+  },
+  "flap": {
+   "color": "#252936",
+   "texture": {
+    "image": "art/flap.png",
+    "projection": "fit"
+   }
+  },
+  "cup": {
+   "color": "#252936",
+   "texture": {
+    "image": "art/cup.png",
+    "projection": "fit"
+   }
+  },
+  "head": {
+   "color": "#8a5a34",
+   "texture": {
+    "image": "art/tanuki_head.png",
+    "projection": "fit"
+   }
+  },
+  "tanuki": {
+   "color": "#59b6e8",
+   "texture": {
+    "image": "art/tanuki.png",
+    "projection": "fit"
+   }
+  },
+  "binlabel": {
+   "color": "#7e8a96",
+   "texture": {
+    "image": "art/bin_label.png",
+    "projection": "fit"
+   }
+  },
+  "binbody": {
+   "color": "#6c7a88"
+  },
+  "lidblue": {
+   "color": "#2f68c0"
+  },
+  "lidyel": {
+   "color": "#f0c838"
+  },
+  "fur": {
+   "color": "#e8a050"
+  },
+  "furw": {
+   "color": "#f6f0e4"
+  },
+  "ink": {
+   "color": "#1a1a1a"
+  },
+  "pink": {
+   "color": "#e88aa0"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "kick",
+   "op": "box",
+   "size": [
+    0.74,
+    0.14,
+    0.64
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     0,
+     0.07,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "body",
+   "op": "box",
+   "size": [
+    0.78,
+    1.64,
+    0.68
+   ],
+   "material": "blue",
+   "transform": {
+    "translate": [
+     0,
+     0.92,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "cap",
+   "op": "box",
+   "size": [
+    0.82,
+    0.05,
+    0.72
+   ],
+   "material": "white",
+   "transform": {
+    "translate": [
+     0,
+     1.745,
+     0
+    ]
+   }
+  },
+  {
+   "id": "plate",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.38,
+     1.7,
+     -0.355
+    ],
+    [
+     0.38,
+     1.7,
+     -0.355
+    ],
+    [
+     0.38,
+     0.12,
+     -0.355
+    ],
+    [
+     -0.38,
+     0.12,
+     -0.355
+    ],
+    [
+     -0.38,
+     1.7,
+     -0.33
+    ],
+    [
+     0.38,
+     1.7,
+     -0.33
+    ],
+    [
+     0.38,
+     0.12,
+     -0.33
+    ],
+    [
+     -0.38,
+     0.12,
+     -0.33
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "white",
+    "white",
+    "white",
+    "white"
+   ],
+   "material": "white"
+  },
+  {
+   "id": "header",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.36,
+     1.66,
+     -0.372
+    ],
+    [
+     0.36,
+     1.66,
+     -0.372
+    ],
+    [
+     0.36,
+     1.44,
+     -0.372
+    ],
+    [
+     -0.36,
+     1.44,
+     -0.372
+    ],
+    [
+     -0.36,
+     1.66,
+     -0.33
+    ],
+    [
+     0.36,
+     1.66,
+     -0.33
+    ],
+    [
+     0.36,
+     1.44,
+     -0.33
+    ],
+    [
+     -0.36,
+     1.44,
+     -0.33
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "header",
+    "white",
+    "white",
+    "white"
+   ],
+   "material": "header"
+  },
+  {
+   "id": "bezel",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.385,
+     1.385,
+     -0.362
+    ],
+    [
+     0.165,
+     1.385,
+     -0.362
+    ],
+    [
+     0.165,
+     0.455,
+     -0.362
+    ],
+    [
+     -0.385,
+     0.455,
+     -0.362
+    ],
+    [
+     -0.385,
+     1.385,
+     -0.33
+    ],
+    [
+     0.165,
+     1.385,
+     -0.33
+    ],
+    [
+     0.165,
+     0.455,
+     -0.33
+    ],
+    [
+     -0.385,
+     0.455,
+     -0.33
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "dark",
+    "dark",
+    "dark",
+    "dark"
+   ],
+   "material": "dark"
+  },
+  {
+   "id": "window",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.36,
+     1.37,
+     -0.372
+    ],
+    [
+     0.14,
+     1.37,
+     -0.372
+    ],
+    [
+     0.14,
+     0.47,
+     -0.372
+    ],
+    [
+     -0.36,
+     0.47,
+     -0.372
+    ],
+    [
+     -0.36,
+     1.37,
+     -0.352
+    ],
+    [
+     0.14,
+     1.37,
+     -0.352
+    ],
+    [
+     0.14,
+     0.47,
+     -0.352
+    ],
+    [
+     -0.36,
+     0.47,
+     -0.352
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "window",
+    "dark",
+    "dark",
+    "dark"
+   ],
+   "material": "window"
+  },
+  {
+   "id": "buttons",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.36,
+     0.44,
+     -0.368
+    ],
+    [
+     0.14,
+     0.44,
+     -0.368
+    ],
+    [
+     0.14,
+     0.35,
+     -0.368
+    ],
+    [
+     -0.36,
+     0.35,
+     -0.368
+    ],
+    [
+     -0.36,
+     0.44,
+     -0.33
+    ],
+    [
+     0.14,
+     0.44,
+     -0.33
+    ],
+    [
+     0.14,
+     0.35,
+     -0.33
+    ],
+    [
+     -0.36,
+     0.35,
+     -0.33
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "buttons",
+    "dark",
+    "dark",
+    "dark"
+   ],
+   "material": "buttons"
+  },
+  {
+   "id": "flap",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.36,
+     0.32,
+     -0.372
+    ],
+    [
+     0.14,
+     0.32,
+     -0.372
+    ],
+    [
+     0.14,
+     0.12,
+     -0.372
+    ],
+    [
+     -0.36,
+     0.12,
+     -0.372
+    ],
+    [
+     -0.36,
+     0.32,
+     -0.33
+    ],
+    [
+     0.14,
+     0.32,
+     -0.33
+    ],
+    [
+     0.14,
+     0.12,
+     -0.33
+    ],
+    [
+     -0.36,
+     0.12,
+     -0.33
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "flap",
+    "dark",
+    "dark",
+    "dark"
+   ],
+   "material": "flap"
+  },
+  {
+   "id": "panel",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.18,
+     1.376,
+     -0.368
+    ],
+    [
+     0.36,
+     1.376,
+     -0.368
+    ],
+    [
+     0.36,
+     0.8,
+     -0.368
+    ],
+    [
+     0.18,
+     0.8,
+     -0.368
+    ],
+    [
+     0.18,
+     1.376,
+     -0.33
+    ],
+    [
+     0.36,
+     1.376,
+     -0.33
+    ],
+    [
+     0.36,
+     0.8,
+     -0.33
+    ],
+    [
+     0.18,
+     0.8,
+     -0.33
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "panel",
+    "chrome",
+    "chrome",
+    "chrome"
+   ],
+   "material": "panel"
+  },
+  {
+   "id": "mascot_head",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.18,
+     0.716,
+     -0.366
+    ],
+    [
+     0.36,
+     0.716,
+     -0.366
+    ],
+    [
+     0.36,
+     0.5,
+     -0.366
+    ],
+    [
+     0.18,
+     0.5,
+     -0.366
+    ],
+    [
+     0.18,
+     0.716,
+     -0.33
+    ],
+    [
+     0.36,
+     0.716,
+     -0.33
+    ],
+    [
+     0.36,
+     0.5,
+     -0.33
+    ],
+    [
+     0.18,
+     0.5,
+     -0.33
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "head",
+    "dark",
+    "dark",
+    "dark"
+   ],
+   "material": "head"
+  },
+  {
+   "id": "cup",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.18,
+     0.32,
+     -0.372
+    ],
+    [
+     0.36,
+     0.32,
+     -0.372
+    ],
+    [
+     0.36,
+     0.12,
+     -0.372
+    ],
+    [
+     0.18,
+     0.12,
+     -0.372
+    ],
+    [
+     0.18,
+     0.32,
+     -0.33
+    ],
+    [
+     0.36,
+     0.32,
+     -0.33
+    ],
+    [
+     0.36,
+     0.12,
+     -0.33
+    ],
+    [
+     0.18,
+     0.12,
+     -0.33
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "cup",
+    "dark",
+    "dark",
+    "dark"
+   ],
+   "material": "cup"
+  },
+  {
+   "id": "stickers",
+   "op": "group",
+   "children": [
+    {
+     "id": "sticker",
+     "op": "mesh",
+     "vertices": [
+      [
+       0.38,
+       1.07,
+       -0.15
+      ],
+      [
+       0.405,
+       1.07,
+       -0.15
+      ],
+      [
+       0.405,
+       0.62,
+       -0.15
+      ],
+      [
+       0.38,
+       0.62,
+       -0.15
+      ],
+      [
+       0.38,
+       1.07,
+       0.15
+      ],
+      [
+       0.405,
+       1.07,
+       0.15
+      ],
+      [
+       0.405,
+       0.62,
+       0.15
+      ],
+      [
+       0.38,
+       0.62,
+       0.15
+      ]
+     ],
+     "faces": [
+      [
+       1,
+       5,
+       6,
+       2
+      ],
+      [
+       0,
+       1,
+       2,
+       3
+      ],
+      [
+       5,
+       4,
+       7,
+       6
+      ],
+      [
+       4,
+       5,
+       1,
+       0
+      ]
+     ],
+     "face_materials": [
+      "tanuki",
+      "white",
+      "white",
+      "white"
+     ],
+     "material": "tanuki"
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "bin",
+   "op": "box",
+   "size": [
+    0.4,
+    0.8,
+    0.4
+   ],
+   "material": "binbody",
+   "transform": {
+    "translate": [
+     0.66,
+     0.4,
+     -0.12
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "bin_label",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.47,
+     0.62,
+     -0.335
+    ],
+    [
+     0.85,
+     0.62,
+     -0.335
+    ],
+    [
+     0.85,
+     0.2,
+     -0.335
+    ],
+    [
+     0.47,
+     0.2,
+     -0.335
+    ],
+    [
+     0.47,
+     0.62,
+     -0.3
+    ],
+    [
+     0.85,
+     0.62,
+     -0.3
+    ],
+    [
+     0.85,
+     0.2,
+     -0.3
+    ],
+    [
+     0.47,
+     0.2,
+     -0.3
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "binlabel",
+    "binbody",
+    "binbody",
+    "binbody"
+   ],
+   "material": "binlabel"
+  },
+  {
+   "id": "lid_can",
+   "op": "box",
+   "size": [
+    0.21,
+    0.05,
+    0.42
+   ],
+   "material": "lidblue",
+   "transform": {
+    "translate": [
+     0.555,
+     0.82,
+     -0.12
+    ]
+   },
+   "open": [
+    "bottom",
+    "right"
+   ]
+  },
+  {
+   "id": "lid_pet",
+   "op": "box",
+   "size": [
+    0.215,
+    0.05,
+    0.42
+   ],
+   "material": "lidyel",
+   "transform": {
+    "translate": [
+     0.7675,
+     0.82,
+     -0.12
+    ]
+   },
+   "open": [
+    "bottom",
+    "left"
+   ]
+  },
+  {
+   "id": "hole_can",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.51,
+     0.855,
+     -0.2
+    ],
+    [
+     0.61,
+     0.855,
+     -0.2
+    ],
+    [
+     0.51,
+     0.855,
+     -0.12
+    ],
+    [
+     0.61,
+     0.855,
+     -0.12
+    ]
+   ],
+   "faces": [
+    [
+     2,
+     3,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "dark"
+   ],
+   "material": "dark"
+  },
+  {
+   "id": "hole_pet",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.7,
+     0.855,
+     -0.25
+    ],
+    [
+     0.82,
+     0.855,
+     -0.25
+    ],
+    [
+     0.7,
+     0.855,
+     -0.22
+    ],
+    [
+     0.82,
+     0.855,
+     -0.22
+    ]
+   ],
+   "faces": [
+    [
+     2,
+     3,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "dark"
+   ],
+   "material": "dark"
+  },
+  {
+   "id": "cat_body",
+   "op": "sphere",
+   "radius": 0.1,
+   "rings": 4,
+   "segments": 8,
+   "material": "fur",
+   "transform": {
+    "scale": [
+     1,
+     1.15,
+     1.1
+    ],
+    "translate": [
+     0.76,
+     0.97,
+     -0.04
+    ]
+   }
+  },
+  {
+   "id": "cat_chest",
+   "op": "sphere",
+   "radius": 0.055,
+   "rings": 3,
+   "segments": 6,
+   "material": "furw",
+   "transform": {
+    "scale": [
+     1,
+     1.2,
+     0.8
+    ],
+    "translate": [
+     0.76,
+     0.93,
+     -0.125
+    ]
+   }
+  },
+  {
+   "id": "cat_head",
+   "op": "sphere",
+   "radius": 0.08,
+   "rings": 4,
+   "segments": 8,
+   "material": "fur",
+   "transform": {
+    "scale": [
+     1.1,
+     0.95,
+     1
+    ],
+    "translate": [
+     0.76,
+     1.13,
+     -0.07
+    ]
+   }
+  },
+  {
+   "id": "cat_ears",
+   "op": "group",
+   "children": [
+    {
+     "id": "ear",
+     "op": "cone",
+     "radius": 0.032,
+     "height": 0.06,
+     "segments": 3,
+     "material": "fur",
+     "transform": {
+      "translate": [
+       0.81,
+       1.2,
+       -0.07
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x",
+     "offset": 0.76
+    }
+   ]
+  },
+  {
+   "id": "cat_eyes",
+   "op": "group",
+   "children": [
+    {
+     "id": "eye",
+     "op": "box",
+     "size": [
+      0.014,
+      0.024,
+      0.012
+     ],
+     "material": "ink",
+     "transform": {
+      "translate": [
+       0.792,
+       1.14,
+       -0.147
+      ]
+     },
+     "open": [
+      "back",
+      "bottom",
+      "top",
+      "left",
+      "right"
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x",
+     "offset": 0.76
+    }
+   ]
+  },
+  {
+   "id": "cat_nose",
+   "op": "box",
+   "size": [
+    0.016,
+    0.012,
+    0.01
+   ],
+   "material": "pink",
+   "transform": {
+    "translate": [
+     0.76,
+     1.108,
+     -0.15
+    ]
+   },
+   "open": [
+    "back",
+    "bottom",
+    "top",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "cat_tail",
+   "op": "cylinder",
+   "radius": 0.016,
+   "height": 0.2,
+   "segments": 5,
+   "caps": true,
+   "material": "fur",
+   "transform": {
+    "translate": [
+     0.89,
+     0.95,
+     0.03
+    ],
+    "rotate": [
+     0,
+     0,
+     -28
+    ]
+   }
+  }
+ ]
+}
