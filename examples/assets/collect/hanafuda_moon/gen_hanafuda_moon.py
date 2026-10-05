@@ -2,7 +2,10 @@
 """Writes art/face.png, art/back.png and hanafuda_moon.asset.json. Run from anywhere (Pillow).
 
 The level goal: the August hanafuda card, the full moon over susuki grass, about 1 m tall. A thick
-gilt-edged card whose moon is a raised medallion going through it, so both sides show the moon.
+gilt-edged card. The moon is printed on both faces and framed by a thin gilt bead, a ring of
+diamond section through the card that stands 1.7 cm proud of each face: a low relief that reads
+from both sides as the card turns. The bead's faces slope at about 60 degrees, so none of them
+lies within 3 cm of a parallel face (the Asset Kit's close-face rule).
 """
 import json
 import math
@@ -19,8 +22,9 @@ W, H, T = 0.62, 1.0, 0.05          # card width, height, thickness
 CR, CSEG = 0.05, 3                 # rounded corners: radius, segments a corner
 BASE = 0.0                         # card bottom (the cart floats and spins it about Y)
 MOON_Y = BASE + 0.69               # moon centre
-MOON_R, RING_R = 0.165, 0.2
-MOON_PROUD, RING_PROUD = 0.075, 0.035   # how far the caps stand in front of the card's faces
+MOON_R = 0.18                      # the printed moon (the bead's inner edge meets the face here)
+BEAD_IN, BEAD_OUT, BEAD_TOP = 0.16, 0.21, 0.042   # the bead's diamond section: radii, half height
+BEAD_SEG = 16
 
 # ---------------------------------------------------------------- texture (texels)
 TW, TH = 64, 104                   # 0.62 x 1.0 m: about 1 cm a texel
@@ -52,7 +56,7 @@ def face():
     d.rectangle((4, 14, TW - 5, 15), fill=SKY)
     for x in range(4, TW - 4, 2):
         d.point((x, 14), fill=SKY_DK)
-    # the moon (the raised medallion covers it; drawn so the art stands on its own)
+    # the moon (its edge under the bead)
     mx, my = tex_xy(0, MOON_Y)
     r = MOON_R / W * TW
     d.ellipse((mx - r, my - r, mx + r, my + r), fill=MOON)
@@ -99,6 +103,10 @@ def back():
     d = ImageDraw.Draw(im)
     border(d, INK)
     d.rectangle((7, 7, TW - 8, TH - 8), outline=SKY_DK)
+    # the moon shows through: the same disc as the face's, so the card reads from behind too
+    mx, my = tex_xy(0, MOON_Y)
+    r = MOON_R / W * TW
+    d.ellipse((mx - r, my - r, mx + r, my + r), fill=MOON)
     im.save(os.path.join(ART, "back.png"))
 
 
@@ -128,25 +136,51 @@ for i in range(n):
     faces.append([i + n, j + n, j, i])
     mats.append("edge")
 
+def bead():
+    """The gilt bead round the moon: a ring of diamond section about the card's Z axis, through the
+    card, its outer corners BEAD_TOP in front of and behind the card's centre plane."""
+    mid = 0.5 * (BEAD_IN + BEAD_OUT)
+    sec = [(BEAD_IN, 0.0), (mid, -BEAD_TOP), (BEAD_OUT, 0.0), (mid, BEAD_TOP)]
+    vs = []
+    for k in range(BEAD_SEG):
+        a = 2 * math.pi * k / BEAD_SEG
+        for r, z in sec:
+            vs.append([round(r * math.cos(a), 5), round(MOON_Y + r * math.sin(a), 5), z])
+    fs = []
+    for k in range(BEAD_SEG):
+        k2 = (k + 1) % BEAD_SEG
+        for j in range(4):
+            j2 = (j + 1) % 4
+            q = [k * 4 + j, k * 4 + j2, k2 * 4 + j2, k2 * 4 + j]
+            # outward and right-handed: reversed where the normal points into the tube
+            p0, p1, p2 = (vs[i] for i in q[:3])
+            u = [p1[i] - p0[i] for i in range(3)]
+            v = [p2[i] - p0[i] for i in range(3)]
+            n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]
+            c = [sum(vs[i][t] for i in q) / 4 for t in range(3)]
+            rr = math.hypot(c[0], c[1] - MOON_Y)
+            axis = [c[0] / rr * mid, MOON_Y + (c[1] - MOON_Y) / rr * mid, 0.0]
+            if sum(n[t] * (c[t] - axis[t]) for t in range(3)) < 0:
+                q.reverse()
+            fs += [q[:3], [q[0], q[2], q[3]]]    # two triangles: the rounded corners are not planar
+    return vs, fs
+
+
+bead_v, bead_f = bead()
+
 materials = {
     "face": {"color": SKY, "class": "emissive",
              "texture": {"image": "art/face.png", "projection": "fit"}},
     "back": {"color": INK, "class": "emissive",
              "texture": {"image": "art/back.png", "projection": "fit"}},
     "edge": {"color": GOLD},
-    "ring": {"color": "#ffd34e"},
-    "moon": {"color": MOON, "class": "emissive"},
+    "bead": {"color": "#ffd34e"},
 }
 
 nodes = [
     {"id": "card", "op": "mesh", "material": "edge", "vertices": verts, "faces": faces,
      "face_materials": mats},
-    {"id": "ring", "op": "cylinder", "radius": RING_R, "height": T + 2 * RING_PROUD,
-     "segments": 16, "material": "ring",
-     "transform": {"rotate": [-90, 0, 0], "translate": [0, MOON_Y, 0]}},
-    {"id": "moon", "op": "cylinder", "radius": MOON_R, "height": T + 2 * MOON_PROUD,
-     "segments": 16, "material": "moon",
-     "transform": {"rotate": [-90, 0, 0], "translate": [0, MOON_Y, 0]}},
+    {"id": "bead", "op": "mesh", "material": "bead", "vertices": bead_v, "faces": bead_f},
 ]
 
 recipe = {
