@@ -1,0 +1,42 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gachapon_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "box",
+   "size": [
+    0.5,
+    1.14,
+    0.44
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.57,
+     0
+    ]
+   }
+  }
+ ]
+}

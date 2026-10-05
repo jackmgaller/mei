@@ -1,0 +1,42 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "mamachari_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "box",
+   "size": [
+    0.3,
+    0.8,
+    1.7
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.4,
+     -0.06
+    ]
+   }
+  }
+ ]
+}
