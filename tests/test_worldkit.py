@@ -576,6 +576,20 @@ class BuildTests(unittest.TestCase):
             pack = P.decode(c.pack)
             self.assertEqual((pack.near_far, pack.lod_slots, c.report['lod']), (0, 0, {}))
 
+    def test_asset_dirs_add_directories_and_refuse_a_name_in_two(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            before = ex.compile().pack
+            (ex.dir/'more').mkdir()
+            shutil.move(str(ex.dir/'assets'/'ramp.asset.json'), str(ex.dir/'more'/'ramp.asset.json'))
+            with self.assertRaisesRegex(WorldError, 'No asset recipe'):
+                ex.compile()
+            ex.edit(lambda w: w.update(asset_dirs=['more']))
+            self.assertEqual(ex.compile().pack, before)
+            shutil.copy(ex.dir/'more'/'ramp.asset.json', ex.dir/'assets'/'ramp.asset.json')
+            with self.assertRaisesRegex(WorldError, 'more than one asset directory'):
+                ex.compile()
+
     def test_assets_must_pass_their_own_policy(self):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp)

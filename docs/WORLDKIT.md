@@ -1099,6 +1099,7 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | Property | Meaning |
 |---|---|
 | `game`, `assets`, `cell_dir` | Paths relative to the world file: the game schema, the Asset Kit recipes (`NAME.asset.json`), the cell files |
+| `asset_dirs` | More directories of Asset Kit recipes, searched with `assets` (a level whose grey boxes and real assets live in folders of their own); a name found in two of them is an error |
 | `grid.cell_size` | 16, 32, 64 or 128 units: the pack's `cell_shift`. Cell (*i*, *j*) (`at`) covers *x* in [*i S*, (*i*+1) *S*) and *z* likewise |
 | `overhang` | How far a placement may reach past its cell (default 8, at most half a cell) |
 | `collision.pad` | How far walls are copied past a cell's edge: at least, and by default, the probe radius |

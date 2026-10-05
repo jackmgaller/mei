@@ -72,10 +72,20 @@ def relative(path, base):
 class Library:
     """The world's assets by name, compiled on first use."""
 
-    def __init__(self, directory, base_path):
+    def __init__(self, directory, base_path, more=()):
         self.directory = Path(directory)
+        self.directories = [self.directory]+[Path(d) for d in more]
         self.base_path = base_path
         self.assets = {}
+
+    def source_of(self, name, path, file=None):
+        """NAME.asset.json in the asset directories (the world's assets, then asset_dirs); a
+        name in two of them is an error."""
+        found = [d/f'{name}.asset.json' for d in self.directories if (d/f'{name}.asset.json').is_file()]
+        if len(found) > 1:
+            raise WorldError(path,f'Asset {name!r} is in more than one asset directory: '
+                                  +', '.join(relative(f,self.base_path) for f in found)+'.',file)
+        return found[0] if found else self.directory/f'{name}.asset.json'
 
     @staticmethod
     def policy_recipe(asset, runtime):
@@ -89,7 +99,7 @@ class Library:
         if name in ('self','none'):
             raise WorldError(path,f'{name!r} is not an asset name here.',file)
         if name not in self.assets:
-            source = self.directory/f'{name}.asset.json'
+            source = self.source_of(name,path,file)
             if not source.is_file():
                 raise WorldError(path,f'No asset recipe {source}. Create it with tools/mei_assets.py init, or fix the name.',file)
             try:

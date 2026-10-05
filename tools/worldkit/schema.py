@@ -262,6 +262,7 @@ WORLD = dict(obj({
     'format':{'const':'mei-world'},'version':{'const':1},'name':NAME,
     'game':dict(PATH,description='The game schema: Mochi (a .mochi file; see $defs/game x-mochi) or JSON (format mei-world-game).'),
     'assets':dict(PATH,description='Directory of Asset Kit recipes.'),
+    'asset_dirs':dict(array(PATH,1,64),description='More directories of Asset Kit recipes, searched with assets; a name found in two of them is an error.'),
     'grid':obj({'cell_size':dict(choice(16,32,64,128),description='Units; one unit is a metre by convention.')},['cell_size']),
     'overhang':dict(number(0,64),description='How far placements may reach past their cell (units, default 8, at most half a cell).'),
     'collision':obj({

@@ -219,7 +219,8 @@ def compile_world(source, lock=None, assets_dir=None):
             return surfaces.get('default', 0)
         return surface_tags[tag]
 
-    library = Library(assets_dir or (source.base / w['assets']).resolve(), source.base)
+    library = Library(assets_dir or (source.base / w['assets']).resolve(), source.base,
+                      [(source.base / d).resolve() for d in w.get('asset_dirs', [])])
     warnings = []
     regions = list(w['regions'])
     layer_names = list(w.get('layers', {}))
