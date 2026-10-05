@@ -1,0 +1,8 @@
+[
+  {"name": "approach", "eye": [0.8, 1.6, -7.0], "target": [0.0, 1.6, 0.0]},
+  {"name": "doorway", "eye": [0.3, 1.6, -3.2], "target": [0.0, 1.0, 1.0]},
+  {"name": "quarter_12m", "eye": [-8.0, 2.0, -9.0], "target": [0.0, 2.2, 0.0]},
+  {"name": "terrace_below", "eye": [3.0, -1.8, -14.0], "target": [0.0, 2.0, 0.0]},
+  {"name": "glide_in", "eye": [-12.0, 9.0, 10.0], "target": [0.0, 2.5, 0.0]},
+  {"name": "roof_top", "eye": [1.5, 5.6, -3.6], "target": [0.0, 3.6, 0.0]}
+]
