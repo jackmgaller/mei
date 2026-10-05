@@ -1,0 +1,41 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "train_emu_car_col",
+  "materials": {
+    "solid": {
+      "color": "#ffffff",
+      "palette": true
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "verification": {
+    "required": true,
+    "depth": true,
+    "perspective": true
+  },
+  "nodes": [
+    {
+      "id": "body",
+      "op": "box",
+      "size": [19.5, 3.34, 2.9],
+      "material": "solid",
+      "transform": {
+        "translate": [0.0, 1.97, 0.0]
+      }
+    },
+    {
+      "id": "aircon",
+      "op": "box",
+      "size": [2.4, 0.4, 1.9],
+      "material": "solid",
+      "transform": {
+        "translate": [-0.6, 3.82, 0.0]
+      },
+      "open": ["bottom"]
+    }
+  ]
+}

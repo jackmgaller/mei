@@ -1,0 +1,652 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "signal_gantry",
+ "budget": {
+  "triangles": 150
+ },
+ "sheets": {
+  "gantry": {
+   "image": "art/gantry.png"
+  }
+ },
+ "materials": {
+  "steel": {
+   "color": "#9ba3ac",
+   "palette": true
+  },
+  "steel_dark": {
+   "color": "#5e6a72",
+   "palette": true
+  },
+  "black": {
+   "color": "#2c2a28",
+   "palette": true
+  },
+  "truss": {
+   "color": "#4e555c",
+   "texture": {
+    "sheet": "gantry",
+    "cell": "truss",
+    "projection": "fit"
+   }
+  },
+  "grating": {
+   "color": "#7a828a",
+   "tag": "floor",
+   "texture": {
+    "sheet": "gantry",
+    "cell": "grating",
+    "projection": "fit"
+   }
+  },
+  "rail": {
+   "color": "#c0c6cc",
+   "double_sided": true,
+   "texture": {
+    "sheet": "gantry",
+    "cell": "rail",
+    "projection": "fit"
+   }
+  },
+  "ladder": {
+   "color": "#c0c6cc",
+   "double_sided": true,
+   "texture": {
+    "sheet": "gantry",
+    "cell": "ladder",
+    "projection": "fit"
+   }
+  },
+  "signal": {
+   "color": "#2c2a28",
+   "texture": {
+    "sheet": "gantry",
+    "cell": "signal",
+    "projection": "fit"
+   }
+  },
+  "green_lamp": {
+   "color": "#3be06a",
+   "class": "emissive",
+   "tag": "lamp"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "girder",
+   "op": "box",
+   "size": [
+    1.2,
+    0.3,
+    11.3
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     0.0,
+     4.3,
+     0.0
+    ]
+   },
+   "faces": {
+    "top": "grating",
+    "left": "truss",
+    "right": "truss",
+    "bottom": "steel_dark"
+   }
+  },
+  {
+   "id": "columns",
+   "op": "group",
+   "children": [
+    {
+     "id": "column",
+     "op": "box",
+     "size": [
+      0.3,
+      4.2,
+      0.3
+     ],
+     "material": "steel",
+     "transform": {
+      "translate": [
+       0.0,
+       2.1,
+       5.3
+      ]
+     },
+     "open": [
+      "top",
+      "bottom"
+     ]
+    },
+    {
+     "id": "plate",
+     "op": "box",
+     "size": [
+      0.6,
+      0.06,
+      0.6
+     ],
+     "material": "steel_dark",
+     "transform": {
+      "translate": [
+       0.0,
+       0.03,
+       5.3
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "z"
+    }
+   ]
+  },
+  {
+   "id": "rails",
+   "op": "group",
+   "children": [
+    {
+     "id": "rail_w0",
+     "op": "mesh",
+     "material": "rail",
+     "vertices": [
+      [
+       -0.58,
+       5.45,
+       -5.6
+      ],
+      [
+       -0.58,
+       5.45,
+       -3.5
+      ],
+      [
+       -0.58,
+       4.45,
+       -3.5
+      ],
+      [
+       -0.58,
+       4.45,
+       -5.6
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "rail_e0",
+     "op": "mesh",
+     "material": "rail",
+     "vertices": [
+      [
+       0.58,
+       5.45,
+       -5.6
+      ],
+      [
+       0.58,
+       5.45,
+       -3.5
+      ],
+      [
+       0.58,
+       4.45,
+       -3.5
+      ],
+      [
+       0.58,
+       4.45,
+       -5.6
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "rail_w1",
+     "op": "mesh",
+     "material": "rail",
+     "vertices": [
+      [
+       -0.58,
+       5.45,
+       -0.5
+      ],
+      [
+       -0.58,
+       5.45,
+       0.5
+      ],
+      [
+       -0.58,
+       4.45,
+       0.5
+      ],
+      [
+       -0.58,
+       4.45,
+       -0.5
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "rail_e1",
+     "op": "mesh",
+     "material": "rail",
+     "vertices": [
+      [
+       0.58,
+       5.45,
+       -0.5
+      ],
+      [
+       0.58,
+       5.45,
+       0.5
+      ],
+      [
+       0.58,
+       4.45,
+       0.5
+      ],
+      [
+       0.58,
+       4.45,
+       -0.5
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "rail_w2",
+     "op": "mesh",
+     "material": "rail",
+     "vertices": [
+      [
+       -0.58,
+       5.45,
+       3.5
+      ],
+      [
+       -0.58,
+       5.45,
+       5.6
+      ],
+      [
+       -0.58,
+       4.45,
+       5.6
+      ],
+      [
+       -0.58,
+       4.45,
+       3.5
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "rail_e2",
+     "op": "mesh",
+     "material": "rail",
+     "vertices": [
+      [
+       0.58,
+       5.45,
+       3.5
+      ],
+      [
+       0.58,
+       5.45,
+       5.6
+      ],
+      [
+       0.58,
+       4.45,
+       5.6
+      ],
+      [
+       0.58,
+       4.45,
+       3.5
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ladder",
+   "op": "mesh",
+   "material": "ladder",
+   "vertices": [
+    [
+     -0.17,
+     4.15,
+     5.075
+    ],
+    [
+     -0.17,
+     4.15,
+     5.525
+    ],
+    [
+     -0.17,
+     0.2,
+     5.525
+    ],
+    [
+     -0.17,
+     0.2,
+     5.075
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "signal_0",
+   "op": "box",
+   "size": [
+    0.25,
+    0.9,
+    0.35
+   ],
+   "material": "black",
+   "transform": {
+    "translate": [
+     -0.72,
+     4.65,
+     -2.0
+    ]
+   },
+   "faces": {
+    "left": "signal"
+   },
+   "decals": [
+    {
+     "id": "lit",
+     "face": "left",
+     "material": "green_lamp",
+     "size": [
+      0.15,
+      0.16
+     ],
+     "at": [
+      0,
+      -0.27
+     ]
+    }
+   ]
+  },
+  {
+   "id": "signal_1",
+   "op": "box",
+   "size": [
+    0.25,
+    0.9,
+    0.35
+   ],
+   "material": "black",
+   "transform": {
+    "translate": [
+     0.72,
+     4.65,
+     2.0
+    ]
+   },
+   "faces": {
+    "right": "signal"
+   },
+   "decals": [
+    {
+     "id": "lit",
+     "face": "right",
+     "material": "green_lamp",
+     "size": [
+      0.15,
+      0.16
+     ],
+     "at": [
+      0,
+      -0.27
+     ]
+    }
+   ]
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 40,
+    "nodes": [
+     {
+      "id": "girder",
+      "op": "box",
+      "size": [
+       1.2,
+       0.3,
+       11.3
+      ],
+      "material": "steel",
+      "transform": {
+       "translate": [
+        0.0,
+        4.3,
+        0.0
+       ]
+      },
+      "faces": {
+       "top": "grating",
+       "left": "truss",
+       "right": "truss",
+       "bottom": "steel_dark"
+      }
+     },
+     {
+      "id": "columns",
+      "op": "group",
+      "children": [
+       {
+        "id": "column",
+        "op": "box",
+        "size": [
+         0.3,
+         4.2,
+         0.3
+        ],
+        "material": "steel",
+        "transform": {
+         "translate": [
+          0.0,
+          2.1,
+          5.3
+         ]
+        },
+        "open": [
+         "top",
+         "bottom"
+        ]
+       }
+      ],
+      "modifiers": [
+       {
+        "op": "mirror",
+        "axis": "z"
+       }
+      ]
+     },
+     {
+      "id": "signal_0",
+      "op": "box",
+      "size": [
+       0.25,
+       0.9,
+       0.35
+      ],
+      "material": "black",
+      "transform": {
+       "translate": [
+        -0.72,
+        4.65,
+        -2.0
+       ]
+      },
+      "faces": {
+       "left": "signal"
+      }
+     },
+     {
+      "id": "signal_1",
+      "op": "box",
+      "size": [
+       0.25,
+       0.9,
+       0.35
+      ],
+      "material": "black",
+      "transform": {
+       "translate": [
+        0.72,
+        4.65,
+        2.0
+       ]
+      },
+      "faces": {
+       "right": "signal"
+      }
+     }
+    ]
+   },
+   {
+    "distance": 100,
+    "nodes": [
+     {
+      "id": "girder",
+      "op": "box",
+      "size": [
+       1.2,
+       0.3,
+       11.3
+      ],
+      "material": "steel",
+      "transform": {
+       "translate": [
+        0.0,
+        4.3,
+        0.0
+       ]
+      },
+      "open": [
+       "top",
+       "left",
+       "right"
+      ]
+     },
+     {
+      "id": "columns",
+      "op": "group",
+      "children": [
+       {
+        "id": "column",
+        "op": "box",
+        "size": [
+         0.3,
+         4.2,
+         0.3
+        ],
+        "material": "steel",
+        "transform": {
+         "translate": [
+          0.0,
+          2.1,
+          5.3
+         ]
+        },
+        "open": [
+         "top",
+         "bottom",
+         "front",
+         "back"
+        ]
+       }
+      ],
+      "modifiers": [
+       {
+        "op": "mirror",
+        "axis": "z"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "cull": 200,
+  "band": 2
+ }
+}

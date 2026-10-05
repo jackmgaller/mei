@@ -1,0 +1,1040 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "station_concourse",
+  "budget": {
+    "vertices": 1000,
+    "triangles": 800
+  },
+  "sheets": {
+    "concourse": {
+      "image": "art/concourse.png"
+    },
+    "concrete": {
+      "image": "../viaduct_span_16/art/concrete.png"
+    }
+  },
+  "materials": {
+    "tile": {
+      "color": "#b09070",
+      "tag": "wall",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "tile",
+        "projection": "box",
+        "scale": [0.5, 0.5]
+      }
+    },
+    "tile_flat": {
+      "color": "#a88a6a",
+      "palette": true,
+      "tag": "wall"
+    },
+    "stone": {
+      "color": "#b4b0a6",
+      "palette": true,
+      "double_sided": true
+    },
+    "panel": {
+      "color": "#e2dccb",
+      "tag": "wall",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "panel",
+        "projection": "box",
+        "scale": [2.0, 4.0],
+        "offset": [0.0, 0.5]
+      }
+    },
+    "floor": {
+      "color": "#a9a8a2",
+      "tag": "floor",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "floor",
+        "projection": "box",
+        "scale": [1.0, 1.0]
+      }
+    },
+    "tread": {
+      "color": "#bcb8ae",
+      "tag": "stairs",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "tread",
+        "projection": "box"
+      }
+    },
+    "concrete": {
+      "color": "#b4b0a6",
+      "tag": "wall",
+      "texture": {
+        "sheet": "concrete",
+        "cell": "wall",
+        "projection": "box",
+        "scale": [4.0, 2.0]
+      }
+    },
+    "fascia": {
+      "color": "#b4b0a6",
+      "texture": {
+        "sheet": "concrete",
+        "cell": "fascia",
+        "projection": "box",
+        "scale": [4.0, 1.65]
+      }
+    },
+    "coping": {
+      "color": "#c8c4b8",
+      "palette": true
+    },
+    "steel": {
+      "color": "#9ba3ac",
+      "palette": true
+    },
+    "green": {
+      "color": "#4f7f6a",
+      "palette": true
+    },
+    "roof": {
+      "color": "#a9c4b4",
+      "palette": true,
+      "tag": "roof"
+    },
+    "interior": {
+      "color": "#e2d8c0",
+      "palette": true,
+      "tag": "wall"
+    },
+    "orange": {
+      "color": "#e8782a",
+      "palette": true
+    },
+    "dark": {
+      "color": "#2c2a28",
+      "palette": true
+    },
+    "lamp": {
+      "color": "#f4fbff",
+      "class": "emissive",
+      "tag": "lamp"
+    },
+    "name_sign": {
+      "color": "#f6f6f0",
+      "tag": "sign",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "name_sign",
+        "projection": "fit"
+      }
+    },
+    "entrance_sign": {
+      "color": "#1e2838",
+      "tag": "sign",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "entrance_sign",
+        "projection": "fit"
+      }
+    },
+    "clock": {
+      "color": "#f6f6f0",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "clock",
+        "projection": "fit"
+      }
+    },
+    "lockers": {
+      "color": "#d2d6d4",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "lockers",
+        "projection": "fit"
+      }
+    },
+    "machines": {
+      "color": "#c9ced0",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "machines",
+        "projection": "fit"
+      }
+    },
+    "fare_chart": {
+      "color": "#f6f6f0",
+      "tag": "sign",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "fare_chart",
+        "projection": "fit"
+      }
+    },
+    "way_up": {
+      "color": "#2c2a28",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "way_up",
+        "projection": "fit"
+      }
+    },
+    "timetable": {
+      "color": "#f6f6f0",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "timetable",
+        "projection": "fit"
+      }
+    },
+    "poster_a": {
+      "color": "#e8a050",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "poster_a",
+        "projection": "fit"
+      }
+    },
+    "poster_b": {
+      "color": "#3a6ab0",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "poster_b",
+        "projection": "fit"
+      }
+    },
+    "office": {
+      "color": "#c8d4d8",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "office",
+        "projection": "fit"
+      }
+    },
+    "crossing": {
+      "color": "#4a4a50",
+      "tag": "floor",
+      "texture": {
+        "sheet": "concourse",
+        "cell": "crossing",
+        "projection": "fit"
+      }
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "verification": {
+    "required": true,
+    "depth": true,
+    "perspective": true
+  },
+  "nodes": [
+    {
+      "id": "hall",
+      "op": "box",
+      "size": [48.0, 8.6, 13.2],
+      "material": "concrete",
+      "transform": {
+        "translate": [0.0, 4.3, -0.1]
+      },
+      "open": ["top", "bottom", "back"]
+    },
+    {
+      "id": "facade",
+      "op": "extrude",
+      "material": "tile",
+      "depth": 0.3,
+      "points": [
+        [-24.0, 0], [-4.0, 0], [-4.0, 3.0], [4.0, 3.0], [4.0, 0], [24.0, 0], [24.0, 4.6],
+        [-24.0, 4.6]
+      ],
+      "faces": {
+        "front": "interior",
+        "side": "tile_flat"
+      },
+      "transform": {
+        "translate": [0, 0, -6.85]
+      },
+      "decals": [
+        {
+          "id": "entrance_sign",
+          "face": "back",
+          "material": "entrance_sign",
+          "size": [4.0, 0.75],
+          "at": [0.0, 4.075]
+        },
+        {
+          "id": "office_w1",
+          "face": "back",
+          "material": "office",
+          "size": [2.4, 1.2],
+          "at": [-13.5, 1.9]
+        },
+        {
+          "id": "office_w2",
+          "face": "back",
+          "material": "office",
+          "size": [2.4, 1.2],
+          "at": [-18.5, 1.9]
+        },
+        {
+          "id": "office_e1",
+          "face": "back",
+          "material": "office",
+          "size": [2.4, 1.2],
+          "at": [13.5, 1.9]
+        },
+        {
+          "id": "office_e2",
+          "face": "back",
+          "material": "office",
+          "size": [2.4, 1.2],
+          "at": [18.5, 1.9]
+        },
+        {
+          "id": "poster_1",
+          "face": "back",
+          "material": "poster_a",
+          "size": [0.6, 0.9],
+          "at": [5.4, 1.65]
+        },
+        {
+          "id": "poster_2",
+          "face": "back",
+          "material": "poster_b",
+          "size": [0.6, 0.9],
+          "at": [6.2, 1.65]
+        },
+        {
+          "id": "poster_3",
+          "face": "back",
+          "material": "poster_a",
+          "size": [0.6, 0.9],
+          "at": [-9.4, 1.65]
+        }
+      ]
+    },
+    {
+      "id": "cladding",
+      "op": "box",
+      "size": [48.0, 4.0, 0.3],
+      "material": "panel",
+      "transform": {
+        "translate": [0.0, 6.6, -6.85]
+      },
+      "open": ["bottom", "top", "front"],
+      "decals": [
+        {
+          "id": "name_sign",
+          "face": "back",
+          "material": "name_sign",
+          "size": [9.6, 2.4],
+          "at": [0.0, 0.2]
+        },
+        {
+          "id": "clock",
+          "face": "back",
+          "material": "clock",
+          "size": [1.0, 1.0],
+          "at": [7.2, 0.4]
+        }
+      ]
+    },
+    {
+      "id": "eave",
+      "op": "box",
+      "size": [12.0, 0.15, 2.05],
+      "material": "roof",
+      "transform": {
+        "translate": [0.0, 3.525, -7.975]
+      },
+      "faces": {
+        "back": "orange",
+        "bottom": "interior"
+      },
+      "decals": [
+        {
+          "id": "light_a",
+          "face": "bottom",
+          "material": "lamp",
+          "size": [4.0, 0.2],
+          "at": [-3.0, 0.0]
+        },
+        {
+          "id": "light_b",
+          "face": "bottom",
+          "material": "lamp",
+          "size": [4.0, 0.2],
+          "at": [3.0, 0.0]
+        }
+      ]
+    },
+    {
+      "id": "lockers",
+      "op": "box",
+      "size": [2.4, 1.8, 0.5],
+      "material": "steel",
+      "transform": {
+        "translate": [-7.0, 0.9, -7.23]
+      },
+      "open": ["bottom", "front"],
+      "faces": {
+        "back": "lockers"
+      }
+    },
+    {
+      "id": "room_floor",
+      "op": "box",
+      "size": [20.0, 0.1, 9.7],
+      "material": "floor",
+      "transform": {
+        "translate": [0.0, 0.01, -1.85]
+      },
+      "open": ["bottom", "left", "right", "back", "front"]
+    },
+    {
+      "id": "room_ceiling",
+      "op": "box",
+      "size": [20.0, 0.1, 9.7],
+      "material": "interior",
+      "transform": {
+        "translate": [0.0, 3.45, -1.85]
+      },
+      "open": ["top", "left", "right", "back", "front"],
+      "decals": [
+        {
+          "id": "light_0",
+          "face": "bottom",
+          "material": "lamp",
+          "size": [6.0, 0.25],
+          "at": [0.0, -2.6]
+        },
+        {
+          "id": "light_1",
+          "face": "bottom",
+          "material": "lamp",
+          "size": [6.0, 0.25],
+          "at": [0.0, 0.0]
+        },
+        {
+          "id": "light_2",
+          "face": "bottom",
+          "material": "lamp",
+          "size": [6.0, 0.25],
+          "at": [0.0, 2.6]
+        }
+      ]
+    },
+    {
+      "id": "room_west",
+      "op": "box",
+      "size": [0.1, 3.4, 9.7],
+      "material": "interior",
+      "transform": {
+        "translate": [-10.05, 1.7, -1.85]
+      },
+      "open": ["top", "bottom", "left", "back", "front"],
+      "decals": [
+        {
+          "id": "fare_chart",
+          "face": "right",
+          "material": "fare_chart",
+          "size": [3.2, 1.2],
+          "at": [-0.85, 0.65]
+        }
+      ]
+    },
+    {
+      "id": "room_east",
+      "op": "box",
+      "size": [0.1, 3.4, 9.7],
+      "material": "interior",
+      "transform": {
+        "translate": [10.05, 1.7, -1.85]
+      },
+      "open": ["top", "bottom", "right", "back", "front"],
+      "decals": [
+        {
+          "id": "office",
+          "face": "left",
+          "material": "office",
+          "size": [2.4, 1.2],
+          "at": [0.0, 0.0]
+        },
+        {
+          "id": "poster",
+          "face": "left",
+          "material": "poster_b",
+          "size": [0.6, 0.9],
+          "at": [-3.0, 0.0]
+        }
+      ]
+    },
+    {
+      "id": "room_back",
+      "op": "box",
+      "size": [20.0, 3.4, 0.1],
+      "material": "interior",
+      "transform": {
+        "translate": [0.0, 1.7, 3.05]
+      },
+      "open": ["top", "bottom", "left", "right", "front"],
+      "decals": [
+        {
+          "id": "way_up",
+          "face": "back",
+          "material": "way_up",
+          "size": [4.0, 2.6],
+          "at": [0.0, -0.33]
+        },
+        {
+          "id": "timetable",
+          "face": "back",
+          "material": "timetable",
+          "size": [1.2, 1.6],
+          "at": [-4.5, 0.15]
+        },
+        {
+          "id": "poster_a",
+          "face": "back",
+          "material": "poster_a",
+          "size": [0.6, 0.9],
+          "at": [4.4, 0.1]
+        },
+        {
+          "id": "poster_b",
+          "face": "back",
+          "material": "poster_b",
+          "size": [0.6, 0.9],
+          "at": [5.2, 0.1]
+        }
+      ]
+    },
+    {
+      "id": "machines",
+      "op": "box",
+      "size": [0.6, 1.7, 2.4],
+      "material": "steel",
+      "transform": {
+        "translate": [-9.71, 0.91, -1.0]
+      },
+      "open": ["left", "bottom"],
+      "faces": {
+        "right": "machines"
+      }
+    },
+    {
+      "id": "column_clad",
+      "op": "box",
+      "size": [1.4, 3.34, 1.5],
+      "material": "tile",
+      "transform": {
+        "translate": [0.0, 1.73, -4.1]
+      },
+      "open": ["top", "bottom"],
+      "decals": [
+        {
+          "id": "poster",
+          "face": "back",
+          "material": "poster_a",
+          "size": [0.6, 0.9],
+          "at": [0.0, 0.1]
+        }
+      ]
+    },
+    {
+      "id": "stairs",
+      "op": "group",
+      "children": [
+        {
+          "id": "stair",
+          "op": "group",
+          "children": [
+            {
+              "id": "steps",
+              "op": "mesh",
+              "material": "tread",
+              "vertices": [[-1.5, 0.0, -26.6], [1.5, 0.0, -26.6], [1.5, 9.0, -8.6], [-1.5, 9.0, -8.6]],
+              "faces": [[3, 2, 1, 0]],
+              "uvs": [[0, 0], [1.5, 0], [1.5, 30], [0, 30]]
+            },
+            {
+              "id": "underside",
+              "op": "mesh",
+              "material": "concrete",
+              "vertices": [[-1.5, 8.55, -8.6], [1.5, 8.55, -8.6], [1.5, 0.0, -25.7], [-1.5, 0.0, -25.7]],
+              "faces": [[3, 2, 1, 0]]
+            },
+            {
+              "id": "landing",
+              "op": "box",
+              "size": [3.0, 0.45, 1.0],
+              "material": "concrete",
+              "transform": {
+                "translate": [0.0, 8.775, -8.1]
+              },
+              "open": ["front"],
+              "faces": {
+                "top": "floor"
+              }
+            },
+            {
+              "id": "walls",
+              "op": "group",
+              "children": [
+                {
+                  "id": "wall",
+                  "op": "extrude",
+                  "material": "green",
+                  "depth": 0.1499999999999999,
+                  "points": [[7.6, 10.1], [8.6, 10.1], [26.6, 1.1], [26.6, 0], [25.6, 0], [8.6, 8.5], [7.6, 8.5]],
+                  "faces": {
+                    "front": "concrete",
+                    "back": "concrete"
+                  },
+                  "transform": {
+                    "rotate": [0, 90, 0],
+                    "translate": [1.555, 0, 0]
+                  }
+                }
+              ],
+              "modifiers": [
+                {
+                  "op": "mirror",
+                  "axis": "x"
+                }
+              ]
+            },
+            {
+              "id": "roof",
+              "op": "mesh",
+              "material": "green",
+              "vertices": [
+                [-1.8, 12.025, -7.75], [1.8, 12.025, -7.75], [1.8, 2.6, -26.6], [-1.8, 2.6, -26.6],
+                [-1.8, 11.905, -7.75], [1.8, 11.905, -7.75], [1.8, 2.48, -26.6], [-1.8, 2.48, -26.6]
+              ],
+              "faces": [[0, 1, 2, 3], [7, 6, 5, 4], [0, 3, 7, 4], [1, 5, 6, 2], [3, 2, 6, 7], [0, 4, 5, 1]],
+              "face_materials": ["roof", "interior", "green", "green", "green", "green"]
+            },
+            {
+              "id": "posts",
+              "op": "group",
+              "children": [
+                {
+                  "id": "post_0",
+                  "op": "box",
+                  "size": [0.06, 1.43, 0.06],
+                  "material": "green",
+                  "transform": {
+                    "translate": [1.555, 9.815, -10.6]
+                  },
+                  "open": ["top", "bottom"]
+                },
+                {
+                  "id": "post_1",
+                  "op": "box",
+                  "size": [0.06, 1.43, 0.06],
+                  "material": "green",
+                  "transform": {
+                    "translate": [1.555, 6.315, -17.6]
+                  },
+                  "open": ["top", "bottom"]
+                },
+                {
+                  "id": "post_2",
+                  "op": "box",
+                  "size": [0.06, 1.43, 0.06],
+                  "material": "green",
+                  "transform": {
+                    "translate": [1.555, 2.815, -24.6]
+                  },
+                  "open": ["top", "bottom"]
+                }
+              ],
+              "modifiers": [
+                {
+                  "op": "mirror",
+                  "axis": "x"
+                }
+              ]
+            },
+            {
+              "id": "column",
+              "op": "box",
+              "size": [0.5, 4.1, 0.5],
+              "material": "stone",
+              "transform": {
+                "translate": [0.0, 2.05, -17.6]
+              },
+              "open": ["top", "bottom"]
+            },
+            {
+              "id": "crossing",
+              "op": "box",
+              "size": [2.4, 0.06, 3.55],
+              "material": "dark",
+              "transform": {
+                "translate": [0.0, 9.03, -4.325]
+              },
+              "open": ["bottom"],
+              "faces": {
+                "top": "crossing"
+              }
+            }
+          ],
+          "transform": {
+            "translate": [10.0, 0, 0]
+          }
+        }
+      ],
+      "modifiers": [
+        {
+          "op": "mirror",
+          "axis": "x"
+        }
+      ]
+    },
+    {
+      "id": "parapet",
+      "op": "group",
+      "children": [
+        {
+          "id": "parapet_0",
+          "op": "mesh",
+          "vertices": [
+            [-24.0, 9.0, -7.35], [-24.0, 10.2, -7.35], [-11.63, 10.2, -7.35], [-11.63, 9.0, -7.35],
+            [-24.0, 10.2, -7.35], [-24.0, 10.2, -7.6], [-11.63, 10.2, -7.6], [-11.63, 10.2, -7.35],
+            [-24.0, 10.2, -7.6], [-24.0, 9.0, -7.6], [-11.63, 9.0, -7.6], [-11.63, 10.2, -7.6]
+          ],
+          "faces": [[3, 2, 1, 0], [7, 6, 5, 4], [11, 10, 9, 8]],
+          "face_materials": ["concrete", "coping", "fascia"],
+          "uvs": [
+            [0.0, 0.0], [0.0, 0.6], [3.0, 0.6], [3.0, 0.0], [0.0, 0.0], [0.0, 1.0], [3.0, 1.0],
+            [3.0, 0.0], [0.0, 0.0], [0.0, 0.7273], [3.0, 0.7273], [3.0, 0.0]
+          ]
+        },
+        {
+          "id": "parapet_1",
+          "op": "mesh",
+          "vertices": [
+            [-8.37, 9.0, -7.35], [-8.37, 10.2, -7.35], [8.37, 10.2, -7.35], [8.37, 9.0, -7.35],
+            [-8.37, 10.2, -7.35], [-8.37, 10.2, -7.6], [8.37, 10.2, -7.6], [8.37, 10.2, -7.35],
+            [-8.37, 10.2, -7.6], [-8.37, 9.0, -7.6], [8.37, 9.0, -7.6], [8.37, 10.2, -7.6]
+          ],
+          "faces": [[3, 2, 1, 0], [7, 6, 5, 4], [11, 10, 9, 8]],
+          "face_materials": ["concrete", "coping", "fascia"],
+          "uvs": [
+            [0.0, 0.0], [0.0, 0.6], [4.0, 0.6], [4.0, 0.0], [0.0, 0.0], [0.0, 1.0], [4.0, 1.0],
+            [4.0, 0.0], [0.0, 0.0], [0.0, 0.7273], [4.0, 0.7273], [4.0, 0.0]
+          ]
+        },
+        {
+          "id": "parapet_2",
+          "op": "mesh",
+          "vertices": [
+            [11.63, 9.0, -7.35], [11.63, 10.2, -7.35], [24.0, 10.2, -7.35], [24.0, 9.0, -7.35],
+            [11.63, 10.2, -7.35], [11.63, 10.2, -7.6], [24.0, 10.2, -7.6], [24.0, 10.2, -7.35],
+            [11.63, 10.2, -7.6], [11.63, 9.0, -7.6], [24.0, 9.0, -7.6], [24.0, 10.2, -7.6]
+          ],
+          "faces": [[3, 2, 1, 0], [7, 6, 5, 4], [11, 10, 9, 8]],
+          "face_materials": ["concrete", "coping", "fascia"],
+          "uvs": [
+            [0.0, 0.0], [0.0, 0.6], [3.0, 0.6], [3.0, 0.0], [0.0, 0.0], [0.0, 1.0], [3.0, 1.0],
+            [3.0, 0.0], [0.0, 0.0], [0.0, 0.7273], [3.0, 0.7273], [3.0, 0.0]
+          ]
+        },
+        {
+          "id": "parapet_ends",
+          "op": "mesh",
+          "material": "concrete",
+          "vertices": [
+            [-11.63, 9.0, -7.35], [-11.63, 10.2, -7.35], [-11.63, 10.2, -7.6], [-11.63, 9.0, -7.6],
+            [-8.37, 9.0, -7.35], [-8.37, 10.2, -7.35], [-8.37, 10.2, -7.6], [-8.37, 9.0, -7.6],
+            [8.37, 9.0, -7.35], [8.37, 10.2, -7.35], [8.37, 10.2, -7.6], [8.37, 9.0, -7.6],
+            [11.63, 9.0, -7.35], [11.63, 10.2, -7.35], [11.63, 10.2, -7.6], [11.63, 9.0, -7.6]
+          ],
+          "faces": [[3, 2, 1, 0], [4, 5, 6, 7], [11, 10, 9, 8], [12, 13, 14, 15]]
+        }
+      ]
+    }
+  ],
+  "lod": {
+    "levels": [
+      {
+        "distance": 30,
+        "nodes": [
+          {
+            "id": "hall",
+            "op": "box",
+            "size": [48.0, 8.6, 13.2],
+            "material": "stone",
+            "transform": {
+              "translate": [0.0, 4.3, -0.1]
+            },
+            "open": ["top", "bottom", "back"]
+          },
+          {
+            "id": "facade",
+            "op": "extrude",
+            "material": "tile_flat",
+            "depth": 0.3,
+            "points": [
+              [-24.0, 0], [-4.0, 0], [-4.0, 3.0], [4.0, 3.0], [4.0, 0], [24.0, 0], [24.0, 4.6],
+              [-24.0, 4.6]
+            ],
+            "faces": {
+              "front": "interior",
+              "side": "tile_flat"
+            },
+            "transform": {
+              "translate": [0, 0, -6.85]
+            }
+          },
+          {
+            "id": "cladding",
+            "op": "box",
+            "size": [48.0, 4.0, 0.3],
+            "material": "interior",
+            "transform": {
+              "translate": [0.0, 6.6, -6.85]
+            },
+            "open": ["bottom", "top", "front"],
+            "decals": [
+              {
+                "id": "name_sign",
+                "face": "back",
+                "material": "name_sign",
+                "size": [9.6, 2.4],
+                "at": [0.0, 0.2]
+              }
+            ]
+          },
+          {
+            "id": "eave",
+            "op": "box",
+            "size": [12.0, 0.15, 2.05],
+            "material": "roof",
+            "transform": {
+              "translate": [0.0, 3.525, -7.975]
+            },
+            "faces": {
+              "back": "orange",
+              "bottom": "interior"
+            }
+          },
+          {
+            "id": "doorway",
+            "op": "box",
+            "size": [8.0, 3.0, 0.1],
+            "material": "dark",
+            "transform": {
+              "translate": [0.0, 1.5, -6.65]
+            },
+            "open": ["top", "bottom", "left", "right", "front"]
+          },
+          {
+            "id": "stairs",
+            "op": "group",
+            "children": [
+              {
+                "id": "stair",
+                "op": "group",
+                "children": [
+                  {
+                    "id": "steps",
+                    "op": "mesh",
+                    "material": "tread",
+                    "vertices": [[-1.5, 0.0, -26.6], [1.5, 0.0, -26.6], [1.5, 9.0, -8.6], [-1.5, 9.0, -8.6]],
+                    "faces": [[3, 2, 1, 0]],
+                    "uvs": [[0, 0], [1.5, 0], [1.5, 30], [0, 30]]
+                  },
+                  {
+                    "id": "underside",
+                    "op": "mesh",
+                    "material": "concrete",
+                    "vertices": [[-1.5, 8.55, -8.6], [1.5, 8.55, -8.6], [1.5, 0.0, -25.7], [-1.5, 0.0, -25.7]],
+                    "faces": [[3, 2, 1, 0]]
+                  },
+                  {
+                    "id": "landing",
+                    "op": "box",
+                    "size": [3.0, 0.45, 1.0],
+                    "material": "concrete",
+                    "transform": {
+                      "translate": [0.0, 8.775, -8.1]
+                    },
+                    "open": ["front"],
+                    "faces": {
+                      "top": "floor"
+                    }
+                  },
+                  {
+                    "id": "walls",
+                    "op": "group",
+                    "children": [
+                      {
+                        "id": "wall",
+                        "op": "mesh",
+                        "material": "stone",
+                        "vertices": [
+                          [1.555, 10.1, -7.6], [1.555, 10.1, -8.6], [1.555, 1.1, -26.6], [1.555, 0, -26.6],
+                          [1.555, 0, -25.6], [1.555, 8.5, -8.6], [1.555, 8.5, -7.6]
+                        ],
+                        "faces": [[0, 1, 2, 3, 4, 5, 6]]
+                      }
+                    ],
+                    "modifiers": [
+                      {
+                        "op": "mirror",
+                        "axis": "x"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "roof",
+                    "op": "mesh",
+                    "material": "green",
+                    "vertices": [
+                      [-1.8, 12.025, -7.75], [1.8, 12.025, -7.75], [1.8, 2.6, -26.6], [-1.8, 2.6, -26.6],
+                      [-1.8, 11.905, -7.75], [1.8, 11.905, -7.75], [1.8, 2.48, -26.6], [-1.8, 2.48, -26.6]
+                    ],
+                    "faces": [[0, 1, 2, 3], [7, 6, 5, 4], [0, 3, 7, 4], [1, 5, 6, 2], [3, 2, 6, 7], [0, 4, 5, 1]],
+                    "face_materials": ["roof", "interior", "green", "green", "green", "green"]
+                  },
+                  {
+                    "id": "column",
+                    "op": "box",
+                    "size": [0.5, 4.1, 0.5],
+                    "material": "stone",
+                    "transform": {
+                      "translate": [0.0, 2.05, -17.6]
+                    },
+                    "open": ["top", "bottom"]
+                  }
+                ],
+                "transform": {
+                  "translate": [10.0, 0, 0]
+                }
+              }
+            ],
+            "modifiers": [
+              {
+                "op": "mirror",
+                "axis": "x"
+              }
+            ]
+          },
+          {
+            "id": "parapet",
+            "op": "group",
+            "children": [
+              {
+                "id": "parapet_0",
+                "op": "mesh",
+                "vertices": [
+                  [-24.0, 9.0, -7.35], [-24.0, 10.2, -7.35], [-11.63, 10.2, -7.35], [-11.63, 9.0, -7.35],
+                  [-24.0, 10.2, -7.35], [-24.0, 10.2, -7.6], [-11.63, 10.2, -7.6], [-11.63, 10.2, -7.35],
+                  [-24.0, 10.2, -7.6], [-24.0, 9.0, -7.6], [-11.63, 9.0, -7.6], [-11.63, 10.2, -7.6]
+                ],
+                "faces": [[3, 2, 1, 0], [7, 6, 5, 4], [11, 10, 9, 8]],
+                "face_materials": ["concrete", "coping", "fascia"],
+                "uvs": [
+                  [0.0, 0.0], [0.0, 0.6], [3.0, 0.6], [3.0, 0.0], [0.0, 0.0], [0.0, 1.0], [3.0, 1.0],
+                  [3.0, 0.0], [0.0, 0.0], [0.0, 0.7273], [3.0, 0.7273], [3.0, 0.0]
+                ]
+              },
+              {
+                "id": "parapet_1",
+                "op": "mesh",
+                "vertices": [
+                  [-8.37, 9.0, -7.35], [-8.37, 10.2, -7.35], [8.37, 10.2, -7.35], [8.37, 9.0, -7.35],
+                  [-8.37, 10.2, -7.35], [-8.37, 10.2, -7.6], [8.37, 10.2, -7.6], [8.37, 10.2, -7.35],
+                  [-8.37, 10.2, -7.6], [-8.37, 9.0, -7.6], [8.37, 9.0, -7.6], [8.37, 10.2, -7.6]
+                ],
+                "faces": [[3, 2, 1, 0], [7, 6, 5, 4], [11, 10, 9, 8]],
+                "face_materials": ["concrete", "coping", "fascia"],
+                "uvs": [
+                  [0.0, 0.0], [0.0, 0.6], [4.0, 0.6], [4.0, 0.0], [0.0, 0.0], [0.0, 1.0], [4.0, 1.0],
+                  [4.0, 0.0], [0.0, 0.0], [0.0, 0.7273], [4.0, 0.7273], [4.0, 0.0]
+                ]
+              },
+              {
+                "id": "parapet_2",
+                "op": "mesh",
+                "vertices": [
+                  [11.63, 9.0, -7.35], [11.63, 10.2, -7.35], [24.0, 10.2, -7.35], [24.0, 9.0, -7.35],
+                  [11.63, 10.2, -7.35], [11.63, 10.2, -7.6], [24.0, 10.2, -7.6], [24.0, 10.2, -7.35],
+                  [11.63, 10.2, -7.6], [11.63, 9.0, -7.6], [24.0, 9.0, -7.6], [24.0, 10.2, -7.6]
+                ],
+                "faces": [[3, 2, 1, 0], [7, 6, 5, 4], [11, 10, 9, 8]],
+                "face_materials": ["concrete", "coping", "fascia"],
+                "uvs": [
+                  [0.0, 0.0], [0.0, 0.6], [3.0, 0.6], [3.0, 0.0], [0.0, 0.0], [0.0, 1.0], [3.0, 1.0],
+                  [3.0, 0.0], [0.0, 0.0], [0.0, 0.7273], [3.0, 0.7273], [3.0, 0.0]
+                ]
+              },
+              {
+                "id": "parapet_ends",
+                "op": "mesh",
+                "material": "concrete",
+                "vertices": [
+                  [-11.63, 9.0, -7.35], [-11.63, 10.2, -7.35], [-11.63, 10.2, -7.6], [-11.63, 9.0, -7.6],
+                  [-8.37, 9.0, -7.35], [-8.37, 10.2, -7.35], [-8.37, 10.2, -7.6], [-8.37, 9.0, -7.6],
+                  [8.37, 9.0, -7.35], [8.37, 10.2, -7.35], [8.37, 10.2, -7.6], [8.37, 9.0, -7.6],
+                  [11.63, 9.0, -7.35], [11.63, 10.2, -7.35], [11.63, 10.2, -7.6], [11.63, 9.0, -7.6]
+                ],
+                "faces": [[3, 2, 1, 0], [4, 5, 6, 7], [11, 10, 9, 8], [12, 13, 14, 15]]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "distance": 70,
+        "nodes": [
+          {
+            "id": "hall",
+            "op": "box",
+            "size": [48.0, 8.6, 13.5],
+            "material": "stone",
+            "transform": {
+              "translate": [0.0, 4.3, -0.25]
+            },
+            "open": ["top", "bottom", "front"],
+            "faces": {
+              "back": "interior"
+            }
+          },
+          {
+            "id": "stairs",
+            "op": "group",
+            "children": [
+              {
+                "id": "stair",
+                "op": "extrude",
+                "material": "stone",
+                "depth": 3.26,
+                "points": [[7.6, 10.1], [26.6, 1.1], [26.6, 0], [7.6, 0]],
+                "faces": {
+                  "side": "roof"
+                },
+                "transform": {
+                  "rotate": [0, 90, 0],
+                  "translate": [10.0, 0, 0]
+                }
+              }
+            ],
+            "modifiers": [
+              {
+                "op": "mirror",
+                "axis": "x"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "band": 2
+  }
+}
