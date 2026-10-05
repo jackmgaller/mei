@@ -75,6 +75,7 @@ and an actionable `message`. Commands accepting a recipe also accept `-` to read
 | `preview FILE -o DIR [--verify] [--strict] [--depth] [--perspective]` | Build plus six native renders and contact sheet |
 | `import-obj FILE -o RECIPE [--name NAME] [--force]` | Geometry-only OBJ import into an explicit `mesh` recipe |
 | `pack FILE... -o DIR [--name NAME] [--slots 14-0] [--palette 0] [--palette8 14]` | Several assets (or one) for a cart without a world: shared texture slots and palettes, one loader ([Placement](#placement-build-and-pack)) |
+| `export FILE -o DIR [--format glb\|gltf]` | One glTF 2.0 file for ordinary 3D viewers, drawn as Mei draws it ([export](#viewing-an-asset-elsewhere-export)) |
 
 `--strict` fails on topology warnings, useful for closed props. Omit it for intentionally open
 surfaces. Build/preview accept `--compiler PATH` and `--runner PATH` for other Mei builds.
@@ -752,6 +753,59 @@ Version 1 makes static meshes with solid colours, baked or palette-backed, and
 [textures](#textures). Boolean solids, skeletal animation, morph animation and automatic LOD
 generation are not included, and the repository has no other tool for them.
 
+### Viewing an asset elsewhere: `export`
+
+`export` writes the asset as one self-contained glTF 2.0 file for an ordinary 3D viewer (a
+browser page with three.js, Blender, a model viewer), looking as Mei draws it:
+
+```sh
+python3 tools/mei_assets.py export examples/assets/stall.asset.json -o build/export      # stall.glb
+python3 tools/mei_assets.py export examples/assets/stall.asset.json -o build/export --format gltf
+```
+
+`--format glb` (the default) writes `NAME.glb`; `--format gltf` writes `NAME.gltf` with its buffer
+embedded as a data URI. The command needs only the standard library (and Pillow where the recipe's
+textures read images, as for `build`), runs no verification and writes nothing else. Its JSON
+result gives the file, its triangles, vertices, primitives and images, `hidden_faces`
+(palette-backed faces on a swatch texel 0, which Mei never draws; left out), `dropped_frames` and
+`lod_levels_not_exported`. The code is
+`tools/assetkit/gltf.py`.
+
+The file is made from what the console reads, not from the recipe: the native mesh exactly as
+`build` writes it, and the texture area and palettes as the asset's loader fills them, each texel
+looked up as the GPU does. So it carries:
+
+| What Mei draws | In the glTF |
+|---|---|
+| Geometry after modifiers, prototypes, fixed-point rounding and texture splits | `POSITION`, one primitive per material |
+| Baked lighting (vertex colours; a textured or palette-backed face's tint) | `COLOR_0`, converted from the display's sRGB to linear; every material is `KHR_materials_unlit` |
+| Palette-backed colours | `COLOR_0`: the swatch colour times the tint |
+| Textures (4- and 8-bit, through their palettes) | RGBA PNGs, sampled `NEAREST` both ways, no mipmaps |
+| Texture windows (repeating tiles) | the tile, `REPEAT`, UV = texel coordinate / tile size |
+| Tiles drawn once | the tile and its gutter, `CLAMP_TO_EDGE` |
+| Cutouts (texel 0) | alpha 0, `alphaMode: MASK` |
+| `double_sided` | `doubleSided: true` |
+| Emissive (never shaded) | unshaded `COLOR_0`; also `emissiveFactor` (and `emissiveTexture`) for viewers without the unlit extension |
+
+Not carried: animated textures beyond frame 0 (the result's `dropped_frames` and the material's
+`extras.mei.frames` say which), levels of detail beyond level 0, run-time palette changes, Mei's
+screen-space colour interpolation, affine texturing where perspective is off, ordering-table sorting
+without the depth buffer, dithering and the 15-bit framebuffer. A viewer draws with a depth buffer
+and perspective-correct texturing, so the closest Mei pictures are `preview --depth --perspective`.
+
+**Handedness.** Mei's world is left-handed: `camera_look` at yaw 0 looks along +Z with +X to the
+right of the screen. glTF is right-handed with +Y up and +Z toward the viewer. `export` negates Z,
+which keeps every point where a viewer sees it: the kit's front (−Z) faces glTF's +Z, the default
+front of a glTF asset, and the native face order is then glTF's counter-clockwise front. The
+`.obj` exchange file is written in the kit's coordinates unchanged, so a right-handed tool shows
+it mirrored left to right.
+
+Compared with the kit's own `preview --depth --perspective` images (the six views drawn in
+three.js with `MeshBasicMaterial` and vertex colours, the same cameras and a 60° field of view),
+the stall, robot, kiosk, cottage and vessel differ by 3.4–4.2 levels of 255 on average per
+channel, the HUD text included; 98–99 % of pixels are within 24 levels. Textures sit in the same
+places, the same way round.
+
 ## Textures
 
 Decided by the owner on 2026-10-04 (see [Decisions](#decisions)) and built: a material can carry
@@ -820,7 +874,7 @@ A textured material has a `texture` with exactly one source:
 A material with a texture may not set `palette` or `share` (its texture has palettes of its own);
 `class: "emissive"` makes its faces unshaded, as for palette-backed materials. The material's
 `color` remains its colour in the exchange files (`.obj`/`.mtl`, the Modeler project), which carry
-no textures. A textured face's vertex colour is the baked shade as a tint, 128 for unchanged, as
+no textures ([`export`](#viewing-an-asset-elsewhere-export) does). A textured face's vertex colour is the baked shade as a tint, 128 for unchanged, as
 for palette-backed faces.
 
 **Texture fields** (also in `schema`):
@@ -1161,7 +1215,12 @@ the error without Pillow, each projection's orientation, `offset`, `rotate` and 
 UVs, splitting without T-junctions, the 7-window limit, the native face bytes and tints, levels
 of detail sharing level 0's textures, the packer's duplicates, window-aligned origins, reserved
 swatch block, gutters, shared palettes and overflow errors, `pack` and `build`'s files, and
-draws texels and a packed pair in depth and perspective mode in the emulator. With NumPy it also checks identical-color
+draws texels and a packed pair in depth and perspective mode in the emulator. For `export` it
+checks the glTF's structure (buffer views, accessor counts and bounds, indices, unlit materials,
+nearest samplers, decodable PNGs), that its colours are the native vertex colours, that texels
+read back through the PNGs and UVs are the texels the faces sample (repeating and drawn once,
+holes as alpha 0), that nothing is mirrored (+X stays +X, the front faces +Z, outward
+counter-clockwise winding), and the stall's `.glb` and `.gltf` from the command line. With NumPy it also checks identical-color
 occlusion, crossing-depth cycles, exact native coverage, palette-backed faces in the gate,
 the depth policy (a plate on a body and crossing faces pass, coplanar faces still fail),
 required-policy enforcement, textured faces judged as solid faces, cutout coverage judged per

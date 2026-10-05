@@ -15,6 +15,7 @@ from assetkit.compiler import (AssetError, compile_recipe, native_bytes,
                                editor_project, obj_text, import_obj, import_source,
                                material_manifest, palette_bytes, texture_outputs, SWATCH)
 from assetkit.preview import source, render
+from assetkit import gltf
 from assetkit.schema import SCHEMA
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -224,6 +225,7 @@ def parser():
     pk.add_argument('--slots',default='14-0',help='Texture slots to use, in order: a range 14-10 or a list 14,12 (never 15). Default 14-0.')
     pk.add_argument('--palette',type=int,default=0,help='First 4-bit palette (palette-backed materials, then 4-bit textures). Default 0.')
     pk.add_argument('--palette8',type=int,default=14,help='First 8-bit palette for 8-bit textures (they take it and those below). Default 14.')
+    gltf.add_parser(sub)
     imp = sub.add_parser('import-obj',help='Convert OBJ geometry into an editable recipe; materials/UVs are not imported.')
     imp.add_argument('input')
     imp.add_argument('-o','--output',required=True)
@@ -250,6 +252,8 @@ def main(argv=None):
             output({'ok':True,'recipe':str(Path(args.output).resolve()),'next':'inspect, then preview this recipe'})
         elif args.command == 'pack':
             output(pack_command(args))
+        elif args.command == 'export':
+            output(gltf.command(args,load,folder))
         elif args.command == 'import-obj':
             with Path(args.input).open() as stream: text = stream.read(MAX_INPUT+1)
             if len(text) > MAX_INPUT: raise AssetError('/input','Input exceeds 8 MiB.')

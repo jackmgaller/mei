@@ -1680,5 +1680,229 @@ class CheckViewTests(unittest.TestCase):
         self.assertLessEqual(report['totals']['views'],24)
 
 
+def png_pixels(data):
+    """(width, height, RGBA rows) of an 8-bit RGBA PNG whose rows all use filter 0, as the glTF
+    export writes them."""
+    import zlib
+    assert data[:8] == b'\x89PNG\r\n\x1a\n'
+    at, idat, head = 8, b'', None
+    while at < len(data):
+        size, kind = struct.unpack_from('>I4s',data,at)
+        body = data[at+8:at+8+size]
+        if kind == b'IHDR': head = struct.unpack('>2I5B',body)
+        if kind == b'IDAT': idat += body
+        at += 12+size
+    width, height, depth, colour = head[:4]
+    assert (depth,colour) == (8,6)
+    raw = zlib.decompress(idat)
+    rows = []
+    for y in range(height):
+        line = raw[y*(1+4*width):(y+1)*(1+4*width)]
+        assert line[0] == 0
+        rows.append([tuple(line[1+4*x:5+4*x]) for x in range(width)])
+    return width, height, rows
+
+
+class GltfExportTests(unittest.TestCase):
+    """`export`: the asset as glTF 2.0, drawn as Mei draws it (assetkit/gltf.py)."""
+
+    def exported(self, r, folder=None):
+        from assetkit import gltf
+        mesh, materials, _ = compile_recipe(r, folder)
+        document, blob, summary = gltf.export(mesh, materials, r, r['name'])
+        # through the .glb container and back, as a viewer reads it
+        document, blob = gltf.read_glb(gltf.glb_bytes(document, blob))
+        return mesh, document, blob, summary
+
+    def read(self, document, blob, index):
+        """An accessor's values, as tuples of its type's width."""
+        acc = document['accessors'][index]
+        view = document['bufferViews'][acc['bufferView']]
+        width = {'SCALAR':1,'VEC2':2,'VEC3':3,'VEC4':4}[acc['type']]
+        code = {5126:'f',5123:'H',5125:'I'}[acc['componentType']]
+        values = struct.unpack_from(f'<{acc["count"]*width}{code}',blob,view['byteOffset']+acc.get('byteOffset',0))
+        return [values[k:k+width] for k in range(0,len(values),width)]
+
+    def triangles(self, document, blob):
+        """[(material, [(position, colour, uv or None) per corner])] of every triangle."""
+        out = []
+        for prim in document['meshes'][0]['primitives']:
+            attrs = prim['attributes']
+            pos = self.read(document,blob,attrs['POSITION'])
+            col = self.read(document,blob,attrs['COLOR_0'])
+            uv = self.read(document,blob,attrs['TEXCOORD_0']) if 'TEXCOORD_0' in attrs else None
+            idx = [i for (i,) in self.read(document,blob,prim['indices'])]
+            for k in range(0,len(idx),3):
+                out.append((prim['material'],[(pos[i],col[i],uv[i] if uv else None) for i in idx[k:k+3]]))
+        return out
+
+    def check_structure(self, document, blob):
+        self.assertEqual(document['asset']['version'],'2.0')
+        self.assertIn('KHR_materials_unlit',document['extensionsUsed'])
+        self.assertEqual(document['buffers'],[{'byteLength':len(blob)}])
+        for view in document['bufferViews']:
+            self.assertEqual(view['byteOffset']%4,0)
+            self.assertLessEqual(view['byteOffset']+view['byteLength'],len(blob))
+        for acc in document['accessors']:
+            view = document['bufferViews'][acc['bufferView']]
+            size = acc['count']*{'SCALAR':1,'VEC2':2,'VEC3':3}[acc['type']]*(2 if acc['componentType'] == 5123 else 4)
+            self.assertLessEqual(size,view['byteLength'])
+        for prim in document['meshes'][0]['primitives']:
+            count = document['accessors'][prim['attributes']['POSITION']]['count']
+            for name in prim['attributes']:
+                self.assertEqual(document['accessors'][prim['attributes'][name]]['count'],count)
+            indices = self.read(document,blob,prim['indices'])
+            self.assertEqual(len(indices)%3,0)
+            self.assertTrue(all(0 <= i < count for (i,) in indices))
+            positions = self.read(document,blob,prim['attributes']['POSITION'])
+            acc = document['accessors'][prim['attributes']['POSITION']]
+            for k in range(3):
+                self.assertEqual(acc['min'][k],min(p[k] for p in positions))
+                self.assertEqual(acc['max'][k],max(p[k] for p in positions))
+        for mat in document['materials']:
+            self.assertIn('KHR_materials_unlit',mat['extensions'])
+        for sampler in document.get('samplers',[]):
+            self.assertEqual((sampler['magFilter'],sampler['minFilter']),(9728,9728))
+        for image in document.get('images',[]):
+            view = document['bufferViews'][image['bufferView']]
+            png_pixels(blob[view['byteOffset']:view['byteOffset']+view['byteLength']])
+
+    def test_untextured_asset_structure_and_colours(self):
+        from assetkit.gltf import linear, decode_native
+        r = json.loads((ROOT/'examples/assets/robot.asset.json').read_text())
+        mesh, document, blob, summary = self.exported(r)
+        self.check_structure(document,blob)
+        self.assertEqual(summary['triangles'],len(mesh.faces))
+        self.assertNotIn('images',document)
+        # every corner's colour is the native vertex colour, as linear light
+        materials = {'default':{'color':'#c4cad4'},**r['materials']}
+        _, faces, _ = decode_native(native_bytes(mesh,materials,r.get('lighting',{})))
+        native = {tuple(round(linear(((c >> s) & 255)/255),5) for s in (0,8,16)) for f in faces for c in f['colours']}
+        exported = {tuple(round(c,5) for c in corner[1]) for _,tri in self.triangles(document,blob) for corner in tri}
+        self.assertEqual(exported,native)
+
+    def test_handedness_nothing_is_mirrored(self):
+        """Mei's world is left-handed (camera_look: looking along +Z, +X is to the right). The
+        export negates Z: the front (-Z in the kit) faces glTF's +Z, +X stays to the right, and
+        front faces wind counter-clockwise seen from outside."""
+        r = recipe(None,**{'materials':{'mark':{'color':'#ff0000'},'nose':{'color':'#00ff00'}}}) | {'nodes':[
+            {'id':'body','op':'box','size':[2,2,2]},
+            {'id':'right_mark','op':'box','size':[.2,.2,.2],'material':'mark','transform':{'translate':[1.5,0,0]}},
+            {'id':'front_nose','op':'cone','radius':.3,'height':.6,'segments':6,'material':'nose',
+             'transform':{'rotate':[-90,0,0],'translate':[0,0,-1.3]}}]}
+        mesh, document, blob, _ = self.exported(r)
+        tris = self.triangles(document,blob)
+        positions = {tuple(round(c,4) for c in corner[0]) for _,tri in tris for corner in tri}
+        self.assertEqual(positions,{(round(x,4),round(y,4),round(-z,4)) for x,y,z in mesh.vertices})
+        mark = document['materials'].index(next(m for m in document['materials'] if m['name'] == 'mark'))
+        self.assertTrue(all(c[0][0] > 1 for m,tri in tris if m == mark for c in tri))
+        # the nose's tip, the kit's front at z -1.6, is glTF's +z 1.6
+        self.assertAlmostEqual(max(p[2] for p in positions),1.6,places=3)
+        # every triangle of the closed body faces outward with counter-clockwise winding
+        body = [tri for m,tri in tris if document['materials'][m]['name'] == 'default']
+        self.assertEqual(len(body),12)
+        for tri in body:
+            a,b,c = (corner[0] for corner in tri)
+            centre = [sum(p[k] for p in (a,b,c))/3 for k in range(3)]
+            self.assertGreater(dot(cross(sub(b,a),sub(c,a)),centre),0)
+
+    def texture_recipe(self):
+        """A repeating 8 x 8 texel grid of 8 colours on a wall spanning 3 x 1.5 repeats, and a
+        cutout drawn once on a double-sided emissive sign."""
+        grid = [''.join('0123456789abcdef'[(x+2*y)%8] for x in range(8)) for y in range(8)]
+        colours = ['#202020','#e04040','#40e040','#4040e0','#e0e040','#40e0e0','#e040e0','#f0f0f0']
+        hole = ['0000','0110','0110','0000']
+        return recipe(None,**{'materials':{
+            'wall':{'color':'#808080','texture':{'texels':grid,'colors':colours,'projection':'planar','scale':[1,1],
+                                                 'offset':[.25,0]}},
+            'sign':{'color':'#c08040','class':'emissive','double_sided':True,
+                    'texture':{'texels':hole,'colors':['#000000','#ffcc00'],'clear':'#000000','projection':'fit'}}},
+            'verification':DEPTH_POLICY,'lighting':{'direction':[0.3,0.5,-1]}}) | {'nodes':[
+            quad(3.0,1.5) | {'material':'wall'},
+            quad(1.0,1.0,-0.5) | {'id':'sign','material':'sign','transform':{'translate':[0,2,0]}}]}
+
+    def test_textures_and_uvs_round_trip(self):
+        """Each triangle's texels at points inside it, read back from the exported PNG through
+        its UVs and sampler, are the texels the compiled face samples there; the tint is the bake's."""
+        from assetkit.gltf import linear
+        from assetkit.textures import rgb_of
+        r = self.texture_recipe()
+        mesh, document, blob, summary = self.exported(r)
+        self.check_structure(document,blob)
+        images = {}
+        for k,image in enumerate(document['images']):
+            view = document['bufferViews'][image['bufferView']]
+            images[k] = png_pixels(blob[view['byteOffset']:view['byteOffset']+view['byteLength']])
+        by_name = {m['name']:m for m in document['materials']}
+        self.assertEqual(by_name['sign']['alphaMode'],'MASK')
+        self.assertTrue(by_name['sign']['doubleSided'])
+        self.assertEqual(by_name['sign']['emissiveFactor'],[1,1,1])
+        self.assertNotIn('alphaMode',by_name['wall'])
+        self.assertNotIn('doubleSided',by_name['wall'])
+        wraps = {by_name[n]['name']:document['samplers'][document['textures'][by_name[n]['pbrMetallicRoughness']['baseColorTexture']['index']]['sampler']]['wrapS']
+                 for n in ('wall','sign')}
+        self.assertEqual(wraps,{'wall':10497,'sign':33071})
+        textures = mesh.textures['textures']
+        # the compiled faces by their glTF positions
+        compiled = {}
+        for face in mesh.faces:
+            key = frozenset(tuple(round(c,4) for c in (x,y,-z)) for x,y,z in (mesh.vertices[i] for i in face.indices))
+            compiled[key] = face
+        checked = {'wall':0,'sign':0}
+        for m,tri in self.triangles(document,blob):
+            mat = document['materials'][m]
+            face = compiled[frozenset(tuple(round(c,4) for c in corner[0]) for corner in tri)]
+            tex = textures[face.material]
+            width, height, rows = images[document['textures'][mat['pbrMetallicRoughness']['baseColorTexture']['index']]['source']]
+            at = {tuple(round(c,4) for c in (x,y,-z)):t for (x,y,z),t in
+                  zip((mesh.vertices[i] for i in face.indices),face.texcoords)}
+            texels = [at[tuple(round(c,4) for c in corner[0])] for corner in tri]
+            for weights in ((.6,.25,.15),(.15,.6,.25),(.25,.15,.6),(.34,.33,.33)):
+                u = sum(w*c[2][0] for w,c in zip(weights,tri))
+                v = sum(w*c[2][1] for w,c in zip(weights,tri))
+                if wraps[mat['name']] == 10497: u, v = u % 1, v % 1
+                exported = rows[int(v*height)][int(u*width)]
+                tu = sum(w*t[0] for w,t in zip(weights,texels))
+                tv = sum(w*t[1] for w,t in zip(weights,texels))
+                c15 = tex.tile.frames[0][int(tv) % tex.height][int(tu) % tex.width]
+                self.assertEqual(exported,(0,0,0,0) if c15 is None else (*rgb_of(c15),255))
+            checked[mat['name']] += 1
+            # the corners' colours: the bake as a tint (128 = 1), emissive never shaded
+            for corner in tri:
+                if mat['name'] == 'sign': self.assertEqual(corner[1],(1.0,1.0,1.0))
+                else: self.assertTrue(all(0 < c < 1 for c in corner[1]))
+        self.assertEqual(checked,{'wall':sum(f.material == 'wall' for f in mesh.faces),'sign':2})
+        # the sign's hole is transparent and the rest opaque
+        sign_image = images[document['textures'][by_name['sign']['pbrMetallicRoughness']['baseColorTexture']['index']]['source']]
+        self.assertEqual((sign_image[0],sign_image[1]),(5,5))       # 4 x 4 and its gutter
+        self.assertEqual([px[3] for px in sign_image[2][1]],[0,255,255,0,0])     # '0110' and the gutter
+        self.assertEqual(summary['dropped_frames'],[])
+        self.assertAlmostEqual(linear(1.0),1.0)
+
+    @unittest.skipUnless(PILLOW,'the stall reads its sheet with Pillow')
+    def test_stall_cli_glb_and_gltf(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'export',
+                                     str(ROOT/'examples/assets/stall.asset.json'),'-o',tmp],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stdout)
+            report = json.loads(result.stdout)
+            self.assertEqual((report['triangles'],report['images'],report['hidden_faces']),(144,8,0))
+            self.assertEqual(report['dropped_frames'],[{'material':'lantern','frames':2,'exported':0,'dropped':1}])
+            from assetkit import gltf
+            document, blob = gltf.read_glb((Path(tmp)/'stall.glb').read_bytes())
+            self.check_structure(document,blob)
+            masks = sorted(m['name'] for m in document['materials'] if m.get('alphaMode') == 'MASK')
+            self.assertEqual(masks,['emblem','screen'])
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'export',
+                                     str(ROOT/'examples/assets/stall.asset.json'),'-o',tmp,'--format','gltf'],
+                                    capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stdout)
+            text = json.loads((Path(tmp)/'stall.gltf').read_text())
+            import base64
+            uri = text['buffers'][0].pop('uri')
+            self.assertEqual(base64.b64decode(uri.split(',',1)[1]),blob)
+            self.assertEqual(text,document)
+
+
 if __name__ == '__main__':
     unittest.main()
