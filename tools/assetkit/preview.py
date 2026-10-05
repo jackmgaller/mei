@@ -1,6 +1,7 @@
 """Render the exported mesh with Mei's real compiler and headless GPU, not a proxy."""
 import math
 from pathlib import Path
+import re
 
 from kitcore import native, depth as DEPTH
 from kitcore.native import png_bytes  # noqa: F401 (re-exported for visibility.py)
@@ -31,8 +32,13 @@ def camera_numbers(bounds, yaw, pitch, distance_scale=1.0, world=False):
     return [f'{n:.7f}' for n in (*eye,yaw,pitch)]
 
 
+TOOLS_HINT = ('Build it with make (make B=DIR for a build directory of your own), or point the kit at your build '
+              'directory with --build-dir DIR (or B, MEIC and RUN in the environment, or --compiler and --runner).')
+FAILED_BANNER ='    text(8, 20, "VERIFICATION FAILED", rgb(255, 64, 64))\n'
+
+
 def source(name, bounds, yaw=-0.65, pitch=-0.35, view='isometric', distance_scale=1.0, load=False, world=False,
-           depth=False, perspective=None):
+           depth=False, perspective=None, failing=False):
     center,scale,radius = fitting(bounds,world)
     distance = max(1, radius*2.6)*distance_scale
     f = lambda n: f'{n:.7f}'
@@ -58,28 +64,225 @@ cart "Asset preview"
     mesh_xf(ASSET_{name.upper()}, model)
     text(8, 8, "{name.upper()}", rgb(224, 230, 240))
     text(8, 224, "{view.upper()}", rgb(140, 165, 190))
-}}
+{FAILED_BANNER if failing else ''}}}
 '''
 
 
-def render(directory, name, bounds, compiler, runner, load=False, depth=False, perspective=None):
+def shoot(directory, stem, code, compiler, runner, view):
+    """Compile and run one preview cart: (pixels, the last presented frame's statistics)."""
+    stem = Path(directory)/stem
+    stem.with_suffix('.akr').write_text(code)
+    native.run([compiler,stem.with_suffix('.akr'),'-o',stem.with_suffix('.mei')],'/preview',error=AssetError)
+    native.run([runner,stem.with_suffix('.mei'),'--frames','4','--dump',stem.with_suffix('.ppm'),
+                '--gpu-stats',stem.with_suffix('.csv')],'/preview',error=AssetError)
+    pixels = native.read_ppm(stem.with_suffix('.ppm'),'/preview',error=AssetError)
+    latest = native.last_frame_stats(stem.with_suffix('.csv'))
+    if latest is None:
+        raise AssetError('/preview',f'No presented frame for {view}.')
+    return pixels,latest
+
+
+def frame_share(stats, budgets):
+    """The frame's CPU and GPU cycles and their share of the frame budgets (src/core/mei.h)."""
+    return {'cpu_cycles':stats['cpu_cycles'],'gpu_cycles':stats['gpu_cycles'],
+            'cpu_frame_percent':round(100*stats['cpu_cycles']/budgets['cpu'],1),
+            'gpu_frame_percent':round(100*stats['gpu_cycles']/budgets['gpu'],1)}
+
+
+def render(directory, name, bounds, compiler, runner, load=False, depth=False, perspective=None, failing=False):
     directory = Path(directory).resolve()
-    native.require('/preview',(compiler,runner),error=AssetError)
-    def run(args): native.run(args,'/preview',error=AssetError)
+    native.require('/preview',(compiler,runner),TOOLS_HINT,error=AssetError)
+    budgets = native.frame_budgets()
     images, reports = [],[]
     for view,yaw,pitch in VIEWS:
-        stem = directory/f'view_{view}'
-        stem.with_suffix('.akr').write_text(source(name,bounds,yaw,pitch,view,load=load,depth=depth,perspective=perspective))
-        run([compiler,stem.with_suffix('.akr'),'-o',stem.with_suffix('.mei')])
-        run([runner,stem.with_suffix('.mei'),'--frames','4','--dump',stem.with_suffix('.ppm'),
-             '--gpu-stats',stem.with_suffix('.csv')])
-        pixels = native.read_ppm(stem.with_suffix('.ppm'),'/preview',error=AssetError)
-        stem.with_suffix('.png').write_bytes(png_bytes(320,240,pixels))
+        code = source(name,bounds,yaw,pitch,view,load=load,depth=depth,perspective=perspective,failing=failing)
+        pixels,latest = shoot(directory,f'view_{view}',code,compiler,runner,view)
+        (directory/f'view_{view}.png').write_bytes(png_bytes(320,240,pixels))
         images.append(pixels)
-        latest = native.last_frame_stats(stem.with_suffix('.csv'))
-        if latest is None:
-            raise AssetError('/preview',f'No presented frame for {view}.')
-        reports.append({'view':view,'image':stem.with_suffix('.png').name,'stats':latest})
+        reports.append({'view':view,'image':f'view_{view}.png','stats':latest,'cost':frame_share(latest,budgets)})
     contact = directory/'contact.png'
     contact.write_bytes(native.contact_sheet(images))
-    return {'contact':str(contact),'views':reports}
+    return {'contact':str(contact),'views':reports,'failing':True} if failing else \
+        {'contact':str(contact),'views':reports}
+
+
+# ---- cameras at world scale (preview --camera, --cameras, --part, --closeups)
+
+EYE_HEIGHT = 1.6        # a standing player's eye above the asset's base, for the eye_level close-up
+SEGMENTS = 4            # at most this many close-ups along the longest axis
+
+
+def look(eye, target):
+    """(yaw, pitch) in radians of camera_look() at eye looking at target (stdlib/render.akr:
+    forward = (sin yaw cos pitch, sin pitch, cos yaw cos pitch))."""
+    d = [t-e for t,e in zip(target,eye)]
+    if math.hypot(*d) < 1e-6:
+        raise AssetError('/arguments/camera','The camera\'s eye and target are the same point.')
+    return math.atan2(d[0],d[2]),math.atan2(d[1],math.hypot(d[0],d[2]))
+
+
+def camera(name, eye, target=None, yaw=None, pitch=None, path='/arguments/camera'):
+    """A camera view: eye (world units, the asset's own coordinates) and either a target or yaw and
+    pitch in degrees (yaw 0 looks along +Z, positive turns toward +X; positive pitch looks up)."""
+    if not re.fullmatch(r'[a-z0-9_]{1,40}',name or ''):
+        raise AssetError(path,'A camera name uses lowercase letters, digits and underscores (at most 40).')
+    numbers = list(eye)+list(target or [])+[n for n in (yaw,pitch) if n is not None]
+    if len(eye) != 3 or (target is not None and len(target) != 3) or \
+            not all(isinstance(n,(int,float)) and not isinstance(n,bool) and math.isfinite(n) and abs(n) < 30000 for n in numbers):
+        raise AssetError(path,'A camera has an eye [x, y, z] and a target [x, y, z], or yaw and pitch in degrees.')
+    if target is not None:
+        y,p = look(eye,target)
+    elif yaw is not None and pitch is not None:
+        if not -90 <= pitch <= 90:
+            raise AssetError(path,'Pitch is -90 to 90 degrees.')
+        y,p = math.radians(yaw),math.radians(pitch)
+    else:
+        raise AssetError(path,'A camera has an eye [x, y, z] and a target [x, y, z], or yaw and pitch in degrees.')
+    return {'name':name,'eye':[float(n) for n in eye],'yaw':y,'pitch':p,
+            **({'target':[float(n) for n in target]} if target is not None else {})}
+
+
+def parse_camera(text, index):
+    """--camera [NAME=]EX,EY,EZ:TX,TY,TZ (eye and target) or [NAME=]EX,EY,EZ@YAW,PITCH (degrees)."""
+    path = '/arguments/camera'
+    name,_,spec = text.rpartition('=')
+    name = name or f'camera{index+1}'
+    try:
+        if ':' in spec:
+            eye,target = spec.split(':')
+            return camera(name,[float(n) for n in eye.split(',')],[float(n) for n in target.split(',')],path=path)
+        if '@' in spec:
+            eye,angles = spec.split('@')
+            yaw,pitch = (float(n) for n in angles.split(','))
+            return camera(name,[float(n) for n in eye.split(',')],yaw=yaw,pitch=pitch,path=path)
+    except ValueError as error:
+        raise AssetError(path,f'Cannot read camera {text!r}: give NAME=EX,EY,EZ:TX,TY,TZ (eye and target) or '
+                              'NAME=EX,EY,EZ@YAW,PITCH (degrees).') from error
+    raise AssetError(path,f'Cannot read camera {text!r}: give NAME=EX,EY,EZ:TX,TY,TZ (eye and target) or '
+                          'NAME=EX,EY,EZ@YAW,PITCH (degrees).')
+
+
+def cameras_file(value):
+    """--cameras FILE: [{"name", "eye", "target"} or {"name", "eye", "yaw", "pitch"}, ...]."""
+    if not isinstance(value,list):
+        raise AssetError('/cameras','A cameras file is a JSON list of {"name", "eye", "target"} or {"name", "eye", "yaw", "pitch"}.')
+    out = []
+    for k,item in enumerate(value):
+        where = f'/cameras/{k}'
+        if not isinstance(item,dict) or set(item)-{'name','eye','target','yaw','pitch'} or 'eye' not in item:
+            raise AssetError(where,'A camera is {"name", "eye", "target"} or {"name", "eye", "yaw", "pitch"}.')
+        if not isinstance(item['eye'],list) or not isinstance(item.get('target',[]),list):
+            raise AssetError(where,'eye and target are [x, y, z].')
+        out.append(camera(item.get('name',f'camera{k+1}'),item['eye'],item.get('target'),item.get('yaw'),item.get('pitch'),where))
+    return out
+
+
+def framing(lo, hi, yaw, pitch, name, margin=1.15):
+    """A camera looking at the box lo..hi from direction (yaw, pitch), as close as shows all of it
+    in Mei's 60-degree view."""
+    center = [(a+b)/2 for a,b in zip(lo,hi)]
+    radius = max(0.05,math.sqrt(sum(((b-a)/2)**2 for a,b in zip(lo,hi))))
+    distance = radius/math.sin(math.radians(30))*margin
+    forward = (math.sin(yaw)*math.cos(pitch),math.sin(pitch),math.cos(yaw)*math.cos(pitch))
+    eye = [c-f*distance for c,f in zip(center,forward)]
+    return camera(name,eye,center)
+
+
+def part_camera(parts, part_id):
+    """--part ID: the part's bounds framed from the isometric direction."""
+    found = [p for p in parts if p['id'] == part_id]
+    if not found:
+        known = ', '.join(sorted({p['id'] for p in parts})[:40])
+        raise AssetError('/arguments/part',f'No part {part_id!r}. Parts: {known}.')
+    lo = [min(p['bounds']['min'][k] for p in found) for k in range(3)]
+    hi = [max(p['bounds']['max'][k] for p in found) for k in range(3)]
+    return framing(lo,hi,VIEWS[0][1],VIEWS[0][2],'part_'+re.sub(r'[^a-z0-9_]','_',part_id)[:35])
+
+
+def closeups(bounds):
+    """The automatic close-ups: eye_level, a player's eye 1.6 units above the base in front of
+    the asset (on its -Z side) seeing all of its front; and, for an asset more than 1.5 times as
+    long along one axis as across the others, up to 4 close-ups along that axis
+    (closeup_1, ...), each framing one segment from the front (from +X when the long axis is Z),
+    15 degrees above."""
+    lo,hi = bounds['min'],bounds['max']
+    size = [b-a for a,b in zip(lo,hi)]
+    center = [(a+b)/2 for a,b in zip(lo,hi)]
+    eye_y = lo[1]+EYE_HEIGHT
+    half = max(size[0],size[1])/2
+    back = max(2.0,half/math.tan(math.radians(30))*1.15)
+    shots = [camera('eye_level',[center[0],eye_y,lo[2]-back],[center[0],center[1],lo[2]])]
+    axis = max(range(3),key=lambda k:(size[k],-k))
+    across = max(max(s for k,s in enumerate(size) if k != axis),0.25)
+    count = min(SEGMENTS,math.ceil(size[axis]/(1.5*across)-1e-9))
+    if count >= 2:
+        yaw = -math.pi/2 if axis == 2 else 0.0          # from +X for a Z-long asset, else from -Z
+        for k in range(count):
+            a,b = list(lo),list(hi)
+            a[axis],b[axis] = lo[axis]+size[axis]*k/count,lo[axis]+size[axis]*(k+1)/count
+            shots.append(framing(a,b,yaw,math.radians(-15),f'closeup_{k+1}'))
+    return shots
+
+
+def camera_source(name, view, load=False, depth=False, perspective=None, failing=False, draw=True, far=None):
+    """A cart drawing the asset at world scale, placed at the origin with yaw 0 as mesh_at() places
+    it, from the view's eye, yaw and pitch. No HUD text, so its cost is the asset's and the
+    frame's clear; draw=False leaves the asset out (the baseline)."""
+    f = lambda n: f'{n:.7f}'
+    init = f'fn init() {{ asset_{name}_load() }}\n\n' if load else ''
+    perspective = depth if perspective is None else perspective or depth
+    imports = f'import "{name}.akr"\n'+DEPTH.cart_import(depth,perspective)
+    modes = DEPTH.cart_lines(depth,perspective)
+    eye = ', '.join(f(n) for n in view['eye'])
+    mesh = f'    mesh_at(ASSET_{name.upper()}, vec3(0.0, 0.0, 0.0), 0.0)\n' if draw else ''
+    return f'''// Generated by Mei Asset Kit. A camera view of the exported mesh at world scale.
+cart "Asset camera"
+{imports}
+{init}fn draw() {{
+    cls(rgb(24, 28, 36))
+{modes}    camera_clip(0.1, {f(far)})
+    camera_look(vec3({eye}), {f(view['yaw'])}, {f(view['pitch'])})
+{mesh}{FAILED_BANNER if failing else ''}}}
+'''
+
+
+def far_for(view, bounds):
+    """Far clip for a view: past the farthest corner of the asset's bounds."""
+    lo,hi = bounds['min'],bounds['max']
+    corners = [(x,y,z) for x in (lo[0],hi[0]) for y in (lo[1],hi[1]) for z in (lo[2],hi[2])]
+    return max(2.0,max(math.dist(view['eye'],c) for c in corners)+1)
+
+
+def render_cameras(directory, name, bounds, views, compiler, runner, load=False, depth=False, perspective=None,
+                   upscale=2, failing=False):
+    """Each view rendered at world scale into camera_NAME.png (upscale times 320 x 240), the
+    sheet cameras.png, and each view's frame cost, and the asset's share of it: the view minus
+    a baseline frame that clears and draws nothing."""
+    directory = Path(directory).resolve()
+    native.require('/preview',(compiler,runner),TOOLS_HINT,error=AssetError)
+    budgets = native.frame_budgets()
+    base_view = views[0]
+    _,baseline = shoot(directory,'camera_baseline',camera_source(name,base_view,load,depth,perspective,failing,False,
+                                                                 far_for(base_view,bounds)),compiler,runner,'baseline')
+    images,reports = [],[]
+    for view in views:
+        code = camera_source(name,view,load,depth,perspective,failing,True,far_for(view,bounds))
+        pixels,latest = shoot(directory,f'camera_{view["name"]}',code,compiler,runner,view['name'])
+        big = native.upscaled(pixels,upscale)
+        (directory/f'camera_{view["name"]}.png').write_bytes(png_bytes(320*upscale,240*upscale,big))
+        images.append(big)
+        asset = {'cpu_cycles':latest['cpu_cycles']-baseline['cpu_cycles'],'gpu_cycles':latest['gpu_cycles']-baseline['gpu_cycles']}
+        reports.append({'view':view['name'],'image':f'camera_{view["name"]}.png',
+                        'eye':[round(n,4) for n in view['eye']],
+                        **({'target':view['target']} if 'target' in view else {}),
+                        'yaw_degrees':round(math.degrees(view['yaw']),2),'pitch_degrees':round(math.degrees(view['pitch']),2),
+                        'triangles':latest['tris'],'stats':latest,
+                        'cost':{**frame_share(latest,budgets),
+                                'asset_cpu_cycles':asset['cpu_cycles'],'asset_gpu_cycles':asset['gpu_cycles'],
+                                'asset_cpu_frame_percent':round(100*asset['cpu_cycles']/budgets['cpu'],1),
+                                'asset_gpu_frame_percent':round(100*asset['gpu_cycles']/budgets['gpu'],1)}})
+    sheet = directory/'cameras.png'
+    sheet.write_bytes(native.tile_sheet(images,320*upscale,240*upscale,min(2,len(images))))
+    return {'contact':str(sheet),'upscale':upscale,'budgets':budgets,
+            'baseline':{'cpu_cycles':baseline['cpu_cycles'],'gpu_cycles':baseline['gpu_cycles']},
+            'views':reports,**({'failing':True} if failing else {})}

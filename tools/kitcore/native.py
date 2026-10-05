@@ -2,6 +2,7 @@
 and contact sheets out. No image library is needed."""
 import csv
 from pathlib import Path
+import re
 import struct
 import subprocess
 import zlib
@@ -54,6 +55,38 @@ def last_frame_stats(path):
     return {k:int(v) for k,v in frames[-1].items()} if frames else None
 
 
+def frame_budgets():
+    """{'cpu': cycles, 'gpu': cycles} a frame may spend: MEI_CYCLES_PER_FRAME and
+    MEI_GPU_CYCLES_PER_FRAME from src/core/mei.h."""
+    text = (Path(__file__).resolve().parents[2]/'src'/'core'/'mei.h').read_text()
+    found = dict(re.findall(r'#define\s+(MEI_(?:GPU_)?CYCLES_PER_FRAME)\s+(\d+)',text))
+    return {'cpu':int(found['MEI_CYCLES_PER_FRAME']),'gpu':int(found['MEI_GPU_CYCLES_PER_FRAME'])}
+
+
+def upscaled(pixels, factor, width=WIDTH, height=HEIGHT):
+    """RGB bytes of width x height scaled up by a whole factor, each pixel a factor x factor block."""
+    if factor == 1:
+        return pixels
+    rows = []
+    for y in range(height):
+        row = b''.join(pixels[x*3:x*3+3]*factor for x in range(y*width,(y+1)*width))
+        rows.append(row*factor)
+    return b''.join(rows)
+
+
+def tile_sheet(images, width, height, columns):
+    """Images (RGB bytes, width x height each) tiled into one PNG, left to right, top to bottom."""
+    rows = (len(images)+columns-1)//columns
+    full = width*columns
+    pixels = bytearray(full*height*rows*3)
+    for i,img in enumerate(images):
+        x,y = (i%columns)*width,(i//columns)*height
+        for row in range(height):
+            start = ((y+row)*full+x)*3
+            pixels[start:start+width*3] = img[row*width*3:(row+1)*width*3]
+    return png_bytes(full,height*rows,bytes(pixels))
+
+
 def png_bytes(width, height, pixels):
     def chunk(kind, data):
         return struct.pack('>I',len(data))+kind+data+struct.pack('>I',zlib.crc32(kind+data)&0xffffffff)
@@ -64,12 +97,4 @@ def png_bytes(width, height, pixels):
 
 def contact_sheet(images, columns=3):
     """Screens (RGB bytes, 320 x 240 each) tiled into one PNG, left to right, top to bottom."""
-    rows = (len(images)+columns-1)//columns
-    width = WIDTH*columns
-    pixels = bytearray(width*HEIGHT*rows*3)
-    for i,img in enumerate(images):
-        x,y = (i%columns)*WIDTH,(i//columns)*HEIGHT
-        for row in range(HEIGHT):
-            start = ((y+row)*width+x)*3
-            pixels[start:start+WIDTH*3] = img[row*WIDTH*3:(row+1)*WIDTH*3]
-    return png_bytes(width,HEIGHT*rows,bytes(pixels))
+    return tile_sheet(images,WIDTH,HEIGHT,columns)

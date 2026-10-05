@@ -33,19 +33,26 @@ def clip_polygon(subject, clip, eps):
     return result
 
 
-def geometry_audit(mesh, limit=200, t_junctions=False):
+CODES=('duplicate_face','coplanar_overlap','surface_intersection','t_junction')
+EXAMPLES=3          # example findings kept per part pair of an allowed code
+
+
+def geometry_audit(mesh, t_junctions=False, allowed=(), crossings=True):
+    """Pairwise findings on the quantized mesh. allowed: the codes the caller's policy does not
+    fail (depth mode: surface_intersection and t_junction; geometry 'warn': all). Failing
+    findings are reported in full, ordered by part pair; allowed ones as counts per part pair
+    with a few examples. crossings=False skips the surface-crossing test (inspect's flush
+    check, which needs only duplicates and coplanar overlaps)."""
     np=numpy()
     triangles=np.array([[mesh.vertices[i] for i in f.indices] for f in mesh.faces],dtype=float)
     normals=np.cross(triangles[:,1]-triangles[:,0],triangles[:,2]-triangles[:,0])
     normals/=np.linalg.norm(normals,axis=1)[:,None]
     lo,hi=triangles.min(axis=1),triangles.max(axis=1)
     eps=1/65536/4
-    findings=[];counts=Counter();seen={}
+    found=[];seen={}
 
     def issue(code,i,j,message):
-        counts[code]+=1
-        if len(findings)<limit:
-            findings.append({'code':code,'a':face_ref(mesh,i),'b':face_ref(mesh,j),'message':message})
+        found.append({'code':code,'a':face_ref(mesh,i),'b':face_ref(mesh,j),'message':message})
 
     def cuts(tri,dist):
         result=[]
@@ -74,8 +81,12 @@ def geometry_audit(mesh, limit=200, t_junctions=False):
                 if len(overlap)>2:
                     area=abs(sum(a[0]*b[1]-a[1]*b[0] for a,b in zip(overlap,overlap[1:]+overlap[:1])))/2
                     if area>eps*eps:
-                        issue('coplanar_overlap',i,j,'Coplanar faces overlap in area. Tile materials on one surface or remove the covered faces.')
+                        facing='back to back' if normals[i]@normals[j]<0 else 'facing the same way'
+                        issue('coplanar_overlap',i,j,f'Coplanar faces overlap in area ({facing}), as where two parts sit '
+                              'flush: sink one 1-2 cm into the other or open the hidden face; on one surface, tile '
+                              'materials or remove the covered faces.')
                 continue
+            if not crossings: continue
             # Pure boundary contact is permitted. Actual crossings straddle both planes.
             if not (min(da)<-eps and max(da)>eps and min(db)<-eps and max(db)>eps): continue
             a,b=cuts(tri,db),cuts(other,da)
@@ -84,15 +95,61 @@ def geometry_audit(mesh, limit=200, t_junctions=False):
             aa,bb=np.array(a)@axis,np.array(b)@axis
             if min(max(aa),max(bb))-max(min(aa),min(bb))>eps:
                 issue('surface_intersection',i,j,'Surfaces cross. Split/trim them at the intersection and remove buried faces, or join the components.')
-    scope='Triangle duplicates, positive-area coplanar overlaps and proper surface crossings after 16.16 quantization; boundary contact is allowed. Containment is not certified.'
+    scope=('Triangle duplicates, positive-area coplanar overlaps and proper surface crossings after 16.16 quantization; '
+           'boundary contact is allowed. Containment is not certified.' if crossings else
+           'Triangle duplicates and positive-area coplanar overlaps after 16.16 quantization; surface crossings are not tested.')
     if t_junctions:
         for v,(i,j) in t_junction_pairs(np,mesh):
             issue('t_junction',i,j,f'Vertex {v} of the first face lies inside an edge of the second, which does not share it: '
                                    'the two can leave a crack of background pixels between them. Split that edge at the vertex.')
         scope+=' T-junctions: a vertex within 2^-16 units of the inside of another face\'s edge.'
-    return {'ok':not counts,'counts':dict(counts),'findings':findings,
-            'truncated':sum(counts.values())>len(findings),
+    return summarise(found,allowed,scope)
+
+
+def pair_of(finding):
+    return tuple(sorted((finding['a']['part'],finding['b']['part'])))
+
+
+def by_code(counter):
+    return {code:counter[code] for code in CODES if counter.get(code)}
+
+
+def summarise(found, allowed, scope):
+    """The audit's report. ok: no failing finding. counts: every code found. failing: the codes
+    that fail, counted. findings: every failing finding, in full, ordered by part pair. allowed:
+    the allowed codes' findings as counts per part pair, each with up to EXAMPLES examples.
+    summary: one line per part pair and failing code."""
+    allowed=set(allowed)
+    failing=[f for f in found if f['code'] not in allowed]
+    failing.sort(key=lambda f:(pair_of(f),CODES.index(f['code']),f['a']['face'],f['b']['face']))
+    groups={}
+    for f in found:
+        if f['code'] in allowed:
+            groups.setdefault((f['code'],pair_of(f)),[]).append(f)
+    rows=[{'code':code,'parts':list(pair),'count':len(group),'examples':group[:EXAMPLES]}
+          for (code,pair),group in sorted(groups.items(),key=lambda kv:(-len(kv[1]),kv[0]))]
+    return {'ok':not failing,
+            'counts':by_code(Counter(f['code'] for f in found)),
+            'failing':by_code(Counter(f['code'] for f in failing)),
+            'allowed_codes':[code for code in CODES if code in allowed],
+            'summary':failure_summary(failing),
+            'findings':failing,
+            'allowed':rows,
             'scope':scope}
+
+
+def failure_summary(failing, faces=4):
+    """One line per part pair and code, the largest first:
+    'coplanar_overlap: 12 between roof and wall (faces 3/40, 5/41, 6/44, 9/45, ...)'."""
+    groups={}
+    for f in failing:
+        groups.setdefault((pair_of(f),f['code']),[]).append(f)
+    lines=[]
+    for (pair,code),group in sorted(groups.items(),key=lambda kv:(-len(kv[1]),kv[0])):
+        where=f'within {pair[0]}' if pair[0]==pair[1] else f'between {pair[0]} and {pair[1]}'
+        sample=', '.join(f"{g['a']['face']}/{g['b']['face']}" for g in group[:faces])+(', ...' if len(group)>faces else '')
+        lines.append(f'{code}: {len(group)} {where} (faces {sample})')
+    return lines
 
 
 def t_junction_pairs(np, mesh):

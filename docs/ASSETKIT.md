@@ -26,23 +26,29 @@ python3 tools/mei_assets.py schema
 python3 tools/mei_assets.py init /tmp/robot.asset.json --example robot
 
 # Edit the JSON, preserving meaningful node IDs.
-# Check bounds, topology, counts and per-part costs before rendering.
+# Check bounds, topology, counts, per-part costs and flush contacts before rendering.
 python3 tools/mei_assets.py inspect /tmp/robot.asset.json
 
-# Build the native tools if necessary.
+# Build the native tools if necessary (make B=DIR ... for a private build directory).
 make build/meic build/mei-headless build/mei-asset-probe
 
 # Numerically check geometry and triangle visibility. Nonzero exit means failure.
 python3 tools/mei_assets.py verify /tmp/robot.asset.json -o build/robot-check
 
-# Build and render the actual exported mesh from six angles.
-python3 tools/mei_assets.py preview /tmp/robot.asset.json -o build/assets/robot
+# Build and render the actual exported mesh from six angles, plus close-ups at world scale.
+python3 tools/mei_assets.py preview /tmp/robot.asset.json -o build/assets/robot --closeups
 ```
 
 Open `build/assets/robot/contact.png`, then adjust the recipe and rerun. The contact sheet
 contains isometric, front, right, back, top and rear-quarter views. Individual PNGs and
 GPU CSVs are also saved. `report.json` includes vertex/triangle counts, mesh bytes, bounds,
-recipe/mesh hashes, topology warnings and CPU/GPU statistics for each view.
+recipe/mesh hashes, topology warnings and CPU/GPU statistics for each view. With `--closeups`,
+`--camera` or `--part`, `cameras.png` shows views at world scale, larger, with each view's frame
+cost ([Camera views](#camera-views-at-world-scale)).
+
+With a private build directory (`make B=build-mine`), give it once: `--build-dir build-mine`, or
+`export B=build-mine` (or `MEIC`, `RUN` and `PROBE`, as the test suites read them) and every
+command finds its tools there ([Native tools](#native-tools)).
 
 For an agent building a game:
 
@@ -60,7 +66,40 @@ For an agent building a game:
 
 The CLI prints JSON on stdout for both successes and failures and exits 0 on success or 1 on
 failure. `--help` prints human-readable help. Recipe errors contain a JSON Pointer `path`
-and an actionable `message`. Commands accepting a recipe also accept `-` to read stdin.
+and an actionable `message`. Commands accepting a recipe also accept `-` to read stdin. A
+failure's output begins with `ok` and `errors`; a verification report begins with `ok`,
+`verdict`, `failures` and `allowed` ([Reports and repairs](#reports-and-repairs)).
+
+## Authoring rules (depth mode)
+
+Most assets are drawn with the depth buffer (`"verification": {"required": true, "depth": true,
+"perspective": true}`, [Depth mode](#depth-mode)). There, parts may cross each other freely, but:
+
+- **Never let two parts' faces sit flush in the same plane.** A box standing on another box, a
+  panel laid on a wall, a frame level with the wall it sits in: two faces in one plane that
+  overlap in area fight in the depth buffer, and the Asset Checker fails them as
+  `coplanar_overlap` (in either mode). **Sink the part 1–2 cm into its neighbour** (stand the box
+  at 0.99 instead of 1.0, set the panel 0.01 into the wall), **or open the hidden face** (a box's
+  `"open": ["bottom"]` where it stands on something). A part floating 1 mm off a surface is not
+  flush and passes the check, but ties in the depth buffer from far enough away; sinking it is
+  safer. `inspect` lists flush contacts by part pair before anything is rendered
+  (`flush_contacts`, with NumPy); `verify` lists them first in its `failures`.
+- Without the depth buffer, crossing parts fail too; see [the gate](#automated-visibility-gate)
+  and [Reports and repairs](#reports-and-repairs).
+
+Conventions, each checked on native renders (`tests/test_assetkit.py`, `ConventionTests`):
+
+| What | Convention |
+|---|---|
+| Facing | Y is up. Models face **−Z**: the preview's `front` view, a camera on −Z looking toward +Z, sees that side. On screen the front view has +X to the right and +Y up; the `right` view (a camera on +X) has +Z to the right; the `top` view has +X to the right and +Z up |
+| Box `open` sides | By axis: `left` −X, `right` +X, `bottom` −Y, `top` +Y, **`back` −Z, `front` +Z**. So a box's `back` is the side a model faces with (the front camera sees it) and its `front` is the model's back |
+| Rotation | `rotate` is in degrees, X then Y then Z. `[0, 90, 0]` turns +X to −Z and the −Z front to −X: clockwise in the top view, the way a positive camera yaw turns right. `[0, 0, 90]` turns +X to +Y: counterclockwise in the front view. `[90, 0, 0]` turns +Y to +Z: the top tips away from the front camera. In general a positive angle turns clockwise as seen from the positive end of its axis in Mei's views |
+| Mesh winding | Outward: (b − a) × (c − a) points out of the solid. A face toward the front camera lists its corners clockwise as seen on screen: top-left, top-right, bottom-right, bottom-left. The reverse order faces away and is culled (not drawn) unless the material is `double_sided` |
+| u and v | u runs right and v down as the face is seen from outside, "up" being the primitive's +Y (+Z for a face looking straight up or down, as in the top view). A mirrored copy is seen from its own outside too |
+| `box` and `planar` | u = 0 and v = 0 at the primitive's origin: a repeat's top-left corner is there, and the repeat runs right and down from it, so a box centred on the origin has a repeat's corner at the middle of each face (`offset` [0.5, 0.5] centres a repeat instead). `planar` along `z` is seen from −Z (u along +X, v along −Y), along `x` from +X (u along +Z), along `y` from above (u along +X, v along −Z), each as `box` draws that side |
+| `cylindrical` | u = 0 on the −Z meridian (the line facing the front camera), growing toward +X, so rightward in the front view, and around; v = 0 at the primitive's y = 0 (its middle: primitives are centred), growing downward |
+| `disc` | Centred on the primitive's origin. About `y` (the default) as seen from above: u = 0 at the −X edge and v = 0 at the +Z edge. Both caps of a cylinder get the same mapping, so the bottom cap, seen from below, shows it upside down. About `z` and `x` as `planar` sees those axes |
+| `fit` | Each plane of the primitive gets the whole texture over the bounding rectangle of its faces in that plane, in its own right/down frame: u = 0 at the left edge, v = 0 at the top. A plane is a box side, each side quad of a cylinder or lathe (so each gets the whole texture), a cap, an extrusion's outline face; in a `mesh` node, each source polygon. On a shape that is not a rectangle (a triangle, a round cap, an L shape) the parts of the texture outside it are not drawn |
 
 ## Commands
 
@@ -69,16 +108,15 @@ and an actionable `message`. Commands accepting a recipe also accept `-` to read
 | `schema` | Full JSON Schema, including supported operations and field bounds |
 | `init FILE [--example robot\|vessel\|cottage\|kiosk\|stall]` | Editable starter (with the images it reads, beside it); refuses to overwrite unless `--force` |
 | `validate FILE [--strict]` | Schema, reference, geometry, fixed-point and budget checks |
-| `inspect FILE [--strict]` | Same checks, with full bounds and per-part report |
-| `verify FILE [-o DIR]` | Geometry checks plus native triangle-ID visibility and ordering-graph checks |
-| `build FILE -o DIR [--verify] [--preview] [--strict] [--depth] [--perspective]` | Native and exchange artifacts; optional or recipe-mandated verification gate |
-| `preview FILE -o DIR [--verify] [--strict] [--depth] [--perspective]` | Build plus six native renders and contact sheet |
+| `inspect FILE [--strict]` | Same checks, with full bounds, per-part report and `flush_contacts` (below) |
+| `verify FILE [-o DIR] [--build-dir DIR]` | Geometry checks plus native triangle-ID visibility and ordering-graph checks |
+| `build FILE -o DIR [--verify] [--preview] [--strict] [--depth] [--perspective] [--build-dir DIR]` | Native and exchange artifacts; optional or recipe-mandated verification gate |
+| `preview FILE -o DIR [--verify] [--strict] [--depth] [--perspective] [--build-dir DIR] [--closeups] [--camera SPEC]… [--cameras FILE] [--part ID]… [--upscale N]` | Build plus six native renders and contact sheet, and [camera views](#camera-views-at-world-scale) |
 | `import-obj FILE -o RECIPE [--name NAME] [--force]` | Geometry-only OBJ import into an explicit `mesh` recipe |
 | `pack FILE... -o DIR [--name NAME] [--slots 14-0] [--palette 0] [--palette8 14]` | Several assets (or one) for a cart without a world: shared texture slots and palettes, one loader ([Placement](#placement-build-and-pack)) |
 
 `--strict` fails on topology warnings, useful for closed props. Omit it for intentionally open
-surfaces. Build/preview accept `--compiler PATH` and `--runner PATH` for other Mei builds.
-Verification accepts `--compiler PATH` and `--probe PATH`. `--depth` and `--perspective` on build and
+surfaces. `--depth` and `--perspective` on build and
 preview say the asset is drawn with the depth buffer and perspective texturing, as in a world whose
 `runtime` says so: the preview cart draws so (`preview.akr` and the six views), and the Asset
 Checker runs in [depth mode](#depth-mode) where the recipe's policy does not set `depth` or
@@ -88,6 +126,78 @@ Validation, serialization and optional rendering finish in a staging directory b
 are replaced; failed geometry checks or renders leave the previous build's files intact.
 Do not use the recipe's own directory as the output directory if its name would collide with
 the generated recipe copy. Obsolete files from earlier differently named builds are not removed.
+
+**Flush contacts.** `inspect` adds `flush_contacts`: the duplicate faces and coplanar overlaps of
+the mesh (the geometry audit without its crossing test), which the Asset Checker fails in either
+mode, as `count`, `by_code`, one `summary` line per part pair and a `hint`
+([Authoring rules](#authoring-rules-depth-mode)). It needs NumPy; without it `checked` is false
+and says why. The robot example (1,520 triangles) takes about 0.5 s and finds its 8 coplanar
+overlaps; the cottage (316) 0.06 s and its 36.
+
+### Native tools
+
+`verify`, `preview` and `build` run Mei's compiler (`meic`), the headless runner
+(`mei-headless`, for previews) and the asset probe (`mei-asset-probe`, for the Asset Checker).
+Each is taken from the first of:
+
+1. its own option: `--compiler PATH`, `--runner PATH`, `--probe PATH`;
+2. `--build-dir DIR`: `DIR/meic`, `DIR/mei-headless`, `DIR/mei-asset-probe`, the directory
+   `make B=DIR` builds into;
+3. its environment variable, `MEIC`, `RUN` or `PROBE` (as the test suites read them);
+4. the environment variable `B`, a build directory relative to the repository (as make's `B`);
+5. `build/`.
+
+A command checks the tools it needs before it starts (`verify`: compiler and probe; `preview`:
+compiler and runner, and the probe when the recipe requires the check or `--verify` is given). A
+missing tool is an error at `/arguments/tools` naming the file, the directory it looked in, which
+of the above chose it, the make command that builds it (`make B=build-mine build-mine/meic`) and
+how to point the kit elsewhere.
+
+### Camera views at world scale
+
+The six fitted views scale every asset to about 2 units, so a 24 m railcar is a thin strip and
+a sign on it a few pixels. `preview` (and `build --preview`) also renders views at the asset's
+own size, as a game draws it: the mesh placed with `mesh_at` at the origin with yaw 0, the
+camera where you put it, 60° field of view, near 0.1, far just past the asset. They draw with the
+depth buffer (and perspective) when the six views do or the recipe's policy says `depth` (or
+`perspective`): as the Asset Checker judges the asset, also when it is untextured, whose six
+views draw without depth unless `--depth` is given. No HUD text is drawn. The contact sheet and
+the six views are unchanged.
+
+```sh
+# a player's view and close-ups along a long asset
+python3 tools/mei_assets.py preview railcar.asset.json -o build/assets/railcar --closeups
+# eye and target, in the asset's coordinates (world units)
+python3 tools/mei_assets.py preview stall.asset.json -o build/assets/stall \
+  --camera counter=0,1.5,-2.5:0,1,0
+# eye, then yaw and pitch in degrees (yaw 0 looks along +Z, positive turns toward +X;
+# positive pitch looks up), and a named part framed close
+python3 tools/mei_assets.py preview stall.asset.json -o build/assets/stall \
+  --camera high=0,4,-4@0,-45 --part sign
+```
+
+| Option | Views |
+|---|---|
+| `--camera NAME=EX,EY,EZ:TX,TY,TZ` | From the eye, looking at the target. Repeatable. Without `NAME=` the view is `cameraN`; write `--camera=…` then if the eye's x is negative |
+| `--camera NAME=EX,EY,EZ@YAW,PITCH` | From the eye, at that yaw and pitch (degrees), as `camera_look` takes them in radians |
+| `--cameras FILE` | A JSON list of `{"name", "eye", "target"}` or `{"name", "eye", "yaw", "pitch"}`, for a set of views kept beside the recipe |
+| `--part ID` | `part_ID`: that part's bounds (an `id` from `inspect`'s `parts`; all parts with that id together) framed from the isometric view's direction. Repeatable; an unknown id is an error listing the parts |
+| `--closeups` | `eye_level`: a player's eye 1.6 units above the asset's base, on its −Z side, far enough back to see its whole front, looking at the middle of its front. And, when the asset is more than 1.5 times as long along one axis as across the others, `closeup_1` … (up to 4) along that axis: each frames one equal segment from the front, 15° above (from +X when the long axis is Z) |
+| `--upscale N` | 1–4, default 2: each camera view's PNG is 320 × 240 scaled up N times, pixel for pixel (the console draws 320 × 240) |
+
+Each view is written as `camera_NAME.png` and the views together as `cameras.png` (two columns).
+`report.json`'s `preview.cameras` lists, per view, its eye, target, yaw and pitch (degrees),
+triangles drawn, the runner's statistics and `cost`: the frame's CPU and GPU cycles and their
+share of the frame budgets (`MEI_CYCLES_PER_FRAME` 1,000,000 and `MEI_GPU_CYCLES_PER_FRAME`
+2,000,000, read from `src/core/mei.h`), and the asset's own share, `asset_cpu_cycles` and
+`asset_gpu_cycles`: the frame minus a `baseline` frame drawn the same way without the asset
+(in depth mode 4,917 CPU and 76,800 GPU cycles: the clears). The six fitted views' entries gain
+the same `cost`, of the whole frame with its HUD text.
+
+Measured: a 24 × 3.5 × 2.9 m railcar (202 triangles, depth policy) with `--closeups`: five views,
+`eye_level` 0.6 % of the GPU budget for the asset and each close-up 2.2–3.0 %; the `stall`
+example's `--part sign` 3.8 %, its whole isometric fitted frame 5.3 %. A view costs one compile
+and one run, about 0.05 s.
 
 ## Recipe contract
 
@@ -147,7 +257,12 @@ Then both `build` and `preview` enforce it even without `--verify`. Merely inclu
 opt-in. Ordinary legacy recipes without this property retain their existing build behavior.
 There is no CLI bypass of a required recipe policy. Failed verification leaves previous
 mesh/import outputs intact and writes `verification.failed.json` plus diagnostic images under
-`verification-failed/`. Successful builds include `verification.json` and the verification
+`verification-failed/`. When a preview was asked for (`preview`, `build --preview`), the model
+is still rendered as it stands, so that it can be seen while being repaired: the six views,
+`contact.png` and any camera views go to `verification-failed/preview/` (replaced on each failed
+run), each marked with a red VERIFICATION FAILED, and `verification.failed.json` gains `preview`
+(with `"failing": true`). Nothing is exported. The error message lists the failures and names
+the renders. Successful builds include `verification.json` and the verification
 result in `report.json`. The report records recipe, mesh, compiler and probe hashes.
 
 ### What is checked
@@ -228,7 +343,7 @@ policy, and the checker judges it as the depth test draws it:
 (`verify --depth --perspective` for one run; `preview --depth --perspective` previews and checks so,
 as in a depth-mode world; `depth_views` or `verify --depth-views N` sets how many views are judged,
 below.) Both default to false, and an asset without them is
-checked exactly as before, its report byte for byte the same. A world recipe with
+checked exactly as before (the same verdict, counts and views). A world recipe with
 `"runtime": {"depth": true}` checks its assets so unless their policy says otherwise
 ([WORLDKIT.md](WORLDKIT.md#depth-mode)). With `depth`:
 
@@ -242,7 +357,8 @@ checked exactly as before, its report byte for byte the same. A world recipe wit
   needed, as the reference rasterises from the console's own projected vertices. `edge_margin`
   applies as before.
 - **Not failures:** `surface_intersection` (the depth test draws crossing faces right along their
-  crossing) and ordering cycles (the graph is not built). They are still listed in `geometry`.
+  crossing) and ordering cycles (the graph is not built). The crossings are still counted, in
+  `geometry.allowed` by part pair ([Reports and repairs](#reports-and-repairs)).
   **Still failures:** duplicate faces and coplanar overlaps, which fight in the depth buffer as
   they did in a bucket, coverage errors, and the budgets and levels of detail as before.
 - **Duplicates and coplanar overlaps are geometry checks**, judged on the mesh without rendering
@@ -338,6 +454,51 @@ the geometry audit and Python's start.
 
 ### Reports and repairs
 
+A verification report begins with its verdict:
+
+| Field | Meaning |
+|---|---|
+| `ok` | The verdict |
+| `verdict` | One line: `PASS` or `FAIL`, the mode, how many problems, and how many geometry findings the mode allowed |
+| `failures` | Every reason for a failure, one line each: each failing geometry code per part pair (largest first), wrong-depth pixels, coverage errors, ordering cycles, no covered pixels, and each level of detail's (`lod K …`). Empty when `ok` |
+| `allowed` | The allowed geometry findings, one line per code and part pair (the 12 largest; `geometry.allowed` has all) |
+
+`geometry` agrees with it: its `ok` is the geometry verdict under the policy, so a depth-mode
+asset with only crossing parts has `geometry.ok` true. Its fields:
+
+| Field | Meaning |
+|---|---|
+| `ok` | No failing finding under the policy |
+| `counts` | Every code found, failing or allowed |
+| `failing` | The failing codes, counted |
+| `allowed_codes` | The codes the policy allows: `surface_intersection` and `t_junction` in depth mode; every code with `geometry: "warn"`; none otherwise |
+| `summary` | One line per part pair and failing code, as in `failures` |
+| `findings` | **Every** failing finding, in full, ordered by part pair (no limit) |
+| `allowed` | The allowed findings, per code and part pair: `count` and up to 3 `examples` |
+
+So the findings that fail are never crowded out by allowed ones. The cottage example in depth
+mode (`verify examples/assets/cottage.asset.json --depth`):
+
+```json
+"ok": false,
+"verdict": "FAIL (depth mode): 7 problems, see failures; 284 findings allowed in depth mode (surface_intersection, t_junction)",
+"failures": [
+  "geometry: coplanar_overlap: 8 between front_windows/window/group_window/frame and front_windows/window/group_window/pane (faces 80/93, 80/95, 82/93, 82/95, ...)",
+  "geometry: coplanar_overlap: 8 between side_windows/group_window/frame and side_windows/group_window/pane (faces 176/189, 176/191, 178/189, 178/191, ...)",
+  "geometry: coplanar_overlap: 6 between front_windows/window/group_window/frame and walls (faces 12/129, 12/131, 14/81, 14/83, ...)",
+  "geometry: coplanar_overlap: 6 between side_windows/group_window/frame and walls (faces 20/177, 20/179, 20/225, 20/227, ...)",
+  "geometry: coplanar_overlap: 4 between foundation and walls (faces 8/18, 8/19, 9/18, 9/19)",
+  "geometry: coplanar_overlap: 2 between door and foundation (faces 8/56, 8/57)",
+  "geometry: coplanar_overlap: 2 between door and walls (faces 18/56, 18/57)"
+],
+"allowed": [
+  "surface_intersection: 40 between front_windows/window/group_window/cross_h and front_windows/window/group_window/cross_v",
+  …
+```
+
+Face pairs are `a/b`, zero-based faces of the exported mesh. A coplanar finding's message says
+whether the two faces are back to back (one part standing on another) or facing the same way.
+
 Each camera has numeric counts and witnesses such as:
 
 ```json
@@ -355,12 +516,15 @@ Face numbers are zero-based indices in the exported triangle mesh; part names ma
 recipe nodes/prototypes. Reports give the exact camera, affected faces, depth error, cycle
 or crossing witnesses, and repair guidance. The optional PNGs show **native IDs | expected
 IDs | discrepancies in red**. Their false colors identify triangles; they are not shaded art.
-Up to 12 failing views get images; all views retain numerical results. Geometry findings and
-per-view conflict lists are bounded, with geometry truncation stated explicitly.
+Up to 12 failing views get images; all views retain numerical results. Per-view conflict lists
+are bounded (32 per view); failing geometry findings are not.
 
 Follow the evidence rather than moving arbitrary vertices until a screenshot looks good:
 
-- Duplicate/coplanar faces: remove the covered faces or tile materials on a single surface.
+- Coplanar faces of two parts (one standing flush on or against another): sink one 1–2 cm into
+  the other, or open the hidden face ([Authoring rules](#authoring-rules-depth-mode)).
+- Duplicate/coplanar faces on one surface: remove the covered faces or tile materials on a
+  single surface.
 - Intersections: split/trim surfaces at the connection and remove buried faces. Prefer one
   connected surface for an attached badge, socket or backpack.
 - Wrong order without intersections: split the named long faces or subdivide the local region,
@@ -1168,7 +1332,13 @@ required-policy enforcement, textured faces judged as solid faces, cutout covera
 texel (and that judging it by the outline fails),
 preservation of prior artifacts on failed verification, that the one check cart draws each
 camera as a cart of its own did, that depth mode's 16 views draw every face the 144 do and are
-rows of the full sweep, the planted faults of [Depth mode](#depth-mode), and `preview --depth`. It also runs as part of `make test` when
+rows of the full sweep, the planted faults of [Depth mode](#depth-mode), and `preview --depth`.
+For agents' use it checks that failing findings are reported in full and first with hundreds of
+allowed crossings beside them (`FindingsTests`), that the verdict and the geometry block agree
+(`VerdictTests`), `inspect`'s flush contacts, the tool paths (options, `--build-dir`, `MEIC`/`RUN`/
+`PROBE`, `B`) and their error, camera parsing and close-ups, camera views' sizes and costs
+(`CameraViewTests`), failing renders kept and marked (`FailedPreviewTests`), and the authoring
+rules' conventions on renders (`ConventionTests`). It also runs as part of `make test` when
 Python is available. Pure Python tests can run independently; native render tests skip if
 the binaries are absent:
 

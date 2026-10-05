@@ -1597,7 +1597,8 @@ class CheckViewTests(unittest.TestCase):
                     'faces':[[0,1,2,3],[1,5,4],[4,5,6],[4,6,2]]})
         report = self.checked(t,self.DEPTH)
         self.assertEqual(report['geometry']['counts'],{'t_junction':1})
-        self.assertEqual(report['geometry']['findings'][0]['b']['face'] in (0,1),True)
+        self.assertEqual(report['geometry']['findings'],[],'allowed in depth mode: counted, not failing')
+        self.assertEqual(report['geometry']['allowed'][0]['examples'][0]['b']['face'] in (0,1),True)
         self.assertNotIn('t_junction',json.dumps(self.checked(t)['geometry']),'without depth the audit is as before')
 
     @unittest.skipUnless(RUNNER.exists(),'Needs mei-headless.')
@@ -1678,6 +1679,352 @@ class CheckViewTests(unittest.TestCase):
         self.assertFalse(report['ok'])
         self.assertGreater(report['totals']['coverage_errors'],0)
         self.assertLessEqual(report['totals']['views'],24)
+
+
+# ---------------------------------------------------------------------------------------------
+# Agent ergonomics: complete failing findings, camera views, flush contacts, tool paths
+# (docs/ASSETKIT.md, "Authoring rules", "Reports and repairs", "Camera views", "Native tools")
+
+def png_pixels(path):
+    """(width, height, RGB bytes) of a PNG the kit wrote (8-bit RGB, filter 0 on every row)."""
+    import zlib
+    data = Path(path).read_bytes()
+    width,height = struct.unpack('>2I',data[16:24])
+    at,chunks = 8,b''
+    while at < len(data):
+        length = struct.unpack('>I',data[at:at+4])[0]
+        if data[at+4:at+8] == b'IDAT': chunks += data[at+8:at+8+length]
+        at += 12+length
+    raw = zlib.decompress(chunks)
+    rows = [raw[y*(width*3+1)+1:(y+1)*(width*3+1)] for y in range(height)]
+    return width,height,b''.join(rows)
+
+
+def crossing_and_flush():
+    """A subdivided body crossed by a subdivided bar (hundreds of surface crossings) with a cap
+    standing flush on its top (coplanar overlaps)."""
+    return recipe() | {'nodes':[
+        {'id':'body','op':'box','size':[2,2,2],'modifiers':[{'op':'subdivide','levels':3}]},
+        {'id':'bar','op':'box','size':[3,1,1],'modifiers':[{'op':'subdivide','levels':3}],
+         'transform':{'rotate':[10,20,30]}},
+        {'id':'cap','op':'box','size':[1,.2,1],'transform':{'translate':[0,1.1,0]}}]}
+
+
+class FindingsTests(unittest.TestCase):
+    @unittest.skipUnless(NUMPY,'Needs NumPy.')
+    def test_failing_findings_are_complete_and_first_and_allowed_ones_grouped(self):
+        from assetkit.geometry_audit import geometry_audit, EXAMPLES
+        mesh,_,_ = compile_recipe(crossing_and_flush())
+        everything = geometry_audit(mesh)
+        crossings,flush = everything['counts']['surface_intersection'],everything['counts']['coplanar_overlap']
+        self.assertGreater(crossings,200,'more allowed findings than the old 200-finding limit')
+        self.assertGreater(flush,0)
+        self.assertEqual(len(everything['findings']),crossings+flush,'without allowed codes every finding fails, in full')
+        depth = geometry_audit(mesh,allowed=('surface_intersection','t_junction'))
+        self.assertFalse(depth['ok'])
+        self.assertEqual(depth['failing'],{'coplanar_overlap':flush})
+        self.assertEqual(len(depth['findings']),flush)
+        self.assertTrue(all(f['code'] == 'coplanar_overlap' for f in depth['findings']))
+        self.assertEqual({tuple(sorted((f['a']['part'],f['b']['part']))) for f in depth['findings']},{('body','cap')})
+        self.assertEqual(depth['summary'][0].split(' (')[0],f'coplanar_overlap: {flush} between body and cap')
+        self.assertEqual(sum(row['count'] for row in depth['allowed']),crossings)
+        self.assertTrue(all(len(row['examples']) <= EXAMPLES and row['code'] == 'surface_intersection' for row in depth['allowed']))
+        self.assertEqual({tuple(row['parts']) for row in depth['allowed']},{('bar','body')})
+        warn = geometry_audit(mesh,allowed=('duplicate_face','coplanar_overlap','surface_intersection','t_junction'))
+        self.assertTrue(warn['ok'])
+        self.assertEqual((warn['findings'],warn['summary']),([],[]))
+
+    def test_inspect_warns_of_flush_contacts_before_rendering(self):
+        def inspect(r):
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'inspect','-'],
+                                    input=json.dumps(r),capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stdout)
+            return json.loads(result.stdout)['flush_contacts']
+        stacked = recipe() | {'nodes':[{'id':'base','op':'box','size':[2,1,2]},
+                                       {'id':'top','op':'box','size':[1,1,1],'transform':{'translate':[0,1,0]}}]}
+        flush = inspect(stacked)
+        if not NUMPY:
+            self.assertFalse(flush['checked'])
+            return
+        self.assertTrue(flush['checked'])
+        self.assertEqual(flush['by_code'],{'coplanar_overlap':flush['count']})
+        self.assertIn('between base and top',flush['summary'][0])
+        self.assertIn('1-2 cm',flush['hint'])
+        stacked['nodes'][1]['transform']['translate'] = [0,.99,0]          # sunk 1 cm: no contact
+        self.assertEqual(inspect(stacked)['count'],0)
+        stacked['nodes'][1]['transform']['translate'] = [0,1,0]
+        stacked['nodes'][1]['open'] = ['bottom']                             # or the hidden face opened
+        self.assertEqual(inspect(stacked)['count'],0)
+
+
+class CameraParsingTests(unittest.TestCase):
+    def test_cameras_from_eye_and_target_or_yaw_and_pitch(self):
+        from assetkit.preview import parse_camera, cameras_file, look
+        view = parse_camera('door=0,1.6,-4:0,1.6,0',0)
+        self.assertEqual((view['name'],view['eye'],view['yaw'],view['pitch']),('door',[0,1.6,-4],0.0,0.0))
+        yaw,pitch = look([0,0,0],[1,0,0])
+        self.assertAlmostEqual(yaw,math.pi/2)                    # toward +X: positive yaw
+        yaw,pitch = look([0,0,0],[0,1,1])
+        self.assertAlmostEqual(pitch,math.pi/4)                  # up: positive pitch
+        view = parse_camera('3,2,1@90,-30',4)
+        self.assertEqual(view['name'],'camera5')
+        self.assertAlmostEqual(view['yaw'],math.pi/2)
+        self.assertAlmostEqual(view['pitch'],-math.pi/6)
+        views = cameras_file([{'name':'a','eye':[0,1,-3],'target':[0,1,0]},{'name':'b','eye':[0,1,-3],'yaw':0,'pitch':0}])
+        self.assertEqual([v['name'] for v in views],['a','b'])
+        for bad in ('x=1,2:3,4,5','x=1,2,3','Bad=1,2,3:4,5,6','x=0,0,0:0,0,0','x=1,2,3@0,120'):
+            with self.subTest(bad=bad), self.assertRaises(AssetError):
+                parse_camera(bad,0)
+        with self.assertRaises(AssetError):
+            cameras_file([{'eye':[0,1,-3],'look':[0,0,0]}])
+
+    def test_closeups_follow_a_long_axis(self):
+        from assetkit.preview import closeups
+        train = closeups({'min':[-12.5,0,-1.5],'max':[12.5,3.5,1.5]})
+        self.assertEqual([v['name'] for v in train],['eye_level','closeup_1','closeup_2','closeup_3','closeup_4'])
+        self.assertAlmostEqual(train[0]['eye'][1],1.6)
+        self.assertLess(train[0]['eye'][2],-1.5)                  # in front, on the -Z side
+        self.assertLess(train[1]['eye'][0],train[4]['eye'][0])    # left to right along X
+        self.assertTrue(all(v['eye'][2] < 0 for v in train[1:]))
+        along_z = closeups({'min':[-1,0,-10],'max':[1,2,10]})
+        self.assertTrue(all(v['eye'][0] > 1 for v in along_z[1:]),'a Z-long asset is seen from +X')
+        self.assertEqual([v['name'] for v in closeups({'min':[-1,0,-1],'max':[1,2,1]})],['eye_level'])
+
+    def test_tool_paths_from_options_build_dir_environment_and_b(self):
+        import argparse
+        from mei_assets import tool_paths, require_tools
+        args = lambda **k: argparse.Namespace(**{'compiler':None,'runner':None,'probe':None,'build_dir':None,**k})
+        paths = lambda a, env: {k:v[0] for k,v in tool_paths(a,env).items()}
+        self.assertEqual(paths(args(),{}),{'compiler':ROOT/'build/meic','runner':ROOT/'build/mei-headless',
+                                           'probe':ROOT/'build/mei-asset-probe'})
+        self.assertEqual(paths(args(),{'B':'build-x'})['probe'],ROOT/'build-x/mei-asset-probe')
+        env = {'B':'build-x','MEIC':'/tmp/a/meic','RUN':'/tmp/a/run','PROBE':'/tmp/a/probe'}
+        self.assertEqual(paths(args(),env),{'compiler':Path('/tmp/a/meic').resolve(),'runner':Path('/tmp/a/run').resolve(),
+                                            'probe':Path('/tmp/a/probe').resolve()})
+        self.assertEqual(paths(args(build_dir=Path('/tmp/b')),env)['compiler'],Path('/tmp/b/meic').resolve())
+        self.assertEqual(paths(args(build_dir=Path('/tmp/b'),probe=Path('/tmp/c/p')),env)['probe'],Path('/tmp/c/p').resolve())
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(AssetError) as caught:
+                require_tools(tool_paths(args(build_dir=Path(tmp)),{}),['compiler','probe'])
+        message = str(caught.exception)
+        self.assertIn(f'Missing meic in {Path(tmp).resolve()}',message)
+        self.assertIn('from --build-dir',message)
+        self.assertIn('make B=',message)
+        self.assertIn('--build-dir DIR',message)
+        self.assertIn('MEIC',message)
+
+    def test_missing_tools_are_named_with_their_directory_on_the_command_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {k:v for k,v in os.environ.items() if k not in ('MEIC','RUN','PROBE','B')}
+            env['B'] = tmp
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'verify','-'],input=json.dumps(recipe()),
+                                    capture_output=True,text=True,env=env)
+            self.assertEqual(result.returncode,1)
+            error = json.loads(result.stdout)['errors'][0]
+            self.assertEqual(error['path'],'/arguments/tools')
+            self.assertIn(f'in {Path(tmp).resolve()} (the compiler, from B={tmp})',error['message'])
+            self.assertIn('mei-asset-probe',error['message'])
+            self.assertNotIn('mei-headless',error['message'],'verify needs no runner')
+
+
+@unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
+class VerdictTests(unittest.TestCase):
+    profile = {'yaw_steps':4,'pitches':[0],'distances':[1]}
+
+    def test_the_verdict_and_the_geometry_block_agree(self):
+        from assetkit.visibility import verify
+        depth = {**self.profile,'depth':True,'perspective':True}
+        crossing = recipe() | {'nodes':[{'id':'body','op':'box','size':[2,2,2]},
+                                        {'id':'bar','op':'box','size':[3,.5,.5],'transform':{'rotate':[0,0,20]}}]}
+        report = verify(crossing,depth,compiler=COMPILER,probe=PROBE)
+        self.assertTrue(report['ok'])
+        self.assertTrue(report['geometry']['ok'],'allowed crossings do not fail the geometry block')
+        self.assertEqual(report['failures'],[])
+        self.assertTrue(report['verdict'].startswith('PASS (depth mode)'))
+        self.assertIn('surface_intersection',report['verdict'])
+        self.assertTrue(report['allowed'][0].startswith('surface_intersection: '))
+        self.assertIn('between bar and body',report['allowed'][0])
+        self.assertEqual(list(report)[:4],['ok','verdict','failures','allowed'],'the verdict leads the report')
+        report = verify(crossing_and_flush(),depth,compiler=COMPILER,probe=PROBE)
+        self.assertFalse(report['ok'])
+        self.assertFalse(report['geometry']['ok'])
+        self.assertTrue(report['verdict'].startswith('FAIL (depth mode)'))
+        self.assertTrue(report['failures'][0].startswith('geometry: coplanar_overlap: '))
+        self.assertIn('between body and cap',report['failures'][0])
+        # --geometry warn: the geometry block passes and says which codes it allowed
+        report = verify(crossing_and_flush(),{**depth,'geometry':'warn'},compiler=COMPILER,probe=PROBE)
+        self.assertTrue(report['geometry']['ok'])
+        self.assertIn('coplanar_overlap',report['geometry']['allowed_codes'])
+
+
+@unittest.skipUnless(COMPILER.exists() and RUNNER.exists(),'Needs meic and mei-headless.')
+class CameraViewTests(unittest.TestCase):
+    def test_camera_views_render_at_world_scale_with_their_cost(self):
+        from assetkit.preview import parse_camera
+        r = recipe() | {'nodes':[{'id':'car','op':'box','size':[20,3,3],'transform':{'translate':[0,1.5,0]}},
+                                 {'id':'sign','op':'box','size':[.4,.3,.05],'transform':{'translate':[9,2.5,-1.52]}}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            shots = {'cameras':[parse_camera('sign=9,2.5,-2.5:9,2.5,-1.5',0)],'parts':['sign'],'closeups':True,'upscale':2}
+            report = build(r,tmp,True,COMPILER,RUNNER,shots=shots)
+            self.assertEqual(png_pixels(Path(tmp)/'contact.png')[:2],(960,480),'the contact sheet is as before')
+            cameras = report['preview']['cameras']
+            names = [v['view'] for v in cameras['views']]
+            self.assertEqual(names,['eye_level','closeup_1','closeup_2','closeup_3','closeup_4','part_sign','sign'])
+            width,height,pixels = png_pixels(Path(tmp)/'camera_sign.png')
+            self.assertEqual((width,height),(640,480))
+            self.assertEqual(png_pixels(Path(tmp)/'cameras.png')[:2],(1280,480*4))
+            # one metre from the sign it fills the middle of the view
+            middle = pixels[(240*640+320)*3:(240*640+320)*3+3]
+            self.assertNotEqual(tuple(middle),(24,28,36))
+            for view in cameras['views']:
+                cost = view['cost']
+                self.assertGreater(cost['asset_gpu_cycles'],0,view['view'])
+                self.assertEqual(cost['gpu_cycles']-cost['asset_gpu_cycles'],cameras['baseline']['gpu_cycles'])
+                self.assertEqual(cost['gpu_frame_percent'],round(100*cost['gpu_cycles']/cameras['budgets']['gpu'],1))
+            self.assertEqual(cameras['budgets'],{'cpu':1000000,'gpu':2000000})
+            self.assertIn('cost',report['preview']['views'][0])
+            # the camera cart draws the mesh as placed: mesh_at at the origin, yaw 0
+            self.assertIn('mesh_at(ASSET_TEST, vec3(0.0, 0.0, 0.0), 0.0)',(Path(tmp)/'camera_sign.akr').read_text())
+        with tempfile.TemporaryDirectory() as tmp, self.assertRaisesRegex(AssetError,'No part'):
+            build(r,tmp,True,COMPILER,RUNNER,shots={'parts':['wheel']})
+
+    def test_preview_cli_takes_cameras_and_the_build_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cams = Path(tmp)/'shots.json'
+            cams.write_text(json.dumps([{'name':'low','eye':[0,.2,-4],'target':[0,0,0]}]))
+            env = {k:v for k,v in os.environ.items() if k not in ('MEIC','RUN','PROBE','B')}
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'preview','-','-o',str(Path(tmp)/'out'),
+                                     '--build-dir',str(COMPILER.parent),'--runner',str(RUNNER),'--cameras',str(cams),
+                                     '--camera','high=0,4,-4@0,-45','--upscale','3'],
+                                    input=json.dumps(recipe()),capture_output=True,text=True,env=env)
+            self.assertEqual(result.returncode,0,result.stdout)
+            report = json.loads(result.stdout)
+            self.assertEqual([v['view'] for v in report['preview']['cameras']['views']],['low','high'])
+            self.assertEqual(png_pixels(Path(tmp)/'out'/'camera_high.png')[:2],(960,720))
+
+
+@unittest.skipUnless(NUMPY and COMPILER.exists() and RUNNER.exists() and PROBE.exists(),
+                     'Needs NumPy, meic, mei-headless and mei-asset-probe.')
+class FailedPreviewTests(unittest.TestCase):
+    def test_a_failed_verification_keeps_renders_marked_as_failing(self):
+        from mei_assets import VerificationFailure
+        r = crossing_and_flush()
+        r['verification'] = {'required':True,'depth':True,'perspective':True,'yaw_steps':4,'pitches':[0],'distances':[1]}
+        with tempfile.TemporaryDirectory() as tmp:
+            build(recipe(),tmp)
+            previous = (Path(tmp)/'test.bin').read_bytes()
+            with self.assertRaises(VerificationFailure) as caught:
+                build(r,tmp,True,COMPILER,RUNNER,probe=PROBE,shots={'closeups':True,'upscale':1})
+            message = str(caught.exception)
+            self.assertIn('coplanar_overlap',message)
+            self.assertIn('between body and cap',message)
+            self.assertIn('verification-failed/preview/contact.png',message)
+            self.assertEqual((Path(tmp)/'test.bin').read_bytes(),previous,'nothing exported')
+            renders = Path(tmp)/'verification-failed'/'preview'
+            for name in ('contact.png','view_front.png','cameras.png','camera_eye_level.png'):
+                self.assertTrue((renders/name).is_file(),name)
+            self.assertFalse((Path(tmp)/'contact.png').exists())
+            failed = json.loads((Path(tmp)/'verification.failed.json').read_text())
+            self.assertTrue(failed['preview']['failing'])
+            self.assertTrue(failed['preview']['cameras']['failing'])
+            # the banner: red text near the top left of every render
+            width,height,pixels = png_pixels(renders/'view_front.png')
+            banner = [pixels[(y*width+x)*3:(y*width+x)*3+3] for y in range(18,30) for x in range(8,160)]
+            self.assertTrue(any(p[0] > 200 and p[1] < 100 and p[2] < 100 for p in banner),'the VERIFICATION FAILED banner')
+            # the CLI leads its failure output with the errors
+            result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'preview','-','-o',tmp,
+                                     '--compiler',str(COMPILER),'--runner',str(RUNNER),'--probe',str(PROBE)],
+                                    input=json.dumps(r),capture_output=True,text=True)
+            self.assertEqual(result.returncode,1)
+            self.assertEqual(list(json.loads(result.stdout))[:3],['ok','errors','verdict'])
+
+
+@unittest.skipUnless(COMPILER.exists() and RUNNER.exists(),'Needs meic and mei-headless.')
+class ConventionTests(unittest.TestCase):
+    """The orientation conventions of docs/ASSETKIT.md's authoring rules, checked on renders."""
+    GRID = {'texels':['00001111']*4+['22223333']*4,'colors':['#ff0000','#00ff00','#0000ff','#ffffff']}
+    COLOURS = {(255,0,0):'red',(0,255,0):'green',(0,0,255):'blue',(255,255,255):'white',(24,28,36):'none'}
+
+    def look(self, nodes, views, points, materials=None):
+        """{view: {label: colour name}} at the given screen points of each camera view."""
+        from assetkit.preview import camera
+        r = recipe(None,lighting={'bake':False},materials=materials or {'default':{'color':'#808080'}}) | {'nodes':nodes}
+        out = {}
+        with tempfile.TemporaryDirectory() as tmp:
+            cams = [camera(name,eye,target) for name,(eye,target) in views.items()]
+            build(r,tmp,True,COMPILER,RUNNER,shots={'cameras':cams,'upscale':1})
+            for name in views:
+                width,_,pixels = png_pixels(Path(tmp)/f'camera_{name}.png')
+                out[name] = {}
+                for label,(x,y) in points.items():
+                    p = tuple(pixels[(y*width+x)*3:(y*width+x)*3+3])
+                    best = min(self.COLOURS,key=lambda c:sum((a-b)**2 for a,b in zip(c,p)))
+                    out[name][label] = self.COLOURS[best] if sum((a-b)**2 for a,b in zip(best,p)) < 3600 else 'grey'
+        return out
+
+    FRONT = {'front':([0,0,-3],[0,0,0])}
+    QUADRANTS = {'TL':(140,100),'TR':(180,100),'BL':(140,140),'BR':(180,140)}
+    CENTRE = {'C':(160,120)}
+
+    def textured(self, projection, **extra):
+        return {'default':{'color':'#808080','texture':{**self.GRID,'projection':projection,**extra}}}
+
+    def test_box_sides_and_facing(self):
+        views = {'front':([0,0,-3],[0,0,0]),'back':([0,0,3],[0,0,0])}
+        seen = self.look([{'id':'b','op':'box','size':[1,1,1],'open':['back']}],views,self.CENTRE)
+        self.assertEqual((seen['front']['C'],seen['back']['C']),('none','grey'),'back is -Z: the side the front camera sees')
+        seen = self.look([{'id':'b','op':'box','size':[1,1,1],'open':['front']}],views,self.CENTRE)
+        self.assertEqual((seen['front']['C'],seen['back']['C']),('grey','none'))
+
+    def test_rotation_direction(self):
+        mats = {'default':{'color':'#808080'},'red':{'color':'#ff0000'}}
+        def marker(at, rotate):
+            return [{'id':'g','op':'group','transform':{'rotate':rotate},'children':[
+                {'id':'core','op':'box','size':[.4,.4,.4]},
+                {'id':'m','op':'box','size':[.3,.3,.3],'material':'red','transform':{'translate':at}}]}]
+        places = {'up':(160,60),'down':(160,180),'left':(100,120),'right':(220,120)}
+        def where(seen):
+            return [k for k,v in seen.items() if v == 'red']
+        from assetkit.preview import camera
+        top = {'top':([0,3,0],[0,0,.0001])}            # looking down: +X right, +Z up the screen
+        self.assertEqual(where(self.look(marker([1,0,0],[0,0,0]),top,places,mats)['top']),['right'])
+        self.assertEqual(where(self.look(marker([0,0,1],[0,0,0]),top,places,mats)['top']),['up'])
+        # [0, 90, 0]: +X to -Z, clockwise in the top view
+        self.assertEqual(where(self.look(marker([1,0,0],[0,90,0]),top,places,mats)['top']),['down'])
+        # [0, 0, 90]: +X to +Y, counterclockwise in the front view
+        self.assertEqual(where(self.look(marker([1,0,0],[0,0,90]),self.FRONT,places,mats)['front']),['up'])
+        # [90, 0, 0]: +Y to +Z; the right camera (on +X) has +Z on its right
+        self.assertEqual(where(self.look(marker([0,1,0],[90,0,0]),{'right':([3,0,0],[0,0,0])},places,mats)['right']),['right'])
+
+    def test_winding_and_fit(self):
+        quad = {'id':'q','op':'mesh','vertices':[[-1,-1,0],[1,-1,0],[1,1,0],[-1,1,0]],'faces':[[3,2,1,0]]}
+        seen = self.look([quad],self.FRONT,self.QUADRANTS,self.textured('fit'))['front']
+        self.assertEqual(seen,{'TL':'red','TR':'green','BL':'blue','BR':'white'})
+        seen = self.look([{**quad,'faces':[[0,1,2,3]]}],self.FRONT,self.CENTRE)['front']
+        self.assertEqual(seen['C'],'none','listed counterclockwise on screen: facing away, culled')
+        # on a triangle, fit spans the bounding rectangle: the corner outside is not drawn
+        tri = {'id':'t','op':'extrude','points':[[-1,-1],[1,-1],[-1,1]],'depth':.2}
+        seen = self.look([tri],self.FRONT,{'TL':(103,84),'TR':(190,90),'BL':(130,150),'BR':(185,150)},self.textured('fit'))['front']
+        self.assertEqual(seen,{'TL':'red','TR':'none','BL':'blue','BR':'white'})
+
+    def test_projection_origins(self):
+        quad = {'id':'q','op':'mesh','vertices':[[-1,-1,0],[1,-1,0],[1,1,0],[-1,1,0]],'faces':[[3,2,1,0]]}
+        # planar: a repeat's top-left corner at the primitive's origin
+        seen = self.look([quad],self.FRONT,self.QUADRANTS,self.textured('planar',scale=[2,2]))['front']
+        self.assertEqual(seen,{'TL':'white','TR':'blue','BL':'green','BR':'red'})
+        # box: every side read from outside
+        views = {'front':([0,0,-3],[0,0,0]),'right':([3,0,0],[0,0,0]),'top':([0,3,0],[0,0,.0001]),'back':([0,0,3],[0,0,0])}
+        seen = self.look([{'id':'b','op':'box','size':[1,1,1]}],views,self.QUADRANTS,self.textured('box',offset=[.5,.5]))
+        for name in views:
+            self.assertEqual(seen[name],{'TL':'red','TR':'green','BL':'blue','BR':'white'},name)
+        # cylindrical: u 0 on the -Z meridian, growing toward +X; v 0 at y 0, growing down
+        drum = {'id':'c','op':'cylinder','radius':.5,'height':1,'segments':24,'caps':False}
+        seen = self.look([drum],self.FRONT,self.QUADRANTS,self.textured('cylindrical',scale=[math.pi,1]))['front']
+        self.assertEqual(seen,{'TL':'white','TR':'blue','BL':'green','BR':'red'})
+        # disc about Y: seen from above, u 0 at -X and v 0 at +Z
+        disc = {'id':'c','op':'cylinder','radius':1,'height':.1,'segments':24}
+        seen = self.look([disc],{'top':([0,3,0],[0,0,.0001])},self.QUADRANTS,self.textured('disc'))['top']
+        self.assertEqual(seen,{'TL':'red','TR':'green','BL':'blue','BR':'white'})
 
 
 if __name__ == '__main__':

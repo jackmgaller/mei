@@ -5,8 +5,10 @@ Run `python3 tools/mei_assets.py schema` for the complete recipe contract, or
 read docs/ASSETKIT.md. All command results and errors are JSON on stdout.
 """
 import json
+import os
 from pathlib import Path
 import re
+import shutil
 import sys
 
 from kitcore import jsonio, output as staged
@@ -14,7 +16,7 @@ from kitcore.cli import parser_class
 from assetkit.compiler import (AssetError, compile_recipe, native_bytes,
                                editor_project, obj_text, import_obj, import_source,
                                material_manifest, palette_bytes, texture_outputs, SWATCH)
-from assetkit.preview import source, render
+from assetkit.preview import source, render, parse_camera, cameras_file
 from assetkit.schema import SCHEMA
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,9 +73,103 @@ def artifacts(recipe, mesh, materials, report, drawn=None):
 
 
 class VerificationFailure(AssetError):
-    def __init__(self, report):
-        super().__init__('/verification','Export blocked by verification. Inspect the face/camera witnesses in verification.failed.json or run verify for a diagnostic sweep.')
+    def __init__(self, report, renders=None):
+        failures=report.get('failures',[])
+        listed='; '.join(failures[:6])+(f'; and {len(failures)-6} more' if len(failures)>6 else '')
+        where=(f' Failing preview renders (not exported): {renders}.' if renders else
+               ' Run preview to see failing renders of the model.')
+        super().__init__('/verification',f'Export blocked by verification: {listed or report.get("verdict","failed")}. '
+                         f'The full report is verification.failed.json.{where}')
         self.report=report
+
+
+TOOLS = (('compiler','MEIC','meic'),('runner','RUN','mei-headless'),('probe','PROBE','mei-asset-probe'))
+
+
+def tool_paths(args, environ=None):
+    """{tool: (path, where it came from)} for the native tools a command takes, each from the
+    first of: its own option (--compiler, --runner, --probe), --build-dir DIR, its environment
+    variable (MEIC, RUN, PROBE, as the test suites read them), $B (make's build directory,
+    relative to the repository), build/."""
+    environ = os.environ if environ is None else environ
+    out = {}
+    for key,variable,executable in TOOLS:
+        if not hasattr(args,key): continue
+        given,build_dir = getattr(args,key),getattr(args,'build_dir',None)
+        if given is not None: path,how = given,f'--{key} {given}'
+        elif build_dir is not None: path,how = Path(build_dir)/executable,f'--build-dir {build_dir}'
+        elif environ.get(variable): path,how = Path(environ[variable]),f'{variable}={environ[variable]}'
+        elif environ.get('B'): path,how = ROOT/environ['B']/executable,f'B={environ["B"]}'
+        else: path,how = ROOT/'build'/executable,'the default, build/'
+        out[key] = (path.resolve(),how)
+    return out
+
+
+def require_tools(tools, keys):
+    """An error naming each missing tool, the directory looked in, how it was chosen, the make
+    command that builds it and how to point the kit elsewhere."""
+    missing = [(key,*tools[key]) for key in dict.fromkeys(keys) if not tools[key][0].is_file()]
+    if not missing: return
+    lines = []
+    for key,path,how in missing:
+        directory = path.parent
+        try: shown = directory.relative_to(ROOT)
+        except ValueError: shown = directory
+        lines.append(f'Missing {path.name} in {directory} (the {key}, from {how}): build it with '
+                     f'make B={shown} {shown}/{path.name}')
+    raise AssetError('/arguments/tools','. '.join(lines)+'. To use another build directory, pass --build-dir DIR '
+                     '(the directory make B=DIR builds into) or set B=DIR, or MEIC, RUN and PROBE for single tools, '
+                     'or --compiler, --runner and --probe.')
+
+
+def flush_contacts(mesh):
+    """inspect's check for flush faces before rendering: duplicate faces and coplanar overlaps,
+    which the Asset Checker fails in either mode, by part pair. Needs NumPy; without it, says so."""
+    from assetkit.geometry_audit import geometry_audit
+    try:
+        audit = geometry_audit(mesh,crossings=False)
+    except AssetError as error:
+        return {'checked':False,'message':str(error)}
+    result = {'checked':True,'count':len(audit['findings']),'by_code':audit['failing'],'summary':audit['summary']}
+    if audit['findings']:
+        result['hint'] = ('Faces of two parts lie flush in one plane: the Asset Checker fails these in either mode. '
+                          'Sink one part 1-2 cm into its neighbour, or open the hidden face (a box\'s open sides).')
+    return result
+
+
+def camera_views(shots, report):
+    """The world-scale views a build renders: --closeups, then --part, --cameras and --camera."""
+    from assetkit.preview import closeups, part_camera
+    if not shots: return []
+    views=closeups(report['bounds']) if shots.get('closeups') else []
+    views+=[part_camera(report['parts'],part) for part in shots.get('parts',[])]
+    views+=list(shots.get('cameras',[]))
+    names=[v['name'] for v in views]
+    if len(set(names))!=len(names):
+        raise AssetError('/arguments/camera',f'Camera names must differ: {", ".join(sorted({n for n in names if names.count(n)>1}))}.')
+    return views
+
+
+def previews(directory, recipe, mesh, report, compiler, runner, drawn, shots, views, failing=False):
+    """The six fitted views and contact sheet, and the world-scale camera views (camera_views()),
+    rendered in directory (which holds the built asset)."""
+    from assetkit.preview import render_cameras
+    load=bool(mesh.palette or mesh.textures)
+    depth,perspective=drawn_with(recipe,mesh,drawn)
+    result=render(directory,recipe['name'],report['bounds'],compiler,runner,load,depth,perspective,failing)
+    if views:
+        # camera views draw as a game does and the Asset Checker judges: with the depth buffer
+        # also when only the recipe's policy says so (the six views keep their earlier files)
+        policy=recipe.get('verification',{})
+        result['cameras']=render_cameras(directory,recipe['name'],report['bounds'],views,compiler,runner,load,
+                                         depth or policy.get('depth',False),
+                                         perspective or policy.get('perspective',False) or None,
+                                         (shots or {}).get('upscale',2),failing)
+    return result
+
+
+def preview_files(directory):
+    return [p for pattern in ('view_*.png','camera_*.png','contact.png','cameras.png') for p in sorted(Path(directory).glob(pattern))]
 
 
 def folder(input_path):
@@ -82,11 +178,15 @@ def folder(input_path):
 
 
 def build(recipe, directory, preview=False, compiler=None, runner=None, input_path=None, verification=False, probe=None,
-          drawn=None):
+          drawn=None, shots=None):
     """drawn: {'depth': True, 'perspective': True} or part of it (build/preview --depth and
     --perspective): the asset is drawn so, as in a world whose runtime says so. Its preview draws
-    so, and the Asset Checker judges it so (where the recipe's policy does not set them)."""
+    so, and the Asset Checker judges it so (where the recipe's policy does not set them).
+    shots: the preview's world-scale views, {'cameras': [camera()...], 'parts': [ids],
+    'closeups': bool, 'upscale': n}. When verification fails and a preview was asked for, the
+    previews are still rendered, marked as failing, into verification-failed/preview/."""
     mesh,materials,report = compile_recipe(recipe,folder(input_path))
+    views = camera_views(shots,report) if preview else []     # named parts checked before any work
     files = artifacts(recipe,mesh,materials,report,drawn)
     directory = Path(directory).resolve()
     if input_path and input_path != '-':
@@ -114,13 +214,31 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
                     for row in checked['views']:
                         if 'image' in row:row['image']='verification-failed/'+row['image']
                     checked['images']=['verification-failed/'+name for name in checked['images']]
+                renders=None
+                if preview:
+                    # the model as it stands, so that it can be seen while being repaired
+                    renders_dir=directory/'verification-failed'/'preview'
+                    shutil.rmtree(renders_dir,ignore_errors=True)
+                    try:
+                        shown=previews(stage,recipe,mesh,report,compiler,runner,drawn,shots,views,failing=True)
+                    except AssetError as error:
+                        checked['preview']={'error':str(error)}
+                    else:
+                        renders_dir.mkdir(parents=True)
+                        for path in preview_files(stage):path.replace(renders_dir/path.name)
+                        shown['contact']=str(renders_dir/'contact.png')
+                        if 'cameras' in shown:shown['cameras']['contact']=str(renders_dir/'cameras.png')
+                        shown['directory']=str(renders_dir)
+                        checked['preview']=shown
+                        renders=shown['contact']+(' and '+shown['cameras']['contact'] if 'cameras' in shown else '')
                 failure.write_text(json.dumps(checked,indent=2)+'\n')
-                raise VerificationFailure(checked)
+                raise VerificationFailure(checked,renders)
             report['verification']=checked
         if preview:
-            report['preview'] = render(stage,recipe['name'],report['bounds'],compiler,runner,bool(mesh.palette or mesh.textures),
-                                       *drawn_with(recipe,mesh,drawn))
+            report['preview'] = previews(stage,recipe,mesh,report,compiler,runner,drawn,shots,views)
             report['preview']['contact'] = str(directory/'contact.png')
+            if 'cameras' in report['preview']:
+                report['preview']['cameras']['contact'] = str(directory/'cameras.png')
         (stage/'report.json').write_text(json.dumps(report,indent=2)+'\n')
         generated = sorted(p.name for p in stage.iterdir())
         if input_path and input_path != '-' and any(directory/name == Path(input_path).resolve() for name in generated):
@@ -193,19 +311,28 @@ def parser():
                                       'verify':'Audit geometry and native triangle visibility across a camera sweep.'}[name])
         cmd.add_argument('recipe',help='Recipe JSON path, or - to read stdin.')
         cmd.add_argument('--strict',action='store_true',help='Treat topology warnings as errors.')
+        if name in ('build','preview','verify'):
+            cmd.add_argument('--build-dir',type=Path,help='The Mei build directory with meic, mei-headless and mei-asset-probe '
+                             '(make B=DIR). Default: $MEIC, $RUN and $PROBE for each tool, else $B, else build/.')
+            cmd.add_argument('--compiler',type=Path,help='meic to use (overrides --build-dir).')
+            cmd.add_argument('--probe',type=Path,help='mei-asset-probe to use (overrides --build-dir).')
         if name in ('build','preview'):
             cmd.add_argument('-o','--output',required=True,help='Dedicated generated-output directory.')
             if name == 'build': cmd.add_argument('--preview',action='store_true')
-            cmd.add_argument('--compiler',type=Path,default=ROOT/'build'/'meic')
-            cmd.add_argument('--runner',type=Path,default=ROOT/'build'/'mei-headless')
+            cmd.add_argument('--runner',type=Path,help='mei-headless to use (overrides --build-dir).')
             cmd.add_argument('--verify',action='store_true',help='Block export on geometry or triangle-visibility failures; also enforced by recipe verification.required.')
-            cmd.add_argument('--probe',type=Path,default=ROOT/'build'/'mei-asset-probe')
+            cmd.add_argument('--camera',action='append',default=[],metavar='SPEC',
+                             help='A world-scale view: NAME=EX,EY,EZ:TX,TY,TZ (eye and target) or NAME=EX,EY,EZ@YAW,PITCH '
+                                  '(degrees; yaw 0 looks along +Z, positive toward +X; positive pitch looks up). Repeatable.')
+            cmd.add_argument('--cameras',type=Path,metavar='FILE',
+                             help='A JSON list of views: {"name", "eye", "target"} or {"name", "eye", "yaw", "pitch"}.')
+            cmd.add_argument('--part',action='append',default=[],metavar='ID',help='A world-scale view framing this part (an id in inspect\'s parts). Repeatable.')
+            cmd.add_argument('--closeups',action='store_true',help='Automatic world-scale views: eye_level, and close-ups along a long asset.')
+            cmd.add_argument('--upscale',type=int,default=2,choices=[1,2,3,4],help='Whole-number scale of the camera views\' images (default 2: 640 x 480).')
             cmd.add_argument('--depth',action='store_true',help='The asset is drawn with the depth buffer, as in a world whose runtime says so: preview so, and verify in depth mode where the recipe\'s policy does not set depth.')
             cmd.add_argument('--perspective',action='store_true',help='The asset is drawn with perspective-correct texturing (preview so; policy perspective where the recipe does not set it).')
         elif name=='verify':
             cmd.add_argument('-o','--output',help='Save verification.json and triangle-ID difference images.')
-            cmd.add_argument('--compiler',type=Path,default=ROOT/'build'/'meic')
-            cmd.add_argument('--probe',type=Path,default=ROOT/'build'/'mei-asset-probe')
             cmd.add_argument('--yaw-steps',type=int)
             cmd.add_argument('--pitches',help='Comma-separated camera pitches in radians; use --pitches=-0.35,0,0.35.')
             cmd.add_argument('--distances',help='Comma-separated multipliers of the fitted camera distance.')
@@ -259,15 +386,27 @@ def main(argv=None):
                     'warnings':['Geometry only: OBJ materials, UVs and supplied normals are not imported. Assign recipe materials before building.']})
         else:
             recipe = load(args.recipe)
-            _,_,report = compile_recipe(recipe,folder(args.recipe))
+            mesh,_,report = compile_recipe(recipe,folder(args.recipe))
             if args.strict and report['warnings']:
                 output(dict(report,ok=False,errors=[{'path':'/nodes','message':'Topology warnings rejected by --strict.'}]))
                 return 1
+            if args.command == 'inspect':
+                report['flush_contacts'] = flush_contacts(mesh)
+            tools = tool_paths(args)
             if args.command in ('build','preview'):
                 drawn = {k:True for k in ('depth','perspective') if getattr(args,k)}
-                report = build(recipe,args.output,args.command == 'preview' or args.preview,
-                               args.compiler.resolve(),args.runner.resolve(),args.recipe,args.verify,args.probe.resolve(),drawn)
+                preview = args.command == 'preview' or args.preview
+                policy = recipe.get('verification')
+                checking = args.verify or (policy is not None and policy.get('required',True))
+                require_tools(tools,(['compiler','runner'] if preview else [])+(['compiler','probe'] if checking else []))
+                shots = {'cameras':[parse_camera(text,k) for k,text in enumerate(args.camera)],'parts':args.part,
+                         'closeups':args.closeups,'upscale':args.upscale}
+                if args.cameras:
+                    shots['cameras'] = cameras_file(load(str(args.cameras)))+shots['cameras']
+                report = build(recipe,args.output,preview,tools['compiler'][0],tools['runner'][0],args.recipe,args.verify,
+                               tools['probe'][0],drawn,shots)
             elif args.command=='verify':
+                require_tools(tools,['compiler','probe'])
                 from assetkit.visibility import verify
                 profile={}
                 if args.yaw_steps is not None:profile['yaw_steps']=args.yaw_steps
@@ -283,12 +422,14 @@ def main(argv=None):
                     if getattr(args,key) is not None:profile[key]=[float(n) for n in getattr(args,key).split(',')]
                 if args.output and args.recipe!='-' and (Path(args.output).resolve()/'verification.json')==Path(args.recipe).resolve():
                     raise AssetError('/output','Verification report would overwrite the source recipe.')
-                report=verify(recipe,profile,args.output,args.compiler.resolve(),args.probe.resolve(),folder(args.recipe))
+                report=verify(recipe,profile,args.output,tools['compiler'][0],tools['probe'][0],folder(args.recipe))
             output(report)
             if not report['ok']:return 1
         return 0
     except (AssetError,OSError,ValueError,RecursionError) as error:
-        output({**getattr(error,'report',{}),'ok':False,'errors':[{'path':getattr(error,'path','/input'),'message':str(error)}]})
+        # the errors first, so that the reason leads a long failure report
+        output({'ok':False,'errors':[{'path':getattr(error,'path','/input'),'message':str(error)}],
+                **{k:v for k,v in getattr(error,'report',{}).items() if k not in ('ok','errors')}})
         return 1
 
 

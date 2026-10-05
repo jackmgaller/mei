@@ -61,7 +61,11 @@ rather than failed.
 **Use a private build directory** when you are not the only one working in the checkout:
 `make B=build-mine test` builds everything into `build-mine/` (ignored by git, like `build/`).
 Pass the tools to scripts the same way, for example
-`MEIC=build-mine/meic RUN=build-mine/mei-headless tests/run_lang_tests.sh planes`.
+`MEIC=build-mine/meic RUN=build-mine/mei-headless tests/run_lang_tests.sh planes`. The Asset
+Kit's `verify`, `preview` and `build` take `--build-dir build-mine`, or read `B=build-mine` (or
+`MEIC`, `RUN` and `PROBE`) from the environment
+([ASSETKIT.md](docs/ASSETKIT.md#native-tools)):
+`python3 tools/mei_assets.py preview model.asset.json -o build-mine/assets/model --build-dir build-mine --closeups`.
 
 Mei Demo, Sound Lab and World Viewer are built only on request (`make build/carts/demo.mei
 build/carts/soundlab.mei build/carts/worldview.mei`); `make` and `make web` leave them out. The

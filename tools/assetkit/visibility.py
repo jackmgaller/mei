@@ -23,7 +23,7 @@ import tempfile
 from kitcore import depth as DEPTH
 from .compiler import compile_recipe, native_bytes
 from .geometry import AssetError
-from .geometry_audit import numpy, geometry_audit, face_ref
+from .geometry_audit import numpy, geometry_audit, face_ref, CODES
 from .preview import source, camera_numbers, png_bytes
 from .views import cameras, cutout_texels, select_views
 from .schema import validate, VERIFICATION
@@ -32,6 +32,25 @@ ROOT=Path(__file__).resolve().parents[2]
 DEFAULT_PROFILE={'yaw_steps':24,'pitches':[-.35,0,.35],'distances':[1,1.5],'far':100,'geometry':'error','edge_margin':1.0}
 DEPTH_EPSILON=2/65536
 DEPTH_VIEWS=16                   # the views judged in depth mode (views.py)
+ALLOWED_LINES=12                 # the report's `allowed` lines; geometry.allowed has every part pair
+
+
+def allowed_codes(policy):
+    """The geometry codes the policy does not fail: all with geometry 'warn'; surface crossings
+    and T-junctions in depth mode; none otherwise."""
+    if policy.get('geometry')=='warn': return CODES
+    if policy.get('depth'): return ('surface_intersection','t_junction')
+    return ()
+
+
+def verdict(ok, failures, geometry, depth, policy):
+    """One line saying what decided the result."""
+    mode='depth mode' if depth else 'ordering-table mode'
+    if policy.get('geometry')=='warn': mode+=', geometry warn'
+    allowed=sum(row['count'] for row in geometry['allowed'])
+    tail=f"; {allowed} findings allowed in {mode} ({', '.join(geometry['allowed_codes'])})" if allowed else ''
+    if ok: return f'PASS ({mode}){tail}'
+    return f"FAIL ({mode}): {len(failures)} problem{'s' if len(failures)!=1 else ''}, see failures{tail}"
 
 
 def identity_mesh(binary, cutouts=(), solid=False):
@@ -352,14 +371,17 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
     np=numpy()
     compiler=Path(compiler or ROOT/'build/meic').resolve();probe=Path(probe or ROOT/'build/mei-asset-probe').resolve()
     for path in (compiler,probe):
-        if not path.is_file():raise AssetError('/verification/native',f'Missing {path}. Run make build/meic build/mei-asset-probe.')
+        if not path.is_file():
+            raise AssetError('/verification/native',f'Missing {path.name} in {path.parent}. Build it with make (make B=DIR '
+                             'for a build directory of your own), or point the kit at your build directory with '
+                             '--build-dir DIR (or B, MEIC and PROBE in the environment).')
     mesh,materials,base=compile_recipe(recipe,folder)
     policy={**DEFAULT_PROFILE,**recipe.get('verification',{}),**(profile or {})}
     policy.pop('required',None)
     validate(policy,VERIFICATION,'/verification')
     depth,perspective=policy.get('depth',False),policy.get('perspective',False)
     if depth:policy.setdefault('depth_views',DEPTH_VIEWS)
-    geometry=geometry_audit(mesh,t_junctions=depth)
+    geometry=geometry_audit(mesh,t_junctions=depth,allowed=allowed_codes(policy))
     original=native_bytes(mesh,materials,recipe.get('lighting',{}))
     # Textured faces are judged as solid faces, but those of textures with holes (cutouts), whose
     # coverage the reference takes from the real texels.
@@ -440,15 +462,30 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
             views.append(row)
     totals={key:sum(v[key] for v in views) for key in ('tested_pixels','undecided_pixels','undecided_wrong_pixels','wrong_pixels','coverage_errors','depth_ties')}
     cycles=sum(bool(v['ordering_graph']['cycle']) for v in views)
-    geometry_ok=geometry['ok'] or policy['geometry']=='warn'
-    if depth:
-        # the depth test draws crossing surfaces right; duplicates and coplanar overlaps z-fight
-        geometry_ok=geometry_ok or not set(geometry['counts'])-{'surface_intersection','t_junction'}
+    # geometry['ok'] is the policy's verdict: in depth mode crossing surfaces and T-junctions are
+    # allowed (the depth test draws crossings right; duplicates and coplanar overlaps z-fight),
+    # and with geometry 'warn' every code is
+    geometry_ok=geometry['ok']
     # coverage is judged at every covered pixel: an asset all of whose pixels lie within the edge
     # margin (a thin pole) passes on coverage alone, and its tested_pixels say so
     covered=totals['tested_pixels']+totals['undecided_pixels']
     ok=geometry_ok and covered>0 and not totals['wrong_pixels'] and not totals['coverage_errors'] and not cycles
-    result={'ok':ok,'format':'mei-visibility-report','version':1,'name':name,'profile':policy,
+    failures=['geometry: '+line for line in geometry['summary']]
+    if not covered:failures.append('views: no covered pixels in any view (the asset is not drawn)')
+    if totals['wrong_pixels']:
+        failures.append(f"views: {totals['wrong_pixels']} wrong-depth pixels in "
+                        f"{sum(1 for v in views if v['wrong_pixels'])} views (see views[].issues)")
+    if totals['coverage_errors']:
+        failures.append(f"views: {totals['coverage_errors']} coverage errors in "
+                        f"{sum(1 for v in views if v['coverage_errors'])} views")
+    if cycles:failures.append(f'views: ordering cycles in {cycles} views (see views[].ordering_graph)')
+    allowed=[f"{row['code']}: {row['count']} {'within '+row['parts'][0] if row['parts'][0]==row['parts'][1] else 'between '+' and '.join(row['parts'])}"
+             for row in geometry['allowed']]
+    if len(allowed)>ALLOWED_LINES:
+        allowed=allowed[:ALLOWED_LINES]+[f'... and {len(allowed)-ALLOWED_LINES} more part pairs (geometry.allowed)']
+    result={'ok':ok,'verdict':verdict(ok,failures,geometry,depth,policy),'failures':failures,
+            'allowed':allowed,
+            'format':'mei-visibility-report','version':1,'name':name,'profile':policy,
             'recipe_sha256':base['recipe_sha256'],'mesh_sha256':hashlib.sha256(original).hexdigest(),
             'depth_epsilon':DEPTH_EPSILON,'geometry':geometry,'totals':{**totals,'views':len(views),'cyclic_views':cycles},
             'faces':len(mesh.faces),'observed_faces':len(visible),'unobserved_faces':len(mesh.faces)-len(visible),
@@ -468,7 +505,10 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
         for k in range(1,len(recipe['lod'].get('levels',[]))+1):
             level=verify(level_recipe(recipe,k),profile,root/f'lod{k}' if root else None,compiler,probe,folder)
             result['lod'].append({'level':k,'ok':level['ok'],'faces':level['faces'],'totals':level['totals'],
-                                  'geometry_ok':level['geometry']['ok'],'mesh_sha256':level['mesh_sha256']})
+                                  'geometry_ok':level['geometry']['ok'],'failures':level['failures'],
+                                  'mesh_sha256':level['mesh_sha256']})
             result['ok']=result['ok'] and level['ok']
+            result['failures']+=[f'lod {k} {line}' for line in level['failures']]
+        result['verdict']=verdict(result['ok'],result['failures'],geometry,depth,policy)
     if root:(root/'verification.json').write_text(json.dumps(result,indent=2)+'\n')
     return result
