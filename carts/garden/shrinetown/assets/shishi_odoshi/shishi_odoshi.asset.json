@@ -1,0 +1,1128 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "shishi_odoshi",
+ "budget": {
+  "vertices": 150,
+  "triangles": 150
+ },
+ "materials": {
+  "bamboo": {
+   "color": "#7fae5a",
+   "texture": {
+    "texels": [
+     "1121112111211121",
+     "1121112111211121",
+     "1121112111211121",
+     "1121112111211121",
+     "1121112111211121",
+     "1121112111211121",
+     "1121112111211121",
+     "1121112111211121",
+     "1121112111211121",
+     "1121112111211121",
+     "1121112111211121",
+     "1121112111211121",
+     "1121112111211121",
+     "3333333333333333",
+     "4444444444444444",
+     "1121112111211121"
+    ],
+    "colors": [
+     "#4a7a3c",
+     "#80b05c",
+     "#6a9c4a",
+     "#a8cc7a",
+     "#47713a"
+    ],
+    "projection": "cylindrical",
+    "scale": [
+     0.28,
+     0.42
+    ]
+   }
+  },
+  "bamboo_in": {
+   "color": "#c9d49a",
+   "double_sided": true
+  },
+  "node": {
+   "color": "#4a7a3c"
+  },
+  "dark": {
+   "color": "#2c3a2a"
+  },
+  "stone": {
+   "color": "#8d8a84",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#8f8c85",
+     "#a9a59b",
+     "#6e6c68"
+    ],
+    "size": 16,
+    "params": {
+     "density": 0.3,
+     "seed": 3
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "gravel": {
+   "color": "#cfc8b8",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#d6cfbd",
+     "#c2baa6"
+    ],
+    "params": {
+     "count": 8,
+     "axis": "v"
+    },
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "water": {
+   "color": "#7cc6e6"
+  },
+  "rope": {
+   "color": "#5b4429"
+  },
+  "frog": {
+   "color": "#6bb25a"
+  },
+  "frog_eye": {
+   "color": "#f2ecd0"
+  },
+  "pupil": {
+   "color": "#1d1d1d"
+  },
+  "leaves": {
+   "color": "#6a9c4a",
+   "double_sided": true,
+   "texture": {
+    "image": "art/leaves.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "gravel",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.75,
+     0.0,
+     -0.3
+    ],
+    [
+     0.75,
+     0.0,
+     -0.3
+    ],
+    [
+     0.75,
+     0.0,
+     0.3
+    ],
+    [
+     -0.75,
+     0.0,
+     0.3
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "material": "gravel"
+  },
+  {
+   "id": "basin",
+   "op": "lathe",
+   "segments": 6,
+   "caps": false,
+   "profile": [
+    [
+     0.26,
+     0.0
+    ],
+    [
+     0.27,
+     0.26
+    ],
+    [
+     0.0,
+     0.262
+    ]
+   ],
+   "material": "stone",
+   "transform": {
+    "translate": [
+     -0.5,
+     0.075,
+     0.02
+    ]
+   }
+  },
+  {
+   "id": "basin_water",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.2,
+     0.0,
+     0.0
+    ],
+    [
+     0.1,
+     0.0,
+     0.1732
+    ],
+    [
+     -0.1,
+     0.0,
+     0.1732
+    ],
+    [
+     -0.2,
+     0.0,
+     0.0
+    ],
+    [
+     -0.1,
+     0.0,
+     -0.1732
+    ],
+    [
+     0.1,
+     0.0,
+     -0.1732
+    ]
+   ],
+   "faces": [
+    [
+     5,
+     4,
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "material": "water",
+   "transform": {
+    "translate": [
+     -0.5,
+     0.375,
+     0.02
+    ]
+   }
+  },
+  {
+   "id": "tube",
+   "op": "group",
+   "children": [
+    {
+     "id": "wall",
+     "op": "cylinder",
+     "radius": 0.055,
+     "height": 0.9,
+     "segments": 6,
+     "caps": false,
+     "material": "bamboo",
+     "transform": {}
+    },
+    {
+     "id": "tail_cap",
+     "op": "mesh",
+     "vertices": [
+      [
+       0.055,
+       -0.45,
+       0.0
+      ],
+      [
+       0.0275,
+       -0.45,
+       0.0476
+      ],
+      [
+       -0.0275,
+       -0.45,
+       0.0476
+      ],
+      [
+       -0.055,
+       -0.45,
+       0.0
+      ],
+      [
+       -0.0275,
+       -0.45,
+       -0.0476
+      ],
+      [
+       0.0275,
+       -0.45,
+       -0.0476
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ]
+     ],
+     "material": "node"
+    },
+    {
+     "id": "inside",
+     "op": "mesh",
+     "vertices": [
+      [
+       0.052,
+       0.31,
+       0.0
+      ],
+      [
+       0.026,
+       0.31,
+       0.045
+      ],
+      [
+       -0.026,
+       0.31,
+       0.045
+      ],
+      [
+       -0.052,
+       0.31,
+       0.0
+      ],
+      [
+       -0.026,
+       0.31,
+       -0.045
+      ],
+      [
+       0.026,
+       0.31,
+       -0.045
+      ]
+     ],
+     "faces": [
+      [
+       5,
+       4,
+       3,
+       2,
+       1,
+       0
+      ]
+     ],
+     "material": "bamboo_in"
+    }
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     62
+    ],
+    "translate": [
+     0.0803,
+     0.5411,
+     0
+    ]
+   }
+  },
+  {
+   "id": "strike_stone",
+   "op": "sphere",
+   "radius": 0.1,
+   "rings": 2,
+   "segments": 5,
+   "material": "stone",
+   "transform": {
+    "scale": [
+     1.3,
+     0.85,
+     1.1
+    ],
+    "translate": [
+     0.5076,
+     0.2,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "upright_front",
+   "op": "box",
+   "size": [
+    0.07,
+    0.56,
+    0.07
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "bamboo",
+   "transform": {
+    "translate": [
+     0.12,
+     0.28,
+     -0.11
+    ]
+   }
+  },
+  {
+   "id": "upright_back",
+   "op": "box",
+   "size": [
+    0.07,
+    0.56,
+    0.07
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "bamboo",
+   "transform": {
+    "translate": [
+     0.12,
+     0.28,
+     0.11
+    ]
+   }
+  },
+  {
+   "id": "source_post",
+   "op": "box",
+   "size": [
+    0.07,
+    0.9,
+    0.07
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "bamboo",
+   "transform": {
+    "translate": [
+     -0.66,
+     0.45,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "source_pipe",
+   "op": "cylinder",
+   "radius": 0.03,
+   "height": 0.42439190541384797,
+   "segments": 3,
+   "caps": true,
+   "material": "bamboo",
+   "transform": {
+    "rotate": [
+     90,
+     126.0916184335017,
+     0
+    ],
+    "translate": [
+     -0.4885,
+     0.9,
+     0.125
+    ]
+   }
+  },
+  {
+   "id": "stream",
+   "op": "box",
+   "size": [
+    0.018,
+    0.17,
+    0.018
+   ],
+   "material": "water",
+   "transform": {
+    "translate": [
+     -0.3171,
+     0.8274,
+     0.0
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "rock_back",
+   "op": "sphere",
+   "radius": 0.12,
+   "rings": 2,
+   "segments": 5,
+   "material": "stone",
+   "transform": {
+    "scale": [
+     1.3,
+     0.8,
+     1.0
+    ],
+    "translate": [
+     -0.3871,
+     0.11,
+     0.25
+    ]
+   }
+  },
+  {
+   "id": "frog",
+   "op": "sphere",
+   "radius": 0.04,
+   "rings": 2,
+   "segments": 4,
+   "material": "frog",
+   "transform": {
+    "scale": [
+     1.2,
+     0.85,
+     1.2
+    ],
+    "translate": [
+     -0.5,
+     0.36,
+     -0.2
+    ]
+   }
+  },
+  {
+   "id": "frog_eye_l",
+   "op": "cone",
+   "radius": 0.018,
+   "height": 0.03,
+   "segments": 3,
+   "material": "frog_eye",
+   "transform": {
+    "translate": [
+     -0.522,
+     0.385,
+     -0.205
+    ]
+   }
+  },
+  {
+   "id": "frog_eye_r",
+   "op": "cone",
+   "radius": 0.018,
+   "height": 0.03,
+   "segments": 3,
+   "material": "frog_eye",
+   "transform": {
+    "translate": [
+     -0.478,
+     0.385,
+     -0.205
+    ]
+   }
+  },
+  {
+   "id": "stalk_a",
+   "op": "cylinder",
+   "radius": 0.026,
+   "height": 1.05,
+   "segments": 4,
+   "caps": false,
+   "material": "bamboo",
+   "transform": {
+    "translate": [
+     0.64,
+     0.565,
+     0.22
+    ]
+   }
+  },
+  {
+   "id": "stalk_a_leaf0",
+   "op": "mesh",
+   "material": "leaves",
+   "vertices": [
+    [
+     -0.22,
+     0.0,
+     0
+    ],
+    [
+     0.22,
+     0.0,
+     0
+    ],
+    [
+     0.22,
+     0.44,
+     0
+    ],
+    [
+     -0.22,
+     0.44,
+     0
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     20,
+     0
+    ],
+    "translate": [
+     0.64,
+     0.99,
+     0.22
+    ]
+   }
+  },
+  {
+   "id": "stalk_a_leaf1",
+   "op": "mesh",
+   "material": "leaves",
+   "vertices": [
+    [
+     -0.22,
+     0.0,
+     0
+    ],
+    [
+     0.22,
+     0.0,
+     0
+    ],
+    [
+     0.22,
+     0.44,
+     0
+    ],
+    [
+     -0.22,
+     0.44,
+     0
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     110,
+     0
+    ],
+    "translate": [
+     0.64,
+     0.99,
+     0.22
+    ]
+   }
+  },
+  {
+   "id": "stalk_c",
+   "op": "cylinder",
+   "radius": 0.024,
+   "height": 0.95,
+   "segments": 4,
+   "caps": false,
+   "material": "bamboo",
+   "transform": {
+    "translate": [
+     -0.7,
+     0.515,
+     0.24
+    ]
+   }
+  },
+  {
+   "id": "stalk_c_leaf0",
+   "op": "mesh",
+   "material": "leaves",
+   "vertices": [
+    [
+     -0.22,
+     0.0,
+     0
+    ],
+    [
+     0.22,
+     0.0,
+     0
+    ],
+    [
+     0.22,
+     0.44,
+     0
+    ],
+    [
+     -0.22,
+     0.44,
+     0
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     -20,
+     0
+    ],
+    "translate": [
+     -0.7,
+     0.89,
+     0.24
+    ]
+   }
+  },
+  {
+   "id": "stalk_c_leaf1",
+   "op": "mesh",
+   "material": "leaves",
+   "vertices": [
+    [
+     -0.22,
+     0.0,
+     0
+    ],
+    [
+     0.22,
+     0.0,
+     0
+    ],
+    [
+     0.22,
+     0.44,
+     0
+    ],
+    [
+     -0.22,
+     0.44,
+     0
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     70,
+     0
+    ],
+    "translate": [
+     -0.7,
+     0.89,
+     0.24
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 30,
+    "nodes": [
+     {
+      "id": "gravel",
+      "op": "mesh",
+      "vertices": [
+       [
+        -0.75,
+        0.0,
+        -0.3
+       ],
+       [
+        0.75,
+        0.0,
+        -0.3
+       ],
+       [
+        0.75,
+        0.0,
+        0.3
+       ],
+       [
+        -0.75,
+        0.0,
+        0.3
+       ]
+      ],
+      "faces": [
+       [
+        3,
+        2,
+        1,
+        0
+       ]
+      ],
+      "material": "gravel"
+     },
+     {
+      "id": "basin",
+      "op": "lathe",
+      "segments": 6,
+      "caps": false,
+      "profile": [
+       [
+        0.26,
+        0.0
+       ],
+       [
+        0.27,
+        0.26
+       ],
+       [
+        0.0,
+        0.262
+       ]
+      ],
+      "material": "stone",
+      "transform": {
+       "translate": [
+        -0.5,
+        0.075,
+        0.02
+       ]
+      }
+     },
+     {
+      "id": "tube",
+      "op": "group",
+      "children": [
+       {
+        "id": "wall",
+        "op": "cylinder",
+        "radius": 0.055,
+        "height": 0.9,
+        "segments": 6,
+        "caps": false,
+        "material": "bamboo",
+        "transform": {}
+       },
+       {
+        "id": "tail_cap",
+        "op": "mesh",
+        "vertices": [
+         [
+          0.055,
+          -0.45,
+          0.0
+         ],
+         [
+          0.0275,
+          -0.45,
+          0.0476
+         ],
+         [
+          -0.0275,
+          -0.45,
+          0.0476
+         ],
+         [
+          -0.055,
+          -0.45,
+          0.0
+         ],
+         [
+          -0.0275,
+          -0.45,
+          -0.0476
+         ],
+         [
+          0.0275,
+          -0.45,
+          -0.0476
+         ]
+        ],
+        "faces": [
+         [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+         ]
+        ],
+        "material": "node"
+       },
+       {
+        "id": "inside",
+        "op": "mesh",
+        "vertices": [
+         [
+          0.052,
+          0.31,
+          0.0
+         ],
+         [
+          0.026,
+          0.31,
+          0.045
+         ],
+         [
+          -0.026,
+          0.31,
+          0.045
+         ],
+         [
+          -0.052,
+          0.31,
+          0.0
+         ],
+         [
+          -0.026,
+          0.31,
+          -0.045
+         ],
+         [
+          0.026,
+          0.31,
+          -0.045
+         ]
+        ],
+        "faces": [
+         [
+          5,
+          4,
+          3,
+          2,
+          1,
+          0
+         ]
+        ],
+        "material": "bamboo_in"
+       }
+      ],
+      "transform": {
+       "rotate": [
+        0,
+        0,
+        62
+       ],
+       "translate": [
+        0.0803,
+        0.5411,
+        0
+       ]
+      }
+     },
+     {
+      "id": "upright_front",
+      "op": "box",
+      "size": [
+       0.07,
+       0.56,
+       0.07
+      ],
+      "open": [
+       "bottom"
+      ],
+      "material": "bamboo",
+      "transform": {
+       "translate": [
+        0.12,
+        0.28,
+        -0.11
+       ]
+      }
+     },
+     {
+      "id": "upright_back",
+      "op": "box",
+      "size": [
+       0.07,
+       0.56,
+       0.07
+      ],
+      "open": [
+       "bottom"
+      ],
+      "material": "bamboo",
+      "transform": {
+       "translate": [
+        0.12,
+        0.28,
+        0.11
+       ]
+      }
+     },
+     {
+      "id": "stalk_a",
+      "op": "cylinder",
+      "radius": 0.026,
+      "height": 1.05,
+      "segments": 4,
+      "caps": false,
+      "material": "bamboo",
+      "transform": {
+       "translate": [
+        0.64,
+        0.565,
+        0.22
+       ]
+      }
+     },
+     {
+      "id": "stalk_a_leaf0",
+      "op": "mesh",
+      "material": "leaves",
+      "vertices": [
+       [
+        -0.22,
+        0.0,
+        0
+       ],
+       [
+        0.22,
+        0.0,
+        0
+       ],
+       [
+        0.22,
+        0.44,
+        0
+       ],
+       [
+        -0.22,
+        0.44,
+        0
+       ]
+      ],
+      "faces": [
+       [
+        3,
+        2,
+        1,
+        0
+       ]
+      ],
+      "transform": {
+       "rotate": [
+        0,
+        20,
+        0
+       ],
+       "translate": [
+        0.64,
+        0.99,
+        0.22
+       ]
+      }
+     },
+     {
+      "id": "stalk_a_leaf1",
+      "op": "mesh",
+      "material": "leaves",
+      "vertices": [
+       [
+        -0.22,
+        0.0,
+        0
+       ],
+       [
+        0.22,
+        0.0,
+        0
+       ],
+       [
+        0.22,
+        0.44,
+        0
+       ],
+       [
+        -0.22,
+        0.44,
+        0
+       ]
+      ],
+      "faces": [
+       [
+        3,
+        2,
+        1,
+        0
+       ]
+      ],
+      "transform": {
+       "rotate": [
+        0,
+        110,
+        0
+       ],
+       "translate": [
+        0.64,
+        0.99,
+        0.22
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 70
+ }
+}
