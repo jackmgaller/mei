@@ -1,0 +1,12 @@
+{
+ "format": "mei-asset", "version": 1, "name": "firepost_col",
+ "budget": {"triangles": 30},
+ "materials": {"solid": {"color": "#ffffff", "palette": true}},
+ "lighting": {"mode": "vertical", "ambient": 0.5},
+ "verification": {"required": true, "depth": true, "perspective": true},
+ "nodes": [
+  {"id": "footing", "op": "box", "size": [0.34, 0.12, 0.34], "open": ["bottom"], "material": "solid", "transform": {"translate": [0, 0.06, 0]}},
+  {"id": "pole", "op": "box", "size": [0.12, 1.94, 0.12], "open": ["bottom"], "material": "solid", "transform": {"translate": [0, 1.09, 0]}},
+  {"id": "boxes", "op": "box", "size": [0.26, 0.87, 0.2], "open": ["bottom"], "material": "solid", "transform": {"translate": [0, 1.005, -0.1]}}
+ ]
+}

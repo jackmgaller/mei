@@ -1,0 +1,11 @@
+{
+ "format": "mei-asset", "version": 1, "name": "street_lamp_col",
+ "budget": {"triangles": 24},
+ "materials": {"solid": {"color": "#ffffff", "palette": true}},
+ "lighting": {"mode": "vertical", "ambient": 0.5},
+ "verification": {"required": true, "depth": true, "perspective": true},
+ "nodes": [
+  {"id": "plinth", "op": "box", "size": [0.4, 0.44, 0.4], "open": ["bottom"], "material": "solid", "transform": {"translate": [0, 0.22, 0]}},
+  {"id": "pole", "op": "box", "size": [0.16, 3.4, 0.16], "open": ["bottom"], "material": "solid", "transform": {"translate": [0, 2.14, 0]}}
+ ]
+}
