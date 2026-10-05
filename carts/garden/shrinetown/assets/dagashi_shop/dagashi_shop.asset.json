@@ -126,7 +126,7 @@
    "texture": {
     "sheet": "shop",
     "cell": "kanban",
-    "bits": 8,
+    "bits": 4,
     "projection": "fit"
    }
   },
@@ -135,7 +135,7 @@
    "texture": {
     "sheet": "shop",
     "cell": "shelf_a",
-    "bits": 8,
+    "bits": 4,
     "projection": "fit"
    }
   },
@@ -143,9 +143,10 @@
    "color": "#4a3020",
    "texture": {
     "sheet": "shop",
-    "cell": "shelf_b",
-    "bits": 8,
-    "projection": "fit"
+    "cell": "shelf_a",
+    "bits": 4,
+    "projection": "fit",
+    "flip": "u"
    }
   },
   "kuji": {
@@ -153,7 +154,7 @@
    "texture": {
     "sheet": "shop",
     "cell": "kuji",
-    "bits": 8,
+    "bits": 4,
     "projection": "fit"
    }
   },
@@ -162,7 +163,7 @@
    "texture": {
     "sheet": "shop",
     "cell": "vending",
-    "bits": 8,
+    "bits": 4,
     "projection": "fit"
    }
   },
@@ -171,7 +172,7 @@
    "texture": {
     "sheet": "shop",
     "cell": "freezer",
-    "bits": 8,
+    "bits": 4,
     "projection": "fit"
    }
   },
@@ -191,7 +192,7 @@
    "texture": {
     "sheet": "shop",
     "cell": "flag",
-    "bits": 8,
+    "bits": 4,
     "projection": "fit"
    }
   },

@@ -210,6 +210,8 @@ def materials():
         v = copy.deepcopy(v)
         if 'texture' not in v:
             v['palette'] = True
+        if 'texture' in v:
+            v['texture'].pop('bits', None)      # every texture 4-bit: the level's palettes (TEXTURES.md)
         m[k] = v
     m.pop('chrome')
     m['paint']['tag'] = 'roof'

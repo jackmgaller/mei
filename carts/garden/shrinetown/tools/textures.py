@@ -43,14 +43,14 @@ ALLOWANCE = {
 }
 # Props any zone of the region may place: their tiles are the region's shared set's.
 SHARED = {
-    'town': ['street_lamp', 'vending_machine', 'postbox', 'town_road_signs', 'delivery_van', 'traffic_mirror',
-             'mamachari', 'town_potted_plants', 'town_laundry_pole', 'town_aircon_pipes',
+    'town': ['town_street_lamp', 'street_lamp', 'vending_machine', 'postbox', 'town_road_signs', 'delivery_van',
+             'traffic_mirror', 'mamachari', 'town_potted_plants', 'town_laundry_pole', 'town_aircon_pipes',
              'town_utility_pole_transformer', 'street_utility_pole', 'street_barrier', 'street_guardrail',
              'street_vending_machine', 'town_bench', 'firepost', 'jizo', 'hokora', 'tanuki', 'town_crates_bins'],
     'shrine': ['plant_bamboo', 'plant_fern', 'plant_sasa', 'plant_shrub', 'plant_susuki', 'litter_gold', 'litter_red',
                'tree_cedar', 'tree_cedar_giant', 'tree_maple', 'tree_maple_small', 'tree_ginkgo', 'tree_zelkova',
                'tree_bamboo_tall', 'forest_stone_lantern', 'shishi_odoshi', 'jizo', 'hokora', 'tanuki',
-               'street_lamp', 'town_bench'],
+               'street_lamp', 'town_street_lamp', 'town_bench'],
 }
 
 

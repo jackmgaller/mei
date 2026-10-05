@@ -11,8 +11,8 @@ from PIL import Image, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONT = ImageFont.truetype('/System/Library/Fonts/Hiragino Sans GB.ttc', 12, index=1)
 
-CELLS = {'board': [0, 0, 80, 96], 'bin': [80, 0, 64, 32], 'lid': [80, 32, 16, 16]}
-sheet = Image.new('RGBA', (144, 96), (0, 0, 0, 0))
+CELLS = {'board': [0, 0, 80, 48], 'bin': [80, 0, 64, 32], 'lid': [80, 32, 16, 16]}
+sheet = Image.new('RGBA', (144, 48), (0, 0, 0, 0))
 
 
 def text(d, xy, s, fill, centre_w=None):
@@ -39,7 +39,8 @@ for i, (day, what, col) in enumerate(rows):
     text(d, (30, y), what, '#ffffff', 47)
 d.line([4, 80, 75, 80], fill='#c9c3ad')
 text(d, (0, 82), 'カラス注意', '#d23c2c', 80)
-sheet.paste(board, (0, 0))
+# stored at half height (80 x 48; the face stretches it back): the town's texture budget (TEXTURES.md)
+sheet.paste(board.resize((80, 48), Image.Resampling.BOX), (0, 0))
 
 # The burnables bin, wrapped round twice: ribs, and a label front and back (the image's centre).
 binimg = Image.new('RGB', (64, 32), '#2b5fa8')

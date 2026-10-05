@@ -7,7 +7,7 @@
   "red": {"color": "#c8241e"},
   "hood": {"color": "#a81c18"},
   "blue": {"color": "#1e4696"},
-  "alarm": {"color": "#c8241e", "texture": {"sheet": "fire", "cell": "alarm", "bits": 8, "projection": "fit"}},
+  "alarm": {"color": "#c8241e", "texture": {"sheet": "fire", "cell": "alarm", "projection": "fit"}},
   "ext": {"color": "#c8241e", "texture": {"sheet": "fire", "cell": "ext", "projection": "fit"}},
   "plate": {"color": "#1e4696", "double_sided": true, "texture": {"sheet": "fire", "cell": "plate", "projection": "fit"}},
   "tiger": {"color": "#e8be1e", "texture": {"sheet": "fire", "cell": "tiger", "projection": "cylindrical", "scale": [0.16, 0.16]}},

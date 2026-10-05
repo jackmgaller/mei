@@ -1,5 +1,5 @@
 {
- "format": "mei-asset", "version": 1, "name": "street_lamp",
+ "format": "mei-asset", "version": 1, "name": "town_street_lamp",
  "budget": {"vertices": 120, "triangles": 100},
  "sheets": {"lamp": {"image": "art/lamp_sheet.png"}},
  "materials": {
@@ -8,7 +8,7 @@
   "plinth": {"color": "#9c978b", "texture": {"pattern": "speckle", "size": 8, "colors": ["#a19c90", "#86817a", "#b8b2a4"], "params": {"density": 0.3}, "projection": "cylindrical", "scale": [0.4, 0.2]}},
   "shade": {"color": "#2e5b47"},
   "glow": {"color": "#fff1c4", "class": "emissive", "tag": "light"},
-  "banner": {"color": "#e25c80", "tag": "sign", "double_sided": true, "texture": {"sheet": "lamp", "cell": "banner", "bits": 8, "projection": "fit"}},
+  "banner": {"color": "#e25c80", "tag": "sign", "double_sided": true, "texture": {"sheet": "lamp", "cell": "banner", "projection": "fit"}},
   "spray": {"color": "#fab2c8", "double_sided": true, "texture": {"sheet": "lamp", "cell": "spray", "projection": "fit"}}
  },
  "lighting": {"mode": "vertical", "ambient": 0.55},

@@ -92,7 +92,7 @@
    "class": "emissive",
    "texture": {
     "image": "art/sign.png",
-    "bits": 8,
+    "bits": 4,
     "projection": "fit"
    }
   },
@@ -100,7 +100,7 @@
    "color": "#3a285a",
    "texture": {
     "image": "art/panel.png",
-    "bits": 8,
+    "bits": 4,
     "projection": "fit"
    }
   },
@@ -108,7 +108,7 @@
    "color": "#fff4d6",
    "texture": {
     "image": "art/side.png",
-    "bits": 8,
+    "bits": 4,
     "projection": "fit"
    }
   },

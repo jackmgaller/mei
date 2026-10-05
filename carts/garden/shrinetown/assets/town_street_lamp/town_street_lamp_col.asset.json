@@ -1,5 +1,5 @@
 {
- "format": "mei-asset", "version": 1, "name": "street_lamp_col",
+ "format": "mei-asset", "version": 1, "name": "town_street_lamp_col",
  "budget": {"triangles": 24},
  "materials": {"solid": {"color": "#ffffff", "palette": true}},
  "lighting": {"mode": "vertical", "ambient": 0.5},

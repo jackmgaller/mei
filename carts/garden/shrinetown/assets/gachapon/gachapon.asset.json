@@ -38,7 +38,7 @@
      "window_c"
     ],
     "ticks": 20,
-    "bits": 8,
+    "bits": 4,
     "projection": "fit"
    }
   },
@@ -47,7 +47,7 @@
    "texture": {
     "sheet": "gacha",
     "cell": "panel",
-    "bits": 8,
+    "bits": 4,
     "projection": "fit"
    }
   },
@@ -56,7 +56,7 @@
    "texture": {
     "sheet": "gacha",
     "cell": "header",
-    "bits": 8,
+    "bits": 4,
     "projection": "fit"
    }
   },

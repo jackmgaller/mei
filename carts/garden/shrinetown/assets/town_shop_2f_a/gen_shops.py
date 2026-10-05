@@ -986,7 +986,8 @@ def shop_c(has_awning=True, left=False):
         'glass': {'color': '#e0d6b8', 'class': 'emissive', 'tag': 'shopfront', 'texture': cell_tex('glass_c')},
         'window': {'color': '#4e6a7a', 'texture': cell_tex('win_c')},
         'kanban': {'color': sign[0], 'class': 'emissive', 'tag': 'sign', 'texture': sign_texels('sign_c', sign)},
-        'kanban_side': {'color': sign_s[0], 'class': 'emissive', 'tag': 'sign', 'texture': sign_texels('sign_cs', sign_s)},
+        # the side's kanban shows the front's (one image, the town's texture budget: TEXTURES.md)
+        'kanban_side': {'color': sign[0], 'class': 'emissive', 'tag': 'sign', 'texture': sign_texels('sign_c', sign)},
         'tate': {'color': tate[0], 'class': 'emissive', 'tag': 'sign', 'texture': sign_texels('tate_c', tate)},
         'vend_a': {'color': '#eceae4', 'class': 'emissive', 'texture': cell_tex('vend_a')},
         'vend_b': {'color': '#24345a', 'class': 'emissive', 'texture': cell_tex('vend_b')},

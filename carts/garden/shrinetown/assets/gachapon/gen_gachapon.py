@@ -4,7 +4,8 @@
 Shrine town's capsule-toy machine: the lab's gachapon (282 triangles) cut to 120. The body, the
 roof and the head sign are boxes with the panel, the cat side and the sign baked in as faces and
 decals; the capsule window keeps its three-frame animation; the crank is one bar and the yellow
-dome stays. Front is -Z. The machine is 0.52 x 0.46 m and 1.34 m tall.
+dome stays. Front is -Z. The machine is 0.52 x 0.46 m and 1.34 m tall. Every texture is 4-bit
+(the level's palettes, TEXTURES.md).
 """
 import json
 import os
@@ -28,11 +29,11 @@ recipe = {
         "dome": {"color": "#ffc83a", "palette": True},
         "window": {"color": "#2e4a5c",
                    "texture": {"sheet": "gacha", "frames": ["window_a", "window_b", "window_c"],
-                               "ticks": 20, "bits": 8, "projection": "fit"}},
+                               "ticks": 20, "bits": 4, "projection": "fit"}},
         "panel": {"color": "#d8322e",
-                  "texture": {"sheet": "gacha", "cell": "panel", "bits": 8, "projection": "fit"}},
+                  "texture": {"sheet": "gacha", "cell": "panel", "bits": 4, "projection": "fit"}},
         "header": {"color": "#f4ead2",
-                   "texture": {"sheet": "gacha", "cell": "header", "bits": 8, "projection": "fit"}},
+                   "texture": {"sheet": "gacha", "cell": "header", "bits": 4, "projection": "fit"}},
         "side": {"color": "#d8322e",
                  "texture": {"sheet": "gacha", "cell": "side", "projection": "fit"}},
     },

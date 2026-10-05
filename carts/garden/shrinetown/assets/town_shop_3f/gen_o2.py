@@ -293,7 +293,8 @@ def shop_3f():
         'kanban': {'color': kanban[0], 'class': 'emissive', 'tag': 'sign', 'texture': mask_texels(masks['kanban'], kanban)},
         'tate': {'color': tate[0], 'class': 'emissive', 'tag': 'sign', 'texture': mask_texels(masks['tate'], tate)},
         'roof_a': {'color': roof_sign[0], 'class': 'emissive', 'tag': 'sign', 'texture': mask_texels(masks['roof_a'], roof_sign)},
-        'roof_b': {'color': roof_sign[0], 'class': 'emissive', 'tag': 'sign', 'texture': mask_texels(masks['roof_b'], roof_sign)},
+        # both faces of the rooftop sign show roof_a (one image, the town's texture budget: TEXTURES.md)
+        'roof_b': {'color': roof_sign[0], 'class': 'emissive', 'tag': 'sign', 'texture': mask_texels(masks['roof_a'], roof_sign)},
         'noren': {'color': noren[0], 'texture': mask_texels(masks['noren'], noren, clear='#000000')},
         'ac': {'color': '#e2e0d6', 'texture': cell('shopfront', 'ac')},
         'antenna': {'color': '#7a7e84', 'double_sided': True, 'texture': cell('shopfront', 'antenna')},

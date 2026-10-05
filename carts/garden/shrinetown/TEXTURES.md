@@ -164,14 +164,15 @@ It exits 1 when a part or a region is over. The world build enforces the region'
 "Measured (plan)" is `tools/textures.py --try` with every asset in the zone where PLACE_SPLIT and
 PLACEMENT_NOTES put it. The canal zone straddles the boundary and has an allowance in each region.
 
-**Shared props.** Town: `street_lamp`, `vending_machine`, `postbox`, `town_road_signs`,
+**Shared props.** Town: `town_street_lamp` (the shotengai's lamp, shrine town's own, renamed from
+`street_lamp`), the shrine's `street_lamp`, `vending_machine`, `postbox`, `town_road_signs`,
 `delivery_van`, `traffic_mirror`, `mamachari`, `town_potted_plants`, `town_laundry_pole`,
 `town_aircon_pipes`, `town_utility_pole_transformer`, `street_utility_pole`, `street_barrier`,
 `street_guardrail`, `street_vending_machine`, `town_bench`, `firepost`, `jizo`, `hokora`,
 `tanuki`, `town_crates_bins`. Shrine: the shrine's plants, litter and trees (`plant_*`,
 `litter_*`, `tree_cedar`, `tree_cedar_giant`, `tree_maple`, `tree_maple_small`, `tree_ginkgo`),
 `tree_zelkova`, `tree_bamboo_tall`, `forest_stone_lantern`, `shishi_odoshi`, `jizo`, `hokora`,
-`tanuki`, `street_lamp`, `town_bench`.
+`tanuki`, `street_lamp`, `town_street_lamp`, `town_bench`.
 
 **The ground.** The town's 40 KB: about four materials at span 88 (asphalt, sidewalk and paving,
 the sando's stone, the canal's stone: 32 KB) and two small ones at span 24 (concrete, gravel). The
@@ -235,9 +236,10 @@ budget, with 148 KB of the slots free besides.
 
 ## Notes for placing
 
-- Asset names must be unique across the world's asset directories: `street_lamp` is both
-  `assets/street_lamp/` and the shrine's `../shrine/assets/street_lamp.asset.json`; adding both
-  folders to `asset_dirs` is an error until one is renamed.
+- Asset names must be unique across the world's asset directories: `street_lamp` was both
+  `assets/street_lamp/` and the shrine's `../shrine/assets/street_lamp.asset.json`; shrine town's
+  is now `town_street_lamp` (`assets/town_street_lamp/`). `arch_pagoda_col` is still both
+  `assets/arch_pagoda/` and the shrine's: a world with both folders may not use it.
 - A placement belongs to the cell holding its origin, and its textures to that cell's region:
   the viaduct's spans in c4_2 are in the shrine's set, the great torii (c2_1) and the cemetery's
   gate (c4_1) in the town's.

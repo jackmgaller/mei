@@ -7,7 +7,7 @@ layout: a concrete pad, a galvanised fence on two posts with the collection-day 
 crossbar, a green corrugated roof sloping to the front, the blue burnables bin, a crate of empty
 bottles, a rubbish bag under the green crow net, and the crow on the roof watching it. The board,
 bin and lid are the lab's pictures (art/sheet.png, copied with its sheet file and the script that
-drew it). The cut: the fence is one double-sided sheet of the town's tin (town_common's `tin`),
+drew it, the board stored at half height for the town's texture budget). The cut: the fence is one double-sided sheet of the town's tin (town_common's `tin`),
 the roof two faces, two bottles, one bag, a simpler crow.
 
 Footprint 2.3 x 1.2 m (the roof; the pad is 2.1 x 1.2), origin at the middle of the pad's foot,
