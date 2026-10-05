@@ -5,7 +5,7 @@ The level goal: the August hanafuda card, the full moon over susuki grass, about
 gilt-edged card. The moon is printed on the face and framed by a thin gilt bead, a ring of
 diamond section through the card that stands 1.7 cm proud of each face: a low relief that reads
 from both sides as the card turns. The back, shared by every goal card, is seigaiha waves in dark
-gold with a kikko crest inside the bead. The bead's faces slope at about 60 degrees, so none of them
+gold, running under the bead, which frames them as it frames the moon. The bead's faces slope at about 60 degrees, so none of them
 lies within 3 cm of a parallel face (the Asset Kit's close-face rule).
 """
 import json
@@ -101,7 +101,7 @@ def face():
 
 def back():
     """The back every goal card shares: seigaiha (overlapping waves) in dark gold on the ink, inside
-    the gilt border; the bead frames a crest, a gold kikko (tortoiseshell hexagon) on deep red."""
+    the gilt border. The waves run on under the bead, which stays as a plain frame over them."""
     im = Image.new("RGB", (TW, TH), INK)
     px = im.load()
     R = 10.0                                  # a wave scale's radius, texels
@@ -128,16 +128,6 @@ def back():
     d.rectangle((1, 1, TW - 2, TH - 2), outline=GOLD_DK)
     d.rectangle((2, 2, TW - 3, TH - 3), outline=GOLD)
     d.rectangle((3, 3, TW - 4, TH - 4), outline=INK)
-    # the crest inside the bead: deep red, a gold hexagon and a gold dot
-    mx, my = tex_xy(0, MOON_Y)
-    r = MOON_R / W * TW
-    d.ellipse((mx - r, my - r, mx + r, my + r), fill=SKY_DK)
-    hexr = r * 0.62
-    pts = [(mx + hexr * math.cos(math.radians(90 + 60 * i)),
-            my + hexr * math.sin(math.radians(90 + 60 * i))) for i in range(6)]
-    d.polygon(pts, outline=GOLD)
-    d.line(pts + [pts[0]], fill=GOLD, width=2)
-    d.ellipse((mx - 1.5, my - 1.5, mx + 1.5, my + 1.5), fill=GOLD)
     im.save(os.path.join(ART, "back.png"))
 
 
