@@ -6,7 +6,8 @@ Adapted from the lab model (examples/assets/lab/overpass, 1,362 triangles, deck 
 the grey box's plan (notes/town.md, 10): the deck at 7.0 over the road, 30 m long, and two
 straight stairs that leave it at opposite ends and opposite sides (a Z in plan), 14.5 m each at
 25.8 degrees, so the stairs are walkable slopes. Kept from the lab: the pale sea-green paint, the
-cutout bar railings, the blue direction sign over the road, the 交通安全 banner, the めい歩道橋 name
+cutout bar railings, the blue direction sign over the road (its texture resampled from 56 to 48
+texels high, TEXTURES.md), the 交通安全 banner, the めい歩道橋 name
 plates, the bicycle channel beside each stair, and the cat asleep on the deck. Dropped: the curve
 mirror (the town has its own), the switchback stairs (each flight was a 40-point extrusion).
 
@@ -28,7 +29,6 @@ Run: python3 carts/garden/shrinetown/assets/overpass/make_overpass.py   (needs P
 import json
 import math
 import os
-import shutil
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
@@ -46,11 +46,26 @@ SLOPE = DECK / (FOOT - HZ)   # 0.483, 25.8 degrees
 STAIR_T = 0.4        # the stair slab's depth, measured vertically
 
 
+SIGN_H = 48          # the sign's cell height: the lab's 56 resampled to 48 (TEXTURES.md, the east zone's cut)
+
+
 def draw_art():
-    """The lab's sheet (sign, plate, banner), copied as it is."""
+    """The lab's sheet (sign, plate, banner); the sign's cell, 128 x 56 there, resampled to
+    128 x 48 (it saves 512 bytes of the town's texture budget)."""
+    from PIL import Image
     os.makedirs(ART, exist_ok=True)
-    shutil.copyfile(os.path.join(LAB, "sheet.png"), os.path.join(ART, "overpass_sheet.png"))
-    shutil.copyfile(os.path.join(LAB, "sheet.sheet.json"), os.path.join(ART, "overpass_sheet.sheet.json"))
+    sheet = Image.open(os.path.join(LAB, "sheet.png")).convert("RGBA")
+    with open(os.path.join(LAB, "sheet.sheet.json")) as f:
+        cells = json.load(f)
+    x, y, w, h = cells["cells"]["sign"]
+    sign = sheet.crop((x, y, x + w, y + h)).resize((w, SIGN_H), Image.LANCZOS)
+    sheet.paste((0, 0, 0, 0), (x, y, x + w, y + h))
+    sheet.paste(sign, (x, y))
+    sheet.save(os.path.join(ART, "overpass_sheet.png"))
+    cells["cells"]["sign"] = [x, y, w, SIGN_H]
+    with open(os.path.join(ART, "overpass_sheet.sheet.json"), "w") as f:
+        json.dump(cells, f, indent=1)
+        f.write("\n")
 
 
 # ---- helpers ---------------------------------------------------------------------------
@@ -357,7 +372,12 @@ def collision():
         solid("wall_end", HX - t, HX, y0, y1, -HZ, HZ, open=["bottom"]),
         solid("pier", 9.8, 10.2, 0, DECK - GIRDER, -1.1, 1.1, open=["top", "bottom"]),
     ]
-    n = [solid("deck", -HX, HX, DECK - GIRDER, DECK, -HZ, HZ)] + half + [turn(p) for p in half]
+    # the deck in three pieces split where the stairs meet it (x = -SX0 and SX0), so that each
+    # stair's top edge meets a deck edge of the same length (no T-junction for the World Checker)
+    deck = [solid(f"deck_{k}", a, b, DECK - GIRDER, DECK, -HZ, HZ, open=o)
+            for k, (a, b, o) in enumerate(((-HX, -SX0, ["right"]), (-SX0, SX0, ["left", "right"]),
+                                           (SX0, HX, ["left"])))]
+    n = deck + half + [turn(p) for p in half]
     # the sign hangs below the deck's edge: a wall a vehicle-height player can hit
     n.append(solid("sign", -2.0, 2.0, DECK - 1.25, DECK - GIRDER, -HZ - 0.25, -HZ))
     return {

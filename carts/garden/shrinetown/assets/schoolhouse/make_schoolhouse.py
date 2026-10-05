@@ -496,7 +496,11 @@ def solid(id, x0, x1, y0, y1, z0, z1, open=None):
 
 def collision():
     tz = (TZ0 + TZ1) / 2
-    n = [solid("block", MX0, MX1, 0, ROOF, MZ0, MZ1, open=["bottom"]),
+    # the classroom block in two, split where the stair's top landing starts, so the roof's east
+    # edge meets the landing edge to edge (no T-junction)
+    lz = landings()[-1][1]
+    n = [solid("block", MX0, MX1, 0, ROOF, MZ0, lz, open=["bottom", "front"]),
+         solid("block_n", MX0, MX1, 0, ROOF, lz, MZ1, open=["bottom", "back"]),
          solid("wing", WX0, WX1, 0, WROOF, WZ0, MZ0, open=["bottom", "front"])]
     # parapets: walls 0.25 thick to stand on (the roof's edges)
     y0, y1, w0, w1 = ROOF, ROOF + PH, WROOF, WROOF + PH
