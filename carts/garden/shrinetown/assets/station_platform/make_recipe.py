@@ -7,21 +7,37 @@ are left to the town's viaduct spans, and what stands on the deck is kept. The o
 middle of the platform at the deck (track bed) level; the platform's floor is 1.0 above it,
 the canopy's top 3.8 above the floor. The tracks run along x at z = -4.1 (track 1) and +4.1
 (track 2). Run `python3 make_recipe.py` after changing it; the recipes are the committed output.
+
+The stairwell is the head of station_concourse's stair, which comes up from the ticket hall
+through the deck's opening (viaduct_station_span_stair) and arrives on the floor at x 0.65,
+climbing west. The floor is open over it from x 0.65 to 5.2 (|z| < 1.2), with a tactile strip at
+the head of the stair, low walls along the sides and a head wall at 5.2-5.45; from there to the
+deck's opening's end (x 7.9) the stair runs on under the floor, whose underside is 0.8 above the
+deck there. The numbers are shared with make_station_viaduct.py (STAIR_*, HOLE_U).
 """
+import importlib.util
 import json
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+_spec = importlib.util.spec_from_file_location(
+    'make_station_viaduct', os.path.join(os.path.dirname(HERE), 'viaduct_station_span',
+                                         'make_station_viaduct.py'))
+sv = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(sv)
 
 L = 20.0          # half length
 W = 2.5           # half width
 FLOOR = 1.0       # floor height above the deck
-HOLE_X = (-1.5, 1.5)
-HOLE_Z = 1.2
-STAIR_END = 0.3   # the flight runs from x -1.5 (floor) down to here (y 0.05)
-LANDING = 0.05
+HOLE_X = (sv.STAIR_TOP_U, 5.2)       # the floor's opening; the head wall stands at its east end
+HOLE_Z = sv.STAIR_HALF
+HEAD_T = 0.25     # the head wall's thickness
+TUNNEL_END = sv.HOLE_U[1]            # the stair runs on under the floor to here
+UNDER = 0.8       # the floor's underside over that stretch
+RAIL = 2.0        # the low walls' top (1.0 over the floor); the head wall 2.05
+TACTILE = 0.6     # the warning strip's depth at the stair's head
 ROOF_LOW, ROOF_EDGE, ROOF_T, ROOF_HALF = 4.35, 4.6, 0.12, 2.9
-FRAMES = [-15.0, -5.0, 5.0, 15.0]
+FRAMES = [-15.0, -5.0, 5.5, 15.0]    # the third stands in the head wall
 
 
 def roof_bottom(z):
@@ -37,7 +53,7 @@ MATERIALS = {
     "coping": {"color": "#eceae4", "palette": True, "tag": "floor"},
     "green_steel": {"color": "#4f7f6a", "palette": True},
     "black": {"color": "#2c2a28", "palette": True},
-    "shade": {"color": "#4a4a50", "palette": True, "tag": "floor"},
+    "shade": {"color": "#4a4a50", "palette": True},
     "wood": {"color": "#5a3e2c", "palette": True, "tag": "wall"},
     "red": {"color": "#c8262c", "palette": True},
     "cat": {"color": "#e8a050", "palette": True},
@@ -65,14 +81,6 @@ MATERIALS = {
         "texture": {"texels": ["1222222222222221", "1222222222222221", "2222222222222222", "2222222222222222",
                                "2222222222222222", "2222222222222222", "0333333333333330", "0333333333333330"],
                     "colors": ["#4a4440", "#c8701e", "#e8862a", "#d27a24"], "projection": "box", "scale": [0.45, 0.45]}},
-    "stairs": {
-        "color": "#b0aaa0", "tag": "stairs",
-        "texture": {"texels": ["1111", "0000", "2222"] * 6,
-                    "colors": ["#b0aaa0", "#f0c020", "#7a766e"], "projection": "fit"}},
-    "opening": {
-        "color": "#2c2a28",
-        "texture": {"texels": ["2222", "1111", "0000", "0000", "0000", "0000"],
-                    "colors": ["#1e1c1a", "#3a3836", "#e2d8c0"], "projection": "fit"}},
     "mark": {
         "color": "#e8782a", "tag": "floor",
         "texture": {"texels": ["00000000", "01111110", "00111100", "00011000"],
@@ -115,10 +123,12 @@ def floor_mesh():
             z0, z1 = sorted((s * a, s * b))
             add(-L, L, z0, z1, m)
     hx0, hx1 = HOLE_X
-    add(-L, hx0, -1.5, 1.5, "floor")
+    tx = hx0 - TACTILE
+    add(-L, tx, -1.5, 1.5, "floor")
     add(hx1, L, -1.5, 1.5, "floor")
-    add(hx0, hx1, -1.5, -HOLE_Z, "floor")
-    add(hx0, hx1, HOLE_Z, 1.5, "floor")
+    add(tx, hx1, -1.5, -HOLE_Z, "floor")
+    add(tx, hx1, HOLE_Z, 1.5, "floor")
+    add(tx, hx0, -HOLE_Z, HOLE_Z, "tactile")     # the warning strip at the stair's head
     # The boarding marks for the last train (track 1 and track 2), on the east floor piece (face 7).
     decals = [{"id": "mark_1", "face": 7, "material": "mark", "size": [0.8, 0.4], "at": [8.0, -1.2]},
               {"id": "mark_2", "face": 7, "material": "mark", "size": [0.8, 0.4], "at": [8.0, 1.2]}]
@@ -142,28 +152,50 @@ def end_fences():
         "modifiers": [{"op": "mirror", "axis": "x"}]}
 
 
+def facing(verts, normal):
+    """A planar polygon's corners in the order that faces `normal`."""
+    return sv.oriented(verts, verts, normal)[0]
+
+
+def polys(nid, faces, material, solid=False):
+    """A mesh node from (corners, normal, material) polygons."""
+    verts, idx, mats = [], [], []
+    for corners, normal, m in faces:
+        base = len(verts)
+        verts += [[r(c) for c in v] for v in facing(corners, normal)]
+        idx.append(list(range(base, base + len(corners))))
+        mats.append("solid" if solid else m)
+    n = {"id": nid, "op": "mesh", "material": material, "vertices": verts, "faces": idx}
+    if not solid:
+        n["face_materials"] = mats
+    return n
+
+
 def stairwell():
+    """The low walls round the floor's opening, the head wall, and the stretch where the stair
+    runs on under the floor (its sides, its ceiling at UNDER and its end at TUNNEL_END)."""
     hx0, hx1 = HOLE_X
-    top = FLOOR + 1.0
-    zin = HOLE_Z + 0.01
+    wall_x1 = hx1 + 0.1                          # the side walls run into the head wall
+    yc = RAIL / 2
     nodes = []
-    nodes.append({"id": "stairs", "op": "mesh", "material": "stairs",
-                  "vertices": [[hx0, FLOOR, zin], [STAIR_END, LANDING, zin], [STAIR_END, LANDING, -zin], [hx0, FLOOR, -zin]],
-                  "faces": [[0, 1, 2, 3]]})
-    nodes.append({"id": "landing", "op": "mesh", "material": "shade",
-                  "vertices": quad_up(STAIR_END, hx1 - 0.14, -zin, zin, LANDING), "faces": [[0, 1, 2, 3]]})
-    h = top - LANDING
-    yc = (top + LANDING) / 2
-    nodes.append({"id": "head_wall", "op": "box", "size": [0.2, r(h + 0.06), 2.6], "material": "tile_wall", "open": ["bottom"],
-                  "decals": [{"id": "way_down", "face": "left", "material": "opening", "size": [2.2, 0.88],
-                              "at": [0, r(LANDING + 0.01 + 0.44 - yc - 0.03)]}],
-                  "transform": {"translate": [hx1 - 0.05, r(yc + 0.03), 0]}})
+    head_h = RAIL + 0.05 - UNDER
+    nodes.append({"id": "head_wall", "op": "box", "size": [HEAD_T, r(head_h), r(2 * (HOLE_Z + 0.2))],
+                  "material": "tile_wall", "open": ["bottom"],
+                  "transform": {"translate": [r(hx1 + HEAD_T / 2), r(UNDER + head_h / 2), 0]}})
     nodes.append({"id": "side_walls", "op": "group", "children": [
-        {"id": "wall", "op": "box", "size": [hx1 - hx0, h, 0.15], "material": "tile_wall", "open": ["bottom"],
+        {"id": "wall", "op": "box", "size": [r(wall_x1 - hx0), RAIL, 0.15], "material": "tile_wall",
+         "open": ["bottom"],
          "decals": [{"id": "poster", "face": "back", "material": "poster", "size": [0.5, 0.75],
                      "at": [-0.6, r(FLOOR + 0.15 + 0.375 - yc)]}],
-         "transform": {"translate": [0, r(yc), -(HOLE_Z + 0.075)]}}],
+         "transform": {"translate": [r((hx0 + wall_x1) / 2), r(yc), -(HOLE_Z + 0.075)]}}],
         "modifiers": [{"op": "mirror", "axis": "z"}]})
+    z, x0, x1 = HOLE_Z, wall_x1, TUNNEL_END
+    nodes.append(polys("under_floor", [
+        ([[x0, UNDER, -z], [x1, UNDER, -z], [x1, 0, -z], [x0, 0, -z]], [0, 0, 1], "tile_wall"),
+        ([[x0, UNDER, z], [x1, UNDER, z], [x1, 0, z], [x0, 0, z]], [0, 0, -1], "tile_wall"),
+        ([[x1, UNDER, -z], [x1, UNDER, z], [x1, 0, z], [x1, 0, -z]], [-1, 0, 0], "tile_wall"),
+        ([[hx1, UNDER, -z], [x1, UNDER, -z], [x1, UNDER, z], [hx1, UNDER, z]], [0, -1, 0], "shade"),
+    ], "tile_wall"))
     return nodes
 
 
@@ -274,12 +306,12 @@ def lod1():
     return [
         {"id": "slab", "op": "box", "size": [2 * L, FLOOR, 2 * W], "material": "concrete", "open": ["bottom"],
          "faces": {"top": "floor"}, "transform": {"translate": [0, FLOOR / 2, 0]}},
-        {"id": "stair_head", "op": "box", "size": [hx1 - hx0, 1.0, 2.7], "material": "tile_wall", "open": ["bottom"],
-         "transform": {"translate": [0, FLOOR + 0.49, 0]}},
+        {"id": "stair_head", "op": "box", "size": [r(hx1 + HEAD_T - hx0), 1.0, 2.7], "material": "tile_wall",
+         "open": ["bottom"], "transform": {"translate": [r((hx0 + hx1 + HEAD_T) / 2), FLOOR + 0.49, 0]}},
         {"id": "columns", "op": "group", "children": [
-            {"id": "column", "op": "box", "size": [0.25, 3.4, 0.3], "material": "green_steel", "open": ["bottom", "top"],
-             "transform": {"translate": [FRAMES[0], FLOOR + 1.7, 0]}}],
-         "modifiers": [{"op": "array", "count": 4, "step": [10, 0, 0]}]},
+            {"id": f"column{i}", "op": "box", "size": [0.25, 3.4, 0.3], "material": "green_steel",
+             "open": ["bottom", "top"], "transform": {"translate": [x, FLOOR + 1.7, 0]}}
+            for i, x in enumerate(FRAMES)]},
         {"id": "roof", "op": "extrude", "material": "roof", "depth": 34.0,
          "points": [[-ROOF_HALF, ROOF_EDGE], [0, ROOF_LOW], [ROOF_HALF, ROOF_EDGE], [ROOF_HALF, ROOF_EDGE + ROOF_T],
                     [0, ROOF_LOW + ROOF_T], [-ROOF_HALF, ROOF_EDGE + ROOF_T]],
@@ -341,21 +373,18 @@ def collision():
             n["open"] = list(open_)
         return n
 
-    hz = HOLE_Z
-    sv = [[-L, FLOOR, -W], [L, FLOOR, -W], [L, FLOOR, W], [-L, FLOOR, W],
-          [hx0, FLOOR, -W], [hx1, FLOOR, -W], [hx1, FLOOR, W], [hx0, FLOOR, W],
-          [hx0, FLOOR, -hz], [hx1, FLOOR, -hz], [hx1, FLOOR, hz], [hx0, FLOOR, hz],
-          [-L, 0, -W], [L, 0, -W], [L, 0, W], [-L, 0, W]]
-    slab = {"id": "slab", "op": "mesh", "material": "solid", "vertices": sv,
-            "faces": [[3, 7, 4, 0], [6, 2, 1, 5], [7, 6, 10, 11], [8, 9, 5, 4],
-                      [0, 1, 13, 12], [2, 3, 15, 14], [1, 2, 14, 13], [3, 0, 12, 15]]}
+    hz, te = HOLE_Z, TUNNEL_END
+    # The slab is open over the stair (x hx0..te, |z| < hz): the pieces' touching sides are
+    # left open; over the stretch where the stair runs under the floor, a thin floor (UNDER..1).
     nodes = [
-        slab,
-        {"id": "stairs", "op": "extrude", "material": "solid", "depth": 2 * hz - 0.04,
-         "points": [[hx0, FLOOR], [hx0, 0], [STAIR_END, 0], [STAIR_END, LANDING]]},
-        box("wall_n", hx0, hx1, 0, FLOOR + 1.0, -hz - 0.15, -hz),
-        box("wall_s", hx0, hx1, 0, FLOOR + 1.0, hz, hz + 0.15),
-        box("head_wall", hx1 - 0.2, hx1 + 0.05, 0, FLOOR + 1.04, -hz - 0.1, hz + 0.1),
+        box("slab_w", -L, hx0, 0, FLOOR, -W, W),
+        box("slab_e", te, L, 0, FLOOR, -W, W),
+        box("slab_n", hx0, te, 0, FLOOR, -W, -hz, ("bottom", "left", "right")),
+        box("slab_s", hx0, te, 0, FLOOR, hz, W, ("bottom", "left", "right")),
+        box("floor_over", hx1, te, UNDER, FLOOR, -hz, hz, ("left", "right", "back", "front")),
+        box("wall_n", hx0, hx1 + 0.1, FLOOR, RAIL, -hz - 0.15, -hz),
+        box("wall_s", hx0, hx1 + 0.1, FLOOR, RAIL, hz, hz + 0.15),
+        box("head_wall", hx1, hx1 + HEAD_T, UNDER, RAIL + 0.05, -hz - 0.2, hz + 0.2),
         box("fence_w", -L, -L + 0.2, FLOOR, FLOOR + 1.1, -W, W),
         box("fence_e", L - 0.2, L, FLOOR, FLOOR + 1.1, -W, W),
         box("kiosk", -11.8, -8.2, FLOOR, FLOOR + 2.6, -0.8, 0.8),

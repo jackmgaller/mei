@@ -49,32 +49,41 @@
       "id": "room",
       "op": "extrude",
       "material": "solid",
-      "depth": 3.6,
+      "depth": 7.92,
       "points": [
-        [-10.2, 6.72], [-10.0, 6.72], [-10.0, -3.0], [10.0, -3.0], [10.0, 6.72], [10.2, 6.72],
-        [10.2, -3.2], [-10.2, -3.2]
+        [10.0, 6.72], [10.2, 6.72], [10.2, -3.7], [-17.3226, -3.7], [-17.3226, -3.5], [10.0, -3.5]
       ],
       "transform": {
         "rotate": [-90, 0, 0],
-        "translate": [0, 1.7, 0]
+        "translate": [0, 3.86, 0]
       }
+    },
+    {
+      "id": "room_wall",
+      "op": "box",
+      "size": [0.2, 3.6, 8.09],
+      "material": "solid",
+      "transform": {
+        "translate": [-10.1, 1.7, -2.675]
+      },
+      "open": ["bottom"]
     },
     {
       "id": "room_ceiling",
       "op": "box",
-      "size": [20.2, 0.2, 9.86],
+      "size": [20.2, 0.2, 10.36],
       "material": "solid",
       "transform": {
-        "translate": [0.0, 3.5, -1.83]
+        "translate": [0.0, 3.5, -1.58]
       }
     },
     {
       "id": "room_floor",
       "op": "box",
-      "size": [20.2, 0.2, 9.86],
+      "size": [20.2, 0.2, 10.36],
       "material": "solid",
       "transform": {
-        "translate": [0.0, -0.04, -1.83]
+        "translate": [0.0, -0.04, -1.58]
       }
     },
     {
@@ -251,6 +260,102 @@
       "material": "solid",
       "transform": {
         "translate": [17.815, 9.6, -7.475]
+      },
+      "open": ["bottom"]
+    },
+    {
+      "id": "flight_1",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 2.19,
+      "points": [[-8.0, 0.06], [-14.8526, 3.5719], [-14.8526, -0.05], [-8.0, -0.05]],
+      "transform": {
+        "translate": [0, 0, 2.425]
+      }
+    },
+    {
+      "id": "landing",
+      "op": "box",
+      "size": [2.42, 3.5566, 4.77],
+      "material": "solid",
+      "transform": {
+        "translate": [-16.0326, 1.7783, 1.145]
+      },
+      "open": ["bottom"]
+    },
+    {
+      "id": "flight_2",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 2.44,
+      "points": [[-10.98, 5.5259], [-14.8526, 3.5412], [-14.8526, -0.03], [-10.98, -0.03]],
+      "transform": {
+        "translate": [0, 0, 0.0]
+      }
+    },
+    {
+      "id": "half_landing",
+      "op": "box",
+      "size": [1.6, 0.4, 2.46],
+      "material": "solid",
+      "transform": {
+        "translate": [-10.2, 5.3156, 0.0]
+      },
+      "open": ["left", "right"]
+    },
+    {
+      "id": "flight_3",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 2.42,
+      "points": [[-9.42, 5.5054], [-0.65, 10.0], [-0.65, 9.55], [-9.42, 5.0554]],
+      "transform": {
+        "translate": [0, 0, 0.0]
+      }
+    },
+    {
+      "id": "wall_n",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 0.15,
+      "points": [
+        [-0.65, 3.55], [-10.05, 3.55], [-10.05, 0.0], [-17.2726, 0.0], [-17.2726, 8.32],
+        [-7.9, 8.32], [-7.9, 9.0], [-0.65, 9.0]
+      ],
+      "transform": {
+        "translate": [0, 0, -1.275]
+      }
+    },
+    {
+      "id": "divider",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 0.15,
+      "points": [
+        [-0.65, 3.55], [-10.05, 3.55], [-10.05, 0.0], [-14.8376, 0.0], [-14.8376, 8.32],
+        [-7.9, 8.32], [-7.9, 9.0], [-0.65, 9.0]
+      ],
+      "transform": {
+        "translate": [0, 0, 1.275]
+      }
+    },
+    {
+      "id": "end_wall",
+      "op": "box",
+      "size": [0.12, 8.34, 4.97],
+      "material": "solid",
+      "transform": {
+        "translate": [-17.2826, 4.17, 1.115]
+      },
+      "open": ["bottom"]
+    },
+    {
+      "id": "over_room",
+      "op": "box",
+      "size": [0.15, 4.9, 2.22],
+      "material": "solid",
+      "transform": {
+        "translate": [-10.105, 5.9, 2.41]
       },
       "open": ["bottom"]
     }

@@ -18,6 +18,16 @@ viaduct_station_span: 16 m of the wide section. Its -Z side (the plaza's, as the
 has no parapet: the walkway runs to the fascia (z -7.6) and station_concourse stands the north
 parapet on it, with gaps where its two stairs arrive. Placed at yaw 180, -Z is north.
 
+viaduct_station_span_stair: the same span with the opening for the station's stair (the middle of
+the three, at x 160). The stair (station_concourse) rises along the track from the concourse
+under the deck to the island platform (station_platform); its last flight comes up through the
+deck between the tracks, east of the bent. In the town's frame (u = world x - 160, w = world
+z - 8; the span placed at yaw 180, so its own x is -u and its z is -w) the opening is u 0.65 to
+7.9 (just clear of the bent's beam, which ends at u 0.6, and 0.1 short of the joint), |w| < 1.4
+(the collision's |w| < 1.3). The stair's walls stand at |w| 1.2 to 1.35, in front of the
+opening's sides. Only level 0 has the opening: it is inside the station, and from 40 m the
+platform's own level 1 covers its stairwell.
+
 viaduct_station_taper: 16 m from the standard section at x = -8 to the wide one at x = +8. The
 tracks swing out on an S (smoothstep: z = +-(2 + 2.1 s), s = smoothstep((x + 8) / 16)), the
 fascias and parapets flare in straight lines (6.0 to 7.6), the girders follow the tracks. Both
@@ -43,6 +53,15 @@ TRACK_STD, TRACK_WIDE = 2.0, 4.1
 OUT_STD, OUT_WIDE = 6.0, 7.6
 PARAPET_T = 0.25
 COL_Z = 4.1                                      # the wide bent's columns, under the tracks
+
+# The station's stair, in the town's frame (u = world x - 160 east, w = world z - 8 north, y up),
+# shared by station_concourse (the stair), station_platform (its stairwell) and the stair span.
+STAIR_TOP_U = 0.65                               # the top step, at the platform floor (10.0)
+STAIR_SLOPE = 0.5125                             # 27.1 degrees: a 16.4 cm riser on a 32 cm tread
+STAIR_HALF = 1.2                                 # the flights' half width between their walls
+STAIR_WALL = 0.15                                # the walls' thickness, outside STAIR_HALF
+HOLE_U = (STAIR_TOP_U, 7.9)                      # the deck's opening along the track
+HOLE_W, HOLE_W_COL = 1.4, 1.3                    # its half width: drawn, collision
 
 
 def smooth(t):
@@ -107,7 +126,7 @@ def taper_at(t, level=0):
                    3.0 + (COL_Z - 3.0) * s, level)
 
 
-def loft(id_, sections, xs, textured=True):
+def loft(id_, sections, xs, textured=True, skip=()):
     """A mesh node: the sections (one per x in xs, the same edges in each) joined into bands.
     An edge that has no width in one section makes a triangle there, none where it has none in
     both."""
@@ -126,6 +145,8 @@ def loft(id_, sections, xs, textured=True):
     length = xs[-1] - xs[0]
     for i in range(n):
         mat = sections[0][i][2]
+        if i in skip:
+            continue                             # drawn in pieces round an opening
         if textured and mat is None:
             continue                             # an edge left open (a parapet's foot)
         reps = max(1, round(length / mv.REP.get(mat, 4.0)))
@@ -261,6 +282,118 @@ def station_span():
     return r, col
 
 
+def oriented(verts, uvs, normal):
+    """A planar polygon's corners in the order that faces `normal` (Newell's normal, so a
+    concave outline is judged by its whole area, not by one corner)."""
+    n = [0.0, 0.0, 0.0]
+    for i, p in enumerate(verts):
+        q = verts[(i + 1) % len(verts)]
+        n[0] += (p[1] - q[1]) * (p[2] + q[2])
+        n[1] += (p[2] - q[2]) * (p[0] + q[0])
+        n[2] += (p[0] - q[0]) * (p[1] + q[1])
+    if sum(n[j] * normal[j] for j in range(3)) < 0:
+        return verts[::-1], uvs[::-1]
+    return verts, uvs
+
+
+class Mesh:
+    """A mesh node built a polygon at a time (x, y, z), with UVs and a material each."""
+    def __init__(self, id_, textured=True):
+        self.id, self.textured = id_, textured
+        self.verts, self.uvs, self.faces, self.mats = [], [], [], []
+
+    def poly(self, verts, normal, mat, uvs=None):
+        uvs = uvs or [[0, 0]] * len(verts)
+        verts, uvs = oriented(verts, uvs, normal)
+        base = len(self.verts)
+        self.verts += [[mv.r7(c) for c in v] for v in verts]
+        self.uvs += [[mv.r4(c) for c in t] for t in uvs]
+        self.faces.append(list(range(base, base + len(verts))))
+        self.mats.append(mat if self.textured else 'solid')
+
+    def node(self):
+        n = {"id": self.id, "op": "mesh", "vertices": self.verts, "faces": self.faces,
+             "face_materials": self.mats}
+        if self.textured:
+            n["uvs"] = self.uvs
+        return n
+
+
+def edge_index(sec, z0, z1, y):
+    """The section edge from (z0, y) to (z1, y)."""
+    for i, p in enumerate(sec):
+        q = sec[(i + 1) % len(sec)]
+        if abs(p[0] - z0) < 1e-9 and abs(q[0] - z1) < 1e-9 and p[1] == y == q[1]:
+            return i
+    raise ValueError((z0, z1, y))
+
+
+def opening(sec, edges, hx, hw):
+    """The deck's level edges `edges` drawn round an opening x hx[0]..hx[1], |z| < hw, with the
+    UVs the loft would give them, and the opening's four sides."""
+    m = Mesh("opening")
+    x0, x1 = -LENGTH / 2, LENGTH / 2
+    for i in edges:
+        za, y, mat, va, vb = sec[i]
+        zb = sec[(i + 1) % len(sec)][0]
+        reps = max(1, round(LENGTH / mv.REP.get(mat, 4.0)))
+        up = 1.0 if y == DECK else -1.0
+        ta, tb = sorted(((-hw - za) / (zb - za), (hw - za) / (zb - za)))
+        for (xa, xb), (s0, s1) in (((x0, hx[0]), (0, 1)), ((hx[1], x1), (0, 1)),
+                                   (hx, (0, ta)), (hx, (tb, 1))):
+            vs = [[xa, s0], [xb, s0], [xb, s1], [xa, s1]]
+            m.poly([[x, y, za + t * (zb - za)] for x, t in vs], [0, up, 0], mat,
+                   [[reps * (x - x0) / LENGTH, va + t * (vb - va)] for x, t in vs])
+    lo, hi = 8.3, DECK
+    for sz in (1, -1):                           # the sides, facing into the opening
+        z = sz * hw
+        vs = [[hx[0], lo], [hx[1], lo], [hx[1], hi], [hx[0], hi]]
+        m.poly([[x, y, z] for x, y in vs], [0, 0, -sz], 'concrete',
+               [[(x - x0) / 4.0, (DECK - y) / 2.0] for x, y in vs])
+    for x, sx in ((hx[0], 1), (hx[1], -1)):      # the ends
+        vs = [[-hw, lo], [hw, lo], [hw, hi], [-hw, hi]]
+        m.poly([[x, y, z] for z, y in vs], [sx, 0, 0], 'concrete',
+               [[z / 4.0, (DECK - y) / 2.0] for z, y in vs])
+    return m.node()
+
+
+def station_span_stair():
+    """The station span with the stair's opening: the span's x is -u."""
+    hx = (-HOLE_U[1], -HOLE_U[0])
+    xs = [-LENGTH / 2, LENGTH / 2]
+    sec = wide(0, False)
+    mid = TRACK_WIDE - 2.0
+    cut = (edge_index(sec, mid, -mid, DECK), edge_index(sec, -(COL_Z - 1.1), COL_Z - 1.1, 8.3))
+    nodes = [loft("deck", [sec] * 2, xs, skip=cut), opening(sec, cut, hx, HOLE_W), bent("bent"),
+             downpipe(COL_Z)]
+    lod = {"levels": [
+        {"distance": 40, "nodes": [loft("deck", [wide(1, False)] * 2, xs),
+                                   bent("bent", detail=False)]},
+        {"distance": 100, "nodes": [loft("deck", [wide(2, False)] * 2, xs),
+                                    bent("bent", detail=False)]},
+    ], "band": 1}
+    r = mv.recipe("viaduct_station_span_stair", 140, SHEET, mv.materials(SHEET), nodes, lod)
+    # Collision: the full slab either side of the opening, and two halves along it.
+    w, pi, hc = OUT_WIDE, OUT_WIDE - PARAPET_T, HOLE_W_COL
+    full = col_section(TRACK_WIDE, OUT_WIDE, False)
+    north = [(hc, 8.3, None, 0, 0), (w, 8.3, None, 0, 0), (w, TOP, None, 0, 0),
+             (pi, TOP, None, 0, 0), (pi, DECK, None, 0, 0), (hc, DECK, None, 0, 0)]
+    south = [(-w, 8.3, None, 0, 0), (-hc, 8.3, None, 0, 0), (-hc, DECK, None, 0, 0),
+             (-w, DECK, None, 0, 0)]
+    east = [hx[1]] + [float(x) for x in range(0, 9, 2)]
+    ends = Mesh("opening_ends", textured=False)
+    for x, sx in ((hx[0], 1), (hx[1], -1)):
+        ends.poly([[x, 8.3, -hc], [x, 8.3, hc], [x, DECK, hc], [x, DECK, -hc]], [sx, 0, 0], None)
+    col = mv.col_recipe("viaduct_station_span_stair_col", [
+        loft("deck_w", [full] * 2, [-LENGTH / 2, hx[0]], textured=False),
+        loft("deck_e", [full] * len(east), east, textured=False),
+        loft("deck_n", [north] * 2, list(hx), textured=False),
+        loft("deck_s", [south] * 2, list(hx), textured=False),
+        ends.node(),
+        col_column("column_n", COL_Z), col_column("column_s", -COL_Z)])
+    return r, col
+
+
 def taper():
     segs = 4
     xs = [-LENGTH / 2 + LENGTH * i / segs for i in range(segs + 1)]
@@ -293,6 +426,7 @@ def write(folder, rec):
 
 if __name__ == '__main__':
     for name, (r, col) in (('viaduct_station_span', station_span()),
+                           ('viaduct_station_span_stair', station_span_stair()),
                            ('viaduct_station_taper', taper())):
         folder = os.path.join(ROOT, name)
         write(folder, r)
