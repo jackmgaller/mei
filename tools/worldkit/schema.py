@@ -35,6 +35,11 @@ AKARI_KEYWORDS = {'fn','var','let','const','struct','enum','if','else','while','
                   'continue','return','import','asm','reg','embed','as','true','false','null','cart',
                   'assert','assert_eq','private','sizeof','len'}
 
+# A stand-in's limits (WORLDKIT.md, "Stand-ins made by the kit"), for the world and per cell.
+STANDIN_LIMITS = {
+    'triangles':dict(integer(1,4000),description='At most this many triangles as drawn (a quad is 2): the cell\'s ground first, then its other contents largest first, each whole or not at all. Default: no cap.'),
+    'ground':dict(choice(4,8,16,32,64),description='The ground as a grid of this many units resampled over the cell\'s field tiles, in place of the level they draw at distance. Default: that level.')}
+
 PLACEMENT = obj({
     'id':dict(NAME,description='Stable within the cell; reports and witnesses name it.'),
     'asset':ASSET,
@@ -307,7 +312,10 @@ WORLD = dict(obj({
     'meshes':dict(obj({'quads':dict(BOOL,description='Pairs of triangles that share an edge and agree in every face field are packed as one quad, which Mei draws as those two triangles: the same picture, about half the faces. Semi-transparent and keyed faces stay triangles. Default false.')}),
                   description='How the kit writes the meshes it packs (WORLDKIT.md, "Quads").'),
     'standins':dict(obj({'distance':dict(POS,description='Each cell is drawn as it looks from this far: every placement, scatter chunk and terrain tile at the level it draws at this distance, without those culled by then (units).'),
-                         'sweeps':dict(BOOL,description='Put swept profiles in too, at that level. Default false: the field\'s ground stands in for them.')},
+                         'sweeps':dict(BOOL,description='Put swept profiles in too, at that level. Default false: the field\'s ground stands in for them.'),
+                         **STANDIN_LIMITS,
+                         'cells':{'type':'object','propertyNames':NAME,'additionalProperties':obj(STANDIN_LIMITS),
+                                  'description':'Per-cell overrides of triangles and ground, by cell ID.'}},
                         ['distance']),
                     description='Stand-ins made by the kit for every cell that does not name one: the cell\'s own contents at a distance, merged into one mesh (WORLDKIT.md, "Sight lines and stand-ins").'),
     'scatter':{'type':'object','propertyNames':NAME,'additionalProperties':SCATTER,'maxProperties':256,
