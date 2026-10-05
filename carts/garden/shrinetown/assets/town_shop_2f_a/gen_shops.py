@@ -6,6 +6,9 @@ Writes, from this folder:
   town_shop_2f_a.asset.json, ..._col             clock and glasses shop, tiled gable roof
   ../town_shop_2f_b/town_shop_2f_b.asset.json    greengrocer, open front with shutters, flat roof
   ../town_shop_2f_c/town_shop_2f_c.asset.json    corner liquor shop, two shopfronts, hip roof
+  ../town_shop_2f_c/town_shop_2f_c_left...       the corner shop mirrored: second front on -X
+  *_noawning.asset.json (in each folder)         A, B, C and C left without their own awning,
+                                                 to carry town_awning_bounce instead
 
 Run with Pillow: python3 gen_shops.py. It draws with the macOS Hiragino fonts; the PNG and the
 recipes are committed, so building the world needs none of this.
@@ -17,6 +20,15 @@ palette.
 
 Every shop: origin at the centre of its 9 x 14 m footprint at street level, front (the street)
 toward -Z, walls 9 m wide (1 m gaps in a row of 10 m plots), roof top 6.5 m, awning at about 2.6.
+
+The `_noawning` variants: a pink-striped awning always means bounce, so a street-side shop that is
+a bounce spot carries the separate town_awning_bounce instead of its own awning. The awning is
+left out and the wall finished where it was. town_awning_bounce goes at the shop's (x, 0, -7.75)
+(its wall plane, local z +0.75, on the shop's front at z -7.0), x = 0 on A and B, x = 0.1 on C
+(-0.1 on C left: the middle of the shopfront). B's opening is 0.1 m lower there (2.7) so the
+bounce awning's underside (2.72 at the wall) clears it, and its shutter box is left out (the
+awning's roller takes its place); C's kanban starts 0.06 m higher (3.11 to 3.85) so the roller (top
+3.09) clears it.
 """
 import json
 import os
@@ -573,7 +585,8 @@ def strip_top(id, x0, x1, z0, z1, y, pieces, along, mat='solid'):
 # a recessed glass front, a red awning, a navy kanban, a vertical sign and a clock on a bracket.
 # --------------------------------------------------------------------------------------------
 
-def shop_a():
+def shop_a(has_awning=True):
+    name = 'town_shop_2f_a' + ('' if has_awning else '_noawning')
     E, RU, T = 5.2, 6.32, 0.18          # wall top at the eaves, underside at the ridge, slab
     k = (RU - E) / D                    # the roof's slope (about 9 degrees)
     OZ, OX = 7.5, 4.75                  # roof overhangs
@@ -632,7 +645,10 @@ def shop_a():
             m.decal(front, 'window', 'window', (5.6, 1.0), (0, 4.5, -D), (0, 0, -1))
             m.quad((-W, E, D), (W, E, D), (W, 0, D), (-W, 0, D), (0, 0, 1), 'plaster')
         else:
-            bands(m, 'front', -W, W, -D, [0, 3.05, 3.95, E], ['glass', 'kanban', 'window'])
+            if has_awning:
+                bands(m, 'front', -W, W, -D, [0, 3.05, 3.95, E], ['glass', 'kanban', 'window'])
+            else:                                        # the wall over the shopfront shows
+                bands(m, 'front', -W, W, -D, [0, 2.5, 3.05, 3.95, E], ['glass', 'plaster', 'kanban', 'window'])
             m.quad((-W, E, D), (W, E, D), (W, 0, D), (-W, 0, D), (0, 0, 1), 'plaster')
         for s in (-1, 1):
             m.face([(s * W, 0, -D), (s * W, E, -D), (s * W, RU, 0), (s * W, E, D), (s * W, 0, D)], (s, 0, 0), 'plaster')
@@ -680,7 +696,8 @@ def shop_a():
     ridge = box('ridge', (9.7, 0.16, 0.36), (0, RU + T, 0), 'ridge', open=['bottom'])
     antenna = crossed_quads('antenna', (2.5, RU + T - k * 2.0 - 0.1, 2.0), 1.4, 1.8, 'antenna')
 
-    nodes0 = [shell(0), roof(0), ridge, awning(0), kanban, tate, clock, bracket, rail.node(), ac, pipe, antenna]
+    nodes0 = [shell(0), roof(0), ridge] + ([awning(0)] if has_awning else []) + [
+        kanban, tate, clock, bracket, rail.node(), ac, pipe, antenna]
 
     # Level 1 (from 20 m): the shopfront and the window as decals on a flat front, the roof without its gable ends, the awning
     # without its ends, the kanban and the vertical sign as open boxes, the clock as a plate.
@@ -688,16 +705,18 @@ def shop_a():
     import math
     ring = [(-4.1, 4.45 + 0.36 * math.cos(a * math.pi / 4), -7.55 + 0.36 * math.sin(a * math.pi / 4)) for a in range(8)]
     plate.face(ring, (1, 0, 0), 'clock_ds')
-    nodes1 = [shell(1), roof(1), awning(1),
+    nodes1 = [shell(1), roof(1)] + ([awning(1)] if has_awning else []) + [
               box('kanban', (8.1, 0.8, 0.3), (-0.2, 3.5, -7.13), 'board', open=['front', 'top'], faces={'back': 'kanban'}),
               box('tate', (0.16, 1.5, 0.62), (4.15, 4.25, -7.29), 'board', open=['front', 'top', 'bottom'],
                   faces={'left': 'tate', 'right': 'tate'}),
               plate.node()]
-    nodes2 = [shell(2), roof(2), awning(2)]
+    nodes2 = [shell(2), roof(2)] + ([awning(2)] if has_awning else [])
+    if not has_awning:
+        del mats['awning']
 
-    r = recipe('town_shop_2f_a', 250, mats, nodes0,
+    r = recipe(name, 250, mats, nodes0,
                [{'distance': 20, 'nodes': nodes1}, {'distance': 50, 'nodes': nodes2}])
-    write(os.path.join(HERE, 'town_shop_2f_a.asset.json'), r)
+    write(os.path.join(HERE, name + '.asset.json'), r)
 
     # Collision: the walls, the roof as a 0.2 m slab on the same slope (its fascias are the
     # grabbing lips), the awning, the kanban's ledge (in pieces).
@@ -719,8 +738,8 @@ def shop_a():
     prism_x(awc, -4.45, 4.45, awning_profile(3.0, -8.3, 2.62, 0.25, 2.78, wall_z=-7.0),
             {0: 'awning', 1: 'awning', 2: 'awning', 3: None, 'end': 'awning'})
     ledge_ = [ledge('kanban', -4.25, 3.85, 3.1, 3.9, -7.28, -7.0, 3, 'x', open=('back',))]
-    write(os.path.join(HERE, 'town_shop_2f_a_col.asset.json'),
-          col_recipe('town_shop_2f_a_col', [body.node(), roofc.node(), awc.node()] + ledge_))
+    write(os.path.join(HERE, name + '_col.asset.json'),
+          col_recipe(name + '_col', [body.node(), roofc.node()] + ([awc.node()] if has_awning else []) + ledge_))
 
 
 # --------------------------------------------------------------------------------------------
@@ -728,9 +747,12 @@ def shop_a():
 # the ground floor open 1.6 m deep with a produce stand under a green awning, one bay shuttered.
 # --------------------------------------------------------------------------------------------
 
-def shop_b():
+def shop_b(has_awning=True):
+    name = 'town_shop_2f_b' + ('' if has_awning else '_noawning')
     H, DECK, PT = 6.5, 6.3, 0.25        # parapet top, roof deck, parapet thickness
     OPX, OPY, ZR = 4.1, 2.8, -5.4       # the opening's half width, height; the back of the recess
+    if not has_awning:
+        OPY = 2.7                       # under the bounce awning's underside (2.72 at the wall)
     sign = ['#f4f0e0', '#c8301e', '#2e7a3a']
     val = ['#2e7a3a', '#f4f0e0', '#2e7a3a']
     awn = ['#2e7a3a', '#f4f0e0']
@@ -800,7 +822,10 @@ def shop_b():
             for s in (-1, 1):
                 m.quad((s * W, H, -D), (s * W, H, D), (s * i_x, H, i_z), (s * i_x, H, -i_z), (0, 1, 0), 'parapet')
         elif level == 2:
-            bands(m, 'front', -W, W, -D, [0, 3.2, 4.9, H], ['interior', 'window', 'kanban'])
+            if has_awning:
+                bands(m, 'front', -W, W, -D, [0, 3.2, 4.9, H], ['interior', 'window', 'kanban'])
+            else:
+                bands(m, 'front', -W, W, -D, [0, OPY, 3.2, 4.9, H], ['interior', 'tile', 'window', 'kanban'])
             m.quad((-W, H, D), (W, H, D), (W, 0, D), (-W, 0, D), (0, 0, 1), 'mortar')
         if level > 0:                                            # a flat top at the parapet
             m.quad((-W, H, -D), (W, H, -D), (W, H, D), (-W, H, D), (0, 1, 0), 'deck')
@@ -835,18 +860,23 @@ def shop_b():
     pipe = box('downpipe', (0.1, 6.4, 0.1), (-4.38, 3.2, 7.03), 'pipe', open=['top', 'bottom'])
     antenna = crossed_quads('antenna', (-2.2, DECK - 0.05, 1.5), 1.4, 1.8, 'antenna')
 
-    nodes0 = [shell(0), awning(0), shutter_box, shutter, stand(0), tank, ac, pipe, antenna]
-    nodes1 = [shell(1), awning(1), stand(1),
+    if has_awning:
+        nodes0 = [shell(0), awning(0), shutter_box, shutter, stand(0), tank, ac, pipe, antenna]
+    else:
+        nodes0 = [shell(0), shutter, stand(0), tank, ac, pipe, antenna]
+    nodes1 = [shell(1)] + ([awning(1)] if has_awning else []) + [stand(1),
               box('shutter', (1.73, 2.84, 0.06), (3.265, 1.42, -6.9), 'steel',
                   open=['top', 'bottom', 'left', 'right', 'front'], faces={'back': 'shutter'}),
               box('tank', (1.4, 1.0, 1.1), (2.6, H + 0.48, 4.2), 'tank', open=['bottom', 'front'])]
-    nodes2 = [shell(2), awning(2)]
+    nodes2 = [shell(2)] + ([awning(2)] if has_awning else [])
+    if not has_awning:
+        del mats['awning'], mats['valance']
 
-    r = recipe('town_shop_2f_b', 250, mats, nodes0,
+    r = recipe(name, 250, mats, nodes0,
                [{'distance': 20, 'nodes': nodes1}, {'distance': 50, 'nodes': nodes2}], sheet=SHEET_REL_OTHER)
     folder = os.path.join(HERE, '..', 'town_shop_2f_b')
     os.makedirs(folder, exist_ok=True)
-    write(os.path.join(folder, 'town_shop_2f_b.asset.json'), r)
+    write(os.path.join(folder, name + '.asset.json'), r)
 
     # Collision: the walls (the open front too: the recess is a shop, not a room to enter),
     # the deck, the parapet as a wall inside and a rim in short pieces, the awning, the stand,
@@ -870,10 +900,10 @@ def shop_b():
     stc = Mesh('stand')
     prism_x(stc, -4.0, 2.25, [(-7.7, 0.0), (-7.7, 0.55), (-7.0, 0.75), (-7.0, 0.0)],
             {0: 'solid', 1: 'solid', 2: None, 3: None, 'end': 'solid'})
-    nodes = [body.node()] + rims + [awc.node(), stc.node(),
+    nodes = [body.node()] + rims + ([awc.node()] if has_awning else []) + [stc.node(),
                                     slab_box('tank', 1.9, 3.3, DECK, DECK + 0.98, 3.65, 4.75, open=('bottom',)),
                                     slab_box('ac', -2.95, -2.05, DECK, DECK + 0.63, 5.425, 5.775, open=('bottom',))]
-    write(os.path.join(folder, 'town_shop_2f_b_col.asset.json'), col_recipe('town_shop_2f_b_col', nodes))
+    write(os.path.join(folder, name + '_col.asset.json'), col_recipe(name + '_col', nodes))
 
 
 # --------------------------------------------------------------------------------------------
@@ -882,7 +912,42 @@ def shop_b():
 # two vending machines and crates on the side, a hip roof of blue corrugated iron.
 # --------------------------------------------------------------------------------------------
 
-def shop_c():
+def mirror_x(nodes):
+    """The nodes mirrored left for right (x -> -x), faces rewound so they still face out.
+    Textures stay readable: every projection works in each face's own right/down frame as seen
+    from outside, so a mirrored sign reads the right way round; a decal's `at` (right, up) flips
+    its right, and a box's left and right sides swap."""
+    swap = {'left': 'right', 'right': 'left'}
+    out = []
+    for n in nodes:
+        n = json.loads(json.dumps(n))
+        if n['op'] == 'mesh':
+            n['vertices'] = [[r4(-v[0]), v[1], v[2]] for v in n['vertices']]
+            n['faces'] = [f[::-1] for f in n['faces']]
+        elif n['op'] != 'box':
+            raise ValueError('mirror_x: ' + n['op'])
+        if 'open' in n:
+            n['open'] = [swap.get(k, k) for k in n['open']]
+        if 'faces' in n and n['op'] == 'box':
+            n['faces'] = {swap.get(k, k): v for k, v in n['faces'].items()}
+        for d in n.get('decals', []):
+            if n['op'] == 'box':
+                d['face'] = swap.get(d['face'], d['face'])
+            d['at'] = [r4(-d['at'][0]), d['at'][1]]
+        t = n.get('transform')
+        if t:
+            if 'translate' in t:
+                t['translate'][0] = r4(-t['translate'][0])
+            if 'rotate' in t:
+                rx, ry, rz = t['rotate']
+                t['rotate'] = [rx, -ry, -rz]
+        out.append(n)
+    return out
+
+
+def shop_c(has_awning=True, left=False):
+    name = 'town_shop_2f_c' + ('_left' if left else '') + ('' if has_awning else '_noawning')
+    flip = mirror_x if left else (lambda nodes: nodes)
     E = 5.22                             # wall top = the roof's soffit
     OX, OZ = 4.9, 7.4                    # eaves
     ET, RT, RZ = 5.37, 6.5, 2.5          # eave top, ridge top, ridge half length
@@ -966,7 +1031,10 @@ def shop_c():
             m.decal(side, 'glass_side', 'glass', (SZ1 - SZ0, 2.48), (W, 1.25, (SZ0 + SZ1) / 2), (1, 0, 0))
             m.quad((-W, E, D), (W, E, D), (W, 0, D), (-W, 0, D), (0, 0, 1), 'mortar')
         else:
-            bands(m, 'front', -W, W, -D, [0, 3.05, 3.95, E], ['glass', 'kanban', 'window'])
+            if has_awning:
+                bands(m, 'front', -W, W, -D, [0, 3.05, 3.95, E], ['glass', 'kanban', 'window'])
+            else:
+                bands(m, 'front', -W, W, -D, [0, 2.5, KY0, 3.95, E], ['glass', 'mortar', 'kanban', 'window'])
             m.quad((W, E, -D), (W, E, D), (W, 0, D), (W, 0, -D), (1, 0, 0), 'mortar')
             m.quad((-W, E, D), (W, E, D), (W, 0, D), (-W, 0, D), (0, 0, 1), 'mortar')
         m.quad((-W, E, -D), (-W, E, D), (-W, 0, D), (-W, 0, -D), (-1, 0, 0), 'mortar')
@@ -1021,6 +1089,8 @@ def shop_c():
 
     # The kanban wraps the corner too: an L-shaped band, its inside sunk into the walls.
     KY0, KY1, KO = 3.05, 3.85, 0.3
+    if not has_awning:
+        KY0 = 3.11                      # over the bounce awning's roller (top 3.09)
 
     def kanban(level):
         m = Mesh('kanban')
@@ -1060,15 +1130,20 @@ def shop_c():
     slope = (RT - ET) / OX
     antenna = crossed_quads('antenna', (-1.6, RT - slope * 1.6 - 0.1, 1.0), 1.4, 1.8, 'antenna')
 
-    nodes0 = [shell(0), roof(0), ridge, awning(0), kanban(0), tate(0)] + vending(0) + [crates, ac, pipe, antenna]
-    nodes1 = [shell(1), roof(1), awning(1), kanban(1), tate(1)] + vending(1)
-    nodes2 = [shell(2), roof(2), awning(2)]
+    awl = (lambda level: [awning(level)]) if has_awning else (lambda level: [])
+    nodes0 = [shell(0), roof(0), ridge] + awl(0) + [kanban(0), tate(0)] + vending(0) + [crates, ac, pipe, antenna]
+    nodes1 = [shell(1), roof(1)] + awl(1) + [kanban(1), tate(1)] + vending(1)
+    nodes2 = [shell(2), roof(2)] + awl(2)
+    if not has_awning:
+        for k in ('awning', 'awning_side', 'valance'):
+            del mats[k]
 
-    r = recipe('town_shop_2f_c', 250, mats, nodes0,
-               [{'distance': 20, 'nodes': nodes1}, {'distance': 50, 'nodes': nodes2}], sheet=SHEET_REL_OTHER)
+    r = recipe(name, 250, mats, flip(nodes0),
+               [{'distance': 20, 'nodes': flip(nodes1)}, {'distance': 50, 'nodes': flip(nodes2)}],
+               sheet=SHEET_REL_OTHER)
     folder = os.path.join(HERE, '..', 'town_shop_2f_c')
     os.makedirs(folder, exist_ok=True)
-    write(os.path.join(folder, 'town_shop_2f_c.asset.json'), r)
+    write(os.path.join(folder, name + '.asset.json'), r)
 
     # Collision: the walls, the hip roof as a slab (its fascias are the lips), the awning round
     # the corner, the kanban ledge in pieces, the vending machines and the crates (steps up).
@@ -1092,10 +1167,10 @@ def shop_c():
     aw = awning(0, wall=(-7.0, 4.5), mat={k: 'awning' for k in ('top', 'top_s', 'val', 'val_s', 'und', 'und_s')})
     ledges = [ledge('kanban_front', -4.25, W + KO, KY0, KY1, -D - KO, -D, 3, 'x', open=('back',)),
               ledge('kanban_side', W, W + KO, KY0, KY1, -D, 1.6, 3, 'z', open=('left',))]
-    nodes = [body.node(), roofc.node(), aw] + ledges + [
+    nodes = [body.node(), roofc.node()] + ([aw] if has_awning else []) + ledges + [
         slab_box('vending', W, W + 0.73, 0, 1.83, 2.05, 4.1, open=('left', 'bottom')),
         slab_box('crates', W, W + 0.58, 0, 1.0, 4.25, 5.25, open=('left', 'bottom'))]
-    write(os.path.join(folder, 'town_shop_2f_c_col.asset.json'), col_recipe('town_shop_2f_c_col', nodes))
+    write(os.path.join(folder, name + '_col.asset.json'), col_recipe(name + '_col', flip(nodes)))
 
 
 # --------------------------------------------------------------------------------------------
@@ -1132,4 +1207,9 @@ if __name__ == '__main__':
     shop_a()
     shop_b()
     shop_c()
+    shop_a(has_awning=False)
+    shop_b(has_awning=False)
+    shop_c(has_awning=False)
+    shop_c(left=True)
+    shop_c(has_awning=False, left=True)
     pack_sheet()

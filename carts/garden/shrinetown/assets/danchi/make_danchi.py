@@ -324,6 +324,27 @@ MATERIALS = {
     "bike_c": {"color": "#3a6ab0", "double_sided": True, "texture": sheet("bike_c")},
 }
 
+# Lit windows: the facade is one repeating texture, so a lit room is a card laid 4 cm over its
+# drawn door or window (emissive, tagged window). Three emissive colours, shared by the three
+# drawings: the sash, a lit curtain and a warm lit room.
+LIT = ["#5e646c", "#f6dc9a", "#e0a056"]
+MATERIALS.update({
+    # balcony door: two glass leaves, curtains drawn back to the sides
+    "lit_door": {"color": LIT[1], "class": "emissive", "tag": "window", "texture": {
+        "texels": ["0000000000000000"] + ["0221111001111220"] * 4 + ["0211111001111120"] * 5
+                  + ["0000000000000000"],
+        "colors": LIT, "projection": "fit"}},
+    # balcony door, one leaf's curtain closed, lit through
+    "lit_door_b": {"color": LIT[1], "class": "emissive", "tag": "window", "texture": {
+        "texels": ["0000000000000000"] + ["0111111002222220"] * 4 + ["0111111002222220"] * 5
+                  + ["0000000000000000"],
+        "colors": LIT, "projection": "fit"}},
+    # small window: two sashes, a curtain half across
+    "lit_win": {"color": LIT[1], "class": "emissive", "tag": "window", "texture": {
+        "texels": ["00000000", "02211110", "02211110", "02111110", "02111110", "00000000"],
+        "colors": LIT, "projection": "fit"}},
+})
+
 
 # ---- level 0 ---------------------------------------------------------------------------
 def body(top_open=True, end_decals=True):
@@ -474,10 +495,56 @@ def stair_tower(flights=True):
     return n
 
 
+LIT_OUT = 0.04       # a card's distance in front of its wall
+# Where the facade texture draws them (8 texels a metre across, 16 a storey): balcony doors
+# x 3.5 to 6.75 (either side), from the floor to 2.01; windows x 1.25 to 2.625, 0.84 to 1.85.
+DOOR_X, WIN_X = (3.5, 6.75), (1.25, 2.625)
+DOOR_Y, WIN_Y = (0.02, 12 * STOREY / 16), (5 * STOREY / 16, 11 * STOREY / 16)
+# South face: (storey, side -1 west / +1 east, door or window, material). Clear of the blinds
+# and the laundry; one behind a futon on the rail, one over the hedge on the ground floor.
+LIT_SOUTH = [(0, -1, "win", "lit_win"), (1, -1, "door", "lit_door"), (2, 1, "win", "lit_win"),
+             (3, 1, "door", "lit_door_b"), (4, -1, "win", "lit_win"), (4, 1, "door", "lit_door"),
+             (5, -1, "door", "lit_door_b"), (6, 1, "win", "lit_win")]
+# End walls (no windows drawn there, below the block number): (storey, -1 west / +1 east, z).
+LIT_ENDS = [(1, -1, -2.6), (2, -1, 1.2), (0, 1, 1.2), (3, 1, -2.6)]
+
+
+def lit_windows(ends=True):
+    """The lit window cards, one mesh node a face (south, and the two ends)."""
+    S = STOREY
+    v, f, fm = [], [], []
+
+    def add(pts, mat):
+        f.append(list(range(len(v), len(v) + 4)))
+        v.extend([[r(c) for c in p] for p in pts])
+        fm.append(mat)
+
+    z = ZF - LIT_OUT
+    for k, side, kind, mat in LIT_SOUTH:
+        (a, b), (y0, y1) = (DOOR_X, DOOR_Y) if kind == "door" else (WIN_X, WIN_Y)
+        x0, x1 = (a, b) if side > 0 else (-b, -a)
+        y0, y1 = k * S + y0, k * S + y1
+        add([[x0, y1, z], [x1, y1, z], [x1, y0, z], [x0, y0, z]], mat)    # seen from -Z
+    nodes = [{"id": "lit_south", "op": "mesh", "vertices": v, "faces": f, "face_materials": fm}]
+    if not ends:
+        return nodes
+    v, f, fm = [], [], []
+    for k, side, zc in LIT_ENDS:
+        x = side * (W / 2 + LIT_OUT)
+        y0, y1 = k * S + WIN_Y[0], k * S + WIN_Y[1]
+        z0, z1 = zc - 0.55, zc + 0.55
+        if side > 0:    # seen from +X: +Z to the right
+            add([[x, y1, z0], [x, y1, z1], [x, y0, z1], [x, y0, z0]], "lit_win")
+        else:           # seen from -X: -Z to the right
+            add([[x, y1, z1], [x, y1, z0], [x, y0, z0], [x, y0, z1]], "lit_win")
+    nodes.append({"id": "lit_ends", "op": "mesh", "vertices": v, "faces": f, "face_materials": fm})
+    return nodes
+
+
 def level0():
     return (
         [body()] + roof_nodes() + balconies() + balcony_life() + ground() + roof_things()
-        + stair_tower()
+        + stair_tower() + lit_windows()
     )
 
 
@@ -494,7 +561,7 @@ def level1():
     n.append(box("tank", [2.4, 2.0, 2.4], [0, ROOF + 1.0, 0], "tank", open=["bottom"]))
     n.append(box("hedge", [W - 0.4, 0.8, 0.5], [0, 0.4, ZF - BAL + 0.05], "hedge",
                  open=["bottom"]))
-    return n
+    return n + lit_windows()
 
 
 def level2():
@@ -502,7 +569,8 @@ def level2():
             box("stair_cage", [T_X1 - T_X0, ROOF + 1.1, T_Z1 - ZB],
                 [(T_X0 + T_X1) / 2, (ROOF + 1.1) / 2, (ZB + T_Z1) / 2], "endwall",
                 open=["bottom", "back"]),
-            box("tank", [2.4, 2.0, 2.4], [0, ROOF + 1.0, 0], "tank", open=["bottom"])]
+            box("tank", [2.4, 2.0, 2.4], [0, ROOF + 1.0, 0], "tank", open=["bottom"])
+            ] + lit_windows(ends=False)
 
 
 def recipe():
