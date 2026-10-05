@@ -160,6 +160,8 @@ fn shrine_case_init() -> bool {
         312 => { name = "shrine view: the road, looking north" }
         313 => { name = "shrine view: the pond, looking west" }
         314 => { name = "shrine view: turning once round on the summit stage" }
+        315 => { name = "shrine view: up the approach from the road to the gate, looking north" }
+        316 => { name = "shrine view: along the ridge behind the temple, looking south" }
         else => { return false }
     }
     cam.lock = false
@@ -179,11 +181,13 @@ fn shrine_case(f: s32) {
         307 => sh_coins(f)
         308 => sh_door(f)
         309 => sh_door_in(f)
-        310 => sh_view(f, vec3(72.0, 0.0, 262.6), 3.1416, -0.5, false)
-        311 => sh_view(f, vec3(96.0, 0.0, 170.0), 3.1416, -0.4, false)
-        312 => sh_view(f, vec3(95.0, 0.0, 14.0), NORTH, -0.2, false)
-        313 => sh_view(f, vec3(184.0, 0.0, 72.0), WEST, -0.2, false)
-        314 => sh_view(f, vec3(72.0, 0.0, 262.6), 3.1416, -0.5, true)
+        310 => sh_view(f, vec3(72.0, 0.0, 262.6), 3.1416, -0.42, 4.0, false)
+        311 => sh_view(f, vec3(100.0, 0.0, 200.0), 3.1416, -0.25, 8.0, false)
+        312 => sh_view(f, vec3(95.0, 0.0, 14.0), NORTH, -0.2, 8.0, false)
+        313 => sh_view(f, vec3(184.0, 0.0, 72.0), WEST, -0.2, 8.0, false)
+        314 => sh_view(f, vec3(72.0, 0.0, 262.6), 3.1416, -0.42, 4.0, true)
+        315 => sh_track(f, vec3(95.0, 0.0, 6.0), vec3(95.0, 0.0, 78.0), NORTH, -0.15)
+        316 => sh_track(f, vec3(16.0, 0.0, 200.0), vec3(176.0, 0.0, 200.0), 3.1416, -0.25)
         else => {}
     }
 }
@@ -234,17 +238,17 @@ fn sh_coins(f: s32) {
 // camera behind it on a fixed yaw (or turning once round in 8 s); notes the frame's peak CPU
 // and GPU cycles and triangles, and checks the frames stay within the budgets. They are for
 // screenshots (SHOT=1, SEQ) as much as for the numbers; check.sh runs them.
-fn sh_view(f: s32, at: vec3, yaw: fixed, pitch: fixed, turn: bool) {
+fn sh_view(f: s32, at: vec3, yaw: fixed, pitch: fixed, dist: fixed, turn: bool) {
     if f == 0 {
         readout = 2                     // no readout over the picture
         tv[T.CamPitch] = pitch          // the view's own pitch, a little further back
-        tv[T.CamDist] = 8.0
+        tv[T.CamDist] = dist
         place(vec3(at.x, sh_floor(at.x, at.z, 90.0), at.z), yaw)
         x0 = 0.0
         y0 = 0.0
         v0 = 0.0
     }
-    if turn { cam.yaw = wrap_angle(yaw + fixed(f) * TAU / 480) }
+    if turn { cam.yaw = wrap_angle(yaw + fixed(f) * TAU / 480) } else { cam.yaw = yaw }
     if f >= 30 {
         x0 = max(x0, fixed(timing.cpu / 100) / 10)
         y0 = max(y0, fixed(timing.gpu / 100) / 10)
@@ -256,6 +260,35 @@ fn sh_view(f: s32, at: vec3, yaw: fixed, pitch: fixed, turn: bool) {
         note("cpu peak, thousand cycles", x0)
         note("gpu peak, thousand cycles", y0)
         note("triangles, most", v0)
+        expect(timing.late == 0, "no late frames", fixed(timing.late))
+        done()
+    }
+}
+
+// A camera track for pop-in (315, 316): the player set down along a line at running speed
+// (9.6 m/s), 0.16 m a tick, the camera behind it on a fixed yaw; runs SEQ for frame strips and
+// checks the frames stay within the budgets.
+fn sh_track(f: s32, a: vec3, b: vec3, yaw: fixed, pitch: fixed) {
+    let n = s32(length(b - a) / 0.16)
+    let t = min(fixed(f) / fixed(n), 1.0)
+    let p = a + (b - a) * t
+    if f == 0 {
+        readout = 2
+        tv[T.CamPitch] = pitch
+        tv[T.CamDist] = 8.0
+        x0 = 0.0
+        y0 = 0.0
+        v0 = 0.0
+    }
+    place(vec3(p.x, sh_floor(p.x, p.z, 90.0), p.z), yaw)
+    cam.yaw = yaw
+    let c = fixed(timing.cpu / 100) / 10
+    if f >= 30 && c > x0 { x0 = c; v0 = fixed(f) }      // (the first ticks load the world)
+    if f >= 30 { y0 = max(y0, fixed(timing.tris)) }
+    if f == n {
+        note("cpu peak, thousand cycles", x0)
+        note("at tick", v0)
+        note("triangles, most", y0)
         expect(timing.late == 0, "no late frames", fixed(timing.late))
         done()
     }

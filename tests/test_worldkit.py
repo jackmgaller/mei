@@ -1074,6 +1074,224 @@ class TerrainTests(unittest.TestCase):
 pillow = unittest.skipUnless(importlib.util.find_spec('PIL'), 'the night market\'s sheets need Pillow')
 
 
+def tri_set(mesh):
+    """A native mesh's triangles as a set of vertex triples, each turned to start at its least
+    corner (so the same triangle compares equal however its corners are numbered)."""
+    out = set()
+    for t in P.mesh_triangles(mesh):
+        k = min(range(3), key=lambda i: t[i])
+        out.add(tuple(t[(k + i) % 3] for i in range(3)))
+    return out
+
+
+def raw_mesh(verts, faces):
+    """A native mesh of palette-swatch-like faces: faces are (indices, flags, colour)."""
+    import meshlib
+    m = meshlib.Mesh()
+    for v in verts:
+        m.vertex(*v)
+    for idx, flags, col in faces:
+        m.face(list(idx), [col] * len(idx), [(1, 0)] * len(idx), flags)
+    return m.pack()
+
+
+class FarLodTests(unittest.TestCase):
+    """Levels of detail for distance: quads, far ground, scatter levels from the assets, thinning,
+    sweep culls, cull-only recipes and stand-ins made by the kit (WORLDKIT.md)."""
+
+    def test_quads_pair_flat_convex_pairs_only(self):
+        from worldkit import quads
+        sq = [(0, 0, 0), (1, 0, 0), (0, 0, 1), (1, 0, 1)]
+        # a flat square in two triangles (upward, Mei's winding) becomes one quad, same triangles
+        m = raw_mesh(sq, [((0, 2, 1), 0, 0x808080), ((1, 2, 3), 0, 0x808080)])
+        q = quads.pair(m)
+        self.assertEqual(struct.unpack_from('<H', q, 2)[0], 1)
+        self.assertEqual(tri_set(q), tri_set(m))
+        # folded 90 degrees: stays two faces
+        fold = [(0, 0, 0), (1, 0, 0), (0, 0, 1), (1, 1, 1)]
+        m2 = raw_mesh(fold, [((0, 2, 1), 0, 0x808080), ((1, 2, 3), 0, 0x808080)])
+        self.assertEqual(quads.pair(m2), m2)
+        # a dart (concave quad) stays two faces
+        dart = [(0, 0, 0), (2, 0, 0), (0, 0, 2), (0.4, 0, 0.4)]
+        m3 = raw_mesh(dart, [((0, 3, 1), 0, 0x808080), ((0, 2, 3), 0, 0x808080)])
+        self.assertEqual(struct.unpack_from('<H', quads.pair(m3), 2)[0], 2)
+        # different colours, semi-transparent faces and skipped flags stay as they were
+        m4 = raw_mesh(sq, [((0, 2, 1), 0, 0x808080), ((1, 2, 3), 0, 0x404040)])
+        self.assertEqual(quads.pair(m4), m4)
+        m5 = raw_mesh(sq, [((0, 2, 1), 8, 0x808080), ((1, 2, 3), 8, 0x808080)])
+        self.assertEqual(quads.pair(m5), m5)
+        m6 = raw_mesh(sq, [((0, 2, 1), 16, 0x808080), ((1, 2, 3), 16, 0x808080)])
+        self.assertEqual(struct.unpack_from('<H', quads.pair(m6), 2)[0], 1)
+        self.assertEqual(quads.pair(m6, skip=quads.DOUBLE), m6)
+
+    def test_quads_in_a_world(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            before = ex.compile()
+            ex.edit(lambda w: w.update(meshes={'quads': True}))
+            after = ex.compile()
+            pb, pa = P.decode(before.pack), P.decode(after.pack)
+            fb = fa = 0
+            for key, cell in pb.cells.items():
+                for x, y in zip(cell.placements, pa.cells[key].placements):
+                    self.assertEqual(tri_set(before.pack[x['mesh']:]), tri_set(after.pack[y['mesh']:]))
+                    self.assertEqual(x['sphere'], y['sphere'])
+                    fb += P.mesh_info(before.pack[x['mesh']:])[1]
+                    fa += P.mesh_info(after.pack[y['mesh']:])[1]
+            self.assertLess(fa, fb * 0.8)
+
+    def test_far_ground_levels_and_skirts(self):
+        ops = [{'op': 'ramp', 'from': [0, 0, 32], 'to': [64, 12, 32], 'width': 100},
+               {'op': 'add', 'area': {'circle': [40, 40, 12]}, 'height': 4, 'falloff': 12}]
+        t = field(operations=ops, tile=16, lod={'distance': 20, 'tolerance': 0.5})
+        with tempfile.TemporaryDirectory() as tmp:
+            plain = TerrainWorld(tmp, terrain=t).compile()
+            w = TerrainWorld(tmp, terrain=t, lod={'ground': [{'distance': 40, 'grid': 8}, {'distance': 80, 'grid': 16}]})
+            c = w.compile()
+            self.assertNotEqual(c.pack, plain.pack)
+            rep = c.report['far_ground']
+            self.assertEqual(rep['levels'][0], {'distance': 40, 'grid': 8})
+            self.assertGreater(rep['tiles'][0], 0)
+            from worldkit import farground
+            tiles = [p for cell in c.world.cells for p in cell.placements if p.tag == 0xFFFE]
+            self.assertTrue(any(p.lod and len(p.lod.levels) > 1 for p in tiles))
+            for p in tiles:
+                if not p.lod:
+                    continue
+                ds = [d for d, _ in p.lod.levels]
+                self.assertEqual(ds, sorted(ds))
+                for d, m in p.lod.levels[1:]:
+                    # far levels: fewer faces, every corner on the tile's own surface (or a
+                    # skirt's foot below it)
+                    self.assertLess(P.mesh_info(m)[1], P.mesh_info(p.lod.levels[0][1])[1])
+            # a grid resampled from a known slope: heights exact, no skirt where the edges are straight
+            slope = raw_mesh([(-8, 0, -8), (8, 4, -8), (-8, 0, 8), (8, 4, 8)],
+                             [((0, 2, 1), 0, 0x808080), ((1, 2, 3), 0, 0x808080)])
+            l8, l16 = farground.far_levels(slope, [8, 16])
+            self.assertEqual(P.mesh_info(l8)[1], 8)
+            self.assertEqual(P.mesh_info(l16)[1], 2)
+            for v in P.mesh_vertices(l8):
+                self.assertAlmostEqual(float(v[1]), (float(v[0]) + 8) / 4, places=3)
+            bump = raw_mesh([(-8, 0, -8), (0, 0, -8), (8, 0, -8), (-8, 0, 0), (0, 3, 0), (8, 0, 0),
+                             (-8, 0, 8), (0, 2, 8), (8, 0, 8)],
+                            [((0, 3, 1), 0, 0x808080), ((1, 3, 4), 0, 0x808080), ((1, 4, 2), 0, 0x808080),
+                             ((2, 4, 5), 0, 0x808080), ((3, 6, 4), 0, 0x808080), ((4, 6, 7), 0, 0x808080),
+                             ((4, 7, 5), 0, 0x808080), ((5, 7, 8), 0, 0x808080)])
+            (b16,) = farground.far_levels(bump, [16])
+            # the 16-unit square cuts the ridge at z = 8 (its edge runs at height 0 over a point
+            # at 2): no skirt needed there, since the edge stands below; none above either
+            self.assertEqual(P.mesh_info(b16)[1], 2)
+            hollow = raw_mesh([(-8, 1, -8), (0, 1, -8), (8, 1, -8), (-8, 1, 0), (0, 1, 0), (8, 1, 0),
+                               (-8, 1, 8), (0, -1, 8), (8, 1, 8)],
+                              [((0, 3, 1), 0, 0x808080), ((1, 3, 4), 0, 0x808080), ((1, 4, 2), 0, 0x808080),
+                               ((2, 4, 5), 0, 0x808080), ((3, 6, 4), 0, 0x808080), ((4, 6, 7), 0, 0x808080),
+                               ((4, 7, 5), 0, 0x808080), ((5, 7, 8), 0, 0x808080)])
+            (h16,) = farground.far_levels(hollow, [16])
+            self.assertEqual(P.mesh_info(h16)[1], 3, 'a skirt where the straight edge stands over the dip')
+            (h16b,) = farground.far_levels(hollow, [16], skirted=lambda a, b: False)
+            self.assertEqual(P.mesh_info(h16b)[1], 2)
+            with self.assertRaises(WorldError) as cm:
+                TerrainWorld(tmp, terrain=t, lod={'ground': [{'distance': 21, 'grid': 8}]}).compile()
+            self.assertEqual(cm.exception.path, '/lod/ground')
+
+    def scatter_world(self, tmp, scatter, **extra):
+        ex = Example(tmp)
+        def lod(a):
+            a['lod'] = {'levels': [{'distance': 20, 'nodes': [{'id': 'top', 'op': 'box', 'size': [3, 2, 3],
+                                                                'open': ['bottom'], 'material': 'stone',
+                                                                'transform': {'translate': [0, 1, 0]}}]}],
+                        'cull': 50, 'band': 2}
+        ex.edit(lod, 'assets/ledge_block.asset.json')
+        ex.edit(lambda a: a.update(lod={'cull': 30}), 'assets/ramp.asset.json')
+        shutil.copytree(ex.dir/'assets', Path(tmp)/'w'/'assets')
+        return TerrainWorld(Path(tmp)/'w', terrain=field(), scatter=scatter, **extra)
+
+    def test_scatter_levels_from_the_assets_and_thinning(self):
+        base = {'assets': [{'asset': 'ledge_block'}, {'asset': 'ramp'}], 'area': {'rect': [0, 0, 64, 64]},
+                'spacing': 6, 'seed': 2, 'chunk': 32}
+        with tempfile.TemporaryDirectory() as tmp:
+            c = self.scatter_world(tmp, {'s': dict(base, lod='assets')}).compile()
+            chunks = [p for cell in c.world.cells for p in cell.placements if p.tag == 0xFFFC]
+            self.assertTrue(chunks)
+            for p in chunks:
+                ds = [d for d, _ in p.lod.levels]
+                # the ramp is culled at 30, the block switches at 20 and is culled at 50
+                self.assertEqual(ds, [20, 30, 50])
+                self.assertIsNone(p.lod.levels[-1][1])
+                self.assertLess(P.mesh_info(p.lod.levels[1][1])[1], P.mesh_info(p.lod.levels[0][1])[1])
+            # the scatter's cull caps them; thinning keeps a share, grown
+            c2 = self.scatter_world(tmp + '/b', {'s': dict(base, lod='assets', cull=40,
+                                                          thin={'distance': 25, 'keep': 0.5, 'scale': 1.5})}).compile()
+            chunks2 = [p for cell in c2.world.cells for p in cell.placements if p.tag == 0xFFFC]
+            for p in chunks2:
+                ds = [d for d, _ in p.lod.levels]
+                self.assertEqual(ds[-1], 40)
+                self.assertIn(25, ds)
+            # without lod, a scatter is built as before
+            plain = self.scatter_world(tmp + '/c', {'s': dict(base, coarse=20, cull=40)}).compile()
+            self.assertTrue(all([d for d, _ in p.lod.levels] == [20, 40]
+                                for cell in plain.world.cells for p in cell.placements if p.tag == 0xFFFC))
+            for bad, path in ((dict(base, lod='assets', coarse=10), '/scatter/s/coarse'),
+                              (dict(base, thin={'distance': 10, 'keep': 0.5}), '/scatter/s/thin')):
+                with self.assertRaises(WorldError) as cm:
+                    self.scatter_world(tmp + '/d' + path[-4:], {'s': bad}).compile()
+                self.assertEqual(cm.exception.path, path)
+
+    def test_cull_only_recipes_and_sweep_culls(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            ex.edit(lambda a: a.update(lod={'cull': 40}), 'assets/ledge_block.asset.json')
+            c = ex.compile()
+            ledge = [p for p in P.decode(c.pack).cells[(0, 0)].placements if p['tag'] == 2][0]
+            self.assertEqual([(r[0], r[3]) for r in ledge['lod']['rows']], [(P.lod_square(40), 0)])
+            self.assertEqual(c.report['lod']['ledge_block']['cull'], 40)
+        paths = {'walk': {'points': [[2, 1, 40], [62, 1, 40]], 'sweep': {'profile': [[-1, 0.2], [1, 0.2]], 'material': 'stone'}},
+                 'stair': {'points': [[2, 1, 10], [62, 1, 10]], 'sweep': {'profile': [[-1, 0.2], [1, 0.2]], 'material': 'stone'}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            c = TerrainWorld(tmp, terrain=field(), paths=paths,
+                             lod={'sweeps': {'cull': 60, 'paths': {'stair': {'cull': None}}}}).compile()
+            sweeps = [p for cell in c.world.cells for p in cell.placements if p.tag == 0xFFFD]
+            self.assertTrue(sweeps)
+            for p in sweeps:
+                cz = P.mesh_vertices(p.mesh)[0][2] + p.position[2]
+                if cz > 24:
+                    self.assertEqual(p.lod.levels, [(60, None)], 'the walk is culled from 60')
+                else:
+                    self.assertIsNone(p.lod, 'the stair is never culled')
+
+    def test_standins_made_by_the_kit(self):
+        ops = [{'op': 'ramp', 'from': [0, 0, 32], 'to': [64, 10, 32], 'width': 100}]
+        scatter = {'s': {'assets': [{'asset': 'ledge_block'}, {'asset': 'ramp'}], 'area': {'rect': [0, 0, 64, 64]},
+                         'spacing': 6, 'seed': 2, 'chunk': 32, 'lod': 'assets'}}
+        with tempfile.TemporaryDirectory() as tmp:
+            t = field(operations=ops, tile=16, lod={'distance': 12, 'tolerance': 0.5})
+            w = self.scatter_world(tmp, scatter, standins={'distance': 48},
+                                   lod={'ground': [{'distance': 30, 'grid': 16}]})
+            spec = json.loads(w.world.read_text())
+            spec['terrain'] = t
+            w.world.write_text(json.dumps(spec))
+            c = w.compile()
+            self.assertEqual(set(c.report['standins']['cells']), {'c0_0', 'c1_0', 'c0_1', 'c1_1'})
+            self.assertNotIn('no_standin', [x['code'] for x in c.report['warnings']])
+            for cell in c.world.cells:
+                self.assertIsNotNone(cell.standin)
+                # the stand-in holds the scatter at 48 (blocks at level 1, ramps culled) and the
+                # ground's far level without the skirts between its own tiles
+                chunks = [p for p in cell.placements if p.tag == 0xFFFC]
+                want = sum(P.mesh_info([m for d, m in p.lod.levels if d <= 48][-1])[1] for p in chunks)
+                ground = sum(P.mesh_info(p.lod.levels[-1][1] if p.lod else p.mesh)[1]
+                             for p in cell.placements if p.tag == 0xFFFE)
+                self.assertLessEqual(P.mesh_info(cell.standin)[1], want + ground)
+                self.assertGreaterEqual(P.mesh_info(cell.standin)[1], want)
+            pack = P.decode(c.pack)
+            self.assertTrue(all(pc.standin for pc in pack.cells.values()))
+            spec['regions']['r2'] = {}
+            w.world.write_text(json.dumps(spec))
+            with self.assertRaises(WorldError) as cm:
+                w.compile()
+            self.assertEqual(cm.exception.path, '/standins')
+
+
 def rgb15_of(c):
     return (int(c[1:3], 16) >> 3) | (int(c[3:5], 16) >> 3) << 5 | (int(c[5:7], 16) >> 3) << 10
 

@@ -525,13 +525,32 @@ props everywhere, and each prop's ID (`NAME_I_J`) lasts while its square keeps i
 | `yaw`, `lift`, `layer` | Degrees or `"random"` (default); added to the height on the ground; a layer of the world |
 | `chunk` | Props are merged per square of 4, 8, 16 (default), 32 or 64 units: one placement each |
 | `coarse`, `cull` | From `coarse` units a chunk draws its assets' level 1 (assets with [`lod`](#levels-of-detail)); from `cull` units it is not drawn |
+| `lod` | `"assets"`: a chunk takes its levels from its assets instead (with `cull` as a last cull mark); not with `coarse` |
+| `thin` | With `"lod": "assets"`: `{"distance", "keep", "scale"}`: from `distance` a chunk draws only a seeded share `keep` of its props, each grown by `scale` (default 1) about its base |
 
 **Budgets.** A forest of placed trees would cost the reader about 500 cycles a tree; scatter
 merges each cell's props per scatter, layer and chunk into one mesh at the cell's centre ([merged
 scatter](#merged-scatter), split between props at 2,048 vertices or 4,000 faces), and gives it
 the chunk's levels: the merged level 1 of its assets from `coarse` and nothing from `cull`, with
 a band of 2. So a forest costs the chunks near the eye at full detail, a ring beyond them coarse,
-and nothing past `cull`. Each prop keeps its own collision (tagged 0xFFFC). Assets with
+and nothing past `cull`.
+
+**`"lod": "assets"`.** `coarse` gives every asset in a chunk its level 1 at one distance and
+ignores the assets' own switch distances, their further levels and their cull distances: a tree
+with a second far level, or a fern that should vanish at 45 units, cannot say so. With `"lod":
+"assets"` a chunk has a level wherever one of its assets switches level or is culled, at that
+asset's own distance (its recipe's, or the world's `lod.assets` override, times `lod.scale`);
+each level is the merge of every prop at the level its asset draws there, without the props
+culled by then, and the chunk is culled once all of them are (or at the scatter's `cull`, which
+stays a cap). The distance is the chunk's, eye to the centre of its sphere, as for any placement.
+Distances closer than twice the band (2) to the one before are moved out to keep the reader's
+rule, so a change comes up to a few units late, never early; a chunk holds at most 8 levels.
+`thin` is for forests seen from far off: from its distance only a seeded share of the props is
+drawn (`keep`, chosen by a hash of each prop's ID, so a prop is kept or dropped the same way at
+every level and in every build), each grown by `scale`; `keep` 0.5 and `scale` 1.2 draw half the
+trees at 72% of their cover. A chunk's stand-in level ([Stand-ins made by the
+kit](#stand-ins-made-by-the-kit)) is thinned too. The shrine's forests use both; without `lod`
+a scatter is built exactly as before. Each prop keeps its own collision (tagged 0xFFFC). Assets with
 repeating textures cannot be scattered (a merged chunk has no texture window table). The World
 Checker judges scatter like any placement: a cell's `cell_triangles` counts every chunk's level 0,
 so a forest's cells need that threshold raised, while its views' budgets see the levels actually
@@ -838,6 +857,31 @@ are in view, so about 400 faces per cell as drawn from any one camera; far pass 
 stand-ins of at most 32 faces if about 12 of them are in view. These are starting numbers for stage 2 to
 measure, not limits to design to.
 
+### Stand-ins made by the kit
+
+```json
+"standins": {"distance": 128}
+```
+
+Authoring a stand-in per cell is work that goes stale when the cell changes, and a stand-in that
+is not the cell's own geometry changes the picture when the cell comes near: a canopy sheet
+stands in for trees, then the trees appear. With `standins` the kit makes a stand-in for every
+cell that names none, from the cell itself: each placement, scatter chunk and terrain tile at
+the level it draws at `distance` (times `lod.scale`), without what is culled by then, merged into
+one mesh around the cell's centre (placements in a layer are left out, and sweeps unless
+`"sweeps": true`: the field under them stands in). A far ground level ([Levels of
+detail](#levels-of-detail)) is made again for it without the skirts between the cell's own
+tiles, which meet exactly. So when the cell moves from the far ring to the near ring, what was
+drawn as its stand-in is drawn again as its placements, at their levels for that distance.
+
+The merged mesh keeps its faces' textures, so the world must have one region (a stand-in is
+drawn whichever region is loaded); a world with more is refused. Faces with repeating textures
+lose their window in the merge (a merged mesh has no window table; the warning
+`standin_windows` names the cells). A cell more than one mesh holds from that distance (2,048
+vertices, 4,000 faces) is an error at `/standins/distance`. `report.json`'s `standins` lists per
+cell the placements and triangles. The shrine's stand-ins are 81–302 triangles (with
+[quads](#quads)); the World Checker's `standin_triangles` threshold applies as to any stand-in.
+
 ## Game data and stable IDs
 
 **Decided.** Goals, collectibles, switches, triggers and missions are entries with a type, a
@@ -1064,7 +1108,9 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | `regions` | Named regions in order (the pack's region numbers): optional `palettes` (`first`, `count`), `variants` (with `texels` and `backdrop` colours for textures and the silhouette), `textures` and `backdrop` ([Backdrops](#backdrops)). `audio` is reserved and rejected for now |
 | `layers` | World-wide layer names in order (the pack's layer ids), each with an optional exclusive `group` and `on` (at start) |
 | `paths` | Named polylines in world coordinates, in order (the pack's path numbers): [Paths](#paths) |
-| `lod` | The switch distances of assets with levels of detail: `scale`, and per asset `distances`, `cull`, `band`, `off` ([Levels of detail](#levels-of-detail)) |
+| `lod` | The switch distances of assets with levels of detail: `scale`, and per asset `distances`, `cull`, `band`, `off`; far levels of the fields' tiles (`ground`) and cull distances for sweeps (`sweeps`) ([Levels of detail](#levels-of-detail)) |
+| `standins` | Stand-ins made by the kit from each cell's own contents, for every cell that names none ([Stand-ins made by the kit](#stand-ins-made-by-the-kit)) |
+| `meshes.quads` | Pack pairs of triangles as quads: the same pictures, fewer faces ([Quads](#quads)) |
 | `runtime.near_far` | The near pass's far depth the pack asks the reader for (units; default 1.5 cells). `wp_open()` sets `wp_near_far` to it and the World Checker measures with it |
 | `runtime.depth`, `runtime.perspective` | The game draws the world with the depth buffer, and with perspective-correct texturing (`render_depth(true)`, `render_perspective(true)`; default false). Not stored in the pack: the checkers judge the world and its assets so ([Depth mode](#depth-mode)) |
 | `verification` | The World Checker's per-world settings: `mode` (`report`, the default, or `enforce`) and `thresholds` |
@@ -1357,10 +1403,78 @@ allows), and checks each view's triangles and draw cycles against its budgets, n
 heaviest placements drawn (with their distance and level) when a view is over
 ([WORLDCHECKER.md](WORLDCHECKER.md#levels-of-detail)).
 
+**Cull distances in a recipe without levels.** A recipe whose `lod` has only a `cull` (a lantern,
+a barrier) gets a cull mark of its own. Before 2026-10-05 the kit ignored such a `lod`, so these
+props were drawn to the end of the near pass; the movement garden's `office_ac_unit` (cull 56) is
+the one example outside the shrine, so the garden's pack changed with this.
+
+**Far ground.** A field's tiles have level 0 and, with the field's `lod`, a coarse level that
+keeps every point its edges share with its neighbours, so that tiles at different levels meet.
+On a mountain that leaves a coarse tile with tens of triangles (the shrine's: 30 to 100), too
+many for ground a hundred units off. `lod.ground` adds far levels to every field tile:
+
+```json
+"lod": {"ground": [{"distance": 36, "grid": 8}, {"distance": 76, "grid": 16}]}
+```
+
+Each is a regular grid over the tile (`grid` units a square, 4 to 64), two triangles a square,
+resampled from the tile's coarsest level (where textured ground is drawn in its textures' far
+colours) by `tools/worldkit/farground.py`: the heights are the tile's own under each grid point
+(its top where a cliff stands), each square takes the face under its centre (flags, texture,
+palette, and colours and texture coordinates carried over affinely) and is split along the
+diagonal whose middle lies nearer the ground there. Its edges do not keep the neighbours'
+points, so where its straight edge stands more than 0.05 units above the finer ground beside it
+a **skirt** hangs down from that grid segment, facing out of the tile, far enough to close the
+crack. A level is kept only where it has fewer faces than the level before it (a flat tile of
+two triangles keeps none). The distances are `lod.scale`d and must clear the field's own `lod`
+by more than twice its band. `report.json`'s `far_ground` counts the tiles and triangles per
+level.
+
+**Sweeps.** A swept profile has no levels; `"sweeps": {"cull": 56, "paths": {"torii_stairs":
+{"cull": 44}}}` culls every sweep's pieces from `cull` (eye to the piece's centre), or a path's
+own (`null`: never). The field under a sweep is still drawn, so a trail or a stair turns into the
+ground it runs on.
+
 `runtime.near_far` sets the near pass's far depth for the world. The default, 1.5 cells, is 96
 units in 64-unit cells; a shorter one draws less but brings the edge where placements appear
 nearer. It is stored in the pack, so the cart and the World Checker draw with the same range, and
 exported as `WORLD_NAME_NEAR_FAR`.
+
+**Depth mode and the near range.** Without the depth buffer the near pass's range keeps its
+ordering table's buckets fine; with it (`runtime.depth`) the range only decides what is drawn,
+and a placement in a near cell beyond `near_far` is culled although no stand-in covers its cell.
+A near cell reaches up to two cells from the eye (three on the diagonal), so a depth-mode world
+that draws its distance can set `near_far` past that and let each placement's levels and cull
+decide: the shrine uses 192 (three of its 64-unit cells).
+
+### Quads
+
+`"meshes": {"quads": true}` pairs the triangles of every mesh the kit packs into quads
+(`tools/worldkit/quads.py`). The Asset Kit and the terrain write every face as a triangle, so a
+wall, a roof panel or a card is two faces and the reader's per-face work (the back-face test,
+the packet, the sort) is paid twice. Mei draws a quad as its triangles 0-1-2 and 1-2-3, so two
+triangles that share an edge, face the same way and agree in everything their face records hold
+(flags, blend, texture, palette, and colour and texture coordinate at both shared corners; a
+flat face's one colour) draw the same pixels as one quad with that edge as its diagonal, when:
+
+- they lie flat to within 1°: the reader decides whether a quad faces away by its first triangle
+  alone, so a folded pair would be drawn or dropped whole (seen from within a degree of edge-on
+  a flat pair can still differ, where it covers next to no pixels);
+- the four corners make a strictly convex quad: a quad cut by the near plane or the guard band
+  is clipped as the polygon around its corners and fanned from one of them, which covers a
+  dart's two triangles wrongly (the World Checker found 2,834 coverage-error pixels in one view
+  before this rule).
+
+Semi-transparent and keyed faces stay triangles (the ordering table sorts a quad as one face),
+and so do the double-sided faces of a placement's level 0 and of entities: a tree crown of
+cutout cards is sorted nearest first triangle by triangle, which keeps its overdraw down where
+it fills the screen (pairing them added 16,000 GPU cycles to the shrine's worst close view).
+What changes is the order faces are sorted in, by a quad's four corners instead of each
+triangle's three, so where coplanar faces overlap (a trim on a wall) a few pixels along their
+edges can go to the other face: 51 pixels in the shrine's view from the road. On the shrine the
+pass packs 47,505 faces where there were 78,925 (40% fewer), and the World Checker's peak draw
+CPU went from 921,962 to 726,303 cycles before the other changes of that day; GPU triangles and
+pixels are unchanged.
 
 ### Paths
 

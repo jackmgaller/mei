@@ -175,7 +175,6 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_weather_assets.py` | `carts/weather/art/` and `carts/weather/art.akr` |
 | `gen_weather_audio.py` | `carts/weather/audio/` and `carts/weather/mu_data.akr` |
 | `gen_weather_tape.py` | `carts/weather/demo_tape.bin`, Mei Weather's sample broadcast |
-| `carts/garden/shrine/standins.py` | `carts/garden/shrine/assets/standin_c*.asset.json`, the shrine world's far-cell stand-ins, sampled from the world's floors (run it after changing the terrain or layout) |
 | `meinet/make_fixture.sh` | `tests/lang/data/broadcast.bin`, the canned broadcast the language tests replay (`meinet.py --fixture`) |
 
 Helpers the generators import, which write nothing themselves: `boot_audio.py`, `mei_adpcm.py`,
