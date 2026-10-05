@@ -1,0 +1,416 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "jizo",
+ "budget": {
+  "vertices": 200,
+  "triangles": 150
+ },
+ "materials": {
+  "stone": {
+   "color": "#989688",
+   "tag": "stone",
+   "texture": {
+    "pattern": "speckle",
+    "size": 16,
+    "colors": [
+     "#9a988a",
+     "#8c8a7e",
+     "#a6a496",
+     "#7e8c6c"
+    ],
+    "params": {
+     "density": 0.32,
+     "seed": 5
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "robe": {
+   "color": "#989688",
+   "smooth": true,
+   "texture": {
+    "pattern": "speckle",
+    "size": 32,
+    "colors": [
+     "#9a988a",
+     "#8c8a7e",
+     "#a6a496",
+     "#7e8c6c"
+    ],
+    "params": {
+     "density": 0.28,
+     "seed": 11
+    },
+    "projection": "cylindrical",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "face": {
+   "color": "#989688",
+   "smooth": true,
+   "texture": {
+    "image": "art/jizo_face.png",
+    "projection": "cylindrical",
+    "scale": [
+     0.8796,
+     0.34
+    ],
+    "offset": [
+     0.25,
+     0.5
+    ]
+   }
+  },
+  "wool": {
+   "color": "#c8352c",
+   "palette": true,
+   "smooth": true
+  },
+  "bib": {
+   "color": "#d63a30",
+   "palette": true,
+   "double_sided": true
+  },
+  "bobble": {
+   "color": "#f0e6d2",
+   "palette": true
+  },
+  "wood": {
+   "color": "#7a5a3c",
+   "palette": true
+  },
+  "gold": {
+   "color": "#d4b24e",
+   "palette": true
+  },
+  "ring": {
+   "color": "#d4b24e",
+   "double_sided": true,
+   "texture": {
+    "image": "art/jizo_ring.png",
+    "projection": "fit"
+   }
+  },
+  "pinwheel": {
+   "color": "#d04040",
+   "double_sided": true,
+   "texture": {
+    "image": "art/jizo_pinwheel.png",
+    "projection": "fit"
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "step_low",
+   "op": "box",
+   "size": [
+    0.6,
+    0.12,
+    0.5
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "stone",
+   "transform": {
+    "translate": [
+     0,
+     0.06,
+     0
+    ]
+   }
+  },
+  {
+   "id": "step_high",
+   "op": "box",
+   "size": [
+    0.4,
+    0.08,
+    0.34
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "stone",
+   "transform": {
+    "translate": [
+     0,
+     0.16,
+     0
+    ]
+   }
+  },
+  {
+   "id": "robe",
+   "op": "lathe",
+   "segments": 8,
+   "caps": false,
+   "material": "robe",
+   "profile": [
+    [
+     0.2,
+     0.0
+    ],
+    [
+     0.15,
+     0.25
+    ],
+    [
+     0.09,
+     0.5
+    ]
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.2,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bib_ring",
+   "op": "lathe",
+   "segments": 8,
+   "caps": false,
+   "material": "bib",
+   "profile": [
+    [
+     0.16,
+     0.0
+    ],
+    [
+     0.1,
+     0.08
+    ]
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.66,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bib_flap",
+   "op": "mesh",
+   "material": "bib",
+   "vertices": [
+    [
+     -0.09,
+     0.7,
+     -0.14
+    ],
+    [
+     0.09,
+     0.7,
+     -0.14
+    ],
+    [
+     0.07,
+     0.52,
+     -0.17
+    ],
+    [
+     -0.07,
+     0.52,
+     -0.17
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     3,
+     2,
+     1
+    ]
+   ]
+  },
+  {
+   "id": "head",
+   "op": "sphere",
+   "radius": 0.14,
+   "rings": 3,
+   "segments": 8,
+   "material": "face",
+   "transform": {
+    "translate": [
+     0,
+     0.84,
+     0
+    ],
+    "scale": [
+     1,
+     1.04,
+     1
+    ]
+   }
+  },
+  {
+   "id": "cap",
+   "op": "cone",
+   "radius": 0.155,
+   "height": 0.18,
+   "segments": 8,
+   "material": "wool",
+   "transform": {
+    "translate": [
+     0,
+     0.97,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bobble",
+   "op": "sphere",
+   "radius": 0.03,
+   "rings": 2,
+   "segments": 4,
+   "material": "bobble",
+   "transform": {
+    "translate": [
+     0,
+     1.08,
+     0
+    ]
+   }
+  },
+  {
+   "id": "staff",
+   "op": "cylinder",
+   "radius": 0.014,
+   "height": 0.78,
+   "segments": 3,
+   "caps": false,
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -0.17,
+     0.51,
+     -0.2
+    ]
+   }
+  },
+  {
+   "id": "staff_ring",
+   "op": "mesh",
+   "material": "ring",
+   "vertices": [
+    [
+     -0.22,
+     0.9,
+     -0.2
+    ],
+    [
+     -0.12,
+     0.9,
+     -0.2
+    ],
+    [
+     -0.12,
+     1.0,
+     -0.2
+    ],
+    [
+     -0.22,
+     1.0,
+     -0.2
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     3,
+     2,
+     1
+    ]
+   ]
+  },
+  {
+   "id": "jewel",
+   "op": "sphere",
+   "radius": 0.035,
+   "rings": 2,
+   "segments": 4,
+   "material": "gold",
+   "transform": {
+    "translate": [
+     0.15,
+     0.56,
+     -0.14
+    ]
+   }
+  },
+  {
+   "id": "pinwheel_stick",
+   "op": "cylinder",
+   "radius": 0.007,
+   "height": 0.34,
+   "segments": 3,
+   "caps": false,
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.25,
+     0.29,
+     -0.24
+    ]
+   }
+  },
+  {
+   "id": "pinwheel",
+   "op": "mesh",
+   "material": "pinwheel",
+   "vertices": [
+    [
+     0.19,
+     0.38,
+     -0.25
+    ],
+    [
+     0.31,
+     0.38,
+     -0.25
+    ],
+    [
+     0.31,
+     0.5,
+     -0.25
+    ],
+    [
+     0.19,
+     0.5,
+     -0.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     3,
+     2,
+     1
+    ]
+   ]
+  }
+ ]
+}
