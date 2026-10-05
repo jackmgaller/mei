@@ -1,0 +1,8 @@
+[
+ {"name": "customer", "eye": [1.0, 1.6, -6.0], "target": [0, 1.6, -3.0]},
+ {"name": "courtyard", "eye": [-9.0, 1.6, -14.0], "target": [0, 2.2, 0]},
+ {"name": "staff_side", "eye": [-10.0, 1.6, 4.0], "target": [0, 2.0, 1.0]},
+ {"name": "on_roof", "eye": [-3.0, 5.6, -6.5], "target": [1.0, 3.8, 0.5]},
+ {"name": "from_side_hall", "eye": [16.0, 11.0, -14.0], "target": [0, 2.5, 0]},
+ {"name": "far", "eye": [-20.0, 6.0, -40.0], "target": [0, 2.0, 0]}
+]
