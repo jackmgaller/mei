@@ -123,9 +123,8 @@ world = {
     'format': 'mei-world', 'version': 1, 'name': 'shrinetown',
     'game': '../world/garden.game.mochi',
     'assets': 'assets/greybox/town',
-    # the game's (game.py: the train, the omamori) and the star, the hanafuda moon card
-    'asset_dirs': ['assets/greybox/core', 'assets/greybox/mountain', 'assets/arch_pagoda', 'assets/game',
-                   '../../../examples/assets/collect/hanafuda_moon'],
+    'asset_dirs': ['assets/greybox/core', 'assets/greybox/mountain', 'assets/arch_pagoda',
+                   'assets/game'],                 # the game's: game.py (the train, the omamori)
     'cell_dir': 'cells',
     'grid': {'cell_size': 64}, 'overhang': 32,
     'collision': town['collision'],
