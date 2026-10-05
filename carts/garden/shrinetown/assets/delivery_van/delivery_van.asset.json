@@ -1,0 +1,739 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "delivery_van",
+ "budget": {
+  "triangles": 300
+ },
+ "materials": {
+  "paint": {
+   "color": "#efe8d2",
+   "palette": true,
+   "tag": "roof"
+  },
+  "side_r": {
+   "color": "#efe8d2",
+   "texture": {
+    "image": "art/side_r.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "side_l": {
+   "color": "#efe8d2",
+   "texture": {
+    "image": "art/side_l.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "windshield": {
+   "color": "#2e4a68",
+   "texture": {
+    "image": "art/windshield.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "front": {
+   "color": "#efe8d2",
+   "texture": {
+    "image": "art/front.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "rear": {
+   "color": "#efe8d2",
+   "texture": {
+    "image": "art/rear.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "bumper": {
+   "color": "#8d949c",
+   "palette": true
+  },
+  "trim": {
+   "color": "#2c3036",
+   "palette": true
+  },
+  "box1": {
+   "color": "#c19a6a",
+   "palette": true
+  },
+  "box2": {
+   "color": "#a98150",
+   "palette": true
+  },
+  "box3": {
+   "color": "#d3b184",
+   "palette": true
+  },
+  "cloth": {
+   "color": "#3f9a62",
+   "palette": true
+  },
+  "knot": {
+   "color": "#e8e4d4",
+   "palette": true
+  },
+  "rail": {
+   "color": "#5d656d",
+   "palette": true
+  },
+  "cat": {
+   "color": "#e89a4a",
+   "palette": true
+  },
+  "wheel": {
+   "color": "#26262a",
+   "texture": {
+    "texels": [
+     "0000000000000000",
+     "0000000000000000",
+     "0000000000000000",
+     "0000001111000000",
+     "0000112222110000",
+     "0000122233210000",
+     "0001233222221000",
+     "0001222332321000",
+     "0001222332321000",
+     "0001233222221000",
+     "0000122233210000",
+     "0000112222110000",
+     "0000001111000000",
+     "0000000000000000",
+     "0000000000000000",
+     "0000000000000000"
+    ],
+    "colors": [
+     "#26262a",
+     "#5a5e64",
+     "#c8ced4",
+     "#6a7078"
+    ],
+    "projection": "disc"
+   }
+  },
+  "flap": {
+   "color": "#26262a",
+   "palette": true,
+   "double_sided": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "extrude",
+   "material": "paint",
+   "depth": 1.7,
+   "points": [
+    [-2.25,0.3],
+    [-1.64,0.3],
+    [-1.511,0.611],
+    [-1.2,0.74],
+    [-0.889,0.611],
+    [-0.76,0.3],
+    [0.91,0.3],
+    [1.039,0.611],
+    [1.35,0.74],
+    [1.661,0.611],
+    [1.79,0.3],
+    [2.25,0.3],
+    [2.25,1.0],
+    [2.18,1.3],
+    [1.78,2.02],
+    [1.7,2.08],
+    [-2.25,2.08]
+   ],
+   "transform": {
+    "rotate": [0,90,0]
+   }
+  },
+  {
+   "id": "windshield",
+   "op": "mesh",
+   "material": "windshield",
+   "vertices": [
+    [-0.76,1.9362,-1.8666],
+    [0.76,1.9362,-1.8666],
+    [0.76,1.3746,-2.1786],
+    [-0.76,1.3746,-2.1786]
+   ],
+   "faces": [
+    [0,1,2,3]
+   ]
+  },
+  {
+   "id": "side_r",
+   "op": "mesh",
+   "material": "side_r",
+   "vertices": [
+    [0.885,1.98,-2.2],
+    [0.885,1.98,2.2],
+    [0.885,0.78,2.2],
+    [0.885,0.78,-2.2]
+   ],
+   "faces": [
+    [0,1,2,3]
+   ]
+  },
+  {
+   "id": "side_l",
+   "op": "mesh",
+   "material": "side_l",
+   "vertices": [
+    [-0.885,1.98,2.2],
+    [-0.885,1.98,-2.2],
+    [-0.885,0.78,-2.2],
+    [-0.885,0.78,2.2]
+   ],
+   "faces": [
+    [0,1,2,3]
+   ]
+  },
+  {
+   "id": "front",
+   "op": "mesh",
+   "material": "front",
+   "vertices": [
+    [-0.8,0.98,-2.285],
+    [0.8,0.98,-2.285],
+    [0.8,0.5,-2.285],
+    [-0.8,0.5,-2.285]
+   ],
+   "faces": [
+    [0,1,2,3]
+   ]
+  },
+  {
+   "id": "rear",
+   "op": "mesh",
+   "material": "rear",
+   "vertices": [
+    [0.82,2.0,2.285],
+    [-0.82,2.0,2.285],
+    [-0.82,0.62,2.285],
+    [0.82,0.62,2.285]
+   ],
+   "faces": [
+    [0,1,2,3]
+   ]
+  },
+  {
+   "id": "wheel_fl",
+   "op": "lathe",
+   "segments": 8,
+   "caps": false,
+   "material": "wheel",
+   "profile": [
+    [0.33,-0.12],
+    [0.33,0.07999999999999999],
+    [0.0,0.12]
+   ],
+   "transform": {
+    "rotate": [0,0,90],
+    "translate": [-0.735,0.33,-1.35]
+   }
+  },
+  {
+   "id": "wheel_fr",
+   "op": "lathe",
+   "segments": 8,
+   "caps": false,
+   "material": "wheel",
+   "profile": [
+    [0.33,-0.12],
+    [0.33,0.07999999999999999],
+    [0.0,0.12]
+   ],
+   "transform": {
+    "rotate": [0,0,-90],
+    "translate": [0.735,0.33,-1.35]
+   }
+  },
+  {
+   "id": "wheel_rl",
+   "op": "lathe",
+   "segments": 8,
+   "caps": false,
+   "material": "wheel",
+   "profile": [
+    [0.33,-0.12],
+    [0.33,0.07999999999999999],
+    [0.0,0.12]
+   ],
+   "transform": {
+    "rotate": [0,0,90],
+    "translate": [-0.735,0.33,1.2]
+   }
+  },
+  {
+   "id": "wheel_rr",
+   "op": "lathe",
+   "segments": 8,
+   "caps": false,
+   "material": "wheel",
+   "profile": [
+    [0.33,-0.12],
+    [0.33,0.07999999999999999],
+    [0.0,0.12]
+   ],
+   "transform": {
+    "rotate": [0,0,-90],
+    "translate": [0.735,0.33,1.2]
+   }
+  },
+  {
+   "id": "bumper_f",
+   "op": "box",
+   "size": [1.78,0.2,0.16],
+   "material": "bumper",
+   "transform": {
+    "translate": [0,0.38,-2.31]
+   },
+   "open": [
+    "front",
+    "bottom"
+   ]
+  },
+  {
+   "id": "bumper_r",
+   "op": "box",
+   "size": [1.78,0.2,0.16],
+   "material": "bumper",
+   "transform": {
+    "translate": [0,0.38,2.31]
+   },
+   "open": [
+    "back",
+    "bottom"
+   ]
+  },
+  {
+   "id": "mirror_l",
+   "op": "box",
+   "size": [0.1,0.22,0.12],
+   "material": "trim",
+   "transform": {
+    "translate": [-0.95,1.5,-1.92]
+   },
+   "open": [
+    "right",
+    "bottom"
+   ]
+  },
+  {
+   "id": "mirror_r",
+   "op": "box",
+   "size": [0.1,0.22,0.12],
+   "material": "trim",
+   "transform": {
+    "translate": [0.95,1.5,-1.92]
+   },
+   "open": [
+    "left",
+    "bottom"
+   ]
+  },
+  {
+   "id": "flaps",
+   "op": "group",
+   "children": [
+    {
+     "id": "flap",
+     "op": "mesh",
+     "material": "flap",
+     "vertices": [
+      [0.8,0.3,1.66],
+      [0.8,0.3,1.9],
+      [0.8,0.08,1.9],
+      [0.8,0.08,1.66]
+     ],
+     "faces": [
+      [0,1,2,3]
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "rails",
+   "op": "group",
+   "children": [
+    {
+     "id": "rail",
+     "op": "cylinder",
+     "material": "rail",
+     "transform": {
+      "rotate": [90,0,0],
+      "translate": [0.7,2.15,0.3]
+     },
+     "radius": 0.02,
+     "height": 3.3,
+     "segments": 3,
+     "caps": false
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "parcel_a",
+   "op": "box",
+   "material": "box1",
+   "transform": {
+    "translate": [-0.12,2.27,-0.35]
+   },
+   "size": [0.62,0.4,0.5],
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "parcel_b",
+   "op": "box",
+   "material": "box2",
+   "transform": {
+    "translate": [0.2,2.22,0.45]
+   },
+   "size": [0.5,0.3,0.42],
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "parcel_c",
+   "op": "box",
+   "material": "box3",
+   "transform": {
+    "translate": [-0.2,2.3,1.3]
+   },
+   "size": [0.45,0.45,0.4],
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "bundle",
+   "op": "sphere",
+   "material": "cloth",
+   "transform": {
+    "translate": [0.25,2.34,-0.4]
+   },
+   "radius": 0.2,
+   "rings": 3,
+   "segments": 4
+  },
+  {
+   "id": "antenna",
+   "op": "cylinder",
+   "material": "trim",
+   "transform": {
+    "translate": [0.78,2.45,-1.2]
+   },
+   "radius": 0.012,
+   "height": 0.8,
+   "segments": 3,
+   "caps": false
+  },
+  {
+   "id": "cat",
+   "op": "group",
+   "children": [
+    {
+     "id": "cat_body",
+     "op": "box",
+     "material": "cat",
+     "transform": {
+      "translate": [-0.2,2.595,1.3]
+     },
+     "size": [0.2,0.16,0.3],
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "cat_head",
+     "op": "box",
+     "material": "cat",
+     "transform": {
+      "translate": [-0.2,2.7,1.12]
+     },
+     "size": [0.13,0.14,0.13],
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "cat_ears",
+     "op": "group",
+     "children": [
+      {
+       "id": "cat_ear",
+       "op": "cone",
+       "material": "cat",
+       "transform": {
+        "translate": [-0.15000000000000002,2.795,1.2]
+       },
+       "radius": 0.03,
+       "height": 0.06,
+       "segments": 3,
+       "caps": false
+      }
+     ],
+     "modifiers": [
+      {
+       "op": "mirror",
+       "axis": "x",
+       "offset": -0.2
+      }
+     ]
+    },
+    {
+     "id": "cat_tail",
+     "op": "cone",
+     "material": "cat",
+     "transform": {
+      "rotate": [70,0,0],
+      "translate": [-0.2,2.6,1.55]
+     },
+     "radius": 0.035,
+     "height": 0.22,
+     "segments": 4,
+     "caps": false
+    }
+   ]
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 20,
+    "nodes": [
+     {
+      "id": "body",
+      "op": "extrude",
+      "material": "paint",
+      "depth": 1.7,
+      "points": [
+       [-2.25,0.3],
+       [2.25,0.3],
+       [2.25,1.0],
+       [2.18,1.3],
+       [1.75,2.08],
+       [-2.25,2.08]
+      ],
+      "transform": {
+       "rotate": [0,90,0]
+      }
+     },
+     {
+      "id": "windshield",
+      "op": "mesh",
+      "material": "windshield",
+      "vertices": [
+       [-0.76,1.9362,-1.8666],
+       [0.76,1.9362,-1.8666],
+       [0.76,1.3746,-2.1786],
+       [-0.76,1.3746,-2.1786]
+      ],
+      "faces": [
+       [0,1,2,3]
+      ]
+     },
+     {
+      "id": "side_r",
+      "op": "mesh",
+      "material": "side_r",
+      "vertices": [
+       [0.885,1.98,-2.2],
+       [0.885,1.98,2.2],
+       [0.885,0.78,2.2],
+       [0.885,0.78,-2.2]
+      ],
+      "faces": [
+       [0,1,2,3]
+      ]
+     },
+     {
+      "id": "side_l",
+      "op": "mesh",
+      "material": "side_l",
+      "vertices": [
+       [-0.885,1.98,2.2],
+       [-0.885,1.98,-2.2],
+       [-0.885,0.78,-2.2],
+       [-0.885,0.78,2.2]
+      ],
+      "faces": [
+       [0,1,2,3]
+      ]
+     },
+     {
+      "id": "front",
+      "op": "mesh",
+      "material": "front",
+      "vertices": [
+       [-0.8,0.98,-2.285],
+       [0.8,0.98,-2.285],
+       [0.8,0.5,-2.285],
+       [-0.8,0.5,-2.285]
+      ],
+      "faces": [
+       [0,1,2,3]
+      ]
+     },
+     {
+      "id": "rear",
+      "op": "mesh",
+      "material": "rear",
+      "vertices": [
+       [0.82,2.0,2.285],
+       [-0.82,2.0,2.285],
+       [-0.82,0.62,2.285],
+       [0.82,0.62,2.285]
+      ],
+      "faces": [
+       [0,1,2,3]
+      ]
+     },
+     {
+      "id": "wheel_fl",
+      "op": "lathe",
+      "segments": 6,
+      "caps": false,
+      "material": "wheel",
+      "profile": [
+       [0.33,-0.01],
+       [0.0,0.01]
+      ],
+      "transform": {
+       "rotate": [0,0,90],
+       "translate": [-0.89,0.33,-1.35]
+      }
+     },
+     {
+      "id": "wheel_fr",
+      "op": "lathe",
+      "segments": 6,
+      "caps": false,
+      "material": "wheel",
+      "profile": [
+       [0.33,-0.01],
+       [0.0,0.01]
+      ],
+      "transform": {
+       "rotate": [0,0,-90],
+       "translate": [0.89,0.33,-1.35]
+      }
+     },
+     {
+      "id": "wheel_rl",
+      "op": "lathe",
+      "segments": 6,
+      "caps": false,
+      "material": "wheel",
+      "profile": [
+       [0.33,-0.01],
+       [0.0,0.01]
+      ],
+      "transform": {
+       "rotate": [0,0,90],
+       "translate": [-0.89,0.33,1.2]
+      }
+     },
+     {
+      "id": "wheel_rr",
+      "op": "lathe",
+      "segments": 6,
+      "caps": false,
+      "material": "wheel",
+      "profile": [
+       [0.33,-0.01],
+       [0.0,0.01]
+      ],
+      "transform": {
+       "rotate": [0,0,-90],
+       "translate": [0.89,0.33,1.2]
+      }
+     },
+     {
+      "id": "parcels",
+      "op": "box",
+      "size": [0.6,0.38,1.9],
+      "material": "box1",
+      "transform": {
+       "translate": [0,2.26,0.45]
+      },
+      "open": [
+       "bottom"
+      ]
+     }
+    ]
+   },
+   {
+    "distance": 45,
+    "nodes": [
+     {
+      "id": "body",
+      "op": "extrude",
+      "material": "paint",
+      "depth": 1.7,
+      "points": [
+       [-2.25,0.3],
+       [2.25,0.3],
+       [2.25,1.0],
+       [2.18,1.3],
+       [1.75,2.08],
+       [-2.25,2.08]
+      ],
+      "transform": {
+       "rotate": [0,90,0]
+      },
+      "faces": {
+       "front": "side_r",
+       "back": "side_l"
+      }
+     },
+     {
+      "id": "windshield",
+      "op": "mesh",
+      "material": "windshield",
+      "vertices": [
+       [-0.76,1.9362,-1.8666],
+       [0.76,1.9362,-1.8666],
+       [0.76,1.3746,-2.1786],
+       [-0.76,1.3746,-2.1786]
+      ],
+      "faces": [
+       [0,1,2,3]
+      ]
+     }
+    ]
+   }
+  ],
+  "cull": 100,
+  "band": 2
+ }
+}
