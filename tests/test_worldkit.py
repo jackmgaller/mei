@@ -29,6 +29,8 @@ sys.path.insert(0, str(ROOT/'tools'))
 from kitcore.schema import validator, obj, NAME, array  # noqa: E402
 from kitcore.errors import KitError  # noqa: E402
 from worldkit import pack as P  # noqa: E402
+from worldkit import terrain as terrain_mod  # noqa: E402
+from worldkit.terrain import cross  # noqa: E402
 from worldkit.build import build, compile_source  # noqa: E402
 from worldkit.schema import WorldError  # noqa: E402
 import mei_world  # noqa: E402
@@ -909,6 +911,23 @@ class TerrainTests(unittest.TestCase):
             self.assertIn(P.KIND_WALL, kinds)
             top = c.terrain.floors().at(30, 50)
             self.assertAlmostEqual(top[0], 8 * 50 / 64 + 6, places=3)
+
+    def test_a_cliff_face_looks_out_over_the_lower_sheet(self):
+        # Two flats cut as sheets and set after: the one at the higher offset (0.02) ends at 4, the
+        # other (0.01) at 20, so the higher sheet is the lower ground. The face between them is
+        # wound outward over the lower ground (toward -z), as a wall the body stops at.
+        ops = [{'op': 'cliff', 'area': {'rect': [0, 32, 64, 64]}, 'height': 0.01, 'material': 'stone'},
+               {'op': 'set', 'area': {'rect': [0, 32, 64, 64]}, 'height': 20},
+               {'op': 'cliff', 'area': {'rect': [0, 20, 64, 32]}, 'height': 0.02, 'material': 'stone'},
+               {'op': 'set', 'area': {'rect': [0, 20, 64, 32]}, 'height': 4}]
+        with tempfile.TemporaryDirectory() as tmp:
+            c = TerrainWorld(tmp, terrain=field(operations=ops)).compile()
+            faces = [(t, m) for t, m in terrain_mod.cliff_faces(c.terrain.fields['main'], c.terrain.fields['main'].walls())
+                     if all(abs(p[2] - 32) < 1e-6 for p in t)]
+            self.assertTrue(faces)
+            for t, _ in faces:
+                n = cross(tuple(b - a for a, b in zip(t[0], t[1])), tuple(b - a for a, b in zip(t[0], t[2])))
+                self.assertLess(n[2], 0, t)
 
     def test_water_is_semi_transparent_without_collision_and_answers_wp_water(self):
         ops = [{'op': 'carve', 'area': {'circle': [20, 20, 6]}, 'height': -1, 'falloff': 2},

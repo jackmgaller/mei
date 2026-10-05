@@ -362,7 +362,9 @@ top, then leans out to the moved edge, so the top band juts over the face: a wat
 ledge that hides the wall from above. The walls are steep faces of the wall material (collision
 walls by `floor_max_degrees`) and share their points with both sheets' tiles, so there are no
 cracks between wall and ground. A cliff's area follows quad edges, so its outline is stepped at
-the spacing seen from above: a polygon traced at an angle gives a stair-stepped wall line.
+the spacing seen from above: a polygon traced at an angle gives a stair-stepped wall line. A face
+looks out over the lower of its two sheets, also where operations after the cliffs leave the sheet
+at the higher offset lower (flats cut into a slope as sheets of small offsets, then `set`).
 `report.json`'s field entry has `cliff_triangles`.
 
 ### Water

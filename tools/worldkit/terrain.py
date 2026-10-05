@@ -1298,6 +1298,10 @@ def cliff_faces(f, walls):
         B = [(x, y, z) for x, z, y in B]
         T = [(x, y, z) for x, z, y in T]
         hint = (lo[0] - hi[0], 0.0, lo[1] - hi[1])
+        if T[0][1] + T[1][1] < B[0][1] + B[1][1]:
+            # the sheet at the higher offset ends lower here (operations after the cliffs set the
+            # two sheets' heights the other way round): the face looks out over the lower one
+            hint = (-hint[0], 0.0, -hint[2])
         bands = [(B, T)]
         if ov and T[0][1] - lip > B[0][1] and T[1][1] - lip > B[1][1]:
             M = [(b[0], q16(t[1] - lip), b[2]) for b, t in zip(B, T)]
