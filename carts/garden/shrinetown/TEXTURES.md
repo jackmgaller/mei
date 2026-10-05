@@ -238,8 +238,8 @@ budget, with 148 KB of the slots free besides.
 
 - Asset names must be unique across the world's asset directories: `street_lamp` was both
   `assets/street_lamp/` and the shrine's `../shrine/assets/street_lamp.asset.json`; shrine town's
-  is now `town_street_lamp` (`assets/town_street_lamp/`). `arch_pagoda_col` is still both
-  `assets/arch_pagoda/` and the shrine's: a world with both folders may not use it.
+  is now `town_street_lamp` (`assets/town_street_lamp/`), and shrine town's pagoda collision
+  `arch_pagoda_town_col` (the shrine's own is `arch_pagoda_col`).
 - A placement belongs to the cell holding its origin, and its textures to that cell's region:
   the viaduct's spans in c4_2 are in the shrine's set, the great torii (c2_1) and the cemetery's
   gate (c4_1) in the town's.
