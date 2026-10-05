@@ -19,6 +19,7 @@ import importlib.util
 import json
 import math
 import os
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -627,6 +628,11 @@ LAYERS = {'ladder_a': {}, 'cedar_c_up': {'group': 'cedar_c', 'on': True}, 'cedar
 def dump(path, obj):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(obj, indent=1) + '\n')
+
+# the placement zones (place/ZONE.py) change the cells and the part before they are written
+sys.path.insert(0, str(TOWN))
+from place import apply as apply_zones
+apply_zones('mountain', globals())
 
 for f in HERE.glob('gbm_*.asset.json'): f.unlink()
 for name, r in ASSETS.items(): dump(HERE / f'{name}.asset.json', r)
