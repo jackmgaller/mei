@@ -1,0 +1,7 @@
+[
+ {"name": "penalty_spot", "eye": [0.5, 1.6, -9.0], "target": [0, 1.1, 0]},
+ {"name": "corner", "eye": [-6.0, 1.6, -5.0], "target": [0, 1.1, 0]},
+ {"name": "behind", "eye": [3.0, 1.8, 5.5], "target": [0, 1.0, 0]},
+ {"name": "on_crossbar", "eye": [-2.0, 3.9, -1.0], "target": [2.5, 2.25, -0.95]},
+ {"name": "far_25m", "eye": [-8.0, 3.0, -24.0], "target": [0, 1.0, 0]}
+]

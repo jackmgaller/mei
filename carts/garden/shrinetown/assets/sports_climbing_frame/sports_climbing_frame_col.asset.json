@@ -1,0 +1,140 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "sports_climbing_frame_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "post_w",
+   "op": "box",
+   "size": [
+    0.16,
+    4.3,
+    0.14
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -2.72,
+     2.15,
+     2.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "post_e",
+   "op": "box",
+   "size": [
+    0.16,
+    4.3,
+    0.14
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     2.72,
+     2.15,
+     2.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "beam",
+   "op": "box",
+   "size": [
+    5.7,
+    0.24,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     4.4,
+     2.0
+    ]
+   }
+  },
+  {
+   "id": "ladder_top",
+   "op": "box",
+   "size": [
+    0.72,
+    0.24,
+    4.36
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     2.36,
+     -0.2
+    ]
+   }
+  },
+  {
+   "id": "back_posts",
+   "op": "box",
+   "size": [
+    0.64,
+    2.26,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     1.13,
+     1.84
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "front_ladder",
+   "op": "box",
+   "size": [
+    0.64,
+    2.26,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     1.13,
+     -2.34
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  }
+ ]
+}
