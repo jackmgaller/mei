@@ -1,0 +1,9 @@
+[
+ {"name": "hall_5m", "eye": [-1.0, 1.6, -5.0], "target": [0, 1.2, 0]},
+ {"name": "hall_10m", "eye": [3.0, 1.6, -10.0], "target": [0, 1.4, 0]},
+ {"name": "oblique_18m", "eye": [-10.0, 1.6, -15.0], "target": [0, 1.4, 0]},
+ {"name": "booth", "eye": [-1.6, 1.5, -2.2], "target": [-2.95, 1.2, 0]},
+ {"name": "from_platform_side", "eye": [1.0, 1.6, 6.0], "target": [0, 1.4, 0]},
+ {"name": "aisle", "eye": [0.22, 1.6, -2.5], "target": [0.22, 0.9, 1.0]},
+ {"name": "jump_view", "eye": [-2.0, 4.5, -4.0], "target": [0, 1.0, 0]}
+]

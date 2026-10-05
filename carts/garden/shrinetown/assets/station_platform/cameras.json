@@ -1,0 +1,11 @@
+[
+ {"name": "on_platform_east", "eye": [18.0, 2.6, 0.8], "target": [0, 2.4, -0.5]},
+ {"name": "on_platform_west", "eye": [-18.5, 2.6, -1.0], "target": [0, 2.2, 0.5]},
+ {"name": "stairs_down", "eye": [-4.0, 2.6, 0.0], "target": [0.5, 0.6, 0]},
+ {"name": "cat_bench", "eye": [11.0, 2.4, -2.0], "target": [12.8, 1.5, -0.4]},
+ {"name": "soba", "eye": [-8.0, 2.6, -2.3], "target": [-10.0, 2.2, -0.8]},
+ {"name": "from_track_1", "eye": [4.0, 1.6, -4.1], "target": [-4.0, 2.0, 0]},
+ {"name": "canopy_top", "eye": [6.0, 6.6, -3.5], "target": [0, 4.6, 0]},
+ {"name": "plaza_25m", "eye": [6.0, -7.4, 25.0], "target": [0, 2.5, 0]},
+ {"name": "train_10m", "eye": [-30.0, 3.0, -4.1], "target": [0, 2.0, 0]}
+]
