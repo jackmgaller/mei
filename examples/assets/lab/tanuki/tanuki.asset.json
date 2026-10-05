@@ -1,0 +1,524 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "tanuki",
+ "budget": {
+  "vertices": 300,
+  "triangles": 420
+ },
+ "materials": {
+  "stone": {
+   "color": "#9a9a92",
+   "tag": "floor",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#9a9a92",
+     "#7c7c76",
+     "#b4b4aa"
+    ],
+    "params": {
+     "density": 0.18
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "glaze": {
+   "color": "#b79a72",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#b79a72",
+     "#8a6d4c",
+     "#d3bb92"
+    ],
+    "params": {
+     "density": 0.1,
+     "seed": 3
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "face": {
+   "color": "#966848",
+   "texture": {
+    "image": "art/face.png",
+    "bits": 4,
+    "projection": "planar",
+    "axis": "z",
+    "scale": [
+     0.62,
+     0.62
+    ],
+    "offset": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "fur": {
+   "color": "#7a5a3c",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#7a5a3c",
+     "#3c2c20"
+    ],
+    "params": {
+     "count": 4,
+     "axis": "v"
+    },
+    "projection": "cylindrical",
+    "scale": [
+     0.4,
+     0.5
+    ]
+   }
+  },
+  "bib": {
+   "color": "#c8382c"
+  },
+  "gold": {
+   "color": "#e8c040"
+  },
+  "leaf": {
+   "color": "#58b848",
+   "double_sided": true
+  },
+  "spark": {
+   "color": "#fff0a0"
+  },
+  "bottle": {
+   "color": "#5a4030",
+   "texture": {
+    "texels": [
+     "00000000",
+     "00000000",
+     "11111111",
+     "11111111",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000"
+    ],
+    "colors": [
+     "#5a4030",
+     "#efe6d2"
+    ],
+    "projection": "cylindrical",
+    "scale": [
+     0.3,
+     0.2
+    ]
+   }
+  },
+  "paper": {
+   "color": "#efe6d2"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "statue",
+   "op": "group",
+   "children": [
+    {
+     "id": "plinth",
+     "op": "cylinder",
+     "radius": 0.5,
+     "height": 0.14,
+     "segments": 6,
+     "material": "stone",
+     "transform": {
+      "translate": [
+       0,
+       0.07,
+       0
+      ]
+     }
+    },
+    {
+     "id": "belly",
+     "op": "sphere",
+     "radius": 0.4,
+     "rings": 5,
+     "segments": 7,
+     "material": "glaze",
+     "transform": {
+      "translate": [
+       0,
+       0.56,
+       0.02
+      ],
+      "scale": [
+       1,
+       1.08,
+       0.96
+      ]
+     }
+    },
+    {
+     "id": "feet",
+     "op": "group",
+     "children": [
+      {
+       "id": "foot",
+       "op": "sphere",
+       "radius": 0.14,
+       "rings": 3,
+       "segments": 5,
+       "material": "glaze",
+       "transform": {
+        "translate": [
+         0.2,
+         0.2,
+         -0.3
+        ],
+        "scale": [
+         1,
+         0.7,
+         1.5
+        ]
+       }
+      }
+     ],
+     "modifiers": [
+      {
+       "op": "mirror",
+       "axis": "x"
+      }
+     ]
+    },
+    {
+     "id": "head",
+     "op": "sphere",
+     "radius": 0.36,
+     "rings": 5,
+     "segments": 8,
+     "material": "glaze",
+     "transform": {
+      "translate": [
+       0,
+       1.2,
+       -0.02
+      ],
+      "scale": [
+       1.1,
+       0.9,
+       1.0
+      ]
+     }
+    },
+    {
+     "id": "faceplate",
+     "op": "sphere",
+     "radius": 0.31,
+     "rings": 4,
+     "segments": 8,
+     "material": "face",
+     "transform": {
+      "translate": [
+       0,
+       1.18,
+       -0.26
+      ],
+      "scale": [
+       1.0,
+       1.0,
+       0.45
+      ]
+     }
+    },
+    {
+     "id": "ears",
+     "op": "group",
+     "children": [
+      {
+       "id": "ear",
+       "op": "cone",
+       "radius": 0.11,
+       "height": 0.18,
+       "segments": 6,
+       "caps": false,
+       "material": "glaze",
+       "transform": {
+        "translate": [
+         0.29,
+         1.48,
+         0.0
+        ],
+        "rotate": [
+         0,
+         0,
+         -18
+        ]
+       }
+      }
+     ],
+     "modifiers": [
+      {
+       "op": "mirror",
+       "axis": "x"
+      }
+     ]
+    },
+    {
+     "id": "bibband",
+     "op": "cylinder",
+     "radius": 0.33,
+     "height": 0.07,
+     "segments": 8,
+     "caps": false,
+     "material": "bib",
+     "transform": {
+      "translate": [
+       0,
+       0.74,
+       0.0
+      ]
+     }
+    },
+    {
+     "id": "bibhang",
+     "op": "extrude",
+     "points": [
+      [
+       -0.1,
+       0
+      ],
+      [
+       0.1,
+       0
+      ],
+      [
+       0.05,
+       -0.17
+      ],
+      [
+       -0.05,
+       -0.17
+      ]
+     ],
+     "depth": 0.02,
+     "material": "bib",
+     "transform": {
+      "translate": [
+       0,
+       0.74,
+       -0.375
+      ],
+      "rotate": [
+       -8,
+       0,
+       0
+      ]
+     }
+    },
+    {
+     "id": "tail",
+     "op": "lathe",
+     "profile": [
+      [
+       0.001,
+       0.0
+      ],
+      [
+       0.14,
+       0.12
+      ],
+      [
+       0.17,
+       0.34
+      ],
+      [
+       0.001,
+       0.62
+      ]
+     ],
+     "segments": 6,
+     "material": "fur",
+     "transform": {
+      "translate": [
+       0.3,
+       0.14,
+       0.34
+      ],
+      "rotate": [
+       -35,
+       0,
+       -25
+      ]
+     }
+    },
+    {
+     "id": "arms",
+     "op": "group",
+     "children": [
+      {
+       "id": "arm",
+       "op": "cone",
+       "radius": 0.09,
+       "height": 0.3,
+       "segments": 5,
+       "material": "glaze",
+       "transform": {
+        "rotate": [
+         0,
+         0,
+         -125
+        ],
+        "translate": [
+         0.38,
+         0.58,
+         -0.12
+        ]
+       }
+      }
+     ],
+     "modifiers": [
+      {
+       "op": "mirror",
+       "axis": "x"
+      }
+     ]
+    },
+    {
+     "id": "bottle",
+     "op": "lathe",
+     "profile": [
+      [
+       0.07,
+       0
+      ],
+      [
+       0.09,
+       0.09
+      ],
+      [
+       0.04,
+       0.2
+      ],
+      [
+       0.04,
+       0.27
+      ]
+     ],
+     "segments": 6,
+     "material": "bottle",
+     "transform": {
+      "translate": [
+       0.46,
+       0.36,
+       -0.24
+      ],
+      "rotate": [
+       -10,
+       0,
+       -5
+      ]
+     }
+    },
+    {
+     "id": "ledger",
+     "op": "box",
+     "size": [
+      0.2,
+      0.25,
+      0.03
+     ],
+     "material": "paper",
+     "transform": {
+      "translate": [
+       -0.44,
+       0.46,
+       -0.26
+      ],
+      "rotate": [
+       -10,
+       20,
+       12
+      ]
+     }
+    },
+    {
+     "id": "leaf",
+     "op": "extrude",
+     "points": [
+      [
+       0,
+       0.16
+      ],
+      [
+       0.09,
+       0.02
+      ],
+      [
+       0.04,
+       -0.1
+      ],
+      [
+       -0.04,
+       -0.1
+      ],
+      [
+       -0.09,
+       0.02
+      ]
+     ],
+     "depth": 0.012,
+     "material": "leaf",
+     "transform": {
+      "translate": [
+       0.02,
+       1.7,
+       -0.06
+      ],
+      "rotate": [
+       -70,
+       15,
+       12
+      ]
+     }
+    },
+    {
+     "id": "spark",
+     "op": "sphere",
+     "radius": 0.04,
+     "rings": 2,
+     "segments": 4,
+     "material": "spark",
+     "transform": {
+      "translate": [
+       0.2,
+       1.76,
+       -0.1
+      ]
+     }
+    }
+   ],
+   "transform": {
+    "scale": [
+     0.9,
+     0.9,
+     0.9
+    ]
+   }
+  }
+ ]
+}
