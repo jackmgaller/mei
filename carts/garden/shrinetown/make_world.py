@@ -142,6 +142,9 @@ world = {
     'standins': STANDINS,
     'meshes': {'quads': True},
 }
+# the placement zones (place/ZONE.py): asset directories, layers, paths for the real assets
+from place import apply as apply_zones
+apply_zones('world', globals())
 OUT.write_text(json.dumps(world, indent=1) + '\n')
 print(f'{OUT.name}: {len(paths)} paths, {len(ops)} operations, {len(materials)} materials, {len(layers)} layers, '
       f'{len(scatter)} scatters')
