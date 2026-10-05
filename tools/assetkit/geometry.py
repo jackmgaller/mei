@@ -39,6 +39,7 @@ class Mesh:
     palette: dict = None   # set on the final mesh only: the palette entry assignment, if any
     levels: list = None    # set on the final mesh of a recipe with lod: [(mesh, report)] of levels 1..
     textures: dict = None  # set on the final mesh of a textured recipe (assetkit/textures.py)
+    notes: list = None     # set on the final mesh: inspect's notes on modifiers (mirror copies over the original)
 
     def append(self, other):
         offset = len(self.vertices)
@@ -193,8 +194,14 @@ def explicit_mesh(vertices, faces, path, face_materials=None, uvs=None):
         if dot(normal, normal) == 0:
             raise AssetError(at, "Face has no area.")
         extent = max(math.sqrt(dot(sub(v, points[0]), sub(v, points[0]))) for v in points)
-        if any(abs(dot(normal, sub(v, points[0]))) > max(1e-10, extent*1e-6) for v in points):
-            raise AssetError(at, "Polygon is not planar; provide triangles explicitly.")
+        tolerance = max(1e-10, extent*1e-6)
+        off = [abs(dot(normal, sub(v, points[0]))) for v in points]
+        if max(off) > tolerance:
+            worst = max(range(len(points)), key=lambda i: off[i])
+            raise AssetError(at, f"Polygon is not planar: its corner {worst} (vertex {ids[worst]}) is {off[worst]:.3g} units "
+                                 f"off the plane through its corners (Newell's normal through corner 0); the tolerance is "
+                                 f"{tolerance:.3g} units (10^-6 of the polygon's extent, {extent:.3g}). Move the corner onto "
+                                 "the plane, or split the polygon into triangles.")
         axis = max(range(3), key=lambda i: abs(normal[i]))
         dims = [i for i in range(3) if i != axis]
         _, tris = polygon([[p[dims[0]],p[dims[1]]] for p in points], at)

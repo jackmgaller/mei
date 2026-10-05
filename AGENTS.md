@@ -121,6 +121,10 @@ details; `carts/worldview/` is the example.
   against the code before writing it down, and run a command before documenting it.
 - **Build into a private directory** (`make B=...`) rather than `build/` when other people or
   agents may be building too.
+- **Commit an asset's generator with the asset.** When a script writes a lab or example asset's
+  recipe or draws its art (a recipe writer, a texture or sheet drawer), commit it in the asset's
+  own folder beside what it writes, and add it to the Generators table below, so the asset can
+  be regenerated. A recipe or PNG without its script cannot be changed except by hand.
 
 ## Where new things go
 
