@@ -21,24 +21,6 @@
  ],
  "entities": [
   {
-   "id": "star_3_bell",
-   "type": "coin",
-   "position": [
-    154.0,
-    61.2,
-    353.6
-   ]
-  },
-  {
-   "id": "race_switch",
-   "type": "coin",
-   "position": [
-    168,
-    60.9,
-    342
-   ]
-  },
-  {
    "id": "pole_stage_front",
    "type": "pole",
    "position": [
@@ -48,6 +30,58 @@
    ],
    "params": {
     "height": 16.0
+   }
+  },
+  {
+   "id": "star_3_bell",
+   "type": "star",
+   "position": [
+    154.0,
+    61.0,
+    351.5
+   ],
+   "params": {
+    "appear": "bell"
+   }
+  },
+  {
+   "id": "bell_rope",
+   "type": "trigger",
+   "position": [
+    154.0,
+    60.0,
+    353.9
+   ],
+   "params": {
+    "size": [
+     1.2,
+     4.0,
+     1.2
+    ],
+    "flag": "bell",
+    "keep": false
+   }
+  },
+  {
+   "id": "race_switch",
+   "type": "trigger",
+   "position": [
+    168,
+    60.0,
+    342
+   ],
+   "asset": "game_omamori",
+   "params": {
+    "size": [
+     1.4,
+     2.0,
+     1.4
+    ],
+    "flag": "race5",
+    "keep": false,
+    "timer": 4500,
+    "ends": "race5_won",
+    "hide": true
    }
   }
  ]

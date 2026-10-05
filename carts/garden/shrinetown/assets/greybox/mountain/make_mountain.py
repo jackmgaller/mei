@@ -231,7 +231,6 @@ ASSETS['gbm_pagoda'] = {'format': 'mei-asset', 'version': 1, 'name': 'gbm_pagoda
                                                                                 cube(0, 0, 0.25, PAG_EAVE_TOP[4] - 0.02, PAG_ROBAN + PAG_FINIAL, 'gold', ['bottom'])], (0, 0, 0))}]}}
 place('pagoda', 'gbm_pagoda', (PX, PB, PZ), 'arch_pagoda_col')
 entity('pole_pagoda_finial', 'pole', (PX, PB + PAG_ROBAN, PZ), {'height': PAG_FINIAL})
-coin('star_1_pagoda', PX, PB + PAG_ROBAN + PAG_FINIAL + 0.5, PZ)    # star 1 (a coin in the grey box), 0.5 over the finial: taken at the pole's top
 STRIP_RISE = 0.35 * math.tan(math.radians(27.9))
 for i in range(5):
     coin(f'coin_pagoda_{i + 1}', PX - (PAG_EAVE_HALF[i] - 0.35), PB + PAG_EAVE_TOP[i] + STRIP_RISE + 1.0, PZ)   # on each roof's west strip
@@ -324,7 +323,6 @@ place('sacred_cedar', 'gbm_cedar_hollow', (CX, BF, CZ),
 curtain = (x0 - 0.2, yb, DZ0 - 0.02, xi0 + 0.1, BF + 3.1, DZ1 + 0.02, 'gold', ['bottom'])
 place('root_curtain', 'gbm_root_curtain', (x0 - 0.05, BF, CZ), asset('gbm_root_curtain', [curtain], (x0 - 0.05, BF, CZ)),
       layer='root_d_shut')
-coin('star_4_cedar', CX, BF + 1.0, CZ)
 # The rope: from 1.75 m above the rope deck (hands overhead, feet on the deck) to 1.2 m short of
 # the knot hole, 1.75 m above its sill: hang along it, hang-jump in (spec: 24 -> 21.5 is the
 # feet's line). A rail entity names it; it is hang only because it is overhead.
@@ -414,8 +412,6 @@ st.append(cube(BELL[0], BELL[1], 0.04, SY + 1.4, SY + 4.02, 'rope'))
 st.append((153.7, 43.8, 339.55, 154.3, SY + 0.6, 339.75, 'wood'))
 SORG = (154.0, SY, 355.0)
 place('stage', 'gbm_stage', SORG, asset('gbm_stage', st, SORG, lod={'levels': [(60, [st[0]] + st[-7:-4])]}))
-coin('star_3_bell', BELL[0], SY + 1.2, BELL[1] - 0.3)
-entity('race_switch', 'coin', (L.RACE_SWITCH[0], SY + 0.9, L.RACE_SWITCH[1]))   # star 5's start (a marker)
 gl = 44.0                                                          # on the ledge
 entity('pole_stage_front', 'pole', (154.0, gl, 339.4), {'height': r2(SY - gl)})
 # Rope ladder A (shortcut A): plumb from the shelf (24) up the ledge's sheer face to 44, 20 m
@@ -429,7 +425,7 @@ place('ladder_a', 'gbm_ladder_a', LA, 'none', layer='ladder_a')     # the pole i
 # The pole runs 1.2 m past the lip (to the stakes the ropes are tied to): the feet stop 1.2 below
 # a pole's top (PoleTop), so at its top they are level with the ledge; let go and push at the rock,
 # and the hands catch the lip (scenario 424). A pole 20 m tall left the feet 1.2 below the lip.
-entity('pole_ladder_a', 'pole', LA, {'height': 21.2}, layer='ladder_a')
+entity('pole_ladder_a', 'pole', LA, {'height': 21.2, 'front': True}, layer='ladder_a', yaw=180)   # climbed from the south
 PATHS['ladder_a_steps'] = {'points': [[176.0, 13.1, 304.0], [161.5, 24.0, 316.0], [159.4, 24.0, 316.0]],
                            'sweep': {'profile': [[-1.6, -3.0], [-1.2, 0], [1.2, 0], [1.6, -3.0]],
                                      'materials': ['stone', 'steps', 'stone'], 'caps': True, 'stairs': {'rise': 0.3}}}
@@ -611,6 +607,11 @@ SCATTER = {
                         'area': {'rect': [2, Z0, 44, 380]}, 'spacing': 4, 'fill': 0.75, 'seed': 43, 'lift': -0.1,
                         'clearance': 1.2, 'max_slope': 45, 'chunk': 16, 'lod': 'assets'},
 }
+
+# ================================================================== the game's entities
+# The stars (1, 3 and 4 here), the triggers (the bell, the omamori, shortcuts A, C and D): ../../../game.py
+_gs = importlib.util.spec_from_file_location('game', TOWN / 'game.py'); G = importlib.util.module_from_spec(_gs); _gs.loader.exec_module(G)
+for _cid, _es in G.cell_entities((4, 5)).items(): CELLS.setdefault(_cid, {'placements': [], 'entities': []})['entities'].extend(_es)
 
 # ================================================================== write
 TERRAIN_MATERIALS = {

@@ -572,6 +572,10 @@ parts = {'paths': paths, 'layers': layers,
          'terrain': {'materials': TERRAIN_MAT, 'fields': {'core': field}},
          'scatter': scatter}
 
+# the game's entities in these rows (../../../game.py: shortcut B's trigger)
+_gs = importlib.util.spec_from_file_location('game', os.path.join(TOWN, 'game.py')); G = importlib.util.module_from_spec(_gs); _gs.loader.exec_module(G)
+for _cid, _es in G.cell_entities(ROWS).items(): entities.setdefault(_cid, []).extend(_es)
+
 # ------------------------------------------------------------------ write
 os.makedirs(HERE, exist_ok=True)
 for f in os.listdir(HERE):

@@ -215,6 +215,28 @@
    "asset": "gbt_coin_red"
   },
   {
+   "id": "train_5",
+   "type": "mover",
+   "position": [
+    2.0,
+    9.0,
+    12.1
+   ],
+   "asset": "game_train",
+   "collision": "game_train",
+   "params": {
+    "to": [
+     158,
+     0,
+     0
+    ],
+    "period": 600,
+    "pause": 900,
+    "start": "race5",
+    "delay": 3000
+   }
+  },
+  {
    "id": "coin_canal0",
    "type": "coin",
    "position": [

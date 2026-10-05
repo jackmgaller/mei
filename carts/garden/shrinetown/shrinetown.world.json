@@ -7,7 +7,9 @@
  "asset_dirs": [
   "assets/greybox/core",
   "assets/greybox/mountain",
-  "assets/arch_pagoda"
+  "assets/arch_pagoda",
+  "assets/game",
+  "../../../examples/assets/collect/hanafuda_moon"
  ],
  "cell_dir": "cells",
  "grid": {

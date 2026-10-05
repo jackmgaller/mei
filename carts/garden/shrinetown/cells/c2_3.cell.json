@@ -146,6 +146,25 @@
     218.0
    ],
    "asset": "gbc_coin"
+  },
+  {
+   "id": "shortcut_b",
+   "type": "trigger",
+   "position": [
+    160.0,
+    4.5,
+    235.0
+   ],
+   "params": {
+    "size": [
+     8.8,
+     3.0,
+     2.8
+    ],
+    "how": "press",
+    "flag": "shortcut_b",
+    "on": "gate_b_open"
+   }
   }
  ]
 }

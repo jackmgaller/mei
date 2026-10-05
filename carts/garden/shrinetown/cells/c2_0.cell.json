@@ -280,13 +280,35 @@
   },
   {
    "id": "star_5_platform",
-   "type": "coin",
+   "type": "star",
    "position": [
     160,
-    9.9,
-    8
+    10.4,
+    7.0
    ],
-   "asset": "gbt_star"
+   "params": {
+    "appear": "race5_won"
+   }
+  },
+  {
+   "id": "race_platform",
+   "type": "trigger",
+   "position": [
+    160,
+    8.9,
+    8.5
+   ],
+   "params": {
+    "size": [
+     32,
+     6,
+     9
+    ],
+    "flag": "race5_won",
+    "needs": "race5",
+    "ends": "race5",
+    "keep": false
+   }
   },
   {
    "id": "coin_stair0_0",
