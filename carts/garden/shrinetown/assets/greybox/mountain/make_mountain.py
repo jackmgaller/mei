@@ -430,7 +430,7 @@ place('ladder_a', 'gbm_ladder_a', LA, 'none', layer='ladder_a')     # the pole i
 # a pole's top (PoleTop), so at its top they are level with the ledge; let go and push at the rock,
 # and the hands catch the lip (scenario 424). A pole 20 m tall left the feet 1.2 below the lip.
 entity('pole_ladder_a', 'pole', LA, {'height': 21.2}, layer='ladder_a')
-PATHS['ladder_a_steps'] = {'points': [[176.0, 13.1, 304.0], [161.5, 24.0, 316.0], [160.0, 24.0, 316.0]],
+PATHS['ladder_a_steps'] = {'points': [[176.0, 13.1, 304.0], [161.5, 24.0, 316.0], [159.4, 24.0, 316.0]],
                            'sweep': {'profile': [[-1.6, -3.0], [-1.2, 0], [1.2, 0], [1.6, -3.0]],
                                      'materials': ['stone', 'steps', 'stone'], 'caps': True, 'stairs': {'rise': 0.3}}}
 

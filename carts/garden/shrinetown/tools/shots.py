@@ -22,10 +22,10 @@ VIEWS = {
     'spawn': (160, 1.6, 20, 0, 3),
     'shotengai': (160, 1.6, 66, 0, 2),
     'courtyard': (160, 2.2, 128, 0, 4),
-    'from_pagoda': (178, 38.5, 266, 180, -14),
-    'from_stage': (154, 62.5, 338, 180, -16),
-    'overview': (330, 120, -40, -38, -30),
-    'overview_west': (-30, 110, 40, 40, -30),
+    'from_pagoda': (181.5, 46.5, 262, 195, -14),
+    'from_stage': (168, 62.5, 341, 200, -12),
+    'overview_north': (150, 150, 200, 10, -32),     # from over the precinct (row 3: the far ring of 3 reaches every row)
+    'overview_south': (150, 150, 200, 180, -32),
 }
 
 
@@ -37,12 +37,12 @@ fn init() {{
     render_depth(true)
     render_perspective(true)
     assert(world_shrinetown_load())
-    wp_backdrop_show(0)
 }}
 fn update() {{}}
 fn draw() {{
     let yaw: fixed = {math.radians(yaw):.5f}
     let pitch: fixed = {math.radians(pitch):.5f}
+    cls(rgb(150, 185, 220))
     wp_draw(vec3({x:.3f}, {y:.3f}, {z:.3f}), yaw, pitch)
     wp_draw_entities()
 }}

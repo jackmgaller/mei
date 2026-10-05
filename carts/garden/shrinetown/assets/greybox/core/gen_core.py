@@ -393,7 +393,7 @@ gw = ground(106, 200); stair('core_west_gate_stair', (106, gw + 0.3, 200), (114,
 ge = ground(222, 192); stair('core_east_gate_stair', (214, 5.0, 192), (222, ge + 0.3, 192), 3.0, 4.0)
 # the stone stair from the north gate to the pagoda terrace, on layout's line (its ground is carved
 # to the line; a bed lowers it under the treads)
-paths['core_north_stair'] = {'points': [[160, 5.0, 234.0], [172, L.PAG_BASE, 254.0]],
+paths['core_north_stair'] = {'points': [[160, 5.0, 233.6], [172, L.PAG_BASE, 254.0]],
                              'sweep': {'profile': [[-4.2, -1.2], [-3.5, 0], [3.5, 0], [4.2, -1.2]],
                                        'materials': ['earth', 'steps', 'earth'], 'stairs': {'rise': 0.3},
                                        'caps': True}}
@@ -435,7 +435,7 @@ sx, sz = deck_exit((94, 152), (101, 122))
 bridge('core_walkway_foot', [(sx, 9.0, sz), (97.5, 7.4, 137.0), (101.0, 6.0, 122.0)])
 # the walkway's foot (spec 3.9; the town did not build it): a stair from the bridge's end (6.0) east
 # along z 120 down into the courtyard's west end (0.6), clear of the town's cedars at x 84 and 92
-paths['core_walkway_stair'] = {'points': [[101.0, 6.0, 122.0], [101.0, 6.0, 120.0], [102.0, 6.0, 120.0], [116.0, 0.9, 120.0]],
+paths['core_walkway_stair'] = {'points': [[101.0, 6.0, 122.4], [101.0, 6.0, 120.0], [102.0, 6.0, 120.0], [116.0, 0.9, 120.0]],
                                'sweep': {'profile': SOLID(1.2, 6.5), 'materials': ['steps', 'steps', 'steps', 'steps'],
                                          'stairs': {'rise': 0.3}, 'caps': True}}
 # deck 3 to the crown's landing

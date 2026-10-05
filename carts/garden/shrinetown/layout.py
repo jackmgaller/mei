@@ -253,9 +253,9 @@ GLIDES = [
     ('G2 danchi roof -> canal lane', (78, 34, 18.8), (56, 80)),
     ('G3 sento chimney -> park', (23.5, 70, 18.2), (22, 138)),
     ('G4 fire tower -> courtyard west', (102, 77, 15.2), (112, 140)),
-    ('G5 temple ridge -> pagoda roof 1', (160, 226, 29.5), (174, 256)),
+    ('G5 temple ridge -> pagoda roof 1', (172.5, 222.3, 27.5), (178, 256.6)),   # the real temple's ridge; roof 1 at 20.0
     ('G6 stage -> pagoda roof 4', (162, 340, 60.0), (179, 266)),
-    ('G7 pagoda roof 5 -> cemetery top', (180.6, 262, PAG_ROOFS[4]), (282, 244)),
+    ('G7 pagoda roof 5 -> cemetery top', (180.6, 262, PAG_ROOFS[4]), (263, 247)),   # lands on the top terrace's west end (scenario 416)
     ('G8 race line: stage -> arcade', (170, 340, 60.0), (160, 98)),
 ]
 SHORTCUTS = [
