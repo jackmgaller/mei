@@ -1,0 +1,8 @@
+[
+ {"name": "approach", "eye": [-3.0, 1.6, -8.0], "target": [0, 1.8, 0]},
+ {"name": "under_roof", "eye": [0.9, 2.2, -2.6], "target": [0, 1.9, 0]},
+ {"name": "bell_up", "eye": [0.6, 1.4, -1.0], "target": [0, 2.3, 0.3]},
+ {"name": "on_roof", "eye": [-3.5, 5.6, -4.5], "target": [0, 3.6, 0]},
+ {"name": "far_30", "eye": [12.0, 4.0, -28.0], "target": [0, 2.0, 0]},
+ {"name": "from_terrace", "eye": [-8.0, 1.6, 6.0], "target": [0, 2.2, 0]}
+]
