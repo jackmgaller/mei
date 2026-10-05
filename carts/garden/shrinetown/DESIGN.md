@@ -1051,3 +1051,40 @@ present (`tools/views.py`): README.md, "What it costs".
 - **The pagoda from the spawn.** With the real pagoda on the terrace at 15, only its finial's
   top clears the arcade gate (section 1.3).
 - **G5** (12.2, the pagoda terrace).
+
+### 12.5 Placing the real assets (by zone, PLACE_SPLIT)
+
+Each zone's grey boxes are swapped for the real assets by its own module, `place/ZONE.py`, which
+the region generators and `make_world.py` call just before they write (`place/__init__.py`).
+
+#### Canal (x < 64, every row: `place/canal.py`)
+
+| Where | Grey box | Real | Why |
+|---|---|---|---|
+| Machiya | ten boxes, rows x 4–18 (7.5) and 24–40 (7.0) | `town_machiya_a` (ridge 8.0) west, `_b` (7.0) east, turned to face the lane x 18–24 (yaw 270 and 90); the east row's backs at x 38.3 | the asset's frontage is 10 m along its X: a row along z needs it turned; b is 14.3 deep in the 16 m row, so the bank's strip is 5.7 m |
+| Sento | box x 8–30, z 60–73 (8.0), boiler room x 32–36 (5.0), chimney at (30.5, 67.5) | `sento_front` at (21.7, 0, 63.25): x 10.9–32.9, z 56.8–69.7; its boiler room (5.0) and chimney (18.2) at (30.5, 67.5) as before | the asset agents' origin (14.7, 64.25) puts the chimney at layout's (23.5, 68.5); glide G3 (scenario 412) and red coin 7 start at the grey box's (30.5, 67.5), so the sento moves 7 m east instead. The lane past its front (z 52.4–56.8) is 4.4 m |
+| Chimney ladder | pole at (32.45, 5.0, 67.5), 13.2, east face | pole at (30.5, 5.02, 66.7), 13.18, the iron ladder on the chimney's south face | the asset's ladder |
+| Road bridge | slab −0.5–0 | `canal_road_bridge`, humped (crown 1.0, parapets 2.1); its two lamps are poles (48, 2.1, 104.2 / 117.8), 2.75 | |
+| Footbridge | slab 0.1–0.3, z 59–61.5 | `canal_footbridge` at (48, 0, 60.25), crown 0.8, parapets 1.55 | yaw 0, not PLACEMENT_NOTES' 90: the walk runs along the asset's X, across the canal |
+| Grille | bars 0.4–0.8 | `canal_grille` at (48, 0, 1), yaw 180 (its front upstream), its slab across the canal at 0.2 and fence rails 1.33 | |
+| Arched bridge | the core's plank sweep `core_canal_arch` | `canal_arched_bridge` at (48, 0.6, 160), yaw 0; its two top rails are rails (`canal_arch_rail_0/1`); the ground at its east foot (x 53–56, z 156–164) set to 0.6 | the woods' edge there is about 1.0 |
+| Park | boxes | `festival_yagura` (ladder poles at (23.2, 0.6, 163.1) 3.3 and (21.4, 3.05, 162.0) 2.95), `park_toilet` (front east), `park_slide` (yaw 180, tower south; ladder pole (12, 0.6, 137.75) 2.4), `park_jungle_gym`, `park_swings` (origin z 139.9; top bar and safety rail are rails at 3.22 and 1.27) | |
+| Watermill | house and wheel boxes | `watermill` at (42.27, 0.6, 196): its bank edge on the canal's wall (x 44), the wheel in the canal | z 196, not PLACEMENT_NOTES' 200.5: there the mill would stand in the plank bridge (z 203.5) |
+| Sake brewery | `gbm_sakagura` at (15, 0.66, 218) | `sakagura` at (15, 0.7, 218) on a pad (x 5–25, z 210.5–225.5, set to 0.7, falloff 3) | the bamboo's foot rises 0.6–1.3 under it |
+| Trees | ginkgo boxes; town ginkgo at (14, 124), (32, 122) and a cedar at (58, 122) | the shrine's `tree_ginkgo`; the town's three moved north of z 128: ginkgo (12, 130), (39, 130), cedar (59, 131) | in the town's rows they would load the shrine's tree tiles into the town's texture set |
+| Bamboo | `gbc_bamboo` and `gbm_bamboo` scatters | `tree_bamboo_tall` in three scatters (loose on a 6 m lattice, two clump sets on 9 m held near their squares' centres: twos and threes) and `plant_sasa` under them, x 2–44, z 206–380 | |
+| Canal's spring | slab `gbm_spring` | three of the shrine's boulders round the canal's head | |
+| Road's west end | road works box (x 0.5–1.5) | two of the shrine's `street_barrier` across the road, facing east | |
+| Utility poles x 10, 40 | boxes at z 104 | the shrine's `street_utility_pole` at z 106, yaw 90 (crossarm across the road) | the street zone's road poles and wires: two wires 0.8 m either side of the poles, clear of the shops at z 104 |
+
+Props, culled at 40–50 m and placed one by one (a merged placement draws its level 0 at any
+distance): potted plants, bicycles, a laundry pole, air conditioners and bins along the machiya
+lane and the bank; a hokora and a jizo at the footbridge's west end; a bench on the canal lane;
+in the park benches round the dance ground, three of the shrine's lamps, shrubs behind the toilet,
+a stone lantern at the arched bridge's foot, a shishi-odoshi by the mill and a tanuki at the
+brewery's door.
+
+Textures (`tools/textures.py`): the canal's town part 25,472 bytes of 26,624, its shrine part
+32,640 of 36,864. The cuts: the footbridge's waterway and year plates are the road bridge's (it
+keeps its own name, 湯屋橋), the sakagura's two 8-bit textures (sign board, barrels) are 4-bit,
+and the zone places no `firepost` (its alarm is 8-bit) and no reeds.

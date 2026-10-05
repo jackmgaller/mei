@@ -160,7 +160,6 @@
    "texture": {
     "sheet": "kura",
     "cell": "taru",
-    "bits": 8,
     "projection": "cylindrical",
     "scale": [
      1.885,
@@ -185,7 +184,6 @@
    "texture": {
     "sheet": "kura",
     "cell": "kanban",
-    "bits": 8,
     "projection": "fit"
    }
   },

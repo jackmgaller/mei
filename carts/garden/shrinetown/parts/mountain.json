@@ -1388,13 +1388,7 @@
     "scale": 1.2
    }
   },
-  "mountain_bamboo": {
-   "assets": [
-    {
-     "asset": "gbm_bamboo",
-     "collision": "self"
-    }
-   ],
+  "canal_bamboo_mountain": {
    "area": {
     "rect": [
      2,
@@ -1403,14 +1397,94 @@
      380
     ]
    },
-   "spacing": 4,
-   "fill": 0.75,
-   "seed": 43,
-   "lift": -0.1,
    "clearance": 1.2,
    "max_slope": 45,
    "chunk": 16,
-   "lod": "assets"
+   "lod": "assets",
+   "lift": -0.1,
+   "assets": [
+    {
+     "asset": "tree_bamboo_tall",
+     "collision": "tree_bamboo_tall_col"
+    }
+   ],
+   "spacing": 6,
+   "fill": 0.6,
+   "seed": 51
+  },
+  "canal_bamboo_mountain_clump_a": {
+   "area": {
+    "rect": [
+     2,
+     256,
+     44,
+     380
+    ]
+   },
+   "clearance": 1.2,
+   "max_slope": 45,
+   "chunk": 16,
+   "lod": "assets",
+   "lift": -0.1,
+   "assets": [
+    {
+     "asset": "tree_bamboo_tall",
+     "collision": "tree_bamboo_tall_col"
+    }
+   ],
+   "spacing": 9,
+   "fill": 0.8,
+   "jitter": 0.2,
+   "seed": 52
+  },
+  "canal_bamboo_mountain_clump_b": {
+   "area": {
+    "rect": [
+     2,
+     256,
+     44,
+     380
+    ]
+   },
+   "clearance": 1.2,
+   "max_slope": 45,
+   "chunk": 16,
+   "lod": "assets",
+   "lift": -0.1,
+   "assets": [
+    {
+     "asset": "tree_bamboo_tall",
+     "collision": "tree_bamboo_tall_col"
+    }
+   ],
+   "spacing": 9,
+   "fill": 0.6,
+   "jitter": 0.25,
+   "seed": 53
+  },
+  "canal_sasa_mountain": {
+   "area": {
+    "rect": [
+     2,
+     256,
+     44,
+     380
+    ]
+   },
+   "clearance": 1.2,
+   "max_slope": 45,
+   "chunk": 32,
+   "lod": "assets",
+   "lift": 0.0,
+   "assets": [
+    {
+     "asset": "plant_sasa",
+     "collision": "none"
+    }
+   ],
+   "spacing": 5,
+   "fill": 0.35,
+   "seed": 54
   }
  },
  "terrain": {

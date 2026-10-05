@@ -53,86 +53,6 @@
    "collision": "gbt_viaduct_162_col"
   },
   {
-   "id": "machiya_w18",
-   "asset": "gbt_machiya_a",
-   "position": [
-    11.0,
-    0,
-    23.0
-   ],
-   "collision": "gbt_machiya_a_col"
-  },
-  {
-   "id": "machiya_e18",
-   "asset": "gbt_machiya_b",
-   "position": [
-    32.0,
-    0,
-    23.0
-   ],
-   "collision": "gbt_machiya_b_col"
-  },
-  {
-   "id": "machiya_w30",
-   "asset": "gbt_machiya_a",
-   "position": [
-    11.0,
-    0,
-    35.0
-   ],
-   "collision": "gbt_machiya_a_col"
-  },
-  {
-   "id": "machiya_e30",
-   "asset": "gbt_machiya_b",
-   "position": [
-    32.0,
-    0,
-    35.0
-   ],
-   "collision": "gbt_machiya_b_col"
-  },
-  {
-   "id": "machiya_w42",
-   "asset": "gbt_machiya_a",
-   "position": [
-    11.0,
-    0,
-    47.0
-   ],
-   "collision": "gbt_machiya_a_col"
-  },
-  {
-   "id": "machiya_e42",
-   "asset": "gbt_machiya_b",
-   "position": [
-    32.0,
-    0,
-    47.0
-   ],
-   "collision": "gbt_machiya_b_col"
-  },
-  {
-   "id": "canal_footbridge",
-   "asset": "gbt_canal_footbridge",
-   "position": [
-    48.0,
-    0.1,
-    60.25
-   ],
-   "collision": "gbt_canal_footbridge_col"
-  },
-  {
-   "id": "canal_grille",
-   "asset": "gbt_canal_grille",
-   "position": [
-    48.0,
-    -1.2,
-    0.6
-   ],
-   "collision": "self"
-  },
-  {
    "id": "edge_s0",
    "asset": "gbt_edge_fence",
    "position": [
@@ -201,6 +121,202 @@
     54.0
    ],
    "collision": "self"
+  },
+  {
+   "id": "machiya_w18",
+   "asset": "town_machiya_a",
+   "position": [
+    10.7,
+    0.0,
+    23.0
+   ],
+   "yaw": 270,
+   "collision": "town_machiya_a_col"
+  },
+  {
+   "id": "machiya_e18",
+   "asset": "town_machiya_b",
+   "position": [
+    31.3,
+    0.0,
+    23.0
+   ],
+   "yaw": 90,
+   "collision": "town_machiya_b_col"
+  },
+  {
+   "id": "machiya_w30",
+   "asset": "town_machiya_a",
+   "position": [
+    10.7,
+    0.0,
+    35.0
+   ],
+   "yaw": 270,
+   "collision": "town_machiya_a_col"
+  },
+  {
+   "id": "machiya_e30",
+   "asset": "town_machiya_b",
+   "position": [
+    31.3,
+    0.0,
+    35.0
+   ],
+   "yaw": 90,
+   "collision": "town_machiya_b_col"
+  },
+  {
+   "id": "machiya_w42",
+   "asset": "town_machiya_a",
+   "position": [
+    10.7,
+    0.0,
+    47.0
+   ],
+   "yaw": 270,
+   "collision": "town_machiya_a_col"
+  },
+  {
+   "id": "machiya_e42",
+   "asset": "town_machiya_b",
+   "position": [
+    31.3,
+    0.0,
+    47.0
+   ],
+   "yaw": 90,
+   "collision": "town_machiya_b_col"
+  },
+  {
+   "id": "sento",
+   "asset": "sento_front",
+   "position": [
+    21.7,
+    0.0,
+    63.25
+   ],
+   "collision": "sento_front_col"
+  },
+  {
+   "id": "canal_footbridge",
+   "asset": "canal_footbridge",
+   "position": [
+    48.0,
+    0.0,
+    60.25
+   ],
+   "collision": "canal_footbridge_col"
+  },
+  {
+   "id": "canal_grille",
+   "asset": "canal_grille",
+   "position": [
+    48.0,
+    0.0,
+    1.0
+   ],
+   "yaw": 180,
+   "collision": "canal_grille_col"
+  },
+  {
+   "id": "canal_pots_w18",
+   "asset": "town_potted_plants",
+   "position": [
+    18.4,
+    0,
+    21.0
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_pots_w42",
+   "asset": "town_potted_plants",
+   "position": [
+    18.4,
+    0,
+    45.5
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_pots_e30",
+   "asset": "town_potted_plants",
+   "position": [
+    23.6,
+    0,
+    33.0
+   ],
+   "yaw": 90,
+   "collision": "self"
+  },
+  {
+   "id": "canal_bike_w30",
+   "asset": "mamachari",
+   "position": [
+    18.9,
+    0,
+    38.0
+   ],
+   "yaw": 10,
+   "collision": "mamachari_col"
+  },
+  {
+   "id": "canal_bike_e18",
+   "asset": "mamachari",
+   "position": [
+    23.1,
+    0,
+    25.5
+   ],
+   "yaw": 185,
+   "collision": "mamachari_col"
+  },
+  {
+   "id": "canal_laundry_e42",
+   "asset": "town_laundry_pole",
+   "position": [
+    23.5,
+    0,
+    44.0
+   ],
+   "yaw": 90,
+   "collision": "self"
+  },
+  {
+   "id": "canal_aircon_e30",
+   "asset": "town_aircon_pipes",
+   "position": [
+    38.5,
+    0,
+    36.0
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_bins_lane52",
+   "asset": "town_crates_bins",
+   "position": [
+    18.6,
+    0,
+    54.0
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_hokora_footbridge",
+   "asset": "hokora",
+   "position": [
+    41.6,
+    0,
+    56.4
+   ],
+   "yaw": 270,
+   "collision": "hokora_col"
   }
  ],
  "entities": [

@@ -4,8 +4,10 @@ at z 60 by the sento), 10 x 2.5 m. Run once and commit the outputs:
 python3 carts/garden/shrinetown/assets/canal_footbridge/make_footbridge.py
 
 The road bridge's little sibling (canal_road_bridge): the same granite, coping and paving, the
-same segmental arch, name plates on its four corner posts (art/footbridge_sheet.png, drawn by
-art/draw_footbridge.py).
+same segmental arch, name plates on its four corner posts: its own name in kanji and kana
+(art/footbridge_sheet.png, drawn by art/draw_footbridge.py), the waterway's name and the year
+the road bridge's (../canal_road_bridge/art/bridge_sheet.png), so the two bridges share those
+two tiles in the town's texture set.
 
 Asset frame: origin at the footprint's centre at bank level (y = 0, the street), the walk
 running along X over the canal, which flows along Z under it (canal 8 m wide, x -4..4, water at
@@ -205,8 +207,10 @@ MATERIALS = {
     'barrel': {'color': '#6a665e', 'palette': True},
     'plate_kanji': {'color': '#34302c', 'texture': {'sheet': 'plates', 'cell': 'plate_kanji', 'projection': 'fit'}},
     'plate_kana': {'color': '#34302c', 'texture': {'sheet': 'plates', 'cell': 'plate_kana', 'projection': 'fit'}},
-    'plate_water': {'color': '#34302c', 'texture': {'sheet': 'plates', 'cell': 'plate_water', 'projection': 'fit'}},
-    'plate_year': {'color': '#34302c', 'texture': {'sheet': 'plates', 'cell': 'plate_year', 'projection': 'fit'}},
+    # the waterway's name and the year are the road bridge's own plates (one tile each for both
+    # bridges in the town's texture set: TEXTURES.md, the canal zone's cut)
+    'plate_water': {'color': '#34302c', 'texture': {'sheet': 'road_plates', 'cell': 'plate_water', 'projection': 'fit'}},
+    'plate_year': {'color': '#34302c', 'texture': {'sheet': 'road_plates', 'cell': 'plate_year', 'projection': 'fit'}},
 }
 
 CAMERAS = [
@@ -230,7 +234,8 @@ if __name__ == '__main__':
     write(os.path.join(HERE, NAME + '.asset.json'), {
         'format': 'mei-asset', 'version': 1, 'name': NAME,
         'budget': {'triangles': 120},
-        'sheets': {'plates': {'image': 'art/footbridge_sheet.png'}},
+        'sheets': {'plates': {'image': 'art/footbridge_sheet.png'},
+                   'road_plates': {'image': '../canal_road_bridge/art/bridge_sheet.png'}},
         'materials': MATERIALS, 'lighting': LIGHT, 'verification': POLICY,
         'lod': {'levels': [{'distance': 30, 'nodes': level1()}, {'distance': 60, 'nodes': level2()}]},
         'nodes': level0()})

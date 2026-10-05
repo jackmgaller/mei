@@ -7,7 +7,33 @@
  "asset_dirs": [
   "assets/greybox/core",
   "assets/greybox/mountain",
-  "assets/arch_pagoda"
+  "assets/arch_pagoda",
+  "assets/canal_arched_bridge",
+  "assets/canal_footbridge",
+  "assets/canal_grille",
+  "assets/canal_road_bridge",
+  "assets/festival_yagura",
+  "../shrine/assets",
+  "assets/hokora",
+  "assets/jizo",
+  "assets/mamachari",
+  "assets/park_jungle_gym",
+  "assets/park_slide",
+  "assets/park_swings",
+  "assets/park_toilet",
+  "assets/sakagura",
+  "assets/sento_front",
+  "assets/shishi_odoshi",
+  "assets/tanuki",
+  "assets/town_aircon_pipes",
+  "assets/town_bench",
+  "assets/town_crates_bins",
+  "assets/town_laundry_pole",
+  "assets/town_machiya_a",
+  "assets/town_machiya_b",
+  "assets/town_potted_plants",
+  "assets/tree_bamboo_tall",
+  "assets/watermill"
  ],
  "cell_dir": "cells",
  "grid": {
@@ -1554,51 +1580,6 @@
     "material": "planks"
    }
   },
-  "core_canal_arch": {
-   "points": [
-    [
-     42.0,
-     0.8,
-     160
-    ],
-    [
-     48.0,
-     1.7,
-     160
-    ],
-    [
-     54.0,
-     1.15,
-     160
-    ]
-   ],
-   "raised": true,
-   "sweep": {
-    "profile": [
-     [
-      -1.5,
-      -0.35
-     ],
-     [
-      -1.5,
-      0
-     ],
-     [
-      1.5,
-      0
-     ],
-     [
-      1.5,
-      -0.35
-     ],
-     [
-      -1.5,
-      -0.35
-     ]
-    ],
-    "material": "planks"
-   }
-  },
   "core_canal_planks": {
    "points": [
     [
@@ -1963,6 +1944,156 @@
     "double_sided": true,
     "collision": false
    }
+  },
+  "canal_swings_top": {
+   "points": [
+    [
+     33.2,
+     3.22,
+     140.5
+    ],
+    [
+     36.8,
+     3.22,
+     140.5
+    ]
+   ],
+   "raised": true
+  },
+  "canal_swings_safety": {
+   "points": [
+    [
+     32.95,
+     1.27,
+     138.5
+    ],
+    [
+     37.05,
+     1.27,
+     138.5
+    ]
+   ],
+   "raised": true
+  },
+  "canal_arch_rail_0": {
+   "points": [
+    [
+     43.0,
+     1.5,
+     158.6
+    ],
+    [
+     44.0,
+     1.968,
+     158.6
+    ],
+    [
+     45.0,
+     2.318,
+     158.6
+    ],
+    [
+     46.0,
+     2.56,
+     158.6
+    ],
+    [
+     47.0,
+     2.703,
+     158.6
+    ],
+    [
+     48.0,
+     2.75,
+     158.6
+    ],
+    [
+     49.0,
+     2.703,
+     158.6
+    ],
+    [
+     50.0,
+     2.56,
+     158.6
+    ],
+    [
+     51.0,
+     2.318,
+     158.6
+    ],
+    [
+     52.0,
+     1.968,
+     158.6
+    ],
+    [
+     53.0,
+     1.5,
+     158.6
+    ]
+   ],
+   "raised": true
+  },
+  "canal_arch_rail_1": {
+   "points": [
+    [
+     43.0,
+     1.5,
+     161.4
+    ],
+    [
+     44.0,
+     1.968,
+     161.4
+    ],
+    [
+     45.0,
+     2.318,
+     161.4
+    ],
+    [
+     46.0,
+     2.56,
+     161.4
+    ],
+    [
+     47.0,
+     2.703,
+     161.4
+    ],
+    [
+     48.0,
+     2.75,
+     161.4
+    ],
+    [
+     49.0,
+     2.703,
+     161.4
+    ],
+    [
+     50.0,
+     2.56,
+     161.4
+    ],
+    [
+     51.0,
+     2.318,
+     161.4
+    ],
+    [
+     52.0,
+     1.968,
+     161.4
+    ],
+    [
+     53.0,
+     1.5,
+     161.4
+    ]
+   ],
+   "raised": true
   },
   "bridge_deck6_rope": {
    "points": [
@@ -4449,6 +4580,31 @@
       },
       "height": 8.0,
       "material": "rock"
+     },
+     {
+      "op": "set",
+      "area": {
+       "rect": [
+        5.0,
+        210.5,
+        25.0,
+        225.5
+       ]
+      },
+      "height": 0.7,
+      "falloff": 3
+     },
+     {
+      "op": "set",
+      "area": {
+       "rect": [
+        53,
+        156,
+        56,
+        164
+       ]
+      },
+      "height": 0.6
      }
     ]
    }
@@ -4646,24 +4802,20 @@
     "scale": 1.2
    }
   },
-  "core_bamboo": {
-   "assets": [
-    {
-     "asset": "gbc_bamboo",
-     "collision": "self"
-    }
-   ],
+  "canal_bamboo_core": {
    "area": {
     "rect": [
-     0,
+     2,
      206,
      44,
      256
     ]
    },
-   "spacing": 6,
-   "fill": 0.7,
-   "seed": 41,
+   "clearance": 1.2,
+   "max_slope": 45,
+   "chunk": 16,
+   "lod": "assets",
+   "lift": -0.1,
    "exclude": [
     {
      "rect": [
@@ -4674,10 +4826,119 @@
      ]
     }
    ],
+   "assets": [
+    {
+     "asset": "tree_bamboo_tall",
+     "collision": "tree_bamboo_tall_col"
+    }
+   ],
+   "spacing": 6,
+   "fill": 0.6,
+   "seed": 51
+  },
+  "canal_bamboo_core_clump_a": {
+   "area": {
+    "rect": [
+     2,
+     206,
+     44,
+     256
+    ]
+   },
    "clearance": 1.2,
-   "max_slope": 36,
+   "max_slope": 45,
    "chunk": 16,
-   "lod": "assets"
+   "lod": "assets",
+   "lift": -0.1,
+   "exclude": [
+    {
+     "rect": [
+      3,
+      209,
+      27,
+      227
+     ]
+    }
+   ],
+   "assets": [
+    {
+     "asset": "tree_bamboo_tall",
+     "collision": "tree_bamboo_tall_col"
+    }
+   ],
+   "spacing": 9,
+   "fill": 0.8,
+   "jitter": 0.2,
+   "seed": 52
+  },
+  "canal_bamboo_core_clump_b": {
+   "area": {
+    "rect": [
+     2,
+     206,
+     44,
+     256
+    ]
+   },
+   "clearance": 1.2,
+   "max_slope": 45,
+   "chunk": 16,
+   "lod": "assets",
+   "lift": -0.1,
+   "exclude": [
+    {
+     "rect": [
+      3,
+      209,
+      27,
+      227
+     ]
+    }
+   ],
+   "assets": [
+    {
+     "asset": "tree_bamboo_tall",
+     "collision": "tree_bamboo_tall_col"
+    }
+   ],
+   "spacing": 9,
+   "fill": 0.6,
+   "jitter": 0.25,
+   "seed": 53
+  },
+  "canal_sasa_core": {
+   "area": {
+    "rect": [
+     2,
+     206,
+     44,
+     256
+    ]
+   },
+   "clearance": 1.2,
+   "max_slope": 45,
+   "chunk": 32,
+   "lod": "assets",
+   "lift": 0.0,
+   "exclude": [
+    {
+     "rect": [
+      3,
+      209,
+      27,
+      227
+     ]
+    }
+   ],
+   "assets": [
+    {
+     "asset": "plant_sasa",
+     "collision": "none"
+    }
+   ],
+   "spacing": 5,
+   "fill": 0.35,
+   "seed": 54
   },
   "mountain_forest": {
    "assets": [
@@ -4962,13 +5223,7 @@
     "scale": 1.2
    }
   },
-  "mountain_bamboo": {
-   "assets": [
-    {
-     "asset": "gbm_bamboo",
-     "collision": "self"
-    }
-   ],
+  "canal_bamboo_mountain": {
    "area": {
     "rect": [
      2,
@@ -4977,14 +5232,94 @@
      380
     ]
    },
-   "spacing": 4,
-   "fill": 0.75,
-   "seed": 43,
-   "lift": -0.1,
    "clearance": 1.2,
    "max_slope": 45,
    "chunk": 16,
-   "lod": "assets"
+   "lod": "assets",
+   "lift": -0.1,
+   "assets": [
+    {
+     "asset": "tree_bamboo_tall",
+     "collision": "tree_bamboo_tall_col"
+    }
+   ],
+   "spacing": 6,
+   "fill": 0.6,
+   "seed": 51
+  },
+  "canal_bamboo_mountain_clump_a": {
+   "area": {
+    "rect": [
+     2,
+     256,
+     44,
+     380
+    ]
+   },
+   "clearance": 1.2,
+   "max_slope": 45,
+   "chunk": 16,
+   "lod": "assets",
+   "lift": -0.1,
+   "assets": [
+    {
+     "asset": "tree_bamboo_tall",
+     "collision": "tree_bamboo_tall_col"
+    }
+   ],
+   "spacing": 9,
+   "fill": 0.8,
+   "jitter": 0.2,
+   "seed": 52
+  },
+  "canal_bamboo_mountain_clump_b": {
+   "area": {
+    "rect": [
+     2,
+     256,
+     44,
+     380
+    ]
+   },
+   "clearance": 1.2,
+   "max_slope": 45,
+   "chunk": 16,
+   "lod": "assets",
+   "lift": -0.1,
+   "assets": [
+    {
+     "asset": "tree_bamboo_tall",
+     "collision": "tree_bamboo_tall_col"
+    }
+   ],
+   "spacing": 9,
+   "fill": 0.6,
+   "jitter": 0.25,
+   "seed": 53
+  },
+  "canal_sasa_mountain": {
+   "area": {
+    "rect": [
+     2,
+     256,
+     44,
+     380
+    ]
+   },
+   "clearance": 1.2,
+   "max_slope": 45,
+   "chunk": 32,
+   "lod": "assets",
+   "lift": 0.0,
+   "assets": [
+    {
+     "asset": "plant_sasa",
+     "collision": "none"
+    }
+   ],
+   "spacing": 5,
+   "fill": 0.35,
+   "seed": 54
   }
  },
  "lod": {
