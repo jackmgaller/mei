@@ -1,0 +1,204 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "school_gym_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "hall",
+   "op": "box",
+   "size": [
+    30.0,
+    7.3276,
+    21.3
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     3.6638,
+     1.05
+    ]
+   },
+   "open": [
+    "top"
+   ]
+  },
+  {
+   "id": "roof",
+   "op": "extrude",
+   "material": "solid",
+   "depth": 30.6,
+   "points": [
+    [
+     9.9,
+     7.4
+    ],
+    [
+     4.425,
+     8.6063
+    ],
+    [
+     -1.05,
+     9.0
+    ],
+    [
+     -6.525,
+     8.6063
+    ],
+    [
+     -12.0,
+     7.4
+    ],
+    [
+     -12.0,
+     7.1276
+    ],
+    [
+     9.9,
+     7.1276
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ]
+   }
+  },
+  {
+   "id": "canopy",
+   "op": "box",
+   "size": [
+    10.0,
+    0.2,
+    2.42
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     3.35,
+     -10.79
+    ]
+   }
+  },
+  {
+   "id": "post_w",
+   "op": "box",
+   "size": [
+    0.2,
+    3.27,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -4.7,
+     1.635,
+     -11.7
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "post_e",
+   "op": "box",
+   "size": [
+    0.2,
+    3.27,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     4.7,
+     1.635,
+     -11.7
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "vent_0",
+   "op": "box",
+   "size": [
+    1.4,
+    0.5,
+    1.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -9.0,
+     9.1,
+     1.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "vent_1",
+   "op": "box",
+   "size": [
+    1.4,
+    0.5,
+    1.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     9.1,
+     1.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "vent_2",
+   "op": "box",
+   "size": [
+    1.4,
+    0.5,
+    1.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     9.0,
+     9.1,
+     1.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}
