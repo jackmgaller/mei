@@ -1,0 +1,343 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "arch_komainu",
+ "budget": {
+  "triangles": 120
+ },
+ "materials": {
+  "stone": {
+   "color": "#a49e90",
+   "texture": {
+    "image": "art/forest_stone.png",
+    "projection": "box",
+    "scale": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "mouth": {
+   "color": "#2c2a28",
+   "palette": true
+  },
+  "mane": {
+   "color": "#8e887c",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "a_plinth",
+   "op": "box",
+   "size": [
+    0.8,
+    0.5,
+    0.9
+   ],
+   "material": "stone",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -0.55,
+     0.25,
+     0
+    ]
+   }
+  },
+  {
+   "id": "a_haunch",
+   "op": "box",
+   "size": [
+    0.64,
+    0.46,
+    0.5
+   ],
+   "material": "stone",
+   "open": [
+    "bottom"
+   ],
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 0.7,
+     "bottom": 1
+    }
+   ],
+   "transform": {
+    "translate": [
+     -0.55,
+     0.71,
+     0.15
+    ]
+   }
+  },
+  {
+   "id": "a_chest",
+   "op": "box",
+   "size": [
+    0.46,
+    0.7,
+    0.28
+   ],
+   "material": "stone",
+   "open": [
+    "bottom"
+   ],
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 0.8,
+     "bottom": 1
+    }
+   ],
+   "transform": {
+    "translate": [
+     -0.55,
+     0.83,
+     -0.2
+    ]
+   }
+  },
+  {
+   "id": "a_head",
+   "op": "box",
+   "size": [
+    0.46,
+    0.36,
+    0.36
+   ],
+   "material": "stone",
+   "open": [
+    "bottom"
+   ],
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 1,
+     "bottom": 0.85
+    }
+   ],
+   "transform": {
+    "translate": [
+     -0.55,
+     1.28,
+     -0.24
+    ]
+   }
+  },
+  {
+   "id": "a_muzzle",
+   "op": "box",
+   "size": [
+    0.26,
+    0.17,
+    0.2
+   ],
+   "material": "stone",
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "mouth"
+   },
+   "transform": {
+    "translate": [
+     -0.55,
+     1.26,
+     -0.46
+    ]
+   }
+  },
+  {
+   "id": "a_mane",
+   "op": "box",
+   "size": [
+    0.66,
+    0.5,
+    0.22
+   ],
+   "material": "mane",
+   "open": [
+    "bottom"
+   ],
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 1,
+     "bottom": 0.9
+    }
+   ],
+   "transform": {
+    "translate": [
+     -0.55,
+     1.26,
+     -0.02
+    ]
+   }
+  },
+  {
+   "id": "un_plinth",
+   "op": "box",
+   "size": [
+    0.8,
+    0.5,
+    0.9
+   ],
+   "material": "stone",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.55,
+     0.25,
+     0
+    ]
+   }
+  },
+  {
+   "id": "un_haunch",
+   "op": "box",
+   "size": [
+    0.64,
+    0.46,
+    0.5
+   ],
+   "material": "stone",
+   "open": [
+    "bottom"
+   ],
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 0.7,
+     "bottom": 1
+    }
+   ],
+   "transform": {
+    "translate": [
+     0.55,
+     0.71,
+     0.15
+    ]
+   }
+  },
+  {
+   "id": "un_chest",
+   "op": "box",
+   "size": [
+    0.46,
+    0.7,
+    0.28
+   ],
+   "material": "stone",
+   "open": [
+    "bottom"
+   ],
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 0.8,
+     "bottom": 1
+    }
+   ],
+   "transform": {
+    "translate": [
+     0.55,
+     0.83,
+     -0.2
+    ]
+   }
+  },
+  {
+   "id": "un_head",
+   "op": "box",
+   "size": [
+    0.46,
+    0.36,
+    0.36
+   ],
+   "material": "stone",
+   "open": [
+    "bottom"
+   ],
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 1,
+     "bottom": 0.85
+    }
+   ],
+   "transform": {
+    "translate": [
+     0.55,
+     1.28,
+     -0.24
+    ]
+   }
+  },
+  {
+   "id": "un_muzzle",
+   "op": "box",
+   "size": [
+    0.26,
+    0.17,
+    0.2
+   ],
+   "material": "stone",
+   "open": [
+    "bottom"
+   ],
+   "faces": {},
+   "transform": {
+    "translate": [
+     0.55,
+     1.26,
+     -0.46
+    ]
+   }
+  },
+  {
+   "id": "un_mane",
+   "op": "box",
+   "size": [
+    0.66,
+    0.5,
+    0.22
+   ],
+   "material": "mane",
+   "open": [
+    "bottom"
+   ],
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 1,
+     "bottom": 0.9
+    }
+   ],
+   "transform": {
+    "translate": [
+     0.55,
+     1.26,
+     -0.02
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "cull": 60
+ }
+}
