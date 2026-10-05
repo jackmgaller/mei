@@ -1087,8 +1087,8 @@ A function value in a vector register is first stored to the stack (3 cycles mor
 
 The prelude (`stdlib/prelude.akr`) imports every module below except the plane chip's
 (`planes.akr`), the depth buffer's (`depth.akr`), the world pack reader (`worldpack.akr`),
-animated textures (`texanim.akr`), world backdrops (`wpbackdrop.akr`) and world water
-(`wpwater.akr`), which a cart imports itself. Colours are `u32` words
+animated textures (`texanim.akr`), world backdrops (`wpbackdrop.akr`), world water
+(`wpwater.akr`) and a collectible's glint (`glint.akr`), which a cart imports itself. Colours are `u32` words
 `0xBBGGRR` (red in the low byte, as the GPU expects); `rgb(r, g, b)` builds one.
 
 Where a function lives (each file's section below lists all of it):
@@ -1108,6 +1108,7 @@ Where a function lives (each file's section below lists all of it):
 | `task.akr`, `audio.akr`, `voice.akr`, `debug.akr`, `mem.akr`, `card.akr`, `broadcast.akr` | tasks, sound, debug output, memory, memory cards, broadcast |
 | `planes.akr`, `depth.akr`, `worldpack.akr` | not in the prelude: the plane chip; the depth buffer and perspective (`render_depth`, `render_perspective`, `depth_offset`); the world pack reader |
 | `texanim.akr`, `wpbackdrop.akr`, `wpwater.akr` | not in the prelude: animated textures' frames (`tex_frame_at`, `tex_frame_copy`); a world region's backdrop on the plane chip (`wp_backdrop_*`); a world's water surfaces (`wp_water`) |
+| `glint.akr` | not in the prelude: a collectible's glint, halo and turn (`glint_draw`, `glint_yaw`, `glint_spin`, `glint_bob`, `Glint`, `GLINT_MOON`) |
 
 ### Frame and system (`runtime.akr`, `io.akr`)
 
@@ -1632,6 +1633,41 @@ fn draw() {
     mesh_at(HERO, hero_pos, hero_yaw)
 }
 ```
+
+### A collectible's glint (`glint.akr`)
+
+Not in the prelude: `import "glint.akr"`. What makes a goal collectible read from across a level:
+three additive layers drawn with one `mesh()` call, untextured (Gouraud colours fading to black),
+around a point of the model.
+
+| | |
+|---|---|
+| `glint_draw(g: *Glint, p, t)` | draws style `g` around `p` (a point on the model's spin axis, in the camera's coordinates: for a world pack, world minus `wp_view_origin()`) at tick `t`: a halo `g.push` metres behind `p` (12 triangles, 12 quads; breathing; at `g.halo_near` of its strength within 3 m, rising to full at 12 m, and up to a quarter brighter toward white from 8 to 20 m), motes circling and rising (4 triangles each: three near; five once one would be under `g.mote_px` on screen, where they keep that size and circle at least 16 pixels out), and a small flash `g.push` in front of `p` for 16 of every 90 ticks (4 triangles, at least `g.flash_px`). The halo keeps at least `g.halo_px` pixels on screen however far away |
+| `glint_yaw(t, period) -> fixed` | the yaw to draw the model with: its front (−Z) toward the camera, swaying about 20°, then a full turn in the last 35 % of every `period` ticks. Edge-on (within 15°) about 4 % of the time, against 17 % for a steady spin |
+| `glint_spin(t, period) -> fixed` | the same against the camera's yaw (0: facing) |
+| `glint_bob(t, period, amp) -> fixed` | a float: up to `amp` metres up and down over `period` ticks |
+| `Glint` | a style: `halo` (a colour added to the scene), `halo_r`, `halo_px`, `halo_near`, `halo_dy` (the halo's centre above `p`), `push`, `motes` and `flash` (colours; 0 for none), `mote_px`, `flash_px` |
+| `GLINT_MOON` | the hanafuda moon card's: a cool moonlight halo, which neither autumn leaves nor vermilion shrines have, pale motes and a white flash on the moon |
+
+The faces are semi-transparent, so with `depth.akr`'s test on they are hidden by what stands in
+front of them, write no depth and draw after the opaque faces, in whatever order the cart calls
+it. Cost, measured in the collectible read test (depth mode): 48 triangles near, 56 far (4 more
+while the flash is lit); about 16,700 CPU cycles near and 21,200 far; 24,600–30,200 GPU cycles
+at 2 m, where the halo covers most of the pixels, and 6,800–7,400 at 8–20 m; 3.7 KB of RAM.
+
+```
+import "glint.akr"
+
+fn draw() {
+    // ... the camera, the world
+    let at = card_pos - wp_view_origin() + vec3(0.0, glint_bob(tick, 120, 0.08), 0.0)
+    mesh_at(CARD, at, glint_yaw(tick, 150))
+    glint_draw(&GLINT_MOON, at + vec3(0.0, 0.69, 0.0), tick)     // the flash on the moon
+}
+```
+
+`tools/collect_readtest.py --glint GLINT_MOON --glint-at 0.69` draws a recipe with it in the
+read test's scenes, and `--strip SCENE:DIST` makes an animated strip.
 
 ### Proportional text (`font.akr`)
 

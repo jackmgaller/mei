@@ -2,6 +2,7 @@
 """The collectible read test: how an Asset Kit model reads in the game's real scenes.
 
     python3 tools/collect_readtest.py RECIPE... -o OUTDIR [--build-dir build-rt]
+        [--glint GLINT_MOON --glint-at 0.69] [--strip SCENE:DIST ...]
 
 For each recipe: packs the asset on its own (texture slot 0, palettes from 40, clear of both
 worlds' VRAM), writes a cart that draws it into the movement garden's worlds (the shrine and
@@ -13,6 +14,18 @@ Writes OUTDIR/NAME.png (the sheet) and OUTDIR/NAME/ (the pack, the cart, the cel
 cells/SCENE_DIST_SPIN.png). The collectible floats with its bounding box's centre --float metres
 over the floor (in the sky scene, along a line 35 degrees up from the eye) and keeps its own
 colours in every light (the world's palette variants do not touch it).
+
+--glint STYLE draws the collectible with stdlib/glint.akr's effect in that style (a Glint const,
+such as GLINT_MOON), its point --glint-at metres up the model's spin axis (default: the bounding
+box's centre). Without it the pictures are the plain model's, as before. All the sheet's cells
+are drawn at the same tick of the effect (--tick), so they compare.
+
+--strip SCENE:DIST (repeatable) adds an animated strip at that scene and distance: --strip-frames
+frames --strip-step ticks apart from tick --strip-start (default 15 x 4 from 0: one second at 60
+ticks a second; the glint's quick turn is in ticks 98-150 of its 150), the
+collectible turning as a game would turn it (with --glint, glint_spin(); without, a steady turn
+in the same --period), written as OUTDIR/NAME_strip_SCENE_DISTm.png (the frames in a row) and
+.gif.
 
 Needs Pillow; make builds the worlds (NumPy) unless --no-make.
 """
@@ -61,8 +74,13 @@ def v3(x, y, z):
     return f'vec3({fx(x)}, {fx(y)}, {fx(z)})'
 
 
-def shots(scenes, dists, spins, float_h, look_dist):
-    """The shots, scene by scene, distance by distance, spin by spin, and readtest.akr's lines."""
+def shots(scenes, dists, spins, float_h, look_dist, tick=0, frames=None):
+    """The shots, scene by scene, distance by distance, spin by spin, and readtest.akr's lines.
+    With frames (a list of ticks) instead: a shot a tick, turned by the cart's obj_spin()."""
+    if frames is None:
+        poses = [(s, tick, 0) for s in spins]
+    else:
+        poses = [(0.0, t, 1) for t in frames]
     out = []
     for sc in scenes:
         ex, ez = sc['eye']
@@ -71,7 +89,7 @@ def shots(scenes, dists, spins, float_h, look_dist):
         dx, dz = dx / n, dz / n
         elev = sc.get('elev')
         for d in dists:
-            for spin in spins:
+            for spin, t, auto in poses:
                 if elev is None:
                     # on the ground ahead; the camera looks at where the collectible is at
                     # look_dist, so a row's background is the same in every cell
@@ -85,12 +103,12 @@ def shots(scenes, dists, spins, float_h, look_dist):
                     look = (ex + dx * 10, sc['eye_h'] + 10 * math.tan(e), ez + dz * 10)
                     obj_h, rel = sc['eye_h'] + d * math.sin(e), 1
                 out.append({
-                    'scene': sc, 'dist': d, 'spin': spin,
+                    'scene': sc, 'dist': d, 'spin': spin, 'auto': auto,
                     'akr': ('    Shot { world: %d, light: %d, eye: %s, eye_h: %s, look: %s, obj: %s, '
-                            'obj_h: %s, obj_rel: %d, spin: %s },'
+                            'obj_h: %s, obj_rel: %d, spin: %s, t: %d, auto: %d },'
                             % (sc['world'], sc['light'], v3(ex, sc['from'], ez), fx(sc['eye_h']),
                                v3(*look), v3(ox, sc['from'], oz),
-                               fx(obj_h), rel, fx(math.radians(spin)))),
+                               fx(obj_h), rel, fx(math.radians(spin)), t, auto)),
                 })
     return out
 
@@ -154,6 +172,19 @@ def main(argv=None):
                     help="the collectible's centre over the floor, metres (default 1.3)")
     ap.add_argument('--upscale', type=int, default=2, help='sheet scale, nearest neighbour (default 2)')
     ap.add_argument('--slots', default='0', help="texture slots for the asset's pack (default 0)")
+    ap.add_argument('--glint', metavar='STYLE',
+                    help="draw stdlib/glint.akr's effect in this style (a Glint const: GLINT_MOON)")
+    ap.add_argument('--glint-at', type=float,
+                    help="the glint's point up the model's spin axis, metres (default: the box's centre)")
+    ap.add_argument('--tick', type=int, default=30,
+                    help="the effect's tick in the sheet's cells (default 30)")
+    ap.add_argument('--strip', action='append', default=[], metavar='SCENE:DIST',
+                    help='also an animated strip at this scene and distance (repeatable)')
+    ap.add_argument('--strip-frames', type=int, default=15, help='frames a strip (default 15)')
+    ap.add_argument('--strip-step', type=int, default=4, help='ticks between them (default 4)')
+    ap.add_argument('--strip-start', type=int, default=0, help="the strips' first tick (default 0)")
+    ap.add_argument('--period', type=int, default=150,
+                    help='ticks a turn of the collectible in the strips (default 150)')
     a = ap.parse_args(argv)
     t_start = time.time()
     B = Path(a.build_dir)
@@ -176,7 +207,13 @@ def main(argv=None):
         run(['make', f'B={mb}', str(mb/'meic'), str(mb/'mei-headless'),
              str(mb/'cart-worlds'/'garden'/'worlds.json')])
     meic, headless = B/'meic', B/'mei-headless'
-    sh = shots(scenes, dists, spins, a.float, 8.0)
+    sh = shots(scenes, dists, spins, a.float, 8.0, a.tick)
+    ticks = [a.strip_start + k * a.strip_step for k in range(a.strip_frames)]
+    strips = []
+    for st in a.strip:
+        sn, sd = st.split(':')
+        strips.append((sn, float(sd), len(sh)))
+        sh += shots([by_name[sn]], [float(sd)], None, a.float, 8.0, frames=ticks)
     for recipe in a.recipes:
         recipe = Path(recipe).resolve()
         t0 = time.time()
@@ -191,13 +228,22 @@ def main(argv=None):
         run([sys.executable, 'tools/mei_assets.py', 'pack', str(recipe), '-o', str(d/'pack'),
              '--name', 'rtpack', '--slots', a.slots, '--palette', '40', '--palette8', '14'])
         cart = d/'pack'/'readtest_cart.akr'
+        if a.glint:
+            at = a.glint_at if a.glint_at is not None else centre[1]
+            fx_src = ('import "glint.akr"\n'
+                      f'fn obj_spin(t: s32) -> fixed {{ return glint_spin(t, {a.period}) }}\n'
+                      f'fn obj_fx(at: vec3, t: s32) {{ glint_draw(&{a.glint}, '
+                      f'at + vec3(0.0, {fx(at)}, 0.0), t) }}\n')
+        else:
+            fx_src = (f'fn obj_spin(t: s32) -> fixed {{ return frame_angle(t, TAU / {a.period}) }}\n'
+                      'fn obj_fx(at: vec3, t: s32) { }\n')
         cart.write_text(
             f'cart "Read Test {name}"\n'
             f'// Generated by tools/collect_readtest.py for {recipe.name} - do not edit.\n'
             'import "rtpack.akr"\nimport "readtest.akr"\n'
             f'const OBJ_CENTRE: vec3 = {v3(*centre)}\n'
             f'fn obj_mesh() -> *Mesh {{ return ASSET_{name.upper()} }}\n'
-            'fn obj_load() { rtpack_load() }\n'
+            'fn obj_load() { rtpack_load() }\n' + fx_src +
             f'const N_SHOTS = {len(sh)}\n'
             f'const SHOTS: [{len(sh)}]Shot = [\n' + '\n'.join(s['akr'] for s in sh) + '\n]\n')
         mei = d/'readtest.mei'
@@ -210,15 +256,31 @@ def main(argv=None):
                 print(f'{name}: warning: {line[5:]} (a scene\'s "from" is below the ground there)')
         from PIL import Image
         cells = {}
+        frames = []
         for k, s in enumerate(sh):
             p = d/f'f_{k * HOLD + HOLD - 1:05d}.ppm'
             im = Image.open(p).convert('RGB')
             im.load()
+            p.unlink()
+            frames.append(im)
+            if s['auto']:
+                continue
             key = (s['scene']['name'], s['dist'], s['spin'])
             cells[key] = im
             im.save(d/'cells'/f'{key[0]}_{key[1]:g}m_{key[2]:g}deg.png')
-            p.unlink()
         sheet(name, cells, scenes, dists, spins, a.upscale, out/f'{name}.png')
+        up = a.upscale
+        for sn, sd, first in strips:
+            big = [im.resize((320 * up, 240 * up), Image.NEAREST)
+                   for im in frames[first:first + len(ticks)]]
+            row = Image.new('RGB', (len(big) * (320 * up + 4) + 4, 240 * up + 8), (24, 24, 28))
+            for i, im in enumerate(big):
+                row.paste(im, (4 + i * (320 * up + 4), 4))
+            base = out/f'{name}_strip_{sn}_{sd:g}m'
+            row.save(f'{base}.png')
+            big[0].save(f'{base}.gif', save_all=True, append_images=big[1:],
+                        duration=round(1000 * a.strip_step / 60), loop=0)
+            print(f'{name}: strip {sn} {sd:g} m -> {base}.png, .gif')
         print(f'{name}: {len(sh)} shots in {time.time() - t0:.1f} s -> {out/name}.png')
     print(f'done in {time.time() - t_start:.1f} s')
 

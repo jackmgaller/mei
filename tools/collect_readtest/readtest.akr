@@ -2,7 +2,8 @@
 // movement garden's two worlds (the shrine and the city block) by the real reader, one shot
 // every HOLD ticks, so that mei-headless --dump-every HOLD dumps each shot once. The cart file
 // the script writes defines SHOTS, N_SHOTS, OBJ_CENTRE (the model's bounding-box centre),
-// obj_mesh() and obj_load(), and imports this file and the asset's pack. Nothing here is part
+// obj_mesh(), obj_load(), obj_spin() and obj_fx() (the effect drawn with the collectible, empty
+// without one), and imports this file and the asset's pack. Nothing here is part
 // of the garden cart; it only reads the worlds make links into $(B)/cart-worlds/garden.
 import "depth.akr"
 import "garden.akr"
@@ -18,6 +19,8 @@ struct Shot {
     obj_h: fixed      // its centre above its floor, or above the eye's floor (obj_rel)
     obj_rel: s32      // 1: obj_h is above the eye's floor (the sky shots)
     spin: fixed       // its yaw against the camera's (0: its front faces the camera)
+    t: s32            // the tick the collectible's animation and effect are drawn at
+    auto: s32         // 1: the spin is obj_spin(t), not `spin` (the animated strips)
 }
 
 const RT_GARDEN = 0
@@ -42,6 +45,7 @@ var yaw: fixed
 var pitch: fixed
 var obj_p: vec3
 var obj_yaw: fixed
+var obj_t: s32
 
 fn init() {
     render_depth(true)
@@ -102,6 +106,8 @@ fn shot_set(k: s32) {
     if s.obj_rel == 0 { oy = rt_floor(s.obj.x, s.obj.y, s.obj.z) + s.obj_h }
     obj_p = vec3(s.obj.x, oy, s.obj.z)
     obj_yaw = yaw + s.spin
+    if s.auto != 0 { obj_yaw = yaw + obj_spin(s.t) }
+    obj_t = s.t
     cur_shot = k
     print("SHOT ")
     print_int(k)
@@ -152,5 +158,7 @@ fn draw() {
     let c = cos(obj_yaw)
     let s = sin(obj_yaw)
     let off = vec3(c * OBJ_CENTRE.x + s * OBJ_CENTRE.z, OBJ_CENTRE.y, c * OBJ_CENTRE.z - s * OBJ_CENTRE.x)
-    mesh_at(obj_mesh(), obj_p - off - wp_view_origin(), obj_yaw)
+    let at = obj_p - off - wp_view_origin()
+    mesh_at(obj_mesh(), at, obj_yaw)
+    obj_fx(at, obj_t)          // at: the model's origin, on its spin axis
 }
