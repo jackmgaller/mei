@@ -1,0 +1,8 @@
+[
+  {"name": "road_10m", "eye": [-17, 1.6, -2.5], "target": [0, 1.4, 0]},
+  {"name": "sidewalk", "eye": [-9, 1.75, -5.6], "target": [0, 1.6, -5.2]},
+  {"name": "canal_lane", "eye": [11, 1.6, -14], "target": [0, 0.8, -7]},
+  {"name": "wading", "eye": [0, 0.0, -14], "target": [0, 0.3, 0]},
+  {"name": "lane_30m", "eye": [14, 1.6, -30], "target": [0, 1, 0]},
+  {"name": "parapet_top", "eye": [-6.5, 3.6, -6.8], "target": [4, 2.0, -6.8]}
+]
