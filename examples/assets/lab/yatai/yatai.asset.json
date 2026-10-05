@@ -1,0 +1,632 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "yatai",
+  "budget": {"vertices": 900, "triangles": 1000},
+  "sheets": {
+    "yatai": {"image": "art/yatai_sheet.png"}
+  },
+  "materials": {
+    "boards": {
+      "color": "#b5824a",
+      "texture": {
+        "pattern": "planks",
+        "colors": ["#b5824a", "#5e3c22", "#a87440", "#94643a"],
+        "params": {"boards": 4},
+        "projection": "box",
+        "scale": [0.64, 0.64]
+      }
+    },
+    "counter": {
+      "color": "#d0a76c",
+      "tag": "floor",
+      "texture": {
+        "pattern": "planks",
+        "colors": ["#d0a76c", "#6e4a2a", "#c49a5e", "#b88c52"],
+        "params": {"boards": 4, "seed": 3},
+        "projection": "planar",
+        "axis": "y",
+        "scale": [1.2, 0.5],
+        "rotate": 90
+      }
+    },
+    "beam": {"color": "#4e3420"},
+    "post": {"color": "#5a3a22"},
+    "tin": {
+      "color": "#3f8f86",
+      "tag": "roof",
+      "texture": {
+        "pattern": "stripes",
+        "colors": ["#4a9c90", "#2f6f68"],
+        "params": {"count": 4},
+        "projection": "box",
+        "scale": [0.4, 0.4]
+      }
+    },
+    "ridge": {"color": "#2a5f58"},
+    "rod": {"color": "#c8b46a"},
+    "noren": {
+      "color": "#23356b",
+      "double_sided": true,
+      "texture": {"sheet": "yatai", "cell": "noren", "projection": "fit"}
+    },
+    "lantern": {
+      "color": "#d8322e",
+      "class": "emissive",
+      "texture": {
+        "sheet": "yatai",
+        "cell": "lantern",
+        "projection": "cylindrical",
+        "scale": [0.45, 0.3]
+      }
+    },
+    "lantern_cap": {"color": "#1e1414"},
+    "plaque": {
+      "color": "#c79a5e",
+      "texture": {"sheet": "yatai", "cell": "plaque", "bits": 8, "projection": "fit"}
+    },
+    "alu": {"color": "#b8bec6", "smooth": true},
+    "steam": {"color": "#f6f6f2", "smooth": true},
+    "bowl": {"color": "#c8302a", "smooth": true, "double_sided": true},
+    "soup": {
+      "color": "#d9a24e",
+      "texture": {"sheet": "yatai", "cell": "soup", "projection": "disc", "axis": "y"}
+    },
+    "chopsticks": {"color": "#e0c48a"},
+    "crate_y": {
+      "color": "#f2c230",
+      "double_sided": true,
+      "texture": {
+        "texels": ["1111111111111111", "1111111111111111", "1111100000011111", "1111111111111111", "1111111111111111", "1100110011001111", "1100110011001111", "1111111111111111", "1100110011001111", "1100110011001111", "1111111111111111", "1100110011001111", "1100110011001111", "1111111111111111", "2222222222222222", "2222222222222222"],
+        "colors": ["#000000", "#f2c230", "#b88a18"],
+        "clear": "#000000",
+        "projection": "fit"
+      }
+    },
+    "crate_r": {
+      "color": "#d83a2a",
+      "double_sided": true,
+      "texture": {
+        "texels": ["1111111111111111", "1111111111111111", "1111100000011111", "1111111111111111", "1111111111111111", "1100110011001111", "1100110011001111", "1111111111111111", "1100110011001111", "1100110011001111", "1111111111111111", "1100110011001111", "1100110011001111", "1111111111111111", "2222222222222222", "2222222222222222"],
+        "colors": ["#000000", "#d83a2a", "#9a2418"],
+        "clear": "#000000",
+        "projection": "fit"
+      }
+    },
+    "wheel": {
+      "color": "#8a5c34",
+      "double_sided": true,
+      "texture": {"sheet": "yatai", "cell": "wheel", "projection": "disc", "axis": "z"}
+    },
+    "tire": {"color": "#3e2a1c"},
+    "iron": {"color": "#5a5e66"}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.55},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {
+      "id": "cabinet",
+      "op": "mesh",
+      "vertices": [
+        [-1, 0.98, -0.38],
+        [1, 0.98, -0.38],
+        [1, 0.32, -0.38],
+        [-1, 0.32, -0.38],
+        [-1, 0.32, 0.38],
+        [1, 0.32, 0.38],
+        [1, 0.98, 0.38],
+        [-1, 0.98, 0.38]
+      ],
+      "faces": [
+        [0, 1, 2, 3],
+        [4, 5, 6, 7],
+        [3, 4, 7, 0],
+        [1, 6, 5, 2]
+      ],
+      "material": "boards"
+    },
+    {
+      "id": "frame",
+      "op": "box",
+      "size": [2.1, 0.06, 0.84],
+      "open": ["top"],
+      "material": "beam",
+      "transform": {
+        "translate": [0, 0.29, 0]
+      }
+    },
+    {
+      "id": "counter",
+      "op": "box",
+      "size": [2.24, 0.06, 0.98],
+      "material": "counter",
+      "transform": {
+        "translate": [0, 1.01, -0.07]
+      }
+    },
+    {
+      "id": "counter_lip",
+      "op": "box",
+      "size": [2.22, 0.05, 0.04],
+      "open": ["top"],
+      "material": "beam",
+      "transform": {
+        "translate": [0, 0.952, -0.534]
+      }
+    },
+    {
+      "id": "wheels",
+      "op": "group",
+      "children": [
+        {
+          "id": "wheel",
+          "op": "group",
+          "children": [
+            {
+              "id": "tire",
+              "op": "cylinder",
+              "radius": 0.4,
+              "height": 0.07,
+              "segments": 12,
+              "caps": false,
+              "material": "tire",
+              "transform": {
+                "rotate": [90, 0, 0]
+              }
+            },
+            {
+              "id": "spokes",
+              "op": "mesh",
+              "vertices": [
+                [0.392, 0, 0],
+                [0.33948, 0.196, 0],
+                [0.196, 0.33948, 0],
+                [0, 0.392, 0],
+                [-0.196, 0.33948, 0],
+                [-0.33948, 0.196, 0],
+                [-0.392, 0, 0],
+                [-0.33948, -0.196, 0],
+                [-0.196, -0.33948, 0],
+                [0, -0.392, 0],
+                [0.196, -0.33948, 0],
+                [0.33948, -0.196, 0]
+              ],
+              "faces": [
+                [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+              ],
+              "material": "wheel"
+            }
+          ],
+          "transform": {
+            "translate": [0, 0, 0.48]
+          }
+        }
+      ],
+      "transform": {
+        "translate": [0.3, 0.4, 0]
+      },
+      "modifiers": [
+        {"op": "mirror", "axis": "z"}
+      ]
+    },
+    {
+      "id": "axle",
+      "op": "cylinder",
+      "radius": 0.03,
+      "height": 1.06,
+      "segments": 6,
+      "caps": true,
+      "material": "iron",
+      "transform": {
+        "rotate": [90, 0, 0],
+        "translate": [0.3, 0.4, 0]
+      }
+    },
+    {
+      "id": "legs",
+      "op": "group",
+      "children": [
+        {
+          "id": "leg",
+          "op": "box",
+          "size": [0.06, 0.26, 0.06],
+          "open": ["top", "bottom"],
+          "material": "beam",
+          "transform": {
+            "translate": [-0.92, 0.13, 0.3]
+          }
+        }
+      ],
+      "modifiers": [
+        {"op": "mirror", "axis": "z"}
+      ]
+    },
+    {
+      "id": "shafts",
+      "op": "group",
+      "children": [
+        {
+          "id": "shaft",
+          "op": "box",
+          "size": [0.8, 0.05, 0.05],
+          "material": "beam",
+          "transform": {
+            "translate": [1.42, 0.88, 0.3]
+          }
+        }
+      ],
+      "modifiers": [
+        {"op": "mirror", "axis": "z"}
+      ]
+    },
+    {
+      "id": "grip",
+      "op": "cylinder",
+      "radius": 0.03,
+      "height": 0.72,
+      "segments": 6,
+      "material": "rod",
+      "transform": {
+        "rotate": [90, 0, 0],
+        "translate": [1.78, 0.88, 0]
+      }
+    },
+    {
+      "id": "posts",
+      "op": "group",
+      "children": [
+        {
+          "id": "post_front",
+          "op": "cylinder",
+          "radius": 0.035,
+          "height": 1.12,
+          "segments": 6,
+          "caps": false,
+          "material": "post",
+          "transform": {
+            "translate": [1, 1.6, -0.48]
+          }
+        },
+        {
+          "id": "post_back",
+          "op": "cylinder",
+          "radius": 0.035,
+          "height": 1.12,
+          "segments": 6,
+          "caps": false,
+          "material": "post",
+          "transform": {
+            "translate": [1, 1.6, 0.36]
+          }
+        }
+      ],
+      "modifiers": [
+        {"op": "mirror", "axis": "x"}
+      ]
+    },
+    {
+      "id": "roof",
+      "op": "extrude",
+      "depth": 2.56,
+      "points": [
+        [-0.74, 0],
+        [0, 0.26],
+        [0.74, 0],
+        [0.74, -0.06],
+        [0, 0.2],
+        [-0.74, -0.06]
+      ],
+      "material": "tin",
+      "transform": {
+        "rotate": [0, 90, 0],
+        "translate": [0, 2.12, -0.06]
+      }
+    },
+    {
+      "id": "ridge",
+      "op": "box",
+      "size": [2.62, 0.05, 0.09],
+      "material": "ridge",
+      "transform": {
+        "translate": [0, 2.39, -0.06]
+      }
+    },
+    {
+      "id": "rod",
+      "op": "box",
+      "size": [2.06, 0.025, 0.025],
+      "material": "rod",
+      "transform": {
+        "translate": [0, 2.03, -0.54]
+      }
+    },
+    {
+      "id": "noren",
+      "op": "mesh",
+      "vertices": [
+        [-0.6, 2.015, -0.56],
+        [0.6, 2.015, -0.56],
+        [0.6, 1.49, -0.56],
+        [-0.6, 1.49, -0.56]
+      ],
+      "faces": [
+        [0, 1, 2, 3]
+      ],
+      "material": "noren"
+    },
+    {
+      "id": "plaque",
+      "op": "box",
+      "size": [0.24, 0.32, 0.02],
+      "material": "plaque",
+      "transform": {
+        "translate": [-0.8, 1.84, -0.575]
+      }
+    },
+    {
+      "id": "lantern",
+      "op": "group",
+      "children": [
+        {
+          "id": "paper",
+          "op": "lathe",
+          "profile": [
+            [0.09, 0],
+            [0.13, 0.05],
+            [0.145, 0.15],
+            [0.13, 0.25],
+            [0.09, 0.3]
+          ],
+          "segments": 10,
+          "caps": false,
+          "material": "lantern"
+        },
+        {"id": "cap_bottom", "op": "cylinder", "radius": 0.095, "height": 0.04, "segments": 8, "material": "lantern_cap"},
+        {
+          "id": "cap_top",
+          "op": "cylinder",
+          "radius": 0.095,
+          "height": 0.04,
+          "segments": 8,
+          "material": "lantern_cap",
+          "transform": {
+            "translate": [0, 0.3, 0]
+          }
+        },
+        {
+          "id": "cord",
+          "op": "box",
+          "size": [0.012, 0.2, 0.012],
+          "open": ["top", "bottom"],
+          "material": "lantern_cap",
+          "transform": {
+            "translate": [0, 0.42, 0]
+          }
+        }
+      ],
+      "transform": {
+        "translate": [1.14, 1.55, -0.68]
+      }
+    },
+    {
+      "id": "pot",
+      "op": "cylinder",
+      "radius": 0.2,
+      "height": 0.32,
+      "segments": 10,
+      "caps": false,
+      "material": "alu",
+      "transform": {
+        "translate": [0.5, 1.2, 0.14]
+      }
+    },
+    {
+      "id": "lid",
+      "op": "lathe",
+      "profile": [
+        [0.205, 1.36],
+        [0.12, 1.42],
+        [0.035, 1.44],
+        [0.03, 1.47],
+        [0, 1.475]
+      ],
+      "segments": 10,
+      "caps": false,
+      "material": "alu",
+      "transform": {
+        "translate": [0.5, 0, 0.14]
+      }
+    },
+    {
+      "id": "pot_handles",
+      "op": "group",
+      "children": [
+        {
+          "id": "handle",
+          "op": "box",
+          "size": [0.06, 0.03, 0.08],
+          "material": "iron",
+          "transform": {
+            "translate": [0.22, 0.28, 0]
+          }
+        }
+      ],
+      "transform": {
+        "translate": [0.5, 1.04, 0.14]
+      },
+      "modifiers": [
+        {"op": "mirror", "axis": "x"}
+      ]
+    },
+    {
+      "id": "steam",
+      "op": "group",
+      "children": [
+        {
+          "id": "puff_a",
+          "op": "sphere",
+          "radius": 0.09,
+          "rings": 4,
+          "segments": 6,
+          "material": "steam",
+          "transform": {
+            "scale": [1.2, 0.65, 1],
+            "translate": [0.02, 0, 0]
+          }
+        },
+        {
+          "id": "puff_b",
+          "op": "sphere",
+          "radius": 0.07,
+          "rings": 4,
+          "segments": 6,
+          "material": "steam",
+          "transform": {
+            "scale": [1.2, 0.65, 1],
+            "translate": [-0.1, 0.13, 0.03]
+          }
+        },
+        {
+          "id": "puff_c",
+          "op": "sphere",
+          "radius": 0.05,
+          "rings": 4,
+          "segments": 6,
+          "material": "steam",
+          "transform": {
+            "scale": [1.2, 0.65, 1],
+            "translate": [0, 0.24, -0.02]
+          }
+        }
+      ],
+      "transform": {
+        "translate": [0.5, 1.57, 0.14]
+      }
+    },
+    {
+      "id": "bowl_stack",
+      "op": "group",
+      "children": [
+        {
+          "id": "bowl1",
+          "op": "lathe",
+          "profile": [
+            [0.05, 0.002],
+            [0.09, 0.04],
+            [0.11, 0.08]
+          ],
+          "segments": 8,
+          "caps": false,
+          "material": "bowl"
+        },
+        {
+          "id": "bowl2",
+          "op": "lathe",
+          "profile": [
+            [0.05, 0.002],
+            [0.09, 0.04],
+            [0.11, 0.08]
+          ],
+          "segments": 8,
+          "caps": false,
+          "material": "bowl",
+          "transform": {
+            "translate": [0, 0.035, 0]
+          }
+        },
+        {
+          "id": "bowl3",
+          "op": "lathe",
+          "profile": [
+            [0.05, 0.002],
+            [0.09, 0.04],
+            [0.11, 0.08]
+          ],
+          "segments": 8,
+          "caps": false,
+          "material": "bowl",
+          "transform": {
+            "translate": [0, 0.07, 0]
+          }
+        }
+      ],
+      "transform": {
+        "translate": [-0.65, 1.04, 0.16]
+      }
+    },
+    {
+      "id": "ramen",
+      "op": "group",
+      "children": [
+        {
+          "id": "bowl",
+          "op": "lathe",
+          "profile": [
+            [0.05, 0.002],
+            [0.09, 0.04],
+            [0.11, 0.08]
+          ],
+          "segments": 8,
+          "caps": false,
+          "material": "bowl"
+        },
+        {
+          "id": "soup",
+          "op": "cylinder",
+          "radius": 0.1,
+          "height": 0.006,
+          "segments": 8,
+          "material": "soup",
+          "transform": {
+            "translate": [0, 0.065, 0]
+          }
+        },
+        {
+          "id": "stick_a",
+          "op": "box",
+          "size": [0.012, 0.012, 0.24],
+          "material": "chopsticks",
+          "transform": {
+            "rotate": [0, 6, 0],
+            "translate": [0.13, 0.008, -0.01]
+          }
+        },
+        {
+          "id": "stick_b",
+          "op": "box",
+          "size": [0.012, 0.012, 0.24],
+          "material": "chopsticks",
+          "transform": {
+            "rotate": [0, 3, 0],
+            "translate": [0.155, 0.008, -0.01]
+          }
+        }
+      ],
+      "transform": {
+        "translate": [-0.2, 1.04, -0.36]
+      }
+    },
+    {
+      "id": "crate_a",
+      "op": "box",
+      "size": [0.42, 0.32, 0.32],
+      "open": ["bottom"],
+      "material": "crate_y",
+      "transform": {
+        "rotate": [0, 8, 0],
+        "translate": [-0.5, 0.16, -0.92]
+      }
+    },
+    {
+      "id": "crate_b",
+      "op": "box",
+      "size": [0.42, 0.32, 0.32],
+      "open": ["bottom"],
+      "material": "crate_r",
+      "transform": {
+        "rotate": [0, -12, 0],
+        "translate": [0.42, 0.16, -0.96]
+      }
+    }
+  ]
+}

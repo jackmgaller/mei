@@ -1,0 +1,269 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "gachapon",
+  "budget": {"vertices": 400, "triangles": 360},
+  "sheets": {
+    "gacha": {"image": "art/gacha_sheet.png"}
+  },
+  "materials": {
+    "red": {"color": "#d8322e"},
+    "plinth": {"color": "#3a3a42"},
+    "silver": {"color": "#c9ccd2"},
+    "knob": {"color": "#f4ead2", "smooth": true},
+    "tray": {"color": "#2a2a30"},
+    "shell_white": {"color": "#f2f0ea", "smooth": true},
+    "shell_yellow": {"color": "#ffc83a", "smooth": true},
+    "shell_blue": {"color": "#4fa8ff", "smooth": true},
+    "window": {
+      "color": "#2e4a5c",
+      "texture": {
+        "sheet": "gacha",
+        "frames": ["window_a", "window_b", "window_c"],
+        "ticks": 20,
+        "bits": 8,
+        "projection": "fit"
+      }
+    },
+    "panel": {
+      "color": "#d8322e",
+      "texture": {"sheet": "gacha", "cell": "panel", "bits": 8, "projection": "fit"}
+    },
+    "header": {
+      "color": "#f4ead2",
+      "texture": {"sheet": "gacha", "cell": "header", "bits": 8, "projection": "fit"}
+    },
+    "side": {
+      "color": "#d8322e",
+      "texture": {"sheet": "gacha", "cell": "side", "projection": "fit"}
+    }
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.6},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {
+      "id": "plinth",
+      "op": "box",
+      "size": [0.44, 0.08, 0.38],
+      "open": ["top", "bottom"],
+      "material": "plinth",
+      "transform": {
+        "translate": [0, 0.04, 0]
+      }
+    },
+    {
+      "id": "body",
+      "op": "mesh",
+      "vertices": [
+        [-0.25, 0.62, -0.22],
+        [0.25, 0.62, -0.22],
+        [0.25, 0.08, -0.22],
+        [-0.25, 0.08, -0.22],
+        [-0.25, 0.08, 0.22],
+        [0.25, 0.08, 0.22],
+        [0.25, 0.62, 0.22],
+        [-0.25, 0.62, 0.22]
+      ],
+      "faces": [
+        [0, 1, 2, 3],
+        [4, 5, 6, 7],
+        [3, 4, 7, 0],
+        [1, 6, 5, 2],
+        [7, 6, 1, 0],
+        [3, 2, 5, 4]
+      ],
+      "face_materials": ["red", "red", "side", "side", "red", "red"]
+    },
+    {
+      "id": "panel",
+      "op": "mesh",
+      "vertices": [
+        [-0.2, 0.57, -0.228],
+        [0.2, 0.57, -0.228],
+        [0.2, 0.13, -0.228],
+        [-0.2, 0.13, -0.228]
+      ],
+      "faces": [
+        [0, 1, 2, 3]
+      ],
+      "material": "panel"
+    },
+    {
+      "id": "crank_disc",
+      "op": "cylinder",
+      "radius": 0.085,
+      "height": 0.03,
+      "segments": 10,
+      "material": "silver",
+      "transform": {
+        "rotate": [-90, 0, 0],
+        "translate": [0, 0.33, -0.24]
+      }
+    },
+    {
+      "id": "crank_bar",
+      "op": "box",
+      "size": [0.15, 0.036, 0.03],
+      "material": "knob",
+      "transform": {
+        "rotate": [0, 0, 28],
+        "translate": [0, 0.33, -0.272]
+      }
+    },
+    {
+      "id": "crank_grip",
+      "op": "cylinder",
+      "radius": 0.02,
+      "height": 0.03,
+      "segments": 6,
+      "material": "knob",
+      "transform": {
+        "rotate": [-90, 0, 0],
+        "translate": [0.058, 0.361, -0.297]
+      }
+    },
+    {
+      "id": "tray",
+      "op": "box",
+      "size": [0.22, 0.03, 0.07],
+      "material": "tray",
+      "transform": {
+        "translate": [0, 0.125, -0.258]
+      }
+    },
+    {
+      "id": "prize",
+      "op": "group",
+      "children": [
+        {
+          "id": "top",
+          "op": "lathe",
+          "profile": [
+            [0.032, 0],
+            [0.026, 0.02],
+            [0, 0.032]
+          ],
+          "segments": 6,
+          "caps": false,
+          "material": "shell_blue"
+        },
+        {
+          "id": "bottom",
+          "op": "lathe",
+          "profile": [
+            [0.032, 0],
+            [0.026, 0.02],
+            [0, 0.032]
+          ],
+          "segments": 6,
+          "caps": false,
+          "material": "shell_white",
+          "transform": {
+            "scale": [1, -1, 1]
+          }
+        }
+      ],
+      "transform": {
+        "rotate": [0, 30, 90],
+        "translate": [0.03, 0.172, -0.268]
+      }
+    },
+    {
+      "id": "window",
+      "op": "mesh",
+      "vertices": [
+        [-0.23, 1.02, -0.2],
+        [0.23, 1.02, -0.2],
+        [0.23, 0.62, -0.2],
+        [-0.23, 0.62, -0.2],
+        [-0.23, 0.62, 0.2],
+        [0.23, 0.62, 0.2],
+        [0.23, 1.02, 0.2],
+        [-0.23, 1.02, 0.2]
+      ],
+      "faces": [
+        [0, 1, 2, 3],
+        [4, 5, 6, 7],
+        [3, 4, 7, 0],
+        [1, 6, 5, 2]
+      ],
+      "material": "window"
+    },
+    {
+      "id": "posts",
+      "op": "group",
+      "children": [
+        {
+          "id": "pair",
+          "op": "group",
+          "children": [
+            {
+              "id": "post",
+              "op": "box",
+              "size": [0.045, 0.4, 0.045],
+              "open": ["top", "bottom"],
+              "material": "red",
+              "transform": {
+                "translate": [0.23, 0.82, -0.2]
+              }
+            }
+          ],
+          "modifiers": [
+            {"op": "mirror", "axis": "x"}
+          ]
+        }
+      ],
+      "modifiers": [
+        {"op": "mirror", "axis": "z"}
+      ]
+    },
+    {
+      "id": "roof",
+      "op": "box",
+      "size": [0.52, 0.11, 0.46],
+      "material": "red",
+      "transform": {
+        "translate": [0, 1.075, 0]
+      }
+    },
+    {
+      "id": "header",
+      "op": "mesh",
+      "vertices": [
+        [-0.22, 1.12, -0.238],
+        [0.22, 1.12, -0.238],
+        [0.22, 1.03, -0.238],
+        [-0.22, 1.03, -0.238]
+      ],
+      "faces": [
+        [0, 1, 2, 3]
+      ],
+      "material": "header"
+    },
+    {
+      "id": "topper_band",
+      "op": "lathe",
+      "profile": [
+        [0.19, 1.13],
+        [0.19, 1.2]
+      ],
+      "segments": 10,
+      "caps": false,
+      "material": "shell_white"
+    },
+    {
+      "id": "topper_dome",
+      "op": "lathe",
+      "profile": [
+        [0.19, 1.2],
+        [0.177, 1.27],
+        [0.14, 1.33],
+        [0.08, 1.37],
+        [0, 1.385]
+      ],
+      "segments": 10,
+      "caps": false,
+      "material": "shell_yellow"
+    }
+  ]
+}
