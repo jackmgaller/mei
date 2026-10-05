@@ -2684,6 +2684,58 @@ class DecalTests(unittest.TestCase):
         self.assertAlmostEqual(rep['decals'][0]['bounds']['min'][0],-.2,4)
         self.assertAlmostEqual(rep['decals'][0]['bounds']['max'][0],4.2,4)
 
+    def test_ring_around_a_decal_keeps_a_mesh_polygons_hand_uvs_and_material(self):
+        # a 2 x 1 quad facing -Z with hand UVs u = 1.5 (x + 1), v = 0.5 - y: three repeats across,
+        # not what the tile's box projection (one repeat a unit) would give
+        r = fd_recipe({**quad(2,1,uvs=[[0,1],[3,1],[3,0],[0,0]]),'material':'wall','face_materials':['tile'],
+                       'decals':[{'id':'d','face':0,'material':'poster','size':[.4,.4],'at':[.3,.1]}]})
+        r['materials']['tile'] = {'color':'#808080','texture':{'pattern':'checker','colors':['#000000','#ffffff']}}
+        mesh,_,_ = compile_recipe(r)
+        ring = [f for f in mesh.faces if f.decal is None]
+        self.assertEqual(len(ring),8)
+        for f in ring:
+            self.assertEqual(f.material,'tile')
+            self.assertIsNotNone(f.uv)
+            for i,uv in zip(f.indices,f.uv):
+                x,y,_ = mesh.vertices[i]
+                self.assertAlmostEqual(uv[0],1.5*(x+1),4)
+                self.assertAlmostEqual(uv[1],.5-y,4)
+        # the decal keeps its own texture once over its rectangle
+        decal = {tuple(round(c,4) for c in mesh.vertices[i]):uv for f in mesh.faces if f.decal for i,uv in zip(f.indices,f.uv)}
+        self.assertEqual(decal[(.1,.3,0)],(0,0))
+        self.assertEqual(decal[(.5,-.1,0)],(1,1))
+
+    def test_ring_interpolates_hand_uvs_over_each_triangle_of_the_polygon(self):
+        # an L-shaped polygon facing -Z whose hand UVs are not one affine map (the corner at (1, 2)
+        # is pulled out): each new corner takes the UVs of the polygon's triangle it lies in
+        verts = [[0,0,0],[2,0,0],[2,1,0],[1,1,0],[1,2,0],[0,2,0]]
+        uvs = [[0,2],[2,2],[2,1],[1,1],[1.5,-.5],[0,0]]
+        node = {'id':'l','op':'mesh','vertices':verts,'faces':[[5,4,3,2,1,0]],'uvs':uvs,'material':'tile'}
+        materials = {**FD_MATERIALS,'tile':{'color':'#808080','texture':{'pattern':'checker','colors':['#000000','#ffffff']}}}
+        before,_,_ = compile_recipe(fd_recipe(node) | {'materials':materials})
+        mesh,_,_ = compile_recipe(fd_recipe({**node,'decals':[{'face':0,'material':'sign','size':[.2,.2],'at':[.5,1.5]}]})
+                                  | {'materials':materials})
+
+        def lookup(p):
+            # the hand UVs at p, from the undecorated polygon's own triangles
+            for f in before.faces:
+                a,b,c = ((before.vertices[i][0],before.vertices[i][1]) for i in f.indices)
+                d = (b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0])
+                s = ((p[0]-a[0])*(c[1]-a[1])-(p[1]-a[1])*(c[0]-a[0]))/d
+                t = ((b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0]))/d
+                if min(s,t,1-s-t) > -1e-9:
+                    ua,ub,uc = f.uv
+                    return tuple(ua[k]+s*(ub[k]-ua[k])+t*(uc[k]-ua[k]) for k in (0,1))
+            self.fail(f'{p} is outside the polygon')
+        ring = [f for f in mesh.faces if f.decal is None]
+        self.assertEqual(len(ring),10)
+        for f in ring:
+            self.assertIsNotNone(f.uv)
+            for i,uv in zip(f.indices,f.uv):
+                want = lookup(mesh.vertices[i])
+                self.assertAlmostEqual(uv[0],want[0],4)
+                self.assertAlmostEqual(uv[1],want[1],4)
+
     def test_preview_part_frames_a_decal_face_on(self):
         from assetkit.preview import part_camera
         _,_,rep = compile_recipe(self.wall({'id':'poster','face':'back','material':'poster','size':[.8,1.2],'at':[.8,.1]},

@@ -190,11 +190,18 @@ def bake(mesh, faces, items, label, host, what, materials, log, basis, orient):
             xy[i] = p
         holes.append(ids)
     tris = triangulate(loop, [list(reversed(h)) for h in holes], xy, items[0][3], what, label)
+    # a mesh polygon's hand UVs carry over to the ring: the outline's corners keep theirs, and each
+    # rectangle corner takes them from the host triangle it lies in
+    hand = host_uvs(faces, [i for h in holes for i in h], xy) if first.uv is not None else None
 
     def oriented(t):
         p, q, r = (mesh.vertices[i] for i in t)
         return t if dot(cross(sub(q, p), sub(r, p)), n) > 0 else (t[0], t[2], t[1])
-    made = [Face(oriented(t), first.material, first.part, polygon=first.polygon, own=first.own) for t in tris]
+    made = []
+    for t in tris:
+        t = oriented(t)
+        made.append(Face(t, first.material, first.part, polygon=first.polygon, own=first.own,
+                         uv=tuple(hand[i] for i in t) if hand else None))
     for (k, name, rect, where), ids, (_, _, decal, _) in zip(rects, holes, items):
         material = decal['material']
         tex = materials[material].get('texture')
@@ -218,6 +225,28 @@ def bake(mesh, faces, items, label, host, what, materials, log, basis, orient):
     gone = set(map(id, faces))
     at = min(k for k, f in enumerate(mesh.faces) if id(f) in gone)
     mesh.faces[:] = [f for f in mesh.faces[:at] if id(f) not in gone]+made+[f for f in mesh.faces[at:] if id(f) not in gone]
+
+
+def host_uvs(faces, new, xy):
+    """Hand UVs for the ring around a face's decals: each corner of the host's triangles keeps its
+    own, and each new vertex (a rectangle's corner, inside the face) is interpolated over the host
+    triangle that holds it (the one it lies deepest in, should it be on an edge between two)."""
+    uv = {}
+    for f in faces:
+        for i, u in zip(f.indices, f.uv):
+            uv.setdefault(i, tuple(u))
+    for i in new:
+        p, best = xy[i], None
+        for f in faces:
+            a, b, c = (xy[j] for j in f.indices)
+            d = turn(a, b, c)
+            s, t = turn(a, p, c)/d, turn(a, b, p)/d
+            depth = min(s, t, 1-s-t)
+            if best is None or depth > best[0]:
+                best = (depth, s, t, f.uv)
+        _, s, t, (ua, ub, uc) = best
+        uv[i] = tuple(ua[k]+s*(ub[k]-ua[k])+t*(uc[k]-ua[k]) for k in (0, 1))
+    return uv
 
 
 def area2(points):

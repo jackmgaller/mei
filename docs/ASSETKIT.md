@@ -866,7 +866,10 @@ decal lies in the face's plane sharing its edges with the ring, so nothing overl
 overlap for the Asset Checker, nothing for the depth test to tie, nothing for the ordering table
 to sort wrong. The part stays closed. **Cost: 8 triangles and 4 vertices a decal**, whatever its
 size: a face of *m* corners with *k* decals becomes *m* + 8*k* − 2 triangles where it was *m* − 2
-(the decal's own 2 and 6 more around it).
+(the decal's own 2 and 6 more around it). The ring keeps the face's material (a `mesh`
+polygon's from `face_materials`) and, on a `mesh` node with `uvs`, its hand UVs: the outline's
+corners keep theirs and each rectangle corner takes them interpolated over the polygon's triangle
+it lies in, so a textured face looks the same around its decals as without them.
 
 The alternative was drawing order: a quad over the face, drawn after it. In the face's plane that
 is a coplanar overlap, which the Asset Checker fails in both modes, and the order would rest on
@@ -1447,7 +1450,8 @@ middle; `offset` [0.5, 0.5] centres a repeat on it instead.
 **Hand UVs.** A `mesh` node may give `uvs`, one `[u, v]` per vertex in repeats (1 = the
 texture's width or height; 0, 0 its top-left): its textured faces use them instead of the
 projection. They are the escape hatch for shapes no projection fits. Whether they repeat is the
-material's projection's (a `fit` material's hand UVs stay within 0–1).
+material's projection's (a `fit` material's hand UVs stay within 0–1). A polygon with decals
+keeps them around its decals ([How a decal is made](#face-materials-and-decals)).
 
 ### Repeats, texture windows and splitting
 
