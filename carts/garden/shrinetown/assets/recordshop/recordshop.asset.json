@@ -1,0 +1,2075 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "recordshop",
+ "budget": {
+  "triangles": 450
+ },
+ "sheets": {
+  "art": {
+   "image": "art/recordshop_sheet.png"
+  },
+  "town_common": {
+   "image": "../town_alley_house_a/art/town_common.png"
+  },
+  "shopfront": {
+   "image": "../town_shop_2f_a/art/shopfront.png"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "tile": {
+   "color": "#e6dcc2",
+   "tag": "wall",
+   "texture": {
+    "pattern": "tile",
+    "size": 16,
+    "colors": [
+     "#e8dec4",
+     "#b4a88e",
+     "#dcd0b4"
+    ],
+    "params": {
+     "count": 4,
+     "grout": 1
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "brown_tile": {
+   "color": "#8e5434",
+   "tag": "wall",
+   "texture": {
+    "pattern": "tile",
+    "size": 16,
+    "colors": [
+     "#8e5434",
+     "#5a3420",
+     "#9c6040"
+    ],
+    "params": {
+     "count": 2,
+     "grout": 1
+    },
+    "projection": "box",
+    "scale": [
+     0.25,
+     0.25
+    ]
+   }
+  },
+  "siding": {
+   "color": "#b8c4cc",
+   "tag": "wall",
+   "texture": {
+    "pattern": "stripes",
+    "size": 16,
+    "colors": [
+     "#c4ced6",
+     "#c4ced6",
+     "#c4ced6",
+     "#8e9aa4"
+    ],
+    "params": {
+     "count": 4,
+     "axis": "v"
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "mortar": {
+   "color": "#b4ac9c",
+   "tag": "wall",
+   "texture": {
+    "sheet": "town_common",
+    "cell": "plaster_grey",
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ]
+   }
+  },
+  "roof": {
+   "color": "#7a7670",
+   "palette": true,
+   "tag": "roof"
+  },
+  "alu": {
+   "color": "#c4c8cc",
+   "palette": true
+  },
+  "navy": {
+   "color": "#1c2860",
+   "palette": true
+  },
+  "red": {
+   "color": "#c84a3a",
+   "palette": true
+  },
+  "glass": {
+   "color": "#2c3c54",
+   "class": "emissive",
+   "tag": "shopfront",
+   "texture": {
+    "sheet": "art",
+    "cell": "glass",
+    "projection": "fit"
+   }
+  },
+  "kanban": {
+   "color": "#1c2860",
+   "class": "emissive",
+   "tag": "sign",
+   "texture": {
+    "sheet": "art",
+    "cell": "kanban",
+    "projection": "fit"
+   }
+  },
+  "sode": {
+   "color": "#faf6e6",
+   "class": "emissive",
+   "tag": "sign",
+   "texture": {
+    "sheet": "art",
+    "cell": "sode",
+    "projection": "fit"
+   }
+  },
+  "poster": {
+   "color": "#faaac4",
+   "texture": {
+    "sheet": "art",
+    "cell": "poster",
+    "projection": "fit"
+   }
+  },
+  "band": {
+   "color": "#18182a",
+   "texture": {
+    "sheet": "art",
+    "cell": "band",
+    "projection": "fit"
+   }
+  },
+  "bargain": {
+   "color": "#fae63c",
+   "texture": {
+    "sheet": "art",
+    "cell": "bargain",
+    "projection": "fit"
+   }
+  },
+  "awning": {
+   "color": "#2e8c5a",
+   "tag": "awning",
+   "texture": {
+    "pattern": "stripes",
+    "size": 16,
+    "colors": [
+     "#2e8c5a",
+     "#f4f2e8"
+    ],
+    "params": {
+     "count": 4,
+     "axis": "u"
+    },
+    "projection": "box",
+    "scale": [
+     1,
+     1
+    ]
+   }
+  },
+  "valance": {
+   "color": "#2e8c5a",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "valance",
+    "projection": "box",
+    "scale": [
+     1,
+     0.25
+    ]
+   }
+  },
+  "cassette": {
+   "color": "#e2dcc8",
+   "texture": {
+    "sheet": "art",
+    "cell": "cassette",
+    "projection": "fit"
+   }
+  },
+  "home": {
+   "color": "#3c4a60",
+   "tag": "window",
+   "texture": {
+    "sheet": "art",
+    "cell": "home",
+    "projection": "fit"
+   }
+  },
+  "door": {
+   "color": "#8e949a",
+   "texture": {
+    "sheet": "shopfront",
+    "cell": "back_door",
+    "projection": "fit"
+   }
+  },
+  "back_win": {
+   "color": "#c8d4d8",
+   "tag": "window",
+   "texture": {
+    "sheet": "shopfront",
+    "cell": "back_win",
+    "projection": "fit"
+   }
+  },
+  "ac": {
+   "color": "#e2e0d6",
+   "texture": {
+    "sheet": "shopfront",
+    "cell": "ac",
+    "projection": "fit"
+   }
+  },
+  "antenna": {
+   "color": "#7a7e84",
+   "double_sided": true,
+   "texture": {
+    "sheet": "shopfront",
+    "cell": "antenna",
+    "projection": "fit"
+   }
+  },
+  "railing": {
+   "color": "#c4c8cc",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "railing",
+    "projection": "fit"
+   }
+  },
+  "laundry": {
+   "color": "#f08cb0",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "laundry",
+    "projection": "fit"
+   }
+  },
+  "gacha": {
+   "color": "#d8302c",
+   "texture": {
+    "sheet": "art",
+    "cell": "gacha",
+    "projection": "fit"
+   }
+  },
+  "lp_a": {
+   "color": "#2878c8",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "lp_row_a",
+    "projection": "fit"
+   }
+  },
+  "lp_b": {
+   "color": "#f68c32",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "lp_row_b",
+    "projection": "fit"
+   }
+  },
+  "legs": {
+   "color": "#8c9096",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "legs",
+    "projection": "fit"
+   }
+  },
+  "bincard": {
+   "color": "#fae63c",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "bincard",
+    "projection": "fit"
+   }
+  },
+  "chalk": {
+   "color": "#283c30",
+   "texture": {
+    "sheet": "art",
+    "cell": "chalk",
+    "projection": "fit"
+   }
+  },
+  "wood": {
+   "color": "#966e46",
+   "palette": true
+  }
+ },
+ "nodes": [
+  {
+   "id": "shell",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.5,
+     0.0,
+     7.0
+    ],
+    [
+     -4.5,
+     7.2,
+     7.0
+    ],
+    [
+     -4.5,
+     7.2,
+     1.0
+    ],
+    [
+     -4.5,
+     5.0,
+     1.0
+    ],
+    [
+     -4.5,
+     5.0,
+     -7.0
+    ],
+    [
+     -4.5,
+     0.0,
+     -7.0
+    ],
+    [
+     4.5,
+     0.0,
+     -7.0
+    ],
+    [
+     4.5,
+     5.0,
+     -7.0
+    ],
+    [
+     4.5,
+     5.0,
+     1.0
+    ],
+    [
+     4.5,
+     7.2,
+     1.0
+    ],
+    [
+     4.5,
+     7.2,
+     7.0
+    ],
+    [
+     4.5,
+     0.0,
+     7.0
+    ],
+    [
+     4.5,
+     3.2,
+     -7.0
+    ],
+    [
+     -4.5,
+     3.2,
+     -7.0
+    ],
+    [
+     -3.6,
+     3.2,
+     -7.0
+    ],
+    [
+     -3.6,
+     0.0,
+     -7.0
+    ],
+    [
+     3.6,
+     3.2,
+     -7.0
+    ],
+    [
+     3.6,
+     0.0,
+     -7.0
+    ],
+    [
+     -3.6,
+     3.2,
+     -6.65
+    ],
+    [
+     -3.6,
+     0.0,
+     -6.65
+    ],
+    [
+     3.6,
+     0.0,
+     -6.65
+    ],
+    [
+     3.6,
+     3.2,
+     -6.65
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    [
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ],
+    [
+     4,
+     7,
+     12,
+     13
+    ],
+    [
+     13,
+     14,
+     15,
+     5
+    ],
+    [
+     16,
+     12,
+     6,
+     17
+    ],
+    [
+     14,
+     18,
+     19,
+     15
+    ],
+    [
+     17,
+     20,
+     21,
+     16
+    ],
+    [
+     14,
+     16,
+     21,
+     18
+    ],
+    [
+     18,
+     21,
+     20,
+     19
+    ],
+    [
+     3,
+     8,
+     7,
+     4
+    ],
+    [
+     2,
+     9,
+     8,
+     3
+    ],
+    [
+     0,
+     11,
+     10,
+     1
+    ]
+   ],
+   "face_materials": [
+    "mortar",
+    "mortar",
+    "tile",
+    "brown_tile",
+    "brown_tile",
+    "brown_tile",
+    "brown_tile",
+    "alu",
+    "glass",
+    "roof",
+    "siding",
+    "mortar"
+   ],
+   "decals": [
+    {
+     "id": "idol",
+     "material": "poster",
+     "size": [
+      0.75,
+      1.0
+     ],
+     "at": [
+      -2.95,
+      1.95
+     ],
+     "face": 8
+    },
+    {
+     "id": "live",
+     "material": "band",
+     "size": [
+      0.75,
+      1.0
+     ],
+     "at": [
+      2.95,
+      2.0
+     ],
+     "face": 8
+    },
+    {
+     "id": "price",
+     "material": "bargain",
+     "size": [
+      0.64,
+      0.32
+     ],
+     "at": [
+      0.0,
+      1.55
+     ],
+     "face": 8
+    },
+    {
+     "id": "home",
+     "material": "home",
+     "size": [
+      1.8,
+      1.35
+     ],
+     "at": [
+      -1.6,
+      6.15
+     ],
+     "face": 10
+    },
+    {
+     "id": "door",
+     "material": "door",
+     "size": [
+      0.85,
+      1.95
+     ],
+     "at": [
+      1.4,
+      5.995
+     ],
+     "face": 10
+    },
+    {
+     "id": "back_door",
+     "material": "door",
+     "size": [
+      0.9,
+      2.0
+     ],
+     "at": [
+      -2.6,
+      1.01
+     ],
+     "face": 11
+    },
+    {
+     "id": "back_win",
+     "material": "back_win",
+     "size": [
+      1.0,
+      1.0
+     ],
+     "at": [
+      1.6,
+      1.7
+     ],
+     "face": 11
+    },
+    {
+     "id": "room_win",
+     "material": "back_win",
+     "size": [
+      1.2,
+      1.0
+     ],
+     "at": [
+      0.0,
+      6.1
+     ],
+     "face": 11
+    }
+   ]
+  },
+  {
+   "id": "coping",
+   "op": "box",
+   "size": [
+    9.1,
+    0.16,
+    0.3
+   ],
+   "material": "roof",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     5.04,
+     -6.9
+    ]
+   }
+  },
+  {
+   "id": "kanban",
+   "op": "box",
+   "size": [
+    7.6,
+    1.38,
+    0.24
+   ],
+   "material": "navy",
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "kanban"
+   },
+   "transform": {
+    "translate": [
+     0.0,
+     4.11,
+     -7.1
+    ]
+   }
+  },
+  {
+   "id": "awning",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.4,
+     3.3,
+     -6.98
+    ],
+    [
+     4.4,
+     3.3,
+     -6.98
+    ],
+    [
+     4.4,
+     2.85,
+     -8.2
+    ],
+    [
+     -4.4,
+     2.85,
+     -8.2
+    ],
+    [
+     4.4,
+     2.6,
+     -8.2
+    ],
+    [
+     -4.4,
+     2.6,
+     -8.2
+    ],
+    [
+     4.4,
+     3.12,
+     -6.98
+    ],
+    [
+     -4.4,
+     3.12,
+     -6.98
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     3,
+     2,
+     4,
+     5
+    ],
+    [
+     5,
+     4,
+     6,
+     7
+    ],
+    [
+     0,
+     3,
+     5,
+     7
+    ],
+    [
+     6,
+     4,
+     2,
+     1
+    ]
+   ],
+   "face_materials": [
+    "awning",
+    "valance",
+    "awning",
+    "awning",
+    "awning"
+   ]
+  },
+  {
+   "id": "sode",
+   "op": "box",
+   "size": [
+    0.12,
+    1.8,
+    0.45
+   ],
+   "material": "red",
+   "faces": {
+    "left": "sode",
+    "right": "sode"
+   },
+   "transform": {
+    "translate": [
+     4.15,
+     4.3,
+     -7.2
+    ]
+   }
+  },
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    9.2,
+    0.12,
+    6.2
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0.0,
+     7.24,
+     4.0
+    ]
+   }
+  },
+  {
+   "id": "rail_front",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.45,
+     5.95,
+     -6.85
+    ],
+    [
+     4.45,
+     5.95,
+     -6.85
+    ],
+    [
+     4.45,
+     5.05,
+     -6.85
+    ],
+    [
+     -4.45,
+     5.05,
+     -6.85
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "railing"
+   ]
+  },
+  {
+   "id": "rail_west",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.42,
+     5.05,
+     -6.85
+    ],
+    [
+     -4.42,
+     5.05,
+     0.95
+    ],
+    [
+     -4.42,
+     5.95,
+     0.95
+    ],
+    [
+     -4.42,
+     5.95,
+     -6.85
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "railing"
+   ]
+  },
+  {
+   "id": "rail_east",
+   "op": "mesh",
+   "vertices": [
+    [
+     4.42,
+     5.95,
+     -6.85
+    ],
+    [
+     4.42,
+     5.95,
+     0.95
+    ],
+    [
+     4.42,
+     5.05,
+     0.95
+    ],
+    [
+     4.42,
+     5.05,
+     -6.85
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "railing"
+   ]
+  },
+  {
+   "id": "cassette",
+   "op": "box",
+   "size": [
+    2.7,
+    1.8,
+    0.16
+   ],
+   "material": "roof",
+   "faces": {
+    "back": "cassette"
+   },
+   "transform": {
+    "rotate": [
+     6,
+     0,
+     3
+    ],
+    "translate": [
+     -2.3,
+     6.8,
+     -6.25
+    ]
+   }
+  },
+  {
+   "id": "post_0",
+   "op": "box",
+   "size": [
+    0.08,
+    1.05,
+    0.08
+   ],
+   "material": "alu",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -3.2,
+     5.52,
+     -6.1
+    ]
+   }
+  },
+  {
+   "id": "post_1",
+   "op": "box",
+   "size": [
+    0.08,
+    1.05,
+    0.08
+   ],
+   "material": "alu",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -1.4,
+     5.52,
+     -6.1
+    ]
+   }
+  },
+  {
+   "id": "ac",
+   "op": "box",
+   "size": [
+    0.8,
+    0.56,
+    0.3
+   ],
+   "material": "alu",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "back": "ac"
+   },
+   "transform": {
+    "translate": [
+     3.3,
+     5.27,
+     0.84
+    ]
+   }
+  },
+  {
+   "id": "laundry",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.0,
+     6.52,
+     -2.2
+    ],
+    [
+     2.3,
+     6.52,
+     -2.2
+    ],
+    [
+     2.3,
+     4.99,
+     -2.2
+    ],
+    [
+     0.0,
+     4.99,
+     -2.2
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "laundry"
+   ]
+  },
+  {
+   "id": "antenna_0",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.7,
+     9.08,
+     0.0
+    ],
+    [
+     0.7,
+     9.08,
+     0.0
+    ],
+    [
+     0.7,
+     7.28,
+     0.0
+    ],
+    [
+     -0.7,
+     7.28,
+     0.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "antenna"
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     0
+    ],
+    "translate": [
+     2.6,
+     0,
+     4.0
+    ]
+   }
+  },
+  {
+   "id": "antenna_90",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.7,
+     9.08,
+     0.0
+    ],
+    [
+     0.7,
+     9.08,
+     0.0
+    ],
+    [
+     0.7,
+     7.28,
+     0.0
+    ],
+    [
+     -0.7,
+     7.28,
+     0.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "antenna"
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ],
+    "translate": [
+     2.6,
+     0,
+     4.0
+    ]
+   }
+  },
+  {
+   "id": "gacha",
+   "op": "box",
+   "size": [
+    0.42,
+    1.05,
+    0.38
+   ],
+   "material": "red",
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "gacha"
+   },
+   "transform": {
+    "translate": [
+     3.95,
+     0.53,
+     -7.24
+    ]
+   }
+  },
+  {
+   "id": "bargain_bin",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     0,
+     8,
+     0
+    ],
+    "translate": [
+     -2.0,
+     0,
+     -7.75
+    ]
+   },
+   "children": [
+    {
+     "id": "bin",
+     "op": "box",
+     "size": [
+      1.1,
+      0.3,
+      0.55
+     ],
+     "material": "red",
+     "open": [
+      "top"
+     ],
+     "transform": {
+      "translate": [
+       0.0,
+       0.7,
+       0.0
+      ]
+     }
+    },
+    {
+     "id": "lps_front",
+     "op": "mesh",
+     "vertices": [
+      [
+       -0.5,
+       0.98,
+       0.0
+      ],
+      [
+       0.5,
+       0.98,
+       0.0
+      ],
+      [
+       0.5,
+       0.62,
+       0.0
+      ],
+      [
+       -0.5,
+       0.62,
+       0.0
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     "face_materials": [
+      "lp_a"
+     ],
+     "transform": {
+      "rotate": [
+       -28,
+       0,
+       0
+      ],
+      "translate": [
+       0,
+       0,
+       -0.1
+      ]
+     }
+    },
+    {
+     "id": "lps_back",
+     "op": "mesh",
+     "vertices": [
+      [
+       -0.5,
+       0.98,
+       0.0
+      ],
+      [
+       0.5,
+       0.98,
+       0.0
+      ],
+      [
+       0.5,
+       0.62,
+       0.0
+      ],
+      [
+       -0.5,
+       0.62,
+       0.0
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     "face_materials": [
+      "lp_b"
+     ],
+     "transform": {
+      "rotate": [
+       -20,
+       0,
+       0
+      ],
+      "translate": [
+       0,
+       0.02,
+       0.14
+      ]
+     }
+    },
+    {
+     "id": "legs_front",
+     "op": "mesh",
+     "vertices": [
+      [
+       -0.52,
+       0.56,
+       -0.24
+      ],
+      [
+       0.52,
+       0.56,
+       -0.24
+      ],
+      [
+       0.52,
+       0.0,
+       -0.24
+      ],
+      [
+       -0.52,
+       0.0,
+       -0.24
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     "face_materials": [
+      "legs"
+     ]
+    },
+    {
+     "id": "legs_back",
+     "op": "mesh",
+     "vertices": [
+      [
+       -0.52,
+       0.56,
+       0.24
+      ],
+      [
+       0.52,
+       0.56,
+       0.24
+      ],
+      [
+       0.52,
+       0.0,
+       0.24
+      ],
+      [
+       -0.52,
+       0.0,
+       0.24
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     "face_materials": [
+      "legs"
+     ]
+    },
+    {
+     "id": "card",
+     "op": "mesh",
+     "vertices": [
+      [
+       0.3,
+       1.4,
+       -0.29
+      ],
+      [
+       0.66,
+       1.4,
+       -0.29
+      ],
+      [
+       0.66,
+       0.85,
+       -0.29
+      ],
+      [
+       0.3,
+       0.85,
+       -0.29
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     "face_materials": [
+      "bincard"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "aframe",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.28,
+     0.8,
+     0.0
+    ],
+    [
+     0.28,
+     0.8,
+     0.0
+    ],
+    [
+     0.28,
+     0.0,
+     -0.26
+    ],
+    [
+     -0.28,
+     0.0,
+     -0.26
+    ],
+    [
+     -0.28,
+     0.0,
+     0.26
+    ],
+    [
+     0.28,
+     0.0,
+     0.26
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     0,
+     3,
+     4
+    ],
+    [
+     5,
+     2,
+     1
+    ]
+   ],
+   "face_materials": [
+    "chalk",
+    "wood",
+    "wood",
+    "wood"
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     -15,
+     0
+    ],
+    "translate": [
+     1.75,
+     0,
+     -7.85
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "shell",
+      "op": "mesh",
+      "vertices": [
+       [
+        -4.5,
+        0.0,
+        7.0
+       ],
+       [
+        -4.5,
+        7.2,
+        7.0
+       ],
+       [
+        -4.5,
+        7.2,
+        1.0
+       ],
+       [
+        -4.5,
+        5.0,
+        1.0
+       ],
+       [
+        -4.5,
+        5.0,
+        -7.0
+       ],
+       [
+        -4.5,
+        0.0,
+        -7.0
+       ],
+       [
+        4.5,
+        0.0,
+        -7.0
+       ],
+       [
+        4.5,
+        5.0,
+        -7.0
+       ],
+       [
+        4.5,
+        5.0,
+        1.0
+       ],
+       [
+        4.5,
+        7.2,
+        1.0
+       ],
+       [
+        4.5,
+        7.2,
+        7.0
+       ],
+       [
+        4.5,
+        0.0,
+        7.0
+       ],
+       [
+        4.5,
+        3.2,
+        -7.0
+       ],
+       [
+        -4.5,
+        3.2,
+        -7.0
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+       ],
+       [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+       ],
+       [
+        4,
+        7,
+        12,
+        13
+       ],
+       [
+        13,
+        12,
+        6,
+        5
+       ],
+       [
+        3,
+        8,
+        7,
+        4
+       ],
+       [
+        2,
+        9,
+        8,
+        3
+       ],
+       [
+        0,
+        11,
+        10,
+        1
+       ],
+       [
+        1,
+        10,
+        9,
+        2
+       ]
+      ],
+      "face_materials": [
+       "mortar",
+       "mortar",
+       "tile",
+       "brown_tile",
+       "roof",
+       "siding",
+       "mortar",
+       "roof"
+      ],
+      "decals": [
+       {
+        "id": "kanban",
+        "material": "kanban",
+        "size": [
+         7.6,
+         1.38
+        ],
+        "at": [
+         0.0,
+         4.11
+        ],
+        "face": 2
+       },
+       {
+        "id": "glass",
+        "material": "glass",
+        "size": [
+         7.2,
+         3.18
+        ],
+        "at": [
+         0.0,
+         1.6
+        ],
+        "face": 3
+       },
+       {
+        "id": "home",
+        "material": "home",
+        "size": [
+         1.8,
+         1.35
+        ],
+        "at": [
+         -1.6,
+         6.15
+        ],
+        "face": 5
+       },
+       {
+        "id": "door",
+        "material": "door",
+        "size": [
+         0.85,
+         1.95
+        ],
+        "at": [
+         1.4,
+         5.995
+        ],
+        "face": 5
+       }
+      ]
+     },
+     {
+      "id": "awning",
+      "op": "mesh",
+      "vertices": [
+       [
+        -4.4,
+        3.3,
+        -6.98
+       ],
+       [
+        4.4,
+        3.3,
+        -6.98
+       ],
+       [
+        4.4,
+        2.85,
+        -8.2
+       ],
+       [
+        -4.4,
+        2.85,
+        -8.2
+       ],
+       [
+        4.4,
+        2.6,
+        -8.2
+       ],
+       [
+        -4.4,
+        2.6,
+        -8.2
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ],
+       [
+        3,
+        2,
+        4,
+        5
+       ]
+      ],
+      "face_materials": [
+       "awning",
+       "valance"
+      ]
+     },
+     {
+      "id": "sode",
+      "op": "box",
+      "size": [
+       0.12,
+       1.8,
+       0.45
+      ],
+      "material": "red",
+      "open": [
+       "top",
+       "bottom"
+      ],
+      "faces": {
+       "left": "sode",
+       "right": "sode"
+      },
+      "transform": {
+       "translate": [
+        4.15,
+        4.3,
+        -7.2
+       ]
+      }
+     },
+     {
+      "id": "cassette",
+      "op": "box",
+      "size": [
+       2.7,
+       1.8,
+       0.16
+      ],
+      "material": "roof",
+      "open": [
+       "bottom",
+       "front"
+      ],
+      "faces": {
+       "back": "cassette"
+      },
+      "transform": {
+       "rotate": [
+        6,
+        0,
+        3
+       ],
+       "translate": [
+        -2.3,
+        6.8,
+        -6.25
+       ]
+      }
+     },
+     {
+      "id": "rail_front",
+      "op": "mesh",
+      "vertices": [
+       [
+        -4.45,
+        5.95,
+        -6.85
+       ],
+       [
+        4.45,
+        5.95,
+        -6.85
+       ],
+       [
+        4.45,
+        5.05,
+        -6.85
+       ],
+       [
+        -4.45,
+        5.05,
+        -6.85
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "face_materials": [
+       "railing"
+      ]
+     }
+    ]
+   },
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "shell",
+      "op": "mesh",
+      "vertices": [
+       [
+        -4.5,
+        0.0,
+        7.0
+       ],
+       [
+        -4.5,
+        7.3,
+        7.0
+       ],
+       [
+        -4.5,
+        7.3,
+        1.0
+       ],
+       [
+        -4.5,
+        5.0,
+        1.0
+       ],
+       [
+        -4.5,
+        5.0,
+        -7.0
+       ],
+       [
+        -4.5,
+        0.0,
+        -7.0
+       ],
+       [
+        4.5,
+        0.0,
+        -7.0
+       ],
+       [
+        4.5,
+        5.0,
+        -7.0
+       ],
+       [
+        4.5,
+        5.0,
+        1.0
+       ],
+       [
+        4.5,
+        7.3,
+        1.0
+       ],
+       [
+        4.5,
+        7.3,
+        7.0
+       ],
+       [
+        4.5,
+        0.0,
+        7.0
+       ],
+       [
+        4.5,
+        3.2,
+        -7.0
+       ],
+       [
+        -4.5,
+        3.2,
+        -7.0
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+       ],
+       [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+       ],
+       [
+        4,
+        7,
+        12,
+        13
+       ],
+       [
+        13,
+        12,
+        6,
+        5
+       ],
+       [
+        3,
+        8,
+        7,
+        4
+       ],
+       [
+        2,
+        9,
+        8,
+        3
+       ],
+       [
+        0,
+        11,
+        10,
+        1
+       ],
+       [
+        1,
+        10,
+        9,
+        2
+       ]
+      ],
+      "face_materials": [
+       "mortar",
+       "mortar",
+       "kanban",
+       "glass",
+       "roof",
+       "siding",
+       "mortar",
+       "roof"
+      ]
+     },
+     {
+      "id": "awning",
+      "op": "mesh",
+      "vertices": [
+       [
+        -4.4,
+        3.3,
+        -6.98
+       ],
+       [
+        4.4,
+        3.3,
+        -6.98
+       ],
+       [
+        4.4,
+        2.75,
+        -8.2
+       ],
+       [
+        -4.4,
+        2.75,
+        -8.2
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "face_materials": [
+       "awning"
+      ]
+     },
+     {
+      "id": "cassette",
+      "op": "mesh",
+      "vertices": [
+       [
+        -3.65,
+        7.7,
+        -6.25
+       ],
+       [
+        -0.95,
+        7.7,
+        -6.25
+       ],
+       [
+        -0.95,
+        5.9,
+        -6.25
+       ],
+       [
+        -3.65,
+        5.9,
+        -6.25
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "face_materials": [
+       "cassette"
+      ]
+     }
+    ]
+   }
+  ],
+  "band": 2
+ }
+}
