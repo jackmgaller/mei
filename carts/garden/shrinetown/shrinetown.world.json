@@ -27,7 +27,64 @@
   }
  },
  "regions": {
-  "shrine_town": {
+  "town": {
+   "textures": {
+    "slots": "13-0",
+    "budget": 389120
+   },
+   "variants": {
+    "day": {},
+    "night": {
+     "surface": {
+      "multiply": "#4a5884"
+     },
+     "colors": {
+      "water": "#1c3050"
+     }
+    }
+   },
+   "backdrop": {
+    "elevations": [
+     -8,
+     0,
+     5,
+     24,
+     70
+    ],
+    "sky": {
+     "day": [
+      "#4a5636",
+      "#c8c4a8",
+      "#c4d8e8",
+      "#7aa8d8",
+      "#3a6cb0"
+     ],
+     "night": [
+      "#141420",
+      "#2a2440",
+      "#1a1c3a",
+      "#0c1028",
+      "#04060f"
+     ]
+    },
+    "silhouette": {
+     "pattern": "mountains",
+     "width": 1024,
+     "height": 48,
+     "seed": 23,
+     "colors": [
+      "#7a8a8c",
+      "#56685a",
+      "#3e5040"
+     ]
+    }
+   }
+  },
+  "shrine": {
+   "textures": {
+    "slots": "13-0",
+    "budget": 307200
+   },
    "variants": {
     "day": {},
     "night": {

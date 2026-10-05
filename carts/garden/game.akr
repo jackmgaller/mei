@@ -102,6 +102,7 @@ fn update() {
     }
     collect_coins()
     use_doors()
+    follow_region()
     cam_place()
     test_hook(frame_n)
     timing_frame()
@@ -128,12 +129,25 @@ fn collect_coins() {
     }
 }
 
+// ---- regions: a world with several (the shrine town's town and shrine,
+// shrinetown/TEXTURES.md) enters the region of the cell the player stands in. wp_region_enter()
+// loads its texture set, palettes and backdrop at once (about 56,000 cycles a 32 KB texture slot:
+// the frame of a crossing may be late); near cells of the other region draw as their stand-ins.
+
+fn follow_region() {
+    let c = wp_cell_at(pl.pos)
+    if c == null || wp_region_loaded < 0 { return }
+    let k = c.region as s32
+    if k != wp_region_loaded { wp_region_enter(k, 0) }
+}
+
 // ---- doors (the world's door entities): walk into one to go to its world
 
 // Opens world k and starts the player at its spawn. Coins taken are the world's own, so they
 // start again (nothing is saved yet).
 fn world_switch(k: s32) {
     world_k = k
+    wp_region_loaded = -1      // the last world's region: world_load() enters the new world's own
     assert(world_load())
     for w in 0..8 { coin_got[w] = 0 }
     coins = 0

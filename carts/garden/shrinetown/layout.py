@@ -117,6 +117,15 @@ def is_water(x, z):
     return pond_d(x, z) < .92 or (stream_d(x, z) < 1.8 and z < 318) or \
         math.hypot(x - FALLS_POOL[0], z - FALLS_POOL[1]) < 6
 
+# ------------------------------------------------------------------ texture regions (TEXTURES.md)
+# Two World Kit regions, each with its own texture set: the town (rows 0-1, z < 128: station,
+# plaza, shotengai, alleys, school, the front road, the canal's machiya and sento) and the shrine
+# (rows 2-5: courtyard, precinct, woods, ridge, mountain, pond, cemetery, park, bamboo). The
+# boundary is the cell line z = 128, 10 m north of the front road's kerb.
+REGIONS = ('town', 'shrine')
+TOWN_ROWS = 2                        # rows 0 .. TOWN_ROWS - 1 are the town's
+def region_of(i, j): return 'town' if j < TOWN_ROWS else 'shrine'
+
 # ------------------------------------------------------------------ things that stand
 # boxes: (x1, z1, x2, z2, base, top, colour, label)
 RED, ROOF, WOOD, STONE, WHITE, TILE, CONC = '#c43026', '#3a3c44', '#96683f', '#97928a', '#eee8d6', '#5a6068', '#c8c4b8'

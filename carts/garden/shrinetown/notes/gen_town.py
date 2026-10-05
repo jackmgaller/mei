@@ -233,7 +233,7 @@ def cell_of(x, z):
 def cell(cid, at):
     if cid not in cells:
         cells[cid] = {'format': 'mei-world-cell', 'version': 1, 'id': cid, 'at': list(at),
-                      'region': 'shrine_town', 'placements': [], 'entities': []}
+                      'region': L.region_of(*at), 'placements': [], 'entities': []}
     return cells[cid]
 
 def place(pid, name_col, x, y, z, yaw=0, layer=None):
@@ -767,7 +767,7 @@ VANTAGE = [
 part = {
     'about': 'Shrine town grey box, region town (z 0-128): world-level entries in the world recipe\'s format. '
              'Written by notes/gen_town.py; see notes/town.md.',
-    'regions': {'shrine_town': {}},
+    'regions': {r: {} for r in L.REGIONS},
     'layers': {'ladder_e': {}},
     'paths': paths,
     'terrain': {'materials': materials, 'operations': ops,

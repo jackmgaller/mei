@@ -6,7 +6,9 @@ sento, a park, a schoolyard, cemetery terraces and a railway viaduct round the s
 then the shrine (courtyard, terraced precinct, ridge and pagoda, the west woods' treetop walkway,
 the sacred cedar's basin, the fox grove's torii tunnel, the back mountain's stage, falls and
 chimney). 320 × 384 m, 30 cells of 64 m, five stars. The design, and every change the building
-made to it, is [DESIGN.md](DESIGN.md); the plan in numbers is `layout.py`.
+made to it, is [DESIGN.md](DESIGN.md); the plan in numbers is `layout.py`. How the textures fit
+in VRAM (two regions, `town` and `shrine`, split at z = 128; each zone's allowance; the cuts the
+town needs) is [TEXTURES.md](TEXTURES.md).
 
 ![Over the precinct, north](screenshots/overview_north.png) ![From the stage](screenshots/from_stage.png)
 
@@ -111,6 +113,7 @@ python3 carts/garden/shrinetown/assets/greybox/mountain/make_mountain.py   # cel
 python3 carts/garden/shrinetown/make_world.py                         # shrinetown.world.json, shrinetown.heights.txt
 python3 carts/garden/shrinetown/tools/draw.py                         # design/*.png from layout.py
 B=build-mine python3 carts/garden/shrinetown/tools/views.py             # the worst views, as a table
+python3 carts/garden/shrinetown/tools/textures.py                     # texture bytes by region and zone
 ```
 
 All of them read `layout.py`. The world's assets are the town's folder and, through the World
@@ -129,3 +132,5 @@ the level is built only as `shrinetown`).
   ladder A's steps) closed an edge mismatch but only moved their cracks; the scenarios walk over
   all three.
 - Phase 2 on: the stars, switches, the timer, the train, life, textures (DESIGN.md 9).
+- The texture regions' boundary is not a hidden seam, and the planned assets need more 4-bit
+  palettes than a world has unless their 8-bit textures go (TEXTURES.md).

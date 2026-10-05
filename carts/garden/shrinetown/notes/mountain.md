@@ -154,7 +154,7 @@ swap needs two layers in a group.
   cliff sheets with offsets 0.01-0.04, each its own sheet, then levelled by a `set`: two flats
   with the same offset would merge into one sheet and lose the wall between them. The `steep` material is `rock` at 38 degrees.
 - Shared names to reconcile: terrain materials (`floor`, `rock`, `water`, `earth`, `path`,
-  `steps`, `stone`, `planks`, `rope` ...), the region `shrine_town`, the scatter names
+  `steps`, `stone`, `planks`, `rope` ...), the region (now `shrine`: TEXTURES.md), the scatter names
   (`mountain_*`).
 
 ## Moves checked (STYLE.md: unaided step 4.5, gap 5, walkable 28-30 degrees)
