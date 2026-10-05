@@ -127,25 +127,47 @@ shrine, small torii, fox statue, the stage hall, stone lantern, fallen and hollo
 boulders), the water (the animated waterfall, three stepping stones, the bobbing log, the zig-zag
 bridge, two lily pads, reeds, the bamboo fence) and the street (konbini, the 1990s building,
 vending machine, utility pole, street lamp, guardrail, barriers). Scattered: 309 trees (maples,
-ginkgo, cedars), 371 undergrowth plants, 114 leaf-litter patches, 46 reed clumps. Far cells draw
-as stand-ins, canopy sheets sampled from the world by `standins.py`. Texture VRAM: 100 tiles,
+ginkgo, cedars), 371 undergrowth plants, 114 leaf-litter patches, 46 reed clumps. Texture VRAM: 100 tiles,
 326,052 bytes (343,712 on the 8-texel grid) in slots 1–13, the ground's 16 tiles 272,608 of
 them.
 
-**What it costs** (the World Checker, depth mode, 600 views, report mode): peak 3,023
-triangles, 681,077 draw CPU cycles, 1,058,081 GPU cycles; 9 views over the 600,000-cycle draw
-budget, all in the forest's north-west and on the mountain, where the torii steps (982 triangles
-of sweep in two cells) and the stage hall meet. 15 cells, 805 placements, a 6.7 MB pack. The
+**At range** (2026-10-05). The whole valley is drawn from anywhere in it, by levels of detail
+rather than a hard edge ([WORLDKIT.md](../../../docs/WORLDKIT.md#levels-of-detail)):
+
+- The near pass reaches 192 m (`runtime.near_far`, three cells), so nothing in the 3 × 3 near
+  cells is cut off by distance; what each thing draws at range is its own levels and cull.
+- Ground: the field's coarse level from 22 m, then far ground resampled on an 8 m grid from
+  36 m and a 16 m grid from 76 m (`lod.ground`), with skirts where tiles at different levels
+  could crack.
+- Trees: each tree's own levels (`"lod": "assets"` on the forest scatters): full trees to
+  16–20 m, three cards to 44–52 m, two crossed cards beyond (`make_foliage.py`'s second far
+  level); from 56 m half the trees, grown by 1.2 (`thin`). Undergrowth, litter and reeds vanish
+  at their assets' own cull distances (40–60 m), capped by the scatters' `cull`.
+- Sweeps (the trails and stairs) are culled from 56 m, the torii steps and the outcrop stairs
+  from 44 m (`lod.sweeps`); the ground under them stands in.
+- Far cells draw stand-ins the kit makes from the cells themselves (`standins`, from 128 m:
+  ground on the 16 m grid, buildings at their coarsest level, the thinned trees), so a cell
+  coming into the near ring is drawn as the same things it stood in for.
+- Every mesh is packed with quads where two triangles make one (`meshes.quads`).
+
+**What it costs** (the World Checker, depth mode, 600 views, report mode): peak 2,785
+triangles, 590,756 draw CPU cycles, 1,058,034 GPU cycles; no view over a threshold. Before the
+work above: peak 3,023 triangles, 681,077 draw CPU cycles, 1,058,081 GPU cycles, 9 views over
+the 600,000-cycle draw budget, with almost nothing drawn past 72 m. 15 cells, a 7.3 MB pack. The
 collision report has 44 cracks of the known kind (narrow walls where sweeps, beds and steep
 banks meet floors; none on a seam) and 4 edge mismatches inside assets' collision.
 
-**Tests.** `carts/garden/tests/shrine_cases.akr`, scenarios 300–309, run by `check.sh`: the
+**Tests.** `carts/garden/tests/shrine_cases.akr`, scenarios 300–316, run by `check.sh`: the
 spawn and the walk through the great torii; wading; the west forest; the pond crossing; the
 treetop walkway; the torii steps, the stage and the way down; the hollow log, the falls and the
-stream; every coin reachable and taken; both doors.
+stream; every coin reachable and taken; both doors; and the views at range, which note their
+peak CPU and triangles and fail on a late frame: the summit stage (310, and turning once round,
+314), the ridge (311), the road looking north (312), the pond looking west (313), and two
+camera tracks for pop-in, up the approach (315) and along the ridge (316). Run one with
+`SHOT=1 SEQ=10` for a frame strip.
 
 **How it is made.** The recipe is JSON written as the source (the world lead's working
-generator is not kept); `standins.py` regenerates the stand-ins after the terrain changes.
+generator is not kept); the kit makes the stand-ins.
 The assets' PNG textures are drawn by the scripts beside them in `assets/art/`
 (`draw_arch.py`, `draw_foliage.py`, `draw_forest.py`, `draw_water.py`, `draw_street_sheet.py`,
 and `draw_terrain.py` for the ground's; `make_foliage.py` writes the foliage recipes). Building
@@ -160,5 +182,6 @@ needs Pillow for those textures.
   `#4a5884`, lanterns emissive); nothing switches it yet.
 - Gliding from the stage or the ridge can still reach the precinct over its wall, around the pond.
 - Sound: the waterfall heard before it is seen (no audio banks yet).
-- The far forest: the stand-ins read as a patchwork from the stage, and the near pass ends at
-  72 m (`runtime.near_far`), so the forest thins out beyond it.
+- The back mountain from the road: it is four cells north of the street, past the reader's far
+  ring of three (`wp_far_ring`), so from the road the sky's silhouette stands in for it. A far
+  ring of 4 would draw its three stand-ins (about 600 triangles).
