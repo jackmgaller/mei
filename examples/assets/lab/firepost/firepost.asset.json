@@ -1,0 +1,99 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "firepost",
+  "budget": {"vertices": 400, "triangles": 400},
+  "sheets": {
+    "fire": {"image": "art/firepost_sheet.png"}
+  },
+  "materials": {
+    "paint": {"color": "#c8241e", "smooth": true},
+    "red": {"color": "#c8241e"},
+    "hood": {"color": "#a81c18"},
+    "white": {"color": "#efede4"},
+    "blue": {"color": "#1e4696"},
+    "steel": {"color": "#8c9096", "smooth": true},
+    "label": {"color": "#efede4", "texture": {"sheet": "fire", "cell": "label", "bits": 8, "projection": "fit"}},
+    "alarm": {"color": "#c8241e", "texture": {"sheet": "fire", "cell": "alarm", "bits": 8, "projection": "fit"}},
+    "ext": {"color": "#c8241e", "texture": {"sheet": "fire", "cell": "ext", "projection": "fit"}},
+    "plate": {"color": "#1e4696", "texture": {"sheet": "fire", "cell": "plate", "projection": "fit"}},
+    "tiger": {"color": "#e8be1e",
+              "texture": {"sheet": "fire", "cell": "tiger", "projection": "cylindrical", "scale": [0.16, 0.16]}},
+    "concrete": {"color": "#96948c", "tag": "floor",
+                 "texture": {"sheet": "fire", "cell": "concrete", "projection": "box", "scale": [0.34, 0.34]}},
+    "lamp": {"color": "#f03a2c", "class": "emissive", "smooth": true, "tag": "lamp"},
+    "mitten": {"color": "#e86a9a"},
+    "cuff": {"color": "#f4eef0"}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.55},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "prototypes": {
+    "hood": {"id": "hood", "op": "extrude", "depth": 1.0,
+             "points": [[-0.02, 0.0], [1.0, 0.0], [1.0, 0.06], [-0.02, 0.4]],
+             "material": "hood", "transform": {"rotate": [0, 90, 0]}},
+    "band": {"id": "band", "op": "cylinder", "radius": 0.05, "height": 0.016, "segments": 8, "caps": false,
+             "material": "steel"}
+  },
+  "nodes": [
+    {"id": "footing", "op": "box", "size": [0.34, 0.12, 0.34], "open": ["bottom"], "material": "concrete",
+     "transform": {"translate": [0, 0.06, 0]}},
+    {"id": "pole", "op": "cylinder", "radius": 0.045, "height": 2.0, "segments": 8, "caps": false,
+     "material": "paint", "transform": {"translate": [0, 1.05, 0]}},
+    {"id": "tiger", "op": "cylinder", "radius": 0.05, "height": 0.38, "segments": 8, "caps": false,
+     "material": "tiger", "transform": {"translate": [0, 0.31, 0]}},
+
+    {"id": "extinguisher", "op": "group", "children": [
+      {"id": "box", "op": "mesh",
+       "vertices": [[-0.1, -0.21, -0.085], [0.1, -0.21, -0.085], [0.1, 0.21, -0.085], [-0.1, 0.21, -0.085],
+                    [-0.1, -0.21, 0.085], [0.1, -0.21, 0.085], [0.1, 0.21, 0.085], [-0.1, 0.21, 0.085]],
+       "faces": [[3, 2, 1, 0], [6, 7, 4, 5], [2, 6, 5, 1], [7, 3, 0, 4], [7, 6, 2, 3], [0, 1, 5, 4]],
+       "face_materials": ["ext", "red", "red", "red", "red", "red"]},
+      {"id": "hood", "op": "instance", "ref": "hood",
+       "transform": {"scale": [0.24, 0.2, 0.21], "translate": [0, 0.205, 0.095]}}
+    ], "transform": {"translate": [0, 0.78, -0.118]}},
+
+    {"id": "alarm", "op": "group", "children": [
+      {"id": "box", "op": "mesh",
+       "vertices": [[-0.13, -0.165, -0.06], [0.13, -0.165, -0.06], [0.13, 0.165, -0.06], [-0.13, 0.165, -0.06],
+                    [-0.13, -0.165, 0.06], [0.13, -0.165, 0.06], [0.13, 0.165, 0.06], [-0.13, 0.165, 0.06]],
+       "faces": [[3, 2, 1, 0], [6, 7, 4, 5], [2, 6, 5, 1], [7, 3, 0, 4], [7, 6, 2, 3], [0, 1, 5, 4]],
+       "face_materials": ["alarm", "red", "red", "red", "red", "red"]},
+      {"id": "hood", "op": "instance", "ref": "hood",
+       "transform": {"scale": [0.3, 0.16, 0.17], "translate": [0, 0.16, 0.07]}}
+    ], "transform": {"translate": [0, 1.27, -0.095]}},
+
+    {"id": "label", "op": "mesh",
+     "vertices": [[-0.15, -0.0375, -0.01], [0.15, -0.0375, -0.01], [0.15, 0.0375, -0.01], [-0.15, 0.0375, -0.01],
+                  [-0.15, -0.0375, 0.01], [0.15, -0.0375, 0.01], [0.15, 0.0375, 0.01], [-0.15, 0.0375, 0.01]],
+     "faces": [[3, 2, 1, 0], [6, 7, 4, 5], [2, 6, 5, 1], [7, 3, 0, 4], [7, 6, 2, 3], [0, 1, 5, 4]],
+     "face_materials": ["label", "white", "white", "white", "white", "white"],
+     "transform": {"translate": [0, 1.535, -0.045]}},
+
+    {"id": "address", "op": "group", "children": [
+      {"id": "plate", "op": "mesh",
+       "vertices": [[-0.05, -0.16, -0.006], [0.05, -0.16, -0.006], [0.05, 0.16, -0.006], [-0.05, 0.16, -0.006],
+                    [-0.05, -0.16, 0.006], [0.05, -0.16, 0.006], [0.05, 0.16, 0.006], [-0.05, 0.16, 0.006]],
+       "faces": [[3, 2, 1, 0], [6, 7, 4, 5], [2, 6, 5, 1], [7, 3, 0, 4], [7, 6, 2, 3], [0, 1, 5, 4]],
+       "face_materials": ["plate", "blue", "blue", "blue", "blue", "blue"],
+       "transform": {"translate": [0, 0, -0.048]}},
+      {"id": "band_top", "op": "instance", "ref": "band", "transform": {"translate": [0, 0.12, 0]}},
+      {"id": "band_low", "op": "instance", "ref": "band", "transform": {"translate": [0, -0.12, 0]}}
+    ], "transform": {"rotate": [0, -35, 0], "translate": [0, 1.8, 0]}},
+
+    {"id": "lamp", "op": "group", "children": [
+      {"id": "collar", "op": "cylinder", "radius": 0.06, "height": 0.05, "segments": 8, "caps": false,
+       "material": "hood", "transform": {"translate": [0, 0.0, 0]}},
+      {"id": "globe", "op": "lathe", "profile": [[0.065, 0.0], [0.1, 0.06], [0.088, 0.12], [0.0, 0.165]],
+       "segments": 8, "material": "lamp", "transform": {"translate": [0, 0.015, 0]}},
+      {"id": "cap", "op": "cone", "radius": 0.11, "height": 0.07, "segments": 8, "material": "hood",
+       "transform": {"translate": [0, 0.17, 0]}}
+    ], "transform": {"translate": [0, 2.06, 0]}},
+
+    {"id": "mitten", "op": "extrude", "depth": 0.025, "material": "mitten",
+     "points": [[0, 0], [0.06, 0], [0.065, 0.045], [0.085, 0.06], [0.08, 0.075], [0.06, 0.068],
+                [0.05, 0.105], [0.025, 0.112], [0.005, 0.092]],
+     "transform": {"scale": [1.35, 1.35, 1.4], "rotate": [90, -25, 0], "translate": [0.04, 0.14, -0.15]}},
+    {"id": "cuff", "op": "box", "size": [0.09, 0.034, 0.02], "material": "cuff",
+     "transform": {"rotate": [0, -25, 0], "translate": [0.079, 0.14, -0.145]}}
+  ]
+}
