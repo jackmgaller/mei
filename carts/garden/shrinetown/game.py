@@ -10,7 +10,8 @@ assets/greybox/mountain/make_mountain.py for 4-5), so a region's generator still
 its cells. The entity types are the garden's game schema's (carts/garden/world/garden.game.mochi:
 `star`, `trigger`, `mover`); what the game does with them is carts/garden/README.md, "Entities".
 Positions are the level's, in metres; where a number comes from a region generator's own
-constants, the comment says which.
+constants, the comment says which. A trigger's position is the centre of its box's base, 5 cm
+over the floor (the World Checker reports an entity inside a solid).
 
 Flags (names the triggers set and the stars and the train wait for):
 
@@ -31,7 +32,7 @@ OUT = HERE / 'assets' / 'game'
 # ★5, the last train (DESIGN.md 5, ★5; section 12): the omamori's clock, in ticks. The train
 # comes in from the west 25 s before the end, stops at the platform 15 s before it and leaves
 # when the clock runs out. Measured routes and why this number: DESIGN.md, ★5.
-TIMER = 75 * 60
+TIMER = 85 * 60
 TRAIN_LEG = 600                     # ticks from the west end to the platform (eased)
 TRAIN_PAUSE = 900                   # ticks stopped at the platform
 TRAIN_DELAY = TIMER - TRAIN_LEG - TRAIN_PAUSE
@@ -64,8 +65,11 @@ ENTITIES = [
     {'id': 'race_switch', 'type': 'trigger', 'position': [168, STAGE_Y, 342], 'asset': 'game_omamori',
      'params': {'size': [1.4, 2.0, 1.4], 'flag': 'race5', 'keep': False, 'timer': TIMER, 'ends': 'race5_won',
                 'hide': True}},
-    {'id': 'race_platform', 'type': 'trigger', 'position': [160, DECK + 0.05, 8.5],
-     'params': {'size': [32, 6, 9], 'flag': 'race5_won', 'needs': 'race5', 'ends': 'race5', 'keep': False}},
+    # the platform's box: x 144-176 over the whole deck's width up to the north parapet (z 3.5-14),
+    # 6 m high: the island platform, the train standing at it and, in the grey box, the head of the
+    # plaza stairs, which reach the deck north of track 2
+    {'id': 'race_platform', 'type': 'trigger', 'position': [160, DECK + 0.05, 8.75],
+     'params': {'size': [32, 6, 10.5], 'flag': 'race5_won', 'needs': 'race5', 'ends': 'race5', 'keep': False}},
     # the two-car train on track 2: parked until the omamori is taken, then in from the west end
     # of the viaduct, stopped with its middle at the platform's (x 160), and back out west
     {'id': 'train_5', 'type': 'mover', 'position': [2.0, DECK, TRACK2_Z], 'asset': 'game_train',
@@ -80,9 +84,11 @@ ENTITIES = [
     # B: the north gate's bar, lifted from the ridge side (the bar at z 232.7-233.3, the terrace 5.0)
     {'id': 'shortcut_b', 'type': 'trigger', 'position': [160.0, 5.05, 235.0],
      'params': {'size': [8.8, 3.0, 2.8], 'how': 'press', 'flag': 'shortcut_b', 'on': 'gate_b_open'}},
-    # C: the dead cedar, pounded at its root plate on the shoulder rim (its foot at 33.37)
-    {'id': 'shortcut_c', 'type': 'trigger', 'position': [256.0, 33.4, 306.0],
-     'params': {'size': [5.0, 4.0, 5.0], 'how': 'pound', 'flag': 'shortcut_c', 'on': 'cedar_c_down'}},
+    # C: the dead cedar (its trunk 1.4 m square at (256, 306), its foot at 33.37), pounded at its
+    # root plate on the shoulder trail's side, east and south-east of it (the rim west of it is
+    # too steep to stand on)
+    {'id': 'shortcut_c', 'type': 'trigger', 'position': [257.5, 33.4, 305.0],
+     'params': {'size': [4.0, 4.0, 4.0], 'how': 'pound', 'flag': 'shortcut_c', 'on': 'cedar_c_down'}},
     # D: the root bulge inside the sacred cedar, at the root door (the shaft's west wall at x 152,
     # the door z 294.6-297.4, the chamber's floor 13)
     {'id': 'shortcut_d', 'type': 'trigger', 'position': [153.0, 13.05, 296.0],

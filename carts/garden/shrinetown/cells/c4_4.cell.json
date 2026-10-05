@@ -25,15 +25,15 @@
    "id": "shortcut_c",
    "type": "trigger",
    "position": [
-    256.0,
-    32.4,
-    306.0
+    257.5,
+    33.4,
+    305.0
    ],
    "params": {
     "size": [
-     5.0,
-     3.0,
-     5.0
+     4.0,
+     4.0,
+     4.0
     ],
     "how": "pound",
     "flag": "shortcut_c",

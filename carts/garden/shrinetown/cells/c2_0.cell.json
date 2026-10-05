@@ -295,14 +295,14 @@
    "type": "trigger",
    "position": [
     160,
-    8.9,
-    8.5
+    9.05,
+    8.75
    ],
    "params": {
     "size": [
      32,
      6,
-     9
+     10.5
     ],
     "flag": "race5_won",
     "needs": "race5",

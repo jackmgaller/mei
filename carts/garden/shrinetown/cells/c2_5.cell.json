@@ -79,7 +79,7 @@
     ],
     "flag": "race5",
     "keep": false,
-    "timer": 4500,
+    "timer": 5100,
     "ends": "race5_won",
     "hide": true
    }
