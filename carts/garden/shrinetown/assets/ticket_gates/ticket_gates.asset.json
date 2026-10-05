@@ -12,7 +12,7 @@
     "roof": {"color": "#455a6a", "palette": true},
     "wood": {"color": "#8a6446", "palette": true},
     "orange": {"color": "#e8782a", "palette": true},
-    "floor": {"color": "#8d9296", "tag": "floor", "texture": {"image": "art/floor.png", "projection": "fit"}},
+    "floor": {"color": "#8d9296", "tag": "floor", "texture": {"image": "art/floor.png", "projection": "planar", "axis": "y", "scale": [1.6, 1.6]}},
     "pedside": {"color": "#c9ced0", "texture": {"image": "art/pedside.png", "projection": "fit"}},
     "slot": {"color": "#b8c0c4", "texture": {"image": "art/slot.png", "projection": "fit"}},
     "top_go": {

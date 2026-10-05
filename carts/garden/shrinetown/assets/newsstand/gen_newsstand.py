@@ -69,15 +69,12 @@ def rect(d, x0, y0, x1, y1, fill):
 
 
 def draw_sign():
-    """168 x 24: the fascia. Blue board, white rules, キオスク between yellow 新聞 and 雑誌."""
-    im = Image.new("RGBA", (168, 24), BLUE + (255,))
+    """84 x 24: the fascia (half width, TEXTURES.md's cut). Blue board, white rules, キオスク."""
+    im = Image.new("RGBA", (84, 24), BLUE + (255,))
     d = ImageDraw.Draw(im)
-    rect(d, 0, 0, 168, 2, WHITE)
-    rect(d, 0, 22, 168, 24, WHITE)
-    text(d, (44, 1), "キオスク", 19, WHITE)
-    for x0, s in ((3, "新聞"), (132, "雑誌")):
-        rect(d, x0, 4, x0 + 33, 20, YELLOW)
-        text(d, (x0 + 1, 3), s, 15, INK)
+    rect(d, 0, 0, 84, 2, WHITE)
+    rect(d, 0, 22, 84, 24, WHITE)
+    text(d, (10, 3), "キオスク", 16, WHITE)
     return im
 
 
@@ -127,7 +124,8 @@ def poster(src, name):
 
 
 def draw_side(src, which):
-    """48 x 72 (3.1 x 3.3 cm a texel) over a side wall's outer face, 1.5 x 2.35 m.
+    """24 x 72 over a side wall's outer face, 1.5 x 2.35 m: drawn at 48 x 72 (3.1 x 3.3 cm a
+    texel) and halved in width (TEXTURES.md's cut).
     Seen from outside, the right wall's front is the texture's left, the left wall's its right.
     A cream trim down the front edge, a poster toward the back, a clock or the station mark
     toward the front, high up."""
@@ -140,14 +138,15 @@ def draw_side(src, which):
     im.paste(poster(src, "poster_a" if which == "l" else "poster_b"), (px, 30))
     cx = 13 if front_left else 34                      # the clock or mark, toward the front
     (emblem if which == "l" else clock)(d, cx, 17)
-    return im
+    return im.resize((24, 72), Image.BOX)
 
 
 def draw_goods(src):
-    """128 x 56: the lab's shelves with its drinks fridge standing at the left."""
+    """64 x 56: the lab's shelves with its drinks fridge standing at the left, drawn at 128 x 56
+    and halved in width (TEXTURES.md's cut)."""
     im = lab(src, "goods").copy()
     im.paste(lab(src, "fridge").resize((26, 56), Image.NEAREST), (6, 0))
-    return im
+    return im.resize((64, 56), Image.BOX)
 
 
 def draw_art():
@@ -168,8 +167,8 @@ def draw_art():
     put("door", lab(src, "door"), 224, 24)
     put("tobacco", lab(src, "tobacco"), 128, 80)
     put("card", lab(src, "card"), 168, 80)
-    put("side_l", draw_side(src, "l"), 96, 88)
-    put("side_r", draw_side(src, "r"), 144, 88)
+    put("side_l", draw_side(src, "l"), 208, 80)
+    put("side_r", draw_side(src, "r"), 232, 80)
     os.makedirs(os.path.join(HERE, "art"), exist_ok=True)
     sheet.save(os.path.join(HERE, "art", "newsstand_sheet.png"))
     with open(os.path.join(HERE, "art", "newsstand_sheet.sheet.json"), "w") as f:

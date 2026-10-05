@@ -77,7 +77,6 @@
    "texture": {
     "sheet": "art",
     "cell": "sign",
-    "bits": 8,
     "projection": "fit"
    }
   },

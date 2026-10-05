@@ -96,8 +96,7 @@
    "texture": {
     "sheet": "art",
     "cell": "panel",
-    "projection": "fit",
-    "bits": 8
+    "projection": "fit"
    }
   },
   "disc": {
@@ -106,8 +105,7 @@
    "texture": {
     "sheet": "art",
     "cell": "disc",
-    "projection": "fit",
-    "bits": 8
+    "projection": "fit"
    }
   },
   "timetable": {
@@ -116,8 +114,7 @@
    "texture": {
     "sheet": "art",
     "cell": "timetable",
-    "projection": "fit",
-    "bits": 8
+    "projection": "fit"
    }
   },
   "lamp": {

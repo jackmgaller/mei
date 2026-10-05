@@ -280,7 +280,7 @@ STAIR_COLORS = ["#000000", "#9a958a", "#c8c4b8", "#d4c8ae", "#b8ae98"]
 
 MATERIALS = {
     "facade": {"color": WALL, "tag": "wall", "texture": {
-        "sheet": "danchi", "cell": "facade", "bits": 8, "projection": "box",
+        "sheet": "danchi", "cell": "facade", "projection": "box",   # 4-bit (TEXTURES.md)
         "scale": [W, r(FACADE_V)], "offset": [0.5, frac(-BODY_YC / FACADE_V)]}},
     "back": {"color": WALL, "tag": "wall", "texture": {
         "sheet": "danchi", "cell": "back", "projection": "box",

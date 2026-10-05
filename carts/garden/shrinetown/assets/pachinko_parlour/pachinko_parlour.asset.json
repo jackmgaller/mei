@@ -178,8 +178,7 @@
    "texture": {
     "sheet": "art",
     "cell": "storefront",
-    "projection": "fit",
-    "bits": 8
+    "projection": "fit"
    }
   },
   "lamp": {
