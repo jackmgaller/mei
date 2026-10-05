@@ -1,0 +1,1060 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "delivery_van",
+ "budget": {
+  "vertices": 700,
+  "triangles": 800
+ },
+ "materials": {
+  "paint": {
+   "color": "#efe8d2"
+  },
+  "side_r": {
+   "color": "#efe8d2",
+   "texture": {
+    "image": "art/side_r.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "side_l": {
+   "color": "#efe8d2",
+   "texture": {
+    "image": "art/side_l.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "windshield": {
+   "color": "#2e4a68",
+   "texture": {
+    "image": "art/windshield.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "front": {
+   "color": "#efe8d2",
+   "texture": {
+    "image": "art/front.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "rear": {
+   "color": "#efe8d2",
+   "texture": {
+    "image": "art/rear.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "tire": {
+   "color": "#26262a"
+  },
+  "chrome": {
+   "color": "#c8ced4"
+  },
+  "bumper": {
+   "color": "#8d949c"
+  },
+  "trim": {
+   "color": "#2c3036"
+  },
+  "box1": {
+   "color": "#c19a6a"
+  },
+  "box2": {
+   "color": "#a98150"
+  },
+  "box3": {
+   "color": "#d3b184"
+  },
+  "cloth": {
+   "color": "#3f9a62"
+  },
+  "knot": {
+   "color": "#e8e4d4"
+  },
+  "rail": {
+   "color": "#5d656d"
+  },
+  "cat": {
+   "color": "#e89a4a"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "extrude",
+   "material": "paint",
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ],
+    "translate": [
+     0,
+     0,
+     0
+    ]
+   },
+   "points": [
+    [
+     -2.25,
+     0.3
+    ],
+    [
+     -1.64,
+     0.3
+    ],
+    [
+     -1.511,
+     0.611
+    ],
+    [
+     -1.2,
+     0.74
+    ],
+    [
+     -0.889,
+     0.611
+    ],
+    [
+     -0.76,
+     0.3
+    ],
+    [
+     0.91,
+     0.3
+    ],
+    [
+     1.039,
+     0.611
+    ],
+    [
+     1.35,
+     0.74
+    ],
+    [
+     1.661,
+     0.611
+    ],
+    [
+     1.79,
+     0.3
+    ],
+    [
+     2.25,
+     0.3
+    ],
+    [
+     2.25,
+     1.0
+    ],
+    [
+     2.18,
+     1.3
+    ],
+    [
+     1.78,
+     2.02
+    ],
+    [
+     1.7,
+     2.08
+    ],
+    [
+     -2.25,
+     2.08
+    ]
+   ],
+   "depth": 1.7
+  },
+  {
+   "id": "windshield",
+   "op": "mesh",
+   "material": "windshield",
+   "vertices": [
+    [
+     -0.76,
+     1.9754,
+     -1.8185
+    ],
+    [
+     0.76,
+     1.9754,
+     -1.8185
+    ],
+    [
+     0.76,
+     1.3562,
+     -2.1625
+    ],
+    [
+     -0.76,
+     1.3562,
+     -2.1625
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "side_r",
+   "op": "mesh",
+   "material": "side_r",
+   "vertices": [
+    [
+     0.862,
+     1.98,
+     -2.2
+    ],
+    [
+     0.862,
+     1.98,
+     2.2
+    ],
+    [
+     0.862,
+     0.78,
+     2.2
+    ],
+    [
+     0.862,
+     0.78,
+     -2.2
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "side_l",
+   "op": "mesh",
+   "material": "side_l",
+   "vertices": [
+    [
+     -0.862,
+     1.98,
+     2.2
+    ],
+    [
+     -0.862,
+     1.98,
+     -2.2
+    ],
+    [
+     -0.862,
+     0.78,
+     -2.2
+    ],
+    [
+     -0.862,
+     0.78,
+     2.2
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "front",
+   "op": "mesh",
+   "material": "front",
+   "vertices": [
+    [
+     -0.8,
+     0.98,
+     -2.262
+    ],
+    [
+     0.8,
+     0.98,
+     -2.262
+    ],
+    [
+     0.8,
+     0.5,
+     -2.262
+    ],
+    [
+     -0.8,
+     0.5,
+     -2.262
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "rear",
+   "op": "mesh",
+   "material": "rear",
+   "vertices": [
+    [
+     0.82,
+     2.0,
+     2.262
+    ],
+    [
+     -0.82,
+     2.0,
+     2.262
+    ],
+    [
+     -0.82,
+     0.62,
+     2.262
+    ],
+    [
+     0.82,
+     0.62,
+     2.262
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "bumper_f",
+   "op": "box",
+   "material": "bumper",
+   "transform": {
+    "translate": [
+     0,
+     0.38,
+     -2.31
+    ]
+   },
+   "size": [
+    1.78,
+    0.2,
+    0.16
+   ]
+  },
+  {
+   "id": "bumper_r",
+   "op": "box",
+   "material": "bumper",
+   "transform": {
+    "translate": [
+     0,
+     0.38,
+     2.31
+    ]
+   },
+   "size": [
+    1.78,
+    0.2,
+    0.16
+   ]
+  },
+  {
+   "id": "mirrors",
+   "op": "group",
+   "children": [
+    {
+     "id": "mirror",
+     "op": "box",
+     "material": "trim",
+     "transform": {
+      "translate": [
+       0.93,
+       1.5,
+       -1.92
+      ]
+     },
+     "size": [
+      0.1,
+      0.22,
+      0.12
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "rails",
+   "op": "group",
+   "children": [
+    {
+     "id": "rail",
+     "op": "cylinder",
+     "material": "rail",
+     "transform": {
+      "rotate": [
+       90,
+       0,
+       0
+      ],
+      "translate": [
+       0.7,
+       2.15,
+       0.3
+      ]
+     },
+     "radius": 0.02,
+     "height": 3.3,
+     "segments": 3,
+     "caps": false
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "parcel_a",
+   "op": "box",
+   "material": "box1",
+   "transform": {
+    "translate": [
+     -0.12,
+     2.27,
+     -0.35
+    ]
+   },
+   "size": [
+    0.62,
+    0.4,
+    0.5
+   ]
+  },
+  {
+   "id": "parcel_b",
+   "op": "box",
+   "material": "box2",
+   "transform": {
+    "translate": [
+     0.2,
+     2.22,
+     0.45
+    ]
+   },
+   "size": [
+    0.5,
+    0.3,
+    0.42
+   ]
+  },
+  {
+   "id": "parcel_c",
+   "op": "box",
+   "material": "box3",
+   "transform": {
+    "translate": [
+     -0.2,
+     2.3,
+     1.3
+    ]
+   },
+   "size": [
+    0.45,
+    0.45,
+    0.4
+   ]
+  },
+  {
+   "id": "bundle",
+   "op": "sphere",
+   "material": "cloth",
+   "transform": {
+    "translate": [
+     0.25,
+     2.34,
+     -0.4
+    ]
+   },
+   "radius": 0.2,
+   "rings": 3,
+   "segments": 6
+  },
+  {
+   "id": "knot",
+   "op": "sphere",
+   "material": "knot",
+   "transform": {
+    "translate": [
+     0.25,
+     2.55,
+     -0.4
+    ]
+   },
+   "radius": 0.06,
+   "rings": 2,
+   "segments": 5
+  },
+  {
+   "id": "antenna",
+   "op": "cylinder",
+   "material": "trim",
+   "transform": {
+    "translate": [
+     0.78,
+     2.45,
+     -1.2
+    ]
+   },
+   "radius": 0.012,
+   "height": 0.8,
+   "segments": 3,
+   "caps": false
+  },
+  {
+   "id": "cat",
+   "op": "group",
+   "children": [
+    {
+     "id": "cat_body",
+     "op": "box",
+     "material": "cat",
+     "transform": {
+      "translate": [
+       -0.2,
+       2.595,
+       1.32
+      ]
+     },
+     "size": [
+      0.2,
+      0.16,
+      0.3
+     ],
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "cat_head",
+     "op": "box",
+     "material": "cat",
+     "transform": {
+      "translate": [
+       -0.2,
+       2.7,
+       1.2
+      ]
+     },
+     "size": [
+      0.16,
+      0.14,
+      0.13
+     ],
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "cat_ears",
+     "op": "group",
+     "children": [
+      {
+       "id": "cat_ear",
+       "op": "cone",
+       "material": "cat",
+       "transform": {
+        "translate": [
+         -0.15000000000000002,
+         2.795,
+         1.2
+        ]
+       },
+       "radius": 0.03,
+       "height": 0.06,
+       "segments": 3
+      }
+     ],
+     "modifiers": [
+      {
+       "op": "mirror",
+       "axis": "x",
+       "offset": -0.2
+      }
+     ]
+    },
+    {
+     "id": "cat_tail",
+     "op": "cone",
+     "material": "cat",
+     "transform": {
+      "rotate": [
+       70,
+       0,
+       0
+      ],
+      "translate": [
+       -0.2,
+       2.6,
+       1.55
+      ]
+     },
+     "radius": 0.035,
+     "height": 0.22,
+     "segments": 4
+    }
+   ]
+  },
+  {
+   "id": "flaps",
+   "op": "group",
+   "children": [
+    {
+     "id": "flap",
+     "op": "mesh",
+     "material": "tire",
+     "vertices": [
+      [
+       0.8,
+       0.3,
+       1.66
+      ],
+      [
+       0.8,
+       0.3,
+       1.9
+      ],
+      [
+       0.8,
+       0.08,
+       1.9
+      ],
+      [
+       0.8,
+       0.08,
+       1.66
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "exhaust",
+   "op": "cylinder",
+   "material": "trim",
+   "transform": {
+    "rotate": [
+     90,
+     0,
+     0
+    ],
+    "translate": [
+     -0.5,
+     0.35,
+     2.3
+    ]
+   },
+   "radius": 0.04,
+   "height": 0.3,
+   "segments": 4,
+   "caps": true
+  },
+  {
+   "id": "wheel_fr",
+   "op": "group",
+   "children": [
+    {
+     "id": "tire",
+     "op": "cylinder",
+     "material": "tire",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       90
+      ],
+      "translate": [
+       0.735,
+       0.33,
+       -1.35
+      ]
+     },
+     "radius": 0.33,
+     "height": 0.24,
+     "segments": 8,
+     "caps": true
+    },
+    {
+     "id": "hub",
+     "op": "mesh",
+     "material": "chrome",
+     "vertices": [
+      [
+       0.866,
+       0.5,
+       -1.35
+      ],
+      [
+       0.866,
+       0.4502,
+       -1.2298
+      ],
+      [
+       0.866,
+       0.33,
+       -1.18
+      ],
+      [
+       0.866,
+       0.2098,
+       -1.2298
+      ],
+      [
+       0.866,
+       0.16,
+       -1.35
+      ],
+      [
+       0.866,
+       0.2098,
+       -1.4702
+      ],
+      [
+       0.866,
+       0.33,
+       -1.52
+      ],
+      [
+       0.866,
+       0.4502,
+       -1.4702
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wheel_fl",
+   "op": "group",
+   "children": [
+    {
+     "id": "tire",
+     "op": "cylinder",
+     "material": "tire",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       90
+      ],
+      "translate": [
+       -0.735,
+       0.33,
+       -1.35
+      ]
+     },
+     "radius": 0.33,
+     "height": 0.24,
+     "segments": 8,
+     "caps": true
+    },
+    {
+     "id": "hub",
+     "op": "mesh",
+     "material": "chrome",
+     "vertices": [
+      [
+       -0.866,
+       0.5,
+       -1.35
+      ],
+      [
+       -0.866,
+       0.4502,
+       -1.4702
+      ],
+      [
+       -0.866,
+       0.33,
+       -1.52
+      ],
+      [
+       -0.866,
+       0.2098,
+       -1.4702
+      ],
+      [
+       -0.866,
+       0.16,
+       -1.35
+      ],
+      [
+       -0.866,
+       0.2098,
+       -1.2298
+      ],
+      [
+       -0.866,
+       0.33,
+       -1.18
+      ],
+      [
+       -0.866,
+       0.4502,
+       -1.2298
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wheel_rr",
+   "op": "group",
+   "children": [
+    {
+     "id": "tire",
+     "op": "cylinder",
+     "material": "tire",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       90
+      ],
+      "translate": [
+       0.735,
+       0.33,
+       1.2
+      ]
+     },
+     "radius": 0.33,
+     "height": 0.24,
+     "segments": 8,
+     "caps": true
+    },
+    {
+     "id": "hub",
+     "op": "mesh",
+     "material": "chrome",
+     "vertices": [
+      [
+       0.866,
+       0.5,
+       1.2
+      ],
+      [
+       0.866,
+       0.4502,
+       1.3202
+      ],
+      [
+       0.866,
+       0.33,
+       1.37
+      ],
+      [
+       0.866,
+       0.2098,
+       1.3202
+      ],
+      [
+       0.866,
+       0.16,
+       1.2
+      ],
+      [
+       0.866,
+       0.2098,
+       1.0798
+      ],
+      [
+       0.866,
+       0.33,
+       1.03
+      ],
+      [
+       0.866,
+       0.4502,
+       1.0798
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wheel_rl",
+   "op": "group",
+   "children": [
+    {
+     "id": "tire",
+     "op": "cylinder",
+     "material": "tire",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       90
+      ],
+      "translate": [
+       -0.735,
+       0.33,
+       1.2
+      ]
+     },
+     "radius": 0.33,
+     "height": 0.24,
+     "segments": 8,
+     "caps": true
+    },
+    {
+     "id": "hub",
+     "op": "mesh",
+     "material": "chrome",
+     "vertices": [
+      [
+       -0.866,
+       0.5,
+       1.2
+      ],
+      [
+       -0.866,
+       0.4502,
+       1.0798
+      ],
+      [
+       -0.866,
+       0.33,
+       1.03
+      ],
+      [
+       -0.866,
+       0.2098,
+       1.0798
+      ],
+      [
+       -0.866,
+       0.16,
+       1.2
+      ],
+      [
+       -0.866,
+       0.2098,
+       1.3202
+      ],
+      [
+       -0.866,
+       0.33,
+       1.37
+      ],
+      [
+       -0.866,
+       0.4502,
+       1.3202
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ]
+    }
+   ]
+  }
+ ]
+}
