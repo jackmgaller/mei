@@ -1,0 +1,1410 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "pachinko_parlour",
+ "budget": {
+  "vertices": 900,
+  "triangles": 900
+ },
+ "sheets": {
+  "art": {
+   "image": "art/parlour_sheet.png"
+  }
+ },
+ "materials": {
+  "tile": {
+   "color": "#3f78a8",
+   "texture": {
+    "pattern": "tile",
+    "colors": [
+     "#3f78a8",
+     "#e8f0f4",
+     "#5a94c4"
+    ],
+    "params": {
+     "count": 4,
+     "grout": 1
+    },
+    "projection": "box",
+    "scale": [
+     1,
+     1
+    ]
+   }
+  },
+  "stucco": {
+   "color": "#f1dcc8",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#f1dcc8",
+     "#e2c4a8"
+    ],
+    "params": {
+     "density": 0.15
+    },
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ]
+   }
+  },
+  "roof": {
+   "color": "#59606b",
+   "texture": {
+    "pattern": "tile",
+    "colors": [
+     "#59606b",
+     "#3c424c"
+    ],
+    "params": {
+     "count": 2,
+     "grout": 1
+    },
+    "projection": "box",
+    "scale": [
+     1.5,
+     1.5
+    ]
+   }
+  },
+  "awning": {
+   "color": "#c4122e",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#c4122e",
+     "#fff2dc"
+    ],
+    "params": {
+     "count": 4
+    },
+    "projection": "box",
+    "scale": [
+     1.6,
+     1.6
+    ]
+   }
+  },
+  "sign": {
+   "color": "#c4122e",
+   "texture": {
+    "sheet": "art",
+    "cell": "sign",
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "bulbs": {
+   "color": "#fff06a",
+   "class": "emissive",
+   "texture": {
+    "sheet": "art",
+    "frames": [
+     "bulbs_a",
+     "bulbs_b"
+    ],
+    "ticks": 10,
+    "projection": "fit"
+   }
+  },
+  "blade": {
+   "color": "#1e2a8a",
+   "texture": {
+    "sheet": "art",
+    "cell": "blade",
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "banner": {
+   "color": "#d81e1e",
+   "texture": {
+    "sheet": "art",
+    "cell": "banner",
+    "projection": "fit"
+   }
+  },
+  "machine": {
+   "color": "#26305e",
+   "texture": {
+    "sheet": "art",
+    "cell": "machine",
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "door": {
+   "color": "#7fd0e0",
+   "texture": {
+    "sheet": "art",
+    "cell": "door",
+    "projection": "fit"
+   }
+  },
+  "vend": {
+   "color": "#e8e8ea",
+   "texture": {
+    "sheet": "art",
+    "cell": "vend",
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "face": {
+   "color": "#dfe6ee",
+   "texture": {
+    "sheet": "art",
+    "cell": "face",
+    "projection": "fit"
+   }
+  },
+  "window": {
+   "color": "#a6dcea",
+   "texture": {
+    "sheet": "art",
+    "cell": "window",
+    "projection": "fit"
+   }
+  },
+  "ball": {
+   "color": "#c3ccd8",
+   "smooth": true
+  },
+  "dark": {
+   "color": "#2b2832"
+  },
+  "redtrim": {
+   "color": "#8e1f2c"
+  },
+  "concrete": {
+   "color": "#a9a9ae"
+  },
+  "steel": {
+   "color": "#8a929e"
+  },
+  "vendbody": {
+   "color": "#d8dce2"
+  },
+  "lamp": {
+   "color": "#e0301e",
+   "class": "emissive"
+  },
+  "pink": {
+   "color": "#ff7fb0"
+  },
+  "ac": {
+   "color": "#cfd4da"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "sign_pic",
+   "op": "box",
+   "size": [
+    6.2,
+    1.55,
+    0.02
+   ],
+   "material": "sign",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     4.9,
+     -3.0900000000000003
+    ]
+   }
+  },
+  {
+   "id": "bulbs_top",
+   "op": "box",
+   "size": [
+    6.6,
+    0.12,
+    0.02
+   ],
+   "material": "bulbs",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     5.82,
+     -3.0900000000000003
+    ]
+   }
+  },
+  {
+   "id": "bulbs_bot",
+   "op": "box",
+   "size": [
+    6.6,
+    0.12,
+    0.02
+   ],
+   "material": "bulbs",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     3.98,
+     -3.0900000000000003
+    ]
+   }
+  },
+  {
+   "id": "door_frame",
+   "op": "box",
+   "size": [
+    2.8,
+    2.5,
+    0.02
+   ],
+   "material": "dark",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     1.25,
+     -3.02
+    ]
+   }
+  },
+  {
+   "id": "door_l",
+   "op": "box",
+   "size": [
+    1.2,
+    2.3,
+    0.02
+   ],
+   "material": "door",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     -0.62,
+     1.2,
+     -3.0500000000000003
+    ]
+   }
+  },
+  {
+   "id": "door_r",
+   "op": "box",
+   "size": [
+    1.2,
+    2.3,
+    0.02
+   ],
+   "material": "door",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     0.62,
+     1.2,
+     -3.0500000000000003
+    ]
+   }
+  },
+  {
+   "id": "win_frame_l",
+   "op": "box",
+   "size": [
+    2.3,
+    1.9,
+    0.02
+   ],
+   "material": "dark",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     -2.7,
+     1.55,
+     -3.02
+    ]
+   }
+  },
+  {
+   "id": "machine_l0",
+   "op": "box",
+   "size": [
+    1.0,
+    1.5,
+    0.02
+   ],
+   "material": "machine",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     -3.25,
+     1.55,
+     -3.0500000000000003
+    ]
+   }
+  },
+  {
+   "id": "machine_l1",
+   "op": "box",
+   "size": [
+    1.0,
+    1.5,
+    0.02
+   ],
+   "material": "machine",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     -2.1500000000000004,
+     1.55,
+     -3.0500000000000003
+    ]
+   }
+  },
+  {
+   "id": "win_frame_r",
+   "op": "box",
+   "size": [
+    2.3,
+    1.9,
+    0.02
+   ],
+   "material": "dark",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     2.7,
+     1.55,
+     -3.02
+    ]
+   }
+  },
+  {
+   "id": "machine_r0",
+   "op": "box",
+   "size": [
+    1.0,
+    1.5,
+    0.02
+   ],
+   "material": "machine",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     2.1500000000000004,
+     1.55,
+     -3.0500000000000003
+    ]
+   }
+  },
+  {
+   "id": "machine_r1",
+   "op": "box",
+   "size": [
+    1.0,
+    1.5,
+    0.02
+   ],
+   "material": "machine",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     3.25,
+     1.55,
+     -3.0500000000000003
+    ]
+   }
+  },
+  {
+   "id": "swin_l0",
+   "op": "box",
+   "size": [
+    0.02,
+    1.0,
+    1.2
+   ],
+   "material": "window",
+   "open": [
+    "top",
+    "bottom",
+    "back",
+    "front",
+    "right"
+   ],
+   "transform": {
+    "translate": [
+     -3.8099999999999996,
+     4.9,
+     -1.6
+    ]
+   }
+  },
+  {
+   "id": "swin_l1",
+   "op": "box",
+   "size": [
+    0.02,
+    1.0,
+    1.2
+   ],
+   "material": "window",
+   "open": [
+    "top",
+    "bottom",
+    "back",
+    "front",
+    "right"
+   ],
+   "transform": {
+    "translate": [
+     -3.8099999999999996,
+     4.9,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "swin_l2",
+   "op": "box",
+   "size": [
+    0.02,
+    1.0,
+    1.2
+   ],
+   "material": "window",
+   "open": [
+    "top",
+    "bottom",
+    "back",
+    "front",
+    "right"
+   ],
+   "transform": {
+    "translate": [
+     -3.8099999999999996,
+     4.9,
+     1.6
+    ]
+   }
+  },
+  {
+   "id": "swin_r0",
+   "op": "box",
+   "size": [
+    0.02,
+    1.0,
+    1.2
+   ],
+   "material": "window",
+   "open": [
+    "top",
+    "bottom",
+    "back",
+    "front",
+    "left"
+   ],
+   "transform": {
+    "translate": [
+     3.8099999999999996,
+     4.9,
+     -1.6
+    ]
+   }
+  },
+  {
+   "id": "swin_r1",
+   "op": "box",
+   "size": [
+    0.02,
+    1.0,
+    1.2
+   ],
+   "material": "window",
+   "open": [
+    "top",
+    "bottom",
+    "back",
+    "front",
+    "left"
+   ],
+   "transform": {
+    "translate": [
+     3.8099999999999996,
+     4.9,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "swin_r2",
+   "op": "box",
+   "size": [
+    0.02,
+    1.0,
+    1.2
+   ],
+   "material": "window",
+   "open": [
+    "top",
+    "bottom",
+    "back",
+    "front",
+    "left"
+   ],
+   "transform": {
+    "translate": [
+     3.8099999999999996,
+     4.9,
+     1.6
+    ]
+   }
+  },
+  {
+   "id": "side_door",
+   "op": "box",
+   "size": [
+    0.02,
+    2.1,
+    0.9
+   ],
+   "material": "dark",
+   "open": [
+    "top",
+    "bottom",
+    "back",
+    "front",
+    "right"
+   ],
+   "transform": {
+    "translate": [
+     -4.01,
+     1.05,
+     1.5
+    ]
+   }
+  },
+  {
+   "id": "face",
+   "op": "box",
+   "size": [
+    0.9,
+    0.9,
+    0.02
+   ],
+   "material": "face",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     7.55,
+     -2.14
+    ]
+   }
+  },
+  {
+   "id": "vend_pic",
+   "op": "box",
+   "size": [
+    0.62,
+    1.55,
+    0.02
+   ],
+   "material": "vend",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     4.45,
+     0.95,
+     -2.8800000000000003
+    ]
+   }
+  },
+  {
+   "id": "banner_l",
+   "op": "box",
+   "size": [
+    0.55,
+    2.2,
+    0.02
+   ],
+   "material": "banner",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right"
+   ],
+   "transform": {
+    "translate": [
+     -4.0,
+     2.05,
+     -3.6
+    ]
+   }
+  },
+  {
+   "id": "banner_r",
+   "op": "box",
+   "size": [
+    0.55,
+    2.2,
+    0.02
+   ],
+   "material": "banner",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right"
+   ],
+   "transform": {
+    "translate": [
+     4.6,
+     2.05,
+     -3.6
+    ]
+   }
+  },
+  {
+   "id": "ground",
+   "op": "box",
+   "size": [
+    8,
+    3.2,
+    6
+   ],
+   "material": "tile",
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     1.6,
+     0
+    ]
+   }
+  },
+  {
+   "id": "cornice",
+   "op": "box",
+   "size": [
+    8.4,
+    0.25,
+    6.4
+   ],
+   "material": "redtrim",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     3.325,
+     0
+    ]
+   }
+  },
+  {
+   "id": "upper",
+   "op": "box",
+   "size": [
+    7.6,
+    2.9,
+    5.6
+   ],
+   "material": "stucco",
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     4.9,
+     0
+    ]
+   }
+  },
+  {
+   "id": "sign_frame",
+   "op": "box",
+   "size": [
+    6.8,
+    2.2,
+    0.25
+   ],
+   "material": "dark",
+   "open": [
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     4.9,
+     -2.945
+    ]
+   }
+  },
+  {
+   "id": "roof_slab",
+   "op": "box",
+   "size": [
+    7.8,
+    0.1,
+    5.8
+   ],
+   "material": "roof",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     6.4,
+     0
+    ]
+   }
+  },
+  {
+   "id": "parapet_f",
+   "op": "box",
+   "size": [
+    7.3,
+    0.35,
+    0.15
+   ],
+   "material": "redtrim",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     6.625,
+     -2.725
+    ]
+   }
+  },
+  {
+   "id": "parapet_s0",
+   "op": "box",
+   "size": [
+    0.15,
+    0.35,
+    5.45
+   ],
+   "material": "redtrim",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -3.725,
+     6.625,
+     0.075
+    ]
+   }
+  },
+  {
+   "id": "parapet_s1",
+   "op": "box",
+   "size": [
+    0.15,
+    0.35,
+    5.45
+   ],
+   "material": "redtrim",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     3.725,
+     6.625,
+     0.075
+    ]
+   }
+  },
+  {
+   "id": "roof_hut",
+   "op": "box",
+   "size": [
+    1.6,
+    1.0,
+    1.4
+   ],
+   "material": "ac",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     2.4,
+     6.95,
+     1.6
+    ]
+   }
+  },
+  {
+   "id": "hut_door",
+   "op": "box",
+   "size": [
+    0.5,
+    0.8,
+    0.02
+   ],
+   "material": "dark",
+   "open": [
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     2.4,
+     6.9,
+     0.88
+    ]
+   }
+  },
+  {
+   "id": "blade_sign",
+   "op": "box",
+   "size": [
+    0.25,
+    3.2,
+    1.2
+   ],
+   "material": "blade",
+   "open": [
+    "top",
+    "bottom",
+    "front",
+    "back"
+   ],
+   "transform": {
+    "translate": [
+     -3.55,
+     5.2,
+     -3.6
+    ]
+   }
+  },
+  {
+   "id": "bracket0",
+   "op": "box",
+   "size": [
+    0.1,
+    0.1,
+    0.35
+   ],
+   "material": "dark",
+   "open": [
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     -3.55,
+     4.2,
+     -2.875
+    ]
+   }
+  },
+  {
+   "id": "bracket1",
+   "op": "box",
+   "size": [
+    0.1,
+    0.1,
+    0.35
+   ],
+   "material": "dark",
+   "open": [
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     -3.55,
+     6.2,
+     -2.875
+    ]
+   }
+  },
+  {
+   "id": "canopy",
+   "op": "box",
+   "size": [
+    3.6,
+    0.08,
+    1.1
+   ],
+   "material": "awning",
+   "transform": {
+    "translate": [
+     0,
+     2.85,
+     -3.5
+    ],
+    "rotate": [
+     -12,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "post0",
+   "op": "cylinder",
+   "radius": 0.045,
+   "height": 2.7,
+   "segments": 6,
+   "caps": false,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -1.7,
+     1.35,
+     -3.95
+    ]
+   }
+  },
+  {
+   "id": "lantern0",
+   "op": "cylinder",
+   "radius": 0.16,
+   "height": 0.4,
+   "segments": 8,
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     -1.1,
+     2.4,
+     -3.9
+    ]
+   }
+  },
+  {
+   "id": "post1",
+   "op": "cylinder",
+   "radius": 0.045,
+   "height": 2.7,
+   "segments": 6,
+   "caps": false,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     1.7,
+     1.35,
+     -3.95
+    ]
+   }
+  },
+  {
+   "id": "lantern1",
+   "op": "cylinder",
+   "radius": 0.16,
+   "height": 0.4,
+   "segments": 8,
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     1.1,
+     2.4,
+     -3.9
+    ]
+   }
+  },
+  {
+   "id": "step",
+   "op": "box",
+   "size": [
+    3.4,
+    0.12,
+    1.0
+   ],
+   "material": "concrete",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.06,
+     -3.5
+    ]
+   }
+  },
+  {
+   "id": "guard_ball0",
+   "op": "sphere",
+   "radius": 0.3,
+   "rings": 5,
+   "segments": 8,
+   "material": "ball",
+   "transform": {
+    "translate": [
+     -1.95,
+     0.42,
+     -3.5
+    ]
+   }
+  },
+  {
+   "id": "guard_ball1",
+   "op": "sphere",
+   "radius": 0.3,
+   "rings": 5,
+   "segments": 8,
+   "material": "ball",
+   "transform": {
+    "translate": [
+     1.95,
+     0.42,
+     -3.5
+    ]
+   }
+  },
+  {
+   "id": "pile0",
+   "op": "sphere",
+   "radius": 0.1,
+   "rings": 4,
+   "segments": 6,
+   "material": "ball",
+   "transform": {
+    "translate": [
+     1.15,
+     0.17,
+     -3.9
+    ]
+   }
+  },
+  {
+   "id": "pile1",
+   "op": "sphere",
+   "radius": 0.1,
+   "rings": 4,
+   "segments": 6,
+   "material": "ball",
+   "transform": {
+    "translate": [
+     1.4,
+     0.17,
+     -3.7
+    ]
+   }
+  },
+  {
+   "id": "pile2",
+   "op": "sphere",
+   "radius": 0.1,
+   "rings": 4,
+   "segments": 6,
+   "material": "ball",
+   "transform": {
+    "translate": [
+     -1.2,
+     0.17,
+     -3.95
+    ]
+   }
+  },
+  {
+   "id": "vend_body",
+   "op": "box",
+   "size": [
+    0.75,
+    1.8,
+    0.65
+   ],
+   "material": "vendbody",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     4.45,
+     0.9,
+     -2.55
+    ]
+   }
+  },
+  {
+   "id": "pole_l",
+   "op": "cylinder",
+   "radius": 0.03,
+   "height": 3.2,
+   "segments": 6,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -4.3,
+     1.6,
+     -3.6
+    ]
+   }
+  },
+  {
+   "id": "arm_l",
+   "op": "box",
+   "size": [
+    0.6,
+    0.03,
+    0.03
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -4.0,
+     3.15,
+     -3.6
+    ]
+   }
+  },
+  {
+   "id": "pole_r",
+   "op": "cylinder",
+   "radius": 0.03,
+   "height": 3.2,
+   "segments": 6,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     4.3,
+     1.6,
+     -3.6
+    ]
+   }
+  },
+  {
+   "id": "arm_r",
+   "op": "box",
+   "size": [
+    0.6,
+    0.03,
+    0.03
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     4.6,
+     3.15,
+     -3.6
+    ]
+   }
+  },
+  {
+   "id": "ac_unit",
+   "op": "box",
+   "size": [
+    0.4,
+    0.55,
+    0.9
+   ],
+   "material": "ac",
+   "open": [
+    "left"
+   ],
+   "transform": {
+    "translate": [
+     4.2,
+     1.5,
+     1.0
+    ]
+   }
+  },
+  {
+   "id": "pedestal",
+   "op": "cylinder",
+   "radius": 0.7,
+   "height": 0.35,
+   "segments": 12,
+   "material": "redtrim",
+   "transform": {
+    "translate": [
+     0,
+     6.6,
+     -1.4
+    ]
+   }
+  },
+  {
+   "id": "mascot",
+   "op": "sphere",
+   "radius": 0.9,
+   "rings": 7,
+   "segments": 12,
+   "material": "ball",
+   "transform": {
+    "scale": [
+     1,
+     1,
+     0.8
+    ],
+    "translate": [
+     0,
+     7.55,
+     -1.4
+    ]
+   }
+  },
+  {
+   "id": "hand0",
+   "op": "sphere",
+   "radius": 0.2,
+   "rings": 4,
+   "segments": 6,
+   "material": "ball",
+   "transform": {
+    "translate": [
+     -1.05,
+     7.35,
+     -1.55
+    ]
+   }
+  },
+  {
+   "id": "hand1",
+   "op": "sphere",
+   "radius": 0.2,
+   "rings": 4,
+   "segments": 6,
+   "material": "ball",
+   "transform": {
+    "translate": [
+     1.05,
+     7.35,
+     -1.55
+    ]
+   }
+  },
+  {
+   "id": "antenna",
+   "op": "cone",
+   "radius": 0.07,
+   "height": 0.4,
+   "segments": 6,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     0,
+     8.65,
+     -1.4
+    ]
+   }
+  },
+  {
+   "id": "antenna_tip",
+   "op": "sphere",
+   "radius": 0.12,
+   "rings": 3,
+   "segments": 6,
+   "material": "pink",
+   "transform": {
+    "translate": [
+     0,
+     8.95,
+     -1.4
+    ]
+   }
+  }
+ ]
+}
