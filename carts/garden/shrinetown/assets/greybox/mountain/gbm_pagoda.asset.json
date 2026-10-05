@@ -1,0 +1,366 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbm_pagoda",
+ "materials": {
+  "gold": {
+   "color": "#d8b048"
+  },
+  "pagoda": {
+   "color": "#a03c2e"
+  },
+  "roof": {
+   "color": "#3a3c44"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    10.0,
+    4.3,
+    10.0
+   ],
+   "material": "pagoda",
+   "transform": {
+    "translate": [
+     0.0,
+     1.65,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    14.8,
+    1.02,
+    14.8
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0.0,
+     4.29,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b2",
+   "op": "box",
+   "size": [
+    8.5,
+    3.82,
+    8.5
+   ],
+   "material": "pagoda",
+   "transform": {
+    "translate": [
+     0.0,
+     6.69,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b3",
+   "op": "box",
+   "size": [
+    12.3,
+    1.02,
+    12.3
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0.0,
+     9.09,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b4",
+   "op": "box",
+   "size": [
+    7.0,
+    3.82,
+    7.0
+   ],
+   "material": "pagoda",
+   "transform": {
+    "translate": [
+     0.0,
+     11.49,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b5",
+   "op": "box",
+   "size": [
+    10.0,
+    1.02,
+    10.0
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0.0,
+     13.89,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b6",
+   "op": "box",
+   "size": [
+    5.5,
+    3.82,
+    5.5
+   ],
+   "material": "pagoda",
+   "transform": {
+    "translate": [
+     0.0,
+     16.29,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b7",
+   "op": "box",
+   "size": [
+    7.9,
+    1.02,
+    7.9
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0.0,
+     18.69,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b8",
+   "op": "box",
+   "size": [
+    4.0,
+    3.82,
+    4.0
+   ],
+   "material": "pagoda",
+   "transform": {
+    "translate": [
+     0.0,
+     21.09,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b9",
+   "op": "box",
+   "size": [
+    5.8,
+    1.02,
+    5.8
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0.0,
+     23.49,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b10",
+   "op": "box",
+   "size": [
+    0.5,
+    5.95,
+    0.5
+   ],
+   "material": "gold",
+   "transform": {
+    "translate": [
+     0.0,
+     27.025,
+     0.0
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 90,
+    "nodes": [
+     {
+      "id": "b0",
+      "op": "box",
+      "size": [
+       14.0,
+       5.3,
+       14.0
+      ],
+      "material": "roof",
+      "transform": {
+       "translate": [
+        0.0,
+        2.15,
+        0.0
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "b1",
+      "op": "box",
+      "size": [
+       11.5,
+       4.8,
+       11.5
+      ],
+      "material": "roof",
+      "transform": {
+       "translate": [
+        0.0,
+        7.2,
+        0.0
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "b2",
+      "op": "box",
+      "size": [
+       9.2,
+       4.8,
+       9.2
+      ],
+      "material": "roof",
+      "transform": {
+       "translate": [
+        0.0,
+        12.0,
+        0.0
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "b3",
+      "op": "box",
+      "size": [
+       7.1,
+       4.8,
+       7.1
+      ],
+      "material": "roof",
+      "transform": {
+       "translate": [
+        0.0,
+        16.8,
+        0.0
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "b4",
+      "op": "box",
+      "size": [
+       5.0,
+       4.8,
+       5.0
+      ],
+      "material": "roof",
+      "transform": {
+       "translate": [
+        0.0,
+        21.6,
+        0.0
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     }
+    ]
+   },
+   {
+    "distance": 120,
+    "nodes": [
+     {
+      "id": "b0",
+      "op": "box",
+      "size": [
+       14.8,
+       24.5,
+       14.8
+      ],
+      "material": "roof",
+      "transform": {
+       "translate": [
+        0.0,
+        11.75,
+        0.0
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "b1",
+      "op": "box",
+      "size": [
+       0.5,
+       6.02,
+       0.5
+      ],
+      "material": "gold",
+      "transform": {
+       "translate": [
+        0.0,
+        26.99,
+        0.0
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

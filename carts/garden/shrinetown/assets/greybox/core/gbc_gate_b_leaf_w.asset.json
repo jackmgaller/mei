@@ -1,0 +1,36 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_gate_b_leaf_w",
+ "materials": {
+  "wood_dark": {
+   "color": "#5a3e2c"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    0.6,
+    2.0,
+    3.8
+   ],
+   "material": "wood_dark",
+   "transform": {
+    "translate": [
+     0,
+     1.0,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

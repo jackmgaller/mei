@@ -1,0 +1,56 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbm_fox_shrine",
+ "materials": {
+  "red": {
+   "color": "#c43026"
+  },
+  "roof": {
+   "color": "#3a3c44"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    8,
+    7.64,
+    6
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     0.0,
+     3.32,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    10,
+    1.42,
+    8
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0.0,
+     7.83,
+     0.0
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_5",
+ "at": [
+  0,
+  5
+ ],
+ "region": "shrine_town",
+ "placements": []
+}

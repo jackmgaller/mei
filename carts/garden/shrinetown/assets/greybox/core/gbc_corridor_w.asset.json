@@ -1,0 +1,119 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_corridor_w",
+ "materials": {
+  "red": {
+   "color": "#c43026"
+  },
+  "roof": {
+   "color": "#3a3c44"
+  },
+  "roof_hi": {
+   "color": "#5a6068"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    12.0,
+    4.2,
+    28.0
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     0,
+     2.1,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    15.0,
+    0.5,
+    31.0
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0,
+     4.45,
+     0
+    ]
+   }
+  },
+  {
+   "id": "b2",
+   "op": "box",
+   "size": [
+    12.4,
+    1.767,
+    26.267
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0,
+     5.583,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b3",
+   "op": "box",
+   "size": [
+    9.8,
+    1.767,
+    21.533
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0,
+     7.35,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b4",
+   "op": "box",
+   "size": [
+    7.2,
+    1.767,
+    16.8
+   ],
+   "material": "roof_hi",
+   "transform": {
+    "translate": [
+     0,
+     9.117,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,120 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c3_5",
+ "at": [
+  3,
+  5
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "kick_chimney",
+   "asset": "gbm_kick_chimney",
+   "position": [
+    196.5,
+    16.0,
+    327.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "falls_cave",
+   "asset": "gbm_falls_cave",
+   "position": [
+    214.0,
+    14.0,
+    341.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "path_out_gate",
+   "asset": "gbm_path_out",
+   "position": [
+    252.0,
+    61.625,
+    378.0
+   ],
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "camera_chimney",
+   "type": "camera_zone",
+   "position": [
+    196.5,
+    16.0,
+    326.0
+   ],
+   "params": {
+    "size": [
+     3,
+     31,
+     10
+    ],
+    "mode": "fixed",
+    "look": [
+     0,
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "coin_cave_1",
+   "type": "coin",
+   "position": [
+    209.5,
+    15.0,
+    338.5
+   ]
+  },
+  {
+   "id": "coin_cave_2",
+   "type": "coin",
+   "position": [
+    211.7,
+    15.0,
+    338.5
+   ]
+  },
+  {
+   "id": "coin_cave_3",
+   "type": "coin",
+   "position": [
+    213.9,
+    15.0,
+    338.5
+   ]
+  },
+  {
+   "id": "coin_cave_4",
+   "type": "coin",
+   "position": [
+    210.6,
+    15.0,
+    341.7
+   ]
+  },
+  {
+   "id": "coin_cave_5",
+   "type": "coin",
+   "position": [
+    212.8,
+    15.0,
+    341.7
+   ]
+  },
+  {
+   "id": "coin_cave_6",
+   "type": "coin",
+   "position": [
+    215.0,
+    15.0,
+    341.7
+   ]
+  }
+ ]
+}

@@ -1,0 +1,85 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c1_2",
+ "at": [
+  1,
+  2
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "wall_1",
+   "asset": "gbc_wall_1",
+   "position": [
+    116.0,
+    5.0,
+    168.0
+   ],
+   "collision": "self",
+   "yaw": -45.0
+  },
+  {
+   "id": "wall_2",
+   "asset": "gbc_wall_2",
+   "position": [
+    115.0,
+    5.0,
+    182.5
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "boulder_0",
+   "asset": "gbc_boulder_0",
+   "position": [
+    110.5,
+    2.365,
+    184.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "deck_0",
+   "asset": "gbc_deck_tree_0",
+   "position": [
+    94,
+    0.993,
+    152
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "deck_1",
+   "asset": "gbc_deck_tree_1",
+   "position": [
+    82,
+    0.661,
+    180
+   ],
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "core_coin_deck_0",
+   "type": "coin",
+   "position": [
+    95.5,
+    10.0,
+    153.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_deck_1",
+   "type": "coin",
+   "position": [
+    83.5,
+    13.0,
+    181.5
+   ],
+   "asset": "gbc_coin"
+  }
+ ]
+}

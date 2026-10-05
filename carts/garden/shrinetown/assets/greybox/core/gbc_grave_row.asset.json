@@ -1,0 +1,36 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_grave_row",
+ "materials": {
+  "grave": {
+   "color": "#a8a49a"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    20,
+    1.2,
+    0.8
+   ],
+   "material": "grave",
+   "transform": {
+    "translate": [
+     0,
+     0.6,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

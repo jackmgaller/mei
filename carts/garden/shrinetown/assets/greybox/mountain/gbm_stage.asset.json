@@ -1,0 +1,447 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbm_stage",
+ "materials": {
+  "gold": {
+   "color": "#d8b048"
+  },
+  "hall": {
+   "color": "#8a6446"
+  },
+  "roof": {
+   "color": "#3a3c44"
+  },
+  "rope": {
+   "color": "#c8b88a"
+  },
+  "stage": {
+   "color": "#aa7c50"
+  },
+  "wood": {
+   "color": "#96683f"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    32,
+    1.0,
+    14
+   ],
+   "material": "stage",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.5,
+     -8.0
+    ]
+   }
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    1.2,
+    10.102,
+    1.2
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -14.0,
+     -6.031,
+     -13.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "b2",
+   "op": "box",
+   "size": [
+    1.2,
+    5.282,
+    1.2
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -14.0,
+     -3.621,
+     -7.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "b3",
+   "op": "box",
+   "size": [
+    1.2,
+    15.52,
+    1.2
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -8.0,
+     -8.74,
+     -13.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "b4",
+   "op": "box",
+   "size": [
+    1.2,
+    5.497,
+    1.2
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -8.0,
+     -3.729,
+     -7.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "b5",
+   "op": "box",
+   "size": [
+    1.2,
+    15.52,
+    1.2
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -2.0,
+     -8.74,
+     -13.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "b6",
+   "op": "box",
+   "size": [
+    1.2,
+    5.426,
+    1.2
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -2.0,
+     -3.693,
+     -7.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "b7",
+   "op": "box",
+   "size": [
+    1.2,
+    15.52,
+    1.2
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     4.0,
+     -8.74,
+     -13.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "b8",
+   "op": "box",
+   "size": [
+    1.2,
+    5.065,
+    1.2
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     4.0,
+     -3.512,
+     -7.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "b9",
+   "op": "box",
+   "size": [
+    1.2,
+    15.52,
+    1.2
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     10.0,
+     -8.74,
+     -13.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "b10",
+   "op": "box",
+   "size": [
+    1.2,
+    4.553,
+    1.2
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     10.0,
+     -3.257,
+     -7.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "b11",
+   "op": "box",
+   "size": [
+    28,
+    8.5,
+    19
+   ],
+   "material": "hall",
+   "transform": {
+    "translate": [
+     0.0,
+     3.75,
+     9.5
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b12",
+   "op": "box",
+   "size": [
+    31.0,
+    4.52,
+    22.0
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0.0,
+     10.24,
+     9.5
+    ]
+   }
+  },
+  {
+   "id": "b13",
+   "op": "box",
+   "size": [
+    16.8,
+    5.52,
+    11.4
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0.0,
+     15.24,
+     9.5
+    ]
+   }
+  },
+  {
+   "id": "b14",
+   "op": "box",
+   "size": [
+    1.2,
+    1.4,
+    1.2
+   ],
+   "material": "gold",
+   "transform": {
+    "translate": [
+     0.0,
+     4.7,
+     -1.1
+    ]
+   }
+  },
+  {
+   "id": "b15",
+   "op": "box",
+   "size": [
+    0.08,
+    2.62,
+    0.08
+   ],
+   "material": "rope",
+   "transform": {
+    "translate": [
+     0.0,
+     2.71,
+     -1.1
+    ]
+   }
+  },
+  {
+   "id": "b16",
+   "op": "box",
+   "size": [
+    0.6,
+    16.8,
+    0.2
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     -7.8,
+     -15.35
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "b0",
+      "op": "box",
+      "size": [
+       32,
+       1.0,
+       14
+      ],
+      "material": "stage",
+      "transform": {
+       "translate": [
+        0.0,
+        -0.5,
+        -8.0
+       ]
+      }
+     },
+     {
+      "id": "b1",
+      "op": "box",
+      "size": [
+       1.2,
+       4.553,
+       1.2
+      ],
+      "material": "wood",
+      "transform": {
+       "translate": [
+        10.0,
+        -3.257,
+        -7.0
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ]
+     },
+     {
+      "id": "b2",
+      "op": "box",
+      "size": [
+       28,
+       8.5,
+       19
+      ],
+      "material": "hall",
+      "transform": {
+       "translate": [
+        0.0,
+        3.75,
+        9.5
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "b3",
+      "op": "box",
+      "size": [
+       31.0,
+       4.52,
+       22.0
+      ],
+      "material": "roof",
+      "transform": {
+       "translate": [
+        0.0,
+        10.24,
+        9.5
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ }
+}

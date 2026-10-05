@@ -1,0 +1,76 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_viaduct_span",
+ "materials": {
+  "conc": {
+   "color": "#c8c4b8"
+  },
+  "conc_dark": {
+   "color": "#8a8680"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    12,
+    1.0,
+    18.439
+   ],
+   "material": "conc",
+   "transform": {
+    "translate": [
+     0,
+     8.5,
+     0
+    ]
+   }
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    0.3,
+    1.2,
+    18.439
+   ],
+   "material": "conc_dark",
+   "transform": {
+    "translate": [
+     -5.85,
+     9.6,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b2",
+   "op": "box",
+   "size": [
+    0.3,
+    1.2,
+    18.439
+   ],
+   "material": "conc_dark",
+   "transform": {
+    "translate": [
+     5.85,
+     9.6,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

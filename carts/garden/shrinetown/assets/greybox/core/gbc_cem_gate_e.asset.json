@@ -1,0 +1,36 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_cem_gate_e",
+ "materials": {
+  "stone_dark": {
+   "color": "#6a665e"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    1.0,
+    4.2,
+    1.2
+   ],
+   "material": "stone_dark",
+   "transform": {
+    "translate": [
+     0,
+     2.1,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

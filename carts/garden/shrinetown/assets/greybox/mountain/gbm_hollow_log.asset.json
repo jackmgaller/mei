@@ -1,0 +1,84 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbm_hollow_log",
+ "materials": {
+  "trunk": {
+   "color": "#5a4636"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    2.6,
+    0.5,
+    6.0
+   ],
+   "material": "trunk",
+   "transform": {
+    "translate": [
+     0.0,
+     -0.25,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    2.6,
+    0.4,
+    6.0
+   ],
+   "material": "trunk",
+   "transform": {
+    "translate": [
+     0.0,
+     2.6,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b2",
+   "op": "box",
+   "size": [
+    0.4,
+    2.44,
+    6.0
+   ],
+   "material": "trunk",
+   "transform": {
+    "translate": [
+     -1.1,
+     1.2,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b3",
+   "op": "box",
+   "size": [
+    0.4,
+    2.44,
+    6.0
+   ],
+   "material": "trunk",
+   "transform": {
+    "translate": [
+     1.1,
+     1.2,
+     0.0
+    ]
+   }
+  }
+ ]
+}

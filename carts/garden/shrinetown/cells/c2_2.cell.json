@@ -1,0 +1,342 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c2_2",
+ "at": [
+  2,
+  2
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "side_hall_w",
+   "asset": "gbc_side_hall_w",
+   "position": [
+    128.0,
+    0.6,
+    144.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "lantern_court_w0",
+   "asset": "gbc_stone_lantern",
+   "position": [
+    154.0,
+    0.6,
+    132
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "lantern_court_e0",
+   "asset": "gbc_stone_lantern",
+   "position": [
+    166.0,
+    0.6,
+    132
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "lantern_court_w1",
+   "asset": "gbc_stone_lantern",
+   "position": [
+    154.0,
+    0.6,
+    140
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "lantern_court_e1",
+   "asset": "gbc_stone_lantern",
+   "position": [
+    166.0,
+    0.6,
+    140
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "lantern_court_w2",
+   "asset": "gbc_stone_lantern",
+   "position": [
+    154.0,
+    0.6,
+    148
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "lantern_court_e2",
+   "asset": "gbc_stone_lantern",
+   "position": [
+    166.0,
+    0.6,
+    148
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "chozuya",
+   "asset": "gbc_chozuya",
+   "position": [
+    143.0,
+    0.6,
+    138.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "shrine_office",
+   "asset": "gbc_shrine_office",
+   "position": [
+    180.0,
+    0.6,
+    155.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "corridor_w",
+   "asset": "gbc_corridor_w",
+   "position": [
+    128.0,
+    5.0,
+    188.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "gate",
+   "asset": "gbc_gate",
+   "position": [
+    160.0,
+    5.0,
+    172.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "lantern_terr0",
+   "asset": "gbc_stone_lantern",
+   "position": [
+    152,
+    5.0,
+    184
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "lantern_terr1",
+   "asset": "gbc_stone_lantern",
+   "position": [
+    168,
+    5.0,
+    184
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "wall_0",
+   "asset": "gbc_wall_0",
+   "position": [
+    133.5,
+    5.0,
+    167.0
+   ],
+   "collision": "self",
+   "yaw": -90.0
+  },
+  {
+   "id": "wall_11",
+   "asset": "gbc_wall_11",
+   "position": [
+    189.5,
+    5.0,
+    167.0
+   ],
+   "collision": "self",
+   "yaw": -90.0
+  },
+  {
+   "id": "boulder_2",
+   "asset": "gbc_boulder_2",
+   "position": [
+    128.0,
+    0.4,
+    164.5
+   ],
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "core_coin_side_hall_w",
+   "type": "coin",
+   "position": [
+    128.0,
+    12.6,
+    144.0
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_corridor_w",
+   "type": "coin",
+   "position": [
+    128.0,
+    16.0,
+    188.0
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_gate",
+   "type": "coin",
+   "position": [
+    160.0,
+    19.6,
+    172.0
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_rail_string_torii_w",
+   "type": "rail",
+   "position": [
+    131.3,
+    11.7,
+    154.5
+   ],
+   "params": {
+    "path": "core_string_torii_w"
+   }
+  },
+  {
+   "id": "core_coin_string_torii_w_0",
+   "type": "coin",
+   "position": [
+    147.1,
+    13.667,
+    134.167
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_string_torii_w_1",
+   "type": "coin",
+   "position": [
+    139.2,
+    13.133,
+    144.333
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_rail_string_torii_e",
+   "type": "rail",
+   "position": [
+    188.7,
+    11.7,
+    154.5
+   ],
+   "params": {
+    "path": "core_string_torii_e"
+   }
+  },
+  {
+   "id": "core_coin_string_torii_e_0",
+   "type": "coin",
+   "position": [
+    172.9,
+    13.667,
+    134.167
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_string_torii_e_1",
+   "type": "coin",
+   "position": [
+    180.8,
+    13.133,
+    144.333
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_rail_string_gate_w",
+   "type": "rail",
+   "position": [
+    131.3,
+    11.7,
+    154.5
+   ],
+   "params": {
+    "path": "core_string_gate_w"
+   }
+  },
+  {
+   "id": "core_coin_string_gate_w_0",
+   "type": "coin",
+   "position": [
+    137.867,
+    12.8,
+    158.667
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_string_gate_w_1",
+   "type": "coin",
+   "position": [
+    144.433,
+    13.0,
+    162.833
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_rail_string_gate_e",
+   "type": "rail",
+   "position": [
+    188.7,
+    11.7,
+    154.5
+   ],
+   "params": {
+    "path": "core_string_gate_e"
+   }
+  },
+  {
+   "id": "core_coin_string_gate_e_0",
+   "type": "coin",
+   "position": [
+    182.133,
+    12.8,
+    158.667
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_string_gate_e_1",
+   "type": "coin",
+   "position": [
+    175.567,
+    13.0,
+    162.833
+   ],
+   "asset": "gbc_coin"
+  }
+ ]
+}
