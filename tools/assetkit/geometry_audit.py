@@ -15,7 +15,7 @@ def numpy():
 
 def face_ref(mesh, i):
     f=mesh.faces[i]
-    return {'face':i,'part':f.part,'material':f.material}
+    return {'face':i,'part':f.part,'material':f.material,**({'decal':f.decal} if f.decal else {})}
 
 
 def clip_polygon(subject, clip, eps):

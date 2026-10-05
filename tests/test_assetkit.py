@@ -2460,5 +2460,260 @@ class FeedbackTests(unittest.TestCase):
             compile_recipe(recipe({'id':'b','op':'box','size':[1,1,1],'open':['z']}))
 
 
+FD_MATERIALS = {'wall':{'color':'#c8b8a0'},'sign':{'color':'#d04030'},'roof':{'color':'#404040'},
+                'poster':{'color':'#2040d0','texture':{'projection':'fit','colors':['#000000','#ffffff'],
+                                                       'texels':['0111','0000']}}}
+
+
+def fd_recipe(*nodes, **extra):
+    return recipe(**{'materials':dict(FD_MATERIALS),**extra}) | {'nodes':list(nodes)}
+
+
+def side_materials(mesh):
+    """{(axis, sign) of the face normal: set of materials}."""
+    out = {}
+    for f in mesh.faces:
+        a,b,c = (mesh.vertices[i] for i in f.indices)
+        n = cross(sub(b,a),sub(c,a))
+        k = max(range(3),key=lambda i: abs(n[i]))
+        out.setdefault((k,1 if n[k] > 0 else -1),set()).add(f.material)
+    return out
+
+
+class FaceMaterialTests(unittest.TestCase):
+    def test_box_faces_by_name_and_axis_add_no_triangles(self):
+        plain,_,base = compile_recipe(fd_recipe({'id':'b','op':'box','size':[2,1,1],'material':'wall'}))
+        for faces in ({'top':'roof','back':'sign'},{'+y':'roof','-z':'sign'}):
+            mesh,_,rep = compile_recipe(fd_recipe({'id':'b','op':'box','size':[2,1,1],'material':'wall','faces':faces}))
+            self.assertEqual((rep['triangles'],rep['vertices']),(base['triangles'],base['vertices']))
+            sides = side_materials(mesh)
+            self.assertEqual(sides[(1,1)],{'roof'})
+            self.assertEqual(sides[(2,-1)],{'sign'})
+            self.assertEqual(sides[(0,1)],{'wall'})
+            self.assertEqual(rep['face_maps'],[{'part':'b','path':'/nodes/0','sides':{'back':'sign','top':'roof'},
+                                                'triangles':{'back':2,'top':2}}])
+            self.assertEqual(rep['parts'][0]['boundary_edges'],0)
+        self.assertNotIn('face_maps',base)
+
+    def test_caps_and_sides(self):
+        for op,extra in (('cylinder',{'radius':.5,'height':1}),('lathe',{'profile':[[.5,0],[.4,1]]}),
+                         ('loft',{'sections':[{'y':0,'points':[[-1,-1],[1,-1],[1,1],[-1,1]]},
+                                              {'y':1,'points':[[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]]}]})):
+            with self.subTest(op=op):
+                node = {'id':'c','op':op,'material':'wall','faces':{'top':'roof','-y':'sign'},**extra}
+                mesh,_,rep = compile_recipe(fd_recipe(node))
+                _,_,base = compile_recipe(fd_recipe({k:v for k,v in node.items() if k != 'faces'}))
+                self.assertEqual(rep['triangles'],base['triangles'])
+                sides = side_materials(mesh)
+                self.assertEqual(sides[(1,1)],{'roof'})
+                self.assertEqual(sides[(1,-1)],{'sign'})
+        mesh,_,_ = compile_recipe(fd_recipe({'id':'c','op':'cone','radius':.5,'height':1,'faces':{'side':'sign','bottom':'roof'}}))
+        self.assertEqual({f.material for f in mesh.faces},{'sign','roof'})
+        mesh,_,_ = compile_recipe(fd_recipe({'id':'e','op':'extrude','points':[[0,0],[1,0],[0,1]],'depth':1,
+                                             'material':'wall','faces':{'+z':'sign'}}))
+        self.assertEqual(side_materials(mesh)[(2,1)],{'sign'})
+        self.assertEqual(side_materials(mesh)[(2,-1)],{'wall'})
+
+    def test_errors_name_the_side_and_why(self):
+        cases = [
+            ({'op':'box','size':[1,1,1],'open':['front'],'faces':{'+z':'sign'}},'/nodes/0/faces/+z','is open'),
+            ({'op':'box','size':[1,1,1],'faces':{'top':'sign','+y':'roof'}},'/nodes/0/faces/+y','named twice'),
+            ({'op':'box','size':[1,1,1],'faces':{'top':'nope'}},'/nodes/0/faces/top',"Unknown material 'nope'"),
+            ({'op':'cone','radius':1,'height':1,'faces':{'top':'sign'}},'/nodes/0/faces/top','A cone has no top cap'),
+            ({'op':'cylinder','radius':1,'height':1,'caps':False,'faces':{'bottom':'sign'}},'/nodes/0/faces/bottom','caps is false'),
+            ({'op':'lathe','profile':[[1,0],[0,1]],'faces':{'top':'sign'}},'/nodes/0/faces/top','ends in a point'),
+        ]
+        for node,path,text in cases:
+            with self.subTest(text=text):
+                with self.assertRaises(AssetError) as caught:
+                    compile_recipe(fd_recipe(node))
+                self.assertEqual(caught.exception.path,path)
+                self.assertIn(text,str(caught.exception))
+        with self.assertRaises(AssetError) as caught:      # schema: a sphere has no sides
+            compile_recipe(fd_recipe({'op':'sphere','radius':1,'faces':{'top':'sign'}}))
+        self.assertEqual(caught.exception.path,'/nodes/0/faces')
+
+    def test_instance_material_keeps_face_maps_and_decals(self):
+        r = fd_recipe({'id':'one','op':'instance','ref':'stall','material':'wall'},
+                      prototypes={'stall':{'op':'box','size':[2,1,1],'material':'roof','faces':{'back':'sign'},
+                                           'decals':[{'face':'left','material':'poster','size':[.4,.4]}]}})
+        mesh,_,_ = compile_recipe(r)
+        sides = side_materials(mesh)
+        self.assertEqual(sides[(2,-1)],{'sign'})
+        self.assertEqual(sides[(0,-1)],{'wall','poster'})
+        self.assertEqual(sides[(1,1)],{'wall'})
+
+    def test_texture_windows_count_face_materials(self):
+        mats = {f'm{k}':{'color':'#808080','texture':{'pattern':'checker','colors':['#000000',f'#{32*k+16:02x}0000']}}
+                for k in range(8)}
+        node = {'id':'b','op':'box','size':[1,1,1],'material':'m0',
+                'faces':dict(zip(('top','bottom','left','right','back'),('m1','m2','m3','m4','m5')))}
+        r = recipe(node,materials=mats)
+        code,out = kit('inspect','-',stdin=r)
+        self.assertEqual(code,0,out)
+        self.assertEqual(out['texture_windows']['used'],6)
+        r['nodes'] = [node,{'id':'c','op':'box','size':[1,1,1],'material':'m6','faces':{'top':'m7'},
+                            'transform':{'translate':[2,0,0]}}]
+        code,out = kit('inspect','-',stdin=r)
+        self.assertEqual(code,1)
+        self.assertIn('8 different repeating textures',out['errors'][0]['message'])
+
+
+class DecalTests(unittest.TestCase):
+    def wall(self, *decals, **extra):
+        return fd_recipe({'id':'wall','op':'box','size':[4,3,.2],'material':'wall','open':['bottom'],
+                          'decals':list(decals),**extra})
+
+    def test_each_decal_adds_8_triangles_and_4_vertices_and_keeps_the_part_closed(self):
+        _,_,base = compile_recipe(fd_recipe({'id':'b','op':'box','size':[4,3,1]}))
+        for count in (1,2,5):
+            decals = [{'face':'back','material':'poster','size':[.5,.5],'at':[-1.6+.8*k,0]} for k in range(count)]
+            mesh,_,rep = compile_recipe(fd_recipe({'id':'b','op':'box','size':[4,3,1],'decals':decals}))
+            self.assertEqual(rep['triangles'],base['triangles']+8*count)
+            self.assertEqual(rep['vertices'],base['vertices']+4*count)
+            part = rep['parts'][0]
+            self.assertEqual((part['boundary_edges'],part['nonmanifold_edges'],part['inconsistent_edges']),(0,0,0))
+            self.assertGreater(volume(mesh),0)
+            self.assertEqual([d['added_triangles'] for d in rep['decals']],[8]*count)
+        for node in ({'op':'cylinder','radius':1,'height':1,'segments':16},
+                     {'op':'extrude','points':[[0,0],[2,0],[2,1],[1,1],[1,2],[0,2]],'depth':.5},
+                     {'op':'lathe','profile':[[1,0],[.6,1]]}):
+            with self.subTest(op=node['op']):
+                face = 'back' if node['op'] == 'extrude' else 'top'
+                at = [.5,1.4] if node['op'] == 'extrude' else [0,0]
+                _,_,a = compile_recipe(fd_recipe(node))
+                _,_,b = compile_recipe(fd_recipe({**node,'decals':[{'face':face,'material':'poster','size':[.4,.3],'at':at}]}))
+                self.assertEqual(b['triangles'],a['triangles']+8)
+                self.assertEqual(b['parts'][0]['boundary_edges'],0)
+
+    def test_decal_lies_in_the_face_with_its_texture_once_over_it(self):
+        mesh,_,rep = compile_recipe(self.wall({'id':'poster','face':'-z','material':'poster','size':[.8,1.2],'at':[.8,.1]}))
+        faces = [f for f in mesh.faces if f.decal == 'wall/poster']
+        self.assertEqual(len(faces),2)
+        self.assertTrue(all(f.material == 'poster' for f in faces))
+        points = {tuple(round(c,4) for c in mesh.vertices[i]) for f in faces for i in f.indices}
+        # the wall's back face is at z -0.1; "right" on it is +X, up +Y, from the box's centre
+        self.assertEqual(points,{(x,y,-.1) for x in (.4,1.2) for y in (-.5,.7)})
+        # u runs right, v down, the whole texture (4 x 2 texels) once
+        uv = {tuple(round(c,4) for c in mesh.vertices[i]):t for f in faces for i,t in zip(f.indices,f.texcoords)}
+        self.assertEqual(uv[(.4,.7,-.1)],(0,0))
+        self.assertEqual(uv[(1.2,.7,-.1)],(4,0))
+        self.assertEqual(uv[(1.2,-.5,-.1)],(4,2))
+        decal = rep['decals'][0]
+        self.assertEqual((decal['id'],decal['part'],decal['face'],decal['material'],decal['triangles']),
+                         ('wall/poster','wall','back','poster',2))
+        self.assertEqual(decal['normal'],[0,0,-1])
+        self.assertEqual(decal['path'],'/nodes/0/decals/0')
+
+    def test_texture_rotate_applies_to_a_decal(self):
+        r = self.wall({'id':'p','face':'back','material':'poster','size':[1,2]})
+        r['materials']['poster'] = {'color':'#000000','texture':{**FD_MATERIALS['poster']['texture'],'rotate':90}}
+        mesh,_,_ = compile_recipe(r)
+        uv = {tuple(round(c,4) for c in mesh.vertices[i]):t for f in mesh.faces if f.decal for i,t in zip(f.indices,f.texcoords)}
+        self.assertEqual(set(uv.values()),{(0,0),(4,0),(0,2),(4,2)})
+        self.assertEqual(uv[(-.5,1,-.1)],(0,2))         # top-left shows the texture's bottom-left
+
+    @unittest.skipUnless(NUMPY,'The geometry audit needs NumPy.')
+    def test_no_flush_contacts_or_t_junctions(self):
+        from assetkit.geometry_audit import geometry_audit
+        r = self.wall(*[{'face':'back','material':'poster','size':[.6,.6],'at':[x,y]} for x in (-1,0,1) for y in (-.6,.6)],
+                      {'face':'left','material':'sign','size':[.1,.5]})
+        mesh,_,_ = compile_recipe(r)
+        audit = geometry_audit(mesh,t_junctions=True)
+        self.assertTrue(audit['ok'],audit['summary'])
+        code,out = kit('inspect','-',stdin=r)
+        self.assertEqual(code,0)
+        self.assertEqual(out['flush_contacts']['count'],0)
+        self.assertEqual(out['close_faces']['pairs'],[])
+        self.assertEqual(len(out['decals']),7)
+
+    def test_errors_name_the_decal_and_why(self):
+        cases = [
+            ({'face':'back','material':'poster','size':[1,1],'at':[1.8,0]},'/nodes/0/decals/0',
+             "its right edge is 0.3 past the face's right edge"),
+            ({'face':'back','material':'poster','size':[4,1]},'/nodes/0/decals/0','within 0.001 of the face'),
+            ({'face':'bottom','material':'poster','size':[1,.1]},'/nodes/0/decals/0/face','is open'),
+            ({'face':'back','material':'nope','size':[1,1]},'/nodes/0/decals/0/material',"Unknown material 'nope'"),
+            ({'face':'back','material':'sign','size':[1,1]},None,None),
+            ({'face':2,'material':'sign','size':[1,1]},'/nodes/0/decals/0/face','Name the side'),
+            ({'face':'z','material':'sign','size':[1,1]},'/nodes/0/decals/0/face',"A box has no side 'z'"),
+        ]
+        for decal,path,text in cases:
+            with self.subTest(decal=decal):
+                if path is None:
+                    compile_recipe(self.wall(decal))
+                    continue
+                with self.assertRaises(AssetError) as caught:
+                    compile_recipe(self.wall(decal))
+                self.assertEqual(caught.exception.path,path)
+                self.assertIn(text,str(caught.exception))
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(self.wall({'face':'back','material':'sign','size':[1,1]},
+                                     {'face':'back','material':'sign','size':[1,1],'at':[.5,.5]}))
+        self.assertEqual(caught.exception.path,'/nodes/0/decals/1')
+        self.assertIn("overlaps decal 'decal_0'",str(caught.exception))
+        r = self.wall({'face':'back','material':'checks','size':[1,1]})
+        r['materials']['checks'] = {'color':'#000000','texture':{'pattern':'checker','colors':['#000000','#ffffff']}}
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(r)
+        self.assertIn('"projection": "fit"',str(caught.exception))
+        for node,text in (({'op':'cylinder','radius':1,'height':1},'curved'),
+                          ({'op':'extrude','points':[[0,0],[1,0],[0,1]],'depth':1},'several faces')):
+            with self.assertRaises(AssetError) as caught:
+                compile_recipe(fd_recipe({**node,'decals':[{'face':'side','material':'sign','size':[.1,.1]}]}))
+            self.assertIn(text,str(caught.exception))
+        # an L-shaped outline: the decal must not cross its notch
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(fd_recipe({'op':'extrude','points':[[0,0],[2,0],[2,1],[1,1],[1,2],[0,2]],'depth':1,
+                                      'decals':[{'face':'back','material':'sign','size':[.6,.6],'at':[1.3,1.3]}]}))
+        self.assertIn("crosses the face's outline",str(caught.exception))
+
+    def test_mesh_polygon_decal_and_modifiers_copy_it(self):
+        node = {'id':'m','op':'mesh','vertices':[[0,0,0],[0,1,0],[1,1,0],[1,0,0]],'faces':[[0,1,2,3]],
+                'decals':[{'id':'d','face':0,'material':'sign','size':[.5,.5],'at':[.5,.5]}]}
+        _,_,rep = compile_recipe(fd_recipe(node))
+        self.assertEqual(rep['triangles'],10)
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(fd_recipe({**node,'decals':[{'face':1,'material':'sign','size':[.5,.5]}]}))
+        self.assertIn('polygon by its index, 0-0',str(caught.exception))
+        node = {'id':'b','op':'box','size':[1,1,1],'decals':[{'id':'d','face':'back','material':'sign','size':[.4,.4]}],
+                'modifiers':[{'op':'array','count':3,'step':[2,0,0]}]}
+        _,_,rep = compile_recipe(fd_recipe(node))
+        self.assertEqual(rep['triangles'],3*20)
+        self.assertEqual((rep['decals'][0]['triangles'],rep['decals'][0]['added_triangles']),(6,24))
+        self.assertAlmostEqual(rep['decals'][0]['bounds']['min'][0],-.2,4)
+        self.assertAlmostEqual(rep['decals'][0]['bounds']['max'][0],4.2,4)
+
+    def test_preview_part_frames_a_decal_face_on(self):
+        from assetkit.preview import part_camera
+        _,_,rep = compile_recipe(self.wall({'id':'poster','face':'back','material':'poster','size':[.8,1.2],'at':[.8,.1]},
+                                           transform={'translate':[0,1.5,0]}))
+        view = part_camera(rep['parts'],'wall/poster',rep['decals'])
+        self.assertTrue(view['name'].startswith('decal_wall_poster'))
+        self.assertLess(view['eye'][2],-1)                 # on the -Z side, looking at the face
+        self.assertAlmostEqual(view['eye'][0],.8,3)
+        self.assertAlmostEqual(view['eye'][1],1.6,3)
+        with self.assertRaises(AssetError) as caught:
+            part_camera(rep['parts'],'wall/nope',rep['decals'])
+        self.assertIn('Decals: wall/poster',str(caught.exception))
+
+    @unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
+    def test_baked_decal_passes_both_modes_where_a_proud_quad_fails_without_depth(self):
+        from assetkit.visibility import verify
+        profile = {'yaw_steps':8,'pitches':[-.35,0],'distances':[1]}
+        baked = fd_recipe({'id':'wall','op':'box','size':[4,3,.2],'material':'wall','open':['bottom'],
+                           'decals':[{'id':'poster','face':'back','material':'sign','size':[.8,1.2],'at':[.8,.1]}]})
+        proud = fd_recipe({'id':'wall','op':'box','size':[4,3,.2],'material':'wall','open':['bottom']},
+                          {'id':'poster','op':'mesh','material':'sign','vertices':[[-.4,.6,0],[.4,.6,0],[.4,-.6,0],[-.4,-.6,0]],
+                           'faces':[[0,1,2,3]],'transform':{'translate':[.8,.1,-.135]}})
+        for depth in (False,True):
+            report = verify(baked,{**profile,'depth':depth},compiler=COMPILER,probe=PROBE)
+            self.assertTrue(report['ok'],report['failures'])
+            self.assertEqual(report['geometry']['counts'],{})
+        report = verify(proud,profile,compiler=COMPILER,probe=PROBE)
+        self.assertFalse(report['ok'])
+        self.assertGreater(report['totals']['wrong_pixels'],0)
+
+
 if __name__ == '__main__':
     unittest.main()

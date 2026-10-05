@@ -9,7 +9,7 @@ from meshlib import Mesh as NativeMesh, rgb
 from .geometry import (AssetError, Mesh, Face, add, sub, cross, dot, norm, extrude,
                        lathe, loft, explicit_mesh, transform, modify)
 from .schema import validate
-from . import textures as TEX, texout
+from . import textures as TEX, texout, faces as FACES
 
 
 SIDE_AXES = {'right':(0,1),'left':(0,-1),'top':(1,1),'bottom':(1,-1),'front':(2,1),'back':(2,-1)}
@@ -73,6 +73,7 @@ def compile_recipe(recipe, base=None, budgets='error'):
     labels = set()
     calls = 0
     notes = []
+    log = {'faces':[],'decals':[]}
 
     def node(spec, path, parent='', inherited='default', stack=()):
         nonlocal calls
@@ -127,13 +128,17 @@ def compile_recipe(recipe, base=None, budgets='error'):
             if target in stack: raise AssetError(path+'/ref','Prototype cycle: '+' → '.join((*stack,target)))
             mesh = node(prototypes[target],'/prototypes/'+target,label,material,(*stack,target))
             if 'material' in spec:
-                for face in mesh.faces: face.material = material
+                # faces maps and decals keep their materials
+                for face in mesh.faces:
+                    if not face.own: face.material = material
         if op not in ('group','instance'):
             for face in mesh.faces:
                 if op != 'mesh' or 'face_materials' not in spec:
                     face.material = material
                 face.part = label.lstrip('/')
                 face.local = tuple(mesh.vertices[i] for i in face.indices)
+            if (op != 'mesh' and 'faces' in spec) or 'decals' in spec:
+                FACES.apply(mesh,spec,op,label,materials,path,log)
         for i,modifier in enumerate(spec.get('modifiers',[])):
             if modifier['op'] == 'mirror':
                 note = mirror_note(mesh,modifier,label,f'{path}/modifiers/{i}')
@@ -206,6 +211,8 @@ def compile_recipe(recipe, base=None, budgets='error'):
         mesh.textures['split_faces'] = split_faces
     result = report(mesh,recipe,budget,materials)
     result['warnings'][:0] = breaches
+    if log['faces']: result['face_maps'] = log['faces']
+    if log['decals']: result['decals'] = decal_report(mesh,log['decals'])
     mesh.notes = notes
     if 'lod' in recipe:
         mesh.levels = compile_levels(recipe,mesh,base,budgets)
@@ -214,6 +221,21 @@ def compile_recipe(recipe, base=None, budgets='error'):
             result['warnings'] += [{**w,'level':k,'message':f'Level {k}: '+w['message']}
                                    for w in rep['warnings'] if w['code'] == 'over_budget']
     return mesh, materials, result
+
+
+def decal_report(mesh, decals):
+    """The report's decals: each with its faces in the final mesh (all copies) and their bounds,
+    their outward normal (the first copy's), and the triangles it added (8 a copy)."""
+    out = []
+    for entry in decals:
+        faces = [f for f in mesh.faces if f.decal == entry['id']]
+        if not faces: continue
+        points = [mesh.vertices[i] for f in faces for i in f.indices]
+        a,b,c = (mesh.vertices[i] for i in faces[0].indices)
+        out.append({**entry,'triangles':len(faces),'added_triangles':4*len(faces),
+                    'bounds':{'min':[min(p[k] for p in points) for k in range(3)],'max':[max(p[k] for p in points) for k in range(3)]},
+                    'normal':[round(x,6) for x in norm(cross(sub(b,a),sub(c,a)))]})
+    return out
 
 
 DEFAULT_BAND = 1.0

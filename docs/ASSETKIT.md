@@ -37,6 +37,7 @@ build-mine/mei-headless build-mine/mei-asset-probe` once):
 | Facing (−Z is the front), box sides, rotation, winding, u/v | [the conventions table](#authoring-rules-depth-mode) |
 | What each primitive costs | [Triangle costs](#triangle-costs) |
 | Limits that are not budgets (2,048 vertices, 128 root nodes, 7 windows) | [Hidden limits](#hidden-limits) |
+| A side or a cap in another material; a sign, poster or label on a face | [Face materials and decals](#face-materials-and-decals) |
 | A sign, a decal, stairs, a dial | [Cookbook](#cookbook) |
 | Texture scale, text on textures | [Texture tips](#texture-tips) |
 | What a failure means and how to repair it | [Reports and repairs](#reports-and-repairs) |
@@ -109,9 +110,11 @@ Most assets are drawn with the depth buffer (`"verification": {"required": true,
   overlap in area fight in the depth buffer, and the Asset Checker fails them as
   `coplanar_overlap` (in either mode). **Sink the part 1–2 cm into its neighbour** (stand the box
   at 0.99 instead of 1.0, set the panel 0.01 into the wall), **or open the hidden face** (a box's
-  `"open": ["bottom"]` where it stands on something). A part floating 1 mm off a surface is not
-  flush and passes the check, but ties in the depth buffer from far enough away; sinking it is
-  safer. `inspect` lists flush contacts by part pair before anything is rendered
+  `"open": ["bottom"]` where it stands on something). A picture on a face (a poster, a label, a
+  stain) is a **decal**, baked into the face ([Face materials and
+  decals](#face-materials-and-decals)), not a panel laid on it. A part floating 1 mm off a
+  surface is not flush and passes the check, but ties in the depth buffer from far enough away;
+  sinking it is safer. `inspect` lists flush contacts by part pair before anything is rendered
   (`flush_contacts`, with NumPy), `build` and `preview` check for them too (and stop when the
   Asset Checker is to run), and `verify` lists them first in its `failures`.
 - **Keep faces that face the same way at least 3 cm apart** where one covers the other: a sign
@@ -216,6 +219,8 @@ bars of its windows (1 mm apart) and their panes (1.7–2.3 cm); the vessel its 
 
 **More in `inspect`.**
 
+- `face_maps` and `decals`: each node's per-side materials and each decal, with their triangles
+  ([Face materials and decals](#face-materials-and-decals)); `build`'s `report.json` has them too.
 - `texture_windows`: the repeating textures' windows in use, `used` of `max` (7), each with its
   texture (`pattern 'brick'`, `image art/x.png`, `sheet 'signs' cell …`), size, bits and the
   `materials` that use it (materials with the same texture share one window). With more than 7,
@@ -277,7 +282,7 @@ python3 tools/mei_assets.py preview stall.asset.json -o build/assets/stall \
 | `--camera NAME=EX,EY,EZ:TX,TY,TZ` | From the eye, looking at the target. Repeatable. Without `NAME=` the view is `cameraN`; write `--camera=…` then if the eye's x is negative |
 | `--camera NAME=EX,EY,EZ@YAW,PITCH` | From the eye, at that yaw and pitch (degrees), as `camera_look` takes them in radians |
 | `--cameras FILE` | A JSON list of `{"name", "eye", "target"}` or `{"name", "eye", "yaw", "pitch"}`, for a set of views kept beside the recipe |
-| `--part ID` | `part_ID`: that part's bounds (an `id` from `inspect`'s `parts`; all parts with that id together) framed from the isometric view's direction. Repeatable; an unknown id is an error listing the parts |
+| `--part ID` | `part_ID`: that part's bounds (an `id` from `inspect`'s `parts`; all parts with that id together) framed from the isometric view's direction. A decal's id (`PART/ID`, from `inspect`'s `decals`) gives `decal_PART_ID`: the decal face on, from outside its face. Repeatable; an unknown id is an error listing the parts and decals |
 | `--closeups` | `eye_level`: a player's eye 1.6 units above the asset's base, on its −Z side, far enough back to see its whole front, looking at the middle of its front. And, when the asset is more than 1.5 times as long along one axis as across the others, `closeup_1` … (up to 4) along that axis: each frames one equal segment from the front, 15° above (from +X when the long axis is Z) |
 | `--upscale N` | 1–4, default 2: each camera view's PNG is 320 × 240 scaled up N times, pixel for pixel (the console draws 320 × 240) |
 
@@ -729,7 +734,7 @@ as in the stool example. A node's own translation happens **after** its modifier
 
 | `op` | Required fields | Optional fields / convention |
 |---|---|---|
-| `box` | `size: [x,y,z]` | Centered at the origin; `open`: sides to leave out, from `top` (+Y), `bottom` (−Y), `left` (−X), `right` (+X), `back` (−Z), `front` (+Z), or by axis `+y`, `-y`, `-x`, `+x`, `-z`, `+z` |
+| `box` | `size: [x,y,z]` | Centered at the origin; `open`: sides to leave out, from `top` (+Y), `bottom` (−Y), `left` (−X), `right` (+X), `back` (−Z), `front` (+Z), or by axis `+y`, `-y`, `-x`, `+x`, `-z`, `+z`; `faces`, `decals` ([below](#face-materials-and-decals)) |
 | `sphere` | `radius` | `rings: 6`, `segments: 12`; scale for an ellipsoid |
 | `cylinder` | `radius`, `height` | `segments: 12`, `caps: true`; centered, along Y |
 | `cone` | `radius`, `height` | Same as cylinder; tip at +height/2 |
@@ -738,7 +743,10 @@ as in the stool example. A node's own translation happens **after** its modifier
 | `loft` | `sections: [{"y":…, "points": [[x,z],…]},…]` | `caps: true`; increasing Y; same point count, correspondence and winding in every section |
 | `mesh` | `vertices: [[x,y,z],…]`, `faces: [[index,…],…]` | Zero-based indices; planar simple polygons are triangulated; outward right-handed winding; optional `face_materials` gives one material name per source polygon |
 | `group` | `children: [node,…]` | Combined geometry; material inherited by children lacking an explicit material |
-| `instance` | `ref` | Reference to a node in the root `prototypes` object; explicit instance material overrides the whole referenced component |
+| `instance` | `ref` | Reference to a node in the root `prototypes` object; explicit instance material overrides the whole referenced component, except the sides of `faces` maps and decals |
+
+`cylinder`, `cone`, `lathe`, `loft` and `extrude` take `faces` and `decals` too, and `mesh`
+`decals` ([Face materials and decals](#face-materials-and-decals)).
 
 A box's `open` sides are left out with the vertices only they use: `["bottom"]` for a building
 or a block standing on the ground, whose underside nobody sees and which would otherwise sort
@@ -795,7 +803,86 @@ Use `mesh.face_materials` for adjacent colored regions on one continuous surface
 a robot's visor and eyes. Each entry names a material for the corresponding source polygon;
 all triangles produced from that polygon retain the material. This avoids overlapping colored
 panels that can cut through one another under Mei's triangle depth sorting. The robot example's
-head uses this approach, retaining a closed mesh with shared boundary vertices.
+head uses this approach, retaining a closed mesh with shared boundary vertices. Primitives do the
+same with `faces` (a material per side) and `decals` (rectangles baked into a face), below.
+
+### Face materials and decals
+
+**Face materials.** `faces` on a `box`, `cylinder`, `cone`, `lathe`, `loft` or `extrude` node
+gives sides materials of their own; the sides it does not name keep the node's `material`. It
+adds no triangles and no vertices: the same faces with other materials.
+
+```json
+{"id": "shop", "op": "box", "size": [3, 2.4, 2], "material": "wall", "open": ["bottom"],
+ "faces": {"top": "roof", "back": "sign"}}
+```
+
+| `op` | Sides |
+|---|---|
+| `box` | `top`, `bottom`, `left`, `right`, `back`, `front`, or `+y`, `-y`, `-x`, `+x`, `-z`, `+z`, as for `open`: `back` is −Z, the side the front camera sees |
+| `cylinder`, `cone`, `lathe`, `loft` | `top` (`+y`) and `bottom` (`-y`), the caps; `side`, everything else |
+| `extrude` | `front` (`+z`) and `back` (`-z`), the outline's two faces; `side`, the walls |
+
+A side is named once (`top` with `+y` is an error). A side without faces is an error that says
+why: open, `caps: false`, a cone's top, a lathe profile ending in radius 0. A textured material
+follows its projection on its side as anywhere (a `fit` texture on a box's `back` covers that
+side once), and each repeating one is a texture window: the limit of 7 counts them and
+`inspect`'s `texture_windows` lists them. `inspect` and `report.json` list the maps as
+`face_maps`: per node its part, path, `sides` (side: material) and `triangles` per side. A `mesh`
+node's polygons take `face_materials` instead.
+
+**Decals.** `decals` on a `box`, `cylinder`, `cone`, `lathe`, `loft`, `extrude` or `mesh` node
+lays rectangles of other materials on its flat faces:
+
+```json
+{"id": "wall", "op": "box", "size": [4, 3, 0.2], "material": "wall", "open": ["bottom"],
+ "decals": [{"id": "poster", "face": "back", "material": "poster", "size": [0.8, 1.2], "at": [0.8, 0.1]}]}
+```
+
+| Field | Meaning |
+|---|---|
+| `face` | The flat face: a side of the table above (not the curved `side` of a cylinder, cone, lathe or loft, nor an extrusion's walls), or a `mesh` node's polygon index |
+| `material` | The decal's material. A textured one draws its texture once over the rectangle as `fit` does, with the texture's `rotate` and `flip`, so its texture says `"projection": "fit"` (an error otherwise: a repeating texture would take a window for nothing) |
+| `size` | Width and height, in the primitive's own units |
+| `at` | The centre, default `[0, 0]`: right and up from the primitive's origin as it lies on the face, the face seen from outside (u's right, v's up). Primitives are centred, so `[0, 0]` is the middle of a box's side or of a cap. On a box's `back` (−Z) right is +X, on its `front` −X; on an extrusion's `back`, `at` is in the outline's own x and y |
+| `id` | Default `decal_K` (K its index); the decal is `PART/ID` in the reports |
+
+Up to 32 a node. A decal lies inside its face, at least 0.001 units from the face's edges and from
+the other decals on it; otherwise the error says which edge and by how much, and the face's
+extent in `at`'s coordinates:
+
+```
+The decal at [1.8, 0], size [1, 1], does not fit inside the side 'back' of 'wall': its right edge is 0.3 past the face's right edge. In at's coordinates (right and up as seen from outside, from the primitive's origin) the face spans x -2 to 2, y -1.5 to 1.5; a decal lies inside its face, at least 0.001 from its edges. Move or shrink it, or give the whole side the material (faces).
+```
+
+Decals are applied with `faces`, before the node's modifiers and transform, so `array`, `mirror`
+and instances copy them. An instance's `material` changes neither.
+
+**How a decal is made.** It is baked into its face: the face's outline gets the rectangle as a
+hole, the ring around the hole is triangulated again (ear clipping, the hole joined to the
+outline by one edge), and the rectangle becomes two faces of the decal's material. The
+rectangle's corners are corners of the ring's triangles, so there are no T-junctions, and the
+decal lies in the face's plane sharing its edges with the ring, so nothing overlaps: no coplanar
+overlap for the Asset Checker, nothing for the depth test to tie, nothing for the ordering table
+to sort wrong. The part stays closed. **Cost: 8 triangles and 4 vertices a decal**, whatever its
+size: a face of *m* corners with *k* decals becomes *m* + 8*k* − 2 triangles where it was *m* − 2
+(the decal's own 2 and 6 more around it).
+
+The alternative was drawing order: a quad over the face, drawn after it. In the face's plane that
+is a coplanar overlap, which the Asset Checker fails in both modes, and the order would rest on
+each mode's tie-breaking; standing proud of the face, it must be 3 cm out before the depth key
+stops tying it ([close faces](#authoring-rules-depth-mode)), and without the depth buffer the
+ordering table sorts the quad and the face's large triangles by depth and gets it wrong from many
+angles. Measured with the default sweep (144 views) on a 0.8 × 1.2 poster on a 4 × 3 wall: the
+quad 3.5 cm proud (12 triangles) passes in depth mode and fails without it, 12,818 wrong-depth
+pixels in 52 views; the decal (18 triangles) passes both.
+
+**In the reports.** `inspect` and `report.json` list `decals`: per decal its `id`, `part`,
+`path`, `face`, `material`, `at`, `size`, `triangles` (its faces in the final mesh, every copy),
+`added_triangles` (8 a copy), `bounds` and `normal` (the first copy's). A decal's faces belong to
+its node's part. `preview --part PART/ID` frames a decal face on
+([Camera views](#camera-views-at-world-scale)), and the Asset Checker's issues name a decal's
+faces with `decal` beside `part` and `material`.
 
 ### Palette-backed materials
 
@@ -945,6 +1032,8 @@ profile, *k* the sections of a loft. Checked against `compile_recipe` for the va
 | `extrude` | 4*n* − 4 (2*n* sides, *n* − 2 each cap) | 2*n* | a square 12, a hexagon 20 |
 | `loft` | 2*n*(*k* − 1) + 2(*n* − 2) with caps | *n k* | 6 points, 3 sections: 24 + 8 = 32 |
 | `mesh` | *m* − 2 per polygon of *m* corners | as given | a quad 2 |
+| `faces` | no change | no change | a box with a sign side 12 |
+| a decal | 8 more | 4 more | a box with a decal 20; two decals 28 |
 
 Modifiers multiply: `mirror` 2 (with `keep_original`), `array` and `radial` their `count`,
 `subdivide` 4 per level. Texture splitting adds pieces (`split_faces` in the report). For the
@@ -969,6 +1058,7 @@ Limits that are not budgets, each an error naming itself when reached:
 | Textures drawn once (`fit`, `disc`) | 255 × 255 texels with the one-texel gutter; 8-bit ones 127 tall |
 | A slot | 256 × 256 4-bit or 256 × 128 8-bit texels; slot 15 holds the fonts |
 | Levels of detail | 7 |
+| Decals | 32 a node; each at least 0.001 units inside its face and from the others |
 | Coordinates | −32,767 to 32,767 units in a recipe; the mesh's 16.16 vertices below 32,768 |
 
 ## Cookbook
@@ -978,11 +1068,11 @@ and `preview` with a required depth-mode policy (`"verification": {"required": t
 true, "perspective": true}`), which they pass (the sign and the poster with texel grids in place of
 their images). Nodes and materials only; wrap them in a recipe.
 
-**A sign with a plain back.** A box cannot give one side its own material, but a `mesh` node can,
-with `face_materials`: the board as six quads, the front one textured with `fit` (the whole
-texture over that face), the rest plain. One closed part, so nothing is flush. The post is
-thinner than the board and sunk 10 cm into it, its front 4 cm behind the board's (not 1 cm:
-[close faces](#authoring-rules-depth-mode)), its top opened. 22 triangles.
+**A sign with a plain back.** A box whose `back` side (−Z, facing the front camera) has the sign's
+material, textured with `fit` (the whole texture over that side), the other sides plain: one
+closed part, nothing flush ([Face materials](#face-materials-and-decals)). The post is thinner
+than the board and sunk 10 cm into it, its front 4 cm behind the board's (not 1 cm: [close
+faces](#authoring-rules-depth-mode)), its top opened. 22 triangles.
 
 ```json
 "materials": {
@@ -990,24 +1080,18 @@ thinner than the board and sunk 10 cm into it, its front 4 cm behind the board's
   "face": {"color": "#e8d8b0", "texture": {"image": "art/sign.png", "bits": 8, "projection": "fit"}}
 },
 "nodes": [
-  {"id": "board", "op": "mesh", "material": "wood",
-   "vertices": [[-0.6, 0.3, -0.06], [0.6, 0.3, -0.06], [0.6, -0.3, -0.06], [-0.6, -0.3, -0.06],
-                [-0.6, 0.3, 0.06], [0.6, 0.3, 0.06], [0.6, -0.3, 0.06], [-0.6, -0.3, 0.06]],
-   "faces": [[0, 1, 2, 3], [5, 4, 7, 6], [4, 5, 1, 0], [3, 2, 6, 7], [4, 0, 3, 7], [1, 5, 6, 2]],
-   "face_materials": ["face", "wood", "wood", "wood", "wood", "wood"],
+  {"id": "board", "op": "box", "size": [1.2, 0.6, 0.12], "material": "wood", "faces": {"back": "face"},
    "transform": {"translate": [0, 2.2, 0]}},
   {"id": "post", "op": "box", "size": [0.08, 2.0, 0.04], "material": "wood", "open": ["top"],
    "transform": {"translate": [0, 1.0, 0]}}
 ]
 ```
 
-The first face, `[0, 1, 2, 3]`, is the front (z −0.06, facing −Z): its corners top-left,
-top-right, bottom-right, bottom-left as the front camera sees them.
-
-**A decal on a wall.** Today a decal is its own face standing in front of the wall: one quad
-(`mesh`, facing −Z), **at least 3 cm proud** of the wall's face (here 3.5 cm: the wall's face is
-at z −0.1, the quad at −0.135). Closer, it fights the wall from a distance; flush, it fails.
-12 triangles with the wall.
+**A decal on a wall.** A poster baked into the wall's front (the box's `back`): the wall's face is
+cut around the rectangle, which becomes two faces of the poster's material, in the wall's plane
+([Decals](#face-materials-and-decals)). Nothing is flush or proud, so it passes with and without
+the depth buffer. `at` is the poster's centre from the wall's centre, right and up as the front
+camera sees it. 18 triangles: the wall's 10 and the decal's 8.
 
 ```json
 "materials": {
@@ -1016,16 +1100,28 @@ at z −0.1, the quad at −0.135). Closer, it fights the wall from a distance; 
 },
 "nodes": [
   {"id": "wall", "op": "box", "size": [4, 3, 0.2], "material": "wall", "open": ["bottom"],
-   "transform": {"translate": [0, 1.5, 0]}},
-  {"id": "poster", "op": "mesh", "material": "poster",
-   "vertices": [[-0.4, 0.6, 0], [0.4, 0.6, 0], [0.4, -0.6, 0], [-0.4, -0.6, 0]], "faces": [[0, 1, 2, 3]],
-   "transform": {"translate": [0.8, 1.6, -0.135]}}
+   "decals": [{"id": "poster", "face": "back", "material": "poster", "size": [0.8, 1.2], "at": [0.8, 0.1]}],
+   "transform": {"translate": [0, 1.5, 0]}}
 ]
 ```
 
-A decal flush with the wall is drawn into the wall's own texture instead: the wall's front as a
-`mesh` polygon with its own material (`face_materials`, as the sign) whose `fit` image holds the
-decal.
+**A drum with a lid and a label.** A cylinder's caps in one material and a label on the lid: 52
+triangles (44 and the decal's 8).
+
+```json
+"materials": {
+  "drum": {"color": "#406040"}, "lid": {"color": "#a0a8b0"}, "label": {"color": "#e0d0a0"}
+},
+"nodes": [
+  {"id": "drum", "op": "cylinder", "radius": 0.3, "height": 0.9, "segments": 12, "material": "drum",
+   "faces": {"top": "lid", "bottom": "lid"},
+   "decals": [{"id": "label", "face": "top", "material": "label", "size": [0.24, 0.12], "at": [0, -0.1]}],
+   "transform": {"translate": [0, 0.45, 0]}}
+]
+```
+
+On a cap, `at`'s right and up are as the top view shows the top cap (+X right, +Z up), so
+`[0, -0.1]` sits the label 10 cm toward the front camera.
 
 **Stairs.** One `extrude` of the stairs' side outline (x the run, y the rise), turned so the
 extrusion runs along X and the flight climbs away from the front camera (`rotate` [0, −90, 0]
@@ -1680,7 +1776,13 @@ stopping before rendering on flush contacts with a fix naming the part, directio
 close parallel faces as a warning in `inspect` and `verify`, `inspect`'s texture windows, its
 full report over budget, its mirror and below-ground warnings, texture splits that no longer
 collapse and the error when one does, the planarity error's numbers, node ids in errors, and
-box sides named by axis. It also runs as part of `make test` when
+box sides named by axis. `FaceMaterialTests` checks `faces` on every primitive that takes it
+(sides by name and axis, no added triangles, the errors, instances keeping them, texture windows
+counted); `DecalTests` that each decal adds 8 triangles and 4 vertices and keeps its part closed,
+its corners and texture coordinates, `rotate`, no flush contacts or T-junctions (with NumPy), the
+errors, `mesh` polygons and modifiers' copies, `--part` framing a decal, and (with NumPy and the
+native tools) that a baked decal passes the Asset Checker with and without the depth buffer
+where a quad 3.5 cm proud fails without it. It also runs as part of `make test` when
 Python is available. Pure Python tests can run independently; native render tests skip if
 the binaries are absent:
 

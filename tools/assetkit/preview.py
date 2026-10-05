@@ -188,12 +188,22 @@ def framing(lo, hi, yaw, pitch, name, margin=1.15):
     return camera(name,eye,center)
 
 
-def part_camera(parts, part_id):
-    """--part ID: the part's bounds framed from the isometric direction."""
+def part_camera(parts, part_id, decals=()):
+    """--part ID: the part's bounds framed from the isometric direction; a decal's id (PART/ID, as
+    the report's decals name them) frames the decal face on, from outside its face."""
     found = [p for p in parts if p['id'] == part_id]
+    decal = next((d for d in decals or () if d['id'] == part_id),None)
+    if not found and decal:
+        n = decal['normal']
+        # look along -normal: forward = (sin yaw cos pitch, sin pitch, cos yaw cos pitch)
+        yaw, pitch = math.atan2(-n[0],-n[2]) if abs(n[1]) < 0.999 else 0.0, math.asin(max(-1,min(1,-n[1])))
+        if abs(n[1]) >= 0.999: pitch = -1.45 if n[1] > 0 else 1.45     # nearly straight down (up) at a cap
+        return framing(decal['bounds']['min'],decal['bounds']['max'],yaw,pitch,
+                       'decal_'+re.sub(r'[^a-z0-9_]','_',part_id)[:34],margin=1.6)
     if not found:
         known = ', '.join(sorted({p['id'] for p in parts})[:40])
-        raise AssetError('/arguments/part',f'No part {part_id!r}. Parts: {known}.')
+        more = f' Decals: {", ".join(d["id"] for d in decals[:20])}.' if decals else ''
+        raise AssetError('/arguments/part',f'No part {part_id!r}. Parts: {known}.{more}')
     lo = [min(p['bounds']['min'][k] for p in found) for k in range(3)]
     hi = [max(p['bounds']['max'][k] for p in found) for k in range(3)]
     return framing(lo,hi,VIEWS[0][1],VIEWS[0][2],'part_'+re.sub(r'[^a-z0-9_]','_',part_id)[:35])

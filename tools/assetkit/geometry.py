@@ -26,10 +26,13 @@ class Face:
     uv: tuple = None
     uvf: tuple = None            # texel coordinates per corner (floats), from the projection
     texcoords: tuple = None      # set on the final mesh: integer texel coordinates per corner
+    own: bool = False            # the material came from a faces map or a decal (an instance's material keeps it)
+    decal: str = None            # a decal's face: the decal's id (PART/ID)
 
     def copy(self, indices, reverse=False):
         flip = (lambda t: tuple(reversed(t)) if t is not None else None) if reverse else (lambda t: t)
-        return Face(indices, self.material, self.part, flip(self.local), self.polygon, flip(self.uv))
+        return Face(indices, self.material, self.part, flip(self.local), self.polygon, flip(self.uv),
+                    own=self.own, decal=self.decal)
 
 
 @dataclass
@@ -258,7 +261,7 @@ def modify(mesh, spec, path):
                 c_ab,c_bc,c_ca = mid(0,1),mid(1,2),mid(2,0)
                 for t,cs in (((a,ab,ca),(corners[0],c_ab,c_ca)),((ab,b,bc),(c_ab,corners[1],c_bc)),
                              ((ca,bc,c),(c_ca,c_bc,corners[2])),((ab,bc,ca),(c_ab,c_bc,c_ca))):
-                    piece = Face(t,face.material,face.part,None,face.polygon,None)
+                    piece = Face(t,face.material,face.part,None,face.polygon,None,own=face.own,decal=face.decal)
                     if face.local: piece.local = tuple(p for p,_ in cs)
                     if face.uv: piece.uv = tuple(u for _,u in cs)
                     result.faces.append(piece)

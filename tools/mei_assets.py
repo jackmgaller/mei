@@ -221,7 +221,7 @@ def camera_views(shots, report):
     from assetkit.preview import closeups, part_camera
     if not shots: return []
     views=closeups(report['bounds']) if shots.get('closeups') else []
-    views+=[part_camera(report['parts'],part) for part in shots.get('parts',[])]
+    views+=[part_camera(report['parts'],part,report.get('decals',())) for part in shots.get('parts',[])]
     views+=list(shots.get('cameras',[]))
     names=[v['name'] for v in views]
     if len(set(names))!=len(names):
