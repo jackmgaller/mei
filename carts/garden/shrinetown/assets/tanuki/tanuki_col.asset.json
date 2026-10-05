@@ -1,0 +1,62 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "tanuki_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "box",
+   "size": [
+    0.76,
+    0.72,
+    0.7
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     0.36,
+     0
+    ]
+   }
+  },
+  {
+   "id": "head",
+   "op": "box",
+   "size": [
+    0.6,
+    0.68,
+    0.58
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     1.06,
+     0
+    ]
+   }
+  }
+ ]
+}
