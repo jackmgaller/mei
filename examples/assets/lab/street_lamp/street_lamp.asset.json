@@ -1,0 +1,536 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "street_lamp",
+ "budget": {
+  "vertices": 320,
+  "triangles": 450
+ },
+ "sheets": {
+  "lamp": {
+   "image": "art/lamp_sheet.png"
+  }
+ },
+ "materials": {
+  "pole": {
+   "color": "#2e5b47"
+  },
+  "gold": {
+   "color": "#d0a64c",
+   "smooth": true
+  },
+  "plinth": {
+   "color": "#9c978b",
+   "texture": {
+    "pattern": "speckle",
+    "size": 8,
+    "colors": [
+     "#a19c90",
+     "#86817a",
+     "#b8b2a4"
+    ],
+    "params": {
+     "density": 0.3
+    },
+    "projection": "cylindrical",
+    "scale": [
+     0.4,
+     0.2
+    ]
+   }
+  },
+  "shade": {
+   "color": "#2e5b47",
+   "smooth": true
+  },
+  "glow": {
+   "color": "#fff1c4",
+   "class": "emissive",
+   "tag": "light"
+  },
+  "speaker": {
+   "color": "#e4e1d6"
+  },
+  "mouth": {
+   "color": "#3a3a3e"
+  },
+  "banner": {
+   "color": "#e25c80",
+   "tag": "sign",
+   "texture": {
+    "sheet": "lamp",
+    "cell": "banner",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "spray": {
+   "color": "#fab2c8",
+   "double_sided": true,
+   "texture": {
+    "sheet": "lamp",
+    "cell": "spray",
+    "projection": "fit"
+   }
+  },
+  "plate": {
+   "color": "#f0f0e6",
+   "texture": {
+    "sheet": "lamp",
+    "cell": "plate",
+    "projection": "fit"
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "plinth",
+   "op": "lathe",
+   "segments": 8,
+   "material": "plinth",
+   "profile": [
+    [
+     0.2,
+     0
+    ],
+    [
+     0.2,
+     0.1
+    ],
+    [
+     0.1,
+     0.44
+    ]
+   ]
+  },
+  {
+   "id": "pole",
+   "op": "cylinder",
+   "radius": 0.062,
+   "height": 3.36,
+   "segments": 8,
+   "caps": false,
+   "material": "pole",
+   "transform": {
+    "translate": [
+     0,
+     2.1,
+     0
+    ]
+   }
+  },
+  {
+   "id": "rings",
+   "op": "group",
+   "material": "gold",
+   "children": [
+    {
+     "id": "ring_low",
+     "op": "cylinder",
+     "radius": 0.08,
+     "height": 0.05,
+     "segments": 6,
+     "transform": {
+      "translate": [
+       0,
+       1.05,
+       0
+      ]
+     }
+    },
+    {
+     "id": "ring_high",
+     "op": "cylinder",
+     "radius": 0.08,
+     "height": 0.05,
+     "segments": 6,
+     "transform": {
+      "translate": [
+       0,
+       3.3,
+       0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "crown",
+   "op": "lathe",
+   "segments": 6,
+   "material": "gold",
+   "profile": [
+    [
+     0.05,
+     3.74
+    ],
+    [
+     0.1,
+     3.79
+    ],
+    [
+     0.035,
+     3.88
+    ],
+    [
+     0.055,
+     3.95
+    ],
+    [
+     0,
+     4.06
+    ]
+   ]
+  },
+  {
+   "id": "arms",
+   "op": "group",
+   "children": [
+    {
+     "id": "arm",
+     "op": "extrude",
+     "points": [
+      [
+       0.02,
+       3.56
+      ],
+      [
+       0.0792,
+       3.7422
+      ],
+      [
+       0.2342,
+       3.8548
+      ],
+      [
+       0.4258,
+       3.8548
+      ],
+      [
+       0.5808,
+       3.7422
+      ],
+      [
+       0.64,
+       3.56
+      ],
+      [
+       0.6,
+       3.56
+      ],
+      [
+       0.5484,
+       3.7187
+      ],
+      [
+       0.4134,
+       3.8168
+      ],
+      [
+       0.2466,
+       3.8168
+      ],
+      [
+       0.1116,
+       3.7187
+      ],
+      [
+       0.06,
+       3.56
+      ]
+     ],
+     "depth": 0.045,
+     "material": "pole"
+    },
+    {
+     "id": "lamp",
+     "op": "group",
+     "transform": {
+      "translate": [
+       0.6,
+       0,
+       0
+      ]
+     },
+     "children": [
+      {
+       "id": "shade",
+       "op": "lathe",
+       "segments": 6,
+       "material": "shade",
+       "profile": [
+        [
+         0.165,
+         3.32
+        ],
+        [
+         0.1,
+         3.43
+        ],
+        [
+         0,
+         3.58
+        ]
+       ]
+      },
+      {
+       "id": "globe",
+       "op": "lathe",
+       "segments": 6,
+       "material": "glow",
+       "profile": [
+        [
+         0,
+         3.19
+        ],
+        [
+         0.095,
+         3.25
+        ],
+        [
+         0.12,
+         3.34
+        ]
+       ]
+      }
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "banner_arms",
+   "op": "group",
+   "material": "pole",
+   "children": [
+    {
+     "id": "bracket_top",
+     "op": "box",
+     "size": [
+      0.5,
+      0.03,
+      0.03
+     ],
+     "transform": {
+      "translate": [
+       0.28,
+       3.06,
+       0
+      ]
+     }
+    },
+    {
+     "id": "bracket_low",
+     "op": "box",
+     "size": [
+      0.5,
+      0.03,
+      0.03
+     ],
+     "transform": {
+      "translate": [
+       0.28,
+       1.88,
+       0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "banner",
+   "op": "box",
+   "size": [
+    0.38,
+    1.14,
+    0.016
+   ],
+   "material": "banner",
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     -1.5
+    ],
+    "translate": [
+     0.3,
+     2.47,
+     0
+    ]
+   }
+  },
+  {
+   "id": "speaker",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     0,
+     -25,
+     0
+    ],
+    "translate": [
+     0,
+     2.95,
+     0
+    ]
+   },
+   "children": [
+    {
+     "id": "speaker_bracket",
+     "op": "box",
+     "size": [
+      0.2,
+      0.04,
+      0.04
+     ],
+     "material": "pole",
+     "transform": {
+      "translate": [
+       -0.12,
+       0,
+       0
+      ]
+     }
+    },
+    {
+     "id": "horn",
+     "op": "lathe",
+     "segments": 6,
+     "material": "speaker",
+     "profile": [
+      [
+       0.05,
+       -0.02
+      ],
+      [
+       0.065,
+       0.12
+      ],
+      [
+       0.15,
+       0.26
+      ]
+     ],
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       100
+      ],
+      "translate": [
+       -0.2,
+       0,
+       0
+      ]
+     }
+    },
+    {
+     "id": "horn_mouth",
+     "op": "cylinder",
+     "radius": 0.125,
+     "height": 0.01,
+     "segments": 6,
+     "caps": true,
+     "material": "mouth",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       100
+      ],
+      "translate": [
+       -0.443,
+       -0.043,
+       0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sprays",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     0,
+     45,
+     0
+    ]
+   },
+   "children": [
+    {
+     "id": "spray",
+     "op": "mesh",
+     "material": "spray",
+     "vertices": [
+      [
+       0.04,
+       3.02,
+       0
+      ],
+      [
+       0.56,
+       3.02,
+       0
+      ],
+      [
+       0.56,
+       3.54,
+       0
+      ],
+      [
+       0.04,
+       3.54,
+       0
+      ]
+     ],
+     "faces": [
+      [
+       3,
+       2,
+       1,
+       0
+      ]
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "radial",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "id": "plate",
+   "op": "box",
+   "size": [
+    0.15,
+    0.075,
+    0.02
+   ],
+   "material": "plate",
+   "transform": {
+    "translate": [
+     0,
+     1.6,
+     -0.07
+    ]
+   }
+  }
+ ]
+}

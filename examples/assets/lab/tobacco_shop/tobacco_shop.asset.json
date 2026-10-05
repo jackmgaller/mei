@@ -1,0 +1,1540 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "tobacco_shop",
+ "budget": {
+  "vertices": 1024,
+  "triangles": 900
+ },
+ "sheets": {
+  "shop": {
+   "image": "art/shop_sheet.png"
+  }
+ },
+ "materials": {
+  "mortar": {
+   "color": "#e6dcc4",
+   "tag": "wall",
+   "texture": {
+    "pattern": "speckle",
+    "size": 16,
+    "colors": [
+     "#e6dcc4",
+     "#d4c8ae",
+     "#efe7d4"
+    ],
+    "params": {
+     "density": 0.22,
+     "seed": 3
+    },
+    "projection": "box",
+    "scale": [
+     0.8,
+     0.8
+    ]
+   }
+  },
+  "siding": {
+   "color": "#7d97a6",
+   "tag": "wall",
+   "texture": {
+    "pattern": "stripes",
+    "size": 16,
+    "colors": [
+     "#86a0ae",
+     "#86a0ae",
+     "#86a0ae",
+     "#6a8392"
+    ],
+    "params": {
+     "count": 4,
+     "axis": "v"
+    },
+    "projection": "box",
+    "scale": [
+     0.6,
+     0.6
+    ]
+   }
+  },
+  "kawara": {
+   "color": "#4a5560",
+   "tag": "roof",
+   "texture": {
+    "texels": [
+     "0111111001111110",
+     "1222222112222221",
+     "1222222112222221",
+     "1222222112222221",
+     "1222222112222221",
+     "1222222112222221",
+     "1222222112222221",
+     "3333333333333333",
+     "0111111001111110",
+     "1222222112222221",
+     "1222222112222221",
+     "1222222112222221",
+     "1222222112222221",
+     "1222222112222221",
+     "1222222112222221",
+     "3333333333333333"
+    ],
+    "colors": [
+     "#3b444e",
+     "#56616d",
+     "#6a7684",
+     "#2c333b"
+    ],
+    "projection": "box",
+    "scale": [
+     0.6,
+     0.45
+    ]
+   }
+  },
+  "ridge": {
+   "color": "#3a424b",
+   "tag": "roof"
+  },
+  "base": {
+   "color": "#6d6a64"
+  },
+  "trim": {
+   "color": "#5b3b2a"
+  },
+  "cabinet": {
+   "color": "#8b5a3a"
+  },
+  "counter": {
+   "color": "#c8b58e"
+  },
+  "awning": {
+   "color": "#2f7d55",
+   "tag": "roof",
+   "texture": {
+    "pattern": "stripes",
+    "size": 16,
+    "colors": [
+     "#2f7d55",
+     "#ece6d2"
+    ],
+    "params": {
+     "count": 2,
+     "axis": "u"
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "phone": {
+   "color": "#f08cb0",
+   "smooth": false
+  },
+  "phone_dark": {
+   "color": "#c45f86"
+  },
+  "vend_red": {
+   "color": "#a8262e"
+  },
+  "vend_white": {
+   "color": "#e8e4da"
+  },
+  "vend_top": {
+   "color": "#55575c"
+  },
+  "steel": {
+   "color": "#a7abb0"
+  },
+  "concrete": {
+   "color": "#a6a196"
+  },
+  "ac_body": {
+   "color": "#e2e0d6"
+  },
+  "pot": {
+   "color": "#b4643c"
+  },
+  "leaf": {
+   "color": "#4f8f3e",
+   "smooth": true
+  },
+  "pole": {
+   "color": "#c8b48a"
+  },
+  "towel_blue": {
+   "color": "#4f7fc8",
+   "double_sided": true
+  },
+  "towel_white": {
+   "color": "#f2efe6",
+   "double_sided": true
+  },
+  "sign": {
+   "color": "#ce2228",
+   "tag": "sign",
+   "texture": {
+    "sheet": "shop",
+    "cell": "sign",
+    "projection": "fit"
+   }
+  },
+  "vsign": {
+   "color": "#fcf8ec",
+   "class": "emissive",
+   "tag": "sign",
+   "texture": {
+    "sheet": "shop",
+    "cell": "vsign",
+    "projection": "fit"
+   }
+  },
+  "showcase": {
+   "color": "#96b6ba",
+   "tag": "window",
+   "texture": {
+    "sheet": "shop",
+    "cell": "showcase",
+    "projection": "fit"
+   }
+  },
+  "vend": {
+   "color": "#e8e4d6",
+   "class": "emissive",
+   "tag": "sign",
+   "texture": {
+    "sheet": "shop",
+    "cell": "vend",
+    "projection": "fit"
+   }
+  },
+  "window": {
+   "color": "#8ca8b0",
+   "tag": "window",
+   "texture": {
+    "sheet": "shop",
+    "cell": "window",
+    "projection": "fit"
+   }
+  },
+  "upwin": {
+   "color": "#96b0c4",
+   "tag": "window",
+   "texture": {
+    "sheet": "shop",
+    "cell": "upwin",
+    "projection": "fit"
+   }
+  },
+  "salt": {
+   "color": "#1e46a0",
+   "tag": "sign",
+   "texture": {
+    "sheet": "shop",
+    "cell": "salt",
+    "projection": "fit"
+   }
+  },
+  "ac_grille": {
+   "color": "#46484c",
+   "texture": {
+    "sheet": "shop",
+    "cell": "ac",
+    "projection": "fit"
+   }
+  },
+  "door": {
+   "color": "#b0b4ba",
+   "tag": "door",
+   "texture": {
+    "sheet": "shop",
+    "cell": "door",
+    "projection": "fit"
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "ground_walls",
+   "op": "box",
+   "size": [
+    3.2,
+    2.6,
+    2.8
+   ],
+   "transform": {
+    "translate": [
+     0,
+     1.3,
+     0
+    ]
+   },
+   "material": "mortar",
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "upper_walls",
+   "op": "box",
+   "size": [
+    3.2,
+    2.3,
+    2.8
+   ],
+   "transform": {
+    "translate": [
+     0,
+     3.75,
+     0
+    ]
+   },
+   "material": "siding",
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "foundation",
+   "op": "box",
+   "size": [
+    3.26,
+    0.16,
+    2.86
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.07,
+     0
+    ]
+   },
+   "material": "base",
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "belt",
+   "op": "box",
+   "size": [
+    3.28,
+    0.16,
+    2.88
+   ],
+   "transform": {
+    "translate": [
+     0,
+     2.6,
+     0
+    ]
+   },
+   "material": "trim"
+  },
+  {
+   "id": "gables",
+   "op": "extrude",
+   "material": "siding",
+   "depth": 3.2,
+   "points": [
+    [
+     -1.4,
+     0
+    ],
+    [
+     1.4,
+     0
+    ],
+    [
+     0,
+     1.0
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ],
+    "translate": [
+     0,
+     4.9,
+     0
+    ]
+   }
+  },
+  {
+   "id": "roof_back",
+   "op": "box",
+   "size": [
+    3.7,
+    0.08,
+    2.0804650534085254
+   ],
+   "transform": {
+    "rotate": [
+     35.53767779197438,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     5.366288184764293,
+     0.7988104929322465
+    ]
+   },
+   "material": "kawara"
+  },
+  {
+   "id": "roof_front",
+   "op": "box",
+   "size": [
+    3.72,
+    0.08,
+    2.0804650534085254
+   ],
+   "transform": {
+    "rotate": [
+     -35.53767779197438,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     5.366288184764293,
+     -0.7988104929322465
+    ]
+   },
+   "material": "kawara"
+  },
+  {
+   "id": "ridge",
+   "op": "box",
+   "size": [
+    3.78,
+    0.16,
+    0.22
+   ],
+   "transform": {
+    "translate": [
+     0,
+     5.970000000000001,
+     0
+    ]
+   },
+   "material": "ridge"
+  },
+  {
+   "id": "ridge_ends",
+   "op": "group",
+   "material": "ridge",
+   "children": [
+    {
+     "id": "onigawara",
+     "op": "cylinder",
+     "radius": 0.13,
+     "height": 0.08,
+     "segments": 6,
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       90
+      ],
+      "translate": [
+       1.915,
+       6.0,
+       0
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "cabinet",
+   "op": "box",
+   "size": [
+    1.72,
+    0.9,
+    0.42
+   ],
+   "transform": {
+    "translate": [
+     -0.66,
+     0.45,
+     -1.59
+    ]
+   },
+   "material": "cabinet",
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "showcase",
+   "op": "box",
+   "size": [
+    1.56,
+    0.5,
+    0.02
+   ],
+   "transform": {
+    "translate": [
+     -0.66,
+     0.56,
+     -1.8
+    ]
+   },
+   "material": "showcase"
+  },
+  {
+   "id": "counter",
+   "op": "box",
+   "size": [
+    1.84,
+    0.05,
+    0.52
+   ],
+   "transform": {
+    "translate": [
+     -0.66,
+     0.915,
+     -1.62
+    ]
+   },
+   "material": "counter"
+  },
+  {
+   "id": "window",
+   "op": "box",
+   "size": [
+    1.72,
+    1.25,
+    0.04
+   ],
+   "transform": {
+    "translate": [
+     -0.66,
+     1.6,
+     -1.4
+    ]
+   },
+   "material": "window"
+  },
+  {
+   "id": "sill",
+   "op": "box",
+   "size": [
+    1.8,
+    0.06,
+    0.08
+   ],
+   "transform": {
+    "translate": [
+     -0.66,
+     2.25,
+     -1.43
+    ]
+   },
+   "material": "steel"
+  },
+  {
+   "id": "phone",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     0,
+     12,
+     0
+    ],
+    "translate": [
+     -1.2,
+     0,
+     -1.66
+    ]
+   },
+   "children": [
+    {
+     "id": "phone_body",
+     "op": "box",
+     "size": [
+      0.24,
+      0.15,
+      0.2
+     ],
+     "transform": {
+      "translate": [
+       0,
+       1.005,
+       0
+      ]
+     },
+     "material": "phone"
+    },
+    {
+     "id": "phone_top",
+     "op": "box",
+     "size": [
+      0.2,
+      0.05,
+      0.12
+     ],
+     "transform": {
+      "translate": [
+       0,
+       1.08,
+       0.03
+      ]
+     },
+     "material": "phone"
+    },
+    {
+     "id": "handset",
+     "op": "box",
+     "size": [
+      0.27,
+      0.05,
+      0.07
+     ],
+     "transform": {
+      "translate": [
+       0,
+       1.12,
+       -0.06
+      ]
+     },
+     "material": "phone_dark"
+    },
+    {
+     "id": "earpiece",
+     "op": "box",
+     "size": [
+      0.07,
+      0.06,
+      0.09
+     ],
+     "transform": {
+      "translate": [
+       -0.11,
+       1.142,
+       -0.06
+      ]
+     },
+     "material": "phone_dark"
+    },
+    {
+     "id": "mouthpiece",
+     "op": "box",
+     "size": [
+      0.07,
+      0.06,
+      0.09
+     ],
+     "transform": {
+      "translate": [
+       0.11,
+       1.142,
+       -0.06
+      ]
+     },
+     "material": "phone_dark"
+    },
+    {
+     "id": "coin_box",
+     "op": "box",
+     "size": [
+      0.12,
+      0.04,
+      0.02
+     ],
+     "transform": {
+      "translate": [
+       0,
+       1.0,
+       -0.1
+      ]
+     },
+     "material": "phone_dark"
+    }
+   ]
+  },
+  {
+   "id": "awning",
+   "op": "box",
+   "size": [
+    1.9,
+    0.04,
+    0.68
+   ],
+   "transform": {
+    "rotate": [
+     -20,
+     0,
+     0
+    ],
+    "translate": [
+     -0.66,
+     2.24,
+     -1.7
+    ]
+   },
+   "material": "awning"
+  },
+  {
+   "id": "valance",
+   "op": "box",
+   "size": [
+    1.9,
+    0.16,
+    0.02
+   ],
+   "transform": {
+    "translate": [
+     -0.66,
+     2.05,
+     -2.045
+    ]
+   },
+   "material": "awning"
+  },
+  {
+   "id": "sign",
+   "op": "box",
+   "size": [
+    1.7,
+    0.42,
+    0.05
+   ],
+   "transform": {
+    "translate": [
+     -0.66,
+     2.62,
+     -1.46
+    ]
+   },
+   "material": "sign"
+  },
+  {
+   "id": "vending_a",
+   "op": "group",
+   "transform": {
+    "translate": [
+     0.6,
+     0,
+     -1.69
+    ]
+   },
+   "children": [
+    {
+     "id": "body",
+     "op": "box",
+     "size": [
+      0.62,
+      1.8,
+      0.62
+     ],
+     "transform": {
+      "translate": [
+       0,
+       0.9,
+       0
+      ]
+     },
+     "material": "vend_red",
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "face",
+     "op": "box",
+     "size": [
+      0.54,
+      1.08,
+      0.02
+     ],
+     "transform": {
+      "translate": [
+       0,
+       1.15,
+       -0.31
+      ]
+     },
+     "material": "vend"
+    },
+    {
+     "id": "cap",
+     "op": "box",
+     "size": [
+      0.64,
+      0.04,
+      0.66
+     ],
+     "transform": {
+      "translate": [
+       0,
+       1.81,
+       0
+      ]
+     },
+     "material": "vend_top"
+    }
+   ]
+  },
+  {
+   "id": "vending_b",
+   "op": "group",
+   "transform": {
+    "translate": [
+     1.25,
+     0,
+     -1.69
+    ]
+   },
+   "children": [
+    {
+     "id": "body",
+     "op": "box",
+     "size": [
+      0.62,
+      1.8,
+      0.62
+     ],
+     "transform": {
+      "translate": [
+       0,
+       0.9,
+       0
+      ]
+     },
+     "material": "vend_white",
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "face",
+     "op": "box",
+     "size": [
+      0.54,
+      1.08,
+      0.02
+     ],
+     "transform": {
+      "translate": [
+       0,
+       1.15,
+       -0.31
+      ]
+     },
+     "material": "vend"
+    },
+    {
+     "id": "cap",
+     "op": "box",
+     "size": [
+      0.645,
+      0.04,
+      0.67
+     ],
+     "transform": {
+      "translate": [
+       0,
+       1.815,
+       0
+      ]
+     },
+     "material": "vend_top"
+    }
+   ]
+  },
+  {
+   "id": "ashtray",
+   "op": "group",
+   "transform": {
+    "translate": [
+     0.05,
+     0,
+     -2.2
+    ]
+   },
+   "children": [
+    {
+     "id": "stand",
+     "op": "cylinder",
+     "radius": 0.035,
+     "height": 0.62,
+     "segments": 6,
+     "caps": false,
+     "material": "steel",
+     "transform": {
+      "translate": [
+       0,
+       0.33,
+       0
+      ]
+     }
+    },
+    {
+     "id": "foot",
+     "op": "cylinder",
+     "radius": 0.16,
+     "height": 0.04,
+     "segments": 8,
+     "material": "steel",
+     "transform": {
+      "translate": [
+       0,
+       0.02,
+       0
+      ]
+     }
+    },
+    {
+     "id": "bowl",
+     "op": "lathe",
+     "segments": 8,
+     "material": "steel",
+     "profile": [
+      [
+       0.05,
+       0.6
+      ],
+      [
+       0.15,
+       0.66
+      ],
+      [
+       0.16,
+       0.72
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "door",
+   "op": "box",
+   "size": [
+    0.04,
+    1.9,
+    0.86
+   ],
+   "transform": {
+    "translate": [
+     1.6,
+     0.97,
+     0.6
+    ]
+   },
+   "material": "door"
+  },
+  {
+   "id": "step",
+   "op": "box",
+   "size": [
+    0.32,
+    0.12,
+    1.0
+   ],
+   "transform": {
+    "translate": [
+     1.745,
+     0.06,
+     0.6
+    ]
+   },
+   "material": "concrete",
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "salt",
+   "op": "box",
+   "size": [
+    0.02,
+    0.26,
+    0.26
+   ],
+   "transform": {
+    "translate": [
+     1.6,
+     1.55,
+     -0.3
+    ]
+   },
+   "material": "salt"
+  },
+  {
+   "id": "door_hood",
+   "op": "box",
+   "size": [
+    0.36,
+    0.05,
+    1.1
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     -10
+    ],
+    "translate": [
+     1.76,
+     2.08,
+     0.6
+    ]
+   },
+   "material": "steel"
+  },
+  {
+   "id": "upwin",
+   "op": "box",
+   "size": [
+    1.2,
+    0.9,
+    0.04
+   ],
+   "transform": {
+    "translate": [
+     -0.65,
+     3.8,
+     -1.4
+    ]
+   },
+   "material": "upwin"
+  },
+  {
+   "id": "side_upwin",
+   "op": "box",
+   "size": [
+    0.04,
+    0.9,
+    1.2
+   ],
+   "transform": {
+    "translate": [
+     -1.6,
+     3.8,
+     0.3
+    ]
+   },
+   "material": "upwin"
+  },
+  {
+   "id": "side_upsill",
+   "op": "box",
+   "size": [
+    0.1,
+    0.05,
+    1.28
+   ],
+   "transform": {
+    "translate": [
+     -1.645,
+     3.33,
+     0.3
+    ]
+   },
+   "material": "steel"
+  },
+  {
+   "id": "drainpipe",
+   "op": "cylinder",
+   "radius": 0.04,
+   "height": 4.8,
+   "segments": 5,
+   "caps": false,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -1.66,
+     2.45,
+     1.32
+    ]
+   }
+  },
+  {
+   "id": "upsill",
+   "op": "box",
+   "size": [
+    1.28,
+    0.05,
+    0.1
+   ],
+   "transform": {
+    "translate": [
+     -0.65,
+     3.33,
+     -1.445
+    ]
+   },
+   "material": "steel"
+  },
+  {
+   "id": "aircon",
+   "op": "group",
+   "transform": {
+    "translate": [
+     0.85,
+     3.25,
+     -1.52
+    ]
+   },
+   "children": [
+    {
+     "id": "ac_box",
+     "op": "box",
+     "size": [
+      0.72,
+      0.52,
+      0.26
+     ],
+     "transform": {
+      "translate": [
+       0,
+       0,
+       0
+      ]
+     },
+     "material": "ac_body"
+    },
+    {
+     "id": "ac_fan",
+     "op": "box",
+     "size": [
+      0.42,
+      0.42,
+      0.02
+     ],
+     "transform": {
+      "translate": [
+       -0.1,
+       0,
+       -0.13
+      ]
+     },
+     "material": "ac_grille"
+    },
+    {
+     "id": "ac_shelf",
+     "op": "box",
+     "size": [
+      0.8,
+      0.04,
+      0.34
+     ],
+     "transform": {
+      "translate": [
+       0,
+       -0.29,
+       0.03
+      ]
+     },
+     "material": "steel"
+    },
+    {
+     "id": "ac_pipe",
+     "op": "box",
+     "size": [
+      0.05,
+      0.05,
+      0.2
+     ],
+     "transform": {
+      "translate": [
+       0.3,
+       0.12,
+       0.13
+      ]
+     },
+     "material": "ac_body"
+    }
+   ]
+  },
+  {
+   "id": "laundry",
+   "op": "group",
+   "transform": {
+    "translate": [
+     -0.65,
+     4.38,
+     -1.78
+    ]
+   },
+   "children": [
+    {
+     "id": "laundry_pole",
+     "op": "cylinder",
+     "radius": 0.022,
+     "height": 1.7,
+     "segments": 5,
+     "material": "pole",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       90
+      ]
+     }
+    },
+    {
+     "id": "hanger_l",
+     "op": "box",
+     "size": [
+      0.03,
+      0.03,
+      0.4
+     ],
+     "transform": {
+      "translate": [
+       -0.8,
+       0,
+       0.19
+      ]
+     },
+     "material": "steel"
+    },
+    {
+     "id": "hanger_r",
+     "op": "box",
+     "size": [
+      0.03,
+      0.03,
+      0.4
+     ],
+     "transform": {
+      "translate": [
+       0.8,
+       0,
+       0.19
+      ]
+     },
+     "material": "steel"
+    },
+    {
+     "id": "towel_a",
+     "op": "box",
+     "size": [
+      0.32,
+      0.46,
+      0.012
+     ],
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       2
+      ],
+      "translate": [
+       -0.4,
+       -0.22,
+       0
+      ]
+     },
+     "material": "towel_blue"
+    },
+    {
+     "id": "towel_b",
+     "op": "box",
+     "size": [
+      0.26,
+      0.38,
+      0.012
+     ],
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       -3
+      ],
+      "translate": [
+       0.05,
+       -0.18,
+       0
+      ]
+     },
+     "material": "towel_white"
+    },
+    {
+     "id": "sock_a",
+     "op": "box",
+     "size": [
+      0.07,
+      0.2,
+      0.012
+     ],
+     "transform": {
+      "translate": [
+       0.38,
+       -0.09,
+       0
+      ]
+     },
+     "material": "towel_blue"
+    },
+    {
+     "id": "sock_b",
+     "op": "box",
+     "size": [
+      0.07,
+      0.2,
+      0.012
+     ],
+     "transform": {
+      "translate": [
+       0.5,
+       -0.09,
+       0
+      ]
+     },
+     "material": "towel_blue"
+    }
+   ]
+  },
+  {
+   "id": "corner_sign",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     0,
+     135,
+     0
+    ],
+    "translate": [
+     -1.6,
+     0,
+     -1.4
+    ]
+   },
+   "children": [
+    {
+     "id": "vsign",
+     "op": "box",
+     "size": [
+      0.34,
+      1.19,
+      0.06
+     ],
+     "transform": {
+      "translate": [
+       0.38,
+       3.65,
+       0
+      ]
+     },
+     "material": "vsign"
+    },
+    {
+     "id": "vsign_frame",
+     "op": "box",
+     "size": [
+      0.38,
+      0.05,
+      0.08
+     ],
+     "transform": {
+      "translate": [
+       0.38,
+       4.265,
+       0
+      ]
+     },
+     "material": "trim"
+    },
+    {
+     "id": "arm_top",
+     "op": "box",
+     "size": [
+      0.24,
+      0.04,
+      0.04
+     ],
+     "transform": {
+      "translate": [
+       0.1,
+       4.1,
+       0
+      ]
+     },
+     "material": "steel"
+    },
+    {
+     "id": "arm_low",
+     "op": "box",
+     "size": [
+      0.24,
+      0.04,
+      0.04
+     ],
+     "transform": {
+      "translate": [
+       0.1,
+       3.2,
+       0
+      ]
+     },
+     "material": "steel"
+    }
+   ]
+  },
+  {
+   "id": "bench",
+   "op": "group",
+   "material": "trim",
+   "transform": {
+    "translate": [
+     -1.82,
+     0,
+     0.25
+    ]
+   },
+   "children": [
+    {
+     "id": "bench_seat",
+     "op": "box",
+     "size": [
+      0.36,
+      0.05,
+      1.2
+     ],
+     "transform": {
+      "translate": [
+       0,
+       0.42,
+       0
+      ]
+     }
+    },
+    {
+     "id": "bench_leg_a",
+     "op": "box",
+     "size": [
+      0.3,
+      0.41,
+      0.06
+     ],
+     "transform": {
+      "translate": [
+       0,
+       0.2,
+       -0.48
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "bench_leg_b",
+     "op": "box",
+     "size": [
+      0.3,
+      0.41,
+      0.06
+     ],
+     "transform": {
+      "translate": [
+       0,
+       0.2,
+       0.48
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "side_salt",
+   "op": "box",
+   "size": [
+    0.02,
+    0.26,
+    0.26
+   ],
+   "transform": {
+    "translate": [
+     -1.6,
+     1.6,
+     -0.55
+    ]
+   },
+   "material": "salt"
+  },
+  {
+   "id": "plant",
+   "op": "group",
+   "transform": {
+    "translate": [
+     -1.82,
+     0,
+     -1.72
+    ]
+   },
+   "children": [
+    {
+     "id": "planter",
+     "op": "lathe",
+     "segments": 8,
+     "material": "pot",
+     "profile": [
+      [
+       0.13,
+       0
+      ],
+      [
+       0.18,
+       0.34
+      ],
+      [
+       0.2,
+       0.38
+      ]
+     ]
+    },
+    {
+     "id": "bush",
+     "op": "sphere",
+     "radius": 0.24,
+     "rings": 4,
+     "segments": 7,
+     "material": "leaf",
+     "transform": {
+      "scale": [
+       1,
+       1.15,
+       1
+      ],
+      "translate": [
+       0,
+       0.56,
+       0
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}
