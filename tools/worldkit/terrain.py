@@ -24,6 +24,17 @@ corners), where the path crosses a cell edge, and at each step of a stair. Each 
 cross-sections goes to the cell holding the middle of its centre line; the cross-section on a
 seam is shared, so the two cells' pieces meet there exactly.
 
+A material with a **texture** (an Asset Kit texture: a pattern, texel grid or image, projected
+`box` or `planar` in world coordinates) repeats in world coordinates, so its pattern runs on
+across tiles, cells and sweeps with no seam of its own. Each face's texel coordinates are
+shifted by whole repeats to start in the first. The texture is stored repeated `span` texels
+past its first repeat, drawn without a texture window, for the faces that reach no further (a
+mesh with windows leaves the reader's quicker face loops); a face reaching further samples the
+texture once more, stored plainly, through a texture window (8-bit coordinates: up to 255
+texels), and only the pieces holding such faces carry a window table. Rectangles and sweep
+strips of a textured material are kept within that windowed reach. The faces are written for the
+region's texture packing by world.py (MeshOut.native).
+
 Nothing here knows what ground, a path or a step is for: the outputs are ordinary placements and
 collision triangles, and the World Checker checks them as it checks any other.
 """
@@ -32,8 +43,10 @@ import hashlib
 import math
 
 import meshlib
+from assetkit import textures as T
 from assetkit.compiler import assign_palette, shading
-from kitcore.errors import pointer
+from kitcore.errors import KitError, pointer
+from kitcore.texpack import Tile
 from .schema import WorldError
 
 TAG_FIELD = 0xFFFE          # placement and collision tag of a field's tiles
@@ -46,6 +59,10 @@ DEFAULT_LOD_TOLERANCE = 0.25
 DEFAULT_LOD_BAND = 2.0
 MIN_MITRE_COS = 0.5         # a path may turn at most 120 degrees at a point
 ONE = 65536
+TERRAIN_PROJECTIONS = ('box', 'planar')
+GENTLE = 0.9                # a textured quad rising less than this a unit is projected from above
+DEFAULT_SPAN = 96           # texels a textured terrain face may reach past its first repeat unwindowed
+MAX_TEXEL = 255             # a face's texel coordinates are 8 bits
 
 
 def q16(v):
@@ -54,14 +71,126 @@ def q16(v):
     return r if v >= 0 else -r
 
 
+# ---- textures
+
+def load_textures(materials, base, files):
+    """material -> assetkit Texture, for each terrain material with a texture. A terrain texture
+    is a pattern, a texel grid or an image (relative to the world file), without holes, projected
+    `box` (default) or `planar` (default axis y: from above) in world coordinates. The images
+    read join files [(path, sha256)]."""
+    out = {}
+    for name, mat in materials.items():
+        if 'texture' not in mat:
+            continue
+        where = pointer('/terrain/materials', name) + '/texture'
+        spec = dict(mat['texture'])
+        span = spec.pop('span', DEFAULT_SPAN)
+        for key in ('sheet', 'cell', 'frames', 'ticks'):
+            if key in spec:
+                raise WorldError(f'{where}/{key}', 'A terrain texture is a pattern, a texel grid or an image '
+                                 '(no sheets or animations).')
+        if 'clear' in spec:
+            raise WorldError(where + '/clear', 'Terrain is solid: its textures have no holes.')
+        projection = spec.setdefault('projection', 'box')
+        if projection not in TERRAIN_PROJECTIONS:
+            raise WorldError(where + '/projection', 'A terrain texture repeats in world coordinates: projection '
+                             'box (the default: each face from the axis nearest its normal) or planar.')
+        if projection == 'planar':
+            spec.setdefault('axis', 'y')
+        try:
+            tex = T.load({'verification': {'depth': True}}, {name: dict(mat, texture=spec)}, base, {name})[name]
+        except KitError as error:
+            path = '/terrain' + error.path if error.path.startswith('/materials/') else where
+            raise WorldError(path, str(error)) from error
+        if tex.cutout:
+            raise WorldError(where + '/image', 'Terrain is solid: the image has transparent pixels. Make it opaque.')
+        if 'image' in spec:
+            f = (base / spec['image']).resolve()
+            if str(f) not in [g for g, _ in files]:
+                files.append((str(f), hashlib.sha256(f.read_bytes()).hexdigest()))
+        if not tex.tile.window:
+            raise WorldError(where, 'A terrain texture repeats: its sides are 8, 16, 32, 64 or 128 texels.')
+        # Stored repeated, span texels further each way, and drawn once: a face that starts in the
+        # first repeat and reaches at most span texels on needs no texture window (a mesh with
+        # windows leaves the reader's quicker loops; DECISIONS.md, "Texture windows"). Faces that
+        # reach further sample the tile as loaded, through a window.
+        tex.span = span
+        tex.window_tile = tex.tile
+        w, h = tex.width + span, tex.height + span
+        if w > 255 or h > 255 or (tex.bits == 8 and h + 1 > 128):
+            raise WorldError(where + '/span', f'The texture stored {span} texels further each way is {w} x {h} '
+                             f'texels; at most 255 a side{" (127 tall for an 8-bit texture)" if tex.bits == 8 else ""}. '
+                             'Use a smaller span or a smaller texture.')
+        frames = [[[f[y % tex.height][x % tex.width] for x in range(w)] for y in range(h)] for f in tex.tile.frames]
+        tex.tile = Tile(w, h, tex.bits, frames, window=False, name=f'terrain material {name!r}')
+        out[name] = tex
+    return out
+
+
+def mean_colour(tex):
+    """'#rrggbb': the mean of a texture's texels (frame 0), its colour from afar."""
+    texels = [T.rgb_of(c) for row in tex.frames[0] for c in row if c is not None]
+    return '#' + ''.join(f'{round(sum(t[k] for t in texels) / len(texels)):02x}' for k in range(3))
+
+
+def texel_reach(tex, stored=False):
+    """The farthest (units) two corners of one face of tex may lie apart along an axis of its
+    projection, so that the face, starting in the first repeat, stays within 8-bit texel
+    coordinates through a texture window, or, stored, within the stored repeats (span texels on,
+    drawn without a window); less one texel for rounding."""
+    su, sv = tex.spec.get('scale', [1, 1])
+    if stored:
+        return (tex.span - 1) / max(tex.width / su, tex.height / sv)
+    return min((MAX_TEXEL - tex.width) / (tex.width / su), (MAX_TEXEL - tex.height) / (tex.height / sv))
+
+
+def texel_coords(tex, pts):
+    """Integer texel coordinates of a face's world corners (wound outward right-handed) under a
+    repeating terrain texture, as the Asset Kit projects (box: from the axis nearest the face's
+    normal; planar: along its axis), in world coordinates, shifted by whole repeats so the face
+    starts in its first; whether it needs a texture window (it reaches past the stored repeats);
+    and whether it had to be squeezed: a face reaching past 255 texels along an axis (a
+    near-vertical quad no merge can shrink) has the texture stretched along that axis to fit."""
+    spec = tex.spec
+    if tex.projection == 'planar':
+        n = T.PLANAR_VIEW[spec['axis']]
+    else:
+        m = cross(sub(pts[1], pts[0]), sub(pts[2], pts[0]))
+        k = max(range(3), key=lambda i: (abs(m[i]), -i))
+        n = tuple(float(i == k) * (1 if m[k] > 0 else -1) for i in range(3))
+    right, down = T.basis(n)
+    su, sv = spec.get('scale', [1, 1])
+    ou, ov = spec.get('offset', [0, 0])
+    w, h = tex.width, tex.height
+    coords = []
+    for p in pts:
+        a, b = T.orient(dot(p, right), dot(p, down), spec)
+        coords.append((round((a / su + ou) * w), round((b / sv + ov) * h)))
+    du = math.floor(min(u for u, _ in coords) / w) * w
+    dv = math.floor(min(v for _, v in coords) / h) * h
+    coords = [(u - du, v - dv) for u, v in coords]
+    limits = (tex.tile.width, tex.tile.height)
+    windowed = any(max(c[k] for c in coords) > limits[k] for k in (0, 1))
+    squeezed = any(max(c[k] for c in coords) > MAX_TEXEL for k in (0, 1))
+    if squeezed:
+        # stretched either way: to the stored repeats, which need no window
+        windowed = False
+        for k in (0, 1):
+            top = max(c[k] for c in coords)
+            if top > limits[k]:
+                coords = [tuple(round(c[i] * limits[k] / top) if i == k else c[i] for i in (0, 1)) for c in coords]
+    return coords, windowed, squeezed
+
+
 @dataclass
 class Piece:
     """A mesh the kit made for one cell: drawn at the cell centre, yaw 0."""
     kind: str                   # 'field' or 'sweep'
     name: str
-    mesh: bytes                 # level 0, provisional palette colours
+    mesh: object                # level 0: bytes with provisional palette colours, or a MeshOut
+                                # with textured faces, written per region (MeshOut.native)
     faces: int
-    levels: list = field(default_factory=list)  # [(distance, mesh bytes)] coarser levels
+    levels: list = field(default_factory=list)  # [(distance, mesh)] coarser levels, as mesh
     band: float = DEFAULT_LOD_BAND
     ground: bool = True
     tag: int = TAG_FIELD
@@ -80,6 +209,8 @@ class Result:
     water: list = field(default_factory=list)   # (a, b, c, surface): water surfaces facing up
     paths: dict = field(default_factory=dict)   # a draped path's points, as the kit resolved them
     floor_cos: float = 0.7071
+    textures: dict = field(default_factory=dict)  # material -> assetkit Texture (textured terrain)
+    windowed: set = field(default_factory=set)    # textured materials with faces through a texture window
 
     def floors(self):
         """A Floors query over the terrain's and sweeps' floors (not water)."""
@@ -291,6 +422,15 @@ class Field:
         if 'steep' in spec and spec['steep']['material'] not in mats:
             raise WorldError(self.path + '/steep/material', f'No terrain material {spec["steep"]["material"]!r}.')
         self.floor_cos = ctx.floor_cos
+        # a textured material's rectangles stay within its texture's reach (its span)
+        self.caps, self.reaches = {}, {}
+        for m, tex in ctx.textures.items():
+            self.reaches[m] = texel_reach(tex)
+            self.caps[m] = math.floor(self.reaches[m] / s + 1e-9)
+            if self.caps[m] < 1:
+                raise WorldError(pointer('/terrain/materials', m) + '/texture/span',
+                                 f'One quad of field {name!r} ({s} units) reaches more than the span of {m!r} '
+                                 f'({tex.span} texels): give the texture a larger span or scale.')
         self.heights(ctx)
         self.materials = [[spec['material']] * self.nx for _ in range(self.nz)]
         self.painted = [[False] * self.nx for _ in range(self.nz)]
@@ -747,11 +887,26 @@ class Field:
             return (m, o, qx, qz)
         return (m, o)
 
-    def rects(self, tx0, tz0, tol, water=False):
+    def reach(self, material, x0, z0, w, d, water):
+        """Whether a w x d block of a textured material stays within its texture's reach: its
+        quads gentle enough to be projected from above (their width is capped by the caller), or
+        else rising no more than the reach (a steep face is projected from the side).
+        Untextured materials and water: always."""
+        if water or material not in self.caps:
+            return True
+        o = self.O[z0 - self.qz0][x0 - self.qx0]
+        hs = {(dx, dz): self.h(x0 + dx, z0 + dz, o) for dx in range(w + 1) for dz in range(d + 1)}
+        steep = GENTLE * self.s
+        if all(abs(hs[(dx + 1, dz)] - hs[(dx, dz)]) < steep for dx in range(w) for dz in range(d + 1)) and \
+           all(abs(hs[(dx, dz + 1)] - hs[(dx, dz)]) < steep for dx in range(w + 1) for dz in range(d)):
+            return True
+        return max(hs.values()) - min(hs.values()) <= self.reaches[material]
+
+    def rects(self, tx0, tz0, tol, water=False, textured=True):
         """The tile at lattice (tx0, tz0) as rectangles of quads [(qx, qz, w, d, material,
         offset)]: greedily, row by row, each grown along x and then along z while its quads share
-        a material and sheet and stay flat (within tol of one plane-like patch). Water: its flat
-        surfaces, by material and level."""
+        a material and sheet and stay flat (within tol of one plane-like patch), and, textured,
+        within a textured material's reach. Water: its flat surfaces, by material and level."""
         n = self.tq
         taken = set()
         out = []
@@ -763,14 +918,16 @@ class Field:
                 m = self.key(qx, qz, water)
                 if m is None:
                     continue
+                cap = self.caps.get(m[0], n) if textured else n
+                reach = self.reach if textured else (lambda *a: True)
                 w = 1
-                while (qx + w < tx0 + n and (qx + w, qz) not in taken and self.key(qx + w, qz, water) == m
-                       and flat(qx, qz, w + 1, 1, tol)):
+                while (qx + w < tx0 + n and w < cap and (qx + w, qz) not in taken and self.key(qx + w, qz, water) == m
+                       and flat(qx, qz, w + 1, 1, tol) and reach(m[0], qx, qz, w + 1, 1, water)):
                     w += 1
                 d = 1
-                while (qz + d < tz0 + n and all((x, qz + d) not in taken and self.key(x, qz + d, water) == m
-                                                for x in range(qx, qx + w))
-                       and flat(qx, qz, w, d + 1, tol)):
+                while (qz + d < tz0 + n and d < cap and all((x, qz + d) not in taken and self.key(x, qz + d, water) == m
+                                                            for x in range(qx, qx + w))
+                       and flat(qx, qz, w, d + 1, tol) and reach(m[0], qx, qz, w, d + 1, water)):
                     d += 1
                 for z in range(qz, qz + d):
                     for x in range(qx, qx + w):
@@ -877,14 +1034,22 @@ def rect_triangles(fld, rect, points):
 # ---- native meshes
 
 class MeshOut:
-    """A cell-local native mesh being written: vertices deduplicated, palette swatch faces."""
+    """A cell-local native mesh being written: vertices deduplicated, palette swatch faces, and
+    textured faces with their texel coordinates. Without textured faces it packs as is (pack());
+    with them it is written per region, for the region's texture packing (native())."""
 
-    def __init__(self, palette, centre):
+    def __init__(self, palette, centre, textures=None, materials=None, where='/terrain'):
         self.mesh = meshlib.Mesh()
         self.index = {}
         self.palette, self.centre = palette, centre
         self.faces = 0
         self.materials = set()
+        self.textures, self.mats, self.where = textures or {}, materials or {}, where
+        self.recs = []          # per face: (indices, colours, material, flags, texel coordinates or None,
+                                #            windowed)
+        self.textured = False
+        self.windowed = set()   # textured materials with faces drawn through a texture window
+        self.squeezed = {}      # textured material -> faces whose texture is stretched to fit
 
     def vertex(self, p):
         key = (p[0] - self.centre[0], p[1], p[2] - self.centre[2])
@@ -895,22 +1060,67 @@ class MeshOut:
     def tri(self, pts, shades, material, flags=0):
         """pts: world corners, wound outward right-handed; shades: 0-1 per corner. flags: the
         mesh face's (meshlib.SEMI for water: half blend, meshlib.DOUBLE)."""
-        entry = self.palette['by_material'][material]
-        if entry['class'] == 'emissive':
+        tex = self.textures.get(material)
+        if tex is None:
+            entry = self.palette['by_material'][material]
+            emissive = entry['class'] == 'emissive'
+        else:
+            emissive = self.mats[material].get('class') == 'emissive'
+        if emissive:
             shades = (1, 1, 1)
         idx = [self.vertex(p) for p in pts]
         cols = [meshlib.rgb(*([max(0, min(255, round(128 * sh)))] * 3)) for sh in shades]
-        uv = (entry['index'], self.palette['layout']['row'])
         # Mei's front faces are the reverse of the outward right-handed winding (assetkit.compiler).
-        self.mesh.tri(list(reversed(idx)), list(reversed(cols)), [uv] * 3, flags,
-                      slot=self.palette['layout']['slot'], four_bit=True, palette=entry['palette'])
+        if tex is not None:
+            uv, windowed, squeezed = texel_coords(tex, pts)
+            if squeezed:
+                self.squeezed[material] = self.squeezed.get(material, 0) + 1
+            if windowed:
+                self.windowed.add(material)
+            self.recs.append((list(reversed(idx)), list(reversed(cols)), material, flags, list(reversed(uv)), windowed))
+            self.textured = True
+        else:
+            uv = (entry['index'], self.palette['layout']['row'])
+            self.mesh.tri(list(reversed(idx)), list(reversed(cols)), [uv] * 3, flags,
+                          slot=self.palette['layout']['slot'], four_bit=True, palette=entry['palette'])
+            self.recs.append((list(reversed(idx)), list(reversed(cols)), material, flags, None, False))
         self.faces += 1
         self.materials.add(material)
 
     def pack(self):
+        """The mesh with provisional palette colours, or, with textured faces, this MeshOut,
+        for world.py to write per region (native())."""
         if len(self.mesh.verts) > 2048:
             raise WorldError('/terrain', 'A terrain piece has more than 2,048 vertices.')
-        return self.mesh.pack()
+        return self if self.textured else self.mesh.pack()
+
+    def native(self, colours, slot, row, packing):
+        """The mesh for a region: palette faces at the region's colours (provisional colour ->
+        region colour) and the world's swatch, as relocate() writes them; textured faces at
+        their stored repeats' place in packing (drawn once: no texture window), or, reaching
+        further, in their tile's texture window (at most 7 a mesh)."""
+        out = meshlib.Mesh()
+        out.verts = list(self.mesh.verts)
+        for idx, cols, material, flags, uv, windowed in self.recs:
+            if uv is None:
+                colour = self.palette['by_material'][material]['colour']
+                colour = colours.get(colour, colour)
+                out.tri(idx, cols, [(colour % 16, row)] * 3, flags, slot=slot, four_bit=True, palette=colour // 16)
+                continue
+            tex = self.textures[material]
+            if windowed:
+                place = packing.placements[tex.window_tile.key]
+                if place.halfword() not in out.windows and len(out.windows) == 7:
+                    raise WorldError(self.where, 'A terrain piece draws more than 7 textured materials through '
+                                     'texture windows (a mesh has at most 7). Give some a larger span.')
+                window = out.window(u=(place.width, place.x), v=(place.height, place.y))
+                out.tri(idx, cols, uv, flags, slot=place.slot, four_bit=place.bits == 4, palette=place.palette,
+                        window=window)
+                continue
+            place = packing.placements[tex.tile.key]
+            out.tri(idx, cols, [(u + place.x, v + place.y) for u, v in uv], flags, slot=place.slot,
+                    four_bit=place.bits == 4, palette=place.palette)
+        return out.pack()
 
 
 def unit(n):
@@ -957,6 +1167,22 @@ class Sweep:
         if self.caps and self.closed:
             raise WorldError(self.path + '/caps', 'A closed path has no ends to cap.')
         self.rise = sw['stairs']['rise'] if 'stairs' in sw else None
+        # a textured edge's strips stay within its texture's reach: cross-sections at most
+        # max_len apart along the path (less the edge's own length)
+        self.max_len = None
+        for k, m in enumerate(mats):
+            if m in ctx.textures:
+                (x0, y0), (x1, y1) = prof[k], prof[k + 1]
+                # strips within the stored repeats (cutting a strip is cheaper than a window
+                # table), unless the edge alone nearly fills them
+                edge = math.hypot(x1 - x0, y1 - y0)
+                room = texel_reach(ctx.textures[m], stored=True) - edge
+                if room < edge:
+                    room = texel_reach(ctx.textures[m]) - edge
+                if room <= 0:
+                    raise WorldError(self.path + '/profile', f'Edge {k} of the profile is more than 255 texels of '
+                                     f'{m!r} long: give the texture a larger scale, or split the edge.')
+                self.max_len = room if self.max_len is None else min(self.max_len, room)
         pts = self.points + ([self.points[0]] if self.closed else [])
         self.segs = []
         for k in range(len(pts) - 1):
@@ -1009,6 +1235,14 @@ class Sweep:
                 runs = math.ceil(abs(dy) / rise - 1e-9) + 1
                 for r in range(1, runs):
                     ts.add(r / runs)
+            if self.max_len is not None:
+                # textured: no strip longer than max_len; a longer gap between the cross-sections
+                # already there is split evenly
+                cuts = sorted(ts)
+                for t0, t1 in zip(cuts, cuts[1:]):
+                    pieces = math.ceil((t1 - t0) * ln / self.max_len - 1e-9)
+                    for r in range(1, pieces):
+                        ts.add(t0 + (t1 - t0) * r / pieces)
             seg = []
             mid = (right_of(tdir), 1.0)
             for t in sorted(ts):
@@ -1129,6 +1363,7 @@ class Context:
     materials: dict
     files: list
     floor_cos: float = math.cos(math.radians(45))
+    textures: dict = field(default_factory=dict)    # material -> assetkit Texture
 
 
 def compile_terrain(w, base, size, cells, surface_of, warnings, overhang, floor_max_degrees=45.0):
@@ -1146,6 +1381,8 @@ def compile_terrain(w, base, size, cells, surface_of, warnings, overhang, floor_
     if not materials:
         raise WorldError('/terrain/materials', 'Declare at least one terrain material.')
     ctx = Context(base, size, w.get("paths", {}), materials, [], math.cos(math.radians(floor_max_degrees)))
+    ctx.textures = load_textures(materials, base, ctx.files)
+    textures = ctx.textures
     lighting = dict({'mode': 'vertical'}, **terrain.get('lighting', {}))
     if lighting['mode'] == 'vertical' and 'direction' in lighting:
         raise WorldError('/terrain/lighting/direction', 'Vertical lighting shades by the normal\'s Y only. Remove '
@@ -1196,8 +1433,16 @@ def compile_terrain(w, base, size, cells, surface_of, warnings, overhang, floor_
         if name not in used:
             warnings.append({'code': 'terrain_material_unused', 'material': name,
                              'message': 'No field or sweep draws this terrain material.'})
-    faces = [type('F', (), {'material': m})() for m in sorted(used)]
-    mats = {m: dict(materials[m], palette=True) for m in used}
+    mats = {m: dict(materials[m], palette=True) for m in used if m not in textures}
+    # A textured material's far colour, its texture's mean (a last mip level), for fields' coarse
+    # levels: an entry of its own, drawn untextured from the lod distance.
+    coarse = {m for f in fields if f.spec.get('lod') for row in f.materials for m in row if m in textures}
+    coarse |= {wall_spec(f, lo, hi)[0] for f in fields if f.spec.get('lod') for lo, hi, _ in f.walls()} & set(textures)
+    far = {}
+    for m in sorted(coarse):
+        far[m] = mean_colour(textures[m])
+        mats[m] = {k: v for k, v in materials[m].items() if k != 'texture'} | {'palette': True, 'color': far[m]}
+    faces = [type('F', (), {'material': m})() for m in sorted(mats)]
     palette = assign_palette(type('M', (), {'faces': faces})(), mats, {}) if used else None
 
     pieces, collision = {}, {}
@@ -1226,7 +1471,8 @@ def compile_terrain(w, base, size, cells, surface_of, warnings, overhang, floor_
                     if any(f.present(qx, qz) for qz in range(tz * tq, tz * tq + tq) for qx in range(tx * tq, tx * tq + tq)):
                         outside += 1
                     continue
-                levels = [f.rects(tx * tq, tz * tq, t) for t in tols]
+                # the coarse level is drawn in the textured materials' far colours: merged freely
+                levels = [f.rects(tx * tq, tz * tq, t, textured=li == 0) for li, t in enumerate(tols)]
                 if levels[0]:
                     tiles[(tx, tz)] = levels
                 wl = f.rects(tx * tq, tz * tq, 0, water=True)
@@ -1307,7 +1553,7 @@ def compile_terrain(w, base, size, cells, surface_of, warnings, overhang, floor_
                 points = edge | mine
                 for r in lv:
                     points.update(rect_corners(r))
-                out = MeshOut(palette, centre)
+                out = MeshOut(palette, centre, textures if li == 0 else None, materials, f'field {f.name!r}')
                 faces = []
                 for rect in lv:
                     for t in rect_triangles(Sheet(f, rect[5]), rect, points):
@@ -1351,7 +1597,7 @@ def compile_terrain(w, base, size, cells, surface_of, warnings, overhang, floor_
             for r in wl:
                 points.update(rect_corners(r))
             cell = (math.floor(x0 * f.s / size), math.floor(z0 * f.s / size))
-            out = MeshOut(palette, centre_of(cell))
+            out = MeshOut(palette, centre_of(cell), textures, materials, f'field {f.name!r}\'s water')
             for rect in wl:
                 for t in rect_triangles(Sheet(f, rect[5], water=True), rect, points):
                     world = [c[0] for c in t]
@@ -1391,7 +1637,7 @@ def compile_terrain(w, base, size, cells, surface_of, warnings, overhang, floor_
                 tri = (tri[0], tri[2], tri[1])
                 n = (-n[0], -n[1], -n[2])
             if key not in outs:
-                outs[key] = MeshOut(palette, centre_of(key))
+                outs[key] = MeshOut(palette, centre_of(key), textures, materials, f'the sweep of path {sw.name!r}')
             water = materials[material].get('water')
             flags = (meshlib.SEMI if water else 0) | (meshlib.DOUBLE if sw.double_sided else 0)
             outs[key].tri(tri, [shade_of(unit(n))] * 3, material, flags)
@@ -1460,6 +1706,38 @@ def compile_terrain(w, base, size, cells, surface_of, warnings, overhang, floor_
             collision.setdefault(key, []).extend(tris_by_cell.get(key, []))
         report['sweeps'][sw.name] = srep
 
+    windowed = set()
+    if textures:
+        tri_count, win_count, squeezed, win_pieces = {}, {}, {}, 0
+        for ps in pieces.values():
+            for piece in ps:
+                m = piece.mesh
+                for rec in (m.recs if isinstance(m, MeshOut) else ()):
+                    if rec[4] is not None:
+                        tri_count[rec[2]] = tri_count.get(rec[2], 0) + 1
+                    if rec[5]:
+                        win_count[rec[2]] = win_count.get(rec[2], 0) + 1
+                if isinstance(m, MeshOut) and m.windowed:
+                    windowed |= m.windowed
+                    win_pieces += 1
+                for mo in [m] + [lv for _, lv in piece.levels]:
+                    for k, n in (mo.squeezed.items() if isinstance(mo, MeshOut) else ()):
+                        squeezed[k] = squeezed.get(k, 0) + n
+        if squeezed:
+            warnings.append({'code': 'terrain_texture_stretched', 'materials': squeezed,
+                             'message': 'These faces span more than 255 texels of their texture along an axis '
+                                        '(near-vertical quads no merge can shrink), so the texture is stretched '
+                                        'on them. A larger scale, or a gentler slope, avoids it.'})
+        report['texture_windows'] = {'pieces': win_pieces, 'triangles': sum(win_count.values())}
+        report['textures'] = {}
+        for m, tex in sorted(textures.items()):
+            su, sv = tex.spec.get('scale', [1, 1])
+            report['textures'][m] = dict(tex.summary(), scale=[su, sv], span=tex.span,
+                                         stored=[tex.tile.width, tex.tile.height],
+                                         texel_cm=[round(100 * su / tex.width, 2), round(100 * sv / tex.height, 2)],
+                                         reach=round(texel_reach(tex), 3), triangles=tri_count.get(m, 0),
+                                         windowed=win_count.get(m, 0), stretched=squeezed.get(m, 0),
+                                         far=far.get(m))
     if ctx.files:
         report['files'] = [{'file': f, 'sha256': h} for f, h in ctx.files]
     if water_tris:
@@ -1467,4 +1745,4 @@ def compile_terrain(w, base, size, cells, surface_of, warnings, overhang, floor_
     if resolved:
         report['draped'] = {n: len(p) for n, p in resolved.items()}
     return Result(pieces, collision, palette, report, [f for f, _ in ctx.files], {f.name: f for f in fields},
-                  water_tris, resolved, floor_cos)
+                  water_tris, resolved, floor_cos, {m: t for m, t in textures.items() if m in used}, windowed)

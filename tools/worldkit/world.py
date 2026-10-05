@@ -170,6 +170,21 @@ class TerrainAsset:
     binary: bytes = b''
 
 
+class TerrainTextures:
+    """What RegionTextures needs of the terrain's textured materials: an asset's name, materials
+    and textures (WORLDKIT.md, "Textured terrain"). A material with faces drawn through a texture
+    window also brings its tile as loaded, as 'MATERIAL window'."""
+    textured = True
+
+    def __init__(self, name, materials, textures, windowed):
+        self.name, self.materials = name, dict(materials)
+        textures = dict(textures)
+        for m in sorted(windowed & set(textures)):
+            self.materials[f'{m} window'] = materials[m]
+            textures[f'{m} window'] = type('W', (), {'tile': textures[m].window_tile})()
+        self.mesh = type('M', (), {'textures': {'textures': textures}})()
+
+
 def cell_shift(size):
     return {16: 4, 32: 5, 64: 6, 128: 7}[size]
 
@@ -409,12 +424,17 @@ def compile_world(source, lock=None, assets_dir=None):
             if r not in used:
                 continue
             entries = []
-            for e in terrain.palette['entries']:
+            for e in (terrain.palette['entries'] if terrain.palette else []):
                 mats = [m for m in e['materials'] if m in used[r]]
                 if mats:
                     entries.append(dict(e, materials=mats))
             terrain_assets[r] = TerrainAsset('terrain', {'entries': entries})
             region_palettes[r].add_asset(terrain_assets[r])
+            # textured terrain materials join the region's texture set as one more asset's
+            drawn = {m: t for m, t in terrain.textures.items() if m in used[r]}
+            if drawn:
+                region_textures[r].add_asset(TerrainTextures('terrain', w['terrain']['materials'], drawn,
+                                                                   terrain.windowed))
 
     # ---- levels of detail: the switch distances per asset (the recipe's, then the world's)
     lod_cfg = w.get('lod', {})
@@ -553,9 +573,10 @@ def compile_world(source, lock=None, assets_dir=None):
             for d, m in (pl.lod.levels if pl.lod else []):
                 if dist >= d:
                     mesh = m
-            grids = [g for d, g in far_grids.get(k, []) if dist >= d]
+            src, fars = far_grids.get(k, (None, []))
+            grids = [g for d, g in fars if dist >= d]
             if grids and mesh is not None:
-                mesh = farground.far_levels(pl.mesh, [g for _, g in far_grids[k]], skirted=border)[len(grids) - 1]
+                mesh = farground.far_levels(src, [g for _, g in fars], skirted=border)[len(grids) - 1]
             if mesh is None:
                 continue
             windows = windows or bool(struct.unpack_from('<I', mesh, 12)[0])
@@ -782,24 +803,33 @@ def compile_world(source, lock=None, assets_dir=None):
                 srep = scatter_report[sname]
                 srep['chunks'] = srep.get('chunks', 0) + 1
                 srep['triangles'] = srep.get('triangles', 0) + struct.unpack_from('<H', mesh, 2)[0]
-        far_grids = {}          # placement number -> [(distance, grid)] of its far ground levels
+        far_grids = {}          # placement number -> (mesh resampled, [(distance, grid)]) of its far ground
         for piece in (terrain.pieces.get((i, j), []) if terrain else []):
             ta = terrain_assets[c['region']]
+
+            def terrain_mesh(m):
+                if isinstance(m, bytes):
+                    return rp.relocated(TerrainAsset(ta.name, ta.manifest, m), slot, row)
+                # textured: written for the region's palette entries and texture packing
+                return m.native(rp.mapping(ta), slot, row, rt.packing)
             lod = None
-            base = rp.relocated(TerrainAsset(ta.name, ta.manifest, piece.mesh), slot, row)
-            levels = [(d, rp.relocated(TerrainAsset(ta.name, ta.manifest, m), slot, row)) for d, m in piece.levels]
+            base = terrain_mesh(piece.mesh)
+            levels = [(d, terrain_mesh(m)) for d, m in piece.levels]
             where = pointer('/terrain/fields', piece.name) + '/lod'
             if piece.kind == 'field' and ground_lod:
                 # far ground (WORLDKIT.md, "Levels of detail"): grids resampled from level 0, each
                 # kept only where it has fewer faces than the level before it
-                fewest = struct.unpack_from('<H', (levels[-1][1] if levels else base), 2)[0]
-                for k, (spec, m) in enumerate(zip(ground_lod, farground.far_levels(base, [g['grid'] for g in ground_lod]))):
+                # resampled from the coarsest level there is: with textured ground that level is
+                # drawn in the textures' far colours, which suit the distance
+                src = levels[-1][1] if levels else base
+                fewest = struct.unpack_from('<H', src, 2)[0]
+                for k, (spec, m) in enumerate(zip(ground_lod, farground.far_levels(src, [g['grid'] for g in ground_lod]))):
                     if m is None:
                         continue
                     nf = struct.unpack_from('<H', m, 2)[0]
                     if nf < fewest:
                         levels.append((spec['distance'] * lod_cfg.get('scale', 1.0), m))
-                        far_grids.setdefault(len(cell.placements), []).append((levels[-1][0], spec['grid']))
+                        far_grids.setdefault(len(cell.placements), (src, []))[1].append((levels[-1][0], spec['grid']))
                         fewest = nf
                         far_ground['triangles'][k] += nf
                         far_ground['tiles'][k] += 1

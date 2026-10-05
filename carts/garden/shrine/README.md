@@ -83,6 +83,18 @@ x is east, z north: the street is z 0–32, the outer courtyard z 32–80, the t
 (top 5.0), the ridge behind it, the back mountain rising from z 200 to about 60 m. The level
 ends at rock rims (west, east, north) and road-works barriers (the road's two ends).
 
+**The ground's textures** ([WORLDKIT.md](../../../docs/WORLDKIT.md#textured-terrain)): 15 of the
+terrain materials are textured, 32-texel tiles repeating in world coordinates, mostly 2.4 m a
+repeat (7.5 cm texels): the forest floor (humus, needles and every colour of leaf), the
+mountain's deep litter, moss, earth banks, the trails' packed dirt, the courtyard's raked gravel,
+the approach's paving, the terrace's ashlar (3.2 m), the steps, the pond's bed, the mountain's
+rock (4.8 m), the road's asphalt and the sidewalk. `stairs_wide` and `earth_wide` are the steps
+and earth at 4.8 m, for the terrace steps and the east stairs, whose long faces would otherwise
+need cutting. Spans of 223 on the forest's, the courtyard's and the pond's materials keep every
+mountain and forest piece without a texture window, so those views cost what the plain ground
+did; the street's and the approach's faces use windows. Kerbs, the road's line, planks and rope
+stay plain colours (planks would need a pattern that follows a path).
+
 **The forest loop**, all of it walked and jumped by the scenarios below with the default tuning:
 the trail from the courtyard's west edge past the fallen log and the mossy boulders; six
 stepping stones across the spring; the old stone stairs up the outcrop (14 m); the treetop
@@ -116,13 +128,14 @@ boulders), the water (the animated waterfall, three stepping stones, the bobbing
 bridge, two lily pads, reeds, the bamboo fence) and the street (konbini, the 1990s building,
 vending machine, utility pole, street lamp, guardrail, barriers). Scattered: 309 trees (maples,
 ginkgo, cedars), 371 undergrowth plants, 114 leaf-litter patches, 46 reed clumps. Far cells draw
-as stand-ins, canopy sheets sampled from the world by `standins.py`. Texture VRAM: 84 tiles,
-59,901 bytes (71,104 on the 8-texel grid) in slots 11–13.
+as stand-ins, canopy sheets sampled from the world by `standins.py`. Texture VRAM: 100 tiles,
+326,052 bytes (343,712 on the 8-texel grid) in slots 1–13, the ground's 16 tiles 272,608 of
+them.
 
 **What it costs** (the World Checker, depth mode, 600 views, report mode): peak 3,023
 triangles, 681,077 draw CPU cycles, 1,058,081 GPU cycles; 9 views over the 600,000-cycle draw
 budget, all in the forest's north-west and on the mountain, where the torii steps (982 triangles
-of sweep in two cells) and the stage hall meet. 15 cells, 805 placements, a 6.4 MB pack. The
+of sweep in two cells) and the stage hall meet. 15 cells, 805 placements, a 6.7 MB pack. The
 collision report has 44 cracks of the known kind (narrow walls where sweeps, beds and steep
 banks meet floors; none on a seam) and 4 edge mismatches inside assets' collision.
 
@@ -134,8 +147,9 @@ stream; every coin reachable and taken; both doors.
 **How it is made.** The recipe is JSON written as the source (the world lead's working
 generator is not kept); `standins.py` regenerates the stand-ins after the terrain changes.
 The assets' PNG textures are drawn by the scripts beside them in `assets/art/`
-(`draw_arch.py`, `draw_foliage.py`, `draw_forest.py`, `draw_water.py`, `draw_street_sheet.py`;
-`make_foliage.py` writes the foliage recipes). Building needs Pillow for those textures.
+(`draw_arch.py`, `draw_foliage.py`, `draw_forest.py`, `draw_water.py`, `draw_street_sheet.py`,
+and `draw_terrain.py` for the ground's; `make_foliage.py` writes the foliage recipes). Building
+needs Pillow for those textures.
 
 ## Open
 

@@ -983,6 +983,74 @@ class TerrainTests(unittest.TestCase):
             with self.assertRaisesRegex(WorldError, 'lift raises'):
                 w.compile()
 
+    def test_textured_terrain(self):
+        """Terrain textures repeat in world coordinates: each face starts in the first repeat, is
+        drawn from the stored repeats without a window when it fits in them, through a texture
+        window when it reaches further, and never past 255 texels."""
+        grass = {'pattern': 'checker', 'colors': ['#406030', '#508040'], 'size': 16, 'scale': [8, 8],
+                 'projection': 'planar'}                  # 2 texels a unit; 96 stored: 47.5 units
+        stone = {'pattern': 'checker', 'colors': ['#808080', '#a0a0a0'], 'size': 16, 'span': 32}   # 16 a unit
+        mats = dict(MATERIALS, grass=dict(MATERIALS['grass'], texture=grass),
+                    stone=dict(MATERIALS['stone'], texture=stone))
+        ops = [{'op': 'paint', 'area': {'rect': [0, 0, 32, 32]}, 'material': 'stone'},
+               {'op': 'ramp', 'from': [40, 0, 48], 'to': [64, 6, 48], 'width': 12}]
+        t = {'materials': mats, 'fields': {'main': {'spacing': 2, 'min': [0, 0], 'max': [64, 64],
+                                                    'material': 'grass', 'operations': ops,
+                                                    'lod': {'distance': 30, 'tolerance': 2}}}}
+        paths = {'walk': {'points': [[36, 0.5, 4], [36, 0.5, 60]],
+                          'sweep': {'profile': [[-1, 0], [1, 0], [1.5, -0.5]], 'materials': ['stone', 'grass']}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            c = TerrainWorld(tmp, terrain=t, paths=paths).compile()
+            rep = c.report['terrain']['textures']
+            self.assertEqual(rep['grass']['stored'], [112, 112])
+            self.assertEqual(rep['grass']['windowed'], 0, 'every grass face fits in its stored repeats')
+            self.assertEqual(rep['stone']['stored'], [48, 48])
+            self.assertGreater(rep['stone']['windowed'], 0, 'big stone rectangles reach past 48 texels')
+            self.assertEqual(rep['stone']['reach'], round((255 - 16) / 16, 3))
+            self.assertTrue(rep['grass']['far'].startswith('#'))
+            region = c.report['regions']['r']['textures']
+            self.assertEqual(region['by_asset']['terrain']['tiles'], 3)     # grass, stone, stone's window tile
+            windowed, plain = 0, 0
+            for cell in c.world.cells:
+                for pl in cell.placements:
+                    if pl.tag not in (0xFFFE, 0xFFFD):
+                        continue
+                    nv, nf, vo, fo = P.mesh_info(pl.mesh)
+                    table = struct.unpack_from('<I', pl.mesh, 12)[0]
+                    wins = []
+                    if table:
+                        wins = [struct.unpack_from('<H', pl.mesh, o)[0] for o in range(table, len(pl.mesh) - 1, 2)]
+                    tris = mesh_world_triangles(c, cell, pl.mesh)
+                    for k in range(nf):
+                        f = fo + 36 * k
+                        uv = [struct.unpack_from('<H', pl.mesh, f + 28 + 2 * i)[0] for i in range(3)]
+                        us, vs = [w & 255 for w in uv], [w >> 8 for w in uv]
+                        window = pl.mesh[f + 2] >> 5
+                        if window:
+                            windowed += 1
+                            half = wins[window - 1]
+                            self.assertEqual((4 << (half & 7), 4 << ((half >> 8) & 7)), (16, 16))
+                            self.assertLess(min(us), 16)        # starts in the first repeat
+                            self.assertLess(min(vs), 16)
+                            # on a level face, texel steps are world steps at 16 texels a unit
+                            if len({round(p[1], 6) for p in tris[k]}) == 1:
+                                (xa, _, za), (xb, _, zb) = tris[k][0], tris[k][1]
+                                steps = sorted((abs(us[1] - us[0]), abs(vs[1] - vs[0])))
+                                for got, want in zip(steps, sorted((16 * abs(xb - xa), 16 * abs(zb - za)))):
+                                    self.assertAlmostEqual(got, want, delta=1)
+                        elif pl.mesh[f] & 2 and table == 0:
+                            plain += 1
+            self.assertEqual(windowed, sum(r['windowed'] for r in rep.values()))
+            self.assertGreater(plain, 0)
+            self.assertEqual(c.report['terrain']['texture_windows']['triangles'], windowed)
+            self.assertEqual(TerrainWorld(tmp, terrain=t, paths=paths).compile().pack, c.pack, 'deterministic')
+            # errors: no holes, sheets or non-repeating projections; the span within 254 texels
+            for bad, path in ((dict(stone, clear='#808080'), '/clear'), (dict(stone, projection='fit'), '/projection'),
+                              (dict(stone, span=240), '/span'), (dict(stone, size=12), '')):
+                m = dict(mats, stone=dict(mats['stone'], texture=bad))
+                e = self.error(tmp, terrain=dict(t, materials=m), paths=paths)
+                self.assertEqual(e.path, '/terrain/materials/stone/texture' + path, str(e))
+
     def test_worlds_without_terrain_report_none(self):
         with tempfile.TemporaryDirectory() as tmp:
             c = Example(tmp).compile()

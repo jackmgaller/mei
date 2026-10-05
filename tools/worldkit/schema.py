@@ -6,6 +6,13 @@ reserved for later work (terrain in a cell file, region audio) are errors that s
 """
 from kitcore.errors import KitError
 from kitcore.schema import number, integer, array, obj, choice, NAME, BOOL, COLOR, validator
+from assetkit.schema import TEXTURE as _ASSET_TEXTURE
+
+# A terrain texture: the Asset Kit's, and how far past its first repeat it is stored.
+ASSET_TEXTURE = dict(_ASSET_TEXTURE, properties=dict(_ASSET_TEXTURE['properties'], span=dict(
+    integer(8,247),description='Texels the texture is stored past its first repeat, each way (default 96; at most '
+                               '255 texels a side in all): faces reaching no further are drawn without a texture window, '
+                               'faces reaching further through one, which costs the reader CPU. More VRAM, less CPU.')))
 
 
 class WorldError(KitError):
@@ -124,6 +131,7 @@ TERRAIN_MATERIAL = obj({
     'tag':dict(NAME,description='A surface tag, mapped to the collision surface byte by collision.surfaces.'),
     'share':dict(BOOL,description='As an Asset Kit material\'s: false gives the material a palette entry of its own. Default true.'),
     'water':dict(BOOL,description='Water: semi-transparent (half blend), no collision, not ground; its upward faces answer the reader\'s wp_water() with the tag\'s surface byte. For water operations and water sweeps. Default false.'),
+    'texture':dict(ASSET_TEXTURE,description='A texture repeating in world coordinates (WORLDKIT.md, "Textured terrain"): an Asset Kit texture\'s pattern, texels or image (relative to the world file), without holes, projection box (default) or planar (default axis y), scale in units a repeat, and span. It joins the region\'s texture set; the material has a palette entry only for a field\'s coarse level (the texture\'s mean colour).'),
 }, ['color'])
 SWEEP = obj({
     'profile':dict(array(array(NUM,2,2),2,64),description='[[x, y], ...]: the cross-section, x to the right of the path\'s direction, y up from its line. Each edge faces to its left (an edge drawn from left to right faces up).'),
