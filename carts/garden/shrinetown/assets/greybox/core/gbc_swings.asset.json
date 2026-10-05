@@ -1,0 +1,36 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_swings",
+ "materials": {
+  "park_green": {
+   "color": "#40a060"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    4,
+    2.5,
+    1
+   ],
+   "material": "park_green",
+   "transform": {
+    "translate": [
+     0,
+     1.25,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

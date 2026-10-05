@@ -1,0 +1,36 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_gate_w_post_n",
+ "materials": {
+  "red": {
+   "color": "#c43026"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    1.2,
+    4.0,
+    1.2
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     0,
+     2.0,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

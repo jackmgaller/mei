@@ -1,0 +1,36 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_shrine_office",
+ "materials": {
+  "white": {
+   "color": "#e8e2d2"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    8,
+    4.0,
+    10
+   ],
+   "material": "white",
+   "transform": {
+    "translate": [
+     0,
+     2.0,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,274 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c4_3",
+ "at": [
+  4,
+  3
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "graves_5_0w",
+   "asset": "gbc_grave_row",
+   "position": [
+    271,
+    10.8,
+    194
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_5_0e",
+   "asset": "gbc_grave_row",
+   "position": [
+    301,
+    10.8,
+    194
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_5_1w",
+   "asset": "gbc_grave_row",
+   "position": [
+    271,
+    10.8,
+    199
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_5_1e",
+   "asset": "gbc_grave_row",
+   "position": [
+    301,
+    10.8,
+    199
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_6_0w",
+   "asset": "gbc_grave_row",
+   "position": [
+    271,
+    12.6,
+    206
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_6_0e",
+   "asset": "gbc_grave_row",
+   "position": [
+    301,
+    12.6,
+    206
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_6_1w",
+   "asset": "gbc_grave_row",
+   "position": [
+    271,
+    12.6,
+    211
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_6_1e",
+   "asset": "gbc_grave_row",
+   "position": [
+    301,
+    12.6,
+    211
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_7_0w",
+   "asset": "gbc_grave_row",
+   "position": [
+    271,
+    14.4,
+    218
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_7_0e",
+   "asset": "gbc_grave_row",
+   "position": [
+    301,
+    14.4,
+    218
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_7_1w",
+   "asset": "gbc_grave_row",
+   "position": [
+    271,
+    14.4,
+    223
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_7_1e",
+   "asset": "gbc_grave_row",
+   "position": [
+    301,
+    14.4,
+    223
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_8_0w",
+   "asset": "gbc_grave_row",
+   "position": [
+    271,
+    16.2,
+    230
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_8_0e",
+   "asset": "gbc_grave_row",
+   "position": [
+    301,
+    16.2,
+    230
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_8_1w",
+   "asset": "gbc_grave_row",
+   "position": [
+    271,
+    16.2,
+    235
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_8_1e",
+   "asset": "gbc_grave_row",
+   "position": [
+    301,
+    16.2,
+    235
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_8_2w",
+   "asset": "gbc_grave_row",
+   "position": [
+    271,
+    16.2,
+    242
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_8_2e",
+   "asset": "gbc_grave_row",
+   "position": [
+    301,
+    16.2,
+    242
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_8_3w",
+   "asset": "gbc_grave_row",
+   "position": [
+    271,
+    16.2,
+    247
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "graves_8_3e",
+   "asset": "gbc_grave_row",
+   "position": [
+    301,
+    16.2,
+    247
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "jizo_hall",
+   "asset": "gbc_jizo_hall",
+   "position": [
+    299.0,
+    16.2,
+    241.0
+   ],
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "core_coin_cemetery_2",
+   "type": "coin",
+   "position": [
+    286.0,
+    11.8,
+    197
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_cemetery_3",
+   "type": "coin",
+   "position": [
+    286.0,
+    15.4,
+    221
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_cemetery_4",
+   "type": "coin",
+   "position": [
+    286.0,
+    17.2,
+    233
+   ],
+   "asset": "gbc_coin"
+  }
+ ]
+}

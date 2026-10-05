@@ -1,0 +1,103 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_2",
+ "at": [
+  0,
+  2
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "yagura",
+   "asset": "gbc_yagura",
+   "position": [
+    22.0,
+    0.6,
+    160.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "park_toilet",
+   "asset": "gbc_park_toilet",
+   "position": [
+    7.0,
+    0.6,
+    189.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "jungle_gym",
+   "asset": "gbc_jungle_gym",
+   "position": [
+    27.5,
+    0.6,
+    133.5
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "swings",
+   "asset": "gbc_swings",
+   "position": [
+    35.0,
+    0.6,
+    140.5
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "park_slide",
+   "asset": "gbc_park_slide",
+   "position": [
+    12.0,
+    0.6,
+    140.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "ginkgo_0",
+   "asset": "gbc_tree_ginkgo",
+   "position": [
+    8,
+    0.6,
+    150
+   ],
+   "collision": "gbc_trunk_ginkgo_col"
+  },
+  {
+   "id": "ginkgo_1",
+   "asset": "gbc_tree_ginkgo",
+   "position": [
+    36,
+    0.6,
+    152
+   ],
+   "collision": "gbc_trunk_ginkgo_col"
+  },
+  {
+   "id": "ginkgo_2",
+   "asset": "gbc_tree_ginkgo",
+   "position": [
+    8,
+    0.6,
+    172
+   ],
+   "collision": "gbc_trunk_ginkgo_col"
+  },
+  {
+   "id": "ginkgo_3",
+   "asset": "gbc_tree_ginkgo",
+   "position": [
+    36,
+    0.6,
+    176
+   ],
+   "collision": "gbc_trunk_ginkgo_col"
+  }
+ ],
+ "entities": []
+}

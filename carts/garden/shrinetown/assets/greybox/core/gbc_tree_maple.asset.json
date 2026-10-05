@@ -1,0 +1,106 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_tree_maple",
+ "materials": {
+  "maple": {
+   "color": "#c8301e"
+  },
+  "trunk": {
+   "color": "#4a3a2e"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    0.5,
+    3.5,
+    0.5
+   ],
+   "material": "trunk",
+   "transform": {
+    "translate": [
+     0,
+     1.75,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    6,
+    5,
+    6
+   ],
+   "material": "maple",
+   "transform": {
+    "translate": [
+     0,
+     6.0,
+     0
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 36,
+    "nodes": [
+     {
+      "id": "canopy",
+      "op": "box",
+      "size": [
+       6,
+       5,
+       6
+      ],
+      "open": [
+       "bottom"
+      ],
+      "material": "maple",
+      "transform": {
+       "translate": [
+        0,
+        6.0,
+        0
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "distance": 80,
+    "nodes": [
+     {
+      "id": "far",
+      "op": "cone",
+      "radius": 4.199999999999999,
+      "height": 8.0,
+      "segments": 3,
+      "caps": false,
+      "material": "maple",
+      "transform": {
+       "translate": [
+        0,
+        6.0,
+        0
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ }
+}

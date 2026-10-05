@@ -1,0 +1,36 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_boulder_2",
+ "materials": {
+  "mossy": {
+   "color": "#7a8050"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    2.4,
+    1.9,
+    2.4
+   ],
+   "material": "mossy",
+   "transform": {
+    "translate": [
+     0,
+     0.95,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}
