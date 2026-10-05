@@ -1,0 +1,581 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "bus_stop",
+ "budget": {
+  "vertices": 600,
+  "triangles": 450
+ },
+ "sheets": {
+  "sheet": {
+   "image": "art/bus_stop_sheet.png"
+  }
+ },
+ "materials": {
+  "concrete": {
+   "color": "#a9a69c",
+   "texture": {
+    "pattern": "tile",
+    "colors": [
+     "#a9a69c",
+     "#8d8a82",
+     "#b6b3a8"
+    ],
+    "params": {
+     "count": 2,
+     "grout": 1
+    },
+    "projection": "box",
+    "scale": [
+     0.8,
+     0.8
+    ]
+   }
+  },
+  "tenji": {
+   "color": "#e8c22e",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#e8c22e",
+     "#b8921a"
+    ],
+    "params": {
+     "density": 0.4
+    },
+    "projection": "box",
+    "scale": [
+     0.25,
+     0.25
+    ]
+   }
+  },
+  "roof": {
+   "color": "#3f8f86",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#3f8f86",
+     "#357a72"
+    ],
+    "params": {
+     "count": 4,
+     "axis": "u"
+    },
+    "projection": "box",
+    "scale": [
+     0.6,
+     0.6
+    ]
+   }
+  },
+  "frame": {
+   "color": "#2f5f5a"
+  },
+  "wood": {
+   "color": "#b98962",
+   "texture": {
+    "pattern": "planks",
+    "colors": [
+     "#b98962",
+     "#7d5634",
+     "#a67a52",
+     "#c79a73"
+    ],
+    "params": {
+     "boards": 4
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "iron": {
+   "color": "#3b3d46"
+  },
+  "poster": {
+   "color": "#e0e0d8",
+   "texture": {
+    "sheet": "sheet",
+    "cell": "poster",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "disc": {
+   "color": "#f4f1e6",
+   "texture": {
+    "sheet": "sheet",
+    "cell": "disc",
+    "bits": 8,
+    "projection": "disc",
+    "axis": "y"
+   }
+  },
+  "timetable": {
+   "color": "#f4f1e6",
+   "texture": {
+    "sheet": "sheet",
+    "cell": "timetable",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "pole": {
+   "color": "#e9e5d6"
+  },
+  "star": {
+   "color": "#ffe36a",
+   "class": "emissive"
+  },
+  "cat": {
+   "color": "#e59a4a"
+  },
+  "cat_dark": {
+   "color": "#8a4f24"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    3.4,
+    0.1,
+    1.7
+   ],
+   "material": "concrete",
+   "transform": {
+    "translate": [
+     0.3,
+     0.05,
+     0.15
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "tenji",
+   "op": "box",
+   "size": [
+    2.4,
+    0.02,
+    0.3
+   ],
+   "material": "tenji",
+   "transform": {
+    "translate": [
+     0.0,
+     0.11,
+     -0.55
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "posts",
+   "op": "group",
+   "children": [
+    {
+     "id": "post",
+     "op": "box",
+     "size": [
+      0.08,
+      2.2,
+      0.08
+     ],
+     "material": "frame",
+     "transform": {
+      "translate": [
+       1.05,
+       1.2,
+       0.55
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "panel",
+   "op": "box",
+   "size": [
+    2.1,
+    1.15,
+    0.06
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     0,
+     1.3,
+     0.55
+    ]
+   }
+  },
+  {
+   "id": "poster",
+   "op": "box",
+   "size": [
+    1.9,
+    0.95,
+    0.02
+   ],
+   "material": "poster",
+   "transform": {
+    "translate": [
+     0,
+     1.3,
+     0.51
+    ]
+   },
+   "open": [
+    "front"
+   ]
+  },
+  {
+   "id": "roof",
+   "op": "extrude",
+   "material": "roof",
+   "points": [
+    [
+     -0.75,
+     0
+    ],
+    [
+     0.75,
+     0
+    ],
+    [
+     0.75,
+     0.07
+    ],
+    [
+     0.5,
+     0.13
+    ],
+    [
+     0,
+     0.17
+    ],
+    [
+     -0.5,
+     0.13
+    ],
+    [
+     -0.75,
+     0.07
+    ]
+   ],
+   "depth": 2.5,
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ],
+    "translate": [
+     0,
+     2.27,
+     0.1
+    ]
+   }
+  },
+  {
+   "id": "seat",
+   "op": "box",
+   "size": [
+    1.7,
+    0.05,
+    0.42
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0,
+     0.46,
+     0.2
+    ]
+   }
+  },
+  {
+   "id": "back",
+   "op": "box",
+   "size": [
+    1.7,
+    0.32,
+    0.04
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0,
+     0.78,
+     0.43
+    ]
+   }
+  },
+  {
+   "id": "bench_sides",
+   "op": "group",
+   "children": [
+    {
+     "id": "front_leg",
+     "op": "box",
+     "size": [
+      0.05,
+      0.42,
+      0.05
+     ],
+     "material": "iron",
+     "transform": {
+      "translate": [
+       0.8,
+       0.21,
+       0.02
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "back_leg",
+     "op": "box",
+     "size": [
+      0.05,
+      0.9,
+      0.05
+     ],
+     "material": "iron",
+     "transform": {
+      "translate": [
+       0.8,
+       0.45,
+       0.45
+      ]
+     },
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "arm",
+     "op": "box",
+     "size": [
+      0.04,
+      0.04,
+      0.46
+     ],
+     "material": "iron",
+     "transform": {
+      "translate": [
+       0.8,
+       0.62,
+       0.23
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "pole",
+   "op": "cylinder",
+   "radius": 0.035,
+   "height": 2.4,
+   "segments": 8,
+   "caps": false,
+   "material": "pole",
+   "transform": {
+    "translate": [
+     1.55,
+     1.3,
+     -0.1
+    ]
+   }
+  },
+  {
+   "id": "sign",
+   "op": "cylinder",
+   "radius": 0.24,
+   "height": 0.03,
+   "segments": 12,
+   "material": "disc",
+   "transform": {
+    "rotate": [
+     -90,
+     0,
+     0
+    ],
+    "translate": [
+     1.55,
+     2.2,
+     -0.12
+    ]
+   }
+  },
+  {
+   "id": "timetable",
+   "op": "box",
+   "size": [
+    0.42,
+    0.28,
+    0.025
+   ],
+   "material": "timetable",
+   "transform": {
+    "translate": [
+     1.55,
+     1.6,
+     -0.12
+    ]
+   }
+  },
+  {
+   "id": "star",
+   "op": "sphere",
+   "radius": 0.07,
+   "rings": 2,
+   "segments": 6,
+   "material": "star",
+   "transform": {
+    "translate": [
+     1.55,
+     2.58,
+     -0.1
+    ]
+   }
+  },
+  {
+   "id": "cat_body",
+   "op": "sphere",
+   "radius": 0.2,
+   "rings": 3,
+   "segments": 8,
+   "material": "cat",
+   "transform": {
+    "scale": [
+     1.3,
+     0.7,
+     1.0
+    ],
+    "translate": [
+     -0.45,
+     0.62,
+     0.2
+    ]
+   }
+  },
+  {
+   "id": "cat_head",
+   "op": "sphere",
+   "radius": 0.11,
+   "rings": 3,
+   "segments": 8,
+   "material": "cat",
+   "transform": {
+    "translate": [
+     -0.13,
+     0.64,
+     0.12
+    ]
+   }
+  },
+  {
+   "id": "cat_ears",
+   "op": "group",
+   "children": [
+    {
+     "id": "ear",
+     "op": "cone",
+     "radius": 0.04,
+     "height": 0.07,
+     "segments": 3,
+     "material": "cat_dark",
+     "transform": {
+      "translate": [
+       -0.1,
+       0.77,
+       0.06
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "z",
+     "offset": 0.12
+    }
+   ]
+  },
+  {
+   "id": "cat_tail",
+   "op": "box",
+   "size": [
+    0.3,
+    0.06,
+    0.06
+   ],
+   "material": "cat_dark",
+   "transform": {
+    "rotate": [
+     0,
+     25,
+     8
+    ],
+    "translate": [
+     -0.78,
+     0.55,
+     0.3
+    ]
+   }
+  },
+  {
+   "id": "cat_nose",
+   "op": "box",
+   "size": [
+    0.025,
+    0.025,
+    0.025
+   ],
+   "material": "cat_dark",
+   "transform": {
+    "translate": [
+     -0.03,
+     0.63,
+     0.12
+    ]
+   }
+  }
+ ]
+}
