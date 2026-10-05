@@ -1,0 +1,773 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "mamachari",
+ "budget": {
+  "vertices": 160,
+  "triangles": 120
+ },
+ "sheets": {
+  "bike": {
+   "image": "art/bike_sheet.png"
+  }
+ },
+ "materials": {
+  "frame": {
+   "color": "#7fcab6",
+   "palette": true
+  },
+  "chrome": {
+   "color": "#c9ced6",
+   "palette": true,
+   "double_sided": true
+  },
+  "tyre": {
+   "color": "#2b2a30",
+   "palette": true,
+   "double_sided": true
+  },
+  "saddle": {
+   "color": "#4a3426",
+   "palette": true
+  },
+  "leek_white": {
+   "color": "#eef0dc",
+   "palette": true
+  },
+  "leek_green": {
+   "color": "#4f9a3c",
+   "palette": true
+  },
+  "wheel": {
+   "color": "#b8bec8",
+   "double_sided": true,
+   "texture": {
+    "sheet": "bike",
+    "cell": "wheel",
+    "projection": "disc",
+    "axis": "x",
+    "scale": [
+     0.66,
+     0.66
+    ]
+   }
+  },
+  "case": {
+   "color": "#f1e8d2",
+   "double_sided": true,
+   "texture": {
+    "sheet": "bike",
+    "cell": "case",
+    "projection": "fit"
+   }
+  },
+  "basket": {
+   "color": "#cfd3da",
+   "double_sided": true,
+   "texture": {
+    "texels": [
+     "1111111111111",
+     "1000100010001",
+     "1000100010001",
+     "1000100010001",
+     "1111111111111",
+     "1000100010001",
+     "1000100010001",
+     "1000100010001",
+     "1111111111111",
+     "1000100010001",
+     "1000100010001",
+     "1000100010001",
+     "1111111111111"
+    ],
+    "colors": [
+     "#000000",
+     "#cfd3da"
+    ],
+    "clear": "#000000",
+    "projection": "fit"
+   }
+  },
+  "carrier": {
+   "color": "#c0c5ce",
+   "double_sided": true,
+   "texture": {
+    "texels": [
+     "1111111",
+     "1001001",
+     "1001001",
+     "1001001",
+     "1001001",
+     "1111111",
+     "1001001",
+     "1001001",
+     "1001001",
+     "1001001",
+     "1111111",
+     "1001001",
+     "1001001",
+     "1001001",
+     "1001001",
+     "1111111"
+    ],
+    "colors": [
+     "#000000",
+     "#c0c5ce"
+    ],
+    "clear": "#000000",
+    "projection": "fit"
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "prototypes": {
+  "wheel": {
+   "id": "wheel",
+   "op": "group",
+   "children": [
+    {
+     "id": "tyre",
+     "op": "cylinder",
+     "radius": 0.33,
+     "height": 0.045,
+     "segments": 8,
+     "caps": false,
+     "material": "tyre",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       90
+      ]
+     }
+    },
+    {
+     "id": "spokes",
+     "op": "mesh",
+     "material": "wheel",
+     "vertices": [
+      [
+       0,
+       0.3049,
+       0.1263
+      ],
+      [
+       0,
+       0.1263,
+       0.3049
+      ],
+      [
+       0,
+       -0.1263,
+       0.3049
+      ],
+      [
+       0,
+       -0.3049,
+       0.1263
+      ],
+      [
+       0,
+       -0.3049,
+       -0.1263
+      ],
+      [
+       0,
+       -0.1263,
+       -0.3049
+      ],
+      [
+       0,
+       0.1263,
+       -0.3049
+      ],
+      [
+       0,
+       0.3049,
+       -0.1263
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ]
+    }
+   ]
+  },
+  "wheel_lo": {
+   "id": "wheel_lo",
+   "op": "mesh",
+   "material": "wheel",
+   "vertices": [
+    [
+     0,
+     0.3049,
+     0.1263
+    ],
+    [
+     0,
+     0.1263,
+     0.3049
+    ],
+    [
+     0,
+     -0.1263,
+     0.3049
+    ],
+    [
+     0,
+     -0.3049,
+     0.1263
+    ],
+    [
+     0,
+     -0.3049,
+     -0.1263
+    ],
+    [
+     0,
+     -0.1263,
+     -0.3049
+    ],
+    [
+     0,
+     0.1263,
+     -0.3049
+    ],
+    [
+     0,
+     0.3049,
+     -0.1263
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ]
+   ]
+  }
+ },
+ "nodes": [
+  {
+   "id": "front_wheel",
+   "op": "instance",
+   "ref": "wheel",
+   "transform": {
+    "translate": [
+     0,
+     0.33,
+     -0.56
+    ]
+   }
+  },
+  {
+   "id": "rear_wheel",
+   "op": "instance",
+   "ref": "wheel",
+   "transform": {
+    "translate": [
+     0,
+     0.33,
+     0.54
+    ]
+   }
+  },
+  {
+   "id": "fork",
+   "op": "cylinder",
+   "radius": 0.016,
+   "height": 0.7425,
+   "segments": 3,
+   "caps": false,
+   "material": "chrome",
+   "transform": {
+    "rotate": [
+     25.5297,
+     0.0,
+     0
+    ],
+    "translate": [
+     0.0,
+     0.665,
+     -0.4
+    ]
+   }
+  },
+  {
+   "id": "bar",
+   "op": "cylinder",
+   "radius": 0.016,
+   "height": 0.56,
+   "segments": 3,
+   "caps": false,
+   "material": "chrome",
+   "transform": {
+    "rotate": [
+     90.0,
+     90.0,
+     0
+    ],
+    "translate": [
+     0.0,
+     1.0,
+     -0.24
+    ]
+   }
+  },
+  {
+   "id": "down_tube",
+   "op": "cylinder",
+   "radius": 0.032,
+   "height": 0.5831,
+   "segments": 3,
+   "caps": false,
+   "material": "frame",
+   "transform": {
+    "rotate": [
+     149.0362,
+     0.0,
+     0
+    ],
+    "translate": [
+     0.0,
+     0.5,
+     -0.14
+    ]
+   }
+  },
+  {
+   "id": "seat_tube",
+   "op": "cylinder",
+   "radius": 0.026,
+   "height": 0.6332,
+   "segments": 3,
+   "caps": false,
+   "material": "frame",
+   "transform": {
+    "rotate": [
+     15.5725,
+     0.0,
+     0
+    ],
+    "translate": [
+     0.0,
+     0.595,
+     0.135
+    ]
+   }
+  },
+  {
+   "id": "chainstay",
+   "op": "cylinder",
+   "radius": 0.016,
+   "height": 0.5036,
+   "segments": 3,
+   "caps": false,
+   "material": "frame",
+   "transform": {
+    "rotate": [
+     83.1572,
+     0.0,
+     0
+    ],
+    "translate": [
+     0.03,
+     0.3,
+     0.29
+    ]
+   }
+  },
+  {
+   "id": "seatstay",
+   "op": "cylinder",
+   "radius": 0.016,
+   "height": 0.6243,
+   "segments": 3,
+   "caps": false,
+   "material": "frame",
+   "transform": {
+    "rotate": [
+     148.0919,
+     0.0,
+     0
+    ],
+    "translate": [
+     -0.05,
+     0.595,
+     0.375
+    ]
+   }
+  },
+  {
+   "id": "saddle",
+   "op": "cylinder",
+   "radius": 0.075,
+   "height": 0.26,
+   "segments": 3,
+   "caps": false,
+   "material": "saddle",
+   "transform": {
+    "rotate": [
+     90,
+     0,
+     0
+    ],
+    "scale": [
+     1.1,
+     1,
+     0.55
+    ],
+    "translate": [
+     0,
+     0.97,
+     0.27
+    ]
+   }
+  },
+  {
+   "id": "basket",
+   "op": "box",
+   "size": [
+    0.38,
+    0.24,
+    0.3
+   ],
+   "open": [
+    "top"
+   ],
+   "material": "basket",
+   "transform": {
+    "translate": [
+     0,
+     0.86,
+     -0.67
+    ]
+   }
+  },
+  {
+   "id": "carrier",
+   "op": "mesh",
+   "material": "carrier",
+   "vertices": [
+    [
+     -0.105,
+     0.735,
+     0.8
+    ],
+    [
+     0.105,
+     0.735,
+     0.8
+    ],
+    [
+     0.105,
+     0.735,
+     0.26
+    ],
+    [
+     -0.105,
+     0.735,
+     0.26
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "front_fender",
+   "op": "mesh",
+   "material": "chrome",
+   "vertices": [
+    [
+     -0.0375,
+     0.455,
+     -0.9
+    ],
+    [
+     0.0375,
+     0.455,
+     -0.9
+    ],
+    [
+     -0.0375,
+     0.668,
+     -0.697
+    ],
+    [
+     0.0375,
+     0.668,
+     -0.697
+    ],
+    [
+     -0.0375,
+     0.565,
+     -0.28
+    ],
+    [
+     0.0375,
+     0.565,
+     -0.28
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     3,
+     2
+    ],
+    [
+     2,
+     3,
+     5,
+     4
+    ]
+   ]
+  },
+  {
+   "id": "rear_fender",
+   "op": "mesh",
+   "material": "chrome",
+   "vertices": [
+    [
+     -0.0375,
+     0.565,
+     0.26
+    ],
+    [
+     0.0375,
+     0.565,
+     0.26
+    ],
+    [
+     -0.0375,
+     0.693,
+     0.5
+    ],
+    [
+     0.0375,
+     0.693,
+     0.5
+    ],
+    [
+     -0.0375,
+     0.381,
+     0.9
+    ],
+    [
+     0.0375,
+     0.381,
+     0.9
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     3,
+     2
+    ],
+    [
+     2,
+     3,
+     5,
+     4
+    ]
+   ]
+  },
+  {
+   "id": "chain_case",
+   "op": "mesh",
+   "material": "case",
+   "vertices": [
+    [
+     0.085,
+     0.28,
+     -0.075
+    ],
+    [
+     0.085,
+     0.385,
+     -0.02
+    ],
+    [
+     0.085,
+     0.39,
+     0.55
+    ],
+    [
+     0.085,
+     0.3,
+     0.6
+    ],
+    [
+     0.085,
+     0.2,
+     0.55
+    ],
+    [
+     0.085,
+     0.155,
+     -0.02
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ]
+   ]
+  },
+  {
+   "id": "leek_white",
+   "op": "cylinder",
+   "radius": 0.02,
+   "height": 0.2335,
+   "segments": 3,
+   "caps": false,
+   "material": "leek_white",
+   "transform": {
+    "rotate": [
+     19.5454,
+     -39.8056,
+     0
+    ],
+    "translate": [
+     -0.125,
+     1.01,
+     -0.61
+    ]
+   }
+  },
+  {
+   "id": "leek_green",
+   "op": "cone",
+   "radius": 0.03,
+   "height": 0.2394,
+   "segments": 3,
+   "caps": false,
+   "material": "leek_green",
+   "transform": {
+    "rotate": [
+     23.2105,
+     -32.0054,
+     0
+    ],
+    "translate": [
+     -0.175,
+     1.23,
+     -0.54
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 18,
+    "nodes": [
+     {
+      "id": "front_wheel",
+      "op": "instance",
+      "ref": "wheel_lo",
+      "transform": {
+       "translate": [
+        0,
+        0.33,
+        -0.56
+       ]
+      }
+     },
+     {
+      "id": "rear_wheel",
+      "op": "instance",
+      "ref": "wheel_lo",
+      "transform": {
+       "translate": [
+        0,
+        0.33,
+        0.54
+       ]
+      }
+     },
+     {
+      "id": "frame",
+      "op": "cylinder",
+      "radius": 0.03,
+      "height": 0.9795,
+      "segments": 3,
+      "caps": false,
+      "material": "frame",
+      "transform": {
+       "rotate": [
+        117.3499,
+        0.0,
+        0
+       ],
+       "translate": [
+        0.0,
+        0.555,
+        0.105
+       ]
+      }
+     },
+     {
+      "id": "basket",
+      "op": "box",
+      "size": [
+       0.38,
+       0.24,
+       0.3
+      ],
+      "open": [
+       "top",
+       "bottom"
+      ],
+      "material": "basket",
+      "transform": {
+       "translate": [
+        0,
+        0.86,
+        -0.67
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 40
+ }
+}

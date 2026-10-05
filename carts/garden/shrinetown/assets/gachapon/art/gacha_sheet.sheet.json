@@ -1,0 +1,9 @@
+{"format": "mei-sheet", "version": 1,
+ "cells": {
+  "window_a": [0, 0, 48, 40],
+  "window_b": [48, 0, 48, 40],
+  "window_c": [96, 0, 48, 40],
+  "panel": [144, 0, 40, 44],
+  "header": [184, 0, 48, 12],
+  "side": [0, 44, 32, 40]
+ }}

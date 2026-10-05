@@ -1,0 +1,1050 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "crane_game",
+ "budget": {
+  "vertices": 400,
+  "triangles": 200
+ },
+ "materials": {
+  "cabinet": {
+   "color": "#2fb7bd",
+   "texture": {
+    "pattern": "tile",
+    "colors": [
+     "#2fb7bd",
+     "#e9f6f2",
+     "#27a0a6"
+    ],
+    "params": {
+     "count": 2,
+     "grout": 1
+    },
+    "projection": "box",
+    "scale": [
+     0.32,
+     0.32
+    ]
+   }
+  },
+  "floor": {
+   "color": "#f3d6e0",
+   "texture": {
+    "pattern": "checker",
+    "colors": [
+     "#f6d9e4",
+     "#f2a9c4"
+    ],
+    "params": {
+     "count": 2
+    },
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     0.2,
+     0.2
+    ]
+   }
+  },
+  "stars": {
+   "color": "#1d2a6b",
+   "double_sided": true,
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#1d2a6b",
+     "#f4f0c8",
+     "#ffd86b"
+    ],
+    "size": 32,
+    "params": {
+     "density": 0.05,
+     "seed": 5
+    },
+    "projection": "planar",
+    "axis": "z",
+    "scale": [
+     0.6,
+     0.6
+    ]
+   }
+  },
+  "candy": {
+   "color": "#d62678",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#d62678",
+     "#fff3e2"
+    ],
+    "params": {
+     "count": 4
+    },
+    "projection": "box",
+    "scale": [
+     0.16,
+     0.16
+    ]
+   }
+  },
+  "sign": {
+   "color": "#d62678",
+   "class": "emissive",
+   "texture": {
+    "image": "art/sign.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "panel": {
+   "color": "#3a285a",
+   "texture": {
+    "image": "art/panel.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "side": {
+   "color": "#fff4d6",
+   "texture": {
+    "image": "art/side.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "label": {
+   "color": "#ffec78",
+   "texture": {
+    "image": "art/label.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "glare": {
+   "color": "#ecf6ff",
+   "double_sided": true,
+   "texture": {
+    "image": "art/glare.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "gold": {
+   "color": "#ffd23f",
+   "palette": true,
+   "double_sided": true
+  },
+  "chrome": {
+   "color": "#c9ced6",
+   "palette": true
+  },
+  "metal": {
+   "color": "#6c7380",
+   "palette": true
+  },
+  "dark": {
+   "color": "#2a2230",
+   "palette": true
+  },
+  "red": {
+   "color": "#e8402f",
+   "palette": true
+  },
+  "siren": {
+   "color": "#ff5a4a",
+   "class": "emissive"
+  },
+  "siren_b": {
+   "color": "#4aa8ff",
+   "class": "emissive"
+  },
+  "bear": {
+   "color": "#b07a4a",
+   "palette": true
+  },
+  "bunny": {
+   "color": "#f4a8c0",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "base",
+   "op": "extrude",
+   "points": [
+    [
+     0.75,
+     0.0
+    ],
+    [
+     -0.45,
+     0.0
+    ],
+    [
+     -0.45,
+     0.9
+    ],
+    [
+     0.45,
+     0.9
+    ],
+    [
+     0.75,
+     0.8
+    ]
+   ],
+   "depth": 0.9,
+   "material": "cabinet",
+   "decals": [
+    {
+     "id": "sticker_r",
+     "face": "front",
+     "material": "side",
+     "size": [
+      0.64,
+      0.4
+     ],
+     "at": [
+      -0.23,
+      0.42
+     ]
+    }
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ]
+   }
+  },
+  {
+   "id": "console",
+   "op": "box",
+   "size": [
+    0.8,
+    0.06,
+    0.3162
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "dark",
+   "faces": {
+    "top": "panel"
+   },
+   "transform": {
+    "rotate": [
+     -18.4349,
+     0,
+     0
+    ],
+    "translate": [
+     0.0,
+     0.8547,
+     -0.6016
+    ]
+   }
+  },
+  {
+   "id": "stick",
+   "op": "cone",
+   "radius": 0.032,
+   "height": 0.12,
+   "segments": 5,
+   "caps": false,
+   "material": "red",
+   "transform": {
+    "rotate": [
+     -18.4349,
+     0,
+     0
+    ],
+    "translate": [
+     -0.224,
+     0.9193,
+     -0.6294
+    ]
+   }
+  },
+  {
+   "id": "flap",
+   "op": "box",
+   "size": [
+    0.4,
+    0.3,
+    0.06
+   ],
+   "open": [
+    "front"
+   ],
+   "material": "dark",
+   "decals": [
+    {
+     "id": "label",
+     "face": "back",
+     "material": "label",
+     "size": [
+      0.36,
+      0.06
+     ],
+     "at": [
+      0,
+      0.08
+     ]
+    }
+   ],
+   "transform": {
+    "translate": [
+     -0.2,
+     0.31,
+     -0.7525
+    ]
+   }
+  },
+  {
+   "id": "playfield",
+   "op": "box",
+   "size": [
+    0.74,
+    0.06,
+    0.82
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "floor",
+   "decals": [
+    {
+     "id": "prize_hole",
+     "face": "top",
+     "material": "dark",
+     "size": [
+      0.2,
+      0.2
+     ],
+     "at": [
+      -0.25,
+      -0.28
+     ]
+    }
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.92,
+     0
+    ]
+   }
+  },
+  {
+   "id": "post_lf",
+   "op": "box",
+   "size": [
+    0.05,
+    0.86,
+    0.05
+   ],
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "material": "gold",
+   "transform": {
+    "translate": [
+     -0.39,
+     1.305,
+     -0.42
+    ]
+   }
+  },
+  {
+   "id": "post_rf",
+   "op": "box",
+   "size": [
+    0.05,
+    0.86,
+    0.05
+   ],
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "material": "gold",
+   "transform": {
+    "translate": [
+     0.39,
+     1.305,
+     -0.42
+    ]
+   }
+  },
+  {
+   "id": "back_wall",
+   "op": "mesh",
+   "material": "stars",
+   "vertices": [
+    [
+     -0.42,
+     0.93,
+     0.428
+    ],
+    [
+     0.42,
+     0.93,
+     0.428
+    ],
+    [
+     0.42,
+     1.72,
+     0.428
+    ],
+    [
+     -0.42,
+     1.72,
+     0.428
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ]
+   ]
+  },
+  {
+   "id": "pane_front",
+   "op": "mesh",
+   "material": "glare",
+   "vertices": [
+    [
+     0.0,
+     1.69,
+     -0.447
+    ],
+    [
+     0.34,
+     1.69,
+     -0.447
+    ],
+    [
+     0.34,
+     1.2,
+     -0.447
+    ],
+    [
+     0.0,
+     1.2,
+     -0.447
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pane_right",
+   "op": "mesh",
+   "material": "glare",
+   "vertices": [
+    [
+     0.447,
+     1.69,
+     -0.38
+    ],
+    [
+     0.447,
+     1.69,
+     0.0
+    ],
+    [
+     0.447,
+     1.2,
+     0.0
+    ],
+    [
+     0.447,
+     1.2,
+     -0.38
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pane_left",
+   "op": "mesh",
+   "material": "glare",
+   "vertices": [
+    [
+     -0.447,
+     1.69,
+     0.0
+    ],
+    [
+     -0.447,
+     1.69,
+     -0.38
+    ],
+    [
+     -0.447,
+     1.2,
+     -0.38
+    ],
+    [
+     -0.447,
+     1.2,
+     0.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "marquee",
+   "op": "box",
+   "size": [
+    0.94,
+    0.24,
+    1.0
+   ],
+   "open": [
+    "bottom"
+   ],
+   "material": "candy",
+   "faces": {
+    "back": "sign"
+   },
+   "transform": {
+    "translate": [
+     0,
+     1.86,
+     0
+    ]
+   }
+  },
+  {
+   "id": "siren_l",
+   "op": "cone",
+   "radius": 0.055,
+   "height": 0.1,
+   "segments": 4,
+   "caps": false,
+   "material": "siren",
+   "transform": {
+    "translate": [
+     -0.37,
+     2.0,
+     0.2
+    ]
+   }
+  },
+  {
+   "id": "siren_r",
+   "op": "cone",
+   "radius": 0.055,
+   "height": 0.1,
+   "segments": 4,
+   "caps": false,
+   "material": "siren_b",
+   "transform": {
+    "translate": [
+     0.37,
+     2.0,
+     0.2
+    ]
+   }
+  },
+  {
+   "id": "topper",
+   "op": "mesh",
+   "material": "gold",
+   "vertices": [
+    [
+     0.0,
+     2.28,
+     0.0
+    ],
+    [
+     -0.0459,
+     2.1631,
+     0.0
+    ],
+    [
+     -0.1711,
+     2.1556,
+     0.0
+    ],
+    [
+     -0.0743,
+     2.0758,
+     0.0
+    ],
+    [
+     -0.1057,
+     1.9543,
+     0.0
+    ],
+    [
+     -0.0,
+     2.022,
+     0.0
+    ],
+    [
+     0.1057,
+     1.9543,
+     0.0
+    ],
+    [
+     0.0743,
+     2.0758,
+     0.0
+    ],
+    [
+     0.1711,
+     2.1556,
+     0.0
+    ],
+    [
+     0.0459,
+     2.1631,
+     0.0
+    ]
+   ],
+   "faces": [
+    [
+     9,
+     8,
+     7,
+     6,
+     5,
+     4,
+     3,
+     2,
+     1,
+     0
+    ]
+   ]
+  },
+  {
+   "id": "rail_l",
+   "op": "cylinder",
+   "radius": 0.025,
+   "height": 0.8,
+   "segments": 3,
+   "caps": false,
+   "material": "metal",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0
+    ],
+    "translate": [
+     -0.3,
+     1.69,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "rail_r",
+   "op": "cylinder",
+   "radius": 0.025,
+   "height": 0.8,
+   "segments": 3,
+   "caps": false,
+   "material": "metal",
+   "transform": {
+    "rotate": [
+     90.0,
+     0.0,
+     0
+    ],
+    "translate": [
+     0.3,
+     1.69,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "bridge",
+   "op": "cylinder",
+   "radius": 0.03,
+   "height": 0.64,
+   "segments": 3,
+   "caps": false,
+   "material": "metal",
+   "transform": {
+    "rotate": [
+     90.0,
+     90.0,
+     0
+    ],
+    "translate": [
+     0.0,
+     1.69,
+     0.12
+    ]
+   }
+  },
+  {
+   "id": "claw_hub",
+   "op": "cylinder",
+   "radius": 0.05,
+   "height": 0.07,
+   "segments": 3,
+   "caps": false,
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     0.2,
+     1.615,
+     0.12
+    ]
+   }
+  },
+  {
+   "id": "claw",
+   "op": "group",
+   "transform": {
+    "translate": [
+     0.2,
+     1.58,
+     0.12
+    ]
+   },
+   "children": [
+    {
+     "id": "arm",
+     "op": "cylinder",
+     "radius": 0.016,
+     "height": 0.1772,
+     "segments": 3,
+     "caps": false,
+     "material": "red",
+     "transform": {
+      "rotate": [
+       163.6105,
+       90.0,
+       0
+      ],
+      "translate": [
+       0.065,
+       -0.085,
+       0.0
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "radial",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "plush_bear",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     0,
+     -20,
+     0
+    ],
+    "translate": [
+     0.28,
+     1.04,
+     0.12
+    ]
+   },
+   "children": [
+    {
+     "id": "body",
+     "op": "sphere",
+     "radius": 0.1,
+     "rings": 2,
+     "segments": 5,
+     "material": "bear",
+     "transform": {
+      "scale": [
+       1.1,
+       0.95,
+       1.0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "plush_bunny",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     0,
+     10,
+     0
+    ],
+    "translate": [
+     0.07,
+     1.04,
+     0.26
+    ]
+   },
+   "children": [
+    {
+     "id": "body",
+     "op": "sphere",
+     "radius": 0.1,
+     "rings": 2,
+     "segments": 5,
+     "material": "bunny",
+     "transform": {
+      "scale": [
+       1.1,
+       0.95,
+       1.0
+      ]
+     }
+    },
+    {
+     "id": "earl",
+     "op": "cylinder",
+     "radius": 0.022,
+     "height": 0.2102,
+     "segments": 3,
+     "caps": false,
+     "material": "bunny",
+     "transform": {
+      "rotate": [
+       2.454,
+       -90.0,
+       0
+      ],
+      "translate": [
+       -0.0495,
+       0.155,
+       0.0
+      ]
+     }
+    },
+    {
+     "id": "earr",
+     "op": "cylinder",
+     "radius": 0.022,
+     "height": 0.2102,
+     "segments": 3,
+     "caps": false,
+     "material": "bunny",
+     "transform": {
+      "rotate": [
+       2.454,
+       90.0,
+       0
+      ],
+      "translate": [
+       0.0495,
+       0.155,
+       0.0
+      ]
+     }
+    }
+   ]
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 22,
+    "nodes": [
+     {
+      "id": "base",
+      "op": "extrude",
+      "points": [
+       [
+        0.75,
+        0.0
+       ],
+       [
+        -0.45,
+        0.0
+       ],
+       [
+        -0.45,
+        0.9
+       ],
+       [
+        0.45,
+        0.9
+       ],
+       [
+        0.75,
+        0.8
+       ]
+      ],
+      "depth": 0.9,
+      "material": "cabinet",
+      "transform": {
+       "rotate": [
+        0,
+        90,
+        0
+       ]
+      }
+     },
+     {
+      "id": "playfield",
+      "op": "box",
+      "size": [
+       0.74,
+       0.06,
+       0.82
+      ],
+      "open": [
+       "bottom"
+      ],
+      "material": "floor",
+      "transform": {
+       "translate": [
+        0,
+        0.92,
+        0
+       ]
+      }
+     },
+     {
+      "id": "post_lf",
+      "op": "box",
+      "size": [
+       0.05,
+       0.86,
+       0.05
+      ],
+      "open": [
+       "top",
+       "bottom"
+      ],
+      "material": "gold",
+      "transform": {
+       "translate": [
+        -0.39,
+        1.305,
+        -0.42
+       ]
+      }
+     },
+     {
+      "id": "post_rf",
+      "op": "box",
+      "size": [
+       0.05,
+       0.86,
+       0.05
+      ],
+      "open": [
+       "top",
+       "bottom"
+      ],
+      "material": "gold",
+      "transform": {
+       "translate": [
+        0.39,
+        1.305,
+        -0.42
+       ]
+      }
+     },
+     {
+      "id": "back_wall",
+      "op": "mesh",
+      "material": "stars",
+      "vertices": [
+       [
+        -0.42,
+        0.93,
+        0.428
+       ],
+       [
+        0.42,
+        0.93,
+        0.428
+       ],
+       [
+        0.42,
+        1.72,
+        0.428
+       ],
+       [
+        -0.42,
+        1.72,
+        0.428
+       ]
+      ],
+      "faces": [
+       [
+        3,
+        2,
+        1,
+        0
+       ]
+      ]
+     },
+     {
+      "id": "marquee",
+      "op": "box",
+      "size": [
+       0.94,
+       0.24,
+       1.0
+      ],
+      "open": [
+       "bottom"
+      ],
+      "material": "candy",
+      "faces": {
+       "back": "sign"
+      },
+      "transform": {
+       "translate": [
+        0,
+        1.86,
+        0
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 90
+ }
+}
