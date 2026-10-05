@@ -40,8 +40,9 @@ type rail {
 // that the entity's origin follows instead ("none": no path). period and pause in ticks (60 a second);
 // pingpong goes there and back, loop restarts from the placement. The entity's `collision`
 // asset is the platform's, in its own frame. A mover with a `start` flag is parked (not drawn,
-// no collision) until that flag is set; then it waits `delay` ticks at the placement and runs one
-// cycle (there and back, or one loop), and goes on cycling while the flag stays set.
+// no collision) until that flag is set; then it waits `delay` ticks, still parked, and runs from
+// the placement, cycling while the flag stays set; once it is cleared, the mover parks when it is
+// back at the placement (pingpong) or at the end of its leg (loop).
 type mover {
   to:     vec3 = [0, 0, 0]
   path:   name = none

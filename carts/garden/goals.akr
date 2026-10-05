@@ -159,6 +159,7 @@ fn goals_frame() {
 var stars: [MAX_STARS]*WpEntity
 var star_n: s32
 var trigs: [MAX_TRIGGERS]*WpEntity
+var trig_in: [MAX_TRIGGERS]bool // the body was in it last tick (a touch fires on entering)
 var trig_n: s32
 var red_total: s32              // the world's red coins
 var stars_taken: s32            // of the world's
@@ -187,6 +188,7 @@ fn goals_init() {
         } else if ty == TRIGGER_TYPE {
             assert(trig_n < MAX_TRIGGERS)
             trigs[trig_n] = e
+            trig_in[trig_n] = true          // not fired by standing in it when the world opens
             trig_n += 1
         } else if ty == RED_COIN_TYPE {
             red_total += 1
@@ -274,8 +276,11 @@ fn goals_tick() {
     for k in 0..trig_n {
         let e = trigs[k]
         let p = wp_entity_params(e) as *GardenTrigger
+        let was_in = trig_in[k]
+        trig_in[k] = trig_inside(e, p)
         if p.how == GardenTriggerHow.Press || (p.how == GardenTriggerHow.Pound && !landed) { continue }
-        if trig_ready(p) && trig_inside(e, p) { trig_fire(e, p) }
+        if p.how == GardenTriggerHow.Touch && was_in { continue }       // entering it, not staying
+        if trig_in[k] && trig_ready(p) { trig_fire(e, p) }
     }
     if chal_flag != null {
         chal_left -= 1
