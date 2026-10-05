@@ -10,203 +10,373 @@
  "placements": [
   {
    "id": "alley_66_66",
-   "asset": "gbt_alley_2",
+   "asset": "town_alley_house_b",
    "position": [
     70.75,
-    0,
+    0.0,
     70.25
    ],
-   "collision": "gbt_alley_2_col"
+   "collision": "town_alley_house_b_col"
   },
   {
    "id": "alley_66_77",
-   "asset": "gbt_alley_3",
+   "asset": "town_alley_house_c",
    "position": [
     70.75,
-    0,
+    0.0,
     81.25
    ],
-   "collision": "gbt_alley_3_col"
+   "yaw": 180,
+   "collision": "town_alley_house_c_col"
   },
   {
    "id": "alley_66_88",
-   "asset": "gbt_alley_4",
+   "asset": "town_alley_house_a",
    "position": [
     70.75,
-    0,
+    0.0,
     92.25
    ],
-   "collision": "gbt_alley_4_col"
+   "yaw": 180,
+   "collision": "town_alley_house_a_col"
   },
   {
    "id": "alley_78_66",
-   "asset": "gbt_alley_4",
+   "asset": "town_alley_house_a",
    "position": [
     82.75,
-    0,
+    0.0,
     70.25
    ],
-   "collision": "gbt_alley_4_col"
+   "yaw": 180,
+   "collision": "town_alley_house_a_col"
   },
   {
    "id": "alley_78_88",
-   "asset": "gbt_alley_2",
+   "asset": "town_alley_house_b",
    "position": [
     82.75,
-    0,
+    0.0,
     92.25
    ],
-   "collision": "gbt_alley_2_col"
+   "yaw": 180,
+   "collision": "town_alley_house_b_col"
   },
   {
    "id": "alley_90_66",
-   "asset": "gbt_alley_3",
+   "asset": "town_alley_house_c",
    "position": [
     94.75,
-    0,
+    0.0,
     70.25
    ],
-   "collision": "gbt_alley_3_col"
+   "collision": "town_alley_house_c_col"
   },
   {
    "id": "alley_90_77",
-   "asset": "gbt_alley_4",
+   "asset": "town_alley_house_a",
    "position": [
     94.75,
-    0,
+    0.0,
     81.25
    ],
-   "collision": "gbt_alley_4_col"
+   "yaw": 180,
+   "collision": "town_alley_house_a_col"
   },
   {
    "id": "alley_90_88",
-   "asset": "gbt_alley_2",
+   "asset": "town_alley_house_b",
    "position": [
     94.75,
-    0,
+    0.0,
     92.25
    ],
-   "collision": "gbt_alley_2_col"
+   "yaw": 180,
+   "collision": "town_alley_house_b_col"
   },
   {
    "id": "alley_102_88",
-   "asset": "gbt_alley_4",
+   "asset": "town_alley_house_a",
    "position": [
     106.75,
-    0,
+    0.0,
     92.25
    ],
-   "collision": "gbt_alley_4_col"
+   "yaw": 180,
+   "collision": "town_alley_house_a_col"
   },
   {
    "id": "alley_114_66",
-   "asset": "gbt_alley_4",
+   "asset": "town_alley_house_a",
    "position": [
     118.75,
-    0,
+    0.0,
     70.25
    ],
-   "collision": "gbt_alley_4_col"
+   "collision": "town_alley_house_a_col"
   },
   {
    "id": "alley_114_77",
-   "asset": "gbt_alley_2",
+   "asset": "town_alley_house_b",
    "position": [
     118.75,
-    0,
+    0.0,
     81.25
    ],
-   "collision": "gbt_alley_2_col"
+   "yaw": 180,
+   "collision": "town_alley_house_b_col"
   },
   {
    "id": "fire_tower",
-   "asset": "gbt_fire_tower",
+   "asset": "fire_tower",
    "position": [
     102.0,
-    0,
+    0.0,
     74.0
    ],
-   "collision": "gbt_fire_tower_col"
+   "collision": "fire_tower_col"
   },
   {
    "id": "fire_kura",
-   "asset": "gbt_kura",
+   "asset": "town_kura",
    "position": [
-    109.5,
-    0,
+    107.8,
+    0.0,
     74.0
    ],
-   "collision": "gbt_kura_col"
+   "collision": "town_kura_col"
   },
   {
    "id": "pole_road70",
-   "asset": "gbt_utility_pole",
+   "asset": "town_utility_pole_transformer",
    "position": [
     70.0,
     0.0,
-    104.0
+    106.0
    ],
-   "collision": "self"
+   "yaw": 90,
+   "collision": "town_utility_pole_transformer_col"
   },
   {
    "id": "pole_road100",
-   "asset": "gbt_utility_pole",
+   "asset": "town_utility_pole_transformer",
    "position": [
     100.0,
     0.0,
-    104.0
+    106.0
    ],
-   "collision": "self"
+   "yaw": 90,
+   "collision": "town_utility_pole_transformer_col"
   },
   {
    "id": "pole_lane_w1",
-   "asset": "gbt_utility_pole",
+   "asset": "town_utility_pole_transformer",
    "position": [
     112.75,
     0.0,
     104.0
    ],
-   "collision": "self"
+   "collision": "town_utility_pole_transformer_col"
   },
   {
-   "id": "cedar_1",
-   "asset": "gbt_tree_cedar",
+   "id": "zelkova_road0",
+   "asset": "tree_zelkova",
    "position": [
-    66,
-    1.584,
-    125
+    66.0,
+    0.0,
+    125.0
    ],
-   "collision": "gbt_tree_cedar_col"
+   "collision": "tree_zelkova_col"
   },
   {
-   "id": "cedar_2",
-   "asset": "gbt_tree_cedar",
+   "id": "zelkova_road1",
+   "asset": "tree_zelkova",
    "position": [
-    74,
-    1.406,
-    121
+    74.0,
+    0.0,
+    121.0
    ],
-   "collision": "gbt_tree_cedar_col"
+   "yaw": 53,
+   "collision": "tree_zelkova_col"
   },
   {
-   "id": "cedar_3",
-   "asset": "gbt_tree_cedar",
+   "id": "zelkova_road2",
+   "asset": "tree_zelkova",
    "position": [
-    84,
-    0.993,
-    124
+    84.0,
+    0.0,
+    124.0
    ],
-   "collision": "gbt_tree_cedar_col"
+   "yaw": 106,
+   "collision": "tree_zelkova_col"
   },
   {
-   "id": "cedar_4",
-   "asset": "gbt_tree_cedar",
+   "id": "zelkova_road3",
+   "asset": "tree_zelkova",
    "position": [
-    92,
-    1.379,
-    121
+    92.0,
+    0.0,
+    121.0
    ],
-   "collision": "gbt_tree_cedar_col"
+   "yaw": 159,
+   "collision": "tree_zelkova_col"
+  },
+  {
+   "id": "lamp_road0",
+   "asset": "street_lamp",
+   "position": [
+    85.0,
+    0.0,
+    117.2
+   ],
+   "yaw": 90,
+   "collision": "street_lamp_col"
+  },
+  {
+   "id": "lamp_road1",
+   "asset": "street_lamp",
+   "position": [
+    115.0,
+    0.0,
+    117.2
+   ],
+   "yaw": 90,
+   "collision": "street_lamp_col"
+  },
+  {
+   "id": "signs_alley",
+   "asset": "town_road_signs",
+   "position": [
+    100.75,
+    0.0,
+    102.9
+   ],
+   "yaw": 180,
+   "collision": "none"
+  },
+  {
+   "id": "mirror_alley_0",
+   "asset": "traffic_mirror",
+   "position": [
+    124.8,
+    0.0,
+    103.3
+   ],
+   "yaw": 180,
+   "collision": "traffic_mirror_col"
+  },
+  {
+   "id": "mirror_alley_1",
+   "asset": "traffic_mirror",
+   "position": [
+    88.8,
+    0.0,
+    103.3
+   ],
+   "yaw": 180,
+   "collision": "traffic_mirror_col"
+  },
+  {
+   "id": "bike_0",
+   "asset": "mamachari",
+   "position": [
+    127.0,
+    0.0,
+    100.6
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "bike_3",
+   "asset": "mamachari",
+   "position": [
+    118.6,
+    0.0,
+    94.6
+   ],
+   "yaw": 90,
+   "collision": "none"
+  },
+  {
+   "id": "aircon_1",
+   "asset": "town_aircon_pipes",
+   "position": [
+    94.0,
+    0.0,
+    65.75
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "aircon_2",
+   "asset": "town_aircon_pipes",
+   "position": [
+    118.0,
+    0.0,
+    76.75
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "aircon_3",
+   "asset": "town_aircon_pipes",
+   "position": [
+    70.0,
+    0.0,
+    74.75
+   ],
+   "yaw": 180,
+   "collision": "none"
+  },
+  {
+   "id": "plants_2",
+   "asset": "town_potted_plants",
+   "position": [
+    97.0,
+    0.0,
+    87.3
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "plants_3",
+   "asset": "town_potted_plants",
+   "position": [
+    121.0,
+    0.0,
+    65.7
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "laundry_yard_c",
+   "asset": "town_laundry_pole",
+   "position": [
+    120.5,
+    0.0,
+    90.5
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "recycling_yard_b",
+   "asset": "recycling_station",
+   "position": [
+    82.75,
+    0.0,
+    84.9
+   ],
+   "collision": "recycling_station_col"
+  },
+  {
+   "id": "bench_tower_yard",
+   "asset": "town_bench",
+   "position": [
+    106.0,
+    0.0,
+    84.6
+   ],
+   "collision": "town_bench_col"
   }
  ],
  "entities": [
@@ -214,9 +384,9 @@
    "id": "pole_fire_tower",
    "type": "pole",
    "position": [
-    102,
-    0,
-    70.55
+    102.0,
+    0.0,
+    72.08
    ],
    "params": {
     "height": 15.2
@@ -402,9 +572,9 @@
    "id": "pole_road70",
    "type": "pole",
    "position": [
-    70,
+    70.0,
     0.0,
-    104.0
+    106.0
    ],
    "params": {
     "height": 9.0
@@ -414,9 +584,9 @@
    "id": "pole_road100",
    "type": "pole",
    "position": [
-    100,
+    100.0,
     0.0,
-    104.0
+    106.0
    ],
    "params": {
     "height": 9.0
@@ -459,7 +629,7 @@
    "type": "coin",
    "position": [
     118,
-    6.7,
+    5.574,
     66
    ],
    "asset": "gbt_coin"

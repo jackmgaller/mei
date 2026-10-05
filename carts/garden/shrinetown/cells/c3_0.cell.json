@@ -73,16 +73,6 @@
    "collision": "self"
   },
   {
-   "id": "building_escape",
-   "asset": "gbt_building_escape",
-   "position": [
-    201.25,
-    0,
-    62
-   ],
-   "collision": "self"
-  },
-  {
    "id": "pole_konbini0",
    "asset": "gbt_utility_pole",
    "position": [
@@ -187,22 +177,34 @@
    "id": "coin_wire_konbini0",
    "type": "coin",
    "position": [
-    208.95,
+    209.75,
     8.7,
     57.85
    ],
    "asset": "gbt_coin"
   },
   {
-   "id": "rail_wire_konbini",
+   "id": "rail_wire_konbini_a",
    "type": "rail",
    "position": [
-    210.0,
+    209.2,
     8.0,
     33.0
    ],
    "params": {
-    "path": "wire_konbini"
+    "path": "wire_konbini_a"
+   }
+  },
+  {
+   "id": "rail_wire_konbini_b",
+   "type": "rail",
+   "position": [
+    210.8,
+    8.0,
+    33.0
+   ],
+   "params": {
+    "path": "wire_konbini_b"
    }
   }
  ]

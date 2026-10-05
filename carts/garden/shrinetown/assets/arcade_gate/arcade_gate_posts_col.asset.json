@@ -1,0 +1,54 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "arcade_gate_posts_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "pillars",
+   "op": "group",
+   "children": [
+    {
+     "id": "pillar",
+     "op": "box",
+     "size": [
+      0.92,
+      7.13,
+      0.92
+     ],
+     "material": "solid",
+     "open": [
+      "bottom"
+     ],
+     "transform": {
+      "translate": [
+       5.45,
+       3.565,
+       0
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  }
+ ]
+}

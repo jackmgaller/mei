@@ -196,9 +196,9 @@
    "id": "pole_road10",
    "type": "pole",
    "position": [
-    10,
+    10.0,
     0.0,
-    104.0
+    106.0
    ],
    "params": {
     "height": 9.0
@@ -208,9 +208,9 @@
    "id": "pole_road40",
    "type": "pole",
    "position": [
-    40,
+    40.0,
     0.0,
-    104.0
+    106.0
    ],
    "params": {
     "height": 9.0
@@ -274,15 +274,27 @@
    "asset": "gbt_coin"
   },
   {
-   "id": "rail_wire_road",
+   "id": "rail_wire_road_a",
    "type": "rail",
    "position": [
-    10,
+    10.0,
     8.0,
-    104.0
+    106.8
    ],
    "params": {
-    "path": "wire_road"
+    "path": "wire_road_a"
+   }
+  },
+  {
+   "id": "rail_wire_road_b",
+   "type": "rail",
+   "position": [
+    10.0,
+    8.0,
+    105.2
+   ],
+   "params": {
+    "path": "wire_road_b"
    }
   }
  ]

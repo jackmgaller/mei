@@ -103,106 +103,6 @@
    "collision": "self"
   },
   {
-   "id": "alley_66_44",
-   "asset": "gbt_alley",
-   "position": [
-    70.75,
-    0,
-    48.25
-   ],
-   "collision": "gbt_alley_col"
-  },
-  {
-   "id": "alley_78_44",
-   "asset": "gbt_alley_4",
-   "position": [
-    82.75,
-    0,
-    48.25
-   ],
-   "collision": "gbt_alley_4_col"
-  },
-  {
-   "id": "alley_78_55",
-   "asset": "gbt_alley",
-   "position": [
-    82.75,
-    0,
-    59.25
-   ],
-   "collision": "gbt_alley_col"
-  },
-  {
-   "id": "alley_90_44",
-   "asset": "gbt_alley_4",
-   "position": [
-    94.75,
-    0,
-    48.25
-   ],
-   "collision": "gbt_alley_4_col"
-  },
-  {
-   "id": "alley_90_55",
-   "asset": "gbt_alley_3",
-   "position": [
-    94.75,
-    0,
-    59.25
-   ],
-   "collision": "gbt_alley_3_col"
-  },
-  {
-   "id": "alley_102_44",
-   "asset": "gbt_alley_3",
-   "position": [
-    106.75,
-    0,
-    48.25
-   ],
-   "collision": "gbt_alley_3_col"
-  },
-  {
-   "id": "alley_102_55",
-   "asset": "gbt_alley_4",
-   "position": [
-    106.75,
-    0,
-    59.25
-   ],
-   "collision": "gbt_alley_4_col"
-  },
-  {
-   "id": "alley_114_44",
-   "asset": "gbt_alley_4",
-   "position": [
-    118.75,
-    0,
-    48.25
-   ],
-   "collision": "gbt_alley_4_col"
-  },
-  {
-   "id": "alley_114_55",
-   "asset": "gbt_alley_3",
-   "position": [
-    118.75,
-    0,
-    59.25
-   ],
-   "collision": "gbt_alley_3_col"
-  },
-  {
-   "id": "pole_lane_w0",
-   "asset": "gbt_utility_pole",
-   "position": [
-    112.75,
-    0.0,
-    44.0
-   ],
-   "collision": "self"
-  },
-  {
    "id": "edge_s2",
    "asset": "gbt_edge_fence_3",
    "position": [
@@ -231,6 +131,180 @@
     0.2
    ],
    "collision": "self"
+  },
+  {
+   "id": "alley_66_44",
+   "asset": "town_alley_house_b",
+   "position": [
+    70.75,
+    0.0,
+    48.25
+   ],
+   "collision": "town_alley_house_b_col"
+  },
+  {
+   "id": "alley_78_44",
+   "asset": "town_alley_house_a",
+   "position": [
+    82.75,
+    0.0,
+    48.25
+   ],
+   "collision": "town_alley_house_a_col"
+  },
+  {
+   "id": "alley_78_55",
+   "asset": "town_alley_house_b",
+   "position": [
+    82.75,
+    0.0,
+    59.25
+   ],
+   "collision": "town_alley_house_b_col"
+  },
+  {
+   "id": "alley_90_44",
+   "asset": "town_alley_house_a",
+   "position": [
+    94.75,
+    0.0,
+    48.25
+   ],
+   "collision": "town_alley_house_a_col"
+  },
+  {
+   "id": "alley_90_55",
+   "asset": "town_alley_house_c",
+   "position": [
+    94.75,
+    0.0,
+    59.25
+   ],
+   "yaw": 180,
+   "collision": "town_alley_house_c_col"
+  },
+  {
+   "id": "alley_102_44",
+   "asset": "town_alley_house_c",
+   "position": [
+    106.75,
+    0.0,
+    48.25
+   ],
+   "collision": "town_alley_house_c_col"
+  },
+  {
+   "id": "alley_102_55",
+   "asset": "town_alley_house_a",
+   "position": [
+    106.75,
+    0.0,
+    59.25
+   ],
+   "collision": "town_alley_house_a_col"
+  },
+  {
+   "id": "alley_114_44",
+   "asset": "town_alley_house_a",
+   "position": [
+    118.75,
+    0.0,
+    48.25
+   ],
+   "collision": "town_alley_house_a_col"
+  },
+  {
+   "id": "alley_114_55",
+   "asset": "town_alley_house_c",
+   "position": [
+    118.75,
+    0.0,
+    59.25
+   ],
+   "yaw": 180,
+   "collision": "town_alley_house_c_col"
+  },
+  {
+   "id": "gacha_0",
+   "asset": "gachapon",
+   "position": [
+    126.6,
+    0.0,
+    43.55
+   ],
+   "collision": "gachapon_col"
+  },
+  {
+   "id": "jizo_dagashi",
+   "asset": "jizo",
+   "position": [
+    124.3,
+    0.0,
+    44.6
+   ],
+   "collision": "jizo_col"
+  },
+  {
+   "id": "pole_lane_w0",
+   "asset": "town_utility_pole_transformer",
+   "position": [
+    112.75,
+    0.0,
+    44.0
+   ],
+   "collision": "town_utility_pole_transformer_col"
+  },
+  {
+   "id": "aircon_0",
+   "asset": "town_aircon_pipes",
+   "position": [
+    81.0,
+    0.0,
+    52.75
+   ],
+   "yaw": 180,
+   "collision": "none"
+  },
+  {
+   "id": "plants_0",
+   "asset": "town_potted_plants",
+   "position": [
+    73.0,
+    0.0,
+    43.7
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "plants_1",
+   "asset": "town_potted_plants",
+   "position": [
+    85.0,
+    0.0,
+    54.7
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "laundry_yard_a",
+   "asset": "town_laundry_pole",
+   "position": [
+    73.5,
+    0.0,
+    62.4
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "kei_yard_a",
+   "asset": "kei_truck",
+   "position": [
+    70.75,
+    0.0,
+    59.25
+   ],
+   "yaw": 90,
+   "collision": "kei_truck_col"
   }
  ],
  "entities": [
@@ -293,7 +367,7 @@
    "type": "coin",
    "position": [
     80,
-    6.7,
+    6.104,
     48
    ],
    "asset": "gbt_coin"
@@ -369,15 +443,27 @@
    "asset": "gbt_coin"
   },
   {
-   "id": "rail_wire_lane_w",
+   "id": "rail_wire_lane_w_a",
    "type": "rail",
    "position": [
-    112.75,
+    111.95,
     8.0,
     44.0
    ],
    "params": {
-    "path": "wire_lane_w"
+    "path": "wire_lane_w_a"
+   }
+  },
+  {
+   "id": "rail_wire_lane_w_b",
+   "type": "rail",
+   "position": [
+    113.55,
+    8.0,
+    44.0
+   ],
+   "params": {
+    "path": "wire_lane_w_b"
    }
   }
  ]
