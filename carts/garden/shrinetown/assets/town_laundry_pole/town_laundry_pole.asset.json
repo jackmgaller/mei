@@ -1,0 +1,33 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "town_laundry_pole",
+  "budget": {"triangles": 32},
+  "materials": {
+    "alu": {"color": "#a8a69e", "palette": true},
+    "rod": {"color": "#eceae4", "palette": true},
+    "shirt_w": {"color": "#eceae4", "double_sided": true, "texture": {"image": "art/wash_shirt_white.png", "projection": "fit"}},
+    "shirt_b": {"color": "#3a6ab0", "double_sided": true, "texture": {"image": "art/wash_shirt_blue.png", "projection": "fit"}},
+    "towel": {"color": "#f0e6c0", "double_sided": true, "texture": {"image": "art/wash_towel.png", "projection": "fit"}}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.55},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {"id": "post_l", "op": "box", "size": [0.05, 1.9, 0.05], "material": "alu", "open": ["bottom", "top"],
+     "transform": {"translate": [-0.8, 0.95, 0]}},
+    {"id": "post_r", "op": "box", "size": [0.05, 1.9, 0.05], "material": "alu", "open": ["bottom", "top"],
+     "transform": {"translate": [0.8, 0.95, 0]}},
+    {"id": "rod", "op": "box", "size": [1.6, 0.035, 0.035], "material": "rod", "open": ["left", "right"],
+     "transform": {"translate": [0, 1.78, -0.04]}},
+    {"id": "shirt", "op": "mesh", "material": "shirt_w",
+     "vertices": [[-0.7, 1.77, -0.04], [-0.2, 1.77, -0.04], [-0.2, 1.15, -0.04], [-0.7, 1.15, -0.04]],
+     "faces": [[0, 1, 2, 3]], "transform": {"rotate": [0, 6, 0]}},
+    {"id": "towel", "op": "mesh", "material": "towel",
+     "vertices": [[-0.1, 1.77, -0.04], [0.28, 1.77, -0.04], [0.28, 0.92, -0.04], [-0.1, 0.92, -0.04]],
+     "faces": [[0, 1, 2, 3]], "transform": {"rotate": [0, -5, 0]}},
+    {"id": "shirt_blue", "op": "mesh", "material": "shirt_b",
+     "vertices": [[0.38, 1.77, -0.04], [0.72, 1.77, -0.04], [0.72, 1.2, -0.04], [0.38, 1.2, -0.04]],
+     "faces": [[0, 1, 2, 3]], "transform": {"rotate": [0, 4, 0]}}
+  ],
+  "lod": {"cull": 50}
+}

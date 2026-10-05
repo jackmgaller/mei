@@ -1,0 +1,32 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "town_crates_bins",
+  "budget": {"triangles": 52},
+  "materials": {
+    "ysides": {"color": "#d8a820", "texture": {"image": "art/crate_yellow.png", "projection": "fit"}},
+    "rsides": {"color": "#b83a2a", "texture": {"image": "art/crate_red.png", "projection": "fit"}},
+    "ytop": {"color": "#d8a820", "palette": true},
+    "rtop": {"color": "#b83a2a", "palette": true},
+    "bin": {"color": "#40a060", "palette": true},
+    "lid": {"color": "#2e7a48", "palette": true},
+    "foam": {"color": "#eceae4", "palette": true}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {"id": "crate_low", "op": "box", "size": [0.42, 0.28, 0.32], "material": "ytop", "open": ["bottom"],
+     "faces": {"left": "ysides", "right": "ysides", "back": "ysides", "front": "ysides"},
+     "transform": {"translate": [-0.5, 0.14, 0.02]}},
+    {"id": "crate_high", "op": "box", "size": [0.42, 0.28, 0.32], "material": "rtop", "open": ["bottom"],
+     "faces": {"left": "rsides", "right": "rsides", "back": "rsides", "front": "rsides"},
+     "transform": {"rotate": [0, 14, 0], "translate": [-0.5, 0.41, 0.02]}},
+    {"id": "bin", "op": "box", "size": [0.4, 0.74, 0.36], "material": "bin", "open": ["bottom"],
+     "transform": {"translate": [0.0, 0.37, -0.02]}},
+    {"id": "lid", "op": "box", "size": [0.48, 0.07, 0.44], "material": "lid", "open": ["bottom"],
+     "transform": {"translate": [0.0, 0.77, -0.02]}},
+    {"id": "foam", "op": "box", "size": [0.5, 0.26, 0.36], "material": "foam", "open": ["bottom"],
+     "transform": {"rotate": [0, -9, 0], "translate": [0.55, 0.13, 0.0]}}
+  ],
+  "lod": {"cull": 50}
+}
