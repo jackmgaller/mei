@@ -1,0 +1,164 @@
+// The collectible read test's cart (tools/collect_readtest.py): one collectible drawn into the
+// movement garden's two worlds (the shrine and the city block) by the real reader, one shot
+// every HOLD ticks, so that mei-headless --dump-every HOLD dumps each shot once. The cart file
+// the script writes defines SHOTS, N_SHOTS, OBJ_CENTRE (the model's bounding-box centre),
+// obj_mesh(), obj_load(), obj_spin() and obj_fx() (the effect drawn with the collectible, empty
+// without one), and imports this file and the asset's pack. Nothing here is part
+// of the garden cart; it only reads the worlds make links into $(B)/cart-worlds/garden.
+import "depth.akr"
+import "garden.akr"
+import "shrine.akr"
+
+struct Shot {
+    world: s32        // RT_GARDEN or RT_SHRINE
+    light: s32        // RT_DAY, RT_DUSK or RT_NIGHT
+    eye: vec3         // x, z; y: the height to look for the floor from
+    eye_h: fixed      // the eye above that floor
+    look: vec3        // the point looked at (x, z; y above the eye's floor)
+    obj: vec3         // x, z of the collectible; y: the height to look for its floor from
+    obj_h: fixed      // its centre above its floor, or above the eye's floor (obj_rel)
+    obj_rel: s32      // 1: obj_h is above the eye's floor (the sky shots)
+    spin: fixed       // its yaw against the camera's (0: its front faces the camera)
+    t: s32            // the tick the collectible's animation and effect are drawn at
+    auto: s32         // 1: the spin is obj_spin(t), not `spin` (the animated strips)
+}
+
+const RT_GARDEN = 0
+const RT_SHRINE = 1
+const RT_DAY = 0
+const RT_DUSK = 1
+const RT_NIGHT = 2
+const HOLD = 6                 // ticks a shot: a world or region switch can run a frame late
+const DUSK_T: fixed = 0.45     // dusk: the day variant blended this far toward night
+
+// Dusk's sky (the shrine's backdrop stops, recoloured): elevations in degrees, colours.
+const DUSK_ELEV: [5]fixed = [-8.0, 0.0, 5.0, 24.0, 70.0]
+var dusk_cols: [5]u32
+var dusk_ys: [5]s32
+
+var cur_world: s32 = -1
+var cur_light: s32 = -1
+var cur_shot: s32 = -1
+var f0: u32
+var eye: vec3
+var yaw: fixed
+var pitch: fixed
+var obj_p: vec3
+var obj_yaw: fixed
+var obj_t: s32
+
+fn init() {
+    render_depth(true)
+    render_perspective(true)
+    f0 = FRAME
+    dusk_cols[0] = rgb(74, 52, 64)
+    dusk_cols[1] = rgb(250, 168, 96)
+    dusk_cols[2] = rgb(232, 120, 88)
+    dusk_cols[3] = rgb(118, 84, 140)
+    dusk_cols[4] = rgb(36, 36, 88)
+    shot_set(0)
+}
+
+fn rt_floor(x: fixed, from: fixed, z: fixed) -> fixed {
+    if wp_floor(vec3(x, from, z), 0.0) { return wp_hit.y }
+    print("NOTE no floor at ")
+    print_fixed(x)
+    print_char(' ')
+    print_fixed(z)
+    println("")
+    return 0.0
+}
+
+fn world_set(w: s32) {
+    if w == cur_world { return }
+    if w == RT_SHRINE {
+        assert(world_shrine_load())
+        wp_backdrop_show(0)
+    } else {
+        wp_water_close()
+        wp_backdrop_hide()
+        assert(world_garden_load())
+    }
+    obj_load()                 // after the world's loader, in case it touched the same VRAM
+    cur_world = w
+    cur_light = -1
+}
+
+fn light_set(l: s32) {
+    if l == cur_light { return }
+    if l == RT_DAY { wp_variant_load(0, 0); wp_backdrop_variant(0, 0, 0.0) }
+    if l == RT_DUSK { wp_variant_blend(0, 0, 1, DUSK_T); wp_backdrop_variant(0, 1, DUSK_T) }
+    if l == RT_NIGHT { wp_variant_load(0, 1); wp_backdrop_variant(1, 1, 0.0) }
+    cur_light = l
+}
+
+fn shot_set(k: s32) {
+    let s = SHOTS[k]
+    world_set(s.world)
+    light_set(s.light)
+    let ef = rt_floor(s.eye.x, s.eye.y, s.eye.z)
+    eye = vec3(s.eye.x, ef + s.eye_h, s.eye.z)
+    let lk = vec3(s.look.x, ef + s.look.y, s.look.z)
+    let d = lk - eye
+    yaw = atan2(d.x, d.z)
+    pitch = atan2(d.y, length(vec3(d.x, 0.0, d.z)))
+    var oy = ef + s.obj_h
+    if s.obj_rel == 0 { oy = rt_floor(s.obj.x, s.obj.y, s.obj.z) + s.obj_h }
+    obj_p = vec3(s.obj.x, oy, s.obj.z)
+    obj_yaw = yaw + s.spin
+    if s.auto != 0 { obj_yaw = yaw + obj_spin(s.t) }
+    obj_t = s.t
+    cur_shot = k
+    print("SHOT ")
+    print_int(k)
+    print(" frame ")
+    print_int((FRAME - f0) as s32)
+    print(" eye floor ")
+    print_fixed(ef)
+    print(" object y ")
+    print_fixed(oy)
+    println("")
+}
+
+fn update() {
+    let k = min(((FRAME - f0) as s32) / HOLD, N_SHOTS - 1)
+    if k != cur_shot { shot_set(k) }
+}
+
+fn dusk_sky() {
+    let f = wp_backdrop_focal
+    var prev = -100000
+    for i in 0..5 {
+        let q = 4 - i
+        let a = clamp(DUSK_ELEV[q] * PI / 180 - pitch, -1.4, 1.4)
+        var y = 120 - (f * sin(a) / cos(a)) as s32
+        if y <= prev { y = prev + 1 }
+        prev = y
+        dusk_ys[i] = y
+    }
+    var cols: [5]u32
+    for i in 0..5 { cols[i] = dusk_cols[4 - i] }
+    sky_gradient(&cols[0], &dusk_ys[0], 5)
+}
+
+fn draw() {
+    if cur_world == RT_SHRINE {
+        wp_animate(FRAME as s32)
+        wp_backdrop_draw(yaw, pitch)
+        if cur_light == RT_DUSK { dusk_sky() }
+    } else if cur_light == RT_NIGHT {
+        cls(rgb(10, 12, 30))
+    } else if cur_light == RT_DUSK {
+        cls(rgb(200, 130, 100))
+    } else {
+        cls(rgb(110, 150, 200))
+    }
+    wp_draw(eye, yaw, pitch)
+    // mesh_at turns about the model's origin: put the bounding box's centre at obj_p
+    let c = cos(obj_yaw)
+    let s = sin(obj_yaw)
+    let off = vec3(c * OBJ_CENTRE.x + s * OBJ_CENTRE.z, OBJ_CENTRE.y, c * OBJ_CENTRE.z - s * OBJ_CENTRE.x)
+    let at = obj_p - off - wp_view_origin()
+    mesh_at(obj_mesh(), at, obj_yaw)
+    obj_fx(at, obj_t)          // at: the model's origin, on its spin axis
+}

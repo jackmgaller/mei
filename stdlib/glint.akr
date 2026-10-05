@@ -1,0 +1,186 @@
+// A collectible's glint: what makes a goal item read from across a level, as a sparkle, glow and
+// sound did for the 1996 platformers' stars. Not part of the prelude: `import "glint.akr"`.
+//
+// glint_draw() draws, around a point, three additive layers with no texture (Gouraud colours
+// fading to black, so the blend makes them soft):
+//   - a halo: a soft disc behind the model (12 triangles and 12 quads), breathing, quieter
+//     within a few metres;
+//   - motes: small sparkles circling the model and rising (4 triangles each): three near, five
+//     once they would be smaller than Glint.mote_px on screen, where they keep that size and
+//     their circle widens to at least 16 pixels;
+//   - a flash: every 90 ticks a small sparkle on the point lights for about a quarter second
+//     (4 triangles), at least Glint.flash_px.
+// The halo keeps at least Glint.halo_px on screen. So far away, where the model is a few pixels,
+// the halo, the motes and the flash are what call to the player; near, all are measured in
+// metres and look the same at any distance. The halo is pushed `push` metres away from the
+// camera and the flash as far toward it, so neither cuts through a model of that radius.
+// With depth.akr's test on they are hidden by what stands in front of them, and write no depth.
+//
+// glint_yaw() is the yaw to draw the model with: it faces the camera, sways a little, and every
+// period turns a full circle quickly, so it is seldom edge-on (about 4 % of the time, against
+// 17 % for a steady spin) and the turn catches the eye.
+//
+// Coordinates are those the camera was set up in (for a world pack: world minus
+// wp_view_origin()). Call after the camera is set, after the scene's opaque meshes or before:
+// the faces are semi-transparent, so the ordering puts them after the opaque ones.
+//
+// Cost: see docs/LANGUAGE.md ("A collectible's glint").
+
+struct Glint {
+    halo: u32          // the halo's centre colour (added to the scene)
+    halo_r: fixed      // the halo's radius in metres...
+    halo_px: s32       // ...but at least this many pixels
+    halo_near: fixed   // the halo's strength within 3 m (rising to full at 12 m): quieter close by
+    halo_dy: fixed     // the halo's centre above the point, metres
+    push: fixed        // the halo this far behind the point, the flash as far in front (metres)
+    motes: u32         // the motes' colour; 0: none
+    mote_px: s32       // a mote's arm at least this many pixels (0.09 m near)
+    flash: u32         // the flash's colour; 0: none
+    flash_px: s32      // its arm at least this many pixels (0.18 m near)
+}
+
+// The hanafuda moon card's: moonlight. A cool silver-blue halo, which neither the autumn reds
+// and golds nor the shrine's vermilion have, pale motes, and a white flash on the moon.
+const GLINT_MOON: Glint = Glint {
+    halo: 0xd8a070, halo_r: 0.8, halo_px: 26, halo_near: 0.55, halo_dy: -0.19, push: 0.42,
+    motes: 0xc0b090, mote_px: 5, flash: 0xe8f6ff, flash_px: 7,
+}
+
+private const GL_V = 112
+private const GL_SEG = 12          // the halo's sides
+private struct GlintMesh { hdr: Mesh, v: [112]vec4, f: [52]Face }
+private var gl: GlintMesh
+private var gl_nv: s32
+private var gl_nf: s32
+private var gl_right: vec3
+private var gl_up: vec3
+
+// The yaw that turns a model's front (its -Z side, as the Asset Kit's cameras see it) toward the
+// camera, at tick t: held facing with a slow sway of about 20 degrees, then a full turn in the
+// last 35 % of every `period` ticks (150, two and a half seconds, is a good pace).
+fn glint_yaw(t: s32, period: s32) -> fixed {
+    let f = __vp[3]
+    return atan2(f.x, f.z) + glint_spin(t, period)
+}
+
+// The same, against the camera's yaw (0: the front faces the camera).
+fn glint_spin(t: s32, period: s32) -> fixed {
+    let p = frame_phase(t, period)
+    let hold: fixed = 0.65
+    if p < hold { return 0.35 * sin(p * TAU / hold) }
+    let x = (p - hold) / (1.0 - hold)
+    return TAU * x * x * (3.0 - 2.0 * x)
+}
+
+// A float for the model's height: up to `amp` metres up and down over `period` ticks.
+fn glint_bob(t: s32, period: s32, amp: fixed) -> fixed { return amp * frame_wave(t, period) }
+
+private fn gl_vert(p: vec3) -> s32 {
+    let i = gl_nv
+    gl.v[i] = vec4(p, 1.0)
+    gl_nv = i + 1
+    return i
+}
+
+private fn gl_face(quad: bool, a: s32, b: s32, c: s32, d: s32, ca: u32, cb: u32, cc: u32, cd: u32) {
+    let f = &gl.f[gl_nf]
+    var fl = FACE_SEMI | FACE_GOURAUD | FACE_DOUBLE
+    if quad { fl = fl | FACE_QUAD }
+    f.flags = fl as u8
+    f.blend = BLEND_ADD as u8
+    f.idx[0] = a as u16
+    f.idx[1] = b as u16
+    f.idx[2] = c as u16
+    f.idx[3] = d as u16
+    f.col[0] = ca
+    f.col[1] = cb
+    f.col[2] = cc
+    f.col[3] = cd
+    gl_nf += 1
+}
+
+// A sparkle of four arms of length r around c, turned by a; arms w wide at the base.
+private fn gl_sparkle(c: vec3, r: fixed, w: fixed, a: fixed, col: u32) {
+    let ca = cos(a)
+    let sa = sin(a)
+    let dx = gl_right * ca + gl_up * sa
+    let dy = gl_up * ca - gl_right * sa
+    for k in 0..4 {
+        var d = dx
+        var n = dy
+        if k == 1 { d = dy; n = -dx }
+        if k == 2 { d = -dx; n = -dy }
+        if k == 3 { d = -dy; n = dx }
+        let i = gl_vert(c + n * w)
+        gl_vert(c - n * w)
+        gl_vert(c + d * r)
+        gl_face(false, i, i + 1, i + 2, i + 2, col, col, 0, 0)
+    }
+}
+
+// Draws the glint of style g around point p (on the model's spin axis) at tick t.
+fn glint_draw(g: *Glint, p: vec3, t: s32) {
+    let fx = __vp[0]
+    let fy = __vp[1]
+    let fw = __vp[3]
+    gl_right = vec3(fx.x, fx.y, fx.z) / __fx
+    gl_up = vec3(fy.x, fy.y, fy.z) / __fy
+    let fwd = vec3(fw.x, fw.y, fw.z)
+    let d = view_depth(p)
+    if d < __cam_near { return }
+    let m_per_px = d / (__fy * 120)          // metres a pixel covers at p
+    gl_nv = 0
+    gl_nf = 0
+    // the halo: breathing between 80 and 100 % (quieter near), a ring at half the radius at 60 %
+    let hr = max(g.halo_r, m_per_px * g.halo_px)
+    let hc = p + vec3(0.0, g.halo_dy, 0.0) + fwd * g.push
+    let near = lerp(g.halo_near, 1.0, clamp((d - 3.0) / 9, 0.0, 1.0))
+    let breathe = (0.9 + 0.1 * frame_wave(t, 96)) * near
+    // past 8 m, up to a quarter brighter (toward white) by 20 m
+    let hcol = clerp(g.halo, 0xffffff, clamp((d - 8.0) / 48, 0.0, 0.25))
+    let c0 = clerp(0, hcol, breathe)
+    let c1 = clerp(0, hcol, breathe * 0.6)
+    let ctr = gl_vert(hc)
+    let rot = frame_angle(t, 0.004)
+    for k in 0..GL_SEG {
+        let a = rot + fixed(k) * (TAU / GL_SEG)
+        let dir = gl_right * cos(a) + gl_up * sin(a)
+        gl_vert(hc + dir * (hr * 0.5))
+        gl_vert(hc + dir * hr)
+    }
+    for k in 0..GL_SEG {
+        let i = ctr + 1 + 2 * k
+        var j = i + 2
+        if k == GL_SEG - 1 { j = ctr + 1 }
+        gl_face(false, ctr, i, j, j, c0, c1, c1, c1)
+        gl_face(true, i, j, i + 1, j + 1, c1, c1, 0, 0)
+    }
+    // the flash: lights and fades over 16 of every 90 ticks
+    let ft = (t % 90 + 90) % 90
+    if g.flash != 0 && ft < 16 {
+        let fr = max(0.18, m_per_px * g.flash_px)
+        let k = sin(fixed(ft) * (PI / 16))
+        gl_sparkle(p - fwd * g.push, fr * (0.6 + 0.4 * k), max(fr * 0.1, m_per_px), PI / 4 * k,
+                clerp(0, g.flash, k))
+    }
+    // motes: three near; far, five, each at least mote_px, on a circle of at least 16 pixels
+    if g.motes != 0 {
+        let ms = max(1.0, m_per_px * g.mote_px / 0.09)      // size scale
+        let os = max(1.0, m_per_px * 16 / 0.5)              // circle scale
+        var n = 3
+        if ms > 1.0 { n = 5 }
+        for k in 0..n {
+            let life = frame_phase(t + k * 120 / n, 120)
+            let a = frame_angle(t, 0.03) + fixed(k) * TAU / n
+            let mp = p + vec3(0.5 * sin(a), -0.55 + 1.1 * life, 0.5 * cos(a)) * os
+            let fade = sin(life * PI)
+            gl_sparkle(mp, 0.09 * ms, max(0.012 * ms, m_per_px * 0.75), a, clerp(0, g.motes, fade))
+        }
+    }
+    gl.hdr.nverts = gl_nv as u16
+    gl.hdr.nfaces = gl_nf as u16
+    gl.hdr.verts = 16
+    gl.hdr.faces = (16 + 16 * GL_V) as u32
+    gl.hdr.windows = 0
+    mesh(&gl.hdr)
+}
