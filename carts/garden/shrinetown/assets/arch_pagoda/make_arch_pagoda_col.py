@@ -1,6 +1,8 @@
-"""Writes arch_pagoda_col.asset.json beside this script (python3 make_arch_pagoda_col.py): shrine
-town's collision for the shrine's five-storey pagoda (carts/garden/shrine/assets/arch_pagoda),
-whose look is reused unchanged. Star 1 (spec 5) is climbed up its tiers.
+"""Writes arch_pagoda_climb_col.asset.json beside this script (python3 make_arch_pagoda_col.py):
+shrine town's collision for the shrine's five-storey pagoda (carts/garden/shrine/assets/
+arch_pagoda), whose look is reused unchanged. Star 1 (spec 5) is climbed up its tiers. Named apart
+from the shrine's own arch_pagoda_col, since the world lists the shrine's assets too (a name in
+two asset directories is an error).
 
 The collision is one closed solid, a square "lathe" up a profile read from the pagoda's own roof
 meshes, so it follows the render:
@@ -150,16 +152,16 @@ def main():
     box_faces(verts, faces, (-1.2, 0.0, -5.1), (1.2, 0.45, -4.4), ('bottom', '+z'))
     box_faces(verts, faces, (-1.2, 0.0, 4.4), (1.2, 0.45, 5.1), ('bottom', '-z'))
     recipe = {
-        'format': 'mei-asset', 'version': 1, 'name': 'arch_pagoda_col',
+        'format': 'mei-asset', 'version': 1, 'name': 'arch_pagoda_climb_col',
         'materials': {'solid': {'color': '#ffffff', 'palette': True}},
         'lighting': {'mode': 'vertical', 'ambient': 0.5},
         'verification': POLICY,
         'nodes': [{'id': 'body', 'op': 'mesh', 'vertices': verts, 'faces': faces,
                    'face_materials': ['solid'] * len(faces)}],
     }
-    (HERE / 'arch_pagoda_col.asset.json').write_text(json.dumps(recipe, indent=1) + '\n')
+    (HERE / 'arch_pagoda_climb_col.asset.json').write_text(json.dumps(recipe, indent=1) + '\n')
     tris = sum(len(f) - 2 for f in faces)
-    print(f'arch_pagoda_col: {tris} triangles')
+    print(f'arch_pagoda_climb_col: {tris} triangles')
     print('profile (half width, height):')
     for r, y in prof:
         print(f'  {r:6.3f} {y:7.4f}')

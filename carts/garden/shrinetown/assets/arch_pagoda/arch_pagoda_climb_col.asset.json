@@ -1,7 +1,7 @@
 {
  "format": "mei-asset",
  "version": 1,
- "name": "arch_pagoda_col",
+ "name": "arch_pagoda_climb_col",
  "materials": {
   "solid": {
    "color": "#ffffff",
