@@ -63,9 +63,14 @@ class Part:
         self.index[key] = len(self.v) - 1
         return len(self.v) - 1
 
-    def face(self, idx, mat):
-        # quads go in as two triangles: rounded to 16.16, a turned quad is not quite flat
+    def face(self, idx, mat, quad=False):
+        # quads go in as two triangles: rounded to 16.16, a turned quad is not quite flat; quad
+        # keeps one that is flat whatever the rounding (an upright card, a level one) as one face
         idx = list(idx)
+        if quad and len(idx) == 4:
+            self.f.append(idx)
+            self.m.append(mat)
+            return
         for k in range(1, len(idx) - 1):
             self.f.append([idx[0], idx[k], idx[k + 1]])
             self.m.append(mat)
@@ -88,7 +93,7 @@ class Part:
         return n
 
 
-def card(part, c, n, w, h, mat, roll=0.0, uv=(0, 0, 1, 1), lift=0.0):
+def card(part, c, n, w, h, mat, roll=0.0, uv=(0, 0, 1, 1), lift=0.0, quad=False):
     """A quad centred at c facing n, w wide and h tall, its texture upright (up = world up
     projected on the card, or +Z for a card facing straight up), turned by roll radians.
     lift moves the quad along its up direction (positive: the card's bottom edge at c)."""
@@ -106,7 +111,7 @@ def card(part, c, n, w, h, mat, roll=0.0, uv=(0, 0, 1, 1), lift=0.0):
                (add(add(c, mul(r, w / 2)), mul(u, -h / 2)), (u1, v1)),
                (add(add(c, mul(r, w / 2)), mul(u, h / 2)), (u1, v0)),
                (add(add(c, mul(r, -w / 2)), mul(u, h / 2)), (u0, v0))]
-    part.face([part.vert(p, t) for p, t in corners], mat)
+    part.face([part.vert(p, t) for p, t in corners], mat, quad)
 
 
 def basis(d):
@@ -190,15 +195,26 @@ def crown_cards(part, rng, centre, radii, count, size, mat, depth=0.7, ymin=-1.0
         card(part, p, n, s, s, mat, roll=rng.uniform(-0.6, 0.6))
 
 
-def cross_cards(part, base, w, h, mat, count=2, yaw=0.0, uv=(0, 0, 1, 1)):
+FAR2 = 64      # the trees' second far level: the crossed cards alone, without the flat one
+
+
+def cross_only(w, h, turn):
+    """A tree's second far level: its far level's two crossed cards, without the card over the
+    crown (from far off the crossed cards carry the tree, at two faces)."""
+    part = Part('far', uvs=True)
+    cross_cards(part, [0, 0, 0], w, h, 'far', yaw=turn, quad=True)
+    return part
+
+
+def cross_cards(part, base, w, h, mat, count=2, yaw=0.0, uv=(0, 0, 1, 1), quad=False):
     """count vertical cards crossing at base's vertical axis, bottom edge at base."""
     for k in range(count):
         a = yaw + math.pi * k / count
-        card(part, base, [math.cos(a), 0, math.sin(a)], w, h, mat, uv=uv, lift=1.0)
+        card(part, base, [math.cos(a), 0, math.sin(a)], w, h, mat, uv=uv, lift=1.0, quad=quad)
 
 
-def flat_card(part, c, size, mat, yaw=0.0, uv=(0, 0, 1, 1)):
-    card(part, c, [0, 1, 0], size, size, mat, roll=yaw, uv=uv)
+def flat_card(part, c, size, mat, yaw=0.0, uv=(0, 0, 1, 1), quad=False):
+    card(part, c, [0, 1, 0], size, size, mat, roll=yaw, uv=uv, quad=quad)
 
 
 # ---------------------------------------------------------------- recipes
@@ -278,9 +294,10 @@ def maple(name, seed, height, crown_r, crown_h, trunk_h, trunk_r, limbs, cards, 
     # far: two crossed cards of the whole tree, and one flat card over the crown
     far = Part('far', uvs=True)
     w = height  # maple_far is square: the tree's height across
-    cross_cards(far, [0, 0, 0], w, w, 'far', yaw=rng.uniform(0, 1))
-    flat_card(far, [0, height * 0.66, 0], crown_r * 1.7, 'leaves', yaw=rng.uniform(0, 6))
-    return recipe(name, budget, mats, [wood, crown], [(far_at, [far])])
+    turn = rng.uniform(0, 1)
+    cross_cards(far, [0, 0, 0], w, w, 'far', yaw=turn, quad=True)
+    flat_card(far, [0, height * 0.66, 0], crown_r * 1.7, 'leaves', yaw=rng.uniform(0, 6), quad=True)
+    return recipe(name, budget, mats, [wood, crown], [(far_at, [far]), (FAR2, [cross_only(w, w, turn)])])
 
 
 def ginkgo(name, seed, budget, far_at):
@@ -302,9 +319,10 @@ def ginkgo(name, seed, budget, far_at):
              uv=(0, 0, 1, 0.8), lift=1.0)
     crown_cards(crown, rng, centre, radii, 24, 2.9, 'leaves', depth=0.95, tilt=0.3)
     far = Part('far', uvs=True)
-    cross_cards(far, [0, 0, 0], height / 2, height, 'far', yaw=rng.uniform(0, 1))
-    flat_card(far, [0, 9.0, 0], 4.6, 'leaves', yaw=rng.uniform(0, 6))
-    return recipe(name, budget, mats, [wood, crown], [(far_at, [far])])
+    turn = rng.uniform(0, 1)
+    cross_cards(far, [0, 0, 0], height / 2, height, 'far', yaw=turn, quad=True)
+    flat_card(far, [0, 9.0, 0], 4.6, 'leaves', yaw=rng.uniform(0, 6), quad=True)
+    return recipe(name, budget, mats, [wood, crown], [(far_at, [far]), (FAR2, [cross_only(height / 2, height, turn)])])
 
 
 def cedar_crown(part, rng, base, top, r_base, tuft, count, mat, droop=-0.25, dome=False):
@@ -342,9 +360,9 @@ def cedar(name, seed, budget, far_at):
              uv=(0, 0, 1, 1 - v0 + 0.0), lift=1.0)
     cedar_crown(crown, rng, 8.6, 23.6, 2.7, 2.9, 20, 'leaves')
     far = Part('far', uvs=True)
-    cross_cards(far, [0, 0, 0], height * 24 / 96, height, 'far', yaw=0.3)
-    flat_card(far, [0, 13.0, 0], 3.6, 'leaves', yaw=rng.uniform(0, 6))
-    return recipe(name, budget, mats, [bark, wood, crown], [(far_at, [far])])
+    cross_cards(far, [0, 0, 0], height * 24 / 96, height, 'far', yaw=0.3, quad=True)
+    flat_card(far, [0, 13.0, 0], 3.6, 'leaves', yaw=rng.uniform(0, 6), quad=True)
+    return recipe(name, budget, mats, [bark, wood, crown], [(far_at, [far]), (FAR2, [cross_only(height * 24 / 96, height, 0.3)])])
 
 
 # ---------------------------------------------------------------- the big cedars
@@ -385,7 +403,7 @@ def giant(name, seed, budget):
         card(l1c, [0, 27.0, 0], [math.cos(a), 0, math.sin(a)], 8.0, 14.5, 'far', uv=(0, 0, 1, 0.66), lift=1.0)
     cedar_crown(l1c, random.Random(seed + 1), 29.0, 39.0, 4.2, 5.4, 12, 'leaves', droop=-0.3)
     l2 = Part('far', uvs=True)
-    cross_cards(l2, [0, 0, 0], 41.5 * 24 / 96 * 1.3, 41.5, 'far', yaw=0.5)
+    cross_cards(l2, [0, 0, 0], 41.5 * 24 / 96 * 1.3, 41.5, 'far', yaw=0.5, quad=True)
     return recipe(name, budget, mats, [wood, limbs, crown], [(70, [l1w, l1c]), (150, [l2])])
 
 
@@ -468,7 +486,7 @@ def sacred(name, seed, budget):
     l2 = Part('far', uvs=True)
     for k in range(3):
         a = 0.2 + k * math.pi / 3
-        card(l2, [0, 0, 0], [math.cos(a), 0, math.sin(a)], 16.0, 46.0, 'far', lift=1.0)
+        card(l2, [0, 0, 0], [math.cos(a), 0, math.sin(a)], 16.0, 46.0, 'far', lift=1.0, quad=True)
     return recipe(name, budget, mats, [roots, trunk, leaders, rope, paper, crown],
                   [(90, [l1, l1c]), (180, [l2])])
 
@@ -562,7 +580,7 @@ def litter(name, cell, colour, radius, seed):
         l0.face([l0.vert(x, t) for x, t in pts], 'leaves')
     l1 = Part('patch', uvs=True)
     s = radius * 2
-    card(l1, [0, 0.05, 0], [0, 1, 0], s, s, 'leaves', roll=turn)
+    card(l1, [0, 0.05, 0], [0, 1, 0], s, s, 'leaves', roll=turn, quad=True)
     return recipe(name, 8, mats, [l0], [(16, [l1])], cull=40)
 
 

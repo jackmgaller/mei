@@ -155,6 +155,11 @@ fn shrine_case_init() -> bool {
         307 => { name = "shrine: every coin has a floor under it and can be taken" }
         308 => { name = "shrine: the konbini door leads to the garden" }
         309 => { name = "shrine: the garden's shrine torii leads to the shrine" }
+        310 => { name = "shrine view: the summit stage, looking south over the valley" }
+        311 => { name = "shrine view: the ridge behind the temple, looking south" }
+        312 => { name = "shrine view: the road, looking north" }
+        313 => { name = "shrine view: the pond, looking west" }
+        314 => { name = "shrine view: turning once round on the summit stage" }
         else => { return false }
     }
     cam.lock = false
@@ -174,6 +179,11 @@ fn shrine_case(f: s32) {
         307 => sh_coins(f)
         308 => sh_door(f)
         309 => sh_door_in(f)
+        310 => sh_view(f, vec3(72.0, 0.0, 262.6), 3.1416, -0.5, false)
+        311 => sh_view(f, vec3(96.0, 0.0, 170.0), 3.1416, -0.4, false)
+        312 => sh_view(f, vec3(95.0, 0.0, 14.0), NORTH, -0.2, false)
+        313 => sh_view(f, vec3(184.0, 0.0, 72.0), WEST, -0.2, false)
+        314 => sh_view(f, vec3(72.0, 0.0, 262.6), 3.1416, -0.5, true)
         else => {}
     }
 }
@@ -217,6 +227,37 @@ fn sh_coins(f: s32) {
         if e.type_id as s32 == RED_COIN_TYPE { sh_red += 1 } else { sh_gold += 1 }
         sh_n = sh_next_coin(sh_n + 1)
         sh_t = 0
+    }
+}
+
+// The views the level is judged from at range (310-314): the player stands at a spot, the
+// camera behind it on a fixed yaw (or turning once round in 8 s); notes the frame's peak CPU
+// and GPU cycles and triangles, and checks the frames stay within the budgets. They are for
+// screenshots (SHOT=1, SEQ) as much as for the numbers; check.sh runs them.
+fn sh_view(f: s32, at: vec3, yaw: fixed, pitch: fixed, turn: bool) {
+    if f == 0 {
+        readout = 2                     // no readout over the picture
+        tv[T.CamPitch] = pitch          // the view's own pitch, a little further back
+        tv[T.CamDist] = 8.0
+        place(vec3(at.x, sh_floor(at.x, at.z, 90.0), at.z), yaw)
+        x0 = 0.0
+        y0 = 0.0
+        v0 = 0.0
+    }
+    if turn { cam.yaw = wrap_angle(yaw + fixed(f) * TAU / 480) }
+    if f >= 30 {
+        x0 = max(x0, fixed(timing.cpu / 100) / 10)
+        y0 = max(y0, fixed(timing.gpu / 100) / 10)
+        v0 = max(v0, fixed(timing.tris))
+    }
+    var end = 90
+    if turn { end = 510 }
+    if f == end {
+        note("cpu peak, thousand cycles", x0)
+        note("gpu peak, thousand cycles", y0)
+        note("triangles, most", v0)
+        expect(timing.late == 0, "no late frames", fixed(timing.late))
+        done()
     }
 }
 

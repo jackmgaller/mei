@@ -17,7 +17,7 @@ import struct
 from kitcore import jsonio
 from kitcore.errors import pointer
 from kitcore.vector import yaw as turn
-from . import ids, merge
+from . import farground, ids, merge, quads
 from . import pack as P
 from .assets import Library, collision_triangles, relative
 from .palettes import RegionPalette
@@ -242,7 +242,12 @@ def compile_world(source, lock=None, assets_dir=None):
                 raise err(f'{p}/entities/{k}/id', f'Entity ID {e["id"]!r} is also used in cell {other[0]!r}; entity IDs are world-wide.', cs)
             entity_where[e['id']] = (c['id'], k)
 
-    if len(source.cells) > 1:
+    auto_standins = w.get('standins')
+    if auto_standins and len(regions) > 1:
+        raise WorldError('/standins', 'Stand-ins made by the kit keep their placements\' textures, and a stand-in '
+                         'is drawn whichever region is loaded: they need a world with one region. Give each cell '
+                         'its own stand-in instead.')
+    if len(source.cells) > 1 and not auto_standins:
         for cs in source.cells:
             if 'standin' not in cs.recipe:
                 warnings.append({'code': 'no_standin', 'cell': cs.recipe['id'],
@@ -415,12 +420,14 @@ def compile_world(source, lock=None, assets_dir=None):
     lod_cfg = w.get('lod', {})
     lod_report = {}
     for aname in lod_cfg.get('assets', {}):
-        if aname not in library.assets or not library.assets[aname].levels:
+        if aname not in library.assets or 'lod' not in library.assets[aname].recipe:
             warnings.append({'code': 'lod_unused', 'asset': aname, 'message': 'lod.assets names an asset that '
                              'no placement draws, or whose recipe has no lod.'})
 
-    def lod_of(asset, rp, slot, row):
-        if not asset.levels:
+    def lod_entry(asset):
+        """The asset's levels as the pack holds them: {'distances', 'cull', 'band', 'off', ...}, or
+        None for an asset without lod. A recipe whose lod has only a cull distance gets a cull mark."""
+        if not asset.levels and 'lod' not in asset.recipe:
             return None
         if asset.name not in lod_report:
             spec = dict(asset.recipe['lod'])
@@ -439,7 +446,7 @@ def compile_world(source, lock=None, assets_dir=None):
             cull = cull * scale if cull is not None else None
             marks = distances + ([cull] if cull is not None else [])
             entry = {'distances': distances, 'cull': cull, 'band': band, 'off': bool(over.get('off')),
-                     'triangles': [r['triangles'] for r in asset.report['lod']['levels']]}
+                     'triangles': [r['triangles'] for r in asset.report.get('lod', {}).get('levels', [])]}
             prev = 0
             for d in ([] if over.get('off') else marks):
                 if d - band <= prev + band or d + band > P.MAX_LOD_DISTANCE:
@@ -448,18 +455,127 @@ def compile_world(source, lock=None, assets_dir=None):
                                      f'within {P.MAX_LOD_DISTANCE} units.')
                 prev = d
             lod_report[asset.name] = entry
-        entry = lod_report[asset.name]
-        if entry['off']:
-            return None
+        return lod_report[asset.name]
+
+    def level_meshes(asset, rp, slot, row):
+        """The asset's levels 1.. as relocated mesh bytes for region rp."""
         if asset.textured:
             rt = region_textures[rp.name]
-            meshes = [rt.binary(asset, relocated_palette(asset, rp, slot, row), k) for k in range(1, len(asset.levels) + 1)]
-        else:
-            meshes = rp.relocated_levels(asset, slot, row)
+            return [rt.binary(asset, relocated_palette(asset, rp, slot, row), k) for k in range(1, len(asset.levels) + 1)]
+        return rp.relocated_levels(asset, slot, row)
+
+    ground_lod = lod_cfg.get('ground', [])
+    far_ground = {'triangles': [0] * len(ground_lod), 'tiles': [0] * len(ground_lod)}
+
+    def sweep_cull(name):
+        """The distance a sweep's pieces are culled from (lod.sweeps), or None."""
+        sw = lod_cfg.get('sweeps', {})
+        own = sw.get('paths', {}).get(name, {})
+        cull = own['cull'] if 'cull' in own else sw.get('cull')
+        return cull * lod_cfg.get('scale', 1.0) if cull is not None else None
+
+    def lod_of(asset, rp, slot, row):
+        entry = lod_entry(asset)
+        if entry is None or entry['off'] or (not entry['distances'] and entry['cull'] is None):
+            return None
+        meshes = level_meshes(asset, rp, slot, row) if asset.levels else []
         levels = list(zip(entry['distances'], meshes))
         if entry['cull'] is not None:
             levels.append((entry['cull'], None))
         return P.Lod(levels, entry['band'])
+
+    def chunk_levels(sname, sc, batch, rp, centre):
+        """A scatter chunk's levels with "lod": "assets" (WORLDKIT.md, "Scatter"): a level wherever
+        one of its assets switches level or is culled, at that asset's own distance (the world's
+        lod overrides and scale applied), each level the merge of every prop at the level its
+        asset draws there, without the props culled by then; a cull mark once every prop is culled,
+        or at the scatter's cull. Distances closer than twice the band to the one before are moved
+        out to keep the reader's rule, so a change can come a few units late, never early."""
+        marks = {}
+        for _, asset, _ in batch:
+            if asset.name not in marks:
+                e = lod_entry(asset)
+                m = []
+                if e is not None and not e['off']:
+                    m = [(d, k + 1) for k, d in enumerate(e['distances'])]
+                    if e['cull'] is not None:
+                        m.append((e['cull'], None))
+                marks[asset.name] = m
+        cap = sc.get('cull')
+        wanted = sorted({d for m in marks.values() for d, _ in m if cap is None or d < cap})
+        def level_at(asset, d):
+            lv = 0
+            for at, k in marks[asset.name]:
+                if d >= at: lv = k
+            return lv
+        meshes = {}
+        def level_mesh(asset, k):
+            if k == 0:
+                return mesh_of(asset)
+            if asset.name not in meshes:
+                meshes[asset.name] = level_meshes(asset, rp, slot, row)
+            return meshes[asset.name][k - 1]
+        band, levels, prev, last = 2.0, [], 0.0, None
+        for d in wanted:
+            state = [level_at(asset, d) for _, asset, _ in batch]
+            if state == last:
+                continue
+            at = max(d, prev + 2 * band + 0.25)
+            parts = [(level_mesh(asset, k), it.position, it.yaw) for (it, asset, _), k in zip(batch, state) if k is not None]
+            if not parts:
+                levels.append((at, None))
+                break
+            levels.append((at, merge.merge(parts, centre)[0]))
+            prev, last = at, state
+        else:
+            if cap is not None:
+                levels.append((max(cap, prev + 2 * band + 0.25), None))
+        if len(levels) > P.MAX_LOD_LEVELS:
+            raise WorldError(pointer('/scatter', sname) + '/lod', f'A chunk would have {len(levels)} levels after '
+                             f'level 0; the pack holds at most {P.MAX_LOD_LEVELS}. Scatter assets that share '
+                             'switch distances, or fewer kinds of asset.')
+        return levels
+
+    def standin_of(cell, centre, cid, far_grids):
+        """A stand-in made from the cell itself (standins): each placement not in a layer (sweeps only
+        with standins.sweeps) at the level it draws at standins.distance, merged into one mesh around
+        the cell's centre; None when nothing is drawn from that far. A far ground level is made
+        again without the skirts between the cell's own tiles, which meet exactly."""
+        dist = auto_standins['distance'] * lod_cfg.get('scale', 1.0)
+        half = size / 2
+        def border(a, b):
+            return any(abs(a[q]) >= half - 1e-3 and abs(b[q]) >= half - 1e-3 and a[q] * b[q] > 0 for q in (0, 2))
+        items, windows = [], False
+        for k, pl in enumerate(cell.placements):
+            if pl.layer is not None or (pl.tag == TAG_SWEEP and not auto_standins.get('sweeps')):
+                continue
+            mesh = pl.mesh
+            for d, m in (pl.lod.levels if pl.lod else []):
+                if dist >= d:
+                    mesh = m
+            grids = [g for d, g in far_grids.get(k, []) if dist >= d]
+            if grids and mesh is not None:
+                mesh = farground.far_levels(pl.mesh, [g for _, g in far_grids[k]], skirted=border)[len(grids) - 1]
+            if mesh is None:
+                continue
+            windows = windows or bool(struct.unpack_from('<I', mesh, 12)[0])
+            items.append((mesh, pl.position, pl.yaw))
+        if not items:
+            return None
+        meshes = merge.merge(items, centre)
+        if len(meshes) > 1:
+            nf = sum(struct.unpack_from('<H', m, 2)[0] for m in meshes)
+            raise WorldError('/standins/distance', f'Cell {cid!r} drawn from {dist:g} units is {nf} faces, more than '
+                             f'one mesh holds (2,048 vertices, 4,000 faces). Raise the distance, or give what it '
+                             'holds coarser levels or cull distances.')
+        if windows:
+            warnings.append({'code': 'standin_windows', 'cell': cid,
+                             'message': 'The stand-in merges faces with repeating textures; a merged mesh has no '
+                                        'texture window table, so they are drawn without their windows.'})
+        auto_report[cid] = {'placements': len(items), 'triangles': struct.unpack_from('<H', meshes[0], 2)[0]}
+        return meshes[0]
+
+    auto_report = {}
 
     # ---- paths: named polylines in world coordinates, stored once per world (WORLDPACK.md, "Paths")
     paths, path_report = [], {}
@@ -645,14 +761,16 @@ def compile_world(source, lock=None, assets_dir=None):
             for batch in batches:
                 mesh = merge.merge([(b, it.position, it.yaw) for it, _, b in batch], centre)[0]
                 levels = []
-                if 'coarse' in sc:
+                if sc.get('lod') == 'assets':
+                    levels = chunk_levels(sname, sc, batch, rp, centre)
+                elif 'coarse' in sc:
                     coarse = []
                     for it, asset, b in batch:
                         lv = (rt.binary(asset, relocated_palette(asset, rp, slot, row), 1) if asset.textured
                               else rp.relocated_levels(asset, slot, row)[0]) if asset.levels else b
                         coarse.append((lv, it.position, it.yaw))
                     levels.append((sc['coarse'], merge.merge(coarse, centre)[0]))
-                if 'cull' in sc:
+                if 'cull' in sc and sc.get('lod') != 'assets':
                     levels.append((sc['cull'], None))
                 lod = P.Lod(levels, 2.0) if levels else None
                 if lod:
@@ -664,20 +782,43 @@ def compile_world(source, lock=None, assets_dir=None):
                 srep = scatter_report[sname]
                 srep['chunks'] = srep.get('chunks', 0) + 1
                 srep['triangles'] = srep.get('triangles', 0) + struct.unpack_from('<H', mesh, 2)[0]
+        far_grids = {}          # placement number -> [(distance, grid)] of its far ground levels
         for piece in (terrain.pieces.get((i, j), []) if terrain else []):
             ta = terrain_assets[c['region']]
             lod = None
-            if piece.levels:
-                lod = P.Lod([(d, rp.relocated(TerrainAsset(ta.name, ta.manifest, m), slot, row)) for d, m in piece.levels],
-                            piece.band)
+            base = rp.relocated(TerrainAsset(ta.name, ta.manifest, piece.mesh), slot, row)
+            levels = [(d, rp.relocated(TerrainAsset(ta.name, ta.manifest, m), slot, row)) for d, m in piece.levels]
+            where = pointer('/terrain/fields', piece.name) + '/lod'
+            if piece.kind == 'field' and ground_lod:
+                # far ground (WORLDKIT.md, "Levels of detail"): grids resampled from level 0, each
+                # kept only where it has fewer faces than the level before it
+                fewest = struct.unpack_from('<H', (levels[-1][1] if levels else base), 2)[0]
+                for k, (spec, m) in enumerate(zip(ground_lod, farground.far_levels(base, [g['grid'] for g in ground_lod]))):
+                    if m is None:
+                        continue
+                    nf = struct.unpack_from('<H', m, 2)[0]
+                    if nf < fewest:
+                        levels.append((spec['distance'] * lod_cfg.get('scale', 1.0), m))
+                        far_grids.setdefault(len(cell.placements), []).append((levels[-1][0], spec['grid']))
+                        fewest = nf
+                        far_ground['triangles'][k] += nf
+                        far_ground['tiles'][k] += 1
+                where = '/lod/ground'
+            elif piece.kind == 'sweep' and sweep_cull(piece.name) is not None and not levels:
+                levels = [(sweep_cull(piece.name), None)]
+                where = pointer('/lod/sweeps/paths', piece.name) if piece.name in lod_cfg.get('sweeps', {}).get('paths', {}) \
+                    else '/lod/sweeps/cull'
+            if levels:
+                lod = P.Lod(levels, piece.band)
                 try:
                     P.lod_rows(lod)
                 except P.PackError as error:
-                    raise WorldError(pointer('/terrain/fields', piece.name) + '/lod', f'{error}.') from error
-            cell.placements.append(P.Placement(rp.relocated(TerrainAsset(ta.name, ta.manifest, piece.mesh), slot, row),
-                                               centre, 0.0, None, piece.tag, piece.ground, lod))
+                    raise WorldError(where, f'{error}.') from error
+            cell.placements.append(P.Placement(base, centre, 0.0, None, piece.tag, piece.ground, lod))
         if plan['standin']:
             cell.standin = rp.relocated(plan['standin'], slot, row)
+        elif auto_standins:
+            cell.standin = standin_of(cell, centre, c['id'], far_grids)
         cell.collision = plan['collision']
         for e in plan['entities']:
             spec = e['spec']
@@ -686,6 +827,24 @@ def compile_world(source, lock=None, assets_dir=None):
                                           collision=e['collision']))
         cells.append(cell)
 
+    if w.get('meshes', {}).get('quads'):
+        # pairs of triangles drawn as quads (WORLDKIT.md, "Quads"): the same pictures, fewer faces
+        paired = {}
+
+        def quads_of(m):
+            if m is None:
+                return None
+            if m not in paired:
+                paired[m] = quads.pair(m)
+            return paired[m]
+        for cell in cells:
+            for pl in cell.placements:
+                pl.mesh = quads_of(pl.mesh)
+                if pl.lod:
+                    pl.lod.levels = [(d, quads_of(m)) for d, m in pl.lod.levels]
+            cell.standin = quads_of(cell.standin)
+            for e in cell.entities:
+                e.mesh = quads_of(e.mesh)
     world = P.World(cells=cells, cell_shift=shift, layers=players, regions=pregions, coll_pad=pad,
                     near_far=w.get('runtime', {}).get('near_far'),
                     overhang=overhang, floor_max_degrees=probe['floor_max_degrees'],
@@ -743,6 +902,11 @@ def compile_world(source, lock=None, assets_dir=None):
         if r in backdrops:
             entry['backdrop'] = backdrops[r].report()
     report['lod'] = {n: s for n, s in lod_report.items()}
+    if auto_standins:
+        report['standins'] = {'distance': auto_standins['distance'], 'cells': auto_report}
+    if ground_lod:
+        report['far_ground'] = {'levels': [dict(g) for g in ground_lod], 'tiles': far_ground['tiles'],
+                                'triangles': far_ground['triangles']}
     if terrain:
         report['terrain'] = terrain.report
         for entry, plan in zip(report['cells'], plans):

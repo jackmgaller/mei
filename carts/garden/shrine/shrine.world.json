@@ -73,7 +73,7 @@
  "runtime": {
   "depth": true,
   "perspective": true,
-  "near_far": 72
+  "near_far": 192
  },
  "verification": {
   "thresholds": {
@@ -3352,8 +3352,7 @@
    "clearance": 1.6,
    "max_slope": 34,
    "chunk": 16,
-   "coarse": 18,
-   "cull": 56
+   "lod": "assets"
   },
   "forest_high": {
    "assets": [
@@ -3540,8 +3539,7 @@
    "clearance": 1.6,
    "max_slope": 40,
    "chunk": 16,
-   "coarse": 18,
-   "cull": 56
+   "lod": "assets"
   },
   "undergrowth": {
    "assets": [
@@ -3663,8 +3661,8 @@
    "clearance": 1.0,
    "max_slope": 34,
    "chunk": 16,
-   "coarse": 12,
-   "cull": 34
+   "cull": 34,
+   "lod": "assets"
   },
   "litter": {
    "assets": [
@@ -3721,8 +3719,8 @@
    "clearance": 0.5,
    "max_slope": 8,
    "chunk": 16,
-   "coarse": 14,
-   "cull": 32
+   "cull": 32,
+   "lod": "assets"
   },
   "reeds": {
    "assets": [
@@ -3761,8 +3759,8 @@
    "clearance": 0.5,
    "max_slope": 30,
    "chunk": 16,
-   "coarse": 14,
-   "cull": 40
+   "cull": 40,
+   "lod": "assets"
   }
  },
  "lod": {
@@ -3833,7 +3831,58 @@
     "distances": [
      24
     ]
+   },
+   "tree_maple": {
+    "distances": [
+     24,
+     64
+    ]
+   },
+   "tree_maple_small": {
+    "distances": [
+     20,
+     56
+    ]
+   },
+   "tree_ginkgo": {
+    "distances": [
+     24,
+     64
+    ]
+   },
+   "tree_cedar": {
+    "distances": [
+     26,
+     64
+    ]
+   }
+  },
+  "ground": [
+   {
+    "distance": 40,
+    "grid": 8
+   },
+   {
+    "distance": 80,
+    "grid": 16
+   }
+  ],
+  "sweeps": {
+   "cull": 56,
+   "paths": {
+    "torii_stairs": {
+     "cull": 44
+    },
+    "stairs_outcrop": {
+     "cull": 44
+    }
    }
   }
+ },
+ "standins": {
+  "distance": 128
+ },
+ "meshes": {
+  "quads": true
  }
 }

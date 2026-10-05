@@ -97,6 +97,9 @@ def scatter_items(w, terrain, size, cells, warnings):
         slope_cos = math.cos(math.radians(sc.get('max_slope', 35)))
         on = sc.get('on', 'terrain')
         tags = {'terrain': (TAG_FIELD,), 'sweeps': (TAG_SWEEP,), 'both': (TAG_FIELD, TAG_SWEEP)}[on]
+        if sc.get('lod') == 'assets' and 'coarse' in sc:
+            raise WorldError(sp + '/coarse', 'With "lod": "assets" a chunk takes its levels from its assets; coarse is '
+                             'not used. Remove one.')
         chunk = sc.get('chunk', 16)
         if chunk > size:
             raise WorldError(sp + '/chunk', f'A chunk is at most a cell ({size}).')

@@ -341,16 +341,11 @@
        [
         0,
         1,
-        2
-       ],
-       [
-        0,
         2,
         3
        ]
       ],
       "face_materials": [
-       "leaves",
        "leaves"
       ],
       "uvs": [
