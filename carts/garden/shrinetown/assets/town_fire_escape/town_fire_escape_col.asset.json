@@ -1,0 +1,564 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "town_fire_escape_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "flight_0",
+   "op": "box",
+   "size": [
+    3.4631,
+    0.2,
+    0.88
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     8.2479,
+     -0.4
+    ],
+    "rotate": [
+     0,
+     0,
+     26.8698
+    ]
+   }
+  },
+  {
+   "id": "flight_1",
+   "op": "box",
+   "size": [
+    3.4631,
+    0.2,
+    0.88
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     9.7679,
+     0.5
+    ],
+    "rotate": [
+     0,
+     0,
+     -26.8698
+    ]
+   }
+  },
+  {
+   "id": "flight_2",
+   "op": "box",
+   "size": [
+    3.4631,
+    0.2,
+    0.88
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     11.2879,
+     -0.4
+    ],
+    "rotate": [
+     0,
+     0,
+     26.8698
+    ]
+   }
+  },
+  {
+   "id": "flight_3",
+   "op": "box",
+   "size": [
+    3.4631,
+    0.2,
+    0.88
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     12.8079,
+     0.5
+    ],
+    "rotate": [
+     0,
+     0,
+     -26.8698
+    ]
+   }
+  },
+  {
+   "id": "flight_4",
+   "op": "box",
+   "size": [
+    3.4631,
+    0.2,
+    0.88
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     14.3279,
+     -0.4
+    ],
+    "rotate": [
+     0,
+     0,
+     26.8698
+    ]
+   }
+  },
+  {
+   "id": "landing_0",
+   "op": "box",
+   "size": [
+    1.0,
+    0.2,
+    1.8
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -2.0,
+     7.5,
+     0.05
+    ]
+   }
+  },
+  {
+   "id": "landing_1",
+   "op": "box",
+   "size": [
+    1.0,
+    0.2,
+    1.8
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     2.0,
+     9.02,
+     0.05
+    ]
+   }
+  },
+  {
+   "id": "landing_2",
+   "op": "box",
+   "size": [
+    1.0,
+    0.2,
+    1.8
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -2.0,
+     10.54,
+     0.05
+    ]
+   }
+  },
+  {
+   "id": "landing_3",
+   "op": "box",
+   "size": [
+    1.0,
+    0.2,
+    1.8
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     2.0,
+     12.06,
+     0.05
+    ]
+   }
+  },
+  {
+   "id": "landing_4",
+   "op": "box",
+   "size": [
+    1.0,
+    0.2,
+    1.8
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -2.0,
+     13.58,
+     0.05
+    ]
+   }
+  },
+  {
+   "id": "landing_5",
+   "op": "box",
+   "size": [
+    1.0,
+    0.2,
+    1.8
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     2.0,
+     15.1,
+     0.05
+    ]
+   }
+  },
+  {
+   "id": "rail_flight_0",
+   "op": "box",
+   "size": [
+    3.3631,
+    1.2,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     8.8205,
+     -0.76
+    ],
+    "rotate": [
+     0,
+     0,
+     26.8698
+    ]
+   }
+  },
+  {
+   "id": "rail_flight_1",
+   "op": "box",
+   "size": [
+    3.3631,
+    1.2,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     10.3405,
+     0.17
+    ],
+    "rotate": [
+     0,
+     0,
+     -26.8698
+    ]
+   }
+  },
+  {
+   "id": "rail_flight_2",
+   "op": "box",
+   "size": [
+    3.3631,
+    1.2,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     11.8605,
+     -0.76
+    ],
+    "rotate": [
+     0,
+     0,
+     26.8698
+    ]
+   }
+  },
+  {
+   "id": "rail_flight_3",
+   "op": "box",
+   "size": [
+    3.3631,
+    1.2,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     13.3805,
+     0.17
+    ],
+    "rotate": [
+     0,
+     0,
+     -26.8698
+    ]
+   }
+  },
+  {
+   "id": "rail_flight_4",
+   "op": "box",
+   "size": [
+    3.3631,
+    1.2,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0,
+     14.9005,
+     -0.76
+    ],
+    "rotate": [
+     0,
+     0,
+     26.8698
+    ]
+   }
+  },
+  {
+   "id": "rail_out_1",
+   "op": "box",
+   "size": [
+    0.78,
+    1.0,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     1.89,
+     9.62,
+     -0.75
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_out_2",
+   "op": "box",
+   "size": [
+    0.78,
+    1.0,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -1.89,
+     11.14,
+     -0.75
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_out_3",
+   "op": "box",
+   "size": [
+    0.78,
+    1.0,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     1.89,
+     12.66,
+     -0.75
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_out_4",
+   "op": "box",
+   "size": [
+    0.78,
+    1.0,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -1.89,
+     14.18,
+     -0.75
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_out_5",
+   "op": "box",
+   "size": [
+    0.78,
+    1.0,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     1.89,
+     15.7,
+     -0.75
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_end_0",
+   "op": "box",
+   "size": [
+    0.2,
+    1.0,
+    1.8
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -2.4,
+     8.1,
+     0.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_end_1",
+   "op": "box",
+   "size": [
+    0.2,
+    1.0,
+    1.8
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     2.4,
+     9.62,
+     0.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_end_2",
+   "op": "box",
+   "size": [
+    0.2,
+    1.0,
+    1.8
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -2.4,
+     11.14,
+     0.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_end_3",
+   "op": "box",
+   "size": [
+    0.2,
+    1.0,
+    1.8
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     2.4,
+     12.66,
+     0.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_end_4",
+   "op": "box",
+   "size": [
+    0.2,
+    1.0,
+    1.8
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -2.4,
+     14.18,
+     0.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_end_5",
+   "op": "box",
+   "size": [
+    0.2,
+    1.0,
+    1.8
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     2.4,
+     15.7,
+     0.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}
