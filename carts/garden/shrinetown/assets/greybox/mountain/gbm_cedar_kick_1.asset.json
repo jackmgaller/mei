@@ -20,14 +20,14 @@
    "op": "box",
    "size": [
     1.8,
-    22.0,
+    20.0,
     1.8
    ],
    "material": "trunk",
    "transform": {
     "translate": [
      0.0,
-     10.5,
+     9.5,
      0.0
     ]
    },
@@ -39,15 +39,15 @@
    "id": "b1",
    "op": "box",
    "size": [
-    4.4,
-    6.5,
-    4.4
+    3.2,
+    4.0,
+    3.2
    ],
    "material": "cedar",
    "transform": {
     "translate": [
-     0.0,
-     18.75,
+     -0.6,
+     21.0,
      0.0
     ]
    },

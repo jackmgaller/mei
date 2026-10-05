@@ -485,8 +485,10 @@ def pole(pid, x, z, h=9.0, y=0.0):
     entity(f'pole_{pid}', 'pole', x, y, z, {'height': h})
     POLES.append((pid, x, z))
 WIRE_Y = 8.0
-road_wire = [(x, 104.0) for x in range(10, 300, 30)]
-for x, z in road_wire: pole(f'road{x}', x, z)
+# poles every 30 m from x 10, but none on the axis (x 160, where the shotengai meets the road):
+# that one is split into two on the sando's kerbs, x 152.5 and 167.5
+road_wire = [(x, 104.0) for x in (10, 40, 70, 100, 130, 152.5, 167.5, 190, 220, 250, 280)]
+for x, z in road_wire: pole(f'road{int(x)}', x, z)
 # service-lane wires: layout's x 118 and x 150 lie over houses and shops; moved to the alley at
 # x 112.75 and the west service lane at x 137.75 (both 2.5-4.5 m lanes), z 44 to 104
 LANE_W = [(112.75, 44.0), (112.75, 104.0)]
@@ -570,6 +572,11 @@ for k, (z1, z2, h) in enumerate([(0, 36, 25), (36, 72, 22), (72, 104, 27)]):
 # and grab (5.15), until the shopping street (west) and downtown (east, the seamless edge) exist.
 block('hoarding_w', 0.0, 104.0, 0.4, 118.0, 0, 5.5, '#eceae4', '#e8782a', label='hoarding')
 block('hoarding_e', 319.6, 104.0, 320.0, 118.0, 0, 5.5, '#eceae4', '#e8782a', label='hoarding')
+# Doors (the garden cart's door entities, spec 7.3): the konbini's leads to the garden, as the
+# shrine's does; walking into the road works at the front road's west end leads back along the
+# road to the shrine (whose road's west end leads here).
+entity('door_garden', 'door', 196.0, 0.0, 33.0, {'world': 'garden', 'size': [3.0, 3.0, 1.2]})
+entity('door_shrine', 'door', 1.6, 0.0, 111.0, {'world': 'shrine', 'size': [2.0, 3.0, 13.0]})
 
 # ------------------------------------------------------------------ floors under points
 def floor_at(x, z, below=99.0):

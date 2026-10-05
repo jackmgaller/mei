@@ -217,6 +217,23 @@
    }
   },
   {
+   "id": "door_shrine",
+   "type": "door",
+   "position": [
+    1.6,
+    0.0,
+    111.0
+   ],
+   "params": {
+    "world": "shrine",
+    "size": [
+     2.0,
+     3.0,
+     13.0
+    ]
+   }
+  },
+  {
    "id": "red_chimney",
    "type": "red_coin",
    "position": [

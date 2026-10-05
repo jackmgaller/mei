@@ -157,6 +157,23 @@
    }
   },
   {
+   "id": "door_garden",
+   "type": "door",
+   "position": [
+    196.0,
+    0.0,
+    33.0
+   ],
+   "params": {
+    "world": "garden",
+    "size": [
+     3.0,
+     3.0,
+     1.2
+    ]
+   }
+  },
+  {
    "id": "red_konbini",
    "type": "red_coin",
    "position": [

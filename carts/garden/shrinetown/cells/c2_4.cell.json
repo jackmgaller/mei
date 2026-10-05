@@ -13,7 +13,7 @@
    "asset": "gbm_pagoda",
    "position": [
     178,
-    20.0,
+    15.0,
     262
    ],
    "collision": "arch_pagoda_col"
@@ -22,8 +22,8 @@
    "id": "kick_cedar_0",
    "asset": "gbm_cedar_kick_0",
    "position": [
-    169.45,
-    20.0,
+    171.35,
+    15.0,
     259.5
    ],
    "collision": "gbm_cedar_kick_0_col"
@@ -32,8 +32,8 @@
    "id": "kick_cedar_1",
    "asset": "gbm_cedar_kick_1",
    "position": [
-    169.45,
-    20.0,
+    171.35,
+    15.0,
     264.5
    ],
    "collision": "gbm_cedar_kick_1_col"
@@ -75,9 +75,9 @@
    "position": [
     154.0,
     24.0,
-    319.85
+    317.85
    ],
-   "collision": "self",
+   "collision": "none",
    "layer": "ladder_a"
   },
   {
@@ -98,7 +98,7 @@
    "type": "pole",
    "position": [
     178,
-    41.19,
+    36.19,
     262
    ],
    "params": {
@@ -110,7 +110,7 @@
    "type": "coin",
    "position": [
     178,
-    50.99,
+    45.49,
     262
    ]
   },
@@ -119,7 +119,7 @@
    "type": "coin",
    "position": [
     172.95,
-    26.185,
+    21.185,
     262
    ]
   },
@@ -128,7 +128,7 @@
    "type": "coin",
    "position": [
     173.65,
-    29.785,
+    24.785,
     262
    ]
   },
@@ -137,7 +137,7 @@
    "type": "coin",
    "position": [
     174.35,
-    33.385,
+    28.385,
     262
    ]
   },
@@ -146,7 +146,7 @@
    "type": "coin",
    "position": [
     175.05,
-    36.985,
+    31.985,
     262
    ]
   },
@@ -155,7 +155,7 @@
    "type": "coin",
    "position": [
     175.75,
-    40.585,
+    35.585,
     262
    ]
   },
@@ -163,14 +163,14 @@
    "id": "camera_kick_pair",
    "type": "camera_zone",
    "position": [
-    169.45,
-    20.0,
+    171.35,
+    15.0,
     262.0
    ],
    "params": {
     "size": [
      6,
-     18,
+     20,
      3.2
     ],
     "mode": "fixed",
@@ -217,10 +217,10 @@
    "position": [
     154.0,
     24.0,
-    319.85
+    317.85
    ],
    "params": {
-    "height": 20.0
+    "height": 21.2
    },
    "layer": "ladder_a"
   }

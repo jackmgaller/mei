@@ -34,8 +34,8 @@
 // drops.
 
 const MAX_MOVERS = 8
-const MAX_POLES = 16
-const MAX_RAILS = 16
+const MAX_POLES = 128         // a world with more poles or rails than these fails to load (attach_init)
+const MAX_RAILS = 128
 const POLE_HOLD: fixed = 0.5        // from the pole's axis to the body's: its radius and a pole's
 const HANG_BELOW: fixed = 1.75      // hanging: the feet this far below the rail (hands overhead)
 const LIFT_MAX: fixed = 0.8         // a mover's top this far into the body lifts the player
@@ -91,23 +91,28 @@ fn attach_init() {
     mover_n = 0
     pole_n = 0
     rail_n = 0
+    assert(wp_pack.entity_count as s32 <= 256)    // game.akr's coin_got: a bit per entity number
     for n in 0..wp_pack.entity_count as s32 {
         let e = wp_entity(n)
         let ty = e.type_id as s32
-        if ty == GARDEN_TYPE_MOVER && mover_n < MAX_MOVERS {
+        // A world with more movers, poles or rails than the cart holds, or a rail on a path the
+        // pack does not have, stops here: none is skipped silently.
+        if ty == GARDEN_TYPE_MOVER {
+            assert(mover_n < MAX_MOVERS)
             mover_add(e)
-        } else if ty == GARDEN_TYPE_POLE && pole_n < MAX_POLES {
+        } else if ty == GARDEN_TYPE_POLE {
+            assert(pole_n < MAX_POLES)
             let p = wp_entity_params(e) as *GardenPole
             let b = wp_entity_pos(e)
             poles[pole_n] = Pole { base: b, top: b.y + p.height }
             pole_n += 1
-        } else if ty == GARDEN_TYPE_RAIL && rail_n < MAX_RAILS {
+        } else if ty == GARDEN_TYPE_RAIL {
+            assert(rail_n < MAX_RAILS)
             let p = wp_entity_params(e) as *GardenRail
             let pth = wp_path_find(pack_string(p.path))
-            if pth != null {
-                rails[rail_n] = pth
-                rail_n += 1
-            }
+            assert(pth != null)
+            rails[rail_n] = pth
+            rail_n += 1
         }
     }
     att_t = 0

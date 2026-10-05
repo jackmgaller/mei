@@ -285,6 +285,11 @@ cx, cz, ch = L.CROWN
 block('crown_landing', cx - 3, cz - 7, cx + 3, cz - 3, 14.4, 15.0, 'wood')
 entity('pole_crown', 'pole', cx, 15.0, cz - 3.4, params={'height': 13.0})
 
+# A stone lantern on the pagoda terrace, in front of its south face (its origin is in this row): its
+# top is 3.6 m under roof 1's eave, the rhythm of the tiers above. From the terrace the eave is 5.0
+# up, and a double jump (3.0 m measured) does not bring the hands to its 0.35 m fascia (scenario 422).
+block('pagoda_lantern', 177.4, 254.9, 178.6, 256.1, L.PAG_BASE - 0.2, L.PAG_BASE + 1.4, 'lantern')
+
 # ---- 3.13 pond and east valley: stepping stones, the zig-zag bridge (a path), a stone at the culvert
 STONES = []
 for (ax, az), (bx, bz) in [((226, 129), (232, 150)), ((232, 150), (236, 179))]:
@@ -388,7 +393,7 @@ gw = ground(106, 200); stair('core_west_gate_stair', (106, gw + 0.3, 200), (114,
 ge = ground(222, 192); stair('core_east_gate_stair', (214, 5.0, 192), (222, ge + 0.3, 192), 3.0, 4.0)
 # the stone stair from the north gate to the pagoda terrace, on layout's line (its ground is carved
 # to the line; a bed lowers it under the treads)
-paths['core_north_stair'] = {'points': [[160, 5.0, 234.0], [172, 20.0, 254.0]],
+paths['core_north_stair'] = {'points': [[160, 5.0, 234.0], [172, L.PAG_BASE, 254.0]],
                              'sweep': {'profile': [[-4.2, -1.2], [-3.5, 0], [3.5, 0], [4.2, -1.2]],
                                        'materials': ['earth', 'steps', 'earth'], 'stairs': {'rise': 0.3},
                                        'caps': True}}

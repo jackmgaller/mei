@@ -35,7 +35,12 @@ POOL = (214, 22, 240, 40)            # school pool, -1.2
 CEMETERY = (256, 130, 316, 250)      # 1.8 m terraces up to 16.2
 STAGE = (138, 340, 170, 354)         # Kiyomizu stage deck, 60
 STAGE_Z = 60.0
-PAGODA = (178, 262); PAG_BASE = 20.0
+PAGODA = (178, 262)
+# The pagoda's terrace is cut 5 m into the ridge's crest (the plan had it on the crest at 20): with
+# the real temple's ridge (27.5) and the real pagoda's first roof (25.0 above a base of 20, its
+# eave 5.4 m out) the glide G5 came down 3.6 m short, under the eave. At 15 it lands on roof 1;
+# G7 from roof 5 still reaches the cemetery's top terrace (DESIGN.md, "Changes from the plan").
+PAG_BASE = 15.0
 # The pagoda is the shrine's real one (owner, 2026-10-05): eave tops 3.6 m apart (5.0 to 19.4 above
 # the base), eave half widths 5.4 to 2.6, the dew basin's top at 21.19, the finial pole 8.8 to 30.0.
 PAG_EAVES = [5.4, 4.7, 4.0, 3.3, 2.6]
@@ -50,7 +55,7 @@ CHIMNEY = (195, 330, 198, 338)       # kick chimney, two rock faces 3 m apart, 1
 POND = [(234, 140, 15), (236, 166, 16)]
 STREAM = [(214, 322), (224, 298), (236, 268), (244, 232), (240, 198), (237, 182)]
 SENBON = [(94, 300), (92, 314), (106, 318), (96, 328), (112, 334), (106, 342), (122, 346)]   # torii tunnel, 15 -> 54.5, switchbacks
-CLEARINGS = [BASIN, FOX, FALLS_POOL, (PAGODA[0], PAGODA[1], 13, PAG_BASE)]
+CLEARINGS = [BASIN, FOX, FALLS_POOL, (PAGODA[0], PAGODA[1], 13, PAG_BASE, 16)]    # (x, z, r, floor[, bank])
 
 def pond_d(x, z): return min(math.hypot(x - cx, (z - cz) * .95) / r for cx, cz, r in POND)
 def stream_d(x, z): return poly_dist(x, z, STREAM)
@@ -68,9 +73,10 @@ def mountain(x, z):
     if x > 244 and z > 236:
         sh = 16.2 + 31.8 * smooth((z - 250) / 96) + 4 * smooth((x - 300) / 20)
         h = max(h, sh * smooth((x - 244) / 14) + h * (1 - smooth((x - 244) / 14)))
-    for cx, cz, r, fl in CLEARINGS:
+    for cx, cz, r, fl, *bank in CLEARINGS:
+        w = bank[0] if bank else 7                  # the pagoda's hollow eases out over 16 m (under 30 degrees)
         d = math.hypot(x - cx, z - cz)
-        if d < r + 7: h = fl + (h - fl) * smooth((d - r) / 7)
+        if d < r + w: h = fl + (h - fl) * smooth((d - r) / w)
     # ease to the courtyard (0.6) and to 3 m along the terrace's retaining wall
     if COURT[0] - 12 < x < COURT[2] + 12 and z < COURT[3] + 4:
         e = min(abs(x - COURT[0]), abs(x - COURT[2]))
@@ -193,9 +199,10 @@ for i, z in enumerate(PAG_ROOFS):
     box(PAGODA[0] - PAG_EAVES[i], PAGODA[1] - PAG_EAVES[i], PAGODA[0] + PAG_EAVES[i], PAGODA[1] + PAG_EAVES[i], 0.6, ROOF, z - 0.6)
     _b = z
 box(PAGODA[0] - .3, PAGODA[1] - .3, PAGODA[0] + .3, PAGODA[1] + .3, PAG_TOP - PAG_ROOFS[4], '#c8aa3c', PAG_ROOFS[4])
-# The kick pair: two cedars west of the pagoda, trunk faces 3.2 m apart, 2.95 m from roof 2's west
-# eave (the plan's single KICK_CEDAR south of the pagoda is dropped: roof 1's eave closed its shaft).
-KICK_PAIR = [(169.45, 259.5), (169.45, 264.5)]
+# The kick pair: two cedars west of the pagoda, trunk faces 3.2 m apart (north and south), 1.05 m
+# from roof 2's west eave line (the plan's single KICK_CEDAR south of the pagoda is dropped: roof 1's
+# eave closed its shaft).
+KICK_PAIR = [(171.35, 259.5), (171.35, 264.5)]
 for _kx, _kz in KICK_PAIR:
     box(_kx - .9, _kz - .9, _kx + .9, _kz + .9, 21.5, '#3a4a30', PAG_BASE)
 for px in range(140, 170, 6):

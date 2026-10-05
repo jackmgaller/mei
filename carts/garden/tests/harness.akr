@@ -24,6 +24,7 @@ const TEST = 1
 import "camera_cases.akr"
 import "attach_cases.akr"
 import "shrine_cases.akr"     // the shrine world's, 300-399
+import "shrinetown_cases.akr" // the shrine town's, 400-499
 
 var pad_v: u32                 // the pad and stick for the next frame
 var stick_v: vec2
@@ -60,6 +61,8 @@ fn input_stick(_f: s32) -> vec2 { return stick_v }
 fn input_look(_f: s32) -> vec2 { return vec2(0.0, 0.0) }
 fn start_world() -> s32 {
     if SCENARIO >= 300 && SCENARIO < 400 && SCENARIO != 309 { return GARDEN_WORLD_SHRINE }
+    if SCENARIO == 433 { return GARDEN_WORLD_SHRINE }
+    if SCENARIO >= 400 && SCENARIO < 500 { return GARDEN_WORLD_SHRINETOWN }
     return GARDEN_WORLD_GARDEN
 }
 
@@ -167,7 +170,7 @@ fn test_init() {
         30 => { name = "camera sweep at the spawn: frame timing"; place_at_spawn(); cam_reset() }
         28 => { name = "crouch and crawl"; place(lane, EAST) }
         else => {
-            if !camera_case_init() && !attach_case_init() && !shrine_case_init() { name = "picture" }
+            if !camera_case_init() && !attach_case_init() && !shrine_case_init() && !town_case_init() { name = "picture" }
         }
     }
 }
@@ -212,6 +215,7 @@ fn scenario(f: s32) {
             camera_case(f)
             attach_case(f)
             shrine_case(f)
+            town_case(f)
         }
     }
 }

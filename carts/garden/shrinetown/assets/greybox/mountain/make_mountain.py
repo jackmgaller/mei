@@ -109,7 +109,7 @@ op(op='set', area={'rect': [138, 354, 170, 377]}, height=60.0, falloff=3)
 # front edge (z 340) so the ladder up the front stilts starts on it.
 # With the cliff-top path east along the foot of the stage to the falls' lip (the back mountain's
 # face is 40-42 degrees from z 316 to 356: no walking on it), the ledge is an L.
-LEDGE = [[146, 320], [162, 320], [162, 334], [206, 334], [206, 342], [146, 342]]
+LEDGE = [[146, 318], [162, 318], [162, 334], [206, 334], [206, 342], [146, 342]]
 FLATS = []
 def flat(area, h):
     FLATS.append(area)                                         # each its own sheet (offset), then levelled
@@ -117,10 +117,10 @@ def flat(area, h):
     op(op='set', area=area, height=h)
 flat({'polygon': LEDGE}, 44.0)
 # Rope ladder A hangs plumb, 20 m (the real forest_rope_ladder; owner, 2026-10-05): its foot is a
-# shelf at 24 cut into the slope (x 148-160, z 316-320), the ledge's south face above it sheer
-# from 24 to 44 at z 320, so foot and top are at the same x and z. Steps climb to the shelf from
+# shelf at 24 cut into the slope (x 148-160, z 314-318), the ledge's south face above it sheer
+# from 24 to 44 at z 318 (not on the row seam at z 320, where the body passed through the face), so foot and top are at the same x and z. Steps climb to the shelf from
 # the basin floor (ladder_a_steps).
-LADDER_SHELF = [148, 316, 160, 320]
+LADDER_SHELF = [148, 314, 160, 318]
 flat({'rect': LADDER_SHELF}, 24.0)
 # The falls pool's west terrace at 16 (the chimney's foot), and the chimney's slot floor.
 SHELF = [[186, 306], [206, 306], [206, 334], [194, 334], [194, 322], [186, 322]]
@@ -231,7 +231,7 @@ ASSETS['gbm_pagoda'] = {'format': 'mei-asset', 'version': 1, 'name': 'gbm_pagoda
                                                                                 cube(0, 0, 0.25, PAG_EAVE_TOP[4] - 0.02, PAG_ROBAN + PAG_FINIAL, 'gold', ['bottom'])], (0, 0, 0))}]}}
 place('pagoda', 'gbm_pagoda', (PX, PB, PZ), 'arch_pagoda_col')
 entity('pole_pagoda_finial', 'pole', (PX, PB + PAG_ROBAN, PZ), {'height': PAG_FINIAL})
-coin('star_1_pagoda', PX, PB + PAG_ROBAN + PAG_FINIAL + 1.0, PZ)    # star 1 (a coin in the grey box), 51
+coin('star_1_pagoda', PX, PB + PAG_ROBAN + PAG_FINIAL + 0.5, PZ)    # star 1 (a coin in the grey box), 0.5 over the finial: taken at the pole's top
 STRIP_RISE = 0.35 * math.tan(math.radians(27.9))
 for i in range(5):
     coin(f'coin_pagoda_{i + 1}', PX - (PAG_EAVE_HALF[i] - 0.35), PB + PAG_EAVE_TOP[i] + STRIP_RISE + 1.0, PZ)   # on each roof's west strip
@@ -240,17 +240,20 @@ for i in range(5):
 # (KICK_CEDAR, in the core region's row); the first roof's eave reaches to 1.2 m of it, so the
 # shaft is closed at 23.8. Built here as the spec says: two cedars west of the pagoda, trunks
 # face to face 3.2 m apart, here north-south at x 168 (z 259.5 and 264.5).
-KICK_X = PX - PAG_EAVE_HALF[1] - 2.95 - 0.9          # 169.45: trunk faces 2.95 m from roof 2's west eave
+# Trunk faces 1.05 m from roof 2's west eave line (x 171.35; roof 1's eave passes 0.35 m east of
+# them): after the fourth kick the stick carries the body east onto roof 2 (a kick itself goes back
+# and forth between the faces, north and south).
+KICK_X = PX - PAG_EAVE_HALF[1] - 1.05 - 0.9
 KICK = [(KICK_X, 259.5), (KICK_X, 264.5)]
 for k, (kx, kz) in enumerate(KICK):
     g = gmin(kx - 0.9, kz - 0.9, kx + 0.9, kz + 0.9)
-    # Crowns from 35.5 (four good kicks reach 33.6, the head 35.2) to 42: the race glide G8 passes
-    # over them at 43.9, 0.2 m west of the trunks (spec: cedars of 25-41 m would stand in its way).
-    trunk = cube(kx, kz, 0.9, g - 0.5, 41.5, 'trunk', ['bottom'])
-    can = cube(kx, kz, 2.6 - 0.4 * k, 35.5, 42.0, 'cedar', ['bottom'])
+    # Trunks to 34.5 and crowns 34-38 (from the terrace at 15, four good kicks reach 31.9, the head 33.5):
+    # the glides G6 and G8 pass over them (spec: cedars of 25-41 m would stand in their way).
+    trunk = cube(kx, kz, 0.9, g - 0.5, 34.5, 'trunk', ['bottom'])
+    can = cube(kx - 0.6, kz, 1.6, 34.0, 38.0, 'cedar', ['bottom'])      # crowns 34-38: over the kicks' reach (head 33.5), under the glides G6 (about 42 here) and G8 (43.9)
     name = f'gbm_cedar_kick_{k}'
     place(f'kick_cedar_{k}', name, (kx, g, kz), asset(name, [trunk, can], (kx, g, kz), collision=[trunk]))
-entity('camera_kick_pair', 'camera_zone', (KICK_X, 20.0, 262.0), {'size': [6, 18, 3.2], 'mode': 'fixed', 'look': [1, 0, 0]})
+entity('camera_kick_pair', 'camera_zone', (KICK_X, L.PAG_BASE, 262.0), {'size': [6, 20, 3.2], 'mode': 'fixed', 'look': [1, 0, 0]})
 
 # ================================================================== 3.9 treetop walkway (rows 4)
 DECK6 = L.DECKS[5]            # (114, 264, 22)
@@ -326,7 +329,10 @@ coin('star_4_cedar', CX, BF + 1.0, CZ)
 # the knot hole, 1.75 m above its sill: hang along it, hang-jump in (spec: 24 -> 21.5 is the
 # feet's line). A rail entity names it; it is hang only because it is overhead.
 rope_a = (ROPE_DECK[0] + 2.4, ROPE_DECK[2] + 1.75, ROPE_DECK[1] + 1.4)
-rope_b = (x0 - 1.2, SILL + 1.75, (HZ0 + HZ1) / 2)
+# The rope ends in the knot hole, 0.5 m into the trunk's wall under the hole's top: the body
+# hanging at its end is in the opening, so letting go puts the feet on the sill. (Ending 1.2 m
+# short, as first built, a hang jump from it bumped the lip and fell short: scenario 423.)
+rope_b = (x0 + 0.5, SILL + 1.75, (HZ0 + HZ1) / 2)
 PATHS['cedar_rope'] = {'points': [[r2(v) for v in rope_a], [r2(v) for v in rope_b]], 'raised': True,
                        'sweep': {'profile': [[0.0, -0.06], [0.0, 0.06]], 'material': 'rope', 'double_sided': True, 'collision': False}}
 entity('rail_cedar_rope', 'rail', rope_a, {'path': 'cedar_rope'})
@@ -418,9 +424,13 @@ entity('pole_stage_front', 'pole', (154.0, gl, 339.4), {'height': r2(SY - gl)})
 # grey box shows nothing there.)
 LA = (154.0, 24.0, LADDER_SHELF[3] - 0.15)
 ladder_a = [(153.6, LA[1] - 0.02, LA[2] - 0.05, 154.4, 44.6, LA[2] + 0.13, 'rope')]
-place('ladder_a', 'gbm_ladder_a', LA, asset('gbm_ladder_a', ladder_a, LA), layer='ladder_a')
-entity('pole_ladder_a', 'pole', LA, {'height': 20.0}, layer='ladder_a')
-PATHS['ladder_a_steps'] = {'points': [[176.0, 13.1, 306.0], [161.5, 24.0, 318.0], [160.0, 24.0, 318.0]],
+asset('gbm_ladder_a', ladder_a, LA)
+place('ladder_a', 'gbm_ladder_a', LA, 'none', layer='ladder_a')     # the pole is what holds the body
+# The pole runs 1.2 m past the lip (to the stakes the ropes are tied to): the feet stop 1.2 below
+# a pole's top (PoleTop), so at its top they are level with the ledge; let go and push at the rock,
+# and the hands catch the lip (scenario 424). A pole 20 m tall left the feet 1.2 below the lip.
+entity('pole_ladder_a', 'pole', LA, {'height': 21.2}, layer='ladder_a')
+PATHS['ladder_a_steps'] = {'points': [[176.0, 13.1, 304.0], [161.5, 24.0, 316.0], [160.0, 24.0, 316.0]],
                            'sweep': {'profile': [[-1.6, -3.0], [-1.2, 0], [1.2, 0], [1.6, -3.0]],
                                      'materials': ['stone', 'steps', 'stone'], 'caps': True, 'stairs': {'rise': 0.3}}}
 

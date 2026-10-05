@@ -124,6 +124,16 @@
    ],
    "collision": "self",
    "layer": "gate_b_open"
+  },
+  {
+   "id": "pagoda_lantern",
+   "asset": "gbc_pagoda_lantern",
+   "position": [
+    178.0,
+    14.8,
+    255.5
+   ],
+   "collision": "self"
   }
  ],
  "entities": [

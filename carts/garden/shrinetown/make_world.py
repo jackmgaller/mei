@@ -94,6 +94,16 @@ for part in (town, core, mountain):
     layers.update(part['layers'])
 scatter = {**core['scatter'], **mountain['scatter']}
 
+# ---- stand-ins capped (spec 8.2-8.3, option 1 of 8.3): 90 triangles a town cell (rows 0-1), 140 the
+# landmark cells (the temple c2_3, the pagoda and the sacred cedar c2_4, the stage c2_5), 60 every
+# other cell; the ground on a 32 m grid. The pond's cell keeps its water whole (water is not
+# resampled), 103 triangles of ground: its cap is 110.
+LANDMARKS = ('c2_3', 'c2_4', 'c2_5')
+cell_caps = {f'c{i}_{j}': {'triangles': 140 if f'c{i}_{j}' in LANDMARKS else 60}
+             for i in range(5) for j in range(2, 6)}
+cell_caps['c3_2'] = {'triangles': 110}
+STANDINS = {'distance': 128, 'sweeps': True, 'triangles': 90, 'ground': 32, 'cells': cell_caps}
+
 shrine = json.loads((ST.parent / 'shrine' / 'shrine.world.json').read_text())
 world = {
     'format': 'mei-world', 'version': 1, 'name': 'shrinetown',
@@ -116,7 +126,7 @@ world = {
     'scatter': scatter,
     'lod': {'ground': [{'distance': 36, 'grid': 8}, {'distance': 76, 'grid': 16}],
             'sweeps': {'cull': 56, 'paths': {'torii_steps': {'cull': 44}}}},
-    'standins': {'distance': 128, 'sweeps': True},
+    'standins': STANDINS,
     'meshes': {'quads': True},
 }
 OUT.write_text(json.dumps(world, indent=1) + '\n')

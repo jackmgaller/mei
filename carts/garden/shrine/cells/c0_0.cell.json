@@ -152,6 +152,12 @@
    }
   },
   {
+   "id": "door_shrinetown",
+   "type": "door",
+   "position": [5.5, 14.0],
+   "params": {"world": "shrinetown", "size": [2.0, 3.0, 22.0]}
+  },
+  {
    "id": "door_garden",
    "type": "door",
    "position": [
