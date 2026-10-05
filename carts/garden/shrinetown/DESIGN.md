@@ -1034,7 +1034,8 @@ ledge and chimney, the falls' lip and top, the rope bridge) are in their notes.
 
 The World Checker, full (600 views, depth mode, report), the whole level: before the stand-ins
 were capped, peak 3,116 triangles, 593,006 draw CPU cycles, 647,334 GPU cycles; capped, 1,808,
-410,083 and 584,668. Budgets 4,000 / 600,000 / 1,600,000. The worst views of 8.3 with every row
+410,083 and 584,668. Budgets 4,000 / 600,000 / 1,600,000. 44 collision cracks (gaps up to
+0.25 m where sweeps, bridge ends and 2 m banks meet floors), as the shrine's. The worst views of 8.3 with every row
 present (`tools/views.py`): README.md, "What it costs".
 
 ### 12.4 Open

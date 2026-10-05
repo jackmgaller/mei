@@ -70,10 +70,9 @@ WORLDS=build-mine/cart-worlds/garden MEIC=build-mine/meic RUN=build-mine/mei-hea
 
 The World Checker, full (600 sampled views, depth mode, report), the whole level: peak **1,808
 triangles, 410,083 draw CPU cycles, 584,668 GPU cycles** (budgets 4,000 / 600,000 / 1,600,000);
-before the stand-ins were capped, 3,116 / 593,006 / 647,334. 45 hard failures: 44 collision
+before the stand-ins were capped, 3,116 / 593,006 / 647,334. 44 hard failures, all collision
 cracks of the kind the shrine has (gaps of 0.02–0.25 m where sweeps, bridge ends and steep
-banks meet floors; two on seams) and one edge mismatch. 6.96 MB pack, 165 entities, 2,141
-meshes.
+banks meet floors; two on seams). 6.96 MB pack, 165 entities, 2,141 meshes.
 
 **Stand-ins** (DESIGN.md 12.1): capped at 90 a town cell, 140 the landmark cells and 60 the
 rest, the ground on a 32 m grid: 28–140 triangles a cell, 2,204 in all (uncapped: 66–520,
@@ -84,14 +83,14 @@ rest, the ground on a 32 m grid: 28–140 triangles a cell, 2,204 in all (uncapp
 | View | Triangles | Draw CPU | GPU | Placements | Stand-ins | Uncapped: triangles / CPU |
 |---|---|---|---|---|---|---|
 | V1 arcade roof, north end, looking south | 1,585 | 370,877 | 495,810 | 91 | 0 | 1,585 / 372,176 |
-| V2 pagoda top (47) looking south | 756 | 161,038 | 278,176 | 34 | 9 | 1,916 / 296,118 |
+| V2 pagoda top (47) looking south | 756 | 160,952 | 278,176 | 34 | 9 | 1,916 / 296,118 |
 | V2 at the spec's 52, looking south | 673 | 147,966 | 259,354 | 29 | 9 | 1,863 / 284,666 |
 | V3 stage looking south | 982 | 236,209 | 262,988 | 65 | 10 | 1,914 / 354,925 |
 | V4 danchi roof looking north-east | 1,439 | 357,298 | 422,612 | 110 | 12 | 2,545 / 503,607 |
 | V5 spawn looking north | 995 | 341,884 | 329,076 | 95 | 10 | 1,689 / 447,534 |
 | V6 cemetery top looking west | 1,098 | 280,529 | 357,060 | 70 | 11 | 1,911 / 402,896 |
 | Platform looking north | 1,522 | 471,523 | 383,869 | 129 | 10 | 2,431 / 605,417 |
-| Deck 3 looking east | 1,522 | 334,059 | 369,218 | 95 | 13 | 2,740 / 491,810 |
+| Deck 3 looking east | 1,522 | 333,973 | 369,218 | 95 | 13 | 2,740 / 491,810 |
 | Shoulder top looking south-west (the whole level) | 1,385 | 323,632 | 377,227 | 99 | 12 | 2,328 / 455,149 |
 
 The town's boxes carry the triangle budgets of the assets that will replace them (spec 8.2);
@@ -125,5 +124,8 @@ the level is built only as `shrinetown`).
 - The far ring from the spawn, the pagoda's height from the spawn and G5 (DESIGN.md 12.4).
 - A ladder mode that holds the body on a ladder's front (rope ladder A, the fire escape's ladder
   E): a pole lets it go round into the wall.
-- The 44 cracks (above): the shrine accepted the same kind.
+- The 44 cracks (above), where sweeps, bridge ends and 2 m banks meet: the shrine accepted 44 of
+  the same kind. Overlapping three sweeps into what they meet (the walkway stair, the north stair,
+  ladder A's steps) closed an edge mismatch but only moved their cracks; the scenarios walk over
+  all three.
 - Phase 2 on: the stars, switches, the timer, the train, life, textures (DESIGN.md 9).
