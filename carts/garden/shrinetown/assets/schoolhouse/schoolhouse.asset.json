@@ -1,0 +1,3311 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "schoolhouse",
+ "budget": {
+  "vertices": 900,
+  "triangles": 800
+ },
+ "sheets": {
+  "school": {
+   "image": "art/school_sheet.png"
+  },
+  "common": {
+   "image": "../town_alley_house_a/art/town_common.png"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "wall": {
+   "color": "#d9cfb9",
+   "tag": "wall",
+   "texture": {
+    "sheet": "common",
+    "cell": "plaster",
+    "projection": "box",
+    "scale": [
+     4,
+     4
+    ]
+   }
+  },
+  "roof": {
+   "color": "#b0aca2",
+   "tag": "roof",
+   "texture": {
+    "sheet": "common",
+    "cell": "plaster_grey",
+    "projection": "box",
+    "scale": [
+     4,
+     4
+    ]
+   }
+  },
+  "kawara": {
+   "color": "#565c64",
+   "tag": "roof",
+   "texture": {
+    "sheet": "common",
+    "cell": "kawara",
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ],
+    "rotate": 90
+   }
+  },
+  "facade_s": {
+   "color": "#d9cfb9",
+   "tag": "wall",
+   "texture": {
+    "sheet": "school",
+    "cell": "facade_s",
+    "projection": "box",
+    "scale": [
+     8,
+     3.72
+    ],
+    "offset": [
+     0,
+     0.5
+    ]
+   }
+  },
+  "facade_n": {
+   "color": "#d9cfb9",
+   "tag": "wall",
+   "texture": {
+    "sheet": "school",
+    "cell": "facade_n",
+    "projection": "box",
+    "scale": [
+     8,
+     3.72
+    ],
+    "offset": [
+     0,
+     0.5
+    ]
+   }
+  },
+  "facade_sw": {
+   "color": "#d9cfb9",
+   "tag": "wall",
+   "texture": {
+    "sheet": "school",
+    "cell": "facade_s",
+    "projection": "box",
+    "scale": [
+     8,
+     3.72
+    ],
+    "offset": [
+     0,
+     0.0
+    ]
+   }
+  },
+  "facade_nw": {
+   "color": "#d9cfb9",
+   "tag": "wall",
+   "texture": {
+    "sheet": "school",
+    "cell": "facade_n",
+    "projection": "box",
+    "scale": [
+     8,
+     3.72
+    ],
+    "offset": [
+     0,
+     0.0
+    ]
+   }
+  },
+  "bars": {
+   "color": "#6a7a74",
+   "double_sided": true,
+   "texture": {
+    "texels": [
+     "11111111",
+     "11001100",
+     "11001100",
+     "11001100",
+     "11001100",
+     "11001100",
+     "11001100",
+     "11001100"
+    ],
+    "colors": [
+     "#000000",
+     "#6a7a74"
+    ],
+    "clear": "#000000",
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "tank": {
+   "color": "#c8ccc4",
+   "texture": {
+    "pattern": "tile",
+    "colors": [
+     "#c8ccc4",
+     "#9aa098"
+    ],
+    "params": {
+     "count": 2,
+     "grout": 1
+    },
+    "size": 16,
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ]
+   }
+  },
+  "coping": {
+   "color": "#b0aca2",
+   "palette": true
+  },
+  "stone": {
+   "color": "#b0aca2",
+   "palette": true
+  },
+  "steel": {
+   "color": "#6a7a74",
+   "palette": true
+  },
+  "tread": {
+   "color": "#4e5a56",
+   "palette": true,
+   "tag": "stairs"
+  },
+  "steel_ds": {
+   "color": "#6a7a74",
+   "palette": true,
+   "double_sided": true
+  },
+  "copper": {
+   "color": "#7a8a70",
+   "palette": true,
+   "tag": "roof"
+  },
+  "iron": {
+   "color": "#6a7a74",
+   "palette": true
+  },
+  "gold": {
+   "color": "#d8b048",
+   "palette": true
+  },
+  "bronze": {
+   "color": "#5a4a3e",
+   "palette": true
+  },
+  "rail": {
+   "color": "#6a7a74",
+   "palette": true
+  },
+  "bark": {
+   "color": "#5a4a3e",
+   "palette": true
+  },
+  "leaves": {
+   "color": "#c8542e",
+   "palette": true,
+   "smooth": true
+  },
+  "leaves_2": {
+   "color": "#d8782a",
+   "palette": true,
+   "smooth": true
+  },
+  "litter": {
+   "color": "#d8782a",
+   "palette": true
+  },
+  "ball": {
+   "color": "#c8542e",
+   "palette": true,
+   "smooth": true
+  },
+  "lamp": {
+   "color": "#f4d27a",
+   "class": "emissive",
+   "tag": "lantern"
+  },
+  "door": {
+   "color": "#5a3e2c",
+   "texture": {
+    "sheet": "school",
+    "cell": "door",
+    "projection": "fit"
+   },
+   "tag": "door"
+  },
+  "plaque": {
+   "color": "#c4a070",
+   "texture": {
+    "sheet": "school",
+    "cell": "plaque",
+    "projection": "fit"
+   }
+  },
+  "clock": {
+   "color": "#f2ecd6",
+   "texture": {
+    "sheet": "school",
+    "cell": "clock",
+    "projection": "fit"
+   }
+  },
+  "louver": {
+   "color": "#28221f",
+   "texture": {
+    "sheet": "school",
+    "cell": "louver",
+    "projection": "fit"
+   }
+  },
+  "rwin": {
+   "color": "#466c78",
+   "texture": {
+    "sheet": "school",
+    "cell": "rwin",
+    "projection": "fit"
+   }
+  },
+  "dwin": {
+   "color": "#466c78",
+   "texture": {
+    "sheet": "school",
+    "cell": "dwin",
+    "projection": "fit"
+   }
+  },
+  "flag": {
+   "color": "#f6f4ee",
+   "texture": {
+    "sheet": "school",
+    "cell": "flag",
+    "projection": "fit"
+   },
+   "double_sided": true
+  }
+ },
+ "nodes": [
+  {
+   "id": "block",
+   "op": "box",
+   "size": [
+    24.0,
+    18.6,
+    11.0
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -2.0,
+     9.6,
+     9.5
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "facade_s",
+    "front": "facade_n",
+    "top": "roof"
+   }
+  },
+  {
+   "id": "wing",
+   "op": "box",
+   "size": [
+    8.0,
+    14.88,
+    16.0
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -10.0,
+     7.74,
+     -4.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "right": "facade_sw",
+    "left": "facade_nw",
+    "back": "facade_nw",
+    "top": "roof"
+   }
+  },
+  {
+   "id": "plinth",
+   "op": "box",
+   "size": [
+    24.2,
+    0.32,
+    11.2
+   ],
+   "material": "stone",
+   "transform": {
+    "translate": [
+     -2.0,
+     0.16,
+     9.5
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "wing_plinth",
+   "op": "box",
+   "size": [
+    8.2,
+    0.32,
+    16.0
+   ],
+   "material": "stone",
+   "transform": {
+    "translate": [
+     -10.0,
+     0.16,
+     -4.1
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "par_n",
+   "op": "box",
+   "size": [
+    24.0,
+    0.75,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -2.0,
+     19.275,
+     14.875
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "coping"
+   }
+  },
+  {
+   "id": "par_s",
+   "op": "box",
+   "size": [
+    24.0,
+    0.75,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -2.0,
+     19.275,
+     4.125
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "coping"
+   }
+  },
+  {
+   "id": "par_w",
+   "op": "box",
+   "size": [
+    0.25,
+    0.75,
+    10.5
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -13.875,
+     19.275,
+     9.5
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "coping"
+   }
+  },
+  {
+   "id": "par_e",
+   "op": "box",
+   "size": [
+    0.25,
+    0.75,
+    9.15
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     9.875,
+     19.275,
+     8.825
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ],
+   "faces": {
+    "top": "coping"
+   }
+  },
+  {
+   "id": "wpar_s",
+   "op": "box",
+   "size": [
+    8.0,
+    0.75,
+    0.25
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -10.0,
+     15.555,
+     -11.875
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "coping"
+   }
+  },
+  {
+   "id": "wpar_w",
+   "op": "box",
+   "size": [
+    0.25,
+    0.75,
+    15.75
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -13.875,
+     15.555,
+     -3.875
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "coping"
+   }
+  },
+  {
+   "id": "wpar_e",
+   "op": "box",
+   "size": [
+    0.25,
+    0.75,
+    15.75
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     -6.125,
+     15.555,
+     -3.875
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "faces": {
+    "top": "coping"
+   }
+  },
+  {
+   "id": "tower",
+   "op": "box",
+   "size": [
+    4.0,
+    22.3,
+    4.0
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0,
+     11.15,
+     4.6
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "coping"
+   },
+   "decals": [
+    {
+     "id": "clock_s",
+     "face": "back",
+     "material": "clock",
+     "size": [
+      1.9,
+      1.9
+     ],
+     "at": [
+      0,
+      9.15
+     ]
+    },
+    {
+     "id": "rwin",
+     "face": "back",
+     "material": "rwin",
+     "size": [
+      1.2,
+      1.2
+     ],
+     "at": [
+      0,
+      -3.5500000000000007
+     ]
+    },
+    {
+     "id": "win_3",
+     "face": "back",
+     "material": "dwin",
+     "size": [
+      1.2,
+      1.0
+     ],
+     "at": [
+      0,
+      1.9100000000000001
+     ]
+    },
+    {
+     "id": "clock_n",
+     "face": "front",
+     "material": "clock",
+     "size": [
+      1.9,
+      1.9
+     ],
+     "at": [
+      0,
+      9.15
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pyramid",
+   "op": "cone",
+   "radius": 2.1213,
+   "height": 2.4,
+   "segments": 4,
+   "caps": false,
+   "material": "copper",
+   "transform": {
+    "rotate": [
+     0,
+     45,
+     0
+    ],
+    "translate": [
+     0,
+     23.49,
+     4.6
+    ]
+   }
+  },
+  {
+   "id": "cornice",
+   "op": "box",
+   "size": [
+    4.4,
+    0.3,
+    4.4
+   ],
+   "material": "coping",
+   "transform": {
+    "translate": [
+     0.0,
+     21.75,
+     4.6
+    ]
+   }
+  },
+  {
+   "id": "finial_rod",
+   "op": "cylinder",
+   "radius": 0.05,
+   "height": 1.0,
+   "segments": 4,
+   "caps": false,
+   "material": "iron",
+   "transform": {
+    "translate": [
+     0,
+     25.19,
+     4.6
+    ]
+   }
+  },
+  {
+   "id": "finial",
+   "op": "sphere",
+   "radius": 0.16,
+   "segments": 4,
+   "rings": 3,
+   "material": "gold",
+   "transform": {
+    "translate": [
+     0,
+     25.69,
+     4.6
+    ]
+   }
+  },
+  {
+   "id": "porch",
+   "op": "box",
+   "size": [
+    6.0,
+    4.4,
+    3.2
+   ],
+   "material": "wall",
+   "transform": {
+    "translate": [
+     0.0,
+     2.2,
+     1.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ],
+   "decals": [
+    {
+     "id": "door",
+     "face": "back",
+     "material": "door",
+     "size": [
+      3.0,
+      2.6
+     ],
+     "at": [
+      0,
+      -0.8000000000000003
+     ]
+    },
+    {
+     "id": "plaque",
+     "face": "back",
+     "material": "plaque",
+     "size": [
+      3.6,
+      0.56
+     ],
+     "at": [
+      0,
+      1.3499999999999996
+     ]
+    }
+   ]
+  },
+  {
+   "id": "porch_roof",
+   "op": "mesh",
+   "material": "kawara",
+   "vertices": [
+    [
+     -3.4,
+     4.4,
+     -1.05
+    ],
+    [
+     0,
+     6.0,
+     -1.05
+    ],
+    [
+     3.4,
+     4.4,
+     -1.05
+    ],
+    [
+     -3.4,
+     4.4,
+     2.6
+    ],
+    [
+     0,
+     6.0,
+     2.6
+    ],
+    [
+     3.4,
+     4.4,
+     2.6
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     3,
+     4,
+     1
+    ],
+    [
+     1,
+     4,
+     5,
+     2
+    ]
+   ]
+  },
+  {
+   "id": "pediment",
+   "op": "mesh",
+   "material": "wall",
+   "vertices": [
+    [
+     -3.0,
+     4.4,
+     -0.6
+    ],
+    [
+     0,
+     5.88,
+     -0.6
+    ],
+    [
+     3.0,
+     4.4,
+     -0.6
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2
+    ]
+   ]
+  },
+  {
+   "id": "lamp_l",
+   "op": "box",
+   "size": [
+    0.28,
+    0.36,
+    0.28
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     -2.6,
+     3.18,
+     -0.76
+    ]
+   }
+  },
+  {
+   "id": "lamp_r",
+   "op": "box",
+   "size": [
+    0.28,
+    0.36,
+    0.28
+   ],
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     2.6,
+     3.18,
+     -0.76
+    ]
+   }
+  },
+  {
+   "id": "flight_1",
+   "op": "mesh",
+   "vertices": [
+    [
+     10.05,
+     0.0,
+     5.3
+    ],
+    [
+     10.05,
+     3.78,
+     13.4
+    ],
+    [
+     10.05,
+     3.53,
+     13.4
+    ],
+    [
+     10.05,
+     0.0,
+     5.8357
+    ],
+    [
+     11.48,
+     0.0,
+     5.3
+    ],
+    [
+     11.48,
+     3.78,
+     13.4
+    ],
+    [
+     11.48,
+     3.53,
+     13.4
+    ],
+    [
+     11.48,
+     0.0,
+     5.8357
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     5,
+     4
+    ],
+    [
+     1,
+     2,
+     6,
+     5
+    ],
+    [
+     2,
+     3,
+     7,
+     6
+    ],
+    [
+     3,
+     0,
+     4,
+     7
+    ],
+    [
+     3,
+     2,
+     1,
+     0
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ]
+   ],
+   "face_materials": [
+    "tread",
+    "steel",
+    "steel",
+    "steel",
+    "steel",
+    "steel"
+   ]
+  },
+  {
+   "id": "flight_2",
+   "op": "mesh",
+   "vertices": [
+    [
+     11.52,
+     3.78,
+     13.4
+    ],
+    [
+     11.52,
+     7.56,
+     5.3
+    ],
+    [
+     11.52,
+     7.31,
+     5.3
+    ],
+    [
+     11.52,
+     3.53,
+     13.4
+    ],
+    [
+     12.95,
+     3.78,
+     13.4
+    ],
+    [
+     12.95,
+     7.56,
+     5.3
+    ],
+    [
+     12.95,
+     7.31,
+     5.3
+    ],
+    [
+     12.95,
+     3.53,
+     13.4
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     5,
+     6,
+     2,
+     1
+    ],
+    [
+     6,
+     7,
+     3,
+     2
+    ],
+    [
+     7,
+     4,
+     0,
+     3
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     7,
+     6,
+     5,
+     4
+    ]
+   ],
+   "face_materials": [
+    "tread",
+    "steel",
+    "steel",
+    "steel",
+    "steel",
+    "steel"
+   ]
+  },
+  {
+   "id": "flight_3",
+   "op": "mesh",
+   "vertices": [
+    [
+     10.05,
+     7.56,
+     5.3
+    ],
+    [
+     10.05,
+     11.34,
+     13.4
+    ],
+    [
+     10.05,
+     11.09,
+     13.4
+    ],
+    [
+     10.05,
+     7.31,
+     5.3
+    ],
+    [
+     11.48,
+     7.56,
+     5.3
+    ],
+    [
+     11.48,
+     11.34,
+     13.4
+    ],
+    [
+     11.48,
+     11.09,
+     13.4
+    ],
+    [
+     11.48,
+     7.31,
+     5.3
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     5,
+     4
+    ],
+    [
+     1,
+     2,
+     6,
+     5
+    ],
+    [
+     2,
+     3,
+     7,
+     6
+    ],
+    [
+     3,
+     0,
+     4,
+     7
+    ],
+    [
+     3,
+     2,
+     1,
+     0
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ]
+   ],
+   "face_materials": [
+    "tread",
+    "steel",
+    "steel",
+    "steel",
+    "steel",
+    "steel"
+   ]
+  },
+  {
+   "id": "flight_4",
+   "op": "mesh",
+   "vertices": [
+    [
+     11.52,
+     11.34,
+     13.4
+    ],
+    [
+     11.52,
+     15.12,
+     5.3
+    ],
+    [
+     11.52,
+     14.87,
+     5.3
+    ],
+    [
+     11.52,
+     11.09,
+     13.4
+    ],
+    [
+     12.95,
+     11.34,
+     13.4
+    ],
+    [
+     12.95,
+     15.12,
+     5.3
+    ],
+    [
+     12.95,
+     14.87,
+     5.3
+    ],
+    [
+     12.95,
+     11.09,
+     13.4
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     5,
+     6,
+     2,
+     1
+    ],
+    [
+     6,
+     7,
+     3,
+     2
+    ],
+    [
+     7,
+     4,
+     0,
+     3
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     7,
+     6,
+     5,
+     4
+    ]
+   ],
+   "face_materials": [
+    "tread",
+    "steel",
+    "steel",
+    "steel",
+    "steel",
+    "steel"
+   ]
+  },
+  {
+   "id": "flight_5",
+   "op": "mesh",
+   "vertices": [
+    [
+     10.05,
+     15.12,
+     5.3
+    ],
+    [
+     10.05,
+     18.9,
+     13.4
+    ],
+    [
+     10.05,
+     18.65,
+     13.4
+    ],
+    [
+     10.05,
+     14.87,
+     5.3
+    ],
+    [
+     11.48,
+     15.12,
+     5.3
+    ],
+    [
+     11.48,
+     18.9,
+     13.4
+    ],
+    [
+     11.48,
+     18.65,
+     13.4
+    ],
+    [
+     11.48,
+     14.87,
+     5.3
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     5,
+     4
+    ],
+    [
+     1,
+     2,
+     6,
+     5
+    ],
+    [
+     2,
+     3,
+     7,
+     6
+    ],
+    [
+     3,
+     0,
+     4,
+     7
+    ],
+    [
+     3,
+     2,
+     1,
+     0
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ]
+   ],
+   "face_materials": [
+    "tread",
+    "steel",
+    "steel",
+    "steel",
+    "steel",
+    "steel"
+   ]
+  },
+  {
+   "id": "land_1",
+   "op": "box",
+   "size": [
+    3.0,
+    0.2,
+    1.63
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     11.5,
+     3.68,
+     14.185
+    ]
+   },
+   "open": [
+    "left"
+   ],
+   "faces": {
+    "top": "tread"
+   }
+  },
+  {
+   "id": "land_2",
+   "op": "box",
+   "size": [
+    3.0,
+    0.2,
+    1.33
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     11.5,
+     7.46,
+     4.665
+    ]
+   },
+   "open": [
+    "left"
+   ],
+   "faces": {
+    "top": "tread"
+   }
+  },
+  {
+   "id": "land_3",
+   "op": "box",
+   "size": [
+    3.0,
+    0.2,
+    1.63
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     11.5,
+     11.24,
+     14.185
+    ]
+   },
+   "open": [
+    "left"
+   ],
+   "faces": {
+    "top": "tread"
+   }
+  },
+  {
+   "id": "land_4",
+   "op": "box",
+   "size": [
+    3.0,
+    0.2,
+    1.33
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     11.5,
+     15.02,
+     4.665
+    ]
+   },
+   "open": [
+    "left"
+   ],
+   "faces": {
+    "top": "tread"
+   }
+  },
+  {
+   "id": "land_5",
+   "op": "box",
+   "size": [
+    3.0,
+    0.2,
+    1.63
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     11.5,
+     18.8,
+     14.185
+    ]
+   },
+   "open": [
+    "left"
+   ],
+   "faces": {
+    "top": "tread"
+   }
+  },
+  {
+   "id": "rail_1",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     11.47,
+     4.78,
+     13.4
+    ],
+    [
+     11.47,
+     1.0,
+     5.3
+    ],
+    [
+     11.47,
+     0.0,
+     5.3
+    ],
+    [
+     11.47,
+     3.78,
+     13.4
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "rail_2",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     12.92,
+     8.56,
+     5.3
+    ],
+    [
+     12.92,
+     4.78,
+     13.4
+    ],
+    [
+     12.92,
+     3.78,
+     13.4
+    ],
+    [
+     12.92,
+     7.56,
+     5.3
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "rail_3",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     11.47,
+     12.34,
+     13.4
+    ],
+    [
+     11.47,
+     8.56,
+     5.3
+    ],
+    [
+     11.47,
+     7.56,
+     5.3
+    ],
+    [
+     11.47,
+     11.34,
+     13.4
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "rail_4",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     12.92,
+     16.12,
+     5.3
+    ],
+    [
+     12.92,
+     12.34,
+     13.4
+    ],
+    [
+     12.92,
+     11.34,
+     13.4
+    ],
+    [
+     12.92,
+     15.12,
+     5.3
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "rail_5",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     11.47,
+     19.9,
+     13.4
+    ],
+    [
+     11.47,
+     16.12,
+     5.3
+    ],
+    [
+     11.47,
+     15.12,
+     5.3
+    ],
+    [
+     11.47,
+     18.9,
+     13.4
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "land_1_rail",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     12.88,
+     4.78,
+     15.0
+    ],
+    [
+     12.88,
+     4.78,
+     13.37
+    ],
+    [
+     12.88,
+     3.78,
+     13.37
+    ],
+    [
+     12.88,
+     3.78,
+     15.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "land_1_end",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     10.05,
+     4.78,
+     14.8
+    ],
+    [
+     12.92,
+     4.78,
+     14.8
+    ],
+    [
+     12.92,
+     3.78,
+     14.8
+    ],
+    [
+     10.05,
+     3.78,
+     14.8
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "land_2_rail",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     12.88,
+     8.56,
+     5.33
+    ],
+    [
+     12.88,
+     8.56,
+     4.0
+    ],
+    [
+     12.88,
+     7.56,
+     4.0
+    ],
+    [
+     12.88,
+     7.56,
+     5.33
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "land_2_end",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     10.05,
+     8.56,
+     4.2
+    ],
+    [
+     12.92,
+     8.56,
+     4.2
+    ],
+    [
+     12.92,
+     7.56,
+     4.2
+    ],
+    [
+     10.05,
+     7.56,
+     4.2
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "land_3_rail",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     12.88,
+     12.34,
+     15.0
+    ],
+    [
+     12.88,
+     12.34,
+     13.37
+    ],
+    [
+     12.88,
+     11.34,
+     13.37
+    ],
+    [
+     12.88,
+     11.34,
+     15.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "land_3_end",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     10.05,
+     12.34,
+     14.8
+    ],
+    [
+     12.92,
+     12.34,
+     14.8
+    ],
+    [
+     12.92,
+     11.34,
+     14.8
+    ],
+    [
+     10.05,
+     11.34,
+     14.8
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "land_4_rail",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     12.88,
+     16.12,
+     5.33
+    ],
+    [
+     12.88,
+     16.12,
+     4.0
+    ],
+    [
+     12.88,
+     15.12,
+     4.0
+    ],
+    [
+     12.88,
+     15.12,
+     5.33
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "land_4_end",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     10.05,
+     16.12,
+     4.2
+    ],
+    [
+     12.92,
+     16.12,
+     4.2
+    ],
+    [
+     12.92,
+     15.12,
+     4.2
+    ],
+    [
+     10.05,
+     15.12,
+     4.2
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "land_5_rail",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     12.88,
+     19.9,
+     15.0
+    ],
+    [
+     12.88,
+     19.9,
+     13.37
+    ],
+    [
+     12.88,
+     18.9,
+     13.37
+    ],
+    [
+     12.88,
+     18.9,
+     15.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "land_5_end",
+   "op": "mesh",
+   "material": "bars",
+   "vertices": [
+    [
+     10.05,
+     19.9,
+     14.8
+    ],
+    [
+     12.92,
+     19.9,
+     14.8
+    ],
+    [
+     12.92,
+     18.9,
+     14.8
+    ],
+    [
+     10.05,
+     18.9,
+     14.8
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "post_0",
+   "op": "box",
+   "size": [
+    0.12,
+    19.9,
+    0.12
+   ],
+   "material": "steel_ds",
+   "transform": {
+    "translate": [
+     11.5,
+     9.95,
+     4.1
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "post_1",
+   "op": "box",
+   "size": [
+    0.12,
+    19.9,
+    0.12
+   ],
+   "material": "steel_ds",
+   "transform": {
+    "translate": [
+     12.9,
+     9.95,
+     4.1
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "post_2",
+   "op": "box",
+   "size": [
+    0.12,
+    19.9,
+    0.12
+   ],
+   "material": "steel_ds",
+   "transform": {
+    "translate": [
+     11.5,
+     9.95,
+     14.9
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "post_3",
+   "op": "box",
+   "size": [
+    0.12,
+    19.9,
+    0.12
+   ],
+   "material": "steel_ds",
+   "transform": {
+    "translate": [
+     12.9,
+     9.95,
+     14.9
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "tank_stand",
+   "op": "box",
+   "size": [
+    2.6,
+    1.02,
+    2.1
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     6.5,
+     19.39,
+     9.25
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "tank",
+   "op": "box",
+   "size": [
+    3.2,
+    2.0,
+    2.7
+   ],
+   "material": "tank",
+   "transform": {
+    "translate": [
+     6.5,
+     20.9,
+     9.25
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "ball",
+   "op": "sphere",
+   "radius": 0.11,
+   "segments": 5,
+   "rings": 3,
+   "material": "ball",
+   "transform": {
+    "translate": [
+     2.6,
+     19.01,
+     12.4
+    ]
+   }
+  },
+  {
+   "id": "flagpole",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 9.0,
+   "segments": 5,
+   "caps": false,
+   "material": "iron",
+   "transform": {
+    "translate": [
+     6.0,
+     4.5,
+     -2.0
+    ]
+   }
+  },
+  {
+   "id": "flag",
+   "op": "mesh",
+   "material": "flag",
+   "vertices": [
+    [
+     4.0,
+     8.85,
+     -2.0
+    ],
+    [
+     5.95,
+     8.85,
+     -2.0
+    ],
+    [
+     5.95,
+     7.55,
+     -2.0
+    ],
+    [
+     4.0,
+     7.55,
+     -2.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "trunk",
+   "op": "cylinder",
+   "radius": 0.3,
+   "height": 3.4,
+   "segments": 6,
+   "caps": false,
+   "material": "bark",
+   "transform": {
+    "translate": [
+     9.5,
+     1.7,
+     -9.0
+    ]
+   },
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 0.6
+    }
+   ]
+  },
+  {
+   "id": "crown_a",
+   "op": "sphere",
+   "radius": 2.4,
+   "segments": 7,
+   "rings": 4,
+   "material": "leaves",
+   "transform": {
+    "translate": [
+     9.5,
+     4.8,
+     -9.0
+    ],
+    "scale": [
+     1,
+     0.75,
+     1
+    ]
+   }
+  },
+  {
+   "id": "pole_ball",
+   "op": "sphere",
+   "radius": 0.15,
+   "segments": 4,
+   "rings": 3,
+   "material": "gold",
+   "transform": {
+    "translate": [
+     6.0,
+     9.1,
+     -2.0
+    ]
+   }
+  },
+  {
+   "id": "crown_b",
+   "op": "sphere",
+   "radius": 1.8,
+   "segments": 6,
+   "rings": 4,
+   "material": "leaves_2",
+   "transform": {
+    "translate": [
+     11.0,
+     4.1,
+     -8.2
+    ],
+    "scale": [
+     1,
+     0.75,
+     1
+    ]
+   }
+  },
+  {
+   "id": "litter",
+   "op": "mesh",
+   "material": "litter",
+   "faces": [
+    [
+     7,
+     6,
+     5,
+     4,
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "vertices": [
+    [
+     12.366,
+     0.02,
+     -8.1134
+    ],
+    [
+     10.8997,
+     0.02,
+     -6.3465
+    ],
+    [
+     8.6134,
+     0.02,
+     -6.134
+    ],
+    [
+     6.8465,
+     0.02,
+     -7.6003
+    ],
+    [
+     6.634,
+     0.02,
+     -9.8866
+    ],
+    [
+     8.1003,
+     0.02,
+     -11.6535
+    ],
+    [
+     10.3866,
+     0.02,
+     -11.866
+    ],
+    [
+     12.1535,
+     0.02,
+     -10.3997
+    ]
+   ]
+  },
+  {
+   "id": "statue_plinth",
+   "op": "box",
+   "size": [
+    0.9,
+    0.5,
+    0.9
+   ],
+   "material": "stone",
+   "transform": {
+    "translate": [
+     -4.6,
+     0.25,
+     -3.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "statue_body",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 0.62,
+   "segments": 6,
+   "caps": true,
+   "material": "bronze",
+   "transform": {
+    "translate": [
+     -4.6,
+     0.8,
+     -3.0
+    ]
+   }
+  },
+  {
+   "id": "statue_head",
+   "op": "sphere",
+   "radius": 0.14,
+   "segments": 4,
+   "rings": 3,
+   "material": "bronze",
+   "transform": {
+    "translate": [
+     -4.6,
+     1.25,
+     -3.0
+    ]
+   }
+  },
+  {
+   "id": "statue_wood",
+   "op": "box",
+   "size": [
+    0.55,
+    0.14,
+    0.16
+   ],
+   "material": "bronze",
+   "transform": {
+    "translate": [
+     -4.6,
+     0.95,
+     -2.82
+    ],
+    "rotate": [
+     -10,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bar_post_0",
+   "op": "cylinder",
+   "radius": 0.04,
+   "height": 1.3,
+   "segments": 4,
+   "caps": false,
+   "material": "iron",
+   "transform": {
+    "translate": [
+     1.6,
+     0.65,
+     -12.0
+    ]
+   }
+  },
+  {
+   "id": "bar_post_1",
+   "op": "cylinder",
+   "radius": 0.04,
+   "height": 1.3,
+   "segments": 4,
+   "caps": false,
+   "material": "iron",
+   "transform": {
+    "translate": [
+     3.8,
+     0.65,
+     -12.0
+    ]
+   }
+  },
+  {
+   "id": "bar_post_2",
+   "op": "cylinder",
+   "radius": 0.04,
+   "height": 1.0,
+   "segments": 4,
+   "caps": false,
+   "material": "iron",
+   "transform": {
+    "translate": [
+     6.0,
+     0.5,
+     -12.0
+    ]
+   }
+  },
+  {
+   "id": "bar_a",
+   "op": "cylinder",
+   "radius": 0.035,
+   "height": 2.2,
+   "segments": 4,
+   "caps": false,
+   "material": "rail",
+   "transform": {
+    "translate": [
+     2.7,
+     1.25,
+     -12.0
+    ],
+    "rotate": [
+     0,
+     0,
+     90
+    ]
+   }
+  },
+  {
+   "id": "bar_b",
+   "op": "cylinder",
+   "radius": 0.035,
+   "height": 2.2,
+   "segments": 4,
+   "caps": false,
+   "material": "rail",
+   "transform": {
+    "translate": [
+     4.9,
+     0.95,
+     -12.0
+    ],
+    "rotate": [
+     0,
+     0,
+     90
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "block",
+      "op": "box",
+      "size": [
+       24.0,
+       18.6,
+       11.0
+      ],
+      "material": "wall",
+      "transform": {
+       "translate": [
+        -2.0,
+        9.6,
+        9.5
+       ]
+      },
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "back": "facade_s",
+       "front": "facade_n",
+       "top": "roof"
+      }
+     },
+     {
+      "id": "wing",
+      "op": "box",
+      "size": [
+       8.0,
+       14.88,
+       16.0
+      ],
+      "material": "wall",
+      "transform": {
+       "translate": [
+        -10.0,
+        7.74,
+        -4.0
+       ]
+      },
+      "open": [
+       "bottom",
+       "front"
+      ],
+      "faces": {
+       "right": "facade_sw",
+       "left": "facade_nw",
+       "back": "facade_nw",
+       "top": "roof"
+      }
+     },
+     {
+      "id": "tower",
+      "op": "box",
+      "size": [
+       4.0,
+       22.3,
+       4.0
+      ],
+      "material": "wall",
+      "transform": {
+       "translate": [
+        0,
+        11.15,
+        4.6
+       ]
+      },
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "top": "coping"
+      },
+      "decals": [
+       {
+        "id": "clock_s",
+        "face": "back",
+        "material": "clock",
+        "size": [
+         1.9,
+         1.9
+        ],
+        "at": [
+         0,
+         9.15
+        ]
+       }
+      ]
+     },
+     {
+      "id": "pyramid",
+      "op": "cone",
+      "radius": 2.1213,
+      "height": 2.4,
+      "segments": 4,
+      "caps": false,
+      "material": "copper",
+      "transform": {
+       "rotate": [
+        0,
+        45,
+        0
+       ],
+       "translate": [
+        0,
+        23.49,
+        4.6
+       ]
+      }
+     },
+     {
+      "id": "porch",
+      "op": "box",
+      "size": [
+       6.0,
+       4.4,
+       3.2
+      ],
+      "material": "wall",
+      "transform": {
+       "translate": [
+        0.0,
+        2.2,
+        1.0
+       ]
+      },
+      "open": [
+       "bottom",
+       "top",
+       "front"
+      ]
+     },
+     {
+      "id": "porch_roof",
+      "op": "mesh",
+      "material": "kawara",
+      "vertices": [
+       [
+        -3.4,
+        4.4,
+        -1.05
+       ],
+       [
+        0,
+        6.0,
+        -1.05
+       ],
+       [
+        3.4,
+        4.4,
+        -1.05
+       ],
+       [
+        -3.4,
+        4.4,
+        2.6
+       ],
+       [
+        0,
+        6.0,
+        2.6
+       ],
+       [
+        3.4,
+        4.4,
+        2.6
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        3,
+        4,
+        1
+       ],
+       [
+        1,
+        4,
+        5,
+        2
+       ]
+      ]
+     },
+     {
+      "id": "pediment",
+      "op": "mesh",
+      "material": "wall",
+      "vertices": [
+       [
+        -3.0,
+        4.4,
+        -0.6
+       ],
+       [
+        0,
+        5.88,
+        -0.6
+       ],
+       [
+        3.0,
+        4.4,
+        -0.6
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2
+       ]
+      ]
+     },
+     {
+      "id": "flight_1",
+      "op": "mesh",
+      "material": "steel_ds",
+      "vertices": [
+       [
+        10.05,
+        3.78,
+        13.4
+       ],
+       [
+        11.48,
+        3.78,
+        13.4
+       ],
+       [
+        11.48,
+        0.0,
+        5.3
+       ],
+       [
+        10.05,
+        0.0,
+        5.3
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "flight_2",
+      "op": "mesh",
+      "material": "steel_ds",
+      "vertices": [
+       [
+        11.52,
+        7.56,
+        5.3
+       ],
+       [
+        12.95,
+        7.56,
+        5.3
+       ],
+       [
+        12.95,
+        3.78,
+        13.4
+       ],
+       [
+        11.52,
+        3.78,
+        13.4
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "flight_3",
+      "op": "mesh",
+      "material": "steel_ds",
+      "vertices": [
+       [
+        10.05,
+        11.34,
+        13.4
+       ],
+       [
+        11.48,
+        11.34,
+        13.4
+       ],
+       [
+        11.48,
+        7.56,
+        5.3
+       ],
+       [
+        10.05,
+        7.56,
+        5.3
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "flight_4",
+      "op": "mesh",
+      "material": "steel_ds",
+      "vertices": [
+       [
+        11.52,
+        15.12,
+        5.3
+       ],
+       [
+        12.95,
+        15.12,
+        5.3
+       ],
+       [
+        12.95,
+        11.34,
+        13.4
+       ],
+       [
+        11.52,
+        11.34,
+        13.4
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "flight_5",
+      "op": "mesh",
+      "material": "steel_ds",
+      "vertices": [
+       [
+        10.05,
+        18.9,
+        13.4
+       ],
+       [
+        11.48,
+        18.9,
+        13.4
+       ],
+       [
+        11.48,
+        15.12,
+        5.3
+       ],
+       [
+        10.05,
+        15.12,
+        5.3
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "land_1",
+      "op": "mesh",
+      "material": "steel_ds",
+      "vertices": [
+       [
+        10.05,
+        3.78,
+        15.0
+       ],
+       [
+        13.0,
+        3.78,
+        15.0
+       ],
+       [
+        13.0,
+        3.78,
+        13.37
+       ],
+       [
+        10.05,
+        3.78,
+        13.37
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "land_2",
+      "op": "mesh",
+      "material": "steel_ds",
+      "vertices": [
+       [
+        10.05,
+        7.56,
+        5.33
+       ],
+       [
+        13.0,
+        7.56,
+        5.33
+       ],
+       [
+        13.0,
+        7.56,
+        4.0
+       ],
+       [
+        10.05,
+        7.56,
+        4.0
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "land_3",
+      "op": "mesh",
+      "material": "steel_ds",
+      "vertices": [
+       [
+        10.05,
+        11.34,
+        15.0
+       ],
+       [
+        13.0,
+        11.34,
+        15.0
+       ],
+       [
+        13.0,
+        11.34,
+        13.37
+       ],
+       [
+        10.05,
+        11.34,
+        13.37
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "land_4",
+      "op": "mesh",
+      "material": "steel_ds",
+      "vertices": [
+       [
+        10.05,
+        15.12,
+        5.33
+       ],
+       [
+        13.0,
+        15.12,
+        5.33
+       ],
+       [
+        13.0,
+        15.12,
+        4.0
+       ],
+       [
+        10.05,
+        15.12,
+        4.0
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "land_5",
+      "op": "mesh",
+      "material": "steel_ds",
+      "vertices": [
+       [
+        10.05,
+        18.9,
+        15.0
+       ],
+       [
+        13.0,
+        18.9,
+        15.0
+       ],
+       [
+        13.0,
+        18.9,
+        13.37
+       ],
+       [
+        10.05,
+        18.9,
+        13.37
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "cage",
+      "op": "mesh",
+      "material": "bars",
+      "vertices": [
+       [
+        13.0,
+        19.9,
+        4.0
+       ],
+       [
+        13.0,
+        19.9,
+        15.0
+       ],
+       [
+        13.0,
+        0,
+        15.0
+       ],
+       [
+        13.0,
+        0,
+        4.0
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "tank_stand",
+      "op": "box",
+      "size": [
+       2.6,
+       1.02,
+       2.1
+      ],
+      "material": "steel",
+      "transform": {
+       "translate": [
+        6.5,
+        19.39,
+        9.25
+       ]
+      },
+      "open": [
+       "top",
+       "bottom"
+      ]
+     },
+     {
+      "id": "tank",
+      "op": "box",
+      "size": [
+       3.2,
+       2.0,
+       2.7
+      ],
+      "material": "tank",
+      "transform": {
+       "translate": [
+        6.5,
+        20.9,
+        9.25
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "flagpole",
+      "op": "cylinder",
+      "radius": 0.07,
+      "height": 9.0,
+      "segments": 5,
+      "caps": false,
+      "material": "iron",
+      "transform": {
+       "translate": [
+        6.0,
+        4.5,
+        -2.0
+       ]
+      }
+     },
+     {
+      "id": "flag",
+      "op": "mesh",
+      "material": "flag",
+      "vertices": [
+       [
+        4.0,
+        8.85,
+        -2.0
+       ],
+       [
+        5.95,
+        8.85,
+        -2.0
+       ],
+       [
+        5.95,
+        7.55,
+        -2.0
+       ],
+       [
+        4.0,
+        7.55,
+        -2.0
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "trunk",
+      "op": "cylinder",
+      "radius": 0.3,
+      "height": 3.4,
+      "segments": 6,
+      "caps": false,
+      "material": "bark",
+      "transform": {
+       "translate": [
+        9.5,
+        1.7,
+        -9.0
+       ]
+      },
+      "modifiers": [
+       {
+        "op": "taper",
+        "top": 0.6
+       }
+      ]
+     },
+     {
+      "id": "crown_a",
+      "op": "sphere",
+      "radius": 2.4,
+      "segments": 7,
+      "rings": 4,
+      "material": "leaves",
+      "transform": {
+       "translate": [
+        9.5,
+        4.8,
+        -9.0
+       ],
+       "scale": [
+        1,
+        0.75,
+        1
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "block",
+      "op": "box",
+      "size": [
+       27.0,
+       19.35,
+       11.0
+      ],
+      "material": "facade_s",
+      "transform": {
+       "translate": [
+        -0.5,
+        9.975,
+        9.5
+       ]
+      },
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "top": "coping"
+      }
+     },
+     {
+      "id": "wing",
+      "op": "box",
+      "size": [
+       8.0,
+       15.63,
+       16.0
+      ],
+      "material": "facade_sw",
+      "transform": {
+       "translate": [
+        -10.0,
+        8.115,
+        -4.0
+       ]
+      },
+      "open": [
+       "bottom",
+       "front"
+      ],
+      "faces": {
+       "top": "coping"
+      }
+     },
+     {
+      "id": "tower",
+      "op": "box",
+      "size": [
+       4.0,
+       2.67,
+       4.0
+      ],
+      "material": "wall",
+      "transform": {
+       "translate": [
+        0.0,
+        20.965,
+        4.6
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ]
+     },
+     {
+      "id": "pyramid",
+      "op": "cone",
+      "radius": 2.8284,
+      "height": 2.4,
+      "segments": 4,
+      "caps": false,
+      "material": "copper",
+      "transform": {
+       "rotate": [
+        0,
+        45,
+        0
+       ],
+       "translate": [
+        0,
+        23.49,
+        4.6
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 300,
+  "band": 2
+ }
+}

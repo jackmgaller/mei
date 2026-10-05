@@ -1,0 +1,1366 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "schoolhouse_col",
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "solid": {
+   "color": "#c8c4b8"
+  }
+ },
+ "nodes": [
+  {
+   "id": "block",
+   "op": "box",
+   "size": [
+    24.0,
+    18.9,
+    11.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -2.0,
+     9.45,
+     9.5
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "wing",
+   "op": "box",
+   "size": [
+    8.0,
+    15.18,
+    16.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -10.0,
+     7.59,
+     -4.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "par_n",
+   "op": "box",
+   "size": [
+    24.0,
+    0.75,
+    0.25
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -2.0,
+     19.275,
+     14.875
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "par_s",
+   "op": "box",
+   "size": [
+    24.0,
+    0.75,
+    0.25
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -2.0,
+     19.275,
+     4.125
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "par_w",
+   "op": "box",
+   "size": [
+    0.25,
+    0.75,
+    10.5
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -13.875,
+     19.275,
+     9.5
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "par_e",
+   "op": "box",
+   "size": [
+    0.25,
+    0.75,
+    9.15
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     9.875,
+     19.275,
+     8.825
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ]
+  },
+  {
+   "id": "wpar_s",
+   "op": "box",
+   "size": [
+    8.0,
+    0.75,
+    0.25
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -10.0,
+     15.555,
+     -11.875
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "wpar_w",
+   "op": "box",
+   "size": [
+    0.25,
+    0.75,
+    15.75
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -13.875,
+     15.555,
+     -3.875
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "wpar_e",
+   "op": "box",
+   "size": [
+    0.25,
+    0.75,
+    15.75
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -6.125,
+     15.555,
+     -3.875
+    ]
+   },
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "tower",
+   "op": "box",
+   "size": [
+    4.0,
+    3.42,
+    4.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     20.59,
+     4.6
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "tower_base",
+   "op": "box",
+   "size": [
+    4.0,
+    18.88,
+    1.4
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     9.44,
+     3.3
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "cornice",
+   "op": "box",
+   "size": [
+    4.4,
+    0.3,
+    4.4
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     21.75,
+     4.6
+    ]
+   }
+  },
+  {
+   "id": "pyramid",
+   "op": "cone",
+   "radius": 2.1213,
+   "height": 2.4,
+   "segments": 4,
+   "caps": false,
+   "material": "solid",
+   "transform": {
+    "rotate": [
+     0,
+     45,
+     0
+    ],
+    "translate": [
+     0,
+     23.49,
+     4.6
+    ]
+   }
+  },
+  {
+   "id": "porch",
+   "op": "box",
+   "size": [
+    6.0,
+    4.4,
+    3.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     2.2,
+     1.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top",
+    "front"
+   ]
+  },
+  {
+   "id": "porch_roof",
+   "op": "mesh",
+   "material": "solid",
+   "vertices": [
+    [
+     -3.4,
+     4.4,
+     -1.05
+    ],
+    [
+     0,
+     6.0,
+     -1.05
+    ],
+    [
+     3.4,
+     4.4,
+     -1.05
+    ],
+    [
+     -3.4,
+     4.4,
+     2.58
+    ],
+    [
+     0,
+     6.0,
+     2.58
+    ],
+    [
+     3.4,
+     4.4,
+     2.58
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     3,
+     4,
+     1
+    ],
+    [
+     1,
+     4,
+     5,
+     2
+    ],
+    [
+     0,
+     1,
+     2
+    ],
+    [
+     5,
+     4,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "flight_1",
+   "op": "mesh",
+   "vertices": [
+    [
+     10.05,
+     0.0,
+     5.3
+    ],
+    [
+     10.05,
+     3.78,
+     13.4
+    ],
+    [
+     10.05,
+     3.53,
+     13.4
+    ],
+    [
+     10.05,
+     0.0,
+     5.8357
+    ],
+    [
+     11.48,
+     0.0,
+     5.3
+    ],
+    [
+     11.48,
+     3.78,
+     13.4
+    ],
+    [
+     11.48,
+     3.53,
+     13.4
+    ],
+    [
+     11.48,
+     0.0,
+     5.8357
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     5,
+     4
+    ],
+    [
+     1,
+     2,
+     6,
+     5
+    ],
+    [
+     2,
+     3,
+     7,
+     6
+    ],
+    [
+     3,
+     0,
+     4,
+     7
+    ],
+    [
+     3,
+     2,
+     1,
+     0
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ]
+   ],
+   "face_materials": [
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid"
+   ]
+  },
+  {
+   "id": "flight_2",
+   "op": "mesh",
+   "vertices": [
+    [
+     11.52,
+     3.78,
+     13.4
+    ],
+    [
+     11.52,
+     7.56,
+     5.3
+    ],
+    [
+     11.52,
+     7.31,
+     5.3
+    ],
+    [
+     11.52,
+     3.53,
+     13.4
+    ],
+    [
+     12.85,
+     3.78,
+     13.4
+    ],
+    [
+     12.85,
+     7.56,
+     5.3
+    ],
+    [
+     12.85,
+     7.31,
+     5.3
+    ],
+    [
+     12.85,
+     3.53,
+     13.4
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     5,
+     6,
+     2,
+     1
+    ],
+    [
+     6,
+     7,
+     3,
+     2
+    ],
+    [
+     7,
+     4,
+     0,
+     3
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     7,
+     6,
+     5,
+     4
+    ]
+   ],
+   "face_materials": [
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid"
+   ]
+  },
+  {
+   "id": "flight_2_wall",
+   "op": "mesh",
+   "vertices": [
+    [
+     12.75,
+     4.78,
+     13.38
+    ],
+    [
+     12.75,
+     8.56,
+     5.32
+    ],
+    [
+     12.75,
+     7.41,
+     5.32
+    ],
+    [
+     12.75,
+     3.63,
+     13.38
+    ],
+    [
+     13.0,
+     4.78,
+     13.38
+    ],
+    [
+     13.0,
+     8.56,
+     5.32
+    ],
+    [
+     13.0,
+     7.41,
+     5.32
+    ],
+    [
+     13.0,
+     3.63,
+     13.38
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     5,
+     6,
+     2,
+     1
+    ],
+    [
+     6,
+     7,
+     3,
+     2
+    ],
+    [
+     7,
+     4,
+     0,
+     3
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     7,
+     6,
+     5,
+     4
+    ]
+   ],
+   "face_materials": [
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid"
+   ]
+  },
+  {
+   "id": "flight_3",
+   "op": "mesh",
+   "vertices": [
+    [
+     10.05,
+     7.56,
+     5.3
+    ],
+    [
+     10.05,
+     11.34,
+     13.4
+    ],
+    [
+     10.05,
+     11.09,
+     13.4
+    ],
+    [
+     10.05,
+     7.31,
+     5.3
+    ],
+    [
+     11.48,
+     7.56,
+     5.3
+    ],
+    [
+     11.48,
+     11.34,
+     13.4
+    ],
+    [
+     11.48,
+     11.09,
+     13.4
+    ],
+    [
+     11.48,
+     7.31,
+     5.3
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     5,
+     4
+    ],
+    [
+     1,
+     2,
+     6,
+     5
+    ],
+    [
+     2,
+     3,
+     7,
+     6
+    ],
+    [
+     3,
+     0,
+     4,
+     7
+    ],
+    [
+     3,
+     2,
+     1,
+     0
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ]
+   ],
+   "face_materials": [
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid"
+   ]
+  },
+  {
+   "id": "flight_4",
+   "op": "mesh",
+   "vertices": [
+    [
+     11.52,
+     11.34,
+     13.4
+    ],
+    [
+     11.52,
+     15.12,
+     5.3
+    ],
+    [
+     11.52,
+     14.87,
+     5.3
+    ],
+    [
+     11.52,
+     11.09,
+     13.4
+    ],
+    [
+     12.85,
+     11.34,
+     13.4
+    ],
+    [
+     12.85,
+     15.12,
+     5.3
+    ],
+    [
+     12.85,
+     14.87,
+     5.3
+    ],
+    [
+     12.85,
+     11.09,
+     13.4
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     5,
+     6,
+     2,
+     1
+    ],
+    [
+     6,
+     7,
+     3,
+     2
+    ],
+    [
+     7,
+     4,
+     0,
+     3
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     7,
+     6,
+     5,
+     4
+    ]
+   ],
+   "face_materials": [
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid"
+   ]
+  },
+  {
+   "id": "flight_4_wall",
+   "op": "mesh",
+   "vertices": [
+    [
+     12.75,
+     12.34,
+     13.38
+    ],
+    [
+     12.75,
+     16.12,
+     5.32
+    ],
+    [
+     12.75,
+     14.97,
+     5.32
+    ],
+    [
+     12.75,
+     11.19,
+     13.38
+    ],
+    [
+     13.0,
+     12.34,
+     13.38
+    ],
+    [
+     13.0,
+     16.12,
+     5.32
+    ],
+    [
+     13.0,
+     14.97,
+     5.32
+    ],
+    [
+     13.0,
+     11.19,
+     13.38
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     5,
+     6,
+     2,
+     1
+    ],
+    [
+     6,
+     7,
+     3,
+     2
+    ],
+    [
+     7,
+     4,
+     0,
+     3
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     7,
+     6,
+     5,
+     4
+    ]
+   ],
+   "face_materials": [
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid"
+   ]
+  },
+  {
+   "id": "flight_5",
+   "op": "mesh",
+   "vertices": [
+    [
+     10.05,
+     15.12,
+     5.3
+    ],
+    [
+     10.05,
+     18.9,
+     13.4
+    ],
+    [
+     10.05,
+     18.65,
+     13.4
+    ],
+    [
+     10.05,
+     14.87,
+     5.3
+    ],
+    [
+     11.48,
+     15.12,
+     5.3
+    ],
+    [
+     11.48,
+     18.9,
+     13.4
+    ],
+    [
+     11.48,
+     18.65,
+     13.4
+    ],
+    [
+     11.48,
+     14.87,
+     5.3
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     5,
+     4
+    ],
+    [
+     1,
+     2,
+     6,
+     5
+    ],
+    [
+     2,
+     3,
+     7,
+     6
+    ],
+    [
+     3,
+     0,
+     4,
+     7
+    ],
+    [
+     3,
+     2,
+     1,
+     0
+    ],
+    [
+     4,
+     5,
+     6,
+     7
+    ]
+   ],
+   "face_materials": [
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid"
+   ]
+  },
+  {
+   "id": "land_1",
+   "op": "box",
+   "size": [
+    2.75,
+    0.2,
+    1.63
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     11.375,
+     3.68,
+     14.185
+    ]
+   },
+   "open": [
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "land_1_wall",
+   "op": "box",
+   "size": [
+    0.19,
+    1.2,
+    1.63
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     12.875,
+     4.18,
+     14.185
+    ]
+   }
+  },
+  {
+   "id": "land_1_end",
+   "op": "box",
+   "size": [
+    2.78,
+    0.97,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     11.44,
+     4.265,
+     14.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "land_2",
+   "op": "box",
+   "size": [
+    2.75,
+    0.2,
+    1.33
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     11.375,
+     7.46,
+     4.665
+    ]
+   },
+   "open": [
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "land_2_wall",
+   "op": "box",
+   "size": [
+    0.19,
+    1.2,
+    1.33
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     12.875,
+     7.96,
+     4.665
+    ]
+   }
+  },
+  {
+   "id": "land_2_end",
+   "op": "box",
+   "size": [
+    2.78,
+    0.97,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     11.44,
+     8.045,
+     4.15
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "land_3",
+   "op": "box",
+   "size": [
+    2.75,
+    0.2,
+    1.63
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     11.375,
+     11.24,
+     14.185
+    ]
+   },
+   "open": [
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "land_3_wall",
+   "op": "box",
+   "size": [
+    0.19,
+    1.2,
+    1.63
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     12.875,
+     11.74,
+     14.185
+    ]
+   }
+  },
+  {
+   "id": "land_3_end",
+   "op": "box",
+   "size": [
+    2.78,
+    0.97,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     11.44,
+     11.825,
+     14.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "land_4",
+   "op": "box",
+   "size": [
+    2.75,
+    0.2,
+    1.33
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     11.375,
+     15.02,
+     4.665
+    ]
+   },
+   "open": [
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "land_4_wall",
+   "op": "box",
+   "size": [
+    0.19,
+    1.2,
+    1.33
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     12.875,
+     15.52,
+     4.665
+    ]
+   }
+  },
+  {
+   "id": "land_4_end",
+   "op": "box",
+   "size": [
+    2.78,
+    0.97,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     11.44,
+     15.605,
+     4.15
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "land_5",
+   "op": "box",
+   "size": [
+    2.75,
+    0.2,
+    1.63
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     11.375,
+     18.8,
+     14.185
+    ]
+   },
+   "open": [
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "land_5_wall",
+   "op": "box",
+   "size": [
+    0.19,
+    1.2,
+    1.63
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     12.875,
+     19.3,
+     14.185
+    ]
+   }
+  },
+  {
+   "id": "land_5_end",
+   "op": "box",
+   "size": [
+    2.78,
+    0.97,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     11.44,
+     19.385,
+     14.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "tank",
+   "op": "box",
+   "size": [
+    3.2,
+    3.02,
+    2.7
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     6.5,
+     20.39,
+     9.25
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "trunk",
+   "op": "box",
+   "size": [
+    0.5,
+    3.4,
+    0.5
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     9.5,
+     1.7,
+     -9.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "statue",
+   "op": "box",
+   "size": [
+    0.9,
+    1.4,
+    0.9
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -4.6,
+     0.7,
+     -3.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}
