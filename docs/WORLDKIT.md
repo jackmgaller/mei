@@ -1405,8 +1405,9 @@ heaviest placements drawn (with their distance and level) when a view is over
 
 **Cull distances in a recipe without levels.** A recipe whose `lod` has only a `cull` (a lantern,
 a barrier) gets a cull mark of its own. Before 2026-10-05 the kit ignored such a `lod`, so these
-props were drawn to the end of the near pass; the movement garden's `office_ac_unit` (cull 56) is
-the one example outside the shrine, so the garden's pack changed with this.
+props were drawn to the end of the near pass; outside the shrine the movement garden's
+`office_ac_unit` (cull 56) and `shrine_stall` (cull 64) are such recipes, so the garden's pack
+changed with this (only those eight placements gained a cull mark).
 
 **Far ground.** A field's tiles have level 0 and, with the field's `lod`, a coarse level that
 keeps every point its edges share with its neighbours, so that tiles at different levels meet.
