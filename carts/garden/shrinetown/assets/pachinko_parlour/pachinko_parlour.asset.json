@@ -1,0 +1,1513 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "pachinko_parlour",
+ "budget": {
+  "triangles": 450
+ },
+ "sheets": {
+  "art": {
+   "image": "art/parlour_sheet.png"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "tile": {
+   "color": "#3f78a8",
+   "tag": "wall",
+   "texture": {
+    "pattern": "tile",
+    "colors": [
+     "#3f78a8",
+     "#e8f0f4",
+     "#5a94c4"
+    ],
+    "params": {
+     "count": 4,
+     "grout": 1
+    },
+    "projection": "box",
+    "scale": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "stucco": {
+   "color": "#f1dcc8",
+   "tag": "wall",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#f1dcc8",
+     "#e2c4a8"
+    ],
+    "params": {
+     "density": 0.15
+    },
+    "projection": "box",
+    "scale": [
+     2.0,
+     2.0
+    ]
+   }
+  },
+  "upper_side": {
+   "color": "#f1dcc8",
+   "tag": "wall",
+   "texture": {
+    "sheet": "art",
+    "cell": "upper_side",
+    "projection": "fit"
+   }
+  },
+  "roof": {
+   "color": "#59606b",
+   "tag": "roof",
+   "texture": {
+    "pattern": "tile",
+    "colors": [
+     "#59606b",
+     "#3c424c"
+    ],
+    "params": {
+     "count": 2,
+     "grout": 1
+    },
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     1.5,
+     1.5
+    ]
+   }
+  },
+  "redtrim": {
+   "color": "#8e1f2c",
+   "palette": true
+  },
+  "dark": {
+   "color": "#2b2832",
+   "palette": true
+  },
+  "concrete": {
+   "color": "#a8a69e",
+   "palette": true
+  },
+  "steel": {
+   "color": "#8a929e",
+   "palette": true
+  },
+  "ac": {
+   "color": "#cfd4da",
+   "palette": true
+  },
+  "ball": {
+   "color": "#c3ccd8",
+   "palette": true,
+   "smooth": true
+  },
+  "pink": {
+   "color": "#ff7fb0",
+   "palette": true
+  },
+  "awning": {
+   "color": "#c4122e",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#c4122e",
+     "#fff2dc"
+    ],
+    "params": {
+     "count": 4
+    },
+    "projection": "box",
+    "scale": [
+     1.6,
+     1.6
+    ]
+   }
+  },
+  "sign": {
+   "color": "#c4122e",
+   "class": "emissive",
+   "tag": "sign",
+   "texture": {
+    "sheet": "art",
+    "cell": "sign",
+    "projection": "fit"
+   }
+  },
+  "bulbs": {
+   "color": "#fff06a",
+   "class": "emissive",
+   "tag": "sign",
+   "texture": {
+    "sheet": "art",
+    "frames": [
+     "bulbs_a",
+     "bulbs_b"
+    ],
+    "ticks": 10,
+    "projection": "fit"
+   }
+  },
+  "blade": {
+   "color": "#1e2a8a",
+   "class": "emissive",
+   "tag": "sign",
+   "texture": {
+    "sheet": "art",
+    "cell": "blade",
+    "projection": "fit"
+   }
+  },
+  "storefront": {
+   "color": "#26305e",
+   "class": "emissive",
+   "tag": "shopfront",
+   "texture": {
+    "sheet": "art",
+    "cell": "storefront",
+    "projection": "fit",
+    "bits": 8
+   }
+  },
+  "lamp": {
+   "color": "#e0301e",
+   "class": "emissive",
+   "tag": "lantern"
+  },
+  "banner": {
+   "color": "#d81e1e",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "banner",
+    "projection": "fit"
+   }
+  },
+  "vend": {
+   "color": "#e8e8ea",
+   "texture": {
+    "sheet": "art",
+    "cell": "vend",
+    "projection": "fit"
+   }
+  },
+  "face": {
+   "color": "#dfe6ee",
+   "texture": {
+    "sheet": "art",
+    "cell": "face",
+    "projection": "fit"
+   }
+  },
+  "side_door": {
+   "color": "#2b2832",
+   "texture": {
+    "sheet": "art",
+    "cell": "side_door",
+    "projection": "fit"
+   }
+  },
+  "hut_door": {
+   "color": "#cfd4da",
+   "texture": {
+    "sheet": "art",
+    "cell": "hut_door",
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "ground",
+   "op": "box",
+   "size": [
+    11.0,
+    3.4,
+    9.0
+   ],
+   "material": "tile",
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "decals": [
+    {
+     "id": "shopfront",
+     "face": "back",
+     "material": "storefront",
+     "size": [
+      9.4,
+      2.6
+     ],
+     "at": [
+      0,
+      -0.35
+     ]
+    },
+    {
+     "id": "side_door",
+     "face": "left",
+     "material": "side_door",
+     "size": [
+      0.9,
+      2.1
+     ],
+     "at": [
+      -2.4,
+      -0.63
+     ]
+    }
+   ],
+   "transform": {
+    "translate": [
+     0,
+     1.7,
+     0
+    ]
+   }
+  },
+  {
+   "id": "cornice",
+   "op": "box",
+   "size": [
+    11.4,
+    0.25,
+    9.4
+   ],
+   "material": "redtrim",
+   "transform": {
+    "translate": [
+     0,
+     3.525,
+     0
+    ]
+   }
+  },
+  {
+   "id": "upper",
+   "op": "box",
+   "size": [
+    10.6,
+    3.5,
+    8.6
+   ],
+   "material": "stucco",
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "faces": {
+    "left": "upper_side",
+    "right": "upper_side"
+   },
+   "transform": {
+    "translate": [
+     0,
+     5.4,
+     0
+    ]
+   }
+  },
+  {
+   "id": "roof",
+   "op": "mesh",
+   "material": "roof",
+   "vertices": [
+    [
+     -5.15,
+     6.8,
+     4.15
+    ],
+    [
+     5.15,
+     6.8,
+     4.15
+    ],
+    [
+     5.15,
+     6.8,
+     -4.15
+    ],
+    [
+     -5.15,
+     6.8,
+     -4.15
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "parapet_in_s",
+   "op": "mesh",
+   "material": "redtrim",
+   "vertices": [
+    [
+     5.15,
+     7.15,
+     -4.15
+    ],
+    [
+     -5.15,
+     7.15,
+     -4.15
+    ],
+    [
+     -5.15,
+     6.8,
+     -4.15
+    ],
+    [
+     5.15,
+     6.8,
+     -4.15
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "parapet_in_n",
+   "op": "mesh",
+   "material": "redtrim",
+   "vertices": [
+    [
+     -5.15,
+     7.15,
+     4.15
+    ],
+    [
+     5.15,
+     7.15,
+     4.15
+    ],
+    [
+     5.15,
+     6.8,
+     4.15
+    ],
+    [
+     -5.15,
+     6.8,
+     4.15
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "parapet_in_w",
+   "op": "mesh",
+   "material": "redtrim",
+   "vertices": [
+    [
+     -5.15,
+     7.15,
+     -4.15
+    ],
+    [
+     -5.15,
+     7.15,
+     4.15
+    ],
+    [
+     -5.15,
+     6.8,
+     4.15
+    ],
+    [
+     -5.15,
+     6.8,
+     -4.15
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "parapet_in_e",
+   "op": "mesh",
+   "material": "redtrim",
+   "vertices": [
+    [
+     5.15,
+     7.15,
+     4.15
+    ],
+    [
+     5.15,
+     7.15,
+     -4.15
+    ],
+    [
+     5.15,
+     6.8,
+     -4.15
+    ],
+    [
+     5.15,
+     6.8,
+     4.15
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "coping_s",
+   "op": "mesh",
+   "material": "redtrim",
+   "vertices": [
+    [
+     -5.3,
+     7.15,
+     -4.15
+    ],
+    [
+     5.3,
+     7.15,
+     -4.15
+    ],
+    [
+     5.3,
+     7.15,
+     -4.3
+    ],
+    [
+     -5.3,
+     7.15,
+     -4.3
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "coping_n",
+   "op": "mesh",
+   "material": "redtrim",
+   "vertices": [
+    [
+     -5.3,
+     7.15,
+     4.3
+    ],
+    [
+     5.3,
+     7.15,
+     4.3
+    ],
+    [
+     5.3,
+     7.15,
+     4.15
+    ],
+    [
+     -5.3,
+     7.15,
+     4.15
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "coping_w",
+   "op": "mesh",
+   "material": "redtrim",
+   "vertices": [
+    [
+     -5.3,
+     7.15,
+     4.15
+    ],
+    [
+     -5.15,
+     7.15,
+     4.15
+    ],
+    [
+     -5.15,
+     7.15,
+     -4.15
+    ],
+    [
+     -5.3,
+     7.15,
+     -4.15
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "coping_e",
+   "op": "mesh",
+   "material": "redtrim",
+   "vertices": [
+    [
+     5.15,
+     7.15,
+     4.15
+    ],
+    [
+     5.3,
+     7.15,
+     4.15
+    ],
+    [
+     5.3,
+     7.15,
+     -4.15
+    ],
+    [
+     5.15,
+     7.15,
+     -4.15
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "sign",
+   "op": "box",
+   "size": [
+    8.4,
+    2.1,
+    0.3
+   ],
+   "material": "dark",
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "sign"
+   },
+   "transform": {
+    "translate": [
+     0,
+     5.35,
+     -4.43
+    ]
+   }
+  },
+  {
+   "id": "bulbs_top",
+   "op": "mesh",
+   "material": "bulbs",
+   "vertices": [
+    [
+     -4.4,
+     6.54,
+     -4.63
+    ],
+    [
+     4.4,
+     6.54,
+     -4.63
+    ],
+    [
+     4.4,
+     6.4,
+     -4.63
+    ],
+    [
+     -4.4,
+     6.4,
+     -4.63
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "bulbs_bottom",
+   "op": "mesh",
+   "material": "bulbs",
+   "vertices": [
+    [
+     -4.4,
+     4.3,
+     -4.63
+    ],
+    [
+     4.4,
+     4.3,
+     -4.63
+    ],
+    [
+     4.4,
+     4.16,
+     -4.63
+    ],
+    [
+     -4.4,
+     4.16,
+     -4.63
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "blade",
+   "op": "box",
+   "size": [
+    0.25,
+    3.6,
+    1.2
+   ],
+   "material": "blade",
+   "open": [
+    "top",
+    "bottom",
+    "front",
+    "back"
+   ],
+   "transform": {
+    "translate": [
+     -4.8,
+     5.7,
+     -4.88
+    ]
+   }
+  },
+  {
+   "id": "blade_cap",
+   "op": "box",
+   "size": [
+    0.31,
+    0.12,
+    1.26
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     -4.8,
+     7.56,
+     -4.88
+    ]
+   }
+  },
+  {
+   "id": "canopy",
+   "op": "box",
+   "size": [
+    3.6,
+    0.08,
+    1.1
+   ],
+   "material": "awning",
+   "transform": {
+    "rotate": [
+     -12,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     2.85,
+     -5.05
+    ]
+   }
+  },
+  {
+   "id": "step",
+   "op": "box",
+   "size": [
+    3.4,
+    0.12,
+    1.0
+   ],
+   "material": "concrete",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.06,
+     -4.98
+    ]
+   }
+  },
+  {
+   "id": "post_0",
+   "op": "box",
+   "size": [
+    0.08,
+    2.72,
+    0.08
+   ],
+   "material": "steel",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -1.7,
+     1.36,
+     -5.5
+    ]
+   }
+  },
+  {
+   "id": "post_1",
+   "op": "box",
+   "size": [
+    0.08,
+    2.72,
+    0.08
+   ],
+   "material": "steel",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     1.7,
+     1.36,
+     -5.5
+    ]
+   }
+  },
+  {
+   "id": "lantern_0",
+   "op": "cylinder",
+   "radius": 0.16,
+   "height": 0.4,
+   "segments": 6,
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     -1.1,
+     2.4,
+     -5.4
+    ]
+   }
+  },
+  {
+   "id": "lantern_1",
+   "op": "cylinder",
+   "radius": 0.16,
+   "height": 0.4,
+   "segments": 6,
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     1.1,
+     2.4,
+     -5.4
+    ]
+   }
+  },
+  {
+   "id": "guard_ball_0",
+   "op": "sphere",
+   "radius": 0.3,
+   "segments": 6,
+   "rings": 4,
+   "material": "ball",
+   "transform": {
+    "translate": [
+     -2.3,
+     0.3,
+     -5.2
+    ]
+   }
+  },
+  {
+   "id": "guard_ball_1",
+   "op": "sphere",
+   "radius": 0.3,
+   "segments": 6,
+   "rings": 4,
+   "material": "ball",
+   "transform": {
+    "translate": [
+     2.3,
+     0.3,
+     -5.2
+    ]
+   }
+  },
+  {
+   "id": "banner_pole_0",
+   "op": "cylinder",
+   "radius": 0.03,
+   "height": 3.2,
+   "segments": 3,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -6.05,
+     1.6,
+     -4.9
+    ]
+   },
+   "caps": false
+  },
+  {
+   "id": "banner_0",
+   "op": "mesh",
+   "material": "banner",
+   "vertices": [
+    [
+     -6.02,
+     3.1,
+     -4.9
+    ],
+    [
+     -5.47,
+     3.1,
+     -4.9
+    ],
+    [
+     -5.47,
+     0.9,
+     -4.9
+    ],
+    [
+     -6.02,
+     0.9,
+     -4.9
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "banner_pole_1",
+   "op": "cylinder",
+   "radius": 0.03,
+   "height": 3.2,
+   "segments": 3,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     6.05,
+     1.6,
+     -4.9
+    ]
+   },
+   "caps": false
+  },
+  {
+   "id": "banner_1",
+   "op": "mesh",
+   "material": "banner",
+   "vertices": [
+    [
+     5.47,
+     3.1,
+     -4.9
+    ],
+    [
+     6.02,
+     3.1,
+     -4.9
+    ],
+    [
+     6.02,
+     0.9,
+     -4.9
+    ],
+    [
+     5.47,
+     0.9,
+     -4.9
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "vend_machine",
+   "op": "box",
+   "size": [
+    0.75,
+    1.8,
+    0.65
+   ],
+   "material": "ac",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "back": "vend"
+   },
+   "transform": {
+    "translate": [
+     5.05,
+     0.9,
+     -4.81
+    ]
+   }
+  },
+  {
+   "id": "ac_unit",
+   "op": "box",
+   "size": [
+    0.4,
+    0.55,
+    0.9
+   ],
+   "material": "ac",
+   "open": [
+    "left"
+   ],
+   "transform": {
+    "translate": [
+     5.68,
+     1.5,
+     1.6
+    ]
+   }
+  },
+  {
+   "id": "roof_hut",
+   "op": "box",
+   "size": [
+    1.6,
+    1.0,
+    1.4
+   ],
+   "material": "ac",
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "hut_door"
+   },
+   "transform": {
+    "translate": [
+     2.6,
+     7.29,
+     3.0
+    ]
+   }
+  },
+  {
+   "id": "pedestal",
+   "op": "cylinder",
+   "radius": 0.7,
+   "height": 0.4,
+   "segments": 8,
+   "material": "redtrim",
+   "transform": {
+    "translate": [
+     0,
+     6.99,
+     -2.7
+    ]
+   }
+  },
+  {
+   "id": "mascot",
+   "op": "sphere",
+   "radius": 0.85,
+   "segments": 8,
+   "rings": 5,
+   "material": "ball",
+   "transform": {
+    "scale": [
+     1,
+     1,
+     0.8
+    ],
+    "translate": [
+     0,
+     8.0,
+     -2.7
+    ]
+   }
+  },
+  {
+   "id": "mascot_face",
+   "op": "mesh",
+   "material": "face",
+   "vertices": [
+    [
+     -0.42,
+     8.42,
+     -3.4
+    ],
+    [
+     0.42,
+     8.42,
+     -3.4
+    ],
+    [
+     0.42,
+     7.58,
+     -3.4
+    ],
+    [
+     -0.42,
+     7.58,
+     -3.4
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "antenna",
+   "op": "cone",
+   "radius": 0.07,
+   "height": 0.42,
+   "segments": 4,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     0,
+     9.01,
+     -2.6999999999999997
+    ]
+   }
+  },
+  {
+   "id": "antenna_tip",
+   "op": "sphere",
+   "radius": 0.12,
+   "segments": 4,
+   "rings": 3,
+   "material": "pink",
+   "transform": {
+    "translate": [
+     0,
+     9.25,
+     -2.7
+    ]
+   }
+  },
+  {
+   "id": "hand_0",
+   "op": "sphere",
+   "radius": 0.2,
+   "segments": 5,
+   "rings": 3,
+   "material": "ball",
+   "transform": {
+    "translate": [
+     -1.0,
+     7.8,
+     -2.85
+    ]
+   }
+  },
+  {
+   "id": "hand_1",
+   "op": "sphere",
+   "radius": 0.2,
+   "segments": 5,
+   "rings": 3,
+   "material": "ball",
+   "transform": {
+    "translate": [
+     1.0,
+     7.8,
+     -2.85
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "ground",
+      "op": "box",
+      "size": [
+       11.0,
+       3.4,
+       9.0
+      ],
+      "material": "tile",
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "decals": [
+       {
+        "id": "shopfront",
+        "face": "back",
+        "material": "storefront",
+        "size": [
+         9.4,
+         2.6
+        ],
+        "at": [
+         0,
+         -0.35
+        ]
+       },
+       {
+        "id": "side_door",
+        "face": "left",
+        "material": "side_door",
+        "size": [
+         0.9,
+         2.1
+        ],
+        "at": [
+         -2.4,
+         -0.63
+        ]
+       }
+      ],
+      "transform": {
+       "translate": [
+        0,
+        1.7,
+        0
+       ]
+      }
+     },
+     {
+      "id": "cornice",
+      "op": "box",
+      "size": [
+       11.4,
+       0.25,
+       9.4
+      ],
+      "material": "redtrim",
+      "transform": {
+       "translate": [
+        0,
+        3.525,
+        0
+       ]
+      }
+     },
+     {
+      "id": "upper",
+      "op": "box",
+      "size": [
+       10.6,
+       3.15,
+       8.6
+      ],
+      "material": "stucco",
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "left": "upper_side",
+       "right": "upper_side",
+       "top": "roof"
+      },
+      "transform": {
+       "translate": [
+        0,
+        5.225,
+        0
+       ]
+      }
+     },
+     {
+      "id": "sign",
+      "op": "box",
+      "size": [
+       8.4,
+       2.1,
+       0.3
+      ],
+      "material": "dark",
+      "open": [
+       "front"
+      ],
+      "faces": {
+       "back": "sign"
+      },
+      "transform": {
+       "translate": [
+        0,
+        5.35,
+        -4.43
+       ]
+      }
+     },
+     {
+      "id": "blade",
+      "op": "box",
+      "size": [
+       0.25,
+       3.6,
+       1.2
+      ],
+      "material": "blade",
+      "open": [
+       "top",
+       "bottom",
+       "front",
+       "back"
+      ],
+      "transform": {
+       "translate": [
+        -4.8,
+        5.7,
+        -4.88
+       ]
+      }
+     },
+     {
+      "id": "canopy",
+      "op": "box",
+      "size": [
+       3.6,
+       0.08,
+       1.1
+      ],
+      "material": "awning",
+      "transform": {
+       "rotate": [
+        -12,
+        0,
+        0
+       ],
+       "translate": [
+        0,
+        2.85,
+        -5.05
+       ]
+      }
+     },
+     {
+      "id": "mascot",
+      "op": "sphere",
+      "radius": 0.85,
+      "segments": 6,
+      "rings": 4,
+      "material": "ball",
+      "transform": {
+       "scale": [
+        1,
+        1,
+        0.8
+       ],
+       "translate": [
+        0,
+        7.62,
+        -2.7
+       ]
+      }
+     },
+     {
+      "id": "mascot_face",
+      "op": "mesh",
+      "material": "face",
+      "vertices": [
+       [
+        -0.42,
+        8.04,
+        -3.4
+       ],
+       [
+        0.42,
+        8.04,
+        -3.4
+       ],
+       [
+        0.42,
+        7.2,
+        -3.4
+       ],
+       [
+        -0.42,
+        7.2,
+        -3.4
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     }
+    ]
+   },
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "ground",
+      "op": "box",
+      "size": [
+       11.0,
+       3.4,
+       9.0
+      ],
+      "material": "tile",
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "transform": {
+       "translate": [
+        0,
+        1.7,
+        0
+       ]
+      }
+     },
+     {
+      "id": "upper",
+      "op": "box",
+      "size": [
+       11.0,
+       3.4,
+       9.0
+      ],
+      "material": "stucco",
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "top": "roof"
+      },
+      "transform": {
+       "translate": [
+        0,
+        5.1,
+        0
+       ]
+      }
+     },
+     {
+      "id": "sign",
+      "op": "box",
+      "size": [
+       8.4,
+       2.1,
+       0.3
+      ],
+      "material": "dark",
+      "open": [
+       "front"
+      ],
+      "faces": {
+       "back": "sign"
+      },
+      "transform": {
+       "translate": [
+        0,
+        5.35,
+        -4.63
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "band": 2
+ }
+}

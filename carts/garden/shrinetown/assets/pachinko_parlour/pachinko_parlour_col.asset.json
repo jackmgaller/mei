@@ -1,0 +1,297 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "pachinko_parlour_col",
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "solid": {
+   "color": "#c8c4b8"
+  }
+ },
+ "nodes": [
+  {
+   "id": "ground",
+   "op": "box",
+   "size": [
+    11.0,
+    3.4,
+    9.0
+   ],
+   "material": "solid",
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     1.7,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "cornice",
+   "op": "box",
+   "size": [
+    11.4,
+    0.25,
+    9.4
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     3.525,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "upper",
+   "op": "box",
+   "size": [
+    10.6,
+    3.15,
+    8.6
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     5.225,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "parapet_s",
+   "op": "box",
+   "size": [
+    10.6,
+    0.35,
+    0.2
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     6.975,
+     -4.2
+    ]
+   }
+  },
+  {
+   "id": "parapet_n",
+   "op": "box",
+   "size": [
+    10.6,
+    0.35,
+    0.2
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     6.975,
+     4.2
+    ]
+   }
+  },
+  {
+   "id": "parapet_w",
+   "op": "box",
+   "size": [
+    0.2,
+    0.35,
+    8.2
+   ],
+   "material": "solid",
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     -5.2,
+     6.975,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "parapet_e",
+   "op": "box",
+   "size": [
+    0.2,
+    0.35,
+    8.2
+   ],
+   "material": "solid",
+   "open": [
+    "bottom",
+    "back",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     5.2,
+     6.975,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "roof_hut",
+   "op": "box",
+   "size": [
+    1.6,
+    1.0,
+    1.4
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     2.6,
+     7.3,
+     3.0
+    ]
+   }
+  },
+  {
+   "id": "mascot",
+   "op": "box",
+   "size": [
+    1.7,
+    2.05,
+    1.4
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     7.825,
+     -2.7
+    ]
+   }
+  },
+  {
+   "id": "blade",
+   "op": "box",
+   "size": [
+    0.24,
+    3.6,
+    1.17
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -4.8,
+     5.7,
+     -4.895
+    ]
+   }
+  },
+  {
+   "id": "canopy",
+   "op": "box",
+   "size": [
+    3.6,
+    0.2,
+    1.09
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     2.85,
+     -5.055
+    ]
+   }
+  },
+  {
+   "id": "vend_machine",
+   "op": "box",
+   "size": [
+    0.76,
+    1.8,
+    0.63
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     5.05,
+     0.9,
+     -4.825
+    ]
+   }
+  },
+  {
+   "id": "guard_ball_0",
+   "op": "box",
+   "size": [
+    0.6,
+    0.6,
+    0.6
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -2.3,
+     0.3,
+     -5.2
+    ]
+   }
+  },
+  {
+   "id": "guard_ball_1",
+   "op": "box",
+   "size": [
+    0.6,
+    0.6,
+    0.6
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     2.3,
+     0.3,
+     -5.2
+    ]
+   }
+  }
+ ]
+}
