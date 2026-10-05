@@ -1,0 +1,721 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "train_emu_car",
+  "budget": {
+    "vertices": 1400,
+    "triangles": 1200
+  },
+  "sheets": {
+    "livery": {
+      "image": "art/livery.png"
+    }
+  },
+  "materials": {
+    "side_l": {
+      "color": "#bcc2c6",
+      "texture": {
+        "sheet": "livery",
+        "cell": "side",
+        "projection": "fit"
+      }
+    },
+    "side_r": {
+      "color": "#bcc2c6",
+      "texture": {
+        "sheet": "livery",
+        "cell": "side",
+        "projection": "fit",
+        "flip": "u"
+      }
+    },
+    "cab": {
+      "color": "#bcc2c6",
+      "texture": {
+        "sheet": "livery",
+        "cell": "cab",
+        "projection": "fit"
+      }
+    },
+    "end": {
+      "color": "#bcc2c6",
+      "texture": {
+        "sheet": "livery",
+        "cell": "end",
+        "projection": "fit"
+      }
+    },
+    "bogie": {
+      "color": "#3a3c40",
+      "texture": {
+        "sheet": "livery",
+        "cell": "bogie",
+        "projection": "fit"
+      }
+    },
+    "ac": {
+      "color": "#a8aeb2",
+      "texture": {
+        "sheet": "livery",
+        "cell": "ac",
+        "projection": "fit"
+      }
+    },
+    "under_side": {
+      "color": "#4a4d52",
+      "texture": {
+        "sheet": "livery",
+        "cell": "under",
+        "projection": "fit"
+      }
+    },
+    "roof": {
+      "color": "#8e9498",
+      "palette": true,
+      "tag": "roof"
+    },
+    "steel": {
+      "color": "#bcc2c6",
+      "palette": true
+    },
+    "dark": {
+      "color": "#2c2e32",
+      "palette": true
+    },
+    "rubber": {
+      "color": "#1c1d20",
+      "palette": true
+    },
+    "insulator": {
+      "color": "#e8e4dc",
+      "palette": true
+    },
+    "orange": {
+      "color": "#e8782a",
+      "palette": true
+    },
+    "window": {
+      "color": "#8fa6b8",
+      "class": "emissive",
+      "tag": "window"
+    },
+    "destination": {
+      "color": "#f2f2ec",
+      "class": "emissive",
+      "tag": "sign"
+    },
+    "headlight": {
+      "color": "#fff6d8",
+      "class": "emissive",
+      "tag": "lamp"
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "verification": {
+    "required": true,
+    "depth": true,
+    "perspective": true
+  },
+  "nodes": [
+    {
+      "id": "body",
+      "op": "mesh",
+      "material": "steel",
+      "vertices": [
+        [-9.75, 1.0, 1.45],
+        [-9.75, 3.45, 1.45],
+        [-9.75, 3.64, 1.25],
+        [-9.75, 3.64, -1.25],
+        [-9.75, 3.45, -1.45],
+        [-9.75, 1.0, -1.45],
+        [9.75, 1.0, 1.45],
+        [9.75, 3.45, 1.45],
+        [9.75, 3.64, 1.25],
+        [9.75, 3.64, -1.25],
+        [9.75, 3.45, -1.45],
+        [9.75, 1.0, -1.45]
+      ],
+      "faces": [
+        [6, 7, 1, 0],
+        [7, 8, 2, 1],
+        [8, 9, 3, 2],
+        [9, 10, 4, 3],
+        [10, 11, 5, 4],
+        [11, 6, 0, 5],
+        [0, 1, 2, 3, 4, 5],
+        [11, 10, 9, 8, 7, 6]
+      ],
+      "face_materials": ["side_r", "roof", "roof", "roof", "side_l", "dark", "end", "cab"],
+      "decals": [
+        {
+          "id": "r_window_0",
+          "face": 0,
+          "material": "window",
+          "size": [1.64, 0.84],
+          "at": [8.35, 2.45]
+        },
+        {
+          "id": "r_window_1",
+          "face": 0,
+          "material": "window",
+          "size": [1.74, 0.84],
+          "at": [4.3, 2.45]
+        },
+        {
+          "id": "r_window_2",
+          "face": 0,
+          "material": "window",
+          "size": [1.84, 0.84],
+          "at": [2.05, 2.45]
+        },
+        {
+          "id": "r_window_3",
+          "face": 0,
+          "material": "window",
+          "size": [1.84, 0.84],
+          "at": [-2.05, 2.45]
+        },
+        {
+          "id": "r_window_4",
+          "face": 0,
+          "material": "window",
+          "size": [1.74, 0.84],
+          "at": [-4.3, 2.45]
+        },
+        {
+          "id": "r_window_5",
+          "face": 0,
+          "material": "window",
+          "size": [0.74, 0.84],
+          "at": [-7.75, 2.45]
+        },
+        {
+          "id": "r_door_0",
+          "face": 0,
+          "material": "window",
+          "size": [1.04, 0.74],
+          "at": [6.3, 2.45]
+        },
+        {
+          "id": "r_door_1",
+          "face": 0,
+          "material": "window",
+          "size": [1.04, 0.74],
+          "at": [0.0, 2.45]
+        },
+        {
+          "id": "r_door_2",
+          "face": 0,
+          "material": "window",
+          "size": [1.04, 0.74],
+          "at": [-6.3, 2.45]
+        },
+        {
+          "id": "r_cab_door",
+          "face": 0,
+          "material": "window",
+          "size": [0.44, 0.64],
+          "at": [-8.75, 2.4]
+        },
+        {
+          "id": "r_cab_window",
+          "face": 0,
+          "material": "window",
+          "size": [0.29, 0.84],
+          "at": [-9.325, 2.45]
+        },
+        {
+          "id": "l_window_0",
+          "face": 4,
+          "material": "window",
+          "size": [1.64, 0.84],
+          "at": [-8.35, 2.45]
+        },
+        {
+          "id": "l_window_1",
+          "face": 4,
+          "material": "window",
+          "size": [1.74, 0.84],
+          "at": [-4.3, 2.45]
+        },
+        {
+          "id": "l_window_2",
+          "face": 4,
+          "material": "window",
+          "size": [1.84, 0.84],
+          "at": [-2.05, 2.45]
+        },
+        {
+          "id": "l_window_3",
+          "face": 4,
+          "material": "window",
+          "size": [1.84, 0.84],
+          "at": [2.05, 2.45]
+        },
+        {
+          "id": "l_window_4",
+          "face": 4,
+          "material": "window",
+          "size": [1.74, 0.84],
+          "at": [4.3, 2.45]
+        },
+        {
+          "id": "l_window_5",
+          "face": 4,
+          "material": "window",
+          "size": [0.74, 0.84],
+          "at": [7.75, 2.45]
+        },
+        {
+          "id": "l_door_0",
+          "face": 4,
+          "material": "window",
+          "size": [1.04, 0.74],
+          "at": [-6.3, 2.45]
+        },
+        {
+          "id": "l_door_1",
+          "face": 4,
+          "material": "window",
+          "size": [1.04, 0.74],
+          "at": [0.0, 2.45]
+        },
+        {
+          "id": "l_door_2",
+          "face": 4,
+          "material": "window",
+          "size": [1.04, 0.74],
+          "at": [6.3, 2.45]
+        },
+        {
+          "id": "l_cab_door",
+          "face": 4,
+          "material": "window",
+          "size": [0.44, 0.64],
+          "at": [8.75, 2.4]
+        },
+        {
+          "id": "l_cab_window",
+          "face": 4,
+          "material": "window",
+          "size": [0.29, 0.84],
+          "at": [9.325, 2.45]
+        },
+        {
+          "id": "screen_a",
+          "face": 7,
+          "material": "window",
+          "size": [1.0, 0.8],
+          "at": [-0.615, 2.69]
+        },
+        {
+          "id": "screen_b",
+          "face": 7,
+          "material": "window",
+          "size": [1.0, 0.8],
+          "at": [0.615, 2.69]
+        },
+        {
+          "id": "destination",
+          "face": 7,
+          "material": "destination",
+          "size": [2.2, 0.16],
+          "at": [0.0, 3.35]
+        },
+        {
+          "id": "head_a",
+          "face": 7,
+          "material": "headlight",
+          "size": [0.26, 0.2],
+          "at": [-1.085, 1.33]
+        },
+        {
+          "id": "head_b",
+          "face": 7,
+          "material": "headlight",
+          "size": [0.26, 0.2],
+          "at": [1.085, 1.33]
+        }
+      ]
+    },
+    {
+      "id": "bogies",
+      "op": "group",
+      "children": [
+        {
+          "id": "bogie",
+          "op": "box",
+          "size": [2.6, 0.85, 2.0],
+          "material": "dark",
+          "transform": {
+            "translate": [6.9, 0.525, 0.0]
+          },
+          "open": ["top"],
+          "faces": {
+            "back": "bogie",
+            "front": "bogie"
+          }
+        }
+      ],
+      "modifiers": [
+        {
+          "op": "mirror",
+          "axis": "x"
+        }
+      ]
+    },
+    {
+      "id": "equipment_a",
+      "op": "box",
+      "size": [4.4, 0.57, 2.2],
+      "material": "dark",
+      "transform": {
+        "translate": [-2.6, 0.735, 0.0]
+      },
+      "open": ["top"],
+      "faces": {
+        "back": "under_side",
+        "front": "under_side"
+      }
+    },
+    {
+      "id": "equipment_b",
+      "op": "box",
+      "size": [3.0, 0.47, 2.0],
+      "material": "dark",
+      "transform": {
+        "translate": [2.9, 0.785, 0.0]
+      },
+      "open": ["top"],
+      "faces": {
+        "back": "under_side",
+        "front": "under_side"
+      }
+    },
+    {
+      "id": "skirt",
+      "op": "extrude",
+      "material": "dark",
+      "depth": 0.15,
+      "points": [[-1.2, 1.02], [1.2, 1.02], [0.95, 0.28], [-0.95, 0.28]],
+      "transform": {
+        "rotate": [0, 90, 0],
+        "translate": [9.82, 0, 0]
+      }
+    },
+    {
+      "id": "coupler_cab",
+      "op": "box",
+      "size": [0.32, 0.2, 0.26],
+      "material": "dark",
+      "transform": {
+        "translate": [9.84, 0.82, 0.0]
+      },
+      "open": ["left"]
+    },
+    {
+      "id": "coupler_rear",
+      "op": "box",
+      "size": [0.32, 0.2, 0.26],
+      "material": "dark",
+      "transform": {
+        "translate": [-9.84, 0.82, 0.0]
+      },
+      "open": ["right"]
+    },
+    {
+      "id": "gangway",
+      "op": "box",
+      "size": [0.25, 2.1, 1.1],
+      "material": "rubber",
+      "transform": {
+        "translate": [-9.87, 2.15, 0.0]
+      },
+      "open": ["right"]
+    },
+    {
+      "id": "aircon",
+      "op": "box",
+      "size": [2.4, 0.38, 1.9],
+      "material": "steel",
+      "transform": {
+        "translate": [-0.6, 3.81, 0.0]
+      },
+      "open": ["bottom"],
+      "faces": {
+        "top": "ac"
+      }
+    },
+    {
+      "id": "gutters",
+      "op": "group",
+      "children": [
+        {
+          "id": "gutter",
+          "op": "box",
+          "size": [19.4, 0.05, 0.06],
+          "material": "steel",
+          "transform": {
+            "translate": [0.0, 3.46, 1.47]
+          },
+          "open": ["left", "right"]
+        }
+      ],
+      "modifiers": [
+        {
+          "op": "mirror",
+          "axis": "z"
+        }
+      ]
+    },
+    {
+      "id": "vents",
+      "op": "group",
+      "children": [
+        {
+          "id": "vent",
+          "op": "box",
+          "size": [0.5, 0.13, 0.55],
+          "material": "steel",
+          "transform": {
+            "translate": [-6.4, 3.685, 0.0]
+          },
+          "open": ["bottom"]
+        }
+      ],
+      "modifiers": [
+        {
+          "op": "array",
+          "count": 2,
+          "step": [3.6, 0, 0]
+        }
+      ]
+    },
+    {
+      "id": "vent_c",
+      "op": "box",
+      "size": [0.5, 0.13, 0.55],
+      "material": "steel",
+      "transform": {
+        "translate": [7.6, 3.685, 0.0]
+      },
+      "open": ["bottom"]
+    },
+    {
+      "id": "insulators",
+      "op": "group",
+      "children": [
+        {
+          "id": "insulator",
+          "op": "box",
+          "size": [0.14, 0.2, 0.14],
+          "material": "insulator",
+          "transform": {
+            "translate": [4.0, 3.72, 0.45]
+          },
+          "open": ["bottom", "top"]
+        }
+      ],
+      "modifiers": [
+        {
+          "op": "mirror",
+          "axis": "z"
+        },
+        {
+          "op": "mirror",
+          "axis": "x",
+          "offset": 4.6
+        }
+      ]
+    },
+    {
+      "id": "panto_base",
+      "op": "box",
+      "size": [1.5, 0.06, 1.2],
+      "material": "dark",
+      "transform": {
+        "translate": [4.6, 3.84, 0.0]
+      }
+    },
+    {
+      "id": "panto_lower",
+      "op": "box",
+      "size": [1.3, 0.06, 0.08],
+      "material": "dark",
+      "transform": {
+        "translate": [4.5, 3.94, 0.0],
+        "rotate": [0, 0, 7]
+      }
+    },
+    {
+      "id": "panto_upper",
+      "op": "box",
+      "size": [1.4, 0.05, 0.06],
+      "material": "dark",
+      "transform": {
+        "translate": [4.7, 3.91, 0.12],
+        "rotate": [0, 0, -5]
+      }
+    },
+    {
+      "id": "panto_head",
+      "op": "box",
+      "size": [0.2, 0.06, 1.7],
+      "material": "steel",
+      "transform": {
+        "translate": [5.35, 3.95, 0.0]
+      }
+    }
+  ],
+  "lod": {
+    "levels": [
+      {
+        "distance": 40,
+        "nodes": [
+          {
+            "id": "body",
+            "op": "mesh",
+            "material": "steel",
+            "vertices": [
+              [-9.75, 1.0, 1.45],
+              [-9.75, 3.45, 1.45],
+              [-9.75, 3.64, 1.25],
+              [-9.75, 3.64, -1.25],
+              [-9.75, 3.45, -1.45],
+              [-9.75, 1.0, -1.45],
+              [9.75, 1.0, 1.45],
+              [9.75, 3.45, 1.45],
+              [9.75, 3.64, 1.25],
+              [9.75, 3.64, -1.25],
+              [9.75, 3.45, -1.45],
+              [9.75, 1.0, -1.45]
+            ],
+            "faces": [
+              [6, 7, 1, 0],
+              [7, 8, 2, 1],
+              [8, 9, 3, 2],
+              [9, 10, 4, 3],
+              [10, 11, 5, 4],
+              [11, 6, 0, 5],
+              [0, 1, 2, 3, 4, 5],
+              [11, 10, 9, 8, 7, 6]
+            ],
+            "face_materials": ["side_r", "roof", "roof", "roof", "side_l", "dark", "end", "cab"]
+          },
+          {
+            "id": "bogies",
+            "op": "group",
+            "children": [
+              {
+                "id": "bogie",
+                "op": "box",
+                "size": [2.6, 0.85, 2.0],
+                "material": "dark",
+                "transform": {
+                  "translate": [6.9, 0.525, 0.0]
+                },
+                "open": ["top"],
+                "faces": {
+                  "back": "bogie",
+                  "front": "bogie"
+                }
+              }
+            ],
+            "modifiers": [
+              {
+                "op": "mirror",
+                "axis": "x"
+              }
+            ]
+          },
+          {
+            "id": "equipment_a",
+            "op": "box",
+            "size": [4.4, 0.57, 2.2],
+            "material": "dark",
+            "transform": {
+              "translate": [-2.6, 0.735, 0.0]
+            },
+            "open": ["top"],
+            "faces": {
+              "back": "under_side",
+              "front": "under_side"
+            }
+          },
+          {
+            "id": "gangway",
+            "op": "box",
+            "size": [0.25, 2.1, 1.1],
+            "material": "rubber",
+            "transform": {
+              "translate": [-9.87, 2.15, 0.0]
+            },
+            "open": ["right"]
+          },
+          {
+            "id": "aircon",
+            "op": "box",
+            "size": [2.4, 0.38, 1.9],
+            "material": "steel",
+            "transform": {
+              "translate": [-0.6, 3.81, 0.0]
+            },
+            "open": ["bottom"],
+            "faces": {
+              "top": "ac"
+            }
+          },
+          {
+            "id": "pantograph",
+            "op": "box",
+            "size": [1.6, 0.3, 1.5],
+            "material": "dark",
+            "transform": {
+              "translate": [4.6, 3.77, 0.0]
+            },
+            "open": ["bottom"]
+          }
+        ]
+      },
+      {
+        "distance": 100,
+        "nodes": [
+          {
+            "id": "body",
+            "op": "mesh",
+            "material": "steel",
+            "vertices": [
+              [-9.75, 1.0, 1.45],
+              [-9.75, 3.45, 1.45],
+              [-9.75, 3.64, 1.25],
+              [-9.75, 3.64, -1.25],
+              [-9.75, 3.45, -1.45],
+              [-9.75, 1.0, -1.45],
+              [9.75, 1.0, 1.45],
+              [9.75, 3.45, 1.45],
+              [9.75, 3.64, 1.25],
+              [9.75, 3.64, -1.25],
+              [9.75, 3.45, -1.45],
+              [9.75, 1.0, -1.45]
+            ],
+            "faces": [
+              [6, 7, 1, 0],
+              [7, 8, 2, 1],
+              [8, 9, 3, 2],
+              [9, 10, 4, 3],
+              [10, 11, 5, 4],
+              [11, 6, 0, 5],
+              [0, 1, 2, 3, 4, 5],
+              [11, 10, 9, 8, 7, 6]
+            ],
+            "face_materials": ["side_r", "roof", "roof", "roof", "side_l", "dark", "end", "cab"]
+          }
+        ]
+      }
+    ],
+    "band": 2
+  }
+}

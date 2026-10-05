@@ -1,0 +1,258 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "station_concourse_col",
+  "materials": {
+    "solid": {
+      "color": "#ffffff",
+      "palette": true
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "verification": {
+    "required": true,
+    "depth": true,
+    "perspective": true
+  },
+  "nodes": [
+    {
+      "id": "facade",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 0.3,
+      "points": [
+        [-24.0, 0.0], [-4.0, 0.0], [-4.0, 3.0], [4.0, 3.0], [4.0, 0.0], [24.0, 0.0], [24.0, 8.6],
+        [-24.0, 8.6]
+      ],
+      "transform": {
+        "translate": [0, 0, -6.85]
+      }
+    },
+    {
+      "id": "shell",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 8.6,
+      "points": [
+        [-23.95, 6.72], [-23.7, 6.72], [-23.7, -6.2], [23.7, -6.2], [23.7, 6.72], [23.95, 6.72],
+        [23.95, -6.5], [-23.95, -6.5]
+      ],
+      "transform": {
+        "rotate": [-90, 0, 0],
+        "translate": [0, 4.2, 0]
+      }
+    },
+    {
+      "id": "room",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 3.6,
+      "points": [
+        [-10.2, 6.72], [-10.0, 6.72], [-10.0, -3.0], [10.0, -3.0], [10.0, 6.72], [10.2, 6.72],
+        [10.2, -3.2], [-10.2, -3.2]
+      ],
+      "transform": {
+        "rotate": [-90, 0, 0],
+        "translate": [0, 1.7, 0]
+      }
+    },
+    {
+      "id": "room_ceiling",
+      "op": "box",
+      "size": [20.2, 0.2, 9.86],
+      "material": "solid",
+      "transform": {
+        "translate": [0.0, 3.5, -1.83]
+      }
+    },
+    {
+      "id": "room_floor",
+      "op": "box",
+      "size": [20.2, 0.2, 9.86],
+      "material": "solid",
+      "transform": {
+        "translate": [0.0, -0.04, -1.83]
+      }
+    },
+    {
+      "id": "machines",
+      "op": "box",
+      "size": [0.62, 1.7, 2.4],
+      "material": "solid",
+      "transform": {
+        "translate": [-9.71, 0.91, -1.0]
+      },
+      "open": ["bottom"]
+    },
+    {
+      "id": "column_clad",
+      "op": "box",
+      "size": [1.4, 3.34, 1.5],
+      "material": "solid",
+      "transform": {
+        "translate": [0.0, 1.73, -4.1]
+      },
+      "open": ["bottom", "top"]
+    },
+    {
+      "id": "eave",
+      "op": "box",
+      "size": [12.0, 0.2, 2.07],
+      "material": "solid",
+      "transform": {
+        "translate": [0.0, 3.55, -8.015]
+      }
+    },
+    {
+      "id": "lockers",
+      "op": "box",
+      "size": [2.4, 1.8, 0.5],
+      "material": "solid",
+      "transform": {
+        "translate": [-7.0, 0.9, -7.23]
+      },
+      "open": ["bottom"]
+    },
+    {
+      "id": "flight_w",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 2.92,
+      "points": [[7.6, 9.0], [8.6, 9.0], [26.6, 0.0], [25.7, 0.0], [8.6, 8.55], [7.6, 8.55]],
+      "transform": {
+        "rotate": [0, 90, 0],
+        "translate": [-10.0, 0, 0]
+      }
+    },
+    {
+      "id": "wall_w_w",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 0.15,
+      "points": [[7.6, 10.1], [8.6, 10.1], [26.6, 1.1], [26.6, 0.0], [25.5, 0.0], [8.6, 8.45], [7.6, 8.45]],
+      "transform": {
+        "rotate": [0, 90, 0],
+        "translate": [-11.555, 0, 0]
+      }
+    },
+    {
+      "id": "wall_w_e",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 0.15,
+      "points": [[7.6, 10.1], [8.6, 10.1], [26.6, 1.1], [26.6, 0.0], [25.5, 0.0], [8.6, 8.45], [7.6, 8.45]],
+      "transform": {
+        "rotate": [0, 90, 0],
+        "translate": [-8.445, 0, 0]
+      }
+    },
+    {
+      "id": "roof_w",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 3.6,
+      "points": [[7.75, 12.025], [26.6, 2.6], [26.6, 2.4], [7.75, 11.825]],
+      "transform": {
+        "rotate": [0, 90, 0],
+        "translate": [-10.0, 0, 0]
+      }
+    },
+    {
+      "id": "column_w",
+      "op": "box",
+      "size": [0.5, 4.1, 0.5],
+      "material": "solid",
+      "transform": {
+        "translate": [-10.0, 2.05, -17.6]
+      },
+      "open": ["bottom", "top"]
+    },
+    {
+      "id": "flight_e",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 2.92,
+      "points": [[7.6, 9.0], [8.6, 9.0], [26.6, 0.0], [25.7, 0.0], [8.6, 8.55], [7.6, 8.55]],
+      "transform": {
+        "rotate": [0, 90, 0],
+        "translate": [10.0, 0, 0]
+      }
+    },
+    {
+      "id": "wall_e_w",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 0.15,
+      "points": [[7.6, 10.1], [8.6, 10.1], [26.6, 1.1], [26.6, 0.0], [25.5, 0.0], [8.6, 8.45], [7.6, 8.45]],
+      "transform": {
+        "rotate": [0, 90, 0],
+        "translate": [8.445, 0, 0]
+      }
+    },
+    {
+      "id": "wall_e_e",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 0.15,
+      "points": [[7.6, 10.1], [8.6, 10.1], [26.6, 1.1], [26.6, 0.0], [25.5, 0.0], [8.6, 8.45], [7.6, 8.45]],
+      "transform": {
+        "rotate": [0, 90, 0],
+        "translate": [11.555, 0, 0]
+      }
+    },
+    {
+      "id": "roof_e",
+      "op": "extrude",
+      "material": "solid",
+      "depth": 3.6,
+      "points": [[7.75, 12.025], [26.6, 2.6], [26.6, 2.4], [7.75, 11.825]],
+      "transform": {
+        "rotate": [0, 90, 0],
+        "translate": [10.0, 0, 0]
+      }
+    },
+    {
+      "id": "column_e",
+      "op": "box",
+      "size": [0.5, 4.1, 0.5],
+      "material": "solid",
+      "transform": {
+        "translate": [10.0, 2.05, -17.6]
+      },
+      "open": ["bottom", "top"]
+    },
+    {
+      "id": "parapet_0",
+      "op": "box",
+      "size": [12.37, 1.2, 0.25],
+      "material": "solid",
+      "transform": {
+        "translate": [-17.815, 9.6, -7.475]
+      },
+      "open": ["bottom"]
+    },
+    {
+      "id": "parapet_1",
+      "op": "box",
+      "size": [16.74, 1.2, 0.25],
+      "material": "solid",
+      "transform": {
+        "translate": [0.0, 9.6, -7.475]
+      },
+      "open": ["bottom"]
+    },
+    {
+      "id": "parapet_2",
+      "op": "box",
+      "size": [12.37, 1.2, 0.25],
+      "material": "solid",
+      "transform": {
+        "translate": [17.815, 9.6, -7.475]
+      },
+      "open": ["bottom"]
+    }
+  ]
+}

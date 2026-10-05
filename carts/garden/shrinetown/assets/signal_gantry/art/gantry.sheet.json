@@ -1,0 +1,8 @@
+{"format": "mei-sheet", "version": 1,
+ "cells": {
+  "truss": [0, 0, 64, 8],
+  "grating": [0, 8, 64, 8],
+  "rail": [0, 16, 32, 8],
+  "ladder": [64, 0, 8, 32],
+  "signal": [72, 0, 8, 20]
+ }}
