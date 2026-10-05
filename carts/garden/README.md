@@ -54,7 +54,9 @@ shell lists it as Movement Garden. Its `tests/check.sh` runs in `make test-carts
 - **Units:** 1 unit = 1 metre; y is up. The block is 128 × 128 m: **four 64 m cells** (2 × 2), so
   the crossroads lies on the corner where all four meet, which tests seams and cell selection.
 - **One region**, `garden`, with palette variants `day` and `night`. A second region is a later
-  stage, not the garden.
+  stage, not the garden. The shrine town has two (`town`, `shrine`): the cart enters the region of
+  the cell the player stands in when it changes (`game.akr`, `follow_region()`;
+  [shrinetown/TEXTURES.md](shrinetown/TEXTURES.md)).
 - **Layers:** `festival` (the stalls and their goals), on at night only; the game switches it.
 - **Ground** is explicit Asset Kit meshes per cell until World Kit terrain exists.
 - **The grey box comes first:** the world lead builds the whole block from primitives with final

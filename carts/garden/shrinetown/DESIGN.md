@@ -193,7 +193,8 @@ more than about 64 m along a dense street except the axis, whose contents are bu
 | r1 (64–128) | sento, machiya, road W | alleys N, fire tower, woods' foot | shotengai N, arcade, torii | building, gym, pond S, culvert | school, overpass, underpass seam |
 | r0 (0–64) | machiya, canal, viaduct | danchi, pachinko, alleys S | station, plaza, shotengai S | konbini, building S, pool | sports ground, viaduct curve |
 
-One region (`shrine_town`), palette variants `day` and `night` (section 6.5).
+Two texture regions, `town` (rows 0–1) and `shrine` (rows 2–5), each with palette variants `day`
+and `night` (section 6.5): [TEXTURES.md](TEXTURES.md).
 
 ---
 
@@ -883,6 +884,10 @@ are designed to do three other things.
    level's budget does not depend on it.
 
 ### 8.5 Texture VRAM (14 slots, 448 KB)
+
+*Superseded by [TEXTURES.md](TEXTURES.md) (2026-10-05):* the real assets need 595 KB
+deduplicated before the ground, so the level is two regions, the town and the shrine, each with
+its own 14 slots, split at z = 128; the World Kit has no common set.
 
 The built shrine uses 13 slots (326 KB), 272 KB of it for 16 ground tiles. The town adds
 shopfronts, signs, concrete and rail. Plan:

@@ -1318,11 +1318,10 @@ class FarLodTests(unittest.TestCase):
                 self.assertGreaterEqual(P.mesh_info(cell.standin)[1], want)
             pack = P.decode(c.pack)
             self.assertTrue(all(pc.standin for pc in pack.cells.values()))
+            # a second region: the stand-ins, untextured, are the same
             spec['regions']['r2'] = {}
             w.world.write_text(json.dumps(spec))
-            with self.assertRaises(WorldError) as cm:
-                w.compile()
-            self.assertEqual(cm.exception.path, '/standins')
+            self.assertEqual([x.standin for x in w.compile().world.cells], [x.standin for x in c.world.cells])
 
     def test_standin_caps_and_ground(self):
         from worldkit.world import standin_triangles
@@ -1468,6 +1467,40 @@ class TextureTests(unittest.TestCase):
                         tex, pal = pack.data[at + 2], pack.data[at + 3]
                         self.assertIn(tex & 15, slots)
                         self.assertTrue(pal in pals if tex & 16 else 256 * pal == reg.runs[0].first_colour)
+
+    def test_standins_with_several_regions_draw_far_colours(self):
+        # a stand-in is drawn whichever region is loaded: its textured faces become palette-backed
+        # faces (the world's swatch) in their tiles' far colours, entries of the cell's own region
+        self.ex.edit(lambda w: w.__setitem__('standins', {'distance': 8}))
+        for name in ('market', 'harbour'):
+            self.ex.edit(lambda cell: cell.pop('standin'), f'cells/{name}.cell.json')
+        c = self.ex.compile()
+        pack = P.decode(c.pack)
+        far = {r: [e for e in c.report['regions'][r]['palette']['entries']
+                   if any(m.startswith('far.') for m in e['materials'])] for r in ('market', 'harbour')}
+        self.assertTrue(far['market'] and far['harbour'])
+        self.assertIn('far.stall.sign', [m for e in far['market'] for m in e['materials']])
+        drawn = 0
+        for cell in pack.cells.values():
+            self.assertIsNotNone(cell.standin)
+            reg = pack.regions[cell.region]
+            entry_pals = {e['colour'] // 16 for e in c.report['regions'][reg.name]['palette']['entries']}
+            colours = {e['colour'] for e in far[reg.name]}
+            mesh = pack.data[cell.standin:]
+            nv, nf, vo, fo = P.mesh_info(mesh)
+            for k in range(nf):
+                face = mesh[fo + 36 * k:fo + 36 * k + 36]
+                if not face[0] & 2:
+                    continue
+                self.assertEqual(face[2], 14 | 16)                  # the swatch, 4-bit, no window
+                self.assertIn(face[3], entry_pals)
+                self.assertEqual(face[29], 0)                       # the swatch's row
+                drawn += face[3] * 16 + face[28] in colours
+        self.assertGreater(drawn, 0)
+        sign = next(e for e in far['market'] if 'far.stall.sign' in e['materials'])
+        self.assertEqual(sign['class'], 'emissive')
+        # the placements themselves still draw their textures
+        self.assertEqual(c.report['regions']['market']['textures']['tiles'], 14)
 
     def test_night_variants_per_colour_and_by_multiply(self):
         c = self.ex.compile()

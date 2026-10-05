@@ -582,7 +582,7 @@ os.makedirs(os.path.join(TOWN, 'cells'), exist_ok=True)
 for c in range(5):
     for r in ROWS:
         cid = f'c{c}_{r}'
-        cell = {'format': 'mei-world-cell', 'version': 1, 'id': cid, 'at': [c, r], 'region': 'shrine_town',
+        cell = {'format': 'mei-world-cell', 'version': 1, 'id': cid, 'at': [c, r], 'region': L.region_of(c, r),
                 'placements': placements.get(cid, []), 'entities': entities.get(cid, [])}
         with open(os.path.join(TOWN, 'cells', cid + '.cell.json'), 'w') as fh: json.dump(cell, fh, indent=1); fh.write('\n')
 os.makedirs(os.path.join(TOWN, 'parts'), exist_ok=True)
