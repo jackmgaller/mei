@@ -1931,12 +1931,17 @@ class FailedPreviewTests(unittest.TestCase):
             width,height,pixels = png_pixels(renders/'view_front.png')
             banner = [pixels[(y*width+x)*3:(y*width+x)*3+3] for y in range(18,30) for x in range(8,160)]
             self.assertTrue(any(p[0] > 200 and p[1] < 100 and p[2] < 100 for p in banner),'the VERIFICATION FAILED banner')
-            # the CLI leads its failure output with the errors
+            # the CLI leads its failure output with the errors. (It stops this recipe before rendering, for
+            # its flush cap: FeedbackTests. Crossing parts without the depth buffer fail in the views.)
+            crossing = crossing_and_flush()
+            crossing['nodes'].pop()
+            crossing['verification'] = {'required':True,'yaw_steps':4,'pitches':[0],'distances':[1]}
             result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'preview','-','-o',tmp,
                                      '--compiler',str(COMPILER),'--runner',str(RUNNER),'--probe',str(PROBE)],
-                                    input=json.dumps(r),capture_output=True,text=True)
+                                    input=json.dumps(crossing),capture_output=True,text=True)
             self.assertEqual(result.returncode,1)
             self.assertEqual(list(json.loads(result.stdout))[:3],['ok','errors','verdict'])
+            self.assertTrue((renders/'contact.png').is_file())
 
 
 @unittest.skipUnless(COMPILER.exists() and RUNNER.exists(),'Needs meic and mei-headless.')
@@ -2248,6 +2253,211 @@ class GltfExportTests(unittest.TestCase):
             uri = text['buffers'][0].pop('uri')
             self.assertEqual(base64.b64decode(uri.split(',',1)[1]),blob)
             self.assertEqual(text,document)
+
+
+# Feedback from agents who built models with the kit: the flush check in build and preview, close
+# parallel faces, more in inspect, clearer errors, axis names for open sides
+# (docs/ASSETKIT.md, "Quick reference", "Authoring rules", "Commands")
+
+def kit(*args, stdin=None):
+    """(exit code, JSON result) of tools/mei_assets.py."""
+    result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),*map(str,args)],
+                            input=json.dumps(stdin) if stdin is not None else None,capture_output=True,text=True)
+    return result.returncode,json.loads(result.stdout)
+
+
+def stacked():
+    """A box standing flush on a larger one: a coplanar overlap, back to back."""
+    return recipe() | {'nodes':[{'id':'base','op':'box','size':[2,1,2]},
+                                {'id':'top','op':'box','size':[1,1,1],'transform':{'translate':[0,1,0]}}]}
+
+
+def sign_on_board(gap):
+    """A sign panel whose front face stands gap in front of its board's (both face -Z)."""
+    return recipe() | {'nodes':[{'id':'board','op':'box','size':[2,1,.1]},
+                                {'id':'panel','op':'box','size':[1.6,.7,.02],'transform':{'translate':[0,0,-.05-gap+.01]}}]}
+
+
+class FeedbackTests(unittest.TestCase):
+    @unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
+    def test_build_and_preview_stop_before_rendering_on_flush_contacts_when_checked(self):
+        r = stacked() | {'verification':{'required':True,'depth':True,'perspective':True}}
+        with tempfile.TemporaryDirectory() as tmp:
+            for command in ('build','preview'):
+                code,out = kit(command,'-','-o',tmp,'--compiler',COMPILER,'--runner',RUNNER,'--probe',PROBE,stdin=r)
+                self.assertEqual(code,1)
+                self.assertEqual(list(out)[:3],['ok','errors','flush_contacts'])
+                message = out['errors'][0]['message']
+                self.assertEqual(out['errors'][0]['path'],'/verification')
+                self.assertTrue(message.startswith('Stopped before rendering: '),message)
+                self.assertIn('coplanar_overlap: 4 between base and top',message)
+                # the smaller part, which way and about how far
+                self.assertIn('sink top about 0.02 along -Y into base',message)
+                self.assertIn('"open": ["bottom"]',message)
+                self.assertEqual(list(Path(tmp).iterdir()),[],'nothing written, nothing rendered')
+            # without the depth buffer sinking would make the parts cross: open the face instead
+            r['verification'] = {'required':True}
+            code,out = kit('build','-','-o',tmp,'--compiler',COMPILER,'--probe',PROBE,stdin=r)
+            self.assertIn('which fails without the depth buffer',out['errors'][0]['message'])
+
+    @unittest.skipUnless(NUMPY,'Needs NumPy.')
+    def test_build_reports_flush_contacts_when_not_checked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            code,out = kit('build','-','-o',tmp,stdin=stacked())
+            self.assertEqual(code,0,out)
+            self.assertEqual(out['flush_contacts']['count'],4)
+            self.assertEqual(json.loads((Path(tmp)/'report.json').read_text())['flush_contacts'],out['flush_contacts'])
+            r = stacked() | {'nodes':stacked()['nodes'][:1]}
+            code,out = kit('build','-','-o',tmp,stdin=r)
+            self.assertEqual(out['flush_contacts']['count'],0)
+
+    @unittest.skipUnless(NUMPY,'Needs NumPy.')
+    def test_close_parallel_faces_are_a_warning(self):
+        from assetkit.geometry_audit import close_faces, CLOSE_GAP
+        self.assertEqual(CLOSE_GAP,.03)
+        close = close_faces(compile_recipe(sign_on_board(.01))[0])
+        self.assertEqual(close['count'],4)                          # 2 x 2 triangles of the two front faces
+        self.assertEqual((close['pairs'][0]['front'],close['pairs'][0]['behind']),('panel','board'))
+        self.assertAlmostEqual(close['pairs'][0]['gap_min'],.01,places=4)
+        self.assertTrue(close['summary'][0].startswith('close_faces: 4 between panel and board: panel\'s faces 10.0 mm in front of'),
+                        close['summary'][0])
+        self.assertAlmostEqual(close['pairs'][0]['fights_from']['grazing'],2.9,places=1)
+        self.assertEqual(close_faces(compile_recipe(sign_on_board(.04))[0])['count'],0,'4 cm is clear')
+        # in one plane is a coplanar overlap, not this; back to back (a plate under a box) neither
+        flush = recipe() | {'nodes':[{'id':'board','op':'box','size':[2,1,.1]},
+                                     {'id':'panel','op':'box','size':[1,.5,.05],'transform':{'translate':[0,0,-.025]}}]}
+        self.assertEqual(close_faces(compile_recipe(flush)[0])['count'],0)
+        under = recipe() | {'nodes':[{'id':'box','op':'box','size':[1,1,1]},
+                                     {'id':'plate','op':'box','size':[1,.01,1],'open':['-y','-x','+x','-z','+z'],
+                                      'transform':{'translate':[0,-.51,0]}}]}
+        self.assertEqual(close_faces(compile_recipe(under)[0])['count'],0)
+        code,out = kit('inspect','-',stdin=sign_on_board(.01))
+        self.assertEqual((code,out['ok'],out['close_faces']['count']),(0,True,4))
+        self.assertIn('3 cm proud',out['close_faces']['hint'])
+
+    @unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
+    def test_verify_warns_of_close_parallel_faces_and_passes(self):
+        from assetkit.visibility import verify
+        report = verify(sign_on_board(.01),{'yaw_steps':4,'pitches':[0],'distances':[1],'depth':True,'perspective':True},
+                        compiler=COMPILER,probe=PROBE)
+        self.assertTrue(report['ok'],report['failures'])
+        self.assertEqual(list(report)[:5],['ok','verdict','failures','allowed','warnings'])
+        self.assertTrue(report['warnings'][0].startswith('close_faces: 4 between panel and board'))
+        self.assertEqual(report['geometry']['close_faces']['count'],4)
+
+    def test_inspect_reports_in_full_over_budget(self):
+        r = recipe({'id':'ball','op':'sphere','radius':1,'rings':8,'segments':16},budget={'triangles':100,'vertices':50})
+        with self.assertRaises(AssetError):
+            compile_recipe(r)
+        code,out = kit('inspect','-',stdin=r)
+        self.assertEqual((code,out['ok']),(0,True))
+        breaches = [w for w in out['warnings'] if w['code'] == 'over_budget']
+        self.assertEqual([(w['key'],w['count'],w['budget']) for w in breaches],[('vertices',114,50),('triangles',224,100)])
+        self.assertEqual(out['parts'][0]['triangles'],224)
+        self.assertEqual(kit('build','-','-o',tempfile.gettempdir()+'/never-written',stdin=r)[1]['errors'][0]['path'],
+                         '/budget/vertices')
+
+    def test_inspect_lists_texture_windows_and_names_them_when_over_seven(self):
+        def material(k):
+            return {'color':'#808080','texture':{'pattern':'checker','colors':['#000000',f'#{k:02x}{k:02x}{k:02x}']}}
+        r = recipe() | {'materials':{f'm{k}':material(k*16) for k in range(8)} | {'twin':material(0)},
+                        'nodes':[{'id':f'b{k}','op':'box','size':[1,1,1],'material':f'm{k}',
+                                  'transform':{'translate':[2*k,0,0]}} for k in range(7)] +
+                                [{'id':'twin','op':'box','size':[1,1,1],'material':'twin','transform':{'translate':[0,2,0]}}]}
+        code,out = kit('inspect','-',stdin=r)
+        windows = out['texture_windows']
+        self.assertEqual((windows['used'],windows['max']),(7,7))
+        self.assertEqual(windows['windows'][0],{'window':1,'texture':"pattern 'checker'",'size':[16,16],'bits':4,
+                                                'materials':['m0','twin']},'one tile, one window, both materials')
+        r['nodes'].append({'id':'b7','op':'box','size':[1,1,1],'material':'m7','transform':{'translate':[0,4,0]}})
+        code,out = kit('inspect','-',stdin=r)
+        message = out['errors'][0]['message']
+        self.assertIn('8 different repeating textures',message)
+        self.assertIn("1: pattern 'checker' 16 x 16 (m0, twin)",message)
+        self.assertIn('8: pattern \'checker\' 16 x 16 (m7)',message)
+
+    def test_inspect_warns_of_mirror_copies_and_parts_below_ground(self):
+        def warnings(r):
+            return {w['code']:w for w in kit('inspect','-',stdin=r)[1]['warnings']}
+        centred = recipe({'id':'post','op':'box','size':[.2,1,.2],'modifiers':[{'op':'mirror','axis':'x'}]})
+        w = warnings(centred)
+        self.assertEqual(w['mirror_coincides']['part'],'post')
+        self.assertEqual(w['mirror_coincides']['path'],'/nodes/0/modifiers/0')
+        self.assertIn('below_ground',w)
+        self.assertEqual(w['below_ground']['parts'],['post'])
+        across = recipe({'id':'arm','op':'box','size':[1,1,1],'transform':{'translate':[0,.5,0]},
+                         'modifiers':[{'op':'mirror','axis':'x','offset':.2}]})
+        w = warnings(across)
+        self.assertIn('mirror_overlaps',w)
+        self.assertNotIn('below_ground',w,'the transform lifts it after the modifier')
+        touching = recipe({'id':'wing','op':'group','children':[
+            {'id':'half','op':'box','size':[1,.2,1],'transform':{'translate':[.5,1,0]}}],
+            'modifiers':[{'op':'mirror','axis':'x'}]})
+        w = warnings(touching)
+        self.assertEqual(w['mirror_touches']['count'],2)
+        self.assertEqual(w['mirror_touches']['part'],'wing')
+        touching['nodes'][0]['children'][0]['open'] = ['-x']
+        self.assertEqual(set(warnings(touching)),set(),'the two open halves close each other')
+        # these are inspect's: build's report and --strict are as before
+        _,_,report = compile_recipe(centred)
+        self.assertNotIn('mirror_coincides',{w['code'] for w in report['warnings']})
+
+    def test_texture_splits_no_longer_collapse_and_the_error_says_why(self):
+        from assetkit import textures
+        wall = recipe({'id':'wall','op':'mesh','material':'brick','faces':[[3,2,1,0]],
+                       'vertices':[[-3.3,0,0],[-2.1,0,0],[-2.1,2,0],[-3.3,2,0]]},
+                      materials={'brick':{'color':'#884422','texture':{'pattern':'brick','colors':['#884422','#dddddd'],
+                                                                      'projection':'planar','scale':[.1,.1]}}})
+        mesh,_,report = compile_recipe(wall)            # a corner 2e-13 texels off a cut line made a sliver
+        self.assertGreater(report['textures']['split_faces'],0)
+        saved = textures.ON_LINE
+        textures.ON_LINE = -1                           # as before: cut there
+        try:
+            with self.assertRaises(AssetError) as caught:
+                compile_recipe(wall)
+        finally:
+            textures.ON_LINE = saved
+        self.assertEqual(caught.exception.path,'/materials/brick/texture/scale')
+        for text in ("material 'brick'","pattern 'brick'",'16 x 16 texels','scale [0.1, 0.1]','power-of-two'):
+            self.assertIn(text,str(caught.exception))
+
+    def test_planarity_error_states_deviation_and_tolerance(self):
+        bent = recipe({'id':'leaf','op':'mesh','vertices':[[0,0,0],[1,0,0],[1,1,.1],[0,1,0]],'faces':[[0,1,2,3]]})
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(bent)
+        message = str(caught.exception)
+        self.assertIn('0.0499 units off the plane',message)
+        self.assertIn('the tolerance is 1.42e-06 units',message)
+
+    def test_errors_name_the_nodes_on_their_path(self):
+        from mei_assets import node_of
+        r = recipe() | {'nodes':[{'id':'body','op':'box','size':[1,1,1]},
+                                 {'op':'group','children':[{'id':'arm','op':'box','size':[1,1,0]}]}],
+                        'prototypes':{'wheel':{'id':'rim','op':'box','size':[1,1,1]}},
+                        'lod':{'levels':[{'distance':10,'nodes':[{'id':'lump','op':'box','size':[1,1,1]}]}]}}
+        self.assertEqual(node_of(r,'/nodes/1/children/0/size/2'),'group_1/arm')
+        self.assertEqual(node_of(r,'/prototypes/wheel/size'),'prototype wheel: rim')
+        self.assertEqual(node_of(r,'/lod/levels/0/nodes/0/size'),'lod level 1: lump')
+        self.assertIsNone(node_of(r,'/budget/triangles'))
+        code,out = kit('validate','-',stdin=r)
+        self.assertEqual(out['errors'][0]['path'],'/nodes/1/children/0/size/2')
+        self.assertEqual(out['errors'][0]['node'],'group_1/arm')
+
+    def test_open_sides_by_axis(self):
+        names = ['back','top','left']
+        for axes in (['-z','+y','-x'],['back','+y','-x']):
+            a = native_bytes(*compile_recipe(recipe({'id':'b','op':'box','size':[1,2,3],'open':names}))[:2],{})
+            b = native_bytes(*compile_recipe(recipe({'id':'b','op':'box','size':[1,2,3],'open':axes}))[:2],{})
+            self.assertEqual(a,b)
+        for side,axis in (('front','+z'),('right','+x'),('bottom','-y')):
+            a = native_bytes(*compile_recipe(recipe({'id':'b','op':'box','size':[1,2,3],'open':[side]}))[:2],{})
+            b = native_bytes(*compile_recipe(recipe({'id':'b','op':'box','size':[1,2,3],'open':[axis]}))[:2],{})
+            self.assertEqual(a,b)
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(recipe({'id':'b','op':'box','size':[1,1,1],'open':['back','-z']}))
+        self.assertIn('Name each side once',str(caught.exception))
+        with self.assertRaises(AssetError):
+            compile_recipe(recipe({'id':'b','op':'box','size':[1,1,1],'open':['z']}))
 
 
 if __name__ == '__main__':

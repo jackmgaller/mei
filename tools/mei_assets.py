@@ -123,9 +123,66 @@ def require_tools(tools, keys):
                      'or --compiler, --runner and --probe.')
 
 
-def flush_contacts(mesh):
-    """inspect's check for flush faces before rendering: duplicate faces and coplanar overlaps,
-    which the Asset Checker fails in either mode, by part pair. Needs NumPy; without it, says so."""
+SINK = 0.02          # how far flush_contacts suggests sinking a part into its neighbour (units)
+BOX_SIDE_OF = {(0,1):'right',(0,-1):'left',(1,1):'top',(1,-1):'bottom',(2,1):'front',(2,-1):'back'}
+
+
+def direction(n):
+    """'-Y' for an axis-aligned unit normal, else the vector rounded."""
+    k = max(range(3),key=lambda i: abs(n[i]))
+    if abs(abs(n[k])-1) < 1e-6: return ('+' if n[k] > 0 else '-')+'XYZ'[k]
+    return '['+', '.join(f'{x:.2f}' for x in n)+']'
+
+
+def contact_fixes(mesh, findings, depth=True):
+    """One line per part pair of flush findings: which part to move, where and by about how much.
+    The smaller part (by surface area) is the one to move."""
+    from assetkit.geometry import cross, sub, dot, norm
+    area = {}
+    for f in mesh.faces:
+        a,b,c = (mesh.vertices[i] for i in f.indices)
+        n = cross(sub(b,a),sub(c,a))
+        area[f.part] = area.get(f.part,0)+dot(n,n)**.5/2
+    first, count = {}, {}
+    for f in findings:
+        pair = tuple(sorted((f['a']['part'],f['b']['part'])))
+        first.setdefault(pair,f)
+        count[pair] = count.get(pair,0)+1
+    lines = []
+    # in the order of the audit's summary: the largest first
+    for (p,q),f in sorted(first.items(),key=lambda kv:(-count[kv[0]],kv[0])):
+        if f['code'] == 'duplicate_face':
+            lines.append(f'{p} and {q}: remove one of the coincident faces (faces {f["a"]["face"]}/{f["b"]["face"]}); '
+                         'a mirror or array copy laid over the original makes them')
+            continue
+        if p == q:
+            lines.append(f'within {p}: two of its faces lie flush in one plane (faces {f["a"]["face"]}/{f["b"]["face"]}); '
+                         'remove the covered one or split the part (a mirror copy over the original?)')
+            continue
+        faces = {f['a']['part']:f['a']['face'],f['b']['part']:f['b']['face']}
+        small,big = (p,q) if area.get(p,0) <= area.get(q,0) else (q,p)
+        normal = lambda part: norm(cross(*(sub(mesh.vertices[mesh.faces[faces[part]].indices[k]],
+                                                mesh.vertices[mesh.faces[faces[part]].indices[0]]) for k in (1,2))))
+        ns = normal(small)
+        toward = direction(ns)
+        k = max(range(3),key=lambda i: abs(ns[i]))
+        side = BOX_SIDE_OF.get((k,1 if ns[k] > 0 else -1)) if len(toward) == 2 else None
+        opened = f'open {small}\'s face toward {toward}' + (f' (an unrotated box: "open": ["{side}"])' if side else '')
+        if dot(ns,normal(big)) < 0:
+            # back to back: one part stands on or against the other
+            sink = f'sink {small} about {SINK} along {toward} into {big}, or {opened}'
+            lines.append(sink if depth else f'{opened}; sinking {small} into {big} would make them cross, '
+                         'which fails without the depth buffer')
+        else:
+            lines.append(f'move {small} about 0.03 along {toward} so its face stands proud of {big}\'s '
+                         '(closer than 3 cm z-fights from a distance), or remove the covered face')
+    return lines
+
+
+def flush_contacts(mesh, depth=True):
+    """The check for flush faces before rendering (inspect, and build and preview): duplicate
+    faces and coplanar overlaps, which the Asset Checker fails in either mode, by part pair,
+    with a fix per pair. Needs NumPy; without it, says so."""
     from assetkit.geometry_audit import geometry_audit
     try:
         audit = geometry_audit(mesh,crossings=False)
@@ -135,7 +192,28 @@ def flush_contacts(mesh):
     if audit['findings']:
         result['hint'] = ('Faces of two parts lie flush in one plane: the Asset Checker fails these in either mode. '
                           'Sink one part 1-2 cm into its neighbour, or open the hidden face (a box\'s open sides).')
+        result['fixes'] = contact_fixes(mesh,audit['findings'],depth)
     return result
+
+
+class FlushContacts(AssetError):
+    """build and preview stop before rendering when the recipe requires the Asset Checker and the
+    mesh has flush contacts, which it would fail."""
+    def __init__(self, flush):
+        listed = '; '.join(flush['summary'][:6])+(f'; and {len(flush["summary"])-6} more' if len(flush['summary']) > 6 else '')
+        fixes = '; '.join(flush['fixes'][:6])
+        super().__init__('/verification',f'Stopped before rendering: {flush["count"]} flush contacts, which the Asset Checker '
+                         f'fails in either mode: {listed}. Fix: {fixes}. Nothing was written; run inspect to see them all.')
+        self.report = {'flush_contacts':flush}
+
+
+def close_contacts(mesh):
+    """inspect's and verify's warning of faces facing the same way closer than 3 cm (geometry_audit.close_faces)."""
+    from assetkit.geometry_audit import close_faces
+    try:
+        return {'checked':True,**close_faces(mesh)}
+    except AssetError as error:
+        return {'checked':False,'message':str(error)}
 
 
 def camera_views(shots, report):
@@ -179,8 +257,11 @@ def folder(input_path):
 
 
 def build(recipe, directory, preview=False, compiler=None, runner=None, input_path=None, verification=False, probe=None,
-          drawn=None, shots=None):
-    """drawn: {'depth': True, 'perspective': True} or part of it (build/preview --depth and
+          drawn=None, shots=None, flush_check=False):
+    """flush_check (the CLI's build and preview): check for flush contacts first (flush_contacts),
+    put them in the report, and stop before rendering or writing anything when the Asset Checker
+    is to run and would fail them.
+    drawn: {'depth': True, 'perspective': True} or part of it (build/preview --depth and
     --perspective): the asset is drawn so, as in a world whose runtime says so. Its preview draws
     so, and the Asset Checker judges it so (where the recipe's policy does not set them).
     shots: the preview's world-scale views, {'cameras': [camera()...], 'parts': [ids],
@@ -188,6 +269,22 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
     previews are still rendered, marked as failing, into verification-failed/preview/."""
     mesh,materials,report = compile_recipe(recipe,folder(input_path))
     views = camera_views(shots,report) if preview else []     # named parts checked before any work
+    if flush_check:
+        policy = recipe.get('verification')
+        checking = verification or (policy is not None and policy.get('required',True))
+        depth = (policy or {}).get('depth',bool((drawn or {}).get('depth')))
+        flush = flush_contacts(mesh,depth)
+        for k,(level,_) in enumerate((mesh.levels or []) if flush['checked'] else [],1):
+            more = flush_contacts(level,depth)
+            if more.get('count'):
+                flush['count'] += more['count']
+                for code,n in more['by_code'].items(): flush['by_code'][code] = flush['by_code'].get(code,0)+n
+                flush['summary'] += [f'lod {k} {line}' for line in more['summary']]
+                flush['fixes'] = flush.get('fixes',[])+[f'lod {k} {line}' for line in more['fixes']]
+                flush.setdefault('hint',more['hint'])
+        if checking and (policy or {}).get('geometry','error') != 'warn' and flush.get('count'):
+            raise FlushContacts(flush)
+        report['flush_contacts'] = flush
     files = artifacts(recipe,mesh,materials,report,drawn)
     directory = Path(directory).resolve()
     if input_path and input_path != '-':
@@ -361,7 +458,60 @@ def parser():
     return p
 
 
+def node_of(recipe, path):
+    """The ids of the nodes a JSON Pointer path runs through, as inspect's parts name them (a node
+    without an id is OP_INDEX): '/nodes/2/children/0/size' -> 'body/arm'. Prototypes and levels of
+    detail say so: 'prototype wheel: rim', 'lod level 1: body'. None outside the nodes."""
+    if not isinstance(recipe, dict) or not isinstance(path, str) or not path.startswith('/'): return None
+    tokens, value, names, context = path[1:].split('/'), recipe, [], ''
+    for k,token in enumerate(tokens):
+        if isinstance(value, list):
+            if not token.isdigit() or int(token) >= len(value): break
+            value = value[int(token)]
+            if k and tokens[k-1] in ('nodes','children') and isinstance(value, dict) and 'op' in value:
+                names.append(value.get('id', f'{value["op"]}_{token}'))
+        elif isinstance(value, dict):
+            if token not in value: break
+            value = value[token]
+            if k and tokens[k-1] == 'prototypes' and isinstance(value, dict) and 'op' in value:
+                context = f'prototype {token}: '
+                if 'id' in value: names.append(value['id'])
+            if k > 1 and tokens[k-2] == 'levels' and token == 'nodes':
+                context = f'lod level {int(tokens[k-1])+1}: '
+        else:
+            break
+    return context+'/'.join(names) if names else None
+
+
+def inspect_extras(recipe, mesh, report):
+    """What inspect adds to the compile report: flush contacts (with a fix per part pair), close
+    parallel faces, the repeating texture windows in use, and warnings for mirror copies over
+    their originals and for parts below y = 0."""
+    policy = recipe.get('verification')
+    depth = policy.get('depth',False) if policy is not None else True
+    report['flush_contacts'] = flush_contacts(mesh,depth)
+    report['close_faces'] = close_contacts(mesh)
+    if mesh.textures:
+        from assetkit.compiler import window_order
+        from assetkit.textures import describe, MAX_WINDOWS
+        packing, textures = mesh.textures['packing'], mesh.textures['textures']
+        windows = []
+        for k,key in enumerate(window_order(mesh,packing),1):
+            users = [t for t in textures.values() if t.tile.key == key]
+            windows.append({'window':k,'texture':describe(users[0]),'size':[users[0].width,users[0].height],
+                            'bits':users[0].bits,'materials':sorted(t.material for t in users)})
+        report['texture_windows'] = {'used':len(windows),'max':MAX_WINDOWS,'windows':windows}
+    report['warnings'] += mesh.notes or []
+    below = [(part['bounds']['min'][1],part['id']) for part in report['parts'] if part['bounds']['min'][1] < 0]
+    if below:
+        report['warnings'].append({'code':'below_ground','parts':[name for _,name in sorted(below)],'min_y':min(below)[0],
+                                   'message':f'{len(below)} part{"s reach" if len(below) > 1 else " reaches"} below y = 0, the ground '
+                                             f'the asset stands on (lowest {min(below)[1]}, at y = {min(below)[0]:.4g}): '
+                                             'intentional if sunk into the ground or hanging from a mount; otherwise raise them.'})
+
+
 def main(argv=None):
+    recipe = None
     try:
         args = parser().parse_args(argv)
         if args.command == 'schema':
@@ -390,12 +540,13 @@ def main(argv=None):
                     'warnings':['Geometry only: OBJ materials, UVs and supplied normals are not imported. Assign recipe materials before building.']})
         else:
             recipe = load(args.recipe)
-            mesh,_,report = compile_recipe(recipe,folder(args.recipe))
+            # inspect reports a recipe over its budgets in full, the breach a warning
+            mesh,_,report = compile_recipe(recipe,folder(args.recipe),'warn' if args.command == 'inspect' else 'error')
             if args.strict and report['warnings']:
                 output(dict(report,ok=False,errors=[{'path':'/nodes','message':'Topology warnings rejected by --strict.'}]))
                 return 1
             if args.command == 'inspect':
-                report['flush_contacts'] = flush_contacts(mesh)
+                inspect_extras(recipe,mesh,report)
             tools = tool_paths(args)
             if args.command in ('build','preview'):
                 drawn = {k:True for k in ('depth','perspective') if getattr(args,k)}
@@ -408,7 +559,7 @@ def main(argv=None):
                 if args.cameras:
                     shots['cameras'] = cameras_file(load(str(args.cameras)))+shots['cameras']
                 report = build(recipe,args.output,preview,tools['compiler'][0],tools['runner'][0],args.recipe,args.verify,
-                               tools['probe'][0],drawn,shots)
+                               tools['probe'][0],drawn,shots,flush_check=True)
             elif args.command=='verify':
                 require_tools(tools,['compiler','probe'])
                 from assetkit.visibility import verify
@@ -432,7 +583,9 @@ def main(argv=None):
         return 0
     except (AssetError,OSError,ValueError,RecursionError) as error:
         # the errors first, so that the reason leads a long failure report
-        output({'ok':False,'errors':[{'path':getattr(error,'path','/input'),'message':str(error)}],
+        path = getattr(error,'path','/input')
+        node = node_of(recipe,path)
+        output({'ok':False,'errors':[{'path':path,**({'node':node} if node else {}),'message':str(error)}],
                 **{k:v for k,v in getattr(error,'report',{}).items() if k not in ('ok','errors')}})
         return 1
 

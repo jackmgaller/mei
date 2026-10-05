@@ -373,6 +373,19 @@ class Texture:
         return out
 
 
+def describe(tex):
+    """A texture's source in a few words, for messages: pattern 'brick', image art/x.png, ..."""
+    src = tex.source
+    if 'pattern' in src:
+        return f"pattern {src['pattern']!r}"
+    if 'texels' in src:
+        return f"a {src['texels']} texel grid"
+    if 'sheet' in src:
+        cell = src.get('cell', src.get('frames'))
+        return f"sheet {src['sheet']!r} cell {cell}"
+    return f"image {src['image']}"
+
+
 def load(recipe, materials, base, used):
     """Each textured material the mesh uses -> its Texture."""
     sources = Sources(recipe, base)
@@ -658,7 +671,10 @@ def split(mesh, textures):
 def cut(poly, axis, c, mesh, made, on_edge):
     """A convex polygon of (vertex, uv) split by the line uv[axis] = c into two polygons (a
     corner on the line belongs to both), or itself when the line does not cross it."""
-    vals = [uv[axis]-c for _, uv in poly]
+    # A corner a hair off the line (float error of a scale that is not a power of two: a corner at
+    # 240.00000000000017 texels) is on it: cutting there would make a sliver that collapses at
+    # 16.16 precision. ON_LINE is far below a 16.16 step for any tile and scale.
+    vals = [0.0 if abs(uv[axis]-c) <= ON_LINE else uv[axis]-c for _, uv in poly]
     if all(v >= 0 for v in vals) or all(v <= 0 for v in vals):
         return [poly]
     below, above, n = [], [], len(poly)
@@ -685,6 +701,9 @@ def cut(poly, axis, c, mesh, made, on_edge):
             below.append(entry)
             above.append(entry)
     return [below, above]
+
+
+ON_LINE = 1e-6     # texels
 
 
 def insert(face, on_edge):
@@ -748,8 +767,14 @@ def finish(mesh, textures, recipe, layout):
         if t.tile.key not in keys:
             keys.append(t.tile.key)
     if len(keys) > MAX_WINDOWS:
+        users = {}
+        for t in windowed:
+            users.setdefault(t.tile.key, []).append(t)
+        listed = '; '.join(f'{k+1}: {describe(ts[0])} {ts[0].width} x {ts[0].height} ({", ".join(t.material for t in ts)})'
+                           for k, ts in enumerate(users[key] for key in keys))
         raise AssetError('/materials', f'{len(keys)} different repeating textures; a mesh has at most {MAX_WINDOWS} texture '
-                                       'windows. Merge textures, or draw some with fit.')
+                                       f'windows. Windows and the materials using them: {listed}. Merge textures (materials '
+                                       'with the same texture share a window), or draw some with fit.')
     info = {'textures': used, 'tiles': [t.tile for t in used.values()]}
     info['packing'] = default_packing(info, mesh, layout)
     return info

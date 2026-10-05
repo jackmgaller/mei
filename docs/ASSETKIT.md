@@ -15,6 +15,32 @@ Checker**. The kit's code is `tools/assetkit/`; what it shares with the World Ki
 input, schema validation, vectors, the compiler and runner wrappers, images and staged outputs)
 is in `tools/kitcore/`.
 
+## Quick reference
+
+The loop, with a private build directory (`make B=build-mine build-mine/meic
+build-mine/mei-headless build-mine/mei-asset-probe` once):
+
+1. **Edit** the recipe (`init FILE --example robot` for a start; `schema` for every field).
+2. **`inspect FILE`.** Fix *everything* it reports before rendering: `flush_contacts` (with a
+   fix per part pair in `fixes`), `close_faces`, the `warnings` (budgets, mirror copies over
+   their originals, parts below y = 0, open surfaces) and `texture_windows` (at most 7).
+3. **`preview FILE -o DIR --build-dir build-mine --closeups`** (and `--camera`, `--part` for the
+   views a player has). Look at `contact.png` and `cameras.png`; the frame costs are in
+   `report.json` at `preview.cameras.views[i].cost` ([Camera views](#camera-views-at-world-scale)).
+   With a required policy, `build` and `preview` stop before rendering on flush contacts.
+4. **`verify FILE --build-dir build-mine`** until `ok`; then the asset is done. Make the policy
+   required in the recipe (`"verification": {"required": true, "depth": true, "perspective":
+   true}` for a depth-mode game) so every later build checks it.
+
+| Look up | Where |
+|---|---|
+| Facing (−Z is the front), box sides, rotation, winding, u/v | [the conventions table](#authoring-rules-depth-mode) |
+| What each primitive costs | [Triangle costs](#triangle-costs) |
+| Limits that are not budgets (2,048 vertices, 128 root nodes, 7 windows) | [Hidden limits](#hidden-limits) |
+| A sign, a decal, stairs, a dial | [Cookbook](#cookbook) |
+| Texture scale, text on textures | [Texture tips](#texture-tips) |
+| What a failure means and how to repair it | [Reports and repairs](#reports-and-repairs) |
+
 ## Agent workflow
 
 ```sh
@@ -66,7 +92,10 @@ For an agent building a game:
 
 The CLI prints JSON on stdout for both successes and failures and exits 0 on success or 1 on
 failure. `--help` prints human-readable help. Recipe errors contain a JSON Pointer `path`
-and an actionable `message`. Commands accepting a recipe also accept `-` to read stdin. A
+and an actionable `message`, and, when the path runs through nodes, `node`: their ids as
+`inspect`'s parts name them (`"path": "/nodes/1/children/0/size/2"`, `"node": "group_1/arm"`; a
+node without an id is `OP_INDEX`; `prototype wheel: rim`, `lod level 1: lump`). Commands
+accepting a recipe also accept `-` to read stdin. A
 failure's output begins with `ok` and `errors`; a verification report begins with `ok`,
 `verdict`, `failures` and `allowed` ([Reports and repairs](#reports-and-repairs)).
 
@@ -83,7 +112,13 @@ Most assets are drawn with the depth buffer (`"verification": {"required": true,
   `"open": ["bottom"]` where it stands on something). A part floating 1 mm off a surface is not
   flush and passes the check, but ties in the depth buffer from far enough away; sinking it is
   safer. `inspect` lists flush contacts by part pair before anything is rendered
-  (`flush_contacts`, with NumPy); `verify` lists them first in its `failures`.
+  (`flush_contacts`, with NumPy), `build` and `preview` check for them too (and stop when the
+  Asset Checker is to run), and `verify` lists them first in its `failures`.
+- **Keep faces that face the same way at least 3 cm apart** where one covers the other: a sign
+  panel standing 1 cm proud of its board, a post 1 cm in front of the face it runs up. The
+  depth buffer allows them, so no check fails them, but they tie in the depth key from a
+  distance and the farther face shows through: a sign 1 cm in front of its board lost half its
+  triangles from 7 m. `inspect` and `verify` warn of them (`close_faces`, below).
 - Without the depth buffer, crossing parts fail too; see [the gate](#automated-visibility-gate)
   and [Reports and repairs](#reports-and-repairs).
 
@@ -92,7 +127,7 @@ Conventions, each checked on native renders (`tests/test_assetkit.py`, `Conventi
 | What | Convention |
 |---|---|
 | Facing | Y is up. Models face **−Z**: the preview's `front` view, a camera on −Z looking toward +Z, sees that side. On screen the front view has +X to the right and +Y up; the `right` view (a camera on +X) has +Z to the right; the `top` view has +X to the right and +Z up |
-| Box `open` sides | By axis: `left` −X, `right` +X, `bottom` −Y, `top` +Y, **`back` −Z, `front` +Z**. So a box's `back` is the side a model faces with (the front camera sees it) and its `front` is the model's back |
+| Box `open` sides | By axis: `left` −X, `right` +X, `bottom` −Y, `top` +Y, **`back` −Z, `front` +Z**. So a box's `back` is the side a model faces with (the front camera sees it) and its `front` is the model's back. The axis names `-x`, `+x`, `-y`, `+y`, `-z`, `+z` are accepted too and mean the same sides (`-z` is `back`) |
 | Rotation | `rotate` is in degrees, X then Y then Z. `[0, 90, 0]` turns +X to −Z and the −Z front to −X: clockwise in the top view, the way a positive camera yaw turns right. `[0, 0, 90]` turns +X to +Y: counterclockwise in the front view. `[90, 0, 0]` turns +Y to +Z: the top tips away from the front camera. In general a positive angle turns clockwise as seen from the positive end of its axis in Mei's views |
 | Mesh winding | Outward: (b − a) × (c − a) points out of the solid. A face toward the front camera lists its corners clockwise as seen on screen: top-left, top-right, bottom-right, bottom-left. The reverse order faces away and is culled (not drawn) unless the material is `double_sided` |
 | u and v | u runs right and v down as the face is seen from outside, "up" being the primitive's +Y (+Z for a face looking straight up or down, as in the top view). A mirrored copy is seen from its own outside too |
@@ -108,7 +143,7 @@ Conventions, each checked on native renders (`tests/test_assetkit.py`, `Conventi
 | `schema` | Full JSON Schema, including supported operations and field bounds |
 | `init FILE [--example robot\|vessel\|cottage\|kiosk\|stall]` | Editable starter (with the images it reads, beside it); refuses to overwrite unless `--force` |
 | `validate FILE [--strict]` | Schema, reference, geometry, fixed-point and budget checks |
-| `inspect FILE [--strict]` | Same checks, with full bounds, per-part report and `flush_contacts` (below) |
+| `inspect FILE [--strict]` | Same checks, with full bounds, per-part report, `flush_contacts`, `close_faces`, `texture_windows` and more `warnings` (below); a recipe over its budgets is reported in full |
 | `verify FILE [-o DIR] [--build-dir DIR]` | Geometry checks plus native triangle-ID visibility and ordering-graph checks |
 | `build FILE -o DIR [--verify] [--preview] [--strict] [--depth] [--perspective] [--build-dir DIR]` | Native and exchange artifacts; optional or recipe-mandated verification gate |
 | `preview FILE -o DIR [--verify] [--strict] [--depth] [--perspective] [--build-dir DIR] [--closeups] [--camera SPEC]… [--cameras FILE] [--part ID]… [--upscale N]` | Build plus six native renders and contact sheet, and [camera views](#camera-views-at-world-scale) |
@@ -130,10 +165,70 @@ the generated recipe copy. Obsolete files from earlier differently named builds 
 
 **Flush contacts.** `inspect` adds `flush_contacts`: the duplicate faces and coplanar overlaps of
 the mesh (the geometry audit without its crossing test), which the Asset Checker fails in either
-mode, as `count`, `by_code`, one `summary` line per part pair and a `hint`
-([Authoring rules](#authoring-rules-depth-mode)). It needs NumPy; without it `checked` is false
-and says why. The robot example (1,520 triangles) takes about 0.5 s and finds its 8 coplanar
-overlaps; the cottage (316) 0.06 s and its 36.
+mode, as `count`, `by_code`, one `summary` line per part pair, a `hint` and `fixes`, one per part
+pair in the summary's order ([Authoring rules](#authoring-rules-depth-mode)). A fix names the
+smaller part (by surface area), the way to move it and about how far: two parts back to back (one
+standing on the other) get `sink top about 0.02 along -Y into base, or open top's face toward
+-Y (an unrotated box: "open": ["bottom"])`, or, when the policy has no depth buffer (where sunk
+parts cross, which fails), only the opening; faces level with each other and facing the same way
+get `move … about 0.03 along … so its face stands proud`. It needs NumPy; without it `checked` is
+false and says why. The robot example (1,520 triangles) takes about 0.5 s and finds its 8
+coplanar overlaps; the cottage (316) 0.06 s and its 36.
+
+`build` and `preview` run the same check first and put it in their result and `report.json`
+(`flush_contacts`). When the Asset Checker is to run (a required policy, or `--verify`) and its
+policy does not say `"geometry": "warn"`, flush contacts **stop the command before anything is
+rendered or written**: the error, at `/verification`, lists the part pairs and the fixes, and
+the output carries `flush_contacts`:
+
+```json
+{"ok": false, "errors": [{"path": "/verification", "message": "Stopped before rendering: 4 flush
+  contacts, which the Asset Checker fails in either mode: coplanar_overlap: 4 between base and top
+  (faces 8/16, 8/17, 9/16, 9/17). Fix: sink top about 0.02 along -Y into base, or open top's face
+  toward -Y (an unrotated box: \"open\": [\"bottom\"]). Nothing was written; run inspect to see
+  them all."}], "flush_contacts": {…}}
+```
+
+Levels of detail are checked too (lines `lod K …`). The check is in the command line; the
+`build()` function runs it when called with `flush_check=True`.
+
+**Close faces.** `inspect` adds `close_faces`, and `verify` lists the same as `warnings` (after
+`allowed`; in full in `geometry.close_faces`): pairs of faces that face the same way (normals
+within 5°), overlap in projection by more than 1 cm² and lie less than **3 cm** apart, but not in
+one plane (that is a coplanar overlap). They are never a failure: the depth test draws them right
+from close by, and no view of the sweep fails them. But a key step is 1/4,096 of the depth, and a
+face seen at a grazing angle needs about ten ([RENDERING.md](RENDERING.md#precision): 2.7 cm at 8
+units for a floor at 11°), so a gap *g* ties from about *g* / 0.0034 units at such an angle and
+*g* / 0.00029 face on: 1 cm from 2.9 units and 34 units, 3 cm from 8.8 and 103. Each part pair's
+line says so:
+
+```
+close_faces: 4 between panel and board: panel's faces 10.0 mm in front of board's, facing the same way (faces 12/0, 14/0, 12/2, 14/2): they z-fight from about 2.9 units at a grazing view, 34 face on
+```
+
+`pairs` gives per pair `front`, `behind`, `count`, `gap_min`, `gap_max`, `fights_from` and up to 8
+face pairs. Stand the front part 3 cm proud, or remove the covered face. Faces inside a solid
+(a panel's back sunk into its board) are listed too: they show only if the solid's face does
+not cover them. Faces back to back (a plate under a box) are not listed, as culling hides one of
+each pair; double-sided materials are not treated differently. The cottage lists the crossing
+bars of its windows (1 mm apart) and their panes (1.7–2.3 cm); the vessel its foot (just under
+3 cm). The check takes 0.17 s for the robot (1,520 triangles), 0.02 s for the cottage.
+
+**More in `inspect`.**
+
+- `texture_windows`: the repeating textures' windows in use, `used` of `max` (7), each with its
+  texture (`pattern 'brick'`, `image art/x.png`, `sheet 'signs' cell …`), size, bits and the
+  `materials` that use it (materials with the same texture share one window). With more than 7,
+  every command fails with an error that lists the windows the same way.
+- A recipe **over its budgets** is reported in full: the breach is a warning (`over_budget`, with
+  `key`, `count` and `budget`) at the start of `warnings`, and `parts` still gives every part's
+  counts, so you can see what to cut. `build`, `preview` and `verify` still fail on it.
+- `warnings` gains `mirror_coincides` (a mirror whose copy lies exactly over the original, as
+  for a part centred on the mirror plane: every face doubled), `mirror_overlaps` (the part spans
+  the mirror plane, so the copy overlaps it), `mirror_touches` (faces on the mirror plane, which
+  the copy's lie back to back on: open that side), each with the part and the modifier's `path`,
+  and `below_ground` (parts reaching below y = 0, the ground an asset stands on, lowest first).
+  These are `inspect`'s: `build`'s report and `--strict` are as before.
 
 ### Native tools
 
@@ -187,13 +282,40 @@ python3 tools/mei_assets.py preview stall.asset.json -o build/assets/stall \
 | `--upscale N` | 1–4, default 2: each camera view's PNG is 320 × 240 scaled up N times, pixel for pixel (the console draws 320 × 240) |
 
 Each view is written as `camera_NAME.png` and the views together as `cameras.png` (two columns).
-`report.json`'s `preview.cameras` lists, per view, its eye, target, yaw and pitch (degrees),
-triangles drawn, the runner's statistics and `cost`: the frame's CPU and GPU cycles and their
-share of the frame budgets (`MEI_CYCLES_PER_FRAME` 1,000,000 and `MEI_GPU_CYCLES_PER_FRAME`
-2,000,000, read from `src/core/mei.h`), and the asset's own share, `asset_cpu_cycles` and
-`asset_gpu_cycles`: the frame minus a `baseline` frame drawn the same way without the asset
-(in depth mode 4,917 CPU and 76,800 GPU cycles: the clears). The six fitted views' entries gain
-the same `cost`, of the whole frame with its HUD text.
+**Where the costs are:** `report.json` (and the command's output) has `preview.cameras`, an
+object whose `views` list has one entry per camera view, in the order given; the six fitted
+views are in `preview.views`, the same way:
+
+```json
+"preview": {
+  "contact": "…/contact.png",
+  "views": [{"view": "isometric", "image": "view_isometric.png", "stats": {…}, "cost": {…}}, …],
+  "cameras": {
+    "contact": "…/cameras.png", "upscale": 2,
+    "budgets": {"cpu": 1000000, "gpu": 2000000},
+    "baseline": {"cpu_cycles": 4917, "gpu_cycles": 76800},
+    "views": [
+      {"view": "eye_level", "image": "camera_eye_level.png", "eye": [0, 1.6, -5.2], "target": […],
+       "yaw_degrees": 0.0, "pitch_degrees": -4.1, "triangles": 202, "stats": {…},
+       "cost": {"cpu_cycles": 31000, "gpu_cycles": 88000, "cpu_frame_percent": 3.1, "gpu_frame_percent": 4.4,
+                "asset_cpu_cycles": 26083, "asset_gpu_cycles": 11200,
+                "asset_cpu_frame_percent": 2.6, "asset_gpu_frame_percent": 0.6}}
+    ]
+  }
+}
+```
+
+(The numbers are illustrative.) So one view's GPU share for the asset is
+`preview.cameras.views[i].cost.asset_gpu_frame_percent`; with `jq`:
+`jq '.preview.cameras.views[] | {view, gpu: .cost.asset_gpu_frame_percent}' report.json`. Per view:
+its eye, target (when given), yaw and pitch (degrees), triangles drawn, the runner's statistics
+and `cost`: the frame's CPU and GPU cycles and their share of the frame budgets
+(`MEI_CYCLES_PER_FRAME` 1,000,000 and `MEI_GPU_CYCLES_PER_FRAME` 2,000,000, read from
+`src/core/mei.h`, in `budgets`), and the asset's own share, `asset_cpu_cycles` and
+`asset_gpu_cycles`: the frame minus the `baseline` frame drawn the same way without the asset
+(in depth mode 4,917 CPU and 76,800 GPU cycles: the clears). The six fitted views' entries have
+the same `cost` without the `asset_` fields, of the whole frame with its HUD text. A failed
+verification puts the same `preview` in `verification.failed.json`.
 
 Measured: a 24 × 3.5 × 2.9 m railcar (202 triangles, depth policy) with `--closeups`: five views,
 `eye_level` 0.6 % of the GPU budget for the asset and each close-up 2.2–3.0 %; the `stall`
@@ -607,7 +729,7 @@ as in the stool example. A node's own translation happens **after** its modifier
 
 | `op` | Required fields | Optional fields / convention |
 |---|---|---|
-| `box` | `size: [x,y,z]` | Centered at the origin; `open`: sides to leave out, from `top` (+Y), `bottom` (−Y), `left` (−X), `right` (+X), `back` (−Z), `front` (+Z) |
+| `box` | `size: [x,y,z]` | Centered at the origin; `open`: sides to leave out, from `top` (+Y), `bottom` (−Y), `left` (−X), `right` (+X), `back` (−Z), `front` (+Z), or by axis `+y`, `-y`, `-x`, `+x`, `-z`, `+z` |
 | `sphere` | `radius` | `rings: 6`, `segments: 12`; scale for an ellipsoid |
 | `cylinder` | `radius`, `height` | `segments: 12`, `caps: true`; centered, along Y |
 | `cone` | `radius`, `height` | Same as cylinder; tip at +height/2 |
@@ -628,7 +750,9 @@ one side stays; each is named once. An open box is an open surface, so it gets t
 Extrusion supports concave outlines through ear-clipping triangulation. Outline holes,
 self-crossings, repeated endpoint vertices, and duplicate/collinear adjacent points are not
 accepted. Loft correspondence matters: use the same corner order at every height. Nonplanar
-polygons in explicit meshes must be supplied as triangles. Coordinates are rounded to Mei's
+polygons in explicit meshes must be supplied as triangles: a polygon with a corner farther from
+its plane than 10^-6 of its extent (at least 10^-10 units) is an error that names the corner, its
+vertex, how far off it is and the tolerance. Coordinates are rounded to Mei's
 16.16 representation before topology checks and export; collapsed triangles are errors.
 
 ### Modifiers
@@ -802,7 +926,136 @@ surfaces, give decorations enough separation, and inspect native renders. The ge
 preview uses a fitted camera and tight clip range for ordering-table precision. It scales and
 centers the original exported mesh for viewing without changing the exported world units.
 Extremely small/large meshes may still expose fixed-point precision limits; use ordinary prop
-scales and verify in the actual scene.
+scales and verify in the actual scene. `inspect` reports a recipe over its budgets in full, so
+the per-part counts show what to cut.
+
+### Triangle costs
+
+What each operation makes, before vertices at the same 16.16 position are merged (so vertex
+counts are at most these). *s* is `segments`, *r* `rings`, *n* the points of an outline or
+profile, *k* the sections of a loft. Checked against `compile_recipe` for the values shown.
+
+| `op` | Triangles | Vertices | Example |
+|---|---|---|---|
+| `box` | 12, less 2 a side in `open` | 8 (fewer when sides are open) | a box 12; `"open": ["bottom"]` 10 |
+| `cylinder` | 4*s* − 4 (2*s* sides, *s* − 2 each cap); 2*s* with `caps: false` | 2*s* | *s* 12: 44 |
+| `cone` | 2*s* − 2 (*s* sides, *s* − 2 the base) | *s* + 1 | *s* 12: 22 |
+| `sphere` | 2*s*(*r* − 1) | *s*(*r* − 1) + 2 | default 12 × 6: 120 |
+| `lathe` | 2*s* per pair of rings, *s* where one is a zero-radius pole; *s* − 2 per cap (a ring with radius) | *s* a ring, 1 a pole | 3 rings, *s* 12: 48 + 20 = 68 |
+| `extrude` | 4*n* − 4 (2*n* sides, *n* − 2 each cap) | 2*n* | a square 12, a hexagon 20 |
+| `loft` | 2*n*(*k* − 1) + 2(*n* − 2) with caps | *n k* | 6 points, 3 sections: 24 + 8 = 32 |
+| `mesh` | *m* − 2 per polygon of *m* corners | as given | a quad 2 |
+
+Modifiers multiply: `mirror` 2 (with `keep_original`), `array` and `radial` their `count`,
+`subdivide` 4 per level. Texture splitting adds pieces (`split_faces` in the report). For the
+cost of drawing them, see a camera view's `cost` ([Camera views](#camera-views-at-world-scale)).
+
+### Hidden limits
+
+Limits that are not budgets, each an error naming itself when reached:
+
+| Limit | Value |
+|---|---|
+| Vertices of a mesh | 2,048 (the console's; `budget.vertices` at most) |
+| Triangles | `budget.triangles` at most 4,000 (the frame's limit); default 2,000 |
+| Root `nodes`, a group's `children`, `materials`, `prototypes` | 128 each (`lod.levels[].nodes` 128) |
+| Modifiers on a node | 16 |
+| The expanded recipe | 4,096 nodes, 32 levels deep; 65,536 vertices or triangles along the way |
+| `segments` | 3–128; `rings` 2–64; a lathe profile 128 points, an extrude outline or loft section 256 |
+| `array` and `radial` count | 128 |
+| A `mesh` node | 8,192 vertices and faces, 256 corners a polygon |
+| Repeating textures | **7 an asset** (a mesh's texture windows; one per distinct tile); tiles 8–128 texels, powers of two |
+| A face on a repeating texture | 255 texels each way, else it is split |
+| Textures drawn once (`fit`, `disc`) | 255 × 255 texels with the one-texel gutter; 8-bit ones 127 tall |
+| A slot | 256 × 256 4-bit or 256 × 128 8-bit texels; slot 15 holds the fonts |
+| Levels of detail | 7 |
+| Coordinates | −32,767 to 32,767 units in a recipe; the mesh's 16.16 vertices below 32,768 |
+
+## Cookbook
+
+Small recipes for common pieces, each checked with `inspect` (no flush contacts, no close faces)
+and `preview` with a required depth-mode policy (`"verification": {"required": true, "depth":
+true, "perspective": true}`), which they pass (the sign and the poster with texel grids in place of
+their images). Nodes and materials only; wrap them in a recipe.
+
+**A sign with a plain back.** A box cannot give one side its own material, but a `mesh` node can,
+with `face_materials`: the board as six quads, the front one textured with `fit` (the whole
+texture over that face), the rest plain. One closed part, so nothing is flush. The post is
+thinner than the board and sunk 10 cm into it, its front 4 cm behind the board's (not 1 cm:
+[close faces](#authoring-rules-depth-mode)), its top opened. 22 triangles.
+
+```json
+"materials": {
+  "wood": {"color": "#6b4a3a"},
+  "face": {"color": "#e8d8b0", "texture": {"image": "art/sign.png", "bits": 8, "projection": "fit"}}
+},
+"nodes": [
+  {"id": "board", "op": "mesh", "material": "wood",
+   "vertices": [[-0.6, 0.3, -0.06], [0.6, 0.3, -0.06], [0.6, -0.3, -0.06], [-0.6, -0.3, -0.06],
+                [-0.6, 0.3, 0.06], [0.6, 0.3, 0.06], [0.6, -0.3, 0.06], [-0.6, -0.3, 0.06]],
+   "faces": [[0, 1, 2, 3], [5, 4, 7, 6], [4, 5, 1, 0], [3, 2, 6, 7], [4, 0, 3, 7], [1, 5, 6, 2]],
+   "face_materials": ["face", "wood", "wood", "wood", "wood", "wood"],
+   "transform": {"translate": [0, 2.2, 0]}},
+  {"id": "post", "op": "box", "size": [0.08, 2.0, 0.04], "material": "wood", "open": ["top"],
+   "transform": {"translate": [0, 1.0, 0]}}
+]
+```
+
+The first face, `[0, 1, 2, 3]`, is the front (z −0.06, facing −Z): its corners top-left,
+top-right, bottom-right, bottom-left as the front camera sees them.
+
+**A decal on a wall.** Today a decal is its own face standing in front of the wall: one quad
+(`mesh`, facing −Z), **at least 3 cm proud** of the wall's face (here 3.5 cm: the wall's face is
+at z −0.1, the quad at −0.135). Closer, it fights the wall from a distance; flush, it fails.
+12 triangles with the wall.
+
+```json
+"materials": {
+  "wall": {"color": "#c8b8a0"},
+  "poster": {"color": "#d04030", "texture": {"image": "art/poster.png", "projection": "fit"}}
+},
+"nodes": [
+  {"id": "wall", "op": "box", "size": [4, 3, 0.2], "material": "wall", "open": ["bottom"],
+   "transform": {"translate": [0, 1.5, 0]}},
+  {"id": "poster", "op": "mesh", "material": "poster",
+   "vertices": [[-0.4, 0.6, 0], [0.4, 0.6, 0], [0.4, -0.6, 0], [-0.4, -0.6, 0]], "faces": [[0, 1, 2, 3]],
+   "transform": {"translate": [0.8, 1.6, -0.135]}}
+]
+```
+
+A decal flush with the wall is drawn into the wall's own texture instead: the wall's front as a
+`mesh` polygon with its own material (`face_materials`, as the sign) whose `fit` image holds the
+decal.
+
+**Stairs.** One `extrude` of the stairs' side outline (x the run, y the rise), turned so the
+extrusion runs along X and the flight climbs away from the front camera (`rotate` [0, −90, 0]
+turns the outline's +X to +Z). One closed part, no steps to stack or sink. Four steps of 18 × 28
+cm, 1.2 m wide: 36 triangles (4*n* − 4 for the 10 points).
+
+```json
+{"id": "flight", "op": "extrude", "material": "stone", "depth": 1.2,
+ "points": [[0, 0], [0, 0.18], [0.28, 0.18], [0.28, 0.36], [0.56, 0.36], [0.56, 0.54],
+            [0.84, 0.54], [0.84, 0.72], [1.12, 0.72], [1.12, 0]],
+ "transform": {"rotate": [0, -90, 0]}}
+```
+
+**A disc texture on a rotated cylinder** (a clock, a wheel, a round sign). `disc` maps in the
+primitive's own coordinates, before its transform, so it stays on the caps however the cylinder
+is turned. To face the front camera, turn the cylinder's +Y to −Z with `rotate` [−90, 0, 0]: the
+top cap then faces −Z and reads the right way round (u along +X, v down); [90, 0, 0] would show
+the bottom cap, mirrored. The sides take the disc's outermost texels, so give the picture a
+rim of one colour. 60 triangles with 16 segments.
+
+```json
+"materials": {
+  "dial": {"color": "#f0ead8", "texture": {"projection": "disc", "colors": ["#000000", "#303030", "#f0ead8", "#c03020"],
+           "texels": ["11111111", "12222221", "12232221", "12232221", "12233321", "12222221", "12222221", "11111111"]}}
+},
+"nodes": [
+  {"id": "face", "op": "cylinder", "radius": 0.3, "height": 0.06, "segments": 16, "material": "dial",
+   "transform": {"rotate": [-90, 0, 0], "translate": [0, 1.8, 0]}}
+]
+```
 
 ## Outputs and game integration
 
@@ -1116,6 +1369,13 @@ the same lines for every face of the texture, so two neighbours that both need c
 their cuts. A neighbour that did not need cutting gets the new points on the edges it shares, so
 no T-junctions open. The report gives `split_faces`; the pieces count against the budget. A
 20-unit wall of a 16-texel brick at one unit a repeat (320 texels) is cut once along its length.
+A corner within 10^-6 texels of a cut line counts as on it: with a `scale` that is not a power of
+two, a corner meant to lie on a line lands a hair off it (240.00000000000017 texels), and cutting
+there made a sliver that collapsed at 16.16 precision, an error. Of 1,500 random textured boxes
+and cylinders (scales 0.1–1.1, offsets 0, 0.3 and 0.5), 328 failed so before and none now
+(an `offset` of 0.3 moves corners off exact coordinates too); every recipe in the repository
+builds byte-identical meshes either way. Should a piece still collapse, the error is at the
+material's `texture/scale` and names the material, its texture, size, projection and scale.
 
 A texture drawn once (`fit`, `disc`) is placed plainly with a one-texel **gutter** to its right
 and below that repeats its last column and row, because a face's coordinate can reach its width
@@ -1312,6 +1572,24 @@ cycles a frame. `tests/test_assetkit.py` packs and draws the same pair.
 
 The sheet is authored art (drawn once with Pillow and committed; no generator rewrites it).
 
+### Texture tips
+
+- **Use power-of-two scales** (0.25, 0.5, 1, 2 units a repeat) for repeating textures: texel
+  coordinates are then exact binary fractions, so repeats line up with box edges and the cuts of
+  long faces fall on exact coordinates. Size the primitive, not the node's `scale`, to keep the
+  texel density. One texel is `scale` / tile size units: a 16-texel brick at 0.5 is 3.1 cm a
+  texel.
+- **Text:** draw it with `"bits": 8`, or without antialiasing (Pillow: `draw.fontmode = "1"`). A
+  4-bit texture has 15 colours, and the many grey edge shades of antialiased text are merged by
+  the quantiser (`quantised_from` in the report) into a smear of the nearest colours; the GPU
+  samples the nearest texel, so the edge shades buy no smoothness either.
+- **Smallest readable glyph:** about 7 texels tall (5 wide) in the texture, as `font_small()`'s
+  capitals ([LANGUAGE.md](LANGUAGE.md)), and about 7 pixels tall on screen. At 60° field of view
+  and 240 lines a unit at distance *d* is about 208 / *d* pixels tall, so a glyph that must read
+  from *d* units is at least *d* / 30 units tall: 17 cm from 5 m, 33 cm from 10 m. Texels much
+  smaller than a pixel at that distance flicker, as nothing filters them: aim for one texel
+  about *d* / 208 units.
+
 ### For a region packer (the World Kit)
 
 Built (2026-10-04): the World Kit packs a region's textures with these pieces
@@ -1396,8 +1674,13 @@ For agents' use it checks that failing findings are reported in full and first w
 allowed crossings beside them (`FindingsTests`), that the verdict and the geometry block agree
 (`VerdictTests`), `inspect`'s flush contacts, the tool paths (options, `--build-dir`, `MEIC`/`RUN`/
 `PROBE`, `B`) and their error, camera parsing and close-ups, camera views' sizes and costs
-(`CameraViewTests`), failing renders kept and marked (`FailedPreviewTests`), and the authoring
-rules' conventions on renders (`ConventionTests`). It also runs as part of `make test` when
+(`CameraViewTests`), failing renders kept and marked (`FailedPreviewTests`), the authoring
+rules' conventions on renders (`ConventionTests`), and (`FeedbackTests`) `build` and `preview`
+stopping before rendering on flush contacts with a fix naming the part, direction and distance,
+close parallel faces as a warning in `inspect` and `verify`, `inspect`'s texture windows, its
+full report over budget, its mirror and below-ground warnings, texture splits that no longer
+collapse and the error when one does, the planarity error's numbers, node ids in errors, and
+box sides named by axis. It also runs as part of `make test` when
 Python is available. Pure Python tests can run independently; native render tests skip if
 the binaries are absent:
 

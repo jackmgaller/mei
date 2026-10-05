@@ -23,7 +23,7 @@ import tempfile
 from kitcore import depth as DEPTH
 from .compiler import compile_recipe, native_bytes
 from .geometry import AssetError
-from .geometry_audit import numpy, geometry_audit, face_ref, CODES
+from .geometry_audit import numpy, geometry_audit, face_ref, CODES, close_faces
 from .preview import source, camera_numbers, png_bytes
 from .views import cameras, cutout_texels, select_views
 from .schema import validate, VERIFICATION
@@ -483,8 +483,12 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
              for row in geometry['allowed']]
     if len(allowed)>ALLOWED_LINES:
         allowed=allowed[:ALLOWED_LINES]+[f'... and {len(allowed)-ALLOWED_LINES} more part pairs (geometry.allowed)']
+    # faces facing the same way closer than 3 cm: allowed (no view of the sweep fails them), but they
+    # tie in the depth key from a game's distances
+    close=close_faces(mesh)
+    geometry['close_faces']=close
     result={'ok':ok,'verdict':verdict(ok,failures,geometry,depth,policy),'failures':failures,
-            'allowed':allowed,
+            'allowed':allowed,'warnings':close['summary'],
             'format':'mei-visibility-report','version':1,'name':name,'profile':policy,
             'recipe_sha256':base['recipe_sha256'],'mesh_sha256':hashlib.sha256(original).hexdigest(),
             'depth_epsilon':DEPTH_EPSILON,'geometry':geometry,'totals':{**totals,'views':len(views),'cyclic_views':cycles},
