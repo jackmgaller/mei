@@ -1,0 +1,98 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "crossing_signal",
+  "budget": {"vertices": 400, "triangles": 340},
+  "sheets": {
+    "signal": {"image": "art/signal_sheet.png"}
+  },
+  "materials": {
+    "pole": {"color": "#a3a9ad", "tag": "pole"},
+    "footing": {"color": "#8e8a80"},
+    "housing": {"color": "#3a3f47"},
+    "hood": {"color": "#3a3f47", "double_sided": true},
+    "bracket": {"color": "#6d737a"},
+    "red_lamp": {"color": "#ff4630", "class": "emissive", "tag": "lamp",
+                 "texture": {"sheet": "signal", "ticks": 30, "projection": "fit",
+                             "frames": ["red_off", "red_off", "red_off", "red_off", "red_off", "red_off",
+                                        "red_off", "red_off", "red_off", "red_off", "red_off", "red_off",
+                                        "red_on", "red_on", "red_on", "red_on"]}},
+    "green_lamp": {"color": "#28ecc4", "class": "emissive", "tag": "lamp",
+                   "texture": {"sheet": "signal", "ticks": 30, "projection": "fit",
+                               "frames": ["green_on", "green_on", "green_on", "green_on", "green_on", "green_on",
+                                          "green_on", "green_on", "green_off", "green_on", "green_off", "green_on",
+                                          "green_off", "green_off", "green_off", "green_off"]}},
+    "sign_face": {"color": "#1e54be", "tag": "sign",
+                  "texture": {"sheet": "signal", "cell": "crosswalk", "projection": "fit"}},
+    "sign_back": {"color": "#8d9298"},
+    "button_face": {"color": "#f6c828", "tag": "button",
+                    "texture": {"sheet": "signal", "cell": "button", "projection": "fit"}},
+    "button_box": {"color": "#e8b42a"},
+    "poster": {"color": "#faf6e6", "tag": "poster",
+               "texture": {"sheet": "signal", "cell": "poster", "projection": "fit"}},
+    "crow": {"color": "#22252f"},
+    "beak": {"color": "#3a3d44"},
+    "eye": {"color": "#f2f0e6"}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {"id": "pole", "op": "lathe", "material": "pole", "segments": 8, "caps": false,
+     "profile": [[0.06, 0.1], [0.06, 3.3], [0.075, 3.33], [0.0, 3.4]]},
+    {"id": "footing", "op": "lathe", "material": "footing", "segments": 8, "caps": false,
+     "profile": [[0.15, 0.0], [0.15, 0.05], [0.058, 0.11]]},
+
+    {"id": "signal_head", "op": "group", "transform": {"translate": [0, 2.3, -0.22]}, "children": [
+      {"id": "housing", "op": "box", "size": [0.3, 0.64, 0.2], "material": "housing"},
+      {"id": "red_lens", "op": "box", "size": [0.26, 0.26, 0.02], "open": ["front"], "material": "red_lamp",
+       "transform": {"translate": [0, 0.155, -0.11]}},
+      {"id": "green_lens", "op": "box", "size": [0.26, 0.26, 0.02], "open": ["front"], "material": "green_lamp",
+       "transform": {"translate": [0, -0.155, -0.11]}},
+      {"id": "hoods", "op": "group", "children": [
+        {"id": "hood", "op": "box", "size": [0.29, 0.28, 0.15], "open": ["front", "back", "bottom"],
+         "material": "hood", "transform": {"translate": [0, 0.155, -0.175]}}
+      ], "modifiers": [{"op": "array", "count": 2, "step": [0, -0.31, 0]}]},
+      {"id": "brackets", "op": "group", "children": [
+        {"id": "bracket", "op": "box", "size": [0.07, 0.05, 0.16], "material": "bracket",
+         "transform": {"translate": [0, 0.22, 0.17]}}
+      ], "modifiers": [{"op": "array", "count": 2, "step": [0, -0.44, 0]}]}
+    ]},
+
+    {"id": "crosswalk_sign", "op": "group", "transform": {"translate": [-0.1, 3.0, 0]}, "children": [
+      {"id": "plate", "op": "box", "size": [0.025, 0.6, 0.6], "material": "sign_back"},
+      {"id": "face", "op": "mesh", "material": "sign_face",
+       "vertices": [[-0.0225, -0.29, 0.29], [-0.0225, -0.29, -0.29], [-0.0225, 0.29, -0.29], [-0.0225, 0.29, 0.29]],
+       "faces": [[3, 2, 1, 0]]},
+      {"id": "sign_bracket", "op": "box", "size": [0.1, 0.3, 0.05], "material": "bracket",
+       "transform": {"translate": [0.05, 0, 0]}}
+    ]},
+
+    {"id": "button_unit", "op": "group", "transform": {"translate": [0, 1.15, -0.1]}, "children": [
+      {"id": "box", "op": "box", "size": [0.17, 0.25, 0.09], "material": "button_box"},
+      {"id": "face", "op": "mesh", "material": "button_face",
+       "vertices": [[-0.08, -0.12, -0.055], [0.08, -0.12, -0.055], [0.08, 0.12, -0.055], [-0.08, 0.12, -0.055]],
+       "faces": [[3, 2, 1, 0]]}
+    ]},
+
+    {"id": "lost_cat_notice", "op": "mesh", "material": "poster",
+     "vertices": [[0.05, 1.68, 0.068], [-0.05, 1.68, 0.068], [-0.05, 1.5, 0.068], [0.05, 1.5, 0.068]],
+     "faces": [[0, 1, 2, 3]]},
+
+    {"id": "crow", "op": "group", "transform": {"rotate": [0, 35, 0], "translate": [-0.1, 3.3, 0.05]}, "children": [
+      {"id": "feet", "op": "group", "children": [
+        {"id": "leg", "op": "box", "size": [0.014, 0.07, 0.014], "open": ["top", "bottom"], "material": "beak",
+         "transform": {"translate": [0.03, 0.035, 0]}}
+      ], "modifiers": [{"op": "mirror", "axis": "x"}]},
+      {"id": "body", "op": "sphere", "radius": 0.1, "rings": 4, "segments": 6, "material": "crow",
+       "transform": {"scale": [0.85, 0.8, 1.5], "rotate": [18, 0, 0], "translate": [0, 0.13, 0.03]}},
+      {"id": "tail", "op": "box", "size": [0.1, 0.02, 0.17], "material": "crow",
+       "transform": {"rotate": [28, 0, 0], "translate": [0, 0.08, 0.2]}},
+      {"id": "head", "op": "sphere", "radius": 0.075, "rings": 4, "segments": 6, "material": "crow",
+       "transform": {"rotate": [0, 30, 0], "translate": [0, 0.24, -0.12]}},
+      {"id": "eyes", "op": "box", "size": [0.13, 0.022, 0.022], "material": "eye",
+       "transform": {"translate": [0, 0.255, -0.15]}},
+      {"id": "beak", "op": "cone", "radius": 0.03, "height": 0.11, "segments": 4, "caps": false, "material": "beak",
+       "transform": {"rotate": [-95, 0, 45], "translate": [0, 0.225, -0.22]}}
+    ]}
+  ]
+}

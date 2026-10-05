@@ -1,0 +1,4 @@
+[
+ {"name": "pavement", "eye": [-1.2, 1.7, -1.6], "target": [0.1, 2.6, 0]},
+ {"name": "across_street", "eye": [-3.0, 1.6, -7.0], "target": [0, 2.2, 0]}
+]

@@ -1,0 +1,8 @@
+{"format": "mei-sheet", "version": 1,
+ "cells": {
+  "noren": [0, 0, 64, 28],
+  "lantern": [64, 0, 16, 32],
+  "plaque": [80, 0, 24, 32],
+  "wheel": [104, 0, 32, 32],
+  "soup": [136, 0, 16, 16]
+ }}

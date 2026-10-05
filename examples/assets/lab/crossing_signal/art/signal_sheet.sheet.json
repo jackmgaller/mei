@@ -1,0 +1,13 @@
+{
+  "format": "mei-sheet",
+  "version": 1,
+  "cells": {
+    "red_on": [0, 0, 16, 16],
+    "red_off": [16, 0, 16, 16],
+    "green_on": [32, 0, 16, 16],
+    "green_off": [48, 0, 16, 16],
+    "button": [64, 0, 16, 24],
+    "crosswalk": [0, 16, 24, 24],
+    "poster": [24, 16, 12, 16]
+  }
+}

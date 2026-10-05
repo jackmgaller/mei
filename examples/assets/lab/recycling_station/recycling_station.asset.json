@@ -1,0 +1,112 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "recycling_station",
+  "budget": {"vertices": 400, "triangles": 450},
+  "sheets": {
+    "art": {"image": "art/sheet.png"}
+  },
+  "materials": {
+    "concrete": {"color": "#a9a69c", "tag": "floor",
+                 "texture": {"pattern": "speckle", "colors": ["#a9a69c", "#8f8c83", "#bcb9ae"],
+                             "params": {"density": 0.3}, "projection": "box", "scale": [0.8, 0.8]}},
+    "fence": {"color": "#c3c7be", "tag": "wall",
+              "texture": {"pattern": "stripes", "colors": ["#c9cdc4", "#a4a89f"], "params": {"count": 8},
+                          "projection": "box", "scale": [0.5, 1]}},
+    "roof": {"color": "#4f8f5a", "tag": "roof",
+             "texture": {"pattern": "stripes", "colors": ["#5a9a62", "#3d7448"], "params": {"count": 8},
+                         "projection": "box", "scale": [0.4, 0.4]}},
+    "steel": {"color": "#7d848c"},
+    "board": {"color": "#f2eedd", "texture": {"sheet": "art", "cell": "board", "projection": "fit"}},
+    "bin": {"color": "#2b5fa8",
+            "texture": {"sheet": "art", "cell": "bin", "projection": "cylindrical",
+                        "scale": [0.848, 0.7], "offset": [0.5, 0.5]}},
+    "lid": {"color": "#2b5fa8", "texture": {"sheet": "art", "cell": "lid", "projection": "disc", "axis": "y"}},
+    "crate": {"color": "#e8b923", "double_sided": true,
+              "texture": {"texels": ["2222222222222222", "1111111111111111", "1001100110011001",
+                                     "1001100110011001", "1001100110011001", "1001100110011001",
+                                     "1111111111111111", "2222222222222222"],
+                          "colors": ["#000000", "#e8b923", "#c99a14"], "clear": "#000000", "projection": "fit"}},
+    "glass_green": {"color": "#3f8f4f"},
+    "glass_brown": {"color": "#7a4a22"},
+    "glass_clear": {"color": "#bcd8d8"},
+    "bag": {"color": "#e4ecef", "smooth": true},
+    "bag_blue": {"color": "#c6d8e6", "smooth": true},
+    "knot": {"color": "#cfd9de"},
+    "net": {"color": "#2f8a74", "double_sided": true,
+            "texture": {"pattern": "lattice", "colors": ["#2f8a74", "#000000"], "clear": "#000000",
+                        "params": {"count": 2, "bar": 1, "diagonal": true},
+                        "projection": "cylindrical", "scale": [0.3, 0.3]}},
+    "crow": {"color": "#23263a", "smooth": true},
+    "crow_eye": {"color": "#f0ead0"},
+    "crow_beak": {"color": "#3a3c44"}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.55},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "prototypes": {
+    "bottle": {"id": "bottle", "op": "lathe", "segments": 5,
+               "profile": [[0.04, 0], [0.04, 0.2], [0.014, 0.31]]},
+    "bag": {"id": "bag", "op": "group", "children": [
+      {"id": "sack", "op": "sphere", "radius": 1, "rings": 4, "segments": 6, "material": "bag",
+       "transform": {"scale": [0.27, 0.23, 0.25], "translate": [0, 0.21, 0]}},
+      {"id": "knot", "op": "cone", "radius": 0.05, "height": 0.09, "segments": 4, "material": "knot",
+       "transform": {"translate": [0, 0.46, 0]}}
+    ]}
+  },
+  "nodes": [
+    {"id": "pad", "op": "box", "size": [2.1, 0.1, 1.2], "open": ["bottom"], "material": "concrete",
+     "transform": {"translate": [0, 0.05, 0.05]}},
+    {"id": "fence", "op": "box", "size": [1.96, 1.2, 0.04], "open": ["bottom"], "material": "fence",
+     "transform": {"translate": [0, 0.69, 0.5]}},
+    {"id": "posts", "op": "group", "children": [
+      {"id": "post", "op": "cylinder", "radius": 0.04, "height": 1.98, "segments": 6, "caps": false,
+       "material": "steel", "transform": {"translate": [0.98, 1.08, 0.5]}}
+    ], "modifiers": [{"op": "mirror", "axis": "x"}]},
+    {"id": "crossbar", "op": "box", "size": [1.96, 0.06, 0.04], "material": "steel",
+     "transform": {"translate": [0, 1.9, 0.5]}},
+    {"id": "board", "op": "mesh", "material": "steel",
+     "vertices": [[-0.36, -0.432, -0.015], [0.36, -0.432, -0.015], [0.36, 0.432, -0.015], [-0.36, 0.432, -0.015],
+                  [-0.36, -0.432, 0.015], [0.36, -0.432, 0.015], [0.36, 0.432, 0.015], [-0.36, 0.432, 0.015]],
+     "faces": [[3, 2, 1, 0], [6, 7, 4, 5], [7, 6, 2, 3], [0, 1, 5, 4], [2, 6, 5, 1], [7, 3, 0, 4]],
+     "face_materials": ["board", "steel", "steel", "steel", "steel", "steel"],
+     "transform": {"translate": [0, 1.55, 0.49]}},
+    {"id": "roof", "op": "box", "size": [2.3, 0.04, 1.0], "material": "roof",
+     "transform": {"rotate": [-10, 0, 0], "translate": [0, 2.0, 0.15]}},
+    {"id": "bin", "op": "cylinder", "radius": 0.27, "height": 0.7, "segments": 10, "caps": false,
+     "material": "bin", "transform": {"translate": [-0.62, 0.44, -0.02]}},
+    {"id": "lid", "op": "cylinder", "radius": 0.29, "height": 0.06, "segments": 10, "material": "lid",
+     "transform": {"translate": [-0.62, 0.81, -0.02]}},
+    {"id": "crate", "op": "box", "size": [0.5, 0.3, 0.38], "open": ["top", "bottom"], "material": "crate",
+     "transform": {"translate": [0.02, 0.24, -0.02]}},
+    {"id": "bottles", "op": "group", "children": [
+      {"id": "bottle_a", "op": "instance", "ref": "bottle", "material": "glass_green",
+       "transform": {"translate": [-0.12, 0.09, -0.08]}},
+      {"id": "bottle_b", "op": "instance", "ref": "bottle", "material": "glass_brown",
+       "transform": {"translate": [0.03, 0.09, 0.06]}},
+      {"id": "bottle_c", "op": "instance", "ref": "bottle", "material": "glass_clear",
+       "transform": {"rotate": [0, 0, -18], "translate": [0.14, 0.09, -0.09]}}
+    ], "transform": {"translate": [0.02, 0, -0.02]}},
+    {"id": "bags", "op": "group", "children": [
+      {"id": "bag_a", "op": "instance", "ref": "bag", "transform": {"translate": [0.5, 0.08, -0.06]}},
+      {"id": "bag_b", "op": "instance", "ref": "bag", "material": "bag_blue",
+       "transform": {"scale": [0.85, 0.85, 0.85], "rotate": [0, 40, 12], "translate": [0.8, 0.08, 0.16]}}
+    ]},
+    {"id": "net", "op": "lathe", "segments": 8, "caps": false, "material": "net",
+     "profile": [[0.5, 0], [0.44, 0.26], [0.26, 0.46], [0, 0.56]],
+     "transform": {"scale": [0.86, 1, 0.78], "translate": [0.63, 0.09, 0.04]}},
+    {"id": "crow", "op": "group", "children": [
+      {"id": "body", "op": "sphere", "radius": 1, "rings": 3, "segments": 6, "material": "crow",
+       "transform": {"scale": [0.075, 0.075, 0.14], "rotate": [15, 0, 0], "translate": [0, 0.07, 0]}},
+      {"id": "head", "op": "sphere", "radius": 0.055, "rings": 3, "segments": 6, "material": "crow",
+       "transform": {"translate": [0, 0.16, -0.11]}},
+      {"id": "beak", "op": "cone", "radius": 0.028, "height": 0.09, "segments": 4, "material": "crow_beak",
+       "transform": {"rotate": [-90, 0, 0], "translate": [0, 0.15, -0.19]}},
+      {"id": "eyes", "op": "group", "children": [
+        {"id": "eye", "op": "box", "size": [0.012, 0.014, 0.012], "material": "crow_eye",
+         "transform": {"translate": [0.033, 0.176, -0.15]}}
+      ], "modifiers": [{"op": "mirror", "axis": "x"}]},
+      {"id": "tail", "op": "box", "size": [0.08, 0.015, 0.13], "material": "crow",
+       "transform": {"rotate": [-20, 0, 0], "translate": [0, 0.07, 0.16]}}
+    ], "transform": {"scale": [1.2, 1.2, 1.2], "rotate": [0, -30, 0], "translate": [-0.55, 1.93, -0.25]}}
+  ]
+}

@@ -1,0 +1,964 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "bike_rack",
+ "budget": {
+  "vertices": 512,
+  "triangles": 500
+ },
+ "materials": {
+  "concrete": {
+   "color": "#a8a59c",
+   "tag": "floor",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#a9a69d",
+     "#8f8c84",
+     "#bdbab0"
+    ],
+    "params": {
+     "density": 0.2
+    },
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     1,
+     1
+    ]
+   }
+  },
+  "steel": {
+   "color": "#7d858c"
+  },
+  "fin": {
+   "color": "#8c949a",
+   "double_sided": true
+  },
+  "post": {
+   "color": "#5f6a70"
+  },
+  "roof": {
+   "color": "#4a9d78",
+   "double_sided": true,
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#58b08a",
+     "#3f8c6a"
+    ],
+    "params": {
+     "count": 8,
+     "axis": "u"
+    },
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     1.5,
+     1.5
+    ]
+   }
+  },
+  "sign": {
+   "color": "#185c46",
+   "texture": {
+    "image": "art/sign.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "red": {
+   "color": "#d0402e"
+  },
+  "mint": {
+   "color": "#4fc4a8"
+  },
+  "navy": {
+   "color": "#2e4f9c"
+  },
+  "yellow": {
+   "color": "#e8b830"
+  },
+  "pink": {
+   "color": "#e87aa4"
+  },
+  "guard": {
+   "color": "#d9d6c8"
+  },
+  "wheel": {
+   "color": "#303030",
+   "double_sided": true,
+   "texture": {
+    "texels": [
+     "00000000000000111100000000000000",
+     "00000000001111111111110000000000",
+     "00000000111111111111111100000000",
+     "00000001111112222221111110000000",
+     "00000111112222222222221111100000",
+     "00001111122200033000222111110000",
+     "00001112220000033000002221110000",
+     "00011122000000033000000022111000",
+     "00111120300000033000000302111100",
+     "00111220030000033000003002211100",
+     "01112200003000033000030000221110",
+     "01112200000300033000300000221110",
+     "01112000000030033003000000021110",
+     "01122000000003033030000000022110",
+     "11122000000000222200000000022111",
+     "11122333333333222233333333322111",
+     "11122333333333222233333333322111",
+     "11122000000000222200000000022111",
+     "01122000000003033030000000022110",
+     "01112000000030033003000000021110",
+     "01112200000300033000300000221110",
+     "01112200003000033000030000221110",
+     "00111220030000033000003002211100",
+     "00111120300000033000000302111100",
+     "00011122000000033000000022111000",
+     "00001112220000033000002221110000",
+     "00001111122200033000222111110000",
+     "00000111112222222222221111100000",
+     "00000001111112222221111110000000",
+     "00000000111111111111111100000000",
+     "00000000001111111111110000000000",
+     "00000000000000111100000000000000"
+    ],
+    "colors": [
+     "#000000",
+     "#222226",
+     "#b9bcc0",
+     "#8d9096"
+    ],
+    "clear": "#000000",
+    "projection": "fit"
+   }
+  },
+  "basket": {
+   "color": "#aab0b4",
+   "double_sided": true,
+   "texture": {
+    "pattern": "lattice",
+    "colors": [
+     "#b4babe",
+     "#000000"
+    ],
+    "clear": "#000000",
+    "params": {
+     "count": 4,
+     "bar": 1
+    },
+    "projection": "box",
+    "scale": [
+     0.18,
+     0.18
+    ]
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "prototypes": {
+  "frame": {
+   "id": "frame",
+   "op": "group",
+   "children": [
+    {
+     "id": "fork",
+     "op": "cylinder",
+     "transform": {
+      "rotate": [
+       7.696,
+       0,
+       0
+      ],
+      "translate": [
+       -0.008,
+       0.68,
+       -0.45
+      ]
+     },
+     "radius": 0.024,
+     "height": 0.7467261881037788,
+     "segments": 3,
+     "caps": false
+    },
+    {
+     "id": "down",
+     "op": "cylinder",
+     "transform": {
+      "rotate": [
+       139.086,
+       0,
+       0
+      ],
+      "translate": [
+       0.006,
+       0.6,
+       -0.15999999999999998
+      ]
+     },
+     "radius": 0.026,
+     "height": 0.7939773296511684,
+     "segments": 3,
+     "caps": false
+    },
+    {
+     "id": "seat",
+     "op": "cylinder",
+     "transform": {
+      "rotate": [
+       20.973,
+       0,
+       0
+      ],
+      "translate": [
+       -0.004,
+       0.6,
+       0.21500000000000002
+      ]
+     },
+     "radius": 0.022,
+     "height": 0.6425729530566939,
+     "segments": 3,
+     "caps": false
+    },
+    {
+     "id": "chain",
+     "op": "cylinder",
+     "transform": {
+      "rotate": [
+       88.568,
+       0,
+       0
+      ],
+      "translate": [
+       0.0,
+       0.305,
+       0.3
+      ]
+     },
+     "radius": 0.02,
+     "height": 0.4001249804748512,
+     "segments": 3,
+     "caps": false
+    },
+    {
+     "id": "stay",
+     "op": "cylinder",
+     "transform": {
+      "rotate": [
+       159.567,
+       0,
+       0
+      ],
+      "translate": [
+       0.009,
+       0.565,
+       0.405
+      ]
+     },
+     "radius": 0.017,
+     "height": 0.5442425929675111,
+     "segments": 3,
+     "caps": false
+    },
+    {
+     "id": "bar",
+     "op": "cylinder",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       90
+      ],
+      "translate": [
+       0,
+       1.07,
+       -0.4
+      ]
+     },
+     "radius": 0.02,
+     "height": 0.56,
+     "segments": 3,
+     "caps": false
+    },
+    {
+     "id": "saddle",
+     "op": "box",
+     "transform": {
+      "translate": [
+       0,
+       0.95,
+       0.33
+      ]
+     },
+     "size": [
+      0.13,
+      0.05,
+      0.24
+     ],
+     "open": [
+      "bottom"
+     ]
+    },
+    {
+     "id": "fender_f",
+     "op": "mesh",
+     "material": "fin",
+     "vertices": [
+      [
+       -0.045,
+       0.66,
+       -0.76
+      ],
+      [
+       0.045,
+       0.66,
+       -0.76
+      ],
+      [
+       0.045,
+       0.66,
+       -0.3
+      ],
+      [
+       -0.045,
+       0.66,
+       -0.3
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "fender_r",
+     "op": "mesh",
+     "material": "fin",
+     "vertices": [
+      [
+       -0.045,
+       0.66,
+       0.3
+      ],
+      [
+       0.045,
+       0.66,
+       0.3
+      ],
+      [
+       0.045,
+       0.66,
+       0.76
+      ],
+      [
+       -0.045,
+       0.66,
+       0.76
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "guard",
+     "op": "mesh",
+     "material": "guard",
+     "vertices": [
+      [
+       0.04,
+       0.4,
+       0.1
+      ],
+      [
+       0.04,
+       0.4,
+       0.5
+      ],
+      [
+       0.04,
+       0.3,
+       0.5
+      ],
+      [
+       0.04,
+       0.3,
+       0.1
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    }
+   ]
+  },
+  "wheels": {
+   "id": "wheels",
+   "op": "group",
+   "children": [
+    {
+     "id": "wheel_f",
+     "op": "mesh",
+     "material": "wheel",
+     "vertices": [
+      [
+       0,
+       0.62,
+       -0.81
+      ],
+      [
+       0,
+       0.62,
+       -0.19
+      ],
+      [
+       0,
+       0.0,
+       -0.19
+      ],
+      [
+       0,
+       0.0,
+       -0.81
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "wheel_r",
+     "op": "mesh",
+     "material": "wheel",
+     "vertices": [
+      [
+       0,
+       0.62,
+       0.19
+      ],
+      [
+       0,
+       0.62,
+       0.81
+      ],
+      [
+       0,
+       0.0,
+       0.81
+      ],
+      [
+       0,
+       0.0,
+       0.19
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    }
+   ]
+  },
+  "basket": {
+   "id": "basket",
+   "op": "box",
+   "material": "basket",
+   "transform": {
+    "translate": [
+     0,
+     1.2,
+     -0.42
+    ]
+   },
+   "size": [
+    0.36,
+    0.2,
+    0.3
+   ],
+   "open": [
+    "bottom"
+   ]
+  }
+ },
+ "nodes": [
+  {
+   "id": "pad",
+   "op": "box",
+   "material": "concrete",
+   "transform": {
+    "translate": [
+     0,
+     0.04,
+     0
+    ]
+   },
+   "size": [
+    3.2,
+    0.1,
+    2.1
+   ],
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail",
+   "op": "box",
+   "material": "steel",
+   "transform": {
+    "translate": [
+     0,
+     0.12,
+     -0.5
+    ]
+   },
+   "size": [
+    3.0,
+    0.1,
+    0.07
+   ]
+  },
+  {
+   "id": "fins",
+   "op": "group",
+   "children": [
+    {
+     "id": "fin_0",
+     "op": "mesh",
+     "material": "fin",
+     "vertices": [
+      [
+       -1.4849999999999999,
+       0.48,
+       -0.5
+      ],
+      [
+       -1.415,
+       0.48,
+       -0.5
+      ],
+      [
+       -1.3599999999999999,
+       0.15,
+       -0.5
+      ],
+      [
+       -1.54,
+       0.15,
+       -0.5
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "fin_1",
+     "op": "mesh",
+     "material": "fin",
+     "vertices": [
+      [
+       -0.935,
+       0.48,
+       -0.5
+      ],
+      [
+       -0.865,
+       0.48,
+       -0.5
+      ],
+      [
+       -0.81,
+       0.15,
+       -0.5
+      ],
+      [
+       -0.99,
+       0.15,
+       -0.5
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "fin_2",
+     "op": "mesh",
+     "material": "fin",
+     "vertices": [
+      [
+       -0.33499999999999996,
+       0.48,
+       -0.5
+      ],
+      [
+       -0.265,
+       0.48,
+       -0.5
+      ],
+      [
+       -0.21,
+       0.15,
+       -0.5
+      ],
+      [
+       -0.39,
+       0.15,
+       -0.5
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "fin_3",
+     "op": "mesh",
+     "material": "fin",
+     "vertices": [
+      [
+       0.265,
+       0.48,
+       -0.5
+      ],
+      [
+       0.33499999999999996,
+       0.48,
+       -0.5
+      ],
+      [
+       0.39,
+       0.15,
+       -0.5
+      ],
+      [
+       0.21,
+       0.15,
+       -0.5
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "fin_4",
+     "op": "mesh",
+     "material": "fin",
+     "vertices": [
+      [
+       0.865,
+       0.48,
+       -0.5
+      ],
+      [
+       0.935,
+       0.48,
+       -0.5
+      ],
+      [
+       0.99,
+       0.15,
+       -0.5
+      ],
+      [
+       0.81,
+       0.15,
+       -0.5
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "id": "fin_5",
+     "op": "mesh",
+     "material": "fin",
+     "vertices": [
+      [
+       1.415,
+       0.48,
+       -0.5
+      ],
+      [
+       1.4849999999999999,
+       0.48,
+       -0.5
+      ],
+      [
+       1.54,
+       0.15,
+       -0.5
+      ],
+      [
+       1.3599999999999999,
+       0.15,
+       -0.5
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "posts",
+   "op": "group",
+   "children": [
+    {
+     "id": "post_f",
+     "op": "cylinder",
+     "material": "post",
+     "transform": {
+      "translate": [
+       1.5,
+       1.04,
+       -0.9
+      ]
+     },
+     "radius": 0.045,
+     "height": 2.0,
+     "segments": 4,
+     "caps": false
+    },
+    {
+     "id": "post_b",
+     "op": "cylinder",
+     "material": "post",
+     "transform": {
+      "translate": [
+       1.5,
+       0.915,
+       0.9
+      ]
+     },
+     "radius": 0.045,
+     "height": 1.75,
+     "segments": 4,
+     "caps": false
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "roof",
+   "op": "box",
+   "material": "roof",
+   "transform": {
+    "rotate": [
+     8,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     2.13,
+     0
+    ]
+   },
+   "size": [
+    3.4,
+    0.06,
+    2.3
+   ]
+  },
+  {
+   "id": "sign",
+   "op": "box",
+   "material": "sign",
+   "transform": {
+    "translate": [
+     0,
+     1.8,
+     -1.03
+    ]
+   },
+   "size": [
+    1.2,
+    0.3,
+    0.05
+   ]
+  },
+  {
+   "id": "bike_1",
+   "op": "group",
+   "children": [
+    {
+     "id": "frame_1",
+     "op": "instance",
+     "ref": "frame",
+     "material": "red"
+    },
+    {
+     "id": "wheels_1",
+     "op": "instance",
+     "ref": "wheels"
+    },
+    {
+     "id": "basket_1",
+     "op": "instance",
+     "ref": "basket"
+    }
+   ],
+   "transform": {
+    "translate": [
+     -1.2,
+     0.075,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "bike_2",
+   "op": "group",
+   "children": [
+    {
+     "id": "frame_2",
+     "op": "instance",
+     "ref": "frame",
+     "material": "mint"
+    },
+    {
+     "id": "wheels_2",
+     "op": "instance",
+     "ref": "wheels"
+    }
+   ],
+   "transform": {
+    "translate": [
+     -0.6,
+     0.075,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "bike_3",
+   "op": "group",
+   "children": [
+    {
+     "id": "frame_3",
+     "op": "instance",
+     "ref": "frame",
+     "material": "yellow"
+    },
+    {
+     "id": "wheels_3",
+     "op": "instance",
+     "ref": "wheels"
+    },
+    {
+     "id": "basket_3",
+     "op": "instance",
+     "ref": "basket"
+    }
+   ],
+   "transform": {
+    "translate": [
+     0.6,
+     0.075,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "bike_4",
+   "op": "group",
+   "children": [
+    {
+     "id": "frame_4",
+     "op": "instance",
+     "ref": "frame",
+     "material": "navy"
+    },
+    {
+     "id": "wheels_4",
+     "op": "instance",
+     "ref": "wheels"
+    }
+   ],
+   "transform": {
+    "translate": [
+     1.2,
+     0.075,
+     0.0
+    ],
+    "scale": [
+     0.82,
+     0.82,
+     0.82
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,1798 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "crane_game",
+ "budget": {
+  "vertices": 800,
+  "triangles": 800
+ },
+ "materials": {
+  "cabinet": {
+   "color": "#2fb7bd",
+   "tag": "wall",
+   "texture": {
+    "pattern": "tile",
+    "colors": [
+     "#2fb7bd",
+     "#e9f6f2",
+     "#27a0a6"
+    ],
+    "params": {
+     "count": 2,
+     "grout": 1
+    },
+    "projection": "box",
+    "scale": [
+     0.32,
+     0.32
+    ]
+   }
+  },
+  "floor": {
+   "color": "#f3d6e0",
+   "tag": "floor",
+   "texture": {
+    "pattern": "checker",
+    "colors": [
+     "#f6d9e4",
+     "#f2a9c4"
+    ],
+    "params": {
+     "count": 2
+    },
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     0.2,
+     0.2
+    ]
+   }
+  },
+  "stars": {
+   "color": "#1d2a6b",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#1d2a6b",
+     "#f4f0c8",
+     "#ffd86b"
+    ],
+    "size": 32,
+    "params": {
+     "density": 0.05,
+     "seed": 5
+    },
+    "projection": "box",
+    "scale": [
+     0.6,
+     0.6
+    ]
+   }
+  },
+  "candy": {
+   "color": "#d62678",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#d62678",
+     "#fff3e2"
+    ],
+    "params": {
+     "count": 4
+    },
+    "projection": "box",
+    "scale": [
+     0.16,
+     0.16
+    ]
+   }
+  },
+  "sign": {
+   "color": "#d62678",
+   "class": "emissive",
+   "texture": {
+    "image": "art/sign.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "panel": {
+   "color": "#3a285a",
+   "texture": {
+    "image": "art/panel.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "side": {
+   "color": "#fff4d6",
+   "texture": {
+    "image": "art/side.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "label": {
+   "color": "#ffec78",
+   "texture": {
+    "image": "art/label.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "face": {
+   "color": "#201a20",
+   "texture": {
+    "image": "art/face.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "glare": {
+   "color": "#ecf6ff",
+   "double_sided": true,
+   "texture": {
+    "image": "art/glare.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "post": {
+   "color": "#ffd23f"
+  },
+  "chrome": {
+   "color": "#c9ced6"
+  },
+  "metal": {
+   "color": "#6c7380"
+  },
+  "dark": {
+   "color": "#2a2230"
+  },
+  "red": {
+   "color": "#e8402f"
+  },
+  "blue": {
+   "color": "#3c96f0"
+  },
+  "green": {
+   "color": "#50d278"
+  },
+  "siren": {
+   "color": "#ff5a4a",
+   "class": "emissive"
+  },
+  "siren_b": {
+   "color": "#4aa8ff",
+   "class": "emissive"
+  },
+  "star": {
+   "color": "#ffd23f"
+  },
+  "bear": {
+   "color": "#b07a4a"
+  },
+  "bear_ear": {
+   "color": "#8d5c33"
+  },
+  "bunny": {
+   "color": "#f4a8c0"
+  },
+  "cat": {
+   "color": "#f0a43f"
+  },
+  "chick": {
+   "color": "#f7dc4a"
+  },
+  "beak": {
+   "color": "#f08a2a"
+  },
+  "white_bunny": {
+   "color": "#f4f1ea"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "base",
+   "op": "extrude",
+   "points": [
+    [
+     0.75,
+     0.0
+    ],
+    [
+     -0.45,
+     0.0
+    ],
+    [
+     -0.45,
+     0.9
+    ],
+    [
+     0.45,
+     0.9
+    ],
+    [
+     0.75,
+     0.8
+    ]
+   ],
+   "depth": 0.9,
+   "material": "cabinet",
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ]
+   }
+  },
+  {
+   "id": "panel",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.4,
+     0.9047,
+     -0.4738
+    ],
+    [
+     0.4,
+     0.9047,
+     -0.4738
+    ],
+    [
+     0.4,
+     0.8181,
+     -0.7338
+    ],
+    [
+     -0.4,
+     0.8181,
+     -0.7338
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "panel",
+   "transform": {}
+  },
+  {
+   "id": "stick",
+   "op": "cylinder",
+   "radius": 0.012,
+   "height": 0.09,
+   "segments": 6,
+   "caps": true,
+   "material": "chrome",
+   "transform": {
+    "rotate": [
+     -18.416834444925144,
+     0,
+     0
+    ],
+    "translate": [
+     -0.225,
+     0.8998,
+     -0.631
+    ]
+   }
+  },
+  {
+   "id": "stick_ball",
+   "op": "sphere",
+   "radius": 0.034,
+   "rings": 3,
+   "segments": 6,
+   "material": "red",
+   "transform": {
+    "translate": [
+     -0.225,
+     0.9567,
+     -0.65
+    ]
+   }
+  },
+  {
+   "id": "button_blue",
+   "op": "cylinder",
+   "radius": 0.046,
+   "height": 0.024,
+   "segments": 8,
+   "caps": true,
+   "material": "blue",
+   "transform": {
+    "rotate": [
+     -18.416834444925144,
+     0,
+     0
+    ],
+    "translate": [
+     0.033,
+     0.8858,
+     -0.5686
+    ]
+   }
+  },
+  {
+   "id": "button_green",
+   "op": "cylinder",
+   "radius": 0.046,
+   "height": 0.024,
+   "segments": 8,
+   "caps": true,
+   "material": "green",
+   "transform": {
+    "rotate": [
+     -18.416834444925144,
+     0,
+     0
+    ],
+    "translate": [
+     0.183,
+     0.8858,
+     -0.5686
+    ]
+   }
+  },
+  {
+   "id": "outlet_label",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.44,
+     0.6,
+     -0.762
+    ],
+    [
+     0.04,
+     0.6,
+     -0.762
+    ],
+    [
+     0.04,
+     0.52,
+     -0.762
+    ],
+    [
+     -0.44,
+     0.52,
+     -0.762
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "label",
+   "transform": {}
+  },
+  {
+   "id": "outlet_flap",
+   "op": "box",
+   "size": [
+    0.36,
+    0.26,
+    0.05
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     -0.2,
+     0.3,
+     -0.75
+    ]
+   }
+  },
+  {
+   "id": "outlet_handle",
+   "op": "box",
+   "size": [
+    0.2,
+    0.03,
+    0.03
+   ],
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     -0.2,
+     0.4,
+     -0.78
+    ]
+   }
+  },
+  {
+   "id": "coin_return",
+   "op": "box",
+   "size": [
+    0.14,
+    0.14,
+    0.05
+   ],
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     0.26,
+     0.3,
+     -0.75
+    ]
+   }
+  },
+  {
+   "id": "coin_slot",
+   "op": "box",
+   "size": [
+    0.07,
+    0.02,
+    0.06
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     0.26,
+     0.3,
+     -0.76
+    ]
+   }
+  },
+  {
+   "id": "sticker_right",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.462,
+     0.62,
+     -0.55
+    ],
+    [
+     0.462,
+     0.62,
+     0.09
+    ],
+    [
+     0.462,
+     0.22,
+     0.09
+    ],
+    [
+     0.462,
+     0.22,
+     -0.55
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "side",
+   "transform": {}
+  },
+  {
+   "id": "sticker_left",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.462,
+     0.62,
+     0.09
+    ],
+    [
+     -0.462,
+     0.62,
+     -0.55
+    ],
+    [
+     -0.462,
+     0.22,
+     -0.55
+    ],
+    [
+     -0.462,
+     0.22,
+     0.09
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "side",
+   "transform": {}
+  },
+  {
+   "id": "playfield",
+   "op": "box",
+   "size": [
+    0.82,
+    0.03,
+    0.82
+   ],
+   "material": "floor",
+   "transform": {
+    "translate": [
+     0,
+     0.9,
+     0
+    ]
+   }
+  },
+  {
+   "id": "prize_hole",
+   "op": "box",
+   "size": [
+    0.22,
+    0.03,
+    0.2
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     -0.26,
+     0.905,
+     -0.28
+    ]
+   }
+  },
+  {
+   "id": "post_lf",
+   "op": "box",
+   "size": [
+    0.05,
+    0.86,
+    0.05
+   ],
+   "material": "post",
+   "transform": {
+    "translate": [
+     -0.42,
+     1.305,
+     -0.42
+    ]
+   }
+  },
+  {
+   "id": "post_lb",
+   "op": "box",
+   "size": [
+    0.05,
+    0.86,
+    0.05
+   ],
+   "material": "post",
+   "transform": {
+    "translate": [
+     -0.42,
+     1.305,
+     0.42
+    ]
+   }
+  },
+  {
+   "id": "post_rf",
+   "op": "box",
+   "size": [
+    0.05,
+    0.86,
+    0.05
+   ],
+   "material": "post",
+   "transform": {
+    "translate": [
+     0.42,
+     1.305,
+     -0.42
+    ]
+   }
+  },
+  {
+   "id": "post_rb",
+   "op": "box",
+   "size": [
+    0.05,
+    0.86,
+    0.05
+   ],
+   "material": "post",
+   "transform": {
+    "translate": [
+     0.42,
+     1.305,
+     0.42
+    ]
+   }
+  },
+  {
+   "id": "back_wall",
+   "op": "box",
+   "size": [
+    0.84,
+    0.82,
+    0.03
+   ],
+   "material": "stars",
+   "transform": {
+    "translate": [
+     0,
+     1.3,
+     0.428
+    ]
+   }
+  },
+  {
+   "id": "pane_front",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.0,
+     1.69,
+     -0.447
+    ],
+    [
+     0.38,
+     1.69,
+     -0.447
+    ],
+    [
+     0.38,
+     1.2,
+     -0.447
+    ],
+    [
+     0.0,
+     1.2,
+     -0.447
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "glare",
+   "transform": {}
+  },
+  {
+   "id": "pane_right",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.447,
+     1.69,
+     -0.38
+    ],
+    [
+     0.447,
+     1.69,
+     0.0
+    ],
+    [
+     0.447,
+     1.2,
+     0.0
+    ],
+    [
+     0.447,
+     1.2,
+     -0.38
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "glare",
+   "transform": {}
+  },
+  {
+   "id": "pane_left",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.447,
+     1.69,
+     0.0
+    ],
+    [
+     -0.447,
+     1.69,
+     -0.38
+    ],
+    [
+     -0.447,
+     1.2,
+     -0.38
+    ],
+    [
+     -0.447,
+     1.2,
+     0.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "glare",
+   "transform": {}
+  },
+  {
+   "id": "marquee",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.47,
+     1.74,
+     -0.5
+    ],
+    [
+     0.47,
+     1.74,
+     -0.5
+    ],
+    [
+     0.47,
+     1.98,
+     -0.5
+    ],
+    [
+     -0.47,
+     1.98,
+     -0.5
+    ],
+    [
+     -0.47,
+     1.74,
+     0.5
+    ],
+    [
+     0.47,
+     1.74,
+     0.5
+    ],
+    [
+     0.47,
+     1.98,
+     0.5
+    ],
+    [
+     -0.47,
+     1.98,
+     0.5
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ],
+    [
+     6,
+     7,
+     4,
+     5
+    ],
+    [
+     2,
+     6,
+     5,
+     1
+    ],
+    [
+     7,
+     3,
+     0,
+     4
+    ],
+    [
+     7,
+     6,
+     2,
+     3
+    ],
+    [
+     0,
+     1,
+     5,
+     4
+    ]
+   ],
+   "material": "candy",
+   "transform": {},
+   "face_materials": [
+    "sign",
+    "candy",
+    "candy",
+    "candy",
+    "candy",
+    "candy"
+   ]
+  },
+  {
+   "id": "siren_l_base",
+   "op": "cylinder",
+   "radius": 0.05,
+   "height": 0.03,
+   "segments": 6,
+   "caps": true,
+   "material": "metal",
+   "transform": {
+    "translate": [
+     -0.37,
+     1.985,
+     0.2
+    ]
+   }
+  },
+  {
+   "id": "siren_l",
+   "op": "sphere",
+   "radius": 0.055,
+   "rings": 3,
+   "segments": 6,
+   "material": "siren",
+   "transform": {
+    "translate": [
+     -0.37,
+     2.02,
+     0.2
+    ]
+   }
+  },
+  {
+   "id": "siren_r_base",
+   "op": "cylinder",
+   "radius": 0.05,
+   "height": 0.03,
+   "segments": 6,
+   "caps": true,
+   "material": "metal",
+   "transform": {
+    "translate": [
+     0.37,
+     1.985,
+     0.2
+    ]
+   }
+  },
+  {
+   "id": "siren_r",
+   "op": "sphere",
+   "radius": 0.055,
+   "rings": 3,
+   "segments": 6,
+   "material": "siren_b",
+   "transform": {
+    "translate": [
+     0.37,
+     2.02,
+     0.2
+    ]
+   }
+  },
+  {
+   "id": "topper",
+   "op": "extrude",
+   "points": [
+    [
+     0.0,
+     0.12
+    ],
+    [
+     -0.0306,
+     0.0421
+    ],
+    [
+     -0.1141,
+     0.0371
+    ],
+    [
+     -0.0495,
+     -0.0161
+    ],
+    [
+     -0.0705,
+     -0.0971
+    ],
+    [
+     -0.0,
+     -0.052
+    ],
+    [
+     0.0705,
+     -0.0971
+    ],
+    [
+     0.0495,
+     -0.0161
+    ],
+    [
+     0.1141,
+     0.0371
+    ],
+    [
+     0.0306,
+     0.0421
+    ]
+   ],
+   "depth": 0.04,
+   "material": "star",
+   "transform": {
+    "translate": [
+     0,
+     2.07,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "rail_l",
+   "op": "box",
+   "size": [
+    0.04,
+    0.04,
+    0.8
+   ],
+   "material": "metal",
+   "transform": {
+    "translate": [
+     -0.38,
+     1.69,
+     0
+    ]
+   }
+  },
+  {
+   "id": "rail_r",
+   "op": "box",
+   "size": [
+    0.04,
+    0.04,
+    0.8
+   ],
+   "material": "metal",
+   "transform": {
+    "translate": [
+     0.38,
+     1.69,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bridge",
+   "op": "box",
+   "size": [
+    0.77,
+    0.05,
+    0.06
+   ],
+   "material": "metal",
+   "transform": {
+    "translate": [
+     0,
+     1.69,
+     0.12
+    ]
+   }
+  },
+  {
+   "id": "trolley",
+   "op": "box",
+   "size": [
+    0.14,
+    0.08,
+    0.12
+   ],
+   "material": "chrome",
+   "transform": {
+    "translate": [
+     0.2,
+     1.63,
+     0.12
+    ]
+   }
+  },
+  {
+   "id": "cable",
+   "op": "cylinder",
+   "radius": 0.008,
+   "height": 0.06,
+   "segments": 4,
+   "caps": false,
+   "material": "dark",
+   "transform": {
+    "translate": [
+     0.2,
+     1.61,
+     0.12
+    ]
+   }
+  },
+  {
+   "id": "claw",
+   "op": "group",
+   "children": [
+    {
+     "id": "arm_up",
+     "op": "box",
+     "size": [
+      0.026,
+      0.14,
+      0.03
+     ],
+     "material": "chrome",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       24.6
+      ],
+      "translate": [
+       0.065,
+       -0.06,
+       0
+      ]
+     }
+    },
+    {
+     "id": "arm_tip",
+     "op": "box",
+     "size": [
+      0.022,
+      0.09,
+      0.028
+     ],
+     "material": "red",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       -32.7
+      ],
+      "translate": [
+       0.0675,
+       -0.155,
+       0
+      ]
+     }
+    }
+   ],
+   "transform": {
+    "translate": [
+     0.2,
+     1.54,
+     0.12
+    ]
+   },
+   "modifiers": [
+    {
+     "op": "radial",
+     "count": 3
+    }
+   ]
+  },
+  {
+   "id": "claw_hub",
+   "op": "cylinder",
+   "radius": 0.045,
+   "height": 0.07,
+   "segments": 6,
+   "caps": true,
+   "material": "metal",
+   "transform": {
+    "translate": [
+     0.2,
+     1.575,
+     0.12
+    ]
+   }
+  },
+  {
+   "id": "plush_a",
+   "op": "group",
+   "children": [
+    {
+     "id": "body",
+     "op": "sphere",
+     "radius": 0.1,
+     "rings": 3,
+     "segments": 6,
+     "material": "bear",
+     "transform": {
+      "scale": [
+       1.1,
+       0.95,
+       1.0
+      ],
+      "translate": [
+       0,
+       0,
+       0
+      ]
+     }
+    },
+    {
+     "id": "earl",
+     "op": "sphere",
+     "radius": 0.035,
+     "rings": 2,
+     "segments": 4,
+     "material": "bear_ear",
+     "transform": {
+      "translate": [
+       -0.07,
+       0.085,
+       0
+      ]
+     }
+    },
+    {
+     "id": "earr",
+     "op": "sphere",
+     "radius": 0.035,
+     "rings": 2,
+     "segments": 4,
+     "material": "bear_ear",
+     "transform": {
+      "translate": [
+       0.07,
+       0.085,
+       0
+      ]
+     }
+    },
+    {
+     "id": "face",
+     "op": "mesh",
+     "vertices": [
+      [
+       -0.075,
+       0.0675,
+       -0.09
+      ],
+      [
+       0.075,
+       0.0675,
+       -0.09
+      ],
+      [
+       0.075,
+       -0.0825,
+       -0.09
+      ],
+      [
+       -0.075,
+       -0.0825,
+       -0.09
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     "material": "face",
+     "transform": {}
+    }
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     -20,
+     0
+    ],
+    "translate": [
+     0.28,
+     1.01,
+     0.12
+    ]
+   }
+  },
+  {
+   "id": "plush_b",
+   "op": "group",
+   "children": [
+    {
+     "id": "body",
+     "op": "sphere",
+     "radius": 0.1,
+     "rings": 3,
+     "segments": 6,
+     "material": "bunny",
+     "transform": {
+      "scale": [
+       1.1,
+       0.95,
+       1.0
+      ],
+      "translate": [
+       0,
+       0,
+       0
+      ]
+     }
+    },
+    {
+     "id": "earl",
+     "op": "box",
+     "size": [
+      0.03,
+      0.13,
+      0.018
+     ],
+     "material": "bunny",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       9
+      ],
+      "translate": [
+       -0.04,
+       0.15,
+       0.0
+      ]
+     }
+    },
+    {
+     "id": "earr",
+     "op": "box",
+     "size": [
+      0.03,
+      0.13,
+      0.018
+     ],
+     "material": "bunny",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       -9
+      ],
+      "translate": [
+       0.04,
+       0.15,
+       0.0
+      ]
+     }
+    },
+    {
+     "id": "face",
+     "op": "mesh",
+     "vertices": [
+      [
+       -0.075,
+       0.0675,
+       -0.09
+      ],
+      [
+       0.075,
+       0.0675,
+       -0.09
+      ],
+      [
+       0.075,
+       -0.0825,
+       -0.09
+      ],
+      [
+       -0.075,
+       -0.0825,
+       -0.09
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     "material": "face",
+     "transform": {}
+    }
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     10,
+     0
+    ],
+    "translate": [
+     0.07,
+     1.01,
+     0.26
+    ]
+   }
+  },
+  {
+   "id": "plush_c",
+   "op": "group",
+   "children": [
+    {
+     "id": "body",
+     "op": "sphere",
+     "radius": 0.1,
+     "rings": 3,
+     "segments": 6,
+     "material": "cat",
+     "transform": {
+      "scale": [
+       1.1,
+       0.95,
+       1.0
+      ],
+      "translate": [
+       0,
+       0,
+       0
+      ]
+     }
+    },
+    {
+     "id": "earl",
+     "op": "cone",
+     "radius": 0.04,
+     "height": 0.07,
+     "segments": 3,
+     "caps": false,
+     "material": "cat",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       12
+      ],
+      "translate": [
+       -0.062,
+       0.1,
+       0
+      ]
+     }
+    },
+    {
+     "id": "earr",
+     "op": "cone",
+     "radius": 0.04,
+     "height": 0.07,
+     "segments": 3,
+     "caps": false,
+     "material": "cat",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       -12
+      ],
+      "translate": [
+       0.062,
+       0.1,
+       0
+      ]
+     }
+    },
+    {
+     "id": "face",
+     "op": "mesh",
+     "vertices": [
+      [
+       -0.075,
+       0.0675,
+       -0.09
+      ],
+      [
+       0.075,
+       0.0675,
+       -0.09
+      ],
+      [
+       0.075,
+       -0.0825,
+       -0.09
+      ],
+      [
+       -0.075,
+       -0.0825,
+       -0.09
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     "material": "face",
+     "transform": {}
+    }
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     15,
+     0
+    ],
+    "translate": [
+     0.3,
+     1.01,
+     0.33
+    ]
+   }
+  },
+  {
+   "id": "plush_d",
+   "op": "group",
+   "children": [
+    {
+     "id": "body",
+     "op": "sphere",
+     "radius": 0.08,
+     "rings": 3,
+     "segments": 6,
+     "material": "chick",
+     "transform": {
+      "scale": [
+       1.1,
+       0.95,
+       1.0
+      ],
+      "translate": [
+       0,
+       0,
+       0
+      ]
+     }
+    },
+    {
+     "id": "beak",
+     "op": "cone",
+     "radius": 0.012799999999999999,
+     "height": 0.023999999999999997,
+     "segments": 3,
+     "caps": false,
+     "material": "beak",
+     "transform": {
+      "rotate": [
+       -90,
+       0,
+       0
+      ],
+      "translate": [
+       0,
+       -0.008,
+       -0.0816
+      ]
+     }
+    },
+    {
+     "id": "face",
+     "op": "mesh",
+     "vertices": [
+      [
+       -0.06,
+       0.054,
+       -0.072
+      ],
+      [
+       0.06,
+       0.054,
+       -0.072
+      ],
+      [
+       0.06,
+       -0.066,
+       -0.072
+      ],
+      [
+       -0.06,
+       -0.066,
+       -0.072
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     "material": "face",
+     "transform": {}
+    }
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     -8,
+     0
+    ],
+    "translate": [
+     0.16,
+     0.99,
+     -0.1
+    ]
+   }
+  },
+  {
+   "id": "plush_e",
+   "op": "group",
+   "children": [
+    {
+     "id": "body",
+     "op": "sphere",
+     "radius": 0.1,
+     "rings": 3,
+     "segments": 6,
+     "material": "white_bunny",
+     "transform": {
+      "scale": [
+       1.1,
+       0.95,
+       1.0
+      ],
+      "translate": [
+       0,
+       0,
+       0
+      ]
+     }
+    },
+    {
+     "id": "earl",
+     "op": "box",
+     "size": [
+      0.03,
+      0.13,
+      0.018
+     ],
+     "material": "white_bunny",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       9
+      ],
+      "translate": [
+       -0.04,
+       0.15,
+       0.0
+      ]
+     }
+    },
+    {
+     "id": "earr",
+     "op": "box",
+     "size": [
+      0.03,
+      0.13,
+      0.018
+     ],
+     "material": "white_bunny",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       -9
+      ],
+      "translate": [
+       0.04,
+       0.15,
+       0.0
+      ]
+     }
+    },
+    {
+     "id": "face",
+     "op": "mesh",
+     "vertices": [
+      [
+       -0.075,
+       0.0675,
+       -0.09
+      ],
+      [
+       0.075,
+       0.0675,
+       -0.09
+      ],
+      [
+       0.075,
+       -0.0825,
+       -0.09
+      ],
+      [
+       -0.075,
+       -0.0825,
+       -0.09
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     "material": "face",
+     "transform": {}
+    }
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     -5,
+     0
+    ],
+    "translate": [
+     0.19,
+     1.18,
+     0.22
+    ]
+   }
+  },
+  {
+   "id": "plush_f",
+   "op": "group",
+   "children": [
+    {
+     "id": "body",
+     "op": "sphere",
+     "radius": 0.1,
+     "rings": 3,
+     "segments": 6,
+     "material": "cat",
+     "transform": {
+      "scale": [
+       1.1,
+       0.95,
+       1.0
+      ],
+      "translate": [
+       0,
+       0,
+       0
+      ]
+     }
+    },
+    {
+     "id": "earl",
+     "op": "cone",
+     "radius": 0.04,
+     "height": 0.07,
+     "segments": 3,
+     "caps": false,
+     "material": "cat",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       12
+      ],
+      "translate": [
+       -0.062,
+       0.1,
+       0
+      ]
+     }
+    },
+    {
+     "id": "earr",
+     "op": "cone",
+     "radius": 0.04,
+     "height": 0.07,
+     "segments": 3,
+     "caps": false,
+     "material": "cat",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       -12
+      ],
+      "translate": [
+       0.062,
+       0.1,
+       0
+      ]
+     }
+    },
+    {
+     "id": "face",
+     "op": "mesh",
+     "vertices": [
+      [
+       -0.075,
+       0.0675,
+       -0.09
+      ],
+      [
+       0.075,
+       0.0675,
+       -0.09
+      ],
+      [
+       0.075,
+       -0.0825,
+       -0.09
+      ],
+      [
+       -0.075,
+       -0.0825,
+       -0.09
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3
+      ]
+     ],
+     "material": "face",
+     "transform": {}
+    }
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     25,
+     0
+    ],
+    "translate": [
+     -0.12,
+     1.01,
+     0.3
+    ]
+   }
+  }
+ ]
+}

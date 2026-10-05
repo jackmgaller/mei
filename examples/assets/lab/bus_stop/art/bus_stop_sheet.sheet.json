@@ -1,0 +1,24 @@
+{
+  "format": "mei-sheet",
+  "version": 1,
+  "cells": {
+    "disc": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "poster": [
+      32,
+      0,
+      32,
+      16
+    ],
+    "timetable": [
+      64,
+      0,
+      24,
+      16
+    ]
+  }
+}

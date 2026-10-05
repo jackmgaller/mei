@@ -1,0 +1,2304 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "bell_pavilion",
+ "budget": {
+  "vertices": 1024,
+  "triangles": 1000
+ },
+ "materials": {
+  "stone": {
+   "color": "#8e8b84",
+   "tag": "floor",
+   "texture": {
+    "pattern": "brick",
+    "colors": [
+     "#8e8b84",
+     "#5f5d58",
+     "#a39f96"
+    ],
+    "params": {
+     "courses": 2,
+     "bricks": 2,
+     "bond": 0.5,
+     "mortar": 1
+    },
+    "projection": "box",
+    "scale": [
+     0.8,
+     0.4
+    ]
+   }
+  },
+  "deck": {
+   "color": "#a57a4e",
+   "tag": "floor",
+   "texture": {
+    "pattern": "planks",
+    "colors": [
+     "#a98258",
+     "#5a3c24",
+     "#96703f",
+     "#7d5634"
+    ],
+    "params": {
+     "boards": 4
+    },
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     0.8,
+     1.6
+    ]
+   }
+  },
+  "tile": {
+   "color": "#4a5568",
+   "tag": "roof",
+   "texture": {
+    "pattern": "brick",
+    "colors": [
+     "#4f5a6e",
+     "#2b3342",
+     "#5d6a80"
+    ],
+    "params": {
+     "courses": 4,
+     "bricks": 2,
+     "bond": 0.5,
+     "mortar": 1
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.25
+    ]
+   }
+  },
+  "eave": {
+   "color": "#2c313c",
+   "tag": "roof",
+   "texture": {
+    "texels": [
+     "0000000000000000",
+     "0000001111000000",
+     "0000111111110000",
+     "0001133333311000",
+     "0011333333331100",
+     "0013333333333100",
+     "0113333223333110",
+     "0113332222333110",
+     "0113332222333110",
+     "0113333223333110",
+     "0013333333333100",
+     "0011333333331100",
+     "0001133333311000",
+     "0000111111110000",
+     "0000001111000000",
+     "0000000000000000"
+    ],
+    "colors": [
+     "#2c313c",
+     "#b8c0cc",
+     "#e9d9a2",
+     "#737c8e"
+    ],
+    "projection": "box",
+    "scale": [
+     0.25,
+     0.25
+    ]
+   }
+  },
+  "soffit": {
+   "color": "#4a3324",
+   "texture": {
+    "pattern": "planks",
+    "colors": [
+     "#5a3e2b",
+     "#2c1e14",
+     "#4c3322"
+    ],
+    "params": {
+     "boards": 4
+    },
+    "projection": "box",
+    "scale": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "post": {
+   "color": "#a63a28"
+  },
+  "beam": {
+   "color": "#5a3a28"
+  },
+  "rail": {
+   "color": "#8e3524"
+  },
+  "slats_l": {
+   "color": "#a8402c",
+   "double_sided": true,
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#a8402c",
+     "#000000"
+    ],
+    "clear": "#000000",
+    "params": {
+     "count": 16
+    },
+    "size": [
+     64,
+     24
+    ],
+    "projection": "fit"
+   }
+  },
+  "slats_s": {
+   "color": "#a8402c",
+   "double_sided": true,
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#a8402c",
+     "#000000"
+    ],
+    "clear": "#000000",
+    "params": {
+     "count": 4
+    },
+    "size": [
+     16,
+     24
+    ],
+    "projection": "fit"
+   }
+  },
+  "bell": {
+   "color": "#756132",
+   "tag": "bell",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#7a6532",
+     "#5e4c25",
+     "#5f8f70",
+     "#a38b45"
+    ],
+    "params": {
+     "density": 0.3
+    },
+    "projection": "cylindrical",
+    "scale": [
+     0.35,
+     0.5
+    ]
+   }
+  },
+  "bell_band": {
+   "color": "#4d3d1d"
+  },
+  "log": {
+   "color": "#b08c5c",
+   "texture": {
+    "pattern": "grain",
+    "colors": [
+     "#b89560",
+     "#8e6b40",
+     "#a47f50"
+    ],
+    "params": {
+     "rings": 2,
+     "waves": 1
+    },
+    "projection": "cylindrical",
+    "scale": [
+     0.3,
+     0.6
+    ]
+   }
+  },
+  "rope": {
+   "color": "#c8aa5a"
+  },
+  "plaque": {
+   "color": "#26201c",
+   "texture": {
+    "image": "art/plaque.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "notice": {
+   "color": "#ece6d0",
+   "texture": {
+    "image": "art/notice.png",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "lantern": {
+   "color": "#d8382a",
+   "class": "emissive",
+   "tag": "light"
+  },
+  "chime": {
+   "color": "#9fd0dc"
+  },
+  "cat": {
+   "color": "#d98a3c"
+  },
+  "cat_dark": {
+   "color": "#1e1612",
+   "double_sided": true
+  },
+  "bucket": {
+   "color": "#2f7fd0"
+  },
+  "broom_h": {
+   "color": "#a98a52"
+  },
+  "straw": {
+   "color": "#d8c070"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "plinth",
+   "op": "box",
+   "size": [
+    3.4,
+    0.4,
+    3.4
+   ],
+   "material": "stone",
+   "transform": {
+    "translate": [
+     0,
+     0.2,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "deck",
+   "op": "box",
+   "size": [
+    3.0,
+    0.08,
+    3.0
+   ],
+   "material": "deck",
+   "transform": {
+    "translate": [
+     0,
+     0.4,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "step_low",
+   "op": "box",
+   "size": [
+    1.3,
+    0.14,
+    0.62
+   ],
+   "material": "stone",
+   "transform": {
+    "translate": [
+     0,
+     0.07,
+     -1.99
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "step_high",
+   "op": "box",
+   "size": [
+    1.1,
+    0.27,
+    0.34
+   ],
+   "material": "stone",
+   "transform": {
+    "translate": [
+     0,
+     0.135,
+     -1.86
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "foot_lf",
+   "op": "box",
+   "size": [
+    0.34,
+    0.1,
+    0.34
+   ],
+   "material": "stone",
+   "transform": {
+    "rotate": [
+     0,
+     45,
+     0
+    ],
+    "translate": [
+     -1.25,
+     0.485,
+     -1.25
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "post_lf",
+   "op": "cylinder",
+   "radius": 0.1,
+   "height": 2.0,
+   "segments": 8,
+   "caps": false,
+   "material": "post",
+   "transform": {
+    "translate": [
+     -1.25,
+     1.52,
+     -1.25
+    ]
+   }
+  },
+  {
+   "id": "foot_lb",
+   "op": "box",
+   "size": [
+    0.34,
+    0.1,
+    0.34
+   ],
+   "material": "stone",
+   "transform": {
+    "rotate": [
+     0,
+     45,
+     0
+    ],
+    "translate": [
+     -1.25,
+     0.485,
+     1.25
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "post_lb",
+   "op": "cylinder",
+   "radius": 0.1,
+   "height": 2.0,
+   "segments": 8,
+   "caps": false,
+   "material": "post",
+   "transform": {
+    "translate": [
+     -1.25,
+     1.52,
+     1.25
+    ]
+   }
+  },
+  {
+   "id": "foot_rf",
+   "op": "box",
+   "size": [
+    0.34,
+    0.1,
+    0.34
+   ],
+   "material": "stone",
+   "transform": {
+    "rotate": [
+     0,
+     45,
+     0
+    ],
+    "translate": [
+     1.25,
+     0.485,
+     -1.25
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "post_rf",
+   "op": "cylinder",
+   "radius": 0.1,
+   "height": 2.0,
+   "segments": 8,
+   "caps": false,
+   "material": "post",
+   "transform": {
+    "translate": [
+     1.25,
+     1.52,
+     -1.25
+    ]
+   }
+  },
+  {
+   "id": "foot_rb",
+   "op": "box",
+   "size": [
+    0.34,
+    0.1,
+    0.34
+   ],
+   "material": "stone",
+   "transform": {
+    "rotate": [
+     0,
+     45,
+     0
+    ],
+    "translate": [
+     1.25,
+     0.485,
+     1.25
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "post_rb",
+   "op": "cylinder",
+   "radius": 0.1,
+   "height": 2.0,
+   "segments": 8,
+   "caps": false,
+   "material": "post",
+   "transform": {
+    "translate": [
+     1.25,
+     1.52,
+     1.25
+    ]
+   }
+  },
+  {
+   "id": "beam_xf",
+   "op": "box",
+   "size": [
+    2.9,
+    0.22,
+    0.2
+   ],
+   "material": "beam",
+   "transform": {
+    "translate": [
+     0,
+     2.38,
+     -1.25
+    ]
+   }
+  },
+  {
+   "id": "beam_xb",
+   "op": "box",
+   "size": [
+    2.9,
+    0.22,
+    0.2
+   ],
+   "material": "beam",
+   "transform": {
+    "translate": [
+     0,
+     2.38,
+     1.25
+    ]
+   }
+  },
+  {
+   "id": "beam_zl",
+   "op": "box",
+   "size": [
+    0.2,
+    0.2,
+    2.9
+   ],
+   "material": "beam",
+   "transform": {
+    "translate": [
+     -1.25,
+     2.36,
+     0
+    ]
+   }
+  },
+  {
+   "id": "beam_zr",
+   "op": "box",
+   "size": [
+    0.2,
+    0.2,
+    2.9
+   ],
+   "material": "beam",
+   "transform": {
+    "translate": [
+     1.25,
+     2.36,
+     0
+    ]
+   }
+  },
+  {
+   "id": "beam_bell",
+   "op": "box",
+   "size": [
+    3.1,
+    0.26,
+    0.26
+   ],
+   "material": "beam",
+   "transform": {
+    "translate": [
+     0,
+     2.3,
+     0
+    ]
+   }
+  },
+  {
+   "id": "nuki_b",
+   "op": "box",
+   "size": [
+    2.5,
+    0.12,
+    0.12
+   ],
+   "material": "beam",
+   "transform": {
+    "translate": [
+     0,
+     2.08,
+     1.25
+    ]
+   }
+  },
+  {
+   "id": "nuki_l",
+   "op": "box",
+   "size": [
+    0.12,
+    0.12,
+    2.5
+   ],
+   "material": "beam",
+   "transform": {
+    "translate": [
+     -1.25,
+     2.05,
+     0
+    ]
+   }
+  },
+  {
+   "id": "nuki_r",
+   "op": "box",
+   "size": [
+    0.12,
+    0.12,
+    2.5
+   ],
+   "material": "beam",
+   "transform": {
+    "translate": [
+     1.25,
+     2.05,
+     0
+    ]
+   }
+  },
+  {
+   "id": "rail_b",
+   "op": "box",
+   "size": [
+    2.34,
+    0.07,
+    0.09
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     0,
+     1.3,
+     1.25
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_l",
+   "op": "box",
+   "size": [
+    0.09,
+    0.07,
+    2.34
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     -1.25,
+     1.3,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_r",
+   "op": "box",
+   "size": [
+    0.09,
+    0.07,
+    2.34
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     1.25,
+     1.3,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_fl",
+   "op": "box",
+   "size": [
+    0.57,
+    0.07,
+    0.09
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     -0.885,
+     1.3,
+     -1.25
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "rail_fr",
+   "op": "box",
+   "size": [
+    0.57,
+    0.07,
+    0.09
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     0.885,
+     1.3,
+     -1.25
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "slats_b",
+   "op": "mesh",
+   "material": "slats_l",
+   "vertices": [
+    [
+     1.17,
+     1.285,
+     1.25
+    ],
+    [
+     -1.17,
+     1.285,
+     1.25
+    ],
+    [
+     -1.17,
+     0.46,
+     1.25
+    ],
+    [
+     1.17,
+     0.46,
+     1.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "slats_l",
+   "op": "mesh",
+   "material": "slats_l",
+   "vertices": [
+    [
+     -1.25,
+     1.285,
+     -1.17
+    ],
+    [
+     -1.25,
+     1.285,
+     1.17
+    ],
+    [
+     -1.25,
+     0.46,
+     1.17
+    ],
+    [
+     -1.25,
+     0.46,
+     -1.17
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "slats_r",
+   "op": "mesh",
+   "material": "slats_l",
+   "vertices": [
+    [
+     1.25,
+     1.285,
+     1.17
+    ],
+    [
+     1.25,
+     1.285,
+     -1.17
+    ],
+    [
+     1.25,
+     0.46,
+     -1.17
+    ],
+    [
+     1.25,
+     0.46,
+     1.17
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "slats_fl",
+   "op": "mesh",
+   "material": "slats_s",
+   "vertices": [
+    [
+     -1.17,
+     1.285,
+     -1.25
+    ],
+    [
+     -0.6,
+     1.285,
+     -1.25
+    ],
+    [
+     -0.6,
+     0.46,
+     -1.25
+    ],
+    [
+     -1.17,
+     0.46,
+     -1.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "slats_fr",
+   "op": "mesh",
+   "material": "slats_s",
+   "vertices": [
+    [
+     0.6,
+     1.285,
+     -1.25
+    ],
+    [
+     1.17,
+     1.285,
+     -1.25
+    ],
+    [
+     1.17,
+     0.46,
+     -1.25
+    ],
+    [
+     0.6,
+     0.46,
+     -1.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "eave_band",
+   "op": "mesh",
+   "vertices": [
+    [
+     -2,
+     2.5,
+     -2
+    ],
+    [
+     2,
+     2.5,
+     -2
+    ],
+    [
+     2,
+     2.5,
+     2
+    ],
+    [
+     -2,
+     2.5,
+     2
+    ],
+    [
+     -2,
+     2.75,
+     -2
+    ],
+    [
+     2,
+     2.75,
+     -2
+    ],
+    [
+     2,
+     2.75,
+     2
+    ],
+    [
+     -2,
+     2.75,
+     2
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     5,
+     6,
+     2,
+     1
+    ],
+    [
+     6,
+     7,
+     3,
+     2
+    ],
+    [
+     7,
+     4,
+     0,
+     3
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "eave",
+    "eave",
+    "eave",
+    "eave",
+    "soffit"
+   ],
+   "material": "eave"
+  },
+  {
+   "id": "roof",
+   "op": "mesh",
+   "material": "tile",
+   "vertices": [
+    [
+     -2.0,
+     2.75,
+     -2.0
+    ],
+    [
+     2.0,
+     2.75,
+     -2.0
+    ],
+    [
+     -1.66,
+     2.87,
+     -1.66
+    ],
+    [
+     1.66,
+     2.87,
+     -1.66
+    ],
+    [
+     -1.28,
+     3.07,
+     -1.28
+    ],
+    [
+     1.28,
+     3.07,
+     -1.28
+    ],
+    [
+     -0.86,
+     3.37,
+     -0.86
+    ],
+    [
+     0.86,
+     3.37,
+     -0.86
+    ],
+    [
+     -0.48,
+     3.77,
+     -0.48
+    ],
+    [
+     0.48,
+     3.77,
+     -0.48
+    ],
+    [
+     -0.12,
+     4.27,
+     -0.12
+    ],
+    [
+     0.12,
+     4.27,
+     -0.12
+    ],
+    [
+     -2.0,
+     2.75,
+     2.0
+    ],
+    [
+     -2.0,
+     2.75,
+     -2.0
+    ],
+    [
+     -1.66,
+     2.87,
+     1.66
+    ],
+    [
+     -1.66,
+     2.87,
+     -1.66
+    ],
+    [
+     -1.28,
+     3.07,
+     1.28
+    ],
+    [
+     -1.28,
+     3.07,
+     -1.28
+    ],
+    [
+     -0.86,
+     3.37,
+     0.86
+    ],
+    [
+     -0.86,
+     3.37,
+     -0.86
+    ],
+    [
+     -0.48,
+     3.77,
+     0.48
+    ],
+    [
+     -0.48,
+     3.77,
+     -0.48
+    ],
+    [
+     -0.12,
+     4.27,
+     0.12
+    ],
+    [
+     -0.12,
+     4.27,
+     -0.12
+    ],
+    [
+     2.0,
+     2.75,
+     2.0
+    ],
+    [
+     -2.0,
+     2.75,
+     2.0
+    ],
+    [
+     1.66,
+     2.87,
+     1.66
+    ],
+    [
+     -1.66,
+     2.87,
+     1.66
+    ],
+    [
+     1.28,
+     3.07,
+     1.28
+    ],
+    [
+     -1.28,
+     3.07,
+     1.28
+    ],
+    [
+     0.86,
+     3.37,
+     0.86
+    ],
+    [
+     -0.86,
+     3.37,
+     0.86
+    ],
+    [
+     0.48,
+     3.77,
+     0.48
+    ],
+    [
+     -0.48,
+     3.77,
+     0.48
+    ],
+    [
+     0.12,
+     4.27,
+     0.12
+    ],
+    [
+     -0.12,
+     4.27,
+     0.12
+    ],
+    [
+     2.0,
+     2.75,
+     -2.0
+    ],
+    [
+     2.0,
+     2.75,
+     2.0
+    ],
+    [
+     1.66,
+     2.87,
+     -1.66
+    ],
+    [
+     1.66,
+     2.87,
+     1.66
+    ],
+    [
+     1.28,
+     3.07,
+     -1.28
+    ],
+    [
+     1.28,
+     3.07,
+     1.28
+    ],
+    [
+     0.86,
+     3.37,
+     -0.86
+    ],
+    [
+     0.86,
+     3.37,
+     0.86
+    ],
+    [
+     0.48,
+     3.77,
+     -0.48
+    ],
+    [
+     0.48,
+     3.77,
+     0.48
+    ],
+    [
+     0.12,
+     4.27,
+     -0.12
+    ],
+    [
+     0.12,
+     4.27,
+     0.12
+    ],
+    [
+     -0.12,
+     4.27,
+     -0.12
+    ],
+    [
+     0.12,
+     4.27,
+     -0.12
+    ],
+    [
+     0.12,
+     4.27,
+     0.12
+    ],
+    [
+     -0.12,
+     4.27,
+     0.12
+    ]
+   ],
+   "faces": [
+    [
+     2,
+     3,
+     1
+    ],
+    [
+     2,
+     1,
+     0
+    ],
+    [
+     4,
+     5,
+     3
+    ],
+    [
+     4,
+     3,
+     2
+    ],
+    [
+     6,
+     7,
+     5
+    ],
+    [
+     6,
+     5,
+     4
+    ],
+    [
+     8,
+     9,
+     7
+    ],
+    [
+     8,
+     7,
+     6
+    ],
+    [
+     10,
+     11,
+     9
+    ],
+    [
+     10,
+     9,
+     8
+    ],
+    [
+     14,
+     15,
+     13
+    ],
+    [
+     14,
+     13,
+     12
+    ],
+    [
+     16,
+     17,
+     15
+    ],
+    [
+     16,
+     15,
+     14
+    ],
+    [
+     18,
+     19,
+     17
+    ],
+    [
+     18,
+     17,
+     16
+    ],
+    [
+     20,
+     21,
+     19
+    ],
+    [
+     20,
+     19,
+     18
+    ],
+    [
+     22,
+     23,
+     21
+    ],
+    [
+     22,
+     21,
+     20
+    ],
+    [
+     26,
+     27,
+     25
+    ],
+    [
+     26,
+     25,
+     24
+    ],
+    [
+     28,
+     29,
+     27
+    ],
+    [
+     28,
+     27,
+     26
+    ],
+    [
+     30,
+     31,
+     29
+    ],
+    [
+     30,
+     29,
+     28
+    ],
+    [
+     32,
+     33,
+     31
+    ],
+    [
+     32,
+     31,
+     30
+    ],
+    [
+     34,
+     35,
+     33
+    ],
+    [
+     34,
+     33,
+     32
+    ],
+    [
+     38,
+     39,
+     37
+    ],
+    [
+     38,
+     37,
+     36
+    ],
+    [
+     40,
+     41,
+     39
+    ],
+    [
+     40,
+     39,
+     38
+    ],
+    [
+     42,
+     43,
+     41
+    ],
+    [
+     42,
+     41,
+     40
+    ],
+    [
+     44,
+     45,
+     43
+    ],
+    [
+     44,
+     43,
+     42
+    ],
+    [
+     46,
+     47,
+     45
+    ],
+    [
+     46,
+     45,
+     44
+    ],
+    [
+     51,
+     50,
+     49,
+     48
+    ]
+   ],
+   "uvs": [
+    [
+     0.3,
+     8.247
+    ],
+    [
+     5.7,
+     8.247
+    ],
+    [
+     0.3,
+     7.045
+    ],
+    [
+     5.7,
+     7.045
+    ],
+    [
+     0.3,
+     5.613
+    ],
+    [
+     5.7,
+     5.613
+    ],
+    [
+     0.3,
+     3.893
+    ],
+    [
+     5.7,
+     3.893
+    ],
+    [
+     0.3,
+     2.054
+    ],
+    [
+     5.7,
+     2.054
+    ],
+    [
+     0.3,
+     0.0
+    ],
+    [
+     5.7,
+     0.0
+    ],
+    [
+     0.3,
+     8.247
+    ],
+    [
+     5.7,
+     8.247
+    ],
+    [
+     0.3,
+     7.045
+    ],
+    [
+     5.7,
+     7.045
+    ],
+    [
+     0.3,
+     5.613
+    ],
+    [
+     5.7,
+     5.613
+    ],
+    [
+     0.3,
+     3.893
+    ],
+    [
+     5.7,
+     3.893
+    ],
+    [
+     0.3,
+     2.054
+    ],
+    [
+     5.7,
+     2.054
+    ],
+    [
+     0.3,
+     0.0
+    ],
+    [
+     5.7,
+     0.0
+    ],
+    [
+     0.3,
+     8.247
+    ],
+    [
+     5.7,
+     8.247
+    ],
+    [
+     0.3,
+     7.045
+    ],
+    [
+     5.7,
+     7.045
+    ],
+    [
+     0.3,
+     5.613
+    ],
+    [
+     5.7,
+     5.613
+    ],
+    [
+     0.3,
+     3.893
+    ],
+    [
+     5.7,
+     3.893
+    ],
+    [
+     0.3,
+     2.054
+    ],
+    [
+     5.7,
+     2.054
+    ],
+    [
+     0.3,
+     0.0
+    ],
+    [
+     5.7,
+     0.0
+    ],
+    [
+     0.3,
+     8.247
+    ],
+    [
+     5.7,
+     8.247
+    ],
+    [
+     0.3,
+     7.045
+    ],
+    [
+     5.7,
+     7.045
+    ],
+    [
+     0.3,
+     5.613
+    ],
+    [
+     5.7,
+     5.613
+    ],
+    [
+     0.3,
+     3.893
+    ],
+    [
+     5.7,
+     3.893
+    ],
+    [
+     0.3,
+     2.054
+    ],
+    [
+     5.7,
+     2.054
+    ],
+    [
+     0.3,
+     0.0
+    ],
+    [
+     5.7,
+     0.0
+    ],
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.96,
+     0.0
+    ],
+    [
+     0.96,
+     0.96
+    ],
+    [
+     0.0,
+     0.96
+    ]
+   ]
+  },
+  {
+   "id": "finial",
+   "op": "lathe",
+   "segments": 6,
+   "material": "bell_band",
+   "profile": [
+    [
+     0.14,
+     0.0
+    ],
+    [
+     0.06,
+     0.1
+    ],
+    [
+     0.11,
+     0.2
+    ],
+    [
+     0.0,
+     0.42
+    ]
+   ],
+   "transform": {
+    "translate": [
+     0,
+     4.25,
+     0
+    ]
+   }
+  },
+  {
+   "id": "chime_lf",
+   "op": "cone",
+   "radius": 0.09,
+   "height": 0.13,
+   "segments": 6,
+   "material": "chime",
+   "transform": {
+    "rotate": [
+     180,
+     0,
+     0
+    ],
+    "translate": [
+     -1.88,
+     2.44,
+     -1.88
+    ]
+   }
+  },
+  {
+   "id": "chime_lb",
+   "op": "cone",
+   "radius": 0.09,
+   "height": 0.13,
+   "segments": 6,
+   "material": "chime",
+   "transform": {
+    "rotate": [
+     180,
+     0,
+     0
+    ],
+    "translate": [
+     -1.88,
+     2.44,
+     1.88
+    ]
+   }
+  },
+  {
+   "id": "chime_rf",
+   "op": "cone",
+   "radius": 0.09,
+   "height": 0.13,
+   "segments": 6,
+   "material": "chime",
+   "transform": {
+    "rotate": [
+     180,
+     0,
+     0
+    ],
+    "translate": [
+     1.88,
+     2.44,
+     -1.88
+    ]
+   }
+  },
+  {
+   "id": "chime_rb",
+   "op": "cone",
+   "radius": 0.09,
+   "height": 0.13,
+   "segments": 6,
+   "material": "chime",
+   "transform": {
+    "rotate": [
+     180,
+     0,
+     0
+    ],
+    "translate": [
+     1.88,
+     2.44,
+     1.88
+    ]
+   }
+  },
+  {
+   "id": "bell",
+   "op": "lathe",
+   "segments": 8,
+   "material": "bell",
+   "profile": [
+    [
+     0.43,
+     0.0
+    ],
+    [
+     0.43,
+     0.07
+    ],
+    [
+     0.37,
+     0.1
+    ],
+    [
+     0.34,
+     0.7
+    ],
+    [
+     0.28,
+     0.93
+    ],
+    [
+     0.12,
+     1.0
+    ]
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.97,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bell_band_low",
+   "op": "cylinder",
+   "radius": 0.385,
+   "height": 0.05,
+   "segments": 8,
+   "caps": false,
+   "material": "bell_band",
+   "transform": {
+    "translate": [
+     0,
+     1.29,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bell_band_high",
+   "op": "cylinder",
+   "radius": 0.365,
+   "height": 0.05,
+   "segments": 8,
+   "caps": false,
+   "material": "bell_band",
+   "transform": {
+    "translate": [
+     0,
+     1.5899999999999999,
+     0
+    ]
+   }
+  },
+  {
+   "id": "bell_hook",
+   "op": "cylinder",
+   "radius": 0.06,
+   "height": 0.24,
+   "segments": 8,
+   "caps": false,
+   "material": "bell_band",
+   "transform": {
+    "translate": [
+     0,
+     2.0700000000000003,
+     0
+    ]
+   }
+  },
+  {
+   "id": "shumoku",
+   "op": "cylinder",
+   "radius": 0.09,
+   "height": 1.09,
+   "segments": 8,
+   "caps": true,
+   "material": "log",
+   "transform": {
+    "rotate": [
+     90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     1.1,
+     -1.0050000000000001
+    ]
+   }
+  },
+  {
+   "id": "rope_a",
+   "op": "cylinder",
+   "radius": 0.02,
+   "height": 1.157626882894484,
+   "segments": 4,
+   "caps": false,
+   "material": "rope",
+   "transform": {
+    "rotate": [
+     31.218,
+     0,
+     0
+    ],
+    "translate": [
+     0.0,
+     1.675,
+     -0.4
+    ]
+   }
+  },
+  {
+   "id": "rope_b",
+   "op": "cylinder",
+   "radius": 0.02,
+   "height": 1.5556670594957005,
+   "segments": 4,
+   "caps": false,
+   "material": "rope",
+   "transform": {
+    "rotate": [
+     50.477,
+     0,
+     0
+    ],
+    "translate": [
+     0.0,
+     1.675,
+     -0.7
+    ]
+   }
+  },
+  {
+   "id": "plaque",
+   "op": "box",
+   "size": [
+    0.7,
+    0.26,
+    0.04
+   ],
+   "material": "plaque",
+   "transform": {
+    "translate": [
+     0,
+     2.35,
+     -1.36
+    ]
+   },
+   "open": [
+    "front",
+    "bottom"
+   ]
+  },
+  {
+   "id": "lantern",
+   "op": "lathe",
+   "segments": 6,
+   "material": "lantern",
+   "profile": [
+    [
+     0.08,
+     0.0
+    ],
+    [
+     0.16,
+     0.1
+    ],
+    [
+     0.16,
+     0.24
+    ],
+    [
+     0.08,
+     0.34
+    ]
+   ],
+   "transform": {
+    "translate": [
+     -0.9,
+     1.88,
+     -1.25
+    ]
+   }
+  },
+  {
+   "id": "lantern_cord",
+   "op": "box",
+   "size": [
+    0.02,
+    0.1,
+    0.02
+   ],
+   "material": "rope",
+   "transform": {
+    "translate": [
+     -0.9,
+     2.27,
+     -1.25
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "notice_post",
+   "op": "box",
+   "size": [
+    0.06,
+    1.2,
+    0.06
+   ],
+   "material": "beam",
+   "transform": {
+    "translate": [
+     -1.05,
+     0.6,
+     -2.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "notice",
+   "op": "box",
+   "size": [
+    0.34,
+    0.68,
+    0.03
+   ],
+   "material": "notice",
+   "transform": {
+    "translate": [
+     -1.05,
+     0.95,
+     -2.075
+    ]
+   },
+   "open": [
+    "front",
+    "bottom"
+   ]
+  },
+  {
+   "id": "cat_body",
+   "op": "sphere",
+   "radius": 1,
+   "rings": 3,
+   "segments": 8,
+   "material": "cat",
+   "transform": {
+    "scale": [
+     0.15,
+     0.11,
+     0.2
+    ],
+    "translate": [
+     -0.85,
+     0.54,
+     0.7
+    ]
+   }
+  },
+  {
+   "id": "cat_head",
+   "op": "sphere",
+   "radius": 0.085,
+   "rings": 3,
+   "segments": 6,
+   "material": "cat",
+   "transform": {
+    "translate": [
+     -0.85,
+     0.64,
+     0.5299999999999999
+    ]
+   }
+  },
+  {
+   "id": "cat_ear_l",
+   "op": "cone",
+   "radius": 0.03,
+   "height": 0.06,
+   "segments": 4,
+   "caps": false,
+   "material": "cat",
+   "transform": {
+    "translate": [
+     -0.9,
+     0.73,
+     0.5299999999999999
+    ]
+   }
+  },
+  {
+   "id": "cat_eye_l",
+   "op": "mesh",
+   "material": "cat_dark",
+   "vertices": [
+    [
+     -0.873,
+     0.655,
+     0.4465
+    ],
+    [
+     -0.897,
+     0.655,
+     0.4465
+    ],
+    [
+     -0.897,
+     0.64,
+     0.4465
+    ],
+    [
+     -0.873,
+     0.64,
+     0.4465
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "cat_ear_r",
+   "op": "cone",
+   "radius": 0.03,
+   "height": 0.06,
+   "segments": 4,
+   "caps": false,
+   "material": "cat",
+   "transform": {
+    "translate": [
+     -0.7999999999999999,
+     0.73,
+     0.5299999999999999
+    ]
+   }
+  },
+  {
+   "id": "cat_eye_r",
+   "op": "mesh",
+   "material": "cat_dark",
+   "vertices": [
+    [
+     -0.803,
+     0.655,
+     0.4465
+    ],
+    [
+     -0.827,
+     0.655,
+     0.4465
+    ],
+    [
+     -0.827,
+     0.64,
+     0.4465
+    ],
+    [
+     -0.803,
+     0.64,
+     0.4465
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "cat_tail",
+   "op": "cylinder",
+   "radius": 0.022,
+   "height": 0.26,
+   "segments": 5,
+   "caps": false,
+   "material": "cat",
+   "transform": {
+    "rotate": [
+     90,
+     20,
+     0
+    ],
+    "translate": [
+     -0.71,
+     0.48,
+     0.75
+    ]
+   }
+  },
+  {
+   "id": "bucket",
+   "op": "lathe",
+   "segments": 8,
+   "material": "bucket",
+   "profile": [
+    [
+     0.1,
+     0.0
+    ],
+    [
+     0.15,
+     0.26
+    ]
+   ],
+   "transform": {
+    "translate": [
+     1.0,
+     0.43,
+     0.7
+    ]
+   }
+  },
+  {
+   "id": "broom_handle",
+   "op": "cylinder",
+   "radius": 0.014,
+   "height": 1.3,
+   "segments": 5,
+   "caps": false,
+   "material": "broom_h",
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     -7
+    ],
+    "translate": [
+     1.12,
+     1.06,
+     1.0
+    ]
+   }
+  },
+  {
+   "id": "broom_head",
+   "op": "cone",
+   "radius": 0.08,
+   "height": 0.28,
+   "segments": 6,
+   "caps": false,
+   "material": "straw",
+   "transform": {
+    "rotate": [
+     180,
+     0,
+     -7
+    ],
+    "translate": [
+     1.12,
+     0.59,
+     1.0
+    ]
+   }
+  }
+ ]
+}

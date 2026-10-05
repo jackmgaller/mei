@@ -1,0 +1,107 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "vegstand",
+  "budget": {"vertices": 400, "triangles": 400},
+  "sheets": {
+    "veg": {"image": "art/vegstand_sheet.png"}
+  },
+  "materials": {
+    "post": {"color": "#7a6b56",
+             "texture": {"pattern": "grain", "colors": ["#8c7c66", "#6a5c4a", "#7c6d58"],
+                         "params": {"rings": 2, "waves": 1, "amplitude": 1}, "projection": "box", "scale": [0.07, 0.8]}},
+    "shelf": {"color": "#9c8a6c", "tag": "floor",
+              "texture": {"pattern": "planks", "colors": ["#a08e70", "#5a4c3c", "#8e7c5e", "#7e6c52"],
+                          "params": {"boards": 4, "seed": 3}, "projection": "box", "scale": [0.6, 0.6], "rotate": 90}},
+    "board": {"color": "#8c7a60", "tag": "wall",
+              "texture": {"texels": ["1000122210001222", "1000122210001222", "1000122210001222", "1000122210001222", "1000122210001222", "1000123210001222", "1000123210001222", "1000122210001222", "1000122210001222", "1000122210011222", "1000122210011222", "1000122210011222", "1000122210011233", "1000122210011222", "1000122210011222", "1000122210001222"],
+                          "colors": ["#94826a", "#5a4c3c", "#86745c", "#6a5a46"], "projection": "box", "scale": [0.5, 0.6]}},
+    "tin": {"color": "#a0a29e", "tag": "roof", "double_sided": true,
+            "texture": {"sheet": "veg", "cell": "tin", "projection": "box", "scale": [0.25, 0.25]}},
+    "sign": {"color": "#c4a070", "texture": {"sheet": "veg", "cell": "sign", "bits": 8, "projection": "fit"}},
+    "cardboard": {"color": "#b8945e"},
+    "lipwood": {"color": "#8a7658"},
+    "string": {"color": "#e4dcc0"},
+    "coin": {"color": "#46607f", "texture": {"sheet": "veg", "cell": "coin", "projection": "fit"}},
+    "tinbox": {"color": "#46607f"},
+    "basket": {"color": "#b49058", "double_sided": true},
+    "tomato": {"color": "#c8302a", "texture": {"sheet": "veg", "cell": "tomato", "projection": "disc", "axis": "y"}},
+    "cucumber": {"color": "#3c7a30", "texture": {"sheet": "veg", "cell": "cucumber", "projection": "disc", "axis": "y"}},
+    "daikon": {"color": "#efebe0", "smooth": true},
+    "leaves": {"color": "#4f8a34"},
+    "cabbage": {"color": "#a6cc6a", "smooth": true},
+    "kabocha": {"color": "#3a5a34", "smooth": true}
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.55},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "prototypes": {
+    "daikon": {"id": "daikon", "op": "group", "children": [
+      {"id": "root", "op": "cone", "radius": 0.045, "height": 0.38, "segments": 6, "material": "daikon",
+       "transform": {"rotate": [0, 0, 90]}},
+      {"id": "tops", "op": "cone", "radius": 0.06, "height": 0.26, "segments": 5, "material": "leaves",
+       "transform": {"rotate": [0, 0, -90], "translate": [0.31, 0.0, 0]}}
+    ]},
+    "zaru": {"id": "zaru", "op": "lathe", "profile": [[0.15, 0.0], [0.19, 0.05]], "segments": 8,
+             "caps": false, "material": "basket"},
+    "sign_card": {"id": "sign_card", "op": "mesh",
+             "vertices": [[-0.5, -0.5, -0.5], [0.5, -0.5, -0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, -0.5],
+                          [-0.5, -0.5, 0.5], [0.5, -0.5, 0.5], [0.5, 0.5, 0.5], [-0.5, 0.5, 0.5]],
+             "faces": [[3, 2, 1, 0], [6, 7, 4, 5], [2, 6, 5, 1], [7, 3, 0, 4], [7, 6, 2, 3], [0, 1, 5, 4]],
+             "face_materials": ["sign", "cardboard", "cardboard", "cardboard", "cardboard", "cardboard"]},
+    "coin_tin": {"id": "coin_tin", "op": "mesh",
+             "vertices": [[-0.5, -0.5, -0.5], [0.5, -0.5, -0.5], [0.5, 0.5, -0.5], [-0.5, 0.5, -0.5],
+                          [-0.5, -0.5, 0.5], [0.5, -0.5, 0.5], [0.5, 0.5, 0.5], [-0.5, 0.5, 0.5]],
+             "faces": [[3, 2, 1, 0], [6, 7, 4, 5], [2, 6, 5, 1], [7, 3, 0, 4], [7, 6, 2, 3], [0, 1, 5, 4]],
+             "face_materials": ["coin", "tinbox", "tinbox", "tinbox", "tinbox", "tinbox"]}
+  },
+  "nodes": [
+    {"id": "front_posts", "op": "group", "children": [
+      {"id": "post", "op": "box", "size": [0.06, 1.64, 0.06], "open": ["bottom"], "material": "post",
+       "transform": {"translate": [0.72, 0.82, -0.27]}}
+    ], "modifiers": [{"op": "mirror", "axis": "x"}]},
+    {"id": "back_posts", "op": "group", "children": [
+      {"id": "post", "op": "box", "size": [0.06, 1.49, 0.06], "open": ["bottom"], "material": "post",
+       "transform": {"translate": [0.72, 0.745, 0.27]}}
+    ], "modifiers": [{"op": "mirror", "axis": "x"}]},
+    {"id": "roof", "op": "box", "size": [1.72, 0.02, 0.84], "material": "tin",
+     "transform": {"rotate": [15.5, 0, 0], "translate": [0, 1.57, -0.01]}},
+    {"id": "shelf_low", "op": "box", "size": [1.44, 0.03, 0.56], "material": "shelf",
+     "transform": {"translate": [0, 0.5, 0]}},
+    {"id": "shelf_high", "op": "box", "size": [1.44, 0.03, 0.56], "material": "shelf",
+     "transform": {"translate": [0, 0.95, 0]}},
+    {"id": "lip", "op": "box", "size": [1.42, 0.07, 0.02], "material": "lipwood",
+     "transform": {"translate": [0, 0.985, -0.28]}},
+    {"id": "back", "op": "box", "size": [1.42, 0.92, 0.02], "material": "board",
+     "transform": {"translate": [0, 1.0, 0.275]}},
+
+    {"id": "sign", "op": "instance", "ref": "sign_card",
+     "transform": {"scale": [0.42, 0.28, 0.012], "rotate": [0, 0, 3], "translate": [0.05, 1.44, -0.36]}},
+    {"id": "strings", "op": "group", "children": [
+      {"id": "string", "op": "box", "size": [0.008, 0.12, 0.008], "open": ["top", "bottom"], "material": "string",
+       "transform": {"translate": [0.17, 1.6, -0.36]}}
+    ], "modifiers": [{"op": "mirror", "axis": "x"}]},
+
+    {"id": "tomatoes", "op": "group", "children": [
+      {"id": "zaru", "op": "instance", "ref": "zaru"},
+      {"id": "heap", "op": "lathe", "profile": [[0.17, 0.0], [0.13, 0.07], [0.0, 0.11]], "segments": 8,
+       "material": "tomato", "transform": {"translate": [0, 0.012, 0]}}
+    ], "transform": {"translate": [-0.45, 0.962, -0.02]}},
+    {"id": "cucumbers", "op": "group", "children": [
+      {"id": "zaru", "op": "instance", "ref": "zaru"},
+      {"id": "heap", "op": "lathe", "profile": [[0.17, 0.0], [0.13, 0.05], [0.0, 0.08]], "segments": 8,
+       "material": "cucumber", "transform": {"translate": [0, 0.012, 0]}}
+    ], "transform": {"translate": [0.0, 0.962, 0.0], "rotate": [0, 20, 0]}},
+    {"id": "coin_box", "op": "instance", "ref": "coin_tin",
+     "transform": {"scale": [0.16, 0.15, 0.13], "rotate": [0, -12, 0], "translate": [0.47, 1.035, 0.02]}},
+
+    {"id": "daikons", "op": "group", "children": [
+      {"id": "d1", "op": "instance", "ref": "daikon", "transform": {"translate": [0, 0.05, -0.1]}},
+      {"id": "d2", "op": "instance", "ref": "daikon", "transform": {"rotate": [0, 8, 0], "translate": [0.03, 0.05, 0.0]}},
+      {"id": "d3", "op": "instance", "ref": "daikon", "transform": {"rotate": [0, -6, 0], "translate": [-0.02, 0.12, -0.05]}}
+    ], "transform": {"translate": [-0.4, 0.51, 0]}},
+    {"id": "cabbage", "op": "sphere", "radius": 0.12, "rings": 4, "segments": 6, "material": "cabbage",
+     "transform": {"scale": [1, 0.85, 1], "translate": [0.24, 0.615, 0.02]}},
+    {"id": "kabocha", "op": "sphere", "radius": 0.13, "rings": 3, "segments": 8, "material": "kabocha",
+     "transform": {"scale": [1, 0.72, 1], "translate": [0.5, 0.6, -0.03]}}
+  ]
+}
