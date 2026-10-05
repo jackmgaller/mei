@@ -1,0 +1,720 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "sports_climbing_frame",
+ "budget": {
+  "triangles": 150
+ },
+ "materials": {
+  "frame": {
+   "color": "#3a6ab0",
+   "palette": true
+  },
+  "beam": {
+   "color": "#e8782a",
+   "palette": true
+  },
+  "rail": {
+   "color": "#d8462a",
+   "palette": true
+  },
+  "steel": {
+   "color": "#c8c4b8",
+   "palette": true
+  },
+  "rungs": {
+   "color": "#f0c030",
+   "double_sided": true,
+   "texture": {
+    "texels": [
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000"
+    ],
+    "colors": [
+     "#000000",
+     "#f0c030"
+    ],
+    "clear": "#000000",
+    "projection": "fit"
+   }
+  },
+  "steps": {
+   "color": "#f0c030",
+   "double_sided": true,
+   "texture": {
+    "texels": [
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000",
+     "00000000",
+     "00000000",
+     "11111111",
+     "00000000"
+    ],
+    "colors": [
+     "#000000",
+     "#f0c030"
+    ],
+    "clear": "#000000",
+    "projection": "fit"
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "post_w",
+   "op": "box",
+   "size": [
+    0.1,
+    4.44,
+    0.1
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     -2.75,
+     2.22,
+     2.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "post_e",
+   "op": "box",
+   "size": [
+    0.1,
+    4.44,
+    0.1
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     2.75,
+     2.22,
+     2.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "beam",
+   "op": "box",
+   "size": [
+    5.7,
+    0.12,
+    0.16
+   ],
+   "material": "beam",
+   "transform": {
+    "translate": [
+     0,
+     4.44,
+     2.0
+    ]
+   }
+  },
+  {
+   "id": "pole_1",
+   "op": "cylinder",
+   "radius": 0.03,
+   "height": 4.44,
+   "segments": 3,
+   "caps": false,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -2.2,
+     2.22,
+     2.0
+    ]
+   }
+  },
+  {
+   "id": "pole_2",
+   "op": "cylinder",
+   "radius": 0.03,
+   "height": 4.44,
+   "segments": 3,
+   "caps": false,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -1.1,
+     2.22,
+     2.0
+    ]
+   }
+  },
+  {
+   "id": "pole_3",
+   "op": "cylinder",
+   "radius": 0.03,
+   "height": 4.44,
+   "segments": 3,
+   "caps": false,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     1.1,
+     2.22,
+     2.0
+    ]
+   }
+  },
+  {
+   "id": "pole_4",
+   "op": "cylinder",
+   "radius": 0.03,
+   "height": 4.44,
+   "segments": 3,
+   "caps": false,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     2.2,
+     2.22,
+     2.0
+    ]
+   }
+  },
+  {
+   "id": "rail_w",
+   "op": "box",
+   "size": [
+    0.12,
+    0.1,
+    4.36
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     -0.3,
+     2.41,
+     -0.2
+    ]
+   }
+  },
+  {
+   "id": "back_post_w",
+   "op": "box",
+   "size": [
+    0.06,
+    2.41,
+    0.06
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     -0.3,
+     1.205,
+     1.88
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "upright_w",
+   "op": "box",
+   "size": [
+    0.06,
+    2.41,
+    0.06
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     -0.3,
+     1.205,
+     -2.3
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "rail_e",
+   "op": "box",
+   "size": [
+    0.12,
+    0.1,
+    4.36
+   ],
+   "material": "rail",
+   "transform": {
+    "translate": [
+     0.3,
+     2.41,
+     -0.2
+    ]
+   }
+  },
+  {
+   "id": "back_post_e",
+   "op": "box",
+   "size": [
+    0.06,
+    2.41,
+    0.06
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     0.3,
+     1.205,
+     1.88
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "upright_e",
+   "op": "box",
+   "size": [
+    0.06,
+    2.41,
+    0.06
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     0.3,
+     1.205,
+     -2.3
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "rungs",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.24,
+     2.41,
+     1.92
+    ],
+    [
+     0.24,
+     2.41,
+     1.92
+    ],
+    [
+     0.24,
+     2.41,
+     -2.32
+    ],
+    [
+     -0.24,
+     2.41,
+     -2.32
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "rungs"
+  },
+  {
+   "id": "steps",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.27,
+     2.34,
+     -2.3
+    ],
+    [
+     0.27,
+     2.34,
+     -2.3
+    ],
+    [
+     0.27,
+     0.0,
+     -2.3
+    ],
+    [
+     -0.27,
+     0.0,
+     -2.3
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "steps"
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "post_w",
+      "op": "cylinder",
+      "radius": 0.07,
+      "height": 4.44,
+      "segments": 3,
+      "caps": false,
+      "material": "frame",
+      "transform": {
+       "translate": [
+        -2.75,
+        2.22,
+        2.0
+       ]
+      }
+     },
+     {
+      "id": "rail_w",
+      "op": "cylinder",
+      "radius": 0.08,
+      "height": 4.36,
+      "segments": 3,
+      "caps": false,
+      "material": "rail",
+      "transform": {
+       "translate": [
+        -0.3,
+        2.41,
+        -0.2
+       ],
+       "rotate": [
+        90,
+        0,
+        0
+       ]
+      }
+     },
+     {
+      "id": "back_post_w",
+      "op": "cylinder",
+      "radius": 0.05,
+      "height": 2.36,
+      "segments": 3,
+      "caps": false,
+      "material": "frame",
+      "transform": {
+       "translate": [
+        -0.3,
+        1.18,
+        1.88
+       ]
+      }
+     },
+     {
+      "id": "upright_w",
+      "op": "cylinder",
+      "radius": 0.05,
+      "height": 2.36,
+      "segments": 3,
+      "caps": false,
+      "material": "frame",
+      "transform": {
+       "translate": [
+        -0.3,
+        1.18,
+        -2.3
+       ]
+      }
+     },
+     {
+      "id": "post_e",
+      "op": "cylinder",
+      "radius": 0.07,
+      "height": 4.44,
+      "segments": 3,
+      "caps": false,
+      "material": "frame",
+      "transform": {
+       "translate": [
+        2.75,
+        2.22,
+        2.0
+       ]
+      }
+     },
+     {
+      "id": "rail_e",
+      "op": "cylinder",
+      "radius": 0.08,
+      "height": 4.36,
+      "segments": 3,
+      "caps": false,
+      "material": "rail",
+      "transform": {
+       "translate": [
+        0.3,
+        2.41,
+        -0.2
+       ],
+       "rotate": [
+        90,
+        0,
+        0
+       ]
+      }
+     },
+     {
+      "id": "back_post_e",
+      "op": "cylinder",
+      "radius": 0.05,
+      "height": 2.36,
+      "segments": 3,
+      "caps": false,
+      "material": "frame",
+      "transform": {
+       "translate": [
+        0.3,
+        1.18,
+        1.88
+       ]
+      }
+     },
+     {
+      "id": "upright_e",
+      "op": "cylinder",
+      "radius": 0.05,
+      "height": 2.36,
+      "segments": 3,
+      "caps": false,
+      "material": "frame",
+      "transform": {
+       "translate": [
+        0.3,
+        1.18,
+        -2.3
+       ]
+      }
+     },
+     {
+      "id": "beam",
+      "op": "cylinder",
+      "radius": 0.09,
+      "height": 5.7,
+      "segments": 3,
+      "caps": false,
+      "material": "beam",
+      "transform": {
+       "translate": [
+        0,
+        4.44,
+        2.0
+       ],
+       "rotate": [
+        0,
+        0,
+        90
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "distance": 50,
+    "nodes": [
+     {
+      "id": "post_w",
+      "op": "cylinder",
+      "radius": 0.08,
+      "height": 4.44,
+      "segments": 3,
+      "caps": false,
+      "material": "frame",
+      "transform": {
+       "translate": [
+        -2.75,
+        2.22,
+        2.0
+       ]
+      }
+     },
+     {
+      "id": "post_e",
+      "op": "cylinder",
+      "radius": 0.08,
+      "height": 4.44,
+      "segments": 3,
+      "caps": false,
+      "material": "frame",
+      "transform": {
+       "translate": [
+        2.75,
+        2.22,
+        2.0
+       ]
+      }
+     },
+     {
+      "id": "beam",
+      "op": "cylinder",
+      "radius": 0.1,
+      "height": 5.7,
+      "segments": 3,
+      "caps": false,
+      "material": "beam",
+      "transform": {
+       "translate": [
+        0,
+        4.44,
+        2.0
+       ],
+       "rotate": [
+        0,
+        0,
+        90
+       ]
+      }
+     },
+     {
+      "id": "ladder",
+      "op": "cylinder",
+      "radius": 0.2,
+      "height": 4.36,
+      "segments": 3,
+      "caps": false,
+      "material": "rail",
+      "transform": {
+       "translate": [
+        0,
+        2.41,
+        -0.2
+       ],
+       "rotate": [
+        90,
+        0,
+        0
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 90
+ }
+}

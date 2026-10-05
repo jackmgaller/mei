@@ -1,0 +1,399 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "sports_goal",
+ "budget": {
+  "triangles": 60
+ },
+ "materials": {
+  "frame": {
+   "color": "#eceae4",
+   "palette": true
+  },
+  "net": {
+   "color": "#eceae4",
+   "double_sided": true,
+   "texture": {
+    "pattern": "lattice",
+    "size": 8,
+    "params": {
+     "count": 2,
+     "bar": 1
+    },
+    "colors": [
+     "#eceae4",
+     "#000000"
+    ],
+    "clear": "#000000",
+    "projection": "box",
+    "scale": [
+     0.25,
+     0.25
+    ]
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "post_w",
+   "op": "box",
+   "size": [
+    0.1,
+    2.15,
+    0.1
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     -2.55,
+     1.075,
+     -0.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "stay_w",
+   "op": "cylinder",
+   "radius": 0.035,
+   "height": 2.8975,
+   "segments": 3,
+   "caps": false,
+   "material": "frame",
+   "transform": {
+    "rotate": [
+     -41.5022,
+     0,
+     0
+    ],
+    "translate": [
+     -2.55,
+     1.115,
+     0.01
+    ]
+   }
+  },
+  {
+   "id": "post_e",
+   "op": "box",
+   "size": [
+    0.1,
+    2.15,
+    0.1
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     2.55,
+     1.075,
+     -0.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "stay_e",
+   "op": "cylinder",
+   "radius": 0.035,
+   "height": 2.8975,
+   "segments": 3,
+   "caps": false,
+   "material": "frame",
+   "transform": {
+    "rotate": [
+     -41.5022,
+     0,
+     0
+    ],
+    "translate": [
+     2.55,
+     1.115,
+     0.01
+    ]
+   }
+  },
+  {
+   "id": "crossbar",
+   "op": "box",
+   "size": [
+    5.2,
+    0.1,
+    0.1
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     0,
+     2.2,
+     -0.95
+    ]
+   }
+  },
+  {
+   "id": "ground_bar",
+   "op": "box",
+   "size": [
+    5.18,
+    0.06,
+    0.06
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     0,
+     0.03,
+     0.97
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "net_back",
+   "op": "mesh",
+   "material": "net",
+   "vertices": [
+    [
+     -2.55,
+     2.15,
+     -0.91
+    ],
+    [
+     2.55,
+     2.15,
+     -0.91
+    ],
+    [
+     2.55,
+     0.0,
+     0.97
+    ],
+    [
+     -2.55,
+     0.0,
+     0.97
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "net_sides",
+   "op": "mesh",
+   "material": "net",
+   "vertices": [
+    [
+     -2.55,
+     0.0,
+     -0.91
+    ],
+    [
+     -2.55,
+     2.15,
+     -0.91
+    ],
+    [
+     -2.55,
+     0.0,
+     0.97
+    ],
+    [
+     2.55,
+     0.0,
+     -0.91
+    ],
+    [
+     2.55,
+     2.15,
+     -0.91
+    ],
+    [
+     2.55,
+     0.0,
+     0.97
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2
+    ],
+    [
+     3,
+     5,
+     4
+    ]
+   ]
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "post_w",
+      "op": "cylinder",
+      "radius": 0.07,
+      "height": 2.15,
+      "segments": 3,
+      "caps": false,
+      "material": "frame",
+      "transform": {
+       "translate": [
+        -2.55,
+        1.075,
+        -0.95
+       ]
+      }
+     },
+     {
+      "id": "post_e",
+      "op": "cylinder",
+      "radius": 0.07,
+      "height": 2.15,
+      "segments": 3,
+      "caps": false,
+      "material": "frame",
+      "transform": {
+       "translate": [
+        2.55,
+        1.075,
+        -0.95
+       ]
+      }
+     },
+     {
+      "id": "crossbar",
+      "op": "cylinder",
+      "radius": 0.07,
+      "height": 5.2,
+      "segments": 3,
+      "caps": false,
+      "material": "frame",
+      "transform": {
+       "rotate": [
+        0,
+        0,
+        90
+       ],
+       "translate": [
+        0,
+        2.2,
+        -0.95
+       ]
+      }
+     },
+     {
+      "id": "net_back",
+      "op": "mesh",
+      "material": "net",
+      "vertices": [
+       [
+        -2.55,
+        2.15,
+        -0.91
+       ],
+       [
+        2.55,
+        2.15,
+        -0.91
+       ],
+       [
+        2.55,
+        0.0,
+        0.97
+       ],
+       [
+        -2.55,
+        0.0,
+        0.97
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "net_sides",
+      "op": "mesh",
+      "material": "net",
+      "vertices": [
+       [
+        -2.55,
+        0.0,
+        -0.91
+       ],
+       [
+        -2.55,
+        2.15,
+        -0.91
+       ],
+       [
+        -2.55,
+        0.0,
+        0.97
+       ],
+       [
+        2.55,
+        0.0,
+        -0.91
+       ],
+       [
+        2.55,
+        2.15,
+        -0.91
+       ],
+       [
+        2.55,
+        0.0,
+        0.97
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2
+       ],
+       [
+        3,
+        5,
+        4
+       ]
+      ]
+     }
+    ]
+   }
+  ],
+  "cull": 80
+ }
+}

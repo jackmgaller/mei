@@ -1,0 +1,122 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "sports_tyre_steps_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "step_1",
+   "op": "box",
+   "size": [
+    0.4,
+    0.3511,
+    0.3
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -2.4434,
+     0.1755,
+     0
+    ]
+   }
+  },
+  {
+   "id": "step_2",
+   "op": "box",
+   "size": [
+    0.4,
+    0.4157,
+    0.3
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -1.5266,
+     0.2079,
+     0
+    ]
+   }
+  },
+  {
+   "id": "step_3",
+   "op": "box",
+   "size": [
+    0.4056,
+    0.4897,
+    0.3
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -0.4712,
+     0.2448,
+     0
+    ]
+   }
+  },
+  {
+   "id": "step_4",
+   "op": "box",
+   "size": [
+    0.4745,
+    0.5728,
+    0.33
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.7413,
+     0.2864,
+     0
+    ]
+   }
+  },
+  {
+   "id": "step_5",
+   "op": "box",
+   "size": [
+    0.5511,
+    0.6652,
+    0.38
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     2.1293,
+     0.3326,
+     0
+    ]
+   }
+  }
+ ]
+}
