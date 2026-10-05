@@ -1,0 +1,271 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "town_bench",
+ "budget": {
+  "triangles": 40
+ },
+ "materials": {
+  "concrete": {
+   "color": "#c8c4b8",
+   "palette": true
+  },
+  "wood": {
+   "color": "#8a6446",
+   "palette": true
+  },
+  "seat": {
+   "color": "#b08a5e",
+   "texture": {
+    "image": "art/seat.png",
+    "projection": "fit"
+   }
+  },
+  "backrest": {
+   "color": "#b08a5e",
+   "texture": {
+    "image": "art/backrest.png",
+    "projection": "fit"
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "end_left",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.78,
+     0.0,
+     -0.2
+    ],
+    [
+     -0.78,
+     0.0,
+     0.26
+    ],
+    [
+     -0.78,
+     0.8,
+     0.3
+    ],
+    [
+     -0.78,
+     0.42,
+     -0.2
+    ],
+    [
+     -0.71,
+     0.0,
+     -0.2
+    ],
+    [
+     -0.71,
+     0.0,
+     0.26
+    ],
+    [
+     -0.71,
+     0.8,
+     0.3
+    ],
+    [
+     -0.71,
+     0.42,
+     -0.2
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     7,
+     6,
+     5,
+     4
+    ],
+    [
+     0,
+     3,
+     7,
+     4
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     3,
+     2,
+     6,
+     7
+    ]
+   ],
+   "face_materials": [
+    "concrete",
+    "concrete",
+    "concrete",
+    "concrete",
+    "concrete"
+   ]
+  },
+  {
+   "id": "end_right",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.71,
+     0.0,
+     -0.2
+    ],
+    [
+     0.71,
+     0.0,
+     0.26
+    ],
+    [
+     0.71,
+     0.8,
+     0.3
+    ],
+    [
+     0.71,
+     0.42,
+     -0.2
+    ],
+    [
+     0.78,
+     0.0,
+     -0.2
+    ],
+    [
+     0.78,
+     0.0,
+     0.26
+    ],
+    [
+     0.78,
+     0.8,
+     0.3
+    ],
+    [
+     0.78,
+     0.42,
+     -0.2
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     7,
+     6,
+     5,
+     4
+    ],
+    [
+     0,
+     3,
+     7,
+     4
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     3,
+     2,
+     6,
+     7
+    ]
+   ],
+   "face_materials": [
+    "concrete",
+    "concrete",
+    "concrete",
+    "concrete",
+    "concrete"
+   ]
+  },
+  {
+   "id": "seat",
+   "op": "box",
+   "size": [
+    1.5,
+    0.05,
+    0.48
+   ],
+   "material": "wood",
+   "open": [
+    "left",
+    "right",
+    "bottom"
+   ],
+   "faces": {
+    "top": "seat"
+   },
+   "transform": {
+    "translate": [
+     0,
+     0.435,
+     -0.01
+    ]
+   }
+  },
+  {
+   "id": "backrest",
+   "op": "box",
+   "size": [
+    1.5,
+    0.3,
+    0.04
+   ],
+   "material": "wood",
+   "open": [
+    "left",
+    "right"
+   ],
+   "faces": {
+    "back": "backrest",
+    "front": "backrest"
+   },
+   "transform": {
+    "rotate": [
+     12,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     0.66,
+     0.255
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "cull": 60
+ }
+}
