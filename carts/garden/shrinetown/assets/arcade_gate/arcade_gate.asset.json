@@ -1,0 +1,185 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "arcade_gate",
+  "budget": {"vertices": 400, "triangles": 300},
+  "sheets": {"gate": {"image": "art/gate_sheet.png"}},
+  "materials": {
+    "brick": {
+      "color": "#9a4a3c",
+      "tag": "wall",
+      "texture": {
+        "pattern": "tile",
+        "size": 16,
+        "colors": ["#a4523f", "#d8cbb2", "#8e4234"],
+        "params": {"count": 2, "grout": 1},
+        "projection": "box",
+        "scale": [0.6, 0.6]
+      }
+    },
+    "granite": {
+      "color": "#8e887c",
+      "texture": {
+        "pattern": "speckle",
+        "size": 8,
+        "colors": ["#8e887c", "#6a665e", "#b4ae9e"],
+        "params": {"density": 0.35, "seed": 5},
+        "projection": "box",
+        "scale": [0.3, 0.3]
+      }
+    },
+    "navy": {"color": "#1c2c60", "palette": true},
+    "gold": {"color": "#d8b048", "palette": true},
+    "cream": {"color": "#fcf4de", "palette": true},
+    "steel": {"color": "#5e6a72", "palette": true},
+    "name": {"color": "#1c2c60", "tag": "sign", "texture": {"sheet": "gate", "cell": "name", "projection": "fit"}},
+    "back": {"color": "#fcf4de", "tag": "sign", "texture": {"sheet": "gate", "cell": "back", "projection": "fit"}},
+    "clock": {"color": "#fcf4de", "texture": {"sheet": "gate", "cell": "clock", "projection": "fit"}},
+    "bike": {"color": "#1e5abe", "tag": "sign", "texture": {"sheet": "gate", "cell": "bike", "projection": "disc", "flip": "v"}},
+    "mascot": {"color": "#faaac4", "double_sided": true, "texture": {"sheet": "gate", "cell": "mascot", "projection": "fit"}},
+    "banner": {"color": "#f080a0", "double_sided": true, "tag": "sign", "texture": {"sheet": "gate", "cell": "banner", "projection": "fit"}},
+    "spray": {"color": "#fab2c8", "double_sided": true, "texture": {"sheet": "gate", "cell": "spray", "projection": "fit"}},
+    "bulbs": {
+      "color": "#ffe27a",
+      "class": "emissive",
+      "tag": "sign",
+      "texture": {
+        "texels": [
+          "0101010101010101010101010101010101010101010101010101010101010101",
+          "2323232323232323232323232323232323232323232323232323232323232323",
+          "0101010101010101010101010101010101010101010101010101010101010101"
+        ],
+        "colors": ["#8a6a2a", "#a07a30", "#fffbe8", "#ffd860"],
+        "projection": "fit"
+      }
+    }
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.5},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "nodes": [
+    {
+      "id": "pillars",
+      "op": "group",
+      "children": [
+        {
+          "id": "pillar",
+          "op": "group",
+          "transform": {"translate": [5.45, 0, 0]},
+          "children": [
+            {"id": "plinth", "op": "box", "size": [0.92, 0.6, 0.92], "material": "granite", "open": ["bottom"],
+             "transform": {"translate": [0, 0.3, 0]}},
+            {"id": "shaft", "op": "box", "size": [0.7, 6.5, 0.7], "material": "brick", "open": ["bottom", "top"],
+             "transform": {"translate": [0, 3.8, 0]}},
+            {"id": "cap", "op": "box", "size": [0.88, 0.16, 0.88], "material": "gold",
+             "transform": {"translate": [0, 7.05, 0]}},
+            {"id": "mascot", "op": "mesh", "material": "mascot",
+             "vertices": [[-0.6, 8.3, 0], [0.6, 8.3, 0], [0.6, 7.1, 0], [-0.6, 7.1, 0]],
+             "faces": [[0, 1, 2, 3]]},
+            {"id": "banner_arm", "op": "box", "size": [0.56, 0.05, 0.05], "material": "steel", "open": ["right"],
+             "transform": {"translate": [-0.6, 4.75, -0.2]}},
+            {"id": "banner", "op": "mesh", "material": "banner",
+             "vertices": [[-0.85, 4.74, -0.17], [-0.37, 4.74, -0.17], [-0.37, 3.26, -0.17], [-0.85, 3.26, -0.17]],
+             "faces": [[0, 1, 2, 3]]},
+            {"id": "bike_sign", "op": "cone", "radius": 0.24, "height": 0.1, "segments": 8, "material": "steel",
+             "faces": {"bottom": "bike"},
+             "transform": {"rotate": [90, 0, 0], "translate": [0, 2.1, -0.36]}}
+          ]
+        }
+      ],
+      "modifiers": [{"op": "mirror", "axis": "x"}]
+    },
+    {
+      "id": "board",
+      "op": "box",
+      "size": [10.4, 1.6, 0.45],
+      "material": "navy",
+      "faces": {"back": "name", "front": "back"},
+      "decals": [
+        {"id": "bulbs_front", "face": "back", "material": "bulbs", "size": [10.0, 0.12], "at": [0, -0.71]},
+        {"id": "bulbs_back", "face": "front", "material": "bulbs", "size": [10.0, 0.12], "at": [0, -0.71]}
+      ],
+      "transform": {"translate": [0, 5.95, 0]}
+    },
+    {
+      "id": "trim",
+      "op": "box",
+      "size": [10.3, 0.08, 0.52],
+      "material": "gold",
+      "transform": {"translate": [0, 6.77, 0]}
+    },
+    {
+      "id": "crest",
+      "op": "extrude",
+      "material": "cream",
+      "depth": 0.3,
+      "points": [[-2.8, 6.62], [-2.5, 7.45], [-1.5, 7.95], [0, 8.15], [1.5, 7.95], [2.5, 7.45], [2.8, 6.62]],
+      "faces": {"side": "gold"},
+      "decals": [{"id": "clock", "face": "back", "material": "clock", "size": [1.1, 1.1], "at": [0, 7.35]}]
+    },
+    {
+      "id": "sprays",
+      "op": "group",
+      "children": [
+        {"id": "spray_in", "op": "mesh", "material": "spray",
+         "vertices": [[-0.45, 7.52, 0], [0.45, 7.52, 0], [0.45, 6.62, 0], [-0.45, 6.62, 0]],
+         "faces": [[0, 1, 2, 3]], "transform": {"rotate": [0, 20, 0], "translate": [3.3, 0, -0.05]}},
+        {"id": "spray_out", "op": "mesh", "material": "spray",
+         "vertices": [[-0.45, 7.52, 0], [0.45, 7.52, 0], [0.45, 6.62, 0], [-0.45, 6.62, 0]],
+         "faces": [[0, 1, 2, 3]], "transform": {"rotate": [0, -25, 0], "translate": [4.3, 0, 0.05]}}
+      ],
+      "modifiers": [{"op": "mirror", "axis": "x"}]
+    }
+  ],
+  "lod": {
+    "levels": [
+      {
+        "distance": 40,
+        "nodes": [
+          {
+            "id": "pillars",
+            "op": "group",
+            "children": [
+              {
+                "id": "pillar",
+                "op": "group",
+                "transform": {"translate": [5.45, 0, 0]},
+                "children": [
+                  {"id": "shaft", "op": "box", "size": [0.8, 7.13, 0.8], "material": "brick", "open": ["bottom"],
+                   "faces": {"top": "gold"}, "transform": {"translate": [0, 3.565, 0]}},
+                  {"id": "mascot", "op": "mesh", "material": "mascot",
+                   "vertices": [[-0.6, 8.3, 0], [0.6, 8.3, 0], [0.6, 7.1, 0], [-0.6, 7.1, 0]],
+                   "faces": [[0, 1, 2, 3]]},
+                  {"id": "banner", "op": "mesh", "material": "banner",
+                   "vertices": [[-0.85, 4.74, -0.2], [-0.4, 4.74, -0.2], [-0.4, 3.26, -0.2], [-0.85, 3.26, -0.2]],
+                   "faces": [[0, 1, 2, 3]]}
+                ]
+              }
+            ],
+            "modifiers": [{"op": "mirror", "axis": "x"}]
+          },
+          {"id": "board", "op": "box", "size": [10.4, 1.7, 0.45], "material": "navy",
+           "faces": {"back": "name", "front": "back", "top": "gold"},
+           "transform": {"translate": [0, 5.95, 0]}},
+          {"id": "crest", "op": "extrude", "material": "cream", "depth": 0.3,
+           "points": [[-2.8, 6.75], [-2.2, 7.7], [0, 8.15], [2.2, 7.7], [2.8, 6.75]],
+           "faces": {"side": "gold"}}
+        ]
+      },
+      {
+        "distance": 80,
+        "nodes": [
+          {"id": "pillars", "op": "group",
+           "children": [{"id": "pillar", "op": "box", "size": [0.8, 7.13, 0.8], "material": "brick", "open": ["bottom"],
+                         "transform": {"translate": [5.45, 3.565, 0]}}],
+           "modifiers": [{"op": "mirror", "axis": "x"}]},
+          {"id": "board", "op": "box", "size": [10.4, 1.7, 0.45], "material": "navy", "open": ["top", "bottom"],
+           "faces": {"back": "name", "front": "back"},
+           "transform": {"translate": [0, 5.95, 0]}},
+          {"id": "crest", "op": "extrude", "material": "cream", "depth": 0.3,
+           "points": [[-2.8, 6.75], [-1.6, 8.0], [1.6, 8.0], [2.8, 6.75]]}
+        ]
+      }
+    ],
+    "band": 2
+  }
+}

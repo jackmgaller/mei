@@ -1,0 +1,546 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "station_platform_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "mesh",
+   "material": "solid",
+   "vertices": [
+    [
+     -20.0,
+     1.0,
+     -2.5
+    ],
+    [
+     20.0,
+     1.0,
+     -2.5
+    ],
+    [
+     20.0,
+     1.0,
+     2.5
+    ],
+    [
+     -20.0,
+     1.0,
+     2.5
+    ],
+    [
+     -1.5,
+     1.0,
+     -2.5
+    ],
+    [
+     1.5,
+     1.0,
+     -2.5
+    ],
+    [
+     1.5,
+     1.0,
+     2.5
+    ],
+    [
+     -1.5,
+     1.0,
+     2.5
+    ],
+    [
+     -1.5,
+     1.0,
+     -1.2
+    ],
+    [
+     1.5,
+     1.0,
+     -1.2
+    ],
+    [
+     1.5,
+     1.0,
+     1.2
+    ],
+    [
+     -1.5,
+     1.0,
+     1.2
+    ],
+    [
+     -20.0,
+     0,
+     -2.5
+    ],
+    [
+     20.0,
+     0,
+     -2.5
+    ],
+    [
+     20.0,
+     0,
+     2.5
+    ],
+    [
+     -20.0,
+     0,
+     2.5
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     7,
+     4,
+     0
+    ],
+    [
+     6,
+     2,
+     1,
+     5
+    ],
+    [
+     7,
+     6,
+     10,
+     11
+    ],
+    [
+     8,
+     9,
+     5,
+     4
+    ],
+    [
+     0,
+     1,
+     13,
+     12
+    ],
+    [
+     2,
+     3,
+     15,
+     14
+    ],
+    [
+     1,
+     2,
+     14,
+     13
+    ],
+    [
+     3,
+     0,
+     12,
+     15
+    ]
+   ]
+  },
+  {
+   "id": "stairs",
+   "op": "extrude",
+   "material": "solid",
+   "depth": 2.36,
+   "points": [
+    [
+     -1.5,
+     1.0
+    ],
+    [
+     -1.5,
+     0
+    ],
+    [
+     0.3,
+     0
+    ],
+    [
+     0.3,
+     0.05
+    ]
+   ]
+  },
+  {
+   "id": "wall_n",
+   "op": "box",
+   "size": [
+    3.0,
+    2.0,
+    0.15
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     1.0,
+     -1.275
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "wall_s",
+   "op": "box",
+   "size": [
+    3.0,
+    2.0,
+    0.15
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     1.0,
+     1.275
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "head_wall",
+   "op": "box",
+   "size": [
+    0.25,
+    2.04,
+    2.6
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     1.425,
+     1.02,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "fence_w",
+   "op": "box",
+   "size": [
+    0.2,
+    1.1,
+    5.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -19.9,
+     1.55,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "fence_e",
+   "op": "box",
+   "size": [
+    0.2,
+    1.1,
+    5.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     19.9,
+     1.55,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "kiosk",
+   "op": "box",
+   "size": [
+    3.6,
+    2.6,
+    1.6
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -10.0,
+     2.3,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "vending",
+   "op": "box",
+   "size": [
+    1.0,
+    1.8,
+    0.7
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     12.5,
+     1.9,
+     0.4
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "bins",
+   "op": "box",
+   "size": [
+    1.1,
+    0.9,
+    0.46
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     14.05,
+     1.45,
+     0.3
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "benches_w",
+   "op": "box",
+   "size": [
+    1.8,
+    0.48,
+    1.52
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -6.5,
+     1.24,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "bench_e",
+   "op": "box",
+   "size": [
+    1.8,
+    0.48,
+    0.42
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     12.5,
+     1.24,
+     -0.55
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "board_w",
+   "op": "box",
+   "size": [
+    2.5,
+    0.95,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -16.5,
+     2.475,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "board_e",
+   "op": "box",
+   "size": [
+    2.5,
+    0.95,
+    0.2
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     7.5,
+     2.475,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "roof",
+   "op": "extrude",
+   "material": "solid",
+   "depth": 34.0,
+   "points": [
+    [
+     -2.9,
+     4.52
+    ],
+    [
+     0,
+     4.27
+    ],
+    [
+     2.9,
+     4.52
+    ],
+    [
+     2.9,
+     4.72
+    ],
+    [
+     0,
+     4.47
+    ],
+    [
+     -2.9,
+     4.72
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ]
+   }
+  },
+  {
+   "id": "column0",
+   "op": "box",
+   "size": [
+    0.3,
+    3.3,
+    0.3
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -15.0,
+     2.65,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "column1",
+   "op": "box",
+   "size": [
+    0.3,
+    3.3,
+    0.3
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -5.0,
+     2.65,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "column2",
+   "op": "box",
+   "size": [
+    0.3,
+    3.3,
+    0.3
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     5.0,
+     2.65,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "column3",
+   "op": "box",
+   "size": [
+    0.3,
+    3.3,
+    0.3
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     15.0,
+     2.65,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,175 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "ticket_gates",
+  "budget": {"vertices": 500, "triangles": 400},
+  "materials": {
+    "shell": {"color": "#c9ced0", "palette": true},
+    "dark": {"color": "#2c2a28", "palette": true},
+    "steel": {"color": "#9ba3ac", "palette": true},
+    "cream": {"color": "#ddd6bc", "palette": true},
+    "green": {"color": "#2f7a56", "palette": true},
+    "roof": {"color": "#455a6a", "palette": true},
+    "wood": {"color": "#8a6446", "palette": true},
+    "orange": {"color": "#e8782a", "palette": true},
+    "floor": {"color": "#8d9296", "tag": "floor", "texture": {"image": "art/floor.png", "projection": "fit"}},
+    "pedside": {"color": "#c9ced0", "texture": {"image": "art/pedside.png", "projection": "fit"}},
+    "slot": {"color": "#b8c0c4", "texture": {"image": "art/slot.png", "projection": "fit"}},
+    "top_go": {
+      "color": "#c9ced0",
+      "texture": {
+        "texels": ["000000", "001100", "012210", "012210", "001100", "000000", "000000", "000000",
+                   "000000", "000000", "000000", "000000"],
+        "colors": ["#c9ced0", "#1c8a40", "#3be06a"],
+        "projection": "fit"
+      }
+    },
+    "top_no": {
+      "color": "#c9ced0",
+      "texture": {
+        "texels": ["000000", "001100", "012210", "012210", "001100", "000000", "000000", "000000",
+                   "000000", "000000", "000000", "000000"],
+        "colors": ["#c9ced0", "#a8221c", "#ff3a30"],
+        "projection": "fit"
+      }
+    },
+    "go": {"color": "#3be06a", "class": "emissive", "texture": {"image": "art/lamp_go.png", "projection": "fit"}},
+    "no": {"color": "#ff3a30", "class": "emissive", "texture": {"image": "art/lamp_no.png", "projection": "fit"}},
+    "sign": {"color": "#17499a", "class": "emissive", "tag": "sign", "texture": {"image": "art/sign.png", "projection": "fit"}},
+    "master": {"color": "#8d7a5a", "texture": {"image": "art/master.png", "projection": "fit"}},
+    "hours": {"color": "#1f6a46", "texture": {"image": "art/hours.png", "projection": "fit"}},
+    "pane": {
+      "color": "#8fc8d8",
+      "texture": {"pattern": "lattice", "colors": ["#e8ece8", "#8fc8d8"], "params": {"count": 1, "bar": 1}, "projection": "fit"}
+    },
+    "clock": {"color": "#f6f2e6", "texture": {"image": "art/clock.png", "projection": "disc", "flip": "v"}},
+    "cone": {
+      "color": "#e8782a",
+      "texture": {"texels": ["0", "0", "1", "1", "0", "0", "0", "0"], "colors": ["#e8782a", "#f2eee2"], "projection": "fit"}
+    }
+  },
+  "lighting": {"mode": "vertical", "ambient": 0.55},
+  "verification": {"required": true, "depth": true, "perspective": true},
+  "prototypes": {
+    "ped_go": {
+      "op": "mesh",
+      "material": "shell",
+      "vertices": [[-0.13, 0.0, -0.55], [-0.13, 0.86, -0.55], [-0.13, 1.02, -0.32], [-0.13, 1.02, 0.3], [-0.13, 0.92, 0.55],
+                   [-0.13, 0.0, 0.55], [0.13, 0.0, -0.55], [0.13, 0.86, -0.55], [0.13, 1.02, -0.32], [0.13, 1.02, 0.3],
+                   [0.13, 0.92, 0.55], [0.13, 0.0, 0.55]],
+      "faces": [[5, 4, 3, 2, 1, 0], [6, 7, 8, 9, 10, 11], [1, 7, 6, 0], [2, 8, 7, 1], [3, 9, 8, 2], [4, 10, 9, 3], [10, 4, 5, 11]],
+      "face_materials": ["pedside", "pedside", "shell", "slot", "top_go", "dark", "shell"]
+    },
+    "ped_no": {
+      "op": "mesh",
+      "material": "shell",
+      "vertices": [[-0.13, 0.0, -0.55], [-0.13, 0.86, -0.55], [-0.13, 1.02, -0.32], [-0.13, 1.02, 0.3], [-0.13, 0.92, 0.55],
+                   [-0.13, 0.0, 0.55], [0.13, 0.0, -0.55], [0.13, 0.86, -0.55], [0.13, 1.02, -0.32], [0.13, 1.02, 0.3],
+                   [0.13, 0.92, 0.55], [0.13, 0.0, 0.55]],
+      "faces": [[5, 4, 3, 2, 1, 0], [6, 7, 8, 9, 10, 11], [1, 7, 6, 0], [2, 8, 7, 1], [3, 9, 8, 2], [4, 10, 9, 3], [10, 4, 5, 11]],
+      "face_materials": ["pedside", "pedside", "shell", "slot", "top_no", "dark", "shell"]
+    },
+    "flap": {
+      "op": "mesh",
+      "material": "orange",
+      "vertices": [[0, 1.005, 0], [0.435, 1.005, 0], [0.435, 0.835, 0], [0, 0.835, 0]],
+      "faces": [[0, 1, 2, 3]]
+    },
+    "lamp_go_no": {"op": "box", "size": [0.34, 0.34, 0.08], "material": "steel", "open": ["top"], "faces": {"back": "go", "front": "no"}},
+    "lamp_go": {"op": "box", "size": [0.34, 0.34, 0.08], "material": "steel", "open": ["top"], "faces": {"back": "go", "front": "go"}},
+    "lamp_no": {"op": "box", "size": [0.34, 0.34, 0.08], "material": "steel", "open": ["top"], "faces": {"back": "no", "front": "no"}}
+  },
+  "nodes": [
+    {"id": "floor", "op": "box", "size": [7.3, 0.04, 2.4], "material": "steel", "open": ["bottom"],
+     "faces": {"top": "floor"}, "transform": {"translate": [0, 0.02, -0.3]}},
+    {"id": "ped0", "op": "instance", "ref": "ped_go", "transform": {"translate": [-1.52, 0, 0]}},
+    {"id": "ped1", "op": "instance", "ref": "ped_go", "transform": {"translate": [-0.36, 0, 0]}},
+    {"id": "ped2", "op": "instance", "ref": "ped_no", "transform": {"translate": [0.8, 0, 0]}},
+    {"id": "ped3", "op": "instance", "ref": "ped_go", "transform": {"translate": [1.96, 0, 0]}},
+    {"id": "ped4", "op": "instance", "ref": "ped_no", "transform": {"translate": [3.12, 0, 0]}},
+    {"id": "flap2_l", "op": "instance", "ref": "flap", "transform": {"translate": [-0.23, 0, 0.02]}},
+    {"id": "flap2_r", "op": "instance", "ref": "flap", "transform": {"translate": [0.235, 0, 0.02]}},
+    {"id": "flap4_l", "op": "instance", "ref": "flap", "transform": {"translate": [2.09, 0, 0.02]}},
+    {"id": "flap4_r", "op": "instance", "ref": "flap", "transform": {"translate": [2.555, 0, 0.02]}},
+    {"id": "post_l", "op": "box", "size": [0.14, 2.6, 0.14], "material": "steel", "open": ["bottom"],
+     "transform": {"translate": [-3.5, 1.3, -0.85]}},
+    {"id": "post_r", "op": "box", "size": [0.14, 2.6, 0.14], "material": "steel", "open": ["bottom"],
+     "transform": {"translate": [3.5, 1.3, -0.85]}},
+    {"id": "beam", "op": "box", "size": [7.26, 0.12, 0.22], "material": "steel", "transform": {"translate": [0, 2.58, -0.85]}},
+    {"id": "gate_sign", "op": "box", "size": [2.0, 0.4, 0.08], "material": "steel", "open": ["bottom"],
+     "faces": {"back": "sign", "front": "sign"}, "transform": {"translate": [-0.6, 2.8, -0.85]}},
+    {"id": "lamp0", "op": "instance", "ref": "lamp_go_no", "transform": {"translate": [-2.1, 2.37, -0.85]}},
+    {"id": "lamp1", "op": "instance", "ref": "lamp_go", "transform": {"translate": [-0.94, 2.37, -0.85]}},
+    {"id": "lamp2", "op": "instance", "ref": "lamp_no", "transform": {"translate": [0.22, 2.37, -0.85]}},
+    {"id": "lamp3", "op": "instance", "ref": "lamp_go", "transform": {"translate": [1.38, 2.37, -0.85]}},
+    {"id": "lamp4", "op": "instance", "ref": "lamp_no", "transform": {"translate": [2.54, 2.37, -0.85]}},
+    {"id": "clock_rod", "op": "box", "size": [0.03, 0.5, 0.03], "material": "steel", "open": ["top", "bottom"],
+     "transform": {"translate": [2.9, 2.85, -0.85]}},
+    {"id": "clock", "op": "cylinder", "radius": 0.26, "height": 0.1, "segments": 8, "material": "clock",
+     "faces": {"side": "steel"}, "transform": {"rotate": [90, 0, 0], "translate": [2.9, 3.33, -0.85]}},
+    {"id": "booth_base", "op": "box", "size": [0.8, 1.0, 1.1], "material": "cream", "open": ["bottom"],
+     "decals": [{"id": "hours", "face": "back", "material": "hours", "size": [0.5, 0.33], "at": [0, 0.185]}],
+     "transform": {"translate": [-2.95, 0.5, 0]}},
+    {"id": "booth_cabin", "op": "box", "size": [0.72, 0.75, 1.02], "material": "green", "open": ["bottom"],
+     "decals": [{"id": "master", "face": "back", "material": "master", "size": [0.7, 0.61], "at": [0, 0]},
+                {"id": "pane", "face": "right", "material": "pane", "size": [0.64, 0.5], "at": [0, 0]}],
+     "transform": {"translate": [-2.95, 1.365, 0]}},
+    {"id": "booth_roof", "op": "box", "size": [0.98, 0.07, 1.3], "material": "roof", "transform": {"translate": [-2.95, 1.765, 0]}},
+    {"id": "sill", "op": "box", "size": [0.9, 0.05, 0.16], "material": "wood", "transform": {"translate": [-2.95, 1.02, -0.58]}},
+    {"id": "pot", "op": "cylinder", "radius": 0.05, "height": 0.08, "segments": 5, "caps": false, "material": "wood",
+     "transform": {"translate": [-2.67, 1.085, -0.62]}},
+    {"id": "plant", "op": "cone", "radius": 0.075, "height": 0.16, "segments": 5, "material": "green",
+     "transform": {"translate": [-2.67, 1.19, -0.62]}},
+    {"id": "umbrella", "op": "cone", "radius": 0.045, "height": 0.7, "segments": 6, "caps": false, "material": "shell",
+     "transform": {"rotate": [180, 0, 8], "translate": [-2.46, 0.42, 0.35]}},
+    {"id": "umbrella_handle", "op": "box", "size": [0.03, 0.14, 0.03], "material": "wood",
+     "transform": {"rotate": [0, 0, 8], "translate": [-2.52, 0.83, 0.35]}},
+    {"id": "cone_base", "op": "box", "size": [0.22, 0.05, 0.22], "material": "orange", "open": ["bottom"],
+     "transform": {"translate": [2.54, 0.06, -0.75]}},
+    {"id": "cone", "op": "cone", "radius": 0.08, "height": 0.42, "segments": 8, "caps": false, "material": "cone",
+     "transform": {"translate": [2.54, 0.27, -0.75]}},
+    {"id": "rail_post_a", "op": "box", "size": [0.04, 0.95, 0.04], "material": "steel", "open": ["bottom", "top"],
+     "transform": {"translate": [3.31, 0.475, -0.5]}},
+    {"id": "rail_post_b", "op": "box", "size": [0.04, 0.95, 0.04], "material": "steel", "open": ["bottom", "top"],
+     "transform": {"translate": [3.31, 0.475, 0.5]}},
+    {"id": "rail_top", "op": "box", "size": [0.11, 0.05, 1.18], "material": "steel", "transform": {"translate": [3.31, 0.94, 0]}}
+  ],
+  "lod": {
+    "levels": [
+      {
+        "distance": 20,
+        "nodes": [
+          {"id": "floor", "op": "box", "size": [7.3, 0.04, 2.4], "material": "steel", "open": ["bottom"],
+           "faces": {"top": "floor"}, "transform": {"translate": [0, 0.02, -0.3]}},
+          {"id": "peds", "op": "group",
+           "children": [{"id": "ped", "op": "box", "size": [0.26, 1.02, 1.1], "material": "shell", "open": ["bottom"],
+                         "faces": {"left": "pedside", "right": "pedside"}, "transform": {"translate": [-1.52, 0.51, 0]}}],
+           "modifiers": [{"op": "array", "count": 5, "step": [1.16, 0, 0]}]},
+          {"id": "booth", "op": "box", "size": [0.8, 1.79, 1.1], "material": "green", "open": ["bottom"],
+           "faces": {"back": "master"}, "transform": {"translate": [-2.95, 0.895, 0]}},
+          {"id": "frame", "op": "extrude", "material": "steel", "depth": 0.16,
+           "points": [[-3.57, 0], [-3.43, 0], [-3.43, 2.52], [3.43, 2.52], [3.43, 0], [3.57, 0], [3.57, 2.64], [-3.57, 2.64]],
+           "transform": {"translate": [0, 0, -0.85]}},
+          {"id": "gate_sign", "op": "box", "size": [2.0, 0.4, 0.08], "material": "steel", "open": ["bottom"],
+           "faces": {"back": "sign", "front": "sign"}, "transform": {"translate": [-0.6, 2.8, -0.85]}}
+        ]
+      },
+      {
+        "distance": 40,
+        "nodes": [
+          {"id": "floor", "op": "box", "size": [7.3, 0.04, 2.4], "material": "steel",
+           "open": ["bottom", "left", "right", "back", "front"], "faces": {"top": "floor"},
+           "transform": {"translate": [0, 0.02, -0.3]}},
+          {"id": "peds", "op": "group",
+           "children": [{"id": "ped", "op": "box", "size": [0.26, 1.02, 1.1], "material": "shell", "open": ["bottom", "top"],
+                         "faces": {"left": "pedside", "right": "pedside"}, "transform": {"translate": [-1.52, 0.51, 0]}}],
+           "modifiers": [{"op": "array", "count": 5, "step": [1.16, 0, 0]}]},
+          {"id": "booth", "op": "box", "size": [0.8, 1.79, 1.1], "material": "green", "open": ["bottom"],
+           "faces": {"back": "master"}, "transform": {"translate": [-2.95, 0.895, 0]}}
+        ]
+      }
+    ],
+    "cull": 80,
+    "band": 2
+  }
+}

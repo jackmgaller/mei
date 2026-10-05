@@ -1,0 +1,9 @@
+[
+ {"name": "spawn_34m", "eye": [0, 1.6, -34], "target": [0, 5.0, 0]},
+ {"name": "plaza_20m", "eye": [-3, 1.6, -20], "target": [0, 5.0, 0]},
+ {"name": "approach_10m", "eye": [-2, 1.6, -10], "target": [0, 5.0, 0]},
+ {"name": "under_5m", "eye": [2.0, 1.6, -4], "target": [0, 6.0, 1.0]},
+ {"name": "leaving", "eye": [1, 1.6, 12], "target": [0, 5.0, 0]},
+ {"name": "roof_top", "eye": [-3, 9.5, 6], "target": [0, 7.0, 0]},
+ {"name": "pillar_close", "eye": [3.2, 1.6, -3.0], "target": [5.45, 2.5, 0]}
+]
