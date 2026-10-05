@@ -1,0 +1,1613 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "dagashi_shop",
+ "budget": {
+  "triangles": 400
+ },
+ "sheets": {
+  "shop": {
+   "image": "art/dagashi_sheet.png"
+  },
+  "town_common": {
+   "image": "../town_alley_house_a/art/town_common.png"
+  }
+ },
+ "materials": {
+  "paving": {
+   "color": "#a9a69c",
+   "tag": "floor",
+   "texture": {
+    "pattern": "tile",
+    "colors": [
+     "#a7a49a",
+     "#7f7c74",
+     "#b6b3a8"
+    ],
+    "params": {
+     "count": 2,
+     "grout": 1
+    },
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     1,
+     1
+    ]
+   }
+  },
+  "wood": {
+   "color": "#8b6a47",
+   "texture": {
+    "pattern": "planks",
+    "colors": [
+     "#8b6a47",
+     "#4e3822",
+     "#7d5d3d",
+     "#9a7852"
+    ],
+    "params": {
+     "boards": 4
+    },
+    "projection": "box",
+    "scale": [
+     1,
+     1
+    ]
+   }
+  },
+  "plaster": {
+   "color": "#e0d6bc",
+   "tag": "wall",
+   "texture": {
+    "sheet": "town_common",
+    "cell": "plaster",
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ]
+   }
+  },
+  "kawara": {
+   "color": "#565c64",
+   "tag": "roof",
+   "texture": {
+    "sheet": "town_common",
+    "cell": "kawara",
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ]
+   }
+  },
+  "awning": {
+   "color": "#c9402f",
+   "double_sided": true,
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#cf4631",
+     "#f1e8d0"
+    ],
+    "params": {
+     "count": 8
+    },
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ]
+   }
+  },
+  "side": {
+   "color": "#e0d6bc",
+   "tag": "wall",
+   "texture": {
+    "sheet": "shop",
+    "cell": "side",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "back": {
+   "color": "#e0d6bc",
+   "tag": "wall",
+   "texture": {
+    "sheet": "shop",
+    "cell": "back",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "kanban": {
+   "color": "#7a1c1a",
+   "texture": {
+    "sheet": "shop",
+    "cell": "kanban",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "shelf_a": {
+   "color": "#4a3020",
+   "texture": {
+    "sheet": "shop",
+    "cell": "shelf_a",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "shelf_b": {
+   "color": "#4a3020",
+   "texture": {
+    "sheet": "shop",
+    "cell": "shelf_b",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "kuji": {
+   "color": "#e6d6a8",
+   "texture": {
+    "sheet": "shop",
+    "cell": "kuji",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "vending_front": {
+   "color": "#bd2824",
+   "texture": {
+    "sheet": "shop",
+    "cell": "vending",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "freezer_sign": {
+   "color": "#3c80d2",
+   "texture": {
+    "sheet": "shop",
+    "cell": "freezer",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "noren": {
+   "color": "#243468",
+   "double_sided": true,
+   "texture": {
+    "sheet": "shop",
+    "cell": "noren",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "flag": {
+   "color": "#2a6ec4",
+   "double_sided": true,
+   "texture": {
+    "sheet": "shop",
+    "cell": "flag",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "jar": {
+   "color": "#cfe6ea",
+   "texture": {
+    "sheet": "shop",
+    "cell": "jar",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "cat": {
+   "color": "#f4f0e6",
+   "double_sided": true,
+   "texture": {
+    "sheet": "shop",
+    "cell": "cat",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "bottles": {
+   "color": "#8fd3e8",
+   "double_sided": true,
+   "texture": {
+    "sheet": "shop",
+    "cell": "bottles",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "lantern": {
+   "color": "#e04a30",
+   "class": "emissive"
+  },
+  "dark_wood": {
+   "color": "#4a3122",
+   "palette": true
+  },
+  "ridge": {
+   "color": "#2b3239",
+   "palette": true
+  },
+  "red": {
+   "color": "#bd2824",
+   "palette": true
+  },
+  "white": {
+   "color": "#dfeaf0",
+   "palette": true
+  },
+  "pole": {
+   "color": "#59636b",
+   "palette": true
+  },
+  "skin": {
+   "color": "#f0c8a0",
+   "palette": true
+  },
+  "gold": {
+   "color": "#e0b84a",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "pavement",
+   "op": "box",
+   "size": [
+    4.9,
+    0.07,
+    1.65
+   ],
+   "material": "paving",
+   "transform": {
+    "translate": [
+     0.0,
+     0.035,
+     -1.675
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "side_walls",
+   "op": "group",
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ],
+   "children": [
+    {
+     "id": "side_wall",
+     "op": "extrude",
+     "material": "plaster",
+     "depth": 0.12,
+     "points": [
+      [
+       0.95,
+       0
+      ],
+      [
+       -2.45,
+       0
+      ],
+      [
+       -2.45,
+       3.3134
+      ],
+      [
+       -0.75,
+       4.35
+      ],
+      [
+       0.95,
+       3.3134
+      ]
+     ],
+     "faces": {
+      "front": "side"
+     },
+     "transform": {
+      "rotate": [
+       0,
+       90,
+       0
+      ],
+      "translate": [
+       1.94,
+       0,
+       0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "front_wall",
+   "op": "box",
+   "size": [
+    3.78,
+    0.8878,
+    0.12
+   ],
+   "material": "plaster",
+   "transform": {
+    "translate": [
+     0.0,
+     2.8939,
+     -0.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "decals": [
+    {
+     "id": "kanban",
+     "face": "back",
+     "material": "kanban",
+     "size": [
+      2.9,
+      0.55
+     ],
+     "at": [
+      0,
+      0.04
+     ]
+    }
+   ]
+  },
+  {
+   "id": "back_wall",
+   "op": "box",
+   "size": [
+    3.78,
+    3.3378,
+    0.12
+   ],
+   "material": "plaster",
+   "transform": {
+    "translate": [
+     0.0,
+     1.6689,
+     2.35
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "front": "back"
+   }
+  },
+  {
+   "id": "shelves",
+   "op": "box",
+   "size": [
+    3.79,
+    2.26,
+    0.1
+   ],
+   "material": "dark_wood",
+   "transform": {
+    "translate": [
+     0.0,
+     1.33,
+     0.8
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "decals": [
+    {
+     "id": "shelf_l",
+     "face": "back",
+     "material": "shelf_a",
+     "size": [
+      1.4,
+      1.84
+     ],
+     "at": [
+      -1.0,
+      -0.12
+     ]
+    },
+    {
+     "id": "shelf_r",
+     "face": "back",
+     "material": "shelf_b",
+     "size": [
+      1.4,
+      1.84
+     ],
+     "at": [
+      1.0,
+      -0.12
+     ]
+    },
+    {
+     "id": "kuji",
+     "face": "back",
+     "material": "kuji",
+     "size": [
+      0.5,
+      0.42
+     ],
+     "at": [
+      0,
+      0.35
+     ]
+    }
+   ]
+  },
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    3.82,
+    0.2,
+    1.77
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     0.1,
+     -0.115
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "ceiling",
+   "op": "mesh",
+   "material": "dark_wood",
+   "vertices": [
+    [
+     -1.88,
+     2.45,
+     -0.83
+    ],
+    [
+     1.88,
+     2.45,
+     -0.83
+    ],
+    [
+     1.88,
+     2.45,
+     0.75
+    ],
+    [
+     -1.88,
+     2.45,
+     0.75
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pillars",
+   "op": "group",
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ],
+   "children": [
+    {
+     "id": "pillar",
+     "op": "box",
+     "size": [
+      0.34,
+      2.46,
+      0.3
+     ],
+     "material": "wood",
+     "transform": {
+      "translate": [
+       1.78,
+       1.23,
+       -0.9
+      ]
+     },
+     "open": [
+      "bottom",
+      "top"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "roof",
+   "op": "extrude",
+   "material": "kawara",
+   "depth": 4.5,
+   "points": [
+    [
+     1.3,
+     3.2
+    ],
+    [
+     -0.75,
+     4.45
+    ],
+    [
+     -2.8,
+     3.2
+    ],
+    [
+     -2.8,
+     3.08
+    ],
+    [
+     -0.75,
+     4.33
+    ],
+    [
+     1.3,
+     3.08
+    ]
+   ],
+   "faces": {
+    "front": "ridge",
+    "back": "ridge"
+   },
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ],
+    "translate": [
+     0,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "ridge",
+   "op": "box",
+   "size": [
+    4.6,
+    0.12,
+    0.2
+   ],
+   "material": "ridge",
+   "transform": {
+    "translate": [
+     0,
+     4.48,
+     0.75
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "awning",
+   "op": "box",
+   "size": [
+    3.7,
+    0.05,
+    1.38
+   ],
+   "material": "awning",
+   "transform": {
+    "translate": [
+     0,
+     2.57,
+     -1.555
+    ],
+    "rotate": [
+     -12,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "valance",
+   "op": "box",
+   "size": [
+    3.62,
+    0.22,
+    0.04
+   ],
+   "material": "awning",
+   "transform": {
+    "translate": [
+     0.0,
+     2.31,
+     -2.23
+    ]
+   },
+   "open": [
+    "top"
+   ]
+  },
+  {
+   "id": "awning_poles",
+   "op": "group",
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ],
+   "children": [
+    {
+     "id": "awning_pole",
+     "op": "cylinder",
+     "radius": 0.03,
+     "height": 2.38,
+     "segments": 4,
+     "material": "pole",
+     "transform": {
+      "translate": [
+       1.85,
+       1.19,
+       -2.1
+      ]
+     },
+     "caps": false
+    }
+   ]
+  },
+  {
+   "id": "noren_0",
+   "op": "mesh",
+   "material": "noren",
+   "vertices": [
+    [
+     -1.45,
+     2.42,
+     -1.01
+    ],
+    [
+     -0.51,
+     2.42,
+     -1.01
+    ],
+    [
+     -0.51,
+     1.9,
+     -1.01
+    ],
+    [
+     -1.45,
+     1.9,
+     -1.01
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "noren_1",
+   "op": "mesh",
+   "material": "noren",
+   "vertices": [
+    [
+     -0.47,
+     2.42,
+     -1.01
+    ],
+    [
+     0.47,
+     2.42,
+     -1.01
+    ],
+    [
+     0.47,
+     1.9,
+     -1.01
+    ],
+    [
+     -0.47,
+     1.9,
+     -1.01
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "noren_2",
+   "op": "mesh",
+   "material": "noren",
+   "vertices": [
+    [
+     0.51,
+     2.42,
+     -1.01
+    ],
+    [
+     1.45,
+     2.42,
+     -1.01
+    ],
+    [
+     1.45,
+     1.9,
+     -1.01
+    ],
+    [
+     0.51,
+     1.9,
+     -1.01
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "vending",
+   "op": "box",
+   "size": [
+    0.86,
+    1.75,
+    0.72
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     1.25,
+     0.945,
+     -1.45
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "vending_front"
+   }
+  },
+  {
+   "id": "freezer",
+   "op": "box",
+   "size": [
+    1.0,
+    0.81,
+    0.6
+   ],
+   "material": "white",
+   "transform": {
+    "translate": [
+     -1.0,
+     0.465,
+     -1.45
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "decals": [
+    {
+     "id": "ice",
+     "face": "back",
+     "material": "freezer_sign",
+     "size": [
+      0.8,
+      0.22
+     ],
+     "at": [
+      0,
+      0.08
+     ]
+    }
+   ]
+  },
+  {
+   "id": "freezer_lid",
+   "op": "box",
+   "size": [
+    1.08,
+    0.06,
+    0.68
+   ],
+   "material": "pole",
+   "transform": {
+    "translate": [
+     -1.0,
+     0.89,
+     -1.45
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "crate",
+   "op": "box",
+   "size": [
+    0.55,
+    0.29,
+    0.4
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.155,
+     0.205,
+     -1.55
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "bottles",
+   "op": "mesh",
+   "material": "bottles",
+   "vertices": [
+    [
+     -0.08,
+     0.6,
+     -1.55
+    ],
+    [
+     0.39,
+     0.6,
+     -1.55
+    ],
+    [
+     0.39,
+     0.33,
+     -1.55
+    ],
+    [
+     -0.08,
+     0.33,
+     -1.55
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "lanterns",
+   "op": "group",
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ],
+   "children": [
+    {
+     "id": "lantern",
+     "op": "cylinder",
+     "radius": 0.15,
+     "height": 0.3,
+     "segments": 4,
+     "material": "lantern",
+     "transform": {
+      "translate": [
+       0.5,
+       2.15,
+       -1.62
+      ],
+      "rotate": [
+       0,
+       45,
+       0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "flag_pole",
+   "op": "cylinder",
+   "radius": 0.025,
+   "height": 2.9,
+   "segments": 4,
+   "material": "pole",
+   "transform": {
+    "translate": [
+     -2.3,
+     1.5,
+     -1.2
+    ]
+   },
+   "caps": false
+  },
+  {
+   "id": "flag_arm",
+   "op": "cylinder",
+   "radius": 0.02,
+   "height": 0.5,
+   "segments": 3,
+   "material": "pole",
+   "transform": {
+    "translate": [
+     -2.07,
+     2.88,
+     -1.2
+    ],
+    "rotate": [
+     0,
+     0,
+     90
+    ]
+   },
+   "caps": false
+  },
+  {
+   "id": "flag",
+   "op": "mesh",
+   "material": "flag",
+   "vertices": [
+    [
+     -2.28,
+     2.85,
+     -1.2
+    ],
+    [
+     -1.9,
+     2.85,
+     -1.2
+    ],
+    [
+     -1.9,
+     1.45,
+     -1.2
+    ],
+    [
+     -2.28,
+     1.45,
+     -1.2
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "counter",
+   "op": "box",
+   "size": [
+    2.4,
+    0.96,
+    0.5
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0.0,
+     0.67,
+     -0.3
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "jar_0",
+   "op": "box",
+   "size": [
+    0.22,
+    0.28,
+    0.22
+   ],
+   "material": "jar",
+   "transform": {
+    "translate": [
+     -0.95,
+     1.28,
+     -0.31
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "jar_1",
+   "op": "box",
+   "size": [
+    0.22,
+    0.28,
+    0.22
+   ],
+   "material": "jar",
+   "transform": {
+    "translate": [
+     -0.6,
+     1.28,
+     -0.31
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "jar_2",
+   "op": "box",
+   "size": [
+    0.22,
+    0.28,
+    0.22
+   ],
+   "material": "jar",
+   "transform": {
+    "translate": [
+     0.75,
+     1.28,
+     -0.31
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "cat",
+   "op": "mesh",
+   "material": "cat",
+   "vertices": [
+    [
+     0.12,
+     1.6,
+     -0.36
+    ],
+    [
+     0.42,
+     1.6,
+     -0.36
+    ],
+    [
+     0.42,
+     1.14,
+     -0.36
+    ],
+    [
+     0.12,
+     1.14,
+     -0.36
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "kid_legs",
+   "op": "box",
+   "size": [
+    0.2,
+    0.4,
+    0.05
+   ],
+   "material": "skin",
+   "transform": {
+    "translate": [
+     -0.2,
+     0.26,
+     -1.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "kid_body",
+   "op": "box",
+   "size": [
+    0.3,
+    0.31,
+    0.12
+   ],
+   "material": "white",
+   "transform": {
+    "translate": [
+     -0.2,
+     0.605,
+     -1.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "kid_head",
+   "op": "box",
+   "size": [
+    0.17,
+    0.17,
+    0.19
+   ],
+   "material": "skin",
+   "transform": {
+    "translate": [
+     -0.2,
+     0.835,
+     -1.05
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "kid_cap",
+   "op": "box",
+   "size": [
+    0.24,
+    0.08,
+    0.29
+   ],
+   "material": "gold",
+   "transform": {
+    "translate": [
+     -0.2,
+     0.92,
+     -1.065
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "side_walls",
+      "op": "group",
+      "modifiers": [
+       {
+        "op": "mirror",
+        "axis": "x"
+       }
+      ],
+      "children": [
+       {
+        "id": "side_wall",
+        "op": "extrude",
+        "material": "plaster",
+        "depth": 0.12,
+        "points": [
+         [
+          0.95,
+          0
+         ],
+         [
+          -2.45,
+          0
+         ],
+         [
+          -2.45,
+          3.3134
+         ],
+         [
+          -0.75,
+          4.35
+         ],
+         [
+          0.95,
+          3.3134
+         ]
+        ],
+        "faces": {
+         "front": "side"
+        },
+        "transform": {
+         "rotate": [
+          0,
+          90,
+          0
+         ],
+         "translate": [
+          1.94,
+          0,
+          0
+         ]
+        }
+       }
+      ]
+     },
+     {
+      "id": "front_wall",
+      "op": "box",
+      "size": [
+       3.78,
+       0.8878,
+       0.12
+      ],
+      "material": "plaster",
+      "transform": {
+       "translate": [
+        0.0,
+        2.8939,
+        -0.85
+       ]
+      },
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "back": "kanban"
+      }
+     },
+     {
+      "id": "back_wall",
+      "op": "box",
+      "size": [
+       3.78,
+       3.3378,
+       0.12
+      ],
+      "material": "plaster",
+      "transform": {
+       "translate": [
+        0.0,
+        1.6689,
+        2.35
+       ]
+      },
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "front": "back"
+      }
+     },
+     {
+      "id": "shelves",
+      "op": "box",
+      "size": [
+       3.79,
+       2.26,
+       0.1
+      ],
+      "material": "dark_wood",
+      "transform": {
+       "translate": [
+        0.0,
+        1.33,
+        0.8
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "faces": {
+       "back": "shelf_a"
+      }
+     },
+     {
+      "id": "roof",
+      "op": "extrude",
+      "material": "kawara",
+      "depth": 4.5,
+      "points": [
+       [
+        1.3,
+        3.2
+       ],
+       [
+        -0.75,
+        4.45
+       ],
+       [
+        -2.8,
+        3.2
+       ],
+       [
+        -2.8,
+        3.08
+       ],
+       [
+        -0.75,
+        4.33
+       ],
+       [
+        1.3,
+        3.08
+       ]
+      ],
+      "faces": {
+       "front": "ridge",
+       "back": "ridge"
+      },
+      "transform": {
+       "rotate": [
+        0,
+        90,
+        0
+       ],
+       "translate": [
+        0,
+        0,
+        0
+       ]
+      }
+     },
+     {
+      "id": "awning",
+      "op": "box",
+      "size": [
+       3.7,
+       0.05,
+       1.38
+      ],
+      "material": "awning",
+      "transform": {
+       "translate": [
+        0,
+        2.57,
+        -1.555
+       ],
+       "rotate": [
+        -12,
+        0,
+        0
+       ]
+      }
+     },
+     {
+      "id": "vending",
+      "op": "box",
+      "size": [
+       0.86,
+       1.75,
+       0.72
+      ],
+      "material": "red",
+      "transform": {
+       "translate": [
+        1.25,
+        0.945,
+        -1.45
+       ]
+      },
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "back": "vending_front"
+      }
+     },
+     {
+      "id": "freezer",
+      "op": "box",
+      "size": [
+       1.0,
+       0.9,
+       0.6
+      ],
+      "material": "white",
+      "transform": {
+       "translate": [
+        -1.0,
+        0.45,
+        -1.45
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "floor",
+      "op": "box",
+      "size": [
+       3.78,
+       0.2,
+       1.74
+      ],
+      "material": "wood",
+      "transform": {
+       "translate": [
+        0.0,
+        0.1,
+        -0.1
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "ceiling",
+      "op": "mesh",
+      "material": "dark_wood",
+      "vertices": [
+       [
+        -1.88,
+        2.45,
+        -0.83
+       ],
+       [
+        1.88,
+        2.45,
+        -0.83
+       ],
+       [
+        1.88,
+        2.45,
+        0.75
+       ],
+       [
+        -1.88,
+        2.45,
+        0.75
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     }
+    ]
+   },
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "house",
+      "op": "box",
+      "size": [
+       4.0,
+       3.2,
+       3.4
+      ],
+      "material": "plaster",
+      "transform": {
+       "translate": [
+        0.0,
+        1.6,
+        0.75
+       ]
+      },
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "back": "shelf_a"
+      }
+     },
+     {
+      "id": "roof",
+      "op": "extrude",
+      "material": "kawara",
+      "depth": 4.4,
+      "points": [
+       [
+        1.3,
+        3.14
+       ],
+       [
+        -2.8,
+        3.14
+       ],
+       [
+        -0.75,
+        4.45
+       ]
+      ],
+      "faces": {
+       "front": "plaster",
+       "back": "plaster"
+      },
+      "transform": {
+       "rotate": [
+        0,
+        90,
+        0
+       ]
+      }
+     },
+     {
+      "id": "awning",
+      "op": "box",
+      "size": [
+       3.7,
+       0.05,
+       1.38
+      ],
+      "material": "awning",
+      "transform": {
+       "translate": [
+        0,
+        2.57,
+        -1.555
+       ],
+       "rotate": [
+        -12,
+        0,
+        0
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "band": 2
+ }
+}
