@@ -1,0 +1,172 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c3_0",
+ "at": [
+  3,
+  0
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "viaduct_12",
+   "asset": "gbt_viaduct_162",
+   "position": [
+    202.941,
+    0.0,
+    8.0
+   ],
+   "yaw": 90.0,
+   "collision": "gbt_viaduct_162_col"
+  },
+  {
+   "id": "viaduct_13",
+   "asset": "gbt_viaduct_162",
+   "position": [
+    219.176,
+    0.0,
+    8.0
+   ],
+   "yaw": 90.0,
+   "collision": "gbt_viaduct_162_col"
+  },
+  {
+   "id": "viaduct_14",
+   "asset": "gbt_viaduct_162",
+   "position": [
+    235.412,
+    0.0,
+    8.0
+   ],
+   "yaw": 90.0,
+   "collision": "gbt_viaduct_162_col"
+  },
+  {
+   "id": "viaduct_15",
+   "asset": "gbt_viaduct_162",
+   "position": [
+    251.647,
+    0.0,
+    8.0
+   ],
+   "yaw": 90.0,
+   "collision": "gbt_viaduct_162_col"
+  },
+  {
+   "id": "konbini",
+   "asset": "gbt_konbini",
+   "position": [
+    196.0,
+    0,
+    25.0
+   ],
+   "collision": "gbt_konbini_col"
+  },
+  {
+   "id": "konbini_sign",
+   "asset": "gbt_konbini_sign",
+   "position": [
+    196.0,
+    5.6,
+    30.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "building_escape",
+   "asset": "gbt_building_escape",
+   "position": [
+    201.25,
+    0,
+    62
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "pole_konbini0",
+   "asset": "gbt_utility_pole",
+   "position": [
+    210.0,
+    0.0,
+    33.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "tyre_steps",
+   "asset": "gbt_tyre_steps",
+   "position": [
+    249.0,
+    0,
+    25.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "tyre_steps_2",
+   "asset": "gbt_tyre_steps_2",
+   "position": [
+    249.0,
+    0,
+    28.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_s4",
+   "asset": "gbt_edge_fence_3",
+   "position": [
+    224.0,
+    0,
+    0.2
+   ],
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_konbini0",
+   "type": "pole",
+   "position": [
+    210.0,
+    0.0,
+    33.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "red_konbini",
+   "type": "red_coin",
+   "position": [
+    196,
+    7.7,
+    30
+   ],
+   "asset": "gbt_coin_red"
+  },
+  {
+   "id": "coin_wire_konbini0",
+   "type": "coin",
+   "position": [
+    208.95,
+    8.7,
+    57.85
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "rail_wire_konbini",
+   "type": "rail",
+   "position": [
+    210.0,
+    8.0,
+    33.0
+   ],
+   "params": {
+    "path": "wire_konbini"
+   }
+  }
+ ]
+}

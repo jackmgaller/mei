@@ -1,0 +1,167 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c4_1",
+ "at": [
+  4,
+  1
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "viaduct_22",
+   "asset": "gbt_viaduct_164",
+   "position": [
+    302.0,
+    0.0,
+    77.0
+   ],
+   "collision": "gbt_viaduct_164_col"
+  },
+  {
+   "id": "viaduct_23",
+   "asset": "gbt_viaduct_164",
+   "position": [
+    302.0,
+    0.0,
+    93.4
+   ],
+   "collision": "gbt_viaduct_164_col"
+  },
+  {
+   "id": "viaduct_24",
+   "asset": "gbt_viaduct_road_164",
+   "position": [
+    302.0,
+    0.0,
+    109.8
+   ],
+   "collision": "gbt_viaduct_road_164_col"
+  },
+  {
+   "id": "viaduct_25",
+   "asset": "gbt_viaduct_165",
+   "position": [
+    304.0,
+    0.0,
+    126.0
+   ],
+   "yaw": 14.036,
+   "collision": "gbt_viaduct_165_col"
+  },
+  {
+   "id": "pole_road280",
+   "asset": "gbt_utility_pole",
+   "position": [
+    280.0,
+    0.0,
+    104.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "overpass",
+   "asset": "gbt_overpass",
+   "position": [
+    262,
+    0,
+    111
+   ],
+   "collision": "gbt_overpass_col"
+  },
+  {
+   "id": "school",
+   "asset": "gbt_school",
+   "position": [
+    273.0,
+    0,
+    71.0
+   ],
+   "collision": "gbt_school_col"
+  },
+  {
+   "id": "school_stair",
+   "asset": "gbt_school_stair",
+   "position": [
+    289.25,
+    0,
+    67
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "zelkova_0",
+   "asset": "gbt_tree_zelkova",
+   "position": [
+    280,
+    0.0,
+    100
+   ],
+   "collision": "gbt_tree_zelkova_col"
+  },
+  {
+   "id": "zelkova_1",
+   "asset": "gbt_tree_zelkova",
+   "position": [
+    286,
+    0.0,
+    100
+   ],
+   "collision": "gbt_tree_zelkova_col"
+  },
+  {
+   "id": "zelkova_2",
+   "asset": "gbt_tree_zelkova",
+   "position": [
+    292,
+    0.0,
+    100
+   ],
+   "collision": "gbt_tree_zelkova_col"
+  },
+  {
+   "id": "zelkova_3",
+   "asset": "gbt_tree_zelkova",
+   "position": [
+    310,
+    0.0,
+    100
+   ],
+   "collision": "gbt_tree_zelkova_col"
+  },
+  {
+   "id": "zelkova_4",
+   "asset": "gbt_tree_zelkova",
+   "position": [
+    316,
+    0.0,
+    100
+   ],
+   "collision": "gbt_tree_zelkova_col"
+  },
+  {
+   "id": "edge_e1",
+   "asset": "gbt_edge_fence_6",
+   "position": [
+    319.8,
+    0,
+    84.0
+   ],
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_road280",
+   "type": "pole",
+   "position": [
+    280,
+    0.0,
+    104.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  }
+ ]
+}

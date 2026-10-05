@@ -1,0 +1,174 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c3_1",
+ "at": [
+  3,
+  1
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "building",
+   "asset": "gbt_building",
+   "position": [
+    193.0,
+    0,
+    73.0
+   ],
+   "collision": "gbt_building_col"
+  },
+  {
+   "id": "ladder_e",
+   "asset": "gbt_ladder_e",
+   "position": [
+    199.5,
+    0,
+    102.1
+   ],
+   "layer": "ladder_e",
+   "collision": "self"
+  },
+  {
+   "id": "pole_road220",
+   "asset": "gbt_utility_pole",
+   "position": [
+    220.0,
+    0.0,
+    104.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "pole_road250",
+   "asset": "gbt_utility_pole",
+   "position": [
+    250.0,
+    0.0,
+    104.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "pole_konbini1",
+   "asset": "gbt_utility_pole",
+   "position": [
+    207.0,
+    0.0,
+    104.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "culvert_deck",
+   "asset": "gbt_culvert_deck",
+   "position": [
+    236.0,
+    -0.15,
+    111.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "gym",
+   "asset": "gbt_gym",
+   "position": [
+    226.0,
+    0,
+    79.0
+   ],
+   "collision": "gbt_gym_col"
+  },
+  {
+   "id": "maple_0",
+   "asset": "gbt_tree_maple",
+   "position": [
+    216,
+    0.746,
+    122
+   ],
+   "collision": "gbt_tree_maple_col"
+  },
+  {
+   "id": "maple_1",
+   "asset": "gbt_tree_maple",
+   "position": [
+    248,
+    1.65,
+    121
+   ],
+   "collision": "gbt_tree_maple_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_ladder_e",
+   "type": "pole",
+   "position": [
+    199.5,
+    0,
+    102.6
+   ],
+   "layer": "ladder_e",
+   "params": {
+    "height": 18.3
+   }
+  },
+  {
+   "id": "pole_road220",
+   "type": "pole",
+   "position": [
+    220,
+    0.0,
+    104.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "pole_road250",
+   "type": "pole",
+   "position": [
+    250,
+    0.0,
+    104.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "pole_konbini1",
+   "type": "pole",
+   "position": [
+    207.0,
+    0.0,
+    104.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "coin_wire_konbini1",
+   "type": "coin",
+   "position": [
+    208.35,
+    8.7,
+    72.05
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_wire_konbini2",
+   "type": "coin",
+   "position": [
+    207.75,
+    8.7,
+    86.25
+   ],
+   "asset": "gbt_coin"
+  }
+ ]
+}
