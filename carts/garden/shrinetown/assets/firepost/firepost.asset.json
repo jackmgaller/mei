@@ -1,0 +1,47 @@
+{
+ "format": "mei-asset", "version": 1, "name": "firepost",
+ "budget": {"vertices": 120, "triangles": 100},
+ "sheets": {"fire": {"image": "art/firepost_sheet.png"}},
+ "materials": {
+  "paint": {"color": "#c8241e"},
+  "red": {"color": "#c8241e"},
+  "hood": {"color": "#a81c18"},
+  "blue": {"color": "#1e4696"},
+  "alarm": {"color": "#c8241e", "texture": {"sheet": "fire", "cell": "alarm", "bits": 8, "projection": "fit"}},
+  "ext": {"color": "#c8241e", "texture": {"sheet": "fire", "cell": "ext", "projection": "fit"}},
+  "plate": {"color": "#1e4696", "double_sided": true, "texture": {"sheet": "fire", "cell": "plate", "projection": "fit"}},
+  "tiger": {"color": "#e8be1e", "texture": {"sheet": "fire", "cell": "tiger", "projection": "cylindrical", "scale": [0.16, 0.16]}},
+  "concrete": {"color": "#96948c", "tag": "floor", "texture": {"sheet": "fire", "cell": "concrete", "projection": "box", "scale": [0.34, 0.34]}},
+  "lamp": {"color": "#f03a2c", "class": "emissive", "tag": "lamp"},
+  "mitten": {"color": "#e86a9a", "double_sided": true}
+ },
+ "lighting": {"mode": "vertical", "ambient": 0.55},
+ "verification": {"required": true, "depth": true, "perspective": true},
+ "prototypes": {
+  "hood": {"id": "hood", "op": "extrude", "depth": 1.0, "points": [[-0.02, 0.0], [1.0, 0.0], [1.0, 0.06], [-0.02, 0.4]], "material": "hood", "transform": {"rotate": [0, 90, 0]}}
+ },
+ "nodes": [
+  {"id": "footing", "op": "box", "size": [0.34, 0.12, 0.34], "open": ["bottom"], "material": "concrete", "transform": {"translate": [0, 0.06, 0]}},
+  {"id": "tiger", "op": "cylinder", "radius": 0.05, "height": 0.38, "segments": 6, "caps": false, "material": "tiger", "transform": {"translate": [0, 0.31, 0]}},
+  {"id": "pole", "op": "cylinder", "radius": 0.05, "height": 1.56, "segments": 6, "caps": false, "material": "paint", "transform": {"translate": [0, 1.28, 0]}},
+  {"id": "extinguisher", "op": "group", "transform": {"translate": [0, 0.78, -0.118]}, "children": [
+   {"id": "box", "op": "box", "size": [0.2, 0.42, 0.17], "material": "red", "faces": {"back": "ext"}},
+   {"id": "hood", "op": "instance", "ref": "hood", "transform": {"scale": [0.24, 0.2, 0.21], "translate": [0, 0.205, 0.095]}}
+  ]},
+  {"id": "alarm", "op": "group", "transform": {"translate": [0, 1.27, -0.095]}, "children": [
+   {"id": "box", "op": "box", "size": [0.26, 0.33, 0.12], "material": "red", "faces": {"back": "alarm"}},
+   {"id": "hood", "op": "instance", "ref": "hood", "transform": {"scale": [0.3, 0.16, 0.17], "translate": [0, 0.16, 0.07]}}
+  ]},
+  {"id": "plate", "op": "mesh", "material": "plate", "vertices": [[0.05, -0.16, 0], [-0.05, -0.16, 0], [-0.05, 0.16, 0], [0.05, 0.16, 0]], "faces": [[3, 2, 1, 0]], "transform": {"rotate": [0, -35, 0], "translate": [0, 1.8, -0.06]}},
+  {"id": "lamp", "op": "sphere", "radius": 0.1, "rings": 2, "segments": 6, "material": "lamp", "transform": {"scale": [1, 1.1, 1], "translate": [0, 2.15, 0]}},
+  {"id": "mitten", "op": "mesh", "material": "mitten", "vertices": [[0.04, 0.122, -0.15], [0.11, 0.122, -0.15], [0.115, 0.122, -0.1], [0.14, 0.122, -0.085], [0.1, 0.122, -0.035], [0.05, 0.122, -0.04]], "faces": [[5, 4, 3, 2, 1, 0]]}
+ ],
+ "lod": {"levels": [{"distance": 24, "nodes": [
+  {"id": "footing", "op": "box", "size": [0.34, 0.12, 0.34], "open": ["bottom"], "material": "concrete", "transform": {"translate": [0, 0.06, 0]}},
+  {"id": "tiger", "op": "cylinder", "radius": 0.05, "height": 0.38, "segments": 4, "caps": false, "material": "tiger", "transform": {"translate": [0, 0.31, 0]}},
+  {"id": "pole", "op": "cylinder", "radius": 0.05, "height": 1.56, "segments": 4, "caps": false, "material": "paint", "transform": {"translate": [0, 1.28, 0]}},
+  {"id": "extinguisher", "op": "box", "size": [0.2, 0.42, 0.17], "open": ["bottom", "top"], "material": "red", "faces": {"back": "ext"}, "transform": {"translate": [0, 0.78, -0.118]}},
+  {"id": "alarm", "op": "box", "size": [0.26, 0.33, 0.12], "open": ["bottom", "top"], "material": "red", "faces": {"back": "alarm"}, "transform": {"translate": [0, 1.27, -0.095]}},
+  {"id": "lamp", "op": "cylinder", "radius": 0.09, "height": 0.2, "segments": 4, "caps": false, "material": "lamp", "transform": {"translate": [0, 2.15, 0]}}
+ ]}], "cull": 100}
+}
