@@ -85,10 +85,11 @@ def depfile(recipe, out):
     deps += [cs.file for cs in source.cells if cs.file]
     if 'cell_dir' in source.world:
         deps.append(source.base/source.world['cell_dir'])
-    assets = (source.base/source.world['assets']).resolve()
-    deps.append(assets)
-    if assets.is_dir():
-        deps += sorted(p for p in assets.iterdir() if p.is_file() and p.name.endswith('.asset.json'))
+    for d in [source.world['assets']]+source.world.get('asset_dirs', []):
+        assets = (source.base/d).resolve()
+        deps.append(assets)
+        if assets.is_dir():
+            deps += sorted(p for p in assets.iterdir() if p.is_file() and p.name.endswith('.asset.json'))
     for spec in source.world.get('terrain', {}).get('fields', {}).values():
         if 'heights' in spec:
             deps.append((source.base/spec['heights']).resolve())

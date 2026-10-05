@@ -219,7 +219,8 @@ def compile_world(source, lock=None, assets_dir=None):
             return surfaces.get('default', 0)
         return surface_tags[tag]
 
-    library = Library(assets_dir or (source.base / w['assets']).resolve(), source.base)
+    library = Library(assets_dir or (source.base / w['assets']).resolve(), source.base,
+                      [(source.base / d).resolve() for d in w.get('asset_dirs', [])])
     warnings = []
     regions = list(w['regions'])
     layer_names = list(w.get('layers', {}))
@@ -263,6 +264,9 @@ def compile_world(source, lock=None, assets_dir=None):
         raise WorldError('/standins', 'Stand-ins made by the kit keep their placements\' textures, and a stand-in '
                          'is drawn whichever region is loaded: they need a world with one region. Give each cell '
                          'its own stand-in instead.')
+    for cid in (auto_standins or {}).get('cells', {}):
+        if cid not in seen_cells:
+            raise WorldError(pointer('/standins/cells', cid), f'No cell {cid!r}.')
     if len(source.cells) > 1 and not auto_standins:
         for cs in source.cells:
             if 'standin' not in cs.recipe:
@@ -559,6 +563,7 @@ def compile_world(source, lock=None, assets_dir=None):
                 levels.append((at, None))
                 break
             levels.append((at, merge.merge(parts, centre)[0]))
+            note_props(levels[-1][1], parts, [it for (it, _, _), k in zip(batch, state) if k is not None])
             prev, last = at, state
         else:
             if cap is not None:
@@ -569,18 +574,35 @@ def compile_world(source, lock=None, assets_dir=None):
                              'switch distances, or fewer kinds of asset.')
         return levels
 
-    def standin_of(cell, centre, cid, far_grids):
+    chunk_props = {}        # a scatter chunk's level mesh -> [((mesh, position, yaw[, scale]), item)]
+
+    def note_props(mesh, parts, items):
+        """Remembers the props a chunk's level was merged from, so that a stand-in with a cap can
+        take some of them when the whole chunk does not fit."""
+        if mesh is not None and auto_standins and any(
+                'triangles' in o for o in [auto_standins, *auto_standins.get('cells', {}).values()]):
+            chunk_props[mesh] = list(zip(parts, items))
+
+    def standin_of(cell, centre, cid, far_grids, field_src):
         """A stand-in made from the cell itself (standins): each placement not in a layer (sweeps only
         with standins.sweeps) at the level it draws at standins.distance, merged into one mesh around
         the cell's centre; None when nothing is drawn from that far. A far ground level is made
-        again without the skirts between the cell's own tiles, which meet exactly."""
+        again without the skirts between the cell's own tiles, which meet exactly. With ground, the
+        field's tiles are resampled on that grid instead. With triangles, the ground (field tiles and
+        ground placements) goes in first, then the rest largest first (standin_size), each whole or
+        not at all, a scatter chunk's props one by one in a seeded order."""
         dist = auto_standins['distance'] * lod_cfg.get('scale', 1.0)
+        limits = dict(auto_standins, **auto_standins.get('cells', {}).get(cid, {}))
+        cap, grid = limits.get('triangles'), limits.get('ground')
         half = size / 2
         def border(a, b):
             return any(abs(a[q]) >= half - 1e-3 and abs(b[q]) >= half - 1e-3 and a[q] * b[q] > 0 for q in (0, 2))
-        items, windows = [], False
+        ground, items, tiles, windows = [], [], [], False
         for k, pl in enumerate(cell.placements):
             if pl.layer is not None or (pl.tag == TAG_SWEEP and not auto_standins.get('sweeps')):
+                continue
+            if grid and k in field_src:
+                tiles.append(field_src[k])
                 continue
             mesh = pl.mesh
             for d, m in (pl.lod.levels if pl.lod else []):
@@ -593,10 +615,43 @@ def compile_world(source, lock=None, assets_dir=None):
             if mesh is None:
                 continue
             windows = windows or bool(struct.unpack_from('<I', mesh, 12)[0])
-            items.append((mesh, pl.position, pl.yaw))
+            if cap is not None and (pl.tag == TAG_FIELD or pl.ground):
+                ground.append((mesh, pl.position, pl.yaw))
+            elif cap is not None and mesh in chunk_props:
+                for part, it in chunk_props[mesh]:
+                    items.append((part, hashlib.sha256(f'standin:{it.id}'.encode()).digest()))
+            else:
+                items.append(((mesh, pl.position, pl.yaw), struct.pack('>I', k)))
+        if tiles:
+            # the field's tiles resampled together on one grid over the cell, or one by one where
+            # that cannot be (ground not under every grid point, or more than one mesh would hold it)
+            windows = windows or any(struct.unpack_from('<I', m, 12)[0] for m in tiles)
+            whole = merge.merge([(m, centre, 0.0) for m in tiles], centre)
+            got = farground.far_levels(whole[0], [grid], skirted=border)[0] if len(whole) == 1 else None
+            parts = [(m, centre, 0.0) for m in
+                     ([got] if got else [farground.far_levels(m, [grid], skirted=border)[0] or m for m in tiles])]
+            if cap is not None:
+                ground[:0] = parts
+            else:
+                items[:0] = [(part, b'') for part in parts]
+        left_out = 0
+        if cap is not None:
+            used = sum(standin_triangles(m) for m, *_ in ground)
+            if used > cap:
+                warnings.append({'code': 'standin_over_cap', 'cell': cid, 'triangles': used, 'cap': cap,
+                                 'message': 'The ground alone is more triangles than the stand-in\'s cap, so the '
+                                            'stand-in is the ground alone. Give it a coarser ground or a higher cap.'})
+            keep = set()
+            for q in sorted(range(len(items)), key=lambda q: (standin_size(*items[q][0]), items[q][1])):
+                t = standin_triangles(items[q][0][0])
+                if used + t <= cap:
+                    keep.add(q)
+                    used += t
+            left_out = len(items) - len(keep)
+            items = [(part, b'') for part in ground] + [it for q, it in enumerate(items) if q in keep]
         if not items:
             return None
-        meshes = merge.merge(items, centre)
+        meshes = merge.merge([part for part, _ in items], centre)
         if len(meshes) > 1:
             nf = sum(struct.unpack_from('<H', m, 2)[0] for m in meshes)
             raise WorldError('/standins/distance', f'Cell {cid!r} drawn from {dist:g} units is {nf} faces, more than '
@@ -606,7 +661,11 @@ def compile_world(source, lock=None, assets_dir=None):
             warnings.append({'code': 'standin_windows', 'cell': cid,
                              'message': 'The stand-in merges faces with repeating textures; a merged mesh has no '
                                         'texture window table, so they are drawn without their windows.'})
-        auto_report[cid] = {'placements': len(items), 'triangles': struct.unpack_from('<H', meshes[0], 2)[0]}
+        auto_report[cid] = {'placements': len(items), 'left_out': left_out, 'triangles': standin_triangles(meshes[0])}
+        if cap is not None:
+            auto_report[cid]['cap'] = cap
+        if grid:
+            auto_report[cid]['ground'] = grid
         return meshes[0]
 
     auto_report = {}
@@ -794,6 +853,7 @@ def compile_world(source, lock=None, assets_dir=None):
             if cur: batches.append(cur)
             for batch in batches:
                 mesh = merge.merge([(b, it.position, it.yaw) for it, _, b in batch], centre)[0]
+                note_props(mesh, [(b, it.position, it.yaw) for it, _, b in batch], [it for it, _, _ in batch])
                 levels = []
                 if sc.get('lod') == 'assets':
                     levels = chunk_levels(sname, sc, batch, rp, centre)
@@ -804,6 +864,7 @@ def compile_world(source, lock=None, assets_dir=None):
                               else rp.relocated_levels(asset, slot, row)[0]) if asset.levels else b
                         coarse.append((lv, it.position, it.yaw))
                     levels.append((sc['coarse'], merge.merge(coarse, centre)[0]))
+                    note_props(levels[-1][1], coarse, [it for it, _, _ in batch])
                 if 'cull' in sc and sc.get('lod') != 'assets':
                     levels.append((sc['cull'], None))
                 lod = P.Lod(levels, 2.0) if levels else None
@@ -817,6 +878,7 @@ def compile_world(source, lock=None, assets_dir=None):
                 srep['chunks'] = srep.get('chunks', 0) + 1
                 srep['triangles'] = srep.get('triangles', 0) + struct.unpack_from('<H', mesh, 2)[0]
         far_grids = {}          # placement number -> (mesh resampled, [(distance, grid)]) of its far ground
+        field_src = {}          # placement number -> the mesh a field tile's far levels are resampled from
         for piece in (terrain.pieces.get((i, j), []) if terrain else []):
             ta = terrain_assets[c['region']]
 
@@ -829,6 +891,8 @@ def compile_world(source, lock=None, assets_dir=None):
             base = terrain_mesh(piece.mesh)
             levels = [(d, terrain_mesh(m)) for d, m in piece.levels]
             where = pointer('/terrain/fields', piece.name) + '/lod'
+            if piece.kind == 'field':
+                field_src[len(cell.placements)] = levels[-1][1] if levels and levels[-1][1] else base
             if piece.kind == 'field' and ground_lod:
                 # far ground (WORLDKIT.md, "Levels of detail"): grids resampled from level 0, each
                 # kept only where it has fewer faces than the level before it
@@ -861,7 +925,7 @@ def compile_world(source, lock=None, assets_dir=None):
         if plan['standin']:
             cell.standin = rp.relocated(plan['standin'], slot, row)
         elif auto_standins:
-            cell.standin = standin_of(cell, centre, c['id'], far_grids)
+            cell.standin = standin_of(cell, centre, c['id'], far_grids, field_src)
         cell.collision = plan['collision']
         for e in plan['entities']:
             spec = e['spec']
@@ -1111,3 +1175,23 @@ def make_report(source, world, data, plans, library, region_palettes, variants_s
 
 def mesh_faces(binary):
     return struct.unpack_from('<H', binary, 2)[0]
+
+
+def standin_triangles(binary):
+    """A mesh's triangles as drawn: a quad is two."""
+    nf, fo = struct.unpack_from('<H', binary, 2)[0], struct.unpack_from('<I', binary, 8)[0]
+    return sum(2 if binary[fo + 36 * k] & 4 else 1 for k in range(nf))
+
+
+def standin_size(binary, position=None, yaw=0.0, scale=1.0):
+    """The sort key of a piece of a capped stand-in, largest first (WORLDKIT.md, "Stand-ins made by
+    the kit"): its bounding box's height times its larger horizontal side, then its footprint."""
+    nv, _, vo = struct.unpack_from('<HHI', binary)
+    if not nv:
+        return (0.0, 0.0)
+    lo, hi = [math.inf] * 3, [-math.inf] * 3
+    for k in range(nv):
+        for q, c in enumerate(struct.unpack_from('<3i', binary, vo + 16 * k)):
+            lo[q], hi[q] = min(lo[q], c), max(hi[q], c)
+    dx, dy, dz = ((hi[q] - lo[q]) / 65536 * scale for q in range(3))
+    return (-dy * max(dx, dz), -dx * dz)

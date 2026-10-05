@@ -13,17 +13,17 @@
    "asset": "gbm_pagoda",
    "position": [
     178,
-    20.0,
+    15.0,
     262
    ],
-   "collision": "self"
+   "collision": "arch_pagoda_col"
   },
   {
    "id": "kick_cedar_0",
    "asset": "gbm_cedar_kick_0",
    "position": [
-    168.0,
-    20.0,
+    171.35,
+    15.0,
     259.5
    ],
    "collision": "gbm_cedar_kick_0_col"
@@ -32,8 +32,8 @@
    "id": "kick_cedar_1",
    "asset": "gbm_cedar_kick_1",
    "position": [
-    168.0,
-    20.0,
+    171.35,
+    15.0,
     264.5
    ],
    "collision": "gbm_cedar_kick_1_col"
@@ -74,10 +74,10 @@
    "asset": "gbm_ladder_a",
    "position": [
     154.0,
-    13.0,
-    311.0
+    24.0,
+    317.85
    ],
-   "collision": "self",
+   "collision": "none",
    "layer": "ladder_a"
   },
   {
@@ -98,11 +98,11 @@
    "type": "pole",
    "position": [
     178,
-    44.0,
+    36.19,
     262
    ],
    "params": {
-    "height": 6.0
+    "height": 8.8
    }
   },
   {
@@ -110,7 +110,7 @@
    "type": "coin",
    "position": [
     178,
-    51.0,
+    45.49,
     262
    ]
   },
@@ -118,8 +118,8 @@
    "id": "coin_pagoda_1",
    "type": "coin",
    "position": [
-    171.225,
-    25.8,
+    172.95,
+    21.185,
     262
    ]
   },
@@ -127,8 +127,8 @@
    "id": "coin_pagoda_2",
    "type": "coin",
    "position": [
-    172.425,
-    30.6,
+    173.65,
+    24.785,
     262
    ]
   },
@@ -136,8 +136,8 @@
    "id": "coin_pagoda_3",
    "type": "coin",
    "position": [
-    173.525,
-    35.4,
+    174.35,
+    28.385,
     262
    ]
   },
@@ -145,8 +145,8 @@
    "id": "coin_pagoda_4",
    "type": "coin",
    "position": [
-    174.575,
-    40.2,
+    175.05,
+    31.985,
     262
    ]
   },
@@ -154,8 +154,8 @@
    "id": "coin_pagoda_5",
    "type": "coin",
    "position": [
-    176.25,
-    45.0,
+    175.75,
+    35.585,
     262
    ]
   },
@@ -163,14 +163,14 @@
    "id": "camera_kick_pair",
    "type": "camera_zone",
    "position": [
-    168.0,
-    20.0,
+    171.35,
+    15.0,
     262.0
    ],
    "params": {
     "size": [
      6,
-     18,
+     20,
      3.2
     ],
     "mode": "fixed",
@@ -216,11 +216,11 @@
    "type": "pole",
    "position": [
     154.0,
-    13.0,
-    311.0
+    24.0,
+    317.85
    ],
    "params": {
-    "height": 31.0
+    "height": 21.2
    },
    "layer": "ladder_a"
   }

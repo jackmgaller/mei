@@ -227,7 +227,7 @@
    "type": "coin",
    "position": [
     147.1,
-    13.667,
+    14.0,
     134.167
    ],
    "asset": "gbc_coin"
@@ -237,7 +237,7 @@
    "type": "coin",
    "position": [
     139.2,
-    13.133,
+    13.3,
     144.333
    ],
    "asset": "gbc_coin"
@@ -259,7 +259,7 @@
    "type": "coin",
    "position": [
     172.9,
-    13.667,
+    14.0,
     134.167
    ],
    "asset": "gbc_coin"
@@ -269,7 +269,7 @@
    "type": "coin",
    "position": [
     180.8,
-    13.133,
+    13.3,
     144.333
    ],
    "asset": "gbc_coin"

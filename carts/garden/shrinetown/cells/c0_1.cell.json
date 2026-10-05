@@ -157,6 +157,26 @@
     84.0
    ],
    "collision": "self"
+  },
+  {
+   "id": "neighbour_w2",
+   "asset": "gbt_neighbour_14",
+   "position": [
+    0.2,
+    0,
+    88.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "hoarding_w",
+   "asset": "gbt_hoarding",
+   "position": [
+    0.2,
+    0,
+    111.0
+   ],
+   "collision": "self"
   }
  ],
  "entities": [
@@ -194,6 +214,23 @@
    ],
    "params": {
     "height": 9.0
+   }
+  },
+  {
+   "id": "door_shrine",
+   "type": "door",
+   "position": [
+    1.6,
+    0.0,
+    111.0
+   ],
+   "params": {
+    "world": "shrine",
+    "size": [
+     2.0,
+     3.0,
+     13.0
+    ]
    }
   },
   {

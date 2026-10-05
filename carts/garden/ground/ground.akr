@@ -7,19 +7,26 @@
 // carts/garden/ that would find the cart's own garden.akr; from here it finds the world's (in
 // the build's cart-worlds directory, which make passes with -I).
 //
-// Two worlds: the movement garden (GARDEN_WORLD_GARDEN, the city block) and the shrine
-// (GARDEN_WORLD_SHRINE, carts/garden/shrine). A door entity names the world it leads to.
+// Three worlds: the movement garden (GARDEN_WORLD_GARDEN, the city block), the shrine
+// (GARDEN_WORLD_SHRINE, carts/garden/shrine) and the shrine town's grey box
+// (GARDEN_WORLD_SHRINETOWN, carts/garden/shrinetown). A door entity names the world it leads to.
 import "garden.akr"
 import "shrine.akr"
+import "shrinetown.akr"
 
 var world_k: s32 = GARDEN_WORLD_GARDEN    // the world open now
 
-// Opens world k (a GARDEN_WORLD_ number). The shrine has water and a backdrop; the garden
-// has neither, so loading it closes the shrine's.
+// Opens world k (a GARDEN_WORLD_ number). The shrine and the shrine town have water and a
+// backdrop; the garden has neither, so loading it closes theirs.
 fn world_load() -> bool {
     if world_k == GARDEN_WORLD_SHRINE {
         if !world_shrine_load() { return false }
         wp_backdrop_show(0)        // the compositor erases each frame, since the cart draws no cls()
+        return true
+    }
+    if world_k == GARDEN_WORLD_SHRINETOWN {
+        if !world_shrinetown_load() { return false }
+        wp_backdrop_show(0)
         return true
     }
     wp_water_close()
@@ -28,11 +35,11 @@ fn world_load() -> bool {
 }
 
 // Whether the open world draws a backdrop (then the cart draws no cls()).
-fn world_backdrop() -> bool { return world_k == GARDEN_WORLD_SHRINE }
+fn world_backdrop() -> bool { return world_k != GARDEN_WORLD_GARDEN }
 
 // How deep the point is under water (0: not in water). The garden has none.
 fn world_water_depth(p: vec3) -> fixed {
-    if world_k != GARDEN_WORLD_SHRINE { return 0.0 }
+    if world_k == GARDEN_WORLD_GARDEN { return 0.0 }
     if wp_water(p, 0.0) { return max(wp_water_hit.depth, 0.0) }
     return 0.0
 }

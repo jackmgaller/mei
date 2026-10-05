@@ -362,7 +362,9 @@ top, then leans out to the moved edge, so the top band juts over the face: a wat
 ledge that hides the wall from above. The walls are steep faces of the wall material (collision
 walls by `floor_max_degrees`) and share their points with both sheets' tiles, so there are no
 cracks between wall and ground. A cliff's area follows quad edges, so its outline is stepped at
-the spacing seen from above: a polygon traced at an angle gives a stair-stepped wall line.
+the spacing seen from above: a polygon traced at an angle gives a stair-stepped wall line. A face
+looks out over the lower of its two sheets, also where operations after the cliffs leave the sheet
+at the higher offset lower (flats cut into a slope as sheets of small offsets, then `set`).
 `report.json`'s field entry has `cliff_triangles`.
 
 ### Water
@@ -879,8 +881,48 @@ drawn whichever region is loaded); a world with more is refused. Faces with repe
 lose their window in the merge (a merged mesh has no window table; the warning
 `standin_windows` names the cells). A cell more than one mesh holds from that distance (2,048
 vertices, 4,000 faces) is an error at `/standins/distance`. `report.json`'s `standins` lists per
-cell the placements and triangles. The shrine's stand-ins are 81–302 triangles (with
-[quads](#quads)); the World Checker's `standin_triangles` threshold applies as to any stand-in.
+cell the pieces merged (`placements`), the pieces a cap left out (`left_out`) and the triangles as
+drawn (a quad is two), with the cell's `cap` and `ground` when it has them. The shrine's stand-ins
+are 81–302 triangles (with [quads](#quads)); the World Checker's `standin_triangles` threshold
+applies as to any stand-in.
+
+```json
+"standins": {"distance": 128, "triangles": 90, "ground": 32,
+             "cells": {"c2_4": {"triangles": 140}}}
+```
+
+Two options keep stand-ins small where a cell holds much more than its far view needs:
+
+- `triangles` (1–4,000) caps each stand-in's triangles as drawn. The cell's ground goes in first,
+  always: its field tiles and water, its `ground` placements and, with `"sweeps": true`, its
+  ground sweeps ([Ground](#ground)). Then the rest goes in largest first, each piece whole or not
+  at all, skipping what does not fit and trying the next. A piece's size is its bounding box's
+  height times its longer horizontal side (as placed, with a scatter prop's thinning `scale`), so
+  tall and wide things, the silhouette, go before low and small ones; ties go to the larger
+  footprint, then to the placements' order. A scatter chunk goes in prop by prop, the props of
+  equal size in a seeded order (by each prop's ID, as `thin` chooses), so a cap keeps a
+  spread-out share of a wood rather than one corner of it. A sweep that is not ground (raised, or
+  `"ground": false`) is a piece like the others. If the ground alone is over the cap, the
+  stand-in is the ground alone and the warning `standin_over_cap` names the cell, its ground's
+  triangles and the cap.
+- `ground` (4, 8, 16, 32 or 64 units) resamples the cell's field tiles on one grid of that many
+  units over the whole cell, as the far ground levels do ([Levels of detail](#levels-of-detail)),
+  in place of the level they draw at `distance`: on a 64-unit cell, `32` is 8 triangles where the
+  ground is flat, plus skirts on the cell's border where a straight edge stands above the ground
+  beside it. Where the grid cannot be laid over the whole cell (a grid point with no field under
+  it, or more tiles than one mesh holds), each tile is resampled on its own (`nx = round(tile /
+  grid)`, at least one square), and a tile that cannot be keeps its own coarsest level. Each grid
+  point takes the highest ground under it, so a cliff becomes a slope one grid square wide whose
+  top edge may move by up to a square, and its overhang is gone. A field's water is a piece of
+  its own and is kept as it is, over the resampled bed; where the coarser bed rises above the
+  water's surface (a narrow stream between banks), the water is hidden there.
+
+`cells` overrides `triangles` and `ground` per cell ID (a cell not in the world is an error). A
+world without these options builds as before, byte for byte. In the shrine town's grey box
+(64-unit cells, far ground at 16, built as its three strip worlds), `{"distance": 128, "sweeps":
+true}` gives stand-ins of 90–540 triangles; adding `"triangles": 90, "ground": 32` gives 28–90,
+except cell `c3_2`, whose ground alone is 103, 85 of them its water, which `ground` does not
+resample (`standin_over_cap`).
 
 ## Game data and stable IDs
 
@@ -1099,6 +1141,7 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | Property | Meaning |
 |---|---|
 | `game`, `assets`, `cell_dir` | Paths relative to the world file: the game schema, the Asset Kit recipes (`NAME.asset.json`), the cell files |
+| `asset_dirs` | More directories of Asset Kit recipes, searched with `assets` (a level whose grey boxes and real assets live in folders of their own); a name found in two of them is an error |
 | `grid.cell_size` | 16, 32, 64 or 128 units: the pack's `cell_shift`. Cell (*i*, *j*) (`at`) covers *x* in [*i S*, (*i*+1) *S*) and *z* likewise |
 | `overhang` | How far a placement may reach past its cell (default 8, at most half a cell) |
 | `collision.pad` | How far walls are copied past a cell's edge: at least, and by default, the probe radius |
@@ -1109,7 +1152,7 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | `layers` | World-wide layer names in order (the pack's layer ids), each with an optional exclusive `group` and `on` (at start) |
 | `paths` | Named polylines in world coordinates, in order (the pack's path numbers): [Paths](#paths) |
 | `lod` | The switch distances of assets with levels of detail: `scale`, and per asset `distances`, `cull`, `band`, `off`; far levels of the fields' tiles (`ground`) and cull distances for sweeps (`sweeps`) ([Levels of detail](#levels-of-detail)) |
-| `standins` | Stand-ins made by the kit from each cell's own contents, for every cell that names none ([Stand-ins made by the kit](#stand-ins-made-by-the-kit)) |
+| `standins` | Stand-ins made by the kit from each cell's own contents, for every cell that names none: `distance`, `sweeps`, a cap on `triangles`, a `ground` grid, and per-cell `cells` overrides ([Stand-ins made by the kit](#stand-ins-made-by-the-kit)) |
 | `meshes.quads` | Pack pairs of triangles as quads: the same pictures, fewer faces ([Quads](#quads)) |
 | `runtime.near_far` | The near pass's far depth the pack asks the reader for (units; default 1.5 cells). `wp_open()` sets `wp_near_far` to it and the World Checker measures with it |
 | `runtime.depth`, `runtime.perspective` | The game draws the world with the depth buffer, and with perspective-correct texturing (`render_depth(true)`, `render_perspective(true)`; default false). Not stored in the pack: the checkers judge the world and its assets so ([Depth mode](#depth-mode)) |

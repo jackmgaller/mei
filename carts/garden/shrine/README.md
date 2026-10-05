@@ -70,9 +70,11 @@ its east side, so the only way out of the forest and back to the shrine is acros
 
 The world `shrine` (`shrine.world.json`, `cells/`, `assets/`, the style sheet `STYLE.md`) is the
 second world of the movement garden's game (`../world/garden.game.mochi`: `worlds garden,
-shrine`). The garden cart opens it through a door: the torii at the foot of the garden's shrine
-hill leads here, to the spawn on the road; the konbini's door leads back. More screenshots are in
-`screenshots/`, drawn by the real reader (world only, no player).
+shrine, shrinetown`). The garden cart opens it through a door: the torii at the foot of the
+garden's shrine hill leads here, to the spawn on the road; the konbini's door leads back, and
+the road works at the road's west end lead on to the shrine town
+([../shrinetown/README.md](../shrinetown/README.md)). More screenshots are in `screenshots/`,
+drawn by the real reader (world only, no player).
 
 **The ground.** One heightfield over 192 × 320 m at 2 m (15,360 quads in 240 tiles of 16 m;
 13,088 triangles at level 0, 9,036 at the coarse level from 22 m), with cliffs for the 4.55 m

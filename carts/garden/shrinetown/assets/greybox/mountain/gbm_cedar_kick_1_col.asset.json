@@ -17,14 +17,14 @@
    "op": "box",
    "size": [
     1.8,
-    22.0,
+    20.0,
     1.8
    ],
    "material": "trunk",
    "transform": {
     "translate": [
      0.0,
-     10.5,
+     9.5,
      0.0
     ]
    },

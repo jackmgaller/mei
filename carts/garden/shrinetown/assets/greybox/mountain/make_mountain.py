@@ -7,7 +7,6 @@ Writes, from the level's plan (layout.py, the single source of coordinates and h
 - carts/garden/shrinetown/cells/c{0..4}_{4,5}.cell.json             this region's cells
 - carts/garden/shrinetown/parts/mountain.json                       world-level entries
 - carts/garden/shrinetown/parts/mountain.heights.txt                the ground of these rows
-- carts/garden/shrinetown/test_mountain.world.json                  a throwaway test world
 
     python3 carts/garden/shrinetown/assets/greybox/mountain/make_mountain.py --layout PATH/layout.py
 
@@ -110,13 +109,19 @@ op(op='set', area={'rect': [138, 354, 170, 377]}, height=60.0, falloff=3)
 # front edge (z 340) so the ladder up the front stilts starts on it.
 # With the cliff-top path east along the foot of the stage to the falls' lip (the back mountain's
 # face is 40-42 degrees from z 316 to 356: no walking on it), the ledge is an L.
-LEDGE = [[146, 312], [162, 312], [162, 334], [206, 334], [206, 342], [146, 342]]
+LEDGE = [[146, 318], [162, 318], [162, 334], [206, 334], [206, 342], [146, 342]]
 FLATS = []
 def flat(area, h):
     FLATS.append(area)                                         # each its own sheet (offset), then levelled
     op(op='cliff', area=area, height=0.01 * len(FLATS), material='rock')
     op(op='set', area=area, height=h)
 flat({'polygon': LEDGE}, 44.0)
+# Rope ladder A hangs plumb, 20 m (the real forest_rope_ladder; owner, 2026-10-05): its foot is a
+# shelf at 24 cut into the slope (x 148-160, z 314-318), the ledge's south face above it sheer
+# from 24 to 44 at z 318 (not on the row seam at z 320, where the body passed through the face), so foot and top are at the same x and z. Steps climb to the shelf from
+# the basin floor (ladder_a_steps).
+LADDER_SHELF = [148, 314, 160, 318]
+flat({'rect': LADDER_SHELF}, 24.0)
 # The falls pool's west terrace at 16 (the chimney's foot), and the chimney's slot floor.
 SHELF = [[186, 306], [206, 306], [206, 334], [194, 334], [194, 322], [186, 322]]
 flat({'polygon': SHELF}, 16.0)
@@ -197,44 +202,58 @@ NOTES = []                                   # measurements written into notes (
 
 # ================================================================== 3.8 the ridge and the pagoda
 PX, PZ = L.PAGODA
-# Tier walls (half widths) and eaves (half widths). The plan's tiers (4.5 m narrowing 0.5 a
-# tier, eaves 1.8 deep) leave 0.5 m of each roof outside the eave above it: too narrow to stand
-# on and jump up past the eave. Here each roof shows 1.05-1.25 m: the walls narrow 0.75 a tier
-# and the eaves shorten from 2.4 to 0.9. Roof tops are the plan's: 24.8, 29.6, 34.4, 39.2, 44.0.
-S_WALL = [5.0, 4.25, 3.5, 2.75, 2.0]
-S_EAVE = [7.4, 6.15, 5.0, 3.95, 2.9]
-pag = []
+# The pagoda is the shrine's real one, reused (owner, 2026-10-05): its tiers are 3.6 m apart, not
+# the plan's 4.8. Its climbing collision is arch_pagoda_col (assets/arch_pagoda, made from the
+# render's own roofs): eave tops at 5.0 / 8.6 / 12.2 / 15.8 / 19.4 above the base, eave half widths
+# 5.4 / 4.7 / 4.0 / 3.3 / 2.6, each roof a 0.7 m strip outside the eave above at 27.9 degrees, roof
+# 5 rising to the dew basin's flat top at 21.19. The grey box draws that same solid in a flat
+# colour (gbm_pagoda) and collides with it; the finial is a pole from the dew basin, 8.8 m.
+PAG_EAVE_TOP = [5.0, 8.6, 12.2, 15.8, 19.4]
+PAG_EAVE_HALF = [5.4, 4.7, 4.0, 3.3, 2.6]
+PAG_ROBAN, PAG_FINIAL = 21.19, 8.8
+PB = L.PAG_BASE
+_col = json.loads((TOWN / 'assets' / 'arch_pagoda' / 'arch_pagoda_col.asset.json').read_text())
+_body = dict(_col['nodes'][0], material='pagoda')
+_body.pop('face_materials', None)
+def _tier_boxes():
+    out, y0 = [], -0.3
+    for i in range(5):
+        out.append(cube(0, 0, PAG_EAVE_HALF[i] - 0.3, y0, PAG_EAVE_TOP[i], 'pagoda' if i % 2 == 0 else 'roof',
+                        ['bottom'] if i == 0 else None))
+        y0 = PAG_EAVE_TOP[i] - 0.02
+    return out
+ASSETS['gbm_pagoda'] = {'format': 'mei-asset', 'version': 1, 'name': 'gbm_pagoda',
+                        'materials': {'pagoda': {'color': C['pagoda']}, 'roof': {'color': C['roof']}, 'gold': {'color': C['gold']}},
+                        'lighting': {'mode': 'vertical', 'ambient': 0.5},
+                        'nodes': [_body] + box_nodes([cube(0, 0, 0.25, PAG_ROBAN - 0.02, PAG_ROBAN + PAG_FINIAL, 'gold')], (0, 0, 0)),
+                        'lod': {'levels': [{'distance': 90, 'nodes': box_nodes(_tier_boxes() + [cube(0, 0, 0.25, PAG_EAVE_TOP[4] - 0.02, PAG_ROBAN + PAG_FINIAL, 'gold')], (0, 0, 0))},
+                                           {'distance': 120, 'nodes': box_nodes([cube(0, 0, PAG_EAVE_HALF[0] - 0.6, -0.3, PAG_EAVE_TOP[4], 'roof', ['bottom']),
+                                                                                cube(0, 0, 0.25, PAG_EAVE_TOP[4] - 0.02, PAG_ROBAN + PAG_FINIAL, 'gold', ['bottom'])], (0, 0, 0))}]}}
+place('pagoda', 'gbm_pagoda', (PX, PB, PZ), 'arch_pagoda_col')
+entity('pole_pagoda_finial', 'pole', (PX, PB + PAG_ROBAN, PZ), {'height': PAG_FINIAL})
+coin('star_1_pagoda', PX, PB + PAG_ROBAN + PAG_FINIAL + 0.5, PZ)    # star 1 (a coin in the grey box), 0.5 over the finial: taken at the pole's top
+STRIP_RISE = 0.35 * math.tan(math.radians(27.9))
 for i in range(5):
-    b = L.PAG_BASE + i * 4.8
-    pag.append(cube(PX, PZ, S_WALL[i], b - (0.5 if i == 0 else 0.02), b + 3.8, 'pagoda', ['bottom'] if i == 0 else None))
-    pag.append(cube(PX, PZ, S_EAVE[i], b + 3.78, b + 4.8, 'roof'))
-pag.append(cube(PX, PZ, 0.25, 44.05, L.PAG_TOP, 'gold'))           # the finial (a pole entity at its foot)
-place('pagoda', 'gbm_pagoda', (PX, L.PAG_BASE, PZ), asset('gbm_pagoda', pag, (PX, L.PAG_BASE, PZ),
-      lod={'levels': [(90, [cube(PX, PZ, S_EAVE[i] - 0.4, L.PAG_BASE + i * 4.8 - (0.5 if i == 0 else 0.0), L.PAG_BASE + i * 4.8 + 4.8,
-                                 'roof', ['bottom']) for i in range(5)]),
-                      (120, [(PX - S_EAVE[0], L.PAG_BASE - 0.5, PZ - S_EAVE[0], PX + S_EAVE[0], L.PAG_BASE + 24.0, PZ + S_EAVE[0], 'roof', ['bottom']),
-                             cube(PX, PZ, 0.25, L.PAG_BASE + 23.98, L.PAG_TOP, 'gold', ['bottom'])])]}))
-entity('pole_pagoda_finial', 'pole', (PX, L.PAG_ROOFS[4], PZ), {'height': L.PAG_TOP - L.PAG_ROOFS[4]})
-coin('star_1_pagoda', PX, L.PAG_TOP + 1.0, PZ)                      # star 1 (a coin in the grey box)
-for i in range(5):
-    top = L.PAG_ROOFS[i]
-    inner = S_EAVE[i + 1] if i < 4 else 0.6
-    coin(f'coin_pagoda_{i + 1}', PX - (inner + S_EAVE[i]) / 2, top + 1.0, PZ)   # west eaves: the south ones are in row 3
+    coin(f'coin_pagoda_{i + 1}', PX - (PAG_EAVE_HALF[i] - 0.35), PB + PAG_EAVE_TOP[i] + STRIP_RISE + 1.0, PZ)   # on each roof's west strip
 
 # The kick pair (star 1, approach 2). layout.py has one cedar 3 m south of the pagoda's wall
 # (KICK_CEDAR, in the core region's row); the first roof's eave reaches to 1.2 m of it, so the
 # shaft is closed at 23.8. Built here as the spec says: two cedars west of the pagoda, trunks
 # face to face 3.2 m apart, here north-south at x 168 (z 259.5 and 264.5).
-KICK = [(168.0, 259.5), (168.0, 264.5)]
+# Trunk faces 1.05 m from roof 2's west eave line (x 171.35; roof 1's eave passes 0.35 m east of
+# them): after the fourth kick the stick carries the body east onto roof 2 (a kick itself goes back
+# and forth between the faces, north and south).
+KICK_X = PX - PAG_EAVE_HALF[1] - 1.05 - 0.9
+KICK = [(KICK_X, 259.5), (KICK_X, 264.5)]
 for k, (kx, kz) in enumerate(KICK):
     g = gmin(kx - 0.9, kz - 0.9, kx + 0.9, kz + 0.9)
-    # Crowns from 35.5 (four good kicks reach 33.6, the head 35.2) to 42: the race glide G8 passes
-    # over them at 43.9, 0.2 m west of the trunks (spec: cedars of 25-41 m would stand in its way).
-    trunk = cube(kx, kz, 0.9, g - 0.5, 41.5, 'trunk', ['bottom'])
-    can = cube(kx, kz, 2.6 - 0.4 * k, 35.5, 42.0, 'cedar', ['bottom'])
+    # Trunks to 34.5 and crowns 34-38 (from the terrace at 15, four good kicks reach 31.9, the head 33.5):
+    # the glides G6 and G8 pass over them (spec: cedars of 25-41 m would stand in their way).
+    trunk = cube(kx, kz, 0.9, g - 0.5, 34.5, 'trunk', ['bottom'])
+    can = cube(kx - 0.6, kz, 1.6, 34.0, 38.0, 'cedar', ['bottom'])      # crowns 34-38: over the kicks' reach (head 33.5), under the glides G6 (about 42 here) and G8 (43.9)
     name = f'gbm_cedar_kick_{k}'
     place(f'kick_cedar_{k}', name, (kx, g, kz), asset(name, [trunk, can], (kx, g, kz), collision=[trunk]))
-entity('camera_kick_pair', 'camera_zone', (168.0, 20.0, 262.0), {'size': [6, 18, 3.2], 'mode': 'fixed', 'look': [1, 0, 0]})
+entity('camera_kick_pair', 'camera_zone', (KICK_X, L.PAG_BASE, 262.0), {'size': [6, 20, 3.2], 'mode': 'fixed', 'look': [1, 0, 0]})
 
 # ================================================================== 3.9 treetop walkway (rows 4)
 DECK6 = L.DECKS[5]            # (114, 264, 22)
@@ -266,12 +285,7 @@ def rope_bridge(name, a, b, sag=0.6, n=5):
                                               for p, t in zip(pts, [i / (n - 1) for i in range(n)])],
                                    'raised': True,
                                    'sweep': {'profile': [[0.0, -0.05], [0.0, 0.05]], 'material': 'rope', 'double_sided': True, 'collision': False}}
-# Deck 5 (102, 252, 21; the core region's) to deck 6: this region's half, from the row seam.
-d5 = L.DECKS[4]
-t = (Z0 - (d5[1] + 2.0)) / ((DECK6[1] - 2.4) - (d5[1] + 2.0))
-seam = (d5[0] + 2.0 + t * ((DECK6[0] - 2.4) - (d5[0] + 2.0)), d5[2] + t * (DECK6[2] - d5[2]), Z0)
-rope_bridge('bridge_deck5_6_north', seam, (DECK6[0] - 2.4, DECK6[2] - 0.05, DECK6[1] - 2.4), sag=0.15, n=3)
-NOTES.append(('crossing', 'bridge deck 5 -> deck 6 (planks)', seam))
+# (Deck 5 to deck 6 is the core region's bridge, core_walkway_56, which runs the whole way.)
 # Deck 6 to the rope deck (24 m, 2 m up).
 rope_bridge('bridge_deck6_rope', (DECK6[0] + 2.4, DECK6[2] - 0.05, DECK6[1] + 2.4),
             (ROPE_DECK[0] - 2.4, ROPE_DECK[2] - 0.05, ROPE_DECK[1] - 2.4), sag=0.5)
@@ -315,7 +329,10 @@ coin('star_4_cedar', CX, BF + 1.0, CZ)
 # the knot hole, 1.75 m above its sill: hang along it, hang-jump in (spec: 24 -> 21.5 is the
 # feet's line). A rail entity names it; it is hang only because it is overhead.
 rope_a = (ROPE_DECK[0] + 2.4, ROPE_DECK[2] + 1.75, ROPE_DECK[1] + 1.4)
-rope_b = (x0 - 1.2, SILL + 1.75, (HZ0 + HZ1) / 2)
+# The rope ends in the knot hole, 0.5 m into the trunk's wall under the hole's top: the body
+# hanging at its end is in the opening, so letting go puts the feet on the sill. (Ending 1.2 m
+# short, as first built, a hang jump from it bumped the lip and fell short: scenario 423.)
+rope_b = (x0 + 0.5, SILL + 1.75, (HZ0 + HZ1) / 2)
 PATHS['cedar_rope'] = {'points': [[r2(v) for v in rope_a], [r2(v) for v in rope_b]], 'raised': True,
                        'sweep': {'profile': [[0.0, -0.06], [0.0, 0.06]], 'material': 'rope', 'double_sided': True, 'collision': False}}
 entity('rail_cedar_rope', 'rail', rope_a, {'path': 'cedar_rope'})
@@ -401,13 +418,21 @@ coin('star_3_bell', BELL[0], SY + 1.2, BELL[1] - 0.3)
 entity('race_switch', 'coin', (L.RACE_SWITCH[0], SY + 0.9, L.RACE_SWITCH[1]))   # star 5's start (a marker)
 gl = 44.0                                                          # on the ledge
 entity('pole_stage_front', 'pole', (154.0, gl, 339.4), {'height': r2(SY - gl)})
-# Rope ladder A (shortcut A): from the basin's north rim (13) up the ledge's face to 44 (31 m,
-# 10.3 s; the spec's 20 m from a slope at 24 is not walkable). Layer ladder_a: down.
-LA = (154.0, 311.0)
-gla = gnd(*LA)
-ladder_a = [(153.6, gla - 0.3, LA[1] + 0.3, 154.4, 44.6, LA[1] + 0.5, 'rope')]
-place('ladder_a', 'gbm_ladder_a', (LA[0], gla, LA[1]), asset('gbm_ladder_a', ladder_a, (LA[0], gla, LA[1])), layer='ladder_a')
-entity('pole_ladder_a', 'pole', (LA[0], gla, LA[1]), {'height': r2(44.0 - gla)}, layer='ladder_a')
+# Rope ladder A (shortcut A): plumb from the shelf (24) up the ledge's sheer face to 44, 20 m
+# (6.7 s); the origin is the real ladder's (its foot, the face 0.15 m behind it). Layer ladder_a:
+# down. (The rolled-up ladder on the lip, while it is up, is the real asset's second recipe; the
+# grey box shows nothing there.)
+LA = (154.0, 24.0, LADDER_SHELF[3] - 0.15)
+ladder_a = [(153.6, LA[1] - 0.02, LA[2] - 0.05, 154.4, 44.6, LA[2] + 0.13, 'rope')]
+asset('gbm_ladder_a', ladder_a, LA)
+place('ladder_a', 'gbm_ladder_a', LA, 'none', layer='ladder_a')     # the pole is what holds the body
+# The pole runs 1.2 m past the lip (to the stakes the ropes are tied to): the feet stop 1.2 below
+# a pole's top (PoleTop), so at its top they are level with the ledge; let go and push at the rock,
+# and the hands catch the lip (scenario 424). A pole 20 m tall left the feet 1.2 below the lip.
+entity('pole_ladder_a', 'pole', LA, {'height': 21.2}, layer='ladder_a')
+PATHS['ladder_a_steps'] = {'points': [[176.0, 13.1, 304.0], [161.5, 24.0, 316.0], [159.4, 24.0, 316.0]],
+                           'sweep': {'profile': [[-1.6, -3.0], [-1.2, 0], [1.2, 0], [1.6, -3.0]],
+                                     'materials': ['stone', 'steps', 'stone'], 'caps': True, 'stairs': {'rise': 0.3}}}
 
 # The kick chimney, moved 8 m south of the plan's (195-198, 330-338), where the ground is 41-48:
 # here its foot is the pool's west terrace (16) and its top the cliff top (46). Two rock faces
@@ -539,12 +564,12 @@ PATHS['stream_gorge'] = {'points': [[218.0, 317.0], [224.0, 298.0], [236.0, 268.
 NOTES.append(('crossing', 'stream_gorge (STREAM, R_WATER)', (sx, gnd(sx, Z0), Z0)))
 op(op='bed', path='torii_steps', width=4.0, depth=0.6, falloff=3)
 op(op='bed', path='landing_stair', width=3.6, depth=0.6, falloff=1)
+op(op='bed', path='ladder_a_steps', width=3.2, depth=0.6, falloff=1)
 
 # ---- water, paint, rims
 op(op='water', area={'circle': [L.FALLS_POOL[0], L.FALLS_POOL[1], 7.5]}, level=12.0, material='water')
-op(op='water', area={'rect': [44, 256, 52, 292]}, level=-0.4, material='water')
 for area, mat in [({'rect': [0, 256, 44, 384]}, 'bamboo_floor'),
-                  ({'polygon': [[44, 256], [256, 256], [256, 320], [44, 320]]}, 'floor'),
+                  ({'polygon': [[52, 256], [256, 256], [256, 320], [52, 320]]}, 'floor'),
                   ({'rect': [44, 320, 244, 384]}, 'litter'),
                   ({'rect': [244, 256, 320, 384]}, 'grass'),
                   ({'circle': [PX, PZ, 14]}, 'gravel'),
@@ -563,9 +588,9 @@ op(op='cliff', area={'rect': [318, 256, 320, 380]}, height=8.0, material='rock')
 # ================================================================== scatter
 clear = [{'circle': [L.BASIN[0], L.BASIN[1], 16]}, {'circle': [FX, FZ, 11]}, {'circle': [PX, PZ, 15]},
          {'circle': [L.FALLS_POOL[0], L.FALLS_POOL[1], 11]}, {'rect': [134, 336, 174, 380]}, {'polygon': LEDGE},
-         {'polygon': SHELF}, {'rect': [186, 318, 224, 348]}, {'circle': [226, 318, 6]},
+         {'polygon': SHELF}, {'rect': [186, 318, 224, 348]}, {'path': 'ladder_a_steps', 'width': 6}, {'rect': LADDER_SHELF}, {'circle': [226, 318, 6]},
          {'path': 'cedar_rope', 'width': 10}, {'path': 'bridge_deck6_rope', 'width': 8}, {'path': 'bridge_falls_stage', 'width': 8},
-         {'path': 'bridge_deck5_6_north', 'width': 8}, {'path': 'torii_steps', 'width': 7}, {'path': 'landing_stair', 'width': 6},
+         {'path': 'torii_steps', 'width': 7}, {'path': 'landing_stair', 'width': 6},
          {'circle': [DECK6[0], DECK6[1], 6]}, {'circle': [ROPE_DECK[0], ROPE_DECK[1], 6]}, {'circle': [168, 262, 6]},
          {'circle': [DC[0], DC[1], 4]}, {'path': 'gully_falls', 'width': 12}, {'circle': [252, 378, 5]},
          {'rect': [0, 256, 46, 384]}]
@@ -634,32 +659,6 @@ parts = {
 }
 dump(TOWN / 'parts' / 'mountain.json', parts)
 
-world = {
-    'format': 'mei-world', 'version': 1, 'name': 'test_mountain',
-    'game': '../world/garden.game.mochi', 'assets': 'assets/greybox/mountain', 'cell_dir': 'cells',
-    'grid': {'cell_size': 64}, 'overhang': 24,
-    'collision': {'surfaces': {'default': 0, 'tags': {'bounce': 1, 'slide': 2, 'water': 3}}},
-    'regions': {'shrine_town': {'variants': {'day': {}, 'night': {'surface': {'multiply': '#4a5884'}}},
-                                'backdrop': {'elevations': [-8, 0, 5, 24, 70],
-                                             'sky': {'day': ['#4a5636', '#c8c4a8', '#c4d8e8', '#7aa8d8', '#3a6cb0'],
-                                                     'night': ['#141420', '#2a2440', '#1a1c3a', '#0c1028', '#04060f']},
-                                             'silhouette': {'pattern': 'mountains', 'width': 1024, 'height': 48, 'seed': 23,
-                                                            'colors': ['#7a8a8c', '#56685a', '#3e5040']}}}},
-    'layers': LAYERS,
-    'runtime': {'depth': True, 'perspective': True, 'near_far': 192},
-    'verification': {'thresholds': {'cell_triangles': 12000, 'cell_placements': 400, 'standin_triangles': 400}},
-    'paths': PATHS,
-    'terrain': {'materials': TERRAIN_MATERIALS,
-                'fields': {'land': {'spacing': SPACING, 'min': [0, Z0], 'max': [L.W, Z1], 'heights': 'parts/mountain.heights.txt',
-                                    'material': 'floor', 'steep': {'degrees': 38, 'material': 'rock'}, 'tolerance': 0.15,
-                                    'tile': 16, 'lod': {'distance': 22, 'tolerance': 2.5}, 'operations': OPS}}},
-    'scatter': SCATTER,
-    'lod': {'ground': [{'distance': 36, 'grid': 8}, {'distance': 76, 'grid': 16}],
-            'sweeps': {'cull': 56, 'paths': {'torii_steps': {'cull': 44}}}},
-    'standins': {'distance': 128},
-    'meshes': {'quads': True},
-}
-dump(TOWN / 'test_mountain.world.json', world)
 
 print(f'{len(ASSETS)} assets, {sum(len(c["placements"]) for c in CELLS.values())} placements, '
       f'{sum(len(c["entities"]) for c in CELLS.values())} entities, {len(PATHS)} paths, {len(OPS)} operations')

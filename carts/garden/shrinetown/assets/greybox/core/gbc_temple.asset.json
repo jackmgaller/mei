@@ -60,14 +60,14 @@
    "op": "box",
    "size": [
     49.8,
-    2.667,
+    2.333,
     19.933
    ],
    "material": "roof",
    "transform": {
     "translate": [
      0,
-     6.233,
+     6.067,
      0
     ]
    },
@@ -80,14 +80,14 @@
    "op": "box",
    "size": [
     45.6,
-    2.667,
+    2.333,
     17.867
    ],
    "material": "roof",
    "transform": {
     "translate": [
      0,
-     8.9,
+     8.4,
      0
     ]
    },
@@ -100,14 +100,14 @@
    "op": "box",
    "size": [
     41.4,
-    2.667,
+    2.333,
     15.8
    ],
    "material": "roof",
    "transform": {
     "translate": [
      0,
-     11.567,
+     10.733,
      0
     ]
    },
@@ -120,14 +120,14 @@
    "op": "box",
    "size": [
     37.2,
-    2.667,
+    2.333,
     13.733
    ],
    "material": "roof",
    "transform": {
     "translate": [
      0,
-     14.233,
+     13.067,
      0
     ]
    },
@@ -140,14 +140,14 @@
    "op": "box",
    "size": [
     33.0,
-    2.667,
+    2.333,
     11.667
    ],
    "material": "roof",
    "transform": {
     "translate": [
      0,
-     16.9,
+     15.4,
      0
     ]
    },
@@ -160,14 +160,14 @@
    "op": "box",
    "size": [
     28.8,
-    2.667,
+    2.333,
     9.6
    ],
    "material": "roof_hi",
    "transform": {
     "translate": [
      0,
-     19.567,
+     17.733,
      0
     ]
    },

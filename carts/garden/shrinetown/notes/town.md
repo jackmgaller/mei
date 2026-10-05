@@ -1,5 +1,10 @@
 # Shrine town grey box: the town (rows z 0–128)
 
+> **Joined (2026-10-05).** This region's notes from the parallel build. Its test world is gone: the
+> level is built only as the world `shrinetown` (`../README.md`), and the generator writes no test
+> world; the build commands below that name one are history. What the joining changed is in
+> `../DESIGN.md`, section 12.
+
 Region `town` of the grey box (spec section 9, phase 1): cells `c0_0`–`c4_1`, zones 3.1 station
 and plaza, 3.2 shotengai, 3.3 alleys, 3.4 canal and machiya, 3.5 front road, 3.15 schoolyard, the
 viaduct in these rows, the great torii (its origin is in `c2_1`) and the ground of the strip

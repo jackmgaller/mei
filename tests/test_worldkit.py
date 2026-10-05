@@ -29,6 +29,8 @@ sys.path.insert(0, str(ROOT/'tools'))
 from kitcore.schema import validator, obj, NAME, array  # noqa: E402
 from kitcore.errors import KitError  # noqa: E402
 from worldkit import pack as P  # noqa: E402
+from worldkit import terrain as terrain_mod  # noqa: E402
+from worldkit.terrain import cross  # noqa: E402
 from worldkit.build import build, compile_source  # noqa: E402
 from worldkit.schema import WorldError  # noqa: E402
 import mei_world  # noqa: E402
@@ -576,6 +578,20 @@ class BuildTests(unittest.TestCase):
             pack = P.decode(c.pack)
             self.assertEqual((pack.near_far, pack.lod_slots, c.report['lod']), (0, 0, {}))
 
+    def test_asset_dirs_add_directories_and_refuse_a_name_in_two(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            before = ex.compile().pack
+            (ex.dir/'more').mkdir()
+            shutil.move(str(ex.dir/'assets'/'ramp.asset.json'), str(ex.dir/'more'/'ramp.asset.json'))
+            with self.assertRaisesRegex(WorldError, 'No asset recipe'):
+                ex.compile()
+            ex.edit(lambda w: w.update(asset_dirs=['more']))
+            self.assertEqual(ex.compile().pack, before)
+            shutil.copy(ex.dir/'more'/'ramp.asset.json', ex.dir/'assets'/'ramp.asset.json')
+            with self.assertRaisesRegex(WorldError, 'more than one asset directory'):
+                ex.compile()
+
     def test_assets_must_pass_their_own_policy(self):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp)
@@ -895,6 +911,23 @@ class TerrainTests(unittest.TestCase):
             self.assertIn(P.KIND_WALL, kinds)
             top = c.terrain.floors().at(30, 50)
             self.assertAlmostEqual(top[0], 8 * 50 / 64 + 6, places=3)
+
+    def test_a_cliff_face_looks_out_over_the_lower_sheet(self):
+        # Two flats cut as sheets and set after: the one at the higher offset (0.02) ends at 4, the
+        # other (0.01) at 20, so the higher sheet is the lower ground. The face between them is
+        # wound outward over the lower ground (toward -z), as a wall the body stops at.
+        ops = [{'op': 'cliff', 'area': {'rect': [0, 32, 64, 64]}, 'height': 0.01, 'material': 'stone'},
+               {'op': 'set', 'area': {'rect': [0, 32, 64, 64]}, 'height': 20},
+               {'op': 'cliff', 'area': {'rect': [0, 20, 64, 32]}, 'height': 0.02, 'material': 'stone'},
+               {'op': 'set', 'area': {'rect': [0, 20, 64, 32]}, 'height': 4}]
+        with tempfile.TemporaryDirectory() as tmp:
+            c = TerrainWorld(tmp, terrain=field(operations=ops)).compile()
+            faces = [(t, m) for t, m in terrain_mod.cliff_faces(c.terrain.fields['main'], c.terrain.fields['main'].walls())
+                     if all(abs(p[2] - 32) < 1e-6 for p in t)]
+            self.assertTrue(faces)
+            for t, _ in faces:
+                n = cross(tuple(b - a for a, b in zip(t[0], t[1])), tuple(b - a for a, b in zip(t[0], t[2])))
+                self.assertLess(n[2], 0, t)
 
     def test_water_is_semi_transparent_without_collision_and_answers_wp_water(self):
         ops = [{'op': 'carve', 'area': {'circle': [20, 20, 6]}, 'height': -1, 'falloff': 2},
@@ -1290,6 +1323,81 @@ class FarLodTests(unittest.TestCase):
             with self.assertRaises(WorldError) as cm:
                 w.compile()
             self.assertEqual(cm.exception.path, '/standins')
+
+    def test_standin_caps_and_ground(self):
+        from worldkit.world import standin_triangles
+        scatter = {'s': {'assets': [{'asset': 'ledge_block'}, {'asset': 'ramp'}], 'area': {'rect': [0, 0, 64, 64]},
+                         'spacing': 6, 'seed': 2, 'chunk': 32, 'lod': 'assets'}}
+
+        def box(name, size):
+            return {'format': 'mei-asset', 'version': 1, 'name': name,
+                    'materials': {'m': {'color': '#806040', 'palette': True}},
+                    'nodes': [{'id': 'b', 'op': 'box', 'size': size, 'material': 'm',
+                               'transform': {'translate': [0, size[1] / 2, 0]}}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            w = self.scatter_world(tmp, scatter, lod={'ground': [{'distance': 30, 'grid': 16}]})
+            # a tower (10 high, 2 wide: size 20), a slab (1 high, 10 wide: 10) and the scatter's
+            # blocks at level 1 (2 high, 3 wide: 6), on flat ground
+            (w.dir/'assets'/'tower.asset.json').write_text(json.dumps(box('tower', [2, 10, 2])))
+            (w.dir/'assets'/'slab.asset.json').write_text(json.dumps(box('slab', [10, 1, 10])))
+            spec = json.loads(w.world.read_text())
+            spec['cells'][0]['placements'] = [{'id': 'slab', 'asset': 'slab', 'position': [8, 8], 'collision': 'none'},
+                                              {'id': 'tower', 'asset': 'tower', 'position': [24, 24], 'collision': 'none'}]
+
+            def compile_with(**standins):
+                spec['standins'] = dict(distance=48, **standins)
+                w.world.write_text(json.dumps(spec))
+                return w.compile()
+
+            def tops(mesh):
+                return {round(float(v[1]), 2) for v in P.mesh_vertices(mesh)}
+            plain = compile_with()
+            self.assertEqual(plain.report['standins']['cells']['c0_0']['left_out'], 0)
+            self.assertLessEqual({1.0, 2.0, 10.0}, tops(plain.world.cells[0].standin))
+            # the ground alone: a cap below it keeps the ground and warns
+            bare = compile_with(triangles=1)
+            over = [x for x in bare.report['warnings'] if x['code'] == 'standin_over_cap']
+            self.assertEqual(sorted(x['cell'] for x in over), ['c0_0', 'c0_1', 'c1_0', 'c1_1'])
+            ground = [cell.standin for cell in bare.world.cells]
+            self.assertEqual(tops(ground[0]), {0.0})
+            g0 = standin_triangles(ground[0])
+            tower = next(p for p in plain.world.cells[0].placements if p.tag != 0xFFFE and p.tag != 0xFFFC
+                         and P.mesh_info(p.mesh)[0] and max(float(v[1]) for v in P.mesh_vertices(p.mesh)) > 9)
+            t = standin_triangles(tower.mesh)
+            # room for the tower and less than the slab: the tower, then blocks where they fit
+            c = compile_with(triangles=g0 + 2 * t - 1)
+            rep = c.report['standins']['cells']['c0_0']
+            standin = c.world.cells[0].standin
+            self.assertLessEqual(standin_triangles(standin), g0 + 2 * t - 1)
+            self.assertEqual(rep['triangles'], standin_triangles(standin))
+            self.assertEqual(rep['cap'], g0 + 2 * t - 1)
+            self.assertIn(10.0, tops(standin))
+            self.assertNotIn(1.0, tops(standin), 'the slab does not fit')
+            self.assertIn(2.0, tops(standin), 'blocks of the chunk go in one by one where they fit')
+            self.assertGreater(rep['left_out'], 1)
+            # the ground goes in first, unchanged
+            gv, gf = P.mesh_info(ground[0])[:2]
+            self.assertEqual(standin[16:16 + 16 * gv], ground[0][16:16 + 16 * gv])
+            sv = P.mesh_info(standin)[0]
+            self.assertEqual(standin[16 + 16 * sv:][:36 * gf], ground[0][16 + 16 * gv:][:36 * gf])
+            # deterministic
+            self.assertEqual([x.standin for x in compile_with(triangles=g0 + 2 * t - 1).world.cells],
+                             [x.standin for x in c.world.cells])
+            # a cell's own cap, and the ground on a coarser grid: one square over the flat cell
+            c = compile_with(triangles=4000, ground=32, cells={'c1_1': {'triangles': 1}})
+            rep = c.report['standins']['cells']
+            self.assertEqual([x['cell'] for x in c.report['warnings'] if x['code'] == 'standin_over_cap'], ['c1_1'])
+            self.assertEqual((rep['c1_1']['cap'], rep['c1_1']['triangles'], rep['c1_1']['ground']), (1, 2, 32))
+            self.assertEqual(rep['c0_0']['left_out'], 0)
+            self.assertEqual(rep['c0_0']['triangles'], plain.report['standins']['cells']['c0_0']['triangles'] - g0 + 2)
+            # without a cap, the ground grid alone
+            c = compile_with(ground=32)
+            self.assertEqual(c.report['standins']['cells']['c1_1']['triangles'],
+                             plain.report['standins']['cells']['c1_1']['triangles'] - standin_triangles(ground[3]) + 2)
+            self.assertNotIn('cap', c.report['standins']['cells']['c1_1'])
+            with self.assertRaises(WorldError) as cm:
+                compile_with(cells={'nowhere': {'triangles': 10}})
+            self.assertEqual(cm.exception.path, '/standins/cells/nowhere')
 
 
 def rgb15_of(c):

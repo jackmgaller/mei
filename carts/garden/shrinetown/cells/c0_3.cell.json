@@ -49,11 +49,11 @@
    "collision": "self"
   },
   {
-   "id": "sake_brewery",
-   "asset": "gbc_sake_brewery",
+   "id": "sakagura",
+   "asset": "gbm_sakagura",
    "position": [
     15.0,
-    0.357,
+    0.66,
     218.0
    ],
    "collision": "self"

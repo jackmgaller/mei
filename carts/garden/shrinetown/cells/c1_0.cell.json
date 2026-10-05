@@ -211,6 +211,26 @@
     0.2
    ],
    "collision": "self"
+  },
+  {
+   "id": "neighbour_s2",
+   "asset": "gbt_neighbour_3",
+   "position": [
+    80.0,
+    0,
+    0.2
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "neighbour_s3",
+   "asset": "gbt_neighbour_4",
+   "position": [
+    116.0,
+    0,
+    0.2
+   ],
+   "collision": "self"
   }
  ],
  "entities": [

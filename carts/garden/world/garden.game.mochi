@@ -10,7 +10,7 @@ probe {
   floor_max_degrees = 40
 }
 
-worlds garden, shrine
+worlds garden, shrine, shrinetown
 
 // Where the player starts. yaw in degrees, as a placement's (0 faces +z, north).
 type spawn {

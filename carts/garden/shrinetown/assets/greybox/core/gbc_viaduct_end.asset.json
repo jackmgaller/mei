@@ -1,0 +1,36 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_viaduct_end",
+ "materials": {
+  "conc_dark": {
+   "color": "#8a8680"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    12.6,
+    5.5,
+    0.4
+   ],
+   "material": "conc_dark",
+   "transform": {
+    "translate": [
+     0,
+     2.75,
+     -0.2
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

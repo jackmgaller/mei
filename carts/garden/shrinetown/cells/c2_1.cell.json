@@ -179,10 +179,20 @@
    "collision": "self"
   },
   {
-   "id": "pole_road160",
+   "id": "pole_road152",
    "asset": "gbt_utility_pole",
    "position": [
-    160.0,
+    152.5,
+    0.0,
+    104.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "pole_road167",
+   "asset": "gbt_utility_pole",
+   "position": [
+    167.5,
     0.0,
     104.0
    ],
@@ -272,10 +282,22 @@
    }
   },
   {
-   "id": "pole_road160",
+   "id": "pole_road152",
    "type": "pole",
    "position": [
-    160,
+    152.5,
+    0.0,
+    104.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "pole_road167",
+   "type": "pole",
+   "position": [
+    167.5,
     0.0,
     104.0
    ],
@@ -490,30 +512,6 @@
     66
    ],
    "asset": "gbt_coin"
-  },
-  {
-   "id": "rail_string_torii_w",
-   "type": "rail",
-   "position": [
-    155,
-    13.8,
-    124
-   ],
-   "params": {
-    "path": "string_torii_w"
-   }
-  },
-  {
-   "id": "rail_string_torii_e",
-   "type": "rail",
-   "position": [
-    165,
-    13.8,
-    124
-   ],
-   "params": {
-    "path": "string_torii_e"
-   }
   }
  ]
 }

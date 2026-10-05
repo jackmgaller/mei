@@ -6,8 +6,7 @@ Writes, under carts/garden/shrinetown/:
   cells/c{0..4}_{0,1}.cell.json          placements and entities of the town's ten cells
   parts/town.json                        world-level entries: paths (rails), layers, terrain
                                          materials and operations, vantage points
-  parts/town_heights.txt                 the heights of the test world's field (layout.height)
-  test_town.world.json                   a throwaway world over the town's rows
+  parts/town_heights.txt                 the ground of these rows (layout.height), for make_world.py
   notes/town_checks.json                 the jump and glide checks this script computes
 
 Coordinates and heights come from the plan's layout.py (import, not a fork): pass its path with
@@ -486,8 +485,10 @@ def pole(pid, x, z, h=9.0, y=0.0):
     entity(f'pole_{pid}', 'pole', x, y, z, {'height': h})
     POLES.append((pid, x, z))
 WIRE_Y = 8.0
-road_wire = [(x, 104.0) for x in range(10, 300, 30)]
-for x, z in road_wire: pole(f'road{x}', x, z)
+# poles every 30 m from x 10, but none on the axis (x 160, where the shotengai meets the road):
+# that one is split into two on the sando's kerbs, x 152.5 and 167.5
+road_wire = [(x, 104.0) for x in (10, 40, 70, 100, 130, 152.5, 167.5, 190, 220, 250, 280)]
+for x, z in road_wire: pole(f'road{int(x)}', x, z)
 # service-lane wires: layout's x 118 and x 150 lie over houses and shops; moved to the alley at
 # x 112.75 and the west service lane at x 137.75 (both 2.5-4.5 m lanes), z 44 to 104
 LANE_W = [(112.75, 44.0), (112.75, 104.0)]
@@ -552,6 +553,30 @@ for k, (x1, x2) in enumerate([(0, 44), (52, 64), (64, 128), (128, 192), (192, 25
 for k, (z1, z2) in enumerate([(0, 64), (64, 104)]):
     block(f'edge_w{k}', 0.0, z1, 0.4, z2, 0, 3.0, C['fence'], label='edge_fence')
     block(f'edge_e{k}', 319.6, z1, 320.0, z2, 0, 3.0, C['fence'], label='edge_fence')
+# The neighbours beyond the town's three open sides (spec 4.4, "the neighbour beyond"): until those
+# levels exist, the backs of their buildings stand just outside the level, 22-28 m, higher than any
+# jump or glide arrives at the edge (the highest: from the danchi's roof, about 17.7 at z 0). Each
+# block's origin is inside the level (a placement must lie in its cell) and the block reaches out
+# past the edge (the world's overhang, 32 m). Plain boxes, a colour of their own.
+NB = C['neighbour'] = '#a6a49c'
+for k, (x1, x2, h) in enumerate([(0, 32, 26), (32, 64, 22), (64, 96, 28), (96, 136, 24), (136, 184, 22),
+                                 (184, 216, 27), (216, 256, 23), (256, 288, 26), (288, 320, 24)]):
+    compound(f'neighbour_s{k}', 'neighbour', (x1 + x2) / 2, 0, 0.2,
+             [('box', x1, 0, -8.0, x2, h, 0.0, 'wall', 'roof')], {'wall': NB, 'roof': '#7e7c76'})
+for k, (z1, z2, h) in enumerate([(0, 36, 25), (36, 72, 22), (72, 104, 27)]):
+    compound(f'neighbour_e{k}', 'neighbour', 319.8, 0, (z1 + z2) / 2,
+             [('box', 320.0, 0, z1, 328.0, h, z2, 'wall', 'roof')], {'wall': NB, 'roof': '#7e7c76'})
+    compound(f'neighbour_w{k}', 'neighbour', 0.2, 0, (z1 + z2) / 2,
+             [('box', -8.0, 0, z1, 0.0, h - 4, z2, 'wall', 'roof')], {'wall': NB, 'roof': '#7e7c76'})
+# The front road's two ends (spec 7.3, 7.1): road-works hoardings 5.5 m tall, above a double jump
+# and grab (5.15), until the shopping street (west) and downtown (east, the seamless edge) exist.
+block('hoarding_w', 0.0, 104.0, 0.4, 118.0, 0, 5.5, '#eceae4', '#e8782a', label='hoarding')
+block('hoarding_e', 319.6, 104.0, 320.0, 118.0, 0, 5.5, '#eceae4', '#e8782a', label='hoarding')
+# Doors (the garden cart's door entities, spec 7.3): the konbini's leads to the garden, as the
+# shrine's does; walking into the road works at the front road's west end leads back along the
+# road to the shrine (whose road's west end leads here).
+entity('door_garden', 'door', 196.0, 0.0, 33.0, {'world': 'garden', 'size': [3.0, 3.0, 1.2]})
+entity('door_shrine', 'door', 1.6, 0.0, 111.0, {'world': 'shrine', 'size': [2.0, 3.0, 13.0]})
 
 # ------------------------------------------------------------------ floors under points
 def floor_at(x, z, below=99.0):
@@ -625,7 +650,14 @@ def offset_line(pts, d):
         out.append((p[0] + nx * d / cosh, p[1] + nz * d / cosh))
     return out
 # Going east along z 8, (-dz, dx) = (0, 1) points north: "left" here is north (+z).
-vline = [segs[0][0]] + [b for a, b in segs]
+# The deck and the parapets are swept along the whole line, to (320, 146) in the core's row 2 (one
+# path each, so there is no seam in them); the spans (placements) are this region's rows only.
+# The line stops 4.5 m short of the level's east edge (x 315.5), so that the parapets, 5.85 m to
+# either side, stay over the level's cells; a wall closes the deck's end there (the core's c4_2).
+(_ax, _az), (_bx, _bz) = L.VIADUCT[-2], L.VIADUCT[-1]
+_t = (315.5 - _ax) / (_bx - _ax)
+VIADUCT_END = (315.5, _az + (_bz - _az) * _t)
+vline = list(L.VIADUCT[:-1]) + [VIADUCT_END]
 par_n = offset_line(vline, POFF)
 par_s = offset_line(vline, -POFF)
 PY = VD + 1.2
@@ -650,10 +682,8 @@ path('parapet_s', pts3(par_s, PY), sweep=PARAPET_SWEEP)
 gx0, gx1 = STATION_GAP
 path('parapet_n_w', pts3([par_n[0], (gx0, par_n[0][1])], PY), sweep=PARAPET_SWEEP)
 path('parapet_n_e', pts3([(gx1, par_n[0][1])] + par_n[1:], PY), sweep=PARAPET_SWEEP)
-# lantern strings from the torii's top beam ends to the side halls' roofs (11.6): their first
-# point is in this region's cell c2_1 (the far ends in the core's rows)
-for k, (a, b) in enumerate(L.STRINGS[:2]):
-    path(f'string_torii_{"w" if k == 0 else "e"}', [(a[0], TORII_TOP, a[1]), (b[0], 11.6, b[1])])
+# (the lantern strings from the torii's top beam are the core region's paths core_string_torii_*,
+# from the kasagi's top at TORII_TOP)
 
 # ------------------------------------------------------------------ terrain: materials and operations
 materials = {
@@ -685,23 +715,26 @@ ops = [
     {'op': 'paint', 'area': {'rect': [52, 118, 110, 128]}, 'material': 'floor'},
     {'op': 'paint', 'area': {'rect': [210, 118, 252, 128]}, 'material': 'floor'},
     {'op': 'paint', 'area': {'rect': [110, 118, 210, 128]}, 'material': 'gravel'},
-    # the canal: vertical stone banks 1.2 m, bed -1.2, water -0.4 (0.8 m: wading)
-    {'op': 'cliff', 'area': {'rect': [44, 0, 52, 128]}, 'height': -1.2, 'material': 'bank'},
-    {'op': 'set', 'area': {'rect': [44, 0, 52, 128]}, 'height': -1.2},
-    {'op': 'paint', 'area': {'rect': [44, 0, 52, 128]}, 'material': 'bed'},
-    {'op': 'water', 'area': {'rect': [44, 0, 52, 128]}, 'level': -0.4, 'material': 'water'},
+    # the canal, its whole length from the grille (z 0) to the spring (z 292): vertical stone banks,
+    # bed -1.2, water -0.4 (0.8 m: wading). One cliff, so there is no wall across it at a row seam.
+    {'op': 'cliff', 'area': {'rect': [44, 0, 52, 292]}, 'height': -1.2, 'material': 'bank'},
+    {'op': 'set', 'area': {'rect': [44, 0, 52, 292]}, 'height': -1.2},
+    {'op': 'paint', 'area': {'rect': [44, 0, 52, 292]}, 'material': 'bed'},
+    {'op': 'water', 'area': {'rect': [44, 0, 52, 292]}, 'level': -0.4, 'material': 'water'},
     # the school pool: bed -1.2, water -0.3 (0.9 m)
     {'op': 'cliff', 'area': {'rect': [214, 22, 240, 40]}, 'height': -1.2, 'material': 'bank'},
     {'op': 'set', 'area': {'rect': [214, 22, 240, 40]}, 'height': -1.2},
     {'op': 'paint', 'area': {'rect': [214, 22, 240, 40]}, 'material': 'bed'},
     {'op': 'water', 'area': {'rect': [214, 22, 240, 40]}, 'level': -0.3, 'material': 'water'},
-    # the culvert (41) and the school's ditch: bed -2.0, water -1.2 (0.8 m), 1.85 m under the road slab
-    {'op': 'cliff', 'area': {'rect': [234, 96, 238, 128]}, 'height': -2.0, 'material': 'bank'},
-    {'op': 'set', 'area': {'rect': [234, 96, 238, 128]}, 'height': -2.0},
-    {'op': 'paint', 'area': {'rect': [234, 96, 238, 128]}, 'material': 'bed'},
-    {'op': 'water', 'area': {'rect': [234, 96, 238, 128]}, 'level': -1.2, 'material': 'water'},
-    # the pond's southern tip reaches z 125 (layout.pond_d)
-    {'op': 'water', 'area': {'circle': [234, 140, 14]}, 'level': 0.0, 'material': 'water'},
+    # the culvert (41) and the school's ditch: bed -2.0, water -1.2 (0.8 m), 1.85 m under the road
+    # slab; north of the road the channel's bed rises to the pond's (-1.4 at z 134), so it opens
+    # into the pond instead of ending at a step. The pond's water (the core's, level 0) covers it
+    # from z 124.
+    {'op': 'cliff', 'area': {'rect': [234, 96, 238, 134]}, 'height': -2.0, 'material': 'bank'},
+    {'op': 'set', 'area': {'rect': [234, 96, 238, 134]}, 'height': -2.0},
+    {'op': 'ramp', 'from': [236, -2.0, 118], 'to': [236, -1.4, 134], 'width': 4},
+    {'op': 'paint', 'area': {'rect': [234, 96, 238, 134]}, 'material': 'bed'},
+    {'op': 'water', 'area': {'rect': [234, 96, 238, 124]}, 'level': -1.2, 'material': 'water'},
 ]
 SP = 2
 heights = []
@@ -744,29 +777,6 @@ part = {
     'vantage_points': VANTAGE,
 }
 (PARTS / 'town.json').write_text(json.dumps(part, indent=1) + '\n')
-
-# ------------------------------------------------------------------ the test world
-shrine = json.loads((ST.parent / 'shrine' / 'shrine.world.json').read_text())
-world = {
-    'format': 'mei-world', 'version': 1, 'name': 'town_gb',
-    'game': '../world/garden.game.mochi', 'assets': 'assets/greybox/town', 'cell_dir': 'cells',
-    'grid': {'cell_size': 64}, 'overhang': 32,
-    'collision': part['collision'],
-    'regions': {'shrine_town': {'variants': shrine['regions']['shrine']['variants'],
-                                'backdrop': shrine['regions']['shrine']['backdrop']}},
-    'runtime': {'depth': True, 'perspective': True, 'near_far': 192},
-    'verification': {'thresholds': {'cell_triangles': 12000, 'cell_placements': 400, 'standin_triangles': 400}},
-    'layers': part['layers'],
-    'paths': paths,
-    'terrain': {'materials': materials, 'fields': {'town': {
-        'spacing': SP, 'min': [0, 0], 'max': [320, int(ROW_MAX)], 'heights': 'parts/town_heights.txt',
-        'material': 'street', 'steep': {'degrees': 38, 'material': 'earth'}, 'tolerance': 0.15, 'tile': 16,
-        'lod': {'distance': 22, 'tolerance': 2.5}, 'operations': ops}}},
-    'lod': {'ground': [{'distance': 36, 'grid': 8}, {'distance': 76, 'grid': 16}]},
-    'standins': {'distance': 128, 'sweeps': True},
-    'meshes': {'quads': True},
-}
-(ST / 'test_town.world.json').write_text(json.dumps(world, indent=1) + '\n')
 
 # ------------------------------------------------------------------ write recipes and cells
 for p in ASSETS.glob('gbt_*.asset.json'): p.unlink()

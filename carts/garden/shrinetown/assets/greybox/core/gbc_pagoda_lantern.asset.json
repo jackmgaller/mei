@@ -1,10 +1,10 @@
 {
  "format": "mei-asset",
  "version": 1,
- "name": "gbc_sake_brewery",
+ "name": "gbc_pagoda_lantern",
  "materials": {
-  "white": {
-   "color": "#e8e2d2"
+  "lantern": {
+   "color": "#b4ae9e"
   }
  },
  "lighting": {
@@ -16,15 +16,15 @@
    "id": "b0",
    "op": "box",
    "size": [
-    18,
-    16.699,
-    12
+    1.2,
+    1.6,
+    1.2
    ],
-   "material": "white",
+   "material": "lantern",
    "transform": {
     "translate": [
      0,
-     8.349,
+     0.8,
      0
     ]
    },

@@ -7,7 +7,6 @@ Writes, from the shared plan `layout.py` (coordinates and heights):
 - parts/core.json                        world-level entries: paths (sweeps, rails), terrain
                                          (materials and the core rows' field), scatter, layers
 - parts/core_heights.txt                 the field's starting heights (layout.height, 2 m grid)
-- test_core.world.json                   a throwaway world over the core rows only
 
 Run from anywhere:
     python3 carts/garden/shrinetown/assets/greybox/core/gen_core.py --layout PATH/layout.py
@@ -65,7 +64,7 @@ GATE_Z = 172.0                     # main gate centre (layout: 167); it stands w
 WALL = [(150, 167), (117, 167), (115, 169), (115, 229), (119, 233), (209, 233), (213, 229),
         (213, 171), (209, 167), (170, 167)]
 GATES = {'west': (115, 200, 4), 'north': (160, 233, 5), 'east': (213, 192, 4)}
-CLIFFS = [TERR, TEMPLE, CEM, CANAL]
+CLIFFS = [TERR, TEMPLE, CEM, CANAL]          # CANAL: its banks are the town's cliff (z 0-292)
 
 
 def ground(x, z):
@@ -208,8 +207,11 @@ block('shrine_office', 176, 150, 184, 160, 0.6, 4.6, 'white')
 # ---- 3.7 inner precinct
 CORR_W = hall('corridor_w', 122, 174, 134, 202, 5.0, 9.2, 15.0, 3)
 CORR_E = hall('corridor_e', 186, 174, 198, 202, 5.0, 9.2, 15.0, 3)
-# temple on its podium (8.6, terrain): body to the eave 13.0, six tiers to the ridge 29.5
-TEMPLE_R = hall('temple', 136, 210, 184, 226, 8.6, 13.0, 29.5, 6, over=3, col='wood', top_frac=0.6)
+# temple on its podium (8.6, terrain): body to the eave 13.0, six tiers to the ridge. The ridge is
+# the real temple's, 27.5 (arch_temple: 18.9 above the podium), not layout's 29.5: G5 is checked
+# against it (DESIGN.md, "Changes from the plan").
+TEMPLE_RIDGE = 27.5
+TEMPLE_R = hall('temple', 136, 210, 184, 226, 8.6, 13.0, TEMPLE_RIDGE, 6, over=3, col='wood', top_frac=0.6)
 # the main gate: two side blocks and a lintel (an 8 m passage, 4.5 m clear), the lower roof (11.0-12.2),
 # the upper storey (12.2-16.2) and its roof stepped to 18.6
 gz = GATE_Z
@@ -283,6 +285,11 @@ cx, cz, ch = L.CROWN
 block('crown_landing', cx - 3, cz - 7, cx + 3, cz - 3, 14.4, 15.0, 'wood')
 entity('pole_crown', 'pole', cx, 15.0, cz - 3.4, params={'height': 13.0})
 
+# A stone lantern on the pagoda terrace, in front of its south face (its origin is in this row): its
+# top is 3.6 m under roof 1's eave, the rhythm of the tiers above. From the terrace the eave is 5.0
+# up, and a double jump (3.0 m measured) does not bring the hands to its 0.35 m fascia (scenario 422).
+block('pagoda_lantern', 177.4, 254.9, 178.6, 256.1, L.PAG_BASE - 0.2, L.PAG_BASE + 1.4, 'lantern')
+
 # ---- 3.13 pond and east valley: stepping stones, the zig-zag bridge (a path), a stone at the culvert
 STONES = []
 for (ax, az), (bx, bz) in [((226, 129), (232, 150)), ((232, 150), (236, 179))]:
@@ -308,12 +315,17 @@ block('cem_gate_w', 282.6, 129.4, 283.6, 130.6, 0.0, 4.2, 'stone_dark')
 block('cem_gate_e', 288.4, 129.4, 289.4, 130.6, 0.0, 4.2, 'stone_dark')
 block('cem_gate_beam', 282.0, 129.5, 290.0, 130.5, 4.2, 4.8, 'stone_dark')
 
-# ---- viaduct: the span (306, 134) -> (320, 146) and its pier; the span to its south is the town's
-(ax, az), (bx, bz) = (306, 134), (320, 146)
+# ---- viaduct: the span (306, 134) -> (320, 146) and its pier; the span to its south is the town's.
+# The deck and the parapets are the town's sweeps along the whole line (paths viaduct_deck,
+# parapet_s, parapet_n_e), so this span is the girders under the deck, as the town's spans.
+# The line stops at x 315.5 (the town's VIADUCT_END: its parapets stay over the level), where a
+# wall 5.5 m tall closes the deck's end (spec 7.3: the line's end; a double jump and grab is 5.15).
+(ax, az), (bx, bz) = (306, 134), (315.5, 134 + 12 * 9.5 / 14)
 length = math.hypot(bx - ax, bz - az)
-vb = [(0, 8.5, 0, 12, 1.0, length, 'conc', False),
-      (-5.85, 9.6, 0, 0.3, 1.2, length, 'conc_dark', True), (5.85, 9.6, 0, 0.3, 1.2, length, 'conc_dark', True)]
+vb = [(-4.0, 6.925, 0, 0.8, 1.05, length - 0.4, 'conc', True), (4.0, 6.925, 0, 0.8, 1.05, length - 0.4, 'conc', True)]
 add_asset('gbc_viaduct_span', vb)
+add_asset('gbc_viaduct_end', [(0, 2.75, -0.2, 12.6, 5.5, 0.4, 'conc_dark', True)])
+place('viaduct_end', 'gbc_viaduct_end', bx, 9.0, bz, yaw=math.degrees(math.atan2(14, 12)))
 place('viaduct_span', 'gbc_viaduct_span', (ax + bx) / 2, 0.0, (az + bz) / 2,
       yaw=math.degrees(math.atan2(bx - ax, bz - az)))
 pg = ground(306, 134)
@@ -338,8 +350,9 @@ block('watermill_house', 36, 191, 43.6, 201, 0.6, 5.6, 'wood_dark')
 block('watermill_wheel', 44.4, 193.5, 46.0, 198.5, -1.2, 4.0, 'wood')
 
 # ---- 3.17 in c0_3: the sake brewery (16.2) at the bamboo's foot
-g = floor_under(6, 212, 24, 224)
-block('sake_brewery', 6, 212, 24, 224, g - 0.3, L.height(15, 218) + 16.2, 'white')
+# the recipe is the mountain region's (gbm_sakagura: walls to 10, roofs to 16.2, the sugidama a
+# bounce under the south eave), placed on layout's ground at its centre (0.66-1.22 under it)
+place('sakagura', 'gbm_sakagura', 15.0, 0.66, 218.0)
 
 # ------------------------------------------------------------------ coins (gold) in the core rows
 add_asset('gbc_coin', [], [{'id': 'disc', 'op': 'cylinder', 'radius': 0.3, 'height': 0.08, 'segments': 10,
@@ -380,7 +393,7 @@ gw = ground(106, 200); stair('core_west_gate_stair', (106, gw + 0.3, 200), (114,
 ge = ground(222, 192); stair('core_east_gate_stair', (214, 5.0, 192), (222, ge + 0.3, 192), 3.0, 4.0)
 # the stone stair from the north gate to the pagoda terrace, on layout's line (its ground is carved
 # to the line; a bed lowers it under the treads)
-paths['core_north_stair'] = {'points': [[160, 5.0, 234.0], [172, 20.0, 254.0]],
+paths['core_north_stair'] = {'points': [[160, 5.0, 233.6], [172, L.PAG_BASE, 254.0]],
                              'sweep': {'profile': [[-4.2, -1.2], [-3.5, 0], [3.5, 0], [4.2, -1.2]],
                                        'materials': ['earth', 'steps', 'earth'], 'stairs': {'rise': 0.3},
                                        'caps': True}}
@@ -420,6 +433,11 @@ for i in range(len(decks6) - 1):
 # deck 1 down to the walkway's foot (the stair round the cedar at (102, 118) is the town's: c1_1)
 sx, sz = deck_exit((94, 152), (101, 122))
 bridge('core_walkway_foot', [(sx, 9.0, sz), (97.5, 7.4, 137.0), (101.0, 6.0, 122.0)])
+# the walkway's foot (spec 3.9; the town did not build it): a stair from the bridge's end (6.0) east
+# along z 120 down into the courtyard's west end (0.6), clear of the town's cedars at x 84 and 92
+paths['core_walkway_stair'] = {'points': [[101.0, 6.0, 122.4], [101.0, 6.0, 120.0], [102.0, 6.0, 120.0], [116.0, 0.9, 120.0]],
+                               'sweep': {'profile': SOLID(1.2, 6.5), 'materials': ['steps', 'steps', 'steps', 'steps'],
+                                         'stairs': {'rise': 0.3}, 'caps': True}}
 # deck 3 to the crown's landing
 bridge('core_walkway_crown', [(77.4, 15.0, 210.4), (72.6, 15.0, 213.6)])
 
@@ -448,9 +466,10 @@ bridge('core_zigzag', [(x, y, z) for (x, z), y in zip(zpts, ys)],
 # the park path (R_CANAL)
 TRAIL = {'profile': [[-2.0, -0.3], [-1.1, 0], [1.1, 0], [2.0, -0.3]], 'materials': ['earth', 'path', 'earth'], 'caps': True}
 DRAPE = {'step': 4, 'bed': {'width': 3.0, 'depth': 0.3, 'falloff': 2}}
-paths['core_trail_woods'] = {'points': [[100.4, 128.5], [101, 146], [87, 176], [74, 206], [84, 232], [96, 255.5]],
+paths['core_trail_woods'] = {'points': [[97, 119], [100.4, 128.5], [101, 146], [87, 176], [74, 206], [84, 232], [96, 255.5]],
                              'drape': DRAPE, 'sweep': TRAIL}
-paths['core_canal_lane'] = {'points': [[56, 128.5], [56, 158], [56.5, 162], [56, 200], [56, 255.5]], 'drape': DRAPE,
+paths['core_canal_lane'] = {'points': [[55, 119], [56, 128.5], [56, 158], [56.5, 162], [56, 200], [56, 255.5], [56, 276], [55.5, 290]],
+                            'drape': DRAPE,
                             'sweep': dict(TRAIL, materials=['earth', 'lane', 'earth'])}
 paths['core_park_path'] = {'points': [[38, 160], [30, 176], [22, 200], [24, 250], [23.6, 255.5]], 'drape': DRAPE,
                            'sweep': dict(TRAIL, materials=['earth', 'lane', 'earth'])}
@@ -465,7 +484,7 @@ def ridge_corner(h, toward):
     return (min(max(toward[0], x1 + 0.3), x2 - 0.3), h['ridge'] + 0.1, min(max(toward[1], z1 + 0.3), z2 - 0.3))
 
 rails = []
-TORII_W, TORII_E = (155.0, 13.3, 124.0), (165.0, 13.3, 124.0)     # top beam ends (town's torii, c2_1)
+TORII_W, TORII_E = (155.0, 13.8, 124.0), (165.0, 13.8, 124.0)     # on the kasagi's top (town's torii, c2_1: 0.6 + 13.2)
 GATE_W, GATE_E = (151.0, 12.3, gz - 5.0), (169.0, 12.3, gz - 5.0)  # lower roof's front corners
 hw = ridge_corner(HALL_W, (134, 158)); he = ridge_corner(HALL_E, (186, 158))
 for name, a, b in (('core_string_torii_w', TORII_W, hw), ('core_string_torii_e', TORII_E, he),
@@ -478,13 +497,7 @@ for name, a, b in rails:
     entity('rail_' + name[5:], 'rail', c[0], c[1], c[2], params={'path': name})
     for k, f in enumerate((1 / 3, 2 / 3)):
         coin(f'{name[5:]}_{k}', a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f + 0.9, a[2] + (b[2] - a[2]) * f)
-# the viaduct's parapets over the core span (grind), 10.2 m
-nx, nz = (bz - az) / length, -(bx - ax) / length
-for side, s in (('w', -1), ('e', 1)):
-    name = f'core_viaduct_parapet_{side}'
-    p0 = (ax + s * 5.85 * nx, 10.2, az + s * 5.85 * nz); p1 = (bx + s * 5.85 * nx, 10.2, bz + s * 5.85 * nz)
-    paths[name] = {'points': [[round(v, 3) for v in p0], [round(v, 3) for v in p1]], 'raised': True}
-    entity('rail_' + name[5:], 'rail', *p0, params={'path': name})
+# (the viaduct's parapets over this span are the town's parapet rails, which run the whole line)
 
 # ------------------------------------------------------------------ terrain: the core rows' field
 ops = []
@@ -496,14 +509,12 @@ cliff_set(TERR, 2.0, 5.0, 'canal_stone')
 cliff_set(TEMPLE, 3.6, 8.6, 'canal_stone')
 for t in range(9):
     cliff_set((CEM[0], CEM[1] + 12 * t, CEM[2], CEM[3]), 1.8, 1.8 * (t + 1), 'canal_stone')
-cliff_set(CANAL, -1.8, -1.2, 'canal_stone')
 ops.append({'op': 'bed', 'path': 'core_north_stair', 'width': 8.0, 'depth': 0.6, 'falloff': 2})
 for rect, m in (((110, 128, 210, 166), 'gravel'), (TERR, 'ashlar'), (TEMPLE, 'podium'), ((0, 128, 44, 206), 'grass'),
                 (CEM, 'cemetery'), ((0, 206, 44, 256), 'bamboo_floor')):
     ops.append({'op': 'paint', 'area': {'rect': list(rect)}, 'material': m})
 for (x, z, r) in L.POND:
     ops.append({'op': 'water', 'area': {'circle': [x, z, round(r * 1.12, 2)]}, 'level': 0.0, 'material': 'water'})
-ops.append({'op': 'water', 'area': {'rect': list(CANAL)}, 'level': -0.4, 'material': 'water'})
 
 heights = []
 for zi in range(Z0, Z1 + 1, 2):
@@ -538,7 +549,7 @@ assets['gbc_bamboo']['lod'] = {'levels': [{'distance': 30, 'nodes': [
     {'id': 'far', 'op': 'cone', 'radius': 0.8, 'height': 10, 'segments': 3, 'caps': False, 'material': 'bamboo',
      'transform': {'translate': [0, 5, 0]}}]}], 'cull': 100}
 deck_excl = [{'circle': [x, z, 6.0]} for x, z, h in DECKS + [L.CROWN]]
-built_excl = [{'rect': [110, 118, 216, 238]}, {'rect': [154, 232, 178, 258]}, {'rect': [CEM[0] - 2, 118, 320, 256]},
+built_excl = [{'rect': [110, 118, 216, 238]}, {'rect': [154, 232, 178, 258]}, {'circle': [178, 262, 12]}, {'rect': [CEM[0] - 2, 118, 320, 256]},
               {'rect': [0, 118, 60, 206]}] + [{'circle': [x, z, r * 1.25]} for x, z, r in L.POND]
 TREES = [{'asset': 'gbc_tree_cedar', 'weight': 3, 'collision': 'gbc_trunk_cedar_col'},
          {'asset': 'gbc_tree_maple', 'weight': 2, 'collision': 'gbc_trunk_maple_col'}]
@@ -580,23 +591,6 @@ with open(os.path.join(TOWN, 'parts', 'core_heights.txt'), 'w') as fh:
     fh.write(f'# core rows z {Z0}..{Z1} (rows), x 0..320, every 2 m; written by assets/greybox/core/gen_core.py\n')
     fh.write('\n'.join(heights) + '\n')
 
-world = {
-    'format': 'mei-world', 'version': 1, 'name': 'shrinetown_core', 'game': '../world/garden.game.mochi',
-    'assets': 'assets/greybox/core', 'cell_dir': 'cells', 'grid': {'cell_size': 64}, 'overhang': 24,
-    'collision': {'surfaces': {'default': 0, 'tags': {'bounce': 1, 'slide': 2, 'water': 3}}},
-    'regions': {'shrine_town': {'variants': {'day': {}}, 'backdrop': {
-        'elevations': [-8, 0, 5, 24, 70],
-        'sky': {'day': ['#4a5636', '#c8c4a8', '#c4d8e8', '#7aa8d8', '#3a6cb0']},
-        'silhouette': {'pattern': 'mountains', 'width': 1024, 'height': 48, 'seed': 23,
-                       'colors': ['#7a8a8c', '#56685a', '#3e5040']}}}},
-    'layers': layers,
-    'runtime': {'depth': True, 'perspective': True, 'near_far': 192},
-    'verification': {'thresholds': {'cell_triangles': 12000, 'cell_placements': 400, 'standin_triangles': 400}},
-    'paths': paths, 'terrain': parts['terrain'], 'scatter': scatter,
-    'lod': {'ground': [{'distance': 36, 'grid': 8}, {'distance': 76, 'grid': 16}], 'sweeps': {'cull': 56}},
-    'standins': {'distance': 128}, 'meshes': {'quads': True},
-}
-with open(os.path.join(TOWN, 'test_core.world.json'), 'w') as fh: json.dump(world, fh, indent=1); fh.write('\n')
 
 print(json.dumps({'assets': len(assets), 'placements': {k: len(v) for k, v in sorted(placements.items())},
                   'entities': {k: len(v) for k, v in sorted(entities.items())}, 'paths': len(paths),

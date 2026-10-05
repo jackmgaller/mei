@@ -33,8 +33,9 @@ carts/garden/
   garden.akr, game.akr, ...           the cart (controller lead)
   ground/ground.akr                   the only file that imports the world (the world's
                                       generated garden.akr would clash with the cart's own)
-  worlds.txt                          the garden's world and the shrine's (shrine/)
+  worlds.txt                          the garden's world, the shrine's and the shrine town's
   shrine/                             the shrine slice: its world, style sheet and assets
+  shrinetown/                         the shrine town's grey box: its world, design and generators
   body.akr, robot/                    the player drawn: the wind-up robot, its parts and poses
   world/
     STYLE.md                          the style sheet (world lead)
@@ -89,12 +90,15 @@ are the world lead's choice. Positions are the entity's placement; offsets are r
 | `mover` | `to` (offset) or `path`, `period` (ticks), `pause` (ticks), `mode: pingpong \| loop`, collision asset | A moving platform: gondola, crane hook, the train |
 | `camera_zone` | `size`, `mode: follow \| fixed \| rail`, `look` | Inside it the camera changes behaviour (the kick alley) |
 | `door` | `world` (a world of the game), `size` | Walking into the box (rising `size.y` from the placement) opens that world at its spawn: the garden's shrine torii leads to the shrine, the shrine's konbini door back |
-| `red_coin` (saved) | | The shrine's eight red coins along its forest loop |
+| `red_coin` (saved) | | Eight red coins in a level: the shrine's along its forest loop, the shrine town's over its roofs |
 
-The game has two worlds (`worlds garden, shrine`): the garden and the shrine slice
-([shrine/README.md](shrine/README.md)), which uses this schema and this cart's controller.
-`ground/ground.akr` opens either; water (the shrine's) slows the player with its depth, and
-from deeper than 1 m there is no jump.
+The game has three worlds (`worlds garden, shrine, shrinetown`): the garden, the shrine slice
+([shrine/README.md](shrine/README.md)) and the shrine town's grey box
+([shrinetown/README.md](shrinetown/README.md)), which use this schema and this cart's
+controller. `ground/ground.akr` opens any of them; water (the shrine's and the town's) slows the
+player with its depth, and from deeper than 1 m there is no jump. A world with more movers (8),
+poles (128), rails (128) or entities (256) than the cart holds stops at its load
+(`attach.akr`).
 
 Rails, wires and the train's route are **World Kit paths**, which the kit engineer builds first
 (they are reserved in [WORLDKIT.md](../../docs/WORLDKIT.md#terrain), not yet built). Until they

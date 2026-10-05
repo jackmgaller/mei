@@ -1,0 +1,498 @@
+// The shrine town's scenarios (numbered 400-499), run by harness.akr in the shrine town's grey box
+// (start_world()); check.sh runs the ones shrinetown_cases.sh lists. They prove the level's
+// moves reach with the controller's default tuning: the spawn's first seconds, each glide of
+// spec 4.4 (G1-G9), the kick pair and the kick chimney, the pagoda's tiers and its finial, the
+// rope to the sacred cedar's knot hole, the coins, the doors, and the worst views of spec 8.3.
+// Coordinates are the level's (carts/garden/shrinetown/layout.py and DESIGN.md), metres.
+//
+// The glides start on the roof at a run-up from its edge, jump, double jump and hold the button
+// through the apex (the glider), then steer at the target; a glide passes when the player lands
+// within `tol` of it, no lower than its `min_y`. They also note where the glide came down.
+
+struct Glide {
+    from: vec3         // x, z of the take-off run's start (y: 0 = on the floor there)
+    to: vec3           // x, z of the target, and y: the lowest the feet may land
+    run: fixed         // metres run before the jump
+    tol: fixed         // how near the target to count
+}
+
+const G1: Glide = Glide { from: vec3(193.0, 0.0, 82.0), to: vec3(192.0, 9.0, 144.0), run: 6.0, tol: 9.0 }
+const G2: Glide = Glide { from: vec3(85.0, 0.0, 20.0), to: vec3(56.0, 0.0, 80.0), run: 4.0, tol: 12.0 }
+const G3: Glide = Glide { from: vec3(30.5, 0.0, 67.5), to: vec3(22.0, 0.5, 138.0), run: 0.0, tol: 16.0 }
+const G4: Glide = Glide { from: vec3(102.0, 0.0, 74.0), to: vec3(113.0, 0.5, 140.0), run: 0.0, tol: 12.0 }
+const G5: Glide = Glide { from: vec3(172.5, 0.0, 222.3), to: vec3(178.0, 19.9, 262.0), run: 0.0, tol: 6.0 }
+const G6: Glide = Glide { from: vec3(162.0, 0.0, 353.0), to: vec3(178.0, 27.1, 262.0), run: 3.0, tol: 5.5 }
+const G7: Glide = Glide { from: vec3(180.3, 0.0, 262.0), to: vec3(282.0, 16.1, 244.0), run: 0.0, tol: 27.0 }
+const G8: Glide = Glide { from: vec3(166.0, 0.0, 353.0), to: vec3(160.0, -0.1, 84.0), run: 3.0, tol: 8.0 }
+const G9: Glide = Glide { from: vec3(273.0, 0.0, 70.0), to: vec3(276.0, 3.5, 150.0), run: 4.0, tol: 10.0 }
+
+// The pagoda's south face, roof by roof (the real pagoda's collision, arch_pagoda_col): from the
+// stone lantern in front of it (16.4) a jump on the spot, then the chained double jump at the eave
+// above and a grab (each 3.6 up), each roof's strip 0.7 m wide. Each row: the z to start from, and
+// the lowest the feet may come down after the climb.
+const TIERS: [6]vec2 = [vec2(255.5, 19.9), vec2(256.95, 23.5), vec2(257.65, 27.1), vec2(258.35, 30.7),
+                         vec2(259.05, 34.3), vec2(259.75, 36.0)]
+
+// The station stair from the plaza (the west one, x 150-154, z 32 -> 14) to the platform (9.0).
+const ROUTE_STATION: [3]Leg = [
+    Leg { from: vec3(160.0, 0.0, 26.0), to: vec3(152.0, 0.0, 33.5), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(152.0, 0.0, 33.5), to: vec3(152.0, 8.9, 13.0), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+    Leg { from: vec3(152.0, 0.0, 13.0), to: vec3(160.0, 8.9, 8.0), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+]
+
+var stg: Glide
+var tw_phase: s32           // a scenario's step
+var tw_k: s32               // kicks made, coins seen, ...
+var tw_land: vec3
+var tw_star: s32            // an entity number
+const TW_TRACE = 0          // debugging: notes the state every 4 ticks at a kick scenario's start (0: none)
+
+fn town_case_init() -> bool {
+    match SCENARIO {
+        400 => { name = "shrine town: the spawn's first seconds, north up the shotengai through the great torii" }
+        401 => { name = "shrine town: from the spawn up the station stair to the platform" }
+        410 => { name = "shrine town: G1, building roof to the east side hall"; stg = G1 }
+        411 => { name = "shrine town: G2, danchi roof to the canal lane"; stg = G2 }
+        412 => { name = "shrine town: G3, sento chimney over the canal to the park"; stg = G3 }
+        413 => { name = "shrine town: G4, fire tower over the front road to the courtyard"; stg = G4 }
+        414 => { name = "shrine town: G5, temple ridge to the pagoda's first roof"; stg = G5 }
+        415 => { name = "shrine town: G6, stage to the pagoda's upper roofs (3 to 5)"; stg = G6 }
+        416 => { name = "shrine town: G7, pagoda roof 5 to the cemetery's top terrace"; stg = G7 }
+        417 => { name = "shrine town: G8, the race line, stage to the arcade"; stg = G8 }
+        418 => { name = "shrine town: G9, school roof to the cemetery terraces"; stg = G9 }
+        420 => { name = "shrine town: the kick pair, up between the cedars and across to the pagoda's roof 2" }
+        421 => { name = "shrine town: the kick chimney, terrace (16) to the cliff top (46)" }
+        422 => { name = "shrine town: the pagoda's tiers, the finial pole and star 1" }
+        423 => { name = "shrine town: the rope to the knot hole and down into the sacred cedar" }
+        424 => { name = "shrine town: rope ladder A, the shelf (24) to the ledge (44)" }
+        430 => { name = "shrine town: every coin is on a floor or a rail and can be taken" }
+        431 => { name = "shrine town: the konbini's door leads to the garden" }
+        432 => { name = "shrine town: the road works at the front road's west end lead to the shrine" }
+        433 => { name = "shrine town: the shrine's road works lead to the shrine town" }
+        440 => { name = "shrine town view V1: the arcade roof's north end, looking south" }
+        441 => { name = "shrine town view V2: the pagoda's top, looking south" }
+        442 => { name = "shrine town view V3: the stage, looking south" }
+        443 => { name = "shrine town view V4: the danchi's roof, looking north-east" }
+        444 => { name = "shrine town view V5: the spawn, looking north" }
+        445 => { name = "shrine town view V6: the cemetery's top, looking west" }
+        446 => { name = "shrine town view: turning once round on the pagoda's top" }
+        else => { return false }
+    }
+    cam.lock = false
+    sh_leg = -1
+    tw_phase = 0
+    tw_k = 0
+    return true
+}
+
+fn town_case(f: s32) {
+    match SCENARIO {
+        400 => tw_spawn(f)
+        401 => tw_route(f, &ROUTE_STATION[0], len(ROUTE_STATION) as s32)
+        410, 411, 412, 413, 414, 415, 416, 417, 418 => tw_glide(f)
+        420 => tw_kick_pair(f)
+        421 => tw_chimney(f)
+        422 => tw_pagoda(f)
+        423 => tw_rope(f)
+        424 => tw_ladder(f)
+        430 => tw_coins(f)
+        431 => tw_door(f, vec3(196.0, 0.0, 36.0), 3.1416, GARDEN_WORLD_SHRINETOWN, GARDEN_WORLD_GARDEN)
+        432 => tw_door(f, vec3(6.0, 0.0, 111.0), WEST, GARDEN_WORLD_SHRINETOWN, GARDEN_WORLD_SHRINE)
+        433 => tw_door(f, vec3(10.0, 0.0, 14.0), WEST, GARDEN_WORLD_SHRINE, GARDEN_WORLD_SHRINETOWN)
+        440 => sh_view(f, vec3(160.0, 0.0, 92.0), 3.1416, -0.14, 4.0, false)
+        441 => sh_view(f, vec3(178.0, 0.0, 262.0), 3.1416, -0.3, 4.0, false)
+        442 => sh_view(f, vec3(154.0, 0.0, 343.0), 3.1416, -0.3, 4.0, false)
+        443 => sh_view(f, vec3(80.0, 0.0, 32.0), 0.7854, -0.17, 4.0, false)
+        444 => sh_view(f, vec3(160.0, 0.0, 28.5), NORTH, 0.0, 4.0, false)
+        445 => sh_view(f, vec3(290.0, 0.0, 244.0), WEST, -0.2, 4.0, false)
+        446 => sh_view(f, vec3(178.0, 0.0, 262.0), 3.1416, -0.3, 4.0, true)
+        else => {}
+    }
+}
+
+// sh_route (shrine_cases.akr), finishing once.
+fn tw_route(f: s32, legs: *Leg, n: s32) {
+    if tw_phase != 0 { return }
+    sh_route(f, legs, n)
+    if sh_leg >= n { done(); tw_phase = 1 }
+}
+
+fn tw_flat(a: vec3) -> vec3 { return vec3(a.x, 0.0, a.z) }
+fn tw_hdist(a: vec3, b: vec3) -> fixed {
+    let d = vec3(a.x - b.x, 0.0, a.z - b.z)
+    if abs(d.x) > 150.0 || abs(d.z) > 150.0 { return 999.0 }      // length() overflows past about 181
+    return length(d)
+}
+
+// The spawn faces north; ten seconds of running north up the shotengai reach the great torii.
+fn tw_spawn(f: s32) {
+    if f == 0 {
+        expect(near(pl.pos.x, 160.0, 0.5) && near(pl.pos.z, 26.0, 0.5), "spawn in the station plaza, z", pl.pos.z)
+        expect(near(pl.yaw, NORTH, 0.01), "facing north", pl.yaw)
+    }
+    if f < 780 { stick_v = FWD }
+    if f == 300 { note("after five seconds, z", pl.pos.z) }
+    if f == 600 {
+        expect(pl.pos.z > 100.0, "ten seconds north: out of the shotengai at the front road, z", pl.pos.z)
+    }
+    if tw_k == 0 && pl.pos.z >= 124.0 { tw_k = 1; note("at the great torii (z 124), seconds", fixed(f) / 60) }
+    if f == 780 {
+        expect(tw_k == 1 && pl.pos.z > 124.0, "through the great torii, z", pl.pos.z)
+        expect(near(pl.pos.x, 160.0, 2.0), "on the axis, x", pl.pos.x)
+        expect(pl.st == St.Ground, "on the ground", pl.pos.y)
+        done()
+    }
+}
+
+// A glide (410-418): the run-up, the jump, the double jump held through its apex, then steering
+// at the target until the feet are down.
+fn tw_glide(f: s32) {
+    let to = tw_flat(stg.to)
+    if f == 0 {
+        var p = tw_flat(stg.from)
+        p = vec3(p.x, sh_floor(p.x, p.z, 90.0), p.z)
+        place(p, sh_heading(to))
+        pl.spawn = vec3(p.x, 0.0, p.z)        // no respawn on a long way down (player.akr: 40 m below the spawn)
+        sh_start = p
+        note("take-off floor, y", p.y)
+        mark()
+    }
+    let ran = tw_hdist(pl.pos, sh_start)
+    let air = is_air(pl.st) || pl.st == St.Glide
+    let steer = cc_stick(sh_heading(to), 1.0)
+    if tw_phase == 0 {                              // the run-up (none: a jump on the spot)
+        if stg.run > 0.0 { stick_v = steer }
+        if ran >= stg.run && f > 2 { pad_v = A; tw_phase = 1 }
+        return
+    }
+    if stg.run > 0.0 { stick_v = steer }
+    if tw_phase == 1 {                              // the first jump, held to its apex
+        pad_v = A
+        if air && pl.vel.y <= 0.0 { pad_v = 0; tw_phase = 2 }
+        return
+    }
+    if tw_phase == 2 {                              // down again: the chained jump at once
+        if pl.st == St.Ground { pad_v = A; tw_phase = 3; note("second take-off, y", pl.pos.y) }
+        if f > 600 { expect(false, "came down from the first jump", pl.pos.y) }
+        return
+    }
+    if pl.st == St.Glide || stg.run > 0.0 { stick_v = steer }
+    if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }   // came down at a ledge: climb it
+    if tw_phase == 3 {
+        pad_v = A                                    // held: the glider at the apex, and after
+        if pl.st == St.Glide && tw_k == 0 { tw_k = 1; note("glider out at y", pl.pos.y) }
+        if !air && pl.st != St.LedgeHang && pl.st != St.LedgeClimb && pl.st != St.WallSlide {
+            tw_phase = 4
+            note("came down at x", pl.pos.x)
+            note("came down at z", pl.pos.z)
+            note("came down at y", pl.pos.y)
+            note("glided from apex, m", apex - pl.pos.y)
+            expect(was(St.Glide), "glided", fixed(seen_at(St.Glide)))
+            expect(tw_hdist(pl.pos, to) < stg.tol, "came down near the target, off by", tw_hdist(pl.pos, to))
+            expect(pl.pos.y >= stg.to.y, "high enough, y", pl.pos.y)
+            done()
+        }
+        if f > 3000 { expect(false, "came down within 50 s", pl.pos.y) }
+    }
+}
+
+// The kick pair (spec 5, star 1, approach 2): two cedar trunks west of the pagoda, faces 3.2 m
+// apart along z at x 171.35. From the terrace (15): run at the north trunk, kick between them four
+// times, then steer east across to the pagoda's roof 2 (eave 23.6, 1.05 m east of the trunks).
+fn tw_kick_pair(f: s32) {
+    if tw_phase == 9 { return }
+    if TW_TRACE != 0 && f < 120 && f % 4 == 0 { note("trace", fixed(f)) }
+    if f == 0 {
+        place(vec3(171.35, sh_floor(171.35, 260.75, 30.0), 260.75), NORTH)
+        mark()
+        y0 = pl.pos.y
+    }
+    if tw_phase == 0 {                       // run at the north trunk and jump; the first touch kicks
+        stick_v = cc_stick(NORTH, 1.0)
+        if f >= 16 && f < 30 { pad_v = A }
+        if pl.st == St.WallSlide || pl.st == St.WallKick { tw_phase = 1 }
+        if f > 120 { expect(false, "reached the first trunk", pl.pos.z) }
+        if pl.st != St.WallSlide { return }
+    }
+    if tw_phase == 1 {
+        if pl.st == St.WallSlide { pad_v = A; tw_k += 1 }
+        if tw_k >= 4 && pl.st == St.WallKick { tw_phase = 2; note("four kicks, y", pl.pos.y) }
+        if f > 600 { expect(false, "four kicks within 10 s", fixed(tw_k)) }
+        return
+    }
+    // across to the pagoda: the stick east (toward its axis) until down; the next touch of a trunk
+    // kicks once more, now with the body drifting east, so the kick carries it east (a kick
+    // mirrors the way the body came in)
+    stick_v = cc_stick(EAST, 1.0)
+    if pl.st == St.WallSlide && tw_k < 6 { pad_v = A; tw_k += 1; note("kick, drifting east, at y", pl.pos.y) }
+    if tw_phase < 9 && (pl.st == St.Ground || pl.st == St.LedgeHang || pl.st == St.LedgeClimb) {
+        if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { return }      // climbing onto it
+        note("highest, y", apex)
+        expect(apex - y0 > 12.0, "four kicks gained, m", apex - y0)
+        note("kicks", fixed(tw_k))
+        expect(pl.pos.x > 172.5 && pl.pos.y > 23.4, "on the pagoda's roof 2 or above, y", pl.pos.y)
+        done()
+        tw_phase = 9
+    }
+    if tw_phase < 9 && f > 1200 { expect(false, "down within 20 s", pl.pos.y) }
+}
+
+// The kick chimney: two rock faces 3 m apart (x 195 and 198) from the west terrace (16) to the
+// cliff top (46). Kick between them until over the top, then land on it.
+fn tw_chimney(f: s32) {
+    if tw_phase == 9 { return }
+    if TW_TRACE != 0 && f < 120 && f % 4 == 0 { note("trace", fixed(f)) }
+    if f == 0 {
+        place(vec3(195.4, sh_floor(195.4, 326.0, 30.0), 326.0), EAST)
+        mark()
+        y0 = pl.pos.y
+        expect(near(y0, 16.0, 0.3), "at the chimney's foot, y", y0)
+    }
+    if tw_phase == 0 {                       // run at the east face and jump; the first touch kicks
+        stick_v = cc_stick(EAST, 1.0)
+        if f >= 14 && f < 28 { pad_v = A }
+        if pl.st == St.WallSlide || pl.st == St.WallKick { tw_phase = 1 }
+        if f > 120 { expect(false, "reached the first face", pl.pos.x) }
+        if pl.st != St.WallSlide { return }
+    }
+    if pl.st == St.WallSlide { pad_v = A; tw_k += 1 }
+    if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }   // over the top: climb on
+    if pl.st == St.Ground && f > 20 && tw_phase < 9 {
+        tw_phase = 9
+        note("kicks", fixed(tw_k))
+        note("highest, y", apex)
+        expect(pl.pos.y > 45.5, "on the cliff top, y", pl.pos.y)
+        done()
+    }
+    if tw_phase < 9 && f > 2400 { expect(false, "up within 40 s", pl.pos.y) }
+}
+
+// The pagoda's tiers (TIERS), the last onto the dew basin's top (36.19); then the finial: jump to
+// the pole, climb it to its top (feet 43.8): star 1 (a coin in the grey box, 45.5) is in reach there.
+var tw_tier: s32
+var tw_sub: s32
+fn tw_pagoda(f: s32) {
+    if tw_phase == 9 { return }
+    if TW_TRACE != 0 && tw_phase >= 1 && f % 3 == 0 { note("trace", fixed(f)) }
+    if f == 0 {
+        tw_star = tw_coin_near(vec3(178.0, 45.5, 262.0))
+        expect(tw_star >= 0, "star 1 is there", 0.0)
+        tw_tier = 0
+        tw_sub = -1
+    }
+    if tw_phase == 0 {
+        if tw_sub < 0 {
+            let z = TIERS[tw_tier].x
+            place(vec3(178.0, sh_floor(178.0, z, 60.0), z), NORTH)
+            cam.yaw = NORTH
+            t0 = f
+            tw_sub = 0
+            return
+        }
+        let air = is_air(pl.st)
+        if tw_sub == 0 {                                   // a jump (on the spot above roof 1), held to its apex
+            if f >= t0 + 4 { pad_v = A }
+            if air && pl.vel.y <= 0.0 { pad_v = 0; tw_sub = 1 }
+            return
+        }
+        if tw_sub == 1 {                                   // down: at once the double jump, at the eave
+            if pl.st == St.Ground { pad_v = A; tw_sub = 2; t1 = f }
+            return
+        }
+        if (is_air(pl.st) && pl.vel.y > 0.0167) || pl.st == St.Ground { pad_v = A }  // held for the full jump, let go before the apex (no glider)
+        stick_v = cc_stick(NORTH, 1.0)
+        if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+        if pl.st == St.Pole && tw_tier == len(TIERS) as s32 - 1 { tw_phase = 2; t1 = f; note("on the finial pole at y", pl.pos.y); return }
+        if pl.st == St.Ground && f > t1 + 4 {
+            expect(pl.pos.y >= TIERS[tw_tier].y, "up a tier, y", pl.pos.y)
+            tw_tier += 1
+            tw_sub = -1
+            if tw_tier >= len(TIERS) as s32 { tw_phase = 1; t0 = f; note("on the dew basin's top, y", pl.pos.y) }
+        }
+        if f > t0 + 300 { expect(false, "up a tier in 5 s", fixed(tw_tier)) }
+        return
+    }
+    if tw_phase == 1 {                                     // a jump on the spot: the pole
+        if f >= t0 + 6 && f < t0 + 20 { pad_v = A }
+        if pl.st == St.Pole { tw_phase = 2; t1 = f; note("on the finial pole at y", pl.pos.y) }
+        if f > t0 + 120 { expect(false, "grabbed the finial pole", pl.pos.y) }
+        return
+    }
+    if tw_phase == 2 {
+        stick_v = FWD
+        if f > t1 + 10 && pl.st == St.Pole && pl.pos.y > 43.7 { tw_phase = 3; t2 = f; note("at the pole's top, y", pl.pos.y) }
+        if f > t1 + 600 { expect(false, "climbed the finial", pl.pos.y) }
+        return
+    }
+    if tw_phase == 3 {
+        if coin_taken(tw_star) {
+            expect(true, "star 1 taken, y", pl.pos.y)
+            done()
+            tw_phase = 9
+        }
+        if f > t2 + 120 { expect(false, "star 1 taken", apex) }
+    }
+}
+
+// The rope (spec 5, star 4): from the rope deck (24) hang the rope to the knot hole, let go on its
+// sill, walk in and fall down the hollow trunk to the chamber (13): star 4.
+fn tw_rope(f: s32) {
+    if tw_phase == 9 { return }
+    let k = rail_named("cedar_rope")
+    if f == 0 {
+        expect(k >= 0, "the cedar rope is a rail", fixed(k))
+        tw_star = tw_coin_near(vec3(154.0, 14.0, 296.0))
+        place(vec3(132.2, sh_floor(132.2, 283.2, 30.0), 283.2), atan2(16.9, 11.6))
+    }
+    let end = wp_path_point(rails[k], 1)
+    if tw_phase == 0 {
+        if f >= 5 && f < 9 { pad_v = A }
+        if pl.st == St.Hang { tw_phase = 1; t0 = f; note("hanging from the rope at y", pl.pos.y) }
+        if f > 120 { expect(false, "hanging from the rope", pl.pos.y) }
+        return
+    }
+    if tw_phase == 1 {
+        stick_v = cc_stick(sh_heading(end), 1.0)
+        if rail_s >= wp_path_length(rails[k]) - 0.02 {
+            tw_phase = 2
+            t1 = f
+            note("along the rope, seconds", fixed(f - t0) / 60)
+        }
+        if f > t0 + 900 { expect(false, "along the rope", tw_hdist(pl.pos, end)) }
+        return
+    }
+    stick_v = cc_stick(EAST, 1.0)            // let go on the sill, walk east into the hollow trunk
+    if pl.pos.x > 152.0 && pl.pos.y < 16.0 { stick_v = cc_stick(sh_heading(vec3(154.0, 0.0, 296.0)), 0.5) }   // down in the chamber: to the star
+    if f == t1 + 1 { pad_v = R }
+    if coin_taken(tw_star) {
+        expect(pl.pos.x > 151.5 && pl.pos.x < 156.5 && pl.pos.y < 15.0, "inside the cedar, on the chamber floor, y", pl.pos.y)
+        expect(true, "star 4 taken", 0.0)
+        done()
+        tw_phase = 9
+    }
+    if tw_phase != 9 && f > t1 + 300 { expect(false, "into the knot hole and down to star 4", pl.pos.y) }
+}
+
+// Rope ladder A (shortcut A), with its layer on: from the shelf (24) climb the 20 m pole to the
+// ledge (44) and step off onto it.
+fn tw_ladder(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        wp_layer_set(wp_layer_find("ladder_a"), true)
+        attach_init()
+        place(vec3(154.0, sh_floor(154.0, 315.5, 30.0), 315.5), NORTH)
+        expect(near(pl.pos.y, 24.0, 0.3), "on the shelf, y", pl.pos.y)
+    }
+    if tw_phase == 0 {
+        stick_v = FWD
+        if f >= 4 && f < 14 { pad_v = A }
+        if pl.st == St.Pole { tw_phase = 1; t0 = f }
+        if f > 120 { expect(false, "grabbed the ladder", pl.pos.y) }
+        return
+    }
+    stick_v = FWD
+    if tw_phase == 1 && pl.st == St.Pole && pl.pos.y > 43.9 {
+        note("climbed, seconds", fixed(f - t0) / 60)
+        tw_phase = 2
+        t1 = f
+    }
+    // at the top: let go (R) and push at the rock: the hands catch the ledge's lip, then climb
+    if tw_phase == 2 {
+        if TW_TRACE != 0 && f % 3 == 0 { note("trace", fixed(f)) }
+        stick_v = cc_stick(NORTH, 1.0)
+        if f == t1 + 2 { pad_v = R }
+        if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+        if f > t1 + 4 && pl.st == St.Ground {
+            expect(pl.pos.y > 43.8, "up on the ledge, y", pl.pos.y)
+            done()
+            tw_phase = 9
+        }
+    }
+    if tw_phase < 9 && f > 1500 { expect(false, "up the ladder", pl.pos.y) }
+}
+
+fn tw_coin_near(p: vec3) -> s32 {
+    for n in 0..wp_pack.entity_count as s32 {
+        let e = wp_entity(n)
+        let ty = e.type_id as s32
+        let d = wp_entity_pos(e) - p          // (no length(): it overflows past about 181 m)
+        if (ty == COIN_TYPE || ty == RED_COIN_TYPE) && abs(d.x) < 1.0 && abs(d.y) < 1.0 && abs(d.z) < 1.0 { return n }
+    }
+    return -1
+}
+
+// Every coin and red coin: on a floor (within reach above it, 0.4 to 1.8 m), over a rail (a wire, a
+// string, a parapet: within 1.6 m above it) or at a pole's top, and the body there takes it.
+var tw_floor_n: s32
+var tw_rail_n: s32
+fn tw_on_rail(c: vec3) -> bool {
+    for k in 0..rail_n {
+        if wp_path_nearest(rails[k], c, 2.0) {
+            let d = c - wp_near.pos
+            if d.y > 0.0 && d.y < 1.6 && abs(d.x) < 0.5 && abs(d.z) < 0.5 { return true }
+        }
+    }
+    return false
+}
+// A coin at a pole's top (star 1 on the finial): the feet there are PoleTop under the top.
+fn tw_on_pole(c: vec3) -> s32 {
+    for k in 0..pole_n {
+        let p = poles[k]
+        if abs(c.x - p.base.x) < 0.8 && abs(c.z - p.base.z) < 0.8 && c.y > p.top - 1.6 && c.y < p.top + 1.0 { return k }
+    }
+    return -1
+}
+var tw_pole_n: s32
+fn tw_coins(f: s32) {
+    if sh_n == -1 && f == 0 { sh_n = sh_next_coin(0); sh_t = 0 }
+    if sh_n == -2 { return }
+    if sh_n < 0 {
+        sh_n = -2
+        note("on floors", fixed(tw_floor_n))
+        note("over rails", fixed(tw_rail_n))
+        note("at a pole's top", fixed(tw_pole_n))
+        expect(sh_red == 8, "red coins taken", fixed(sh_red))
+        expect(coins + red_coins == sh_gold + sh_red, "the game counted them", fixed(coins + red_coins))
+        done()
+        return
+    }
+    let e = wp_entity(sh_n)
+    let c = wp_entity_pos(e)
+    if sh_t == 0 {
+        let pk = tw_on_pole(c)
+        if pk >= 0 {
+            tw_pole_n += 1
+            place_air(vec3(c.x, poles[pk].top - tv[T.PoleTop], c.z - 0.5), NORTH)
+        } else if tw_on_rail(c) {
+            tw_rail_n += 1
+            place_air(vec3(c.x, c.y - 0.8, c.z), NORTH)        // the body over the rail, the coin in reach
+        } else {
+            expect(wp_floor(c, 0.0), "a floor under the coin", c.y)
+            let rise = c.y - wp_hit.y
+            expect(rise > 0.4 && rise < 1.8, "the coin within reach above it, m", rise)
+            tw_floor_n += 1
+            place(vec3(c.x, wp_hit.y, c.z), NORTH)
+        }
+    }
+    sh_t += 1
+    if sh_t == 2 {
+        expect(coin_taken(e.number as s32), "there takes it", c.y)
+        if e.type_id as s32 == RED_COIN_TYPE { sh_red += 1 } else { sh_gold += 1 }
+        sh_n = sh_next_coin(sh_n + 1)
+        sh_t = 0
+    }
+}
+
+// A door: start in world `w0`, walk into the door from `at` facing `yaw`: world `w1` opens.
+fn tw_door(f: s32, at: vec3, yaw: fixed, w0: s32, w1: s32) {
+    if f == 0 {
+        expect(world_k == w0, "starts in its world", fixed(world_k))
+        place(vec3(at.x, sh_floor(at.x, at.z, 30.0), at.z), yaw)
+    }
+    if f < 60 && world_k == w0 { stick_v = FWD }
+    if f == 80 {
+        expect(world_k == w1, "the door opened the other world", fixed(world_k))
+        expect(wp_cell_at(pl.pos) != null, "standing in it", pl.pos.y)
+        done()
+    }
+}
