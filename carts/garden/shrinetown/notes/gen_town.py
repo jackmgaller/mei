@@ -776,6 +776,10 @@ part = {
     'collision': {'surfaces': {'default': 0, 'tags': {'bounce': 1, 'slide': 2, 'water': 3}}},
     'vantage_points': VANTAGE,
 }
+# the placement zones (place/ZONE.py) change the cells and the part before they are written
+sys.path.insert(0, str(ST))
+from place import apply as apply_zones
+apply_zones('town', globals())
 (PARTS / 'town.json').write_text(json.dumps(part, indent=1) + '\n')
 
 # ------------------------------------------------------------------ write recipes and cells
