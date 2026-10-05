@@ -1,0 +1,120 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "tree_zelkova_col",
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "trunk",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.2828,
+     0.0,
+     -0.2828
+    ],
+    [
+     -0.2828,
+     0.0,
+     0.2828
+    ],
+    [
+     -0.2404,
+     2.8,
+     0.2404
+    ],
+    [
+     -0.2404,
+     2.8,
+     -0.2404
+    ],
+    [
+     0.2828,
+     0.0,
+     0.2828
+    ],
+    [
+     0.2404,
+     2.8,
+     0.2404
+    ],
+    [
+     0.2828,
+     0.0,
+     -0.2828
+    ],
+    [
+     0.2404,
+     2.8,
+     -0.2404
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2
+    ],
+    [
+     0,
+     2,
+     3
+    ],
+    [
+     1,
+     4,
+     5
+    ],
+    [
+     1,
+     5,
+     2
+    ],
+    [
+     4,
+     6,
+     7
+    ],
+    [
+     4,
+     7,
+     5
+    ],
+    [
+     6,
+     0,
+     3
+    ],
+    [
+     6,
+     3,
+     7
+    ]
+   ],
+   "face_materials": [
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid",
+    "solid"
+   ]
+  }
+ ]
+}
