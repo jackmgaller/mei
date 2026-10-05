@@ -1,0 +1,803 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "bus_stop",
+ "budget": {
+  "triangles": 150
+ },
+ "sheets": {
+  "art": {
+   "image": "art/bus_stop_sheet.png"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "slab_top": {
+   "color": "#a9a69c",
+   "tag": "floor",
+   "texture": {
+    "sheet": "art",
+    "cell": "slab_top",
+    "projection": "fit"
+   }
+  },
+  "kerb": {
+   "color": "#a8a69e",
+   "palette": true
+  },
+  "roof": {
+   "color": "#3f8f86",
+   "tag": "roof",
+   "texture": {
+    "pattern": "stripes",
+    "size": 16,
+    "colors": [
+     "#3f8f86",
+     "#357a72"
+    ],
+    "params": {
+     "count": 4,
+     "axis": "u"
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "frame": {
+   "color": "#2f5f5a",
+   "palette": true
+  },
+  "wood": {
+   "color": "#b98962",
+   "tag": "bench",
+   "texture": {
+    "pattern": "planks",
+    "size": 16,
+    "colors": [
+     "#b98962",
+     "#7d5634",
+     "#a67a52",
+     "#c79a73"
+    ],
+    "params": {
+     "boards": 4
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "iron": {
+   "color": "#3b3d46",
+   "palette": true,
+   "double_sided": true
+  },
+  "pole": {
+   "color": "#e9e5d6",
+   "palette": true
+  },
+  "panel": {
+   "color": "#e0e0d8",
+   "class": "emissive",
+   "tag": "sign",
+   "texture": {
+    "sheet": "art",
+    "cell": "panel",
+    "projection": "fit",
+    "bits": 8
+   }
+  },
+  "disc": {
+   "color": "#f4f1e6",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "disc",
+    "projection": "fit",
+    "bits": 8
+   }
+  },
+  "timetable": {
+   "color": "#f4f1e6",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "timetable",
+    "projection": "fit",
+    "bits": 8
+   }
+  },
+  "lamp": {
+   "color": "#ffe36a",
+   "class": "emissive",
+   "tag": "lantern"
+  },
+  "cat": {
+   "color": "#e59a4a",
+   "palette": true
+  },
+  "cat_dark": {
+   "color": "#8a4f24",
+   "palette": true
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    3.4,
+    0.1,
+    1.7
+   ],
+   "material": "kerb",
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "slab_top"
+   },
+   "transform": {
+    "translate": [
+     0.3,
+     0.05,
+     0.15
+    ]
+   }
+  },
+  {
+   "id": "posts",
+   "op": "group",
+   "children": [
+    {
+     "id": "post",
+     "op": "box",
+     "size": [
+      0.08,
+      2.25,
+      0.14
+     ],
+     "material": "frame",
+     "open": [
+      "top",
+      "bottom"
+     ],
+     "transform": {
+      "translate": [
+       1.05,
+       1.225,
+       0.55
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "panel",
+   "op": "box",
+   "size": [
+    2.1,
+    1.15,
+    0.06
+   ],
+   "material": "frame",
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "panel"
+   },
+   "transform": {
+    "translate": [
+     0,
+     1.3,
+     0.55
+    ]
+   }
+  },
+  {
+   "id": "roof",
+   "op": "extrude",
+   "material": "roof",
+   "points": [
+    [
+     -0.75,
+     0
+    ],
+    [
+     0.75,
+     0
+    ],
+    [
+     0.75,
+     0.07
+    ],
+    [
+     0,
+     0.17
+    ],
+    [
+     -0.75,
+     0.07
+    ]
+   ],
+   "depth": 2.5,
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ],
+    "translate": [
+     0,
+     2.27,
+     0.1
+    ]
+   }
+  },
+  {
+   "id": "seat",
+   "op": "box",
+   "size": [
+    1.7,
+    0.05,
+    0.42
+   ],
+   "material": "wood",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.46,
+     0.2
+    ]
+   }
+  },
+  {
+   "id": "back",
+   "op": "box",
+   "size": [
+    1.7,
+    0.32,
+    0.04
+   ],
+   "material": "wood",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.78,
+     0.43
+    ]
+   }
+  },
+  {
+   "id": "bench_end_e",
+   "op": "mesh",
+   "material": "iron",
+   "vertices": [
+    [
+     0.8,
+     0.0,
+     0.0
+    ],
+    [
+     0.8,
+     0.0,
+     0.45
+    ],
+    [
+     0.8,
+     0.94,
+     0.45
+    ],
+    [
+     0.8,
+     0.94,
+     0.4
+    ],
+    [
+     0.8,
+     0.62,
+     0.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4
+    ]
+   ]
+  },
+  {
+   "id": "bench_end_w",
+   "op": "mesh",
+   "material": "iron",
+   "vertices": [
+    [
+     -0.8,
+     0.62,
+     0.0
+    ],
+    [
+     -0.8,
+     0.94,
+     0.4
+    ],
+    [
+     -0.8,
+     0.94,
+     0.45
+    ],
+    [
+     -0.8,
+     0.0,
+     0.45
+    ],
+    [
+     -0.8,
+     0.0,
+     0.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4
+    ]
+   ]
+  },
+  {
+   "id": "pole",
+   "op": "cylinder",
+   "radius": 0.035,
+   "height": 2.4,
+   "segments": 4,
+   "caps": false,
+   "material": "pole",
+   "transform": {
+    "translate": [
+     1.55,
+     1.3,
+     -0.1
+    ]
+   }
+  },
+  {
+   "id": "sign",
+   "op": "mesh",
+   "material": "disc",
+   "vertices": [
+    [
+     1.31,
+     2.44,
+     -0.14
+    ],
+    [
+     1.79,
+     2.44,
+     -0.14
+    ],
+    [
+     1.79,
+     1.96,
+     -0.14
+    ],
+    [
+     1.31,
+     1.96,
+     -0.14
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "timetable",
+   "op": "mesh",
+   "material": "timetable",
+   "vertices": [
+    [
+     1.34,
+     1.74,
+     -0.14
+    ],
+    [
+     1.76,
+     1.74,
+     -0.14
+    ],
+    [
+     1.76,
+     1.46,
+     -0.14
+    ],
+    [
+     1.34,
+     1.46,
+     -0.14
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "lamp",
+   "op": "sphere",
+   "radius": 0.07,
+   "rings": 2,
+   "segments": 4,
+   "material": "lamp",
+   "transform": {
+    "translate": [
+     1.55,
+     2.57,
+     -0.1
+    ]
+   }
+  },
+  {
+   "id": "cat_body",
+   "op": "sphere",
+   "radius": 0.2,
+   "rings": 3,
+   "segments": 5,
+   "material": "cat",
+   "transform": {
+    "scale": [
+     1.3,
+     0.7,
+     1.0
+    ],
+    "translate": [
+     -0.45,
+     0.6,
+     0.2
+    ]
+   }
+  },
+  {
+   "id": "cat_head",
+   "op": "sphere",
+   "radius": 0.11,
+   "rings": 3,
+   "segments": 4,
+   "material": "cat",
+   "transform": {
+    "translate": [
+     -0.15,
+     0.64,
+     0.12
+    ]
+   }
+  },
+  {
+   "id": "cat_ears",
+   "op": "group",
+   "children": [
+    {
+     "id": "ear",
+     "op": "cone",
+     "radius": 0.04,
+     "height": 0.07,
+     "segments": 3,
+     "material": "cat_dark",
+     "transform": {
+      "translate": [
+       -0.12,
+       0.76,
+       0.06
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "z",
+     "offset": 0.12
+    }
+   ]
+  },
+  {
+   "id": "cat_tail",
+   "op": "cone",
+   "radius": 0.035,
+   "height": 0.34,
+   "segments": 3,
+   "material": "cat_dark",
+   "transform": {
+    "rotate": [
+     0,
+     25,
+     80
+    ],
+    "translate": [
+     -0.82,
+     0.53,
+     0.28
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "slab",
+      "op": "box",
+      "size": [
+       3.4,
+       0.1,
+       1.7
+      ],
+      "material": "kerb",
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "top": "slab_top"
+      },
+      "transform": {
+       "translate": [
+        0.3,
+        0.05,
+        0.15
+       ]
+      }
+     },
+     {
+      "id": "panel",
+      "op": "box",
+      "size": [
+       2.2,
+       2.17,
+       0.1
+      ],
+      "material": "frame",
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "decals": [
+       {
+        "id": "poster",
+        "face": "back",
+        "material": "panel",
+        "size": [
+         2.1,
+         1.15
+        ],
+        "at": [
+         0,
+         0.115
+        ]
+       }
+      ],
+      "transform": {
+       "translate": [
+        0,
+        1.185,
+        0.55
+       ]
+      }
+     },
+     {
+      "id": "roof",
+      "op": "extrude",
+      "material": "roof",
+      "points": [
+       [
+        -0.75,
+        0
+       ],
+       [
+        0.75,
+        0
+       ],
+       [
+        0.75,
+        0.07
+       ],
+       [
+        0,
+        0.17
+       ],
+       [
+        -0.75,
+        0.07
+       ]
+      ],
+      "depth": 2.5,
+      "transform": {
+       "rotate": [
+        0,
+        90,
+        0
+       ],
+       "translate": [
+        0,
+        2.27,
+        0.1
+       ]
+      }
+     },
+     {
+      "id": "bench",
+      "op": "box",
+      "size": [
+       1.7,
+       0.5,
+       0.45
+      ],
+      "material": "wood",
+      "open": [
+       "bottom"
+      ],
+      "transform": {
+       "translate": [
+        0,
+        0.35,
+        0.22
+       ]
+      }
+     },
+     {
+      "id": "pole",
+      "op": "cylinder",
+      "radius": 0.04,
+      "height": 2.4,
+      "segments": 3,
+      "caps": false,
+      "material": "pole",
+      "transform": {
+       "translate": [
+        1.55,
+        1.3,
+        -0.1
+       ]
+      }
+     },
+     {
+      "id": "sign",
+      "op": "mesh",
+      "material": "disc",
+      "vertices": [
+       [
+        1.31,
+        2.44,
+        -0.14
+       ],
+       [
+        1.79,
+        2.44,
+        -0.14
+       ],
+       [
+        1.79,
+        1.96,
+        -0.14
+       ],
+       [
+        1.31,
+        1.96,
+        -0.14
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     }
+    ]
+   },
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "panel",
+      "op": "box",
+      "size": [
+       2.2,
+       2.27,
+       0.1
+      ],
+      "material": "frame",
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "decals": [
+       {
+        "id": "poster",
+        "face": "back",
+        "material": "panel",
+        "size": [
+         2.1,
+         1.15
+        ],
+        "at": [
+         0,
+         0.165
+        ]
+       }
+      ],
+      "transform": {
+       "translate": [
+        0,
+        1.135,
+        0.55
+       ]
+      }
+     },
+     {
+      "id": "roof",
+      "op": "box",
+      "size": [
+       2.5,
+       0.12,
+       1.5
+      ],
+      "material": "roof",
+      "transform": {
+       "translate": [
+        0,
+        2.33,
+        0.1
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 120,
+  "band": 2
+ }
+}

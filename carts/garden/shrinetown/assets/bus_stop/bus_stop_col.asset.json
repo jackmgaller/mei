@@ -1,0 +1,142 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "bus_stop_col",
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "solid": {
+   "color": "#c8c4b8",
+   "palette": true
+  }
+ },
+ "nodes": [
+  {
+   "id": "slab",
+   "op": "box",
+   "size": [
+    3.4,
+    0.3,
+    1.7
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.3,
+     -0.05,
+     0.15
+    ]
+   }
+  },
+  {
+   "id": "panel",
+   "op": "box",
+   "size": [
+    2.2,
+    1.82,
+    0.2
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     0.99,
+     0.55
+    ]
+   }
+  },
+  {
+   "id": "bench",
+   "op": "box",
+   "size": [
+    1.7,
+    0.4,
+    0.48
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     0.28,
+     0.23
+    ]
+   }
+  },
+  {
+   "id": "pole",
+   "op": "box",
+   "size": [
+    0.2,
+    2.42,
+    0.2
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     1.55,
+     1.29,
+     -0.1
+    ]
+   }
+  },
+  {
+   "id": "roof",
+   "op": "extrude",
+   "material": "solid",
+   "points": [
+    [
+     -0.75,
+     -0.13
+    ],
+    [
+     0.75,
+     -0.13
+    ],
+    [
+     0.75,
+     0.07
+    ],
+    [
+     0,
+     0.17
+    ],
+    [
+     -0.75,
+     0.07
+    ]
+   ],
+   "depth": 2.5,
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ],
+    "translate": [
+     0,
+     2.27,
+     0.1
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,960 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "bike_rack",
+ "budget": {
+  "triangles": 150
+ },
+ "sheets": {
+  "art": {
+   "image": "art/bike_rack_sheet.png"
+  },
+  "concrete": {
+   "image": "../viaduct_span_16/art/concrete.png"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "concrete": {
+   "color": "#b4b0a6",
+   "tag": "floor",
+   "texture": {
+    "sheet": "concrete",
+    "cell": "wall",
+    "projection": "box",
+    "scale": [
+     4.0,
+     2.0
+    ]
+   }
+  },
+  "roof": {
+   "color": "#4a9d78",
+   "tag": "roof",
+   "texture": {
+    "pattern": "stripes",
+    "size": 16,
+    "colors": [
+     "#58b08a",
+     "#3f8c6a"
+    ],
+    "params": {
+     "count": 8,
+     "axis": "u"
+    },
+    "projection": "box",
+    "scale": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "steel": {
+   "color": "#7d858c",
+   "palette": true
+  },
+  "fin": {
+   "color": "#8c949a",
+   "palette": true,
+   "double_sided": true
+  },
+  "post": {
+   "color": "#5f6a70",
+   "palette": true,
+   "double_sided": true
+  },
+  "sign": {
+   "color": "#185c46",
+   "tag": "sign",
+   "texture": {
+    "sheet": "art",
+    "cell": "sign",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "bikes": {
+   "color": "#7fcab6",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "bikes",
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "pad",
+   "op": "box",
+   "size": [
+    3.2,
+    0.1,
+    2.1
+   ],
+   "material": "concrete",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     0.05,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "rail",
+   "op": "box",
+   "size": [
+    3.1,
+    0.1,
+    0.07
+   ],
+   "material": "steel",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     0.15,
+     -0.5
+    ]
+   }
+  },
+  {
+   "id": "stand_0",
+   "op": "mesh",
+   "material": "fin",
+   "vertices": [
+    [
+     -1.5,
+     0.1,
+     -0.8
+    ],
+    [
+     -1.5,
+     0.1,
+     -0.2
+    ],
+    [
+     -1.5,
+     0.48,
+     -0.42
+    ],
+    [
+     -1.5,
+     0.48,
+     -0.62
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "stand_1",
+   "op": "mesh",
+   "material": "fin",
+   "vertices": [
+    [
+     -0.9,
+     0.1,
+     -0.8
+    ],
+    [
+     -0.9,
+     0.1,
+     -0.2
+    ],
+    [
+     -0.9,
+     0.48,
+     -0.42
+    ],
+    [
+     -0.9,
+     0.48,
+     -0.62
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "stand_2",
+   "op": "mesh",
+   "material": "fin",
+   "vertices": [
+    [
+     -0.3,
+     0.1,
+     -0.8
+    ],
+    [
+     -0.3,
+     0.1,
+     -0.2
+    ],
+    [
+     -0.3,
+     0.48,
+     -0.42
+    ],
+    [
+     -0.3,
+     0.48,
+     -0.62
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "stand_3",
+   "op": "mesh",
+   "material": "fin",
+   "vertices": [
+    [
+     0.3,
+     0.1,
+     -0.8
+    ],
+    [
+     0.3,
+     0.1,
+     -0.2
+    ],
+    [
+     0.3,
+     0.48,
+     -0.42
+    ],
+    [
+     0.3,
+     0.48,
+     -0.62
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "stand_4",
+   "op": "mesh",
+   "material": "fin",
+   "vertices": [
+    [
+     0.9,
+     0.1,
+     -0.8
+    ],
+    [
+     0.9,
+     0.1,
+     -0.2
+    ],
+    [
+     0.9,
+     0.48,
+     -0.42
+    ],
+    [
+     0.9,
+     0.48,
+     -0.62
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "stand_5",
+   "op": "mesh",
+   "material": "fin",
+   "vertices": [
+    [
+     1.5,
+     0.1,
+     -0.8
+    ],
+    [
+     1.5,
+     0.1,
+     -0.2
+    ],
+    [
+     1.5,
+     0.48,
+     -0.42
+    ],
+    [
+     1.5,
+     0.48,
+     -0.62
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "post_front_w",
+   "op": "box",
+   "size": [
+    0.08,
+    2.1429,
+    0.08
+   ],
+   "material": "post",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -1.5,
+     1.1715,
+     -0.95
+    ]
+   }
+  },
+  {
+   "id": "post_front_e",
+   "op": "box",
+   "size": [
+    0.08,
+    2.1429,
+    0.08
+   ],
+   "material": "post",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     1.5,
+     1.1715,
+     -0.95
+    ]
+   }
+  },
+  {
+   "id": "post_back_w",
+   "op": "box",
+   "size": [
+    0.08,
+    1.8759,
+    0.08
+   ],
+   "material": "post",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     -1.5,
+     1.0379,
+     0.95
+    ]
+   }
+  },
+  {
+   "id": "post_back_e",
+   "op": "box",
+   "size": [
+    0.08,
+    1.8759,
+    0.08
+   ],
+   "material": "post",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     1.5,
+     1.0379,
+     0.95
+    ]
+   }
+  },
+  {
+   "id": "beam_front",
+   "op": "box",
+   "size": [
+    2.92,
+    0.08,
+    0.08
+   ],
+   "material": "post",
+   "open": [
+    "left",
+    "right"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     2.1529,
+     -0.95
+    ]
+   }
+  },
+  {
+   "id": "beam_back",
+   "op": "box",
+   "size": [
+    2.92,
+    0.08,
+    0.08
+   ],
+   "material": "post",
+   "open": [
+    "left",
+    "right"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     1.8859,
+     0.95
+    ]
+   }
+  },
+  {
+   "id": "roof",
+   "op": "box",
+   "size": [
+    3.4,
+    0.06,
+    2.3
+   ],
+   "material": "roof",
+   "transform": {
+    "rotate": [
+     8.0,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     2.11,
+     0
+    ]
+   }
+  },
+  {
+   "id": "sign",
+   "op": "box",
+   "size": [
+    1.2,
+    0.3,
+    0.065
+   ],
+   "material": "steel",
+   "faces": {
+    "back": "sign"
+   },
+   "transform": {
+    "translate": [
+     0.0,
+     2.01,
+     -1.0175
+    ]
+   }
+  },
+  {
+   "id": "plate",
+   "op": "mesh",
+   "material": "bikes",
+   "vertices": [
+    [
+     -1.63,
+     1.83,
+     -1.025
+    ],
+    [
+     -1.37,
+     1.83,
+     -1.025
+    ],
+    [
+     -1.37,
+     1.57,
+     -1.025
+    ],
+    [
+     -1.63,
+     1.57,
+     -1.025
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "uvs": [
+    [
+     0,
+     0.6667
+    ],
+    [
+     0.25,
+     0.6667
+    ],
+    [
+     0.25,
+     1.0
+    ],
+    [
+     0,
+     1.0
+    ]
+   ]
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "roof",
+      "op": "box",
+      "size": [
+       3.4,
+       0.06,
+       2.3
+      ],
+      "material": "roof",
+      "transform": {
+       "rotate": [
+        8.0,
+        0,
+        0
+       ],
+       "translate": [
+        0,
+        2.11,
+        0
+       ]
+      }
+     },
+     {
+      "id": "sign",
+      "op": "box",
+      "size": [
+       1.2,
+       0.3,
+       0.065
+      ],
+      "material": "steel",
+      "faces": {
+       "back": "sign"
+      },
+      "transform": {
+       "translate": [
+        0.0,
+        2.01,
+        -1.0175
+       ]
+      }
+     },
+     {
+      "id": "post_front_w",
+      "op": "cylinder",
+      "radius": 0.05,
+      "height": 2.2429,
+      "segments": 3,
+      "caps": false,
+      "material": "post",
+      "transform": {
+       "translate": [
+        -1.5,
+        1.1215,
+        -0.95
+       ]
+      }
+     },
+     {
+      "id": "post_front_e",
+      "op": "cylinder",
+      "radius": 0.05,
+      "height": 2.2429,
+      "segments": 3,
+      "caps": false,
+      "material": "post",
+      "transform": {
+       "translate": [
+        1.5,
+        1.1215,
+        -0.95
+       ]
+      }
+     },
+     {
+      "id": "post_back_w",
+      "op": "cylinder",
+      "radius": 0.05,
+      "height": 1.9759,
+      "segments": 3,
+      "caps": false,
+      "material": "post",
+      "transform": {
+       "translate": [
+        -1.5,
+        0.9879,
+        0.95
+       ]
+      }
+     },
+     {
+      "id": "post_back_e",
+      "op": "cylinder",
+      "radius": 0.05,
+      "height": 1.9759,
+      "segments": 3,
+      "caps": false,
+      "material": "post",
+      "transform": {
+       "translate": [
+        1.5,
+        0.9879,
+        0.95
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "distance": 40,
+    "nodes": [
+     {
+      "id": "roof",
+      "op": "box",
+      "size": [
+       3.4,
+       0.06,
+       2.3
+      ],
+      "material": "roof",
+      "open": [
+       "bottom"
+      ],
+      "transform": {
+       "rotate": [
+        8.0,
+        0,
+        0
+       ],
+       "translate": [
+        0,
+        2.11,
+        0
+       ]
+      }
+     },
+     {
+      "id": "post_front_w",
+      "op": "mesh",
+      "material": "post",
+      "vertices": [
+       [
+        -1.55,
+        2.2429,
+        -0.95
+       ],
+       [
+        -1.45,
+        2.2429,
+        -0.95
+       ],
+       [
+        -1.45,
+        0,
+        -0.95
+       ],
+       [
+        -1.55,
+        0,
+        -0.95
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "post_front_e",
+      "op": "mesh",
+      "material": "post",
+      "vertices": [
+       [
+        1.45,
+        2.2429,
+        -0.95
+       ],
+       [
+        1.55,
+        2.2429,
+        -0.95
+       ],
+       [
+        1.55,
+        0,
+        -0.95
+       ],
+       [
+        1.45,
+        0,
+        -0.95
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "post_back_w",
+      "op": "mesh",
+      "material": "post",
+      "vertices": [
+       [
+        -1.55,
+        1.9759,
+        0.95
+       ],
+       [
+        -1.45,
+        1.9759,
+        0.95
+       ],
+       [
+        -1.45,
+        0,
+        0.95
+       ],
+       [
+        -1.55,
+        0,
+        0.95
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "post_back_e",
+      "op": "mesh",
+      "material": "post",
+      "vertices": [
+       [
+        1.45,
+        1.9759,
+        0.95
+       ],
+       [
+        1.55,
+        1.9759,
+        0.95
+       ],
+       [
+        1.55,
+        0,
+        0.95
+       ],
+       [
+        1.45,
+        0,
+        0.95
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ]
+     },
+     {
+      "id": "bikes_front",
+      "op": "mesh",
+      "material": "bikes",
+      "vertices": [
+       [
+        -1.55,
+        1.05,
+        -0.3
+       ],
+       [
+        1.55,
+        1.05,
+        -0.3
+       ],
+       [
+        1.55,
+        0.1,
+        -0.3
+       ],
+       [
+        -1.55,
+        0.1,
+        -0.3
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "uvs": [
+       [
+        0,
+        0.0
+       ],
+       [
+        1.0,
+        0.0
+       ],
+       [
+        1.0,
+        0.3333
+       ],
+       [
+        0,
+        0.3333
+       ]
+      ]
+     },
+     {
+      "id": "bikes_side",
+      "op": "mesh",
+      "material": "bikes",
+      "vertices": [
+       [
+        0,
+        1.05,
+        -0.9
+       ],
+       [
+        0,
+        1.05,
+        0.9
+       ],
+       [
+        0,
+        0.1,
+        0.9
+       ],
+       [
+        0,
+        0.1,
+        -0.9
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "uvs": [
+       [
+        0,
+        0.3333
+       ],
+       [
+        1.0,
+        0.3333
+       ],
+       [
+        1.0,
+        0.6667
+       ],
+       [
+        0,
+        0.6667
+       ]
+      ]
+     }
+    ]
+   }
+  ],
+  "cull": 100,
+  "band": 2
+ }
+}
