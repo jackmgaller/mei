@@ -300,7 +300,7 @@ Each zone: purpose, layout, heights, landmarks, ways in and out, secrets, what y
   Its five roofs at 24.8, 29.6, 34.4, 39.2 and 44.0 m (4.8 m apart; each eave 1.8 m deep, each
   tier 0.5 m narrower), the finial a pole from 44.0 to 50.0.
   *Grey box:* the pagoda is the shrine's real one (owner, 2026-10-05), with its climbing
-  collision `arch_pagoda_climb_col`: eave tops 5.0 / 8.6 / 12.2 / 15.8 / 19.4 above its base (3.6 m
+  collision `arch_pagoda_town_col`: eave tops 5.0 / 8.6 / 12.2 / 15.8 / 19.4 above its base (3.6 m
   apart), eave half widths 5.4 / 4.7 / 4.0 / 3.3 / 2.6, a 0.7 m strip of each roof outside the
   eave above (27.9°), the dew basin's flat top at 21.19, the finial a pole 8.8 m from it. Its
   terrace is cut into the ridge at 15 (G5, section 12): roofs at 20.0, 23.6, 27.2, 30.8 and 34.4,
@@ -996,7 +996,7 @@ sections 1–11 while building it; the region notes (`notes/town.md`, `notes/cor
 ### 12.1 Owner decisions
 
 - The pagoda is the shrine's real one, its tiers 3.6 m apart (section 3.8), with the climbing
-  collision `arch_pagoda_climb_col`.
+  collision `arch_pagoda_town_col`.
 - Rope ladder A is the real `forest_rope_ladder`: plumb, 20 m, on a sheer face (section 3.12).
   A pole lets the body go round it, into the rock: a ladder mode that holds the body on the
   ladder's front is a follow-up for the cart.

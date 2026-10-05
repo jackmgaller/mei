@@ -204,7 +204,7 @@ NOTES = []                                   # measurements written into notes (
 # ================================================================== 3.8 the ridge and the pagoda
 PX, PZ = L.PAGODA
 # The pagoda is the shrine's real one, reused (owner, 2026-10-05): its tiers are 3.6 m apart, not
-# the plan's 4.8. Its climbing collision is arch_pagoda_climb_col (assets/arch_pagoda, made from the
+# the plan's 4.8. Its climbing collision is arch_pagoda_town_col (assets/arch_pagoda, made from the
 # render's own roofs): eave tops at 5.0 / 8.6 / 12.2 / 15.8 / 19.4 above the base, eave half widths
 # 5.4 / 4.7 / 4.0 / 3.3 / 2.6, each roof a 0.7 m strip outside the eave above at 27.9 degrees, roof
 # 5 rising to the dew basin's flat top at 21.19. The grey box draws that same solid in a flat
@@ -213,7 +213,7 @@ PAG_EAVE_TOP = [5.0, 8.6, 12.2, 15.8, 19.4]
 PAG_EAVE_HALF = [5.4, 4.7, 4.0, 3.3, 2.6]
 PAG_ROBAN, PAG_FINIAL = 21.19, 8.8
 PB = L.PAG_BASE
-_col = json.loads((TOWN / 'assets' / 'arch_pagoda' / 'arch_pagoda_climb_col.asset.json').read_text())
+_col = json.loads((TOWN / 'assets' / 'arch_pagoda' / 'arch_pagoda_town_col.asset.json').read_text())
 _body = dict(_col['nodes'][0], material='pagoda')
 _body.pop('face_materials', None)
 def _tier_boxes():
@@ -230,7 +230,7 @@ ASSETS['gbm_pagoda'] = {'format': 'mei-asset', 'version': 1, 'name': 'gbm_pagoda
                         'lod': {'levels': [{'distance': 90, 'nodes': box_nodes(_tier_boxes() + [cube(0, 0, 0.25, PAG_EAVE_TOP[4] - 0.02, PAG_ROBAN + PAG_FINIAL, 'gold')], (0, 0, 0))},
                                            {'distance': 120, 'nodes': box_nodes([cube(0, 0, PAG_EAVE_HALF[0] - 0.6, -0.3, PAG_EAVE_TOP[4], 'roof', ['bottom']),
                                                                                 cube(0, 0, 0.25, PAG_EAVE_TOP[4] - 0.02, PAG_ROBAN + PAG_FINIAL, 'gold', ['bottom'])], (0, 0, 0))}]}}
-place('pagoda', 'gbm_pagoda', (PX, PB, PZ), 'arch_pagoda_climb_col')
+place('pagoda', 'gbm_pagoda', (PX, PB, PZ), 'arch_pagoda_town_col')
 entity('pole_pagoda_finial', 'pole', (PX, PB + PAG_ROBAN, PZ), {'height': PAG_FINIAL})
 coin('star_1_pagoda', PX, PB + PAG_ROBAN + PAG_FINIAL + 0.5, PZ)    # star 1 (a coin in the grey box), 0.5 over the finial: taken at the pole's top
 STRIP_RISE = 0.35 * math.tan(math.radians(27.9))
