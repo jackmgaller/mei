@@ -2,7 +2,7 @@
   "format": "mei-world-ids",
   "version": 1,
   "world": "shrinetown",
-  "next_bit": 111,
+  "next_bit": 118,
   "bits": {
     "red_parapet": 0,
     "coin_canal0": 1,
@@ -114,7 +114,14 @@
     "core_coin_cemetery_1": 107,
     "core_coin_cemetery_2": 108,
     "core_coin_cemetery_3": 109,
-    "core_coin_cemetery_4": 110
+    "core_coin_cemetery_4": 110,
+    "race_platform": 111,
+    "shortcut_b": 112,
+    "shortcut_a": 113,
+    "shortcut_d": 114,
+    "bell_rope": 115,
+    "shortcut_e": 116,
+    "shortcut_c": 117
   },
   "retired": {},
   "renamed": {}

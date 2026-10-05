@@ -106,15 +106,6 @@
    }
   },
   {
-   "id": "star_1_pagoda",
-   "type": "coin",
-   "position": [
-    178,
-    45.49,
-    262
-   ]
-  },
-  {
    "id": "coin_pagoda_1",
    "type": "coin",
    "position": [
@@ -191,15 +182,6 @@
    ]
   },
   {
-   "id": "star_4_cedar",
-   "type": "coin",
-   "position": [
-    154,
-    14.0,
-    296
-   ]
-  },
-  {
    "id": "rail_cedar_rope",
    "type": "rail",
    "position": [
@@ -219,10 +201,68 @@
     24.0,
     317.85
    ],
+   "yaw": 180,
    "params": {
-    "height": 21.2
+    "height": 21.2,
+    "front": true
    },
    "layer": "ladder_a"
+  },
+  {
+   "id": "star_1_pagoda",
+   "type": "star",
+   "position": [
+    178,
+    45.49,
+    262
+   ]
+  },
+  {
+   "id": "star_4_cedar",
+   "type": "star",
+   "position": [
+    154,
+    14.0,
+    296
+   ]
+  },
+  {
+   "id": "shortcut_a",
+   "type": "trigger",
+   "position": [
+    154.0,
+    44.05,
+    319.2
+   ],
+   "params": {
+    "size": [
+     3.0,
+     3.0,
+     2.4
+    ],
+    "how": "press",
+    "flag": "shortcut_a",
+    "on": "ladder_a"
+   }
+  },
+  {
+   "id": "shortcut_d",
+   "type": "trigger",
+   "position": [
+    153.0,
+    13.05,
+    296.0
+   ],
+   "params": {
+    "size": [
+     2.0,
+     3.0,
+     2.8
+    ],
+    "how": "pound",
+    "flag": "shortcut_d",
+    "off": "root_d_shut"
+   }
   }
  ]
 }

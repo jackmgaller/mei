@@ -506,6 +506,8 @@ arrives there.
 | E | Fire-escape ladder | the building's roof: kick it down | front road ↔ building roof 18.3 (G1) | layer `ladder_e`, a pole when down |
 
 Five layers in all; the most in one cell is two (c2_4: D; c2_5: A). The kit allows eight a cell.
+*Phase 2 (12.5):* each is a `trigger` with `keep` (saved) that switches its layer: A, B and E by a
+press of B in the box, C and D by a ground pound.
 
 ---
 
@@ -632,6 +634,11 @@ Each needs a `star` entity (saved); the game has `coin` and `red_coin` today and
   5. *East* (the shoulder trail, 575 m): about 68 s. Too slow; the race teaches which way is
      down.
 - **On failure:** the train leaves, the omamori goes back to the stage. No penalty.
+- *Phase 2 (section 12.5):* the clock is **85 s** (5,100 ticks), not 70: the train comes in from
+  the west at 60 s, stands at the platform from 70 s and leaves at 85 s. Measured in the grey box
+  (scenarios 452 and 454): the G8 line 47.1 s, the west ground route 60.6 s to the deck; with the
+  real station's inside stair (about 35 m, 4.5 s more) the walking route is 65.1 s, which at 85%
+  of the run speed is 76.6 s, and 8 s to spare gives 84.6. The spec's 70 s assumed a 55 s walk.
 - **Learns:** the level is one place; height is speed.
 - **Needs:** a switch that starts a challenge (new; PLATFORMER.md plans "switches that start
   challenges"), a timer on the HUD (new), the train as a `mover` on the viaduct's path (built:
@@ -642,16 +649,19 @@ Each needs a `star` entity (saved); the game has `coin` and `red_coin` today and
 
 | Need | For | Today |
 |---|---|---|
-| `star` entity (saved), its count, its pickup | all | new |
-| Red-coin count releases a star | ★2 | new (the red coins exist) |
-| Touch switch (bell, omamori, bar) | ★3, ★5, B | new |
-| Timer on the HUD; fail and reset | ★5 | new |
-| Mover started by a trigger | ★5 | new (movers exist) |
-| Trigger box (platform zone) | ★5 | new |
-| Saved flags that switch layers | A–E | new in the game; layers exist in the kit |
-| Ground pound on a target (root bulge, dead cedar) | C, D | new hook; the pound exists |
+| `star` entity (saved), its count, its pickup | all | built (phase 2): the hanafuda moon card in its glint |
+| Red-coin count releases a star | ★2 | built: the flag `red_coins`, star 2's `appear` |
+| Touch switch (bell, omamori, bar) | ★3, ★5, B | built: `trigger` (`how: touch`, or `press` for B) |
+| Timer on the HUD; fail and reset | ★5 | built: a trigger's `timer` |
+| Mover started by a trigger | ★5 | built: a mover's `start` flag and `delay` |
+| Trigger box (platform zone) | ★5 | built: `trigger` (with `needs` and `ends`) |
+| Saved flags that switch layers | A–E | built: a trigger's `keep`, `on` and `off` |
+| Ground pound on a target (root bulge, dead cedar) | C, D | built: `trigger` with `how: pound` |
 | Hang on a sloping rope | ★4 | built (`rail`, St.Hang) |
 | Poles, bounce, wading, slide surfaces | everywhere | built |
+| A ladder held on its front (A, E) | ★3, A, E | built (phase 2): `pole` with `front` |
+
+*Phase 2 (section 12.5):* every row is built; the entities are in `game.py`.
 
 ---
 
@@ -928,7 +938,7 @@ Each phase ends with a playable build and a World Checker report.
    300–316; the six worst views measured with boxes (placement counts) and stand-ins on.
 2. **The game features the stars need:** `star`, the red-coin count, switches, the timer, a
    mover started by a trigger, a trigger box, saved flags switching layers, the pound hook.
-   With grey boxes, all five stars can be played.
+   With grey boxes, all five stars can be played. *Built (12.5).*
 3. **The shrine core:** move the built shrine in (A's changes: the pagoda's place and collision,
    three wall gates, the north stair, the bamboo fence removed, the hollow cedar, the rope deck,
    the rope ladder, the kick pair, the chimney). Most of its 50 assets are reused as they are.
@@ -998,8 +1008,8 @@ sections 1–11 while building it; the region notes (`notes/town.md`, `notes/cor
 - The pagoda is the shrine's real one, its tiers 3.6 m apart (section 3.8), with the climbing
   collision `arch_pagoda_town_col`.
 - Rope ladder A is the real `forest_rope_ladder`: plumb, 20 m, on a sheer face (section 3.12).
-  A pole lets the body go round it, into the rock: a ladder mode that holds the body on the
-  ladder's front is a follow-up for the cart.
+  A pole let the body go round it, into the rock; since phase 2 it is a front pole, held on the
+  ladder's front (12.5).
 - The circling glide into the knot hole is an accepted expert route; the rope stays the way in.
 - The viaduct deck is 9.0 everywhere, the platform floor 10.0 (the station's wider spans are
   for the real assets; the grey-box deck is 12 m wide).
@@ -1051,3 +1061,32 @@ present (`tools/views.py`): README.md, "What it costs".
 - **The pagoda from the spawn.** With the real pagoda on the terrace at 15, only its finial's
   top clears the arcade gate (section 1.3).
 - **G5** (12.2, the pagoda terrace).
+
+### 12.5 Phase 2: the game features (2026-10-05)
+
+The stars, the triggers and the shortcuts are entities of the garden's game schema
+(`../world/garden.game.mochi`: `star`, `trigger`, a mover's `start` and `delay`, a pole's `front`;
+`../README.md`, "Entities" and "Goals"), listed in `game.py`, which the three region generators
+add to their cells. Scenarios 450–467 (`../tests/goals_cases.akr`) play them.
+
+| What | Built | Scenario |
+|---|---|---|
+| Stars | the hanafuda moon card turning in its glint, drawn by the cart from texture slot 14; taken is saved and shows the card's back | 422 (★1), 423 (★4), 450–452 |
+| ★2 | the eighth red coin sets `red_coins`: star 2 comes down onto the torii's top beam | 450 |
+| ★3 | the bell's rope: a touch box 1.2 m square (0.6 m round the rope); star 3 comes down 2.4 m in front of it | 451 |
+| ★5 | the omamori (touch, `timer` 85 s, hidden while it runs) starts the clock and the train (`game_train`, two grey-box cars on track 2, z 12.1, from x 2 to x 160); the platform's box (x 144–176, z 3.5–14, 6 m high: the platform, the train standing there, and in the grey box the plaza stairs' head) wins | 452 (won by G8), 453 (lost), 454 (the walking route, timed) |
+| A | press (B) at the ledge's lip (44) over the ladder: layer `ladder_a` | 460, 467 |
+| B | press (B) on the ridge side of the bar (z 233.6–236.4): layer `gate_b_open` (its group's `gate_b_barred` goes off) | 461 |
+| C | ground pound on the root plate, east and south-east of the trunk (the trail's side; the rim west of it is too steep to stand on): layer `cedar_c_down` | 462 |
+| D | ground pound inside the chamber at the root door: layer `root_d_shut` off | 463 |
+| E | press (B) at the roof's north edge over the ladder: layer `ladder_e` | 464, 467 |
+| Saved | every shortcut stays open when the world is opened again, and on the memory card across a restart | 460–466 |
+| Ladders A, E | front poles: held on the face away from the rock or wall, not gone round, not grabbed while their layer is off | 467 |
+
+The placement agents' real assets: the rolled-up ladder A, the folded ladder E and the barred
+gate go in a layer of the same group as the down/open one (`ladder_a_up` with `ladder_a`, and so
+on), so switching the open layer on puts the shut one off; a real ladder's pole keeps `front: true` and,
+as its yaw, the direction from the ladder to the side it is climbed on. A trigger's placement is the centre of its box's base, set 5 cm over
+the floor (the World Checker reports an entity in a solid). When the real station is placed, the
+race's last legs (`RACE_TOWN` in the scenarios) go up its inside stair, and star 5 and the
+platform's box move to the real platform (10.0) if it differs.

@@ -1,0 +1,594 @@
+// The goals' scenarios (numbered 450-479), in the shrine town's grey box: the stars (goals.akr),
+// the red coins releasing star 2, the bell, the last train won and lost, the shortcuts A-E (each
+// opened, then still open after the world is opened again), the progress on a memory card, and
+// the front-only ladders. check.sh runs the ones goals_cases.sh lists; 465 and 466 run on one
+// memory card file, in that order. Numbers that the level's game.py sets (the clock, the train's
+// times) are read from the entities. Stars 1 and 4 are scenarios 422 and 423.
+
+const ROUTE_MAX = 32
+
+var gc_pts: [ROUTE_MAX]vec3      // a walk's points (y: unused)
+var gc_n: s32
+var gc_i: s32                    // the point walked to now
+var gc_slow: s32                 // ticks spent slow (a step or a lip: hop)
+var gc_t0: s32
+var gc_e: *WpEntity
+var gc_k: s32
+
+fn goals_case_init() -> bool {
+    match SCENARIO {
+        450 => { name = "goals: the eight red coins release star 2 on the great torii's top beam" }
+        451 => { name = "goals: the stage bell rings star 3 down onto the deck" }
+        452 => { name = "goals: the last train, won: the omamori, the glide G8, the arcade, the station" }
+        453 => { name = "goals: the last train, lost: the clock runs out, the train comes and goes" }
+        454 => { name = "goals: the last train's walking route (west: the torii tunnel, the woods trail), timed" }
+        460 => { name = "goals: shortcut A, the rope ladder kicked down from the ledge, stays down" }
+        461 => { name = "goals: shortcut B, the north gate's bar lifted from the ridge side, stays open" }
+        462 => { name = "goals: shortcut C, the dead cedar pounded over the gorge, stays down" }
+        463 => { name = "goals: shortcut D, the root door pounded open from inside the cedar, stays open" }
+        464 => { name = "goals: shortcut E, the fire-escape ladder kicked down from the roof, stays down" }
+        465 => { name = "goals: the progress written to the memory card (shortcut E, star 4)" }
+        466 => { name = "goals: the progress read from the memory card at start-up" }
+        467 => { name = "goals: the front-only ladders: held on their front, not gone round, not grabbed while up" }
+        else => { return false }
+    }
+    cam.lock = false
+    tw_phase = 0
+    tw_k = 0
+    gc_i = 0
+    gc_n = 0
+    return true
+}
+
+fn goals_case(f: s32) {
+    match SCENARIO {
+        450 => gc_red(f)
+        451 => gc_bell(f)
+        452 => gc_race_won(f)
+        453 => gc_race_lost(f)
+        454 => gc_route_west(f)
+        460 => gc_shortcut(f, "shortcut_a", "ladder_a", true)
+        461 => gc_shortcut(f, "shortcut_b", "gate_b_open", true)
+        462 => gc_shortcut(f, "shortcut_c", "cedar_c_down", true)
+        463 => gc_shortcut(f, "shortcut_d", "root_d_shut", false)
+        464 => gc_shortcut(f, "shortcut_e", "ladder_e", true)
+        465 => gc_card_write(f)
+        466 => gc_card_read(f)
+        467 => gc_front(f)
+        else => {}
+    }
+}
+
+// ---- helpers
+
+// The trigger whose flag is `nm`.
+fn gc_trig(nm: *u8) -> *WpEntity {
+    for k in 0..trig_n {
+        let p = wp_entity_params(trigs[k]) as *GardenTrigger
+        if streq(pname(p.flag), nm) { return trigs[k] }
+    }
+    assert(false)
+    return null
+}
+
+fn gc_trig_params(e: *WpEntity) -> *GardenTrigger { return wp_entity_params(e) as *GardenTrigger }
+
+fn gc_layer(nm: *u8) -> bool { return wp_layer_on(wp_layer_find(nm)) }
+
+// The mover started by a flag (the train).
+fn gc_train() -> *Mover {
+    for k in 0..mover_n {
+        if movers[k].start != null { return &movers[k] }
+    }
+    assert(false)
+    return null
+}
+
+fn gc_route(pts: *vec3, n: s32) {
+    gc_n = n
+    gc_i = 0
+    gc_slow = 0
+    for k in 0..n { gc_pts[k] = pts[k] }
+}
+
+// Walks the route's points in turn at full stick (no teleport): true when the last is reached.
+// Slow for half a second (a lip or a step the run does not take): a hop.
+fn gc_walk(tol: fixed) -> bool {
+    if gc_i >= gc_n { return true }
+    let to = gc_pts[gc_i]
+    if tw_hdist(pl.pos, to) < tol {
+        gc_i += 1
+        if gc_i >= gc_n { return true }
+    }
+    stick_v = cc_stick(sh_heading(gc_pts[gc_i]), 1.0)
+    if pl.st == St.Ground && speed_ms() < 3.0 { gc_slow += 1 } else { gc_slow = 0 }
+    if gc_slow > 30 { pad_v = A; gc_slow = 0 }
+    if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+    return false
+}
+
+// Stands at p (on the floor found from `from`) facing yaw.
+fn gc_place(x: fixed, z: fixed, from: fixed, yaw: fixed) {
+    place(vec3(x, sh_floor(x, z, from), z), yaw)
+}
+
+// Opens the garden, then the shrine town again (a reload of the world).
+fn gc_reload() {
+    world_switch(GARDEN_WORLD_GARDEN)
+    expect(world_k == GARDEN_WORLD_GARDEN && flag_n == 0, "in the garden, no flags", fixed(flag_n))
+    world_switch(GARDEN_WORLD_SHRINETOWN)
+}
+
+// A star taken: walk at it until it is (t0: the frame the walk started).
+fn gc_take(f: s32, star: s32, what: *u8) -> bool {
+    if star_taken(star) {
+        expect(true, what, pl.pos.y)
+        return true
+    }
+    stick_v = cc_stick(sh_heading(wp_entity_pos(wp_entity(star))), 0.6)
+    if f > gc_t0 + 600 { expect(false, what, tw_hdist(pl.pos, wp_entity_pos(wp_entity(star)))) }
+    return false
+}
+
+// ---- 450: the red coins and star 2
+
+fn gc_red(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        tw_star = tw_star_near(vec3(160.0, 14.7, 124.0))
+        expect(tw_star >= 0 && red_total == 8, "star 2 and eight red coins in the world", fixed(red_total))
+        expect(star_drop(wp_entity(tw_star)) < 0.0, "star 2 is not there yet", 0.0)
+        sh_n = -1
+    }
+    if tw_phase == 0 {
+        // each red coin: the body put where it takes the coin (as scenario 430)
+        if sh_t == 0 {
+            sh_n = gc_next_red(sh_n + 1)
+            if sh_n < 0 {
+                tw_phase = 1
+                t0 = f
+                expect(red_coins == 8 && flag_on("red_coins"), "eight red coins: the flag", fixed(red_coins))
+                return
+            }
+            if red_coins < 8 { expect(star_drop(wp_entity(tw_star)) < 0.0, "not before the eighth", fixed(red_coins)) }
+            let c = wp_entity_pos(wp_entity(sh_n))
+            if tw_on_rail(c) { place_air(vec3(c.x, c.y - 0.8, c.z), NORTH) } else {
+                assert(wp_floor(c, 0.0))
+                place(vec3(c.x, wp_hit.y, c.z), NORTH)
+            }
+        }
+        sh_t += 1
+        if sh_t == 2 { sh_t = 0 }
+        return
+    }
+    if tw_phase == 1 {
+        let up = star_drop(wp_entity(tw_star))
+        if f == t0 + 1 { expect(up > 2.0, "star 2 coming down onto the beam, m above it", up) }
+        if f == t0 + STAR_DROP + 2 {
+            expect(up == 0.0, "star 2 on the beam", up)
+            // on the top beam (the kasagi's top, 13.8), 2 m west of the star: walk to it
+            gc_place(158.0, 124.0, 20.0, EAST)
+            expect(near(pl.pos.y, 13.8, 0.2), "on the torii's top beam, y", pl.pos.y)
+            tw_phase = 2
+            gc_t0 = f
+        }
+        return
+    }
+    if gc_take(f, tw_star, "star 2 taken on the torii") {
+        expect(stars_taken == 1, "one star", fixed(stars_taken))
+        done()
+        tw_phase = 9
+    }
+}
+
+fn gc_next_red(from: s32) -> s32 {
+    for n in from..wp_pack.entity_count as s32 {
+        if wp_entity(n).type_id as s32 == RED_COIN_TYPE { return n }
+    }
+    return -1
+}
+
+// ---- 451: the bell and star 3
+
+fn gc_bell(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        tw_star = tw_star_near(vec3(154.0, 61.0, 351.5))
+        gc_e = gc_trig("bell")
+        expect(tw_star >= 0, "star 3", fixed(tw_star))
+        // on the deck, 3 m south of the bell's rope, facing it
+        gc_place(154.0, 350.9, 61.0, NORTH)
+        expect(near(pl.pos.y, 60.0, 0.05), "on the stage's deck, y", pl.pos.y)
+        expect(star_drop(wp_entity(tw_star)) < 0.0, "no star before the bell", 0.0)
+    }
+    if tw_phase == 0 {
+        stick_v = cc_stick(NORTH, 0.5)
+        if flag_on("bell") {
+            tw_phase = 1
+            t0 = f
+            let d = pl.pos - wp_entity_pos(gc_e)
+            note("rang the bell at, m from its rope", length(vec3(d.x, 0.0, d.z)))
+            expect(abs(d.x) < 0.6 && abs(d.z) < 0.6, "within 0.6 m of the rope", d.z)
+        }
+        if f > 300 { expect(false, "rang the bell", pl.pos.z) }
+        return
+    }
+    if tw_phase == 1 {
+        if f == t0 + 1 { expect(star_drop(wp_entity(tw_star)) > 2.0, "star 3 coming down", star_drop(wp_entity(tw_star))) }
+        if f == t0 + STAR_DROP + 1 {
+            expect(star_drop(wp_entity(tw_star)) == 0.0, "star 3 on the deck", 0.0)
+            tw_phase = 2
+            gc_t0 = f
+        }
+        return
+    }
+    if gc_take(f, tw_star, "star 3 taken on the deck") {
+        done()
+        tw_phase = 9
+    }
+}
+
+// ---- 452: the last train, won by the G8 line
+
+// From the arcade's landing to the station's platform: the shotengai south, the plaza, the west
+// station stair (z 32 -> 14, up to the deck, 9.0), the platform. (The real station's inside stair
+// is about 35 m longer: DESIGN.md, star 5.)
+const RACE_TOWN: [5]vec3 = [vec3(160.0, 0.0, 44.0), vec3(152.0, 0.0, 34.0), vec3(152.0, 0.0, 14.0),
+                            vec3(156.0, 0.0, 10.0), vec3(160.0, 0.0, 7.5)]
+
+fn gc_race_won(f: s32) {
+    if tw_phase == 9 { return }
+    let to = vec3(160.0, 0.0, 84.0)
+    if f == 0 {
+        gc_e = gc_trig("race5")
+        tw_star = tw_star_near(vec3(160.0, 10.4, 7.0))
+        // 2 m north of the omamori, on the stage, facing it
+        gc_place(168.0, 344.0, 61.0, 3.1416)
+        pl.spawn = vec3(pl.pos.x, 0.0, pl.pos.z)
+        expect(trig_shown(gc_e) && !gc_train_live(), "the omamori on the stage, no train", 0.0)
+    }
+    let air = is_air(pl.st) || pl.st == St.Glide
+    if tw_phase == 0 {                                 // into the omamori: the clock starts
+        stick_v = cc_stick(3.1416, 1.0)
+        if flag_on("race5") {
+            tw_phase = 1
+            t0 = f
+            expect(chal_left == gc_trig_params(gc_e).timer as s32 - 1 || chal_left > 0, "the clock runs, s", fixed(chal_left) / 60)
+            expect(!trig_shown(gc_e), "the omamori taken", 0.0)
+            gc_route(&G8_RUNUP[0], 1)
+        }
+        if f > 120 { expect(false, "took the omamori", pl.pos.z) }
+        return
+    }
+    if tw_phase == 1 {                                 // round to the glide's run-up, at the back of the deck
+        if gc_walk(1.0) {
+            tw_phase = 2
+            sh_start = pl.pos
+        }
+        return
+    }
+    if tw_phase == 2 {                                 // G8 (scenario 417): run 3 m south, jump, double, glide
+        stick_v = cc_stick(sh_heading(to), 1.0)
+        if tw_hdist(pl.pos, sh_start) >= 3.0 { pad_v = A; tw_phase = 3 }
+        return
+    }
+    if tw_phase == 3 {
+        stick_v = cc_stick(sh_heading(to), 1.0)
+        pad_v = A
+        if air && pl.vel.y <= 0.0 { pad_v = 0; tw_phase = 4 }
+        return
+    }
+    if tw_phase == 4 {
+        stick_v = cc_stick(sh_heading(to), 1.0)
+        if pl.st == St.Ground { pad_v = A; tw_phase = 5 }
+        return
+    }
+    if tw_phase == 5 {
+        stick_v = cc_stick(sh_heading(to), 1.0)
+        pad_v = A
+        if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+        if !air && pl.st != St.LedgeHang && pl.st != St.LedgeClimb && pl.st != St.WallSlide {
+            expect(was(St.Glide), "glided", 0.0)
+            note("down in the arcade after, s", fixed(f - t0) / 60)
+            note("down at z", pl.pos.z)
+            tw_phase = 6
+            gc_route(&RACE_TOWN[0], len(RACE_TOWN) as s32)
+        }
+        if f > t0 + 3000 { expect(false, "down from the glide", pl.pos.y) }
+        return
+    }
+    if tw_phase == 6 {                                 // on foot to the platform
+        let _ = gc_walk(1.2)
+        if flag_on("race5_won") {
+            let s = fixed(f - t0) / 60
+            note("on the platform after, s", s)
+            expect(chal_flag == null && chal_end == 1 && !flag_on("race5"), "won: the clock stopped", s)
+            expect(pl.pos.y > 8.5, "at the platform (the deck, or the stair's head), y", pl.pos.y)
+            tw_phase = 7
+            t1 = f
+        }
+        if chal_end == 2 { expect(false, "reached the platform in time", pl.pos.z) }
+        return
+    }
+    if tw_phase == 7 {
+        if f == t1 + STAR_DROP + 1 {
+            expect(star_drop(wp_entity(tw_star)) == 0.0, "star 5 at the marked spot", 0.0)
+            tw_phase = 8
+            gc_t0 = f
+        }
+        return
+    }
+    if gc_take(f, tw_star, "star 5 taken on the platform") {
+        expect(trig_shown(gc_e), "the omamori back on the stage", 0.0)
+        done()
+        tw_phase = 9
+    }
+}
+
+// The glide's run-up: the back of the stage's deck (G8's start, scenario 417).
+const G8_RUNUP: [1]vec3 = [vec3(166.0, 0.0, 353.0)]
+
+fn gc_train_live() -> bool { return mover_live(gc_train()) }
+
+// ---- 453: the last train, lost: the omamori taken and the clock let run out
+
+fn gc_race_lost(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        gc_e = gc_trig("race5")
+        tw_star = tw_star_near(vec3(160.0, 10.4, 7.0))
+        gc_place(168.0, 343.5, 61.0, 3.1416)
+    }
+    let m = gc_train()
+    if tw_phase == 0 {
+        stick_v = cc_stick(3.1416, 0.5)
+        if flag_on("race5") { tw_phase = 1; t0 = f; stick_v = STILL }
+        if f > 120 { expect(false, "took the omamori", pl.pos.z) }
+        return
+    }
+    let p = gc_trig_params(gc_e)
+    let t = f - t0
+    let arrive = m.delay + m.period
+    if t == 60 { expect(!mover_live(m) && !trig_shown(gc_e), "the train not yet out; the omamori taken", fixed(m.mt)) }
+    if t == m.delay - 30 { expect(!mover_live(m), "the train waits, parked, until its delay", fixed(m.mt)) }
+    if t == m.delay + 30 {
+        expect(mover_live(m) && m.pos.x < 40.0 && near(m.pos.z, 12.1, 0.01), "the train coming in from the west, x", m.pos.x)
+        note("the train comes in at, s", fixed(m.delay) / 60)
+    }
+    if t == arrive + 30 {
+        expect(near(m.pos.x, 160.0, 0.01) && near(m.pos.y, 9.0, 0.01), "the train standing at the platform, x", m.pos.x)
+        expect(chal_flag != null, "the clock still running, s", fixed(chal_left) / 60)
+    }
+    if t == p.timer as s32 + 2 {
+        expect(chal_flag == null && chal_end == 2 && !flag_on("race5"), "time is up: lost", fixed(t) / 60)
+        expect(trig_shown(gc_e), "the omamori back on the stage", 0.0)
+        expect(star_drop(wp_entity(tw_star)) < 0.0, "no star 5", 0.0)
+    }
+    if t == p.timer as s32 + 60 { expect(mover_live(m) && m.pos.x < 157.0, "the train pulling out as the clock ran out, x", m.pos.x) }
+    if t == arrive + m.pause + m.period + 4 {
+        expect(!mover_live(m) && m.mt < 0, "the train parked again", fixed(m.mt))
+        done()
+        tw_phase = 9
+    }
+}
+
+// ---- 454: the walking route, timed (DESIGN.md, star 5, approach 3)
+
+// The stage's west end, the landing stair, the torii tunnel's steps down (54.5 to 15), the fox
+// grove, the woods trail south (its points, north to south), the front road, the shotengai, the
+// station: RACE_TOWN from the arcade on.
+const RACE_WEST: [23]vec3 = [
+    vec3(150.0, 0.0, 347.0), vec3(138.4, 0.0, 347.0), vec3(126.0, 0.0, 346.25), vec3(122.0, 0.0, 346.0),
+    vec3(106.0, 0.0, 342.0), vec3(112.0, 0.0, 334.0), vec3(96.0, 0.0, 328.0), vec3(106.0, 0.0, 318.0),
+    vec3(92.0, 0.0, 314.0), vec3(94.0, 0.0, 300.0), vec3(90.0, 0.0, 294.0), vec3(94.0, 0.0, 284.0),
+    vec3(96.0, 0.0, 255.5), vec3(84.0, 0.0, 232.0), vec3(74.0, 0.0, 206.0), vec3(87.0, 0.0, 176.0),
+    vec3(101.0, 0.0, 146.0), vec3(100.4, 0.0, 128.5), vec3(97.0, 0.0, 119.0), vec3(104.0, 0.0, 111.0),
+    vec3(150.0, 0.0, 111.0), vec3(158.0, 0.0, 104.0), vec3(160.0, 0.0, 84.0),
+]
+
+fn gc_route_west(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        gc_place(168.0, 343.5, 61.0, 3.1416)
+        pl.spawn = vec3(pl.pos.x, 0.0, pl.pos.z)
+    }
+    if tw_phase == 0 {
+        stick_v = cc_stick(3.1416, 1.0)
+        if flag_on("race5") {
+            tw_phase = 1
+            t0 = f
+            gc_route(&RACE_WEST[0], len(RACE_WEST) as s32)
+        }
+        return
+    }
+    if tw_phase == 1 {
+        if gc_walk(2.0) {
+            note("the arcade at z 84 after, s", fixed(f - t0) / 60)
+            tw_phase = 2
+            gc_route(&RACE_TOWN[0], len(RACE_TOWN) as s32)
+        }
+        if TW_TRACE != 0 && f % 60 == 0 { note("trace, point", fixed(gc_i)) }
+        if f > t0 + 6000 { expect(false, "along the route, point", fixed(gc_i)) }
+        return
+    }
+    let _ = gc_walk(1.2)
+    if flag_on("race5_won") {
+        let s = fixed(f - t0) / 60
+        note("the walking route: on the platform after, s", s)
+        // the clock (game.py): the route at 85% of the run speed, with the real station's inside
+        // stair (about 35 m, 4.5 s more than the grey box's outside one), and 8 s to spare
+        let need = s * 100 / 85 + 4.5 * 100 / 85 + 8.0
+        note("so the clock should be at least, s", need)
+        expect(fixed(gc_trig_params(gc_trig("race5")).timer as s32) / 60 >= need, "the clock leaves the walking route its margin, s", need)
+        done()
+        tw_phase = 9
+    }
+    if chal_end == 2 { expect(false, "the walking route in time", pl.pos.z) }
+}
+
+// ---- 460-464: the shortcuts
+
+// A shortcut: the body put in its trigger (or beside it), then a wrong move first (a walk
+// through it, no press or pound: nothing opens), then its own (B, or a ground pound): its layer
+// switches (on, or off for D's curtain); then the world is opened again and it still is.
+fn gc_shortcut(f: s32, flag: *u8, layer: *u8, on: bool) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        gc_e = gc_trig(flag)
+        let p = gc_trig_params(gc_e)
+        let c = wp_entity_pos(gc_e)
+        expect(p.keep && gc_layer(layer) != on && !flag_on(flag), "shut at the start", 0.0)
+        // in the box, on its floor (looked for from the box's top)
+        var x = c.x
+        var z = c.z
+        if streq(flag, "shortcut_c") { x = 258.0; z = 304.0 }                   // on the trail beside the cedar's trunk
+        gc_place(x, z, c.y + p.size.y, NORTH)
+        note("standing at y", pl.pos.y)
+        expect(trig_inside(gc_e, p), "in the trigger", pl.pos.y)
+        tw_k = 0
+    }
+    let p = gc_trig_params(gc_e)
+    if tw_phase == 0 {                       // the wrong move: a plain jump (and, for a press, no B)
+        if f >= 4 && f < 14 { pad_v = A }
+        if f == 80 {
+            expect(!flag_on(flag) && gc_layer(layer) != on, "a jump opens nothing", 0.0)
+            tw_phase = 1
+            t0 = f
+        }
+        return
+    }
+    if tw_phase == 1 {                       // its own move
+        if p.how == GardenTriggerHow.Press {
+            if f == t0 + 2 { pad_v = B }
+        } else {
+            if f >= t0 + 2 && f < t0 + 12 { pad_v = A }
+            if f > t0 + 12 && pl.vel.y <= 0.0 && is_air(pl.st) && pl.st != St.PoundSpin && pl.st != St.PoundFall { pad_v = R }
+        }
+        if flag_on(flag) {
+            expect(gc_layer(layer) == on, "opened: its layer switched", fixed(f - t0))
+            if p.how == GardenTriggerHow.Press { expect(pl.st != St.Dive, "the press is no dive", 0.0) }
+            else { expect(pl.st == St.PoundLand, "by a ground pound", 0.0) }
+            expect(prog_has(gc_e), "saved", 0.0)
+            tw_phase = 2
+            t1 = f
+        }
+        if f > t0 + 120 { expect(false, "opened", pl.pos.y) }
+        return
+    }
+    if tw_phase == 2 && f == t1 + 30 {
+        gc_check_open(flag)
+        gc_reload()
+        expect(flag_on(flag) && gc_layer(layer) == on, "still open after the world is opened again", 0.0)
+        gc_check_open(flag)
+        done()
+        tw_phase = 9
+    }
+}
+
+// What each shortcut's opening changed for the body.
+fn gc_check_open(flag: *u8) {
+    if streq(flag, "shortcut_a") || streq(flag, "shortcut_e") {
+        // its ladder (a front pole in its layer) is there to grab
+        var k = -1
+        for j in 0..pole_n {
+            if poles[j].front && wp_entity_live(poles[j].e) && tw_hdist(poles[j].base, wp_entity_pos(gc_e)) < 3.0 { k = j }
+        }
+        expect(k >= 0, "its ladder is a live front pole", fixed(k))
+    }
+    if streq(flag, "shortcut_b") {
+        // the barred gate's bar is gone: no wall between the precinct and the ridge stair
+        expect(!gc_layer("gate_b_barred"), "the bar is gone", 0.0)
+        let _ = wp_push(vec3(160.0, 6.0, 233.0), BODY_RADIUS)
+        expect(wp_hit.walls == 0, "the gateway is clear", fixed(wp_hit.walls))
+    }
+    if streq(flag, "shortcut_c") {
+        // the fallen cedar is a floor from the rim (34.7) down to the shelf (20)
+        expect(wp_floor(vec3(241.0, 40.0, 312.0), 0.0) && wp_hit.y > 20.0 && wp_hit.y < 34.0, "the log bridges the gorge, y", wp_hit.y)
+    }
+    if streq(flag, "shortcut_d") {
+        // the root curtain is gone: the door in the trunk's foot is open
+        let _ = wp_push(vec3(150.6, 14.0, 296.0), BODY_RADIUS)
+        expect(wp_hit.walls == 0, "the root door is open", fixed(wp_hit.walls))
+    }
+}
+
+// ---- 465, 466: the progress on the memory card (run with --card1 FILE, 465 first)
+
+fn gc_card_write(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        expect(card_present(1), "a memory card", 0.0)
+        gc_e = gc_trig("shortcut_e")
+        let c = wp_entity_pos(gc_e)
+        gc_place(c.x, c.z, c.y + 3.0, NORTH)
+        tw_star = tw_star_near(vec3(154.0, 14.0, 296.0))
+    }
+    if f == 2 { pad_v = B }
+    if f == 10 {
+        expect(flag_on("shortcut_e") && gc_layer("ladder_e"), "shortcut E open", 0.0)
+        place(vec3(154.0, 13.0, 296.6), NORTH)            // in the cedar's chamber, at star 4
+    }
+    if f == 14 { expect(star_taken(tw_star), "star 4 taken", 0.0) }
+    if f > 14 && !prog_dirty && !card_busy() && tw_phase == 0 {
+        expect(saves_written >= 1, "written to the card, times", fixed(saves_written))
+        done()
+        tw_phase = 9
+    }
+    if f > 200 && tw_phase != 9 { expect(false, "written to the card", fixed(saves_written)) }
+}
+
+fn gc_card_read(f: s32) {
+    if f == 0 {
+        tw_star = tw_star_near(vec3(154.0, 14.0, 296.0))
+        expect(card_present(1), "a memory card", 0.0)
+        expect(flag_on("shortcut_e") && gc_layer("ladder_e"), "shortcut E open at start-up", 0.0)
+        expect(!flag_on("shortcut_a") && !gc_layer("ladder_a"), "shortcut A still shut", 0.0)
+        expect(star_taken(tw_star) && stars_taken == 1, "star 4 taken, one star", fixed(stars_taken))
+        done()
+    }
+}
+
+// ---- 467: the front-only ladders
+
+fn gc_front(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        // ladder E is up (its layer off): a jump at its pole grabs nothing
+        place(vec3(199.5, 0.0, 104.5), 3.1416)
+        tw_k = 0
+    }
+    if tw_phase == 0 {
+        if f >= 4 && f < 30 { pad_v = A }
+        stick_v = cc_stick(3.1416, 1.0)
+        if pl.st == St.Pole { expect(false, "no ladder E while it is up", pl.pos.y) }
+        if f == 90 {
+            expect(true, "no grab at ladder E while it is up", pl.pos.z)
+            // ladder A down: grab it, then hold the stick sideways: the body stays on its front
+            wp_layer_set(wp_layer_find("ladder_a"), true)
+            place(vec3(154.0, sh_floor(154.0, 315.5, 30.0), 315.5), NORTH)
+            tw_phase = 1
+            t0 = f
+        }
+        return
+    }
+    if tw_phase == 1 {
+        stick_v = FWD
+        if f >= t0 + 4 && f < t0 + 14 { pad_v = A }
+        if pl.st == St.Pole {
+            expect(near(pole_ang, PI, 0.01) || near(pole_ang, -PI, 0.01), "held on the ladder's south face", pole_ang)
+            tw_phase = 2
+            t1 = f
+        }
+        if f > t0 + 120 { expect(false, "grabbed ladder A", pl.pos.y) }
+        return
+    }
+    if tw_phase == 2 {
+        stick_v = cc_stick(EAST, 1.0)          // sideways, for two seconds
+        if f == t1 + 120 {
+            expect(pl.st == St.Pole && (near(pole_ang, PI, 0.01) || near(pole_ang, -PI, 0.01)), "not gone round: still on the front", pole_ang)
+            expect(pl.pos.z < 317.85, "the body in front of the ladder, not in the rock, z", pl.pos.z)
+            done()
+            tw_phase = 9
+        }
+    }
+}

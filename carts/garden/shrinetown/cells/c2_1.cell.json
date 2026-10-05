@@ -534,13 +534,15 @@
   },
   {
    "id": "star_2_torii",
-   "type": "coin",
+   "type": "star",
    "position": [
     160,
     14.7,
     124
    ],
-   "asset": "gbt_star"
+   "params": {
+    "appear": "red_coins"
+   }
   },
   {
    "id": "coin_roof3",
