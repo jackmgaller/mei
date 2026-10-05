@@ -1,0 +1,1965 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "locomotive",
+ "budget": {
+  "vertices": 2048,
+  "triangles": 1800
+ },
+ "sheets": {
+  "loco": {
+   "image": "art/loco_sheet.png"
+  }
+ },
+ "materials": {
+  "black": {
+   "color": "#30313a"
+  },
+  "boiler": {
+   "color": "#2e3039",
+   "smooth": true
+  },
+  "smokebox": {
+   "color": "#26272d",
+   "smooth": true
+  },
+  "roof": {
+   "color": "#3b3d47"
+  },
+  "frame": {
+   "color": "#1f2025"
+  },
+  "red": {
+   "color": "#b8312a"
+  },
+  "lining": {
+   "color": "#e9e4d6"
+  },
+  "brass": {
+   "color": "#d9a93a"
+  },
+  "steel": {
+   "color": "#aeb2ba"
+  },
+  "tyre": {
+   "color": "#5e6068"
+  },
+  "lamp": {
+   "color": "#ffe7a0",
+   "class": "emissive",
+   "palette": true
+  },
+  "spokes": {
+   "color": "#25262d",
+   "double_sided": true,
+   "texture": {
+    "sheet": "loco",
+    "cell": "wheel",
+    "projection": "disc",
+    "axis": "y"
+   }
+  },
+  "headboard": {
+   "color": "#f3ead0",
+   "texture": {
+    "sheet": "loco",
+    "cell": "headboard",
+    "bits": 8,
+    "projection": "disc",
+    "axis": "y"
+   }
+  },
+  "plate": {
+   "color": "#3a1416",
+   "texture": {
+    "sheet": "loco",
+    "cell": "plate",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "window": {
+   "color": "#26354a",
+   "texture": {
+    "texels": [
+     "00000000",
+     "01111110",
+     "01222110",
+     "01221110",
+     "01211110",
+     "01111130",
+     "01111330",
+     "00000000"
+    ],
+    "colors": [
+     "#30313a",
+     "#22324a",
+     "#7fa4c4",
+     "#3c5674"
+    ],
+    "projection": "fit"
+   }
+  },
+  "coal": {
+   "color": "#26262c",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#1c1c21",
+     "#3d3e47",
+     "#5b5d68"
+    ],
+    "params": {
+     "density": 0.35
+    },
+    "projection": "box",
+    "scale": [
+     0.6,
+     0.6
+    ]
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true,
+  "scale": "world"
+ },
+ "prototypes": {
+  "driver": {
+   "id": "wheel",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     -90
+    ]
+   },
+   "children": [
+    {
+     "id": "tyre",
+     "op": "cylinder",
+     "radius": 0.7,
+     "height": 0.14,
+     "segments": 12,
+     "caps": false,
+     "material": "tyre"
+    },
+    {
+     "id": "spokes",
+     "op": "mesh",
+     "material": "spokes",
+     "vertices": [
+      [
+       0.7,
+       0,
+       -0.0
+      ],
+      [
+       0.6062,
+       0,
+       -0.35
+      ],
+      [
+       0.35,
+       0,
+       -0.6062
+      ],
+      [
+       0.0,
+       0,
+       -0.7
+      ],
+      [
+       -0.35,
+       0,
+       -0.6062
+      ],
+      [
+       -0.6062,
+       0,
+       -0.35
+      ],
+      [
+       -0.7,
+       0,
+       -0.0
+      ],
+      [
+       -0.6062,
+       0,
+       0.35
+      ],
+      [
+       -0.35,
+       0,
+       0.6062
+      ],
+      [
+       -0.0,
+       0,
+       0.7
+      ],
+      [
+       0.35,
+       0,
+       0.6062
+      ],
+      [
+       0.6062,
+       0,
+       0.35
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11
+      ]
+     ],
+     "transform": {
+      "translate": [
+       0,
+       0.076,
+       0
+      ]
+     }
+    }
+   ]
+  },
+  "small_wheel": {
+   "id": "wheel",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     -90
+    ]
+   },
+   "children": [
+    {
+     "id": "tyre",
+     "op": "cylinder",
+     "radius": 0.43,
+     "height": 0.12,
+     "segments": 8,
+     "caps": false,
+     "material": "tyre"
+    },
+    {
+     "id": "spokes",
+     "op": "mesh",
+     "material": "spokes",
+     "vertices": [
+      [
+       0.43,
+       0,
+       -0.0
+      ],
+      [
+       0.3041,
+       0,
+       -0.3041
+      ],
+      [
+       0.0,
+       0,
+       -0.43
+      ],
+      [
+       -0.3041,
+       0,
+       -0.3041
+      ],
+      [
+       -0.43,
+       0,
+       -0.0
+      ],
+      [
+       -0.3041,
+       0,
+       0.3041
+      ],
+      [
+       -0.0,
+       0,
+       0.43
+      ],
+      [
+       0.3041,
+       0,
+       0.3041
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ]
+     ],
+     "transform": {
+      "translate": [
+       0,
+       0.066,
+       0
+      ]
+     }
+    }
+   ]
+  }
+ },
+ "nodes": [
+  {
+   "id": "headboard",
+   "op": "mesh",
+   "material": "headboard",
+   "vertices": [
+    [
+     0.4,
+     0,
+     -0.0
+    ],
+    [
+     0.3604,
+     0,
+     -0.1736
+    ],
+    [
+     0.2494,
+     0,
+     -0.3127
+    ],
+    [
+     0.089,
+     0,
+     -0.39
+    ],
+    [
+     -0.089,
+     0,
+     -0.39
+    ],
+    [
+     -0.2494,
+     0,
+     -0.3127
+    ],
+    [
+     -0.3604,
+     0,
+     -0.1736
+    ],
+    [
+     -0.4,
+     0,
+     -0.0
+    ],
+    [
+     -0.3604,
+     0,
+     0.1736
+    ],
+    [
+     -0.2494,
+     0,
+     0.3127
+    ],
+    [
+     -0.089,
+     0,
+     0.39
+    ],
+    [
+     0.089,
+     0,
+     0.39
+    ],
+    [
+     0.2494,
+     0,
+     0.3127
+    ],
+    [
+     0.3604,
+     0,
+     0.1736
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     -90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     1.93,
+     -6.43
+    ]
+   }
+  },
+  {
+   "id": "headboard_bracket",
+   "op": "box",
+   "size": [
+    0.1,
+    0.16,
+    0.08
+   ],
+   "material": "black",
+   "transform": {
+    "translate": [
+     0.0,
+     1.54,
+     -6.4
+    ]
+   }
+  },
+  {
+   "id": "front_plate",
+   "op": "mesh",
+   "material": "plate",
+   "vertices": [
+    [
+     -0.36,
+     2.66,
+     -6.352
+    ],
+    [
+     0.36,
+     2.66,
+     -6.352
+    ],
+    [
+     0.36,
+     2.84,
+     -6.352
+    ],
+    [
+     -0.36,
+     2.84,
+     -6.352
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     3,
+     2,
+     1
+    ]
+   ]
+  },
+  {
+   "id": "door_handle",
+   "op": "group",
+   "children": [
+    {
+     "id": "handle_a",
+     "op": "box",
+     "size": [
+      0.42,
+      0.05,
+      0.05
+     ],
+     "material": "brass",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       35
+      ],
+      "translate": [
+       0,
+       0,
+       0
+      ]
+     }
+    },
+    {
+     "id": "handle_b",
+     "op": "box",
+     "size": [
+      0.42,
+      0.05,
+      0.05
+     ],
+     "material": "brass",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       -35
+      ],
+      "translate": [
+       0,
+       0,
+       0.012
+      ]
+     }
+    }
+   ],
+   "transform": {
+    "translate": [
+     0,
+     2.42,
+     -6.375
+    ]
+   }
+  },
+  {
+   "id": "smokebox_door",
+   "op": "lathe",
+   "segments": 16,
+   "material": "smokebox",
+   "profile": [
+    [
+     0.8,
+     0.0
+    ],
+    [
+     0.5,
+     0.11
+    ],
+    [
+     0.0,
+     0.15
+    ]
+   ],
+   "caps": false,
+   "transform": {
+    "rotate": [
+     -90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     2.3,
+     -6.2001
+    ]
+   }
+  },
+  {
+   "id": "door_ring",
+   "op": "lathe",
+   "segments": 16,
+   "material": "brass",
+   "profile": [
+    [
+     0.88,
+     0.0
+    ],
+    [
+     0.8,
+     0.0001
+    ]
+   ],
+   "caps": false,
+   "transform": {
+    "rotate": [
+     -90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     2.3,
+     -6.2
+    ]
+   }
+  },
+  {
+   "id": "smokebox",
+   "op": "cylinder",
+   "radius": 0.88,
+   "height": 1.2000000000000002,
+   "segments": 16,
+   "caps": false,
+   "material": "smokebox",
+   "transform": {
+    "rotate": [
+     90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     2.3,
+     -5.6
+    ]
+   }
+  },
+  {
+   "id": "smokebox_back",
+   "op": "lathe",
+   "segments": 16,
+   "material": "smokebox",
+   "profile": [
+    [
+     0.82,
+     0.0
+    ],
+    [
+     0.88,
+     0.0001
+    ]
+   ],
+   "caps": false,
+   "transform": {
+    "rotate": [
+     90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     2.3,
+     -5.0001
+    ]
+   }
+  },
+  {
+   "id": "boiler",
+   "op": "cylinder",
+   "radius": 0.82,
+   "height": 6.0,
+   "segments": 16,
+   "caps": false,
+   "material": "boiler",
+   "transform": {
+    "rotate": [
+     90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     2.3,
+     -2.0
+    ]
+   }
+  },
+  {
+   "id": "bands",
+   "op": "group",
+   "children": [
+    {
+     "id": "band_0",
+     "op": "cylinder",
+     "radius": 0.838,
+     "height": 0.07,
+     "segments": 16,
+     "caps": false,
+     "material": "brass",
+     "transform": {
+      "rotate": [
+       90,
+       0,
+       0
+      ],
+      "translate": [
+       0,
+       2.3,
+       -4.75
+      ]
+     }
+    },
+    {
+     "id": "band_1",
+     "op": "cylinder",
+     "radius": 0.838,
+     "height": 0.07,
+     "segments": 16,
+     "caps": false,
+     "material": "brass",
+     "transform": {
+      "rotate": [
+       90,
+       0,
+       0
+      ],
+      "translate": [
+       0,
+       2.3,
+       -0.7
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "chimney",
+   "op": "lathe",
+   "segments": 8,
+   "material": "black",
+   "profile": [
+    [
+     0.3,
+     -0.12
+    ],
+    [
+     0.24,
+     0.08
+    ],
+    [
+     0.22,
+     0.42
+    ],
+    [
+     0.27,
+     0.52
+    ],
+    [
+     0.27,
+     0.56
+    ]
+   ],
+   "caps": false,
+   "transform": {
+    "translate": [
+     0,
+     3.16,
+     -5.55
+    ]
+   }
+  },
+  {
+   "id": "chimney_lip",
+   "op": "lathe",
+   "segments": 8,
+   "material": "brass",
+   "profile": [
+    [
+     0.27,
+     0.56
+    ],
+    [
+     0.2,
+     0.5601
+    ]
+   ],
+   "caps": false,
+   "transform": {
+    "translate": [
+     0,
+     3.16,
+     -5.55
+    ]
+   }
+  },
+  {
+   "id": "lamp_lens",
+   "op": "lathe",
+   "segments": 10,
+   "material": "lamp",
+   "profile": [
+    [
+     0.15,
+     0.0
+    ],
+    [
+     0.1,
+     0.04
+    ],
+    [
+     0.0,
+     0.05
+    ]
+   ],
+   "caps": false,
+   "transform": {
+    "rotate": [
+     -90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     3.28,
+     -6.125
+    ]
+   }
+  },
+  {
+   "id": "headlamp",
+   "op": "cylinder",
+   "radius": 0.17,
+   "height": 0.34,
+   "segments": 10,
+   "material": "black",
+   "transform": {
+    "rotate": [
+     90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     3.28,
+     -5.95
+    ]
+   }
+  },
+  {
+   "id": "lamp_stand",
+   "op": "box",
+   "size": [
+    0.18,
+    0.07,
+    0.23
+   ],
+   "material": "black",
+   "transform": {
+    "translate": [
+     0.0,
+     3.085,
+     -5.935
+    ]
+   }
+  },
+  {
+   "id": "dome",
+   "op": "sphere",
+   "radius": 1.0,
+   "rings": 5,
+   "segments": 8,
+   "material": "boiler",
+   "transform": {
+    "scale": [
+     0.4,
+     0.42,
+     1.35
+    ],
+    "translate": [
+     0,
+     3.0599999999999996,
+     -2.9
+    ]
+   }
+  },
+  {
+   "id": "whistle",
+   "op": "cylinder",
+   "radius": 0.05,
+   "height": 0.26,
+   "segments": 6,
+   "material": "brass",
+   "transform": {
+    "translate": [
+     0,
+     3.43,
+     -2.0
+    ]
+   }
+  },
+  {
+   "id": "handrails",
+   "op": "group",
+   "children": [
+    {
+     "id": "handrail",
+     "op": "box",
+     "size": [
+      0.04,
+      0.04,
+      6.85
+     ],
+     "material": "brass",
+     "transform": {
+      "translate": [
+       0.82,
+       2.64,
+       -2.475
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "air_pump",
+   "op": "cylinder",
+   "radius": 0.17,
+   "height": 0.75,
+   "segments": 8,
+   "material": "black",
+   "transform": {
+    "translate": [
+     1.05,
+     1.835,
+     -2.2
+    ]
+   }
+  },
+  {
+   "id": "deflectors",
+   "op": "group",
+   "children": [
+    {
+     "id": "deflector",
+     "op": "extrude",
+     "points": [
+      [
+       6.2,
+       1.56
+      ],
+      [
+       4.55,
+       1.56
+      ],
+      [
+       4.55,
+       3.12
+      ],
+      [
+       4.75,
+       3.28
+      ],
+      [
+       5.85,
+       3.28
+      ],
+      [
+       6.2,
+       3.0
+      ],
+      [
+       6.25,
+       2.2
+      ]
+     ],
+     "depth": 0.05,
+     "material": "black",
+     "transform": {
+      "rotate": [
+       0,
+       90,
+       0
+      ],
+      "translate": [
+       1.3,
+       0,
+       0
+      ]
+     }
+    },
+    {
+     "id": "deflector_stay",
+     "op": "box",
+     "size": [
+      0.42,
+      0.05,
+      0.06
+     ],
+     "material": "black",
+     "transform": {
+      "translate": [
+       1.07,
+       2.975,
+       -5.27
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "running_board",
+   "op": "group",
+   "children": [
+    {
+     "id": "board",
+     "op": "box",
+     "size": [
+      2.7,
+      0.06,
+      7.55
+     ],
+     "material": "black",
+     "transform": {
+      "translate": [
+       0.0,
+       1.45,
+       -2.725
+      ]
+     }
+    },
+    {
+     "id": "board_edge",
+     "op": "box",
+     "size": [
+      0.03,
+      0.07,
+      7.51
+     ],
+     "material": "lining",
+     "transform": {
+      "translate": [
+       1.355,
+       1.435,
+       -2.725
+      ]
+     }
+    },
+    {
+     "id": "board_edge_l",
+     "op": "box",
+     "size": [
+      0.03,
+      0.07,
+      7.51
+     ],
+     "material": "lining",
+     "transform": {
+      "translate": [
+       -1.355,
+       1.435,
+       -2.725
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "frame",
+   "op": "box",
+   "size": [
+    1.0,
+    0.99,
+    9.8
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     0.0,
+     0.945,
+     -1.55
+    ]
+   }
+  },
+  {
+   "id": "buffer_beam",
+   "op": "box",
+   "size": [
+    2.7,
+    0.47,
+    0.25
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     0.0,
+     1.185,
+     -6.625
+    ]
+   }
+  },
+  {
+   "id": "pilot",
+   "op": "extrude",
+   "material": "frame",
+   "depth": 1.3,
+   "points": [
+    [
+     6.55,
+     0.97
+    ],
+    [
+     6.72,
+     0.97
+    ],
+    [
+     6.98,
+     0.24
+    ],
+    [
+     6.88,
+     0.24
+    ],
+    [
+     6.55,
+     0.6
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ]
+   }
+  },
+  {
+   "id": "coupler",
+   "op": "box",
+   "size": [
+    0.26,
+    0.24,
+    0.35
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     0.0,
+     1.04,
+     -6.875
+    ]
+   }
+  },
+  {
+   "id": "lamps_small",
+   "op": "group",
+   "children": [
+    {
+     "id": "marker",
+     "op": "box",
+     "size": [
+      0.18,
+      0.22,
+      0.15
+     ],
+     "material": "lamp",
+     "transform": {
+      "translate": [
+       1.04,
+       1.57,
+       -6.375
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "cylinders",
+   "op": "group",
+   "children": [
+    {
+     "id": "cylinder",
+     "op": "cylinder",
+     "radius": 0.33,
+     "height": 1.1,
+     "segments": 8,
+     "material": "black",
+     "transform": {
+      "rotate": [
+       90,
+       0,
+       0
+      ],
+      "translate": [
+       0.98,
+       1.08,
+       -5.15
+      ]
+     }
+    },
+    {
+     "id": "guide",
+     "op": "box",
+     "size": [
+      0.06,
+      0.07,
+      1.07
+     ],
+     "material": "steel",
+     "transform": {
+      "translate": [
+       0.86,
+       1.215,
+       -4.085
+      ]
+     }
+    },
+    {
+     "id": "crosshead",
+     "op": "box",
+     "size": [
+      0.08,
+      0.24,
+      0.25
+     ],
+     "material": "steel",
+     "transform": {
+      "translate": [
+       0.86,
+       1.08,
+       -3.925
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "rods",
+   "op": "group",
+   "children": [
+    {
+     "id": "coupling_rod",
+     "op": "box",
+     "size": [
+      0.05,
+      0.12,
+      4.7
+     ],
+     "material": "steel",
+     "transform": {
+      "translate": [
+       0.755,
+       0.48,
+       -0.93
+      ]
+     }
+    },
+    {
+     "id": "main_rod",
+     "op": "box",
+     "size": [
+      0.05,
+      0.12,
+      3.9463
+     ],
+     "material": "steel",
+     "transform": {
+      "rotate": [
+       8.965,
+       0,
+       0
+      ],
+      "translate": [
+       0.81,
+       0.775,
+       -2.05
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "drivers",
+   "op": "group",
+   "children": [
+    {
+     "id": "drivers_0",
+     "op": "instance",
+     "ref": "driver",
+     "transform": {
+      "translate": [
+       0.61,
+       0.7,
+       -3.4
+      ]
+     }
+    },
+    {
+     "id": "drivers_1",
+     "op": "instance",
+     "ref": "driver",
+     "transform": {
+      "translate": [
+       0.61,
+       0.7,
+       -1.9
+      ]
+     }
+    },
+    {
+     "id": "drivers_2",
+     "op": "instance",
+     "ref": "driver",
+     "transform": {
+      "translate": [
+       0.61,
+       0.7,
+       -0.4
+      ]
+     }
+    },
+    {
+     "id": "drivers_3",
+     "op": "instance",
+     "ref": "driver",
+     "transform": {
+      "translate": [
+       0.61,
+       0.7,
+       1.1
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "pony",
+   "op": "group",
+   "children": [
+    {
+     "id": "pony_0",
+     "op": "instance",
+     "ref": "small_wheel",
+     "transform": {
+      "translate": [
+       0.61,
+       0.43,
+       -5.25
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "trailing",
+   "op": "group",
+   "children": [
+    {
+     "id": "trailing_0",
+     "op": "instance",
+     "ref": "small_wheel",
+     "transform": {
+      "translate": [
+       0.61,
+       0.43,
+       2.45
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "tender_wheels",
+   "op": "group",
+   "children": [
+    {
+     "id": "tender_wheels_0",
+     "op": "instance",
+     "ref": "small_wheel",
+     "transform": {
+      "translate": [
+       0.61,
+       0.43,
+       4.05
+      ]
+     }
+    },
+    {
+     "id": "tender_wheels_1",
+     "op": "instance",
+     "ref": "small_wheel",
+     "transform": {
+      "translate": [
+       0.61,
+       0.43,
+       4.95
+      ]
+     }
+    },
+    {
+     "id": "tender_wheels_2",
+     "op": "instance",
+     "ref": "small_wheel",
+     "transform": {
+      "translate": [
+       0.61,
+       0.43,
+       5.95
+      ]
+     }
+    },
+    {
+     "id": "tender_wheels_3",
+     "op": "instance",
+     "ref": "small_wheel",
+     "transform": {
+      "translate": [
+       0.61,
+       0.43,
+       6.85
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "cab_plates",
+   "op": "group",
+   "children": [
+    {
+     "id": "cab_plate",
+     "op": "mesh",
+     "material": "plate",
+     "vertices": [
+      [
+       1.366,
+       2.08,
+       1.65
+      ],
+      [
+       1.366,
+       2.08,
+       2.55
+      ],
+      [
+       1.366,
+       2.3,
+       2.55
+      ],
+      [
+       1.366,
+       2.3,
+       1.65
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       3,
+       2,
+       1
+      ]
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "cab_windows",
+   "op": "group",
+   "children": [
+    {
+     "id": "side_window",
+     "op": "mesh",
+     "material": "window",
+     "vertices": [
+      [
+       1.366,
+       2.62,
+       1.2
+      ],
+      [
+       1.366,
+       2.62,
+       2.05
+      ],
+      [
+       1.366,
+       3.3,
+       2.05
+      ],
+      [
+       1.366,
+       3.3,
+       1.2
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       3,
+       2,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "side_window_b",
+     "op": "mesh",
+     "material": "window",
+     "vertices": [
+      [
+       1.366,
+       2.62,
+       2.25
+      ],
+      [
+       1.366,
+       2.62,
+       2.95
+      ],
+      [
+       1.366,
+       3.3,
+       2.95
+      ],
+      [
+       1.366,
+       3.3,
+       2.25
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       3,
+       2,
+       1
+      ]
+     ]
+    },
+    {
+     "id": "front_window",
+     "op": "mesh",
+     "material": "window",
+     "vertices": [
+      [
+       0.88,
+       2.85,
+       0.994
+      ],
+      [
+       1.22,
+       2.85,
+       0.994
+      ],
+      [
+       1.22,
+       3.35,
+       0.994
+      ],
+      [
+       0.88,
+       3.35,
+       0.994
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       3,
+       2,
+       1
+      ]
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "cab",
+   "op": "box",
+   "size": [
+    2.72,
+    2.13,
+    2.2
+   ],
+   "material": "black",
+   "transform": {
+    "translate": [
+     0.0,
+     2.485,
+     2.1
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "cab_roof",
+   "op": "extrude",
+   "points": [
+    [
+     -1.5,
+     3.5
+    ],
+    [
+     1.5,
+     3.5
+    ],
+    [
+     1.5,
+     3.6
+    ],
+    [
+     1.1,
+     3.82
+    ],
+    [
+     0.5,
+     3.92
+    ],
+    [
+     -0.5,
+     3.92
+    ],
+    [
+     -1.1,
+     3.82
+    ],
+    [
+     -1.5,
+     3.6
+    ]
+   ],
+   "depth": 2.7,
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0,
+     0,
+     2.2
+    ]
+   }
+  },
+  {
+   "id": "cab_steps",
+   "op": "group",
+   "children": [
+    {
+     "id": "step",
+     "op": "box",
+     "size": [
+      0.2,
+      0.05,
+      0.4
+     ],
+     "material": "black",
+     "transform": {
+      "translate": [
+       1.22,
+       0.975,
+       2.2
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "coal",
+   "op": "sphere",
+   "radius": 1.0,
+   "rings": 4,
+   "segments": 8,
+   "material": "coal",
+   "transform": {
+    "scale": [
+     1.12,
+     0.5,
+     1.5
+    ],
+    "translate": [
+     0,
+     3.1,
+     4.95
+    ]
+   }
+  },
+  {
+   "id": "water_hatch",
+   "op": "cylinder",
+   "radius": 0.32,
+   "height": 0.16,
+   "segments": 8,
+   "material": "black",
+   "transform": {
+    "translate": [
+     0,
+     3.22,
+     6.75
+    ]
+   }
+  },
+  {
+   "id": "tender_flare",
+   "op": "group",
+   "children": [
+    {
+     "id": "flare",
+     "op": "extrude",
+     "points": [
+      [
+       1.27,
+       3.1
+      ],
+      [
+       1.3,
+       3.1
+      ],
+      [
+       1.42,
+       3.36
+      ],
+      [
+       1.39,
+       3.36
+      ]
+     ],
+     "depth": 3.28,
+     "material": "black",
+     "transform": {
+      "translate": [
+       0,
+       0,
+       5.16
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "tender_lining",
+   "op": "group",
+   "children": [
+    {
+     "id": "tender_line",
+     "op": "box",
+     "size": [
+      0.025,
+      0.05,
+      3.7
+     ],
+     "material": "lining",
+     "transform": {
+      "translate": [
+       1.3025,
+       2.975,
+       5.45
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  },
+  {
+   "id": "tender_body",
+   "op": "box",
+   "size": [
+    2.6,
+    1.8,
+    3.9
+   ],
+   "material": "black",
+   "transform": {
+    "translate": [
+     0.0,
+     2.25,
+     5.45
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "tender_frame",
+   "op": "box",
+   "size": [
+    2.3,
+    0.42,
+    3.98
+   ],
+   "material": "frame",
+   "transform": {
+    "translate": [
+     0.0,
+     1.16,
+     5.39
+    ]
+   },
+   "open": [
+    "top"
+   ]
+  },
+  {
+   "id": "tender_beam",
+   "op": "box",
+   "size": [
+    2.5,
+    0.45,
+    0.24
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     0.0,
+     1.125,
+     7.48
+    ]
+   }
+  },
+  {
+   "id": "tender_coupler",
+   "op": "box",
+   "size": [
+    0.26,
+    0.24,
+    0.3
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     0.0,
+     1.04,
+     7.7
+    ]
+   }
+  },
+  {
+   "id": "bogie_frames",
+   "op": "group",
+   "children": [
+    {
+     "id": "bogie_a",
+     "op": "box",
+     "size": [
+      0.06,
+      0.4,
+      1.3
+     ],
+     "material": "frame",
+     "transform": {
+      "translate": [
+       0.77,
+       0.55,
+       4.5
+      ]
+     }
+    },
+    {
+     "id": "bogie_b",
+     "op": "box",
+     "size": [
+      0.06,
+      0.4,
+      1.3
+     ],
+     "material": "frame",
+     "transform": {
+      "translate": [
+       0.77,
+       0.55,
+       6.4
+      ]
+     }
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  }
+ ]
+}
