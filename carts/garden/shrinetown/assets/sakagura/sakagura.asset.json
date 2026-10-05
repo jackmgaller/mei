@@ -1,0 +1,2194 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "sakagura",
+ "budget": {
+  "triangles": 700
+ },
+ "sheets": {
+  "kura": {
+   "image": "art/sakagura_sheet.png"
+  }
+ },
+ "materials": {
+  "namako": {
+   "color": "#3a3c42",
+   "tag": "wall",
+   "texture": {
+    "pattern": "lattice",
+    "colors": [
+     "#ece8dc",
+     "#3a3c44"
+    ],
+    "params": {
+     "count": 2,
+     "bar": 2,
+     "diagonal": true
+    },
+    "projection": "box",
+    "scale": [
+     0.7,
+     0.7
+    ]
+   }
+  },
+  "yakisugi": {
+   "color": "#2a2624",
+   "tag": "wall",
+   "texture": {
+    "texels": [
+     "1000200010003000",
+     "1000200010003000",
+     "1000200010003000",
+     "1002200010003000",
+     "1000200010003000",
+     "1000200010003000",
+     "1000200010303000",
+     "1000200010003000",
+     "1000200010003000",
+     "1000220010003000",
+     "1000200010003000",
+     "1000200010003000",
+     "1000200010003030",
+     "1000200010003000",
+     "1000200010003000",
+     "1000200010003000"
+    ],
+    "colors": [
+     "#2e2a28",
+     "#121010",
+     "#383230",
+     "#262220"
+    ],
+    "projection": "box",
+    "scale": [
+     0.6,
+     1.2
+    ]
+   }
+  },
+  "kawara": {
+   "color": "#62666e",
+   "tag": "roof",
+   "texture": {
+    "sheet": "kura",
+    "cell": "kawara",
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "kawara_far": {
+   "color": "#62666e",
+   "tag": "roof",
+   "texture": {
+    "sheet": "kura",
+    "cell": "kawara",
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     4.0,
+     4.0
+    ]
+   }
+  },
+  "kawara_mid": {
+   "color": "#62666e",
+   "tag": "roof",
+   "texture": {
+    "sheet": "kura",
+    "cell": "kawara",
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     2.0,
+     2.0
+    ]
+   }
+  },
+  "hood_tile": {
+   "color": "#62666e",
+   "tag": "roof",
+   "texture": {
+    "sheet": "kura",
+    "cell": "kawara",
+    "projection": "box",
+    "scale": [
+     0.6,
+     0.6
+    ]
+   }
+  },
+  "brick": {
+   "color": "#964030",
+   "texture": {
+    "pattern": "brick",
+    "colors": [
+     "#963e2c",
+     "#bcaa96",
+     "#7e3424"
+    ],
+    "params": {
+     "courses": 4,
+     "bricks": 2
+    },
+    "projection": "box",
+    "scale": [
+     1.3,
+     1.1
+    ]
+   }
+  },
+  "koshi": {
+   "color": "#54341e",
+   "texture": {
+    "sheet": "kura",
+    "cell": "koshi",
+    "projection": "planar",
+    "axis": "z",
+    "scale": [
+     0.4,
+     0.4
+    ]
+   }
+  },
+  "taru": {
+   "color": "#d6be82",
+   "texture": {
+    "sheet": "kura",
+    "cell": "taru",
+    "bits": 8,
+    "projection": "cylindrical",
+    "scale": [
+     1.885,
+     0.55
+    ],
+    "offset": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "chimney_name": {
+   "color": "#963e2c",
+   "texture": {
+    "sheet": "kura",
+    "cell": "chimney",
+    "projection": "fit"
+   }
+  },
+  "kanban": {
+   "color": "#462c1c",
+   "texture": {
+    "sheet": "kura",
+    "cell": "kanban",
+    "bits": 8,
+    "projection": "fit"
+   }
+  },
+  "door": {
+   "color": "#604028",
+   "tag": "door",
+   "texture": {
+    "sheet": "kura",
+    "cell": "door",
+    "projection": "fit"
+   }
+  },
+  "noren": {
+   "color": "#202c5c",
+   "double_sided": true,
+   "texture": {
+    "sheet": "kura",
+    "cell": "noren",
+    "projection": "fit"
+   }
+  },
+  "mushiko": {
+   "color": "#24201e",
+   "tag": "window",
+   "texture": {
+    "sheet": "kura",
+    "cell": "mushiko",
+    "projection": "fit"
+   }
+  },
+  "crest": {
+   "color": "#ece8de",
+   "texture": {
+    "sheet": "kura",
+    "cell": "crest",
+    "projection": "fit"
+   }
+  },
+  "crate": {
+   "color": "#f0c428",
+   "texture": {
+    "sheet": "kura",
+    "cell": "crate",
+    "projection": "fit"
+   }
+  },
+  "staves": {
+   "color": "#a87a4c",
+   "texture": {
+    "sheet": "kura",
+    "cell": "staves",
+    "projection": "fit"
+   }
+  },
+  "sugi": {
+   "color": "#6a7a3a",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#66783a",
+     "#4c5c2a",
+     "#8a8a48",
+     "#7a6a3a"
+    ],
+    "params": {
+     "density": 0.5,
+     "seed": 2
+    },
+    "projection": "fit"
+   }
+  },
+  "ladder": {
+   "color": "#5a3e2c",
+   "double_sided": true,
+   "texture": {
+    "texels": [
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "11111111",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "11111111",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "11111111",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "11111111",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "11111111",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "11111111"
+    ],
+    "colors": [
+     "#ff00ff",
+     "#5a3e2c"
+    ],
+    "clear": "#ff00ff",
+    "projection": "fit"
+   }
+  },
+  "plaster": {
+   "color": "#ece4d2",
+   "palette": true,
+   "tag": "wall"
+  },
+  "beam": {
+   "color": "#2c2a28",
+   "palette": true
+  },
+  "ridge": {
+   "color": "#3e4248",
+   "palette": true,
+   "tag": "roof"
+  },
+  "wood": {
+   "color": "#5a3e2c",
+   "palette": true
+  },
+  "rope": {
+   "color": "#b08a5e",
+   "palette": true
+  },
+  "gold": {
+   "color": "#f0c030",
+   "palette": true
+  },
+  "stone": {
+   "color": "#8e887c",
+   "palette": true
+  },
+  "lid": {
+   "color": "#8a6446",
+   "palette": true
+  },
+  "chochin": {
+   "color": "#d8462a",
+   "class": "emissive",
+   "tag": "lantern"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "walls",
+   "op": "box",
+   "size": [
+    14.0,
+    3.8,
+    8.0
+   ],
+   "material": "plaster",
+   "transform": {
+    "translate": [
+     -0.93,
+     4.1,
+     -0.45
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "decals": [
+    {
+     "id": "win_f1",
+     "face": "back",
+     "material": "mushiko",
+     "size": [
+      0.9,
+      0.62
+     ],
+     "at": [
+      1.6,
+      0.5
+     ]
+    },
+    {
+     "id": "win_f2",
+     "face": "back",
+     "material": "mushiko",
+     "size": [
+      0.9,
+      0.62
+     ],
+     "at": [
+      4.6,
+      0.5
+     ]
+    },
+    {
+     "id": "win_f3",
+     "face": "back",
+     "material": "mushiko",
+     "size": [
+      0.9,
+      0.62
+     ],
+     "at": [
+      -5.8,
+      0.5
+     ]
+    },
+    {
+     "id": "win_w",
+     "face": "left",
+     "material": "mushiko",
+     "size": [
+      0.9,
+      0.62
+     ],
+     "at": [
+      -1.8,
+      0.5
+     ]
+    },
+    {
+     "id": "win_e",
+     "face": "right",
+     "material": "mushiko",
+     "size": [
+      0.9,
+      0.62
+     ],
+     "at": [
+      -1.8,
+      0.5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "skirt",
+   "op": "box",
+   "size": [
+    14.1,
+    2.25,
+    8.1
+   ],
+   "material": "namako",
+   "transform": {
+    "translate": [
+     -0.93,
+     1.125,
+     -0.45
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "left": "yakisugi",
+    "right": "yakisugi",
+    "top": "beam"
+   },
+   "decals": [
+    {
+     "id": "door",
+     "face": "back",
+     "material": "door",
+     "size": [
+      1.15,
+      2.2
+     ],
+     "at": [
+      -3.05,
+      0.0
+     ]
+    },
+    {
+     "id": "doorway",
+     "face": "back",
+     "material": "beam",
+     "size": [
+      0.95,
+      2.2
+     ],
+     "at": [
+      -1.95,
+      0.0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "eave_band",
+   "op": "box",
+   "size": [
+    14.12,
+    0.32,
+    8.12
+   ],
+   "material": "beam",
+   "transform": {
+    "translate": [
+     -0.93,
+     5.84,
+     -0.45
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "attic",
+   "op": "extrude",
+   "depth": 14.0,
+   "points": [
+    [
+     -4.0,
+     0
+    ],
+    [
+     4.0,
+     0
+    ],
+    [
+     0,
+     2.2594
+    ]
+   ],
+   "material": "plaster",
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ],
+    "translate": [
+     -0.93,
+     6.0,
+     -0.45
+    ]
+   },
+   "decals": [
+    {
+     "id": "crest_w",
+     "face": "back",
+     "material": "crest",
+     "size": [
+      1.1,
+      1.1
+     ],
+     "at": [
+      0,
+      0.95
+     ]
+    },
+    {
+     "id": "crest_e",
+     "face": "front",
+     "material": "crest",
+     "size": [
+      1.1,
+      1.1
+     ],
+     "at": [
+      0,
+      0.95
+     ]
+    }
+   ]
+  },
+  {
+   "id": "roof",
+   "op": "mesh",
+   "vertices": [
+    [
+     -8.33,
+     5.5035,
+     -5.31
+    ],
+    [
+     -8.33,
+     8.3094,
+     -0.45
+    ],
+    [
+     -8.33,
+     5.5035,
+     4.41
+    ],
+    [
+     -8.33,
+     5.7235,
+     4.41
+    ],
+    [
+     -8.33,
+     8.5294,
+     -0.45
+    ],
+    [
+     -8.33,
+     5.7235,
+     -5.31
+    ],
+    [
+     6.47,
+     5.5035,
+     -5.31
+    ],
+    [
+     6.47,
+     8.3094,
+     -0.45
+    ],
+    [
+     6.47,
+     5.5035,
+     4.41
+    ],
+    [
+     6.47,
+     5.7235,
+     4.41
+    ],
+    [
+     6.47,
+     8.5294,
+     -0.45
+    ],
+    [
+     6.47,
+     5.7235,
+     -5.31
+    ]
+   ],
+   "faces": [
+    [
+     6,
+     7,
+     1,
+     0
+    ],
+    [
+     7,
+     8,
+     2,
+     1
+    ],
+    [
+     8,
+     9,
+     3,
+     2
+    ],
+    [
+     9,
+     10,
+     4,
+     3
+    ],
+    [
+     10,
+     11,
+     5,
+     4
+    ],
+    [
+     11,
+     6,
+     0,
+     5
+    ],
+    [
+     0,
+     1,
+     4,
+     5
+    ],
+    [
+     1,
+     2,
+     3,
+     4
+    ],
+    [
+     11,
+     10,
+     7,
+     6
+    ],
+    [
+     10,
+     9,
+     8,
+     7
+    ]
+   ],
+   "face_materials": [
+    "beam",
+    "beam",
+    "beam",
+    "kawara",
+    "kawara",
+    "beam",
+    "beam",
+    "beam",
+    "beam",
+    "beam"
+   ]
+  },
+  {
+   "id": "ridge",
+   "op": "box",
+   "size": [
+    15.0,
+    0.45,
+    0.6
+   ],
+   "material": "ridge",
+   "transform": {
+    "translate": [
+     -0.93,
+     8.6294,
+     -0.45
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "oni_w",
+   "op": "box",
+   "size": [
+    0.35,
+    0.85,
+    0.75
+   ],
+   "material": "ridge",
+   "transform": {
+    "translate": [
+     -8.43,
+     8.8494,
+     -0.45
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "oni_e",
+   "op": "box",
+   "size": [
+    0.35,
+    0.85,
+    0.75
+   ],
+   "material": "ridge",
+   "transform": {
+    "translate": [
+     6.57,
+     8.8494,
+     -0.45
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "kanban",
+   "op": "box",
+   "size": [
+    4.4,
+    1.45,
+    0.14
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -3.43,
+     4.3,
+     -4.5
+    ]
+   },
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "kanban"
+   }
+  },
+  {
+   "id": "door_post_w",
+   "op": "box",
+   "size": [
+    0.2,
+    2.5,
+    0.3
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -4.68,
+     1.25,
+     -4.55
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "door_post_e",
+   "op": "box",
+   "size": [
+    0.2,
+    2.5,
+    0.3
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -2.18,
+     1.25,
+     -4.55
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "lintel",
+   "op": "box",
+   "size": [
+    2.9,
+    0.26,
+    0.4
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -3.43,
+     2.5,
+     -4.55
+    ]
+   },
+   "open": [
+    "front"
+   ]
+  },
+  {
+   "id": "hood",
+   "op": "box",
+   "size": [
+    3.9,
+    0.12,
+    1.35
+   ],
+   "material": "hood_tile",
+   "transform": {
+    "translate": [
+     -3.43,
+     3.05,
+     -5.07
+    ],
+    "rotate": [
+     -20,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "step",
+   "op": "box",
+   "size": [
+    1.8,
+    0.15,
+    0.6
+   ],
+   "material": "stone",
+   "transform": {
+    "translate": [
+     -3.43,
+     0.075,
+     -4.85
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "noren",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.53,
+     1.75,
+     -4.81
+    ],
+    [
+     -2.33,
+     1.75,
+     -4.81
+    ],
+    [
+     -2.33,
+     2.72,
+     -4.81
+    ],
+    [
+     -4.53,
+     2.72,
+     -4.81
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "material": "noren"
+  },
+  {
+   "id": "sugi_rope",
+   "op": "box",
+   "size": [
+    0.03,
+    0.42,
+    0.03
+   ],
+   "material": "rope",
+   "transform": {
+    "translate": [
+     -1.68,
+     2.85,
+     -5.45
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "sugidama",
+   "op": "sphere",
+   "radius": 0.42,
+   "segments": 6,
+   "rings": 4,
+   "material": "sugi",
+   "transform": {
+    "translate": [
+     -1.68,
+     2.3,
+     -5.45
+    ]
+   }
+  },
+  {
+   "id": "shop_koshi",
+   "op": "box",
+   "size": [
+    3.8,
+    1.9,
+    0.12
+   ],
+   "material": "koshi",
+   "transform": {
+    "translate": [
+     3.57,
+     1.2,
+     -4.53
+    ]
+   },
+   "open": [
+    "front",
+    "bottom"
+   ]
+  },
+  {
+   "id": "shop_beam",
+   "op": "box",
+   "size": [
+    4.1,
+    0.16,
+    0.28
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     3.57,
+     2.23,
+     -4.55
+    ]
+   },
+   "open": [
+    "front",
+    "bottom"
+   ]
+  },
+  {
+   "id": "shop_post_w",
+   "op": "box",
+   "size": [
+    0.14,
+    2.3,
+    0.18
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     1.52,
+     1.15,
+     -4.55
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "shop_post_e",
+   "op": "box",
+   "size": [
+    0.14,
+    2.3,
+    0.18
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     5.62,
+     1.15,
+     -4.55
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "shop_hood",
+   "op": "box",
+   "size": [
+    4.6,
+    0.1,
+    0.95
+   ],
+   "material": "hood_tile",
+   "transform": {
+    "translate": [
+     3.57,
+     2.62,
+     -4.9
+    ],
+    "rotate": [
+     -20,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "lantern_door",
+   "op": "cylinder",
+   "radius": 0.26,
+   "height": 0.5980000000000001,
+   "segments": 6,
+   "material": "chochin",
+   "transform": {
+    "translate": [
+     -5.08,
+     2.0,
+     -4.95
+    ]
+   },
+   "faces": {
+    "top": "beam",
+    "bottom": "beam"
+   }
+  },
+  {
+   "id": "lantern_shop_w",
+   "op": "cylinder",
+   "radius": 0.22999999999999998,
+   "height": 0.529,
+   "segments": 6,
+   "material": "chochin",
+   "transform": {
+    "translate": [
+     2.07,
+     2.05,
+     -5.05
+    ]
+   },
+   "faces": {
+    "top": "beam",
+    "bottom": "beam"
+   }
+  },
+  {
+   "id": "lantern_shop_e",
+   "op": "cylinder",
+   "radius": 0.22999999999999998,
+   "height": 0.529,
+   "segments": 6,
+   "material": "chochin",
+   "transform": {
+    "translate": [
+     5.07,
+     2.05,
+     -5.05
+    ]
+   },
+   "faces": {
+    "top": "beam",
+    "bottom": "beam"
+   }
+  },
+  {
+   "id": "bench_seat",
+   "op": "box",
+   "size": [
+    1.7,
+    0.06,
+    0.45
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     3.47,
+     0.45,
+     -5.2
+    ]
+   }
+  },
+  {
+   "id": "bench_leg_w",
+   "op": "box",
+   "size": [
+    0.06,
+    0.44,
+    0.36
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     2.77,
+     0.215,
+     -5.2
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "bench_leg_e",
+   "op": "box",
+   "size": [
+    0.06,
+    0.44,
+    0.36
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     4.17,
+     0.215,
+     -5.2
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "taru_0",
+   "op": "cylinder",
+   "radius": 0.3,
+   "height": 0.55,
+   "segments": 6,
+   "material": "taru",
+   "transform": {
+    "translate": [
+     -1.28,
+     0.275,
+     -5.0
+    ],
+    "rotate": [
+     0,
+     0,
+     0
+    ]
+   },
+   "faces": {
+    "top": "lid",
+    "bottom": "lid"
+   }
+  },
+  {
+   "id": "taru_1",
+   "op": "cylinder",
+   "radius": 0.3,
+   "height": 0.55,
+   "segments": 6,
+   "material": "taru",
+   "transform": {
+    "translate": [
+     -0.66,
+     0.275,
+     -5.0
+    ],
+    "rotate": [
+     0,
+     12,
+     0
+    ]
+   },
+   "faces": {
+    "top": "lid",
+    "bottom": "lid"
+   }
+  },
+  {
+   "id": "taru_2",
+   "op": "cylinder",
+   "radius": 0.3,
+   "height": 0.55,
+   "segments": 6,
+   "material": "taru",
+   "transform": {
+    "translate": [
+     -0.04,
+     0.275,
+     -5.0
+    ],
+    "rotate": [
+     0,
+     -9,
+     0
+    ]
+   },
+   "faces": {
+    "top": "lid",
+    "bottom": "lid"
+   }
+  },
+  {
+   "id": "taru_3",
+   "op": "cylinder",
+   "radius": 0.3,
+   "height": 0.55,
+   "segments": 6,
+   "material": "taru",
+   "transform": {
+    "translate": [
+     -0.97,
+     0.835,
+     -5.0
+    ],
+    "rotate": [
+     0,
+     20,
+     0
+    ]
+   },
+   "faces": {
+    "top": "lid",
+    "bottom": "lid"
+   }
+  },
+  {
+   "id": "taru_4",
+   "op": "cylinder",
+   "radius": 0.3,
+   "height": 0.55,
+   "segments": 6,
+   "material": "taru",
+   "transform": {
+    "translate": [
+     -0.35,
+     0.835,
+     -5.0
+    ],
+    "rotate": [
+     0,
+     -15,
+     0
+    ]
+   },
+   "faces": {
+    "top": "lid",
+    "bottom": "lid"
+   }
+  },
+  {
+   "id": "taru_5",
+   "op": "cylinder",
+   "radius": 0.3,
+   "height": 0.55,
+   "segments": 6,
+   "material": "taru",
+   "transform": {
+    "translate": [
+     -0.66,
+     1.395,
+     -5.0
+    ],
+    "rotate": [
+     0,
+     5,
+     0
+    ]
+   },
+   "faces": {
+    "top": "lid",
+    "bottom": "lid"
+   }
+  },
+  {
+   "id": "crate_low",
+   "op": "box",
+   "size": [
+    0.42,
+    0.3,
+    0.34
+   ],
+   "material": "gold",
+   "transform": {
+    "translate": [
+     5.67,
+     0.15,
+     -4.95
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "crate"
+   }
+  },
+  {
+   "id": "crate_high",
+   "op": "box",
+   "size": [
+    0.46,
+    0.3,
+    0.38
+   ],
+   "material": "gold",
+   "transform": {
+    "translate": [
+     5.69,
+     0.44,
+     -4.94
+    ],
+    "rotate": [
+     0,
+     8,
+     0
+    ]
+   },
+   "faces": {
+    "top": "crate"
+   }
+  },
+  {
+   "id": "vat",
+   "op": "lathe",
+   "profile": [
+    [
+     1.0,
+     0.0
+    ],
+    [
+     1.12,
+     2.2
+    ]
+   ],
+   "segments": 8,
+   "material": "staves",
+   "faces": {
+    "top": "lid"
+   },
+   "transform": {
+    "translate": [
+     7.47,
+     0,
+     0.55
+    ]
+   }
+  },
+  {
+   "id": "hoop_0",
+   "op": "cylinder",
+   "radius": 1.065,
+   "height": 0.1,
+   "segments": 8,
+   "material": "rope",
+   "transform": {
+    "translate": [
+     7.47,
+     0.5,
+     0.55
+    ]
+   },
+   "caps": false
+  },
+  {
+   "id": "hoop_1",
+   "op": "cylinder",
+   "radius": 1.135,
+   "height": 0.1,
+   "segments": 8,
+   "material": "rope",
+   "transform": {
+    "translate": [
+     7.47,
+     1.75,
+     0.55
+    ]
+   },
+   "caps": false
+  },
+  {
+   "id": "ladder",
+   "op": "mesh",
+   "vertices": [
+    [
+     7.25,
+     0.0,
+     -1.07
+    ],
+    [
+     7.69,
+     0.0,
+     -1.07
+    ],
+    [
+     7.69,
+     2.52,
+     -0.45
+    ],
+    [
+     7.25,
+     2.52,
+     -0.45
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "material": "ladder"
+  },
+  {
+   "id": "chimney",
+   "op": "box",
+   "size": [
+    1.3,
+    15.9,
+    1.3
+   ],
+   "material": "brick",
+   "transform": {
+    "translate": [
+     3.87,
+     7.95,
+     5.15
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 0.55
+    }
+   ],
+   "decals": [
+    {
+     "id": "name",
+     "face": "back",
+     "material": "chimney_name",
+     "size": [
+      0.5,
+      2.8
+     ],
+     "at": [
+      0,
+      3.0
+     ]
+    }
+   ]
+  },
+  {
+   "id": "chimney_cap",
+   "op": "box",
+   "size": [
+    0.82,
+    0.4,
+    0.82
+   ],
+   "material": "beam",
+   "transform": {
+    "translate": [
+     3.87,
+     16.0,
+     5.15
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "walls",
+      "op": "box",
+      "size": [
+       14.0,
+       3.8,
+       8.0
+      ],
+      "material": "plaster",
+      "transform": {
+       "translate": [
+        -0.93,
+        4.1,
+        -0.45
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ]
+     },
+     {
+      "id": "skirt",
+      "op": "box",
+      "size": [
+       14.1,
+       2.25,
+       8.1
+      ],
+      "material": "namako",
+      "transform": {
+       "translate": [
+        -0.93,
+        1.125,
+        -0.45
+       ]
+      },
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "left": "yakisugi",
+       "right": "yakisugi",
+       "top": "beam"
+      },
+      "decals": [
+       {
+        "id": "door",
+        "face": "back",
+        "material": "door",
+        "size": [
+         1.15,
+         2.2
+        ],
+        "at": [
+         -3.05,
+         0.0
+        ]
+       }
+      ]
+     },
+     {
+      "id": "attic",
+      "op": "extrude",
+      "depth": 14.0,
+      "points": [
+       [
+        -4.0,
+        0
+       ],
+       [
+        4.0,
+        0
+       ],
+       [
+        0,
+        2.2594
+       ]
+      ],
+      "material": "plaster",
+      "transform": {
+       "rotate": [
+        0,
+        90,
+        0
+       ],
+       "translate": [
+        -0.93,
+        6.0,
+        -0.45
+       ]
+      }
+     },
+     {
+      "id": "roof",
+      "op": "mesh",
+      "vertices": [
+       [
+        -8.33,
+        5.5035,
+        -5.31
+       ],
+       [
+        -8.33,
+        8.3094,
+        -0.45
+       ],
+       [
+        -8.33,
+        5.5035,
+        4.41
+       ],
+       [
+        -8.33,
+        5.7235,
+        4.41
+       ],
+       [
+        -8.33,
+        8.5294,
+        -0.45
+       ],
+       [
+        -8.33,
+        5.7235,
+        -5.31
+       ],
+       [
+        6.47,
+        5.5035,
+        -5.31
+       ],
+       [
+        6.47,
+        8.3094,
+        -0.45
+       ],
+       [
+        6.47,
+        5.5035,
+        4.41
+       ],
+       [
+        6.47,
+        5.7235,
+        4.41
+       ],
+       [
+        6.47,
+        8.5294,
+        -0.45
+       ],
+       [
+        6.47,
+        5.7235,
+        -5.31
+       ]
+      ],
+      "faces": [
+       [
+        6,
+        7,
+        1,
+        0
+       ],
+       [
+        7,
+        8,
+        2,
+        1
+       ],
+       [
+        8,
+        9,
+        3,
+        2
+       ],
+       [
+        9,
+        10,
+        4,
+        3
+       ],
+       [
+        10,
+        11,
+        5,
+        4
+       ],
+       [
+        11,
+        6,
+        0,
+        5
+       ],
+       [
+        0,
+        1,
+        4,
+        5
+       ],
+       [
+        1,
+        2,
+        3,
+        4
+       ],
+       [
+        11,
+        10,
+        7,
+        6
+       ],
+       [
+        10,
+        9,
+        8,
+        7
+       ]
+      ],
+      "face_materials": [
+       "beam",
+       "beam",
+       "beam",
+       "kawara_mid",
+       "kawara_mid",
+       "beam",
+       "beam",
+       "beam",
+       "beam",
+       "beam"
+      ]
+     },
+     {
+      "id": "ridge",
+      "op": "box",
+      "size": [
+       15.0,
+       0.45,
+       0.6
+      ],
+      "material": "ridge",
+      "transform": {
+       "translate": [
+        -0.93,
+        8.6294,
+        -0.45
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "kanban",
+      "op": "box",
+      "size": [
+       4.4,
+       1.45,
+       0.14
+      ],
+      "material": "wood",
+      "transform": {
+       "translate": [
+        -3.43,
+        4.3,
+        -4.5
+       ]
+      },
+      "open": [
+       "front"
+      ],
+      "faces": {
+       "back": "kanban"
+      }
+     },
+     {
+      "id": "hood",
+      "op": "box",
+      "size": [
+       3.9,
+       0.12,
+       1.35
+      ],
+      "material": "hood_tile",
+      "transform": {
+       "translate": [
+        -3.43,
+        3.05,
+        -5.07
+       ],
+       "rotate": [
+        -20,
+        0,
+        0
+       ]
+      }
+     },
+     {
+      "id": "noren",
+      "op": "mesh",
+      "vertices": [
+       [
+        -4.53,
+        1.75,
+        -4.75
+       ],
+       [
+        -2.33,
+        1.75,
+        -4.75
+       ],
+       [
+        -2.33,
+        2.72,
+        -4.75
+       ],
+       [
+        -4.53,
+        2.72,
+        -4.75
+       ]
+      ],
+      "faces": [
+       [
+        3,
+        2,
+        1,
+        0
+       ]
+      ],
+      "material": "noren"
+     },
+     {
+      "id": "shop_koshi",
+      "op": "box",
+      "size": [
+       3.8,
+       1.9,
+       0.12
+      ],
+      "material": "koshi",
+      "transform": {
+       "translate": [
+        3.57,
+        1.2,
+        -4.53
+       ]
+      },
+      "open": [
+       "front",
+       "bottom"
+      ]
+     },
+     {
+      "id": "sugidama",
+      "op": "sphere",
+      "radius": 0.42,
+      "segments": 5,
+      "rings": 3,
+      "material": "sugi",
+      "transform": {
+       "translate": [
+        -1.68,
+        2.3,
+        -5.45
+       ]
+      }
+     },
+     {
+      "id": "lantern_door",
+      "op": "cylinder",
+      "radius": 0.26,
+      "height": 0.5980000000000001,
+      "segments": 4,
+      "material": "chochin",
+      "transform": {
+       "translate": [
+        -5.08,
+        2.0,
+        -4.95
+       ]
+      },
+      "faces": {
+       "top": "beam",
+       "bottom": "beam"
+      }
+     },
+     {
+      "id": "vat",
+      "op": "lathe",
+      "profile": [
+       [
+        1.0,
+        0.0
+       ],
+       [
+        1.12,
+        2.2
+       ]
+      ],
+      "segments": 6,
+      "material": "staves",
+      "faces": {
+       "top": "lid"
+      },
+      "transform": {
+       "translate": [
+        7.47,
+        0,
+        0.55
+       ]
+      }
+     },
+     {
+      "id": "chimney",
+      "op": "box",
+      "size": [
+       1.3,
+       15.9,
+       1.3
+      ],
+      "material": "brick",
+      "transform": {
+       "translate": [
+        3.87,
+        7.95,
+        5.15
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "modifiers": [
+       {
+        "op": "taper",
+        "top": 0.55
+       }
+      ],
+      "decals": [
+       {
+        "id": "name",
+        "face": "back",
+        "material": "chimney_name",
+        "size": [
+         0.5,
+         2.8
+        ],
+        "at": [
+         0,
+         3.0
+        ]
+       }
+      ]
+     },
+     {
+      "id": "chimney_cap",
+      "op": "box",
+      "size": [
+       0.82,
+       0.4,
+       0.82
+      ],
+      "material": "beam",
+      "transform": {
+       "translate": [
+        3.87,
+        16.0,
+        5.15
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     }
+    ]
+   },
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "walls",
+      "op": "box",
+      "size": [
+       14.0,
+       5.7235,
+       8.0
+      ],
+      "material": "plaster",
+      "transform": {
+       "translate": [
+        -0.93,
+        2.8617,
+        -0.45
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ]
+     },
+     {
+      "id": "roof",
+      "op": "mesh",
+      "vertices": [
+       [
+        -8.33,
+        5.7235,
+        -5.31
+       ],
+       [
+        -8.33,
+        5.7235,
+        4.41
+       ],
+       [
+        -8.33,
+        8.5294,
+        -0.45
+       ],
+       [
+        6.47,
+        5.7235,
+        -5.31
+       ],
+       [
+        6.47,
+        5.7235,
+        4.41
+       ],
+       [
+        6.47,
+        8.5294,
+        -0.45
+       ]
+      ],
+      "faces": [
+       [
+        3,
+        4,
+        1,
+        0
+       ],
+       [
+        4,
+        5,
+        2,
+        1
+       ],
+       [
+        5,
+        3,
+        0,
+        2
+       ],
+       [
+        0,
+        1,
+        2
+       ],
+       [
+        5,
+        4,
+        3
+       ]
+      ],
+      "face_materials": [
+       "beam",
+       "kawara_far",
+       "kawara_far",
+       "plaster",
+       "plaster"
+      ]
+     },
+     {
+      "id": "chimney",
+      "op": "box",
+      "size": [
+       1.3,
+       15.9,
+       1.3
+      ],
+      "material": "brick",
+      "transform": {
+       "translate": [
+        3.87,
+        7.95,
+        5.15
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "modifiers": [
+       {
+        "op": "taper",
+        "top": 0.55
+       }
+      ]
+     },
+     {
+      "id": "chimney_cap",
+      "op": "box",
+      "size": [
+       0.82,
+       0.4,
+       0.82
+      ],
+      "material": "beam",
+      "transform": {
+       "translate": [
+        3.87,
+        16.0,
+        5.15
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     }
+    ]
+   }
+  ],
+  "band": 2
+ }
+}
