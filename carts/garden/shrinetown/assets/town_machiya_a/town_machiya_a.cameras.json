@@ -1,0 +1,8 @@
+[
+  {"name": "lane_5m", "eye": [-3.5, 1.6, -11.5], "target": [0.5, 2.8, -6.5]},
+  {"name": "lane_12m", "eye": [-9, 1.6, -17], "target": [0, 3.2, -3]},
+  {"name": "street_30m", "eye": [-18, 1.6, -26], "target": [0, 3.5, 0]},
+  {"name": "neighbour_roof", "eye": [-9.5, 8.6, -2], "target": [0, 6.5, 0]},
+  {"name": "from_above", "eye": [-10, 16, -14], "target": [0, 4, 0]},
+  {"name": "back_canal", "eye": [6, 1.6, 18], "target": [0, 3, 6]}
+]
