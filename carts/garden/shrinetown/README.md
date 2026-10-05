@@ -15,9 +15,14 @@ town needs) is [TEXTURES.md](TEXTURES.md).
 ## What is built
 
 **A grey box** (DESIGN.md, section 9, phase 1): every building and roof a box at its final
-footprint, height and collision, in flat colours, the trees boxes, the rails paths, the stars
-coins. It is the world `shrinetown`, the movement garden's third (`../world/garden.game.mochi`:
+footprint, height and collision, in flat colours, the trees boxes, the rails paths. It is the world `shrinetown`, the movement garden's third (`../world/garden.game.mochi`:
 `worlds garden, shrine, shrinetown`), on the garden's controller and camera.
+
+**The game** (DESIGN.md, section 9, phase 2; 12.5): the five stars (the hanafuda moon card), the
+red coins releasing star 2, the stage bell, the last train (the omamori's 85 s clock, the train
+on track 2, the platform), the shortcuts A–E (triggers that switch their layers, saved), and
+ladders A and E held on their front. The entities are in `game.py`; how the cart plays them is
+`../README.md`, "Entities" and "Goals".
 
 **Getting in.** Walk into the road works at the west end of the shrine's road (the shrine is
 the garden's second world: the torii at the foot of the garden's shrine hill): the road goes on
@@ -58,9 +63,17 @@ hoarding until downtown exists.
 | 422 | The pagoda: from the lantern each roof's eave is 3.6 m up, five chained jumps and grabs, the dew basin, the finial pole, star 1 |
 | 423 | The rope from the rope deck into the knot hole (8.9 s), the sill, down the hollow trunk to star 4 |
 | 424 | Rope ladder A: the shelf (24) to the ledge (44), 6.1 s up, let go and catch the lip |
-| 430 | All 111 coins: 84 on floors, 26 over rails, 1 at a pole's top, each taken there; the 8 red coins |
+| 430 | All 105 coins and red coins: 79 on floors, 26 over rails, each taken there; the 8 red coins |
 | 431–433 | The doors: konbini → garden, road works → shrine, the shrine's road works → shrine town |
 | 440–446 | The views V1–V6 in the game, and turning round on the pagoda: no late frame |
+| 450 | The eighth red coin brings star 2 down onto the great torii's top beam; taken there |
+| 451 | The bell's rope (within 0.6 m) rings star 3 down onto the deck; taken |
+| 452 | The last train won: the omamori, a glide down the G8 line, the shotengai, the station stair: the platform at 47.1 s; star 5 |
+| 453 | The last train lost: the clock runs out at 85 s, the omamori comes back, the train comes in at 60 s, stands from 70, leaves at 85 and parks |
+| 454 | The walking route (the torii tunnel, the woods trail, the front road, the shotengai): the platform at 60.6 s, and the clock leaves it its margin |
+| 460–464 | Shortcuts A–E: a jump opens nothing; B (A, B, E) or a ground pound (C, D) opens it, saved; still open when the world is opened again |
+| 465, 466 | The progress on a memory card: written (shortcut E, star 4), then read at start-up |
+| 467 | Ladders A and E: not grabbed while up; held on the front, not gone round |
 
 ```sh
 make B=build-mine build-mine/carts/garden.mei
@@ -107,6 +120,7 @@ Generated, nothing hand-edited. Each region's generator writes its cells, its gr
 and its world-level part; `make_world.py` joins the parts into the world:
 
 ```sh
+python3 carts/garden/shrinetown/game.py                               # assets/game (the train, the omamori)
 python3 carts/garden/shrinetown/notes/gen_town.py                     # cells c*_0, c*_1; assets/greybox/town
 python3 carts/garden/shrinetown/assets/greybox/core/gen_core.py         # cells c*_2, c*_3; assets/greybox/core
 python3 carts/garden/shrinetown/assets/greybox/mountain/make_mountain.py   # cells c*_4, c*_5; assets/greybox/mountain
@@ -116,8 +130,9 @@ B=build-mine python3 carts/garden/shrinetown/tools/views.py             # the wo
 python3 carts/garden/shrinetown/tools/textures.py                     # texture bytes by region and zone
 ```
 
-All of them read `layout.py`. The world's assets are the town's folder and, through the World
-Kit's `asset_dirs`, the core's, the mountain's and `assets/arch_pagoda` (the real pagoda's
+All of them read `layout.py`; the three region generators also put `game.py`'s entities (the
+stars, the triggers, the train) into their cells. The world's assets are the town's folder and,
+through the World Kit's `asset_dirs`, the core's, the mountain's, `assets/game` and `assets/arch_pagoda` (the real pagoda's
 climbing collision; its look is `../shrine/assets/arch_pagoda`, which the grey box draws in a flat
 colour). `notes/` keeps each region's notes from the parallel build (their test worlds are gone:
 the level is built only as `shrinetown`).
@@ -125,12 +140,11 @@ the level is built only as `shrinetown`).
 ## Open
 
 - The far ring from the spawn, the pagoda's height from the spawn and G5 (DESIGN.md 12.4).
-- A ladder mode that holds the body on a ladder's front (rope ladder A, the fire escape's ladder
-  E): a pole lets it go round into the wall.
 - The 44 cracks (above), where sweeps, bridge ends and 2 m banks meet: the shrine accepted 44 of
   the same kind. Overlapping three sweeps into what they meet (the walkway stair, the north stair,
   ladder A's steps) closed an edge mismatch but only moved their cracks; the scenarios walk over
   all three.
-- Phase 2 on: the stars, switches, the timer, the train, life, textures (DESIGN.md 9).
+- Phase 3 on: the real assets, life, textures (DESIGN.md 9). The race's last legs and star 5
+  move to the real station's inside stair and platform when it is placed (DESIGN.md 12.5).
 - The texture regions' boundary is not a hidden seam, and the planned assets need more 4-bit
   palettes than a world has unless their 8-bit textures go (TEXTURES.md).

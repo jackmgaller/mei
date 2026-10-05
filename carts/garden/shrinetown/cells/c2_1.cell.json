@@ -219,14 +219,14 @@
    "collision": "self"
   },
   {
-   "id": "torii",
-   "asset": "gbt_torii",
+   "id": "sh_torii_great",
+   "asset": "arch_torii_great",
    "position": [
-    160,
+    160.0,
     0.6,
-    124
+    124.0
    ],
-   "collision": "gbt_torii_col"
+   "collision": "arch_torii_great_col"
   }
  ],
  "entities": [
@@ -333,24 +333,24 @@
    "id": "pole_torii_w",
    "type": "pole",
    "position": [
-    155.5,
+    155.0,
     0.6,
-    123.15
+    124.0
    ],
    "params": {
-    "height": 12.6
+    "height": 9.9
    }
   },
   {
    "id": "pole_torii_e",
    "type": "pole",
    "position": [
-    164.5,
+    165.0,
     0.6,
-    123.15
+    124.0
    ],
    "params": {
-    "height": 12.6
+    "height": 9.9
    }
   },
   {
@@ -375,13 +375,15 @@
   },
   {
    "id": "star_2_torii",
-   "type": "coin",
+   "type": "star",
    "position": [
     160,
     14.7,
     124
    ],
-   "asset": "gbt_star"
+   "params": {
+    "appear": "red_coins"
+   }
   },
   {
    "id": "coin_roof3",

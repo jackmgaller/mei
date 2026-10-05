@@ -1,0 +1,12 @@
+// Mei Asset Kit pack: hanafuda_moon. Call moon_load() once before drawing.
+embed ASSET_HANAFUDA_MOON: Mesh = "hanafuda_moon.bin"
+embed MOON_TEX14: u8 = "moon.slot14.tex"
+embed MOON_TEXPAL: u16 = "moon.tpal"
+embed MOON_SWATCH: u8 = "moon.swatch"
+
+// Copies the textures, the swatch and the palettes into VRAM.
+fn moon_load() {
+    memcpy((VRAM_TEXTURES + 14 * TEXTURE_SLOT_SIZE + 0) as *u8, MOON_TEX14, 13440)
+    load_palette(4064, &MOON_TEXPAL[0], 16)
+    memcpy((VRAM_TEXTURES + 14 * TEXTURE_SLOT_SIZE) as *u8, MOON_SWATCH, 8)
+}

@@ -9,56 +9,162 @@
  "region": "shrine",
  "placements": [
   {
-   "id": "bell_pavilion",
-   "asset": "gbc_bell_pavilion",
+   "id": "sh_bell_pavilion",
+   "asset": "bell_pavilion",
    "position": [
     204.0,
     5.0,
     226.0
    ],
-   "collision": "self"
+   "collision": "bell_pavilion_col",
+   "yaw": 90
   },
   {
-   "id": "wall_7",
-   "asset": "gbc_wall_7",
+   "id": "sh_wall_x237_1940",
+   "asset": "arch_wall_8",
    "position": [
-    211.0,
+    194.0,
+    6.0,
+    237.4
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_x237_1940_plinth",
+   "asset": "shrine_wall_plinth_8",
+   "position": [
+    194.0,
     5.0,
-    231.0
+    237.4
    ],
-   "collision": "self",
-   "yaw": 135.0
+   "collision": "shrine_wall_plinth_8_col"
   },
   {
-   "id": "wall_8",
-   "asset": "gbc_wall_8",
+   "id": "sh_wall_x237_2020",
+   "asset": "arch_wall_8",
    "position": [
-    213.0,
+    202.0,
+    6.0,
+    237.4
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_x237_2020_plinth",
+   "asset": "shrine_wall_plinth_8",
+   "position": [
+    202.0,
     5.0,
-    212.5
+    237.4
    ],
-   "collision": "self",
-   "yaw": 180.0
+   "collision": "shrine_wall_plinth_8_col"
   },
   {
-   "id": "gate_e_post_n",
-   "asset": "gbc_gate_e_post_n",
+   "id": "sh_wall_x237_2080",
+   "asset": "arch_wall_4",
    "position": [
-    213.0,
+    208.0,
+    6.0,
+    237.4
+   ],
+   "collision": "arch_wall_4_col"
+  },
+  {
+   "id": "sh_wall_x237_2080_plinth",
+   "asset": "shrine_wall_plinth_4",
+   "position": [
+    208.0,
     5.0,
-    196.0
+    237.4
    ],
-   "collision": "self"
+   "collision": "shrine_wall_plinth_4_col"
   },
   {
-   "id": "gate_e_lintel",
-   "asset": "gbc_gate_e_lintel",
+   "id": "sh_wall_z210_2010",
+   "asset": "arch_wall_8",
    "position": [
-    213.0,
-    8.2,
-    192.0
+    210.4,
+    5.0,
+    201.0
    ],
-   "collision": "self"
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z210_2090",
+   "asset": "arch_wall_8",
+   "position": [
+    210.4,
+    5.0,
+    209.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z210_2170",
+   "asset": "arch_wall_8",
+   "position": [
+    210.4,
+    5.0,
+    217.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z210_2250",
+   "asset": "arch_wall_8",
+   "position": [
+    210.4,
+    5.0,
+    225.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z210_2330",
+   "asset": "arch_wall_8",
+   "position": [
+    210.4,
+    5.0,
+    233.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_corner_3",
+   "asset": "arch_wall_corner",
+   "position": [
+    210.4,
+    6.0,
+    237.4
+   ],
+   "collision": "arch_wall_corner_col",
+   "merge": true
+  },
+  {
+   "id": "sh_wall_corner_3_plinth",
+   "asset": "shrine_wall_plinth_corner",
+   "position": [
+    210.4,
+    5.0,
+    237.4
+   ],
+   "collision": "shrine_wall_plinth_corner_col"
+  },
+  {
+   "id": "sh_gate_e",
+   "asset": "arch_wall_gate",
+   "position": [
+    210.4,
+    5.0,
+    193.0
+   ],
+   "collision": "arch_wall_gate_col",
+   "yaw": -90
   }
  ],
  "entities": []

@@ -268,14 +268,14 @@ fn tw_chimney(f: s32) {
 }
 
 // The pagoda's tiers (TIERS), the last onto the dew basin's top (36.19); then the finial: jump to
-// the pole, climb it to its top (feet 43.8): star 1 (a coin in the grey box, 45.5) is in reach there.
+// the pole, climb it to its top (feet 43.8): star 1 (at 45.5) is in reach there.
 var tw_tier: s32
 var tw_sub: s32
 fn tw_pagoda(f: s32) {
     if tw_phase == 9 { return }
     if TW_TRACE != 0 && tw_phase >= 1 && f % 3 == 0 { note("trace", fixed(f)) }
     if f == 0 {
-        tw_star = tw_coin_near(vec3(178.0, 45.5, 262.0))
+        tw_star = tw_star_near(vec3(178.0, 45.5, 262.0))
         expect(tw_star >= 0, "star 1 is there", 0.0)
         tw_tier = 0
         tw_sub = -1
@@ -325,7 +325,7 @@ fn tw_pagoda(f: s32) {
         return
     }
     if tw_phase == 3 {
-        if coin_taken(tw_star) {
+        if star_taken(tw_star) {
             expect(true, "star 1 taken, y", pl.pos.y)
             done()
             tw_phase = 9
@@ -341,7 +341,7 @@ fn tw_rope(f: s32) {
     let k = rail_named("cedar_rope")
     if f == 0 {
         expect(k >= 0, "the cedar rope is a rail", fixed(k))
-        tw_star = tw_coin_near(vec3(154.0, 14.0, 296.0))
+        tw_star = tw_star_near(vec3(154.0, 14.0, 296.0))
         place(vec3(132.2, sh_floor(132.2, 283.2, 30.0), 283.2), atan2(16.9, 11.6))
     }
     let end = wp_path_point(rails[k], 1)
@@ -364,7 +364,7 @@ fn tw_rope(f: s32) {
     stick_v = cc_stick(EAST, 1.0)            // let go on the sill, walk east into the hollow trunk
     if pl.pos.x > 152.0 && pl.pos.y < 16.0 { stick_v = cc_stick(sh_heading(vec3(154.0, 0.0, 296.0)), 0.5) }   // down in the chamber: to the star
     if f == t1 + 1 { pad_v = R }
-    if coin_taken(tw_star) {
+    if star_taken(tw_star) {
         expect(pl.pos.x > 151.5 && pl.pos.x < 156.5 && pl.pos.y < 15.0, "inside the cedar, on the chamber floor, y", pl.pos.y)
         expect(true, "star 4 taken", 0.0)
         done()
@@ -409,6 +409,16 @@ fn tw_ladder(f: s32) {
         }
     }
     if tw_phase < 9 && f > 1500 { expect(false, "up the ladder", pl.pos.y) }
+}
+
+// The star entity within a metre of p, or -1.
+fn tw_star_near(p: vec3) -> s32 {
+    for n in 0..wp_pack.entity_count as s32 {
+        let e = wp_entity(n)
+        let d = wp_entity_pos(e) - p
+        if e.type_id as s32 == STAR_TYPE && abs(d.x) < 1.0 && abs(d.y) < 1.0 && abs(d.z) < 1.0 { return n }
+    }
+    return -1
 }
 
 fn tw_coin_near(p: vec3) -> s32 {

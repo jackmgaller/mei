@@ -22,9 +22,12 @@ saved type coin {
   time_window: any | day | night = any
 }
 
-// A vertical pole from the placement up, height in metres.
+// A vertical pole from the placement up, height in metres. A front pole (a ladder against a wall)
+// is climbed on one side only: the side the placement's yaw faces (0: north of it), and the body
+// cannot go round it.
 type pole {
   height: fixed
+  front:  bool = false
 }
 
 // Something to grind or hang from, along a World Kit path of the world file (`paths`). The
@@ -36,13 +39,18 @@ type rail {
 // A moving platform. `to` is an offset from the placement, or `path` names a World Kit path
 // that the entity's origin follows instead ("none": no path). period and pause in ticks (60 a second);
 // pingpong goes there and back, loop restarts from the placement. The entity's `collision`
-// asset is the platform's, in its own frame.
+// asset is the platform's, in its own frame. A mover with a `start` flag is parked (not drawn,
+// no collision) until that flag is set; then it waits `delay` ticks, still parked, and runs from
+// the placement, cycling while the flag stays set; once it is cleared, the mover parks when it is
+// back at the placement (pingpong) or at the end of its leg (loop).
 type mover {
   to:     vec3 = [0, 0, 0]
   path:   name = none
   period: s16
   pause:  s16 = 0
   mode:   pingpong | loop = pingpong
+  start:  name = none
+  delay:  s16 = 0
 }
 
 // Inside the box the camera changes behaviour. The placement is the centre of the box's base;
@@ -64,3 +72,32 @@ type door {
 
 // A red coin: eight in a level, along its hardest route (the shrine's forest loop).
 saved type red_coin
+
+// A star: the level's goal, the hanafuda moon card. The position is the card's centre. Taking
+// one is saved; a star taken shows its back. `appear` names a flag: the star is there only
+// while the flag is set ("none": always), and comes down into its place when it is set. The
+// game sets `red_coins` when the world's last red coin is taken; triggers set the others.
+saved type star {
+  appear: name = none
+}
+
+// A trigger box: `size` (x, y, z) in metres, its base centred on the placement. It fires when
+// the body enters it (touch), when B is pressed standing in it (press; no dive then) or when a
+// ground pound lands in it (pound), and sets `flag`, but only while `needs` is set ("none":
+// always) and not while `flag` already is. With `keep` the flag is saved: it is set again
+// whenever the world opens. `timer` (ticks) makes the flag a challenge's: it is cleared that
+// long after, and the time left is on the screen. `ends` is a flag firing clears (a challenge
+// it ends is won). `on` and `off` are layers switched when the flag is set (on: its group's
+// others go off). `hide`: the entity's mesh is not drawn while the flag is set.
+saved type trigger {
+  size:  vec3 = [1, 2, 1]
+  how:   touch | press | pound = touch
+  flag:  name
+  needs: name = none
+  keep:  bool = true
+  timer: s16 = 0
+  ends:  name = none
+  on:    name = none
+  off:   name = none
+  hide:  bool = false
+}

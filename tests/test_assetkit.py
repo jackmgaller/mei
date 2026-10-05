@@ -1412,6 +1412,30 @@ class TexturePackingTests(unittest.TestCase):
             self.assertEqual(result.returncode,1)
             self.assertIn('do not fit',json.loads(result.stdout)['errors'][0]['message'])
 
+    def test_pack_swatch_keeps_a_worlds_swatch_block(self):
+        # a textured asset with no palette-backed material: --swatch keeps row 0's block free and
+        # writes the swatch after the textures, so the pack can share slot 14 with a world's swatch
+        r = textured({'pattern':'checker','colors':['#202020','#e0e0e0'],'size':32},quad(2,2))
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp,'card.asset.json').write_text(json.dumps(r|{'name':'card'}))
+            def run(out, *extra):
+                result = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'pack',str(Path(tmp,'card.asset.json')),
+                                         '-o',str(Path(tmp,out)),'--name','moon','--slots','14','--palette','254',*extra],
+                                        capture_output=True,text=True)
+                self.assertEqual(result.returncode,0,result.stdout)
+                return json.loads(Path(tmp,out,'moon.pack.json').read_text())
+            plain = run('plain')
+            self.assertNotIn('swatch',plain)
+            kept = run('kept','--swatch')
+            self.assertEqual(kept['swatch'],{'file':'moon.swatch','slot':14,'row':0,'texels':16})
+            self.assertEqual(kept['textures']['palettes_4bit'],[254])
+            for t in kept['assets'][0]['textures']:
+                self.assertFalse(t['x'] < 16 and t['y'] < 8,'the swatch block is reserved')
+            akr = Path(tmp,'kept/moon.akr').read_text()
+            load = akr[akr.index('fn moon_load()'):]
+            self.assertLess(load.index('MOON_TEX14'),load.index('MOON_SWATCH'),'textures load before the swatch')
+            self.assertNotIn('MOON_PALETTE',akr)
+
     def test_build_writes_texture_files_manifest_and_loader(self):
         r = recipe(**{'materials':{'default':{'color':'#a0522d','tag':'wall','texture':{'pattern':'brick','colors':['#a0522d','#d8d0c0']}},
                                    'neon':{'color':'#ff3fa4','class':'emissive'}}}) | {'nodes':[

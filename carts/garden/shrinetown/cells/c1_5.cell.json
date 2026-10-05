@@ -9,355 +9,355 @@
  "region": "shrine",
  "placements": [
   {
-   "id": "torii_19",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_19",
+   "asset": "forest_fox_torii",
    "position": [
     103.879,
     29.489,
     320.121
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": -45.0
   },
   {
-   "id": "torii_20",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_20",
+   "asset": "forest_fox_torii",
    "position": [
     102.889,
     30.129,
     321.111
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": -45.0
   },
   {
-   "id": "torii_21",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_21",
+   "asset": "forest_fox_torii",
    "position": [
     101.899,
     30.769,
     322.101
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": -45.0
   },
   {
-   "id": "torii_22",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_22",
+   "asset": "forest_fox_torii",
    "position": [
     100.909,
     31.409,
     323.091
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": -45.0
   },
   {
-   "id": "torii_23",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_23",
+   "asset": "forest_fox_torii",
    "position": [
     99.919,
     32.049,
     324.081
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": -45.0
   },
   {
-   "id": "torii_24",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_24",
+   "asset": "forest_fox_torii",
    "position": [
     98.929,
     32.689,
     325.071
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": -45.0
   },
   {
-   "id": "torii_25",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_25",
+   "asset": "forest_fox_torii",
    "position": [
     97.939,
     33.329,
     326.061
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": -45.0
   },
   {
-   "id": "torii_26",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_26",
+   "asset": "forest_fox_torii",
    "position": [
     97.498,
     35.313,
     328.562
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 69.444
   },
   {
-   "id": "torii_27",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_27",
+   "asset": "forest_fox_torii",
    "position": [
     98.809,
     35.953,
     329.053
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 69.444
   },
   {
-   "id": "torii_28",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_28",
+   "asset": "forest_fox_torii",
    "position": [
     100.12,
     36.593,
     329.545
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 69.444
   },
   {
-   "id": "torii_29",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_29",
+   "asset": "forest_fox_torii",
    "position": [
     101.431,
     37.233,
     330.037
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 69.444
   },
   {
-   "id": "torii_30",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_30",
+   "asset": "forest_fox_torii",
    "position": [
     102.742,
     37.873,
     330.528
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 69.444
   },
   {
-   "id": "torii_31",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_31",
+   "asset": "forest_fox_torii",
    "position": [
     104.052,
-    38.512,
+    38.513,
     331.02
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 69.444
   },
   {
-   "id": "torii_32",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_32",
+   "asset": "forest_fox_torii",
    "position": [
     105.363,
     39.152,
     331.511
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 69.444
   },
   {
-   "id": "torii_33",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_33",
+   "asset": "forest_fox_torii",
    "position": [
     106.674,
     39.792,
     332.003
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 69.444
   },
   {
-   "id": "torii_34",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_34",
+   "asset": "forest_fox_torii",
    "position": [
     107.985,
     40.432,
     332.494
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 69.444
   },
   {
-   "id": "torii_35",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_35",
+   "asset": "forest_fox_torii",
    "position": [
     109.296,
     41.072,
     332.986
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 69.444
   },
   {
-   "id": "torii_36",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_36",
+   "asset": "forest_fox_torii",
    "position": [
     111.04,
     43.123,
     335.28
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": -36.87
   },
   {
-   "id": "torii_37",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_37",
+   "asset": "forest_fox_torii",
    "position": [
     110.2,
     43.763,
     336.4
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": -36.87
   },
   {
-   "id": "torii_38",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_38",
+   "asset": "forest_fox_torii",
    "position": [
     109.36,
     44.403,
     337.52
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": -36.87
   },
   {
-   "id": "torii_39",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_39",
+   "asset": "forest_fox_torii",
    "position": [
     108.52,
     45.043,
     338.64
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": -36.87
   },
   {
-   "id": "torii_40",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_40",
+   "asset": "forest_fox_torii",
    "position": [
     107.68,
-    45.683,
+    45.682,
     339.76
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": -36.87
   },
   {
-   "id": "torii_41",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_41",
+   "asset": "forest_fox_torii",
    "position": [
     107.552,
-    47.694,
+    47.693,
     342.388
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 75.964
   },
   {
-   "id": "torii_42",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_42",
+   "asset": "forest_fox_torii",
    "position": [
     108.91,
     48.333,
     342.728
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 75.964
   },
   {
-   "id": "torii_43",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_43",
+   "asset": "forest_fox_torii",
    "position": [
     110.269,
     48.973,
     343.067
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 75.964
   },
   {
-   "id": "torii_44",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_44",
+   "asset": "forest_fox_torii",
    "position": [
     111.627,
     49.613,
     343.407
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 75.964
   },
   {
-   "id": "torii_45",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_45",
+   "asset": "forest_fox_torii",
    "position": [
     112.985,
     50.253,
     343.746
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 75.964
   },
   {
-   "id": "torii_46",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_46",
+   "asset": "forest_fox_torii",
    "position": [
     114.343,
     50.893,
     344.086
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 75.964
   },
   {
-   "id": "torii_47",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_47",
+   "asset": "forest_fox_torii",
    "position": [
     115.701,
     51.533,
     344.425
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 75.964
   },
   {
-   "id": "torii_48",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_48",
+   "asset": "forest_fox_torii",
    "position": [
     117.06,
-    52.173,
+    52.172,
     344.765
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 75.964
   },
   {
-   "id": "torii_49",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_49",
+   "asset": "forest_fox_torii",
    "position": [
     118.418,
     52.812,
     345.104
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 75.964
   },
   {
-   "id": "torii_50",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_50",
+   "asset": "forest_fox_torii",
    "position": [
     119.776,
     53.452,
     345.444
    ],
-   "collision": "self",
+   "collision": "forest_fox_torii_col",
    "yaw": 75.964
   }
  ],

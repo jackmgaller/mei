@@ -1,0 +1,387 @@
+// Goals: the stars, the triggers and the flags they set, a challenge's clock and the saved
+// progress (carts/garden/README.md, "Entities" and "Goals"). game.akr calls:
+//
+// - progress_load(): once at start-up, before the first world opens: the memory card's save,
+//   and the card's texels and palette (moon_load()).
+// - goals_init(): after a world is open and attach_init() ran: its stars and triggers, the
+//   flags of the triggers it keeps (and their layers).
+// - goals_pre(ip): each tick before player_tick(): a press trigger takes the B press.
+// - goals_tick(): each tick after player_tick(): touch and pound triggers, the clock.
+// - goals_collect(): each frame after the ticks: the stars the body touches.
+// - goals_frame(): each frame: writes the progress to the card when it changed.
+// - goals_draw(), goals_hud(): the stars (and their glint), the counts and the clock.
+//
+// Flags are names (the game schema's `name` parameters): triggers set them; stars wait for one
+// (`appear`), movers start on one (`start`); the game sets "red_coins" when the world's last red
+// coin is taken. They belong to the world open now: opening a world clears them, then sets again
+// the flags of the triggers it keeps (`keep`: their saved bits are set).
+//
+// The progress is the worlds' saved bits as the World Kit numbers them (a bit per saved entity):
+// a star taken, a kept trigger fired. Coins and red coins are not in it: they come back each time
+// a world opens. It is written to save 0 of the memory card whenever it changes (when there is a
+// card), and read from it at start-up.
+//
+// The star is drawn from the cart's own pack of the hanafuda moon card (art/moon.akr, made by
+// `mei_assets.py pack ... --slots 14 --palette 254 --swatch`: README.md, "Goals"), not from the
+// world: a world's entity meshes are drawn whichever texture region is loaded, so they stay
+// untextured. The card's texels are in slot 14, which no world region uses (it holds only the
+// worlds' swatch row, which the pack keeps), and its one 4-bit palette is 254, above every
+// world's; progress_load() loads them once.
+import "glint.akr"
+import "art/moon.akr"
+
+const STAR_TYPE = GARDEN_TYPE_STAR
+const TRIGGER_TYPE = GARDEN_TYPE_TRIGGER
+
+const MAX_FLAGS = 32
+const MAX_STARS = 16
+const MAX_TRIGGERS = 32
+const STAR_DROP = 45            // ticks a star takes to come down into its place when it appears
+const STAR_DROP_H: fixed = 4.0  // from this far above it
+const STAR_SEE: fixed = 160.0   // stars nearer the camera than this are drawn (their glint calls from far)
+const NOTE_TICKS = 150          // a message on the screen
+
+// ---- flags
+
+var flag_names: [MAX_FLAGS]*u8
+var flag_at: [MAX_FLAGS]s32     // the tick it was set (sim_t), or FLAG_LOADED
+var flag_n: s32
+const FLAG_LOADED = -100000
+
+fn flag_find(nm: *u8) -> s32 {
+    for k in 0..flag_n {
+        if streq(flag_names[k], nm) { return k }
+    }
+    return -1
+}
+
+fn flag_on(nm: *u8) -> bool { return nm != null && flag_find(nm) >= 0 }
+
+fn flag_set(nm: *u8) {
+    if nm == null || flag_find(nm) >= 0 { return }
+    assert(flag_n < MAX_FLAGS)
+    flag_names[flag_n] = nm
+    flag_at[flag_n] = sim_t
+    flag_n += 1
+}
+
+fn flag_clear(nm: *u8) {
+    if nm == null { return }
+    let k = flag_find(nm)
+    if k < 0 { return }
+    flag_n -= 1
+    flag_names[k] = flag_names[flag_n]
+    flag_at[k] = flag_at[flag_n]
+}
+
+// ---- the progress: the worlds' saved bits
+
+const PROG_WORLDS = 3
+const PROG_WORDS = 16           // 512 saved bits a world
+const SAVE_MAGIC: u32 = 0x4E445247
+const SAVE_VERSION: u32 = 1
+
+struct GardenSave {
+    magic: u32
+    version: u32
+    prog: [48]u32               // PROG_WORLDS * PROG_WORDS
+}
+
+var prog: [48]u32
+var prog_dirty: bool
+var save_buf: GardenSave
+var save_meta: SaveMeta
+var saves_written: s32          // to the card (the tests read it)
+
+fn prog_word(e: *WpEntity) -> s32 {
+    assert(world_k >= 0 && world_k < PROG_WORLDS && e.saved_bit >= 0 && e.saved_bit < PROG_WORDS * 32)
+    return world_k * PROG_WORDS + (e.saved_bit >> 5)
+}
+
+// Whether a saved entity's bit is set (false for an entity that is not saved).
+fn prog_has(e: *WpEntity) -> bool {
+    if e.flags & 1 == 0 { return false }
+    return prog[prog_word(e)] & (1 << (e.saved_bit & 31)) as u32 != 0
+}
+
+fn prog_put(e: *WpEntity) {
+    if e.flags & 1 == 0 || prog_has(e) { return }
+    prog[prog_word(e)] |= (1 << (e.saved_bit & 31)) as u32
+    prog_dirty = true
+}
+
+// Start-up: the card's save, if there is one (a blocking read: nothing runs yet).
+fn progress_load() {
+    moon_load()
+    if card_load(0, &save_buf as *u8, sizeof(GardenSave)) != sizeof(GardenSave) as s32 { return }
+    if save_buf.magic != SAVE_MAGIC || save_buf.version != SAVE_VERSION { return }
+    for k in 0..len(prog) { prog[k] = save_buf.prog[k] }
+}
+
+// The save's icon: a moon card (red, a gold rim, a cream moon), one frame.
+fn save_icon() {
+    card_set_title(&save_meta, "Movement Garden")
+    save_meta.frames = 1
+    save_meta.palette[1] = rgb15(rgb(208, 40, 44))
+    save_meta.palette[2] = rgb15(rgb(232, 184, 58))
+    save_meta.palette[3] = rgb15(rgb(250, 240, 214))
+    for y in 0..16 {
+        for x in 0..16 {
+            var c = 0
+            if x >= 3 && x <= 12 && y >= 1 && y <= 14 {
+                c = 1
+                if x == 3 || x == 12 || y == 1 || y == 14 { c = 2 }
+                let dx = x * 2 - 15
+                let dy = y * 2 - 13
+                if dx * dx + dy * dy <= 30 { c = 3 }
+            }
+            let i = y * 8 + x / 2
+            if x & 1 == 0 { save_meta.pixels[i] = c as u8 } else { save_meta.pixels[i] |= (c << 4) as u8 }
+        }
+    }
+}
+
+// Each frame: write the progress when it changed and the card is free (the write runs on for a
+// few frames; the buffer is not touched until the next change and a free card).
+fn goals_frame() {
+    if !prog_dirty || card_busy() { return }
+    save_buf.magic = SAVE_MAGIC
+    save_buf.version = SAVE_VERSION
+    for k in 0..len(prog) { save_buf.prog[k] = prog[k] }
+    if save_meta.frames == 0 { save_icon() }
+    let err = card_save(0, &save_buf as *u8, sizeof(GardenSave), &save_meta)
+    if err == CARD_OK { saves_written += 1 }
+    if err != CARD_BUSY { prog_dirty = false }       // no card, or full: not retried until the next change
+}
+
+// ---- the world's goals
+
+var stars: [MAX_STARS]*WpEntity
+var star_n: s32
+var trigs: [MAX_TRIGGERS]*WpEntity
+var trig_in: [MAX_TRIGGERS]bool // the body was in it last tick (a touch fires on entering)
+var trig_n: s32
+var red_total: s32              // the world's red coins
+var stars_taken: s32            // of the world's
+var chal_flag: *u8              // the challenge running (its flag), or null
+var chal_left: s32              // ticks
+var chal_end: s32               // 1 won, 2 lost, 0 none: the last challenge's end ...
+var chal_end_at: s32            // ... at this tick
+var note_star_at: s32 = -1000   // a star taken at this tick
+var prev_st: St
+
+fn goals_init() {
+    flag_n = 0
+    star_n = 0
+    trig_n = 0
+    red_total = 0
+    chal_flag = null
+    chal_left = 0
+    chal_end = 0
+    for n in 0..wp_pack.entity_count as s32 {
+        let e = wp_entity(n)
+        let ty = e.type_id as s32
+        if ty == STAR_TYPE {
+            assert(star_n < MAX_STARS)
+            stars[star_n] = e
+            star_n += 1
+        } else if ty == TRIGGER_TYPE {
+            assert(trig_n < MAX_TRIGGERS)
+            trigs[trig_n] = e
+            trig_in[trig_n] = true          // not fired by standing in it when the world opens
+            trig_n += 1
+        } else if ty == RED_COIN_TYPE {
+            red_total += 1
+        }
+    }
+    // the triggers kept: their flags and layers again
+    for k in 0..trig_n {
+        let e = trigs[k]
+        let p = wp_entity_params(e) as *GardenTrigger
+        if p.keep && prog_has(e) {
+            trig_layers(p)
+            let nm = pname(p.flag)
+            flag_set(nm)
+            flag_at[flag_find(nm)] = FLAG_LOADED
+        }
+    }
+    count_stars()
+    prev_st = pl.st
+}
+
+fn count_stars() {
+    stars_taken = 0
+    for k in 0..star_n {
+        if prog_has(stars[k]) { stars_taken += 1 }
+    }
+}
+
+// ---- triggers
+
+fn trig_inside(e: *WpEntity, p: *GardenTrigger) -> bool {
+    let d = pl.pos - wp_entity_pos(e)
+    return abs(d.x) < p.size.x / 2 && abs(d.z) < p.size.z / 2 && d.y + BODY_HEIGHT > 0.0 && d.y < p.size.y
+}
+
+// Not fired already (its flag is not set) and what it needs is set.
+fn trig_ready(p: *GardenTrigger) -> bool {
+    if flag_on(pname(p.flag)) { return false }
+    return pname(p.needs) == null || flag_on(pname(p.needs))
+}
+
+fn trig_layers(p: *GardenTrigger) {
+    if pname(p.on) != null { wp_layer_set(wp_layer_find(pname(p.on)), true) }
+    if pname(p.off) != null { wp_layer_set(wp_layer_find(pname(p.off)), false) }
+}
+
+fn trig_fire(e: *WpEntity, p: *GardenTrigger) {
+    let nm = pname(p.flag)
+    let ends = pname(p.ends)
+    if ends != null {
+        if chal_flag != null && streq(chal_flag, ends) {
+            chal_flag = null
+            chal_left = 0
+            chal_end = 1
+            chal_end_at = sim_t
+        }
+        flag_clear(ends)
+    }
+    flag_set(nm)
+    if p.timer > 0 {
+        chal_flag = nm
+        chal_left = p.timer as s32
+        chal_end = 0
+    }
+    trig_layers(p)
+    if p.keep { prog_put(e) }
+}
+
+// Before the player's tick: B in a press trigger presses it (and is no dive).
+fn goals_pre(ip: *Pin) {
+    if !ip.bp || !standing(pl.st) { return }
+    for k in 0..trig_n {
+        let e = trigs[k]
+        let p = wp_entity_params(e) as *GardenTrigger
+        if p.how != GardenTriggerHow.Press || !trig_ready(p) || !trig_inside(e, p) { continue }
+        trig_fire(e, p)
+        ip.bp = false
+        return
+    }
+}
+
+// After the player's tick: touch and pound triggers, the clock.
+fn goals_tick() {
+    let landed = pl.st == St.PoundLand && prev_st != St.PoundLand
+    prev_st = pl.st
+    for k in 0..trig_n {
+        let e = trigs[k]
+        let p = wp_entity_params(e) as *GardenTrigger
+        let was_in = trig_in[k]
+        trig_in[k] = trig_inside(e, p)
+        if p.how == GardenTriggerHow.Press || (p.how == GardenTriggerHow.Pound && !landed) { continue }
+        if p.how == GardenTriggerHow.Touch && was_in { continue }       // entering it, not staying
+        if trig_in[k] && trig_ready(p) { trig_fire(e, p) }
+    }
+    if chal_flag != null {
+        chal_left -= 1
+        if chal_left <= 0 {
+            flag_clear(chal_flag)
+            chal_flag = null
+            chal_left = 0
+            chal_end = 2
+            chal_end_at = sim_t
+        }
+    }
+}
+
+// Whether trigger e's mesh is drawn (hidden while its flag is set, with `hide`).
+fn trig_shown(e: *WpEntity) -> bool {
+    let p = wp_entity_params(e) as *GardenTrigger
+    return !p.hide || !flag_on(pname(p.flag))
+}
+
+// ---- stars
+
+// How far above its place star e is (coming down), or -1 when it is not there.
+fn star_drop(e: *WpEntity) -> fixed {
+    let p = wp_entity_params(e) as *GardenStar
+    if p == null || pname(p.appear) == null { return 0.0 }
+    let k = flag_find(pname(p.appear))
+    if k < 0 { return -1.0 }
+    let t = sim_t - flag_at[k]
+    if t >= STAR_DROP { return 0.0 }
+    let u = 1.0 - fixed(t) / STAR_DROP
+    return STAR_DROP_H * u * u
+}
+
+fn star_taken(n: s32) -> bool { return prog_has(wp_entity(n)) }
+
+// The world's red coins all taken: the "red_coins" flag (star 2).
+fn red_coins_check() {
+    if red_total > 0 && red_coins >= red_total { flag_set("red_coins") }
+}
+
+fn goals_collect() {
+    let c = pl.pos + vec3(0.0, BODY_HEIGHT / 2, 0.0)
+    for k in 0..star_n {
+        let e = stars[k]
+        if prog_has(e) || star_drop(e) != 0.0 { continue }
+        let d = wp_entity_pos(e) - c
+        if abs(d.x) < 0.8 && abs(d.y) < 1.2 && abs(d.z) < 0.8 {
+            prog_put(e)
+            count_stars()
+            note_star_at = sim_t
+        }
+    }
+}
+
+// The stars near the camera: the card turning in its glint; a star taken shows its back, still.
+fn goals_draw() {
+    let o = wp_view_origin()
+    for k in 0..star_n {
+        let e = stars[k]
+        let m = ASSET_HANAFUDA_MOON
+        let up = star_drop(e)
+        if up < 0.0 { continue }
+        let p = wp_entity_pos(e)
+        if abs(p.x - cam.eye.x) > STAR_SEE || abs(p.z - cam.eye.z) > STAR_SEE { continue }
+        // the card's origin is its bottom edge, 0.5 under its centre; the moon 0.69 over it
+        let at = p - o + vec3(0.0, up - 0.5 + glint_bob(sim_t, 120, 0.08), 0.0)
+        if prog_has(e) {
+            let face = glint_yaw(sim_t, 150) - glint_spin(sim_t, 150)
+            mesh_at(m, at, face + PI + 0.3 * frame_wave(sim_t, 240))
+        } else {
+            mesh_at(m, at, glint_yaw(sim_t, 150))
+            glint_draw(&GLINT_MOON, at + vec3(0.0, 0.69, 0.0), sim_t)
+        }
+    }
+}
+
+fn goals_hud() {
+    let y = 210
+    if star_n > 0 {
+        text(232, y, "moon", dim())
+        var x = text_int(268, y, stars_taken, hot())
+        text(x, y, "/", dim())
+        text_int(x + 8, y, star_n, ink())
+    }
+    if red_total > 0 && red_coins > 0 {
+        text(144, y, "red", dim())
+        var x = text_int(176, y, red_coins, hot())
+        text(x, y, "/", dim())
+        text_int(x + 8, y, red_total, ink())
+    }
+    if chal_flag != null {
+        // the clock: seconds and tenths, at the top in the middle
+        let s = (chal_left + 5) / 6
+        var c = hot()
+        if chal_left < 600 { c = rgb(255, 120, 100) }
+        rect_blend(128, 38, 64, 12, rgb(24, 32, 40), BLEND_HALF)
+        var x = text_int(140, 40, s / 10, c)
+        text(x, 40, ".", c)
+        text_int(x + 8, 40, s % 10, c)
+    } else if chal_end != 0 && sim_t - chal_end_at < NOTE_TICKS {
+        if chal_end == 1 { text(124, 40, "in time!", hot()) } else { text(112, 40, "time is up", rgb(255, 120, 100)) }
+    }
+    if sim_t - note_star_at < NOTE_TICKS { text(116, 52, "a moon card!", hot()) }
+}

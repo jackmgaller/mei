@@ -489,11 +489,10 @@ def back_mountain(Z):
     for o in Z.ops():
         if o['op'] == 'set' and o.get('area', {}).get('rect') == [138, 354, 170, 377]:
             o['height'] = sy - 0.5
-    # the bell under the hall's front eave (underside 4.35): its beam's top there, the pull rope (star 3)
-    # 2.85 m in front of the hall's wall
+    # the bell under the hall's front eave (underside 4.35): its beam's top there, the pull rope 2.85 m in
+    # front of the hall's wall (game.py's BELL: the rope's trigger and star 3 in front of it)
     bell = (sx, sy + 0.8, sz - 1.0)
     Z.place('stage_bell', 'forest_stage_bell', bell, 'forest_stage_bell_col')
-    Z.move_entity('star_3_bell', (sx, sy + 1.6, bell[2] - 1.85))
     # the stilt ladder from the ledge (44) over the deck's front railing (61): the pole and its look
     front = sz - 10.0
     Z.move_entity('pole_stage_front', (sx, 44.0, front - 0.6), height=18.3)

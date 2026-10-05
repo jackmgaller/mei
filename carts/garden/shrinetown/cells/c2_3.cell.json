@@ -9,131 +9,241 @@
  "region": "shrine",
  "placements": [
   {
-   "id": "temple",
-   "asset": "gbc_temple",
+   "id": "sh_temple",
+   "asset": "arch_temple",
    "position": [
     160.0,
-    8.6,
-    218.0
+    5.0,
+    221.75
    ],
-   "collision": "self"
+   "collision": "arch_temple_col"
   },
   {
-   "id": "lantern_terr2",
-   "asset": "gbc_stone_lantern",
+   "id": "sh_lantern_terr2",
+   "asset": "forest_stone_lantern",
    "position": [
     152,
     5.0,
     196
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "forest_stone_lantern_col"
   },
   {
-   "id": "lantern_terr3",
-   "asset": "gbc_stone_lantern",
+   "id": "sh_lantern_terr3",
+   "asset": "forest_stone_lantern",
    "position": [
     168,
     5.0,
     196
    ],
-   "collision": "self",
+   "collision": "forest_stone_lantern_col"
+  },
+  {
+   "id": "sh_omikuji_terr",
+   "asset": "arch_omikuji_rack",
+   "position": [
+    180.0,
+    5.0,
+    202.5
+   ],
+   "collision": "arch_omikuji_rack_col",
    "merge": true
   },
   {
-   "id": "wall_5",
-   "asset": "gbc_wall_5",
+   "id": "sh_wall_x237_1300",
+   "asset": "arch_wall_8",
    "position": [
-    137.0,
-    5.0,
-    233.0
+    130.0,
+    6.0,
+    237.4
    ],
-   "collision": "self",
-   "yaw": 90.0
+   "collision": "arch_wall_8_col"
   },
   {
-   "id": "wall_6",
-   "asset": "gbc_wall_6",
+   "id": "sh_wall_x237_1300_plinth",
+   "asset": "shrine_wall_plinth_8",
    "position": [
-    187.0,
+    130.0,
     5.0,
-    233.0
+    237.4
    ],
-   "collision": "self",
-   "yaw": 90.0
+   "collision": "shrine_wall_plinth_8_col"
   },
   {
-   "id": "gate_b_posts_w",
-   "asset": "gbc_gate_b_posts_w",
+   "id": "sh_wall_x237_1380",
+   "asset": "arch_wall_8",
    "position": [
-    155.0,
-    5.0,
-    233.0
+    138.0,
+    6.0,
+    237.4
    ],
-   "collision": "self"
+   "collision": "arch_wall_8_col"
   },
   {
-   "id": "gate_b_posts_e",
-   "asset": "gbc_gate_b_posts_e",
+   "id": "sh_wall_x237_1380_plinth",
+   "asset": "shrine_wall_plinth_8",
    "position": [
-    165.0,
+    138.0,
     5.0,
-    233.0
+    237.4
    ],
-   "collision": "self"
+   "collision": "shrine_wall_plinth_8_col"
   },
   {
-   "id": "gate_b_lintel",
-   "asset": "gbc_gate_b_lintel",
+   "id": "sh_wall_x237_1460",
+   "asset": "arch_wall_8",
    "position": [
-    160.0,
-    8.2,
-    233.0
+    146.0,
+    6.0,
+    237.4
    ],
-   "collision": "self"
+   "collision": "arch_wall_8_col"
   },
   {
-   "id": "gate_b_bar",
-   "asset": "gbc_gate_b_bar",
+   "id": "sh_wall_x237_1460_plinth",
+   "asset": "shrine_wall_plinth_8",
    "position": [
-    160.0,
+    146.0,
     5.0,
-    233.0
+    237.4
    ],
-   "collision": "self",
+   "collision": "shrine_wall_plinth_8_col"
+  },
+  {
+   "id": "sh_wall_x237_1540",
+   "asset": "arch_wall_8",
+   "position": [
+    154.0,
+    6.0,
+    237.4
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_x237_1540_plinth",
+   "asset": "shrine_wall_plinth_8",
+   "position": [
+    154.0,
+    5.0,
+    237.4
+   ],
+   "collision": "shrine_wall_plinth_8_col"
+  },
+  {
+   "id": "sh_wall_x237_1700",
+   "asset": "arch_wall_8",
+   "position": [
+    170.0,
+    6.0,
+    237.4
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_x237_1700_plinth",
+   "asset": "shrine_wall_plinth_8",
+   "position": [
+    170.0,
+    5.0,
+    237.4
+   ],
+   "collision": "shrine_wall_plinth_8_col"
+  },
+  {
+   "id": "sh_wall_x237_1780",
+   "asset": "arch_wall_8",
+   "position": [
+    178.0,
+    6.0,
+    237.4
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_x237_1780_plinth",
+   "asset": "shrine_wall_plinth_8",
+   "position": [
+    178.0,
+    5.0,
+    237.4
+   ],
+   "collision": "shrine_wall_plinth_8_col"
+  },
+  {
+   "id": "sh_wall_x237_1860",
+   "asset": "arch_wall_8",
+   "position": [
+    186.0,
+    6.0,
+    237.4
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_x237_1860_plinth",
+   "asset": "shrine_wall_plinth_8",
+   "position": [
+    186.0,
+    5.0,
+    237.4
+   ],
+   "collision": "shrine_wall_plinth_8_col"
+  },
+  {
+   "id": "sh_gate_n_shut",
+   "asset": "arch_wall_gate_shut",
+   "position": [
+    162.0,
+    5.0,
+    237.4
+   ],
+   "collision": "arch_wall_gate_shut_col",
+   "yaw": 180,
    "layer": "gate_b_barred"
   },
   {
-   "id": "gate_b_leaf_w",
-   "asset": "gbc_gate_b_leaf_w",
+   "id": "sh_gate_n_open",
+   "asset": "arch_wall_gate",
    "position": [
-    156.1,
+    162.0,
     5.0,
-    230.5
+    237.4
    ],
-   "collision": "self",
+   "collision": "arch_wall_gate_col",
+   "yaw": 180,
    "layer": "gate_b_open"
   },
   {
-   "id": "gate_b_leaf_e",
-   "asset": "gbc_gate_b_leaf_e",
+   "id": "sh_gate_n_bar",
+   "asset": "arch_wall_gate_bar",
    "position": [
-    163.9,
+    162.0,
     5.0,
-    230.5
+    237.55
    ],
-   "collision": "self",
+   "collision": "arch_wall_gate_bar_col",
+   "layer": "gate_b_barred"
+  },
+  {
+   "id": "sh_gate_n_bar_down",
+   "asset": "arch_wall_gate_bar_lifted",
+   "position": [
+    162.0,
+    5.0,
+    237.55
+   ],
+   "collision": "none",
    "layer": "gate_b_open"
   },
   {
-   "id": "pagoda_lantern",
-   "asset": "gbc_pagoda_lantern",
+   "id": "sh_pagoda_lantern",
+   "asset": "forest_stone_lantern",
    "position": [
     178.0,
-    14.8,
+    14.55,
     255.5
    ],
-   "collision": "self"
+   "collision": "forest_stone_lantern_col"
   }
  ],
  "entities": [
@@ -142,10 +252,29 @@
    "type": "coin",
    "position": [
     160.0,
-    28.5,
-    218.0
+    28.54,
+    221.75
    ],
    "asset": "gbc_coin"
+  },
+  {
+   "id": "shortcut_b",
+   "type": "trigger",
+   "position": [
+    162.0,
+    5.05,
+    239.0
+   ],
+   "params": {
+    "size": [
+     8.8,
+     3.0,
+     2.8
+    ],
+    "how": "press",
+    "flag": "shortcut_b",
+    "on": "gate_b_open"
+   }
   }
  ]
 }
