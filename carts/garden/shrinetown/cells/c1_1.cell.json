@@ -1,0 +1,488 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c1_1",
+ "at": [
+  1,
+  1
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "alley_66_66",
+   "asset": "gbt_alley_2",
+   "position": [
+    70.75,
+    0,
+    70.25
+   ],
+   "collision": "gbt_alley_2_col"
+  },
+  {
+   "id": "alley_66_77",
+   "asset": "gbt_alley_3",
+   "position": [
+    70.75,
+    0,
+    81.25
+   ],
+   "collision": "gbt_alley_3_col"
+  },
+  {
+   "id": "alley_66_88",
+   "asset": "gbt_alley_4",
+   "position": [
+    70.75,
+    0,
+    92.25
+   ],
+   "collision": "gbt_alley_4_col"
+  },
+  {
+   "id": "alley_78_66",
+   "asset": "gbt_alley_4",
+   "position": [
+    82.75,
+    0,
+    70.25
+   ],
+   "collision": "gbt_alley_4_col"
+  },
+  {
+   "id": "alley_78_88",
+   "asset": "gbt_alley_2",
+   "position": [
+    82.75,
+    0,
+    92.25
+   ],
+   "collision": "gbt_alley_2_col"
+  },
+  {
+   "id": "alley_90_66",
+   "asset": "gbt_alley_3",
+   "position": [
+    94.75,
+    0,
+    70.25
+   ],
+   "collision": "gbt_alley_3_col"
+  },
+  {
+   "id": "alley_90_77",
+   "asset": "gbt_alley_4",
+   "position": [
+    94.75,
+    0,
+    81.25
+   ],
+   "collision": "gbt_alley_4_col"
+  },
+  {
+   "id": "alley_90_88",
+   "asset": "gbt_alley_2",
+   "position": [
+    94.75,
+    0,
+    92.25
+   ],
+   "collision": "gbt_alley_2_col"
+  },
+  {
+   "id": "alley_102_88",
+   "asset": "gbt_alley_4",
+   "position": [
+    106.75,
+    0,
+    92.25
+   ],
+   "collision": "gbt_alley_4_col"
+  },
+  {
+   "id": "alley_114_66",
+   "asset": "gbt_alley_4",
+   "position": [
+    118.75,
+    0,
+    70.25
+   ],
+   "collision": "gbt_alley_4_col"
+  },
+  {
+   "id": "alley_114_77",
+   "asset": "gbt_alley_2",
+   "position": [
+    118.75,
+    0,
+    81.25
+   ],
+   "collision": "gbt_alley_2_col"
+  },
+  {
+   "id": "fire_tower",
+   "asset": "gbt_fire_tower",
+   "position": [
+    102.0,
+    0,
+    74.0
+   ],
+   "collision": "gbt_fire_tower_col"
+  },
+  {
+   "id": "fire_kura",
+   "asset": "gbt_kura",
+   "position": [
+    109.5,
+    0,
+    74.0
+   ],
+   "collision": "gbt_kura_col"
+  },
+  {
+   "id": "pole_road70",
+   "asset": "gbt_utility_pole",
+   "position": [
+    70.0,
+    0.0,
+    104.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "pole_road100",
+   "asset": "gbt_utility_pole",
+   "position": [
+    100.0,
+    0.0,
+    104.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "pole_lane_w1",
+   "asset": "gbt_utility_pole",
+   "position": [
+    112.75,
+    0.0,
+    104.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "cedar_1",
+   "asset": "gbt_tree_cedar",
+   "position": [
+    66,
+    1.584,
+    125
+   ],
+   "collision": "gbt_tree_cedar_col"
+  },
+  {
+   "id": "cedar_2",
+   "asset": "gbt_tree_cedar",
+   "position": [
+    74,
+    1.406,
+    121
+   ],
+   "collision": "gbt_tree_cedar_col"
+  },
+  {
+   "id": "cedar_3",
+   "asset": "gbt_tree_cedar",
+   "position": [
+    84,
+    0.993,
+    124
+   ],
+   "collision": "gbt_tree_cedar_col"
+  },
+  {
+   "id": "cedar_4",
+   "asset": "gbt_tree_cedar",
+   "position": [
+    92,
+    1.379,
+    121
+   ],
+   "collision": "gbt_tree_cedar_col"
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_fire_tower",
+   "type": "pole",
+   "position": [
+    102,
+    0,
+    70.55
+   ],
+   "params": {
+    "height": 15.2
+   }
+  },
+  {
+   "id": "cam_alley_ns0",
+   "type": "camera_zone",
+   "position": [
+    76.75,
+    0,
+    70.25
+   ],
+   "params": {
+    "size": [
+     2.5,
+     12,
+     52.5
+    ],
+    "mode": "rail",
+    "look": [
+     0,
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "cam_alley_ns1",
+   "type": "camera_zone",
+   "position": [
+    88.75,
+    0,
+    70.25
+   ],
+   "params": {
+    "size": [
+     2.5,
+     12,
+     52.5
+    ],
+    "mode": "rail",
+    "look": [
+     0,
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "cam_alley_ns2",
+   "type": "camera_zone",
+   "position": [
+    100.75,
+    0,
+    70.25
+   ],
+   "params": {
+    "size": [
+     2.5,
+     12,
+     52.5
+    ],
+    "mode": "rail",
+    "look": [
+     0,
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "cam_alley_ns3",
+   "type": "camera_zone",
+   "position": [
+    112.75,
+    0,
+    70.25
+   ],
+   "params": {
+    "size": [
+     2.5,
+     12,
+     52.5
+    ],
+    "mode": "rail",
+    "look": [
+     0,
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "cam_alley_ns4",
+   "type": "camera_zone",
+   "position": [
+    124.75,
+    0,
+    70.25
+   ],
+   "params": {
+    "size": [
+     2.5,
+     12,
+     52.5
+    ],
+    "mode": "rail",
+    "look": [
+     0,
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "cam_alley_ew1",
+   "type": "camera_zone",
+   "position": [
+    100.75,
+    0,
+    64.75
+   ],
+   "params": {
+    "size": [
+     69.5,
+     12,
+     2.5
+    ],
+    "mode": "rail",
+    "look": [
+     1,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "cam_alley_ew2",
+   "type": "camera_zone",
+   "position": [
+    100.75,
+    0,
+    75.75
+   ],
+   "params": {
+    "size": [
+     69.5,
+     12,
+     2.5
+    ],
+    "mode": "rail",
+    "look": [
+     1,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "cam_alley_ew3",
+   "type": "camera_zone",
+   "position": [
+    100.75,
+    0,
+    86.75
+   ],
+   "params": {
+    "size": [
+     69.5,
+     12,
+     2.5
+    ],
+    "mode": "rail",
+    "look": [
+     1,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "pole_road70",
+   "type": "pole",
+   "position": [
+    70,
+    0.0,
+    104.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "pole_road100",
+   "type": "pole",
+   "position": [
+    100,
+    0.0,
+    104.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "pole_lane_w1",
+   "type": "pole",
+   "position": [
+    112.75,
+    0.0,
+    104.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "red_fire_tower",
+   "type": "red_coin",
+   "position": [
+    102,
+    15.9,
+    74
+   ],
+   "asset": "gbt_coin_red"
+  },
+  {
+   "id": "coin_alley1",
+   "type": "coin",
+   "position": [
+    125,
+    0.7,
+    70
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_alley2",
+   "type": "coin",
+   "position": [
+    118,
+    6.7,
+    66
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_alley3",
+   "type": "coin",
+   "position": [
+    107,
+    0.7,
+    74
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_alley4",
+   "type": "coin",
+   "position": [
+    95,
+    0.7,
+    64
+   ],
+   "asset": "gbt_coin"
+  }
+ ]
+}

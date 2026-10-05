@@ -1,0 +1,177 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c1_3",
+ "at": [
+  1,
+  3
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "wall_3",
+   "asset": "gbc_wall_3",
+   "position": [
+    115.0,
+    5.0,
+    216.5
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "wall_4",
+   "asset": "gbc_wall_4",
+   "position": [
+    117.0,
+    5.0,
+    231.0
+   ],
+   "collision": "self",
+   "yaw": 45.0
+  },
+  {
+   "id": "gate_w_post_s",
+   "asset": "gbc_gate_w_post_s",
+   "position": [
+    115.0,
+    5.0,
+    196.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "gate_w_post_n",
+   "asset": "gbc_gate_w_post_n",
+   "position": [
+    115.0,
+    5.0,
+    204.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "gate_w_lintel",
+   "asset": "gbc_gate_w_lintel",
+   "position": [
+    115.0,
+    8.2,
+    200.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "boulder_1",
+   "asset": "gbc_boulder_1",
+   "position": [
+    110.5,
+    2.262,
+    214.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "deck_2",
+   "asset": "gbc_deck_tree_2",
+   "position": [
+    80,
+    1.456,
+    208
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "deck_3",
+   "asset": "gbc_deck_tree_3",
+   "position": [
+    88,
+    0.8,
+    234
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "deck_4",
+   "asset": "gbc_deck_tree_4",
+   "position": [
+    102,
+    7.173,
+    252
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "deck_5",
+   "asset": "gbc_deck_tree_5",
+   "position": [
+    70,
+    0.897,
+    220
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "crown_landing",
+   "asset": "gbc_crown_landing",
+   "position": [
+    70.0,
+    14.4,
+    215.0
+   ],
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "core_pole_crown",
+   "type": "pole",
+   "position": [
+    70,
+    15.0,
+    216.6
+   ],
+   "params": {
+    "height": 13.0
+   }
+  },
+  {
+   "id": "core_coin_deck_2",
+   "type": "coin",
+   "position": [
+    81.5,
+    16.0,
+    209.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_deck_3",
+   "type": "coin",
+   "position": [
+    89.5,
+    19.0,
+    235.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_deck_4",
+   "type": "coin",
+   "position": [
+    103.5,
+    22.0,
+    253.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_crown",
+   "type": "coin",
+   "position": [
+    70,
+    29.0,
+    220
+   ],
+   "asset": "gbc_coin"
+  }
+ ]
+}

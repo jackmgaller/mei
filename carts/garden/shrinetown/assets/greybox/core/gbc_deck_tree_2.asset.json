@@ -1,0 +1,76 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_deck_tree_2",
+ "materials": {
+  "cedar": {
+   "color": "#2e4a30"
+  },
+  "trunk": {
+   "color": "#4a3a2e"
+  },
+  "wood": {
+   "color": "#96683f"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    1.6,
+    22.344,
+    1.6
+   ],
+   "material": "trunk",
+   "transform": {
+    "translate": [
+     0,
+     11.172,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    6,
+    0.6,
+    6
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     0,
+     13.044,
+     0
+    ]
+   }
+  },
+  {
+   "id": "b2",
+   "op": "box",
+   "size": [
+    8,
+    6,
+    8
+   ],
+   "material": "cedar",
+   "transform": {
+    "translate": [
+     0,
+     21.344,
+     0
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,844 @@
+{
+ "about": "Shrine town grey box, region town (z 0-128): world-level entries in the world recipe's format. Written by notes/gen_town.py; see notes/town.md.",
+ "regions": {
+  "shrine_town": {}
+ },
+ "layers": {
+  "ladder_e": {}
+ },
+ "paths": {
+  "wire_road": {
+   "points": [
+    [
+     10,
+     8.0,
+     104.0
+    ],
+    [
+     40,
+     8.0,
+     104.0
+    ],
+    [
+     70,
+     8.0,
+     104.0
+    ],
+    [
+     100,
+     8.0,
+     104.0
+    ],
+    [
+     130,
+     8.0,
+     104.0
+    ],
+    [
+     160,
+     8.0,
+     104.0
+    ],
+    [
+     190,
+     8.0,
+     104.0
+    ],
+    [
+     220,
+     8.0,
+     104.0
+    ],
+    [
+     250,
+     8.0,
+     104.0
+    ],
+    [
+     280,
+     8.0,
+     104.0
+    ]
+   ],
+   "raised": true
+  },
+  "wire_lane_w": {
+   "points": [
+    [
+     112.75,
+     8.0,
+     44.0
+    ],
+    [
+     112.75,
+     8.0,
+     104.0
+    ]
+   ],
+   "raised": true
+  },
+  "wire_lane_e": {
+   "points": [
+    [
+     137.75,
+     8.0,
+     44.0
+    ],
+    [
+     137.75,
+     8.0,
+     104.0
+    ]
+   ],
+   "raised": true
+  },
+  "wire_konbini": {
+   "points": [
+    [
+     210.0,
+     8.0,
+     33.0
+    ],
+    [
+     207.0,
+     8.0,
+     104.0
+    ]
+   ],
+   "raised": true
+  },
+  "viaduct_deck": {
+   "points": [
+    [
+     0,
+     9.0,
+     8
+    ],
+    [
+     276,
+     9.0,
+     8
+    ],
+    [
+     290,
+     9.0,
+     12
+    ],
+    [
+     299,
+     9.0,
+     22
+    ],
+    [
+     302,
+     9.0,
+     36
+    ],
+    [
+     302,
+     9.0,
+     118
+    ],
+    [
+     306,
+     9.0,
+     134
+    ]
+   ],
+   "raised": true,
+   "sweep": {
+    "profile": [
+     [
+      -6.0,
+      -1.5
+     ],
+     [
+      -6.0,
+      0
+     ],
+     [
+      6.0,
+      0
+     ],
+     [
+      6.0,
+      -1.5
+     ],
+     [
+      -6.0,
+      -1.5
+     ]
+    ],
+    "materials": [
+     "viaduct",
+     "deck",
+     "viaduct",
+     "viaduct_under"
+    ]
+   }
+  },
+  "parapet_s": {
+   "points": [
+    [
+     0.0,
+     10.2,
+     2.15
+    ],
+    [
+     276.819,
+     10.2,
+     2.15
+    ],
+    [
+     293.224,
+     10.2,
+     6.837
+    ],
+    [
+     304.393,
+     10.2,
+     19.247
+    ],
+    [
+     307.85,
+     10.2,
+     35.38
+    ],
+    [
+     307.85,
+     10.2,
+     117.28
+    ],
+    [
+     311.675,
+     10.2,
+     132.581
+    ]
+   ],
+   "raised": true,
+   "sweep": {
+    "profile": [
+     [
+      -0.15,
+      -1.2
+     ],
+     [
+      -0.15,
+      0
+     ],
+     [
+      0.15,
+      0
+     ],
+     [
+      0.15,
+      -1.2
+     ]
+    ],
+    "material": "parapet",
+    "caps": true
+   }
+  },
+  "parapet_n_w": {
+   "points": [
+    [
+     0.0,
+     10.2,
+     13.85
+    ],
+    [
+     146.0,
+     10.2,
+     13.85
+    ]
+   ],
+   "raised": true,
+   "sweep": {
+    "profile": [
+     [
+      -0.15,
+      -1.2
+     ],
+     [
+      -0.15,
+      0
+     ],
+     [
+      0.15,
+      0
+     ],
+     [
+      0.15,
+      -1.2
+     ]
+    ],
+    "material": "parapet",
+    "caps": true
+   }
+  },
+  "parapet_n_e": {
+   "points": [
+    [
+     178.0,
+     10.2,
+     13.85
+    ],
+    [
+     275.181,
+     10.2,
+     13.85
+    ],
+    [
+     286.776,
+     10.2,
+     17.163
+    ],
+    [
+     293.607,
+     10.2,
+     24.753
+    ],
+    [
+     296.15,
+     10.2,
+     36.62
+    ],
+    [
+     296.15,
+     10.2,
+     118.72
+    ],
+    [
+     300.325,
+     10.2,
+     135.419
+    ]
+   ],
+   "raised": true,
+   "sweep": {
+    "profile": [
+     [
+      -0.15,
+      -1.2
+     ],
+     [
+      -0.15,
+      0
+     ],
+     [
+      0.15,
+      0
+     ],
+     [
+      0.15,
+      -1.2
+     ]
+    ],
+    "material": "parapet",
+    "caps": true
+   }
+  },
+  "string_torii_w": {
+   "points": [
+    [
+     155,
+     13.8,
+     124
+    ],
+    [
+     134,
+     11.6,
+     158
+    ]
+   ],
+   "raised": true
+  },
+  "string_torii_e": {
+   "points": [
+    [
+     165,
+     13.8,
+     124
+    ],
+    [
+     186,
+     11.6,
+     158
+    ]
+   ],
+   "raised": true
+  }
+ },
+ "terrain": {
+  "materials": {
+   "street": {
+    "color": "#8e8c88"
+   },
+   "asphalt": {
+    "color": "#4a4a50"
+   },
+   "paving": {
+    "color": "#b4ae9e"
+   },
+   "sando": {
+    "color": "#c8b89a"
+   },
+   "clay": {
+    "color": "#c49a6a"
+   },
+   "pooldeck": {
+    "color": "#d8d8d0"
+   },
+   "grass": {
+    "color": "#6f8a3c"
+   },
+   "floor": {
+    "color": "#5f7a34"
+   },
+   "gravel": {
+    "color": "#d4ccb8"
+   },
+   "bank": {
+    "color": "#8e887c"
+   },
+   "bed": {
+    "color": "#5a5a4e"
+   },
+   "earth": {
+    "color": "#6a4a30"
+   },
+   "viaduct": {
+    "color": "#b0aca2"
+   },
+   "viaduct_under": {
+    "color": "#8e8a82"
+   },
+   "deck": {
+    "color": "#9a968e"
+   },
+   "parapet": {
+    "color": "#d0ccc2"
+   },
+   "water": {
+    "color": "#3f7393",
+    "water": true,
+    "tag": "water"
+   }
+  },
+  "operations": [
+   {
+    "op": "paint",
+    "area": {
+     "rect": [
+      100,
+      14,
+      216,
+      44
+     ]
+    },
+    "material": "paving"
+   },
+   {
+    "op": "paint",
+    "area": {
+     "rect": [
+      154,
+      44,
+      166,
+      104
+     ]
+    },
+    "material": "sando"
+   },
+   {
+    "op": "paint",
+    "area": {
+     "rect": [
+      0,
+      104,
+      320,
+      118
+     ]
+    },
+    "material": "asphalt"
+   },
+   {
+    "op": "paint",
+    "area": {
+     "rect": [
+      244,
+      18,
+      292,
+      52
+     ]
+    },
+    "material": "clay"
+   },
+   {
+    "op": "paint",
+    "area": {
+     "rect": [
+      210,
+      18,
+      244,
+      44
+     ]
+    },
+    "material": "pooldeck"
+   },
+   {
+    "op": "paint",
+    "area": {
+     "rect": [
+      0,
+      118,
+      44,
+      128
+     ]
+    },
+    "material": "grass"
+   },
+   {
+    "op": "paint",
+    "area": {
+     "rect": [
+      52,
+      118,
+      110,
+      128
+     ]
+    },
+    "material": "floor"
+   },
+   {
+    "op": "paint",
+    "area": {
+     "rect": [
+      210,
+      118,
+      252,
+      128
+     ]
+    },
+    "material": "floor"
+   },
+   {
+    "op": "paint",
+    "area": {
+     "rect": [
+      110,
+      118,
+      210,
+      128
+     ]
+    },
+    "material": "gravel"
+   },
+   {
+    "op": "cliff",
+    "area": {
+     "rect": [
+      44,
+      0,
+      52,
+      128
+     ]
+    },
+    "height": -1.2,
+    "material": "bank"
+   },
+   {
+    "op": "set",
+    "area": {
+     "rect": [
+      44,
+      0,
+      52,
+      128
+     ]
+    },
+    "height": -1.2
+   },
+   {
+    "op": "paint",
+    "area": {
+     "rect": [
+      44,
+      0,
+      52,
+      128
+     ]
+    },
+    "material": "bed"
+   },
+   {
+    "op": "water",
+    "area": {
+     "rect": [
+      44,
+      0,
+      52,
+      128
+     ]
+    },
+    "level": -0.4,
+    "material": "water"
+   },
+   {
+    "op": "cliff",
+    "area": {
+     "rect": [
+      214,
+      22,
+      240,
+      40
+     ]
+    },
+    "height": -1.2,
+    "material": "bank"
+   },
+   {
+    "op": "set",
+    "area": {
+     "rect": [
+      214,
+      22,
+      240,
+      40
+     ]
+    },
+    "height": -1.2
+   },
+   {
+    "op": "paint",
+    "area": {
+     "rect": [
+      214,
+      22,
+      240,
+      40
+     ]
+    },
+    "material": "bed"
+   },
+   {
+    "op": "water",
+    "area": {
+     "rect": [
+      214,
+      22,
+      240,
+      40
+     ]
+    },
+    "level": -0.3,
+    "material": "water"
+   },
+   {
+    "op": "cliff",
+    "area": {
+     "rect": [
+      234,
+      96,
+      238,
+      128
+     ]
+    },
+    "height": -2.0,
+    "material": "bank"
+   },
+   {
+    "op": "set",
+    "area": {
+     "rect": [
+      234,
+      96,
+      238,
+      128
+     ]
+    },
+    "height": -2.0
+   },
+   {
+    "op": "paint",
+    "area": {
+     "rect": [
+      234,
+      96,
+      238,
+      128
+     ]
+    },
+    "material": "bed"
+   },
+   {
+    "op": "water",
+    "area": {
+     "rect": [
+      234,
+      96,
+      238,
+      128
+     ]
+    },
+    "level": -1.2,
+    "material": "water"
+   },
+   {
+    "op": "water",
+    "area": {
+     "circle": [
+      234,
+      140,
+      14
+     ]
+    },
+    "level": 0.0,
+    "material": "water"
+   }
+  ],
+  "heights": "layout.height() over the rows (parts/town_heights.txt for the test world)"
+ },
+ "collision": {
+  "surfaces": {
+   "default": 0,
+   "tags": {
+    "bounce": 1,
+    "slide": 2,
+    "water": 3
+   }
+  }
+ },
+ "vantage_points": [
+  {
+   "name": "V5 spawn looking north",
+   "position": [
+    160,
+    1.6,
+    26
+   ],
+   "yaw": 0,
+   "pitch": 0
+  },
+  {
+   "name": "V5b spawn looking north, up 5",
+   "position": [
+    160,
+    1.6,
+    26
+   ],
+   "yaw": 0,
+   "pitch": 5
+  },
+  {
+   "name": "V1 arcade roof north end looking south",
+   "position": [
+    160,
+    10.0,
+    94
+   ],
+   "yaw": 180,
+   "pitch": -8
+  },
+  {
+   "name": "V4 danchi roof looking north-east",
+   "position": [
+    78,
+    20.3,
+    30
+   ],
+   "yaw": 45,
+   "pitch": -10
+  },
+  {
+   "name": "shotengai floor looking north",
+   "position": [
+    160,
+    1.5,
+    50
+   ],
+   "yaw": 0,
+   "pitch": 0
+  },
+  {
+   "name": "shotengai floor looking south",
+   "position": [
+    160,
+    1.5,
+    100
+   ],
+   "yaw": 180,
+   "pitch": 0
+  },
+  {
+   "name": "platform looking north",
+   "position": [
+    160,
+    10.5,
+    8
+   ],
+   "yaw": 0,
+   "pitch": -5
+  },
+  {
+   "name": "parapet over the canal looking east",
+   "position": [
+    48,
+    11.7,
+    13.85
+   ],
+   "yaw": 90,
+   "pitch": -5
+  },
+  {
+   "name": "fire tower top looking east",
+   "position": [
+    102,
+    16.7,
+    74
+   ],
+   "yaw": 90,
+   "pitch": -15
+  },
+  {
+   "name": "building roof looking west",
+   "position": [
+    193,
+    19.8,
+    90
+   ],
+   "yaw": 270,
+   "pitch": -15
+  },
+  {
+   "name": "school roof looking west",
+   "position": [
+    273,
+    20.4,
+    71
+   ],
+   "yaw": 270,
+   "pitch": -10
+  },
+  {
+   "name": "front road looking east",
+   "position": [
+    120,
+    1.5,
+    111
+   ],
+   "yaw": 90,
+   "pitch": 0
+  },
+  {
+   "name": "sento chimney looking east",
+   "position": [
+    30.5,
+    19.7,
+    67.5
+   ],
+   "yaw": 90,
+   "pitch": -15
+  }
+ ]
+}

@@ -1,0 +1,73 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbm_path_out",
+ "materials": {
+  "marker": {
+   "color": "#e02080"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    0.4,
+    4.1,
+    0.4
+   ],
+   "material": "marker",
+   "transform": {
+    "translate": [
+     -1.8,
+     1.55,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    0.4,
+    4.1,
+    0.4
+   ],
+   "material": "marker",
+   "transform": {
+    "translate": [
+     1.8,
+     1.55,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b2",
+   "op": "box",
+   "size": [
+    4.8,
+    0.3,
+    0.4
+   ],
+   "material": "marker",
+   "transform": {
+    "translate": [
+     0.0,
+     3.45,
+     0.0
+    ]
+   }
+  }
+ ]
+}

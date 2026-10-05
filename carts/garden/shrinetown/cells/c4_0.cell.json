@@ -1,0 +1,107 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c4_0",
+ "at": [
+  4,
+  0
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "viaduct_16",
+   "asset": "gbt_viaduct_162",
+   "position": [
+    267.882,
+    0.0,
+    8.0
+   ],
+   "yaw": 90.0,
+   "collision": "gbt_viaduct_162_col"
+  },
+  {
+   "id": "viaduct_17",
+   "asset": "gbt_viaduct_146",
+   "position": [
+    283.0,
+    0.0,
+    10.0
+   ],
+   "yaw": 74.055,
+   "collision": "gbt_viaduct_146_col"
+  },
+  {
+   "id": "viaduct_18",
+   "asset": "gbt_viaduct_135",
+   "position": [
+    294.5,
+    0.0,
+    17.0
+   ],
+   "yaw": 41.987,
+   "collision": "gbt_viaduct_135_col"
+  },
+  {
+   "id": "viaduct_19",
+   "asset": "gbt_viaduct_143",
+   "position": [
+    300.5,
+    0.0,
+    29.0
+   ],
+   "yaw": 12.095,
+   "collision": "gbt_viaduct_143_col"
+  },
+  {
+   "id": "viaduct_20",
+   "asset": "gbt_viaduct_164",
+   "position": [
+    302.0,
+    0.0,
+    44.2
+   ],
+   "collision": "gbt_viaduct_164_col"
+  },
+  {
+   "id": "viaduct_21",
+   "asset": "gbt_viaduct_164",
+   "position": [
+    302.0,
+    0.0,
+    60.6
+   ],
+   "collision": "gbt_viaduct_164_col"
+  },
+  {
+   "id": "climbing_frame",
+   "asset": "gbt_climbing_frame",
+   "position": [
+    269.0,
+    0,
+    33.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_s5",
+   "asset": "gbt_edge_fence_4",
+   "position": [
+    273.0,
+    0,
+    0.2
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_e0",
+   "asset": "gbt_edge_fence_5",
+   "position": [
+    319.8,
+    0,
+    32.0
+   ],
+   "collision": "self"
+  }
+ ],
+ "entities": []
+}

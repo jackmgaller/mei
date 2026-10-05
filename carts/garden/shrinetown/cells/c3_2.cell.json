@@ -1,0 +1,290 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c3_2",
+ "at": [
+  3,
+  2
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "side_hall_e",
+   "asset": "gbc_side_hall_e",
+   "position": [
+    192.0,
+    0.6,
+    144.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "corridor_e",
+   "asset": "gbc_corridor_e",
+   "position": [
+    192.0,
+    5.0,
+    188.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "wall_9",
+   "asset": "gbc_wall_9",
+   "position": [
+    213.0,
+    5.0,
+    179.5
+   ],
+   "collision": "self",
+   "yaw": 180.0
+  },
+  {
+   "id": "wall_10",
+   "asset": "gbc_wall_10",
+   "position": [
+    211.0,
+    5.0,
+    169.0
+   ],
+   "collision": "self",
+   "yaw": -135.0
+  },
+  {
+   "id": "gate_e_post_s",
+   "asset": "gbc_gate_e_post_s",
+   "position": [
+    213.0,
+    5.0,
+    188.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "pond_stone_0",
+   "asset": "gbc_pond_stone",
+   "position": [
+    227.0,
+    -1.5,
+    132.5
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "pond_stone_1",
+   "asset": "gbc_pond_stone",
+   "position": [
+    228.0,
+    -1.5,
+    136.0
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "pond_stone_2",
+   "asset": "gbc_pond_stone",
+   "position": [
+    229.0,
+    -1.5,
+    139.5
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "pond_stone_3",
+   "asset": "gbc_pond_stone",
+   "position": [
+    230.0,
+    -1.5,
+    143.0
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "pond_stone_4",
+   "asset": "gbc_pond_stone",
+   "position": [
+    231.0,
+    -1.5,
+    146.5
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "pond_stone_5",
+   "asset": "gbc_pond_stone",
+   "position": [
+    232.0,
+    -1.5,
+    150.0
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "pond_stone_6",
+   "asset": "gbc_pond_stone",
+   "position": [
+    232.5,
+    -1.5,
+    153.6
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "pond_stone_7",
+   "asset": "gbc_pond_stone",
+   "position": [
+    233.0,
+    -1.5,
+    157.2
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "pond_stone_8",
+   "asset": "gbc_pond_stone",
+   "position": [
+    233.5,
+    -1.5,
+    160.9
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "pond_stone_9",
+   "asset": "gbc_pond_stone",
+   "position": [
+    234.0,
+    -1.5,
+    164.5
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "pond_stone_10",
+   "asset": "gbc_pond_stone",
+   "position": [
+    234.5,
+    -1.5,
+    168.1
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "pond_stone_11",
+   "asset": "gbc_pond_stone",
+   "position": [
+    235.0,
+    -1.5,
+    171.8
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "pond_stone_12",
+   "asset": "gbc_pond_stone",
+   "position": [
+    235.5,
+    -1.5,
+    175.4
+   ],
+   "collision": "self",
+   "merge": true
+  },
+  {
+   "id": "pond_stone_13",
+   "asset": "gbc_pond_stone",
+   "position": [
+    236.0,
+    -1.5,
+    179.0
+   ],
+   "collision": "self",
+   "merge": true
+  }
+ ],
+ "entities": [
+  {
+   "id": "core_coin_side_hall_e",
+   "type": "coin",
+   "position": [
+    192.0,
+    12.6,
+    144.0
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_corridor_e",
+   "type": "coin",
+   "position": [
+    192.0,
+    16.0,
+    188.0
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_pond_0",
+   "type": "coin",
+   "position": [
+    227.0,
+    1.3,
+    132.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_pond_1",
+   "type": "coin",
+   "position": [
+    229.0,
+    1.3,
+    139.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_pond_2",
+   "type": "coin",
+   "position": [
+    231.0,
+    1.3,
+    146.5
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_pond_3",
+   "type": "coin",
+   "position": [
+    232.5,
+    1.3,
+    153.6
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_pond_4",
+   "type": "coin",
+   "position": [
+    233.5,
+    1.3,
+    160.9
+   ],
+   "asset": "gbc_coin"
+  }
+ ]
+}

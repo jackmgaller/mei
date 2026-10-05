@@ -1,0 +1,228 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c2_4",
+ "at": [
+  2,
+  4
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "pagoda",
+   "asset": "gbm_pagoda",
+   "position": [
+    178,
+    20.0,
+    262
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "kick_cedar_0",
+   "asset": "gbm_cedar_kick_0",
+   "position": [
+    168.0,
+    20.0,
+    259.5
+   ],
+   "collision": "gbm_cedar_kick_0_col"
+  },
+  {
+   "id": "kick_cedar_1",
+   "asset": "gbm_cedar_kick_1",
+   "position": [
+    168.0,
+    20.0,
+    264.5
+   ],
+   "collision": "gbm_cedar_kick_1_col"
+  },
+  {
+   "id": "deck_rope",
+   "asset": "gbm_deck_rope",
+   "position": [
+    130,
+    13.584,
+    282
+   ],
+   "collision": "gbm_deck_rope_col"
+  },
+  {
+   "id": "sacred_cedar",
+   "asset": "gbm_cedar_hollow",
+   "position": [
+    154,
+    13.0,
+    296
+   ],
+   "collision": "gbm_cedar_hollow_col"
+  },
+  {
+   "id": "root_curtain",
+   "asset": "gbm_root_curtain",
+   "position": [
+    150.45,
+    13.0,
+    296
+   ],
+   "collision": "self",
+   "layer": "root_d_shut"
+  },
+  {
+   "id": "ladder_a",
+   "asset": "gbm_ladder_a",
+   "position": [
+    154.0,
+    13.0,
+    311.0
+   ],
+   "collision": "self",
+   "layer": "ladder_a"
+  },
+  {
+   "id": "hollow_log",
+   "asset": "gbm_hollow_log",
+   "position": [
+    188.0,
+    11.312,
+    304.0
+   ],
+   "collision": "self",
+   "yaw": 57.995
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_pagoda_finial",
+   "type": "pole",
+   "position": [
+    178,
+    44.0,
+    262
+   ],
+   "params": {
+    "height": 6.0
+   }
+  },
+  {
+   "id": "star_1_pagoda",
+   "type": "coin",
+   "position": [
+    178,
+    51.0,
+    262
+   ]
+  },
+  {
+   "id": "coin_pagoda_1",
+   "type": "coin",
+   "position": [
+    171.225,
+    25.8,
+    262
+   ]
+  },
+  {
+   "id": "coin_pagoda_2",
+   "type": "coin",
+   "position": [
+    172.425,
+    30.6,
+    262
+   ]
+  },
+  {
+   "id": "coin_pagoda_3",
+   "type": "coin",
+   "position": [
+    173.525,
+    35.4,
+    262
+   ]
+  },
+  {
+   "id": "coin_pagoda_4",
+   "type": "coin",
+   "position": [
+    174.575,
+    40.2,
+    262
+   ]
+  },
+  {
+   "id": "coin_pagoda_5",
+   "type": "coin",
+   "position": [
+    176.25,
+    45.0,
+    262
+   ]
+  },
+  {
+   "id": "camera_kick_pair",
+   "type": "camera_zone",
+   "position": [
+    168.0,
+    20.0,
+    262.0
+   ],
+   "params": {
+    "size": [
+     6,
+     18,
+     3.2
+    ],
+    "mode": "fixed",
+    "look": [
+     1,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "coin_deck_rope",
+   "type": "coin",
+   "position": [
+    128.5,
+    25.0,
+    280.5
+   ]
+  },
+  {
+   "id": "star_4_cedar",
+   "type": "coin",
+   "position": [
+    154,
+    14.0,
+    296
+   ]
+  },
+  {
+   "id": "rail_cedar_rope",
+   "type": "rail",
+   "position": [
+    132.4,
+    25.75,
+    283.4
+   ],
+   "params": {
+    "path": "cedar_rope"
+   }
+  },
+  {
+   "id": "pole_ladder_a",
+   "type": "pole",
+   "position": [
+    154.0,
+    13.0,
+    311.0
+   ],
+   "params": {
+    "height": 31.0
+   },
+   "layer": "ladder_a"
+  }
+ ]
+}

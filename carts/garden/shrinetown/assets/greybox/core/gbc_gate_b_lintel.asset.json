@@ -1,0 +1,36 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_gate_b_lintel",
+ "materials": {
+  "roof": {
+   "color": "#3a3c44"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    11.2,
+    1.2,
+    0.8
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0,
+     0.6,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

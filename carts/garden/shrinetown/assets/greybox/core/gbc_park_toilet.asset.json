@@ -1,0 +1,36 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_park_toilet",
+ "materials": {
+  "conc": {
+   "color": "#c8c4b8"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    6,
+    3.0,
+    6
+   ],
+   "material": "conc",
+   "transform": {
+    "translate": [
+     0,
+     1.5,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,252 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_1",
+ "at": [
+  0,
+  1
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "machiya_w78",
+   "asset": "gbt_machiya_a",
+   "position": [
+    11.0,
+    0,
+    83.0
+   ],
+   "collision": "gbt_machiya_a_col"
+  },
+  {
+   "id": "machiya_e78",
+   "asset": "gbt_machiya_b",
+   "position": [
+    32.0,
+    0,
+    83.0
+   ],
+   "collision": "gbt_machiya_b_col"
+  },
+  {
+   "id": "machiya_w90",
+   "asset": "gbt_machiya_a",
+   "position": [
+    11.0,
+    0,
+    95.0
+   ],
+   "collision": "gbt_machiya_a_col"
+  },
+  {
+   "id": "machiya_e90",
+   "asset": "gbt_machiya_b",
+   "position": [
+    32.0,
+    0,
+    95.0
+   ],
+   "collision": "gbt_machiya_b_col"
+  },
+  {
+   "id": "sento",
+   "asset": "gbt_sento",
+   "position": [
+    19.0,
+    0,
+    66.5
+   ],
+   "collision": "gbt_sento_col"
+  },
+  {
+   "id": "sento_boiler",
+   "asset": "gbt_sento_boiler",
+   "position": [
+    34.0,
+    0,
+    67.5
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "sento_chimney",
+   "asset": "gbt_sento_chimney",
+   "position": [
+    30.5,
+    0,
+    67.5
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "canal_road_bridge",
+   "asset": "gbt_canal_road_bridge",
+   "position": [
+    48.0,
+    -0.5,
+    111.0
+   ],
+   "collision": "gbt_canal_road_bridge_col"
+  },
+  {
+   "id": "pole_road10",
+   "asset": "gbt_utility_pole",
+   "position": [
+    10.0,
+    0.0,
+    104.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "pole_road40",
+   "asset": "gbt_utility_pole",
+   "position": [
+    40.0,
+    0.0,
+    104.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "road_works",
+   "asset": "gbt_road_works",
+   "position": [
+    1.0,
+    0,
+    111.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "cedar_0",
+   "asset": "gbt_tree_cedar",
+   "position": [
+    58,
+    1.119,
+    122
+   ],
+   "collision": "gbt_tree_cedar_col"
+  },
+  {
+   "id": "ginkgo_0",
+   "asset": "gbt_tree_ginkgo",
+   "position": [
+    14,
+    0.6,
+    124
+   ],
+   "collision": "gbt_tree_ginkgo_col"
+  },
+  {
+   "id": "ginkgo_1",
+   "asset": "gbt_tree_ginkgo",
+   "position": [
+    32,
+    0.6,
+    122
+   ],
+   "collision": "gbt_tree_ginkgo_col"
+  },
+  {
+   "id": "edge_w1",
+   "asset": "gbt_edge_fence_6",
+   "position": [
+    0.2,
+    0,
+    84.0
+   ],
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "pole_chimney",
+   "type": "pole",
+   "position": [
+    32.45,
+    5.0,
+    67.5
+   ],
+   "params": {
+    "height": 13.2
+   }
+  },
+  {
+   "id": "pole_road10",
+   "type": "pole",
+   "position": [
+    10,
+    0.0,
+    104.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "pole_road40",
+   "type": "pole",
+   "position": [
+    40,
+    0.0,
+    104.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "red_chimney",
+   "type": "red_coin",
+   "position": [
+    30.5,
+    18.9,
+    67.5
+   ],
+   "asset": "gbt_coin_red"
+  },
+  {
+   "id": "coin_canal3",
+   "type": "coin",
+   "position": [
+    48,
+    0.1,
+    68
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_canal4",
+   "type": "coin",
+   "position": [
+    48,
+    0.1,
+    84
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_canal5",
+   "type": "coin",
+   "position": [
+    48,
+    0.1,
+    100
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "rail_wire_road",
+   "type": "rail",
+   "position": [
+    10,
+    8.0,
+    104.0
+   ],
+   "params": {
+    "path": "wire_road"
+   }
+  }
+ ]
+}

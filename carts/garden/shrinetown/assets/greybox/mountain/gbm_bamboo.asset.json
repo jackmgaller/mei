@@ -1,0 +1,113 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbm_bamboo",
+ "materials": {
+  "bamboo": {
+   "color": "#a8b860"
+  },
+  "bamboo2": {
+   "color": "#8a9a48"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    0.18,
+    11.3,
+    0.18
+   ],
+   "material": "bamboo",
+   "transform": {
+    "translate": [
+     -0.6,
+     5.35,
+     -0.4
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    0.18,
+    12.8,
+    0.18
+   ],
+   "material": "bamboo2",
+   "transform": {
+    "translate": [
+     0.7,
+     6.1,
+     0.1
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "b2",
+   "op": "box",
+   "size": [
+    0.18,
+    10.3,
+    0.18
+   ],
+   "material": "bamboo",
+   "transform": {
+    "translate": [
+     0.0,
+     4.85,
+     0.8
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 30,
+    "nodes": [
+     {
+      "id": "b0",
+      "op": "box",
+      "size": [
+       0.6,
+       11.8,
+       0.6
+      ],
+      "material": "bamboo",
+      "transform": {
+       "translate": [
+        0.0,
+        5.6,
+        0.0
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ]
+     }
+    ]
+   }
+  ],
+  "cull": 90
+ }
+}

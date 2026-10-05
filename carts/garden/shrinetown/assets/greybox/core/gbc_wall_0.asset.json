@@ -1,0 +1,56 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_wall_0",
+ "materials": {
+  "roof": {
+   "color": "#3a3c44"
+  },
+  "white": {
+   "color": "#e8e2d2"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    0.8,
+    2.6,
+    33.8
+   ],
+   "material": "white",
+   "transform": {
+    "translate": [
+     0,
+     1.3,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    1.2,
+    0.3,
+    34.2
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0,
+     2.75,
+     0
+    ]
+   }
+  }
+ ]
+}

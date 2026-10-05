@@ -1,0 +1,242 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c0_0",
+ "at": [
+  0,
+  0
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "viaduct_0",
+   "asset": "gbt_viaduct_162",
+   "position": [
+    8.118,
+    0.0,
+    8.0
+   ],
+   "yaw": 90.0,
+   "collision": "gbt_viaduct_162_col"
+  },
+  {
+   "id": "viaduct_1",
+   "asset": "gbt_viaduct_162",
+   "position": [
+    24.353,
+    0.0,
+    8.0
+   ],
+   "yaw": 90.0,
+   "collision": "gbt_viaduct_162_col"
+  },
+  {
+   "id": "viaduct_2",
+   "asset": "gbt_viaduct_162",
+   "position": [
+    40.588,
+    0.0,
+    8.0
+   ],
+   "yaw": 90.0,
+   "collision": "gbt_viaduct_162_col"
+  },
+  {
+   "id": "viaduct_3",
+   "asset": "gbt_viaduct_162",
+   "position": [
+    56.824,
+    0.0,
+    8.0
+   ],
+   "yaw": 90.0,
+   "collision": "gbt_viaduct_162_col"
+  },
+  {
+   "id": "machiya_w18",
+   "asset": "gbt_machiya_a",
+   "position": [
+    11.0,
+    0,
+    23.0
+   ],
+   "collision": "gbt_machiya_a_col"
+  },
+  {
+   "id": "machiya_e18",
+   "asset": "gbt_machiya_b",
+   "position": [
+    32.0,
+    0,
+    23.0
+   ],
+   "collision": "gbt_machiya_b_col"
+  },
+  {
+   "id": "machiya_w30",
+   "asset": "gbt_machiya_a",
+   "position": [
+    11.0,
+    0,
+    35.0
+   ],
+   "collision": "gbt_machiya_a_col"
+  },
+  {
+   "id": "machiya_e30",
+   "asset": "gbt_machiya_b",
+   "position": [
+    32.0,
+    0,
+    35.0
+   ],
+   "collision": "gbt_machiya_b_col"
+  },
+  {
+   "id": "machiya_w42",
+   "asset": "gbt_machiya_a",
+   "position": [
+    11.0,
+    0,
+    47.0
+   ],
+   "collision": "gbt_machiya_a_col"
+  },
+  {
+   "id": "machiya_e42",
+   "asset": "gbt_machiya_b",
+   "position": [
+    32.0,
+    0,
+    47.0
+   ],
+   "collision": "gbt_machiya_b_col"
+  },
+  {
+   "id": "canal_footbridge",
+   "asset": "gbt_canal_footbridge",
+   "position": [
+    48.0,
+    0.1,
+    60.25
+   ],
+   "collision": "gbt_canal_footbridge_col"
+  },
+  {
+   "id": "canal_grille",
+   "asset": "gbt_canal_grille",
+   "position": [
+    48.0,
+    -1.2,
+    0.6
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_s0",
+   "asset": "gbt_edge_fence",
+   "position": [
+    22.0,
+    0,
+    0.2
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_s1",
+   "asset": "gbt_edge_fence_2",
+   "position": [
+    58.0,
+    0,
+    0.2
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_w0",
+   "asset": "gbt_edge_fence_5",
+   "position": [
+    0.2,
+    0,
+    32.0
+   ],
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "red_parapet",
+   "type": "red_coin",
+   "position": [
+    48,
+    10.9,
+    13.85
+   ],
+   "asset": "gbt_coin_red"
+  },
+  {
+   "id": "coin_canal0",
+   "type": "coin",
+   "position": [
+    48,
+    0.1,
+    20
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_canal1",
+   "type": "coin",
+   "position": [
+    48,
+    0.1,
+    36
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_canal2",
+   "type": "coin",
+   "position": [
+    48,
+    0.1,
+    52
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_parapet0",
+   "type": "coin",
+   "position": [
+    60,
+    10.9,
+    13.85
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "rail_parapet_s",
+   "type": "rail",
+   "position": [
+    0.0,
+    10.2,
+    2.15
+   ],
+   "params": {
+    "path": "parapet_s"
+   }
+  },
+  {
+   "id": "rail_parapet_n_w",
+   "type": "rail",
+   "position": [
+    0.0,
+    10.2,
+    13.85
+   ],
+   "params": {
+    "path": "parapet_n_w"
+   }
+  }
+ ]
+}

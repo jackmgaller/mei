@@ -1,0 +1,54 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c2_5",
+ "at": [
+  2,
+  5
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "stage",
+   "asset": "gbm_stage",
+   "position": [
+    154.0,
+    60.0,
+    355.0
+   ],
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "star_3_bell",
+   "type": "coin",
+   "position": [
+    154.0,
+    61.2,
+    353.6
+   ]
+  },
+  {
+   "id": "race_switch",
+   "type": "coin",
+   "position": [
+    168,
+    60.9,
+    342
+   ]
+  },
+  {
+   "id": "pole_stage_front",
+   "type": "pole",
+   "position": [
+    154.0,
+    44.0,
+    339.4
+   ],
+   "params": {
+    "height": 16.0
+   }
+  }
+ ]
+}

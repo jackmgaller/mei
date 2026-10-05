@@ -1,0 +1,36 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbc_stone_lantern",
+ "materials": {
+  "lantern": {
+   "color": "#b4ae9e"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    0.9,
+    2.0,
+    0.9
+   ],
+   "material": "lantern",
+   "transform": {
+    "translate": [
+     0,
+     1.0,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}

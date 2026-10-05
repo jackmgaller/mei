@@ -1,0 +1,406 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c2_0",
+ "at": [
+  2,
+  0
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "viaduct_8",
+   "asset": "gbt_viaduct_162",
+   "position": [
+    138.0,
+    0.0,
+    8.0
+   ],
+   "yaw": 90.0,
+   "collision": "gbt_viaduct_162_col"
+  },
+  {
+   "id": "viaduct_9",
+   "asset": "gbt_viaduct_162",
+   "position": [
+    154.235,
+    0.0,
+    8.0
+   ],
+   "yaw": 90.0,
+   "collision": "gbt_viaduct_162_col"
+  },
+  {
+   "id": "viaduct_10",
+   "asset": "gbt_viaduct_162",
+   "position": [
+    170.471,
+    0.0,
+    8.0
+   ],
+   "yaw": 90.0,
+   "collision": "gbt_viaduct_162_col"
+  },
+  {
+   "id": "viaduct_11",
+   "asset": "gbt_viaduct_162",
+   "position": [
+    186.706,
+    0.0,
+    8.0
+   ],
+   "yaw": 90.0,
+   "collision": "gbt_viaduct_162_col"
+  },
+  {
+   "id": "station_concourse",
+   "asset": "gbt_station_concourse",
+   "position": [
+    160.0,
+    0,
+    8.0
+   ],
+   "collision": "gbt_station_concourse_col"
+  },
+  {
+   "id": "station_platform",
+   "asset": "gbt_station_platform",
+   "position": [
+    160,
+    9.0,
+    8
+   ],
+   "collision": "gbt_station_platform_col"
+  },
+  {
+   "id": "station_stair_0",
+   "asset": "gbt_station_stair",
+   "position": [
+    152.0,
+    0,
+    23
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "station_stair_1",
+   "asset": "gbt_station_stair",
+   "position": [
+    172.0,
+    0,
+    23
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "vending",
+   "asset": "gbt_vending",
+   "position": [
+    177.4,
+    0,
+    29.8
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "bus_stop",
+   "asset": "gbt_bus_stop",
+   "position": [
+    140.0,
+    0,
+    35.5
+   ],
+   "collision": "gbt_bus_stop_col"
+  },
+  {
+   "id": "shop_w0",
+   "asset": "gbt_shop2",
+   "position": [
+    147.0,
+    0,
+    49.0
+   ],
+   "collision": "gbt_shop2_col"
+  },
+  {
+   "id": "shop_e0",
+   "asset": "gbt_shop2",
+   "position": [
+    173.0,
+    0,
+    49.0
+   ],
+   "collision": "gbt_shop2_col"
+  },
+  {
+   "id": "shop_w1",
+   "asset": "gbt_shop3",
+   "position": [
+    147.0,
+    0,
+    59.0
+   ],
+   "collision": "gbt_shop3_col"
+  },
+  {
+   "id": "shop_e1",
+   "asset": "gbt_shop2",
+   "position": [
+    173.0,
+    0,
+    59.0
+   ],
+   "collision": "gbt_shop2_col"
+  },
+  {
+   "id": "arcade_gate_0",
+   "asset": "gbt_arcade_gate",
+   "position": [
+    160,
+    0,
+    61
+   ],
+   "collision": "gbt_arcade_gate_col"
+  },
+  {
+   "id": "awning_w0",
+   "asset": "gbt_awning",
+   "position": [
+    154.75,
+    2.3,
+    49.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "awning_e0",
+   "asset": "gbt_awning",
+   "position": [
+    165.25,
+    2.3,
+    49.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "awning_e1",
+   "asset": "gbt_awning",
+   "position": [
+    165.25,
+    2.3,
+    59.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "alley_126_55",
+   "asset": "gbt_alley_2",
+   "position": [
+    130.75,
+    0,
+    59.25
+   ],
+   "collision": "gbt_alley_2_col"
+  },
+  {
+   "id": "dagashi",
+   "asset": "gbt_dagashi",
+   "position": [
+    128.5,
+    0,
+    46.5
+   ],
+   "collision": "gbt_dagashi_col"
+  },
+  {
+   "id": "pole_lane_e0",
+   "asset": "gbt_utility_pole",
+   "position": [
+    137.75,
+    0.0,
+    44.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_s3",
+   "asset": "gbt_edge_fence_3",
+   "position": [
+    160.0,
+    0,
+    0.2
+   ],
+   "collision": "self"
+  }
+ ],
+ "entities": [
+  {
+   "id": "spawn",
+   "type": "spawn",
+   "position": [
+    160,
+    0.0,
+    26
+   ],
+   "params": {
+    "yaw": 0
+   }
+  },
+  {
+   "id": "pole_lane_e0",
+   "type": "pole",
+   "position": [
+    137.75,
+    0.0,
+    44.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "red_canopy",
+   "type": "red_coin",
+   "position": [
+    172,
+    13.5,
+    8
+   ],
+   "asset": "gbt_coin_red"
+  },
+  {
+   "id": "star_5_platform",
+   "type": "coin",
+   "position": [
+    160,
+    9.9,
+    8
+   ],
+   "asset": "gbt_star"
+  },
+  {
+   "id": "coin_stair0_0",
+   "type": "coin",
+   "position": [
+    152.0,
+    2.2,
+    29
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_stair0_1",
+   "type": "coin",
+   "position": [
+    152.0,
+    5.2,
+    23
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_stair0_2",
+   "type": "coin",
+   "position": [
+    152.0,
+    8.2,
+    17
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_stair1_0",
+   "type": "coin",
+   "position": [
+    172.0,
+    2.2,
+    29
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_stair1_1",
+   "type": "coin",
+   "position": [
+    172.0,
+    5.2,
+    23
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_stair1_2",
+   "type": "coin",
+   "position": [
+    172.0,
+    8.2,
+    17
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_roof0",
+   "type": "coin",
+   "position": [
+    165.2,
+    3.3,
+    49
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_roof1",
+   "type": "coin",
+   "position": [
+    173,
+    7.2,
+    49
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_roof2",
+   "type": "coin",
+   "position": [
+    173,
+    7.2,
+    58
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "coin_wire_lane0",
+   "type": "coin",
+   "position": [
+    137.75,
+    8.7,
+    60
+   ],
+   "asset": "gbt_coin"
+  },
+  {
+   "id": "rail_wire_lane_e",
+   "type": "rail",
+   "position": [
+    137.75,
+    8.0,
+    44.0
+   ],
+   "params": {
+    "path": "wire_lane_e"
+   }
+  },
+  {
+   "id": "rail_parapet_n_e",
+   "type": "rail",
+   "position": [
+    178.0,
+    10.2,
+    13.85
+   ],
+   "params": {
+    "path": "parapet_n_e"
+   }
+  }
+ ]
+}
