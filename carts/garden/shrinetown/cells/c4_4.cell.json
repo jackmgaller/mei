@@ -1,0 +1,23 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c4_4",
+ "at": [
+  4,
+  4
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "dead_cedar_up",
+   "asset": "gbm_dead_cedar_up",
+   "position": [
+    256.0,
+    33.368,
+    306.0
+   ],
+   "collision": "self",
+   "layer": "cedar_c_up"
+  }
+ ]
+}

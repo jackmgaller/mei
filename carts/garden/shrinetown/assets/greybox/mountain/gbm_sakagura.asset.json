@@ -1,0 +1,94 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbm_sakagura",
+ "materials": {
+  "cedar": {
+   "color": "#2e4a30",
+   "tag": "bounce"
+  },
+  "plaster": {
+   "color": "#e8e2d2"
+  },
+  "roof": {
+   "color": "#3a3c44"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    18,
+    10.5,
+    12
+   ],
+   "material": "plaster",
+   "transform": {
+    "translate": [
+     0.0,
+     4.75,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    21.0,
+    3.22,
+    15.0
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0.0,
+     11.59,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b2",
+   "op": "box",
+   "size": [
+    12.0,
+    3.02,
+    7.2
+   ],
+   "material": "roof",
+   "transform": {
+    "translate": [
+     0.0,
+     14.69,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "b3",
+   "op": "box",
+   "size": [
+    1.2,
+    1.2,
+    1.2
+   ],
+   "material": "cedar",
+   "transform": {
+    "translate": [
+     0.0,
+     8.0,
+     -7.8
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,96 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbm_kick_chimney",
+ "materials": {
+  "rock": {
+   "color": "#6e6a62"
+  },
+  "rock2": {
+   "color": "#85807a"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    6,
+    30.5,
+    11.0
+   ],
+   "material": "rock",
+   "transform": {
+    "translate": [
+     -4.5,
+     14.75,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b1",
+   "op": "box",
+   "size": [
+    6,
+    30.5,
+    11.0
+   ],
+   "material": "rock",
+   "transform": {
+    "translate": [
+     4.5,
+     14.75,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b2",
+   "op": "box",
+   "size": [
+    3.04,
+    30.5,
+    2.0
+   ],
+   "material": "rock2",
+   "transform": {
+    "translate": [
+     0.0,
+     14.75,
+     5.5
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "b3",
+   "op": "box",
+   "size": [
+    3.04,
+    0.6,
+    1.22
+   ],
+   "material": "rock2",
+   "transform": {
+    "translate": [
+     0.0,
+     14.7,
+     3.91
+    ]
+   }
+  }
+ ]
+}

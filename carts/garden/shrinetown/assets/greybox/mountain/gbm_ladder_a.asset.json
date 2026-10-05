@@ -1,0 +1,33 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "gbm_ladder_a",
+ "materials": {
+  "rope": {
+   "color": "#c8b88a"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "nodes": [
+  {
+   "id": "b0",
+   "op": "box",
+   "size": [
+    0.8,
+    31.9,
+    0.2
+   ],
+   "material": "rope",
+   "transform": {
+    "translate": [
+     0.0,
+     15.65,
+     0.4
+    ]
+   }
+  }
+ ]
+}

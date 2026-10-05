@@ -1,0 +1,288 @@
+{
+ "format": "mei-world-cell",
+ "version": 1,
+ "id": "c1_4",
+ "at": [
+  1,
+  4
+ ],
+ "region": "shrine_town",
+ "placements": [
+  {
+   "id": "deck_6",
+   "asset": "gbm_deck_6",
+   "position": [
+    114,
+    18.664,
+    264
+   ],
+   "collision": "gbm_deck_6_col"
+  },
+  {
+   "id": "fox_shrine",
+   "asset": "gbm_fox_shrine",
+   "position": [
+    84,
+    10.86,
+    307
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "fox_statue_0",
+   "asset": "gbm_fox_statue",
+   "position": [
+    91.2,
+    15.0,
+    298.6
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "fox_statue_1",
+   "asset": "gbm_fox_statue",
+   "position": [
+    96.8,
+    15.0,
+    298.6
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "torii_01",
+   "asset": "gbm_fox_torii",
+   "position": [
+    93.774,
+    15.731,
+    301.584
+   ],
+   "collision": "self",
+   "yaw": -8.13
+  },
+  {
+   "id": "torii_02",
+   "asset": "gbm_fox_torii",
+   "position": [
+    93.576,
+    16.371,
+    302.97
+   ],
+   "collision": "self",
+   "yaw": -8.13
+  },
+  {
+   "id": "torii_03",
+   "asset": "gbm_fox_torii",
+   "position": [
+    93.378,
+    17.011,
+    304.356
+   ],
+   "collision": "self",
+   "yaw": -8.13
+  },
+  {
+   "id": "torii_04",
+   "asset": "gbm_fox_torii",
+   "position": [
+    93.18,
+    17.651,
+    305.742
+   ],
+   "collision": "self",
+   "yaw": -8.13
+  },
+  {
+   "id": "torii_05",
+   "asset": "gbm_fox_torii",
+   "position": [
+    92.982,
+    18.291,
+    307.128
+   ],
+   "collision": "self",
+   "yaw": -8.13
+  },
+  {
+   "id": "torii_06",
+   "asset": "gbm_fox_torii",
+   "position": [
+    92.784,
+    18.931,
+    308.514
+   ],
+   "collision": "self",
+   "yaw": -8.13
+  },
+  {
+   "id": "torii_07",
+   "asset": "gbm_fox_torii",
+   "position": [
+    92.586,
+    19.57,
+    309.899
+   ],
+   "collision": "self",
+   "yaw": -8.13
+  },
+  {
+   "id": "torii_08",
+   "asset": "gbm_fox_torii",
+   "position": [
+    92.388,
+    20.21,
+    311.285
+   ],
+   "collision": "self",
+   "yaw": -8.13
+  },
+  {
+   "id": "torii_09",
+   "asset": "gbm_fox_torii",
+   "position": [
+    93.538,
+    22.195,
+    314.44
+   ],
+   "collision": "self",
+   "yaw": 74.055
+  },
+  {
+   "id": "torii_10",
+   "asset": "gbm_fox_torii",
+   "position": [
+    94.885,
+    22.835,
+    314.824
+   ],
+   "collision": "self",
+   "yaw": 74.055
+  },
+  {
+   "id": "torii_11",
+   "asset": "gbm_fox_torii",
+   "position": [
+    96.231,
+    23.475,
+    315.209
+   ],
+   "collision": "self",
+   "yaw": 74.055
+  },
+  {
+   "id": "torii_12",
+   "asset": "gbm_fox_torii",
+   "position": [
+    97.577,
+    24.114,
+    315.593
+   ],
+   "collision": "self",
+   "yaw": 74.055
+  },
+  {
+   "id": "torii_13",
+   "asset": "gbm_fox_torii",
+   "position": [
+    98.923,
+    24.754,
+    315.978
+   ],
+   "collision": "self",
+   "yaw": 74.055
+  },
+  {
+   "id": "torii_14",
+   "asset": "gbm_fox_torii",
+   "position": [
+    100.269,
+    25.394,
+    316.363
+   ],
+   "collision": "self",
+   "yaw": 74.055
+  },
+  {
+   "id": "torii_15",
+   "asset": "gbm_fox_torii",
+   "position": [
+    101.615,
+    26.034,
+    316.747
+   ],
+   "collision": "self",
+   "yaw": 74.055
+  },
+  {
+   "id": "torii_16",
+   "asset": "gbm_fox_torii",
+   "position": [
+    102.961,
+    26.674,
+    317.132
+   ],
+   "collision": "self",
+   "yaw": 74.055
+  },
+  {
+   "id": "torii_17",
+   "asset": "gbm_fox_torii",
+   "position": [
+    104.308,
+    27.314,
+    317.516
+   ],
+   "collision": "self",
+   "yaw": 74.055
+  },
+  {
+   "id": "torii_18",
+   "asset": "gbm_fox_torii",
+   "position": [
+    104.869,
+    28.85,
+    319.131
+   ],
+   "collision": "self",
+   "yaw": -45.0
+  }
+ ],
+ "entities": [
+  {
+   "id": "coin_deck_6",
+   "type": "coin",
+   "position": [
+    115.5,
+    23.0,
+    265.5
+   ]
+  },
+  {
+   "id": "coin_torii_top_1",
+   "type": "coin",
+   "position": [
+    93.378,
+    21.511,
+    304.356
+   ]
+  },
+  {
+   "id": "coin_torii_top_2",
+   "type": "coin",
+   "position": [
+    93.538,
+    26.695,
+    314.44
+   ]
+  },
+  {
+   "id": "coin_torii_top_3",
+   "type": "coin",
+   "position": [
+    101.615,
+    30.534,
+    316.747
+   ]
+  }
+ ]
+}
