@@ -1,0 +1,3424 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "rural_station",
+ "budget": {
+  "vertices": 1600,
+  "triangles": 1800
+ },
+ "materials": {
+  "plaster": {
+   "color": "#ece6d4",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#ece6d4",
+     "#ddd5bf"
+    ],
+    "params": {
+     "density": 0.1,
+     "seed": 3
+    },
+    "projection": "box",
+    "scale": [
+     1.6,
+     1.6
+    ],
+    "size": 16
+   }
+  },
+  "clap": {
+   "color": "#5d4232",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#5d4232",
+     "#4b3427"
+    ],
+    "params": {
+     "count": 4,
+     "axis": "v"
+    },
+    "projection": "box",
+    "scale": [
+     1.0,
+     0.6
+    ],
+    "size": 16
+   }
+  },
+  "roof": {
+   "color": "#4d5663",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#4d5663",
+     "#444c59"
+    ],
+    "params": {
+     "count": 4,
+     "axis": "u"
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ],
+    "size": 16
+   }
+  },
+  "conc": {
+   "color": "#a4a49c",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#a4a49c",
+     "#b6b6ae",
+     "#8d8d86"
+    ],
+    "params": {
+     "density": 0.18,
+     "seed": 7
+    },
+    "projection": "box",
+    "scale": [
+     1.5,
+     1.5
+    ],
+    "size": 16
+   }
+  },
+  "corr": {
+   "color": "#86969f",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#86969f",
+     "#9fb0b9"
+    ],
+    "params": {
+     "count": 8,
+     "axis": "u"
+    },
+    "projection": "box",
+    "scale": [
+     0.6,
+     0.6
+    ],
+    "size": 16
+   }
+  },
+  "name": {
+   "color": "#f4f0e2",
+   "texture": {
+    "image": "art/name_board.png",
+    "projection": "fit"
+   }
+  },
+  "door": {
+   "color": "#6e4a2a",
+   "texture": {
+    "image": "art/door.png",
+    "projection": "fit"
+   }
+  },
+  "win_t": {
+   "color": "#f2eee2",
+   "texture": {
+    "image": "art/window_ticket.png",
+    "projection": "fit"
+   }
+  },
+  "win_p": {
+   "color": "#f2eee2",
+   "texture": {
+    "image": "art/window_plain.png",
+    "projection": "fit"
+   }
+  },
+  "timetable": {
+   "color": "#efe8d0",
+   "texture": {
+    "image": "art/timetable.png",
+    "projection": "fit"
+   }
+  },
+  "lantern": {
+   "color": "#c8322a",
+   "texture": {
+    "image": "art/lantern.png",
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "pole_sign": {
+   "color": "#f4f0e2",
+   "texture": {
+    "image": "art/pole_sign.png",
+    "projection": "fit"
+   }
+  },
+  "clock": {
+   "color": "#f6f2e6",
+   "texture": {
+    "image": "art/clock.png",
+    "projection": "disc",
+    "axis": "y",
+    "flip": "v"
+   }
+  },
+  "vend_win": {
+   "color": "#2a2c38",
+   "texture": {
+    "image": "art/vend_window.png",
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "vend_head": {
+   "color": "#2a5fa8",
+   "texture": {
+    "image": "art/vend_header.png",
+    "projection": "fit"
+   },
+   "class": "emissive"
+  },
+  "bike_b": {
+   "color": "#3a6fc0",
+   "texture": {
+    "image": "art/bike_blue.png",
+    "projection": "fit"
+   },
+   "double_sided": true
+  },
+  "bike_p": {
+   "color": "#d9608c",
+   "texture": {
+    "image": "art/bike_pink.png",
+    "projection": "fit"
+   },
+   "double_sided": true
+  },
+  "trim": {
+   "color": "#e8e0cc"
+  },
+  "timber": {
+   "color": "#4a3426"
+  },
+  "dark": {
+   "color": "#23262c"
+  },
+  "steel": {
+   "color": "#8d959e"
+  },
+  "yellow": {
+   "color": "#f0cf2c"
+  },
+  "red": {
+   "color": "#c8322a"
+  },
+  "wood": {
+   "color": "#8a5e38"
+  },
+  "woodlt": {
+   "color": "#b58a58"
+  },
+  "blue": {
+   "color": "#2f7fc1"
+  },
+  "white": {
+   "color": "#eef0ee"
+  },
+  "green": {
+   "color": "#3c8c4c"
+  },
+  "pot": {
+   "color": "#b4663c"
+  },
+  "bark": {
+   "color": "#5a4636"
+  },
+  "bloom": {
+   "color": "#f2a6c0"
+  },
+  "bloom2": {
+   "color": "#f8c8da"
+  },
+  "petals": {
+   "color": "#f6d0de"
+  },
+  "bulb": {
+   "color": "#fff2c0",
+   "class": "emissive"
+  },
+  "rooftile": {
+   "color": "#3b4350"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true,
+  "scale": "world",
+  "far": 100
+ },
+ "nodes": [
+  {
+   "id": "apron",
+   "op": "box",
+   "size": [
+    14.0,
+    0.06,
+    5.35
+   ],
+   "material": "conc",
+   "transform": {
+    "translate": [
+     0,
+     0.03,
+     -5.075
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "foundation",
+   "op": "box",
+   "size": [
+    9.3,
+    0.35,
+    5.3
+   ],
+   "material": "conc",
+   "transform": {
+    "translate": [
+     0,
+     0.175,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "platform",
+   "op": "box",
+   "size": [
+    13.0,
+    0.35,
+    4.35
+   ],
+   "material": "conc",
+   "transform": {
+    "translate": [
+     0,
+     0.175,
+     4.825
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
+   ]
+  },
+  {
+   "id": "platform_line",
+   "op": "box",
+   "size": [
+    13.0,
+    0.014,
+    0.25
+   ],
+   "material": "yellow",
+   "transform": {
+    "translate": [
+     0,
+     0.35,
+     6.7
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "wainscot",
+   "op": "box",
+   "size": [
+    9.06,
+    0.9,
+    5.06
+   ],
+   "material": "clap",
+   "transform": {
+    "translate": [
+     0,
+     0.75,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "body",
+   "op": "extrude",
+   "points": [
+    [
+     -2.5,
+     0.0
+    ],
+    [
+     2.5,
+     0.0
+    ],
+    [
+     2.5,
+     2.9
+    ],
+    [
+     0.0,
+     4.3
+    ],
+    [
+     -2.5,
+     2.9
+    ]
+   ],
+   "depth": 9.0,
+   "material": "plaster",
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ]
+   }
+  },
+  {
+   "id": "roof",
+   "op": "extrude",
+   "material": "roof",
+   "depth": 10.0,
+   "points": [
+    [
+     -3.2,
+     2.83
+    ],
+    [
+     0.0,
+     4.62
+    ],
+    [
+     3.2,
+     2.83
+    ],
+    [
+     3.2,
+     2.608
+    ],
+    [
+     0.0,
+     4.4
+    ],
+    [
+     -3.2,
+     2.608
+    ]
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ]
+   }
+  },
+  {
+   "id": "ridge",
+   "op": "box",
+   "size": [
+    10.2,
+    0.2,
+    0.36
+   ],
+   "material": "rooftile",
+   "transform": {
+    "translate": [
+     0,
+     4.66,
+     0
+    ]
+   }
+  },
+  {
+   "id": "onigawara_l",
+   "op": "cone",
+   "radius": 0.15,
+   "height": 0.34,
+   "segments": 6,
+   "material": "rooftile",
+   "transform": {
+    "translate": [
+     -5.0,
+     4.9,
+     0
+    ]
+   }
+  },
+  {
+   "id": "onigawara_r",
+   "op": "cone",
+   "radius": 0.15,
+   "height": 0.34,
+   "segments": 6,
+   "material": "rooftile",
+   "transform": {
+    "translate": [
+     5.0,
+     4.9,
+     0
+    ]
+   }
+  },
+  {
+   "id": "chimney",
+   "op": "cylinder",
+   "radius": 0.1,
+   "height": 1.0,
+   "segments": 6,
+   "caps": true,
+   "material": "dark",
+   "transform": {
+    "translate": [
+     2.8,
+     4.55,
+     0.9
+    ]
+   }
+  },
+  {
+   "id": "porch_roof",
+   "op": "extrude",
+   "material": "roof",
+   "depth": 1.9,
+   "points": [
+    [
+     -2.4,
+     2.5
+    ],
+    [
+     0.0,
+     3.25
+    ],
+    [
+     2.4,
+     2.5
+    ],
+    [
+     2.4,
+     2.3
+    ],
+    [
+     0.0,
+     3.05
+    ],
+    [
+     -2.4,
+     2.3
+    ]
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0,
+     -3.4
+    ]
+   }
+  },
+  {
+   "id": "porch_gable",
+   "op": "extrude",
+   "material": "plaster",
+   "depth": 0.1,
+   "points": [
+    [
+     -1.95,
+     2.25
+    ],
+    [
+     1.95,
+     2.25
+    ],
+    [
+     0.0,
+     2.99
+    ]
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0,
+     -4.2
+    ]
+   }
+  },
+  {
+   "id": "porch_clock",
+   "op": "cylinder",
+   "radius": 0.3,
+   "height": 0.05,
+   "segments": 12,
+   "caps": true,
+   "material": "clock",
+   "transform": {
+    "translate": [
+     0,
+     2.6,
+     -4.27
+    ],
+    "rotate": [
+     90,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "porch_beam",
+   "op": "box",
+   "size": [
+    4.0,
+    0.16,
+    0.2
+   ],
+   "material": "timber",
+   "transform": {
+    "translate": [
+     0,
+     2.2,
+     -4.1
+    ]
+   }
+  },
+  {
+   "id": "porch_post_l",
+   "op": "cylinder",
+   "radius": 0.09,
+   "height": 2.2,
+   "segments": 8,
+   "caps": false,
+   "material": "timber",
+   "transform": {
+    "translate": [
+     -1.9,
+     1.17,
+     -4.1
+    ]
+   }
+  },
+  {
+   "id": "porch_post_r",
+   "op": "cylinder",
+   "radius": 0.09,
+   "height": 2.2,
+   "segments": 8,
+   "caps": false,
+   "material": "timber",
+   "transform": {
+    "translate": [
+     1.9,
+     1.17,
+     -4.1
+    ]
+   }
+  },
+  {
+   "id": "name_board",
+   "op": "mesh",
+   "vertices": [
+    [
+     -1.0,
+     2.16,
+     -4.23
+    ],
+    [
+     1.0,
+     2.16,
+     -4.23
+    ],
+    [
+     1.0,
+     1.58,
+     -4.23
+    ],
+    [
+     -1.0,
+     1.58,
+     -4.23
+    ],
+    [
+     -1.0,
+     2.16,
+     -4.14
+    ],
+    [
+     1.0,
+     2.16,
+     -4.14
+    ],
+    [
+     1.0,
+     1.58,
+     -4.14
+    ],
+    [
+     -1.0,
+     1.58,
+     -4.14
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "name",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "name"
+  },
+  {
+   "id": "lantern_l",
+   "op": "mesh",
+   "vertices": [
+    [
+     -1.56,
+     2.14,
+     -4.21
+    ],
+    [
+     -1.34,
+     2.14,
+     -4.21
+    ],
+    [
+     -1.34,
+     1.8,
+     -4.21
+    ],
+    [
+     -1.56,
+     1.8,
+     -4.21
+    ],
+    [
+     -1.56,
+     2.14,
+     -3.99
+    ],
+    [
+     -1.34,
+     2.14,
+     -3.99
+    ],
+    [
+     -1.34,
+     1.8,
+     -3.99
+    ],
+    [
+     -1.56,
+     1.8,
+     -3.99
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     5,
+     4,
+     7,
+     6
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "lantern",
+    "lantern",
+    "lantern",
+    "lantern",
+    "dark"
+   ],
+   "material": "lantern"
+  },
+  {
+   "id": "lantern_r",
+   "op": "mesh",
+   "vertices": [
+    [
+     1.34,
+     2.14,
+     -4.21
+    ],
+    [
+     1.56,
+     2.14,
+     -4.21
+    ],
+    [
+     1.56,
+     1.8,
+     -4.21
+    ],
+    [
+     1.34,
+     1.8,
+     -4.21
+    ],
+    [
+     1.34,
+     2.14,
+     -3.99
+    ],
+    [
+     1.56,
+     2.14,
+     -3.99
+    ],
+    [
+     1.56,
+     1.8,
+     -3.99
+    ],
+    [
+     1.34,
+     1.8,
+     -3.99
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     5,
+     4,
+     7,
+     6
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "lantern",
+    "lantern",
+    "lantern",
+    "lantern",
+    "dark"
+   ],
+   "material": "lantern"
+  },
+  {
+   "id": "step1",
+   "op": "box",
+   "size": [
+    3.6,
+    0.15,
+    1.2
+   ],
+   "material": "conc",
+   "transform": {
+    "translate": [
+     0,
+     0.075,
+     -3.2
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "step2",
+   "op": "box",
+   "size": [
+    3.0,
+    0.27,
+    0.65
+   ],
+   "material": "conc",
+   "transform": {
+    "translate": [
+     0,
+     0.135,
+     -2.875
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "door_l",
+   "op": "mesh",
+   "vertices": [
+    [
+     -1.02,
+     2.35,
+     -2.6
+    ],
+    [
+     -0.02,
+     2.35,
+     -2.6
+    ],
+    [
+     -0.02,
+     0.35,
+     -2.6
+    ],
+    [
+     -1.02,
+     0.35,
+     -2.6
+    ],
+    [
+     -1.02,
+     2.35,
+     -2.46
+    ],
+    [
+     -0.02,
+     2.35,
+     -2.46
+    ],
+    [
+     -0.02,
+     0.35,
+     -2.46
+    ],
+    [
+     -1.02,
+     0.35,
+     -2.46
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "door",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "door"
+  },
+  {
+   "id": "door_r",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.02,
+     2.35,
+     -2.6
+    ],
+    [
+     1.02,
+     2.35,
+     -2.6
+    ],
+    [
+     1.02,
+     0.35,
+     -2.6
+    ],
+    [
+     0.02,
+     0.35,
+     -2.6
+    ],
+    [
+     0.02,
+     2.35,
+     -2.46
+    ],
+    [
+     1.02,
+     2.35,
+     -2.46
+    ],
+    [
+     1.02,
+     0.35,
+     -2.46
+    ],
+    [
+     0.02,
+     0.35,
+     -2.46
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "door",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "door"
+  },
+  {
+   "id": "win_front_a",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.6,
+     2.2,
+     -2.58
+    ],
+    [
+     -3.8,
+     2.2,
+     -2.58
+    ],
+    [
+     -3.8,
+     1.25,
+     -2.58
+    ],
+    [
+     -4.6,
+     1.25,
+     -2.58
+    ],
+    [
+     -4.6,
+     2.2,
+     -2.46
+    ],
+    [
+     -3.8,
+     2.2,
+     -2.46
+    ],
+    [
+     -3.8,
+     1.25,
+     -2.46
+    ],
+    [
+     -4.6,
+     1.25,
+     -2.46
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "win_p",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "win_p"
+  },
+  {
+   "id": "win_front_ticket",
+   "op": "mesh",
+   "vertices": [
+    [
+     -3.6,
+     2.1,
+     -2.58
+    ],
+    [
+     -2.4,
+     2.1,
+     -2.58
+    ],
+    [
+     -2.4,
+     1.2,
+     -2.58
+    ],
+    [
+     -3.6,
+     1.2,
+     -2.58
+    ],
+    [
+     -3.6,
+     2.1,
+     -2.46
+    ],
+    [
+     -2.4,
+     2.1,
+     -2.46
+    ],
+    [
+     -2.4,
+     1.2,
+     -2.46
+    ],
+    [
+     -3.6,
+     1.2,
+     -2.46
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "win_t",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "win_t"
+  },
+  {
+   "id": "win_front_b",
+   "op": "mesh",
+   "vertices": [
+    [
+     2.5,
+     2.2,
+     -2.58
+    ],
+    [
+     3.3,
+     2.2,
+     -2.58
+    ],
+    [
+     3.3,
+     1.25,
+     -2.58
+    ],
+    [
+     2.5,
+     1.25,
+     -2.58
+    ],
+    [
+     2.5,
+     2.2,
+     -2.46
+    ],
+    [
+     3.3,
+     2.2,
+     -2.46
+    ],
+    [
+     3.3,
+     1.25,
+     -2.46
+    ],
+    [
+     2.5,
+     1.25,
+     -2.46
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "win_p",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "win_p"
+  },
+  {
+   "id": "win_front_c",
+   "op": "mesh",
+   "vertices": [
+    [
+     3.6,
+     2.2,
+     -2.58
+    ],
+    [
+     4.4,
+     2.2,
+     -2.58
+    ],
+    [
+     4.4,
+     1.25,
+     -2.58
+    ],
+    [
+     3.6,
+     1.25,
+     -2.58
+    ],
+    [
+     3.6,
+     2.2,
+     -2.46
+    ],
+    [
+     4.4,
+     2.2,
+     -2.46
+    ],
+    [
+     4.4,
+     1.25,
+     -2.46
+    ],
+    [
+     3.6,
+     1.25,
+     -2.46
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "win_p",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "win_p"
+  },
+  {
+   "id": "timetable",
+   "op": "mesh",
+   "vertices": [
+    [
+     -2.0,
+     2.1,
+     -2.58
+    ],
+    [
+     -1.2,
+     2.1,
+     -2.58
+    ],
+    [
+     -1.2,
+     1.0,
+     -2.58
+    ],
+    [
+     -2.0,
+     1.0,
+     -2.58
+    ],
+    [
+     -2.0,
+     2.1,
+     -2.46
+    ],
+    [
+     -1.2,
+     2.1,
+     -2.46
+    ],
+    [
+     -1.2,
+     1.0,
+     -2.46
+    ],
+    [
+     -2.0,
+     1.0,
+     -2.46
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "timetable",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "timetable"
+  },
+  {
+   "id": "win_back_0",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.4,
+     2.2,
+     2.46
+    ],
+    [
+     -3.6,
+     2.2,
+     2.46
+    ],
+    [
+     -3.6,
+     1.25,
+     2.46
+    ],
+    [
+     -4.4,
+     1.25,
+     2.46
+    ],
+    [
+     -4.4,
+     2.2,
+     2.58
+    ],
+    [
+     -3.6,
+     2.2,
+     2.58
+    ],
+    [
+     -3.6,
+     1.25,
+     2.58
+    ],
+    [
+     -4.4,
+     1.25,
+     2.58
+    ]
+   ],
+   "faces": [
+    [
+     5,
+     4,
+     7,
+     6
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "win_p",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "win_p"
+  },
+  {
+   "id": "win_back_1",
+   "op": "mesh",
+   "vertices": [
+    [
+     -3.2,
+     2.2,
+     2.46
+    ],
+    [
+     -2.4,
+     2.2,
+     2.46
+    ],
+    [
+     -2.4,
+     1.25,
+     2.46
+    ],
+    [
+     -3.2,
+     1.25,
+     2.46
+    ],
+    [
+     -3.2,
+     2.2,
+     2.58
+    ],
+    [
+     -2.4,
+     2.2,
+     2.58
+    ],
+    [
+     -2.4,
+     1.25,
+     2.58
+    ],
+    [
+     -3.2,
+     1.25,
+     2.58
+    ]
+   ],
+   "faces": [
+    [
+     5,
+     4,
+     7,
+     6
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "win_p",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "win_p"
+  },
+  {
+   "id": "win_back_2",
+   "op": "mesh",
+   "vertices": [
+    [
+     2.4,
+     2.2,
+     2.46
+    ],
+    [
+     3.2,
+     2.2,
+     2.46
+    ],
+    [
+     3.2,
+     1.25,
+     2.46
+    ],
+    [
+     2.4,
+     1.25,
+     2.46
+    ],
+    [
+     2.4,
+     2.2,
+     2.58
+    ],
+    [
+     3.2,
+     2.2,
+     2.58
+    ],
+    [
+     3.2,
+     1.25,
+     2.58
+    ],
+    [
+     2.4,
+     1.25,
+     2.58
+    ]
+   ],
+   "faces": [
+    [
+     5,
+     4,
+     7,
+     6
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "win_p",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "win_p"
+  },
+  {
+   "id": "win_back_3",
+   "op": "mesh",
+   "vertices": [
+    [
+     3.6,
+     2.2,
+     2.46
+    ],
+    [
+     4.4,
+     2.2,
+     2.46
+    ],
+    [
+     4.4,
+     1.25,
+     2.46
+    ],
+    [
+     3.6,
+     1.25,
+     2.46
+    ],
+    [
+     3.6,
+     2.2,
+     2.58
+    ],
+    [
+     4.4,
+     2.2,
+     2.58
+    ],
+    [
+     4.4,
+     1.25,
+     2.58
+    ],
+    [
+     3.6,
+     1.25,
+     2.58
+    ]
+   ],
+   "faces": [
+    [
+     5,
+     4,
+     7,
+     6
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "win_p",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "win_p"
+  },
+  {
+   "id": "door_back_l",
+   "op": "mesh",
+   "vertices": [
+    [
+     -1.02,
+     2.35,
+     2.46
+    ],
+    [
+     -0.02,
+     2.35,
+     2.46
+    ],
+    [
+     -0.02,
+     0.35,
+     2.46
+    ],
+    [
+     -1.02,
+     0.35,
+     2.46
+    ],
+    [
+     -1.02,
+     2.35,
+     2.58
+    ],
+    [
+     -0.02,
+     2.35,
+     2.58
+    ],
+    [
+     -0.02,
+     0.35,
+     2.58
+    ],
+    [
+     -1.02,
+     0.35,
+     2.58
+    ]
+   ],
+   "faces": [
+    [
+     5,
+     4,
+     7,
+     6
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "door",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "door"
+  },
+  {
+   "id": "door_back_r",
+   "op": "mesh",
+   "vertices": [
+    [
+     0.02,
+     2.35,
+     2.46
+    ],
+    [
+     1.02,
+     2.35,
+     2.46
+    ],
+    [
+     1.02,
+     0.35,
+     2.46
+    ],
+    [
+     0.02,
+     0.35,
+     2.46
+    ],
+    [
+     0.02,
+     2.35,
+     2.58
+    ],
+    [
+     1.02,
+     2.35,
+     2.58
+    ],
+    [
+     1.02,
+     0.35,
+     2.58
+    ],
+    [
+     0.02,
+     0.35,
+     2.58
+    ]
+   ],
+   "faces": [
+    [
+     5,
+     4,
+     7,
+     6
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "door",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "door"
+  },
+  {
+   "id": "win_end",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.58,
+     2.2,
+     -0.4
+    ],
+    [
+     -4.52,
+     2.2,
+     -0.4
+    ],
+    [
+     -4.52,
+     1.25,
+     -0.4
+    ],
+    [
+     -4.58,
+     1.25,
+     -0.4
+    ],
+    [
+     -4.58,
+     2.2,
+     0.4
+    ],
+    [
+     -4.52,
+     2.2,
+     0.4
+    ],
+    [
+     -4.52,
+     1.25,
+     0.4
+    ],
+    [
+     -4.58,
+     1.25,
+     0.4
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     5,
+     4,
+     7,
+     6
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "win_p",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "win_p"
+  },
+  {
+   "id": "win_attic",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.56,
+     3.78,
+     -0.25
+    ],
+    [
+     -4.52,
+     3.78,
+     -0.25
+    ],
+    [
+     -4.52,
+     3.2,
+     -0.25
+    ],
+    [
+     -4.56,
+     3.2,
+     -0.25
+    ],
+    [
+     -4.56,
+     3.78,
+     0.25
+    ],
+    [
+     -4.52,
+     3.78,
+     0.25
+    ],
+    [
+     -4.52,
+     3.2,
+     0.25
+    ],
+    [
+     -4.56,
+     3.2,
+     0.25
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     5,
+     4,
+     7,
+     6
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "win_p",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "win_p"
+  },
+  {
+   "id": "win_attic_r",
+   "op": "mesh",
+   "vertices": [
+    [
+     4.52,
+     3.78,
+     -0.25
+    ],
+    [
+     4.56,
+     3.78,
+     -0.25
+    ],
+    [
+     4.56,
+     3.2,
+     -0.25
+    ],
+    [
+     4.52,
+     3.2,
+     -0.25
+    ],
+    [
+     4.52,
+     3.78,
+     0.25
+    ],
+    [
+     4.56,
+     3.78,
+     0.25
+    ],
+    [
+     4.56,
+     3.2,
+     0.25
+    ],
+    [
+     4.52,
+     3.2,
+     0.25
+    ]
+   ],
+   "faces": [
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     5,
+     4,
+     7,
+     6
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "win_p",
+    "trim",
+    "trim",
+    "trim"
+   ],
+   "material": "win_p"
+  },
+  {
+   "id": "timber_fn445",
+   "op": "box",
+   "size": [
+    0.13,
+    1.75,
+    0.07
+   ],
+   "material": "timber",
+   "transform": {
+    "translate": [
+     -4.45,
+     2.025,
+     -2.53
+    ]
+   }
+  },
+  {
+   "id": "timber_bn445",
+   "op": "box",
+   "size": [
+    0.13,
+    1.75,
+    0.07
+   ],
+   "material": "timber",
+   "transform": {
+    "translate": [
+     -4.45,
+     2.025,
+     2.53
+    ]
+   }
+  },
+  {
+   "id": "timber_fn150",
+   "op": "box",
+   "size": [
+    0.13,
+    1.75,
+    0.07
+   ],
+   "material": "timber",
+   "transform": {
+    "translate": [
+     -1.5,
+     2.025,
+     -2.53
+    ]
+   }
+  },
+  {
+   "id": "timber_bn150",
+   "op": "box",
+   "size": [
+    0.13,
+    1.75,
+    0.07
+   ],
+   "material": "timber",
+   "transform": {
+    "translate": [
+     -1.5,
+     2.025,
+     2.53
+    ]
+   }
+  },
+  {
+   "id": "timber_f150",
+   "op": "box",
+   "size": [
+    0.13,
+    1.75,
+    0.07
+   ],
+   "material": "timber",
+   "transform": {
+    "translate": [
+     1.5,
+     2.025,
+     -2.53
+    ]
+   }
+  },
+  {
+   "id": "timber_b150",
+   "op": "box",
+   "size": [
+    0.13,
+    1.75,
+    0.07
+   ],
+   "material": "timber",
+   "transform": {
+    "translate": [
+     1.5,
+     2.025,
+     2.53
+    ]
+   }
+  },
+  {
+   "id": "timber_f445",
+   "op": "box",
+   "size": [
+    0.13,
+    1.75,
+    0.07
+   ],
+   "material": "timber",
+   "transform": {
+    "translate": [
+     4.45,
+     2.025,
+     -2.53
+    ]
+   }
+  },
+  {
+   "id": "timber_b445",
+   "op": "box",
+   "size": [
+    0.13,
+    1.75,
+    0.07
+   ],
+   "material": "timber",
+   "transform": {
+    "translate": [
+     4.45,
+     2.025,
+     2.53
+    ]
+   }
+  },
+  {
+   "id": "beam_f",
+   "op": "box",
+   "size": [
+    9.1,
+    0.1,
+    0.06
+   ],
+   "material": "timber",
+   "transform": {
+    "translate": [
+     0,
+     2.55,
+     -2.52
+    ]
+   }
+  },
+  {
+   "id": "beam_b",
+   "op": "box",
+   "size": [
+    9.1,
+    0.1,
+    0.06
+   ],
+   "material": "timber",
+   "transform": {
+    "translate": [
+     0,
+     2.55,
+     2.52
+    ]
+   }
+  },
+  {
+   "id": "canopy",
+   "op": "box",
+   "size": [
+    10.4,
+    0.1,
+    3.1
+   ],
+   "material": "corr",
+   "transform": {
+    "translate": [
+     0,
+     2.62,
+     4.65
+    ]
+   }
+  },
+  {
+   "id": "canopy_fascia",
+   "op": "box",
+   "size": [
+    10.5,
+    0.2,
+    0.08
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     0,
+     2.55,
+     6.2
+    ]
+   }
+  },
+  {
+   "id": "canopy_post_n45",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 2.22,
+   "segments": 6,
+   "caps": false,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -4.5,
+     1.46,
+     6.0
+    ]
+   }
+  },
+  {
+   "id": "canopy_post_n15",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 2.22,
+   "segments": 6,
+   "caps": false,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -1.5,
+     1.46,
+     6.0
+    ]
+   }
+  },
+  {
+   "id": "canopy_post_15",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 2.22,
+   "segments": 6,
+   "caps": false,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     1.5,
+     1.46,
+     6.0
+    ]
+   }
+  },
+  {
+   "id": "canopy_post_45",
+   "op": "cylinder",
+   "radius": 0.07,
+   "height": 2.22,
+   "segments": 6,
+   "caps": false,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     4.5,
+     1.46,
+     6.0
+    ]
+   }
+  },
+  {
+   "id": "pole_l",
+   "op": "box",
+   "size": [
+    0.08,
+    1.5,
+    0.08
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     -3.6,
+     1.1,
+     5.7
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "pole_sign_l",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.4,
+     2.04,
+     5.65
+    ],
+    [
+     -2.8,
+     2.04,
+     5.65
+    ],
+    [
+     -2.8,
+     1.7,
+     5.65
+    ],
+    [
+     -4.4,
+     1.7,
+     5.65
+    ],
+    [
+     -4.4,
+     2.04,
+     5.75
+    ],
+    [
+     -2.8,
+     2.04,
+     5.75
+    ],
+    [
+     -2.8,
+     1.7,
+     5.75
+    ],
+    [
+     -4.4,
+     1.7,
+     5.75
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     5,
+     4,
+     7,
+     6
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "pole_sign",
+    "pole_sign",
+    "dark",
+    "dark",
+    "dark"
+   ],
+   "material": "pole_sign"
+  },
+  {
+   "id": "pole_r",
+   "op": "box",
+   "size": [
+    0.08,
+    1.5,
+    0.08
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     3.6,
+     1.1,
+     5.7
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "pole_sign_r",
+   "op": "mesh",
+   "vertices": [
+    [
+     2.8,
+     2.04,
+     5.65
+    ],
+    [
+     4.4,
+     2.04,
+     5.65
+    ],
+    [
+     4.4,
+     1.7,
+     5.65
+    ],
+    [
+     2.8,
+     1.7,
+     5.65
+    ],
+    [
+     2.8,
+     2.04,
+     5.75
+    ],
+    [
+     4.4,
+     2.04,
+     5.75
+    ],
+    [
+     4.4,
+     1.7,
+     5.75
+    ],
+    [
+     2.8,
+     1.7,
+     5.75
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     5,
+     4,
+     7,
+     6
+    ],
+    [
+     4,
+     0,
+     3,
+     7
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ]
+   ],
+   "face_materials": [
+    "pole_sign",
+    "pole_sign",
+    "dark",
+    "dark",
+    "dark"
+   ],
+   "material": "pole_sign"
+  },
+  {
+   "id": "bench_a_seat",
+   "op": "box",
+   "size": [
+    1.8,
+    0.06,
+    0.45
+   ],
+   "material": "woodlt",
+   "transform": {
+    "translate": [
+     -2.6,
+     0.8,
+     3.2
+    ]
+   }
+  },
+  {
+   "id": "bench_a_back",
+   "op": "box",
+   "size": [
+    1.8,
+    0.35,
+    0.05
+   ],
+   "material": "woodlt",
+   "transform": {
+    "translate": [
+     -2.6,
+     1.05,
+     3.0
+    ]
+   }
+  },
+  {
+   "id": "bench_a_legn75",
+   "op": "box",
+   "size": [
+    0.06,
+    0.45,
+    0.4
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     -3.35,
+     0.57,
+     3.2
+    ]
+   }
+  },
+  {
+   "id": "bench_a_leg75",
+   "op": "box",
+   "size": [
+    0.06,
+    0.45,
+    0.4
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     -1.85,
+     0.57,
+     3.2
+    ]
+   }
+  },
+  {
+   "id": "bench_b_seat",
+   "op": "box",
+   "size": [
+    1.8,
+    0.06,
+    0.45
+   ],
+   "material": "woodlt",
+   "transform": {
+    "translate": [
+     2.6,
+     0.8,
+     3.2
+    ]
+   }
+  },
+  {
+   "id": "bench_b_back",
+   "op": "box",
+   "size": [
+    1.8,
+    0.35,
+    0.05
+   ],
+   "material": "woodlt",
+   "transform": {
+    "translate": [
+     2.6,
+     1.05,
+     3.0
+    ]
+   }
+  },
+  {
+   "id": "bench_b_legn75",
+   "op": "box",
+   "size": [
+    0.06,
+    0.45,
+    0.4
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     1.85,
+     0.57,
+     3.2
+    ]
+   }
+  },
+  {
+   "id": "bench_b_leg75",
+   "op": "box",
+   "size": [
+    0.06,
+    0.45,
+    0.4
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     3.35,
+     0.57,
+     3.2
+    ]
+   }
+  },
+  {
+   "id": "shed_roof",
+   "op": "box",
+   "size": [
+    1.95,
+    0.08,
+    3.6
+   ],
+   "material": "corr",
+   "transform": {
+    "translate": [
+     5.45,
+     2.0,
+     -0.5
+    ]
+   }
+  },
+  {
+   "id": "shed_post_a",
+   "op": "box",
+   "size": [
+    0.1,
+    1.96,
+    0.1
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     6.3,
+     1.0,
+     -2.1
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "shed_post_b",
+   "op": "box",
+   "size": [
+    0.1,
+    1.96,
+    0.1
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     6.3,
+     1.0,
+     1.1
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "bike_1",
+   "op": "mesh",
+   "vertices": [
+    [
+     5.1,
+     1.0,
+     -2.25
+    ],
+    [
+     5.1,
+     1.0,
+     -0.5499999999999999
+    ],
+    [
+     5.1,
+     0.06,
+     -0.5499999999999999
+    ],
+    [
+     5.1,
+     0.06,
+     -2.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "bike_b"
+  },
+  {
+   "id": "bike_2",
+   "op": "mesh",
+   "vertices": [
+    [
+     5.45,
+     1.0,
+     -1.15
+    ],
+    [
+     5.45,
+     1.0,
+     0.55
+    ],
+    [
+     5.45,
+     0.06,
+     0.55
+    ],
+    [
+     5.45,
+     0.06,
+     -1.15
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "bike_p"
+  },
+  {
+   "id": "bike_3",
+   "op": "mesh",
+   "vertices": [
+    [
+     5.1,
+     1.0,
+     -0.04999999999999993
+    ],
+    [
+     5.1,
+     1.0,
+     1.65
+    ],
+    [
+     5.1,
+     0.06,
+     1.65
+    ],
+    [
+     5.1,
+     0.06,
+     -0.04999999999999993
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "bike_b"
+  },
+  {
+   "id": "vm_body",
+   "op": "box",
+   "size": [
+    0.78,
+    1.75,
+    0.68
+   ],
+   "material": "blue",
+   "transform": {
+    "translate": [
+     -5.6,
+     0.935,
+     -0.9
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "vm_head",
+   "op": "mesh",
+   "material": "vend_head",
+   "vertices": [
+    [
+     -5.96,
+     1.67,
+     -1.25
+    ],
+    [
+     -5.239999999999999,
+     1.67,
+     -1.25
+    ],
+    [
+     -5.239999999999999,
+     1.45,
+     -1.25
+    ],
+    [
+     -5.96,
+     1.45,
+     -1.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "vm_win",
+   "op": "mesh",
+   "material": "vend_win",
+   "vertices": [
+    [
+     -5.96,
+     1.37,
+     -1.25
+    ],
+    [
+     -5.46,
+     1.37,
+     -1.25
+    ],
+    [
+     -5.46,
+     0.47,
+     -1.25
+    ],
+    [
+     -5.96,
+     0.47,
+     -1.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "vm_cap",
+   "op": "box",
+   "size": [
+    0.82,
+    0.05,
+    0.72
+   ],
+   "material": "white",
+   "transform": {
+    "translate": [
+     -5.6,
+     1.83,
+     -0.9
+    ]
+   }
+  },
+  {
+   "id": "postbox",
+   "op": "cylinder",
+   "radius": 0.17,
+   "height": 0.8,
+   "segments": 8,
+   "caps": true,
+   "material": "red",
+   "transform": {
+    "translate": [
+     -2.5,
+     0.45,
+     -4.9
+    ]
+   }
+  },
+  {
+   "id": "postbox_cap",
+   "op": "cone",
+   "radius": 0.19,
+   "height": 0.14,
+   "segments": 8,
+   "material": "red",
+   "transform": {
+    "translate": [
+     -2.5,
+     0.91,
+     -4.9
+    ]
+   }
+  },
+  {
+   "id": "postbox_slot",
+   "op": "box",
+   "size": [
+    0.16,
+    0.025,
+    0.03
+   ],
+   "material": "dark",
+   "transform": {
+    "translate": [
+     -2.5,
+     0.78,
+     -5.08
+    ]
+   }
+  },
+  {
+   "id": "lamp_pole",
+   "op": "cylinder",
+   "radius": 0.05,
+   "height": 3.4,
+   "segments": 6,
+   "caps": false,
+   "material": "steel",
+   "transform": {
+    "translate": [
+     3.6,
+     1.76,
+     -5.8
+    ]
+   }
+  },
+  {
+   "id": "lamp_arm",
+   "op": "box",
+   "size": [
+    0.5,
+    0.05,
+    0.05
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     3.35,
+     3.42,
+     -5.8
+    ]
+   }
+  },
+  {
+   "id": "lamp_bulb",
+   "op": "sphere",
+   "radius": 0.13,
+   "rings": 3,
+   "segments": 6,
+   "material": "bulb",
+   "transform": {
+    "translate": [
+     3.12,
+     3.32,
+     -5.8
+    ]
+   }
+  },
+  {
+   "id": "planter_l",
+   "op": "box",
+   "size": [
+    0.9,
+    0.3,
+    0.32
+   ],
+   "material": "pot",
+   "transform": {
+    "translate": [
+     -2.8,
+     0.22,
+     -2.9
+    ]
+   }
+  },
+  {
+   "id": "bush_l0",
+   "op": "sphere",
+   "radius": 0.18,
+   "rings": 3,
+   "segments": 6,
+   "material": "green",
+   "transform": {
+    "translate": [
+     -3.08,
+     0.46,
+     -2.9
+    ]
+   }
+  },
+  {
+   "id": "bush_l1",
+   "op": "sphere",
+   "radius": 0.18,
+   "rings": 3,
+   "segments": 6,
+   "material": "green",
+   "transform": {
+    "translate": [
+     -2.8,
+     0.46,
+     -2.9
+    ]
+   }
+  },
+  {
+   "id": "bush_l2",
+   "op": "sphere",
+   "radius": 0.18,
+   "rings": 3,
+   "segments": 6,
+   "material": "green",
+   "transform": {
+    "translate": [
+     -2.5199999999999996,
+     0.46,
+     -2.9
+    ]
+   }
+  },
+  {
+   "id": "planter_r",
+   "op": "box",
+   "size": [
+    0.9,
+    0.3,
+    0.32
+   ],
+   "material": "pot",
+   "transform": {
+    "translate": [
+     2.8,
+     0.22,
+     -2.9
+    ]
+   }
+  },
+  {
+   "id": "bush_r0",
+   "op": "sphere",
+   "radius": 0.18,
+   "rings": 3,
+   "segments": 6,
+   "material": "green",
+   "transform": {
+    "translate": [
+     2.5199999999999996,
+     0.46,
+     -2.9
+    ]
+   }
+  },
+  {
+   "id": "bush_r1",
+   "op": "sphere",
+   "radius": 0.18,
+   "rings": 3,
+   "segments": 6,
+   "material": "green",
+   "transform": {
+    "translate": [
+     2.8,
+     0.46,
+     -2.9
+    ]
+   }
+  },
+  {
+   "id": "bush_r2",
+   "op": "sphere",
+   "radius": 0.18,
+   "rings": 3,
+   "segments": 6,
+   "material": "green",
+   "transform": {
+    "translate": [
+     3.08,
+     0.46,
+     -2.9
+    ]
+   }
+  },
+  {
+   "id": "trunk",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 2.6,
+   "segments": 6,
+   "caps": true,
+   "material": "bark",
+   "transform": {
+    "translate": [
+     -7.6,
+     1.3,
+     -3.4
+    ]
+   }
+  },
+  {
+   "id": "bloom_0",
+   "op": "sphere",
+   "radius": 1.4,
+   "rings": 4,
+   "segments": 7,
+   "material": "bloom",
+   "transform": {
+    "translate": [
+     -7.6,
+     3.7,
+     -3.4
+    ]
+   }
+  },
+  {
+   "id": "bloom_1",
+   "op": "sphere",
+   "radius": 1.0,
+   "rings": 4,
+   "segments": 7,
+   "material": "bloom2",
+   "transform": {
+    "translate": [
+     -8.7,
+     3.3,
+     -2.9
+    ]
+   }
+  },
+  {
+   "id": "bloom_2",
+   "op": "sphere",
+   "radius": 1.1,
+   "rings": 4,
+   "segments": 7,
+   "material": "bloom2",
+   "transform": {
+    "translate": [
+     -6.5,
+     3.4,
+     -3.8
+    ]
+   }
+  },
+  {
+   "id": "bloom_3",
+   "op": "sphere",
+   "radius": 0.9,
+   "rings": 4,
+   "segments": 7,
+   "material": "bloom",
+   "transform": {
+    "translate": [
+     -7.3999999999999995,
+     4.5,
+     -3.1
+    ]
+   }
+  },
+  {
+   "id": "bloom_4",
+   "op": "sphere",
+   "radius": 0.9,
+   "rings": 4,
+   "segments": 7,
+   "material": "bloom",
+   "transform": {
+    "translate": [
+     -7.3,
+     3.2,
+     -4.4
+    ]
+   }
+  },
+  {
+   "id": "petals",
+   "op": "box",
+   "size": [
+    3.6,
+    0.012,
+    3.4
+   ],
+   "material": "petals",
+   "transform": {
+    "translate": [
+     -7.6,
+     0.06,
+     -3.4
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right",
+    "back",
+    "front"
+   ]
+  }
+ ]
+}
