@@ -2,16 +2,17 @@
 """Writes art/face.png, art/back.png and hanafuda_moon.asset.json. Run from anywhere (Pillow).
 
 The level goal: the August hanafuda card, the full moon over susuki grass, about 1 m tall. A thick
-gilt-edged card. The moon is printed on both faces and framed by a thin gilt bead, a ring of
+gilt-edged card. The moon is printed on the face and framed by a thin gilt bead, a ring of
 diamond section through the card that stands 1.7 cm proud of each face: a low relief that reads
-from both sides as the card turns. The bead's faces slope at about 60 degrees, so none of them
+from both sides as the card turns. The back, shared by every goal card, is seigaiha waves in dark
+gold with a kikko crest inside the bead. The bead's faces slope at about 60 degrees, so none of them
 lies within 3 cm of a parallel face (the Asset Kit's close-face rule).
 """
 import json
 import math
 import os
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageColor, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ART = os.path.join(HERE, "art")
@@ -99,14 +100,44 @@ def face():
 
 
 def back():
+    """The back every goal card shares: seigaiha (overlapping waves) in dark gold on the ink, inside
+    the gilt border; the bead frames a crest, a gold kikko (tortoiseshell hexagon) on deep red."""
     im = Image.new("RGB", (TW, TH), INK)
+    px = im.load()
+    R = 10.0                                  # a wave scale's radius, texels
+    rows = int(TH / (R / 2)) + 3
+    for y in range(TH):
+        for x in range(TW):
+            # the scale drawn last over (x, y): the lowest row whose circle covers it
+            best = None
+            for row in range(rows):
+                cy = row * R / 2 - R
+                cx0 = (row % 2) * R
+                k = round((x + 0.5 - cx0) / (2 * R))
+                for cx in (cx0 + 2 * R * k, cx0 + 2 * R * (k - 1), cx0 + 2 * R * (k + 1)):
+                    dd = math.hypot(x + 0.5 - cx, y + 0.5 - cy)
+                    if dd < R:
+                        best = dd
+            if best is None:
+                continue
+            ring = int(R - best)              # 0 at the rim: gold rings a texel wide, two of ink between
+            c = SKY_DK if best < 1.0 else (GOLD_DK if ring % 3 == 0 else INK)
+            px[x, y] = ImageColor.getrgb(c)
     d = ImageDraw.Draw(im)
-    border(d, INK)
-    d.rectangle((7, 7, TW - 8, TH - 8), outline=SKY_DK)
-    # the moon shows through: the same disc as the face's, so the card reads from behind too
+    d.rectangle((0, 0, TW - 1, TH - 1), outline=GOLD)
+    d.rectangle((1, 1, TW - 2, TH - 2), outline=GOLD_DK)
+    d.rectangle((2, 2, TW - 3, TH - 3), outline=GOLD)
+    d.rectangle((3, 3, TW - 4, TH - 4), outline=INK)
+    # the crest inside the bead: deep red, a gold hexagon and a gold dot
     mx, my = tex_xy(0, MOON_Y)
     r = MOON_R / W * TW
-    d.ellipse((mx - r, my - r, mx + r, my + r), fill=MOON)
+    d.ellipse((mx - r, my - r, mx + r, my + r), fill=SKY_DK)
+    hexr = r * 0.62
+    pts = [(mx + hexr * math.cos(math.radians(90 + 60 * i)),
+            my + hexr * math.sin(math.radians(90 + 60 * i))) for i in range(6)]
+    d.polygon(pts, outline=GOLD)
+    d.line(pts + [pts[0]], fill=GOLD, width=2)
+    d.ellipse((mx - 1.5, my - 1.5, mx + 1.5, my + 1.5), fill=GOLD)
     im.save(os.path.join(ART, "back.png"))
 
 
