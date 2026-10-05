@@ -1,0 +1,99 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "newsstand_col",
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "solid": {
+   "color": "#c8c4b8",
+   "palette": true
+  }
+ },
+ "nodes": [
+  {
+   "id": "plinth",
+   "op": "box",
+   "size": [
+    3.1,
+    0.3,
+    1.9
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     -0.05,
+     -0.1
+    ]
+   }
+  },
+  {
+   "id": "body",
+   "op": "box",
+   "size": [
+    2.76,
+    2.32,
+    1.5
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     1.24,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "roof",
+   "op": "box",
+   "size": [
+    3.3,
+    0.25,
+    2.1
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     2.425,
+     -0.1
+    ]
+   }
+  },
+  {
+   "id": "ashtray",
+   "op": "box",
+   "size": [
+    0.24,
+    0.9,
+    0.24
+   ],
+   "material": "solid",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     1.25,
+     0.45,
+     -1.4
+    ]
+   }
+  }
+ ]
+}
