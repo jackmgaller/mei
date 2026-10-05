@@ -170,6 +170,21 @@ class TerrainAsset:
     binary: bytes = b''
 
 
+class TerrainTextures:
+    """What RegionTextures needs of the terrain's textured materials: an asset's name, materials
+    and textures (WORLDKIT.md, "Textured terrain"). A material with faces drawn through a texture
+    window also brings its tile as loaded, as 'MATERIAL window'."""
+    textured = True
+
+    def __init__(self, name, materials, textures, windowed):
+        self.name, self.materials = name, dict(materials)
+        textures = dict(textures)
+        for m in sorted(windowed & set(textures)):
+            self.materials[f'{m} window'] = materials[m]
+            textures[f'{m} window'] = type('W', (), {'tile': textures[m].window_tile})()
+        self.mesh = type('M', (), {'textures': {'textures': textures}})()
+
+
 def cell_shift(size):
     return {16: 4, 32: 5, 64: 6, 128: 7}[size]
 
@@ -404,12 +419,17 @@ def compile_world(source, lock=None, assets_dir=None):
             if r not in used:
                 continue
             entries = []
-            for e in terrain.palette['entries']:
+            for e in (terrain.palette['entries'] if terrain.palette else []):
                 mats = [m for m in e['materials'] if m in used[r]]
                 if mats:
                     entries.append(dict(e, materials=mats))
             terrain_assets[r] = TerrainAsset('terrain', {'entries': entries})
             region_palettes[r].add_asset(terrain_assets[r])
+            # textured terrain materials join the region's texture set as one more asset's
+            drawn = {m: t for m, t in terrain.textures.items() if m in used[r]}
+            if drawn:
+                region_textures[r].add_asset(TerrainTextures('terrain', w['terrain']['materials'], drawn,
+                                                                   terrain.windowed))
 
     # ---- levels of detail: the switch distances per asset (the recipe's, then the world's)
     lod_cfg = w.get('lod', {})
@@ -666,16 +686,20 @@ def compile_world(source, lock=None, assets_dir=None):
                 srep['triangles'] = srep.get('triangles', 0) + struct.unpack_from('<H', mesh, 2)[0]
         for piece in (terrain.pieces.get((i, j), []) if terrain else []):
             ta = terrain_assets[c['region']]
+
+            def terrain_mesh(m):
+                if isinstance(m, bytes):
+                    return rp.relocated(TerrainAsset(ta.name, ta.manifest, m), slot, row)
+                # textured: written for the region's palette entries and texture packing
+                return m.native(rp.mapping(ta), slot, row, rt.packing)
             lod = None
             if piece.levels:
-                lod = P.Lod([(d, rp.relocated(TerrainAsset(ta.name, ta.manifest, m), slot, row)) for d, m in piece.levels],
-                            piece.band)
+                lod = P.Lod([(d, terrain_mesh(m)) for d, m in piece.levels], piece.band)
                 try:
                     P.lod_rows(lod)
                 except P.PackError as error:
                     raise WorldError(pointer('/terrain/fields', piece.name) + '/lod', f'{error}.') from error
-            cell.placements.append(P.Placement(rp.relocated(TerrainAsset(ta.name, ta.manifest, piece.mesh), slot, row),
-                                               centre, 0.0, None, piece.tag, piece.ground, lod))
+            cell.placements.append(P.Placement(terrain_mesh(piece.mesh), centre, 0.0, None, piece.tag, piece.ground, lod))
         if plan['standin']:
             cell.standin = rp.relocated(plan['standin'], slot, row)
         cell.collision = plan['collision']

@@ -552,18 +552,59 @@ the assets' (a kerb can share an entry with a building's stone), and a variant r
 object (default `"mode": "vertical"`, as the assets are; terrain is never turned, so
 `directional` is also allowed).
 
-**What textures will need** (asset textures are packed per region now, [Textures per
-region](#textures-per-region); terrain's are not built). A terrain material would add a texture reference and a projection: planar from above for
-ground (u = x / scale, v = z / scale, in world coordinates, so the pattern runs on across seams
-and tiles with no seam of its own), box projection for sweeps and banks (the axis nearest the face
-normal). The faces are already 4-bit textured faces, so the change is their slot, palette and UVs:
-UVs in world units need a repeating texture through a texture window (DECISIONS.md, "Texture
-windows"), whose range limits a face to 256 texels across, so large merged rectangles would be
-split (a `max_rect` per field) or the UV origin moved per face, which the window's wrap allows.
-The region packer (`worldkit/textures.py`) would take terrain's tiles as one more asset's (its
-`RegionTextures` collects tiles per region and writes meshes for the packing; terrain pieces
-would need their faces written with the packing's slot, palette and window instead of the
-swatch). Nothing in the pack changes.
+A terrain material may instead carry a **texture** ([Textured terrain](#textured-terrain)).
+
+### Textured terrain
+
+Built (2026-10-05). A terrain material with a `texture` draws an Asset Kit texture
+([ASSETKIT.md](ASSETKIT.md#textures)) repeating in world coordinates, so its pattern runs on
+across faces, tiles, cells and sweeps with no seam of its own:
+
+```json
+"floor": {"color": "#6e6236",
+          "texture": {"image": "assets/art/terrain_floor.png", "scale": [2.4, 2.4], "span": 223}}
+```
+
+- **The texture** is a `pattern`, `texels` or an `image` (relative to the world file; make reads
+  it as a dependency), 4- or 8-bit, with sides of 8, 16, 32, 64 or 128 texels (it repeats). No
+  holes (`clear`, transparent pixels), sheets or animations.
+- **Projection** `box` (the default: each face from the axis nearest its normal, so banks and
+  cliffs are textured from the side) or `planar` (default axis `y`: from above); `scale` is
+  world units a repeat; `offset`, `rotate` and `flip` as in the Asset Kit. The pattern is fixed
+  to the world's axes, not to a path's direction.
+- **Coordinates.** Texel coordinates are 8 bits and do not wrap, so each face's are shifted by
+  whole repeats to start in the first. The texture is stored repeated `span` texels further each
+  way (default 96; at most 255 texels a side in all, 127 tall for an 8-bit texture), and a face
+  that reaches no further samples those stored repeats without a texture window. A face that
+  reaches further samples the texture as loaded through a texture window (DECISIONS.md,
+  "Texture windows"), up to 255 texels. Field rectangles and sweep strips of a textured material
+  are kept within that windowed reach (a rectangle within its `scale` × (255 − size) / size
+  units; a strip cut between its cross-sections where it would pass the stored repeats); a face
+  that still reaches past 255 texels (a near-vertical quad) has its texture stretched to the
+  stored repeats, with the warning `terrain_texture_stretched`.
+- **Why the span.** A mesh with a texture window table leaves the reader's quicker face loops
+  (LANGUAGE.md, "Performance notes": about 55 cycles a call and 10 a visible face more, and
+  never the loop for meshes with nothing to clip), and a terrain piece gets a table as soon as
+  one of its faces needs a window. A span that covers the largest face (a whole field tile: 16 units at
+  2.4 units a 32-texel repeat needs a span of 223) keeps every piece windowless and the ground's
+  draw cost exactly that of palette-backed ground; a smaller span saves VRAM (a 32-texel 4-bit
+  texture is 8,385 bytes at the default span, 32,768 at 223) and costs CPU where faces are
+  large. `report.json`'s `terrain.texture_windows` counts the pieces and triangles with windows.
+- **VRAM.** Each textured material's stored repeats, and the texture as loaded for one with
+  windowed faces, join the texture set of each region that draws it as the tiles of one more
+  asset named `terrain` ([Textures per region](#textures-per-region)); equal tiles are packed
+  once (two materials of one image and span at different scales share a tile). The material has
+  no palette entry, except for a field's coarse level ([lod](#heightfields)), which is drawn
+  untextured in the texture's mean colour (`far` in the report), a palette entry of its own.
+- **Shading** is baked into the vertex colours as for palette-backed terrain; a texel is drawn
+  times its face's shade.
+
+`report.json`'s `terrain.textures` has, per textured material, the texture's summary, `scale`,
+`span`, `stored` (texels), `texel_cm`, `reach` (units a face may span through a window),
+`triangles`, `windowed`, `stretched` and `far`. The kit's test is
+`tests/test_worldkit.py`'s `test_textured_terrain`; the shrine world
+(`carts/garden/shrine/`) is the example, with 15 textured materials drawn by
+`carts/garden/shrine/assets/art/draw_terrain.py`.
 
 ### Costs and checking
 
@@ -1136,9 +1177,8 @@ when it changes (`wp_animate(t)`, every placement in step). The texture set hold
 
 **What is refused.** A stand-in with textures (a stand-in is drawn whichever region is loaded,
 so it cannot use a region's set), and a merged placement whose mesh has repeating textures (a
-merged mesh keeps no window table). Textured terrain is not built: terrain materials are
-palette-backed ([Materials, palettes and textures](#materials-palettes-and-textures) lists what it
-needs; its tiles would join the region's packing as one more asset's).
+merged mesh keeps no window table). Textured terrain's tiles join the region's set as one more
+asset's ([Textured terrain](#textured-terrain)).
 
 **Cost** (the night market's market region, measured on the console, `tests/worldkit/market.akr`):
 2,434 bytes of tiles (3,360 on the grid) in slots 13 (4-bit) and 12 (8-bit), 6,528 bytes of ROM;

@@ -398,9 +398,9 @@
      ]
     ],
     "materials": [
-     "earth",
-     "steps",
-     "earth"
+     "earth_wide",
+     "stairs_wide",
+     "earth_wide"
     ],
     "caps": true
    }
@@ -769,7 +769,7 @@
       -5.2
      ]
     ],
-    "material": "steps",
+    "material": "stairs_wide",
     "stairs": {
      "rise": 0.3
     },
@@ -1839,46 +1839,137 @@
  "terrain": {
   "materials": {
    "floor": {
-    "color": "#6e6236"
+    "color": "#6e6236",
+    "texture": {
+     "image": "assets/art/terrain_floor.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 223
+    }
    },
    "moss": {
-    "color": "#5f7a34"
+    "color": "#5f7a34",
+    "texture": {
+     "image": "assets/art/terrain_moss.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 128
+    }
    },
    "earth": {
-    "color": "#6a4a30"
+    "color": "#6a4a30",
+    "texture": {
+     "image": "assets/art/terrain_earth.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 223
+    }
    },
    "litter": {
-    "color": "#8a5a30"
+    "color": "#8a5a30",
+    "texture": {
+     "image": "assets/art/terrain_litter.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 223
+    }
    },
    "rock": {
-    "color": "#6a665e"
+    "color": "#6a665e",
+    "texture": {
+     "image": "assets/art/terrain_rock.png",
+     "scale": [
+      4.8,
+      4.8
+     ],
+     "span": 128
+    }
    },
    "stone": {
-    "color": "#8e887c"
+    "color": "#8e887c",
+    "texture": {
+     "image": "assets/art/terrain_stone.png",
+     "scale": [
+      3.2,
+      3.2
+     ]
+    }
    },
    "gravel": {
-    "color": "#d4ccb8"
+    "color": "#d4ccb8",
+    "texture": {
+     "image": "assets/art/terrain_gravel.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 223
+    }
    },
    "paving": {
-    "color": "#b4ae9e"
+    "color": "#b4ae9e",
+    "texture": {
+     "image": "assets/art/terrain_paving.png",
+     "scale": [
+      2.4,
+      2.4
+     ]
+    }
    },
    "asphalt": {
-    "color": "#4a4a50"
+    "color": "#4a4a50",
+    "texture": {
+     "image": "assets/art/terrain_asphalt.png",
+     "scale": [
+      2.4,
+      2.4
+     ]
+    }
    },
    "line": {
     "color": "#e8e4d8"
    },
    "sidewalk": {
-    "color": "#b8b4a8"
+    "color": "#b8b4a8",
+    "texture": {
+     "image": "assets/art/terrain_sidewalk.png",
+     "scale": [
+      2.4,
+      2.4
+     ]
+    }
    },
    "kerb": {
     "color": "#a8a69e"
    },
    "path": {
-    "color": "#8a6a48"
+    "color": "#8a6a48",
+    "texture": {
+     "image": "assets/art/terrain_path.png",
+     "scale": [
+      2.4,
+      2.4
+     ]
+    }
    },
    "pond_bed": {
-    "color": "#4e4632"
+    "color": "#4e4632",
+    "texture": {
+     "image": "assets/art/terrain_pond_bed.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 223
+    }
    },
    "planks": {
     "color": "#8a6446"
@@ -1887,12 +1978,42 @@
     "color": "#c8b88a"
    },
    "steps": {
-    "color": "#9a9488"
+    "color": "#9a9488",
+    "texture": {
+     "image": "assets/art/terrain_steps.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 223
+    }
    },
    "water": {
     "color": "#3f7393",
     "water": true,
     "tag": "water"
+   },
+   "stairs_wide": {
+    "color": "#9a9488",
+    "texture": {
+     "image": "assets/art/terrain_steps.png",
+     "scale": [
+      4.8,
+      4.8
+     ],
+     "span": 223
+    }
+   },
+   "earth_wide": {
+    "color": "#6a4a30",
+    "texture": {
+     "image": "assets/art/terrain_earth.png",
+     "scale": [
+      4.8,
+      4.8
+     ],
+     "span": 223
+    }
    }
   },
   "fields": {

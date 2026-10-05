@@ -92,6 +92,9 @@ def depfile(recipe, out):
     for spec in source.world.get('terrain', {}).get('fields', {}).values():
         if 'heights' in spec:
             deps.append((source.base/spec['heights']).resolve())
+    for mat in source.world.get('terrain', {}).get('materials', {}).values():
+        if 'image' in mat.get('texture', {}):
+            deps.append((source.base/mat['texture']['image']).resolve())
     names = []
     for d in deps:
         if d and Path(d).exists() and rel(d) not in names: names.append(rel(d))
