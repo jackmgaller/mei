@@ -1,0 +1,48 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "shrine_wall_plinth_corner",
+ "budget": {
+  "triangles": 40
+ },
+ "materials": {
+  "stone": {
+   "color": "#b4ae9e",
+   "texture": {
+    "image": "../../../shrine/assets/art/arch_stone.png",
+    "projection": "planar"
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "course",
+   "op": "box",
+   "size": [
+    1.4,
+    1.0,
+    1.4
+   ],
+   "material": "stone",
+   "transform": {
+    "translate": [
+     0.0,
+     0.5,
+     0.0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  }
+ ]
+}
