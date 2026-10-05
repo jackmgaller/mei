@@ -1051,3 +1051,51 @@ present (`tools/views.py`): README.md, "What it costs".
 - **The pagoda from the spawn.** With the real pagoda on the terrace at 15, only its finial's
   top clears the arcade gate (section 1.3).
 - **G5** (12.2, the pagoda terrace).
+
+### 12.5 The real assets placed
+
+Each placement zone (PLACE_SPLIT) swaps its grey boxes in `place/ZONE.py`, called by the
+generators' hook (`place/__init__.py`).
+
+#### Station zone (`place/station.py`)
+
+What stands now: the viaduct as real pieces along its whole line; the station
+(`station_concourse` with its two outside stairs and the inside stair, `ticket_gates`,
+`station_platform`, the three station spans and two tapers); a two-car `train_emu_car` standing
+at track 1; two `signal_gantry`s, each with a pole on its ladder; the plaza's danchi, pachinko
+parlour, koban, konbini (the shrine's `street_konbini`), bus stop, newsstand, four bike shelters
+with eight `mamachari`, a taxi rank, a phone booth, a postbox, three of the shrine's
+`street_vending_machine`s, two benches, two planters and the konbini's corner pole
+(`town_utility_pole_transformer`). `city_bus` is left out (OVERNIGHT_DECISIONS 16).
+
+| Where | Grey box | Real | Why |
+|---|---|---|---|
+| Viaduct line | swept deck and parapets along layout's polyline; the north run at x 302 | 16 m pieces: spans from x -8 (joints at x = 8 mod 16), the station x 136-184, tapers either side, three 30-degree curves (R 30.56) from x 280, the north run at x 310.56, the underpass, two curves east out of the level | the pieces join only end to end and turn by 30 degrees; x 310.56 keeps the bend and the piers off the sports ground and the school |
+| Piers | 1.6 x 8 under each grey span | each piece's two-column bent; at x 48 one stands in the canal | the station's joints fix every span west of it |
+| Underpass | a span over the straight road | `viaduct_underpass` at (310.56, 114.56), yaw 90: the road 25 degrees north of east between abutments, asphalt painted along the skew | the asset is built for the dog-leg (7.1); the straight road meets its west wing wall at x 293-300 (z 114.6-118) and walks on east into the corridor |
+| Deck's east end | wall at x 315.5 | the same wall (`gbc_viaduct_end`) where the centre line reaches x 315, heading 58.8 degrees; the second curve runs on past it out of the level | the line leaves between the rims (z 132-154) |
+| Parapet rails | 10.2, 5.85 m off the line, the north one open over x 146-178 | 10.2 on the real parapets: 5.875 off the line, 7.475 through the station (tapering between), the north one in three with gaps at the outside stairs only (x 148.35-151.65, 168.35-171.65) | `parapet_n_m` is new: the concourse's parapet between the stairs |
+| Outside stairs | x 150-154 and 170-174, foot z 32 | x 148.5-151.5 and 168.5-171.5, foot z 34.6, landing 9.0 at z 15.6-16.6, roofed | the asset's; they reach the walkway, not the platform (no track crossing) |
+| Platform | the deck (9.0), canopy 12.8 | floor 10.0, canopy top 13.47 (middle) to 13.72 (edges) | GREYBOX_SPLIT; the inside stair is the way up |
+| Stair coins | on the grey ramps at x 152, 172 | on the real treads at x 150, 170: y = 0.5 (34.6 - z) + 0.7 | they were inside the real steps |
+| Red coin 3, star 5 | 13.5; 9.9 | 14.17 on the canopy; 10.9 over the platform's floor | the real canopy and floor |
+| Konbini | box 36 x 14, roof 5.6 | `street_konbini` (36 x 14, deck 4.7, coping 5.0), front to the plaza; the door entity stays at (196, 33), before its middle as in the shrine | the same footprint |
+| Konbini roof sign | 5.6-7.0 | the same grey sign, 4.7-7.0, on the real roof's deck; red coin 5 on top | no real asset has a roof sign |
+| Danchi | 16 x 16 box, ramps round it | `danchi` 16.2 x 13.4 (z 19.4-32.8), its own stair tower on the north face to the roof (18.8) | |
+| Koban | 12 x 10 box, 5.9 | `koban` 4 x 3 (5 x 4 with eaves) at (122, 24), front east, eave 3.35 | the asset's size |
+| Pachinko | 16 x 16, 9.1 | 11.4 x 10.3 at (100.5, 26), front east, antenna 8.85 | |
+| Vending machine (route D) | at x 177.4 | `street_vending_machine` at (179.1, 29.8) against the konbini's west end, 1.9 | the konbini's roof is 3.1 up |
+
+Scenario changes: 401 walks the inside stair (through a ticket gate's aisle at x 158.6, west of
+the middle bent's column at x 160) onto the platform (10.0); G2 (411) takes off from the real
+roof at (78, 22) with no run-up (from (85, 20) it stood on the top balcony at 16.1, and a
+run-up's first jump carried it off the roof's north edge).
+
+Costs (World Checker, full, the whole level with the other zones still grey): peak 2,148
+triangles, 598,458 draw CPU, 591,544 GPU. The peak is the ticket hall looking west, with the
+platform and the train over its ceiling; it is kept in by the train's level 1 from 9 m (band 1)
+and the plaza's small props culled sooner (`lod.assets`, set in `world()`). Texture cuts made
+(TEXTURES.md): the zone's 8-bit textures 4-bit (koban, danchi facade, pachinko storefront, bus
+stop, bike shelter sign), the ticket gates' floor a repeating 32 x 32, the newsstand's goods,
+sign and sides at half width, the postbox's cap a 32 x 32 pattern, `street_vending_machine` for
+`vending_machine`.

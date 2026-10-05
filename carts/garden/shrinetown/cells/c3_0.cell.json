@@ -9,86 +9,12 @@
  "region": "town",
  "placements": [
   {
-   "id": "viaduct_12",
-   "asset": "gbt_viaduct_162",
-   "position": [
-    202.941,
-    0.0,
-    8.0
-   ],
-   "yaw": 90.0,
-   "collision": "gbt_viaduct_162_col"
-  },
-  {
-   "id": "viaduct_13",
-   "asset": "gbt_viaduct_162",
-   "position": [
-    219.176,
-    0.0,
-    8.0
-   ],
-   "yaw": 90.0,
-   "collision": "gbt_viaduct_162_col"
-  },
-  {
-   "id": "viaduct_14",
-   "asset": "gbt_viaduct_162",
-   "position": [
-    235.412,
-    0.0,
-    8.0
-   ],
-   "yaw": 90.0,
-   "collision": "gbt_viaduct_162_col"
-  },
-  {
-   "id": "viaduct_15",
-   "asset": "gbt_viaduct_162",
-   "position": [
-    251.647,
-    0.0,
-    8.0
-   ],
-   "yaw": 90.0,
-   "collision": "gbt_viaduct_162_col"
-  },
-  {
-   "id": "konbini",
-   "asset": "gbt_konbini",
-   "position": [
-    196.0,
-    0,
-    25.0
-   ],
-   "collision": "gbt_konbini_col"
-  },
-  {
-   "id": "konbini_sign",
-   "asset": "gbt_konbini_sign",
-   "position": [
-    196.0,
-    5.6,
-    30.0
-   ],
-   "collision": "self"
-  },
-  {
    "id": "building_escape",
    "asset": "gbt_building_escape",
    "position": [
     201.25,
     0,
     62
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "pole_konbini0",
-   "asset": "gbt_utility_pole",
-   "position": [
-    210.0,
-    0.0,
-    33.0
    ],
    "collision": "self"
   },
@@ -139,6 +65,89 @@
     236.0,
     0,
     0.2
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "viaduct_12",
+   "asset": "viaduct_station_taper",
+   "position": [
+    192.0,
+    0.0,
+    8.0
+   ],
+   "yaw": 180.0,
+   "collision": "viaduct_station_taper_col"
+  },
+  {
+   "id": "viaduct_13",
+   "asset": "viaduct_span_16",
+   "position": [
+    208.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_14",
+   "asset": "viaduct_span_16",
+   "position": [
+    224.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_15",
+   "asset": "viaduct_span_16",
+   "position": [
+    240.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "konbini",
+   "asset": "street_konbini",
+   "position": [
+    196.0,
+    0.0,
+    25.0
+   ],
+   "yaw": 180.0,
+   "collision": "street_konbini_col"
+  },
+  {
+   "id": "bench_1",
+   "asset": "town_bench",
+   "position": [
+    192.0,
+    0.0,
+    38.5
+   ],
+   "collision": "town_bench_col"
+  },
+  {
+   "id": "pole_konbini0",
+   "asset": "town_utility_pole_transformer",
+   "position": [
+    210.0,
+    0.0,
+    33.0
+   ],
+   "yaw": 357.58,
+   "collision": "town_utility_pole_transformer_col"
+  },
+  {
+   "id": "konbini_sign",
+   "asset": "gbt_konbini_sign_2",
+   "position": [
+    196.0,
+    4.7,
+    30.0
    ],
    "collision": "self"
   }

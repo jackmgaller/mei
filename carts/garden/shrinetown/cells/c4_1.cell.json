@@ -9,47 +9,6 @@
  "region": "town",
  "placements": [
   {
-   "id": "viaduct_22",
-   "asset": "gbt_viaduct_164",
-   "position": [
-    302.0,
-    0.0,
-    77.0
-   ],
-   "collision": "gbt_viaduct_164_col"
-  },
-  {
-   "id": "viaduct_23",
-   "asset": "gbt_viaduct_164",
-   "position": [
-    302.0,
-    0.0,
-    93.4
-   ],
-   "collision": "gbt_viaduct_164_col"
-  },
-  {
-   "id": "viaduct_24",
-   "asset": "gbt_viaduct_road_164",
-   "position": [
-    302.0,
-    0.0,
-    109.8
-   ],
-   "collision": "gbt_viaduct_road_164_col"
-  },
-  {
-   "id": "viaduct_25",
-   "asset": "gbt_viaduct_165",
-   "position": [
-    304.0,
-    0.0,
-    126.0
-   ],
-   "yaw": 14.036,
-   "collision": "gbt_viaduct_165_col"
-  },
-  {
    "id": "pole_road280",
    "asset": "gbt_utility_pole",
    "position": [
@@ -168,6 +127,50 @@
     111.0
    ],
    "collision": "self"
+  },
+  {
+   "id": "viaduct_23",
+   "asset": "viaduct_span_16",
+   "position": [
+    310.5577,
+    0.0,
+    78.5577
+   ],
+   "yaw": 270.0,
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_24",
+   "asset": "viaduct_span_16",
+   "position": [
+    310.5577,
+    0.0,
+    94.5577
+   ],
+   "yaw": 270.0,
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_25",
+   "asset": "viaduct_underpass",
+   "position": [
+    310.5577,
+    0.0,
+    114.5577
+   ],
+   "yaw": 90.0,
+   "collision": "viaduct_underpass_col"
+  },
+  {
+   "id": "signal_gantry_1",
+   "asset": "signal_gantry",
+   "position": [
+    310.56,
+    9.0,
+    98.0
+   ],
+   "yaw": 270.0,
+   "collision": "signal_gantry_col"
   }
  ],
  "entities": [
@@ -181,6 +184,18 @@
    ],
    "params": {
     "height": 9.0
+   }
+  },
+  {
+   "id": "pole_gantry_1",
+   "type": "pole",
+   "position": [
+    305.26,
+    9.2,
+    97.55
+   ],
+   "params": {
+    "height": 4.25
    }
   }
  ]

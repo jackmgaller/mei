@@ -17,7 +17,7 @@ struct Glide {
 }
 
 const G1: Glide = Glide { from: vec3(193.0, 0.0, 82.0), to: vec3(192.0, 9.0, 144.0), run: 6.0, tol: 9.0 }
-const G2: Glide = Glide { from: vec3(85.0, 0.0, 20.0), to: vec3(56.0, 0.0, 80.0), run: 4.0, tol: 12.0 }
+const G2: Glide = Glide { from: vec3(78.0, 0.0, 22.0), to: vec3(56.0, 0.0, 80.0), run: 0.0, tol: 12.0 }
 const G3: Glide = Glide { from: vec3(30.5, 0.0, 67.5), to: vec3(22.0, 0.5, 138.0), run: 0.0, tol: 16.0 }
 const G4: Glide = Glide { from: vec3(102.0, 0.0, 74.0), to: vec3(113.0, 0.5, 140.0), run: 0.0, tol: 12.0 }
 const G5: Glide = Glide { from: vec3(172.5, 0.0, 222.3), to: vec3(178.0, 19.9, 262.0), run: 0.0, tol: 6.0 }
@@ -33,11 +33,19 @@ const G9: Glide = Glide { from: vec3(273.0, 0.0, 70.0), to: vec3(276.0, 3.5, 150
 const TIERS: [6]vec2 = [vec2(255.5, 19.9), vec2(256.95, 23.5), vec2(257.65, 27.1), vec2(258.35, 30.7),
                          vec2(259.05, 34.3), vec2(259.75, 36.0)]
 
-// The station stair from the plaza (the west one, x 150-154, z 32 -> 14) to the platform (9.0).
-const ROUTE_STATION: [3]Leg = [
-    Leg { from: vec3(160.0, 0.0, 26.0), to: vec3(152.0, 0.0, 33.5), kind: LEG_WALK, at: 0.0, tol: 1.2 },
-    Leg { from: vec3(152.0, 0.0, 33.5), to: vec3(152.0, 8.9, 13.0), kind: LEG_WALK, at: 0.0, tol: 1.2 },
-    Leg { from: vec3(152.0, 0.0, 13.0), to: vec3(160.0, 8.9, 8.0), kind: LEG_WALK, at: 0.0, tol: 1.2 },
+// The station's inside stair (station_concourse): from the plaza through the entrance and a ticket
+// gate's aisle (x 158.6, west of the middle bent's column), east along the hall's back wall to the
+// first flight, up it to the landing (3.56), back west up the second flight to the half landing
+// (5.52) and the third up through the deck into the platform's stairwell, onto the island platform
+// (floor 10.0).
+const ROUTE_STATION: [7]Leg = [
+    Leg { from: vec3(160.0, 0.0, 26.0), to: vec3(158.6, 0.0, 10.5), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(158.6, 0.0, 10.5), to: vec3(158.6, 0.0, 5.6), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(158.6, 0.0, 5.6), to: vec3(166.5, 0.0, 5.6), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(166.5, 0.0, 5.6), to: vec3(176.0, 3.5, 5.6), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(176.0, 3.5, 5.6), to: vec3(176.0, 3.5, 8.0), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(176.0, 3.5, 8.0), to: vec3(170.2, 5.4, 8.0), kind: LEG_WALK, at: 0.0, tol: 0.8 },
+    Leg { from: vec3(170.2, 5.4, 8.0), to: vec3(157.5, 9.9, 8.0), kind: LEG_WALK, at: 0.0, tol: 1.2 },
 ]
 
 var stg: Glide

@@ -9,110 +9,6 @@
  "region": "town",
  "placements": [
   {
-   "id": "viaduct_8",
-   "asset": "gbt_viaduct_162",
-   "position": [
-    138.0,
-    0.0,
-    8.0
-   ],
-   "yaw": 90.0,
-   "collision": "gbt_viaduct_162_col"
-  },
-  {
-   "id": "viaduct_9",
-   "asset": "gbt_viaduct_162",
-   "position": [
-    154.235,
-    0.0,
-    8.0
-   ],
-   "yaw": 90.0,
-   "collision": "gbt_viaduct_162_col"
-  },
-  {
-   "id": "viaduct_10",
-   "asset": "gbt_viaduct_162",
-   "position": [
-    170.471,
-    0.0,
-    8.0
-   ],
-   "yaw": 90.0,
-   "collision": "gbt_viaduct_162_col"
-  },
-  {
-   "id": "viaduct_11",
-   "asset": "gbt_viaduct_162",
-   "position": [
-    186.706,
-    0.0,
-    8.0
-   ],
-   "yaw": 90.0,
-   "collision": "gbt_viaduct_162_col"
-  },
-  {
-   "id": "station_concourse",
-   "asset": "gbt_station_concourse",
-   "position": [
-    160.0,
-    0,
-    8.0
-   ],
-   "collision": "gbt_station_concourse_col"
-  },
-  {
-   "id": "station_platform",
-   "asset": "gbt_station_platform",
-   "position": [
-    160,
-    9.0,
-    8
-   ],
-   "collision": "gbt_station_platform_col"
-  },
-  {
-   "id": "station_stair_0",
-   "asset": "gbt_station_stair",
-   "position": [
-    152.0,
-    0,
-    23
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "station_stair_1",
-   "asset": "gbt_station_stair",
-   "position": [
-    172.0,
-    0,
-    23
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "vending",
-   "asset": "gbt_vending",
-   "position": [
-    177.4,
-    0,
-    29.8
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "bus_stop",
-   "asset": "gbt_bus_stop",
-   "position": [
-    140.0,
-    0,
-    35.5
-   ],
-   "collision": "gbt_bus_stop_col"
-  },
-  {
    "id": "shop_w0",
    "asset": "gbt_shop2",
    "position": [
@@ -241,6 +137,319 @@
     0.2
    ],
    "collision": "self"
+  },
+  {
+   "id": "viaduct_8",
+   "asset": "viaduct_station_taper",
+   "position": [
+    128.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_station_taper_col"
+  },
+  {
+   "id": "viaduct_9",
+   "asset": "viaduct_station_span",
+   "position": [
+    144.0,
+    0.0,
+    8.0
+   ],
+   "yaw": 180.0,
+   "collision": "viaduct_station_span_col"
+  },
+  {
+   "id": "viaduct_10",
+   "asset": "viaduct_station_span_stair",
+   "position": [
+    160.0,
+    0.0,
+    8.0
+   ],
+   "yaw": 180.0,
+   "collision": "viaduct_station_span_stair_col"
+  },
+  {
+   "id": "viaduct_11",
+   "asset": "viaduct_station_span",
+   "position": [
+    176.0,
+    0.0,
+    8.0
+   ],
+   "yaw": 180.0,
+   "collision": "viaduct_station_span_col"
+  },
+  {
+   "id": "station_concourse",
+   "asset": "station_concourse",
+   "position": [
+    160.0,
+    0.0,
+    8.0
+   ],
+   "yaw": 180.0,
+   "collision": "station_concourse_col"
+  },
+  {
+   "id": "ticket_gates",
+   "asset": "ticket_gates",
+   "position": [
+    160.0,
+    0.06,
+    7.4
+   ],
+   "yaw": 180.0,
+   "collision": "ticket_gates_col"
+  },
+  {
+   "id": "station_platform",
+   "asset": "station_platform",
+   "position": [
+    160.0,
+    9.0,
+    8.0
+   ],
+   "collision": "station_platform_col"
+  },
+  {
+   "id": "train_car_e",
+   "asset": "train_emu_car",
+   "position": [
+    170.0,
+    9.0,
+    3.9
+   ],
+   "collision": "train_emu_car_col"
+  },
+  {
+   "id": "train_car_w",
+   "asset": "train_emu_car",
+   "position": [
+    150.0,
+    9.0,
+    3.9
+   ],
+   "yaw": 180.0,
+   "collision": "train_emu_car_col"
+  },
+  {
+   "id": "bus_stop",
+   "asset": "bus_stop",
+   "position": [
+    140.0,
+    0.0,
+    36.0
+   ],
+   "collision": "bus_stop_col"
+  },
+  {
+   "id": "newsstand",
+   "asset": "newsstand",
+   "position": [
+    141.0,
+    0.0,
+    18.7
+   ],
+   "yaw": 180.0,
+   "collision": "newsstand_col"
+  },
+  {
+   "id": "taxi_rank",
+   "asset": "town_taxi_rank",
+   "position": [
+    184.5,
+    0.0,
+    37.5
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "postbox",
+   "asset": "postbox",
+   "position": [
+    132.5,
+    0.0,
+    37.0
+   ],
+   "collision": "postbox_col"
+  },
+  {
+   "id": "vending_konbini",
+   "asset": "street_vending_machine",
+   "position": [
+    179.1,
+    0.0,
+    29.8
+   ],
+   "yaw": 90.0,
+   "collision": "street_vending_machine_col"
+  },
+  {
+   "id": "vending_station_0",
+   "asset": "street_vending_machine",
+   "position": [
+    154.0,
+    0.0,
+    15.6
+   ],
+   "yaw": 180.0,
+   "collision": "street_vending_machine_col"
+  },
+  {
+   "id": "vending_station_1",
+   "asset": "street_vending_machine",
+   "position": [
+    155.0,
+    0.0,
+    15.6
+   ],
+   "yaw": 180.0,
+   "collision": "street_vending_machine_col"
+  },
+  {
+   "id": "planters_station",
+   "asset": "town_potted_plants",
+   "position": [
+    165.5,
+    0.0,
+    15.7
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_rack_0",
+   "asset": "bike_rack",
+   "position": [
+    131.0,
+    0.0,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "bike_rack_col"
+  },
+  {
+   "id": "bike_0_1",
+   "asset": "mamachari",
+   "position": [
+    131.6,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_0_3",
+   "asset": "mamachari",
+   "position": [
+    130.4,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_rack_1",
+   "asset": "bike_rack",
+   "position": [
+    145.3,
+    0.0,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "bike_rack_col"
+  },
+  {
+   "id": "bike_1_0",
+   "asset": "mamachari",
+   "position": [
+    146.5,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_1_2",
+   "asset": "mamachari",
+   "position": [
+    145.3,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_1_4",
+   "asset": "mamachari",
+   "position": [
+    144.1,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_rack_2",
+   "asset": "bike_rack",
+   "position": [
+    173.5,
+    0.0,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "bike_rack_col"
+  },
+  {
+   "id": "bike_2_1",
+   "asset": "mamachari",
+   "position": [
+    174.1,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_2_3",
+   "asset": "mamachari",
+   "position": [
+    172.9,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
+   "id": "bike_rack_3",
+   "asset": "bike_rack",
+   "position": [
+    176.9,
+    0.0,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "bike_rack_col"
+  },
+  {
+   "id": "bike_3_2",
+   "asset": "mamachari",
+   "position": [
+    176.9,
+    0.1,
+    17.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
   }
  ],
  "entities": [
@@ -272,9 +481,9 @@
    "id": "red_canopy",
    "type": "red_coin",
    "position": [
-    172,
-    13.5,
-    8
+    172.0,
+    14.17,
+    8.0
    ],
    "asset": "gbt_coin_red"
   },
@@ -282,9 +491,9 @@
    "id": "star_5_platform",
    "type": "coin",
    "position": [
-    160,
-    9.9,
-    8
+    160.0,
+    10.9,
+    8.0
    ],
    "asset": "gbt_star"
   },
@@ -292,9 +501,9 @@
    "id": "coin_stair0_0",
    "type": "coin",
    "position": [
-    152.0,
-    2.2,
-    29
+    150.0,
+    3.5,
+    29.0
    ],
    "asset": "gbt_coin"
   },
@@ -302,9 +511,9 @@
    "id": "coin_stair0_1",
    "type": "coin",
    "position": [
-    152.0,
-    5.2,
-    23
+    150.0,
+    6.5,
+    23.0
    ],
    "asset": "gbt_coin"
   },
@@ -312,9 +521,9 @@
    "id": "coin_stair0_2",
    "type": "coin",
    "position": [
-    152.0,
-    8.2,
-    17
+    150.0,
+    9.5,
+    17.0
    ],
    "asset": "gbt_coin"
   },
@@ -322,9 +531,9 @@
    "id": "coin_stair1_0",
    "type": "coin",
    "position": [
-    172.0,
-    2.2,
-    29
+    170.0,
+    3.5,
+    29.0
    ],
    "asset": "gbt_coin"
   },
@@ -332,9 +541,9 @@
    "id": "coin_stair1_1",
    "type": "coin",
    "position": [
-    172.0,
-    5.2,
-    23
+    170.0,
+    6.5,
+    23.0
    ],
    "asset": "gbt_coin"
   },
@@ -342,9 +551,9 @@
    "id": "coin_stair1_2",
    "type": "coin",
    "position": [
-    172.0,
-    8.2,
-    17
+    170.0,
+    9.5,
+    17.0
    ],
    "asset": "gbt_coin"
   },
@@ -401,12 +610,24 @@
    }
   },
   {
+   "id": "rail_parapet_n_m",
+   "type": "rail",
+   "position": [
+    151.65,
+    10.2,
+    15.475
+   ],
+   "params": {
+    "path": "parapet_n_m"
+   }
+  },
+  {
    "id": "rail_parapet_n_e",
    "type": "rail",
    "position": [
-    178.0,
+    171.65,
     10.2,
-    13.85
+    15.475
    ],
    "params": {
     "path": "parapet_n_e"

@@ -9,70 +9,6 @@
  "region": "town",
  "placements": [
   {
-   "id": "viaduct_16",
-   "asset": "gbt_viaduct_162",
-   "position": [
-    267.882,
-    0.0,
-    8.0
-   ],
-   "yaw": 90.0,
-   "collision": "gbt_viaduct_162_col"
-  },
-  {
-   "id": "viaduct_17",
-   "asset": "gbt_viaduct_146",
-   "position": [
-    283.0,
-    0.0,
-    10.0
-   ],
-   "yaw": 74.055,
-   "collision": "gbt_viaduct_146_col"
-  },
-  {
-   "id": "viaduct_18",
-   "asset": "gbt_viaduct_135",
-   "position": [
-    294.5,
-    0.0,
-    17.0
-   ],
-   "yaw": 41.987,
-   "collision": "gbt_viaduct_135_col"
-  },
-  {
-   "id": "viaduct_19",
-   "asset": "gbt_viaduct_143",
-   "position": [
-    300.5,
-    0.0,
-    29.0
-   ],
-   "yaw": 12.095,
-   "collision": "gbt_viaduct_143_col"
-  },
-  {
-   "id": "viaduct_20",
-   "asset": "gbt_viaduct_164",
-   "position": [
-    302.0,
-    0.0,
-    44.2
-   ],
-   "collision": "gbt_viaduct_164_col"
-  },
-  {
-   "id": "viaduct_21",
-   "asset": "gbt_viaduct_164",
-   "position": [
-    302.0,
-    0.0,
-    60.6
-   ],
-   "collision": "gbt_viaduct_164_col"
-  },
-  {
    "id": "climbing_frame",
    "asset": "gbt_climbing_frame",
    "position": [
@@ -141,6 +77,81 @@
     54.0
    ],
    "collision": "self"
+  },
+  {
+   "id": "viaduct_16",
+   "asset": "viaduct_span_16",
+   "position": [
+    256.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_17",
+   "asset": "viaduct_span_16",
+   "position": [
+    272.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_18",
+   "asset": "viaduct_curve_16",
+   "position": [
+    287.9089,
+    0.0,
+    9.0412
+   ],
+   "yaw": 345.0,
+   "collision": "viaduct_curve_16_col"
+  },
+  {
+   "id": "viaduct_19",
+   "asset": "viaduct_curve_16",
+   "position": [
+    301.6076,
+    0.0,
+    16.9502
+   ],
+   "yaw": 315.0,
+   "collision": "viaduct_curve_16_col"
+  },
+  {
+   "id": "viaduct_20",
+   "asset": "viaduct_curve_16",
+   "position": [
+    309.5165,
+    0.0,
+    30.6488
+   ],
+   "yaw": 285.0,
+   "collision": "viaduct_curve_16_col"
+  },
+  {
+   "id": "viaduct_21",
+   "asset": "viaduct_span_16",
+   "position": [
+    310.5577,
+    0.0,
+    46.5577
+   ],
+   "yaw": 270.0,
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_22",
+   "asset": "viaduct_span_16",
+   "position": [
+    310.5577,
+    0.0,
+    62.5577
+   ],
+   "yaw": 270.0,
+   "collision": "viaduct_span_16_col"
   }
  ],
  "entities": []

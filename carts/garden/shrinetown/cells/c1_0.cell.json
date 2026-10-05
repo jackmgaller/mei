@@ -9,100 +9,6 @@
  "region": "town",
  "placements": [
   {
-   "id": "viaduct_4",
-   "asset": "gbt_viaduct_162",
-   "position": [
-    73.059,
-    0.0,
-    8.0
-   ],
-   "yaw": 90.0,
-   "collision": "gbt_viaduct_162_col"
-  },
-  {
-   "id": "viaduct_5",
-   "asset": "gbt_viaduct_162",
-   "position": [
-    89.294,
-    0.0,
-    8.0
-   ],
-   "yaw": 90.0,
-   "collision": "gbt_viaduct_162_col"
-  },
-  {
-   "id": "viaduct_6",
-   "asset": "gbt_viaduct_162",
-   "position": [
-    105.529,
-    0.0,
-    8.0
-   ],
-   "yaw": 90.0,
-   "collision": "gbt_viaduct_162_col"
-  },
-  {
-   "id": "viaduct_7",
-   "asset": "gbt_viaduct_162",
-   "position": [
-    121.765,
-    0.0,
-    8.0
-   ],
-   "yaw": 90.0,
-   "collision": "gbt_viaduct_162_col"
-  },
-  {
-   "id": "koban",
-   "asset": "gbt_koban",
-   "position": [
-    122.0,
-    0,
-    23.0
-   ],
-   "collision": "gbt_koban_col"
-  },
-  {
-   "id": "danchi",
-   "asset": "gbt_danchi",
-   "position": [
-    78.0,
-    0,
-    26.0
-   ],
-   "collision": "gbt_danchi_col"
-  },
-  {
-   "id": "danchi_tank",
-   "asset": "gbt_danchi_tank",
-   "position": [
-    78.0,
-    18.8,
-    26.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "pachinko",
-   "asset": "gbt_pachinko",
-   "position": [
-    100.0,
-    0,
-    26.0
-   ],
-   "collision": "gbt_pachinko_col"
-  },
-  {
-   "id": "danchi_stair",
-   "asset": "gbt_danchi_stair",
-   "position": [
-    78,
-    0,
-    26
-   ],
-   "collision": "self"
-  },
-  {
    "id": "alley_66_44",
    "asset": "gbt_alley",
    "position": [
@@ -231,6 +137,110 @@
     0.2
    ],
    "collision": "self"
+  },
+  {
+   "id": "viaduct_4",
+   "asset": "viaduct_span_16",
+   "position": [
+    64.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_5",
+   "asset": "viaduct_span_16",
+   "position": [
+    80.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_6",
+   "asset": "viaduct_span_16",
+   "position": [
+    96.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "viaduct_7",
+   "asset": "viaduct_span_16",
+   "position": [
+    112.0,
+    0.0,
+    8.0
+   ],
+   "collision": "viaduct_span_16_col"
+  },
+  {
+   "id": "danchi",
+   "asset": "danchi",
+   "position": [
+    78.0,
+    0.0,
+    26.0
+   ],
+   "collision": "danchi_col"
+  },
+  {
+   "id": "pachinko",
+   "asset": "pachinko_parlour",
+   "position": [
+    100.5,
+    0.0,
+    26.0
+   ],
+   "yaw": 270.0,
+   "collision": "pachinko_parlour_col"
+  },
+  {
+   "id": "koban",
+   "asset": "koban",
+   "position": [
+    122.0,
+    0.0,
+    24.0
+   ],
+   "yaw": 270.0,
+   "collision": "koban_col"
+  },
+  {
+   "id": "phone_booth",
+   "asset": "phone_booth",
+   "position": [
+    114.5,
+    0.0,
+    36.0
+   ],
+   "yaw": 270.0,
+   "collision": "phone_booth_col"
+  },
+  {
+   "id": "bench_0",
+   "asset": "town_bench",
+   "position": [
+    126.0,
+    0.0,
+    38.5
+   ],
+   "collision": "town_bench_col"
+  },
+  {
+   "id": "planters_koban",
+   "asset": "town_potted_plants",
+   "position": [
+    122.0,
+    0.0,
+    27.2
+   ],
+   "yaw": 180.0,
+   "collision": "none"
   }
  ],
  "entities": [
