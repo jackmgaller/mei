@@ -1,0 +1,1329 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "koi_pond",
+ "budget": {
+  "vertices": 1100,
+  "triangles": 1000
+ },
+ "materials": {
+  "water": {
+   "color": "#2f7f8c",
+   "texture": {
+    "image": "art/water.png",
+    "bits": 4,
+    "projection": "disc",
+    "axis": "y"
+   }
+  },
+  "bank": {
+   "color": "#6fa04a",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#6fa04a",
+     "#548a3c",
+     "#8ab85a",
+     "#a8884e"
+    ],
+    "params": {
+     "density": 0.3,
+     "seed": 3
+    },
+    "size": 16,
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     0.6,
+     0.6
+    ]
+   }
+  },
+  "wall": {
+   "color": "#6b6a5c",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#6b6a5c",
+     "#4a4a40",
+     "#86857a"
+    ],
+    "params": {
+     "density": 0.3,
+     "seed": 5
+    },
+    "projection": "cylindrical",
+    "scale": [
+     0.6,
+     0.4
+    ]
+   }
+  },
+  "rock": {
+   "color": "#8a8a84",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#8a8a84",
+     "#6a6a66",
+     "#a8a8a0",
+     "#7c8a70"
+    ],
+    "params": {
+     "density": 0.35,
+     "seed": 9
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "stone": {
+   "color": "#a0a096",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#a0a096",
+     "#85857c",
+     "#bcbcb0"
+    ],
+    "params": {
+     "density": 0.25,
+     "seed": 2
+    },
+    "projection": "box",
+    "scale": [
+     0.4,
+     0.4
+    ]
+   }
+  },
+  "planks": {
+   "color": "#c8402f",
+   "texture": {
+    "pattern": "planks",
+    "colors": [
+     "#c8402f",
+     "#7a2418",
+     "#b83828"
+    ],
+    "params": {
+     "boards": 4
+    },
+    "projection": "box",
+    "scale": [
+     1.0,
+     0.45
+    ]
+   }
+  },
+  "red": {
+   "color": "#c8402f"
+  },
+  "gold": {
+   "color": "#e8c050"
+  },
+  "glow": {
+   "color": "#ffd070",
+   "class": "emissive"
+  },
+  "pad_mat": {
+   "color": "#4fae52"
+  },
+  "frog_mat": {
+   "color": "#8acb4a"
+  },
+  "koi_orange": {
+   "color": "#f0742a"
+  },
+  "koi_white": {
+   "color": "#f5f0e0"
+  },
+  "spray": {
+   "color": "#e8f6ff"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "bank",
+   "op": "lathe",
+   "segments": 16,
+   "caps": false,
+   "material": "bank",
+   "profile": [
+    [
+     2.55,
+     0.0
+    ],
+    [
+     2.48,
+     0.1
+    ],
+    [
+     2.15,
+     0.145
+    ],
+    [
+     2.0,
+     0.15
+    ]
+   ]
+  },
+  {
+   "id": "inner_wall",
+   "op": "lathe",
+   "segments": 16,
+   "caps": false,
+   "material": "wall",
+   "profile": [
+    [
+     2.0,
+     0.02
+    ],
+    [
+     2.0,
+     0.15
+    ]
+   ]
+  },
+  {
+   "id": "water",
+   "op": "lathe",
+   "segments": 16,
+   "caps": false,
+   "material": "water",
+   "profile": [
+    [
+     2.0,
+     0.02
+    ],
+    [
+     0,
+     0.03
+    ]
+   ]
+  },
+  {
+   "id": "rocks",
+   "op": "group",
+   "children": [
+    {
+     "id": "rock_00",
+     "op": "sphere",
+     "radius": 1,
+     "rings": 3,
+     "segments": 6,
+     "material": "rock",
+     "transform": {
+      "scale": [
+       0.26,
+       0.17,
+       0.22
+      ],
+      "rotate": [
+       0,
+       42.5,
+       0
+      ],
+      "translate": [
+       1.849,
+       0.16,
+       0.862
+      ]
+     }
+    },
+    {
+     "id": "rock_01",
+     "op": "sphere",
+     "radius": 1,
+     "rings": 3,
+     "segments": 6,
+     "material": "rock",
+     "transform": {
+      "scale": [
+       0.22,
+       0.13,
+       0.2
+      ],
+      "rotate": [
+       0,
+       85.0,
+       0
+      ],
+      "translate": [
+       1.311,
+       0.16,
+       1.563
+      ]
+     }
+    },
+    {
+     "id": "rock_02",
+     "op": "sphere",
+     "radius": 1,
+     "rings": 3,
+     "segments": 6,
+     "material": "rock",
+     "transform": {
+      "scale": [
+       0.3,
+       0.2,
+       0.24
+      ],
+      "rotate": [
+       0,
+       136.0,
+       0
+      ],
+      "translate": [
+       0.354,
+       0.16,
+       2.009
+      ]
+     }
+    },
+    {
+     "id": "rock_03",
+     "op": "sphere",
+     "radius": 1,
+     "rings": 3,
+     "segments": 6,
+     "material": "rock",
+     "transform": {
+      "scale": [
+       0.27,
+       0.16,
+       0.22
+      ],
+      "rotate": [
+       0,
+       238.0,
+       0
+      ],
+      "translate": [
+       -1.563,
+       0.16,
+       1.311
+      ]
+     }
+    },
+    {
+     "id": "rock_04",
+     "op": "sphere",
+     "radius": 1,
+     "rings": 3,
+     "segments": 6,
+     "material": "rock",
+     "transform": {
+      "scale": [
+       0.23,
+       0.15,
+       0.24
+      ],
+      "rotate": [
+       0,
+       289.0,
+       0
+      ],
+      "translate": [
+       -2.009,
+       0.16,
+       0.354
+      ]
+     }
+    },
+    {
+     "id": "rock_05",
+     "op": "sphere",
+     "radius": 1,
+     "rings": 3,
+     "segments": 6,
+     "material": "rock",
+     "transform": {
+      "scale": [
+       0.3,
+       0.2,
+       0.22
+      ],
+      "rotate": [
+       0,
+       340.0,
+       0
+      ],
+      "translate": [
+       -1.917,
+       0.16,
+       -0.698
+      ]
+     }
+    },
+    {
+     "id": "rock_06",
+     "op": "sphere",
+     "radius": 1,
+     "rings": 3,
+     "segments": 6,
+     "material": "rock",
+     "transform": {
+      "scale": [
+       0.26,
+       0.17,
+       0.24
+      ],
+      "rotate": [
+       0,
+       433.5,
+       0
+      ],
+      "translate": [
+       -0.528,
+       0.16,
+       -1.97
+      ]
+     }
+    },
+    {
+     "id": "rock_07",
+     "op": "sphere",
+     "radius": 1,
+     "rings": 3,
+     "segments": 6,
+     "material": "rock",
+     "transform": {
+      "scale": [
+       0.24,
+       0.15,
+       0.2
+      ],
+      "rotate": [
+       0,
+       484.5,
+       0
+      ],
+      "translate": [
+       0.528,
+       0.16,
+       -1.97
+      ]
+     }
+    },
+    {
+     "id": "rock_08",
+     "op": "sphere",
+     "radius": 1,
+     "rings": 3,
+     "segments": 6,
+     "material": "rock",
+     "transform": {
+      "scale": [
+       0.28,
+       0.18,
+       0.24
+      ],
+      "rotate": [
+       0,
+       535.5,
+       0
+      ],
+      "translate": [
+       1.442,
+       0.16,
+       -1.442
+      ]
+     }
+    },
+    {
+     "id": "rock_09",
+     "op": "sphere",
+     "radius": 1,
+     "rings": 3,
+     "segments": 6,
+     "material": "rock",
+     "transform": {
+      "scale": [
+       0.2,
+       0.12,
+       0.18
+      ],
+      "rotate": [
+       0,
+       586.5,
+       0
+      ],
+      "translate": [
+       1.97,
+       0.16,
+       -0.528
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "bridge",
+   "op": "group",
+   "children": [
+    {
+     "id": "deck",
+     "op": "extrude",
+     "points": [
+      [
+       -2.0,
+       0.42
+      ],
+      [
+       -1.556,
+       0.42
+      ],
+      [
+       -1.556,
+       0.68
+      ],
+      [
+       -1.111,
+       0.68
+      ],
+      [
+       -1.111,
+       0.88
+      ],
+      [
+       -0.667,
+       0.88
+      ],
+      [
+       -0.667,
+       1.0
+      ],
+      [
+       -0.222,
+       1.0
+      ],
+      [
+       -0.222,
+       1.02
+      ],
+      [
+       0.222,
+       1.02
+      ],
+      [
+       0.222,
+       1.0
+      ],
+      [
+       0.667,
+       1.0
+      ],
+      [
+       0.667,
+       0.88
+      ],
+      [
+       1.111,
+       0.88
+      ],
+      [
+       1.111,
+       0.68
+      ],
+      [
+       1.556,
+       0.68
+      ],
+      [
+       1.556,
+       0.42
+      ],
+      [
+       2.0,
+       0.42
+      ],
+      [
+       2.0,
+       0.06
+      ],
+      [
+       1.556,
+       0.368
+      ],
+      [
+       1.111,
+       0.599
+      ],
+      [
+       0.667,
+       0.753
+      ],
+      [
+       0.222,
+       0.83
+      ],
+      [
+       -0.222,
+       0.83
+      ],
+      [
+       -0.667,
+       0.753
+      ],
+      [
+       -1.111,
+       0.599
+      ],
+      [
+       -1.556,
+       0.368
+      ],
+      [
+       -2.0,
+       0.06
+      ]
+     ],
+     "depth": 0.9,
+     "material": "planks"
+    },
+    {
+     "id": "rails",
+     "op": "group",
+     "children": [
+      {
+       "id": "rail_f",
+       "op": "extrude",
+       "points": [
+        [
+         -2.0,
+         0.73
+        ],
+        [
+         -1.4,
+         1.128
+        ],
+        [
+         -0.7,
+         1.414
+        ],
+        [
+         0.0,
+         1.51
+        ],
+        [
+         0.7,
+         1.414
+        ],
+        [
+         1.4,
+         1.128
+        ],
+        [
+         2.0,
+         0.73
+        ],
+        [
+         2.0,
+         0.66
+        ],
+        [
+         1.4,
+         1.058
+        ],
+        [
+         0.7,
+         1.344
+        ],
+        [
+         0.0,
+         1.44
+        ],
+        [
+         -0.7,
+         1.344
+        ],
+        [
+         -1.4,
+         1.058
+        ],
+        [
+         -2.0,
+         0.66
+        ]
+       ],
+       "depth": 0.07,
+       "material": "red",
+       "transform": {
+        "translate": [
+         0,
+         0,
+         -0.42
+        ]
+       }
+      },
+      {
+       "id": "rail_b",
+       "op": "extrude",
+       "points": [
+        [
+         -2.0,
+         0.73
+        ],
+        [
+         -1.4,
+         1.128
+        ],
+        [
+         -0.7,
+         1.414
+        ],
+        [
+         0.0,
+         1.51
+        ],
+        [
+         0.7,
+         1.414
+        ],
+        [
+         1.4,
+         1.128
+        ],
+        [
+         2.0,
+         0.73
+        ],
+        [
+         2.0,
+         0.66
+        ],
+        [
+         1.4,
+         1.058
+        ],
+        [
+         0.7,
+         1.344
+        ],
+        [
+         0.0,
+         1.44
+        ],
+        [
+         -0.7,
+         1.344
+        ],
+        [
+         -1.4,
+         1.058
+        ],
+        [
+         -2.0,
+         0.66
+        ]
+       ],
+       "depth": 0.07,
+       "material": "red",
+       "transform": {
+        "translate": [
+         0,
+         0,
+         0.42
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "id": "post_n20_f",
+     "op": "box",
+     "size": [
+      0.09,
+      0.62,
+      0.09
+     ],
+     "open": [
+      "bottom"
+     ],
+     "material": "red",
+     "transform": {
+      "translate": [
+       -2.0,
+       0.5099546485260772,
+       -0.42
+      ]
+     }
+    },
+    {
+     "id": "post_p00_f",
+     "op": "box",
+     "size": [
+      0.09,
+      0.62,
+      0.09
+     ],
+     "open": [
+      "bottom"
+     ],
+     "material": "red",
+     "transform": {
+      "translate": [
+       0.0,
+       1.29,
+       -0.42
+      ]
+     }
+    },
+    {
+     "id": "post_p20_f",
+     "op": "box",
+     "size": [
+      0.09,
+      0.62,
+      0.09
+     ],
+     "open": [
+      "bottom"
+     ],
+     "material": "red",
+     "transform": {
+      "translate": [
+       2.0,
+       0.5099546485260772,
+       -0.42
+      ]
+     }
+    },
+    {
+     "id": "post_n20_b",
+     "op": "box",
+     "size": [
+      0.09,
+      0.62,
+      0.09
+     ],
+     "open": [
+      "bottom"
+     ],
+     "material": "red",
+     "transform": {
+      "translate": [
+       -2.0,
+       0.5099546485260772,
+       0.42
+      ]
+     }
+    },
+    {
+     "id": "post_p00_b",
+     "op": "box",
+     "size": [
+      0.09,
+      0.62,
+      0.09
+     ],
+     "open": [
+      "bottom"
+     ],
+     "material": "red",
+     "transform": {
+      "translate": [
+       0.0,
+       1.29,
+       0.42
+      ]
+     }
+    },
+    {
+     "id": "post_p20_b",
+     "op": "box",
+     "size": [
+      0.09,
+      0.62,
+      0.09
+     ],
+     "open": [
+      "bottom"
+     ],
+     "material": "red",
+     "transform": {
+      "translate": [
+       2.0,
+       0.5099546485260772,
+       0.42
+      ]
+     }
+    },
+    {
+     "id": "fin_n20_f",
+     "op": "sphere",
+     "radius": 0.065,
+     "rings": 2,
+     "segments": 6,
+     "material": "gold",
+     "transform": {
+      "translate": [
+       -2.0,
+       0.8699546485260772,
+       -0.42
+      ]
+     }
+    },
+    {
+     "id": "fin_p20_f",
+     "op": "sphere",
+     "radius": 0.065,
+     "rings": 2,
+     "segments": 6,
+     "material": "gold",
+     "transform": {
+      "translate": [
+       2.0,
+       0.8699546485260772,
+       -0.42
+      ]
+     }
+    },
+    {
+     "id": "fin_n20_b",
+     "op": "sphere",
+     "radius": 0.065,
+     "rings": 2,
+     "segments": 6,
+     "material": "gold",
+     "transform": {
+      "translate": [
+       -2.0,
+       0.8699546485260772,
+       0.42
+      ]
+     }
+    },
+    {
+     "id": "fin_p20_b",
+     "op": "sphere",
+     "radius": 0.065,
+     "rings": 2,
+     "segments": 6,
+     "material": "gold",
+     "transform": {
+      "translate": [
+       2.0,
+       0.8699546485260772,
+       0.42
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "lantern",
+   "op": "group",
+   "transform": {
+    "translate": [
+     1.55,
+     0.15,
+     1.65
+    ],
+    "rotate": [
+     0,
+     35,
+     0
+    ]
+   },
+   "children": [
+    {
+     "id": "l_base",
+     "op": "box",
+     "size": [
+      0.34,
+      0.1,
+      0.34
+     ],
+     "open": [
+      "bottom"
+     ],
+     "material": "stone",
+     "transform": {
+      "translate": [
+       0,
+       0.05,
+       0
+      ]
+     }
+    },
+    {
+     "id": "l_post",
+     "op": "cylinder",
+     "radius": 0.06,
+     "height": 0.36,
+     "segments": 6,
+     "caps": false,
+     "material": "stone",
+     "transform": {
+      "translate": [
+       0,
+       0.28,
+       0
+      ]
+     }
+    },
+    {
+     "id": "l_deck",
+     "op": "box",
+     "size": [
+      0.3,
+      0.05,
+      0.3
+     ],
+     "material": "stone",
+     "transform": {
+      "translate": [
+       0,
+       0.485,
+       0
+      ]
+     }
+    },
+    {
+     "id": "l_fire",
+     "op": "box",
+     "size": [
+      0.18,
+      0.18,
+      0.18
+     ],
+     "material": "glow",
+     "transform": {
+      "translate": [
+       0,
+       0.595,
+       0
+      ]
+     }
+    },
+    {
+     "id": "l_roof",
+     "op": "cone",
+     "radius": 0.3,
+     "height": 0.2,
+     "segments": 4,
+     "material": "stone",
+     "transform": {
+      "rotate": [
+       0,
+       45,
+       0
+      ],
+      "translate": [
+       0,
+       0.79,
+       0
+      ]
+     }
+    },
+    {
+     "id": "l_top",
+     "op": "sphere",
+     "radius": 0.05,
+     "rings": 2,
+     "segments": 6,
+     "material": "stone",
+     "transform": {
+      "translate": [
+       0,
+       0.92,
+       0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "pads",
+   "op": "group",
+   "children": [
+    {
+     "id": "pad_a",
+     "op": "lathe",
+     "segments": 8,
+     "caps": false,
+     "material": "pad_mat",
+     "profile": [
+      [
+       0.3,
+       0.035
+      ],
+      [
+       0,
+       0.05
+      ]
+     ],
+     "transform": {
+      "translate": [
+       -0.9,
+       0,
+       -1.05
+      ]
+     }
+    },
+    {
+     "id": "frog",
+     "op": "group",
+     "transform": {
+      "translate": [
+       -0.9,
+       0.05,
+       -1.05
+      ],
+      "rotate": [
+       0,
+       40,
+       0
+      ]
+     },
+     "children": [
+      {
+       "id": "frog_body",
+       "op": "sphere",
+       "radius": 0.1,
+       "rings": 2,
+       "segments": 6,
+       "material": "frog_mat",
+       "transform": {
+        "scale": [
+         1,
+         0.7,
+         1.2
+        ],
+        "translate": [
+         0,
+         0.06,
+         0
+        ]
+       }
+      },
+      {
+       "id": "eye_l",
+       "op": "sphere",
+       "radius": 0.03,
+       "rings": 2,
+       "segments": 4,
+       "material": "frog_mat",
+       "transform": {
+        "translate": [
+         -0.05,
+         0.14,
+         -0.08
+        ]
+       }
+      },
+      {
+       "id": "eye_r",
+       "op": "sphere",
+       "radius": 0.03,
+       "rings": 2,
+       "segments": 4,
+       "material": "frog_mat",
+       "transform": {
+        "translate": [
+         0.05,
+         0.14,
+         -0.08
+        ]
+       }
+      }
+     ]
+    },
+    {
+     "id": "pad_b",
+     "op": "lathe",
+     "segments": 8,
+     "caps": false,
+     "material": "pad_mat",
+     "profile": [
+      [
+       0.22,
+       0.035
+      ],
+      [
+       0,
+       0.047
+      ]
+     ],
+     "transform": {
+      "translate": [
+       1.1,
+       0,
+       1.1
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "jumper",
+   "op": "group",
+   "transform": {
+    "translate": [
+     0.6,
+     0.85,
+     -1.15
+    ],
+    "rotate": [
+     -35,
+     70,
+     0
+    ],
+    "scale": [
+     1.3,
+     1.3,
+     1.3
+    ]
+   },
+   "children": [
+    {
+     "id": "j_body",
+     "op": "sphere",
+     "radius": 1,
+     "rings": 3,
+     "segments": 8,
+     "material": "koi_orange",
+     "transform": {
+      "scale": [
+       0.11,
+       0.1,
+       0.32
+      ]
+     }
+    },
+    {
+     "id": "j_back",
+     "op": "sphere",
+     "radius": 1,
+     "rings": 2,
+     "segments": 6,
+     "material": "koi_white",
+     "transform": {
+      "scale": [
+       0.085,
+       0.07,
+       0.15
+      ],
+      "translate": [
+       0,
+       0.05,
+       0.02
+      ]
+     }
+    },
+    {
+     "id": "j_tail",
+     "op": "extrude",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       0.13,
+       0.12
+      ],
+      [
+       0.04,
+       0.0
+      ],
+      [
+       0.13,
+       -0.12
+      ]
+     ],
+     "depth": 0.02,
+     "material": "koi_orange",
+     "transform": {
+      "rotate": [
+       0,
+       90,
+       0
+      ],
+      "translate": [
+       0,
+       0,
+       0.3
+      ]
+     }
+    },
+    {
+     "id": "j_fin",
+     "op": "extrude",
+     "points": [
+      [
+       0,
+       0
+      ],
+      [
+       0.06,
+       0.03
+      ],
+      [
+       0.02,
+       -0.04
+      ]
+     ],
+     "depth": 0.015,
+     "material": "koi_orange",
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       0
+      ],
+      "translate": [
+       0,
+       0.0,
+       -0.05
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "drop_0",
+   "op": "sphere",
+   "radius": 0.035,
+   "rings": 2,
+   "segments": 4,
+   "material": "spray",
+   "transform": {
+    "translate": [
+     0.9,
+     0.5,
+     -1.3
+    ]
+   }
+  },
+  {
+   "id": "drop_1",
+   "op": "sphere",
+   "radius": 0.035,
+   "rings": 2,
+   "segments": 4,
+   "material": "spray",
+   "transform": {
+    "translate": [
+     0.2,
+     0.7,
+     -0.95
+    ]
+   }
+  }
+ ]
+}

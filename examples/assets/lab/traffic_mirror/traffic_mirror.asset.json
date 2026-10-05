@@ -1,0 +1,431 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "traffic_mirror",
+ "budget": {
+  "vertices": 400,
+  "triangles": 420
+ },
+ "sheets": {},
+ "materials": {
+  "pole": {
+   "color": "#e8742a",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#e8742a",
+     "#f3ead6"
+    ],
+    "params": {
+     "count": 2,
+     "axis": "v"
+    },
+    "projection": "cylindrical",
+    "scale": [
+     0.4,
+     0.6
+    ]
+   }
+  },
+  "rim": {
+   "color": "#e8742a"
+  },
+  "metal": {
+   "color": "#8a909a"
+  },
+  "concrete": {
+   "color": "#b4b0a6",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#b4b0a6",
+     "#8e8a82",
+     "#cbc7bb"
+    ],
+    "params": {
+     "density": 0.3
+    },
+    "projection": "box",
+    "scale": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "glass_cat": {
+   "color": "#8fd0f0",
+   "texture": {
+    "image": "art/mirror_cat.png",
+    "bits": 8,
+    "projection": "disc",
+    "axis": "y"
+   }
+  },
+  "glass_kid": {
+   "color": "#8fd0f0",
+   "texture": {
+    "image": "art/mirror_kid.png",
+    "bits": 8,
+    "projection": "disc",
+    "axis": "y"
+   }
+  },
+  "plaque": {
+   "color": "#2f5fb0",
+   "texture": {
+    "texels": [
+     "00000000",
+     "00011000",
+     "00111100",
+     "01111110",
+     "00011000",
+     "00011000",
+     "00011000",
+     "00000000"
+    ],
+    "colors": [
+     "#2f5fb0",
+     "#f3ead6"
+    ],
+    "projection": "fit"
+   }
+  },
+  "fur": {
+   "color": "#f0a030"
+  },
+  "ink": {
+   "color": "#2a2a30"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "foot",
+   "op": "cylinder",
+   "radius": 0.2,
+   "height": 0.28,
+   "segments": 8,
+   "caps": true,
+   "material": "concrete",
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 0.7
+    }
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.14,
+     0
+    ]
+   }
+  },
+  {
+   "id": "pole",
+   "op": "cylinder",
+   "radius": 0.06,
+   "height": 2.65,
+   "segments": 8,
+   "caps": false,
+   "material": "pole",
+   "transform": {
+    "translate": [
+     0,
+     1.6,
+     0
+    ]
+   }
+  },
+  {
+   "id": "pole_cap",
+   "op": "sphere",
+   "radius": 0.075,
+   "rings": 2,
+   "segments": 8,
+   "material": "rim",
+   "transform": {
+    "translate": [
+     0,
+     2.94,
+     0
+    ]
+   }
+  },
+  {
+   "id": "plaque",
+   "op": "box",
+   "size": [
+    0.3,
+    0.3,
+    0.03
+   ],
+   "material": "plaque",
+   "transform": {
+    "translate": [
+     0,
+     1.35,
+     -0.075
+    ]
+   }
+  },
+  {
+   "id": "bracket",
+   "op": "box",
+   "size": [
+    0.09,
+    0.09,
+    0.62
+   ],
+   "material": "metal",
+   "transform": {
+    "translate": [
+     0,
+     2.5,
+     0
+    ]
+   }
+  },
+  {
+   "id": "mirror_a",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     -98,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     2.5,
+     -0.34
+    ]
+   },
+   "children": [
+    {
+     "id": "housing",
+     "op": "lathe",
+     "segments": 10,
+     "caps": false,
+     "material": "rim",
+     "profile": [
+      [
+       0,
+       -0.13
+      ],
+      [
+       0.4,
+       -0.07
+      ],
+      [
+       0.46,
+       0.03
+      ],
+      [
+       0.38,
+       0.07
+      ]
+     ]
+    },
+    {
+     "id": "glass",
+     "op": "lathe",
+     "segments": 10,
+     "caps": false,
+     "material": "glass_cat",
+     "profile": [
+      [
+       0.38,
+       0.07
+      ],
+      [
+       0.22,
+       0.13
+      ],
+      [
+       0,
+       0.17
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mirror_b",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     98,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     2.5,
+     0.34
+    ]
+   },
+   "children": [
+    {
+     "id": "housing",
+     "op": "lathe",
+     "segments": 10,
+     "caps": false,
+     "material": "rim",
+     "profile": [
+      [
+       0,
+       -0.13
+      ],
+      [
+       0.4,
+       -0.07
+      ],
+      [
+       0.46,
+       0.03
+      ],
+      [
+       0.38,
+       0.07
+      ]
+     ]
+    },
+    {
+     "id": "glass",
+     "op": "lathe",
+     "segments": 10,
+     "caps": false,
+     "material": "glass_kid",
+     "profile": [
+      [
+       0.38,
+       0.07
+      ],
+      [
+       0.22,
+       0.13
+      ],
+      [
+       0,
+       0.17
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cat",
+   "op": "group",
+   "transform": {
+    "translate": [
+     0.3,
+     0,
+     -0.22
+    ],
+    "rotate": [
+     0,
+     -30,
+     0
+    ]
+   },
+   "children": [
+    {
+     "id": "cat_body",
+     "op": "sphere",
+     "radius": 0.11,
+     "rings": 2,
+     "segments": 8,
+     "material": "fur",
+     "transform": {
+      "scale": [
+       1,
+       1.15,
+       1
+      ],
+      "translate": [
+       0,
+       0.12,
+       0
+      ]
+     }
+    },
+    {
+     "id": "cat_head",
+     "op": "sphere",
+     "radius": 0.08,
+     "rings": 2,
+     "segments": 8,
+     "material": "fur",
+     "transform": {
+      "translate": [
+       0,
+       0.29,
+       -0.02
+      ]
+     }
+    },
+    {
+     "id": "ear_l",
+     "op": "cone",
+     "radius": 0.025,
+     "height": 0.06,
+     "segments": 4,
+     "caps": false,
+     "material": "fur",
+     "transform": {
+      "translate": [
+       -0.045,
+       0.37,
+       -0.02
+      ]
+     }
+    },
+    {
+     "id": "ear_r",
+     "op": "cone",
+     "radius": 0.025,
+     "height": 0.06,
+     "segments": 4,
+     "caps": false,
+     "material": "fur",
+     "transform": {
+      "translate": [
+       0.045,
+       0.37,
+       -0.02
+      ]
+     }
+    },
+    {
+     "id": "tail",
+     "op": "cylinder",
+     "radius": 0.015,
+     "height": 0.2,
+     "segments": 4,
+     "material": "fur",
+     "transform": {
+      "rotate": [
+       60,
+       0,
+       0
+      ],
+      "translate": [
+       0,
+       0.11,
+       0.17
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}
