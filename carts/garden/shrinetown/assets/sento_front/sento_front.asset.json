@@ -1,0 +1,3809 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "sento_front",
+ "budget": {
+  "triangles": 700
+ },
+ "sheets": {
+  "s": {
+   "image": "art/sento_sheet.png"
+  }
+ },
+ "materials": {
+  "tile": {
+   "color": "#565c64",
+   "tag": "roof",
+   "texture": {
+    "image": "../../../shrine/assets/art/arch_tile.png",
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "tile_far": {
+   "color": "#565c64",
+   "tag": "roof",
+   "texture": {
+    "image": "../../../shrine/assets/art/arch_tile.png",
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     4.0,
+     4.0
+    ]
+   }
+  },
+  "tile_k": {
+   "color": "#565c64",
+   "tag": "roof",
+   "texture": {
+    "image": "../../../shrine/assets/art/arch_tile.png",
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "plaster": {
+   "color": "#e4dccb",
+   "tag": "wall",
+   "texture": {
+    "pattern": "speckle",
+    "colors": [
+     "#e4dccb",
+     "#d4cab4",
+     "#ece4d2"
+    ],
+    "params": {
+     "density": 0.14,
+     "seed": 3
+    },
+    "projection": "box",
+    "scale": [
+     2.0,
+     2.0
+    ]
+   }
+  },
+  "boards": {
+   "color": "#6b4a34",
+   "tag": "wall",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#76523a",
+     "#6a4932",
+     "#5c3f2a",
+     "#6a4932"
+    ],
+    "params": {
+     "count": 8
+    },
+    "projection": "box",
+    "scale": [
+     1.6,
+     1.6
+    ]
+   }
+  },
+  "rafters": {
+   "color": "#4a3020",
+   "texture": {
+    "pattern": "stripes",
+    "colors": [
+     "#5a3e2c",
+     "#2c2a28"
+    ],
+    "params": {
+     "count": 2
+    },
+    "projection": "planar",
+    "axis": "y",
+    "scale": [
+     2.0,
+     2.0
+    ]
+   }
+  },
+  "brick": {
+   "color": "#9c4f34",
+   "tag": "wall",
+   "texture": {
+    "pattern": "brick",
+    "colors": [
+     "#a4553a",
+     "#b99a7a",
+     "#94492f"
+    ],
+    "params": {
+     "courses": 4,
+     "bricks": 2
+    },
+    "projection": "box",
+    "scale": [
+     1.2,
+     0.9
+    ]
+   }
+  },
+  "brick_far": {
+   "color": "#9c4f34",
+   "tag": "wall",
+   "texture": {
+    "pattern": "brick",
+    "colors": [
+     "#a4553a",
+     "#b99a7a",
+     "#94492f"
+    ],
+    "params": {
+     "courses": 4,
+     "bricks": 2
+    },
+    "projection": "box",
+    "scale": [
+     2.4,
+     1.8
+    ]
+   }
+  },
+  "ladder": {
+   "color": "#3e4248",
+   "double_sided": true,
+   "texture": {
+    "texels": [
+     "11111111",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001",
+     "10000001"
+    ],
+    "colors": [
+     "#ff00ff",
+     "#3e4248"
+    ],
+    "clear": "#ff00ff",
+    "projection": "planar",
+    "axis": "z",
+    "scale": [
+     0.5,
+     0.4
+    ]
+   }
+  },
+  "glass_door": {
+   "color": "#f6ecb4",
+   "class": "emissive",
+   "tag": "door",
+   "texture": {
+    "pattern": "lattice",
+    "colors": [
+     "#5a3d28",
+     "#f2e6a8"
+    ],
+    "params": {
+     "count": 4,
+     "bar": 1
+    },
+    "projection": "fit"
+   }
+  },
+  "glass_win": {
+   "color": "#d6ecf0",
+   "class": "emissive",
+   "tag": "window",
+   "texture": {
+    "pattern": "lattice",
+    "colors": [
+     "#4c4a46",
+     "#c8e4ea"
+    ],
+    "params": {
+     "count": 4,
+     "bar": 1
+    },
+    "projection": "fit"
+   }
+  },
+  "glass_up": {
+   "color": "#f6e6a0",
+   "class": "emissive",
+   "tag": "window",
+   "texture": {
+    "pattern": "lattice",
+    "colors": [
+     "#4c4a46",
+     "#f0e2a0"
+    ],
+    "params": {
+     "count": 4,
+     "bar": 1
+    },
+    "projection": "fit"
+   }
+  },
+  "door_dark": {
+   "color": "#4a3626",
+   "tag": "door",
+   "texture": {
+    "pattern": "planks",
+    "colors": [
+     "#4a3626",
+     "#2c2a28",
+     "#56402c"
+    ],
+    "params": {
+     "boards": 4
+    },
+    "projection": "fit"
+   }
+  },
+  "noren_blue": {
+   "color": "#2c4d92",
+   "texture": {
+    "sheet": "s",
+    "cell": "noren_blue",
+    "projection": "fit"
+   }
+  },
+  "noren_red": {
+   "color": "#b8352f",
+   "texture": {
+    "sheet": "s",
+    "cell": "noren_red",
+    "projection": "fit"
+   }
+  },
+  "plaque": {
+   "color": "#22397a",
+   "texture": {
+    "sheet": "s",
+    "cell": "plaque",
+    "projection": "fit"
+   }
+  },
+  "vend": {
+   "color": "#c8322a",
+   "class": "emissive",
+   "texture": {
+    "sheet": "s",
+    "cell": "vend",
+    "projection": "fit"
+   }
+  },
+  "nobori": {
+   "color": "#c8322a",
+   "double_sided": true,
+   "texture": {
+    "sheet": "s",
+    "cell": "nobori",
+    "projection": "fit"
+   }
+  },
+  "bike": {
+   "color": "#2f8f86",
+   "double_sided": true,
+   "texture": {
+    "sheet": "s",
+    "cell": "bike",
+    "projection": "fit"
+   }
+  },
+  "steam": {
+   "color": "#f2f4f6",
+   "class": "emissive",
+   "double_sided": true,
+   "texture": {
+    "sheet": "s",
+    "cell": "steam",
+    "projection": "fit"
+   }
+  },
+  "yu_red": {
+   "color": "#c8322a",
+   "texture": {
+    "sheet": "s",
+    "cell": "yu_red",
+    "projection": "fit"
+   }
+  },
+  "dark": {
+   "color": "#2c2a28",
+   "palette": true
+  },
+  "cap": {
+   "color": "#3e4248",
+   "palette": true
+  },
+  "wood": {
+   "color": "#5a3e2c",
+   "palette": true
+  },
+  "white": {
+   "color": "#ece4d2",
+   "palette": true
+  },
+  "red": {
+   "color": "#a8321e",
+   "palette": true
+  },
+  "leaf": {
+   "color": "#3c5a34",
+   "palette": true
+  },
+  "cat": {
+   "color": "#e8782a",
+   "palette": true
+  },
+  "pot": {
+   "color": "#9a5a2e",
+   "palette": true
+  },
+  "stone": {
+   "color": "#b4ae9e",
+   "palette": true
+  },
+  "chochin": {
+   "color": "#e0502a",
+   "class": "emissive",
+   "tag": "lantern"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "plinth",
+   "op": "box",
+   "size": [
+    17.8,
+    0.45,
+    9.4
+   ],
+   "material": "stone",
+   "transform": {
+    "translate": [
+     -1.9,
+     0.225,
+     1.35
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "porch",
+   "op": "mesh",
+   "vertices": [
+    [
+     -5.5,
+     0.0,
+     -6.45
+    ],
+    [
+     -5.5,
+     0.15,
+     -6.45
+    ],
+    [
+     -5.5,
+     0.15,
+     -5.8
+    ],
+    [
+     -5.5,
+     0.3,
+     -5.8
+    ],
+    [
+     -5.5,
+     0.3,
+     -3.25
+    ],
+    [
+     -5.5,
+     0.0,
+     -3.25
+    ],
+    [
+     1.7,
+     0.0,
+     -6.45
+    ],
+    [
+     1.7,
+     0.15,
+     -6.45
+    ],
+    [
+     1.7,
+     0.15,
+     -5.8
+    ],
+    [
+     1.7,
+     0.3,
+     -5.8
+    ],
+    [
+     1.7,
+     0.3,
+     -3.25
+    ],
+    [
+     1.7,
+     0.0,
+     -3.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     7,
+     6
+    ],
+    [
+     1,
+     2,
+     8,
+     7
+    ],
+    [
+     2,
+     3,
+     9,
+     8
+    ],
+    [
+     3,
+     4,
+     10,
+     9
+    ],
+    [
+     5,
+     4,
+     3,
+     2,
+     1,
+     0
+    ],
+    [
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ]
+   ],
+   "material": "stone"
+  },
+  {
+   "id": "wall_low",
+   "op": "box",
+   "size": [
+    16,
+    1.06,
+    8.4
+   ],
+   "material": "boards",
+   "transform": {
+    "translate": [
+     -1.9,
+     0.97,
+     1.35
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "wall_mid",
+   "op": "box",
+   "size": [
+    16,
+    2.12,
+    8.4
+   ],
+   "material": "plaster",
+   "transform": {
+    "translate": [
+     -1.9,
+     2.56,
+     1.35
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "decals": [
+    {
+     "id": "win_w",
+     "face": "back",
+     "material": "glass_win",
+     "size": [
+      2.0,
+      1.0
+     ],
+     "at": [
+      -5.4,
+      0.1
+     ]
+    },
+    {
+     "id": "win_e",
+     "face": "back",
+     "material": "glass_win",
+     "size": [
+      2.0,
+      1.0
+     ],
+     "at": [
+      5.4,
+      0.1
+     ]
+    },
+    {
+     "id": "win_back_w",
+     "face": "front",
+     "material": "glass_win",
+     "size": [
+      2.0,
+      1.0
+     ],
+     "at": [
+      4.4,
+      0.1
+     ]
+    },
+    {
+     "id": "win_back_e",
+     "face": "front",
+     "material": "glass_win",
+     "size": [
+      2.0,
+      1.0
+     ],
+     "at": [
+      -4.4,
+      0.1
+     ]
+    },
+    {
+     "id": "win_end_w",
+     "face": "left",
+     "material": "glass_win",
+     "size": [
+      1.6,
+      1.0
+     ],
+     "at": [
+      0,
+      0.1
+     ]
+    },
+    {
+     "id": "win_end_e",
+     "face": "right",
+     "material": "glass_win",
+     "size": [
+      1.6,
+      1.0
+     ],
+     "at": [
+      0,
+      0.1
+     ]
+    }
+   ]
+  },
+  {
+   "id": "door_frame",
+   "op": "box",
+   "size": [
+    6.0,
+    2.46,
+    0.3
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -1.9,
+     1.67,
+     -2.9
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "glass_door"
+   },
+   "decals": [
+    {
+     "id": "noren_men",
+     "face": "back",
+     "material": "noren_blue",
+     "size": [
+      1.4,
+      1.85
+     ],
+     "at": [
+      -1.5,
+      0.28
+     ]
+    },
+    {
+     "id": "noren_women",
+     "face": "back",
+     "material": "noren_red",
+     "size": [
+      1.4,
+      1.85
+     ],
+     "at": [
+      1.5,
+      0.28
+     ]
+    }
+   ]
+  },
+  {
+   "id": "skirt",
+   "op": "mesh",
+   "vertices": [
+    [
+     -10.8,
+     3.55,
+     -3.75
+    ],
+    [
+     7.0,
+     3.55,
+     -3.75
+    ],
+    [
+     7.0,
+     3.55,
+     6.45
+    ],
+    [
+     -10.8,
+     3.55,
+     6.45
+    ],
+    [
+     -7.9,
+     4.35,
+     -1.45
+    ],
+    [
+     4.1,
+     4.35,
+     -1.45
+    ],
+    [
+     4.1,
+     4.35,
+     4.15
+    ],
+    [
+     -7.9,
+     4.35,
+     4.15
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     4,
+     5,
+     1
+    ],
+    [
+     1,
+     5,
+     6,
+     2
+    ],
+    [
+     2,
+     6,
+     7,
+     3
+    ],
+    [
+     3,
+     7,
+     4,
+     0
+    ]
+   ],
+   "material": "tile"
+  },
+  {
+   "id": "skirt_fascia",
+   "op": "mesh",
+   "vertices": [
+    [
+     -10.8,
+     3.3,
+     -3.75
+    ],
+    [
+     7.0,
+     3.3,
+     -3.75
+    ],
+    [
+     7.0,
+     3.3,
+     6.45
+    ],
+    [
+     -10.8,
+     3.3,
+     6.45
+    ],
+    [
+     -10.8,
+     3.55,
+     -3.75
+    ],
+    [
+     7.0,
+     3.55,
+     -3.75
+    ],
+    [
+     7.0,
+     3.55,
+     6.45
+    ],
+    [
+     -10.8,
+     3.55,
+     6.45
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     5,
+     6,
+     2,
+     1
+    ],
+    [
+     6,
+     7,
+     3,
+     2
+    ],
+    [
+     7,
+     4,
+     0,
+     3
+    ]
+   ],
+   "material": "dark"
+  },
+  {
+   "id": "skirt_soffit",
+   "op": "mesh",
+   "vertices": [
+    [
+     -10.8,
+     3.3,
+     -3.75
+    ],
+    [
+     7.0,
+     3.3,
+     -3.75
+    ],
+    [
+     7.0,
+     3.3,
+     6.45
+    ],
+    [
+     -10.8,
+     3.3,
+     6.45
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "rafters"
+  },
+  {
+   "id": "wall_up",
+   "op": "box",
+   "size": [
+    12,
+    1.5,
+    5.6
+   ],
+   "material": "plaster",
+   "transform": {
+    "translate": [
+     -1.9,
+     5.0,
+     1.35
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "decals": [
+    {
+     "id": "win_w",
+     "face": "back",
+     "material": "glass_up",
+     "size": [
+      1.5,
+      0.8
+     ],
+     "at": [
+      -5.0,
+      0.1
+     ]
+    },
+    {
+     "id": "win_e",
+     "face": "back",
+     "material": "glass_up",
+     "size": [
+      1.5,
+      0.8
+     ],
+     "at": [
+      5.0,
+      0.1
+     ]
+    },
+    {
+     "id": "win_back_w",
+     "face": "front",
+     "material": "glass_up",
+     "size": [
+      1.5,
+      0.8
+     ],
+     "at": [
+      3.0,
+      0.1
+     ]
+    },
+    {
+     "id": "win_back_e",
+     "face": "front",
+     "material": "glass_up",
+     "size": [
+      1.5,
+      0.8
+     ],
+     "at": [
+      -3.0,
+      0.1
+     ]
+    }
+   ]
+  },
+  {
+   "id": "roof",
+   "op": "mesh",
+   "vertices": [
+    [
+     -9.3,
+     6.05,
+     -3.05
+    ],
+    [
+     5.5,
+     6.05,
+     -3.05
+    ],
+    [
+     5.5,
+     6.05,
+     5.75
+    ],
+    [
+     -9.3,
+     6.05,
+     5.75
+    ],
+    [
+     -5.1,
+     7.75,
+     1.35
+    ],
+    [
+     1.3,
+     7.75,
+     1.35
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     4,
+     5,
+     1
+    ],
+    [
+     2,
+     5,
+     4,
+     3
+    ],
+    [
+     3,
+     4,
+     0
+    ],
+    [
+     1,
+     5,
+     2
+    ]
+   ],
+   "material": "tile"
+  },
+  {
+   "id": "roof_fascia",
+   "op": "mesh",
+   "vertices": [
+    [
+     -9.3,
+     5.75,
+     -3.05
+    ],
+    [
+     5.5,
+     5.75,
+     -3.05
+    ],
+    [
+     5.5,
+     5.75,
+     5.75
+    ],
+    [
+     -9.3,
+     5.75,
+     5.75
+    ],
+    [
+     -9.3,
+     6.05,
+     -3.05
+    ],
+    [
+     5.5,
+     6.05,
+     -3.05
+    ],
+    [
+     5.5,
+     6.05,
+     5.75
+    ],
+    [
+     -9.3,
+     6.05,
+     5.75
+    ]
+   ],
+   "faces": [
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     5,
+     6,
+     2,
+     1
+    ],
+    [
+     6,
+     7,
+     3,
+     2
+    ],
+    [
+     7,
+     4,
+     0,
+     3
+    ]
+   ],
+   "material": "dark"
+  },
+  {
+   "id": "roof_soffit",
+   "op": "mesh",
+   "vertices": [
+    [
+     -9.3,
+     5.75,
+     -3.05
+    ],
+    [
+     5.5,
+     5.75,
+     -3.05
+    ],
+    [
+     5.5,
+     5.75,
+     5.75
+    ],
+    [
+     -9.3,
+     5.75,
+     5.75
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "rafters"
+  },
+  {
+   "id": "ridge",
+   "op": "box",
+   "size": [
+    7.0,
+    0.3,
+    0.5
+   ],
+   "material": "cap",
+   "transform": {
+    "translate": [
+     -1.9,
+     7.8,
+     1.35
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "oni_w",
+   "op": "box",
+   "size": [
+    0.5,
+    0.75,
+    0.6
+   ],
+   "material": "cap",
+   "transform": {
+    "translate": [
+     -5.45,
+     8.05,
+     1.35
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "oni_e",
+   "op": "box",
+   "size": [
+    0.5,
+    0.75,
+    0.6
+   ],
+   "material": "cap",
+   "transform": {
+    "translate": [
+     1.65,
+     8.05,
+     1.35
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "hip_ws",
+   "op": "mesh",
+   "vertices": [
+    [
+     -5.0132,
+     7.77,
+     1.2671
+    ],
+    [
+     -9.2132,
+     6.08,
+     -3.1329
+    ],
+    [
+     -9.3,
+     6.2,
+     -3.05
+    ],
+    [
+     -5.1,
+     7.89,
+     1.35
+    ],
+    [
+     -5.1868,
+     7.77,
+     1.4329
+    ],
+    [
+     -9.3868,
+     6.08,
+     -2.9671
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     3,
+     2,
+     5,
+     4
+    ]
+   ],
+   "material": "cap"
+  },
+  {
+   "id": "hip_wn",
+   "op": "mesh",
+   "vertices": [
+    [
+     -5.1868,
+     7.77,
+     1.2671
+    ],
+    [
+     -9.3868,
+     6.08,
+     5.6671
+    ],
+    [
+     -9.3,
+     6.2,
+     5.75
+    ],
+    [
+     -5.1,
+     7.89,
+     1.35
+    ],
+    [
+     -5.0132,
+     7.77,
+     1.4329
+    ],
+    [
+     -9.2132,
+     6.08,
+     5.8329
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     3,
+     2,
+     5,
+     4
+    ]
+   ],
+   "material": "cap"
+  },
+  {
+   "id": "hip_es",
+   "op": "mesh",
+   "vertices": [
+    [
+     1.3868,
+     7.77,
+     1.4329
+    ],
+    [
+     5.5868,
+     6.08,
+     -2.9671
+    ],
+    [
+     5.5,
+     6.2,
+     -3.05
+    ],
+    [
+     1.3,
+     7.89,
+     1.35
+    ],
+    [
+     1.2132,
+     7.77,
+     1.2671
+    ],
+    [
+     5.4132,
+     6.08,
+     -3.1329
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     3,
+     2,
+     5,
+     4
+    ]
+   ],
+   "material": "cap"
+  },
+  {
+   "id": "hip_en",
+   "op": "mesh",
+   "vertices": [
+    [
+     1.2132,
+     7.77,
+     1.4329
+    ],
+    [
+     5.4132,
+     6.08,
+     5.8329
+    ],
+    [
+     5.5,
+     6.2,
+     5.75
+    ],
+    [
+     1.3,
+     7.89,
+     1.35
+    ],
+    [
+     1.3868,
+     7.77,
+     1.2671
+    ],
+    [
+     5.5868,
+     6.08,
+     5.6671
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     3,
+     2,
+     5,
+     4
+    ]
+   ],
+   "material": "cap"
+  },
+  {
+   "id": "kara_top",
+   "op": "mesh",
+   "vertices": [
+    [
+     -6.1,
+     3.45,
+     -5.25
+    ],
+    [
+     -5.05,
+     3.595,
+     -5.25
+    ],
+    [
+     -4.0,
+     4.1227,
+     -5.25
+    ],
+    [
+     -2.95,
+     4.7627,
+     -5.25
+    ],
+    [
+     -1.9,
+     5.05,
+     -5.25
+    ],
+    [
+     -0.85,
+     4.7627,
+     -5.25
+    ],
+    [
+     0.2,
+     4.1227,
+     -5.25
+    ],
+    [
+     1.25,
+     3.595,
+     -5.25
+    ],
+    [
+     2.3,
+     3.45,
+     -5.25
+    ],
+    [
+     -6.1,
+     5.5,
+     -1.5
+    ],
+    [
+     -5.05,
+     5.5,
+     -1.5
+    ],
+    [
+     -4.0,
+     5.5,
+     -1.5
+    ],
+    [
+     -2.95,
+     5.5,
+     -1.5
+    ],
+    [
+     -1.9,
+     5.5,
+     -1.5
+    ],
+    [
+     -0.85,
+     5.5,
+     -1.5
+    ],
+    [
+     0.2,
+     5.5,
+     -1.5
+    ],
+    [
+     1.25,
+     5.5,
+     -1.5
+    ],
+    [
+     2.3,
+     5.5,
+     -1.5
+    ]
+   ],
+   "faces": [
+    [
+     10,
+     1,
+     0
+    ],
+    [
+     9,
+     10,
+     0
+    ],
+    [
+     11,
+     2,
+     1
+    ],
+    [
+     10,
+     11,
+     1
+    ],
+    [
+     12,
+     3,
+     2
+    ],
+    [
+     11,
+     12,
+     2
+    ],
+    [
+     13,
+     4,
+     3
+    ],
+    [
+     12,
+     13,
+     3
+    ],
+    [
+     14,
+     5,
+     4
+    ],
+    [
+     13,
+     14,
+     4
+    ],
+    [
+     15,
+     6,
+     5
+    ],
+    [
+     14,
+     15,
+     5
+    ],
+    [
+     16,
+     7,
+     6
+    ],
+    [
+     15,
+     16,
+     6
+    ],
+    [
+     17,
+     8,
+     7
+    ],
+    [
+     16,
+     17,
+     7
+    ]
+   ],
+   "material": "tile_k"
+  },
+  {
+   "id": "kara_board",
+   "op": "mesh",
+   "vertices": [
+    [
+     -6.1,
+     3.45,
+     -5.25
+    ],
+    [
+     -5.05,
+     3.595,
+     -5.25
+    ],
+    [
+     -4.0,
+     4.1227,
+     -5.25
+    ],
+    [
+     -2.95,
+     4.7627,
+     -5.25
+    ],
+    [
+     -1.9,
+     5.05,
+     -5.25
+    ],
+    [
+     -0.85,
+     4.7627,
+     -5.25
+    ],
+    [
+     0.2,
+     4.1227,
+     -5.25
+    ],
+    [
+     1.25,
+     3.595,
+     -5.25
+    ],
+    [
+     2.3,
+     3.45,
+     -5.25
+    ],
+    [
+     -6.1,
+     3.05,
+     -5.25
+    ],
+    [
+     -5.05,
+     3.05,
+     -5.25
+    ],
+    [
+     -4.0,
+     3.05,
+     -5.25
+    ],
+    [
+     -2.95,
+     3.05,
+     -5.25
+    ],
+    [
+     -1.9,
+     3.05,
+     -5.25
+    ],
+    [
+     -0.85,
+     3.05,
+     -5.25
+    ],
+    [
+     0.2,
+     3.05,
+     -5.25
+    ],
+    [
+     1.25,
+     3.05,
+     -5.25
+    ],
+    [
+     2.3,
+     3.05,
+     -5.25
+    ]
+   ],
+   "faces": [
+    [
+     10,
+     9,
+     0
+    ],
+    [
+     1,
+     10,
+     0
+    ],
+    [
+     11,
+     10,
+     1
+    ],
+    [
+     2,
+     11,
+     1
+    ],
+    [
+     12,
+     11,
+     2
+    ],
+    [
+     3,
+     12,
+     2
+    ],
+    [
+     13,
+     12,
+     3
+    ],
+    [
+     4,
+     13,
+     3
+    ],
+    [
+     14,
+     13,
+     4
+    ],
+    [
+     5,
+     14,
+     4
+    ],
+    [
+     15,
+     14,
+     5
+    ],
+    [
+     6,
+     15,
+     5
+    ],
+    [
+     16,
+     15,
+     6
+    ],
+    [
+     7,
+     16,
+     6
+    ],
+    [
+     17,
+     16,
+     7
+    ],
+    [
+     8,
+     17,
+     7
+    ]
+   ],
+   "material": "plaster"
+  },
+  {
+   "id": "kara_under",
+   "op": "mesh",
+   "vertices": [
+    [
+     -6.1,
+     3.05,
+     -5.25
+    ],
+    [
+     -5.05,
+     3.05,
+     -5.25
+    ],
+    [
+     -4.0,
+     3.05,
+     -5.25
+    ],
+    [
+     -2.95,
+     3.05,
+     -5.25
+    ],
+    [
+     -1.9,
+     3.05,
+     -5.25
+    ],
+    [
+     -0.85,
+     3.05,
+     -5.25
+    ],
+    [
+     0.2,
+     3.05,
+     -5.25
+    ],
+    [
+     1.25,
+     3.05,
+     -5.25
+    ],
+    [
+     2.3,
+     3.05,
+     -5.25
+    ],
+    [
+     -6.1,
+     3.05,
+     -1.5
+    ],
+    [
+     2.3,
+     3.05,
+     -1.5
+    ]
+   ],
+   "faces": [
+    [
+     9,
+     0,
+     1
+    ],
+    [
+     9,
+     1,
+     2
+    ],
+    [
+     9,
+     2,
+     3
+    ],
+    [
+     9,
+     3,
+     4
+    ],
+    [
+     9,
+     4,
+     5
+    ],
+    [
+     9,
+     5,
+     6
+    ],
+    [
+     9,
+     6,
+     7
+    ],
+    [
+     9,
+     7,
+     8
+    ],
+    [
+     9,
+     8,
+     10
+    ]
+   ],
+   "material": "rafters"
+  },
+  {
+   "id": "kara_side_w",
+   "op": "mesh",
+   "vertices": [
+    [
+     -6.1,
+     3.45,
+     -5.25
+    ],
+    [
+     -6.1,
+     5.5,
+     -1.5
+    ],
+    [
+     -6.1,
+     3.05,
+     -1.5
+    ],
+    [
+     -6.1,
+     3.05,
+     -5.25
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "material": "dark"
+  },
+  {
+   "id": "kara_side_e",
+   "op": "mesh",
+   "vertices": [
+    [
+     2.3,
+     3.45,
+     -5.25
+    ],
+    [
+     2.3,
+     5.5,
+     -1.5
+    ],
+    [
+     2.3,
+     3.05,
+     -1.5
+    ],
+    [
+     2.3,
+     3.05,
+     -5.25
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "dark"
+  },
+  {
+   "id": "kara_plaque",
+   "op": "mesh",
+   "vertices": [
+    [
+     -2.55,
+     3.6,
+     -5.3
+    ],
+    [
+     -1.25,
+     3.6,
+     -5.3
+    ],
+    [
+     -1.25,
+     4.9,
+     -5.3
+    ],
+    [
+     -2.55,
+     4.9,
+     -5.3
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "material": "plaque"
+  },
+  {
+   "id": "kara_lintel",
+   "op": "box",
+   "size": [
+    8.0,
+    0.3,
+    0.34
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -1.9,
+     3.05,
+     -5.13
+    ]
+   },
+   "open": [
+    "top"
+   ]
+  },
+  {
+   "id": "kara_ridge",
+   "op": "box",
+   "size": [
+    0.3,
+    0.16,
+    3.7769
+   ],
+   "material": "cap",
+   "transform": {
+    "translate": [
+     -1.9,
+     5.365,
+     -3.375
+    ],
+    "rotate": [
+     -6.8428,
+     0,
+     0
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "post_w",
+   "op": "box",
+   "size": [
+    0.26,
+    2.8,
+    0.26
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -5.5,
+     1.68,
+     -4.8
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "chochin_w",
+   "op": "cylinder",
+   "radius": 0.3,
+   "height": 0.6,
+   "segments": 6,
+   "material": "chochin",
+   "transform": {
+    "translate": [
+     -4.9,
+     2.5,
+     -4.85
+    ]
+   },
+   "faces": {
+    "top": "dark",
+    "bottom": "dark"
+   }
+  },
+  {
+   "id": "post_e",
+   "op": "box",
+   "size": [
+    0.26,
+    2.8,
+    0.26
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     1.7,
+     1.68,
+     -4.8
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "chochin_e",
+   "op": "cylinder",
+   "radius": 0.3,
+   "height": 0.6,
+   "segments": 6,
+   "material": "chochin",
+   "transform": {
+    "translate": [
+     1.1,
+     2.5,
+     -4.85
+    ]
+   },
+   "faces": {
+    "top": "dark",
+    "bottom": "dark"
+   }
+  },
+  {
+   "id": "boiler",
+   "op": "box",
+   "size": [
+    3.4,
+    4.8,
+    5.2
+   ],
+   "material": "boards",
+   "transform": {
+    "translate": [
+     8.8,
+     2.4,
+     2.95
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "decals": [
+    {
+     "id": "door",
+     "face": "back",
+     "material": "door_dark",
+     "size": [
+      1.0,
+      2.0
+     ],
+     "at": [
+      0.4,
+      -1.35
+     ]
+    },
+    {
+     "id": "window",
+     "face": "right",
+     "material": "glass_win",
+     "size": [
+      1.2,
+      0.8
+     ],
+     "at": [
+      0.6,
+      0.6
+     ]
+    }
+   ]
+  },
+  {
+   "id": "boiler_roof",
+   "op": "box",
+   "size": [
+    3.9,
+    0.22,
+    5.7
+   ],
+   "material": "cap",
+   "transform": {
+    "translate": [
+     8.8,
+     4.91,
+     2.95
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "chimney",
+   "op": "box",
+   "size": [
+    1.5,
+    13.3,
+    1.5
+   ],
+   "material": "brick",
+   "transform": {
+    "translate": [
+     8.8,
+     11.25,
+     4.25
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "decals": [
+    {
+     "id": "yu_e",
+     "face": "right",
+     "material": "yu_red",
+     "size": [
+      0.9,
+      0.9
+     ],
+     "at": [
+      0,
+      3.2
+     ]
+    },
+    {
+     "id": "yu_w",
+     "face": "left",
+     "material": "yu_red",
+     "size": [
+      0.9,
+      0.9
+     ],
+     "at": [
+      0,
+      3.2
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "taper",
+     "top": 0.64,
+     "bottom": 1.0
+    }
+   ]
+  },
+  {
+   "id": "chimney_cap",
+   "op": "box",
+   "size": [
+    1.31,
+    0.4,
+    1.31
+   ],
+   "material": "cap",
+   "transform": {
+    "translate": [
+     8.8,
+     18.0,
+     4.25
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "chimney_band",
+   "op": "box",
+   "size": [
+    1.1247,
+    0.34,
+    1.1247
+   ],
+   "material": "white",
+   "transform": {
+    "translate": [
+     8.8,
+     16.8,
+     4.25
+    ]
+   },
+   "open": [
+    "top",
+    "bottom"
+   ]
+  },
+  {
+   "id": "ladder",
+   "op": "mesh",
+   "vertices": [
+    [
+     8.55,
+     5.0,
+     3.3881
+    ],
+    [
+     9.05,
+     5.0,
+     3.3881
+    ],
+    [
+     9.05,
+     17.85,
+     3.649
+    ],
+    [
+     8.55,
+     17.85,
+     3.649
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "material": "ladder"
+  },
+  {
+   "id": "steam_0",
+   "op": "mesh",
+   "vertices": [
+    [
+     8.2,
+     19.75,
+     4.25
+    ],
+    [
+     11.2,
+     19.75,
+     4.25
+    ],
+    [
+     11.2,
+     21.25,
+     4.25
+    ],
+    [
+     8.2,
+     21.25,
+     4.25
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "material": "steam"
+  },
+  {
+   "id": "steam_1",
+   "op": "mesh",
+   "vertices": [
+    [
+     10.4,
+     21.2,
+     5.65
+    ],
+    [
+     10.4,
+     21.2,
+     3.25
+    ],
+    [
+     10.4,
+     22.4,
+     3.25
+    ],
+    [
+     10.4,
+     22.4,
+     5.65
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "material": "steam"
+  },
+  {
+   "id": "vend",
+   "op": "box",
+   "size": [
+    1.0,
+    1.9,
+    0.8
+   ],
+   "material": "red",
+   "transform": {
+    "translate": [
+     -9.1,
+     0.95,
+     -3.8
+    ]
+   },
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "back": "vend",
+    "top": "cap"
+   }
+  },
+  {
+   "id": "pot",
+   "op": "cylinder",
+   "radius": 0.42,
+   "height": 0.6,
+   "segments": 6,
+   "material": "pot",
+   "transform": {
+    "translate": [
+     3.1,
+     0.3,
+     -5.65
+    ]
+   },
+   "faces": {
+    "top": "dark"
+   }
+  },
+  {
+   "id": "pine",
+   "op": "sphere",
+   "radius": 0.62,
+   "segments": 6,
+   "rings": 3,
+   "material": "leaf",
+   "transform": {
+    "translate": [
+     3.1,
+     1.05,
+     -5.65
+    ],
+    "scale": [
+     1.2,
+     0.8,
+     1.2
+    ]
+   }
+  },
+  {
+   "id": "nobori_pole",
+   "op": "box",
+   "size": [
+    0.06,
+    3.4,
+    0.06
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -5.85,
+     1.7,
+     -6.15
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "nobori",
+   "op": "mesh",
+   "vertices": [
+    [
+     -5.8,
+     0.6,
+     -6.15
+    ],
+    [
+     -4.9,
+     0.6,
+     -6.15
+    ],
+    [
+     -4.9,
+     3.3,
+     -6.15
+    ],
+    [
+     -5.8,
+     3.3,
+     -6.15
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ]
+   ],
+   "material": "nobori"
+  },
+  {
+   "id": "bike_a",
+   "op": "group",
+   "children": [
+    {
+     "id": "bike",
+     "op": "mesh",
+     "vertices": [
+      [
+       -1.0,
+       0.0,
+       0
+      ],
+      [
+       1.0,
+       0.0,
+       0
+      ],
+      [
+       1.0,
+       1.0,
+       0
+      ],
+      [
+       -1.0,
+       1.0,
+       0
+      ]
+     ],
+     "faces": [
+      [
+       3,
+       2,
+       1,
+       0
+      ]
+     ],
+     "material": "bike"
+    }
+   ],
+   "transform": {
+    "translate": [
+     4.7,
+     0,
+     -4.05
+    ]
+   }
+  },
+  {
+   "id": "bike_b",
+   "op": "group",
+   "children": [
+    {
+     "id": "bike",
+     "op": "mesh",
+     "vertices": [
+      [
+       -1.0,
+       0.0,
+       0
+      ],
+      [
+       1.0,
+       0.0,
+       0
+      ],
+      [
+       1.0,
+       1.0,
+       0
+      ],
+      [
+       -1.0,
+       1.0,
+       0
+      ]
+     ],
+     "faces": [
+      [
+       3,
+       2,
+       1,
+       0
+      ]
+     ],
+     "material": "bike"
+    }
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     38,
+     0
+    ],
+    "translate": [
+     2.4,
+     0,
+     -4.55
+    ]
+   }
+  },
+  {
+   "id": "bench_seat",
+   "op": "box",
+   "size": [
+    1.7,
+    0.09,
+    0.5
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -7.25,
+     0.52,
+     -3.95
+    ]
+   }
+  },
+  {
+   "id": "bench_leg_w",
+   "op": "box",
+   "size": [
+    0.1,
+    0.49,
+    0.38
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -7.95,
+     0.24,
+     -3.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "bench_leg_e",
+   "op": "box",
+   "size": [
+    0.1,
+    0.49,
+    0.38
+   ],
+   "material": "wood",
+   "transform": {
+    "translate": [
+     -6.55,
+     0.24,
+     -3.95
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  },
+  {
+   "id": "cat_body",
+   "op": "sphere",
+   "radius": 0.38,
+   "segments": 6,
+   "rings": 3,
+   "material": "cat",
+   "transform": {
+    "translate": [
+     -2.9,
+     8.25,
+     1.35
+    ],
+    "scale": [
+     1.0,
+     0.9,
+     1.2
+    ]
+   }
+  },
+  {
+   "id": "cat_head",
+   "op": "sphere",
+   "radius": 0.25,
+   "segments": 6,
+   "rings": 3,
+   "material": "cat",
+   "transform": {
+    "translate": [
+     -2.9,
+     8.73,
+     1.15
+    ]
+   }
+  },
+  {
+   "id": "cat_ear_w",
+   "op": "cone",
+   "radius": 0.1,
+   "height": 0.2,
+   "segments": 3,
+   "material": "dark",
+   "transform": {
+    "translate": [
+     -3.03,
+     9.03,
+     1.15
+    ],
+    "rotate": [
+     0,
+     0,
+     12
+    ]
+   }
+  },
+  {
+   "id": "cat_ear_e",
+   "op": "cone",
+   "radius": 0.1,
+   "height": 0.2,
+   "segments": 3,
+   "material": "dark",
+   "transform": {
+    "translate": [
+     -2.77,
+     9.03,
+     1.15
+    ],
+    "rotate": [
+     0,
+     0,
+     -12
+    ]
+   }
+  },
+  {
+   "id": "cat_tail",
+   "op": "box",
+   "size": [
+    0.1,
+    0.1,
+    0.7
+   ],
+   "material": "white",
+   "transform": {
+    "translate": [
+     -2.7,
+     8.15,
+     1.97
+    ],
+    "rotate": [
+     60,
+     0,
+     18
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "plinth",
+      "op": "box",
+      "size": [
+       17.8,
+       0.45,
+       9.4
+      ],
+      "material": "stone",
+      "transform": {
+       "translate": [
+        -1.9,
+        0.225,
+        1.35
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "walls",
+      "op": "box",
+      "size": [
+       16,
+       3.17,
+       8.4
+      ],
+      "material": "plaster",
+      "transform": {
+       "translate": [
+        -1.9,
+        2.025,
+        1.35
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "decals": [
+       {
+        "id": "win_w",
+        "face": "back",
+        "material": "glass_win",
+        "size": [
+         2.0,
+         1.0
+        ],
+        "at": [
+         -5.4,
+         0.6
+        ]
+       },
+       {
+        "id": "win_e",
+        "face": "back",
+        "material": "glass_win",
+        "size": [
+         2.0,
+         1.0
+        ],
+        "at": [
+         5.4,
+         0.6
+        ]
+       }
+      ]
+     },
+     {
+      "id": "door_frame",
+      "op": "box",
+      "size": [
+       6.0,
+       2.46,
+       0.3
+      ],
+      "material": "wood",
+      "transform": {
+       "translate": [
+        -1.9,
+        1.67,
+        -2.9
+       ]
+      },
+      "open": [
+       "bottom",
+       "front"
+      ],
+      "faces": {
+       "back": "glass_door"
+      },
+      "decals": [
+       {
+        "id": "noren_men",
+        "face": "back",
+        "material": "noren_blue",
+        "size": [
+         1.4,
+         1.85
+        ],
+        "at": [
+         -1.5,
+         0.28
+        ]
+       },
+       {
+        "id": "noren_women",
+        "face": "back",
+        "material": "noren_red",
+        "size": [
+         1.4,
+         1.85
+        ],
+        "at": [
+         1.5,
+         0.28
+        ]
+       }
+      ]
+     },
+     {
+      "id": "skirt",
+      "op": "mesh",
+      "vertices": [
+       [
+        -10.8,
+        3.55,
+        -3.75
+       ],
+       [
+        7.0,
+        3.55,
+        -3.75
+       ],
+       [
+        7.0,
+        3.55,
+        6.45
+       ],
+       [
+        -10.8,
+        3.55,
+        6.45
+       ],
+       [
+        -7.9,
+        4.35,
+        -1.45
+       ],
+       [
+        4.1,
+        4.35,
+        -1.45
+       ],
+       [
+        4.1,
+        4.35,
+        4.15
+       ],
+       [
+        -7.9,
+        4.35,
+        4.15
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        4,
+        5,
+        1
+       ],
+       [
+        1,
+        5,
+        6,
+        2
+       ],
+       [
+        2,
+        6,
+        7,
+        3
+       ],
+       [
+        3,
+        7,
+        4,
+        0
+       ]
+      ],
+      "material": "tile_far"
+     },
+     {
+      "id": "wall_up",
+      "op": "box",
+      "size": [
+       12,
+       1.5,
+       5.6
+      ],
+      "material": "plaster",
+      "transform": {
+       "translate": [
+        -1.9,
+        5.0,
+        1.35
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ]
+     },
+     {
+      "id": "ridge",
+      "op": "box",
+      "size": [
+       7.0,
+       0.3,
+       0.5
+      ],
+      "material": "cap",
+      "transform": {
+       "translate": [
+        -1.9,
+        7.8,
+        1.35
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "kara_plaque",
+      "op": "mesh",
+      "vertices": [
+       [
+        -2.55,
+        3.6,
+        -5.3
+       ],
+       [
+        -1.25,
+        3.6,
+        -5.3
+       ],
+       [
+        -1.25,
+        4.9,
+        -5.3
+       ],
+       [
+        -2.55,
+        4.9,
+        -5.3
+       ]
+      ],
+      "faces": [
+       [
+        3,
+        2,
+        1,
+        0
+       ]
+      ],
+      "material": "plaque"
+     },
+     {
+      "id": "boiler",
+      "op": "box",
+      "size": [
+       3.4,
+       4.8,
+       5.2
+      ],
+      "material": "boards",
+      "transform": {
+       "translate": [
+        8.8,
+        2.4,
+        2.95
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "boiler_roof",
+      "op": "box",
+      "size": [
+       3.9,
+       0.22,
+       5.7
+      ],
+      "material": "cap",
+      "transform": {
+       "translate": [
+        8.8,
+        4.91,
+        2.95
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "vend",
+      "op": "box",
+      "size": [
+       1.0,
+       1.9,
+       0.8
+      ],
+      "material": "red",
+      "transform": {
+       "translate": [
+        -9.1,
+        0.95,
+        -3.8
+       ]
+      },
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "back": "vend",
+       "top": "cap"
+      }
+     },
+     {
+      "id": "roof",
+      "op": "mesh",
+      "vertices": [
+       [
+        -9.3,
+        6.05,
+        -3.05
+       ],
+       [
+        5.5,
+        6.05,
+        -3.05
+       ],
+       [
+        5.5,
+        6.05,
+        5.75
+       ],
+       [
+        -9.3,
+        6.05,
+        5.75
+       ],
+       [
+        -5.1,
+        7.75,
+        1.35
+       ],
+       [
+        1.3,
+        7.75,
+        1.35
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        4,
+        5,
+        1
+       ],
+       [
+        2,
+        5,
+        4,
+        3
+       ],
+       [
+        3,
+        4,
+        0
+       ],
+       [
+        1,
+        5,
+        2
+       ]
+      ],
+      "material": "tile_far"
+     },
+     {
+      "id": "roof_fascia",
+      "op": "mesh",
+      "vertices": [
+       [
+        -9.3,
+        5.75,
+        -3.05
+       ],
+       [
+        5.5,
+        5.75,
+        -3.05
+       ],
+       [
+        5.5,
+        5.75,
+        5.75
+       ],
+       [
+        -9.3,
+        5.75,
+        5.75
+       ],
+       [
+        -9.3,
+        6.05,
+        -3.05
+       ],
+       [
+        5.5,
+        6.05,
+        -3.05
+       ],
+       [
+        5.5,
+        6.05,
+        5.75
+       ],
+       [
+        -9.3,
+        6.05,
+        5.75
+       ]
+      ],
+      "faces": [
+       [
+        4,
+        5,
+        1,
+        0
+       ],
+       [
+        5,
+        6,
+        2,
+        1
+       ],
+       [
+        6,
+        7,
+        3,
+        2
+       ],
+       [
+        7,
+        4,
+        0,
+        3
+       ]
+      ],
+      "material": "dark"
+     },
+     {
+      "id": "roof_soffit",
+      "op": "mesh",
+      "vertices": [
+       [
+        -9.3,
+        5.75,
+        -3.05
+       ],
+       [
+        5.5,
+        5.75,
+        -3.05
+       ],
+       [
+        5.5,
+        5.75,
+        5.75
+       ],
+       [
+        -9.3,
+        5.75,
+        5.75
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "material": "rafters"
+     },
+     {
+      "id": "kara_top",
+      "op": "mesh",
+      "vertices": [
+       [
+        -6.1,
+        3.45,
+        -5.25
+       ],
+       [
+        -4.0,
+        4.1227,
+        -5.25
+       ],
+       [
+        -1.9,
+        5.05,
+        -5.25
+       ],
+       [
+        0.2,
+        4.1227,
+        -5.25
+       ],
+       [
+        2.3,
+        3.45,
+        -5.25
+       ],
+       [
+        -6.1,
+        5.5,
+        -1.5
+       ],
+       [
+        -4.0,
+        5.5,
+        -1.5
+       ],
+       [
+        -1.9,
+        5.5,
+        -1.5
+       ],
+       [
+        0.2,
+        5.5,
+        -1.5
+       ],
+       [
+        2.3,
+        5.5,
+        -1.5
+       ]
+      ],
+      "faces": [
+       [
+        6,
+        1,
+        0
+       ],
+       [
+        5,
+        6,
+        0
+       ],
+       [
+        7,
+        2,
+        1
+       ],
+       [
+        6,
+        7,
+        1
+       ],
+       [
+        8,
+        3,
+        2
+       ],
+       [
+        7,
+        8,
+        2
+       ],
+       [
+        9,
+        4,
+        3
+       ],
+       [
+        8,
+        9,
+        3
+       ]
+      ],
+      "material": "tile_far"
+     },
+     {
+      "id": "kara_board",
+      "op": "mesh",
+      "vertices": [
+       [
+        -6.1,
+        3.45,
+        -5.25
+       ],
+       [
+        -4.0,
+        4.1227,
+        -5.25
+       ],
+       [
+        -1.9,
+        5.05,
+        -5.25
+       ],
+       [
+        0.2,
+        4.1227,
+        -5.25
+       ],
+       [
+        2.3,
+        3.45,
+        -5.25
+       ],
+       [
+        -6.1,
+        3.05,
+        -5.25
+       ],
+       [
+        -4.0,
+        3.05,
+        -5.25
+       ],
+       [
+        -1.9,
+        3.05,
+        -5.25
+       ],
+       [
+        0.2,
+        3.05,
+        -5.25
+       ],
+       [
+        2.3,
+        3.05,
+        -5.25
+       ]
+      ],
+      "faces": [
+       [
+        6,
+        5,
+        0
+       ],
+       [
+        1,
+        6,
+        0
+       ],
+       [
+        7,
+        6,
+        1
+       ],
+       [
+        2,
+        7,
+        1
+       ],
+       [
+        8,
+        7,
+        2
+       ],
+       [
+        3,
+        8,
+        2
+       ],
+       [
+        9,
+        8,
+        3
+       ],
+       [
+        4,
+        9,
+        3
+       ]
+      ],
+      "material": "plaster"
+     },
+     {
+      "id": "kara_under",
+      "op": "mesh",
+      "vertices": [
+       [
+        -6.1,
+        3.05,
+        -5.25
+       ],
+       [
+        -4.0,
+        3.05,
+        -5.25
+       ],
+       [
+        -1.9,
+        3.05,
+        -5.25
+       ],
+       [
+        0.2,
+        3.05,
+        -5.25
+       ],
+       [
+        2.3,
+        3.05,
+        -5.25
+       ],
+       [
+        -6.1,
+        3.05,
+        -1.5
+       ],
+       [
+        2.3,
+        3.05,
+        -1.5
+       ]
+      ],
+      "faces": [
+       [
+        5,
+        0,
+        1
+       ],
+       [
+        5,
+        1,
+        2
+       ],
+       [
+        5,
+        2,
+        3
+       ],
+       [
+        5,
+        3,
+        4
+       ],
+       [
+        5,
+        4,
+        6
+       ]
+      ],
+      "material": "rafters"
+     },
+     {
+      "id": "chimney",
+      "op": "box",
+      "size": [
+       1.5,
+       13.3,
+       1.5
+      ],
+      "material": "brick",
+      "transform": {
+       "translate": [
+        8.8,
+        11.25,
+        4.25
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "decals": [
+       {
+        "id": "yu_e",
+        "face": "right",
+        "material": "yu_red",
+        "size": [
+         0.9,
+         0.9
+        ],
+        "at": [
+         0,
+         3.2
+        ]
+       }
+      ],
+      "modifiers": [
+       {
+        "op": "taper",
+        "top": 0.64,
+        "bottom": 1.0
+       }
+      ]
+     },
+     {
+      "id": "chimney_cap",
+      "op": "box",
+      "size": [
+       1.31,
+       0.4,
+       1.31
+      ],
+      "material": "cap",
+      "transform": {
+       "translate": [
+        8.8,
+        18.0,
+        4.25
+       ]
+      },
+      "open": [
+       "bottom"
+      ]
+     },
+     {
+      "id": "chimney_band",
+      "op": "box",
+      "size": [
+       1.1247,
+       0.34,
+       1.1247
+      ],
+      "material": "white",
+      "transform": {
+       "translate": [
+        8.8,
+        16.8,
+        4.25
+       ]
+      },
+      "open": [
+       "top",
+       "bottom"
+      ]
+     },
+     {
+      "id": "ladder",
+      "op": "mesh",
+      "vertices": [
+       [
+        8.55,
+        5.0,
+        3.3881
+       ],
+       [
+        9.05,
+        5.0,
+        3.3881
+       ],
+       [
+        9.05,
+        17.85,
+        3.649
+       ],
+       [
+        8.55,
+        17.85,
+        3.649
+       ]
+      ],
+      "faces": [
+       [
+        3,
+        2,
+        1,
+        0
+       ]
+      ],
+      "material": "ladder"
+     },
+     {
+      "id": "steam_0",
+      "op": "mesh",
+      "vertices": [
+       [
+        8.2,
+        19.75,
+        4.25
+       ],
+       [
+        11.2,
+        19.75,
+        4.25
+       ],
+       [
+        11.2,
+        21.25,
+        4.25
+       ],
+       [
+        8.2,
+        21.25,
+        4.25
+       ]
+      ],
+      "faces": [
+       [
+        3,
+        2,
+        1,
+        0
+       ]
+      ],
+      "material": "steam"
+     }
+    ]
+   },
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "body",
+      "op": "box",
+      "size": [
+       16,
+       5.75,
+       8.4
+      ],
+      "material": "plaster",
+      "transform": {
+       "translate": [
+        -1.9,
+        2.875,
+        1.35
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ]
+     },
+     {
+      "id": "boiler",
+      "op": "box",
+      "size": [
+       3.4,
+       4.8,
+       5.2
+      ],
+      "material": "boards",
+      "transform": {
+       "translate": [
+        8.8,
+        2.4,
+        2.95
+       ]
+      },
+      "open": [
+       "bottom",
+       "left"
+      ]
+     },
+     {
+      "id": "chimney",
+      "op": "box",
+      "size": [
+       1.5,
+       18.2,
+       1.5
+      ],
+      "material": "brick_far",
+      "transform": {
+       "translate": [
+        8.8,
+        9.1,
+        4.25
+       ]
+      },
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "modifiers": [
+       {
+        "op": "taper",
+        "top": 0.64,
+        "bottom": 1.0
+       }
+      ]
+     },
+     {
+      "id": "roof",
+      "op": "mesh",
+      "vertices": [
+       [
+        -9.3,
+        5.75,
+        -3.05
+       ],
+       [
+        5.5,
+        5.75,
+        -3.05
+       ],
+       [
+        5.5,
+        5.75,
+        5.75
+       ],
+       [
+        -9.3,
+        5.75,
+        5.75
+       ],
+       [
+        -5.1,
+        7.75,
+        1.35
+       ],
+       [
+        1.3,
+        7.75,
+        1.35
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        4,
+        5,
+        1
+       ],
+       [
+        2,
+        5,
+        4,
+        3
+       ],
+       [
+        3,
+        4,
+        0
+       ],
+       [
+        1,
+        5,
+        2
+       ]
+      ],
+      "material": "tile_far"
+     },
+     {
+      "id": "roof_soffit",
+      "op": "mesh",
+      "vertices": [
+       [
+        -9.3,
+        5.75,
+        -3.05
+       ],
+       [
+        5.5,
+        5.75,
+        -3.05
+       ],
+       [
+        5.5,
+        5.75,
+        5.75
+       ],
+       [
+        -9.3,
+        5.75,
+        5.75
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "material": "rafters"
+     }
+    ]
+   }
+  ],
+  "band": 2
+ }
+}
