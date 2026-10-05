@@ -1,0 +1,715 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "vending_machine",
+ "budget": {
+  "vertices": 200,
+  "triangles": 200
+ },
+ "materials": {
+  "blue": {
+   "color": "#2f7fc1",
+   "palette": true,
+   "tag": "body"
+  },
+  "dark": {
+   "color": "#1c1e28",
+   "palette": true
+  },
+  "white": {
+   "color": "#eef0ee",
+   "palette": true
+  },
+  "plate": {
+   "color": "#eef0ee",
+   "texture": {
+    "image": "art/front.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "side": {
+   "color": "#2f7fc1",
+   "texture": {
+    "image": "art/side.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "window": {
+   "color": "#2a2c38",
+   "class": "emissive",
+   "texture": {
+    "image": "art/window.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "header": {
+   "color": "#2a5fa8",
+   "class": "emissive",
+   "texture": {
+    "image": "art/header.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "lowleft": {
+   "color": "#d9dde4",
+   "texture": {
+    "image": "art/lowleft.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "column": {
+   "color": "#d9dde4",
+   "texture": {
+    "image": "art/column.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "binbody": {
+   "color": "#6c7a88",
+   "palette": true
+  },
+  "binfront": {
+   "color": "#6c7a88",
+   "texture": {
+    "image": "art/bin_front.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "lidcan": {
+   "color": "#2f68c0",
+   "texture": {
+    "image": "art/lid_can.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "lidpet": {
+   "color": "#f0c838",
+   "texture": {
+    "image": "art/lid_pet.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  },
+  "lidblue": {
+   "color": "#2f68c0",
+   "palette": true
+  },
+  "lidyel": {
+   "color": "#f0c838",
+   "palette": true
+  },
+  "fur": {
+   "color": "#e8a050",
+   "palette": true
+  },
+  "catface": {
+   "color": "#e8a050",
+   "texture": {
+    "image": "art/cat_face.png",
+    "bits": 4,
+    "projection": "fit"
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "body",
+      "op": "box",
+      "size": [
+       0.78,
+       1.64,
+       0.68
+      ],
+      "material": "blue",
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "faces": {
+       "back": "plate",
+       "left": "side",
+       "right": "side"
+      },
+      "transform": {
+       "translate": [
+        0,
+        0.92,
+        0
+       ]
+      }
+     },
+     {
+      "id": "cap",
+      "op": "box",
+      "size": [
+       0.86,
+       0.05,
+       0.76
+      ],
+      "material": "white",
+      "transform": {
+       "translate": [
+        0,
+        1.745,
+        0
+       ]
+      }
+     },
+     {
+      "id": "header",
+      "op": "box",
+      "size": [
+       0.72,
+       0.216,
+       0.032
+      ],
+      "material": "header",
+      "open": [
+       "bottom",
+       "front"
+      ],
+      "transform": {
+       "translate": [
+        0.0,
+        1.55,
+        -0.356
+       ]
+      }
+     },
+     {
+      "id": "window",
+      "op": "box",
+      "size": [
+       0.558,
+       0.954,
+       0.032
+      ],
+      "material": "window",
+      "open": [
+       "bottom",
+       "front"
+      ],
+      "transform": {
+       "translate": [
+        -0.11,
+        0.92,
+        -0.356
+       ]
+      }
+     },
+     {
+      "id": "bin",
+      "op": "box",
+      "size": [
+       0.36,
+       0.8,
+       0.36
+      ],
+      "material": "binbody",
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "faces": {
+       "back": "binfront"
+      },
+      "transform": {
+       "translate": [
+        0.66,
+        0.4,
+        -0.12
+       ]
+      }
+     },
+     {
+      "id": "lid_can",
+      "op": "box",
+      "size": [
+       0.22,
+       0.05,
+       0.44
+      ],
+      "material": "lidblue",
+      "open": [
+       "bottom",
+       "right"
+      ],
+      "faces": {
+       "top": "lidcan"
+      },
+      "transform": {
+       "translate": [
+        0.55,
+        0.82,
+        -0.12
+       ]
+      }
+     },
+     {
+      "id": "lid_pet",
+      "op": "box",
+      "size": [
+       0.22,
+       0.05,
+       0.44
+      ],
+      "material": "lidyel",
+      "open": [
+       "bottom",
+       "left"
+      ],
+      "faces": {
+       "top": "lidpet"
+      },
+      "transform": {
+       "translate": [
+        0.77,
+        0.82,
+        -0.12
+       ]
+      }
+     },
+     {
+      "id": "cat",
+      "op": "cone",
+      "radius": 0.1,
+      "height": 0.2,
+      "segments": 5,
+      "caps": false,
+      "material": "fur",
+      "transform": {
+       "translate": [
+        0.76,
+        0.945,
+        -0.04
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "body",
+      "op": "box",
+      "size": [
+       0.78,
+       1.64,
+       0.68
+      ],
+      "material": "blue",
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "faces": {
+       "back": "plate",
+       "left": "side",
+       "right": "side"
+      },
+      "transform": {
+       "translate": [
+        0,
+        0.92,
+        0
+       ]
+      }
+     },
+     {
+      "id": "cap",
+      "op": "box",
+      "size": [
+       0.86,
+       0.05,
+       0.76
+      ],
+      "material": "white",
+      "transform": {
+       "translate": [
+        0,
+        1.745,
+        0
+       ]
+      }
+     },
+     {
+      "id": "bin",
+      "op": "box",
+      "size": [
+       0.36,
+       0.8,
+       0.36
+      ],
+      "material": "binbody",
+      "open": [
+       "bottom",
+       "top"
+      ],
+      "faces": {
+       "back": "binfront"
+      },
+      "transform": {
+       "translate": [
+        0.66,
+        0.4,
+        -0.12
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 100,
+  "band": 1
+ },
+ "nodes": [
+  {
+   "id": "kick",
+   "op": "box",
+   "size": [
+    0.7,
+    0.14,
+    0.6
+   ],
+   "material": "dark",
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "transform": {
+    "translate": [
+     0,
+     0.07,
+     0
+    ]
+   }
+  },
+  {
+   "id": "body",
+   "op": "box",
+   "size": [
+    0.78,
+    1.64,
+    0.68
+   ],
+   "material": "blue",
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "faces": {
+    "back": "plate",
+    "left": "side",
+    "right": "side"
+   },
+   "transform": {
+    "translate": [
+     0,
+     0.92,
+     0
+    ]
+   }
+  },
+  {
+   "id": "cap",
+   "op": "box",
+   "size": [
+    0.86,
+    0.05,
+    0.76
+   ],
+   "material": "white",
+   "transform": {
+    "translate": [
+     0,
+     1.745,
+     0
+    ]
+   }
+  },
+  {
+   "id": "header",
+   "op": "box",
+   "size": [
+    0.72,
+    0.216,
+    0.032
+   ],
+   "material": "header",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     1.55,
+     -0.356
+    ]
+   }
+  },
+  {
+   "id": "window",
+   "op": "box",
+   "size": [
+    0.558,
+    0.954,
+    0.032
+   ],
+   "material": "window",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     -0.11,
+     0.92,
+     -0.356
+    ]
+   }
+  },
+  {
+   "id": "lowleft",
+   "op": "box",
+   "size": [
+    0.504,
+    0.324,
+    0.032
+   ],
+   "material": "lowleft",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     -0.108,
+     0.268,
+     -0.356
+    ]
+   }
+  },
+  {
+   "id": "column",
+   "op": "box",
+   "size": [
+    0.18,
+    1.26,
+    0.032
+   ],
+   "material": "column",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     0.27,
+     0.75,
+     -0.356
+    ]
+   }
+  },
+  {
+   "id": "bin",
+   "op": "box",
+   "size": [
+    0.36,
+    0.8,
+    0.36
+   ],
+   "material": "binbody",
+   "open": [
+    "bottom",
+    "top"
+   ],
+   "faces": {
+    "back": "binfront"
+   },
+   "transform": {
+    "translate": [
+     0.66,
+     0.4,
+     -0.12
+    ]
+   }
+  },
+  {
+   "id": "lid_can",
+   "op": "box",
+   "size": [
+    0.22,
+    0.05,
+    0.44
+   ],
+   "material": "lidblue",
+   "open": [
+    "bottom",
+    "right"
+   ],
+   "faces": {
+    "top": "lidcan"
+   },
+   "transform": {
+    "translate": [
+     0.55,
+     0.82,
+     -0.12
+    ]
+   }
+  },
+  {
+   "id": "lid_pet",
+   "op": "box",
+   "size": [
+    0.22,
+    0.05,
+    0.44
+   ],
+   "material": "lidyel",
+   "open": [
+    "bottom",
+    "left"
+   ],
+   "faces": {
+    "top": "lidpet"
+   },
+   "transform": {
+    "translate": [
+     0.77,
+     0.82,
+     -0.12
+    ]
+   }
+  },
+  {
+   "id": "cat_body",
+   "op": "lathe",
+   "segments": 6,
+   "caps": false,
+   "material": "fur",
+   "profile": [
+    [
+     0.085,
+     0.84
+    ],
+    [
+     0.105,
+     0.92
+    ],
+    [
+     0.075,
+     1.01
+    ],
+    [
+     0,
+     1.05
+    ]
+   ],
+   "transform": {
+    "translate": [
+     0.76,
+     0,
+     -0.04
+    ]
+   }
+  },
+  {
+   "id": "cat_head",
+   "op": "box",
+   "size": [
+    0.14,
+    0.115,
+    0.1
+   ],
+   "material": "fur",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "back": "catface"
+   },
+   "transform": {
+    "translate": [
+     0.76,
+     1.095,
+     -0.07
+    ]
+   }
+  },
+  {
+   "id": "cat_ears",
+   "op": "group",
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x",
+     "offset": 0.76
+    }
+   ],
+   "children": [
+    {
+     "id": "ear",
+     "op": "cone",
+     "radius": 0.028,
+     "height": 0.05,
+     "segments": 3,
+     "caps": false,
+     "material": "fur",
+     "transform": {
+      "translate": [
+       0.805,
+       1.18,
+       -0.07
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cat_tail",
+   "op": "cone",
+   "radius": 0.022,
+   "height": 0.22,
+   "segments": 3,
+   "caps": false,
+   "material": "fur",
+   "transform": {
+    "translate": [
+     0.89,
+     0.95,
+     0.03
+    ],
+    "rotate": [
+     0,
+     0,
+     -28
+    ]
+   }
+  }
+ ]
+}
