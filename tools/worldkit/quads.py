@@ -26,6 +26,7 @@ FACE = struct.Struct('<BBBB4H4I4H')
 GOURAUD = 1
 QUAD = 4
 SEMI = 8
+DOUBLE = 16
 KEYED = 32
 FLAT_COS = math.cos(math.radians(1.0))      # how flat a pair must be (its triangles' normals)
 
@@ -57,7 +58,8 @@ def _convex(ring, n):
     return len(signs) == 1
 
 
-def pair(mesh, flat_cos=FLAT_COS):
+def pair(mesh, flat_cos=FLAT_COS, skip=0):
+    """mesh with its pairs as quads; faces with any of the flag bits skip stay as they are."""
     nv, nf, vo, fo, wo = struct.unpack_from('<HHIII', mesh)
     faces = [FACE.unpack_from(mesh, fo + 36 * k) for k in range(nf)]
     table = mesh[wo:] if wo else b''
@@ -65,7 +67,7 @@ def pair(mesh, flat_cos=FLAT_COS):
     normals = [_normal(verts, f[4:7]) for f in faces]
 
     def pairable(f):
-        return not f[0] & (QUAD | SEMI | KEYED)
+        return not f[0] & (QUAD | SEMI | KEYED | skip)
 
     edges = {}
     for k, f in enumerate(faces):

@@ -175,6 +175,8 @@ SCATTER = obj({
     'chunk':dict(choice(4,8,16,32,64),description='Props are merged per chunk of this many units a side (one placement, one cull sphere). Default 16.'),
     'cull':dict(POS,description='Chunks are not drawn from this distance (units, eye to the chunk\'s centre).'),
     'coarse':dict(POS,description='From this distance chunks draw their assets\' level 1 (assets with lod).'),
+    'thin':dict(obj({'distance':POS,'keep':number(0.01,1),'scale':number(1,4)},['distance','keep']),
+                description='With "lod": "assets": from distance, chunks draw only a seeded share (keep) of their props, each grown by scale (default 1) about its base, so a forest far off costs fewer faces with about the same cover.'),
     'lod':dict(choice('assets'),description='"assets": chunks draw each asset\'s own levels at its own switch distances and drop it from its cull distance (the world\'s lod applies); instead of coarse.'),
 }, ['assets','area','spacing'])
 TERRAIN = obj({

@@ -10,6 +10,7 @@ schema and packed into records; layers, regions and variants are names.
 """
 from dataclasses import dataclass, field
 from fractions import Fraction
+import hashlib
 import math
 from pathlib import Path
 import struct
@@ -509,7 +510,8 @@ def compile_world(source, lock=None, assets_dir=None):
         one of its assets switches level or is culled, at that asset's own distance (the world's
         lod overrides and scale applied), each level the merge of every prop at the level its
         asset draws there, without the props culled by then; a cull mark once every prop is culled,
-        or at the scatter's cull. Distances closer than twice the band to the one before are moved
+        or at the scatter's cull. With thin, from its distance only a seeded share (keep) of the
+        props is drawn, each grown by its scale. Distances closer than twice the band to the one before are moved
         out to keep the reader's rule, so a change can come a few units late, never early."""
         marks = {}
         for _, asset, _ in batch:
@@ -522,11 +524,20 @@ def compile_world(source, lock=None, assets_dir=None):
                         m.append((e['cull'], None))
                 marks[asset.name] = m
         cap = sc.get('cull')
-        wanted = sorted({d for m in marks.values() for d, _ in m if cap is None or d < cap})
-        def level_at(asset, d):
+        thin = sc.get('thin')
+        wanted = {d for m in marks.values() for d, _ in m if cap is None or d < cap}
+        if thin and (cap is None or thin['distance'] < cap):
+            wanted.add(thin['distance'] * lod_cfg.get('scale', 1.0))
+        wanted = sorted(wanted)
+        def kept(it):
+            return hashlib.sha256(f'thin:{it.id}'.encode()).digest()[0] / 256 < thin['keep']
+        def level_at(asset, d, it=None):
             lv = 0
             for at, k in marks[asset.name]:
                 if d >= at: lv = k
+            if thin and it is not None and lv is not None and d >= thin['distance'] * lod_cfg.get('scale', 1.0) \
+                    and not kept(it):
+                return None
             return lv
         meshes = {}
         def level_mesh(asset, k):
@@ -537,11 +548,13 @@ def compile_world(source, lock=None, assets_dir=None):
             return meshes[asset.name][k - 1]
         band, levels, prev, last = 2.0, [], 0.0, None
         for d in wanted:
-            state = [level_at(asset, d) for _, asset, _ in batch]
+            state = [level_at(asset, d, it) for it, asset, _ in batch]
             if state == last:
                 continue
             at = max(d, prev + 2 * band + 0.25)
-            parts = [(level_mesh(asset, k), it.position, it.yaw) for (it, asset, _), k in zip(batch, state) if k is not None]
+            grow = thin.get('scale', 1.0) if thin and d >= thin['distance'] * lod_cfg.get('scale', 1.0) else 1.0
+            parts = [(level_mesh(asset, k), it.position, it.yaw, grow) for (it, asset, _), k in zip(batch, state)
+                     if k is not None]
             if not parts:
                 levels.append((at, None))
                 break
@@ -858,23 +871,25 @@ def compile_world(source, lock=None, assets_dir=None):
         cells.append(cell)
 
     if w.get('meshes', {}).get('quads'):
-        # pairs of triangles drawn as quads (WORLDKIT.md, "Quads"): the same pictures, fewer faces
+        # pairs of triangles drawn as quads (WORLDKIT.md, "Quads"): the same pictures, fewer faces;
+        # at level 0 double-sided faces (cutout cards) stay triangles, sorted nearest first one by
+        # one, which keeps the overdraw of a crown of cards filling the screen down
         paired = {}
 
-        def quads_of(m):
+        def quads_of(m, skip=0):
             if m is None:
                 return None
-            if m not in paired:
-                paired[m] = quads.pair(m)
-            return paired[m]
+            if (m, skip) not in paired:
+                paired[m, skip] = quads.pair(m, skip=skip)
+            return paired[m, skip]
         for cell in cells:
             for pl in cell.placements:
-                pl.mesh = quads_of(pl.mesh)
+                pl.mesh = quads_of(pl.mesh, quads.DOUBLE)
                 if pl.lod:
                     pl.lod.levels = [(d, quads_of(m)) for d, m in pl.lod.levels]
             cell.standin = quads_of(cell.standin)
             for e in cell.entities:
-                e.mesh = quads_of(e.mesh)
+                e.mesh = quads_of(e.mesh, quads.DOUBLE)
     world = P.World(cells=cells, cell_shift=shift, layers=players, regions=pregions, coll_pad=pad,
                     near_far=w.get('runtime', {}).get('near_far'),
                     overhang=overhang, floor_max_degrees=probe['floor_max_degrees'],

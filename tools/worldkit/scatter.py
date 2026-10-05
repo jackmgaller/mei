@@ -100,6 +100,8 @@ def scatter_items(w, terrain, size, cells, warnings):
         if sc.get('lod') == 'assets' and 'coarse' in sc:
             raise WorldError(sp + '/coarse', 'With "lod": "assets" a chunk takes its levels from its assets; coarse is '
                              'not used. Remove one.')
+        if 'thin' in sc and sc.get('lod') != 'assets':
+            raise WorldError(sp + '/thin', 'thin needs "lod": "assets".')
         chunk = sc.get('chunk', 16)
         if chunk > size:
             raise WorldError(sp + '/chunk', f'A chunk is at most a cell ({size}).')

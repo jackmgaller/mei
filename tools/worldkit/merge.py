@@ -24,10 +24,10 @@ def parts(binary):
     return verts, faces
 
 
-def place(raw, position, yaw, centre):
-    """A raw 16.16 model vertex turned by yaw (mesh_at's convention) and moved to the position,
-    relative to centre, in units."""
-    x, y, z = (c / 65536 for c in raw)
+def place(raw, position, yaw, centre, scale=1.0):
+    """A raw 16.16 model vertex scaled about the model's origin, turned by yaw (mesh_at's
+    convention) and moved to the position, relative to centre, in units."""
+    x, y, z = (c / 65536 * scale for c in raw)
     if yaw % 90 == 0:
         c, s = [(1, 0), (0, 1), (-1, 0), (0, -1)][int(yaw // 90) % 4]
     else:
@@ -36,8 +36,8 @@ def place(raw, position, yaw, centre):
 
 
 def merge(items, centre):
-    """items: [(mesh bytes, world position, yaw)] -> [mesh bytes], each within the mesh limits, in
-    order, splitting between props (never inside one)."""
+    """items: [(mesh bytes, world position, yaw[, scale])] -> [mesh bytes], each within the mesh
+    limits, in order, splitting between props (never inside one)."""
     out = []
     verts, faces = [], []
 
@@ -49,12 +49,13 @@ def merge(items, centre):
         verts.clear()
         faces.clear()
 
-    for binary, position, yaw in items:
+    for binary, position, yaw, *rest in items:
+        scale = rest[0] if rest else 1.0
         pv, pf = parts(binary)
         if len(verts) + len(pv) > MAX_VERTICES or len(faces) + len(pf) > MAX_FACES:
             flush()
         base = len(verts)
-        verts.extend(place(v, position, yaw, centre) for v in pv)
+        verts.extend(place(v, position, yaw, centre, scale) for v in pv)
         for f in pf:
             idx = struct.unpack_from('<4H', f, 4)
             n = 4 if f[0] & 4 else 3

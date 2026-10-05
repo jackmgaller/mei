@@ -3473,7 +3473,12 @@
    "clearance": 1.6,
    "max_slope": 34,
    "chunk": 16,
-   "lod": "assets"
+   "lod": "assets",
+   "thin": {
+    "distance": 56,
+    "keep": 0.5,
+    "scale": 1.2
+   }
   },
   "forest_high": {
    "assets": [
@@ -3660,7 +3665,12 @@
    "clearance": 1.6,
    "max_slope": 40,
    "chunk": 16,
-   "lod": "assets"
+   "lod": "assets",
+   "thin": {
+    "distance": 56,
+    "keep": 0.5,
+    "scale": 1.2
+   }
   },
   "undergrowth": {
    "assets": [
@@ -3955,36 +3965,36 @@
    },
    "tree_maple": {
     "distances": [
-     24,
-     64
+     18,
+     48
     ]
    },
    "tree_maple_small": {
     "distances": [
-     20,
-     56
+     16,
+     44
     ]
    },
    "tree_ginkgo": {
     "distances": [
-     24,
-     64
+     18,
+     48
     ]
    },
    "tree_cedar": {
     "distances": [
-     26,
-     64
+     20,
+     52
     ]
    }
   },
   "ground": [
    {
-    "distance": 40,
+    "distance": 36,
     "grid": 8
    },
    {
-    "distance": 80,
+    "distance": 76,
     "grid": 16
    }
   ],
