@@ -1,0 +1,241 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "forest_rope_ladder_rolled",
+ "budget": {
+  "triangles": 80
+ },
+ "materials": {
+  "rungs": {
+   "color": "#8a6446",
+   "double_sided": true,
+   "texture": {
+    "image": "art/ladder.png",
+    "projection": "planar",
+    "axis": "z",
+    "scale": [
+     0.5,
+     0.5
+    ],
+    "offset": [
+     0.5,
+     0.0
+    ]
+   }
+  },
+  "rope": {
+   "color": "#c8b478",
+   "palette": true
+  },
+  "stake": {
+   "color": "#5a3e2c",
+   "palette": true
+  },
+  "roll": {
+   "color": "#9a8458",
+   "palette": true
+  },
+  "roll_end": {
+   "color": "#c8b478",
+   "texture": {
+    "image": "art/roll_end.png",
+    "projection": "disc",
+    "axis": "y"
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "roll",
+   "op": "cylinder",
+   "radius": 0.22,
+   "height": 0.6,
+   "segments": 8,
+   "material": "roll",
+   "faces": {
+    "top": "roll_end",
+    "bottom": "roll_end"
+   },
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     90
+    ],
+    "translate": [
+     0,
+     20.2,
+     0.36
+    ]
+   }
+  },
+  {
+   "id": "rungs",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.25,
+     20.05,
+     0
+    ],
+    [
+     0.25,
+     20.05,
+     0
+    ],
+    [
+     0.25,
+     18.9,
+     0
+    ],
+    [
+     -0.25,
+     18.9,
+     0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "rungs"
+   ]
+  },
+  {
+   "id": "stake_west",
+   "op": "box",
+   "size": [
+    0.1,
+    0.6,
+    0.1
+   ],
+   "material": "stake",
+   "transform": {
+    "translate": [
+     -0.22,
+     20.2,
+     0.95
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "tie_west",
+   "op": "box",
+   "size": [
+    0.05,
+    0.05,
+    0.42000000000000004
+   ],
+   "material": "rope",
+   "transform": {
+    "translate": [
+     -0.203,
+     20.04,
+     0.74
+    ],
+    "rotate": [
+     0,
+     0,
+     45
+    ]
+   },
+   "open": [
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "stake_east",
+   "op": "box",
+   "size": [
+    0.1,
+    0.6,
+    0.1
+   ],
+   "material": "stake",
+   "transform": {
+    "translate": [
+     0.22,
+     20.2,
+     0.95
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "tie_east",
+   "op": "box",
+   "size": [
+    0.05,
+    0.05,
+    0.42000000000000004
+   ],
+   "material": "rope",
+   "transform": {
+    "translate": [
+     0.203,
+     20.04,
+     0.74
+    ],
+    "rotate": [
+     0,
+     0,
+     45
+    ]
+   },
+   "open": [
+    "back",
+    "front"
+   ]
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 30,
+    "nodes": [
+     {
+      "id": "roll",
+      "op": "cylinder",
+      "radius": 0.22,
+      "height": 0.6,
+      "segments": 5,
+      "material": "roll",
+      "transform": {
+       "rotate": [
+        0,
+        0,
+        90
+       ],
+       "translate": [
+        0,
+        20.2,
+        0.36
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 90
+ }
+}
