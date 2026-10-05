@@ -260,10 +260,9 @@ def compile_world(source, lock=None, assets_dir=None):
             entity_where[e['id']] = (c['id'], k)
 
     auto_standins = w.get('standins')
-    if auto_standins and len(regions) > 1:
-        raise WorldError('/standins', 'Stand-ins made by the kit keep their placements\' textures, and a stand-in '
-                         'is drawn whichever region is loaded: they need a world with one region. Give each cell '
-                         'its own stand-in instead.')
+    # A stand-in is drawn whichever region is loaded: with several regions, the kit's stand-ins draw
+    # textured faces in their tiles' far colours (textures.py, far_faces()).
+    far_standins = bool(auto_standins) and len(regions) > 1
     for cid in (auto_standins or {}).get('cells', {}):
         if cid not in seen_cells:
             raise WorldError(pointer('/standins/cells', cid), f'No cell {cid!r}.')
@@ -583,7 +582,7 @@ def compile_world(source, lock=None, assets_dir=None):
                 'triangles' in o for o in [auto_standins, *auto_standins.get('cells', {}).values()]):
             chunk_props[mesh] = list(zip(parts, items))
 
-    def standin_of(cell, centre, cid, far_grids, field_src):
+    def standin_of(cell, centre, cid, far_grids, field_src, region):
         """A stand-in made from the cell itself (standins): each placement not in a layer (sweeps only
         with standins.sweeps) at the level it draws at standins.distance, merged into one mesh around
         the cell's centre; None when nothing is drawn from that far. A far ground level is made
@@ -651,6 +650,10 @@ def compile_world(source, lock=None, assets_dir=None):
             items = [(part, b'') for part in ground] + [it for q, it in enumerate(items) if q in keep]
         if not items:
             return None
+        if far_standins:
+            rt_, rp_ = region_textures[region], region_palettes[region]
+            items = [((rt_.far_faces(part[0], rp_, slot, row), *part[1:]), q) for part, q in items]
+            windows = False
         meshes = merge.merge([part for part, _ in items], centre)
         if len(meshes) > 1:
             nf = sum(struct.unpack_from('<H', m, 2)[0] for m in meshes)
@@ -724,6 +727,10 @@ def compile_world(source, lock=None, assets_dir=None):
                 if vn not in vnames:
                     raise WorldError(pointer(bp + '/sky', vn), f'Region {r!r} has no palette variant {vn!r}; its '
                                      f'variants: {", ".join(vnames)}.')
+    for r in regions:
+        far = region_textures[r].far_asset() if far_standins and region_textures[r].assets else None
+        if far:
+            region_palettes[r].add_asset(far)
     for r in regions:
         rp, rt = region_palettes[r], region_textures[r]
         if rt.assets or r in backdrops:
@@ -925,7 +932,7 @@ def compile_world(source, lock=None, assets_dir=None):
         if plan['standin']:
             cell.standin = rp.relocated(plan['standin'], slot, row)
         elif auto_standins:
-            cell.standin = standin_of(cell, centre, c['id'], far_grids, field_src)
+            cell.standin = standin_of(cell, centre, c['id'], far_grids, field_src, c['region'])
         cell.collision = plan['collision']
         for e in plan['entities']:
             spec = e['spec']

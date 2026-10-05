@@ -12,17 +12,25 @@ entry by entry), the 8-bit palettes as extra runs (a variant tints all 256 colou
 multiply) and the animated tiles' frames.
 
 Regions share slots: entering a region loads its set over the last one (wp_region_enter()).
+
+A stand-in is drawn whichever region is loaded, so in a world with several regions the kit's
+stand-ins draw each textured face in its tile's **far colour** (the mean of its texels, as a
+textured terrain field's coarse level does): far_asset() gives the region a palette entry per
+colour, far_faces() rewrites a mesh's textured faces to them.
 """
 import copy
+import struct
 
 from assetkit.compiler import native_bytes
 from assetkit.texout import rgb_hex
+from assetkit.textures import quantise, rgb_of
 from kitcore.errors import KitError, pointer
 from kitcore.texpack import pack as pack_tiles, SLOT_BYTES, FONT_SLOT, CELL
 from . import pack as P
 from .schema import WorldError
 
 DEFAULT_SLOTS = tuple(range(13, -1, -1))     # slot 14 holds the swatch row by default, 15 the fonts
+FAR_COLOURS = {'surface': 30, 'emissive': 15}  # a region's far colours at most (stand-ins, several regions)
 
 
 def parse_slots(text, path):
@@ -119,6 +127,74 @@ class RegionTextures:
         self.swatch = swatch if reserved else None
         self.budget, self.slots_given = budget, slots
         return self.packing
+
+    # ---- far colours (stand-ins in a world with several regions)
+
+    def far_asset(self):
+        """A stand-in for an asset whose palette entries are the far colours of the region's tiles,
+        for RegionPalette.add_asset(); None without tiles. A tile's far colour is the mean of its
+        texels (frame 0, holes left out); the means of each class are then reduced to at most
+        FAR_COLOURS of them (the Asset Kit's median cut), so they take a few palettes, not one entry
+        a tile. Records tile key -> (class, colour) in self.far."""
+        classes, means = {}, {}
+        for a, material, tex in self.uses():
+            classes.setdefault(tex.tile.key, set()).add(a.materials[material].get('class', 'surface'))
+            if tex.tile.key not in means:
+                texels = [rgb_of(c) for row in tex.tile.frames[0] for c in row if c is not None]
+                means[tex.tile.key] = tuple(round(sum(t[k] for t in texels) / len(texels)) for k in range(3))
+        self.far, entries = {}, {}
+        for cls, cap in FAR_COLOURS.items():
+            keys = [k for k in means if ('emissive' if 'emissive' in classes[k] else 'surface') == cls]
+            if not keys:
+                continue
+            reduced = quantise([[[means[k] for k in keys]]], cap)[0][0][0]
+            for k, c in zip(keys, reduced):
+                self.far[k] = (cls, rgb_hex(c))
+        for a, material, tex in self.uses():
+            entries.setdefault(self.far[tex.tile.key], []).append(f'{a.name}.{material}')
+        if not entries:
+            return None
+        manifest = {'entries': [{'colour': k + 1, 'class': cls, 'color': colour, 'materials': mats}
+                                for k, ((cls, colour), mats) in enumerate(sorted(entries.items()))]}
+        return type('FarColours', (), {'name': 'far', 'manifest': manifest})()
+
+    def far_faces(self, binary, rp, slot, row):
+        """The mesh with every face that samples this region's texture set drawn instead in its
+        tile's far colour: a palette-backed face (the world's swatch at slot and row) of the region
+        entry far_asset() added. Faces are found by their texture's slot, depth and palette, then by
+        their texture window or, without one, the tile holding their texture coordinates."""
+        if not self.packing or not getattr(self, 'far', None):
+            return binary
+        nv, nf, voff, foff, woff = struct.unpack_from('<HHIII', binary)
+        out = bytearray(binary)
+        places = {}
+        for key, place in self.packing.placements.items():
+            places.setdefault((place.slot, place.bits, place.palette), []).append((key, place))
+        for k in range(nf):
+            at = foff + 36 * k
+            flags, _, tex, pal = struct.unpack_from('<BBBB', binary, at)
+            if not flags & 2:
+                continue
+            bits = 4 if tex & 16 else 8
+            group = places.get((tex & 15, bits, pal))
+            if not group:
+                continue                 # a palette-backed face (the swatch), or not this region's
+            uvs = struct.unpack_from('<4H', binary, at + 28)[:4 if flags & 4 else 3]
+            win = tex >> 5
+            hit = None
+            if win and woff:
+                hw = struct.unpack_from('<H', binary, woff + 2 * (win - 1))[0]
+                hit = next((key for key, p in group if p.window and p.halfword() == hw), None)
+            if hit is None:
+                u = sum(c & 255 for c in uvs) / len(uvs)
+                v = sum(c >> 8 for c in uvs) / len(uvs)
+                inside = [key for key, p in group if not p.window and p.x <= u < p.x + p.width + 1
+                          and p.y <= v < p.y + p.height + 1]
+                hit = inside[0] if inside else group[0][0]
+            colour = rp.by_key[self.far[hit]]['colour']
+            struct.pack_into('<BB', out, at + 2, (slot & 15) | 16, colour // 16)
+            struct.pack_into('<4H', out, at + 28, *([colour % 16 | row << 8] * 4))
+        return bytes(out)
 
     # ---- what goes into the pack
 

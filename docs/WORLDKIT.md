@@ -876,10 +876,15 @@ detail](#levels-of-detail)) is made again for it without the skirts between the 
 tiles, which meet exactly. So when the cell moves from the far ring to the near ring, what was
 drawn as its stand-in is drawn again as its placements, at their levels for that distance.
 
-The merged mesh keeps its faces' textures, so the world must have one region (a stand-in is
-drawn whichever region is loaded); a world with more is refused. Faces with repeating textures
-lose their window in the merge (a merged mesh has no window table; the warning
-`standin_windows` names the cells). A cell more than one mesh holds from that distance (2,048
+In a world with one region the merged mesh keeps its faces' textures. Faces with repeating
+textures lose their window in the merge (a merged mesh has no window table; the warning
+`standin_windows` names the cells). A stand-in is drawn whichever region is loaded, so in a world
+with several regions (built 2026-10-05) every face that samples the region's texture set is drawn
+instead in its tile's **far colour**, the mean of its texels (as a textured field's coarse level
+is): a palette-backed face of the world's swatch. A region's far colours are reduced to at most 30
+surface and 15 emissive ones (the Asset Kit's median cut), each a palette entry of the region,
+shared like any entries and listed in its palette as `far.ASSET.MATERIAL`; a variant tints them by
+class. A cutout face (foliage) is drawn solid in its colour. A cell more than one mesh holds from that distance (2,048
 vertices, 4,000 faces) is an error at `/standins/distance`. `report.json`'s `standins` lists per
 cell the pieces merged (`placements`), the pieces a cap left out (`left_out`) and the triangles as
 drawn (a quad is two), with the cell's `cap` and `ground` when it has them. The shrine's stand-ins
@@ -1264,9 +1269,10 @@ reader loads or blends them like any other variant (`wp_variant_load()`, `wp_var
 has its frames in the pack in the tile's own layout; the reader copies a frame into the tile
 when it changes (`wp_animate(t)`, every placement in step). The texture set holds frame 0.
 
-**What is refused.** A stand-in with textures (a stand-in is drawn whichever region is loaded,
-so it cannot use a region's set), and a merged placement whose mesh has repeating textures (a
-merged mesh keeps no window table). Textured terrain's tiles join the region's set as one more
+**What is refused.** An authored stand-in with textures (a stand-in is drawn whichever region is
+loaded, so it cannot use a region's set; in a world with several regions the kit's own stand-ins
+draw far colours instead: [Stand-ins made by the kit](#stand-ins-made-by-the-kit)), and a merged
+placement whose mesh has repeating textures (a merged mesh keeps no window table). Textured terrain's tiles join the region's set as one more
 asset's ([Textured terrain](#textured-terrain)).
 
 **Cost** (the night market's market region, measured on the console, `tests/worldkit/market.akr`):
