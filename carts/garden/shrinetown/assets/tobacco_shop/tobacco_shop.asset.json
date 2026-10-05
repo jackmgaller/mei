@@ -1,0 +1,2000 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "tobacco_shop",
+ "budget": {
+  "triangles": 450
+ },
+ "sheets": {
+  "art": {
+   "image": "art/tobacco_sheet.png"
+  },
+  "town_common": {
+   "image": "../town_alley_house_a/art/town_common.png"
+  },
+  "shopfront": {
+   "image": "../town_shop_2f_a/art/shopfront.png"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "plaster": {
+   "color": "#e6dcc4",
+   "tag": "wall",
+   "texture": {
+    "sheet": "town_common",
+    "cell": "plaster",
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ]
+   }
+  },
+  "siding": {
+   "color": "#7d97a6",
+   "tag": "wall",
+   "texture": {
+    "pattern": "stripes",
+    "size": 16,
+    "colors": [
+     "#86a0ae",
+     "#86a0ae",
+     "#86a0ae",
+     "#6a8392"
+    ],
+    "params": {
+     "count": 4,
+     "axis": "v"
+    },
+    "projection": "box",
+    "scale": [
+     1,
+     1
+    ]
+   }
+  },
+  "kawara": {
+   "color": "#4a5560",
+   "tag": "roof",
+   "texture": {
+    "sheet": "town_common",
+    "cell": "kawara",
+    "projection": "box",
+    "scale": [
+     2,
+     2
+    ]
+   }
+  },
+  "ridge": {
+   "color": "#3a424b",
+   "palette": true,
+   "tag": "roof"
+  },
+  "trim": {
+   "color": "#5b3b2a",
+   "palette": true
+  },
+  "counter": {
+   "color": "#c8b58e",
+   "palette": true
+  },
+  "phone": {
+   "color": "#f08cb0",
+   "palette": true
+  },
+  "vend_red": {
+   "color": "#a8262e",
+   "palette": true
+  },
+  "vend_white": {
+   "color": "#e8e4da",
+   "palette": true
+  },
+  "pot": {
+   "color": "#b4643c",
+   "palette": true
+  },
+  "leaf": {
+   "color": "#4f8f3e",
+   "palette": true
+  },
+  "awning": {
+   "color": "#2f7d55",
+   "tag": "awning",
+   "texture": {
+    "pattern": "stripes",
+    "size": 16,
+    "colors": [
+     "#2f7d55",
+     "#ece6d2"
+    ],
+    "params": {
+     "count": 4,
+     "axis": "u"
+    },
+    "projection": "box",
+    "scale": [
+     1,
+     1
+    ]
+   }
+  },
+  "sign": {
+   "color": "#ce2228",
+   "class": "emissive",
+   "tag": "sign",
+   "texture": {
+    "sheet": "art",
+    "cell": "sign",
+    "projection": "fit"
+   }
+  },
+  "vsign": {
+   "color": "#fcf8ec",
+   "class": "emissive",
+   "tag": "sign",
+   "texture": {
+    "sheet": "art",
+    "cell": "vsign",
+    "projection": "fit"
+   }
+  },
+  "showcase": {
+   "color": "#96b6ba",
+   "tag": "window",
+   "texture": {
+    "sheet": "art",
+    "cell": "showcase",
+    "projection": "fit"
+   }
+  },
+  "vend": {
+   "color": "#e8e4d6",
+   "class": "emissive",
+   "tag": "sign",
+   "texture": {
+    "sheet": "art",
+    "cell": "vend",
+    "projection": "fit"
+   }
+  },
+  "window": {
+   "color": "#8ca8b0",
+   "class": "emissive",
+   "tag": "shopfront",
+   "texture": {
+    "sheet": "art",
+    "cell": "window",
+    "projection": "fit"
+   }
+  },
+  "upwin": {
+   "color": "#96b0c4",
+   "tag": "window",
+   "texture": {
+    "sheet": "art",
+    "cell": "upwin",
+    "projection": "fit"
+   }
+  },
+  "salt": {
+   "color": "#1e46a0",
+   "tag": "sign",
+   "texture": {
+    "sheet": "art",
+    "cell": "salt",
+    "projection": "fit"
+   }
+  },
+  "door": {
+   "color": "#b0b4ba",
+   "tag": "door",
+   "texture": {
+    "sheet": "art",
+    "cell": "door",
+    "projection": "fit"
+   }
+  },
+  "laundry": {
+   "color": "#4f7fc8",
+   "double_sided": true,
+   "texture": {
+    "sheet": "art",
+    "cell": "laundry",
+    "projection": "fit"
+   }
+  },
+  "onigawara": {
+   "color": "#2c333b",
+   "texture": {
+    "sheet": "art",
+    "cell": "onigawara",
+    "projection": "fit"
+   }
+  },
+  "back_door": {
+   "color": "#8e949a",
+   "texture": {
+    "sheet": "shopfront",
+    "cell": "back_door",
+    "projection": "fit"
+   }
+  },
+  "back_win": {
+   "color": "#c8d4d8",
+   "tag": "window",
+   "texture": {
+    "sheet": "shopfront",
+    "cell": "back_win",
+    "projection": "fit"
+   }
+  },
+  "ac": {
+   "color": "#e2e0d6",
+   "texture": {
+    "sheet": "shopfront",
+    "cell": "ac",
+    "projection": "fit"
+   }
+  },
+  "antenna": {
+   "color": "#7a7e84",
+   "double_sided": true,
+   "texture": {
+    "sheet": "shopfront",
+    "cell": "antenna",
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "shell",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.5,
+     0.0,
+     -7.0
+    ],
+    [
+     -4.5,
+     0.0,
+     7.0
+    ],
+    [
+     -4.5,
+     2.85,
+     7.0
+    ],
+    [
+     -4.5,
+     2.85,
+     -7.0
+    ],
+    [
+     -4.5,
+     5.0,
+     7.0
+    ],
+    [
+     -4.5,
+     6.38,
+     0.0
+    ],
+    [
+     -4.5,
+     5.0,
+     -7.0
+    ],
+    [
+     4.5,
+     2.85,
+     -7.0
+    ],
+    [
+     4.5,
+     2.85,
+     7.0
+    ],
+    [
+     4.5,
+     0.0,
+     7.0
+    ],
+    [
+     4.5,
+     0.0,
+     -7.0
+    ],
+    [
+     4.5,
+     5.0,
+     -7.0
+    ],
+    [
+     4.5,
+     6.38,
+     0.0
+    ],
+    [
+     4.5,
+     5.0,
+     7.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     2,
+     4,
+     5,
+     6,
+     3
+    ],
+    [
+     7,
+     8,
+     9,
+     10
+    ],
+    [
+     7,
+     11,
+     12,
+     13,
+     8
+    ],
+    [
+     3,
+     7,
+     10,
+     0
+    ],
+    [
+     6,
+     11,
+     7,
+     3
+    ],
+    [
+     1,
+     9,
+     8,
+     2
+    ],
+    [
+     2,
+     8,
+     13,
+     4
+    ]
+   ],
+   "face_materials": [
+    "plaster",
+    "siding",
+    "plaster",
+    "siding",
+    "plaster",
+    "siding",
+    "plaster",
+    "siding"
+   ],
+   "decals": [
+    {
+     "id": "window",
+     "material": "window",
+     "size": [
+      2.4,
+      1.3
+     ],
+     "at": [
+      -2.4,
+      1.58
+     ],
+     "face": 4
+    },
+    {
+     "id": "door",
+     "material": "door",
+     "size": [
+      0.95,
+      1.95
+     ],
+     "at": [
+      3.15,
+      0.985
+     ],
+     "face": 4
+    },
+    {
+     "id": "salt",
+     "material": "salt",
+     "size": [
+      0.32,
+      0.32
+     ],
+     "at": [
+      2.05,
+      1.75
+     ],
+     "face": 4
+    },
+    {
+     "id": "upwin_l",
+     "material": "upwin",
+     "size": [
+      1.4,
+      1.05
+     ],
+     "at": [
+      -2.3,
+      3.95
+     ],
+     "face": 5
+    },
+    {
+     "id": "upwin_r",
+     "material": "upwin",
+     "size": [
+      1.4,
+      1.05
+     ],
+     "at": [
+      1.4,
+      3.95
+     ],
+     "face": 5
+    },
+    {
+     "id": "back_door",
+     "material": "back_door",
+     "size": [
+      0.9,
+      2.0
+     ],
+     "at": [
+      -2.8,
+      1.01
+     ],
+     "face": 6
+    },
+    {
+     "id": "back_win",
+     "material": "back_win",
+     "size": [
+      1.0,
+      1.0
+     ],
+     "at": [
+      1.5,
+      1.6
+     ],
+     "face": 6
+    },
+    {
+     "id": "back_upwin",
+     "material": "back_win",
+     "size": [
+      1.2,
+      1.0
+     ],
+     "at": [
+      0.5,
+      3.95
+     ],
+     "face": 7
+    }
+   ]
+  },
+  {
+   "id": "roof",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.75,
+     6.5,
+     0.0
+    ],
+    [
+     4.75,
+     6.5,
+     0.0
+    ],
+    [
+     4.75,
+     5.0,
+     -7.6
+    ],
+    [
+     -4.75,
+     5.0,
+     -7.6
+    ],
+    [
+     -4.75,
+     5.0,
+     7.6
+    ],
+    [
+     4.75,
+     5.0,
+     7.6
+    ],
+    [
+     -4.75,
+     4.88,
+     -7.6
+    ],
+    [
+     4.75,
+     4.88,
+     -7.6
+    ],
+    [
+     4.75,
+     6.38,
+     0.0
+    ],
+    [
+     -4.75,
+     6.38,
+     0.0
+    ],
+    [
+     -4.75,
+     4.88,
+     7.6
+    ],
+    [
+     4.75,
+     4.88,
+     7.6
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     4,
+     5,
+     1,
+     0
+    ],
+    [
+     6,
+     7,
+     8,
+     9
+    ],
+    [
+     3,
+     2,
+     7,
+     6
+    ],
+    [
+     6,
+     9,
+     10,
+     4,
+     0,
+     3
+    ],
+    [
+     9,
+     8,
+     11,
+     10
+    ],
+    [
+     10,
+     11,
+     5,
+     4
+    ],
+    [
+     2,
+     1,
+     5,
+     11,
+     8,
+     7
+    ]
+   ],
+   "face_materials": [
+    "kawara",
+    "kawara",
+    "trim",
+    "ridge",
+    "ridge",
+    "trim",
+    "ridge",
+    "ridge"
+   ]
+  },
+  {
+   "id": "ridge_cap",
+   "op": "box",
+   "size": [
+    9.6,
+    0.16,
+    0.34
+   ],
+   "material": "ridge",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     6.52,
+     0.0
+    ]
+   }
+  },
+  {
+   "id": "onigawara_w",
+   "op": "mesh",
+   "vertices": [
+    [
+     -4.84,
+     6.38,
+     -0.21
+    ],
+    [
+     -4.84,
+     6.38,
+     0.21
+    ],
+    [
+     -4.84,
+     6.8,
+     0.21
+    ],
+    [
+     -4.84,
+     6.8,
+     -0.21
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "onigawara"
+   ]
+  },
+  {
+   "id": "onigawara_e",
+   "op": "mesh",
+   "vertices": [
+    [
+     4.84,
+     6.8,
+     -0.21
+    ],
+    [
+     4.84,
+     6.8,
+     0.21
+    ],
+    [
+     4.84,
+     6.38,
+     0.21
+    ],
+    [
+     4.84,
+     6.38,
+     -0.21
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "onigawara"
+   ]
+  },
+  {
+   "id": "belt",
+   "op": "box",
+   "size": [
+    9.1,
+    0.14,
+    0.1
+   ],
+   "material": "trim",
+   "open": [
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     2.85,
+     -7.03
+    ]
+   }
+  },
+  {
+   "id": "belt_back",
+   "op": "box",
+   "size": [
+    9.1,
+    0.14,
+    0.1
+   ],
+   "material": "trim",
+   "open": [
+    "back"
+   ],
+   "transform": {
+    "translate": [
+     0.0,
+     2.85,
+     7.03
+    ]
+   }
+  },
+  {
+   "id": "cabinet",
+   "op": "box",
+   "size": [
+    2.6,
+    0.95,
+    0.42
+   ],
+   "material": "trim",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "back": "showcase"
+   },
+   "transform": {
+    "translate": [
+     -2.4,
+     0.475,
+     -7.19
+    ]
+   }
+  },
+  {
+   "id": "counter",
+   "op": "box",
+   "size": [
+    2.8,
+    0.06,
+    0.57
+   ],
+   "material": "counter",
+   "open": [
+    "front"
+   ],
+   "transform": {
+    "translate": [
+     -2.4,
+     0.97,
+     -7.265
+    ]
+   }
+  },
+  {
+   "id": "phone",
+   "op": "box",
+   "size": [
+    0.26,
+    0.18,
+    0.2
+   ],
+   "material": "phone",
+   "open": [
+    "bottom"
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     12,
+     0
+    ],
+    "translate": [
+     -3.25,
+     1.085,
+     -7.3
+    ]
+   }
+  },
+  {
+   "id": "awning",
+   "op": "mesh",
+   "vertices": [
+    [
+     -3.85,
+     2.36,
+     -6.98
+    ],
+    [
+     -0.95,
+     2.36,
+     -6.98
+    ],
+    [
+     -0.95,
+     2.12,
+     -7.72
+    ],
+    [
+     -3.85,
+     2.12,
+     -7.72
+    ],
+    [
+     -0.95,
+     1.98,
+     -7.72
+    ],
+    [
+     -3.85,
+     1.98,
+     -7.72
+    ],
+    [
+     -0.95,
+     2.24,
+     -6.98
+    ],
+    [
+     -3.85,
+     2.24,
+     -6.98
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ],
+    [
+     3,
+     2,
+     4,
+     5
+    ],
+    [
+     5,
+     4,
+     6,
+     7
+    ],
+    [
+     0,
+     3,
+     5,
+     7
+    ],
+    [
+     6,
+     4,
+     2,
+     1
+    ]
+   ],
+   "face_materials": [
+    "awning",
+    "awning",
+    "awning",
+    "awning",
+    "awning"
+   ]
+  },
+  {
+   "id": "sign",
+   "op": "box",
+   "size": [
+    2.5,
+    0.5,
+    0.08
+   ],
+   "material": "trim",
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "sign"
+   },
+   "transform": {
+    "translate": [
+     -2.4,
+     2.62,
+     -7.08
+    ]
+   }
+  },
+  {
+   "id": "corner_sign",
+   "op": "box",
+   "size": [
+    0.06,
+    1.55,
+    0.45
+   ],
+   "material": "trim",
+   "faces": {
+    "left": "vsign",
+    "right": "vsign"
+   },
+   "transform": {
+    "rotate": [
+     0,
+     225,
+     0
+    ],
+    "translate": [
+     -4.6838,
+     4.2,
+     -7.1838
+    ]
+   }
+  },
+  {
+   "id": "vend_red",
+   "op": "box",
+   "size": [
+    0.72,
+    1.8,
+    0.66
+   ],
+   "material": "vend_red",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "back": "vend"
+   },
+   "transform": {
+    "translate": [
+     -0.55,
+     0.9,
+     -7.32
+    ]
+   }
+  },
+  {
+   "id": "vend_white",
+   "op": "box",
+   "size": [
+    0.72,
+    1.8,
+    0.66
+   ],
+   "material": "vend_white",
+   "open": [
+    "bottom",
+    "front"
+   ],
+   "faces": {
+    "back": "vend"
+   },
+   "transform": {
+    "translate": [
+     0.25,
+     0.9,
+     -7.32
+    ]
+   }
+  },
+  {
+   "id": "ashtray_stand",
+   "op": "cylinder",
+   "radius": 0.03,
+   "height": 0.6,
+   "segments": 4,
+   "material": "ridge",
+   "transform": {
+    "translate": [
+     0.95,
+     0.3,
+     -7.55
+    ]
+   },
+   "caps": false
+  },
+  {
+   "id": "ashtray",
+   "op": "cylinder",
+   "radius": 0.15,
+   "height": 0.08,
+   "segments": 6,
+   "material": "ridge",
+   "transform": {
+    "translate": [
+     0.95,
+     0.64,
+     -7.55
+    ]
+   }
+  },
+  {
+   "id": "bench_seat",
+   "op": "box",
+   "size": [
+    1.2,
+    0.06,
+    0.36
+   ],
+   "material": "trim",
+   "transform": {
+    "translate": [
+     1.75,
+     0.42,
+     -7.25
+    ]
+   }
+  },
+  {
+   "id": "bench_leg_0",
+   "op": "box",
+   "size": [
+    0.06,
+    0.39,
+    0.3
+   ],
+   "material": "trim",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     1.23,
+     0.195,
+     -7.25
+    ]
+   }
+  },
+  {
+   "id": "bench_leg_1",
+   "op": "box",
+   "size": [
+    0.06,
+    0.39,
+    0.3
+   ],
+   "material": "trim",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     2.27,
+     0.195,
+     -7.25
+    ]
+   }
+  },
+  {
+   "id": "pot",
+   "op": "cylinder",
+   "radius": 0.18,
+   "height": 0.36,
+   "segments": 5,
+   "material": "pot",
+   "transform": {
+    "translate": [
+     3.95,
+     0.18,
+     -7.4
+    ]
+   }
+  },
+  {
+   "id": "bush",
+   "op": "sphere",
+   "radius": 0.26,
+   "segments": 5,
+   "rings": 3,
+   "material": "leaf",
+   "transform": {
+    "scale": [
+     1,
+     1.15,
+     1
+    ],
+    "translate": [
+     3.95,
+     0.62,
+     -7.4
+    ]
+   }
+  },
+  {
+   "id": "laundry",
+   "op": "mesh",
+   "vertices": [
+    [
+     -3.5,
+     4.45,
+     -7.4
+    ],
+    [
+     -1.1,
+     4.45,
+     -7.4
+    ],
+    [
+     -1.1,
+     3.55,
+     -7.4
+    ],
+    [
+     -3.5,
+     3.55,
+     -7.4
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "laundry"
+   ]
+  },
+  {
+   "id": "ac",
+   "op": "box",
+   "size": [
+    0.72,
+    0.52,
+    0.28
+   ],
+   "material": "vend_white",
+   "open": [
+    "front"
+   ],
+   "faces": {
+    "back": "ac"
+   },
+   "transform": {
+    "translate": [
+     3.45,
+     3.2,
+     -7.15
+    ]
+   }
+  },
+  {
+   "id": "downpipe",
+   "op": "box",
+   "size": [
+    0.1,
+    4.95,
+    0.1
+   ],
+   "material": "ridge",
+   "open": [
+    "top",
+    "bottom"
+   ],
+   "transform": {
+    "translate": [
+     4.38,
+     2.475,
+     -7.07
+    ]
+   }
+  },
+  {
+   "id": "antenna_0",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.7,
+     8.1,
+     0.0
+    ],
+    [
+     0.7,
+     8.1,
+     0.0
+    ],
+    [
+     0.7,
+     6.48,
+     0.0
+    ],
+    [
+     -0.7,
+     6.48,
+     0.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "antenna"
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     0
+    ],
+    "translate": [
+     -2.8,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "antenna_90",
+   "op": "mesh",
+   "vertices": [
+    [
+     -0.7,
+     8.1,
+     0.0
+    ],
+    [
+     0.7,
+     8.1,
+     0.0
+    ],
+    [
+     0.7,
+     6.48,
+     0.0
+    ],
+    [
+     -0.7,
+     6.48,
+     0.0
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2,
+     3
+    ]
+   ],
+   "face_materials": [
+    "antenna"
+   ],
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ],
+    "translate": [
+     -2.8,
+     0,
+     0
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 24,
+    "nodes": [
+     {
+      "id": "shell",
+      "op": "mesh",
+      "vertices": [
+       [
+        -4.5,
+        0.0,
+        -7.0
+       ],
+       [
+        -4.5,
+        0.0,
+        7.0
+       ],
+       [
+        -4.5,
+        2.85,
+        7.0
+       ],
+       [
+        -4.5,
+        2.85,
+        -7.0
+       ],
+       [
+        -4.5,
+        5.0,
+        7.0
+       ],
+       [
+        -4.5,
+        6.38,
+        0.0
+       ],
+       [
+        -4.5,
+        5.0,
+        -7.0
+       ],
+       [
+        4.5,
+        2.85,
+        -7.0
+       ],
+       [
+        4.5,
+        2.85,
+        7.0
+       ],
+       [
+        4.5,
+        0.0,
+        7.0
+       ],
+       [
+        4.5,
+        0.0,
+        -7.0
+       ],
+       [
+        4.5,
+        5.0,
+        -7.0
+       ],
+       [
+        4.5,
+        6.38,
+        0.0
+       ],
+       [
+        4.5,
+        5.0,
+        7.0
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ],
+       [
+        2,
+        4,
+        5,
+        6,
+        3
+       ],
+       [
+        7,
+        8,
+        9,
+        10
+       ],
+       [
+        7,
+        11,
+        12,
+        13,
+        8
+       ],
+       [
+        3,
+        7,
+        10,
+        0
+       ],
+       [
+        6,
+        11,
+        7,
+        3
+       ],
+       [
+        1,
+        9,
+        13,
+        4
+       ]
+      ],
+      "face_materials": [
+       "plaster",
+       "siding",
+       "plaster",
+       "siding",
+       "plaster",
+       "siding",
+       "plaster"
+      ],
+      "decals": [
+       {
+        "id": "window",
+        "material": "window",
+        "size": [
+         2.4,
+         1.3
+        ],
+        "at": [
+         -2.4,
+         1.58
+        ],
+        "face": 4
+       },
+       {
+        "id": "door",
+        "material": "door",
+        "size": [
+         0.95,
+         1.95
+        ],
+        "at": [
+         3.15,
+         0.985
+        ],
+        "face": 4
+       },
+       {
+        "id": "upwin_l",
+        "material": "upwin",
+        "size": [
+         1.4,
+         1.05
+        ],
+        "at": [
+         -2.3,
+         3.95
+        ],
+        "face": 5
+       }
+      ]
+     },
+     {
+      "id": "roof",
+      "op": "mesh",
+      "vertices": [
+       [
+        -4.75,
+        6.5,
+        0.0
+       ],
+       [
+        4.75,
+        6.5,
+        0.0
+       ],
+       [
+        4.75,
+        5.0,
+        -7.6
+       ],
+       [
+        -4.75,
+        5.0,
+        -7.6
+       ],
+       [
+        -4.75,
+        5.0,
+        7.6
+       ],
+       [
+        4.75,
+        5.0,
+        7.6
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ],
+       [
+        4,
+        5,
+        1,
+        0
+       ],
+       [
+        4,
+        0,
+        3
+       ],
+       [
+        2,
+        1,
+        5
+       ]
+      ],
+      "face_materials": [
+       "kawara",
+       "kawara",
+       "ridge",
+       "ridge"
+      ]
+     },
+     {
+      "id": "awning",
+      "op": "mesh",
+      "vertices": [
+       [
+        -3.85,
+        2.36,
+        -6.98
+       ],
+       [
+        -0.95,
+        2.36,
+        -6.98
+       ],
+       [
+        -0.95,
+        2.12,
+        -7.72
+       ],
+       [
+        -3.85,
+        2.12,
+        -7.72
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "face_materials": [
+       "awning"
+      ]
+     },
+     {
+      "id": "cabinet",
+      "op": "box",
+      "size": [
+       2.6,
+       0.95,
+       0.42
+      ],
+      "material": "trim",
+      "open": [
+       "bottom",
+       "front"
+      ],
+      "faces": {
+       "back": "showcase"
+      },
+      "transform": {
+       "translate": [
+        -2.4,
+        0.475,
+        -7.19
+       ]
+      }
+     },
+     {
+      "id": "sign",
+      "op": "box",
+      "size": [
+       2.5,
+       0.5,
+       0.08
+      ],
+      "material": "trim",
+      "open": [
+       "front"
+      ],
+      "faces": {
+       "back": "sign"
+      },
+      "transform": {
+       "translate": [
+        -2.4,
+        2.62,
+        -7.08
+       ]
+      }
+     },
+     {
+      "id": "vend",
+      "op": "box",
+      "size": [
+       1.52,
+       1.8,
+       0.66
+      ],
+      "material": "vend_red",
+      "open": [
+       "bottom",
+       "front"
+      ],
+      "faces": {
+       "back": "vend"
+      },
+      "transform": {
+       "translate": [
+        -0.15,
+        0.9,
+        -7.32
+       ]
+      }
+     },
+     {
+      "id": "corner_sign",
+      "op": "box",
+      "size": [
+       0.06,
+       1.55,
+       0.45
+      ],
+      "material": "trim",
+      "open": [
+       "top",
+       "bottom"
+      ],
+      "faces": {
+       "left": "vsign",
+       "right": "vsign"
+      },
+      "transform": {
+       "rotate": [
+        0,
+        225,
+        0
+       ],
+       "translate": [
+        -4.6838,
+        4.2,
+        -7.1838
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "shell",
+      "op": "mesh",
+      "vertices": [
+       [
+        -4.5,
+        0.0,
+        7.0
+       ],
+       [
+        -4.5,
+        5.0,
+        7.0
+       ],
+       [
+        -4.5,
+        6.38,
+        0.0
+       ],
+       [
+        -4.5,
+        5.0,
+        -7.0
+       ],
+       [
+        -4.5,
+        0.0,
+        -7.0
+       ],
+       [
+        4.5,
+        0.0,
+        -7.0
+       ],
+       [
+        4.5,
+        5.0,
+        -7.0
+       ],
+       [
+        4.5,
+        6.38,
+        0.0
+       ],
+       [
+        4.5,
+        5.0,
+        7.0
+       ],
+       [
+        4.5,
+        0.0,
+        7.0
+       ],
+       [
+        -4.5,
+        2.85,
+        -7.0
+       ],
+       [
+        4.5,
+        2.85,
+        -7.0
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3,
+        4
+       ],
+       [
+        5,
+        6,
+        7,
+        8,
+        9
+       ],
+       [
+        10,
+        11,
+        5,
+        4
+       ],
+       [
+        3,
+        6,
+        11,
+        10
+       ],
+       [
+        0,
+        9,
+        8,
+        1
+       ]
+      ],
+      "face_materials": [
+       "siding",
+       "siding",
+       "plaster",
+       "siding",
+       "plaster"
+      ]
+     },
+     {
+      "id": "roof",
+      "op": "mesh",
+      "vertices": [
+       [
+        -4.75,
+        6.5,
+        0.0
+       ],
+       [
+        4.75,
+        6.5,
+        0.0
+       ],
+       [
+        4.75,
+        5.0,
+        -7.6
+       ],
+       [
+        -4.75,
+        5.0,
+        -7.6
+       ],
+       [
+        -4.75,
+        5.0,
+        7.6
+       ],
+       [
+        4.75,
+        5.0,
+        7.6
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ],
+       [
+        4,
+        5,
+        1,
+        0
+       ],
+       [
+        4,
+        0,
+        3
+       ],
+       [
+        2,
+        1,
+        5
+       ]
+      ],
+      "face_materials": [
+       "kawara",
+       "kawara",
+       "ridge",
+       "ridge"
+      ]
+     },
+     {
+      "id": "awning",
+      "op": "mesh",
+      "vertices": [
+       [
+        -3.8,
+        2.36,
+        -6.98
+       ],
+       [
+        -1.0,
+        2.36,
+        -6.98
+       ],
+       [
+        -1.0,
+        2.04,
+        -7.72
+       ],
+       [
+        -3.8,
+        2.04,
+        -7.72
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "face_materials": [
+       "awning"
+      ]
+     },
+     {
+      "id": "sign",
+      "op": "mesh",
+      "vertices": [
+       [
+        -3.65,
+        2.87,
+        -7.12
+       ],
+       [
+        -1.15,
+        2.87,
+        -7.12
+       ],
+       [
+        -1.15,
+        2.37,
+        -7.12
+       ],
+       [
+        -3.65,
+        2.37,
+        -7.12
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "face_materials": [
+       "sign"
+      ]
+     },
+     {
+      "id": "vend",
+      "op": "mesh",
+      "vertices": [
+       [
+        -0.91,
+        1.8,
+        -7.66
+       ],
+       [
+        0.61,
+        1.8,
+        -7.66
+       ],
+       [
+        0.61,
+        0.0,
+        -7.66
+       ],
+       [
+        -0.91,
+        0.0,
+        -7.66
+       ]
+      ],
+      "faces": [
+       [
+        0,
+        1,
+        2,
+        3
+       ]
+      ],
+      "face_materials": [
+       "vend"
+      ]
+     }
+    ]
+   }
+  ],
+  "band": 2
+ }
+}
