@@ -14,7 +14,7 @@ in [README.md](README.md#documentation).
 | `carts/` | The carts, one folder each (`carts/NAME/NAME.akr`), with their binary assets in `art/` and `audio/`, their tests in `tests/`, and the worlds they use in `worlds.txt` |
 | `examples/` | Example recipes for the kits: `assets/` (Asset Kit) and `worlds/` (World Kit) |
 | `tests/` | C unit tests (`test_*.c`), language tests (`lang/`), the kits' Python suites (`test_*.py`) and their fixtures, the Reference Renderer (`reference_renderer/`), the depth mode's measurements (`depth/`) |
-| `tools/` | Generators, the kits and their shared core, the MeiNet gateway, the language fuzzer, the web cart packer, the VS Code extension |
+| `tools/` | Generators, the kits and their shared core, the MeiNet gateway, the workboard, the language fuzzer, the web cart packer, the VS Code extension |
 | `web/` | The browser page (`shell.html`) |
 | `docs/` | The documentation and the spec |
 
@@ -36,7 +36,7 @@ tests/run_lang_tests.sh planes    # only the language tests whose name contains 
 
 `make test` runs the suites in this order: the C unit tests, `tests/run_lang_tests.sh`, the
 MeiNet gateway's tests, then `test_assetkit.py`, `test_worldpack.py`, `test_worldkit.py`,
-`test_mochi.py`, `test_worldverify.py` and `test_worldcache.py`, and last
+`test_mochi.py`, `test_worldverify.py`, `test_worldcache.py` and `test_workboard.py`, and last
 `tools/check_generated.sh` (what `make check-generated` runs: the generators that need only the standard library, and
 `gen_adpcm_vectors.py` when NumPy is there, into a temporary directory, compared with the
 committed files). `make test-carts` runs `carts/lantern/tests/check.sh`,
@@ -104,6 +104,31 @@ details; `carts/worldview/` is the example.
   **SciPy** too for `gen_boot_duet` and `gen_soundlab_assets`.
 - Several generators draw with macOS system fonts (Avenir Next, Hiragino, Georgia, Optima and
   others). Their outputs are committed, so building and running Mei needs none of this.
+
+## Reporting status
+
+Agents working in a worktree report to the workboard ([tools/workboard/README.md](tools/workboard/README.md);
+`python3 tools/workboard/serve.py`, then http://127.0.0.1:8770/). It infers branches, commits,
+uncommitted files and Asset Kit and World Kit reports by itself; what it cannot see is the
+model, the current step, the items planned and the questions. The orchestrator creates the
+record when it starts an agent and gives it the ID:
+
+```sh
+python3 tools/work_status.py new ID --title "Plaza props" --kind asset --model sonnet --lead LEAD --branch BRANCH
+```
+
+The agent, from its worktree (branch and worktree are filled in from there):
+
+```sh
+python3 tools/work_status.py set ID --state working --step "LOD pass" --percent 60   # at each step
+python3 tools/work_status.py item ID bench --state done --size small                  # each item
+python3 tools/work_status.py ask ID "Red or blue awning?"                             # then carry on
+python3 tools/work_status.py done ID --note "3 assets, all verified"                  # or review, block ID "why", stop
+```
+
+Call `set` when the step changes, not on a timer; a card with nothing new for 20 minutes is
+marked stale. `show ID` prints the record with any answers. Records live in `.git/mei-work/`
+(or `$MEI_WORK_DIR`), never in the checkout.
 
 ## Rules
 

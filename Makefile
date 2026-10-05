@@ -148,6 +148,7 @@ test: $(TESTS) $(B)/meiasm $(B)/meic $(B)/mei-headless $(B)/mei-asset-probe $(B)
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_mochi.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_mochi.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldverify.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless SCENE_PROBE=$(B)/mei-scene-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldverify.py; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_worldcache.py"; MEIC=$(B)/meic RUN=$(B)/mei-headless PROBE=$(B)/mei-asset-probe SCENE_PROBE=$(B)/mei-scene-probe PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_worldcache.py; fi
+	@if command -v python3 >/dev/null 2>&1; then echo "== tests/test_workboard.py"; PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_workboard.py; fi
 	@if command -v python3 >/dev/null 2>&1 && python3 -c 'import numpy, PIL' 2>/dev/null; then echo "== tests/reference_renderer: stress scene, subdivision"; mkdir -p $(B)/reference_renderer; { $(RR_RUN) $(RR)/gen_scene.py && $(RR_RUN) $(RR)/oracle.py && $(RR_RUN) $(RR)/geometry_check.py; } > $(B)/reference_renderer/test.log 2>&1 || { tail -5 $(B)/reference_renderer/test.log; echo "FAILED: see $(B)/reference_renderer/test.log"; exit 1; }; fi
 	@if command -v python3 >/dev/null 2>&1; then echo "== tools/check_generated.sh"; PYTHONDONTWRITEBYTECODE=1 ./tools/check_generated.sh; fi
 
