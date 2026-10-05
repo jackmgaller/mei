@@ -9,17 +9,29 @@ viaduct_station_span pieces (x -24..24) and stands on their deck where it has to
 - the hall: a box under the deck (x -24..24, z -7.0..6.5, up into the deck's underside at 8.6),
   its front the ground floor's tile wall to 4.6 with the entrance (x -4..4, 3.0 high) and the
   cream cladding above it with the station's name; an eave over the entrance at 3.45-3.6;
-- inside the entrance, a room (x -10..10, z -6.7..3.0, floor 0.06, ceiling 3.4): ticket
-  machines and the fare chart on the west wall, the office window on the east, the way up and
-  the timetable on the back wall. The ticket gates (ticket_gates) stand in it at (0, 0.06, 0.6),
-  facing -Z. The middle bent's north column (station span, z -4.1) is clad in tile;
+- inside the entrance, a room (x -10..10, z -6.7..3.5, floor 0.06, ceiling 3.4): ticket
+  machines and the fare chart on the -x wall, the office window on the +x wall, the timetable
+  and the sign to the platform (のりば) on the back wall. The ticket gates (ticket_gates) stand
+  in it at (0, 0.06, 0.6), facing -Z. The middle bent's north column (station span, z -4.1) is
+  clad in tile;
+- the platform stair, from the paid side of the gates up to the island platform
+  (station_platform's floor, 10.0). The numbers are in the town's frame (u = world x - 160 = -x
+  here, w = world z - 8 = -z; make_station_viaduct.py's STAIR_*), all three flights at 27.1
+  degrees (0.5125): the first flight rises along the back wall (w -3.5..-1.35) from u 8.0
+  through an opening in the room's -x wall into a stair hall behind it (u 10..17.3, up to the
+  deck's underside), to a landing (u 14.8..17.2, 3.56) under the east span's bent; it turns,
+  and the second flight climbs back west between walls (|w| < 1.2) to a half landing (u 9.4..
+  11.0, 5.52) over the room's ceiling, the third on up to the top step at u 0.65, coming up
+  through the opening in the middle span's deck (viaduct_station_span_stair, u 0.65..7.9) into
+  the platform's stairwell;
 - two stairs at x = -10 and +10, 3 m wide between their walls, from the plaza (foot at
   z -26.6) up 9.0 m over 18 m (26.6 degrees) to a landing at the deck's edge (z -7.6..-8.6,
-  top 9.0) under a roof that follows them (2.6 m over the steps, walkable at 26.6 degrees);
+  top 9.0) under a roof that follows them (2.6 m over the steps, walkable at 26.6 degrees). They
+  are the town's way up onto the viaduct's walkway and its parapet (spec's way up B), not to the
+  trains: nothing crosses track 2 from them;
 - on the deck: the north parapet over the station (the station span leaves it off), z -7.35..
   -7.6, top 10.2, the same section and textures as the viaduct's, with a gap at each stair
-  (x +-8.35..+-11.65); from each gap a crossing of rubber panels over track 2 (z -2.55..-6.1)
-  to the island platform's edge, which is 1.0 m up (station_platform's floor at 10.0).
+  (x +-8.35..+-11.65).
 """
 import importlib.util
 import json
@@ -40,7 +52,8 @@ BACK = 6.5                     # the hall's back wall
 GROUND_TOP = 4.6               # the tile wall's top; cladding to 8.6
 CLAD_TOP = 8.6
 DOOR_HALF, DOOR_H = 4.0, 3.0
-ROOM_HALF, ROOM_BACK, ROOM_H, FLOOR_Y = 10.0, 3.0, 3.4, 0.06
+ROOM_HALF, ROOM_BACK, ROOM_H, FLOOR_Y = 10.0, 3.5, 3.4, 0.06
+ROOM_BACK_WAS = 3.0            # where the back wall stood: the decals keep their places
 EDGE = -7.6                    # the deck's north edge (station span)
 PAR_IN = -7.35                 # the parapet's inner face
 STAIR_X = 10.0
@@ -56,7 +69,24 @@ ROOF_UP = 2.6                  # the roof's top over the steps
 ROOF_T = 0.12
 ROOF_END = -7.75               # the roof's upper end
 GAP_IN, GAP_OUT = STAIR_X - WALL_OUT, STAIR_X + WALL_OUT
-CROSS_Z = (-2.55, -6.1)
+
+# The platform stair, in the town's frame (u east = -x, w north = -z; see the docstring).
+PLATFORM = DECK + 1.0          # station_platform's floor
+S = sv.STAIR_SLOPE
+TOP_U = sv.STAIR_TOP_U
+SW = sv.STAIR_HALF             # the second and third flights' half width
+SWT = sv.STAIR_WALL
+HOLE_END = sv.HOLE_U[1]        # the deck's opening ends here: the walls' tops step down
+SOFFIT, GIRDER = 8.3, 7.8      # the deck's underside between the girders, and the girders'
+F1_W = (-ROOM_BACK, -(SW + SWT))  # the first flight's band, along the back wall
+FOOT_U = 8.0                   # the first flight's foot
+MID_U = (9.4, 11.0)            # the half landing
+MID_Y = PLATFORM - S * (MID_U[0] - TOP_U)
+LAND_U0 = (MID_Y - FLOOR_Y + S * (MID_U[1] + FOOT_U)) / (2 * S)   # the landing's west edge
+LAND_Y = FLOOR_Y + S * (LAND_U0 - FOOT_U)
+LAND_U1 = LAND_U0 + 2.4        # its east edge, the stair hall's end wall
+HALL_U = ROOM_HALF             # the room's -x wall: the stair hall starts here
+IN = 0.02                      # what the walls' tops go into the deck
 
 
 def r(v):
@@ -106,12 +136,11 @@ MATERIALS = {
     "lockers": {"color": "#d2d6d4", "texture": tex("lockers")},
     "machines": {"color": "#c9ced0", "texture": tex("machines")},
     "fare_chart": {"color": "#f6f6f0", "tag": "sign", "texture": tex("fare_chart")},
-    "way_up": {"color": "#2c2a28", "texture": tex("way_up")},
+    "noriba": {"color": "#1e2838", "tag": "sign", "texture": tex("noriba")},
     "timetable": {"color": "#f6f6f0", "texture": tex("timetable")},
     "poster_a": {"color": "#e8a050", "texture": tex("poster_a")},
     "poster_b": {"color": "#3a6ab0", "texture": tex("poster_b")},
     "office": {"color": "#c8d4d8", "texture": tex("office")},
-    "crossing": {"color": "#4a4a50", "tag": "floor", "texture": tex("crossing")},
 }
 
 
@@ -190,6 +219,10 @@ def lockers():
 def room():
     zc = (FRONT + 0.3 + ROOM_BACK) / 2
     depth = ROOM_BACK - (FRONT + 0.3)
+    zc_was = (FRONT + 0.3 + ROOM_BACK_WAS) / 2
+    # The -x wall stops at the stair's opening (z 1.35..3.5, the first flight's band).
+    w_z1 = -F1_W[1]
+    wc, wd = (FRONT + 0.3 + w_z1) / 2, w_z1 - (FRONT + 0.3)
     keep_only = lambda keep: [s for s in ("top", "bottom", "left", "right", "back", "front")
                               if s != keep]
     return [
@@ -199,16 +232,17 @@ def room():
             open_=keep_only("bottom"),
             decals=[decal(f"light_{k}", "bottom", "lamp", [6.0, 0.25], [0, z])
                     for k, z in enumerate((-2.6, 0.0, 2.6))]),
-        box("room_west", [0.1, ROOM_H, depth], [-ROOM_HALF - 0.05, ROOM_H / 2, zc], "interior",
+        box("room_west", [0.1, ROOM_H, wd], [-ROOM_HALF - 0.05, ROOM_H / 2, wc], "interior",
             open_=keep_only("right"),
-            decals=[decal("fare_chart", "right", "fare_chart", [3.2, 1.2], [-0.85, 0.65])]),
+            decals=[decal("fare_chart", "right", "fare_chart", [3.2, 1.2],
+                          [-0.85 + zc_was - wc, 0.65])]),
         box("room_east", [0.1, ROOM_H, depth], [ROOM_HALF + 0.05, ROOM_H / 2, zc], "interior",
             open_=keep_only("left"),
-            decals=[decal("office", "left", "office", [2.4, 1.2], [0.0, 0.0]),
-                    decal("poster", "left", "poster_b", [0.6, 0.9], [-3.0, 0.0])]),
+            decals=[decal("office", "left", "office", [2.4, 1.2], [0.0 - zc_was + zc, 0.0]),
+                    decal("poster", "left", "poster_b", [0.6, 0.9], [-3.0 - zc_was + zc, 0.0])]),
         box("room_back", [2 * ROOM_HALF, ROOM_H, 0.1], [0, ROOM_H / 2, ROOM_BACK + 0.05],
             "interior", open_=keep_only("back"),
-            decals=[decal("way_up", "back", "way_up", [4.0, 2.6], [0, -0.33]),
+            decals=[decal("noriba", "back", "noriba", [1.6, 0.4], [-6.4, 1.25]),
                     decal("timetable", "back", "timetable", [1.2, 1.6], [-4.5, 0.15]),
                     decal("poster_a", "back", "poster_a", [0.6, 0.9], [4.4, 0.1]),
                     decal("poster_b", "back", "poster_b", [0.6, 0.9], [5.2, 0.1])]),
@@ -218,6 +252,110 @@ def room():
             [0, (ROOM_H + FLOOR_Y) / 2, -4.1], "tile", open_=["top", "bottom"],
             decals=[decal("poster", "back", "poster_a", [0.6, 0.9], [0, 0.1])]),
     ]
+
+
+# ---------------------------------------------------------------------------- the platform stair
+# Built in the town's frame (u, y, w) and turned into the asset's (x, y, z) = (-u, y, -w): a
+# rotation, so the faces keep their winding.
+def here(p):
+    return [r(-p[0]), r(p[1]), r(-p[2])]
+
+
+def uyw_mesh(id_, polys, material, uvs=False):
+    """A mesh node from polygons (corners in (u, y, w), the normal they face, a material; with
+    uvs, a list of corner UVs too)."""
+    m = sv.Mesh(id_, textured=uvs)
+    for poly in polys:
+        corners, normal, mat = poly[:3]
+        m.poly([here(c) for c in corners], [-normal[0], normal[1], -normal[2]], mat,
+               poly[3] if uvs else None)
+    n = m.node()
+    if not uvs:
+        n["face_materials"] = [p[2] for p in polys]
+    n["material"] = material
+    return n
+
+
+def at_u(pts, w):
+    """(u, y) outline points on the plane w."""
+    return [[u, y, w] for u, y in pts]
+
+
+def at_w(pts, u):
+    """(w, y) outline points on the plane u."""
+    return [[u, y, w] for w, y in pts]
+
+
+def flight(u0, y0, u1, y1, w0, w1):
+    """A flight's steps as one textured slope, a repeat a 0.3 m of rise as on the outside
+    stairs (v from the foot up)."""
+    n = round(abs(y1 - y0) / 0.3)
+    width = (w1 - w0) / 2.0
+    return ([[u0, y0, w0], [u0, y0, w1], [u1, y1, w1], [u1, y1, w0]], [0, 1, 0], "tread",
+            [[0, 0], [width, 0], [width, n], [0, n]])
+
+
+def flights():
+    return [flight(FOOT_U, FLOOR_Y, LAND_U0, LAND_Y, F1_W[0], F1_W[1]),
+            flight(LAND_U0, LAND_Y, MID_U[1], MID_Y, -SW, SW),
+            flight(MID_U[0], MID_Y, TOP_U, PLATFORM, -SW, SW)]
+
+
+def tunnel_wall(top_end, hall_u=HALL_U, over=ROOM_H + 0.1):
+    """A wall's outline (u, y) along the second and third flights, from the room's ceiling (and
+    below it the ground, in the stair hall) up into the deck: to the platform's base (DECK) over
+    the deck's opening, to the deck's underside beyond it; ending at top_end."""
+    return [(TOP_U, over), (hall_u, over), (hall_u, 0.0), (top_end, 0.0),
+            (top_end, SOFFIT + IN), (HOLE_END, SOFFIT + IN), (HOLE_END, DECK), (TOP_U, DECK)]
+
+
+def soffit_line(w0, w1):
+    """The deck's underside across w0..w1 (w0 < w1), into it by IN: (w, y) points from w1 back
+    to w0, with the north girder's foot (south of w -3.0) where the band reaches it."""
+    pts = [(w1, SOFFIT + IN)]
+    if w0 < -3.0:
+        pts += [(-3.0 + 0.01, SOFFIT + IN), (-3.2 - 0.01, GIRDER + IN), (w0, GIRDER + IN)]
+    else:
+        pts += [(w0, SOFFIT + IN)]
+    return pts
+
+
+def platform_stair(level=0):
+    """The stair to the platform: the flights, the landings and the walls round them."""
+    fw0, fw1 = F1_W
+    steps = uyw_mesh("platform_steps", flights(), "tread", uvs=True)
+    floors = [
+        (at_w([(fw0, LAND_Y), (SW, LAND_Y)], LAND_U0) + at_w([(SW, LAND_Y), (fw0, LAND_Y)],
+                                                              LAND_U1), [0, 1, 0], "floor"),
+        ([[MID_U[0], MID_Y, -SW], [MID_U[1], MID_Y, -SW], [MID_U[1], MID_Y, SW],
+          [MID_U[0], MID_Y, SW]], [0, 1, 0], "floor"),
+    ]
+    walls = [
+        # along the second and third flights: the north wall (to the end wall) and the
+        # divider's south face (to the landing)
+        (at_u(tunnel_wall(LAND_U1), SW), [0, 0, -1], "interior"),
+        (at_u(tunnel_wall(LAND_U0), -SW), [0, 0, 1], "interior"),
+    ]
+    if level == 0:
+        walls += [
+            # the divider's face to the first flight, and its end at the landing
+            (at_u([(HALL_U, 0.0), (LAND_U0, 0.0), (LAND_U0, SOFFIT + IN), (HALL_U, SOFFIT + IN)],
+                  fw1), [0, 0, -1], "interior"),
+            (at_w([(fw1, LAND_Y - 0.1), (-SW, LAND_Y - 0.1), (-SW, SOFFIT + IN),
+                   (fw1, SOFFIT + IN)], LAND_U0), [1, 0, 0], "interior"),
+            # the first flight's side in the room, below the divider
+            ([[FOOT_U, FLOOR_Y, fw1], [HALL_U, FLOOR_Y, fw1],
+              [HALL_U, FLOOR_Y + S * (HALL_U - FOOT_U), fw1]], [0, 0, 1], "dark"),
+            # the stair hall's back wall, its end wall, and over the room's ceiling the end of
+            # the first flight's band
+            (at_u([(HALL_U, 0.0), (LAND_U1, 0.0), (LAND_U1, GIRDER + IN), (HALL_U, GIRDER + IN)],
+                  fw0), [0, 0, 1], "interior"),
+            (at_w([(fw0, 0.0), (SW, 0.0)] + soffit_line(fw0, SW), LAND_U1), [-1, 0, 0],
+             "interior"),
+            (at_w([(fw0, ROOM_H), (fw1, ROOM_H)] + soffit_line(fw0, fw1), HALL_U), [1, 0, 0],
+             "interior"),
+        ]
+    return [steps, uyw_mesh("platform_stair", floors + walls, "interior")]
 
 
 # ---------------------------------------------------------------------------- the stairs
@@ -312,12 +450,6 @@ def column():
     return box("column", [0.5, top, 0.5], [0, top / 2, z], "stone", open_=["top", "bottom"])
 
 
-def crossing():
-    zc = (CROSS_Z[0] + CROSS_Z[1]) / 2
-    return box("crossing", [2.4, 0.06, abs(CROSS_Z[0] - CROSS_Z[1])], [0, DECK + 0.03, zc],
-               "dark", open_=["bottom"], faces={"top": "crossing"})
-
-
 def flat_walls():
     """Level 1's stair walls: each one polygon, drawn from both sides."""
     pts = wall_outline()
@@ -332,7 +464,7 @@ def stair(level=0):
     kids = [flight_top(), flight_under(), landing(), walls() if level == 0 else flat_walls(),
             roof()]
     if level == 0:
-        kids += [posts(), column(), crossing()]
+        kids += [posts(), column()]
     elif level == 1:
         kids += [column()]
     return {"id": "stairs", "op": "group",
@@ -371,14 +503,14 @@ def parapet():
 # ---------------------------------------------------------------------------- levels
 def level0():
     return [hall_box(), facade(0), cladding(0), eave(0), lockers()] + room() + \
-           [stair(0), parapet()]
+           [stair(0), parapet()] + platform_stair(0)
 
 
 def level1():
     return [hall_box(1), facade(1), cladding(1), eave(1),
             box("doorway", [2 * DOOR_HALF, DOOR_H, 0.1], [0, DOOR_H / 2, FRONT + 0.3 + 0.05],
                 "dark", open_=["top", "bottom", "left", "right", "front"]),
-            stair(1), parapet()]
+            stair(1), parapet()] + platform_stair(1)
 
 
 def level2():
@@ -446,11 +578,13 @@ def collision():
                        [-HALF + 0.3, -(BACK - 0.3)], [HALF - 0.3, -(BACK - 0.3)],
                        [HALF - 0.3, -(f1 - o)], [HALF - 0.05, -(f1 - o)], [HALF - 0.05, -BACK],
                        [-HALF + 0.05, -BACK]], -0.1, CLAD_TOP - 0.1),
-        plan("room", [[-ROOM_HALF - 0.2, -(f1 - o)], [-ROOM_HALF, -(f1 - o)],
-                      [-ROOM_HALF, -ROOM_BACK], [ROOM_HALF, -ROOM_BACK],
-                      [ROOM_HALF, -(f1 - o)], [ROOM_HALF + 0.2, -(f1 - o)],
-                      [ROOM_HALF + 0.2, -(ROOM_BACK + 0.2)], [-ROOM_HALF - 0.2, -(ROOM_BACK + 0.2)]],
-             -0.1, ROOM_H + 0.1),
+        # the room's +x and back walls, the back wall running on behind the stair hall
+        plan("room", [[ROOM_HALF, -(f1 - o)], [ROOM_HALF + 0.2, -(f1 - o)],
+                      [ROOM_HALF + 0.2, -(ROOM_BACK + 0.2)], [-(LAND_U1 + 0.1), -(ROOM_BACK + 0.2)],
+                      [-(LAND_U1 + 0.1), -ROOM_BACK], [ROOM_HALF, -ROOM_BACK]],
+             -0.1, GIRDER + IN),
+        # its -x wall, up to the stair's opening
+        cbox("room_wall", -ROOM_HALF - 0.2, -ROOM_HALF, -0.1, ROOM_H + 0.1, f1 - o, -F1_W[1] + o),
         cbox("room_ceiling", -ROOM_HALF - 0.1, ROOM_HALF + 0.1, ROOM_H, ROOM_H + 0.2, f1 - 0.06,
              ROOM_BACK + 0.1, None),
         cbox("room_floor", -ROOM_HALF - 0.1, ROOM_HALF + 0.1, FLOOR_Y - 0.2, FLOOR_Y, f1 - 0.06,
@@ -476,6 +610,7 @@ def collision():
         ]
     for k, (x0, x1) in enumerate(SEGMENTS):
         nodes.append(cbox(f"parapet_{k}", x0, x1, DECK, TOP, EDGE, PAR_IN))
+    nodes += platform_stair_collision()
     for n in nodes:
         if "points" in n:
             n["points"] = [[r(a), r(b)] for a, b in n["points"]]
@@ -484,6 +619,41 @@ def collision():
             "lighting": {"mode": "vertical", "ambient": 0.5},
             "verification": {"required": True, "depth": True, "perspective": True},
             "nodes": nodes}
+
+
+def ubox(id_, u0, u1, y0, y1, w0, w1, open_=("bottom",)):
+    """cbox in the town's frame."""
+    return cbox(id_, -u1, -u0, y0, y1, -w1, -w0, open_)
+
+
+def uprism(id_, outline, w0, w1):
+    """An outline in (u, y) extruded across w0..w1."""
+    return slab_xy(id_, [[-u, y] for u, y in outline], -w1, -w0)
+
+
+def platform_stair_collision():
+    """The flights as slopes (the second and third as slabs over the room), the landings, the
+    walls. Touching pieces overlap by a centimetre or two, by different amounts where faces
+    would otherwise share a plane."""
+    fw0, fw1 = F1_W
+    o, d = 0.02, S * 0.02
+    over = ROOM_H + 0.15                         # the walls' foot over the room, in its ceiling
+    return [
+        uprism("flight_1", [(FOOT_U, FLOOR_Y), (LAND_U0 + 0.03, LAND_Y + S * 0.03),
+                            (LAND_U0 + 0.03, -0.05), (FOOT_U, -0.05)], fw0 - o, fw1 + o),
+        ubox("landing", LAND_U0, LAND_U1 + o, 0.0, LAND_Y, fw0 - 0.03, SW + 0.04),
+        uprism("flight_2", [(MID_U[1] - o, MID_Y + d), (LAND_U0 + 0.03, LAND_Y - S * 0.03),
+                            (LAND_U0 + 0.03, -0.03), (MID_U[1] - o, -0.03)], -SW - o, SW + o),
+        ubox("half_landing", MID_U[0], MID_U[1], MID_Y - 0.4, MID_Y, -SW - 0.03, SW + 0.03,
+             ("left", "right")),
+        uprism("flight_3", [(MID_U[0] + o, MID_Y - d), (TOP_U, PLATFORM), (TOP_U, PLATFORM - SLAB),
+                            (MID_U[0] + o, MID_Y - d - SLAB)], -SW - 0.01, SW + 0.01),
+        uprism("wall_n", tunnel_wall(LAND_U1 + 0.05, HALL_U + 0.05, over), SW, SW + SWT),
+        uprism("divider", tunnel_wall(LAND_U0 + 0.015, HALL_U + 0.05, over), -SW - SWT, -SW),
+        ubox("end_wall", LAND_U1, LAND_U1 + 0.12, 0.0, SOFFIT + 0.04, fw0 - 0.1, SW + SWT + o),
+        ubox("over_room", HALL_U + 0.03, HALL_U + 0.18, ROOM_H + 0.05, SOFFIT + 0.05, fw0 - o,
+             fw1 + 0.05),
+    ]
 
 
 def slab_xy(id_, outline, z0, z1):

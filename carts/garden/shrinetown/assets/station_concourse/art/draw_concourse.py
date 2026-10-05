@@ -200,18 +200,14 @@ c.done()
 
 # ---- the way up to the platform, on the hall's back wall: 48 x 32 for 4 x 2.7 m. A stair
 # rising into the light under a hanging "for the platform" sign.
-c = Cell('way_up', 0, 64, 48, 32)
-c.rect(0, 0, 47, 31, '#e2d8c0')
-c.rect(4, 6, 43, 31, '#2c2a28')                 # the opening
-for i in range(9):                               # steps rising away, lit from above
-    y = 31 - i * 3
-    shade = ['#8e8a82', '#9a968c', '#a6a296', '#b2ae a2'.replace(' ', ''), '#bcb8ae', '#c6c2b6',
-             '#cfcbc0', '#d8d4ca', '#e0ddd4'][i]
-    c.rect(6 + i, y - 2, 41 - i, y, shade)
-    c.rect(6 + i, y - 2, 41 - i, y - 2, '#e0b830')
-c.rect(15, 4, 32, 9, NAVY)                       # the sign
-c.text('のりば', 15, 4, 18, 6, 6, WHITE)
-c.rect(15, 4, 15, 9, ORANGE)
+c = Cell('noriba', 0, 64, 48, 12)                # 1.6 x 0.4 m on the back wall, past the gates
+c.rect(0, 0, 47, 11, '#3a3a3c')
+c.rect(1, 1, 46, 10, NAVY)
+c.rect(1, 1, 2, 10, ORANGE)
+for i in range(4):                               # the arrow, to the left: the stair's way
+    c.rect(5 + i, 5 - i, 5 + i, 6 + i, WHITE)
+c.rect(9, 5, 14, 6, WHITE)
+c.text('のりば', 16, 1, 30, 10, 9, WHITE)
 c.done()
 
 # ---- the timetable: 24 x 32 for 1.2 x 1.6 m. A white board with hour rows, minutes in black
