@@ -1,0 +1,7 @@
+[
+ {"name": "from_shoulder", "eye": [3, 1.6, 9], "target": [0, 3, 0]},
+ {"name": "plate_close", "eye": [1.5, 2.2, 4.5], "target": [0.1, 0.4, 1.2]},
+ {"name": "trunk_up", "eye": [4, 1.6, -6], "target": [0, 18, 0]},
+ {"name": "across_gorge", "eye": [-6, 6, -40], "target": [0, 14, 0]},
+ {"name": "snapped_top", "eye": [5, 38, -5], "target": [0, 35, 0]}
+]

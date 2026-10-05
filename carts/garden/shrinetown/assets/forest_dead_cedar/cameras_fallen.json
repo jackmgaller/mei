@@ -1,0 +1,7 @@
+[
+ {"name": "on_the_rim", "eye": [0.5, 1.6, 4.5], "target": [0, -3, -14]},
+ {"name": "on_the_log", "eye": [0, 1.4, -6], "target": [0, -8, -26]},
+ {"name": "from_below", "eye": [-14, -10, -20], "target": [0, -6, -14]},
+ {"name": "from_shelf", "eye": [2, -12.4, -38], "target": [0, -4, -10]},
+ {"name": "stump_close", "eye": [2.5, 2.4, 2.5], "target": [0, 1.1, -0.8]}
+]
