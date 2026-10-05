@@ -1,0 +1,235 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "life_koi",
+ "budget": {
+  "vertices": 60,
+  "triangles": 30
+ },
+ "materials": {
+  "scales": {
+   "color": "#e8782a",
+   "texture": {
+    "image": "art/koi_back.png",
+    "projection": "planar",
+    "axis": "z",
+    "scale": [
+     0.16,
+     0.44
+    ],
+    "offset": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "fin": {
+   "color": "#f0a860",
+   "palette": true,
+   "double_sided": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.55
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "loft",
+   "caps": true,
+   "material": "scales",
+   "sections": [
+    {
+     "y": -0.22,
+     "points": [
+      [
+       -0.02,
+       0
+      ],
+      [
+       0,
+       0.02
+      ],
+      [
+       0.02,
+       0
+      ],
+      [
+       0,
+       -0.02
+      ]
+     ]
+    },
+    {
+     "y": -0.02,
+     "points": [
+      [
+       -0.065,
+       0
+      ],
+      [
+       0,
+       0.05
+      ],
+      [
+       0.065,
+       0
+      ],
+      [
+       0,
+       -0.05
+      ]
+     ]
+    },
+    {
+     "y": 0.2,
+     "points": [
+      [
+       -0.045,
+       0
+      ],
+      [
+       0,
+       0.04
+      ],
+      [
+       0.045,
+       0
+      ],
+      [
+       0,
+       -0.04
+      ]
+     ]
+    }
+   ],
+   "transform": {
+    "rotate": [
+     -90,
+     0,
+     0
+    ],
+    "translate": [
+     0,
+     0.05,
+     0
+    ]
+   }
+  },
+  {
+   "id": "tail",
+   "op": "mesh",
+   "material": "fin",
+   "vertices": [
+    [
+     0,
+     0.05,
+     0.2
+    ],
+    [
+     -0.075,
+     0.05,
+     0.34
+    ],
+    [
+     0,
+     0.05,
+     0.29
+    ],
+    [
+     0.075,
+     0.05,
+     0.34
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2
+    ],
+    [
+     0,
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "dorsal",
+   "op": "mesh",
+   "material": "fin",
+   "vertices": [
+    [
+     0,
+     0.095,
+     0.0
+    ],
+    [
+     0,
+     0.095,
+     0.12
+    ],
+    [
+     0,
+     0.16,
+     0.1
+    ]
+   ],
+   "faces": [
+    [
+     0,
+     1,
+     2
+    ]
+   ]
+  },
+  {
+   "id": "pectorals",
+   "op": "group",
+   "children": [
+    {
+     "id": "pectoral",
+     "op": "mesh",
+     "material": "fin",
+     "vertices": [
+      [
+       0.055,
+       0.04,
+       -0.1
+      ],
+      [
+       0.14,
+       0.03,
+       -0.04
+      ],
+      [
+       0.06,
+       0.04,
+       -0.03
+      ]
+     ],
+     "faces": [
+      [
+       0,
+       1,
+       2
+      ]
+     ]
+    }
+   ],
+   "modifiers": [
+    {
+     "op": "mirror",
+     "axis": "x"
+    }
+   ]
+  }
+ ]
+}
