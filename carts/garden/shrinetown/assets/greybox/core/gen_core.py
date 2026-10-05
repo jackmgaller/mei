@@ -572,6 +572,11 @@ parts = {'paths': paths, 'layers': layers,
          'terrain': {'materials': TERRAIN_MAT, 'fields': {'core': field}},
          'scatter': scatter}
 
+# the placement zones (place/ZONE.py) change the cells and the part before they are written
+sys.path.insert(0, TOWN)
+from place import apply as apply_zones
+apply_zones('core', globals())
+
 # ------------------------------------------------------------------ write
 os.makedirs(HERE, exist_ok=True)
 for f in os.listdir(HERE):
