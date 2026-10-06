@@ -9,17 +9,18 @@ Called by the placement hook (place/__init__.py) from three generators:
   stop, newsstand, bike racks and bicycles, taxi rank, phone booth, postbox, vending machines,
   benches, planters, the konbini's corner pole), the parapet rails along the real parapets, the
   coins the real stairs and canopy moved, and the road's skew under the underpass;
-- core(ns), from assets/greybox/core/gen_core.py (rows 2-3): the viaduct's two curves past the
-  underpass, where it leaves the level, and the wall that closes its deck;
+- core(ns), from assets/greybox/core/gen_core.py (rows 2-3): the core's grey viaduct pieces go
+  (the line ends in the town's rows since the alpha's frame, DESIGN.md 12.9);
 - world(ns), from make_world.py: the asset directories.
 
 The viaduct is a chain of 16 m pieces from x -8 along z 8 (asset frames in the docstrings of
 assets/viaduct_span_16/make_viaduct.py and make_station_viaduct.py): eight standard spans, the
 west taper, the three station spans (x 136-184, joints at x = 8 mod 16), the east taper, five
 standard spans to x 280, three curves (90 degrees left, R 30.56), four spans north along
-x 310.56, the underpass over the front road (24 m, the road through it 25 degrees north of east)
-and two curves right, out of the level to the east between the rims (z 132-154). DESIGN.md
-12.6 has what changed from the grey box and why.
+x 310.56 and the underpass over the front road (24 m, the road through it 25 degrees north of
+east), where a concrete wall closes the deck (z 126.56). DESIGN.md 12.6 has what changed from the
+grey box and why; 12.9 why the line ends there (it curved out of the level to the east, into the
+neighbour's back that is the frame there, and its deck's outer faces let a body round the frame).
 """
 import math
 
@@ -30,7 +31,8 @@ R_CURVE = 16.0 / (math.pi / 6)  # viaduct_curve_16: 30 degrees in 16 m at the ce
 CURVE_END = (R_CURVE * math.sin(math.pi / 12), R_CURVE * (1 - math.cos(math.pi / 12)))
 HALF_STD, HALF_WIDE = 5.875, 7.475   # the parapet rails off the centre line: standard, station
 UNDERPASS = 24.0
-END_X = 315.0                   # the deck's closing wall stands where the centre line reaches this x
+RAIL_SHORT = 2.0                # the parapet rails stop this far short of the closing wall (a rider
+                                # passes through walls: riding ignores collision)
 
 # The town's frame of the station: its middle (concourse, platform, the stair span) at x 160.
 STATION_X, STATION_Z = 160.0, 8.0
@@ -107,29 +109,25 @@ def viaduct():
     for _ in range(4):
         straight('viaduct_span_16')                                    # z 38.56 .. 102.56
     # the underpass: its +X to the south (yaw 90), so the road runs 25 degrees north of east
-    straight('viaduct_underpass', UNDERPASS, yaw=90.0)                 # z 102.56 .. 126.56
-    for _ in range(2):
-        curve(False)                                                   # east, out of the level
+    straight('viaduct_underpass', UNDERPASS, yaw=90.0)                 # z 102.56 .. 126.56: the end
     return pieces, line
 
 
 PIECES, LINE = viaduct()
 
 
-def line_to(x_end):
-    """The centre line cut where it first reaches x = x_end past the underpass (the closing wall)."""
-    out = []
-    for a, b in zip(LINE, LINE[1:]):
-        out.append(a)
-        if a[1] > 110 and a[0] < x_end <= b[0]:
-            t = (x_end - a[0]) / (b[0] - a[0])
-            out.append((x_end, a[1] + t * (b[1] - a[1]), a[2] + t * (b[2] - a[2]), a[3]))
-            return out
-    raise ValueError('the line does not reach x %s' % x_end)
+def line_short(d):
+    """The centre line less its last d metres (the end is the underpass's straight north end)."""
+    out = list(LINE)
+    x, z, h, half = out[-1]
+    px, pz = out[-2][0], out[-2][1]
+    assert abs(px - x) < 1e-6 and z - pz > d, (out[-2], out[-1])
+    out[-1] = (x, z - d, h, half)
+    return out
 
 
-CUT = line_to(END_X)
-END = CUT[-1]                    # (x, z, heading, half) where the wall stands
+CUT = LINE
+END = CUT[-1]                    # (x, z, heading, half) where the wall stands: the deck's north end
 
 
 def distinct(points):
@@ -166,7 +164,7 @@ def split(rail, gaps):
 
 def rails():
     """{name: [(x, z)]} of the parapet rails (y 10.2): the south one whole, the north one in three."""
-    pts = distinct(line_to(END_X - 0.5))     # stopping 0.5 m short of the closing wall
+    pts = distinct(line_short(RAIL_SHORT))     # stopping short of the closing wall
     south = offset(pts, -1)
     north = offset(pts, 1)
     # (through the station both are the wide section's: z 15.475 on station_concourse, 0.525)
@@ -267,10 +265,14 @@ def town(ns):
     # -- the grey boxes go: the viaduct's spans, the station, the plaza's buildings
     remove(lambda p: p['id'].startswith('viaduct_') or p['id'] in GREY)
 
-    # -- the viaduct's pieces in the town's rows
+    # -- the viaduct's pieces (all in the town's rows) and the wall that closes the deck at the
+    # underpass's north end: concrete, 5.5 m over the deck, 13.2 m wide over both parapets
+    # (assets/viaduct_end_wall), its south face on the deck's end
     for k, (asset, x, z, yaw) in enumerate(PIECES):
-        if z < ns['ROW_MAX']:
-            _put(ns, put_town, f'viaduct_{k}', asset, x, 0.0, z, yaw)
+        assert z < ns['ROW_MAX'], (asset, x, z)
+        _put(ns, put_town, f'viaduct_{k}', asset, x, 0.0, z, yaw)
+    x, z, h, _ = END
+    _put(ns, put_town, 'viaduct_end', 'viaduct_end_wall', x, DECK, z - 0.3, (90.0 - h) % 360, collision='self')
 
     # -- the station: concourse (its stairs, hall, platform stair), ticket gates, platform
     _put(ns, put_town, 'station_concourse', 'station_concourse', STATION_X, 0.0, STATION_Z, 180.0)
@@ -335,18 +337,7 @@ def core(ns):
     placements = ns['placements']
     for cid in list(placements):
         placements[cid] = [p for p in placements[cid] if p['id'] not in ('viaduct_span', 'viaduct_pier', 'viaduct_end')]
-
-    def put_core(pid, p, x, z):
-        cid = ns['cell_of'](x, z)
-        assert cid is not None, (pid, x, z)
-        placements.setdefault(cid, []).append(p)
-
-    for k, (asset, x, z, yaw) in enumerate(PIECES):
-        if z >= 128:
-            _put(ns, put_core, f'viaduct_{k}', asset, x, 0.0, z, yaw)
-    # the wall that closes the deck (the core's grey wall, 5.5 m over the deck) across the line
-    x, z, h, _ = END
-    _put(ns, put_core, 'viaduct_end', 'gbc_viaduct_end', x, DECK, z, (90.0 - h) % 360, collision='self')
+    assert all(z < 128 for _, _, z, _ in PIECES)        # the line ends in the town's rows
 
 
 # ------------------------------------------------------------------ stage: make_world.py

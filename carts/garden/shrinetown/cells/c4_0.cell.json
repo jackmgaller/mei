@@ -10,23 +10,25 @@
  "placements": [
   {
    "id": "edge_s5",
-   "asset": "gbt_edge_fence_4",
+   "asset": "edge_fence_34",
    "position": [
     273.0,
     0,
-    0.2
+    0.05
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 180.0
   },
   {
    "id": "edge_e0",
-   "asset": "gbt_edge_fence_5",
+   "asset": "edge_fence_64",
    "position": [
-    319.8,
+    319.95,
     0,
     32.0
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 90.0
   },
   {
    "id": "neighbour_s7",

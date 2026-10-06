@@ -10,13 +10,14 @@
  "placements": [
   {
    "id": "edge_w1",
-   "asset": "gbt_edge_fence_6",
+   "asset": "edge_fence_40",
    "position": [
-    0.2,
+    0.05,
     0,
     84.0
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 270.0
   },
   {
    "id": "neighbour_w2",
@@ -33,7 +34,7 @@
    "id": "hoarding_w",
    "asset": "edge_hoarding",
    "position": [
-    0.2,
+    0.05,
     0,
     111.0
    ],
@@ -225,6 +226,17 @@
    ],
    "yaw": 90,
    "collision": "town_bench_col"
+  },
+  {
+   "id": "neighbour_w3",
+   "asset": "edge_neighbour_w3",
+   "position": [
+    0.2,
+    0.0,
+    116.0
+   ],
+   "yaw": 270.0,
+   "collision": "self"
   }
  ],
  "entities": [

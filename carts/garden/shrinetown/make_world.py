@@ -65,11 +65,15 @@ ops += town['terrain']['operations']
 ops += core_field['operations']
 ops += mountain['terrain']['operations']
 # The level's rims where the regions left none (spec 1.8: no jump or glide leaves the level): the
-# west edge along the park and the bamboo's foot (the mountain's west rim, +14, starts at z 256),
-# and the east edge north of the road beside the cemetery (the viaduct leaves at z 134-152).
-ops += [{'op': 'cliff', 'area': {'rect': [0, 118, 2, 256]}, 'height': 10.0, 'material': 'rock'},
-        {'op': 'cliff', 'area': {'rect': [318, 118, 320, 132]}, 'height': 8.0, 'material': 'rock'},
+# west edge along the park and the bamboo's foot (the mountain's west rim starts at z 256), and the
+# east edge beside the cemetery. South of z 128 on the west and z 154 on the east the frame is the
+# neighbours' backs (place/art.py).
+ops += [{'op': 'cliff', 'area': {'rect': [0, 128, 2, 256]}, 'height': 10.0, 'material': 'rock'},
         {'op': 'cliff', 'area': {'rect': [318, 154, 320, 256]}, 'height': 8.0, 'material': 'rock'}]
+# Above the rims stand the frame's rock walls (place/art.py, assets/edge_rock): the frame's rule
+# (DESIGN.md 12.9, "The level's frame") asks 13-72 m there, which as terrain at the field's edge
+# would be drawn as ramps by the far levels and stand-ins (their grid points on the edge take the
+# rim's top).
 
 # ---- paths: the regions', with the routes that cross a row seam joined
 paths = {}

@@ -1038,7 +1038,7 @@ sections 1–11 while building it; the region notes (`notes/town.md`, `notes/cor
 | Viaduct | segments per region | one deck and parapet sweep along the whole line, to x 315.5, closed there by a wall | the parapets reached past x 320; walking off its end left the level |
 | Canal | per region | one cliff, z 0–292 | two cliffs at a seam made a wall across it |
 | Culvert | bed −2.0 to z 128 | the bed rises to the pond's (−1.4 at z 134) | it ended in a step under the pond's water |
-| Level's frame | fences 3 m; rims north, west (rows 4–5), east (rows 4–5) | the neighbours' backs (22–28 m) beyond the south, east and west of the town; hoardings 5.5 m at the front road's ends; rims west (rows 2–3) and east (rows 1–3) | a jump or glide off the viaduct, the danchi or the chimney left the level |
+| Level's frame | fences 3 m; rims north, west (rows 4–5), east (rows 4–5) | the neighbours' backs (22–28 m) beyond the south, east and west of the town; hoardings 5.5 m at the front road's ends; rims west (rows 2–3) and east (rows 1–3). Sized for a double jump and grab (5.15 m); re-sized by the frame's rule in 12.9 | a jump or glide off the viaduct, the danchi or the chimney left the level |
 | Walkway foot | a stair round a cedar (102, 118) | a stair from the bridge's end (6.0) east along z 120 into the courtyard | not built by any region |
 | Woods trail, canal path, stream | a path per region | one path each across the seams | |
 | Sake brewery | the core's box | the mountain's `gbm_sakagura` (bounce sugidama) at (15, 0.66, 218) | |
@@ -1355,3 +1355,64 @@ same cameras (triangles, draw CPU, GPU), before → after: courtyard wall north 
 461,553; stage 1,333, 336,505, 402,855 → 1,403, 348,464, 391,151; station plaza 1,350, 415,031,
 391,185 → 1,336, 412,739, 388,860; canal by the watermill 1,736, 346,810, 528,387 → 1,774,
 352,422, 531,829. The pack is 11,480,668 bytes (11,456,388 before).
+
+### 12.9 Alpha fixes
+
+#### The level's frame (workstream 8)
+
+The alpha review (reviews 08, 12 and 13) found about eight ways out of the level. One cause: the
+frame was sized for a double jump and grab (5.15 m), but a backflip and a ledge grab reach
+6.55 m, a running triple jump starts a glide 4.5 m up at a glide ratio of 4, and the rims were
+measured from the ground at the rim, not from the floors beside them.
+
+**The rule.** At every point of the edge the frame (a rim's top, a neighbour's back) stands at
+least 6.6 m over any floor within 4 m of it, less 1 m for every 4 m farther:
+`top >= F + 6.6 - max(0, d - 4) / 4` for every floor at height F, d metres from the point. 6.6 is
+the backflip (4.8) and the ledge grab (1.75); the glide sinks 1 m in 4 from 4.5 m over the floor
+it left, which the backflip's reach covers. Every floor counts, however far: the mountain's
+plateau (62–70 m) reaches every rim north of the town by a glide, and glides of 270 m are designed
+(G8). Nothing between is taken to stop a glide. A floor on the frame itself (a fence's top, a
+rim's top) counts as a floor to start from when the rule lets a body reach it.
+
+North of the town the rule asks 13–72 m, so the rims carry rock walls: 49 placements, 16 m of rim
+each, the rim's depth thick (2 m west and east, 4 m north), from the rim's top to the height the
+rule asks there and 0.5 m, in the terrain's rock texture (`assets/edge_rock/make_edge_rock.py`,
+`ROCKS`). Raised as terrain (a `fill` on the rims' cliffs) the rims were drawn as ramps tens of
+metres long by the far levels and the stand-ins, whose grid points on the field's edge take the
+rim's top; a placement keeps its walls upright at every distance.
+
+`tools/frame.py` checks a built world against the rule from the pack's floors and walls and the
+terrain's top (`--tops`: the top each 8 m of edge needs, the reach and 0.5 m; `--rocks`: the rock
+walls' table), and writes the frame scenarios' probes (`--probes`).
+
+| Where | Was | Now | Why |
+|---|---|---|---|
+| East rim, z 154–384 | 8 m over the ground (8.4–9.9 by the cemetery) | rock walls on the rim to 38–70.5 m (`edge_rock_e*`, `assets/edge_rock`, placed by `place/art.py`) | terraces 5–9 (9.0–16.2) walked and glided off it; the plateau's glides arrive at 38–62 |
+| North rim | 8 m over the ground; 9.0 at the canal's spring (x 42–54) | rock walls to 57.5–72 m (`edge_rock_n*`) | from the bamboo (14.6) the spring's rim was climbed; the path-out torii's beam (65.2) is 1.5 m from it; the plateau beside the canal's gorge (62) glides over it |
+| West rim, z 128–384 | 10 m over the ground (10.6), 14 m in rows 4–5 | rock walls to 14.5–53.5 m (`edge_rock_w*`) | the sake brewery's roof (16.9) and the plateau's glides |
+| East, z 104–156 | hoarding 5.5 m (z 104–118); rim 8 m (118–132); open where the viaduct left (132–154) | neighbours' backs `edge_neighbour_e3` (z 104–128, 31 m) and `e4` (128–156, 39 m), the hoarding in front | the deck (9.0) glided over the hoarding; terrace 1 walked out under the viaduct; the rim was 8 m |
+| West, z 104–128 | hoarding 5.5 m; nothing behind it; rim 10 m from z 118 | `edge_neighbour_w3` (20 m) behind the hoarding; the rim from z 128 | the edge fence (3.0) is a step to the hoarding's top, and nothing stood behind it |
+| West neighbour w1 (z 36–72) | 18 m | 22 m | the sento's chimney (18.2) glides to 19 there |
+| The viaduct's east end | two curves out of the level at z 132–154, closed on the deck by a grey wall 5.5 m tall at x 315 | the line ends at the underpass's north end (z 126.56), closed by `viaduct_end_wall` (concrete, 13.2 m wide over both parapets); the parapet rails stop 2 m short of it | the end wall's backflip and grab; the parapet rails ran through the wall (riding ignores collision); the deck's outer face crossed the neighbour's face, and a body sliding down it was pushed through the face (scenario 580) |
+| Edge fences and hoardings | 0.4 m thick, against the neighbours' faces (x 0–0.4, 319.6–320, z 0–0.4) | the same, straddling the edge (centre 0.05 m inside it) | a body falling past a fence's top was pushed through the neighbour's face by the fence's outer face (scenario 583) |
+| Underpass view (r14 #3) | an untextured rock cliff (`rock_far`) at x 318–320, z 118–128 | the neighbour's back (`e3`), its façade textured; `rock_far` is no longer drawn | the front road's view should end on concrete (7.1) |
+| Edge fences' look (r16 #7) | flat olive bands (`gbt_edge_fence*`) | `edge_fence_12/34/40/44/64`: the hoarding's ribbed panels, 3 m, their backs open, one flat colour from 40 m | |
+| The end wall's look (r17 #5) | `gbc_viaduct_end`, grey, unlit at night | `viaduct_end_wall`, the viaduct's concrete | |
+
+Texture bytes added: none. The fences use the hoarding's panel tile, the end wall the viaduct's
+concrete sheet, the new neighbours the neighbours' façade tiles, and the rock walls the terrain's
+rock image (`tools/textures.py`: town 366,816 and shrine 126,560 bytes, as before).
+
+**Tests.** `carts/garden/tests/frame_cases.akr`, scenarios 580–584 (`make test-carts`): 580 the
+29 ways out the review found, each by the move that found it; 581–584 the south, north, west and
+east edges, every 8 m a walk (hopping and climbing when stopped), a backflip and grab from the
+highest floor near the edge, and a glide from the floor that gets highest there. A probe fails
+when the body gets 0.5 m past the edge. They run four ticks of every five between frames, with
+the camera on the sky, about 200 probes a minute.
+
+**For the owner.** The rule makes the frame tall: north of the town the rock walls stand 14–72 m
+(a ridge round the valley; 61 m over the canal's spring), the neighbours behind the front road's
+east end 31–39 m. A lower frame there
+needs a lower plateau, a glide that ends sooner, or a frame that is not a wall (a slope outside
+the level, which the terrain field does not reach today). The viaduct no longer curves out of
+the level: it ends at a wall after the underpass.

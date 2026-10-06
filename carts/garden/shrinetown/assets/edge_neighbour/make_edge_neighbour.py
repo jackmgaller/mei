@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Writes the backs of the neighbours' buildings that close the shrine town's south, east and west
 edges (README.md, "The frame"): art/facade_a.png (the balcony side of an apartment block),
-art/facade_b.png (the back of an office building) and one recipe per grey-box neighbour,
-edge_neighbour_s0..s8, _e0..e2, _w0..w2.asset.json, at the grey box's sizes (notes/gen_town.py,
+art/facade_b.png (the back of an office building) and one recipe per neighbour,
+edge_neighbour_s0..s8, _e0..e4, _w0..w3.asset.json, at the grey box's sizes and the frame's (notes/gen_town.py,
 "the level's frame": NEIGHBOURS below is that table).
 
 Each is a cheap box seen from far and from rooftops: the face toward the level carries one
@@ -39,14 +39,25 @@ LOD_FAR = 60          # from here on a plain box (8 triangles) in the façade's 
 DEPTH = 8.0
 INSET = 0.2
 
-# name: (face width, height, façade); from gen_town.py's frame (west heights are its h - 4)
+# name: (face width, height, façade, shift); from gen_town.py's frame (west heights are its h - 4),
+# and the frame's rule (DESIGN.md 12.9, "The level's frame"; tools/frame.py --tops): w1 22 (the
+# sento's chimney, 18.2, glides to it); e3 and e4 behind the front road's east hoarding and the
+# cemetery's foot (z 104-128, 128-156: the mountain's glides reach 31 and 39 there); w3 behind
+# the west hoarding (z 104-128). shift: the face's middle off the origin along the face (local
+# x), so that e4's origin lies in cell c4_1 (z 127.9) and its textures in the town's region.
 NEIGHBOURS = {
-    **{f's{k}': (x2 - x1, h, 'ab'[k % 2]) for k, (x1, x2, h) in enumerate(
+    **{f's{k}': (x2 - x1, h, 'ab'[k % 2], 0.0) for k, (x1, x2, h) in enumerate(
         [(0, 32, 26), (32, 64, 22), (64, 96, 28), (96, 136, 24), (136, 184, 22), (184, 216, 27),
          (216, 256, 23), (256, 288, 26), (288, 320, 24)])},
-    **{f'e{k}': (z2 - z1, h, 'ba'[k % 2]) for k, (z1, z2, h) in enumerate([(0, 36, 25), (36, 72, 22), (72, 104, 27)])},
-    **{f'w{k}': (z2 - z1, h - 4, 'ab'[k % 2]) for k, (z1, z2, h) in enumerate([(0, 36, 25), (36, 72, 22), (72, 104, 27)])},
+    **{f'e{k}': (z2 - z1, h, 'ba'[k % 2], 0.0) for k, (z1, z2, h) in enumerate([(0, 36, 25), (36, 72, 22), (72, 104, 27)])},
+    **{f'w{k}': (z2 - z1, h - 4, 'ab'[k % 2], 0.0) for k, (z1, z2, h) in enumerate([(0, 36, 25), (36, 72, 26), (72, 104, 27)])},
+    'e3': (24.0, 31.0, 'a', 0.0),
+    'e4': (28.0, 39.0, 'b', -14.1),     # z 128-156 from an origin at z 127.9 (yaw 90: local +x is world -z)
+    'w3': (24.0, 20.0, 'b', 0.0),
 }
+# Where place/art.py puts the frame's new ones (x, z of the origin, yaw); the others replace the
+# grey box's neighbours in their places.
+PLACES = {'e3': (319.8, 116.0, 90.0), 'e4': (319.8, 127.9, 90.0), 'w3': (0.2, 116.0, 270.0)}
 
 # One palette for both tiles (15 colours).
 WALL, WALL2, SLAB, SHADOW = '#c8c4b8', '#b4b0a4', '#dcd8cc', '#8e8c88'
@@ -186,16 +197,17 @@ def facade_b():
     t.save('facade_b')
 
 
-def recipe(name, width, height, style):
+def recipe(name, width, height, style, shift=0.0):
     w2 = width / 2
     # u = x / REPEAT + offset: the façade's left edge on a repeat; v = -y / REPEAT + offset: the
     # roof line on a repeat (the slab edge at the top of the tile)
-    offset = [round((w2 / REPEAT) % 1, 4), round((height / REPEAT) % 1, 4)]
+    offset = [round(((w2 - shift) / REPEAT) % 1, 4), round((height / REPEAT) % 1, 4)]
     # the stair house on the roof: 4 x 3 x 4 m, a third of the way along, set back 2 m
-    hx = round(-w2 / 3, 2)
+    hx = round(shift - w2 / 3, 2)
     z0, z1 = INSET, INSET + DEPTH
-    v = [[-w2, 0, z0], [w2, 0, z0], [w2, height, z0], [-w2, height, z0],
-         [-w2, 0, z1], [w2, 0, z1], [w2, height, z1], [-w2, height, z1]]
+    a, b = shift - w2, shift + w2
+    v = [[a, 0, z0], [b, 0, z0], [b, height, z0], [a, height, z0],
+         [a, 0, z1], [b, 0, z1], [b, height, z1], [a, height, z1]]
     faces = [[0, 1, 2, 3][::-1], [3, 2, 6, 7][::-1], [4, 0, 3, 7][::-1], [1, 5, 6, 2][::-1]]
     return {
         'format': 'mei-asset', 'version': 1, 'name': name,
@@ -228,7 +240,7 @@ if __name__ == '__main__':
     facade_b()
     for old in HERE.glob('edge_neighbour_*.asset.json'):
         old.unlink()
-    for key, (width, height, style) in NEIGHBOURS.items():
+    for key, (width, height, style, shift) in NEIGHBOURS.items():
         name = f'edge_neighbour_{key}'
-        (HERE / f'{name}.asset.json').write_text(json.dumps(recipe(name, width, height, style), indent=1) + '\n')
+        (HERE / f'{name}.asset.json').write_text(json.dumps(recipe(name, width, height, style, shift), indent=1) + '\n')
         print(f'{name}: {width} x {height} m, facade_{style}')

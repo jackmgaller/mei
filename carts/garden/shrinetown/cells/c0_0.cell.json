@@ -10,33 +10,36 @@
  "placements": [
   {
    "id": "edge_s0",
-   "asset": "gbt_edge_fence",
+   "asset": "edge_fence_44",
    "position": [
     22.0,
     0,
-    0.2
+    0.05
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 180.0
   },
   {
    "id": "edge_s1",
-   "asset": "gbt_edge_fence_2",
+   "asset": "edge_fence_12",
    "position": [
     58.0,
     0,
-    0.2
+    0.05
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 180.0
   },
   {
    "id": "edge_w0",
-   "asset": "gbt_edge_fence_5",
+   "asset": "edge_fence_64",
    "position": [
-    0.2,
+    0.05,
     0,
     32.0
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 270.0
   },
   {
    "id": "neighbour_s0",

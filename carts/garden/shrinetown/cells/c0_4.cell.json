@@ -37,6 +37,50 @@
    ],
    "yaw": 250,
    "collision": "self"
+  },
+  {
+   "id": "edge_rock_w256",
+   "asset": "edge_rock_w256",
+   "position": [
+    1.0,
+    18.0,
+    264.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  },
+  {
+   "id": "edge_rock_w272",
+   "asset": "edge_rock_w272",
+   "position": [
+    1.0,
+    20.0,
+    280.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  },
+  {
+   "id": "edge_rock_w288",
+   "asset": "edge_rock_w288",
+   "position": [
+    1.0,
+    23.0,
+    296.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  },
+  {
+   "id": "edge_rock_w304",
+   "asset": "edge_rock_w304",
+   "position": [
+    1.0,
+    26.0,
+    312.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
   }
  ]
 }

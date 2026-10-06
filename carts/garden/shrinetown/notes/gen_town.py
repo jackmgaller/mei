@@ -554,8 +554,10 @@ for k, (z1, z2) in enumerate([(0, 64), (64, 104)]):
     block(f'edge_w{k}', 0.0, z1, 0.4, z2, 0, 3.0, C['fence'], label='edge_fence')
     block(f'edge_e{k}', 319.6, z1, 320.0, z2, 0, 3.0, C['fence'], label='edge_fence')
 # The neighbours beyond the town's three open sides (spec 4.4, "the neighbour beyond"): until those
-# levels exist, the backs of their buildings stand just outside the level, 22-28 m, higher than any
-# jump or glide arrives at the edge (the highest: from the danchi's roof, about 17.7 at z 0). Each
+# levels exist, the backs of their buildings stand just outside the level, 18-28 m here, at least as
+# high as the frame's rule asks (DESIGN.md 12.9: 6.6 m over any floor within 4 m, less 1 m for each
+# 4 m farther, for a backflip and a ledge grab and a glide; place/art.py gives the real ones their
+# heights and adds the ones behind the front road's hoardings, tools/frame.py checks them). Each
 # block's origin is inside the level (a placement must lie in its cell) and the block reaches out
 # past the edge (the world's overhang, 32 m). Plain boxes, a colour of their own.
 NB = C['neighbour'] = '#a6a49c'
@@ -568,8 +570,9 @@ for k, (z1, z2, h) in enumerate([(0, 36, 25), (36, 72, 22), (72, 104, 27)]):
              [('box', 320.0, 0, z1, 328.0, h, z2, 'wall', 'roof')], {'wall': NB, 'roof': '#7e7c76'})
     compound(f'neighbour_w{k}', 'neighbour', 0.2, 0, (z1 + z2) / 2,
              [('box', -8.0, 0, z1, 0.0, h - 4, z2, 'wall', 'roof')], {'wall': NB, 'roof': '#7e7c76'})
-# The front road's two ends (spec 7.3, 7.1): road-works hoardings 5.5 m tall, above a double jump
-# and grab (5.15), until the shopping street (west) and downtown (east, the seamless edge) exist.
+# The front road's two ends (spec 7.3, 7.1): road-works hoardings 5.5 m tall, until the shopping
+# street (west) and downtown (east, the seamless edge) exist. They are not the frame: a backflip
+# and a grab reach 6.55 m, so the neighbours' backs stand behind them (place/art.py, e3, w3).
 block('hoarding_w', 0.0, 104.0, 0.4, 118.0, 0, 5.5, '#eceae4', '#e8782a', label='hoarding')
 block('hoarding_e', 319.6, 104.0, 320.0, 118.0, 0, 5.5, '#eceae4', '#e8782a', label='hoarding')
 # Doors (the garden cart's door entities, spec 7.3): the konbini's leads to the garden, as the

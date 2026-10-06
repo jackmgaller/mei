@@ -37,6 +37,36 @@
     339.55
    ],
    "collision": "none"
+  },
+  {
+   "id": "edge_rock_n144",
+   "asset": "edge_rock_n144",
+   "position": [
+    152.0,
+    68.0,
+    382.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_rock_n160",
+   "asset": "edge_rock_n160",
+   "position": [
+    168.0,
+    67.0,
+    382.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_rock_n176",
+   "asset": "edge_rock_n176",
+   "position": [
+    184.0,
+    67.0,
+    382.0
+   ],
+   "collision": "self"
   }
  ],
  "entities": [

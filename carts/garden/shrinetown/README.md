@@ -48,12 +48,20 @@ flats (the ledge at 44, the ladder's shelf at 24, the pool's terrace at 16, the 
 falls' top at 52) and the rims; water for the canal, the pool, the culvert, the pond and the
 falls' pool; the trails, the stream, the stairs and the bridges as paths.
 
-**The frame.** No jump or glide leaves the level: the north, east and west rims are rock walls
-(8–14 m); south of the viaduct, east of the school and west of the machiya stand the backs of
-the neighbours' buildings (22–28 m, placeholders until those levels exist); the front road's two
-ends are road works behind 5.5 m hoardings; the viaduct's east end is closed by a wall on the
-deck. The road's east end under the viaduct is the seamless edge to downtown (DESIGN.md 7.1), a
-hoarding until downtown exists.
+**The frame.** No jump or glide leaves the level. The rule (DESIGN.md 12.9, "The level's
+frame"): the frame stands 6.6 m over any floor within 4 m of it, less 1 m for every 4 m farther
+(a backflip and a ledge grab reach 6.55 m; a glide sinks 1 m in 4 from 4.5 m over the floor it
+left, so the mountain's plateau, 62–70 m, reaches every rim north of the town). South of the
+viaduct, east of the school, the front road and the cemetery's foot, and west of the machiya and
+the front road stand the backs of the neighbours' buildings (20–39 m, placeholders until those
+levels exist), with
+the edge fences (3 m) and the road works' hoardings (5.5 m) in front of them; the viaduct ends
+after the underpass at a concrete wall across its deck (z 126.6). North of the town
+rock walls stand on the rims to the rule's heights: 14.5 m at the park rising to 53.5 m in the
+north-west, 38 m at the cemetery rising to 70.5 m in the north-east, 57.5–72 m along the north
+(`assets/edge_rock`, placed by `place/art.py`). `tools/frame.py` checks a
+built world against the rule and writes the frame scenarios' probes. The road's east end under
+the viaduct is the seamless edge to downtown (DESIGN.md 7.1), road works until downtown exists.
 
 **Tests.** `carts/garden/tests/shrinetown_cases.akr`, scenarios 400–446, run by `check.sh`
 (`make test-carts`), each on the default tuning:
@@ -79,6 +87,8 @@ hoarding until downtown exists.
 | 460–464 | Shortcuts A–E: a jump opens nothing; B (A, B, E) or a ground pound (C, D) opens it, saved; still open when the world is opened again |
 | 465, 466 | The progress on a memory card: written (shortcut E, star 4), then read at start-up |
 | 467 | Ladders A and E: not grabbed while up; held on the front, not gone round |
+| 580 | The frame: the 29 ways out the alpha review found (cemetery terraces, under and on the viaduct's end, its parapet rails, the west hoarding, the canal's spring, the path-out torii, the brewery's roof), each closed (`frame_cases.akr`) |
+| 581–584 | The frame, south, north, west and east: every 8 m of edge a walk, a backflip and a glide (`frame_probes.akr`, from `tools/frame.py --probes`); no probe leaves the level |
 
 ```sh
 make B=build-mine build-mine/carts/garden.mei
@@ -133,6 +143,8 @@ python3 carts/garden/shrinetown/make_world.py                         # shrineto
 python3 carts/garden/shrinetown/tools/draw.py                         # design/*.png from layout.py
 B=build-mine python3 carts/garden/shrinetown/tools/views.py             # the worst views, as a table
 python3 carts/garden/shrinetown/tools/textures.py                     # texture bytes by region and zone
+python3 carts/garden/shrinetown/tools/frame.py --build-dir build-mine  # the frame against its rule
+python3 carts/garden/shrinetown/tools/frame.py --build-dir build-mine --tops --probes   # the rims' tops; the probes
 ```
 
 All of them read `layout.py`; the three region generators also put `game.py`'s entities (the

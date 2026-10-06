@@ -29,6 +29,50 @@
    "collision": "forest_dead_cedar_fallen_col",
    "yaw": 111.801,
    "layer": "cedar_c_down"
+  },
+  {
+   "id": "edge_rock_e256",
+   "asset": "edge_rock_e256",
+   "position": [
+    319.0,
+    27.0,
+    264.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "edge_rock_e272",
+   "asset": "edge_rock_e272",
+   "position": [
+    319.0,
+    32.0,
+    280.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "edge_rock_e288",
+   "asset": "edge_rock_e288",
+   "position": [
+    319.0,
+    39.0,
+    296.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "edge_rock_e304",
+   "asset": "edge_rock_e304",
+   "position": [
+    319.0,
+    47.0,
+    312.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
   }
  ],
  "entities": [

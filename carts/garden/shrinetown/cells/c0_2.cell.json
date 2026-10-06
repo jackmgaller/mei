@@ -225,6 +225,50 @@
     157.0
    ],
    "collision": "forest_stone_lantern_col"
+  },
+  {
+   "id": "edge_rock_w128",
+   "asset": "edge_rock_w128",
+   "position": [
+    1.0,
+    9.0,
+    136.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  },
+  {
+   "id": "edge_rock_w144",
+   "asset": "edge_rock_w144",
+   "position": [
+    1.0,
+    9.0,
+    152.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  },
+  {
+   "id": "edge_rock_w160",
+   "asset": "edge_rock_w160",
+   "position": [
+    1.0,
+    9.0,
+    168.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
+  },
+  {
+   "id": "edge_rock_w176",
+   "asset": "edge_rock_w176",
+   "position": [
+    1.0,
+    9.0,
+    184.0
+   ],
+   "collision": "self",
+   "yaw": 270.0
   }
  ],
  "entities": [

@@ -81,10 +81,23 @@ WATER = {
 
 # ---- the edges: (face width, height) come from the recipes; the side fixes the yaw
 EDGE_YAW = {'s': 180.0, 'e': 90.0, 'w': 270.0}
+# The frame's neighbours that no grey box stands for (DESIGN.md 12.9, "The level's frame"): behind
+# the front road's hoardings, and east of the underpass and the cemetery's foot (z 104-156). Their
+# places are assets/edge_neighbour/make_edge_neighbour.py's PLACES (x, z of the origin, yaw).
+NEW_NEIGHBOURS = {'e3': (319.8, 116.0, 90.0), 'e4': (319.8, 127.9, 90.0), 'w3': (0.2, 116.0, 270.0)}
+# The edge fences (3 m, the grey box's): the hoarding's panels, edge_fence_LENGTH, along x on the
+# south edge, along z (turned) on the east and west. The fences and hoardings (0.4 m thick) straddle
+# the edge, their middle 0.05 m inside it, so their outer half stands inside the neighbour's back
+# (whose face is on the edge): flush against the face, a body falling past a fence's top was pushed
+# through the face by the fence's outer face (frame scenario 583).
+ON_EDGE = {'s': 0.05, 'w': 0.05, 'e': 319.95}
+FENCES = {'edge_s0': 44, 'edge_s1': 12, 'edge_s2': 64, 'edge_s3': 64, 'edge_s4': 64, 'edge_s5': 34,
+          'edge_w0': 64, 'edge_w1': 40, 'edge_e0': 64, 'edge_e1': 40}
 
 
 def town(g):
-    """The neighbours' backs and the hoardings: the grey box's placements, the same places."""
+    """The neighbours' backs, the hoardings and the edge fences: the grey box's placements, the
+    same places; and the frame's own neighbours."""
     n = 0
     for c in g['cells'].values():
         for p in c['placements']:
@@ -96,8 +109,18 @@ def town(g):
             elif pid in ('hoarding_w', 'hoarding_e'):
                 p['asset'], p['collision'] = 'edge_hoarding', 'self'
                 p['yaw'] = 270.0 if pid == 'hoarding_w' else 90.0
+                p['position'][0] = ON_EDGE[pid[-1]]
                 n += 1
-    assert n == 17, n
+            elif pid in FENCES:
+                p['asset'], p['collision'] = f'edge_fence_{FENCES[pid]}', 'self'
+                p['yaw'] = EDGE_YAW[pid[5]]                     # its face to the level
+                p['position'][0 if pid[5] in 'we' else 2] = ON_EDGE[pid[5]]
+                n += 1
+    assert n == 27, n
+    for key, (x, z, yaw) in NEW_NEIGHBOURS.items():
+        c = g['cell'](*g['cell_of'](x, z))
+        c['placements'].append({'id': f'neighbour_{key}', 'asset': f'edge_neighbour_{key}',
+                                'position': [x, 0.0, z], 'yaw': yaw, 'collision': 'self'})
 
 
 def _rect(op):
@@ -151,7 +174,35 @@ def _sports_lines():
     return lines
 
 
+def rocks():
+    """The frame's rock walls on the rims north of the town (assets/edge_rock): in the cell files,
+    which the regions' generators and the shrine zone wrote, in place of any earlier run's."""
+    import importlib.util
+    import json
+    from pathlib import Path
+    st = Path(__file__).resolve().parent.parent
+    spec = importlib.util.spec_from_file_location('make_edge_rock', st / 'assets/edge_rock/make_edge_rock.py')
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    files = {f: json.loads(f.read_text()) for f in sorted((st / 'cells').glob('*.cell.json'))}
+    by_id = {c['id']: c for c in files.values()}
+    before = {f: json.dumps(c) for f, c in files.items()}
+    for c in files.values():
+        c['placements'] = [p for p in c['placements'] if not p['id'].startswith('edge_rock_')]
+    for row in m.walls():
+        x, y, z, yaw = m.place(row)
+        p = {'id': f'edge_rock_{m.key(row)}', 'asset': f'edge_rock_{m.key(row)}',
+             'position': [x, float(y), z], 'collision': 'self'}
+        if yaw:
+            p['yaw'] = yaw
+        by_id[f'c{int(x // 64)}_{int(z // 64)}']['placements'].append(p)
+    for f, c in files.items():
+        if json.dumps(c) != before[f]:
+            f.write_text(json.dumps(c, indent=1) + '\n')
+
+
 def world(g):
+    rocks()
     w = g['world']
     mats = w['terrain']['materials']
     ops = w['terrain']['fields']['ground']['operations']

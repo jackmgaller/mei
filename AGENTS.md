@@ -227,9 +227,12 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/garden/shrinetown/art/backdrop/draw_backdrop.py` | The shrine town's backdrops in `art/backdrop/`: `town_backdrop.png`, `shrine_backdrop.png`, `backdrop.json` |
 | `carts/garden/shrinetown/art/ground/draw_ground.py` | The shrine town's ground textures in `art/ground/` (`--preview DIR`: a contact sheet) |
 | `carts/garden/shrinetown/assets/edge_neighbour/make_edge_neighbour.py` | The neighbours' backs: `art/facade_a.png`, `art/facade_b.png` and the `edge_neighbour_*` recipes |
-| `carts/garden/shrinetown/assets/edge_hoarding/make_edge_hoarding.py` | The road-works hoarding: `art/panel.png`, `art/sign.png`, `edge_hoarding.asset.json` |
+| `carts/garden/shrinetown/assets/edge_hoarding/make_edge_hoarding.py` | The road-works hoarding: `art/panel.png`, `art/sign.png`, `edge_hoarding.asset.json`; the edge fences, `edge_fence_*.asset.json` |
+| `carts/garden/shrinetown/assets/viaduct_end_wall/make_viaduct_end_wall.py` | The viaduct's end wall: `viaduct_end_wall.asset.json` |
+| `carts/garden/shrinetown/assets/edge_rock/make_edge_rock.py` | The frame's rock walls on the rims: `edge_rock_*.asset.json` (their table from `tools/frame.py --rocks`) |
+| `carts/garden/shrinetown/tools/frame.py --build-dir B --probes` | `carts/garden/tests/frame_probes.akr`, the frame scenarios' probes, from the built world (NumPy) |
 
-The last five are run by their path from the repository root, not as `tools/NAME.py`.
+The last nine are run by their path from the repository root, not as `tools/NAME.py`.
 
 Helpers the generators import, which write nothing themselves: `boot_audio.py`, `mei_adpcm.py`,
 `mei_icon.py` (memory card icons), `meshlib.py` (the native mesh format) and `weather_geo.py`.

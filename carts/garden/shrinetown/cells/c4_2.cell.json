@@ -9,39 +9,6 @@
  "region": "shrine",
  "placements": [
   {
-   "id": "viaduct_26",
-   "asset": "viaduct_curve_16",
-   "position": [
-    311.599,
-    0.0,
-    134.4667
-   ],
-   "yaw": 105.0,
-   "collision": "viaduct_curve_16_col"
-  },
-  {
-   "id": "viaduct_27",
-   "asset": "viaduct_curve_16",
-   "position": [
-    319.5079,
-    0.0,
-    148.1653
-   ],
-   "yaw": 135.0,
-   "collision": "viaduct_curve_16_col"
-  },
-  {
-   "id": "viaduct_end",
-   "asset": "gbc_viaduct_end",
-   "position": [
-    315.0,
-    9.0,
-    142.3833
-   ],
-   "yaw": 31.2158,
-   "collision": "self"
-  },
-  {
    "id": "sh_cem_wall_1_262",
    "asset": "cemetery_terrace_wall_12",
    "position": [
@@ -556,6 +523,39 @@
    ],
    "collision": "jizo_col",
    "yaw": -20
+  },
+  {
+   "id": "edge_rock_e154",
+   "asset": "edge_rock_e154",
+   "position": [
+    319.0,
+    9.0,
+    157.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "edge_rock_e160",
+   "asset": "edge_rock_e160",
+   "position": [
+    319.0,
+    8.0,
+    168.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "edge_rock_e176",
+   "asset": "edge_rock_e176",
+   "position": [
+    319.0,
+    8.0,
+    184.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
   }
  ],
  "entities": [

@@ -72,7 +72,7 @@ SCHOOLYARD = (212, 18, 295)
 RAILWAY = ('viaduct_', 'signal_gantry')
 # The level's edges (the neighbours' backs, the road-works hoardings): their tiles count in the
 # ground's allowance, `terrain` (art/ground/GROUND.md), not in a zone's.
-EDGES = ('edge_neighbour_', 'edge_hoarding')
+EDGES = ('edge_neighbour_', 'edge_hoarding', 'edge_fence_')
 
 
 def zone_of(x, z, asset=''):

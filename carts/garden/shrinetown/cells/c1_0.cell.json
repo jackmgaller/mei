@@ -10,13 +10,14 @@
  "placements": [
   {
    "id": "edge_s2",
-   "asset": "gbt_edge_fence_3",
+   "asset": "edge_fence_64",
    "position": [
     96.0,
     0,
-    0.2
+    0.05
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 180.0
   },
   {
    "id": "neighbour_s2",

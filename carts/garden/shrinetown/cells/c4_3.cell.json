@@ -341,6 +341,50 @@
     241.0
    ],
    "collision": "cemetery_jizo_hall_col"
+  },
+  {
+   "id": "edge_rock_e192",
+   "asset": "edge_rock_e192",
+   "position": [
+    319.0,
+    8.0,
+    200.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "edge_rock_e208",
+   "asset": "edge_rock_e208",
+   "position": [
+    319.0,
+    7.0,
+    216.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "edge_rock_e224",
+   "asset": "edge_rock_e224",
+   "position": [
+    319.0,
+    7.0,
+    232.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "edge_rock_e240",
+   "asset": "edge_rock_e240",
+   "position": [
+    319.0,
+    27.0,
+    248.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
   }
  ],
  "entities": [

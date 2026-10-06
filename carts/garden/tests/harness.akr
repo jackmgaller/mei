@@ -26,6 +26,7 @@ import "attach_cases.akr"
 import "shrine_cases.akr"     // the shrine world's, 300-399
 import "shrinetown_cases.akr" // the shrine town's, 400-449
 import "goals_cases.akr"      // the goals' (in the shrine town), 450-479
+import "frame_cases.akr"      // the shrine town's frame, 580-584
 
 var pad_v: u32                 // the pad and stick for the next frame
 var stick_v: vec2
@@ -63,7 +64,7 @@ fn input_look(_f: s32) -> vec2 { return vec2(0.0, 0.0) }
 fn start_world() -> s32 {
     if SCENARIO >= 300 && SCENARIO < 400 && SCENARIO != 309 { return GARDEN_WORLD_SHRINE }
     if SCENARIO == 433 { return GARDEN_WORLD_SHRINE }
-    if SCENARIO >= 400 && SCENARIO < 500 { return GARDEN_WORLD_SHRINETOWN }
+    if (SCENARIO >= 400 && SCENARIO < 500) || (SCENARIO >= 580 && SCENARIO < 590) { return GARDEN_WORLD_SHRINETOWN }
     return GARDEN_WORLD_GARDEN
 }
 
@@ -171,7 +172,7 @@ fn test_init() {
         30 => { name = "camera sweep at the spawn: frame timing"; place_at_spawn(); cam_reset() }
         28 => { name = "crouch and crawl"; place(lane, EAST) }
         else => {
-            if !camera_case_init() && !attach_case_init() && !shrine_case_init() && !town_case_init() && !goals_case_init() { name = "picture" }
+            if !camera_case_init() && !attach_case_init() && !shrine_case_init() && !town_case_init() && !goals_case_init() && !frame_case_init() { name = "picture" }
         }
     }
 }
@@ -181,6 +182,7 @@ fn test_init() {
 fn test_hook(f: s32) {
     if seen[pl.st] < 0 { seen[pl.st] = f }
     apex = max(apex, pl.pos.y)
+    frame_case_hook()
 }
 
 fn scenario(f: s32) {
@@ -218,6 +220,7 @@ fn scenario(f: s32) {
             shrine_case(f)
             town_case(f)
             goals_case(f)
+            frame_case(f)
         }
     }
 }

@@ -67,6 +67,46 @@
    ],
    "collision": "jizo_col",
    "yaw": -160
+  },
+  {
+   "id": "edge_rock_n192",
+   "asset": "edge_rock_n192",
+   "position": [
+    200.0,
+    67.0,
+    382.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_rock_n208",
+   "asset": "edge_rock_n208",
+   "position": [
+    216.0,
+    67.0,
+    382.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_rock_n224",
+   "asset": "edge_rock_n224",
+   "position": [
+    232.0,
+    68.0,
+    382.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_rock_n240",
+   "asset": "edge_rock_n240",
+   "position": [
+    248.0,
+    68.0,
+    382.0
+   ],
+   "collision": "self"
   }
  ],
  "entities": [

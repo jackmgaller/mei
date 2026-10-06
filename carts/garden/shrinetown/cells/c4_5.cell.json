@@ -7,5 +7,79 @@
   5
  ],
  "region": "shrine",
- "placements": []
+ "placements": [
+  {
+   "id": "edge_rock_e320",
+   "asset": "edge_rock_e320",
+   "position": [
+    319.0,
+    54.0,
+    328.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "edge_rock_e336",
+   "asset": "edge_rock_e336",
+   "position": [
+    319.0,
+    58.0,
+    344.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "edge_rock_e352",
+   "asset": "edge_rock_e352",
+   "position": [
+    319.0,
+    66.0,
+    360.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "edge_rock_n256",
+   "asset": "edge_rock_n256",
+   "position": [
+    264.0,
+    67.0,
+    382.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_rock_n272",
+   "asset": "edge_rock_n272",
+   "position": [
+    280.0,
+    67.0,
+    382.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_rock_n288",
+   "asset": "edge_rock_n288",
+   "position": [
+    296.0,
+    68.0,
+    382.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "edge_rock_n304",
+   "asset": "edge_rock_n304",
+   "position": [
+    312.0,
+    69.0,
+    382.0
+   ],
+   "collision": "self"
+  }
+ ]
 }

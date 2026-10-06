@@ -1,0 +1,293 @@
+// The shrine town's frame (scenarios 580-584): tries to leave the level, and fails a scenario when
+// the body gets out of it (x outside 0..320 or z outside 0..384 by more than half a metre). The
+// frame rule is DESIGN.md 12.9's ("The level's frame"): 6.6 m over any floor within 4 m of the
+// frame, less 1 m for each 4 m farther (a backflip and a grab; a glide).
+//
+//   580  the leaks the alpha review found (reviews 08, 12 and 13), each by the move that found it
+//   581  the south edge, 582 the north, 583 the west, 584 the east: frame_probes.akr, written by
+//        carts/garden/shrinetown/tools/frame.py --probes from the built world. Every 8 m of edge:
+//        a walk and a backflip from the highest floor near it, and a glide from the floor that
+//        gets highest at it
+//
+// Each probe places the body, then for its ticks: walks at the edge (hopping, a jump and the
+// chained double jump, when it is stopped, and climbing any ledge it catches); or backflips at it
+// from a crouch, facing away; or jumps, chains the double jump and holds it into the glide, at
+// it. Then it walks on at the edge. A probe at a negative y starts in the air there (falling, as
+// onto a rail). One line per probe; the scenario passes when no probe left the level.
+//
+// So that 1,000 probes run in a few minutes: four of every five ticks are run here, between the
+// frames (fr_sub: the controller and the attachments, without the goals and the camera), the
+// fifth by the frame with the same input; the camera looks up at the sky (frame_case_hook), and
+// the doors are kept shut (the road works' door at the front road's west end).
+
+struct FrameProbe {
+    at: vec3           // where (y: the floor at or below it; negative: in the air at -y)
+    yaw: fixed         // toward the edge (0 north, +z; pi/2 east, +x)
+    mode: s32
+    edge: s32          // 0 S, 1 N, 2 W, 3 E; 4 the review's
+}
+
+import "frame_probes.akr"
+
+const FM_WALK = 0
+const FM_FLIP = 1
+const FM_GLIDE = 2
+const FM_TICKS: [3]s32 = [300, 240, 360]
+const FM_NAMES: [3]*u8 = ["walk", "flip", "glide"]
+const FR_SUB = 4               // ticks run between frames, besides the frame's own
+const FR_OUT = 0.5             // how far past the edge counts as out
+const FR_TRACE = -1            // debugging: the probe whose every fourth tick is printed (-1: none)
+
+// The review's leaks: (where, heading, move), each closed by the frame (DESIGN.md 12.9).
+const FRAME_LEAKS: [29]FrameProbe = [
+    // r12 #1, r13 #1: the cemetery's terraces 5-9, off the east edge
+    FrameProbe { at: vec3(312.0, 16.3, 230.0), yaw: 1.5708, mode: 0, edge: 4 },
+    FrameProbe { at: vec3(312.0, 12.7, 206.0), yaw: 1.5708, mode: 0, edge: 4 },
+    FrameProbe { at: vec3(312.0, 10.9, 194.0), yaw: 1.5708, mode: 2, edge: 4 },
+    FrameProbe { at: vec3(312.0, 9.1, 182.0), yaw: 1.5708, mode: 2, edge: 4 },
+    FrameProbe { at: vec3(312.0, 16.3, 236.0), yaw: 1.5708, mode: 1, edge: 4 },
+    FrameProbe { at: vec3(299.0, 21.3, 241.0), yaw: 1.5708, mode: 2, edge: 4 },     // the jizo hall's roof
+    // r12 #2, r13 #1: terrace 1 and the ground under the viaduct
+    FrameProbe { at: vec3(289.0, 2.0, 133.0), yaw: 1.3788, mode: 0, edge: 4 },
+    FrameProbe { at: vec3(300.0, 2.0, 139.0), yaw: 1.5708, mode: 0, edge: 4 },
+    FrameProbe { at: vec3(310.0, 2.0, 124.0), yaw: 0.7854, mode: 0, edge: 4 },
+    FrameProbe { at: vec3(312.0, 4.0, 148.0), yaw: 1.5708, mode: 1, edge: 4 },
+    // r12 #3, r08 #1: the deck's east end (the line now ends at the underpass's north end, z 126.56,
+    // closed by a wall): a glide east, a backflip over the end wall, the parapets ridden to their ends
+    FrameProbe { at: vec3(313.0, 9.1, 106.0), yaw: 1.5708, mode: 2, edge: 4 },
+    FrameProbe { at: vec3(313.0, 9.1, 125.0), yaw: 1.5708, mode: 2, edge: 4 },
+    FrameProbe { at: vec3(316.4, 10.3, 120.0), yaw: 1.5708, mode: 2, edge: 4 },    // off the parapet
+    FrameProbe { at: vec3(313.0, 9.1, 125.0), yaw: 3.1416, mode: 1, edge: 4 },     // flipped north
+    FrameProbe { at: vec3(314.0, 9.1, 112.0), yaw: 0.0, mode: 0, edge: 4 },
+    FrameProbe { at: vec3(316.43, -10.8, 112.0), yaw: 0.0, mode: 0, edge: 4 },     // onto parapet_s, to its end
+    FrameProbe { at: vec3(304.68, -10.8, 112.0), yaw: 0.0, mode: 0, edge: 4 },     // onto parapet_n_e
+    FrameProbe { at: vec3(316.43, -10.8, 116.0), yaw: 0.7854, mode: 2, edge: 4 },
+    // r12 #4: the west hoarding from the edge fence
+    FrameProbe { at: vec3(2.0, 0.1, 96.0), yaw: -1.5708, mode: 0, edge: 4 },
+    FrameProbe { at: vec3(0.3, 3.1, 98.0), yaw: 0.0, mode: 0, edge: 4 },
+    FrameProbe { at: vec3(0.3, 3.1, 100.0), yaw: 0.0, mode: 2, edge: 4 },
+    FrameProbe { at: vec3(0.3, -5.8, 110.0), yaw: -1.5708, mode: 0, edge: 4 },    // on the hoarding's top
+    // r12 #5: the north rim at the canal's spring, from the bamboo
+    FrameProbe { at: vec3(40.5, 14.0, 379.3), yaw: 1.5708, mode: 0, edge: 4 },
+    FrameProbe { at: vec3(40.5, 14.0, 379.3), yaw: 0.7854, mode: 2, edge: 4 },
+    FrameProbe { at: vec3(38.0, 14.7, 378.0), yaw: 0.0, mode: 1, edge: 4 },
+    // r12 #6: the north rim from the path-out torii
+    FrameProbe { at: vec3(252.6, 61.6, 376.0), yaw: 0.0, mode: 0, edge: 4 },
+    FrameProbe { at: vec3(251.5, -65.4, 378.25), yaw: 0.0, mode: 0, edge: 4 },    // on its top beam
+    FrameProbe { at: vec3(251.5, -65.4, 378.25), yaw: 0.0, mode: 2, edge: 4 },
+    // r12 #12: a glide from the sake brewery's roof at the west rim
+    FrameProbe { at: vec3(18.8, 17.0, 222.8), yaw: -1.5708, mode: 2, edge: 4 },
+]
+
+var fr_k: s32 = -1             // the probe running
+var fr_n: s32                  // probes in the scenario
+var fr_t: s32                  // its tick
+var fr_ph: s32                 // its step
+var fr_still: s32              // ticks stopped on the ground
+var fr_hops: s32
+var fr_out: s32
+var fr_resp: s32
+var fr_maxy: fixed
+var fr_start: vec3
+var fr_prev: vec3
+var fr_leaks: s32
+var fr_btn: u32                // the buttons the last tick held
+var fr_p: FrameProbe
+
+fn frame_case_init() -> bool {
+    if SCENARIO < 580 || SCENARIO > 584 { return false }
+    if SCENARIO == 580 { name = "shrine town: the review's leaks stay closed" }
+    if SCENARIO == 581 { name = "shrine town: the south edge holds" }
+    if SCENARIO == 582 { name = "shrine town: the north edge holds" }
+    if SCENARIO == 583 { name = "shrine town: the west edge holds" }
+    if SCENARIO == 584 { name = "shrine town: the east edge holds" }
+    cam.lock = false
+    fr_n = fr_count()
+    return true
+}
+
+fn fr_count() -> s32 {
+    if SCENARIO == 580 { return len(FRAME_LEAKS) as s32 }
+    var n = 0
+    for k in 0..len(FRAME_PROBES) as s32 { if FRAME_PROBES[k].edge == SCENARIO - 581 { n += 1 } }
+    return n
+}
+
+// The scenario's k-th probe.
+fn fr_probe(k: s32) -> FrameProbe {
+    if SCENARIO == 580 { return FRAME_LEAKS[k] }
+    var n = 0
+    for j in 0..len(FRAME_PROBES) as s32 {
+        if FRAME_PROBES[j].edge == SCENARIO - 581 {
+            if n == k { return FRAME_PROBES[j] }
+            n += 1
+        }
+    }
+    return FRAME_PROBES[0]
+}
+
+fn fr_begin(k: s32) {
+    fr_p = fr_probe(k)
+    let a = fr_p.at
+    var yaw = fr_p.yaw
+    if fr_p.mode == FM_FLIP { yaw = fr_p.yaw + 3.1416 }
+    if a.y < 0.0 {
+        place(vec3(a.x, -a.y, a.z), yaw)
+        pl.pos = vec3(a.x, -a.y, a.z)
+        pl.vel = vec3(0.0, 0.0, 0.0)
+        enter(St.Fall)
+    } else {
+        place(vec3(a.x, sh_floor(a.x, a.z, a.y + 0.5), a.z), yaw)
+    }
+    pl.spawn = vec3(pl.pos.x, 0.0, pl.pos.z)       // a fall to 40 m under the ground is a respawn
+    fr_t = 0
+    fr_ph = 0
+    fr_still = 0
+    fr_hops = 0
+    fr_out = 0
+    fr_resp = 0
+    fr_btn = 0
+    fr_maxy = pl.pos.y
+    fr_start = pl.pos
+    fr_prev = pl.pos
+}
+
+fn fr_end(k: s32) {
+    print("FP ")
+    print_int(k)
+    print(" ")
+    print(FM_NAMES[fr_p.mode])
+    print(" from ")
+    print_fixed(fr_start.x); print_char(' '); print_fixed(fr_start.y); print_char(' '); print_fixed(fr_start.z)
+    print(" -> ")
+    print_fixed(pl.pos.x); print_char(' '); print_fixed(pl.pos.y); print_char(' '); print_fixed(pl.pos.z)
+    print(" ")
+    print(ST_NAMES[pl.st])
+    print(" maxy ")
+    print_fixed(fr_maxy)
+    if fr_resp != 0 { print(" RESPAWN") }
+    if fr_out != 0 { print(" OUT") }
+    println("")
+    if fr_out != 0 { fr_leaks += 1 }
+}
+
+// What the probe does this tick: (heading, stick, buttons held).
+fn fr_act() -> u32 {
+    let air = is_air(pl.st)
+    let ground = pl.st == St.Ground || pl.st == St.Skid
+    var b: u32 = 0
+    if fr_p.mode == FM_FLIP && fr_ph < 3 {
+        // face away, crouch, A: the backflip; then steer at the edge
+        if fr_ph == 0 { if fr_t >= 3 { fr_ph = 1 } return 0 }
+        if fr_ph == 1 { if fr_t >= 9 { fr_ph = 2 } return R }
+        b = R | A
+        if fr_t >= 14 || air { fr_ph = 3 }
+        return b
+    }
+    if fr_p.mode == FM_GLIDE && fr_ph < 4 {
+        // jump, the chained double jump on landing held through its apex: the glide
+        if fr_ph == 0 { if fr_t >= 2 { fr_ph = 1 } return 0 }
+        if fr_ph == 1 { if (air && pl.vel.y <= 0.0) || fr_t > 90 { fr_ph = 2; return 0 } return A }
+        if fr_ph == 2 { if ground { fr_ph = 3; return A } if fr_t > 150 { fr_ph = 4 } return 0 }
+        if pl.st == St.Ground && fr_t > 200 { fr_ph = 4 }
+        return A
+    }
+    // walking at the edge; stopped on the ground: a jump, the chained double jump, climb
+    if fr_ph <= 10 {
+        if ground && fr_still >= 10 && fr_hops < 5 { fr_ph = 11; fr_hops += 1; fr_still = 0 }
+        return 0
+    }
+    let hang = pl.st == St.LedgeHang || pl.st == St.LedgeClimb
+    if hang { fr_ph = 10; return 0 }
+    if fr_ph == 11 { if (air && pl.vel.y <= 0.0) || fr_t > 280 { fr_ph = 12; return 0 } return A }
+    if fr_ph == 12 { if ground { fr_ph = 13; return A } return 0 }
+    if fr_ph == 13 { if (air && pl.vel.y <= 0.0) || fr_t > 280 { fr_ph = 14; return 0 } return A }
+    if ground { fr_ph = 10 }
+    return 0
+}
+
+// The heading the stick holds: at the edge; on a ledge, at the ledge (to climb it).
+fn fr_heading() -> fixed {
+    if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { return pl.yaw }
+    return fr_p.yaw
+}
+
+fn fr_still_count() {
+    let ground = pl.st == St.Ground || pl.st == St.Skid
+    let dx = pl.pos.x - fr_prev.x
+    let dz = pl.pos.z - fr_prev.z
+    if ground && abs(dx) < 0.004 && abs(dz) < 0.004 && fr_t > 20 { fr_still += 1 } else { fr_still = 0 }
+    if abs(dx) > 6.0 || abs(dz) > 6.0 || abs(pl.pos.y - fr_prev.y) > 6.0 { fr_resp = 1 }
+    fr_prev = pl.pos
+    if pl.pos.x < -FR_OUT || pl.pos.x > 320.0 + FR_OUT || pl.pos.z < -FR_OUT || pl.pos.z > 384.0 + FR_OUT { fr_out = 1 }
+    fr_maxy = max(fr_maxy, pl.pos.y)
+}
+
+// One tick run here: the input as read_input() makes it, the attachments and the controller.
+fn fr_sub() {
+    let b = fr_act()
+    let h = fr_heading()
+    pin.mag = 1.0
+    pin.dir = vec3(sin(h), 0.0, cos(h))
+    if fr_p.mode == FM_FLIP && fr_ph < 3 {
+        pin.mag = 0.0
+        pin.dir = vec3(0.0, 0.0, 0.0)
+    }
+    pin.a = b & A != 0
+    pin.ap = b & ~fr_btn & A != 0
+    pin.bp = false
+    pin.r = b & R != 0
+    pin.rp = b & ~fr_btn & R != 0
+    fr_btn = b
+    attach_tick()
+    player_tick(&pin)
+    fr_t += 1
+    fr_still_count()
+    if fr_k == FR_TRACE && fr_t % 4 == 0 {
+        print("T "); print_int(fr_t); print(" "); print_fixed(pl.pos.x); print_char(' '); print_fixed(pl.pos.y)
+        print_char(' '); print_fixed(pl.pos.z); print(" "); println(ST_NAMES[pl.st])
+    }
+}
+
+fn frame_case(f: s32) {
+    if SCENARIO < 580 || SCENARIO > 584 { return }
+    door_wait = true
+    last_frame = FRAME                       // the frame runs one tick, whatever the time
+    if fr_k < 0 {
+        fr_k = 0
+        fr_leaks = 0
+        fr_begin(0)
+        return
+    }
+    if fr_k >= fr_n { return }
+    fr_still_count()
+    for s in 0..FR_SUB {
+        if fr_t >= FM_TICKS[fr_p.mode] { break }
+        fr_sub()
+    }
+    if fr_t >= FM_TICKS[fr_p.mode] {
+        fr_end(fr_k)
+        fr_k += 1
+        if fr_k >= fr_n {
+            expect(fr_leaks == 0, "probes that left the level", fixed(fr_leaks))
+            note("probes", fixed(fr_n))
+            done()
+            return
+        }
+        fr_begin(fr_k)
+        return
+    }
+    // the frame's own tick: the same buttons, none newly pressed
+    let h = fr_heading()
+    pad_v = fr_btn
+    pad_prev = fr_btn
+    stick_v = cc_stick(h, 1.0)
+    if fr_p.mode == FM_FLIP && fr_ph < 3 { stick_v = STILL }
+    fr_t += 1
+}
+
+// After the frame's camera: look at the sky, so the frame draws little.
+fn frame_case_hook() {
+    if SCENARIO < 580 || SCENARIO > 584 { return }
+    cam.pitch = 1.2
+}

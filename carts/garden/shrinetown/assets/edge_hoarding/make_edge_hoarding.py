@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Writes the road-works hoarding that closes the front road's two ends (README.md, "The frame";
 the grey box's hoarding_w and hoarding_e, 14 m long, 5.5 m tall, 0.4 m thick): art/panel.png,
-art/sign.png and edge_hoarding.asset.json.
+art/sign.png and edge_hoarding.asset.json; and the edge fences of the same panels, 3 m tall, in
+front of the neighbours' backs (the grey box's edge_s0..s5, _w0, _w1, _e0, _e1):
+edge_fence_L.asset.json for each length L in FENCES.
 
 A Japanese road-works hoarding (kakoi): white ribbed steel panels on a green kick plate under a
 blue top rail, and the bowing-worker sign ("sorry for the trouble") on its front. The panel is
@@ -10,12 +12,21 @@ texel); the sign a 32 x 32 decal drawn once, 1.6 m square. 18 triangles; 1,024 +
 VRAM, one 4-bit palette for the two.
 
 Origin and facing: the middle of the hoarding's foot; its front (the sign's side) faces -Z.
-Each replaces the grey box's hoarding at the middle of its footprint (0.2, 111) and (319.8, 111),
-with the yaw that turns the front to the road (GROUND.md, "Edges"). Collision: "self".
+Each replaces the grey box's hoarding, straddling the edge (place/art.py: (0.05, 111) and
+(319.95, 111)), with the yaw that turns the front to the road (GROUND.md, "Edges"). Collision:
+"self".
+
+A fence is the hoarding's panel without the sign: the same tile (no VRAM of its own), a 2 m repeat
+along it and once up its 3 m, the blue top rail and the green kick plate at its top and foot; its
+back (+Z, against the neighbour's back) is left open. Its origin is the middle of its foot, its
+length along X, its face toward -Z; 8 triangles before the kit splits the face where the tile
+would repeat more than three times (14-30 after); from FENCE_FAR one flat colour, 8. Each
+replaces one of the grey box's fences, straddling the edge, its face turned to the level.
 
 Run: python3 carts/garden/shrinetown/assets/edge_hoarding/make_edge_hoarding.py   (Pillow)
 """
 import json
+import math
 import random
 from pathlib import Path
 
@@ -23,6 +34,10 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 LENGTH, HEIGHT, THICK = 14.0, 5.5, 0.4
+FENCES = (12, 34, 40, 44, 64)         # the grey box's fences' lengths (notes/gen_town.py's frame)
+FENCE_HEIGHT = 3.0
+FENCE_FAR = 40                        # from here a fence is one flat colour: the panels' mean
+FAR = '#dcdad2'
 
 WHITE, RIB, GRIME, BLUE, BLUE2 = '#eceae4', '#d0cec6', '#b8b6ae', '#3a6ab0', '#2a4a80'
 GREEN, GREEN2, YELLOW, BLACK, SKIN = '#40a060', '#2e7a48', '#f0c030', '#2c2a28', '#e8b890'
@@ -118,8 +133,35 @@ def recipe():
     }
 
 
+def fence(length):
+    return {
+        'format': 'mei-asset', 'version': 1, 'name': f'edge_fence_{length}',
+        'budget': {'triangles': 4 * math.ceil(length / 6) + 16},
+        'lighting': {'mode': 'vertical', 'ambient': 0.5},
+        'verification': {'required': True, 'depth': True, 'perspective': True},
+        'materials': {
+            'panel': {'color': WHITE, 'tag': 'wall',
+                      'texture': {'image': 'art/panel.png', 'projection': 'box', 'scale': [2.0, FENCE_HEIGHT],
+                                  'offset': [round((length / 2 / 2.0) % 1, 4), 0.5]}},
+            'top': {'color': BLUE, 'palette': True},
+            'far': {'color': FAR},
+        },
+        'nodes': [
+            {'id': 'wall', 'op': 'box', 'size': [length, FENCE_HEIGHT, THICK], 'material': 'panel',
+             'open': ['bottom', '+z'], 'faces': {'top': 'top', 'left': 'top', 'right': 'top'},
+             'transform': {'translate': [0, FENCE_HEIGHT / 2, 0]}},
+        ],
+        'lod': {'levels': [{'distance': FENCE_FAR, 'nodes': [
+            {'id': 'wall', 'op': 'box', 'size': [length, FENCE_HEIGHT, THICK], 'material': 'far',
+             'open': ['bottom', '+z'], 'transform': {'translate': [0, FENCE_HEIGHT / 2, 0]}}]}]},
+    }
+
+
 if __name__ == '__main__':
     panel()
     sign()
     (HERE / 'edge_hoarding.asset.json').write_text(json.dumps(recipe(), indent=1) + '\n')
     print('edge_hoarding: 14 x 5.5 x 0.4 m')
+    for length in FENCES:
+        (HERE / f'edge_fence_{length}.asset.json').write_text(json.dumps(fence(length), indent=1) + '\n')
+        print(f'edge_fence_{length}: {length} x {FENCE_HEIGHT} x {THICK} m')

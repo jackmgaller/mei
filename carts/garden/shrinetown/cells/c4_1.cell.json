@@ -10,13 +10,14 @@
  "placements": [
   {
    "id": "edge_e1",
-   "asset": "gbt_edge_fence_6",
+   "asset": "edge_fence_40",
    "position": [
-    319.8,
+    319.95,
     0,
     84.0
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 90.0
   },
   {
    "id": "neighbour_e2",
@@ -33,7 +34,7 @@
    "id": "hoarding_e",
    "asset": "edge_hoarding",
    "position": [
-    319.8,
+    319.95,
     0,
     111.0
    ],
@@ -72,6 +73,16 @@
    ],
    "yaw": 90.0,
    "collision": "viaduct_underpass_col"
+  },
+  {
+   "id": "viaduct_end",
+   "asset": "viaduct_end_wall",
+   "position": [
+    310.5577,
+    9.0,
+    126.2577
+   ],
+   "collision": "self"
   },
   {
    "id": "signal_gantry_1",
@@ -158,6 +169,28 @@
    ],
    "yaw": 111,
    "collision": "tree_zelkova_col"
+  },
+  {
+   "id": "neighbour_e3",
+   "asset": "edge_neighbour_e3",
+   "position": [
+    319.8,
+    0.0,
+    116.0
+   ],
+   "yaw": 90.0,
+   "collision": "self"
+  },
+  {
+   "id": "neighbour_e4",
+   "asset": "edge_neighbour_e4",
+   "position": [
+    319.8,
+    0.0,
+    127.9
+   ],
+   "yaw": 90.0,
+   "collision": "self"
   }
  ],
  "entities": [
