@@ -1658,6 +1658,22 @@ class TextureTests(unittest.TestCase):
             self.assertNotIn('wp_region_enter', c.akr)
             self.assertNotIn('wpbackdrop', c.akr)
 
+    def test_silhouette_palette_of_a_bank_1_region_is_in_bank_0(self):
+        # a plane reads palette bank 0 only: the harbour, placed from 256, keeps its silhouette's
+        # palette in bank 0 as a run of its own, loaded with each variant
+        self.ex.edit(lambda w: w['regions']['harbour'].__setitem__('palettes', {'first': 256}))
+        c = self.ex.compile()
+        rm, rh = P.decode(c.pack).regions
+        self.assertGreaterEqual(rh.first_colour, 256 * 16)
+        pal = (rh.sky.mode >> 8) & 255
+        market = c.report['regions']['market']['palette']['palettes']
+        self.assertNotIn(pal, market)
+        self.assertGreater(pal, max(market))
+        run = [r for r in rh.runs if r.first_colour == pal * 16]
+        self.assertEqual(len(run), 1)
+        self.assertEqual(len(run[0].variants), 2)                  # day and night
+        self.assertTrue(any(run[0].variants[0][1:]))
+
     def far_world(self, **extra):
         """Night market with the kit's stand-ins from 8 units (every cell draws one)."""
         self.ex.edit(lambda w: w.__setitem__('standins', {'distance': 8, **extra}))
