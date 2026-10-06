@@ -220,6 +220,19 @@ class HeadlessTest(unittest.TestCase):
         self.assertFalse(o.out)
         self.assertAlmostEqual(o.maxy, TN.load().summary()['jump_running'], delta=0.1)
 
+    def test_written_case_runs_in_the_cart(self):
+        """A case as the explorer writes it, run in the real cart: a jump on the lane stays in the
+        level (the check passes, exit 0); one off the garden's south edge leaves it (exit 2)."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, p, head, want in (('stays', (40.0, 0.5, 8.0), math.pi / 2, 0),
+                                        ('leaves', (44.0, 0.5, 0.5), math.pi, 2)):
+                st = {'probe': C.asdict(C.Probe(find=name, p=p, yaw=head, head=head, mode=3, t=90)), 'seed': 1}
+                path = Path(tmp) / f'{name}.akr'
+                path.write_text(C.case_text('garden', 'escape', {'id': name}, st, (0, 0, 128, 128), -5.0))
+                code, out = C.run_case(BUILD, path, draw=False)
+                self.assertEqual(code, want, out[-800:])
+
 
 if __name__ == '__main__':
     unittest.main()

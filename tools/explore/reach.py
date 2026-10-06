@@ -705,14 +705,26 @@ class Explorer:
         return path[::-1]
 
     def route_flights(self, node, pred=None):
-        """The flights of the cheapest route to node, in order: [(flight set, row, to node)]."""
+        """The flights of the cheapest route to node, in order: [(flight set, row, from node, to node)]."""
         path = self.route_nodes(node, pred)
         out = []
         for u, v in zip(path[:-1], path[1:]):
             f = self.edge_flight_row(u, v)
             if f is not None:
-                out.append((f[0], f[1], v))
+                out.append((f[0], f[1], u, v))
         return out
+
+    def graph_without(self, banned):
+        """The graph with the edges (u, v) in banned made too dear to take."""
+        G = self.G.copy()
+        for u, v in banned:
+            i = self.edge_index(u, v)
+            if i >= 0:
+                lo, hi = G.indptr[u], G.indptr[u + 1]
+                j = lo + np.searchsorted(G.indices[lo:hi], v)
+                if j < hi and G.indices[j] == v:
+                    G.data[j] = 1e9
+        return G
 
     def route(self, node, pred=None, dist=None):
         """The cheapest route from the start to node: [(move, node)], walking merged."""

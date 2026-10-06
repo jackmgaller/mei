@@ -139,6 +139,31 @@ def escapes(e, radius=12.0):
     return found
 
 
+def escape_stretches(found, gap=20.0, confirmed_only=True):
+    """The escapes grouped into stretches of the frame's sides: escapes on one side whose exits
+    are within `gap` metres of each other along it. Each: the side, the range along it, the
+    escapes and the moves."""
+    out = []
+    for side in ('north', 'east', 'south', 'west'):
+        fs = [f for f in found if f['side'] == side and (not confirmed_only or f.get('confirm', {}).get('confirmed'))]
+        along = 0 if side in ('north', 'south') else 1
+        fs.sort(key=lambda f: f['at'][along])
+        cur = None
+        for f in fs:
+            v = f['at'][along]
+            if cur and v - cur['to'] <= gap:
+                cur['to'] = v
+                cur['escapes'].append(f['id'])
+                cur['moves'] |= {f['takeoff']['chain'][0]}
+            else:
+                cur = {'side': side, 'axis': 'xz'[along], 'from': v, 'to': v, 'escapes': [f['id']],
+                       'moves': {f['takeoff']['chain'][0]}}
+                out.append(cur)
+    for c in out:
+        c['moves'] = sorted(c['moves'])
+    return out
+
+
 # ---- falls through the world
 
 def falls(e, radius=4.0):
@@ -265,7 +290,9 @@ def collectibles(e):
                 for kind, feet, how in ((0, y, 'grind'), (1, y, 'grind'), (2, y - tn.attach['HANG_BELOW'], 'hang')):
                     if abs(p['y'] - (feet + H / 2)) < 1.2 and np.isfinite(e.dist[base + kind * n + i]):
                         add(k, how, e.dist[base + kind * n + i], {'rail': rail['id']})
-    # flights
+    # flights: the cheapest of each move and state per pickup, and the cheapest few glides through it
+    best = {}
+    glides = {k: [] for k in range(len(e.pickups))}
     for fk, (r, src) in enumerate(zip(e.flights.result, e.flights.src)):
         pk = r.pickups
         if len(pk.get('i', [])) == 0:
@@ -274,18 +301,33 @@ def collectibles(e):
         ok = np.isfinite(d)
         for i, ent, tick, st, dd in zip(pk['i'][ok], pk['entity'][ok], pk['tick'][ok], pk['state'][ok], d[ok]):
             mv = MOVE_NAMES[int(e.flights.move[fk][i])]
-            how = f'{mv} ({STATE_NAMES.get(int(st), "air")})'
-            cost = dd + tick / 60
-            cur = ways[int(ent)].get(how)
-            if cur is None or cost < cur['cost_s']:
-                ways[int(ent)][how] = {'how': how, 'cost_s': _r(cost, 1), 'state': STATE_NAMES.get(int(st), 'air'),
-                                       'takeoff': describe_flight(e, fk, int(i)), 'route': _route(e, int(src[i]))}
+            state = STATE_NAMES.get(int(st), 'air')
+            how = f'{mv} ({state})'
+            cost = float(dd + tick / 60)
+            key = (int(ent), how)
+            if key not in best or cost < best[key][0]:
+                best[key] = (cost, fk, int(i), int(src[i]), state)
+            if state == 'glide':
+                glides[int(ent)].append((cost, fk, int(i), int(src[i])))
+    for (ent, how), (cost, fk, i, src, state) in best.items():
+        ways[ent][how] = {'how': how, 'cost_s': _r(cost, 1), 'state': state, 'takeoff': describe_flight(e, fk, i),
+                          'route': _route(e, src)}
     out = []
     for k, p in enumerate(e.pickups):
         w = sorted(ways[k].values(), key=lambda v: v['cost_s'])
+        g = []
+        seen = set()
+        for cost, fk, i, src in sorted(glides[k]):
+            b = e.flights.batch[fk]
+            spot = (round(float(b.x[i]) / 3), round(float(b.z[i]) / 3))
+            if spot in seen:
+                continue
+            seen.add(spot)
+            g.append({'cost_s': _r(cost, 1), 'takeoff': describe_flight(e, fk, i), '_node': src})
+            if len(g) >= 5:
+                break
         out.append({'id': p['id'], 'type': p['type'], 'at': _pt((p['x'], p['y'], p['z'])), 'params': p['params'],
-                    'reachable': bool(w), 'ways': w,
-                    'glide_take': any(v.get('state') == 'glide' for v in w)})
+                    'reachable': bool(w), 'ways': w, 'glide_take': bool(g), 'glide_flights': g})
     return out
 
 
@@ -311,7 +353,12 @@ def sealed(e):
             w.pop('_cost', None)
         intended = set(spec.get('ways_in', []))
         reached = bool(np.isfinite(e.dist[inside]).any())
-        out.append({'kind': 'sealed', 'name': spec['name'], 'box': sealed_box(spec), 'reached': reached,
+        into = ~inside[src] & inside[dst]
+        names = np.array([M.WALK] + MOVE_NAMES)[mid.astype(int) + 1]
+        meant = into & np.isin(names, list(intended))
+        intended_edges = list(zip(src[meant].tolist(), dst[meant].tolist()))
+        out.append({'kind': 'sealed', 'name': spec['name'], 'box': sealed_box(spec), 'watch': sealed_watch(spec),
+                    'reached': reached, '_inside': np.nonzero(inside)[0].tolist(), '_intended_edges': intended_edges,
                     'intended': sorted(intended), 'ways_in': sorted(ways.values(), key=lambda w: w['cost_s']),
                     'other_ways': sorted([w for n, w in ways.items() if n not in intended], key=lambda w: w['cost_s'])})
     return out
@@ -320,6 +367,11 @@ def sealed(e):
 def in_sealed(spec, pos):
     """Which points (n, 3) are inside a sealed place: a cylinder [x, z, radius, y0, y1] or a box
     [x0, y0, z0, x1, y1, z1]."""
+    if 'cylinders' in spec:
+        out = np.zeros(len(pos), bool)
+        for x, z, r, y0, y1 in spec['cylinders']:
+            out |= ((pos[:, 0] - x) ** 2 + (pos[:, 2] - z) ** 2 <= r * r) & (pos[:, 1] >= y0) & (pos[:, 1] <= y1)
+        return out
     if 'cylinder' in spec:
         x, z, r, y0, y1 = spec['cylinder']
         return ((pos[:, 0] - x) ** 2 + (pos[:, 2] - z) ** 2 <= r * r) & (pos[:, 1] >= y0) & (pos[:, 1] <= y1)
@@ -328,7 +380,21 @@ def in_sealed(spec, pos):
            (pos[:, 2] >= z0) & (pos[:, 2] <= z1)
 
 
+def sealed_watch(spec):
+    """The box the headless probe watches: the first cylinder's inscribed square, or the box."""
+    c = (spec.get('cylinders') or [spec.get('cylinder')])[0]
+    if c:
+        x, z, r, y0, y1 = c
+        h = r / math.sqrt(2)
+        return [x - h, y0, z - h, x + h, y1, z + h]
+    return list(spec['box'])
+
+
 def sealed_box(spec):
+    if 'cylinders' in spec:
+        cs = spec['cylinders']
+        return [min(c[0] - c[2] for c in cs), min(c[3] for c in cs), min(c[1] - c[2] for c in cs),
+                max(c[0] + c[2] for c in cs), max(c[4] for c in cs), max(c[1] + c[2] for c in cs)]
     if 'cylinder' in spec:
         x, z, r, y0, y1 = spec['cylinder']
         return [x - r, y0, z - r, x + r, y1, z + r]
@@ -404,7 +470,8 @@ def shortcuts(e):
                     'far': _pt(t.pos), 'straight_m': _r(straight, 1), 'shut_cost_s': _r(cost, 1),
                     'route_strays_m': _r(off, 1), 'local_m': local,
                     'bypassed': bool(np.isfinite(cost) and off <= local),
-                    '_end': int(best) if np.isfinite(cost) else None, '_pred': p,
+                    '_end': int(best) if np.isfinite(cost) else None, '_pred': p, '_start': f,
+                    '_targets': [int(i) for i in idx],
                     'route': [{'move': mv, 'to': _pt(q[:3]) if q else None} for mv, q in steps]})
     return out
 
@@ -458,6 +525,13 @@ def path_walks(e):
                 samples.append((acc + ln * u, [a[i] + (b[i] - a[i]) * u for i in range(3)]))
             acc += ln
         samples.append((acc, list(pts[-1])))
+        # a metre and a half beyond each end, along the end segments: the floor a walker comes from
+        def beyond(p0, p1, dist):
+            d = [p1[i] - p0[i] for i in range(3)]
+            ln = math.hypot(d[0], d[2]) or 1.0
+            return [p1[0] + d[0] / ln * dist, p1[1], p1[2] + d[2] / ln * dist]
+        samples.insert(0, (-1.5, beyond(pts[1], pts[0], 1.5)))
+        samples.append((acc + 1.5, beyond(pts[-2], pts[-1], 1.5)))
         # the corridor's floors: within half the width (and a margin) of the line, near its height
         xs = [q[1][0] for q in samples]
         zs = [q[1][2] for q in samples]
@@ -506,29 +580,36 @@ def path_walks(e):
             return last
         fwd = walk(valid)
         back = walk(valid[::-1])
-        valid = np.array(valid)
-        total = samples[-1][0]
+        total = samples[-2][0]
         rec = {'kind': 'path', 'path': name, 'length_m': _r(total, 1),
                'forward_to_m': _r(samples[fwd][0], 1), 'backward_to_m': _r(samples[back][0], 1),
                'forward_ok': bool(fwd == valid[-1]), 'backward_ok': bool(back == valid[0])}
-        if not rec['forward_ok']:
-            rec['forward_stop'] = _pt(samples[fwd][1])
-            rec['forward_why'] = stop_reason(e, samples[fwd][1], samples[min(fwd + 2, len(samples) - 1)][1])
-        if not rec['backward_ok']:
-            rec['backward_stop'] = _pt(samples[back][1])
-            rec['backward_why'] = stop_reason(e, samples[back][1], samples[max(back - 2, 0)][1])
+        for side, at, nxt in (('forward', fwd, min(fwd + 2, len(samples) - 1)), ('backward', back, max(back - 2, 0))):
+            if rec[f'{side}_ok']:
+                continue
+            ys = sy[sets[at]] if len(sets[at]) else [samples[at][1][1]]
+            ya = float(min(ys, key=lambda y: abs(y - samples[at][1][1])))
+            why = stop_reason(e, samples[at][1], samples[nxt][1], ya)
+            past_end = (side == 'forward' and nxt >= len(samples) - 1) or (side == 'backward' and nxt <= 0)
+            if past_end and why.get('why') != 'lip':
+                rec[f'{side}_ok'] = True          # the sweep's end meets a wall or a drop: by design
+                continue
+            rec[f'{side}_stop'] = _pt(samples[at][1])
+            rec[f'{side}_why'] = why
         out.append(rec)
     return out
 
 
-def stop_reason(e, a, b):
-    """Why a walk from a toward b stops: a wall (and its tag), a step up, a steep floor, no floor."""
+def stop_reason(e, a, b, ya=None):
+    """Why a walk from a (its floor at ya) toward b stops: a wall (and what it belongs to), a lip
+    (a rise over a step), a steep floor, no floor."""
     from worldkit.quick import tag_name
     m = e.m
     F = m.floors
-    ca = int(m.col_of(a[0], a[2]))
-    fa = int(m.floor_below(np.array([ca]), np.array([a[1] + 0.5]))[0])
-    ya = F.y[fa] if fa >= 0 else a[1]
+    if ya is None:
+        ca = int(m.col_of(a[0], a[2]))
+        fa = int(m.floor_below(np.array([ca]), np.array([a[1] + 0.5]))[0])
+        ya = F.y[fa] if fa >= 0 else a[1]
     for u in np.linspace(0.1, 1.0, 10):
         p = [a[i] + (b[i] - a[i]) * u for i in range(3)]
         c = int(m.col_of(p[0], p[2]))
@@ -547,6 +628,9 @@ def stop_reason(e, a, b):
             if out['why'] == 'lip':
                 out['rise'] = _r(rise)
             return out
+        hi_ = int(m.floor_below(np.array([c]), np.array([ya + 1.2]))[0])
+        if hi_ >= 0 and F.y[hi_] > ya + e.tn.step:
+            return {'why': 'lip', 'at': _pt(p), 'rise': _r(F.y[hi_] - ya)}
         f = int(m.floor_below(np.array([c]), np.array([ya + e.tn.step]))[0])
         if f < 0:
             hi = int(m.floor_below(np.array([c]), np.array([ya + 10]))[0])
@@ -563,7 +647,8 @@ def stop_reason(e, a, b):
 
 def traps(e, min_area=2.0):
     """Floors reachable from the spawn from which it cannot be reached back (without a respawn),
-    in clusters."""
+    as connected pieces of the grid: each with its area, its floors' heights and a floor in it."""
+    from scipy import ndimage
     from scipy.sparse.csgraph import dijkstra
     back = dijkstra(e.G.T.tocsr(), directed=True, indices=e.start, return_predecessors=False)
     fwd = np.isfinite(e.dist[:e.n_floor])
@@ -571,19 +656,41 @@ def traps(e, min_area=2.0):
     if len(stuck) == 0:
         return []
     m = e.m
-    x, z = m.xz_of(m.floors.col[stuck])
-    pts = np.stack([x, z], 1)
+    F = m.floors
+    grid = np.zeros(m.nx * m.nz, bool)
+    grid[F.col[stuck]] = True
+    lab, n = ndimage.label(grid.reshape(m.nz, m.nx), structure=np.ones((3, 3)))
+    lab = lab.ravel()
     out = []
-    for members in _cluster(pts, 3.0):
-        area = len(members) * m.grid * m.grid
+    comp = lab[F.col[stuck]]
+    for k in range(1, n + 1):
+        members = stuck[comp == k]
+        cols = np.unique(F.col[members])
+        area = len(cols) * m.grid * m.grid
         if area < min_area:
             continue
-        i = stuck[members[np.argmin(e.dist[stuck[members]])]]
+        x, z = m.xz_of(F.col[members])
+        cx, cz = x.mean(), z.mean()
+        i = members[np.argmin((x - cx) ** 2 + (z - cz) ** 2)]
         out.append({'kind': 'trap', 'at': _pt(node_positions(e)[i]), 'area_m2': _r(area, 1),
-                    'box': [_r(x[members].min()), _r(z[members].min()), _r(x[members].max()), _r(z[members].max())],
-                    'cost_s': _r(e.dist[i], 1), 'route': _route(e, int(i))})
+                    'box': [_r(x.min()), _r(z.min()), _r(x.max()), _r(z.max())],
+                    'heights': [_r(F.y[members].min()), _r(F.y[members].max())],
+                    'cost_s': _r(e.dist[i], 1), 'route': _route(e, int(i)), '_cols': cols, '_ys': F.y[members]})
     out.sort(key=lambda f: -f['area_m2'])
     return out
+
+
+def in_trap(e, t, p):
+    """Whether point p (x, y, z) stands in trap t: on one of its columns (or next to one), within
+    a metre of its floors' heights."""
+    m = e.m
+    c = int(m.col_of(p[0], p[2]))
+    if c < 0:
+        return False
+    near = [c + dz * m.nx + dx for dx in (-1, 0, 1) for dz in (-1, 0, 1)]
+    if not np.isin(near, t['_cols']).any():
+        return False
+    return bool(t['heights'][0] - 1.0 <= p[1] <= t['heights'][1] + 1.0)
 
 
 # ---- the drop check's points

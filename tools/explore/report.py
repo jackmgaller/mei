@@ -52,8 +52,9 @@ def draw_map(e, finds, confirmed, path, scale=2.0):
     rgb = np.stack([shade, shade, shade], -1)
     reach = np.isfinite(r) & (np.abs(np.nan_to_num(r) - np.nan_to_num(t)) < 0.6)
     under = np.isfinite(r) & ~reach            # reachable, but under something higher
-    rgb[reach] = np.stack([(shade[reach] * 0.55).astype(np.uint8), np.minimum(shade[reach].astype(int) + 40, 255).astype(np.uint8),
-                           (shade[reach] * 0.55).astype(np.uint8)], -1)
+    kr = k[reach]
+    rgb[reach] = np.stack([(40 + 120 * kr).astype(np.uint8), (110 + 120 * kr).astype(np.uint8),
+                           (60 + 60 * kr).astype(np.uint8)], -1)
     rgb[under] = np.stack([(shade[under] * 0.6).astype(np.uint8), (shade[under] * 0.85).astype(np.uint8),
                            (shade[under] * 0.6).astype(np.uint8)], -1)
     rgb[~np.isfinite(t)] = (40, 20, 50)        # no floor
@@ -88,18 +89,21 @@ def draw_map(e, finds, confirmed, path, scale=2.0):
         b = f['box']
         d.rectangle([*P(b[0], b[3]), *P(b[2], b[1])], outline=(200, 140, 60), width=2)
     for f in finds.get('falls', []):
-        c = (255, 60, 220) if f.get('confirm', {}).get('confirmed') else (170, 70, 150)
-        dot(f['at'][0], f['at'][1], c, 3)
+        if f.get('confirm', {}).get('confirmed'):
+            dot(f['at'][0], f['at'][1], (255, 60, 220), 3)
     for f in finds.get('drops', []):
         if f.get('confirmed'):
             dot(f['at'][0], f['at'][2], (255, 60, 220), 4)
     for f in finds.get('escapes', []):
-        c = (255, 40, 40) if f.get('confirm', {}).get('confirmed') else (200, 110, 110)
+        ok = f.get('confirm', {}).get('confirmed')
+        c = (255, 40, 40) if ok else (150, 90, 90)
         t0 = f['takeoff']['from']
         px, pz = P(t0[0], t0[2])
         qx, qz = P(f['at'][0], f['at'][1])
-        d.line([px, pz, qx, qz], fill=c, width=2)
-        cross(f['at'][0], f['at'][1], c, 6, 3)
+        if ok:
+            d.line([px, pz, qx, qz], fill=c, width=1)
+            dot(t0[0], t0[2], c, 2)
+        cross(f['at'][0], f['at'][1], c, 5 if ok else 3, 2)
     for s in finds.get('sealed', []):
         b = s['box']
         d.rectangle([*P(b[0], b[5]), *P(b[3], b[2])], outline=(255, 160, 40), width=2)
@@ -155,6 +159,8 @@ def _route(x):
     r = x.get('route_check')
     if not r:
         return ''
+    if r.get('on_foot'):
+        return '; route: on foot'
     if r['confirmed']:
         return f'; route: all {r["legs"]} flights reproduced'
     bits = [f'{r["reproduced"]} of {r["legs"]} route flights reproduced']
@@ -163,6 +169,18 @@ def _route(x):
     if r.get('not_flown'):
         bits.append(f'{len(r["not_flown"])} not flown (off a rail or a hang)')
     return '; route: ' + ', '.join(bits)
+
+
+def _headless_route(h):
+    if h.get('confirmed'):
+        moves = [q['move'] for q in h.get('route', []) if q['move'] != 'walk']
+        return (f'a route the cart repeats flight by flight, {h["cost_s"]} s ({" > ".join(moves) or "walking"}), '
+                f'found in {h["rounds"]} round{"s" if h["rounds"] > 1 else ""}')
+    if h.get('no_route'):
+        return f'no route left after {h["rounds"]} rounds (each leg the cart did not repeat taken out)'
+    if h.get('gave_up'):
+        return f'no route the cart repeats in {h["rounds"]} rounds'
+    return 'a route with legs the cart cannot fly here (off a hang): ' + _route({'route_check': h}).lstrip('; ')
 
 
 def summary_text(rep):
@@ -178,6 +196,10 @@ def summary_text(rep):
     esc = f.get('escapes', [])
     nconf = sum(1 for x in esc if x.get('confirm', {}).get('confirmed'))
     out.append(f'  escapes from the frame: {len(esc)} places, {nconf} confirmed headless')
+    for st in f.get('escape_stretches', []):
+        out.append(f'    {st["side"]} side, {st["axis"]} {st["from"]:.0f}..{st["to"]:.0f}: {len(st["escapes"])} escapes '
+                   f'({", ".join(st["moves"])})')
+    out.append('  the escapes, cheapest first:')
     for x in esc[:24]:
         t = x['takeoff']
         out.append(f'    {x["side"]:5s} at ({x["at"][0]:.0f}, {x["at"][1]:.0f}), {x["cost_s"]:.0f} s from the spawn: '
@@ -198,10 +220,13 @@ def summary_text(rep):
         out.append(f'  flights through the world (reach map): {len(falls)} spots, {nconf} of the first '
                    f'{sum(1 for x in falls if x.get("confirm"))} confirmed headless')
     for s in f.get('sealed', []):
-        out.append(f'  sealed: {s["name"]}: ways in: {", ".join(w["move"] for w in s["ways_in"]) or "none"}')
-        for w in s['other_ways']:
-            out.append(f'    NOT intended: {w["move"]} from ({w["from"][0]:.1f}, {w["from"][1]:.1f}, {w["from"][2]:.1f}), '
-                       f'{w["cost_s"]} s from the spawn{_conf(w)}{_route(w)}')
+        out.append(f'  sealed: {s["name"]}: ways in (reach map): {", ".join(w["move"] for w in s["ways_in"]) or "none"}')
+        h = s.get('headless_other_way')
+        if h:
+            out.append('    with its intended ways in taken out: ' + _headless_route(h))
+        for w in s['other_ways'][:8]:
+            out.append(f'    not intended: {w["move"]} from ({w["from"][0]:.1f}, {w["from"][1]:.1f}, {w["from"][2]:.1f}), '
+                       f'{w["cost_s"]} s from the spawn{_conf(w)}')
     for c in [c for c in f.get('collectibles', []) if c['type'] == 'star']:
         hows = sorted({w['how'].split(' (')[0] for w in c['ways']})
         out.append(f'  {c["id"]}: ' + ('reachable' if c['reachable'] else 'NOT REACHABLE') +
@@ -213,9 +238,17 @@ def summary_text(rep):
         if 'error' in s:
             out.append(f'  shortcut {s["name"]}: {s["error"]}')
             continue
-        out.append(f'  shortcut {s["name"]}: with it shut, its far side in {s["shut_cost_s"]} s, the route at most '
-                   f'{s["route_strays_m"]} m off the line between its ends: ' +
-                   ('BYPASSED' if s['bypassed'] else 'the long way') + _route(s))
+        h = s.get('headless_route')
+        line = (f'  shortcut {s["name"]}: shut, its far side in {s["shut_cost_s"]} s by the reach map, '
+                f'{s["route_strays_m"]} m off the line between its ends')
+        if h:
+            line += '; headless: ' + _headless_route(h)
+            if h.get('confirmed'):
+                line += (f', {h.get("strays_m")} m off the line: ' +
+                         ('BYPASSED' if s.get('bypassed_headless') else 'the long way'))
+        else:
+            line += ': ' + ('bypassed (reach map only)' if s['bypassed'] else 'the long way')
+        out.append(line)
     paths = f.get('paths', [])
     bad = [p for p in paths if not (p['forward_ok'] and p['backward_ok'])]
     out.append(f'  paths that do not walk end to end: {len(bad)} of {len(paths)}')
@@ -232,8 +265,11 @@ def summary_text(rep):
         out.append(f'    {p["path"]} ({p["length_m"]} m): ' + '; '.join(why))
     tr = f.get('traps', [])
     out.append(f'  traps (reachable, no way back without a respawn, reach map only): {len(tr)}')
-    for t in tr[:8]:
-        out.append(f'    {t["area_m2"]} m2 at ({t["at"][0]:.1f}, {t["at"][1]:.1f}, {t["at"][2]:.1f})')
+    for t in tr[:12]:
+        h = t.get('headless')
+        out.append(f'    {t["area_m2"]} m2 at ({t["at"][0]:.1f}, {t["at"][1]:.1f}, {t["at"][2]:.1f})' +
+                   ('' if not h else (f': headless, {h["got_out"]} of {h["tried"]} moves got out ({", ".join(h["ways_out"][:3])})'
+                                      if h['got_out'] else f': headless, none of {h["tried"]} moves got out')))
     for gd in f.get('glides', []):
         out.append(f'  glide {gd["name"]}: lands from {gd["ok"]} of {gd["tried"]} take-offs; window {gd["window_x"]} m '
                    f'across x ({gd["range_x"]}), {gd["window_z"]} m across z ({gd["range_z"]}); aim errors '
