@@ -1556,6 +1556,12 @@ A slot's file holds the rows from its first used row to its last, whole rows (12
 row, 256 an 8-bit one), so a slot with one 33 × 17 8-bit sign costs 4,352 bytes of ROM. The
 loader copies them with `memcpy`; textures load before the swatch, which may share their slot.
 
+`--swatch` keeps the swatch's block free and loads the swatch even when no material is
+palette-backed. Every swatch is the same 16 texels (texel *u* holds index *u*), so such a pack
+can share slot 14 with a world's swatch: the movement garden draws its star, the hanafuda moon
+card, from a pack in slot 14 that no world region uses (`--slots 14 --palette 254 --swatch`;
+[carts/garden/README.md](../carts/garden/README.md#goals)).
+
 ### Outputs and the manifest
 
 A textured asset's `build` adds `NAME.slotK.tex` (each slot used), `NAME.tpal` (the texture

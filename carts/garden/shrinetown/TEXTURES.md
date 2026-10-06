@@ -126,6 +126,9 @@ not fit the palettes either.** With no 8-bit textures (the cuts below) the 4-bit
 to 254: about 180 for the town and 56 for the shrine (an estimate: the 42 tiles made 4-bit take
 some palettes of their own), about 20 to spare. So:
 
+- **Palette 254 and slot 14 are the star's.** The garden cart draws the hanafuda moon card
+  itself, from a pack in texture slot 14 (beside the worlds' swatch row) with one 4-bit palette,
+  254 (`../README.md`, "Goals"): the regions' palettes stay at 253 and below, their slots 13–0.
 - **No 8-bit textures in the shrine town.** Each costs 16 palettes for one region.
 - Allowances: the town 180 4-bit palettes, the shrine 60. `report.json`'s
   `regions.NAME.palette.palettes` lists them.

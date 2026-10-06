@@ -430,7 +430,7 @@ compound('building_escape', 'building_escape', 201.25, 0, 62, [slab_ramp(200, 44
          {'stair': C['concd']})
 # shortcut E: the drop ladder on the north face (layer ladder_e), a pole when down
 block('ladder_e', 199.0, 102.0, 200.0, 102.2, 0, 17.9, C['ladder'], label='ladder_e', layer='ladder_e', solid=False)
-entity('pole_ladder_e', 'pole', 199.5, 0, 102.6, {'height': 18.3}, layer='ladder_e')
+entity('pole_ladder_e', 'pole', 199.5, 0, 102.6, {'height': 18.3, 'front': True}, layer='ladder_e')   # climbed from the north
 
 # ------------------------------------------------------------------ 3.3 back alleys
 # layout.py's loop makes rows z 44..99; the z 99 row (99-107.5) runs 3.5 m into the front road
@@ -594,8 +594,6 @@ coin_rec = {'format': 'mei-asset', 'version': 1, 'name': 'gbt_coin',
             'verification': {'required': True, 'yaw_steps': 4, 'pitches': [0], 'distances': [1.5]}}
 recipes['gbt_coin'] = coin_rec
 recipes['gbt_coin_red'] = json.loads(json.dumps(coin_rec).replace('gbt_coin', 'gbt_coin_red').replace('#ffd040', '#e02828'))
-recipes['gbt_star'] = json.loads(json.dumps(coin_rec).replace('gbt_coin', 'gbt_star').replace('#ffd040', '#fff4a0')
-                                 .replace('"radius": 0.3', '"radius": 0.6'))
 COIN_LIFT = 0.7
 RED = [  # (id, x, y_surface, z, what); layout.RED_COINS with the grey box's changes
     ('red_arcade', 160, 8.5, 78, 'arcade ridge'),
@@ -609,9 +607,10 @@ RED = [  # (id, x, y_surface, z, what); layout.RED_COINS with the grey box's cha
 ]
 for rid, x, y, z, _ in RED:
     entity(rid, 'red_coin', x, y + COIN_LIFT, z, asset='gbt_coin_red')
-# stars as coins (no star type yet): star 2 on the torii's top beam, star 5 on the platform
-entity('star_2_torii', 'coin', 160, TORII_TOP + 0.9, 124, asset='gbt_star')
-entity('star_5_platform', 'coin', 160, VD + 0.9, 8, asset='gbt_star')
+# the game's entities in these rows (../game.py: the stars, the triggers, the last train)
+_gs = importlib.util.spec_from_file_location('game', ST / 'game.py'); G = importlib.util.module_from_spec(_gs); _gs.loader.exec_module(G)
+for _cid, _es in G.cell_entities((0, 1)).items():
+    for _e in _es: entities_n.add(_e['id']); cell(_cid, (int(_cid[1]), int(_cid[3])))['entities'].append(_e)
 # coin lines (spec 6.1, the town's share)
 coins = []
 for k, (x0, x1) in enumerate(STAIRS):                       # plaza and station stairs: 6

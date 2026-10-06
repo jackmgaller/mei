@@ -380,7 +380,7 @@ def pack_command(args):
     if not 0 <= args.palette <= 254 or not 0 <= args.palette8 <= 14:
         raise AssetError('/arguments/palette','--palette is 0-254 and --palette8 0-14 (palette 255 and 8-bit palette 15 hold the fonts).')
     recipes = [(load(path),folder(path)) for path in args.recipes]
-    files,manifest = pack(recipes,args.name,slot_list(args.slots),args.palette,args.palette8)
+    files,manifest = pack(recipes,args.name,slot_list(args.slots),args.palette,args.palette8,args.swatch)
     directory = Path(args.output).resolve()
     staged.guard(directory,files,args.recipes,error=AssetError)
     with staged.staging(directory,'.mei-assets-') as stage:
@@ -449,6 +449,7 @@ def parser():
     pk.add_argument('--slots',default='14-0',help='Texture slots to use, in order: a range 14-10 or a list 14,12 (never 15). Default 14-0.')
     pk.add_argument('--palette',type=int,default=0,help='First 4-bit palette (palette-backed materials, then 4-bit textures). Default 0.')
     pk.add_argument('--palette8',type=int,default=14,help='First 8-bit palette for 8-bit textures (they take it and those below). Default 14.')
+    pk.add_argument('--swatch',action='store_true',help='Keep the swatch block (row 0 of the first slot) and load the swatch even with no palette-backed material: the textures can then share a slot with a world\'s swatch.')
     gltf.add_parser(sub)
     imp = sub.add_parser('import-obj',help='Convert OBJ geometry into an editable recipe; materials/UVs are not imported.')
     imp.add_argument('input')

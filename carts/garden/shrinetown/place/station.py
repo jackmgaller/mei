@@ -19,7 +19,7 @@ west taper, the three station spans (x 136-184, joints at x = 8 mod 16), the eas
 standard spans to x 280, three curves (90 degrees left, R 30.56), four spans north along
 x 310.56, the underpass over the front road (24 m, the road through it 25 degrees north of east)
 and two curves right, out of the level to the east between the rims (z 132-154). DESIGN.md
-12.5 has what changed from the grey box and why.
+12.6 has what changed from the grey box and why.
 """
 import math
 
@@ -220,14 +220,13 @@ GREY = [  # the grey boxes these replace (gen_town's placement ids)
     'bus_stop', 'koban', 'danchi', 'danchi_tank', 'danchi_stair', 'pachinko', 'konbini',
     'konbini_sign', 'pole_konbini0']
 
-# Coins on what the real assets moved (DESIGN.md 12.5): the outside stairs are at x 150 and 170
-# with their treads at 0.5 (34.6 - z); the canopy's top is 13.47 over the platform's middle; the
-# platform's floor is 10.0.
+# Coins on what the real assets moved (DESIGN.md 12.6): the outside stairs are at x 150 and 170
+# with their treads at 0.5 (34.6 - z); the canopy's top is 13.47 over the platform's middle. (Star
+# 5 and the platform's trigger are game.py's, on the platform's floor, 10.0.)
 COIN_LIFT = 0.7
 COINS = {f'coin_stair{k}_{j}': (x, 0.5 * (34.6 - z) + COIN_LIFT, z)
          for k, x in enumerate((150.0, 170.0)) for j, z in enumerate((29.0, 23.0, 17.0))}
 COINS['red_canopy'] = (172.0, 13.47 + COIN_LIFT, 8.0)
-COINS['star_5_platform'] = (160.0, 10.0 + 0.9, 8.0)
 
 
 def _put(ns, cells_put, pid, asset, x, y, z, yaw=0.0, collision=None, layer=None, merge=False):
