@@ -9,146 +9,6 @@
  "region": "town",
  "placements": [
   {
-   "id": "machiya_w78",
-   "asset": "gbt_machiya_a",
-   "position": [
-    11.0,
-    0,
-    83.0
-   ],
-   "collision": "gbt_machiya_a_col"
-  },
-  {
-   "id": "machiya_e78",
-   "asset": "gbt_machiya_b",
-   "position": [
-    32.0,
-    0,
-    83.0
-   ],
-   "collision": "gbt_machiya_b_col"
-  },
-  {
-   "id": "machiya_w90",
-   "asset": "gbt_machiya_a",
-   "position": [
-    11.0,
-    0,
-    95.0
-   ],
-   "collision": "gbt_machiya_a_col"
-  },
-  {
-   "id": "machiya_e90",
-   "asset": "gbt_machiya_b",
-   "position": [
-    32.0,
-    0,
-    95.0
-   ],
-   "collision": "gbt_machiya_b_col"
-  },
-  {
-   "id": "sento",
-   "asset": "gbt_sento",
-   "position": [
-    19.0,
-    0,
-    66.5
-   ],
-   "collision": "gbt_sento_col"
-  },
-  {
-   "id": "sento_boiler",
-   "asset": "gbt_sento_boiler",
-   "position": [
-    34.0,
-    0,
-    67.5
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "sento_chimney",
-   "asset": "gbt_sento_chimney",
-   "position": [
-    30.5,
-    0,
-    67.5
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "canal_road_bridge",
-   "asset": "gbt_canal_road_bridge",
-   "position": [
-    48.0,
-    -0.5,
-    111.0
-   ],
-   "collision": "gbt_canal_road_bridge_col"
-  },
-  {
-   "id": "pole_road10",
-   "asset": "gbt_utility_pole",
-   "position": [
-    10.0,
-    0.0,
-    104.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "pole_road40",
-   "asset": "gbt_utility_pole",
-   "position": [
-    40.0,
-    0.0,
-    104.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "road_works",
-   "asset": "gbt_road_works",
-   "position": [
-    1.0,
-    0,
-    111.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "cedar_0",
-   "asset": "gbt_tree_cedar",
-   "position": [
-    58,
-    1.119,
-    122
-   ],
-   "collision": "gbt_tree_cedar_col"
-  },
-  {
-   "id": "ginkgo_0",
-   "asset": "gbt_tree_ginkgo",
-   "position": [
-    14,
-    0.6,
-    124
-   ],
-   "collision": "gbt_tree_ginkgo_col"
-  },
-  {
-   "id": "ginkgo_1",
-   "asset": "gbt_tree_ginkgo",
-   "position": [
-    32,
-    0.6,
-    122
-   ],
-   "collision": "gbt_tree_ginkgo_col"
-  },
-  {
    "id": "edge_w1",
    "asset": "gbt_edge_fence_6",
    "position": [
@@ -177,45 +37,195 @@
     111.0
    ],
    "collision": "self"
-  }
- ],
- "entities": [
+  },
   {
-   "id": "pole_chimney",
-   "type": "pole",
+   "id": "machiya_w78",
+   "asset": "town_machiya_a",
    "position": [
-    32.45,
-    5.0,
-    67.5
+    10.7,
+    0.0,
+    83.0
    ],
-   "params": {
-    "height": 13.2
-   }
+   "yaw": 270,
+   "collision": "town_machiya_a_col"
+  },
+  {
+   "id": "machiya_e78",
+   "asset": "town_machiya_b",
+   "position": [
+    31.3,
+    0.0,
+    83.0
+   ],
+   "yaw": 90,
+   "collision": "town_machiya_b_col"
+  },
+  {
+   "id": "machiya_w90",
+   "asset": "town_machiya_a",
+   "position": [
+    10.7,
+    0.0,
+    95.0
+   ],
+   "yaw": 270,
+   "collision": "town_machiya_a_col"
+  },
+  {
+   "id": "machiya_e90",
+   "asset": "town_machiya_b",
+   "position": [
+    31.3,
+    0.0,
+    95.0
+   ],
+   "yaw": 90,
+   "collision": "town_machiya_b_col"
+  },
+  {
+   "id": "canal_road_bridge",
+   "asset": "canal_road_bridge",
+   "position": [
+    48.0,
+    0.0,
+    111.0
+   ],
+   "collision": "canal_road_bridge_col"
   },
   {
    "id": "pole_road10",
-   "type": "pole",
+   "asset": "street_utility_pole",
    "position": [
-    10,
+    10.0,
     0.0,
-    104.0
+    106.0
    ],
-   "params": {
-    "height": 9.0
-   }
+   "yaw": 90,
+   "collision": "street_utility_pole_col"
   },
   {
    "id": "pole_road40",
-   "type": "pole",
+   "asset": "street_utility_pole",
    "position": [
-    40,
+    40.0,
     0.0,
-    104.0
+    106.0
    ],
-   "params": {
-    "height": 9.0
-   }
+   "yaw": 90,
+   "collision": "street_utility_pole_col"
   },
+  {
+   "id": "road_works_0",
+   "asset": "street_barrier",
+   "position": [
+    1.0,
+    0.0,
+    107.5
+   ],
+   "yaw": 270,
+   "collision": "street_barrier_col"
+  },
+  {
+   "id": "road_works_1",
+   "asset": "street_barrier",
+   "position": [
+    1.0,
+    0.0,
+    114.5
+   ],
+   "yaw": 270,
+   "collision": "street_barrier_col"
+  },
+  {
+   "id": "canal_pots_w78",
+   "asset": "town_potted_plants",
+   "position": [
+    18.4,
+    0,
+    86.0
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_pots_e78",
+   "asset": "town_potted_plants",
+   "position": [
+    23.6,
+    0,
+    80.5
+   ],
+   "yaw": 90,
+   "collision": "self"
+  },
+  {
+   "id": "canal_pots_e90",
+   "asset": "town_potted_plants",
+   "position": [
+    23.6,
+    0,
+    96.5
+   ],
+   "yaw": 90,
+   "collision": "self"
+  },
+  {
+   "id": "canal_bike_w90",
+   "asset": "mamachari",
+   "position": [
+    18.9,
+    0,
+    98.0
+   ],
+   "yaw": 355,
+   "collision": "mamachari_col"
+  },
+  {
+   "id": "canal_aircon_e78",
+   "asset": "town_aircon_pipes",
+   "position": [
+    38.5,
+    0,
+    85.0
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_bins_e90",
+   "asset": "town_crates_bins",
+   "position": [
+    38.6,
+    0,
+    92.0
+   ],
+   "yaw": 270,
+   "collision": "self"
+  },
+  {
+   "id": "canal_jizo_footbridge",
+   "asset": "jizo",
+   "position": [
+    41.8,
+    0,
+    64.2
+   ],
+   "yaw": 270,
+   "collision": "jizo_col"
+  },
+  {
+   "id": "canal_bench_canal_lane",
+   "asset": "town_bench",
+   "position": [
+    53.4,
+    0,
+    76.0
+   ],
+   "yaw": 90,
+   "collision": "town_bench_col"
+  }
+ ],
+ "entities": [
   {
    "id": "door_shrine",
    "type": "door",
@@ -283,6 +293,66 @@
    ],
    "params": {
     "path": "wire_road"
+   }
+  },
+  {
+   "id": "pole_chimney",
+   "type": "pole",
+   "position": [
+    30.5,
+    5.02,
+    66.7
+   ],
+   "params": {
+    "height": 13.18
+   }
+  },
+  {
+   "id": "pole_road_bridge_0",
+   "type": "pole",
+   "position": [
+    48.0,
+    2.1,
+    104.2
+   ],
+   "params": {
+    "height": 2.75
+   }
+  },
+  {
+   "id": "pole_road_bridge_1",
+   "type": "pole",
+   "position": [
+    48.0,
+    2.1,
+    117.8
+   ],
+   "params": {
+    "height": 2.75
+   }
+  },
+  {
+   "id": "pole_road10",
+   "type": "pole",
+   "position": [
+    10.0,
+    0.0,
+    106.0
+   ],
+   "params": {
+    "height": 9.0
+   }
+  },
+  {
+   "id": "pole_road40",
+   "type": "pole",
+   "position": [
+    40.0,
+    0.0,
+    106.0
+   ],
+   "params": {
+    "height": 9.0
    }
   }
  ]

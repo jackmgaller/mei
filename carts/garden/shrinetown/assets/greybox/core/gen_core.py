@@ -576,6 +576,11 @@ parts = {'paths': paths, 'layers': layers,
 _gs = importlib.util.spec_from_file_location('game', os.path.join(TOWN, 'game.py')); G = importlib.util.module_from_spec(_gs); _gs.loader.exec_module(G)
 for _cid, _es in G.cell_entities(ROWS).items(): entities.setdefault(_cid, []).extend(_es)
 
+# the placement zones (place/ZONE.py) change the cells and the part before they are written
+sys.path.insert(0, TOWN)
+from place import apply as apply_zones
+apply_zones('core', globals())
+
 # ------------------------------------------------------------------ write
 os.makedirs(HERE, exist_ok=True)
 for f in os.listdir(HERE):

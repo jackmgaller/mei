@@ -8,6 +8,9 @@
  "sheets": {
   "plates": {
    "image": "art/footbridge_sheet.png"
+  },
+  "road_plates": {
+   "image": "../canal_road_bridge/art/bridge_sheet.png"
   }
  },
  "materials": {
@@ -115,7 +118,7 @@
   "plate_water": {
    "color": "#34302c",
    "texture": {
-    "sheet": "plates",
+    "sheet": "road_plates",
     "cell": "plate_water",
     "projection": "fit"
    }
@@ -123,7 +126,7 @@
   "plate_year": {
    "color": "#34302c",
    "texture": {
-    "sheet": "plates",
+    "sheet": "road_plates",
     "cell": "plate_year",
     "projection": "fit"
    }

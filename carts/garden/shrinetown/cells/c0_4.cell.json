@@ -9,13 +9,33 @@
  "region": "shrine",
  "placements": [
   {
-   "id": "canal_spring",
-   "asset": "gbm_spring",
+   "id": "canal_spring_0",
+   "asset": "forest_boulder_big",
    "position": [
     48.0,
-    1.0,
-    294.0
+    295.0
    ],
+   "yaw": 20,
+   "collision": "self"
+  },
+  {
+   "id": "canal_spring_1",
+   "asset": "forest_boulder",
+   "position": [
+    44.6,
+    293.6
+   ],
+   "yaw": 110,
+   "collision": "self"
+  },
+  {
+   "id": "canal_spring_2",
+   "asset": "forest_boulder",
+   "position": [
+    51.6,
+    293.8
+   ],
+   "yaw": 250,
    "collision": "self"
   }
  ]

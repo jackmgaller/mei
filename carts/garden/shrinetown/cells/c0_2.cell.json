@@ -10,94 +10,307 @@
  "placements": [
   {
    "id": "yagura",
-   "asset": "gbc_yagura",
+   "asset": "festival_yagura",
    "position": [
     22.0,
     0.6,
     160.0
    ],
-   "collision": "self"
+   "collision": "festival_yagura_col"
   },
   {
    "id": "park_toilet",
-   "asset": "gbc_park_toilet",
+   "asset": "park_toilet",
    "position": [
     7.0,
     0.6,
     189.0
    ],
-   "collision": "self"
-  },
-  {
-   "id": "jungle_gym",
-   "asset": "gbc_jungle_gym",
-   "position": [
-    27.5,
-    0.6,
-    133.5
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "swings",
-   "asset": "gbc_swings",
-   "position": [
-    35.0,
-    0.6,
-    140.5
-   ],
-   "collision": "self"
+   "yaw": 270,
+   "collision": "park_toilet_col"
   },
   {
    "id": "park_slide",
-   "asset": "gbc_park_slide",
+   "asset": "park_slide",
    "position": [
     12.0,
     0.6,
     140.0
    ],
-   "collision": "self"
+   "yaw": 180,
+   "collision": "park_slide_col"
+  },
+  {
+   "id": "jungle_gym",
+   "asset": "park_jungle_gym",
+   "position": [
+    27.5,
+    0.6,
+    133.5
+   ],
+   "collision": "park_jungle_gym_col"
+  },
+  {
+   "id": "swings",
+   "asset": "park_swings",
+   "position": [
+    35.0,
+    0.6,
+    139.9
+   ],
+   "collision": "park_swings_col"
+  },
+  {
+   "id": "canal_arched_bridge",
+   "asset": "canal_arched_bridge",
+   "position": [
+    48.0,
+    0.6,
+    160.0
+   ],
+   "collision": "canal_arched_bridge_col"
   },
   {
    "id": "ginkgo_0",
-   "asset": "gbc_tree_ginkgo",
+   "asset": "tree_ginkgo",
    "position": [
     8,
-    0.6,
     150
    ],
-   "collision": "gbc_trunk_ginkgo_col"
+   "collision": "tree_ginkgo_col"
   },
   {
    "id": "ginkgo_1",
-   "asset": "gbc_tree_ginkgo",
+   "asset": "tree_ginkgo",
    "position": [
     36,
-    0.6,
     152
    ],
-   "collision": "gbc_trunk_ginkgo_col"
+   "yaw": 47,
+   "collision": "tree_ginkgo_col"
   },
   {
    "id": "ginkgo_2",
-   "asset": "gbc_tree_ginkgo",
+   "asset": "tree_ginkgo",
    "position": [
     8,
-    0.6,
     172
    ],
-   "collision": "gbc_trunk_ginkgo_col"
+   "yaw": 94,
+   "collision": "tree_ginkgo_col"
   },
   {
    "id": "ginkgo_3",
-   "asset": "gbc_tree_ginkgo",
+   "asset": "tree_ginkgo",
    "position": [
     36,
-    0.6,
     176
    ],
-   "collision": "gbc_trunk_ginkgo_col"
+   "yaw": 141,
+   "collision": "tree_ginkgo_col"
+  },
+  {
+   "id": "ginkgo_6",
+   "asset": "tree_ginkgo",
+   "position": [
+    12,
+    130
+   ],
+   "yaw": 282,
+   "collision": "tree_ginkgo_col"
+  },
+  {
+   "id": "ginkgo_7",
+   "asset": "tree_ginkgo",
+   "position": [
+    39,
+    130
+   ],
+   "yaw": 329,
+   "collision": "tree_ginkgo_col"
+  },
+  {
+   "id": "cedar_canal_lane",
+   "asset": "tree_cedar",
+   "position": [
+    59.0,
+    131.0
+   ],
+   "yaw": 30,
+   "collision": "tree_cedar_col"
+  },
+  {
+   "id": "canal_bench_sw",
+   "asset": "town_bench",
+   "position": [
+    14.0,
+    152.0
+   ],
+   "yaw": 225,
+   "collision": "town_bench_col"
+  },
+  {
+   "id": "canal_bench_se",
+   "asset": "town_bench",
+   "position": [
+    30.0,
+    152.0
+   ],
+   "yaw": 135,
+   "collision": "town_bench_col"
+  },
+  {
+   "id": "canal_bench_w",
+   "asset": "town_bench",
+   "position": [
+    9.5,
+    162.0
+   ],
+   "yaw": 270,
+   "collision": "town_bench_col"
+  },
+  {
+   "id": "canal_bench_e",
+   "asset": "town_bench",
+   "position": [
+    35.0,
+    166.0
+   ],
+   "yaw": 90,
+   "collision": "town_bench_col"
+  },
+  {
+   "id": "canal_lamp_park_s",
+   "asset": "street_lamp",
+   "position": [
+    20.0,
+    136.0
+   ],
+   "collision": "street_lamp_col"
+  },
+  {
+   "id": "canal_lamp_park_e",
+   "asset": "street_lamp",
+   "position": [
+    40.5,
+    168.0
+   ],
+   "yaw": 90,
+   "collision": "street_lamp_col"
+  },
+  {
+   "id": "canal_lamp_park_n",
+   "asset": "street_lamp",
+   "position": [
+    18.0,
+    184.0
+   ],
+   "yaw": 180,
+   "collision": "street_lamp_col"
+  },
+  {
+   "id": "canal_shrub_toilet_s",
+   "asset": "plant_shrub",
+   "position": [
+    3.4,
+    185.0
+   ],
+   "collision": "self"
+  },
+  {
+   "id": "canal_lantern_arch",
+   "asset": "forest_stone_lantern",
+   "position": [
+    41.3,
+    157.0
+   ],
+   "collision": "forest_stone_lantern_col"
   }
  ],
- "entities": []
+ "entities": [
+  {
+   "id": "pole_yagura_0",
+   "type": "pole",
+   "position": [
+    23.2,
+    0.6,
+    163.12
+   ],
+   "params": {
+    "height": 3.3
+   }
+  },
+  {
+   "id": "pole_yagura_1",
+   "type": "pole",
+   "position": [
+    21.4,
+    3.05,
+    162.02
+   ],
+   "params": {
+    "height": 2.95
+   }
+  },
+  {
+   "id": "pole_park_slide",
+   "type": "pole",
+   "position": [
+    12.0,
+    0.6,
+    137.75
+   ],
+   "params": {
+    "height": 2.4
+   }
+  },
+  {
+   "id": "rail_canal_swings_top",
+   "type": "rail",
+   "position": [
+    33.2,
+    3.22,
+    140.5
+   ],
+   "params": {
+    "path": "canal_swings_top"
+   }
+  },
+  {
+   "id": "rail_canal_swings_safety",
+   "type": "rail",
+   "position": [
+    32.95,
+    1.27,
+    138.5
+   ],
+   "params": {
+    "path": "canal_swings_safety"
+   }
+  },
+  {
+   "id": "rail_canal_arch_0",
+   "type": "rail",
+   "position": [
+    43.0,
+    1.5,
+    158.6
+   ],
+   "params": {
+    "path": "canal_arch_rail_0"
+   }
+  },
+  {
+   "id": "rail_canal_arch_1",
+   "type": "rail",
+   "position": [
+    43.0,
+    1.5,
+    161.4
+   ],
+   "params": {
+    "path": "canal_arch_rail_1"
+   }
+  }
+ ]
 }
