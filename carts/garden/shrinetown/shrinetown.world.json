@@ -7176,13 +7176,13 @@
    "tree_cedar_giant": {
     "distances": [
      22,
-     80
+     110
     ]
    },
    "forest_stage_hall": {
     "distances": [
      18,
-     60
+     90
     ]
    },
    "forest_fox_torii": {
@@ -7198,69 +7198,69 @@
    },
    "arch_temple": {
     "distances": [
-     30,
-     90
+     40,
+     130
     ]
    },
    "arch_side_hall": {
     "distances": [
-     28
+     30
     ]
    },
    "arch_corridor_hall": {
     "distances": [
-     28
+     30
     ]
    },
    "arch_gate": {
     "distances": [
      30,
-     80
+     110
     ]
    },
    "arch_pagoda": {
     "distances": [
-     32,
-     90
+     40,
+     130
     ]
    },
    "arch_torii_great": {
     "distances": [
-     30
+     40
     ]
    },
    "arch_wall_8": {
     "distances": [
-     24
+     28
     ]
    },
    "arch_wall_4": {
     "distances": [
-     24
+     28
     ]
    },
    "tree_maple": {
     "distances": [
      18,
-     48
+     64
     ]
    },
    "tree_maple_small": {
     "distances": [
      16,
-     44
+     64
     ]
    },
    "tree_ginkgo": {
     "distances": [
      18,
-     48
+     64
     ]
    },
    "tree_cedar": {
     "distances": [
      20,
-     52
+     64
     ]
    }
   }
@@ -7331,7 +7331,16 @@
    "c4_5": {
     "triangles": 60
    }
+  },
+  "textures": {
+   "slots": "0"
   }
+ },
+ "haze": {
+  "start": 20,
+  "end": 280,
+  "amount": 0.55,
+  "standins": 0.38
  },
  "meshes": {
   "quads": true

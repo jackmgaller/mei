@@ -789,7 +789,9 @@ common set and common palettes, so any cell's stand-in can be drawn whichever re
 and a cell in a region that is not loaded is always drawn as its stand-in, even when near. Region
 boundaries that the player can approach without passing a seam then show stand-ins at close
 range; the layout should avoid that (a viaduct, a wall of buildings, a river), and the kit can
-report where it happens.
+report where it happens. Built: the kit's stand-ins draw far colours (palette entries of their
+region, every region's palettes being loaded at once) and, for cutouts, the stand-ins' own
+texture set, which every region's set holds ([Stand-ins made by the kit](#stand-ins-made-by-the-kit)).
 
 ## Sight lines and stand-ins
 
@@ -884,7 +886,8 @@ instead in its tile's **far colour**, the mean of its texels (as a textured fiel
 is): a palette-backed face of the world's swatch. A region's far colours are reduced to at most 30
 surface and 15 emissive ones (the Asset Kit's median cut), each a palette entry of the region,
 shared like any entries and listed in its palette as `far.ASSET.MATERIAL`; a variant tints them by
-class. A cutout face (foliage) is drawn solid in its colour. A cell more than one mesh holds from that distance (2,048
+class. A cutout face (foliage) is drawn solid in its colour, unless the stand-ins have a texture
+set of their own (below). A cell more than one mesh holds from that distance (2,048
 vertices, 4,000 faces) is an error at `/standins/distance`. `report.json`'s `standins` lists per
 cell the pieces merged (`placements`), the pieces a cap left out (`left_out`) and the triangles as
 drawn (a quad is two), with the cell's `cap` and `ground` when it has them. The shrine's stand-ins
@@ -928,6 +931,37 @@ world without these options builds as before, byte for byte. In the shrine town'
 true}` gives stand-ins of 90–540 triangles; adding `"triangles": 90, "ground": 32` gives 28–90,
 except cell `c3_2`, whose ground alone is 103, 85 of them its water, which `ground` does not
 resample (`standin_over_cap`).
+
+**The stand-ins' own texture set** (built 2026-10-05; the common set proposed in [Regions and the
+VRAM split](#regions-and-the-vram-split), for cutouts only). Drawn solid in a far colour, a
+tree's two crossed cards are two dark slabs, and a fence or a lattice a wall:
+
+```json
+"standins": {"distance": 128, "textures": {"slots": "0", "budget": 32768}}
+```
+
+With `textures`, every 4-bit cutout texture (one with holes, not animated) of the levels the
+stand-ins draw (each placement's and scatter prop's level at `distance`, not culled by then, not
+in a layer) is packed once into these slots (default `"0"`, budget their 32,768 bytes a slot) and
+left out of the regions' own sets. Its slots are taken out of every region's slot list, and every
+region's set holds the same image of them, so the cards are in VRAM whichever region was entered
+last; wp_region_enter() copies them with the region's other slots (no reader change). Each region
+holds its own copies of the palettes of the cards it draws, after its texture palettes, so its
+variants tint them as its own. A stand-in then keeps those faces textured, cut out as near; with
+[haze](#haze) it draws them through a second copy of those palettes that the variants haze. Over
+the budget, the build fails at `/standins/textures` naming each texture and its bytes.
+`report.json`'s `standins.textures` gives the set's slots, budget, bytes (as `vram_bytes` and
+`vram_bytes_allocated` on the 8-texel grid), tiles, palettes and bytes per `ASSET.MATERIAL`; each
+region's `textures` counts its own tiles only. In a world with one region nothing changes: its
+stand-ins keep every texture already.
+
+In the shrine town (two regions): 15 tiles, 23,764 bytes (27,488 on the grid) in slot 0: the
+far cards of the cedar, giant cedar, hollow sacred cedar, ginkgo, maple, small maple and zelkova
+(5,408 for each 96 × 96 card, 2,720 for the cedars' 32 × 128 one), the hollow cedar's leaf
+cluster, and the lattices, grilles and railings of the fire tower, the canal grille, the arched
+bridge, the pool fence, the watermill's wheel, the platforms and the ramen shop's treads. The
+regions' own sets fell by those tiles (the town from 252,963 to 243,100 bytes, the shrine from
+105,825 to 87,171). The full check's peaks did not move (GPU 908,916 to 909,169 cycles).
 
 ## Game data and stable IDs
 
@@ -1496,6 +1530,82 @@ and a placement in a near cell beyond `near_far` is culled although no stand-in 
 A near cell reaches up to two cells from the eye (three on the diagonal), so a depth-mode world
 that draws its distance can set `near_far` past that and let each placement's levels and cull
 decide: the shrine uses 192 (three of its 64-unit cells).
+
+**A level bias that follows the measured cost** (*proposal*, not built). The switch distances are
+set for a world's worst views, so every other view draws coarser than it could: in the shrine
+town the full check's median view is about 310,000 draw CPU cycles of the 600,000 budget. The
+reader could scale the distances it compares by a bias *b* (0.75–1.5), kept per frame from what
+the last frames cost:
+
+- the cart measures the world's draw with `CYCLES` around `wp_draw()` (the reader can do it in
+  `wp_draw()` itself) and keeps a short average *c* of the last 4 frames;
+- with a target *T* (say 80% of the world's share, 480,000 of 600,000), *b* moves toward
+  *b* · (*T* / *c*) by at most 2% a frame, clamped to the range, so a view that grows heavier is
+  drawn coarser within a few frames, and a light view draws finer;
+- the comparison is `d < D · b` for each switch distance *D*, and the hysteresis band is scaled
+  with it, so placements at a switch distance still do not flicker; cull distances and stand-ins
+  are not biased (what pops in at the near ring's edge stays where the World Checker saw it);
+- the bias is one `fixed` the reader multiplies into the eye distance it already computes per
+  placement (`__wp_lod_mesh()`): about 10 cycles a placement, under 4,000 a frame.
+
+The World Checker would keep judging the levels at *b* = 1 (and, to bound the worst case, at the
+range's top). Levels then become a quality floor rather than a budget, and the zones' sooner
+levels (DESIGN.md 12.6) could go back to the recipes' own, the bias pulling them in only where a
+view needs it. What it cannot fix: a single frame's spike (a region entered, cells loaded), and
+GPU-bound views, which a CPU measurement does not see (the GPU's `GPU_CYCLES` could be averaged the
+same way).
+
+### Haze
+
+Built (2026-10-05). Far geometry fades toward the colour of the sky at the horizon (aerial
+perspective), so it recedes instead of reading as dark blocks:
+
+```json
+"haze": {"start": 20, "end": 280, "amount": 0.55, "standins": 0.38}
+```
+
+| Property | Meaning |
+|---|---|
+| `start`, `end` | The amount grows linearly from 0 at `start` (default 0) to `amount` at `end` (units from the eye) |
+| `amount` | How far a colour moves toward the haze colour at `end` and beyond, 0–1 |
+| `standins` | The amount for stand-ins; default the amount at 1.5 times the stand-in distance |
+| `emissive` | Emissive faces (lit windows, lamps, signs) are hazed by this times the amount; default 0.5 |
+| `elevation` | Where on each region's backdrop sky the haze colour is read, degrees above the horizon; default 2 |
+| `colors` | The haze colour per palette variant name, instead of the sky's |
+
+Nothing is computed at run time (`tools/worldkit/haze.py`): what is drawn far off is separate
+data already, so the kit bakes the haze into it.
+
+- **Levels of detail** after level 0 (assets', scatter chunks', terrain tiles' and the far ground
+  levels): each level is hazed by the amount at the distance it switches in, through its faces'
+  vertex colours. An untextured face's colour is mixed exactly. A palette-backed face's colour is
+  its palette entry times its vertex tint (128 is unchanged, 255 at most), so the tint is set to
+  turn the entry's colour into the hazed one: t' = t (1 − a) + 128 a S / b per channel, b the
+  entry's colour, S the haze colour. A textured face's tint applies to all its texels, so b is the
+  tile's mean brightness, as grey: the texture brightens toward the haze with a cast of its colour
+  and keeps its own hues (a per-channel tint for a card's mean green turned its brown trunk pink).
+  The tint is the first variant's haze colour; at night the variant's palette darkens under the
+  same tint, so a far level is a little lighter at night than exact haze toward the night sky
+  would make it.
+- **Stand-ins**, at `standins`: in a world with several regions their faces are drawn in far
+  colours ([Stand-ins made by the kit](#stand-ins-made-by-the-kit)), and with haze those become
+  entries of their own (palette-backed faces' colours join the tiles' means in the reduction),
+  which only stand-ins draw: every palette variant hazes them exactly toward its own haze colour.
+  Their cut-out cards (the stand-ins' texture set) are drawn through a second copy of the cards'
+  palettes, hazed the same way. Everything else in a stand-in (and every stand-in in a world with
+  one region) is tinted as the levels are.
+
+Level 0 is never hazed, and an asset without levels is drawn unhazed to the end of the near pass.
+A level's haze is the amount where it starts, so it steps up a little at each switch. ROM grows by
+the levels whose bytes no longer pool with another copy; palettes by the far colours' entries
+(about 3 palettes a region) and the cards' second copies. `report.json`'s `haze` gives the
+settings, each region's colour per variant and the number of levels hazed. A world without
+`haze` builds as before, byte for byte.
+
+In the shrine town (the settings above; day `#c6ccc2`, night `#24213e` from its sky): 2,246
+levels hazed, the pack 11,480,668 bytes (11,456,388 without), the regions' palettes to 245
+(232 without); no frame cost, and the full check's peaks unchanged by the haze and the cards
+(shrinetown/DESIGN.md 12.7 has the views, before and after).
 
 ### Quads
 

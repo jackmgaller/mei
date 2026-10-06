@@ -21,8 +21,9 @@ from kitcore.vector import yaw as turn
 from . import farground, ids, merge, quads
 from . import pack as P
 from .assets import Library, asset_directories, collision_triangles, relative
-from .palettes import RegionPalette
-from .textures import RegionTextures, relocated_palette
+from .palettes import RegionPalette, multiply as RP_multiply
+from .textures import RegionTextures, CommonTextures, relocated_palette
+from .haze import Haze
 from . import backdrop as BD
 from .terrain import TAG_FIELD, TAG_SWEEP, TAG_SCATTER, compile_terrain, q16
 from .scatter import scatter_items
@@ -713,6 +714,45 @@ def compile_world(source, lock=None, assets_dir=None):
                               'length': round(recs[-1][2] / P.ONE, 4), 'raised': path.raised, 'closed': closed,
                               'surface': path.surface}
 
+    # ---- the stand-ins' texture set (standins.textures): the 4-bit cutout tiles (the trees' far
+    # cards) of the levels the stand-ins draw, packed once and held by every region's set
+    common = None
+    if auto_standins and auto_standins.get('textures'):
+        common = CommonTextures(auto_standins['textures'], '/standins/textures')
+        sdist = auto_standins['distance'] * lod_cfg.get('scale', 1.0)
+
+        def standin_level(asset):
+            """The level of the asset a stand-in draws (None: culled by then)."""
+            e = lod_entry(asset)
+            if e is None or e['off']:
+                return 0
+            if e['cull'] is not None and sdist >= e['cull']:
+                return None
+            return min(sum(1 for d in e['distances'] if sdist >= d), len(asset.mesh.levels))
+        seen_levels = set()
+        for plan in plans:
+            drawn = [pl['asset'] for pl in plan['placements'] if pl['spec'].get('layer') is None]
+            drawn += [a for it, a in plan['scatter'] if it.layer is None]
+            for asset in drawn:
+                if not getattr(asset, 'textured', False):
+                    continue
+                k = standin_level(asset)
+                if k is None or (asset.name, k) in seen_levels:
+                    continue
+                seen_levels.add((asset.name, k))
+                mesh = asset.mesh if k == 0 else asset.mesh.levels[k - 1][0]
+                textures = asset.mesh.textures['textures'] if asset.mesh.textures else {}
+                for material in sorted({f.material for f in mesh.faces}):
+                    tex = textures.get(material)
+                    if tex and tex.tile.holes and tex.tile.bits == 4 and len(tex.tile.frames) == 1:
+                        common.add(asset.name, material, tex.tile, asset.materials[material].get('class', 'surface'))
+        if not common.tiles:
+            common = None
+
+    # ---- haze (aerial perspective): far levels and stand-ins fade toward the horizon's colour
+    hz = Haze(w['haze'], auto_standins['distance'] * lod_cfg.get('scale', 1.0) if auto_standins else 0) \
+        if w.get('haze') else None
+
     # ---- palettes: each region's entries, then the assets' faces moved to them
     palette = w.get('palette', {})
     slot, row = palette.get('swatch_slot', 14), palette.get('swatch_row', 0)
@@ -730,18 +770,30 @@ def compile_world(source, lock=None, assets_dir=None):
                 if vn not in vnames:
                     raise WorldError(pointer(bp + '/sky', vn), f'Region {r!r} has no palette variant {vn!r}; its '
                                      f'variants: {", ".join(vnames)}.')
+    if common:
+        common.pack((slot, row) if any_palette else None)
     for r in regions:
-        far = region_textures[r].far_asset() if far_standins and region_textures[r].assets else None
+        region_textures[r].common = common
+        far = None
+        if far_standins and (region_textures[r].assets or (hz and region_palettes[r].by_key)):
+            far = region_textures[r].far_asset(dict(region_palettes[r].by_key) if hz else None)
         if far:
             region_palettes[r].add_asset(far)
+        if hz:
+            rspec = w['regions'][r]
+            hz.region(r, rspec, backdrops.get(r), rspec.get('variants') or {'default': {}},
+                      lambda c, t: RP_multiply(c, t))
+            region_palettes[r].haze = {'colours': hz.colours[r], 'amount': hz.standins, 'emissive': hz.emissive}
     for r in regions:
         rp, rt = region_palettes[r], region_textures[r]
-        if rt.assets or r in backdrops:
+        if rt.assets or r in backdrops or common:
             # textures, then the backdrop's palette, after the entries' palettes in the region's range
             first = rp.spec.get('palettes', {}).get('first', nxt)
             extra = 0
-            if rt.assets:
-                rt.pack(warnings, first + rp.entry_palettes(), next8, (slot, row) if any_palette else None)
+            if rt.assets or common:
+                rt.haze = bool(hz and far_standins)
+                rt.pack(warnings, first + rp.entry_palettes(), next8, (slot, row) if any_palette else None, common)
+                rp.haze_palettes = set(rt.common_haze.values())
                 rp.tex4, rp.tex8, rp.texels = rt.palettes4(), rt.palettes8(), rt.texel_owners()
                 extra = len(rp.tex4)
                 if rp.tex8:
@@ -782,7 +834,7 @@ def compile_world(source, lock=None, assets_dir=None):
             variants_shown[r] = shown
             reg = P.Region(r, first_colour=rp.first_colour, variants=rows)
             rt = region_textures[r]
-            if rt.packing:
+            if rt.packing and (rt.packing.placements or common):
                 reg.textures = rt.slot_textures(SWATCH if any_palette else b'')
                 reg.runs = [P.PaletteRun(pal * 256, rp.run_rows[q]) for q, pal in enumerate(sorted(rp.tex8))]
                 reg.animations = [a for _, a in rt.animations()]
@@ -944,6 +996,19 @@ def compile_world(source, lock=None, assets_dir=None):
                                           collision=e['collision']))
         cells.append(cell)
 
+    if hz:
+        # haze: every level after level 0 at the amount where it starts, stand-ins at theirs
+        bases = {r: region_textures[r].face_base(region_palettes[r], slot, row) for r in regions}
+        haze_levels = 0
+        for cell in cells:
+            r = regions[cell.region]
+            for pl in cell.placements:
+                if pl.lod:
+                    pl.lod.levels = [(d, hz.tint(m, hz.at(d), bases[r], r)) for d, m in pl.lod.levels]
+                    haze_levels += sum(1 for _, m in pl.lod.levels if m is not None)
+            cell.standin = hz.tint(cell.standin, hz.standins, bases[r], r)
+        hz.levels = haze_levels
+
     if w.get('meshes', {}).get('quads'):
         # pairs of triangles drawn as quads (WORLDKIT.md, "Quads"): the same pictures, fewer faces;
         # at level 0 double-sided faces (cutout cards) stay triangles, sorted nearest first one by
@@ -1023,6 +1088,10 @@ def compile_world(source, lock=None, assets_dir=None):
     report['lod'] = {n: s for n, s in lod_report.items()}
     if auto_standins:
         report['standins'] = {'distance': auto_standins['distance'], 'cells': auto_report}
+        if common:
+            report['standins']['textures'] = common.report()
+    if hz:
+        report['haze'] = hz.report()
     if ground_lod:
         report['far_ground'] = {'levels': [dict(g) for g in ground_lod], 'tiles': far_ground['tiles'],
                                 'triangles': far_ground['triangles']}

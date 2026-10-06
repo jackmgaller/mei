@@ -1610,6 +1610,93 @@ class TextureTests(unittest.TestCase):
             self.assertNotIn('wp_region_enter', c.akr)
             self.assertNotIn('wpbackdrop', c.akr)
 
+    def far_world(self, **extra):
+        """Night market with the kit's stand-ins from 8 units (every cell draws one)."""
+        self.ex.edit(lambda w: w.__setitem__('standins', {'distance': 8, **extra}))
+        for name in ('market', 'harbour'):
+            self.ex.edit(lambda cell: cell.pop('standin', None), f'cells/{name}.cell.json')
+
+    def test_standin_texture_set_keeps_cutout_cards(self):
+        # the stall's lattice (a cutout) is in the stand-ins' own set, at one place in every
+        # region's set; stand-ins keep it textured instead of drawing it in a far colour
+        before = self.ex.compile()
+        self.far_world(textures={'slots': '6'})
+        c = self.ex.compile()
+        pack = P.decode(c.pack)
+        common = c.report['standins']['textures']
+        self.assertEqual(common['slots_given'], [6])
+        self.assertEqual({m.split('.')[0] for m in common['by_material']}, {'stall'})
+        self.assertGreater(common['vram_bytes'], 0)
+        images = {}
+        for reg in pack.regions:
+            slots = {t.slot: t for t in reg.textures}
+            self.assertIn(6, slots, reg.name)             # every region's set holds the common slot
+            images[reg.name] = slots[6].data
+            self.assertNotIn(6, c.report['regions'][reg.name]['textures']['slots_given'])
+        self.assertEqual(images['market'], images['harbour'])
+        cards = 0
+        for cell in pack.cells.values():
+            mesh = pack.data[cell.standin:]
+            nv, nf, vo, fo = P.mesh_info(mesh)
+            for k in range(nf):
+                face = mesh[fo + 36 * k:fo + 36 * k + 36]
+                if face[0] & 2 and face[2] & 15 == 6:
+                    cards += 1
+                    self.assertTrue(face[2] & 16)
+        self.assertGreater(cards, 0)
+        # the region's own set no longer holds the lattice; the placements are unchanged
+        self.assertLess(c.report['regions']['market']['textures']['vram_bytes'],
+                        before.report['regions']['market']['textures']['vram_bytes'])
+
+    def test_haze(self):
+        from worldkit.haze import Haze, mix, sky_at
+        self.assertEqual(sky_at([-8, 0, 6], ['#000000', '#646464', '#c8c8c8'], 3), '#969696')
+        self.assertEqual(mix('#000000', '#ffffff', 0.5), '#808080')
+        self.far_world(textures={'slots': '6'})
+        plain = self.ex.compile()
+        self.ex.edit(lambda w: w.__setitem__('haze', {'end': 40, 'amount': 0.5, 'standins': 0.4}))
+        c = self.ex.compile()
+        hz = c.report['haze']
+        # the haze colour per region and variant: the backdrop's sky at 2 degrees
+        self.assertEqual(hz['colors']['market']['day'], sky_at([-8, 0, 6, 30, 70],
+                         ['#8a9298', '#e8dcc8', '#b8d0e8', '#6898d0', '#3060a8'], 2))
+        self.assertEqual(set(hz['colors']['harbour']), {'day', 'night'})
+        # stand-ins' far colours are entries of their own, hazed in each variant toward its colour
+        pack = P.decode(c.pack)
+        for reg in pack.regions:
+            entries = c.report['regions'][reg.name]['palette']['entries']
+            far = [e for e in entries if any(m.startswith('far.far') for m in e['materials'])]
+            self.assertTrue(far, reg.name)
+            (vd, day), (vn, night) = reg.variants
+            for e in far:
+                want = mix(e['color'], hz['colors'][reg.name]['day'],
+                           0.4 * (0.5 if e['class'] == 'emissive' else 1))
+                self.assertEqual(day[e['colour'] - reg.first_colour], rgb15_of(want))
+        # placements' level 0 is never hazed (its colours; the palettes move: the far colours are
+        # entries of their own now)
+        plain_pack = P.decode(plain.pack)
+
+        def mesh_bytes(data, at):
+            nv, nf, vo, fo = P.mesh_info(data[at:])
+            return [data[at + fo + 36 * k + 12:at + fo + 36 * k + 28] for k in range(nf)]
+        for key in pack.cells:
+            for pl, ppl in zip(pack.cells[key].placements, plain_pack.cells[key].placements):
+                self.assertEqual(mesh_bytes(pack.data, pl['mesh']), mesh_bytes(plain_pack.data, ppl['mesh']))
+        # the tint of a level: an untextured face mixed exactly; a textured one's tint toward
+        # the colour its base needs, clamped at 255
+        h = Haze({'end': 100, 'amount': 1.0}, 0)
+        h.colours['r'] = {'day': '#c8c8c8'}
+        self.assertEqual(h.at(50), 0.5)
+        mesh = struct.pack('<HHIII', 3, 2, 16, 64, 0) + bytes(48)
+        flat = struct.pack('<BBBB4H4I4H', 0, 0, 0, 0, 0, 1, 2, 0, 0x000000, 0, 0, 0, 0, 0, 0, 0)
+        textured = struct.pack('<BBBB4H4I4H', 2, 0, 16 | 3, 7, 0, 1, 2, 0, *[0x808080] * 4, 0, 0, 0, 0)
+        out = h.tint(mesh + flat + textured, 0.5, lambda tex, pal, uvs, hw: ((100, 100, 100), 'surface'), 'r')
+        f0 = struct.unpack_from('<4I', out, 64 + 12)
+        f1 = struct.unpack_from('<4I', out, 64 + 36 + 12)
+        self.assertEqual(f0[0], 0x646464)                   # black halfway to #c8c8c8
+        self.assertEqual(f1[0], 0xC0C0C0)                   # 128 * 0.5 + 128 * 0.5 * 200 / 100 = 192
+        self.assertEqual(h.tint(mesh + flat + textured, 0.0, None, 'r'), mesh + flat + textured)
+
 
 @tools_built
 class ConsoleTests(unittest.TestCase):

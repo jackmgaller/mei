@@ -52,9 +52,25 @@ the cells and `make_world.py` writes the regions, their `textures` (`slots`, `bu
 shrine's variants and backdrop for both, so the sky does not change at the boundary. The budget is
 a hard limit: over it the world does not build, and the error lists every asset's share.
 
-**There is no common set.** The World Kit packs each region's set by itself: a tile drawn in both
-regions is in both sets and loaded with each. DESIGN.md 8.5's common set (asphalt, kerb, concrete,
-signs, shared with the city levels) is a plan, not a kit feature; here it is the 10 KB in both.
+**The common set is the stand-ins' cards only.** The World Kit packs each region's set by itself:
+a tile drawn in both regions is in both sets and loaded with each. DESIGN.md 8.5's common set
+(asphalt, kerb, concrete, signs, shared with the city levels) is a plan, not a kit feature; here it
+is the 10 KB in both. What is built (2026-10-05, `standins.textures`, WORLDKIT.md "Stand-ins made by
+the kit") is a set for the stand-ins' cutouts: slot 0, taken out of both regions' slots and held by
+both regions' sets at the same places.
+
+| Set | Tiles | Bytes (texels) | Bytes on the grid | Budget | 4-bit palettes |
+|---|---|---|---|---|---|
+| stand-ins' (slot 0) | 15 | 23,764 | 27,488 | 32,768 | 4, copied twice into each region (as drawn near, and hazed) |
+| `town` (slots 13–1), own tiles | 488 | 243,100 | 319,488 (was 330,560) | 389,120 | 157 with the copies (palettes 0–184 in all) |
+| `shrine` (slots 13–1), own tiles | 164 | 87,171 | 107,840 (was 129,664) | 307,200 | 44 with the copies (palettes 185–245 in all) |
+
+The cards are the far cards of the seven trees (cedar, giant cedar, hollow sacred cedar, ginkgo,
+maple, small maple, zelkova: 5,408 bytes each 96 × 96 one, 2,720 the cedars' 32 × 128), the hollow
+cedar's leaf cluster, and the cutout lattices of the fire tower, canal grille, arched bridge, pool
+fence, watermill wheel, platforms and the ramen shop's treads. The regions' palettes now run to
+245 (232 before): the far colours became entries of their own (hazed per variant), and each region
+holds two copies of the cards' palettes. Eight 4-bit palettes are left before the star's 254.
 
 **Entering a region.** The garden cart enters the region of the cell the player stands in when it
 changes (`game.akr`, `follow_region()`): `wp_region_enter()` copies the region's whole set, about
@@ -64,8 +80,9 @@ entered draw as their stand-ins.
 
 **Stand-ins.** A stand-in is drawn whichever region is loaded, so in a world with two regions the
 kit's stand-ins draw every textured face in its tile's far colour, a flat colour of its own
-region's palette (WORLDKIT.md, "Stand-ins made by the kit"; built for this level). Far trees are
-solid cards in their foliage's colour.
+region's palette (WORLDKIT.md, "Stand-ins made by the kit"; built for this level). Far trees were
+solid cards in their foliage's colour; since 2026-10-05 they keep their cut-out cards (the
+stand-ins' set above), and the far colours and cards are hazed toward the sky (WORLDKIT.md, "Haze").
 
 **The grey box** has no textures, so the World Checker still judges every view with every cell
 drawn in full; its numbers are unchanged (README.md). With the first textured asset in the pack it

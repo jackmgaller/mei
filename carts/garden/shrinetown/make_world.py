@@ -106,7 +106,12 @@ LANDMARKS = ('c2_3', 'c2_4', 'c2_5')
 cell_caps = {f'c{i}_{j}': {'triangles': 140 if f'c{i}_{j}' in LANDMARKS else 60}
              for i in range(5) for j in range(2, 6)}
 cell_caps['c3_2'] = {'triangles': 110}
-STANDINS = {'distance': 128, 'sweeps': True, 'triangles': 90, 'ground': 32, 'cells': cell_caps}
+STANDINS = {'distance': 128, 'sweeps': True, 'triangles': 90, 'ground': 32, 'cells': cell_caps,
+            # the trees' far cards stay cut-out cards in the stand-ins: their textures in slot 0, held
+            # by both regions' sets (WORLDKIT.md, "Stand-ins made by the kit")
+            'textures': {'slots': '0'}}
+# ---- haze (WORLDKIT.md, "Haze"): far levels and stand-ins fade toward the sky at the horizon
+HAZE = {'start': 20, 'end': 280, 'amount': 0.55, 'standins': 0.38}
 
 shrine = json.loads((ST.parent / 'shrine' / 'shrine.world.json').read_text())
 
@@ -143,6 +148,7 @@ world = {
     'lod': {'ground': [{'distance': 36, 'grid': 8}, {'distance': 76, 'grid': 16}],
             'sweeps': {'cull': 56, 'paths': {'torii_steps': {'cull': 44}}}},
     'standins': STANDINS,
+    'haze': HAZE,
     'meshes': {'quads': True},
 }
 # the placement zones (place/ZONE.py): asset directories, layers, paths for the real assets

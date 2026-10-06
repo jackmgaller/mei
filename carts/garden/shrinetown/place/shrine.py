@@ -75,14 +75,17 @@ CEM_GATE = (286.0, 1.8, 131.4)                # at the head of the first flight,
 # The shrine's levels of detail for the assets it shares with the level (shrine.world.json), a little
 # nearer where the shrine town's forest views were over the draw budget (the giant cedars, the
 # platforms, the fox torii).
-SHRINE_LOD = {'tree_cedar_giant': {'distances': [22, 80]}, 'forest_stage_hall': {'distances': [18, 60]},
-              'forest_fox_torii': {'distances': [16], 'cull': 48}, 'forest_platform': {'distances': [24]}, 'arch_temple': {'distances': [30, 90]},
-              'arch_side_hall': {'distances': [28]}, 'arch_corridor_hall': {'distances': [28]},
-              'arch_gate': {'distances': [30, 80]}, 'arch_pagoda': {'distances': [32, 90]},
-              'arch_torii_great': {'distances': [30]}, 'arch_wall_8': {'distances': [24]},
-              'arch_wall_4': {'distances': [24]}, 'tree_maple': {'distances': [18, 48]},
-              'tree_maple_small': {'distances': [16, 44]}, 'tree_ginkgo': {'distances': [18, 48]},
-              'tree_cedar': {'distances': [20, 52]}}
+# (far-views) The last levels further out again where the full check has room (the temple's,
+# pagoda's and great torii's level 1 too): the gate, the stage hall, the giant cedars and the trees'
+# cards (64: the recipes' own); the walls' level 1 at 28.
+SHRINE_LOD = {'tree_cedar_giant': {'distances': [22, 110]}, 'forest_stage_hall': {'distances': [18, 90]},
+              'forest_fox_torii': {'distances': [16], 'cull': 48}, 'forest_platform': {'distances': [24]}, 'arch_temple': {'distances': [40, 130]},
+              'arch_side_hall': {'distances': [30]}, 'arch_corridor_hall': {'distances': [30]},
+              'arch_gate': {'distances': [30, 110]}, 'arch_pagoda': {'distances': [40, 130]},
+              'arch_torii_great': {'distances': [40]}, 'arch_wall_8': {'distances': [28]},
+              'arch_wall_4': {'distances': [28]}, 'tree_maple': {'distances': [18, 64]},
+              'tree_maple_small': {'distances': [16, 64]}, 'tree_ginkgo': {'distances': [18, 64]},
+              'tree_cedar': {'distances': [20, 64]}}
 
 # The assets' directories: the shrine's, and each shrine town asset the zone places.
 ASSET_DIRS = ['../shrine/assets'] + [f'assets/{d}' for d in (

@@ -15,6 +15,7 @@ colours per material. The kit treats variant names as opaque.
 from assetkit.compiler import relocate, rgb15
 from assetkit.texout import rgb_hex
 from kitcore.errors import pointer
+from .haze import mix as haze_mix
 from .schema import WorldError
 
 CLASSES = ('surface','emissive')
@@ -46,6 +47,8 @@ class RegionPalette:
         self.sky = None        # backdrop.Backdrop
         self.run_rows = []     # per 8-bit palette: [colours per variant] (variants())
         self.sky_rows = []     # per variant: [0xBBGGRR] per sky stop (variants())
+        self.haze = None       # {'colours': {variant: hex}, 'amount', 'emissive'}: hazes the far colours (haze.py)
+        self.haze_palettes = set()   # 4-bit texture palettes hazed the same way (the stand-ins' card copies)
 
     @property
     def extra(self):
@@ -60,6 +63,7 @@ class RegionPalette:
             if key not in self.by_key:
                 self.by_key[key] = {'class':entry['class'],'color':entry['color'],'owners':[],
                                     'separate':bool(entry.get('separate'))}
+                if entry.get('haze'): self.by_key[key]['haze'] = True
             for owner in owners:
                 if owner not in self.by_key[key]['owners']: self.by_key[key]['owners'].append(owner)
 
@@ -139,6 +143,12 @@ class RegionPalette:
                         warnings.append({'code':'shared_entry_recoloured','region':self.name,'variant':vname,
                                          'message':f'{selector!r} shares its palette entry with {", ".join(others)}, which change colour too. '
                                                    'Set share: false on the material in its asset recipe to keep them apart.'})
+            if self.haze:
+                # far colours (stand-ins only): moved toward this variant's haze colour
+                target, amount, emissive = self.haze['colours'][vname], self.haze['amount'], self.haze['emissive']
+                for e in self.entries:
+                    if e.get('haze'):
+                        colors[id(e)] = haze_mix(colors[id(e)], target, amount*(emissive if e['class'] == 'emissive' else 1))
             row = [0]*self.colours
             for e in self.entries: row[e['colour']-self.first_colour] = rgb15(colors[id(e)])
             if self.extra: self.extra_colours(vname,v,vpath,row,warnings)
@@ -172,6 +182,9 @@ class RegionPalette:
             for i,c in enumerate(cols,1):
                 colour = pal*16+i
                 hexc = fixed[colour][0] if colour in fixed else multiply(rgb_hex(c),tint(cls))
+                if pal in self.haze_palettes:
+                    hexc = haze_mix(hexc,self.haze['colours'][vname],
+                                    self.haze['amount']*(self.haze['emissive'] if cls == 'emissive' else 1))
                 row[colour-self.first_colour] = rgb15(hexc)
         shared = {}
         for (a,m),(bits,pal,index) in self.texels.items():
