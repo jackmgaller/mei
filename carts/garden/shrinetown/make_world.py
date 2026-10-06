@@ -115,7 +115,7 @@ STANDINS = {'distance': 128, 'sweeps': True, 'triangles': 90, 'ground': 32, 'cel
 # below) fades every far surface by its depth, the levels included, so the levels are not hazed
 # again; the stand-ins' far colours are moved a little toward each variant's sky as well, which
 # softens their flat colours where the fog is still thin (100-200 units).
-HAZE = {'start': 20, 'end': 280, 'amount': 0.0, 'standins': 0.15}
+HAZE = {'start': 20, 'end': 280, 'amount': 0.0, 'standins': 0.15, 'elevation': 1}
 
 shrine = json.loads((ST.parent / 'shrine' / 'shrine.world.json').read_text())
 

@@ -1035,7 +1035,11 @@ prototypes, lighting, palette layout, budget and verification policy:
 | `band` | Hysteresis in units, default 1: a consumer changes level only once the distance is this far past a switch distance. Distances (and the cull) must lie more than twice the band apart, and the first more than twice the band from 0 |
 
 A level may draw only palette-backed materials that level 0 draws: every level uses level 0's
-palette entries, so one palette and one relocation serve them all. A level with no fewer
+palette entries, so one palette and one relocation serve them all. A level may draw textured
+materials level 0 does not (since 2026-10-05: a far card's second drawing, an impostor's
+pictures): level 0 loads and places every textured material its levels' nodes name
+(`material`, `face_materials`), so every level shares one placement, and they count in the
+asset's VRAM. A level with no fewer
 triangles than the one before is a warning (`lod_not_simpler`). The report's `lod` lists each
 level's distance, triangles and vertices, with `cull` and `band`. `build` writes each level as
 `NAME.lodK.bin` (K from 1) and embeds it in `NAME.akr` as `ASSET_NAME_LODK`. `verify` checks
@@ -1043,6 +1047,26 @@ every level as an asset of its own with the same policy (pictures under `lodK/`)
 levels' results under `lod`, and fails if any level fails. Choosing the level is the consumer's:
 the World Kit stores the distances in the pack and the reader chooses per placement
 ([WORLDKIT.md](WORLDKIT.md#levels-of-detail)).
+
+### Impostors
+
+Built (2026-10-05). `tools/assetkit/impostor.py` makes an asset's coarsest level from pictures of
+its level 0: `with_impostor(recipe, folder, NAME, ppu)` renders level 0 orthographically from the
+front (looking along +Z) and the side (from +X) as the console colours it (textures, palette
+colours, the baked shade; texture holes stay holes), `ppu` pixels a unit with 2 × 2 supersampling,
+writes them as 4-bit cutout PNGs (`art/NAME_front.png`, `art/NAME_side.png`, at most 15 colours by
+median cut), and puts in place of the coarsest level a box of four double-sided quads round level
+0's bounds, the front picture on its front and back and the side picture on its ends, mapped by
+world position. The pictures are brightened by the shade the box's walls get, so they come out as
+drawn. A recipe's generator calls it (Pillow and NumPy); rerunning writes the same files. The
+asset's policy must allow cutouts (`depth: true`).
+
+Eight triangles and two small textures: the shrine's temple (2 pixels a unit: 3,136 + 1,792 bytes
+of VRAM on the 8-texel grid), pagoda (3: 1,920 + 1,920) and two-storey gate (2.5: 1,120 + 480)
+(`carts/garden/shrine/assets/art/make_impostors.py`), and the shrine town's station concourse (3:
+3,040 + 2,080, `make_concourse.py`), in place of 30–56 triangles of flat palette bands. Seen from
+much nearer than its pictures' scale the box shows its flatness; the shrine town draws them from
+70–110 units.
 
 ### Budgets and diagnostics
 

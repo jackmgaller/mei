@@ -964,13 +964,21 @@ the budget, the build fails at `/standins/textures` naming each texture and its 
 region's `textures` counts its own tiles only. In a world with one region nothing changes: its
 stand-ins keep every texture already.
 
-In the shrine town (two regions): 15 tiles, 23,764 bytes (27,488 on the grid) in slot 0: the
-far cards of the cedar, giant cedar, hollow sacred cedar, ginkgo, maple, small maple and zelkova
-(5,408 for each 96 × 96 card, 2,720 for the cedars' 32 × 128 one), the hollow cedar's leaf
-cluster, and the lattices, grilles and railings of the fire tower, the canal grille, the arched
-bridge, the pool fence, the watermill's wheel, the platforms and the ramen shop's treads. The
-regions' own sets fell by those tiles (the town from 252,963 to 243,100 bytes, the shrine from
-105,825 to 87,171). The full check's peaks did not move (GPU 908,916 to 909,169 cycles).
+Every region entered copies the set again with its other slots: the slots' images run from row 0
+to the last row a tile uses. A set loaded once (only the first region's set holding it) would save
+that, but the World Checker judges each region's set as the pack gives it, so it is not done.
+
+In the shrine town (two regions, `"slots": "0,31"`): 27 tiles, 48,518 bytes (56,736 on the grid)
+of the 65,536: the far cards of the cedar (two drawings), giant cedar, hollow sacred cedar, ginkgo
+(two), maple and small maple (two), and zelkova (5,408 for each 96 × 96 card, 2,720 for a cedar's
+32 × 128), the hollow cedar's leaf cluster, the impostors of the temple, pagoda, gate and station
+concourse ([ASSETKIT.md](ASSETKIT.md#impostors), 1,600–5,120 bytes each), and the lattices,
+grilles and railings of the fire tower, the canal grille, the arched bridge, the pool fence, the
+watermill's wheel, the platforms and the ramen shop's treads. Each region's set carries slot 0 (256
+rows) and slot 31 (227 rows): 61,824 bytes copied on every crossing, about 58,000 cycles at the
+0.94 cycles a byte of `wp_region_enter()`. Its palettes: 12 in the set, copied twice into each
+region that draws them (as drawn near, and hazed). The full check's peaks did not move with the
+first version of the set (15 tiles in slot 0: GPU 908,916 to 909,169 cycles).
 
 ## Game data and stable IDs
 
@@ -1368,7 +1376,11 @@ plane chip erasing the frame to holes the GPU's 38,400-cycle `cls()` goes too.
   (`MAP_BG1`), both copied by `wp_region_enter()`. `horizon` gives the rows below the horizon
   line (default 0: it stands on the horizon). Its colours are one 4-bit palette in the region's
   range, so variants recolour it: the surface tint, then exact colours in the variant's
-  `backdrop` (the skyline's windows lit at night).
+  `backdrop` (the skyline's windows lit at night). A plane reads palette bank 0 only, so a
+  region whose palettes are in bank 1 (from 256) has its silhouette's palette in bank 0 instead,
+  the first after every bank-0 palette taken, loaded with each variant as a run of its own
+  (`wp_variant_load()`). Before 2026-10-05 it stayed in the region's range and the plane drew it
+  with the bank-0 palette 256 below: another region's colours.
 
 **How it moves with the camera** (`stdlib/wpbackdrop.akr`, `wp_backdrop_draw(yaw, pitch)`): the
 camera has no roll, so the horizon is a screen line, 120 + *F* tan(pitch) with *F* = 207.8
@@ -1626,10 +1638,17 @@ the levels whose bytes no longer pool with another copy; palettes by the far col
 settings, each region's colour per variant and the number of levels hazed. A world without
 `haze` builds as before, byte for byte.
 
-In the shrine town (the settings above; day `#c6ccc2`, night `#24213e` from its sky): 2,246
-levels hazed, the pack 11,480,668 bytes (11,456,388 without), the regions' palettes to 245
-(232 without); no frame cost, and the full check's peaks unchanged by the haze and the cards
-(shrinetown/DESIGN.md 12.7 has the views, before and after).
+**With the GPU's fog** ([Fog per variant](#palettes-per-region), DECISIONS.md "Fog toward a colour"), which
+fades every surface with depth by its own depth, textured ones included, at 8 GPU cycles a
+triangle, the baked haze is mostly redundant: hazing the levels as well fades them twice. A world
+with fog sets `amount` 0 (the levels are left as they are; at() is 0 everywhere) and keeps a
+little for `standins`, whose flat far colours read better moved toward the sky where the fog is
+still thin. Fog is not drawn by the World Checker; the haze, being data, is.
+
+The shrine town had `{"start": 20, "end": 280, "amount": 0.55, "standins": 0.38}` (2,246 levels
+hazed, the pack 24,280 bytes larger) until fog came; with fog from 30 to 380 units by day and 16
+to 220 by night, it has `{"amount": 0.0, "standins": 0.15, "elevation": 1}`: the stand-ins only,
+toward the same colour as the fog (shrinetown/DESIGN.md 12.7 has the views, before and after).
 
 ### Quads
 

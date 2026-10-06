@@ -8409,7 +8409,8 @@
   "start": 20,
   "end": 280,
   "amount": 0.0,
-  "standins": 0.15
+  "standins": 0.15,
+  "elevation": 1
  },
  "meshes": {
   "quads": true

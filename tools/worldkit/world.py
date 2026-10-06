@@ -1044,7 +1044,7 @@ def compile_world(source, lock=None, assets_dir=None):
             for pl in cell.placements:
                 if pl.lod:
                     pl.lod.levels = [(d, hz.tint(m, hz.at(d), bases[r], r)) for d, m in pl.lod.levels]
-                    haze_levels += sum(1 for _, m in pl.lod.levels if m is not None)
+                    haze_levels += sum(1 for d, m in pl.lod.levels if m is not None and hz.at(d) > 0)
             cell.standin = hz.tint(cell.standin, hz.standins, bases[r], r)
         hz.levels = haze_levels
 
