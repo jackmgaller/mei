@@ -95,8 +95,8 @@ Before the re-split the town's entry was 382,960 (the van and the three signs ad
 palettes and the backdrop's art are about 33,000 of each entry; the rest is 0.94 cycles a byte of
 texels.
 
-A frame that goes past 1,000,000 CPU cycles is shown a tick late. (Whether the far views' slot 0 is copied on entering a region is that
-branch's; if it is, add about 60,000 to each entry.) The heaviest frames
+A frame that goes past 1,000,000 CPU cycles is shown a tick late. (The far views' set, slots 0
+and 31, is copied on every entry: 61,824 bytes, about 58,000 cycles more on each.) The heaviest frames
 within 16 m of the line, as the World Checker measures them, are about 515,000 (views 228, 262,
 263: the canal's and the cemetery lane's ends of the courtyard row). **Now neither crossing
 hitches:** about 920,000 entering the town, 780,000 entering the shrine. Filled to its budget, the
@@ -123,21 +123,23 @@ a hard limit: over it the world does not build, and the error lists every asset'
 a tile drawn in both regions is in both sets and loaded with each. DESIGN.md 8.5's common set
 (asphalt, kerb, concrete, signs, shared with the city levels) is a plan, not a kit feature; here it
 is the 10 KB in both. What is built (2026-10-05, `standins.textures`, WORLDKIT.md "Stand-ins made by
-the kit") is a set for the stand-ins' cutouts: slot 0, taken out of both regions' slots and held by
-both regions' sets at the same places.
+the kit") is a set for the stand-ins' cutouts: slots 0 and 31, taken out of both regions' slots
+and held by both regions' sets at the same places (measured on `far-views` after the split):
 
 | Set | Tiles | Bytes (texels) | Bytes on the grid | Budget | 4-bit palettes |
 |---|---|---|---|---|---|
-| stand-ins' (slot 0) | 15 | 23,764 | 27,488 | 32,768 | 4, copied twice into each region (as drawn near, and hazed) |
-| `town` (slots 13–1), own tiles | 488 | 243,100 | 319,488 (was 330,560) | 389,120 | 157 with the copies (palettes 0–184 in all) |
-| `shrine` (slots 13–1), own tiles | 164 | 87,171 | 107,840 (was 129,664) | 307,200 | 44 with the copies (palettes 185–245 in all) |
+| stand-ins' (slots 0, 31) | 27 | 48,518 | 56,736 | 65,536 | 12; each region copies those it draws twice (as drawn near, and hazed): the town 5 + 5 (187–196), the shrine 10 + 10 (319–338) |
+| `town`, own tiles | 523 | 304,319 | 384,832 | 684,032 | palettes 0–197 in all (the shrine's silhouette's, 198, after them: a plane reads bank 0 only) |
+| `shrine`, own tiles | 198 | 196,803 | 217,472 | 471,040 | palettes 256–339 in all |
 
-The cards are the far cards of the seven trees (cedar, giant cedar, hollow sacred cedar, ginkgo,
-maple, small maple, zelkova: 5,408 bytes each 96 × 96 one, 2,720 the cedars' 32 × 128), the hollow
-cedar's leaf cluster, and the cutout lattices of the fire tower, canal grille, arched bridge, pool
-fence, watermill wheel, platforms and the ramen shop's treads. The regions' palettes now run to
-245 (232 before): the far colours became entries of their own (hazed per variant), and each region
-holds two copies of the cards' palettes. Eight 4-bit palettes are left before the star's 254.
+The cards are the far cards of the seven trees (cedar in two drawings, giant cedar, hollow sacred
+cedar, ginkgo and maple in two each, small maple, zelkova: 5,408 bytes each 96 × 96 one, 2,720 a
+cedar's 32 × 128), the hollow cedar's leaf cluster, the impostors of the temple, pagoda, gate and
+station concourse, and the cutout lattices of the fire tower, canal grille, arched bridge, pool
+fence, watermill wheel, platforms and the ramen shop's treads. Since the first version (15 tiles,
+slot 0 alone) the regions' palettes grew: the far colours became entries of their own (hazed per
+variant), and each region holds two copies of the cards' palettes. Bank 0 has 199–253 free (55)
+before the star's 254.
 
 **Entering a region.** The garden cart enters the region of the cell the player stands in when it
 changes (`game.akr`, `follow_region()`): `wp_region_enter()` copies the region's whole set at
