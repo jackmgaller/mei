@@ -1355,3 +1355,32 @@ same cameras (triangles, draw CPU, GPU), before → after: courtyard wall north 
 461,553; stage 1,333, 336,505, 402,855 → 1,403, 348,464, 391,151; station plaza 1,350, 415,031,
 391,185 → 1,336, 412,739, 388,860; canal by the watermill 1,736, 346,810, 528,387 → 1,774,
 352,422, 531,829. The pack is 11,480,668 bytes (11,456,388 before).
+
+### 12.9 Alpha fixes
+
+#### Collision and checker kit (alpha-fix-kit)
+
+- **Steep ground (B3).** Terrain steeper than the game's 40° floor limit was walls only, and a
+  body falling into a crease between two steep faces sank through the world (45 places by the
+  new drop check). The World Kit now has a heightfield key, `slide_floor_degrees`: faces up to
+  it are floors as well as walls, so a falling body lands and slides down. At 70 the drop check
+  finds none, and r13's walks and grid drops no longer fall through (the pond bridge, the fox
+  tunnel's end, the falls' top, the north wall's bank). A body walking into a 40–63° bank now
+  steps on and slides back instead of standing against it. Not set yet: `make_world.py` gives
+  the ground field `"slide_floor_degrees": 70`, and the crack baseline is written again (one
+  known crack goes, one 0.125 terrain crack at (102.1, 40.9, 334.1) appears).
+- **Drop check.** The World Checker drops a body over every steep up-facing point (1 m grid);
+  one that falls through is a hard failure (`drop_through`; in report mode the pack is still
+  built). Shrine town: 45 now, 0 with slide floors at 70.
+- **Sampling.** 8 yaws instead of 4; layer sets only where their placements are drawn; vantage
+  points from `verification.vantage_points`, checked on every build on top of the 600. The list
+  for the town and the shrine (42 points, 126 views, from r01 and r02) is ready for
+  `make_world.py`; with it the check flags 43 positions over 600k draw CPU, worst 786,145 (the
+  follow camera over the platform).
+- **Kit fixes.** s6's missing facade triangle (a sliver paired first into a quad); merged meshes
+  keep a cull all their props share (the sotoba racks now cull at 84.8 and 86.9 m: the racks'
+  60 plus their spread), else warn (`cull_merged`: `sh_omikuji_terr` in c2_3);
+  `palette.reserved` (give it `[254]`, the star's); the stand-ins' common set is stored once and
+  copied on the first crossing only (61,824 bytes, about 58,000 cycles a crossing); the camera
+  error names the bad camera name. The fire stair's opaque slab is not a kit fault: it is
+  `street_building`'s level 1, a solid box, drawn from 30 m in the town.

@@ -174,7 +174,16 @@ The drops run with every layer off over every cell, then with each layer alone o
 that hold it. `static.collision.drops` gives the drops made, the findings and the first of them.
 
 A body that falls through a slope onto a floor beneath it (a cave's) is not caught: it has
-landed. Its cost is about 8 ms a drop in Python: the shrine world's 4,858 drops take 38 s.
+landed. A layer's pass drops only where the bucket holds that layer's collision. Its cost is
+about 7 ms a drop in Python: the shrine town's 8,041 drops (7,842 with every layer off) take 57 s,
+the shrine world's 4,858 take 38 s.
+
+In the shrine town at 590e049 the check finds 45 places (`drop_through`), every one on terrain:
+the bank under the precinct's north wall (x 166–190, z 238–254), the stage's west stair and the
+fox grove (x 86–135, z 309–347), the falls' top (218, 346), the ridge (146, 264–270), by the pond
+bridge (216, 170 and 228, 185), and around the basin and chimney terrace. With the ground's
+`slide_floor_degrees` at 60 it finds 5 (faces of 64–66°), at 70 none; r13's grid of 942 drops in
+the game then leaves none falling through.
 
 ### Vantage points
 

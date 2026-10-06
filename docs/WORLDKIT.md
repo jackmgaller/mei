@@ -1861,14 +1861,17 @@ in a V, one face pushes it one way and the other back, and it sinks through the 
 shrine town bodies fell through the world this way on 45–48° banks (the stage's west stair, the
 falls' top, the bank under the precinct's north wall).
 
-A heightfield's `slide_floor_degrees` (say 60) makes its faces steeper than the game's limit, up
+A heightfield's `slide_floor_degrees` (70 clears the shrine town: [WORLDCHECKER.md](WORLDCHECKER.md#drops)) makes its faces steeper than the game's limit, up
 to that slope, floors as well as walls: the encoder writes each such triangle twice, as a wall
 record and as a floor record (`pack.Tri`'s `slide_floor_degrees`; the quads' splits judge kinds
 by it too). The wall still stops a body moving into the slope; the floor catches a falling body,
 which the game slides down (the garden slides on floors steeper than its slide angle, 30°). A
 body walking into such a slope is pushed out by the wall to where the floor is within its step,
-so it steps onto the slope and slides back down instead of standing against it: up to about 65°
-with the garden's body (radius 0.3, step 0.32, lowest wall sample 0.36 up). Faces steeper than
+so it steps onto the slope and slides back down instead of standing against it: up to about 63°
+with the garden's body (radius 0.3, step 0.32, lowest wall sample 0.36 up); steeper slide floors
+still stop it. Making faces floors moves the crack check's findings: in the shrine town at 70,
+one known crack goes and one terrain crack of 0.125 appears at (102.1, 40.9, 334.1), so the
+world's crack baseline is written again with the change. Faces steeper than
 `slide_floor_degrees` stay walls only, so cliffs still stop the body and can be kicked off.
 
 The World Checker's drop check ([WORLDCHECKER.md](WORLDCHECKER.md#drops)) finds where a falling
