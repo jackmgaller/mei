@@ -899,7 +899,9 @@ are designed to do three other things.
 
 *Superseded by [TEXTURES.md](TEXTURES.md) (2026-10-05):* the real assets need 595 KB
 deduplicated before the ground, so the level is two regions, the town and the shrine, each with
-its own 14 slots, split at z = 128; the World Kit has no common set.
+its own 14 slots, split at z = 128; the World Kit has no common set. With VRAM at 2 MB (the same
+day) each region may use 29 slots; the town's budget is 668 KB and the shrine's 460 KB
+(TEXTURES.md, "The budgets").
 
 The built shrine uses 13 slots (326 KB), 272 KB of it for 16 ground tiles. The town adds
 shopfronts, signs, concrete and rail. Plan:

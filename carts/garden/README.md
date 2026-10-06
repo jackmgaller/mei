@@ -148,8 +148,8 @@ A star turns in its glint (`glint.akr`, `GLINT_MOON`) and is drawn within 160 m 
 star taken shows its back, still, and touching it again does nothing. The screen shows the
 world's stars taken (`moon 2/5`), the red coins once one is taken, and a challenge's clock.
 
-**Worlds may use** texture slots 13–0 and 4-bit palettes 0–253: slot 14 (beyond the swatch row)
-and palette 254 are the star's.
+**Worlds may use** texture slots 13–0 and 16–31 and 4-bit palettes 0–253 and 256–511 (VRAM at
+2 MB): slot 14 (beyond the swatch row) and palette 254 are the star's.
 
 ## Gates
 

@@ -5,9 +5,9 @@ Shrine town's UFO catcher: the lab's crane_game (781 triangles) cut to about 200
 cabinet with its slanted console, the glass case with gold posts, the striped marquee with its
 sign, the siren lights and the star stay; the side sticker, the outlet label and the prize hole
 are decals, the console's buttons are in its texture, the claw is a hub and three arms, and three
-plush toys stand in for six. Every texture is 4-bit (the level's palettes, TEXTURES.md), and the
-sign, the side sticker and the outlet label are stored at half width (the town's VRAM). Front is
--Z. 0.94 m wide, 1.28 m deep, 2.2 m tall.
+plush toys stand in for six. Every texture is 4-bit (the level's palettes, TEXTURES.md); the
+sign, the side sticker and the outlet label are at full width again since VRAM grew to 2 MB.
+Front is -Z. 0.94 m wide, 1.28 m deep, 2.2 m tall.
 """
 import json
 import math

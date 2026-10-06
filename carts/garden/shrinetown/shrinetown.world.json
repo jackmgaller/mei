@@ -28,8 +28,8 @@
  "regions": {
   "town": {
    "textures": {
-    "slots": "13-0",
-    "budget": 389120
+    "slots": "13-1,16-31",
+    "budget": 684032
    },
    "variants": {
     "day": {},
@@ -84,8 +84,11 @@
   },
   "shrine": {
    "textures": {
-    "slots": "13-0",
-    "budget": 307200
+    "slots": "13-1,16-31",
+    "budget": 471040
+   },
+   "palettes": {
+    "first": 256
    },
    "variants": {
     "day": {},
@@ -8158,6 +8161,9 @@
     "cull": 50
    },
    "kei_truck": {
+    "cull": 60
+   },
+   "delivery_van": {
     "cull": 60
    },
    "recycling_station": {
