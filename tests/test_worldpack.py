@@ -1364,6 +1364,8 @@ class RegionExtTests(unittest.TestCase):
             print(f'\nwp_animate: {unchanged} cycles with no frame change, {changed} copying 2 rows of 4 bytes')
         self.assertLess(unchanged, 400)
         self.assertLess(changed, 1500)
+        self.assertEqual(vals['again'], '17 0 0')         # the animated slot is copied again
+        self.assertEqual(vals['cache'], '99 33 0')        # an untouched slot is not, until forgotten
 
 
 class PathEncoderTests(unittest.TestCase):

@@ -248,6 +248,7 @@ var __wp_origin: vec3
 var __wp_planes: [6]vec4
 var __wp_safe_planes: [5]vec4  // a sphere inside all five needs no clipping (__wp_safe)
 var __wp_track_n: s32
+var __wp_slot_src: [32]u32      // per texture slot: the texture data wp_texture_load() last copied there (0: unknown)
 var __wp_track_cell: [WP_MAX_TRACK]u32
 var __wp_track_mask: [WP_MAX_TRACK]u32
 var __wp_bkey: [16]u32         // wp_entity_draw()'s cache of wp_mesh_bounds(), by mesh address
@@ -286,6 +287,7 @@ fn wp_open(pack: *u8) -> bool {
     __wp_index = (__wp_base + h.index_off) as *u32
     wp_near_far = __wp_half * 3
     __wp_lod_open(h)
+    wp_textures_forget()
     __wp_track_n = 0
     mem_fill(&__wp_bkey[0] as *u8, 0, 64)
     mem_fill(&__wp_layer_on[0], 0, 32)
@@ -1209,12 +1211,24 @@ fn wp_textures_load(k: s32) {
     for t in 0..wp_region(k).texture_count as s32 { wp_texture_load(k, t) }
 }
 
+// Copies texture t of region k into its slot, unless that slot already holds it: a texture the
+// pack stores once for several regions (the stand-ins' common set, WORLDKIT.md) is copied on the
+// first region entry only. The reader remembers what it copied into each
+// slot since wp_open(); a game that writes a world's slot itself calls wp_textures_forget().
 fn wp_texture_load(k: s32, t: s32) {
     let r = wp_region(k)
     if t < 0 || t >= r.texture_count as s32 { return }
     let x = (__wp_base + r.texture_off) as *WpTexture + t
-    load_texture(x.slot as s32, (__wp_base + x.data) as *u8, x.bytes as s32)
+    let slot = x.slot as s32 & 31
+    let src = __wp_base + x.data
+    if __wp_slot_src[slot] == src { return }
+    load_texture(slot, src as *u8, x.bytes as s32)
+    __wp_slot_src[slot] = src
 }
+
+// Forgets what the reader copied into the texture slots, so the next region entry copies every
+// texture again (after the game wrote a world's slot itself).
+fn wp_textures_forget() { mem_fill(&__wp_slot_src[0] as *u8, 0, 128) }
 
 // ---- region resources (1.4): every palette run, animated textures, backdrop art; entering a region
 //
@@ -1311,7 +1325,8 @@ fn wp_backdrop_load(k: s32) {
     }
 }
 
-// Makes region k the loaded region: copies its texture set and backdrop art into VRAM, loads
+// Makes region k the loaded region: copies its texture set and backdrop art into VRAM (a slot
+// that already holds the same texture, the stand-ins' common set, is not copied again), loads
 // palette variant v (every run), restarts its animated textures from frame 0 (the frame the
 // texture set holds) and sets wp_region_loaded = k, so near cells of other regions, whose
 // textures are not loaded, draw as their stand-ins. About 56,000 cycles a 32 KB texture slot:
@@ -1345,6 +1360,7 @@ fn wp_animate(t: s32) -> s32 {
             let rows = a.rows as s32
             let rb = a.row_bytes as s32
             tex_frame_copy((__wp_base + a.data + (f * rows * rb) as u32) as *u8, a.vram as s32, rows, rb, a.stride as s32)
+            __wp_slot_src[(a.vram / TEXTURE_SLOT_SIZE) & 31] = 0     // the slot no longer holds the set's texture
             __wp_anim_shown[q] = f
             wp_anim_copied += rows
             changed += 1

@@ -380,6 +380,164 @@ def crack_check(pack, floors_all, layers_on, probe, settings, limit):
     return found[:limit], len(found), len(edges), count
 
 
+# ---- drops: a body falling onto steep ground
+
+# The game's body samples walls at these heights above its feet, as fractions of the probe's
+# height (carts/garden/player.akr's PUSH_H: 0.36, 0.9 and 1.4 of 1.6).
+PUSH_FRACTIONS = (0.225, 0.5625, 0.875)
+
+
+def _cell_mask(c, layers_on):
+    return sum(1 << k for k, lid in enumerate(c.layers) if lid in layers_on)
+
+
+def _fxdot(a, b):
+    """The CPU's four-lane dot product: the 64-bit sum shifted right 16."""
+    return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]) >> 16
+
+
+def reader_push(pack, x, y, z, radius, layers_on):
+    """wp_push() at raw world point (x, y, z), bit for bit: the walls of the point's cell's
+    bucket, in the order the pack files them, each pushing the point out along its horizontal
+    normal when it is within radius (raw) of the wall's plane and inside its edges. Returns
+    (x, z, walls pushed)."""
+    (i, j), lx, lz = pack.cell_of(x, z)
+    c = pack.cells.get((i, j))
+    if c is None or c.coll is None:
+        return x, z, 0
+    ox, oz = x - lx, z - lz
+    mask = _cell_mask(c, layers_on)
+    count = 0
+    for wid in c.coll.bucket(lx, lz)[1]:
+        p, edges, hx, hz, inv, info = c.coll.walls[wid]
+        lm = (info >> 8) & 255
+        if lm and not lm & mask:
+            continue
+        q = (lx, y, lz, ONE)
+        d = _fxdot(p, q)
+        if d <= -radius or d >= radius:
+            continue
+        if any(_fxdot(e, q) < 0 for e in edges):
+            continue
+        push = ((radius - d) * inv) >> 16
+        lx += (hx * push) >> 16
+        lz += (hz * push) >> 16
+        count += 1
+    return lx + ox, lz + oz, count
+
+
+def up_surfaces(pack, x, z, layers_on, min_ny):
+    """The up-facing collision over raw world point (x, z) in its cell's bucket: [(height raw,
+    kind, tag)] for every present floor whose edges accept the point, and every wall whose
+    normal's y is at least min_ny (raw) whose edges accept the point on its plane."""
+    (i, j), lx, lz = pack.cell_of(x, z)
+    c = pack.cells.get((i, j))
+    if c is None or c.coll is None:
+        return []
+    mask = _cell_mask(c, layers_on)
+    fl, wl, _ = c.coll.bucket(lx, lz)
+    out = []
+    for fid in fl:
+        a, b, cc, info, edges, _, _ = c.coll.floors[fid]
+        lm = (info >> 8) & 255
+        if lm and not lm & mask:
+            continue
+        if any(mx * lx + mz * lz + k * ONE < 0 for mx, mz, k in edges):
+            continue
+        out.append(((a * lx + b * lz + cc * ONE) >> 16, KIND_FLOOR, info >> 16))
+    for wid in wl:
+        p, edges, hx, hz, inv, info = c.coll.walls[wid]
+        if p[1] < min_ny:
+            continue
+        lm = (info >> 8) & 255
+        if lm and not lm & mask:
+            continue
+        y = -(p[0] * lx + p[2] * lz + p[3] * ONE) // p[1]
+        q = (lx, y, lz, ONE)
+        if any(_fxdot(e, q) < 0 for e in edges):
+            continue
+        out.append((y, KIND_WALL, info >> 16))
+    return out
+
+
+def drop_body(pack, x, z, y, layers_on, probe, drop):
+    """A body dropped with its feet at raw (x, y, z), falling drop['speed'] units a tick, moved
+    as the game's air move moves it: pushed out of walls at the probe's sample heights, then
+    down, then onto a floor its feet reached (wp_floor_across() with the probe's step and
+    bridge). Returns ('landed', x, y, z, ticks); ('through', x, y, z, ticks, tag, height): it is
+    under up-facing collision (that tag's, at that height) with none under its feet, fallen
+    through the world; ('out', x, y, z, ticks): no collision is left over or under it (off the
+    world's edge); or ('falling', ...) after drop['ticks'] ticks."""
+    radius, step = round(probe['radius'] * ONE), round(probe['step'] * ONE)
+    speed = round(drop['speed'] * ONE)
+    n = across_steps(probe.get('bridge', 0) or 0)
+    heights = [round(probe['height'] * f * ONE) for f in PUSH_FRACTIONS]
+    min_ny = round(drop['min_normal_y'] * ONE)
+    top = heights[-1] + radius
+    for tick in range(1, drop['ticks'] + 1):
+        for h in heights:
+            x, z, _ = reader_push(pack, x, y + h, z, radius, layers_on)
+        old = y
+        y -= speed
+        got = (reader_floor_across(pack, x, old, z, layers_on, step, max(old - y, step), n) if n >= 2
+               else reader_floor(pack, x, old, z, layers_on, step))
+        if got is not None and got[0] >= y:
+            return ('landed', x, got[0], z, tick)
+        ups = up_surfaces(pack, x, z, layers_on, min_ny)
+        if not ups:
+            return ('out', x, y, z, tick)
+        over = min(ups, key=lambda s: s[0])
+        if over[0] > y + top:
+            # the whole body is under the lowest up-facing collision here: no wall sample can
+            # reach the surface to push it back out
+            return ('through', x, y, z, tick, over[2], over[0])
+    return ('falling', x, y, z, drop['ticks'])
+
+
+def drop_check(pack, layers_on, probe, drop, limit, cells=None):
+    """Bodies dropped over every point of a grid (drop['spacing'] units) where the highest
+    up-facing collision is a wall, not a floor: ground too steep to stand on, which a falling
+    body can still land on. Each starts drop['start'] units over that wall at the fall speed and
+    moves as drop_body() moves it; one that falls through the world is a finding (points within
+    drop['merge'] units of a finding in its cell are counted in it). Returns (findings, findings
+    before the limit, drops made)."""
+    S = 1 << pack.cell_shift
+    k = max(1, int(round(S / drop['spacing'])))
+    min_ny = round(drop['min_normal_y'] * ONE)
+    start = round(drop['start'] * ONE)
+    near = drop['merge']
+    found, made = [], 0
+    for (i, j) in sorted(pack.cells, key=lambda ij: (ij[1], ij[0])):
+        if cells is not None and (i, j) not in cells:
+            continue
+        if pack.cells[(i, j)].coll is None:
+            continue
+        for gz in range(k):
+            for gx in range(k):
+                x = round((i * S + (gx + 0.5) * S / k) * ONE)
+                z = round((j * S + (gz + 0.5) * S / k) * ONE)
+                ups = up_surfaces(pack, x, z, layers_on, min_ny)
+                if not ups:
+                    continue
+                top = max(ups, key=lambda s: (s[0], -s[1]))
+                if top[1] == KIND_FLOOR:
+                    continue
+                made += 1
+                r = drop_body(pack, x, z, top[0] + start, layers_on, probe, drop)
+                if r[0] != 'through':
+                    continue
+                at = [round(x / ONE, 4), round(top[0] / ONE, 4), round(z / ONE, 4)]
+                same = next((g for g in found if g['cell'] == [i, j] and abs(g['at'][0] - at[0]) <= near
+                             and abs(g['at'][2] - at[2]) <= near), None)
+                if same is not None:
+                    same['points'] += 1
+                    continue
+                found.append({'code': 'drop_through', 'cell': [i, j], 'at': at, 'tag': top[2],
+                              'ended': [round(r[1] / ONE, 4), round(r[2] / ONE, 4), round(r[3] / ONE, 4)],
+                              'ticks': r[4], 'under_tag': r[5], 'under': round(r[6] / ONE, 4), 'points': 1})
+    return found[:limit], len(found), made
+
+
 # ---- the crack baseline (NAME.cracks.json beside the recipe; WORLDCHECKER.md, "Crack baseline")
 
 BASELINE_FORMAT = 'mei-world-cracks'

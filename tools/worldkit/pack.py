@@ -129,13 +129,18 @@ def bucket_of(x, half, inv, g):
 class Tri:
     """A collision triangle. Corners are world coordinates for cell collision and the entity's
     own frame for entity collision. surface is the game's byte; layer a layer name or None;
-    tag a 16-bit number carried into the record (0xFFFF: none), e.g. the placement it came from."""
+    tag a 16-bit number carried into the record (0xFFFF: none), e.g. the placement it came from.
+    slide_floor_degrees: a triangle steeper than the world's floor limit, up to this slope, is a
+    floor as well as a wall (two records): the wall stops a body moving into it, the floor
+    catches a falling one, which a game slides down (a heightfield's steep ground, WORLDKIT.md,
+    "Steep ground"). None: a wall only."""
     a: tuple
     b: tuple
     c: tuple
     surface: int = 0
     layer: str = None
     tag: int = 0xFFFF
+    slide_floor_degrees: float = None
 
 
 @dataclass
@@ -202,6 +207,7 @@ class Texture:
     slot: int
     data: bytes
     four_bit: bool = True
+    offset: int = None      # decoded: where its data is in the pack (regions may share it)
 
 
 @dataclass
@@ -568,9 +574,11 @@ def _write_coll(out, tris, half, pad, grid_shift, floor_cos, ceiling_cos, layer_
     by_kind = [[], [], []]
     classified = []
     for t in tris:
-        v, surface, layer, tag = t
+        v, surface, layer, tag = t[:4]
         n = front_normal(*v)
-        kind = classify(n, floor_cos, ceiling_cos)
+        # a cell's triangles come classified (world_triangles(): a triangle may have its own
+        # floor limit); an entity's are classified here
+        kind = t[4] if len(t) > 4 else classify(n, floor_cos, ceiling_cos)
         if not 0 <= surface <= 255:
             raise PackError('surface byte out of range')
         if not 0 <= tag <= 0xFFFF:
@@ -630,8 +638,12 @@ def world_triangles(world):
         for t in cell.collision:
             v = tuple(_raw3(p, 'collision corner') for p in (t.a, t.b, t.c))
             n = front_normal(*v)
-            out.append(dict(kind=classify(n, fc, cc), v=v, n=n, surface=t.surface,
-                            layer=t.layer, tag=t.tag))
+            kind = classify(n, fc, cc)
+            out.append(dict(kind=kind, v=v, n=n, surface=t.surface, layer=t.layer, tag=t.tag))
+            slide = t.slide_floor_degrees
+            if kind == KIND_WALL and slide is not None and \
+                    classify(n, math.cos(math.radians(slide)), cc) == KIND_FLOOR:
+                out.append(dict(out[-1], kind=KIND_FLOOR))     # a slide floor too
     return out
 
 
@@ -829,7 +841,7 @@ def encode(world, report=None):
                 if x1 <= -half or x0 >= half or z1 <= -half or z0 >= half:
                     continue
                 v = tuple((p[0] - cx, p[1], p[2] - cz) for p in t['v'])
-                cell_tris[key].append((v, t['surface'], t['layer'], t['tag']))
+                cell_tris[key].append((v, t['surface'], t['layer'], t['tag'], t['kind']))
                 if t['layer'] is not None and t['layer'] not in cell_layers[key]:
                     cell_layers[key].append(t['layer'])
 
@@ -854,10 +866,10 @@ def encode(world, report=None):
             mesh_order.append(data)
         pending_meshes.append((at, data))
 
-    blobs = []                  # (patch offset, bytes, align, [(offset in bytes, string)])
+    blobs = []                  # (patch offset, bytes, align, [(offset in bytes, string)], shared)
 
-    def blob_ref(at, data, align=4, names=()):
-        blobs.append((at, data, align, names))
+    def blob_ref(at, data, align=4, names=(), shared=False):
+        blobs.append((at, data, align, names, shared))
 
     index_off = out.reserve(4 * gw * gh)
     layer_off = out.reserve(LAYER_SIZE * len(world.layers)) if world.layers else 0
@@ -876,7 +888,9 @@ def encode(world, report=None):
                 raise PackError('texture slot out of range')
             out.patch(tex_off + TEXTURE_SIZE * t, 'BBHII', tex.slot, 1 if tex.four_bit else 0, 0, 0,
                       len(tex.data))
-            blob_ref(tex_off + TEXTURE_SIZE * t + 4, tex.data)
+            # a texture several regions hold (the stand-ins' common set) is stored once, so the
+            # reader sees the same data offset and does not copy it again on entering
+            blob_ref(tex_off + TEXTURE_SIZE * t + 4, tex.data, shared=True)
         smp_off = out.reserve(SAMPLE_SIZE * len(r.samples)) if r.samples else 0
         for s, smp in enumerate(r.samples):
             at2 = smp_off + SAMPLE_SIZE * s
@@ -1048,8 +1062,14 @@ def encode(world, report=None):
         out.patch(mesh_dir + 4 * k, 'I', meshes[m])
     for at, m in pending_meshes:
         out.patch(at, 'I', meshes[m])
-    for at, data, align, names in blobs:
-        off = out.put(data, align)
+    shared_blobs = {}
+    for at, data, align, names, shared in blobs:
+        if shared and (data, align) in shared_blobs:
+            off = shared_blobs[(data, align)]
+        else:
+            off = out.put(data, align)
+            if shared:
+                shared_blobs[(data, align)] = off
         out.patch(at, 'I', off)
         for o, text in names:
             string_ref(off + o, text)
@@ -1287,7 +1307,7 @@ def decode(data):
             slot, fl, _, do, n = r.u('BBHII', to + TEXTURE_SIZE * t, 'texture')
             if slot >= TEXTURE_SLOTS:
                 raise PackError('texture slot out of range')
-            texs.append(Texture(slot, r.blob(do, n, 'texture'), bool(fl & 1)))
+            texs.append(Texture(slot, r.blob(do, n, 'texture'), bool(fl & 1), do))
         smps = []
         for s in range(nsmp):
             sn, do, ns, ls, fl = r.u('5I', so + SAMPLE_SIZE * s, 'sample')
