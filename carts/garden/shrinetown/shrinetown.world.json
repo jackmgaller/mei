@@ -980,6 +980,66 @@
    ],
    "raised": true
   },
+  "race_track2": {
+   "points": [
+    [
+     24.0,
+     9.0,
+     10.0
+    ],
+    [
+     120.0,
+     9.0,
+     10.0
+    ],
+    [
+     122.0,
+     9.0,
+     10.09
+    ],
+    [
+     124.0,
+     9.0,
+     10.328
+    ],
+    [
+     126.0,
+     9.0,
+     10.664
+    ],
+    [
+     128.0,
+     9.0,
+     11.05
+    ],
+    [
+     130.0,
+     9.0,
+     11.436
+    ],
+    [
+     132.0,
+     9.0,
+     11.772
+    ],
+    [
+     134.0,
+     9.0,
+     12.01
+    ],
+    [
+     136.0,
+     9.0,
+     12.1
+    ],
+    [
+     160.0,
+     9.0,
+     12.1
+    ]
+   ],
+   "raised": true
+  },
   "wire_road_a": {
    "points": [
     [
@@ -8071,26 +8131,22 @@
    }
   },
   "assets": {
-   "train_emu_car": {
-    "distances": [
-     6,
-     60
-    ],
-    "band": 1
-   },
    "mamachari": {
+    "distances": [
+     8
+    ],
     "cull": 30
    },
    "bike_rack": {
     "distances": [
-     14,
+     10,
      30
     ],
     "cull": 60
    },
    "newsstand": {
     "distances": [
-     14,
+     8,
      40
     ],
     "cull": 72
@@ -8103,7 +8159,7 @@
    },
    "koban": {
     "distances": [
-     24,
+     14,
      45
     ],
     "cull": 100
@@ -8117,15 +8173,27 @@
      100
     ]
    },
+   "viaduct_station_span": {
+    "distances": [
+     24,
+     100
+    ]
+   },
+   "viaduct_station_span_stair": {
+    "distances": [
+     24,
+     100
+    ]
+   },
    "town_potted_plants": {
-    "cull": 36
+    "cull": 28
    },
    "town_bench": {
     "cull": 45
    },
    "ticket_gates": {
     "distances": [
-     12,
+     8,
      40
     ]
    },

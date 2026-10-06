@@ -368,7 +368,7 @@ fn gc_race_lost(f: s32) {
     if t == 60 { expect(!mover_live(m) && !trig_shown(gc_e), "the train not yet out; the omamori taken", fixed(m.mt)) }
     if t == m.delay - 30 { expect(!mover_live(m), "the train waits, parked, until its delay", fixed(m.mt)) }
     if t == m.delay + 30 {
-        expect(mover_live(m) && m.pos.x < 40.0 && near(m.pos.z, 12.1, 0.01), "the train coming in from the west, x", m.pos.x)
+        expect(mover_live(m) && m.pos.x < 40.0 && near(m.pos.z, 10.0, 0.01), "the train coming in from the west on track 2 (z 10), x", m.pos.x)
         note("the train comes in at, s", fixed(m.delay) / 60)
     }
     if t == arrive + 30 {

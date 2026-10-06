@@ -114,13 +114,13 @@
   },
   {
    "id": "konbini_sign",
-   "asset": "gbt_konbini_sign_2",
+   "asset": "konbini_roof_sign",
    "position": [
     196.0,
     4.7,
     30.0
    ],
-   "collision": "self"
+   "collision": "konbini_roof_sign_col"
   },
   {
    "id": "pool",
