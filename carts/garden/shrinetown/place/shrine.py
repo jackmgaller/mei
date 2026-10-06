@@ -36,6 +36,7 @@ def in_zone(x, z):
 # of 4 m between gates (the grey box's wall had chamfered corners and any length). The rectangle:
 WX0, WX1 = 117.6, 210.4               # west and east walls (grey 115 / 213)
 WZ0, WZ1 = 168.6, 237.4               # south and north walls (grey 167 / 233)
+TORII_Z = 124.0                       # the great torii (as the grey box's)
 GATE = (160.0, 172.0)                 # the two-storey gate (arch_gate, 20 x 8): its front at 168 meets the wall
 GATE_W_Z, GATE_E_Z = 201.0, 193.0     # the west and east gates (arch_wall_gate) on their walls (grey 200 / 192)
 GATE_N_X = 162.0                      # the north gate (shortcut B) on the north wall (grey 160)
@@ -71,9 +72,11 @@ WALL_XS = (262.0, 274.0, 298.0, 310.0)        # cemetery_terrace_wall_12 centres
 GRAVE_XS = (264.0, 274.0, 298.0, 308.0)
 CEM_GATE = (286.0, 1.8, 131.4)                # at the head of the first flight, on terrace 1 (the shrine's region)
 
-# The shrine's levels of detail for the assets it shares with the level (shrine.world.json).
-SHRINE_LOD = {'tree_cedar_giant': {'distances': [32, 100]}, 'forest_stage_hall': {'distances': [18, 60]},
-              'forest_fox_torii': {'distances': [24], 'cull': 60}, 'arch_temple': {'distances': [30, 90]},
+# The shrine's levels of detail for the assets it shares with the level (shrine.world.json), a little
+# nearer where the shrine town's forest views were over the draw budget (the giant cedars, the
+# platforms, the fox torii).
+SHRINE_LOD = {'tree_cedar_giant': {'distances': [22, 80]}, 'forest_stage_hall': {'distances': [18, 60]},
+              'forest_fox_torii': {'distances': [16], 'cull': 48}, 'forest_platform': {'distances': [24]}, 'arch_temple': {'distances': [30, 90]},
               'arch_side_hall': {'distances': [28]}, 'arch_corridor_hall': {'distances': [28]},
               'arch_gate': {'distances': [30, 80]}, 'arch_pagoda': {'distances': [32, 90]},
               'arch_torii_great': {'distances': [30]}, 'arch_wall_8': {'distances': [24]},
@@ -242,10 +245,12 @@ def apply(cells, world):
 
 # ---------------------------------------------------------------------------- 3.6 the outer courtyard
 def courtyard(Z):
-    # the great torii (c2_1), its posts poles as the shrine's (x +-5, 9.9 m)
-    Z.place('torii_great', 'arch_torii_great', (160.0, 0.6, 124.0), 'arch_torii_great_col')
-    Z.move_entity('pole_torii_w', (155.0, 0.6, 124.0), height=9.9)
-    Z.move_entity('pole_torii_e', (165.0, 0.6, 124.0), height=9.9)
+    # the great torii (c2_1), its posts poles as the shrine's (x +-5, 9.9 m). (The race line G8, scenario
+    # 417, now comes down on its top beam: DESIGN.md 12.5.)
+    ty, tz = 0.6, TORII_Z
+    Z.place('torii_great', 'arch_torii_great', (160.0, ty, tz), 'arch_torii_great_col')
+    Z.move_entity('pole_torii_w', (155.0, ty, tz), height=9.9)
+    Z.move_entity('pole_torii_e', (165.0, ty, tz), height=9.9)
     for (x, z, yaw), side in zip(SIDE_HALLS, 'we'):
         Z.place(f'side_hall_{side}', 'arch_side_hall', (x, 0.6, z), 'arch_side_hall_col', yaw)
     Z.place('chozuya', 'arch_chozuya', (143.0, 0.6, 138.0), 'arch_chozuya_col', 270)
@@ -269,7 +274,7 @@ def courtyard(Z):
         Z.move_entity(f'core_coin_side_hall_{side}', (x, 0.6 + 10.3 + 1.0, z))
     # the lantern strings: from the kasagi's top (13.1) to the side halls' ridge ends (10.9), and on to the
     # gate's lower roof (its eave 11.9 at the front corners)
-    torii = {'w': (155.0, 13.2, 124.0), 'e': (165.0, 13.2, 124.0)}
+    torii = {'w': (155.0, 13.2, TORII_Z), 'e': (165.0, 13.2, TORII_Z)}
     hall = {'w': (128.0, 11.0, 158.6), 'e': (192.0, 11.0, 158.6)}
     gate = {'w': (GATE[0] - 9.0, 12.0, GATE[1] - 3.9), 'e': (GATE[0] + 9.0, 12.0, GATE[1] - 3.9)}
     for side in 'we':
@@ -334,7 +339,8 @@ def precinct(Z):
             nm = f'wall_{axis}{int(fixed)}_{int(c * 10)}'
             Z.place(nm, f'arch_wall_{size}', (x, y, z), f'arch_wall_{size}_col', yaw)
             if raised:
-                Z.place(nm + '_plinth', f'shrine_wall_plinth_{size}', (x, 5.0, z), f'shrine_wall_plinth_{size}_col', yaw)
+                Z.place(nm + '_plinth', f'shrine_wall_plinth_{size}', (x, 5.0, z), f'shrine_wall_plinth_{size}_col', yaw,
+                        merge=True)
         return out
     e = 0.4                                          # a module's end sits 0.4 m past its corner post's centre
     run(WX0 + e, gx - 10, WZ0, 'x'); run(gx + 10, WX1 - e, WZ0, 'x')
@@ -345,7 +351,8 @@ def precinct(Z):
         north = z == WZ1
         Z.place(f'wall_corner_{k}', 'arch_wall_corner', (x, 6.0 if north else 5.0, z), 'arch_wall_corner_col', merge=True)
         if north:
-            Z.place(f'wall_corner_{k}_plinth', 'shrine_wall_plinth_corner', (x, 5.0, z), 'shrine_wall_plinth_corner_col')
+            Z.place(f'wall_corner_{k}_plinth', 'shrine_wall_plinth_corner', (x, 5.0, z), 'shrine_wall_plinth_corner_col',
+                    merge=True)
     Z.place('gate_w', 'arch_wall_gate', (WX0, 5.0, GATE_W_Z), 'arch_wall_gate_col', 90)
     Z.place('gate_e', 'arch_wall_gate', (WX1, 5.0, GATE_E_Z), 'arch_wall_gate_col', 270)
     # the north gate, shortcut B: shut and barred on the ridge side (layer gate_b_barred, on), open with the
@@ -464,7 +471,10 @@ def fox_grove(Z):
             bearing(L.FOX[0] - fx, L.FOX[1] - fz) + 180)
     for k, (sx, sz) in enumerate(((91.2, 298.6), (96.8, 298.6))):
         Z.place(f'fox_statue_{k}', 'forest_fox_statue', (sx, sz), 'forest_fox_statue_col', 0, merge=True)
-    # the senbon torii: the grey box's frames' places (make_mountain.py), the shrine's torii
+    # the senbon torii: the grey box's frames' places (make_mountain.py), the shrine's torii drawn. Their
+    # collision is the grey frames' (gbm_fox_torii: posts 2.9 m apart, the beam's top at 3.6): the
+    # shrine's own puts the posts 2.5 m apart, inside the steps' 3 m, and the walking route down the
+    # tunnel (scenario 454) caught on them at the switchbacks
     pts = Z.paths['torii_steps']['points']
     n = 0
     for a, b in zip(pts, pts[1:]):
@@ -475,7 +485,7 @@ def fox_grove(Z):
             t = d / seg
             n += 1
             Z.place(f'torii_{n:02d}', 'forest_fox_torii', (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t,
-                                                          a[2] + (b[2] - a[2]) * t), 'forest_fox_torii_col', yaw)
+                                                          a[2] + (b[2] - a[2]) * t), 'gbm_fox_torii', yaw)
             d += 1.4
     # a hokora where the trail from the road reaches the grove
     Z.place('hokora_fox', 'hokora', (86.0, 289.5), 'hokora_col', 60, merge=True)
@@ -600,9 +610,11 @@ def forest(Z):
     sc['core_woods']['assets'] = low
     sc['core_valley']['assets'] = low
     sc['mountain_forest']['assets'] = high
-    import os
-    if os.environ.get('SHRINE_EXP') == 'bare':
-        return
+    # the real trees cost more to draw than the grey ones (textured cards): a little sparser than the grey
+    # box's forest (fill 0.8, thinned from 56 m), thinned from 44 m
+    for name in ('core_woods', 'core_valley', 'mountain_forest'):
+        sc[name]['thin'] = {'distance': 44, 'keep': 0.5, 'scale': 1.2}
+        sc[name]['fill'] = 0.68
     # undergrowth and leaf litter (as the shrine's), where the trees are, the zone's part of them
     excl = []
     for name in ('core_woods', 'core_valley', 'mountain_forest'):
@@ -617,12 +629,12 @@ def forest(Z):
     sc['shrine_undergrowth'] = {
         'assets': [{'asset': 'plant_fern', 'weight': 3}, {'asset': 'plant_sasa', 'weight': 4},
                    {'asset': 'plant_shrub', 'weight': 2}, {'asset': 'plant_susuki', 'weight': 2}],
-        'area': area, 'spacing': 5, 'fill': 0.45, 'seed': 59, 'lift': -0.05, 'exclude': uniq[:256],
-        'clearance': 1.0, 'max_slope': 30, 'chunk': 32, 'cull': 44, 'lod': 'assets'}
+        'area': area, 'spacing': 5, 'fill': 0.3, 'seed': 59, 'lift': -0.05, 'exclude': uniq[:256],
+        'clearance': 1.0, 'max_slope': 30, 'chunk': 16, 'cull': 36, 'lod': 'assets'}
     sc['shrine_litter'] = {
         'assets': [{'asset': 'litter_red', 'weight': 3}, {'asset': 'litter_gold', 'weight': 2}],
         'area': area, 'spacing': 7, 'fill': 0.5, 'seed': 61, 'exclude': uniq[:256],
-        'clearance': 0.5, 'max_slope': 8, 'chunk': 32, 'cull': 32, 'lod': 'assets'}
+        'clearance': 0.5, 'max_slope': 8, 'chunk': 16, 'cull': 24, 'lod': 'assets'}
     # reeds round the pond's banks
     sc['shrine_reeds'] = {
         'assets': [{'asset': 'water_reeds'}], 'area': {'rect': [216, 128, 254, 184]}, 'spacing': 3, 'fill': 0.45,

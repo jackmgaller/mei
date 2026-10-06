@@ -65,7 +65,7 @@
     15.731,
     301.584
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
@@ -76,7 +76,7 @@
     16.371,
     302.97
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
@@ -87,7 +87,7 @@
     17.011,
     304.356
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
@@ -98,7 +98,7 @@
     17.651,
     305.742
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
@@ -109,7 +109,7 @@
     18.291,
     307.128
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
@@ -120,7 +120,7 @@
     18.931,
     308.514
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
@@ -131,7 +131,7 @@
     19.571,
     309.899
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
@@ -142,7 +142,7 @@
     20.211,
     311.285
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
@@ -153,7 +153,7 @@
     22.195,
     314.44
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
@@ -164,7 +164,7 @@
     22.835,
     314.824
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
@@ -175,7 +175,7 @@
     23.475,
     315.209
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
@@ -186,7 +186,7 @@
     24.115,
     315.593
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
@@ -197,7 +197,7 @@
     24.754,
     315.978
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
@@ -208,7 +208,7 @@
     25.394,
     316.363
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
@@ -219,7 +219,7 @@
     26.034,
     316.747
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
@@ -230,7 +230,7 @@
     26.674,
     317.132
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
@@ -241,7 +241,7 @@
     27.314,
     317.516
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
@@ -252,7 +252,7 @@
     28.849,
     319.131
    ],
-   "collision": "forest_fox_torii_col",
+   "collision": "gbm_fox_torii",
    "yaw": -45.0
   },
   {

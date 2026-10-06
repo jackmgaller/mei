@@ -46,7 +46,7 @@ ENTITIES = [
     # ---- the five stars (they were coins in the grey box: the IDs, and so the saved bits, stay)
     # ★1 0.5 m over the pagoda's finial (178, 262): taken from the finial pole's top (scenario 422)
     {'id': 'star_1_pagoda', 'type': 'star', 'position': [178, 45.49, 262]},
-    # ★2 on the great torii's top beam (13.8): there once the eight red coins are taken
+    # ★2 on the great torii's top beam (13.1 in the real torii's middle): there once the eight red coins are taken
     {'id': 'star_2_torii', 'type': 'star', 'position': [160, 14.7, 124], 'params': {'appear': 'red_coins'}},
     # ★3 rung down onto the stage's deck, 2.4 m in front of the bell's rope
     {'id': 'star_3_bell', 'type': 'star', 'position': [BELL[0], STAGE_Y + 1.0, BELL[1] - 2.4],

@@ -4477,7 +4477,7 @@
     ]
    },
    "spacing": 9,
-   "fill": 0.8,
+   "fill": 0.68,
    "seed": 31,
    "lift": -0.15,
    "exclude": [
@@ -4582,7 +4582,7 @@
    "chunk": 16,
    "lod": "assets",
    "thin": {
-    "distance": 56,
+    "distance": 44,
     "keep": 0.5,
     "scale": 1.2
    }
@@ -4619,7 +4619,7 @@
     ]
    },
    "spacing": 9,
-   "fill": 0.75,
+   "fill": 0.68,
    "seed": 37,
    "lift": -0.15,
    "exclude": [
@@ -4651,7 +4651,7 @@
    "chunk": 16,
    "lod": "assets",
    "thin": {
-    "distance": 56,
+    "distance": 44,
     "keep": 0.5,
     "scale": 1.2
    }
@@ -4716,7 +4716,7 @@
     ]
    },
    "spacing": 9,
-   "fill": 0.8,
+   "fill": 0.68,
    "seed": 41,
    "lift": -0.1,
    "exclude": [
@@ -4972,7 +4972,7 @@
    "chunk": 16,
    "lod": "assets",
    "thin": {
-    "distance": 56,
+    "distance": 44,
     "keep": 0.5,
     "scale": 1.2
    }
@@ -5029,7 +5029,7 @@
     ]
    },
    "spacing": 5,
-   "fill": 0.45,
+   "fill": 0.3,
    "seed": 59,
    "lift": -0.05,
    "exclude": [
@@ -5385,8 +5385,8 @@
    ],
    "clearance": 1.0,
    "max_slope": 30,
-   "chunk": 32,
-   "cull": 44,
+   "chunk": 16,
+   "cull": 36,
    "lod": "assets"
   },
   "shrine_litter": {
@@ -5764,8 +5764,8 @@
    ],
    "clearance": 0.5,
    "max_slope": 8,
-   "chunk": 32,
-   "cull": 32,
+   "chunk": 16,
+   "cull": 24,
    "lod": "assets"
   },
   "shrine_reeds": {
@@ -5838,8 +5838,8 @@
   "assets": {
    "tree_cedar_giant": {
     "distances": [
-     32,
-     100
+     22,
+     80
     ]
    },
    "forest_stage_hall": {
@@ -5850,9 +5850,14 @@
    },
    "forest_fox_torii": {
     "distances": [
-     24
+     16
     ],
-    "cull": 60
+    "cull": 48
+   },
+   "forest_platform": {
+    "distances": [
+     24
+    ]
    },
    "arch_temple": {
     "distances": [

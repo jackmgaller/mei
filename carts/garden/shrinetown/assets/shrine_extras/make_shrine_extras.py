@@ -5,8 +5,7 @@ script (python3 make_shrine_extras.py), each with its collision where it has one
   precinct's north wall (the shrine's arch_wall_8 and arch_wall_corner) stands on beside the
   north gate, so its top is 3.6 m over the terrace and a double jump (3.4) does not clear it
   (OVERNIGHT_DECISIONS #5). Footprint 8 (or 4) x 1.1 m and 1.4 x 1.4 m, origin at the middle of the
-  base, the top at 1.0. The shrine's architecture stone (its art/arch_stone.png, a tile the
-  chozuya and the office already load).
+  base, the top at 1.0. Plain stone colours, no texture, so the world can merge them.
 - shrine_stilt_ladder: a wooden ladder up the stage's front stilts from the ledge (44) to over
   the deck's railing (the pole entity holds the body; this is its look). Two rails 0.5 m apart
   and a rung every 0.5 m, 18.3 m; front -Z. No collision.
@@ -23,7 +22,6 @@ HERE = Path(__file__).resolve().parent
 ART = '../../../shrine/assets/art/'
 POLICY = {'required': True, 'depth': True, 'perspective': True}
 LIGHT = {'mode': 'vertical', 'ambient': 0.5}
-STONE = {'color': '#b4ae9e', 'texture': {'image': ART + 'arch_stone.png', 'projection': 'planar'}}
 ROCK = {'color': '#6e6a62', 'texture': {'image': ART + 'forest_mossy_stone.png', 'projection': 'box',
                                         'scale': [2.4, 2.4]}}
 WOOD = {'color': '#8a6446', 'palette': True}
@@ -57,7 +55,7 @@ out = {}
 for name, (sx, sz) in (('shrine_wall_plinth_8', (8.0, 1.1)), ('shrine_wall_plinth_4', (4.0, 1.1)),
                        ('shrine_wall_plinth_corner', (1.4, 1.4))):
     nodes = [box('course', -sx / 2, 0, -sz / 2, sx / 2, 1.0, sz / 2, 'stone', ['bottom'])]
-    out[name] = recipe(name, {'stone': STONE}, nodes, 40)
+    out[name] = recipe(name, {'stone': {'color': '#b4ae9e', 'palette': True}}, nodes, 12)
     out[name + '_col'] = col(name + '_col', nodes)
 
 # ---- the stage's stilt ladder

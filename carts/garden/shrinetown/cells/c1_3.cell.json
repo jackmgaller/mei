@@ -26,7 +26,8 @@
     5.0,
     237.4
    ],
-   "collision": "shrine_wall_plinth_8_col"
+   "collision": "shrine_wall_plinth_8_col",
+   "merge": true
   },
   {
    "id": "sh_wall_z117_1950",
@@ -102,7 +103,8 @@
     5.0,
     237.4
    ],
-   "collision": "shrine_wall_plinth_corner_col"
+   "collision": "shrine_wall_plinth_corner_col",
+   "merge": true
   },
   {
    "id": "sh_gate_w",

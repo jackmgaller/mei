@@ -3,15 +3,12 @@
  "version": 1,
  "name": "shrine_wall_plinth_4",
  "budget": {
-  "triangles": 40
+  "triangles": 12
  },
  "materials": {
   "stone": {
    "color": "#b4ae9e",
-   "texture": {
-    "image": "../../../shrine/assets/art/arch_stone.png",
-    "projection": "planar"
-   }
+   "palette": true
   }
  },
  "lighting": {

@@ -37,7 +37,8 @@
     5.0,
     237.4
    ],
-   "collision": "shrine_wall_plinth_8_col"
+   "collision": "shrine_wall_plinth_8_col",
+   "merge": true
   },
   {
    "id": "sh_wall_x237_2020",
@@ -57,7 +58,8 @@
     5.0,
     237.4
    ],
-   "collision": "shrine_wall_plinth_8_col"
+   "collision": "shrine_wall_plinth_8_col",
+   "merge": true
   },
   {
    "id": "sh_wall_x237_2080",
@@ -77,7 +79,8 @@
     5.0,
     237.4
    ],
-   "collision": "shrine_wall_plinth_4_col"
+   "collision": "shrine_wall_plinth_4_col",
+   "merge": true
   },
   {
    "id": "sh_wall_z210_2010",
@@ -153,7 +156,8 @@
     5.0,
     237.4
    ],
-   "collision": "shrine_wall_plinth_corner_col"
+   "collision": "shrine_wall_plinth_corner_col",
+   "merge": true
   },
   {
    "id": "sh_gate_e",
