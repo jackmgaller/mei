@@ -41,6 +41,7 @@ STAGE_Y = 60.0                      # layout.STAGE_Z
 BELL = (154.0, 353.9)               # make_mountain.py's BELL: the rope hangs from SY + 1.4 to SY + 4
 TRACK2_Z = 12.1                     # the station's track 2 (the north one); the rail at the deck, 9.0
 DECK = 9.0                          # layout.VIADUCT_DECK
+PLATFORM = DECK + 1.0               # station_platform's floor (place/station.py)
 
 ENTITIES = [
     # ---- the five stars (they were coins in the grey box: the IDs, and so the saved bits, stay)
@@ -54,7 +55,8 @@ ENTITIES = [
     # ★4 in the root chamber inside the sacred cedar (layout.CEDAR, the basin floor 13)
     {'id': 'star_4_cedar', 'type': 'star', 'position': [154, 14.0, 296]},
     # ★5 on the platform, at the marked spot, once the race is won
-    {'id': 'star_5_platform', 'type': 'star', 'position': [160, DECK + 1.4, 7.0], 'params': {'appear': 'race5_won'}},
+    {'id': 'star_5_platform', 'type': 'star', 'position': [160, PLATFORM + 1.4, 7.0],
+     'params': {'appear': 'race5_won'}},
 
     # ---- ★3: the bell's rope, a touch within about 0.6 m of it
     {'id': 'bell_rope', 'type': 'trigger', 'position': [BELL[0], STAGE_Y, BELL[1]],
@@ -65,10 +67,10 @@ ENTITIES = [
     {'id': 'race_switch', 'type': 'trigger', 'position': [168, STAGE_Y, 342], 'asset': 'game_omamori',
      'params': {'size': [1.4, 2.0, 1.4], 'flag': 'race5', 'keep': False, 'timer': TIMER, 'ends': 'race5_won',
                 'hide': True}},
-    # the platform's box: x 144-176 over the whole deck's width up to the north parapet (z 3.5-14),
-    # 6 m high: the island platform, the train standing at it and, in the grey box, the head of the
-    # plaza stairs, which reach the deck north of track 2
-    {'id': 'race_platform', 'type': 'trigger', 'position': [160, DECK + 0.05, 8.75],
+    # the platform's box: x 144-176 over both tracks (z 3.5-14), 6 m up from the island platform's
+    # floor: the platform and the roofs of trains standing at it (the outside stairs' walkway, north
+    # of track 2 at the deck, is outside it: they are not the way to the trains)
+    {'id': 'race_platform', 'type': 'trigger', 'position': [160, PLATFORM + 0.05, 8.75],
      'params': {'size': [32, 6, 10.5], 'flag': 'race5_won', 'needs': 'race5', 'ends': 'race5', 'keep': False}},
     # the two-car train on track 2: parked until the omamori is taken, then in from the west end
     # of the viaduct, stopped with its middle at the platform's (x 160), and back out west

@@ -174,8 +174,8 @@ MATERIALS = {
     "steel": {"color": "#7d858c", "palette": True},
     "fin": {"color": "#8c949a", "palette": True, "double_sided": True},
     "post": {"color": "#5f6a70", "palette": True, "double_sided": True},
-    "sign": {"color": "#185c46", "tag": "sign", "texture": {"sheet": "art", "cell": "sign",
-                                                            "bits": 8, "projection": "fit"}},
+    "sign": {"color": "#185c46", "tag": "sign", "texture": {"sheet": "art", "cell": "sign",  # 4-bit
+                                                            "projection": "fit"}},
     "bikes": {"color": "#7fcab6", "double_sided": True,
               "texture": {"sheet": "art", "cell": "bikes", "projection": "fit"}},
 }

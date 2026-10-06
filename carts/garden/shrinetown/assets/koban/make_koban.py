@@ -167,7 +167,7 @@ def cyl(id, radius, height, at, material, segments=6, caps=True):
     return n
 
 
-def sheet(cellname, bits=8):
+def sheet(cellname, bits=4):         # 4-bit: no 8-bit textures in shrine town (TEXTURES.md)
     t = {"sheet": "art", "cell": cellname, "projection": "fit"}
     if bits == 8:
         t["bits"] = 8

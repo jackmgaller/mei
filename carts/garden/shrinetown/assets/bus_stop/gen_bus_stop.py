@@ -122,7 +122,7 @@ def sphere(id, radius, rings, segments, at, material, scale=None):
             "material": material, "transform": t}
 
 
-def fit(cell, bits=8):
+def fit(cell, bits=4):               # 4-bit: no 8-bit textures in shrine town (TEXTURES.md)
     t = {"sheet": "art", "cell": cell, "projection": "fit"}
     if bits == 8:
         t["bits"] = 8

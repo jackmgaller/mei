@@ -230,18 +230,20 @@ fn gc_bell(f: s32) {
 
 // ---- 452: the last train, won by the G8 line
 
-// From the arcade's landing to the station's platform: the shotengai south, the plaza, the west
-// station stair (z 32 -> 14, up to the deck, 9.0), the platform. (The real station's inside stair
-// is about 35 m longer: DESIGN.md, star 5.)
-const RACE_TOWN: [5]vec3 = [vec3(160.0, 0.0, 44.0), vec3(152.0, 0.0, 34.0), vec3(152.0, 0.0, 14.0),
-                            vec3(156.0, 0.0, 10.0), vec3(160.0, 0.0, 7.5)]
+// From the arcade's landing to the station's platform: the shotengai south, the plaza, the
+// station's entrance and a ticket gate's aisle (x 158.6, west of the middle bent's column), east
+// along the hall's back wall up the first flight to the landing (3.56), back west up the second
+// flight to the half landing (5.52) and the third through the deck onto the island platform (10.0).
+const RACE_TOWN: [8]vec3 = [vec3(160.0, 0.0, 44.0), vec3(158.6, 0.0, 10.5), vec3(158.6, 0.0, 5.0),
+                            vec3(166.5, 0.0, 5.6), vec3(176.0, 0.0, 5.6), vec3(176.4, 0.0, 8.4),
+                            vec3(169.8, 0.0, 8.0), vec3(156.5, 0.0, 8.0)]
 
 fn gc_race_won(f: s32) {
     if tw_phase == 9 { return }
     let to = vec3(160.0, 0.0, 84.0)
     if f == 0 {
         gc_e = gc_trig("race5")
-        tw_star = tw_star_near(vec3(160.0, 10.4, 7.0))
+        tw_star = tw_star_near(vec3(160.0, 11.4, 7.0))
         // 2 m north of the omamori, on the stage, facing it
         gc_place(168.0, 344.0, 61.0, 3.1416)
         pl.spawn = vec3(pl.pos.x, 0.0, pl.pos.z)
@@ -303,7 +305,7 @@ fn gc_race_won(f: s32) {
             let s = fixed(f - t0) / 60
             note("on the platform after, s", s)
             expect(chal_flag == null && chal_end == 1 && !flag_on("race5"), "won: the clock stopped", s)
-            expect(pl.pos.y > 8.5, "at the platform (the deck, or the stair's head), y", pl.pos.y)
+            expect(pl.pos.y > 8.0, "at the platform (or the head of its stair), y", pl.pos.y)
             tw_phase = 7
             t1 = f
         }
@@ -336,7 +338,7 @@ fn gc_race_lost(f: s32) {
     if tw_phase == 9 { return }
     if f == 0 {
         gc_e = gc_trig("race5")
-        tw_star = tw_star_near(vec3(160.0, 10.4, 7.0))
+        tw_star = tw_star_near(vec3(160.0, 11.4, 7.0))
         gc_place(168.0, 343.5, 61.0, 3.1416)
     }
     let m = gc_train()
@@ -415,9 +417,9 @@ fn gc_route_west(f: s32) {
     if flag_on("race5_won") {
         let s = fixed(f - t0) / 60
         note("the walking route: on the platform after, s", s)
-        // the clock (game.py): the route at 85% of the run speed, with the real station's inside
-        // stair (about 35 m, 4.5 s more than the grey box's outside one), and 8 s to spare
-        let need = s * 100 / 85 + 4.5 * 100 / 85 + 8.0
+        // the clock (game.py): the route (up the station's inside stair) at 85% of the run speed,
+        // and 8 s to spare
+        let need = s * 100 / 85 + 8.0
         note("so the clock should be at least, s", need)
         expect(fixed(gc_trig_params(gc_trig("race5")).timer as s32) / 60 >= need, "the clock leaves the walking route its margin, s", need)
         done()

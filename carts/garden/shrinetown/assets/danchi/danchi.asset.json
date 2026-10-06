@@ -26,7 +26,6 @@
    "texture": {
     "sheet": "danchi",
     "cell": "facade",
-    "bits": 8,
     "projection": "box",
     "scale": [
      16.0,

@@ -639,6 +639,8 @@ Each needs a `star` entity (saved); the game has `coin` and `red_coin` today and
   (scenarios 452 and 454): the G8 line 47.1 s, the west ground route 60.6 s to the deck; with the
   real station's inside stair (about 35 m, 4.5 s more) the walking route is 65.1 s, which at 85%
   of the run speed is 76.6 s, and 8 s to spare gives 84.6. The spec's 70 s assumed a 55 s walk.
+  With the real station placed (12.6) the walking route up the inside stair measures 63.7 s and
+  the G8 line 50.2 s: 63.7 at 85% and 8 s to spare is 82.9, inside the 85.
 - **Learns:** the level is one place; height is speed.
 - **Needs:** a switch that starts a challenge (new; PLATFORMER.md plans "switches that start
   challenges"), a timer on the HUD (new), the train as a `mover` on the viaduct's path (built:
@@ -1074,7 +1076,7 @@ add to their cells. Scenarios 450–467 (`../tests/goals_cases.akr`) play them.
 | Stars | the hanafuda moon card turning in its glint, drawn by the cart from texture slot 14; taken is saved and shows the card's back | 422 (★1), 423 (★4), 450–452 |
 | ★2 | the eighth red coin sets `red_coins`: star 2 comes down onto the torii's top beam | 450 |
 | ★3 | the bell's rope: a touch box 1.2 m square (0.6 m round the rope); star 3 comes down 2.4 m in front of it | 451 |
-| ★5 | the omamori (touch, `timer` 85 s, hidden while it runs) starts the clock and the train (`game_train`, two grey-box cars on track 2, z 12.1, from x 2 to x 160); the platform's box (x 144–176, z 3.5–14, 6 m high: the platform, the train standing there, and in the grey box the plaza stairs' head) wins | 452 (won by G8), 453 (lost), 454 (the walking route, timed) |
+| ★5 | the omamori (touch, `timer` 85 s, hidden while it runs) starts the clock and the train (`game_train`, two grey-box cars on track 2, z 12.1, from x 2 to x 160); the platform's box (x 144–176, z 3.5–14, 6 m high from the platform's floor: the platform and the roofs of trains standing at it) wins | 452 (won by G8), 453 (lost), 454 (the walking route, timed) |
 | A | press (B) at the ledge's lip (44) over the ladder: layer `ladder_a` | 460, 467 |
 | B | press (B) on the ridge side of the bar (z 233.6–236.4): layer `gate_b_open` (its group's `gate_b_barred` goes off) | 461 |
 | C | ground pound on the root plate, east and south-east of the trunk (the trail's side; the rim west of it is too steep to stand on): layer `cedar_c_down` | 462 |
@@ -1087,9 +1089,9 @@ The placement agents' real assets: the rolled-up ladder A, the folded ladder E a
 gate go in a layer of the same group as the down/open one (`ladder_a_up` with `ladder_a`, and so
 on), so switching the open layer on puts the shut one off; a real ladder's pole keeps `front: true` and,
 as its yaw, the direction from the ladder to the side it is climbed on. A trigger's placement is the centre of its box's base, set 5 cm over
-the floor (the World Checker reports an entity in a solid). When the real station is placed, the
+the floor (the World Checker reports an entity in a solid). With the real station (12.6) the
 race's last legs (`RACE_TOWN` in the scenarios) go up its inside stair, and star 5 and the
-platform's box move to the real platform (10.0) if it differs.
+platform's box stand on the real platform's floor (10.0).
 
 ### 12.6 Placing the real assets (by zone, PLACE_SPLIT)
 
@@ -1153,3 +1155,49 @@ no T-junction. Scenarios 400–446 pass. The worst view measured in the zone is 
 296,281 draw CPU cycles and 606,074 GPU cycles. The zone's textures are 24,864 bytes of its
 26,624. The pool and the sports ground add 4,352 bytes, which `tools/textures.py` counts as the
 station's because they are south of z 40.
+
+#### Station zone (`place/station.py`)
+
+What stands now: the viaduct as real pieces along its whole line; the station
+(`station_concourse` with its two outside stairs and the inside stair, `ticket_gates`,
+`station_platform`, the three station spans and two tapers); a two-car `train_emu_car` standing
+at track 1; two `signal_gantry`s, each with a pole on its ladder; the plaza's danchi, pachinko
+parlour, koban, konbini (the shrine's `street_konbini`), bus stop, newsstand, four bike shelters
+with eight `mamachari`, a taxi rank, a phone booth, a postbox, three of the shrine's
+`street_vending_machine`s, two benches, two planters and the konbini's corner pole
+(`town_utility_pole_transformer`). `city_bus` is left out (OVERNIGHT_DECISIONS 16).
+
+| Where | Grey box | Real | Why |
+|---|---|---|---|
+| Viaduct line | swept deck and parapets along layout's polyline; the north run at x 302 | 16 m pieces: spans from x -8 (joints at x = 8 mod 16), the station x 136-184, tapers either side, three 30-degree curves (R 30.56) from x 280, the north run at x 310.56, the underpass, two curves east out of the level | the pieces join only end to end and turn by 30 degrees; x 310.56 keeps the bend and the piers off the sports ground and the school |
+| Piers | 1.6 x 8 under each grey span | each piece's two-column bent; at x 48 one stands in the canal | the station's joints fix every span west of it |
+| Underpass | a span over the straight road | `viaduct_underpass` at (310.56, 114.56), yaw 90: the road 25 degrees north of east between abutments, asphalt painted along the skew | the asset is built for the dog-leg (7.1); the straight road meets its west wing wall at x 293-300 (z 114.6-118) and walks on east into the corridor |
+| Deck's east end | wall at x 315.5 | the same wall (`gbc_viaduct_end`) where the centre line reaches x 315, heading 58.8 degrees; the second curve runs on past it out of the level | the line leaves between the rims (z 132-154) |
+| Parapet rails | 10.2, 5.85 m off the line, the north one open over x 146-178 | 10.2 on the real parapets: 5.875 off the line, 7.475 through the station (tapering between), the north one in three with gaps at the outside stairs only (x 148.35-151.65, 168.35-171.65) | `parapet_n_m` is new: the concourse's parapet between the stairs |
+| Outside stairs | x 150-154 and 170-174, foot z 32 | x 148.5-151.5 and 168.5-171.5, foot z 34.6, landing 9.0 at z 15.6-16.6, roofed | the asset's; they reach the walkway, not the platform (no track crossing) |
+| Platform | the deck (9.0), canopy 12.8 | floor 10.0, canopy top 13.47 (middle) to 13.72 (edges) | GREYBOX_SPLIT; the inside stair is the way up |
+| Stair coins | on the grey ramps at x 152, 172 | on the real treads at x 150, 170: y = 0.5 (34.6 - z) + 0.7 | they were inside the real steps |
+| Red coin 3 | 13.5 | 14.17 on the canopy | the real canopy |
+| Star 5, the platform's trigger (`game.py`) | 10.4; box from 9.05 | 11.4 (1.4 over the floor); the box from 10.05, over both tracks, the walkway north of track 2 outside it | the real platform's floor, 10.0 |
+| Konbini | box 36 x 14, roof 5.6 | `street_konbini` (36 x 14, deck 4.7, coping 5.0), front to the plaza; the door entity stays at (196, 33), before its middle as in the shrine | the same footprint |
+| Konbini roof sign | 5.6-7.0 | the same grey sign, 4.7-7.0, on the real roof's deck; red coin 5 on top | no real asset has a roof sign |
+| Danchi | 16 x 16 box, ramps round it | `danchi` 16.2 x 13.4 (z 19.4-32.8), its own stair tower on the north face to the roof (18.8) | |
+| Koban | 12 x 10 box, 5.9 | `koban` 4 x 3 (5 x 4 with eaves) at (122, 24), front east, eave 3.35 | the asset's size |
+| Pachinko | 16 x 16, 9.1 | 11.4 x 10.3 at (100.5, 26), front east, antenna 8.85 | |
+| Vending machine (route D) | at x 177.4 | `street_vending_machine` at (179.1, 29.8) against the konbini's west end, 1.9 | the konbini's roof is 3.1 up |
+
+Scenario changes: 401 walks the inside stair (through a ticket gate's aisle at x 158.6, west of
+the middle bent's column at x 160) onto the platform (10.0); G2 (411) takes off from the real
+roof at (78, 22) with no run-up (from (85, 20) it stood on the top balcony at 16.1, and a
+run-up's first jump carried it off the roof's north edge). The race's cases (452, 454) walk the
+same stair (`RACE_TOWN`); the platform's box is reached at the stair's head (8.5), and 454 no
+longer adds the stair's 4.5 s to the measured route, which now includes it.
+
+Costs (World Checker, full, the whole level with the other zones still grey): peak 2,148
+triangles, 598,458 draw CPU, 591,544 GPU. The peak is the ticket hall looking west, with the
+platform and the train over its ceiling; it is kept in by the train's level 1 from 9 m (band 1)
+and the plaza's small props culled sooner (`lod.assets`, set in `world()`). Texture cuts made
+(TEXTURES.md): the zone's 8-bit textures 4-bit (koban, danchi facade, pachinko storefront, bus
+stop, bike shelter sign), the ticket gates' floor a repeating 32 x 32, the newsstand's goods,
+sign and sides at half width, the postbox's cap a 32 x 32 pattern, `street_vending_machine` for
+`vending_machine`.

@@ -2,7 +2,7 @@
 """Draws the ticket gates' textures (authored art; run once, the PNGs are committed beside).
 
 From the asset lab's ticket gates (examples/assets/lab/ticket_gates); shrine town adds floor(),
-the tiled floor with its tactile band and guide strips painted in, sized to the recipe.
+the tiled floor, a repeating 32 x 32 (the recipe's floor material repeats it every 1.6 m).
 """
 import os
 from PIL import Image, ImageDraw, ImageFont
@@ -190,38 +190,19 @@ def clock():
     return im
 
 
-# The floor slab's top: x -3.6..3.6, z -1.5..0.9 at 5 cm a texel (row 0 is the back, z 0.9).
-FLOOR_X0, FLOOR_Z1, TEXEL = -3.6, 0.9, 0.05
-AISLES = [-2.10, -0.94, 0.22, 1.38, 2.54]   # aisle centres (x), as in ticket_gates.asset.json
-
-
 def floor():
-    """Grey tiles, the yellow tactile band along the front and a guide strip into each aisle."""
+    """32 x 32, repeating (TEXTURES.md's cut: the 144 x 48 floor drawn once was 4 KB): grey tiles
+    of 8 texels (0.4 m at the recipe's 1.6 m a repeat) with a texel of darker grout, two tones in a
+    checker."""
     T0, T1, GR = hexc("#8d9296"), hexc("#9aa0a4"), hexc("#6c7276")
-    Y, YD = hexc("#f0cf2c"), hexc("#b89410")
-    w, h = 144, 48
-    im = Image.new("RGBA", (w, h), T0)
+    im = Image.new("RGBA", (32, 32), T0)
     px = im.load()
-
-    def col(x):
-        return round((x - FLOOR_X0) / TEXEL)
-
-    def row(z):
-        return round((FLOOR_Z1 - z) / TEXEL)
-
-    for y in range(h):
-        for x in range(w):
-            if x % 6 == 0 or y % 6 == 0:
+    for y in range(32):
+        for x in range(32):
+            if x % 8 == 0 or y % 8 == 0:
                 px[x, y] = GR
-            elif ((x // 6) + (y // 6)) % 2:
+            elif ((x // 8) + (y // 8)) % 2:
                 px[x, y] = T1
-    def tactile(x0, x1, y0, y1):
-        for y in range(y0, y1):
-            for x in range(x0, x1):
-                px[x, y] = YD if (x % 2 == 1 and y % 2 == 1) else Y
-    tactile(0, w, row(-1.0), row(-1.45))
-    for a in AISLES:
-        tactile(col(a - 0.15), col(a + 0.15), row(0.0), row(-1.0))
     return im
 
 

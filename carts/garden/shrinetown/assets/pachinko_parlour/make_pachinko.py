@@ -224,7 +224,7 @@ MATERIALS = {
         "sheet": "art", "frames": ["bulbs_a", "bulbs_b"], "ticks": 10, "projection": "fit"}},
     "blade": {"color": "#1e2a8a", "class": "emissive", "tag": "sign", "texture": sheet("blade")},
     "storefront": {"color": "#26305e", "class": "emissive", "tag": "shopfront",
-                   "texture": sheet("storefront", bits=8)},
+                   "texture": sheet("storefront")},      # 4-bit (TEXTURES.md)
     "lamp": {"color": "#e0301e", "class": "emissive", "tag": "lantern"},
     "banner": {"color": "#d81e1e", "double_sided": True, "texture": sheet("banner")},
     "vend": {"color": "#e8e8ea", "texture": sheet("vend")},

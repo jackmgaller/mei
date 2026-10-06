@@ -66,8 +66,7 @@
    "texture": {
     "sheet": "art",
     "cell": "front",
-    "projection": "fit",
-    "bits": 8
+    "projection": "fit"
    }
   },
   "side": {
@@ -76,8 +75,7 @@
    "texture": {
     "sheet": "art",
     "cell": "side",
-    "projection": "fit",
-    "bits": 8
+    "projection": "fit"
    }
   },
   "police_blue": {
@@ -220,8 +218,7 @@
    "texture": {
     "sheet": "art",
     "cell": "sign",
-    "projection": "fit",
-    "bits": 8
+    "projection": "fit"
    }
   },
   "stop": {
@@ -230,8 +227,7 @@
    "texture": {
     "sheet": "art",
     "cell": "stop",
-    "projection": "fit",
-    "bits": 8
+    "projection": "fit"
    }
   },
   "aframe": {
@@ -240,8 +236,7 @@
    "texture": {
     "sheet": "art",
     "cell": "aframe",
-    "projection": "fit",
-    "bits": 8
+    "projection": "fit"
    }
   },
   "grille": {

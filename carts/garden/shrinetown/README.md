@@ -56,7 +56,7 @@ hoarding until downtown exists.
 | Scenario | What it proves |
 |---|---|
 | 400 | The spawn faces north; running north reaches the front road in 10 s (z 115.8) and the great torii at 10.9 s |
-| 401 | From the spawn up the west station stair onto the platform (9.0) |
+| 401 | From the spawn through the ticket gates and up the station's inside stair onto the island platform (10.0) |
 | 410–418 | Each glide G1–G9: jump, chained jump held through its apex, glide, land at its target (G5 on roof 1 at 21.3; G6 on roof 3; G7 on the cemetery's top terrace at x 263; G8 in the arcade at z 80) |
 | 420 | The kick pair: four good kicks between the cedars (13.6 m), a fifth drifting east, onto the pagoda's roof 4 |
 | 421 | The kick chimney: nine kicks from the terrace (16) to the cliff top (46) |
