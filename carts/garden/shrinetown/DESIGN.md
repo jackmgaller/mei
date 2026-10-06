@@ -1090,3 +1090,36 @@ as its yaw, the direction from the ladder to the side it is climbed on. A trigge
 the floor (the World Checker reports an entity in a solid). When the real station is placed, the
 race's last legs (`RACE_TOWN` in the scenarios) go up its inside stair, and star 5 and the
 platform's box move to the real platform (10.0) if it differs.
+
+### 12.6 The real assets: street (40 ≤ z < 128, 64 ≤ x < 210)
+
+`place/street.py` (called by `notes/gen_town.py` and `make_world.py` through `place/__init__.py`)
+takes out the zone's grey boxes, all but the great torii (the shrine zone's), and places the real
+assets. What differs from the grey box:
+
+| Where | Grey box | Real | Why |
+|---|---|---|---|
+| Shops | boxes 14 × 9 m, roofs 6.5 / 9.5 | west row yaw 270, east row yaw 90; 2F roofs 5.0–6.5 (gables and terraces), the record shop's back room 7.3, the 3F's roof 9.3 inside a 9.5 parapet | the assets. West: corner C (left, no awning), 3F, tobacco, record, ramen, 3F; east: corner C (no awning), A (no awning), 3F, A, B, 3F |
+| Bounce awnings | six 1.5 m boxes at 2.6 | `town_awning_bounce` (top 2.7–2.9) on the street fronts of w0, e0, e1 and the back walls of w2, e3, w4 | the record shop's back roof (7.3) is above a bounce from 2.9 (7.4), so it has none behind it |
+| Arcade | roof z 62–94, gates at z 60 and 96 | roof z 61–93 (two `arcade_roof_16`, columns at z 65/73/81/89), gates on the plot lines at z 54 and 94 | at z 60 and 96 the gates' pillars went through shop awnings; at 54 and 94 no awning reaches |
+| North gate | beam 7.0–8.3 | the name board's underside at 5.11; its collision is the pillars only (`arcade_gate_posts_col`) | G8 comes in under it with its feet at about 4.3 and struck the board (417) |
+| Alley houses | 24 boxes, 6–8 m | `town_alley_house_a` for 6 (roof 4.8–5.9), `_b` for 6.5 and 7 (6.5–7.0), `_c` for 8 (6.0–7.1, platform 8.0); doors to the plaza in the first row, to the road in the last, alternating between | |
+| Fire tower | box at (102, 74), pole at z 70.55 | `fire_tower` yaw 0, the ladder's pole at (102, 72.08), 15.2 | its hose shed (x 97.7–100.25) stands against the north-east corner of the house at x 90–99.5, z 66–74.5 |
+| Kura | box x 108–111, 8.0 | `town_kura` (new; the town's common plaster and kawara, no texture of its own) at x 106.3–109.3, z 70–78, roof 7.5–8.0 at 15° | the kick pair (FOLLOWUPS): kura roof, the railing (12.9), the eave (14.6), the cap |
+| Dagashi, coin laundry | a box; no laundry | `dagashi_shop` at (128.5, 46.5) facing the plaza's walk, two gachapon and a jizo; `coin_laundry` at (130.75, 100.6) facing the road | |
+| Building | box 18.3, a ramp up its east face | `street_building` at (193, 73) yaw 90: roof deck 15.2, parapet 16.0, tank 18.2; its own stair at its south end (z 44–48) | the ramp is gone; G1 from 15.2 comes down on the east side hall's south half (z 134): 410's target is now (192, 138) |
+| Shortcut E | a 17.9 m ladder box, pole 18.3 | the escape's stair in no layer (with the collision), its ladder folded (`town_fire_escape_up`, layer `ladder_e_up`) or down (`town_fire_escape_down`, `ladder_e`), group `shortcut_e`; the pole at (198.5, 103.95), 7.6, front, yaw 0; the trigger on the roof at 15.25 (`game.py`) | two copies of the stair's collision, one a layer, overfilled the pack's collision lookup (270 triangles of one kind in a bucket, at most 255) |
+| Wires | one rail per line through the poles | `town_utility_pole_transformer` everywhere; two wires per line, 0.8 m either side, at 8.0, each a rail drawn as a thin sweep (`wire_*_a`, `_b`, material `wire`, no collision) | the asset (GREYBOX_SPLIT's decisions) |
+| Front-road poles | z 104 | z 106, yaw 90 (wires at 105.2 and 106.8), the whole road from x 10 to 280 | at 104 the south wire (103.2) went through the 3F shops at the shotengai's mouth and grazed the fire escape |
+| Wire coins | on the old lines | the road's on the south wire (z 105.2), the service lane's on its east wire (x 138.55), the konbini wire's on its east wire | |
+| Floor coins | 0.7 over the boxes | 0.7 over the real roofs (from the collision) | |
+| North verge | four cedar boxes (x 66–92) | `tree_zelkova` (the town's street tree, as the east zone's) | the shrine's `tree_cedar` is 5.6 KB the town's set does not have |
+| Props | none | lamps (`town_street_lamp` in the shotengai, poles to 3.8; the shrine's `street_lamp` along the road's north side), signs, curve mirrors, a firepost, a crane game, kanban, bikes, crates, aircon units, plants, laundry poles, the kei truck, the recycling station, a bench | spec 8.2; not merged (a merged chunk has no levels or cull and drew 360 triangles from 97 m) |
+| Delivery van | — | left out | 14 KB of the town's shared set for one prop; its right side mirrored from the left would read backwards |
+
+Levels of detail sooner than the recipes' (`lod.assets`): the ramen shop from 16 m, the record and
+tobacco shops from 20, the building from 30, the arcade gates from 30; the small props culled at
+40–70 m. The worst views (`tools/views.py`, every row present, the other zones still grey): V1
+1,711 triangles, 541,156 draw CPU, 557,187 GPU; V5 1,298 / 454,162 / 358,995; V4 1,573 / 458,832
+/ 420,689; the platform looking north 1,630 / 556,198 / 392,100. The street's textures: 146,816
+of its 147,456 bytes (`tools/textures.py`).

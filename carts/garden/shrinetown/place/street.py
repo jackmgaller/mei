@@ -158,7 +158,8 @@ def town(g):
     put('fire_escape', 'town_fire_escape', ESCAPE, 180)
     put('fire_escape_up', 'town_fire_escape_up', ESCAPE, 180, col='none', layer='ladder_e_up')
     put('fire_escape_down', 'town_fire_escape_down', ESCAPE, 180, col='none', layer='ladder_e')
-    _move_entity(cells, 'pole_ladder_e', LADDER_E_POLE, {'height': 7.6})
+    _move_entity(cells, 'pole_ladder_e', LADDER_E_POLE, {'height': 7.6})      # front: climbed from the north
+    _entity(cells, 'pole_ladder_e')['yaw'] = 0
     g['part']['layers'].pop('ladder_e', None)
     g['part']['layers'].update({'ladder_e_up': {'group': 'shortcut_e', 'on': True}, 'ladder_e': {'group': 'shortcut_e'}})
 
@@ -247,6 +248,10 @@ def _move_entity(cells, eid, pos, params=None):
     raise KeyError(eid)
 
 
+def _entity(cells, eid):
+    return next(e for c in cells.values() for e in c['entities'] if e['id'] == eid)
+
+
 def _drop_entity(g, eid):
     for c in g['cells'].values():
         c['entities'] = [e for e in c['entities'] if e['id'] != eid]
@@ -316,9 +321,28 @@ def _reseat_coins(cells, placed):
                 e['position'] = [x, round(floor(x, z, y + 1.5) + COIN_LIFT, 3), z]
 
 
+# Levels of detail sooner than the assets' own (world lod.assets: levels 1 and 2, cull): the
+# shops to spec 8.2's 20 m (the ramen shop is 483 triangles at level 0, its own L1 is from 24 m),
+# the building from 30 m (its 446-triangle level 0 was drawn to 60 m in V1), the arcade gates
+# from 30 m. Measured with tools/views.py (V1, the platform): DESIGN.md 12.5.
+LOD = {'ramen_shop': {'distances': [16, 45]}, 'recordshop': {'distances': [20, 50]},
+       'tobacco_shop': {'distances': [20, 50]}, 'street_building': {'distances': [30]},
+       'arcade_gate': {'distances': [30, 70]},
+       # the street's small props culled at 40-70 m (spec 8.2: 40), not the 90-120 m of their
+       # recipes, or never: from the platform the shotengai's lamps and the alleys' props were drawn
+       'town_street_lamp': {'cull': 60}, 'street_lamp': {'cull': 70}, 'gachapon': {'cull': 40},
+       'jizo': {'cull': 40}, 'town_kanban_set': {'cull': 45}, 'town_road_signs': {'cull': 60},
+       'firepost': {'cull': 50}, 'traffic_mirror': {'cull': 50}, 'kei_truck': {'cull': 60},
+       'recycling_station': {'cull': 50}, 'crane_game': {'cull': 45}}
+
+
 def world(g):
-    """The real assets' folders in the world's asset directories (the town's cells as written)."""
+    """The real assets' folders in the world's asset directories (the town's cells as written),
+    and the zone's levels of detail."""
     w = g['world']
+    lod = w.setdefault('lod', {}).setdefault('assets', {})
+    for name, spec in LOD.items():
+        lod[name] = spec
     dirs = w.setdefault('asset_dirs', [])
     for f in sorted((ST / 'cells').glob('c[0-4]_[01].cell.json')):
         for p in json.loads(f.read_text())['placements']:

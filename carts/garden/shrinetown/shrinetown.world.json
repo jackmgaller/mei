@@ -5277,6 +5277,70 @@
      "cull": 44
     }
    }
+  },
+  "assets": {
+   "ramen_shop": {
+    "distances": [
+     16,
+     45
+    ]
+   },
+   "recordshop": {
+    "distances": [
+     20,
+     50
+    ]
+   },
+   "tobacco_shop": {
+    "distances": [
+     20,
+     50
+    ]
+   },
+   "street_building": {
+    "distances": [
+     30
+    ]
+   },
+   "arcade_gate": {
+    "distances": [
+     30,
+     70
+    ]
+   },
+   "town_street_lamp": {
+    "cull": 60
+   },
+   "street_lamp": {
+    "cull": 70
+   },
+   "gachapon": {
+    "cull": 40
+   },
+   "jizo": {
+    "cull": 40
+   },
+   "town_kanban_set": {
+    "cull": 45
+   },
+   "town_road_signs": {
+    "cull": 60
+   },
+   "firepost": {
+    "cull": 50
+   },
+   "traffic_mirror": {
+    "cull": 50
+   },
+   "kei_truck": {
+    "cull": 60
+   },
+   "recycling_station": {
+    "cull": 50
+   },
+   "crane_game": {
+    "cull": 45
+   }
   }
  },
  "standins": {

@@ -172,8 +172,9 @@ PLACEMENT_NOTES put it. The canal zone straddles the boundary and has an allowan
 `delivery_van`, `traffic_mirror`, `mamachari`, `town_potted_plants`, `town_laundry_pole`,
 `town_aircon_pipes`, `town_utility_pole_transformer`, `street_utility_pole`, `street_barrier`,
 `street_guardrail`, `street_vending_machine`, `town_bench`, `firepost`, `jizo`, `hokora`,
-`tanuki`, `town_crates_bins`. Shrine: the shrine's plants, litter and trees (`plant_*`,
-`litter_*`, `tree_cedar`, `tree_cedar_giant`, `tree_maple`, `tree_maple_small`, `tree_ginkgo`),
+`tanuki`, `town_crates_bins`, `tree_zelkova` (the town's street tree). Shrine: the shrine's
+plants, litter and trees (`plant_*`, `litter_*`, `tree_cedar`, `tree_cedar_giant`, `tree_maple`,
+`tree_maple_small`, `tree_ginkgo`),
 `tree_zelkova`, `tree_bamboo_tall`, `forest_stone_lantern`, `shishi_odoshi`, `jizo`, `hokora`,
 `tanuki`, `street_lamp`, `town_street_lamp`, `town_bench`.
 

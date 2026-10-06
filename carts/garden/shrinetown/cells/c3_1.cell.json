@@ -149,7 +149,8 @@
    "params": {
     "height": 7.6,
     "front": true
-   }
+   },
+   "yaw": 0
   },
   {
    "id": "pole_road220",
