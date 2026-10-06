@@ -9,10 +9,12 @@ Each is a cheap box seen from far and from rooftops: the face toward the level c
 repeating 64 x 64 façade tile (6 m a repeat: two bays of 3 m, two storeys of 3 m; 9.4 cm a
 texel), lined up so a storey's slab edge is the roof line; the ends and the roof are flat
 palette colours; a stair house stands on the roof. 18 triangles before the kit splits the façade
-(a face repeats a 64-texel tile at most three times: 18 m), 23-57 after; from LOD_FAR (60 m) a
-plain box of 8 in the façades' mean colour. Both tiles use one set
-of 15 colours, so they share one 4-bit palette; 4,096 bytes of VRAM for the two, whatever the
-number of buildings.
+(a face repeats a 64-texel tile at most three times: 18 m), 23-57 after; from LOD_FAR (60 m) the
+same box and stair house, 18 triangles, its façade a 16 x 16 far tile (art/facade_a_far.png,
+facade_b_far.png: each 4 x 4 block of the 64 x 64 tile in its commonest colour, so the windows,
+the slabs and the lit panes stay where they were). All four tiles use one set of 15 colours, so
+they share one 4-bit palette; about 4,700 bytes of VRAM for the four, whatever the number of
+buildings.
 
 Origin and facing: the façade faces -Z (the Asset Kit's front); the origin is INSET (0.2 m) in
 front of the middle of its foot, so that it lies inside the level's cell when the façade stands
@@ -20,8 +22,9 @@ on the level's edge, and the box reaches DEPTH metres behind the façade. Each r
 box's neighbour_KEY at the same position (0.2 m inside the edge), with the yaw that turns the
 front to the level (GROUND.md, "Edges"). Collision: "self" (the box's faces).
 
-Night: the lit-window glass is its own colour (LIT below), so a palette variant may light some
-windows: "texels": {"edge_neighbour_s0.facade": {"#3e4a5e": "#e8c878"}} (WORLDKIT.md, "Night").
+Night: the lit-window glass is its own colour (LIT below), so a palette variant lights some
+windows: "texels": {"edge_neighbour_s0.facade": {"#3e4a5e": "#e8c878"}} (WORLDKIT.md, "Night");
+make_world.py does that for every neighbour, both levels (NIGHT_TEXELS below).
 
 Run: python3 carts/garden/shrinetown/assets/edge_neighbour/make_edge_neighbour.py   (Pillow)
 """
@@ -35,7 +38,7 @@ HERE = Path(__file__).resolve().parent
 ART = HERE / 'art'
 N = 64
 REPEAT = 6.0          # metres a repeat: two bays, two storeys
-LOD_FAR = 60          # from here on a plain box (8 triangles) in the façade's far colour
+LOD_FAR = 60          # from here on the box and the stair house, the façade a 16 x 16 far tile
 DEPTH = 8.0
 INSET = 0.2
 
@@ -55,7 +58,14 @@ PARAPET, STAIN = '#d2cec2', '#a4a096'
 AC, GRILLE, PIPE = '#e4e2da', '#6a6a6e', '#7a7872'
 FUTON, FUTON2, CLOTH = '#b0806e', '#6a8aa4', '#ecebe6'
 ROOF, END = '#7e7c76', '#b4b0a4'
-FAR = '#a09e9a'        # both façades' mean colour: the stair house, and the façade from LOD_FAR on
+FAR = '#a09e9a'        # both façades' mean colour: the stair house
+LIT_NIGHT = '#e8c878'  # the lit panes at night
+
+
+def night_texels(name):
+    """The night variant's exact colours for a neighbour (make_world.py's town region): its lit
+    panes, near and far."""
+    return {f'{name}.{m}': {LIT: LIT_NIGHT} for m in ('facade', 'facade_far')}
 
 
 def rgb(h):
@@ -85,6 +95,19 @@ class Tile:
         img.putdata([rgb(c) for row in self.px for c in row])
         ART.mkdir(exist_ok=True)
         img.save(ART / f'{name}.png')
+        self.save_far(name)
+
+    def save_far(self, name, k=4):
+        """The far tile: each k x k block in its commonest colour (ties to the first seen)."""
+        m = N // k
+        out = []
+        for by in range(m):
+            for bx in range(m):
+                block = [self.px[by * k + y][bx * k + x] for y in range(k) for x in range(k)]
+                out.append(max(dict.fromkeys(block), key=block.count))
+        img = Image.new('RGB', (m, m))
+        img.putdata([rgb(c) for c in out])
+        img.save(ART / f'{name}_far.png')
 
 
 def wall_grain(t, count=160):
@@ -197,6 +220,9 @@ def recipe(name, width, height, style):
     v = [[-w2, 0, z0], [w2, 0, z0], [w2, height, z0], [-w2, height, z0],
          [-w2, 0, z1], [w2, 0, z1], [w2, height, z1], [-w2, height, z1]]
     faces = [[0, 1, 2, 3][::-1], [3, 2, 6, 7][::-1], [4, 0, 3, 7][::-1], [1, 5, 6, 2][::-1]]
+    house = {'id': 'stair_house', 'op': 'box', 'size': [4, 3, 4], 'material': 'house',
+             'open': ['bottom'], 'faces': {'top': 'roof'},
+             'transform': {'translate': [hx, height + 1.5, INSET + 4.0]}}
     return {
         'format': 'mei-asset', 'version': 1, 'name': name,
         'budget': {'triangles': 60},
@@ -209,17 +235,19 @@ def recipe(name, width, height, style):
             'end': {'color': END, 'palette': True, 'tag': 'wall'},
             'roof': {'color': ROOF, 'palette': True, 'tag': 'roof'},
             'house': {'color': FAR, 'palette': True, 'tag': 'wall'},
+            'facade_far': {'color': WALL, 'tag': 'wall',
+                           'texture': {'image': f'art/facade_{style}_far.png', 'projection': 'box',
+                                       'scale': [REPEAT, REPEAT], 'offset': offset}},
         },
         'nodes': [
             {'id': 'body', 'op': 'mesh', 'vertices': v, 'faces': faces,
              'face_materials': ['facade', 'roof', 'end', 'end']},
-            {'id': 'stair_house', 'op': 'box', 'size': [4, 3, 4], 'material': 'house',
-             'open': ['bottom'], 'faces': {'top': 'roof'},
-             'transform': {'translate': [hx, height + 1.5, INSET + 4.0]}},
+            house,
         ],
         'lod': {'levels': [{'distance': LOD_FAR, 'nodes': [
             {'id': 'body', 'op': 'mesh', 'vertices': v, 'faces': faces,
-             'face_materials': ['house', 'roof', 'end', 'end']}]}]},
+             'face_materials': ['facade_far', 'roof', 'end', 'end']},
+            house]}]},
     }
 
 

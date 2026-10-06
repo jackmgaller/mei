@@ -28,15 +28,15 @@
  "regions": {
   "town": {
    "textures": {
-    "slots": "13-1,16-31",
-    "budget": 684032
+    "slots": "13-1,16-18",
+    "budget": 524288
    },
    "variants": {
     "day": {
      "fog": {
-      "color": "#e4ddc1",
-      "near": 30,
-      "far": 380
+      "color": "#d6dede",
+      "near": 20,
+      "far": 240
      }
     },
     "night": {
@@ -48,14 +48,107 @@
       "#f3ebdc": "#46517a",
       "#d6cbc0": "#2c3358",
       "#b33d36": "#d84a3c",
-      "#ece8e0": "#9aa0c4",
       "#b2573a": "#4c3446",
-      "#c99a46": "#5a5a46"
+      "#c99a46": "#5a5a46",
+      "#bdc6d6": "#212952",
+      "#d6dede": "#181842"
      },
      "fog": {
-      "color": "#4e3c61",
+      "color": "#181842",
       "near": 16,
       "far": 220
+     },
+     "texels": {
+      "edge_neighbour_e0.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e0.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e1.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e1.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e2.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e2.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s0.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s0.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s1.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s1.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s2.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s2.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s3.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s3.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s4.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s4.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s5.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s5.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s6.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s6.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s7.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s7.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s8.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s8.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w0.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w0.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w1.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w1.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w2.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w2.facade_far": {
+       "#3e4a5e": "#e8c878"
+      }
      }
     }
    },
@@ -70,7 +163,7 @@
     ],
     "sky": {
      "day": [
-      "#e4ddc1",
+      "#d6dede",
       "#ecdcb4",
       "#d3dfdc",
       "#9cc4e0",
@@ -78,7 +171,7 @@
       "#3a6cb0"
      ],
      "night": [
-      "#4e3c61",
+      "#181842",
       "#5a4466",
       "#352c58",
       "#1c1e42",
@@ -87,16 +180,16 @@
      ]
     },
     "silhouette": {
-     "image": "art/backdrop/town_backdrop.png",
-     "horizon": 6,
+     "image": "art/backdrop/backdrop.png",
+     "horizon": 40,
      "repeat": 1
     }
    }
   },
   "shrine": {
    "textures": {
-    "slots": "13-1,16-31",
-    "budget": 471040
+    "slots": "19-29",
+    "budget": 360448
    },
    "palettes": {
     "first": 256
@@ -104,9 +197,9 @@
    "variants": {
     "day": {
      "fog": {
-      "color": "#e4ddc1",
-      "near": 30,
-      "far": 380
+      "color": "#d6dede",
+      "near": 20,
+      "far": 240
      }
     },
     "night": {
@@ -118,12 +211,13 @@
       "#f3ebdc": "#46517a",
       "#d6cbc0": "#2c3358",
       "#b33d36": "#d84a3c",
-      "#ece8e0": "#9aa0c4",
       "#b2573a": "#4c3446",
-      "#c99a46": "#5a5a46"
+      "#c99a46": "#5a5a46",
+      "#bdc6d6": "#212952",
+      "#d6dede": "#181842"
      },
      "fog": {
-      "color": "#4e3c61",
+      "color": "#181842",
       "near": 16,
       "far": 220
      }
@@ -140,7 +234,7 @@
     ],
     "sky": {
      "day": [
-      "#e4ddc1",
+      "#d6dede",
       "#ecdcb4",
       "#d3dfdc",
       "#9cc4e0",
@@ -148,7 +242,7 @@
       "#3a6cb0"
      ],
      "night": [
-      "#4e3c61",
+      "#181842",
       "#5a4466",
       "#352c58",
       "#1c1e42",
@@ -157,8 +251,8 @@
      ]
     },
     "silhouette": {
-     "image": "art/backdrop/shrine_backdrop.png",
-     "horizon": 6,
+     "image": "art/backdrop/backdrop.png",
+     "horizon": 40,
      "repeat": 1
     }
    }
@@ -173,7 +267,7 @@
   "thresholds": {
    "cell_triangles": 12000,
    "cell_placements": 400,
-   "standin_triangles": 140
+   "standin_triangles": 270
   }
  },
  "layers": {
@@ -8421,7 +8515,7 @@
     "triangles": 60
    },
    "c1_2": {
-    "triangles": 60
+    "triangles": 140
    },
    "c1_3": {
     "triangles": 60
@@ -8433,7 +8527,7 @@
     "triangles": 60
    },
    "c2_2": {
-    "triangles": 60
+    "triangles": 220
    },
    "c2_3": {
     "triangles": 140
@@ -8445,7 +8539,7 @@
     "triangles": 140
    },
    "c3_2": {
-    "triangles": 110
+    "triangles": 270
    },
    "c3_3": {
     "triangles": 60
@@ -8470,7 +8564,7 @@
    }
   },
   "textures": {
-   "slots": "0,31"
+   "slots": "0,31,30"
   }
  },
  "haze": {
@@ -8478,7 +8572,10 @@
   "end": 280,
   "amount": 0.0,
   "standins": 0.15,
-  "elevation": 1
+  "colors": {
+   "day": "#d6dede",
+   "night": "#181842"
+  }
  },
  "meshes": {
   "quads": true
