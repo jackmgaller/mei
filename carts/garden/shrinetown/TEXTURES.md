@@ -44,8 +44,8 @@ drawn through a texture window: about 55 cycles a mesh and 10 a visible face mor
 
 | Region | Cells | Slots | Budget | Free | Palette variants, backdrop |
 |---|---|---|---|---|---|
-| `town` | rows 0–1 (z < 128): 10 cells | 13–0 (458,752) | 389,120 (380 KB) | 15% | the shrine's `day`, `night`; its mountains |
-| `shrine` | rows 2–5 (z ≥ 128): 20 cells | 13–0 (458,752) | 307,200 (300 KB) | 33% | the same |
+| `town` | rows 0–1 (z < 128): 10 cells | 13–0 (458,752) | 389,120 (380 KB) | 15% | the shrine's `day`, `night`; its own (art/backdrop) |
+| `shrine` | rows 2–5 (z ≥ 128): 20 cells | 13–0 (458,752) | 307,200 (300 KB) | 33% | the same variants; its own backdrop |
 
 `layout.py`'s `region_of(i, j)` says which region a cell is in; the three generators write it into
 the cells and `make_world.py` writes the regions, their `textures` (`slots`, `budget`) and the
@@ -150,14 +150,14 @@ It exits 1 when a part or a region is over. The world build enforces the region'
 
 | Region | Part | Measured (plan) | Allowance | Cut |
 |---|---|---|---|---|
-| town | ground textures | 0 | 40,960 (40 KB) | |
+| town | ground textures (and the water, the edges) | 40,128 (applied) | 40,960 (40 KB) | |
 | town | shared props | 70,432 | 49,152 (48 KB) | −21,280 |
 | town | station zone | 155,008 | 98,304 (96 KB) | −56,704 |
 | town | street zone | 204,704 | 147,456 (144 KB; 143 since the join) | −57,248 |
 | town | east zone | 26,848 | 26,624 (26 KB) | −224 |
 | town | canal zone (rows 0–1) | 27,840 | 26,624 (26 KB) | −1,216 |
 | town | **total** | **484,832** | **389,120** | **−136,672** |
-| shrine | ground textures | 0 | 122,880 (120 KB) | |
+| shrine | ground textures (and the water) | 110,144 (applied) | 122,880 (120 KB) | |
 | shrine | shared props | 44,896 | 49,152 (48 KB) | |
 | shrine | shrine zone | 55,904 | 90,112 (88 KB) | |
 | shrine | canal zone (rows 2–5) | 32,640 | 36,864 (36 KB) | |

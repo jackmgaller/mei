@@ -40,43 +40,47 @@
   },
   {
    "id": "neighbour_s0",
-   "asset": "gbt_neighbour",
+   "asset": "edge_neighbour_s0",
    "position": [
     16.0,
     0,
     0.2
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 180.0
   },
   {
    "id": "neighbour_s1",
-   "asset": "gbt_neighbour_2",
+   "asset": "edge_neighbour_s1",
    "position": [
     48.0,
     0,
     0.2
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 180.0
   },
   {
    "id": "neighbour_w0",
-   "asset": "gbt_neighbour_10",
+   "asset": "edge_neighbour_w0",
    "position": [
     0.2,
     0,
     18.0
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 270.0
   },
   {
    "id": "neighbour_w1",
-   "asset": "gbt_neighbour_12",
+   "asset": "edge_neighbour_w1",
    "position": [
     0.2,
     0,
     54.0
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 270.0
   },
   {
    "id": "viaduct_0",

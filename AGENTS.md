@@ -222,6 +222,13 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_weather_audio.py` | `carts/weather/audio/` and `carts/weather/mu_data.akr` |
 | `gen_weather_tape.py` | `carts/weather/demo_tape.bin`, Mei Weather's sample broadcast |
 | `meinet/make_fixture.sh` | `tests/lang/data/broadcast.bin`, the canned broadcast the language tests replay (`meinet.py --fixture`) |
+| `carts/garden/shrinetown/art/water/draw_water.py` | The shrine town's water textures in `art/water/`: `water.png`, `pond_water.png`, `falls.png`, `water_ramps.akr` |
+| `carts/garden/shrinetown/art/backdrop/draw_backdrop.py` | The shrine town's backdrops in `art/backdrop/`: `town_backdrop.png`, `shrine_backdrop.png`, `backdrop.json` |
+| `carts/garden/shrinetown/art/ground/draw_ground.py` | The shrine town's ground textures in `art/ground/` (`--preview DIR`: a contact sheet) |
+| `carts/garden/shrinetown/assets/edge_neighbour/make_edge_neighbour.py` | The neighbours' backs: `art/facade_a.png`, `art/facade_b.png` and the `edge_neighbour_*` recipes |
+| `carts/garden/shrinetown/assets/edge_hoarding/make_edge_hoarding.py` | The road-works hoarding: `art/panel.png`, `art/sign.png`, `edge_hoarding.asset.json` |
+
+The last five are run by their path from the repository root, not as `tools/NAME.py`.
 
 Helpers the generators import, which write nothing themselves: `boot_audio.py`, `mei_adpcm.py`,
 `mei_icon.py` (memory card icons), `meshlib.py` (the native mesh format) and `weather_geo.py`.

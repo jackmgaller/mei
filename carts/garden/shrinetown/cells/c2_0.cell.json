@@ -20,13 +20,14 @@
   },
   {
    "id": "neighbour_s4",
-   "asset": "gbt_neighbour_5",
+   "asset": "edge_neighbour_s4",
    "position": [
     160.0,
     0,
     0.2
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 180.0
   },
   {
    "id": "viaduct_8",

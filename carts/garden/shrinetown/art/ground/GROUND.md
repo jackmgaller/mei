@@ -278,3 +278,32 @@ python3 -c "import json; r = json.load(open('build-gt/worlds/carts/garden/shrine
 
 The town's terrain must be 32,928 bytes and the shrine's 106,496 (plus 2,080 for concrete,
 7,712 for planks, if added).
+
+## Applied (2026-10-05)
+
+`place/art.py` applies this plan and the water's (`art/water/APPLY.md`): the hook's last module,
+after the five zones (`town()` swaps the edges in the town's cells, `world()` the materials,
+paints, splits and paths in the world); `make_world.py` sets each region's backdrop
+(`art/backdrop/APPLY.md`). Measured on the built world (`B=build-art`, `report.json`, and
+`tools/textures.py --report`, which counts the edges' assets with the ground):
+
+| Region | Terrain (ground and water) | Edges | Ground's allowance |
+|---|---|---|---|
+| town | 34,208 | 5,920 | 40,128 of 40,960 |
+| shrine | 110,144 | | 110,144 of 122,880 |
+
+Where the application differs from the plan above:
+
+- `kerb` is flat (`#bbb7ab`): a textured sweep is cut at its stored reach, every 1.4 m at a 1 m
+  scale, which made the road's kerbs 2,804 triangles. Untextured they are a piece a cell, and
+  800 bytes are saved. `kerb.png` stays for a later span or scale.
+- `canal_stone` (the cemetery's terrace walls) is at a scale of 2.4, not 1.6: at 1.6 its long
+  walls stretched the texture on 36 faces (`terrain_texture_stretched`); 1 is left, with the
+  shrine's own `rock` (21) and `litter` (3).
+- Names: the town's plaza keeps the name `paving` (texture `plaza.png`); the shrine's approach is
+  `sando_stone` (the shrine's `terrain_paving.png`); the precinct's terrace wall `precinct_wall`.
+- The trails `trail_west` and `core_canal_lane` start on z 128 (their first 9 m south of it are
+  a `path_far` paint); `core_walkway_stair` and `core_cem_stair_0` are `steps_far`.
+- Not applied: the planks (walkways) and the viaduct's concrete (the station zone replaced the
+  viaduct's sweeps with assets); `falls` is textured but unused (the shrine zone put the real
+  `water_falls` asset in place of the falls sheet).

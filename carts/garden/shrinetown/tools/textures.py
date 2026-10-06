@@ -14,7 +14,7 @@ use, is the region's shared set's; a zone's own bytes are its other tiles.
 
 --try ZONE:REGION:ASSET,... adds assets to a zone as if placed there (repeatable), to check an
 allowance before placing. --report reads a built world's report.json for the terrain's textures
-(none until the ground is textured). Exits 1 when a region is over its budget or a part over
+(none until the ground is textured); the edges' assets (EDGES) count with it. Exits 1 when a region is over its budget or a part over
 its allowance. Asset names resolve in the world's asset directories, then
 carts/garden/shrinetown/assets/NAME/, then ../shrine/assets/ (`shrine:NAME` names that one).
 Game entities' meshes are not counted (the coins are untextured).
@@ -66,6 +66,9 @@ SCHOOLYARD = (212, 18, 295)
 # The railway is the station zone's wherever it runs: the viaduct's pieces and the signal gantries
 # (at x 20 and 310.56, in the canal's and the east's ground).
 RAILWAY = ('viaduct_', 'signal_gantry')
+# The level's edges (the neighbours' backs, the road-works hoardings): their tiles count in the
+# ground's allowance, `terrain` (art/ground/GROUND.md), not in a zone's.
+EDGES = ('edge_neighbour_', 'edge_hoarding')
 
 
 def zone_of(x, z, asset=''):
@@ -132,6 +135,8 @@ def main():
             # the shrine zone's placements (ids sh_*) are its own wherever they stand: the great
             # torii (c2_1) in the town's cells, so in the town's set
             zone = 'shrine' if pl['id'].startswith('sh_') else zone_of(pos[0], pos[-1], pl['asset'])
+            if pl['asset'].startswith(EDGES):     # the level's edges count with the ground (GROUND.md)
+                zone = 'edges'
             placed.setdefault((cell['region'], zone), set()).add(pl['asset'])
     for spec in args.extra:
         zone, region, names = spec.split(':', 2)
@@ -163,7 +168,9 @@ def main():
                 seen.setdefault(k, z)
         every = {k: b for t in ztiles.values() for k, b in t.items()}
         total = sum(every.values()) + terrain.get(region, 0)
-        rows = [('terrain', terrain.get(region, 0), allow['terrain']), ('shared', sum(shared.values()), allow['shared'])]
+        edges = sum(ztiles.get('edges', {}).values())
+        rows = [('terrain', terrain.get(region, 0) + edges, allow['terrain']),
+                ('shared', sum(shared.values()), allow['shared'])]
         for z in ('station', 'street', 'east', 'canal', 'shrine'):
             own = sum(b for k, b in ztiles.get(z, {}).items() if k not in shared)
             if own or allow[z]:

@@ -114,11 +114,30 @@ shrine = json.loads((ST.parent / 'shrine' / 'shrine.world.json').read_text())
 # texture set in slots 13-0 (slot 14 holds the swatch row, 15 the fonts); entering one loads its set
 # over the other's. The budgets are the plan's totals, each zone's allowance and the ground's:
 # 380 KB of the town's 448 (15% free) and 300 KB of the shrine's (a third free). The shrine's palette
-# variants (day, night) and backdrop for both, so the sky does not change at the boundary.
+# variants (day, night), a copy per region, without its night's water colour (the water is textured:
+# the night's multiply tints it, art/water/APPLY.md); each region its own backdrop, from
+# art/backdrop/backdrop.json (art/backdrop/APPLY.md): a sky and a far view drawn for the streets and
+# one for the shrine's grounds and mountain, with the night's exact colours.
 TEXTURE_BUDGETS = {'town': 380 * 1024, 'shrine': 300 * 1024}
+BD = json.loads((ST / 'art' / 'backdrop' / 'backdrop.json').read_text())
+
+
+def variants(r):
+    v = json.loads(json.dumps(shrine['regions']['shrine']['variants']))
+    for spec in v.values():
+        spec.get('colors', {}).pop('water', None)
+        if 'colors' in spec and not spec['colors']:
+            del spec['colors']
+    for name, colours in BD[r].get('variants', {}).items():
+        v[name]['backdrop'] = colours
+    return v
+
+
 regions = {r: {'textures': {'slots': '13-0', 'budget': TEXTURE_BUDGETS[r]},
-               'variants': shrine['regions']['shrine']['variants'],
-               'backdrop': shrine['regions']['shrine']['backdrop']} for r in L.REGIONS}
+               'variants': variants(r),
+               'backdrop': {'elevations': BD[r]['elevations'], 'sky': BD[r]['sky'],
+                            'silhouette': {'image': f'art/backdrop/{r}_backdrop.png', 'horizon': BD[r]['horizon'],
+                                           'repeat': 1}}} for r in L.REGIONS}
 world = {
     'format': 'mei-world', 'version': 1, 'name': 'shrinetown',
     'game': '../world/garden.game.mochi',

@@ -14,7 +14,7 @@ terrain operations, asset directories). A missing module or function is skipped.
 import importlib
 import importlib.util
 
-ZONES = ('station', 'street', 'east', 'canal', 'shrine')
+ZONES = ('station', 'street', 'east', 'canal', 'shrine', 'art')     # art: not a zone, the textures over them (place/art.py)
 
 
 def apply(stage, ns):

@@ -30,43 +30,47 @@
   },
   {
    "id": "neighbour_s7",
-   "asset": "gbt_neighbour",
+   "asset": "edge_neighbour_s7",
    "position": [
     272.0,
     0,
     0.2
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 180.0
   },
   {
    "id": "neighbour_s8",
-   "asset": "gbt_neighbour_8",
+   "asset": "edge_neighbour_s8",
    "position": [
     304.0,
     0,
     0.2
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 180.0
   },
   {
    "id": "neighbour_e0",
-   "asset": "gbt_neighbour_9",
+   "asset": "edge_neighbour_e0",
    "position": [
     319.8,
     0,
     18.0
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 90.0
   },
   {
    "id": "neighbour_e1",
-   "asset": "gbt_neighbour_11",
+   "asset": "edge_neighbour_e1",
    "position": [
     319.8,
     0,
     54.0
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 90.0
   },
   {
    "id": "viaduct_16",

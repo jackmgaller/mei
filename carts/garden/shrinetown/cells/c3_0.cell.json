@@ -20,23 +20,25 @@
   },
   {
    "id": "neighbour_s5",
-   "asset": "gbt_neighbour_6",
+   "asset": "edge_neighbour_s5",
    "position": [
     200.0,
     0,
     0.2
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 180.0
   },
   {
    "id": "neighbour_s6",
-   "asset": "gbt_neighbour_7",
+   "asset": "edge_neighbour_s6",
    "position": [
     236.0,
     0,
     0.2
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 180.0
   },
   {
    "id": "viaduct_12",
