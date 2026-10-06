@@ -1,0 +1,142 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "shrine_finial_top",
+ "budget": {
+  "triangles": 150
+ },
+ "materials": {
+  "bronze": {
+   "color": "#7a8a70",
+   "palette": true
+  },
+  "gold": {
+   "color": "#d8b048",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "rod",
+   "op": "cylinder",
+   "radius": 0.08,
+   "height": 5.7,
+   "segments": 6,
+   "material": "bronze",
+   "transform": {
+    "translate": [
+     0,
+     2.85,
+     0
+    ]
+   }
+  },
+  {
+   "id": "ring_0",
+   "op": "cylinder",
+   "radius": 0.22,
+   "height": 0.08,
+   "segments": 8,
+   "material": "gold",
+   "transform": {
+    "translate": [
+     0,
+     3.6,
+     0
+    ]
+   }
+  },
+  {
+   "id": "ring_1",
+   "op": "cylinder",
+   "radius": 0.19,
+   "height": 0.08,
+   "segments": 8,
+   "material": "gold",
+   "transform": {
+    "translate": [
+     0,
+     4.3,
+     0
+    ]
+   }
+  },
+  {
+   "id": "ring_2",
+   "op": "cylinder",
+   "radius": 0.16,
+   "height": 0.08,
+   "segments": 8,
+   "material": "gold",
+   "transform": {
+    "translate": [
+     0,
+     5.0,
+     0
+    ]
+   }
+  },
+  {
+   "id": "jewel",
+   "op": "lathe",
+   "profile": [
+    [
+     0.0,
+     5.6
+    ],
+    [
+     0.16,
+     5.7
+    ],
+    [
+     0.2,
+     5.8
+    ],
+    [
+     0.12,
+     5.9
+    ],
+    [
+     0.0,
+     6.0
+    ]
+   ],
+   "segments": 6,
+   "material": "gold"
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 40,
+    "nodes": [
+     {
+      "id": "rod",
+      "op": "cylinder",
+      "radius": 0.08,
+      "height": 5.7,
+      "segments": 6,
+      "material": "bronze",
+      "transform": {
+       "translate": [
+        0,
+        2.85,
+        0
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 140
+ }
+}

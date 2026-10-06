@@ -279,24 +279,22 @@ fn gc_race_won(f: s32) {
         }
         return
     }
-    if tw_phase == 2 {                                 // G8 (scenario 417): run 3 m south, jump, double, glide
-        stick_v = cc_stick(sh_heading(to), 1.0)
-        if tw_hdist(pl.pos, sh_start) >= 3.0 { pad_v = A; tw_phase = 3 }
+    if tw_phase == 2 {                                 // G8 (scenario 417): from its pad, jump, double, glide
+        pad_v = A
+        tw_phase = 3
         return
     }
     if tw_phase == 3 {
-        stick_v = cc_stick(sh_heading(to), 1.0)
         pad_v = A
         if air && pl.vel.y <= 0.0 { pad_v = 0; tw_phase = 4 }
         return
     }
     if tw_phase == 4 {
-        stick_v = cc_stick(sh_heading(to), 1.0)
         if pl.st == St.Ground { pad_v = A; tw_phase = 5 }
         return
     }
     if tw_phase == 5 {
-        stick_v = cc_stick(sh_heading(to), 1.0)
+        stick_v = cc_stick(shz_g8_aim(to), 1.0)               // east of the great torii, then the arcade
         pad_v = A
         if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
         if !air && pl.st != St.LedgeHang && pl.st != St.LedgeClimb && pl.st != St.WallSlide {
@@ -340,9 +338,9 @@ fn gc_race_won(f: s32) {
     }
 }
 
-// The glide's run-up: off the back of the stage's deck and round onto the slope east of it, G8's
-// start (61.7, scenario 417), from where the glide clears the great torii's top beam.
-const G8_RUNUP: [3]vec3 = [vec3(168.0, 0.0, 362.0), vec3(174.0, 0.0, 361.0), vec3(174.0, 0.0, 356.0)]
+// The glide's run-up: off the back of the stage's deck and round onto G8's pad east of it (61.8,
+// scenario 417), facing the line east of the great torii.
+const G8_RUNUP: [4]vec3 = [vec3(168.0, 0.0, 362.0), vec3(174.0, 0.0, 361.0), vec3(174.0, 0.0, 357.0), vec3(173.9, 0.0, 356.0)]
 
 fn gc_train_live() -> bool { return mover_live(gc_train()) }
 

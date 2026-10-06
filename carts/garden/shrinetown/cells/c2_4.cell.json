@@ -40,6 +40,16 @@
    "collision": "arch_pagoda_town_col"
   },
   {
+   "id": "sh_finial_top",
+   "asset": "shrine_finial_top",
+   "position": [
+    178,
+    45.0,
+    262
+   ],
+   "collision": "none"
+  },
+  {
    "id": "sh_kick_cedar_0",
    "asset": "tree_cedar_giant",
    "position": [
@@ -136,7 +146,7 @@
     262
    ],
    "params": {
-    "height": 8.8
+    "height": 14.81
    }
   },
   {
@@ -224,7 +234,9 @@
     283.4
    ],
    "params": {
-    "path": "cedar_rope"
+    "path": "cedar_rope",
+    "hang": true,
+    "catch": 3.0
    }
   },
   {
@@ -247,7 +259,7 @@
    "type": "star",
    "position": [
     178,
-    45.49,
+    51.5,
     262
    ]
   },

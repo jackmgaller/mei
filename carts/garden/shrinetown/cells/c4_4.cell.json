@@ -13,6 +13,7 @@
    "asset": "forest_dead_cedar",
    "position": [
     256.0,
+    34.7,
     306.0
    ],
    "collision": "forest_dead_cedar_col",
@@ -24,6 +25,7 @@
    "asset": "forest_dead_cedar_fallen",
    "position": [
     256.0,
+    34.7,
     306.0
    ],
    "collision": "forest_dead_cedar_fallen_col",

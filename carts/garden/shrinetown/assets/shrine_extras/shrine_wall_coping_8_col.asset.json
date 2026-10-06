@@ -1,0 +1,60 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "shrine_wall_coping_8_col",
+ "budget": {
+  "triangles": 60
+ },
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "wall",
+   "op": "extrude",
+   "points": [
+    [
+     -0.4,
+     0.0
+    ],
+    [
+     0.4,
+     0.0
+    ],
+    [
+     0.4,
+     2.45
+    ],
+    [
+     0.0,
+     2.95
+    ],
+    [
+     -0.4,
+     2.45
+    ]
+   ],
+   "depth": 8.0,
+   "material": "solid",
+   "transform": {
+    "rotate": [
+     0,
+     90,
+     0
+    ]
+   }
+  }
+ ]
+}

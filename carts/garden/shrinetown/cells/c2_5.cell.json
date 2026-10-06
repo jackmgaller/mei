@@ -34,7 +34,7 @@
    "position": [
     154.0,
     44.0,
-    339.55
+    339.0
    ],
    "collision": "none"
   },
@@ -56,10 +56,11 @@
    "position": [
     154.0,
     44.0,
-    339.4
+    338.85
    ],
    "params": {
-    "height": 18.3
+    "height": 18.3,
+    "front": true
    }
   },
   {

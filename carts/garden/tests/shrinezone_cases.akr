@@ -1,0 +1,804 @@
+// The shrine zone's route scenarios (700-789 in the shrine town, 790-799 in the shrine), from the
+// alpha fix round (DESIGN.md 12.9, "The shrine zone"): each walks, climbs or jumps a route a
+// reviewer found broken, with real inputs and no teleport past its start, so it stays fixed.
+// check.sh runs the ones shrinezone_cases.sh lists.
+//
+// A route is a list of points, each with a kind: walk to it (strict: a walk that stalls fails,
+// unless the route allows hops), climb a pole and jump or drop off it toward the next point, a
+// held jump or a double jump with a grab, or kicks up a chimney. Each point's y is the lowest
+// the feet may be on arrival (0: anything), so a fall through a deck or off a bridge fails.
+
+struct ShzP {
+    p: vec3            // x, z the target; y: the lowest the feet may be on arrival (0: none)
+    k: s32             // SHZ_K_*
+    tol: fixed
+}
+
+const SHZ_K_WALK = 0
+const SHZ_K_POLE = 1      // p: the pole's base; climb to the top, go round to face the next point, pole jump
+const SHZ_K_DOUBLE = 2    // a held jump then the chained jump at p, a grab and climb if it comes to that
+const SHZ_K_POLE_DROP = 3 // p: the pole; climb to the top, let go (R) pushing at the next point
+const SHZ_K_JUMP = 4      // a single held jump toward p
+const SHZ_K_KICKS = 5     // kick between two faces (east first) until standing again
+const SHZ_K_VDOUBLE = 6   // a double jump straight up where the body stands, the stick at p only near the second apex
+const SHZ_K_SDOUBLE = 7   // a double jump from standing, the stick half way at p throughout (a short hop up and across)
+
+const SHZ_P_MAX = 96
+var shz_pts: [SHZ_P_MAX]ShzP
+var shz_p_n: s32
+var shz_p_i: s32
+var shz_p_sub: s32
+var shz_p_t: s32
+var shz_p_slow: s32
+var shz_p_hold: s32
+var shz_p_hops: s32
+var shz_p_last: vec3
+var shz_p_top: fixed
+var shz_p_strict: bool        // a stalled walk fails (no hops)
+var shz_p_noslide: bool       // the body must never slide
+var shz_p_done: bool
+var shz_p_trace: s32
+var shz_p_glide_at: s32 = -1  // 414: the frame the climb ended and G5 began (-1: climbing)
+
+fn shz_case_init() -> bool {
+    match SCENARIO {
+        700 => { name = "shrine zone: the treetop walkway on foot, the courtyard's stair to the rope deck, deck to deck" }
+        701 => { name = "shrine zone: on each walkway deck, running at the trunk from eight sides keeps the body on the deck" }
+        702 => { name = "shrine zone: the rope bridge, the stage to the falls' top" }
+        703 => { name = "shrine zone: the rope bridge, the falls' top to the stage" }
+        704 => { name = "shrine zone: the woods trail up the ridge's west end to the fox grove, walking" }
+        705 => { name = "shrine zone: the east shoulder trail up from the cemetery to the falls' top, no slide" }
+        706 => { name = "shrine zone: grinding down a lantern string from the torii does not pin the body at the hall" }
+        707 => { name = "shrine zone: grinding up a lantern string ends on the torii's top beam" }
+        708 => { name = "shrine zone: the north wall's coping refuses a jump and grab from the terrace" }
+        711 => { name = "shrine zone: the stilt ladder, the ledge (44) to the stage's deck" }
+        712 => { name = "shrine zone: the torii tunnel's foot is walked into up the middle" }
+        713 => { name = "shrine zone: ladder A's steps from the basin to the shelf, walking" }
+        714 => { name = "shrine zone: the landing stair onto the stage's deck at its west gap, walking" }
+        715 => { name = "shrine zone: the steps from the falls pool into the cave, walking" }
+        716 => { name = "shrine zone: the cave's west passage to the pool's terrace" }
+        717 => { name = "shrine zone: shortcut C's fallen cedar walked from its root plate to the shelf" }
+        718 => { name = "shrine zone: a jump onto the fallen cedar where it meets its root plate lands on it" }
+        719 => { name = "shrine zone: the zig-zag bridge walked from the east gate's stair to the pond" }
+        720 => { name = "shrine zone: out of the stream's mouth onto the pond's bank, walking" }
+        721 => { name = "shrine zone: the path from the falls' top to the way-out torii" }
+        722 => { name = "shrine zone: the stage's front: G6's glide passes under star 1" }
+        723 => { name = "shrine zone: the crown deck's pole, from the landing to the crown deck" }
+        709 => { name = "shrine zone: the gate's roofs, from its lower roof to the upper ridge" }
+        724 => { name = "shrine zone: dropped onto the cedar rope from above, at every metre of it, the body does not get into the cedar" }
+        725 => { name = "shrine zone: rising past the cedar rope's far end (a kick up the trunk) does not catch it" }
+        726 => { name = "shrine zone: wall kicks up the sacred cedar from the basin do not get into the knot hole (shortcut D's bypass)" }
+        727 => { name = "shrine zone: the barred north gate is not climbed over from the terrace (shortcut B's bypass)" }
+        728 => { name = "shrine zone: the zig-zag bridge walked back from the pond to the east gate's stair" }
+        710 => { name = "shrine zone: the temple's roofs, from the terrace up the stair and the three roofs to the ridge" }
+        730 => { name = "shrine zone: G8 from its pad, 1 m west" }
+        731 => { name = "shrine zone: G8 from its pad, 1 m east" }
+        732 => { name = "shrine zone: G8 from its pad, 1 m north" }
+        733 => { name = "shrine zone: G8 from its pad, 1 m south" }
+        790 => { name = "shrine: on each walkway deck, running at the trunk from eight sides keeps the body on the deck" }
+        else => { return false }
+    }
+    cam.lock = false
+    shz_p_n = 0
+    shz_p_i = 0
+    shz_p_sub = 0
+    shz_p_t = 0
+    shz_p_slow = 0
+    shz_p_hold = 0
+    shz_p_hops = 0
+    shz_p_strict = true
+    shz_p_noslide = false
+    shz_p_done = false
+    shz_p_trace = 0
+    tw_phase = 0
+    tw_k = 0
+    return true
+}
+
+fn shz_case(f: s32) {
+    match SCENARIO {
+        701 => shz_trunks(f, &SHZ_DECKS_TOWN[0], len(SHZ_DECKS_TOWN) as s32)
+        790 => shz_trunks(f, &SHZ_DECKS_SHRINE[0], len(SHZ_DECKS_SHRINE) as s32)
+        706 => shz_string_down(f)
+        707 => shz_string_up(f)
+        708 => shz_north_wall(f)
+        718 => shz_log_drop(f)
+        724 => shz_rope_drops(f)
+        725 => shz_rope_rise(f)
+        726 => shz_trunk_kicks(f)
+        727 => shz_gate_n(f)
+        722 => shz_g6_star(f)
+        730, 731, 732, 733 => shz_g8(f)
+        else => shz_route(f)
+    }
+}
+
+// ---- building a route
+
+fn shz_a(x: fixed, y: fixed, z: fixed, k: s32, tol: fixed) {
+    shz_pts[shz_p_n] = ShzP { p: vec3(x, y, z), k: k, tol: tol }
+    shz_p_n += 1
+}
+fn shz_w(x: fixed, y: fixed, z: fixed) { shz_a(x, y, z, SHZ_K_WALK, 0.8) }
+
+// Walk points every 2.5 m from the last point to (x, z); each no lower than y (0: anything).
+fn shz_l(x: fixed, y: fixed, z: fixed) {
+    let a = shz_pts[shz_p_n - 1].p
+    let n = (tw_hdist(a, vec3(x, 0.0, z)) / 2.5) as s32 + 1
+    for k in 1..n + 1 {
+        let t = fixed(k) / fixed(n)
+        shz_a(a.x + (x - a.x) * t, y, a.z + (z - a.z) * t, SHZ_K_WALK, 0.8)
+    }
+}
+
+// The same on a narrow way (a plank bridge): points every 1.25 m, each within 0.4 m.
+fn shz_n(x: fixed, y: fixed, z: fixed) {
+    let a = shz_pts[shz_p_n - 1].p
+    let n = (tw_hdist(a, vec3(x, 0.0, z)) / 1.25) as s32 + 1
+    for k in 1..n + 1 {
+        let t = fixed(k) / fixed(n)
+        shz_a(a.x + (x - a.x) * t, y, a.z + (z - a.z) * t, SHZ_K_WALK, 0.4)
+    }
+}
+
+// Across a walkway deck (centre c, deck height h) from the gap at a to the gap at b, round the
+// trunk on the shorter side, 2.3 m from its centre.
+fn shz_deck(cx: fixed, h: fixed, cz: fixed, ax: fixed, az: fixed, bx: fixed, bz: fixed) {
+    let a = atan2(ax - cx, az - cz)
+    var d = atan2(bx - cx, bz - cz) - a
+    if d > 3.1416 { d = d - 6.2832 }
+    if d < -3.1416 { d = d + 6.2832 }
+    for s in 0..5 {
+        let t = a + d * fixed(s) / 4
+        shz_a(cx + sin(t) * 2.3, h - 0.3, cz + cos(t) * 2.3, SHZ_K_WALK, 0.7)
+    }
+}
+
+fn shz_start(x: fixed, z: fixed, from: fixed, yaw: fixed) {
+    place(vec3(x, sh_floor(x, z, from), z), yaw)
+    shz_w(x, 0.0, z)
+}
+
+// The routes (700-723 but those with their own driver).
+fn shz_setup() {
+    match SCENARIO {
+        700 => {
+            // the stair at the courtyard's west end, the foot bridge, then each deck (the gaps the
+            // bridges run between) to the rope deck
+            shz_start(116.0, 120.0, 4.0, WEST)
+            shz_w(102.0, 5.0, 120.0); shz_a(101.0, 5.5, 121.5, SHZ_K_WALK, 0.8); shz_w(97.5, 6.8, 137.0)
+            SHZ_WALKWAY()
+        }
+        702 => {
+            shz_start(160.0, 345.0, 65.0, EAST)
+            shz_a(169.6, 59.5, 345.0, SHZ_K_WALK, 0.8); shz_l(196.6, 51.0, 345.5); shz_l(223.6, 51.0, 346.0)
+            shz_a(229.0, 51.5, 346.0, SHZ_K_WALK, 1.0)
+        }
+        703 => {
+            shz_start(229.0, 346.0, 60.0, WEST)
+            shz_l(223.6, 51.0, 346.0); shz_l(196.6, 51.0, 345.5); shz_l(169.6, 51.0, 345.0)
+            shz_a(160.0, 59.5, 345.0, SHZ_K_WALK, 1.0)
+        }
+        704 => {
+            // the woods trail from the walkway's crown spur, over the ridge's west end, to the grove
+            shz_p_noslide = true
+            shz_start(74.0, 206.0, 20.0, NORTH)
+            shz_l(84.0, 0.0, 232.0); shz_l(86.5, 0.0, 240.0); shz_l(91.15, 0.0, 255.5); shz_l(95.5, 0.0, 270.0); shz_l(94.0, 0.0, 284.0)
+            shz_l(90.0, 0.0, 294.0); shz_w(90.0, 14.5, 294.0)
+        }
+        705 => {
+            // the shoulder trail's own line, the cemetery's top to the falls' top
+            shz_p_noslide = true
+            shz_start(288.0, 250.0, 20.0, NORTH)
+            shz_l(288.0, 16.0, 256.0)
+            SHZ_SHOULDER()
+            shz_l(229.0, 51.5, 346.0)
+        }
+        711 => {
+            // from the ledge round to the ladder's north side (under the deck), up it, a pole jump north
+            // over the railing onto the deck
+            shz_start(154.0, 336.0, 50.0, NORTH)
+            shz_a(152.4, 43.5, 337.5, SHZ_K_WALK, 0.5); shz_a(152.4, 43.5, 340.0, SHZ_K_WALK, 0.5); shz_a(154.0, 43.5, 340.1, SHZ_K_WALK, 0.4); shz_a(154.0, 43.5, 339.6, SHZ_K_WALK, 0.25)
+            shz_a(154.0, 43.5, 338.85, SHZ_K_POLE, 0.8)
+            shz_a(154.0, 59.5, 343.5, SHZ_K_WALK, 1.2)
+        }
+        712 => {
+            // the grove up the middle of the tunnel's first steps
+            shz_start(94.0, 294.0, 20.0, NORTH)
+            shz_l(94.0, 14.5, 298.0); shz_l(94.0, 14.5, 302.5); shz_l(93.0, 0.0, 308.0); shz_w(93.0, 17.0, 308.0)
+        }
+        713 => {
+            shz_start(178.0, 302.0, 20.0, atan2(-14.5, 12.0))
+            shz_l(176.0, 12.0, 304.0); shz_l(161.5, 0.0, 316.0); shz_a(159.4, 23.5, 316.0, SHZ_K_WALK, 0.8)
+        }
+        714 => {
+            // the tunnel's landing up its stair onto the deck's west end
+            shz_start(122.0, 346.0, 60.0, EAST)
+            shz_l(126.0, 54.0, 344.5); shz_l(137.0, 0.0, 345.0); shz_l(138.6, 59.7, 345.0); shz_l(146.0, 59.9, 345.0)
+        }
+        715 => {
+            shz_start(214.0, 320.0, 20.0, NORTH)
+            shz_l(214.0, 11.0, 324.0); shz_l(214.0, 0.0, 331.0); shz_a(214.0, 13.9, 333.0, SHZ_K_WALK, 0.8)
+        }
+        717 => {
+            wp_layer_set(wp_layer_find("cedar_c_down"), true)
+            wp_layer_set(wp_layer_find("cedar_c_up"), false)
+            SHZ_LOG()
+        }
+        716 => {
+            shz_start(212.0, 332.0, 20.0, WEST)
+            SHZ_CAVE_WEST()
+        }
+        709 => {
+            SHZ_GATE_ROOFS()
+        }
+        710 => {
+            shz_start(160.0, 204.0, 10.0, NORTH)
+            SHZ_TEMPLE_ROOFS()
+        }
+        719 => {
+            shz_start(223.0, 192.0, 10.0, 3.1416)
+            SHZ_ZIGZAG()
+        }
+        720 => {
+            SHZ_STREAM()
+        }
+        728 => {
+            shz_start(221.33, 158.0, 4.0, 0.5)                   // on the bridge, 2 m from its pond end
+            shz_n(224.0, 0.3, 162.0); shz_n(219.5, 0.3, 168.0); shz_n(222.0, 0.3, 174.0)
+            shz_n(216.0, 0.3, 180.0); shz_n(220.0, 0.3, 186.0); shz_n(222.0, 0.3, 192.0)
+        }
+        721 => {
+            shz_start(229.0, 346.0, 60.0, EAST)
+            SHZ_WAYOUT()
+        }
+        723 => {
+            // on the landing (15) north of the pole, which stands at its south edge
+            shz_start(70.0, 219.0, 16.0, 3.1416)
+            shz_a(70.0, 14.5, 218.4, SHZ_K_WALK, 0.4)
+            shz_a(70.0, 14.5, 216.6, SHZ_K_POLE, 0.8)
+            shz_a(70.0, 27.5, 220.0, SHZ_K_WALK, 1.6)
+        }
+        else => {}
+    }
+    mark()
+    shz_p_top = pl.pos.y
+    note("start, y", pl.pos.y)
+}
+
+fn shz_route(f: s32) {
+    if shz_p_done { return }
+    if f == 0 { shz_setup(); return }
+    if shz_p_trace != 0 && f % shz_p_trace == 0 { note("trace x", pl.pos.x); note("trace z", pl.pos.z) }
+    if shz_p_noslide && pl.st == St.Slide { expect(false, "walked without sliding, at point", fixed(shz_p_i)) }
+    if shz_p_i >= shz_p_n {
+        note("route done after, s", fixed(f) / 60)
+        note("hops", fixed(shz_p_hops))
+        shz_p_done = true
+        if SCENARIO == 414 { shz_p_glide_at = f; return }       // G5 from here (shz_g5)
+        done()
+        return
+    }
+    let pt = shz_pts[shz_p_i]
+    shz_p_t += 1
+    let air = is_air(pl.st) || pl.st == St.Glide
+    let d = tw_hdist(pl.pos, pt.p)
+    if pt.k == SHZ_K_WALK {
+        if d < pt.tol && pl.st == St.Ground {
+            if pt.p.y != 0.0 { expect(pl.pos.y >= pt.p.y, "at the point, no lower than its y", pl.pos.y) }
+            shz_next(f)
+            return
+        }
+        stick_v = cc_stick(sh_heading(pt.p), 1.0)
+        if d < 1.5 { stick_v = cc_stick(sh_heading(pt.p), 0.5) }
+        if pt.tol < 0.5 { stick_v = cc_stick(sh_heading(pt.p), 0.35) }        // a narrow way: slowly
+        let moved = tw_hdist(pl.pos, shz_p_last)
+        shz_p_last = pl.pos
+        if pl.st == St.Ground && moved < 0.004 && d > pt.tol { shz_p_slow += 1 } else { shz_p_slow = 0 }
+        if shz_p_slow > 60 {
+            if shz_p_strict {
+                note("stalled: wall normal x", pl.wall_n.x); note("stalled: wall normal z", pl.wall_n.z)
+                note("stalled: wall hit", fixed(pl.wall_hit as s32))
+                expect(false, "walked on without a stop, stalled before point", fixed(shz_p_i))
+            }
+            shz_p_hold = 42; shz_p_slow = 0; shz_p_hops += 1
+            note("a hop before point", fixed(shz_p_i))
+        }
+        if shz_p_hold > 24 { stick_v = cc_stick(sh_heading(pt.p) + 3.1416, 1.0) }
+        else if shz_p_hold > 0 && shz_p_hold <= 16 { pad_v = A }
+        if shz_p_hold > 0 { shz_p_hold -= 1; shz_p_slow = 0 }
+        if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+    } else if pt.k == SHZ_K_POLE || pt.k == SHZ_K_POLE_DROP {
+        let nx = shz_pts[shz_p_i + 1].p
+        if shz_p_sub == 0 {                       // to the pole and jump at it
+            stick_v = cc_stick(sh_heading(pt.p), 1.0)
+            if d < 1.6 && pl.st == St.Ground { pad_v = A }
+            if pl.st == St.Pole { shz_p_sub = 1; shz_p_t = 0; shz_p_top = pl.pos.y; note("on the pole at y", pl.pos.y) }
+        } else if shz_p_sub == 1 {                // climb until it stops rising
+            if pl.st != St.Pole { expect(false, "held the pole, y", pl.pos.y) }
+            stick_v = FWD
+            if pl.pos.y > shz_p_top { shz_p_top = pl.pos.y; shz_p_slow = 0 } else { shz_p_slow += 1 }
+            if shz_p_slow > 20 { shz_p_sub = 2; shz_p_t = 0; shz_p_slow = 0; note("at the pole's top, y", pl.pos.y) }
+        } else if shz_p_sub == 2 {                // round to the side of the next point
+            let want = atan2(nx.x - poles[pole_k].base.x, nx.z - poles[pole_k].base.z)
+            let e = wrap_angle(want - pole_ang)
+            if pt.k == SHZ_K_POLE_DROP || abs(e) < 0.2 || poles[pole_k].front { shz_p_sub = 3; shz_p_t = 0 }
+            else { stick_v = vec2(1.0, 0.0) }
+            if shz_p_t > 400 { expect(false, "went round the pole", e) }
+        } else if shz_p_sub == 3 {                // off: a pole jump (or let go) toward the next point
+            if shz_p_t == 1 { if pt.k == SHZ_K_POLE_DROP { pad_v = R } else { pad_v = A } }
+            if shz_p_t > 1 { stick_v = cc_stick(sh_heading(nx), 1.0) }
+            if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+            if shz_p_t > 4 && pl.st == St.Ground {
+                note("off the pole, down at y", pl.pos.y)
+                shz_p_sub = 0
+                shz_next(f)
+                return
+            }
+        }
+    } else if pt.k == SHZ_K_DOUBLE || pt.k == SHZ_K_JUMP || pt.k == SHZ_K_VDOUBLE || pt.k == SHZ_K_SDOUBLE {
+        stick_v = cc_stick(sh_heading(pt.p), 1.0)
+        if pt.k == SHZ_K_SDOUBLE { stick_v = cc_stick(sh_heading(pt.p), 0.5) }
+        if pt.k == SHZ_K_VDOUBLE && (shz_p_sub < 3 || pl.vel.y > 0.08) { stick_v = STILL }
+        if shz_p_sub == 0 && pt.k != SHZ_K_DOUBLE && hspeed() > 0.005 && !air {      // standing still first
+            stick_v = STILL
+            return
+        }
+        if shz_p_sub == 0 { if shz_p_t % 4 < 2 || air { pad_v = A }; if air { shz_p_sub = 1 } }      // pressed again until it jumps
+        else if shz_p_sub == 1 { pad_v = A; if pl.vel.y <= 0.0 { shz_p_sub = 2; pad_v = 0 } }
+        else if shz_p_sub == 2 { if pt.k == SHZ_K_JUMP { shz_p_sub = 4 } else if pl.st == St.Ground { pad_v = A; shz_p_sub = 3 } }
+        else if shz_p_sub == 3 { pad_v = A; if air && pl.vel.y <= 0.0 { shz_p_sub = 4; pad_v = 0 } }
+        if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+        if pl.st == St.LedgeClimb { stick_v = STILL }
+        // up already (a grab and climb on the way): done
+        if shz_p_sub >= 1 && shz_p_sub < 4 && pl.st == St.Ground && pt.p.y != 0.0 && pl.pos.y >= pt.p.y { shz_p_sub = 4 }
+        if shz_p_sub >= 4 && pl.st == St.Ground {
+            note("jumped, down at y", pl.pos.y)
+            if pt.p.y != 0.0 { expect(pl.pos.y >= pt.p.y, "the jump reached, y", pl.pos.y) }
+            shz_p_sub = 0
+            shz_next(f)
+            return
+        }
+    } else if pt.k == SHZ_K_KICKS {
+        if shz_p_sub == 0 {
+            stick_v = cc_stick(EAST, 1.0)
+            if shz_p_t >= 6 && shz_p_t < 20 { pad_v = A }
+            if pl.st == St.WallSlide || pl.st == St.WallKick { shz_p_sub = 1 }
+            if shz_p_t > 120 { expect(false, "reached the first face", pl.pos.x) }
+        } else {
+            if pl.st == St.WallSlide { pad_v = A }
+            if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+            if pl.st == St.Ground && shz_p_t > 20 {
+                if pt.p.y != 0.0 { expect(pl.pos.y >= pt.p.y, "the kicks reached, y", pl.pos.y) }
+                shz_p_sub = 0
+                shz_next(f)
+                return
+            }
+        }
+    }
+    if shz_p_t > 1500 { expect(false, "reached point", fixed(shz_p_i)) }
+}
+
+fn shz_next(f: s32) {
+    if shz_p_trace != 0 { note("reached point", fixed(shz_p_i)) }
+    shz_p_i += 1
+    shz_p_t = 0
+    shz_p_slow = 0
+    shz_p_top = pl.pos.y
+}
+
+// ---- 701, 790: the walkway decks and their trunks (B2): from 2.7 m out, run at the trunk's
+// centre from eight sides for 1.5 s, at each deck; the body must stay on the deck.
+fn shz_trunks(f: s32, decks: *vec3, n: s32) {
+    if tw_phase == 9 { return }
+    let i = tw_k / 8
+    if i >= n {
+        expect(true, "runs at the trunks, every one stayed on its deck", fixed(tw_k))
+        done()
+        tw_phase = 9
+        return
+    }
+    let c = decks[i]
+    let a = fixed(tw_k % 8) * 0.7854 + 0.2
+    if tw_phase == 0 {
+        let x = c.x + sin(a) * 2.7
+        let z = c.z + cos(a) * 2.7
+        place(vec3(x, sh_floor(x, z, c.y + 1.0), z), a + 3.1416)
+        expect(pl.pos.y > c.y - 0.3, "on the deck, y", pl.pos.y)
+        t0 = f
+        tw_phase = 1
+        return
+    }
+    stick_v = cc_stick(sh_heading(c), 1.0)
+    if pl.pos.y < c.y - 0.5 { expect(false, "stayed on the deck by its trunk, deck", fixed(i)) }
+    if f > t0 + 60 { tw_k += 1; tw_phase = 0 }
+}
+
+// ---- 706, 707: the lantern strings
+
+fn shz_string(nm: *u8) -> s32 {
+    let k = rail_named(nm)
+    expect(k >= 0, "the string is a rail", fixed(k))
+    return k
+}
+
+// Down the west torii string from its middle: off its lower end the body must come to rest
+// somewhere (the hall's roof, the courtyard) within 4 s, not caught between the two strings.
+fn shz_string_down(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        let k = shz_string("core_string_torii_w")
+        let p = wp_path_at(rails[k], 24.0)            // the torii -> hall leg's middle (2 m along the beam first)
+        place_air(p + vec3(0.0, 0.3, 0.0), atan2(-27.0, 34.6))
+        t0 = -1
+    }
+    if t0 < 0 && pl.st == St.Rail { t0 = f; note("grinding at y", pl.pos.y) }
+    if f > 10 && t0 < 0 { expect(false, "came down onto the string", pl.pos.y) }
+    stick_v = cc_stick(atan2(-27.0, 34.6), 1.0)        // held down the string, toward the hall,
+    if pl.pos.z > 158.0 { stick_v = cc_stick(pl.yaw, 1.0) }    // then on along it to the gate
+    if t0 >= 0 && pl.st == St.Ground && f > t0 + 20 {
+        note("came to rest at y", pl.pos.y)
+        expect(true, "off the strings within, s", fixed(f - t0) / 60)
+        done()
+        tw_phase = 9
+    }
+    if t0 >= 0 && f > t0 + 240 { expect(false, "off the strings within 4 s", pl.pos.y) }
+}
+
+// Up the west string from the side hall's end toward the torii: the grind ends on the kasagi.
+fn shz_string_up(f: s32) {
+    if tw_phase == 9 { return }
+    let k = rail_named("core_string_torii_w")
+    if f == 0 {
+        expect(k >= 0, "the string is a rail", fixed(k))
+        let p = wp_path_at(rails[k], 34.0)            // on the torii -> hall leg, 10 m short of the hall
+        place_air(p + vec3(0.0, 0.3, 0.0), atan2(27.0, -34.6))
+        t0 = -1
+    }
+    if t0 < 0 && pl.st == St.Rail { t0 = f; note("grinding at y", pl.pos.y) }
+    if f > 10 && t0 < 0 { expect(false, "came down onto the string", pl.pos.y) }
+    // the stick up the string, toward the torii's middle, all the way
+    stick_v = cc_stick(sh_heading(vec3(160.0, 0.0, 124.0)), 1.0)
+    if t0 >= 0 && pl.st == St.Ground && f > t0 + 10 {
+        expect(pl.pos.y > 12.8 && abs(pl.pos.z - 124.0) < 0.8, "landed on the torii's top beam, y", pl.pos.y)
+        done()
+        tw_phase = 9
+    }
+    if t0 >= 0 && f > t0 + 600 { expect(false, "came down within 10 s", pl.pos.y) }
+}
+
+// ---- 708: the north wall. From the terrace (5) a jump and a grab at the 3.6 m wall: the coping
+// refuses the grab, so the body comes down on the terrace's side, never on the wall's top.
+fn shz_north_wall(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        place(vec3(140.0, sh_floor(140.0, 235.5, 10.0), 235.5), NORTH)
+        mark()
+        tw_k = 0
+    }
+    // three tries along the wall: a held jump and a double jump at it, the stick into it
+    let k = tw_k
+    if k >= 3 {
+        expect(true, "never stood on the wall's top, tries", fixed(k))
+        done()
+        tw_phase = 9
+        return
+    }
+    stick_v = cc_stick(NORTH, 1.0)
+    if tw_phase == 0 { t0 = f; tw_phase = 1 }
+    let t = f - t0
+    if k == 0 { if t >= 4 && t < 40 { pad_v = A } }
+    else { if (t >= 4 && t < 30) || (t >= 30 && pl.st == St.Ground && t < 60) || (t >= 36 && is_air(pl.st) && pl.vel.y > 0.0) { pad_v = A } }
+    if pl.pos.y > 8.0 && pl.st == St.Ground { expect(false, "stood on the wall's top, y", pl.pos.y) }
+    // (a hang from the plinth's 0.15 m step, its top at 6.0, is no matter: from there too the coping refuses)
+    if (pl.st == St.LedgeHang || pl.st == St.LedgeClimb) && pl.pos.y > 6.0 { expect(false, "grabbed the wall's coping", pl.pos.y) }
+    if t > 150 {
+        tw_k += 1
+        place(vec3(140.0 + fixed(tw_k) * 16.0, sh_floor(140.0 + fixed(tw_k) * 16.0, 235.5, 10.0), 235.5), NORTH)
+        tw_phase = 0
+    }
+}
+
+// ---- 718: dropped onto the fallen cedar where its log meets the root plate (the hole r11 found)
+fn shz_log_drop(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        wp_layer_set(wp_layer_find("cedar_c_down"), true)
+        wp_layer_set(wp_layer_find("cedar_c_up"), false)
+        tw_k = 0
+    }
+    let pts: [3]vec2 = [vec2(255.15, 306.5), vec2(254.9, 306.0), vec2(255.4, 307.0)]
+    if tw_k >= 3 {
+        expect(true, "every drop landed on the log or the plate", fixed(tw_k))
+        done()
+        tw_phase = 9
+        return
+    }
+    if tw_phase == 0 {
+        let p = pts[tw_k]
+        place_air(vec3(p.x, 39.0, p.y), WEST)
+        t0 = f
+        tw_phase = 1
+        return
+    }
+    if pl.st == St.Ground && f > t0 + 2 {
+        expect(pl.pos.y > 33.0, "landed on the dead cedar, y", pl.pos.y)
+        tw_k += 1
+        tw_phase = 0
+    }
+    if f > t0 + 200 { expect(false, "came down", pl.pos.y) }
+}
+
+// ---- 724: star 4's rope is hang only (lead's decision): a body dropped onto it from 4 m above (as from a
+// glide let go over it), at each metre along it, the stick neutral or toward the trunk, is not
+// carried into the knot hole (nor caught by the hands and left at its end): it comes down outside the
+// cedar, never in its chamber (x 151.5-156.5, z 293.5-298.5, under 16).
+fn shz_rope_drops(f: s32) {
+    if tw_phase == 9 { return }
+    let k = rail_named("cedar_rope")
+    if f == 0 { expect(k >= 0, "the cedar rope is a rail", fixed(k)); tw_k = 0 }
+    let len = wp_path_length(rails[k])
+    let n = (len as s32) * 2                         // every metre, two ways
+    if tw_k >= n {
+        expect(true, "no drop got into the cedar, drops", fixed(n))
+        done()
+        tw_phase = 9
+        return
+    }
+    let s = fixed(tw_k / 2)
+    if tw_phase == 0 {
+        let p = wp_path_at(rails[k], min(s, len - 0.1))
+        place_air(p + vec3(0.0, 4.0, 0.0), WEST)
+        t0 = f
+        tw_phase = 1
+        return
+    }
+    if tw_k % 2 == 1 { stick_v = cc_stick(sh_heading(vec3(154.0, 0.0, 296.0)), 1.0) }
+    if pl.st == St.Rail { expect(false, "ground along the rope, at metre", s) }
+    let inside = pl.pos.x > 151.5 && pl.pos.x < 156.5 && pl.pos.z > 293.5 && pl.pos.z < 298.5 && pl.pos.y < 16.0
+    if inside { expect(false, "came into the cedar's chamber, from metre", s) }
+    if (pl.st == St.Ground && f > t0 + 2) || pl.st == St.Hang || f > t0 + 240 {
+        if pl.st == St.Hang { expect(wp_near.s < 3.5 || rail_s < 3.5, "caught only at the deck end, at", rail_s) }
+        tw_k += 1
+        tw_phase = 0
+    }
+}
+
+// ---- 725: shortcut D's bypass (the explorer bot: a kick up the trunk from the basin, the hands at the
+// rope's end in the knot hole, a hang jump into the hole): a body rising past the rope's last 5 m at
+// hand height is not caught (the rope is caught only in its first 3 m, at the deck).
+fn shz_rope_rise(f: s32) {
+    if tw_phase == 9 { return }
+    let k = rail_named("cedar_rope")
+    if f == 0 { tw_k = 0 }
+    let len = wp_path_length(rails[k])
+    if tw_k >= 5 {
+        expect(true, "not caught rising past its far end, tries", fixed(tw_k))
+        done()
+        tw_phase = 9
+        return
+    }
+    if tw_phase == 0 {
+        let p = wp_path_at(rails[k], len - 0.5 - fixed(tw_k))
+        place_air(p - vec3(0.0, 2.6, 0.0), WEST)
+        pl.vel = vec3(0.0, 0.12, 0.0)                // rising at 7.2 m/s through the hands' reach
+        enter(St.Jump)
+        t0 = f
+        tw_phase = 1
+        return
+    }
+    if pl.st == St.Hang { expect(false, "caught the rope's far end rising, metre", len - 0.5 - fixed(tw_k)) }
+    if f > t0 + 40 { tw_k += 1; tw_phase = 0 }
+}
+
+// ---- 726: the explorer bot's bypass of shortcut D, flown whole: from the basin floor west of the
+// trunk, a run at it with A pressed at every wall slide (kicks), the stick held at the trunk or turned
+// with each kick, from six places. Nothing hangs from the rope or comes into the chamber.
+fn shz_trunk_kicks(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 { tw_k = 0 }
+    if tw_k >= 6 {
+        expect(true, "no kick up the trunk got in, tries", fixed(tw_k))
+        done()
+        tw_phase = 9
+        return
+    }
+    let zs: [3]fixed = [292.0, 295.6, 298.0]
+    if tw_phase == 0 {
+        let x = 146.0
+        let z = zs[tw_k % 3]
+        place(vec3(x, sh_floor(x, z, 16.0), z), EAST)
+        t0 = f
+        tw_phase = 1
+        return
+    }
+    let t = f - t0
+    if tw_k < 3 { stick_v = cc_stick(EAST, 1.0) } else { stick_v = cc_stick(pl.yaw, 1.0) }
+    if t >= 20 && (t % 6 == 0 || pl.st == St.Ground) { pad_v = A }
+    if pl.st == St.Hang { expect(false, "hung from the rope, x", pl.pos.x) }
+    let inside = pl.pos.x > 152.4 && pl.pos.x < 155.6 && pl.pos.z > 294.4 && pl.pos.z < 297.6 && pl.pos.y > 12.0 && pl.pos.y < 24.5
+    if inside { expect(false, "came into the cedar, try", fixed(tw_k)) }
+    if (pl.st == St.LedgeHang || pl.st == St.LedgeClimb) && pl.pos.y > 18.0 { expect(false, "grabbed a ledge high on the trunk, y", pl.pos.y) }
+    if t > 300 { tw_k += 1; tw_phase = 0 }
+}
+
+// ---- 727: shortcut B's bypass (the explorer bot: a side flip from the terrace onto the barred north
+// gate's roof, then off its far side to the north stair). From three places along the gate, a double
+// jump, a side flip and a running triple jump at it: nothing comes past it (z over 238.2) or stands
+// on it.
+fn shz_gate_n(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 { tw_k = 0 }
+    if tw_k >= 9 {
+        expect(true, "never past the barred gate, tries", fixed(tw_k))
+        done()
+        tw_phase = 9
+        return
+    }
+    let xs: [3]fixed = [158.6, 162.0, 165.6]
+    let x = xs[tw_k % 3]
+    let mv = tw_k / 3                                  // 0 double, 1 side flip, 2 running triple
+    if tw_phase == 0 {
+        var z = 235.6
+        if mv == 2 { z = 226.0 }
+        place(vec3(x, sh_floor(x, z, 8.0), z), NORTH)
+        t0 = f
+        tw_phase = 1
+        return
+    }
+    let t = f - t0
+    if mv == 0 {
+        stick_v = cc_stick(NORTH, 1.0)
+        if (t >= 4 && t < 20) || (t >= 30 && t < 50) { pad_v = A }
+    } else if mv == 1 {
+        if t < 14 { stick_v = cc_stick(3.1416, 1.0) } else { stick_v = cc_stick(NORTH, 1.0) }
+        if t >= 14 && t < 30 { pad_v = A }
+    } else {
+        stick_v = cc_stick(NORTH, 1.0)
+        if pl.pos.z > 230.0 && t < 200 && (pl.st == St.Ground || (is_air(pl.st) && pl.vel.y > 0.0)) { pad_v = A }
+    }
+    if pl.pos.z > 238.2 { expect(false, "came past the barred gate, try", fixed(tw_k)) }
+    if pl.st == St.Ground && pl.pos.y > 7.0 { expect(false, "stood on the gate, y", pl.pos.y) }
+    if (pl.st == St.LedgeHang || pl.st == St.LedgeClimb) && pl.pos.y > 6.0 { expect(false, "grabbed the gate, y", pl.pos.y) }
+    if t > 240 { tw_k += 1; tw_phase = 0 }
+}
+
+// ---- 722: G6 (the stage to the pagoda) glides under star 1 (raised to about 48), whatever line
+fn shz_g6_star(f: s32) {
+    if f == 0 {
+        tw_star = tw_star_near(vec3(178.0, SHZ_STAR1_Y, 262.0))
+        expect(tw_star >= 0, "star 1 at its raised place", SHZ_STAR1_Y)
+        stg = Glide { from: vec3(166.5, 0.0, 353.0), to: vec3(178.0, 27.1, 262.0), run: 3.0, tol: 5.5 }
+    }
+    if star_taken(tw_star) { expect(false, "G6 did not take star 1", pl.pos.y) }
+    tw_glide(f)
+}
+
+// ---- 414: G5 from the temple's ridge, the ridge climbed first (710's route from the terrace in front
+// of the temple's stair), then the glide to the pagoda's first roof (tw_glide), with no placing
+fn shz_g5(f: s32) {
+    if f == 0 {
+        shz_p_n = 0; shz_p_i = 0; shz_p_sub = 0; shz_p_t = 0; shz_p_slow = 0; shz_p_hold = 0; shz_p_hops = 0
+        shz_p_strict = true; shz_p_noslide = false; shz_p_done = false; shz_p_trace = 0; shz_p_glide_at = -1
+        shz_start(160.0, 204.0, 10.0, NORTH)
+        SHZ_TEMPLE_ROOFS()
+        shz_a(172.5, 27.3, 221.75, SHZ_K_WALK, 0.3)
+        mark()
+        return
+    }
+    if shz_p_glide_at < 0 { shz_route(f); return }
+    let g = f - shz_p_glide_at + 1
+    if g == 1 { sh_start = pl.pos; pl.spawn = vec3(pl.pos.x, 0.0, pl.pos.z); note("on the ridge, take-off y", pl.pos.y) }
+    tw_glide(g)
+}
+
+// ---- 730-733: G8 from its pad, the take-off moved 1 m each way: it still lands in the arcade
+fn shz_g8(f: s32) {
+    if f == 0 {
+        var dx = 0.0
+        var dz = 0.0
+        if SCENARIO == 730 { dx = -1.0 }
+        if SCENARIO == 731 { dx = 1.0 }
+        if SCENARIO == 732 { dz = 1.0 }
+        if SCENARIO == 733 { dz = -1.0 }
+        stg = Glide { from: vec3(SHZ_G8.x + dx, 0.0, SHZ_G8.z + dz), to: vec3(163.0, -0.1, 97.5), run: 0.0, tol: 6.0 }
+        shz_g8_via_on = true
+    }
+    tw_glide(f)
+}
+
+// ---- the routes' points
+
+// The walkway's decks (x, deck height, z): the six, the rope deck, the crown deck and its landing.
+const SHZ_DECKS_TOWN: [9]vec3 = [vec3(94.0, 9.0, 152.0), vec3(82.0, 12.0, 180.0), vec3(80.0, 15.0, 208.0),
+                                vec3(88.0, 18.0, 234.0), vec3(102.0, 21.0, 252.0), vec3(114.0, 22.0, 264.0),
+                                vec3(130.0, 24.0, 282.0), vec3(70.0, 28.0, 220.0), vec3(70.0, 15.0, 220.0)]
+// The shrine's walkway (carts/garden/shrine): the same platforms on the same cedars.
+const SHZ_DECKS_SHRINE: [5]vec3 = [vec3(16.0, 14.0, 146.0), vec3(14.0, 17.0, 168.0), vec3(24.0, 20.0, 188.0),
+                                  vec3(38.0, 23.0, 198.0), vec3(54.0, 26.0, 206.0)]
+
+// Deck to deck, gap to gap (place/shrine.py turns each deck so its railing gaps face its bridges),
+// round each trunk, from deck 1 to the rope deck.
+fn SHZ_WALKWAY() {
+    shz_a(94.93, 8.5, 149.15, SHZ_K_WALK, 0.8)
+    shz_deck(94.0, 9.0, 152.0, 94.93, 149.15, 93.07, 154.85)
+    shz_a(93.07, 8.5, 154.85, SHZ_K_WALK, 0.8); shz_a(82.73, 11.5, 177.09, SHZ_K_WALK, 0.8)
+    shz_deck(82.0, 12.0, 180.0, 82.73, 177.09, 81.27, 182.91)
+    shz_a(81.27, 11.5, 182.91, SHZ_K_WALK, 0.8); shz_a(78.83, 14.5, 205.24, SHZ_K_WALK, 0.8)
+    shz_deck(80.0, 15.0, 208.0, 78.83, 205.24, 81.17, 210.76)
+    shz_a(81.17, 14.5, 210.76, SHZ_K_WALK, 0.8); shz_a(86.64, 17.5, 231.33, SHZ_K_WALK, 0.8)
+    shz_deck(88.0, 18.0, 234.0, 86.64, 231.33, 89.36, 236.67)
+    shz_a(89.36, 17.5, 236.67, SHZ_K_WALK, 0.8); shz_a(100.03, 20.5, 249.74, SHZ_K_WALK, 0.8)
+    shz_deck(102.0, 21.0, 252.0, 100.03, 249.74, 103.97, 254.26)
+    shz_a(103.97, 20.5, 254.26, SHZ_K_WALK, 0.8); shz_a(111.95, 21.5, 261.81, SHZ_K_WALK, 0.8)
+    shz_deck(114.0, 22.0, 264.0, 111.95, 261.81, 116.05, 266.19)
+    shz_a(116.05, 21.5, 266.19, SHZ_K_WALK, 0.8); shz_a(127.7, 23.5, 280.07, SHZ_K_WALK, 0.8)
+    shz_a(130.0, 23.6, 282.0, SHZ_K_WALK, 1.5)
+}
+
+// The shoulder trail's points (make_mountain.py, trail_shoulder), from the cemetery's top.
+fn SHZ_SHOULDER() {
+    shz_l(290.0, 0.0, 262.0); shz_l(302.0, 0.0, 282.0); shz_l(266.0, 0.0, 298.0); shz_l(260.0, 0.0, 303.0)
+    shz_l(266.0, 0.0, 308.0); shz_l(296.0, 0.0, 322.0); shz_l(298.0, 0.0, 327.0); shz_l(292.0, 0.0, 331.0)
+    shz_l(250.0, 0.0, 338.0); shz_l(237.0, 0.0, 343.0)
+}
+const SHZ_STAR1_Y: fixed = 51.5                     // star 1, raised over G6's line (place/shrine.py)
+const SHZ_G8: vec3 = vec3(174.0, 0.0, 356.0)          // the middle of G8's take-off pad (make_mountain.py)
+
+// The cave's west passage, the nook outside it (14) and the steps up to the pool's west terrace (16).
+fn SHZ_CAVE_WEST() {
+    shz_l(206.6, 13.9, 332.0); shz_l(205.0, 13.9, 331.0); shz_l(205.0, 0.0, 320.5); shz_l(201.0, 15.8, 318.0)
+}
+
+// Shortcut C's fallen cedar: from the shoulder trail's hairpin up the ramp to the stump, over the
+// stump onto the log's butt, down the log to the shelf over the falls pool (20).
+fn SHZ_LOG() {
+    shz_start(264.6, 306.8, 40.0, WEST)
+    shz_l(263.0, 35.3, 307.0); shz_l(257.5, 0.0, 307.0); shz_l(256.0, 35.7, 306.0); shz_l(254.7, 35.5, 306.5)
+    shz_l(229.0, 0.0, 316.8); shz_a(226.5, 19.5, 317.8, SHZ_K_WALK, 1.0)
+}
+
+// The zig-zag bridge (gen_core.py's ZZ), every corner, from the east gate's stair to the pond's bank.
+fn SHZ_ZIGZAG() {
+    shz_n(222.0, 0.3, 192.0); shz_n(220.0, 0.3, 186.0); shz_n(216.0, 0.3, 180.0); shz_n(222.0, 0.3, 174.0)
+    shz_n(219.5, 0.3, 168.0); shz_n(224.0, 0.3, 162.0); shz_n(220.0, 0.3, 156.0)
+}
+
+// In the stream 20 m above its mouth, out onto its east bank, back across and out onto its west bank.
+fn SHZ_STREAM() {
+    shz_start(238.5, 200.0, 5.0, EAST)
+    shz_l(246.0, 0.0, 200.0); shz_w(246.0, 0.3, 200.0); shz_l(238.5, 0.0, 200.0); shz_l(231.0, 0.0, 200.0); shz_w(231.0, 0.2, 200.0)
+}
+
+// The temple (arch_temple at (160, 5, 221.75), its climbing collision arch_temple_town_col): up its
+// stair onto the podium's front strip (8.6); a double jump and a grab onto the lower (pent) roof's
+// front (z 210.75); on its strip outside the main roof's eave (z 211.75), a double jump and a grab
+// onto the main roof; up it to below the top roof's eave
+// (z 215.15); a double jump and a grab onto the top roof; up it and a jump onto the ridge (27.5);
+// along the ridge to G5's take-off (172.5, 222.3).
+fn SHZ_TEMPLE_ROOFS() {
+    shz_l(160.0, 0.0, 210.3); shz_w(160.0, 8.3, 210.3)
+    shz_l(150.0, 8.4, 210.2); shz_a(150.0, 8.4, 210.45, SHZ_K_WALK, 0.15)        // facing the pent roof's eave
+    shz_a(150.0, 12.9, 211.5, SHZ_K_VDOUBLE, 1.5)
+    shz_a(150.0, 12.8, 211.4, SHZ_K_WALK, 0.15)
+    shz_a(150.0, 17.2, 212.6, SHZ_K_VDOUBLE, 1.5)
+    shz_l(150.0, 17.2, 214.2); shz_a(150.0, 17.2, 214.8, SHZ_K_WALK, 0.15)
+    shz_a(150.0, 23.2, 216.6, SHZ_K_VDOUBLE, 1.5)
+    shz_a(150.0, 24.0, 218.4, SHZ_K_JUMP, 1.5)
+    shz_a(150.0, 27.3, 220.9, SHZ_K_JUMP, 1.2)
+    shz_a(150.0, 27.3, 221.75, SHZ_K_WALK, 0.4); shz_n(172.5, 27.3, 221.75)
+}
+
+// The gate (arch_gate at (160, 5, 172)): placed on its lower roof's front strip, east of the middle
+// and outside the upper roof's eave (z 168.8), as the lantern string delivers the body there; a jump
+// and a grab onto the upper roof; up it to the ridge (17.8).
+fn SHZ_GATE_ROOFS() {
+    shz_start(156.0, 168.4, 14.0, NORTH)
+    shz_a(156.0, 15.3, 169.6, SHZ_K_DOUBLE, 1.5)
+    shz_a(156.0, 16.4, 172.0, SHZ_K_JUMP, 1.5)
+}
+
+// From the falls' top up the cutting to the way-out torii by the north rim.
+fn SHZ_WAYOUT() {
+    shz_l(238.0, 51.0, 349.0); shz_l(243.0, 0.0, 359.0); shz_l(248.0, 0.0, 369.0); shz_a(252.0, 60.5, 376.5, SHZ_K_WALK, 1.0)
+}

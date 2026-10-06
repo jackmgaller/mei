@@ -27,7 +27,7 @@
     6.0,
     237.4
    ],
-   "collision": "arch_wall_8_col"
+   "collision": "shrine_wall_coping_8_col"
   },
   {
    "id": "sh_wall_x237_1940_plinth",
@@ -48,7 +48,7 @@
     6.0,
     237.4
    ],
-   "collision": "arch_wall_8_col"
+   "collision": "shrine_wall_coping_8_col"
   },
   {
    "id": "sh_wall_x237_2020_plinth",
@@ -69,7 +69,7 @@
     6.0,
     237.4
    ],
-   "collision": "arch_wall_4_col"
+   "collision": "shrine_wall_coping_4_col"
   },
   {
    "id": "sh_wall_x237_2080_plinth",
@@ -145,7 +145,7 @@
     6.0,
     237.4
    ],
-   "collision": "arch_wall_corner_col",
+   "collision": "shrine_wall_coping_corner_col",
    "merge": true
   },
   {

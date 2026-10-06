@@ -25,9 +25,14 @@ const G4: Glide = Glide { from: vec3(102.0, 0.0, 74.0), to: vec3(113.0, 0.5, 140
 const G5: Glide = Glide { from: vec3(172.5, 0.0, 222.3), to: vec3(178.0, 19.9, 262.0), run: 0.0, tol: 6.0 }
 const G6: Glide = Glide { from: vec3(166.5, 0.0, 353.0), to: vec3(178.0, 27.1, 262.0), run: 3.0, tol: 5.5 }   // beside the real hall, off its eaves
 const G7: Glide = Glide { from: vec3(180.3, 0.0, 262.0), to: vec3(282.0, 16.1, 244.0), run: 0.0, tol: 27.0 }
-// G8 takes off from the slope east of the stage (61.7), not the deck (60): from the deck the glide
-// came down on the real great torii's top beam (13.7 at z 124.5)
-const G8: Glide = Glide { from: vec3(174.0, 0.0, 356.0), to: vec3(160.0, -0.1, 84.0), run: 3.0, tol: 8.0 }
+// G8 takes off from its pad east of the stage (61.8), a standing double jump, and is steered east of
+// the great torii (SHZ_G8_VIA, x 170 at its line: lead's decision, DESIGN.md 12.9), then into the arcade.
+// (From the deck the glide came down on the torii's top beam; through the torii it threaded a 1.15 m
+// slot between its beams.) A standing start glides 13 m less far than the old run-up: it comes down
+// on the front road at the arcade's mouth, (163, 97.5), not in the arcade.
+const G8: Glide = Glide { from: vec3(174.0, 0.0, 356.0), to: vec3(163.0, -0.1, 97.5), run: 0.0, tol: 6.0 }
+const SHZ_G8_VIA: vec3 = vec3(170.0, 0.0, 124.0)
+const SHZ_G8_WIRE_Z: fixed = 106.0      // the front road's wires (z 105.2 and 106.8, 8.0 high)
 const G9: Glide = Glide { from: vec3(273.0, 0.0, 80.0), to: vec3(276.0, 3.5, 150.0), run: 0.0, tol: 10.0 }
 
 // The pagoda's south face, roof by roof (the real pagoda's collision, arch_pagoda_col): from the
@@ -57,6 +62,8 @@ var tw_phase: s32           // a scenario's step
 var tw_k: s32               // kicks made, coins seen, ...
 var tw_land: vec3
 var tw_star: s32            // an entity number
+var shz_g8_via_on: bool         // a glide steered at SHZ_G8_VIA first (G8)
+var shz_g8_wire_y: fixed        // G8: the feet's height where the line crosses the road's wires
 const TW_TRACE = 0          // debugging: notes the state every 4 ticks at a kick scenario's start (0: none)
 
 fn town_case_init() -> bool {
@@ -74,7 +81,7 @@ fn town_case_init() -> bool {
         411 => { name = "shrine town: G2, danchi roof to the canal lane"; stg = G2 }
         412 => { name = "shrine town: G3, sento chimney over the canal to the park"; stg = G3 }
         413 => { name = "shrine town: G4, fire tower over the front road to the courtyard"; stg = G4 }
-        414 => { name = "shrine town: G5, temple ridge to the pagoda's first roof"; stg = G5 }
+        414 => { name = "shrine town: G5, the temple climbed from its stair to the ridge, glide to the pagoda's first roof"; stg = G5 }
         415 => { name = "shrine town: G6, stage to the pagoda's upper roofs (3 to 5)"; stg = G6 }
         416 => { name = "shrine town: G7, pagoda roof 5 to the cemetery's top terrace"; stg = G7 }
         417 => { name = "shrine town: G8, the race line, stage to the arcade"; stg = G8 }
@@ -105,7 +112,24 @@ fn town_case_init() -> bool {
     sh_leg = -1
     tw_phase = 0
     tw_k = 0
+    shz_g8_via_on = SCENARIO == 417
     return true
+}
+
+// G8's aim: east of the great torii (SHZ_G8_VIA) until the line is past it, then the arcade.
+fn shz_g8_aim(to: vec3) -> fixed {
+    if pl.pos.z > SHZ_G8_VIA.z + 3.0 { return sh_heading(SHZ_G8_VIA) }
+    return sh_heading(to)
+}
+
+// G8 over the front road's wires: the feet must pass under the hanging reach of a wire (a rail
+// 1.2-1.9 m over the feet hangs the body) or over it, at 5.9 or lower or 8.2 or higher.
+fn shz_g8_wire() {
+    if shz_g8_wire_y < -50.0 && pl.pos.z < SHZ_G8_WIRE_Z {
+        shz_g8_wire_y = pl.pos.y
+        note("over the road's wires (z 106), feet at y", shz_g8_wire_y)
+        expect(shz_g8_wire_y <= 5.9 || shz_g8_wire_y >= 8.2, "clear of the wires' reach, feet at y", shz_g8_wire_y)
+    }
 }
 
 fn town_case(f: s32) {
@@ -119,7 +143,8 @@ fn town_case(f: s32) {
         406 => tw_body_hidden(f)
         407 => tw_opening(f)
         408 => tw_awning(f)
-        410, 411, 412, 413, 414, 415, 416, 417, 418 => tw_glide(f)
+        410, 411, 412, 413, 415, 416, 417, 418 => tw_glide(f)
+        414 => shz_g5(f)
         420 => tw_kick_pair(f)
         421 => tw_chimney(f)
         422 => tw_pagoda(f)
@@ -204,6 +229,8 @@ fn tw_glide(f: s32) {
         var p = tw_flat(stg.from)
         p = vec3(p.x, sh_floor(p.x, p.z, 90.0), p.z)
         place(p, sh_heading(to))
+        if shz_g8_via_on { place(p, atan2(SHZ_G8_VIA.x - p.x, SHZ_G8_VIA.z - p.z)) }
+        shz_g8_wire_y = -99.0
         pl.spawn = vec3(p.x, 0.0, p.z)        // no respawn on a long way down (player.akr: 40 m below the spawn)
         sh_start = p
         note("take-off floor, y", p.y)
@@ -211,7 +238,8 @@ fn tw_glide(f: s32) {
     }
     let ran = tw_hdist(pl.pos, sh_start)
     let air = is_air(pl.st) || pl.st == St.Glide
-    let steer = cc_stick(sh_heading(to), 1.0)
+    var steer = cc_stick(sh_heading(to), 1.0)
+    if shz_g8_via_on { steer = cc_stick(shz_g8_aim(to), 1.0); shz_g8_wire() }
     if tw_phase == 0 {                              // the run-up (none: a jump on the spot)
         if stg.run > 0.0 { stick_v = steer }
         if ran >= stg.run && f > 2 { pad_v = A; tw_phase = 1 }
@@ -320,14 +348,14 @@ fn tw_chimney(f: s32) {
 }
 
 // The pagoda's tiers (TIERS), the last onto the dew basin's top (36.19); then the finial: jump to
-// the pole, climb it to its top (feet 43.8): star 1 (at 45.5) is in reach there.
+// the pole, climb it to its top (feet 49.8): star 1 (at 51.5, raised out of every glide) is in reach there.
 var tw_tier: s32
 var tw_sub: s32
 fn tw_pagoda(f: s32) {
     if tw_phase == 9 { return }
     if TW_TRACE != 0 && tw_phase >= 1 && f % 3 == 0 { note("trace", fixed(f)) }
     if f == 0 {
-        tw_star = tw_star_near(vec3(178.0, 45.5, 262.0))
+        tw_star = tw_star_near(vec3(178.0, 51.5, 262.0))
         expect(tw_star >= 0, "star 1 is there", 0.0)
         tw_tier = 0
         tw_sub = -1
@@ -372,7 +400,7 @@ fn tw_pagoda(f: s32) {
     }
     if tw_phase == 2 {
         stick_v = FWD
-        if f > t1 + 10 && pl.st == St.Pole && pl.pos.y > 43.7 { tw_phase = 3; t2 = f; note("at the pole's top, y", pl.pos.y) }
+        if f > t1 + 10 && pl.st == St.Pole && pl.pos.y > 49.7 { tw_phase = 3; t2 = f; note("at the pole's top, y", pl.pos.y) }
         if f > t1 + 600 { expect(false, "climbed the finial", pl.pos.y) }
         return
     }

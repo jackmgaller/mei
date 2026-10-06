@@ -332,6 +332,26 @@
    "asset": "gbc_coin"
   },
   {
+   "id": "core_coin_string_gate_w_0",
+   "type": "coin",
+   "position": [
+    135.667,
+    12.367,
+    161.767
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_string_gate_w_1",
+   "type": "coin",
+   "position": [
+    143.333,
+    12.833,
+    164.933
+   ],
+   "asset": "gbc_coin"
+  },
+  {
    "id": "core_coin_string_torii_e_0",
    "type": "coin",
    "position": [
@@ -352,43 +372,11 @@
    "asset": "gbc_coin"
   },
   {
-   "id": "core_rail_string_gate_w",
-   "type": "rail",
-   "position": [
-    128.0,
-    11.0,
-    158.6
-   ],
-   "params": {
-    "path": "core_string_gate_w"
-   }
-  },
-  {
-   "id": "core_coin_string_gate_w_0",
-   "type": "coin",
-   "position": [
-    135.667,
-    12.233,
-    161.767
-   ],
-   "asset": "gbc_coin"
-  },
-  {
-   "id": "core_coin_string_gate_w_1",
-   "type": "coin",
-   "position": [
-    143.333,
-    12.567,
-    164.933
-   ],
-   "asset": "gbc_coin"
-  },
-  {
    "id": "core_coin_string_gate_e_0",
    "type": "coin",
    "position": [
     184.333,
-    12.233,
+    12.367,
     161.767
    ],
    "asset": "gbc_coin"
@@ -398,7 +386,7 @@
    "type": "coin",
    "position": [
     176.667,
-    12.567,
+    12.833,
     164.933
    ],
    "asset": "gbc_coin"
