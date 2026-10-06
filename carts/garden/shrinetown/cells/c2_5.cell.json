@@ -42,37 +42,7 @@
    "id": "edge_rock_n128",
    "asset": "edge_rock_n128",
    "position": [
-    136.0,
-    68.0,
-    382.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "edge_rock_n144",
-   "asset": "edge_rock_n144",
-   "position": [
-    152.0,
-    68.0,
-    382.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "edge_rock_n160",
-   "asset": "edge_rock_n160",
-   "position": [
-    168.0,
-    66.0,
-    382.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "edge_rock_n176",
-   "asset": "edge_rock_n176",
-   "position": [
-    184.0,
+    160.0,
     66.0,
     382.0
    ],

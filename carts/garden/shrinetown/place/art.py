@@ -189,7 +189,9 @@ def rocks():
     before = {f: json.dumps(c) for f, c in files.items()}
     for c in files.values():
         c['placements'] = [p for p in c['placements'] if not p['id'].startswith('edge_rock_')]
+    names = []
     for row in m.walls():
+        names.append(f'edge_rock_{m.key(row)}')
         x, y, z, yaw = m.place(row)
         p = {'id': f'edge_rock_{m.key(row)}', 'asset': f'edge_rock_{m.key(row)}',
              'position': [x, float(y), z], 'collision': 'self'}
@@ -199,11 +201,17 @@ def rocks():
     for f, c in files.items():
         if json.dumps(c) != before[f]:
             f.write_text(json.dumps(c, indent=1) + '\n')
+    return names
+
+
+ROCK_CULL = 120          # the rock walls go from here: past the stand-ins' 128 m, so that a far
+                         # cell's stand-in leaves them out (DESIGN.md 12.9, the draw's cost)
 
 
 def world(g):
-    rocks()
+    names = rocks()
     w = g['world']
+    w.setdefault('lod', {}).setdefault('assets', {}).update({n: {'cull': ROCK_CULL} for n in names})
     mats = w['terrain']['materials']
     ops = w['terrain']['fields']['ground']['operations']
     paths = w['paths']

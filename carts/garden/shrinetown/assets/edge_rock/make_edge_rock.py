@@ -9,14 +9,16 @@ metres long by the far levels and the stand-ins (whose grid points on the edge t
 top), so the height is these walls instead, standing on the rims.
 
 A wall is the rim's width deep (2 m on the west and east, 4 m on the north, the rim's footprint),
-ROCK (16) m along the edge, on every 16 m of those rims. Its face toward the level rises from its
+ROCK (16) m along the edge, on every 16 m of those rims; the steps of one cell's edge are one wall
+(one placement). Its face toward the level rises from its
 foot (the rim's lowest corner under it, less 1 m) to its top, and goes on down, in the rock's flat
 far colour, to SKIRT_TO under the mountain, so that a body that falls through the terrain's steep
 faces (review 13 #3) meets it at the edge. Its cap rises from the top to the back, LIP times the
 depth (56 degrees, steeper than a floor): nothing stands on a wall, and a body that clears the
 face's top meets the cap and slides back. The ends close it from the foot to the cap; the back
 and the bottom are open. The rock is the terrain's (../shrine/assets/art/terrain_rock.png at the
-terrain's 4.8 m a repeat: no VRAM of its own); from LOD_FAR the rock's flat far colour.
+terrain's 4.8 m a repeat: no VRAM of its own); from LOD_FAR the rock's flat far colour; place/art.py
+culls them from 120 m, so the stand-ins leave them out.
 Collision: "self" (its faces).
 
 ROCKS is the table `tools/frame.py --build-dir B --rocks` prints from a built world: per 16 m of
@@ -40,6 +42,7 @@ LIP = 1.5                 # the cap rises this many times the wall's depth to it
 SKIRT_TO = -200.0         # the face goes on down to here, inside the mountain, in the far colour: a
                           # body that falls through the terrain (DESIGN.md 12.9) meets it at the edge
 W, D = 320.0, 384.0
+CELL = 64                 # a wall per edge of a cell
 
 # (edge, from, to along it, foot, top): tools/frame.py --rocks
 ROCKS = [
@@ -98,46 +101,85 @@ ROCKS = [
 
 
 def walls():
-    """Every row: a wall on every 16 m of rim, so that no rim's top is a floor by the edge."""
-    return list(ROCKS)
+    """The walls: the rows grouped by the cell they stand in (edge, 64 m of it), one placement each
+    (a placement costs the draw about as much as its triangles: 51 walls were 30,000-66,000 cycles
+    of draw CPU in the shrine's views, DESIGN.md 12.9)."""
+    groups = {}
+    for r in ROCKS:
+        groups.setdefault((r[0], int(r[1] // CELL)), []).append(r)
+    return list(groups.values())
 
 
-def key(row):
-    edge, a, b, _, _ = row
+def key(group):
+    edge, a = group[0][0], group[0][1]
     return f'{edge.lower()}{int(a)}'
 
 
-def place(row):
-    """(x, y, z, yaw) of a wall's origin: the middle of its footprint, at its foot."""
-    edge, a, b, foot, _ = row
+def span(group):
+    return group[0][1], group[-1][2], min(r[3] for r in group)
+
+
+def place(group):
+    """(x, y, z, yaw) of a wall's origin: the middle of its footprint, at its lowest foot."""
+    edge = group[0][0]
+    a, b, foot = span(group)
     m, d = (a + b) / 2, DEPTH[edge] / 2
     x, z = {'N': (m, D - d), 'E': (W - d, m), 'W': (d, m)}[edge]
     return x, foot, z, YAW[edge]
 
 
-def recipe(row):
+def segment(row, dx, dy, depth, lo_top, hi_top):
+    """One row's face, cap and skirt, its middle dx along the wall from the origin, its foot dy over
+    the wall's; and its ends: whole at the wall's ends (lo_top, hi_top None: the -X and +X
+    neighbours' tops), and where a neighbour is lower only above that neighbour's face (the faces
+    of two steps may not overlap)."""
     edge, a, b, foot, top = row
-    length, depth, height = b - a, DEPTH[edge], top - foot
+    length, height = b - a, top - foot
     l2, d2 = length / 2, depth / 2
     lip = LIP * depth
     lo = SKIRT_TO - foot
-    # 0-3 the face's foot and top, 4-5 the cap's back edge (LIP higher), 6-7 the skirt's foot;
-    # y from the wall's foot
+    # 0-3 the face's foot and top, 4-5 the cap's back edge (LIP higher), 6-7 the skirt's foot
     v = [[-l2, 0, -d2], [l2, 0, -d2], [l2, height, -d2], [-l2, height, -d2],
          [-l2, height + lip, d2], [l2, height + lip, d2], [-l2, lo, -d2], [l2, lo, -d2]]
-    v += [[-l2, 0, d2], [l2, 0, d2]]                                      # 8-9 the ends' back foot
     faces = [[0, 1, 2, 3][::-1],              # the face (-Z)
              [3, 2, 5, 4][::-1],              # the cap, rising to the back: steeper than a floor
-             [6, 7, 1, 0][::-1],              # the skirt under the rim, in the far colour
-             [8, 0, 3, 4][::-1],              # the -X end, from the foot to the cap
-             [1, 9, 5, 2][::-1]]              # the +X end
-    mats = ['rock', 'rock', 'far', 'rock', 'rock']
-    body = {'id': 'wall', 'op': 'mesh', 'vertices': v, 'faces': faces, 'face_materials': mats}
-    far = dict(body, face_materials=['far'] * len(faces))
-    pieces = (int(length / (3 * REPEAT)) + 2) * (int((height + lip) / (3 * REPEAT)) + 2)
+             [6, 7, 1, 0][::-1]]              # the skirt under the rim, in the far colour
+    mats = ['rock', 'rock', 'far']
+    for x, other, front_top, back_top, flip in ((-l2, lo_top, 3, 4, False), (l2, hi_top, 2, 5, True)):
+        if other is not None and other >= top:
+            continue
+        y0 = 0.0 if other is None else other - foot
+        n = len(v)
+        v += [[x, y0, -d2], [x, y0 + (0 if other is None else lip), d2]]
+        quad = [n + 1, n, front_top, back_top]             # back foot, front foot, front top, back top
+        faces.append(quad[::-1] if not flip else [n, n + 1, back_top, front_top][::-1])
+        mats.append('rock')
+    v = [[round(x + dx, 4), round(y + dy, 4), z] for x, y, z in v]
+    return v, faces, mats
+
+
+def recipe(group):
+    edge = group[0][0]
+    a, b, foot = span(group)
+    depth = DEPTH[edge]
+    # the asset's +X runs along the edge: north +x (yaw 0), east -z (yaw 90), west +z (yaw 270)
+    sign = -1 if edge == 'E' else 1
+    nodes, far, tris = [], [], 0
+    dxs = [sign * ((r[1] + r[2]) / 2 - (a + b) / 2) for r in group]
+    for k, row in enumerate(group):
+        dx = dxs[k]
+        lower = [group[j][4] for j in range(len(group)) if abs(dxs[j] - (dx - (row[2] - row[1] + group[j][2] - group[j][1]) / 2)) < 1e-6]
+        higher = [group[j][4] for j in range(len(group)) if abs(dxs[j] - (dx + (row[2] - row[1] + group[j][2] - group[j][1]) / 2)) < 1e-6]
+        v, faces, mats = segment(row, dx, row[3] - foot, depth, lower[0] if lower else None,
+                                 higher[0] if higher else None)
+        nodes.append({'id': f'wall{k}', 'op': 'mesh', 'vertices': v, 'faces': faces, 'face_materials': mats})
+        far.append({'id': f'wall{k}', 'op': 'mesh', 'vertices': v, 'faces': faces,
+                    'face_materials': ['far'] * len(faces)})
+        height = row[4] - row[3] + LIP * depth
+        tris += 4 * (int((row[2] - row[1]) / (3 * REPEAT)) + 2) * (int(height / (3 * REPEAT)) + 2) + 40
     return {
-        'format': 'mei-asset', 'version': 1, 'name': f'edge_rock_{key(row)}',
-        'budget': {'triangles': 4 * pieces + 40},
+        'format': 'mei-asset', 'version': 1, 'name': f'edge_rock_{key(group)}',
+        'budget': {'triangles': tris},
         'lighting': {'mode': 'vertical', 'ambient': 0.5},
         'verification': {'required': True, 'depth': True, 'perspective': True},
         'materials': {
@@ -145,16 +187,16 @@ def recipe(row):
                      'texture': {'image': ROCK_IMAGE, 'projection': 'box', 'scale': [REPEAT, REPEAT]}},
             'far': {'color': FAR_COLOUR, 'tag': 'wall'},
         },
-        'nodes': [body],
-        'lod': {'levels': [{'distance': LOD_FAR, 'nodes': [far]}]},
+        'nodes': nodes,
+        'lod': {'levels': [{'distance': LOD_FAR, 'nodes': far}]},
     }
 
 
 if __name__ == '__main__':
     for old in HERE.glob('edge_rock_*.asset.json'):
         old.unlink()
-    for row in walls():
-        r = recipe(row)
+    for group in walls():
+        r = recipe(group)
         (HERE / f'{r["name"]}.asset.json').write_text(json.dumps(r, indent=1) + '\n')
-    print(f'{len(walls())} rock walls, {min(t - f for _, _, _, f, t in walls()):g}-'
-          f'{max(t - f for _, _, _, f, t in walls()):g} m tall')
+    print(f'{len(walls())} rock walls of {len(ROCKS)} 16 m steps, {min(t - f for _, _, _, f, t in ROCKS):g}-'
+          f'{max(t - f for _, _, _, f, t in ROCKS):g} m tall')

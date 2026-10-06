@@ -364,38 +364,8 @@
    "id": "edge_rock_n64",
    "asset": "edge_rock_n64",
    "position": [
-    72.0,
+    96.0,
     56.0,
-    382.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "edge_rock_n80",
-   "asset": "edge_rock_n80",
-   "position": [
-    88.0,
-    67.0,
-    382.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "edge_rock_n96",
-   "asset": "edge_rock_n96",
-   "position": [
-    104.0,
-    66.0,
-    382.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "edge_rock_n112",
-   "asset": "edge_rock_n112",
-   "position": [
-    120.0,
-    67.0,
     382.0
    ],
    "collision": "self"

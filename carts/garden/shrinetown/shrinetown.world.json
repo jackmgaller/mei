@@ -8197,6 +8197,45 @@
      20,
      64
     ]
+   },
+   "edge_rock_w128": {
+    "cull": 120
+   },
+   "edge_rock_w192": {
+    "cull": 120
+   },
+   "edge_rock_w256": {
+    "cull": 120
+   },
+   "edge_rock_w320": {
+    "cull": 120
+   },
+   "edge_rock_e154": {
+    "cull": 120
+   },
+   "edge_rock_e192": {
+    "cull": 120
+   },
+   "edge_rock_e256": {
+    "cull": 120
+   },
+   "edge_rock_e320": {
+    "cull": 120
+   },
+   "edge_rock_n0": {
+    "cull": 120
+   },
+   "edge_rock_n64": {
+    "cull": 120
+   },
+   "edge_rock_n128": {
+    "cull": 120
+   },
+   "edge_rock_n192": {
+    "cull": 120
+   },
+   "edge_rock_n256": {
+    "cull": 120
    }
   }
  },

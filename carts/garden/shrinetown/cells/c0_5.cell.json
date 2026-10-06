@@ -14,40 +14,7 @@
    "position": [
     1.0,
     29.0,
-    328.0
-   ],
-   "collision": "self",
-   "yaw": 270.0
-  },
-  {
-   "id": "edge_rock_w336",
-   "asset": "edge_rock_w336",
-   "position": [
-    1.0,
-    31.0,
-    344.0
-   ],
-   "collision": "self",
-   "yaw": 270.0
-  },
-  {
-   "id": "edge_rock_w352",
-   "asset": "edge_rock_w352",
-   "position": [
-    1.0,
-    33.0,
-    360.0
-   ],
-   "collision": "self",
-   "yaw": 270.0
-  },
-  {
-   "id": "edge_rock_w368",
-   "asset": "edge_rock_w368",
-   "position": [
-    1.0,
-    35.0,
-    374.0
+    350.0
    ],
    "collision": "self",
    "yaw": 270.0
@@ -56,37 +23,7 @@
    "id": "edge_rock_n0",
    "asset": "edge_rock_n0",
    "position": [
-    8.0,
-    26.0,
-    382.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "edge_rock_n16",
-   "asset": "edge_rock_n16",
-   "position": [
-    24.0,
-    22.0,
-    382.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "edge_rock_n32",
-   "asset": "edge_rock_n32",
-   "position": [
-    40.0,
-    8.0,
-    382.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "edge_rock_n48",
-   "asset": "edge_rock_n48",
-   "position": [
-    56.0,
+    32.0,
     8.0,
     382.0
    ],

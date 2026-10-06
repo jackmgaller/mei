@@ -529,30 +529,8 @@
    "asset": "edge_rock_e154",
    "position": [
     319.0,
-    9.0,
-    157.0
-   ],
-   "collision": "self",
-   "yaw": 90.0
-  },
-  {
-   "id": "edge_rock_e160",
-   "asset": "edge_rock_e160",
-   "position": [
-    319.0,
     8.0,
-    168.0
-   ],
-   "collision": "self",
-   "yaw": 90.0
-  },
-  {
-   "id": "edge_rock_e176",
-   "asset": "edge_rock_e176",
-   "position": [
-    319.0,
-    8.0,
-    184.0
+    173.0
    ],
    "collision": "self",
    "yaw": 90.0

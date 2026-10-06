@@ -1379,13 +1379,16 @@ top beside the void is a way out whatever its height, so the rock walls' tops ar
 stand on.
 
 North of the town the rule asks 25–72 m, so the rims carry rock walls (`assets/edge_rock`,
-`make_edge_rock.py`, `ROCKS`; placed by `place/art.py`): 51 placements, one per 16 m of rim, the
-rim's depth thick (2 m west and east, 4 m north). Each face rises from the rim's lowest corner to
+`make_edge_rock.py`, `ROCKS`; placed by `place/art.py`): a step per 16 m of rim, 51 in 13 walls
+(one per cell's edge: a placement costs the draw about as much as its triangles), the rim's depth
+thick (2 m west and east, 4 m north). Each face rises from the rim's lowest corner to
 the rule's height and 0.5 m, and at least 1 m over the rim's highest corner (a sliver of rim above
 the face's top was a floor by the edge); its cap rises 1.5 times the depth to the back (56
 degrees, a wall to the body: nothing stands or grabs there); its face goes on down in a flat
 colour to y -200, so that a body falling through the mountain's steep terrain (review 13 #3) meets
-it at the edge. The terrain's rock texture, a flat level from 60 m. Raised as terrain (a `fill` on
+it at the edge. The terrain's rock texture, a flat level from 60 m, culled from 120 m: past the
+stand-ins' 128 m, so the far cells' stand-ins leave them out (in them, the walls cost the shrine's
+views 30,000–66,000 cycles of draw CPU; far off, the rims are drawn as before). Raised as terrain (a `fill` on
 the rims' cliffs) the rims were drawn as ramps tens of metres long by the far levels and the
 stand-ins, whose grid points on the field's edge take the rim's top; a placement stays upright.
 
