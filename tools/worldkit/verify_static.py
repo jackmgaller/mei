@@ -494,6 +494,20 @@ def drop_body(pack, x, z, y, layers_on, probe, drop):
     return ('falling', x, y, z, drop['ticks'])
 
 
+def _layer_near(pack, x, z, layers_on):
+    """Whether the bucket over raw world point (x, z) holds a floor or wall of one of the layers
+    (a drop there can go otherwise than with every layer off)."""
+    (i, j), lx, lz = pack.cell_of(x, z)
+    c = pack.cells.get((i, j))
+    if c is None or c.coll is None:
+        return False
+    mask = _cell_mask(c, layers_on)
+    if not mask:
+        return False
+    fl, wl, _ = c.coll.bucket(lx, lz)
+    return any((c.coll.floors[f][3] >> 8) & mask for f in fl) or any((c.coll.walls[w][5] >> 8) & mask for w in wl)
+
+
 def drop_check(pack, layers_on, probe, drop, limit, cells=None):
     """Bodies dropped over every point of a grid (drop['spacing'] units) where the highest
     up-facing collision is a wall, not a floor: ground too steep to stand on, which a falling
@@ -516,6 +530,8 @@ def drop_check(pack, layers_on, probe, drop, limit, cells=None):
             for gx in range(k):
                 x = round((i * S + (gx + 0.5) * S / k) * ONE)
                 z = round((j * S + (gz + 0.5) * S / k) * ONE)
+                if layers_on and not _layer_near(pack, x, z, layers_on):
+                    continue            # the layers change nothing here: every layer off covered it
                 ups = up_surfaces(pack, x, z, layers_on, min_ny)
                 if not ups:
                     continue
