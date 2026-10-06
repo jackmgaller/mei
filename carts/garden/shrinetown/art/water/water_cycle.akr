@@ -1,0 +1,75 @@
+// Moving water by colour cycling: the shrine town's water textures (draw_water.py) draw each texel
+// as a phase of a wave, and this rotates the phases' colours in palette memory a step at a time,
+// so the crests travel across the canal, the pool and the ponds and down the falls. No VRAM and
+// no ROM beyond the still textures; about 40 halfword writes every few frames.
+//
+//     import "water_cycle.akr"
+//
+//     // after wp_region_enter(k, 0) (variant 0, the day's, loaded):
+//     water_cycle_enter(first_colour_of_region_k, colours_of_region_k)
+//     // every frame (update(), or draw()):
+//     water_cycle_update(frame() as s32)
+//     // after wp_variant_load() / wp_variant_blend() of a region (they rewrite the palette):
+//     water_cycle_sync()
+//
+// The region's colour range is world_NAME_REGION_COLOUR and _COLOURS (the generated shrinetown.akr).
+// water_cycle_enter() looks in that range of palette memory for each texture's colours (the ramps in
+// water_ramps.akr, which draw_water.py writes), so the packer may put the textures' palettes
+// anywhere; a texture the region does not draw is left out.
+
+import "water_ramps.akr"
+
+const WATER_CYCLE_TICKS: [3]s32 = [7, 10, 3]       // frames a step: canal, ponds, falls
+const WATER_CYCLE_DIR: [3]s32 = [1, 1, -1]         // +1 or -1: which way the crests go
+
+var __wc_idx: [48]s32          // palette colour of texture k's phase L (-1: not drawn in the region)
+var __wc_base: [48]u16         // the phases' colours as the palette holds them unrotated
+var __wc_step: [3]s32          // the rotation each texture shows now (-1: none yet)
+
+// Finds the water textures' palettes among `count` colours from colour `first`, and takes the
+// colours as they are now as the unrotated ones. Call it with the day variant loaded.
+fn water_cycle_enter(first: s32, count: s32) {
+    let pal = VRAM_PALETTE as *u16
+    for i in 0..48 { __wc_idx[i] = -1 }
+    for k in 0..WATER_TEXTURES { __wc_step[k] = -1 }
+    for c in first..first + count {
+        let h = pal[c]
+        for k in 0..WATER_TEXTURES {
+            if h != WATER_RAMP[k * 16] || __wc_idx[k * 16] >= 0 { continue }
+            let at = c - (c & 15)                       // its palette's first colour
+            for j in 1..16 {
+                let cj = pal[at + j]
+                for l in 0..WATER_LEVELS[k] {
+                    if cj == WATER_RAMP[k * 16 + l] { __wc_idx[k * 16 + l] = at + j }
+                }
+            }
+        }
+    }
+    water_cycle_sync()
+}
+
+// Takes the palette's colours as the unrotated ones again (after a variant load or blend).
+fn water_cycle_sync() {
+    let pal = VRAM_PALETTE as *u16
+    for i in 0..48 {
+        if __wc_idx[i] >= 0 { __wc_base[i] = pal[__wc_idx[i]] }
+    }
+    for k in 0..WATER_TEXTURES { __wc_step[k] = 0 }
+}
+
+// Rotates each texture to its step at tick t.
+fn water_cycle_update(t: s32) {
+    let pal = VRAM_PALETTE as *u16
+    for k in 0..WATER_TEXTURES {
+        let n = WATER_LEVELS[k]
+        let s = (t / WATER_CYCLE_TICKS[k]) * WATER_CYCLE_DIR[k]
+        var sh = s % n
+        if sh < 0 { sh += n }
+        if sh == __wc_step[k] { continue }
+        __wc_step[k] = sh
+        for l in 0..n {
+            let i = __wc_idx[k * 16 + l]
+            if i >= 0 { pal[i] = __wc_base[k * 16 + (l + sh) % n] }
+        }
+    }
+}

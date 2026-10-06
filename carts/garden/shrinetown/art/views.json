@@ -1,0 +1,20 @@
+{
+ "canal_south":   {"eye": [48, 3.0, 6],     "yaw": 0,   "pitch": -12, "region": 0},
+ "canal_bridge":  {"eye": [36, 3.2, 70],    "yaw": 75,  "pitch": -16, "region": 0},
+ "canal_north":   {"eye": [48, 3.0, 150],   "yaw": 0,   "pitch": -10, "region": 1},
+ "pool":          {"eye": [226, 7.0, 12],   "yaw": 0,   "pitch": -22, "region": 0},
+ "pond":          {"eye": [234, 6.0, 118],  "yaw": 5,   "pitch": -14, "region": 1},
+ "falls":         {"eye": [214, 16.0, 312], "yaw": 0,   "pitch": 8,   "region": 1},
+ "falls_pool":    {"eye": [206, 15.0, 302], "yaw": 20,  "pitch": -12, "region": 1},
+ "town_high_s":   {"eye": [160, 24, 70],    "yaw": 180, "pitch": 0,   "region": 0},
+ "town_high_n":   {"eye": [160, 24, 70],    "yaw": 0,   "pitch": 2,   "region": 0},
+ "town_high_e":   {"eye": [160, 24, 70],    "yaw": 100, "pitch": 2,   "region": 0},
+ "town_high_w":   {"eye": [160, 24, 70],    "yaw": 265, "pitch": 2,   "region": 0},
+ "street_n":      {"eye": [160, 1.7, 90],   "yaw": 0,   "pitch": 14,  "region": 0},
+ "precinct_n":    {"eye": [160, 14, 150],   "yaw": 0,   "pitch": 6,   "region": 1},
+ "precinct_s":    {"eye": [160, 14, 150],   "yaw": 180, "pitch": 0,   "region": 1},
+ "woods_w":       {"eye": [120, 12, 200],   "yaw": 270, "pitch": 3,   "region": 1},
+ "from_pagoda_s": {"eye": [181.5, 46.5, 262], "yaw": 195, "pitch": -4, "region": 1},
+ "from_pagoda_e": {"eye": [181.5, 46.5, 262], "yaw": 100, "pitch": 2,  "region": 1},
+ "from_stage":    {"eye": [168, 62.5, 341], "yaw": 200, "pitch": -6,  "region": 1}
+}
