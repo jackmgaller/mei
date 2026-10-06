@@ -178,7 +178,7 @@ def repaired_route(e, owner, runner, a, start, targets, banned=(), rounds=6):
     banned = list(banned)
     tried = []
     for r in range(rounds):
-        G = e.graph_without(banned) if banned else e.G
+        G = e.graph_without(banned)
         d, p = dijkstra(G, directed=True, indices=start, return_predecessors=True)
         tgt = [t for t in targets if np.isfinite(d[t]) and d[t] < 1e8]
         if not tgt:

@@ -714,9 +714,13 @@ class Explorer:
                 out.append((f[0], f[1], u, v))
         return out
 
-    def graph_without(self, banned):
-        """The graph with the edges (u, v) in banned made too dear to take."""
+    def graph_without(self, banned, kick_penalty=5.0):
+        """The graph with the edges (u, v) in banned made too dear to take, and wall kicks (the
+        reach map's least sure flights) made dearer by kick_penalty seconds."""
         G = self.G.copy()
+        if kick_penalty and G.nnz == len(self.edges[0]):
+            # the edges are sorted by (src, dst) and unique, as G's data is
+            G.data[self.edges[3] == MOVE_ID[M.KICK]] += kick_penalty
         for u, v in banned:
             i = self.edge_index(u, v)
             if i >= 0:
