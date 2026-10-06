@@ -1236,20 +1236,68 @@ Textures (`tools/textures.py`): the canal's town part 25,472 bytes of 26,624, it
 keeps its own name, 湯屋橋), the sakagura's two 8-bit textures (sign board, barrels) are 4-bit,
 and the zone places no `firepost` (its alarm is 8-bit) and no reeds.
 
-#### The join (station, street, east and canal together, 2026-10-05)
+#### Shrine (z ≥ 128, x ≥ 64: `place/shrine.py`)
 
-The four zones' branches merged on `shrinetown-join`, the shrine zone still grey. What the join
-changed:
+`place/shrine.py` (the zones' hook, make_world.py's `world` stage) takes the zone's grey boxes out
+of the generators' cells and places the real assets: the shrine's (`../shrine/assets`: halls,
+gate, temple, pagoda, white wall, great torii, lanterns, the walkway's cedars and platforms, fox
+shrine, statues and torii, the stage hall, the falls, stepping stones, lily pads, trees,
+undergrowth) and the level's own (`assets/NAME/`), with three small pieces of the zone's own in
+`assets/shrine_extras/` (the north wall's plinths, the stage's stilt ladder, the rock the falls
+pour from). What changed from the grey box:
+
+| Where | Grey box | Placed | Why |
+|---|---|---|---|
+| White wall | chamfered corners, x 115–213, z 167–233 | 8 m and 4 m modules with corner posts: x 117.6–210.4, z 168.6–237.4; west gate at z 201, east at 193, north at x 162 | the modules tile only in runs of 4 m between gates and corners |
+| Terrace | z 166–234 | 166–238 | the wall and the temple moved north |
+| Temple | terrain podium (134–186, 208–228), stair, a box | `arch_temple` (its own podium, 52 × 24, and stair) at (160, 5, 221.75): its ridge (27.5) on G5's take-off line (414) | the real ridge is a 1.1 m line; the grey box's top was a 10 m flat |
+| North wall | 2.6 m | on a 1 m plinth: 3.6 m over the terrace (decision #5); the north gate's own module stays 2.6 | a double jump (3.4) cleared it |
+| North stair | from (160, 233.6) | from (162, 237.9) to (174, 15, 256.5), 25° | the gate and the terrace moved |
+| Treetop decks | boxes 6 × 6 | `forest_platform` (7 × 7, railing gaps mid-side) on `tree_cedar_giant`; each turned so its gaps face its bridges, the bridges running gap to gap; the crown's landing a platform on the crown deck's cedar at 15 | the railings closed the bridges' ends |
+| Kick pair | grey trunks | `tree_cedar_giant` drawn, the grey trunks (`gbm_cedar_kick_*_col`) their collision, turned by 90° only | two flat faces 3.2 m apart (420) |
+| Sacred cedar | west-facing box | `tree_cedar_sacred_hollow` turned 59.7° so the knot hole faces the rope deck; the rope ends 0.5 m into the hole's mouth (151.6, 23.25, 294.6); `forest_shide_rope` along it; the root curtain in the door below | (423) |
+| Fox torii | grey frames | `forest_fox_torii` drawn at the same places, the grey frames (`gbm_fox_torii`) their collision | the real posts are 2.5 m apart, inside the 3 m steps: the walking route (454) caught on them at the switchbacks |
+| Stage | deck 138–170 × 340–354, hall behind to 374 | `forest_stage_hall` at (154, 60, 350): deck z 340–360, the hall on it x 144–164; the pad behind at 59.5 | the real stage is 22 m deep |
+| G6 take-off | (162, 353) | (166.5, 353), beside the hall (scenario 415) | (162, 353) is under the hall's eaves |
+| Stage stairs | landing stair and falls bridge at z 347 | at z 345, the side railings' gaps (and 454's route) | |
+| Bell, star 3 | (154, 353.9) | `forest_stage_bell` under the hall's front eave, its rope at (154, 347.15) (game.py's BELL; 451's positions) | (154, 353.9) is inside the real hall |
+| Stilt ladder | pole 16 m | 18.3 m, over the deck's front railing (61), with `shrine_stilt_ladder` | the railing |
+| Falls | a water sheet in front of a box (17.5–48) | `water_falls` (34.2 m), `forest_falls_cave` and `shrine_falls_cliff` at (214, 12, 330); the lip 48.3, a notch to 46.15 where the water pours; the stream's last 6 m drop into it; the cave's 6 coins moved into the real cave (z 332–335) | the real falls are 1.8 m shorter than the drop |
+| Great torii | grey | `arch_torii_great`, posts as poles at x ±5 (9.9 m); its top beam 13.1 in the middle (450 reads 13.1) | the real kasagi |
+| G1 | lands ≥ 9 on the east hall | ≥ 7.5 (410) | the real hall's roof slopes from 10.9 to 4.85 |
+| Coins | over the grey roofs | 1 m over the real ridges (side halls 11.9, corridor halls 15.3, gate 18.8, temple 28.5 at z 221.75); the crown deck's off its trunk (+1.5, +1.5); the lantern strings' coins with their strings | |
+| Cemetery | grey rows 20 m, no walls, no first flight, gate at z 130 | per terrace 4 `cemetery_terrace_wall_12` (x 256–280, 292–316) and 4 grave rows 5.5 m behind the edge, a sotoba rack; the middle stair 12 m wide (x 280–292) at every edge, the first from the lane (z 126.4, FOLLOWUPS); `cemetery_gate` at the head of the first flight on terrace 1 (286, 1.8, 131.4), in the shrine's texture region; the jizo hall at (299, 16.2, 241) | the walls stop at the stair |
+| Komainu | one pair asset | each lion alone (`arch_komainu_a`, `_un`, from gen_komainu.py) either side of the gate stair's foot | the pair stands 1.1 m apart |
+| Dead cedar | boxes | `forest_dead_cedar` / `_fallen` at (256, 306), −Z across the gorge (yaw 111.8) | |
+| Rope ladder A | a box | `forest_rope_ladder` (`ladder_a`) and `_rolled` (`ladder_a_up`, on, the same group) | |
+| North gate | boxes | `arch_wall_gate_shut` + `arch_wall_gate_bar` (`gate_b_barred`), `arch_wall_gate` + `_bar_lifted` (`gate_b_open`); shortcut B's trigger at (162, 5.05, 239) | |
+| Forest | grey trees, fill 0.8, thinned from 56 m | the shrine's maples, ginkgo and cedars, fill 0.68, thinned from 44 m; undergrowth (fill 0.3, cull 36) and leaf litter (cull 24) as the shrine's; reeds round the pond | the draw CPU in the woods (below) |
+
+Not merged though planned so: the grave rows, the terrace walls, the lanterns, the komainu, the
+koi and the jizo have repeating textures, which a merged mesh cannot keep. The kick chimney stays
+the grey box's rock. **Open:** G8 (scenario 417) now comes down on the great torii's top beam at
+z 124.5 instead of in the arcade (it flew under the grey box's beam, 11.0–13.8; with the torii
+switched off it lands at z 80 as before); the last train (452) still passes, landing on the torii.
+**Costs** (`tools/views.py` and the World Checker, full): every view under budget, the checker's
+peak 2,635 triangles, 588,731 draw CPU, 885,098 GPU; the heaviest views are the woods' (deck 3
+looking east 515,958 CPU). The zone's textures 50,816 bytes of its 90,112 (`tools/textures.py`),
+the shrine region 93,088 of 307,200, no 8-bit textures.
+
+#### The join (the five zones together, 2026-10-05)
+
+The five zones' branches merged on `shrinetown-join` (station, street, east and canal, then the
+shrine). What the join changed:
 
 | What | Change |
 |---|---|
 | The hook | one `place/__init__.py` (`apply(STAGE, globals())`); in `gen_core.py` and `make_mountain.py` the game's entities first, then the zones |
-| Grey-box recipes | a region generator no longer writes a grey-box recipe its cells and part do not name (`place.unused()`): 93 town, 12 core and 3 mountain recipes gone |
+| Grey-box recipes | a region generator no longer writes a grey-box recipe its cells and part do not name (`place.unused()`), and `make_world.py` deletes those the world stage swapped out (the shrine zone's); of 218, 31 are left |
 | Asset directories | `make_world.py` lists `assets/greybox/core`, `assets/greybox/mountain`, `assets/*` and `../shrine/assets`; a zone adds a folder only when no glob holds it (`place.add_dir()`) |
 | Front road poles | east's three at z 106, yaw 90, on the street zone's line; the station's konbini corner pole (210, 33) at yaw 0, as the konbini wire runs |
 | Konbini door | the door entity at (187.5, 33) on the real door (x 186–189), in cell c2_0; scenario 431 starts at (187.5, 36) |
 | Fire tower | the alley house west of it left out (its plot is the tower's yard): the tower's hose shed stood in it |
-| Textures | `tools/textures.py` counts the railway as the station's wherever it runs and the schoolyard south of z 40 as the east's (TEXTURES.md, "As placed") |
+| Textures | `tools/textures.py` counts the railway as the station's wherever it runs, the schoolyard south of z 40 as the east's, and the shrine zone's placements (`sh_*`) as the shrine's wherever they stand: the great torii (c2_1) in the town's set, from 1 KB the street's allowance gave up (TEXTURES.md, "As placed") |
+| G8 (417, 452) | from the deck (60) the glide came down on the real great torii's top beam (13.7, z 124.5); it now takes off from the slope east of the stage, (174, 61.7, 356), and lands in the arcade at (160, 84). The race (452) walks off the deck's back (z 362) and round onto the slope: the platform at 50.7 s |
 | Views | the street's real assets put the views from the inside stair, the canopy and the air over the station at 620,000–725,000 draw CPU; levels and culls sooner (below) bring the full check's peak to 616,847 |
 
 Levels and culls set at the join (`lod.assets`): the train's level 1 from 6 m (was 9); the ticket
@@ -1260,12 +1308,15 @@ koban's level 2 from 45; the dagashi shop's levels from 20 and 45, the shops' (`
 `town_road_signs` had no `lod`, so the street's culls for them did nothing (the World Kit's
 `lod_unused`): their generators now give them `"lod": {"cull": 50}`.
 
-The full check (600 views): peak 2,193 triangles, 616,847 draw CPU, 875,222 GPU; one view over,
-on the canopy (165.7, 15.1, 6.1) looking west-north-west, 616,847, where the canopy's faces are
-clipped at the near plane and the standing train is at level 0 6.3 m off. The ticket hall
-looking west with the race train standing at the platform is 484,000–549,000; the camera over the
-station (149.7, 16.8, 2.5) looking north 623,000. Each zone's worst draw CPU: station 616,847,
-street 533,043, canal 475,485, east 387,327, shrine 417,014. 50 hard failures, all cracks.
+The full check (600 views), five zones: peak 2,266 triangles, 617,020 draw CPU, 908,916 GPU; one
+view over the draw CPU budget, on the canopy (165.7, 15.1, 6.1) looking west-north-west, 617,020,
+where the canopy's faces are clipped at the near plane and the standing train is at level 0 6.3 m
+off; and 5 pixels drawn in the wrong order at the seam view (16, 15.9, 320). With the street's
+assets alone over the station (four zones) these views were 620,000-725,000 before the levels
+above. The ticket hall looking west with the race train standing at the platform is
+484,000-549,000; the camera over the station (149.7, 16.8, 2.5) looking north 623,000. Each zone's
+worst draw CPU: station 617,020, shrine 509,988, street 494,590, canal 453,902, east 394,599. 50
+hard failures, all cracks.
 
 The view scenarios (`sh_view`: 440–446, and the shrine's 310–316) count late frames from frame
 30: the frame after a view jumps to V1 or V4 loads the cells round it and took about 1.1 million

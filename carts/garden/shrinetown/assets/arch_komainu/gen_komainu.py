@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Writes arch_komainu.asset.json and arch_komainu_col.asset.json (python3 gen_komainu.py).
+"""Writes arch_komainu.asset.json and arch_komainu_col.asset.json (python3 gen_komainu.py), and each lion
+alone (arch_komainu_a, arch_komainu_un, with their _col), to flank a wide approach.
 
 A pair of guardian lion-dogs on plinths, facing -Z: the open-mouthed "a" lion at -X and the
 closed-mouthed, horned "un" lion at +X (as a visitor on the approach sees them). Each sits on
@@ -153,7 +154,23 @@ col = {
         for t, x in (("a", -0.55), ("un", 0.55))
     ],
 }
-for name, r in (("arch_komainu", recipe), ("arch_komainu_col", col)):
+
+
+def single(tag, budget):
+    """One lion of the pair at x = 0, to flank an approach wider than the pair (the world places
+    arch_komainu_a on the left of the path as a visitor sees it and arch_komainu_un on the right)."""
+    open_mouth = tag == "a"
+    nodes = lion(tag, 0.0, open_mouth)
+    r = dict(recipe, name="arch_komainu_" + tag, budget={"triangles": budget},
+             nodes=nodes, lod={"levels": [{"distance": 24, "nodes": lod_lion(tag, 0.0)}], "cull": 60})
+    c = dict(col, name="arch_komainu_%s_col" % tag, budget={"triangles": 20},
+             nodes=[dict(n, transform={"translate": [0.0] + n["transform"]["translate"][1:]})
+                    for n in col["nodes"] if n["id"].endswith("_" + tag)])
+    return r, c
+
+
+singles = [r for t in ("a", "un") for r in single(t, 160)]
+for name, r in [("arch_komainu", recipe), ("arch_komainu_col", col)] + [(r["name"], r) for r in singles]:
     with open(os.path.join(here, name + ".asset.json"), "w") as f:
         json.dump(r, f, indent=1)
         f.write("\n")

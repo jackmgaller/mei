@@ -1,0 +1,130 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "shrine_falls_cliff_col",
+ "budget": {
+  "triangles": 60
+ },
+ "materials": {
+  "solid": {
+   "color": "#ffffff",
+   "palette": true
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "west",
+   "op": "box",
+   "size": [
+    5.35,
+    23.9,
+    15.9
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -5.825,
+     24.35,
+     8.55
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "east",
+   "op": "box",
+   "size": [
+    5.35,
+    23.9,
+    15.9
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     5.825,
+     24.35,
+     8.55
+    ]
+   },
+   "open": [
+    "bottom"
+   ]
+  },
+  {
+   "id": "notch",
+   "op": "box",
+   "size": [
+    6.4,
+    21.7,
+    5.98
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     23.3,
+     3.61
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "lip",
+   "op": "box",
+   "size": [
+    6.4,
+    23.83,
+    9.9
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     24.365,
+     11.53
+    ]
+   },
+   "open": [
+    "bottom",
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "back",
+   "op": "box",
+   "size": [
+    16.9,
+    11.0,
+    10.45
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     0.0,
+     7.0,
+     11.225
+    ]
+   },
+   "open": [
+    "bottom",
+    "top"
+   ]
+  }
+ ]
+}

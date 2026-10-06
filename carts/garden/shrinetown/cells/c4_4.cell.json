@@ -9,15 +9,26 @@
  "region": "shrine",
  "placements": [
   {
-   "id": "dead_cedar_up",
-   "asset": "gbm_dead_cedar_up",
+   "id": "sh_dead_cedar_up",
+   "asset": "forest_dead_cedar",
    "position": [
     256.0,
-    33.368,
     306.0
    ],
-   "collision": "self",
+   "collision": "forest_dead_cedar_col",
+   "yaw": 111.801,
    "layer": "cedar_c_up"
+  },
+  {
+   "id": "sh_dead_cedar_down",
+   "asset": "forest_dead_cedar_fallen",
+   "position": [
+    256.0,
+    306.0
+   ],
+   "collision": "forest_dead_cedar_fallen_col",
+   "yaw": 111.801,
+   "layer": "cedar_c_down"
   }
  ],
  "entities": [

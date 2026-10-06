@@ -19,24 +19,54 @@
    "collision": "self"
   },
   {
-   "id": "falls_cave",
-   "asset": "gbm_falls_cave",
+   "id": "sh_falls",
+   "asset": "water_falls",
    "position": [
     214.0,
-    14.0,
-    341.0
+    12.0,
+    330.0
    ],
-   "collision": "self"
+   "collision": "none"
   },
   {
-   "id": "path_out_gate",
-   "asset": "gbm_path_out",
+   "id": "sh_falls_cave",
+   "asset": "forest_falls_cave",
+   "position": [
+    214.0,
+    12.0,
+    330.0
+   ],
+   "collision": "forest_falls_cave_col"
+  },
+  {
+   "id": "sh_falls_cliff",
+   "asset": "shrine_falls_cliff",
+   "position": [
+    214.0,
+    12.0,
+    330.0
+   ],
+   "collision": "shrine_falls_cliff_col"
+  },
+  {
+   "id": "sh_path_out_torii",
+   "asset": "forest_fox_torii",
    "position": [
     252.0,
-    61.625,
     378.0
    ],
-   "collision": "self"
+   "collision": "forest_fox_torii_col",
+   "yaw": 20
+  },
+  {
+   "id": "sh_path_out_jizo",
+   "asset": "jizo",
+   "position": [
+    255.2,
+    376.6
+   ],
+   "collision": "jizo_col",
+   "yaw": -160
   }
  ],
  "entities": [
@@ -66,54 +96,54 @@
    "id": "coin_cave_1",
    "type": "coin",
    "position": [
-    209.5,
+    209.6,
     15.0,
-    338.5
+    332.2
    ]
   },
   {
    "id": "coin_cave_2",
    "type": "coin",
    "position": [
-    211.7,
+    211.8,
     15.0,
-    338.5
+    332.2
    ]
   },
   {
    "id": "coin_cave_3",
    "type": "coin",
    "position": [
-    213.9,
+    214.0,
     15.0,
-    338.5
+    332.2
    ]
   },
   {
    "id": "coin_cave_4",
    "type": "coin",
    "position": [
-    210.6,
+    210.7,
     15.0,
-    341.7
+    334.6
    ]
   },
   {
    "id": "coin_cave_5",
    "type": "coin",
    "position": [
-    212.8,
+    212.9,
     15.0,
-    341.7
+    334.6
    ]
   },
   {
    "id": "coin_cave_6",
    "type": "coin",
    "position": [
-    215.0,
+    215.1,
     15.0,
-    341.7
+    334.6
    ]
   }
  ]

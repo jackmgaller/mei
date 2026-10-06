@@ -148,6 +148,12 @@ world = {
 # the placement zones (place/ZONE.py): asset directories, layers, paths for the real assets
 from place import apply as apply_zones
 apply_zones('world', globals())
+# the grey boxes the world stage swapped out (the shrine zone's, place/shrine.py): their recipes go
+_used = json.dumps(world) + ''.join(f.read_text() for f in sorted((ST / 'cells').glob('*.cell.json')))
+for _d, _pre in (('town', 'gbt_'), ('core', 'gbc_'), ('mountain', 'gbm_')):
+    for _f in sorted((ST / 'assets' / 'greybox' / _d).glob(_pre + '*.asset.json')):
+        if '"' + _f.name[:-len('.asset.json')] + '"' not in _used:
+            _f.unlink()
 OUT.write_text(json.dumps(world, indent=1) + '\n')
 print(f'{OUT.name}: {len(paths)} paths, {len(ops)} operations, {len(materials)} materials, {len(layers)} layers, '
       f'{len(scatter)} scatters')

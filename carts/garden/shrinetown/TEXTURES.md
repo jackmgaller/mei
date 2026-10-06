@@ -153,7 +153,7 @@ It exits 1 when a part or a region is over. The world build enforces the region'
 | town | ground textures | 0 | 40,960 (40 KB) | |
 | town | shared props | 70,432 | 49,152 (48 KB) | −21,280 |
 | town | station zone | 155,008 | 98,304 (96 KB) | −56,704 |
-| town | street zone | 204,704 | 147,456 (144 KB) | −57,248 |
+| town | street zone | 204,704 | 147,456 (144 KB; 143 since the join) | −57,248 |
 | town | east zone | 26,848 | 26,624 (26 KB) | −224 |
 | town | canal zone (rows 0–1) | 27,840 | 26,624 (26 KB) | −1,216 |
 | town | **total** | **484,832** | **389,120** | **−136,672** |
@@ -167,27 +167,32 @@ It exits 1 when a part or a region is over. The world build enforces the region'
 "Measured (plan)" is `tools/textures.py --try` with every asset in the zone where PLACE_SPLIT and
 PLACEMENT_NOTES put it. The canal zone straddles the boundary and has an allowance in each region.
 
-**As placed (the four town zones joined, 2026-10-05; the shrine zone still grey).**
-`tools/textures.py` on the cells:
+**As placed (the five zones joined, 2026-10-05).** `tools/textures.py` on the cells:
 
 | Region | Part | Bytes | Allowance |
 |---|---|---|---|
 | town | shared props | 46,752 | 49,152 |
 | town | station zone | 97,088 | 98,304 |
-| town | street zone | 143,264 | 147,456 |
+| town | street zone | 143,264 | 146,432 (143 KB) |
 | town | east zone | 18,304 | 26,624 |
 | town | canal zone | 24,960 | 26,624 |
-| town | **total** | **330,368** | **389,120** |
-| shrine | shared props | 16,768 | 49,152 |
+| town | shrine zone (the great torii) | 192 | 1,024 (1 KB) |
+| town | **total** | **330,560** | **389,120** |
+| shrine | shared props | 29,760 | 49,152 |
 | shrine | station zone | 1,664 | 8,192 |
-| shrine | canal zone | 32,128 | 36,864 |
-| shrine | **total** | **50,560** | **307,200** |
+| shrine | canal zone | 30,304 | 36,864 |
+| shrine | shrine zone | 46,112 | 90,112 |
+| shrine | **total** | **107,840** | **307,200** |
 
-A placement counts in the zone that holds its origin, with two exceptions (`zone_of()`): the
-railway (the viaduct's pieces and the signal gantries, at x 20 and 310.56) is the station's
-wherever it stands, and the schoolyard south of z 40 (the pool and the sports ground, x 212–295,
-z 18–40) is the east's. Counted by origin alone, the gantries made their tiles shared (a canal
-and an east placement) and the shared set went 1,440 bytes over its allowance.
+A placement counts in its cell's region and in the zone that holds its origin, with three
+exceptions (`zone_of()` and `main()`): the railway (the viaduct's pieces and the signal gantries,
+at x 20 and 310.56) is the station's wherever it stands; the schoolyard south of z 40 (the pool
+and the sports ground, x 212-295, z 18-40) is the east's; and the shrine zone's placements (ids
+`sh_*`) are the shrine's wherever they stand. The great torii stands at z 124 in c2_1, a town cell,
+so its tiles are in the town's set: the street's allowance gave 1 KB of its 144 to the shrine zone
+in the town. The cemetery gate (286, 131.4) is in c4_2, the shrine's region. Counted by origin
+alone, the gantries made their tiles shared (a canal and an east placement) and the town's shared
+set went 1,440 bytes over its allowance.
 
 **Shared props.** Town: `town_street_lamp` (the shotengai's lamp, shrine town's own, renamed from
 `street_lamp`), the shrine's `street_lamp`, `vending_machine`, `postbox`, `town_road_signs`,

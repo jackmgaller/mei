@@ -9,242 +9,261 @@
  "region": "shrine",
  "placements": [
   {
-   "id": "deck_6",
-   "asset": "gbm_deck_6",
+   "id": "sh_deck_tree_5",
+   "asset": "tree_cedar_giant",
    "position": [
     114,
-    18.664,
     264
    ],
-   "collision": "gbm_deck_6_col"
+   "collision": "tree_cedar_giant_col",
+   "yaw": -175
   },
   {
-   "id": "fox_shrine",
-   "asset": "gbm_fox_shrine",
+   "id": "sh_deck_5",
+   "asset": "forest_platform",
    "position": [
-    84,
-    10.86,
-    307
+    114,
+    22,
+    264
    ],
-   "collision": "self"
+   "collision": "forest_platform_col",
+   "yaw": 43
   },
   {
-   "id": "fox_statue_0",
-   "asset": "gbm_fox_statue",
+   "id": "sh_fox_shrine",
+   "asset": "forest_fox_shrine",
+   "position": [
+    84.0,
+    307.0
+   ],
+   "collision": "forest_fox_shrine_col",
+   "yaw": -24.775
+  },
+  {
+   "id": "sh_fox_statue_0",
+   "asset": "forest_fox_statue",
    "position": [
     91.2,
-    15.0,
     298.6
    ],
-   "collision": "self"
+   "collision": "forest_fox_statue_col"
   },
   {
-   "id": "fox_statue_1",
-   "asset": "gbm_fox_statue",
+   "id": "sh_fox_statue_1",
+   "asset": "forest_fox_statue",
    "position": [
     96.8,
-    15.0,
     298.6
    ],
-   "collision": "self"
+   "collision": "forest_fox_statue_col"
   },
   {
-   "id": "torii_01",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_01",
+   "asset": "forest_fox_torii",
    "position": [
     93.774,
     15.731,
     301.584
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
-   "id": "torii_02",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_02",
+   "asset": "forest_fox_torii",
    "position": [
     93.576,
     16.371,
     302.97
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
-   "id": "torii_03",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_03",
+   "asset": "forest_fox_torii",
    "position": [
     93.378,
     17.011,
     304.356
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
-   "id": "torii_04",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_04",
+   "asset": "forest_fox_torii",
    "position": [
     93.18,
     17.651,
     305.742
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
-   "id": "torii_05",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_05",
+   "asset": "forest_fox_torii",
    "position": [
     92.982,
     18.291,
     307.128
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
-   "id": "torii_06",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_06",
+   "asset": "forest_fox_torii",
    "position": [
     92.784,
     18.931,
     308.514
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
-   "id": "torii_07",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_07",
+   "asset": "forest_fox_torii",
    "position": [
     92.586,
-    19.57,
+    19.571,
     309.899
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
-   "id": "torii_08",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_08",
+   "asset": "forest_fox_torii",
    "position": [
     92.388,
-    20.21,
+    20.211,
     311.285
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": -8.13
   },
   {
-   "id": "torii_09",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_09",
+   "asset": "forest_fox_torii",
    "position": [
     93.538,
     22.195,
     314.44
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
-   "id": "torii_10",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_10",
+   "asset": "forest_fox_torii",
    "position": [
     94.885,
     22.835,
     314.824
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
-   "id": "torii_11",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_11",
+   "asset": "forest_fox_torii",
    "position": [
     96.231,
     23.475,
     315.209
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
-   "id": "torii_12",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_12",
+   "asset": "forest_fox_torii",
    "position": [
     97.577,
-    24.114,
+    24.115,
     315.593
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
-   "id": "torii_13",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_13",
+   "asset": "forest_fox_torii",
    "position": [
     98.923,
     24.754,
     315.978
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
-   "id": "torii_14",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_14",
+   "asset": "forest_fox_torii",
    "position": [
     100.269,
     25.394,
     316.363
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
-   "id": "torii_15",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_15",
+   "asset": "forest_fox_torii",
    "position": [
     101.615,
     26.034,
     316.747
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
-   "id": "torii_16",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_16",
+   "asset": "forest_fox_torii",
    "position": [
     102.961,
     26.674,
     317.132
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
-   "id": "torii_17",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_17",
+   "asset": "forest_fox_torii",
    "position": [
     104.308,
     27.314,
     317.516
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": 74.055
   },
   {
-   "id": "torii_18",
-   "asset": "gbm_fox_torii",
+   "id": "sh_torii_18",
+   "asset": "forest_fox_torii",
    "position": [
     104.869,
-    28.85,
+    28.849,
     319.131
    ],
-   "collision": "self",
+   "collision": "gbm_fox_torii",
    "yaw": -45.0
+  },
+  {
+   "id": "sh_hokora_fox",
+   "asset": "hokora",
+   "position": [
+    86.0,
+    289.5
+   ],
+   "collision": "hokora_col",
+   "yaw": 60
   }
  ],
  "entities": [

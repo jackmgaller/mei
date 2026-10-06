@@ -9,174 +9,263 @@
  "region": "shrine",
  "placements": [
   {
-   "id": "side_hall_w",
-   "asset": "gbc_side_hall_w",
+   "id": "sh_side_hall_w",
+   "asset": "arch_side_hall",
    "position": [
     128.0,
     0.6,
     144.0
    ],
-   "collision": "self"
+   "collision": "arch_side_hall_col",
+   "yaw": -90
   },
   {
-   "id": "lantern_court_w0",
-   "asset": "gbc_stone_lantern",
-   "position": [
-    154.0,
-    0.6,
-    132
-   ],
-   "collision": "self",
-   "merge": true
-  },
-  {
-   "id": "lantern_court_e0",
-   "asset": "gbc_stone_lantern",
-   "position": [
-    166.0,
-    0.6,
-    132
-   ],
-   "collision": "self",
-   "merge": true
-  },
-  {
-   "id": "lantern_court_w1",
-   "asset": "gbc_stone_lantern",
-   "position": [
-    154.0,
-    0.6,
-    140
-   ],
-   "collision": "self",
-   "merge": true
-  },
-  {
-   "id": "lantern_court_e1",
-   "asset": "gbc_stone_lantern",
-   "position": [
-    166.0,
-    0.6,
-    140
-   ],
-   "collision": "self",
-   "merge": true
-  },
-  {
-   "id": "lantern_court_w2",
-   "asset": "gbc_stone_lantern",
-   "position": [
-    154.0,
-    0.6,
-    148
-   ],
-   "collision": "self",
-   "merge": true
-  },
-  {
-   "id": "lantern_court_e2",
-   "asset": "gbc_stone_lantern",
-   "position": [
-    166.0,
-    0.6,
-    148
-   ],
-   "collision": "self",
-   "merge": true
-  },
-  {
-   "id": "chozuya",
-   "asset": "gbc_chozuya",
+   "id": "sh_chozuya",
+   "asset": "arch_chozuya",
    "position": [
     143.0,
     0.6,
     138.0
    ],
-   "collision": "self"
+   "collision": "arch_chozuya_col",
+   "yaw": -90
   },
   {
-   "id": "shrine_office",
-   "asset": "gbc_shrine_office",
+   "id": "sh_shrine_office",
+   "asset": "arch_shrine_office",
    "position": [
     180.0,
     0.6,
     155.0
    ],
-   "collision": "self"
+   "collision": "arch_shrine_office_col",
+   "yaw": 90
   },
   {
-   "id": "corridor_w",
-   "asset": "gbc_corridor_w",
+   "id": "sh_omikuji",
+   "asset": "arch_omikuji_rack",
+   "position": [
+    175.2,
+    0.6,
+    148.6
+   ],
+   "collision": "arch_omikuji_rack_col",
+   "yaw": 90,
+   "merge": true
+  },
+  {
+   "id": "sh_ema",
+   "asset": "arch_ema_board",
+   "position": [
+    175.2,
+    0.6,
+    161.4
+   ],
+   "collision": "arch_ema_board_col",
+   "yaw": 90,
+   "merge": true
+  },
+  {
+   "id": "sh_komainu_a",
+   "asset": "arch_komainu_a",
+   "position": [
+    152.8,
+    0.6,
+    150.0
+   ],
+   "collision": "arch_komainu_a_col"
+  },
+  {
+   "id": "sh_komainu_un",
+   "asset": "arch_komainu_un",
+   "position": [
+    167.2,
+    0.6,
+    150.0
+   ],
+   "collision": "arch_komainu_un_col"
+  },
+  {
+   "id": "sh_lantern_court_w0",
+   "asset": "forest_stone_lantern",
+   "position": [
+    154.0,
+    0.6,
+    132
+   ],
+   "collision": "forest_stone_lantern_col"
+  },
+  {
+   "id": "sh_lantern_court_e0",
+   "asset": "forest_stone_lantern",
+   "position": [
+    166.0,
+    0.6,
+    132
+   ],
+   "collision": "forest_stone_lantern_col"
+  },
+  {
+   "id": "sh_lantern_court_w1",
+   "asset": "forest_stone_lantern",
+   "position": [
+    154.0,
+    0.6,
+    140
+   ],
+   "collision": "forest_stone_lantern_col"
+  },
+  {
+   "id": "sh_lantern_court_e1",
+   "asset": "forest_stone_lantern",
+   "position": [
+    166.0,
+    0.6,
+    140
+   ],
+   "collision": "forest_stone_lantern_col"
+  },
+  {
+   "id": "sh_lantern_court_w2",
+   "asset": "forest_stone_lantern",
+   "position": [
+    154.0,
+    0.6,
+    148
+   ],
+   "collision": "forest_stone_lantern_col"
+  },
+  {
+   "id": "sh_lantern_court_e2",
+   "asset": "forest_stone_lantern",
+   "position": [
+    166.0,
+    0.6,
+    148
+   ],
+   "collision": "forest_stone_lantern_col"
+  },
+  {
+   "id": "sh_boulder_court",
+   "asset": "forest_boulder",
    "position": [
     128.0,
-    5.0,
-    188.0
+    164.5
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 30
   },
   {
-   "id": "gate",
-   "asset": "gbc_gate",
+   "id": "sh_shishi_odoshi",
+   "asset": "shishi_odoshi",
+   "position": [
+    184.6,
+    0.6,
+    162.4
+   ],
+   "collision": "shishi_odoshi_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_gate",
+   "asset": "arch_gate",
    "position": [
     160.0,
     5.0,
     172.0
    ],
-   "collision": "self"
+   "collision": "arch_gate_col"
   },
   {
-   "id": "lantern_terr0",
-   "asset": "gbc_stone_lantern",
+   "id": "sh_corridor_w",
+   "asset": "arch_corridor_hall",
+   "position": [
+    128.0,
+    5.0,
+    188.0
+   ],
+   "collision": "arch_corridor_hall_col",
+   "yaw": -90
+  },
+  {
+   "id": "sh_lantern_terr0",
+   "asset": "forest_stone_lantern",
    "position": [
     152,
     5.0,
     184
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "forest_stone_lantern_col"
   },
   {
-   "id": "lantern_terr1",
-   "asset": "gbc_stone_lantern",
+   "id": "sh_lantern_terr1",
+   "asset": "forest_stone_lantern",
    "position": [
     168,
     5.0,
     184
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "forest_stone_lantern_col"
   },
   {
-   "id": "wall_0",
-   "asset": "gbc_wall_0",
+   "id": "sh_wall_x168_1300",
+   "asset": "arch_wall_8",
    "position": [
-    133.5,
+    130.0,
     5.0,
-    167.0
+    168.6
    ],
-   "collision": "self",
-   "yaw": -90.0
+   "collision": "arch_wall_8_col"
   },
   {
-   "id": "wall_11",
-   "asset": "gbc_wall_11",
+   "id": "sh_wall_x168_1380",
+   "asset": "arch_wall_8",
    "position": [
-    189.5,
+    138.0,
     5.0,
-    167.0
+    168.6
    ],
-   "collision": "self",
-   "yaw": -90.0
+   "collision": "arch_wall_8_col"
   },
   {
-   "id": "boulder_2",
-   "asset": "gbc_boulder_2",
+   "id": "sh_wall_x168_1460",
+   "asset": "arch_wall_8",
    "position": [
-    128.0,
-    0.4,
-    164.5
+    146.0,
+    5.0,
+    168.6
    ],
-   "collision": "self"
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_x168_1740",
+   "asset": "arch_wall_8",
+   "position": [
+    174.0,
+    5.0,
+    168.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_x168_1820",
+   "asset": "arch_wall_8",
+   "position": [
+    182.0,
+    5.0,
+    168.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_x168_1900",
+   "asset": "arch_wall_8",
+   "position": [
+    190.0,
+    5.0,
+    168.6
+   ],
+   "collision": "arch_wall_8_col"
   }
  ],
  "entities": [
@@ -185,7 +274,7 @@
    "type": "coin",
    "position": [
     128.0,
-    12.6,
+    11.9,
     144.0
    ],
    "asset": "gbc_coin"
@@ -195,7 +284,7 @@
    "type": "coin",
    "position": [
     128.0,
-    16.0,
+    15.3,
     188.0
    ],
    "asset": "gbc_coin"
@@ -205,7 +294,7 @@
    "type": "coin",
    "position": [
     160.0,
-    19.6,
+    18.79,
     172.0
    ],
    "asset": "gbc_coin"
@@ -214,9 +303,9 @@
    "id": "core_rail_string_torii_w",
    "type": "rail",
    "position": [
-    131.3,
-    11.7,
-    154.5
+    128.0,
+    11.0,
+    158.6
    ],
    "params": {
     "path": "core_string_torii_w"
@@ -226,9 +315,9 @@
    "id": "core_coin_string_torii_w_0",
    "type": "coin",
    "position": [
-    147.1,
-    14.0,
-    134.167
+    146.0,
+    13.367,
+    135.533
    ],
    "asset": "gbc_coin"
   },
@@ -236,31 +325,19 @@
    "id": "core_coin_string_torii_w_1",
    "type": "coin",
    "position": [
-    139.2,
-    13.3,
-    144.333
+    137.0,
+    12.633,
+    147.067
    ],
    "asset": "gbc_coin"
-  },
-  {
-   "id": "core_rail_string_torii_e",
-   "type": "rail",
-   "position": [
-    188.7,
-    11.7,
-    154.5
-   ],
-   "params": {
-    "path": "core_string_torii_e"
-   }
   },
   {
    "id": "core_coin_string_torii_e_0",
    "type": "coin",
    "position": [
-    172.9,
-    14.0,
-    134.167
+    174.0,
+    13.367,
+    135.533
    ],
    "asset": "gbc_coin"
   },
@@ -268,9 +345,9 @@
    "id": "core_coin_string_torii_e_1",
    "type": "coin",
    "position": [
-    180.8,
-    13.3,
-    144.333
+    183.0,
+    12.633,
+    147.067
    ],
    "asset": "gbc_coin"
   },
@@ -278,9 +355,9 @@
    "id": "core_rail_string_gate_w",
    "type": "rail",
    "position": [
-    131.3,
-    11.7,
-    154.5
+    128.0,
+    11.0,
+    158.6
    ],
    "params": {
     "path": "core_string_gate_w"
@@ -290,9 +367,9 @@
    "id": "core_coin_string_gate_w_0",
    "type": "coin",
    "position": [
-    137.867,
-    12.8,
-    158.667
+    135.667,
+    12.233,
+    161.767
    ],
    "asset": "gbc_coin"
   },
@@ -300,31 +377,19 @@
    "id": "core_coin_string_gate_w_1",
    "type": "coin",
    "position": [
-    144.433,
-    13.0,
-    162.833
+    143.333,
+    12.567,
+    164.933
    ],
    "asset": "gbc_coin"
-  },
-  {
-   "id": "core_rail_string_gate_e",
-   "type": "rail",
-   "position": [
-    188.7,
-    11.7,
-    154.5
-   ],
-   "params": {
-    "path": "core_string_gate_e"
-   }
   },
   {
    "id": "core_coin_string_gate_e_0",
    "type": "coin",
    "position": [
-    182.133,
-    12.8,
-    158.667
+    184.333,
+    12.233,
+    161.767
    ],
    "asset": "gbc_coin"
   },
@@ -332,9 +397,9 @@
    "id": "core_coin_string_gate_e_1",
    "type": "coin",
    "position": [
-    175.567,
-    13.0,
-    162.833
+    176.667,
+    12.567,
+    164.933
    ],
    "asset": "gbc_coin"
   }

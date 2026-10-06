@@ -148,7 +148,7 @@ region's notes from the parallel build (their test worlds are gone: the level is
   the same kind. Overlapping three sweeps into what they meet (the walkway stair, the north stair,
   ladder A's steps) closed an edge mismatch but only moved their cracks; the scenarios walk over
   all three.
-- Phase 3 on: the real assets, life, textures (DESIGN.md 9). The station, street, east and
-  canal zones are placed (DESIGN.md 12.6); the shrine zone (z ≥ 128, x ≥ 64) is still grey.
+- Phase 3 on: the real assets, life, textures (DESIGN.md 9). All five zones are placed (DESIGN.md
+  12.6); the costs in "What it costs" above are the grey box's (the join's are in 12.6, "The join").
 - The texture regions' boundary is not a hidden seam, and the planned assets need more 4-bit
   palettes than a world has unless their 8-bit textures go (TEXTURES.md).

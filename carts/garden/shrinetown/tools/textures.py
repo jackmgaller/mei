@@ -42,7 +42,7 @@ KB = 1024
 # terrain's textures, the shared set and each zone's own tiles.
 ALLOWANCE = {
     'town': {'budget': 380 * KB, 'terrain': 40 * KB, 'shared': 48 * KB,
-             'station': 96 * KB, 'street': 144 * KB, 'east': 26 * KB, 'canal': 26 * KB, 'shrine': 0},
+             'station': 96 * KB, 'street': 143 * KB, 'east': 26 * KB, 'canal': 26 * KB, 'shrine': 1 * KB},
     'shrine': {'budget': 300 * KB, 'terrain': 120 * KB, 'shared': 48 * KB,
                'shrine': 88 * KB, 'canal': 36 * KB, 'station': 8 * KB, 'street': 0, 'east': 0},
 }
@@ -129,7 +129,10 @@ def main():
         cell = json.loads(f.read_text())
         for pl in cell.get('placements', []):
             pos = pl['position']
-            placed.setdefault((cell['region'], zone_of(pos[0], pos[-1], pl['asset'])), set()).add(pl['asset'])
+            # the shrine zone's placements (ids sh_*) are its own wherever they stand: the great
+            # torii (c2_1) in the town's cells, so in the town's set
+            zone = 'shrine' if pl['id'].startswith('sh_') else zone_of(pos[0], pos[-1], pl['asset'])
+            placed.setdefault((cell['region'], zone), set()).add(pl['asset'])
     for spec in args.extra:
         zone, region, names = spec.split(':', 2)
         if region not in ALLOWANCE or zone not in ALLOWANCE[region]:

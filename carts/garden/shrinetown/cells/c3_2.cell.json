@@ -9,210 +9,392 @@
  "region": "shrine",
  "placements": [
   {
-   "id": "side_hall_e",
-   "asset": "gbc_side_hall_e",
+   "id": "sh_side_hall_e",
+   "asset": "arch_side_hall",
    "position": [
     192.0,
     0.6,
     144.0
    ],
-   "collision": "self"
+   "collision": "arch_side_hall_col",
+   "yaw": 90
   },
   {
-   "id": "corridor_e",
-   "asset": "gbc_corridor_e",
+   "id": "sh_zelkova_2",
+   "asset": "tree_zelkova",
+   "position": [
+    205.0,
+    131.0
+   ],
+   "collision": "tree_zelkova_col",
+   "yaw": -166
+  },
+  {
+   "id": "sh_zelkova_3",
+   "asset": "tree_zelkova",
+   "position": [
+    205.5,
+    158.0
+   ],
+   "collision": "tree_zelkova_col",
+   "yaw": -89
+  },
+  {
+   "id": "sh_corridor_e",
+   "asset": "arch_corridor_hall",
    "position": [
     192.0,
     5.0,
     188.0
    ],
-   "collision": "self"
+   "collision": "arch_corridor_hall_col",
+   "yaw": 90
   },
   {
-   "id": "wall_9",
-   "asset": "gbc_wall_9",
+   "id": "sh_wall_x168_1980",
+   "asset": "arch_wall_8",
    "position": [
-    213.0,
+    198.0,
     5.0,
-    179.5
+    168.6
    ],
-   "collision": "self",
-   "yaw": 180.0
+   "collision": "arch_wall_8_col"
   },
   {
-   "id": "wall_10",
-   "asset": "gbc_wall_10",
+   "id": "sh_wall_x168_2060",
+   "asset": "arch_wall_8",
    "position": [
-    211.0,
+    206.0,
     5.0,
-    169.0
+    168.6
    ],
-   "collision": "self",
-   "yaw": -135.0
+   "collision": "arch_wall_8_col"
   },
   {
-   "id": "gate_e_post_s",
-   "asset": "gbc_gate_e_post_s",
+   "id": "sh_wall_z210_1730",
+   "asset": "arch_wall_8",
    "position": [
-    213.0,
+    210.4,
     5.0,
-    188.0
+    173.0
    ],
-   "collision": "self"
+   "collision": "arch_wall_8_col",
+   "yaw": 90
   },
   {
-   "id": "pond_stone_0",
-   "asset": "gbc_pond_stone",
+   "id": "sh_wall_z210_1810",
+   "asset": "arch_wall_8",
+   "position": [
+    210.4,
+    5.0,
+    181.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z210_1870",
+   "asset": "arch_wall_4",
+   "position": [
+    210.4,
+    5.0,
+    187.0
+   ],
+   "collision": "arch_wall_4_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_corner_1",
+   "asset": "arch_wall_corner",
+   "position": [
+    210.4,
+    5.0,
+    168.6
+   ],
+   "collision": "arch_wall_corner_col",
+   "merge": true
+  },
+  {
+   "id": "sh_pond_stone_0",
+   "asset": "water_stepping_stone_a",
    "position": [
     227.0,
-    -1.5,
+    -1.3,
     132.5
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_a_col"
   },
   {
-   "id": "pond_stone_1",
-   "asset": "gbc_pond_stone",
+   "id": "sh_pond_stone_1",
+   "asset": "water_stepping_stone_b",
    "position": [
     228.0,
-    -1.5,
+    -1.3,
     136.0
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_b_col",
+   "yaw": 47
   },
   {
-   "id": "pond_stone_2",
-   "asset": "gbc_pond_stone",
+   "id": "sh_pond_stone_2",
+   "asset": "water_stepping_stone_c",
    "position": [
     229.0,
-    -1.5,
+    -1.3,
     139.5
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_c_col",
+   "yaw": 94
   },
   {
-   "id": "pond_stone_3",
-   "asset": "gbc_pond_stone",
+   "id": "sh_pond_stone_3",
+   "asset": "water_stepping_stone_a",
    "position": [
     230.0,
-    -1.5,
+    -1.3,
     143.0
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_a_col",
+   "yaw": 141
   },
   {
-   "id": "pond_stone_4",
-   "asset": "gbc_pond_stone",
+   "id": "sh_pond_stone_4",
+   "asset": "water_stepping_stone_b",
    "position": [
     231.0,
-    -1.5,
+    -1.3,
     146.5
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_b_col",
+   "yaw": -172
   },
   {
-   "id": "pond_stone_5",
-   "asset": "gbc_pond_stone",
+   "id": "sh_pond_stone_5",
+   "asset": "water_stepping_stone_c",
    "position": [
     232.0,
-    -1.5,
+    -1.3,
     150.0
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_c_col",
+   "yaw": -125
   },
   {
-   "id": "pond_stone_6",
-   "asset": "gbc_pond_stone",
+   "id": "sh_pond_stone_6",
+   "asset": "water_stepping_stone_a",
    "position": [
     232.5,
-    -1.5,
+    -1.3,
     153.6
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_a_col",
+   "yaw": -78
   },
   {
-   "id": "pond_stone_7",
-   "asset": "gbc_pond_stone",
+   "id": "sh_pond_stone_7",
+   "asset": "water_stepping_stone_b",
    "position": [
     233.0,
-    -1.5,
+    -1.3,
     157.2
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_b_col",
+   "yaw": -31
   },
   {
-   "id": "pond_stone_8",
-   "asset": "gbc_pond_stone",
+   "id": "sh_pond_stone_8",
+   "asset": "water_stepping_stone_c",
    "position": [
     233.5,
-    -1.5,
+    -1.3,
     160.9
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_c_col",
+   "yaw": 16
   },
   {
-   "id": "pond_stone_9",
-   "asset": "gbc_pond_stone",
+   "id": "sh_pond_stone_9",
+   "asset": "water_stepping_stone_a",
    "position": [
     234.0,
-    -1.5,
+    -1.3,
     164.5
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_a_col",
+   "yaw": 63
   },
   {
-   "id": "pond_stone_10",
-   "asset": "gbc_pond_stone",
+   "id": "sh_pond_stone_10",
+   "asset": "water_stepping_stone_b",
    "position": [
     234.5,
-    -1.5,
+    -1.3,
     168.1
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_b_col",
+   "yaw": 110
   },
   {
-   "id": "pond_stone_11",
-   "asset": "gbc_pond_stone",
+   "id": "sh_pond_stone_11",
+   "asset": "water_stepping_stone_c",
    "position": [
     235.0,
-    -1.5,
+    -1.3,
     171.8
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_c_col",
+   "yaw": 157
   },
   {
-   "id": "pond_stone_12",
-   "asset": "gbc_pond_stone",
+   "id": "sh_pond_stone_12",
+   "asset": "water_stepping_stone_a",
    "position": [
     235.5,
-    -1.5,
+    -1.3,
     175.4
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_a_col",
+   "yaw": -156
   },
   {
-   "id": "pond_stone_13",
-   "asset": "gbc_pond_stone",
+   "id": "sh_pond_stone_13",
+   "asset": "water_stepping_stone_b",
    "position": [
     236.0,
-    -1.5,
+    -1.3,
     179.0
    ],
-   "collision": "self",
-   "merge": true
+   "collision": "water_stepping_stone_b_col",
+   "yaw": -109
+  },
+  {
+   "id": "sh_lily_0",
+   "asset": "water_lily_pad",
+   "position": [
+    228.5,
+    0.0,
+    158.0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "sh_lily_1",
+   "asset": "water_lily_pad_flower",
+   "position": [
+    240.5,
+    0.0,
+    171.0
+   ],
+   "collision": "none",
+   "yaw": 70
+  },
+  {
+   "id": "sh_lily_2",
+   "asset": "water_lily_pad",
+   "position": [
+    243.0,
+    0.0,
+    136.0
+   ],
+   "collision": "none",
+   "yaw": 140
+  },
+  {
+   "id": "sh_lily_3",
+   "asset": "water_lily_pad_flower",
+   "position": [
+    229.5,
+    0.0,
+    176.5
+   ],
+   "collision": "none",
+   "yaw": -150
+  },
+  {
+   "id": "sh_lily_4",
+   "asset": "water_lily_pad",
+   "position": [
+    244.5,
+    0.0,
+    160.5
+   ],
+   "collision": "none",
+   "yaw": -80
+  },
+  {
+   "id": "sh_koi_0",
+   "asset": "life_koi",
+   "position": [
+    237.0,
+    -0.5,
+    146.0
+   ],
+   "collision": "none",
+   "yaw": 30
+  },
+  {
+   "id": "sh_koi_1",
+   "asset": "life_koi",
+   "position": [
+    239.5,
+    -0.5,
+    150.0
+   ],
+   "collision": "none",
+   "yaw": -160
+  },
+  {
+   "id": "sh_koi_2",
+   "asset": "life_koi",
+   "position": [
+    233.0,
+    -0.5,
+    168.0
+   ],
+   "collision": "none",
+   "yaw": 110
+  },
+  {
+   "id": "sh_koi_3",
+   "asset": "life_koi",
+   "position": [
+    238.0,
+    -0.5,
+    172.5
+   ],
+   "collision": "none",
+   "yaw": -60
+  },
+  {
+   "id": "sh_koi_4",
+   "asset": "life_koi",
+   "position": [
+    241.5,
+    -0.5,
+    140.5
+   ],
+   "collision": "none",
+   "yaw": 160
+  },
+  {
+   "id": "sh_cem_zelkova_0",
+   "asset": "tree_zelkova",
+   "position": [
+    253.0,
+    133.0
+   ],
+   "collision": "tree_zelkova_col",
+   "yaw": 120
+  },
+  {
+   "id": "sh_cem_zelkova_1",
+   "asset": "tree_zelkova",
+   "position": [
+    252.5,
+    166.0
+   ],
+   "collision": "tree_zelkova_col",
+   "yaw": -150
   }
  ],
  "entities": [
@@ -221,7 +403,7 @@
    "type": "coin",
    "position": [
     192.0,
-    12.6,
+    11.9,
     144.0
    ],
    "asset": "gbc_coin"
@@ -231,7 +413,7 @@
    "type": "coin",
    "position": [
     192.0,
-    16.0,
+    15.3,
     188.0
    ],
    "asset": "gbc_coin"
@@ -285,6 +467,30 @@
     160.9
    ],
    "asset": "gbc_coin"
+  },
+  {
+   "id": "core_rail_string_torii_e",
+   "type": "rail",
+   "position": [
+    192.0,
+    11.0,
+    158.6
+   ],
+   "params": {
+    "path": "core_string_torii_e"
+   }
+  },
+  {
+   "id": "core_rail_string_gate_e",
+   "type": "rail",
+   "position": [
+    192.0,
+    11.0,
+    158.6
+   ],
+   "params": {
+    "path": "core_string_gate_e"
+   }
   }
  ]
 }

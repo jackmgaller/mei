@@ -38,7 +38,7 @@ TRAIN_PAUSE = 900                   # ticks stopped at the platform
 TRAIN_DELAY = TIMER - TRAIN_LEG - TRAIN_PAUSE
 
 STAGE_Y = 60.0                      # layout.STAGE_Z
-BELL = (154.0, 353.9)               # make_mountain.py's BELL: the rope hangs from SY + 1.4 to SY + 4
+BELL = (154.0, 347.15)              # forest_stage_bell's pull rope (place/shrine.py: the bell under the real hall's eave)
 TRACK2_Z = 12.1                     # the station's track 2 (the north one); the rail at the deck, 9.0
 DECK = 9.0                          # layout.VIADUCT_DECK
 PLATFORM = DECK + 1.0               # station_platform's floor (place/station.py)
@@ -47,7 +47,7 @@ ENTITIES = [
     # ---- the five stars (they were coins in the grey box: the IDs, and so the saved bits, stay)
     # ★1 0.5 m over the pagoda's finial (178, 262): taken from the finial pole's top (scenario 422)
     {'id': 'star_1_pagoda', 'type': 'star', 'position': [178, 45.49, 262]},
-    # ★2 on the great torii's top beam (13.8): there once the eight red coins are taken
+    # ★2 on the great torii's top beam (13.1 in the real torii's middle): there once the eight red coins are taken
     {'id': 'star_2_torii', 'type': 'star', 'position': [160, 14.7, 124], 'params': {'appear': 'red_coins'}},
     # ★3 rung down onto the stage's deck, 2.4 m in front of the bell's rope
     {'id': 'star_3_bell', 'type': 'star', 'position': [BELL[0], STAGE_Y + 1.0, BELL[1] - 2.4],
@@ -83,17 +83,18 @@ ENTITIES = [
     # A: the rope ladder, kicked down from the ledge (44) at the lip over it (the face at z 318)
     {'id': 'shortcut_a', 'type': 'trigger', 'position': [154.0, 44.05, 319.2],
      'params': {'size': [3.0, 3.0, 2.4], 'how': 'press', 'flag': 'shortcut_a', 'on': 'ladder_a'}},
-    # B: the north gate's bar, lifted from the ridge side (the bar at z 232.7-233.3, the terrace 5.0)
-    {'id': 'shortcut_b', 'type': 'trigger', 'position': [160.0, 5.05, 235.0],
+    # B: the north gate's bar, lifted from the ridge side (place/shrine.py: the gate at (162, 237.4), the
+    # bar on its north face, the stair's foot outside it at 5.0)
+    {'id': 'shortcut_b', 'type': 'trigger', 'position': [162.0, 5.05, 239.0],
      'params': {'size': [8.8, 3.0, 2.8], 'how': 'press', 'flag': 'shortcut_b', 'on': 'gate_b_open'}},
     # C: the dead cedar (its trunk 1.4 m square at (256, 306), its foot at 33.37), pounded at its
     # root plate on the shoulder trail's side, east and south-east of it (the rim west of it is
     # too steep to stand on)
     {'id': 'shortcut_c', 'type': 'trigger', 'position': [257.5, 33.4, 305.0],
      'params': {'size': [4.0, 4.0, 4.0], 'how': 'pound', 'flag': 'shortcut_c', 'on': 'cedar_c_down'}},
-    # D: the root bulge inside the sacred cedar, at the root door (the shaft's west wall at x 152,
-    # the door z 294.6-297.4, the chamber's floor 13)
-    {'id': 'shortcut_d', 'type': 'trigger', 'position': [153.0, 13.05, 296.0],
+    # D: the root bulge on the floor of the root chamber inside the sacred cedar (tree_cedar_sacred_hollow:
+    # local (0.25, 1.15), the tree turned 59.7 degrees to the rope deck by place/shrine.py; the floor 13.08)
+    {'id': 'shortcut_d', 'type': 'trigger', 'position': [155.1, 13.13, 296.4],
      'params': {'size': [2.0, 3.0, 2.8], 'how': 'pound', 'flag': 'shortcut_d', 'off': 'root_d_shut'}},
     # E: the fire-escape ladder, kicked down from the building's roof (the real street_building's
     # deck, 15.2) at its north edge, over the ladder (x 198.5)

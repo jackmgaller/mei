@@ -166,9 +166,9 @@ fn gc_red(f: s32) {
         if f == t0 + 1 { expect(up > 2.0, "star 2 coming down onto the beam, m above it", up) }
         if f == t0 + STAR_DROP + 2 {
             expect(up == 0.0, "star 2 on the beam", up)
-            // on the top beam (the kasagi's top, 13.8), 2 m west of the star: walk to it
+            // on the top beam (the real torii's kasagi, 13.1 at the middle), 2 m west of the star: walk to it
             gc_place(158.0, 124.0, 20.0, EAST)
-            expect(near(pl.pos.y, 13.8, 0.2), "on the torii's top beam, y", pl.pos.y)
+            expect(near(pl.pos.y, 13.1, 0.2), "on the torii's top beam, y", pl.pos.y)
             tw_phase = 2
             gc_t0 = f
         }
@@ -193,11 +193,11 @@ fn gc_next_red(from: s32) -> s32 {
 fn gc_bell(f: s32) {
     if tw_phase == 9 { return }
     if f == 0 {
-        tw_star = tw_star_near(vec3(154.0, 61.0, 351.5))
+        tw_star = tw_star_near(vec3(154.0, 61.0, 344.75))      // game.py: 2.4 m in front of the real bell's rope (347.15)
         gc_e = gc_trig("bell")
         expect(tw_star >= 0, "star 3", fixed(tw_star))
         // on the deck, 3 m south of the bell's rope, facing it
-        gc_place(154.0, 350.9, 61.0, NORTH)
+        gc_place(154.0, 344.15, 61.0, NORTH)
         expect(near(pl.pos.y, 60.0, 0.05), "on the stage's deck, y", pl.pos.y)
         expect(star_drop(wp_entity(tw_star)) < 0.0, "no star before the bell", 0.0)
     }
@@ -257,7 +257,7 @@ fn gc_race_won(f: s32) {
             t0 = f
             expect(chal_left == gc_trig_params(gc_e).timer as s32 - 1 || chal_left > 0, "the clock runs, s", fixed(chal_left) / 60)
             expect(!trig_shown(gc_e), "the omamori taken", 0.0)
-            gc_route(&G8_RUNUP[0], 1)
+            gc_route(&G8_RUNUP[0], len(G8_RUNUP) as s32)
         }
         if f > 120 { expect(false, "took the omamori", pl.pos.z) }
         return
@@ -327,8 +327,9 @@ fn gc_race_won(f: s32) {
     }
 }
 
-// The glide's run-up: the back of the stage's deck (G8's start, scenario 417).
-const G8_RUNUP: [1]vec3 = [vec3(166.0, 0.0, 353.0)]
+// The glide's run-up: off the back of the stage's deck and round onto the slope east of it, G8's
+// start (61.7, scenario 417), from where the glide clears the great torii's top beam.
+const G8_RUNUP: [3]vec3 = [vec3(168.0, 0.0, 362.0), vec3(174.0, 0.0, 361.0), vec3(174.0, 0.0, 356.0)]
 
 fn gc_train_live() -> bool { return mover_live(gc_train()) }
 
@@ -380,7 +381,7 @@ fn gc_race_lost(f: s32) {
 // grove, the woods trail south (its points, north to south), the front road, the shotengai, the
 // station: RACE_TOWN from the arcade on.
 const RACE_WEST: [23]vec3 = [
-    vec3(150.0, 0.0, 347.0), vec3(138.4, 0.0, 347.0), vec3(126.0, 0.0, 346.25), vec3(122.0, 0.0, 346.0),
+    vec3(150.0, 0.0, 345.0), vec3(138.4, 0.0, 345.0), vec3(126.0, 0.0, 344.4), vec3(122.0, 0.0, 346.0),   // the real stage's west gap
     vec3(106.0, 0.0, 342.0), vec3(112.0, 0.0, 334.0), vec3(96.0, 0.0, 328.0), vec3(106.0, 0.0, 318.0),
     vec3(92.0, 0.0, 314.0), vec3(94.0, 0.0, 300.0), vec3(90.0, 0.0, 294.0), vec3(94.0, 0.0, 284.0),
     vec3(96.0, 0.0, 255.5), vec3(84.0, 0.0, 232.0), vec3(74.0, 0.0, 206.0), vec3(87.0, 0.0, 176.0),

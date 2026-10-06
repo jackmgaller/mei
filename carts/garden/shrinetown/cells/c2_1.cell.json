@@ -9,16 +9,6 @@
  "region": "town",
  "placements": [
   {
-   "id": "torii",
-   "asset": "gbt_torii",
-   "position": [
-    160,
-    0.6,
-    124
-   ],
-   "collision": "gbt_torii_col"
-  },
-  {
    "id": "shop_w2",
    "asset": "tobacco_shop",
    "position": [
@@ -386,6 +376,16 @@
    ],
    "yaw": 270,
    "collision": "none"
+  },
+  {
+   "id": "sh_torii_great",
+   "asset": "arch_torii_great",
+   "position": [
+    160.0,
+    0.6,
+    124.0
+   ],
+   "collision": "arch_torii_great_col"
   }
  ],
  "entities": [
@@ -492,24 +492,24 @@
    "id": "pole_torii_w",
    "type": "pole",
    "position": [
-    155.5,
+    155.0,
     0.6,
-    123.15
+    124.0
    ],
    "params": {
-    "height": 12.6
+    "height": 9.9
    }
   },
   {
    "id": "pole_torii_e",
    "type": "pole",
    "position": [
-    164.5,
+    165.0,
     0.6,
-    123.15
+    124.0
    ],
    "params": {
-    "height": 12.6
+    "height": 9.9
    }
   },
   {

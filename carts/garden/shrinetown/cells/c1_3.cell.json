@@ -9,115 +9,217 @@
  "region": "shrine",
  "placements": [
   {
-   "id": "wall_3",
-   "asset": "gbc_wall_3",
+   "id": "sh_wall_x237_1220",
+   "asset": "arch_wall_8",
    "position": [
-    115.0,
+    122.0,
+    6.0,
+    237.4
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_x237_1220_plinth",
+   "asset": "shrine_wall_plinth_8",
+   "position": [
+    122.0,
     5.0,
-    216.5
+    237.4
    ],
-   "collision": "self"
+   "collision": "shrine_wall_plinth_8_col",
+   "merge": true
   },
   {
-   "id": "wall_4",
-   "asset": "gbc_wall_4",
+   "id": "sh_wall_z117_1950",
+   "asset": "arch_wall_4",
    "position": [
-    117.0,
+    117.6,
     5.0,
-    231.0
+    195.0
    ],
-   "collision": "self",
-   "yaw": 45.0
+   "collision": "arch_wall_4_col",
+   "yaw": 90
   },
   {
-   "id": "gate_w_post_s",
-   "asset": "gbc_gate_w_post_s",
+   "id": "sh_wall_z117_2090",
+   "asset": "arch_wall_8",
    "position": [
-    115.0,
+    117.6,
     5.0,
-    196.0
+    209.0
    ],
-   "collision": "self"
+   "collision": "arch_wall_8_col",
+   "yaw": 90
   },
   {
-   "id": "gate_w_post_n",
-   "asset": "gbc_gate_w_post_n",
+   "id": "sh_wall_z117_2170",
+   "asset": "arch_wall_8",
    "position": [
-    115.0,
+    117.6,
     5.0,
-    204.0
+    217.0
    ],
-   "collision": "self"
+   "collision": "arch_wall_8_col",
+   "yaw": 90
   },
   {
-   "id": "gate_w_lintel",
-   "asset": "gbc_gate_w_lintel",
+   "id": "sh_wall_z117_2250",
+   "asset": "arch_wall_8",
    "position": [
-    115.0,
-    8.2,
-    200.0
+    117.6,
+    5.0,
+    225.0
    ],
-   "collision": "self"
+   "collision": "arch_wall_8_col",
+   "yaw": 90
   },
   {
-   "id": "boulder_1",
-   "asset": "gbc_boulder_1",
+   "id": "sh_wall_z117_2330",
+   "asset": "arch_wall_8",
+   "position": [
+    117.6,
+    5.0,
+    233.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_corner_2",
+   "asset": "arch_wall_corner",
+   "position": [
+    117.6,
+    6.0,
+    237.4
+   ],
+   "collision": "arch_wall_corner_col",
+   "merge": true
+  },
+  {
+   "id": "sh_wall_corner_2_plinth",
+   "asset": "shrine_wall_plinth_corner",
+   "position": [
+    117.6,
+    5.0,
+    237.4
+   ],
+   "collision": "shrine_wall_plinth_corner_col",
+   "merge": true
+  },
+  {
+   "id": "sh_gate_w",
+   "asset": "arch_wall_gate",
+   "position": [
+    117.6,
+    5.0,
+    201.0
+   ],
+   "collision": "arch_wall_gate_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_boulder_w1",
+   "asset": "forest_boulder_big",
    "position": [
     110.5,
-    2.262,
     214.0
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": -160
   },
   {
-   "id": "deck_2",
-   "asset": "gbc_deck_tree_2",
+   "id": "sh_deck_tree_2",
+   "asset": "tree_cedar_giant",
    "position": [
     80,
-    1.456,
     208
    ],
-   "collision": "self"
+   "collision": "tree_cedar_giant_col",
+   "yaw": 74
   },
   {
-   "id": "deck_3",
-   "asset": "gbc_deck_tree_3",
+   "id": "sh_deck_2",
+   "asset": "forest_platform",
+   "position": [
+    80,
+    15,
+    208
+   ],
+   "collision": "forest_platform_col",
+   "yaw": 23
+  },
+  {
+   "id": "sh_deck_tree_3",
+   "asset": "tree_cedar_giant",
    "position": [
     88,
-    0.8,
     234
    ],
-   "collision": "self"
+   "collision": "tree_cedar_giant_col",
+   "yaw": 111
   },
   {
-   "id": "deck_4",
-   "asset": "gbc_deck_tree_4",
+   "id": "sh_deck_3",
+   "asset": "forest_platform",
+   "position": [
+    88,
+    18,
+    234
+   ],
+   "collision": "forest_platform_col",
+   "yaw": 27
+  },
+  {
+   "id": "sh_deck_tree_4",
+   "asset": "tree_cedar_giant",
    "position": [
     102,
-    7.173,
     252
    ],
-   "collision": "self"
+   "collision": "tree_cedar_giant_col",
+   "yaw": 148
   },
   {
-   "id": "deck_5",
-   "asset": "gbc_deck_tree_5",
+   "id": "sh_deck_4",
+   "asset": "forest_platform",
+   "position": [
+    102,
+    21,
+    252
+   ],
+   "collision": "forest_platform_col",
+   "yaw": 41
+  },
+  {
+   "id": "sh_deck_tree_crown",
+   "asset": "tree_cedar_giant",
    "position": [
     70,
-    0.897,
     220
    ],
-   "collision": "self"
+   "collision": "tree_cedar_giant_col",
+   "yaw": -110
   },
   {
-   "id": "crown_landing",
-   "asset": "gbc_crown_landing",
+   "id": "sh_deck_crown",
+   "asset": "forest_platform",
    "position": [
-    70.0,
-    14.4,
-    215.0
+    70,
+    28,
+    220
    ],
-   "collision": "self"
+   "collision": "forest_platform_col"
+  },
+  {
+   "id": "sh_deck_crown_landing",
+   "asset": "forest_platform",
+   "position": [
+    70,
+    15.0,
+    220
+   ],
+   "collision": "forest_platform_col",
+   "yaw": 50
   }
  ],
  "entities": [
@@ -167,9 +269,9 @@
    "id": "core_coin_crown",
    "type": "coin",
    "position": [
-    70,
+    71.5,
     29.0,
-    220
+    221.5
    ],
    "asset": "gbc_coin"
   }

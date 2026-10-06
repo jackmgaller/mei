@@ -17,15 +17,17 @@ struct Glide {
 }
 
 // G1: the real building's roof is 15.2, not the grey box's 18.3, so it comes down on the east side
-// hall's south half (the hall runs z 126-162)
-const G1: Glide = Glide { from: vec3(193.0, 0.0, 82.0), to: vec3(192.0, 9.0, 138.0), run: 6.0, tol: 9.0 }
+// hall's south half (the hall runs z 126-162); the real hall's roof slopes from 10.9 to 4.85
+const G1: Glide = Glide { from: vec3(193.0, 0.0, 82.0), to: vec3(192.0, 7.5, 138.0), run: 6.0, tol: 9.0 }
 const G2: Glide = Glide { from: vec3(78.0, 0.0, 22.0), to: vec3(56.0, 0.0, 80.0), run: 0.0, tol: 12.0 }
 const G3: Glide = Glide { from: vec3(30.5, 0.0, 67.5), to: vec3(22.0, 0.5, 138.0), run: 0.0, tol: 16.0 }
 const G4: Glide = Glide { from: vec3(102.0, 0.0, 74.0), to: vec3(113.0, 0.5, 140.0), run: 0.0, tol: 12.0 }
 const G5: Glide = Glide { from: vec3(172.5, 0.0, 222.3), to: vec3(178.0, 19.9, 262.0), run: 0.0, tol: 6.0 }
-const G6: Glide = Glide { from: vec3(162.0, 0.0, 353.0), to: vec3(178.0, 27.1, 262.0), run: 3.0, tol: 5.5 }
+const G6: Glide = Glide { from: vec3(166.5, 0.0, 353.0), to: vec3(178.0, 27.1, 262.0), run: 3.0, tol: 5.5 }   // beside the real hall, off its eaves
 const G7: Glide = Glide { from: vec3(180.3, 0.0, 262.0), to: vec3(282.0, 16.1, 244.0), run: 0.0, tol: 27.0 }
-const G8: Glide = Glide { from: vec3(166.0, 0.0, 353.0), to: vec3(160.0, -0.1, 84.0), run: 3.0, tol: 8.0 }
+// G8 takes off from the slope east of the stage (61.7), not the deck (60): from the deck the glide
+// came down on the real great torii's top beam (13.7 at z 124.5)
+const G8: Glide = Glide { from: vec3(174.0, 0.0, 356.0), to: vec3(160.0, -0.1, 84.0), run: 3.0, tol: 8.0 }
 const G9: Glide = Glide { from: vec3(273.0, 0.0, 80.0), to: vec3(276.0, 3.5, 150.0), run: 0.0, tol: 10.0 }
 
 // The pagoda's south face, roof by roof (the real pagoda's collision, arch_pagoda_col): from the

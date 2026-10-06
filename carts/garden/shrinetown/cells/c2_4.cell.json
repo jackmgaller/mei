@@ -9,8 +9,29 @@
  "region": "shrine",
  "placements": [
   {
-   "id": "pagoda",
-   "asset": "gbm_pagoda",
+   "id": "sh_deck_tree_rope",
+   "asset": "tree_cedar_giant",
+   "position": [
+    130,
+    282
+   ],
+   "collision": "tree_cedar_giant_col",
+   "yaw": -138
+  },
+  {
+   "id": "sh_deck_rope",
+   "asset": "forest_platform",
+   "position": [
+    130,
+    24,
+    282
+   ],
+   "collision": "forest_platform_col",
+   "yaw": 50
+  },
+  {
+   "id": "sh_pagoda",
+   "asset": "arch_pagoda",
    "position": [
     178,
     15.0,
@@ -19,77 +40,90 @@
    "collision": "arch_pagoda_town_col"
   },
   {
-   "id": "kick_cedar_0",
-   "asset": "gbm_cedar_kick_0",
+   "id": "sh_kick_cedar_0",
+   "asset": "tree_cedar_giant",
    "position": [
     171.35,
-    15.0,
     259.5
    ],
-   "collision": "gbm_cedar_kick_0_col"
+   "collision": "gbm_cedar_kick_0_col",
+   "yaw": 90
   },
   {
-   "id": "kick_cedar_1",
-   "asset": "gbm_cedar_kick_1",
+   "id": "sh_kick_cedar_1",
+   "asset": "tree_cedar_giant",
    "position": [
     171.35,
-    15.0,
     264.5
    ],
-   "collision": "gbm_cedar_kick_1_col"
+   "collision": "gbm_cedar_kick_1_col",
+   "yaw": 180
   },
   {
-   "id": "deck_rope",
-   "asset": "gbm_deck_rope",
-   "position": [
-    130,
-    13.584,
-    282
-   ],
-   "collision": "gbm_deck_rope_col"
-  },
-  {
-   "id": "sacred_cedar",
-   "asset": "gbm_cedar_hollow",
+   "id": "sh_sacred_cedar",
+   "asset": "tree_cedar_sacred_hollow",
    "position": [
     154,
     13.0,
     296
    ],
-   "collision": "gbm_cedar_hollow_col"
+   "collision": "tree_cedar_sacred_hollow_col",
+   "yaw": 59.744
   },
   {
-   "id": "root_curtain",
-   "asset": "gbm_root_curtain",
+   "id": "sh_root_curtain",
+   "asset": "forest_root_curtain",
    "position": [
-    150.45,
+    151.625,
     13.0,
-    296
+    294.614
    ],
-   "collision": "self",
+   "collision": "forest_root_curtain_col",
+   "yaw": 59.744,
    "layer": "root_d_shut"
   },
   {
-   "id": "ladder_a",
-   "asset": "gbm_ladder_a",
+   "id": "sh_shide_rope",
+   "asset": "forest_shide_rope",
+   "position": [
+    141.216,
+    21.85,
+    288.543
+   ],
+   "collision": "none",
+   "yaw": 59.743
+  },
+  {
+   "id": "sh_hollow_log",
+   "asset": "forest_hollow_log",
+   "position": [
+    191.0,
+    305.0
+   ],
+   "collision": "forest_hollow_log_col",
+   "yaw": -8
+  },
+  {
+   "id": "sh_ladder_a",
+   "asset": "forest_rope_ladder",
    "position": [
     154.0,
     24.0,
     317.85
    ],
-   "collision": "none",
+   "collision": "forest_rope_ladder_col",
    "layer": "ladder_a"
   },
   {
-   "id": "hollow_log",
-   "asset": "gbm_hollow_log",
+   "id": "sh_ladder_a_up",
+   "asset": "forest_rope_ladder_rolled",
    "position": [
-    188.0,
-    11.312,
-    304.0
+    154.0,
+    24.0,
+    317.85
    ],
-   "collision": "self",
-   "yaw": 57.995
+   "collision": "forest_rope_ladder_rolled_col",
+   "layer": "ladder_a_up"
   }
  ],
  "entities": [
@@ -249,9 +283,9 @@
    "id": "shortcut_d",
    "type": "trigger",
    "position": [
-    153.0,
-    13.05,
-    296.0
+    155.1,
+    13.13,
+    296.4
    ],
    "params": {
     "size": [

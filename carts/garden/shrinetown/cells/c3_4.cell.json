@@ -7,18 +7,5 @@
   4
  ],
  "region": "shrine",
- "placements": [
-  {
-   "id": "dead_cedar_down",
-   "asset": "gbm_dead_cedar_down",
-   "position": [
-    241.0,
-    26.234,
-    312.0
-   ],
-   "collision": "self",
-   "yaw": -68.199,
-   "layer": "cedar_c_down"
-  }
- ]
+ "placements": []
 }

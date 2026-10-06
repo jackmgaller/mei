@@ -9,55 +9,129 @@
  "region": "shrine",
  "placements": [
   {
-   "id": "wall_1",
-   "asset": "gbc_wall_1",
+   "id": "sh_zelkova_0",
+   "asset": "tree_zelkova",
    "position": [
-    116.0,
-    5.0,
-    168.0
+    114.0,
+    131.0
    ],
-   "collision": "self",
-   "yaw": -45.0
+   "collision": "tree_zelkova_col",
+   "yaw": 40
   },
   {
-   "id": "wall_2",
-   "asset": "gbc_wall_2",
+   "id": "sh_zelkova_1",
+   "asset": "tree_zelkova",
    "position": [
     115.0,
-    5.0,
-    182.5
+    157.0
    ],
-   "collision": "self"
+   "collision": "tree_zelkova_col",
+   "yaw": 117
   },
   {
-   "id": "boulder_0",
-   "asset": "gbc_boulder_0",
+   "id": "sh_wall_x168_1220",
+   "asset": "arch_wall_8",
+   "position": [
+    122.0,
+    5.0,
+    168.6
+   ],
+   "collision": "arch_wall_8_col"
+  },
+  {
+   "id": "sh_wall_z117_1730",
+   "asset": "arch_wall_8",
+   "position": [
+    117.6,
+    5.0,
+    173.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z117_1810",
+   "asset": "arch_wall_8",
+   "position": [
+    117.6,
+    5.0,
+    181.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_z117_1890",
+   "asset": "arch_wall_8",
+   "position": [
+    117.6,
+    5.0,
+    189.0
+   ],
+   "collision": "arch_wall_8_col",
+   "yaw": 90
+  },
+  {
+   "id": "sh_wall_corner_0",
+   "asset": "arch_wall_corner",
+   "position": [
+    117.6,
+    5.0,
+    168.6
+   ],
+   "collision": "arch_wall_corner_col",
+   "merge": true
+  },
+  {
+   "id": "sh_boulder_w0",
+   "asset": "forest_boulder_big",
    "position": [
     110.5,
-    2.365,
     184.0
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 20
   },
   {
-   "id": "deck_0",
-   "asset": "gbc_deck_tree_0",
+   "id": "sh_deck_tree_0",
+   "asset": "tree_cedar_giant",
    "position": [
     94,
-    0.993,
     152
    ],
-   "collision": "self"
+   "collision": "tree_cedar_giant_col"
   },
   {
-   "id": "deck_1",
-   "asset": "gbc_deck_tree_1",
+   "id": "sh_deck_0",
+   "asset": "forest_platform",
+   "position": [
+    94,
+    9,
+    152
+   ],
+   "collision": "forest_platform_col",
+   "yaw": 72
+  },
+  {
+   "id": "sh_deck_tree_1",
+   "asset": "tree_cedar_giant",
    "position": [
     82,
-    0.661,
     180
    ],
-   "collision": "self"
+   "collision": "tree_cedar_giant_col",
+   "yaw": 37
+  },
+  {
+   "id": "sh_deck_1",
+   "asset": "forest_platform",
+   "position": [
+    82,
+    12,
+    180
+   ],
+   "collision": "forest_platform_col",
+   "yaw": 76
   }
  ],
  "entities": [
