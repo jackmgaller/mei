@@ -345,7 +345,9 @@ FIELD = {'oneOf':[
 GAME = obj({
     'format':{'const':'mei-world-game'},'version':{'const':1},'name':NAME,
     'probe':obj({'radius':POS,'height':POS,'step':number(0,64),
-                 'floor_max_degrees':number(1,89),'ceiling_max_degrees':number(1,89)},['radius','floor_max_degrees']),
+                 'floor_max_degrees':number(1,89),'ceiling_max_degrees':number(1,89),
+                 'bridge':dict(number(0,4),description='Units: the span of the floor query\'s crack bridging (wp_floor_across(); WORLDKIT.md, "Cracks"). The World Checker does not report a crack that this bridges. Default 0: none.')},
+                ['radius','floor_max_degrees']),
     'types':{'type':'object','propertyNames':NAME,'maxProperties':1024,
              'additionalProperties':obj({'saved':BOOL,'params':{'type':'object','propertyNames':NAME,
                                                                 'additionalProperties':FIELD,'maxProperties':64}})},

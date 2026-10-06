@@ -47,7 +47,7 @@ are measured and listed, and nothing fails on them.
 | a view with dropped triangles (over the GPU's 4,000) | wrong-order pixels in the near band over `near_wrong_pixels` |
 | a view that filled the packet arena | wrong-order pixels elsewhere over `far_wrong_fraction` of the screen |
 | in depth mode, a view drawn without the depth test (`depth_untested`) | |
-| a collision crack or mismatched floor edge | coverage errors over `coverage_pixels` |
+| a collision crack or mismatched floor edge the game's floor query does not bridge, unless the crack baseline lists it ([Crack baseline](#crack-baseline)) | coverage errors over `coverage_pixels` |
 | | ground inversions over `ground_inversion_pixels` ([Ground](#ground)) |
 | an entity origin inside solid collision | a cell over `cell_triangles`, `cell_placements`, `standin_triangles` |
 | a face index outside its mesh | a cell without a stand-in that other cells can see |
@@ -91,7 +91,7 @@ are WORLDKIT.md's placeholders.
 | `runtime` | far ring 3, near 0.1, near far 1.5 cells, entities drawn, ground first, entity drawing `object`, object bias 1.5, object squash 2, levels of detail on, worst case | what the game sets on the reader (`near_far`: `null` takes the pack's own, else 1.5 cells; `lod`: `wp_lod`; `lod_fine`: `wp_lod_fine`, the finest level the hysteresis band allows; `ground_first`: `wp_ground_first`; `entity_drawing`: `object`, through `wp_draw_entities()`, or `mesh_at`, each live entity's mesh by its own depth; `object_bias`, `object_squash`: `wp_object_bias`, `wp_object_squash`; `depth`, `perspective`: false, the game calls `render_depth(true)`, `render_perspective(true)`, [Depth mode](#depth-mode)) |
 | `ordering` | on; edge margin 1 px; depth epsilon 0.001 | see [Ordering](#ordering-check-3); in depth mode also the depth key's tolerance |
 | `ordering.depth_views` | 60 | depth mode only: views given the pixel comparison ([The ordering sample](#the-ordering-sample)); `null`: every view. Listed in the report only in depth mode |
-| `collision` | 4 samples a unit, rays of 32 units, 50 findings | |
+| `collision` | 4 samples a unit, rays of 32 units, 50 findings | `crack_baseline`: the entries of the world's crack baseline, which the World Kit build passes from `NAME.cracks.json` ([Crack baseline](#crack-baseline)); null, none |
 | `images` | 6 | diagnostic pictures of the worst views |
 
 `names` (optional) labels witnesses: `{"placements": {"TAG": "id"}, "entities": {"N": "id"}}`.
@@ -108,13 +108,22 @@ the console has. Each check runs with every layer off and with each layer on alo
   row and ends), the checker steps outward up to the probe radius, at 1, 2, 4 and 16 raw units,
   1/256 and 1/64 of a unit, then every 1/16. A point with no floor within the probe step of the
   edge's height followed by one with a floor again is a crack: a gap narrower than the radius
-  that a point query falls through. The witness names the cell, both floors' tags, a point and
-  the gap. Points are sampled (4 a unit along each edge), so a sliver thinner than one raw unit
-  between samples can be missed; T-junctions are caught structurally instead:
+  that a point query falls through. The witness names the cell, both floors' tags, a point, the
+  gap and its `width` (the widest of the finding's samples, to 1/16: from the last offset with a
+  floor to the first with one again). Points are sampled (4 a unit along each edge), so a sliver
+  thinner than one raw unit between samples can be missed; T-junctions are caught structurally
+  instead:
 - **Mismatched floor edges.** Two boundary edges on one line (within 1/1024 unit), facing each
   other, overlapping, at heights within the probe step, that do not share rows: a T-junction or
   corners that disagree, inside a cell or across a seam (`on_seam`). WORLDPACK.md, "Floor and
   ceiling records", says these leave cracks; the checker rejects them.
+- **Bridged cracks.** When the game's probe gives `bridge`, its floor query
+  (`wp_floor_across()`, [WORLDKIT.md](WORLDKIT.md#cracks)) steps across gaps narrower than it,
+  and the checker asks the same question with the same arithmetic (`reader_floor_across()`):
+  a gap is a crack only if one of its points is not bridged for a body at the edge's height, with
+  the probe's step above and below; a mismatched edge only if a point of its sliver (at the
+  overlap's midpoint and 1 and 2 raw units either side of the line) is not. On the shrine town
+  (bridge 0.4375) this leaves 3 of 190 findings (132 cracks, 58 mismatched edges).
 - **Entities inside solid.** 14 rays from the entity's origin (axes and diagonals, slightly
   skewed off edges, 32 units): if every one first meets a triangle from behind, the origin is
   inside a closed solid. An origin on a surface is not inside. An entity's own collision block
@@ -129,6 +138,32 @@ the console has. Each check runs with every layer off and with each layer on alo
 
 Sloped floors are judged by the encoder's kinds; the checker does not know `floor_max_degrees`
 (the pack stores kinds, not the angle).
+
+### Crack baseline
+
+`NAME.cracks.json` beside the world recipe and its ID lock file holds the cracks and mismatched
+floor edges that remain once bridged ones are left out, when it was written (format
+`mei-world-cracks`, version 1; each entry its code, cell, both floors' tags and names, layers,
+point and width). It is written by the quick tool, and read by every build:
+
+```sh
+python3 tools/mei_world.py cracks carts/garden/shrinetown/shrinetown.world.json --build-dir build-mine --write-baseline
+python3 tools/mei_world.py cracks carts/garden/shrinetown/shrinetown.world.json --build-dir build-mine --baseline
+```
+
+The second compares (exit 1 when a crack is new) and prints every finding, those on a route first
+(`--routes FILE`, a JSON object of named polylines `{"NAME": [[x, z], ...]}`, a finding within
+`--near` units, default 3, of one being on it), then the widest first, marking each new or known
+and listing the entries nothing matches as fixed. A build reads the file when it is there
+(`build --crack-baseline FILE` for another, `none` for none) and passes its entries to the checker
+as `collision.crack_baseline`: the cracks it lists are not hard failures but `static.
+crack_baseline.known_findings`, those it does not list stay hard failures, and the entries no
+finding matches are `fixed_findings`, with the three counts beside them and the known count in
+`summary.known_cracks` (world_cart.py's summary line prints it). A finding matches an entry with
+the same code and layers and either the same cell and tags or a point within 1 unit across and
+0.5 up (tags change when a cell's placements are renumbered). With a baseline the checker lists
+every new finding, not only the first `collision.findings`. The movement garden's three worlds
+have one each: the garden's and the shrine's empty, the shrine town's with 3 cracks.
 
 ## Sampled views (check 2)
 

@@ -53,7 +53,7 @@ SCREEN = RD.W * RD.H
 
 DEFAULTS = {
     'mode': 'report',                   # 'report' (never fails on thresholds) or 'strict'
-    'probe': {'radius': 0.3, 'height': 1.6, 'step': 0.32},   # the game schema's probe
+    'probe': {'radius': 0.3, 'height': 1.6, 'step': 0.32, 'bridge': 0.0},   # the game schema's probe
     'eye_height': 1.5,
     'thresholds': {
         'near_band': 16.0,              # units: wrong-order pixels nearer than this, or on entities...
@@ -89,7 +89,8 @@ DEFAULTS = {
                 'depth': False, 'perspective': False},     # render_depth(), render_perspective()
     'ordering': {'enabled': True, 'edge_margin': 1.0, 'depth_epsilon': 0.001, 'witnesses': 8,
                  'depth_views': 60},        # depth mode: views given the pixel comparison (None: all)
-    'collision': {'crack_samples_per_unit': 4.0, 'solid_ray_length': 32.0, 'findings': 50},
+    'collision': {'crack_samples_per_unit': 4.0, 'solid_ray_length': 32.0, 'findings': 50,
+                  'crack_baseline': None},      # the cracks of NAME.cracks.json: known, not failures
     'images': 6,
 }
 
@@ -137,6 +138,12 @@ def shown_settings(cfg):
     on, and ordering depth_views only in depth mode, so that a report without them is the one the
     checker made before they existed."""
     out = copy.deepcopy(cfg)
+    if not cfg['probe'].get('bridge'):
+        del out['probe']['bridge']
+    if cfg['collision']['crack_baseline'] is None:
+        del out['collision']['crack_baseline']
+    else:
+        out['collision']['crack_baseline'] = len(cfg['collision']['crack_baseline'])
     if not (cfg['runtime']['depth'] or cfg['runtime']['perspective']):
         del out['runtime']['depth'], out['runtime']['perspective']
     if not cfg['runtime']['depth']:
@@ -767,12 +774,14 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None, focu
         # a layer with no collision near the cells finds what every layer off finds
         near = {t.layer for t in ST.near_cells(tris, only, S, 2.0)}
         sets = [(name, on) for name, on in sets if not on or on & near]
+    baseline = cfg['collision']['crack_baseline']
     for name, on in sets:
         found, n, ne, _ = ST.crack_check(pack, static_tris, on, cfg['probe'], cfg['collision'],
-                                         lim if only is None else len(static_tris) * 3)
+                                         lim if only is None and baseline is None else 10 ** 9)
         if only is not None:
             found = focused(found)
             n = len(found)
+        if baseline is None:
             found = found[:lim]
         nedges = max(nedges, ne)
         for f in found:
@@ -781,6 +790,14 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None, focu
             if all((g['code'], tuple(g['cell']), g['floor_tag'], g['beyond_tag']) != key for g in cracks):
                 cracks.append(f)
         ncrack += n
+    known = []
+    if baseline is not None:
+        # NAME.cracks.json: the cracks known when it was written are listed, not failures
+        cracks, known, fixed = ST.against_baseline(cracks, baseline)
+        if only is not None:
+            fixed = focused(fixed)
+        static['crack_baseline'] = {'known': len(known), 'new': len(cracks), 'fixed': len(fixed),
+                                    'known_findings': known[:lim], 'fixed_findings': fixed[:lim]}
     ents, nent = ST.entity_check(pack, tris, cfg['collision'], lim)
     ref_err, ref_warn = ST.reference_check(pack, rt['far_ring'])
     if only is not None:
@@ -981,6 +998,8 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None, focu
         'hard_failures': len(report['hard_failures']),
         'threshold_failures': len(report['threshold_failures']),
     }
+    if baseline is not None:
+        report['summary']['known_cracks'] = len(known)
     report['ok'] = not report['hard_failures'] and (cfg['mode'] == 'report' or not report['threshold_failures'])
     report['scope'] = (DEPTH_SCOPE if rt['depth'] else 'Static collision checks use the reader\'s exact floor query at sampled points. '
                        'Views are sampled, not exhaustive. Ordering compares pixels at least edge_margin '
@@ -1071,8 +1090,9 @@ def check_world(context):
     ('report' or 'enforce', which is this checker's 'strict') and 'thresholds', the game's
     'probe', the staging directory ('stage', where the report and images go, under
     verification/) and optionally the 'compiler' to use (mei-scene-probe is looked for beside
-    it), 'checker' (a number: sample at most that many views; build --world-checker N) and
-    'runtime' (the recipe's runtime: depth and perspective, how the game draws the world).
+    it), 'checker' (a number: sample at most that many views; build --world-checker N),
+    'runtime' (the recipe's runtime: depth and perspective, how the game draws the world) and
+    'crack_baseline' (the entries of NAME.cracks.json: those cracks are known, not failures).
     Returns the report, or {'ok': False, 'errors': [...]} when the check could not run."""
     mode = context.get('mode') or 'report'
     settings = {'mode': 'strict' if mode == 'enforce' else mode,
@@ -1085,6 +1105,8 @@ def check_world(context):
     probe = {k: v for k, v in (context.get('probe') or {}).items() if k in DEFAULTS['probe']}
     if probe:
         settings['probe'] = {**DEFAULTS['probe'], **probe}
+    if context.get('crack_baseline') is not None:   # NAME.cracks.json's entries
+        settings['collision'] = {'crack_baseline': list(context['crack_baseline'])}
     tools = {}
     if context.get('compiler'):
         tools['compiler'] = Path(context['compiler'])

@@ -5,10 +5,12 @@
 import "worldpack.akr"
 
 struct WpQuery {
-    op: s32            // 0 floor, 1 ceiling, 2 push, 3 ray, 4 layer; 5-8 the same against an entity
+    op: s32            // 0 floor, 1 ceiling, 2 push, 3 ray, 4 layer; 5-8 the same against an entity;
+                       // 9 floor across cracks (wp_floor_across)
     arg: s32           // layer: id | on << 16; entity ops: the entity's number
     p: vec4            // a point (w = 0)
-    q: vec4            // floor/ceiling: x = above/below; push: x = radius; ray: the end point
+    q: vec4            // floor/ceiling: x = above/below; push: x = radius; ray: the end point;
+                       // floor across: x, y, z = above, below, span
 }
 
 fn out3(a: s32, b: s32, c: s32) {
@@ -64,6 +66,7 @@ fn run(k: s32) {
             ray_line(wp_coll_ray(wp_entity_coll(wp_entity(r.arg)), p, q, 0))
         }
         8 => flat_line(wp_coll_ceiling(wp_entity_coll(wp_entity(r.arg)), p, q.x, 0))
+        9 => flat_line(wp_floor_across(p, q.x, q.y, q.z))
         else => println("?")
     }
 }

@@ -1029,6 +1029,7 @@ ceilings a bucket). Means over 400 random points, cycles:
 |---|---|---|
 | `wp_cell_at` | 74 | |
 | `wp_floor` | 448 | Tsumiki's `tk_floor_at` among 41 solids: about 2,000 |
+| `wp_floor_across`, span 0.4375: a floor in the window / none, nothing bridged | 512 / 11,478 | the second is 25 floor queries: the body in the air |
 | `wp_ceiling` | 312 | |
 | `wp_push`, radius 0.5 | 382 | |
 | `wp_ray`, 3.7 units | 3,078 | Tsumiki's `tk_raycast`: about 900 short, 4,400 across 41 solids |
@@ -1104,6 +1105,7 @@ radius (2), and `WP_MAX_LOD` = 2,048 bytes of level memory, one per placement sl
 | `wp_object_bias`, `wp_object_squash` | `wp_draw_object()`'s settings: units nearer from above (1.5); squash of the object's own depths (2; 1: no key, the bias alone) |
 | `wp_stats` | near cells, placements looked at and drawn, stand-ins drawn, ground placements drawn, placements drawn at a coarser level (`coarse`) and culled by their LOD set (`lod_culled`), last `wp_draw` |
 | `wp_floor(p, above)`, `wp_ceiling(p, below)`, `wp_push(p, radius)`, `wp_ray(a, b)` | collision in the world; answers in `wp_hit` |
+| `wp_floor_across(p, above, below, span)` | `wp_floor()` bridging cracks narrower than `span`: where it finds no floor at or above `p.y - below`, the higher of two floors in that window on either side of `p`, at most `span` apart along x, z or a diagonal ([WORLDKIT.md](WORLDKIT.md#cracks)) |
 | `wp_coll_floor`, `wp_coll_ceiling`, `wp_coll_push`, `wp_coll_ray` | the same against one block, in its frame (an entity's: `wp_entity_coll(e)`) |
 | `wp_hit_normal()` | the unit front normal of what was hit |
 | `wp_entity(n)`, `wp_cell_entity(c, k)`, `wp_entity_pos(e)`, `wp_entity_live(e)`, `wp_entity_params(e)`, `wp_entity_mesh(e)`, `wp_entity_coll(e)` | entities |

@@ -27,6 +27,37 @@ def lock_path(source):
     return base/f'{source.world["name"]}.ids.json'
 
 
+def cracks_path(source):
+    """The crack baseline beside the recipe and its ID lock file (WORLDCHECKER.md, "Crack
+    baseline")."""
+    base = source.world_path.parent if source.world_path else Path.cwd()
+    return base/f'{source.world["name"]}.cracks.json'
+
+
+def load_crack_baseline(source, option=None):
+    """The crack baseline's (path, entries) as the World Checker compares with it: `option`
+    None takes NAME.cracks.json beside the recipe when there is one, 'none' takes none, and a
+    path that file. (None, None) when there is none."""
+    if option == 'none':
+        return None, None
+    path = Path(option) if option else cracks_path(source)
+    if not option and not path.exists():
+        return None, None
+    data = jsonio.load(str(path),WorldError)
+    from .verify_static import BASELINE_FORMAT
+    if (not isinstance(data,dict) or data.get('format') != BASELINE_FORMAT or data.get('version') != 1
+            or not isinstance(data.get('cracks'),list)):
+        raise WorldError('/crack_baseline',f'{path} is not a crack baseline (format {BASELINE_FORMAT}, version 1). '
+                         'Write one with mei_world.py cracks RECIPE --write-baseline.',str(path))
+    if data.get('world') != source.world['name']:
+        raise WorldError('/crack_baseline/world',f'{path} is the crack baseline of world {data.get("world")!r}, '
+                         f'not {source.world["name"]!r}.',str(path))
+    for k,e in enumerate(data['cracks']):
+        if not isinstance(e,dict) or any(key not in e for key in ('code','cell','floor_tag','beyond_tag','at')):
+            raise WorldError(f'/crack_baseline/cracks/{k}','A baseline crack has code, cell, floor_tag, beyond_tag and at.',str(path))
+    return path, data['cracks']
+
+
 def compile_source(path, assets_dir=None):
     source = load(path)
     lock = ids.load(lock_path(source),source.world['name'])
@@ -74,13 +105,15 @@ def run_gate(context, cache=None):
 
 
 def build(path, directory, compiler=None, runner=None, probe=None, locked=False, assets_dir=None, preview=False,
-          cell=None, checker='full', cache=None):
+          cell=None, checker='full', cache=None, crack_baseline=None):
     """`checker` is how the World Checker runs: 'full' (the world's own settings), 'skip', or
     a number of views to sample at most, for a quick check. A world whose recipe says
     verification.mode "enforce" builds only with the full check. `cache` is a directory for
-    the checkers' results (worldkit/cache.py), or None to run every check."""
+    the checkers' results (worldkit/cache.py), or None to run every check. `crack_baseline`:
+    see load_crack_baseline()."""
     checker = checker_option(checker)
     source, compiled = compile_source(path,assets_dir)
+    baseline_file, baseline = load_crack_baseline(source,crack_baseline)
     settings = source.world.get('verification',{})
     if checker != 'full' and settings.get('mode') == 'enforce':
         raise WorldError('/verification/mode','This world enforces the World Checker, so it builds only with the full '
@@ -115,7 +148,8 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
         # a terrain field's heights file, at its path relative to the world file
         rel = Path(f).relative_to(source.base) if Path(f).is_relative_to(source.base) else Path(Path(f).name)
         snapshot['source/'+rel.as_posix()] = Path(f).read_bytes()
-    sources = ([source.world_path,source.game_path,lock_path(source)]+[cs.file for cs in source.cells]
+    sources = ([source.world_path,source.game_path,lock_path(source)]+([baseline_file] if baseline_file else [])
+               +[cs.file for cs in source.cells]
                +[a.file for a in compiled.library.assets.values()]+list(compiled.terrain_files))
     directory = Path(directory).resolve()
     staged.guard(directory,list(files)+['report.json','source','preview'],sources,error=WorldError)
@@ -129,6 +163,7 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
         context = {'world':name,'stage':str(stage),'pack':str(stage/f'{name}.world.bin'),'akr':str(stage/f'{name}.akr'),
                    'mode':settings.get('mode','report'),'thresholds':settings.get('thresholds',{}),
                    'probe':source.game['probe'],'report':compiled.report,'checker':checker,
+                   **({'crack_baseline':baseline} if baseline is not None else {}),
                    **({'runtime':runtime} if runtime else {}),
                    'compiler':str(compiler) if compiler else None,'runner':str(runner) if runner else None}
         gate = run_gate(context,cache)
@@ -138,6 +173,7 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
         # a megabyte for the example city) stays in the checker's own verification/world-check.json.
         compiled.report['verification'] = {k:v for k,v in gate.items() if k != 'views'}
         if 'views' in gate: compiled.report['verification']['views_report'] = 'verification/world-check.json'
+        if baseline_file: compiled.report['verification']['crack_baseline_file'] = str(baseline_file)
         if context['mode'] == 'enforce' and not gate['ok']:
             failure = directory/'verification.failed.json'
             failure.write_text(jsonio.pretty(gate))

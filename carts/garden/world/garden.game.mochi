@@ -3,11 +3,14 @@
 
 game garden
 
+// bridge: the controller's floor query steps across cracks narrower than this (wp_floor_across(),
+// docs/WORLDKIT.md "Cracks"), and the World Checker does not report the cracks it bridges.
 probe {
   radius            = 0.3
   height            = 1.6
   step              = 0.32
   floor_max_degrees = 40
+  bridge            = 0.4375
 }
 
 worlds garden, shrine, shrinetown

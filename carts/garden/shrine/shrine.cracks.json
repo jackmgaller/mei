@@ -1,0 +1,7 @@
+{
+  "format": "mei-world-cracks",
+  "version": 1,
+  "world": "shrine",
+  "note": "The cracks the World Checker found when this was written (mei_world.py cracks RECIPE --write-baseline); the checker lists them as known, not as failures. WORLDCHECKER.md, \"Crack baseline\".",
+  "cracks": []
+}

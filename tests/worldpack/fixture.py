@@ -321,6 +321,7 @@ def heightfield_world(seed, cell_shift):
 
 OP_FLOOR, OP_CEILING, OP_PUSH, OP_RAY, OP_LAYER = 0, 1, 2, 3, 4
 OP_EFLOOR, OP_EPUSH, OP_ERAY, OP_ECEILING = 5, 6, 7, 8
+OP_ACROSS = 9
 
 
 def query(op, p=(0, 0, 0), q=(0, 0, 0), arg=0):
