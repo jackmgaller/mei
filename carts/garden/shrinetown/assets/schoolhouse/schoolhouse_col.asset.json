@@ -23,18 +23,40 @@
    "size": [
     24.0,
     18.9,
-    11.0
+    9.37
    ],
    "material": "solid",
    "transform": {
     "translate": [
      -2.0,
      9.45,
-     9.5
+     8.685
     ]
    },
    "open": [
-    "bottom"
+    "bottom",
+    "front"
+   ]
+  },
+  {
+   "id": "block_n",
+   "op": "box",
+   "size": [
+    24.0,
+    18.9,
+    1.63
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -2.0,
+     9.45,
+     14.185
+    ]
+   },
+   "open": [
+    "bottom",
+    "back"
    ]
   },
   {

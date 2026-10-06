@@ -18,10 +18,30 @@
  },
  "nodes": [
   {
-   "id": "deck",
+   "id": "deck_0",
    "op": "box",
    "size": [
-    30.0,
+    3.0,
+    0.6,
+    3.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     -13.5,
+     6.7,
+     0.0
+    ]
+   },
+   "open": [
+    "right"
+   ]
+  },
+  {
+   "id": "deck_1",
+   "op": "box",
+   "size": [
+    24.0,
     0.6,
     3.0
    ],
@@ -32,7 +52,31 @@
      6.7,
      0.0
     ]
-   }
+   },
+   "open": [
+    "left",
+    "right"
+   ]
+  },
+  {
+   "id": "deck_2",
+   "op": "box",
+   "size": [
+    3.0,
+    0.6,
+    3.0
+   ],
+   "material": "solid",
+   "transform": {
+    "translate": [
+     13.5,
+     6.7,
+     0.0
+    ]
+   },
+   "open": [
+    "left"
+   ]
   },
   {
    "id": "stair",
