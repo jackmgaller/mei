@@ -60,7 +60,7 @@ def patch_water(w, ops=POND_OPS):
     return w
 
 
-def patch_backdrop(w, town='art/backdrop/town_backdrop.png', shrine='art/backdrop/shrine_backdrop.png'):
+def patch_backdrop(w, town='art/backdrop/backdrop.png', shrine='art/backdrop/backdrop.png'):
     import json
     from pathlib import Path
     spec = json.loads((Path(__file__).resolve().parent / 'backdrop' / 'backdrop.json').read_text())

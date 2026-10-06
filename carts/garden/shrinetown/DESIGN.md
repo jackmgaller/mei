@@ -1355,3 +1355,21 @@ same cameras (triangles, draw CPU, GPU), before → after: courtyard wall north 
 461,553; stage 1,333, 336,505, 402,855 → 1,403, 348,464, 391,151; station plaza 1,350, 415,031,
 391,185 → 1,336, 412,739, 388,860; canal by the watermill 1,736, 346,810, 528,387 → 1,774,
 352,422, 531,829. The pack is 11,480,668 bytes (11,456,388 before).
+
+### 12.9 Alpha fixes (2026-10-06)
+
+The fix round after the 20-reviewer alpha review (`ALPHA_REVIEW.md`), by workstream.
+
+#### Look: the z 128 boundary, far views and level-1 roofs
+
+| What | Change | Where |
+|---|---|---|
+| The boundary | The two regions' texture sets are in disjoint slots: the town's 13–1 and 16–18 (512 KB; it uses 376 KB), the shrine's 19–29 (352 KB; it uses 212 KB), the stand-ins' set 0, 31 and 30. Both can be resident at once. With the cart entering both regions once and drawing with `wp_region_loaded = -1` (a cart change, not on this branch), every near cell draws at its own levels on both sides of the line: the great torii is the real one from the courtyard, the shotengai is not grey boxes one step north of z 128, the cemetery's first flight and walls are drawn from the front road, and crossing copies no textures. A cart that enters a region at a time works as before | `make_world.py` `TEXTURE_SLOTS`, `TEXTURE_BUDGETS` |
+| The backdrop | One backdrop for both regions (`art/backdrop/backdrop.png`, 1,024 × 128, 40 rows under the horizon), so nothing in it moves at the line; the ranges' and the city's feet fade into the haze, and under the horizon far low town and fields thin out into the fog colour | `art/backdrop/draw_backdrop.py`, `APPLY.md` |
+| Day fog | `#d6dede` (the sky 3° up, a pale blue-grey; at 1° far hills went cream in front of the blue ranges), 20–240 (was 30–380): 87 % at 192, where the far ring may end, whole at 240. The sky's −8° stop and the backdrop's band under the horizon are the fog colour | `make_world.py` `FOG_RANGE`; `backdrop.json` `fog` |
+| Night fog | `#181842` (the sky's 9° stop; was `#4e3c61`, the purple at 1°, which made far hills and tree cards glow), 16–220 as before. The stand-ins' haze takes each variant's fog colour (`haze.colors`) | the same |
+| Level-1 roofs | The temple's, gate's and pagoda's level 1: a quad facing down under each roof at the eave's height (in `lacquer`, level 0's red), and the walls raised to it, so the roofs are closed from below: temple 224 → 230 triangles, gate 80 → 84, pagoda 89 → 99 | `../shrine/assets/art/make_roof_levels.py` |
+| The pagoda's impostor | A star of four cards through its axis (front, side, and level 0 turned 45° on both diagonals, `arch_pagoda_diag.png`) in place of the box, which showed two towers side by side from a diagonal; still 4 double-sided quads. The temple and the gate keep the box. The stand-ins' set needed a third slot for the picture (50,702 bytes in 0, 31 and 30) | `../shrine/assets/art/make_impostors.py` |
+| Edge neighbours | Level 1 (from 60 m) keeps the façade as a 16 × 16 far tile (each 4 × 4 block of the 64 × 64 tile in its commonest colour) and the stair house: 8 → 18 triangles. At night their lit panes glow, near and far (`texels` in the town's night variant) | `assets/edge_neighbour/make_edge_neighbour.py`, `make_world.py` `NEIGHBOUR_NIGHT` |
+| Courtyard stand-ins | Caps: c2_2 220 and c3_2 270, so that the side and corridor halls are in them (at 140 the halls were left out and popped in under the pagoda); c1_2 140. The World Checker's `standin_triangles` threshold follows (270) | `make_world.py` `COURTYARD` |
+| Coarse ground | Measured, not changed: the field's coarse level stays at 22 units and 2.5. At 40 and 1.5 the draw CPU rose by a median 13,000 cycles a view, and the views over 600,000 in a sweep along the line (x 72–312, z 112–152, 16 yaws, 2 pitches, 2 heights) went from 21 to 84 of 6,144; at 30 and 1.5, a median 3,500 and 41. At 1.2 and 1.0 the kit leaves a hole in level 0's floor under the giant cedar at (102, 252). A textured coarse level would cost no triangles | `make_world.py` `GROUND_LOD` |
