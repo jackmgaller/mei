@@ -28,8 +28,9 @@ const G7: Glide = Glide { from: vec3(180.3, 0.0, 262.0), to: vec3(282.0, 16.1, 2
 // G8 takes off from its pad east of the stage (61.8), a standing double jump, and is steered east of
 // the great torii (G8_VIA, x 170 at its line: lead's decision, DESIGN.md 12.9), then into the arcade.
 // (From the deck the glide came down on the torii's top beam; through the torii it threaded a 1.15 m
-// slot between its beams.)
-const G8: Glide = Glide { from: vec3(174.0, 0.0, 356.0), to: vec3(160.0, -0.1, 84.0), run: 0.0, tol: 8.0 }
+// slot between its beams.) A standing start glides 13 m less far than the old run-up: it comes down
+// on the front road at the arcade's mouth, (163, 97.5), not in the arcade.
+const G8: Glide = Glide { from: vec3(174.0, 0.0, 356.0), to: vec3(163.0, -0.1, 97.5), run: 0.0, tol: 6.0 }
 const G8_VIA: vec3 = vec3(170.0, 0.0, 124.0)
 const G8_WIRE_Z: fixed = 106.0      // the front road's wires (z 105.2 and 106.8, 8.0 high)
 const G9: Glide = Glide { from: vec3(273.0, 0.0, 80.0), to: vec3(276.0, 3.5, 150.0), run: 0.0, tol: 10.0 }
@@ -80,7 +81,7 @@ fn town_case_init() -> bool {
         411 => { name = "shrine town: G2, danchi roof to the canal lane"; stg = G2 }
         412 => { name = "shrine town: G3, sento chimney over the canal to the park"; stg = G3 }
         413 => { name = "shrine town: G4, fire tower over the front road to the courtyard"; stg = G4 }
-        414 => { name = "shrine town: G5, temple ridge to the pagoda's first roof"; stg = G5 }
+        414 => { name = "shrine town: G5, the temple climbed from its stair to the ridge, glide to the pagoda's first roof"; stg = G5 }
         415 => { name = "shrine town: G6, stage to the pagoda's upper roofs (3 to 5)"; stg = G6 }
         416 => { name = "shrine town: G7, pagoda roof 5 to the cemetery's top terrace"; stg = G7 }
         417 => { name = "shrine town: G8, the race line, stage to the arcade"; stg = G8 }
@@ -138,7 +139,8 @@ fn town_case(f: s32) {
         406 => tw_body_hidden(f)
         407 => tw_opening(f)
         408 => tw_awning(f)
-        410, 411, 412, 413, 414, 415, 416, 417, 418 => tw_glide(f)
+        410, 411, 412, 413, 415, 416, 417, 418 => tw_glide(f)
+        414 => zc_g5(f)
         420 => tw_kick_pair(f)
         421 => tw_chimney(f)
         422 => tw_pagoda(f)

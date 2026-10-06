@@ -228,9 +228,12 @@ def fallen_col():
     p = mf.Part('stump')
     rings = rings_mesh(p, [(-0.3, 1.0), (BUTT_TOP, 0.8)], 'solid')
     p.poly(rings[-1], 'solid', [0, 1, 0])
-    p.poly([[-0.65, BUTT_TOP - 0.02, -0.5], [0.65, BUTT_TOP - 0.02, -0.5], [0.65, BUTT_TOP - 0.02, -1.45],
-            [-0.65, BUTT_TOP - 0.02, -1.45]],
-           'solid', [0, 1, 0])
+    # the join: a block from the log's underside to just under the stump's top, round the slab's butt
+    x0, x1, z0, z1, y0, y1 = -0.9, 0.9, -1.6, -0.4, 0.3, BUTT_TOP - 0.02
+    c = [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]]
+    for q, n in (([4, 5, 6, 7], [0, 1, 0]), ([0, 1, 5, 4], [0, 0, -1]), ([2, 3, 7, 6], [0, 0, 1]),
+                 ([1, 2, 6, 5], [1, 0, 0]), ([3, 0, 4, 7], [-1, 0, 0])):
+        p.poly([c[i] for i in q], 'solid', n)
     plate = mf.Part('root_plate')
     root_plate(plate, 'solid', 'solid')
     slab = mf.Part('log')

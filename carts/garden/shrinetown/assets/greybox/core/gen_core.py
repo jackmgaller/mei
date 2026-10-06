@@ -522,6 +522,7 @@ for rect, m in (((110, 128, 210, 166), 'gravel'), (TERR, 'ashlar'), (TEMPLE, 'po
 # -1.65, and the stream's bed a slot at -2.25 between 2-3 m walls; filled to -0.4, its bed (-1.0) runs
 # into the pond's floor (-1.4) and its banks can be walked out of.
 ops.append({'op': 'fill', 'area': {'rect': [232, 182, 246, 216]}, 'height': -0.4, 'falloff': 3})
+ops.append({'op': 'smooth', 'area': {'rect': [245, 184, 253, 214]}, 'passes': 4})     # the east bank (35 degrees), eased
 for (x, z, r) in L.POND:
     ops.append({'op': 'water', 'area': {'circle': [x, z, round(r * 1.12, 2)]}, 'level': 0.0, 'material': 'water'})
 

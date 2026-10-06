@@ -2131,6 +2131,18 @@
       "falloff": 3
      },
      {
+      "op": "smooth",
+      "area": {
+       "rect": [
+        245,
+        184,
+        253,
+        214
+       ]
+      },
+      "passes": 4
+     },
+     {
       "op": "water",
       "area": {
        "circle": [

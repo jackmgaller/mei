@@ -612,7 +612,7 @@ ramp_trail('trail_west', WOODS_UP, heights=[0.8, 1.0, 12.4, 14.0, 15.0])
 ramp_trail('trail_shoulder', [tuple(p) for p in PATHS['trail_shoulder']['points']])
 # From the trail (35.6 at (263, 307)) level west to the fallen dead cedar's stump (its top 35.96, 1.26
 # over the trunk's foot at 34.7: forest_dead_cedar_fallen_col), so shortcut C's log is walked onto.
-op(op='ramp', **{'from': [263.0, 35.6, 307.0], 'to': [257.4, 35.96, 307.0]}, width=2.0, falloff=1.0)
+op(op='ramp', **{'from': [263.0, 35.6, 307.0], 'to': [256.2, 35.94, 306.8]}, width=2.2, falloff=1.0)
 # The way out north-east: a trail from the falls' top (52) to the small torii (61.6) at the north rim,
 # on a ramp cut into the bank (more than 45 degrees there).
 trail('trail_way_out', [(238.0, 349.0), (243.0, 359.0), (248.0, 369.0), (252.0, 376.5)])

@@ -316,7 +316,8 @@ def precinct(Z):
         Z.place(f'corridor_{side}', 'arch_corridor_hall', (x, 5.0, z), 'arch_corridor_hall_col', yaw)
         Z.move_entity(f'core_coin_corridor_{side}', (x, 5.0 + 9.3 + 1.0, z))
     tx, tz = TEMPLE
-    Z.place('temple', 'arch_temple', (tx, 5.0, tz), 'arch_temple_col')
+    # (its climbing collision, assets/arch_temple: walls under its eaves; alpha fix, DESIGN.md 12.9)
+    Z.place('temple', 'arch_temple', (tx, 5.0, tz), 'arch_temple_town_col')
     Z.move_entity('core_coin_temple', (tx, 5.0 + 22.54 + 1.0, tz))
     Z.place('bell_pavilion', 'bell_pavilion', (204.0, 5.0, 226.0), 'bell_pavilion_col', 90)
     for k, (x, z) in enumerate([(152, 184), (168, 184), (152, 196), (168, 196)]):

@@ -20,7 +20,8 @@ const ZK_DOUBLE = 2    // a held jump then the chained jump at p, a grab and cli
 const ZK_POLE_DROP = 3 // p: the pole; climb to the top, let go (R) pushing at the next point
 const ZK_JUMP = 4      // a single held jump toward p
 const ZK_KICKS = 5     // kick between two faces (east first) until standing again
-const ZK_LADDER = 6    // p: a front pole (a ladder); climb to its top and keep pushing at the next point
+const ZK_VDOUBLE = 6   // a double jump straight up where the body stands, the stick at p only near the second apex
+const ZK_SDOUBLE = 7   // a double jump from standing, the stick half way at p throughout (a short hop up and across)
 
 const ZP_MAX = 96
 var zp: [ZP_MAX]ZP
@@ -37,6 +38,7 @@ var zp_strict: bool        // a stalled walk fails (no hops)
 var zp_noslide: bool       // the body must never slide
 var zp_done: bool
 var zp_trace: s32
+var zp_glide_at: s32 = -1  // 414: the frame the climb ended and G5 began (-1: climbing)
 
 fn zone_case_init() -> bool {
     match SCENARIO {
@@ -62,6 +64,8 @@ fn zone_case_init() -> bool {
         721 => { name = "shrine zone: the path from the falls' top to the way-out torii" }
         722 => { name = "shrine zone: the stage's front: G6's glide passes under star 1" }
         723 => { name = "shrine zone: the crown deck's pole, from the landing to the crown deck" }
+        709 => { name = "shrine zone: the gate's roofs, from its lower roof to the upper ridge" }
+        710 => { name = "shrine zone: the temple's roofs, from the terrace up the stair and the three roofs to the ridge" }
         730 => { name = "shrine zone: G8 from its pad, 1 m west" }
         731 => { name = "shrine zone: G8 from its pad, 1 m east" }
         732 => { name = "shrine zone: G8 from its pad, 1 m north" }
@@ -216,6 +220,14 @@ fn zc_setup() {
             zstart(212.0, 332.0, 20.0, WEST)
             ZC_CAVE_WEST()
         }
+        709 => {
+            ZC_GATE_ROOFS()
+        }
+        710 => {
+            zstart(160.0, 204.0, 10.0, NORTH)
+            zp_trace = 3
+            ZC_TEMPLE_ROOFS()
+        }
         719 => {
             zstart(223.0, 192.0, 10.0, 3.1416)
             ZC_ZIGZAG()
@@ -249,8 +261,9 @@ fn zc_route(f: s32) {
     if zp_i >= zp_n {
         note("route done after, s", fixed(f) / 60)
         note("hops", fixed(zp_hops))
-        done()
         zp_done = true
+        if SCENARIO == 414 { zp_glide_at = f; return }       // G5 from here (zc_g5)
+        done()
         return
     }
     let pt = zp[zp_i]
@@ -268,8 +281,8 @@ fn zc_route(f: s32) {
         if pt.tol < 0.5 { stick_v = cc_stick(sh_heading(pt.p), 0.35) }        // a narrow way: slowly
         let moved = tw_hdist(pl.pos, zp_last)
         zp_last = pl.pos
-        if pl.st == St.Ground && moved < 0.04 && d > pt.tol { zp_slow += 1 } else { zp_slow = 0 }
-        if zp_slow > 45 {
+        if pl.st == St.Ground && moved < 0.004 && d > pt.tol { zp_slow += 1 } else { zp_slow = 0 }
+        if zp_slow > 60 {
             if zp_strict {
                 note("stalled: wall normal x", pl.wall_n.x); note("stalled: wall normal z", pl.wall_n.z)
                 note("stalled: wall hit", fixed(pl.wall_hit as s32))
@@ -282,31 +295,17 @@ fn zc_route(f: s32) {
         else if zp_hold > 0 && zp_hold <= 16 { pad_v = A }
         if zp_hold > 0 { zp_hold -= 1; zp_slow = 0 }
         if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
-    } else if pt.k == ZK_POLE || pt.k == ZK_POLE_DROP || pt.k == ZK_LADDER {
+    } else if pt.k == ZK_POLE || pt.k == ZK_POLE_DROP {
         let nx = zp[zp_i + 1].p
         if zp_sub == 0 {                       // to the pole and jump at it
             stick_v = cc_stick(sh_heading(pt.p), 1.0)
             if d < 1.6 && pl.st == St.Ground { pad_v = A }
             if pl.st == St.Pole { zp_sub = 1; zp_t = 0; zp_top = pl.pos.y; note("on the pole at y", pl.pos.y) }
         } else if zp_sub == 1 {                // climb until it stops rising
-            if pl.st != St.Pole && pt.k != ZK_LADDER { expect(false, "held the pole, y", pl.pos.y) }
+            if pl.st != St.Pole { expect(false, "held the pole, y", pl.pos.y) }
             stick_v = FWD
-            if pt.k == ZK_LADDER && pl.st != St.Pole {
-                // off the ladder's top: on toward the next point
-                stick_v = cc_stick(sh_heading(nx), 1.0)
-                if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
-                if pl.st == St.Ground && zp_t > 4 {
-                    note("off the ladder, y", pl.pos.y)
-                    zp_sub = 0
-                    zc_next(f)
-                }
-                return
-            }
             if pl.pos.y > zp_top { zp_top = pl.pos.y; zp_slow = 0 } else { zp_slow += 1 }
-            if zp_slow > 20 {
-                zp_sub = 2; zp_t = 0; zp_slow = 0; note("at the pole's top, y", pl.pos.y)
-                if pt.k == ZK_LADDER { zp_sub = 1; zp_t = 0 }
-            }
+            if zp_slow > 20 { zp_sub = 2; zp_t = 0; zp_slow = 0; note("at the pole's top, y", pl.pos.y) }
         } else if zp_sub == 2 {                // round to the side of the next point
             let want = atan2(nx.x - poles[pole_k].base.x, nx.z - poles[pole_k].base.z)
             let e = wrap_angle(want - pole_ang)
@@ -324,13 +323,22 @@ fn zc_route(f: s32) {
                 return
             }
         }
-    } else if pt.k == ZK_DOUBLE || pt.k == ZK_JUMP {
+    } else if pt.k == ZK_DOUBLE || pt.k == ZK_JUMP || pt.k == ZK_VDOUBLE || pt.k == ZK_SDOUBLE {
         stick_v = cc_stick(sh_heading(pt.p), 1.0)
-        if zp_sub == 0 { pad_v = A; if air { zp_sub = 1 } }
+        if pt.k == ZK_SDOUBLE { stick_v = cc_stick(sh_heading(pt.p), 0.5) }
+        if pt.k == ZK_VDOUBLE && (zp_sub < 3 || pl.vel.y > 0.08) { stick_v = STILL }
+        if zp_sub == 0 && pt.k != ZK_DOUBLE && hspeed() > 0.005 && !air {      // standing still first
+            stick_v = STILL
+            return
+        }
+        if zp_sub == 0 { if zp_t % 4 < 2 || air { pad_v = A }; if air { zp_sub = 1 } }      // pressed again until it jumps
         else if zp_sub == 1 { pad_v = A; if pl.vel.y <= 0.0 { zp_sub = 2; pad_v = 0 } }
         else if zp_sub == 2 { if pt.k == ZK_JUMP { zp_sub = 4 } else if pl.st == St.Ground { pad_v = A; zp_sub = 3 } }
         else if zp_sub == 3 { pad_v = A; if air && pl.vel.y <= 0.0 { zp_sub = 4; pad_v = 0 } }
         if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+        if pl.st == St.LedgeClimb { stick_v = STILL }
+        // up already (a grab and climb on the way): done
+        if zp_sub >= 1 && zp_sub < 4 && pl.st == St.Ground && pt.p.y != 0.0 && pl.pos.y >= pt.p.y { zp_sub = 4 }
         if zp_sub >= 4 && pl.st == St.Ground {
             note("jumped, down at y", pl.pos.y)
             if pt.p.y != 0.0 { expect(pl.pos.y >= pt.p.y, "the jump reached, y", pl.pos.y) }
@@ -518,6 +526,24 @@ fn zc_g6_star(f: s32) {
     tw_glide(f)
 }
 
+// ---- 414: G5 from the temple's ridge, the ridge climbed first (710's route from the terrace in front
+// of the temple's stair), then the glide to the pagoda's first roof (tw_glide), with no placing
+fn zc_g5(f: s32) {
+    if f == 0 {
+        zp_n = 0; zp_i = 0; zp_sub = 0; zp_t = 0; zp_slow = 0; zp_hold = 0; zp_hops = 0
+        zp_strict = true; zp_noslide = false; zp_done = false; zp_trace = 0; zp_glide_at = -1
+        zstart(160.0, 204.0, 10.0, NORTH)
+        ZC_TEMPLE_ROOFS()
+        za(172.5, 27.3, 221.75, ZK_WALK, 0.3)
+        mark()
+        return
+    }
+    if zp_glide_at < 0 { zc_route(f); return }
+    let g = f - zp_glide_at + 1
+    if g == 1 { sh_start = pl.pos; pl.spawn = vec3(pl.pos.x, 0.0, pl.pos.z); note("on the ridge, take-off y", pl.pos.y) }
+    tw_glide(g)
+}
+
 // ---- 730-733: G8 from its pad, the take-off moved 1 m each way: it still lands in the arcade
 fn zc_g8(f: s32) {
     if f == 0 {
@@ -527,7 +553,7 @@ fn zc_g8(f: s32) {
         if SCENARIO == 731 { dx = 1.0 }
         if SCENARIO == 732 { dz = 1.0 }
         if SCENARIO == 733 { dz = -1.0 }
-        stg = Glide { from: vec3(ZC_G8.x + dx, 0.0, ZC_G8.z + dz), to: vec3(160.0, -0.1, 84.0), run: 0.0, tol: 8.0 }
+        stg = Glide { from: vec3(ZC_G8.x + dx, 0.0, ZC_G8.z + dz), to: vec3(163.0, -0.1, 97.5), run: 0.0, tol: 6.0 }
         tw_via_on = true
     }
     tw_glide(f)
@@ -573,7 +599,7 @@ const ZC_G8: vec3 = vec3(174.0, 0.0, 356.0)          // the middle of G8's take-
 
 // The cave's west passage, the nook outside it (14) and the steps up to the pool's west terrace (16).
 fn ZC_CAVE_WEST() {
-    zl(206.6, 13.9, 332.0); zl(205.0, 13.9, 331.0); zl(205.0, 0.0, 326.5); zl(201.0, 15.8, 318.0)
+    zl(206.6, 13.9, 332.0); zl(205.0, 13.9, 331.0); zl(205.0, 0.0, 320.5); zl(201.0, 15.8, 318.0)
 }
 
 // Shortcut C's fallen cedar: from the shoulder trail's hairpin up the ramp to the stump, over the
@@ -593,8 +619,35 @@ fn ZC_ZIGZAG() {
 // In the stream 20 m above its mouth, out onto its east bank, back across and out onto its west bank.
 fn ZC_STREAM() {
     zstart(238.5, 200.0, 5.0, EAST)
-    zp_trace = 30
-    zl(246.0, 0.0, 200.0); zw(246.0, 0.6, 200.0); zl(238.5, 0.0, 200.0); zl(231.0, 0.0, 200.0); zw(231.0, 0.2, 200.0)
+    zl(246.0, 0.0, 200.0); zw(246.0, 0.3, 200.0); zl(238.5, 0.0, 200.0); zl(231.0, 0.0, 200.0); zw(231.0, 0.2, 200.0)
+}
+
+// The temple (arch_temple at (160, 5, 221.75), its climbing collision arch_temple_town_col): up its
+// stair onto the podium's front strip (8.6); a double jump and a grab onto the lower (pent) roof's
+// front (z 210.75); on its strip outside the main roof's eave (z 211.75), a double jump and a grab
+// onto the main roof; up it to below the top roof's eave
+// (z 215.15); a double jump and a grab onto the top roof; up it and a jump onto the ridge (27.5);
+// along the ridge to G5's take-off (172.5, 222.3).
+fn ZC_TEMPLE_ROOFS() {
+    zl(160.0, 0.0, 210.3); zw(160.0, 8.3, 210.3)
+    zl(150.0, 8.4, 210.2); za(150.0, 8.4, 210.45, ZK_WALK, 0.15)        // facing the pent roof's eave
+    za(150.0, 12.9, 211.5, ZK_VDOUBLE, 1.5)
+    za(150.0, 12.8, 211.4, ZK_WALK, 0.15)
+    za(150.0, 17.2, 212.6, ZK_VDOUBLE, 1.5)
+    zl(150.0, 17.2, 214.2); za(150.0, 17.2, 214.8, ZK_WALK, 0.15)
+    za(150.0, 23.2, 216.6, ZK_VDOUBLE, 1.5)
+    za(150.0, 24.0, 218.4, ZK_JUMP, 1.5)
+    za(150.0, 27.3, 220.9, ZK_JUMP, 1.2)
+    za(150.0, 27.3, 221.75, ZK_WALK, 0.4); zn(172.5, 27.3, 221.75)
+}
+
+// The gate (arch_gate at (160, 5, 172)): placed on its lower roof's front strip, east of the middle
+// and outside the upper roof's eave (z 168.8), as the lantern string delivers the body there; a jump
+// and a grab onto the upper roof; up it to the ridge (17.8).
+fn ZC_GATE_ROOFS() {
+    zstart(156.0, 168.4, 14.0, NORTH)
+    za(156.0, 15.3, 169.6, ZK_DOUBLE, 1.5)
+    za(156.0, 16.4, 172.0, ZK_JUMP, 1.5)
 }
 
 // From the falls' top up the cutting to the way-out torii by the north rim.
