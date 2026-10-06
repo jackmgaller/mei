@@ -334,7 +334,11 @@ rope_a = (ROPE_DECK[0] + 2.4, ROPE_DECK[2] + 1.75, ROPE_DECK[1] + 1.4)
 rope_b = (x0 + 0.5, SILL + 1.75, (HZ0 + HZ1) / 2)
 PATHS['cedar_rope'] = {'points': [[r2(v) for v in rope_a], [r2(v) for v in rope_b]], 'raised': True,
                        'sweep': {'profile': [[0.0, -0.06], [0.0, 0.06]], 'material': 'rope', 'double_sided': True, 'collision': False}}
-entity('rail_cedar_rope', 'rail', rope_a, {'path': 'cedar_rope'})
+# Hang only (lead's decision, alpha fix): a body dropping onto it from a glide ground along it into
+# the knot hole (DESIGN.md 12.9); a hang rail is never ground, nor caught falling past. And caught
+# only in its first 3 m, at the rope deck: wall kicks up the trunk from the basin caught its end in
+# the knot hole (the explorer bot: shortcut D bypassed).
+entity('rail_cedar_rope', 'rail', rope_a, {'path': 'cedar_rope', 'hang': True, 'catch': 3.0})
 
 # ================================================================== 3.11 fox grove, torii tunnel
 FX, FZ = L.FOX[:2]
@@ -557,9 +561,12 @@ PATHS['steps_pool_shelf'] = {'points': [[210.8, 12.3, 311.0], [206.3, 15.95, 311
 PATHS['steps_pool_cave'] = {'points': [[214.0, 11.25, 324.0], [214.0, 13.95, 328.6], [214.0, 13.95, 331.0]],
                             'sweep': {'profile': [[-1.6, -2.0], [-1.2, 0], [1.2, 0], [1.6, -2.0]],
                                       'materials': ['stone', 'steps', 'stone'], 'caps': True, 'stairs': {'rise': 0.3}}}
-# The east shoulder trail (R_EAST) from the row seam to the falls' top, its switchbacks eased.
-trail('trail_shoulder', [(288.0, 256.0), (290.0, 262.0), (302.0, 282.0), (266.0, 298.0), (260.0, 303.0), (266.0, 308.0),
-                         (296.0, 322.0), (298.0, 327.0), (292.0, 331.0), (250.0, 338.0), (237.0, 343.0)])
+# The east shoulder trail (R_EAST) from the row seam to the falls' top, its switchbacks eased. The
+# hairpin at (260, 303) has a point 1.5 m up each leg at its own height (alpha fix: the swept trail's
+# mitre there met the next sections up the legs in a 31-degree crease, where a walk slid: scenario
+# 705; level from the mitre to those points, it is flat).
+trail('trail_shoulder', [(288.0, 256.0), (290.0, 262.0), (302.0, 282.0), (266.0, 298.0), (261.15, 302.04),
+                         (260.0, 303.0), (261.15, 303.96), (266.0, 308.0), (296.0, 322.0), (298.0, 327.0), (292.0, 331.0), (250.0, 338.0), (237.0, 343.0)])
 NOTES.append(('crossing', 'trail_shoulder (R_EAST)', (288.0, gnd(288, 256), 256)))
 # The canal lane through the bamboo (R_CANAL), bending north-west round the grove's rise.
 trail('trail_canal_lane_north', [(23.5, 256.0), (20.0, 300.0), (8.0, 350.0)])
@@ -595,11 +602,11 @@ PATHS['steps_cave_terrace'] = {'points': [[205.0, 14.0, 330.6], [205.0, 15.95, 3
 # rough, and the draped line followed its bumps over 30 at the hairpins.
 # A hairpin (a turn of more than 60 degrees) gets a level landing at its height, so the mitred
 # corner of the trail lies flat (on the slope, its outer edge stood 1 m proud and the body slid).
-def ramp_trail(name, pts, width=4.4, falloff=2.0, heights=None):
+def ramp_trail(name, pts, width=4.4, falloff=2.0, heights=None, max_grade=21.0):
     hs = heights or [gnd(x, z) for x, z in pts]
     for (a, ha), (b, hb) in zip(zip(pts, hs), zip(pts[1:], hs[1:])):
         grade = math.degrees(math.atan2(abs(hb - ha), math.hypot(b[0] - a[0], b[1] - a[1])))
-        assert grade <= 21.0, (name, a, b, grade)
+        assert grade <= max_grade, (name, a, b, grade)
         op(op='ramp', **{'from': [a[0], r2(ha), a[1]], 'to': [b[0], r2(hb), b[1]]}, width=width, falloff=falloff)
     for i in range(1, len(pts) - 1):
         (ax, az), (bx, bz), (cx, cz) = pts[i - 1], pts[i], pts[i + 1]
@@ -609,7 +616,10 @@ def ramp_trail(name, pts, width=4.4, falloff=2.0, heights=None):
             op(op='set', area={'circle': [bx, bz, 3.5]}, height=r2(hs[i]), falloff=2.5)
 WOODS_UP = [(84.0, 232.0), (86.5, 240.0), (95.5, 270.0), (94.0, 284.0), (90.0, 294.0)]
 ramp_trail('trail_west', WOODS_UP, heights=[0.8, 1.0, 12.4, 14.0, 15.0])
-ramp_trail('trail_shoulder', [tuple(p) for p in PATHS['trail_shoulder']['points']])
+_sh = [tuple(p) for p in PATHS['trail_shoulder']['points']]
+_shh = [gnd(x, z) for x, z in _sh]
+_shh[4] = _shh[6] = _shh[5]                   # the hairpin's level: its legs 22 degrees beyond it
+ramp_trail('trail_shoulder', _sh, heights=_shh, max_grade=23.0)
 # From the trail (35.6 at (263, 307)) level west to the fallen dead cedar's stump (its top 35.96, 1.26
 # over the trunk's foot at 34.7: forest_dead_cedar_fallen_col), so shortcut C's log is walked onto.
 op(op='ramp', **{'from': [263.0, 35.6, 307.0], 'to': [256.2, 35.94, 306.8]}, width=2.2, falloff=1.0)
@@ -650,6 +660,8 @@ clear = [{'circle': [L.BASIN[0], L.BASIN[1], 16]}, {'circle': [FX, FZ, 11]}, {'c
          {'circle': [DECK6[0], DECK6[1], 6]}, {'circle': [ROPE_DECK[0], ROPE_DECK[1], 6]}, {'circle': [168, 262, 6]},
          {'circle': [DC[0], DC[1], 4]}, {'path': 'gully_falls', 'width': 12}, {'circle': [252, 378, 5]},
          {'rect': [0, 256, 46, 384]},
+         # the way out's trail and the cave's west steps (alpha fix)
+         {'path': 'trail_way_out', 'width': 6}, {'path': 'steps_cave_terrace', 'width': 4},
          # G8 as flown now: from its pad, east of the great torii (place/shrine.py), its part in these rows
          {'rect': [166, 340, 182, 362]}, {'polygon': [[169.0, 352.0], [179.0, 352.0], [176.6, 256.0], [166.6, 256.0]]}]
 # Glide corridors kept clear of trees (10 m wide): G6 stage -> pagoda roof 4/5, G7 pagoda roof 5 ->

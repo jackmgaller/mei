@@ -46,6 +46,7 @@ const MAX_POLES = 128         // a world with more poles or rails than these fai
 const MAX_RAILS = 128
 const POLE_HOLD: fixed = 0.5        // from the pole's axis to the body's: its radius and a pole's
 const HANG_BELOW: fixed = 1.75      // hanging: the feet this far below the rail (hands overhead)
+const HANG_FALL_MAX: fixed = 0.05   // a hang-only rail is not caught falling faster (metres a tick: 3 m/s)
 const LIFT_MAX: fixed = 0.8         // a mover's top this far into the body lifts the player
 const SQUEEZE_MAX: fixed = 12.0     // how far to look for room beside a mover pressing down
 
@@ -84,6 +85,8 @@ var mover_n: s32
 var poles: [MAX_POLES]Pole
 var pole_n: s32
 var rails: [MAX_RAILS]*WpPath
+var rail_hang: [MAX_RAILS]bool  // a hang-only rail (the rail entity's `hang`)
+var rail_catch: [MAX_RAILS]fixed // where it can be caught: within this of its first point (0: anywhere)
 var rail_n: s32
 
 var att_t: s32                 // the movers' clock, ticks
@@ -127,6 +130,8 @@ fn attach_init() {
             let pth = wp_path_find(pack_string(p.path))
             assert(pth != null)
             rails[rail_n] = pth
+            rail_hang[rail_n] = p.hang
+            rail_catch[rail_n] = p.catch
             rail_n += 1
         }
     }
@@ -524,10 +529,12 @@ fn rail_touch() -> bool {
         let dz = pl.pos.z - n.z
         if abs(dx) > r || abs(dz) > r || dx * dx + dz * dz > r * r { continue }
         let up = n.y - pl.pos.y
-        if pl.vel.y <= 0.0 && up >= -0.05 && up <= -pl.vel.y + 0.05 {
+        if !rail_hang[k] && pl.vel.y <= 0.0 && up >= -0.05 && up <= -pl.vel.y + 0.05 {
             grab_rail(k, St.Rail)
             return true
         }
+        if rail_hang[k] && pl.vel.y < -HANG_FALL_MAX { continue }      // dropping past a hang-only rail
+        if rail_catch[k] > 0.0 && wp_near.s > rail_catch[k] { continue }
         if up >= 1.2 && up <= 1.9 {
             grab_rail(k, St.Hang)
             return true

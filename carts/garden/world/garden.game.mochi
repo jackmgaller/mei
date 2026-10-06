@@ -34,9 +34,13 @@ type pole {
 }
 
 // Something to grind or hang from, along a World Kit path of the world file (`paths`). The
-// entity sits at the path's first point.
+// entity sits at the path's first point. A `hang` rail is hung from only, never ground, and only
+// by a body rising or falling slowly (a jump's top, a glide), not one dropping past it; with `catch`
+// over 0, only within that many metres of its first point (once caught, the hands go its whole way).
 type rail {
   path: name
+  hang: bool = false
+  catch: fixed = 0
 }
 
 // A moving platform. `to` is an offset from the placement, or `path` names a World Kit path

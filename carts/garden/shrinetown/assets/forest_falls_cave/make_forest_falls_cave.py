@@ -57,7 +57,8 @@ BLOCKS = [
     ('crag_m', -3.2, 2.6, 8.6, 11.6, 0.2, 7.0, 0.45, False),
     ('crag_e', 1.6, 7.2, 9.2, 11.2, -0.4, 6.6, 0.45, False),
     ('crag_back', -6.0, 5.0, 9.4, 12.6, 4.0, 8.4, 0.5, False),
-    ('buttress_w', -7.7, -7.0, -1.0, 7.6, -2.4, 0.4, 0.4, False),     # (from -9.6: it closed the way south from the west passage, alpha fix)
+    # (buttress_w from -9.6: it closed the way south from the west passage, alpha fix)
+    ('buttress_w', -7.7, -7.0, -1.0, 7.6, -2.4, 0.4, 0.4, False),
     ('buttress_e', 4.8, 8.2, -1.0, 8.1, -2.3, 0.3, 0.4, False),
     ('boulder', -4.9, -3.3, 1.9, 3.0, 4.0, 5.4, 0.2, False),
 ]

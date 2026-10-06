@@ -294,7 +294,7 @@ fn gc_race_won(f: s32) {
         return
     }
     if tw_phase == 5 {
-        stick_v = cc_stick(g8_aim(to), 1.0)               // east of the great torii, then the arcade
+        stick_v = cc_stick(shz_g8_aim(to), 1.0)               // east of the great torii, then the arcade
         pad_v = A
         if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
         if !air && pl.st != St.LedgeHang && pl.st != St.LedgeClimb && pl.st != St.WallSlide {

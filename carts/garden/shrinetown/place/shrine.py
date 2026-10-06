@@ -55,7 +55,7 @@ LANDING = (CROWN[0], CROWN[1], 15.0)  # the crown's landing: a second platform o
 PLAT_HALF, PLAT_GAP = 3.5, 1.2        # forest_platform: 7 x 7, its railing open 2.4 m in the middle of each side
 
 # ---------------------------------------------------------------------------- the mountain
-STAR1_Y, FINIAL_TOP, PAG_ROBAN = 48.3, 47.8, 21.19   # star 1, the finial pole's top, the dew basin's top over the base
+STAR1_Y, FINIAL_TOP, PAG_ROBAN = 51.5, 51.0, 21.19   # star 1, the finial pole's top, the dew basin's top over the base
 CEDAR = (L.CEDAR[0], L.BASIN[3], L.CEDAR[1])                     # the sacred cedar's foot (154, 13, 296)
 ROPE_DECK = DECKS[6]
 CEDAR_YAW = math.degrees(math.atan2(CEDAR[0] - ROPE_DECK[0], CEDAR[2] - ROPE_DECK[1]))   # its knot hole (-Z) to the rope deck
@@ -81,8 +81,9 @@ CEM_GATE = (286.0, 1.8, 131.4)                # at the head of the first flight,
 # cards (64: the recipes' own); the walls' level 1 at 28.
 # (alpha fix, DESIGN.md 12.9: draw CPU, r02's measured levels) The temple's and pagoda's level 1 from 26 m,
 # the hollow cedar's from 30, the bell pavilion's from 20; the grave rows' level 1 from 12 and culled at 30;
-# the zone's sweeps culled at 40 (SWEEP_CULL).
-SHRINE_LOD = {'tree_cedar_giant': {'distances': [22, 110]}, 'forest_stage_hall': {'distances': [18, 90]},
+# the zone's sweeps culled at 40 (SWEEP_CULL); the giant cedars' level 1 from 16 (was 22: deck 5's view
+# south, 622k).
+SHRINE_LOD = {'tree_cedar_giant': {'distances': [16, 110]}, 'forest_stage_hall': {'distances': [18, 90]},
               'forest_fox_torii': {'distances': [16], 'cull': 48}, 'forest_platform': {'distances': [24]}, 'arch_temple': {'distances': [26, 110]},
               'arch_side_hall': {'distances': [30]}, 'arch_corridor_hall': {'distances': [30]},
               'arch_gate': {'distances': [30, 100]}, 'arch_pagoda': {'distances': [26, 110]},
@@ -296,7 +297,9 @@ def courtyard(Z):
     torii = {'w': (155.0, 13.2, TORII_Z), 'e': (165.0, 13.2, TORII_Z)}
     beam = {'w': (157.0, 13.2, TORII_Z), 'e': (163.0, 13.2, TORII_Z)}
     hall = {'w': (128.0, 11.0, 158.6), 'e': (192.0, 11.0, 158.6)}
-    gate = {'w': (GATE[0] - 9.0, 12.0, GATE[1] - 3.9), 'e': (GATE[0] + 9.0, 12.0, GATE[1] - 3.9)}
+    # (the gate end 0.5 m over the lower roof's eave, 11.9: at 12.0 the body grinding up to it met the
+    # eave's corner and stuck on the string; scenario 706)
+    gate = {'w': (GATE[0] - 9.0, 12.4, GATE[1] - 3.9), 'e': (GATE[0] + 9.0, 12.4, GATE[1] - 3.9)}
     for side in 'we':
         name = f'core_string_torii_{side}'
         Z.paths[name]['points'] = [[R(v) for v in p] for p in (beam[side], torii[side], hall[side], gate[side])]
@@ -387,7 +390,9 @@ def precinct(Z):
     # the north gate, shortcut B: shut and barred on the ridge side (layer gate_b_barred, on), open with the
     # bar set down (gate_b_open). The gate's -Z (outside) faces north; the bar's +Z is the ridge side.
     gn = (GATE_N_X, 5.0, WZ1)
-    Z.place('gate_n_shut', 'arch_wall_gate_shut', gn, 'arch_wall_gate_shut_col', 180, layer='gate_b_barred')
+    # barred, its collision is the town's: no walkable roof nor wing tops (alpha fix: the explorer bot
+    # side-flipped onto the roof from the terrace and so past shortcut B; scenario 727)
+    Z.place('gate_n_shut', 'arch_wall_gate_shut', gn, 'arch_wall_gate_shut_town_col', 180, layer='gate_b_barred')
     Z.place('gate_n_open', 'arch_wall_gate', gn, 'arch_wall_gate_col', 180, layer='gate_b_open')
     bar = (GATE_N_X, 5.0, WZ1 + 0.15)
     Z.place('gate_n_bar', 'arch_wall_gate_bar', bar, 'arch_wall_gate_bar_col', layer='gate_b_barred')
@@ -462,9 +467,11 @@ def walkway(Z):
 def ridge_and_basin(Z):
     px, pz = L.PAGODA
     Z.place('pagoda', 'arch_pagoda', (px, L.PAG_BASE, pz), 'arch_pagoda_town_col')
-    # star 1 raised to 48.3 (lead's decision, alpha fix: G6 from the stage crossed the finial at 45.5-45.8
-    # and took the card in mid-air); the finial pole runs to 47.8, so its top holds the feet at 46.6 and
-    # the card is in reach there; the spire drawn on up to it (shrine_finial_top)
+    # star 1 raised to 51.5 (lead's decision, alpha fix: G6 from the stage crossed the finial at
+    # 45.5-45.8 and took the card in mid-air; at 48.3, the first try, the explorer bot still glided to
+    # it from the 65.4 m slope at (150, 350), 92 m off, the body's middle at 49.5-50 over the pole).
+    # The finial pole runs to 51.0, its top holding the feet at 49.8 with the card in reach; the spire
+    # is drawn on up to it (shrine_finial_top).
     Z.move_entity('star_1_pagoda', (px, STAR1_Y, pz))
     Z.move_entity('pole_pagoda_finial', (px, L.PAG_BASE + PAG_ROBAN, pz), height=R(FINIAL_TOP - L.PAG_BASE - PAG_ROBAN))
     Z.place('finial_top', 'shrine_finial_top', (px, L.PAG_BASE + 30.0, pz), 'none')

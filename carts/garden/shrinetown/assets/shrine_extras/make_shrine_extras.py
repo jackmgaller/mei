@@ -17,7 +17,7 @@ script (python3 make_shrine_extras.py), each with its collision where it has one
 - shrine_crown_ladder: the same ladder, 13 m, on the crown deck's pole (core_pole_crown).
 - shrine_kick_chimney: the kick chimney's two rock faces, their back and the rest ledge (the grey
   box's, in the falls' rock), with its collision.
-- shrine_finial_top: the pagoda's spire carried on 2.9 m up the raised finial pole.
+- shrine_finial_top: the pagoda's spire carried on 6.0 m up the raised finial pole.
 - shrine_wall_coping_8_col, _4_col and _corner_col: the north wall's collision with a steep
   coping instead of a flat top, so a jump and a grab from the terrace do not get onto it.
 """
@@ -101,18 +101,19 @@ for name, length in (('shrine_wall_coping_8_col', 8.0), ('shrine_wall_coping_4_c
     out[name] = col(name, [{'id': 'wall', 'op': 'extrude', 'points': GABLE, 'depth': length, 'material': 'solid',
                             'transform': {'rotate': [0, 90, 0]}}])
 
-# ---- the pagoda's finial, taller (alpha fix: star 1 at 48.3, out of G6's glide, DESIGN.md 12.9)
+# ---- the pagoda's finial, taller (alpha fix: star 1 at 51.5, out of every glide, DESIGN.md 12.9)
 # The shrine's pagoda draws its spire to 30.0 over its base (45.0 in the level); the finial pole
-# (place/shrine.py) now runs to 47.8, so the spire goes on 2.9 m: a bronze rod with three rings and
+# (place/shrine.py) now runs to 51.0, so the spire goes on 6.0 m: a bronze rod with three rings and
 # a gold jewel at its tip. Origin at the drawn spire's top; no collision (the pole holds the body).
+RISE = 6.0
 BRONZE = {'color': '#7a8a70', 'palette': True}
 GOLD = {'color': '#d8b048', 'palette': True}
-nodes = [{'id': 'rod', 'op': 'cylinder', 'radius': 0.08, 'height': 2.6, 'segments': 6, 'material': 'bronze',
-          'transform': {'translate': [0, 1.3, 0]}}]
-for k, y in enumerate((0.5, 1.2, 1.9)):
+nodes = [{'id': 'rod', 'op': 'cylinder', 'radius': 0.08, 'height': RISE - 0.3, 'segments': 6, 'material': 'bronze',
+          'transform': {'translate': [0, (RISE - 0.3) / 2, 0]}}]
+for k, y in enumerate((RISE - 2.4, RISE - 1.7, RISE - 1.0)):
     nodes.append({'id': f'ring_{k}', 'op': 'cylinder', 'radius': 0.22 - 0.03 * k, 'height': 0.08, 'segments': 8,
                   'material': 'gold', 'transform': {'translate': [0, y, 0]}})
-nodes.append({'id': 'jewel', 'op': 'lathe', 'profile': [[0.0, 2.55], [0.16, 2.65], [0.2, 2.75], [0.12, 2.85], [0.0, 2.95]],
+nodes.append({'id': 'jewel', 'op': 'lathe', 'profile': [[0.0, RISE - 0.4], [0.16, RISE - 0.3], [0.2, RISE - 0.2], [0.12, RISE - 0.1], [0.0, RISE]],
               'segments': 6, 'material': 'gold'})
 out['shrine_finial_top'] = recipe('shrine_finial_top', {'bronze': BRONZE, 'gold': GOLD}, nodes, 150,
                                   {'levels': [{'distance': 40, 'nodes': nodes[:1]}], 'cull': 140})

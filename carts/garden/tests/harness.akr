@@ -174,7 +174,7 @@ fn test_init() {
         30 => { name = "camera sweep at the spawn: frame timing"; place_at_spawn(); cam_reset() }
         28 => { name = "crouch and crawl"; place(lane, EAST) }
         else => {
-            if !camera_case_init() && !attach_case_init() && !shrine_case_init() && !town_case_init() && !goals_case_init() && !zone_case_init() { name = "picture" }
+            if !camera_case_init() && !attach_case_init() && !shrine_case_init() && !town_case_init() && !goals_case_init() && !shz_case_init() { name = "picture" }
         }
     }
 }
@@ -221,7 +221,7 @@ fn scenario(f: s32) {
             shrine_case(f)
             town_case(f)
             goals_case(f)
-            zone_case(f)
+            shz_case(f)
         }
     }
 }

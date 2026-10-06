@@ -1388,3 +1388,64 @@ Not done here: the race train's own mesh and its path along track 2 (the station
 takes them through `RACE_TRAIN` and `RACE_PATH` once they exist; until then the grey-box train
 runs the straight line at z 12.1), a tunnel camera zone (the shrine's; the cart now holds 24
 zones), and case 414's start on the temple's ridge (waits for the shrine's climbable roofs).
+
+#### The shrine zone
+
+From the alpha review (reviewers 02, 04, 05, 07, 09, 10, 11, 13, 17 and 19) and the explorer bot
+(`tools/explore`, branch explore-bot). Each fix has a case: 700–789 are shrine town's shrine-zone
+routes and 790 the shrine world's (`carts/garden/tests/shrinezone_cases.akr` and `.sh`); 414, 417
+and 422 are in `shrinetown_cases.akr`.
+
+| What | Change | Case |
+|---|---|---|
+| B2: the walkway decks let the body fall into the trunk | `forest_platform_col` (`carts/garden/shrine/assets`, so the shrine world too): the inner hole round the trunk 1.2 → 0.6 m from the trunk's axis | 700, 701, 790 |
+| B4: the rope bridge, stage to falls' top, ended in a lip | A flat 52.0 at its east end (x 216–222, z 345–349) | 702, 703 |
+| The woods trail up the west ridge slid | `ramp_trail()` (`make_mountain.py`): each leg a ramp between its ends, 21° at most, a level landing (r 3.5) at each hairpin; the trail's last leg runs to (91.15, 255.5) | 704 |
+| The east shoulder trail slid at its switchbacks | The same `ramp_trail()`; at the hairpin at (260, 303) a point 1.5 m up each leg at the hairpin's height, so the swept trail's mitre meets level sections (it met the sections up the legs in a 31° crease); the legs beyond it are 22° | 705 |
+| A grind down a lantern string pinned the body at the hall; a grind up overshot the torii | One path a side (`core_string_torii_{w,e}`): 2 m along the torii's top beam from its middle, the torii, the hall, the gate; the rail entity at the hall | 706, 707 |
+| The north wall's top could be grabbed | The raised north run's collision is `shrine_wall_coping_{8,4,corner}_col`: 2.45 m sides and a 2.95 m ridge, no flat top | 708 |
+| The gate's and temple's roofs could not be climbed (G5's take-off was reached only by gliding) | The gate's roofs: a double jump from its skirt reaches the lower roof as built. The temple: `arch_temple_town_col` (`assets/arch_temple/make_arch_temple_col.py`), the shrine's collision with walls under the three front eaves and the ridge walk widened to 2.5 m | 709, 710, 414 |
+| Case 414 started on the temple's ridge | It climbs there from the terrace (`SHZ_TEMPLE_ROOFS`), then glides G5 | 414 |
+| Star 1 was taken in mid-air by G6's glide (lead: star and finial to about 48 m) | Star 1 at 51.5, the finial pole to 51.0 (the feet at its top 49.8), `shrine_finial_top` drawing the spire 6.0 m on. At 48.3, the first try, the explorer bot still glided to it from the 65.4 m slope at (150, 350), 92 m off; at 51.5 it finds only the pole | 722, 422 |
+| Star 4: a body dropped onto the cedar rope ground along it into the knot hole (lead: hang only) | The rail type's `hang` (the game schema, `attach.akr`): a hang rail is never ground and is not caught falling faster than 3 m/s. Its `catch` 3.0: it is caught only in its first 3 m, at the rope deck | 724, 423 |
+| Shortcut D bypassed: a wall kick up the trunk, the hands on the rope's end in the knot hole (the explorer bot) | The rope's `catch` (above). The bot still reports it, as its confirmer puts the body on the rope directly and knows neither `hang` nor `catch`; flown whole in the cart, no kick gets in | 725, 726 |
+| Shortcut B bypassed: a side flip from the terrace onto the barred north gate's 26° roof (the explorer bot) | The barred gate's collision is `arch_wall_gate_shut_town_col` (`assets/arch_wall_gate/make_arch_wall_gate_town_col.py`): the roof a 64° gable to 6.6 (1.9 m over the drawn ridge), the wings a 56° coping | 727 |
+| G8 (lead: a flat pad, routed east of the torii) | A 5 × 5 m pad at 61.8 (x 171.5–176.5, z 353.5–358.5), kept clear of scatter; a standing jump from it glides east of the great torii (x ≥ 167) to the front road at (163, 97.5), the feet 2.1 m clear of the wires at z 106 | 417, 730–733, 452 |
+| The stilt ladder's top was hard to leave | Its pole 1.15 m in front of the deck, a front pole held on its north side: at its top (feet 61.1) a pole jump goes onto the deck | 711 |
+| Lips at the torii tunnel's foot and ladder A's first riser | The ground at each foot set just under the first tread (14.75, 12.85) | 712, 713 |
+| The landing stair's last riser at the stage's west gap | It ends in a level landing 0.1 m under the deck, slipping 0.6 m under it | 714 |
+| The steps into the cave ended in a 0.65 m lip | `steps_pool_cave` reaches the cave's floor at its front (13.95 at z 328.6) | 715 |
+| The cave's west passage ended under the terrace | `forest_falls_cave`'s west buttress trimmed (x from −7.7); the ground cut to 14 west of the cave, with steps (`steps_cave_terrace`) up to the terrace | 716 |
+| Shortcut C's fallen cedar: a hole where the log meets the root plate, and the log not walkable from the stump | `forest_dead_cedar_fallen_col`: the stump to the log's top (1.26) and a join block; a ramp up to the stump; the cedar placed at 34.7 | 717, 718 |
+| The zig-zag bridge's hump, and its 32° corner (the explorer bot) | The corner at (218, 168) moved to x 219.5; no leg steeper than 22° (each point within 0.4 m a metre of its neighbours) | 719, 728 |
+| The stream's mouth: its east bank too steep to leave | The bank lowered 0.4 m and smoothed (x 232–253, z 182–216) | 720 |
+| No path to the way-out torii | `trail_way_out` from the falls' top (238, 349) to the torii (252, 376.5), ramped | 721 |
+| The crown pole could not be seen | `shrine_crown_ladder` drawn on it | 723 |
+| The north gate's sawtooth: a gully behind the moved wall | A strip at 5.0 behind it (x 114–214, z 238–243) | 708 |
+| The kick chimney was grey box | `shrine_kick_chimney` (and `_col`): its rock faces textured, so it takes the night's colours | — |
+| The koi could not be seen | At −0.15 (was −0.5), brighter | — |
+| Draw CPU over 600k (r02 #1) | r02's measured levels: `arch_temple` and `arch_pagoda` level 1 from 26 m, `tree_cedar_sacred_hollow` from 30, `bell_pavilion` from 20, `cemetery_grave_row` from 12 and culled at 30; every sweep wholly in the zone culled at 40 (`SWEEP_CULL`); the sotoba racks unmerged, so their cull holds; `tree_cedar_giant` level 1 from 16 (was 22) | below |
+
+Draw CPU at r02's positions afterwards, the worst of 24 yaws × 3 pitches (−30, −10, 5; the World
+Checker at fixed cameras, the backdrop drawn), against r02's worst before (72 yaws × 7 pitches):
+
+| Position | r02 before | Now | Views over 600k |
+|---|---|---|---|
+| deck 5 (102, 22.6, 252) | 636k | 599k (yaw 180, pitch −30) | 0 of 72 |
+| pagoda terrace (184, 19, 264) | 667k | 599k (yaw 255, −10) | 0 |
+| rope deck (130, 25.6, 282) | 663k | 581k | 0 |
+| cemetery terrace 2 (312, 7.6, 152) | 659k | 576k | 0 |
+| cemetery terrace 1 (286, 3.3, 135) | 641k | 564k | 0 |
+| pagoda climb (178, 34, 262) | 640k | 558k | 0 |
+| basin east (184, 15.8, 296) | 655k | 545k | 0 |
+| pagoda terrace (184, 18.5, 248) | 649k | 544k | 0 |
+| the courtyard (165, 7, 200) | 521k | 444k | 0 |
+| the viaduct deck (312, 10.5, 136) | 713k | 657k (yaw 300, −10) | 2 |
+
+The viaduct deck (the station's, over the cemetery) is still over. The World Checker's own 600
+views over the level find 613k at (185.4, 20.4, 255.5) over the pagoda's terrace, yaw 181, pitch
+−20; its two others over 600k are at the station.
+
+Not done here: the temple's, gate's and pagoda's level-1 roof shapes (the look); the race train
+(the cart); the fall-through spots (the World Kit's `slide_floor_degrees`); a rail camera zone per
+torii tunnel switchback; the kick cedars drawn at their trunks' size.

@@ -204,7 +204,7 @@
     5.0,
     237.4
    ],
-   "collision": "arch_wall_gate_shut_col",
+   "collision": "arch_wall_gate_shut_town_col",
    "yaw": 180,
    "layer": "gate_b_barred"
   },
