@@ -9,37 +9,6 @@
  "region": "town",
  "placements": [
   {
-   "id": "building",
-   "asset": "gbt_building",
-   "position": [
-    193.0,
-    0,
-    73.0
-   ],
-   "collision": "gbt_building_col"
-  },
-  {
-   "id": "ladder_e",
-   "asset": "gbt_ladder_e",
-   "position": [
-    199.5,
-    0,
-    102.1
-   ],
-   "layer": "ladder_e",
-   "collision": "self"
-  },
-  {
-   "id": "pole_konbini1",
-   "asset": "gbt_utility_pole",
-   "position": [
-    207.0,
-    0.0,
-    104.0
-   ],
-   "collision": "self"
-  },
-  {
    "id": "culvert_deck",
    "asset": "gbt_culvert_deck",
    "position": [
@@ -48,6 +17,73 @@
     111.0
    ],
    "collision": "self"
+  },
+  {
+   "id": "building",
+   "asset": "street_building",
+   "position": [
+    193.0,
+    0.0,
+    73.0
+   ],
+   "yaw": 90,
+   "collision": "street_building_col"
+  },
+  {
+   "id": "fire_escape",
+   "asset": "town_fire_escape",
+   "position": [
+    196.5,
+    0.0,
+    103.0
+   ],
+   "yaw": 180,
+   "collision": "town_fire_escape_col"
+  },
+  {
+   "id": "fire_escape_up",
+   "asset": "town_fire_escape_up",
+   "position": [
+    196.5,
+    0.0,
+    103.0
+   ],
+   "yaw": 180,
+   "layer": "ladder_e_up",
+   "collision": "none"
+  },
+  {
+   "id": "fire_escape_down",
+   "asset": "town_fire_escape_down",
+   "position": [
+    196.5,
+    0.0,
+    103.0
+   ],
+   "yaw": 180,
+   "layer": "ladder_e",
+   "collision": "none"
+  },
+  {
+   "id": "pole_konbini1",
+   "asset": "town_utility_pole_transformer",
+   "position": [
+    207.0,
+    0.0,
+    104.0
+   ],
+   "collision": "town_utility_pole_transformer_col"
+  },
+  {
+   "id": "lamp_road4",
+   "asset": "street_lamp",
+   "position": [
+    204.0,
+    0.0,
+    117.2
+   ],
+   "yaw": 90,
+   "collision": "street_lamp_col"
   },
   {
    "id": "gym",
@@ -141,23 +177,24 @@
    "id": "pole_ladder_e",
    "type": "pole",
    "position": [
-    199.5,
-    0,
-    102.6
+    198.5,
+    0.0,
+    103.95
    ],
    "layer": "ladder_e",
    "params": {
-    "height": 18.3,
+    "height": 7.6,
     "front": true
-   }
+   },
+   "yaw": 0
   },
   {
    "id": "pole_road220",
    "type": "pole",
    "position": [
-    220,
+    220.0,
     0.0,
-    104.0
+    106.0
    ],
    "params": {
     "height": 9.0
@@ -167,9 +204,9 @@
    "id": "pole_road250",
    "type": "pole",
    "position": [
-    250,
+    250.0,
     0.0,
-    104.0
+    106.0
    ],
    "params": {
     "height": 9.0
@@ -192,7 +229,7 @@
    "type": "trigger",
    "position": [
     199.0,
-    18.35,
+    15.25,
     101.0
    ],
    "params": {
@@ -210,7 +247,7 @@
    "id": "coin_wire_konbini1",
    "type": "coin",
    "position": [
-    208.35,
+    209.15,
     8.7,
     72.05
    ],
@@ -220,7 +257,7 @@
    "id": "coin_wire_konbini2",
    "type": "coin",
    "position": [
-    207.75,
+    208.55,
     8.7,
     86.25
    ],

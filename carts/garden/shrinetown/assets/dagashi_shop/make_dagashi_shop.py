@@ -16,7 +16,8 @@ shelves of sweets and the kuji board, the jars on the counter and the beckoning 
 freezer, the drinks machine, the crate of ramune, the アイス flag, two red lanterns and the boy
 in the gold cap. The cat, the ramune and the side and back walls are drawn on textures now.
 
-Textures: art/dagashi_sheet.png is the lab's sheet (examples/assets/lab/dagashi_shop/art) with
+Textures (all 4-bit, for the level's palettes: TEXTURES.md; both shelves are shelf_a's image,
+the right one mirrored): art/dagashi_sheet.png is the lab's sheet (examples/assets/lab/dagashi_shop/art) with
 new cells below it, drawn here: the side and back elevations (on the town's shared plaster from
 ../town_alley_house_a/art/town_common.png), a sweet jar, the cat and the ramune bottles. Roof
 tile and plaster are the town's shared tiles."""
@@ -256,6 +257,8 @@ def write_sheet():
     x = 0
     for name, im in (("side", draw_side()), ("back", draw_back()), ("jar", draw_jar()), ("cat", draw_cat()),
                      ("bottles", draw_bottles())):
+        if name in ("side", "back"):     # stored at half size (the town's texture budget, TEXTURES.md)
+            im = im.resize((im.width // 2, im.height // 2), Image.Resampling.BOX)
         sheet.paste(im, (x, 192))
         cells[name] = [x, 192, im.width, im.height]
         x += im.width
@@ -287,14 +290,14 @@ M = {
         "projection": "box", "scale": [2, 2]}},
     "side": {"color": "#e0d6bc", "tag": "wall", "texture": cell("side")},
     "back": {"color": "#e0d6bc", "tag": "wall", "texture": cell("back")},
-    "kanban": {"color": "#7a1c1a", "texture": cell("kanban", 8)},
-    "shelf_a": {"color": "#4a3020", "texture": cell("shelf_a", 8)},
-    "shelf_b": {"color": "#4a3020", "texture": cell("shelf_b", 8)},
-    "kuji": {"color": "#e6d6a8", "texture": cell("kuji", 8)},
-    "vending_front": {"color": "#bd2824", "texture": cell("vending", 8)},
-    "freezer_sign": {"color": "#3c80d2", "texture": cell("freezer", 8)},
+    "kanban": {"color": "#7a1c1a", "texture": cell("kanban")},
+    "shelf_a": {"color": "#4a3020", "texture": cell("shelf_a")},
+    "shelf_b": {"color": "#4a3020", "texture": cell("shelf_a", flip="u")},   # one image for both (TEXTURES.md)
+    "kuji": {"color": "#e6d6a8", "texture": cell("kuji")},
+    "vending_front": {"color": "#bd2824", "texture": cell("vending")},
+    "freezer_sign": {"color": "#3c80d2", "texture": cell("freezer")},
     "noren": {"color": "#243468", "double_sided": True, "texture": cell("noren")},
-    "flag": {"color": "#2a6ec4", "double_sided": True, "texture": cell("flag", 8)},
+    "flag": {"color": "#2a6ec4", "double_sided": True, "texture": cell("flag")},
     "jar": {"color": "#cfe6ea", "texture": cell("jar")},
     "cat": {"color": "#f4f0e6", "double_sided": True, "texture": cell("cat")},
     "bottles": {"color": "#8fd3e8", "double_sided": True, "texture": cell("bottles")},

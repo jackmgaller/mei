@@ -163,9 +163,9 @@
    "id": "pole_road280",
    "type": "pole",
    "position": [
-    280,
+    280.0,
     0.0,
-    104.0
+    106.0
    ],
    "params": {
     "height": 9.0

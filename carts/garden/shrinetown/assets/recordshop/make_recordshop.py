@@ -225,6 +225,10 @@ def draw_bincard(src):
 CELLS = {}
 
 
+def half_width(im):
+    return im.resize((im.size[0] // 2, im.size[1]), Image.Resampling.BOX)
+
+
 def draw_art():
     src = Image.open(LAB).convert("RGBA")
     sheet = Image.new("RGBA", (256, 128), (0, 0, 0, 0))
@@ -233,8 +237,10 @@ def draw_art():
         sheet.paste(im, (x, y))
         CELLS[name] = [x, y, im.size[0], im.size[1]]
 
-    put("glass", draw_glass(), 0, 0)                     # 144 x 64
-    put("kanban", draw_kanban(src), 0, 64)               # 176 x 32
+    # the glass front and the kanban are stored at half width (the faces stretch them back): the
+    # town's texture budget (TEXTURES.md)
+    put("glass", half_width(draw_glass()), 0, 0)         # 72 x 64 (drawn 144 x 64)
+    put("kanban", half_width(draw_kanban(src)), 0, 64)   # 88 x 32 (drawn 176 x 32)
     put("cassette", lab(src, "cassette"), 144, 0)        # 48 x 32
     put("sode", lab(src, "sode"), 192, 0)                # 16 x 64
     put("poster", lab(src, "poster"), 208, 0)            # 24 x 32

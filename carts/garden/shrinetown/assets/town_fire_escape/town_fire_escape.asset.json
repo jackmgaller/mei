@@ -1334,63 +1334,6 @@
    "faces": {
     "back": "door"
    }
-  },
-  {
-   "id": "ladder_stub",
-   "op": "mesh",
-   "vertices": [
-    [
-     -2.25,
-     8.1,
-     -0.95
-    ],
-    [
-     -1.75,
-     8.1,
-     -0.95
-    ],
-    [
-     -1.75,
-     6.3,
-     -0.95
-    ],
-    [
-     -2.25,
-     6.3,
-     -0.95
-    ]
-   ],
-   "faces": [
-    [
-     0,
-     1,
-     2,
-     3
-    ]
-   ],
-   "face_materials": [
-    "ladder"
-   ]
-  },
-  {
-   "id": "hanger",
-   "op": "box",
-   "size": [
-    0.62,
-    0.7,
-    0.24
-   ],
-   "material": "hanger",
-   "transform": {
-    "translate": [
-     -2.0,
-     7.9,
-     -0.79
-    ]
-   },
-   "open": [
-    "bottom"
-   ]
   }
  ],
  "lod": {
@@ -2326,26 +2269,6 @@
         0,
         1
        ]
-      ]
-     },
-     {
-      "id": "hanger",
-      "op": "box",
-      "size": [
-       0.62,
-       0.7,
-       0.24
-      ],
-      "material": "hanger",
-      "transform": {
-       "translate": [
-        -2.0,
-        7.9,
-        -0.79
-       ]
-      },
-      "open": [
-       "bottom"
       ]
      }
     ]

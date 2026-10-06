@@ -9,116 +9,6 @@
  "region": "town",
  "placements": [
   {
-   "id": "shop_w0",
-   "asset": "gbt_shop2",
-   "position": [
-    147.0,
-    0,
-    49.0
-   ],
-   "collision": "gbt_shop2_col"
-  },
-  {
-   "id": "shop_e0",
-   "asset": "gbt_shop2",
-   "position": [
-    173.0,
-    0,
-    49.0
-   ],
-   "collision": "gbt_shop2_col"
-  },
-  {
-   "id": "shop_w1",
-   "asset": "gbt_shop3",
-   "position": [
-    147.0,
-    0,
-    59.0
-   ],
-   "collision": "gbt_shop3_col"
-  },
-  {
-   "id": "shop_e1",
-   "asset": "gbt_shop2",
-   "position": [
-    173.0,
-    0,
-    59.0
-   ],
-   "collision": "gbt_shop2_col"
-  },
-  {
-   "id": "arcade_gate_0",
-   "asset": "gbt_arcade_gate",
-   "position": [
-    160,
-    0,
-    61
-   ],
-   "collision": "gbt_arcade_gate_col"
-  },
-  {
-   "id": "awning_w0",
-   "asset": "gbt_awning",
-   "position": [
-    154.75,
-    2.3,
-    49.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "awning_e0",
-   "asset": "gbt_awning",
-   "position": [
-    165.25,
-    2.3,
-    49.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "awning_e1",
-   "asset": "gbt_awning",
-   "position": [
-    165.25,
-    2.3,
-    59.0
-   ],
-   "collision": "self"
-  },
-  {
-   "id": "alley_126_55",
-   "asset": "gbt_alley_2",
-   "position": [
-    130.75,
-    0,
-    59.25
-   ],
-   "collision": "gbt_alley_2_col"
-  },
-  {
-   "id": "dagashi",
-   "asset": "gbt_dagashi",
-   "position": [
-    128.5,
-    0,
-    46.5
-   ],
-   "collision": "gbt_dagashi_col"
-  },
-  {
-   "id": "pole_lane_e0",
-   "asset": "gbt_utility_pole",
-   "position": [
-    137.75,
-    0.0,
-    44.0
-   ],
-   "collision": "self"
-  },
-  {
    "id": "edge_s3",
    "asset": "gbt_edge_fence_3",
    "position": [
@@ -450,6 +340,187 @@
    ],
    "yaw": 180.0,
    "collision": "none"
+  },
+  {
+   "id": "shop_w0",
+   "asset": "town_shop_2f_c_left_noawning",
+   "position": [
+    147.0,
+    0.0,
+    49.0
+   ],
+   "yaw": 270.0,
+   "collision": "town_shop_2f_c_left_noawning_col"
+  },
+  {
+   "id": "awning_w0",
+   "asset": "town_awning_bounce",
+   "position": [
+    154.75,
+    0.0,
+    48.9
+   ],
+   "yaw": 270.0,
+   "collision": "town_awning_bounce_col"
+  },
+  {
+   "id": "shop_w1",
+   "asset": "town_shop_3f",
+   "position": [
+    147.0,
+    0.0,
+    59.0
+   ],
+   "yaw": 270.0,
+   "collision": "town_shop_3f_col"
+  },
+  {
+   "id": "shop_e0",
+   "asset": "town_shop_2f_c_noawning",
+   "position": [
+    173.0,
+    0.0,
+    49.0
+   ],
+   "yaw": 90.0,
+   "collision": "town_shop_2f_c_noawning_col"
+  },
+  {
+   "id": "awning_e0",
+   "asset": "town_awning_bounce",
+   "position": [
+    165.25,
+    0.0,
+    48.9
+   ],
+   "yaw": 90.0,
+   "collision": "town_awning_bounce_col"
+  },
+  {
+   "id": "shop_e1",
+   "asset": "town_shop_2f_a_noawning",
+   "position": [
+    173.0,
+    0.0,
+    59.0
+   ],
+   "yaw": 90.0,
+   "collision": "town_shop_2f_a_noawning_col"
+  },
+  {
+   "id": "awning_e1",
+   "asset": "town_awning_bounce",
+   "position": [
+    165.25,
+    0.0,
+    59.0
+   ],
+   "yaw": 90.0,
+   "collision": "town_awning_bounce_col"
+  },
+  {
+   "id": "arcade_gate_0",
+   "asset": "arcade_gate",
+   "position": [
+    160.0,
+    0.0,
+    54.0
+   ],
+   "collision": "arcade_gate_col"
+  },
+  {
+   "id": "lamp_sando0",
+   "asset": "town_street_lamp",
+   "position": [
+    155.9,
+    0.0,
+    46.0
+   ],
+   "yaw": 90,
+   "collision": "town_street_lamp_col"
+  },
+  {
+   "id": "lamp_sando1",
+   "asset": "town_street_lamp",
+   "position": [
+    164.1,
+    0.0,
+    51.5
+   ],
+   "yaw": 90,
+   "collision": "town_street_lamp_col"
+  },
+  {
+   "id": "alley_126_55",
+   "asset": "town_alley_house_b",
+   "position": [
+    130.75,
+    0.0,
+    59.25
+   ],
+   "collision": "town_alley_house_b_col"
+  },
+  {
+   "id": "dagashi",
+   "asset": "dagashi_shop",
+   "position": [
+    128.5,
+    0.0,
+    46.5
+   ],
+   "collision": "dagashi_shop_col"
+  },
+  {
+   "id": "gacha_1",
+   "asset": "gachapon",
+   "position": [
+    128.0,
+    0.0,
+    43.55
+   ],
+   "collision": "gachapon_col"
+  },
+  {
+   "id": "pole_lane_e0",
+   "asset": "town_utility_pole_transformer",
+   "position": [
+    137.75,
+    0.0,
+    44.0
+   ],
+   "collision": "town_utility_pole_transformer_col"
+  },
+  {
+   "id": "bike_1",
+   "asset": "mamachari",
+   "position": [
+    131.9,
+    0.0,
+    44.9
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "crates_0",
+   "asset": "town_crates_bins",
+   "position": [
+    139.7,
+    0.0,
+    47.5
+   ],
+   "yaw": 90,
+   "collision": "none"
+  },
+  {
+   "id": "crates_2",
+   "asset": "town_crates_bins",
+   "position": [
+    180.3,
+    0.0,
+    59.0
+   ],
+   "yaw": 270,
+   "collision": "none"
   }
  ],
  "entities": [
@@ -584,7 +655,7 @@
    "type": "coin",
    "position": [
     165.2,
-    3.3,
+    3.463,
     49
    ],
    "asset": "gbt_coin"
@@ -604,7 +675,7 @@
    "type": "coin",
    "position": [
     173,
-    7.2,
+    7.22,
     58
    ],
    "asset": "gbt_coin"
@@ -613,23 +684,11 @@
    "id": "coin_wire_lane0",
    "type": "coin",
    "position": [
-    137.75,
+    138.55,
     8.7,
     60
    ],
    "asset": "gbt_coin"
-  },
-  {
-   "id": "rail_wire_lane_e",
-   "type": "rail",
-   "position": [
-    137.75,
-    8.0,
-    44.0
-   ],
-   "params": {
-    "path": "wire_lane_e"
-   }
   },
   {
    "id": "rail_parapet_n_m",
@@ -653,6 +712,54 @@
    ],
    "params": {
     "path": "parapet_n_e"
+   }
+  },
+  {
+   "id": "pole_lamp_sando0",
+   "type": "pole",
+   "position": [
+    155.9,
+    0.0,
+    46.0
+   ],
+   "params": {
+    "height": 3.8
+   }
+  },
+  {
+   "id": "pole_lamp_sando1",
+   "type": "pole",
+   "position": [
+    164.1,
+    0.0,
+    51.5
+   ],
+   "params": {
+    "height": 3.8
+   }
+  },
+  {
+   "id": "rail_wire_lane_e_a",
+   "type": "rail",
+   "position": [
+    136.95,
+    8.0,
+    44.0
+   ],
+   "params": {
+    "path": "wire_lane_e_a"
+   }
+  },
+  {
+   "id": "rail_wire_lane_e_b",
+   "type": "rail",
+   "position": [
+    138.55,
+    8.0,
+    44.0
+   ],
+   "params": {
+    "path": "wire_lane_e_b"
    }
   }
  ]

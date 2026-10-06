@@ -18,7 +18,9 @@ What the player uses (spec 3.3, 5 red coin 2, glide G4):
   face leans 1.9 degrees, x = 1.45 at the ground and 1.07 under the deck: the kick wall.
 
 The lattice (X braces, ring beams and the legs' outlines) is drawn on four cutout faces, one a
-side, where the lab built it from 300 boxes; the legs stay as geometry over them."""
+side, where the lab built it from 300 boxes; the legs stay as geometry over them. Its texture is one
+bay, 64 x 64, repeating up each side through hand UVs that narrow it with the legs. Every texture
+is 4-bit (the level's palettes and VRAM, TEXTURES.md)."""
 import json, math, os
 
 from PIL import Image, ImageDraw
@@ -116,7 +118,6 @@ EAVE_Y, LIP_Y, TOP = 14.45, 14.6, 15.2
 EAVE_H, CAP_H = 1.75, 0.3        # roof half-widths at the eave and at the flat cap
 LAD_Z, LAD_W = -1.92, 0.44       # the ladder's plane and width
 LAD_TOP = 15.75
-RINGS = [0.9, 3.7, 6.5, 9.3]     # ring beams (drawn on the lattice faces); the deck is the fifth
 SHED = (-4.3, -1.75, -0.55, 1.35, 2.3)   # x0, x1, z0, z1, wall height
 
 
@@ -132,41 +133,25 @@ WOOD, WOOD_D = (92, 62, 44, 255), (58, 40, 30, 255)
 PLASTER, PLASTER_D = (232, 226, 204, 255), (204, 196, 170, 255)
 CLEAR = (0, 0, 0, 0)
 
-BR_W, BR_H = 64, 240           # the lattice face texture
+BR_W, BR_H = 64, 64            # the lattice face texture: one bay, repeating up the shaft
+BAY, BAY_TOP = 2.95, 12.1       # a bay's height (ring to ring; under 255 texels a side, so no split) and its top
+RINGS = [round(BAY_TOP - k * BAY, 2) for k in (4, 3, 2, 1)]   # ring beams (drawn on the lattice)
 RAIL_W, RAIL_H = 64, 16
 CAB_W, CAB_H_TX = 32, 64
 
 
 def draw_braces():
-    """One side of the shaft: the trapezoid between two legs' centre lines, from LEG_Y0 up to the
-    deck, as `fit` maps it (its bounding rectangle, the top edge at v = 0)."""
+    """One bay of a side of the shaft, repeating up it: a ring beam along the top, the X braces from
+    corner to corner, the legs' outlines down the sides. The lattice's hand UVs give every height of
+    a side the tile's whole width, so the bay narrows with the legs (lattice())."""
     im = Image.new("RGBA", (BR_W, BR_H), CLEAR)
     d = ImageDraw.Draw(im)
-    span = DECK - LEG_Y0
-
-    def row(y):
-        return (DECK - y) / span * (BR_H - 1)
-
-    def half(y):
-        return c_at(y) / C0 * (BR_W / 2)
-
-    cx = BR_W / 2 - 0.5
-    # X braces between ring beams (and from the last ring to the deck)
-    levels = RINGS + [DECK - 0.05]
-    for a, b in zip(levels, levels[1:]):
-        ya, yb = row(a), row(b)
-        d.line([(cx - half(a) + 1, ya), (cx + half(b) - 1, yb)], fill=STEEL_D, width=2)
-        d.line([(cx + half(a) - 1, ya), (cx - half(b) + 1, yb)], fill=STEEL, width=2)
-    # the legs' outlines, so the far levels keep their silhouette
-    for s in (-1, 1):
-        d.line([(cx + s * half(LEG_Y0), row(LEG_Y0)), (cx + s * half(DECK), row(DECK))], fill=STEEL, width=3)
-    # ring beams, red with a shadowed underside
-    for y in RINGS:
-        y0 = row(y)
-        for k, col in ((0, RED), (1, RED), (2, RED_D)):
-            yy = int(round(y0)) + k - 1
-            hw = half(y)
-            d.line([(cx - hw + 1, yy), (cx + hw - 1, yy)], fill=col, width=1)
+    d.line([(1, 3), (BR_W - 2, BR_H - 1)], fill=STEEL_D, width=2)
+    d.line([(BR_W - 2, 3), (1, BR_H - 1)], fill=STEEL, width=2)
+    d.rectangle([0, 0, 1, BR_H - 1], fill=STEEL)
+    d.rectangle([BR_W - 2, 0, BR_W - 1, BR_H - 1], fill=STEEL)
+    for y, col in ((0, RED), (1, RED), (2, RED_D)):
+        d.line([(0, y), (BR_W - 1, y)], fill=col, width=1)
     return im
 
 
@@ -225,11 +210,19 @@ def draw_ladder_far():
     return im
 
 
+def write_board():
+    """The 火の用心 board's picture, the lab's (examples/assets/lab/fire_tower/art/hinoyojin.png, 96 x 32)
+    stored at half width (the face stretches it back): the town's texture budget (TEXTURES.md)."""
+    lab = os.path.join(HERE, "..", "..", "..", "..", "..", "examples", "assets", "lab", "fire_tower", "art")
+    im = Image.open(os.path.join(lab, "hinoyojin.png")).convert("RGBA")
+    im.resize((im.width // 2, im.height), Image.Resampling.BOX).save(os.path.join(ART, "hinoyojin.png"))
+
+
 def write_sheet():
     cells = {"braces": draw_braces(), "railing": draw_railing(), "cabin": draw_cabin(),
              "ladder": draw_ladder_far()}
     W = BR_W + CAB_W + RAIL_W
-    sheet = Image.new("RGBA", (W, BR_H), CLEAR)
+    sheet = Image.new("RGBA", (W, max(BR_H, CAB_H_TX, RAIL_H + 64)), CLEAR)
     layout, x = {}, 0
     for name in ("braces", "cabin"):
         im = cells[name]
@@ -251,7 +244,8 @@ def cell(name, bits=4):
 
 
 M = {
-    "lattice": {"color": "#8aa096", "double_sided": True, "texture": cell("braces")},
+    "lattice": {"color": "#8aa096", "double_sided": True, "texture": {   # repeats, by its hand UVs
+        "sheet": "tower", "cell": "braces", "projection": "box"}},
     "railing": {"color": "#c8402f", "double_sided": True, "texture": cell("railing")},
     "cabin": {"color": "#e8e2cc", "double_sided": True, "texture": cell("cabin")},
     "rungs": {"color": "#c8402f", "double_sided": True, "texture": {
@@ -273,10 +267,10 @@ M = {
     "shutter": {"color": "#7d8c96", "texture": {
         "pattern": "stripes", "colors": ["#8696a0", "#6d7c86"], "params": {"count": 8, "axis": "v"},
         "projection": "fit"}},
-    "board_art": {"color": "#f4f0e2", "texture": {"image": "art/hinoyojin.png", "bits": 8, "projection": "fit"}},
+    "board_art": {"color": "#f4f0e2", "texture": {"image": "art/hinoyojin.png", "projection": "fit"}},
     "banner": {"color": "#f4f0e2", "double_sided": True,
-               "texture": {"image": "art/bouka.png", "bits": 8, "projection": "fit"}},
-    "shed_sign": {"color": "#be2822", "texture": {"image": "art/shed_sign.png", "bits": 8, "projection": "fit"}},
+               "texture": {"image": "art/bouka.png", "projection": "fit"}},
+    "shed_sign": {"color": "#be2822", "texture": {"image": "art/shed_sign.png", "projection": "fit"}},
 }
 # palette-backed colours (6 surface)
 for name, col in {"steel": "#8aa096", "red": "#c8402f", "dark": "#33383c", "bronze": "#c0903c",
@@ -302,10 +296,19 @@ def legs():
 def lattice(y0=LEG_Y0, y1=DECK - 0.02):
     """Four trapezoids through the legs' centre lines, one material, `fit` each."""
     a, b = c_at(y0), c_at(y1)
-    v = [[-a, y0, -a], [a, y0, -a], [a, y0, a], [-a, y0, a],
-         [-b, y1, -b], [b, y1, -b], [b, y1, b], [-b, y1, b]]
-    return mesh("lattice", "lattice", v, [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]],
-                ("away", [0, DECK / 2, 0]))
+    lo = [[-a, y0, -a], [a, y0, -a], [a, y0, a], [-a, y0, a]]
+    hi = [[-b, y1, -b], [b, y1, -b], [b, y1, b], [-b, y1, b]]
+    vb, vt = (BAY_TOP - y0) / BAY, (BAY_TOP - y1) / BAY
+    v, uv, faces = [], [], []
+    for k in range(4):            # each side its own corners, so each spans the tile's width once
+        j = (k + 1) % 4
+        n = len(v)
+        v += [lo[k], lo[j], hi[j], hi[k]]
+        uv += [[0, vb], [1, vb], [1, vt], [0, vt]]
+        faces.append([n, n + 1, n + 2, n + 3])
+    node = mesh("lattice", "lattice", v, faces, ("away", [0, DECK / 2, 0]))
+    node["uvs"] = [r(list(t)) for t in uv]
+    return node
 
 
 def footings():
@@ -497,6 +500,7 @@ cams = [
 if __name__ == "__main__":
     os.makedirs(ART, exist_ok=True)
     write_sheet()
+    write_board()
     for name, data in (("fire_tower.asset.json", recipe), ("fire_tower_col.asset.json", col),
                        ("fire_tower.cameras.json", cams)):
         with open(os.path.join(HERE, name), "w") as fh:

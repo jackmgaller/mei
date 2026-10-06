@@ -95,8 +95,9 @@ ENTITIES = [
     # the door z 294.6-297.4, the chamber's floor 13)
     {'id': 'shortcut_d', 'type': 'trigger', 'position': [153.0, 13.05, 296.0],
      'params': {'size': [2.0, 3.0, 2.8], 'how': 'pound', 'flag': 'shortcut_d', 'off': 'root_d_shut'}},
-    # E: the fire-escape ladder, kicked down from the building's roof (18.3) at its north edge
-    {'id': 'shortcut_e', 'type': 'trigger', 'position': [199.0, 18.35, 101.0],
+    # E: the fire-escape ladder, kicked down from the building's roof (the real street_building's
+    # deck, 15.2) at its north edge, over the ladder (x 198.5)
+    {'id': 'shortcut_e', 'type': 'trigger', 'position': [199.0, 15.25, 101.0],
      'params': {'size': [3.0, 3.0, 2.4], 'how': 'press', 'flag': 'shortcut_e', 'on': 'ladder_e'}},
 ]
 

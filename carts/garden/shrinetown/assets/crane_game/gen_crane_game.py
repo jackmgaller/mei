@@ -5,7 +5,9 @@ Shrine town's UFO catcher: the lab's crane_game (781 triangles) cut to about 200
 cabinet with its slanted console, the glass case with gold posts, the striped marquee with its
 sign, the siren lights and the star stay; the side sticker, the outlet label and the prize hole
 are decals, the console's buttons are in its texture, the claw is a hub and three arms, and three
-plush toys stand in for six. Front is -Z. 0.94 m wide, 1.28 m deep, 2.2 m tall.
+plush toys stand in for six. Every texture is 4-bit (the level's palettes, TEXTURES.md), and the
+sign, the side sticker and the outlet label are stored at half width (the town's VRAM). Front is
+-Z. 0.94 m wide, 1.28 m deep, 2.2 m tall.
 """
 import json
 import math
@@ -77,10 +79,10 @@ recipe = {
             "pattern": "stripes", "colors": ["#d62678", "#fff3e2"], "params": {"count": 4},
             "projection": "box", "scale": [0.16, 0.16]}},
         "sign": {"color": "#d62678", "class": "emissive",
-                 "texture": {"image": "art/sign.png", "bits": 8, "projection": "fit"}},
-        "panel": {"color": "#3a285a", "texture": {"image": "art/panel.png", "bits": 8,
+                 "texture": {"image": "art/sign.png", "bits": 4, "projection": "fit"}},
+        "panel": {"color": "#3a285a", "texture": {"image": "art/panel.png", "bits": 4,
                                                   "projection": "fit"}},
-        "side": {"color": "#fff4d6", "texture": {"image": "art/side.png", "bits": 8,
+        "side": {"color": "#fff4d6", "texture": {"image": "art/side.png", "bits": 4,
                                                  "projection": "fit"}},
         "label": {"color": "#ffec78", "texture": {"image": "art/label.png", "bits": 4,
                                                   "projection": "fit"}},

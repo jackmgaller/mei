@@ -284,15 +284,27 @@
    "asset": "gbt_coin"
   },
   {
-   "id": "rail_wire_road",
+   "id": "rail_wire_road_a",
    "type": "rail",
    "position": [
-    10,
+    10.0,
     8.0,
-    104.0
+    106.8
    ],
    "params": {
-    "path": "wire_road"
+    "path": "wire_road_a"
+   }
+  },
+  {
+   "id": "rail_wire_road_b",
+   "type": "rail",
+   "position": [
+    10.0,
+    8.0,
+    105.2
+   ],
+   "params": {
+    "path": "wire_road_b"
    }
   },
   {

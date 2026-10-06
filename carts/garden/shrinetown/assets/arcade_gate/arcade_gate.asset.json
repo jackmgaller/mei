@@ -33,7 +33,7 @@
     "cream": {"color": "#fcf4de", "palette": true},
     "steel": {"color": "#5e6a72", "palette": true},
     "name": {"color": "#1c2c60", "tag": "sign", "texture": {"sheet": "gate", "cell": "name", "projection": "fit"}},
-    "back": {"color": "#fcf4de", "tag": "sign", "texture": {"sheet": "gate", "cell": "back", "projection": "fit"}},
+    "back": {"color": "#1c2c60", "tag": "sign", "texture": {"sheet": "gate", "cell": "name", "projection": "fit"}},
     "clock": {"color": "#fcf4de", "texture": {"sheet": "gate", "cell": "clock", "projection": "fit"}},
     "bike": {"color": "#1e5abe", "tag": "sign", "texture": {"sheet": "gate", "cell": "bike", "projection": "disc", "flip": "v"}},
     "mascot": {"color": "#faaac4", "double_sided": true, "texture": {"sheet": "gate", "cell": "mascot", "projection": "fit"}},

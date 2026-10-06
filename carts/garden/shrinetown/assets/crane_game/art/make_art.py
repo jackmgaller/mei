@@ -52,6 +52,8 @@ def sign():
         star(d, cx, cy, r, (255, 240, 90))
     f = font(18)
     outlined(d, (17, 10), "クレーンゲーム", f, (255, 252, 230), (120, 20, 80), 1)
+    # stored at half width (80 x 40, the face stretches it back): the town's texture budget (TEXTURES.md)
+    im = im.resize((W // 2, H), Image.Resampling.BOX)
     im = im.quantize(colors=48, dither=Image.Dither.NONE).convert("RGB")
     im.save(os.path.join(HERE, "sign.png"))
 
@@ -94,6 +96,7 @@ def side():
     outlined(d, (12, 12), "GET!", font(17), (214, 38, 120), (255, 255, 255), 1)
     d.text((20, 3), "とって", font=font(8), fill=(60, 40, 90))
     d.text((20, 29), "ゲット", font=font(7), fill=(60, 40, 90))
+    im = im.resize((W // 2, H), Image.Resampling.BOX)        # half width: as the sign
     im = im.quantize(colors=24, dither=Image.Dither.NONE).convert("RGB")
     im.save(os.path.join(HERE, "side.png"))
 
@@ -104,6 +107,7 @@ def label():
     d = ImageDraw.Draw(im)
     d.rectangle([0, 0, W - 1, H - 1], outline=(60, 40, 90))
     d.text((6, 1), "とりだしぐち", font=font(13), fill=(60, 40, 90))
+    im = im.resize((W // 2, H), Image.Resampling.BOX)        # half width: as the sign
     im = im.quantize(colors=8, dither=Image.Dither.NONE).convert("RGB")
     im.save(os.path.join(HERE, "label.png"))
 

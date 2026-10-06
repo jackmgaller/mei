@@ -7,8 +7,8 @@
   "rim": {"color": "#e8742a"},
   "metal": {"color": "#8a909a"},
   "concrete": {"color": "#b4b0a6", "texture": {"pattern": "speckle", "colors": ["#b4b0a6", "#8e8a82", "#cbc7bb"], "params": {"density": 0.3}, "projection": "box", "scale": [0.5, 0.5]}},
-  "glass_cat": {"color": "#8fd0f0", "texture": {"image": "art/mirror_cat.png", "bits": 8, "projection": "disc", "axis": "y"}},
-  "glass_kid": {"color": "#8fd0f0", "texture": {"image": "art/mirror_kid.png", "bits": 8, "projection": "disc", "axis": "y"}},
+  "glass_cat": {"color": "#8fd0f0", "texture": {"image": "art/mirror_cat.png", "projection": "disc", "axis": "y"}},
+  "glass_kid": {"color": "#8fd0f0", "texture": {"image": "art/mirror_kid.png", "projection": "disc", "axis": "y"}},
   "plaque": {"color": "#2f5fb0", "double_sided": true, "texture": {"texels": ["00000000", "00011000", "00111100", "01111110", "00011000", "00011000", "00011000", "00000000"], "colors": ["#2f5fb0", "#f3ead6"], "projection": "fit"}},
   "fur": {"color": "#f0a030"}
  },

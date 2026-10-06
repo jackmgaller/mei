@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Writes shortcut E's fire escape (shrine town spec 4.5, assets.md 4.1 #22) beside this script:
 
-- town_fire_escape: up (the default), a steel switchback stair hung on the building's end wall
-  from its roof (15.2) down to a lowest landing at 7.6, the drop ladder folded in its hanger on
-  that landing's outer edge with a metre of it showing below (bottom 6.3, out of reach);
-- town_fire_escape_down: the same with the ladder down (layer `ladder_e`): two steel sections
-  from the street to the lowest landing's rail, a pole when down;
-- town_fire_escape_col: the collision both states share (landings, flights, rails).
+- town_fire_escape: a steel switchback stair hung on the building's end wall from its roof
+  (15.2) down to a lowest landing at 7.6, without its ladder: placed in no layer, it carries the
+  collision both states share;
+- town_fire_escape_up: the drop ladder up (the default, layer `ladder_e_up`), folded in its
+  hanger on that landing's outer edge with a metre of it showing below (bottom 6.3, out of reach);
+- town_fire_escape_down: the ladder down (layer `ladder_e`): two steel sections from the street
+  to the lowest landing's rail, a pole when down;
+- town_fire_escape_col: the stair's collision (landings, flights, rails).
+
+The ladder is a separate asset in each state so that the stair's collision (300 triangles in a
+5 x 2 m footprint) is packed once: two copies, one per layer, overfilled the reader's collision
+lookup (at most 255 triangles of one kind in a bucket).
 
 The building is shrine/assets/street_building (reused as it is): roof deck 15.2, parapet 16.0,
 storeys 3.04, and a blank end wall at its local x = -29 (the end without its own stair). The
@@ -270,9 +276,9 @@ def body():
     return flights() + landings() + struts() + [rails_mesh()] + doors()
 
 
-def level1(ladder):
+def level1(ladder=None):
     """From 30 m: the flights and landings as slabs (top and underside), the outer railing
-    panels, the ladder or its hanger."""
+    panels (the ladder is its own asset)."""
     nodes = []
     for k in range(LEVELS - 1):
         z0, z1 = flight_lane(k)
@@ -289,14 +295,6 @@ def level1(ladder):
                          (ZO0 + ZI1) / 2], 'steel', ['front', 'left', 'right'],
                          faces={'top': 'deck', 'bottom': 'steel_under'}))
     nodes.append(rails_mesh(divider=False))
-    if ladder == 'down':
-        x0, x1 = LAD_X - LAD_W / 2, LAD_X + LAD_W / 2
-        nodes.append({'id': 'ladder', 'op': 'mesh',
-                      'vertices': [[x0, LOW + RAIL, LAD_Z], [x1, LOW + RAIL, LAD_Z],
-                                   [x1, 0.0, LAD_Z], [x0, 0.0, LAD_Z]],
-                      'faces': [[0, 1, 2, 3]], 'face_materials': ['ladder']})
-    else:
-        nodes.append(hanger())
     return nodes
 
 
@@ -336,10 +334,16 @@ def recipe(name, nodes, lod_nodes):
             'lod': {'levels': [{'distance': 30, 'nodes': lod_nodes}], 'cull': 160}}
 
 
+def ladder_recipe(name, nodes):
+    return {'format': 'mei-asset', 'version': 1, 'name': name, 'budget': {'triangles': 40},
+            'sheets': SHEETS, 'materials': MATS, 'lighting': LIGHT, 'verification': POLICY,
+            'nodes': nodes, 'lod': {'cull': 160}}
+
+
 def main():
-    write('town_fire_escape', recipe('town_fire_escape', body() + ladder_up(), level1('up')))
-    write('town_fire_escape_down', recipe('town_fire_escape_down', body() + ladder_down(),
-                                          level1('down')))
+    write('town_fire_escape', recipe('town_fire_escape', body(), level1(None)))
+    write('town_fire_escape_up', ladder_recipe('town_fire_escape_up', ladder_up()))
+    write('town_fire_escape_down', ladder_recipe('town_fire_escape_down', ladder_down()))
     write('town_fire_escape_col', {
         'format': 'mei-asset', 'version': 1, 'name': 'town_fire_escape_col',
         'materials': {'solid': {'color': '#ffffff', 'palette': True}},
