@@ -263,6 +263,11 @@ class ValidationTests(unittest.TestCase):
             w['regions']['downtown']['variants']['night']['colors'] = {'paving': '#000000', 'ground_tile.paving': '#ffffff'}
         self.check(two_colours, '/regions/downtown/variants/night/colors/ground_tile.paving', 'two colours', name='two_districts')
 
+        def reserved(w):
+            # palette.reserved: a palette the game keeps (a collectible's) that a region would take
+            w['palette'] = {'reserved': [1]}
+        self.check(reserved, '/palette/reserved', 'is reserved', name='two_districts')
+
 
 class IdTests(unittest.TestCase):
     def test_bits_survive_edits_renames_and_deletions(self):
@@ -486,6 +491,33 @@ class BuildTests(unittest.TestCase):
             s = [x for x in c.report['cells'] if x['id'] == 'shrine_gate'][0]
             self.assertEqual(s['merged'][0]['layer'], 'festival')
             self.assertEqual(s['triangles']['by_layer'], {'festival': 4 * c.library.assets['lantern'].triangles})
+
+    def test_merged_props_keep_their_cull(self):
+        # The bollards (x 4..25 at z 12) culled at 30: merged, the mesh is culled from 30 plus the
+        # farthest bollard's distance from the mesh's centre (10.5), so none goes early; a prop
+        # without a cull merged with them leaves the mesh unculled, with a warning.
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp, 'two_districts')
+            ex.edit(lambda a: a.__setitem__('lod', {'cull': 30}), 'assets/bollard.asset.json')
+            c = ex.compile()
+            a = [x for x in c.report['cells'] if x['id'] == 'downtown_a'][0]
+            self.assertEqual(a['merged'][0]['cull'], 40.5)
+            self.assertNotIn('cull_merged', [w['code'] for w in c.report['warnings']])
+            merged = [p for p in P.decode(c.pack).cells[(0, 0)].placements if p['tag'] == 0xFFFF]
+            self.assertTrue(merged[0]['lod']['cull'])
+            self.assertEqual(len(merged[0]['lod']['rows']), 1)
+            # the reader's (distance / 8)^2 at the cull
+            self.assertEqual(merged[0]['lod']['rows'][0][0], round((40.5 / 8) ** 2 * 65536))
+
+            def one_unculled(cell):
+                cell['placements'][1]['merge'] = True        # shop_1, which has no cull
+            ex.edit(one_unculled, 'cells/downtown_a.cell.json')
+            c = ex.compile()
+            warn = [w for w in c.report['warnings'] if w['code'] == 'cull_merged']
+            self.assertEqual(len(warn), 1)
+            self.assertIn('bollard_0', warn[0]['placements'])
+            merged = [p for p in P.decode(c.pack).cells[(0, 0)].placements if p['tag'] == 0xFFFF]
+            self.assertTrue(all(p['lod'] is None for p in merged))
 
     def test_ground_placements(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1157,6 +1189,18 @@ class FarLodTests(unittest.TestCase):
         m6 = raw_mesh(sq, [((0, 2, 1), 16, 0x808080), ((1, 2, 3), 16, 0x808080)])
         self.assertEqual(struct.unpack_from('<H', quads.pair(m6), 2)[0], 1)
         self.assertEqual(quads.pair(m6, skip=quads.DOUBLE), m6)
+        # a sliver (edge_neighbour_s6's facade: two corners 0.0002 apart, an 18-unit edge) is
+        # never paired: the reader would turn the quad away by its first triangle, the sliver,
+        # whose facing is rounding noise, and lose the big triangle with it
+        sliver = [(0, 0, 18), (0, 0, 0), (0.0002, 0, 18), (9, 0, 9)]
+        for order in (((0, 1, 2), (1, 3, 2)), ((0, 2, 1), (1, 2, 3))):
+            m7 = raw_mesh(sliver, [(order[0], 0, 0x808080), (order[1], 0, 0x808080)])
+            self.assertEqual(quads.pair(m7), m7)
+            old, quads.SLIVER = quads.SLIVER, 0.0
+            try:        # without the rule they pair (the convex check passes them)
+                self.assertEqual(struct.unpack_from('<H', quads.pair(m7), 2)[0], 1)
+            finally:
+                quads.SLIVER = old
 
     def test_quads_in_a_world(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1695,9 +1739,12 @@ class TextureTests(unittest.TestCase):
         for reg in pack.regions:
             slots = {t.slot: t for t in reg.textures}
             self.assertIn(6, slots, reg.name)             # every region's set holds the common slot
-            images[reg.name] = slots[6].data
+            images[reg.name] = slots[6]
             self.assertNotIn(6, c.report['regions'][reg.name]['textures']['slots_given'])
-        self.assertEqual(images['market'], images['harbour'])
+        self.assertEqual(images['market'].data, images['harbour'].data)
+        # stored once: both regions' records point at the same data, so the reader, entering
+        # the second region, sees the slot already holds it and does not copy it again
+        self.assertEqual(images['market'].offset, images['harbour'].offset)
         cards = 0
         for cell in pack.cells.values():
             mesh = pack.data[cell.standin:]
@@ -2155,6 +2202,106 @@ class QuickToolTests(unittest.TestCase):
         self.assertTrue(r.stdout.startswith('error at /arguments/area'), r.stdout)
         code, out = cli('check', ex.world, '--cache', self.cache, '--json')
         self.assertEqual((code, out['errors'][0]['path']), (1, '/arguments'))
+
+
+class OcclusionTests(unittest.TestCase):
+    """Occlusion zones (WORLDKIT.md, "Occlusion"): the recipe's occluders and zones, the sets the
+    kit works out, its errors and warnings, and the World Checker's leak check."""
+    WALL = {'box': [[28.1, 0.1, 41.85], [35.9, 4.9, 42.15]]}     # inside test_room's climb wall
+    FRONT = {'box': [[30, 1, 33], [34, 2.5, 38]]}
+
+    def room(self, tmp, occlusion=None):
+        ex = Example(tmp)
+
+        def edit(w):
+            ledge = next(p for p in w['cells'][0]['placements'] if p['id'] == 'ledge')
+            w['cells'][0]['placements'].append(dict(ledge, id='behind', position=[32, 0, 50]))
+            if occlusion is not None:
+                w['occlusion'] = occlusion
+        ex.edit(edit)
+        return ex
+
+    def test_zones_hide_what_lies_behind_the_wall(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            plain = self.room(tmp).compile()
+        with tempfile.TemporaryDirectory() as tmp:
+            empty = self.room(tmp, {}).compile()
+        self.assertEqual(plain.pack, empty.pack, 'a world without occluders builds as before')
+        self.assertNotIn('occlusion', plain.report)
+        self.assertEqual(P.decode(plain.pack).minor, 3)
+        with tempfile.TemporaryDirectory() as tmp:
+            c = self.room(tmp, {'occluders': {'wall': self.WALL}, 'zones': {'front': self.FRONT}}).compile()
+        pack = P.decode(c.pack)
+        self.assertEqual(pack.minor, 5)
+        cell = pack.cells[(0, 0)]
+        self.assertEqual(len(cell.zones), 1)
+        hidden = [cell.placements[k]['tag'] for k in cell.zones[0]['hidden'][(0, 0)]]
+        self.assertEqual(hidden, [7], 'the block behind the wall, and nothing else')
+        self.assertEqual(c.report['occlusion'], [{'zone': 'front', 'occluders': ['wall'], 'cells': [[0, 0]],
+                                                  'placements': 1, 'faces': 12, 'standins': 0, 'hidden_by': {'wall': 1}}])
+        # the pack is the plain one but for the zone: same cells, same placements
+        self.assertEqual(len(P.decode(plain.pack).cells[(0, 0)].placements), len(cell.placements))
+
+    def test_warnings_and_errors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            c = self.room(tmp, {'occluders': {'wall': self.WALL},
+                                'zones': {'nothing': {'box': [[2, 1, 2], [6, 2, 6]]},
+                                          'inside': {'box': [[30, 1, 40], [34, 2, 43]]}}}).compile()
+        codes = [w['code'] for w in c.report['warnings']]
+        self.assertIn('zone_hides_nothing', codes)
+        self.assertIn('zone_meets_occluder', codes)
+        self.assertEqual(P.decode(c.pack).minor, 3, 'no zone hides anything: no zones in the pack')
+        cases = [({'occluders': {'wall': self.WALL}, 'zones': {'front': dict(self.FRONT, occluders=['door'])}},
+                  '/occlusion/zones/front/occluders/0'),
+                 ({'occluders': {'wall': {'box': [[36, 0, 42], [28, 5, 43]]}}}, '/occlusion/occluders/wall/box'),
+                 ({'occluders': {'wall': dict(self.WALL, quad=[[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]])}},
+                  '/occlusion/occluders/wall'),
+                 ({'occluders': {'q': {'quad': [[0, 0, 0], [1, 0, 0], [1, 1, 1], [0, 1, 0]]}}}, '/occlusion/occluders/q/quad'),
+                 ({'occluders': {'q': {'quad': [[0, 0, 0], [1, 1, 0], [1, 0, 0], [0, 1, 0]]}}}, '/occlusion/occluders/q/quad'),
+                 ({'occluders': {'wall': dict(self.WALL, layer='rain')}}, '/occlusion/occluders/wall/layer'),
+                 ({'occluders': {'wall': dict(self.WALL, layer='gate_closed')},
+                   'zones': {'front': dict(self.FRONT, occluders=['wall'])}}, '/occlusion/zones/front/occluders/0'),
+                 ({'zones': {'front': {'box': [[30, 1, 33], [30, 2, 38]]}}}, '/occlusion/zones/front/box'),
+                 ({'zones': {'front': {'box': [[30, 1, 33], [34, 2, 38]], 'size': 1}}}, '/occlusion/zones/front/size')]
+        for spec, path in cases:
+            with tempfile.TemporaryDirectory() as tmp, self.subTest(path=path):
+                with self.assertRaises(WorldError) as cm:
+                    self.room(tmp, spec).compile()
+                self.assertEqual(cm.exception.path, path)
+        # an occluder of a layer serves the zones of that layer, by default
+        with tempfile.TemporaryDirectory() as tmp:
+            c = self.room(tmp, {'occluders': {'wall': dict(self.WALL, layer='gate_closed')},
+                                'zones': {'front': self.FRONT, 'gated': dict(self.FRONT, layer='gate_closed')}}).compile()
+        self.assertEqual([(z['zone'], z['occluders']) for z in c.report['occlusion']], [('front', []), ('gated', ['wall'])])
+        zones = P.decode(c.pack).cells[(0, 0)].zones
+        self.assertEqual(len(zones), 1)
+        self.assertEqual(zones[0]['layer'], P.decode(c.pack).layers.index(('gate_closed', 0, True)))
+
+    @checker_ready
+    def test_the_checker_finds_a_zone_that_hides_what_is_in_sight(self):
+        from worldkit import verify as V
+        tools = {'compiler': COMPILER, 'probe': SCENE_PROBE}
+        settings = {'sampling': {'max_views': 4}, 'ordering': {'enabled': False}, 'images': 0,
+                    'vantage_points': [{'position': [32, 2, 35], 'yaw': 0, 'pitch': 0}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            good = self.room(tmp, {'occluders': {'wall': self.WALL}, 'zones': {'front': self.FRONT}}).compile()
+        r = V.verify(good.pack, settings, None, None, tools)
+        occ = r['static']['occlusion']
+        self.assertEqual((occ['zones'], occ['hidden_placements'], occ['leaks']), (1, 1, 0))
+        self.assertGreater(occ['rays'], 100)
+        view = next(v for v in r['views'] if 'vantage' in v)
+        self.assertEqual((view['stats']['zone'], view['stats']['occluded']), (0, 1))
+        # a box where nothing stands (over the floor between the zone and the gate) hides nothing
+        # truly: the check counts the rays that reach what it claims to hide
+        with tempfile.TemporaryDirectory() as tmp:
+            bad = self.room(tmp, {'occluders': {'air': {'box': [[22, 0.2, 29.5], [42, 6, 30]]}},
+                                  'zones': {'front': self.FRONT}}).compile()
+        r = V.verify(bad.pack, settings, None, None, tools)
+        occ = r['static']['occlusion']
+        self.assertGreater(occ['hidden_placements'], 0)
+        self.assertGreater(occ['leaks'], 0)
+        self.assertEqual(occ['findings'][0]['hidden']['kind'], 'placement')
+        self.assertIn('occlusion_leak', [f['code'] for f in r['threshold_failures']])
 
 
 if __name__ == '__main__':

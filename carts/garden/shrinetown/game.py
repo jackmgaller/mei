@@ -2,7 +2,7 @@
 """The shrine town's game entities (DESIGN.md, section 5 and 4.5): the five stars, the triggers
 (the bell, the omamori and the platform of the last train, the shortcuts A-E) and the last train.
 
-    python3 carts/garden/shrinetown/game.py      # writes assets/game/: the train and the omamori
+    python3 carts/garden/shrinetown/game.py      # writes assets/game/: the omamori
 
 The region generators put these entities into their cells: each calls `cell_entities(rows)` and
 appends what it returns (notes/gen_town.py for rows 0-1, assets/greybox/core/gen_core.py for 2-3,
@@ -24,9 +24,11 @@ Flags (names the triggers set and the stars and the train wait for):
 | shortcut_a ... _e | the shortcuts (press or pound) | yes | their layers |
 """
 import json
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
 OUT = HERE / 'assets' / 'game'
 
 # ★5, the last train (DESIGN.md 5, ★5; section 12, 12.9): the omamori's clock, in ticks. The
@@ -39,21 +41,22 @@ TRAIN_DELAY = 30 * 60               # ticks parked after the omamori is taken
 TRAIN_LEG = 600                     # ticks from the west end to the platform (eased)
 TRAIN_PAUSE = TIMER - TRAIN_DELAY - TRAIN_LEG   # ticks stopped at the platform: until the clock runs out
 
-RACE_PATH = None                    # the station's path along track 2 (place/station.py), when it has one
-RACE_TRAIN = 'game_train'           # the train's asset and collision (the grey box until the station's)
+# the station's path along track 2 (the set's middle, x 24 to 160, on the taper's S) and the
+# two-car train drawn along it, with its collision (place/race_train.py)
+from place.race_train import NAME as RACE_PATH, PATH as RACE_POINTS
+from place.race_train import ASSET as RACE_TRAIN, COLLISION as RACE_TRAIN_COL
 STAGE_Y = 60.0                      # layout.STAGE_Z
 BELL = (154.0, 347.15)              # forest_stage_bell's pull rope (place/shrine.py: the bell under the real hall's eave)
-TRACK2_Z = 12.1                     # the station's track 2 (the north one); the rail at the deck, 9.0
 DECK = 9.0                          # layout.VIADUCT_DECK
 PLATFORM = DECK + 1.0               # station_platform's floor (place/station.py)
 
 def train_mover():
-    """The last train: along the world path RACE_PATH (track 2's centre line, from the viaduct's
-    west end to the platform's middle) when it is set, else the straight line."""
-    params = {'path': RACE_PATH} if RACE_PATH else {'to': [158, 0, 0]}
-    params.update({'period': TRAIN_LEG, 'pause': TRAIN_PAUSE, 'start': 'race5', 'delay': TRAIN_DELAY})
-    return {'id': 'train_5', 'type': 'mover', 'position': [2.0, DECK, TRACK2_Z], 'asset': RACE_TRAIN,
-            'collision': RACE_TRAIN, 'params': params}
+    """The last train: along the world path RACE_PATH (track 2's centre line, from x 24 to the
+    platform's middle), two real cars (RACE_TRAIN)."""
+    params = {'path': RACE_PATH, 'period': TRAIN_LEG, 'pause': TRAIN_PAUSE, 'start': 'race5',
+              'delay': TRAIN_DELAY}
+    return {'id': 'train_5', 'type': 'mover', 'position': list(RACE_POINTS[0]), 'asset': RACE_TRAIN,
+            'collision': RACE_TRAIN_COL, 'params': params}
 
 
 ENTITIES = [
@@ -87,9 +90,8 @@ ENTITIES = [
     {'id': 'race_platform', 'type': 'trigger', 'position': [160, PLATFORM + 0.05, 8.0],
      'params': {'size': [32, 3, 5.0], 'flag': 'race5_won', 'needs': 'race5', 'ends': 'race5', 'keep': False}},
     # the two-car train on track 2: parked until the omamori is taken, then in from the west end
-    # of the viaduct, stopped with its middle at the platform's (x 160), and back out west. Until
-    # the station's path along track 2 exists (RACE_PATH), a straight line at the platform's z
-    # (on the standard spans track 2 is at z 10, so the train rides 2.1 m north of it there)
+    # of the viaduct, stopped with its middle at the platform's (x 160), and back out west, on
+    # track 2 (z 10 on the standard spans, the taper's S to 12.1 at the station)
     train_mover(),
 
     # ---- the shortcuts (DESIGN.md 4.5): each opens once and stays open (saved)
@@ -151,18 +153,6 @@ def recipe(name, boxes, colours, budget):
             'budget': {'triangles': budget}, 'nodes': nodes}
 
 
-def train():
-    """Two cars of 19.5 m (x), 2.8 m wide, their floors 1.1 over the rail (the origin), roofs at
-    3.6; bogies under them. Centred on the origin along x: 40 m in all."""
-    b = []
-    for cx in (-9.9, 9.9):
-        b.append((cx - 9.75, 1.0, -1.4, cx + 9.75, 3.6, 1.4, 'body', 'roof'))
-        for bx in (cx - 6.5, cx + 6.5):
-            b.append((bx - 1.3, 0.0, -1.1, bx + 1.3, 1.02, 1.1, 'bogie'))     # 2 cm into the car
-    b.append((-0.2, 1.2, -1.0, 0.2, 3.3, 1.0, 'bogie'))            # the gangway between the cars
-    return recipe('game_train', b, {'body': '#e8e2d0', 'roof': '#8a8c90', 'bogie': '#3a3c40'}, 96)
-
-
 def omamori():
     """A red brocade pouch (0.36 x 0.5 x 0.12) with its gold cord, at chest height over its spot."""
     b = [(-0.18, 0.9, -0.06, 0.18, 1.4, 0.06, 'red'),
@@ -173,8 +163,8 @@ def omamori():
 if __name__ == '__main__':
     OUT.mkdir(parents=True, exist_ok=True)
     for p in OUT.glob('game_*.asset.json'): p.unlink()
-    for r in (train(), omamori()):
+    for r in (omamori(),):
         (OUT / f'{r["name"]}.asset.json').write_text(json.dumps(r, separators=(',', ':')) + '\n')
-    print(f'{OUT.relative_to(HERE)}: game_train, game_omamori; {len(ENTITIES)} entities '
+    print(f'{OUT.relative_to(HERE)}: game_omamori; {len(ENTITIES)} entities '
           f'(TIMER {TIMER} ticks, the train in at {(TRAIN_DELAY) / 60:g} s, at the platform at '
           f'{(TRAIN_DELAY + TRAIN_LEG) / 60:g} s, out at {TIMER / 60:g} s)')

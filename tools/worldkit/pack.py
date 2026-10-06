@@ -28,10 +28,12 @@ import struct
 
 MAGIC = b'MEIW'
 VERSION_MAJOR = 1
-VERSION_MINOR = 4           # the newest minor this module writes and reads
+VERSION_MINOR = 5           # the newest minor this module writes and reads
 HEADER_SIZE = 80            # 64 in 1.0 and 1.1; 1.2 adds path_count and path_off; 1.3 near_far, lod_slots
-HEADER_SIZE_1_4 = 84        # 1.4 adds region_ext_off
+HEADER_SIZE_1_4 = 84        # 1.4 adds region_ext_off (1.5 keeps it)
 MINOR_PLAIN = 3             # the minor version written for a pack that needs no 1.4 region extension
+MINOR_EXT = 4               # ... that needs one, and has no occlusion zones
+MINOR_ZONES = 5             # ... that has occlusion zones (1.5)
 HEADER_SIZE_1_2 = 72
 MIN_HEADER_SIZE = 64
 CELL_SIZE = 96
@@ -57,6 +59,8 @@ RUN_SIZE = 8
 ANIM_SIZE = 20
 SKY_SIZE = 32
 SKY_SILHOUETTE = 1          # sky flags bit 0: a silhouette on plane BG1
+ZONE_SIZE = 80              # (1.5) an occlusion zone: its box, layer, the stand-ins and placements it hides
+ZONE_FAR = 3                # (1.5) a zone's stand-in mask covers the cells within 3 of its own: 7 x 7 bits
 
 ONE = 65536
 NO_LAYER = 0xFF
@@ -129,13 +133,18 @@ def bucket_of(x, half, inv, g):
 class Tri:
     """A collision triangle. Corners are world coordinates for cell collision and the entity's
     own frame for entity collision. surface is the game's byte; layer a layer name or None;
-    tag a 16-bit number carried into the record (0xFFFF: none), e.g. the placement it came from."""
+    tag a 16-bit number carried into the record (0xFFFF: none), e.g. the placement it came from.
+    slide_floor_degrees: a triangle steeper than the world's floor limit, up to this slope, is a
+    floor as well as a wall (two records): the wall stops a body moving into it, the floor
+    catches a falling one, which a game slides down (a heightfield's steep ground, WORLDKIT.md,
+    "Steep ground"). None: a wall only."""
     a: tuple
     b: tuple
     c: tuple
     surface: int = 0
     layer: str = None
     tag: int = 0xFFFF
+    slide_floor_degrees: float = None
 
 
 @dataclass
@@ -178,6 +187,21 @@ class Entity:
 
 
 @dataclass
+class Zone:
+    """(1.5) An occlusion zone (WORLDPACK.md, "Occlusion zones"): while the eye lies in the box
+    lo <= eye < hi (world coordinates, inside its cell's square in x and z) and its layer is on (None:
+    always), the reader skips the placements in `hidden` (Placement objects of the cell's 3 x 3 near
+    cells) and the stand-ins of the cells in `standins` ((i, j), within ZONE_FAR cells). The
+    encoder does not check that they are hidden: the World Kit works that out, the World Checker
+    checks it."""
+    lo: tuple
+    hi: tuple
+    layer: str = None
+    hidden: list = field(default_factory=list)
+    standins: list = field(default_factory=list)
+
+
+@dataclass
 class Cell:
     i: int
     j: int
@@ -188,6 +212,7 @@ class Cell:
     collision: list = field(default_factory=list)    # Tri, world coordinates
     entities: list = field(default_factory=list)
     grid_shift: int = None                           # None: chosen by the encoder
+    zones: list = field(default_factory=list)        # Zone (1.5): the eye's occlusion zones in this cell
 
 
 @dataclass
@@ -202,6 +227,7 @@ class Texture:
     slot: int
     data: bytes
     four_bit: bool = True
+    offset: int = None      # decoded: where its data is in the pack (regions may share it)
 
 
 @dataclass
@@ -568,9 +594,11 @@ def _write_coll(out, tris, half, pad, grid_shift, floor_cos, ceiling_cos, layer_
     by_kind = [[], [], []]
     classified = []
     for t in tris:
-        v, surface, layer, tag = t
+        v, surface, layer, tag = t[:4]
         n = front_normal(*v)
-        kind = classify(n, floor_cos, ceiling_cos)
+        # a cell's triangles come classified (world_triangles(): a triangle may have its own
+        # floor limit); an entity's are classified here
+        kind = t[4] if len(t) > 4 else classify(n, floor_cos, ceiling_cos)
         if not 0 <= surface <= 255:
             raise PackError('surface byte out of range')
         if not 0 <= tag <= 0xFFFF:
@@ -630,8 +658,12 @@ def world_triangles(world):
         for t in cell.collision:
             v = tuple(_raw3(p, 'collision corner') for p in (t.a, t.b, t.c))
             n = front_normal(*v)
-            out.append(dict(kind=classify(n, fc, cc), v=v, n=n, surface=t.surface,
-                            layer=t.layer, tag=t.tag))
+            kind = classify(n, fc, cc)
+            out.append(dict(kind=kind, v=v, n=n, surface=t.surface, layer=t.layer, tag=t.tag))
+            slide = t.slide_floor_degrees
+            if kind == KIND_WALL and slide is not None and \
+                    classify(n, math.cos(math.radians(slide)), cc) == KIND_FLOOR:
+                out.append(dict(out[-1], kind=KIND_FLOOR))     # a slide floor too
     return out
 
 
@@ -829,12 +861,13 @@ def encode(world, report=None):
                 if x1 <= -half or x0 >= half or z1 <= -half or z0 >= half:
                     continue
                 v = tuple((p[0] - cx, p[1], p[2] - cz) for p in t['v'])
-                cell_tris[key].append((v, t['surface'], t['layer'], t['tag']))
+                cell_tris[key].append((v, t['surface'], t['layer'], t['tag'], t['kind']))
                 if t['layer'] is not None and t['layer'] not in cell_layers[key]:
                     cell_layers[key].append(t['layer'])
 
+    zoned = any(c.zones for c in cells)
     out = _Out()
-    out.reserve(HEADER_SIZE_1_4 if any(r.extended for r in world.regions) else HEADER_SIZE)
+    out.reserve(HEADER_SIZE_1_4 if zoned or any(r.extended for r in world.regions) else HEADER_SIZE)
     strings = {}
     pending_strings = []        # (patch offset, text)
 
@@ -854,10 +887,10 @@ def encode(world, report=None):
             mesh_order.append(data)
         pending_meshes.append((at, data))
 
-    blobs = []                  # (patch offset, bytes, align, [(offset in bytes, string)])
+    blobs = []                  # (patch offset, bytes, align, [(offset in bytes, string)], shared)
 
-    def blob_ref(at, data, align=4, names=()):
-        blobs.append((at, data, align, names))
+    def blob_ref(at, data, align=4, names=(), shared=False):
+        blobs.append((at, data, align, names, shared))
 
     index_off = out.reserve(4 * gw * gh)
     layer_off = out.reserve(LAYER_SIZE * len(world.layers)) if world.layers else 0
@@ -876,7 +909,9 @@ def encode(world, report=None):
                 raise PackError('texture slot out of range')
             out.patch(tex_off + TEXTURE_SIZE * t, 'BBHII', tex.slot, 1 if tex.four_bit else 0, 0, 0,
                       len(tex.data))
-            blob_ref(tex_off + TEXTURE_SIZE * t + 4, tex.data)
+            # a texture several regions hold (the stand-ins' common set) is stored once, so the
+            # reader sees the same data offset and does not copy it again on entering
+            blob_ref(tex_off + TEXTURE_SIZE * t + 4, tex.data, shared=True)
         smp_off = out.reserve(SAMPLE_SIZE * len(r.samples)) if r.samples else 0
         for s, smp in enumerate(r.samples):
             at2 = smp_off + SAMPLE_SIZE * s
@@ -1039,6 +1074,8 @@ def encode(world, report=None):
         if c.standin is not None:
             mesh_ref(at + 48, c.standin)
 
+    if zoned:
+        _write_zones(out, cells, cell_offs, layer_id, shift)
     for (i, j), off in cell_offs.items():
         out.patch(index_off + 4 * ((j - j0) * gw + (i - i0)), 'I', off)
     ent_dir = out.put(struct.pack(f'<{len(entity_records)}I', *entity_records)) if entity_records else 0
@@ -1048,8 +1085,14 @@ def encode(world, report=None):
         out.patch(mesh_dir + 4 * k, 'I', meshes[m])
     for at, m in pending_meshes:
         out.patch(at, 'I', meshes[m])
-    for at, data, align, names in blobs:
-        off = out.put(data, align)
+    shared_blobs = {}
+    for at, data, align, names, shared in blobs:
+        if shared and (data, align) in shared_blobs:
+            off = shared_blobs[(data, align)]
+        else:
+            off = out.put(data, align)
+            if shared:
+                shared_blobs[(data, align)] = off
         out.patch(at, 'I', off)
         for o, text in names:
             string_ref(off + o, text)
@@ -1064,13 +1107,14 @@ def encode(world, report=None):
     near_far = fx(world.near_far) if world.near_far is not None else 0
     if world.near_far is not None and not 0 < near_far <= 2048 * ONE:
         raise PackError('near_far must be more than 0 and at most 2048 units')
-    out.patch(0, '4sHHIBBHhhHHIiiHHIIIIIIIIiI', MAGIC, VERSION_MAJOR, VERSION_MINOR if extended else MINOR_PLAIN,
-              len(out.b), shift, FLAG_GROUND if any_ground else 0, HEADER_SIZE_1_4 if extended else HEADER_SIZE,
+    minor = MINOR_ZONES if zoned else MINOR_EXT if extended else MINOR_PLAIN
+    out.patch(0, '4sHHIBBHhhHHIiiHHIIIIIIIIiI', MAGIC, VERSION_MAJOR, minor,
+              len(out.b), shift, FLAG_GROUND if any_ground else 0, HEADER_SIZE_1_4 if minor >= 4 else HEADER_SIZE,
               i0, j0, gw, gh, index_off, pad, overhang,
               len(world.regions), len(world.layers), region_off, layer_off,
               len(entity_records), ent_dir, len(mesh_order), mesh_dir, len(world.paths), path_off,
               near_far, lod_slots)
-    if extended:
+    if minor >= 4:
         out.patch(HEADER_SIZE, 'I', ext_off)
     if report is not None:
         report['layers'] = dict(layer_id)
@@ -1081,7 +1125,73 @@ def encode(world, report=None):
         report['paths'] = {p.name: k for k, p in enumerate(world.paths)}
         report['lod_slots'] = lod_slots
         report['lod_sets'] = len(lod_pool)
+        report['zones'] = sum(len(c.zones) for c in cells)
     return bytes(out.b)
+
+
+def ordered_placements(cell):
+    """A cell's placements in the order the encoder files them: ground first."""
+    return [p for p in cell.placements if p.ground] + [p for p in cell.placements if not p.ground]
+
+
+def _write_zones(out, cells, cell_offs, layer_id, shift):
+    """(1.5) Each cell's occlusion zones: a table of ZONE_SIZE records, its count and offset in
+    the cell's words 88 and 92, and the placement masks they point at, each distinct mask once."""
+    size = 1 << shift
+    half = (size // 2) * ONE
+    by_key = {(c.i, c.j): c for c in cells}
+    index = {}                  # id(placement) -> (cell, number in the cell as filed)
+    for c in cells:
+        for k, p in enumerate(ordered_placements(c)):
+            index[id(p)] = ((c.i, c.j), k)
+    masks = {}                  # mask bytes -> offset
+    for c in cells:
+        if not c.zones:
+            continue
+        cx, cz = (c.i << shift) * ONE + half, (c.j << shift) * ONE + half
+        table = out.reserve(ZONE_SIZE * len(c.zones))
+        for n, z in enumerate(c.zones):
+            lo, hi = _raw3(z.lo, 'zone corner'), _raw3(z.hi, 'zone corner')
+            lo = (lo[0] - cx, lo[1], lo[2] - cz)
+            hi = (hi[0] - cx, hi[1], hi[2] - cz)
+            if not all(a < b for a, b in zip(lo, hi)):
+                raise PackError(f'cell ({c.i}, {c.j}): an occlusion zone\'s box is empty')
+            if lo[0] < -half or lo[2] < -half or hi[0] > half or hi[2] > half:
+                raise PackError(f'cell ({c.i}, {c.j}): an occlusion zone reaches past its cell')
+            if z.layer is not None and z.layer not in layer_id:
+                raise PackError(f'cell ({c.i}, {c.j}): occlusion zone layer {z.layer!r} is not a layer')
+            far = 0
+            for (i, j) in z.standins:
+                di, dj = i - c.i, j - c.j
+                if max(abs(di), abs(dj)) > ZONE_FAR or (i, j) not in by_key:
+                    raise PackError(f'cell ({c.i}, {c.j}): an occlusion zone hides the stand-in of ({i}, {j}), '
+                                    f'not a cell within {ZONE_FAR}')
+                far |= 1 << ((dj + ZONE_FAR) * (2 * ZONE_FAR + 1) + di + ZONE_FAR)
+            bits = {}
+            for p in z.hidden:
+                if id(p) not in index:
+                    raise PackError(f'cell ({c.i}, {c.j}): an occlusion zone hides a placement of no cell')
+                (i, j), k = index[id(p)]
+                if max(abs(i - c.i), abs(j - c.j)) > 1:
+                    raise PackError(f'cell ({c.i}, {c.j}): an occlusion zone hides a placement of ({i}, {j}), '
+                                    'not a near cell')
+                bits[(i, j)] = bits.get((i, j), 0) | 1 << k
+            near = []
+            for dj in (-1, 0, 1):
+                for di in (-1, 0, 1):
+                    key = (c.i + di, c.j + dj)
+                    if key not in bits:
+                        near.append(0)
+                        continue
+                    nw = (len(by_key[key].placements) + 31) // 32
+                    data = bits[key].to_bytes(4 * nw, 'little')
+                    if data not in masks:
+                        masks[data] = out.put(data)
+                    near.append(masks[data])
+            at = table + ZONE_SIZE * n
+            out.patch(at, '4i4iBBH2I9I', *lo, 0, *hi, 0, NO_LAYER if z.layer is None else layer_id[z.layer], 0, 0,
+                      far & 0xFFFFFFFF, far >> 32, *near)
+        out.patch(cell_offs[(c.i, c.j)] + 88, 'II', len(c.zones), table)
 
 
 # ---- the decoder
@@ -1119,6 +1229,8 @@ class DCell:
     entity_first: int
     coll: Coll
     ground_count: int = 0
+    zones: list = field(default_factory=list)   # (1.5) dicts: lo, hi (raw, cell-local), layer (id or None),
+                                                # far (the 49-bit stand-in mask), hidden {(i, j): set of k}
 
 
 @dataclass
@@ -1287,7 +1399,7 @@ def decode(data):
             slot, fl, _, do, n = r.u('BBHII', to + TEXTURE_SIZE * t, 'texture')
             if slot >= TEXTURE_SLOTS:
                 raise PackError('texture slot out of range')
-            texs.append(Texture(slot, r.blob(do, n, 'texture'), bool(fl & 1)))
+            texs.append(Texture(slot, r.blob(do, n, 'texture'), bool(fl & 1), do))
         smps = []
         for s in range(nsmp):
             sn, do, ns, ls, fl = r.u('5I', so + SAMPLE_SIZE * s, 'sample')
@@ -1333,6 +1445,7 @@ def decode(data):
         return mo
 
     cells = {}
+    zone_words = {}
     for k in range(gw * gh):
         co = r.u('I', index_off + 4 * k, 'index')[0]
         if co == 0:
@@ -1395,6 +1508,10 @@ def decode(data):
             raise PackError(f'cell ({ci}, {cj}): collision grid is not the cell square')
         cells[(ci, cj)] = DCell(co, ci, cj, reg, lay, bounds, sbounds, mesh_at(sto, 'stand-in'), pls, ens,
                                 efirst, coll, nground)
+        if minor >= 5:
+            zone_words[(ci, cj)] = (v[31], v[32])
+    for key, (nz, zo) in zone_words.items():
+        cells[key].zones = _decode_zones(r, nz, zo, cells[key], cells, nlay, half, hs)
     if minor >= 1 and bool(flags & FLAG_GROUND) != any(c.ground_count for c in cells.values()):
         raise PackError('the header\'s ground flag disagrees with the cells')
     ents = []
@@ -1409,6 +1526,76 @@ def decode(data):
         raise PackError('entity count disagrees with the cells')
     return Pack(data, major, minor, shift, i0, j0, gw, gh, pad, overhang, layers, regions, cells,
                 ents, meshes, paths, near_far, lod_slots)
+
+
+def _decode_zones(r, nz, zo, cell, cells, nlay, half, hs):
+    """(1.5) A cell's occlusion zones, validated."""
+    if nz == 0:
+        if zo:
+            raise PackError(f'cell ({cell.i}, {cell.j}): a zone table without zones')
+        return []
+    r.table(zo, nz, ZONE_SIZE, f'cell ({cell.i}, {cell.j}) zones', hs)
+    if zo == 0:
+        raise PackError(f'cell ({cell.i}, {cell.j}): zones without a table')
+    side = 2 * ZONE_FAR + 1
+    out = []
+    for n in range(nz):
+        v = r.u('4i4iBBH2I9I', zo + ZONE_SIZE * n, 'zone')
+        lo, hi, layer, flags = v[0:3], v[4:7], v[8], v[9]
+        if v[3] or v[7] or flags or v[10]:
+            raise PackError(f'cell ({cell.i}, {cell.j}): a zone\'s reserved fields are not 0')
+        if not all(a < b for a, b in zip(lo, hi)) or lo[0] < -half or lo[2] < -half or hi[0] > half or hi[2] > half:
+            raise PackError(f'cell ({cell.i}, {cell.j}): a zone\'s box is empty or reaches past its cell')
+        if layer != NO_LAYER and layer >= nlay:
+            raise PackError(f'cell ({cell.i}, {cell.j}): a zone names no layer')
+        far = v[11] | v[12] << 32
+        if far >> (side * side):
+            raise PackError(f'cell ({cell.i}, {cell.j}): a zone hides stand-ins past its square')
+        for b in range(side * side):
+            if far >> b & 1 and (cell.i + b % side - ZONE_FAR, cell.j + b // side - ZONE_FAR) not in cells:
+                raise PackError(f'cell ({cell.i}, {cell.j}): a zone hides the stand-in of no cell')
+        hidden = {}
+        for q, mo in enumerate(v[13:22]):
+            key = (cell.i + q % 3 - 1, cell.j + q // 3 - 1)
+            if not mo:
+                continue
+            if key not in cells:
+                raise PackError(f'cell ({cell.i}, {cell.j}): a zone hides placements of no cell')
+            npl = len(cells[key].placements)
+            nw = (npl + 31) // 32
+            if npl == 0:
+                raise PackError(f'cell ({cell.i}, {cell.j}): a zone hides placements of a cell without any')
+            r.table(mo, nw, 4, 'zone mask', hs)
+            bits = int.from_bytes(r.blob(mo, 4 * nw, 'zone mask'), 'little')
+            if bits >> npl:
+                raise PackError(f'cell ({cell.i}, {cell.j}): a zone mask names placements that do not exist')
+            hidden[key] = {k for k in range(npl) if bits >> k & 1}
+        out.append(dict(lo=lo, hi=hi, layer=None if layer == NO_LAYER else layer, far=far, hidden=hidden,
+                        off=zo + ZONE_SIZE * n))
+    return out
+
+
+def zone_at(pack, eye, layers_on=()):
+    """(1.5) The occlusion zone the reader uses for a raw world eye (x, y, z), with these layer
+    ids on: the first in the eye's cell whose box holds the eye (lo <= eye < hi) and whose layer is
+    on; or None. Returns (cell (i, j), zone dict)."""
+    key, lx, lz = pack.cell_of(eye[0], eye[2])
+    c = pack.cells.get(key)
+    if c is None:
+        return None
+    e = (lx, eye[1], lz)
+    for z in c.zones:
+        if all(z['lo'][a] <= e[a] < z['hi'][a] for a in range(3)) and (z['layer'] is None or z['layer'] in layers_on):
+            return key, z
+    return None
+
+
+def zone_hides_standin(zone, di, dj):
+    """Whether a zone hides the stand-in of the cell (di, dj) from its own."""
+    if max(abs(di), abs(dj)) > ZONE_FAR:
+        return False
+    side = 2 * ZONE_FAR + 1
+    return bool(zone['far'] >> ((dj + ZONE_FAR) * side + di + ZONE_FAR) & 1)
 
 
 def _write_region_ext(out, at, r, blob_ref):

@@ -847,6 +847,18 @@ def compile_world(source, lock=None, assets_dir=None):
             raise WorldError('/palette', f'8-bit palette {p8} (colours {256 * p8}-{256 * p8 + 255}) overlaps 4-bit '
                              f'palette {hit[0]}, which region {taken[hit[0]]!r} uses. Use fewer 8-bit textures, '
                              'palette.first8, or other 4-bit palettes.')
+    # palette.reserved: 4-bit palettes the game keeps for itself (a collectible's colours, say),
+    # which no region, texture or silhouette may take
+    reserved = sorted(set(palette.get('reserved', [])))
+    for pal in reserved:
+        if pal in taken:
+            raise WorldError('/palette/reserved', f'4-bit palette {pal} is reserved (palette.reserved), but region '
+                             f'{taken[pal]!r} uses it. Give the region palettes.first and palettes.count that leave '
+                             'it out.')
+        hit = [p8 for p8 in low8 if p8 * 16 <= pal < p8 * 16 + 16]
+        if hit:
+            raise WorldError('/palette/reserved', f'4-bit palette {pal} is reserved (palette.reserved), but 8-bit '
+                             f'palette {hit[0]} covers it. Use fewer 8-bit textures or palette.first8.')
     # a backdrop silhouette is drawn by a plane, which reads palette bank 0 only: a region whose
     # palettes are in bank 1 gets its silhouette's palette in bank 0, after every palette there
     # taken, loaded with its variants as a run of its own
@@ -855,6 +867,8 @@ def compile_world(source, lock=None, assets_dir=None):
         if rp.backdrop and rp.backdrop[0] > FONT_PALETTE:
             used0 = [p for p in taken if p < FONT_PALETTE] + [16 * p8 + 15 for p8 in low8 if p8 < FONT_PALETTE // 16]
             pal = max(used0, default=-1) + 1
+            while pal in reserved:
+                pal += 1
             if pal >= FONT_PALETTE:
                 raise WorldError(pointer('/regions', r) + '/backdrop', f'Region {r!r}\'s backdrop needs a 4-bit palette in '
                                  'bank 0 (0-254: a plane reads bank 0 only); none is free.')
@@ -926,10 +940,33 @@ def compile_world(source, lock=None, assets_dir=None):
         # ground placement, the way a terrain piece is)
         for (lname, ground), items in sorted(to_merge.items(),
                                              key=lambda kv: (kv[0][0] is not None, kv[0][0] or '', kv[0][1])):
-            meshes = merge.merge([(b, pl['pos'], pl['yaw']) for b, pl in items], centre)
-            for m in meshes:
-                cell.placements.append(P.Placement(m, centre, 0.0, lname, 0xFFFF, ground))
+            groups = merge.merge_groups([(b, pl['pos'], pl['yaw']) for b, pl in items], centre)
+            # A merged mesh keeps the props' cull when every prop in it has one (moved out by how
+            # far each prop is from the mesh's centre, merge.shared_cull()); levels are lost.
+            entries = [lod_entry(pl['asset']) for _, pl in items]
+            culls = [e['cull'] if e is not None and not e['off'] else None for e in entries]
+            culled = []
+            for m, props in groups:
+                cull = merge.shared_cull(props, culls)
+                lod = None
+                if cull is not None:
+                    band = max(entries[k]['band'] for k, _ in props)
+                    if cull + band <= P.MAX_LOD_DISTANCE:
+                        lod = P.Lod([(cull, None)], band)
+                        culled.append(cull)
+                    else:
+                        cull = None
+                if cull is None:
+                    lost = sorted({items[k][1]['spec']['id'] for k, _ in props if culls[k] is not None})
+                    if lost:
+                        warnings.append({'code': 'cull_merged', 'cell': c['id'], 'placements': lost,
+                                         'message': 'Merged placements whose assets have a cull distance are drawn '
+                                                    'at every distance: another prop merged with them has no cull. '
+                                                    'Give it one, or do not merge them.'})
+                cell.placements.append(P.Placement(m, centre, 0.0, lname, 0xFFFF, ground, lod))
+            meshes = [m for m, _ in groups]
             entry = {'layer': lname, 'placements': [pl['spec']['id'] for _, pl in items], 'meshes': len(meshes)}
+            if culled: entry['cull'] = max(culled)
             if ground: entry['ground'] = True
             merged_report.setdefault(c['id'], []).append(entry)
         # scatter: each chunk's props merged into one mesh (or more, split between props), with a
@@ -1072,6 +1109,10 @@ def compile_world(source, lock=None, assets_dir=None):
                     near_far=w.get('runtime', {}).get('near_far'),
                     overhang=overhang, floor_max_degrees=probe['floor_max_degrees'],
                     ceiling_max_degrees=probe.get('ceiling_max_degrees', DEFAULT_CEILING_DEGREES), paths=paths)
+    occlusion_report = None
+    if w.get('occlusion'):
+        from . import occlusion
+        occlusion_report = occlusion.compute(w['occlusion'], world, size, layer_names, warnings)
 
     # ---- entity numbers, saved bits, parameter records
     numbers = P.entity_numbers(world)
@@ -1125,6 +1166,8 @@ def compile_world(source, lock=None, assets_dir=None):
         if r in backdrops:
             entry['backdrop'] = backdrops[r].report()
     report['lod'] = {n: s for n, s in lod_report.items()}
+    if occlusion_report is not None:
+        report['occlusion'] = occlusion_report
     if auto_standins:
         report['standins'] = {'distance': auto_standins['distance'], 'cells': auto_report}
         if common:

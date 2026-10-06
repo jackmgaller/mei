@@ -1389,6 +1389,186 @@ takes them through `RACE_TRAIN` and `RACE_PATH` once they exist; until then the 
 runs the straight line at z 12.1), a tunnel camera zone (the shrine's; the cart now holds 24
 zones), and case 414's start on the temple's ridge (waits for the shrine's climbable roofs).
 
+#### Collision and checker kit (alpha-fix-kit)
+
+- **Steep ground (B3).** Terrain steeper than the game's 40° floor limit was walls only, and a
+  body falling into a crease between two steep faces sank through the world (45 places by the
+  new drop check). The World Kit now has a heightfield key, `slide_floor_degrees`: faces up to
+  it are floors as well as walls, so a falling body lands and slides down. At 70 the drop check
+  finds none, and r13's walks and grid drops no longer fall through (the pond bridge, the fox
+  tunnel's end, the falls' top, the north wall's bank). A body walking into a 40–63° bank now
+  steps on and slides back instead of standing against it. Not set yet: `make_world.py` gives
+  the ground field `"slide_floor_degrees": 70`, and the crack baseline is written again (one
+  known crack goes, one 0.125 terrain crack at (102.1, 40.9, 334.1) appears).
+- **Drop check.** The World Checker drops a body over every steep up-facing point (1 m grid);
+  one that falls through is a hard failure (`drop_through`; in report mode the pack is still
+  built). Shrine town: 45 now, 0 with slide floors at 70.
+- **Sampling.** 8 yaws instead of 4; layer sets only where their placements are drawn; vantage
+  points from `verification.vantage_points`, checked on every build on top of the 600. The list
+  for the town and the shrine (42 points, 126 views, from r01 and r02) is ready for
+  `make_world.py`; with it the check flags 43 positions over 600k draw CPU, worst 786,145 (the
+  follow camera over the platform).
+- **Kit fixes.** s6's missing facade triangle (a sliver paired first into a quad); merged meshes
+  keep a cull all their props share (the sotoba racks now cull at 84.8 and 86.9 m: the racks'
+  60 plus their spread), else warn (`cull_merged`: `sh_omikuji_terr` in c2_3);
+  `palette.reserved` (give it `[254]`, the star's); the stand-ins' common set is stored once and
+  copied on the first crossing only (61,824 bytes, about 58,000 cycles a crossing); the camera
+  error names the bad camera name. The fire stair's opaque slab is not a kit fault: it is
+  `street_building`'s level 1, a solid box, drawn from 30 m in the town.
+
+#### Workstream 7: occluders
+
+**What was built.** Hand-placed occluders in the World Kit (WORLDKIT.md, "Occlusion"): a recipe
+declares occluder boxes or quads and camera zones; the kit works out, per zone, the placements of
+the near cells and the stand-ins of the far ring that one occluder hides from every point of the
+zone; the pack stores those sets (WORLDPACK.md 1.5, "Occlusion zones"); the reader finds the
+eye's zone once a frame and skips what it hides; the World Checker draws with the zones, judges
+its pictures against what is in sight without them, and casts rays from every zone to what it
+hides (the occlusion check). The scheme is a potentially visible set per zone rather than a
+screen-space test per frame because the test would cost about 66,000 cycles a frame with 20
+occluders and 130 placements in view; the set costs about 40 cycles a zone looked at and 11 a
+placement looked at in a cell the zone has a mask for. Worlds without `occlusion` build the same
+packs as before.
+
+**Applied to shrine town** in `place/occluders.py`: the viaduct deck's slab round the platform
+stair's opening, the station's facade above the door and the concourse's end walls; zones under
+the two tapers and in the plaza west of the station's door, at camera heights. They hide the two
+train cars (256 faces each at level 0) from under the tapers and the west car from the plaza; the
+leak check casts 3,600 rays and finds no leak.
+
+**What it saves: almost nothing.** Measured with the World Checker at 70178b4's world against the
+same world with the zones (the level-of-detail changes of the other workstreams not included):
+
+| Cameras | Draw CPU before → after |
+|---|---|
+| r01's 20 worst cameras (`worst_cams.json`) | +15 to +47 each: no camera is in a zone |
+| r02's 9 worst cameras (the viaduct deck 711,057 among them) | +16 or +17 each |
+| 60 of r01's sweep views at camera heights under 6 m and over 450,000 | 30,625,567 → 30,618,586 in all; 5 views in a zone: −6,266, −5,385, +1,051, +1,051, +967 |
+
+Why, from what was tried (the notes in `place/occluders.py`):
+
+- Most of the cost r01 found "behind walls" is placements that are partly in sight: the
+  concourse (484 faces) is the wall; the platform (366) and the train cars are 20-48 m long and
+  show over or through the facade's door and windows. A placement is skipped only when all of it
+  is hidden, and the kit joins no shadows, so these need occluders larger than any solid piece
+  of the station (or the station split into pieces: the level-of-detail workstream's fix).
+- A box in each of the town's 67 buildings and a zone every 8 m over the town hid 3,284
+  placements over 640 zones, but almost none of them in view from where they are hidden: the
+  views look along the streets, and what stands behind a row is beside the view. Net +500
+  cycles a view (the zones' tests).
+- The viaduct's parapet over the cemetery is 1.2 m over the deck; the cemetery is hidden by the
+  deck and the parapet together, never by either alone. The follow camera (about 13 m there,
+  r02's case 447) sees the cemetery over the parapet anyway.
+- The woods decks look over cut-out tree cards (holes), which cannot occlude.
+
+So the draw CPU overruns are for the levels of detail (r01 findings 1-3, r02 finding 1), not
+for occluders. The feature stays for worlds with closed rooms and corridors (interiors, the
+ticket hall from inside), where a zone hides a whole room's contents.
+
+#### Workstream 4: the station zone and its draw CPU
+
+The alpha review's dense sweep found 195 views round the station over the 600,000 draw-CPU
+budget (worst 783,327); the owner chose levels of detail first, then occluders (another
+workstream). What changed (`place/station.py` and the station's assets):
+
+| What | Before | Now | Why |
+|---|---|---|---|
+| `train_emu_car` | a parked pair on track 1, level 1 from 6 m; level 0 454 triangles, 216 of them the emissive glass over the windows | no train on track 1 (the lead's decision: the last train is the one train); level 0 262 triangles, the windows the livery's glass at every level | the car changed colour at its level switch (pale emissive glass, then the texture's dark glass); the windows no longer glow at night |
+| `station_concourse` | one asset: level 0 785 triangles, level 1 from 30 m | two: the shell (front, outside stairs, parapet: level 0 628, a middle level of 448 from 14 m without the posters and the roofs' posts and with the stair walls' faces only, the old level 1 from 30, the impostor from 70) and `station_hall` (the ticket hall's room and the platform stair: level 0 170, level 1 of 63 from 16 m without signs and lights, culled from 40) | the shell's bounding sphere is out over the plaza (the stairs reach z 34.6), so the plaza sees its middle level, which keeps the front, the stairs and the sign; the hall's sphere is in the hall, so a player inside sees its level 0 |
+| The hall's walls | flat beige (`interior`) | the cladding's cream panels (`panel`), the void under the first flight too | the hall read as a void (r19 #9, r14 #8) |
+| `station_platform` | one asset: level 0 674, level 1 from 30 | the structure (level 0 280; a middle level from 22 m: the floor's bands without the stairwell, the canopy on columns; then 34, 70) and two fittings assets, `station_platform_fittings_w` (name board, soba stand, clock, two benches) and `_e` (name board, track signs, bench, vending machine, bins, cat), each level 1 from 12 m and culled from 24 | from the plaza the parapet hides the platform's floor; a player on the platform is at most 20 m from its middle |
+| Other levels (`LOD`) | mamachari cull 30; bike rack 14/30; newsstand 14/40; koban 24/45; ticket gates 12/40; planters cull 36 | mamachari level 1 from 8 m; bike rack 10/30; newsstand 8/40; koban 14/45; ticket gates 8/40; station spans 24/100; planters cull 28 | r01's measured set |
+| Konbini roof sign | the grey box's block | `konbini_roof_sign`: a lightbox with the konbini's logo (the shrine's `kon_sign` cell) on two posts, its collision the grey block (top 7.0) | grey-box leftover (r14 #4); case 436 takes red coin 5 from the roof |
+| Gantries' ladders | poles, held from any side | front poles, yaw 270 (gantry 0) and 180 (gantry 1) | the body went round into the column and was grabbed from the parapet rail (r08 #4); case 434 |
+| Red coin 8 | 10.9 over the parapet west of the station | 11.3 (1.1 over the rail) | taken walking the deck (r05 #3); case 435 walks past it, then grinds the rail and takes it |
+| The last train | `game_train`, grey boxes, on a straight line at z 12.1 from x 2 | `train_emu_pair` (two cars at `train_emu_car`'s level 1, 160 triangles; collision `train_emu_pair_col`) along the path `race_track2`: its middle on track 2 from x 24 (z 10) through the taper's S (x 120–136) to the platform's middle, x 160, z 12.1 (`place/race_train.py`; game.py's `RACE_PATH`, `RACE_TRAIN`) | it ran on the cable trough beside track 2 and stood through gantry 0 (r14 #1, r06 #3); case 453 checks it comes in at z 10 |
+
+The danchi's balconies: only the first is reached (a double jump from the ground). Each slab is
+right over the one below and a rail top is 1.44 m under the next slab, so there is no jump from a
+balcony to the next; accepted (r08 #9), the back stair is the way to the roof.
+
+Measured with the World Checker at the review's worst cameras (`r01/worst_cams.json`), draw CPU
+before → after (with the parked train gone): canopy 490 642,195 → 553,662; air 523 627,618 →
+578,689; over the station 623,999 → 556,482; follow camera over the platform, north-west
+783,327 → 683,086, north 717,357 → 654,531, west 723,250 → 628,172; platform's east end
+729,927 → 671,426, west end 649,899 → 573,820; ticket hall 656,824 → 597,090, over it 728,420 →
+649,104; the passage between the concourse and the konbini 736,477 → 631,384 and 734,411 →
+618,414; plaza west 716,147 → 557,214, by the bike shelters 683,085 → 631,838; deck west
+727,795 → 580,231. The full check (600 views): peak 642,195 → 576,628 draw CPU, 0 views over a
+budget (2 before); the pack 12,078,148 → 12,068,704 bytes. The review's sweep over the station block (its 2,158 views with x 128–196,
+z 0–40): over 600,000 195 → 58, over 650,000 86 → 10, over 700,000 21 → 0, worst 784,048 →
+683,388, median 386,732 → 344,738. Still over 600,000 (for the occluders): 23 views over the
+platform and its canopy (follow cameras, y 12 and up), 20 in or under the hall, 8 on the
+platform and the deck, 7 in the plaza and the passage east of the concourse. While the last
+train stands at the platform (40–85 s of a race) it adds its 160 triangles to these views.
+
+The fix round after the 20-reviewer alpha review (`ALPHA_REVIEW.md`), by workstream.
+
+#### Look: the z 128 boundary, far views and level-1 roofs
+
+| What | Change | Where |
+|---|---|---|
+| The boundary | The two regions' texture sets are in disjoint slots: the town's 13–1 and 16–18 (512 KB; it uses 376 KB), the shrine's 19–29 (352 KB; it uses 212 KB), the stand-ins' set 0, 31 and 30. Both can be resident at once. With the cart entering both regions once and drawing with `wp_region_loaded = -1` (a cart change, not on this branch), every near cell draws at its own levels on both sides of the line: the great torii is the real one from the courtyard, the shotengai is not grey boxes one step north of z 128, the cemetery's first flight and walls are drawn from the front road, and crossing copies no textures. A cart that enters a region at a time works as before | `make_world.py` `TEXTURE_SLOTS`, `TEXTURE_BUDGETS` |
+| The backdrop | One backdrop for both regions (`art/backdrop/backdrop.png`, 1,024 × 128, 40 rows under the horizon), so nothing in it moves at the line; the ranges' and the city's feet fade into the haze, and under the horizon far low town and fields thin out into the fog colour | `art/backdrop/draw_backdrop.py`, `APPLY.md` |
+| Day fog | `#d6dede` (the sky 3° up, a pale blue-grey; at 1° far hills went cream in front of the blue ranges), 20–240 (was 30–380): 87 % at 192, where the far ring may end, whole at 240. The sky's −8° stop and the backdrop's band under the horizon are the fog colour | `make_world.py` `FOG_RANGE`; `backdrop.json` `fog` |
+| Night fog | `#181842` (the sky's 9° stop; was `#4e3c61`, the purple at 1°, which made far hills and tree cards glow), 16–220 as before. The stand-ins' haze takes each variant's fog colour (`haze.colors`) | the same |
+| Level-1 roofs | The temple's, gate's and pagoda's level 1: a quad facing down under each roof at the eave's height (in `lacquer`, level 0's red), and the walls raised to it, so the roofs are closed from below: temple 224 → 230 triangles, gate 80 → 84, pagoda 89 → 99 | `../shrine/assets/art/make_roof_levels.py` |
+| The pagoda's impostor | A star of four cards through its axis (front, side, and level 0 turned 45° on both diagonals, `arch_pagoda_diag.png`) in place of the box, which showed two towers side by side from a diagonal; still 4 double-sided quads. The temple and the gate keep the box. The stand-ins' set needed a third slot for the picture (50,702 bytes in 0, 31 and 30) | `../shrine/assets/art/make_impostors.py` |
+| Edge neighbours | Level 1 (from 60 m) keeps the façade as a 16 × 16 far tile (each 4 × 4 block of the 64 × 64 tile in its commonest colour) and the stair house: 8 → 18 triangles. At night their lit panes glow, near and far (`texels` in the town's night variant) | `assets/edge_neighbour/make_edge_neighbour.py`, `make_world.py` `NEIGHBOUR_NIGHT` |
+| Courtyard stand-ins | Caps: c2_2 220 and c3_2 270, so that the side and corridor halls are in them (at 140 the halls were left out and popped in under the pagoda); c1_2 140. The World Checker's `standin_triangles` threshold follows (270) | `make_world.py` `COURTYARD` |
+| Coarse ground | Measured, not changed: the field's coarse level stays at 22 units and 2.5. At 40 and 1.5 the draw CPU rose by a median 13,000 cycles a view, and the views over 600,000 in a sweep along the line (x 72–312, z 112–152, 16 yaws, 2 pitches, 2 heights) went from 21 to 84 of 6,144; at 30 and 1.5, a median 3,500 and 41. At 1.2 and 1.0 the kit leaves a hole in level 0's floor under the giant cedar at (102, 252). A textured coarse level would cost no triangles | `make_world.py` `GROUND_LOD` |
+
+The fix round after the 20-reviewer alpha review of 70178b4 (reviewer numbers in brackets: r08 is
+reviewer 08's report). One subsection a workstream.
+
+#### Street, east and canal (branch `alpha-fix-town`)
+
+Scenarios 480-487 (`../tests/town_route_cases.akr`) prove each fix.
+
+| What | Was | Now | Scenario |
+|---|---|---|---|
+| Ladder E (shortcut E) | pole 7.6 m: its top held the feet 1.2 m under the escape's lowest landing, so it led nowhere up (B7; r08 #2, r09 #1) | pole 9.0 m (`LADDER_E_H`): at its top the feet are at 7.8; let go and push south and the body is on the landing (7.6); then the five flights and a jump over the parapet onto the roof (15.2) | 480 |
+| Fire tower's ladder | a pole the body went round, into the tower's eave and roof (r08 #4) | a front pole climbed from the south (yaw 180); let go at the top and push north: a ledge hang on the eave, the roof at 14.66 | 481 |
+| Kura → fire tower kicks | 12.6 and `notes/town.md` said two kicks from the kura's roof reach the tower's top | not so as built: the pair gives four kicks from the ground (to about 9.8), and from the kura's roof one kick off the tower goes back onto the kura (r08 #5). The docs are corrected (`notes/town.md`); the tower's top is its ladder's. A kura tall enough for the route (about 13 m) would not read as a storehouse | — |
+| Arcade's north gate | collision on its pillars only: a walk north off the arcade roof fell through the board and crest to the road (r08 #7) | `arcade_gate_posts_col` keeps the board's top 0.3 m (6.51-6.81) and the crest (6.75-8.15) too, all above G8's body (top about 5.9) | 482, 417 |
+| Back awnings (w2b, w4b, e3b) | the inner half lay under the shops' eaves: a bounce struck the eave at 4.0 (r08 #8) | `town_awning_bounce_back_col`: the inner 0.85 m is a steep face (a wall) up to the shop's wall, which moves a body out onto the outer part; dropped on the middle and steering at the roof, each bounces to 7.07 onto its roof | 483 |
+| Red coin 7, G3's take-off | the sento chimney's ladder ended at the chimney's top (18.2), the feet 1.2 m under it and out of a ledge's reach; the top was reached only by going round the pole (r05 #2) | the pole runs to 19.4 (the iron ladder's stiles drawn 1.2 m over the cap): from the boiler room's roof, up, let go and push north, on the top at 18.2 with the coin taken; G3 starts there | 484, 412 |
+| Road wires at the overpass | 8.0, through the deck's handrails 1 m over the deck (r16 #1, r08 #3) | the poles at x 250 and 280 are `town_utility_pole_tall` (11.5 m, wires at 10.5): the span is 3.5 m over the deck; a hop from the deck catches nothing | 485 |
+| Lane and konbini wires | ended on poles at z 104, 2 m short of the road's line (r08 #11) | their last poles stand on the road's line (z 106), between the road's two wires | 487 |
+| Road works' barriers | the shrine's `street_barrier_col`, a 3 m wall over a 1.26 m barrier (r09 #6) | `road_works_barrier_col`, the drawn box | 486 |
+| Machiya fronts | the body stopped 0.5 m into the inuyarai at the front's foot (r12 #7) | the inuyarai are in `town_machiya_a/_b_col` | 486 |
+| Shop fronts | a flat collision front 0.4-0.6 m in front of the recessed glass (r12 #8) | the recess is in the collision (`gen_shops.py` `recess_col`): shops A, C (front and side) and the 3F; the record shop's (0.35 m, with its bin and gachapon in front) is left | 486 |
+| School's bars | no collision (r12 #9) | two thin walls, their tops floors | 486 |
+| Shop signs | 12 shops, 7 names: Ryokkoen four times, Hikari-do and Maruju twice (r15 #1) | each family's second shop is another trade in the same building, its lettering drawn as masks: the east corner Maruya's general store (`town_shop_2f_c_store_noawning`), e3 Takagi's cameras (`town_shop_2f_a_camera`), w5 Kikuya's kimono and e2 Bun'eido's books (`town_shop_3f_kimono`, `_books`, without the tea shop's rooftop sign and side advert; their glass fronts in `town_shop_3f/art/more.png`). Eleven names | — |
+| North verge | the zelkovas at y 0 on a bank 1-1.6 m high, the road lamps on the tactile strip's slope (r15 #3) | the trees on the ground (`ground()`, the heightfield's 2 m grid); the lamps at z 115.8, on the flat sidewalk | — |
+| The building's north end and roof | a blank end wall and a bare roof (r15 #4) | `street_building_dressing`: windows west of the fire escape, a painted advert (丸栄ビル, tenants wanted) high on the end wall, three condensers on a stand and an aerial on the roof, clear of G1's line (x 193) | — |
+| The alleys | unlit at night, little dressing (r15 #5) | eleven `town_wall_lamp`s (an emissive bulb under a shade, 2.4 m up on side walls), and four potted plants, two bicycles and two air conditioners more | — |
+| The school's tree | two flat-coloured spheres on the way to the fire stair (r16 #4) | the shrine's `tree_maple_small` at (278.5, 63.5), off the paved strip; the schoolhouse's own tree and leaf disc are gone | — |
+| The canal's plank bridge | flat colour (r16 #5) | its own material `canal_planks`, the walkway's plank texture | — |
+| The culvert's deck | a flat dark grey-box slab, the road's rows and kerbs stopping at it (r16 #6) | `culvert_deck`: the road's rows in their textures, the kerbs across it, a 0.6 m parapet over each mouth; 0.15 m thick, so the culvert keeps 1.85 m under it | — |
+
+**Draw CPU in the shotengai** (r01 #3: looking north from (160, 1.5, 64), 668,111). Levels sooner
+(`place/street.py` `LOD`): every shop's level 1 from 12 m (the two- and three-storey shops' and
+the record and tobacco shops' were 20, the ramen shop's 16), the crane game's from 12, the arcade gates' from 22
+(was 30), the kanban sets culled at 32 (45), gachapon and jizo at 26 (40); the utility poles have
+a level 1 from 30 m (a square shaft and the crossarm, 14 triangles) and are culled at 56 with the
+wires' sweeps (`gen_town_utility_pole_transformer.py`); the bicycle in the street's middle moved
+to the east service lane. `mei_world.py check --cameras` at r01's cameras, every layer set, before
+→ after: (160, 1.5, 64) north 668,111 → 571,215; (160, 1.5, 66) north 631,849 → 554,300; the
+arcade roof (160, 10, 66) north 659,182 → 520,441; (160, 1.5, 94) south 600,942 → 566,328;
+(168, 1.5, 88) south-west 614,505 → 581,649; (168, 7.8, 88) south-west 626,763 → 582,713. A sweep
+of the shotengai (x 152-168 every 4 m, z 44-104 every 6 m, eye height, 8 yaws, every layer set:
+4,040 views) has none over 600,000; its peak is 566,179, at (160, 1.5, 92) looking south.
+
+Textures (`tools/textures.py`): the street zone 168,448 of its 196,608 bytes, the east 34,272 of
+49,152 (the maple and the culvert's deck), the shrine region's terrain 112,224 of 155,648 (the
+planks).
+
+**Left for others** (their workstreams' files): the landing after a wall slide skips `land()`, so a
+slide down a shop's front onto a street awning does not bounce (r08 #8: the cart); the danchi's
+balconies above the first are a dead end, the body's head in the slab above (r08 #9: the station's
+`make_danchi.py`); the alleys' rail cameras (r19 #3: the cart).
+
 #### The shrine zone
 
 From the alpha review (reviewers 02, 04, 05, 07, 09, 10, 11, 13, 17 and 19) and the explorer bot
@@ -1402,7 +1582,7 @@ and 422 are in `shrinetown_cases.akr`.
 | B4: the rope bridge, stage to falls' top, ended in a lip | A flat 52.0 at its east end (x 216–222, z 345–349) | 702, 703 |
 | The woods trail up the west ridge slid | `ramp_trail()` (`make_mountain.py`): each leg a ramp between its ends, 21° at most, a level landing (r 3.5) at each hairpin; the trail's last leg runs to (91.15, 255.5) | 704 |
 | The east shoulder trail slid at its switchbacks | The same `ramp_trail()`; at the hairpin at (260, 303) a point 1.5 m up each leg at the hairpin's height, so the swept trail's mitre meets level sections (it met the sections up the legs in a 31° crease); the legs beyond it are 22° | 705 |
-| A grind down a lantern string pinned the body at the hall; a grind up overshot the torii | One path a side (`core_string_torii_{w,e}`): 2 m along the torii's top beam from its middle, the torii, the hall, the gate; the rail entity at the hall | 706, 707 |
+| A grind down a lantern string pinned the body at the hall; a grind up overshot the torii | One path a side (`core_string_torii_{w,e}`): 2 m along the torii's top beam from its middle, the torii, the hall, the gate (its end at 12.4, 0.5 m over the gate's lower eave, which stopped a body grinding up to it at 12.0); the rail entity at the hall | 706, 707 |
 | The north wall's top could be grabbed | The raised north run's collision is `shrine_wall_coping_{8,4,corner}_col`: 2.45 m sides and a 2.95 m ridge, no flat top | 708 |
 | The gate's and temple's roofs could not be climbed (G5's take-off was reached only by gliding) | The gate's roofs: a double jump from its skirt reaches the lower roof as built. The temple: `arch_temple_town_col` (`assets/arch_temple/make_arch_temple_col.py`), the shrine's collision with walls under the three front eaves and the ridge walk widened to 2.5 m | 709, 710, 414 |
 | Case 414 started on the temple's ridge | It climbs there from the terrace (`SHZ_TEMPLE_ROOFS`), then glides G5 | 414 |
@@ -1446,6 +1626,6 @@ The viaduct deck (the station's, over the cemetery) is still over. The World Che
 views over the level find 613k at (185.4, 20.4, 255.5) over the pagoda's terrace, yaw 181, pitch
 −20; its two others over 600k are at the station.
 
-Not done here: the temple's, gate's and pagoda's level-1 roof shapes (the look); the race train
-(the cart); the fall-through spots (the World Kit's `slide_floor_degrees`); a rail camera zone per
-torii tunnel switchback; the kick cedars drawn at their trunks' size.
+Not done here: the race train (the cart); a rail camera zone per torii tunnel switchback; the kick
+cedars drawn at their trunks' size. (The level-1 roofs are the look's; the fall-through spots the
+kit's `slide_floor_degrees`, above.)

@@ -9,7 +9,7 @@ boiler room and its chimney on the +X side at the back. The design coordinates b
 on the main hall; every node is shifted by SHIFT at the end.
 
 Routes: ground -> lower skirt roof (3.55 at its outer edge) -> boiler-room roof (5.0, flat) ->
-the chimney's iron ladder (a pole entity, 5.0 -> 18.2) -> the chimney's top (18.2, 1.3 m square:
+the chimney's iron ladder (a pole entity, 5.0 -> 19.4) -> the chimney's top (18.2, 1.3 m square:
 red coin 7, glide G3). The main roof (eave 6.05, ridge 7.75, 21-22 degrees) is walkable, with
 the cat on its ridge."""
 import json, math, os
@@ -285,6 +285,11 @@ def chimney(lod=0):
         z0, z1 = CH_Z - chw(y0) / 2 - 0.12, CH_Z - chw(y1) / 2 - 0.12
         out.append(mesh("ladder", "ladder", [[CH_X - 0.25, y0, z0], [CH_X + 0.25, y0, z0], [CH_X + 0.25, y1, z1],
                                              [CH_X - 0.25, y1, z1]], [[0, 1, 2, 3]], [0, 0, -1]))
+        # its stiles run on 1.2 m over the cap, a handhold to step off onto the top (the ladder's
+        # pole runs to 19.4: place/canal.py)
+        y2, y3, z2 = TOP, TOP + 1.2, CH_Z - (chw(CH_Y1) + 0.35) / 2 - 0.05
+        out.append(mesh("ladder_top", "ladder", [[CH_X - 0.25, y2, z2], [CH_X + 0.25, y2, z2], [CH_X + 0.25, y3, z2],
+                                                 [CH_X - 0.25, y3, z2]], [[0, 1, 2, 3]], [0, 0, -1]))
     return out
 
 

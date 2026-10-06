@@ -28,7 +28,7 @@
     69.0
    ],
    "yaw": 90.0,
-   "collision": "town_awning_bounce_col"
+   "collision": "town_awning_bounce_back_col"
   },
   {
    "id": "shop_w3",
@@ -61,40 +61,40 @@
     89.0
    ],
    "yaw": 90.0,
-   "collision": "town_awning_bounce_col"
+   "collision": "town_awning_bounce_back_col"
   },
   {
    "id": "shop_w5",
-   "asset": "town_shop_3f",
+   "asset": "town_shop_3f_kimono",
    "position": [
     147.0,
     0.0,
     99.0
    ],
    "yaw": 270.0,
-   "collision": "town_shop_3f_col"
+   "collision": "town_shop_3f_kimono_col"
   },
   {
    "id": "shop_e2",
-   "asset": "town_shop_3f",
+   "asset": "town_shop_3f_books",
    "position": [
     173.0,
     0.0,
     69.0
    ],
    "yaw": 90.0,
-   "collision": "town_shop_3f_col"
+   "collision": "town_shop_3f_books_col"
   },
   {
    "id": "shop_e3",
-   "asset": "town_shop_2f_a",
+   "asset": "town_shop_2f_a_camera",
    "position": [
     173.0,
     0.0,
     79.0
    ],
    "yaw": 90.0,
-   "collision": "town_shop_2f_a_col"
+   "collision": "town_shop_2f_a_camera_col"
   },
   {
    "id": "awning_e3b",
@@ -105,7 +105,7 @@
     79.0
    ],
    "yaw": 270.0,
-   "collision": "town_awning_bounce_col"
+   "collision": "town_awning_bounce_back_col"
   },
   {
    "id": "shop_e4",
@@ -275,7 +275,7 @@
    "position": [
     137.75,
     0.0,
-    104.0
+    106.0
    ],
    "collision": "town_utility_pole_transformer_col"
   },
@@ -285,7 +285,7 @@
    "position": [
     140.0,
     0.0,
-    117.2
+    115.8
    ],
    "yaw": 90,
    "collision": "street_lamp_col"
@@ -296,7 +296,7 @@
    "position": [
     182.0,
     0.0,
-    117.2
+    115.8
    ],
    "yaw": 90,
    "collision": "street_lamp_col"
@@ -349,9 +349,9 @@
    "id": "bike_2",
    "asset": "mamachari",
    "position": [
-    165.4,
+    182.6,
     0.0,
-    74.2
+    68.5
    ],
    "collision": "none"
   },
@@ -375,6 +375,16 @@
     90.0
    ],
    "yaw": 270,
+   "collision": "none"
+  },
+  {
+   "id": "alley_lamp_8",
+   "asset": "town_wall_lamp",
+   "position": [
+    130.0,
+    0.0,
+    66.0
+   ],
    "collision": "none"
   },
   {
@@ -482,7 +492,7 @@
    "position": [
     137.75,
     0.0,
-    104.0
+    106.0
    ],
    "params": {
     "height": 9.0

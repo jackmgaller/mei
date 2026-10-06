@@ -67,10 +67,11 @@ DEFAULTS = {
         'cell_triangles': 1600,
         'cell_placements': 100,
         'standin_triangles': 32,
+        'occlusion_leaks': 0,           # rays from an occlusion zone that reach what it hides (pack 1.5)
     },
     'sampling': {
         'floor_spacing': 16.0,          # grid over each cell's walkable floors (units)
-        'yaws': 4,                      # directions per position
+        'yaws': 8,                      # directions per position
         'yaw_offset_degrees': 22.5,
         'eye_pitches_degrees': [0.0],
         'follow': {'distance': 6.0, 'height': 2.5},     # None: no follow cameras
@@ -83,14 +84,19 @@ DEFAULTS = {
         'layer_combinations': True,
         'max_views': 600,
     },
-    'vantage_points': [],               # {"position": [x, y, z], "yaw": deg, "pitch": deg}
+    'vantage_points': [],               # {"position": [x, y, z], "yaw": deg, "pitch": deg, "yaws": n, "name": s}
     'runtime': {'far_ring': 3, 'clip_near': 0.1, 'near_far': None, 'draw_entities': True, 'ground_first': True,
                 'entity_drawing': 'object', 'object_bias': 1.5, 'object_squash': 2, 'lod': True, 'lod_fine': True,
-                'depth': False, 'perspective': False},     # render_depth(), render_perspective()
+                'depth': False, 'perspective': False,      # render_depth(), render_perspective()
+                'occlusion': True},                        # wp_occlusion: the pack's occlusion zones (1.5)
     'ordering': {'enabled': True, 'edge_margin': 1.0, 'depth_epsilon': 0.001, 'witnesses': 8,
                  'depth_views': 60},        # depth mode: views given the pixel comparison (None: all)
     'collision': {'crack_samples_per_unit': 4.0, 'solid_ray_length': 32.0, 'findings': 50,
-                  'crack_baseline': None},      # the cracks of NAME.cracks.json: known, not failures
+                  'crack_baseline': None,       # the cracks of NAME.cracks.json: known, not failures
+                  # bodies dropped onto steep ground (verify_static.drop_check); None: no drops
+                  'drop': {'spacing': 1.0, 'start': 1.0, 'speed': 0.375, 'ticks': 240, 'min_normal_y': 0.2,
+                           'merge': 4.0}},
+    'occlusion': {'enabled': True, 'rays_per_target': 48, 'findings': 20},   # pack 1.5's zones
     'images': 6,
 }
 
@@ -146,6 +152,8 @@ def shown_settings(cfg):
         out['collision']['crack_baseline'] = len(cfg['collision']['crack_baseline'])
     if not (cfg['runtime']['depth'] or cfg['runtime']['perspective']):
         del out['runtime']['depth'], out['runtime']['perspective']
+    if cfg['runtime']['occlusion'] is True:
+        del out['runtime']['occlusion']
     if not cfg['runtime']['depth']:
         del out['ordering']['depth_views']
     return out
@@ -298,8 +306,12 @@ def sample_views(pack, tris, settings, only=None):
     if ents:
         _entity_cameras(pack, grid, floors, ceilings, probe, eye_h, ents, add, only)
     for k, vp in enumerate(settings['vantage_points']):
-        add('vantage', vp['position'], math.radians(vp.get('yaw', 0.0)), math.radians(vp.get('pitch', 0.0)),
-            {'vantage': k})
+        # yaws: n directions from yaw, evenly round; else the one direction
+        n = int(vp.get('yaws', 1))
+        extra = {'vantage': k, **({'name': vp['name']} if vp.get('name') else {})}
+        for q in range(max(1, n)):
+            add('vantage', vp['position'], math.radians(vp.get('yaw', 0.0) + 360.0 * q / max(1, n)),
+                math.radians(vp.get('pitch', 0.0)), extra)
     for v in views:
         v['cell'] = [math.floor(v['eye'][0]) >> pack.cell_shift, math.floor(v['eye'][2]) >> pack.cell_shift]
     if only is not None:
@@ -351,16 +363,17 @@ def _entity_cameras(pack, grid, floors, ceilings, probe, eye_h, ents, add, only=
 
 
 def thin(views, cap):
-    """At most `cap` views (vantage points always kept), each kind thinned evenly in its own
-    order: deterministic, and every kind keeps a share proportional to its size."""
-    if not cap or len(views) <= cap:
+    """At most `cap` sampled views, each kind thinned evenly in its own order: deterministic, and
+    every kind keeps a share proportional to its size. Vantage points are always kept, on top of
+    the cap."""
+    fixed = sum(1 for v in views if v['kind'] == 'vantage')
+    if not cap or len(views) - fixed <= cap:
         return views
     kinds = {}
     for v in views:
         kinds.setdefault(v['kind'], []).append(v)
-    fixed = len(kinds.get('vantage', []))
     rest = len(views) - fixed
-    room = max(0, cap - fixed)
+    room = cap
     # quotas by largest remainder, so they add up to exactly `room`
     share = {k: room * len(vs) / rest for k, vs in kinds.items() if k != 'vantage'}
     quota = {k: int(q) for k, q in share.items()}
@@ -414,6 +427,40 @@ def layer_combinations(pack, settings):
     if len(largest) > 1:
         combos.append(('largest', frozenset(largest)))
     return combos
+
+
+def layer_views(pack, cams, combos, near_far):
+    """Each camera with each layer combination that can change what it draws. A layer changes a
+    view only through its placements in the cells the near pass draws (stand-ins leave layers
+    out), so a combination is taken at a camera only where a cell with one of its layers'
+    placements (its square grown by the overhang) is within near_far (units) of the eye;
+    elsewhere the view is the one with every layer off. A camera aimed at an entity in a layer
+    takes only the combinations with that layer."""
+    S = 1 << pack.cell_shift
+    layered = {}
+    for (i, j), c in pack.cells.items():
+        for p in c.placements:
+            if p['mask']:
+                layered.setdefault(c.layers[p['mask'].bit_length() - 1], set()).add((i, j))
+    reach = near_far + pack.overhang / ONE
+
+    def near(eye, cells):
+        for a, b in cells:
+            dx = max(a * S - eye[0], 0.0, eye[0] - (a + 1) * S)
+            dz = max(b * S - eye[2], 0.0, eye[2] - (b + 1) * S)
+            if dx * dx + dz * dz <= reach * reach:
+                return True
+        return False
+    views = []
+    for cam in cams:
+        for name, on in combos:
+            if cam.get('entity_layer') is not None and cam['entity_layer'] not in on:
+                continue                    # the entity aimed at is not there
+            if on and cam.get('entity_layer') is None and \
+                    not near(cam['eye'], set().union(*(layered.get(lid, set()) for lid in on))):
+                continue
+            views.append({**cam, 'layer_set': name, 'layers': sorted(on)})
+    return views
 
 
 # ---- the check
@@ -495,7 +542,7 @@ def _view_row(ctx, g, v, rec, rec2, out_dir, sample=None):
                       'pitch_degrees': round(math.degrees(v['pitch']), 3), 'cell': v['cell']},
            'layer_set': v['layer_set'],
            'layers': [pack.layers[l][0] for l in v['layers']]}
-    for k2 in ('vantage', 'entity'):
+    for k2 in ('vantage', 'name', 'entity'):
         if k2 in v:
             row[k2] = v[k2]
     row['stats'] = {'draw_cpu_cycles': out['draw_cycles'] + out['entity_cycles'],
@@ -509,6 +556,8 @@ def _view_row(ctx, g, v, rec, rec2, out_dir, sample=None):
                     'placements_drawn': out['drawn'], 'ground_drawn': out['ground'],
                     'standins_drawn': out['standins'], 'entities_drawn': out['entities'],
                     'coarse_drawn': out['coarse'], 'lod_culled': out['lod_culled']}
+    if pack.minor >= 5:
+        row['stats'].update(occluded=out['occluded'], standins_occluded=out['standins_occluded'], zone=out['zone'])
     if rt['depth'] or rt['perspective']:
         row['stats']['depth'] = {k: st[k] for k in RD.DEPTH_STATS}
     if rt['depth']:
@@ -525,8 +574,10 @@ def _view_row(ctx, g, v, rec, rec2, out_dir, sample=None):
         # in depth mode wp_draw() draws the stand-ins over the near pass's clip range too
         near_planes = {'near': rt['clip_near'], 'ground': rt['clip_near'],
                        'far': rt['clip_near'] if rt['depth'] else S / 2}
-        if sel is None:
-            sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt, v.get('region'))
+        if sel is None or pack.minor >= 5:
+            # the reference: what is in sight, occlusion zones or not (a zone that hides something
+            # in sight shows as pixels drawn wrongly)
+            sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt, v.get('region'), occlusion=False)
         faces = RD.view_faces(pack, meshes, sel, out2['vp'], out2['origin'], first, near_planes,
                               ctx['texels'], v.get('region'))
         cmp = RD.compare_view(faces, pic, order_cfg)
@@ -743,6 +794,9 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None, focu
         report['timing'] = {'total_seconds': time.perf_counter() - t_start}
         return report
     S = 1 << pack.cell_shift
+    if pack.minor < 5:                  # no occlusion zones: the report is the one made before them
+        report['settings'].pop('occlusion', None)
+        report['settings']['thresholds'].pop('occlusion_leaks', None)
     rt = dict(cfg['runtime'])
     if any(r.textures for r in pack.regions):
         rt['textured'] = True       # each view enters its camera cell's region (verify_render.py)
@@ -798,6 +852,24 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None, focu
             fixed = focused(fixed)
         static['crack_baseline'] = {'known': len(known), 'new': len(cracks), 'fixed': len(fixed),
                                     'known_findings': known[:lim], 'fixed_findings': fixed[:lim]}
+    drops, made = [], 0
+    drop = cfg['collision']['drop']
+    if drop:
+        # every layer off over every cell, then each layer alone over the cells with its collision
+        dsets = [(frozenset(), None)]
+        for k, l in enumerate(pack.layers):
+            mine = {ij for ij, c in pack.cells.items() if k in c.layers} if any(t.layer == k for t in tris) else None
+            if mine:
+                dsets.append((frozenset([k]), mine))
+        for on, mine in dsets:
+            cells_of = mine if only is None else (only if mine is None else mine & only)
+            found, n, m = ST.drop_check(pack, on, cfg['probe'], drop, 10 ** 9, cells_of)
+            made += m
+            for f in found:
+                f['layers'] = sorted(pack.layers[k][0] for k in on)
+                if not any(g['cell'] == f['cell'] and abs(g['at'][0] - f['at'][0]) <= drop['merge'] and
+                           abs(g['at'][2] - f['at'][2]) <= drop['merge'] for g in drops):
+                    drops.append(f)
     ents, nent = ST.entity_check(pack, tris, cfg['collision'], lim)
     ref_err, ref_warn = ST.reference_check(pack, rt['far_ring'])
     if only is not None:
@@ -811,13 +883,26 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None, focu
         cells = [c for c in cells if tuple(c['cell']) in only]
     static['collision'] = {'triangles': len(tris), 'boundary_edges': nedges, 'findings': cracks[:lim],
                            'entities_in_solid': ents}
+    if drop:
+        static['collision']['drops'] = {'made': made, 'through': len(drops), 'findings': drops[:lim]}
     static['cells'] = cells
     static['regions'] = regions
     static['warnings'] = ref_warn
+    if pack.minor >= 5 and cfg['occlusion']['enabled']:
+        from . import verify_occlusion as OC
+        t1 = time.perf_counter()
+        occ = OC.check(pack, cfg['occlusion'], only, names)
+        timing['occlusion_seconds'] = time.perf_counter() - t1
+        static['occlusion'] = occ
+        if th['occlusion_leaks'] is not None and occ['leaks'] > th['occlusion_leaks']:
+            report['threshold_failures'].append({'check': 'occlusion', 'code': 'occlusion_leak', 'value': occ['leaks'],
+                                                 'limit': th['occlusion_leaks'], 'witness': occ['findings'][:1]})
     report['static'] = static
     for f in cracks:
         report['hard_failures'].append({'check': 'collision', **f})
     for f in ents:
+        report['hard_failures'].append({'check': 'collision', **f})
+    for f in drops[:lim]:
         report['hard_failures'].append({'check': 'collision', **f})
     for e in ref_err:
         dest = report['threshold_failures'] if e.get('policy') else report['hard_failures']
@@ -835,21 +920,7 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None, focu
     cams = sample_views(pack, tris, cfg, only)
     combos = layer_combinations(pack, cfg)
     ring = int(rt['far_ring'])
-    layered_cells = {}
-    for (i, j), c in pack.cells.items():
-        for lid in c.layers:
-            layered_cells.setdefault(lid, set()).add((i, j))
-    views = []
-    for cam in cams:
-        for name, on in combos:
-            if cam.get('entity_layer') is not None and cam['entity_layer'] not in on:
-                continue                    # the entity aimed at is not there
-            if on:
-                ci, cj = cam['cell']
-                if not any(max(abs(a - ci), abs(b - cj)) <= max(1, ring)
-                           for lid in on for a, b in layered_cells.get(lid, ())):
-                    continue
-            views.append({**cam, 'layer_set': name, 'layers': sorted(on)})
+    views = layer_views(pack, cams, combos, rt['near_far'])
     sampled = len(views)
     views = thin(views, cfg['sampling']['max_views'])
     for k, v in enumerate(views):
@@ -1092,13 +1163,16 @@ def check_world(context):
     verification/) and optionally the 'compiler' to use (mei-scene-probe is looked for beside
     it), 'checker' (a number: sample at most that many views; build --world-checker N),
     'runtime' (the recipe's runtime: depth and perspective, how the game draws the world) and
-    'crack_baseline' (the entries of NAME.cracks.json: those cracks are known, not failures).
+    'crack_baseline' (the entries of NAME.cracks.json: those cracks are known, not failures) and
+    'vantage_points' (the recipe's verification.vantage_points: cameras always checked).
     Returns the report, or {'ok': False, 'errors': [...]} when the check could not run."""
     mode = context.get('mode') or 'report'
     settings = {'mode': 'strict' if mode == 'enforce' else mode,
                 'thresholds': dict(context.get('thresholds') or {})}
     if isinstance(context.get('checker'), int):     # build --world-checker N: a reduced sample
         settings['sampling'] = {'max_views': context['checker']}
+    if context.get('vantage_points'):               # the recipe's verification.vantage_points
+        settings['vantage_points'] = [dict(vp) for vp in context['vantage_points']]
     runtime = {k: bool(v) for k, v in (context.get('runtime') or {}).items() if k in ('depth', 'perspective')}
     if runtime:                                     # the recipe's runtime.depth, runtime.perspective
         settings['runtime'] = runtime

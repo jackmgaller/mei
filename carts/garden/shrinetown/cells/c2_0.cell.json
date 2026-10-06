@@ -84,6 +84,17 @@
    "collision": "station_concourse_col"
   },
   {
+   "id": "station_hall",
+   "asset": "station_hall",
+   "position": [
+    160.0,
+    0.0,
+    8.0
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
    "id": "ticket_gates",
    "asset": "ticket_gates",
    "position": [
@@ -105,25 +116,24 @@
    "collision": "station_platform_col"
   },
   {
-   "id": "train_car_e",
-   "asset": "train_emu_car",
+   "id": "platform_fittings_w",
+   "asset": "station_platform_fittings_w",
    "position": [
-    170.0,
+    160.0,
     9.0,
-    3.9
+    8.0
    ],
-   "collision": "train_emu_car_col"
+   "collision": "none"
   },
   {
-   "id": "train_car_w",
-   "asset": "train_emu_car",
+   "id": "platform_fittings_e",
+   "asset": "station_platform_fittings_e",
    "position": [
-    150.0,
+    160.0,
     9.0,
-    3.9
+    8.0
    ],
-   "yaw": 180.0,
-   "collision": "train_emu_car_col"
+   "collision": "none"
   },
   {
    "id": "bus_stop",
@@ -377,14 +387,14 @@
   },
   {
    "id": "shop_e0",
-   "asset": "town_shop_2f_c_noawning",
+   "asset": "town_shop_2f_c_store_noawning",
    "position": [
     173.0,
     0.0,
     49.0
    ],
    "yaw": 90.0,
-   "collision": "town_shop_2f_c_noawning_col"
+   "collision": "town_shop_2f_c_store_noawning_col"
   },
   {
    "id": "awning_e0",

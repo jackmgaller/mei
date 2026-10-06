@@ -107,7 +107,8 @@ struct WpCell {
     ground_count: u32  // 1.1: its first ground_count placements are ground (0 in a 1.0 pack)
     lod_off: u32       // 1.3: a LOD set offset per placement (0: none), or 0 (reserved before 1.3)
     lod_first: u32     // 1.3: the reader's level memory slot of its first placement
-    reserved: [2]u32
+    zone_count: u32    // 1.5: its occlusion zones (WpZone), or 0 (reserved before 1.5)
+    zone_off: u32
 }
 
 struct WpPlacement {
@@ -213,6 +214,22 @@ struct WpStats {
     ground: s32        // ground placements drawn in the ground pass
     coarse: s32        // placements drawn at a level of detail other than 0
     lod_culled: s32    // placements in view not drawn: beyond their LOD cull distance
+    occluded: s32      // placements skipped: hidden from the eye's occlusion zone (1.5)
+    standins_occluded: s32  // stand-ins skipped so
+    zone: s32          // the eye's occlusion zone: its number in the eye's cell, or -1
+}
+
+// An occlusion zone (1.5, docs/WORLDPACK.md "Occlusion zones"): while the eye is in its box (in
+// its cell's local coordinates, lo <= eye < hi) and its layer is on, the placements whose bits are
+// set in the near cells' masks and the stand-ins whose bits are set in far are not drawn.
+struct WpZone {
+    lo: vec4           // (x, y, z, 0), cell-local
+    hi: vec4
+    layer: u8          // a layer id: the zone counts only while it is on; 0xFF: always
+    flags: u8
+    reserved: u16
+    far: [2]u32        // stand-ins hidden: bit (dj + 3) * 7 + di + 3 for the cell (di, dj) from this one
+    near: [9]u32       // per near cell ((dj + 1) * 3 + di + 1): a mask, a bit per placement, or 0
 }
 
 // ---- state and settings
@@ -230,8 +247,11 @@ var wp_object_squash: s32 = 2    // wp_draw_object(): how much it squashes an ob
 
 var wp_lod: bool = true    // levels of detail (1.3); false draws every placement's level 0
 var wp_lod_fine: bool      // draw the finest level the hysteresis band allows (the World Checker)
+var wp_occlusion: bool = true  // occlusion zones (1.5); false draws what they hide too
 
 var __wp_ground: bool      // the pack is 1.1 or later and has ground placements
+var __wp_zones: bool       // the pack is 1.5 or later: cells may have occlusion zones
+var __wp_zone: *WpZone     // the last wp_draw()'s occlusion zone, or null
 var __wp_eye: vec4         // the last wp_draw()'s eye, relative to its origin (w = 0)
 var __wp_eye_y: fixed      // the last wp_draw()'s eye height (world)
 
@@ -248,6 +268,7 @@ var __wp_origin: vec3
 var __wp_planes: [6]vec4
 var __wp_safe_planes: [5]vec4  // a sphere inside all five needs no clipping (__wp_safe)
 var __wp_track_n: s32
+var __wp_slot_src: [32]u32      // per texture slot: the texture data wp_texture_load() last copied there (0: unknown)
 var __wp_track_cell: [WP_MAX_TRACK]u32
 var __wp_track_mask: [WP_MAX_TRACK]u32
 var __wp_bkey: [16]u32         // wp_entity_draw()'s cache of wp_mesh_bounds(), by mesh address
@@ -276,6 +297,8 @@ fn wp_open(pack: *u8) -> bool {
     }
     wp_pack = h
     __wp_ground = h.minor >= 1 && h.flags & 1 != 0
+    __wp_zones = h.minor >= 5
+    __wp_zone = null
     __wp_base = pack as u32
     __wp_shift = shift
     __wp_half = fixed(1 << (shift - 1))
@@ -286,6 +309,7 @@ fn wp_open(pack: *u8) -> bool {
     __wp_index = (__wp_base + h.index_off) as *u32
     wp_near_far = __wp_half * 3
     __wp_lod_open(h)
+    wp_textures_forget()
     __wp_track_n = 0
     mem_fill(&__wp_bkey[0] as *u8, 0, 64)
     mem_fill(&__wp_layer_on[0], 0, 32)
@@ -397,6 +421,7 @@ weak fn wp_draw(eye: vec3, yaw: fixed, pitch: fixed) {
     __wp_eye_y = eye.y
     __wp_eye = vec4(local.x, local.y, local.z, 0.0)
     wp_stats = WpStats {}
+    __wp_zone_find(wp_cell(ci, cj))
     let size = __wp_half * 2
     let r = wp_far_ring
     if r >= 2 {
@@ -576,7 +601,34 @@ fn __wp_mesh(m: *Mesh, t: vec4, c: fixed, s: fixed, safe: bool) {
     }
 }
 
+// The eye's occlusion zone (1.5): the first of its cell's zones whose box holds __wp_eye and whose
+// layer is on, into __wp_zone and wp_stats.zone (null and -1: none). About 40 cycles a zone looked at.
+fn __wp_zone_find(c: *WpCell) {
+    __wp_zone = null
+    wp_stats.zone = -1
+    if c == null || !__wp_zones || !wp_occlusion { return }
+    let e = __wp_eye
+    var z = (__wp_base + c.zone_off) as *WpZone
+    for k in 0..c.zone_count as s32 {
+        if e.x >= z.lo.x && e.x < z.hi.x && e.z >= z.lo.z && e.z < z.hi.z && e.y >= z.lo.y && e.y < z.hi.y {
+            if z.layer == 0xFF || wp_layer_on(z.layer as s32) {
+                __wp_zone = z
+                wp_stats.zone = k
+                return
+            }
+        }
+        z = z + 1
+    }
+}
+
 fn __wp_standin(c: *WpCell, di: s32, dj: s32) {
+    if __wp_zone != null && abs(di) <= 3 && abs(dj) <= 3 {
+        let b = (dj + 3) * 7 + di + 3
+        if (__wp_zone.far[b >> 5] >> (b & 31)) & 1 != 0 {
+            wp_stats.standins_occluded += 1
+            return
+        }
+    }
     let off = vec4(fixed(di << __wp_shift), 0.0, fixed(dj << __wp_shift), 0.0)
     let sb = c.standin_bounds + off
     if !__wp_visible(sb) { return }
@@ -584,8 +636,8 @@ fn __wp_standin(c: *WpCell, di: s32, dj: s32) {
     wp_stats.standins += 1
 }
 
-// Draws placements k0..k1 - 1 of a near cell that are present and in view (the whole cell is
-// culled by its bounds first). Returns how many it drew.
+// Draws placements k0..k1 - 1 of a near cell that are present and in view and not hidden from the
+// eye's occlusion zone (the whole cell is culled by its bounds first). Returns how many it drew.
 fn __wp_placements(c: *WpCell, di: s32, dj: s32, k0: s32, k1: s32) -> s32 {
     if k0 >= k1 { return 0 }
     let off = vec4(fixed(di << __wp_shift), 0.0, fixed(dj << __wp_shift), 0.0)
@@ -594,21 +646,32 @@ fn __wp_placements(c: *WpCell, di: s32, dj: s32, k0: s32, k1: s32) -> s32 {
     var p = (__wp_base + c.placement_off) as *WpPlacement + k0
     wp_stats.placements += k1 - k0
     let lod = wp_lod && c.lod_off != 0
+    var hid: *u32 = null
+    if __wp_zone != null {
+        let o = __wp_zone.near[(dj + 1) * 3 + di + 1]
+        if o != 0 { hid = (__wp_base + o) as *u32 }
+    }
     var drawn = 0
+    var occl = 0
     for k in k0..k1 {
-        let pm = p.mask as u32
-        let ps = p.sphere + off
-        if (pm == 0 || pm & mask != 0) && __wp_visible(ps) {
-            var m = p.mesh
-            if lod { m = __wp_lod_mesh(c, k, p, off) }
-            if m != 0 {
-                __wp_mesh((__wp_base + m) as *Mesh, p.pos + off, p.cos, p.sin, __wp_safe(ps))
-                drawn += 1
+        if hid != null && (hid[k >> 5] >> (k & 31)) & 1 != 0 {
+            occl += 1
+        } else {
+            let pm = p.mask as u32
+            let ps = p.sphere + off
+            if (pm == 0 || pm & mask != 0) && __wp_visible(ps) {
+                var m = p.mesh
+                if lod { m = __wp_lod_mesh(c, k, p, off) }
+                if m != 0 {
+                    __wp_mesh((__wp_base + m) as *Mesh, p.pos + off, p.cos, p.sin, __wp_safe(ps))
+                    drawn += 1
+                }
             }
         }
         p = p + 1
     }
     wp_stats.drawn += drawn
+    wp_stats.occluded += occl
     return drawn
 }
 
@@ -1209,12 +1272,24 @@ fn wp_textures_load(k: s32) {
     for t in 0..wp_region(k).texture_count as s32 { wp_texture_load(k, t) }
 }
 
+// Copies texture t of region k into its slot, unless that slot already holds it: a texture the
+// pack stores once for several regions (the stand-ins' common set, WORLDKIT.md) is copied on the
+// first region entry only. The reader remembers what it copied into each
+// slot since wp_open(); a game that writes a world's slot itself calls wp_textures_forget().
 fn wp_texture_load(k: s32, t: s32) {
     let r = wp_region(k)
     if t < 0 || t >= r.texture_count as s32 { return }
     let x = (__wp_base + r.texture_off) as *WpTexture + t
-    load_texture(x.slot as s32, (__wp_base + x.data) as *u8, x.bytes as s32)
+    let slot = x.slot as s32 & 31
+    let src = __wp_base + x.data
+    if __wp_slot_src[slot] == src { return }
+    load_texture(slot, src as *u8, x.bytes as s32)
+    __wp_slot_src[slot] = src
 }
+
+// Forgets what the reader copied into the texture slots, so the next region entry copies every
+// texture again (after the game wrote a world's slot itself).
+fn wp_textures_forget() { mem_fill(&__wp_slot_src[0] as *u8, 0, 128) }
 
 // ---- region resources (1.4): every palette run, animated textures, backdrop art; entering a region
 //
@@ -1311,7 +1386,8 @@ fn wp_backdrop_load(k: s32) {
     }
 }
 
-// Makes region k the loaded region: copies its texture set and backdrop art into VRAM, loads
+// Makes region k the loaded region: copies its texture set and backdrop art into VRAM (a slot
+// that already holds the same texture, the stand-ins' common set, is not copied again), loads
 // palette variant v (every run), restarts its animated textures from frame 0 (the frame the
 // texture set holds) and sets wp_region_loaded = k, so near cells of other regions, whose
 // textures are not loaded, draw as their stand-ins. About 56,000 cycles a 32 KB texture slot:
@@ -1345,6 +1421,7 @@ fn wp_animate(t: s32) -> s32 {
             let rows = a.rows as s32
             let rb = a.row_bytes as s32
             tex_frame_copy((__wp_base + a.data + (f * rows * rb) as u32) as *u8, a.vram as s32, rows, rb, a.stride as s32)
+            __wp_slot_src[(a.vram / TEXTURE_SLOT_SIZE) & 31] = 0     // the slot no longer holds the set's texture
             __wp_anim_shown[q] = f
             wp_anim_copied += rows
             changed += 1
