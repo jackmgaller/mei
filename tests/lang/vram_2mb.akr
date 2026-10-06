@@ -1,0 +1,109 @@
+// VRAM at 2 MB (docs/DECISIONS.md): texture slots 16-31 and palette bank 1 (colours 4096-8191).
+// A mesh face with FACE_SLOT_HI and FACE_PAL_HI draws slot 20's texel through 4-bit palette 300;
+// the same face bytes without the flags draw slot 4 through palette 44. A sprite reads 8-bit
+// slot 31 through 8-bit palette 17, and its rows 128 and on wrap to slot 16. load_texture(),
+// load_palette(), palette_ptr(), palette_lerp() and tex_page() address the second megabyte.
+// frames: 3
+// pixel: 100 120 001F
+// pixel: 220 120 7C00
+// pixel: 10 10 03E0
+// pixel: 10 210 7FFF
+
+struct Quad { hdr: Mesh, v: [4]vec4, f: [1]Face }
+var hi: Quad         // slot 20, palette 300: red
+var lo: Quad         // slot 4, palette 44 (the same bytes, no bank flags): blue
+var cols: [16]u16
+var keys_a: [16]u16
+var keys_b: [16]u16
+var texel5: [128]u8
+var big: [32768]u8
+
+fn quad(m: *Quad, x0: fixed, x1: fixed, flags: s32) {
+    m.hdr.nverts = 4
+    m.hdr.nfaces = 1
+    m.hdr.verts = 16
+    m.hdr.faces = 16 + 64
+    m.v[0] = vec4(x0, -1.0, 4.0, 1.0)
+    m.v[1] = vec4(x1, -1.0, 4.0, 1.0)
+    m.v[2] = vec4(x0, 1.0, 4.0, 1.0)
+    m.v[3] = vec4(x1, 1.0, 4.0, 1.0)
+    m.f[0].flags = (FACE_QUAD | FACE_TEXTURED | FACE_DOUBLE | flags) as u8
+    m.f[0].tex = (4 | 16) as u8          // slot 4 (or 20), 4-bit
+    m.f[0].palette = 44 as u8            // palette 44 (or 300)
+    for k in 0..4 {
+        m.f[0].idx[k] = k as u16
+        m.f[0].col[k] = 0x808080
+        m.f[0].uv[k] = 0
+    }
+}
+
+fn show_hex(label: *u8, v: u32) {
+    print(label)
+    print(" ")
+    print_hex(v)
+    println("")
+}
+
+fn init() {
+    dither(false)
+    // textures: slot 20 and slot 4 both hold index 5 at (0, 0); slot 31's 8-bit rows hold 200,
+    // and its second half (slot 16) 201
+    for k in 0..128 { texel5[k] = 0x55 as u8 }
+    load_texture(20, &texel5[0], 128)
+    load_texture(4, &texel5[0], 128)
+    mem_fill(&big[0], 200, 32768)
+    load_texture(31, &big[0], 32768)
+    mem_fill(&big[0], 201, 32768)
+    load_texture(16, &big[0], 32768)
+    show_hex("slot 20 at", (VRAM_TEXTURES + 20 * TEXTURE_SLOT_SIZE) as u32)
+    show_hex("slot 31 byte", ((0x578000) as *u8)[0] as u32)
+    // colours: 300 * 16 + 5 red (bank 1), 44 * 16 + 5 blue (bank 0); 8-bit palette 17 (bank 1):
+    // 200 green, 201 white
+    palette_ptr(300 * 16 + 5)[0] = 0x001F as u16
+    palette_ptr(44 * 16 + 5)[0] = 0x7C00 as u16
+    palette_ptr(17 * 256 + 200)[0] = 0x03E0 as u16
+    palette_ptr(17 * 256 + 201)[0] = 0x7FFF as u16
+    show_hex("colour 4805 at", palette_ptr(300 * 16 + 5) as u32)
+    show_hex("bank 1 word", ((0x580000 + (300 * 16 + 5 - 4096) * 2) as *u16)[0] as u32)
+    // a run across colour 4096: 6 colours in bank 0, 10 in bank 1
+    for k in 0..16 { cols[k] = (k + 1) as u16 }
+    load_palette(4090, &cols[0], 16)
+    show_hex("4095", ((VRAM_PALETTE + 4095 * 2) as *u16)[0] as u32)
+    show_hex("4096", ((VRAM_PALETTE_HI) as *u16)[0] as u32)
+    show_hex("4105", palette_ptr(4105)[0] as u32)
+    show_hex("old end", ((VRAM_PALETTE + 4096 * 2) as *u16)[0] as u32)     // the line tables: untouched
+    for k in 0..16 { keys_a[k] = 0 as u16 }
+    for k in 0..16 { keys_b[k] = 0x7FFF as u16 }
+    palette_lerp(4088, &keys_a[0], &keys_b[0], 16, 1.0)
+    show_hex("lerp 4095", palette_ptr(4095)[0] as u32)
+    show_hex("lerp 4103", palette_ptr(4103)[0] as u32)
+    show_hex("lerp 4104", palette_ptr(4104)[0] as u32)
+    show_hex("page 20 300", tex_page(20, 300, true))
+    show_hex("page 31 17", tex_page(31, 17, false))
+    show_hex("page 3 40", tex_page(3, 40, true))
+    quad(&hi, -4.0, -0.2, FACE_SLOT_HI | FACE_PAL_HI)
+    quad(&lo, 0.2, 4.0, 0)
+    camera(vec3(0.0, 0.0, 0.0), 0.0)
+}
+
+fn draw() {
+    cls(0)
+    mesh(&hi.hdr)
+    mesh(&lo.hdr)
+    sprite(31, 17, false, 0, 0, 20, 20, 0, 0)          // 8-bit slot 31 rows 0-19: 200, green
+    sprite(31, 17, false, 0, 128, 20, 20, 0, 200)      // rows 128-147: slot 16's, 201, white
+}
+// expect: slot 20 at 520000
+// expect: slot 31 byte C8
+// expect: colour 4805 at 58058A
+// expect: bank 1 word 1F
+// expect: 4095 6
+// expect: 4096 7
+// expect: 4105 10
+// expect: old end 0
+// expect: lerp 4095 7FFF
+// expect: lerp 4103 7FFF
+// expect: lerp 4104 F
+// expect: page 20 300 2C740000
+// expect: page 31 17 116F0000
+// expect: page 3 40 28130000

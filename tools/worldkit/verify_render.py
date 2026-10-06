@@ -41,6 +41,7 @@ import tempfile
 import time
 
 from kitcore import depth as DEPTH
+from meshlib import face_slot
 from .pack import ONE, mesh_info, lod_level, lod_d2
 from .verify_shared import numpy, id_colour, diagnostic_png
 
@@ -117,11 +118,12 @@ class RegionTexels:
             if not t.four_bit and len(raw) > 32768:
                 pass                    # an 8-bit texture running into the next slot: not written by the kit
 
-    def tile(self, tex, uv, windows):
+    def tile(self, flags, tex, uv, windows):
         """(texel array, window (su, sv) or None) a textured face samples: its window's tile, or
-        the slot (a texture drawn once: coordinates are slot texels)."""
+        the slot (a texture drawn once: coordinates are slot texels). The slot is 0-31: flag bit 6
+        is slots 16-31 (VRAM at 2 MB)."""
         np = numpy()
-        slot = self.slots.get(tex & 15)
+        slot = self.slots.get(face_slot(flags, tex))
         if slot is None:
             return np.zeros((1, 1), dtype=bool), None
         k = tex >> 5
@@ -132,10 +134,10 @@ class RegionTexels:
             return slot[ov:ov + sv, ou:ou + su], (su, sv)
         return slot, None
 
-    def solid(self, tex, uv, windows):
+    def solid(self, flags, tex, uv, windows):
         """Whether a face can never sample texel 0: every texel of its window's tile, or of its
         corners' texel box, is set. Such a face covers exactly its outline's pixels."""
-        arr, win = self.tile(tex, uv, windows)
+        arr, win = self.tile(flags, tex, uv, windows)
         if win:
             return bool(arr.all())
         us, vs = [c & 255 for c in uv], [c >> 8 for c in uv]
@@ -277,7 +279,7 @@ def cutout_faces(texels, inst, mesh, pack):
     if tx is None:
         return set()
     return {k for k, (flags, _, tex, _, uv) in enumerate(mesh.faces)
-            if flags & FACE_TEXTURED and not swatch_face(flags, tex, uv) and not tx.solid(tex, uv, mesh.windows)}
+            if flags & FACE_TEXTURED and not swatch_face(flags, tex, uv) and not tx.solid(flags, tex, uv, mesh.windows)}
 
 
 def mask_bytes(data, four_bit):
@@ -493,7 +495,7 @@ def _run(cmd, what, timeout=600):
 
 def swatch_rows(meshes):
     """The (texture slot, row) of every palette swatch face's texel in these meshes."""
-    return sorted({(tex & 15, uv[0] >> 8) for m in meshes for flags, _, tex, _, uv in m.faces
+    return sorted({(face_slot(flags, tex), uv[0] >> 8) for m in meshes for flags, _, tex, _, uv in m.faces
                    if swatch_face(flags, tex, uv)})
 
 
@@ -861,8 +863,8 @@ def view_faces(pack, meshes, view_insts, vp, origin, first_ids, near_planes, tex
             texel = None
             if not ok and tx is not None and not flags & FACE_SEMI and len(idx) == 3:
                 ok = True
-                if not tx.solid(tex, uv, mesh.windows):
-                    tile, win = tx.tile(tex, uv, mesh.windows)
+                if not tx.solid(flags, tex, uv, mesh.windows):
+                    tile, win = tx.tile(flags, tex, uv, mesh.windows)
                     texel = (np.array([cxyw[i] for i in idx]), np.array([(c & 255, c >> 8) for c in uv], dtype=float),
                              tile, win)
             faces.append(Face(first + k, inst, k, pas, scr, (nrm, d),

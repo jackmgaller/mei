@@ -157,6 +157,9 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -182,6 +185,9 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]
@@ -255,6 +261,9 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -284,6 +293,9 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]
@@ -360,6 +372,9 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r10]
@@ -444,6 +459,9 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
@@ -489,6 +507,9 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -523,6 +544,9 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]
@@ -563,6 +587,9 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -601,6 +628,9 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]
@@ -654,6 +684,9 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
@@ -705,6 +738,9 @@ weak asm fn __draw_faces(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r10]
@@ -1181,6 +1217,9 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -1206,6 +1245,9 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]
@@ -1279,6 +1321,9 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -1308,6 +1353,9 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]
@@ -1384,6 +1432,9 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r10]
@@ -1468,6 +1519,9 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
@@ -1513,6 +1567,9 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -1547,6 +1604,9 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]
@@ -1587,6 +1647,9 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -1625,6 +1688,9 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]
@@ -1678,6 +1744,9 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
@@ -1729,6 +1798,9 @@ weak asm fn __draw_faces_in(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r10]
@@ -2251,6 +2323,9 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -2276,6 +2351,9 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]
@@ -2349,6 +2427,9 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -2378,6 +2459,9 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]
@@ -2454,6 +2538,9 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r10]
@@ -2538,6 +2625,9 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
@@ -2583,6 +2673,9 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -2617,6 +2710,9 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]
@@ -2657,6 +2753,9 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -2695,6 +2794,9 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]
@@ -2748,6 +2850,9 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r10]
     add  r10, r10, r13
@@ -2799,6 +2904,9 @@ weak asm fn __draw_faces_sub(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r10]
@@ -3188,6 +3296,9 @@ weak asm fn __draw_faces_safe(first: *Face, nf: s32) {
     lhu  r12, [r1+28]
     and  r6, r4, r8             ; slot, depth and palette -> bits 16-31
     or   r12, r12, r6
+    andi r6, r4, 0xC0           ; the slot's bank and the palette's (flags bits 6-7) -> bits 21-22
+    shli r6, r6, 15
+    or   r12, r12, r6
     sw   r12, [r15+12]
     sw   r11, [r15+16]
     lhu  r12, [r1+30]
@@ -3253,6 +3364,9 @@ weak asm fn __draw_faces_safe(first: *Face, nf: s32) {
     sw   r12, [r15+8]
     lhu  r12, [r1+28]
     and  r6, r4, r8             ; slot, depth and palette -> bits 16-31
+    or   r12, r12, r6
+    andi r6, r4, 0xC0           ; the slot's bank and the palette's (flags bits 6-7) -> bits 21-22
+    shli r6, r6, 15
     or   r12, r12, r6
     sw   r12, [r15+12]
     sw   r11, [r15+16]
@@ -3369,6 +3483,9 @@ weak asm fn __draw_faces_safe(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -3393,6 +3510,9 @@ weak asm fn __draw_faces_safe(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]
@@ -3463,6 +3583,9 @@ weak asm fn __draw_faces_safe(first: *Face, nf: s32) {
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
     or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
+    or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r6+{__sv}+8]
     sw   r11, [r15+16]
@@ -3491,6 +3614,9 @@ weak asm fn __draw_faces_safe(first: *Face, nf: s32) {
     shri r12, r4, 16          ; slot, depth and palette -> bits 16-31
     andi r12, r12, 0xFF1F
     shli r12, r12, 16
+    or   r11, r11, r12
+    andi r12, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22
+    shli r12, r12, 15
     or   r11, r11, r12
     sw   r11, [r15+12]
     lw   r11, [r1+16]

@@ -15,6 +15,11 @@ that is a multiple of 8 (window-aligned), and returns a `Packing`, or raises Kit
 tiles do not fit. A slot holds tiles of one depth: 256 x 256 4-bit texels, or 256 x 128 8-bit
 texels (an 8-bit texture's rows 128 and on would be in the next slot). Slot 15 holds the fonts
 and 4-bit palette 255 their colours: neither is ever used.
+
+With VRAM at 2 MB (docs/DECISIONS.md) there are 32 slots (0-31), 512 4-bit palettes (0-511)
+and 32 8-bit palettes (0-31; 8-bit palette p is 4-bit palettes 16p-16p+15, so 8-bit palette 15
+holds the fonts' colours too). 4-bit palettes are taken consecutively and never across 255;
+8-bit ones downward and never across 15.
 """
 from dataclasses import dataclass, field
 import hashlib
@@ -23,10 +28,16 @@ import struct
 from .errors import KitError
 
 SLOT_BYTES = 32768
+SLOTS = 32                  # texture slots 0-31 (16-31: VRAM's second megabyte)
 FONT_SLOT = 15
 FONT_PALETTE = 255          # 4-bit palette 255 (colours 4080-4095) holds the fonts' colours
+PALETTES4, PALETTES8 = 512, 32
 CELL = 8                    # placement grid: window origins are multiples of 8
 WINDOW_SIZES = (8, 16, 32, 64, 128)
+
+
+class PaletteRangeError(KitError):
+    """The tiles need more palettes than are free from the first one given."""
 
 
 @dataclass
@@ -106,7 +117,7 @@ class Placement:
     x: int
     y: int
     bits: int
-    palette: int                # 4-bit palette 0-254, or 8-bit palette 0-14
+    palette: int                # 4-bit palette 0-254 or 256-511, or 8-bit palette 0-14 or 16-31
     index: dict                 # 15-bit colour -> palette index 1-15 or 1-255
     window: bool
     width: int
@@ -209,17 +220,18 @@ def assign_palettes(tiles, bits, first, last, path, group=None):
             of[key] = len(palettes)-1
     numbers = [first+k if bits == 4 else first-k for k in range(len(palettes))]
     if numbers and (numbers[-1] > last if bits == 4 else numbers[-1] < last):
-        raise KitError(path, f'The {bits}-bit textures need {len(palettes)} palettes from {first}; only '
+        raise PaletteRangeError(path, f'The {bits}-bit textures need {len(palettes)} palettes from {first}; only '
                              f'{abs(last-first)+1} are free there. Use fewer colours, or merge textures.')
     return {key: numbers[k] for key, k in of.items()}, {numbers[k]: pal for k, pal in enumerate(palettes)}
 
 
 def pack(tiles, slots=tuple(range(14, -1, -1)), first_palette=0, palette8=14, reserved=(), path='/textures',
          group=None):
-    """tiles: an iterable of Tile (equal keys are one tile). slots: the slots to use, in order of
-    preference (never 15). first_palette: the first 4-bit palette for 4-bit tiles (they take
-    consecutive ones). palette8: the first 8-bit palette (8-bit tiles take it and those below);
-    8-bit palette p covers 4-bit palettes 16p-16p+15, which no 4-bit tile may use. reserved:
+    """tiles: an iterable of Tile (equal keys are one tile). slots: the slots to use, 0-31, in
+    order of preference (never 15). first_palette: the first 4-bit palette for 4-bit tiles (they
+    take consecutive ones, up to 254, or from 256 up to 511). palette8: the first 8-bit palette
+    (8-bit tiles take it and those below, down to 0, or from 31 down to 16); 8-bit palette p
+    covers 4-bit palettes 16p-16p+15, which no 4-bit tile may use. reserved:
     (slot, x, y, width, height) rectangles in 4-bit texels that no tile may use (a swatch); a
     slot with one holds 4-bit tiles only. group: tile key -> a group; tiles share palettes only
     within their group (the World Kit keeps surface and emissive textures apart, so a palette
@@ -229,14 +241,24 @@ def pack(tiles, slots=tuple(range(14, -1, -1)), first_palette=0, palette8=14, re
         unique.setdefault(tile.key, tile)
     if FONT_SLOT in slots:
         raise KitError(path, 'Texture slot 15 holds the fonts.')
+    if any(not 0 <= s < SLOTS for s in slots):
+        raise KitError(path, f'Texture slots are 0-{SLOTS-1}.')
     four = {k: t for k, t in unique.items() if t.bits == 4}
     eight = {k: t for k, t in unique.items() if t.bits == 8}
-    pal8, palettes8 = assign_palettes(eight, 8, palette8, 0, path, group)
-    lowest8 = min(palettes8) if palettes8 else 16
-    limit4 = min(FONT_PALETTE, 16*lowest8)-1
+    if eight and not (0 <= palette8 < PALETTES8 and palette8 != FONT_PALETTE//16):
+        raise KitError(path, f'8-bit palettes are 0-14 and 16-31 (8-bit palette 15 holds the fonts\' colours); not {palette8}.')
+    if four and not (0 <= first_palette < PALETTES4 and first_palette != FONT_PALETTE):
+        raise KitError(path, f'4-bit palettes are 0-254 and 256-511 (palette 255 holds the fonts); not {first_palette}.')
+    pal8, palettes8 = assign_palettes(eight, 8, palette8, 16 if palette8 > FONT_PALETTE//16 else 0, path, group)
+    # 4-bit palettes run upward from first_palette, never across 255 nor into an 8-bit palette
+    limit4 = FONT_PALETTE-1 if first_palette < FONT_PALETTE else PALETTES4-1
+    if palettes8:
+        lo8, hi8 = 16*min(palettes8), 16*max(palettes8)+15
+        if four and lo8 <= first_palette <= hi8:
+            raise KitError(path, f'4-bit palette {first_palette} lies in 8-bit palette {first_palette//16}, used by an 8-bit texture.')
+        if first_palette < lo8:
+            limit4 = min(limit4, lo8-1)
     pal4, palettes4 = assign_palettes(four, 4, first_palette, limit4, path, group)
-    if four and first_palette > limit4:
-        raise KitError(path, f'4-bit palette {first_palette} lies in 8-bit palette {first_palette//16}, used by an 8-bit texture.')
     palettes = {**{(4, p): c for p, c in palettes4.items()}, **{(8, p): c for p, c in palettes8.items()}}
 
     # Occupancy grids of 8 x 8 cells: 32 x 32 for a 4-bit slot, 32 x 16 for an 8-bit one.

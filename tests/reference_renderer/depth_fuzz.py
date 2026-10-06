@@ -53,7 +53,7 @@ def positions(rng, n, category):
 
 
 def scene(rng, run):
-    vram = bytearray(rng.integers(0, 256, 1 << 20, dtype=np.uint8).tobytes())
+    vram = bytearray(rng.integers(0, 256, 1 << 21, dtype=np.uint8).tobytes())      # 2 MB
     fb = rng.integers(0, 32768, 320 * 240).astype('<u2')
     vram[:320 * 240 * 2] = fb.tobytes()
     packets = []
@@ -63,10 +63,12 @@ def scene(rng, run):
         flags = kind
         n = 4 if flags & 4 else 3
         p = {'flags': flags, 'depth': has_depth, 'blend': int(rng.integers(0, 4)),
-             'slot': int(rng.integers(0, 16)), 'four': bool(rng.integers(0, 2)),
-             'pal': int(rng.integers(0, 256)), 'pos': positions(rng, n, int(rng.integers(0, 5)) if i % 3 else 3),
+             'slot': int(rng.integers(0, 32)), 'four': bool(rng.integers(0, 2)),
+             'pal': int(rng.integers(0, 512)), 'pos': positions(rng, n, int(rng.integers(0, 5)) if i % 3 else 3),
              'cols': rng.integers(0, 256, (n, 3)).tolist(), 'uv': rng.integers(0, 256, (n, 2)).tolist(),
              'window': 0, 'decal': 0}
+        if not p['four']:
+            p['pal'] %= 32                           # 8-bit palettes are 0-31
         if flags & 2 and rng.integers(0, 2):
             p['window'] = int(rng.integers(0, 8)) | int(rng.integers(0, 32)) << 3
             p['window'] |= (int(rng.integers(0, 8)) | int(rng.integers(0, 32)) << 3) << 8

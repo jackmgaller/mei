@@ -21,6 +21,7 @@ import subprocess
 import tempfile
 
 from kitcore import depth as DEPTH
+from meshlib import face_slot, SLOT_HI, PAL_HI, SLOTS
 from .compiler import compile_recipe, native_bytes
 from .geometry import AssetError
 from .geometry_audit import numpy, geometry_audit, face_ref, CODES, close_faces
@@ -74,8 +75,8 @@ def identity_mesh(binary, cutouts=(), solid=False):
         n=i+1
         color=((n&31)<<3)|(((n>>5)&31)<<11)|(((n>>10)&31)<<19)
         if flags&2 and i in cutouts:
-            if flags&~19: raise AssetError('/verification','Only opaque triangle meshes are supported.')
-            data[at+3]=0
+            if flags&~(19|SLOT_HI|PAL_HI): raise AssetError('/verification','Only opaque triangle meshes are supported.')
+            data[at],data[at+3]=flags&~PAL_HI,0      # palette 0 of bank 0, the slot kept
             color=sum(-(-1024*((n>>(5*c))&31)//255)<<(8*c) for c in range(3))
             struct.pack_into('<4I',data,at+12,*([color]*4))
             continue
@@ -83,7 +84,7 @@ def identity_mesh(binary, cutouts=(), solid=False):
             uv=struct.unpack_from('<3H',data,at+28)
             if not solid and (not data[at+2]&16 or len(set(uv))!=1 or not 0<(uv[0]&255)<16):
                 raise AssetError('/verification','Textured faces are supported only as palette swatch faces.')
-            flags&=~2;data[at]=flags;data[at+2]=data[at+3]=0
+            flags&=~(2|SLOT_HI|PAL_HI);data[at]=flags;data[at+2]=data[at+3]=0
             struct.pack_into('<4H',data,at+28,0,0,0,0)
         if flags&~17: raise AssetError('/verification','Only opaque, untextured triangle meshes are supported.')
         struct.pack_into('<4I',data,offset+i*36+12,*([color]*4))
@@ -141,7 +142,7 @@ def texel_coverage(np, v, uv, w, xx, yy, inside, area, texture):
     if four:
         texel=(vram[slot*32768+t*128+(u>>1)]>>((u&1)*4))&15
     else:
-        texel=vram[(slot*32768+t*256+u)&0x7FFFF]
+        texel=vram[slot//16*0x80000+((slot%16*32768+t*256+u)&0x7FFFF)]   # wraps within the bank of 16 slots
     keep=inside.copy()
     keep[inside]=texel!=0
     return keep
@@ -339,7 +340,7 @@ def cutout_setup(np, mesh, original):
     faces={i for i,f in enumerate(mesh.faces) if f.material in holed}
     if not faces: return set(),{},None
     packing=mesh.textures['packing']
-    vram=np.zeros(16*32768,dtype=np.uint8);files={};lines=[]
+    vram=np.zeros(SLOTS*32768,dtype=np.uint8);files={};lines=[]
     for slot in packing.slots():
         first,data=packing.slot_image(slot)
         raw=np.frombuffer(data,dtype=np.uint8)
@@ -357,11 +358,11 @@ def cutout_setup(np, mesh, original):
     textured={}
     for i in faces:
         at=offset+i*36
-        tex=original[at+2]
+        flags,tex=original[at],original[at+2]
         k=tex>>5
         window=struct.unpack_from('<H',original,windows+2*(k-1))[0] if k and windows else 0
         uv=[(c&255,c>>8) for c in struct.unpack_from('<3H',original,at+28)]
-        textured[i]=(uv,(tex&15,bool(tex&16),window,vram))
+        textured[i]=(uv,(face_slot(flags,tex),bool(tex&16),window,vram))
     lines.append('embed WHITE: u16 = "white.pal"')
     lines+=['fn asset_NAME_load() {',*(f'    mask{slot}_load()' for slot in packing.slots()),'    load_palette(0, WHITE, 2)','}']
     return faces,textured,(files,lines)

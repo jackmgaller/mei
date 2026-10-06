@@ -9,7 +9,7 @@
 
 #include <string.h>
 
-#define VMASK    (VRAM_SIZE - 1)
+#define VMASK    (VRAM_SIZE - 1)   /* VRAM offsets: bits 0-20 (2 MB); addresses wrap within VRAM */
 #define PAL_OFF  (PALETTE_ADDR - VRAM_BASE)
 #define R(off)   ((off) / 4)
 
@@ -70,8 +70,8 @@ static int map_dim(uint32_t code) { return 32 << (code > 2 ? 2 : code); }
 static void plane_setup(Plane *p, const uint8_t *vram, const uint32_t *b) {
     uint32_t mode = b[R(PLN_BG_MODE)];
     p->vram = vram;
-    p->tiles = b[R(PLN_BG_TILES)] & 0xF8000u;
-    p->map = b[R(PLN_BG_MAP)] & 0xFF800u;
+    p->tiles = b[R(PLN_BG_TILES)] & (VMASK & ~0x7FFFu);
+    p->map = b[R(PLN_BG_MAP)] & (VMASK & ~0x7FFu);
     p->mw = map_dim(mode & 3);
     p->mh = map_dim((mode >> 2) & 3);
     p->tsh = (mode & 0x10) ? 4 : 3;
@@ -233,7 +233,7 @@ static void line_regs(const Mei *m, int y, uint32_t *W) {
     for (int ch = 0; ch < 8; ch++) {
         uint32_t ctrl = m->pln_reg[R(PLN_LC + 8 * ch + 4)];
         if (!(ctrl & 0x8000)) continue;
-        uint32_t addr = m->pln_reg[R(PLN_LC + 8 * ch)] & 0xFFFFCu, target = ctrl & 0xFC;
+        uint32_t addr = m->pln_reg[R(PLN_LC + 8 * ch)] & (VMASK & ~3u), target = ctrl & 0xFC;
         uint32_t n = ((ctrl >> 8) & 3) + 1;
         for (uint32_t k = 0; k < n; k++) {
             uint32_t off = target + 4 * k;

@@ -245,6 +245,27 @@ still blends with the layers behind it. A pixel that fails the depth test leaves
 framebuffer pixel as it was, hole or not. The planes have no depth and cost nothing, as before.
 The depth buffer is not erased by the plane chip's auto-erase.
 
+## Texture slots and palette banks (VRAM at 2 MB)
+
+Added on 2026-10-05 with the second megabyte of VRAM ([DECISIONS.md](DECISIONS.md#vram-at-2-mb)),
+for every textured packet, with depth or without. Bits 16–31 of a packet's first texture
+coordinate:
+
+| Bits | Field |
+|---|---|
+| 16–19 | slot within its bank of 16 |
+| 20 | 4-bit texture |
+| 21 | **slot bank**: 0 slots 0–15 (`0x480000`), 1 slots 16–31 (`0x500000`) |
+| 22 | **palette bank**: 0 colours 0–4095 (`0x44C000`), 1 colours 4096–8191 (`0x580000`) |
+| 23 | reserved (ignored) |
+| 24–31 | palette within its bank: 0–255 for 4-bit, 0–15 for 8-bit (bits 28–31 ignored) |
+
+So slot *n* is at `0x480000 + n × 0x8000` for *n* 0–31, and 4-bit palette *p* 0–511 is bank
+*p* ÷ 256, palette *p* mod 256 (8-bit palette *q* 0–31: bank *q* ÷ 16, palette *q* mod 16). An
+8-bit texture's second slot wraps within its bank: slot 15 into slot 0 (as before), slot 31 into
+slot 16. A packet with bits 21–22 clear draws exactly as before. Neither field costs a GPU cycle.
+The plane chip reads palette bank 0 only.
+
 ## Cost
 
 The cost table (DECISIONS.md, "GPU budget") with the new terms; constants `GPU_CYCLES_*` in

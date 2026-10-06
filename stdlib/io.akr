@@ -26,9 +26,15 @@ reg SYS_TIME: u32 @ 0xFF0318     // local time: seconds since midnight (docs/SYS
 reg SYS_DATE: u32 @ 0xFF031C     // bits 0-4 day, 5-8 month, 9-11 weekday (0 = Sunday), 16-31 year
 
 const AUDIO_BASE = 0xFF0100      // channel n at AUDIO_BASE + n * 32
-const VRAM_PALETTE = 0x44C000    // colour i at VRAM_PALETTE + i * 2
-const VRAM_TEXTURES = 0x480000   // slot n at VRAM_TEXTURES + n * TEXTURE_SLOT_SIZE
+// VRAM is 2 MB, 0x400000-0x5FFFFF (docs/DECISIONS.md, "VRAM at 2 MB").
+const VRAM_PALETTE = 0x44C000    // palette bank 0: colour i (0-4095) at VRAM_PALETTE + i * 2
+const VRAM_PALETTE_HI = 0x580000 // palette bank 1: colour i (4096-8191) at VRAM_PALETTE_HI + (i - 4096) * 2
+const PALETTE_BANK_COLOURS = 4096
+const VRAM_TEXTURES = 0x480000   // slot n (0-31) at VRAM_TEXTURES + n * TEXTURE_SLOT_SIZE
 const TEXTURE_SLOT_SIZE = 0x8000
+const TEXTURE_SLOTS = 32
+const VRAM_FREE = 0x582000       // free VRAM to VRAM_END: plane pages 49-63 and the rest of page 48
+const VRAM_END = 0x600000
 const SCREEN_W = 320
 const SCREEN_H = 240
 

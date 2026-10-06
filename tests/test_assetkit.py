@@ -529,6 +529,40 @@ class MaterialExtensionTests(unittest.TestCase):
             self.assertEqual(after[4:12],before[4:12])
         with self.assertRaises(AssetError): relocate(binary,{1:16*70})
 
+    def test_relocate_into_the_second_megabyte(self):
+        # VRAM at 2 MB (DECISIONS.md): palettes 256-511 and slots 16-31 set flag bits 7 and 6
+        from assetkit.compiler import relocate
+        mesh,mats,_ = compile_recipe(palette_recipe())
+        binary = native_bytes(mesh,mats,{'mode':'vertical'})
+        moved = relocate(binary,{1:16*300+3,2:16*511+9},slot=20,row=7)
+        for before,after in zip(faces_of(binary),faces_of(moved)):
+            colour = 16*300+3 if before[12]&255 == 1 else 16*511+9
+            self.assertEqual((after[0]&0xC0,after[2],after[3],after[12]),(0xC0,4|16,(colour//16)%256,colour%16|7<<8))
+            self.assertEqual(after[0]&0x3F,before[0])
+        back = relocate(moved,{16*300+3:16*2+3,16*511+9:16*3+9},slot=14,row=0)
+        for before,after in zip(faces_of(binary),faces_of(back)):
+            self.assertEqual(after[0],before[0])                  # the bank bits are cleared again
+        with self.assertRaisesRegex(AssetError,'outside palettes'): relocate(binary,{1:16*255+3})
+        with self.assertRaisesRegex(AssetError,'outside palettes'): relocate(binary,{1:16*512+3})
+
+    def test_meshlib_banks(self):
+        import meshlib
+        self.assertEqual(meshlib.tex_fields(3,True,40),(0,3|16,40))          # as before
+        self.assertEqual(meshlib.tex_fields(19,True,300,window=2),(64|128,3|16|2<<5,44))
+        self.assertEqual(meshlib.tex_fields(30,False,17),(64|128,14,1))
+        for slot,four,pal in [(0,True,0),(15,False,14),(16,True,255),(31,True,511),(20,False,31),(7,False,16)]:
+            flags,tex,byte = meshlib.tex_fields(slot,four,pal)
+            self.assertEqual((meshlib.face_slot(flags,tex),meshlib.face_palette(flags,tex,byte)),(slot,pal))
+        self.assertEqual(meshlib.face_colour(128,16,4,7),(256+4)*16+7)
+        self.assertEqual(meshlib.face_colour(128,0,1,7),17*256+7)
+        for bad in [(32,True,0),(0,True,512),(0,False,32)]:
+            with self.assertRaises(AssertionError): meshlib.tex_fields(*bad)
+        m = meshlib.Mesh()
+        a,b,c = (m.vertex(*v) for v in [(0,0,0),(1,0,0),(0,1,0)])
+        m.tri([a,b,c],[0x808080]*3,[(0,0)]*3,slot=17,four_bit=True,palette=258)
+        flags,_,tex,pal = struct.unpack_from('<BBBB',m.pack(),16+3*16)
+        self.assertEqual((flags&0xC0,tex,pal),(0xC0,1|16,2))
+
     def test_identity_mesh_accepts_only_swatch_faces(self):
         from assetkit.visibility import identity_mesh
         mesh,mats,_ = compile_recipe(palette_recipe())
@@ -1358,6 +1392,31 @@ class TexturePackingTests(unittest.TestCase):
         self.assertEqual(data[row:row+3],bytes([0x33,0x33,0x33]))
         with self.assertRaisesRegex(Exception,'slot 15'):
             pack(tiles,slots=[15])
+
+    def test_second_megabyte_slots_and_palette_banks(self):
+        # VRAM at 2 MB: slots 16-31, 4-bit palettes 256-511 (never across 255), 8-bit 16-31
+        from kitcore.errors import KitError
+        from kitcore.texpack import pack
+        tiles = [self.tile(128,128,k+1,bits=8,window=True) for k in range(3)]   # two to an 8-bit slot
+        packing = pack(tiles,slots=[13,16,31],palette8=31)
+        self.assertEqual(packing.slot_bits,{13:8,16:8})
+        self.assertEqual(sorted(packing.palettes),[(8,31)])
+        four = [self.tile(8,8,k+1) for k in range(40)]                 # 40 colours: three palettes
+        self.assertEqual(sorted(p for b,p in pack(four,slots=[20],first_palette=300).palettes),[300,301,302])
+        with self.assertRaisesRegex(KitError,'palettes from 253'):
+            pack(four,slots=[20],first_palette=253)                     # 253, 254, then 255: the fonts'
+        with self.assertRaisesRegex(KitError,'not 255'):
+            pack(four,slots=[20],first_palette=255)
+        with self.assertRaisesRegex(KitError,'0-31'):
+            pack(four,slots=[32])
+        with self.assertRaisesRegex(KitError,'8-bit palettes'):
+            pack(tiles,slots=[16],palette8=15)
+        # 8-bit palettes from 17 down stop at 16: they never take 15 (the fonts' colours)
+        many8 = [Tile8 for Tile8 in (__import__('kitcore.texpack',fromlist=['Tile']).Tile(8,8,8,[[[k*8+j+1 for j in range(8)]]*8],name=f't{k}') for k in range(80))]
+        with self.assertRaisesRegex(KitError,'8-bit textures need'):
+            pack(many8,slots=[16,17,18,19],palette8=17)
+        # 4-bit palettes stop below an 8-bit palette above them
+        self.assertEqual(sorted(p for b,p in pack(tiles+four[:20],slots=[16,17,18],first_palette=480,palette8=31).palettes if b == 4),[480,481])
 
     def test_overflow_is_a_clear_error(self):
         from kitcore.errors import KitError

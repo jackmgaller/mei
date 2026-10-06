@@ -1211,7 +1211,7 @@ class RegionExtTests(unittest.TestCase):
         self.assertEqual((old.regions[0].runs, old.regions[0].animations, old.regions[0].sky), ([], [], None))
 
     def test_limits(self):
-        bad = [dict(runs=[P.PaletteRun(4090, [[0] * 8, [0] * 8])]),           # past colour 4095
+        bad = [dict(runs=[P.PaletteRun(8186, [[0] * 8, [0] * 8])]),           # past colour 8191
                dict(runs=[P.PaletteRun(3584, [[0, 1]])]),                       # one list for two variants
                dict(animations=[P.Animation(b'\0' * 7, 3, 4, 4, 2, 0, 128)]),   # frames' bytes
                dict(animations=[P.Animation(b'\0' * 24, 3, 0, 4, 2, 0, 128)]),  # ticks 0
@@ -1235,6 +1235,43 @@ class RegionExtTests(unittest.TestCase):
         for what, data in cases.items():
             with self.assertRaises(PackError, msg=what):
                 decode(data)
+
+    def high_world(self):
+        """region_world() moved into VRAM's second megabyte: slot 20, colours 4112 on, the 8-bit
+        run at colour 7936 (8-bit palette 31), the animated tile in slot 20, backdrop art at
+        0x590000 (a free page)."""
+        w = region_world()
+        r = w.regions[0]
+        r.textures[0].slot = 20
+        r.first_colour = 4096 + 16
+        r.runs = [P.PaletteRun(31 * 256, r.runs[0].variants)]
+        r.animations[0].vram = 20 * 32768 + 128 * 8
+        r.backdrop = [P.VramCopy(0x590000, bytes([9, 8, 7, 6]))]
+        return w
+
+    def test_second_megabyte_round_trip_and_limits(self):
+        r = decode(encode(self.high_world())).regions[0]
+        self.assertEqual((r.textures[0].slot, r.first_colour, r.runs[0].first_colour, r.animations[0].vram),
+                         (20, 4112, 7936, 20 * 32768 + 1024))
+        for over in (dict(runs=[P.PaletteRun(8190, [[0] * 4, [0] * 4])]),            # past colour 8191
+                     dict(textures=[P.Texture(32, b'\0' * 4, True)]),                  # no slot 32
+                     dict(animations=[P.Animation(b'\0' * 24, 3, 4, 4, 2, 32 * 32768, 128)])):   # past slot 31
+            with self.assertRaises(PackError, msg=over):
+                encode(region_world(**over))
+
+    @needs_tools
+    def test_the_reader_uses_the_second_megabyte(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lines = F.run_cart(tmp, 'regions_hi.akr', {'PACK': ('u8', encode(self.high_world()))})
+        self.assertEqual(lines[-1], 'done')
+        vals = dict(l.split(' ', 1) for l in lines[:-1])
+        self.assertEqual(vals['texture'], '33 67 17')
+        self.assertEqual(vals['slot4'], '0 0 0')
+        self.assertEqual(vals['day'], '1000 31 992')
+        self.assertEqual(vals['bank0'], '0 0 0')
+        self.assertEqual(vals['backdrop'], '9 6 0')
+        self.assertEqual(vals['night'], '2000 1 32')
+        self.assertEqual(vals['frame1'], '0 1 34')
 
     @needs_tools
     def test_the_reader_enters_regions_and_animates(self):
