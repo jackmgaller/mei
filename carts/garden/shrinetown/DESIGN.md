@@ -1412,15 +1412,16 @@ right over the one below and a rail top is 1.44 m under the next slab, so there 
 balcony to the next; accepted (r08 #9), the back stair is the way to the roof.
 
 Measured with the World Checker at the review's worst cameras (`r01/worst_cams.json`), draw CPU
-before → after: canopy 490 642,195 → 577,871; air 523 627,618 → 586,581; over the station
-623,999 → 563,518; follow camera over the platform, north-west 783,327 → 729,184, north
-717,357 → 672,809, west 723,250 → 677,337; platform's east end 729,927 → 682,299, west end
-649,899 → 577,724; ticket hall 656,824 → 604,187, over it 728,420 → 667,143; the passage
-between the concourse and the konbini 736,477 → 643,523 and 734,411 → 630,589; plaza west
-716,147 → 557,332, by the bike shelters 683,085 → 631,938; deck west 727,795 → 580,349. The full
-check (600 views): peak 642,195 → 584,520 draw CPU, 0 views over a budget (2 before); the pack
-12,078,148 → 12,096,124 bytes. The review's sweep over the station block (its 2,158 views with
-x 128–196, z 0–40): over 600,000 195 → 80, over 650,000 86 → 19, over 700,000 21 → 2, worst
-784,048 → 729,283, median 386,732 → 351,329. Still over 600,000 (for the occluders): 37 views
-over the platform and its canopy (follow cameras, y 12 and up), 25 in or under the hall, 9 on
-the platform and the deck, 9 in the plaza and the passage east of the concourse.
+before → after (with the parked train gone): canopy 490 642,195 → 553,662; air 523 627,618 →
+578,689; over the station 623,999 → 556,482; follow camera over the platform, north-west
+783,327 → 683,086, north 717,357 → 654,531, west 723,250 → 628,172; platform's east end
+729,927 → 671,426, west end 649,899 → 573,820; ticket hall 656,824 → 597,090, over it 728,420 →
+649,104; the passage between the concourse and the konbini 736,477 → 631,384 and 734,411 →
+618,414; plaza west 716,147 → 557,214, by the bike shelters 683,085 → 631,838; deck west
+727,795 → 580,231. The full check (600 views): peak 642,195 → 576,628 draw CPU, 0 views over a
+budget (2 before); the pack 12,078,148 → 12,068,704 bytes. The review's sweep over the station block (its 2,158 views with x 128–196,
+z 0–40): over 600,000 195 → 58, over 650,000 86 → 10, over 700,000 21 → 0, worst 784,048 →
+683,388, median 386,732 → 344,738. Still over 600,000 (for the occluders): 23 views over the
+platform and its canopy (follow cameras, y 12 and up), 20 in or under the hall, 8 on the
+platform and the deck, 7 in the plaza and the passage east of the concourse. While the last
+train stands at the platform (40–85 s of a race) it adds its 160 triangles to these views.
