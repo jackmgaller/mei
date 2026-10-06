@@ -1,0 +1,392 @@
+// Garden audio demo: the movement garden's sound before it is wired into the cart. A listener
+// walks a scripted tour of the shrine town (no world is drawn: a map of the sound zones) and the
+// robot and the goals make every sound once. sound.akr does all of it, as the cart will.
+//
+// Held at start-up: UP plays only the robot and the goals, DOWN only the tour of the places,
+// LEFT only the music (each place's mix in turn); nothing, the robot then the tour. During the tour the d-pad walks the listener freely (the
+// tour stops; A restarts it). Build and render (WIRING.md, "Listening"):
+//
+//     build-mine/meic carts/garden/audio/demo.akr -o build-mine/garden-audio-demo.mei
+//     build-mine/mei-headless build-mine/garden-audio-demo.mei --frames 20000 --wav tour.wav
+cart "Garden Audio Demo", "MEI-GARDEN-AUD"
+
+import "sound.akr"
+
+// ---- the robot and the goals: (frame, event, argument)
+const EV_SAY = 0          // arg: a caption from CAPTIONS
+const EV_WALK = 1         // arg: a material, footsteps for 64 frames
+const EV_PLAY = 2         // arg: a sound
+const EV_JUMP = 3         // arg: ga_jump's kind
+const EV_LAND = 4         // arg: 1 hard
+const EV_LOOP = 5         // arg: a looped sound, -1 off
+const EV_RED = 6          // arg: the count
+const EV_STAR_GET = 7
+const EV_STAR_APPEAR = 8
+const EV_BELL = 9
+const EV_CLOCK = 10       // arg: seconds
+const EV_END = 11
+
+const CAPTIONS: [24]*u8 = [
+    "footsteps: stone", "gravel", "wood", "earth and leaves", "metal", "roof tiles", "wading",
+    "jump, double, wind-up spin, long", "dive", "glider", "ground pound", "wall kicks",
+    "wall slide", "ledge grab and climb", "pole", "rail grind", "awning bounce, splash, bonk, skid",
+    "wound up (back to the start)", "coins", "red coins", "star comes down, star taken",
+    "shortcut opened", "the last train's clock: won, lost; a door", "the stage bell"
+]
+
+const SHOW: [276]s32 = [
+    0, EV_SAY, 0, 4, EV_WALK, 0,
+    80, EV_SAY, 1, 84, EV_WALK, 1,
+    160, EV_SAY, 2, 164, EV_WALK, 2,
+    240, EV_SAY, 3, 244, EV_WALK, 3,
+    320, EV_SAY, 4, 324, EV_WALK, 4,
+    400, EV_SAY, 5, 404, EV_WALK, 5,
+    480, EV_SAY, 6, 484, EV_WALK, 6,
+    570, EV_SAY, 7, 572, EV_JUMP, 0, 610, EV_LAND, 0, 640, EV_JUMP, 1, 680, EV_LAND, 0,
+    710, EV_JUMP, 2, 765, EV_LAND, 0, 800, EV_JUMP, 3, 850, EV_LAND, 0,
+    890, EV_SAY, 8, 892, EV_PLAY, GA_S_DIVE, 935, EV_LAND, 0,
+    980, EV_SAY, 9, 982, EV_PLAY, GA_S_GLIDE_OPEN, 990, EV_LOOP, GA_S_GLIDE, 1140, EV_LOOP, -1, 1142, EV_LAND, 0,
+    1190, EV_SAY, 10, 1192, EV_PLAY, GA_S_POUND_SPIN, 1218, EV_LAND, 1,
+    1280, EV_SAY, 11, 1282, EV_PLAY, GA_S_KICK, 1316, EV_PLAY, GA_S_KICK, 1350, EV_PLAY, GA_S_KICK, 1395, EV_LAND, 0,
+    1440, EV_SAY, 12, 1442, EV_LOOP, GA_S_WALL_SLIDE, 1530, EV_LOOP, -1, 1532, EV_LAND, 0,
+    1580, EV_SAY, 13, 1582, EV_PLAY, GA_S_LEDGE_GRAB, 1625, EV_PLAY, GA_S_LEDGE_CLIMB,
+    1690, EV_SAY, 14, 1692, EV_PLAY, GA_S_POLE_GRAB, 1720, EV_PLAY, GA_S_POLE_CLIMB, 1742, EV_PLAY, GA_S_POLE_CLIMB,
+    1764, EV_PLAY, GA_S_POLE_CLIMB, 1786, EV_PLAY, GA_S_POLE_CLIMB,
+    1840, EV_SAY, 15, 1842, EV_LOOP, GA_S_RAIL_GRIND, 1960, EV_LOOP, -1, 1962, EV_LAND, 0,
+    2010, EV_SAY, 16, 2012, EV_PLAY, GA_S_BOUNCE, 2070, EV_LAND, 0, 2110, EV_PLAY, GA_S_SPLASH,
+    2170, EV_PLAY, GA_S_BONK, 2220, EV_PLAY, GA_S_SKID,
+    2280, EV_SAY, 17, 2282, EV_PLAY, GA_S_WINDUP,
+    2400, EV_SAY, 18, 2402, EV_PLAY, GA_S_COIN, 2440, EV_PLAY, GA_S_COIN, 2470, EV_PLAY, GA_S_COIN,
+    2540, EV_SAY, 19, 2542, EV_RED, 1, 2582, EV_RED, 2, 2622, EV_RED, 3, 2662, EV_RED, 4,
+    2702, EV_RED, 5, 2742, EV_RED, 6, 2782, EV_RED, 7, 2822, EV_RED, 8, 2850, EV_PLAY, GA_S_RED_ALL,
+    2990, EV_SAY, 20, 2992, EV_STAR_APPEAR, 0, 3150, EV_STAR_GET, 0,
+    3420, EV_SAY, 21, 3422, EV_PLAY, GA_S_SHORTCUT,
+    3580, EV_SAY, 22, 3582, EV_CLOCK, 12, 4300, EV_PLAY, GA_S_WON, 4440, EV_CLOCK, 3,
+    4630, EV_PLAY, GA_S_LOST, 4800, EV_PLAY, GA_S_DOOR,
+    4900, EV_SAY, 23, 4902, EV_BELL, 0, 5400, EV_END, 0
+]
+
+// ---- the tour of the places: x, y, z (m), seconds to get there (0: cut), act, seconds to stay
+const ACT_NONE = 0
+const ACT_TRAIN = 1       // the train passes along the viaduct, the platform's chime, the departure melody
+const ACT_BELL = 2        // the bell rung on the stage, the star coming down
+const ACT_CHIME = 3       // the five o'clock chime
+
+struct Way { x: fixed, y: fixed, z: fixed, secs: fixed, act: s32, stay: fixed }
+
+const TOUR: [34]Way = [
+    Way { x: 160.0, y: 0.0, z: 26.0, secs: 0.0, act: ACT_NONE, stay: 7.0 },       // the spawn, the plaza
+    Way { x: 160.0, y: 0.0, z: 10.0, secs: 2.5, act: ACT_NONE, stay: 5.0 },       // the concourse
+    Way { x: 150.0, y: 10.0, z: 8.0, secs: 0.0, act: ACT_TRAIN, stay: 20.0 },     // the platform
+    Way { x: 160.0, y: 0.0, z: 46.0, secs: 0.0, act: ACT_NONE, stay: 2.0 },       // the shotengai
+    Way { x: 160.0, y: 0.0, z: 78.0, secs: 8.0, act: ACT_NONE, stay: 5.0 },       // the arcade
+    Way { x: 160.0, y: 0.0, z: 111.0, secs: 6.0, act: ACT_NONE, stay: 1.0 },      // the front road
+    Way { x: 160.0, y: 0.6, z: 142.0, secs: 4.0, act: ACT_NONE, stay: 4.0 },      // the courtyard
+    Way { x: 160.0, y: 5.0, z: 205.0, secs: 7.0, act: ACT_NONE, stay: 9.0 },      // the precinct, the temple
+    Way { x: 90.0, y: 2.0, z: 160.0, secs: 0.0, act: ACT_NONE, stay: 6.0 },       // the west woods
+    Way { x: 82.0, y: 12.0, z: 180.0, secs: 0.0, act: ACT_NONE, stay: 1.0 },      // the treetop walkway
+    Way { x: 80.0, y: 15.0, z: 206.0, secs: 3.0, act: ACT_NONE, stay: 2.0 },
+    Way { x: 92.0, y: 15.0, z: 294.0, secs: 0.0, act: ACT_NONE, stay: 4.0 },      // the fox grove
+    Way { x: 110.0, y: 34.0, z: 322.0, secs: 6.0, act: ACT_NONE, stay: 0.0 },     // the torii tunnel
+    Way { x: 122.0, y: 54.5, z: 346.0, secs: 5.0, act: ACT_NONE, stay: 1.0 },
+    Way { x: 154.0, y: 60.0, z: 349.0, secs: 4.0, act: ACT_BELL, stay: 11.0 },    // the stage
+    Way { x: 214.0, y: 12.0, z: 312.0, secs: 0.0, act: ACT_NONE, stay: 5.0 },     // the falls' pool
+    Way { x: 214.0, y: 15.0, z: 330.0, secs: 3.0, act: ACT_NONE, stay: 6.0 },     // the cave behind them
+    Way { x: 160.0, y: 13.0, z: 300.0, secs: 0.0, act: ACT_NONE, stay: 1.0 },     // the cedar's basin
+    Way { x: 172.0, y: 13.0, z: 280.0, secs: 3.0, act: ACT_NONE, stay: 3.0 },
+    Way { x: 228.0, y: 0.5, z: 164.0, secs: 0.0, act: ACT_NONE, stay: 11.0 },     // the pond
+    Way { x: 236.0, y: -0.4, z: 117.0, secs: 0.0, act: ACT_NONE, stay: 1.0 },     // the culvert
+    Way { x: 236.0, y: -0.4, z: 106.0, secs: 3.0, act: ACT_NONE, stay: 2.0 },
+    Way { x: 285.0, y: 9.0, z: 190.0, secs: 0.0, act: ACT_NONE, stay: 7.0 },      // the cemetery
+    Way { x: 36.0, y: 0.6, z: 196.0, secs: 0.0, act: ACT_NONE, stay: 6.0 },       // the park, the watermill
+    Way { x: 40.0, y: 0.0, z: 150.0, secs: 5.0, act: ACT_NONE, stay: 0.0 },
+    Way { x: 40.0, y: 0.0, z: 70.0, secs: 9.0, act: ACT_NONE, stay: 2.0 },        // the canal's lane
+    Way { x: 25.0, y: 12.0, z: 290.0, secs: 0.0, act: ACT_NONE, stay: 8.0 },      // the bamboo
+    Way { x: 96.0, y: 7.0, z: 70.0, secs: 0.0, act: ACT_NONE, stay: 1.0 },        // over the alleys' roofs
+    Way { x: 122.0, y: 7.0, z: 70.0, secs: 3.0, act: ACT_NONE, stay: 1.0 },
+    Way { x: 110.0, y: 0.0, z: 74.0, secs: 0.0, act: ACT_NONE, stay: 3.0 },       // down in the alleys
+    Way { x: 160.0, y: 0.0, z: 30.0, secs: 0.0, act: ACT_CHIME, stay: 15.0 },     // the plaza at five
+    Way { x: 160.0, y: 0.0, z: 30.0, secs: 0.0, act: ACT_NONE, stay: 0.0 },
+    Way { x: 160.0, y: 0.0, z: 30.0, secs: 0.0, act: ACT_NONE, stay: 0.0 },
+    Way { x: 160.0, y: 0.0, z: 30.0, secs: 0.0, act: ACT_NONE, stay: 0.0 },
+]
+const TOUR_N = 31
+
+const BELL_AT: vec3 = vec3(154.0, 62.0, 347.0)
+const STAR_AT: vec3 = vec3(154.0, 62.0, 344.0)
+
+var mode = 0              // 0 the robot then the tour, 1 the robot only, 2 the tour only, 3 free
+var show_on = false
+var show_t = 0
+var show_i = 0
+var caption: *u8 = ""
+var walk_mat = -1
+var walk_t = 0
+var clock_left = 0
+var tour_on = false
+var tour_i = 0
+var leg_t = 0             // frames into this way's leg, then its stay
+var leg_frames = 0
+var stay_frames = 0
+var from: vec3
+var pos: vec3
+var yaw: fixed = 0.0
+var speed: fixed = 0.0
+var act_t = -1            // frames into the act
+var act_k = 0
+var pad_prev: u32
+var done = false
+
+fn init() {
+    ga_init()
+    ga_world(2)
+    pos = vec3(160.0, 0.0, 26.0)
+}
+
+var started = false
+var frames = 0
+
+// The buttons held at start-up are read on the fourth frame (the first ones may not have them).
+fn start(p: u32) {
+    started = true
+    if p & UP != 0 { mode = 1 }
+    if p & DOWN != 0 { mode = 2 }
+    if p & LEFT != 0 {
+        mode = 4
+        ga_sfx_vol = 0
+        return
+    }
+    if mode == 2 { tour_start() } else { show_on = true }
+}
+
+// ---- the music alone (LEFT held at start-up): each mix in turn, at a place that chooses it
+const MUSIC_AT: [7]Way = [
+    Way { x: 160.0, y: 0.0, z: 26.0, secs: 0.0, act: 0, stay: 40.0 },       // town
+    Way { x: 160.0, y: 0.0, z: 80.0, secs: 0.0, act: 0, stay: 15.0 },       // street
+    Way { x: 160.0, y: 0.6, z: 140.0, secs: 0.0, act: 0, stay: 40.0 },      // precinct
+    Way { x: 90.0, y: 2.0, z: 160.0, secs: 0.0, act: 0, stay: 35.0 },       // woods
+    Way { x: 214.0, y: 12.0, z: 312.0, secs: 0.0, act: 0, stay: 30.0 },     // mountain
+    Way { x: 154.0, y: 60.0, z: 349.0, secs: 0.0, act: 0, stay: 25.0 },     // summit
+    Way { x: 285.0, y: 9.0, z: 190.0, secs: 0.0, act: 0, stay: 20.0 },      // quiet
+]
+var music_i = 0
+var music_t = 0
+
+fn music_frame() {
+    if music_i >= 7 {
+        done = true
+        return
+    }
+    let w = MUSIC_AT[music_i]
+    pos = vec3(w.x, w.y, w.z)
+    music_t += 1
+    if music_t >= bits(w.stay * 60.0) >> 16 {
+        music_t = 0
+        music_i += 1
+    }
+}
+
+fn tour_start() {
+    tour_on = true
+    tour_i = 0
+    way_begin()
+}
+
+fn way_begin() {
+    let w = TOUR[tour_i]
+    let to = vec3(w.x, w.y, w.z)
+    from = pos
+    leg_frames = bits(w.secs * 60.0) >> 16
+    stay_frames = bits(w.stay * 60.0) >> 16
+    leg_t = 0
+    if leg_frames == 0 {
+        pos = to
+        from = to
+    } else {
+        let d = (to - from) / 16.0
+        speed = length(d) * 16.0 / fixed(leg_frames)
+        yaw = atan2(d.x, d.z)
+    }
+    act_k = w.act
+    act_t = -1
+}
+
+fn tour_frame() {
+    let w = TOUR[tour_i]
+    let to = vec3(w.x, w.y, w.z)
+    leg_t += 1
+    if leg_t <= leg_frames {
+        pos = from + (to - from) * (fixed(leg_t) / fixed(leg_frames))
+        var wade = false
+        if ga_zone >= 0 { wade = GA_ZONES[ga_zone * 13 + 11] == GA_MAT_WATER }
+        ga_walk(speed, true, 0, wade)
+        if leg_t == leg_frames { act_t = 0 }
+        return
+    }
+    if act_t < 0 { act_t = 0 }
+    ga_walk(0.0, true, 0, false)
+    act_frame()
+    act_t += 1
+    if leg_t > leg_frames + stay_frames {
+        tour_i += 1
+        if tour_i >= TOUR_N {
+            tour_on = false
+            done = true
+            return
+        }
+        way_begin()
+    }
+}
+
+fn act_frame() {
+    if act_k == ACT_TRAIN {
+        // the platform's chime, then the train in from the west, stopping, the melody, away east
+        if act_t == 30 { ga_play_at(GA_S_STATION_CHIME, vec3(160.0, 12.0, 8.0), 12, 110) }
+        var tx: fixed = 150.0                                   // standing at the platform
+        if act_t < 420 {                                        // slowing in from the west
+            let u = fixed(420 - act_t) / 29.0
+            tx = 150.0 - u * u
+        } else if act_t >= 780 {                                // away east
+            let u = fixed(act_t - 780) / 24.5
+            tx = 150.0 + u * u
+        }
+        ga_emitter_move(GA_EM_TRAIN, vec3(tx, 10.0, 8.0), act_t < 1190 && tx < 360.0)
+        if act_t == 450 { ga_play_at(GA_S_DEPARTURE, vec3(160.0, 12.0, 8.0), 12, 110) }
+    } else if act_k == ACT_BELL {
+        if act_t == 20 { ga_bell(BELL_AT) }
+        if act_t == 150 { ga_star_appear(STAR_AT) }
+    } else if act_k == ACT_CHIME {
+        if act_t == 30 { ga_play(GA_S_TOWN_CHIME) }
+    }
+}
+
+fn show_frame() {
+    while show_i < len(SHOW) / 3 && SHOW[show_i * 3] <= show_t {
+        let ev = SHOW[show_i * 3 + 1]
+        let arg = SHOW[show_i * 3 + 2]
+        match ev {
+            0 => caption = CAPTIONS[arg]
+            1 => {
+                walk_mat = arg
+                walk_t = 64
+            }
+            2 => ga_play(arg)
+            3 => ga_jump(arg)
+            4 => ga_land(arg != 0, GA_MAT_STONE)
+            5 => {
+                if arg < 0 { ga_loop(-1, 0, 1.0) } else { ga_loop(arg, GA_SND[arg * 6 + 4], 1.0) }
+            }
+            6 => ga_red_coin(arg)
+            7 => ga_star_get()
+            8 => ga_star_appear(pos + vec3(0.0, 4.0, 8.0))
+            9 => ga_bell(pos + vec3(0.0, 2.0, 6.0))
+            10 => clock_left = arg * 60
+            else => {
+                show_on = false
+                caption = ""
+                if mode == 0 { tour_start() } else { done = true }
+            }
+        }
+        show_i += 1
+    }
+    show_t += 1
+    if walk_t > 0 {
+        if walk_t % 8 == 0 { ga_step(walk_mat, 0.15) }
+        walk_t -= 1
+    }
+    if clock_left > 0 {
+        ga_clock(clock_left)
+        clock_left -= 1
+    } else {
+        ga_clock(0)
+    }
+}
+
+fn free_frame(p: u32) {
+    var d = vec3(0.0, 0.0, 0.0)
+    if p & UP != 0 { d.z = 1.0 }
+    if p & DOWN != 0 { d.z = -1.0 }
+    if p & LEFT != 0 { d.x = -1.0 }
+    if p & RIGHT != 0 { d.x = 1.0 }
+    let moving = d.x != 0.0 || d.z != 0.0
+    if moving {
+        pos = pos + d * 0.2
+        yaw = atan2(d.x, d.z)
+    }
+    var sp: fixed = 0.0
+    if moving { sp = 0.2 }
+    ga_walk(sp, true, 0, false)
+}
+
+fn update() {
+    let p = PAD1
+    frames += 1
+    if !started {
+        if frames >= 4 { start(p) }
+        pad_prev = p
+        ga_frame(pos + vec3(0.0, 1.4, 0.0), yaw, pos)
+        return
+    }
+    if (p & ~pad_prev & (UP | DOWN | LEFT | RIGHT)) != 0 && !show_on && mode != 4 {
+        tour_on = false
+        mode = 3
+    }
+    if (p & ~pad_prev & A) != 0 && mode == 3 {
+        mode = 2
+        tour_start()
+    }
+    pad_prev = p
+    if show_on { show_frame() }
+    else if tour_on { tour_frame() }
+    else if mode == 3 { free_frame(p) }
+    else if mode == 4 { music_frame() }
+    ga_frame(pos + vec3(0.0, 1.4, 0.0), yaw, pos)
+}
+
+// ---- drawing: the map of the shrine town's zones, the listener, the readout
+
+const MAP_X = 156
+const MAP_Y = 30
+const PRESETS: [6]*u8 = ["off", "room", "studio", "hall", "space", "echo"]
+const MIXNAMES: [8]*u8 = ["town", "street", "precinct", "woods", "mountain", "summit", "quiet", "garden"]
+
+fn mx(x: s32) -> s32 { return MAP_X + x / 2 }
+fn mz(z: s32) -> s32 { return MAP_Y + 192 - z / 2 }
+
+fn draw() {
+    cls(rgb(18, 20, 28))
+    let first = GA_WORLD_ZONES[4]
+    let count = GA_WORLD_ZONES[5]
+    for n in 0..count - 1 {
+        let e = (first + n) * 13
+        let x0 = clamp(GA_ZONES[e], 0, 320)
+        let z0 = clamp(GA_ZONES[e + 1], 0, 384)
+        let x1 = clamp(GA_ZONES[e + 2], 0, 320)
+        let z1 = clamp(GA_ZONES[e + 3], 0, 384)
+        var c = rgb(70, 76, 96)
+        if first + n == ga_zone { c = rgb(240, 190, 90) }
+        rect_outline(mx(x0), mz(z1), (x1 - x0) / 2 + 1, (z1 - z0) / 2 + 1, c, BLEND_NONE)
+    }
+    let px = mx(bits(pos.x) >> 16)
+    let pz = mz(bits(pos.z) >> 16)
+    rect(px - 2, pz - 2, 5, 5, rgb(255, 250, 240))
+    text(8, 8, "GARDEN AUDIO DEMO", rgb(240, 190, 90))
+    text(8, 30, ga_zone_name(), rgb(230, 230, 230))
+    if ga_zone >= 0 {
+        let e = ga_zone * 13
+        text(8, 44, "mix", rgb(140, 150, 170))
+        text(48, 44, MIXNAMES[GA_ZONES[e + 8]], rgb(230, 230, 230))
+        text(8, 54, "reverb", rgb(140, 150, 170))
+        text(64, 54, PRESETS[GA_ZONES[e + 9]], rgb(230, 230, 230))
+        text_int(112, 54, GA_ZONES[e + 10], rgb(230, 230, 230))
+    }
+    text(8, 68, "x", rgb(140, 150, 170))
+    text_int(20, 68, bits(pos.x) >> 16, rgb(230, 230, 230))
+    text(52, 68, "y", rgb(140, 150, 170))
+    text_int(64, 68, bits(pos.y) >> 16, rgb(230, 230, 230))
+    text(96, 68, "z", rgb(140, 150, 170))
+    text_int(108, 68, bits(pos.z) >> 16, rgb(230, 230, 230))
+    if show_on { text(8, 90, caption, rgb(250, 220, 160)) }
+    if done { text(8, 90, "the end", rgb(250, 220, 160)) }
+    text(8, 226, "UP robot  DOWN tour  d-pad walk  A tour", rgb(90, 96, 120))
+}

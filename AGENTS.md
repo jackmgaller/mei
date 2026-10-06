@@ -114,7 +114,8 @@ nothing it read has changed ([WORLDKIT.md](docs/WORLDKIT.md#quick-tools)).
   `gen_orbs_assets`, `gen_weather_assets` and `meifont`, and for the Asset Kit's textures read
   from PNG images and sheets (`examples/assets/stall`, the shrine world's assets, so `make`;
   recipes without images need it not).
-  **SciPy** too for `gen_boot_duet` and `gen_soundlab_assets`.
+  **SciPy** too for `gen_boot_duet`, `gen_soundlab_assets` and the garden's audio generators
+  (`carts/garden/audio/gen_sounds.py`, `gen_music.py`).
 - Several generators draw with macOS system fonts (Avenir Next, Hiragino, Georgia, Optima and
   others). Their outputs are committed, so building and running Mei needs none of this.
 
@@ -232,8 +233,11 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `carts/garden/shrinetown/assets/viaduct_end_wall/make_viaduct_end_wall.py` | The viaduct's end wall: `viaduct_end_wall.asset.json` |
 | `carts/garden/shrinetown/assets/edge_rock/make_edge_rock.py` | The frame's rock walls on the rims: `edge_rock_*.asset.json` (their table from `tools/frame.py --rocks`) |
 | `carts/garden/shrinetown/tools/frame.py --build-dir B --probes` | `carts/garden/tests/frame_probes.akr`, the frame scenarios' probes, from the built world (NumPy) |
+| `carts/garden/audio/gen_sounds.py` | The movement garden's sounds (the robot, the goals, the shrine town's beds, emitters, timers and life) in `carts/garden/audio/sounds.adp`, and `sound_data.akr`: the sounds' table and the zones, emitters and timers (`--preview DIR`: a WAV of every sound) |
+| `carts/garden/audio/gen_music.py` | "Momiji", the shrine town's music: `carts/garden/audio/music.adp` and `music_data.akr` (`--preview DIR`: a WAV of every sample) |
 
-The last ten are run by their path from the repository root, not as `tools/NAME.py`.
+The last twelve are run by their path from the repository root, not as `tools/NAME.py`; the
+garden's two audio generators share `carts/garden/audio/garden_dsp.py`, which writes nothing.
 
 Helpers the generators import, which write nothing themselves: `boot_audio.py`, `mei_adpcm.py`,
 `mei_icon.py` (memory card icons), `meshlib.py` (the native mesh format) and `weather_geo.py`.
