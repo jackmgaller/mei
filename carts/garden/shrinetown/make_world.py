@@ -120,14 +120,20 @@ HAZE = {'start': 20, 'end': 280, 'amount': 0.0, 'standins': 0.15}
 shrine = json.loads((ST.parent / 'shrine' / 'shrine.world.json').read_text())
 
 # ---- texture regions (TEXTURES.md): the town (rows 0-1) and the shrine (rows 2-5). Each has its own
-# texture set in slots 13-0 (slot 14 holds the swatch row, 15 the fonts); entering one loads its set
-# over the other's. The budgets are the plan's totals, each zone's allowance and the ground's:
-# 380 KB of the town's 448 (15% free) and 300 KB of the shrine's (a third free). The shrine's palette
-# variants (day, night), a copy per region, without its night's water colour (the water is textured:
-# the night's multiply tints it, art/water/APPLY.md); each region its own backdrop, from
-# art/backdrop/backdrop.json (art/backdrop/APPLY.md): a sky and a far view drawn for the streets and
-# one for the shrine's grounds and mountain, with the night's exact colours.
-TEXTURE_BUDGETS = {'town': 380 * 1024, 'shrine': 300 * 1024}
+# texture set in slots 13-1 and 16-31 (VRAM at 2 MB; slot 14 holds the swatch row and the star, 15
+# the fonts, 0 the far views' common stand-in set); entering one loads its set over the other's,
+# about 0.94 cycles a byte, so a budget is also the crossing's cost. The budgets are the zones'
+# allowances, the ground's and 64 KB for the far views: 668 KB for the town, 460 KB for the shrine
+# (TEXTURES.md, "The budgets"). The
+# shrine's palettes start at 256, in palette bank 1, so the town has 0-253 (254 is the star's, 255
+# the fonts'). The shrine's palette variants (day, night), a copy per region, without its night's
+# water colour (the water is textured: the night's multiply tints it, art/water/APPLY.md); each
+# region its own backdrop, from art/backdrop/backdrop.json (art/backdrop/APPLY.md): a sky and a far
+# view drawn for the streets and one for the shrine's grounds and mountain, with the night's exact
+# colours.
+TEXTURE_SLOTS = '13-1,16-31'
+TEXTURE_BUDGETS = {'town': 668 * 1024, 'shrine': 460 * 1024}
+PALETTES = {'shrine': {'first': 256}}
 BD = json.loads((ST / 'art' / 'backdrop' / 'backdrop.json').read_text())
 
 
@@ -173,7 +179,8 @@ def variants(r):
     return v
 
 
-regions = {r: {'textures': {'slots': '13-0', 'budget': TEXTURE_BUDGETS[r]},
+regions = {r: {'textures': {'slots': TEXTURE_SLOTS, 'budget': TEXTURE_BUDGETS[r]},
+               **({'palettes': PALETTES[r]} if r in PALETTES else {}),
                'variants': variants(r),
                'backdrop': {'elevations': BD[r]['elevations'], 'sky': sky(r),
                             'silhouette': {'image': f'art/backdrop/{r}_backdrop.png', 'horizon': BD[r]['horizon'],

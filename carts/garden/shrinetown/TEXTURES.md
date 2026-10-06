@@ -2,9 +2,11 @@
 
 How the shrine town's textures fit in VRAM: what the real assets need, the two texture regions,
 where the boundary runs, each zone's allowance for placing the real assets, and the cuts that
-make the town fit. Measured 2026-10-05 on the 110 asset recipes in `assets/` (not `greybox/`) and
-the shrine's 52 in `../shrine/assets/`; the zones are those of the placement split (station,
-street, east, canal, shrine).
+made the town fit in 1 MB. Measured 2026-10-05 on the 110 asset recipes in `assets/` (not
+`greybox/`) and the shrine's 52 in `../shrine/assets/`; the zones are those of the placement split
+(station, street, east, canal, shrine). **Re-split the same day for 2 MB of VRAM**
+(docs/DECISIONS.md, "VRAM at 2 MB"): [The budgets](#the-budgets) and [Palettes](#palettes) are
+current; the plan's tables below them are the 1 MB history.
 
 ## The real need
 
@@ -38,14 +40,79 @@ The ground is not textured yet. The shrine's textured ground is 15 materials, 27
 drawn through a texture window: about 55 cycles a mesh and 10 a visible face more). WORLDKIT.md,
 "Textured terrain", has the rules.
 
-**One region cannot hold it:** 595 KB of assets before the ground, against 448 KB in slots 13–0.
+**With 1 MB, one region could not hold it:** 595 KB of assets before the ground, against 448 KB
+in slots 13–0. With 2 MB a region may use slots 13–0 and 16–31, 960 KB, so one region could hold
+the whole level; the two regions stay, since entering a region copies its whole set and the
+boundary is where the content changes anyway.
+
+## The budgets
+
+Since VRAM grew to 2 MB (2026-10-05). `make_world.py` writes each region's `textures`: slots
+`"13-1,16-31"` and the budget; `tools/textures.py` holds the split. A zone's allowance is what
+it may place; the **reserve** is no part's: 64 KB in each region for the far views' common
+stand-in set (tree silhouette cards for the far levels and the stand-ins, the `far-views`
+branch's `standins.textures`), which takes slot 0 in every region, so the regions' own sets
+leave slot 0 out. That branch also adds hazed copies of the cards' palettes to each region
+([Palettes](#palettes)): the town's 66 free palettes are for those first. The headroom is sized by what
+the zones are likely to want: the delivery van (back, in the town's shared set), the school pool's
+texture (east), 64 × 64 canal and pond textures, lit neighbour windows at night and a textured kerb
+(the ground's allowance, with the water and the edges), and the signs restored at full width.
+
+| Region | Part | Placed now | Allowance | Headroom |
+|---|---|---|---|---|
+| town | ground (the terrain's textures, the water, the edges) | 40,128 | 98,304 (96 KB) | 58,176 |
+| town | shared props | 61,024 | 98,304 (96 KB) | 37,280 |
+| town | station zone | 97,088 | 131,072 (128 KB) | 33,984 |
+| town | street zone | 154,208 | 196,608 (192 KB) | 42,400 |
+| town | east zone | 18,304 | 49,152 (48 KB) | 30,848 |
+| town | canal zone (rows 0–1) | 24,960 | 40,960 (40 KB) | 16,000 |
+| town | shrine zone (the great torii) | 192 | 4,096 (4 KB) | 3,904 |
+| town | reserve (the far views' stand-in set, slot 0) | 0 | 65,536 (64 KB) | 65,536 |
+| town | **budget** | **395,904** | **684,032 (668 KB)** | **288,128** |
+| shrine | ground (the terrain's textures, the water) | 110,144 | 155,648 (152 KB) | 45,504 |
+| shrine | shared props | 29,760 | 65,536 (64 KB) | 35,776 |
+| shrine | shrine zone | 46,112 | 122,880 (120 KB) | 76,768 |
+| shrine | canal zone (rows 2–5) | 30,304 | 49,152 (48 KB) | 18,848 |
+| shrine | station zone (the viaduct in c4_2) | 1,664 | 12,288 (12 KB) | 10,624 |
+| shrine | reserve (the far views' stand-in set, slot 0) | 0 | 65,536 (64 KB) | 65,536 |
+| shrine | **budget** | **217,984** | **471,040 (460 KB)** | **253,056** |
+
+"Placed now" is `tools/textures.py --report` on the world as built (the delivery van back, the
+three restored signs in). The town's 668 KB is about 21 slots' worth and the shrine's 460 KB 14½;
+the packer may use any of the 29 (13–1, 16–31).
+
+**The crossing.** Entering a region copies its texture set (`wp_region_enter()`: `memcpy`, about
+0.95 cycles a byte), its palettes and its backdrop art; the frame that crosses z 128 does that on
+top of its own work. Measured on the console (`wp_region_enter()` timed with `cycle_count()` on the
+built pack):
+
+| Entering | Texture set | Cycles now | At the full budget (estimate) |
+|---|---|---|---|
+| the town (crossing south) | 394,752 bytes of copies (13 slots' rows) | 404,459 (371,163 the textures) | about 675,000 (668 KB) |
+| the shrine (crossing north) | 247,168 bytes (8 slots' rows) | 264,893 (232,408 the textures) | about 475,000 (460 KB) |
+
+Before the re-split the town's entry was 382,960 (the van and the three signs add 21,500). The
+palettes and the backdrop's art are about 33,000 of each entry; the rest is 0.94 cycles a byte of
+texels.
+
+A frame that goes past 1,000,000 CPU cycles is shown a tick late. (Whether the far views' slot 0 is copied on entering a region is that
+branch's; if it is, add about 60,000 to each entry.) The heaviest frames
+within 16 m of the line, as the World Checker measures them, are about 515,000 (views 228, 262,
+263: the canal's and the cemetery lane's ends of the courtyard row). **Now neither crossing
+hitches:** about 920,000 entering the town, 780,000 entering the shrine. Filled to its budget, the
+shrine's entry still fits (about 990,000); **the town's would not** (about 1,190,000: one frame
+shown a tick late, no more, since it stays under 2,000,000). The town fits a frame up to about
+470 KB of textures, 75 KB more than now. Past that the fix is the seam WORLDKIT.md, "Region
+seams", describes and the World Kit can already do: entering the region a slot a frame
+(`wp_texture_load()`) while the player is in the 24 m of open ground the line runs through,
+rather than the whole set at once (`follow_region()` in `game.akr`).
 
 ## The regions
 
 | Region | Cells | Slots | Budget | Free | Palette variants, backdrop |
 |---|---|---|---|---|---|
-| `town` | rows 0–1 (z < 128): 10 cells | 13–0 (458,752) | 389,120 (380 KB) | 15% | the shrine's `day`, `night`; its own (art/backdrop) |
-| `shrine` | rows 2–5 (z ≥ 128): 20 cells | 13–0 (458,752) | 307,200 (300 KB) | 33% | the same variants; its own backdrop |
+| `town` | rows 0–1 (z < 128): 10 cells | 13–1, 16–31 (950,272) | 684,032 (668 KB) | 42% | the shrine's `day`, `night`; its own (art/backdrop) |
+| `shrine` | rows 2–5 (z ≥ 128): 20 cells | 13–1, 16–31 (950,272) | 471,040 (460 KB) | 54% | the same variants; its own backdrop |
 
 `layout.py`'s `region_of(i, j)` says which region a cell is in; the three generators write it into
 the cells and `make_world.py` writes the regions, their `textures` (`slots`, `budget`) and the
@@ -73,9 +140,8 @@ fence, watermill wheel, platforms and the ramen shop's treads. The regions' pale
 holds two copies of the cards' palettes. Eight 4-bit palettes are left before the star's 254.
 
 **Entering a region.** The garden cart enters the region of the cell the player stands in when it
-changes (`game.akr`, `follow_region()`): `wp_region_enter()` copies the region's whole set, about
-56,000 cycles a 32 KB slot, at once. The town's set will be 12 slots or so (about 670,000 cycles),
-the shrine's about 9 (500,000): the frame of a crossing is late. Near cells of the region not
+changes (`game.akr`, `follow_region()`): `wp_region_enter()` copies the region's whole set at
+once (measured: [The budgets](#the-budgets), "The crossing"). Near cells of the region not
 entered draw as their stand-ins.
 
 **Stand-ins.** A stand-in is drawn whichever region is loaded, so in a world with two regions the
@@ -127,8 +193,22 @@ The future downtown district (DESIGN.md 7.1) would be a third region, entered un
 
 ## Palettes
 
-Regions get disjoint palettes and every region's are loaded at once (WORLDKIT.md, "Palettes per
-region"). A world has 255 4-bit palettes (0–254; 255 is the fonts'), and each 8-bit palette takes
+**Now (2 MB).** There are 512 4-bit palettes in two banks: 0–255 and 256–511 (WORLDKIT.md,
+"Palettes per region"). `make_world.py` starts the shrine's palettes at 256, so the town has
+bank 0 to itself: palettes 0–253, since 254 is the star's and 255 the fonts'. The town uses
+0–187, the shrine 256–320 (`report.json`'s `regions.NAME.palette.palettes`):
+
+| Region | Range | Used | Ceiling | Headroom |
+|---|---|---|---|---|
+| town | 0–253 | 188 | 254 | 66 |
+| shrine | 256–511 | 65 | 256, less 16 for each 8-bit palette (from 511 down) | 191 |
+
+The town was the binding limit (palettes 0–185 of the 254 the two regions shared, the shrine
+186–250). 8-bit textures are possible again: the World Kit takes 8-bit palettes from 31 down
+(colours 7936 on, the top of bank 1), so each costs the shrine's range 16 palettes, not the town's.
+
+**Before (1 MB).** Regions get disjoint palettes and every region's are loaded at once
+(WORLDKIT.md, "Palettes per region"). A world has 255 4-bit palettes (0–254; 255 is the fonts'), and each 8-bit palette takes
 16 of them from 14 downward (8-bit palette 14 is 4-bit palettes 224–239). The planned placements
 need, by the kit's own packing (`kitcore/texpack.py`, `assign_palettes`; entries are the assets'
 palette-backed colours, 15 to a palette):
@@ -152,7 +232,7 @@ some palettes of their own), about 20 to spare. So:
 - The kit change that removes the limit (not built): the regions' texture palettes in one range,
   loaded with the region's set, so only the entries, far colours and backdrop stay disjoint.
 
-## Allowances for the placement agents
+## Allowances for the placement agents (1 MB: superseded by [The budgets](#the-budgets))
 
 Each zone's own tiles, its share of the region's shared set and the ground's, against the region's
 budget. A tile of a shared prop (the list below), or one two zones use, is the shared set's; a
@@ -230,7 +310,17 @@ fewer windows.
 
 ## Cuts (the town)
 
-Not made: they are the asset owners' and the zone agents' to make. Exact where a texture goes from
+**With 2 MB.** The zone agents made most of the cuts below (the station's in 29a1ee6, the street's
+and the shared props' in 397ef69). Restored with the re-split, each a generator change that shows:
+the record shop's glass front and kanban, the coin laundry's glass front and sign, and the crane
+game's sign, side sticker and outlet label are stored at full width again (their text was smeared
+at half width; +10,944 bytes, the street's), and the delivery van is back on the front road
+(`place/street.py`, `van_road`, south lane at x 85; +14,272, the town's shared set). The 8-bit to
+4-bit conversions stay (each would double its bytes and cost 16 palettes), as do the merged and
+repeating images (the same picture either way) and the newsstand's halved cells (its sheet was
+re-laid around them).
+
+**The plan (1 MB).** Not made at the time: they are the asset owners' and the zone agents' to make. Exact where a texture goes from
 8-bit to 4-bit (half its bytes) or is replaced; "about" where it is halved, which depends on the
 art. Each list is more than its zone needs.
 
