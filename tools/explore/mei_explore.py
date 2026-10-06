@@ -136,7 +136,7 @@ def leg_items(e, owner, node, pred=None, limit=40):
         d = FD.describe_flight(e, fs, row)
         to = tuple(float(c) for c in pos[v])
         leg = {'id': f'{owner["id"]}-leg{k + 1}', 'takeoff': d, 'to': [round(c, 2) for c in to], '_edge': (int(u), int(v))}
-        if d['move'] in (M.GRIND_END, M.GRIND_JUMP) and out and out[-1][2] is not None:
+        if d['move'] == M.GRIND_END and out and out[-1][2] is not None:
             # on with the flight that landed on the rail: watch for this leg's landing instead
             _, prev, q = out[-1]
             q.box = to
@@ -150,7 +150,27 @@ def leg_items(e, owner, node, pred=None, limit=40):
     return out
 
 
-def repaired_route(e, owner, runner, a, start, targets, banned=(), rounds=4):
+def similar_edges(e, edges, near=1.5):
+    """The edges like these: the same move, from within `near` metres of the take-off to within
+    `near` metres of the landing (the reach map has many near-copies of one flight)."""
+    from explore import finds as FD
+    pos = FD.node_positions(e)
+    src, dst, cost, mid = e.edges
+    out = []
+    for u, v in edges:
+        i = e.edge_index(u, v)
+        if i < 0:
+            out.append((u, v))
+            continue
+        same = np.nonzero(mid == mid[i])[0]
+        du = np.linalg.norm(pos[src[same]] - pos[u], axis=1)
+        dv = np.linalg.norm(pos[dst[same]] - pos[v], axis=1)
+        sel = same[(du <= near) & (dv <= near)]
+        out.extend(zip(src[sel].tolist(), dst[sel].tolist()))
+    return out
+
+
+def repaired_route(e, owner, runner, a, start, targets, banned=(), rounds=6):
     """The cheapest route from start to any of targets whose every flight the real cart repeats:
     a leg it does not repeat is taken out of the graph and the route found again, up to `rounds`
     times. Returns the verdict and the route's legs."""
@@ -181,7 +201,7 @@ def repaired_route(e, owner, runner, a, start, targets, banned=(), rounds=4):
             v['tried'] = tried
             return v, gs
         bad = next(g for g in gs if g.get('confirm') and not g['confirm'].get('confirmed'))
-        banned.extend(bad.get('_edges', [bad['_edge']]))
+        banned.extend(similar_edges(e, bad.get('_edges', [bad['_edge']])))
     return {'confirmed': False, 'rounds': rounds, 'gave_up': True, 'tried': tried}, []
 
 
@@ -301,6 +321,13 @@ def confirm_finds(e, finds, runner, a):
             continue
         v, gs = repaired_route(e, s_, runner, a, e.start, s_['_inside'], banned=s_['_intended_edges'])
         s_['headless_other_way'] = v
+        # and each way in that is not intended, alone: every other way in taken out
+        s_['headless_ways'] = {}
+        kinds = [w['move'] for w in s_['other_ways']][:4]
+        for kind in kinds:
+            others = [ed for k_, eds in s_['_entries'].items() if k_ != kind for ed in eds]
+            v, gs = repaired_route(e, {'id': f'{s_["id"]}-{kind}'}, runner, a, e.start, s_['_inside'], banned=others)
+            s_['headless_ways'][kind] = v
     for t in finds['traps'][:12]:
         outs = [g for g in t.get('escape_probes', []) if g.get('confirm', {}).get('confirmed')]
         t['headless'] = {'tried': len(t.get('escape_probes', [])), 'got_out': len(outs),

@@ -36,11 +36,11 @@ def draw_map(e, finds, confirmed, path, scale=2.0):
     x0, z0, x1, z1 = m.frame
     pad = 8
     W = int((x1 - x0) * scale) + 2 * pad
-    H = int((z1 - z0) * scale) + 2 * pad + 60
+    H = int((z1 - z0) * scale) + 2 * pad + 84
     img = Image.new('RGB', (W, H), (24, 24, 30))
     # sample the grid at the picture's pixels
     xs = x0 + (np.arange(W - 2 * pad) + 0.5) / scale
-    zs = z1 - (np.arange(H - 2 * pad - 60) + 0.5) / scale
+    zs = z1 - (np.arange(H - 2 * pad - 84) + 0.5) / scale
     ix = np.clip(np.rint((xs - m.ox) / m.grid).astype(int), 0, m.nx - 1)
     iz = np.clip(np.rint((zs - m.oz) / m.grid).astype(int), 0, m.nz - 1)
     t = top[np.ix_(iz, ix)]
@@ -86,6 +86,8 @@ def draw_map(e, finds, confirmed, path, scale=2.0):
                 s = f[f'{side}_stop']
                 cross(s[0], s[2], (60, 220, 240), 4, 2)
     for f in finds.get('traps', []):
+        if f.get('headless', {}).get('got_out'):
+            continue                            # the cart got out: the reach map's miss
         b = f['box']
         d.rectangle([*P(b[0], b[3]), *P(b[2], b[1])], outline=(200, 140, 60), width=2)
     for f in finds.get('falls', []):
@@ -130,7 +132,7 @@ def draw_map(e, finds, confirmed, path, scale=2.0):
     if e.spawn:
         ring(e.spawn[0], e.spawn[2], (255, 255, 255), 6, 2)
     # legend
-    y = H - 56
+    y = H - 80
     items = [((90, 200, 90), 'reachable floor'), ((120, 120, 120), 'not reached'), ((255, 40, 40), 'escape (x: where it leaves)'),
              ((255, 60, 220), 'falls through'), ((120, 60, 150), 'no floor (drop check)'), ((255, 160, 40), 'sealed place'),
              ((60, 220, 240), 'path stops'), ((200, 140, 60), 'trap'), ((255, 220, 40), 'star (blue ring: taken gliding)')]
@@ -167,7 +169,7 @@ def _route(x):
     if r.get('first_failing'):
         bits.append(f'first off: {" > ".join(r["first_failing"]["move"])} from {r["first_failing"]["from"]}')
     if r.get('not_flown'):
-        bits.append(f'{len(r["not_flown"])} not flown (off a rail or a hang)')
+        bits.append(f'{len(r["not_flown"])} not flown')
     return '; route: ' + ', '.join(bits)
 
 
@@ -180,7 +182,7 @@ def _headless_route(h):
         return f'no route left after {h["rounds"]} rounds (each leg the cart did not repeat taken out)'
     if h.get('gave_up'):
         return f'no route the cart repeats in {h["rounds"]} rounds'
-    return 'a route with legs the cart cannot fly here (off a hang): ' + _route({'route_check': h}).lstrip('; ')
+    return 'a route with legs the cart cannot fly here: ' + _route({'route_check': h}).lstrip('; ')
 
 
 def summary_text(rep):
@@ -224,6 +226,8 @@ def summary_text(rep):
         h = s.get('headless_other_way')
         if h:
             out.append('    with its intended ways in taken out: ' + _headless_route(h))
+        for kind, h in s.get('headless_ways', {}).items():
+            out.append(f'    in by {kind} alone: ' + _headless_route(h))
         for w in s['other_ways'][:8]:
             out.append(f'    not intended: {w["move"]} from ({w["from"][0]:.1f}, {w["from"][1]:.1f}, {w["from"][2]:.1f}), '
                        f'{w["cost_s"]} s from the spawn{_conf(w)}')

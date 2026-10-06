@@ -33,6 +33,7 @@ SCENARIO = 990
 
 MODE_POLE_JUMP, MODE_POLE_DROP = 20, 21
 MODE_DROP = 40
+RAIL_MODES = {'hang_jump': 22, 'hang_drop': 23, 'grind_jump': 24, 'grind_off_end': 25}
 WORLD_CONST = {'garden': 'GARDEN_WORLD_GARDEN', 'shrine': 'GARDEN_WORLD_SHRINE', 'shrinetown': 'GARDEN_WORLD_SHRINETOWN'}
 
 
@@ -280,6 +281,20 @@ fn ex_takeoff(q: ExProbe) {
         pl.fwd = 0.0
         enter(St.Fall)
     }
+    if m >= 22 && m <= 25 {                    // on a rail: hanging (22, 23) or grinding (24, 25)
+        var hp = q.p
+        if m <= 23 { hp = vec3(q.p.x, q.p.y + HANG_BELOW, q.p.z) }
+        var held = false
+        for k in 0..rail_n {
+            if !held && wp_path_nearest(rails[k], hp, 1.2) {
+                pl.yaw = q.head
+                pl.fwd = mps(T.GrindMin)
+                set_hvel()
+                if m <= 23 { grab_rail(k, St.Hang) } else { grab_rail(k, St.Rail) }
+                held = true
+            }
+        }
+    }
     if m == 20 || m == 21 {
         var best = -1
         var bd = 1000.0
@@ -378,7 +393,7 @@ fn ex_case(f: s32) {
     let steer = cc_stick(q.head, 1.0)
     if g == 1 {
         ex_takeoff(q)
-        if m != 1 && m != 21 && m != 40 { pad_v = A }
+        if m != 1 && m != 21 && m != 40 && m < 22 { pad_v = A }
         if m == 21 { pad_v = R }
         if m != 10 && m != 40 { stick_v = steer }
         ex_lasta = pad_v == A
@@ -431,6 +446,8 @@ fn ex_case(f: s32) {
     }
     if pl.st == St.WallKick && ex_kicks > 0 && ex_kick_yaw == 0.0 { ex_kick_yaw = pl.yaw }
     if m == 20 && g < 4 { a = g == 2 }
+    if (m == 22 || m == 24) && g == 3 { a = true }       // a hang jump or a grind jump, a tick after the grab
+    if m == 23 && g == 3 { pad_v |= R }                   // off the hang: let go
     if a { pad_v |= A }
     ex_lasta = a
 }
@@ -577,8 +594,10 @@ def probe_for_flight(fid, takeoff, extra=None):
     elif name in ('pole_jump', 'pole_drop'):
         q.update(p=tuple(takeoff['from']), yaw=head, head=head,
                  mode=MODE_POLE_JUMP if name == 'pole_jump' else MODE_POLE_DROP)
+    elif name in RAIL_MODES:
+        q.update(p=tuple(takeoff['from']), yaw=head, head=head, mode=RAIL_MODES[name])
     else:
-        return None             # off a rail or a hang: not driven headless (yet)
+        return None
     q['kick'] = int(takeoff.get('kicks', 0))
     q['release'] = int(takeoff.get('release_ticks', 0))
     q['t'] = min(max(int(takeoff.get('seconds_before', 0) * 60) + int(takeoff.get('ticks', 600)) + 120, 240), 3000)

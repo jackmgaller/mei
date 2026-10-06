@@ -357,8 +357,12 @@ def sealed(e):
         names = np.array([M.WALK] + MOVE_NAMES)[mid.astype(int) + 1]
         meant = into & np.isin(names, list(intended))
         intended_edges = list(zip(src[meant].tolist(), dst[meant].tolist()))
+        entries = {}
+        for u, v, nm in zip(src[into].tolist(), dst[into].tolist(), names[into].tolist()):
+            entries.setdefault(nm, []).append((u, v))
         out.append({'kind': 'sealed', 'name': spec['name'], 'box': sealed_box(spec), 'watch': sealed_watch(spec),
                     'reached': reached, '_inside': np.nonzero(inside)[0].tolist(), '_intended_edges': intended_edges,
+                    '_entries': entries,
                     'intended': sorted(intended), 'ways_in': sorted(ways.values(), key=lambda w: w['cost_s']),
                     'other_ways': sorted([w for n, w in ways.items() if n not in intended], key=lambda w: w['cost_s'])})
     return out

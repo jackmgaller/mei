@@ -126,10 +126,12 @@ probe row are the repro.
 **Routes.** A find's own flight is flown from where it took off. The route the reach map gives to
 that take-off is checked too, flight by flight: each leg is flown from its own take-off and must
 come down within 1.5 m of where the map says. For the shortcuts and the sealed places a leg the
-cart does not repeat is taken out of the graph and the route found again (up to four rounds), so
-what is reported is a route the real controller flies. A leg that starts on a rail's end is flown
-with the leg that put the body on the rail (the controller grinds on by itself); a leg off a hang
-is not flown.
+cart does not repeat is taken out of the graph, with its near copies (the same move from within
+1.5 m to within 1.5 m), and the route found again (up to six rounds), so what is reported is a
+route the real controller flies. A sealed place is also tried one way in at a time (every other
+way in taken out). Legs off a pole, a hang or a grind start with the body put on the pole or the
+rail (`grab_pole()`, `grab_rail()`); a leg off a rail's end is flown with the leg that put the body
+on the rail, since the controller grinds on by itself.
 
 **Cases.** For each confirmed find `cases/FIND.akr` is a complete cases file: the probe driver, the
 probe, and the check that fails while the bug is there (`expect(!ex_out, ...)` for an escape,
@@ -172,8 +174,8 @@ denser drops, six tries) is the overnight mode: several times longer.
 - Flags are ignored: stars that appear on a flag (the race, the bell, the red coins) are taken as
   there, triggers do not fire, layers stay as the world starts (the shortcuts shut).
 - The confirmer starts each flight in the controller state the move needs (the run speed, the
-  chain window) rather than running up to it, and cannot start on a hang. A find it does not
-  repeat may still be real (a take-off it did not hit); one it repeats is real.
+  chain window, a pole or a rail held) rather than running up to it. A find it does not repeat may
+  still be real (a take-off it did not hit); one it repeats is real. Walking legs are not flown.
 - The traps of the reach map are mostly its own misses: the 12 largest are tried headless and
   marked when a move gets out.
 - Escapes are judged against the cells' rectangle; a world with a smaller playable area needs a
