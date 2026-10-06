@@ -2034,6 +2034,7 @@
     },
     "tolerance": 0.15,
     "tile": 16,
+    "slide_floor_degrees": 70,
     "lod": {
      "distance": 22,
      "tolerance": 2.5

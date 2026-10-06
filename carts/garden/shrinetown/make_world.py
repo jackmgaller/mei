@@ -220,12 +220,20 @@ world = {
     'collision': town['collision'],
     'regions': regions,
     'runtime': {'depth': True, 'perspective': True, 'near_far': 192},
-    'verification': {'thresholds': {'cell_triangles': 12000, 'cell_placements': 400, 'standin_triangles': max(COURTYARD.values())}},
+    # vantage points: the heaviest views the reviews found (DESIGN.md 12.9), always checked on top of
+    # the sampled ones (WORLDCHECKER.md, "Vantage points")
+    'verification': {'thresholds': {'cell_triangles': 12000, 'cell_placements': 400, 'standin_triangles': max(COURTYARD.values())},
+                     'vantage_points': json.loads((ST / 'notes' / 'vantage_points.json').read_text())},
+    # 254 is the star card's palette (the cart's own pack); no region may take it
+    'palette': {'reserved': [254]},
     'layers': layers,
     'paths': paths,
     'terrain': {'materials': materials, 'fields': {'ground': {
         'spacing': 2, 'min': [0, 0], 'max': [320, 384], 'heights': HEIGHTS,
         'material': 'floor', 'steep': {'degrees': 38, 'material': 'rock'}, 'tolerance': 0.15, 'tile': 16,
+        # steep faces up to 70 degrees are floors a falling body slides down, not only walls, so no
+        # crease between two steep faces lets a body through (WORLDKIT.md, "Steep ground")
+        'slide_floor_degrees': 70,
         'lod': GROUND_LOD, 'operations': ops}}},
     'scatter': scatter,
     'lod': {'ground': FAR_GROUND,
