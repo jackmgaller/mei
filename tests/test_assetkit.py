@@ -1364,10 +1364,13 @@ class TextureProjectionTests(unittest.TestCase):
             'lod':{'levels':[{'distance':10,'nodes':[{'id':'b','op':'box','size':[1,1,1],'material':'brick','open':['bottom']}]}]}}
         mesh,_,_ = compile_recipe(r)
         self.assertIs(mesh.levels[0][0].textures['packing'],mesh.textures['packing'])
+        # a texture only a level draws (a far card's second drawing, an impostor's pictures) is the
+        # asset's too: level 0 loads and places it, and the level shares that placement
         r['lod']['levels'][0]['nodes'][0]['material'] = 'other'
-        with self.assertRaisesRegex(AssetError,'level 0') as error:
-            compile_recipe(r)
-        self.assertEqual(error.exception.path,'/lod/levels/0/nodes')
+        mesh,_,_ = compile_recipe(r)
+        self.assertIn('other',mesh.textures['textures'])
+        self.assertIs(mesh.levels[0][0].textures['packing'],mesh.textures['packing'])
+        self.assertIn(mesh.textures['textures']['other'].tile.key,mesh.textures['packing'].placements)
 
 
 class TexturePackingTests(unittest.TestCase):
