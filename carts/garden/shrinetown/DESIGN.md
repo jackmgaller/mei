@@ -1324,3 +1324,34 @@ The view scenarios (`sh_view`: 440–446, and the shrine's 310–316) count late
 30: the frame after a view jumps to V1 or V4 loads the cells round it and took about 1.1 million
 cycles (one late frame), which walking there never does at once; each view's own frames are
 636,000–652,000 at most.
+
+### 12.7 Far views (2026-10-05)
+
+The owner, from the courtyard wall looking north: far off the view was still brutal. The near
+cells' trees were already crossed cut-out cards past 16–20 m; what read as boxes were the
+stand-ins (the far ring, from about 96 m), which drew every textured face in a flat far colour,
+so each tree's two cards became two dark slabs (the cedars) or yellow and orange blocks (the
+ginkgos and maples), and nothing faded with distance. Three changes, in the World Kit and the
+world's settings (WORLDKIT.md, "Stand-ins made by the kit" and "Haze"):
+
+| What | Where | Effect |
+|---|---|---|
+| The stand-ins' texture set | `make_world.py`: `standins.textures` `{"slots": "0"}` | the trees' far cards and the lattices (15 tiles, 23,764 bytes, 27,488 on the grid) in slot 0, held by both regions' sets: stand-ins keep them cut out (TEXTURES.md) |
+| Haze | `make_world.py`: `haze` `{"start": 20, "end": 280, "amount": 0.55, "standins": 0.38}` | levels after level 0 and stand-ins fade toward the sky at 2° (day `#c6ccc2`, night `#24213e`): the stand-ins' far colours and cards exactly per variant, the levels through their tints |
+| Later last levels | `place/shrine.py`, `SHRINE_LOD` | temple and pagoda 40/130 (were 30/90), gate 30/110 (30/80), great torii 40 (30), walls 28 (24), stage hall 18/90 (18/60), giant cedar 22/110 (22/80), the four trees' cards from 64 (44–52) |
+
+Measured with the full check (600 views; before → after): peaks 2,266 → 2,392 triangles, 617,020
+→ 617,020 draw CPU (the station canopy, unchanged), 908,916 → 903,706 GPU; the shrine zone's
+worst draw CPU 509,988 → 531,976, its 90th percentile 435,508 → 444,527; one view over a budget,
+as before. `tools/views.py`'s heaviest: deck 3 looking east 510,694 → 532,375, the courtyard
+toward the gate 477,539 → 477,976, V3 stage looking south 324,643 → 343,791. With the halls'
+level 1 at 36 and the walls' at 32 the courtyard view was 576,583 and deck 3 552,388, so they
+stay at 30 and 28; the trees' level 1 stays where the zones put it (16–20: a tree's level 0 is
+60–90 triangles, its cards 4–6).
+
+The far views (`tools/shots.py`; `screenshots/far/before/` and `after/`), World Checker at the
+same cameras (triangles, draw CPU, GPU), before → after: courtyard wall north 1,382, 308,256,
+435,086 → 1,500, 328,368, 459,083; pagoda north 1,242, 347,477, 459,446 → 1,242, 347,461,
+461,553; stage 1,333, 336,505, 402,855 → 1,403, 348,464, 391,151; station plaza 1,350, 415,031,
+391,185 → 1,336, 412,739, 388,860; canal by the watermill 1,736, 346,810, 528,387 → 1,774,
+352,422, 531,829. The pack is 11,480,668 bytes (11,456,388 before).

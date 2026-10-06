@@ -15,6 +15,7 @@ colours per material. The kit treats variant names as opaque.
 from assetkit.compiler import relocate, rgb15
 from assetkit.texout import rgb_hex
 from kitcore.errors import pointer
+from .haze import mix as haze_mix
 from .schema import WorldError
 
 CLASSES = ('surface','emissive')
@@ -43,9 +44,12 @@ class RegionPalette:
         self.tex8 = {}         # 8-bit palette -> (class, [15-bit colours, index 1 first])
         self.texels = {}       # (asset, material) -> (bits, palette, {15-bit colour: index})
         self.backdrop = None   # (4-bit palette, [15-bit colours])
+        self.backdrop_rows = []   # per variant: the silhouette's palette when it is outside the main run
         self.sky = None        # backdrop.Backdrop
         self.run_rows = []     # per 8-bit palette: [colours per variant] (variants())
         self.sky_rows = []     # per variant: [0xBBGGRR] per sky stop (variants())
+        self.haze = None       # {'colours': {variant: hex}, 'amount', 'emissive'}: hazes the far colours (haze.py)
+        self.haze_palettes = set()   # 4-bit texture palettes hazed the same way (the stand-ins' card copies)
 
     @property
     def extra(self):
@@ -60,6 +64,7 @@ class RegionPalette:
             if key not in self.by_key:
                 self.by_key[key] = {'class':entry['class'],'color':entry['color'],'owners':[],
                                     'separate':bool(entry.get('separate'))}
+                if entry.get('haze'): self.by_key[key]['haze'] = True
             for owner in owners:
                 if owner not in self.by_key[key]['owners']: self.by_key[key]['owners'].append(owner)
 
@@ -142,6 +147,12 @@ class RegionPalette:
                         warnings.append({'code':'shared_entry_recoloured','region':self.name,'variant':vname,
                                          'message':f'{selector!r} shares its palette entry with {", ".join(others)}, which change colour too. '
                                                    'Set share: false on the material in its asset recipe to keep them apart.'})
+            if self.haze:
+                # far colours (stand-ins only): moved toward this variant's haze colour
+                target, amount, emissive = self.haze['colours'][vname], self.haze['amount'], self.haze['emissive']
+                for e in self.entries:
+                    if e.get('haze'):
+                        colors[id(e)] = haze_mix(colors[id(e)], target, amount*(emissive if e['class'] == 'emissive' else 1))
             row = [0]*self.colours
             for e in self.entries: row[e['colour']-self.first_colour] = rgb15(colors[id(e)])
             if self.extra: self.extra_colours(vname,v,vpath,row,warnings)
@@ -175,6 +186,9 @@ class RegionPalette:
             for i,c in enumerate(cols,1):
                 colour = pal*16+i
                 hexc = fixed[colour][0] if colour in fixed else multiply(rgb_hex(c),tint(cls))
+                if pal in self.haze_palettes:
+                    hexc = haze_mix(hexc,self.haze['colours'][vname],
+                                    self.haze['amount']*(self.haze['emissive'] if cls == 'emissive' else 1))
                 row[colour-self.first_colour] = rgb15(hexc)
         shared = {}
         for (a,m),(bits,pal,index) in self.texels.items():
@@ -194,8 +208,13 @@ class RegionPalette:
                 if k not in known:
                     raise WorldError(pointer(vpath,'backdrop'),f'The backdrop silhouette has no colour {rgb_hex(k)} '
                                      f'(its colours: {", ".join(sorted(rgb_hex(c) for c in known))}; compared at 15 bits).')
-            for i,c in enumerate(cols,1):
-                row[pal*16+i-self.first_colour] = rgb15(exact.get(c) or multiply(rgb_hex(c),tint('surface')))
+            colours = [rgb15(exact.get(c) or multiply(rgb_hex(c),tint('surface'))) for c in cols]
+            if self.first_colour <= pal*16 < self.first_colour+self.colours:
+                for i,c in enumerate(colours,1): row[pal*16+i-self.first_colour] = c
+            else:
+                # a plane reads palette bank 0 only: a region in bank 1 keeps its silhouette's
+                # palette in bank 0, loaded as a run of its own (world.py)
+                self.backdrop_rows.append(([0]+colours+[0]*15)[:16])
         elif v.get('backdrop'):
             raise WorldError(pointer(vpath,'backdrop'),f'Region {self.name!r} has no backdrop silhouette to recolour.')
         for q,(pal,(cls,cols)) in enumerate(sorted(self.tex8.items())):

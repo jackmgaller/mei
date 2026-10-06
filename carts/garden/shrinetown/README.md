@@ -34,7 +34,12 @@ without playing (the world is built with the garden cart):
 make B=build-mine build-mine/carts/garden.mei
 B=build-mine python3 carts/garden/shrinetown/tools/shots.py spawn               # screenshots/spawn.png
 B=build-mine python3 carts/garden/shrinetown/tools/shots.py --at 160 1.6 20 0 3 here   # any view
+B=build-mine python3 carts/garden/shrinetown/tools/shots.py --night wall_north  # palette variant 1
 ```
+
+The pictures are drawn as the game draws them, with the region's sky and silhouette behind;
+`--out DIR` writes them elsewhere. `screenshots/far/before/` and `after/` are the far views
+before and after the stand-ins' cards, haze and later levels (DESIGN.md 12.7).
 
 **The ground.** One heightfield over the level at 2 m, from the three regions' heights files
 (`shrinetown.heights.txt`), with cliffs for the canal (z 0–292), the school pool, the culvert,

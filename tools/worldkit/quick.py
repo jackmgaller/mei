@@ -140,8 +140,11 @@ def snapshot(source, compiled):
     textures = {}
     for r, rt in compiled.region_textures.items():
         tiles = {}
+        shared = set(rt.common.tiles) if rt.common else set()    # the stand-ins' own set (standins.textures)
         for a, material, tex in rt.uses():
             t = tex.tile
+            if t.key in shared:
+                continue
             row = tiles.setdefault(t.key, {'bits': t.bits, 'size': [t.width, t.height], 'window': t.window,
                                            'stored': t.vram_bytes(), 'allocated': allocated(t), 'users': []})
             row['users'].append([a.name, material])
@@ -152,7 +155,8 @@ def snapshot(source, compiled):
                     row['image'] = os.path.relpath(image, source.base)
             if len(getattr(tex, 'frames', ())) > 1:
                 row['frames'] = len(tex.frames)
-        textures[r] = {'budget': rt.spec.get('budget', len(rt.slots)*SLOT_BYTES), 'slots': list(rt.slots),
+        slots = list(getattr(rt, 'slots_given', None) or rt.slots)
+        textures[r] = {'budget': rt.spec.get('budget', len(slots)*SLOT_BYTES), 'slots': slots,
                        'tiles': tiles}
     probe = {k: v for k, v in game.get('probe', {}).items()}
     meta = {'format': 'mei-world-quick', 'version': VERSION, 'name': w['name'],

@@ -35,6 +35,24 @@
     "projection": "fit"
    },
    "double_sided": true
+  },
+  "far_b": {
+   "color": "#2e4a2e",
+   "texture": {
+    "sheet": "foliage",
+    "cell": "cedar_far_b",
+    "projection": "fit"
+   },
+   "double_sided": true
+  },
+  "far_c": {
+   "color": "#2e4a2e",
+   "texture": {
+    "sheet": "foliage",
+    "cell": "cedar_far_c",
+    "projection": "fit"
+   },
+   "double_sided": true
   }
  },
  "lighting": {
@@ -1540,8 +1558,8 @@
        ]
       ],
       "face_materials": [
-       "far",
-       "far",
+       "far_b",
+       "far_c",
        "leaves"
       ],
       "uvs": [
@@ -1660,8 +1678,8 @@
        ]
       ],
       "face_materials": [
-       "far",
-       "far"
+       "far_b",
+       "far_c"
       ],
       "uvs": [
        [
