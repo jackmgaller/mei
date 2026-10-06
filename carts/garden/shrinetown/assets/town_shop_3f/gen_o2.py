@@ -241,6 +241,115 @@ def tea_masks():
 
 
 # ============================================================================================
+# The street's other three-storey shops (alpha review r15 #1: twelve shops, seven names; Ryokkoen
+# four times): the same building with another trade's front, lettering and colours, and no
+# rooftop sign. Their glass fronts are cells of their own sheet, art/more.png.
+# ============================================================================================
+
+MORE = {}
+
+
+def draw_more():
+    # glass_k: a kimono shop. A kimono on its stand, bolts of cloth on shelves, a tatami step.
+    img, d = new(MORE, 'glass_k', 64, 32)
+
+    def kimono(d):
+        gs.rect(d, 0, 0, 63, 31, fill='#e8dcc0')
+        gs.rect(d, 0, 24, 63, 31, fill='#b8a878')                # the tatami step
+        gs.rect(d, 0, 24, 63, 24, fill='#8a7a4a')
+        for i, x in enumerate(range(1, 20, 3)):                  # bolts of cloth, two shelves
+            for y, k in ((4, i), (13, i + 3)):
+                c = ['#7a2a4a', '#2a4a7a', '#c8a040', '#4a6a3a', '#a8321e', '#5a3a6a', '#d8b8c8'][k % 7]
+                gs.rect(d, x, y, x + 1, y + 7, fill=c)
+        gs.rect(d, 0, 12, 21, 12, fill='#6a4632')
+        gs.rect(d, 0, 21, 21, 21, fill='#6a4632')
+        gs.rect(d, 28, 3, 44, 3, fill='#2c2a28')                 # the stand's bar
+        d.polygon([(30, 4), (42, 4), (44, 23), (28, 23)], fill='#5a2a6a')     # the kimono
+        d.polygon([(34, 4), (36, 12), (38, 4)], fill='#f4f0e0')               # its collar
+        gs.rect(d, 29, 13, 43, 15, fill='#d8b048')                            # the obi
+        for x, y in ((31, 18), (39, 8), (35, 20), (41, 17)):
+            d.point((x, y), fill='#f0a8c0')
+            d.point((x + 1, y), fill='#f0a8c0')
+        for i, x in enumerate(range(49, 62, 4)):                 # folded obi on the counter
+            gs.rect(d, x, 18, x + 2, 23, fill=['#d8b048', '#a8321e', '#2a4a7a', '#4a6a3a'][i])
+    gs.shopfront_frame(d, 64, 32, 4, kimono)
+
+    # glass_h: a bookshop. Shelves of spines, a magazine rack in front, the till.
+    img, d = new(MORE, 'glass_h', 64, 32)
+
+    def books(d):
+        gs.rect(d, 0, 0, 63, 31, fill='#e6e0cc')
+        for y in (2, 10):                                        # two shelves of spines
+            for i, x in enumerate(range(0, 64, 2)):
+                c = ['#a8321e', '#2a4a7a', '#e8dcc0', '#3a5a3a', '#c8a040', '#5a3a2c', '#24345a'][(i * 3 + y) % 7]
+                h = 6 + (i * 5 + y) % 2
+                gs.rect(d, x, y + 7 - h, x, y + 7, fill=c)
+            gs.rect(d, 0, y + 8, 63, y + 8, fill='#6a4632')
+        covers = ['#f04880', '#f4d23c', '#3cb4e6', '#f4f2e8', '#e85a2a', '#64c864', '#c84a3a']
+        for i, x in enumerate(range(2, 40, 6)):                  # the magazine rack, covers out
+            gs.rect(d, x, 20, x + 4, 27, fill=covers[i % 7])
+            gs.rect(d, x + 1, 21, x + 3, 22, fill='#2c2a28')
+        gs.rect(d, 0, 28, 41, 29, fill='#8a6446')
+        gs.rect(d, 46, 21, 61, 29, fill='#6a4632')               # the till's counter
+        gs.rect(d, 50, 18, 55, 20, fill='#c4c8cc')
+    gs.shopfront_frame(d, 64, 32, 4, books)
+
+
+def kimono_masks():
+    m = {}
+    img, d = new(m, 'kanban', 128, 16, MASK)
+    gs.rect(d, 0, 0, 127, 15, outline=RIM)
+    d.ellipse([4, 1, 17, 14], fill=RIM)
+    gs.text(d, (11, 8), '呉', 11, FG, GOTHIC)
+    gs.text(d, (35, 8), 'ごふく', 9, FG, GOTHIC_M)
+    gs.rect(d, 50, 3, 50, 12, fill=RIM)
+    for i, ch in enumerate('きくや'):
+        gs.text(d, (70 + i * 20, 8), ch, 14, FG, MINCHO)
+    img, d = new(m, 'tate', 16, 48, MASK)
+    gs.rect(d, 0, 0, 15, 47, outline=RIM)
+    gs.vtext(d, 8, 8, '呉服', 12, 13, FG, MINCHO)
+    gs.rect(d, 3, 22, 12, 22, fill=RIM)
+    gs.vtext(d, 8, 29, 'きもの', 9, 7, FG, GOTHIC_M)
+    img, d = new(m, 'noren', 32, 16, MASK)
+    gs.text(d, (16, 9), '菊', 11, FG, MINCHO)
+    for x in (10, 21):
+        gs.rect(d, x, 4, x, 15, fill=(0, 0, 0, 0))
+    return m
+
+
+def book_masks():
+    m = {}
+    img, d = new(m, 'kanban', 128, 16, MASK)
+    gs.rect(d, 0, 0, 127, 15, outline=RIM)
+    gs.rect(d, 2, 2, 125, 13, outline=RIM)
+    gs.text(d, (18, 8), '本', 11, FG, GOTHIC)
+    for i, ch in enumerate('文栄堂書店'):
+        gs.text(d, (42 + i * 17, 8), ch, 13, FG, MINCHO)
+    img, d = new(m, 'tate', 16, 48, MASK)
+    gs.rect(d, 0, 0, 15, 47, outline=RIM)
+    gs.vtext(d, 8, 8, '書籍', 12, 13, FG)
+    gs.rect(d, 3, 22, 12, 22, fill=RIM)
+    gs.vtext(d, 8, 29, '雑誌', 9, 10, FG, GOTHIC_M)
+    img, d = new(m, 'noren', 32, 16, MASK)
+    gs.text(d, (16, 9), '本', 11, FG, GOTHIC)
+    for x in (10, 21):
+        gs.rect(d, x, 4, x, 15, fill=(0, 0, 0, 0))
+    return m
+
+
+VARIANTS_3F = {
+    'town_shop_3f_kimono': dict(masks=kimono_masks, glass='glass_k', glass_col='#e8dcc0',
+                                kanban=['#4a2a5a', '#f4f0e0', '#d8b048'], tate=['#f4f0e0', '#4a2a5a', '#4a2a5a'],
+                                noren=['#4a2a5a', '#f4f0e0', '#4a2a5a'], awn=['#4a2a5a', '#e8e2c8'],
+                                tile=('#7e7e86', '#9a9aa2', '#64646c')),
+    'town_shop_3f_books': dict(masks=book_masks, glass='glass_h', glass_col='#e6e0cc',
+                               kanban=['#7a1e1e', '#f4f0e0', '#d8b048'], tate=['#f4f0e0', '#7a1e1e', '#7a1e1e'],
+                               noren=['#7a1e1e', '#f4f0e0', '#7a1e1e'], awn=['#7a1e1e', '#e8e2c8'],
+                               tile=('#b89a6a', '#ccb48a', '#9a7e52')),
+}
+
+
+# ============================================================================================
 # town_shop_3f: Ryokkoen, a tea merchant in a 1970s three-storey building faced in brown
 # scratch tiles, the street's tallest shops (9.5 m to the parapet). Origin at the centre of its
 # 9 x 14 m footprint at street level, front toward -Z, like the two-storey shops.
@@ -253,18 +362,24 @@ PH_X, PH_Z, PH_W, PH_H = -2.6, 4.2, 2.6, 2.4                                # th
 TANK = (1.6, 1.1, 1.2)
 
 
-def shop_3f():
-    masks = tea_masks()
-    kanban = ['#2e5a2e', '#f4f0e0', '#d8b048']
-    tate = ['#f4f0e0', '#2e5a2e', '#2e5a2e']
+def shop_3f(name='town_shop_3f'):
+    """Ryokkoen; or, with the name of one of VARIANTS_3F, that trade's front without the rooftop
+    sign and the side wall's advert."""
+    v = VARIANTS_3F.get(name)
+    masks = v['masks']() if v else tea_masks()
+    kanban = v['kanban'] if v else ['#2e5a2e', '#f4f0e0', '#d8b048']
+    tate = v['tate'] if v else ['#f4f0e0', '#2e5a2e', '#2e5a2e']
     roof_sign = ['#f4f0e0', '#2e5a2e', '#c8301e']
-    noren = ['#24345a', '#f4f0e0', '#24345a']
-    awn = ['#2e5a2e', '#e8e2c8']
-    tile, mortar = '#9a6a52', '#c8c4b8'
+    noren = v['noren'] if v else ['#24345a', '#f4f0e0', '#24345a']
+    awn = v['awn'] if v else ['#2e5a2e', '#e8e2c8']
+    tiles = v['tile'] if v else ('#9a6a52', '#b49a84', '#865a44')
+    tile, mortar = tiles[0], '#c8c4b8'
     sheets = {'shopfront': {'image': SHOPFRONT}, 'tea': {'image': 'art/tea.png'}}
+    if v:
+        sheets = {'shopfront': {'image': SHOPFRONT}, 'more': {'image': 'art/more.png'}}
     mats = {
         'tile': {'color': tile, 'tag': 'wall', 'texture': {
-            'pattern': 'brick', 'size': 16, 'colors': [tile, '#b49a84', '#865a44'],
+            'pattern': 'brick', 'size': 16, 'colors': list(tiles),
             'params': {'courses': 8, 'bricks': 4, 'bond': 0.5, 'mortar': 1, 'seed': 3},
             'projection': 'box', 'scale': [1, 0.5]}},
         'mortar': {'color': mortar, 'tag': 'wall', 'texture': {
@@ -285,22 +400,28 @@ def shop_3f():
         'awning': {'color': awn[0], 'tag': 'awning', 'texture': {
             'pattern': 'stripes', 'size': 16, 'colors': awn, 'params': {'count': 4, 'axis': 'u'},
             'projection': 'box', 'scale': [1, 1]}},
-        'glass': {'color': '#e6dcb8', 'class': 'emissive', 'tag': 'shopfront', 'texture': cell('tea', 'glass_t')},
+        'glass': {'color': v['glass_col'] if v else '#e6dcb8', 'class': 'emissive', 'tag': 'shopfront',
+                  'texture': cell('more', v['glass']) if v else cell('tea', 'glass_t')},
         'window2': {'color': '#4e6a7a', 'texture': cell('shopfront', 'win_a')},
         'window3': {'color': '#4e6a7a', 'texture': cell('shopfront', 'win_c')},
         'ad': {'color': '#9a5a44', 'texture': cell('tea', 'ad')},
         'legs': {'color': '#5e6468', 'double_sided': True, 'texture': cell('tea', 'legs')},
         'kanban': {'color': kanban[0], 'class': 'emissive', 'tag': 'sign', 'texture': mask_texels(masks['kanban'], kanban)},
         'tate': {'color': tate[0], 'class': 'emissive', 'tag': 'sign', 'texture': mask_texels(masks['tate'], tate)},
-        'roof_a': {'color': roof_sign[0], 'class': 'emissive', 'tag': 'sign', 'texture': mask_texels(masks['roof_a'], roof_sign)},
+        'roof_a': {'color': roof_sign[0], 'class': 'emissive', 'tag': 'sign',
+                   'texture': None if v else mask_texels(masks['roof_a'], roof_sign)},
         # both faces of the rooftop sign show roof_a (one image, the town's texture budget: TEXTURES.md)
-        'roof_b': {'color': roof_sign[0], 'class': 'emissive', 'tag': 'sign', 'texture': mask_texels(masks['roof_a'], roof_sign)},
+        'roof_b': {'color': roof_sign[0], 'class': 'emissive', 'tag': 'sign',
+                   'texture': None if v else mask_texels(masks['roof_a'], roof_sign)},
         'noren': {'color': noren[0], 'texture': mask_texels(masks['noren'], noren, clear='#000000')},
         'ac': {'color': '#e2e0d6', 'texture': cell('shopfront', 'ac')},
         'antenna': {'color': '#7a7e84', 'double_sided': True, 'texture': cell('shopfront', 'antenna')},
         'back_door': {'color': '#8e949a', 'texture': cell('shopfront', 'back_door')},
         'back_win': {'color': '#c8d4d8', 'texture': cell('shopfront', 'back_win')},
     }
+    if v:                               # no rooftop sign, no advert
+        for k in ('ad', 'legs', 'roof_a', 'roof_b'):
+            del mats[k]
     WIN2, WIN3 = 4.85, 8.05             # window centres on the second and third floors
 
     def shell(level):
@@ -320,7 +441,8 @@ def shop_3f():
                                           ('win2', 'back_win', (-1.6, 7.8), (1.4, 0.9))):
                 m.decal(back, id, mat, size, (x, y, D), (0, 0, 1))
             side = m.quad((W, 0, -D), (W, H, -D), (W, H, D), (W, 0, D), (1, 0, 0), 'mortar')
-            m.decal(side, 'ad', 'ad', (5.2, 2.6), (W, 8.0, -3.4), (1, 0, 0))
+            if not v:
+                m.decal(side, 'ad', 'ad', (5.2, 2.6), (W, 8.0, -3.4), (1, 0, 0))
             # the deck and the parapet's inner faces and rim
             i_x, i_z = W - PT, D - PT
             m.quad((-i_x, DECK, -i_z), (i_x, DECK, -i_z), (i_x, DECK, i_z), (-i_x, DECK, i_z), (0, 1, 0), 'deck')
@@ -361,6 +483,8 @@ def shop_3f():
     def sign(level):
         """The rooftop sign: a board standing across the roof (its faces to the two ends of the
         street) on a steel frame."""
+        if v:
+            return []
         sx, sz = 0.3, SIGN_Z1 - SIGN_Z0
         board = box('sign', (sx, SIGN_Y1 - SIGN_Y0, sz), (SIGN_X, (SIGN_Y0 + SIGN_Y1) / 2, (SIGN_Z0 + SIGN_Z1) / 2),
                     'steel', open=(['bottom', 'top', 'back', 'front'] if level else None),
@@ -397,15 +521,15 @@ def shop_3f():
               stair_house(1)] + sign(1)
     nodes2 = [shell(2)] + sign(2)
     sheets_used = sheets
-    r = recipe('town_shop_3f', 300, sheets_used, mats, nodes0,
+    r = recipe(name, 300, sheets_used, mats, nodes0,
                [{'distance': 20, 'nodes': nodes1}, {'distance': 50, 'nodes': nodes2}])
-    write(os.path.join(HERE, 'town_shop_3f.asset.json'), r)
+    write(os.path.join(HERE, name + '.asset.json'), r)
 
     # Collision: the walls, the deck, the parapet (a wall inside, its rim in short pieces), the
     # awning, the kanban's ledge, the stair house with its tank (a step up to 12.8), the
     # rooftop sign as a solid fin (its top 12.3 a ledge), the air conditioner.
     body = Mesh('body')
-    body.quad((-W, H, -D), (W, H, -D), (W, 0, -D), (-W, 0, -D), (0, 0, -1), 'solid')
+    gs.recess_col(body, -OPX, OPX, OPY, ZR, H)          # the glass front recessed, as drawn
     body.quad((-W, H, D), (W, H, D), (W, 0, D), (-W, 0, D), (0, 0, 1), 'solid')
     for s in (-1, 1):
         body.quad((s * W, 0, -D), (s * W, H, -D), (s * W, H, D), (s * W, 0, D), (s, 0, 0), 'solid')
@@ -427,9 +551,11 @@ def shop_3f():
         slab_box('stair_house', PH_X - PH_W / 2, PH_X + PH_W / 2, ph0, ph1, PH_Z - PH_W / 2, PH_Z + PH_W / 2, open=('bottom',)),
         slab_box('tank', PH_X - TANK[0] / 2, PH_X + TANK[0] / 2, ph1, ph1 + TANK[1], PH_Z - TANK[2] / 2, PH_Z + TANK[2] / 2,
                  open=('bottom',)),
-        ledge('sign', SIGN_X - 0.15, SIGN_X + 0.15, DECK, SIGN_Y1, SIGN_Z0, SIGN_Z1, 4, 'z', open=('bottom',)),
         slab_box('ac', 1.75, 2.65, DECK, DECK + 0.63, 5.425, 5.775, open=('bottom',))]
-    write(os.path.join(HERE, 'town_shop_3f_col.asset.json'), col_recipe('town_shop_3f_col', nodes))
+    if not v:
+        nodes.insert(-1, ledge('sign', SIGN_X - 0.15, SIGN_X + 0.15, DECK, SIGN_Y1, SIGN_Z0, SIGN_Z1, 4, 'z',
+                               open=('bottom',)))
+    write(os.path.join(HERE, name + '_col.asset.json'), col_recipe(name + '_col', nodes))
 
 
 # ============================================================================================
@@ -652,6 +778,7 @@ def arcade_roof():
 AW_WALL, AW_OUT = 0.77, -0.75
 AW_TOP_W, AW_TOP_O, AW_VAL, AW_UND_W = 2.95, 2.6, 0.28, 2.72
 AW_X = 4.0
+AW_IN = -0.1                  # the back awnings' collision: bounce from here out (town_awning_bounce_back_col)
 
 
 def awning_bounce():
@@ -709,12 +836,39 @@ def awning_bounce():
           col_recipe('town_awning_bounce_col', [c.node()],
                      {'bounce': {'color': '#f04880', 'palette': True, 'tag': 'bounce'}}, budget=40))
 
+    # The back walls' awnings (place/street.py: w2b, e3b, w4b) hang under their shops' eaves,
+    # which reach 0.2-0.45 m out over the canvas: a bounce there struck the eave at 4.0 (alpha
+    # review r08 #8). Their collision's inner 0.85 m is a steep face (60 degrees, a wall) from the
+    # canvas up to the wall, which moves a body landing there out onto the outer part, from where a
+    # bounce clears the eave.
+    c = Mesh('awning')
+    y_in = round(AW_TOP_W - (AW_TOP_W - AW_TOP_O) * (0.75 - AW_IN) / (0.75 - AW_OUT), 4)
+    cprof = [(0.75, round(y_in + (0.75 - AW_IN) * 1.73, 4)), (AW_IN, y_in), (AW_OUT, AW_TOP_O),
+             (AW_OUT, AW_TOP_O - AW_VAL), (0.75, AW_UND_W)]
+    # (each side faced away from a point inside the section: the wall's height moves the vertices'
+    # centroid, which prism_x faces by, above the canvas)
+    inside = (0.3, 2.8)
+    for i, mat in enumerate(['solid', 'bounce', 'bounce', 'solid', None]):
+        (z0, y0), (z1, y1) = cprof[i], cprof[(i + 1) % len(cprof)]
+        if mat:
+            out = (0, (y0 + y1) / 2 - inside[1], (z0 + z1) / 2 - inside[0])
+            c.quad((-AW_X, y0, z0), (AW_X, y0, z0), (AW_X, y1, z1), (-AW_X, y1, z1), out, mat)
+    for x, sx in ((-AW_X, -1), (AW_X, 1)):
+        c.face([(x, y, z) for z, y in cprof], (sx, 0, 0), 'solid')
+    write(os.path.join(folder, 'town_awning_bounce_back_col.asset.json'),
+          col_recipe('town_awning_bounce_back_col', [c.node()],
+                     {'bounce': {'color': '#f04880', 'palette': True, 'tag': 'bounce'}}, budget=40))
+
 
 if __name__ == '__main__':
     gs.draw_sheet()                     # the sheet's cells, for its helpers (nothing is written)
     draw_tea()
     pack(TEA, os.path.join(HERE, 'art', 'tea.png'))
     shop_3f()
+    draw_more()
+    pack(MORE, os.path.join(HERE, 'art', 'more.png'))
+    for name in VARIANTS_3F:
+        shop_3f(name)
     draw_arcade()
     pack(ARC, os.path.join(ASSETS, 'arcade_roof_16', 'art', 'arcade.png'))
     arcade_roof()

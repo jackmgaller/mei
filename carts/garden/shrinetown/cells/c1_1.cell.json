@@ -164,7 +164,7 @@
    "position": [
     112.75,
     0.0,
-    104.0
+    106.0
    ],
    "collision": "town_utility_pole_transformer_col"
   },
@@ -173,7 +173,7 @@
    "asset": "tree_zelkova",
    "position": [
     66.0,
-    0.0,
+    1.581,
     125.0
    ],
    "collision": "tree_zelkova_col"
@@ -183,7 +183,7 @@
    "asset": "tree_zelkova",
    "position": [
     74.0,
-    0.0,
+    1.325,
     121.0
    ],
    "yaw": 53,
@@ -194,7 +194,7 @@
    "asset": "tree_zelkova",
    "position": [
     84.0,
-    0.0,
+    0.993,
     124.0
    ],
    "yaw": 106,
@@ -205,7 +205,7 @@
    "asset": "tree_zelkova",
    "position": [
     92.0,
-    0.0,
+    1.327,
     121.0
    ],
    "yaw": 159,
@@ -217,7 +217,7 @@
    "position": [
     85.0,
     0.0,
-    117.2
+    115.8
    ],
    "yaw": 90,
    "collision": "street_lamp_col"
@@ -228,7 +228,7 @@
    "position": [
     115.0,
     0.0,
-    117.2
+    115.8
    ],
    "yaw": 90,
    "collision": "street_lamp_col"
@@ -378,6 +378,135 @@
     84.6
    ],
    "collision": "town_bench_col"
+  },
+  {
+   "id": "alley_lamp_1",
+   "asset": "town_wall_lamp",
+   "position": [
+    90.0,
+    0.0,
+    80.75
+   ],
+   "yaw": 90,
+   "collision": "none"
+  },
+  {
+   "id": "alley_lamp_4",
+   "asset": "town_wall_lamp",
+   "position": [
+    123.5,
+    0.0,
+    80.75
+   ],
+   "yaw": 270,
+   "collision": "none"
+  },
+  {
+   "id": "alley_lamp_5",
+   "asset": "town_wall_lamp",
+   "position": [
+    75.5,
+    0.0,
+    91.75
+   ],
+   "yaw": 270,
+   "collision": "none"
+  },
+  {
+   "id": "alley_lamp_6",
+   "asset": "town_wall_lamp",
+   "position": [
+    111.5,
+    0.0,
+    91.75
+   ],
+   "yaw": 270,
+   "collision": "none"
+  },
+  {
+   "id": "alley_lamp_9",
+   "asset": "town_wall_lamp",
+   "position": [
+    118.0,
+    0.0,
+    77.0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "alley_lamp_10",
+   "asset": "town_wall_lamp",
+   "position": [
+    94.0,
+    0.0,
+    88.0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "plants_lane_0",
+   "asset": "town_potted_plants",
+   "position": [
+    77.4,
+    0.0,
+    64.6
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "plants_lane_2",
+   "asset": "town_potted_plants",
+   "position": [
+    113.3,
+    0.0,
+    86.2
+   ],
+   "yaw": 90,
+   "collision": "none"
+  },
+  {
+   "id": "plants_lane_3",
+   "asset": "town_potted_plants",
+   "position": [
+    89.4,
+    0.0,
+    75.4
+   ],
+   "yaw": 180,
+   "collision": "none"
+  },
+  {
+   "id": "bike_lane_1",
+   "asset": "mamachari",
+   "position": [
+    100.6,
+    0.0,
+    91.5
+   ],
+   "yaw": 175,
+   "collision": "none"
+  },
+  {
+   "id": "aircon_lane_0",
+   "asset": "town_aircon_pipes",
+   "position": [
+    78.2,
+    0.0,
+    92.0
+   ],
+   "yaw": 90,
+   "collision": "none"
+  },
+  {
+   "id": "aircon_lane_1",
+   "asset": "town_aircon_pipes",
+   "position": [
+    114.2,
+    0.0,
+    70.0
+   ],
+   "yaw": 90,
+   "collision": "none"
   }
  ],
  "entities": [
@@ -390,8 +519,10 @@
     72.08
    ],
    "params": {
-    "height": 15.2
-   }
+    "height": 15.2,
+    "front": true
+   },
+   "yaw": 180
   },
   {
    "id": "cam_alley_ns0",
@@ -599,7 +730,7 @@
    "position": [
     112.75,
     0.0,
-    104.0
+    106.0
    ],
    "params": {
     "height": 9.0

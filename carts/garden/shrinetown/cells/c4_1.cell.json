@@ -107,14 +107,14 @@
   },
   {
    "id": "pole_road280",
-   "asset": "town_utility_pole_transformer",
+   "asset": "town_utility_pole_tall",
    "position": [
     280.0,
     0.0,
     106.0
    ],
    "yaw": 90,
-   "collision": "town_utility_pole_transformer_col"
+   "collision": "town_utility_pole_tall_col"
   },
   {
    "id": "zelkova_s0",
@@ -170,7 +170,7 @@
     106.0
    ],
    "params": {
-    "height": 9.0
+    "height": 11.5
    }
   },
   {

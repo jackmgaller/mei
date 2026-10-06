@@ -377,14 +377,14 @@
   },
   {
    "id": "shop_e0",
-   "asset": "town_shop_2f_c_noawning",
+   "asset": "town_shop_2f_c_store_noawning",
    "position": [
     173.0,
     0.0,
     49.0
    ],
    "yaw": 90.0,
-   "collision": "town_shop_2f_c_noawning_col"
+   "collision": "town_shop_2f_c_store_noawning_col"
   },
   {
    "id": "awning_e0",
