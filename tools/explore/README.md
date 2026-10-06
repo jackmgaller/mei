@@ -94,7 +94,7 @@ bulk.
 | Escapes | flights from a reachable floor that cross the frame (the cells' rectangle), clustered by where they leave |
 | Falls through the world | flights over a column with no floor under the feet that fall below every floor |
 | The drop check | floorless columns (faces steeper than a floor) within 4 m of a reachable floor: the real controller dropped over each, every 1.5 m (`--deep` 1 m), from 3 m over the floors round it; the drops that fall below every floor, clustered |
-| Sealed places | edges into a region of the world's notes (cylinders or a box) by moves other than its intended ways in; then, with the intended ways taken out of the graph, a route in that the real cart repeats |
+| Sealed places | edges into a region of the world's notes (cylinders or a box) by moves other than its intended ways in; then, with the intended ways taken out of the graph, a route in that the real cart repeats; and each rail that runs into it, dropped onto a metre apart (does the grind carry the body in?) |
 | Collectibles | for every coin, red coin and star: taken walking, on a pole, grinding, hanging, or by which flight (in the air, gliding or diving); those nobody reaches |
 | Cards taken gliding | a star whose box a glide passes through, flown headless from up to five take-offs |
 | Shortcuts | with the shortcut shut, a route from its near end to its trigger that the real cart repeats; bypassed when that route stays within 12 m of the line between the two ends (the long way strays further) |
@@ -128,7 +128,8 @@ that take-off is checked too, flight by flight: each leg is flown from its own t
 come down within 1.5 m of where the map says. For the shortcuts and the sealed places a leg the
 cart does not repeat is taken out of the graph, with its near copies (the same move from within
 1.5 m to within 1.5 m), and the route found again (up to six rounds), so what is reported is a
-route the real controller flies. A sealed place is also tried one way in at a time (every other
+route the real controller flies; while repairing, wall kicks count 5 s dearer, since they are the
+reach map's least sure flights. A sealed place is also tried one way in at a time (every other
 way in taken out). Legs off a pole, a hang or a grind start with the body put on the pole or the
 rail (`grab_pole()`, `grab_rail()`); a leg off a rail's end is flown with the leg that put the body
 on the rail, since the controller grinds on by itself.

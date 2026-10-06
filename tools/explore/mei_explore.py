@@ -319,8 +319,40 @@ def confirm_finds(e, finds, runner, a):
     for s_ in finds['sealed']:
         if s_.get('_inside') is None:
             continue
+        w_ = s_['watch']
+        box = ((w_[0] + w_[3]) / 2, (w_[1] + w_[4]) / 2, (w_[2] + w_[5]) / 2)
+        half = ((w_[3] - w_[0]) / 2, (w_[4] - w_[1]) / 2, (w_[5] - w_[2]) / 2)
         v, gs = repaired_route(e, s_, runner, a, e.start, s_['_inside'], banned=s_['_intended_edges'])
         s_['headless_other_way'] = v
+        # rails that run into the sealed place: a body dropped onto each, a metre apart along it,
+        # from 3 m above with the stick let go (a glide let go over it comes down so): does the
+        # grind carry it in?
+        spec = next(sp for sp in e.cfg.get('sealed', []) if sp['name'] == s_['name'])
+        bx = s_['box']
+        drops = []
+        for k, rail in enumerate(e.rails):
+            pts = rail['points']
+            near = [p_ for p_ in pts if bx[0] - 8 <= p_[0] <= bx[3] + 8 and bx[2] - 8 <= p_[2] <= bx[5] + 8]
+            if not near:
+                continue
+            total = e.rail_nodes[k][2]
+            for sv in np.arange(0.0, total, 1.0):
+                (x, y, z), _ = e.rail_point(k, sv)
+                drops.append((rail['id'], float(sv), C.Probe(find=s_['id'], p=(x, y + 3.0, z), yaw=0, head=0,
+                                                              mode=C.MODE_DROP, t=900, box=tuple(box), half=tuple(half))))
+        if drops:
+            got = runner.run([q for *_, q in drops], name='rail_drops')
+            byk = {o.k: o for o in got}
+            res = {}
+            for j, (rid, sv, q) in enumerate(drops):
+                o = byk.get(j)
+                r_ = res.setdefault(rid, {'tried': 0, 'in': 0, 'along_m': []})
+                r_['tried'] += 1
+                if o is not None and o.inbox >= 0:
+                    r_['in'] += 1
+                    r_['along_m'].append(sv)
+            s_['rail_drops'] = res
+        del spec
         # and each way in that is not intended, alone: every other way in taken out
         s_['headless_ways'] = {}
         kinds = [w['move'] for w in s_['other_ways']][:4]

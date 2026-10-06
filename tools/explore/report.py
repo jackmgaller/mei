@@ -228,6 +228,12 @@ def summary_text(rep):
             out.append('    with its intended ways in taken out: ' + _headless_route(h))
         for kind, h in s.get('headless_ways', {}).items():
             out.append(f'    in by {kind} alone: ' + _headless_route(h))
+        for rid, r in s.get('rail_drops', {}).items():
+            if r['in']:
+                out.append(f'    a body dropped onto {rid} grinds into it: {r["in"]} of {r["tried"]} drops (a metre apart '
+                           f'along it, at {", ".join(f"{v:g}" for v in r["along_m"][:8])} m)')
+            else:
+                out.append(f'    drops onto {rid}: none of {r["tried"]} get in')
         for w in s['other_ways'][:8]:
             out.append(f'    not intended: {w["move"]} from ({w["from"][0]:.1f}, {w["from"][1]:.1f}, {w["from"][2]:.1f}), '
                        f'{w["cost_s"]} s from the spawn{_conf(w)}')
