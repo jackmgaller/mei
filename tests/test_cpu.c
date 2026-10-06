@@ -870,7 +870,7 @@ static void test_faults(void) {
         begin("bad I/O width"); e(U(LUI, 9, IO_HI)); e(width[i]);
         FAULT(MEI_FAULT_IO_WIDTH, 0xFF0000 + MEI_IMM18(width[i]));
     }
-    uint32_t unlisted[] = {0x28, 0x2C, 0xFC, 0x11C, 0x1FC, 0x218, 0x2FC, 0x320, 0x3FC};
+    uint32_t unlisted[] = {0x30, 0x34, 0xFC, 0x11C, 0x1FC, 0x218, 0x2FC, 0x320, 0x3FC};
     for (size_t i = 0; i < sizeof unlisted / sizeof *unlisted; i++) {
         begin("unlisted I/O read"); e(U(LUI, 9, IO_HI)); e(I(LW, 1, 9, unlisted[i]));
         FAULT(MEI_FAULT_UNMAPPED, 0xFF0000 + unlisted[i]);

@@ -1210,6 +1210,14 @@ of every asset drawn in the region) or `ASSET.MATERIAL`. A name that matches not
 two names giving one shared entry two colours is an error that suggests `share: false`; recolouring
 an entry another material shares is a warning. The kit attaches no meaning to the names.
 
+**Fog per variant** (a proposal, with the GPU's fog toward a colour: [DECISIONS.md](DECISIONS.md#proposal-fog-toward-a-colour)).
+A variant may declare `"fog": {"color": "#c6cec8", "near": 48, "far": 300}` (near 0–4,095 units,
+far at least near + 1): a day haze, or night darkness. When any variant does, `NAME.akr` gets
+`world_NAME_fog(region, variant)`, which calls `gpu_fog()` with that variant's fog, or
+`gpu_fog_off()` for a variant without it; the game calls it with `wp_region_enter(k, v)`. A world
+without fog generates what it always did. The World Checker does not draw fog (it costs the GPU 8
+cycles a triangle and nothing a pixel).
+
 ### Textures per region
 
 Built (2026-10-04). A world may place Asset Kit assets with textures ([ASSETKIT.md](ASSETKIT.md#textures)).

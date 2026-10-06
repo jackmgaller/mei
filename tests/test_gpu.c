@@ -1,5 +1,5 @@
 /* GPU tests: packet walking, rasterization rules, pixel pipeline, faults, the depth test and
- * perspective (docs/RENDERING.md). */
+ * perspective (docs/RENDERING.md), and fog toward a colour (a proposal, docs/DECISIONS.md). */
 #include "machine.h"
 #include "asm.h"
 
@@ -1033,13 +1033,28 @@ static uint32_t ref_key(long long q) {
 }
 static long long ref_fails, ref_divs, ref_inside;
 
-typedef struct { int flags, mode, dither, slot, four, pal, ztest, zoff; } RefZ;
+typedef struct { int flags, mode, dither, slot, four, pal, ztest, zoff; int fog; uint32_t fogcol, frange; } RefZ;
+
+/* Fog toward a colour (the proposal in DECISIONS.md): the factor of a vertex at view depth w,
+ * 0-256, from GPU_FOG_RANGE (bits 0-15 near in 1/16 units, bits 16-31 the scale). */
+static int ref_fogf(int32_t w, uint32_t range) {
+    long long d = w <= 0 ? 0 : w / 4096, n = range & 0xFFFF, sc = range >> 16;
+    if (d > 65535) d = 65535;
+    if (d <= n) return 0;
+    long long f = (d - n) * sc / 4096;
+    return f > 256 ? 256 : (int)f;
+}
 
 static void ref_tri_z(uint16_t *fb, uint16_t *zb, RV a, RV b, RV c, const int32_t wv[3], const RefZ *o) {
     long long rw[3] = {ref_recip(wv[0]), ref_recip(wv[1]), ref_recip(wv[2])};
+    long long fv[3] = {0, 0, 0};
+    if (o->fog) for (int i = 0; i < 3; i++) fv[i] = ref_fogf(wv[i], o->frange);
     long long area = edge(&a, &b, c.x, c.y);
     if (area == 0) return;
-    if (area < 0) { RV t = b; b = c; c = t; long long r = rw[1]; rw[1] = rw[2]; rw[2] = r; area = -area; }
+    if (area < 0) {
+        RV t = b; b = c; c = t; long long r = rw[1]; rw[1] = rw[2]; rw[2] = r; area = -area;
+        r = fv[1]; fv[1] = fv[2]; fv[2] = r;
+    }
     RV *V[3] = {&a, &b, &c};
     int flags = o->flags, persp = 0;
     long long q[3];
@@ -1110,6 +1125,14 @@ static void ref_tri_z(uint16_t *fb, uint16_t *zb, RV a, RV b, RV c, const int32_
                     col[k] = e * col[k] / 128 > 255 ? 255 : e * col[k] / 128;
                 }
             }
+            if (o->fog) {   /* toward the fog colour (black for additive and subtractive pixels) */
+                long long fz = fdiv(W[x][0] * fv[0] + W[x][1] * fv[1] + W[x][2] * fv[2], area);
+                int black = (flags & 8) && o->mode != 0;
+                for (int k = 0; k < 3; k++) {
+                    int t = black ? 0 : (int)(o->fogcol >> (8 * k) & 0xFF);
+                    col[k] += (int)fdiv((long long)(t - col[k]) * fz, 256);
+                }
+            }
             for (int k = 0; k < 3; k++) col[k] = (o->dither ? clampi(col[k] + DM[y & 3][x & 3], 0, 255) : col[k]) >> 3;
             uint16_t *d = &fb[y * MEI_W + x];
             if (flags & 8)
@@ -1168,7 +1191,7 @@ static void test_depth_registers(void) {
     CHECK_EQ(bus_read8(m, IO_BASE + IO_GPU_DEPTH, &v, 0), -1);
     CHECK_EQ(m->fault.kind, MEI_FAULT_IO_WIDTH);
     memset(&m->fault, 0, sizeof m->fault);
-    CHECK_EQ(bus_read32(m, IO_BASE + 0x28, &v), -1);    /* 0xFF0028-0xFF00FF stay unmapped */
+    CHECK_EQ(bus_read32(m, IO_BASE + 0x30, &v), -1);    /* 0xFF0030-0xFF00FF stay unmapped (0x28, 0x2C: fog) */
     CHECK_EQ(m->fault.kind, MEI_FAULT_UNMAPPED);
     memset(&m->fault, 0, sizeof m->fault);
 
@@ -1416,7 +1439,7 @@ static void test_depth_reference_random(void) {
     int mismatch = 0, zmismatch = 0;
     long long cyc_bad = 0;
     for (int iter = 0; iter < 400; iter++) {
-        RefZ o;
+        RefZ o = {0};
         o.flags = rnd(0, 15) & ~4;
         o.mode = rnd(0, 3);
         o.dither = rnd(0, 1);
@@ -1518,7 +1541,7 @@ static void test_perspective(void) {
     }
 
     /* unequal depths: a floor receding from w 1 (bottom) to w 4 (top), against the reference */
-    RefZ o = {2, 0, 0, 2, 0, 1, 0, 0};
+    RefZ o = {2, 0, 0, 2, 0, 1, 0, 0, 0, 0, 0};
     RV q[4] = {{0, 0, {128, 128, 128, 0, 0}}, {319, 0, {128, 128, 128, 255, 0}},
                {0, 239, {128, 128, 128, 0, 255}}, {319, 239, {128, 128, 128, 255, 255}}};
     int32_t wq[4] = {(int32_t)w4, (int32_t)w4, (int32_t)w1, (int32_t)w1};
@@ -1617,31 +1640,251 @@ static void test_depth_planes(void) {
     m->pln_reg[PLN_CTRL / 4] = 0;
 }
 
+/* ---- fog toward a colour (a proposal, docs/DECISIONS.md) ---- */
+
+#define FOG_ON (1u << 24)
+static uint32_t FOGR(int near16, int scale) { return (uint32_t)near16 | (uint32_t)scale << 16; }
+
+static void test_fog_registers(void) {
+    setup();
+    uint32_t v = 7;
+    CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_FOG, &v), 0);
+    CHECK_EQ(v, 0);                                     /* off at reset */
+    CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_FOG_RANGE, &v), 0);
+    CHECK_EQ(v, 0);
+    CHECK_EQ(bus_write32(m, IO_BASE + IO_GPU_FOG, 0xFFFFFFFF), 0);
+    CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_FOG, &v), 0);
+    CHECK_EQ(v, 0x1FFFFFF);                             /* bits 25-31 reserved, read 0 */
+    CHECK_EQ(bus_write32(m, IO_BASE + IO_GPU_FOG_RANGE, 0xDEADBEEF), 0);
+    CHECK_EQ(bus_read32(m, IO_BASE + IO_GPU_FOG_RANGE, &v), 0);
+    CHECK_EQ(v, 0xDEADBEEF);
+    CHECK_EQ(bus_read8(m, IO_BASE + IO_GPU_FOG, &v, 0), -1);
+    CHECK_EQ(m->fault.kind, MEI_FAULT_IO_WIDTH);
+    memset(&m->fault, 0, sizeof m->fault);
+    CHECK_EQ(bus_read32(m, IO_BASE + 0x30, &v), -1);    /* 0xFF0030-0xFF00FF stay unmapped */
+    CHECK_EQ(m->fault.kind, MEI_FAULT_UNMAPPED);
+    memset(&m->fault, 0, sizeof m->fault);
+    mei_reset(m);                                       /* a reset turns it off */
+    memset(&m->fault, 0, sizeof m->fault);
+    CHECK_EQ(m->gpu_fog, 0);
+    CHECK_EQ(m->gpu_fog_range, 0);
+}
+
+/* The factor, the blend and what fog leaves alone. */
+static void test_fog_blend(void) {
+    setup();
+    for (int i = 0; i < 256 * 256; i++) slot_ptr(0)[i] = 1;
+    set_pal(1, C15(31, 0, 0));                          /* a red texel: 255 at tint 128 */
+    const uint32_t W16u = W16(16);                      /* 16 units: 256 sixteenths */
+    /* near 0, scale 2048: factor 256 * 2048 / 4096 = 128 at 16 units */
+    m->gpu_fog = FOG_ON | RGB(255, 255, 255);
+    m->gpu_fog_range = FOGR(0, 2048);
+    CHECK_EQ(ref_fogf((int32_t)W16u, m->gpu_fog_range), 128);
+    CHECK_EQ(ref_fogf((int32_t)W16(32), m->gpu_fog_range), 256);
+    CHECK_EQ(ref_fogf((int32_t)W16(1000), m->gpu_fog_range), 256);   /* clamped */
+    CHECK_EQ(ref_fogf(-5, m->gpu_fog_range), 0);
+    CHECK_EQ(ref_fogf((int32_t)W16(16), FOGR(256, 2048)), 0);        /* at near: 0 */
+    list_begin();
+    emit(0x30, 7, RGB(0, 0, 0), P(0, 0), P(20, 0), P(0, 20), W16u, W16u, W16u);
+    list_draw();
+    CHECK_EQ(px(2, 2), C15(15, 15, 15));                /* black halfway to white: 127 >> 3 */
+    /* a textured face fogs toward a bright colour: the point of the proposal */
+    m->gpu_fog = FOG_ON | RGB(0, 0, 255);
+    list_begin();
+    emit(0x32, 10, RGB(128, 128, 128), P(30, 0), TEX0(0, 0, 0, 0, 0), P(50, 0), UV(0, 0), P(30, 20), UV(0, 0),
+         W16(32), W16(32), W16(32));
+    emit(0x32, 10, RGB(128, 128, 128), P(60, 0), TEX0(0, 0, 0, 0, 0), P(80, 0), UV(0, 0), P(60, 20), UV(0, 0),
+         W16(1), W16(1), W16(1));
+    list_draw();
+    CHECK_EQ(px(32, 2), C15(0, 0, 31));                 /* factor 256: the fog colour exactly */
+    CHECK_EQ(px(62, 2), C15(30, 0, 0));                 /* factor 8 at 1 unit: 255 - 8 = 247 */
+    /* a packet without depth is never fogged */
+    list_begin();
+    emit(0x20, 4, RGB(255, 0, 0), P(90, 0), P(110, 0), P(90, 20));
+    list_draw();
+    CHECK_EQ(px(92, 2), C15(31, 0, 0));
+    /* semi-transparent: mode 0 blends the fogged colour; additive fades toward black */
+    gpu_clear(m, C15(10, 10, 10));
+    m->gpu_fog = FOG_ON | RGB(248, 248, 248);
+    list_begin();
+    emit(0x38, 7, RGB(0, 0, 0), P(0, 0), P(20, 0), P(0, 20), W16(32), W16(32), W16(32));
+    emit(0x38, 7, RGB(200, 200, 200) | 1u << 24, P(30, 0), P(50, 0), P(30, 20), W16(32), W16(32), W16(32));
+    emit(0x38, 7, RGB(200, 200, 200) | 2u << 24, P(60, 0), P(80, 0), P(60, 20), W16(32), W16(32), W16(32));
+    list_draw();
+    CHECK_EQ(px(2, 2), C15(20, 20, 20));                /* (10 + 31) / 2 */
+    CHECK_EQ(px(32, 2), C15(10, 10, 10));               /* fully fogged glow adds nothing */
+    CHECK_EQ(px(62, 2), C15(10, 10, 10));               /* nor does a fully fogged shadow subtract */
+    /* the factor is interpolated: a floor from 0 to 32 units fogs from nothing to all */
+    gpu_clear(m, 0);
+    m->gpu_fog = FOG_ON | RGB(255, 255, 255);
+    list_begin();
+    emit(0x30, 7, RGB(0, 0, 0), P(0, 100), P(256, 100), P(0, 120), W16(0), W16(32), W16(0));
+    list_draw();
+    CHECK_EQ(px(0, 100), 0);
+    CHECK_EQ(px(128, 100), C15(15, 15, 15));            /* factor 128 */
+    CHECK(px(250, 100) == C15(30, 30, 30) || px(250, 100) == C15(31, 31, 31));
+    /* fog off with the colour and range set: exactly as with the registers at 0 */
+    static uint16_t a[MEI_W * MEI_H];
+    for (int pass = 0; pass < 2; pass++) {
+        gpu_clear(m, 0);
+        m->gpu_fog = pass ? RGB(255, 255, 255) : 0;     /* bit 24 clear */
+        m->gpu_fog_range = pass ? FOGR(0, 2048) : 0;
+        list_begin();
+        emit(0x30, 7, RGB(10, 200, 30), P(0, 0), P(200, 0), P(0, 200), W16(1), W16(64), W16(500));
+        emit(0x32, 10, RGB(128, 128, 128), P(100, 100), TEX0(0, 0, 0, 0, 0), P(300, 100), UV(255, 0), P(100, 230), UV(0, 255),
+             W16(3), W16(90), W16(30));
+        m->gpu_cycles = 0;
+        list_draw();
+        if (!pass) memcpy(a, back(), sizeof a);
+        else CHECK(memcmp(a, back(), sizeof a) == 0);
+    }
+    m->gpu_fog = m->gpu_fog_range = 0;
+}
+
+/* GPU_CYCLES_FOG a triangle with depth while fog is on; nothing a pixel. */
+static void test_fog_cost(void) {
+    setup();
+    for (int i = 0; i < 256 * 256; i++) slot_ptr(0)[i] = 1;
+    set_pal(1, C15(10, 20, 30));
+    const uint32_t W1 = W16(1), W99 = W16(99);
+    m->gpu_fog = FOG_ON | RGB(200, 210, 220);
+    m->gpu_fog_range = FOGR(16, 1024);
+    CHECK_EQ(GPU_CYCLES_FOG, 8);
+    struct { uint32_t type; int n; uint32_t px; } k[] = {{0x30, 7, 55}, {0x32, 10, 110}, {0x38, 7, 110}, {0x3A, 10, 220}};
+    for (int i = 0; i < 4; i++)
+        for (int far = 0; far < 2; far++) {   /* factor 0 (drawn without fog) or 256: the same price */
+            uint32_t w = far ? W99 : W1;
+            m->gpu_cycles = 0;
+            list_begin();
+            if (k[i].type & 2)
+                emit(k[i].type, 10, RGB(128, 128, 128), P(0, 0), TEX0(0, 0, 0, 0, 0), P(10, 0), UV(0, 0), P(0, 10), UV(0, 0), w, w, w);
+            else emit(k[i].type, 7, RGB(128, 128, 128), P(0, 0), P(10, 0), P(0, 10), w, w, w);
+            list_draw();
+            CHECK_EQ(m->gpu_cycles, 40 + ((k[i].type & 2) ? 24 : 0) + 8 + k[i].px);
+        }
+    /* a quad: two triangles; a packet without depth: no fog, no charge */
+    m->gpu_cycles = 0;
+    memset(&m->gstat, 0, sizeof m->gstat);
+    list_begin();
+    emit(0x34, 9, RGB(1, 1, 1), P(0, 0), P(10, 0), P(0, 10), P(10, 10), W99, W99, W99, W99);
+    emit(0x24, 5, RGB(1, 1, 1), P(20, 0), P(30, 0), P(20, 10), P(30, 10));
+    list_draw();
+    CHECK_EQ(m->gpu_cycles, 2 * (40 + 8) + 100 + 2 * 40 + 100);
+    CHECK_EQ(m->gstat.tris_fog, 2);
+    CHECK_EQ(m->gstat.px_fog, 100);
+    /* depth-tested and failing: the test's 1 a pixel, the setup still paid */
+    m->gpu_depth = 1;
+    bus_write32(m, IO_BASE + IO_GPU_ZCLEAR, 0xFFFF);
+    m->gpu_cycles = 0;
+    list_begin();
+    emit(0x32, 10, RGB(128, 128, 128), P(0, 0), TEX0(0, 0, 0, 0, 0), P(10, 0), UV(0, 0), P(0, 10), UV(0, 0), W99, W99, W99);
+    list_draw();
+    CHECK_EQ(m->gpu_cycles, 40 + 24 + 8 + 55);
+    m->gpu_depth = 0;
+    m->gpu_fog = m->gpu_fog_range = 0;
+}
+
+/* Random fogged packets with depth of every kind against the reference, with the depth test on
+ * and off, and the cost. */
+static void test_fog_reference_random(void) {
+    static uint16_t ref[MEI_W * MEI_H], zref[MEI_W * MEI_H];
+    setup();
+    for (int i = 0; i < 0x10000; i++) slot_ptr(0)[i] = (uint8_t)(rnd(0, 255) * (rnd(0, 7) != 0));
+    for (int i = 0; i < 0x8000; i++) slot_ptr(15)[i] = (uint8_t)rnd(0, 255);
+    for (int i = 0; i < 4096; i++) set_pal(i, (uint16_t)rnd(0, 0x7FFF));
+    int mismatch = 0, zmismatch = 0;
+    long long cyc_bad = 0;
+    for (int iter = 0; iter < 400; iter++) {
+        RefZ o;
+        o.flags = rnd(0, 15) & ~4;
+        o.mode = rnd(0, 3);
+        o.dither = rnd(0, 1);
+        o.four = rnd(0, 1);
+        o.slot = o.four ? 15 : rnd(0, 1) * 15;
+        o.pal = o.four ? rnd(0, 255) : rnd(0, 15);
+        o.ztest = iter % 3 != 0;
+        o.zoff = 0;
+        o.fog = 1;
+        o.fogcol = (uint32_t)rnd(0, 0xFFFFFF);
+        o.frange = FOGR(rnd(0, 3) ? rnd(0, 2000) : rnd(0, 65535), rnd(0, 3) ? rnd(1, 4000) : rnd(0, 65535));
+        ref_win = (o.flags & 2) && rnd(0, 3) == 0 ? (uint32_t)rnd(0, 0xFFFF) : 0;
+        int big = iter % 4 == 0;
+        RV v[3];
+        int32_t wv[3];
+        for (int i = 0; i < 3; i++) {
+            v[i].x = big ? rnd(-2000, 2000) : rnd(-40, 360);
+            v[i].y = big ? rnd(-2000, 2000) : rnd(-40, 280);
+            for (int k = 0; k < 5; k++) v[i].c[k] = rnd(0, 3) == 0 ? 255 : rnd(0, 255);
+            int r = rnd(0, 9);
+            wv[i] = r == 0 ? rnd(-100, 5000) : r == 1 ? 0x7FFFFFFF - rnd(0, 1000) : rnd(1 << 16, 1 << 26);
+        }
+        if (iter % 7 == 0) wv[1] = wv[0];
+        if (iter % 50 == 0) v[0].x = -32768, v[1].y = 32767;
+        next_frame();
+        gpu_clear(m, (uint32_t)rnd(0, 0x7FFF));
+        for (int i = 0; i < MEI_W * MEI_H; i++) m->zbuf[i] = (uint16_t)(rnd(0, 1) ? rnd(0, 0xFFFF) : 0);
+        m->gpu_ctrl = (uint32_t)o.dither;
+        m->gpu_depth = (uint32_t)o.ztest;
+        m->gpu_fog = FOG_ON | o.fogcol;
+        m->gpu_fog_range = o.frange;
+        memcpy(ref, back(), sizeof ref);
+        memcpy(zref, m->zbuf, sizeof zref);
+        list_begin();
+        emit_tri_z(o.flags, v, wv, &o);
+        ref_fails = ref_divs = ref_inside = 0;
+        m->gpu_cycles = 0;
+        memset(&m->gstat, 0, sizeof m->gstat);
+        list_draw();
+        ref_tri_z(ref, zref, v[0], v[1], v[2], wv, &o);
+        if (memcmp(ref, back(), sizeof ref)) {
+            if (!mismatch) printf("  fog reference mismatch: iter %d flags %x\n", iter, o.flags);
+            mismatch++;
+        }
+        if (memcmp(zref, m->zbuf, sizeof zref)) zmismatch++;
+        static const int per_px[8] = {1, 1, 2, 2, 2, 2, 4, 4};
+        int kind = (o.flags & 3) | (o.flags >> 1 & 4);
+        long long expect = 40 + 8 + (o.ztest || (o.flags & 2) ? 24 : 0) + (ref_inside - ref_fails) * per_px[kind] + ref_fails + 2 * ref_divs;
+        if ((long long)m->gpu_cycles != expect) {
+            if (!cyc_bad) printf("  fog cost mismatch: iter %d: %llu, expected %lld\n", iter, (unsigned long long)m->gpu_cycles, expect);
+            cyc_bad++;
+        }
+    }
+    ref_win = 0;
+    m->gpu_depth = 0;
+    m->gpu_fog = m->gpu_fog_range = 0;
+    CHECK_EQ(mismatch, 0);
+    CHECK_EQ(zmismatch, 0);
+    CHECK_EQ(cyc_bad, 0);
+}
+
 static void bench_depth(void) {
     setup();
     for (int i = 0; i < 0x8000; i++) slot_ptr(0)[i] = (uint8_t)(i * 7 + 1);
     for (int i = 0; i < 256; i++) set_pal(i, (uint16_t)(i * 97));
     m->gpu_ctrl = 1;
-    for (int mode = 0; mode < 3; mode++) {   /* plain, depth-tested, depth-tested and perspective */
+    for (int mode = 0; mode < 4; mode++) {   /* plain, depth-tested, + perspective, + fog */
         list_begin();
         rng = 99;
         for (int i = 0; i < 1000; i++) {
             int x = rnd(0, 280), y = rnd(0, 200);
-            uint32_t wa = W16(2 + i % 7), wb = mode == 2 ? W16(3 + i % 5) : wa;
+            uint32_t wa = W16(2 + i % 7), wb = mode >= 2 ? W16(3 + i % 5) : wa;
             if (!mode) emit(0x2F - 8, 12, RGB(200, 128, 90), P(x, y), TEX0(0, 0, 0, 1, 3), RGB(128, 128, 128), P(x + 35, y + 2), UV(60, 0),
                             RGB(90, 255, 128), P(x + 1, y + 36), UV(0, 60), RGB(128, 60, 200), P(x + 34, y + 37), UV(60, 60));
             else emit(0x3F - 8, 16, RGB(200, 128, 90), P(x, y), TEX0(0, 0, 0, 1, 3), RGB(128, 128, 128), P(x + 35, y + 2), UV(60, 0),
                       RGB(90, 255, 128), P(x + 1, y + 36), UV(0, 60), RGB(128, 60, 200), P(x + 34, y + 37), UV(60, 60), wa, wb, wa, wb);
         }
         m->gpu_depth = mode != 0;
+        m->gpu_fog = mode == 3 ? FOG_ON | RGB(200, 210, 220) : 0;
+        m->gpu_fog_range = FOGR(16, 8192);   /* fog from 1 unit to 9: every factor between 8 and 256 */
         int frames = 50;
         clock_t t0 = clock();
         for (int f = 0; f < frames; f++) { gpu_zclear(m, 0); list_draw(); m->gpu_status = 0; }
         double ms = (double)(clock() - t0) * 1000.0 / CLOCKS_PER_SEC / frames;
-        static const char *names[] = {"plain", "depth-tested", "depth-tested, perspective"};
+        static const char *names[] = {"plain", "depth-tested", "depth-tested, perspective", "depth-tested, perspective, fogged"};
         printf("  bench: 2,000 textured Gouraud dithered triangles, %s, in %.2f ms per frame\n", names[mode], ms);
     }
     m->gpu_depth = 0;
+    m->gpu_fog = m->gpu_fog_range = 0;
 }
 
 static void bench(void) {
@@ -1696,6 +1939,10 @@ int main(void) {
     test_depth_reference_random();
     test_perspective();
     test_depth_planes();
+    test_fog_registers();
+    test_fog_blend();
+    test_fog_cost();
+    test_fog_reference_random();
     test_buffers();
     test_error_screen();
     test_reference_random();

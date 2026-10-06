@@ -243,6 +243,11 @@ BACKDROP = obj({
 }, ['elevations','sky'])
 
 TINT = obj({'multiply':dict(COLOR,description='Each colour channel is multiplied by this colour / 255.')})
+FOG = obj({
+    'color':dict(COLOR,description='The colour faces fade toward: a day haze (the horizon\'s sky colour) or night darkness.'),
+    'near':dict(number(0,4095),description='View depth (units) where the fog starts.'),
+    'far':dict(number(1,32767),description='View depth (units) where faces are the fog colour; at least near + 1.'),
+}, ['color','near','far'])
 VARIANT = obj({
     'surface':dict(TINT,description='Applied to every surface entry of the region.'),
     'emissive':dict(TINT,description='Applied to every emissive entry of the region.'),
@@ -253,6 +258,7 @@ VARIANT = obj({
               'additionalProperties':COLOR_MAP,'maxProperties':4096,
               'description':'Exact colours of 4-bit textures after the tints: "MATERIAL" or "ASSET.MATERIAL" -> {texture colour: colour in this variant}.'},
     'backdrop':dict(COLOR_MAP,description='Exact colours of the backdrop silhouette after the surface tint: {its colour: colour in this variant}.'),
+    'fog':dict(FOG,description='Fog toward a colour on the GPU in this variant (a proposal, DECISIONS.md): NAME.akr gets world_NAME_fog(region, variant), which calls gpu_fog() (or gpu_fog_off() for a variant without fog).'),
 })
 REGION = dict(obj({
     'palettes':dict(obj({'first':integer(0,254),'count':integer(1,255)},['first']),

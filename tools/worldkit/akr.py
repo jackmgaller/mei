@@ -46,6 +46,30 @@ def game_source(game):
     return '\n'.join(lines)+'\n'
 
 
+def fog_lines(w, palettes):
+    """world_NAME_fog(region, variant) when a variant declares fog (a proposal: DECISIONS.md, "Proposal:
+    fog toward a colour"); nothing otherwise, so a world without fog generates what it always did."""
+    from kitcore.errors import pointer
+    from .schema import WorldError
+    n = w['name']
+    calls = []
+    for k,rname in enumerate(palettes):
+        for v,(vname,spec) in enumerate((w['regions'][rname].get('variants') or {}).items()):
+            fog = spec.get('fog')
+            if not fog: continue
+            if fog['far'] - fog['near'] < 1:
+                raise WorldError(pointer(pointer(pointer(pointer('/regions',rname),'variants'),vname),'fog'),
+                                 f'Fog far ({fog["far"]}) must be at least 1 unit past near ({fog["near"]}).')
+            r,g,b = (int(fog['color'][i:i+2],16) for i in (1,3,5))
+            calls.append(f'    if region == {k} && variant == {v} {{ gpu_fog(rgb({r}, {g}, {b}), {float(fog["near"])}, '
+                         f'{float(fog["far"])}); return }}   // {rname} {vname}')
+    if not calls: return []
+    return ['','// Fog toward a colour for region k\'s palette variant v, as the recipe declares it (gpu_fog() in',
+            '// gfx.akr; a proposal, docs/DECISIONS.md). Call it with wp_region_enter(k, v); a variant without',
+            '// fog turns it off. It fogs packets with depth only (render_depth() or render_perspective()).',
+            f'fn world_{n}_fog(region: s32, variant: s32) {{',*calls,'    gpu_fog_off()','}']
+
+
 def world_source(source, compiled, palettes, slot, row, numbers, groups):
     w, game = source.world, source.game
     n, N = w['name'], upper(w['name'])
@@ -89,6 +113,7 @@ def world_source(source, compiled, palettes, slot, row, numbers, groups):
     if numbers:
         lines += ['','// Entity numbers (wp_entity(n)) in this pack; not stable across edits: saves use SAVED_ bits.']
         for eid,num in sorted(numbers.items(),key=lambda kv: kv[1]): lines.append(f'const WORLD_{N}_ENTITY_{upper(eid)} = {num}')
+    lines += fog_lines(w, palettes)
     lock = compiled.lock
     lines += ['','// Saved bits (WpEntity.saved_bit), from the ID lock file: stable across edits.',
               f'const WORLD_{N}_SAVED_BITS = {lock["next_bit"]}   // bits ever given out, retired ones included']

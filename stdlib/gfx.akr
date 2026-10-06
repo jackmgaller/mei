@@ -110,6 +110,26 @@ fn fog(colour: u32, near: fixed, far: fixed) {
 
 fn fog_off() { __fog_on = 0 }
 
+// Fog toward a colour on the GPU (a proposal: docs/DECISIONS.md, "Proposal: fog toward a
+// colour"). Every packet with depth (mesh*() while render_depth() or render_perspective() is on,
+// depth.akr) is blended per pixel toward `colour` (0xBBGGRR, as rgb() makes) between view depths
+// near and far, textured faces included, so it can fade to a bright haze; additive and
+// subtractive faces fade out instead. It costs the CPU nothing (the GPU computes each corner's
+// factor from its depth word) and the GPU 8 cycles a triangle. Packets without depth (fog(),
+// sprites, text) are not fogged. Range: near 0-4,095 units; far - near at least 1 unit.
+fn gpu_fog(colour: u32, near: fixed, far: fixed) {
+    var n = bits(near) >> 12
+    if n < 0 { n = 0 }
+    if n > 0xFFFF { n = 0xFFFF }
+    var s = 0xFFFF                           // the scale: 65,536 / (far - near) units
+    if far - near > 1.0 { s = bits(1.0 / (far - near)) }
+    if s < 1 { s = 1 }
+    GPU_FOG_RANGE = (n as u32) | (s as u32) << 16
+    GPU_FOG = (colour & 0xFFFFFF) | 0x1000000
+}
+
+fn gpu_fog_off() { GPU_FOG = 0 }
+
 // ---- meshes
 
 import "faces.akr"

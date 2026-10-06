@@ -34,6 +34,8 @@
 #define IO_GPU_LAG     0x01C   /* extension, read-only: ticks the GPU held a finished frame back */
 #define IO_GPU_DEPTH   0x020   /* extension: bit 0 tests packets with depth (0x30-0x3F) (docs/RENDERING.md) */
 #define IO_GPU_ZCLEAR  0x024   /* extension, write-only: fill the depth buffer with bits 0-15 */
+#define IO_GPU_FOG     0x028   /* proposal: bits 0-23 the fog colour, bit 24 fog packets with depth (DECISIONS.md) */
+#define IO_GPU_FOG_RANGE 0x02C /* proposal: bits 0-15 near (1/16 units), bits 16-31 the factor's scale */
 #define IO_AUDIO       0x100   /* channel n at IO_AUDIO + n * 0x20 */
 #define IO_AUD_ADDR    0x00
 #define IO_AUD_LEN     0x04
@@ -115,6 +117,7 @@
 #define GPU_CYCLES_RECIP   24u   /* a triangle with depth that is tested or textured: three vertex reciprocals */
 #define GPU_CYCLES_DIVIDE  2u    /* each perspective divide (a span's start, every 16 pixels, its end) */
 #define GPU_CYCLES_ZCLEAR  (MEI_W * MEI_H / 2u)   /* GPU_ZCLEAR, as GPU_CLEAR: 38,400 */
+#define GPU_CYCLES_FOG     8u    /* proposal: a fogged triangle's setup (three fog factors, one more interpolant) */
 #define GPU_PERSP_SPAN     16    /* pixels between perspective divides */
 
 #define AUD_CHANNELS 16
@@ -229,6 +232,8 @@ struct Mei {
     int gpu_wait;            /* the CPU reached vsync; the frame waits for the GPU to finish */
     uint32_t gpu_lag;        /* GPU_LAG: ticks since reset a finished frame waited for the GPU */
     uint32_t gpu_depth;      /* GPU_DEPTH: bit 0 the depth test on */
+    uint32_t gpu_fog;        /* GPU_FOG (proposal): bits 0-23 the colour, bit 24 on */
+    uint32_t gpu_fog_range;  /* GPU_FOG_RANGE (proposal): bits 0-15 near, bits 16-31 scale */
     uint16_t zbuf[MEI_W * MEI_H];   /* the depth buffer: on the GPU, not in VRAM, not CPU-addressable */
     uint16_t error_screen[MEI_W * MEI_H];
 

@@ -10,6 +10,8 @@ reg GPU_TICKS: u32 @ 0xFF0018    // ticks the last frame shown took: 1 on time
 reg GPU_LAG: u32 @ 0xFF001C      // ticks since reset a finished frame waited for the GPU
 reg GPU_DEPTH: u32 @ 0xFF0020    // bit 0: test packets with depth (0x30-0x3F) against the depth buffer
 reg GPU_ZCLEAR: u32 @ 0xFF0024   // write: fill the depth buffer with bits 0-15 (0 the farthest)
+reg GPU_FOG: u32 @ 0xFF0028      // proposal: bits 0-23 the fog colour, bit 24 fog packets with depth
+reg GPU_FOG_RANGE: u32 @ 0xFF002C   // proposal: bits 0-15 near (1/16 units), bits 16-31 the scale
 
 reg PAD1: u32 @ 0xFF0200
 reg PAD2: u32 @ 0xFF0204

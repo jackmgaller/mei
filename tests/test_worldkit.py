@@ -1665,6 +1665,29 @@ class ConsoleTests(unittest.TestCase):
             self.assertGreater(len(pixels), 6)
             self.assertNotEqual(data[(200 * 320 + 160) * 3:(200 * 320 + 160) * 3 + 3], bytes([40, 60, 120]))
 
+    def test_fog_per_variant_on_the_console(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            def night_fog(w):
+                w['regions']['lab']['variants']['night']['fog'] = {'color': '#102040', 'near': 8, 'far': 40}
+            ex.edit(night_fog)
+            out = Path(tmp)/'out'
+            build_without_asset_checker(ex, out)
+            akr = (out/'test_room.akr').read_text()
+            self.assertIn('fn world_test_room_fog(region: s32, variant: s32) {', akr)
+            got = self.run_cart(out, 'room_fog.akr', frames=1)
+            self.assertEqual(got['day'], ['0', '0'])              # no fog declared: off
+            # bit 24 on, 0x402010; near 8 units = 128 sixteenths, scale 65,536 / 32 = 2,048
+            self.assertEqual(got['night'], [str(1 << 24 | 0x402010), str(2048 << 16 | 128)])
+        # without fog the generated source has no fog function; far must pass near by a unit
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertNotIn('_fog(', Example(tmp + '/a').compile().akr)
+            bad = Example(tmp + '/b')
+            bad.edit(lambda w: w['regions']['lab']['variants']['day'].__setitem__('fog', {'color': '#ffffff', 'near': 10, 'far': 10.5}))
+            with self.assertRaises(WorldError) as e:
+                bad.compile()
+            self.assertEqual(e.exception.path, '/regions/lab/variants/day/fog')
+
     def test_paths_on_the_console(self):
         with tempfile.TemporaryDirectory() as tmp:
             ex = Example(tmp)

@@ -874,3 +874,133 @@ unit tests' benchmark (2,000 textured Gouraud triangles of about 35 × 36 pixels
 than a frame within the budget): natively (M1 Pro, `-O2`) 4.5 ms a frame plain, 5.5 ms
 depth-tested, 7.0 ms depth-tested and perspective; in WebAssembly (Emscripten `-O3`, Node)
 7.8, 10.6 and 9.5 ms.
+
+## Proposal: fog toward a colour
+
+**Status: a proposal, not decided.** Prototyped on branch `gpu-fog-colour` (2026-10-05) behind a
+switch that is off at reset; the project owner decides whether it ships. With the switch off,
+every cart ROM and `system.mei` builds byte-identical, and every cart draws the same frames with
+the same cycle counts.
+
+**The problem.** The GPU has no fog (spec p. 17). Carts blend vertex colours toward the fog
+colour on the CPU, and a textured face's colour is a tint that multiplies its texel, so textured
+faces can only fade toward dark colours. Almost everything in the worlds is textured
+(palette-backed materials draw as textured swatches, [WORLDKIT.md](WORLDKIT.md)), so there is no
+daytime haze: in the shrine town, far buildings, trees and stand-ins read as hard dark blocks
+against a bright sky (`tests/fog/shots/`, left halves).
+
+**What it does.** The Prism Engine blends each pixel of a packet with depth (`0x30`–`0x3F`)
+toward a fog colour register, by a fog factor it computes per vertex from the vertex's depth
+word and interpolates across the triangle. Textured faces fade toward any colour, bright haze
+included. Packets without depth (the interface, sprites, ordering-table carts) are never
+fogged, so the CPU fog (`fog()`) keeps working as before.
+
+**Registers** (word registers, like the other GPU registers; `0xFF0030`–`0xFF00FF` stay unmapped):
+
+| Address | Name | Access | Purpose |
+|---|---|---|---|
+| `0xFF0028` | `GPU_FOG` | read/write | bits 0–23 the fog colour (red, green, blue, 8 bits each, as in a packet's colour word); **bit 24 on**. Bits 25–31 are reserved (ignored, read 0). 0 at reset |
+| `0xFF002C` | `GPU_FOG_RANGE` | read/write | bits 0–15 *N*, where fog starts, in 1/16 units (0–4,095.9 units); bits 16–31 *S*, the scale, ⌊65,536 ÷ (far − near)⌋ with far − near in units. 0 at reset |
+
+Like `GPU_DEPTH`, they apply to the lists drawn while they are set, so a cart can change the fog
+between two `GPU_DRAW` writes.
+
+**The factor.** For each vertex of a packet with depth while bit 24 is on, from its depth word
+*w* (16.16):
+
+    d = 0 when w <= 0, else min(w >> 12, 65535)          the depth in 1/16 units, 16 bits
+    f = 0 when d <= N, else min(((d - N) * S) >> 12, 256)  a 16 x 16 multiply, 0 to 256
+
+*f* is interpolated across the triangle exactly as a Gouraud colour is (⌊Σ fᵢEᵢ(p) ÷ area⌋, the
+rasterization rule), linear in screen space, not perspective-corrected, as the N64's and
+Direct3D's vertex fog were. A triangle whose three factors are 0 is drawn exactly as without fog.
+
+**The blend,** per colour channel, after the texel times the tint and before dither:
+
+    c' = c + floor((F - c) * f / 256)
+
+with *F* the fog colour's channel (8 bits), so *f* = 256 gives the fog colour exactly. Then dither,
+the semi-transparent blend and the write, as before. Index-0 texels stay transparent.
+
+**With the rest of the GPU:**
+
+- **Semi-transparency.** Mode 0 (average) blends the fogged colour. Modes 1 and 3 (additive) and
+  2 (subtractive) fog toward **black** instead, so a far glow or shadow fades out rather than
+  adding or removing the fog colour (the rule Direct3D left to the programmer, here in the chip).
+- **The depth buffer.** Untouched: the key, the test, early depth and the decal offset are the
+  same, and a pixel that fails the test is not fogged (it costs 1, as before).
+- **The Horizon Engine.** Untouched: the planes and the backdrop are not fogged; the layer bit and
+  holes behave as before. A world picks a fog colour close to its backdrop's horizon colour. (The
+  shrine town's backdrop has a dark olive stop below the horizon, `#4a5636` at −8°, which now
+  shows as a band under fogged geometry; with fog the recipe would give that stop the fog colour.)
+
+**Cost.** One new term in the cost table ([RENDERING.md](RENDERING.md#cost)), `GPU_CYCLES_FOG` in
+`src/core/machine.h`:
+
+| Work | GPU cycles |
+|---|---|
+| each triangle of a packet with depth while `GPU_FOG` bit 24 is on: its three factors and the fourth interpolant's setup (empty, off-screen and all-zero ones too, like the 40 of setup) | **8** |
+| a fogged pixel | **+0**: the blend is a fixed-function stage in the pixel pipeline with no memory access, as Gouraud colour is |
+| writing the registers | 0 |
+
+The CPU pays nothing per vertex or face: the GPU computes the factors from the depth words the
+depth mode already writes. `gpu_fog()` is two register writes.
+
+**Era precedent.**
+
+- **Nintendo 64 (1996):** the RSP computed a per-vertex fog factor from depth (`gSPFogPosition`)
+  into the shade alpha; the RDP's blender mixed each pixel toward a fog colour register by it. In
+  one-cycle mode fog came free on an opaque pixel (fog and translucency together needed two-cycle
+  mode, half rate). This proposal is that design, with the factor computed by the polygon chip
+  from the depth word instead of by a vertex processor.
+- **3dfx Voodoo Graphics (1996):** a fog colour register and per-pixel fog, from iterated alpha or a
+  64-entry table indexed by *w*, at no fill cost.
+- **Direct3D 5 (1997)** exposed both vertex fog and table fog with a fog colour render state; the
+  **Dreamcast** (1998) had per-vertex and 128-entry table fog.
+- The **PlayStation** (1994) had none: the GTE's depth cueing interpolated vertex colours toward a
+  far colour, which is Mei's `fog()` today, with the same dark-only limit on textured polygons.
+
+So per-vertex fog toward any colour, free per pixel, is squarely 1996–97 hardware; per-pixel table
+fog (exact on large faces) is the Voodoo's and the Dreamcast's, and is the natural next step if
+affine interpolation shows on big ground faces.
+
+**Measured on the shrine town** (`tests/fog/shrinetown.py`: the real reader in depth mode, the
+world, its entities and backdrop, the fourth frame of each view; day fog `#c8c8b4` from 40 to 220
+units, night `#141826` from 16 to 140):
+
+| View | Triangles | GPU, fog off | GPU, fog on | + | CPU (either) |
+|---|---|---|---|---|---|
+| shrine courtyard wall looking north (180, 19, 160) | 1,367 | 389,077 | 400,013 | 2.8 % | 320,624 |
+| the pagoda from the courtyard | 1,700 | 388,480 | 402,080 | 3.5 % | 459,006 |
+| from the pagoda | 1,143 | 298,852 | 307,996 | 3.1 % | 289,856 |
+| from the stage | 1,319 | 363,539 | 374,091 | 2.9 % | 311,120 |
+| station plaza looking north | 1,251 | 332,589 | 342,597 | 3.0 % | 468,997 |
+| the World Checker's 21 worst views (`views.py`): heaviest GPU, the shoulder top | 1,876 | 723,492 | 738,500 | 2.1 % | 464,089 |
+| the same: most triangles, deck 3 looking east | 1,985 | 518,625 | 534,505 | 3.1 % | 502,791 |
+
+Over the 21 worst views fog adds 5,920–15,880 GPU cycles (1.6–3.5 %; at most 0.8 % of the
+2,000,000 budget), and nothing to the CPU. For comparison, the CPU fog (`fog()`, which cannot
+make bright haze) on the same views adds 112,000–189,000 CPU cycles (station plaza 468,997 →
+597,706; deck 3 502,791 → 691,612), 11–19 % of the CPU budget. Pictures, fog off on the left:
+`tests/fog/shots/` (day: `courtyard_wall_north`, `courtyard_pagoda`, `from_pagoda`,
+`from_stage`, `station_plaza_north`; night: `night_from_stage`, `night_station_plaza_north`).
+
+**Host time.** The emulator's fogged spans are compiled per flag set like the depth spans (80
+more functions); the old spans are unchanged. The unit tests' benchmark (2,000 textured Gouraud
+triangles, depth-tested and perspective, every pixel fogged; M1 Pro, `-O2`): 8.0 ms a frame
+without fog, 10.2 ms with it.
+
+**What the prototype adds.** `GPU_FOG`, `GPU_FOG_RANGE` and the blend in `src/core/gpu.c` (with
+`tris_fog` and `px_fog` in `MeiGpuStats` and the `--gpu-stats` columns); `gpu_fog(colour, near,
+far)` and `gpu_fog_off()` in `stdlib/gfx.akr`; in the World Kit, a palette variant's `fog`
+(`{"color", "near", "far"}`), from which `NAME.akr` gets `world_NAME_fog(region, variant)`
+([WORLDKIT.md](WORLDKIT.md#palettes-per-region)). Tests: `tests/test_gpu.c` (`test_fog_*`: the
+registers, the factor, the blend, the semi-transparent rule, the cost, and 400 random packets
+against an independent reference), `tests/lang/gpu_fog.akr`, and the World Kit's
+`test_fog_per_variant_on_the_console`.
+
+**Open questions for the decision.** Whether a fogged pixel should cost something (+0 here; the
+N64 charged a second cycle only for fog with translucency); whether the factor should be
+perspective-corrected or table-driven per pixel (more exact on large ground faces, more GPU);
+whether the World Checker should model fog (it does not; the cost is 8 a triangle); and whether
+the spec's fog paragraph and the Reference Renderer follow.
