@@ -393,8 +393,10 @@ gw = ground(106, 200); stair('core_west_gate_stair', (106, gw + 0.3, 200), (114,
 ge = ground(222, 192); stair('core_east_gate_stair', (214, 5.0, 192), (222, ge + 0.3, 192), 3.0, 4.0)
 # the stone stair from the north gate to the pagoda terrace, on layout's line (its ground is carved
 # to the line; a bed lowers it under the treads)
+# (its earth sides go 3.5 m down, not 1.2: over the lower ground west of it the stepped edge of the
+# skirt hung in the air, a sawtooth; alpha fix, DESIGN.md 12.9)
 paths['core_north_stair'] = {'points': [[160, 5.0, 233.6], [172, L.PAG_BASE, 254.0]],
-                             'sweep': {'profile': [[-4.2, -1.2], [-3.5, 0], [3.5, 0], [4.2, -1.2]],
+                             'sweep': {'profile': [[-4.6, -3.5], [-3.5, 0], [3.5, 0], [4.6, -3.5]],
                                        'materials': ['earth', 'steps', 'earth'], 'stairs': {'rise': 0.3},
                                        'caps': True}}
 # the cemetery's middle stair: one flight at each terrace edge
@@ -448,7 +450,9 @@ bridge('core_canal_planks', [(42.0, 0.8, 203.5), (54.0, 1.15, 203.5)],
        profile=[[-1.0, -0.3], [-1.0, 0], [1.0, 0], [1.0, -0.3], [-1.0, -0.3]])
 
 # the zig-zag bridge from the east gate stair's foot to the pond's west bank
-ZZ = [(222.0, 192.0), (220, 186), (216, 180), (222, 174), (218, 168), (224, 162), (220, 156)]
+# (the corner at (218, 168) moved to x 219.5, off the 2.9 m bank, which lifted the bridge into a hump
+# there that a walk could not take: alpha fix, DESIGN.md 12.9)
+ZZ = [(222.0, 192.0), (220, 186), (216, 180), (222, 174), (219.5, 168), (224, 162), (220, 156)]
 zpts = []
 for (x0, z0), (x1, z1) in zip(ZZ, ZZ[1:]):
     n = max(1, int(math.hypot(x1 - x0, z1 - z0) // 2))
@@ -466,7 +470,9 @@ bridge('core_zigzag', [(x, y, z) for (x, z), y in zip(zpts, ys)],
 # the park path (R_CANAL)
 TRAIL = {'profile': [[-2.0, -0.3], [-1.1, 0], [1.1, 0], [2.0, -0.3]], 'materials': ['earth', 'path', 'earth'], 'caps': True}
 DRAPE = {'step': 4, 'bed': {'width': 3.0, 'depth': 0.3, 'falloff': 2}}
-paths['core_trail_woods'] = {'points': [[97, 119], [100.4, 128.5], [101, 146], [87, 176], [74, 206], [84, 232], [96, 255.5]],
+# (its climb over the ridge's west end straighter, on make_mountain.py's ramp: alpha fix, DESIGN.md 12.9)
+paths['core_trail_woods'] = {'points': [[97, 119], [100.4, 128.5], [101, 146], [87, 176], [74, 206], [84, 232], [86.5, 240],
+                                        [91.15, 255.5]],
                              'drape': DRAPE, 'sweep': TRAIL}
 paths['core_canal_lane'] = {'points': [[55, 119], [56, 128.5], [56, 158], [56.5, 162], [56, 200], [56, 255.5], [56, 276], [55.5, 290]],
                             'drape': DRAPE,
@@ -483,20 +489,19 @@ def ridge_corner(h, toward):
     x1, z1, x2, z2 = h['top']
     return (min(max(toward[0], x1 + 0.3), x2 - 0.3), h['ridge'] + 0.1, min(max(toward[1], z1 + 0.3), z2 - 0.3))
 
-rails = []
 TORII_W, TORII_E = (155.0, 13.8, 124.0), (165.0, 13.8, 124.0)     # on the kasagi's top (town's torii, c2_1: 0.6 + 13.2)
 GATE_W, GATE_E = (151.0, 12.3, gz - 5.0), (169.0, 12.3, gz - 5.0)  # lower roof's front corners
 hw = ridge_corner(HALL_W, (134, 158)); he = ridge_corner(HALL_E, (186, 158))
-for name, a, b in (('core_string_torii_w', TORII_W, hw), ('core_string_torii_e', TORII_E, he),
-                   ('core_string_gate_w', hw, GATE_W), ('core_string_gate_e', he, GATE_E)):
-    paths[name] = {'points': [[round(v, 3) for v in a], [round(v, 3) for v in b]], 'raised': True,
-                   'sweep': dict(ROPE)}
-    rails.append((name, a, b))
-for name, a, b in rails:
-    c = a if int(a[2] // 64) in ROWS else b
-    entity('rail_' + name[5:], 'rail', c[0], c[1], c[2], params={'path': name})
-    for k, f in enumerate((1 / 3, 2 / 3)):
-        coin(f'{name[5:]}_{k}', a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f + 0.9, a[2] + (b[2] - a[2]) * f)
+# One string a side, torii -> hall -> gate, one rail (alpha fix, DESIGN.md 12.9): as two rails meeting
+# at the hall, grinding off the end of one caught the other going back, and back again, for ever.
+for side, t, h, g in (('w', TORII_W, hw, GATE_W), ('e', TORII_E, he, GATE_E)):
+    name = f'core_string_torii_{side}'
+    paths[name] = {'points': [[round(v, 3) for v in p] for p in (t, h, g)], 'raised': True, 'sweep': dict(ROPE)}
+    c = t if int(t[2] // 64) in ROWS else h
+    entity(f'rail_string_torii_{side}', 'rail', c[0], c[1], c[2], params={'path': name})
+    for kind, a, b in (('torii', t, h), ('gate', h, g)):
+        for k, f in enumerate((1 / 3, 2 / 3)):
+            coin(f'string_{kind}_{side}_{k}', a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f + 0.9, a[2] + (b[2] - a[2]) * f)
 # (the viaduct's parapets over this span are the town's parapet rails, which run the whole line)
 
 # ------------------------------------------------------------------ terrain: the core rows' field
@@ -513,6 +518,10 @@ ops.append({'op': 'bed', 'path': 'core_north_stair', 'width': 8.0, 'depth': 0.6,
 for rect, m in (((110, 128, 210, 166), 'gravel'), (TERR, 'ashlar'), (TEMPLE, 'podium'), ((0, 128, 44, 206), 'grass'),
                 (CEM, 'cemetery'), ((0, 206, 44, 256), 'bamboo_floor')):
     ops.append({'op': 'paint', 'area': {'rect': list(rect)}, 'material': m})
+# The stream's last 34 m before the pond (alpha fix, DESIGN.md 12.9): the ground under it was down to
+# -1.65, and the stream's bed a slot at -2.25 between 2-3 m walls; filled to -0.4, its bed (-1.0) runs
+# into the pond's floor (-1.4) and its banks can be walked out of.
+ops.append({'op': 'fill', 'area': {'rect': [232, 182, 246, 216]}, 'height': -0.4, 'falloff': 3})
 for (x, z, r) in L.POND:
     ops.append({'op': 'water', 'area': {'circle': [x, z, round(r * 1.12, 2)]}, 'level': 0.0, 'material': 'water'})
 

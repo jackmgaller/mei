@@ -326,7 +326,7 @@
    "asset": "life_koi",
    "position": [
     237.0,
-    -0.5,
+    -0.15,
     146.0
    ],
    "collision": "none",
@@ -337,7 +337,7 @@
    "asset": "life_koi",
    "position": [
     239.5,
-    -0.5,
+    -0.15,
     150.0
    ],
    "collision": "none",
@@ -348,7 +348,7 @@
    "asset": "life_koi",
    "position": [
     233.0,
-    -0.5,
+    -0.15,
     168.0
    ],
    "collision": "none",
@@ -359,7 +359,7 @@
    "asset": "life_koi",
    "position": [
     238.0,
-    -0.5,
+    -0.15,
     172.5
    ],
    "collision": "none",
@@ -370,7 +370,7 @@
    "asset": "life_koi",
    "position": [
     241.5,
-    -0.5,
+    -0.15,
     140.5
    ],
    "collision": "none",
@@ -478,18 +478,6 @@
    ],
    "params": {
     "path": "core_string_torii_e"
-   }
-  },
-  {
-   "id": "core_rail_string_gate_e",
-   "type": "rail",
-   "position": [
-    192.0,
-    11.0,
-    158.6
-   ],
-   "params": {
-    "path": "core_string_gate_e"
    }
   }
  ]

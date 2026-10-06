@@ -8,7 +8,7 @@
  },
  "materials": {
   "scales": {
-   "color": "#e8782a",
+   "color": "#ff8020",
    "texture": {
     "image": "art/koi_back.png",
     "projection": "planar",
@@ -24,14 +24,14 @@
    }
   },
   "fin": {
-   "color": "#f0a860",
+   "color": "#ffb878",
    "palette": true,
    "double_sided": true
   }
  },
  "lighting": {
   "mode": "vertical",
-  "ambient": 0.55
+  "ambient": 0.85
  },
  "verification": {
   "required": true,

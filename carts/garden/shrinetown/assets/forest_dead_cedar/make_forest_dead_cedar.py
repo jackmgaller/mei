@@ -215,13 +215,22 @@ def fallen():
     return recipe('forest_dead_cedar_fallen', 120, nodes, [(45, [l1s.node(), l1n]), (110, [l2n])])
 
 
+BUTT_TOP = 1.26              # the log's walking top at its butt (0.66 + 0.85 r cos theta)
+
+
 def fallen_col():
-    """The stump's walls and flat top (1.6), the root plate, and the log's walking slab: four sides
+    """The stump's walls and flat top, the root plate, and the log's walking slab: four sides
     in four lengths of 8.35 m (no floor triangle longer than 8:1), its top 0.85 of the log's radius
-    above the axis, 1.2 m wide at the butt and 1.0 at the tip."""
+    above the axis, 1.2 m wide at the butt and 1.0 at the tip. The stump's top is the slab's top at the
+    butt (1.26), and a floor joins the two over the 0.6 m between them (alpha fix, shrine town
+    DESIGN.md 12.9: the top was 1.6 and nothing joined them, so a body dropped through there to the
+    gorge, and the log was walked onto only by a hop from the stump)."""
     p = mf.Part('stump')
-    rings = rings_mesh(p, [(-0.3, 1.0), (1.6, 0.8)], 'solid')
+    rings = rings_mesh(p, [(-0.3, 1.0), (BUTT_TOP, 0.8)], 'solid')
     p.poly(rings[-1], 'solid', [0, 1, 0])
+    p.poly([[-0.65, BUTT_TOP - 0.02, -0.5], [0.65, BUTT_TOP - 0.02, -0.5], [0.65, BUTT_TOP - 0.02, -1.45],
+            [-0.65, BUTT_TOP - 0.02, -1.45]],
+           'solid', [0, 1, 0])
     plate = mf.Part('root_plate')
     root_plate(plate, 'solid', 'solid')
     slab = mf.Part('log')

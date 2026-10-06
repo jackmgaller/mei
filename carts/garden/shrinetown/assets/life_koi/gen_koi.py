@@ -14,7 +14,9 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(os.path.join(HERE, "art"), exist_ok=True)
 
-ORANGE, WHITE, DARK, DEEP = (232, 120, 42), (240, 232, 214), (44, 36, 34), (200, 80, 30)
+# (brighter than first made, and lit more, so they show through the pond's half-blended water: alpha
+# fix, shrine town DESIGN.md 12.9)
+ORANGE, WHITE, DARK, DEEP = (255, 128, 30), (255, 252, 240), (44, 36, 34), (228, 72, 20)
 
 
 def back():
@@ -49,12 +51,12 @@ recipe = {
     "format": "mei-asset", "version": 1, "name": "life_koi",
     "budget": {"vertices": 60, "triangles": 30},
     "materials": {
-        "scales": {"color": "#e8782a",
+        "scales": {"color": "#ff8020",
                    "texture": {"image": "art/koi_back.png", "projection": "planar",
                                "axis": "z", "scale": [0.16, 0.44], "offset": [0.5, 0.5]}},
-        "fin": {"color": "#f0a860", "palette": True, "double_sided": True},
+        "fin": {"color": "#ffb878", "palette": True, "double_sided": True},
     },
-    "lighting": {"mode": "vertical", "ambient": 0.55},
+    "lighting": {"mode": "vertical", "ambient": 0.85},
     "verification": {"required": True, "depth": True, "perspective": True},
     "nodes": [
         {"id": "body", "op": "loft", "caps": True, "material": "scales",

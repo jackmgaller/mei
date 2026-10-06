@@ -55,6 +55,7 @@ LANDING = (CROWN[0], CROWN[1], 15.0)  # the crown's landing: a second platform o
 PLAT_HALF, PLAT_GAP = 3.5, 1.2        # forest_platform: 7 x 7, its railing open 2.4 m in the middle of each side
 
 # ---------------------------------------------------------------------------- the mountain
+STAR1_Y, FINIAL_TOP, PAG_ROBAN = 48.3, 47.8, 21.19   # star 1, the finial pole's top, the dew basin's top over the base
 CEDAR = (L.CEDAR[0], L.BASIN[3], L.CEDAR[1])                     # the sacred cedar's foot (154, 13, 296)
 ROPE_DECK = DECKS[6]
 CEDAR_YAW = math.degrees(math.atan2(CEDAR[0] - ROPE_DECK[0], CEDAR[2] - ROPE_DECK[1]))   # its knot hole (-Z) to the rope deck
@@ -78,14 +79,20 @@ CEM_GATE = (286.0, 1.8, 131.4)                # at the head of the first flight,
 # (far-views) The last levels further out again where the full check has room (the temple's,
 # pagoda's and great torii's level 1 too): the gate, the stage hall, the giant cedars and the trees'
 # cards (64: the recipes' own); the walls' level 1 at 28.
+# (alpha fix, DESIGN.md 12.9: draw CPU, r02's measured levels) The temple's and pagoda's level 1 from 26 m,
+# the hollow cedar's from 30, the bell pavilion's from 20; the grave rows' level 1 from 12 and culled at 30;
+# the zone's sweeps culled at 40 (SWEEP_CULL).
 SHRINE_LOD = {'tree_cedar_giant': {'distances': [22, 110]}, 'forest_stage_hall': {'distances': [18, 90]},
-              'forest_fox_torii': {'distances': [16], 'cull': 48}, 'forest_platform': {'distances': [24]}, 'arch_temple': {'distances': [40, 110]},
+              'forest_fox_torii': {'distances': [16], 'cull': 48}, 'forest_platform': {'distances': [24]}, 'arch_temple': {'distances': [26, 110]},
               'arch_side_hall': {'distances': [30]}, 'arch_corridor_hall': {'distances': [30]},
-              'arch_gate': {'distances': [30, 100]}, 'arch_pagoda': {'distances': [40, 110]},
+              'arch_gate': {'distances': [30, 100]}, 'arch_pagoda': {'distances': [26, 110]},
+              'tree_cedar_sacred_hollow': {'distances': [30, 180]}, 'bell_pavilion': {'distances': [20, 70]},
+              'cemetery_grave_row': {'distances': [12], 'cull': 30},
               'arch_torii_great': {'distances': [40]}, 'arch_wall_8': {'distances': [28]},
               'arch_wall_4': {'distances': [28]}, 'tree_maple': {'distances': [18, 64]},
               'tree_maple_small': {'distances': [16, 64]}, 'tree_ginkgo': {'distances': [18, 64]},
               'tree_cedar': {'distances': [20, 64]}}
+SWEEP_CULL = 40
 
 # The assets' directories: the shrine's, and each shrine town asset the zone places.
 ASSET_DIRS = ['../shrine/assets'] + [f'assets/{d}' for d in (
@@ -100,8 +107,9 @@ GREY = ('gbc_side_hall_', 'gbc_stone_lantern', 'gbc_chozuya', 'gbc_shrine_office
         'gbc_gate', 'gbc_bell_pavilion', 'gbc_wall_', 'gbc_boulder_', 'gbc_deck_tree_', 'gbc_crown_landing',
         'gbc_pagoda_lantern', 'gbc_pond_stone', 'gbc_grave_row', 'gbc_jizo_hall', 'gbc_cem_gate_',
         'gbm_pagoda', 'gbm_cedar_kick_', 'gbm_deck_', 'gbm_cedar_hollow', 'gbm_root_curtain', 'gbm_ladder_a',
-        'gbm_hollow_log', 'gbm_fox_', 'gbm_stage', 'gbm_falls_cave', 'gbm_path_out', 'gbm_dead_cedar_')
-KEEP = ('gbm_kick_chimney',)          # the chimney's two rock faces stay (no asset is a rock face)
+        'gbm_hollow_log', 'gbm_fox_', 'gbm_stage', 'gbm_falls_cave', 'gbm_path_out', 'gbm_dead_cedar_',
+        'gbm_kick_chimney')
+KEEP = ()                             # (the kick chimney's grey rock is shrine_kick_chimney now: alpha fix)
 # Assets with repeating textures (a texture window table) cannot be merged (the World Kit refuses),
 # and merged lily pads would lose their levels: they are placed alone even where merging was meant
 # (the cemetery's rows and walls, the lanterns).
@@ -244,6 +252,12 @@ def apply(cells, world):
     valley_and_pond(Z)
     cemetery(Z)
     forest(Z)
+    # the zone's sweeps (a path with a sweep whose points are all in the zone) culled at SWEEP_CULL
+    sw = world['lod'].setdefault('sweeps', {}).setdefault('paths', {})
+    for name, spec in sorted(world['paths'].items()):
+        pts = spec.get('points', [])
+        if 'sweep' in spec and pts and all(in_zone(p[0], p[-1]) for p in pts):
+            sw[name] = dict(sw.get(name, {}), cull=min(sw.get(name, {}).get('cull', SWEEP_CULL), SWEEP_CULL))
 
 
 # ---------------------------------------------------------------------------- 3.6 the outer courtyard
@@ -276,16 +290,18 @@ def courtyard(Z):
     for side, (x, z, _) in zip('we', SIDE_HALLS):
         Z.move_entity(f'core_coin_side_hall_{side}', (x, 0.6 + 10.3 + 1.0, z))
     # the lantern strings: from the kasagi's top (13.1) to the side halls' ridge ends (10.9), and on to the
-    # gate's lower roof (its eave 11.9 at the front corners)
+    # gate's lower roof (its eave 11.9 at the front corners), one rail a side (gen_core.py). Each starts
+    # with 2 m along the kasagi's top from its middle side, so a grind up the string leaves along the
+    # beam and comes down on it (alpha fix: it left heading for the road, DESIGN.md 12.9)
     torii = {'w': (155.0, 13.2, TORII_Z), 'e': (165.0, 13.2, TORII_Z)}
+    beam = {'w': (157.0, 13.2, TORII_Z), 'e': (163.0, 13.2, TORII_Z)}
     hall = {'w': (128.0, 11.0, 158.6), 'e': (192.0, 11.0, 158.6)}
     gate = {'w': (GATE[0] - 9.0, 12.0, GATE[1] - 3.9), 'e': (GATE[0] + 9.0, 12.0, GATE[1] - 3.9)}
     for side in 'we':
+        name = f'core_string_torii_{side}'
+        Z.paths[name]['points'] = [[R(v) for v in p] for p in (beam[side], torii[side], hall[side], gate[side])]
+        Z.move_entity(f'core_rail_string_torii_{side}', hall[side])
         for kind, a, b in (('torii', torii[side], hall[side]), ('gate', hall[side], gate[side])):
-            name = f'core_string_{kind}_{side}'
-            Z.paths[name]['points'] = [[R(v) for v in a], [R(v) for v in b]]
-            c = a if a[2] >= 128 else b
-            Z.move_entity(f'core_rail_string_{kind}_{side}', c)
             for k, f in enumerate((1 / 3, 2 / 3)):
                 Z.move_entity(f'core_coin_string_{kind}_{side}_{k}',
                               tuple(a[i] + (b[i] - a[i]) * f + (0.9 if i == 1 else 0) for i in range(3)))
@@ -324,6 +340,12 @@ def precinct(Z):
         keep.append(o)
     ops[:] = keep
     Z.paths.pop('core_temple_stair', None)
+    # (alpha fix, DESIGN.md 12.9) Behind the north wall the ground was a gully at 2-3 (the wall moved north
+    # to 237.4), the north stair a causeway over it, and the bank up to the pagoda's terrace had a
+    # floorless crease at the wall's foot: a strip at the terrace's height runs behind the wall now,
+    # blending into the bank and the ridge north of it.
+    ops.append({'op': 'set', 'area': {'rect': [114, 238, 214, 243]}, 'height': 5.0, 'falloff': 3})
+    ops.append({'op': 'paint', 'area': {'rect': [114, 238, 214, 243]}, 'material': 'earth'})
 
     # the white wall: 8 m and 4 m modules from corner to gate, corner posts; the north run on a 1 m
     # plinth (top 3.6 m over the terrace: decision #5); the west, east and north gates in it
@@ -340,7 +362,9 @@ def precinct(Z):
             yaw = None if axis == 'x' else 90
             y = 6.0 if raised else 5.0
             nm = f'wall_{axis}{int(fixed)}_{int(c * 10)}'
-            Z.place(nm, f'arch_wall_{size}', (x, y, z), f'arch_wall_{size}_col', yaw)
+            # the north run's collision has a steep coping: no grab on its top (DESIGN.md 12.9)
+            colname = f'shrine_wall_coping_{size}_col' if raised else f'arch_wall_{size}_col'
+            Z.place(nm, f'arch_wall_{size}', (x, y, z), colname, yaw)
             if raised:
                 Z.place(nm + '_plinth', f'shrine_wall_plinth_{size}', (x, 5.0, z), f'shrine_wall_plinth_{size}_col', yaw,
                         merge=True)
@@ -352,7 +376,8 @@ def precinct(Z):
     run(WZ0 + e, GATE_E_Z - 4, WX1, 'z'); run(GATE_E_Z + 4, WZ1 - e, WX1, 'z')
     for k, (x, z) in enumerate(((WX0, WZ0), (WX1, WZ0), (WX0, WZ1), (WX1, WZ1))):
         north = z == WZ1
-        Z.place(f'wall_corner_{k}', 'arch_wall_corner', (x, 6.0 if north else 5.0, z), 'arch_wall_corner_col', merge=True)
+        Z.place(f'wall_corner_{k}', 'arch_wall_corner', (x, 6.0 if north else 5.0, z),
+                'shrine_wall_coping_corner_col' if north else 'arch_wall_corner_col', merge=True)
         if north:
             Z.place(f'wall_corner_{k}_plinth', 'shrine_wall_plinth_corner', (x, 5.0, z), 'shrine_wall_plinth_corner_col',
                     merge=True)
@@ -398,6 +423,10 @@ def walkway(Z):
     Z.move_entity('core_coin_crown', (cx + 1.5, ch + 1.0, cz + 1.5))
     land_yaw = platform_yaw([bearing(decks[2][0] - cx, decks[2][1] - cz)])
     Z.place('deck_crown_landing', 'forest_platform', (cx, LANDING[2], cz), 'forest_platform_col', land_yaw)
+    # the 13 m pole from the landing to the crown deck (core_pole_crown, gen_core.py) drawn as a ladder
+    # (alpha fix, DESIGN.md 12.9: it was an entity only, and could not be seen)
+    _, pole = Z.entity('core_pole_crown')
+    Z.place('crown_ladder', 'shrine_crown_ladder', tuple(pole['position']), 'none')
 
     def ends(i, j):
         (ax, az, ah), (bx, bz, bh) = decks[i], decks[j]
@@ -432,6 +461,12 @@ def walkway(Z):
 def ridge_and_basin(Z):
     px, pz = L.PAGODA
     Z.place('pagoda', 'arch_pagoda', (px, L.PAG_BASE, pz), 'arch_pagoda_town_col')
+    # star 1 raised to 48.3 (lead's decision, alpha fix: G6 from the stage crossed the finial at 45.5-45.8
+    # and took the card in mid-air); the finial pole runs to 47.8, so its top holds the feet at 46.6 and
+    # the card is in reach there; the spire drawn on up to it (shrine_finial_top)
+    Z.move_entity('star_1_pagoda', (px, STAR1_Y, pz))
+    Z.move_entity('pole_pagoda_finial', (px, L.PAG_BASE + PAG_ROBAN, pz), height=R(FINIAL_TOP - L.PAG_BASE - PAG_ROBAN))
+    Z.place('finial_top', 'shrine_finial_top', (px, L.PAG_BASE + 30.0, pz), 'none')
     # the stone lantern in front of its south face: the step to roof 1, its top at 16.4 as before
     # (forest_stone_lantern is 1.85 to its cap in collision: sunk 0.45)
     Z.place('pagoda_lantern', 'forest_stone_lantern', (178.0, L.PAG_BASE - 0.45, 255.5), 'forest_stone_lantern_col')
@@ -506,15 +541,20 @@ def back_mountain(Z):
     # front of the hall's wall (game.py's BELL: the rope's trigger and star 3 in front of it)
     bell = (sx, sy + 0.8, sz - 1.0)
     Z.place('stage_bell', 'forest_stage_bell', bell, 'forest_stage_bell_col')
-    # the stilt ladder from the ledge (44) over the deck's front railing (61): the pole and its look
+    # the stilt ladder from the ledge (44) over the deck's front railing (61): the pole and its look. A
+    # front pole held on its north side, 1.15 m out from the deck's front (alpha fix, DESIGN.md 12.9:
+    # 0.6 m out, the body on the deck's side met the deck's edge and stopped at 58; on the other side a
+    # pole jump went away from the deck): climbed from the ledge under the deck, and at its top (the
+    # feet at 61.1, over the railing) a pole jump goes north onto the deck
     front = sz - 10.0
-    Z.move_entity('pole_stage_front', (sx, 44.0, front - 0.6), height=18.3)
-    Z.place('stilt_ladder', 'shrine_stilt_ladder', (sx, 44.0, front - 0.45), 'none')
+    Z.move_entity('pole_stage_front', (sx, 44.0, front - 1.15), height=18.3, front=True)
+    Z.place('stilt_ladder', 'shrine_stilt_ladder', (sx, 44.0, front - 1.0), 'none')
     # the stairs from the torii landing and the rope bridge from the falls arrive at the side railings' gaps
     gz = sz - 5.0
+    # (alpha fix, DESIGN.md 12.9: the stair's last riser stood at the deck's edge, its last tread 0.4 m
+    # below the deck; it now ends in a level landing 1.6 m long, 0.1 m below the deck, slipping 0.6 m under)
     st = Z.paths['landing_stair']['points']
-    st[-1] = [R(sx - 16.0 + 0.4), R(sy - 0.1), R(gz)]
-    st[-2] = [126.0, 54.5, R(gz - 0.6)]
+    st[1:] = [[126.0, 54.5, R(gz - 0.6)], [R(sx - 17.0), R(sy - 0.1), R(gz)], [R(sx - 16.0 + 0.6), R(sy - 0.1), R(gz)]]
     br = Z.paths['bridge_falls_stage']['points']
     a, b = (sx + 16.0 - 0.4, sy - 0.08, gz), tuple(br[-1])
     n = len(br)
@@ -533,6 +573,9 @@ def back_mountain(Z):
     Z.place('falls', 'water_falls', FALLS, 'none')
     Z.place('falls_cave', 'forest_falls_cave', FALLS, 'forest_falls_cave_col')
     Z.place('falls_cliff', 'shrine_falls_cliff', FALLS, 'shrine_falls_cliff_col')
+    # the kick chimney (the grey box's rock faces in their places, textured as the falls' rock, so they
+    # take the night's colours: alpha fix, DESIGN.md 12.9)
+    Z.place('kick_chimney', 'shrine_kick_chimney', (196.5, 16.0, 327.0), 'shrine_kick_chimney_col')
     Z.paths.pop('falls_sheet', None)
     up = Z.paths['stream_upper']['points']
     up[-1] = [214.0, 48.45, 337.2]
@@ -544,8 +587,10 @@ def back_mountain(Z):
     Z.place('path_out_torii', 'forest_fox_torii', (252.0, 378.0), 'forest_fox_torii_col', 20)
     Z.place('path_out_jizo', 'jizo', (255.2, 376.6), 'jizo_col', 200, merge=True)
     # the dead cedar of shortcut C, standing and fallen (one origin, -Z across the gorge)
-    Z.place('dead_cedar_up', 'forest_dead_cedar', DEAD_CEDAR, 'forest_dead_cedar_col', DEAD_CEDAR_YAW, layer='cedar_c_up')
-    Z.place('dead_cedar_down', 'forest_dead_cedar_fallen', DEAD_CEDAR, 'forest_dead_cedar_fallen_col', DEAD_CEDAR_YAW,
+    # (at the trunk's foot, 34.7, as the ground was before the walk to its stump raised it: alpha fix)
+    dc = (DEAD_CEDAR[0], 34.7, DEAD_CEDAR[1])
+    Z.place('dead_cedar_up', 'forest_dead_cedar', dc, 'forest_dead_cedar_col', DEAD_CEDAR_YAW, layer='cedar_c_up')
+    Z.place('dead_cedar_down', 'forest_dead_cedar_fallen', dc, 'forest_dead_cedar_fallen_col', DEAD_CEDAR_YAW,
             layer='cedar_c_down')
 
 
@@ -568,7 +613,7 @@ def valley_and_pond(Z):
         Z.place(f'lily_{i}', 'water_lily_pad_flower' if i % 2 else 'water_lily_pad', (x, 0.0, z), 'none', 70 * i, merge=True)
     for i, (x, z, yaw) in enumerate(((237.0, 146.0, 30), (239.5, 150.0, 200), (233.0, 168.0, 110),
                                      (238.0, 172.5, 300), (241.5, 140.5, 160))):
-        Z.place(f'koi_{i}', 'life_koi', (x, -0.5, z), 'none', yaw, merge=True)
+        Z.place(f'koi_{i}', 'life_koi', (x, -0.15, z), 'none', yaw, merge=True)   # (was -0.5: unseen, alpha fix)
 
 
 # ---------------------------------------------------------------------------- 3.14 the cemetery
@@ -584,7 +629,7 @@ def cemetery(Z):
             xx = x + (1.0 if (t + j) % 2 else -1.0) * (t % 3 == 0)
             Z.place(f'graves_{t}_{j}', 'cemetery_grave_row', (xx, h, ze + 5.5), 'cemetery_grave_row_col', merge=True)
         sx = GRAVE_XS[t % 4] + (2.0 if t % 2 else -2.0)
-        Z.place(f'sotoba_{t}', 'cemetery_sotoba_rack', (sx, h, ze + 6.75), 'cemetery_sotoba_rack_col', merge=True)
+        Z.place(f'sotoba_{t}', 'cemetery_sotoba_rack', (sx, h, ze + 6.75), 'cemetery_sotoba_rack_col')
     # the middle stair: a flight 12 m wide at each terrace's edge (between the walls), the first from the
     # lane (the grey box had none: FOLLOWUPS)
     wide = [[-6.0, -2.4], [-6.0, 0], [6.0, 0], [6.0, -2.4], [-6.0, -2.4]]

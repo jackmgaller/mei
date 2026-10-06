@@ -332,38 +332,6 @@
    "asset": "gbc_coin"
   },
   {
-   "id": "core_coin_string_torii_e_0",
-   "type": "coin",
-   "position": [
-    174.0,
-    13.367,
-    135.533
-   ],
-   "asset": "gbc_coin"
-  },
-  {
-   "id": "core_coin_string_torii_e_1",
-   "type": "coin",
-   "position": [
-    183.0,
-    12.633,
-    147.067
-   ],
-   "asset": "gbc_coin"
-  },
-  {
-   "id": "core_rail_string_gate_w",
-   "type": "rail",
-   "position": [
-    128.0,
-    11.0,
-    158.6
-   ],
-   "params": {
-    "path": "core_string_gate_w"
-   }
-  },
-  {
    "id": "core_coin_string_gate_w_0",
    "type": "coin",
    "position": [
@@ -380,6 +348,26 @@
     143.333,
     12.567,
     164.933
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_string_torii_e_0",
+   "type": "coin",
+   "position": [
+    174.0,
+    13.367,
+    135.533
+   ],
+   "asset": "gbc_coin"
+  },
+  {
+   "id": "core_coin_string_torii_e_1",
+   "type": "coin",
+   "position": [
+    183.0,
+    12.633,
+    147.067
    ],
    "asset": "gbc_coin"
   },

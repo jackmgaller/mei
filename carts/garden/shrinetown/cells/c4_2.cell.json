@@ -129,8 +129,7 @@
     1.8,
     136.75
    ],
-   "collision": "cemetery_sotoba_rack_col",
-   "merge": true
+   "collision": "cemetery_sotoba_rack_col"
   },
   {
    "id": "sh_cem_wall_2_262",
@@ -220,8 +219,7 @@
     3.6,
     148.75
    ],
-   "collision": "cemetery_sotoba_rack_col",
-   "merge": true
+   "collision": "cemetery_sotoba_rack_col"
   },
   {
    "id": "sh_cem_wall_3_262",
@@ -311,8 +309,7 @@
     5.4,
     160.75
    ],
-   "collision": "cemetery_sotoba_rack_col",
-   "merge": true
+   "collision": "cemetery_sotoba_rack_col"
   },
   {
    "id": "sh_cem_wall_4_262",
@@ -402,8 +399,7 @@
     7.2,
     172.75
    ],
-   "collision": "cemetery_sotoba_rack_col",
-   "merge": true
+   "collision": "cemetery_sotoba_rack_col"
   },
   {
    "id": "sh_cem_wall_5_262",
@@ -493,8 +489,7 @@
     9.0,
     184.75
    ],
-   "collision": "cemetery_sotoba_rack_col",
-   "merge": true
+   "collision": "cemetery_sotoba_rack_col"
   },
   {
    "id": "sh_cem_wall_6_262",

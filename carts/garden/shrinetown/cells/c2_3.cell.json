@@ -57,7 +57,7 @@
     6.0,
     237.4
    ],
-   "collision": "arch_wall_8_col"
+   "collision": "shrine_wall_coping_8_col"
   },
   {
    "id": "sh_wall_x237_1300_plinth",
@@ -78,7 +78,7 @@
     6.0,
     237.4
    ],
-   "collision": "arch_wall_8_col"
+   "collision": "shrine_wall_coping_8_col"
   },
   {
    "id": "sh_wall_x237_1380_plinth",
@@ -99,7 +99,7 @@
     6.0,
     237.4
    ],
-   "collision": "arch_wall_8_col"
+   "collision": "shrine_wall_coping_8_col"
   },
   {
    "id": "sh_wall_x237_1460_plinth",
@@ -120,7 +120,7 @@
     6.0,
     237.4
    ],
-   "collision": "arch_wall_8_col"
+   "collision": "shrine_wall_coping_8_col"
   },
   {
    "id": "sh_wall_x237_1540_plinth",
@@ -141,7 +141,7 @@
     6.0,
     237.4
    ],
-   "collision": "arch_wall_8_col"
+   "collision": "shrine_wall_coping_8_col"
   },
   {
    "id": "sh_wall_x237_1700_plinth",
@@ -162,7 +162,7 @@
     6.0,
     237.4
    ],
-   "collision": "arch_wall_8_col"
+   "collision": "shrine_wall_coping_8_col"
   },
   {
    "id": "sh_wall_x237_1780_plinth",
@@ -183,7 +183,7 @@
     6.0,
     237.4
    ],
-   "collision": "arch_wall_8_col"
+   "collision": "shrine_wall_coping_8_col"
   },
   {
    "id": "sh_wall_x237_1860_plinth",

@@ -1,0 +1,603 @@
+// The shrine zone's route scenarios (700-789 in the shrine town, 790-799 in the shrine), from the
+// alpha fix round (DESIGN.md 12.9, "The shrine zone"): each walks, climbs or jumps a route a
+// reviewer found broken, with real inputs and no teleport past its start, so it stays fixed.
+// check.sh runs the ones shrinezone_cases.sh lists.
+//
+// A route is a list of points, each with a kind: walk to it (strict: a walk that stalls fails,
+// unless the route allows hops), climb a pole and jump or drop off it toward the next point, a
+// held jump or a double jump with a grab, or kicks up a chimney. Each point's y is the lowest
+// the feet may be on arrival (0: anything), so a fall through a deck or off a bridge fails.
+
+struct ZP {
+    p: vec3            // x, z the target; y: the lowest the feet may be on arrival (0: none)
+    k: s32             // ZK_*
+    tol: fixed
+}
+
+const ZK_WALK = 0
+const ZK_POLE = 1      // p: the pole's base; climb to the top, go round to face the next point, pole jump
+const ZK_DOUBLE = 2    // a held jump then the chained jump at p, a grab and climb if it comes to that
+const ZK_POLE_DROP = 3 // p: the pole; climb to the top, let go (R) pushing at the next point
+const ZK_JUMP = 4      // a single held jump toward p
+const ZK_KICKS = 5     // kick between two faces (east first) until standing again
+const ZK_LADDER = 6    // p: a front pole (a ladder); climb to its top and keep pushing at the next point
+
+const ZP_MAX = 96
+var zp: [ZP_MAX]ZP
+var zp_n: s32
+var zp_i: s32
+var zp_sub: s32
+var zp_t: s32
+var zp_slow: s32
+var zp_hold: s32
+var zp_hops: s32
+var zp_last: vec3
+var zp_top: fixed
+var zp_strict: bool        // a stalled walk fails (no hops)
+var zp_noslide: bool       // the body must never slide
+var zp_done: bool
+var zp_trace: s32
+
+fn zone_case_init() -> bool {
+    match SCENARIO {
+        700 => { name = "shrine zone: the treetop walkway on foot, the courtyard's stair to the rope deck, deck to deck" }
+        701 => { name = "shrine zone: on each walkway deck, running at the trunk from eight sides keeps the body on the deck" }
+        702 => { name = "shrine zone: the rope bridge, the stage to the falls' top" }
+        703 => { name = "shrine zone: the rope bridge, the falls' top to the stage" }
+        704 => { name = "shrine zone: the woods trail up the ridge's west end to the fox grove, walking" }
+        705 => { name = "shrine zone: the east shoulder trail up from the cemetery to the falls' top, no slide" }
+        706 => { name = "shrine zone: grinding down a lantern string from the torii does not pin the body at the hall" }
+        707 => { name = "shrine zone: grinding up a lantern string ends on the torii's top beam" }
+        708 => { name = "shrine zone: the north wall's coping refuses a jump and grab from the terrace" }
+        711 => { name = "shrine zone: the stilt ladder, the ledge (44) to the stage's deck" }
+        712 => { name = "shrine zone: the torii tunnel's foot is walked into up the middle" }
+        713 => { name = "shrine zone: ladder A's steps from the basin to the shelf, walking" }
+        714 => { name = "shrine zone: the landing stair onto the stage's deck at its west gap, walking" }
+        715 => { name = "shrine zone: the steps from the falls pool into the cave, walking" }
+        716 => { name = "shrine zone: the cave's west passage to the pool's terrace" }
+        717 => { name = "shrine zone: shortcut C's fallen cedar walked from its root plate to the shelf" }
+        718 => { name = "shrine zone: a jump onto the fallen cedar where it meets its root plate lands on it" }
+        719 => { name = "shrine zone: the zig-zag bridge walked from the east gate's stair to the pond" }
+        720 => { name = "shrine zone: out of the stream's mouth onto the pond's bank, walking" }
+        721 => { name = "shrine zone: the path from the falls' top to the way-out torii" }
+        722 => { name = "shrine zone: the stage's front: G6's glide passes under star 1" }
+        723 => { name = "shrine zone: the crown deck's pole, from the landing to the crown deck" }
+        730 => { name = "shrine zone: G8 from its pad, 1 m west" }
+        731 => { name = "shrine zone: G8 from its pad, 1 m east" }
+        732 => { name = "shrine zone: G8 from its pad, 1 m north" }
+        733 => { name = "shrine zone: G8 from its pad, 1 m south" }
+        790 => { name = "shrine: on each walkway deck, running at the trunk from eight sides keeps the body on the deck" }
+        else => { return false }
+    }
+    cam.lock = false
+    zp_n = 0
+    zp_i = 0
+    zp_sub = 0
+    zp_t = 0
+    zp_slow = 0
+    zp_hold = 0
+    zp_hops = 0
+    zp_strict = true
+    zp_noslide = false
+    zp_done = false
+    zp_trace = 0
+    tw_phase = 0
+    tw_k = 0
+    return true
+}
+
+fn zone_case(f: s32) {
+    match SCENARIO {
+        701 => zc_trunks(f, &ZC_DECKS_TOWN[0], len(ZC_DECKS_TOWN) as s32)
+        790 => zc_trunks(f, &ZC_DECKS_SHRINE[0], len(ZC_DECKS_SHRINE) as s32)
+        706 => zc_string_down(f)
+        707 => zc_string_up(f)
+        708 => zc_north_wall(f)
+        718 => zc_log_drop(f)
+        722 => zc_g6_star(f)
+        730, 731, 732, 733 => zc_g8(f)
+        else => zc_route(f)
+    }
+}
+
+// ---- building a route
+
+fn za(x: fixed, y: fixed, z: fixed, k: s32, tol: fixed) {
+    zp[zp_n] = ZP { p: vec3(x, y, z), k: k, tol: tol }
+    zp_n += 1
+}
+fn zw(x: fixed, y: fixed, z: fixed) { za(x, y, z, ZK_WALK, 0.8) }
+
+// Walk points every 2.5 m from the last point to (x, z); each no lower than y (0: anything).
+fn zl(x: fixed, y: fixed, z: fixed) {
+    let a = zp[zp_n - 1].p
+    let n = (tw_hdist(a, vec3(x, 0.0, z)) / 2.5) as s32 + 1
+    for k in 1..n + 1 {
+        let t = fixed(k) / fixed(n)
+        za(a.x + (x - a.x) * t, y, a.z + (z - a.z) * t, ZK_WALK, 0.8)
+    }
+}
+
+// The same on a narrow way (a plank bridge): points every 1.25 m, each within 0.4 m.
+fn zn(x: fixed, y: fixed, z: fixed) {
+    let a = zp[zp_n - 1].p
+    let n = (tw_hdist(a, vec3(x, 0.0, z)) / 1.25) as s32 + 1
+    for k in 1..n + 1 {
+        let t = fixed(k) / fixed(n)
+        za(a.x + (x - a.x) * t, y, a.z + (z - a.z) * t, ZK_WALK, 0.4)
+    }
+}
+
+// Across a walkway deck (centre c, deck height h) from the gap at a to the gap at b, round the
+// trunk on the shorter side, 2.3 m from its centre.
+fn zdeck(cx: fixed, h: fixed, cz: fixed, ax: fixed, az: fixed, bx: fixed, bz: fixed) {
+    let a = atan2(ax - cx, az - cz)
+    var d = atan2(bx - cx, bz - cz) - a
+    if d > 3.1416 { d = d - 6.2832 }
+    if d < -3.1416 { d = d + 6.2832 }
+    for s in 0..5 {
+        let t = a + d * fixed(s) / 4
+        za(cx + sin(t) * 2.3, h - 0.3, cz + cos(t) * 2.3, ZK_WALK, 0.7)
+    }
+}
+
+fn zstart(x: fixed, z: fixed, from: fixed, yaw: fixed) {
+    place(vec3(x, sh_floor(x, z, from), z), yaw)
+    zw(x, 0.0, z)
+}
+
+// The routes (700-723 but those with their own driver).
+fn zc_setup() {
+    match SCENARIO {
+        700 => {
+            // the stair at the courtyard's west end, the foot bridge, then each deck (the gaps the
+            // bridges run between) to the rope deck
+            zstart(116.0, 120.0, 4.0, WEST)
+            zw(102.0, 5.0, 120.0); za(101.0, 5.5, 121.5, ZK_WALK, 0.8); zw(97.5, 6.8, 137.0)
+            ZC_WALKWAY()
+        }
+        702 => {
+            zstart(160.0, 345.0, 65.0, EAST)
+            za(169.6, 59.5, 345.0, ZK_WALK, 0.8); zl(196.6, 51.0, 345.5); zl(223.6, 51.0, 346.0)
+            za(229.0, 51.5, 346.0, ZK_WALK, 1.0)
+        }
+        703 => {
+            zstart(229.0, 346.0, 60.0, WEST)
+            zl(223.6, 51.0, 346.0); zl(196.6, 51.0, 345.5); zl(169.6, 51.0, 345.0)
+            za(160.0, 59.5, 345.0, ZK_WALK, 1.0)
+        }
+        704 => {
+            // the woods trail from the walkway's crown spur, over the ridge's west end, to the grove
+            zp_noslide = true
+            zstart(74.0, 206.0, 20.0, NORTH)
+            zl(84.0, 0.0, 232.0); zl(86.5, 0.0, 240.0); zl(91.15, 0.0, 255.5); zl(95.5, 0.0, 270.0); zl(94.0, 0.0, 284.0)
+            zl(90.0, 0.0, 294.0); zw(90.0, 14.5, 294.0)
+        }
+        705 => {
+            // the shoulder trail's own line, the cemetery's top to the falls' top
+            zp_noslide = true
+            zstart(288.0, 250.0, 20.0, NORTH)
+            zl(288.0, 16.0, 256.0)
+            ZC_SHOULDER()
+            zl(229.0, 51.5, 346.0)
+        }
+        711 => {
+            // from the ledge round to the ladder's north side (under the deck), up it, a pole jump north
+            // over the railing onto the deck
+            zstart(154.0, 336.0, 50.0, NORTH)
+            za(152.4, 43.5, 337.5, ZK_WALK, 0.5); za(152.4, 43.5, 340.0, ZK_WALK, 0.5); za(154.0, 43.5, 340.1, ZK_WALK, 0.4)
+            za(154.0, 43.5, 338.85, ZK_POLE, 0.8)
+            za(154.0, 59.5, 343.5, ZK_WALK, 1.2)
+        }
+        712 => {
+            // the grove up the middle of the tunnel's first steps
+            zstart(94.0, 294.0, 20.0, NORTH)
+            zl(94.0, 14.5, 298.0); zl(94.0, 14.5, 302.5); zl(93.0, 0.0, 308.0); zw(93.0, 17.0, 308.0)
+        }
+        713 => {
+            zstart(178.0, 302.0, 20.0, atan2(-14.5, 12.0))
+            zl(176.0, 12.0, 304.0); zl(161.5, 0.0, 316.0); za(159.4, 23.5, 316.0, ZK_WALK, 0.8)
+        }
+        714 => {
+            // the tunnel's landing up its stair onto the deck's west end
+            zstart(122.0, 346.0, 60.0, EAST)
+            zl(126.0, 54.0, 344.5); zl(137.0, 0.0, 345.0); zl(138.6, 59.7, 345.0); zl(146.0, 59.9, 345.0)
+        }
+        715 => {
+            zstart(214.0, 320.0, 20.0, NORTH)
+            zl(214.0, 11.0, 324.0); zl(214.0, 0.0, 331.0); za(214.0, 13.9, 333.0, ZK_WALK, 0.8)
+        }
+        717 => {
+            wp_layer_set(wp_layer_find("cedar_c_down"), true)
+            wp_layer_set(wp_layer_find("cedar_c_up"), false)
+            ZC_LOG()
+        }
+        716 => {
+            zstart(212.0, 332.0, 20.0, WEST)
+            ZC_CAVE_WEST()
+        }
+        719 => {
+            zstart(223.0, 192.0, 10.0, 3.1416)
+            ZC_ZIGZAG()
+        }
+        720 => {
+            ZC_STREAM()
+        }
+        721 => {
+            zstart(229.0, 346.0, 60.0, EAST)
+            ZC_WAYOUT()
+        }
+        723 => {
+            // on the landing (15) north of the pole, which stands at its south edge
+            zstart(70.0, 219.0, 16.0, 3.1416)
+            za(70.0, 14.5, 218.4, ZK_WALK, 0.4)
+            za(70.0, 14.5, 216.6, ZK_POLE, 0.8)
+            za(70.0, 27.5, 220.0, ZK_WALK, 1.6)
+        }
+        else => {}
+    }
+    mark()
+    zp_top = pl.pos.y
+    note("start, y", pl.pos.y)
+}
+
+fn zc_route(f: s32) {
+    if zp_done { return }
+    if f == 0 { zc_setup(); return }
+    if zp_trace != 0 && f % zp_trace == 0 { note("trace x", pl.pos.x); note("trace z", pl.pos.z) }
+    if zp_noslide && pl.st == St.Slide { expect(false, "walked without sliding, at point", fixed(zp_i)) }
+    if zp_i >= zp_n {
+        note("route done after, s", fixed(f) / 60)
+        note("hops", fixed(zp_hops))
+        done()
+        zp_done = true
+        return
+    }
+    let pt = zp[zp_i]
+    zp_t += 1
+    let air = is_air(pl.st) || pl.st == St.Glide
+    let d = tw_hdist(pl.pos, pt.p)
+    if pt.k == ZK_WALK {
+        if d < pt.tol && pl.st == St.Ground {
+            if pt.p.y != 0.0 { expect(pl.pos.y >= pt.p.y, "at the point, no lower than its y", pl.pos.y) }
+            zc_next(f)
+            return
+        }
+        stick_v = cc_stick(sh_heading(pt.p), 1.0)
+        if d < 1.5 { stick_v = cc_stick(sh_heading(pt.p), 0.5) }
+        if pt.tol < 0.5 { stick_v = cc_stick(sh_heading(pt.p), 0.35) }        // a narrow way: slowly
+        let moved = tw_hdist(pl.pos, zp_last)
+        zp_last = pl.pos
+        if pl.st == St.Ground && moved < 0.04 && d > pt.tol { zp_slow += 1 } else { zp_slow = 0 }
+        if zp_slow > 45 {
+            if zp_strict {
+                note("stalled: wall normal x", pl.wall_n.x); note("stalled: wall normal z", pl.wall_n.z)
+                note("stalled: wall hit", fixed(pl.wall_hit as s32))
+                expect(false, "walked on without a stop, stalled before point", fixed(zp_i))
+            }
+            zp_hold = 42; zp_slow = 0; zp_hops += 1
+            note("a hop before point", fixed(zp_i))
+        }
+        if zp_hold > 24 { stick_v = cc_stick(sh_heading(pt.p) + 3.1416, 1.0) }
+        else if zp_hold > 0 && zp_hold <= 16 { pad_v = A }
+        if zp_hold > 0 { zp_hold -= 1; zp_slow = 0 }
+        if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+    } else if pt.k == ZK_POLE || pt.k == ZK_POLE_DROP || pt.k == ZK_LADDER {
+        let nx = zp[zp_i + 1].p
+        if zp_sub == 0 {                       // to the pole and jump at it
+            stick_v = cc_stick(sh_heading(pt.p), 1.0)
+            if d < 1.6 && pl.st == St.Ground { pad_v = A }
+            if pl.st == St.Pole { zp_sub = 1; zp_t = 0; zp_top = pl.pos.y; note("on the pole at y", pl.pos.y) }
+        } else if zp_sub == 1 {                // climb until it stops rising
+            if pl.st != St.Pole && pt.k != ZK_LADDER { expect(false, "held the pole, y", pl.pos.y) }
+            stick_v = FWD
+            if pt.k == ZK_LADDER && pl.st != St.Pole {
+                // off the ladder's top: on toward the next point
+                stick_v = cc_stick(sh_heading(nx), 1.0)
+                if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+                if pl.st == St.Ground && zp_t > 4 {
+                    note("off the ladder, y", pl.pos.y)
+                    zp_sub = 0
+                    zc_next(f)
+                }
+                return
+            }
+            if pl.pos.y > zp_top { zp_top = pl.pos.y; zp_slow = 0 } else { zp_slow += 1 }
+            if zp_slow > 20 {
+                zp_sub = 2; zp_t = 0; zp_slow = 0; note("at the pole's top, y", pl.pos.y)
+                if pt.k == ZK_LADDER { zp_sub = 1; zp_t = 0 }
+            }
+        } else if zp_sub == 2 {                // round to the side of the next point
+            let want = atan2(nx.x - poles[pole_k].base.x, nx.z - poles[pole_k].base.z)
+            let e = wrap_angle(want - pole_ang)
+            if pt.k == ZK_POLE_DROP || abs(e) < 0.2 || poles[pole_k].front { zp_sub = 3; zp_t = 0 }
+            else { stick_v = vec2(1.0, 0.0) }
+            if zp_t > 400 { expect(false, "went round the pole", e) }
+        } else if zp_sub == 3 {                // off: a pole jump (or let go) toward the next point
+            if zp_t == 1 { if pt.k == ZK_POLE_DROP { pad_v = R } else { pad_v = A } }
+            if zp_t > 1 { stick_v = cc_stick(sh_heading(nx), 1.0) }
+            if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+            if zp_t > 4 && pl.st == St.Ground {
+                note("off the pole, down at y", pl.pos.y)
+                zp_sub = 0
+                zc_next(f)
+                return
+            }
+        }
+    } else if pt.k == ZK_DOUBLE || pt.k == ZK_JUMP {
+        stick_v = cc_stick(sh_heading(pt.p), 1.0)
+        if zp_sub == 0 { pad_v = A; if air { zp_sub = 1 } }
+        else if zp_sub == 1 { pad_v = A; if pl.vel.y <= 0.0 { zp_sub = 2; pad_v = 0 } }
+        else if zp_sub == 2 { if pt.k == ZK_JUMP { zp_sub = 4 } else if pl.st == St.Ground { pad_v = A; zp_sub = 3 } }
+        else if zp_sub == 3 { pad_v = A; if air && pl.vel.y <= 0.0 { zp_sub = 4; pad_v = 0 } }
+        if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+        if zp_sub >= 4 && pl.st == St.Ground {
+            note("jumped, down at y", pl.pos.y)
+            if pt.p.y != 0.0 { expect(pl.pos.y >= pt.p.y, "the jump reached, y", pl.pos.y) }
+            zp_sub = 0
+            zc_next(f)
+            return
+        }
+    } else if pt.k == ZK_KICKS {
+        if zp_sub == 0 {
+            stick_v = cc_stick(EAST, 1.0)
+            if zp_t >= 6 && zp_t < 20 { pad_v = A }
+            if pl.st == St.WallSlide || pl.st == St.WallKick { zp_sub = 1 }
+            if zp_t > 120 { expect(false, "reached the first face", pl.pos.x) }
+        } else {
+            if pl.st == St.WallSlide { pad_v = A }
+            if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(pl.yaw, 1.0) }
+            if pl.st == St.Ground && zp_t > 20 {
+                if pt.p.y != 0.0 { expect(pl.pos.y >= pt.p.y, "the kicks reached, y", pl.pos.y) }
+                zp_sub = 0
+                zc_next(f)
+                return
+            }
+        }
+    }
+    if zp_t > 1500 { expect(false, "reached point", fixed(zp_i)) }
+}
+
+fn zc_next(f: s32) {
+    if zp_trace != 0 { note("reached point", fixed(zp_i)) }
+    zp_i += 1
+    zp_t = 0
+    zp_slow = 0
+    zp_top = pl.pos.y
+}
+
+// ---- 701, 790: the walkway decks and their trunks (B2): from 2.7 m out, run at the trunk's
+// centre from eight sides for 1.5 s, at each deck; the body must stay on the deck.
+fn zc_trunks(f: s32, decks: *vec3, n: s32) {
+    if tw_phase == 9 { return }
+    let i = tw_k / 8
+    if i >= n {
+        expect(true, "runs at the trunks, every one stayed on its deck", fixed(tw_k))
+        done()
+        tw_phase = 9
+        return
+    }
+    let c = decks[i]
+    let a = fixed(tw_k % 8) * 0.7854 + 0.2
+    if tw_phase == 0 {
+        let x = c.x + sin(a) * 2.7
+        let z = c.z + cos(a) * 2.7
+        place(vec3(x, sh_floor(x, z, c.y + 1.0), z), a + 3.1416)
+        expect(pl.pos.y > c.y - 0.3, "on the deck, y", pl.pos.y)
+        t0 = f
+        tw_phase = 1
+        return
+    }
+    stick_v = cc_stick(sh_heading(c), 1.0)
+    if pl.pos.y < c.y - 0.5 { expect(false, "stayed on the deck by its trunk, deck", fixed(i)) }
+    if f > t0 + 60 { tw_k += 1; tw_phase = 0 }
+}
+
+// ---- 706, 707: the lantern strings
+
+fn zc_string(nm: *u8) -> s32 {
+    let k = rail_named(nm)
+    expect(k >= 0, "the string is a rail", fixed(k))
+    return k
+}
+
+// Down the west torii string from its middle: off its lower end the body must come to rest
+// somewhere (the hall's roof, the courtyard) within 4 s, not caught between the two strings.
+fn zc_string_down(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        let k = zc_string("core_string_torii_w")
+        let p = wp_path_at(rails[k], 24.0)            // the torii -> hall leg's middle (2 m along the beam first)
+        place_air(p + vec3(0.0, 0.3, 0.0), atan2(-27.0, 34.6))
+        t0 = -1
+    }
+    if t0 < 0 && pl.st == St.Rail { t0 = f; note("grinding at y", pl.pos.y) }
+    if f > 10 && t0 < 0 { expect(false, "came down onto the string", pl.pos.y) }
+    stick_v = cc_stick(atan2(-27.0, 34.6), 1.0)        // held down the string, toward the hall
+    if t0 >= 0 && pl.st == St.Ground && f > t0 + 20 {
+        note("came to rest at y", pl.pos.y)
+        expect(true, "off the strings within, s", fixed(f - t0) / 60)
+        done()
+        tw_phase = 9
+    }
+    if t0 >= 0 && f > t0 + 240 { expect(false, "off the strings within 4 s", pl.pos.y) }
+}
+
+// Up the west string from the side hall's end toward the torii: the grind ends on the kasagi.
+fn zc_string_up(f: s32) {
+    if tw_phase == 9 { return }
+    let k = rail_named("core_string_torii_w")
+    if f == 0 {
+        expect(k >= 0, "the string is a rail", fixed(k))
+        let p = wp_path_at(rails[k], 34.0)            // on the torii -> hall leg, 10 m short of the hall
+        place_air(p + vec3(0.0, 0.3, 0.0), atan2(27.0, -34.6))
+        t0 = -1
+    }
+    if t0 < 0 && pl.st == St.Rail { t0 = f; note("grinding at y", pl.pos.y) }
+    if f > 10 && t0 < 0 { expect(false, "came down onto the string", pl.pos.y) }
+    // the stick up the string, toward the torii's middle, all the way
+    stick_v = cc_stick(sh_heading(vec3(160.0, 0.0, 124.0)), 1.0)
+    if t0 >= 0 && pl.st == St.Ground && f > t0 + 10 {
+        expect(pl.pos.y > 12.8 && abs(pl.pos.z - 124.0) < 0.8, "landed on the torii's top beam, y", pl.pos.y)
+        done()
+        tw_phase = 9
+    }
+    if t0 >= 0 && f > t0 + 600 { expect(false, "came down within 10 s", pl.pos.y) }
+}
+
+// ---- 708: the north wall. From the terrace (5) a jump and a grab at the 3.6 m wall: the coping
+// refuses the grab, so the body comes down on the terrace's side, never on the wall's top.
+fn zc_north_wall(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        place(vec3(140.0, sh_floor(140.0, 235.5, 10.0), 235.5), NORTH)
+        mark()
+        tw_k = 0
+    }
+    // three tries along the wall: a held jump and a double jump at it, the stick into it
+    let k = tw_k
+    if k >= 3 {
+        expect(true, "never stood on the wall's top, tries", fixed(k))
+        done()
+        tw_phase = 9
+        return
+    }
+    stick_v = cc_stick(NORTH, 1.0)
+    if tw_phase == 0 { t0 = f; tw_phase = 1 }
+    let t = f - t0
+    if k == 0 { if t >= 4 && t < 40 { pad_v = A } }
+    else { if (t >= 4 && t < 30) || (t >= 30 && pl.st == St.Ground && t < 60) || (t >= 36 && is_air(pl.st) && pl.vel.y > 0.0) { pad_v = A } }
+    if pl.pos.y > 8.0 && pl.st == St.Ground { expect(false, "stood on the wall's top, y", pl.pos.y) }
+    // (a hang from the plinth's 0.15 m step, its top at 6.0, is no matter: from there too the coping refuses)
+    if (pl.st == St.LedgeHang || pl.st == St.LedgeClimb) && pl.pos.y > 6.0 { expect(false, "grabbed the wall's coping", pl.pos.y) }
+    if t > 150 {
+        tw_k += 1
+        place(vec3(140.0 + fixed(tw_k) * 16.0, sh_floor(140.0 + fixed(tw_k) * 16.0, 235.5, 10.0), 235.5), NORTH)
+        tw_phase = 0
+    }
+}
+
+// ---- 718: dropped onto the fallen cedar where its log meets the root plate (the hole r11 found)
+fn zc_log_drop(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        wp_layer_set(wp_layer_find("cedar_c_down"), true)
+        wp_layer_set(wp_layer_find("cedar_c_up"), false)
+        tw_k = 0
+    }
+    let pts: [3]vec2 = [vec2(255.15, 306.5), vec2(254.9, 306.0), vec2(255.4, 307.0)]
+    if tw_k >= 3 {
+        expect(true, "every drop landed on the log or the plate", fixed(tw_k))
+        done()
+        tw_phase = 9
+        return
+    }
+    if tw_phase == 0 {
+        let p = pts[tw_k]
+        place_air(vec3(p.x, 39.0, p.y), WEST)
+        t0 = f
+        tw_phase = 1
+        return
+    }
+    if pl.st == St.Ground && f > t0 + 2 {
+        expect(pl.pos.y > 33.0, "landed on the dead cedar, y", pl.pos.y)
+        tw_k += 1
+        tw_phase = 0
+    }
+    if f > t0 + 200 { expect(false, "came down", pl.pos.y) }
+}
+
+// ---- 722: G6 (the stage to the pagoda) glides under star 1 (raised to about 48), whatever line
+fn zc_g6_star(f: s32) {
+    if f == 0 {
+        tw_star = tw_star_near(vec3(178.0, ZC_STAR1_Y, 262.0))
+        expect(tw_star >= 0, "star 1 at its raised place", ZC_STAR1_Y)
+        stg = Glide { from: vec3(166.5, 0.0, 353.0), to: vec3(178.0, 27.1, 262.0), run: 3.0, tol: 5.5 }
+    }
+    if star_taken(tw_star) { expect(false, "G6 did not take star 1", pl.pos.y) }
+    tw_glide(f)
+}
+
+// ---- 730-733: G8 from its pad, the take-off moved 1 m each way: it still lands in the arcade
+fn zc_g8(f: s32) {
+    if f == 0 {
+        var dx = 0.0
+        var dz = 0.0
+        if SCENARIO == 730 { dx = -1.0 }
+        if SCENARIO == 731 { dx = 1.0 }
+        if SCENARIO == 732 { dz = 1.0 }
+        if SCENARIO == 733 { dz = -1.0 }
+        stg = Glide { from: vec3(ZC_G8.x + dx, 0.0, ZC_G8.z + dz), to: vec3(160.0, -0.1, 84.0), run: 0.0, tol: 8.0 }
+        tw_via_on = true
+    }
+    tw_glide(f)
+}
+
+// ---- the routes' points
+
+// The walkway's decks (x, deck height, z): the six, the rope deck, the crown deck and its landing.
+const ZC_DECKS_TOWN: [9]vec3 = [vec3(94.0, 9.0, 152.0), vec3(82.0, 12.0, 180.0), vec3(80.0, 15.0, 208.0),
+                                vec3(88.0, 18.0, 234.0), vec3(102.0, 21.0, 252.0), vec3(114.0, 22.0, 264.0),
+                                vec3(130.0, 24.0, 282.0), vec3(70.0, 28.0, 220.0), vec3(70.0, 15.0, 220.0)]
+// The shrine's walkway (carts/garden/shrine): the same platforms on the same cedars.
+const ZC_DECKS_SHRINE: [5]vec3 = [vec3(16.0, 14.0, 146.0), vec3(14.0, 17.0, 168.0), vec3(24.0, 20.0, 188.0),
+                                  vec3(38.0, 23.0, 198.0), vec3(54.0, 26.0, 206.0)]
+
+// Deck to deck, gap to gap (place/shrine.py turns each deck so its railing gaps face its bridges),
+// round each trunk, from deck 1 to the rope deck.
+fn ZC_WALKWAY() {
+    za(94.93, 8.5, 149.15, ZK_WALK, 0.8)
+    zdeck(94.0, 9.0, 152.0, 94.93, 149.15, 93.07, 154.85)
+    za(93.07, 8.5, 154.85, ZK_WALK, 0.8); za(82.73, 11.5, 177.09, ZK_WALK, 0.8)
+    zdeck(82.0, 12.0, 180.0, 82.73, 177.09, 81.27, 182.91)
+    za(81.27, 11.5, 182.91, ZK_WALK, 0.8); za(78.83, 14.5, 205.24, ZK_WALK, 0.8)
+    zdeck(80.0, 15.0, 208.0, 78.83, 205.24, 81.17, 210.76)
+    za(81.17, 14.5, 210.76, ZK_WALK, 0.8); za(86.64, 17.5, 231.33, ZK_WALK, 0.8)
+    zdeck(88.0, 18.0, 234.0, 86.64, 231.33, 89.36, 236.67)
+    za(89.36, 17.5, 236.67, ZK_WALK, 0.8); za(100.03, 20.5, 249.74, ZK_WALK, 0.8)
+    zdeck(102.0, 21.0, 252.0, 100.03, 249.74, 103.97, 254.26)
+    za(103.97, 20.5, 254.26, ZK_WALK, 0.8); za(111.95, 21.5, 261.81, ZK_WALK, 0.8)
+    zdeck(114.0, 22.0, 264.0, 111.95, 261.81, 116.05, 266.19)
+    za(116.05, 21.5, 266.19, ZK_WALK, 0.8); za(127.7, 23.5, 280.07, ZK_WALK, 0.8)
+    za(130.0, 23.6, 282.0, ZK_WALK, 1.5)
+}
+
+// The shoulder trail's points (make_mountain.py, trail_shoulder), from the cemetery's top.
+fn ZC_SHOULDER() {
+    zl(290.0, 0.0, 262.0); zl(302.0, 0.0, 282.0); zl(266.0, 0.0, 298.0); zl(260.0, 0.0, 303.0)
+    zl(266.0, 0.0, 308.0); zl(296.0, 0.0, 322.0); zl(298.0, 0.0, 327.0); zl(292.0, 0.0, 331.0)
+    zl(250.0, 0.0, 338.0); zl(237.0, 0.0, 343.0)
+}
+const ZC_STAR1_Y: fixed = 48.3                     // star 1, raised over G6's line (place/shrine.py)
+const ZC_G8: vec3 = vec3(174.0, 0.0, 356.0)          // the middle of G8's take-off pad (make_mountain.py)
+
+// The cave's west passage, the nook outside it (14) and the steps up to the pool's west terrace (16).
+fn ZC_CAVE_WEST() {
+    zl(206.6, 13.9, 332.0); zl(205.0, 13.9, 331.0); zl(205.0, 0.0, 326.5); zl(201.0, 15.8, 318.0)
+}
+
+// Shortcut C's fallen cedar: from the shoulder trail's hairpin up the ramp to the stump, over the
+// stump onto the log's butt, down the log to the shelf over the falls pool (20).
+fn ZC_LOG() {
+    zstart(264.6, 306.8, 40.0, WEST)
+    zl(263.0, 35.3, 307.0); zl(257.5, 0.0, 307.0); zl(256.0, 35.7, 306.0); zl(254.7, 35.5, 306.5)
+    zl(229.0, 0.0, 316.8); za(226.5, 19.5, 317.8, ZK_WALK, 1.0)
+}
+
+// The zig-zag bridge (gen_core.py's ZZ), every corner, from the east gate's stair to the pond's bank.
+fn ZC_ZIGZAG() {
+    zn(222.0, 0.3, 192.0); zn(220.0, 0.3, 186.0); zn(216.0, 0.3, 180.0); zn(222.0, 0.3, 174.0)
+    zn(219.5, 0.3, 168.0); zn(224.0, 0.3, 162.0); zn(220.0, 0.3, 156.0)
+}
+
+// In the stream 20 m above its mouth, out onto its east bank, back across and out onto its west bank.
+fn ZC_STREAM() {
+    zstart(238.5, 200.0, 5.0, EAST)
+    zp_trace = 30
+    zl(246.0, 0.0, 200.0); zw(246.0, 0.6, 200.0); zl(238.5, 0.0, 200.0); zl(231.0, 0.0, 200.0); zw(231.0, 0.2, 200.0)
+}
+
+// From the falls' top up the cutting to the way-out torii by the north rim.
+fn ZC_WAYOUT() {
+    zl(238.0, 51.0, 349.0); zl(243.0, 0.0, 359.0); zl(248.0, 0.0, 369.0); za(252.0, 60.5, 376.5, ZK_WALK, 1.0)
+}

@@ -9,16 +9,6 @@
  "region": "shrine",
  "placements": [
   {
-   "id": "kick_chimney",
-   "asset": "gbm_kick_chimney",
-   "position": [
-    196.5,
-    16.0,
-    327.0
-   ],
-   "collision": "self"
-  },
-  {
    "id": "sh_falls",
    "asset": "water_falls",
    "position": [
@@ -47,6 +37,16 @@
     330.0
    ],
    "collision": "shrine_falls_cliff_col"
+  },
+  {
+   "id": "sh_kick_chimney",
+   "asset": "shrine_kick_chimney",
+   "position": [
+    196.5,
+    16.0,
+    327.0
+   ],
+   "collision": "shrine_kick_chimney_col"
   },
   {
    "id": "sh_path_out_torii",
