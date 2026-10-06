@@ -22,6 +22,11 @@ fn goals_case_init() -> bool {
         452 => { name = "goals: the last train, won: the omamori, the glide G8, the arcade, the station" }
         453 => { name = "goals: the last train, lost: the clock runs out, the train comes and goes" }
         454 => { name = "goals: the last train's walking route (west: the torii tunnel, the woods trail), timed" }
+        455 => { name = "goals: Y (or a fall) during the last train goes back to the spawn and loses the race" }
+        456 => { name = "goals: the omamori taken again after a loss starts the train's clock again" }
+        457 => { name = "goals: the last train's finish is the platform's floor, not the trackbed, the canopy or the walkway" }
+        458 => { name = "goals: a taken star whose flag is not kept still shows its back after a reload" }
+        459 => { name = "goals: the omamori and the bell's rope glint while they lead to a star" }
         460 => { name = "goals: shortcut A, the rope ladder kicked down from the ledge, stays down" }
         461 => { name = "goals: shortcut B, the north gate's bar lifted from the ridge side, stays open" }
         462 => { name = "goals: shortcut C, the dead cedar pounded over the gorge, stays down" }
@@ -47,6 +52,11 @@ fn goals_case(f: s32) {
         452 => gc_race_won(f)
         453 => gc_race_lost(f)
         454 => gc_route_west(f)
+        455 => gc_race_respawn(f)
+        456 => gc_race_retake(f)
+        457 => gc_race_box(f)
+        458 => gc_taken_back(f)
+        459 => gc_glints(f)
         460 => gc_shortcut(f, "shortcut_a", "ladder_a", true)
         461 => gc_shortcut(f, "shortcut_b", "gate_b_open", true)
         462 => gc_shortcut(f, "shortcut_c", "cedar_c_down", true)
@@ -304,6 +314,8 @@ fn gc_race_won(f: s32) {
             note("on the platform after, s", s)
             expect(chal_flag == null && chal_end == 1 && !flag_on("race5"), "won: the clock stopped", s)
             expect(pl.pos.y > 8.0, "at the platform (or the head of its stair), y", pl.pos.y)
+            let m = gc_train()
+            expect(mover_live(m) && near(m.pos.x, 160.0, 0.01), "the last train standing at the platform, x", m.pos.x)
             tw_phase = 7
             t1 = f
         }
@@ -320,6 +332,7 @@ fn gc_race_won(f: s32) {
     }
     if gc_take(f, tw_star, "star 5 taken on the platform") {
         expect(trig_shown(gc_e), "the omamori back on the stage", 0.0)
+        expect(mover_live(gc_train()), "the win did not park the train", fixed(gc_train().mt))
         done()
         tw_phase = 9
     }
@@ -445,6 +458,7 @@ fn gc_shortcut(f: s32, flag: *u8, layer: *u8, on: bool) {
         if streq(flag, "shortcut_c") { x = 258.0; z = 304.0 }                   // on the trail beside the cedar's trunk
         gc_place(x, z, c.y + p.size.y, NORTH)
         note("standing at y", pl.pos.y)
+        gc_check_shut(flag)
         expect(trig_inside(gc_e, p), "in the trigger", pl.pos.y)
         tw_k = 0
     }
@@ -486,6 +500,23 @@ fn gc_shortcut(f: s32, flag: *u8, layer: *u8, on: bool) {
     }
 }
 
+// B's gateway and D's door: walls there while shut (so gc_check_open's probes tell).
+fn gc_check_shut(flag: *u8) {
+    if streq(flag, "shortcut_b") {
+        let _ = wp_push(GATE_B, BODY_RADIUS)
+        expect(wp_hit.walls > 0, "shut: the gateway is barred, walls", fixed(wp_hit.walls))
+    }
+    if streq(flag, "shortcut_d") {
+        let _ = wp_push(DOOR_D, BODY_RADIUS)
+        expect(wp_hit.walls > 0, "shut: the root door is closed, walls", fixed(wp_hit.walls))
+    }
+}
+
+// The probes: in the north gate's gateway (162, 237.4), and in the root door (the curtain at
+// (151.6, 294.6), turned with the cedar).
+const GATE_B: vec3 = vec3(162.0, 5.6, 237.4)
+const DOOR_D: vec3 = vec3(151.6, 13.6, 294.6)
+
 // What each shortcut's opening changed for the body.
 fn gc_check_open(flag: *u8) {
     if streq(flag, "shortcut_a") || streq(flag, "shortcut_e") {
@@ -499,7 +530,7 @@ fn gc_check_open(flag: *u8) {
     if streq(flag, "shortcut_b") {
         // the barred gate's bar is gone: no wall between the precinct and the ridge stair
         expect(!gc_layer("gate_b_barred"), "the bar is gone", 0.0)
-        let _ = wp_push(vec3(160.0, 6.0, 233.0), BODY_RADIUS)
+        let _ = wp_push(GATE_B, BODY_RADIUS)
         expect(wp_hit.walls == 0, "the gateway is clear", fixed(wp_hit.walls))
     }
     if streq(flag, "shortcut_c") {
@@ -508,7 +539,7 @@ fn gc_check_open(flag: *u8) {
     }
     if streq(flag, "shortcut_d") {
         // the root curtain is gone: the door in the trunk's foot is open
-        let _ = wp_push(vec3(150.6, 14.0, 296.0), BODY_RADIUS)
+        let _ = wp_push(DOOR_D, BODY_RADIUS)
         expect(wp_hit.walls == 0, "the root door is open", fixed(wp_hit.walls))
     }
 }
@@ -592,4 +623,192 @@ fn gc_front(f: s32) {
             tw_phase = 9
         }
     }
+}
+
+// ---- the alpha fixes' cases (DESIGN.md 12.9, the cart, game and camera)
+
+// The body in the omamori's box on the stage (it starts the race at once).
+fn gc_take_omamori() {
+    let c = wp_entity_pos(gc_trig("race5"))
+    gc_place(c.x, c.z + 2.0, c.y + 1.0, 3.1416)
+}
+
+// 455: Y during the race (B6): the body goes back to the spawn, in the station plaza beside the
+// platform, and the race is lost there, so the platform wins nothing (r06: won in 9.2 s).
+fn gc_race_respawn(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        gc_e = gc_trig("race5")
+        tw_star = tw_star_near(vec3(160.0, 11.4, 7.0))
+        place_at_spawn()                                               // Y puts the body at the world's spawn
+        let sp = pl.spawn
+        let sy = pl.spawn_yaw
+        gc_take_omamori()
+        pl.spawn = sp
+        pl.spawn_yaw = sy
+    }
+    if tw_phase == 0 {
+        stick_v = cc_stick(3.1416, 0.5)
+        if flag_on("race5") { tw_phase = 1; t0 = f }
+        if f > 120 { expect(false, "took the omamori", pl.pos.z) }
+        return
+    }
+    if tw_phase == 1 {
+        if f == t0 + 30 { pad_v = Y }
+        if f == t0 + 32 {
+            note("back at the spawn, z", pl.pos.z)
+            expect(pl.pos.z < 40.0, "Y: back at the spawn, in the plaza", pl.pos.z)
+            expect(chal_flag == null && chal_end == 2 && !flag_on("race5"), "the race lost", fixed(chal_end))
+            expect(trig_shown(gc_e), "the omamori back on the stage", 0.0)
+            gc_place(150.0, 8.0, 12.0, EAST)                            // on the platform's floor
+            tw_phase = 2
+            t1 = f
+        }
+        return
+    }
+    if f == t1 + 10 {
+        expect(!flag_on("race5_won") && star_drop(wp_entity(tw_star)) < 0.0, "the platform wins nothing, no star 5", 0.0)
+        // a fall out of the level is a respawn too
+        gc_take_omamori()
+        chal_end = 0
+        tw_phase = 3
+    }
+    if tw_phase == 3 { stick_v = cc_stick(3.1416, 0.5) }
+    if tw_phase == 3 && flag_on("race5") {
+        pl.pos = vec3(pl.pos.x, pl.spawn.y - 41.0, pl.pos.z)
+        pl.vel = vec3(0.0, -0.1, 0.0)
+        enter(St.Fall)
+        tw_phase = 4
+        t1 = f
+    }
+    if tw_phase == 4 && f == t1 + 3 {
+        expect(chal_flag == null && chal_end == 2, "falling out of the level loses it too", fixed(chal_end))
+        done()
+        tw_phase = 9
+    }
+    if f > 400 && tw_phase != 9 { expect(false, "finished, phase", fixed(tw_phase)) }
+}
+
+// 456: the race lost and the omamori taken again at once (r06 #4): the train's clock starts
+// again from 0, so it comes in on the new race's timeline.
+fn gc_race_retake(f: s32) {
+    if tw_phase == 9 { return }
+    let m = gc_train()
+    if f == 0 { gc_take_omamori() }
+    if tw_phase == 0 {
+        stick_v = cc_stick(3.1416, 0.5)
+        if flag_on("race5") { tw_phase = 1; t0 = f }
+        if f > 120 { expect(false, "took the omamori", pl.pos.z) }
+        return
+    }
+    if tw_phase == 1 && f == t0 + 300 {
+        expect(m.mt >= 299, "the train's clock running, ticks", fixed(m.mt))
+        chal_lose()                                                    // lost (as the clock running out)
+        expect(!flag_on("race5") && m.mt > 0, "lost: the train's first cycle runs on", fixed(m.mt))
+        tw_phase = 2
+    }
+    if tw_phase == 2 && f == t0 + 302 { gc_take_omamori() }
+    if tw_phase == 2 && f > t0 + 302 { stick_v = cc_stick(3.1416, 0.5) }
+    if tw_phase == 2 && flag_on("race5") {
+        tw_phase = 3
+        t1 = f
+    }
+    if tw_phase == 3 && f == t1 + 1 {                                  // the movers tick before the triggers
+        expect(m.mt <= 1, "taken again: the train's clock from 0", fixed(m.mt))
+        expect(!mover_live(m), "parked, waiting its delay", 0.0)
+    }
+    if tw_phase == 3 && f == t1 + m.delay + 30 {
+        expect(mover_live(m) && m.pos.x < 40.0, "in from the west on the new race's timeline, x", m.pos.x)
+        done()
+        tw_phase = 9
+    }
+    if tw_phase == 2 && f > t0 + 400 { expect(false, "took the omamori again", pl.pos.z) }
+}
+
+// 457: the platform's box (r06 #6) is the island platform's floor: the trackbed beside it, the
+// canopy's roof and the walkway north of track 2 win nothing; the floor does.
+const NOT_PLATFORM: [3]vec3 = [vec3(150.0, 9.6, 12.1), vec3(156.0, 16.0, 8.0), vec3(150.0, 9.6, 14.6)]
+fn gc_race_box(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 { gc_take_omamori() }
+    if tw_phase == 0 {
+        stick_v = cc_stick(3.1416, 0.5)
+        if flag_on("race5") { tw_phase = 1; t0 = f; tw_k = 0 }
+        if f > 120 { expect(false, "took the omamori", pl.pos.z) }
+        return
+    }
+    if tw_phase == 1 {
+        let t = f - t0
+        if t % 10 == 1 {
+            if tw_k > 0 {
+                expect(!flag_on("race5_won") && flag_on("race5"), "no win there, y", pl.pos.y)
+            }
+            if tw_k < len(NOT_PLATFORM) as s32 {
+                let p = NOT_PLATFORM[tw_k]
+                gc_place(p.x, p.z, p.y, EAST)
+                note("standing at y", pl.pos.y)
+            } else {
+                gc_place(170.0, 8.0, 10.6, EAST)                             // the platform's floor, east of the stairwell
+                tw_phase = 2
+                t1 = f
+            }
+            tw_k += 1
+        }
+        return
+    }
+    if f == t1 + 3 {
+        expect(flag_on("race5_won") && chal_end == 1, "the platform's floor wins", pl.pos.y)
+        done()
+        tw_phase = 9
+    }
+}
+
+// 458: taken stars that appear on a flag that is not kept (stars 2, 3, 5) still show their back
+// after the world is opened again (r06 #5, r04 #6): star 3, rung down and taken, then a reload.
+fn gc_taken_back(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        tw_star = tw_star_near(vec3(154.0, 61.0, 344.75))
+        let c = wp_entity_pos(gc_trig("bell"))
+        gc_place(c.x, c.z - 1.5, c.y + 1.0, NORTH)
+    }
+    if tw_phase == 0 {
+        stick_v = cc_stick(NORTH, 0.5)
+        if flag_on("bell") { tw_phase = 1; t0 = f }
+        if f > 200 { expect(false, "rang the bell", pl.pos.z) }
+        return
+    }
+    if tw_phase == 1 && f == t0 + STAR_DROP + 2 {
+        let c = wp_entity_pos(wp_entity(tw_star))
+        place(vec3(c.x, c.y - 1.0, c.z), NORTH)
+        tw_phase = 2
+    }
+    if tw_phase == 2 && star_taken(tw_star) {
+        gc_reload()
+        expect(!flag_on("bell"), "opened again: the bell's flag is not kept", 0.0)
+        expect(star_taken(tw_star) && star_drop(wp_entity(tw_star)) == 0.0, "star 3 still at its place (its back)", star_drop(wp_entity(tw_star)))
+        done()
+        tw_phase = 9
+    }
+    if f > 400 && tw_phase != 9 { expect(false, "took star 3", pl.pos.y) }
+}
+
+// 459: the omamori and the bell's rope glint as the stars do (r19 #6), while they lead to a star
+// not taken yet; the platform's box and the shortcuts do not.
+fn gc_glints(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        expect(trig_glints(gc_trig("race5")), "the omamori glints", 0.0)
+        expect(trig_glints(gc_trig("bell")), "the bell's rope glints", 0.0)
+        expect(!trig_glints(gc_trig("race5_won")), "the platform's box does not", 0.0)
+        expect(!trig_glints(gc_trig("shortcut_a")), "a shortcut does not", 0.0)
+        gc_take_omamori()
+    }
+    stick_v = cc_stick(3.1416, 0.5)
+    if flag_on("race5") {
+        expect(!trig_glints(gc_trig("race5")), "the omamori taken: no glint", 0.0)
+        done()
+        tw_phase = 9
+    }
+    if f > 120 { expect(false, "took the omamori", pl.pos.z) }
 }

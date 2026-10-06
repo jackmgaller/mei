@@ -596,8 +596,10 @@ fn s_menu(f: s32) {
     if f == 24 { expect(near(tv[T.RunDrag], 1.35, 0.001), "ten steps up", tv[T.RunDrag]) }
     if f == 27 { expect(tv[T.RunDrag] == TUNE[T.RunDrag].def, "back to the default", tv[T.RunDrag]) }
     if f == 30 { expect(!menu_open, "menu closed", 0.0) }
-    if f == 33 { expect(readout == 1, "readout: state", 0.0) }
-    if f == 39 { expect(readout == 0, "readout: timing", 0.0) }
+    if f == 3 { expect(readout == 2, "readout: nothing at the start", 0.0) }
+    if f == 33 { expect(readout == 0, "readout: timing", 0.0) }
+    if f == 36 { expect(readout == 1, "readout: state", 0.0) }
+    if f == 39 { expect(readout == 2, "readout: nothing", 0.0) }
     if f == 60 {
         expect(timing.shown == 60 && timing.ticks == 60 && timing.late == 0, "60 shown, 60 ticks", fixed(timing.ticks))
         expect(timing.cpu > 0 && timing.cpu < CPU_BUDGET && timing.gpu > 0, "cpu and gpu measured", fixed(timing.cpu / 1000))

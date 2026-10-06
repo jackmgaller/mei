@@ -9,7 +9,10 @@
 // - goals_tick(): each tick after player_tick(): touch and pound triggers, the clock.
 // - goals_collect(): each frame after the ticks: the stars the body touches.
 // - goals_frame(): each frame: writes the progress to the card when it changed.
-// - goals_draw(), goals_hud(): the stars (and their glint), the counts and the clock.
+// - goals_draw(), goals_hud(): the stars (and their glint), the triggers that lead to a star
+//   (their glint), the counts and the clock.
+// - goals_respawn(): the player was put back at the spawn (Y, or a fall): a challenge running
+//   is lost.
 //
 // Flags are names (the game schema's `name` parameters): triggers set them; stars wait for one
 // (`appear`), movers start on one (`start`); the game sets "red_coins" when the world's last red
@@ -40,6 +43,7 @@ const STAR_DROP = 45            // ticks a star takes to come down into its plac
 const STAR_DROP_H: fixed = 4.0  // from this far above it
 const STAR_SEE: fixed = 160.0   // stars nearer the camera than this are drawn (their glint calls from far)
 const NOTE_TICKS = 150          // a message on the screen
+const TRIG_GLINT_Y: fixed = 1.25 // a glinting trigger's glint, over its box's base (the omamori's middle, the rope at hand height)
 
 // ---- flags
 
@@ -284,15 +288,24 @@ fn goals_tick() {
     }
     if chal_flag != null {
         chal_left -= 1
-        if chal_left <= 0 {
-            flag_clear(chal_flag)
-            chal_flag = null
-            chal_left = 0
-            chal_end = 2
-            chal_end_at = sim_t
-        }
+        if chal_left <= 0 { chal_lose() }
     }
 }
+
+// The challenge running ends, lost: its flag cleared (the omamori back, its star not there).
+fn chal_lose() {
+    if chal_flag == null { return }
+    flag_clear(chal_flag)
+    chal_flag = null
+    chal_left = 0
+    chal_end = 2
+    chal_end_at = sim_t
+}
+
+// The player put back at the spawn (player_respawn(): Y, or falling 40 m under it) while a
+// challenge runs loses it: the spawn is not a way to the finish (the station plaza's spawn is
+// beside the last train's platform).
+fn goals_respawn() { chal_lose() }
 
 // Whether trigger e's mesh is drawn (hidden while its flag is set, with `hide`).
 fn trig_shown(e: *WpEntity) -> bool {
@@ -302,8 +315,11 @@ fn trig_shown(e: *WpEntity) -> bool {
 
 // ---- stars
 
-// How far above its place star e is (coming down), or -1 when it is not there.
+// How far above its place star e is (coming down), or -1 when it is not there. A star taken is
+// at its place (its back shown) whatever its `appear` flag: the flags of stars 2, 3 and 5 are not
+// kept, so after a reload they are not set.
 fn star_drop(e: *WpEntity) -> fixed {
+    if prog_has(e) { return 0.0 }
     let p = wp_entity_params(e) as *GardenStar
     if p == null || pname(p.appear) == null { return 0.0 }
     let k = flag_find(pname(p.appear))
@@ -355,10 +371,50 @@ fn goals_draw() {
             glint_draw(&GLINT_MOON, at + vec3(0.0, 0.69, 0.0), sim_t)
         }
     }
+    for k in 0..trig_n {
+        let e = trigs[k]
+        if !trig_glints(e) { continue }
+        let p = wp_entity_pos(e)
+        if abs(p.x - cam.eye.x) > STAR_SEE || abs(p.z - cam.eye.z) > STAR_SEE { continue }
+        glint_draw(&GLINT_MOON, p - o + vec3(0.0, TRIG_GLINT_Y, 0.0), sim_t)
+    }
+}
+
+// Whether trigger e calls with the star's glint: a touch trigger that leads to a star not taken
+// yet, ready now. It leads to a star when its flag is the star's `appear` (the bell's rope), or
+// when it is what a trigger setting that flag `needs` (the omamori, which the platform needs).
+fn trig_glints(e: *WpEntity) -> bool {
+    let p = wp_entity_params(e) as *GardenTrigger
+    if p.how != GardenTriggerHow.Touch || !trig_ready(p) { return false }
+    let nm = pname(p.flag)
+    if nm == null { return false }
+    if star_waits_for(nm) { return true }
+    for k in 0..trig_n {
+        let q = wp_entity_params(trigs[k]) as *GardenTrigger
+        let qn = pname(q.needs)
+        if qn != null && streq(qn, nm) && star_waits_for(pname(q.flag)) { return true }
+    }
+    return false
+}
+
+// Whether a star not taken yet appears on flag nm.
+fn star_waits_for(nm: *u8) -> bool {
+    if nm == null { return false }
+    for k in 0..star_n {
+        let p = wp_entity_params(stars[k]) as *GardenStar
+        if p != null && !prog_has(stars[k]) && pname(p.appear) != null && streq(pname(p.appear), nm) { return true }
+    }
+    return false
 }
 
 fn goals_hud() {
     let y = 210
+    // a backing strip under the counters (as the clock's), so they read over light paving
+    if star_n > 0 || (red_total > 0 && red_coins > 0) {
+        var x0 = 228
+        if red_total > 0 && red_coins > 0 { x0 = 140 }
+        rect_blend(x0, y - 2, 316 - x0, 12, rgb(24, 32, 40), BLEND_HALF)
+    }
     if star_n > 0 {
         text(232, y, "moon", dim())
         var x = text_int(268, y, stars_taken, hot())
