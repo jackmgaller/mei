@@ -41,7 +41,7 @@ import tempfile
 import time
 
 from kitcore import depth as DEPTH
-from meshlib import face_slot
+from meshlib import face_slot, SLOT_HI, PAL_HI
 from .pack import ONE, mesh_info, lod_level, lod_d2
 from .verify_shared import numpy, id_colour, diagnostic_png
 
@@ -256,12 +256,12 @@ def identity_mesh(data, off, mesh, first, cutouts=()):
         at = fo + 36 * k
         flags = out[at]
         if k in cutouts:
-            out[at] = flags & ~FACE_SEMI
+            out[at] = flags & ~(FACE_SEMI | PAL_HI)     # palette 0 of bank 0; the slot (and its bank) kept
             out[at + 1] = 0
             out[at + 3] = 0
             struct.pack_into('<4I', out, at + 12, *([id_tint(first + k)] * 4))
             continue
-        flags &= ~(FACE_TEXTURED | FACE_SEMI)
+        flags &= ~(FACE_TEXTURED | FACE_SEMI | SLOT_HI | PAL_HI)
         out[at] = flags
         out[at + 1] = out[at + 2] = out[at + 3] = 0
         c = id_colour(first + k)

@@ -764,6 +764,26 @@ class DepthSampleTests(unittest.TestCase):
 @needs_tools
 @needs_tools
 @unittest.skipUnless(importlib.util.find_spec('PIL'), 'the night market\'s sheets need Pillow')
+class IdentityMeshBankTests(unittest.TestCase):
+    def test_bank_flags(self):
+        # VRAM at 2 MB: a face in slots 16-31 and palette bank 1 (flags bits 6 and 7). A cutout face
+        # keeps its slot but must read palette 0 of bank 0 (the verification cart's white); a face
+        # drawn untextured keeps neither bit.
+        import meshlib
+        m = meshlib.Mesh()
+        a, b, c = (m.vertex(*v) for v in [(0, 0, 0), (1, 0, 0), (0, 1, 0)])
+        for _ in range(2):
+            m.tri([a, b, c], [0x808080] * 3, [(1, 2), (30, 2), (1, 40)], slot=20, four_bit=True, palette=300)
+        data = m.pack()
+        mesh = dataclasses.make_dataclass('M', ['size'])(len(data))
+        out = V.RD.identity_mesh(data, 0, mesh, 5, cutouts={0})
+        fo = struct.unpack_from('<I', out, 8)[0]
+        cut, plain = out[fo:fo + 36], out[fo + 36:fo + 72]
+        self.assertEqual((cut[0] & 0xC0, cut[2] & 15, cut[3]), (meshlib.SLOT_HI, 4, 0))
+        self.assertEqual(meshlib.face_slot(cut[0], cut[2]), 20)
+        self.assertEqual((plain[0] & 0xC2, plain[2], plain[3]), (0, 0, 0))
+
+
 class TextureViewTests(unittest.TestCase):
     """A world with region texture sets (examples/worlds/night_market, depth and perspective):
     each view enters its camera cell's region, textured faces without holes are judged whole and
