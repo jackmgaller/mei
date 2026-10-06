@@ -108,11 +108,14 @@ cell_caps = {f'c{i}_{j}': {'triangles': 140 if f'c{i}_{j}' in LANDMARKS else 60}
 cell_caps['c3_2'] = {'triangles': 110}
 STANDINS = {'distance': 128, 'sweeps': True, 'triangles': 90, 'ground': 32, 'cells': cell_caps,
             # the trees' far cards and the landmarks' impostors stay cut out in the stand-ins: their
-            # textures in slots 31 and 30 (64 KB, the top of VRAM's second megabyte), held by both
-            # regions' sets (WORLDKIT.md, "Stand-ins made by the kit")
-            'textures': {'slots': '31,30'}}
-# ---- haze (WORLDKIT.md, "Haze"): far levels and stand-ins fade toward the sky at the horizon
-HAZE = {'start': 20, 'end': 280, 'amount': 0.55, 'standins': 0.38}
+            # textures in slots 0 and 31 (64 KB: slot 0 kept free by the regions' split, and the top of
+            # VRAM's second megabyte), held by both regions' sets (WORLDKIT.md, "Stand-ins made by the kit")
+            'textures': {'slots': '0,31'}}
+# ---- haze (WORLDKIT.md, "Haze"): baked into the stand-ins only, a little. The GPU's fog (FOG_RANGE
+# below) fades every far surface by its depth, the levels included, so the levels are not hazed
+# again; the stand-ins' far colours are moved a little toward each variant's sky as well, which
+# softens their flat colours where the fog is still thin (100-200 units).
+HAZE = {'start': 20, 'end': 280, 'amount': 0.0, 'standins': 0.15}
 
 shrine = json.loads((ST.parent / 'shrine' / 'shrine.world.json').read_text())
 
@@ -128,6 +131,35 @@ TEXTURE_BUDGETS = {'town': 380 * 1024, 'shrine': 300 * 1024}
 BD = json.loads((ST / 'art' / 'backdrop' / 'backdrop.json').read_text())
 
 
+# ---- fog toward a colour (the GPU's, DECISIONS.md "Fog toward a colour"; DESIGN.md 12.7): each
+# variant fades far geometry toward its own sky at 1 degree above the horizon, the day's from 30 to
+# 380 units (a haze: the far ring's stand-ins half gone at 200), the night's from 16 to 220 (the
+# dark). The backdrop's stop below the horizon (-8 degrees) is the fog colour too, so the sky under
+# the farthest fogged ground has no band of another colour.
+FOG_RANGE = {'day': (30, 380), 'night': (16, 220)}
+
+
+def sky_at(elevations, colours, e):
+    for k in range(1, len(elevations)):
+        if e <= elevations[k]:
+            t = (e - elevations[k - 1]) / (elevations[k] - elevations[k - 1])
+            a, b = (tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) for c in (colours[k - 1], colours[k]))
+            return '#' + ''.join(f'{round(x + (y - x) * t):02x}' for x, y in zip(a, b))
+    return colours[-1]
+
+
+def fog_colour(r, name):
+    return sky_at(BD[r]['elevations'], BD[r]['sky'][name], 1.0)
+
+
+def sky(r):
+    """The region's sky with its stop below the horizon in each variant's fog colour."""
+    out = {}
+    for name, colours in BD[r]['sky'].items():
+        out[name] = [fog_colour(r, name)] + colours[1:] if name in FOG_RANGE and BD[r]['elevations'][0] < 0 else colours
+    return out
+
+
 def variants(r):
     v = json.loads(json.dumps(shrine['regions']['shrine']['variants']))
     for spec in v.values():
@@ -136,12 +168,14 @@ def variants(r):
             del spec['colors']
     for name, colours in BD[r].get('variants', {}).items():
         v[name]['backdrop'] = colours
+    for name, (near, far) in FOG_RANGE.items():
+        v[name]['fog'] = {'color': fog_colour(r, name), 'near': near, 'far': far}
     return v
 
 
 regions = {r: {'textures': {'slots': '13-0', 'budget': TEXTURE_BUDGETS[r]},
                'variants': variants(r),
-               'backdrop': {'elevations': BD[r]['elevations'], 'sky': BD[r]['sky'],
+               'backdrop': {'elevations': BD[r]['elevations'], 'sky': sky(r),
                             'silhouette': {'image': f'art/backdrop/{r}_backdrop.png', 'horizon': BD[r]['horizon'],
                                            'repeat': 1}}} for r in L.REGIONS}
 world = {

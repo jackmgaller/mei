@@ -54,6 +54,9 @@ def shot(name, x, y, z, yaw, pitch, night=False, out=OUT):
     v = 1 if night else 0
     if night:
         name += '_night'
+    # the region's fog for the variant, as the cart sets it, when the world declares fog
+    fog = 'fn world_shrinetown_fog' in open(os.path.join(WORLD, 'shrinetown.akr')).read()
+    fog_call = f'world_shrinetown_fog(k, {v})' if fog else ''
     src = f'''cart "Shrine town shot"
 import "depth.akr"
 import "wpbackdrop.akr"
@@ -70,6 +73,7 @@ fn init() {{
     wp_region_enter(k, {v})
     sky = wp_backdrop_show(k)
     if sky {{ wp_backdrop_variant({v}, {v}, 0.0) }}
+    {fog_call}
 }}
 fn update() {{}}
 fn draw() {{

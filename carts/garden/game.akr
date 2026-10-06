@@ -148,7 +148,7 @@ fn follow_region() {
     if c == null || wp_region_loaded < 0 { return }
     let k = c.region as s32
     if k != wp_region_loaded {
-        wp_region_enter(k, 0)
+        wp_region_enter(k, world_variant)
         world_region_entered(k)
     }
 }

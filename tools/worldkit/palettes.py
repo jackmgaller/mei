@@ -44,6 +44,7 @@ class RegionPalette:
         self.tex8 = {}         # 8-bit palette -> (class, [15-bit colours, index 1 first])
         self.texels = {}       # (asset, material) -> (bits, palette, {15-bit colour: index})
         self.backdrop = None   # (4-bit palette, [15-bit colours])
+        self.backdrop_rows = []   # per variant: the silhouette's palette when it is outside the main run
         self.sky = None        # backdrop.Backdrop
         self.run_rows = []     # per 8-bit palette: [colours per variant] (variants())
         self.sky_rows = []     # per variant: [0xBBGGRR] per sky stop (variants())
@@ -207,8 +208,13 @@ class RegionPalette:
                 if k not in known:
                     raise WorldError(pointer(vpath,'backdrop'),f'The backdrop silhouette has no colour {rgb_hex(k)} '
                                      f'(its colours: {", ".join(sorted(rgb_hex(c) for c in known))}; compared at 15 bits).')
-            for i,c in enumerate(cols,1):
-                row[pal*16+i-self.first_colour] = rgb15(exact.get(c) or multiply(rgb_hex(c),tint('surface')))
+            colours = [rgb15(exact.get(c) or multiply(rgb_hex(c),tint('surface'))) for c in cols]
+            if self.first_colour <= pal*16 < self.first_colour+self.colours:
+                for i,c in enumerate(colours,1): row[pal*16+i-self.first_colour] = c
+            else:
+                # a plane reads palette bank 0 only: a region in bank 1 keeps its silhouette's
+                # palette in bank 0, loaded as a run of its own (world.py)
+                self.backdrop_rows.append(([0]+colours+[0]*15)[:16])
         elif v.get('backdrop'):
             raise WorldError(pointer(vpath,'backdrop'),f'Region {self.name!r} has no backdrop silhouette to recolour.')
         for q,(pal,(cls,cols)) in enumerate(sorted(self.tex8.items())):

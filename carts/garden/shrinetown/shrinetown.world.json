@@ -32,7 +32,13 @@
     "budget": 389120
    },
    "variants": {
-    "day": {},
+    "day": {
+     "fog": {
+      "color": "#e4ddc1",
+      "near": 30,
+      "far": 380
+     }
+    },
     "night": {
      "surface": {
       "multiply": "#4a5884"
@@ -45,6 +51,11 @@
       "#ece8e0": "#9aa0c4",
       "#b2573a": "#4c3446",
       "#c99a46": "#5a5a46"
+     },
+     "fog": {
+      "color": "#4e3c61",
+      "near": 16,
+      "far": 220
      }
     }
    },
@@ -59,7 +70,7 @@
     ],
     "sky": {
      "day": [
-      "#7d8456",
+      "#e4ddc1",
       "#ecdcb4",
       "#d3dfdc",
       "#9cc4e0",
@@ -67,7 +78,7 @@
       "#3a6cb0"
      ],
      "night": [
-      "#141420",
+      "#4e3c61",
       "#5a4466",
       "#352c58",
       "#1c1e42",
@@ -88,7 +99,13 @@
     "budget": 307200
    },
    "variants": {
-    "day": {},
+    "day": {
+     "fog": {
+      "color": "#e4ddc1",
+      "near": 30,
+      "far": 380
+     }
+    },
     "night": {
      "surface": {
       "multiply": "#4a5884"
@@ -101,6 +118,11 @@
       "#ece8e0": "#9aa0c4",
       "#b2573a": "#4c3446",
       "#c99a46": "#5a5a46"
+     },
+     "fog": {
+      "color": "#4e3c61",
+      "near": 16,
+      "far": 220
      }
     }
    },
@@ -115,7 +137,7 @@
     ],
     "sky": {
      "day": [
-      "#7d8456",
+      "#e4ddc1",
       "#ecdcb4",
       "#d3dfdc",
       "#9cc4e0",
@@ -123,7 +145,7 @@
       "#3a6cb0"
      ],
      "night": [
-      "#141420",
+      "#4e3c61",
       "#5a4466",
       "#352c58",
       "#1c1e42",
@@ -8380,8 +8402,8 @@
  "haze": {
   "start": 20,
   "end": 280,
-  "amount": 0.55,
-  "standins": 0.38
+  "amount": 0.0,
+  "standins": 0.15
  },
  "meshes": {
   "quads": true

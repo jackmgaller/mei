@@ -847,6 +847,19 @@ def compile_world(source, lock=None, assets_dir=None):
             raise WorldError('/palette', f'8-bit palette {p8} (colours {256 * p8}-{256 * p8 + 255}) overlaps 4-bit '
                              f'palette {hit[0]}, which region {taken[hit[0]]!r} uses. Use fewer 8-bit textures, '
                              'palette.first8, or other 4-bit palettes.')
+    # a backdrop silhouette is drawn by a plane, which reads palette bank 0 only: a region whose
+    # palettes are in bank 1 gets its silhouette's palette in bank 0, after every palette there
+    # taken, loaded with its variants as a run of its own
+    for r in regions:
+        rp = region_palettes[r]
+        if rp.backdrop and rp.backdrop[0] > FONT_PALETTE:
+            used0 = [p for p in taken if p < FONT_PALETTE] + [16 * p8 + 15 for p8 in low8 if p8 < FONT_PALETTE // 16]
+            pal = max(used0, default=-1) + 1
+            if pal >= FONT_PALETTE:
+                raise WorldError(pointer('/regions', r) + '/backdrop', f'Region {r!r}\'s backdrop needs a 4-bit palette in '
+                                 'bank 0 (0-254: a plane reads bank 0 only); none is free.')
+            taken[pal] = r
+            rp.backdrop = (pal, rp.backdrop[1])
 
     # ---- the pack's description
     variants_shown = {}
@@ -862,6 +875,8 @@ def compile_world(source, lock=None, assets_dir=None):
                 reg.textures = rt.slot_textures(SWATCH if any_palette else b'')
                 reg.runs = [P.PaletteRun(pal * 256, rp.run_rows[q]) for q, pal in enumerate(sorted(rp.tex8))]
                 reg.animations = [a for _, a in rt.animations()]
+            if rp.backdrop_rows:
+                reg.runs = list(reg.runs or []) + [P.PaletteRun(rp.backdrop[0] * 16, rp.backdrop_rows)]
             if rp.sky:
                 bd = rp.sky
                 reg.sky = P.Sky(bd.elevations, rp.sky_rows, bd.mode(rp.backdrop[0]) if bd.height else 0,
