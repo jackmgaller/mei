@@ -12,7 +12,7 @@ pagoda, walls, torii, lanterns, trees and forest pieces) and shrine town's own
 pavilion, the cemetery, the hollow cedar and its rope and root curtain, the rope ladder, the
 dead cedar, the falls cave, the stage bell, the koi, the zelkova, jizo and hokora) and the zone's
 few pieces of its own (assets/shrine_extras/). What changed from the grey box, and why, is in
-DESIGN.md 12.5.
+DESIGN.md 12.6.
 """
 import math
 import sys
@@ -246,7 +246,7 @@ def apply(cells, world):
 # ---------------------------------------------------------------------------- 3.6 the outer courtyard
 def courtyard(Z):
     # the great torii (c2_1), its posts poles as the shrine's (x +-5, 9.9 m). (The race line G8, scenario
-    # 417, now comes down on its top beam: DESIGN.md 12.5.)
+    # 417, now comes down on its top beam: DESIGN.md 12.6.)
     ty, tz = 0.6, TORII_Z
     Z.place('torii_great', 'arch_torii_great', (160.0, ty, tz), 'arch_torii_great_col')
     Z.move_entity('pole_torii_w', (155.0, ty, tz), height=9.9)
@@ -269,7 +269,7 @@ def courtyard(Z):
     for k, (x, z) in enumerate(((114.0, 131.0), (115.0, 157.0), (205.0, 131.0), (205.5, 158.0))):
         Z.place(f'zelkova_{k}', 'tree_zelkova', (x, z), 'tree_zelkova_col', 40 + 77 * k)
     Z.place('shishi_odoshi', 'shishi_odoshi', (184.6, 0.6, 162.4), 'shishi_odoshi_col', 90, merge=True)
-    # coins on the halls' ridges (1 m over the real ridges: side halls 10.9, see 12.5)
+    # coins on the halls' ridges (1 m over the real ridges: side halls 10.9, DESIGN.md 12.6)
     for side, (x, z, _) in zip('we', SIDE_HALLS):
         Z.move_entity(f'core_coin_side_hall_{side}', (x, 0.6 + 10.3 + 1.0, z))
     # the lantern strings: from the kasagi's top (13.1) to the side halls' ridge ends (10.9), and on to the
