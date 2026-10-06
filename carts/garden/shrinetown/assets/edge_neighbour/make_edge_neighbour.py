@@ -40,20 +40,21 @@ DEPTH = 8.0
 INSET = 0.2
 
 # name: (face width, height, façade, shift); from gen_town.py's frame (west heights are its h - 4),
-# and the frame's rule (DESIGN.md 12.9, "The level's frame"; tools/frame.py --tops): w1 22 (the
-# sento's chimney, 18.2, glides to it); e3 and e4 behind the front road's east hoarding and the
-# cemetery's foot (z 104-128, 128-156: the mountain's glides reach 31 and 39 there); w3 behind
-# the west hoarding (z 104-128). shift: the face's middle off the origin along the face (local
-# x), so that e4's origin lies in cell c4_1 (z 127.9) and its textures in the town's region.
+# raised where the frame's rule asks more (DESIGN.md 12.9, "The level's frame"; tools/frame.py
+# --tops): the mountain's plateau (62-70 m) glides to the east edge at 23-46 m, the danchi's roof to
+# s1 at 23, the sento's chimney to w1 at 20.5. e3 and e4 stand behind the front road's east
+# hoarding and the cemetery's foot (z 104-128, 128-156), w3 behind the west hoarding (z 104-128).
+# shift: the face's middle off the origin along the face (local x), so that e4's origin lies in
+# cell c4_1 (z 127.9) and its textures in the town's region.
 NEIGHBOURS = {
     **{f's{k}': (x2 - x1, h, 'ab'[k % 2], 0.0) for k, (x1, x2, h) in enumerate(
-        [(0, 32, 26), (32, 64, 22), (64, 96, 28), (96, 136, 24), (136, 184, 22), (184, 216, 27),
+        [(0, 32, 26), (32, 64, 24), (64, 96, 28), (96, 136, 24), (136, 184, 22), (184, 216, 27),
          (216, 256, 23), (256, 288, 26), (288, 320, 24)])},
-    **{f'e{k}': (z2 - z1, h, 'ba'[k % 2], 0.0) for k, (z1, z2, h) in enumerate([(0, 36, 25), (36, 72, 22), (72, 104, 27)])},
+    **{f'e{k}': (z2 - z1, h, 'ba'[k % 2], 0.0) for k, (z1, z2, h) in enumerate([(0, 36, 25), (36, 72, 31), (72, 104, 36)])},
     **{f'w{k}': (z2 - z1, h - 4, 'ab'[k % 2], 0.0) for k, (z1, z2, h) in enumerate([(0, 36, 25), (36, 72, 26), (72, 104, 27)])},
-    'e3': (24.0, 31.0, 'a', 0.0),
-    'e4': (28.0, 39.0, 'b', -14.1),     # z 128-156 from an origin at z 127.9 (yaw 90: local +x is world -z)
-    'w3': (24.0, 20.0, 'b', 0.0),
+    'e3': (24.0, 41.0, 'a', 0.0),
+    'e4': (28.0, 46.5, 'b', -14.1),     # z 128-156 from an origin at z 127.9 (yaw 90: local +x is world -z)
+    'w3': (24.0, 24.0, 'b', 0.0),
 }
 # Where place/art.py puts the frame's new ones (x, z of the origin, yaw); the others replace the
 # grey box's neighbours in their places.

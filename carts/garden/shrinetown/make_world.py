@@ -71,7 +71,7 @@ ops += mountain['terrain']['operations']
 ops += [{'op': 'cliff', 'area': {'rect': [0, 128, 2, 256]}, 'height': 10.0, 'material': 'rock'},
         {'op': 'cliff', 'area': {'rect': [318, 154, 320, 256]}, 'height': 8.0, 'material': 'rock'}]
 # Above the rims stand the frame's rock walls (place/art.py, assets/edge_rock): the frame's rule
-# (DESIGN.md 12.9, "The level's frame") asks 13-72 m there, which as terrain at the field's edge
+# (DESIGN.md 12.9, "The level's frame") asks 25-73 m there, which as terrain at the field's edge
 # would be drawn as ramps by the far levels and stand-ins (their grid points on the edge take the
 # rim's top).
 

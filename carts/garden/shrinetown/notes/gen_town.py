@@ -554,10 +554,11 @@ for k, (z1, z2) in enumerate([(0, 64), (64, 104)]):
     block(f'edge_w{k}', 0.0, z1, 0.4, z2, 0, 3.0, C['fence'], label='edge_fence')
     block(f'edge_e{k}', 319.6, z1, 320.0, z2, 0, 3.0, C['fence'], label='edge_fence')
 # The neighbours beyond the town's three open sides (spec 4.4, "the neighbour beyond"): until those
-# levels exist, the backs of their buildings stand just outside the level, 18-28 m here, at least as
-# high as the frame's rule asks (DESIGN.md 12.9: 6.6 m over any floor within 4 m, less 1 m for each
-# 4 m farther, for a backflip and a ledge grab and a glide; place/art.py gives the real ones their
-# heights and adds the ones behind the front road's hoardings, tools/frame.py checks them). Each
+# levels exist, the backs of their buildings stand just outside the level, 18-28 m here (the grey
+# box's). The real ones (assets/edge_neighbour, place/art.py) are as high as the frame's rule asks
+# (DESIGN.md 12.9: 6.6 m over any floor within 4 m, less 1 m for each 5 m farther, for a backflip
+# and a ledge grab and a glide; tools/frame.py checks them), and more stand behind the front road's
+# hoardings. Each
 # block's origin is inside the level (a placement must lie in its cell) and the block reaches out
 # past the edge (the world's overhang, 32 m). Plain boxes, a colour of their own.
 NB = C['neighbour'] = '#a6a49c'

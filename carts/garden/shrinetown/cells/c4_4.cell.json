@@ -46,7 +46,7 @@
    "asset": "edge_rock_e272",
    "position": [
     319.0,
-    32.0,
+    31.0,
     280.0
    ],
    "collision": "self",
@@ -57,7 +57,7 @@
    "asset": "edge_rock_e288",
    "position": [
     319.0,
-    39.0,
+    38.0,
     296.0
    ],
    "collision": "self",
@@ -68,7 +68,7 @@
    "asset": "edge_rock_e304",
    "position": [
     319.0,
-    47.0,
+    45.0,
     312.0
    ],
    "collision": "self",

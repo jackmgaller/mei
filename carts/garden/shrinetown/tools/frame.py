@@ -8,8 +8,10 @@ frame scenarios' probes (carts/garden/tests/frame_probes.akr, scenarios 581-584)
 
 The rule: from a floor at height F a body gets to F + REACH at the frame (a backflip, 4.8 m, and
 a ledge grab, 1.75 m: 6.55, rounded up) when the floor is within NEAR (4 m) of it; from farther a
-glide loses 1 m in RATIO (4) metres, so F + REACH - (d - NEAR) / RATIO. A running triple jump
-starts its glide 4.5 m up, under the backflip's 4.8, so the backflip's reach covers it. Every
+glide loses 1 m in RATIO (5) metres, so F + REACH - (d - NEAR) / RATIO. A running triple jump
+starts its glide 4.5 m up, under the backflip's 4.8, so the backflip's reach covers it. The glide
+sinks 1 m in 4 at its steady speed, but a running third jump's speed carries it farther (the
+explorer bot, tools/explore, measured about 1 in 4.8 over 100 m), so 5. Every
 floor of the level counts, however far (a glide from the mountain's plateau, 62-70 m, crosses the
 level); nothing between is taken to stop a glide. At each edge point the frame's height is the
 lowest, along 2 m of edge, of the highest surface across the frame's strip (STRIP metres inside
@@ -34,7 +36,7 @@ ST = Path(__file__).resolve().parent.parent
 REPO = ST.parents[2]
 sys.path.insert(0, str(REPO / 'tools'))
 
-REACH, NEAR, RATIO = 6.6, 4.0, 4.0
+REACH, NEAR, RATIO = 6.6, 4.0, 5.0
 STEP = 0.5                      # the floor grid
 OUTSIDE = 3.0                   # how far outside the edge the strip reaches
 WINDOW = 1.0                    # half the length of edge a frame height is the lowest over
@@ -143,8 +145,9 @@ def wall_top(pack, xs, zs):
     return T
 
 
-def terrain_top(xs, zs):
-    """The terrain's top (its highest corner, its cliff sheet's) at each grid point, NaN off it."""
+def terrain_top(xs, zs, lowest=False):
+    """The terrain's top (its highest corner, its cliff sheet's; with lowest, its lowest corner)
+    at each grid point, NaN off it."""
     import json
     from worldkit import terrain as TR
     w = json.loads((ST / 'shrinetown.world.json').read_text())
@@ -154,7 +157,8 @@ def terrain_top(xs, zs):
     T = np.full((len(zs), len(xs)), np.nan)
     for name, spec in t['fields'].items():
         f = TR.Field(name, spec, ctx)
-        top = np.array([[max(f.corners(ix, jz)) + f.O[jz][ix] for ix in range(f.nx)] for jz in range(f.nz)])
+        pick = min if lowest else max
+        top = np.array([[pick(f.corners(ix, jz)) + f.O[jz][ix] for ix in range(f.nx)] for jz in range(f.nz)])
         ix = np.floor(xs / f.s).astype(int) - f.qx0
         jz = np.floor(zs / f.s).astype(int) - f.qz0
         okx, okz = (ix >= 0) & (ix < f.nx), (jz >= 0) & (jz < f.nz)
@@ -255,6 +259,8 @@ def analyse(H, T, xs, zs):
         sx, sz, sf, sa = X[sm], Z[sm], H[sm], alo[sm]
         idx = np.clip(np.round((sa - ss[0]) / STEP).astype(int), 0, len(ss) - 1)
         ok = sf <= reach[idx] + 1e-6
+        # not a floor under a wall's cap (a rim's top inside a rock wall): nowhere to stand
+        ok &= ~(np.nan_to_num(T[sm], nan=-1e9) > sf + 1.0)
         if ok.any():
             rows = pass_(cx, cz, cf, (sx[ok], sz[ok], sf[ok]))
         # the highest floor near the edge, for the walking and backflip probes
@@ -278,7 +284,10 @@ ROCK_RIMS = {'W': (128.0, 380.0, 2.0), 'E': (154.0, 380.0, 2.0), 'N': (0.0, 320.
 
 
 def print_rocks(result, T, xs, zs):
-    """Python rows for assets/edge_rock/make_edge_rock.py's ROCKS: (edge, from, to, foot, top)."""
+    """Python rows for assets/edge_rock/make_edge_rock.py's ROCKS: (edge, from, to, foot, top). T:
+    the terrain's lowest and highest corners; the top is also 1 m over the rim's highest corner
+    (else a sliver of the rim's top stands out at the face's top, a floor by the edge)."""
+    T, Tmax = T
     for name, (s0, s1, depth) in ROCK_RIMS.items():
         strip, at, _ = EDGES[name]
         rows = result[name]
@@ -287,14 +296,17 @@ def print_rocks(result, T, xs, zs):
             b = min(s1, (math.floor(a / ROCK) + 1) * ROCK)
             seg = [r for r in rows if a <= r[0] < b]
             top = math.ceil((max(r[5] for r in seg) + MARGIN) * 2) / 2
-            feet = []
+            feet, heads = [], []
             for s in np.arange(a + STEP / 2, b, STEP):
-                for d in np.arange(STEP / 2, depth, STEP):
+                for d in np.arange(STEP / 2, depth + STEP, STEP):
                     x, z = at(s, d)
                     j, i = int((x - xs[0]) // STEP), int((z - zs[0]) // STEP)
-                    if not np.isnan(T[i, j]):
+                    if not np.isnan(T[i, j]) and d < depth:
                         feet.append(T[i, j])
-            foot = math.floor(min(feet)) - 1.0
+                    if not np.isnan(Tmax[i, j]):
+                        heads.append(Tmax[i, j])
+            top = max(top, math.ceil((max(heads) + 1.0) * 2) / 2)
+            foot = math.floor(min(feet)) - 1.0       # the rim's lowest corner under it, less 1 m
             print(f"    ('{name}', {a:g}, {b:g}, {foot:g}, {top:g}),")
             a = b
 
@@ -382,7 +394,7 @@ def main():
                     '(the reach from the floors inside, not from the frame itself, and MARGIN)')
     a = ap.parse_args()
     H, T, xs, zs = floors(REPO / a.build_dir if not Path(a.build_dir).is_absolute() else a.build_dir)
-    T_terrain = terrain_top(xs, zs) if a.rocks else None
+    T_terrain = (terrain_top(xs, zs, lowest=True), terrain_top(xs, zs)) if a.rocks else None
     result = analyse(H, T, xs, zs)
     if a.table:
         for name, rows in result.items():

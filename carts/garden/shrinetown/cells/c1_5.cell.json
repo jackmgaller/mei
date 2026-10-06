@@ -365,7 +365,7 @@
    "asset": "edge_rock_n64",
    "position": [
     72.0,
-    65.0,
+    56.0,
     382.0
    ],
    "collision": "self"
@@ -375,7 +375,7 @@
    "asset": "edge_rock_n80",
    "position": [
     88.0,
-    68.0,
+    67.0,
     382.0
    ],
    "collision": "self"

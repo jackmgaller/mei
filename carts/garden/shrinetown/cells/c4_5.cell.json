@@ -13,7 +13,7 @@
    "asset": "edge_rock_e320",
    "position": [
     319.0,
-    54.0,
+    53.0,
     328.0
    ],
    "collision": "self",
@@ -24,7 +24,7 @@
    "asset": "edge_rock_e336",
    "position": [
     319.0,
-    58.0,
+    57.0,
     344.0
    ],
    "collision": "self",
@@ -35,8 +35,19 @@
    "asset": "edge_rock_e352",
    "position": [
     319.0,
-    66.0,
+    65.0,
     360.0
+   ],
+   "collision": "self",
+   "yaw": 90.0
+  },
+  {
+   "id": "edge_rock_e368",
+   "asset": "edge_rock_e368",
+   "position": [
+    319.0,
+    69.0,
+    374.0
    ],
    "collision": "self",
    "yaw": 90.0

@@ -49,19 +49,18 @@ falls' top at 52) and the rims; water for the canal, the pool, the culvert, the 
 falls' pool; the trails, the stream, the stairs and the bridges as paths.
 
 **The frame.** No jump or glide leaves the level. The rule (DESIGN.md 12.9, "The level's
-frame"): the frame stands 6.6 m over any floor within 4 m of it, less 1 m for every 4 m farther
-(a backflip and a ledge grab reach 6.55 m; a glide sinks 1 m in 4 from 4.5 m over the floor it
-left, so the mountain's plateau, 62–70 m, reaches every rim north of the town). South of the
-viaduct, east of the school, the front road and the cemetery's foot, and west of the machiya and
-the front road stand the backs of the neighbours' buildings (20–39 m, placeholders until those
-levels exist), with
-the edge fences (3 m) and the road works' hoardings (5.5 m) in front of them; the viaduct ends
-after the underpass at a concrete wall across its deck (z 126.6). North of the town
-rock walls stand on the rims to the rule's heights: 14.5 m at the park rising to 53.5 m in the
-north-west, 38 m at the cemetery rising to 70.5 m in the north-east, 57.5–72 m along the north
-(`assets/edge_rock`, placed by `place/art.py`). `tools/frame.py` checks a
-built world against the rule and writes the frame scenarios' probes. The road's east end under
-the viaduct is the seamless edge to downtown (DESIGN.md 7.1), road works until downtown exists.
+frame"): the frame stands 6.6 m over any floor within 4 m of it, less 1 m for every 5 m farther
+(a backflip and a ledge grab reach 6.55 m; a running third jump's glide sinks about 1 m in 5, so
+the mountain's plateau, 62–70 m, reaches every edge north of the front road); and nothing on the
+frame is a floor beside the void. South of the viaduct, east of the school, the front road and the
+cemetery's foot, and west of the machiya and the front road stand the backs of the neighbours'
+buildings (21–46.5 m, placeholders until those levels exist), with the edge fences (3 m) and the
+road works' hoardings (5.5 m) in front of them; the viaduct ends after the underpass at a concrete
+wall across its deck (z 126.6). North of the town rock walls stand on the rims to the rule's
+heights, 25.5 m at the park rising to 73 m along the north, their caps too steep to stand on
+(`assets/edge_rock`, placed by `place/art.py`). `tools/frame.py` checks a built world against the
+rule and writes the frame scenarios' probes. The road's east end under the viaduct is the
+seamless edge to downtown (DESIGN.md 7.1), road works until downtown exists.
 
 **Tests.** `carts/garden/tests/shrinetown_cases.akr`, scenarios 400–446, run by `check.sh`
 (`make test-carts`), each on the default tuning:
