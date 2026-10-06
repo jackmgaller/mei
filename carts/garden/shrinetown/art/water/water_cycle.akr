@@ -5,62 +5,120 @@
 //
 //     import "water_cycle.akr"
 //
-//     // after wp_region_enter(k, 0) (variant 0, the day's, loaded):
-//     water_cycle_enter(first_colour_of_region_k, colours_of_region_k)
+//     // once, when the world opens: each region's day colours as the pack stores them
+//     water_cycle_find(k, day_colours_of_region_k, first_colour_of_region_k, colours_of_region_k)
+//     // after wp_region_enter(k, v), any variant v:
+//     water_cycle_enter(k)
 //     // every frame (update(), or draw()):
 //     water_cycle_update(frame() as s32)
 //     // after wp_variant_load() / wp_variant_blend() of a region (they rewrite the palette):
 //     water_cycle_sync()
 //
-// The region's colour range is world_NAME_REGION_COLOUR and _COLOURS (the generated shrinetown.akr).
-// water_cycle_enter() looks in that range of palette memory for each texture's colours (the ramps in
-// water_ramps.akr, which draw_water.py writes), so the packer may put the textures' palettes
-// anywhere; a texture the region does not draw is left out.
+// water_cycle_find() looks in a region's day colours (variant 0, from ROM, so whichever variant
+// is loaded) for each texture's colours (the ramps in water_ramps.akr, which draw_water.py
+// writes), so the packer may put the textures' palettes anywhere; a texture the region does not
+// draw is left out. It compares every palette with the three ramps (about 240,000 cycles for
+// the shrine town's two regions), so it runs once when the world opens, not at a region
+// crossing. water_cycle_enter() then only copies the region's 48 places and reads their colours
+// as the palette holds them now (a few thousand cycles), so the night's water cycles too.
+// Colours are reached through palette_ptr(): bank 1 (colours 4096 on, the shrine's) is not
+// after bank 0 in memory.
 
 import "water_ramps.akr"
 
 const WATER_CYCLE_TICKS: [3]s32 = [7, 10, 3]       // frames a step: canal, ponds, falls
 const WATER_CYCLE_DIR: [3]s32 = [1, 1, -1]         // +1 or -1: which way the crests go
+const WATER_MAX_REGIONS = 4
 
 var __wc_idx: [48]s32          // palette colour of texture k's phase L (-1: not drawn in the region)
+var __wc_ptr: [48]*u16         // where colour __wc_idx[i] is in palette memory (bank 1 is not after bank 0)
 var __wc_base: [48]u16         // the phases' colours as the palette holds them unrotated
 var __wc_step: [3]s32          // the rotation each texture shows now (-1: none yet)
+var __wc_found: [192]s16       // WATER_MAX_REGIONS x 48: each region's places, from water_cycle_find()
+var water_cycle_regions: s32   // regions found (water_cycle_find() sets it to the highest k + 1)
 
-// Finds the water textures' palettes among `count` colours from colour `first`, and takes the
-// colours as they are now as the unrotated ones. Call it with the day variant loaded.
-fn water_cycle_enter(first: s32, count: s32) {
-    let pal = VRAM_PALETTE as *u16
+// Nothing cycles (a world without the water).
+fn water_cycle_off() {
     for i in 0..48 { __wc_idx[i] = -1 }
     for k in 0..WATER_TEXTURES { __wc_step[k] = -1 }
-    for c in first..first + count {
-        let h = pal[c]
+    water_cycle_regions = 0
+}
+
+// Finds the water textures' palettes among `count` colours `cols` (region r's day colours as
+// stored: cols[i] is palette colour first + i) and keeps their places as region r's. A texture's
+// palette is the 16-colour palette that holds the most of its ramp (another texture may share
+// a colour or two with it, so the first palette holding phase 0 is not enough).
+fn water_cycle_find(r: s32, cols: *u16, first: s32, count: s32) {
+    assert(r >= 0 && r < WATER_MAX_REGIONS)
+    let f = r * 48
+    for i in 0..48 { __wc_found[f + i] = -1 }
+    var best: [3]s32
+    var best_at: [3]s32
+    for k in 0..WATER_TEXTURES { best[k] = 0; best_at[k] = -1 }
+    var at = first - (first & 15)
+    if at < first { at += 16 }
+    while at + 16 <= first + count {
+        let q = at - first
         for k in 0..WATER_TEXTURES {
-            if h != WATER_RAMP[k * 16] || __wc_idx[k * 16] >= 0 { continue }
-            let at = c - (c & 15)                       // its palette's first colour
+            // quick: a palette without phase 0 or 1 of the ramp is not the texture's
+            let a0 = WATER_RAMP[k * 16]
+            let a1 = WATER_RAMP[k * 16 + 1]
+            var maybe = false
             for j in 1..16 {
-                let cj = pal[at + j]
-                for l in 0..WATER_LEVELS[k] {
-                    if cj == WATER_RAMP[k * 16 + l] { __wc_idx[k * 16 + l] = at + j }
+                let cj = cols[q + j]
+                if cj == a0 || cj == a1 { maybe = true; break }
+            }
+            if !maybe { continue }
+            let n = WATER_LEVELS[k]
+            var hits = 0
+            for j in 1..16 {
+                let cj = cols[q + j]
+                for l in 0..n {
+                    if cj == WATER_RAMP[k * 16 + l] { hits += 1; break }
                 }
             }
+            if hits > best[k] { best[k] = hits; best_at[k] = at }
         }
+        at += 16
+    }
+    for k in 0..WATER_TEXTURES {
+        if best_at[k] < 0 || best[k] * 2 < WATER_LEVELS[k] { continue }      // not drawn in the region
+        let q = best_at[k] - first
+        for j in 1..16 {
+            let cj = cols[q + j]
+            for l in 0..WATER_LEVELS[k] {
+                if cj == WATER_RAMP[k * 16 + l] { __wc_found[f + k * 16 + l] = (best_at[k] + j) as s16 }
+            }
+        }
+    }
+    water_cycle_regions = max(water_cycle_regions, r + 1)
+}
+
+// Cycles region r's water (its palette loaded, in any variant), taking the colours as they are
+// now as the unrotated ones.
+fn water_cycle_enter(r: s32) {
+    for k in 0..WATER_TEXTURES { __wc_step[k] = -1 }
+    for i in 0..48 { __wc_idx[i] = -1 }
+    if r < 0 || r >= water_cycle_regions { return }
+    for i in 0..48 {
+        __wc_idx[i] = __wc_found[r * 48 + i] as s32
+        if __wc_idx[i] >= 0 { __wc_ptr[i] = palette_ptr(__wc_idx[i]) }
     }
     water_cycle_sync()
 }
 
 // Takes the palette's colours as the unrotated ones again (after a variant load or blend).
 fn water_cycle_sync() {
-    let pal = VRAM_PALETTE as *u16
     for i in 0..48 {
-        if __wc_idx[i] >= 0 { __wc_base[i] = pal[__wc_idx[i]] }
+        if __wc_idx[i] >= 0 { __wc_base[i] = __wc_ptr[i][0] }
     }
     for k in 0..WATER_TEXTURES { __wc_step[k] = 0 }
 }
 
 // Rotates each texture to its step at tick t.
 fn water_cycle_update(t: s32) {
-    let pal = VRAM_PALETTE as *u16
     for k in 0..WATER_TEXTURES {
+        if __wc_step[k] < 0 { continue }
         let n = WATER_LEVELS[k]
         let s = (t / WATER_CYCLE_TICKS[k]) * WATER_CYCLE_DIR[k]
         var sh = s % n
@@ -68,8 +126,7 @@ fn water_cycle_update(t: s32) {
         if sh == __wc_step[k] { continue }
         __wc_step[k] = sh
         for l in 0..n {
-            let i = __wc_idx[k * 16 + l]
-            if i >= 0 { pal[i] = __wc_base[k * 16 + (l + sh) % n] }
+            if __wc_idx[k * 16 + l] >= 0 { __wc_ptr[k * 16 + l][0] = __wc_base[k * 16 + (l + sh) % n] }
         }
     }
 }

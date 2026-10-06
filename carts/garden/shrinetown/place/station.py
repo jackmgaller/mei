@@ -5,12 +5,12 @@ Called by the placement hook (place/__init__.py) from three generators:
 
 - town(ns), from notes/gen_town.py (rows 0-1): the viaduct's pieces in those rows, the station
   (concourse with its stairs, the hall inside it, ticket gates, platform and its fittings, spans
-  and tapers, a two-car train at the platform, the signal gantries and their ladders), the plaza
-  (danchi, pachinko parlour, koban, konbini and its roof sign, bus stop, newsstand, bike racks
-  and bicycles, taxi rank, phone booth, postbox, vending machines, benches, planters, the
-  konbini's corner pole), the parapet rails along the real parapets, the coins the real stairs,
-  canopy and parapet moved, the last train's paths (place/race_train.py), and the road's skew
-  under the underpass;
+  and tapers, the signal gantries and their ladders; track 1 is left empty, the last train on
+  track 2 being the one train), the plaza (danchi, pachinko parlour, koban, konbini and its
+  roof sign, bus stop, newsstand, bike racks and bicycles, taxi rank, phone booth, postbox,
+  vending machines, benches, planters, the konbini's corner pole), the parapet rails along the
+  real parapets, the coins the real stairs, canopy and parapet moved, the last train's path
+  (place/race_train.py), and the road's skew under the underpass;
 - core(ns), from assets/greybox/core/gen_core.py (rows 2-3): the viaduct's two curves past the
   underpass, where it leaves the level, and the wall that closes its deck;
 - world(ns), from make_world.py: the asset directories.
@@ -192,7 +192,6 @@ def col(asset):
     return COL.get(asset, asset + '_col')
 
 
-TRAIN_Z = STATION_Z - 4.1        # track 1, the south one, beside the island platform
 GANTRIES = [(20.0, STATION_Z, 0.0), (310.56, 98.0, 270.0)]     # x, z, yaw: the line's two ends
 GANTRY_LADDER = (-0.45, 5.3)     # the pole in front of the north column's ladder (its frame)
 
@@ -301,9 +300,6 @@ def town(ns):
     for side in ('w', 'e'):
         _put(ns, put_town, f'platform_fittings_{side}', f'station_platform_fittings_{side}',
              STATION_X, DECK, STATION_Z, 0.0)
-    # a two-car local standing at the platform on track 1: cars 20 m long, cabs at the ends
-    _put(ns, put_town, 'train_car_e', 'train_emu_car', STATION_X + 10, DECK, TRAIN_Z, 0.0)
-    _put(ns, put_town, 'train_car_w', 'train_emu_car', STATION_X - 10, DECK, TRAIN_Z, 180.0)
     for k, (gx, gz, gyaw) in enumerate(GANTRIES):
         _put(ns, put_town, f'signal_gantry_{k}', 'signal_gantry', gx, DECK, gz, gyaw)
         lx, lz = turn(*GANTRY_LADDER, gyaw)
@@ -346,10 +342,9 @@ def town(ns):
         ns['materials'].pop(m, None)
     for name, pts in rails().items():
         ns['path'](name, [(r3(x), PARAPET_Y, r3(z)) for x, z in pts])
-    # the last train's two cars' paths along track 2 (place/race_train.py; game.py's movers)
-    from place.race_train import PATHS
-    for name, pts in PATHS.items():
-        paths[name] = {'points': pts, 'raised': True}
+    # the last train's path along track 2 (place/race_train.py; game.py's RACE_PATH)
+    from place.race_train import NAME, PATH
+    paths[NAME] = {'points': PATH, 'raised': True}
 
     # -- the front road through the underpass: asphalt along its skew (25 degrees north of east)
     ux, uz = next((x, z) for a, x, z, _ in PIECES if a == 'viaduct_underpass')
@@ -387,12 +382,9 @@ ASSET_DIRS = ['viaduct_span_16', 'viaduct_curve_16', 'viaduct_underpass', 'viadu
               'town_utility_pole_transformer', 'konbini_roof_sign']
 
 
-# Levels and culls for this world (the recipes' own suit a view of one asset): the train's L1
-# from 9 m (a car is drawn whole from the ticket hall under it, 10.5 m off, which put the hall's
-# view over its draw CPU budget), the plaza's small props culled sooner (seen from the station
-# and the danchi through what stands between).
-LOD = {'train_emu_car': {'distances': [4, 60], 'band': 1},
-       'mamachari': {'distances': [8], 'cull': 30}, 'bike_rack': {'distances': [10, 30], 'cull': 60},
+# Levels and culls for this world (the recipes' own suit a view of one asset): the plaza's small
+# props culled sooner (seen from the station and the danchi through what stands between).
+LOD = {'mamachari': {'distances': [8], 'cull': 30}, 'bike_rack': {'distances': [10, 30], 'cull': 60},
        'newsstand': {'distances': [8, 40], 'cull': 72},
        'phone_booth': {'cull': 66}, 'postbox': {'cull': 66}, 'koban': {'distances': [14, 45], 'cull': 100},
        'bus_stop': {'cull': 90}, 'viaduct_station_taper': {'distances': [20, 100]},
@@ -404,10 +396,10 @@ LOD = {'train_emu_car': {'distances': [4, 60], 'band': 1},
 # the station came to 620,000-725,000 draw CPU; the train's level 1 from 6 m, the newsstand's,
 # bicycle shelters' and tapers' sooner, and the plaza's small props culled at 36-60 m bring them
 # down; DESIGN.md 12.6, "The join". The alpha review's dense sweep found 195 views round the
-# station still over 600,000: since then the train's level 1 is from 4 m, the bicycles' from 8,
-# the shelters', gates', newsstand's and koban's sooner, and the station's own assets have levels
-# that suit the plaza (the concourse's middle level, the hall and the platform's fittings apart);
-# DESIGN.md 12.9.)
+# station still over 600,000: since then the parked train on track 1 is gone (the last train is
+# the one train), the bicycles' level 1 is from 8 m, the shelters', gates', newsstand's and
+# koban's sooner, and the station's own assets have levels that suit the plaza (the concourse's
+# middle level, the hall and the platform's fittings apart); DESIGN.md 12.9.)
 
 
 def world(ns):

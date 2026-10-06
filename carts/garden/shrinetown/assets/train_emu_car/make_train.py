@@ -18,8 +18,8 @@ at night).
 
 Levels (the shrine town sets the distances in its world, place/station.py): 0 whole; 1 the body,
 bogies, equipment, gangway, air conditioner and a pantograph block (80 triangles); 2 the body
-alone. `train_emu_car_mover` is level 1 as an asset of its own, for the last train's movers (an
-entity draws its mesh's level 0 only), with this car's collision.
+alone. `train_emu_pair` is two cars at level 1 as an asset of its own, with
+`train_emu_pair_col`: the last train, a mover (an entity draws its mesh's level 0 only).
 """
 import json
 import os
@@ -229,6 +229,23 @@ def collision():
             ]}
 
 
+def pair_collision():
+    """The pair's: one block over both bodies and the gangways between them, the two air
+    conditioners."""
+    return {"format": "mei-asset", "version": 1, "name": "train_emu_pair_col",
+            "materials": {"solid": {"color": "#ffffff", "palette": True}},
+            "lighting": {"mode": "vertical", "ambient": 0.5},
+            "verification": {"required": True, "depth": True, "perspective": True},
+            "nodes": [
+                box("body", [2 * (COUPLER + HALF_L), ROOF - 0.3, 2 * HALF_W],
+                    [0, (ROOF + 0.3) / 2, 0], "solid"),
+                box("aircon_e", [2.4, 0.4, 1.9], [COUPLER - 0.6, ROOF - 0.02 + 0.2, 0], "solid",
+                    open_=["bottom"]),
+                box("aircon_w", [2.4, 0.4, 1.9], [-COUPLER + 0.6, ROOF - 0.02 + 0.2, 0], "solid",
+                    open_=["bottom"]),
+            ]}
+
+
 def dump(obj, ind=0):
     sp = '  ' * ind
     if isinstance(obj, dict):
@@ -251,12 +268,19 @@ def write(name, data):
     print("wrote", name)
 
 
-def mover():
-    """Level 1 as an asset of its own: the last train's cars (an entity's mesh has no levels)."""
+def pair():
+    """The last train (the shrine town's ★5 mover, game.py RACE_TRAIN): two cars at level 1
+    (an entity's mesh has no levels), the east one's cab at +X, the west one turned; the origin
+    the middle of the set at rail level, the couplers meeting at x 0."""
     out = recipe()
-    out["name"] = "train_emu_car_mover"
-    out["budget"] = {"vertices": 200, "triangles": 120}
-    out["nodes"] = level_nodes(1)
+    out["name"] = "train_emu_pair"
+    out["budget"] = {"vertices": 300, "triangles": 200}
+    out["nodes"] = [
+        {"id": "car_e", "op": "group", "children": level_nodes(1),
+         "transform": {"translate": [COUPLER, 0, 0]}},
+        {"id": "car_w", "op": "group", "children": level_nodes(1),
+         "transform": {"rotate": [0, 180, 0], "translate": [-COUPLER, 0, 0]}},
+    ]
     del out["lod"]
     used = set()
     stack = list(out["nodes"])
@@ -273,5 +297,6 @@ def mover():
 
 if __name__ == "__main__":
     write("train_emu_car.asset.json", recipe())
-    write("train_emu_car_mover.asset.json", mover())
+    write("train_emu_pair.asset.json", pair())
+    write("train_emu_pair_col.asset.json", pair_collision())
     write("train_emu_car_col.asset.json", collision())

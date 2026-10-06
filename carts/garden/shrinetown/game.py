@@ -2,7 +2,7 @@
 """The shrine town's game entities (DESIGN.md, section 5 and 4.5): the five stars, the triggers
 (the bell, the omamori and the platform of the last train, the shortcuts A-E) and the last train.
 
-    python3 carts/garden/shrinetown/game.py      # writes assets/game/: the train and the omamori
+    python3 carts/garden/shrinetown/game.py      # writes assets/game/: the omamori
 
 The region generators put these entities into their cells: each calls `cell_entities(rows)` and
 appends what it returns (notes/gen_town.py for rows 0-1, assets/greybox/core/gen_core.py for 2-3,
@@ -24,24 +24,40 @@ Flags (names the triggers set and the stars and the train wait for):
 | shortcut_a ... _e | the shortcuts (press or pound) | yes | their layers |
 """
 import json
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
 OUT = HERE / 'assets' / 'game'
 
-# ★5, the last train (DESIGN.md 5, ★5; section 12): the omamori's clock, in ticks. The train
-# comes in from the west 25 s before the end, stops at the platform 15 s before it and leaves
-# when the clock runs out. Measured routes and why this number: DESIGN.md, ★5.
+# ★5, the last train (DESIGN.md 5, ★5; section 12, 12.9): the omamori's clock, in ticks. The
+# train comes in from the west at 30 s, stands at the platform from 40 s and leaves when the
+# clock runs out (85 s), so every winner (the fastest, by G8, at about 49 s) sees it standing
+# there; a win does not park it (attach.akr: its first cycle runs to the end), it leaves as the
+# reward. Measured routes and why this number: DESIGN.md, ★5.
 TIMER = 85 * 60
+TRAIN_DELAY = 30 * 60               # ticks parked after the omamori is taken
 TRAIN_LEG = 600                     # ticks from the west end to the platform (eased)
-TRAIN_PAUSE = 900                   # ticks stopped at the platform
-TRAIN_DELAY = TIMER - TRAIN_LEG - TRAIN_PAUSE
+TRAIN_PAUSE = TIMER - TRAIN_DELAY - TRAIN_LEG   # ticks stopped at the platform: until the clock runs out
 
+# the station's path along track 2 (the set's middle, x 24 to 160, on the taper's S) and the
+# two-car train drawn along it, with its collision (place/race_train.py)
+from place.race_train import NAME as RACE_PATH, PATH as RACE_POINTS
+from place.race_train import ASSET as RACE_TRAIN, COLLISION as RACE_TRAIN_COL
 STAGE_Y = 60.0                      # layout.STAGE_Z
 BELL = (154.0, 347.15)              # forest_stage_bell's pull rope (place/shrine.py: the bell under the real hall's eave)
-TRACK2_Z = 12.1                     # the station's track 2 (the north one); the rail at the deck, 9.0
 DECK = 9.0                          # layout.VIADUCT_DECK
 PLATFORM = DECK + 1.0               # station_platform's floor (place/station.py)
+
+def train_mover():
+    """The last train: along the world path RACE_PATH (track 2's centre line, from x 24 to the
+    platform's middle), two real cars (RACE_TRAIN)."""
+    params = {'path': RACE_PATH, 'period': TRAIN_LEG, 'pause': TRAIN_PAUSE, 'start': 'race5',
+              'delay': TRAIN_DELAY}
+    return {'id': 'train_5', 'type': 'mover', 'position': list(RACE_POINTS[0]), 'asset': RACE_TRAIN,
+            'collision': RACE_TRAIN_COL, 'params': params}
+
 
 ENTITIES = [
     # ---- the five stars (they were coins in the grey box: the IDs, and so the saved bits, stay)
@@ -67,17 +83,16 @@ ENTITIES = [
     {'id': 'race_switch', 'type': 'trigger', 'position': [168, STAGE_Y, 342], 'asset': 'game_omamori',
      'params': {'size': [1.4, 2.0, 1.4], 'flag': 'race5', 'keep': False, 'timer': TIMER, 'ends': 'race5_won',
                 'hide': True}},
-    # the platform's box: x 144-176 over both tracks (z 3.5-14), 6 m up from the island platform's
-    # floor: the platform and the roofs of trains standing at it (the outside stairs' walkway, north
-    # of track 2 at the deck, is outside it: they are not the way to the trains)
-    {'id': 'race_platform', 'type': 'trigger', 'position': [160, PLATFORM + 0.05, 8.75],
-     'params': {'size': [32, 6, 10.5], 'flag': 'race5_won', 'needs': 'race5', 'ends': 'race5', 'keep': False}},
+    # the platform's box: the island platform's floor only (station_platform: z 5.5-10.5, from
+    # x 144 to 176), 3 m up from it, so not the trackbeds (9.0) beside it, not the canopy's roof
+    # (13.47) and not the walkway north of track 2. (A body's head in it counts: the stair's top
+    # flight, coming up through the floor, is in it from about 8.5.)
+    {'id': 'race_platform', 'type': 'trigger', 'position': [160, PLATFORM + 0.05, 8.0],
+     'params': {'size': [32, 3, 5.0], 'flag': 'race5_won', 'needs': 'race5', 'ends': 'race5', 'keep': False}},
     # the two-car train on track 2: parked until the omamori is taken, then in from the west end
-    # of the viaduct, stopped with its middle at the platform's (x 160), and back out west
-    {'id': 'train_5', 'type': 'mover', 'position': [2.0, DECK, TRACK2_Z], 'asset': 'game_train',
-     'collision': 'game_train',
-     'params': {'to': [158, 0, 0], 'period': TRAIN_LEG, 'pause': TRAIN_PAUSE, 'start': 'race5',
-                'delay': TRAIN_DELAY}},
+    # of the viaduct, stopped with its middle at the platform's (x 160), and back out west, on
+    # track 2 (z 10 on the standard spans, the taper's S to 12.1 at the station)
+    train_mover(),
 
     # ---- the shortcuts (DESIGN.md 4.5): each opens once and stays open (saved)
     # A: the rope ladder, kicked down from the ledge (44) at the lip over it (the face at z 318)
@@ -138,18 +153,6 @@ def recipe(name, boxes, colours, budget):
             'budget': {'triangles': budget}, 'nodes': nodes}
 
 
-def train():
-    """Two cars of 19.5 m (x), 2.8 m wide, their floors 1.1 over the rail (the origin), roofs at
-    3.6; bogies under them. Centred on the origin along x: 40 m in all."""
-    b = []
-    for cx in (-9.9, 9.9):
-        b.append((cx - 9.75, 1.0, -1.4, cx + 9.75, 3.6, 1.4, 'body', 'roof'))
-        for bx in (cx - 6.5, cx + 6.5):
-            b.append((bx - 1.3, 0.0, -1.1, bx + 1.3, 1.02, 1.1, 'bogie'))     # 2 cm into the car
-    b.append((-0.2, 1.2, -1.0, 0.2, 3.3, 1.0, 'bogie'))            # the gangway between the cars
-    return recipe('game_train', b, {'body': '#e8e2d0', 'roof': '#8a8c90', 'bogie': '#3a3c40'}, 96)
-
-
 def omamori():
     """A red brocade pouch (0.36 x 0.5 x 0.12) with its gold cord, at chest height over its spot."""
     b = [(-0.18, 0.9, -0.06, 0.18, 1.4, 0.06, 'red'),
@@ -160,8 +163,8 @@ def omamori():
 if __name__ == '__main__':
     OUT.mkdir(parents=True, exist_ok=True)
     for p in OUT.glob('game_*.asset.json'): p.unlink()
-    for r in (train(), omamori()):
+    for r in (omamori(),):
         (OUT / f'{r["name"]}.asset.json').write_text(json.dumps(r, separators=(',', ':')) + '\n')
-    print(f'{OUT.relative_to(HERE)}: game_train, game_omamori; {len(ENTITIES)} entities '
+    print(f'{OUT.relative_to(HERE)}: game_omamori; {len(ENTITIES)} entities '
           f'(TIMER {TIMER} ticks, the train in at {(TRAIN_DELAY) / 60:g} s, at the platform at '
           f'{(TRAIN_DELAY + TRAIN_LEG) / 60:g} s, out at {TIMER / 60:g} s)')

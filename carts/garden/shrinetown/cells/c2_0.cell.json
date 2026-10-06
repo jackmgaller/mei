@@ -136,27 +136,6 @@
    "collision": "none"
   },
   {
-   "id": "train_car_e",
-   "asset": "train_emu_car",
-   "position": [
-    170.0,
-    9.0,
-    3.9
-   ],
-   "collision": "train_emu_car_col"
-  },
-  {
-   "id": "train_car_w",
-   "asset": "train_emu_car",
-   "position": [
-    150.0,
-    9.0,
-    3.9
-   ],
-   "yaw": 180.0,
-   "collision": "train_emu_car_col"
-  },
-  {
    "id": "bus_stop",
    "asset": "bus_stop",
    "position": [
@@ -608,13 +587,13 @@
    "position": [
     160,
     10.05,
-    8.75
+    8.0
    ],
    "params": {
     "size": [
      32,
-     6,
-     10.5
+     3,
+     5.0
     ],
     "flag": "race5_won",
     "needs": "race5",
