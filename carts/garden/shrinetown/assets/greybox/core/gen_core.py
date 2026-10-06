@@ -578,8 +578,9 @@ for _cid, _es in G.cell_entities(ROWS).items(): entities.setdefault(_cid, []).ex
 
 # the placement zones (place/ZONE.py) change the cells and the part before they are written
 sys.path.insert(0, TOWN)
-from place import apply as apply_zones
+from place import apply as apply_zones, unused
 apply_zones('core', globals())
+for _n in unused(assets, placements, entities, parts): del assets[_n]          # the grey boxes swapped out
 
 # ------------------------------------------------------------------ write
 os.makedirs(HERE, exist_ok=True)

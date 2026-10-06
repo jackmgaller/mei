@@ -3,12 +3,12 @@
  "machiya": 10,
  "poles": 22,
  "rails": 17,
- "placements": 259,
+ "placements": 258,
  "placements_per_cell": {
   "c0_0": 30,
   "c0_1": 20,
   "c1_0": 30,
-  "c1_1": 35,
+  "c1_1": 34,
   "c2_0": 48,
   "c2_1": 35,
   "c3_0": 15,
@@ -16,7 +16,7 @@
   "c4_0": 17,
   "c4_1": 14
  },
- "recipes": 120,
+ "recipes": 27,
  "glides": {
   "G1 building roof -> east side hall (11.6)": {
    "distance": 24.0,

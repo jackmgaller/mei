@@ -64,6 +64,8 @@ recipe = {
     "materials": materials,
     "lighting": {"mode": "vertical", "ambient": 0.5},
     "verification": {"required": True, "depth": True, "perspective": True},
+    # a small prop: no levels, culled (a world's lod.assets may say sooner)
+    "lod": {"cull": 50},
     "nodes": nodes,
 }
 with open(os.path.join(HERE, "town_kanban_set.asset.json"), "w") as f:

@@ -106,7 +106,7 @@ fn town_case(f: s32) {
         423 => tw_rope(f)
         424 => tw_ladder(f)
         430 => tw_coins(f)
-        431 => tw_door(f, vec3(196.0, 0.0, 36.0), 3.1416, GARDEN_WORLD_SHRINETOWN, GARDEN_WORLD_GARDEN)
+        431 => tw_door(f, vec3(187.5, 0.0, 36.0), 3.1416, GARDEN_WORLD_SHRINETOWN, GARDEN_WORLD_GARDEN)
         432 => tw_door(f, vec3(6.0, 0.0, 111.0), WEST, GARDEN_WORLD_SHRINETOWN, GARDEN_WORLD_SHRINE)
         433 => tw_door(f, vec3(10.0, 0.0, 14.0), WEST, GARDEN_WORLD_SHRINE, GARDEN_WORLD_SHRINETOWN)
         440 => sh_view(f, vec3(160.0, 0.0, 92.0), 3.1416, -0.14, 4.0, false)

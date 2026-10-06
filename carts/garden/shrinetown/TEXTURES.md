@@ -167,6 +167,28 @@ It exits 1 when a part or a region is over. The world build enforces the region'
 "Measured (plan)" is `tools/textures.py --try` with every asset in the zone where PLACE_SPLIT and
 PLACEMENT_NOTES put it. The canal zone straddles the boundary and has an allowance in each region.
 
+**As placed (the four town zones joined, 2026-10-05; the shrine zone still grey).**
+`tools/textures.py` on the cells:
+
+| Region | Part | Bytes | Allowance |
+|---|---|---|---|
+| town | shared props | 46,752 | 49,152 |
+| town | station zone | 97,088 | 98,304 |
+| town | street zone | 143,264 | 147,456 |
+| town | east zone | 18,304 | 26,624 |
+| town | canal zone | 24,960 | 26,624 |
+| town | **total** | **330,368** | **389,120** |
+| shrine | shared props | 16,768 | 49,152 |
+| shrine | station zone | 1,664 | 8,192 |
+| shrine | canal zone | 32,128 | 36,864 |
+| shrine | **total** | **50,560** | **307,200** |
+
+A placement counts in the zone that holds its origin, with two exceptions (`zone_of()`): the
+railway (the viaduct's pieces and the signal gantries, at x 20 and 310.56) is the station's
+wherever it stands, and the schoolyard south of z 40 (the pool and the sports ground, x 212–295,
+z 18–40) is the east's. Counted by origin alone, the gantries made their tiles shared (a canal
+and an east placement) and the shared set went 1,440 bytes over its allowance.
+
 **Shared props.** Town: `town_street_lamp` (the shotengai's lamp, shrine town's own, renamed from
 `street_lamp`), the shrine's `street_lamp`, `vending_machine`, `postbox`, `town_road_signs`,
 `delivery_van`, `traffic_mirror`, `mamachari`, `town_potted_plants`, `town_laundry_pole`,

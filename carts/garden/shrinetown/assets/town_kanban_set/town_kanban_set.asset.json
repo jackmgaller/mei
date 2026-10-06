@@ -59,6 +59,9 @@
   "depth": true,
   "perspective": true
  },
+ "lod": {
+  "cull": 50
+ },
  "nodes": [
   {
    "id": "aframe_front",

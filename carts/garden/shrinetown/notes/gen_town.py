@@ -777,8 +777,9 @@ part = {
 }
 # the placement zones (place/ZONE.py) change the cells and the part before they are written
 sys.path.insert(0, str(ST))
-from place import apply as apply_zones
+from place import apply as apply_zones, unused
 apply_zones('town', globals())
+for _n in unused(recipes, cells, part): del recipes[_n]          # the grey boxes swapped out
 (PARTS / 'town.json').write_text(json.dumps(part, indent=1) + '\n')
 
 # ------------------------------------------------------------------ write recipes and cells

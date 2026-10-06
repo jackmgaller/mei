@@ -207,7 +207,9 @@ PLAZA = [  # (id, asset, x, y, z, yaw)
     ('bench_1', 'town_bench', 192.0, 0.0, 38.5, 0.0),
     ('planters_koban', 'town_potted_plants', 122.0, 0.0, 27.2, 180.0),
     ('planters_station', 'town_potted_plants', 165.5, 0.0, 15.7, 180.0),
-    ('pole_konbini0', 'town_utility_pole_transformer', 210.0, 0.0, 33.0, -2.42),   # wires to (207, 104)
+    # the konbini wire's first pole: yaw 0 as the street zone's wires take it (place/street.py,
+    # `wire_konbini_a`/`_b` 0.8 m either side along x, to the pole at (207, 104))
+    ('pole_konbini0', 'town_utility_pole_transformer', 210.0, 0.0, 33.0, 0.0),
 ]
 # bicycle shelters against the concourse and the viaduct (backs to the south), with the town's
 # mamachari in some of their five slots (bike_rack's docstring: local x -1.2 .. 1.2, z 0, y 0.1);
@@ -227,6 +229,7 @@ COIN_LIFT = 0.7
 COINS = {f'coin_stair{k}_{j}': (x, 0.5 * (34.6 - z) + COIN_LIFT, z)
          for k, x in enumerate((150.0, 170.0)) for j, z in enumerate((29.0, 23.0, 17.0))}
 COINS['red_canopy'] = (172.0, 13.47 + COIN_LIFT, 8.0)
+KONBINI_DOOR = (187.5, 0.0, 33.0)     # the door entity (3 m wide): street_konbini's door, x 186-189
 
 
 def _put(ns, cells_put, pid, asset, x, y, z, yaw=0.0, collision=None, layer=None, merge=False):
@@ -294,11 +297,18 @@ def town(ns):
     # roof's deck (4.7) instead of the grey roof (5.6). No real asset has a roof sign.
     ns['block']('konbini_sign', 193, 29.6, 199, 30.4, 4.7, 7.0, ns['C']['sign'], label='konbini_sign')
 
-    # -- coins the real stairs, canopy and platform moved
+    # -- coins the real stairs, canopy and platform moved; the door to the garden on the real
+    # konbini's door (x 186-189 on its front, z 32), not the grey box's middle
+    door = None
     for c in cells.values():
         for e in c['entities']:
             if e['id'] in COINS:
                 e['position'] = [r3(v) for v in COINS[e['id']]]
+            elif e['id'] == 'door_garden':
+                door = e
+        c['entities'] = [e for e in c['entities'] if e is not door]
+    door['position'] = list(KONBINI_DOOR)                  # in cell c2_0 now, not c3_0
+    ns['cell'](*ns['cell_of'](KONBINI_DOOR[0], KONBINI_DOOR[2]))['entities'].append(door)
 
     # -- the deck's line and the parapet rails along the real parapets (the sweeps are gone)
     for name in ('parapet_s', 'parapet_n_w', 'parapet_n_e'):
@@ -352,16 +362,23 @@ ASSET_DIRS = ['viaduct_span_16', 'viaduct_curve_16', 'viaduct_underpass', 'viadu
 # from 9 m (a car is drawn whole from the ticket hall under it, 10.5 m off, which put the hall's
 # view over its draw CPU budget), the plaza's small props culled sooner (seen from the station
 # and the danchi through what stands between).
-LOD = {'train_emu_car': {'distances': [9, 60], 'band': 1},
-       'mamachari': {'cull': 30}, 'bike_rack': {'cull': 60}, 'newsstand': {'cull': 72},
-       'phone_booth': {'cull': 66}, 'postbox': {'cull': 66}, 'koban': {'cull': 100},
-       'bus_stop': {'cull': 90}}
+LOD = {'train_emu_car': {'distances': [6, 60], 'band': 1},
+       'mamachari': {'cull': 30}, 'bike_rack': {'distances': [14, 30], 'cull': 60},
+       'newsstand': {'distances': [14, 40], 'cull': 72},
+       'phone_booth': {'cull': 66}, 'postbox': {'cull': 66}, 'koban': {'distances': [24, 45], 'cull': 100},
+       'bus_stop': {'cull': 90}, 'viaduct_station_taper': {'distances': [20, 100]},
+       'town_potted_plants': {'cull': 36}, 'town_bench': {'cull': 45},
+       'ticket_gates': {'distances': [12, 40]}}
+# (the join, with the street's real assets: the views from the inside stair, the canopy and over
+# the station came to 620,000-725,000 draw CPU; the train's level 1 from 6 m, the newsstand's,
+# bicycle shelters' and tapers' sooner, and the plaza's small props culled at 36-60 m bring them
+# down; DESIGN.md 12.6, "The join")
 
 
 def world(ns):
     w = ns['world']
+    from place import add_dir
     dirs = w.setdefault('asset_dirs', [])
     for d in [f'assets/{a}' for a in ASSET_DIRS] + ['../shrine/assets']:   # the konbini, vending machines
-        if d not in dirs:
-            dirs.append(d)
+        add_dir(dirs, d)
     w.setdefault('lod', {}).setdefault('assets', {}).update(LOD)

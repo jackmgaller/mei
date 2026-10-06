@@ -131,11 +131,15 @@ python3 carts/garden/shrinetown/tools/textures.py                     # texture 
 ```
 
 All of them read `layout.py`; the three region generators also put `game.py`'s entities (the
-stars, the triggers, the train) into their cells. The world's assets are the town's folder and,
-through the World Kit's `asset_dirs`, the core's, the mountain's, `assets/game` and `assets/arch_pagoda` (the real pagoda's
-climbing collision; its look is `../shrine/assets/arch_pagoda`, which the grey box draws in a flat
-colour). `notes/` keeps each region's notes from the parallel build (their test worlds are gone:
-the level is built only as `shrinetown`).
+stars, the triggers, the train) into their cells, then call the placement zones' hook
+(`place/__init__.py`: `apply(STAGE, globals())`, one `place/ZONE.py` per zone, in the order
+station, street, east, canal, shrine), which swaps grey boxes for the real assets; a grey-box
+recipe nothing places any more is not written. The world's assets are the town's grey boxes
+(`assets/greybox/town`) and, through the World Kit's `asset_dirs`, the core's and the mountain's
+grey boxes, `assets/*` (a folder per real asset, `assets/game` and `assets/arch_pagoda`, the real
+pagoda's climbing collision, among them) and the shrine's `../shrine/assets`. `notes/` keeps each
+region's notes from the parallel build (their test worlds are gone: the level is built only as
+`shrinetown`).
 
 ## Open
 
@@ -144,7 +148,7 @@ the level is built only as `shrinetown`).
   the same kind. Overlapping three sweeps into what they meet (the walkway stair, the north stair,
   ladder A's steps) closed an edge mismatch but only moved their cracks; the scenarios walk over
   all three.
-- Phase 3 on: the real assets, life, textures (DESIGN.md 9). The race's last legs and star 5
-  move to the real station's inside stair and platform when it is placed (DESIGN.md 12.5).
+- Phase 3 on: the real assets, life, textures (DESIGN.md 9). The station, street, east and
+  canal zones are placed (DESIGN.md 12.6); the shrine zone (z ≥ 128, x ≥ 64) is still grey.
 - The texture regions' boundary is not a hidden seam, and the planned assets need more 4-bit
   palettes than a world has unless their 8-bit textures go (TEXTURES.md).

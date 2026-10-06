@@ -14,7 +14,7 @@ place/__init__.py, just before they write:
 - world (make_world.py): the asset directories, the ground under the brewery and the arched
   bridge's east end.
 
-Where the real assets differ from the grey box (DESIGN.md 12.5, "Canal"): the machiya are turned
+Where the real assets differ from the grey box (DESIGN.md 12.6, "Canal"): the machiya are turned
 to face their lane, the sento sits so that its chimney is the grey box's (30.5, 67.5), the trees
 between the road and the park move north of z 128 into the shrine's texture region.
 Run the three generators and make_world.py (README.md, "How it is made").
@@ -317,11 +317,12 @@ def world(ns):
     for s in w['scatter'].values():
         if any(a['asset'] in ('tree_bamboo_tall', 'plant_sasa') for a in s['assets']):
             names.update(a['asset'] for a in s['assets'])
+    from place import add_dir
     dirs = w.setdefault('asset_dirs', [])
     for n in sorted(names):
         d = folder(n)
-        if d and d not in dirs and not n.startswith(('gbt_', 'gbc_', 'gbm_')):
-            dirs.append(d)
+        if d and not n.startswith(('gbt_', 'gbc_', 'gbm_')):
+            add_dir(dirs, d)
     ops = w['terrain']['fields']['ground']['operations']
     # a flat pad under the brewery; the arched bridge's east foot down to its abutment (0.6), clear
     # of the canal's bank (x 52)

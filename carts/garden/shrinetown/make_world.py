@@ -123,8 +123,10 @@ world = {
     'format': 'mei-world', 'version': 1, 'name': 'shrinetown',
     'game': '../world/garden.game.mochi',
     'assets': 'assets/greybox/town',
-    'asset_dirs': ['assets/greybox/core', 'assets/greybox/mountain', 'assets/arch_pagoda',
-                   'assets/game'],                 # the game's: game.py (the train, the omamori)
+    # the other regions' grey boxes; a folder per real asset (with assets/arch_pagoda, the pagoda's
+    # climbing collision, and assets/game, game.py's train and omamori); the shrine's assets, which
+    # the zones place too
+    'asset_dirs': ['assets/greybox/core', 'assets/greybox/mountain', 'assets/*', '../shrine/assets'],
     'cell_dir': 'cells',
     'grid': {'cell_size': 64}, 'overhang': 32,
     'collision': town['collision'],

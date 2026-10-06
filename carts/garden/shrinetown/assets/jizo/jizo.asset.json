@@ -117,6 +117,9 @@
   "depth": true,
   "perspective": true
  },
+ "lod": {
+  "cull": 50
+ },
  "nodes": [
   {
    "id": "step_low",

@@ -39,6 +39,8 @@ recipe = {
     },
     "lighting": {"mode": "vertical", "ambient": 0.5},
     "verification": {"required": True, "depth": True, "perspective": True},
+    # a small prop: no levels, culled (a world's lod.assets may say sooner)
+    "lod": {"cull": 50},
     "nodes": [
         {"id": "plinth", "op": "box", "size": [0.44, 0.08, 0.38], "open": ["top", "bottom"],
          "material": "plinth", "transform": {"translate": [0, 0.04, 0]}},

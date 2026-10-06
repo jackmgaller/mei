@@ -19,10 +19,12 @@ run 430 2000
 run 431 90
 run 432 90
 run 433 90
-run 440 91
-run 441 91
-run 442 91
-run 443 91
-run 444 91
-run 445 91
-run 446 511
+# the views: a few ticks over their 90 (510) frames for the late frame that loads the cells round
+# the place a view jumps to (sh_view counts late frames from frame 30)
+run 440 95
+run 441 95
+run 442 95
+run 443 95
+run 444 95
+run 445 95
+run 446 515

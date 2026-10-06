@@ -1098,6 +1098,112 @@ platform's box stand on the real platform's floor (10.0).
 Each zone's grey boxes are swapped for the real assets by its own module, `place/ZONE.py`, which
 the region generators and `make_world.py` call just before they write (`place/__init__.py`).
 
+#### Station (z < 40, x ≥ 64, and the whole viaduct: `place/station.py`)
+
+What stands now: the viaduct as real pieces along its whole line; the station
+(`station_concourse` with its two outside stairs and the inside stair, `ticket_gates`,
+`station_platform`, the three station spans and two tapers); a two-car `train_emu_car` standing
+at track 1; two `signal_gantry`s, each with a pole on its ladder; the plaza's danchi, pachinko
+parlour, koban, konbini (the shrine's `street_konbini`), bus stop, newsstand, four bike shelters
+with eight `mamachari`, a taxi rank, a phone booth, a postbox, three of the shrine's
+`street_vending_machine`s, two benches, two planters and the konbini's corner pole
+(`town_utility_pole_transformer`). `city_bus` is left out (OVERNIGHT_DECISIONS 16).
+
+| Where | Grey box | Real | Why |
+|---|---|---|---|
+| Viaduct line | swept deck and parapets along layout's polyline; the north run at x 302 | 16 m pieces: spans from x -8 (joints at x = 8 mod 16), the station x 136-184, tapers either side, three 30-degree curves (R 30.56) from x 280, the north run at x 310.56, the underpass, two curves east out of the level | the pieces join only end to end and turn by 30 degrees; x 310.56 keeps the bend and the piers off the sports ground and the school |
+| Piers | 1.6 x 8 under each grey span | each piece's two-column bent; at x 48 one stands in the canal | the station's joints fix every span west of it |
+| Underpass | a span over the straight road | `viaduct_underpass` at (310.56, 114.56), yaw 90: the road 25 degrees north of east between abutments, asphalt painted along the skew | the asset is built for the dog-leg (7.1); the straight road meets its west wing wall at x 293-300 (z 114.6-118) and walks on east into the corridor |
+| Deck's east end | wall at x 315.5 | the same wall (`gbc_viaduct_end`) where the centre line reaches x 315, heading 58.8 degrees; the second curve runs on past it out of the level | the line leaves between the rims (z 132-154) |
+| Parapet rails | 10.2, 5.85 m off the line, the north one open over x 146-178 | 10.2 on the real parapets: 5.875 off the line, 7.475 through the station (tapering between), the north one in three with gaps at the outside stairs only (x 148.35-151.65, 168.35-171.65) | `parapet_n_m` is new: the concourse's parapet between the stairs |
+| Outside stairs | x 150-154 and 170-174, foot z 32 | x 148.5-151.5 and 168.5-171.5, foot z 34.6, landing 9.0 at z 15.6-16.6, roofed | the asset's; they reach the walkway, not the platform (no track crossing) |
+| Platform | the deck (9.0), canopy 12.8 | floor 10.0, canopy top 13.47 (middle) to 13.72 (edges) | GREYBOX_SPLIT; the inside stair is the way up |
+| Stair coins | on the grey ramps at x 152, 172 | on the real treads at x 150, 170: y = 0.5 (34.6 - z) + 0.7 | they were inside the real steps |
+| Red coin 3 | 13.5 | 14.17 on the canopy | the real canopy |
+| Star 5, the platform's trigger (`game.py`) | 10.4; box from 9.05 | 11.4 (1.4 over the floor); the box from 10.05, over both tracks, the walkway north of track 2 outside it | the real platform's floor, 10.0 |
+| Konbini | box 36 x 14, roof 5.6 | `street_konbini` (36 x 14, deck 4.7, coping 5.0), front to the plaza; the door entity at (187.5, 33), on the real door (x 186–189) | the same footprint; the door moved at the join (scenario 431 starts before it) |
+| Konbini roof sign | 5.6-7.0 | the same grey sign, 4.7-7.0, on the real roof's deck; red coin 5 on top | no real asset has a roof sign |
+| Danchi | 16 x 16 box, ramps round it | `danchi` 16.2 x 13.4 (z 19.4-32.8), its own stair tower on the north face to the roof (18.8) | |
+| Koban | 12 x 10 box, 5.9 | `koban` 4 x 3 (5 x 4 with eaves) at (122, 24), front east, eave 3.35 | the asset's size |
+| Pachinko | 16 x 16, 9.1 | 11.4 x 10.3 at (100.5, 26), front east, antenna 8.85 | |
+| Vending machine (route D) | at x 177.4 | `street_vending_machine` at (179.1, 29.8) against the konbini's west end, 1.9 | the konbini's roof is 3.1 up |
+
+Scenario changes: 401 walks the inside stair (through a ticket gate's aisle at x 158.6, west of
+the middle bent's column at x 160) onto the platform (10.0); G2 (411) takes off from the real
+roof at (78, 22) with no run-up (from (85, 20) it stood on the top balcony at 16.1, and a
+run-up's first jump carried it off the roof's north edge). The race's cases (452, 454) walk the
+same stair (`RACE_TOWN`); the platform's box is reached at the stair's head (8.5), and 454 no
+longer adds the stair's 4.5 s to the measured route, which now includes it.
+
+Costs (World Checker, full, the whole level with the other zones still grey): peak 2,148
+triangles, 598,458 draw CPU, 591,544 GPU. The peak is the ticket hall looking west, with the
+platform and the train over its ceiling; it is kept in by the train's level 1 from 9 m (band 1)
+and the plaza's small props culled sooner (`lod.assets`, set in `world()`). Texture cuts made
+(TEXTURES.md): the zone's 8-bit textures 4-bit (koban, danchi facade, pachinko storefront, bus
+stop, bike shelter sign), the ticket gates' floor a repeating 32 x 32, the newsstand's goods,
+sign and sides at half width, the postbox's cap a 32 x 32 pattern, `street_vending_machine` for
+`vending_machine`.
+
+#### Street (40 ≤ z < 128, 64 ≤ x < 210: `place/street.py`)
+
+`place/street.py` (called by `notes/gen_town.py` and `make_world.py` through `place/__init__.py`)
+takes out the zone's grey boxes, all but the great torii (the shrine zone's), and places the real
+assets. What differs from the grey box:
+
+| Where | Grey box | Real | Why |
+|---|---|---|---|
+| Shops | boxes 14 × 9 m, roofs 6.5 / 9.5 | west row yaw 270, east row yaw 90; 2F roofs 5.0–6.5 (gables and terraces), the record shop's back room 7.3, the 3F's roof 9.3 inside a 9.5 parapet | the assets. West: corner C (left, no awning), 3F, tobacco, record, ramen, 3F; east: corner C (no awning), A (no awning), 3F, A, B, 3F |
+| Bounce awnings | six 1.5 m boxes at 2.6 | `town_awning_bounce` (top 2.7–2.9) on the street fronts of w0, e0, e1 and the back walls of w2, e3, w4 | the record shop's back roof (7.3) is above a bounce from 2.9 (7.4), so it has none behind it |
+| Arcade | roof z 62–94, gates at z 60 and 96 | roof z 61–93 (two `arcade_roof_16`, columns at z 65/73/81/89), gates on the plot lines at z 54 and 94 | at z 60 and 96 the gates' pillars went through shop awnings; at 54 and 94 no awning reaches |
+| North gate | beam 7.0–8.3 | the name board's underside at 5.11; its collision is the pillars only (`arcade_gate_posts_col`) | G8 comes in under it with its feet at about 4.3 and struck the board (417) |
+| Alley houses | 24 boxes, 6–8 m | `town_alley_house_a` for 6 (roof 4.8–5.9), `_b` for 6.5 and 7 (6.5–7.0), `_c` for 8 (6.0–7.1, platform 8.0); doors to the plaza in the first row, to the road in the last, alternating between | |
+| Fire tower | box at (102, 74), pole at z 70.55 | `fire_tower` yaw 0, the ladder's pole at (102, 72.08), 15.2; the alley plot west of it (x 90–99.5, z 66–74.5) left to its yard | its hose shed (x 97.6–100.3, z 73.3–75.4) stood in that plot's house (x 89.7–99.8, z 65.4–74.9 with its eaves); moved, the house would meet its neighbours, and the tower stays at (102, 74) for G4 (413). Done at the join |
+| Kura | box x 108–111, 8.0 | `town_kura` (new; the town's common plaster and kawara, no texture of its own) at x 106.3–109.3, z 70–78, roof 7.5–8.0 at 15° | the kick pair (FOLLOWUPS): kura roof, the railing (12.9), the eave (14.6), the cap |
+| Dagashi, coin laundry | a box; no laundry | `dagashi_shop` at (128.5, 46.5) facing the plaza's walk, two gachapon and a jizo; `coin_laundry` at (130.75, 100.6) facing the road | |
+| Building | box 18.3, a ramp up its east face | `street_building` at (193, 73) yaw 90: roof deck 15.2, parapet 16.0, tank 18.2; its own stair at its south end (z 44–48) | the ramp is gone; G1 from 15.2 comes down on the east side hall's south half (z 134): 410's target is now (192, 138) |
+| Shortcut E | a 17.9 m ladder box, pole 18.3 | the escape's stair in no layer (with the collision), its ladder folded (`town_fire_escape_up`, layer `ladder_e_up`) or down (`town_fire_escape_down`, `ladder_e`), group `shortcut_e`; the pole at (198.5, 103.95), 7.6, front, yaw 0; the trigger on the roof at 15.25 (`game.py`) | two copies of the stair's collision, one a layer, overfilled the pack's collision lookup (270 triangles of one kind in a bucket, at most 255) |
+| Wires | one rail per line through the poles | `town_utility_pole_transformer` everywhere; two wires per line, 0.8 m either side, at 8.0, each a rail drawn as a thin sweep (`wire_*_a`, `_b`, material `wire`, no collision) | the asset (GREYBOX_SPLIT's decisions) |
+| Front-road poles | z 104 | z 106, yaw 90 (wires at 105.2 and 106.8), the whole road from x 10 to 280 | at 104 the south wire (103.2) went through the 3F shops at the shotengai's mouth and grazed the fire escape |
+| Wire coins | on the old lines | the road's on the south wire (z 105.2), the service lane's on its east wire (x 138.55), the konbini wire's on its east wire | |
+| Floor coins | 0.7 over the boxes | 0.7 over the real roofs (from the collision) | |
+| North verge | four cedar boxes (x 66–92) | `tree_zelkova` (the town's street tree, as the east zone's) | the shrine's `tree_cedar` is 5.6 KB the town's set does not have |
+| Props | none | lamps (`town_street_lamp` in the shotengai, poles to 3.8; the shrine's `street_lamp` along the road's north side), signs, curve mirrors, a firepost, a crane game, kanban, bikes, crates, aircon units, plants, laundry poles, the kei truck, the recycling station, a bench | spec 8.2; not merged (a merged chunk has no levels or cull and drew 360 triangles from 97 m) |
+| Delivery van | — | left out | 14 KB of the town's shared set for one prop; its right side mirrored from the left would read backwards |
+
+Levels of detail sooner than the recipes' (`lod.assets`): the ramen shop from 16 m, the record and
+tobacco shops from 20, the building from 30, the arcade gates from 30; the small props culled at
+40–70 m. The worst views (`tools/views.py`, every row present, the other zones still grey): V1
+1,711 triangles, 541,156 draw CPU, 557,187 GPU; V5 1,298 / 454,162 / 358,995; V4 1,573 / 458,832
+/ 420,689; the platform looking north 1,630 / 556,198 / 392,100. The street's textures: 146,816
+of its 147,456 bytes (`tools/textures.py`).
+
+#### East (the school, the overpass, the front road's east part, the culvert)
+
+`place/east.py`. It also places the pool and the sports ground. They lie south of z 40, but they
+are the school's.
+
+| Where | Grey box | Real asset | Why, and what it changes |
+|---|---|---|---|
+| School | a 30 × 30 box to 18.9; one 26° ramp up its east face from z 48 (x 288–290.5) | `schoolhouse` at (273, 71): an L. The classroom block is x 259–283, z 75–86, roof 18.9; the wing x 259–267, z 59–75, roof 15.18; the clock tower rises to 22.3; the fire stair is on the east end | The roof to stand on is the block's 11 m depth. The fire stair's foot is at (283.8, 76.3), reached from the sports ground across open yard. A paved strip (x 281–287, z 52–76) marks the way. The flagpole is a pole at (279, 69), 9.1 m |
+| G9 | take-off at (273, 70) after a 4 m run | take-off at (273, 80), a jump on the spot (`shrinetown_cases.akr`) | (273, 70) is now the porch's roof (6.0). From (273, 80), a run-up carries the first jump over the north parapet. Scenario 418 lands at (276, 150), height 3.6 |
+| Gym | box x 214–238, z 64–94, 9.0 | `school_gym` at (226, 79), yaw 270, entrance east | The same footprint, crown 9.0. Its roof is a bonus route (canopy 3.45, eave 7.4) |
+| Pool | terrain cut x 214–240, z 22–40 to −1.2 | `school_pool` at (227, 31); cut x 216–238, z 26–36 to −1.3; water −0.3 | The cut is the asset's tank opening. The liner's floor is 0.1 above the cut, so the two do not z-fight |
+| Tyre steps | two boxes, 0.8 and 1.6 | `sports_tyre_steps` × 2 at (249, 25) and (249, 28) | Tops 0.35–0.67 |
+| Climbing frame | box to 2.6 | `sports_climbing_frame` at (269, 33) | Four climbing poles to 4.38. The overhead ladder's hang rail is at 2.2, not the generator's 2.3, which is inside its collision (2.24–2.48) |
+| Goals | none | `sports_goal` at (247, 35) yaw 270 and (289, 35) yaw 90 | The crossbars (2.25) are rails |
+| Overpass | deck and two ramps, no rails | `overpass` at (262, 111), yaw 90 | The same deck (7.0) and stair feet. Two handrail rails at 8.12: each runs down one stair, along one side of the deck and down the other stair. The deck's collision is split where the stairs meet it, so there is no T-junction. The sign's texture is 128 × 48 (TEXTURES.md) |
+| Road poles at x 220, 250, 280 | boxes at z 104 | `town_utility_pole_transformer` at z 106, yaw 90 | On the street zone's road line: its wires (8.0, z 105.2 and 106.8) run from x 10 to 280. Moved from z 104 at the join |
+| Trees | maples at (216, 122) and (248, 121); zelkovas at z 100, x 280–316 | `tree_zelkova` in the maples' places, and four at z 97, x 268–289 | One leaf sheet for the whole zone. At z 100, and east of x 290, the 6 m crowns reached the wires and the viaduct's deck |
+| Props | none | school-zone signs at (244, 101.5), a curve mirror at the gym's corner, a hydrant, and two benches by the sports ground | |
+| Culvert | road slab and channel | unchanged | No real asset |
+
+The school's collision is split where the fire stair's top landing meets the roof, so there is
+no T-junction. Scenarios 400–446 pass. The worst view measured in the zone is 1,145 triangles,
+296,281 draw CPU cycles and 606,074 GPU cycles. The zone's textures are 24,864 bytes of its
+26,624. The pool and the sports ground add 4,352 bytes, which `tools/textures.py` counted as the
+station's because they are south of z 40; since the join it counts them as the east's (18,304 of
+26,624 with the other zones' shared tiles out).
+
 #### Canal (x < 64, every row: `place/canal.py`)
 
 | Where | Grey box | Real | Why |
@@ -1130,107 +1236,38 @@ Textures (`tools/textures.py`): the canal's town part 25,472 bytes of 26,624, it
 keeps its own name, 湯屋橋), the sakagura's two 8-bit textures (sign board, barrels) are 4-bit,
 and the zone places no `firepost` (its alarm is 8-bit) and no reeds.
 
-#### East (the school, the overpass, the front road's east part, the culvert)
+#### The join (station, street, east and canal together, 2026-10-05)
 
-`place/east.py`. It also places the pool and the sports ground. They lie south of z 40, but they
-are the school's.
+The four zones' branches merged on `shrinetown-join`, the shrine zone still grey. What the join
+changed:
 
-| Where | Grey box | Real asset | Why, and what it changes |
-|---|---|---|---|
-| School | a 30 × 30 box to 18.9; one 26° ramp up its east face from z 48 (x 288–290.5) | `schoolhouse` at (273, 71): an L. The classroom block is x 259–283, z 75–86, roof 18.9; the wing x 259–267, z 59–75, roof 15.18; the clock tower rises to 22.3; the fire stair is on the east end | The roof to stand on is the block's 11 m depth. The fire stair's foot is at (283.8, 76.3), reached from the sports ground across open yard. A paved strip (x 281–287, z 52–76) marks the way. The flagpole is a pole at (279, 69), 9.1 m |
-| G9 | take-off at (273, 70) after a 4 m run | take-off at (273, 80), a jump on the spot (`shrinetown_cases.akr`) | (273, 70) is now the porch's roof (6.0). From (273, 80), a run-up carries the first jump over the north parapet. Scenario 418 lands at (276, 150), height 3.6 |
-| Gym | box x 214–238, z 64–94, 9.0 | `school_gym` at (226, 79), yaw 270, entrance east | The same footprint, crown 9.0. Its roof is a bonus route (canopy 3.45, eave 7.4) |
-| Pool | terrain cut x 214–240, z 22–40 to −1.2 | `school_pool` at (227, 31); cut x 216–238, z 26–36 to −1.3; water −0.3 | The cut is the asset's tank opening. The liner's floor is 0.1 above the cut, so the two do not z-fight |
-| Tyre steps | two boxes, 0.8 and 1.6 | `sports_tyre_steps` × 2 at (249, 25) and (249, 28) | Tops 0.35–0.67 |
-| Climbing frame | box to 2.6 | `sports_climbing_frame` at (269, 33) | Four climbing poles to 4.38. The overhead ladder's hang rail is at 2.2, not the generator's 2.3, which is inside its collision (2.24–2.48) |
-| Goals | none | `sports_goal` at (247, 35) yaw 270 and (289, 35) yaw 90 | The crossbars (2.25) are rails |
-| Overpass | deck and two ramps, no rails | `overpass` at (262, 111), yaw 90 | The same deck (7.0) and stair feet. Two handrail rails at 8.12: each runs down one stair, along one side of the deck and down the other stair. The deck's collision is split where the stairs meet it, so there is no T-junction. The sign's texture is 128 × 48 (TEXTURES.md) |
-| Road poles at x 220, 250, 280 | boxes | `town_utility_pole_transformer`, yaw 90 | Wire points at 8.0 |
-| Trees | maples at (216, 122) and (248, 121); zelkovas at z 100, x 280–316 | `tree_zelkova` in the maples' places, and four at z 97, x 268–289 | One leaf sheet for the whole zone. At z 100, and east of x 290, the 6 m crowns reached the wires and the viaduct's deck |
-| Props | none | school-zone signs at (244, 101.5), a curve mirror at the gym's corner, a hydrant, and two benches by the sports ground | |
-| Culvert | road slab and channel | unchanged | No real asset |
+| What | Change |
+|---|---|
+| The hook | one `place/__init__.py` (`apply(STAGE, globals())`); in `gen_core.py` and `make_mountain.py` the game's entities first, then the zones |
+| Grey-box recipes | a region generator no longer writes a grey-box recipe its cells and part do not name (`place.unused()`): 93 town, 12 core and 3 mountain recipes gone |
+| Asset directories | `make_world.py` lists `assets/greybox/core`, `assets/greybox/mountain`, `assets/*` and `../shrine/assets`; a zone adds a folder only when no glob holds it (`place.add_dir()`) |
+| Front road poles | east's three at z 106, yaw 90, on the street zone's line; the station's konbini corner pole (210, 33) at yaw 0, as the konbini wire runs |
+| Konbini door | the door entity at (187.5, 33) on the real door (x 186–189), in cell c2_0; scenario 431 starts at (187.5, 36) |
+| Fire tower | the alley house west of it left out (its plot is the tower's yard): the tower's hose shed stood in it |
+| Textures | `tools/textures.py` counts the railway as the station's wherever it runs and the schoolyard south of z 40 as the east's (TEXTURES.md, "As placed") |
+| Views | the street's real assets put the views from the inside stair, the canopy and the air over the station at 620,000–725,000 draw CPU; levels and culls sooner (below) bring the full check's peak to 616,847 |
 
-The school's collision is split where the fire stair's top landing meets the roof, so there is
-no T-junction. Scenarios 400–446 pass. The worst view measured in the zone is 1,145 triangles,
-296,281 draw CPU cycles and 606,074 GPU cycles. The zone's textures are 24,864 bytes of its
-26,624. The pool and the sports ground add 4,352 bytes, which `tools/textures.py` counts as the
-station's because they are south of z 40.
+Levels and culls set at the join (`lod.assets`): the train's level 1 from 6 m (was 9); the ticket
+gates' from 12, the newsstand's and the bicycle shelters' from 14, the tapers' from 20, the
+koban's level 2 from 45; the dagashi shop's levels from 20 and 45, the shops' (`town_shop_2f_*`,
+`town_shop_3f`) level 2 from 40; culls at 36 (potted plants), 40 (crates), 45 (benches) and 56
+(the utility poles, with the wires' sweeps). `gachapon`, `jizo`, `town_kanban_set` and
+`town_road_signs` had no `lod`, so the street's culls for them did nothing (the World Kit's
+`lod_unused`): their generators now give them `"lod": {"cull": 50}`.
 
-#### Station zone (`place/station.py`)
+The full check (600 views): peak 2,193 triangles, 616,847 draw CPU, 875,222 GPU; one view over,
+on the canopy (165.7, 15.1, 6.1) looking west-north-west, 616,847, where the canopy's faces are
+clipped at the near plane and the standing train is at level 0 6.3 m off. The ticket hall
+looking west with the race train standing at the platform is 484,000–549,000; the camera over the
+station (149.7, 16.8, 2.5) looking north 623,000. Each zone's worst draw CPU: station 616,847,
+street 533,043, canal 475,485, east 387,327, shrine 417,014. 50 hard failures, all cracks.
 
-What stands now: the viaduct as real pieces along its whole line; the station
-(`station_concourse` with its two outside stairs and the inside stair, `ticket_gates`,
-`station_platform`, the three station spans and two tapers); a two-car `train_emu_car` standing
-at track 1; two `signal_gantry`s, each with a pole on its ladder; the plaza's danchi, pachinko
-parlour, koban, konbini (the shrine's `street_konbini`), bus stop, newsstand, four bike shelters
-with eight `mamachari`, a taxi rank, a phone booth, a postbox, three of the shrine's
-`street_vending_machine`s, two benches, two planters and the konbini's corner pole
-(`town_utility_pole_transformer`). `city_bus` is left out (OVERNIGHT_DECISIONS 16).
-
-| Where | Grey box | Real | Why |
-|---|---|---|---|
-| Viaduct line | swept deck and parapets along layout's polyline; the north run at x 302 | 16 m pieces: spans from x -8 (joints at x = 8 mod 16), the station x 136-184, tapers either side, three 30-degree curves (R 30.56) from x 280, the north run at x 310.56, the underpass, two curves east out of the level | the pieces join only end to end and turn by 30 degrees; x 310.56 keeps the bend and the piers off the sports ground and the school |
-| Piers | 1.6 x 8 under each grey span | each piece's two-column bent; at x 48 one stands in the canal | the station's joints fix every span west of it |
-| Underpass | a span over the straight road | `viaduct_underpass` at (310.56, 114.56), yaw 90: the road 25 degrees north of east between abutments, asphalt painted along the skew | the asset is built for the dog-leg (7.1); the straight road meets its west wing wall at x 293-300 (z 114.6-118) and walks on east into the corridor |
-| Deck's east end | wall at x 315.5 | the same wall (`gbc_viaduct_end`) where the centre line reaches x 315, heading 58.8 degrees; the second curve runs on past it out of the level | the line leaves between the rims (z 132-154) |
-| Parapet rails | 10.2, 5.85 m off the line, the north one open over x 146-178 | 10.2 on the real parapets: 5.875 off the line, 7.475 through the station (tapering between), the north one in three with gaps at the outside stairs only (x 148.35-151.65, 168.35-171.65) | `parapet_n_m` is new: the concourse's parapet between the stairs |
-| Outside stairs | x 150-154 and 170-174, foot z 32 | x 148.5-151.5 and 168.5-171.5, foot z 34.6, landing 9.0 at z 15.6-16.6, roofed | the asset's; they reach the walkway, not the platform (no track crossing) |
-| Platform | the deck (9.0), canopy 12.8 | floor 10.0, canopy top 13.47 (middle) to 13.72 (edges) | GREYBOX_SPLIT; the inside stair is the way up |
-| Stair coins | on the grey ramps at x 152, 172 | on the real treads at x 150, 170: y = 0.5 (34.6 - z) + 0.7 | they were inside the real steps |
-| Red coin 3 | 13.5 | 14.17 on the canopy | the real canopy |
-| Star 5, the platform's trigger (`game.py`) | 10.4; box from 9.05 | 11.4 (1.4 over the floor); the box from 10.05, over both tracks, the walkway north of track 2 outside it | the real platform's floor, 10.0 |
-| Konbini | box 36 x 14, roof 5.6 | `street_konbini` (36 x 14, deck 4.7, coping 5.0), front to the plaza; the door entity stays at (196, 33), before its middle as in the shrine | the same footprint |
-| Konbini roof sign | 5.6-7.0 | the same grey sign, 4.7-7.0, on the real roof's deck; red coin 5 on top | no real asset has a roof sign |
-| Danchi | 16 x 16 box, ramps round it | `danchi` 16.2 x 13.4 (z 19.4-32.8), its own stair tower on the north face to the roof (18.8) | |
-| Koban | 12 x 10 box, 5.9 | `koban` 4 x 3 (5 x 4 with eaves) at (122, 24), front east, eave 3.35 | the asset's size |
-| Pachinko | 16 x 16, 9.1 | 11.4 x 10.3 at (100.5, 26), front east, antenna 8.85 | |
-| Vending machine (route D) | at x 177.4 | `street_vending_machine` at (179.1, 29.8) against the konbini's west end, 1.9 | the konbini's roof is 3.1 up |
-
-Scenario changes: 401 walks the inside stair (through a ticket gate's aisle at x 158.6, west of
-the middle bent's column at x 160) onto the platform (10.0); G2 (411) takes off from the real
-roof at (78, 22) with no run-up (from (85, 20) it stood on the top balcony at 16.1, and a
-run-up's first jump carried it off the roof's north edge). The race's cases (452, 454) walk the
-same stair (`RACE_TOWN`); the platform's box is reached at the stair's head (8.5), and 454 no
-longer adds the stair's 4.5 s to the measured route, which now includes it.
-
-Costs (World Checker, full, the whole level with the other zones still grey): peak 2,148
-triangles, 598,458 draw CPU, 591,544 GPU. The peak is the ticket hall looking west, with the
-platform and the train over its ceiling; it is kept in by the train's level 1 from 9 m (band 1)
-and the plaza's small props culled sooner (`lod.assets`, set in `world()`). Texture cuts made
-(TEXTURES.md): the zone's 8-bit textures 4-bit (koban, danchi facade, pachinko storefront, bus
-stop, bike shelter sign), the ticket gates' floor a repeating 32 x 32, the newsstand's goods,
-sign and sides at half width, the postbox's cap a 32 x 32 pattern, `street_vending_machine` for
-`vending_machine`.
-
-#### Street (40 ≤ z < 128, 64 ≤ x < 210)
-
-`place/street.py` (called by `notes/gen_town.py` and `make_world.py` through `place/__init__.py`)
-takes out the zone's grey boxes, all but the great torii (the shrine zone's), and places the real
-assets. What differs from the grey box:
-
-| Where | Grey box | Real | Why |
-|---|---|---|---|
-| Shops | boxes 14 × 9 m, roofs 6.5 / 9.5 | west row yaw 270, east row yaw 90; 2F roofs 5.0–6.5 (gables and terraces), the record shop's back room 7.3, the 3F's roof 9.3 inside a 9.5 parapet | the assets. West: corner C (left, no awning), 3F, tobacco, record, ramen, 3F; east: corner C (no awning), A (no awning), 3F, A, B, 3F |
-| Bounce awnings | six 1.5 m boxes at 2.6 | `town_awning_bounce` (top 2.7–2.9) on the street fronts of w0, e0, e1 and the back walls of w2, e3, w4 | the record shop's back roof (7.3) is above a bounce from 2.9 (7.4), so it has none behind it |
-| Arcade | roof z 62–94, gates at z 60 and 96 | roof z 61–93 (two `arcade_roof_16`, columns at z 65/73/81/89), gates on the plot lines at z 54 and 94 | at z 60 and 96 the gates' pillars went through shop awnings; at 54 and 94 no awning reaches |
-| North gate | beam 7.0–8.3 | the name board's underside at 5.11; its collision is the pillars only (`arcade_gate_posts_col`) | G8 comes in under it with its feet at about 4.3 and struck the board (417) |
-| Alley houses | 24 boxes, 6–8 m | `town_alley_house_a` for 6 (roof 4.8–5.9), `_b` for 6.5 and 7 (6.5–7.0), `_c` for 8 (6.0–7.1, platform 8.0); doors to the plaza in the first row, to the road in the last, alternating between | |
-| Fire tower | box at (102, 74), pole at z 70.55 | `fire_tower` yaw 0, the ladder's pole at (102, 72.08), 15.2 | its hose shed (x 97.7–100.25) stands against the north-east corner of the house at x 90–99.5, z 66–74.5 |
-| Kura | box x 108–111, 8.0 | `town_kura` (new; the town's common plaster and kawara, no texture of its own) at x 106.3–109.3, z 70–78, roof 7.5–8.0 at 15° | the kick pair (FOLLOWUPS): kura roof, the railing (12.9), the eave (14.6), the cap |
-| Dagashi, coin laundry | a box; no laundry | `dagashi_shop` at (128.5, 46.5) facing the plaza's walk, two gachapon and a jizo; `coin_laundry` at (130.75, 100.6) facing the road | |
-| Building | box 18.3, a ramp up its east face | `street_building` at (193, 73) yaw 90: roof deck 15.2, parapet 16.0, tank 18.2; its own stair at its south end (z 44–48) | the ramp is gone; G1 from 15.2 comes down on the east side hall's south half (z 134): 410's target is now (192, 138) |
-| Shortcut E | a 17.9 m ladder box, pole 18.3 | the escape's stair in no layer (with the collision), its ladder folded (`town_fire_escape_up`, layer `ladder_e_up`) or down (`town_fire_escape_down`, `ladder_e`), group `shortcut_e`; the pole at (198.5, 103.95), 7.6, front, yaw 0; the trigger on the roof at 15.25 (`game.py`) | two copies of the stair's collision, one a layer, overfilled the pack's collision lookup (270 triangles of one kind in a bucket, at most 255) |
-| Wires | one rail per line through the poles | `town_utility_pole_transformer` everywhere; two wires per line, 0.8 m either side, at 8.0, each a rail drawn as a thin sweep (`wire_*_a`, `_b`, material `wire`, no collision) | the asset (GREYBOX_SPLIT's decisions) |
-| Front-road poles | z 104 | z 106, yaw 90 (wires at 105.2 and 106.8), the whole road from x 10 to 280 | at 104 the south wire (103.2) went through the 3F shops at the shotengai's mouth and grazed the fire escape |
-| Wire coins | on the old lines | the road's on the south wire (z 105.2), the service lane's on its east wire (x 138.55), the konbini wire's on its east wire | |
-| Floor coins | 0.7 over the boxes | 0.7 over the real roofs (from the collision) | |
-| North verge | four cedar boxes (x 66–92) | `tree_zelkova` (the town's street tree, as the east zone's) | the shrine's `tree_cedar` is 5.6 KB the town's set does not have |
-| Props | none | lamps (`town_street_lamp` in the shotengai, poles to 3.8; the shrine's `street_lamp` along the road's north side), signs, curve mirrors, a firepost, a crane game, kanban, bikes, crates, aircon units, plants, laundry poles, the kei truck, the recycling station, a bench | spec 8.2; not merged (a merged chunk has no levels or cull and drew 360 triangles from 97 m) |
-| Delivery van | — | left out | 14 KB of the town's shared set for one prop; its right side mirrored from the left would read backwards |
-
-Levels of detail sooner than the recipes' (`lod.assets`): the ramen shop from 16 m, the record and
-tobacco shops from 20, the building from 30, the arcade gates from 30; the small props culled at
-40–70 m. The worst views (`tools/views.py`, every row present, the other zones still grey): V1
-1,711 triangles, 541,156 draw CPU, 557,187 GPU; V5 1,298 / 454,162 / 358,995; V4 1,573 / 458,832
-/ 420,689; the platform looking north 1,630 / 556,198 / 392,100. The street's textures: 146,816
-of its 147,456 bytes (`tools/textures.py`).
+The view scenarios (`sh_view`: 440–446, and the shrine's 310–316) count late frames from frame
+30: the frame after a view jumps to V1 or V4 loads the cells round it and took about 1.1 million
+cycles (one late frame), which walking there never does at once; each view's own frames are
+636,000–652,000 at most.

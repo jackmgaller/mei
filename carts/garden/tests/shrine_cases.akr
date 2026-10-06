@@ -249,6 +249,9 @@ fn sh_view(f: s32, at: vec3, yaw: fixed, pitch: fixed, dist: fixed, turn: bool) 
         v0 = 0.0
     }
     if turn { cam.yaw = wrap_angle(yaw + fixed(f) * TAU / 480) } else { cam.yaw = yaw }
+    // measured from frame 30: the first frames load the cells round the place the view was jumped
+    // to (in the shrine town once about 1.1 million cycles), which walking never does at once
+    if f == 30 { t0 = timing.late }
     if f >= 30 {
         x0 = max(x0, fixed(timing.cpu / 100) / 10)
         y0 = max(y0, fixed(timing.gpu / 100) / 10)
@@ -260,7 +263,7 @@ fn sh_view(f: s32, at: vec3, yaw: fixed, pitch: fixed, dist: fixed, turn: bool) 
         note("cpu peak, thousand cycles", x0)
         note("gpu peak, thousand cycles", y0)
         note("triangles, most", v0)
-        expect(timing.late == 0, "no late frames", fixed(timing.late))
+        expect(timing.late == t0, "no late frames", fixed(timing.late - t0))
         done()
     }
 }

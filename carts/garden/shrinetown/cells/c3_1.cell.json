@@ -102,7 +102,7 @@
    "position": [
     220.0,
     0.0,
-    104.0
+    106.0
    ],
    "yaw": 90,
    "collision": "town_utility_pole_transformer_col"
@@ -113,7 +113,7 @@
    "position": [
     250.0,
     0.0,
-    104.0
+    106.0
    ],
    "yaw": 90,
    "collision": "town_utility_pole_transformer_col"

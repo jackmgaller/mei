@@ -7,90 +7,8 @@
  "asset_dirs": [
   "assets/greybox/core",
   "assets/greybox/mountain",
-  "assets/arch_pagoda",
-  "assets/game",
-  "assets/viaduct_span_16",
-  "assets/viaduct_curve_16",
-  "assets/viaduct_underpass",
-  "assets/viaduct_station_span",
-  "assets/viaduct_station_span_stair",
-  "assets/viaduct_station_taper",
-  "assets/station_concourse",
-  "assets/station_platform",
-  "assets/ticket_gates",
-  "assets/train_emu_car",
-  "assets/signal_gantry",
-  "assets/danchi",
-  "assets/pachinko_parlour",
-  "assets/koban",
-  "assets/bus_stop",
-  "assets/bike_rack",
-  "assets/mamachari",
-  "assets/newsstand",
-  "assets/town_taxi_rank",
-  "assets/phone_booth",
-  "assets/postbox",
-  "assets/town_bench",
-  "assets/town_potted_plants",
-  "assets/town_utility_pole_transformer",
-  "../shrine/assets",
-  "assets/town_alley_house_b",
-  "assets/town_alley_house_a",
-  "assets/town_alley_house_c",
-  "assets/gachapon",
-  "assets/jizo",
-  "assets/town_aircon_pipes",
-  "assets/town_laundry_pole",
-  "assets/kei_truck",
-  "assets/fire_tower",
-  "assets/town_kura",
-  "assets/tree_zelkova",
-  "assets/town_road_signs",
-  "assets/traffic_mirror",
-  "assets/recycling_station",
-  "assets/town_shop_2f_c",
-  "assets/town_awning_bounce",
-  "assets/town_shop_3f",
-  "assets/town_shop_2f_a",
-  "assets/arcade_gate",
-  "assets/town_street_lamp",
-  "assets/dagashi_shop",
-  "assets/town_crates_bins",
-  "assets/tobacco_shop",
-  "assets/recordshop",
-  "assets/ramen_shop",
-  "assets/town_shop_2f_b",
-  "assets/arcade_roof_16",
-  "assets/coin_laundry",
-  "assets/firepost",
-  "assets/crane_game",
-  "assets/town_kanban_set",
-  "assets/town_fire_escape",
-  "assets/school_pool",
-  "assets/sports_goal",
-  "assets/sports_tyre_steps",
-  "assets/school_gym",
-  "assets/sports_climbing_frame",
-  "assets/schoolhouse",
-  "assets/overpass",
-  "assets/canal_arched_bridge",
-  "assets/canal_footbridge",
-  "assets/canal_grille",
-  "assets/canal_road_bridge",
-  "assets/festival_yagura",
-  "assets/hokora",
-  "assets/park_jungle_gym",
-  "assets/park_slide",
-  "assets/park_swings",
-  "assets/park_toilet",
-  "assets/sakagura",
-  "assets/sento_front",
-  "assets/shishi_odoshi",
-  "assets/tanuki",
-  "assets/town_machiya_a",
-  "assets/town_machiya_b",
-  "assets/tree_bamboo_tall",
-  "assets/watermill"
+  "assets/*",
+  "../shrine/assets"
  ],
  "cell_dir": "cells",
  "grid": {
@@ -6288,7 +6206,7 @@
   "assets": {
    "train_emu_car": {
     "distances": [
-     9,
+     6,
      60
     ],
     "band": 1
@@ -6297,9 +6215,17 @@
     "cull": 30
    },
    "bike_rack": {
+    "distances": [
+     14,
+     30
+    ],
     "cull": 60
    },
    "newsstand": {
+    "distances": [
+     14,
+     40
+    ],
     "cull": 72
    },
    "phone_booth": {
@@ -6309,10 +6235,32 @@
     "cull": 66
    },
    "koban": {
+    "distances": [
+     24,
+     45
+    ],
     "cull": 100
    },
    "bus_stop": {
     "cull": 90
+   },
+   "viaduct_station_taper": {
+    "distances": [
+     20,
+     100
+    ]
+   },
+   "town_potted_plants": {
+    "cull": 36
+   },
+   "town_bench": {
+    "cull": 45
+   },
+   "ticket_gates": {
+    "distances": [
+     12,
+     40
+    ]
    },
    "ramen_shop": {
     "distances": [
@@ -6375,6 +6323,54 @@
    },
    "crane_game": {
     "cull": 45
+   },
+   "town_crates_bins": {
+    "cull": 40
+   },
+   "town_utility_pole_transformer": {
+    "cull": 56
+   },
+   "dagashi_shop": {
+    "distances": [
+     20,
+     45
+    ]
+   },
+   "town_shop_2f_a": {
+    "distances": [
+     20,
+     40
+    ]
+   },
+   "town_shop_2f_a_noawning": {
+    "distances": [
+     20,
+     40
+    ]
+   },
+   "town_shop_2f_b": {
+    "distances": [
+     20,
+     40
+    ]
+   },
+   "town_shop_2f_c_left_noawning": {
+    "distances": [
+     20,
+     40
+    ]
+   },
+   "town_shop_2f_c_noawning": {
+    "distances": [
+     20,
+     40
+    ]
+   },
+   "town_shop_3f": {
+    "distances": [
+     20,
+     40
+    ]
    }
   }
  },

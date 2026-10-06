@@ -24,3 +24,19 @@ def apply(stage, ns):
         fn = getattr(importlib.import_module(f'{__name__}.{zone}'), stage, None)
         if fn is not None:
             fn(ns)
+
+
+def add_dir(dirs, d):
+    """Add the asset directory D to the world's DIRS, unless it is there or a `PARENT/*` glob there
+    holds it (make_world.py lists `assets/*`, a folder per asset)."""
+    if d not in dirs and (d.rpartition('/')[0] + '/*') not in dirs:
+        dirs.append(d)
+
+
+def unused(recipes, *where):
+    """The names in RECIPES that nothing in WHERE (the cells, the part: placements, collisions,
+    scatters) names: the grey boxes the zones swapped out. A generator drops them before it writes
+    its recipes."""
+    import json
+    text = json.dumps(where)
+    return [name for name in recipes if f'"{name}"' not in text]

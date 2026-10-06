@@ -108,7 +108,6 @@
     0.0,
     33.0
    ],
-   "yaw": 357.58,
    "collision": "town_utility_pole_transformer_col"
   },
   {
@@ -175,23 +174,6 @@
    ],
    "params": {
     "height": 9.0
-   }
-  },
-  {
-   "id": "door_garden",
-   "type": "door",
-   "position": [
-    196.0,
-    0.0,
-    33.0
-   ],
-   "params": {
-    "world": "garden",
-    "size": [
-     3.0,
-     3.0,
-     1.2
-    ]
    }
   },
   {

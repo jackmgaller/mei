@@ -60,14 +60,25 @@ SHARED = {
 }
 
 
-def zone_of(x, z):
-    """PLACE_SPLIT's zones: a placement belongs to the zone holding its origin. (The viaduct is the
-    station zone's wherever it runs: pass it with --try, or it counts where it stands.)"""
+# The schoolyard's part south of z 40 (x0, z0, x1): the pool (x 216-238) and the sports ground (x
+# 244-292, z 18-52); not the konbini's corner pole (210, 33), the viaduct (z 8) or its curves.
+SCHOOLYARD = (212, 18, 295)
+# The railway is the station zone's wherever it runs: the viaduct's pieces and the signal gantries
+# (at x 20 and 310.56, in the canal's and the east's ground).
+RAILWAY = ('viaduct_', 'signal_gantry')
+
+
+def zone_of(x, z, asset=''):
+    """PLACE_SPLIT's zones: a placement belongs to the zone holding its origin, but the railway
+    (RAILWAY) is the station's wherever it runs, and the schoolyard south of z 40, the pool and the
+    sports ground (SCHOOLYARD), is the east's."""
+    if asset.startswith(RAILWAY):
+        return 'station'
     if x < 64:
         return 'canal'
     if z >= 128:
         return 'shrine'
-    if z < 40:
+    if z < 40 and not (SCHOOLYARD[0] <= x < SCHOOLYARD[2] and SCHOOLYARD[1] <= z):
         return 'station'
     return 'street' if x < 210 else 'east'
 
@@ -118,7 +129,7 @@ def main():
         cell = json.loads(f.read_text())
         for pl in cell.get('placements', []):
             pos = pl['position']
-            placed.setdefault((cell['region'], zone_of(pos[0], pos[-1])), set()).add(pl['asset'])
+            placed.setdefault((cell['region'], zone_of(pos[0], pos[-1], pl['asset'])), set()).add(pl['asset'])
     for spec in args.extra:
         zone, region, names = spec.split(':', 2)
         if region not in ALLOWANCE or zone not in ALLOWANCE[region]:

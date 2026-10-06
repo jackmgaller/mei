@@ -45,6 +45,8 @@ recipe = {
     },
     "lighting": {"mode": "vertical", "ambient": 0.5},
     "verification": {"required": True, "depth": True, "perspective": True},
+    # a small prop: no levels, culled (a world's lod.assets may say sooner)
+    "lod": {"cull": 50},
     "nodes": [
         {"id": "step_low", "op": "box", "size": [0.6, 0.12, 0.5], "open": ["bottom"],
          "material": "stone", "transform": {"translate": [0, 0.06, 0]}},

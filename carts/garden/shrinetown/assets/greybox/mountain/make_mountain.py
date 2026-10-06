@@ -632,8 +632,9 @@ def dump(path, obj):
 
 # the placement zones (place/ZONE.py) change the cells and the part before they are written
 sys.path.insert(0, str(TOWN))
-from place import apply as apply_zones
+from place import apply as apply_zones, unused
 apply_zones('mountain', globals())
+for _n in unused(ASSETS, CELLS, SCATTER, PATHS): del ASSETS[_n]          # the grey boxes swapped out
 
 for f in HERE.glob('gbm_*.asset.json'): f.unlink()
 for name, r in ASSETS.items(): dump(HERE / f'{name}.asset.json', r)

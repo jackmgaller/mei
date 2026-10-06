@@ -63,16 +63,6 @@
    "collision": "town_alley_house_b_col"
   },
   {
-   "id": "alley_90_66",
-   "asset": "town_alley_house_c",
-   "position": [
-    94.75,
-    0.0,
-    70.25
-   ],
-   "collision": "town_alley_house_c_col"
-  },
-  {
    "id": "alley_90_77",
    "asset": "town_alley_house_a",
    "position": [

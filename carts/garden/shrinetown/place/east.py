@@ -6,7 +6,7 @@ Called through place/__init__.py by notes/gen_town.py (`town`: the cells and the
 part) and by make_world.py (`world`: the asset directories). It swaps the grey boxes for the real
 assets, with the poles and rails they carry, and dresses the zone with a few props. Every number
 comes from the asset's own generator (its docstring) or PLACEMENT_NOTES.md; what differs from the
-grey box is in DESIGN.md, section 12.5, "East".
+grey box is in DESIGN.md, section 12.6, "East".
 """
 import math
 
@@ -81,9 +81,11 @@ def town(g):
     rail('overpass_rail_w', [local_to_world(OV, 90, p) for p in side_a])
     rail('overpass_rail_e', [local_to_world(OV, 90, p) for p in side_b])
 
-    # ---- the front road's east part: the utility poles (wires at 8.0, along the road: yaw 90)
+    # ---- the front road's east part: the utility poles, on the street zone's road line (z 106,
+    # yaw 90: the crossarm across the road). The wires (place/street.py, `wire_road_a`/`_b`, at 8.0,
+    # z 105.2 and 106.8) run on them from x 10 to 280.
     for x in (220, 250, 280):
-        put(f'pole_road{x}', 'town_utility_pole_transformer', (float(x), 0.0, 104.0), 90)
+        put(f'pole_road{x}', 'town_utility_pole_transformer', (float(x), 0.0, 106.0), 90)
 
     # ---- street trees. The grey box's maples on the road's north verge become zelkovas (one leaf
     # sheet for the zone's trees). The zelkova row south of the road beside the underpass (spec
@@ -118,12 +120,13 @@ def town(g):
 
 def world(g):
     """The real assets' folders in the world's asset directories."""
+    from place import add_dir
     st = g['ST']
     dirs = g['world'].setdefault('asset_dirs', [])
     for name in _placed(g):
         d = f'assets/{name}'
-        if (st / d / f'{name}.asset.json').is_file() and d not in dirs:
-            dirs.append(d)
+        if (st / d / f'{name}.asset.json').is_file():
+            add_dir(dirs, d)
 
 
 def _placed(g):

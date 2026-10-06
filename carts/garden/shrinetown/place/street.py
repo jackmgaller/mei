@@ -8,7 +8,7 @@ and by make_world.py (`world`: the asset directories). It takes out the zone's g
 the great torii, which the shrine zone places) and puts the real assets in their place, with the
 poles, rails, layers and coins that come with them. Every number comes from the asset's own
 generator (its docstring) or PLACEMENT_NOTES.md; what differs from the grey box is in DESIGN.md,
-section 12.5, "Street".
+section 12.6, "Street".
 
 Yaw is the kit's: 90 turns an asset's -Z front toward -X. The shops' fronts face the street, so
 the west row (x 140-154) stands at yaw 270 and the east row (x 166-180) at yaw 90.
@@ -52,6 +52,11 @@ ARCADE_GATES = [(160.0, 54.0, 0), (160.0, 94.0, 180)]               # each front
 # ------------------------------------------------------------------ the back alleys
 ALLEY_KIND = {6: 'town_alley_house_a', 6.5: 'town_alley_house_b', 7: 'town_alley_house_b', 8: 'town_alley_house_c'}
 TOWER = (102.0, 0.0, 74.0)
+# The alley plot west of the tower (x 90-99.5, z 66-74.5) is left to the tower's yard: the real
+# house there (x 89.7-99.8, z 65.4-74.9 with its eaves) took in the tower's hose shed (x 97.6-100.3,
+# z 73.3-75.4), and moved it would meet its neighbours (the alley west is 1.9 m, the one south 1.3
+# m between the eaves). The tower stays at (102, 74): glide G4 (scenario 413) starts from its top.
+TOWER_YARD = {(90, 66)}
 KURA = (107.8, 0.0, 74.0)                                           # x 106.3-109.3: the kick wall 2.85 m east
 
 # ------------------------------------------------------------------ the building and shortcut E
@@ -130,6 +135,8 @@ def town(g):
     for b in L.boxes:
         x1, z1, x2, z2, base, top, col, lab = b
         if not (66 <= x1 < 136 and 44 <= z1 < 102 and abs((x2 - x1) - 9.5) < .01) or z1 >= 99:
+            continue
+        if (x1, z1) in TOWER_YARD:
             continue
         if z1 == 44:
             yaw = 0
@@ -324,7 +331,7 @@ def _reseat_coins(cells, placed):
 # Levels of detail sooner than the assets' own (world lod.assets: levels 1 and 2, cull): the
 # shops to spec 8.2's 20 m (the ramen shop is 483 triangles at level 0, its own L1 is from 24 m),
 # the building from 30 m (its 446-triangle level 0 was drawn to 60 m in V1), the arcade gates
-# from 30 m. Measured with tools/views.py (V1, the platform): DESIGN.md 12.5.
+# from 30 m. Measured with tools/views.py (V1, the platform): DESIGN.md 12.6.
 LOD = {'ramen_shop': {'distances': [16, 45]}, 'recordshop': {'distances': [20, 50]},
        'tobacco_shop': {'distances': [20, 50]}, 'street_building': {'distances': [30]},
        'arcade_gate': {'distances': [30, 70]},
@@ -333,12 +340,24 @@ LOD = {'ramen_shop': {'distances': [16, 45]}, 'recordshop': {'distances': [20, 5
        'town_street_lamp': {'cull': 60}, 'street_lamp': {'cull': 70}, 'gachapon': {'cull': 40},
        'jizo': {'cull': 40}, 'town_kanban_set': {'cull': 45}, 'town_road_signs': {'cull': 60},
        'firepost': {'cull': 50}, 'traffic_mirror': {'cull': 50}, 'kei_truck': {'cull': 60},
-       'recycling_station': {'cull': 50}, 'crane_game': {'cull': 45}}
+       'recycling_station': {'cull': 50}, 'crane_game': {'cull': 45},
+       'town_crates_bins': {'cull': 40},
+       # the poles with their wires (the sweeps are culled at 56): from over the station the
+       # front road's poles were drawn at 100-110 m
+       'town_utility_pole_transformer': {'cull': 56},
+       # (the join) the dagashi shop and the shops' level 2 sooner: from the station's stair and
+       # canopy the shotengai's mouth is 45-60 m off
+       'dagashi_shop': {'distances': [20, 45]},
+       **{n: {'distances': [20, 40]} for n in (
+           'town_shop_2f_a', 'town_shop_2f_a_noawning', 'town_shop_2f_b',
+           'town_shop_2f_c_left_noawning', 'town_shop_2f_c_noawning',
+           'town_shop_3f')}}
 
 
 def world(g):
     """The real assets' folders in the world's asset directories (the town's cells as written),
     and the zone's levels of detail."""
+    from place import add_dir
     w = g['world']
     lod = w.setdefault('lod', {}).setdefault('assets', {})
     for name, spec in LOD.items():
@@ -355,6 +374,4 @@ def world(g):
                 src = _find(name)
                 if src is None:
                     raise SystemExit(f'place/street.py: no asset recipe {name!r}')
-                d = Path(__import__('os').path.relpath(src.parent, ST)).as_posix()
-                if d not in dirs:
-                    dirs.append(d)
+                add_dir(dirs, Path(__import__('os').path.relpath(src.parent, ST)).as_posix())
