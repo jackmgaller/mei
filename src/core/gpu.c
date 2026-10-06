@@ -13,8 +13,9 @@ _Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, "Mei core requires a l
 
 #define FB_OFF(a)   ((a) - VRAM_BASE)
 #define PAL_OFF     (PALETTE_ADDR - VRAM_BASE)
+#define PAL_HI_OFF  (PALETTE_HI_ADDR - VRAM_BASE)
 #define TEX_OFF     (TEXTURE_ADDR - VRAM_BASE)
-#define TEX_MASK    0x7FFFFu        /* the 16 slots are 512 KB; 8-bit slot 15 wraps to slot 0 */
+#define TEX_MASK    (TEXTURE_BANK_BYTES - 1)   /* a bank of 16 slots is 512 KB; 8-bit slot 15 wraps to slot 0, 31 to 16 */
 #define LIST_END    0xFFFFFFu
 
 static inline uint16_t ld16(const uint8_t *p) { uint16_t v; memcpy(&v, p, 2); return v; }
@@ -87,8 +88,10 @@ typedef struct {
     const uint8_t *vram;
     int gouraud, textured, semi, mode, dither, four;
     int32_t flat[3];   /* polygon colour when not Gouraud */
-    uint32_t slot;     /* byte offset of the texture slot within the texture area */
-    uint32_t pal;      /* first palette colour index */
+    const uint8_t *tex;      /* the texture bank: slots 0-15 or 16-31 */
+    uint32_t slot;     /* byte offset of the texture slot within its bank */
+    const uint8_t *palp;     /* the palette bank: colours 0-4095 or 4096-8191 */
+    uint32_t pal;      /* first palette colour index within the bank */
     int window;        /* textured with a texture window: u samples ((u & mu) + ou) & 255, likewise v */
     uint32_t mu, ou, mv, ov;
     uint16_t upper;    /* 0x8000: the packet draws into the PH layer (compositor on, colour bit 26) */
@@ -142,14 +145,14 @@ static FORCE_INLINE int clamp31(int v) { return v < 0 ? 0 : v > 31 ? 31 : v; }
 static FORCE_INLINE int shade(const Raster *R, uint8_t *row, int x, const int8_t *dm,
                                int r, int g, int b, uint32_t u, uint32_t v, const int F) {
     if (F & F_TEXTURED) {
-        const uint8_t *tex = R->vram + TEX_OFF;
+        const uint8_t *tex = R->tex;
         uint32_t idx;
         if (F & F_WINDOW) { u = ((u & R->mu) + R->ou) & 255; v = ((v & R->mv) + R->ov) & 255; }
         else { u &= 255; v &= 255; }
         if (R->four) idx = (tex[R->slot + v * 128 + (u >> 1)] >> ((u & 1) * 4)) & 15;
         else idx = tex[(R->slot + v * 256 + u) & TEX_MASK];
         if (idx == 0) return 0;
-        uint32_t t = ld16(R->vram + PAL_OFF + (R->pal + idx) * 2);
+        uint32_t t = ld16(R->palp + (R->pal + idx) * 2);
         r = expand5[t & 31] * r >> 7;
         g = expand5[(t >> 5) & 31] * g >> 7;
         b = expand5[(t >> 10) & 31] * b >> 7;
@@ -596,7 +599,12 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
     R.flat[0] = vx[0].a[0];
     R.flat[1] = vx[0].a[1];
     R.flat[2] = vx[0].a[2];
+    /* First texture coordinate: bits 16-19 the slot within its bank, 20 4-bit, 21 the slot's
+     * bank (slots 16-31), 22 the palette bank (colours 4096-8191), 23 reserved, 24-31 the
+     * palette within the bank (docs/DECISIONS.md, "VRAM at 2 MB"). */
+    R.tex = m->vram + TEX_OFF + ((tex0 >> 21) & 1) * TEXTURE_BANK_BYTES;
     R.slot = ((tex0 >> 16) & 15) * TEXTURE_SLOT_BYTES;
+    R.palp = m->vram + (((tex0 >> 22) & 1) ? PAL_HI_OFF : PAL_OFF);
     R.pal = R.four ? (tex0 >> 24) * 16 : ((tex0 >> 24) & 15) * 256;
     /* Texture window (DECISIONS.md): bits 16-31 of the second vertex's texture coordinate.
      * Bits 16-18 u size (0: none, k: 4 << k texels), 19-23 u origin / 8, 24-26 v size, 27-31 v origin / 8. */

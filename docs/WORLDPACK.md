@@ -260,12 +260,12 @@ VRAM split").
 | 12 | `u32` | `sample_off` | `sample_count` × 20 bytes |
 | 16 | `u16` | `variant_count` | palette variants |
 | 18 | `u16` | `colour_count` | colours in each variant |
-| 20 | `u16` | `first_colour` | the palette memory colour (0–4,095) the variants load to |
+| 20 | `u16` | `first_colour` | the palette memory colour (0–8,191; 4,096 and up are palette bank 1) the variants load to |
 | 22 | `u16` | `backdrop_count` | |
 | 24 | `u32` | `palette_off` | `variant_count` × `u32` name offsets, then `variant_count` × `colour_count` `u16` colours |
 | 28 | `u32` | `backdrop_off` | `backdrop_count` × 12 bytes |
 
-**Texture** (12 bytes): `u8 slot` (0–15), `u8 flags` (bit 0: 4-bit), `u16` reserved,
+**Texture** (12 bytes): `u8 slot` (0–31; 16–31 since VRAM grew to 2 MB, DECISIONS.md), `u8 flags` (bit 0: 4-bit), `u16` reserved,
 `u32 data` (offset), `u32 bytes`. The bytes are copied to the slot as `load_texture()` copies
 them (the GPU's layout, spec p. 11), from the slot's first byte; a texture larger than one slot
 runs into the next slot, as an 8-bit texture does. The World Kit writes one record per slot its
@@ -275,7 +275,8 @@ swatch shares the slot. A region's 4-bit texture palettes are part of its main p
 **Palette variants.** Variant *v*'s colours are the `colour_count` `u16` 15-bit colours at
 `palette_off` + 4 × `variant_count` + 2 × `colour_count` × *v*. Loading variant *v* writes them to
 palette memory from colour `first_colour`; blending between two is `palette_lerp()`.
-`first_colour + colour_count` ≤ 4,096.
+`first_colour + colour_count` ≤ 8,192 (`load_palette()` puts colours 4,096 and up in palette bank
+1; the World Kit never makes a run that crosses colour 4,096, nor palette 255).
 
 **Sample** (20 bytes; *specified, reader not yet implemented*): `u32 name`, `u32 data` (offset of
 the sample bytes, read in place: channels play from ROM), `u32 samples` (length in samples),

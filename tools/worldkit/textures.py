@@ -25,23 +25,26 @@ from assetkit.compiler import native_bytes
 from assetkit.texout import rgb_hex
 from assetkit.textures import quantise, rgb_of
 from kitcore.errors import KitError, pointer
-from kitcore.texpack import pack as pack_tiles, SLOT_BYTES, FONT_SLOT
+from kitcore.texpack import pack as pack_tiles, SLOT_BYTES, FONT_SLOT, SLOTS
+from meshlib import tex_fields, face_slot, face_palette, SLOT_HI, PAL_HI
 from . import pack as P
 from .schema import WorldError
 
-DEFAULT_SLOTS = tuple(range(13, -1, -1))     # slot 14 holds the swatch row by default, 15 the fonts
+# Slot 14 holds the swatch row by default, 15 the fonts; slots 16-31 (VRAM's second megabyte) after
+# 13-0, so a set that fits in 13-0 packs as it did with 1 MB of VRAM.
+DEFAULT_SLOTS = tuple(range(13, -1, -1)) + tuple(range(16, SLOTS))
 FAR_COLOURS = {'surface': 30, 'emissive': 15}  # a region's far colours at most (stand-ins, several regions)
 
 
 def parse_slots(text, path):
-    """'13-6' (a range, in that order) or '14,12,10-11' -> [slots] in order of preference."""
+    """'13-6' (a range, in that order) or '14,12,10-11,16-31' -> [slots] in order of preference."""
     slots = []
     for part in text.split(','):
         a, _, b = part.partition('-')
         a, b = int(a), int(b or a)
         slots += list(range(a, b + 1)) if a <= b else list(range(a, b - 1, -1))
-    if any(s > 15 for s in slots) or len(set(slots)) != len(slots):
-        raise WorldError(path, 'Texture slots are 0-14, each named once.')
+    if any(s >= SLOTS for s in slots) or len(set(slots)) != len(slots):
+        raise WorldError(path, f'Texture slots are 0-14 and 16-{SLOTS - 1}, each named once.')
     if FONT_SLOT in slots:
         raise WorldError(path, 'Texture slot 15 holds the fonts.')
     return slots
@@ -175,7 +178,7 @@ class RegionTextures:
             if not flags & 2:
                 continue
             bits = 4 if tex & 16 else 8
-            group = places.get((tex & 15, bits, pal))
+            group = places.get((face_slot(flags, tex), bits, face_palette(flags, tex, pal)))
             if not group:
                 continue                 # a palette-backed face (the swatch), or not this region's
             uvs = struct.unpack_from('<4H', binary, at + 28)[:4 if flags & 4 else 3]
@@ -191,7 +194,9 @@ class RegionTextures:
                           and p.y <= v < p.y + p.height + 1]
                 hit = inside[0] if inside else group[0][0]
             colour = rp.by_key[self.far[hit]]['colour']
-            struct.pack_into('<BB', out, at + 2, (slot & 15) | 16, colour // 16)
+            banks, t, p = tex_fields(slot, True, colour // 16)
+            out[at] = (flags & ~(SLOT_HI | PAL_HI)) | banks
+            struct.pack_into('<BB', out, at + 2, t, p)
             struct.pack_into('<4H', out, at + 28, *([colour % 16 | row << 8] * 4))
         return bytes(out)
 

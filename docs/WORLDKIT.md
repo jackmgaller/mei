@@ -729,7 +729,7 @@ and `mesh()` draws a `*Mesh` that points into ROM (LANGUAGE.md, "Memory" and "Me
 "Streaming" here means three things only:
 
 1. choosing which cells to draw, and at what detail, and which to collide with;
-2. swapping textures and palettes in the 1 MB of VRAM when the player crosses into a region;
+2. swapping textures and palettes in the 2 MB of VRAM when the player crosses into a region;
 3. spawning and retiring entities as their cells become active and inactive.
 
 Cells are position-independent blobs behind an index: every reference inside a pack is an
@@ -758,28 +758,37 @@ backdrop. VRAM cannot hold two regions' textures at once, so there is a shared c
 one set per region, and swaps happen at natural seams: underpasses, covered arcades, station
 concourses.
 
-VRAM is 1,024 KB (spec p. 11, PLANES.md "Memory map"):
+VRAM is 2,048 KB since 2026-10-05 ([DECISIONS.md](DECISIONS.md#vram-at-2-mb); it was 1,024 KB,
+spec p. 11; PLANES.md "Memory map"):
 
 | Use | Size | Note |
 |---|---|---|
 | framebuffers A and B | 300 KB | 2 × 153,600 bytes |
 | spare | 4 KB | |
-| palette memory | 8 KB | 4,096 colours; palette 255 (colours 4080–4095) is the font's |
+| palette bank 0 | 8 KB | colours 0–4095 (4-bit palettes 0–255); palette 255 (colours 4080–4095) is the font's |
 | Horizon Engine line tables | 8 KB | convention |
 | Horizon Engine pages 10–15 | 192 KB | maps and atlases for backdrops |
 | texture slots 0–15 | 512 KB | 32 KB each (one 4-bit 256×256 texture; an 8-bit one takes two) |
+| texture slots 16–31 | 512 KB | the second megabyte, `0x500000`–`0x57FFFF` |
+| palette bank 1 | 8 KB | colours 4096–8191 (4-bit palettes 256–511, 8-bit 16–31); polygons only |
+| free | 504 KB | pages 49–63 and the rest of page 48: plane atlases and maps, or a cart's own use |
 
-300 + 4 + 8 + 8 + 192 + 512 = 1,024. Slot 15 holds the fonts (rows 0–66), so 15 whole slots are
-free for polygons.
+300 + 4 + 8 + 8 + 192 + 512 + 512 + 8 + 504 = 2,048. Slot 15 holds the fonts (rows 0–66), so 31
+whole slots are free for polygons, 30 of them for regions by default (slot 14 holds the world's
+swatch row and, in the garden, the star).
 
-*Placeholder split:* slots 0–5 common, slots 6–13 region (8 slots, 256 KB), slot 14 effects and
-HUD, slot 15 fonts. Palettes as 4-bit palettes of 16: 0–63 common (1,024 colours), 64–191 region
-(2,048 colours), 192–254 backdrop, HUD and effects, 255 font. The kit enforces whatever split the
-world recipe declares and reports use per region.
+*The kit's default split:* every region may use slots 13–0 and then 16–31 (30 slots, 983,040
+bytes) and 4-bit palettes 0–254 and 256–511; slot 14 the swatch and effects, slot 15 and palette
+255 the fonts. Regions' palettes are disjoint ([Palettes per region](#palettes-per-region)); their
+texture sets share the slots and are swapped. The kit enforces whatever split the world recipe
+declares and reports use per region.
+
+*The first placeholder split* (with 1 MB, never built): slots 0–5 common, 6–13 region, 14 effects
+and HUD, 15 fonts; palettes 0–63 common, 64–191 region, 192–254 backdrop, HUD and effects.
 
 Swap cost: filling all 16 slots costs about 900,000 cycles (spec p. 11), so about 56,000 a slot
 (PLANES.md gives the same for a 32 KB atlas). A region's 8 slots are about 450,000 cycles, nearly
-half a frame's 1,000,000. *Proposal:* swap one slot a frame (about 6% of the CPU) over 8 frames,
+half a frame's 1,000,000; all 30 a region may have are about 1,700,000, nearly two frames. *Proposal:* swap one slot a frame (about 6% of the CPU) over 8 frames,
 plus the region's palettes, while the player is inside a seam. During those frames nothing on
 screen may use region textures, which the kit can check (see [Verification](#verification)).
 
@@ -1151,8 +1160,8 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | `overhang` | How far a placement may reach past its cell (default 8, at most half a cell) |
 | `collision.pad` | How far walls are copied past a cell's edge: at least, and by default, the probe radius |
 | `collision.surfaces` | Material `tag` to surface byte; untagged faces and unmapped tags get `default` (unmapped tags are listed in the warnings) |
-| `palette` | `swatch_slot` and `swatch_row` (default 14, 0): where the world's swatch row lives in VRAM; `first`: the first 4-bit palette regions are given (default 0); `first8`: the first 8-bit palette 8-bit textures take, regions taking them downward (default 14) |
-| `textures` | Every region's texture `slots` (a range `"13-6"` in order of preference, or a list `"14,12"`; default `"13-0"`) and VRAM `budget` (bytes; default the slots'), unless the region gives its own ([Textures per region](#textures-per-region)) |
+| `palette` | `swatch_slot` and `swatch_row` (default 14, 0): where the world's swatch row lives in VRAM; `first`: the first 4-bit palette regions are given (default 0); `first8`: the first 8-bit palette 8-bit textures take, regions taking them downward (default 31, the top of palette bank 1) |
+| `textures` | Every region's texture `slots` 0–31 (a range `"13-6"` in order of preference, or a list `"14,12,16-31"`; default `"13-0,16-31"`) and VRAM `budget` (bytes; default the slots', 983,040 for the default 30), unless the region gives its own ([Textures per region](#textures-per-region)) |
 | `regions` | Named regions in order (the pack's region numbers): optional `palettes` (`first`, `count`), `variants` (with `texels` and `backdrop` colours for textures and the silhouette), `textures` and `backdrop` ([Backdrops](#backdrops)). `audio` is reserved and rejected for now |
 | `layers` | World-wide layer names in order (the pack's layer ids), each with an optional exclusive `group` and `on` (at start) |
 | `paths` | Named polylines in world coordinates, in order (the pack's path numbers): [Paths](#paths) |
@@ -1196,7 +1205,10 @@ emissive range on its own curve. Each asset's palette faces are then rewritten w
 drawn in two regions is stored twice (the pack pools identical bytes).
 
 **Regions get disjoint palettes** (by default consecutively from `palette.first`; an explicit
-`palettes.first` may place them, and overlaps are errors). That departs from the placeholder split
+`palettes.first` may place them, and overlaps are errors). There are 512 4-bit palettes, 0–511 in
+two banks; a region's range never includes 255 (the fonts'), so a region that does not fit below
+it starts at 256, in palette bank 1, and its main run is loaded there (`load_palette()` and
+`palette_lerp()` address colours 4096–8191 in bank 1). That departs from the placeholder split
 in [Regions and the VRAM split](#regions-and-the-vram-split), which shared one range among regions
 and swapped it: with flat-colour materials a region needs tens of colours, not hundreds, so every
 region's palettes can be loaded at once, and a far cell's stand-in is coloured correctly whichever
@@ -1224,8 +1236,10 @@ packer (`kitcore/texpack.py`, as `mei_assets.py pack` does):
   differently; a tile used by both classes is tinted as emissive, with a warning);
 - **window-aligned tiles**: every tile at a multiple of 8 texels, repeating tiles reached through
   texture windows;
-- **slots** from the region's `textures.slots` (else the world's, else `"13-0"`), in that order
-  of preference, never 15 (the fonts). Slot 14 holds the world's swatch row by default; a region
+- **slots** from the region's `textures.slots` (else the world's, else `"13-0,16-31"`), in that
+  order of preference, never 15 (the fonts). A set that fits in 13–0 packs exactly as it did
+  before slots 16–31 existed; a face in slots 16–31 has bit 6 of its flags set
+  ([LANGUAGE.md](LANGUAGE.md#mesh-format)), and one with a palette in bank 1 bit 7. Slot 14 holds the world's swatch row by default; a region
   may still use it: the packer keeps the swatch's 16 × 1 texels free and the region's slot image
   carries the swatch bytes.
 
@@ -1238,8 +1252,8 @@ before, byte for byte.
 its own range (`palettes.first`, `count`; still disjoint from every other region's), so its main
 colour run covers them and palette variants recolour them entry by entry. 8-bit texture palettes
 (256 colours each, 8-bit palette *p* is colours 256 *p* ..) are taken from `palette.first8`
-(default 14) downward, region after region, and stored as extra runs; the build fails if one
-would overlap a 4-bit palette a region uses.
+(default 31, the top of palette bank 1; it was 14) downward, region after region, never 15, and
+stored as extra runs; the build fails if one would overlap a 4-bit palette a region uses.
 
 **VRAM budget.** A region may use its slots' 32,768 bytes each, or `textures.budget` bytes (tiles
 counted on the 8-texel grid, gutters included). Over it, or when the tiles do not fit in the

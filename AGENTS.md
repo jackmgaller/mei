@@ -189,10 +189,11 @@ marked stale. `show ID` prints the record with any answers. Records live in `.gi
 - **A cart's tests** in `carts/NAME/tests/`: a `harness.akr` with the scenarios, a `run.sh` that
   calls `tools/cart_scenario.sh`, and a `check.sh` that `make test-carts` runs.
 - **Machine constants** come from the core's headers, not from new numbers: the memory map
-  (`MEI_ROM_BASE`, `MEI_RAM_SIZE`, `MEI_RAM_USER_BASE`, `MEI_IO_BASE`), the cart header layout
-  (`MEI_HDR_*`) and the frame budgets in `src/core/mei.h`; the 18-bit immediate range
-  (`MEI_IMM_MIN`, `MEI_IMM_MAX`, `MEI_UIMM_MAX`) and the instruction encodings in
-  `src/core/isa.h`.
+  (`MEI_ROM_BASE`, `MEI_RAM_SIZE`, `MEI_RAM_USER_BASE`, `MEI_IO_BASE`, `MEI_VRAM_BASE`,
+  `MEI_VRAM_SIZE`), the cart header layout (`MEI_HDR_*`) and the frame budgets in
+  `src/core/mei.h`; VRAM's layout (`TEXTURE_ADDR`, `TEXTURE_SLOTS`, `PALETTE_HI_ADDR`, ...) in
+  `src/core/machine.h`; the 18-bit immediate range (`MEI_IMM_MIN`, `MEI_IMM_MAX`,
+  `MEI_UIMM_MAX`) and the instruction encodings in `src/core/isa.h`.
 - **Compiler passes:** the AST optimisations (inlining, let forwarding, induction pointers) are
   in `src/lang/opt.c`, run by `opt_program()` between type checking and code generation.
 

@@ -23,6 +23,7 @@ from . import pack as P
 from .assets import Library, asset_directories, collision_triangles, relative
 from .palettes import RegionPalette
 from .textures import RegionTextures, relocated_palette
+from kitcore.texpack import PaletteRangeError, FONT_PALETTE
 from . import backdrop as BD
 from .terrain import TAG_FIELD, TAG_SWEEP, TAG_SCATTER, compile_terrain, q16
 from .scatter import scatter_items
@@ -717,7 +718,7 @@ def compile_world(source, lock=None, assets_dir=None):
     palette = w.get('palette', {})
     slot, row = palette.get('swatch_slot', 14), palette.get('swatch_row', 0)
     nxt = palette.get('first', 0)
-    next8 = palette.get('first8', 14)
+    next8 = palette.get('first8', 31)          # 8-bit palettes from the top of bank 1 down
     any_palette = any(rp.by_key for rp in region_palettes.values())
     backdrops = {}
     for r in regions:
@@ -736,24 +737,45 @@ def compile_world(source, lock=None, assets_dir=None):
             region_palettes[r].add_asset(far)
     for r in regions:
         rp, rt = region_palettes[r], region_textures[r]
+        nxt += nxt == FONT_PALETTE                   # palette 255 holds the fonts' colours
         if rt.assets or r in backdrops:
-            # textures, then the backdrop's palette, after the entries' palettes in the region's range
-            first = rp.spec.get('palettes', {}).get('first', nxt)
-            extra = 0
-            if rt.assets:
-                rt.pack(warnings, first + rp.entry_palettes(), next8, (slot, row) if any_palette else None)
-                rp.tex4, rp.tex8, rp.texels = rt.palettes4(), rt.palettes8(), rt.texel_owners()
-                extra = len(rp.tex4)
-                if rp.tex8:
-                    next8 = min(rp.tex8) - 1
+            # textures, then the backdrop's palette, after the entries' palettes in the region's range;
+            # a region's palettes never cross 255 (the fonts'), so one that does not fit below it
+            # starts at 256, in palette bank 1, unless the recipe places it
+            placed = 'first' in rp.spec.get('palettes', {})
+            for start in ([nxt] if placed or nxt >= FONT_PALETTE else [nxt, FONT_PALETTE + 1]):
+                first = rp.spec.get('palettes', {}).get('first', start)
+                extra, n8, said = 0, next8, []
+                try:
+                    if rt.assets:
+                        rt.pack(said, first + rp.entry_palettes(), n8, (slot, row) if any_palette else None)
+                        rp.tex4, rp.tex8, rp.texels = rt.palettes4(), rt.palettes8(), rt.texel_owners()
+                        extra = len(rp.tex4)
+                        if rp.tex8:
+                            n8 = min(rp.tex8) - 1
+                            n8 -= n8 == FONT_PALETTE // 16      # 8-bit palette 15 holds the fonts' colours
+                except WorldError as error:
+                    if placed or start > FONT_PALETTE or not isinstance(error.__cause__, PaletteRangeError):
+                        raise
+                    continue
+                total = rp.entry_palettes() + extra + (1 if r in backdrops and backdrops[r].height else 0)
+                if not placed and first < FONT_PALETTE < first + total and start < FONT_PALETTE:
+                    continue
+                break
+            warnings += said
+            next8 = n8
             if r in backdrops:
                 rp.sky = backdrops[r]
                 if rp.sky.height:
                     rp.backdrop = (first + rp.entry_palettes() + extra, rp.sky.colours)
                     extra += 1
-            nxt = rp.assign(nxt, extra)
+            nxt = rp.assign(first, extra)
         else:
-            nxt = region_palettes[r].assign(nxt) if region_palettes[r].by_key or 'palettes' in w['regions'][r] else nxt
+            rp = region_palettes[r]
+            if rp.by_key or 'palettes' in w['regions'][r]:
+                if 'first' not in rp.spec.get('palettes', {}) and nxt < FONT_PALETTE < nxt + rp.entry_palettes():
+                    nxt = FONT_PALETTE + 1
+                nxt = rp.assign(nxt)
         if not region_palettes[r].by_key and not region_palettes[r].extra and 'variants' in w['regions'][r]:
             warnings.append({'code': 'variants_without_entries', 'region': r,
                              'message': 'The region has palette variants but no palette-backed material is drawn in it.'})
@@ -767,10 +789,12 @@ def compile_world(source, lock=None, assets_dir=None):
             taken[pal] = r
     any_palette = any(rp.entries for rp in region_palettes.values())
     low8 = [p for rp in region_palettes.values() for p in rp.tex8]
-    if low8 and taken and max(taken) >= 16 * min(low8):
-        raise WorldError('/palette', f'8-bit palette {min(low8)} (colours {256 * min(low8)}-{256 * min(low8) + 255}) '
-                         f'overlaps 4-bit palette {max(taken)}, which region {taken[max(taken)]!r} uses. Use fewer '
-                         '8-bit textures, palette.first8, or lower 4-bit palettes.')
+    for p8 in sorted(low8):
+        hit = [p for p in taken if p8 * 16 <= p < p8 * 16 + 16]
+        if hit:
+            raise WorldError('/palette', f'8-bit palette {p8} (colours {256 * p8}-{256 * p8 + 255}) overlaps 4-bit '
+                             f'palette {hit[0]}, which region {taken[hit[0]]!r} uses. Use fewer 8-bit textures, '
+                             'palette.first8, or other 4-bit palettes.')
 
     # ---- the pack's description
     variants_shown = {}

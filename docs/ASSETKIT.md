@@ -963,8 +963,11 @@ fills the face with exactly that palette colour (equal coordinates interpolate t
 everywhere, also after near-plane or guard-band clipping). The baked shade becomes the vertex
 tint, where 128 is unchanged: a face shaded 0.75 has tint 96 and shows 75 % of its entry's
 colour, so shape shading survives any recolouring. Smooth materials still get Gouraud tints.
-`palette_layout` places the swatch (texels u 0–15 of `row` in texture `slot`, 0–14; default slot
-14, row 0; 8 bytes of VRAM) and the first 4-bit palette (`first`, 0–254; default 0).
+`palette_layout` places the swatch (texels u 0–15 of `row` in texture `slot`, 0–31 but not 15;
+default slot 14, row 0; 8 bytes of VRAM) and the first 4-bit palette (`first`, 0–510, the
+palettes never running into 255, the fonts'; default 0). Slots 16–31 and palettes 256–511 are
+VRAM's second megabyte ([DECISIONS.md](DECISIONS.md#vram-at-2-mb)); a face there has bits 6 and 7
+of its flags set ([LANGUAGE.md](LANGUAGE.md#mesh-format)).
 
 **Entries.** The kit gives one entry to each distinct colour per class among the palette-backed
 materials the mesh uses: surface entries first, then emissive, as indices 1–15 of palette
@@ -1572,11 +1575,12 @@ python3 tools/mei_assets.py pack examples/assets/stall.asset.json examples/asset
     -o build/street --name street --slots 10-14 --palette 0 --palette8 14
 ```
 
-It compiles each recipe, packs all their tiles once into the slots given (a range `10-14`, which
-is also their order of preference, or a list `14,12`; default `14-0`), gives the palette-backed
-materials of each asset consecutive 4-bit palettes from `--palette` with one shared swatch at row
-0 of the first slot, then the 4-bit textures' palettes, and 8-bit palettes from `--palette8`
-down. It writes each mesh for that placement (`NAME.bin`, `NAME.lodK.bin`), the slots' texels
+It compiles each recipe, packs all their tiles once into the slots given (0–31 but not 15: a
+range `10-14`, which is also their order of preference, or a list `14,12`; default `14-0`), gives
+the palette-backed materials of each asset consecutive 4-bit palettes from `--palette` (0–510; an
+asset's palettes never cross 255, the fonts', and move to 256 instead) with one shared swatch at
+row 0 of the first slot, then the 4-bit textures' palettes, and 8-bit palettes from `--palette8`
+(0–31 but not 15) down. It writes each mesh for that placement (`NAME.bin`, `NAME.lodK.bin`), the slots' texels
 (`street.slotK.tex`), the palettes (`street.tpal` for textures, `street.pal` and
 `street.swatch` for palette-backed materials), animation frames (`street.frames`), one
 `street.akr` that embeds every mesh and defines `street_load()`, and the manifest
@@ -1660,7 +1664,7 @@ The **material manifest** (`NAME.materials.json`) gains `textures`, the shape a 
 - `windows`: the mesh's window table, in order (window n is entry n − 1).
 - `list`: per textured material, its tile (`tile` is the content key that removes duplicates),
   where it is (`slot`, `x`, `y` in texels, `gutter`), its window halfword (`null` when drawn
-  once), its palette (`palette`: a 4-bit palette 0–254 or an 8-bit one 0–14; `first_colour` its
+  once), its palette (`palette`: a 4-bit palette 0–254 or 256–511, or an 8-bit one 0–14 or 16–31; `first_colour` its
   colour 0) and which entry each colour has (`indices`), and the faces (half-open ranges of the
   exported faces).
 - `night`: what a day/night palette variant can do with the texture. `per_colour` (4-bit): each

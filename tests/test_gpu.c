@@ -63,6 +63,13 @@ static uint32_t TEX0(int u, int v, int slot, int four, int pal) {
     return UV(u, v) | (uint32_t)slot << 16 | (uint32_t)four << 20 | (uint32_t)pal << 24;
 }
 
+/* The same with slot 0-31 and palette 0-511 (4-bit) or 0-31 (8-bit): the slot's bank in bit 21,
+ * the palette's bank in bit 22 (docs/DECISIONS.md, "VRAM at 2 MB"). */
+static uint32_t TEXB(int u, int v, int slot, int four, int pal) {
+    uint32_t bank = four ? (uint32_t)pal >> 8 & 1 : (uint32_t)pal >> 4 & 1, field = four ? (uint32_t)pal & 255 : (uint32_t)pal & 15;
+    return UV(u, v) | (uint32_t)(slot & 15) << 16 | (uint32_t)four << 20 | (uint32_t)(slot >> 4 & 1) << 21 | bank << 22 | field << 24;
+}
+
 static uint8_t *back(void) { return m->vram + (gpu_back_addr(m) - VRAM_BASE); }
 static uint16_t px(int x, int y) { return rd16(back() + (y * MEI_W + x) * 2); }
 static int count_nonzero(void) {
@@ -71,8 +78,24 @@ static int count_nonzero(void) {
     return n;
 }
 static uint16_t C15(int r, int g, int b) { return (uint16_t)(r | g << 5 | b << 10); }
-static void set_pal(int i, uint16_t c) { wr16(m->vram + (PALETTE_ADDR - VRAM_BASE) + i * 2, c); }
+/* Colour i of the 8,192: bank 0 (0-4095) at PALETTE_ADDR, bank 1 at PALETTE_HI_ADDR. */
+static uint8_t *pal_ptr(int i) {
+    return m->vram + (i < (int)PALETTE_BANK_COLOURS ? PALETTE_ADDR - VRAM_BASE + i * 2 : PALETTE_HI_ADDR - VRAM_BASE + (i - (int)PALETTE_BANK_COLOURS) * 2);
+}
+static void set_pal(int i, uint16_t c) { wr16(pal_ptr(i), c); }
 static uint8_t *slot_ptr(int s) { return m->vram + (TEXTURE_ADDR - VRAM_BASE) + s * TEXTURE_SLOT_BYTES; }
+
+/* The reference's texel: the colour index (0-8191) of texel (u, v) of slot 0-31 with palette
+ * 0-511 (4-bit) or 0-31 (8-bit), or -1 for index 0. An 8-bit texture's second slot wraps
+ * within the bank: slot 15 into 0, 31 into 16. */
+static int ref_texel(int slot, int four, int pal, int u, int v) {
+    if (four) {
+        int byt = slot_ptr(slot)[v * 128 + u / 2], idx = (u & 1) ? byt >> 4 : byt & 15;
+        return idx ? pal * 16 + idx : -1;
+    }
+    int idx = m->vram[(TEXTURE_ADDR - VRAM_BASE) + (slot >> 4) * 0x80000 + (((slot & 15) * 0x8000 + v * 256 + u) & 0x7FFFF)];
+    return idx ? pal * 256 + idx : -1;
+}
 
 /* ---- independent reference rasterizer (brute force over the whole screen) ---- */
 
@@ -114,9 +137,8 @@ static void ref_tri(uint16_t *fb, RV a, RV b, RV c, int flags, int mode, int dit
             for (int k = 0; k < 3; k++) col[k] = (flags & 1) ? at[k] : a.c[k];
             if (flags & 2) {
                 int u = ref_wrap(at[3], ref_win & 0xFF), v = ref_wrap(at[4], ref_win >> 8 & 0xFF), idx;
-                if (four) { int byt = slot_ptr(slot)[v * 128 + u / 2]; idx = (u & 1) ? byt >> 4 : byt & 15; idx += pal * 16; if ((idx & 15) == 0) continue; }
-                else { idx = m->vram[(TEXTURE_ADDR - VRAM_BASE) + ((slot * 0x8000 + v * 256 + u) & 0x7FFFF)]; if (!idx) continue; idx += (pal & 15) * 256; }
-                uint16_t t = rd16(m->vram + (PALETTE_ADDR - VRAM_BASE) + idx * 2);
+                if ((idx = ref_texel(slot, four, pal, u, v)) < 0) continue;
+                uint16_t t = rd16(pal_ptr(idx));
                 for (int k = 0; k < 3; k++) {
                     int c5 = (t >> (5 * k)) & 31, e = (c5 << 3) | (c5 >> 2);
                     col[k] = e * col[k] / 128 > 255 ? 255 : e * col[k] / 128;
@@ -249,11 +271,14 @@ static void test_reference_random(void) {
     setup();
     for (int i = 0; i < 0x10000; i++) slot_ptr(0)[i] = (uint8_t)(rnd(0, 255) * (rnd(0, 7) != 0));
     for (int i = 0; i < 0x8000; i++) slot_ptr(15)[i] = (uint8_t)rnd(0, 255);
-    for (int i = 0; i < 4096; i++) set_pal(i, (uint16_t)rnd(0, 0x7FFF));
+    for (int i = 0; i < 0x10000; i++) slot_ptr(16)[i] = (uint8_t)(rnd(0, 255) * (rnd(0, 7) != 0));
+    for (int i = 0; i < 0x8000; i++) slot_ptr(31)[i] = (uint8_t)rnd(0, 255);
+    for (int i = 0; i < 8192; i++) set_pal(i, (uint16_t)rnd(0, 0x7FFF));
     int mismatch = 0;
     for (int iter = 0; iter < 400; iter++) {
         int flags = rnd(0, 15) & ~4, mode = rnd(0, 3), dither = rnd(0, 1);
-        int four = rnd(0, 1), slot = four ? 15 : rnd(0, 1) * 15, pal = four ? rnd(0, 255) : rnd(0, 15);
+        int bank = rnd(0, 1) * 16;     /* slots 0, 15 or 16, 31; palettes of either bank */
+        int four = rnd(0, 1), slot = bank + (four ? 15 : rnd(0, 1) * 15), pal = four ? rnd(0, 511) : rnd(0, 31);
         int big = iter % 4 == 0;
         RV v[3];
         for (int i = 0; i < 3; i++) {
@@ -272,7 +297,7 @@ static void test_reference_random(void) {
         for (int i = 0; i < 3; i++) {
             if (i == 0 || (flags & 1)) w[n++] = RGB(v[i].c[0], v[i].c[1], v[i].c[2]) | (i == 0 ? (uint32_t)mode << 24 : 0);
             w[n++] = P(v[i].x, v[i].y);
-            if (flags & 2) w[n++] = i == 0 ? TEX0(v[i].c[3], v[i].c[4], slot, four, pal) : UV(v[i].c[3], v[i].c[4]);
+            if (flags & 2) w[n++] = i == 0 ? TEXB(v[i].c[3], v[i].c[4], slot, four, pal) : UV(v[i].c[3], v[i].c[4]);
         }
         uint32_t a = emit((uint32_t)(0x20 | flags), 0);
         for (int i = 0; i < n; i++) wr32(m->ram + a + 4 + 4 * i, w[i]);
@@ -1102,9 +1127,8 @@ static void ref_tri_z(uint16_t *fb, uint16_t *zb, RV a, RV b, RV c, const int32_
             for (int k = 0; k < 3; k++) col[k] = (flags & 1) ? at[k] : a.c[k];
             if (flags & 2) {
                 int u = ref_wrap(at[3], ref_win & 0xFF), v = ref_wrap(at[4], ref_win >> 8 & 0xFF), idx;
-                if (o->four) { int byt = slot_ptr(o->slot)[v * 128 + u / 2]; idx = (u & 1) ? byt >> 4 : byt & 15; idx += o->pal * 16; if ((idx & 15) == 0) continue; }
-                else { idx = m->vram[(TEXTURE_ADDR - VRAM_BASE) + ((o->slot * 0x8000 + v * 256 + u) & 0x7FFFF)]; if (!idx) continue; idx += (o->pal & 15) * 256; }
-                uint16_t t = rd16(m->vram + (PALETTE_ADDR - VRAM_BASE) + idx * 2);
+                if ((idx = ref_texel(o->slot, o->four, o->pal, u, v)) < 0) continue;
+                uint16_t t = rd16(pal_ptr(idx));
                 for (int k = 0; k < 3; k++) {
                     int c5 = (t >> (5 * k)) & 31, e = (c5 << 3) | (c5 >> 2);
                     col[k] = e * col[k] / 128 > 255 ? 255 : e * col[k] / 128;
@@ -1131,7 +1155,7 @@ static uint32_t emit_tri_z(int flags, const RV v[3], const int32_t wv[3], const 
     for (int i = 0; i < 3; i++) {
         if (i == 0 || (flags & 1)) w[n++] = RGB(v[i].c[0], v[i].c[1], v[i].c[2]) | (i == 0 ? (uint32_t)o->mode << 24 | (uint32_t)o->zoff << 27 : 0);
         w[n++] = P(v[i].x, v[i].y);
-        if (flags & 2) w[n++] = i == 0 ? TEX0(v[i].c[3], v[i].c[4], o->slot, o->four, o->pal) : UV(v[i].c[3], v[i].c[4]) | (i == 1 ? ref_win << 16 : 0);
+        if (flags & 2) w[n++] = i == 0 ? TEXB(v[i].c[3], v[i].c[4], o->slot, o->four, o->pal) : UV(v[i].c[3], v[i].c[4]) | (i == 1 ? ref_win << 16 : 0);
     }
     for (int i = 0; i < 3; i++) w[n++] = (uint32_t)wv[i];
     uint32_t a = emit((uint32_t)(0x30 | flags), 0);
@@ -1412,7 +1436,9 @@ static void test_depth_reference_random(void) {
     setup();
     for (int i = 0; i < 0x10000; i++) slot_ptr(0)[i] = (uint8_t)(rnd(0, 255) * (rnd(0, 7) != 0));
     for (int i = 0; i < 0x8000; i++) slot_ptr(15)[i] = (uint8_t)rnd(0, 255);
-    for (int i = 0; i < 4096; i++) set_pal(i, (uint16_t)rnd(0, 0x7FFF));
+    for (int i = 0; i < 0x10000; i++) slot_ptr(16)[i] = (uint8_t)(rnd(0, 255) * (rnd(0, 7) != 0));
+    for (int i = 0; i < 0x8000; i++) slot_ptr(31)[i] = (uint8_t)rnd(0, 255);
+    for (int i = 0; i < 8192; i++) set_pal(i, (uint16_t)rnd(0, 0x7FFF));
     int mismatch = 0, zmismatch = 0;
     long long cyc_bad = 0;
     for (int iter = 0; iter < 400; iter++) {
@@ -1421,8 +1447,8 @@ static void test_depth_reference_random(void) {
         o.mode = rnd(0, 3);
         o.dither = rnd(0, 1);
         o.four = rnd(0, 1);
-        o.slot = o.four ? 15 : rnd(0, 1) * 15;
-        o.pal = o.four ? rnd(0, 255) : rnd(0, 15);
+        o.slot = rnd(0, 1) * 16 + (o.four ? 15 : rnd(0, 1) * 15);
+        o.pal = o.four ? rnd(0, 511) : rnd(0, 31);
         o.ztest = iter % 5 != 0;
         o.zoff = rnd(0, 3) ? 0 : rnd(0, 31);
         ref_win = (o.flags & 2) && rnd(0, 3) == 0 ? (uint32_t)rnd(0, 0xFFFF) : 0;

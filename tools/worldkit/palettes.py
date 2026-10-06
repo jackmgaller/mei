@@ -79,9 +79,12 @@ class RegionPalette:
         if needed > self.count:
             raise WorldError(self.path+'/palettes/count',f'Region {self.name!r} needs {needed} 4-bit palettes for '
                              f'{len(keys)} entries; it declares {self.count}.')
-        if self.count and self.first+self.count > 255:
+        if self.count and self.first <= 255 < self.first+self.count:
             raise WorldError(self.path+'/palettes',f'Region {self.name!r}: palettes {self.first}-{self.first+self.count-1} '
                              'run into palette 255, which holds the fonts.')
+        if self.count and self.first+self.count > 512:
+            raise WorldError(self.path+'/palettes',f'Region {self.name!r}: palettes {self.first}-{self.first+self.count-1} '
+                             'run past palette 511, the last (VRAM at 2 MB: 4-bit palettes 0-511).')
         for i,key in enumerate(keys):
             e = self.by_key[key]
             e['colour'] = (self.first+i//15)*16+1+i%15

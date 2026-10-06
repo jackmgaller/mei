@@ -17,7 +17,7 @@ import planes_check as spec
 
 
 def initial_vram():
-    vram=bytearray(1<<20)
+    vram=bytearray(1<<21)       # 2 MB (DECISIONS.md, "VRAM at 2 MB")
     for n in range(3):
         for y in range(32):
             for x in range(32):

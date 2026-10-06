@@ -54,7 +54,7 @@ def c15(r, g, b):
 
 
 def vram_image():
-    v = bytearray(1 << 20)
+    v = bytearray(depth.VRAM_BYTES)
     palette = [0] * 4096
     for i in range(16):
         palette[16 + i] = c15(60 + i * 12, 70 + i * 10, 90 + i * 8)             # pal 1: checker

@@ -365,7 +365,7 @@ def numbers(text, n, what):
 
 
 def slot_list(text):
-    """'14-10' -> [14, 13, 12, 11, 10]; '14,12' -> [14, 12]."""
+    """'14-10' -> [14, 13, 12, 11, 10]; '14,12' -> [14, 12]. Slots are 0-31 (VRAM at 2 MB), never 15."""
     try:
         if '-' in text:
             a,b = (int(n) for n in text.split('-'))
@@ -374,8 +374,8 @@ def slot_list(text):
             slots = [int(n) for n in text.split(',')]
     except ValueError as error:
         raise AssetError('/arguments/slots','Give slots as a range (14-10) or a list (14,12).') from error
-    if not slots or any(not 0 <= s <= 14 for s in slots) or len(set(slots)) != len(slots):
-        raise AssetError('/arguments/slots','Slots are 0-14, each once (15 holds the fonts).')
+    if not slots or any(not 0 <= s <= 31 or s == 15 for s in slots) or len(set(slots)) != len(slots):
+        raise AssetError('/arguments/slots','Slots are 0-14 and 16-31, each once (15 holds the fonts).')
     return slots
 
 
@@ -383,8 +383,8 @@ def pack_command(args):
     from assetkit.packer import pack
     if not re.fullmatch(r'[a-z][a-z0-9_]{0,47}',args.name):
         raise AssetError('/arguments/name','A pack name uses lowercase letters, digits and underscores, beginning with a letter.')
-    if not 0 <= args.palette <= 254 or not 0 <= args.palette8 <= 14:
-        raise AssetError('/arguments/palette','--palette is 0-254 and --palette8 0-14 (palette 255 and 8-bit palette 15 hold the fonts).')
+    if not 0 <= args.palette <= 510 or args.palette == 255 or not 0 <= args.palette8 <= 31 or args.palette8 == 15:
+        raise AssetError('/arguments/palette','--palette is 0-254 or 256-510 and --palette8 0-14 or 16-31 (palette 255 and 8-bit palette 15 hold the fonts).')
     recipes = [(load(path),folder(path)) for path in args.recipes]
     files,manifest = pack(recipes,args.name,slot_list(args.slots),args.palette,args.palette8,args.swatch)
     directory = Path(args.output).resolve()
@@ -470,9 +470,9 @@ def parser():
     pk.add_argument('recipes',nargs='+',help='Recipe JSON paths.')
     pk.add_argument('-o','--output',required=True,help='Dedicated generated-output directory.')
     pk.add_argument('--name',default='assets',help='Name of the Akari file, its loader NAME_load() and the data files (default assets).')
-    pk.add_argument('--slots',default='14-0',help='Texture slots to use, in order: a range 14-10 or a list 14,12 (never 15). Default 14-0.')
-    pk.add_argument('--palette',type=int,default=0,help='First 4-bit palette (palette-backed materials, then 4-bit textures). Default 0.')
-    pk.add_argument('--palette8',type=int,default=14,help='First 8-bit palette for 8-bit textures (they take it and those below). Default 14.')
+    pk.add_argument('--slots',default='14-0',help='Texture slots 0-31 to use, in order: a range 14-10 or a list 14,12 (never 15). Default 14-0.')
+    pk.add_argument('--palette',type=int,default=0,help='First 4-bit palette, 0-510 (palette-backed materials, then 4-bit textures; never across 255). Default 0.')
+    pk.add_argument('--palette8',type=int,default=14,help='First 8-bit palette for 8-bit textures, 0-31 but not 15 (they take it and those below). Default 14.')
     pk.add_argument('--swatch',action='store_true',help='Keep the swatch block (row 0 of the first slot) and load the swatch even with no palette-backed material: the textures can then share a slot with a world\'s swatch.')
     gltf.add_parser(sub)
     imp = sub.add_parser('import-obj',help='Convert OBJ geometry into an editable recipe; materials/UVs are not imported.')

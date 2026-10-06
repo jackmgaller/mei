@@ -37,6 +37,10 @@ the same packets in the same order as the others, without their per-face near-pl
 and arena tests, keeps the packet pointer in r15, and writes flat textured triangles and quads
 (the World Kit's faces) without the jump table (see safe_loop()).
 
+Banks (VRAM at 2 MB, DECISIONS.md): bits 6 and 7 of a face's flags put it in texture slots 16-31
+and palette bank 1 (colours 4096-8191). Every textured writer copies them to bits 21 and 22 of
+the packet's first texture coordinate, 3 instructions after the texture byte and palette.
+
 All the loops address __sv and __ot as immediates (gfx.akr declares both below 0x20000): r5-r8
 hold vertex offsets (index x 16), not pointers (see immediates()).
 
@@ -80,6 +84,13 @@ P = ['r5', 'r6', 'r7', 'r8']     # vertex pointers
 out = []
 def e(s=''):
     out.append(s)
+
+def bank_bits(t, d):
+    """The face's banks (VRAM at 2 MB, DECISIONS.md): flags bit 6 (slots 16-31) and bit 7
+    (palette bank 1) -> bits 21 and 22 of the packet's first texture coordinate, in d."""
+    e('    andi %s, r4, 0xC0          ; slot bank and palette bank (flags bits 6-7) -> bits 21-22' % t)
+    e('    shli %s, %s, 15' % (t, t))
+    e('    or   %s, %s, %s' % (d, d, t))
 
 def variant(g, t, q, fog, win=False):
     n = 4 if q else 3
@@ -147,6 +158,7 @@ def variant(g, t, q, fog, win=False):
                 e('    andi r12, r12, 0xFF1F')
                 e('    shli r12, r12, 16')
                 e('    or   r11, r11, r12')
+                bank_bits('r12', 'r11')
             e('    sw   r11, [r15+%d]' % (base + 4))
     if DEPTH:
         for k in range(n):
@@ -964,6 +976,7 @@ def safe_variant(g, t, q):
                 e('    andi r12, r12, 0xFF1F')
                 e('    shli r12, r12, 16')
                 e('    or   r11, r11, r12')
+                bank_bits('r12', 'r11')
             e('    sw   r11, [r15+%d]' % (base + 4))
     if DEPTH:
         for k in range(n):
@@ -1117,6 +1130,9 @@ def safe_loop():
     lhu  r12, [r1+28]
     and  r6, r4, r8             ; slot, depth and palette -> bits 16-31
     or   r12, r12, r6
+    andi r6, r4, 0xC0           ; the slot's bank and the palette's (flags bits 6-7) -> bits 21-22
+    shli r6, r6, 15
+    or   r12, r12, r6
     sw   r12, [r15+12]
     sw   r11, [r15+16]
     lhu  r12, [r1+30]
@@ -1182,6 +1198,9 @@ def safe_loop():
     sw   r12, [r15+8]
     lhu  r12, [r1+28]
     and  r6, r4, r8             ; slot, depth and palette -> bits 16-31
+    or   r12, r12, r6
+    andi r6, r4, 0xC0           ; the slot's bank and the palette's (flags bits 6-7) -> bits 21-22
+    shli r6, r6, 15
     or   r12, r12, r6
     sw   r12, [r15+12]
     sw   r11, [r15+16]

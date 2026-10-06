@@ -25,6 +25,8 @@ from oracle import DM, windowed
 
 W, H = 320, 240
 TEXTURE, PALETTE = 0x80000, 0x4C000   # VRAM offsets (DECISIONS.md, the VRAM layout)
+PALETTE_HI, VRAM_BYTES = 0x180000, 1 << 21   # palette bank 1 (colours 4096-8191); 2 MB (DECISIONS.md, "VRAM at 2 MB")
+BANK = 524288                          # 16 texture slots; slots 16-31 follow at TEXTURE + BANK
 GPU_DRAW, GPU_CLEAR, GPU_CTRL, GPU_DEPTH, GPU_ZCLEAR = 0x00, 0x04, 0x08, 0x20, 0x24
 TRIANGLE_LIMIT = 4000
 # A deliberate departure from the spec, for the negative controls (depth_fuzz.py): None, or
@@ -66,11 +68,11 @@ def divides(n):
 
 class Gpu:
     def __init__(self, vram=None, regs=None, ctrl=0):
-        self.vram = bytearray(vram if vram is not None else bytes(1 << 20))
+        self.vram = bytearray(vram if vram is not None else bytes(VRAM_BYTES))
         self.regs = list(regs) if regs is not None else [0] * 64
-        self.texture = np.frombuffer(bytes(self.vram[TEXTURE:TEXTURE + 524288]), dtype=np.uint8)
-        self.palette = np.frombuffer(bytes(self.vram[PALETTE:PALETTE + 8192]),
-                                     dtype='<u2').astype(np.int64)
+        self.texture = np.frombuffer(bytes(self.vram[TEXTURE:TEXTURE + 2 * BANK]), dtype=np.uint8)
+        self.palette = np.frombuffer(bytes(self.vram[PALETTE:PALETTE + 8192] + self.vram[PALETTE_HI:PALETTE_HI + 8192]),
+                                     dtype='<u2').astype(np.int64)      # colours 0-8191
         self.fb = np.frombuffer(bytes(self.vram[:W * H * 2]), dtype='<u2').astype(np.int64).reshape(H, W)
         self.zbuf = np.zeros((H, W), dtype=np.int64)
         self.ctrl, self.ztest = ctrl, False
@@ -222,12 +224,14 @@ class Gpu:
         if textured:
             window = p.get('window', 0)
             uu, vv = windowed(u, window), windowed(tv, window >> 8)
+            # slot 0-31; pal 0-511 (4-bit) or 0-31 (8-bit); an 8-bit texture's second slot wraps
+            # within its bank of 16 slots
             if p['four']:
-                idx = (self.texture[(p['slot'] * 32768 + vv * 128 + uu // 2) % 524288] >> (uu % 2 * 4)) & 15
+                idx = (self.texture[p['slot'] * 32768 + vv * 128 + uu // 2] >> (uu % 2 * 4)) & 15
                 base = p['pal'] * 16
             else:
-                idx = self.texture[(p['slot'] * 32768 + vv * 256 + uu) % 524288]
-                base = (p['pal'] & 15) * 256
+                idx = self.texture[p['slot'] // 16 * BANK + (p['slot'] % 16 * 32768 + vv * 256 + uu) % BANK]
+                base = p['pal'] * 256
             keep = keep & (idx != 0)
         y, x, colours = y[keep], x[keep], colours[keep]
         if textured:
@@ -286,7 +290,9 @@ def words(p):
         if p['flags'] & 2:
             t = p['uv'][i][0] | p['uv'][i][1] << 8
             if i == 0:
-                t |= p['slot'] << 16 | int(p['four']) << 20 | p['pal'] << 24
+                per = 256 if p['four'] else 16
+                t |= ((p['slot'] & 15) << 16 | int(p['four']) << 20 | (p['slot'] >> 4) << 21 |
+                      (p['pal'] // per) << 22 | (p['pal'] % per) << 24)
             if i == 1:
                 t |= p.get('window', 0) << 16
             out.append(t)

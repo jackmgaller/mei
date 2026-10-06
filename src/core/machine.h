@@ -9,19 +9,27 @@
 #define RAM_SIZE   MEI_RAM_SIZE
 #define ROM_BASE   MEI_ROM_BASE     /* the cart ROM window (mei.h) */
 #define ROM_WINDOW MEI_ROM_WINDOW
-#define VRAM_BASE  0x400000u
-#define VRAM_SIZE  0x100000u
+#define VRAM_BASE  MEI_VRAM_BASE
+#define VRAM_SIZE  MEI_VRAM_SIZE
 #define IO_BASE    MEI_IO_BASE
 #define IO_SIZE    0x800u   /* 0x400-0x5FF: audio channels 8-15 and global audio registers;
                                0x600: broadcast; 0x700-0x7FF: the plane chip */
 
-/* VRAM layout (absolute addresses) */
+/* VRAM layout (absolute addresses; docs/DECISIONS.md, "VRAM at 2 MB"). The first megabyte is
+ * the spec's layout unchanged; the second holds texture slots 16-31 right after slots 0-15,
+ * then the second palette bank, then free pages (plane atlases and maps, by convention). */
 #define FB_A_ADDR     0x400000u
 #define FB_B_ADDR     0x425800u
 #define FB_BYTES      (MEI_W * MEI_H * 2)
-#define PALETTE_ADDR  0x44C000u
-#define TEXTURE_ADDR  0x480000u
+#define PALETTE_ADDR  0x44C000u     /* palette bank 0: colours 0-4095 */
+#define TEXTURE_ADDR  0x480000u     /* slot n at TEXTURE_ADDR + n * TEXTURE_SLOT_BYTES */
 #define TEXTURE_SLOT_BYTES 0x8000u
+#define TEXTURE_SLOTS      32u      /* 0-31: 1 MB, 0x480000-0x57FFFF */
+#define TEXTURE_BANK_SLOTS 16u      /* an 8-bit texture's second slot wraps within its bank of 16 */
+#define TEXTURE_BANK_BYTES (TEXTURE_BANK_SLOTS * TEXTURE_SLOT_BYTES)
+#define PALETTE_HI_ADDR    0x580000u   /* palette bank 1: colours 4096-8191 */
+#define PALETTE_BANK_COLOURS 4096u
+#define VRAM_FREE_ADDR     0x582000u   /* free to 0x5FFFFF (pages 49-63 whole) */
 
 /* I/O offsets from IO_BASE */
 #define IO_GPU_DRAW    0x000

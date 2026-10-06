@@ -34,6 +34,7 @@ from worldkit.terrain import cross  # noqa: E402
 from worldkit.build import build, compile_source  # noqa: E402
 from worldkit.schema import WorldError  # noqa: E402
 import mei_world  # noqa: E402
+import meshlib  # noqa: E402
 
 EXAMPLES = ROOT/'examples'/'worlds'
 CLI = [sys.executable, str(ROOT/'tools'/'mei_world.py')]
@@ -1442,14 +1443,14 @@ class TextureTests(unittest.TestCase):
         self.assertEqual(market['tiles'], 14)
         self.assertLess(market['tiles'], sum(a['tiles'] for a in market['by_asset'].values()) + 1)
         self.assertEqual([s['slot'] for s in market['slots']], [12, 13])      # "13-6": 4-bit 13, 8-bit 12
-        self.assertEqual(market['palettes_8bit'], [14])
+        self.assertEqual(market['palettes_8bit'], [31])     # palette.first8's default: the top of bank 1
         self.assertEqual([a['material'] for a in market['animations']], ['shopfront.neon', 'stall.lantern'])
         self.assertEqual(harbour['animations'], [])
         rm, rh = pack.regions
         self.assertEqual(sorted(t.slot for t in rm.textures), [12, 13])
         self.assertEqual([t.slot for t in rh.textures], [13])
         self.assertEqual(len(rm.animations), 2)
-        self.assertEqual(rm.runs[0].first_colour, 14 * 256)
+        self.assertEqual(rm.runs[0].first_colour, 31 * 256)
         # disjoint palettes: textures after each region's entries, every region's set coexisting
         pm, ph = (set(c.report['regions'][r]['palette']['palettes']) for r in ('market', 'harbour'))
         self.assertFalse(pm & ph)
@@ -1464,8 +1465,9 @@ class TextureTests(unittest.TestCase):
                 for k in range(nf):
                     at = pl['mesh'] + fo + 36 * k
                     if pack.data[at] & 2:
-                        tex, pal = pack.data[at + 2], pack.data[at + 3]
-                        self.assertIn(tex & 15, slots)
+                        flags, tex, pal = pack.data[at], pack.data[at + 2], pack.data[at + 3]
+                        pal = meshlib.face_palette(flags, tex, pal)
+                        self.assertIn(meshlib.face_slot(flags, tex), slots)
                         self.assertTrue(pal in pals if tex & 16 else 256 * pal == reg.runs[0].first_colour)
 
     def test_standins_with_several_regions_draw_far_colours(self):
@@ -1556,6 +1558,52 @@ class TextureTests(unittest.TestCase):
         with self.assertRaises(WorldError) as e:
             self.ex.compile()
         self.assertIn('do not fit in its slots', str(e.exception))
+
+    def test_second_megabyte(self):
+        # VRAM at 2 MB (DECISIONS.md): a region in slots 16-31 and 4-bit palettes from 256, the
+        # 8-bit sign from 8-bit palette 14 (bank 0) when the recipe says so
+        self.ex.edit(lambda w: w['regions']['market'].__setitem__('textures', {'slots': '20,17-16'}))
+        self.ex.edit(lambda w: w['regions']['market'].__setitem__('palettes', {'first': 300}))
+        self.ex.edit(lambda w: w.__setitem__('palette', {'first8': 14}))
+        c = self.ex.compile()
+        pack = P.decode(c.pack)
+        market = c.report['regions']['market']
+        self.assertEqual(sorted(s['slot'] for s in market['textures']['slots']), [17, 20])
+        self.assertEqual(market['textures']['palettes_8bit'], [14])
+        self.assertTrue(all(p >= 300 for p in market['palette']['palettes']))
+        rm = pack.regions[0]
+        self.assertEqual(rm.first_colour, 300 * 16)
+        self.assertEqual(sorted(t.slot for t in rm.textures), [17, 20])
+        hi = 0
+        for cell in pack.cells.values():
+            if cell.region != 0:
+                continue
+            for pl in cell.placements:
+                nv, nf, vo, fo = P.mesh_info(pack.data[pl['mesh']:])
+                for k in range(nf):
+                    at = pl['mesh'] + fo + 36 * k
+                    flags, tex, pal = pack.data[at], pack.data[at + 2], pack.data[at + 3]
+                    if not flags & 2:
+                        continue
+                    slot, palette = meshlib.face_slot(flags, tex), meshlib.face_palette(flags, tex, pal)
+                    self.assertIn(slot, (14, 17, 20))
+                    self.assertTrue(palette >= 300 if tex & 16 else palette == 14)
+                    hi += bool(flags & 64)
+        self.assertGreater(hi, 0)
+        # a region that would run across palette 255 starts at 256 instead
+        self.ex.edit(lambda w: w['regions']['market'].pop('palettes'))
+        self.ex.edit(lambda w: w.__setitem__('palette', {'first': 252}))     # the market needs 5
+        c = self.ex.compile()
+        pm = c.report['regions']['market']['palette']['palettes']
+        self.assertNotIn(255, pm + c.report['regions']['harbour']['palette']['palettes'])
+        self.assertEqual(min(pm), 256)
+        # the default slots reach into the second megabyte, after 13-0
+        from worldkit.textures import DEFAULT_SLOTS
+        self.assertEqual(DEFAULT_SLOTS, tuple(range(13, -1, -1)) + tuple(range(16, 32)))
+        for bad in ('32', '15-16'):
+            self.ex.edit(lambda w: w['regions']['market'].__setitem__('textures', {'slots': bad}))
+            with self.assertRaises(WorldError):
+                self.ex.compile()
 
     def test_slots_and_swatch(self):
         # the swatch's slot may hold region textures: the swatch row is kept and copied with them

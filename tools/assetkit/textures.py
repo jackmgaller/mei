@@ -800,5 +800,10 @@ def default_packing(info, mesh, layout):
     if palette:
         reserved.append((slot, 0, layout['row']//8*8, 16, 8))
         first = palette['palettes'][-1]+1
-    slots = [s for s in range(slot, -1, -1)]+[s for s in range(14, slot, -1)]
-    return pack_tiles(info['tiles'], slots=slots, first_palette=first, reserved=reserved, path='/materials')
+    # the layout's slot and those below it in its bank of 16, the rest of that bank, then the other
+    # bank (VRAM at 2 MB: slots 16-31); an asset that fits in slots 14-0 packs as it did before
+    if slot <= 14:
+        slots = list(range(slot, -1, -1))+list(range(14, slot, -1))+list(range(16, 32))
+    else:
+        slots = list(range(slot, 15, -1))+list(range(31, slot, -1))+list(range(14, -1, -1))
+    return pack_tiles(info['tiles'], slots=slots, first_palette=first+(first == 255), reserved=reserved, path='/materials')

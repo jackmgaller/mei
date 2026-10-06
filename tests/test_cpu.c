@@ -286,7 +286,7 @@ static void test_memory(void) {
     li(6, 0x1234ABCD);
     e(I(SW, 6, 5, 0));
     e(I(LHU, 7, 5, 2));
-    li(8, 0x4FFFFC);
+    li(8, VRAM_BASE + VRAM_SIZE - 4);        /* 0x5FFFFC */
     e(I(SW, 6, 8, 0));                       /* last VRAM word */
     li(9, 0x1FFFFC);
     e(I(SW, 6, 9, 0));                       /* last RAM word */
@@ -827,8 +827,20 @@ static void test_faults(void) {
     li(1, 0x1004); e(I(VLD, 2, 1, 0)); e(I(VST, 2, 1, 4)); e(I(LB, 3, 1, 1)); e(I(SB, 3, 1, 3));
     exec();
 
-    begin("unmapped read"); li(1, 0x500000); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x500000);
-    begin("unmapped write"); li(1, 0x600000); e(I(SW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x600000);
+    begin("VRAM's second megabyte");
+    li(1, 0x4FFFFC); li(2, 0x5A5A1234); e(I(SW, 2, 1, 0));      /* the last word of the first */
+    li(3, 0x500000); li(4, 0x0BADF00D); e(I(SW, 4, 3, 0));      /* the first of the second */
+    e(I(LW, 5, 1, 0)); e(I(LW, 6, 3, 0));
+    li(7, 0x57FFFC); e(I(SW, 4, 7, 0));                         /* the last word of slot 31 */
+    li(8, 0x580000); e(I(SH, 4, 8, 0));                         /* palette bank 1, colour 4096 */
+    exec();
+    EQ(M->r[5], 0x5A5A1234); EQ(M->r[6], 0x0BADF00D);
+    EQ(rd32(M->vram + 0xFFFFC), 0x5A5A1234); EQ(rd32(M->vram + 0x100000), 0x0BADF00D);
+    EQ(rd32(M->vram + 0x17FFFC), 0x0BADF00D); EQ(rd32(M->vram + 0x180000), 0xF00D);
+    begin("vld across the old end of VRAM"); li(1, 0x4FFFF8); e(I(VLD, 2, 1, 0)); exec();
+    begin("unmapped read"); li(1, 0x600000); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x600000);
+    begin("unmapped read8 past VRAM"); li(1, VRAM_BASE + VRAM_SIZE); e(I(LBU, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x600000);
+    begin("unmapped write"); li(1, 0x600004); e(I(SW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x600004);
     begin("unmapped write8"); li(1, 0xFEFFFF); e(I(SB, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0xFEFFFF);
     begin("bit 24 set"); li(1, 0x1000000); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x1000000);
     begin("old ROM base"); li(1, 0x200000); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x200000);
@@ -839,8 +851,8 @@ static void test_faults(void) {
     begin("bit 31 set"); e(I(LBU, 2, 0, -4)); FAULT(MEI_FAULT_UNMAPPED, 0xFFFFFFFC);
     begin("past I/O"); li(1, 0xFF0800); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0xFF0800);
     begin("past broadcast"); li(1, 0xFF0648); e(I(LW, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0xFF0648);
-    begin("vld into gap"); li(1, 0x4FFFF8); e(I(VLD, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x500000);
-    begin("unmapped jmp"); e(I(ADDI, 1, 0, 1)); e(J(JMP, 0x500000)); FAULT(MEI_FAULT_UNMAPPED, 0x500000);
+    begin("vld into gap"); li(1, 0x5FFFF8); e(I(VLD, 2, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x600000);
+    begin("unmapped jmp"); e(I(ADDI, 1, 0, 1)); e(J(JMP, 0x600000)); FAULT(MEI_FAULT_UNMAPPED, 0x600000);
     begin("unmapped call"); e(J(CALL, 0xFF0000)); FAULT(MEI_FAULT_UNMAPPED, 0xFF0000);
     EQ(M->r[15], 0);
     begin("unmapped callr"); li(1, 0x700000); e(I(CALLR, 0, 1, 0)); FAULT(MEI_FAULT_UNMAPPED, 0x700000);
@@ -852,11 +864,11 @@ static void test_faults(void) {
     EQ(mei_run_frame(M), 0);
     EQ(M->fault.kind, MEI_FAULT_UNMAPPED); EQ(M->fault.pc, 0x100); EQ(M->fault.addr, 0xFFFFFF04);
     begin("run off the end of VRAM");
-    e(J(JMP, 0x4FFFFC));
+    e(J(JMP, 0x5FFFFC));
     load();
     wr32(M->vram + VRAM_SIZE - 4, I(ADDI, 1, 0, 1));
     EQ(mei_run_frame(M), 0);
-    EQ(M->fault.kind, MEI_FAULT_UNMAPPED); EQ(M->fault.pc, 0x500000); EQ(M->fault.addr, 0x500000);
+    EQ(M->fault.kind, MEI_FAULT_UNMAPPED); EQ(M->fault.pc, 0x600000); EQ(M->fault.addr, 0x600000);
     EQ(M->r[1], 1);
 
     begin("ROM write"); e(U(LUI, 1, ROM_BASE >> 10)); e(I(SW, 1, 1, 0)); FAULT(MEI_FAULT_READ_ONLY, ROM_BASE);

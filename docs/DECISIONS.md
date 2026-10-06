@@ -589,7 +589,7 @@ moving anything.
 | Address | Region | Size | Access |
 |---|---|---|---|
 | `0x000000`–`0x1FFFFF` | RAM | 2 MB | read/write |
-| `0x400000`–`0x4FFFFF` | VRAM | 1 MB | read/write |
+| `0x400000`–`0x4FFFFF` | VRAM | 1 MB (2 MB, to `0x5FFFFF`, since 2026-10-05: [below](#vram-at-2-mb)) | read/write |
 | `0xFF0000`–`0xFF07FF` | I/O | 2 KB | see the I/O map in [Details filled in](#details-filled-in) |
 | `0x08000000`–`0x0FFFFFFF` | cart ROM window | 128 MB (carts up to 64 MB) | read only |
 
@@ -683,7 +683,8 @@ Three tools check the work, each under its own name:
   (the depth buffer was adopted later the same day:
   [below](#a-depth-buffer-perspective-texturing-and-a-2000000-cycle-gpu)).
 - **VRAM stays 1 MB** and the ordering table stays a cart convention. Both are to be revisited
-  only if a second region or a real district shows they cannot work.
+  only if a second region or a real district shows they cannot work. (The shrine town did:
+  VRAM is 2 MB since 2026-10-05, [below](#vram-at-2-mb).)
 
 ## The CPU at 60 MHz
 
@@ -874,3 +875,160 @@ unit tests' benchmark (2,000 textured Gouraud triangles of about 35 × 36 pixels
 than a frame within the budget): natively (M1 Pro, `-O2`) 4.5 ms a frame plain, 5.5 ms
 depth-tested, 7.0 ms depth-tested and perspective; in WebAssembly (Emscripten `-O3`, Node)
 7.8, 10.6 and 9.5 ms.
+
+## VRAM at 2 MB
+
+On 2026-10-05 the project owner doubled VRAM: **1 MB → 2 MB, `0x400000`–`0x5FFFFF`**
+(`MEI_VRAM_BASE`, `MEI_VRAM_SIZE` in `src/core/mei.h`; the layout in `src/core/machine.h`). The
+target stays the 1997 slot: the N64 had 4 MB of RAM shared by everything, the PlayStation 1 MB of
+VRAM beside 2 MB of RAM. This supersedes the VRAM size and layout in the published v0.1 spec
+(`spec-v0.1.pdf`, `spec-v0.1.txt`, p. 10–11), which is left as published, like the CPU and GPU
+figures before it.
+
+**Why.** The shrine town, the movement garden's second large level, is limited by texture
+memory. A World Kit region could use slots 13–0, 448 KB; the town's region was full to 32 bytes
+of its allowance and the level's assets need 595 KB before its ground
+(`carts/garden/shrinetown/TEXTURES.md`). Palettes ran out as well: regions get disjoint 4-bit
+palettes so that every region's colours are loaded at once, and the town and shrine regions
+already took palettes 0–232 of the 255 (an 8-bit texture takes 16 more).
+
+**The memory map.** The first megabyte is unchanged, so every address a cart, the system ROM or
+the standard library uses stays where it was. Nothing was above VRAM before `MEI_IO_BASE`
+(`0xFF0000`), so the second megabyte needs no other region to move:
+
+| Address | Contents | Size |
+|---|---|---|
+| `0x400000`–`0x44AFFF` | framebuffers A and B | 300 KB |
+| `0x44B000`–`0x44BFFF` | spare | 4 KB |
+| `0x44C000`–`0x44DFFF` | palette bank 0: colours 0–4095 | 8 KB |
+| `0x44E000`–`0x47FFFF` | Horizon Engine line tables and pages 10–15 (convention) | 200 KB |
+| `0x480000`–`0x4FFFFF` | texture slots 0–15 (pages 16–31) | 512 KB |
+| `0x500000`–`0x57FFFF` | **texture slots 16–31** (pages 32–47) | 512 KB |
+| `0x580000`–`0x581FFF` | **palette bank 1: colours 4096–8191** | 8 KB |
+| `0x582000`–`0x5FFFFF` | **free**: the rest of page 48, pages 49–63 | 504 KB |
+| `0x600000`–`0xFEFFFF` | unmapped, as before | |
+
+Slot *n* is at `0x480000 + n × 0x8000` for every *n* 0–31, so slots 16–31 continue the old
+formula. Palette bank 1 could not follow bank 0 directly: `0x44E000` is the line tables' place
+in the standard library (`planes.akr`, which Lantern Lake and the World Kit's backdrops use), so
+it sits after the slots.
+
+**The packet encoding.** Bits 21 and 22 of a packet's first texture coordinate, which the spec
+left unused and which nothing set (the face loops mask them out; RENDERING.md, "Texture slots and
+palette banks"):
+
+- **bit 21, the slot's bank**: slots 16–31 (bits 16–19 the slot within the bank);
+- **bit 22, the palette bank**: colours 4096–8191, so 4-bit palettes 256–511 and 8-bit palettes
+  16–31 (bits 24–31 the palette within the bank);
+- bit 23 stays reserved (ignored): a third bank, if VRAM ever grows again.
+
+An 8-bit texture's second slot wraps within its bank: slot 15 into slot 0 as before, slot 31
+into slot 16. The packet does not grow and neither field costs a GPU cycle. A packet with the
+two bits clear draws exactly as before.
+
+**More palette entries came with it** because the bank bit is free to add and the palettes were
+as short as the slots: 8,192 colours, 512 4-bit palettes. The plane chip still reads bank 0 only
+(its palette fields are unchanged); its page and map registers gain bit 20 (`BGn_TILES` bits
+15–20, `BGn_MAP` 11–20, `LCn_ADDR` 2–20), so atlases, maps and line tables may be anywhere in
+the 2 MB, and its addresses wrap at the end of the 2 MB instead of the 1 MB.
+
+**Meshes.** A face has no spare bit in its texture and palette bytes (bits 5–7 of the texture
+byte are the texture window), and the blend byte's bits 2–7 are taken at run time by
+`poly_upper()` and the decal offset. Bits 6 and 7 of the **flags** byte were unused: bit 6
+(`FACE_SLOT_HI`) puts the face's texture in slots 16–31, bit 7 (`FACE_PAL_HI`) its palette in
+bank 1 (LANGUAGE.md, "Mesh format"). Every mesh made before has them clear and draws as it did.
+`mesh()`'s packet writers copy them into bits 21–22: three instructions per drawn textured face,
+in every face loop (plain, plane chip and depth; `tools/gen_faces_asm.py`). A variant of the
+writers only for meshes that use the bits, as texture windows have, would have kept old meshes at
+their old cost but doubled the jump tables again and left the World Kit's fast loop for flat
+textured faces (`__draw_faces_safe`) without them. Measured, the three cycles are about 1 % of a
+busy frame (below).
+
+**The kits.** The World Kit's default region slots are `"13-0,16-31"`, 30 slots: **983,040 bytes
+a region** where 458,752 was (`textures.budget` still caps it). 13–0 come first, so a set that
+fit before packs exactly as before. Regions' palettes are still disjoint, now from 0–254 and
+256–511; a region's range never includes 255 (the fonts'), so one that does not fit below it
+starts at 256, and no palette run crosses colour 4096. `palette.first8`'s default is 31, the top
+of bank 1 (it was 14, in the middle of bank 0's 4-bit palettes), and 8-bit palettes never take
+15 (the fonts' colours). The Asset Kit's slots and palettes are 0–31 and 0–511 the same way
+(`palette_layout`, `pack --slots`, `--palette`, `--palette8`); a single asset's default packing
+fills slots 14–0 first, then 16–31. `kitcore/texpack.py` does both kits' packing. The World
+Checker, the Asset Checker's renderer and the Reference Renderer read the new bits. The World
+Checker has no texture thresholds; its CPU thresholds are unchanged.
+
+**The standard library.** `load_texture()` takes slots 0–31; `load_palette()` and
+`palette_lerp()` take colours 0–8191 (a run that crosses 4096 continues in bank 1);
+`palette_ptr(i)` gives a colour's address; `tex_page()` and `sprite()` take slots 0–31 and
+palettes 0–511 (0–31 for 8-bit); `tex_atlas()` slots 0–31. `io.akr` names `VRAM_PALETTE_HI`,
+`PALETTE_BANK_COLOURS`, `TEXTURE_SLOTS`, `VRAM_FREE` and `VRAM_END`, `draw.akr` `TEX_SLOT_HI` and
+`TEX_PAL_HI`, `gfx.akr` `FACE_SLOT_HI` and `FACE_PAL_HI`. The World Kit reader
+(`wp_region_enter()`, `wp_texture_load()`, `wp_variant_load()`, `wp_variant_blend()`, the
+animated tiles) needed no change of its own: it loads through those functions, and the pack
+format already had a byte for the slot and 16 bits for the first colour (WORLDPACK.md; the
+encoder now accepts slots 16–31 and colours to 8,191, with no version change). The shell's System
+page reads "2 MB, 32 texture slots".
+
+**Existing carts.** Compiled with the old standard library, every cart ROM and `system.mei`
+builds byte-identical to the build before, and the three garden worlds' packs are byte-identical:
+the compiler, the assembler, the carts and the kits' output for existing recipes are unchanged.
+With the new standard library the ROMs grow by the face loops' three instructions a writer and
+the bank handling in `load_palette()`, `palette_lerp()`, `tex_page()`, `sprite()`,
+`load_texture()` and `tex_atlas()` (bytes):
+
+| ROM | Before | After | Face loops | The rest of the library |
+|---|---|---|---|---|
+| `system.mei` | 890,329 | 890,441, and the System page's text | 0 | +112 |
+| `features.mei` | 26,806 | 26,806 (identical) | 0 | 0 |
+| `lantern.mei` | 1,330,337 | 1,330,953 | +504 | +112 |
+| `orbs.mei` | 861,166 | 861,886 | +504 | +216 |
+| `weather.mei` | 857,163 | 857,339 | 0 | +176 |
+| `garden.mei` | 19,540,915 | 19,541,907 | +864 | +128 |
+
+Compared frame by frame, old build against new: every cart and the system ROM for 1,800 ticks
+with the same scripted input (the GPU statistics of every presented frame, the last frame's
+pixels, the tick each frame was presented at). Every frame is presented at the same tick, and no
+frame changes except where a cart acts on its own CPU use:
+
+| Cart | Frames | CPU cycles a frame added, mean / most | Peak CPU |
+|---|---|---|---|
+| system ROM | identical | 0 / 34 | 118,665 → 118,699 |
+| Features | identical | 0 / 0 | 72,881 |
+| Lantern Lake | identical | 833 / 945 | 488,779 → 489,687 |
+| Mei Weather | identical | 73 / 124 | 162,957 → 163,030 |
+| Movement Garden | the timing bar 6 pixels longer, nothing else | 2,767 / 4,215 | 487,953 → 491,913 |
+| Sun & Moon Orbs | differ from tick 89 | 639 on average | 366,479 → 367,752 |
+
+Sun & Moon Orbs' subdivision governor subdivides less above 280,000 cycles a frame
+(`SUB_CPU_HIGH`, its own tuning): at tick 88 the new build crosses it (280,258 against 279,097)
+and the governor steps down a tick earlier, so the orbs are cut into a few triangles fewer from
+then on. The World Checker's peaks over the garden's three worlds (600 views each; the GPU
+figures and hard failures are identical):
+
+| World | CPU peak before | After | Over a threshold, before / after |
+|---|---|---|---|
+| garden | 451,836 | 456,849 (+1.1 %) | 0 / 0 |
+| shrine | 590,756 | 596,123 (+0.9 %) | 0 / 0 |
+| shrinetown | 617,020 | 619,861 (+0.5 %) | 2 / 3 (`draw_cpu_cycles`, 600,000) |
+
+**Host cost.** The core's `Mei` struct grows by the second megabyte (it holds RAM, VRAM and the
+depth buffer by value); the web build grows its memory as it needs (`ALLOW_MEMORY_GROWTH`) and
+builds unchanged. The GPU's per-pixel work is unchanged (it resolves the banks once a packet,
+into the base pointers it already had): the unit tests' benchmarks (`test_gpu`, `test_planes`)
+are within their run-to-run spread of the build before (2,000 textured Gouraud triangles of about
+35 × 36 pixels: 5.4–5.9 ms against 5.5–5.9 ms a frame natively, M1 Pro, `-O2`, three runs each,
+measured while a world built).
+
+**Calls made while adopting it** (by the agent that built it; recorded so they can be revisited):
+
+- The second megabyte is laid out as slots 16–31, palette bank 1, then free space, rather than
+  as more slots (bit 23 could address 48): the free 504 KB serve the plane chip and carts, and
+  the regions' budget doubles already.
+- The palette banks are a bit, not a contiguous 13-bit colour index: bank 1 is not next to bank
+  0 in memory, and `load_palette()` and `palette_lerp()` hide that for runs. `palette_rotate()`
+  works within one bank.
+- Planes stay on palette bank 0.
+- The face loops pay three cycles a textured face rather than a second set of writers.
+- `palette.first8` moved to 31. No built world has an 8-bit texture, so no pack changed; the
+  night market example's sign moved from 8-bit palette 14 to 31.
+- The spec text (`spec-v0.1.txt`) is a transcription of the published PDF and is left as it is,
+  as for the CPU and GPU changes; DECISIONS.md, RENDERING.md and PLANES.md give the current map.
