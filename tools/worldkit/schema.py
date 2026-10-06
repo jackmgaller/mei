@@ -128,6 +128,7 @@ HEIGHTFIELD = obj({
     'shading':dict(choice('smooth','flat'),description='smooth (default): each sample shaded by the field\'s normal there, so shading runs on across seams; flat: each face by its own.'),
     'ground':dict(BOOL,description='Drawn in the ground pass (WORLDKIT.md, "Ground"). Default true.'),
     'collision':dict(BOOL,description='The field\'s faces are collision triangles. Default true.'),
+    'slide_floor_degrees':dict(number(1,89),description='The field\'s faces steeper than the game\'s floor_max_degrees, up to this slope, are floors as well as walls: the wall stops a body moving into them, the floor catches a falling one, which the game slides down, where between walls alone it can sink through the ground (WORLDKIT.md, "Steep ground"). Default: none, walls only.'),
     'lod':dict(FIELD_LOD,description='A coarser level of every tile, for distance.'),
 }, ['spacing','min','max','material'])
 TERRAIN_MATERIAL = obj({
@@ -284,7 +285,10 @@ WORLD = dict(obj({
     }),
     'palette':obj({'swatch_slot':integer(0,14),'swatch_row':integer(0,255),'first':integer(0,510),
                    'first8':dict(integer(1,31),description='The first 8-bit palette 8-bit textures take (regions take them downward; '
-                                 'default 31, the top of palette bank 1; 15 holds the fonts\' colours).')}),
+                                 'default 31, the top of palette bank 1; 15 holds the fonts\' colours).'),
+                   'reserved':dict(array(integer(0,510),0,64),description='4-bit palettes the game keeps for itself '
+                                   '(a collectible\'s colours, say): no region, texture or backdrop silhouette may use '
+                                   'them; the build fails if one would.')}),
     'textures':dict(TEXTURES,description='Every region\'s texture slots and VRAM budget, unless the region gives its own.'),
     'regions':{'type':'object','propertyNames':NAME,'additionalProperties':REGION,'maxProperties':255},
     'layers':{'type':'object','propertyNames':NAME,'additionalProperties':obj({'group':NAME,'on':BOOL}),'maxProperties':255},
@@ -316,7 +320,14 @@ WORLD = dict(obj({
              'description':'Named polylines in world coordinates, in order (the pack\'s path numbers): rails, wires, routes. The kit attaches no meaning to them; entities refer to them by name.'},
     'verification':obj({'mode':choice('report','enforce'),
                         'thresholds':{'type':'object','propertyNames':NAME,'additionalProperties':{},
-                                      'description':'Per-world World Checker settings (defaults from the kit).'}}),
+                                      'description':'Per-world World Checker settings (defaults from the kit).'},
+                        'vantage_points':dict(array(obj({'name':dict(NAME,description='Names the views in the report.'),
+                                                         'position':dict(VEC,description='The eye, world units.'),
+                                                         'yaw':dict(number(-360,360),description='Degrees; 0 looks along +z, 90 along +x. Default 0.'),
+                                                         'pitch':dict(number(-89,89),description='Degrees, positive up. Default 0.'),
+                                                         'yaws':dict(integer(1,64),description='Look this many ways, evenly round from yaw. Default 1.')},
+                                                        ['position']),0,512),
+                                              description='Cameras the World Checker always checks, on top of its sample (WORLDCHECKER.md, "Vantage points"): the views known to be heavy, say.')}),
     'meshes':dict(obj({'quads':dict(BOOL,description='Pairs of triangles that share an edge and agree in every face field are packed as one quad, which Mei draws as those two triangles: the same picture, about half the faces. Semi-transparent and keyed faces stay triangles. Default false.')}),
                   description='How the kit writes the meshes it packs (WORLDKIT.md, "Quads").'),
     'standins':dict(obj({'distance':dict(POS,description='Each cell is drawn as it looks from this far: every placement, scatter chunk and terrain tile at the level it draws at this distance, without those culled by then (units).'),

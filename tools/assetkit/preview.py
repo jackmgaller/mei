@@ -125,7 +125,8 @@ def camera(name, eye, target=None, yaw=None, pitch=None, path='/arguments/camera
     """A camera view: eye (world units, the asset's own coordinates) and either a target or yaw and
     pitch in degrees (yaw 0 looks along +Z, positive turns toward +X; positive pitch looks up)."""
     if not re.fullmatch(r'[a-z0-9_]{1,40}',name or ''):
-        raise AssetError(path,'A camera name uses lowercase letters, digits and underscores (at most 40).')
+        raise AssetError(path,f'Camera name {name!r}: a camera name uses lowercase letters, digits and underscores '
+                              '(at most 40).')
     numbers = list(eye)+list(target or [])+[n for n in (yaw,pitch) if n is not None]
     if len(eye) != 3 or (target is not None and len(target) != 3) or \
             not all(isinstance(n,(int,float)) and not isinstance(n,bool) and math.isfinite(n) and abs(n) < 30000 for n in numbers):
@@ -147,19 +148,29 @@ def parse_camera(text, index):
     path = '/arguments/camera'
     name,_,spec = text.rpartition('=')
     name = name or f'camera{index+1}'
+    usage = (f'Cannot read camera {text!r}: give NAME=EX,EY,EZ:TX,TY,TZ (eye and target) or '
+             'NAME=EX,EY,EZ@YAW,PITCH (degrees).')
+    # Only the numbers are parsed here; camera() checks the rest (the name, the eye and target)
+    # and its own message says what is wrong, so an AssetError from it is not replaced by this
+    # usage line (AssetError is a ValueError).
     try:
         if ':' in spec:
             eye,target = spec.split(':')
-            return camera(name,[float(n) for n in eye.split(',')],[float(n) for n in target.split(',')],path=path)
-        if '@' in spec:
+            eye,target = [float(n) for n in eye.split(',')],[float(n) for n in target.split(',')]
+            angles = None
+        elif '@' in spec:
             eye,angles = spec.split('@')
             yaw,pitch = (float(n) for n in angles.split(','))
-            return camera(name,[float(n) for n in eye.split(',')],yaw=yaw,pitch=pitch,path=path)
+            eye,angles = [float(n) for n in eye.split(',')],(yaw,pitch)
+        else:
+            raise AssetError(path,usage)
+    except AssetError:
+        raise
     except ValueError as error:
-        raise AssetError(path,f'Cannot read camera {text!r}: give NAME=EX,EY,EZ:TX,TY,TZ (eye and target) or '
-                              'NAME=EX,EY,EZ@YAW,PITCH (degrees).') from error
-    raise AssetError(path,f'Cannot read camera {text!r}: give NAME=EX,EY,EZ:TX,TY,TZ (eye and target) or '
-                          'NAME=EX,EY,EZ@YAW,PITCH (degrees).')
+        raise AssetError(path,usage) from error
+    if angles is None:
+        return camera(name,eye,target,path=path)
+    return camera(name,eye,yaw=angles[0],pitch=angles[1],path=path)
 
 
 def cameras_file(value):

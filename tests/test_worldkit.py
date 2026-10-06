@@ -263,6 +263,11 @@ class ValidationTests(unittest.TestCase):
             w['regions']['downtown']['variants']['night']['colors'] = {'paving': '#000000', 'ground_tile.paving': '#ffffff'}
         self.check(two_colours, '/regions/downtown/variants/night/colors/ground_tile.paving', 'two colours', name='two_districts')
 
+        def reserved(w):
+            # palette.reserved: a palette the game keeps (a collectible's) that a region would take
+            w['palette'] = {'reserved': [1]}
+        self.check(reserved, '/palette/reserved', 'is reserved', name='two_districts')
+
 
 class IdTests(unittest.TestCase):
     def test_bits_survive_edits_renames_and_deletions(self):
@@ -486,6 +491,33 @@ class BuildTests(unittest.TestCase):
             s = [x for x in c.report['cells'] if x['id'] == 'shrine_gate'][0]
             self.assertEqual(s['merged'][0]['layer'], 'festival')
             self.assertEqual(s['triangles']['by_layer'], {'festival': 4 * c.library.assets['lantern'].triangles})
+
+    def test_merged_props_keep_their_cull(self):
+        # The bollards (x 4..25 at z 12) culled at 30: merged, the mesh is culled from 30 plus the
+        # farthest bollard's distance from the mesh's centre (10.5), so none goes early; a prop
+        # without a cull merged with them leaves the mesh unculled, with a warning.
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp, 'two_districts')
+            ex.edit(lambda a: a.__setitem__('lod', {'cull': 30}), 'assets/bollard.asset.json')
+            c = ex.compile()
+            a = [x for x in c.report['cells'] if x['id'] == 'downtown_a'][0]
+            self.assertEqual(a['merged'][0]['cull'], 40.5)
+            self.assertNotIn('cull_merged', [w['code'] for w in c.report['warnings']])
+            merged = [p for p in P.decode(c.pack).cells[(0, 0)].placements if p['tag'] == 0xFFFF]
+            self.assertTrue(merged[0]['lod']['cull'])
+            self.assertEqual(len(merged[0]['lod']['rows']), 1)
+            # the reader's (distance / 8)^2 at the cull
+            self.assertEqual(merged[0]['lod']['rows'][0][0], round((40.5 / 8) ** 2 * 65536))
+
+            def one_unculled(cell):
+                cell['placements'][1]['merge'] = True        # shop_1, which has no cull
+            ex.edit(one_unculled, 'cells/downtown_a.cell.json')
+            c = ex.compile()
+            warn = [w for w in c.report['warnings'] if w['code'] == 'cull_merged']
+            self.assertEqual(len(warn), 1)
+            self.assertIn('bollard_0', warn[0]['placements'])
+            merged = [p for p in P.decode(c.pack).cells[(0, 0)].placements if p['tag'] == 0xFFFF]
+            self.assertTrue(all(p['lod'] is None for p in merged))
 
     def test_ground_placements(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1157,6 +1189,18 @@ class FarLodTests(unittest.TestCase):
         m6 = raw_mesh(sq, [((0, 2, 1), 16, 0x808080), ((1, 2, 3), 16, 0x808080)])
         self.assertEqual(struct.unpack_from('<H', quads.pair(m6), 2)[0], 1)
         self.assertEqual(quads.pair(m6, skip=quads.DOUBLE), m6)
+        # a sliver (edge_neighbour_s6's facade: two corners 0.0002 apart, an 18-unit edge) is
+        # never paired: the reader would turn the quad away by its first triangle, the sliver,
+        # whose facing is rounding noise, and lose the big triangle with it
+        sliver = [(0, 0, 18), (0, 0, 0), (0.0002, 0, 18), (9, 0, 9)]
+        for order in (((0, 1, 2), (1, 3, 2)), ((0, 2, 1), (1, 2, 3))):
+            m7 = raw_mesh(sliver, [(order[0], 0, 0x808080), (order[1], 0, 0x808080)])
+            self.assertEqual(quads.pair(m7), m7)
+            old, quads.SLIVER = quads.SLIVER, 0.0
+            try:        # without the rule they pair (the convex check passes them)
+                self.assertEqual(struct.unpack_from('<H', quads.pair(m7), 2)[0], 1)
+            finally:
+                quads.SLIVER = old
 
     def test_quads_in_a_world(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1695,9 +1739,12 @@ class TextureTests(unittest.TestCase):
         for reg in pack.regions:
             slots = {t.slot: t for t in reg.textures}
             self.assertIn(6, slots, reg.name)             # every region's set holds the common slot
-            images[reg.name] = slots[6].data
+            images[reg.name] = slots[6]
             self.assertNotIn(6, c.report['regions'][reg.name]['textures']['slots_given'])
-        self.assertEqual(images['market'], images['harbour'])
+        self.assertEqual(images['market'].data, images['harbour'].data)
+        # stored once: both regions' records point at the same data, so the reader, entering
+        # the second region, sees the slot already holds it and does not copy it again
+        self.assertEqual(images['market'].offset, images['harbour'].offset)
         cards = 0
         for cell in pack.cells.values():
             mesh = pack.data[cell.standin:]

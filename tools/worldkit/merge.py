@@ -38,28 +38,57 @@ def place(raw, position, yaw, centre, scale=1.0):
 def merge(items, centre):
     """items: [(mesh bytes, world position, yaw[, scale])] -> [mesh bytes], each within the mesh
     limits, in order, splitting between props (never inside one)."""
+    return [m for m, _ in merge_groups(items, centre)]
+
+
+def merge_groups(items, centre):
+    """merge(), with each mesh's props: [(mesh bytes, [(item index, (box lo, box hi))])], the box
+    of each prop's placed vertices relative to centre (units)."""
     out = []
-    verts, faces = [], []
+    verts, faces, props = [], [], []
 
     def flush():
         if not faces: return
         head = struct.pack('<HHIII', len(verts), len(faces), 16, 16 + 16 * len(verts), 0)
         body = b''.join(struct.pack('<4i', *(meshlib.fx(c) for c in v), 65536) for v in verts)
-        out.append(head + body + b''.join(bytes(f) for f in faces))
+        out.append((head + body + b''.join(bytes(f) for f in faces), list(props)))
         verts.clear()
         faces.clear()
+        props.clear()
 
-    for binary, position, yaw, *rest in items:
+    for k, (binary, position, yaw, *rest) in enumerate(items):
         scale = rest[0] if rest else 1.0
         pv, pf = parts(binary)
         if len(verts) + len(pv) > MAX_VERTICES or len(faces) + len(pf) > MAX_FACES:
             flush()
         base = len(verts)
-        verts.extend(place(v, position, yaw, centre, scale) for v in pv)
+        placed = [place(v, position, yaw, centre, scale) for v in pv]
+        verts.extend(placed)
+        if placed:
+            props.append((k, (tuple(min(v[i] for v in placed) for i in range(3)),
+                              tuple(max(v[i] for v in placed) for i in range(3)))))
         for f in pf:
             idx = struct.unpack_from('<4H', f, 4)
             n = 4 if f[0] & 4 else 3
-            struct.pack_into('<4H', f, 4, *[(i + base if k < n else 0) for k, i in enumerate(idx)])
+            struct.pack_into('<4H', f, 4, *[(i + base if k2 < n else 0) for k2, i in enumerate(idx)])
             faces.append(f)
     flush()
     return out
+
+
+def shared_cull(props, culls):
+    """The distance from which a merged mesh can be culled without hiding a prop its own cull
+    would still draw: props as merge_groups() gives them, culls[item index] each prop's cull
+    distance (units from the viewer to its own centre) or None. The reader measures from the
+    merged mesh's centre (its box centre), so each prop's cull is moved out by how far its centre
+    is from that one. None when a prop has no cull."""
+    if not props or any(culls[k] is None for k, _ in props):
+        return None
+    lo = [min(b[0][i] for _, b in props) for i in range(3)]
+    hi = [max(b[1][i] for _, b in props) for i in range(3)]
+    mid = [(lo[i] + hi[i]) / 2 for i in range(3)]
+    out = 0.0
+    for k, (plo, phi) in props:
+        c = [(plo[i] + phi[i]) / 2 for i in range(3)]
+        out = max(out, culls[k] + math.sqrt(sum((c[i] - mid[i]) ** 2 for i in range(3))))
+    return math.ceil(out * 16) / 16

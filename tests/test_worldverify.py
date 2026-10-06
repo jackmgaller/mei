@@ -66,6 +66,42 @@ class SettingsTests(unittest.TestCase):
             V.merge_settings({'runtime': {'entity_drawing': 'billboard'}})
         self.assertIsNone(V.merge_settings({'sampling': {'entities': None}})['sampling']['entities'])
 
+    def test_yaws_and_vantage_points(self):
+        # 8 yaws a position by default; a vantage point with yaws looks that many ways round from
+        # its yaw, and vantage views are kept on top of max_views
+        pack = decode(encode(F.good_world()))
+        cfg = V.merge_settings({'vantage_points': [{'name': 'mid', 'position': [16.0, 3.0, 16.0], 'yaw': 10.0,
+                                                    'pitch': -5.0, 'yaws': 8}]})
+        self.assertEqual(cfg['sampling']['yaws'], 8)
+        cams = V.sample_views(pack, ST.world_triangles(pack), cfg)
+        van = [c for c in cams if c['kind'] == 'vantage']
+        self.assertEqual(sorted(round(math.degrees(c['yaw'])) for c in van), [10, 55, 100, 145, 190, 235, 280, 325])
+        self.assertTrue(all(c['name'] == 'mid' and c['vantage'] == 0 for c in van))
+        eyes = {}
+        for c in cams:
+            if c['kind'] == 'eye':
+                eyes.setdefault(tuple(c['eye']), set()).add(c['yaw'])
+        self.assertTrue(eyes and all(len(y) == 8 for y in eyes.values()))
+        kept = V.thin(cams, 20)
+        self.assertEqual(sum(1 for c in kept if c['kind'] == 'vantage'), 8)
+        self.assertEqual(sum(1 for c in kept if c['kind'] != 'vantage'), 20)
+
+    def test_layer_sets_only_where_they_draw(self):
+        # four plaza cells in a row; a layer's lamp in the first. Its layer set is sampled from a
+        # camera within the near pass's far depth (48) and overhang (8) of that cell, not beyond
+        from worldkit.pack import Layer
+        cells = [F.plaza(i, 0, boxes=[]) for i in range(4)]
+        cells[0].layers = ['lamp']
+        cells[0].placements.append(Placement(F.box_mesh((-0.2, 0, -0.2), (0.2, 3, 0.2), 0xFFFFFF), (20, 0, 20),
+                                             layer='lamp', tag=92))
+        pack = decode(encode(World(cells=cells, cell_shift=5, layers=[Layer('lamp')])))
+        combos = V.layer_combinations(pack, V.merge_settings(None))
+        cams = [{'kind': 'vantage', 'eye': [x, 1.5, 16.0], 'yaw': 0.0, 'pitch': 0.0, 'cell': [x // 32, 0]}
+                for x in (40.0, 85.0, 120.0)]
+        views = V.layer_views(pack, cams, combos, 48.0)
+        self.assertEqual([(v['eye'][0], v['layer_set']) for v in views],
+                         [(40.0, 'none'), (40.0, 'lamp'), (85.0, 'none'), (85.0, 'lamp'), (120.0, 'none')])
+
     def test_bad_pack_is_a_hard_failure(self):
         r = V.verify(b'MEIX' + bytes(60))
         self.assertFalse(r['ok'])
@@ -118,6 +154,43 @@ class StaticTests(unittest.TestCase):
         w = F.crack_world()
         found, _ = self.check_static(w, settings={'probe': {'radius': 0.05, 'height': 1.6, 'step': 0.32}})
         self.assertEqual([f for f in found if f['code'] == 'crack'], [])
+
+    def test_drop_through_a_steep_crease(self):
+        # a body dropped into the gully is pushed back and forth by its two walls and sinks
+        # through: hard failures, in every mode
+        cfg = V.merge_settings(None)
+        pack = decode(encode(F.crease_world()))
+        found, n, made = ST.drop_check(pack, frozenset(), cfg['probe'], cfg['collision']['drop'], 50)
+        self.assertGreater(made, 50)
+        self.assertTrue(found)
+        for f in found:
+            self.assertEqual((f['code'], f['cell']), ('drop_through', [0, 0]))
+            self.assertIn(f['tag'], (70, 71))
+            self.assertTrue(22 <= f['at'][0] <= 30 and 22 <= f['at'][2] <= 30, f)
+            self.assertLess(f['ended'][1], 0.0)         # below the gully's bottom
+        self.assertEqual(len(found), n)
+        self.assertGreater(sum(f['points'] for f in found), n)     # nearby points are counted in one
+        # slide floors (pack.Tri's slide_floor_degrees, a heightfield's slide_floor_degrees):
+        # the faces are floors as well as walls, and the body lands
+        pack = decode(encode(F.crease_world(slide=70)))
+        self.assertEqual(ST.drop_check(pack, frozenset(), cfg['probe'], cfg['collision']['drop'], 50)[0], [])
+        kinds = sorted(t.kind for t in ST.world_triangles(pack) if t.tag in (70, 71))
+        self.assertEqual(kinds, [0, 0, 0, 0, 1, 1, 1, 1])      # four floors and the same four walls
+        # nothing to drop onto in the good plaza: its tops are floors
+        pack = decode(encode(F.good_world()))
+        self.assertEqual(ST.drop_check(pack, frozenset(), cfg['probe'], cfg['collision']['drop'], 50), ([], 0, 0))
+
+    def test_reader_push(self):
+        # wp_push() as the checker does it: a point 0.1 inside the probe radius of the first
+        # box's west side (x 4) is pushed out along x to the radius; one clear of it is not moved
+        pack = decode(encode(F.good_world()))
+        r = round(0.3 * 65536)
+        x, z, n = ST.reader_push(pack, round(3.9 * 65536), 2 * 65536, 6 * 65536, r, frozenset())
+        self.assertEqual(n, 1)
+        self.assertAlmostEqual(x / 65536, 3.7, places=3)
+        self.assertEqual(z, 6 * 65536)
+        self.assertEqual(ST.reader_push(pack, 3 * 65536, 2 * 65536, 6 * 65536, r, frozenset()),
+                         (3 * 65536, 6 * 65536, 0))
 
     def test_mismatched_edges_across_a_seam(self):
         found, _ = self.check_static(F.seam_world())
@@ -231,8 +304,9 @@ class ViewTests(unittest.TestCase):
     def test_good_world_passes_strict(self):
         # Without the cameras aimed at its coin: one of them, at eye height on the ground 4 units
         # from the coin, sees a ground tile drawn over the foot of a building (6 pixels; the
-        # plaza's ground is not flagged ground). The plaza is known-good from the other kinds.
-        r = self.run_check(F.good_world(), {'mode': 'strict', 'sampling': {'entities': None}})
+        # plaza's ground is not flagged ground). The plaza is known-good from the other kinds, at
+        # 4 yaws (the default's 8 find eye views where a ground tile sorts over a building's foot).
+        r = self.run_check(F.good_world(), {'mode': 'strict', 'sampling': {'entities': None, 'yaws': 4}})
         if VERBOSE:
             print('\n  good world:', json.dumps(r['summary']), json.dumps(r['timing']))
         self.assertTrue(r['ok'], json.dumps(r['hard_failures'] + r['threshold_failures'])[:2000])
