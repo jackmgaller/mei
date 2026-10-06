@@ -334,9 +334,9 @@
    "id": "red_parapet",
    "type": "red_coin",
    "position": [
-    48,
-    10.9,
-    13.85
+    48.0,
+    11.3,
+    13.875
    ],
    "asset": "gbt_coin_red"
   },
@@ -410,8 +410,10 @@
     9.2,
     13.3
    ],
+   "yaw": 270.0,
    "params": {
-    "height": 4.25
+    "height": 4.25,
+    "front": true
    }
   },
   {

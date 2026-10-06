@@ -1,0 +1,204 @@
+{
+  "format": "mei-asset",
+  "version": 1,
+  "name": "train_emu_car_mover",
+  "budget": {
+    "vertices": 200,
+    "triangles": 120
+  },
+  "sheets": {
+    "livery": {
+      "image": "art/livery.png"
+    }
+  },
+  "materials": {
+    "side_l": {
+      "color": "#bcc2c6",
+      "texture": {
+        "sheet": "livery",
+        "cell": "side",
+        "projection": "fit"
+      }
+    },
+    "side_r": {
+      "color": "#bcc2c6",
+      "texture": {
+        "sheet": "livery",
+        "cell": "side",
+        "projection": "fit",
+        "flip": "u"
+      }
+    },
+    "cab": {
+      "color": "#bcc2c6",
+      "texture": {
+        "sheet": "livery",
+        "cell": "cab",
+        "projection": "fit"
+      }
+    },
+    "end": {
+      "color": "#bcc2c6",
+      "texture": {
+        "sheet": "livery",
+        "cell": "end",
+        "projection": "fit"
+      }
+    },
+    "bogie": {
+      "color": "#3a3c40",
+      "texture": {
+        "sheet": "livery",
+        "cell": "bogie",
+        "projection": "fit"
+      }
+    },
+    "ac": {
+      "color": "#a8aeb2",
+      "texture": {
+        "sheet": "livery",
+        "cell": "ac",
+        "projection": "fit"
+      }
+    },
+    "under_side": {
+      "color": "#4a4d52",
+      "texture": {
+        "sheet": "livery",
+        "cell": "under",
+        "projection": "fit"
+      }
+    },
+    "roof": {
+      "color": "#8e9498",
+      "palette": true,
+      "tag": "roof"
+    },
+    "steel": {
+      "color": "#bcc2c6",
+      "palette": true
+    },
+    "dark": {
+      "color": "#2c2e32",
+      "palette": true
+    },
+    "rubber": {
+      "color": "#1c1d20",
+      "palette": true
+    }
+  },
+  "lighting": {
+    "mode": "vertical",
+    "ambient": 0.5
+  },
+  "verification": {
+    "required": true,
+    "depth": true,
+    "perspective": true
+  },
+  "nodes": [
+    {
+      "id": "body",
+      "op": "mesh",
+      "material": "steel",
+      "vertices": [
+        [-9.75, 1.0, 1.45],
+        [-9.75, 3.45, 1.45],
+        [-9.75, 3.64, 1.25],
+        [-9.75, 3.64, -1.25],
+        [-9.75, 3.45, -1.45],
+        [-9.75, 1.0, -1.45],
+        [9.75, 1.0, 1.45],
+        [9.75, 3.45, 1.45],
+        [9.75, 3.64, 1.25],
+        [9.75, 3.64, -1.25],
+        [9.75, 3.45, -1.45],
+        [9.75, 1.0, -1.45]
+      ],
+      "faces": [
+        [6, 7, 1, 0],
+        [7, 8, 2, 1],
+        [8, 9, 3, 2],
+        [9, 10, 4, 3],
+        [10, 11, 5, 4],
+        [11, 6, 0, 5],
+        [0, 1, 2, 3, 4, 5],
+        [11, 10, 9, 8, 7, 6]
+      ],
+      "face_materials": ["side_r", "roof", "roof", "roof", "side_l", "dark", "end", "cab"]
+    },
+    {
+      "id": "bogies",
+      "op": "group",
+      "children": [
+        {
+          "id": "bogie",
+          "op": "box",
+          "size": [2.6, 0.85, 2.0],
+          "material": "dark",
+          "transform": {
+            "translate": [6.9, 0.525, 0.0]
+          },
+          "open": ["top"],
+          "faces": {
+            "back": "bogie",
+            "front": "bogie"
+          }
+        }
+      ],
+      "modifiers": [
+        {
+          "op": "mirror",
+          "axis": "x"
+        }
+      ]
+    },
+    {
+      "id": "equipment_a",
+      "op": "box",
+      "size": [4.4, 0.57, 2.2],
+      "material": "dark",
+      "transform": {
+        "translate": [-2.6, 0.735, 0.0]
+      },
+      "open": ["top"],
+      "faces": {
+        "back": "under_side",
+        "front": "under_side"
+      }
+    },
+    {
+      "id": "gangway",
+      "op": "box",
+      "size": [0.25, 2.1, 1.1],
+      "material": "rubber",
+      "transform": {
+        "translate": [-9.87, 2.15, 0.0]
+      },
+      "open": ["right"]
+    },
+    {
+      "id": "aircon",
+      "op": "box",
+      "size": [2.4, 0.38, 1.9],
+      "material": "steel",
+      "transform": {
+        "translate": [-0.6, 3.81, 0.0]
+      },
+      "open": ["bottom"],
+      "faces": {
+        "top": "ac"
+      }
+    },
+    {
+      "id": "pantograph",
+      "op": "box",
+      "size": [1.6, 0.3, 1.5],
+      "material": "dark",
+      "transform": {
+        "translate": [4.6, 3.77, 0.0]
+      },
+      "open": ["bottom"]
+    }
+  ]
+}

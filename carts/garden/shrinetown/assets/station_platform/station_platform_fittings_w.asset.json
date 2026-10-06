@@ -1,0 +1,543 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "station_platform_fittings_w",
+ "budget": {
+  "vertices": 500,
+  "triangles": 300
+ },
+ "sheets": {
+  "station": {
+   "image": "art/station_sheet.png"
+  }
+ },
+ "materials": {
+  "concrete": {
+   "color": "#6a665e",
+   "palette": true,
+   "tag": "wall"
+  },
+  "green_steel": {
+   "color": "#4f7f6a",
+   "palette": true
+  },
+  "black": {
+   "color": "#2c2a28",
+   "palette": true
+  },
+  "wood": {
+   "color": "#5a3e2c",
+   "palette": true,
+   "tag": "wall"
+  },
+  "lantern": {
+   "color": "#e04a2a",
+   "class": "emissive",
+   "tag": "lamp"
+  },
+  "seats": {
+   "color": "#e8862a",
+   "texture": {
+    "texels": [
+     "1222222222222221",
+     "1222222222222221",
+     "2222222222222222",
+     "2222222222222222",
+     "2222222222222222",
+     "2222222222222222",
+     "0333333333333330",
+     "0333333333333330"
+    ],
+    "colors": [
+     "#4a4440",
+     "#c8701e",
+     "#e8862a",
+     "#d27a24"
+    ],
+    "projection": "box",
+    "scale": [
+     0.45,
+     0.45
+    ]
+   }
+  },
+  "name_board": {
+   "color": "#f6f6f0",
+   "tag": "sign",
+   "texture": {
+    "sheet": "station",
+    "cell": "name_board",
+    "projection": "fit"
+   }
+  },
+  "clock": {
+   "color": "#f6f6f0",
+   "texture": {
+    "sheet": "station",
+    "cell": "clock",
+    "projection": "disc"
+   }
+  },
+  "soba": {
+   "color": "#ffd68c",
+   "class": "emissive",
+   "tag": "shop",
+   "texture": {
+    "sheet": "station",
+    "cell": "soba",
+    "projection": "fit"
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "name_board_west",
+   "op": "group",
+   "transform": {
+    "translate": [
+     -16.5,
+     0,
+     0
+    ]
+   },
+   "children": [
+    {
+     "id": "legs",
+     "op": "group",
+     "children": [
+      {
+       "id": "leg",
+       "op": "box",
+       "size": [
+        0.04,
+        1.04,
+        0.04
+       ],
+       "material": "green_steel",
+       "open": [
+        "bottom",
+        "top"
+       ],
+       "transform": {
+        "translate": [
+         1.0,
+         1.52,
+         0
+        ]
+       }
+      }
+     ],
+     "modifiers": [
+      {
+       "op": "mirror",
+       "axis": "x"
+      }
+     ]
+    },
+    {
+     "id": "board",
+     "op": "box",
+     "size": [
+      2.5,
+      0.95,
+      0.12
+     ],
+     "material": "black",
+     "faces": {
+      "back": "name_board",
+      "front": "name_board"
+     },
+     "transform": {
+      "translate": [
+       0,
+       2.475,
+       0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "clock",
+   "op": "group",
+   "transform": {
+    "translate": [
+     -4.0,
+     0,
+     0
+    ]
+   },
+   "children": [
+    {
+     "id": "hanger",
+     "op": "box",
+     "size": [
+      0.03,
+      0.2,
+      0.03
+     ],
+     "material": "concrete",
+     "open": [
+      "top",
+      "bottom"
+     ],
+     "transform": {
+      "translate": [
+       0,
+       4.26,
+       0
+      ]
+     }
+    },
+    {
+     "id": "face",
+     "op": "cylinder",
+     "radius": 0.3,
+     "height": 0.1,
+     "segments": 8,
+     "material": "clock",
+     "faces": {
+      "side": "green_steel"
+     },
+     "transform": {
+      "rotate": [
+       0,
+       0,
+       90
+      ],
+      "translate": [
+       0,
+       3.88,
+       0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "soba_stand",
+   "op": "group",
+   "transform": {
+    "translate": [
+     -10.0,
+     0,
+     0
+    ]
+   },
+   "children": [
+    {
+     "id": "kiosk",
+     "op": "box",
+     "size": [
+      3.6,
+      2.6,
+      1.6
+     ],
+     "material": "wood",
+     "open": [
+      "bottom"
+     ],
+     "decals": [
+      {
+       "id": "front",
+       "face": "back",
+       "material": "soba",
+       "size": [
+        3.3,
+        1.65
+       ],
+       "at": [
+        0,
+        -0.25
+       ]
+      }
+     ],
+     "transform": {
+      "translate": [
+       0,
+       2.3,
+       0
+      ]
+     }
+    },
+    {
+     "id": "eave",
+     "op": "box",
+     "size": [
+      3.9,
+      0.08,
+      0.6
+     ],
+     "material": "green_steel",
+     "transform": {
+      "translate": [
+       0,
+       3.0,
+       -1.08
+      ]
+     }
+    },
+    {
+     "id": "lantern",
+     "op": "cylinder",
+     "radius": 0.18,
+     "height": 0.42,
+     "segments": 6,
+     "material": "lantern",
+     "transform": {
+      "translate": [
+       1.95,
+       2.73,
+       -1.2
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "bench_w_north",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     0
+    ],
+    "translate": [
+     -6.5,
+     1.0,
+     -0.55
+    ]
+   },
+   "children": [
+    {
+     "id": "seat",
+     "op": "extrude",
+     "material": "seats",
+     "depth": 1.8,
+     "points": [
+      [
+       -0.21,
+       0.42
+      ],
+      [
+       0.21,
+       0.42
+      ],
+      [
+       0.21,
+       0.95
+      ],
+      [
+       0.16,
+       0.95
+      ],
+      [
+       0.16,
+       0.48
+      ],
+      [
+       -0.21,
+       0.48
+      ]
+     ],
+     "transform": {
+      "rotate": [
+       0,
+       -90,
+       0
+      ]
+     }
+    },
+    {
+     "id": "legs",
+     "op": "group",
+     "children": [
+      {
+       "id": "leg",
+       "op": "box",
+       "size": [
+        0.05,
+        0.44,
+        0.34
+       ],
+       "material": "green_steel",
+       "open": [
+        "bottom"
+       ],
+       "transform": {
+        "translate": [
+         0.75,
+         0.21,
+         0
+        ]
+       }
+      }
+     ],
+     "modifiers": [
+      {
+       "op": "mirror",
+       "axis": "x"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bench_w_south",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     0,
+     180,
+     0
+    ],
+    "translate": [
+     -6.5,
+     1.0,
+     0.55
+    ]
+   },
+   "children": [
+    {
+     "id": "seat",
+     "op": "extrude",
+     "material": "seats",
+     "depth": 1.8,
+     "points": [
+      [
+       -0.21,
+       0.42
+      ],
+      [
+       0.21,
+       0.42
+      ],
+      [
+       0.21,
+       0.95
+      ],
+      [
+       0.16,
+       0.95
+      ],
+      [
+       0.16,
+       0.48
+      ],
+      [
+       -0.21,
+       0.48
+      ]
+     ],
+     "transform": {
+      "rotate": [
+       0,
+       -90,
+       0
+      ]
+     }
+    },
+    {
+     "id": "legs",
+     "op": "group",
+     "children": [
+      {
+       "id": "leg",
+       "op": "box",
+       "size": [
+        0.05,
+        0.44,
+        0.34
+       ],
+       "material": "green_steel",
+       "open": [
+        "bottom"
+       ],
+       "transform": {
+        "translate": [
+         0.75,
+         0.21,
+         0
+        ]
+       }
+      }
+     ],
+     "modifiers": [
+      {
+       "op": "mirror",
+       "axis": "x"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 12,
+    "nodes": [
+     {
+      "id": "board_w",
+      "op": "box",
+      "size": [
+       2.5,
+       1.9,
+       0.08
+      ],
+      "material": "black",
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "back": "name_board",
+       "front": "name_board"
+      },
+      "transform": {
+       "translate": [
+        -16.5,
+        1.98,
+        0
+       ]
+      }
+     },
+     {
+      "id": "kiosk",
+      "op": "box",
+      "size": [
+       3.6,
+       2.6,
+       1.6
+      ],
+      "material": "wood",
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "back": "soba"
+      },
+      "transform": {
+       "translate": [
+        -10.0,
+        2.3,
+        0
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "band": 2,
+  "cull": 24
+ }
+}

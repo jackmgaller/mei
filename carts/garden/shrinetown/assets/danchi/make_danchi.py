@@ -626,7 +626,11 @@ def collision():
          solid("parapet_e", W / 2 - t, W / 2, ROOF, top, ZF + t, ZB - t,
                open=["bottom", "back", "front"]),
          solid("tank", -1.2, 1.2, ROOF, ROOF + 2.0, -1.2, 1.2, open=["bottom"])]
-    # balconies: a slab and a solid front rail, so they are ledges to grab and stand on
+    # balconies: a slab and a solid front rail. Only the first is a ledge to reach: a double jump
+    # from the ground grabs its rail and climbs in (2.69). Each balcony's slab is right over the
+    # one below, its rail top 1.44 m under the next slab (the body is 1.6 m), so from a balcony
+    # there is no jump to the next; standing on a rail puts the head in the slab above (alpha
+    # review, r08 #9: accepted, the stair on the back is the way to the roof)
     for k in range(1, 7):
         y = k * S
         n.append(solid(f"bal_{k}", -W / 2, W / 2, y - 0.2, y, ZF - BAL, ZF, open=["front"]))

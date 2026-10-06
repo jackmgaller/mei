@@ -128,7 +128,10 @@ MATERIALS = {
     "roof": {"color": "#a9c4b4", "palette": True, "tag": "roof"},
     "interior": {"color": "#e2d8c0", "palette": True, "tag": "wall"},
     "orange": {"color": "#e8782a", "palette": True},
-    "dark": {"color": "#2c2a28", "palette": True},
+    # the far level's doorway: a texture (a level may draw textures level 0 does not, not palette
+    # entries), as level 0 no longer draws anything dark
+    "dark": {"color": "#2c2a28", "texture": {"texels": ["00000000"] * 8, "colors": ["#2c2a28"],
+                                             "projection": "fit"}},
     "lamp": {"color": "#f4fbff", "class": "emissive", "tag": "lamp"},
     "name_sign": {"color": "#f6f6f0", "tag": "sign", "texture": tex("name_sign")},
     "entrance_sign": {"color": "#1e2838", "tag": "sign", "texture": tex("entrance_sign")},
@@ -167,17 +170,21 @@ FACADE_PTS = [[-HALF, 0], [-DOOR_HALF, 0], [-DOOR_HALF, DOOR_H], [DOOR_HALF, DOO
 
 
 def facade(level=0):
-    n = {"id": "facade", "op": "extrude", "material": "tile" if level == 0 else "tile_flat",
+    """Level 0 whole; 1 (the middle) without the posters; 2 flat, no decals."""
+    n = {"id": "facade", "op": "extrude", "material": "tile" if level < 2 else "tile_flat",
          "depth": 0.3, "points": FACADE_PTS,
          "faces": {"front": "interior", "side": "tile_flat"},
          "transform": {"translate": [0, 0, FRONT + 0.15]}}
-    if level == 0:
+    if level < 2:
         n["decals"] = [
             decal("entrance_sign", "back", "entrance_sign", [4.0, 0.75], [0, 4.075]),
             decal("office_w1", "back", "office", [2.4, 1.2], [-13.5, 1.9]),
             decal("office_w2", "back", "office", [2.4, 1.2], [-18.5, 1.9]),
             decal("office_e1", "back", "office", [2.4, 1.2], [13.5, 1.9]),
             decal("office_e2", "back", "office", [2.4, 1.2], [18.5, 1.9]),
+        ]
+    if level == 0:
+        n["decals"] += [
             decal("poster_1", "back", "poster_a", [0.6, 0.9], [5.4, 1.65]),
             decal("poster_2", "back", "poster_b", [0.6, 0.9], [6.2, 1.65]),
             decal("poster_3", "back", "poster_a", [0.6, 0.9], [-9.4, 1.65]),
@@ -187,24 +194,24 @@ def facade(level=0):
 
 def cladding(level=0):
     decals = [decal("name_sign", "back", "name_sign", [9.6, 2.4], [0, 0.2])]
-    if level == 0:
+    if level < 2:
         decals.append(decal("clock", "back", "clock", [1.0, 1.0], [7.2, 0.4]))
     return box("cladding", [2 * HALF, CLAD_TOP - GROUND_TOP, 0.3],
                [0, (GROUND_TOP + CLAD_TOP) / 2, FRONT + 0.15],
-               "panel" if level == 0 else "interior",
+               "panel" if level < 2 else "interior",
                open_=["bottom", "top", "front"], decals=decals)
 
 
 def hall_box(level=0):
     depth = BACK - (FRONT + 0.3)
     return box("hall", [2 * HALF, CLAD_TOP, depth], [0, CLAD_TOP / 2, (BACK + FRONT + 0.3) / 2],
-               "concrete" if level == 0 else "stone", open_=["top", "bottom", "back"])
+               "concrete" if level < 2 else "stone", open_=["top", "bottom", "back"])
 
 
 def eave(level=0):
     n = box("eave", [12.0, 0.15, 2.05], [0, 3.525, FRONT + 0.05 - 1.025], "roof",
             faces={"back": "orange", "bottom": "interior"})
-    if level == 0:
+    if level < 2:
         n["decals"] = [decal("light_a", "bottom", "lamp", [4.0, 0.2], [-3.0, 0]),
                        decal("light_b", "bottom", "lamp", [4.0, 0.2], [3.0, 0])]
     return n
@@ -216,7 +223,10 @@ def lockers():
 
 
 # ---------------------------------------------------------------------------- the room
-def room():
+def room(level=0):
+    """The ticket hall's room. Its walls are the cladding's cream panels (until the alpha review
+    they were flat beige and the room read as a void). Level 1 (station_hall's, from outside the
+    entrance) leaves out the signs, posters and lights."""
     zc = (FRONT + 0.3 + ROOM_BACK) / 2
     depth = ROOM_BACK - (FRONT + 0.3)
     zc_was = (FRONT + 0.3 + ROOM_BACK_WAS) / 2
@@ -225,32 +235,37 @@ def room():
     wc, wd = (FRONT + 0.3 + w_z1) / 2, w_z1 - (FRONT + 0.3)
     keep_only = lambda keep: [s for s in ("top", "bottom", "left", "right", "back", "front")
                               if s != keep]
+    full = level == 0
+
+    def decals(*ds):
+        return list(ds) if full else None
     return [
         box("room_floor", [2 * ROOM_HALF, 0.1, depth], [0, FLOOR_Y - 0.05, zc], "floor",
             open_=keep_only("top")),
         box("room_ceiling", [2 * ROOM_HALF, 0.1, depth], [0, ROOM_H + 0.05, zc], "interior",
             open_=keep_only("bottom"),
-            decals=[decal(f"light_{k}", "bottom", "lamp", [6.0, 0.25], [0, z])
-                    for k, z in enumerate((-2.6, 0.0, 2.6))]),
-        box("room_west", [0.1, ROOM_H, wd], [-ROOM_HALF - 0.05, ROOM_H / 2, wc], "interior",
+            decals=decals(*[decal(f"light_{k}", "bottom", "lamp", [6.0, 0.25], [0, z])
+                            for k, z in enumerate((-2.6, 0.0, 2.6))])),
+        box("room_west", [0.1, ROOM_H, wd], [-ROOM_HALF - 0.05, ROOM_H / 2, wc], "panel",
             open_=keep_only("right"),
-            decals=[decal("fare_chart", "right", "fare_chart", [3.2, 1.2],
-                          [-0.85 + zc_was - wc, 0.65])]),
-        box("room_east", [0.1, ROOM_H, depth], [ROOM_HALF + 0.05, ROOM_H / 2, zc], "interior",
+            decals=decals(decal("fare_chart", "right", "fare_chart", [3.2, 1.2],
+                                [-0.85 + zc_was - wc, 0.65]))),
+        box("room_east", [0.1, ROOM_H, depth], [ROOM_HALF + 0.05, ROOM_H / 2, zc], "panel",
             open_=keep_only("left"),
-            decals=[decal("office", "left", "office", [2.4, 1.2], [0.0 - zc_was + zc, 0.0]),
-                    decal("poster", "left", "poster_b", [0.6, 0.9], [-3.0 - zc_was + zc, 0.0])]),
+            decals=decals(decal("office", "left", "office", [2.4, 1.2], [0.0 - zc_was + zc, 0.0]),
+                          decal("poster", "left", "poster_b", [0.6, 0.9],
+                                [-3.0 - zc_was + zc, 0.0]))),
         box("room_back", [2 * ROOM_HALF, ROOM_H, 0.1], [0, ROOM_H / 2, ROOM_BACK + 0.05],
-            "interior", open_=keep_only("back"),
-            decals=[decal("noriba", "back", "noriba", [1.6, 0.4], [-6.4, 1.25]),
-                    decal("timetable", "back", "timetable", [1.2, 1.6], [-4.5, 0.15]),
-                    decal("poster_a", "back", "poster_a", [0.6, 0.9], [4.4, 0.1]),
-                    decal("poster_b", "back", "poster_b", [0.6, 0.9], [5.2, 0.1])]),
+            "panel", open_=keep_only("back"),
+            decals=decals(decal("noriba", "back", "noriba", [1.6, 0.4], [-6.4, 1.25]),
+                          decal("timetable", "back", "timetable", [1.2, 1.6], [-4.5, 0.15]),
+                          decal("poster_a", "back", "poster_a", [0.6, 0.9], [4.4, 0.1]),
+                          decal("poster_b", "back", "poster_b", [0.6, 0.9], [5.2, 0.1]))),
         box("machines", [0.6, 1.7, 2.4], [-ROOM_HALF + 0.29, FLOOR_Y + 0.85, -1.0], "steel",
             open_=["left", "bottom"], faces={"right": "machines"}),
         box("column_clad", [1.4, ROOM_H - FLOOR_Y, 1.5],
             [0, (ROOM_H + FLOOR_Y) / 2, -4.1], "tile", open_=["top", "bottom"],
-            decals=[decal("poster", "back", "poster_a", [0.6, 0.9], [0, 0.1])]),
+            decals=decals(decal("poster", "back", "poster_a", [0.6, 0.9], [0, 0.1]))),
     ]
 
 
@@ -333,27 +348,27 @@ def platform_stair(level=0):
     walls = [
         # along the second and third flights: the north wall (to the end wall) and the
         # divider's south face (to the landing)
-        (at_u(tunnel_wall(LAND_U1), SW), [0, 0, -1], "interior"),
-        (at_u(tunnel_wall(LAND_U0), -SW), [0, 0, 1], "interior"),
+        (at_u(tunnel_wall(LAND_U1), SW), [0, 0, -1], "panel"),
+        (at_u(tunnel_wall(LAND_U0), -SW), [0, 0, 1], "panel"),
     ]
     if level == 0:
         walls += [
             # the divider's face to the first flight, and its end at the landing
             (at_u([(HALL_U, 0.0), (LAND_U0, 0.0), (LAND_U0, SOFFIT + IN), (HALL_U, SOFFIT + IN)],
-                  fw1), [0, 0, -1], "interior"),
+                  fw1), [0, 0, -1], "panel"),
             (at_w([(fw1, LAND_Y - 0.1), (-SW, LAND_Y - 0.1), (-SW, SOFFIT + IN),
-                   (fw1, SOFFIT + IN)], LAND_U0), [1, 0, 0], "interior"),
+                   (fw1, SOFFIT + IN)], LAND_U0), [1, 0, 0], "panel"),
             # the first flight's side in the room, below the divider
             ([[FOOT_U, FLOOR_Y, fw1], [HALL_U, FLOOR_Y, fw1],
-              [HALL_U, FLOOR_Y + S * (HALL_U - FOOT_U), fw1]], [0, 0, 1], "dark"),
+              [HALL_U, FLOOR_Y + S * (HALL_U - FOOT_U), fw1]], [0, 0, 1], "panel"),
             # the stair hall's back wall, its end wall, and over the room's ceiling the end of
             # the first flight's band
             (at_u([(HALL_U, 0.0), (LAND_U1, 0.0), (LAND_U1, GIRDER + IN), (HALL_U, GIRDER + IN)],
-                  fw0), [0, 0, 1], "interior"),
+                  fw0), [0, 0, 1], "panel"),
             (at_w([(fw0, 0.0), (SW, 0.0)] + soffit_line(fw0, SW), LAND_U1), [-1, 0, 0],
-             "interior"),
+             "panel"),
             (at_w([(fw0, ROOM_H), (fw1, ROOM_H)] + soffit_line(fw0, fw1), HALL_U), [1, 0, 0],
-             "interior"),
+             "panel"),
         ]
     return [steps, uyw_mesh("platform_stair", floors + walls, "interior")]
 
@@ -460,12 +475,39 @@ def flat_walls():
             "modifiers": [{"op": "mirror", "axis": "x"}]}
 
 
+def faced_polygon(pts, normal):
+    """The polygon's corners in the order that faces `normal` (Newell's normal)."""
+    n = [0.0, 0.0, 0.0]
+    for a, b in zip(pts, pts[1:] + pts[:1]):
+        n[0] += (a[1] - b[1]) * (a[2] + b[2])
+        n[1] += (a[2] - b[2]) * (a[0] + b[0])
+        n[2] += (a[0] - b[0]) * (a[1] + b[1])
+    return pts if sum(n[k] * normal[k] for k in range(3)) > 0 else pts[::-1]
+
+
+def thin_walls():
+    """The middle level's stair walls: their two faces only, in the walls' concrete (level 0's
+    extrusions also draw the green top and ends, 0.15 m wide)."""
+    outline = wall_outline()
+    v, faces = [], []
+    for x, sign in ((WALL_OUT, 1), (WALL_IN, -1)):
+        k = len(v)
+        pts = faced_polygon([[r(x), y, -mz] for mz, y in outline], [sign, 0, 0])
+        v += pts
+        faces.append(list(range(k, k + len(pts))))
+    kids = [{"id": "wall", "op": "mesh", "material": "concrete", "vertices": v, "faces": faces}]
+    return {"id": "walls", "op": "group", "children": kids,
+            "modifiers": [{"op": "mirror", "axis": "x"}]}
+
+
 def stair(level=0):
-    kids = [flight_top(), flight_under(), landing(), walls() if level == 0 else flat_walls(),
-            roof()]
+    """Level 0 whole; 1 (the middle) without the roof's posts, the walls' faces only; 2 flat
+    walls."""
+    kids = [flight_top(), flight_under(), landing(),
+            [walls, thin_walls, flat_walls][min(level, 2)](), roof()]
     if level == 0:
         kids += [posts(), column()]
-    elif level == 1:
+    elif level in (1, 2):
         kids += [column()]
     return {"id": "stairs", "op": "group",
             "children": [{"id": "stair", "op": "group", "children": kids,
@@ -501,16 +543,32 @@ def parapet():
 
 
 # ---------------------------------------------------------------------------- levels
+# The station is two assets since the alpha review (the draw CPU over the station): this one, the
+# shell (the hall's box, the front, the outside stairs, the parapet), and station_hall, what is
+# inside (the ticket hall's room and the stair to the platform), each with its own levels and
+# its own bounding sphere. The shell's sphere is centred out over the plaza (the stairs reach
+# z -26.6), so its middle level, from 14 m, is what the plaza sees: the front whole but its
+# posters, the outside stairs but the posts of their roofs. The hall's sphere is in the hall, so
+# a player inside sees its level 0 wherever they stand.
 def level0():
-    return [hall_box(), facade(0), cladding(0), eave(0), lockers()] + room() + \
-           [stair(0), parapet()] + platform_stair(0)
+    return [hall_box(0), facade(0), cladding(0), eave(0), lockers(), stair(0), parapet()]
 
 
-def level1():
-    return [hall_box(1), facade(1), cladding(1), eave(1),
+def level_middle():
+    return [hall_box(1), facade(1), cladding(1), eave(1), lockers(), stair(1), parapet()]
+
+
+def level_far():
+    """Until the alpha, level 1 (from 30 m): flat walls, the entrance a dark doorway (the hall
+    asset is culled from 40 m)."""
+    return [hall_box(2), facade(2), cladding(2), eave(2),
             box("doorway", [2 * DOOR_HALF, DOOR_H, 0.1], [0, DOOR_H / 2, FRONT + 0.3 + 0.05],
                 "dark", open_=["top", "bottom", "left", "right", "front"]),
-            stair(1), parapet()] + platform_stair(1)
+            stair(2), parapet()]
+
+
+def hall_level(level):
+    return room(level) + platform_stair(level)
 
 
 def level2():
@@ -535,8 +593,37 @@ def recipe():
         "lighting": {"mode": "vertical", "ambient": 0.5},
         "verification": {"required": True, "depth": True, "perspective": True},
         "nodes": level0(),
-        "lod": {"levels": [{"distance": 30, "nodes": level1()},
+        "lod": {"levels": [{"distance": 14, "nodes": level_middle()},
+                           {"distance": 30, "nodes": level_far()},
                            {"distance": 70, "nodes": level2()}], "band": 2},
+    }
+
+
+def hall_recipe():
+    """station_hall: the ticket hall's room and the platform stair, placed with the shell (its
+    collision is the shell's). Level 1 from 16 m (seen through the entrance from the plaza)
+    without the signs and lights; culled from 40 m, where the shell's far level (from 30 m from
+    its own centre, up to 9 m further out) has closed the entrance with a dark doorway."""
+    used = set()
+
+    def walk(nodes):
+        for n in nodes:
+            used.add(n.get("material"))
+            used.update(n.get("face_materials", []))
+            if isinstance(n.get("faces"), dict):
+                used.update(n["faces"].values())
+            used.update(d["material"] for d in n.get("decals", []))
+            walk(n.get("children", []))
+    walk(hall_level(0))
+    return {
+        "format": "mei-asset", "version": 1, "name": "station_hall",
+        "budget": {"vertices": 300, "triangles": 300},
+        "sheets": {"concourse": {"image": SHEET}},
+        "materials": {k: v for k, v in MATERIALS.items() if k in used},
+        "lighting": {"mode": "vertical", "ambient": 0.5},
+        "verification": {"required": True, "depth": True, "perspective": True},
+        "nodes": hall_level(0),
+        "lod": {"levels": [{"distance": 16, "nodes": hall_level(1)}], "cull": 40, "band": 2},
     }
 
 
@@ -670,10 +757,18 @@ def write(name, data):
 
 
 if __name__ == "__main__":
-    # level 2 (from 70 m) is an impostor: cut-out pictures of level 0 on a box round it
-    # (tools/assetkit/impostor.py: art/station_concourse_front.png and _side.png; Pillow, NumPy)
+    # the last level (from 70 m) is an impostor: cut-out pictures of level 0 with the hall's
+    # level 0 inside it, on a box round it (tools/assetkit/impostor.py:
+    # art/station_concourse_front.png and _side.png; Pillow, NumPy)
     import sys
     sys.path.insert(0, os.path.join(HERE, "..", "..", "..", "..", "..", "tools"))
-    from assetkit.impostor import with_impostor
-    write("station_concourse.asset.json", with_impostor(recipe(), HERE, "station_concourse", ppu=3.0))
+    from assetkit.impostor import impostor
+    shell = recipe()
+    whole = {k: v for k, v in shell.items() if k != "lod"}
+    whole["nodes"] = level0() + hall_level(0)
+    mats, nodes = impostor(whole, HERE, os.path.join(HERE, "art"), "station_concourse", 3.0)
+    shell["materials"] = {**shell["materials"], **mats}
+    shell["lod"]["levels"][-1]["nodes"] = nodes
+    write("station_concourse.asset.json", shell)
+    write("station_hall.asset.json", hall_recipe())
     write("station_concourse_col.asset.json", collision())

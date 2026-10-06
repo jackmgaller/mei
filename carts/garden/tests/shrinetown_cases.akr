@@ -81,6 +81,9 @@ fn town_case_init() -> bool {
         431 => { name = "shrine town: the konbini's door leads to the garden" }
         432 => { name = "shrine town: the road works at the front road's west end lead to the shrine" }
         433 => { name = "shrine town: the shrine's road works lead to the shrine town" }
+        434 => { name = "shrine town: the signal gantries' ladders are front poles: held on their front, not from the parapet" }
+        435 => { name = "shrine town: red coin 8 over the north parapet: not taken walking the deck, taken grinding the rail" }
+        436 => { name = "shrine town: red coin 5 on the konbini's roof sign, jumped up to from the roof" }
         440 => { name = "shrine town view V1: the arcade roof's north end, looking south" }
         441 => { name = "shrine town view V2: the pagoda's top, looking south" }
         442 => { name = "shrine town view V3: the stage, looking south" }
@@ -111,6 +114,9 @@ fn town_case(f: s32) {
         431 => tw_door(f, vec3(187.5, 0.0, 36.0), 3.1416, GARDEN_WORLD_SHRINETOWN, GARDEN_WORLD_GARDEN)
         432 => tw_door(f, vec3(6.0, 0.0, 111.0), WEST, GARDEN_WORLD_SHRINETOWN, GARDEN_WORLD_SHRINE)
         433 => tw_door(f, vec3(10.0, 0.0, 14.0), WEST, GARDEN_WORLD_SHRINE, GARDEN_WORLD_SHRINETOWN)
+        434 => tw_gantries(f)
+        435 => tw_coin_parapet(f)
+        436 => tw_coin_sign(f)
         440 => sh_view(f, vec3(160.0, 0.0, 92.0), 3.1416, -0.14, 4.0, false)
         441 => sh_view(f, vec3(178.0, 0.0, 262.0), 3.1416, -0.3, 4.0, false)
         442 => sh_view(f, vec3(154.0, 0.0, 343.0), 3.1416, -0.3, 4.0, false)
@@ -517,4 +523,118 @@ fn tw_door(f: s32, at: vec3, yaw: fixed, w0: s32, w1: s32) {
         expect(wp_cell_at(pl.pos) != null, "standing in it", pl.pos.y)
         done()
     }
+}
+
+// ---- 434: the signal gantries' ladders (place/station.py: poles in front of the north column's
+// ladder, on the column's -X side in the gantry's frame) are front poles. Dropped onto the parapet
+// rail beside gantry 0 the body does not take the pole 0.575 m off it; jumped at from the deck in
+// front, each is held on its front, and the stick held sideways for 2 s does not take the body
+// round into the column or the parapet.
+const GANTRY_POLES: [2]vec3 = [vec3(19.55, 9.2, 13.3), vec3(305.26, 9.2, 97.55)]
+const GANTRY_FRONT: [2]vec2 = [vec2(-1.0, 0.0), vec2(0.0, -1.0)]     // the side each is held on (x, z)
+
+fn tw_gantries(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 { place_air(vec3(20.0, 11.2, 13.875), WEST) }
+    if tw_phase == 0 {
+        if pl.st == St.Pole { expect(false, "no pole taken from the parapet rail", pl.pos.y) }
+        if f == 60 {
+            expect(pl.st != St.Pole, "not on gantry 0's pole after the drop onto the parapet, y", pl.pos.y)
+            tw_phase = 1
+            tw_k = 0
+        }
+        return
+    }
+    let p = GANTRY_POLES[tw_k]
+    let fr = GANTRY_FRONT[tw_k]
+    let face = atan2(-fr.x, -fr.y)                         // facing the pole from its front
+    if tw_phase == 1 {                                     // stand 1.3 m in front of it
+        let ax = p.x + fr.x * 1.3
+        let az = p.z + fr.y * 1.3
+        place(vec3(ax, sh_floor(ax, az, 10.5), az), face)
+        t0 = f
+        tw_phase = 2
+        return
+    }
+    if tw_phase == 2 {                                     // a jump at it
+        stick_v = cc_stick(face, 1.0)
+        if f >= t0 + 4 && f < t0 + 16 { pad_v = A }
+        if pl.st == St.Pole {
+            expect(near(sin(pole_ang), fr.x, 0.01) && near(cos(pole_ang), fr.y, 0.01), "held on the ladder's front", pole_ang)
+            tw_phase = 3
+            t1 = f
+        }
+        if f > t0 + 120 { expect(false, "took the gantry's ladder", pl.pos.y) }
+        return
+    }
+    if tw_phase == 3 {                                     // sideways for two seconds
+        stick_v = cc_stick(face + 1.5708, 1.0)
+        if f == t1 + 120 {
+            expect(pl.st == St.Pole && near(sin(pole_ang), fr.x, 0.01) && near(cos(pole_ang), fr.y, 0.01), "not gone round: still on the front", pole_ang)
+            let off = (pl.pos.x - p.x) * fr.x + (pl.pos.z - p.z) * fr.y
+            expect(off > 0.2, "the body in front of the pole, m", off)
+            tw_k += 1
+            tw_phase = 1
+            if tw_k == 2 {
+                done()
+                tw_phase = 9
+            }
+        }
+    }
+}
+
+// ---- 435: red coin 8 (place/station.py: 1.1 m over the north parapet's rail west of the
+// station). Walking the deck beside the parapet past it does not take it; coming down onto the
+// rail and grinding it west does.
+fn tw_coin_parapet(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        tw_star = tw_coin_near(vec3(48.0, 11.3, 13.875))
+        expect(tw_star >= 0, "red coin 8 over the parapet at 11.3", 11.3)
+        place(vec3(58.0, sh_floor(58.0, 13.4, 10.5), 13.4), WEST)
+    }
+    if tw_phase == 0 {
+        stick_v = cc_stick(WEST, 1.0)
+        if pl.pos.x < 40.0 || f == 240 {
+            expect(pl.pos.x < 40.0, "walked past it on the deck, x", pl.pos.x)
+            expect(!coin_taken(wp_entity(tw_star).number as s32), "not taken on foot", pl.pos.y)
+            place_air(vec3(56.0, 11.6, 13.875), WEST)
+            pl.vel = vec3(-0.12, 0.0, 0.0)
+            tw_phase = 1
+            t0 = f
+        }
+        return
+    }
+    if pl.st == St.Rail && t1 < 0 { t1 = f; note("on the rail at x", pl.pos.x) }
+    if coin_taken(wp_entity(tw_star).number as s32) {
+        expect(t1 >= 0, "taken grinding the rail, y", pl.pos.y)
+        done()
+        tw_phase = 9
+        return
+    }
+    if f > t0 + 180 { expect(false, "taken grinding", pl.pos.x) }
+}
+
+// ---- 436: red coin 5 on the konbini's roof sign (konbini_roof_sign, its top 7.0, 2.3 m over
+// the roof's deck): from the deck behind it, a jump and a double jump at it.
+fn tw_coin_sign(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        tw_star = tw_coin_near(vec3(196.0, 7.7, 30.0))
+        expect(tw_star >= 0, "red coin 5 on the sign at 7.7", 7.7)
+        let y = sh_floor(196.0, 28.4, 6.0)
+        expect(near(y, 4.7, 0.1), "on the konbini's roof deck, y", y)
+        place(vec3(196.0, y, 28.4), NORTH)
+    }
+    stick_v = cc_stick(NORTH, 0.6)
+    if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(NORTH, 1.0) }
+    if f >= 4 && f < 18 { pad_v = A }
+    if f >= 30 && f < 44 { pad_v = A }
+    if coin_taken(wp_entity(tw_star).number as s32) {
+        expect(pl.pos.y > 6.0, "taken on the sign, y", pl.pos.y)
+        done()
+        tw_phase = 9
+        return
+    }
+    if f == 200 { expect(false, "taken", pl.pos.y) }
 }

@@ -84,6 +84,17 @@
    "collision": "station_concourse_col"
   },
   {
+   "id": "station_hall",
+   "asset": "station_hall",
+   "position": [
+    160.0,
+    0.0,
+    8.0
+   ],
+   "yaw": 180.0,
+   "collision": "none"
+  },
+  {
    "id": "ticket_gates",
    "asset": "ticket_gates",
    "position": [
@@ -103,6 +114,26 @@
     8.0
    ],
    "collision": "station_platform_col"
+  },
+  {
+   "id": "platform_fittings_w",
+   "asset": "station_platform_fittings_w",
+   "position": [
+    160.0,
+    9.0,
+    8.0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "platform_fittings_e",
+   "asset": "station_platform_fittings_e",
+   "position": [
+    160.0,
+    9.0,
+    8.0
+   ],
+   "collision": "none"
   },
   {
    "id": "train_car_e",

@@ -1,0 +1,665 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "station_platform_fittings_e",
+ "budget": {
+  "vertices": 500,
+  "triangles": 300
+ },
+ "sheets": {
+  "station": {
+   "image": "art/station_sheet.png"
+  }
+ },
+ "materials": {
+  "concrete": {
+   "color": "#6a665e",
+   "palette": true,
+   "tag": "wall"
+  },
+  "coping": {
+   "color": "#eceae4",
+   "palette": true,
+   "tag": "floor"
+  },
+  "green_steel": {
+   "color": "#4f7f6a",
+   "palette": true
+  },
+  "black": {
+   "color": "#2c2a28",
+   "palette": true
+  },
+  "red": {
+   "color": "#c8262c",
+   "palette": true
+  },
+  "cat": {
+   "color": "#e8a050",
+   "palette": true
+  },
+  "seats": {
+   "color": "#e8862a",
+   "texture": {
+    "texels": [
+     "1222222222222221",
+     "1222222222222221",
+     "2222222222222222",
+     "2222222222222222",
+     "2222222222222222",
+     "2222222222222222",
+     "0333333333333330",
+     "0333333333333330"
+    ],
+    "colors": [
+     "#4a4440",
+     "#c8701e",
+     "#e8862a",
+     "#d27a24"
+    ],
+    "projection": "box",
+    "scale": [
+     0.45,
+     0.45
+    ]
+   }
+  },
+  "name_board": {
+   "color": "#f6f6f0",
+   "tag": "sign",
+   "texture": {
+    "sheet": "station",
+    "cell": "name_board",
+    "projection": "fit"
+   }
+  },
+  "track1": {
+   "color": "#1e2838",
+   "tag": "sign",
+   "texture": {
+    "sheet": "station",
+    "cell": "track1",
+    "projection": "fit"
+   }
+  },
+  "track2": {
+   "color": "#1e2838",
+   "tag": "sign",
+   "texture": {
+    "sheet": "station",
+    "cell": "track2",
+    "projection": "fit"
+   }
+  },
+  "vending": {
+   "color": "#e0e4e8",
+   "class": "emissive",
+   "texture": {
+    "sheet": "station",
+    "cell": "vending",
+    "projection": "fit"
+   }
+  },
+  "bin_cans": {
+   "color": "#e8e6de",
+   "texture": {
+    "sheet": "station",
+    "cell": "bin_cans",
+    "projection": "fit"
+   }
+  },
+  "bin_burn": {
+   "color": "#e8e6de",
+   "texture": {
+    "sheet": "station",
+    "cell": "bin_burn",
+    "projection": "fit"
+   }
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "name_board_east",
+   "op": "group",
+   "transform": {
+    "translate": [
+     7.5,
+     0,
+     0
+    ]
+   },
+   "children": [
+    {
+     "id": "legs",
+     "op": "group",
+     "children": [
+      {
+       "id": "leg",
+       "op": "box",
+       "size": [
+        0.04,
+        1.04,
+        0.04
+       ],
+       "material": "green_steel",
+       "open": [
+        "bottom",
+        "top"
+       ],
+       "transform": {
+        "translate": [
+         1.0,
+         1.52,
+         0
+        ]
+       }
+      }
+     ],
+     "modifiers": [
+      {
+       "op": "mirror",
+       "axis": "x"
+      }
+     ]
+    },
+    {
+     "id": "board",
+     "op": "box",
+     "size": [
+      2.5,
+      0.95,
+      0.12
+     ],
+     "material": "black",
+     "faces": {
+      "back": "name_board",
+      "front": "name_board"
+     },
+     "transform": {
+      "translate": [
+       0,
+       2.475,
+       0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "track_sign_1",
+   "op": "group",
+   "transform": {
+    "translate": [
+     3.2,
+     0,
+     -1.45
+    ]
+   },
+   "children": [
+    {
+     "id": "hanger",
+     "op": "box",
+     "size": [
+      0.04,
+      0.805,
+      0.04
+     ],
+     "material": "concrete",
+     "open": [
+      "top",
+      "bottom"
+     ],
+     "transform": {
+      "translate": [
+       0,
+       4.1025,
+       0
+      ]
+     }
+    },
+    {
+     "id": "plate",
+     "op": "box",
+     "size": [
+      0.06,
+      0.4,
+      1.25
+     ],
+     "material": "black",
+     "faces": {
+      "left": "track1",
+      "right": "track1"
+     },
+     "transform": {
+      "translate": [
+       0,
+       3.5,
+       0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "track_sign_2",
+   "op": "group",
+   "transform": {
+    "translate": [
+     3.2,
+     0,
+     1.45
+    ]
+   },
+   "children": [
+    {
+     "id": "hanger",
+     "op": "box",
+     "size": [
+      0.04,
+      0.805,
+      0.04
+     ],
+     "material": "concrete",
+     "open": [
+      "top",
+      "bottom"
+     ],
+     "transform": {
+      "translate": [
+       0,
+       4.1025,
+       0
+      ]
+     }
+    },
+    {
+     "id": "plate",
+     "op": "box",
+     "size": [
+      0.06,
+      0.4,
+      1.25
+     ],
+     "material": "black",
+     "faces": {
+      "left": "track2",
+      "right": "track2"
+     },
+     "transform": {
+      "translate": [
+       0,
+       3.5,
+       0
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "bench_east",
+   "op": "group",
+   "transform": {
+    "rotate": [
+     0,
+     0,
+     0
+    ],
+    "translate": [
+     12.5,
+     1.0,
+     -0.55
+    ]
+   },
+   "children": [
+    {
+     "id": "seat",
+     "op": "extrude",
+     "material": "seats",
+     "depth": 1.8,
+     "points": [
+      [
+       -0.21,
+       0.42
+      ],
+      [
+       0.21,
+       0.42
+      ],
+      [
+       0.21,
+       0.95
+      ],
+      [
+       0.16,
+       0.95
+      ],
+      [
+       0.16,
+       0.48
+      ],
+      [
+       -0.21,
+       0.48
+      ]
+     ],
+     "transform": {
+      "rotate": [
+       0,
+       -90,
+       0
+      ]
+     }
+    },
+    {
+     "id": "legs",
+     "op": "group",
+     "children": [
+      {
+       "id": "leg",
+       "op": "box",
+       "size": [
+        0.05,
+        0.44,
+        0.34
+       ],
+       "material": "green_steel",
+       "open": [
+        "bottom"
+       ],
+       "transform": {
+        "translate": [
+         0.75,
+         0.21,
+         0
+        ]
+       }
+      }
+     ],
+     "modifiers": [
+      {
+       "op": "mirror",
+       "axis": "x"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cat",
+   "op": "group",
+   "transform": {
+    "translate": [
+     12.75,
+     1.47,
+     -0.62
+    ]
+   },
+   "children": [
+    {
+     "id": "body",
+     "op": "sphere",
+     "radius": 0.16,
+     "rings": 3,
+     "segments": 6,
+     "material": "cat",
+     "transform": {
+      "scale": [
+       1.3,
+       0.65,
+       1.0
+      ],
+      "translate": [
+       0.12,
+       0.09,
+       0
+      ]
+     }
+    },
+    {
+     "id": "head",
+     "op": "sphere",
+     "radius": 0.09,
+     "rings": 3,
+     "segments": 5,
+     "material": "cat",
+     "transform": {
+      "translate": [
+       -0.12,
+       0.1,
+       -0.06
+      ]
+     }
+    },
+    {
+     "id": "ears",
+     "op": "group",
+     "children": [
+      {
+       "id": "ear",
+       "op": "cone",
+       "radius": 0.035,
+       "height": 0.07,
+       "segments": 3,
+       "caps": false,
+       "material": "cat",
+       "transform": {
+        "translate": [
+         -0.12,
+         0.2,
+         -0.015
+        ]
+       }
+      }
+     ],
+     "modifiers": [
+      {
+       "op": "mirror",
+       "axis": "z",
+       "offset": -0.06
+      }
+     ]
+    },
+    {
+     "id": "tail",
+     "op": "box",
+     "size": [
+      0.3,
+      0.05,
+      0.05
+     ],
+     "material": "cat",
+     "transform": {
+      "rotate": [
+       0,
+       10,
+       0
+      ],
+      "translate": [
+       0.1,
+       0.03,
+       -0.17
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "vending_machine",
+   "op": "box",
+   "size": [
+    0.95,
+    1.8,
+    0.7
+   ],
+   "material": "red",
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "front": "vending"
+   },
+   "transform": {
+    "translate": [
+     12.5,
+     1.9,
+     0.4
+    ]
+   }
+  },
+  {
+   "id": "bin_cans",
+   "op": "box",
+   "size": [
+    0.5,
+    0.9,
+    0.45
+   ],
+   "material": "coping",
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "front": "bin_cans"
+   },
+   "transform": {
+    "translate": [
+     13.75,
+     1.45,
+     0.3
+    ]
+   }
+  },
+  {
+   "id": "bin_burn",
+   "op": "box",
+   "size": [
+    0.5,
+    0.9,
+    0.45
+   ],
+   "material": "coping",
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "front": "bin_burn"
+   },
+   "transform": {
+    "translate": [
+     14.35,
+     1.45,
+     0.3
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 12,
+    "nodes": [
+     {
+      "id": "board_e",
+      "op": "box",
+      "size": [
+       2.5,
+       1.9,
+       0.08
+      ],
+      "material": "black",
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "back": "name_board",
+       "front": "name_board"
+      },
+      "transform": {
+       "translate": [
+        7.5,
+        1.98,
+        0
+       ]
+      }
+     },
+     {
+      "id": "vending_machine",
+      "op": "box",
+      "size": [
+       0.95,
+       1.8,
+       0.7
+      ],
+      "material": "red",
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "front": "vending"
+      },
+      "transform": {
+       "translate": [
+        12.5,
+        1.9,
+        0.4
+       ]
+      }
+     },
+     {
+      "id": "track_sign_1",
+      "op": "box",
+      "size": [
+       0.06,
+       0.4,
+       1.25
+      ],
+      "material": "black",
+      "faces": {
+       "left": "track1",
+       "right": "track1"
+      },
+      "transform": {
+       "translate": [
+        3.2,
+        3.5,
+        -1.45
+       ]
+      }
+     },
+     {
+      "id": "track_sign_2",
+      "op": "box",
+      "size": [
+       0.06,
+       0.4,
+       1.25
+      ],
+      "material": "black",
+      "faces": {
+       "left": "track2",
+       "right": "track2"
+      },
+      "transform": {
+       "translate": [
+        3.2,
+        3.5,
+        1.45
+       ]
+      }
+     }
+    ]
+   }
+  ],
+  "band": 2,
+  "cull": 24
+ }
+}

@@ -10,8 +10,16 @@ The origin is the middle of the car at rail level (the viaduct's deck, 9.0 in th
 car body runs y 1.0..3.64 (floor 1.15 inside, the platform's edge 1.0); its roof is flat at 3.64
 between two chamfers and walkable; the air conditioner on it reaches 4.0 and the folded
 pantograph 3.98, so a signal gantry's underside at 4.15 clears everything and sweeps a rider
-standing on the roof off it. Level 0 lays emissive glass over the windows and the cab's
-windscreens, destination and headlights (the cart brightens them at night).
+standing on the roof off it. The windows' glass is the livery's at every level. (Until the alpha,
+level 0 laid emissive glass over the windows, pale where the texture's is dark, so the car changed
+colour at its first level switch; the glass cost 216 of level 0's 454 triangles.) Level 0 lays
+the cab's destination and headlights over the livery as emissive decals (the cart brightens them
+at night).
+
+Levels (the shrine town sets the distances in its world, place/station.py): 0 whole; 1 the body,
+bogies, equipment, gangway, air conditioner and a pantograph block (80 triangles); 2 the body
+alone. `train_emu_car_mover` is level 1 as an asset of its own, for the last train's movers (an
+entity draws its mesh's level 0 only), with this car's collision.
 """
 import json
 import os
@@ -24,13 +32,6 @@ BODY_Y0, SIDE_TOP, ROOF = 1.0, 3.45, 3.64
 CHAMFER_W = 1.25
 COUPLER = 10.0                 # over the couplers: 20 m
 BOGIE_X = 6.9
-DOORS = [-6.3, 0.0, 6.3]
-WINDOWS = [(-9.25, -7.45), (-5.25, -3.35), (-3.05, -1.05), (1.05, 3.05), (3.35, 5.25),
-           (7.3, 8.2)]
-CAB_DOOR = (8.45, 9.05)
-CAB_WIN = (9.15, 9.5)
-WIN_Y = (1.95, 2.95)
-INSET = 0.08                   # the rubber frame round the glass, a texel
 
 
 def r(v):
@@ -57,7 +58,6 @@ MATERIALS = {
     "rubber": {"color": "#1c1d20", "palette": True},
     "insulator": {"color": "#e8e4dc", "palette": True},
     "orange": {"color": "#e8782a", "palette": True},
-    "window": {"color": "#8fa6b8", "class": "emissive", "tag": "window"},
     "destination": {"color": "#f2f2ec", "class": "emissive", "tag": "sign"},
     "headlight": {"color": "#fff6d8", "class": "emissive", "tag": "lamp"},
 }
@@ -81,27 +81,6 @@ def orient(verts, faces):
     return out
 
 
-def side_decals(level, sign):
-    """Glass over the side's windows. sign -1: the -Z side (right = +x); +1: the +Z side
-    (right = -x, so at's x is -x)."""
-    if level > 0:
-        return []
-    out = []
-    y0, y1 = WIN_Y[0] + INSET, WIN_Y[1] - INSET
-
-    def add(name, x0, x1, ya, yb):
-        xc = (x0 + x1) / 2
-        out.append({"id": name, "face": None, "material": "window",
-                    "size": [r(x1 - x0), r(yb - ya)], "at": [r(-sign * xc), r((ya + yb) / 2)]})
-    for k, (x0, x1) in enumerate(WINDOWS):
-        add(f"window_{k}", x0 + INSET, x1 - INSET, y0, y1)
-    for k, xc in enumerate(DOORS):
-        add(f"door_{k}", xc - 0.52, xc + 0.52, 2.0 + INSET, 2.9 - INSET)
-    add("cab_door", CAB_DOOR[0] + INSET, CAB_DOOR[1] - INSET, 2.0 + INSET, 2.8 - INSET)
-    add("cab_window", CAB_WIN[0] + 0.03, CAB_WIN[1] - 0.03, y0, y1)
-    return out
-
-
 def body(level=0):
     rear = [[-HALF_L, y, z] for z, y in PROFILE]
     front = [[HALF_L, y, z] for z, y in PROFILE]
@@ -121,22 +100,10 @@ def body(level=0):
             "vertices": [[r(c) for c in v] for v in verts], "faces": faces,
             "face_materials": mats}
     if level == 0:
-        decals = []
-        for d in side_decals(0, +1):
-            d["face"] = 0
-            d["id"] = "r_" + d["id"]
-            decals.append(d)
-        for d in side_decals(0, -1):
-            d["face"] = 4
-            d["id"] = "l_" + d["id"]
-            decals.append(d)
-        # the cab front (x = +9.75, seen from +x): symmetric about z = 0, so either way round
+        # the cab front (x = +9.75, seen from +x): symmetric about z = 0, so either way round.
+        # No glass over the windows or the windscreens: the livery's is drawn at every level.
         cab = n + 1
-        decals += [
-            {"id": "screen_a", "face": cab, "material": "window", "size": [1.0, 0.8],
-             "at": [-0.615, 2.69]},
-            {"id": "screen_b", "face": cab, "material": "window", "size": [1.0, 0.8],
-             "at": [0.615, 2.69]},
+        decals = [
             {"id": "destination", "face": cab, "material": "destination", "size": [2.2, 0.16],
              "at": [0.0, 3.35]},
             {"id": "head_a", "face": cab, "material": "headlight", "size": [0.26, 0.2],
@@ -284,6 +251,27 @@ def write(name, data):
     print("wrote", name)
 
 
+def mover():
+    """Level 1 as an asset of its own: the last train's cars (an entity's mesh has no levels)."""
+    out = recipe()
+    out["name"] = "train_emu_car_mover"
+    out["budget"] = {"vertices": 200, "triangles": 120}
+    out["nodes"] = level_nodes(1)
+    del out["lod"]
+    used = set()
+    stack = list(out["nodes"])
+    while stack:
+        n = stack.pop()
+        used.add(n.get("material"))
+        used.update(n.get("face_materials", []))
+        if isinstance(n.get("faces"), dict):
+            used.update(n["faces"].values())
+        stack += n.get("children", [])
+    out["materials"] = {k: v for k, v in MATERIALS.items() if k in used}
+    return out
+
+
 if __name__ == "__main__":
     write("train_emu_car.asset.json", recipe())
+    write("train_emu_car_mover.asset.json", mover())
     write("train_emu_car_col.asset.json", collision())

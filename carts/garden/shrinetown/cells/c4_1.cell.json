@@ -181,8 +181,10 @@
     9.2,
     97.55
    ],
+   "yaw": 180.0,
    "params": {
-    "height": 4.25
+    "height": 4.25,
+    "front": true
    }
   },
   {

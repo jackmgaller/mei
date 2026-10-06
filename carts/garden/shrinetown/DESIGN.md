@@ -1355,3 +1355,41 @@ same cameras (triangles, draw CPU, GPU), before → after: courtyard wall north 
 461,553; stage 1,333, 336,505, 402,855 → 1,403, 348,464, 391,151; station plaza 1,350, 415,031,
 391,185 → 1,336, 412,739, 388,860; canal by the watermill 1,736, 346,810, 528,387 → 1,774,
 352,422, 531,829. The pack is 11,480,668 bytes (11,456,388 before).
+
+### 12.9 Alpha fixes
+
+#### Workstream 4: the station zone and its draw CPU
+
+The alpha review's dense sweep found 195 views round the station over the 600,000 draw-CPU
+budget (worst 783,327); the owner chose levels of detail first, then occluders (another
+workstream). What changed (`place/station.py` and the station's assets):
+
+| What | Before | Now | Why |
+|---|---|---|---|
+| `train_emu_car` | level 1 from 6 m; level 0 454 triangles, 216 of them the emissive glass over the windows | level 1 from 4 m; level 0 262 triangles, the windows the livery's glass at every level | the car changed colour at its level switch (pale emissive glass, then the texture's dark glass); the windows no longer glow at night |
+| `station_concourse` | one asset: level 0 785 triangles, level 1 from 30 m | two: the shell (front, outside stairs, parapet: level 0 628, a middle level of 448 from 14 m without the posters and the roofs' posts and with the stair walls' faces only, the old level 1 from 30, the impostor from 70) and `station_hall` (the ticket hall's room and the platform stair: level 0 170, level 1 of 63 from 16 m without signs and lights, culled from 40) | the shell's bounding sphere is out over the plaza (the stairs reach z 34.6), so the plaza sees its middle level, which keeps the front, the stairs and the sign; the hall's sphere is in the hall, so a player inside sees its level 0 |
+| The hall's walls | flat beige (`interior`) | the cladding's cream panels (`panel`), the void under the first flight too | the hall read as a void (r19 #9, r14 #8) |
+| `station_platform` | one asset: level 0 674, level 1 from 30 | the structure (level 0 280; a middle level from 22 m: the floor's bands without the stairwell, the canopy on columns; then 34, 70) and two fittings assets, `station_platform_fittings_w` (name board, soba stand, clock, two benches) and `_e` (name board, track signs, bench, vending machine, bins, cat), each level 1 from 12 m and culled from 24 | from the plaza the parapet hides the platform's floor; a player on the platform is at most 20 m from its middle |
+| Other levels (`LOD`) | mamachari cull 30; bike rack 14/30; newsstand 14/40; koban 24/45; ticket gates 12/40; planters cull 36 | mamachari level 1 from 8 m; bike rack 10/30; newsstand 8/40; koban 14/45; ticket gates 8/40; station spans 24/100; planters cull 28 | r01's measured set |
+| Konbini roof sign | the grey box's block | `konbini_roof_sign`: a lightbox with the konbini's logo (the shrine's `kon_sign` cell) on two posts, its collision the grey block (top 7.0) | grey-box leftover (r14 #4); case 436 takes red coin 5 from the roof |
+| Gantries' ladders | poles, held from any side | front poles, yaw 270 (gantry 0) and 180 (gantry 1) | the body went round into the column and was grabbed from the parapet rail (r08 #4); case 434 |
+| Red coin 8 | 10.9 over the parapet west of the station | 11.3 (1.1 over the rail) | taken walking the deck (r05 #3); case 435 walks past it, then grinds the rail and takes it |
+| The last train's paths | none | `race_train_e`, `race_train_w` along track 2 (z 10, the taper's S to 12.1 at x 120–136), from x 54 and 34 to 170 and 150 (`place/race_train.py`) | for the cart's two `train_emu_car_mover` cars (game.py) |
+
+The danchi's balconies: only the first is reached (a double jump from the ground). Each slab is
+right over the one below and a rail top is 1.44 m under the next slab, so there is no jump from a
+balcony to the next; accepted (r08 #9), the back stair is the way to the roof.
+
+Measured with the World Checker at the review's worst cameras (`r01/worst_cams.json`), draw CPU
+before → after: canopy 490 642,195 → 577,871; air 523 627,618 → 586,581; over the station
+623,999 → 563,518; follow camera over the platform, north-west 783,327 → 729,184, north
+717,357 → 672,809, west 723,250 → 677,337; platform's east end 729,927 → 682,299, west end
+649,899 → 577,724; ticket hall 656,824 → 604,187, over it 728,420 → 667,143; the passage
+between the concourse and the konbini 736,477 → 643,523 and 734,411 → 630,589; plaza west
+716,147 → 557,332, by the bike shelters 683,085 → 631,938; deck west 727,795 → 580,349. The full
+check (600 views): peak 642,195 → 584,520 draw CPU, 0 views over a budget (2 before); the pack
+12,078,148 → 12,096,124 bytes. The review's sweep over the station block (its 2,158 views with
+x 128–196, z 0–40): over 600,000 195 → 80, over 650,000 86 → 19, over 700,000 21 → 2, worst
+784,048 → 729,283, median 386,732 → 351,329. Still over 600,000 (for the occluders): 37 views
+over the platform and its canopy (follow cameras, y 12 and up), 25 in or under the hall, 9 on
+the platform and the deck, 9 in the plaza and the passage east of the concourse.
