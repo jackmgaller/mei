@@ -318,6 +318,70 @@
    ],
    "yaw": 90,
    "collision": "kei_truck_col"
+  },
+  {
+   "id": "alley_lamp_0",
+   "asset": "town_wall_lamp",
+   "position": [
+    87.5,
+    0.0,
+    58.75
+   ],
+   "yaw": 270,
+   "collision": "none"
+  },
+  {
+   "id": "alley_lamp_2",
+   "asset": "town_wall_lamp",
+   "position": [
+    99.5,
+    0.0,
+    47.5
+   ],
+   "yaw": 270,
+   "collision": "none"
+  },
+  {
+   "id": "alley_lamp_3",
+   "asset": "town_wall_lamp",
+   "position": [
+    111.5,
+    0.0,
+    58.75
+   ],
+   "yaw": 270,
+   "collision": "none"
+  },
+  {
+   "id": "alley_lamp_7",
+   "asset": "town_wall_lamp",
+   "position": [
+    82.0,
+    0.0,
+    55.0
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "plants_lane_1",
+   "asset": "town_potted_plants",
+   "position": [
+    101.4,
+    0.0,
+    52.9
+   ],
+   "collision": "none"
+  },
+  {
+   "id": "bike_lane_0",
+   "asset": "mamachari",
+   "position": [
+    124.6,
+    0.0,
+    60.0
+   ],
+   "yaw": 5,
+   "collision": "none"
   }
  ],
  "entities": [

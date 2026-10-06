@@ -19,6 +19,7 @@ are together (DESIGN.md, "The joined grey box"):
   (TEXTURES.md; which cell is in which is layout.region_of()).
 """
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -103,70 +104,70 @@ for part in (town, core, mountain):
 scatter = {**core['scatter'], **mountain['scatter']}
 
 # ---- stand-ins capped (spec 8.2-8.3, option 1 of 8.3): 90 triangles a town cell (rows 0-1), 140 the
-# landmark cells (the temple c2_3, the pagoda and the sacred cedar c2_4, the stage c2_5), 60 every
-# other cell; the ground on a 32 m grid. The pond's cell keeps its water whole (water is not
-# resampled), 103 triangles of ground: its cap is 110.
-LANDMARKS = ('c2_3', 'c2_4', 'c2_5')
-cell_caps = {f'c{i}_{j}': {'triangles': 140 if f'c{i}_{j}' in LANDMARKS else 60}
+# landmark cells (the temple c2_3, the pagoda and the sacred cedar c2_4, the stage c2_5) and c1_2, 60
+# every other cell; the ground on a 32 m grid. The courtyard's two cells hold the side and corridor
+# halls (84 and 74 triangles at their level 1) and are seen from the pagoda at 60-130 m as stand-ins
+# until the eye is in row 3: c2_2 (with the gate) has 220 and c3_2 270, since the pond keeps its
+# water whole (water is not resampled: 103 triangles of ground), so that both halls are in each
+# (ALPHA_REVIEW, far views: at 60 and 110 the halls were left out and popped in at z 256).
+LANDMARKS = ('c2_3', 'c2_4', 'c2_5', 'c1_2')
+COURTYARD = {'c2_2': 220, 'c3_2': 270}
+cell_caps = {f'c{i}_{j}': {'triangles': COURTYARD.get(f'c{i}_{j}', 140 if f'c{i}_{j}' in LANDMARKS else 60)}
              for i in range(5) for j in range(2, 6)}
-cell_caps['c3_2'] = {'triangles': 110}
 STANDINS = {'distance': 128, 'sweeps': True, 'triangles': 90, 'ground': 32, 'cells': cell_caps,
             # the trees' far cards and the landmarks' impostors stay cut out in the stand-ins: their
-            # textures in slots 0 and 31 (64 KB: slot 0 kept free by the regions' split, and the top of
-            # VRAM's second megabyte), held by both regions' sets (WORLDKIT.md, "Stand-ins made by the kit")
-            'textures': {'slots': '0,31'}}
-# ---- haze (WORLDKIT.md, "Haze"): baked into the stand-ins only, a little. The GPU's fog (FOG_RANGE
-# below) fades every far surface by its depth, the levels included, so the levels are not hazed
-# again; the stand-ins' far colours are moved a little toward each variant's sky as well, which
-# softens their flat colours where the fog is still thin (100-200 units).
-HAZE = {'start': 20, 'end': 280, 'amount': 0.0, 'standins': 0.15, 'elevation': 1}
+            # textures in slots 0, 31 and 30 (96 KB: slot 0 kept free by the regions' split, and the top
+            # of VRAM's second megabyte; the third since the pagoda's star of cards, DESIGN.md 12.9), held
+            # by both regions' sets (WORLDKIT.md, "Stand-ins made by the kit")
+            'textures': {'slots': '0,31,30'}}
+BD = json.loads((ST / 'art' / 'backdrop' / 'backdrop.json').read_text())
+
+# ---- fog toward a colour (the GPU's, DECISIONS.md "Fog toward a colour"; DESIGN.md 12.7 and 12.9):
+# each variant fades far geometry toward its fog colour (art/backdrop/backdrop.json "fog", drawn by
+# draw_backdrop.py): by day the sky 3 degrees up, a pale blue-grey; by night the sky's
+# deep blue at 9 degrees, darker than the horizon's purple, so far hills darken into the night
+# instead of glowing. The far pass ends three cells off, 192-256 units along an axis, so the day's
+# fog is 87 % at 192 and whole at 240, where the world's last cells may end; the night's 87 % at
+# 192. The sky's stop below the horizon (-8 degrees) and the backdrop's band under the horizon are
+# the fog colour, so the fogged end of the drawn world meets them in one colour (ALPHA_REVIEW,
+# far views: the day fog ran on to 380 and the world stopped half fogged against a flat plain).
+FOG_RANGE = {'day': (20, 240), 'night': (16, 220)}
+FOG_COLOUR = BD['town']['fog']
+assert BD['town'] == BD['shrine'], 'one backdrop for both regions (art/backdrop/APPLY.md)'
+
+# ---- haze (WORLDKIT.md, "Haze"): baked into the stand-ins only, a little. The GPU's fog fades every
+# far surface by its depth, the levels included, so the levels are not hazed again; the stand-ins'
+# far colours are moved a little toward each variant's fog colour as well, which softens their flat
+# colours where the fog is still thin (100-200 units).
+HAZE = {'start': 20, 'end': 280, 'amount': 0.0, 'standins': 0.15, 'colors': dict(FOG_COLOUR)}
 
 shrine = json.loads((ST.parent / 'shrine' / 'shrine.world.json').read_text())
 
-# ---- texture regions (TEXTURES.md): the town (rows 0-1) and the shrine (rows 2-5). Each has its own
-# texture set in slots 13-1 and 16-31 (VRAM at 2 MB; slot 14 holds the swatch row and the star, 15
-# the fonts, 0 the far views' common stand-in set); entering one loads its set over the other's,
-# about 0.94 cycles a byte, so a budget is also the crossing's cost. The budgets are the zones'
-# allowances, the ground's and 64 KB for the far views: 668 KB for the town, 460 KB for the shrine
-# (TEXTURES.md, "The budgets"). The
+# ---- texture regions (TEXTURES.md): the town (rows 0-1) and the shrine (rows 2-5). Since the alpha
+# fixes (DESIGN.md 12.9) their texture sets are in disjoint slots, the town's 13-1 and 16-18 (16
+# slots, 512 KB), the shrine's 19-29 (11, 352 KB), so both can be in VRAM at once (slot 14 holds the
+# swatch row and the star, 15 the fonts, 0, 31 and 30 the far views' common stand-in set). A cart that
+# enters both regions once and then draws with wp_region_loaded = -1 draws every near cell at its
+# own levels, whichever side of z = 128 the eye is on, and crossing the line copies nothing but the
+# backdrop; a cart that enters a region at a time still works as before (each entry copies only its
+# own slots). The budgets are those slots: 512 KB for the town (it uses 376 KB), 352 KB for the
+# shrine (212 KB). The
 # shrine's palettes start at 256, in palette bank 1, so the town has 0-253 (254 is the star's, 255
 # the fonts'). The shrine's palette variants (day, night), a copy per region, without its night's
-# water colour (the water is textured: the night's multiply tints it, art/water/APPLY.md); each
-# region its own backdrop, from art/backdrop/backdrop.json (art/backdrop/APPLY.md): a sky and a far
-# view drawn for the streets and one for the shrine's grounds and mountain, with the night's exact
-# colours.
-TEXTURE_SLOTS = '13-1,16-31'
-TEXTURE_BUDGETS = {'town': 668 * 1024, 'shrine': 460 * 1024}
+# water colour (the water is textured: the night's multiply tints it, art/water/APPLY.md); and one
+# backdrop for both, art/backdrop/backdrop.png (art/backdrop/APPLY.md): a sky and a far view round
+# the level, with the night's exact colours, the same in both regions so that nothing in it moves
+# when the line is crossed.
+TEXTURE_SLOTS = {'town': '13-1,16-18', 'shrine': '19-29'}
+TEXTURE_BUDGETS = {'town': 16 * 32768, 'shrine': 11 * 32768}
 PALETTES = {'shrine': {'first': 256}}
-BD = json.loads((ST / 'art' / 'backdrop' / 'backdrop.json').read_text())
-
-
-# ---- fog toward a colour (the GPU's, DECISIONS.md "Fog toward a colour"; DESIGN.md 12.7): each
-# variant fades far geometry toward its own sky at 1 degree above the horizon, the day's from 30 to
-# 380 units (a haze: the far ring's stand-ins half gone at 200), the night's from 16 to 220 (the
-# dark). The backdrop's stop below the horizon (-8 degrees) is the fog colour too, so the sky under
-# the farthest fogged ground has no band of another colour.
-FOG_RANGE = {'day': (30, 380), 'night': (16, 220)}
-
-
-def sky_at(elevations, colours, e):
-    for k in range(1, len(elevations)):
-        if e <= elevations[k]:
-            t = (e - elevations[k - 1]) / (elevations[k] - elevations[k - 1])
-            a, b = (tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) for c in (colours[k - 1], colours[k]))
-            return '#' + ''.join(f'{round(x + (y - x) * t):02x}' for x, y in zip(a, b))
-    return colours[-1]
-
-
-def fog_colour(r, name):
-    return sky_at(BD[r]['elevations'], BD[r]['sky'][name], 1.0)
 
 
 def sky(r):
     """The region's sky with its stop below the horizon in each variant's fog colour."""
     out = {}
     for name, colours in BD[r]['sky'].items():
-        out[name] = [fog_colour(r, name)] + colours[1:] if name in FOG_RANGE and BD[r]['elevations'][0] < 0 else colours
+        out[name] = [FOG_COLOUR[name]] + colours[1:] if name in FOG_RANGE and BD[r]['elevations'][0] < 0 else colours
     return out
 
 
@@ -179,16 +180,37 @@ def variants(r):
     for name, colours in BD[r].get('variants', {}).items():
         v[name]['backdrop'] = colours
     for name, (near, far) in FOG_RANGE.items():
-        v[name]['fog'] = {'color': fog_colour(r, name), 'near': near, 'far': far}
+        v[name]['fog'] = {'color': FOG_COLOUR[name], 'near': near, 'far': far}
+    if r == 'town':
+        v['night']['texels'] = NEIGHBOUR_NIGHT
     return v
 
 
-regions = {r: {'textures': {'slots': TEXTURE_SLOTS, 'budget': TEXTURE_BUDGETS[r]},
+# The neighbours' lit panes at night (assets/edge_neighbour/make_edge_neighbour.py: LIT, LIT_NIGHT),
+# near and far, every neighbour the cells place (all in the town's rows).
+NEIGHBOURS = sorted(set(re.findall(r'"(edge_neighbour_[a-z0-9]+)"', ''.join(
+    f.read_text() for f in sorted((ST / 'cells').glob('*.cell.json'))))))
+NEIGHBOUR_NIGHT = {f'{n}.{m}': {'#3e4a5e': '#e8c878'} for n in NEIGHBOURS for m in ('facade', 'facade_far')}
+
+
+regions = {r: {'textures': {'slots': TEXTURE_SLOTS[r], 'budget': TEXTURE_BUDGETS[r]},
                **({'palettes': PALETTES[r]} if r in PALETTES else {}),
                'variants': variants(r),
                'backdrop': {'elevations': BD[r]['elevations'], 'sky': sky(r),
-                            'silhouette': {'image': f'art/backdrop/{r}_backdrop.png', 'horizon': BD[r]['horizon'],
+                            'silhouette': {'image': 'art/backdrop/backdrop.png', 'horizon': BD[r]['horizon'],
                                            'repeat': 1}}} for r in L.REGIONS}
+
+# ---- the ground's levels (WORLDKIT.md, "Levels of detail"): the field's coarse level from 22 units,
+# to 2.5 units, drawn in each texture's mean colour, untextured; the far levels on 8- and 16-unit
+# grids. The alpha review (far views) found the ridge, the grove and the mountain flat brown facets
+# from 22 units; moving the coarse level out was measured and not taken (DESIGN.md 12.9): at 40 units
+# and a tolerance of 1.5 the draw CPU rose by a median 13,000 cycles a view and the views over
+# 600,000 near z = 128 went from 5 to 54 of 5,760, at 30 and 1.5 by 3,500 and to 20. At 1.2 or 1.0
+# the kit also leaves a hole in level 0's floor under the giant cedar at (102, 252). A textured
+# coarse level is the fix that costs no triangles (a World Kit change).
+GROUND_LOD = {'distance': 22, 'tolerance': 2.5}
+FAR_GROUND = [{'distance': 36, 'grid': 8}, {'distance': 76, 'grid': 16}]
+
 world = {
     'format': 'mei-world', 'version': 1, 'name': 'shrinetown',
     'game': '../world/garden.game.mochi',
@@ -202,15 +224,23 @@ world = {
     'collision': town['collision'],
     'regions': regions,
     'runtime': {'depth': True, 'perspective': True, 'near_far': 192},
-    'verification': {'thresholds': {'cell_triangles': 12000, 'cell_placements': 400, 'standin_triangles': 140}},
+    # vantage points: the heaviest views the reviews found (DESIGN.md 12.9), always checked on top of
+    # the sampled ones (WORLDCHECKER.md, "Vantage points")
+    'verification': {'thresholds': {'cell_triangles': 12000, 'cell_placements': 400, 'standin_triangles': max(COURTYARD.values())},
+                     'vantage_points': json.loads((ST / 'notes' / 'vantage_points.json').read_text())},
+    # 254 is the star card's palette (the cart's own pack); no region may take it
+    'palette': {'reserved': [254]},
     'layers': layers,
     'paths': paths,
     'terrain': {'materials': materials, 'fields': {'ground': {
         'spacing': 2, 'min': [0, 0], 'max': [320, 384], 'heights': HEIGHTS,
         'material': 'floor', 'steep': {'degrees': 38, 'material': 'rock'}, 'tolerance': 0.15, 'tile': 16,
-        'lod': {'distance': 22, 'tolerance': 2.5}, 'operations': ops}}},
+        # steep faces up to 70 degrees are floors a falling body slides down, not only walls, so no
+        # crease between two steep faces lets a body through (WORLDKIT.md, "Steep ground")
+        'slide_floor_degrees': 70,
+        'lod': GROUND_LOD, 'operations': ops}}},
     'scatter': scatter,
-    'lod': {'ground': [{'distance': 36, 'grid': 8}, {'distance': 76, 'grid': 16}],
+    'lod': {'ground': FAR_GROUND,
             'sweeps': {'cull': 56, 'paths': {'torii_steps': {'cull': 44}}}},
     'standins': STANDINS,
     'haze': HAZE,

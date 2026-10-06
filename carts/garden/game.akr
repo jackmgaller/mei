@@ -25,6 +25,10 @@ var coins: s32
 var red_coins: s32
 var coin_got: [8]u32           // a bit per entity number (of the world open now)
 var door_wait: bool            // standing in the door just come through: not taken again until left
+var region_cycles: s32         // the cost of the last region crossing (follow_region()), for the tests
+var region_entered_at: s32     // and the frame it was in (frame_n)
+var region_enters: s32         // crossings so far
+var body_shown: bool           // draw() drew the body (the tests)
 
 fn init() {
     // The depth buffer and perspective-correct textures (docs/RENDERING.md): everything is
@@ -42,6 +46,7 @@ fn init() {
     attach_init()
     goals_init()
     cam_reset()
+    cam_intro()
     timing_start()
     last_frame = FRAME
     test_init()
@@ -91,7 +96,8 @@ fn update() {
         if held(LEFT) { look.x = -1.0 }
         if held(RIGHT) { look.x = 1.0 }
     }
-    if pressed(Y) && !menu_open { player_respawn() }
+    if pressed(Y) && !menu_open { player_respawn() }       // a challenge running is lost (goals_respawn())
+    if ticks(T.Night) != world_variant { world_set_variant(ticks(T.Night)) }
     read_input(s)
     let n = clamp((FRAME - last_frame) as s32, 1, MAX_CATCH_UP)
     last_frame = FRAME
@@ -148,8 +154,12 @@ fn follow_region() {
     if c == null || wp_region_loaded < 0 { return }
     let k = c.region as s32
     if k != wp_region_loaded {
+        let c0 = cycle_count()
         wp_region_enter(k, world_variant)
         world_region_entered(k)
+        region_cycles = cycle_count() - c0
+        region_entered_at = frame_n
+        region_enters += 1
     }
 }
 
@@ -168,6 +178,7 @@ fn world_switch(k: s32) {
     place_at_spawn()
     goals_init()
     cam_reset()
+    cam_intro()
     door_wait = true
 }
 
@@ -226,7 +237,8 @@ fn draw() {
     draw_entities()
     attach_draw()
     goals_draw()
-    body_draw()
+    body_shown = cam.reach >= CAM_BODY_HIDE             // the eye in the robot's head: not drawn
+    if body_shown { body_draw() }
     goals_hud()
     hud_draw()
 }

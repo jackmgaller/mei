@@ -337,9 +337,9 @@
    "id": "red_parapet",
    "type": "red_coin",
    "position": [
-    48,
-    10.9,
-    13.85
+    48.0,
+    11.3,
+    13.875
    ],
    "asset": "gbt_coin_red"
   },
@@ -347,22 +347,18 @@
    "id": "train_5",
    "type": "mover",
    "position": [
-    2.0,
+    24.0,
     9.0,
-    12.1
+    10.0
    ],
-   "asset": "game_train",
-   "collision": "game_train",
+   "asset": "train_emu_pair",
+   "collision": "train_emu_pair_col",
    "params": {
-    "to": [
-     158,
-     0,
-     0
-    ],
+    "path": "race_track2",
     "period": 600,
-    "pause": 900,
+    "pause": 2700,
     "start": "race5",
-    "delay": 3600
+    "delay": 1800
    }
   },
   {
@@ -413,8 +409,10 @@
     9.2,
     13.3
    ],
+   "yaw": 270.0,
    "params": {
-    "height": 4.25
+    "height": 4.25,
+    "front": true
    }
   },
   {

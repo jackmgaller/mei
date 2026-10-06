@@ -115,9 +115,12 @@ MACHIYA_W = (18.0 - 7.3, 270)
 MACHIYA_E = (24.0 + 7.3, 90)
 # The sento (sento_front: 22 x 12.9 m, the chimney at local (8.8, 4.25)). Placed so that the
 # chimney is where the grey box had it, (30.5, 67.5): glide G3 (scenario 412) and red coin 7 start
-# there. Its iron ladder is a pole at local (8.8, 5.02, 3.45) up to the top, 18.2.
+# there. Its iron ladder is a pole at local (8.8, 5.02, 3.45) from the boiler room's roof; the pole
+# runs on 1.2 m over the chimney's top (18.2) so that its top holds the feet level with it, and
+# letting go there steps onto the top (red coin 7, G3's take-off). To the top only, the feet
+# stopped 1.2 m under it, out of a ledge's reach (alpha review r05 #2).
 SENTO = (30.5 - 8.8, 0.0, 67.5 - 4.25)
-SENTO_POLE = ((8.8, 5.02, 3.45), 18.2 - 5.02)
+SENTO_POLE = ((8.8, 5.02, 3.45), 19.4 - 5.02)
 # The bridges and the grille (their frames: the walk along local X over a canal along local Z).
 ROAD_BRIDGE = (48.0, 0.0, 111.0)                      # lamps on the parapets at local (0, 2.1, +-6.8)
 ROAD_POLE_Z = 106.0                                   # the front road's utility poles (street zone)
@@ -207,10 +210,12 @@ def town(ns):
         c.remove('c0_1', f'pole_road{x}')
         c.put(f'pole_road{x}', 'street_utility_pole', (float(x), 0.0, ROAD_POLE_Z), 90)
         c.entity(f'pole_road{x}', 'pole', (float(x), 0.0, ROAD_POLE_Z), {'height': 9.0})
-    # the road works at the front road's west end: two barriers across the road, facing east
+    # the road works at the front road's west end: two barriers across the road, facing east; their
+    # collision is the drawn barrier's box (assets/road_works_barrier), not the shrine's 3 m wall
     c.remove('c0_1', 'road_works')
     for k, z in enumerate((107.5, 114.5)):
-        c.put(f'road_works_{k}', 'street_barrier', (1.0, 0.0, z), 270)
+        c.put(f'road_works_{k}', 'street_barrier', (1.0, 0.0, z), 270,
+              collision='road_works_barrier_col')
     # the trees between the road and the park move into the shrine's rows (core())
     c.remove('c0_1', 'cedar_0', 'ginkgo_0', 'ginkgo_1')
     lane_props(c)
@@ -244,6 +249,9 @@ def core(ns):
         pts = [at(ARCHED, 0, (x, -9.375 + math.sqrt(10.625 ** 2 - x * x) + 0.9, lz)) for x in range(-5, 6)]
         paths[f'canal_arch_rail_{k}'] = {'points': [[r3(v) for v in p] for p in pts], 'raised': True}
         c.entity(f'rail_canal_arch_{k}', 'rail', pts[0], {'path': f'canal_arch_rail_{k}'})
+    # the plank bridge by the mill (the core's sweep): boards, the arched bridge's (its material
+    # `planks` is the walkway's too, flat; this one is the zone's own, textured in world())
+    paths['core_canal_planks']['sweep']['material'] = 'canal_planks'
     # the watermill (house and wheel in one asset) and the brewery
     c.remove('c0_3', 'watermill_house', 'watermill_wheel', 'sakagura')
     c.put('watermill', 'watermill', WATERMILL)
@@ -323,6 +331,10 @@ def world(ns):
         d = folder(n)
         if d and not n.startswith(('gbt_', 'gbc_', 'gbm_')):
             add_dir(dirs, d)
+    # the plank bridge's boards (alpha review r16 #5: the one flat-colour bridge of the four)
+    w['terrain']['materials']['canal_planks'] = {
+        'color': '#8a6446',
+        'texture': {'image': '../shrine/assets/art/forest_planks.png', 'scale': [2.0, 2.0], 'span': 23}}
     ops = w['terrain']['fields']['ground']['operations']
     # a flat pad under the brewery; the arched bridge's east foot down to its abutment (0.6), clear
     # of the canal's bank (x 52)

@@ -28,15 +28,15 @@
  "regions": {
   "town": {
    "textures": {
-    "slots": "13-1,16-31",
-    "budget": 684032
+    "slots": "13-1,16-18",
+    "budget": 524288
    },
    "variants": {
     "day": {
      "fog": {
-      "color": "#e4ddc1",
-      "near": 30,
-      "far": 380
+      "color": "#d6dede",
+      "near": 20,
+      "far": 240
      }
     },
     "night": {
@@ -48,14 +48,125 @@
       "#f3ebdc": "#46517a",
       "#d6cbc0": "#2c3358",
       "#b33d36": "#d84a3c",
-      "#ece8e0": "#9aa0c4",
       "#b2573a": "#4c3446",
-      "#c99a46": "#5a5a46"
+      "#c99a46": "#5a5a46",
+      "#bdc6d6": "#212952",
+      "#d6dede": "#181842"
      },
      "fog": {
-      "color": "#4e3c61",
+      "color": "#181842",
       "near": 16,
       "far": 220
+     },
+     "texels": {
+      "edge_neighbour_e0.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e0.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e1.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e1.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e2.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e2.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e3.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e3.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e4.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_e4.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s0.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s0.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s1.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s1.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s2.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s2.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s3.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s3.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s4.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s4.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s5.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s5.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s6.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s6.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s7.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s7.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s8.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_s8.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w0.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w0.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w1.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w1.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w2.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w2.facade_far": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w3.facade": {
+       "#3e4a5e": "#e8c878"
+      },
+      "edge_neighbour_w3.facade_far": {
+       "#3e4a5e": "#e8c878"
+      }
      }
     }
    },
@@ -70,7 +181,7 @@
     ],
     "sky": {
      "day": [
-      "#e4ddc1",
+      "#d6dede",
       "#ecdcb4",
       "#d3dfdc",
       "#9cc4e0",
@@ -78,7 +189,7 @@
       "#3a6cb0"
      ],
      "night": [
-      "#4e3c61",
+      "#181842",
       "#5a4466",
       "#352c58",
       "#1c1e42",
@@ -87,16 +198,16 @@
      ]
     },
     "silhouette": {
-     "image": "art/backdrop/town_backdrop.png",
-     "horizon": 6,
+     "image": "art/backdrop/backdrop.png",
+     "horizon": 40,
      "repeat": 1
     }
    }
   },
   "shrine": {
    "textures": {
-    "slots": "13-1,16-31",
-    "budget": 471040
+    "slots": "19-29",
+    "budget": 360448
    },
    "palettes": {
     "first": 256
@@ -104,9 +215,9 @@
    "variants": {
     "day": {
      "fog": {
-      "color": "#e4ddc1",
-      "near": 30,
-      "far": 380
+      "color": "#d6dede",
+      "near": 20,
+      "far": 240
      }
     },
     "night": {
@@ -118,12 +229,13 @@
       "#f3ebdc": "#46517a",
       "#d6cbc0": "#2c3358",
       "#b33d36": "#d84a3c",
-      "#ece8e0": "#9aa0c4",
       "#b2573a": "#4c3446",
-      "#c99a46": "#5a5a46"
+      "#c99a46": "#5a5a46",
+      "#bdc6d6": "#212952",
+      "#d6dede": "#181842"
      },
      "fog": {
-      "color": "#4e3c61",
+      "color": "#181842",
       "near": 16,
       "far": 220
      }
@@ -140,7 +252,7 @@
     ],
     "sky": {
      "day": [
-      "#e4ddc1",
+      "#d6dede",
       "#ecdcb4",
       "#d3dfdc",
       "#9cc4e0",
@@ -148,7 +260,7 @@
       "#3a6cb0"
      ],
      "night": [
-      "#4e3c61",
+      "#181842",
       "#5a4466",
       "#352c58",
       "#1c1e42",
@@ -157,8 +269,8 @@
      ]
     },
     "silhouette": {
-     "image": "art/backdrop/shrine_backdrop.png",
-     "horizon": 6,
+     "image": "art/backdrop/backdrop.png",
+     "horizon": 40,
      "repeat": 1
     }
    }
@@ -173,8 +285,315 @@
   "thresholds": {
    "cell_triangles": 12000,
    "cell_placements": 400,
-   "standin_triangles": 140
-  }
+   "standin_triangles": 270
+  },
+  "vantage_points": [
+   {
+    "name": "canopy_490",
+    "position": [
+     165.667,
+     15.137,
+     6.067
+    ],
+    "yaw": 292.5,
+    "pitch": -20
+   },
+   {
+    "name": "air_523",
+    "position": [
+     146.167,
+     17.637,
+     3.783
+    ],
+    "yaw": 353.321,
+    "pitch": -20
+   },
+   {
+    "name": "over_stn",
+    "position": [
+     149.7,
+     16.8,
+     2.5
+    ],
+    "yaw": 0,
+    "pitch": -20
+   },
+   {
+    "name": "follow_platform_nw",
+    "position": [
+     172.2,
+     14.0,
+     3.8
+    ],
+    "yaw": 315,
+    "pitch": -22.62
+   },
+   {
+    "name": "follow_platform_n",
+    "position": [
+     162.3,
+     14.0,
+     2.5
+    ],
+    "yaw": 337.5,
+    "pitch": -22.62
+   },
+   {
+    "name": "follow_platform_w",
+    "position": [
+     146.3,
+     14.0,
+     2.5
+    ],
+    "yaw": 337.5,
+    "pitch": -22.62
+   },
+   {
+    "name": "platform_e_eye_nw",
+    "position": [
+     177,
+     11.5,
+     8
+    ],
+    "yaw": 315,
+    "pitch": -15
+   },
+   {
+    "name": "platform_w_eye_n",
+    "position": [
+     144,
+     11.5,
+     8
+    ],
+    "yaw": 337.5,
+    "pitch": -15
+   },
+   {
+    "name": "hall_eye_nnw",
+    "position": [
+     160,
+     1.6,
+     8
+    ],
+    "yaw": 337.5,
+    "pitch": 0
+   },
+   {
+    "name": "hall_follow_nw",
+    "position": [
+     164.2,
+     13.0,
+     6.8
+    ],
+    "yaw": 315,
+    "pitch": -22.62
+   },
+   {
+    "name": "under_viaduct_e_wnw",
+    "position": [
+     184,
+     1.5,
+     16
+    ],
+    "yaw": 292.5,
+    "pitch": 0
+   },
+   {
+    "name": "under_viaduct_e_nw",
+    "position": [
+     184,
+     1.5,
+     8
+    ],
+    "yaw": 315,
+    "pitch": 0
+   },
+   {
+    "name": "plaza_w_n",
+    "position": [
+     136,
+     1.5,
+     8
+    ],
+    "yaw": 0,
+    "pitch": 0
+   },
+   {
+    "name": "plaza_c_nw",
+    "position": [
+     176,
+     1.5,
+     16
+    ],
+    "yaw": 315,
+    "pitch": 0
+   },
+   {
+    "name": "deck_w_n",
+    "position": [
+     136,
+     10.5,
+     8
+    ],
+    "yaw": 0,
+    "pitch": -15
+   },
+   {
+    "name": "shotengai_64_n",
+    "position": [
+     160,
+     1.5,
+     64
+    ],
+    "yaw": 0,
+    "pitch": 0
+   },
+   {
+    "name": "arcade_roof_66_n",
+    "position": [
+     160,
+     10.0,
+     66
+    ],
+    "yaw": 0,
+    "pitch": -15
+   },
+   {
+    "name": "shotengai_94_s",
+    "position": [
+     160,
+     1.5,
+     94
+    ],
+    "yaw": 180,
+    "pitch": 0
+   },
+   {
+    "name": "street_168_88_sw",
+    "position": [
+     168,
+     1.5,
+     88
+    ],
+    "yaw": 225,
+    "pitch": 0
+   },
+   {
+    "name": "roof_168_88_sw",
+    "position": [
+     168,
+     7.8,
+     88
+    ],
+    "yaw": 225,
+    "pitch": -15
+   },
+   {
+    "name": "viaduct_deck_cemetery",
+    "position": [
+     312.0,
+     10.5,
+     136.0
+    ],
+    "yaw": 300,
+    "pitch": -10
+   },
+   {
+    "name": "cemetery_terrace_2",
+    "position": [
+     312.0,
+     7.6,
+     152.0
+    ],
+    "yaw": 300,
+    "pitch": -5
+   },
+   {
+    "name": "pagoda_terrace_264",
+    "position": [
+     184.0,
+     19.0,
+     264.0
+    ],
+    "yaw": 255,
+    "pitch": -10
+   },
+   {
+    "name": "pagoda_terrace_248",
+    "position": [
+     184.0,
+     18.5,
+     248.0
+    ],
+    "yaw": 180,
+    "pitch": 0
+   },
+   {
+    "name": "cemetery_terrace_1",
+    "position": [
+     286.0,
+     3.3,
+     135.0
+    ],
+    "yaw": 310,
+    "pitch": 5
+   },
+   {
+    "name": "rope_deck",
+    "position": [
+     130.0,
+     25.6,
+     282.0
+    ],
+    "yaw": 100,
+    "pitch": -22
+   },
+   {
+    "name": "basin_east",
+    "position": [
+     184.0,
+     15.8,
+     296.0
+    ],
+    "yaw": 240,
+    "pitch": -10
+   },
+   {
+    "name": "deck_5",
+    "position": [
+     102.0,
+     22.6,
+     252.0
+    ],
+    "yaw": 175,
+    "pitch": -30
+   },
+   {
+    "name": "pagoda_climb",
+    "position": [
+     178.0,
+     34.0,
+     262.0
+    ],
+    "yaw": 260,
+    "pitch": -22
+   },
+   {
+    "name": "courtyard_gate",
+    "position": [
+     160.0,
+     2.1,
+     130.0
+    ],
+    "yaw": 0,
+    "pitch": 0
+   }
+  ]
+ },
+ "palette": {
+  "reserved": [
+   254
+  ]
  },
  "layers": {
   "ladder_e_up": {
@@ -885,6 +1304,66 @@
    ],
    "raised": true
   },
+  "race_track2": {
+   "points": [
+    [
+     24.0,
+     9.0,
+     10.0
+    ],
+    [
+     120.0,
+     9.0,
+     10.0
+    ],
+    [
+     122.0,
+     9.0,
+     10.09
+    ],
+    [
+     124.0,
+     9.0,
+     10.328
+    ],
+    [
+     126.0,
+     9.0,
+     10.664
+    ],
+    [
+     128.0,
+     9.0,
+     11.05
+    ],
+    [
+     130.0,
+     9.0,
+     11.436
+    ],
+    [
+     132.0,
+     9.0,
+     11.772
+    ],
+    [
+     134.0,
+     9.0,
+     12.01
+    ],
+    [
+     136.0,
+     9.0,
+     12.1
+    ],
+    [
+     160.0,
+     9.0,
+     12.1
+    ]
+   ],
+   "raised": true
+  },
   "wire_road_a": {
    "points": [
     [
@@ -934,12 +1413,12 @@
     ],
     [
      250.0,
-     8.0,
+     10.5,
      106.8
     ],
     [
      280.0,
-     8.0,
+     10.5,
      106.8
     ]
    ],
@@ -1009,12 +1488,12 @@
     ],
     [
      250.0,
-     8.0,
+     10.5,
      105.2
     ],
     [
      280.0,
-     8.0,
+     10.5,
      105.2
     ]
    ],
@@ -1045,7 +1524,7 @@
     [
      111.95,
      8.0,
-     104.0
+     106.0
     ]
    ],
    "raised": true,
@@ -1075,7 +1554,7 @@
     [
      113.55,
      8.0,
-     104.0
+     106.0
     ]
    ],
    "raised": true,
@@ -1105,7 +1584,7 @@
     [
      136.95,
      8.0,
-     104.0
+     106.0
     ]
    ],
    "raised": true,
@@ -1135,7 +1614,7 @@
     [
      138.55,
      8.0,
-     104.0
+     106.0
     ]
    ],
    "raised": true,
@@ -1165,7 +1644,7 @@
     [
      206.2,
      8.0,
-     104.0
+     106.0
     ]
    ],
    "raised": true,
@@ -1195,7 +1674,7 @@
     [
      207.8,
      8.0,
-     104.0
+     106.0
     ]
    ],
    "raised": true,
@@ -2346,7 +2825,7 @@
       -0.3
      ]
     ],
-    "material": "planks"
+    "material": "canal_planks"
    }
   },
   "core_zigzag": {
@@ -4602,6 +5081,17 @@
      "span": 23
     }
    },
+   "canal_planks": {
+    "color": "#8a6446",
+    "texture": {
+     "image": "../shrine/assets/art/forest_planks.png",
+     "scale": [
+      2.0,
+      2.0
+     ],
+     "span": 23
+    }
+   },
    "asphalt_line_x": {
     "color": "#53535a",
     "texture": {
@@ -4794,6 +5284,7 @@
     },
     "tolerance": 0.15,
     "tile": 16,
+    "slide_floor_degrees": 70,
     "lod": {
      "distance": 22,
      "tolerance": 2.5
@@ -7937,26 +8428,22 @@
    }
   },
   "assets": {
-   "train_emu_car": {
-    "distances": [
-     6,
-     60
-    ],
-    "band": 1
-   },
    "mamachari": {
+    "distances": [
+     8
+    ],
     "cull": 30
    },
    "bike_rack": {
     "distances": [
-     14,
+     10,
      30
     ],
     "cull": 60
    },
    "newsstand": {
     "distances": [
-     14,
+     8,
      40
     ],
     "cull": 72
@@ -7969,7 +8456,7 @@
    },
    "koban": {
     "distances": [
-     24,
+     14,
      45
     ],
     "cull": 100
@@ -7983,33 +8470,45 @@
      100
     ]
    },
+   "viaduct_station_span": {
+    "distances": [
+     24,
+     100
+    ]
+   },
+   "viaduct_station_span_stair": {
+    "distances": [
+     24,
+     100
+    ]
+   },
    "town_potted_plants": {
-    "cull": 36
+    "cull": 28
    },
    "town_bench": {
     "cull": 45
    },
    "ticket_gates": {
     "distances": [
-     12,
+     8,
      40
     ]
    },
    "ramen_shop": {
     "distances": [
-     16,
+     12,
      45
     ]
    },
    "recordshop": {
     "distances": [
-     20,
+     12,
      50
     ]
    },
    "tobacco_shop": {
     "distances": [
-     20,
+     12,
      50
     ]
    },
@@ -8020,8 +8519,8 @@
    },
    "arcade_gate": {
     "distances": [
-     30,
-     70
+     22,
+     60
     ]
    },
    "town_street_lamp": {
@@ -8031,13 +8530,13 @@
     "cull": 70
    },
    "gachapon": {
-    "cull": 40
+    "cull": 26
    },
    "jizo": {
-    "cull": 40
+    "cull": 26
    },
    "town_kanban_set": {
-    "cull": 45
+    "cull": 32
    },
    "town_road_signs": {
     "cull": 60
@@ -8058,6 +8557,9 @@
     "cull": 50
    },
    "crane_game": {
+    "distances": [
+     12
+    ],
     "cull": 45
    },
    "town_crates_bins": {
@@ -8066,45 +8568,60 @@
    "town_utility_pole_transformer": {
     "cull": 56
    },
+   "town_utility_pole_tall": {
+    "cull": 56
+   },
    "dagashi_shop": {
     "distances": [
      20,
      45
     ]
    },
-   "town_shop_2f_a": {
-    "distances": [
-     20,
-     40
-    ]
-   },
    "town_shop_2f_a_noawning": {
     "distances": [
-     20,
+     12,
      40
     ]
    },
    "town_shop_2f_b": {
     "distances": [
-     20,
+     12,
      40
     ]
    },
    "town_shop_2f_c_left_noawning": {
     "distances": [
-     20,
+     12,
      40
     ]
    },
-   "town_shop_2f_c_noawning": {
+   "town_shop_2f_c_store_noawning": {
     "distances": [
-     20,
+     12,
+     40
+    ]
+   },
+   "town_shop_2f_a_camera": {
+    "distances": [
+     12,
      40
     ]
    },
    "town_shop_3f": {
     "distances": [
-     20,
+     12,
+     40
+    ]
+   },
+   "town_shop_3f_kimono": {
+    "distances": [
+     12,
+     40
+    ]
+   },
+   "town_shop_3f_books": {
+    "distances": [
+     12,
      40
     ]
    },
@@ -8258,7 +8775,7 @@
     "triangles": 60
    },
    "c1_2": {
-    "triangles": 60
+    "triangles": 140
    },
    "c1_3": {
     "triangles": 60
@@ -8270,7 +8787,7 @@
     "triangles": 60
    },
    "c2_2": {
-    "triangles": 60
+    "triangles": 220
    },
    "c2_3": {
     "triangles": 140
@@ -8282,7 +8799,7 @@
     "triangles": 140
    },
    "c3_2": {
-    "triangles": 110
+    "triangles": 270
    },
    "c3_3": {
     "triangles": 60
@@ -8307,7 +8824,7 @@
    }
   },
   "textures": {
-   "slots": "0,31"
+   "slots": "0,31,30"
   }
  },
  "haze": {
@@ -8315,9 +8832,158 @@
   "end": 280,
   "amount": 0.0,
   "standins": 0.15,
-  "elevation": 1
+  "colors": {
+   "day": "#d6dede",
+   "night": "#181842"
+  }
  },
  "meshes": {
   "quads": true
+ },
+ "occlusion": {
+  "occluders": {
+   "deck_w": {
+    "box": [
+     [
+      120.2,
+      8.6,
+      2.0
+     ],
+     [
+      160.6,
+      8.95,
+      14.0
+     ]
+    ]
+   },
+   "deck_e": {
+    "box": [
+     [
+      167.95,
+      8.6,
+      2.0
+     ],
+     [
+      199.8,
+      8.95,
+      14.0
+     ]
+    ]
+   },
+   "deck_s": {
+    "box": [
+     [
+      120.2,
+      8.6,
+      2.0
+     ],
+     [
+      199.8,
+      8.95,
+      6.55
+     ]
+    ]
+   },
+   "deck_n": {
+    "box": [
+     [
+      120.2,
+      8.6,
+      9.45
+     ],
+     [
+      199.8,
+      8.95,
+      14.0
+     ]
+    ]
+   },
+   "facade": {
+    "box": [
+     [
+      136.1,
+      4.7,
+      14.8
+     ],
+     [
+      183.9,
+      8.5,
+      14.99
+     ]
+    ]
+   },
+   "concourse_w": {
+    "box": [
+     [
+      136.05,
+      0.1,
+      1.6
+     ],
+     [
+      136.3,
+      8.5,
+      14.6
+     ]
+    ]
+   },
+   "concourse_e": {
+    "box": [
+     [
+      183.7,
+      0.1,
+      1.6
+     ],
+     [
+      183.95,
+      8.5,
+      14.6
+     ]
+    ]
+   }
+  },
+  "zones": {
+   "under_taper_w": {
+    "box": [
+     [
+      120,
+      -0.5,
+      2
+     ],
+     [
+      136,
+      5,
+      14
+     ]
+    ]
+   },
+   "under_taper_e": {
+    "box": [
+     [
+      184,
+      -0.5,
+      2
+     ],
+     [
+      200,
+      5,
+      14
+     ]
+    ]
+   },
+   "station_front_w": {
+    "box": [
+     [
+      136,
+      -0.5,
+      16
+     ],
+     [
+      160,
+      2,
+      28
+     ]
+    ]
+   }
+  }
  }
 }

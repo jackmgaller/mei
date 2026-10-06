@@ -63,6 +63,13 @@ fn town_case_init() -> bool {
     match SCENARIO {
         400 => { name = "shrine town: the spawn's first seconds, north up the shotengai through the great torii" }
         401 => { name = "shrine town: from the spawn up the station stair to the platform" }
+        402 => { name = "shrine town: crossing z 128 into the town and back costs no late frame (the water found at load)" }
+        403 => { name = "shrine town: night from the tuning menu: the night palette, and its water cycles in both regions" }
+        404 => { name = "shrine town: every camera zone is read; the kick chimney's and the kick pair's are used" }
+        405 => { name = "shrine town: the alley rail cameras look the way the player runs, held through the crossings" }
+        406 => { name = "shrine town: the body is not drawn with the eye in its head (the platform's stairwell)" }
+        407 => { name = "shrine town: the opening looks up the level, level with the horizon, then eases back" }
+        408 => { name = "shrine town: sliding down a shop front onto an awning bounces" }
         410 => { name = "shrine town: G1, building roof to the east side hall"; stg = G1 }
         411 => { name = "shrine town: G2, danchi roof to the canal lane"; stg = G2 }
         412 => { name = "shrine town: G3, sento chimney over the canal to the park"; stg = G3 }
@@ -81,6 +88,9 @@ fn town_case_init() -> bool {
         431 => { name = "shrine town: the konbini's door leads to the garden" }
         432 => { name = "shrine town: the road works at the front road's west end lead to the shrine" }
         433 => { name = "shrine town: the shrine's road works lead to the shrine town" }
+        434 => { name = "shrine town: the signal gantries' ladders are front poles: held on their front, not from the parapet" }
+        435 => { name = "shrine town: red coin 8 over the north parapet: not taken walking the deck, taken grinding the rail" }
+        436 => { name = "shrine town: red coin 5 on the konbini's roof sign, jumped up to from the roof" }
         440 => { name = "shrine town view V1: the arcade roof's north end, looking south" }
         441 => { name = "shrine town view V2: the pagoda's top, looking south" }
         442 => { name = "shrine town view V3: the stage, looking south" }
@@ -88,6 +98,7 @@ fn town_case_init() -> bool {
         444 => { name = "shrine town view V5: the spawn, looking north" }
         445 => { name = "shrine town view V6: the cemetery's top, looking west" }
         446 => { name = "shrine town view: turning once round on the pagoda's top" }
+        470 => { name = "shrine town occluders: under the west taper the deck hides the trains" }
         else => { return false }
     }
     cam.lock = false
@@ -101,6 +112,13 @@ fn town_case(f: s32) {
     match SCENARIO {
         400 => tw_spawn(f)
         401 => tw_route(f, &ROUTE_STATION[0], len(ROUTE_STATION) as s32)
+        402 => tw_cross(f)
+        403 => tw_night(f)
+        404 => tw_zones(f)
+        405 => tw_alleys(f)
+        406 => tw_body_hidden(f)
+        407 => tw_opening(f)
+        408 => tw_awning(f)
         410, 411, 412, 413, 414, 415, 416, 417, 418 => tw_glide(f)
         420 => tw_kick_pair(f)
         421 => tw_chimney(f)
@@ -111,6 +129,9 @@ fn town_case(f: s32) {
         431 => tw_door(f, vec3(187.5, 0.0, 36.0), 3.1416, GARDEN_WORLD_SHRINETOWN, GARDEN_WORLD_GARDEN)
         432 => tw_door(f, vec3(6.0, 0.0, 111.0), WEST, GARDEN_WORLD_SHRINETOWN, GARDEN_WORLD_SHRINE)
         433 => tw_door(f, vec3(10.0, 0.0, 14.0), WEST, GARDEN_WORLD_SHRINE, GARDEN_WORLD_SHRINETOWN)
+        434 => tw_gantries(f)
+        435 => tw_coin_parapet(f)
+        436 => tw_coin_sign(f)
         440 => sh_view(f, vec3(160.0, 0.0, 92.0), 3.1416, -0.14, 4.0, false)
         441 => sh_view(f, vec3(178.0, 0.0, 262.0), 3.1416, -0.3, 4.0, false)
         442 => sh_view(f, vec3(154.0, 0.0, 343.0), 3.1416, -0.3, 4.0, false)
@@ -118,7 +139,26 @@ fn town_case(f: s32) {
         444 => sh_view(f, vec3(160.0, 0.0, 28.5), NORTH, 0.0, 4.0, false)
         445 => sh_view(f, vec3(290.0, 0.0, 244.0), WEST, -0.2, 4.0, false)
         446 => sh_view(f, vec3(178.0, 0.0, 262.0), 3.1416, -0.3, 4.0, true)
+        470 => tw_occluded(f)
         else => {}
+    }
+}
+
+// The player under the viaduct's west taper, the camera behind it looking east along the deck
+// (place/occluders.py): the camera is in the zone `under_taper_w`, whose set holds both train cars
+// on the deck above; the reader skips them (wp_stats.occluded) and no frame is late.
+var tw_ozone: s32
+var tw_occl: s32
+fn tw_occluded(f: s32) {
+    sh_view(f, vec3(126.0, 0.0, 8.0), EAST, 0.0, 3.0, false)
+    if f == 0 { place(vec3(126.0, sh_floor(126.0, 8.0, 5.0), 8.0), EAST) }      // on the ground, not the deck
+    if f >= 30 {
+        tw_ozone = max(tw_ozone, wp_stats.zone + 1)
+        tw_occl = max(tw_occl, wp_stats.occluded)
+    }
+    if f == 89 {
+        expect(tw_ozone > 0, "the camera is in an occlusion zone", fixed(tw_ozone - 1))
+        expect(tw_occl >= 2, "the zone skips the two train cars", fixed(tw_occl))
     }
 }
 
@@ -517,4 +557,369 @@ fn tw_door(f: s32, at: vec3, yaw: fixed, w0: s32, w1: s32) {
         expect(wp_cell_at(pl.pos) != null, "standing in it", pl.pos.y)
         done()
     }
+}
+
+// ---- 434: the signal gantries' ladders (place/station.py: poles in front of the north column's
+// ladder, on the column's -X side in the gantry's frame) are front poles. Dropped onto the parapet
+// rail beside gantry 0 the body does not take the pole 0.575 m off it; jumped at from the deck in
+// front, each is held on its front, and the stick held sideways for 2 s does not take the body
+// round into the column or the parapet.
+const GANTRY_POLES: [2]vec3 = [vec3(19.55, 9.2, 13.3), vec3(305.26, 9.2, 97.55)]
+const GANTRY_FRONT: [2]vec2 = [vec2(-1.0, 0.0), vec2(0.0, -1.0)]     // the side each is held on (x, z)
+
+fn tw_gantries(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 { place_air(vec3(20.0, 11.2, 13.875), WEST) }
+    if tw_phase == 0 {
+        if pl.st == St.Pole { expect(false, "no pole taken from the parapet rail", pl.pos.y) }
+        if f == 60 {
+            expect(pl.st != St.Pole, "not on gantry 0's pole after the drop onto the parapet, y", pl.pos.y)
+            tw_phase = 1
+            tw_k = 0
+        }
+        return
+    }
+    let p = GANTRY_POLES[tw_k]
+    let fr = GANTRY_FRONT[tw_k]
+    let face = atan2(-fr.x, -fr.y)                         // facing the pole from its front
+    if tw_phase == 1 {                                     // stand 1.3 m in front of it
+        let ax = p.x + fr.x * 1.3
+        let az = p.z + fr.y * 1.3
+        place(vec3(ax, sh_floor(ax, az, 10.5), az), face)
+        t0 = f
+        tw_phase = 2
+        return
+    }
+    if tw_phase == 2 {                                     // a jump at it
+        stick_v = cc_stick(face, 1.0)
+        if f >= t0 + 4 && f < t0 + 16 { pad_v = A }
+        if pl.st == St.Pole {
+            expect(near(sin(pole_ang), fr.x, 0.01) && near(cos(pole_ang), fr.y, 0.01), "held on the ladder's front", pole_ang)
+            tw_phase = 3
+            t1 = f
+        }
+        if f > t0 + 120 { expect(false, "took the gantry's ladder", pl.pos.y) }
+        return
+    }
+    if tw_phase == 3 {                                     // sideways for two seconds
+        stick_v = cc_stick(face + 1.5708, 1.0)
+        if f == t1 + 120 {
+            expect(pl.st == St.Pole && near(sin(pole_ang), fr.x, 0.01) && near(cos(pole_ang), fr.y, 0.01), "not gone round: still on the front", pole_ang)
+            let off = (pl.pos.x - p.x) * fr.x + (pl.pos.z - p.z) * fr.y
+            expect(off > 0.2, "the body in front of the pole, m", off)
+            tw_k += 1
+            tw_phase = 1
+            if tw_k == 2 {
+                done()
+                tw_phase = 9
+            }
+        }
+    }
+}
+
+// ---- 435: red coin 8 (place/station.py: 1.1 m over the north parapet's rail west of the
+// station). Walking the deck beside the parapet past it does not take it; coming down onto the
+// rail and grinding it west does.
+fn tw_coin_parapet(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        tw_star = tw_coin_near(vec3(48.0, 11.3, 13.875))
+        expect(tw_star >= 0, "red coin 8 over the parapet at 11.3", 11.3)
+        place(vec3(58.0, sh_floor(58.0, 13.4, 10.5), 13.4), WEST)
+    }
+    if tw_phase == 0 {
+        stick_v = cc_stick(WEST, 1.0)
+        if pl.pos.x < 40.0 || f == 240 {
+            expect(pl.pos.x < 40.0, "walked past it on the deck, x", pl.pos.x)
+            expect(!coin_taken(wp_entity(tw_star).number as s32), "not taken on foot", pl.pos.y)
+            place_air(vec3(56.0, 11.6, 13.875), WEST)
+            pl.vel = vec3(-0.12, 0.0, 0.0)
+            tw_phase = 1
+            t0 = f
+        }
+        return
+    }
+    if pl.st == St.Rail && t1 < 0 { t1 = f; note("on the rail at x", pl.pos.x) }
+    if coin_taken(wp_entity(tw_star).number as s32) {
+        expect(t1 >= 0, "taken grinding the rail, y", pl.pos.y)
+        done()
+        tw_phase = 9
+        return
+    }
+    if f > t0 + 180 { expect(false, "taken grinding", pl.pos.x) }
+}
+
+// ---- 436: red coin 5 on the konbini's roof sign (konbini_roof_sign, its top 7.0, 2.3 m over
+// the roof's deck): from the deck behind it, a jump and a double jump at it.
+fn tw_coin_sign(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        tw_star = tw_coin_near(vec3(196.0, 7.7, 30.0))
+        expect(tw_star >= 0, "red coin 5 on the sign at 7.7", 7.7)
+        let y = sh_floor(196.0, 28.4, 6.0)
+        expect(near(y, 4.7, 0.1), "on the konbini's roof deck, y", y)
+        place(vec3(196.0, y, 28.4), NORTH)
+    }
+    stick_v = cc_stick(NORTH, 0.6)
+    if pl.st == St.LedgeHang || pl.st == St.LedgeClimb { stick_v = cc_stick(NORTH, 1.0) }
+    if f >= 4 && f < 18 { pad_v = A }
+    if f >= 30 && f < 44 { pad_v = A }
+    if coin_taken(wp_entity(tw_star).number as s32) {
+        expect(pl.pos.y > 6.0, "taken on the sign, y", pl.pos.y)
+        done()
+        tw_phase = 9
+        return
+    }
+    if f == 200 { expect(false, "taken", pl.pos.y) }
+}
+
+// ---- the alpha fixes' cases (DESIGN.md 12.9, the cart, game and camera)
+
+// 402: the region crossing at z 128 (B5). Runs north from z 108 to 150 at x 160, then south, then
+// the same at x 220 (the worst of r03's): each entry's cost and the late ticks round it. The water's
+// palettes are found when the world opens, so an entry is the texture copy and little else.
+const CROSS_X: [2]fixed = [160.0, 220.0]
+var tw_late: s32
+var tw_enters: s32
+
+fn tw_cross(f: s32) {
+    if tw_phase == 9 { return }
+    if tw_phase == 0 {
+        expect(water_cycle_regions == 2, "the water's places found for both regions at load", fixed(water_cycle_regions))
+        if tw_k == 0 { note("finding them cost, thousand cycles (in the world's load)", fixed(water_find_cycles / 1000)) }
+        let x = CROSS_X[tw_k]
+        place(vec3(x, sh_floor(x, 108.0, 60.0), 108.0), NORTH)
+        tw_enters = region_enters
+        tw_phase = 1
+        t0 = f
+        t1 = -1
+        return
+    }
+    if tw_phase == 1 { stick_v = cc_stick(NORTH, 1.0) }
+    if tw_phase == 3 { stick_v = cc_stick(3.1416, 1.0) }
+    if tw_phase == 1 && pl.pos.z >= 150.0 {
+        let x = CROSS_X[tw_k]
+        place(vec3(x, sh_floor(x, 150.0, 60.0), 150.0), 3.1416)
+        tw_phase = 2
+        t0 = f
+    }
+    if tw_phase == 2 && f >= t0 + 30 { tw_phase = 3 }
+    if region_enters != tw_enters {
+        tw_enters = region_enters
+        tw_late = timing.late
+        t1 = f
+        note("entered region", fixed(wp_region_loaded))
+        note("  the entry's cycles (thousands)", fixed(region_cycles / 1000))
+        if wp_region_loaded == WORLD_SHRINETOWN_REGION_TOWN {
+            expect(region_cycles < 520000, "the town's entry, cycles under 520,000 (was 642,500)", fixed(region_cycles / 1000))
+        } else {
+            expect(region_cycles < 340000, "the shrine's entry, cycles under 340,000 (was 377,300)", fixed(region_cycles / 1000))
+        }
+        expect(__wc_idx[0] >= 0, "its water cycles (the canal's ramp found)", fixed(__wc_idx[0]))
+    }
+    if t1 >= 0 && f == t1 + 4 {
+        note("  frame cpu after (thousands)", fixed(timing.cpu / 1000))
+        expect(timing.late == tw_late, "no late tick at the crossing", fixed(timing.late - tw_late))
+        t1 = -1
+    }
+    if tw_phase == 3 && pl.pos.z <= 108.0 {
+        tw_k += 1
+        if tw_k >= len(CROSS_X) as s32 {
+            done()
+            tw_phase = 9
+            return
+        }
+        tw_phase = 0
+    }
+    if f > 4000 { expect(false, "crossed, z", pl.pos.z) }
+}
+
+// 403: night (the tuning menu's "night" row): the palette is the night's, and the water cycles
+// in it, in the town and, after a crossing, in the shrine; then day again.
+var tw_col: s32
+// A sum over texture k's cycled colours' places (it changes when the cycle steps on).
+fn tw_water_sig(k: s32) -> s32 {
+    var h = 0
+    for l in 0..WATER_LEVELS[k] {
+        let i = __wc_idx[k * 16 + l]
+        if i >= 0 { h = h * 3 + palette_ptr(i)[0] as s32 * (l + 1) }
+    }
+    return h
+}
+
+fn tw_night(f: s32) {
+    if tw_phase == 9 { return }
+    let pal = VRAM_PALETTE as *u16          // the canal's palette is in bank 0
+    if f == 0 {
+        place(vec3(160.0, sh_floor(160.0, 116.0, 20.0), 116.0), NORTH)
+        expect(world_variant == 0 && __wc_idx[0] >= 0, "day, the canal's water cycling", fixed(__wc_idx[0]))
+        tw_col = pal[__wc_idx[0]] as s32
+        tv[T.Night] = 1.0
+    }
+    if f == 2 {
+        expect(world_variant == 1, "night", fixed(world_variant))
+        expect(__wc_idx[0] >= 0 && pal[__wc_idx[0]] as s32 != tw_col, "the canal's colours are the night's", fixed(pal[__wc_idx[0]] as s32))
+        tw_col = tw_water_sig(0)
+        tw_k = 0
+    }
+    if f > 2 && f < 60 && tw_water_sig(0) != tw_col {
+        tw_col = tw_water_sig(0)
+        tw_k += 1
+    }
+    if f == 60 {
+        expect(tw_k >= 3, "the night's canal cycles, colour changes", fixed(tw_k))
+        place(vec3(160.0, sh_floor(160.0, 140.0, 60.0), 140.0), NORTH)        // into the shrine
+    }
+    if f == 63 {
+        expect(wp_region_loaded == WORLD_SHRINETOWN_REGION_SHRINE && __wc_idx[16] >= 0, "in the shrine, the pond's water cycling", fixed(__wc_idx[16]))
+        tw_col = tw_water_sig(1)
+        tw_k = 0
+    }
+    if f > 63 && f < 130 && tw_water_sig(1) != tw_col {
+        tw_col = tw_water_sig(1)
+        tw_k += 1
+    }
+    if f == 130 {
+        expect(tw_k >= 3, "the night's pond cycles, colour changes", fixed(tw_k))
+        tv[T.Night] = 0.0
+    }
+    if f == 132 {
+        expect(world_variant == 0, "day again", fixed(world_variant))
+        done()
+        tw_phase = 9
+    }
+}
+
+// 404: the camera zones: as many read as the world has (13; the cart held 8), and the kick
+// chimney's and the kick pair's used with the camera free.
+fn tw_zones(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        var n = 0
+        for k in 0..wp_pack.entity_count as s32 {
+            if wp_entity(k).type_id as s32 == GARDEN_TYPE_CAMERA_ZONE { n += 1 }
+        }
+        note("camera zones in the world", fixed(n))
+        expect(cam_zone_n == n && n > 8, "every zone read", fixed(cam_zone_n))
+        place(vec3(196.5, sh_floor(196.5, 326.0, 50.0), 326.0), NORTH)        // the kick chimney's foot
+    }
+    if f == 60 {
+        expect(cam.zone >= 0 && cam.w == 1.0, "the kick chimney's zone", fixed(cam.zone))
+        place(vec3(171.35, sh_floor(171.35, 262.0, 40.0), 262.0), NORTH)     // between the kick pair's cedars
+    }
+    if f == 120 {
+        expect(cam.zone >= 0 && cam.w == 1.0, "the kick pair's zone", fixed(cam.zone))
+        done()
+        tw_phase = 9
+    }
+}
+
+// 405: the back alleys (r19's walk): up ns4, west along ew1, up ns2, west along ew3, south down
+// ns0, with the camera free. In a rail zone the camera looks the way the player runs, so the eye
+// is behind it; it turns round only for the frames of a corner.
+const ALLEYS: [8]vec3 = [vec3(124.75, 0.0, 50.0), vec3(124.75, 0.0, 64.75), vec3(112.75, 0.0, 64.75), vec3(100.75, 0.0, 64.75),
+                         vec3(100.75, 0.0, 86.75), vec3(88.75, 0.0, 86.75), vec3(76.75, 0.0, 86.75), vec3(76.75, 0.0, 56.0)]
+var tw_rail: s32
+var tw_ahead: s32
+var tw_zone: s32
+var tw_switch: s32
+
+fn tw_alleys(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        place(vec3(124.75, sh_floor(124.75, 50.0, 10.0), 50.0), NORTH)
+        gc_route(&ALLEYS[0], len(ALLEYS) as s32)
+        tw_zone = -1
+    }
+    let end = gc_walk(1.0)
+    if cam.zone >= 0 && cam.w >= 0.99 && cam_zones[cam.zone].mode == GardenCameraZoneMode.Rail as s32 && speed_ms() > 4.0 {
+        tw_rail += 1
+        let v = vec3(pl.vel.x, 0.0, pl.vel.z)
+        let b = pl.pos - cam.eye
+        if dot(vec3(b.x, 0.0, b.z), v) < 0.0 { tw_ahead += 1 }       // the eye ahead of the runner
+    }
+    if cam.zone != tw_zone && cam.zone >= 0 {
+        tw_switch += 1
+        tw_zone = cam.zone
+    }
+    if end {
+        note("frames running in a rail zone", fixed(tw_rail))
+        note("of them, the eye ahead of the runner", fixed(tw_ahead))
+        note("zones entered", fixed(tw_switch))
+        expect(tw_rail > 300, "ran the alleys in their rail zones", fixed(tw_rail))
+        expect(tw_ahead * 10 < tw_rail, "the eye behind the runner (ahead under 10 % of the frames)", fixed(tw_ahead))
+        expect(tw_switch <= 8, "a zone a leg or so: no flipping at the crossings", fixed(tw_switch))
+        done()
+        tw_phase = 9
+    }
+    if f > 2400 { expect(false, "walked the alleys, point", fixed(gc_i)) }
+}
+
+// 406: the station's inside stair up to the platform, where the stairwell pulls the eye into the
+// robot's head (r19: 26 frames under 0.6 m): there the body is not drawn, and elsewhere it is.
+fn tw_body_hidden(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        place(vec3(160.0, 0.0, 26.0), NORTH)
+        gc_route(&RACE_TOWN[1], len(RACE_TOWN) as s32 - 1)
+        tw_k = 0
+    }
+    let end = gc_walk(1.0)
+    if f > 2 {
+        if cam.reach < CAM_BODY_HIDE {
+            tw_k += 1
+            if body_shown { expect(false, "not drawn with the eye in its head, reach", cam.reach) }
+        } else if !body_shown {
+            expect(false, "drawn with the eye clear of it, reach", cam.reach)
+        }
+    }
+    if end && tw_phase == 0 {
+        tw_phase = 1
+        t0 = f
+    }
+    if tw_phase == 1 {
+        stick_v = cc_stick(cam.yaw + 1.5708, 0.4)                      // round the stairwell's head
+        if f == t0 + 240 {
+            note("frames with the eye within 0.8 m of the head (not drawn)", fixed(tw_k))
+            expect(true, "drawn exactly when the eye is clear of the head", fixed(tw_k))
+            done()
+            tw_phase = 9
+        }
+    }
+    if f > 2400 { expect(false, "up the stair, point", fixed(gc_i)) }
+}
+
+// 407: the opening (cam_intro() when a world opens): level with the horizon, up the spawn's way,
+// then the normal pitch; the world opened again starts it again.
+fn tw_opening(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 { expect(cam.intro > 0, "the opening runs as the world opens", fixed(cam.intro)) }
+    if f == 30 {
+        expect(near(cam.pitch, CAM_INTRO_PITCH, 0.03), "looking level up the axis, pitch", cam.pitch)
+        expect(near(cam.yaw, NORTH, 0.05), "north, the spawn's way", cam.yaw)
+    }
+    if f == CAM_INTRO + 10 {
+        expect(cam.intro == 0 && cam.pitch < -0.1, "then the normal pitch", cam.pitch)
+        world_switch(GARDEN_WORLD_SHRINETOWN)
+        expect(cam.intro > 0, "the world opened again: the opening again", fixed(cam.intro))
+        done()
+        tw_phase = 9
+    }
+}
+
+// 408: dropped beside the toy shop's front over awning e0 (r08's t60), pushing at the front:
+// the body slides down it onto the awning, which bounces (it used to land without land()).
+fn tw_awning(f: s32) {
+    if tw_phase == 9 { return }
+    if f == 0 {
+        place_air(vec3(165.25, 4.0, 48.9), EAST)
+        pl.spawn = vec3(165.25, -60.0, 48.9)
+    }
+    if f >= 4 && !was(St.Bounce) { stick_v = cc_stick(EAST, 1.0) }
+    if was(St.Bounce) {
+        expect(was(St.WallSlide) && seen_at(St.WallSlide) < seen_at(St.Bounce), "slid down the front, then bounced", fixed(seen_at(St.Bounce)))
+        done()
+        tw_phase = 9
+    }
+    if f > 300 { expect(false, "bounced off the awning", pl.pos.y) }
 }

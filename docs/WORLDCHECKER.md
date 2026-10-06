@@ -50,6 +50,7 @@ are measured and listed, and nothing fails on them.
 | a collision crack or mismatched floor edge the game's floor query does not bridge, unless the crack baseline lists it ([Crack baseline](#crack-baseline)) | coverage errors over `coverage_pixels` |
 | | ground inversions over `ground_inversion_pixels` ([Ground](#ground)) |
 | an entity origin inside solid collision | a cell over `cell_triangles`, `cell_placements`, `standin_triangles` |
+| a body dropped onto steep ground that falls through the world (`drop_through`, [Drops](#drops)) | |
 | a face index outside its mesh | a cell without a stand-in that other cells can see |
 
 The report (`"format": "mei-world-check"`) holds `ok`, `mode`, the full `settings`, the lists
@@ -77,8 +78,9 @@ are WORLDKIT.md's placeholders.
 | `thresholds.draw_cpu_cycles` | 600,000 | 60% of the CPU's: `wp_draw()` plus entity meshes |
 | `thresholds.view_triangles` | 4,000 | triangles submitted per view (WORLDKIT.md, "A frame budget") |
 | `thresholds.cell_triangles`, `cell_placements`, `standin_triangles` | 1,600, 100, 32 | every layer on |
+| `thresholds.occlusion_leaks` | 0 | rays from an occlusion zone that reach what it hides ([Occlusion](#occlusion)) |
 | `sampling.floor_spacing` | 16 | grid spacing over each cell's floors (`null`: none) |
-| `sampling.yaws`, `yaw_offset_degrees` | 4, 22.5 | directions per position |
+| `sampling.yaws`, `yaw_offset_degrees` | 8, 22.5 | directions per position (4 before 2026-10-06, which missed the heavy views between them) |
 | `sampling.eye_pitches_degrees` | [0] | |
 | `sampling.follow` | distance 6, height 2.5 | a camera behind and above the eye, pulled in by walls (`null`: none) |
 | `sampling.rooftops_per_cell`, `roof_pitches_degrees` | 2, [−20] | |
@@ -86,12 +88,14 @@ are WORLDKIT.md's placeholders.
 | `sampling.seams` | spacing 32 | on cell seams (`null`: none) |
 | `sampling.entities` | yaws 6, distances [1.5, 4, 8], pitches [−55, −30, −10], floor distances [2.5, 6] | cameras aimed at each entity with a mesh (`null`: none; [Entities](#entities)). In depth mode the default is `null` |
 | `sampling.layer_combinations` | true | |
-| `sampling.max_views` | 600 | views after layer combinations; thinned evenly per kind; vantage points always kept |
-| `vantage_points` | [] | `{"position": [x, y, z], "yaw": deg, "pitch": deg}` |
+| `sampling.max_views` | 600 | sampled views after layer combinations; thinned evenly per kind; vantage points are kept on top of it |
+| `vantage_points` | [] | `{"position": [x, y, z], "yaw": deg, "pitch": deg, "yaws": n, "name": s}`, always checked ([Vantage points](#vantage-points)); a World Kit recipe gives them as `verification.vantage_points` |
 | `runtime` | far ring 3, near 0.1, near far 1.5 cells, entities drawn, ground first, entity drawing `object`, object bias 1.5, object squash 2, levels of detail on, worst case | what the game sets on the reader (`near_far`: `null` takes the pack's own, else 1.5 cells; `lod`: `wp_lod`; `lod_fine`: `wp_lod_fine`, the finest level the hysteresis band allows; `ground_first`: `wp_ground_first`; `entity_drawing`: `object`, through `wp_draw_entities()`, or `mesh_at`, each live entity's mesh by its own depth; `object_bias`, `object_squash`: `wp_object_bias`, `wp_object_squash`; `depth`, `perspective`: false, the game calls `render_depth(true)`, `render_perspective(true)`, [Depth mode](#depth-mode)) |
 | `ordering` | on; edge margin 1 px; depth epsilon 0.001 | see [Ordering](#ordering-check-3); in depth mode also the depth key's tolerance |
 | `ordering.depth_views` | 60 | depth mode only: views given the pixel comparison ([The ordering sample](#the-ordering-sample)); `null`: every view. Listed in the report only in depth mode |
+| `occlusion` | on; 48 rays a target; 20 findings | the occlusion check of a pack 1.5 ([Occlusion](#occlusion)); `rays_per_target`: sample points of each hidden thing; listed only for a pack with zones |
 | `collision` | 4 samples a unit, rays of 32 units, 50 findings | `crack_baseline`: the entries of the world's crack baseline, which the World Kit build passes from `NAME.cracks.json` ([Crack baseline](#crack-baseline)); null, none |
+| `collision.drop` | spacing 1, start 1, speed 0.375, ticks 240, min normal y 0.2, merge 4 | the drop check ([Drops](#drops)); `null`: none |
 | `images` | 6 | diagnostic pictures of the worst views |
 
 `names` (optional) labels witnesses: `{"placements": {"TAG": "id"}, "entities": {"N": "id"}}`.
@@ -124,6 +128,7 @@ the console has. Each check runs with every layer off and with each layer on alo
   the probe's step above and below; a mismatched edge only if a point of its sliver (at the
   overlap's midpoint and 1 and 2 raw units either side of the line) is not. On the shrine town
   (bridge 0.4375) this leaves 3 of 190 findings (132 cracks, 58 mismatched edges).
+- **Drops** ([Drops](#drops)): bodies dropped onto steep ground that fall through the world.
 - **Entities inside solid.** 14 rays from the entity's origin (axes and diagonals, slightly
   skewed off edges, 32 units): if every one first meets a triangle from behind, the origin is
   inside a closed solid. An origin on a surface is not inside. An entity's own collision block
@@ -138,6 +143,59 @@ the console has. Each check runs with every layer off and with each layer on alo
 
 Sloped floors are judged by the encoder's kinds; the checker does not know `floor_max_degrees`
 (the pack stores kinds, not the angle).
+
+### Drops
+
+The crack check looks at floors; it cannot see steep ground, which is all walls. A wall pushes a
+body out along its horizontal normal only, so a body falling onto a slope too steep to stand on
+is held at the surface while it creeps down a single face, but in a crease, where two steep faces
+meet in a V, the faces push it back and forth and it sinks through the world (the shrine town's
+B3, [WORLDKIT.md](WORLDKIT.md#steep-ground)). The drop check finds those places.
+
+Over a grid of points (`collision.drop.spacing`, 1 unit) in every cell, wherever the highest
+up-facing collision is a wall rather than a floor (a wall whose normal's y is at least
+`min_normal_y`, 0.2: steep ground, not a cliff face), a body is dropped from `start` (1 unit)
+above that wall, falling `speed` units a tick (0.375: the garden's fall speed, 22.5 m/s, at 60
+ticks a second), and moved as the game's air move moves it:
+
+1. pushed out of the walls at three heights above its feet (0.225, 0.5625 and 0.875 of
+   `probe.height`: the garden's 0.36, 0.9 and 1.4 of 1.6) by `verify_static.reader_push()`,
+   `wp_push()` bit for bit (the same bucket, rows and fixed-point products, walls in the pack's
+   order);
+2. moved down;
+3. landed if the floor query (`wp_floor_across()` with the probe's step and bridge, as for cracks)
+   finds a floor its feet reached.
+
+A body that lands, leaves every collision behind (off the world's edge), or is still falling after
+`ticks` (240) is fine. One whose whole body (its top wall sample plus the radius) is under the
+lowest up-facing collision at its position, with nothing up-facing under it, has fallen through:
+a hard failure `drop_through` in every mode, with the drop's point and the wall's tag (`at`,
+`tag`), where the body ended (`ended`, `ticks`), the surface it is under (`under`, `under_tag`)
+and how many dropped points within `merge` (4) units in the cell went the same way (`points`).
+The drops run with every layer off over every cell, then with each layer alone over the cells
+that hold it. `static.collision.drops` gives the drops made, the findings and the first of them.
+
+A body that falls through a slope onto a floor beneath it (a cave's) is not caught: it has
+landed. A layer's pass drops only where the bucket holds that layer's collision. Its cost is
+about 7 ms a drop in Python: the shrine town's 8,041 drops (7,842 with every layer off) take 57 s,
+the shrine world's 4,858 take 38 s.
+
+In the shrine town at 590e049 the check finds 45 places (`drop_through`), every one on terrain:
+the bank under the precinct's north wall (x 166–190, z 238–254), the stage's west stair and the
+fox grove (x 86–135, z 309–347), the falls' top (218, 346), the ridge (146, 264–270), by the pond
+bridge (216, 170 and 228, 185), and around the basin and chimney terrace. With the ground's
+`slide_floor_degrees` at 60 it finds 5 (faces of 64–66°), at 70 none; r13's grid of 942 drops in
+the game then leaves none falling through.
+
+### Vantage points
+
+`vantage_points` are cameras checked in every run, on top of the sample: the views a world knows
+to be heavy, which a grid can miss between its points (the shrine town's sampled check found 2 of
+the town's 204 views over the draw budget). Each is `{"position": [x, y, z], "yaw", "pitch"}` in
+degrees, with an optional `name` (carried into its rows) and `yaws`: that many directions evenly
+round from `yaw` (8: every 45°). They are never thinned and do not count against
+`sampling.max_views`; the quick check (`focus`) keeps them too. A World Kit recipe lists them as
+`verification.vantage_points`, which the build passes to `check_world()`.
 
 ### Crack baseline
 
@@ -185,7 +243,12 @@ Cameras come from the pack's floors:
 
 Each view is repeated for each layer set: all off, each layer alone, and the largest set the
 exclusive groups allow (in each group the layer with the most triangles, with every ungrouped
-layer), where a cell with those layers is within reach of the camera.
+layer), where the set can change what the view draws (`layer_views()`): a layer changes a view
+only through its placements in the cells the near pass draws (stand-ins leave layers out), so a
+set is taken only where a cell with one of its layers' placements, its square grown by the
+overhang, is within the near pass's far depth of the eye. Before 2026-10-06 the reach was the far
+ring (3 cells), so in the shrine town 10 of the 11 layer sets were repeated over the town, where
+they change nothing, and took most of the 600 views.
 
 A generated verification cart (`verify_render.py`) opens the pack with `stdlib/worldpack.akr`
 and draws each view twice on the headless core: once from the pack as built, measured, and once
@@ -231,6 +294,32 @@ instance of its own in the identity pack (each placement gets its own copy of it
 so the ordering check judges the levels actually drawn. `tests/test_worldverify.py` checks a
 plaza whose buildings have two coarser levels and a cull distance: no coverage errors, coarse
 levels drawn in most views. `runtime.lod: false` checks the world at full detail.
+
+### Occlusion
+
+A pack 1.5's occlusion zones ([WORLDPACK.md](WORLDPACK.md#occlusion-zones)) are drawn as the
+reader draws them: `wp_occlusion` is on in the verification cart unless `runtime.occlusion` is
+false, so every view's budgets count the culls the cart makes, and each view's stats list the
+placements and stand-ins it skipped (`occluded`, `standins_occluded`) and the eye's zone (`zone`,
+its number in the eye's cell, or −1). The reference the pictures are judged by ignores the zones
+(`select(occlusion=False)`): it draws what is in sight, so a zone that hides something a sampled
+view sees shows there as pixels drawn wrongly or not at all.
+
+Sampled views see a zone from a few points; the **occlusion check** (a static check,
+`tools/worldkit/verify_occlusion.py`) tests every zone from 15 points of its box: its corners a
+hair inside, its centre and its faces' centres. From each it casts a ray to sample points of each
+hidden thing (the vertices of each of its levels and its faces' centres, up to
+`occlusion.rays_per_target`, evenly spread) and asks whether the ray first crosses a face that is
+drawn from there and hides what is behind: a face of a placement of the zone's near cells that
+the zone does not hide, present with the zone's layer on and the other layers off, facing the eye
+or double-sided, not semi-transparent, and untextured, a swatch, or textured without a texel 0 in
+its tile. Each placement is taken at the finest and at the coarsest level its hysteresis band
+allows from that point, and the ray must be stopped in both. A ray that is not stopped is a
+**leak** (`static.occlusion.findings`: the zone's cell and number, the eye, the point, the hidden
+placement or stand-in); leaks over `thresholds.occlusion_leaks` are a threshold failure
+(`occlusion_leak`). The check is sampled: a gap narrower than the spacing of the sample points can
+still show. It does not use the occluders the recipe declared (the pack does not hold them): it
+judges the culls themselves.
 
 ## Ordering (check 3)
 
@@ -764,7 +853,9 @@ shrine town's two cells with 12 findings, and in `tests/test_worldkit.py`).
 - **ROM.** The cart embeds the pack twice (as built and as identity pack): a pack over about
   31 MB does not fit a 64 MB cart.
 - **Sampling** is finite: views the sampler never makes are not checked; positions are where a
-  body can stand by the pack's collision.
+  body can stand by the pack's collision. Name the views known to be heavy as vantage points.
+- **Drops** model the garden's body (its fall speed and wall sample heights), not every game's;
+  a fall through a slope onto a floor beneath it is not caught.
 - **Not checked yet:** the seam rule for region textures (no region texture drawn while slots
   are swapped: [WORLDKIT.md](WORLDKIT.md#region-seams)), the backdrop (the plane chip draws it
   behind every polygon; the check judges polygons only) and the overhang limit (the encoder enforces it); fog and the game's own drawing
@@ -774,7 +865,7 @@ shrine town's two cells with 12 findings, and in `tests/test_worldkit.py`).
 
 `worldkit.build.run_gate(context)` calls `check_world(context)`: `context['pack']` (the staged
 pack's path), `mode` (`report` or `enforce`), `thresholds` (the recipe's
-`verification.thresholds`, any key of `thresholds` above), `probe` (the game's; radius, height
-and step are used), `stage` (the report and pictures go to `verification/` in it) and `compiler`
+`verification.thresholds`, any key of `thresholds` above), `vantage_points` (the recipe's
+`verification.vantage_points`), `probe` (the game's; radius, height, step and bridge are used), `stage` (the report and pictures go to `verification/` in it) and `compiler`
 (`mei-scene-probe` is looked for beside it, else `build/` or `SCENE_PROBE`). It returns the
 report, which has `ok`, or `{"ok": false, "errors": [...]}` when the check could not run.

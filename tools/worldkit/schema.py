@@ -128,6 +128,7 @@ HEIGHTFIELD = obj({
     'shading':dict(choice('smooth','flat'),description='smooth (default): each sample shaded by the field\'s normal there, so shading runs on across seams; flat: each face by its own.'),
     'ground':dict(BOOL,description='Drawn in the ground pass (WORLDKIT.md, "Ground"). Default true.'),
     'collision':dict(BOOL,description='The field\'s faces are collision triangles. Default true.'),
+    'slide_floor_degrees':dict(number(1,89),description='The field\'s faces steeper than the game\'s floor_max_degrees, up to this slope, are floors as well as walls: the wall stops a body moving into them, the floor catches a falling one, which the game slides down, where between walls alone it can sink through the ground (WORLDKIT.md, "Steep ground"). Default: none, walls only.'),
     'lod':dict(FIELD_LOD,description='A coarser level of every tile, for distance.'),
 }, ['spacing','min','max','material'])
 TERRAIN_MATERIAL = obj({
@@ -284,7 +285,10 @@ WORLD = dict(obj({
     }),
     'palette':obj({'swatch_slot':integer(0,14),'swatch_row':integer(0,255),'first':integer(0,510),
                    'first8':dict(integer(1,31),description='The first 8-bit palette 8-bit textures take (regions take them downward; '
-                                 'default 31, the top of palette bank 1; 15 holds the fonts\' colours).')}),
+                                 'default 31, the top of palette bank 1; 15 holds the fonts\' colours).'),
+                   'reserved':dict(array(integer(0,510),0,64),description='4-bit palettes the game keeps for itself '
+                                   '(a collectible\'s colours, say): no region, texture or backdrop silhouette may use '
+                                   'them; the build fails if one would.')}),
     'textures':dict(TEXTURES,description='Every region\'s texture slots and VRAM budget, unless the region gives its own.'),
     'regions':{'type':'object','propertyNames':NAME,'additionalProperties':REGION,'maxProperties':255},
     'layers':{'type':'object','propertyNames':NAME,'additionalProperties':obj({'group':NAME,'on':BOOL}),'maxProperties':255},
@@ -316,7 +320,14 @@ WORLD = dict(obj({
              'description':'Named polylines in world coordinates, in order (the pack\'s path numbers): rails, wires, routes. The kit attaches no meaning to them; entities refer to them by name.'},
     'verification':obj({'mode':choice('report','enforce'),
                         'thresholds':{'type':'object','propertyNames':NAME,'additionalProperties':{},
-                                      'description':'Per-world World Checker settings (defaults from the kit).'}}),
+                                      'description':'Per-world World Checker settings (defaults from the kit).'},
+                        'vantage_points':dict(array(obj({'name':dict(NAME,description='Names the views in the report.'),
+                                                         'position':dict(VEC,description='The eye, world units.'),
+                                                         'yaw':dict(number(-360,360),description='Degrees; 0 looks along +z, 90 along +x. Default 0.'),
+                                                         'pitch':dict(number(-89,89),description='Degrees, positive up. Default 0.'),
+                                                         'yaws':dict(integer(1,64),description='Look this many ways, evenly round from yaw. Default 1.')},
+                                                        ['position']),0,512),
+                                              description='Cameras the World Checker always checks, on top of its sample (WORLDCHECKER.md, "Vantage points"): the views known to be heavy, say.')}),
     'meshes':dict(obj({'quads':dict(BOOL,description='Pairs of triangles that share an edge and agree in every face field are packed as one quad, which Mei draws as those two triangles: the same picture, about half the faces. Semi-transparent and keyed faces stay triangles. Default false.')}),
                   description='How the kit writes the meshes it packs (WORLDKIT.md, "Quads").'),
     'standins':dict(obj({'distance':dict(POS,description='Each cell is drawn as it looks from this far: every placement, scatter chunk and terrain tile at the level it draws at this distance, without those culled by then (units).'),
@@ -339,6 +350,22 @@ WORLD = dict(obj({
                                'description':'The haze colour per palette variant name, instead of the backdrop\'s sky.'}},
                     ['end','amount']),
                 description='Aerial perspective: levels of detail after level 0 and stand-ins are baked fading toward the horizon\'s colour by distance (WORLDKIT.md, "Haze").'),
+    'occlusion':dict(obj({
+        'occluders':{'type':'object','propertyNames':NAME,'maxProperties':1024,
+                     'additionalProperties':obj({
+                         'box':dict(array(VEC,2,2),description='[[x0, y0, z0], [x1, y1, z1]], world coordinates: a box inside solid geometry (walls, a floor slab, a roof) that is drawn, opaque, from every zone that uses it.'),
+                         'yaw':dict(YAW,description='The box turned about its centre\'s vertical. Default 0.'),
+                         'quad':dict(array(VEC,4,4),description='Four corners in order of a flat convex quad: a wall or roof seen from one side or both.'),
+                         'layer':dict(NAME,description='The occluder exists only while this layer is on: only zones of that layer may use it.')}),
+                     'description':'Solid boxes and quads; each hides what lies wholly in its shadow from the whole of a zone (WORLDKIT.md, "Occlusion").'},
+        'zones':{'type':'object','propertyNames':NAME,'maxProperties':1024,
+                 'additionalProperties':obj({
+                     'box':dict(array(VEC,2,2),description='[[x0, y0, z0], [x1, y1, z1]], world coordinates: where the eye (the camera) may be. The reader uses the first zone, in this order, whose box holds the eye.'),
+                     'occluders':dict(array(NAME,1,1024),description='The occluders it uses. Default: every occluder without a layer, and those of its own layer.'),
+                     'layer':dict(NAME,description='The zone is used only while this layer is on.')},
+                     ['box']),
+                 'description':'Camera zones, in order: from inside one, the reader skips the placements and stand-ins its occluders hide from all of it.'}}),
+                     description='Hand-placed occluders and the camera zones they hide things from, a potentially visible set per zone (WORLDKIT.md, "Occlusion"; WORLDPACK.md 1.5).'),
     'scatter':{'type':'object','propertyNames':NAME,'additionalProperties':SCATTER,'maxProperties':256,
                'description':'Seeded props over an area, set on the ground, cut per cell and merged per chunk (WORLDKIT.md, "Scatter").'},
     'terrain':dict(TERRAIN,description='Ground heightfields and their materials (WORLDKIT.md, "Terrain"); profiles swept along paths are in paths.'),

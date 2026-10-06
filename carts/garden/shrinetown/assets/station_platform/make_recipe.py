@@ -316,16 +316,31 @@ def lod1():
          "points": [[-ROOF_HALF, ROOF_EDGE], [0, ROOF_LOW], [ROOF_HALF, ROOF_EDGE], [ROOF_HALF, ROOF_EDGE + ROOF_T],
                     [0, ROOF_LOW + ROOF_T], [-ROOF_HALF, ROOF_EDGE + ROOF_T]],
          "transform": {"rotate": [0, 90, 0]}},
-        {"id": "board_w", "op": "box", "size": [2.5, 1.9, 0.08], "material": "black", "open": ["bottom"],
-         "faces": {"back": "name_board", "front": "name_board"}, "transform": {"translate": [-16.5, FLOOR + 0.98, 0]}},
-        {"id": "board_e", "op": "box", "size": [2.5, 1.9, 0.08], "material": "black", "open": ["bottom"],
-         "faces": {"back": "name_board", "front": "name_board"}, "transform": {"translate": [7.5, FLOOR + 0.98, 0]}},
-        {"id": "kiosk", "op": "box", "size": [3.6, 2.6, 1.6], "material": "wood", "open": ["bottom"],
-         "faces": {"back": "soba"}, "transform": {"translate": [-10.0, FLOOR + 1.3, 0]}},
-        {"id": "vending_machine", "op": "box", "size": [0.95, 1.8, 0.7], "material": "red", "open": ["bottom"],
-         "faces": {"front": "vending"}, "transform": {"translate": [12.5, FLOOR + 0.9, 0.4]}},
         end_fences(),
     ]
+
+
+def lod_middle():
+    """From 22 m (a player on the platform is at most 20 m from its middle, so never sees it):
+    the floor's bands whole (the coping, the tactile strips) without the stairwell's hole, the
+    stairwell a block, the canopy on its four columns without the frames' arms, the lights."""
+    hx0, hx1 = HOLE_X
+    verts, faces, mats = [], [], []
+    for s in (-1, 1):
+        for a, b, m in ((2.5, 2.3, "coping"), (2.3, 1.8, "floor"), (1.8, 1.5, "tactile")):
+            z0, z1 = sorted((s * a, s * b))
+            k = len(verts)
+            verts.extend(quad_up(-L, L, z0, z1, FLOOR))
+            faces.append([k, k + 1, k + 2, k + 3])
+            mats.append(m)
+    k = len(verts)
+    verts.extend(quad_up(-L, L, -1.5, 1.5, FLOOR))
+    faces.append([k, k + 1, k + 2, k + 3])
+    mats.append("floor")
+    floor = {"id": "platform_floor", "op": "mesh", "material": "floor", "vertices": verts,
+             "faces": faces, "face_materials": mats}
+    lights = [n for n in canopy() if n["id"] == "lights"]
+    return [floor, platform_sides(), end_fences()] + lod1()[1:4] + lights
 
 
 def lod2():
@@ -336,31 +351,85 @@ def lod2():
          "points": [[-ROOF_HALF, ROOF_EDGE], [0, ROOF_LOW], [ROOF_HALF, ROOF_EDGE], [ROOF_HALF, ROOF_EDGE + ROOF_T],
                     [0, ROOF_LOW + ROOF_T], [-ROOF_HALF, ROOF_EDGE + ROOF_T]],
          "transform": {"rotate": [0, 90, 0]}},
-        {"id": "kiosk", "op": "box", "size": [3.6, 2.6, 1.6], "material": "wood", "open": ["bottom"],
-         "faces": {"back": "soba"}, "transform": {"translate": [-10.0, FLOOR + 1.3, 0]}},
     ]
+
+
+# The fittings (since the alpha review: the draw CPU over the station) are two assets of their own,
+# placed with the platform (the same origin; their collision stays the platform's): the west half's
+# (the west name board, the soba stand, the two benches, the clock) and the east half's (the east
+# name board, the track signs, the bench, the vending machine and bins, the cat). Each has its own
+# bounding sphere, about 8 m round its half, a level 1 from 12 m (the boards, the kiosk, the
+# vending machine and the track signs' plates as boxes) and a cull: from the plaza (the parapet
+# and the deck's edge hide the platform's floor) and from the far end of the deck they are not
+# drawn. The canopy's lights stay with the platform (four quads under its roof).
+def board_box(nid, x):
+    return {"id": nid, "op": "box", "size": [2.5, 1.9, 0.08], "material": "black", "open": ["bottom"],
+            "faces": {"back": "name_board", "front": "name_board"}, "transform": {"translate": [x, FLOOR + 0.98, 0]}}
+
+
+def fittings_w(level=0):
+    if level == 0:
+        return [name_board("name_board_west", -16.5), clock(), soba(),
+                bench("bench_w_north", -6.5, -0.55, 0), bench("bench_w_south", -6.5, 0.55, 180)]
+    return [board_box("board_w", -16.5),
+            {"id": "kiosk", "op": "box", "size": [3.6, 2.6, 1.6], "material": "wood", "open": ["bottom"],
+             "faces": {"back": "soba"}, "transform": {"translate": [-10.0, FLOOR + 1.3, 0]}}]
+
+
+def fittings_e(level=0):
+    if level == 0:
+        return [name_board("name_board_east", 7.5),
+                track_sign("track_sign_1", -1.45, "track1"), track_sign("track_sign_2", 1.45, "track2"),
+                bench("bench_east", 12.5, -0.55, 0), cat()] + kiosk_props()
+    signs = []
+    for k, (z, mat) in enumerate(((-1.45, "track1"), (1.45, "track2"))):
+        signs.append({"id": f"track_sign_{k + 1}", "op": "box", "size": [0.06, 0.4, 1.25], "material": "black",
+                      "faces": {"left": mat, "right": mat}, "transform": {"translate": [3.2, 3.5, z]}})
+    return [board_box("board_e", 7.5),
+            {"id": "vending_machine", "op": "box", "size": [0.95, 1.8, 0.7], "material": "red", "open": ["bottom"],
+             "faces": {"front": "vending"}, "transform": {"translate": [12.5, FLOOR + 0.9, 0.4]}}] + signs
+
+
+def used(nodes):
+    """The materials the nodes (and their children and decals) name."""
+    out = set()
+    for n in nodes:
+        out.add(n.get("material"))
+        out.update(n.get("face_materials", []))
+        if isinstance(n.get("faces"), dict):
+            out.update(n["faces"].values())
+        out.update(d["material"] for d in n.get("decals", []))
+        out |= used(n.get("children", []))
+    return out
+
+
+def asset(name, nodes, levels, cull=None, budget=900):
+    names = used(nodes)
+    lod = {"levels": [{"distance": d, "nodes": n} for d, n in levels], "band": 2}
+    if cull:
+        lod["cull"] = cull
+    return {
+        "format": "mei-asset", "version": 1, "name": name,
+        "budget": {"vertices": budget + 200, "triangles": budget},
+        "sheets": {"station": {"image": "art/station_sheet.png"}},
+        "materials": {k: v for k, v in MATERIALS.items() if k in names},
+        "lighting": {"mode": "vertical", "ambient": 0.5},
+        "verification": {"required": True, "depth": True, "perspective": True},
+        "nodes": nodes,
+        "lod": lod,
+    }
 
 
 def recipe():
     nodes = [floor_mesh(), platform_sides(), end_fences()]
     nodes += stairwell()
     nodes += canopy()
-    nodes += [name_board("name_board_west", -16.5), name_board("name_board_east", 7.5),
-              track_sign("track_sign_1", -1.45, "track1"), track_sign("track_sign_2", 1.45, "track2"),
-              clock(), soba(),
-              bench("bench_w_north", -6.5, -0.55, 0), bench("bench_w_south", -6.5, 0.55, 180),
-              bench("bench_east", 12.5, -0.55, 0), cat()]
-    nodes += kiosk_props()
-    return {
-        "format": "mei-asset", "version": 1, "name": "station_platform",
-        "budget": {"vertices": 1100, "triangles": 900},
-        "sheets": {"station": {"image": "art/station_sheet.png"}},
-        "materials": MATERIALS,
-        "lighting": {"mode": "vertical", "ambient": 0.5},
-        "verification": {"required": True, "depth": True, "perspective": True},
-        "nodes": nodes,
-        "lod": {"levels": [{"distance": 30, "nodes": lod1()}, {"distance": 70, "nodes": lod2()}], "band": 2},
-    }
+    return asset("station_platform", nodes, [(22, lod_middle()), (34, lod1()), (70, lod2())])
+
+
+def fittings_recipes():
+    return [asset("station_platform_fittings_w", fittings_w(0), [(12, fittings_w(1))], cull=24, budget=300),
+            asset("station_platform_fittings_e", fittings_e(0), [(12, fittings_e(1))], cull=24, budget=300)]
 
 
 def collision():
@@ -416,4 +485,6 @@ def write(name, data):
 
 if __name__ == "__main__":
     write("station_platform.asset.json", recipe())
+    for f in fittings_recipes():
+        write(f"{f['name']}.asset.json", f)
     write("station_platform_col.asset.json", collision())

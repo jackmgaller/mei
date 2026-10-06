@@ -9,8 +9,8 @@ outside fire stair up to it, so the school is the town's 1960s concrete rebuild 
 school's things: the clock tower (now the stair core, rising 3.4 over the roof to its copper
 pyramid and finial), the gabled entrance porch with the glazed double doors and the
 ひなた小学校 board, the round window, the pale-green sashes (now long classroom bands), the
-Hinomaru on its pole, the Ninomiya Kinjiro statue, the horizontal bars, and the cherry tree (in
-October, its leaves turning). Its sheet is the lab's with the two facade tiles drawn here; walls
+Hinomaru on its pole, the Ninomiya Kinjiro statue and the horizontal bars (the yard's tree is
+the shrine's tree_maple_small, placed beside it). Its sheet is the lab's with the two facade tiles drawn here; walls
 and roofs use the town's common plaster and roof tile.
 
 Plan (origin at the centre of the grey box's 30 x 30 footprint, x 258-288, z 56-86; front, the
@@ -27,7 +27,7 @@ yard side, toward -Z = south, so it is placed at (273, 0, 71) with yaw 0):
   lanes, landings at the south (z 4..5.3) and north (z 13.4..15) ends; the foot is at the south
   end of the inner lane, (10.8, 0, 5.3); the top landing (18.9) opens west onto the roof
   through a gap in the parapet at z 13.4..14.75
-- yard: the flagpole (a pole, 9.1 m, at (6, -2)), the bars, the statue, the cherry tree
+- yard: the flagpole (a pole, 9.1 m, at (6, -2)), the bars, the statue
 
 Levels: L1 from 24 m, L2 from 60 m, culled at 300 m (it is a landmark: spec 1.3).
 
@@ -370,18 +370,11 @@ def roof_things(detail=True):
 def yard(detail=True):
     n = [cyl("flagpole", 0.07, 9.0, [6.0, 4.5, -2.0], "iron", segments=5),
          quad("flag", "flag", [[4.0, 8.85, -2.0], [5.95, 8.85, -2.0], [5.95, 7.55, -2.0], [4.0, 7.55, -2.0]])]
-    n.append(cyl("trunk", 0.3, 3.4, [9.5, 1.7, -9.0], "bark", segments=6))
-    n[-1]["modifiers"] = [{"op": "taper", "top": 0.6}]
-    n.append(sphere("crown_a", 2.4, [9.5, 4.8, -9.0], "leaves", segments=7, rings=4,
-                    scale=[1, 0.75, 1]))
+    # (the cherry tree is a placement of its own now, the shrine's tree_maple_small, west of the
+    # paved way to the fire stair: place/east.py; here it was two flat spheres on the way)
     if not detail:
         return n
-    n += [sphere("pole_ball", 0.15, [6.0, 9.1, -2.0], "gold", segments=4),
-          sphere("crown_b", 1.8, [11.0, 4.1, -8.2], "leaves_2", segments=6, rings=4,
-                 scale=[1, 0.75, 1]),
-          {"id": "litter", "op": "mesh", "material": "litter", "faces": [list(range(7, -1, -1))],
-           "vertices": [r4([9.5 + 3.0 * math.cos(a * math.pi / 4 + 0.3), 0.02,
-                            -9.0 + 3.0 * math.sin(a * math.pi / 4 + 0.3)]) for a in range(8)]}]
+    n += [sphere("pole_ball", 0.15, [6.0, 9.1, -2.0], "gold", segments=4)]
     # the woodcutter boy reading as he walks
     n += [span("statue_plinth", -5.05, -4.15, 0, 0.5, -3.45, -2.55, "stone", open=["bottom"]),
           cyl("statue_body", 0.2, 0.62, [-4.6, 0.8, -3.0], "bronze", segments=6, caps=True),
@@ -432,10 +425,6 @@ MATERIALS = {
     "gold": {"color": "#d8b048", "palette": True},
     "bronze": {"color": "#5a4a3e", "palette": True},
     "rail": {"color": "#6a7a74", "palette": True},
-    "bark": {"color": "#5a4a3e", "palette": True},
-    "leaves": {"color": "#c8542e", "palette": True, "smooth": True},
-    "leaves_2": {"color": "#d8782a", "palette": True, "smooth": True},
-    "litter": {"color": "#d8782a", "palette": True},
     "ball": {"color": "#c8542e", "palette": True, "smooth": True},
     "lamp": {"color": "#f4d27a", "class": "emissive", "tag": "lantern"},
     "door": cell("door", "#5a3e2c", tag="door"),
@@ -545,7 +534,10 @@ def collision():
         n.append(solid(f"{id}_end", SX0 + 0.05, WI + 0.08, y, y + 0.97, ze0, ze1, open=["bottom"]))
     # roof and yard
     n += [solid("tank", 4.9, 8.1, ROOF - 0.02, ROOF + 3.0, 7.9, 10.6, open=["bottom"]),
-          solid("trunk", 9.25, 9.75, 0, 3.4, -9.25, -8.75, open=["bottom"]),
+          # the horizontal bars (posts and bar, two heights): walls, not walked through (alpha
+          # review r12 #9); their tops are floors to stand on
+          solid("bars_high", 1.56, 3.84, 0, 1.29, -12.04, -11.96, open=["bottom"]),
+          solid("bars_low", 3.84, 6.04, 0, 0.99, -12.04, -11.96, open=["bottom", "left"]),
           solid("statue", -5.05, -4.15, 0, 1.4, -3.45, -2.55, open=["bottom"])]
     return {
         "format": "mei-asset", "version": 1, "name": "schoolhouse_col",

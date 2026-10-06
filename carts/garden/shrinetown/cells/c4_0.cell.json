@@ -189,6 +189,17 @@
     53.5
    ],
    "collision": "town_bench_col"
+  },
+  {
+   "id": "maple_school",
+   "asset": "tree_maple_small",
+   "position": [
+    278.5,
+    0.0,
+    63.5
+   ],
+   "yaw": 40,
+   "collision": "tree_maple_small_col"
   }
  ],
  "entities": [

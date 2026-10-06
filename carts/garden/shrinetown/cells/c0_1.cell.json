@@ -126,7 +126,7 @@
     107.5
    ],
    "yaw": 270,
-   "collision": "street_barrier_col"
+   "collision": "road_works_barrier_col"
   },
   {
    "id": "road_works_1",
@@ -137,7 +137,7 @@
     114.5
    ],
    "yaw": 270,
-   "collision": "street_barrier_col"
+   "collision": "road_works_barrier_col"
   },
   {
    "id": "canal_pots_w78",
@@ -330,7 +330,7 @@
     66.7
    ],
    "params": {
-    "height": 13.18
+    "height": 14.38
    }
   },
   {

@@ -162,6 +162,7 @@ def build(path, directory, compiler=None, runner=None, probe=None, locked=False,
             (stage/rel).write_bytes(data)
         context = {'world':name,'stage':str(stage),'pack':str(stage/f'{name}.world.bin'),'akr':str(stage/f'{name}.akr'),
                    'mode':settings.get('mode','report'),'thresholds':settings.get('thresholds',{}),
+                   **({'vantage_points':settings['vantage_points']} if settings.get('vantage_points') else {}),
                    'probe':source.game['probe'],'report':compiled.report,'checker':checker,
                    **({'crack_baseline':baseline} if baseline is not None else {}),
                    **({'runtime':runtime} if runtime else {}),

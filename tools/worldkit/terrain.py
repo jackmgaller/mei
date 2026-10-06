@@ -421,7 +421,11 @@ class Field:
                 raise WorldError(f'{self.path}/{key}', f'No terrain material {spec[key]!r}.')
         if 'steep' in spec and spec['steep']['material'] not in mats:
             raise WorldError(self.path + '/steep/material', f'No terrain material {spec["steep"]["material"]!r}.')
-        self.floor_cos = ctx.floor_cos
+        # slide_floor_degrees: faces steeper than the game's floor limit, up to this slope, are
+        # floors as well as walls, so a falling body lands on steep ground (and the game slides it
+        # down) instead of sinking between walls; the quads' splits judge kinds by it
+        self.slide_floor = spec.get('slide_floor_degrees')
+        self.floor_cos = ctx.floor_cos if self.slide_floor is None else math.cos(math.radians(self.slide_floor))
         # a textured material's rectangles stay within its texture's reach (its span)
         self.caps, self.reaches = {}, {}
         for m, tex in ctx.textures.items():
@@ -1577,7 +1581,8 @@ def compile_terrain(w, base, size, cells, surface_of, warnings, overhang, floor_
                         if spec.get('collision', True):
                             a, b, c = world
                             collision.setdefault(cell, []).append(
-                                P.Tri(c, b, a, surface=surface_of(materials[material].get('tag')), tag=TAG_FIELD))
+                                P.Tri(c, b, a, surface=surface_of(materials[material].get('tag')), tag=TAG_FIELD,
+                                      slide_floor_degrees=f.slide_floor))
                 meshes.append(out)
                 frep['triangles'][li] += out.faces
             if walls:

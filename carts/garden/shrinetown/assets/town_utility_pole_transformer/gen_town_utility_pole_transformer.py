@@ -4,7 +4,14 @@ pole-mounted transformer can, two white bushings and two hanging insulators.
 
 Wire attachment points (local coordinates, wires run along Z): the clamps at the bottom of the
 two hanging insulators, (-0.80, 8.00, 0) and (+0.80, 8.00, 0).
-Run: python3 gen_town_utility_pole_transformer.py (standard library only).
+
+Also town_utility_pole_tall and its _col: the same pole 2.5 m taller (11.5 m, the crossarm, can
+and insulators raised with it, wires at 10.5), for the front road's two poles either side of the
+overpass, whose span crosses the overpass's deck (7.0) and handrails (8.12).
+
+Both have a level 1 from 30 m (a square shaft and the crossarm, 14 triangles: alpha review r01 #3)
+and are culled at 56 m, with the wires' sweeps (place/street.py), so a pole and its wires go
+together. Run: python3 gen_town_utility_pole_transformer.py (standard library only).
 """
 import json
 import math
@@ -75,6 +82,27 @@ for i, x in enumerate((-0.8, 0.8)):
     hv, hf = prism(x, 0.0, 8.0, 8.26, 0.03, 0.065, 4, math.pi / 4, cap=False)
     hang.append(mesh('insulator_%d' % i, hv, hf, ['porcelain'] * len(hf)))
 
+def level1(lift=0.0):
+    """From 30 m: the shaft as a square prism (open at the bottom), the crossarm."""
+    top = 9.0 + lift
+    h = 0.17
+    v = [[-h, 0.0, -h], [h, 0.0, -h], [h, 0.0, h], [-h, 0.0, h],
+         [-h, top, -h], [h, top, -h], [h, top, h], [-h, top, h]]
+    f = [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7], [4, 5, 6, 7]]
+    shaft = mesh('pole', v, f, ['concrete'] * 4 + ['cap'])
+    return [shaft, raised(arm, lift)]
+
+
+def raised(node, lift, stretch=None):
+    """NODE with every vertex lifted by LIFT; with STRETCH (y), only the vertices at or above it
+    (the shaft's top ring, its cap)."""
+    n = json.loads(json.dumps(node))
+    for p in n['vertices']:
+        if stretch is None or p[1] >= stretch - 1e-6:
+            p[1] = round(p[1] + lift, 4)
+    return n
+
+
 recipe = {
     'format': 'mei-asset', 'version': 1, 'name': 'town_utility_pole_transformer',
     'sheets': {'street': {'image': 'art/street_sheet.png'}},
@@ -90,7 +118,7 @@ recipe = {
     'lighting': {'mode': 'vertical', 'ambient': 0.5},
     'verification': {'required': True, 'depth': True, 'perspective': True},
     'nodes': [pole, arm, tank] + bush + hang,
-    'lod': {'cull': 110},
+    'lod': {'levels': [{'distance': 30, 'nodes': level1()}], 'cull': 56},
 }
 with open(HERE / 'town_utility_pole_transformer.asset.json', 'w') as fh:
     json.dump(recipe, fh, indent=1)
@@ -98,4 +126,21 @@ with open(HERE / 'town_utility_pole_transformer.asset.json', 'w') as fh:
 col = json.load(open(REPO / 'carts/garden/shrine/assets/street_utility_pole_col.asset.json'))
 col['name'] = 'town_utility_pole_transformer_col'
 with open(HERE / 'town_utility_pole_transformer_col.asset.json', 'w') as fh:
+    json.dump(col, fh, indent=1)
+
+# the tall pole: the shaft stretched by LIFT, everything on it raised
+LIFT = 2.5
+tall = json.loads(json.dumps(recipe))
+tall['name'] = 'town_utility_pole_tall'
+tall['materials']['concrete'] = json.loads(json.dumps(recipe['materials']['concrete']))
+tall['materials']['concrete']['texture']['scale'] = [1.2, 9.0 + LIFT]
+tall['nodes'] = [raised(pole, LIFT, stretch=9.0)] + [raised(n, LIFT) for n in [arm, tank] + bush + hang]
+tall['lod'] = {'levels': [{'distance': 30, 'nodes': level1(LIFT)}], 'cull': 56}
+with open(HERE / 'town_utility_pole_tall.asset.json', 'w') as fh:
+    json.dump(tall, fh, indent=1)
+col_tall = raised(col['nodes'][0], LIFT, stretch=9.0)
+col = json.loads(json.dumps(col))
+col['name'] = 'town_utility_pole_tall_col'
+col['nodes'] = [col_tall] + [raised(n, LIFT) for n in col['nodes'][1:]]
+with open(HERE / 'town_utility_pole_tall_col.asset.json', 'w') as fh:
     json.dump(col, fh, indent=1)

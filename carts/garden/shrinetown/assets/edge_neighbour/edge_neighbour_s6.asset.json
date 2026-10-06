@@ -45,6 +45,22 @@
    "color": "#a09e9a",
    "palette": true,
    "tag": "wall"
+  },
+  "facade_far": {
+   "color": "#c8c4b8",
+   "tag": "wall",
+   "texture": {
+    "image": "art/facade_a_far.png",
+    "projection": "box",
+    "scale": [
+     6.0,
+     6.0
+    ],
+    "offset": [
+     0.3333,
+     0.8333
+    ]
+   }
   }
  },
  "nodes": [
@@ -227,11 +243,34 @@
        ]
       ],
       "face_materials": [
-       "house",
+       "facade_far",
        "roof",
        "end",
        "end"
       ]
+     },
+     {
+      "id": "stair_house",
+      "op": "box",
+      "size": [
+       4,
+       3,
+       4
+      ],
+      "material": "house",
+      "open": [
+       "bottom"
+      ],
+      "faces": {
+       "top": "roof"
+      },
+      "transform": {
+       "translate": [
+        -6.67,
+        24.5,
+        4.2
+       ]
+      }
      }
     ]
    }

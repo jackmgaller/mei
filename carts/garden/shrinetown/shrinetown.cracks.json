@@ -7,18 +7,18 @@
     {
       "code": "crack",
       "cell": [
-        2,
+        1,
         5
       ],
       "floor_tag": 65534,
       "beyond_tag": 65534,
       "layers": [],
       "at": [
-        171.8844,
-        52.7147,
-        343.9615
+        102.0833,
+        40.8729,
+        334.0833
       ],
-      "width": 0.124985,
+      "width": 0.125,
       "floor": "terrain",
       "beyond": "terrain"
     },
@@ -36,26 +36,8 @@
         2.267,
         155.9376
       ],
-      "width": 0.187485,
+      "width": 0.1875,
       "floor": "sweep",
-      "beyond": "terrain"
-    },
-    {
-      "code": "crack",
-      "cell": [
-        4,
-        2
-      ],
-      "floor_tag": 1,
-      "beyond_tag": 65534,
-      "layers": [],
-      "at": [
-        320.1245,
-        10.2,
-        156.4666
-      ],
-      "width": 0.249985,
-      "floor": "viaduct_27",
       "beyond": "terrain"
     }
   ]

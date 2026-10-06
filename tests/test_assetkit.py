@@ -1861,6 +1861,14 @@ class CameraParsingTests(unittest.TestCase):
         for bad in ('x=1,2:3,4,5','x=1,2,3','Bad=1,2,3:4,5,6','x=0,0,0:0,0,0','x=1,2,3@0,120'):
             with self.subTest(bad=bad), self.assertRaises(AssetError):
                 parse_camera(bad,0)
+        # each error says what is wrong: a bad name is not reported as a bad form
+        with self.assertRaises(AssetError) as cm:
+            parse_camera('A=1,2,3@0,0',0)
+        self.assertIn("Camera name 'A'",str(cm.exception))
+        self.assertIn('lowercase',str(cm.exception))
+        with self.assertRaises(AssetError) as cm:
+            parse_camera('a=1,2,x@0,0',0)
+        self.assertIn('give NAME=',str(cm.exception))
         with self.assertRaises(AssetError):
             cameras_file([{'eye':[0,1,-3],'look':[0,0,0]}])
 
