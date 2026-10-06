@@ -577,13 +577,13 @@
    "position": [
     160,
     10.05,
-    8.75
+    8.0
    ],
    "params": {
     "size": [
      32,
-     6,
-     10.5
+     3,
+     5.0
     ],
     "flag": "race5_won",
     "needs": "race5",

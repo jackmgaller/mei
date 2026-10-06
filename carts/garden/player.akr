@@ -126,7 +126,11 @@ fn player_place(p: vec3, yaw: fixed) {
     }
 }
 
-fn player_respawn() { player_place(pl.spawn, pl.spawn_yaw) }
+// Back at the spawn (Y, or a fall 40 m under it): a challenge running is lost (goals.akr).
+fn player_respawn() {
+    player_place(pl.spawn, pl.spawn_yaw)
+    goals_respawn()
+}
 
 // ---- collision (the world, then attach.akr's moving things)
 
@@ -689,8 +693,7 @@ fn st_wall_slide(ip: *Pin) {
     pl.vel = vec3(-n.x * 0.01, -fall, -n.z * 0.01)
     if air_move(0.0) {
         pl.fwd = 0.0
-        pl.chain_from = St.Ground
-        enter(St.Ground)
+        land()                                 // a bounce surface (an awning) bounces
         return
     }
     if !pl.wall_hit { leave_wall(0.0) }        // slid off the wall's end

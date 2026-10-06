@@ -22,7 +22,9 @@
 // `start` flag (goals.akr) is parked, not drawn and without collision, until the flag is set;
 // then it waits `delay` ticks (still parked), runs its cycles from the placement, and once the
 // flag is cleared parks again when it is back at the placement (pingpong) or at the end of its
-// leg (loop): the last train (DESIGN.md, star 5).
+// leg (loop); its first cycle always runs to the end, so a race won early still sees the train
+// come in and leave. The flag set again starts its clock again from 0 (parked, waiting its
+// delay): the last train (DESIGN.md, star 5).
 //
 // Standing on a mover carries the player by its movement each tick. Leaving it (a jump, or
 // walking off) keeps T.RideKeep of its velocity: the horizontal part as a drift added each tick
@@ -66,6 +68,7 @@ struct Mover {
     start: *u8         // the flag that starts it, or null (always running)
     delay: s32         // ticks waited after the flag is set
     mt: s32            // its own clock since the flag was set, or -1: parked
+    on: bool           // its flag was set last tick
 }
 
 struct Pole {
@@ -164,6 +167,7 @@ fn mover_add(e: *WpEntity) {
     m.start = null
     m.delay = 0
     m.mt = -1
+    m.on = false
     if p != null {
         if p.path != 0 { m.path = wp_path_find(pack_string(p.path)) }
         m.to = p.to
@@ -218,18 +222,20 @@ fn mover_live(m: *Mover) -> bool {
     return m.start == null || m.mt >= m.delay
 }
 
-// A started mover's clock: set going by its flag; parked again once the flag is cleared, as soon
-// as it is back at its placement (pingpong) or at the end of its leg (loop), or at once if it was
-// still waiting.
+// A started mover's clock: set going (from 0) each time its flag is set; once the flag is
+// cleared, parked as soon as it is back at its placement (pingpong) or at the end of its leg
+// (loop), its first cycle (the delay included) run to the end.
 fn mover_clock(m: *Mover) {
     let on = flag_on(m.start)
-    if m.mt < 0 {
-        if on { m.mt = 0 }
+    let rose = on && !m.on
+    m.on = on
+    if rose {
+        m.mt = 0
         return
     }
+    if m.mt < 0 { return }
     m.mt += 1
-    if on { return }
-    if m.mt < m.delay { m.mt = -1; return }
+    if on || m.mt <= m.delay { return }
     let k = (m.mt - m.delay) % mover_cycle(m)
     var home = m.period * 2 + m.pause            // pingpong: back at the placement
     if m.looped { home = m.period }               // loop: at the end of the leg
