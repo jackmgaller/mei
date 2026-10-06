@@ -357,9 +357,9 @@
      0
     ],
     "period": 600,
-    "pause": 900,
+    "pause": 2700,
     "start": "race5",
-    "delay": 3600
+    "delay": 1800
    }
   },
   {

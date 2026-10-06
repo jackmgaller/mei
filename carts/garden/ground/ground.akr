@@ -21,7 +21,7 @@ var world_variant: s32 = 0                // the palette variant the regions are
 // Opens world k (a GARDEN_WORLD_ number). The shrine and the shrine town have water and a
 // backdrop; the garden has neither, so loading it closes theirs.
 fn world_load() -> bool {
-    water_cycle_enter(0, 0)         // none cycling until a world that has the shrine town's water opens
+    water_cycle_off()               // none cycling until a world that has the shrine town's water opens
     gpu_fog_off()                   // only the shrine town's variants declare fog
     if world_k == GARDEN_WORLD_SHRINE {
         if !world_shrine_load() { return false }
@@ -30,6 +30,7 @@ fn world_load() -> bool {
     }
     if world_k == GARDEN_WORLD_SHRINETOWN {
         if !world_shrinetown_load() { return false }
+        world_water_find()
         world_region_entered(wp_region_loaded)
         return true
     }
@@ -38,20 +39,41 @@ fn world_load() -> bool {
     return world_garden_load()
 }
 
+var water_find_cycles: s32     // what world_water_find() cost (the tests)
+
+// Once, when the shrine town opens: where each region's water palettes are, from the region's
+// day colours as the pack stores them (about 240,000 cycles for both regions, in the load's
+// frame), so that crossing into a region (world_region_entered()) does not look for them.
+fn world_water_find() {
+    let c0 = cycle_count()
+    for k in 0..min(wp_region_count(), WATER_MAX_REGIONS) {
+        let r = wp_region(k)
+        let cols = (__wp_base + r.palette_off + 4 * (r.variant_count as u32)) as *u16      // variant 0
+        water_cycle_find(k, cols, r.first_colour as s32, r.colour_count as s32)
+    }
+    water_find_cycles = cycle_count() - c0
+}
+
 // Called after wp_region_enter(k, world_variant) in the shrine town, and again when the variant
 // changes: shows that region's backdrop (the two regions' differ), sets the region's fog for the
 // variant (the GPU's fog toward a colour: the day's haze toward the horizon, the night's dark; 8
-// GPU cycles a triangle, no CPU) and finds the region's water palettes to cycle.
+// GPU cycles a triangle, no CPU) and cycles the region's water (its palettes found at load).
 fn world_region_entered(k: s32) {
     if world_k != GARDEN_WORLD_SHRINETOWN { return }
     wp_backdrop_show(k)
     wp_backdrop_variant(world_variant, world_variant, 0.0)
     world_shrinetown_fog(k, world_variant)
-    if k == WORLD_SHRINETOWN_REGION_TOWN {
-        water_cycle_enter(WORLD_SHRINETOWN_TOWN_COLOUR, WORLD_SHRINETOWN_TOWN_COLOURS)
-    } else {
-        water_cycle_enter(WORLD_SHRINETOWN_SHRINE_COLOUR, WORLD_SHRINETOWN_SHRINE_COLOURS)
-    }
+    water_cycle_enter(k)
+}
+
+// Night (palette variant 1) or day (0), from the tuning menu's "night" row: the shrine town's
+// region loaded now takes the variant's palette, backdrop, fog and water; the other worlds have
+// no variants and only remember it.
+fn world_set_variant(v: s32) {
+    world_variant = v
+    if world_k != GARDEN_WORLD_SHRINETOWN || wp_region_loaded < 0 { return }
+    for r in 0..wp_region_count() { wp_variant_load(r, v) }     // the other region's stand-ins too
+    world_region_entered(wp_region_loaded)
 }
 
 // Whether the open world draws a backdrop (then the cart draws no cls()).

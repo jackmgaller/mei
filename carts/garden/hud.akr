@@ -1,6 +1,6 @@
 // What is drawn over the world: the tuning menu (START), the frame-timing readout and the
-// player's state (SELECT cycles: timing and state, state only, nothing), and a note for each
-// wall kick.
+// player's state (SELECT cycles: timing and state, state only, nothing; nothing at the start),
+// and a note for each wall kick.
 //
 // Menu: d-pad up/down chooses a number, left/right changes it (hold X for ten steps at a
 // time), Y puts it back to its default. The player still runs, so a change can be tried at
@@ -10,7 +10,7 @@ var menu_open: bool
 var menu_sel: s32
 var menu_top: s32
 var menu_rep: KeyRepeat
-var readout: s32               // 0 timing and state, 1 state, 2 nothing
+var readout: s32 = 2           // 0 timing and state, 1 state, 2 nothing
 
 const MENU_ROWS = 17
 

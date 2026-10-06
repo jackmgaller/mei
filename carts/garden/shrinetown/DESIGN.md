@@ -1355,3 +1355,36 @@ same cameras (triangles, draw CPU, GPU), before → after: courtyard wall north 
 461,553; stage 1,333, 336,505, 402,855 → 1,403, 348,464, 391,151; station plaza 1,350, 415,031,
 391,185 → 1,336, 412,739, 388,860; canal by the watermill 1,736, 346,810, 528,387 → 1,774,
 352,422, 531,829. The pack is 11,480,668 bytes (11,456,388 before).
+
+### 12.9 Alpha fixes (2026-10-06)
+
+#### The cart, game and camera
+
+From the alpha review (`ALPHA_REVIEW.md`; reviewers 03, 04, 06, 08, 14 and 19). Each fix has a
+case in `carts/garden/tests/` (`make test-carts`).
+
+| What | Change | Case |
+|---|---|---|
+| B5: entering the town was a tick late (1.09M cycles) | `water_cycle_find()` finds each region's water palettes once, when the world opens (from the region's day colours in ROM, about 240,000 cycles); a crossing only copies them. The town's entry is 456,000 cycles (was 642,500), the shrine's 301,000 (377,300) | 402 |
+| The water did not cycle | The old search took the first palette holding a ramp's phase 0, which in the town was another texture's: the canal never moved. It also wrote the shrine's water (bank 1, colours 4096 on) past palette bank 0. Now the palette holding most of a ramp is taken, and colours go through `palette_ptr()` | 402, 403 |
+| Night water (r03 #8) | Found in the day colours, so the places hold in any variant; a crossing at night cycles the night's colours | 403 |
+| Night in play (r19 #12) | The tuning menu's last row, "night" (0/1), loads the variant in both regions with its backdrop, fog and water | 403 |
+| B6: Y during ★5 won it in 9 s | A respawn (Y, or falling 40 m under the spawn) loses a challenge running (`goals_respawn()`) | 455 |
+| ★5's train came in at 60 s, after a fast win | It comes in at 30 s, stands at the platform from 40 s to 85 s and leaves when the clock runs out (`game.py`: `TRAIN_DELAY` 1,800, `TRAIN_PAUSE` 2,700) | 452, 453 |
+| A win parked the train | A started mover's first cycle (its delay included) runs to the end whatever its flag does (`attach.akr`), so the train leaves as the reward | 452 |
+| Retaking the omamori just after a loss ran the old timeline | The start flag's rising edge sets the mover's clock to 0 | 456 |
+| The platform's box took the trackbed and the canopy roofs | The island platform's floor only: x 144–176, z 5.5–10.5, 3 m up from 10.05 | 457 |
+| Taken stars 2, 3 and 5 vanished after a reload | A taken star is at its place, its back shown, whatever its `appear` flag | 458 |
+| Finding the cards (r19 #6) | A touch trigger that leads to a star not taken yet (the bell's rope; the omamori, which the platform needs) has the star's glint, 1.25 m over its base | 459 |
+| The opening shows only paving (r19 #6) | For 150 ticks after a world opens the camera looks level up the spawn's facing, then eases back; the stick, L or a run ends it sooner | 407 |
+| Only 8 of 13 camera zones were read (r19 #2) | `CAM_MAX_ZONES` 24; a world with more fails to load | 404 |
+| The alley rail cameras faced the robot (r19 #3) | A rail zone looks the way the player runs along its axis (chosen on entry; turned round after 40 ticks running back); the zone held is kept until the feet leave it, and a change of zone turns the view (0.06 rad a tick) instead of jumping. Case 405: 726 frames running in the alleys' zones, none with the eye ahead of the runner (r19: 86 off-centre frames, 9 reversals) | 405 |
+| The camera inside the robot (r19 #8) | The body is not drawn while the eye is within 0.8 m of the head | 406 |
+| Wall slide onto an awning did not bounce (r08 #8) | The wall slide's landing goes through `land()` | 408 |
+| HUD (r19 #10, #11; r06 #9) | A half-blend strip behind the counters; the timing readout off at the start (SELECT: timing, state, nothing) | 25 |
+| Cases 461 and 463 probed the wrong place (r09 #5, r10 #5) | They probe the north gate's gateway (162, 5.6, 237.4) and the root door (151.6, 13.6, 294.6), and expect walls there while shut | 461, 463 |
+
+Not done here: the race train's own mesh and its path along track 2 (the station's; `game.py`
+takes them through `RACE_TRAIN` and `RACE_PATH` once they exist; until then the grey-box train
+runs the straight line at z 12.1), a tunnel camera zone (the shrine's; the cart now holds 24
+zones), and case 414's start on the temple's ridge (waits for the shrine's climbable roofs).

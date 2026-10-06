@@ -1,6 +1,13 @@
 # The shrine town's scenarios (shrinetown_cases.akr), sourced by check.sh: one `run SCENARIO FRAMES` line each.
 run 400 790
 run 401 2000
+run 402 2000
+run 403 140
+run 404 130
+run 405 2500
+run 406 2500
+run 407 170
+run 408 310
 run 410 1500
 run 411 1500
 run 412 1500
