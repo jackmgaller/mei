@@ -1,0 +1,67 @@
+--- a/carts/garden/ground/ground.akr
++++ b/carts/garden/ground/ground.akr
+@@ -13,12 +13,14 @@
+ import "garden.akr"
+ import "shrine.akr"
+ import "shrinetown.akr"
++import "../shrinetown/art/water/water_cycle.akr"     // the water's colour cycling (shrinetown/art/water/APPLY.md)
+ 
+ var world_k: s32 = GARDEN_WORLD_GARDEN    // the world open now
+ 
+ // Opens world k (a GARDEN_WORLD_ number). The shrine and the shrine town have water and a
+ // backdrop; the garden has neither, so loading it closes theirs.
+ fn world_load() -> bool {
++    water_cycle_enter(0, 0)         // none cycling until a world that has the shrine town's water opens
+     if world_k == GARDEN_WORLD_SHRINE {
+         if !world_shrine_load() { return false }
+         wp_backdrop_show(0)        // the compositor erases each frame, since the cart draws no cls()
+@@ -26,7 +28,7 @@
+     }
+     if world_k == GARDEN_WORLD_SHRINETOWN {
+         if !world_shrinetown_load() { return false }
+-        wp_backdrop_show(0)
++        world_region_entered(wp_region_loaded)
+         return true
+     }
+     wp_water_close()
+@@ -34,6 +36,18 @@
+     return world_garden_load()
+ }
+ 
++// Called after wp_region_enter(k, 0) in the shrine town: shows that region's backdrop (the two
++// regions' differ) and finds the region's water palettes to cycle (variant 0, the day's, is loaded).
++fn world_region_entered(k: s32) {
++    if world_k != GARDEN_WORLD_SHRINETOWN { return }
++    wp_backdrop_show(k)
++    if k == WORLD_SHRINETOWN_REGION_TOWN {
++        water_cycle_enter(WORLD_SHRINETOWN_TOWN_COLOUR, WORLD_SHRINETOWN_TOWN_COLOURS)
++    } else {
++        water_cycle_enter(WORLD_SHRINETOWN_SHRINE_COLOUR, WORLD_SHRINETOWN_SHRINE_COLOURS)
++    }
++}
++
+ // Whether the open world draws a backdrop (then the cart draws no cls()).
+ fn world_backdrop() -> bool { return world_k != GARDEN_WORLD_GARDEN }
+ 
+--- a/carts/garden/game.akr
++++ b/carts/garden/game.akr
+@@ -81,6 +81,7 @@
+ }
+ 
+ fn update() {
++    water_cycle_update(frame() as s32)
+     pad_prev = pad_now
+     pad_now = input_pad(frame_n)
+     let s = input_stick(frame_n)
+@@ -146,7 +147,10 @@
+     let c = wp_cell_at(pl.pos)
+     if c == null || wp_region_loaded < 0 { return }
+     let k = c.region as s32
+-    if k != wp_region_loaded { wp_region_enter(k, 0) }
++    if k != wp_region_loaded {
++        wp_region_enter(k, 0)
++        world_region_entered(k)
++    }
+ }
+ 
+ // ---- doors (the world's door entities): walk into one to go to its world

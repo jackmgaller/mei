@@ -38,6 +38,8 @@ def pack(recipes, name, slots, first_palette=0, palette8=14, swatch=False):
         if not mesh.palette:
             continue
         old = mesh.palette
+        if palette <= 255 < palette+len(old['palettes']):
+            palette = 256           # an asset's palettes never cross 255, the fonts'
         shift = palette-old['palettes'][0]
         entries = [dict(e, palette=e['palette']+shift, colour=e['colour']+16*shift) for e in old['entries']]
         new = {'layout': {'slot': swatch_slot, 'row': 0, 'first': palette},
@@ -50,16 +52,17 @@ def pack(recipes, name, slots, first_palette=0, palette8=14, swatch=False):
         palette_files += b''.join(w.to_bytes(2, 'little') for w in words)
         colours.append((palette*16, 16*len(new['palettes'])))
         palette += len(new['palettes'])
-    if palette > 255:
-        raise AssetError('/assets', f'The palette-backed materials need {palette-first_palette} palettes from {first_palette}; palette 255 holds the fonts.')
+    if palette > 512:
+        raise AssetError('/assets', f'The palette-backed materials need {palette-first_palette} palettes from {first_palette}; there are 512 '
+                                    '(0-511), and palette 255 holds the fonts.')
 
     tiles = [t.tile for _, mesh, _, _ in assets if mesh.textures for t in mesh.textures['textures'].values()]
     keep_swatch = bool(relocated) or swatch
     reserved = [(swatch_slot, 0, 0, 16, 8)] if keep_swatch else []
-    packing = pack_tiles(tiles, slots=slots, first_palette=palette, palette8=palette8, reserved=reserved,
-                         path='/assets') if tiles else None
+    packing = pack_tiles(tiles, slots=slots, first_palette=palette+(palette == 255), palette8=palette8,
+                         reserved=reserved, path='/assets') if tiles else None
     eight = [p for b, p in packing.palettes if b == 8] if packing else []
-    if eight and palette > 16*min(eight):
+    if any(first_palette < 16*p+16 and 16*p < palette for p in eight):
         raise AssetError('/assets', f'8-bit palette {min(eight)} covers 4-bit palettes {16*min(eight)}-{16*min(eight)+15}, '
                                     'which the palette-backed materials use. Pass a higher --palette8 or a lower --palette.')
 

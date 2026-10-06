@@ -112,7 +112,12 @@ land, the grey box places the poles and movers, and the rails come with the path
 
 The probe (`probe.radius`, `height`, `step`, `floor_max_degrees`) starts as in
 `examples/worlds/test_room/garden.game.mochi` (0.3, 1.6, 0.32, 40); the controller lead may ask
-for other numbers through the main session.
+for other numbers through the main session. Its `bridge` (0.4375) is the cracks the body steps
+across: `col_stand()` (`player.akr`), which stands the body and lands it, asks `col_floor()` as
+before, and only where that finds no floor (the world's or a mover's) within reach asks
+`wp_floor_across()`, so a gap of up to about 0.3 m between two floors within a step of the feet
+holds the body; the World Checker does not report such gaps
+([WORLDKIT.md](../../docs/WORLDKIT.md#cracks)).
 
 ## Goals
 

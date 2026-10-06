@@ -95,11 +95,12 @@ VRAM in exactly the texture format (spec p. 11). A 4-bit image fills one 32 KB *
 | 16×16 | 16 × 16 | column *t* mod 16, row (*t* div 16) mod 16 | 256 (bits 8–9 of *t* ignored) |
 
 Because the format is the texture format, **a texture slot is also a tile set**: the same art can
-be drawn as polygons and as planes. A page is any 32 KB-aligned block of VRAM. Pages 16–31 are
-texture slots 0–15, and pages 10–15 are the free VRAM above the palette (see [Memory
-map](#memory-map)). Texel (u, v) of a 4-bit atlas is the low nibble (even u) or high nibble
-(odd u) of byte `page + v × 128 + u ÷ 2`. For an 8-bit atlas it is byte `page + v × 256 + u`.
-Addresses wrap within VRAM.
+be drawn as polygons and as planes. A page is any 32 KB-aligned block of VRAM: 64 of them in the
+2 MB (0–63). Pages 16–47 are texture slots 0–31, pages 10–15 are the free VRAM above the palette,
+and pages 49–63 the free VRAM after palette bank 1 (see [Memory map](#memory-map)). Texel (u, v)
+of a 4-bit atlas is the low nibble (even u) or high nibble (odd u) of byte `page + v × 128 + u ÷
+2`. For an 8-bit atlas it is byte `page + v × 256 + u`. Addresses wrap within VRAM (from page 63
+to page 0).
 
 **Colour.** 4-bit or 8-bit indexed, from the existing palette memory. Index 0 is transparent.
 The colour is the palette entry's low 15 bits:
@@ -228,7 +229,7 @@ VRAM.
 
 | Register | Bits | Field |
 |---|---|---|
-| `LCn_ADDR` | 2–19 | VRAM offset of the table (word-aligned; other bits ignored, read back as written) |
+| `LCn_ADDR` | 2–20 | VRAM offset of the table (word-aligned; other bits ignored, read back as written) |
 | `LCn_CTRL` | 0–7 | target: offset of the first register written, from `0xFF0700` (bits 0–1 ignored) |
 | | 8–9 | words per line − 1 (1–4 consecutive registers) |
 | | 15 | enable |
@@ -416,18 +417,24 @@ no dither.
 
 ### VRAM
 
-The plane chip has no memory of its own. Everything is in the existing 1 MB of VRAM, and only the
-two spare regions are newly used, which no cart or the system ROM touches today:
+The plane chip has no memory of its own. Everything is in VRAM (2 MB since 2026-10-05:
+[DECISIONS.md](DECISIONS.md#vram-at-2-mb)); the chip added only conventions for two spare regions of
+the first megabyte:
 
 | Address | Contents | Size | |
 |---|---|---|---|
 | `0x400000`–`0x44AFFF` | framebuffers A and B | 300 KB | unchanged |
 | `0x44B000`–`0x44BFFF` | spare | 4 KB | free; extra line tables if wanted (Lantern Lake puts BG2's per-line mode table here) |
-| `0x44C000`–`0x44DFFF` | palette memory, shared by planes and polygons | 8 KB | unchanged |
+| `0x44C000`–`0x44DFFF` | palette memory (bank 0, colours 0–4095), shared by planes and polygons | 8 KB | unchanged |
 | `0x44E000`–`0x44FFFF` | **line tables** (convention) | 8 KB | was spare |
 | `0x450000`–`0x47FFFF` | **plane pages 10–15**: maps and tile atlases (convention) | 192 KB | was spare |
 | `0x480000`–`0x4FFFFF` | texture slots 0–15 = pages 16–31, also usable as atlases | 512 KB | unchanged |
+| `0x500000`–`0x57FFFF` | texture slots 16–31 = pages 32–47 | 512 KB | the second megabyte |
+| `0x580000`–`0x581FFF` | palette bank 1 (colours 4096–8191): polygons only | 8 KB | the second megabyte |
+| `0x582000`–`0x5FFFFF` | free: the rest of page 48, then pages 49–63 (maps, atlases, tables) | 504 KB | the second megabyte |
 
+Planes read palette bank 0 only: a plane's palette base and a tile's palette are as before (4-bit
+palettes 0–255, 8-bit 0–15).
 The hardware enforces none of this, since every address is a register, but the standard library
 uses this layout:
 
@@ -466,8 +473,8 @@ depend on that.
 | `0xFF0718` | `PLN_ERASE` | bits 0–15: value written by auto-erase |
 | `0xFF071C` | — | reserved |
 | `0xFF0720` | `BG0_MODE` | 0–1 map width (0: 32, 1: 64, 2–3: 128) · 2–3 map height · 4 16×16 tiles · 5 8-bit colour · 8–15 palette base |
-| `0xFF0724` | `BG0_TILES` | atlas page: bits 15–19 of the VRAM offset (e.g. `0x498000` = slot 3) |
-| `0xFF0728` | `BG0_MAP` | map: bits 11–19 of the VRAM offset (2 KB-aligned) |
+| `0xFF0724` | `BG0_TILES` | atlas page: bits 15–20 of the VRAM offset (e.g. `0x498000` = slot 3, `0x540000` = slot 24) |
+| `0xFF0728` | `BG0_MAP` | map: bits 11–20 of the VRAM offset (2 KB-aligned) |
 | `0xFF072C` | `BG0_SCROLL` | 0–15 x · 16–31 y, pixels |
 | `0xFF0730` | `BG0_WINX` | 0–8 left inset · 16–24 right inset |
 | `0xFF0734` | `BG0_WINY` | 0–7 top inset · 8–15 bottom inset |

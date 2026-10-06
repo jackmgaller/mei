@@ -1,7 +1,8 @@
 """The quick tools over a world recipe (docs/WORLDKIT.md, "Quick tools"): `mei_world.py check`
-(the World Checker on a few cells or cameras), `floors` (the pack's floor heights over an area)
-and `textures` (texture VRAM by region, asset and image). They only read: nothing a build writes
-changes.
+(the World Checker on a few cells or cameras), `floors` (the pack's floor heights over an area),
+`textures` (texture VRAM by region, asset and image) and `cracks` (every crack the game's floor
+query does not bridge, against the crack baseline). They only read: nothing a build writes
+changes, and only `cracks --write-baseline` writes (NAME.cracks.json).
 
 Each needs the world compiled, which for a large level takes most of a minute. The compiled
 world (its pack, and what was placed where) is kept in the cache directory with a manifest of
@@ -559,6 +560,117 @@ def floors_text(r):
              + f' (layers on: {", ".join(r["layers"]) or "none"}; compiled world '
              f'{how["compiled"]}, {how["seconds"]} s)')
     return grid_text(r['x'], r['z'], r['heights'], marks, legend, title)
+
+
+# ---- cracks
+
+
+def load_routes(path):
+    """--routes: a JSON object of named polylines, {"NAME": [[x, z], ...]} (world units, seen
+    from above)."""
+    from kitcore import jsonio
+    data = jsonio.load(str(path), WorldError)
+    ok = isinstance(data, dict) and all(
+        isinstance(pts, list) and len(pts) >= 2 and all(isinstance(p, list) and len(p) == 2 and
+                                                        all(isinstance(v, (int, float)) for v in p) for p in pts)
+        for pts in data.values())
+    if not ok:
+        raise WorldError('/arguments/routes', f'{path}: routes are {{"NAME": [[x, z], [x, z], ...]}}, two points or more each.')
+    return data
+
+
+def _route_distance(x, z, pts):
+    best = math.inf
+    for (ax, az), (bx, bz) in zip(pts, pts[1:]):
+        dx, dz = bx - ax, bz - az
+        ln = dx * dx + dz * dz
+        t = 0.0 if ln == 0 else min(1.0, max(0.0, ((x - ax) * dx + (z - az) * dz) / ln))
+        best = min(best, math.hypot(x - ax - t * dx, z - az - t * dz))
+    return best
+
+
+def cracks(world, routes=None, near=3.0, baseline=None):
+    """The World Checker's crack and mismatched-edge findings over the whole world, every one
+    (the full check lists at most collision.findings), with every layer off and each layer on
+    alone, as the full check runs them, and with the game's floor query's bridging (the probe's
+    bridge): what remains. Each is named (both floors), gets its route (the nearest of `routes`,
+    {name: [[x, z], ...]}, within `near` units) and is sorted: on a route first, then the
+    widest first. With `baseline` (NAME.cracks.json's entries) each is new or known, and the
+    entries nothing matches are fixed."""
+    from . import verify_static as ST
+    from .verify import DEFAULTS, merge_settings
+    pack = world.decoded
+    probe = merge_settings({'probe': {**DEFAULTS['probe'], **{k: v for k, v in world.meta['settings']['probe'].items()
+                                                                if k in DEFAULTS['probe']}}})['probe']
+    cfg = merge_settings({})
+    tris = ST.world_triangles(pack)
+    sets = [frozenset()] + [frozenset([k]) for k in range(len(pack.layers))]
+    found = []
+    for on in sets:
+        got, _, _, _ = ST.crack_check(pack, tris, on, probe, cfg['collision'], 10 ** 9)
+        for f in got:
+            f['layers'] = sorted(pack.layers[k][0] for k in on)
+            key = (f['code'], tuple(f['cell']), f['floor_tag'], f['beyond_tag'])
+            if all((g['code'], tuple(g['cell']), g['floor_tag'], g['beyond_tag']) != key for g in found):
+                found.append(f)
+    for f in found:
+        where = (f['at'][0], f['at'][2])
+        f['floor'] = tag_name(world, f['cell'], f['floor_tag'], where)['id']
+        f['beyond'] = tag_name(world, f['cell'], f['beyond_tag'], where)['id']
+        if routes:
+            d, name = min((_route_distance(where[0], where[1], pts), name) for name, pts in routes.items())
+            if d <= near:
+                f['route'] = name
+                f['route_distance'] = round(d, 2)
+    found.sort(key=lambda f: ('route' not in f, -f.get('width', 0.0), f['code'], f['cell'], f['at']))
+    out = {'ok': True, 'world': world.meta['name'],
+           'probe': {k: probe[k] for k in ('radius', 'step', 'bridge')},
+           'bridge_steps': ST.across_steps(probe['bridge']),
+           'count': len(found), 'on_routes': sum('route' in f for f in found), 'cracks': found,
+           'compiled': world.how()}
+    if baseline is not None:
+        new, known, fixed = ST.against_baseline(found, baseline)
+        for f in found:
+            f['new'] = any(f is g for g in new)
+        out['baseline'] = {'new': len(new), 'known': len(known), 'fixed': len(fixed), 'fixed_entries': fixed}
+        out['ok'] = not new
+    return out
+
+
+def baseline_file(world, found):
+    """NAME.cracks.json's content for these findings, sorted by cell and point so that a change
+    reads as one."""
+    from .verify_static import BASELINE_FORMAT, baseline_entry
+    entries = sorted((baseline_entry(f) for f in found), key=lambda e: (e['cell'], e['code'], e['at']))
+    return {'format': BASELINE_FORMAT, 'version': 1, 'world': world.meta['name'],
+            'note': 'The cracks the World Checker found when this was written (mei_world.py cracks RECIPE '
+                    '--write-baseline); the checker lists them as known, not as failures. WORLDCHECKER.md, '
+                    '"Crack baseline".',
+            'cracks': entries}
+
+
+def cracks_text(r):
+    p = r['probe']
+    out = [f'{r["world"]}: {r["count"]} cracks and mismatched floor edges the floor query does not bridge '
+           f'(probe radius {p["radius"]:g}, step {p["step"]:g}, bridge {p["bridge"]:g}: {r["bridge_steps"]} steps of 1/16)'
+           + (f', {r["on_routes"]} on a route' if r['on_routes'] else '')]
+    if 'baseline' in r:
+        b = r['baseline']
+        out.append(f'against the baseline: {b["new"]} new, {b["known"]} known, {b["fixed"]} fixed')
+    for f in r['cracks']:
+        mark = ('NEW ' if f.get('new') else '    ') if 'baseline' in r else ''
+        width = f'{f["width"]:.3f}' if 'width' in f else '  -  '
+        layers = f' [layers {",".join(f["layers"])}]' if f.get('layers') else ''
+        route = f' on {f["route"]} ({f["route_distance"]:g})' if 'route' in f else ''
+        x, y, z = f['at']
+        out.append(f'{mark}{f["code"]:13s} {width} at ({x:g}, {y:g}, {z:g}) cell {f["cell"]}: '
+                   f'{f["floor"]} | {f["beyond"]}{layers}{route}')
+    for e in (r.get('baseline') or {}).get('fixed_entries', []):
+        x, y, z = e['at']
+        out.append(f'FIXED {e["code"]} at ({x:g}, {y:g}, {z:g}) cell {e["cell"]}: {e.get("floor", "?")} | {e.get("beyond", "?")}')
+    how = r['compiled']
+    out.append(f'(compiled world {how["compiled"]}, {how["seconds"]} s)')
+    return '\n'.join(out)
 
 
 # ---- textures

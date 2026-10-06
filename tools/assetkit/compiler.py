@@ -5,7 +5,8 @@ import math
 import struct
 
 from kitcore.jsonio import canonical
-from meshlib import Mesh as NativeMesh, rgb
+from meshlib import Mesh as NativeMesh, rgb, tex_fields, face_slot, face_colour, PALETTES4
+import meshlib
 from .geometry import (AssetError, Mesh, Face, add, sub, cross, dot, norm, extrude,
                        lathe, loft, explicit_mesh, transform, modify)
 from .schema import validate
@@ -305,6 +306,15 @@ def lod_summary(recipe, mesh, base):
 DEFAULT_LAYOUT = {'slot':14,'row':0,'first':0}
 
 
+FONT_PALETTE = 255      # 4-bit palette 255 (colours 4080-4095) holds the fonts' colours
+
+
+def palette_range_ok(first, count):
+    """Whether 4-bit palettes first..first+count-1 exist (0-511, VRAM at 2 MB) and leave out
+    the fonts' palette 255."""
+    return 0 <= first and first+count <= PALETTES4 and not first <= FONT_PALETTE < first+count
+
+
 def palette_backed(mat):
     if 'texture' in mat: return False     # a textured material draws through its texture's palette
     return mat.get('palette',mat.get('class','surface') == 'emissive')
@@ -334,9 +344,12 @@ def assign_palette(mesh, materials, recipe, textured=False):
             raise AssetError('/palette_layout','No material the mesh uses is drawn through the palette. Set palette: true (or class "emissive") on a material, or remove palette_layout.')
         return None
     layout = {**DEFAULT_LAYOUT,**recipe.get('palette_layout',{})}
+    if layout['slot'] == 15:
+        raise AssetError('/palette_layout/slot','Texture slot 15 holds the fonts.')
     count = (len(keys)+14)//15
-    if layout['first']+count > 255:
-        raise AssetError('/palette_layout/first',f'{len(keys)} palette entries need {count} 4-bit palettes from {layout["first"]}; palette 255 holds the fonts.')
+    if not palette_range_ok(layout['first'],count):
+        raise AssetError('/palette_layout/first',f'{len(keys)} palette entries need {count} 4-bit palettes from {layout["first"]}; '
+                         f'palette 255 holds the fonts, and there are {PALETTES4} (0-{PALETTES4-1}).')
     entries, by_material = [], {}
     for i,key in enumerate(keys):
         palette, index = layout['first']+i//15, 1+i%15
@@ -472,19 +485,20 @@ def relocate(binary, colours=None, slot=None, row=None):
     _,count,_,offset,_ = struct.unpack_from('<HHIII',data)
     for i in range(count):
         at = offset+i*36
-        if not data[at]&2: continue
+        flags = data[at]
+        if not flags&2: continue
         tex,palette = data[at+2],data[at+3]
         uv = struct.unpack_from('<4H',data,at+28)
         if not tex&16 or len(set(uv[:3])) != 1 or not 0 < (uv[0]&255) < 16:
             raise AssetError('/binary',f'Face {i} is textured but is not a palette swatch face.')
-        colour, v = palette*16+(uv[0]&255), uv[0]>>8
+        colour, v = face_colour(flags,tex,palette,uv[0]&255), uv[0]>>8
         if colours and colour in colours:
             colour = colours[colour]
-            if not 0 < colour < 4080 or colour%16 == 0:
-                raise AssetError('/binary',f'Colour {colour} is index 0 of a palette or outside palettes 0-254.')
-        if slot is not None: tex = (tex&~15)|slot
+            if not 0 < colour < 16*PALETTES4 or colour%16 == 0 or colour//16 == FONT_PALETTE:
+                raise AssetError('/binary',f'Colour {colour} is index 0 of a palette or outside palettes 0-254 and 256-511.')
+        banks,tex,data[at+3] = tex_fields(face_slot(flags,tex) if slot is None else slot,True,colour//16,tex>>5)
+        data[at],data[at+2] = (flags&~(meshlib.SLOT_HI|meshlib.PAL_HI))|banks,tex
         if row is not None: v = row
-        data[at+2],data[at+3] = tex,colour//16
         struct.pack_into('<4H',data,at+28,*([colour%16|v<<8]*4))
     return bytes(data)
 

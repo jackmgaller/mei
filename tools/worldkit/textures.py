@@ -31,23 +31,26 @@ from assetkit.compiler import native_bytes
 from assetkit.texout import rgb_hex
 from assetkit.textures import quantise, rgb_of
 from kitcore.errors import KitError, pointer
-from kitcore.texpack import pack as pack_tiles, SLOT_BYTES, FONT_SLOT, FONT_PALETTE
+from kitcore.texpack import pack as pack_tiles, SLOT_BYTES, FONT_SLOT, FONT_PALETTE, SLOTS, PALETTES4, PaletteRangeError
+from meshlib import tex_fields, face_slot, face_palette, SLOT_HI, PAL_HI
 from . import pack as P
 from .schema import WorldError
 
-DEFAULT_SLOTS = tuple(range(13, -1, -1))     # slot 14 holds the swatch row by default, 15 the fonts
+# Slot 14 holds the swatch row by default, 15 the fonts; slots 16-31 (VRAM's second megabyte) after
+# 13-0, so a set that fits in 13-0 packs as it did with 1 MB of VRAM.
+DEFAULT_SLOTS = tuple(range(13, -1, -1)) + tuple(range(16, SLOTS))
 FAR_COLOURS = {'surface': 30, 'emissive': 15}  # a region's far colours at most (stand-ins, several regions)
 
 
 def parse_slots(text, path):
-    """'13-6' (a range, in that order) or '14,12,10-11' -> [slots] in order of preference."""
+    """'13-6' (a range, in that order) or '14,12,10-11,16-31' -> [slots] in order of preference."""
     slots = []
     for part in text.split(','):
         a, _, b = part.partition('-')
         a, b = int(a), int(b or a)
         slots += list(range(a, b + 1)) if a <= b else list(range(a, b - 1, -1))
-    if any(s > 15 for s in slots) or len(set(slots)) != len(slots):
-        raise WorldError(path, 'Texture slots are 0-14, each named once.')
+    if any(s >= SLOTS for s in slots) or len(set(slots)) != len(slots):
+        raise WorldError(path, f'Texture slots are 0-14 and 16-{SLOTS - 1}, each named once.')
     if FONT_SLOT in slots:
         raise WorldError(path, 'Texture slot 15 holds the fonts.')
     return slots
@@ -211,10 +214,14 @@ class RegionTextures:
             for new in list(renumber.values()):
                 self.common_haze[new] = nxt
                 nxt += 1
-        limit = min([FONT_PALETTE] + [16 * p for b, p in own.palettes if b == 8])
+        # never across palette 255 (the fonts') nor into an 8-bit palette: the world then places the
+        # region's palettes again from 256 (PaletteRangeError), as for its own textures
+        start = min(mine) if mine else first_palette
+        limit = FONT_PALETTE if start < FONT_PALETTE else PALETTES4
+        limit = min([limit] + [16 * p for b, p in own.palettes if b == 8 and 16 * p >= start])
         if nxt > limit:
             raise WorldError(self.path, f'Region {self.name!r}: the copies of the stand-ins\' texture palettes run '
-                                        f'to palette {nxt - 1}, into {limit}.')
+                                        f'to palette {nxt - 1}, into {limit}.') from PaletteRangeError(self.path, 'range')
         tiles, placements, palettes = dict(own.tiles), dict(own.placements), dict(own.palettes)
         for key, place in cp.placements.items():
             tiles[key] = cp.tiles[key]
@@ -308,18 +315,19 @@ class RegionTextures:
             if not flags & 2:
                 continue
             bits = 4 if tex & 16 else 8
+            fslot, fpal = face_slot(flags, tex), face_palette(flags, tex, pal)
             uvs = struct.unpack_from('<4H', binary, at + 28)[:4 if flags & 4 else 3]
-            if self.common_haze and bits == 4 and pal in self.common_haze and tex & 15 in self.common.slots:
-                struct.pack_into('<B', out, at + 3, self.common_haze[pal])     # a card: its hazed palette
+            if self.common_haze and bits == 4 and fpal in self.common_haze and fslot in self.common.slots:
+                set_texture(out, at, flags, fslot, self.common_haze[fpal], tex >> 5)   # a card: its hazed palette
                 continue
-            if entry_far and bits == 4 and tex & 15 == slot and all(c >> 8 == row and c & 255 < 16 for c in uvs):
-                far = entry_far.get(pal * 16 + (uvs[0] & 15))
+            if entry_far and bits == 4 and fslot == slot and all(c >> 8 == row and c & 255 < 16 for c in uvs):
+                far = entry_far.get(fpal * 16 + (uvs[0] & 15))
                 if far:
                     colour = rp.by_key[self.far_rpkey[far]]['colour']
-                    struct.pack_into('<BB', out, at + 2, (slot & 15) | 16, colour // 16)
+                    set_texture(out, at, flags, slot, colour // 16)
                     struct.pack_into('<4H', out, at + 28, *([colour % 16 | row << 8] * 4))
                 continue
-            group = places.get((tex & 15, bits, pal))
+            group = places.get((fslot, bits, fpal))
             if not group:
                 continue                 # a palette-backed face (the swatch), or not this region's
             win = tex >> 5
@@ -334,12 +342,12 @@ class RegionTextures:
                           and p.y <= v < p.y + p.height + 1]
                 hit = inside[0] if inside else group[0][0]
             colour = rp.by_key[self.far_rpkey[self.far[hit]]]['colour']
-            struct.pack_into('<BB', out, at + 2, (slot & 15) | 16, colour // 16)
+            set_texture(out, at, flags, slot, colour // 16)
             struct.pack_into('<4H', out, at + 28, *([colour % 16 | row << 8] * 4))
         return bytes(out)
 
     def face_base(self, rp, slot, row):
-        """For haze.tint(): a function (tex, pal, uvs, window halfword) -> ((r, g, b), class), the
+        """For haze.tint(): a function (flags, tex, pal, uvs, window halfword) -> ((r, g, b), class), the
         colour a textured face's tint multiplies: its palette entry's (a palette-backed face of the
         world's swatch at slot and row) or its tile's mean brightness; None for a face the haze
         leaves alone (a far colour or card palette the palette variants haze, or a face this region
@@ -351,16 +359,17 @@ class RegionTextures:
             places.setdefault((place.slot, place.bits, place.palette), []).append((key, place))
         means = {}
 
-        def base(tex, pal, uvs, hw):
+        def base(flags, tex, pal, uvs, hw):
             bits = 4 if tex & 16 else 8
-            if bits == 4 and tex & 15 == slot and all(c >> 8 == row and c & 255 < 16 for c in uvs):
+            fslot, pal = face_slot(flags, tex), face_palette(flags, tex, pal)
+            if bits == 4 and fslot == slot and all(c >> 8 == row and c & 255 < 16 for c in uvs):
                 e = by_colour.get(pal * 16 + (uvs[0] & 15))
                 if e is None or e.get('haze'):
                     return None
                 return tuple(int(e['color'][k:k + 2], 16) for k in (1, 3, 5)), e['class']
             if pal in hazed and bits == 4:
                 return None
-            group = places.get((tex & 15, bits, pal))
+            group = places.get((fslot, bits, pal))
             if not group:
                 return None
             hit = next((key for key, p in group if p.window and p.halfword() == hw), None) if hw else None
@@ -459,6 +468,14 @@ class RegionTextures:
                 'by_asset': {n: {'vram_bytes': b, 'tiles': k} for n, (b, k) in sorted(self.asset_bytes().items())},
                 'animations': [{'material': label, 'frames': a.frames, 'ticks': a.ticks,
                                 'rom_bytes': len(a.data), 'bytes_a_frame': a.rows * a.row_bytes} for label, a in anims]}
+
+
+def set_texture(out, at, flags, slot, palette, window=0):
+    """Writes a 4-bit face's slot (0-31) and palette (0-511) into its record at `at`: the flags'
+    bank bits, the texture byte and the palette byte (meshlib.tex_fields)."""
+    banks, t, p = tex_fields(slot, True, palette, window)
+    out[at] = (flags & ~(SLOT_HI | PAL_HI)) | banks
+    struct.pack_into('<BB', out, at + 2, t, p)
 
 
 def tile_mean(tile):

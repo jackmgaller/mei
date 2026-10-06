@@ -21,9 +21,10 @@ struct Mesh {
 struct Face {
     flags: u8        // FACE_* bits; bits 0-3 match the GPU packet type bits
     blend: u8        // blend mode 0-3 for semi-transparent faces
-    tex: u8          // bits 0-3 texture slot, bit 4 set for a 4-bit texture, bits 5-7 texture
-                     // window 1-7: the window table's halfword 1-7 (0: none; ignored with no table)
-    palette: u8      // palette number
+    tex: u8          // bits 0-3 texture slot (16-31 with FACE_SLOT_HI), bit 4 set for a 4-bit texture,
+                     // bits 5-7 texture window 1-7: the window table's halfword 1-7 (0: none;
+                     // ignored with no table)
+    palette: u8      // palette number (in palette bank 1 with FACE_PAL_HI)
     idx: [4]u16      // vertex indices (quads use all four, in strip order)
     col: [4]u32      // colours 0xBBGGRR; flat faces use col[0]; 0x808080 leaves textures unchanged
     uv: [4]u16       // texture coordinates u | v << 8
@@ -35,6 +36,8 @@ const FACE_QUAD = 4
 const FACE_SEMI = 8
 const FACE_DOUBLE = 16     // never culled
 const FACE_KEYED = 32      // sorted into the ordering-table bucket held in col[3] (not Gouraud)
+const FACE_SLOT_HI = 64    // the texture is in slots 16-31: slot 16 + bits 0-3 of tex
+const FACE_PAL_HI = 128    // the palette is in bank 1: 4-bit palette 256 + palette, 8-bit 16 + palette
 
 const MAX_MESH_VERTS = 2048
 

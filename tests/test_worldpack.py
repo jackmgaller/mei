@@ -451,6 +451,69 @@ class DifferentialTests(unittest.TestCase):
                 if VERBOSE:
                     print(f'\n  heightfield shift {shift}: worst height error {worst:.6f}')
 
+    def test_floor_across_cracks_matches_the_checker(self):
+        """wp_floor_across() and the World Checker's reader_floor_across() give the same answer,
+        bit for bit, near gaps of many widths and angles between slabs 2 units up over a ground
+        at 0 (outside the window), some across a cell seam and some with the far slab higher;
+        and a gap is bridged as WORLDKIT.md says: narrower than (span - 1/8) cos 22.5 at every
+        point, never wider than the span."""
+        try:
+            from worldkit import verify_static as ST
+        except ImportError as error:
+            self.skipTest(f'the World Checker does not load: {error}')
+        rng = random.Random(5)
+        tris, gaps = [], []
+        tag = 10
+        S = 64
+        tris += [Tri((0, 0, 0), (2 * S, 0, 0), (0, 0, S), tag=1), Tri((2 * S, 0, 0), (2 * S, 0, S), (0, 0, S), tag=1)]
+        k = 0
+        for width in (0.016, 0.05, 0.1, 0.2, 0.25, 0.28, 0.33, 0.4, 0.45, 0.6):
+            for deg in (0, 22.5, 30, 45, 60, 90):
+                for rise in (0.0, 0.25, 0.5):
+                    # 20 columns of 9; the eleventh (x = 64) on the seam
+                    cx, cz = 4 + 6 * (k // 9), 4 + 6.5 * (k % 9)
+                    k += 1
+                    a = math.radians(deg)
+                    ux, uz, vx, vz = math.cos(a), math.sin(a), -math.sin(a), math.cos(a)
+
+                    def at(s, t, y):
+                        return (cx + ux * s + vx * t, y, cz + uz * s + vz * t)
+                    for (s0, s1), y in (((-1.5, -width / 2), 2.0), ((width / 2, 1.5), 2.0 + rise)):
+                        q = [at(s0, -1.5, y), at(s1, -1.5, y), at(s1, 1.5, y), at(s0, 1.5, y)]
+                        tris += [Tri(q[0], q[1], q[2], tag=tag), Tri(q[0], q[2], q[3], tag=tag)]
+                        tag += 1
+                    gaps.append((cx, cz, ux, uz, width, rise))
+        w = World(cells=[Cell(0, 0, collision=[t for t in tris]), Cell(1, 0, collision=[])])
+        pack = decode(encode(w))
+        recs, pts = [], []
+        for cx, cz, ux, uz, width, rise in gaps:
+            for _ in range(12):
+                s = rng.uniform(-0.6, 0.6) * max(width, 0.3)
+                t = rng.uniform(-1.2, 1.2)
+                y = 2.0 + rng.choice([0.0, 0.1, -0.1, rise])
+                span = rng.choice([0.4375, 0.4375, 0.25, 0.125])
+                p = F.raw((cx + ux * s - uz * t, y, cz + uz * s + ux * t))
+                q = (fx(0.32), fx(0.32), fx(span))
+                recs.append(F.query(F.OP_ACROSS, p, q))
+                pts.append((p, q, s, width, rise, span))
+        got = self.run_queries(w, recs, frames=600)
+        bridged = 0
+        for (p, q, s, width, rise, span), g in zip(pts, got):
+            want = ST.reader_floor_across(pack, p[0], p[1], p[2], set(), q[0], q[1], ST.across_steps(span))
+            lo = p[1] - q[1]
+            self.assertEqual(g[0] == 1, want is not None, (p, width, span))
+            if want is not None:
+                self.assertEqual((g[1], g[3]), (want[0], want[1]), (p, width, span))
+            inside = abs(s) < width / 2 - 1e-3
+            on_slab = want is not None and want[0] >= lo and want[1] != 1
+            if inside and on_slab:
+                bridged += 1
+                self.assertLessEqual(width, span + 1e-9, 'a gap wider than the span is never bridged')
+            elif inside and rise <= 0.32 - 0.1 and abs(p[1] / ONE - 2.0) <= 0.1 + 1e-6 and \
+                    width < (span - 0.125) * math.cos(math.radians(22.5)) - 1e-3:
+                self.fail(f'a gap of {width} is not bridged with span {span} at {[c / ONE for c in p]}')
+        self.assertGreater(bridged, 100)
+
     def test_moving_object_in_its_own_frame(self):
         w, etris = F.random_world(21, 6)
         oracle = Oracle.from_tris(etris)
@@ -916,9 +979,13 @@ class CostTests(unittest.TestCase):
             got.setdefault(f[0], []).append([int(x) for x in f[1:]])
         if VERBOSE:
             print('\n  ' + '\n  '.join(lines))
-        per = {k: got[k][0][0] for k in ('cell', 'floor', 'ceiling', 'push', 'ray4', 'ray15')}
+        per = {k: got[k][0][0] for k in ('cell', 'floor', 'across', 'across_air', 'ceiling', 'push', 'ray4', 'ray15')}
         # Tsumiki's floor query among 41 solids took about 2,000 cycles (docs/WORLDKIT.md)
         self.assertLess(per['floor'], 1000)
+        # wp_floor_across(): wp_floor() and little more on whole ground; at most 25 queries when
+        # there is nothing in the window (in the air), 6 steps out along each of 4 directions
+        self.assertLess(per['across'], per['floor'] + 100)
+        self.assertLess(per['across_air'], 25 * per['floor'] + 1000)
         self.assertLess(per['ceiling'], 1000)
         self.assertLess(per['push'], 1000)
         self.assertLess(per['ray4'], 5000)
@@ -1211,7 +1278,7 @@ class RegionExtTests(unittest.TestCase):
         self.assertEqual((old.regions[0].runs, old.regions[0].animations, old.regions[0].sky), ([], [], None))
 
     def test_limits(self):
-        bad = [dict(runs=[P.PaletteRun(4090, [[0] * 8, [0] * 8])]),           # past colour 4095
+        bad = [dict(runs=[P.PaletteRun(8186, [[0] * 8, [0] * 8])]),           # past colour 8191
                dict(runs=[P.PaletteRun(3584, [[0, 1]])]),                       # one list for two variants
                dict(animations=[P.Animation(b'\0' * 7, 3, 4, 4, 2, 0, 128)]),   # frames' bytes
                dict(animations=[P.Animation(b'\0' * 24, 3, 0, 4, 2, 0, 128)]),  # ticks 0
@@ -1235,6 +1302,43 @@ class RegionExtTests(unittest.TestCase):
         for what, data in cases.items():
             with self.assertRaises(PackError, msg=what):
                 decode(data)
+
+    def high_world(self):
+        """region_world() moved into VRAM's second megabyte: slot 20, colours 4112 on, the 8-bit
+        run at colour 7936 (8-bit palette 31), the animated tile in slot 20, backdrop art at
+        0x590000 (a free page)."""
+        w = region_world()
+        r = w.regions[0]
+        r.textures[0].slot = 20
+        r.first_colour = 4096 + 16
+        r.runs = [P.PaletteRun(31 * 256, r.runs[0].variants)]
+        r.animations[0].vram = 20 * 32768 + 128 * 8
+        r.backdrop = [P.VramCopy(0x590000, bytes([9, 8, 7, 6]))]
+        return w
+
+    def test_second_megabyte_round_trip_and_limits(self):
+        r = decode(encode(self.high_world())).regions[0]
+        self.assertEqual((r.textures[0].slot, r.first_colour, r.runs[0].first_colour, r.animations[0].vram),
+                         (20, 4112, 7936, 20 * 32768 + 1024))
+        for over in (dict(runs=[P.PaletteRun(8190, [[0] * 4, [0] * 4])]),            # past colour 8191
+                     dict(textures=[P.Texture(32, b'\0' * 4, True)]),                  # no slot 32
+                     dict(animations=[P.Animation(b'\0' * 24, 3, 4, 4, 2, 32 * 32768, 128)])):   # past slot 31
+            with self.assertRaises(PackError, msg=over):
+                encode(region_world(**over))
+
+    @needs_tools
+    def test_the_reader_uses_the_second_megabyte(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lines = F.run_cart(tmp, 'regions_hi.akr', {'PACK': ('u8', encode(self.high_world()))})
+        self.assertEqual(lines[-1], 'done')
+        vals = dict(l.split(' ', 1) for l in lines[:-1])
+        self.assertEqual(vals['texture'], '33 67 17')
+        self.assertEqual(vals['slot4'], '0 0 0')
+        self.assertEqual(vals['day'], '1000 31 992')
+        self.assertEqual(vals['bank0'], '0 0 0')
+        self.assertEqual(vals['backdrop'], '9 6 0')
+        self.assertEqual(vals['night'], '2000 1 32')
+        self.assertEqual(vals['frame1'], '0 1 34')
 
     @needs_tools
     def test_the_reader_enters_regions_and_animates(self):

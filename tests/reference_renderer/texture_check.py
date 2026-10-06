@@ -57,7 +57,7 @@ fn init() {
     // halves explicitly; load_texture itself is an ordinary memory copy.
     load_texture(15, T81, 32768)
     load_texture(0, T81 + 32768, 32768)
-    load_palette(2560, P1, 256)
+    load_palette(6656, P1, 256)          // 8-bit palette 26: palette bank 1 (VRAM at 2 MB)
 }
 fn update() {
     seq += 1
@@ -96,7 +96,7 @@ fn draw() {
         if i % 5 == 4 && i % 3 != 0 { u = 224 + seq % 32; v = 230 + seq % 26 }
         var page = tex_page(8, 0, true)
         if i % 4 == 1 { page = tex_page(3, 1, false) }
-        if i % 4 == 2 { page = tex_page(15, 250, false) }
+        if i % 4 == 2 { page = tex_page(15, 26, false) }
         if i % 4 == 3 { page = tex_page(8, 7, true) }
         let tint = rgb(65 + (seq * 3 + i * 11) % 190,
                        63 + (seq * 5 + i * 7) % 190,
@@ -142,8 +142,8 @@ class State:
         wrap = np.frombuffer(art(False, 1), dtype=np.uint8)
         self.texture[15 * 32768:] = wrap[:32768]
         self.texture[:32768] = wrap[32768:]
-        self.palette = np.zeros(4096, dtype=np.int64)
-        self.palette[2560:2816] = palette_key(1)
+        self.palette = np.zeros(8192, dtype=np.int64)       # both palette banks
+        self.palette[6656:6912] = palette_key(1)
         self.keys = [palette_key(i).astype(np.int64) for i in range(2)]
 
     def advance(self, seq):
@@ -184,7 +184,7 @@ def packets(seq, stress):
         if i % 5 == 4 and i % 3 != 0:
             u, v = 224 + seq % 32, 230 + seq % 26
         slot, four, pal = [(8, True, 0), (3, False, 1),
-                           (15, False, 250), (8, True, 7)][i % 4]
+                           (15, False, 26), (8, True, 7)][i % 4]
         tint = [65 + (seq * 3 + i * 11) % 190,
                 63 + (seq * 5 + i * 7) % 190,
                 67 + (seq * 7 + i * 3) % 188]

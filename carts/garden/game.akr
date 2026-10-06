@@ -81,6 +81,7 @@ fn read_input(s: vec2) {
 }
 
 fn update() {
+    water_cycle_update(frame() as s32)
     pad_prev = pad_now
     pad_now = input_pad(frame_n)
     let s = input_stick(frame_n)
@@ -146,7 +147,10 @@ fn follow_region() {
     let c = wp_cell_at(pl.pos)
     if c == null || wp_region_loaded < 0 { return }
     let k = c.region as s32
-    if k != wp_region_loaded { wp_region_enter(k, 0) }
+    if k != wp_region_loaded {
+        wp_region_enter(k, 0)
+        world_region_entered(k)
+    }
 }
 
 // ---- doors (the world's door entities): walk into one to go to its world

@@ -133,6 +133,21 @@ class ParseTests(unittest.TestCase):
                 self.assertEqual(mochi.format(game), path.read_text())        # the examples are canonical
                 self.assertEqual(ordered(mochi.parse(mochi.format(game))[0]), ordered(game))
 
+    def test_probe_bridge(self):
+        """The probe's bridge (WORLDKIT.md, "Cracks"): parsed, formatted, validated and exported
+        to GAME.game.akr as GAME_PROBE_BRIDGE, and nothing new without it."""
+        from worldkit.akr import game_source
+        text = 'game g\n\nprobe {\n  radius            = 0.3\n  floor_max_degrees = 40\n  bridge            = 0.4375\n}\n'
+        game, _ = mochi.parse(text)
+        self.assertEqual(game['probe'], {'radius': 0.3, 'floor_max_degrees': 40, 'bridge': 0.4375})
+        self.assertEqual(mochi.format(game), text)
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(load_text(text, tmp)['probe']['bridge'], 0.4375)
+            with self.assertRaises(WorldError):
+                load_text(text.replace('0.4375', '5'), tmp)
+        self.assertIn('const G_PROBE_BRIDGE: fixed = 0.4375\n', game_source(dict(game, types={})))
+        self.assertNotIn('BRIDGE', game_source(dict(game, probe={'radius': 0.3, 'floor_max_degrees': 40}, types={})))
+
     def test_spellings_that_mean_the_same_are_normalised(self):
         game = dict(SINK_JSON, types={'a': {'saved': False, 'params': {}},
                                       'b': {'params': {'r': {'type': 'entity_ref', 'required': False}}}})

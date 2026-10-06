@@ -3,7 +3,7 @@
 
 Run `python3 tools/mei_world.py schema` for the complete recipe contract (the game schema's
 Mochi form is described under $defs/game x-mochi), or read docs/WORLDKIT.md. All command results
-and errors are JSON on stdout; exit 0 or 1. The quick tools (check, floors, textures) print
+and errors are JSON on stdout; exit 0 or 1. The quick tools (check, floors, textures, cracks) print
 plain text, or JSON with --json.
 """
 import os
@@ -121,7 +121,7 @@ def numbers(text, n, what):
 
 
 def quick(args):
-    """check, floors and textures: (result, its plain text)."""
+    """check, floors, textures and cracks: (result, its plain text)."""
     from worldkit import quick as Q
     world = quick_world(args)
     if args.command == 'check':
@@ -139,6 +139,23 @@ def quick(args):
         report = Q.check(world,cells,cameras,tools,args.max_views,args.output)
         report['compiled'] = world.how()
         return report,Q.check_text(report,world,cells,cameras,args.rows)
+    if args.command == 'cracks':
+        from worldkit.build import cracks_path, load_crack_baseline
+        from worldkit.world import load
+        from kitcore import jsonio as J
+        routes = Q.load_routes(args.routes) if args.routes else None
+        source = load(args.recipe)
+        path = Path(args.baseline) if args.baseline else cracks_path(source)
+        baseline = None
+        if args.baseline is not None and not args.write_baseline:
+            _,baseline = load_crack_baseline(source,str(path))
+        result = Q.cracks(world,routes,args.near,baseline)
+        if args.write_baseline:
+            path.write_text(J.pretty(Q.baseline_file(world,result['cracks'])))
+            result['baseline_written'] = str(path)
+        text = Q.cracks_text(result)
+        if args.write_baseline: text += f'\nwrote {path}'
+        return result,text
     if args.command == 'floors':
         result = Q.floors(world,numbers(args.area,4,'area'),args.step,
                           [l for l in args.layers.split(',') if l] if args.layers is not None else None,args.below)
@@ -196,6 +213,8 @@ def parser():
     q['floors'] = sub.add_parser('floors',help='The pack\'s floor heights over an area as wp_floor() finds them, '
                                  'with what each belongs to, holes and cracks.')
     q['textures'] = sub.add_parser('textures',help='Texture VRAM per region, by asset and by image, against the budget.')
+    q['cracks'] = sub.add_parser('cracks',help='Every collision crack the game\'s floor query does not bridge, on routes '
+                                 'first, the widest first; compared with or written to the crack baseline.')
     for name,cmd in q.items():
         cmd.add_argument('recipe',help='World recipe path.')
         cmd.add_argument('--assets',type=Path,help='Use this asset directory instead of the recipe\'s.')
@@ -226,6 +245,15 @@ def parser():
     f.add_argument('--layers',metavar='A,B',help='Layers on (default: those on at the start; "" for none).')
     f.add_argument('--below',type=float,metavar='Y',help='The highest floor at or below this height (default: from '
                    'above everything), as a body standing there finds it.')
+    k = q['cracks']
+    k.add_argument('--routes',type=Path,metavar='FILE',help='A JSON object of named routes, {"NAME": [[x, z], ...]}: '
+                   'a crack within --near of one is on it.')
+    k.add_argument('--near',type=float,default=3.0,help='How near a route a crack is on it (units, default 3).')
+    k.add_argument('--baseline',nargs='?',const='',metavar='FILE',
+                   help='Compare with the crack baseline (default NAME.cracks.json beside the recipe): exit 1 when a '
+                        'crack is new.')
+    k.add_argument('--write-baseline',action='store_true',help='Write the cracks found to the crack baseline '
+                   '(NAME.cracks.json beside the recipe, or --baseline FILE).')
     t = q['textures']
     t.add_argument('--region',help='One region.')
     t.add_argument('--cells',action='append',default=[],metavar='I,J[;I,J...]',
@@ -254,6 +282,9 @@ def parser():
             cmd.add_argument('--probe',type=Path,default=ROOT/'build'/'mei-asset-probe')
             cmd.add_argument('--cache',type=Path,help='Keep the Asset and World Checkers\' results in this directory '
                                                       'and reuse them while their inputs are unchanged.')
+            cmd.add_argument('--crack-baseline',metavar='FILE|none',
+                             help='The crack baseline the World Checker compares with: its cracks are listed as known, '
+                                  'not failures (default NAME.cracks.json beside the recipe, when there is one).')
     return p
 
 
@@ -268,7 +299,7 @@ def main(argv=None):
             jsonio.output(init(args.output,args.example,args.force))
         elif args.command == 'floor':
             jsonio.output(floors(args.recipe,args.points,args.assets))
-        elif args.command in ('check','floors','textures'):
+        elif args.command in ('check','floors','textures','cracks'):
             result,text = quick(args)
             if args.json: jsonio.output(result)
             else: print(text)
@@ -277,7 +308,7 @@ def main(argv=None):
             jsonio.output(build(args.recipe,args.output,args.compiler.resolve(),args.runner.resolve(),
                                 args.probe.resolve(),args.locked,args.assets,
                                 args.command == 'preview' or args.preview,getattr(args,'cell',None),
-                                args.world_checker,args.cache))
+                                args.world_checker,args.cache,args.crack_baseline))
         else:
             _,compiled = compile_source(args.recipe,args.assets)
             report = compiled.report

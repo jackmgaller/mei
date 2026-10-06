@@ -30,8 +30,8 @@ def main():
     rng=np.random.default_rng(args.seed)
     # Windows come from a second generator so that the other inputs stay as they were.
     windows=np.random.default_rng(args.seed+1)
-    texture=rng.integers(0,256,524288,dtype=np.uint8)
-    palette=rng.integers(0,32768,4096,dtype=np.int64)
+    texture=rng.integers(0,256,2*524288,dtype=np.uint8)      # slots 0-31 (VRAM at 2 MB)
+    palette=rng.integers(0,32768,8192,dtype=np.int64)        # colours 0-8191, both banks
     failures=[]
     tally={'scenes':args.scenes,'seed':args.seed,'packets':0,'triangles':0,
            'large_area_triangles':0,'degenerate_triangles':0,'negative_windings':0,
@@ -73,8 +73,9 @@ def main():
                 window=int(windows.integers(0,8))|int(windows.integers(0,32))<<3
                 window|=(int(windows.integers(0,8))|int(windows.integers(0,32))<<3)<<8
                 tally['windowed_packets']+=int(bool(window&0x707))
-            packets.append({'flags':flags,'blend':(run+kind)%4,'slot':(run+kind)%16,
-                            'four':bool((run+kind)%2),'pal':int(rng.integers(0,256)),
+            four=bool((run+kind)%2)
+            packets.append({'flags':flags,'blend':(run+kind)%4,'slot':(run+kind)%32,
+                            'four':four,'pal':int(rng.integers(0,512 if four else 32)),
                             'pos':pos,'cols':rng.integers(0,256,(n,3)).tolist(),
                             'uv':rng.integers(0,256,(n,2)).tolist(),'window':window})
             tally['kinds'][str(kind)]=tally['kinds'].get(str(kind),0)+1

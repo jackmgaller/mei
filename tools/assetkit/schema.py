@@ -47,8 +47,8 @@ MATERIAL['properties']['texture'] = TEXTURE
 SHEET = dict(obj({'image':{'type':'string','minLength':1,'maxLength':200},
                   'grid':dict(array(integer(1,256),2,2),description="Cell width and height: cells are named [column, row]. Without it, cells are named in the image's NAME.sheet.json.")},['image']),
              description='A PNG holding many textures: an authoring container that the kit slices.')
-PALETTE_LAYOUT = dict(obj({'slot':integer(0,14),'row':integer(0,255),'first':integer(0,254)}),
-                      description='Where palette-backed materials live: swatch texels u 0-15 of row `row` in texture slot `slot` (default 14, 0); entries from 4-bit palette `first` (default 0).')
+PALETTE_LAYOUT = dict(obj({'slot':integer(0,31),'row':integer(0,255),'first':integer(0,510)}),
+                      description='Where palette-backed materials live: swatch texels u 0-15 of row `row` in texture slot `slot` (0-31 but not 15, the fonts\'; default 14, 0); entries from 4-bit palette `first` (0-511, not running into 255, the fonts\'; default 0).')
 VERIFICATION = obj({'required':BOOL,'yaw_steps':integer(4,120),
                     'pitches':array(number(-1.4,1.4),1,5),
                     'distances':array(number(.8,3),1,3),'far':number(1,1000),'geometry':choice('error','warn'),

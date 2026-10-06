@@ -46,6 +46,8 @@ REGION_SIZE = 32
 TEXTURE_SIZE = 12
 SAMPLE_SIZE = 20
 VRAM_COPY_SIZE = 12
+TEXTURE_SLOTS = 32          # VRAM at 2 MB (DECISIONS.md): slots 0-31
+PALETTE_COLOURS = 8192      # ... and colours 0-8191 (bank 1 from 4096)
 PATH_SIZE = 48
 PATH_POINT_SIZE = 40
 LOD_HEAD_SIZE = 8
@@ -870,7 +872,7 @@ def encode(world, report=None):
         string_ref(at, r.name)
         tex_off = out.reserve(TEXTURE_SIZE * len(r.textures)) if r.textures else 0
         for t, tex in enumerate(r.textures):
-            if not 0 <= tex.slot <= 15:
+            if not 0 <= tex.slot < TEXTURE_SLOTS:
                 raise PackError('texture slot out of range')
             out.patch(tex_off + TEXTURE_SIZE * t, 'BBHII', tex.slot, 1 if tex.four_bit else 0, 0, 0,
                       len(tex.data))
@@ -887,8 +889,8 @@ def encode(world, report=None):
         if nvar:
             if any(len(cols) != ncol for _, cols in r.variants):
                 raise PackError(f'region {r.name!r}: palette variants differ in length')
-            if r.first_colour + ncol > 4096:
-                raise PackError(f'region {r.name!r}: palette runs past colour 4095')
+            if r.first_colour + ncol > PALETTE_COLOURS:
+                raise PackError(f'region {r.name!r}: palette runs past colour {PALETTE_COLOURS - 1}')
             pal_off = out.reserve(4 * nvar)
             for vi, (name, cols) in enumerate(r.variants):
                 string_ref(pal_off + 4 * vi, name)
@@ -1283,7 +1285,7 @@ def decode(data):
         texs = []
         for t in range(ntex):
             slot, fl, _, do, n = r.u('BBHII', to + TEXTURE_SIZE * t, 'texture')
-            if slot > 15:
+            if slot >= TEXTURE_SLOTS:
                 raise PackError('texture slot out of range')
             texs.append(Texture(slot, r.blob(do, n, 'texture'), bool(fl & 1)))
         smps = []
@@ -1293,8 +1295,8 @@ def decode(data):
             smps[-1].offset = do
         variants = []
         if nvar:
-            if first + ncol > 4096:
-                raise PackError('palette runs past colour 4095')
+            if first + ncol > PALETTE_COLOURS:
+                raise PackError(f'palette runs past colour {PALETTE_COLOURS - 1}')
             r.table(po, nvar, 4, 'palette variants', hs)
             names = [r.string(r.u('I', po + 4 * v, 'variant')[0], 'variant') for v in range(nvar)]
             base = po + 4 * nvar
@@ -1418,7 +1420,7 @@ def _write_region_ext(out, at, r, blob_ref):
     for q, run in enumerate(r.runs):
         n = len(run.variants[0]) if run.variants else 0
         if len(run.variants) != nvar or any(len(v) != n for v in run.variants) or not 0 < n <= 256 \
-                or run.first_colour + n > 4096:
+                or run.first_colour + n > PALETTE_COLOURS:
             raise PackError(f'region {r.name!r}: a palette run needs 1-256 colours for each palette variant')
         out.patch(run_off + RUN_SIZE * q, 'HHI', run.first_colour, n, 0)
         blob_ref(run_off + RUN_SIZE * q + 4, b''.join(struct.pack(f'<{n}H', *v) for v in run.variants))
@@ -1427,7 +1429,7 @@ def _write_region_ext(out, at, r, blob_ref):
         if not (1 <= a.frames <= 0xFFFF and 1 <= a.ticks <= 255 and a.rows >= 1 and 1 <= a.row_bytes <= a.stride
                 and len(a.data) == a.frames * a.rows * a.row_bytes and a.stride in (128, 256)
                 and (a.vram % a.stride) + a.row_bytes <= a.stride and 0 <= a.vram
-                and a.vram + (a.rows - 1) * a.stride + a.row_bytes <= 16 * 32768):
+                and a.vram + (a.rows - 1) * a.stride + a.row_bytes <= TEXTURE_SLOTS * 32768):
             raise PackError(f'region {r.name!r}: bad animated texture')
         out.patch(anim_off + ANIM_SIZE * q, 'II6H', 0, a.vram, a.frames, a.ticks, a.row_bytes, a.rows, a.stride, 0)
         blob_ref(anim_off + ANIM_SIZE * q, a.data)
@@ -1454,7 +1456,7 @@ def _decode_region_ext(r, at, reg, hs):
     r.table(anim_off, nanim, ANIM_SIZE, 'animated textures', hs)
     for q in range(nrun):
         first, n, do = r.u('HHI', run_off + RUN_SIZE * q, 'palette run')
-        if n == 0 or n > 256 or first + n > 4096 or not nvar:
+        if n == 0 or n > 256 or first + n > PALETTE_COLOURS or not nvar:
             raise PackError('palette run: bad colours, or a region without palette variants')
         r.blob(do, 2 * n * nvar, 'palette run')
         reg.runs.append(PaletteRun(first, [list(r.u(f'{n}H', do + 2 * n * v, 'palette run')) for v in range(nvar)]))
@@ -1462,7 +1464,7 @@ def _decode_region_ext(r, at, reg, hs):
         do, vram, frames, ticks, rb, rows, stride, _ = r.u('II6H', anim_off + ANIM_SIZE * q, 'animated texture')
         if frames == 0 or rows == 0 or not 1 <= ticks <= 255 or stride not in (128, 256) or not 1 <= rb <= stride:
             raise PackError('animated texture: bad fields')
-        if (vram % stride) + rb > stride or vram + (rows - 1) * stride + rb > 16 * 32768:
+        if (vram % stride) + rb > stride or vram + (rows - 1) * stride + rb > TEXTURE_SLOTS * 32768:
             raise PackError('animated texture: its tile runs past the texture area')
         reg.animations.append(Animation(r.blob(do, frames * rows * rb, 'animated texture'), frames, ticks, rb, rows,
                                         vram, stride))

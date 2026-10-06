@@ -158,6 +158,64 @@ def reader_floor(pack, x, y, z, layers_on, above=0):
     return best
 
 
+# wp_floor_across()'s steps (raw units): 1/16 along x and z, 181/4096 in x and z along the diagonals.
+ACROSS = ((4096, 0), (0, 4096), (2896, 2896), (2896, -2896))
+
+
+def across_steps(bridge):
+    """wp_floor_across()'s span in steps of 1/16: (span * 16) as s32, span in fixed point."""
+    return (round(bridge * ONE) * 16) >> 16
+
+
+def reader_floor_across(pack, x, y, z, layers_on, above, below, n):
+    """wp_floor_across() at raw world point (x, y, z), bit for bit (above, below raw; n steps,
+    across_steps()): wp_floor()'s floor when it is at or above y - below; else, along x, z and
+    the two diagonals in that order, the nearest floor within y - below .. y + above on each
+    side, a and b steps out with a + b <= n: the higher of the two (the first direction that
+    has them); else wp_floor()'s answer. Returns (height raw, tag, surface) or None."""
+    lo = y - below
+    got = reader_floor(pack, x, y, z, layers_on, above)
+    if got is not None and got[0] >= lo:
+        return got
+
+    def ok(k, sx, sz):
+        g = reader_floor(pack, x + k * sx, y, z + k * sz, layers_on, above)
+        return g if g is not None and g[0] >= lo else None
+    for sx, sz in ACROSS:
+        side = None
+        a = 1
+        while a < n:
+            side = ok(a, sx, sz)
+            if side is not None:
+                break
+            a += 1
+        if side is None:
+            continue
+        other = None
+        b = 1
+        while a + b <= n:
+            other = ok(-b, sx, sz)
+            if other is not None:
+                break
+            b += 1
+        if other is None:
+            continue
+        return side if side[0] > other[0] else other
+    return got
+
+
+def bridged(pack, x, h, z, layers_on, probe):
+    """Whether the game's floor query bridges raw point (x, z) for a body at height h (units):
+    wp_floor_across() with the probe's step above and below and its bridge as the span finds a
+    floor within the step of h."""
+    n = across_steps(probe.get('bridge', 0) or 0)
+    if n < 2:
+        return False
+    y, step = round(h * ONE), round(probe['step'] * ONE)
+    got = reader_floor_across(pack, x, y, z, layers_on, step, step, n)
+    return got is not None and got[0] >= y - step
+
+
 # ---- collision checks
 
 def _present(t, layers_on):
@@ -233,6 +291,7 @@ def crack_check(pack, floors_all, layers_on, probe, settings, limit):
     floors = [t for t in floors_all if t.kind == KIND_FLOOR and _present(t, layers_on)]
     edges = _boundary_edges(floors)
     radius, step = probe['radius'], probe['step']
+    bridging = across_steps(probe.get('bridge', 0) or 0) >= 2
     per_unit = settings['crack_samples_per_unit']
     offsets = [1 / ONE, 2 / ONE, 4 / ONE, 16 / ONE, 1 / 256, 1 / 64]
     t = 1 / 16
@@ -254,21 +313,37 @@ def crack_check(pack, floors_all, layers_on, probe, settings, limit):
             px, pz = p[0] + (q[0] - p[0]) * f, p[2] + (q[2] - p[2]) * f
             h = _height(tri, px, pz)
             gap = None
+            holes = []
+            last = 0.0                  # the last offset with a floor before the gap
             for off in offsets:
                 x, z = round((px + out[0] * off) * ONE), round((pz + out[1] * off) * ONE)
                 got = reader_floor(pack, x, round((h + step) * ONE), z, layers_on)
                 present = got is not None and got[0] >= (h - step) * ONE
-                if not present and gap is None:
-                    gap = off
-                elif present and gap is not None:
+                if not present:
+                    holes.append((off, x, z))
+                    if gap is None:
+                        gap = off
+                elif gap is None:
+                    last = off
+                else:
+                    if bridging:
+                        # the game's query bridges it unless a point of the gap is not bridged
+                        gap = next((o for o, hx, hz in holes if not bridged(pack, hx, h, hz, layers_on, probe)), None)
+                        if gap is None:
+                            break
                     count += 1
                     key = (tri.tag, got[1], tri.cell)
                     if key not in findings:
                         findings[key] = {'code': 'crack', 'cell': list(tri.cell), 'floor_tag': tri.tag,
                                          'beyond_tag': got[1], 'at': [round(px, 4), round(h, 4), round(pz, 4)],
                                          'gap': [round(gap, 6), round(off, 6)], 'samples': 0,
-                                         'on_seam': _on_seam(px, pz, S)}
-                    findings[key]['samples'] += 1
+                                         'on_seam': _on_seam(px, pz, S), 'width': 0.0}
+                    found = findings[key]
+                    found['samples'] += 1
+                    width = round(off - last, 6)    # at most this wide here; the widest of the samples
+                    if width > found['width']:
+                        found['width'] = width
+                        found['widest_at'] = [round(px, 4), round(h, 4), round(pz, 4)]
                     break
     # collinear boundary edges facing each other without shared rows
     lines = {}
@@ -291,6 +366,8 @@ def crack_check(pack, floors_all, layers_on, probe, settings, limit):
                 r = _facing_overlap(a, b, step)
                 if r is None:
                     continue
+                if bridging and _sliver_bridged(pack, a, r, layers_on, probe):
+                    continue
                 k2 = (a[0].tag, b[0].tag, a[0].cell)
                 if k2 not in mism:
                     mx_, mz_ = r
@@ -301,6 +378,66 @@ def crack_check(pack, floors_all, layers_on, probe, settings, limit):
     found = list(findings.values()) + list(mism.values())
     found.sort(key=lambda f: (f['code'], f['cell'], f['floor_tag'], f['beyond_tag']))
     return found[:limit], len(found), len(edges), count
+
+
+# ---- the crack baseline (NAME.cracks.json beside the recipe; WORLDCHECKER.md, "Crack baseline")
+
+BASELINE_FORMAT = 'mei-world-cracks'
+BASELINE_KEYS = ('code', 'cell', 'floor_tag', 'beyond_tag', 'layers', 'at', 'width')
+
+
+def _same_crack(f, b):
+    """Whether finding f is baseline entry b: the same code and layers, and the same cell and
+    tags, or a point within 1 unit across and 0.5 up of b's (tags change when a cell's placements
+    are renumbered; a finding's point moves when its first sample does)."""
+    if f['code'] != b['code'] or sorted(f.get('layers', [])) != sorted(b.get('layers', [])):
+        return False
+    if list(f['cell']) == list(b['cell']) and f['floor_tag'] == b['floor_tag'] and f['beyond_tag'] == b['beyond_tag']:
+        return True
+    (x, y, z), (bx, by, bz) = f['at'], b['at']
+    return abs(x - bx) <= 1.0 and abs(z - bz) <= 1.0 and abs(y - by) <= 0.5
+
+
+def against_baseline(found, baseline):
+    """Findings split by the baseline's entries: (new, known, fixed), fixed being the entries
+    no finding matches."""
+    new, known, used = [], [], set()
+    for f in found:
+        hit = next((k for k, b in enumerate(baseline) if _same_crack(f, b)), None)
+        if hit is None:
+            new.append(f)
+        else:
+            known.append(f)
+            used.add(hit)
+    return new, known, [b for k, b in enumerate(baseline) if k not in used]
+
+
+def baseline_entry(f):
+    """A finding as NAME.cracks.json keeps it."""
+    out = {k: f[k] for k in BASELINE_KEYS if k in f}
+    for k in ('floor', 'beyond', 'route'):
+        if k in f:
+            out[k] = f[k]
+    return out
+
+
+def _sliver_bridged(pack, a, r, layers_on, probe):
+    """Whether the game's floor query bridges the sliver a mismatched edge can leave: at the
+    overlap's midpoint r and 1 and 2 raw units either side of edge a's line, every point without
+    a floor within the step of the edge's height is bridged (bridged())."""
+    tri, row = a[0], a[1]
+    mlen = math.hypot(row[0], row[1])
+    nx, nz = row[0] / mlen, row[1] / mlen
+    h = _height(tri, r[0], r[1])
+    step = probe['step']
+    for t in (-2, -1, 0, 1, 2):
+        x, z = round(r[0] * ONE + nx * t), round(r[1] * ONE + nz * t)
+        got = reader_floor(pack, x, round((h + step) * ONE), z, layers_on)
+        if got is not None and got[0] >= (h - step) * ONE:
+            continue
+        if not bridged(pack, x, h, z, layers_on, probe):
+            return False
+    return True
 
 
 def _on_seam(x, z, S):

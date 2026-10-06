@@ -729,7 +729,7 @@ and `mesh()` draws a `*Mesh` that points into ROM (LANGUAGE.md, "Memory" and "Me
 "Streaming" here means three things only:
 
 1. choosing which cells to draw, and at what detail, and which to collide with;
-2. swapping textures and palettes in the 1 MB of VRAM when the player crosses into a region;
+2. swapping textures and palettes in the 2 MB of VRAM when the player crosses into a region;
 3. spawning and retiring entities as their cells become active and inactive.
 
 Cells are position-independent blobs behind an index: every reference inside a pack is an
@@ -758,28 +758,37 @@ backdrop. VRAM cannot hold two regions' textures at once, so there is a shared c
 one set per region, and swaps happen at natural seams: underpasses, covered arcades, station
 concourses.
 
-VRAM is 1,024 KB (spec p. 11, PLANES.md "Memory map"):
+VRAM is 2,048 KB since 2026-10-05 ([DECISIONS.md](DECISIONS.md#vram-at-2-mb); it was 1,024 KB,
+spec p. 11; PLANES.md "Memory map"):
 
 | Use | Size | Note |
 |---|---|---|
 | framebuffers A and B | 300 KB | 2 × 153,600 bytes |
 | spare | 4 KB | |
-| palette memory | 8 KB | 4,096 colours; palette 255 (colours 4080–4095) is the font's |
+| palette bank 0 | 8 KB | colours 0–4095 (4-bit palettes 0–255); palette 255 (colours 4080–4095) is the font's |
 | Horizon Engine line tables | 8 KB | convention |
 | Horizon Engine pages 10–15 | 192 KB | maps and atlases for backdrops |
 | texture slots 0–15 | 512 KB | 32 KB each (one 4-bit 256×256 texture; an 8-bit one takes two) |
+| texture slots 16–31 | 512 KB | the second megabyte, `0x500000`–`0x57FFFF` |
+| palette bank 1 | 8 KB | colours 4096–8191 (4-bit palettes 256–511, 8-bit 16–31); polygons only |
+| free | 504 KB | pages 49–63 and the rest of page 48: plane atlases and maps, or a cart's own use |
 
-300 + 4 + 8 + 8 + 192 + 512 = 1,024. Slot 15 holds the fonts (rows 0–66), so 15 whole slots are
-free for polygons.
+300 + 4 + 8 + 8 + 192 + 512 + 512 + 8 + 504 = 2,048. Slot 15 holds the fonts (rows 0–66), so 31
+whole slots are free for polygons, 30 of them for regions by default (slot 14 holds the world's
+swatch row and, in the garden, the star).
 
-*Placeholder split:* slots 0–5 common, slots 6–13 region (8 slots, 256 KB), slot 14 effects and
-HUD, slot 15 fonts. Palettes as 4-bit palettes of 16: 0–63 common (1,024 colours), 64–191 region
-(2,048 colours), 192–254 backdrop, HUD and effects, 255 font. The kit enforces whatever split the
-world recipe declares and reports use per region.
+*The kit's default split:* every region may use slots 13–0 and then 16–31 (30 slots, 983,040
+bytes) and 4-bit palettes 0–254 and 256–511; slot 14 the swatch and effects, slot 15 and palette
+255 the fonts. Regions' palettes are disjoint ([Palettes per region](#palettes-per-region)); their
+texture sets share the slots and are swapped. The kit enforces whatever split the world recipe
+declares and reports use per region.
+
+*The first placeholder split* (with 1 MB, never built): slots 0–5 common, 6–13 region, 14 effects
+and HUD, 15 fonts; palettes 0–63 common, 64–191 region, 192–254 backdrop, HUD and effects.
 
 Swap cost: filling all 16 slots costs about 900,000 cycles (spec p. 11), so about 56,000 a slot
 (PLANES.md gives the same for a 32 KB atlas). A region's 8 slots are about 450,000 cycles, nearly
-half a frame's 1,000,000. *Proposal:* swap one slot a frame (about 6% of the CPU) over 8 frames,
+half a frame's 1,000,000; all 30 a region may have are about 1,700,000, nearly two frames. *Proposal:* swap one slot a frame (about 6% of the CPU) over 8 frames,
 plus the region's palettes, while the player is inside a seam. During those frames nothing on
 screen may use region textures, which the kit can check (see [Verification](#verification)).
 
@@ -1020,10 +1029,12 @@ the type numbers, an Akari `struct` per type with parameters and an `enum` per e
 `GAME.game.akr`, which every world of the game imports. `saved` asks the kit for a persistent bit
 per entity of that type. `probe` describes the player's body: the kit classifies collision by
 `floor_max_degrees` (and `ceiling_max_degrees`, default 45) and copies walls `radius` past cell
-edges; the World Checker samples cameras with its `radius`, `height` and `step`. `GAME.game.akr`
-exports it as `GAME_PROBE_RADIUS` and `_FLOOR_MAX_DEGREES`, `_HEIGHT` and `_STEP` when the
-schema gives them, and `_CEILING_MAX_DEGREES` (always: the angle the kit used), so a cart moves
-the same body the level was checked for. It is geometry, not movement rules.
+edges; the World Checker samples cameras with its `radius`, `height` and `step`, and does not
+report a crack that the game's floor query bridges with its `bridge` ([Cracks](#cracks)).
+`GAME.game.akr` exports it as `GAME_PROBE_RADIUS` and `_FLOOR_MAX_DEGREES`, `_HEIGHT`, `_STEP`
+and `_BRIDGE` when the schema gives them, and `_CEILING_MAX_DEGREES` (always: the angle the kit
+used), so a cart moves the same body the level was checked for. It is geometry, not movement
+rules.
 Everything else (what `night` means, whether a coin respawns) is the game's. Entity IDs are
 world-wide, so a `ref` and a saved bit can name any entity.
 
@@ -1053,8 +1064,8 @@ vec3 defaults are `[x, y, z]`; `true` and `false` are bool defaults; names, enum
 names are bare and follow the kit's name rule, `^[a-z][a-z0-9_]{0,47}$`. There are no reserved
 words, so an enum value may be `u8` (`kind: u8 | s16`, where the `|` makes it an enum) and a field
 may be called `world`. `game` comes first; `probe`, `worlds` and types follow in any order. The
-probe requires `radius` and `floor_max_degrees`; `height`, `step` and `ceiling_max_degrees` are
-optional. `convert` writes the canonical style shown above (probe values and field types aligned,
+probe requires `radius` and `floor_max_degrees`; `height`, `step`, `ceiling_max_degrees` and
+`bridge` are optional. `convert` writes the canonical style shown above (probe values and field types aligned,
 a blank line between statements); it drops `"saved": false`, empty `params` and `"required":
 false`, which mean the same as leaving them out.
 
@@ -1185,8 +1196,8 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | `overhang` | How far a placement may reach past its cell (default 8, at most half a cell) |
 | `collision.pad` | How far walls are copied past a cell's edge: at least, and by default, the probe radius |
 | `collision.surfaces` | Material `tag` to surface byte; untagged faces and unmapped tags get `default` (unmapped tags are listed in the warnings) |
-| `palette` | `swatch_slot` and `swatch_row` (default 14, 0): where the world's swatch row lives in VRAM; `first`: the first 4-bit palette regions are given (default 0); `first8`: the first 8-bit palette 8-bit textures take, regions taking them downward (default 14) |
-| `textures` | Every region's texture `slots` (a range `"13-6"` in order of preference, or a list `"14,12"`; default `"13-0"`) and VRAM `budget` (bytes; default the slots'), unless the region gives its own ([Textures per region](#textures-per-region)) |
+| `palette` | `swatch_slot` and `swatch_row` (default 14, 0): where the world's swatch row lives in VRAM; `first`: the first 4-bit palette regions are given (default 0); `first8`: the first 8-bit palette 8-bit textures take, regions taking them downward (default 31, the top of palette bank 1) |
+| `textures` | Every region's texture `slots` 0–31 (a range `"13-6"` in order of preference, or a list `"14,12,16-31"`; default `"13-0,16-31"`) and VRAM `budget` (bytes; default the slots', 983,040 for the default 30), unless the region gives its own ([Textures per region](#textures-per-region)) |
 | `regions` | Named regions in order (the pack's region numbers): optional `palettes` (`first`, `count`), `variants` (with `texels` and `backdrop` colours for textures and the silhouette), `textures` and `backdrop` ([Backdrops](#backdrops)). `audio` is reserved and rejected for now |
 | `layers` | World-wide layer names in order (the pack's layer ids), each with an optional exclusive `group` and `on` (at start) |
 | `paths` | Named polylines in world coordinates, in order (the pack's path numbers): [Paths](#paths) |
@@ -1230,7 +1241,10 @@ emissive range on its own curve. Each asset's palette faces are then rewritten w
 drawn in two regions is stored twice (the pack pools identical bytes).
 
 **Regions get disjoint palettes** (by default consecutively from `palette.first`; an explicit
-`palettes.first` may place them, and overlaps are errors). That departs from the placeholder split
+`palettes.first` may place them, and overlaps are errors). There are 512 4-bit palettes, 0–511 in
+two banks; a region's range never includes 255 (the fonts'), so a region that does not fit below
+it starts at 256, in palette bank 1, and its main run is loaded there (`load_palette()` and
+`palette_lerp()` address colours 4096–8191 in bank 1). That departs from the placeholder split
 in [Regions and the VRAM split](#regions-and-the-vram-split), which shared one range among regions
 and swapped it: with flat-colour materials a region needs tens of colours, not hundreds, so every
 region's palettes can be loaded at once, and a far cell's stand-in is coloured correctly whichever
@@ -1258,8 +1272,10 @@ packer (`kitcore/texpack.py`, as `mei_assets.py pack` does):
   differently; a tile used by both classes is tinted as emissive, with a warning);
 - **window-aligned tiles**: every tile at a multiple of 8 texels, repeating tiles reached through
   texture windows;
-- **slots** from the region's `textures.slots` (else the world's, else `"13-0"`), in that order
-  of preference, never 15 (the fonts). Slot 14 holds the world's swatch row by default; a region
+- **slots** from the region's `textures.slots` (else the world's, else `"13-0,16-31"`), in that
+  order of preference, never 15 (the fonts). A set that fits in 13–0 packs exactly as it did
+  before slots 16–31 existed; a face in slots 16–31 has bit 6 of its flags set
+  ([LANGUAGE.md](LANGUAGE.md#mesh-format)), and one with a palette in bank 1 bit 7. Slot 14 holds the world's swatch row by default; a region
   may still use it: the packer keeps the swatch's 16 × 1 texels free and the region's slot image
   carries the swatch bytes.
 
@@ -1272,8 +1288,8 @@ before, byte for byte.
 its own range (`palettes.first`, `count`; still disjoint from every other region's), so its main
 colour run covers them and palette variants recolour them entry by entry. 8-bit texture palettes
 (256 colours each, 8-bit palette *p* is colours 256 *p* ..) are taken from `palette.first8`
-(default 14) downward, region after region, and stored as extra runs; the build fails if one
-would overlap a 4-bit palette a region uses.
+(default 31, the top of palette bank 1; it was 14) downward, region after region, never 15, and
+stored as extra runs; the build fails if one would overlap a 4-bit palette a region uses.
 
 **VRAM budget.** A region may use its slots' 32,768 bytes each, or `textures.budget` bytes (tiles
 counted on the 8-texel grid, gutters included). Over it, or when the tiles do not fit in the
@@ -1750,6 +1766,47 @@ sets how far walls are copied past a cell's edge (the pack's `pad`). Moving obje
 are entities with a collision asset in their own frame; the game moves them and the runtime tests
 queries in that frame.
 
+### Cracks
+
+**Decided (2026-10-05): the floor query bridges small cracks, and the World Checker agrees.** A
+crack is a small horizontal gap between walkable floors: where two assets' collision meshes meet,
+inside an asset's own collision, at a bridge's or platform's joints. A point query falls through
+one, or snags in it. The shrine town had about 50 findings of 0.016 to 0.25 units, so the
+checker's report drowned the real problems in them. A game whose probe gives `bridge` (units;
+the movement garden's is 0.4375) stands its body with `wp_floor_across(p, above, below, bridge)`
+(`stdlib/worldpack.akr`) instead of `wp_floor(p, above)` (the garden's `col_stand()` asks it
+only where its own query, movers included, finds nothing within reach):
+
+- Where `wp_floor()` finds a floor at or above `p.y - below`, that is the answer, unchanged. On
+  whole floors the two queries are the same, bit for bit.
+- Otherwise it steps out from `p` along x, z and the two diagonals, 1/16 unit a step (181/4096 in
+  x and z on the diagonals, exact in fixed point), to the nearest floor within `p.y - below ..
+  p.y + above` on each side. A direction with one on both sides, `a + b` steps apart with `a + b`
+  at most `bridge × 16`, bridges the gap: the higher of the two floors is the answer. With none,
+  `wp_floor()`'s answer stands.
+
+So a gap is bridged when it is narrower than `bridge - 1/8` across its line, and narrower than
+0.92 (`bridge - 1/8`) at any angle (the nearest direction is at most 22.5° off): 0.31 and 0.29
+units for 0.4375. A gap wider than `bridge` is never bridged, at any point, nor is an edge with no
+floor beyond it (a ledge), nor a gap whose far side is out of the window (a step down into a
+trench is a fall). What it does give is a fillet in a floor's concave corners: a point in the
+corner of a hole's outline, less than `bridge` from both edges along a diagonal, is held (a
+triangle about 0.3 units on a side in a right-angled corner). The real gaps the shrine town means
+to be fallen through are 0.5 units and wider.
+
+The cost, measured by `tests/worldpack/bench.akr` (cycles; `wp_floor` 448 there): 512 where
+`wp_floor()` finds a floor in the window, and 11,478 where it does not and nothing is bridged
+(every step of every direction: 6 out along each of the 4, plus the first query), which is the
+body in the air over far ground, once a tick, about 1.1 % of a frame.
+
+The World Checker's crack check uses the same rule, through `verify_static.reader_floor_across()`
+(bit for bit `wp_floor_across()`, which `tests/test_worldpack.py` compares on 2,160 points near
+gaps of 0.016 to 0.6 units at six angles, across a cell seam): a gap whose every point the game's
+query bridges, for a body at the edge's height with the probe's step above and below, is not a
+crack, and a mismatched edge whose sliver is bridged is not reported. What remains is listed by
+`mei_world.py cracks` and kept in the world's crack baseline ([WORLDCHECKER.md](WORLDCHECKER.md#crack-baseline)).
+A game without `bridge` (or with 0) is checked as before.
+
 ## Build outputs and the runtime contract
 
 For a world named `city` of a game named `game`, `build` produces:
@@ -1861,12 +1918,13 @@ contract](#build-outputs-and-the-runtime-contract)).
 | `init DIR [--example room\|city\|terrain] [--force]` | Copies an example world (world file, cells, game schema, asset recipes) into a new directory |
 | `validate FILE` | Every static check: schemas, references, game data, IDs, palettes, that every asset compiles and that the pack can hold the world; the ID changes a build would make |
 | `inspect FILE [--cell ID]` | The same, with the full report: per cell and per region costs, palettes and variants, entity numbers, asset hashes, warnings |
-| `build FILE -o DIR [--locked] [--preview] [--world-checker full\|skip\|N]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam |
+| `build FILE -o DIR [--locked] [--preview] [--world-checker full\|skip\|N] [--crack-baseline FILE\|none]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam (with `NAME.cracks.json` beside the recipe as its crack baseline, when there is one) |
 | `preview FILE -o DIR [--cell ID] [--locked] [--world-checker full\|skip\|N]` | `build`, plus native renders of a cell per region and palette variant (`--cell` picks the cell) |
 | `floor FILE X Z [X Z ...]` | The highest floor under each point, from the world's collision as the kit builds it: `{"at", "y", "from"}`, `from` being `terrain`, `sweep` or a placement's ID (`y` null: none). For setting placements and entities on the ground |
 | `check FILE [--cells I,J[;I,J...]] [--camera SPEC]... [--cameras FILE] [--max-views 200] [-o DIR]` | The World Checker on a few cells and cameras, in seconds ([Quick tools](#quick-tools)) |
 | `floors FILE --area X0,Z0,X1,Z1 [--step 1] [--layers A,B] [--below Y]` | The pack's floor heights over an area as `wp_floor()` finds them, what each belongs to, holes and cracks ([Quick tools](#quick-tools)) |
 | `textures FILE [--region R] [--cells ...] [--add REGION:ASSET,...]` | Texture VRAM per region, by asset and by image, against the region's budget ([Quick tools](#quick-tools)) |
+| `cracks FILE [--routes FILE] [--near 3] [--baseline [FILE]] [--write-baseline]` | Every collision crack the game's floor query does not bridge, on routes first, the widest first; compared with or written to the crack baseline ([Quick tools](#quick-tools)) |
 
 `--world-checker` is for quick builds, such as the World Kit's own tests: `full` (the default)
 runs the World Checker with the world's settings; `skip` does not run it, and `report.json`
@@ -1886,8 +1944,9 @@ nothing).
 
 ### Quick tools
 
-Built (2026-10-05). Three read-only commands for placing things in a world, each in seconds
-once the world has been compiled (`tools/worldkit/quick.py`). They print plain text; `--json`
+Built (2026-10-05). Four read-only commands for placing things in a world, each in seconds
+once the world has been compiled (`tools/worldkit/quick.py`; `cracks` takes minutes on a large
+world, and with `--write-baseline` writes the crack baseline). They print plain text; `--json`
 gives the result as JSON (and errors as the other commands give them; plain `error at PATH:
 message` without it). Exit 1 when the result fails (a check that fails, a region over its
 budget).
@@ -1944,6 +2003,23 @@ crack findings in the area are listed. A placement's collision copied into a nei
 keeps its own cell's tag; the name is taken from the nearest placement with that tag. Unlike
 `floor`, which tests the kit's collision before packing in floating point, a point exactly on a
 face's edge is decided as the console decides it.
+
+**`cracks FILE`** runs the World Checker's crack and mismatched-edge checks over the whole world
+(every layer off and each alone, as the full check does), with the game's floor query's bridging
+([Cracks](#cracks)), and lists every finding that remains, not only the full check's first 50:
+those within `--near` units (default 3) of a `--routes` polyline first, then the widest first,
+each with both floors named. `--baseline` compares with the crack baseline (exit 1 when one is
+new) and `--write-baseline` writes it ([WORLDCHECKER.md](WORLDCHECKER.md#crack-baseline)). On the
+shrine town (about 3 minutes, a minute of it compiling the world when it is not cached; the
+routes from `layout.py`'s `R_*` lines):
+
+```
+$ python3 tools/mei_world.py cracks carts/garden/shrinetown/shrinetown.world.json --build-dir build-mine --routes routes.json
+shrinetown: 3 cracks and mismatched floor edges the floor query does not bridge (probe radius 0.3, step 0.32, bridge 0.4375: 7 steps of 1/16), 2 on a route
+crack         0.188 at (220.094, 2.267, 155.938) cell [3, 2]: sweep | terrain on BRIDGE (0.11)
+crack         0.125 at (171.884, 52.7147, 343.962) cell [2, 5]: terrain | terrain on R_ROPEBRIDGE (2.96)
+crack         0.250 at (320.125, 10.2, 156.467) cell [4, 2]: viaduct_27 | terrain
+```
 
 **`textures FILE`** gives each region's texture VRAM as the kit packs it: every distinct tile
 once, on the 8-texel grid, against `textures.budget` (the numbers of `report.json`'s

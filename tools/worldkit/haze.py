@@ -91,7 +91,7 @@ class Haze:
 
     def tint(self, binary, a, base_of, region):
         """The mesh with every face's colours moved toward the region's (first variant's) haze
-        colour by a. base_of(tex, pal, uvs, window halfword) -> ((r, g, b), class), or None to
+        colour by a. base_of(flags, tex, pal, uvs, window halfword) -> ((r, g, b), class), or None to
         leave the face as it is; it is asked only for textured faces."""
         if binary is None or a <= 0:
             return binary
@@ -110,7 +110,7 @@ class Haze:
                 uvs = struct.unpack_from('<4H', binary, at + 28)
                 win = tex >> 5
                 hw = struct.unpack_from('<H', binary, woff + 2 * (win - 1))[0] if win and woff else 0
-                got = base_of(tex, pal, uvs[:4 if flags & 4 else 3], hw)
+                got = base_of(flags, tex, pal, uvs[:4 if flags & 4 else 3], hw)
                 if got is None:
                     continue
                 base, cls = got

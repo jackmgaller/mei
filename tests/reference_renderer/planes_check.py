@@ -13,7 +13,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 import common
 
-W, H, MASK = 320, 240, 0xfffff
+W, H, MASK = 320, 240, 0x1fffff     # VRAM offsets: 2 MB (DECISIONS.md, "VRAM at 2 MB")
 DM = ((-4,0,-3,1),(2,-2,3,-1),(-3,1,-4,0),(3,-1,2,-2))
 ORDER = (2,1,0,3,4)
 RESERVED = {0x1c,0x38,0x3c,0x58,0x5c,0x6c}
@@ -44,7 +44,7 @@ def line(r,v,y):
         for k in range(n):
             target=(c & 0xfc)+4*k
             if 4 <= target <= 0x8c and target not in RESERVED:
-                w[target//4]=read(v,(a & 0xffffc)+4*(y*n+k),4)
+                w[target//4]=read(v,(a & 0x1ffffc)+4*(y*n+k),4)
     return w
 
 def sample(v,r,n,x,y):
@@ -62,11 +62,11 @@ def sample(v,r,n,x,y):
         outside=(mode >> 16)&3
         is_out=not (0 <= u < mw*ts and 0 <= t < mh*ts)
         if is_out and outside in (1,3): return None
-        entry=0 if is_out and outside==2 else read(v,(mp & 0xff800)+2*((t//ts % mh)*mw+u//ts % mw),2)
+        entry=0 if is_out and outside==2 else read(v,(mp & 0x1ff800)+2*((t//ts % mh)*mw+u//ts % mw),2)
     else:
         scroll=r[b+3]
         u,t=x+(scroll&65535),y+(scroll >> 16)
-        entry=read(v,(mp & 0xff800)+2*((t//ts % mh)*mw+u//ts % mw),2)
+        entry=read(v,(mp & 0x1ff800)+2*((t//ts % mh)*mw+u//ts % mw),2)
     tx,ty=u%ts,t%ts
     if entry & 0x4000: tx=ts-1-tx
     if entry & 0x8000: ty=ts-1-ty
@@ -74,7 +74,7 @@ def sample(v,r,n,x,y):
     cols=256//ts
     u,t=(tile%cols)*ts+tx,((tile//cols)%cols)*ts+ty
     eight=bool(mode&32)
-    raw=v[((atlas & 0xf8000)+t*(256 if eight else 128)+(u if eight else u//2)) & MASK]
+    raw=v[((atlas & 0x1f8000)+t*(256 if eight else 128)+(u if eight else u//2)) & MASK]
     idx=raw if eight else (raw >> (4*(u%2))) & 15
     if not idx: return None
     page=(((mode >> 8)&255)+((entry >> 10)&7)) % (16 if eight else 256)
@@ -114,7 +114,7 @@ def fixture(case, aliased=False):
     # first version of this fixture did, so the atlas may overlap the pixels being drawn
     # (planes_feedback.py; a static-input oracle cannot predict that).
     rng=random.Random(0x504c414e+case)
-    v=bytearray(rng.randbytes(1 << 20))
+    v=bytearray(rng.randbytes(1 << 21))
     front=np.array([(0x8000 if (x//19+y//13)%3==0 else ((x*29+y*41)&32767)|((x//31%2)<<15))
                     for y in range(H) for x in range(W)],dtype='<u2')
     v[:W*H*2]=front.tobytes()
@@ -126,7 +126,7 @@ def fixture(case, aliased=False):
         b=8+8*n
         mode=((case+n)%4)|(((case//4+n)%4)<<2)|(((case+n)//2%2)<<4)|(((case+n)%2)<<5)|(((253+case+n)%256)<<8)
         if n==2: mode|=(case%4)<<16
-        r[b:b+3]=[mode,[0x60000,0x78000,0x70000 if case%2 else 0xf8000][n], [0x50000,0x58000,0x5c000 if case%2 else 0xff800][n]]
+        r[b:b+3]=[mode,[0x60000,0x78000,0x70000 if case%2 else 0x1f8000][n], [0x50000,0x58000,0x5c000 if case%2 else 0x1ff800][n]]   # the last page and map: wrap
         r[b+3]=rng.getrandbits(32)
         if case%3:
             left=[0,1,319,320,511][(case+n)%5]
@@ -138,7 +138,7 @@ def fixture(case, aliased=False):
     targets=[0x14,0x2c,0x78,0x30,0x30,0x88,0x00,0x58]
     for ch,target in enumerate(targets):
         n=4 if ch in (2,5,6,7) else 1
-        a=(0xfffc0 if ch==6 else 0x4e000+ch*0x1000)
+        a=(0x1fffc0 if ch==6 else 0x4e000+ch*0x1000)
         r[40+2*ch:42+2*ch]=[a|3,0x8000|((n-1)<<8)|target|3]
         for y in range(H):
             for k in range(n):
@@ -146,7 +146,7 @@ def fixture(case, aliased=False):
                 if ch==0: val=(y*2311)&0xffffff
                 if ch in (3,4): val=(y%59)|((y%73)<<16)
                 if ch==6: val=[r[0],r[1],r[2],r[3]][k]
-                if ch==7 and k==3 and not aliased: val=0x70000 if case%2 else 0xf8000
+                if ch==7 and k==3 and not aliased: val=0x70000 if case%2 else 0x1f8000
                 off=(a+4*(y*n+k))&MASK
                 v[off:off+4]=struct.pack('<I',val)
     # Avoid wrap-table overwrites of front being interpreted as initial fixture discrepancy.

@@ -6,11 +6,11 @@ Build the world first (make builds it with the garden cart; B is the build direc
     make B=$B $B/carts/garden.mei
     B=$B python3 carts/garden/shrinetown/tools/shots.py [NAME ...]
     B=$B python3 carts/garden/shrinetown/tools/shots.py --at X Y Z YAW PITCH NAME   # any view
-YAW in degrees, 0 north (+z), 90 east; PITCH in degrees, negative looks down.
-
-Each picture is drawn as the game draws it: the camera's region entered, its backdrop (sky and
-silhouette) behind the world. --night draws palette variant 1 (every region's, and the sky's);
---out DIR writes the pictures there instead (relative to the repository).
+    B=$B python3 carts/garden/shrinetown/tools/shots.py --night art_spawn ...       # palette variant 1
+YAW in degrees, 0 north (+z), 90 east; PITCH in degrees, negative looks down. The camera's region
+is entered and its backdrop drawn, as the garden cart does; --night loads every region's `night`
+variant (variant 1; the picture is NAME_night.png). --out DIR writes the pictures there instead
+(relative to the repository).
 """
 import argparse, math, os, subprocess, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -30,7 +30,19 @@ VIEWS = {
     'from_stage': (168, 62.5, 341, 200, -12),
     'overview_north': (150, 150, 200, 10, -32),     # from over the precinct (row 3: the far ring of 3 reaches every row)
     'overview_south': (150, 150, 200, 180, -32),
-    # the far views (far-views branch): what the far levels, stand-ins and haze look like
+    # the five zones with the art applied (art/ground/GROUND.md, art/water, art/backdrop)
+    'art_station': (160, 3.2, 20, 20, -6),          # the plaza, the station, the shotengai's mouth
+    'art_street': (160, 3.0, 96, 0, -8),            # the shotengai's north end, the crossing, the torii
+    'art_road': (130, 3.4, 111, 90, -6),            # along the front road, east
+    'art_east': (250, 6.0, 60, 200, -14),           # the sports ground, the pool, the neighbours
+    'art_canal': (56, 3.0, 40, 340, -10),           # the canal's walls and water, the machiya
+    'art_shrine': (160, 2.6, 132, 0, 2),            # the sando and the courtyard
+    'art_cemetery': (270, 8.0, 150, 30, -12),       # the cemetery's terraces
+    'art_pond': (222, 4.0, 150, 60, -14),           # the ponds
+    'art_woods': (100, 4.0, 150, 340, -8),          # the woods' floor, the trail
+    'art_from_pagoda': (181.5, 46.5, 262, 195, -14),
+    'art_neighbours': (84, 20.3, 26, 225, -4),      # the neighbours' backs from the danchi's roof
+    # the far views (DESIGN.md 12.7): the far levels, the stand-ins and the haze
     'wall_north': (180, 19, 160, 0, -4),            # the shrine courtyard wall, looking north
     'plaza_north': (160, 1.6, 26, 0, 3),            # the station plaza (V5), looking north
     'canal_north': (48, 6, 170, 0, -4),             # over the canal by the watermill, looking north
@@ -38,9 +50,13 @@ VIEWS = {
 }
 
 
-def shot(name, x, y, z, yaw, pitch, variant=0, out=OUT):
+def shot(name, x, y, z, yaw, pitch, night=False, out=OUT):
+    v = 1 if night else 0
+    if night:
+        name += '_night'
     src = f'''cart "Shrine town shot"
 import "depth.akr"
+import "wpbackdrop.akr"
 import "shrinetown.akr"
 var sky = false
 fn init() {{
@@ -50,10 +66,10 @@ fn init() {{
     let c = wp_cell_at(vec3({x:.3f}, {y:.3f}, {z:.3f}))     // the camera's region, as the game enters it
     var k = 0
     if c != null {{ k = c.region as s32 }}
-    for r in 0..wp_region_count() {{ wp_variant_load(r, {variant}) }}
-    wp_region_enter(k, {variant})
+    for r in 0..wp_region_count() {{ wp_variant_load(r, {v}) }}     // stand-ins of the other region too
+    wp_region_enter(k, {v})
     sky = wp_backdrop_show(k)
-    if sky {{ wp_backdrop_variant({variant}, {variant}, 0.0) }}
+    if sky {{ wp_backdrop_variant({v}, {v}, 0.0) }}
 }}
 fn update() {{}}
 fn draw() {{
@@ -80,14 +96,13 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('names', nargs='*')
     ap.add_argument('--at', nargs=6, metavar=('X', 'Y', 'Z', 'YAW', 'PITCH', 'NAME'))
-    ap.add_argument('--night', action='store_true', help='palette variant 1')
+    ap.add_argument('--night', action='store_true', help='palette variant 1 (NAME_night.png)')
     ap.add_argument('--out', default=None, help='folder for the pictures (default screenshots/)')
     a = ap.parse_args()
     out = os.path.join(ROOT, a.out) if a.out else OUT
-    v = 1 if a.night else 0
     if a.at:
         x, y, z, yaw, pitch = map(float, a.at[:5])
-        shot(a.at[5], x, y, z, yaw, pitch, v, out)
+        shot(a.at[5], x, y, z, yaw, pitch, a.night, out)
     else:
         for name in a.names or list(VIEWS):
-            shot(name, *VIEWS[name], v, out)
+            shot(name, *VIEWS[name], a.night, out)

@@ -132,8 +132,12 @@ triangles per view. Nine views: overview, a camera offset by a fraction of a pix
 camera, near clipping, guard-band clipping, dithering off, fog, near clipping with fog, and
 rotated, non-uniformly scaled models.
 
-The five textures cover 4-bit and 8-bit sampling, separate palettes, transparent index 0,
-full-range coordinates, odd 8-bit slots and slot 15 wrapping into slot 0. The full-range,
+The seven textures cover 4-bit and 8-bit sampling, separate palettes, transparent index 0,
+full-range coordinates, odd 8-bit slots and slot 15 wrapping into slot 0, and VRAM's second
+megabyte (DECISIONS.md, "VRAM at 2 MB"): a 4-bit texture in slot 20 through palette 300 and an
+8-bit one in slot 31 through 8-bit palette 19, wrapping into slot 16, both drawn by faces with
+the bank flags; the palette file holds all 8,192 colours, so the cart's `load_palette()`
+crosses colour 4096. The full-range,
 high-frequency textures expose aliasing on purpose. Both windings, shared quad edges,
 degenerate pole faces, flat and Gouraud tint, fog and dithering are present. The window panels
 use both texture depths, one axis or both, and an origin plus size past 256; one of the clipping
@@ -164,8 +168,8 @@ while a midpoint one too dark gives 127 (5-bit 15).
 ### GPU fuzzing (`fuzz.py`)
 
 64 scenes of 16 packets each, one of every packet kind, through `gpu_probe.c`: full signed
-16-bit positions, thin and degenerate triangles, both windings, both texture depths, every slot,
-palette and blend mode, both dither settings, 200 triangles large enough for the rasterizer's
+16-bit positions, thin and degenerate triangles, both windings, both texture depths, every slot
+(0–31), palette (both banks) and blend mode, both dither settings, 200 triangles large enough for the rasterizer's
 large-area path, and texture windows (every size code on each axis, any origin) on half the
 textured packets. Each packet is also replayed alone, so that later opaque packets cannot hide
 an error in an earlier one: 83,558,400 pixel comparisons. `--seed` and `--scenes` change the
@@ -173,7 +177,7 @@ run; failing scenes are saved as packet files with their images.
 
 ### Plane compositor (`planes_check.py`, `planes_feedback.py`)
 
-64 cases, each a complete 1 MB VRAM image, the plane registers and optional polygon packets,
+64 cases, each a complete 2 MB VRAM image, the plane registers and optional polygon packets,
 replayed by `planes_probe.c`, which captures both the polygon framebuffer and the displayed
 composite after vsync. The reference is a scalar implementation of PLANES.md: it sorts explicit
 candidate tuples and samples each atlas per pixel, where the Horizon Engine uses per-line tile
@@ -214,7 +218,7 @@ A real cart with 20 overlapping textured quads per frame (moving, sheared, clipp
 edge, scrolling coordinates) and a 16-pixel binary frame marker. Full texture uploads every 8
 or 12 frames and 32 bytes rewritten in place every frame; `palette_lerp` through both
 endpoints, `palette_rotate` both ways; 4-bit pages in slot 8, 8-bit pages from the odd slot 3,
-an 8-bit slot-15 page wrapping into slot 0, high palette bits ignored for 8-bit pages; index-0
+an 8-bit slot-15 page wrapping into slot 0 through 8-bit palette 26 (palette bank 1); index-0
 transparency over a coloured palette entry and a black non-zero index that must draw; 1:1 and
 scaled mirroring, changing tints, opaque and all four blend modes, dithering alternating. A
 normal run of 96 frames, and an overload run of 64 ticks in which eight full-screen blended

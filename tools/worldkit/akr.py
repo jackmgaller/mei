@@ -25,7 +25,7 @@ def game_source(game):
     probe = game['probe']
     lines += ['',f'// The body the kit classified collision for (units; degrees): every field the schema gives,',
               '// and the ceiling angle the kit used (45 when the schema leaves it out).']
-    for key in ('radius','height','step','floor_max_degrees'):
+    for key in ('radius','height','step','floor_max_degrees','bridge'):
         if key in probe: lines.append(f'const {g}_PROBE_{upper(key)}: fixed = {float(probe[key])}')
     from .world import DEFAULT_CEILING_DEGREES
     lines.append(f'const {g}_PROBE_CEILING_MAX_DEGREES: fixed = '

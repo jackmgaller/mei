@@ -20,23 +20,25 @@
   },
   {
    "id": "neighbour_w2",
-   "asset": "gbt_neighbour_14",
+   "asset": "edge_neighbour_w2",
    "position": [
     0.2,
     0,
     88.0
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 270.0
   },
   {
    "id": "hoarding_w",
-   "asset": "gbt_hoarding",
+   "asset": "edge_hoarding",
    "position": [
     0.2,
     0,
     111.0
    ],
-   "collision": "self"
+   "collision": "self",
+   "yaw": 270.0
   },
   {
    "id": "machiya_w78",

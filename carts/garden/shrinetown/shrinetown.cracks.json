@@ -1,0 +1,62 @@
+{
+  "format": "mei-world-cracks",
+  "version": 1,
+  "world": "shrinetown",
+  "note": "The cracks the World Checker found when this was written (mei_world.py cracks RECIPE --write-baseline); the checker lists them as known, not as failures. WORLDCHECKER.md, \"Crack baseline\".",
+  "cracks": [
+    {
+      "code": "crack",
+      "cell": [
+        2,
+        5
+      ],
+      "floor_tag": 65534,
+      "beyond_tag": 65534,
+      "layers": [],
+      "at": [
+        171.8844,
+        52.7147,
+        343.9615
+      ],
+      "width": 0.124985,
+      "floor": "terrain",
+      "beyond": "terrain"
+    },
+    {
+      "code": "crack",
+      "cell": [
+        3,
+        2
+      ],
+      "floor_tag": 65533,
+      "beyond_tag": 65534,
+      "layers": [],
+      "at": [
+        220.0936,
+        2.267,
+        155.9376
+      ],
+      "width": 0.187485,
+      "floor": "sweep",
+      "beyond": "terrain"
+    },
+    {
+      "code": "crack",
+      "cell": [
+        4,
+        2
+      ],
+      "floor_tag": 1,
+      "beyond_tag": 65534,
+      "layers": [],
+      "at": [
+        320.1245,
+        10.2,
+        156.4666
+      ],
+      "width": 0.249985,
+      "floor": "viaduct_27",
+      "beyond": "terrain"
+    }
+  ]
+}

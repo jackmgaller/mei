@@ -147,6 +147,65 @@ class StaticTests(unittest.TestCase):
         found, _ = self.check_static(quad(2, 50, dz=0.05))
         self.assertEqual({(f['code'], f['floor_tag'], f['beyond_tag']) for f in found}, {('crack', 1, 2), ('crack', 2, 1)})
 
+    def test_bridged_cracks_are_not_cracks(self):
+        """A probe with a bridge leaves out the cracks and mismatched edges the game's floor query
+        (wp_floor_across) steps across, and keeps those wider than it (WORLDKIT.md, "Cracks")."""
+        bridge = {'radius': 0.3, 'height': 1.6, 'step': 0.32, 'bridge': 0.4375}
+        found, _ = self.check_static(F.crack_world(), settings={'probe': bridge})
+        self.assertEqual(found, [])
+        found, _ = self.check_static(F.seam_world(), settings={'probe': bridge})
+        self.assertEqual(found, [])
+        # one step of 1/16 bridges nothing: the crack is found as without a bridge
+        found, _ = self.check_static(F.crack_world(), settings={'probe': dict(bridge, bridge=0.0625)})
+        self.assertEqual({(f['floor_tag'], f['beyond_tag']) for f in found if f['code'] == 'crack'}, {(30, 31), (31, 30)})
+        # a 0.5 gap is wider than the span: a crack for a probe of radius 0.8, bridge or not
+        w = F.crack_world()
+        w.cells[0].collision = [t for t in w.cells[0].collision if t.tag != 31]
+        m = F.box_mesh((0, 0, 0), (3.5, 0.25, 4), F.GREY)
+        w.cells[0].collision += F.placed_tris(m, (26.5, 1.75, 24), 3, tag=31)
+        wide = dict(bridge, radius=0.8)
+        for probe in (wide, dict(wide, bridge=0.0)):
+            found, _ = self.check_static(w, settings={'probe': probe})
+            cracks = [f for f in found if f['code'] == 'crack']
+            self.assertEqual({(f['floor_tag'], f['beyond_tag']) for f in cracks}, {(30, 31), (31, 30)}, probe)
+            self.assertTrue(all(0.5 <= f['width'] <= 0.5625 for f in cracks), cracks)
+        # the query itself: across the 0.1 gap, at a ledge, over the 0.5 gap
+        pack = decode(encode(F.crack_world()))
+        y, step = 2 * 65536, round(0.32 * 65536)
+        n = ST.across_steps(0.4375)
+        self.assertEqual(n, 7)
+        mid = ST.reader_floor_across(pack, round(26.05 * 65536), y, 26 * 65536, set(), step, step, n)
+        self.assertEqual(mid[0], y)
+        self.assertIn(mid[1], (30, 31))
+        self.assertTrue(ST.bridged(pack, round(26.05 * 65536), 2.0, 26 * 65536, set(), bridge))
+        ledge = ST.reader_floor_across(pack, round(21.95 * 65536), y, 26 * 65536, set(), step, step, n)
+        self.assertEqual(ledge[1], F.TAG_GROUND)                  # the ground below: no floor at the slab's height
+        self.assertFalse(ST.bridged(pack, round(21.95 * 65536), 2.0, 26 * 65536, set(), bridge))
+        pack = decode(encode(w))
+        self.assertFalse(ST.bridged(pack, round(26.25 * 65536), 2.0, 26 * 65536, set(), bridge))
+
+    def test_crack_baseline(self):
+        """Findings in the baseline are known, others new, entries nothing matches fixed; a
+        renumbered tag still matches by its point."""
+        found, _ = self.check_static(F.crack_world())
+        base = [ST.baseline_entry(dict(f, layers=[])) for f in found]
+        for f in found:
+            f['layers'] = []
+        new, known, fixed = ST.against_baseline(found, base)
+        self.assertEqual((len(new), len(known), fixed), (0, len(found), []))
+        moved = [dict(found[0], floor_tag=77)] + [dict(f, at=[f['at'][0] + 5, f['at'][1], f['at'][2]]) for f in found[1:]]
+        new, known, fixed = ST.against_baseline(moved, base[:1])
+        self.assertEqual((len(new), len(known), len(fixed)), (len(found) - 1, 1, 0))
+        new, known, fixed = ST.against_baseline([], base)
+        self.assertEqual(len(fixed), len(base))
+        # the checker: a baseline's cracks are known, not hard failures
+        r = V.verify(encode(F.crack_world()), {'collision': {'crack_baseline': base},
+                                               'sampling': {'max_views': 1}}, tools=F.tools()) if F.tools_built() else None
+        if r is not None:
+            self.assertFalse([f for f in r['hard_failures'] if f.get('check') == 'collision'])
+            self.assertEqual(r['static']['crack_baseline']['known'], len(found))
+            self.assertEqual(r['summary']['known_cracks'], len(found))
+
     def test_entity_in_a_wall(self):
         _, ents = self.check_static(F.entity_wall_world())
         self.assertEqual(len(ents), 1)

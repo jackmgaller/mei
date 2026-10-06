@@ -1127,7 +1127,7 @@ Where a function lives (each file's section below lists all of it):
 | `frame_angle(t, speed) -> fixed` | `t × speed` (radians per frame) reduced to 0..TAU, exactly |
 | `vsync()` | end the frame now (low level: skips the ordering table and pad bookkeeping) |
 | registers | `GPU_DRAW GPU_CLEAR GPU_CTRL GPU_STATUS GPU_BACK GPU_LOAD GPU_TICKS GPU_LAG PAD1 PAD2 STICK1_X STICK1_Y STICK2_X STICK2_Y FRAME CYCLES RAND DEBUG SYS_TIME SYS_DATE` |
-| constants | `AUDIO_BASE VRAM_PALETTE VRAM_TEXTURES TEXTURE_SLOT_SIZE SCREEN_W SCREEN_H CPU_BUDGET GPU_BUDGET` |
+| constants | `AUDIO_BASE VRAM_PALETTE VRAM_PALETTE_HI PALETTE_BANK_COLOURS VRAM_TEXTURES TEXTURE_SLOT_SIZE TEXTURE_SLOTS VRAM_FREE VRAM_END SCREEN_W SCREEN_H CPU_BUDGET GPU_BUDGET` (VRAM is 2 MB: [DECISIONS.md](DECISIONS.md#vram-at-2-mb)) |
 
 `cpu_used()` and `frames_dropped()` measure from one `vsync` to the next, so the frame after one
 the GPU held back counts the wait as well; `gpu_lag()` tells the two apart.
@@ -1383,7 +1383,7 @@ and `y .. y+h−1`. Colours are `0xBBGGRR`. A `mode` is a blend mode:
 
 | | |
 |---|---|
-| `sprite(slot, palette, four_bit: bool, u, v, w, h, x, y)` | draw a w×h texel rectangle of a texture at (x, y), untinted |
+| `sprite(slot, palette, four_bit: bool, u, v, w, h, x, y)` | draw a w×h texel rectangle of a texture (slot 0–31; palette 0–511 4-bit, 0–31 8-bit) at (x, y), untinted |
 | `rect(x, y, w, h, colour)` | a filled rectangle |
 | `rect_blend(x, y, w, h, colour, mode)` | a filled rectangle |
 | `rect_grad(x, y, w, h, top, bottom, mode)` | a vertical gradient |
@@ -1395,7 +1395,7 @@ and `y .. y+h−1`. Colours are `0xBBGGRR`. A `mode` is a blend mode:
 | `tri_fill(x0, y0, x1, y1, x2, y2, colour, mode)` | a filled triangle (either winding) |
 | `tri_grad(x0, y0, x1, y1, x2, y2, c0, c1, c2, mode)` | a Gouraud-shaded triangle |
 | `quad_fill(x0, y0, x1, y1, x2, y2, x3, y3, colour, mode)` | a quad in strip order (0-1-2, 1-2-3: top-left, top-right, bottom-left, bottom-right) |
-| `tex_page(slot, palette, four_bit) -> u32` | the texture page of the sprite functions: slot, palette and depth |
+| `tex_page(slot, palette, four_bit) -> u32` | the texture page of the sprite functions: slot 0–31, palette (0–511 4-bit, 0–31 8-bit) and depth, as bits 16–31 of a packet's first texture coordinate (bit 21 slots 16–31, bit 22 palette bank 1; `TEX_SLOT_HI`, `TEX_PAL_HI`) |
 | `tex_window(u_size, u_origin, v_size, v_origin) -> u32` | a texture window halfword (sizes 8-256, 0 for none; origins multiples of 8): a mesh window table entry, or `<< 16` into a hand-built packet's second texture coordinate |
 | `sprite_ex(page, u, v, tw, th, x, y, w, h, tint, mode)` | the texels `(u, v, tw, th)` stretched over `(x, y, w, h)`; a negative `tw` or `th` mirrors that axis |
 | `sprite_rot(page, u, v, tw, th, cx, cy, w, h, angle, tint, mode)` | the same `w × h`, centred on `(cx, cy)` and turned clockwise by `angle` radians |
@@ -1425,8 +1425,9 @@ arena is full it draws nothing.
 
 | | |
 |---|---|
-| `load_texture(slot, src: *u8, bytes)` | copy texture data (in the GPU's layout, spec p. 11) into a slot |
-| `load_palette(index, src: *u16, count)` | copy 15-bit colours into palette memory from colour `index` |
+| `load_texture(slot, src: *u8, bytes)` | copy texture data (in the GPU's layout, spec p. 11) into slot 0–31 (16–31 are VRAM's second megabyte, right after slot 15) |
+| `load_palette(index, src: *u16, count)` | copy 15-bit colours into palette memory from colour `index` (0–8191); colours 4096 and up are palette bank 1, and a run that crosses 4096 continues there |
+| `palette_ptr(index) -> *u16` | where colour `index` (0–8191) is in VRAM: `VRAM_PALETTE + 2 × index`, or `VRAM_PALETTE_HI + 2 × (index − 4096)` |
 
 Drawing with them: `sprite*()` and `tex_page()` (`draw.akr`), `mesh()` (`gfx.akr`). Changing
 palette colours in place: `palette_lerp()`, `palette_rotate()` (`colour.akr`).
@@ -1724,8 +1725,8 @@ also share a texture with other art: bake it with `--no-texels` at the rows the 
 | `col_scale(c, t) -> u32` | each channel times `t` (0..1.0) |
 | `col_add(a, b) -> u32` | channel sums, clamped at 255 |
 | `rgb_of15(c) -> u32` | the 24-bit colour of a 15-bit palette or framebuffer colour (`rgb15` is the reverse) |
-| `palette_lerp(index, a: *u16, b: *u16, count, t)` | write `count` palette colours from colour `index` on, each `a[i]` blended toward `b[i]` by `t` (15-bit colours, e.g. two keyframe palettes in ROM); about 38 cycles a colour |
-| `palette_rotate(index, count, step)` | rotate `count` palette colours in place: colour `index + i` gets what `index + (i + step) mod count` held (colour cycling); about 14 cycles a colour |
+| `palette_lerp(index, a: *u16, b: *u16, count, t)` | write `count` palette colours from colour `index` (0–8191) on, each `a[i]` blended toward `b[i]` by `t` (15-bit colours, e.g. two keyframe palettes in ROM); about 38 cycles a colour; a run that crosses colour 4096 continues in palette bank 1 |
+| `palette_rotate(index, count, step)` | rotate `count` palette colours in place (all in one palette bank): colour `index + i` gets what `index + (i + step) mod count` held (colour cycling); about 14 cycles a colour |
 
 ### Strings (`str.akr`)
 
@@ -2008,11 +2009,13 @@ header (16 bytes)
 vertex (16 bytes): x, y, z, w as 16.16 fixed point, with w = 1.0
 face (36 bytes)
   +0   u8   flags: bit 0 Gouraud, bit 1 textured, bit 2 quad, bit 3 semi-transparent, bit 4 double-sided,
-            bit 5 keyed (sorted into the bucket held in col[3]; see Sort keys)
+            bit 5 keyed (sorted into the bucket held in col[3]; see Sort keys), bit 6 the texture is
+            in slots 16-31 (FACE_SLOT_HI), bit 7 the palette is in palette bank 1 (FACE_PAL_HI)
   +1   u8   blend mode 0-3 (used when semi-transparent)
-  +2   u8   texture: bits 0-3 slot, bit 4 set for a 4-bit texture, bits 5-7 texture window
-            (1-7: that entry of the window table; 0: none; ignored in a mesh without a table)
-  +3   u8   palette (0-255 for 4-bit textures, 0-15 for 8-bit)
+  +2   u8   texture: bits 0-3 slot (within slots 0-15 or, with flag bit 6, 16-31), bit 4 set for a
+            4-bit texture, bits 5-7 texture window (1-7: that entry of the window table; 0: none;
+            ignored in a mesh without a table)
+  +3   u8   palette (0-255 for 4-bit textures, 0-15 for 8-bit; with flag bit 7, 256 + it or 16 + it)
   +4   u16  vertex index ×4 (triangles ignore the fourth)
   +12  u32  colour ×4, 0xBBGGRR (flat faces use the first; for textured faces 0x808080 leaves the texture unchanged)
   +28  u16  texture coordinate ×4: u | v << 8
@@ -2026,6 +2029,10 @@ A window halfword is exactly what the GPU reads from bits 16–31 of a polygon's
 texture coordinate (`DECISIONS.md`, "Texture windows"); `tex_window(u_size, u_origin, v_size,
 v_origin)` builds one. A mesh without windows has 0 at +12 and zeros in the texture bytes'
 bits 5–7, as every mesh did before windows existed.
+
+Flag bits 6 and 7 (VRAM at 2 MB, [DECISIONS.md](DECISIONS.md#vram-at-2-mb)) go to bits 21 and 22
+of the packet's first texture coordinate; a face in slots 0–15 and palette bank 0 has them clear,
+as every mesh did before. `mesh()` copies them for every textured face (3 cycles).
 
 Vertices are 16 bytes so `vld`/`vxfm` work on them directly. Flag bits 0–3 equal the GPU packet
 type bits. A triangle is front-facing when its vertices are counter-clockwise as seen by the

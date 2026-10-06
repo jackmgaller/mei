@@ -37,7 +37,7 @@
       }
     },
     {
-      "match": "\\b(radius|height|step|floor_max_degrees|ceiling_max_degrees)\\b(?=\\s*=)",
+      "match": "\\b(radius|height|step|floor_max_degrees|ceiling_max_degrees|bridge)\\b(?=\\s*=)",
       "name": "variable.other.property.mochi"
     },
     {

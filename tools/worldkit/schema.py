@@ -217,11 +217,11 @@ CELL_FILE = dict(obj({'format':{'const':'mei-world-cell'},'version':{'const':1},
                      ['format','version','id','at','region']),**{'x-unknown':{'terrain':CELL_TERRAIN}})
 
 SLOTS = {'type':'string','pattern':r'^[0-9]{1,2}(-[0-9]{1,2})?(,[0-9]{1,2}(-[0-9]{1,2})?)*$',
-         'description':'Texture slots in order of preference: a range "13-6" (in that order) or a list "14,12,10-11". '
-                       'Slot 15 holds the fonts. Default "13-0".'}
+         'description':'Texture slots 0-31 in order of preference: a range "13-6" (in that order) or a list "14,12,10-11,16-31". '
+                       'Slot 15 holds the fonts. Default "13-0,16-31" (30 slots, 983,040 bytes).'}
 TEXTURES = obj({
     'slots':SLOTS,
-    'budget':dict(integer(0,15*32768),description='Bytes of texture VRAM the region may use (tiles on the 8-texel grid); '
+    'budget':dict(integer(0,31*32768),description='Bytes of texture VRAM the region may use (tiles on the 8-texel grid); '
                                                   'default: its slots (32,768 bytes a slot). Over it, the build fails naming the assets.'),
 })
 COLOR_MAP = {'type':'object','propertyNames':COLOR,'additionalProperties':COLOR,'maxProperties':255}
@@ -247,7 +247,7 @@ VARIANT = obj({
     'surface':dict(TINT,description='Applied to every surface entry of the region.'),
     'emissive':dict(TINT,description='Applied to every emissive entry of the region.'),
     'colors':{'type':'object','propertyNames':{'type':'string','pattern':r'^[a-z][a-z0-9_]{0,47}(\.[a-z][a-z0-9_]{0,47})?$'},
-              'additionalProperties':COLOR,'maxProperties':4080,
+              'additionalProperties':COLOR,'maxProperties':8176,
               'description':'Exact colours after the tints: "MATERIAL" (that material of every asset in the region) or "ASSET.MATERIAL".'},
     'texels':{'type':'object','propertyNames':{'type':'string','pattern':r'^[a-z][a-z0-9_]{0,47}(\.[a-z][a-z0-9_]{0,47})?$'},
               'additionalProperties':COLOR_MAP,'maxProperties':4096,
@@ -255,7 +255,7 @@ VARIANT = obj({
     'backdrop':dict(COLOR_MAP,description='Exact colours of the backdrop silhouette after the surface tint: {its colour: colour in this variant}.'),
 })
 REGION = dict(obj({
-    'palettes':dict(obj({'first':integer(0,254),'count':integer(1,255)},['first']),
+    'palettes':dict(obj({'first':integer(0,510),'count':integer(1,511)},['first']),
                     description='4-bit palettes the region\'s entries use: from first, count of them (default: as many as needed). Regions never overlap.'),
     'variants':{'type':'object','propertyNames':NAME,'additionalProperties':VARIANT,'maxProperties':64,
                 'description':'Named palette variants, in order; the kit does not know what they mean. Default: one, "default".'},
@@ -276,8 +276,9 @@ WORLD = dict(obj({
         'surfaces':obj({'default':integer(0,255),
                         'tags':{'type':'object','propertyNames':NAME,'additionalProperties':integer(0,255),'maxProperties':256}}),
     }),
-    'palette':obj({'swatch_slot':integer(0,14),'swatch_row':integer(0,255),'first':integer(0,254),
-                   'first8':dict(integer(1,14),description='The first 8-bit palette 8-bit textures take (regions take them downward; default 14).')}),
+    'palette':obj({'swatch_slot':integer(0,14),'swatch_row':integer(0,255),'first':integer(0,510),
+                   'first8':dict(integer(1,31),description='The first 8-bit palette 8-bit textures take (regions take them downward; '
+                                 'default 31, the top of palette bank 1; 15 holds the fonts\' colours).')}),
     'textures':dict(TEXTURES,description='Every region\'s texture slots and VRAM budget, unless the region gives its own.'),
     'regions':{'type':'object','propertyNames':NAME,'additionalProperties':REGION,'maxProperties':255},
     'layers':{'type':'object','propertyNames':NAME,'additionalProperties':obj({'group':NAME,'on':BOOL}),'maxProperties':255},
@@ -358,7 +359,9 @@ FIELD = {'oneOf':[
 GAME = obj({
     'format':{'const':'mei-world-game'},'version':{'const':1},'name':NAME,
     'probe':obj({'radius':POS,'height':POS,'step':number(0,64),
-                 'floor_max_degrees':number(1,89),'ceiling_max_degrees':number(1,89)},['radius','floor_max_degrees']),
+                 'floor_max_degrees':number(1,89),'ceiling_max_degrees':number(1,89),
+                 'bridge':dict(number(0,4),description='Units: the span of the floor query\'s crack bridging (wp_floor_across(); WORLDKIT.md, "Cracks"). The World Checker does not report a crack that this bridges. Default 0: none.')},
+                ['radius','floor_max_degrees']),
     'types':{'type':'object','propertyNames':NAME,'maxProperties':1024,
              'additionalProperties':obj({'saved':BOOL,'params':{'type':'object','propertyNames':NAME,
                                                                 'additionalProperties':FIELD,'maxProperties':64}})},

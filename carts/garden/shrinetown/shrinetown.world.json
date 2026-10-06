@@ -37,8 +37,14 @@
      "surface": {
       "multiply": "#4a5884"
      },
-     "colors": {
-      "water": "#1c3050"
+     "backdrop": {
+      "#566680": "#f2cf78",
+      "#f3ebdc": "#46517a",
+      "#d6cbc0": "#2c3358",
+      "#b33d36": "#d84a3c",
+      "#ece8e0": "#9aa0c4",
+      "#b2573a": "#4c3446",
+      "#c99a46": "#5a5a46"
      }
     }
    },
@@ -46,36 +52,33 @@
     "elevations": [
      -8,
      0,
-     5,
-     24,
+     3,
+     9,
+     26,
      70
     ],
     "sky": {
      "day": [
-      "#4a5636",
-      "#c8c4a8",
-      "#c4d8e8",
-      "#7aa8d8",
+      "#7d8456",
+      "#ecdcb4",
+      "#d3dfdc",
+      "#9cc4e0",
+      "#6a9fd2",
       "#3a6cb0"
      ],
      "night": [
       "#141420",
-      "#2a2440",
-      "#1a1c3a",
+      "#5a4466",
+      "#352c58",
+      "#1c1e42",
       "#0c1028",
       "#04060f"
      ]
     },
     "silhouette": {
-     "pattern": "mountains",
-     "width": 1024,
-     "height": 48,
-     "seed": 23,
-     "colors": [
-      "#7a8a8c",
-      "#56685a",
-      "#3e5040"
-     ]
+     "image": "art/backdrop/town_backdrop.png",
+     "horizon": 6,
+     "repeat": 1
     }
    }
   },
@@ -90,8 +93,14 @@
      "surface": {
       "multiply": "#4a5884"
      },
-     "colors": {
-      "water": "#1c3050"
+     "backdrop": {
+      "#566680": "#f2cf78",
+      "#f3ebdc": "#46517a",
+      "#d6cbc0": "#2c3358",
+      "#b33d36": "#d84a3c",
+      "#ece8e0": "#9aa0c4",
+      "#b2573a": "#4c3446",
+      "#c99a46": "#5a5a46"
      }
     }
    },
@@ -99,36 +108,33 @@
     "elevations": [
      -8,
      0,
-     5,
-     24,
+     3,
+     9,
+     26,
      70
     ],
     "sky": {
      "day": [
-      "#4a5636",
-      "#c8c4a8",
-      "#c4d8e8",
-      "#7aa8d8",
+      "#7d8456",
+      "#ecdcb4",
+      "#d3dfdc",
+      "#9cc4e0",
+      "#6a9fd2",
       "#3a6cb0"
      ],
      "night": [
       "#141420",
-      "#2a2440",
-      "#1a1c3a",
+      "#5a4466",
+      "#352c58",
+      "#1c1e42",
       "#0c1028",
       "#04060f"
      ]
     },
     "silhouette": {
-     "pattern": "mountains",
-     "width": 1024,
-     "height": 48,
-     "seed": 23,
-     "colors": [
-      "#7a8a8c",
-      "#56685a",
-      "#3e5040"
-     ]
+     "image": "art/backdrop/shrine_backdrop.png",
+     "horizon": 6,
+     "repeat": 1
     }
    }
   }
@@ -2322,10 +2328,10 @@
      ]
     ],
     "materials": [
-     "steps",
-     "steps",
-     "steps",
-     "steps"
+     "steps_far",
+     "steps_far",
+     "steps_far",
+     "steps_far"
     ],
     "stairs": {
      "rise": 0.3
@@ -2551,8 +2557,8 @@
   "core_canal_lane": {
    "points": [
     [
-     55,
-     119
+     55.947,
+     128.0
     ],
     [
      56,
@@ -3811,8 +3817,8 @@
   "trail_west": {
    "points": [
     [
-     97,
-     119
+     100.221,
+     128.0
     ],
     [
      100.4,
@@ -4011,7 +4017,7 @@
       -0.6
      ]
     ],
-    "material": "water"
+    "material": "stream_water"
    }
   },
   "core_cem_stair_0": {
@@ -4051,14 +4057,302 @@
      ]
     ],
     "materials": [
-     "steps",
-     "steps",
-     "steps",
-     "steps"
+     "steps_far",
+     "steps_far",
+     "steps_far",
+     "steps_far"
     ],
     "stairs": {
      "rise": 0.3
     },
+    "caps": true
+   }
+  },
+  "kerb_108_0": {
+   "points": [
+    [
+     0.4,
+     0.0,
+     108.0
+    ],
+    [
+     43.6,
+     0.0,
+     108.0
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -0.1,
+      0
+     ],
+     [
+      -0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0
+     ]
+    ],
+    "material": "kerb",
+    "caps": true
+   }
+  },
+  "kerb_108_1": {
+   "points": [
+    [
+     52.4,
+     0.0,
+     108.0
+    ],
+    [
+     157.6,
+     0.0,
+     108.0
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -0.1,
+      0
+     ],
+     [
+      -0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0
+     ]
+    ],
+    "material": "kerb",
+    "caps": true
+   }
+  },
+  "kerb_108_2": {
+   "points": [
+    [
+     162.4,
+     0.0,
+     108.0
+    ],
+    [
+     233.6,
+     0.0,
+     108.0
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -0.1,
+      0
+     ],
+     [
+      -0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0
+     ]
+    ],
+    "material": "kerb",
+    "caps": true
+   }
+  },
+  "kerb_108_3": {
+   "points": [
+    [
+     238.4,
+     0.0,
+     108.0
+    ],
+    [
+     286.0,
+     0.0,
+     108.0
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -0.1,
+      0
+     ],
+     [
+      -0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0
+     ]
+    ],
+    "material": "kerb",
+    "caps": true
+   }
+  },
+  "kerb_114_0": {
+   "points": [
+    [
+     0.4,
+     0.0,
+     114.0
+    ],
+    [
+     43.6,
+     0.0,
+     114.0
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -0.1,
+      0
+     ],
+     [
+      -0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0
+     ]
+    ],
+    "material": "kerb",
+    "caps": true
+   }
+  },
+  "kerb_114_1": {
+   "points": [
+    [
+     52.4,
+     0.0,
+     114.0
+    ],
+    [
+     157.6,
+     0.0,
+     114.0
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -0.1,
+      0
+     ],
+     [
+      -0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0
+     ]
+    ],
+    "material": "kerb",
+    "caps": true
+   }
+  },
+  "kerb_114_2": {
+   "points": [
+    [
+     162.4,
+     0.0,
+     114.0
+    ],
+    [
+     233.6,
+     0.0,
+     114.0
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -0.1,
+      0
+     ],
+     [
+      -0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0
+     ]
+    ],
+    "material": "kerb",
+    "caps": true
+   }
+  },
+  "kerb_114_3": {
+   "points": [
+    [
+     238.4,
+     0.0,
+     114.0
+    ],
+    [
+     286.0,
+     0.0,
+     114.0
+    ]
+   ],
+   "sweep": {
+    "profile": [
+     [
+      -0.1,
+      0
+     ],
+     [
+      -0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0.15
+     ],
+     [
+      0.1,
+      0
+     ]
+    ],
+    "material": "kerb",
     "caps": true
    }
   }
@@ -4066,72 +4360,244 @@
  "terrain": {
   "materials": {
    "street": {
-    "color": "#8e8c88"
+    "color": "#b7b2a7",
+    "texture": {
+     "image": "art/ground/concrete.png",
+     "scale": [
+      2.0,
+      2.0
+     ],
+     "span": 23
+    }
    },
    "asphalt": {
-    "color": "#4a4a50"
+    "color": "#4a4a51",
+    "texture": {
+     "image": "art/ground/asphalt.png",
+     "scale": [
+      2.0,
+      2.0
+     ],
+     "span": 23
+    }
    },
    "paving": {
-    "color": "#b4ae9e"
+    "color": "#bebaaa",
+    "texture": {
+     "image": "art/ground/plaza.png",
+     "scale": [
+      4.0,
+      4.0
+     ],
+     "span": 23
+    }
    },
    "sando": {
-    "color": "#c8b89a"
+    "color": "#bebaaa",
+    "texture": {
+     "image": "art/ground/plaza.png",
+     "scale": [
+      4.0,
+      4.0
+     ],
+     "span": 23,
+     "offset": [
+      0.5,
+      0
+     ]
+    }
    },
    "clay": {
-    "color": "#c49a6a"
+    "color": "#c39a6a",
+    "texture": {
+     "image": "art/ground/ground.png",
+     "scale": [
+      2.0,
+      2.0
+     ],
+     "span": 23
+    }
    },
    "pooldeck": {
-    "color": "#d8d8d0"
+    "color": "#b7b2a7",
+    "texture": {
+     "image": "art/ground/concrete.png",
+     "scale": [
+      2.0,
+      2.0
+     ],
+     "span": 23
+    }
    },
    "grass": {
-    "color": "#6f8a3c"
+    "color": "#688436",
+    "texture": {
+     "image": "art/ground/park_grass.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
    },
    "floor": {
-    "color": "#5f7a34"
+    "color": "#594325",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_floor.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
    },
    "gravel": {
-    "color": "#d4ccb8"
+    "color": "#d4cbb9",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_gravel.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
    },
    "bank": {
-    "color": "#8e887c"
+    "color": "#807b70",
+    "texture": {
+     "image": "art/ground/canal_wall.png",
+     "scale": [
+      1.6,
+      1.6
+     ],
+     "span": 23
+    }
    },
    "bed": {
-    "color": "#5a5a4e"
+    "color": "#4b4332",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_pond_bed.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 23
+    }
    },
    "earth": {
-    "color": "#6a4a30"
+    "color": "#65452f",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_earth.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
    },
    "water": {
     "color": "#3f7393",
     "water": true,
-    "tag": "water"
+    "tag": "water",
+    "texture": {
+     "image": "art/water/water.png",
+     "scale": [
+      4.8,
+      4.8
+     ],
+     "span": 23
+    }
    },
    "wire": {
     "color": "#26262a"
    },
    "ashlar": {
-    "color": "#b4ae9e"
+    "color": "#d4cbb9",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_gravel.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
    },
    "podium": {
-    "color": "#8e887c"
+    "color": "#848072",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_stone.png",
+     "scale": [
+      3.2,
+      3.2
+     ],
+     "span": 87
+    }
    },
    "cemetery": {
-    "color": "#a09c90"
+    "color": "#9b938a",
+    "texture": {
+     "image": "art/ground/cemetery_gravel.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
    },
    "bamboo_floor": {
-    "color": "#8a9448"
+    "color": "#897a4a",
+    "texture": {
+     "image": "art/ground/bamboo_floor.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
    },
    "lane": {
-    "color": "#a89a7a"
+    "color": "#906f4c",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_path.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
    },
    "canal_stone": {
-    "color": "#7a766c"
+    "color": "#807b70",
+    "texture": {
+     "image": "art/ground/canal_wall.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 23
+    }
    },
    "path": {
-    "color": "#8a6a48"
+    "color": "#906f4c",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_path.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
    },
    "steps": {
-    "color": "#9a9488"
+    "color": "#908b7f",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_steps.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
    },
    "planks": {
     "color": "#8a6446"
@@ -4140,23 +4606,243 @@
     "color": "#e8e0c8"
    },
    "litter": {
-    "color": "#7a5a34"
+    "color": "#7b4825",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_litter.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
    },
    "moss": {
-    "color": "#4f7a34"
+    "color": "#56732d",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_moss.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
    },
    "fox_earth": {
-    "color": "#a0603a"
+    "color": "#65452f",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_earth.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
    },
    "rock": {
-    "color": "#6a665e"
+    "color": "#686157",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_rock.png",
+     "scale": [
+      4.8,
+      4.8
+     ],
+     "span": 87
+    }
    },
    "stone": {
-    "color": "#8e887c"
+    "color": "#848072",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_stone.png",
+     "scale": [
+      3.2,
+      3.2
+     ],
+     "span": 87
+    }
    },
    "falls": {
     "color": "#dce8f0",
-    "water": true
+    "water": true,
+    "texture": {
+     "image": "art/water/falls.png",
+     "scale": [
+      3.0,
+      6.4
+     ],
+     "span": 23
+    }
+   },
+   "asphalt_line_x": {
+    "color": "#53535a",
+    "texture": {
+     "image": "art/ground/asphalt_line.png",
+     "scale": [
+      2.0,
+      2.0
+     ],
+     "span": 23,
+     "rotate": 90
+    }
+   },
+   "asphalt_zebra_x": {
+    "color": "#969696",
+    "texture": {
+     "image": "art/ground/asphalt_zebra.png",
+     "scale": [
+      2.0,
+      2.0
+     ],
+     "span": 23,
+     "rotate": 90
+    }
+   },
+   "asphalt_stop": {
+    "color": "#6b6b6f",
+    "texture": {
+     "image": "art/ground/asphalt_stop.png",
+     "scale": [
+      2.0,
+      2.0
+     ],
+     "span": 71
+    }
+   },
+   "sidewalk": {
+    "color": "#b2aea2",
+    "texture": {
+     "image": "art/ground/sidewalk.png",
+     "scale": [
+      2.0,
+      2.0
+     ],
+     "span": 23
+    }
+   },
+   "sidewalk_tactile": {
+    "color": "#b8ab8a",
+    "texture": {
+     "image": "art/ground/sidewalk_tactile.png",
+     "scale": [
+      2.0,
+      2.0
+     ],
+     "span": 23
+    }
+   },
+   "sidewalk_tactile_x": {
+    "color": "#b8ab8a",
+    "texture": {
+     "image": "art/ground/sidewalk_tactile.png",
+     "scale": [
+      2.0,
+      2.0
+     ],
+     "span": 23,
+     "rotate": 90
+    }
+   },
+   "ground_line": {
+    "color": "#c6a173",
+    "texture": {
+     "image": "art/ground/ground_line.png",
+     "scale": [
+      2.0,
+      2.0
+     ],
+     "span": 23
+    }
+   },
+   "ground_line_x": {
+    "color": "#c6a173",
+    "texture": {
+     "image": "art/ground/ground_line.png",
+     "scale": [
+      2.0,
+      2.0
+     ],
+     "span": 23,
+     "rotate": 90
+    }
+   },
+   "sando_stone": {
+    "color": "#aba294",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_paving.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 87
+    }
+   },
+   "precinct_wall": {
+    "color": "#848072",
+    "texture": {
+     "image": "../shrine/assets/art/terrain_stone.png",
+     "scale": [
+      3.2,
+      3.2
+     ],
+     "span": 87
+    }
+   },
+   "park_sand": {
+    "color": "#d7c69d",
+    "texture": {
+     "image": "art/ground/park_sand.png",
+     "scale": [
+      2.4,
+      2.4
+     ],
+     "span": 23
+    }
+   },
+   "stream_water": {
+    "color": "#3f7393",
+    "texture": {
+     "image": "art/water/water.png",
+     "scale": [
+      7.2,
+      7.2
+     ],
+     "span": 23
+    },
+    "water": true,
+    "tag": "water"
+   },
+   "pond_water": {
+    "color": "#2f4c46",
+    "texture": {
+     "image": "art/water/pond_water.png",
+     "scale": [
+      4.8,
+      4.8
+     ],
+     "span": 23
+    },
+    "water": true,
+    "tag": "water"
+   },
+   "grass_far": {
+    "color": "#688436"
+   },
+   "floor_far": {
+    "color": "#594325"
+   },
+   "gravel_far": {
+    "color": "#d4cbb9"
+   },
+   "rock_far": {
+    "color": "#686157"
+   },
+   "path_far": {
+    "color": "#906f4c"
+   },
+   "steps_far": {
+    "color": "#908b7f"
+   },
+   "kerb": {
+    "color": "#bbb7ab"
    }
   },
   "fields": {
@@ -4260,12 +4946,216 @@
       "area": {
        "rect": [
         0,
+        104,
+        286,
+        106
+       ]
+      },
+      "material": "sidewalk_tactile_x"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        0,
+        106,
+        286,
+        108
+       ]
+      },
+      "material": "sidewalk"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        0,
+        110,
+        286,
+        112
+       ]
+      },
+      "material": "asphalt_line_x"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        0,
+        114,
+        286,
+        116
+       ]
+      },
+      "material": "sidewalk"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        0,
+        116,
+        286,
+        118
+       ]
+      },
+      "material": "sidewalk_tactile_x"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        0,
+        108,
+        286,
+        110
+       ]
+      },
+      "material": "asphalt"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        0,
+        112,
+        286,
+        114
+       ]
+      },
+      "material": "asphalt"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        158,
+        108,
+        162,
+        114
+       ]
+      },
+      "material": "asphalt_zebra_x"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        158,
+        104,
+        160,
+        108
+       ]
+      },
+      "material": "sidewalk_tactile"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        158,
+        114,
+        160,
+        118
+       ]
+      },
+      "material": "sidewalk_tactile"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        154,
+        112,
+        156,
+        114
+       ]
+      },
+      "material": "asphalt_stop"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        164,
+        108,
+        166,
+        110
+       ]
+      },
+      "material": "asphalt_stop"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        246,
+        18,
+        248,
+        52
+       ]
+      },
+      "material": "ground_line"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        288,
+        18,
+        290,
+        52
+       ]
+      },
+      "material": "ground_line"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        266,
+        18,
+        268,
+        52
+       ]
+      },
+      "material": "ground_line"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        244,
+        20,
+        292,
+        22
+       ]
+      },
+      "material": "ground_line_x"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        244,
+        48,
+        292,
+        50
+       ]
+      },
+      "material": "ground_line_x"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        0,
         118,
         44,
         128
        ]
       },
-      "material": "grass"
+      "material": "grass_far"
      },
      {
       "op": "paint",
@@ -4277,7 +5167,7 @@
         128
        ]
       },
-      "material": "floor"
+      "material": "floor_far"
      },
      {
       "op": "paint",
@@ -4289,7 +5179,7 @@
         128
        ]
       },
-      "material": "floor"
+      "material": "floor_far"
      },
      {
       "op": "paint",
@@ -4301,7 +5191,7 @@
         128
        ]
       },
-      "material": "gravel"
+      "material": "gravel_far"
      },
      {
       "op": "cliff",
@@ -4514,7 +5404,7 @@
        ]
       },
       "height": 2.0,
-      "material": "canal_stone"
+      "material": "precinct_wall"
      },
      {
       "op": "set",
@@ -4842,7 +5732,7 @@
        ]
       },
       "level": 0.0,
-      "material": "water"
+      "material": "pond_water"
      },
      {
       "op": "water",
@@ -4854,7 +5744,7 @@
        ]
       },
       "level": 0.0,
-      "material": "water"
+      "material": "pond_water"
      },
      {
       "op": "set",
@@ -5156,7 +6046,7 @@
        ]
       },
       "level": 12.0,
-      "material": "water"
+      "material": "pond_water"
      },
      {
       "op": "paint",
@@ -5373,6 +6263,19 @@
         0,
         118,
         2,
+        128.0
+       ]
+      },
+      "height": 10.0,
+      "material": "rock_far"
+     },
+     {
+      "op": "cliff",
+      "area": {
+       "rect": [
+        0,
+        128.0,
+        2,
         256
        ]
       },
@@ -5385,6 +6288,19 @@
        "rect": [
         318,
         118,
+        320,
+        128.0
+       ]
+      },
+      "height": 8.0,
+      "material": "rock_far"
+     },
+     {
+      "op": "cliff",
+      "area": {
+       "rect": [
+        318,
+        128.0,
         320,
         132
        ]
@@ -5429,6 +6345,131 @@
        ]
       },
       "height": 0.6
+     },
+     {
+      "op": "paint",
+      "area": {
+       "polygon": [
+        [
+         95.494,
+         119.54
+        ],
+        [
+         98.715,
+         128.53
+        ],
+        [
+         101.727,
+         127.45
+        ],
+        [
+         98.506,
+         118.46
+        ]
+       ]
+      },
+      "material": "path_far"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "polygon": [
+        [
+         53.409,
+         119.168
+        ],
+        [
+         54.356,
+         128.158
+        ],
+        [
+         57.539,
+         127.822
+        ],
+        [
+         56.591,
+         118.832
+        ]
+       ]
+      },
+      "material": "path_far"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        156,
+        128.0,
+        164,
+        152
+       ]
+      },
+      "material": "sando_stone"
+     },
+     {
+      "op": "paint",
+      "area": {
+       "rect": [
+        6,
+        130,
+        40,
+        146
+       ]
+      },
+      "material": "park_sand"
+     },
+     {
+      "op": "water",
+      "area": {
+       "polygon": [
+        [
+         222.242,
+         128.0
+        ],
+        [
+         245.758,
+         128.0
+        ],
+        [
+         244.799,
+         127.13
+        ],
+        [
+         242.4,
+         125.451
+        ],
+        [
+         239.746,
+         124.213
+        ],
+        [
+         236.917,
+         123.455
+        ],
+        [
+         234.0,
+         123.2
+        ],
+        [
+         231.083,
+         123.455
+        ],
+        [
+         228.254,
+         124.213
+        ],
+        [
+         225.6,
+         125.451
+        ],
+        [
+         223.201,
+         127.13
+        ]
+       ]
+      },
+      "level": 0.0,
+      "material": "water"
      }
     ]
    }
