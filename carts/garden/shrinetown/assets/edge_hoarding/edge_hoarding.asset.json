@@ -1,0 +1,88 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "edge_hoarding",
+ "budget": {
+  "triangles": 24
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "panel": {
+   "color": "#eceae4",
+   "tag": "wall",
+   "texture": {
+    "image": "art/panel.png",
+    "projection": "box",
+    "scale": [
+     2.0,
+     5.5
+    ],
+    "offset": [
+     0.5,
+     0.5
+    ]
+   }
+  },
+  "top": {
+   "color": "#3a6ab0",
+   "palette": true
+  },
+  "sign": {
+   "color": "#f0c030",
+   "texture": {
+    "image": "art/sign.png",
+    "projection": "fit"
+   }
+  }
+ },
+ "nodes": [
+  {
+   "id": "wall",
+   "op": "box",
+   "size": [
+    14.0,
+    5.5,
+    0.4
+   ],
+   "material": "panel",
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "top",
+    "left": "top",
+    "right": "top"
+   },
+   "transform": {
+    "translate": [
+     0,
+     2.75,
+     0
+    ]
+   },
+   "decals": [
+    {
+     "id": "sign",
+     "face": "back",
+     "material": "sign",
+     "size": [
+      1.6,
+      1.6
+     ],
+     "at": [
+      -2.0,
+      -0.35
+     ]
+    }
+   ]
+  }
+ ]
+}

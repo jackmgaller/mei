@@ -1,0 +1,240 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "edge_neighbour_s1",
+ "budget": {
+  "triangles": 60
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "materials": {
+  "facade": {
+   "color": "#c8c4b8",
+   "tag": "wall",
+   "texture": {
+    "image": "art/facade_b.png",
+    "projection": "box",
+    "scale": [
+     6.0,
+     6.0
+    ],
+    "offset": [
+     0.6667,
+     0.6667
+    ]
+   }
+  },
+  "end": {
+   "color": "#b4b0a4",
+   "palette": true,
+   "tag": "wall"
+  },
+  "roof": {
+   "color": "#7e7c76",
+   "palette": true,
+   "tag": "roof"
+  },
+  "house": {
+   "color": "#a09e9a",
+   "palette": true,
+   "tag": "wall"
+  }
+ },
+ "nodes": [
+  {
+   "id": "body",
+   "op": "mesh",
+   "vertices": [
+    [
+     -16.0,
+     0,
+     0.2
+    ],
+    [
+     16.0,
+     0,
+     0.2
+    ],
+    [
+     16.0,
+     22,
+     0.2
+    ],
+    [
+     -16.0,
+     22,
+     0.2
+    ],
+    [
+     -16.0,
+     0,
+     8.2
+    ],
+    [
+     16.0,
+     0,
+     8.2
+    ],
+    [
+     16.0,
+     22,
+     8.2
+    ],
+    [
+     -16.0,
+     22,
+     8.2
+    ]
+   ],
+   "faces": [
+    [
+     3,
+     2,
+     1,
+     0
+    ],
+    [
+     7,
+     6,
+     2,
+     3
+    ],
+    [
+     7,
+     3,
+     0,
+     4
+    ],
+    [
+     2,
+     6,
+     5,
+     1
+    ]
+   ],
+   "face_materials": [
+    "facade",
+    "roof",
+    "end",
+    "end"
+   ]
+  },
+  {
+   "id": "stair_house",
+   "op": "box",
+   "size": [
+    4,
+    3,
+    4
+   ],
+   "material": "house",
+   "open": [
+    "bottom"
+   ],
+   "faces": {
+    "top": "roof"
+   },
+   "transform": {
+    "translate": [
+     -5.33,
+     23.5,
+     4.2
+    ]
+   }
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 60,
+    "nodes": [
+     {
+      "id": "body",
+      "op": "mesh",
+      "vertices": [
+       [
+        -16.0,
+        0,
+        0.2
+       ],
+       [
+        16.0,
+        0,
+        0.2
+       ],
+       [
+        16.0,
+        22,
+        0.2
+       ],
+       [
+        -16.0,
+        22,
+        0.2
+       ],
+       [
+        -16.0,
+        0,
+        8.2
+       ],
+       [
+        16.0,
+        0,
+        8.2
+       ],
+       [
+        16.0,
+        22,
+        8.2
+       ],
+       [
+        -16.0,
+        22,
+        8.2
+       ]
+      ],
+      "faces": [
+       [
+        3,
+        2,
+        1,
+        0
+       ],
+       [
+        7,
+        6,
+        2,
+        3
+       ],
+       [
+        7,
+        3,
+        0,
+        4
+       ],
+       [
+        2,
+        6,
+        5,
+        1
+       ]
+      ],
+      "face_materials": [
+       "house",
+       "roof",
+       "end",
+       "end"
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}
