@@ -698,6 +698,28 @@ Hence `max_views` 600 (about 15–20 seconds a world). The reference dominates; 
 face is the cost, so dense views cost more. Sampling and static checks are pure Python and grow
 with the number of floors.
 
+## The quick check
+
+`verify(..., focus={'cells': [(i, j), ...]})` narrows a check to some cells, for
+`mei_world.py check` ([WORLDKIT.md](WORLDKIT.md#quick-tools)); `focus=None` (the default) is
+the whole check, unchanged. With a focus:
+
+- the static collision checks run on the triangles near the cells (`near_cells()`: those whose
+  bounds come within a unit of a cell, and every triangle whose bounds meet theirs, so edges
+  shared across the cells' borders stay shared), with the reader's floor query on the whole
+  pack, and keep the findings whose point lies in the cells; a layer with no collision near the
+  cells is not checked again on its own (it finds what every layer off finds); entities in
+  solid, reference findings and the ground check are the cells' too, and so are the cell
+  budgets;
+- the sampled views are those sampled from the cells (floors, rooftops, air between their
+  rooftops, the seams on their edges, entities in them) whose eye is in one of them, thinned to
+  `sampling.max_views` as always; vantage points (the quick check's cameras) always run;
+- every view lists its `heaviest` placements, as views of a world with levels of detail do.
+
+The report has `focus` (`cells`, `vantage_points`). Thresholds, settings and the rows are the
+full check's. A cell's crack and edge findings equal the full check's in that cell (on the
+shrine town's two cells with 12 findings, and in `tests/test_worldkit.py`).
+
 ## Limits
 
 - **IDs.** A view's faces need distinct 15-bit IDs. A world with at most 32,767 faces in all

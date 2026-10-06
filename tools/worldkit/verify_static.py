@@ -110,6 +110,30 @@ def world_triangles(pack):
 
 # ---- the reader's floor query, exactly
 
+def near_cells(tris, cells, size, margin=1.0):
+    """The triangles a check of `cells` ((i, j) pairs, cell size `size`) needs: near_boxes() of
+    the cells grown by `margin`."""
+    return near_boxes(tris, [(i * size - margin, j * size - margin, (i + 1) * size + margin, (j + 1) * size + margin)
+                             for i, j in cells])
+
+
+def near_boxes(tris, boxes):
+    """The triangles whose bounds (seen from above) meet one of the boxes (x0, z0, x1, z1), and
+    every triangle whose bounds meet theirs, so that an edge they share with a neighbour outside
+    the boxes is still shared."""
+    def meets(b, c):
+        return b[0] <= c[2] and c[0] <= b[2] and b[1] <= c[3] and c[1] <= b[3]
+    marked = [(t, (min(v[0] for v in t.verts), min(v[2] for v in t.verts),
+                   max(v[0] for v in t.verts), max(v[2] for v in t.verts))) for t in tris if t.verts is not None]
+    unions = []
+    for c in boxes:
+        core = [b for _, b in marked if meets(b, c)]
+        if core:
+            unions.append((min(b[0] for b in core), min(b[1] for b in core),
+                           max(b[2] for b in core), max(b[3] for b in core)))
+    return [t for t, b in marked if any(meets(b, u) for u in unions)]
+
+
 def reader_floor(pack, x, y, z, layers_on, above=0):
     """wp_floor() at raw world point (x, y, z): the height (raw) of the highest present floor at
     or below y + above whose edge rows accept the point, and its tag; or None."""
@@ -529,7 +553,7 @@ def _clip_side(poly, n, d):
     return out
 
 
-def ground_check(pack, near_far, limit):
+def ground_check(pack, near_far, limit, cells=None):
     """Likely misuse of the ground flag (docs/WORLDPACK.md, "Ground"): geometry that a ground
     face can hide. The reader draws ground first, so whatever is drawn after it shows through
     ground that truly hides it, and ground faces that can overlap on screen are sorted among
@@ -540,10 +564,13 @@ def ground_check(pack, near_far, limit):
     of each other. The sides and undersides of ground meshes are left out as hiding faces: only
     cameras below the ground's top see through them. Layers that can never be on together are
     skipped. Returns warnings: one per pair of
-    instances, at most `limit` of each code, with the totals."""
+    instances, at most `limit` of each code, with the totals. cells: only the ground of these
+    cells ((i, j) pairs; the quick check's focus), or None for every cell."""
     from .verify_render import instances, read_mesh
     insts = [i for i in instances(pack) if i.key[0] != 'standin']
-    ground = [i for i in insts if i.ground]
+    if cells is not None:
+        insts = [i for i in insts if any(max(abs(i.cell[0] - a), abs(i.cell[1] - b)) <= 2 for a, b in cells)]
+    ground = [i for i in insts if i.ground and (cells is None or tuple(i.cell) in cells)]
     if not ground:
         return []
     meshes, faces = {}, {}

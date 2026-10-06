@@ -18,6 +18,10 @@ allowance before placing. --report reads a built world's report.json for the ter
 its allowance. Asset names resolve in the world's asset directories, then
 carts/garden/shrinetown/assets/NAME/, then ../shrine/assets/ (`shrine:NAME` names that one).
 Game entities' meshes are not counted (the coins are untextured).
+
+The zones and allowances are the shrine town's; the World Kit's own `python3 tools/mei_world.py
+textures carts/garden/shrinetown/shrinetown.world.json [--region R] [--cells ...] [--add
+REGION:ASSET,...]` gives the bytes per region of the world as built, by asset and by image.
 """
 import argparse, json, sys
 from pathlib import Path
@@ -30,6 +34,7 @@ import layout as L                                           # noqa: E402
 from kitcore import jsonio                                    # noqa: E402
 from assetkit.compiler import compile_recipe                  # noqa: E402
 from assetkit.geometry import AssetError                      # noqa: E402
+from worldkit.assets import asset_directories                 # noqa: E402
 from worldkit.textures import allocated                       # noqa: E402
 
 KB = 1024
@@ -67,8 +72,8 @@ def zone_of(x, z):
 
 
 def asset_dirs(world):
-    dirs = [ST / world['assets']] + [ST / d for d in world.get('asset_dirs', [])]
-    return dirs
+    """The world's asset directories as the World Kit searches them (asset_dirs' "DIR/*" too)."""
+    return asset_directories(world, ST)
 
 
 def find(name, dirs):

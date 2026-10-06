@@ -20,7 +20,7 @@ from kitcore.errors import pointer
 from kitcore.vector import yaw as turn
 from . import farground, ids, merge, quads
 from . import pack as P
-from .assets import Library, collision_triangles, relative
+from .assets import Library, asset_directories, collision_triangles, relative
 from .palettes import RegionPalette
 from .textures import RegionTextures, relocated_palette
 from . import backdrop as BD
@@ -160,6 +160,9 @@ class Compiled:
     terrain_files: list = field(default_factory=list)   # heights files the terrain read
     terrain: object = None                              # terrain.Result, or None
     water: bytes = b''                                  # NAME.water.bin (wp_water()), or empty
+    # what the quick tools read (worldkit/quick.py), not written by a build
+    region_textures: dict = None                        # region name -> RegionTextures
+    plans: list = None                                  # per cell: what went into the pack
 
 
 @dataclass
@@ -219,8 +222,8 @@ def compile_world(source, lock=None, assets_dir=None):
             return surfaces.get('default', 0)
         return surface_tags[tag]
 
-    library = Library(assets_dir or (source.base / w['assets']).resolve(), source.base,
-                      [(source.base / d).resolve() for d in w.get('asset_dirs', [])])
+    directories = asset_directories(w, source.base, assets_dir)
+    library = Library(directories[0], source.base, directories[1:])
     warnings = []
     regions = list(w['regions'])
     layer_names = list(w.get('layers', {}))
@@ -1043,6 +1046,7 @@ def compile_world(source, lock=None, assets_dir=None):
         report['scatter'] = scatter_report
     compiled.water = water_blob(terrain.water) if terrain and terrain.water else b''
     compiled.terrain = terrain
+    compiled.region_textures, compiled.plans = region_textures, plans
     from .akr import world_source, game_source
     compiled.akr = world_source(source, compiled, region_palettes, slot, row, number_of, groups)
     compiled.game_akr = game_source(game)

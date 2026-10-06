@@ -193,8 +193,10 @@ def _clear(grid, x, h, z, room, radius):
     return True
 
 
-def sample_views(pack, tris, settings):
-    """Cameras: dicts with kind, eye, yaw, pitch (radians), cell."""
+def sample_views(pack, tris, settings, only=None):
+    """Cameras: dicts with kind, eye, yaw, pitch (radians), cell. only: a set of cells (i, j):
+    the cameras sampled from those cells and whose eye is in one of them (the quick check's
+    focus; vantage points are always kept), or None for every cell."""
     smp = settings['sampling']
     S = 1 << pack.cell_shift
     floors = [t for t in tris if t.kind == KIND_FLOOR]
@@ -213,7 +215,9 @@ def sample_views(pack, tris, settings):
             v.update(extra)
         views.append(v)
 
-    cells = sorted(pack.cells, key=lambda ij: (ij[1], ij[0]))
+    every = cells = sorted(pack.cells, key=lambda ij: (ij[1], ij[0]))
+    if only is not None:
+        cells = [c for c in cells if c in only]
     sp = smp['floor_spacing']
     n = max(1, int(round(S / sp))) if sp else 0
     follow = smp.get('follow')
@@ -267,9 +271,11 @@ def sample_views(pack, tris, settings):
     seams = smp.get('seams')
     if seams:
         n = max(1, int(round(S / seams['spacing'])))
-        for (i, j) in cells:
+        for (i, j) in every:
             for di, dj in ((1, 0), (0, 1)):
                 if (i + di, j + dj) not in pack.cells:
+                    continue
+                if only is not None and (i, j) not in only and (i + di, j + dj) not in only:
                     continue
                 for k in range(n):
                     f = (k + 0.5) / n
@@ -283,16 +289,18 @@ def sample_views(pack, tris, settings):
                                 add('seam', (x, h + eye_h, z), y2, 0.0)
     ents = smp.get('entities')
     if ents:
-        _entity_cameras(pack, grid, floors, ceilings, probe, eye_h, ents, add)
+        _entity_cameras(pack, grid, floors, ceilings, probe, eye_h, ents, add, only)
     for k, vp in enumerate(settings['vantage_points']):
         add('vantage', vp['position'], math.radians(vp.get('yaw', 0.0)), math.radians(vp.get('pitch', 0.0)),
             {'vantage': k})
     for v in views:
         v['cell'] = [math.floor(v['eye'][0]) >> pack.cell_shift, math.floor(v['eye'][2]) >> pack.cell_shift]
+    if only is not None:
+        views = [v for v in views if v['kind'] == 'vantage' or tuple(v['cell']) in only]
     return views
 
 
-def _entity_cameras(pack, grid, floors, ceilings, probe, eye_h, ents, add):
+def _entity_cameras(pack, grid, floors, ceilings, probe, eye_h, ents, add, only=None):
     """Cameras aimed at each entity that has a mesh, at the middle of its mesh's height: around
     it at each distance and pitch (from above, like a follow camera; pulled in front of anything
     between them, as a follow camera is), and from eye height on the floors around it (from below
@@ -300,6 +308,8 @@ def _entity_cameras(pack, grid, floors, ceilings, probe, eye_h, ents, add):
     S = 1 << pack.cell_shift
     nyaw = max(1, ents['yaws'])
     for (i, j) in sorted(pack.cells, key=lambda ij: (ij[1], ij[0])):
+        if only is not None and (i, j) not in only:
+            continue
         c = pack.cells[(i, j)]
         for e in c.entities:
             if not e['mesh']:
@@ -440,8 +450,9 @@ def _groups(pack, insts, meshes, views, ring):
     return out
 
 
-def _view_context(pack, names, cfg, rt, groups):
-    """What the ordering check of each view needs, rebuilt from the pack in a worker process."""
+def _view_context(pack, names, cfg, rt, groups, heaviest=False):
+    """What the ordering check of each view needs, rebuilt from the pack in a worker process.
+    heaviest: list each view's heaviest placements (always in a world with levels of detail)."""
     insts = RD.instances(pack)
     meshes = {}
     for inst in insts:
@@ -454,6 +465,7 @@ def _view_context(pack, names, cfg, rt, groups):
             'meshes': meshes, 'by_cell': by_cell, 'describe': _describe(names),
             'texels': RD.pack_texels(pack) if rt.get('textured') else None,
             'lod_pack': any(p.get('lod') for c in pack.cells.values() for p in c.placements),
+            'heaviest': heaviest,
             'order_cfg': {**cfg['ordering'], 'near_band': cfg['thresholds']['near_band'], 'depth': rt['depth']}}
 
 
@@ -497,7 +509,7 @@ def _view_row(ctx, g, v, rec, rec2, out_dir, sample=None):
         # depth mode), and the identity frame's when there is one
         row['stats']['depth']['untested_pixels'] = max(_untested(st), _untested(st2))
     sel = None
-    if lod_pack:
+    if lod_pack or ctx.get('heaviest'):
         sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt, v.get('region'))
         row['heaviest'] = _heaviest(pack, sel, meshes, v['eye'], names)
     if rec2 is None:
@@ -546,8 +558,8 @@ def _untested(st):
 _WORKER = {}
 
 
-def _view_worker_init(pack_bytes, names, cfg, rt, groups):
-    _WORKER['ctx'] = _view_context(decode(pack_bytes), names, cfg, rt, groups)
+def _view_worker_init(pack_bytes, names, cfg, rt, groups, heaviest=False):
+    _WORKER['ctx'] = _view_context(decode(pack_bytes), names, cfg, rt, groups, heaviest)
 
 
 def _view_worker(task):
@@ -701,9 +713,14 @@ def _sample_summary(chosen, views):
     return {'views': len(chosen), 'of': views, 'chosen': dict(sorted(why.items()))}
 
 
-def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
+def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None, focus=None):
     """Checks a world pack. Returns the report (a JSON-ready dict); see docs/WORLDCHECKER.md.
-    Raises SettingsError for bad settings and RD.RenderError when the native tools fail."""
+    Raises SettingsError for bad settings and RD.RenderError when the native tools fail.
+
+    focus (the quick check, `mei_world.py check`): {'cells': [(i, j), ...]} narrows the check to
+    those cells: the static collision checks find what lies in them, the sampled views are the
+    ones sampled from them, the cell budgets are theirs, and every view lists its heaviest
+    placements. The vantage points are checked as always. None: the whole world."""
     t_start = time.perf_counter()
     cfg = merge_settings(settings)
     th = cfg['thresholds']
@@ -726,15 +743,37 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         rt['near_far'] = pack.near_far / ONE if pack.near_far else 1.5 * S
     report['pack'] = {'sha256': hashlib.sha256(bytes(pack_bytes)).hexdigest(), 'bytes': len(pack_bytes),
                       'cells': len(pack.cells), 'cell_size': S, 'layers': [l[0] for l in pack.layers]}
+    if focus is not None:
+        report['focus'] = {'cells': sorted([list(c) for c in focus.get('cells', ())], key=lambda c: (c[1], c[0])),
+                           'vantage_points': len(cfg['vantage_points'])}
 
     # 1. static checks
     t0 = time.perf_counter()
     tris = ST.world_triangles(pack)
     static = {'errors': [], 'warnings': []}
     lim = cfg['collision']['findings']
+    only = None if focus is None else {tuple(c) for c in focus.get('cells', ())}
+    static_tris = tris if only is None else ST.near_cells(tris, only, S)
+
+    def focused(found):
+        """Findings whose point lies in the focus's cells."""
+        if only is None:
+            return found
+        return [f for f in found if ((math.floor(f['at'][0]) >> pack.cell_shift),
+                                     (math.floor(f['at'][2]) >> pack.cell_shift)) in only]
     cracks, ncrack, nedges = [], 0, 0
-    for name, on in [('none', frozenset())] + [(l[0], frozenset([k])) for k, l in enumerate(pack.layers)]:
-        found, n, ne, _ = ST.crack_check(pack, tris, on, cfg['probe'], cfg['collision'], lim)
+    sets = [('none', frozenset())] + [(l[0], frozenset([k])) for k, l in enumerate(pack.layers)]
+    if only is not None:
+        # a layer with no collision near the cells finds what every layer off finds
+        near = {t.layer for t in ST.near_cells(tris, only, S, 2.0)}
+        sets = [(name, on) for name, on in sets if not on or on & near]
+    for name, on in sets:
+        found, n, ne, _ = ST.crack_check(pack, static_tris, on, cfg['probe'], cfg['collision'],
+                                         lim if only is None else len(static_tris) * 3)
+        if only is not None:
+            found = focused(found)
+            n = len(found)
+            found = found[:lim]
         nedges = max(nedges, ne)
         for f in found:
             f['layers'] = sorted(pack.layers[k][0] for k in on)
@@ -744,9 +783,15 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
         ncrack += n
     ents, nent = ST.entity_check(pack, tris, cfg['collision'], lim)
     ref_err, ref_warn = ST.reference_check(pack, rt['far_ring'])
+    if only is not None:
+        ents = focused(ents)
+        ref_err = [e for e in ref_err if 'cell' not in e or tuple(e['cell']) in only]
+        ref_warn = [e for e in ref_warn if 'cell' not in e or tuple(e['cell']) in only]
     if rt['ground_first'] and not rt['depth']:     # the depth test draws ground in its place
-        ref_warn += ST.ground_check(pack, rt['near_far'], lim)
+        ref_warn += ST.ground_check(pack, rt['near_far'], lim, only)
     cells, regions = ST.counts(pack)
+    if only is not None:
+        cells = [c for c in cells if tuple(c['cell']) in only]
     static['collision'] = {'triangles': len(tris), 'boundary_edges': nedges, 'findings': cracks[:lim],
                            'entities_in_solid': ents}
     static['cells'] = cells
@@ -770,7 +815,7 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
 
     # 2 and 3. sampled views
     t0 = time.perf_counter()
-    cams = sample_views(pack, tris, cfg)
+    cams = sample_views(pack, tris, cfg, only)
     combos = layer_combinations(pack, cfg)
     ring = int(rt['far_ring'])
     layered_cells = {}
@@ -813,7 +858,7 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
             nid += len(meshes[inst.mesh].faces)
         groups.append((ginsts, gviews, first, nid - 1 <= RD.MAX_ID))
     firsts = [(first, ids_ok) for _, _, first, ids_ok in groups]
-    ctx = _view_context(pack, names, cfg, rt, firsts)
+    ctx = _view_context(pack, names, cfg, rt, firsts, focus is not None)
     rows = []
     images = []
     t_native = t_ref = 0.0
@@ -825,7 +870,7 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None):
     pool = None
     if jobs > 1:
         pool = ProcessPoolExecutor(jobs, initializer=_view_worker_init,
-                                   initargs=(bytes(pack_bytes), names, cfg, rt, firsts))
+                                   initargs=(bytes(pack_bytes), names, cfg, rt, firsts, focus is not None))
     try:
         if rt['depth']:
             rows, diag, chosen, tm = _depth_mode_views(pool, ctx, groups, meshes, tools, out_dir)

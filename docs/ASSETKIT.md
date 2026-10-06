@@ -150,6 +150,8 @@ Conventions, each checked on native renders (`tests/test_assetkit.py`, `Conventi
 | `verify FILE [-o DIR] [--build-dir DIR]` | Geometry checks plus native triangle-ID visibility and ordering-graph checks |
 | `build FILE -o DIR [--verify] [--preview] [--strict] [--depth] [--perspective] [--build-dir DIR]` | Native and exchange artifacts; optional or recipe-mandated verification gate |
 | `preview FILE -o DIR [--verify] [--strict] [--depth] [--perspective] [--build-dir DIR] [--closeups] [--camera SPEC]… [--cameras FILE] [--part ID]… [--upscale N]` | Build plus six native renders and contact sheet, and [camera views](#camera-views-at-world-scale) |
+| `info FILE [--at X,Y,Z] [--yaw DEG] [--collision auto\|self\|none\|PATH] [--json]` | Bounds (drawn and collision, and placed), triangles per level of detail and switch distances, texture bytes per texture, palettes, texture windows ([Quick facts](#quick-facts-info-and-floors)) |
+| `floors FILE [--step 0.25] [--at X,Y,Z] [--yaw DEG] [--below Y] [--area X0,Z0,X1,Z1] [--json]` | A grid of the collision's top floor heights, with walls and too-steep faces marked ([Quick facts](#quick-facts-info-and-floors)) |
 | `import-obj FILE -o RECIPE [--name NAME] [--force]` | Geometry-only OBJ import into an explicit `mesh` recipe |
 | `pack FILE... -o DIR [--name NAME] [--slots 14-0] [--palette 0] [--palette8 14]` | Several assets (or one) for a cart without a world: shared texture slots and palettes, one loader ([Placement](#placement-build-and-pack)) |
 | `export FILE -o DIR [--format glb\|gltf]` | One glTF 2.0 file for ordinary 3D viewers, drawn as Mei draws it ([export](#viewing-an-asset-elsewhere-export)) |
@@ -234,6 +236,49 @@ bars of its windows (1 mm apart) and their panes (1.7–2.3 cm); the vessel its 
   the copy's lie back to back on: open that side), each with the part and the modifier's `path`,
   and `below_ground` (parts reaching below y = 0, the ground an asset stands on, lowest first).
   These are `inspect`'s: `build`'s report and `--strict` are as before.
+
+### Quick facts: info and floors
+
+Two read-only commands for placing an asset (`tools/assetkit/info.py`). They compile the recipe
+and nothing else: no native tools, nothing written, a fraction of a second. They print plain
+text; `--json` gives the same as JSON (errors too: plain `error at PATH: message` without it).
+
+**`info FILE`**: the triangles, vertices and mesh bytes; the drawn bounds; the collision (which
+recipe, its triangles as floors, walls, faces too steep to stand on and ceilings, as the World
+Kit files them, its bounds and highest floor); each level of detail's triangles and switch
+distance, `cull` and `band` (a world's `lod` may change the distances); the palettes
+(palette-backed, and the textures' 4-bit and 8-bit); and per texture its size, bits, source,
+`stored` bytes (`vram_bytes`, the gutter included) and `allocated` bytes (on the packer's 8-texel
+grid, what a world region's `textures.budget` counts), with the textures that are one tile
+(`same tile as`), each image or sheet several textures read, and the texture windows. `--at
+X,Y,Z --yaw DEG` adds the bounds where a world placement there puts them (yaw as `mesh_at()`:
++Z toward +X). `--collision auto` (the default) takes `NAME_col.asset.json` beside the recipe
+when there is one, else the recipe itself; `self`, `none` or a recipe path say otherwise.
+`--floor-max DEG` is the steepest floor (default 45, the World Kit's; the game's probe may say
+less: the garden's is 40).
+
+```
+$ python3 tools/mei_assets.py info carts/garden/shrinetown/assets/station_platform/station_platform.asset.json --at 160,9,8 --yaw 90
+station_platform: 674 triangles, 486 vertices, 32,056 mesh bytes
+bounds (drawn): [-20.0, 0.0, -2.9] .. [20.0, 4.72, 2.9] (size [40.0, 4.72, 5.8])
+  placed at [160.0, 9.0, 8.0] yaw 90: [157.1, 9.0, -12.0] .. [162.9, 13.72, 28.0]
+collision: station_platform_col.asset.json (beside the recipe): 208 triangles (38 floors, 164 walls, 0 too steep, 6 ceilings at floor_max 45 deg); ...
+levels of detail: L0 674 tris from 0, L1 126 tris from 30, L2 40 tris from 70; band 2
+textures: 16 tiles, 5,487 bytes stored, 7,648 allocated on the 8-texel grid (what a world region's budget counts)
+  name_board             96x36      4   1,813   2,080  sheet 'station' cell name_board
+  ...
+  image art/station_sheet.png: 10 textures, 7,200 bytes (bin_burn, bin_cans, clock, ...)
+texture windows: 5 of 7: ...
+```
+
+**`floors FILE`**: the collision's highest floor under each point of a grid (`--step`, default
+0.25; over the collision's bounds or `--area X0,Z0,X1,Z1`), north (+Z) up, as heights and as a
+map of marks: `.` a floor, `#` a wall passing within half a step, `^` a face too steep to stand
+on above the floor there, blank nothing. `--below Y` takes the highest floor at or below Y (the
+platform under a roof); the JSON's `stacks` list every floor at each point. With `--at` and
+`--yaw` the grid is in world coordinates. Floors are tested as triangles in floating point, so a
+point exactly on an edge may differ from the reader's integer rows; a world's own floors as the
+console finds them are `mei_world.py floors` ([WORLDKIT.md](WORLDKIT.md#quick-tools)).
 
 ### Native tools
 

@@ -85,6 +85,19 @@ DIR` (repeatable) names a directory searched for imports after the importing fil
 and before the standard library. [WORLDKIT.md](docs/WORLDKIT.md#using-a-world-in-a-cart) has the
 details; `carts/worldview/` is the example.
 
+**Quick feedback while placing assets in a world** (plain text; `--json` for JSON):
+
+```sh
+python3 tools/mei_assets.py info RECIPE [--at X,Y,Z --yaw DEG]     # bounds, LOD, texture bytes
+python3 tools/mei_assets.py floors RECIPE [--step 0.25]             # collision floor heights
+python3 tools/mei_world.py check WORLD --cells I,J --camera NAME=EX,EY,EZ@YAW,PITCH --build-dir build-mine
+python3 tools/mei_world.py floors WORLD --area X0,Z0,X1,Z1 --build-dir build-mine
+python3 tools/mei_world.py textures WORLD [--cells I,J] --build-dir build-mine
+```
+
+The world commands keep the compiled world in `BUILD_DIR/kit-cache/quick/` and reuse it while
+nothing it read has changed ([WORLDKIT.md](docs/WORLDKIT.md#quick-tools)).
+
 ## Dependencies
 
 - A C compiler and SDL3 (`brew install sdl3`). Optional: libusb (`brew install libusb`) for

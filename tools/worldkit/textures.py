@@ -25,7 +25,7 @@ from assetkit.compiler import native_bytes
 from assetkit.texout import rgb_hex
 from assetkit.textures import quantise, rgb_of
 from kitcore.errors import KitError, pointer
-from kitcore.texpack import pack as pack_tiles, SLOT_BYTES, FONT_SLOT, CELL
+from kitcore.texpack import pack as pack_tiles, SLOT_BYTES, FONT_SLOT
 from . import pack as P
 from .schema import WorldError
 
@@ -49,8 +49,7 @@ def parse_slots(text, path):
 
 def allocated(tile):
     """VRAM a tile takes on the packer's 8-texel grid (bytes)."""
-    cw, ch = tile.cells()
-    return cw * ch * CELL * CELL * tile.bits // 8
+    return tile.allocated_bytes()
 
 
 class RegionTextures:

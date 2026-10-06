@@ -1806,5 +1806,182 @@ class ConsoleTests(unittest.TestCase):
             self.assertEqual(got['floor'], ['1', '0', '1'])
 
 
+SCENE_PROBE = Path(os.environ.get('SCENE_PROBE', COMPILER.parent/'mei-scene-probe')).resolve()
+checker_tools = unittest.skipUnless(COMPILER.exists() and SCENE_PROBE.exists() and importlib.util.find_spec('numpy'),
+                                    'the World Checker needs NumPy, meic and mei-scene-probe')
+
+
+class AssetDirTests(unittest.TestCase):
+    """asset_dirs: up to 256 entries, DIR/* for every subfolder, clashes naming both files."""
+
+    def test_a_folder_of_asset_folders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            before = ex.compile().pack
+            for name in ('ramp', 'gate'):
+                (ex.dir/'more'/name).mkdir(parents=True)
+                shutil.move(str(ex.dir/'assets'/f'{name}.asset.json'), str(ex.dir/'more'/name/f'{name}.asset.json'))
+            (ex.dir/'more'/'.hidden').mkdir()
+            ex.edit(lambda w: w.update(asset_dirs=['more/*']))
+            self.assertEqual(ex.compile().pack, before)
+            ex.edit(lambda w: w.update(asset_dirs=['more/*', 'more/ramp']))     # named twice: searched once
+            self.assertEqual(ex.compile().pack, before)
+            (ex.dir/'empty').mkdir()
+            ex.edit(lambda w: w.update(asset_dirs=['more/*', 'empty/*']))
+            with self.assertRaises(WorldError) as cm:
+                ex.compile()
+            self.assertEqual(cm.exception.path, '/asset_dirs/1')
+            # a name in two folders: the message names both files
+            ex.edit(lambda w: w.update(asset_dirs=['more/*']))
+            shutil.copy(ex.dir/'more'/'ramp'/'ramp.asset.json', ex.dir/'assets'/'ramp.asset.json')
+            with self.assertRaisesRegex(WorldError, 'more than one asset directory') as cm:
+                ex.compile()
+            self.assertIn(os.path.join('assets', 'ramp.asset.json') + ' and ' + os.path.join('more', 'ramp', 'ramp.asset.json'),
+                          str(cm.exception))
+
+    def test_the_schema_takes_256(self):
+        from worldkit.schema import validate_world
+        with tempfile.TemporaryDirectory() as tmp:
+            world = Example(tmp).read()
+        validate_world(dict(world, asset_dirs=[f'd{k}' for k in range(256)]))
+        with self.assertRaises(WorldError):
+            validate_world(dict(world, asset_dirs=[f'd{k}' for k in range(257)]))
+
+    def test_make_depends_on_the_subfolders(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            (ex.dir/'more'/'ramp').mkdir(parents=True)
+            shutil.move(str(ex.dir/'assets'/'ramp.asset.json'), str(ex.dir/'more'/'ramp'/'ramp.asset.json'))
+            ex.edit(lambda w: w.update(asset_dirs=['more/*']))
+            sys.path.insert(0, str(ROOT/'tools'))
+            import world_cart
+            deps = world_cart.depfile(str(ex.world), Path(tmp)/'out')
+            self.assertIn('ramp.asset.json', deps)
+            self.assertIn(str(ex.dir/'more').replace(' ', '\\ ') + ' ', deps.replace('\n', ' ') + ' ')
+
+
+class QuickToolTests(unittest.TestCase):
+    """mei_world.py check, floors and textures (worldkit/quick.py)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.cache = Path(self.tmp.name)/'cache'
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_the_compiled_world_is_kept_by_its_inputs(self):
+        from worldkit.quick import load_world
+        ex = Example(self.tmp.name)
+        first = load_world(str(ex.world), None, self.cache)
+        self.assertFalse(first.cached)
+        self.assertEqual(first.pack, ex.compile().pack)
+        again = load_world(str(ex.world), None, self.cache)
+        self.assertTrue(again.cached)
+        self.assertEqual((again.pack, again.meta['cells']), (first.pack, first.meta['cells']))
+        ex.edit(lambda w: w['cells'][0]['placements'][1].update(position=[36, 0, 27]))
+        moved = load_world(str(ex.world), None, self.cache)
+        self.assertFalse(moved.cached)
+        self.assertNotEqual(moved.pack, first.pack)
+        ex.edit(lambda a: a['nodes'][0].update(size=[2.5, 1, 4]) if a['nodes'][0].get('size') else None,
+                'assets/ramp.asset.json')
+        self.assertFalse(load_world(str(ex.world), None, self.cache).cached)      # an asset recipe changed
+        (ex.dir/'assets'/'new.asset.json').write_text((ex.dir/'assets'/'ramp.asset.json').read_text())
+        self.assertFalse(load_world(str(ex.world), None, self.cache).cached)      # an asset directory's listing
+        self.assertTrue(load_world(str(ex.world), None, self.cache).cached)
+
+    def test_floors_are_the_packs(self):
+        from worldkit.quick import load_world, floors, floors_text
+        ex = Example(self.tmp.name)
+        world = load_world(str(ex.world), None, self.cache)
+        # off the faces' edges (where the reader's rows and the kit's float test may differ)
+        r = floors(world, (20.5, 20.5, 43.5, 43.5), 1.0, ['gate_closed', 'gate_open'])     # the kit's floor: every layer
+        points = []
+        for b, z in enumerate(r['z']):
+            for a, x in enumerate(r['x']):
+                points += [x, z]
+        kit = mei_world.floors(str(ex.world), points)['floors']
+        got = [h for row in r['heights'] for h in row]
+        self.assertEqual(len(kit), len(got))
+        for k, (want, h) in enumerate(zip(kit, got)):
+            if want['y'] is None or h is None:
+                self.assertEqual(want['y'], h, kit[k])
+            else:
+                self.assertAlmostEqual(want['y'], h, places=3)
+        names = {g['what'] for g in r['sources']}
+        self.assertIn('room/slope', names)
+        self.assertEqual(floors(world, (20, 20, 21, 21), 1.0)['layers'], ['gate_closed'])     # those on at the start
+        self.assertIn('heights', floors_text(r))
+        under = floors(world, (32, 30, 32, 30), 1.0, below=2.0)
+        self.assertLessEqual(under['heights'][0][0], 2.0)
+
+    def test_textures_are_the_regions(self):
+        from worldkit.quick import load_world, textures, textures_text
+        from worldkit.assets import Library, asset_directories
+        ex = Example(self.tmp.name, 'night_market')
+        report = ex.compile().report
+        world = load_world(str(ex.world), None, self.cache)
+        r = textures(world)
+        for name in ('market', 'harbour'):
+            want = report['regions'][name]['textures']
+            self.assertEqual(r['regions'][name]['allocated'], want['vram_bytes_allocated'])
+            self.assertEqual(r['regions'][name]['tiles'], want['tiles'])
+            self.assertEqual({a['asset']: a['allocated'] for a in r['regions'][name]['assets']},
+                             {n: a['vram_bytes'] for n, a in want['by_asset'].items()})
+        crate = next(a for a in r['regions']['market']['assets'] if a['asset'] == 'crate')
+        self.assertEqual(crate['allocated'], crate['own'] + crate['shared'])
+        one = textures(world, cells=[(1, 0)])
+        self.assertEqual(list(one['regions']), ['harbour'])
+        self.assertEqual(one['regions']['harbour']['selected']['assets'], ['crate', 'quay', 'warehouse'])
+        from worldkit.world import load
+        s = load(str(ex.world))
+        dirs = asset_directories(s.world, s.base)
+        added = textures(world, 'harbour', add={'harbour': ['stall']}, library=Library(dirs[0], s.base, dirs[1:]))
+        self.assertGreater(added['regions']['harbour']['allocated'], r['regions']['harbour']['allocated'])
+        self.assertIn('market:', textures_text(r))
+
+    @checker_tools
+    def test_check_one_cell_and_a_camera(self):
+        from worldkit.quick import load_world, check, check_text, parse_cells, parse_cameras
+        from worldkit import verify as V
+        ex = Example(self.tmp.name, 'two_districts')
+        world = load_world(str(ex.world), None, self.cache)
+        tools = {'compiler': COMPILER, 'probe': SCENE_PROBE}
+        cells = parse_cells(['1,0'], world)
+        cams = parse_cameras(['street=40,1.5,8@90,0'], None)
+        r = check(world, cells, cams, tools, 40)
+        self.assertEqual(r['focus']['cells'], [[1, 0]])
+        named = [v for v in r['views'] if 'name' in v]
+        self.assertTrue(named and all(v['name'] == 'street' and v['kind'] == 'vantage' for v in named))
+        self.assertTrue(all(tuple(v['camera']['cell']) == (1, 0) for v in r['views'] if 'name' not in v))
+        self.assertTrue(all('heaviest' in v for v in r['views']))
+        self.assertEqual([c['cell'] for c in r['static']['cells']], [[1, 0]])
+        # the cell's static findings are the full check's there
+        full = V.verify(world.pack, {'sampling': {'max_views': 1}}, None, None, tools)
+        mine = lambda f: (f['code'], f['floor_tag'], f['beyond_tag'], tuple(f['at']))
+        there = [f for f in full['static']['collision']['findings'] if (int(f['at'][0]) // 32, int(f['at'][2]) // 32) == (1, 0)]
+        self.assertEqual(sorted(map(mine, r['static']['collision']['findings'])), sorted(map(mine, there)))
+        self.assertIn('street', check_text(r, world, cells, cams))
+        with self.assertRaises(WorldError):
+            parse_cells(['9,9'], world)
+        self.assertEqual(parse_cells([world.meta['cells'][0]['id']], world), [tuple(world.meta['cells'][0]['at'])])
+
+    def test_cli_text_and_json(self):
+        ex = Example(self.tmp.name, 'night_market')
+        base = [*CLI, 'textures', str(ex.world), '--cache', str(self.cache)]
+        r = subprocess.run(base, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertTrue(r.stdout.startswith('night_market: texture VRAM'))
+        code, out = cli('textures', ex.world, '--cache', self.cache, '--json', '--region', 'market')
+        self.assertEqual((code, list(out['regions'])), (0, ['market']))
+        self.assertTrue(out['compiled']['compiled'] == 'cached')
+        r = subprocess.run([*CLI, 'floors', str(ex.world), '--cache', str(self.cache), '--area', '1,2'],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertTrue(r.stdout.startswith('error at /arguments/area'), r.stdout)
+        code, out = cli('check', ex.world, '--cache', self.cache, '--json')
+        self.assertEqual((code, out['errors'][0]['path']), (1, '/arguments'))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -2791,5 +2791,94 @@ class DecalTests(unittest.TestCase):
         self.assertGreater(report['totals']['wrong_pixels'],0)
 
 
+class InfoFloorsTests(unittest.TestCase):
+    """mei_assets.py info and floors (assetkit/info.py): read-only facts from the recipe."""
+
+    def platform(self):
+        # a slab 4 x 1 x 2 standing on y = 0, and a ramp up the east end too steep to stand on
+        return recipe({'id':'slab','op':'box','size':[4,1,2],'transform':{'translate':[0,0.5,0]}},
+                      lod={'levels':[{'distance':20,'nodes':[{'id':'slab','op':'box','size':[4,1,2],
+                                                               'transform':{'translate':[0,0.5,0]}}]}]})
+
+    def test_info_bounds_levels_and_collision(self):
+        from assetkit import info as I
+        r = I.info(self.platform(),None,'self',[10,0,5],90)
+        self.assertEqual(r['bounds'],{'min':[-2,0,-1],'max':[2,1,1]})
+        self.assertEqual(r['placed']['bounds'],{'min':[9,0,3],'max':[11,1,7]})     # yaw 90: +Z toward +X
+        self.assertEqual([(l['level'],l['distance']) for l in r['lod']['levels']],[(0,0),(1,20)])
+        c = r['collision']
+        self.assertEqual((c['floors'],c['ceilings'],c['walls'],c['triangles']),(2,2,8,12))
+        self.assertEqual((c['top_floor'],c['placed_top_floor']),(1.0,1.0))
+        self.assertIsNone(r['textures'])
+        self.assertEqual(I.info(self.platform(),None,'none')['collision'],{'source':'none'})
+
+    def test_kinds_are_the_world_kits(self):
+        # the floors, walls and ceilings info counts are the ones the World Kit's collision files
+        from assetkit import info as I
+        from worldkit import pack as P
+        r = recipe({'id':'wedge','op':'extrude','depth':2,'points':[[0,0],[3,0],[3,1],[1.5,1],[0,5]]})
+        mesh,materials,_ = compile_recipe(r)
+        cos = math.cos(math.radians(45))
+        world = [P.classify(P.front_normal(*[tuple(float(c) for c in v) for v in t]),cos,cos)
+                 for t in P.mesh_triangles(native_bytes(mesh,materials,{}))]
+        mine = I.kinds(I.triangles(mesh),45)
+        names = {P.KIND_FLOOR:'floor',P.KIND_CEILING:'ceiling',P.KIND_WALL:'wall'}
+        self.assertEqual([names[k] for k in world],['wall' if k == 'steep' else k for k in mine])
+        self.assertIn('steep',mine)
+
+    def test_floors_grid(self):
+        from assetkit import info as I
+        r = I.floors(self.platform(),None,1.0,'self')
+        self.assertEqual((r['x'],r['z']),([-2,-1,0,1,2],[-1,0,1]))
+        self.assertEqual(r['heights'][1],[1.0]*5)
+        self.assertEqual(r['marks'][0][0],'wall')            # the slab's corner: its sides pass there
+        self.assertEqual(r['floor_heights'],[1.0])
+        self.assertEqual(r['stacks'][1][2],[1.0])
+        under = I.floors(self.platform(),None,1.0,'self',below=0.5)
+        self.assertTrue(all(h is None for row in under['heights'] for h in row))
+        placed = I.floors(self.platform(),None,1.0,'self',[0,2,0],0)
+        self.assertEqual(placed['heights'][1][2],3.0)
+
+    def test_collision_beside_the_recipe(self):
+        from assetkit import info as I
+        with tempfile.TemporaryDirectory() as tmp:
+            col = recipe({'id':'deck','op':'box','size':[4,0.2,2],'transform':{'translate':[0,2.9,0]}})
+            col['name'] = 'test_col'
+            Path(tmp,'test_col.asset.json').write_text(json.dumps(col))
+            r = I.info(self.platform(),tmp)
+            self.assertIn('test_col.asset.json',r['collision']['source'])
+            self.assertEqual(r['collision']['top_floor'],3.0)
+            self.assertEqual(I.info(self.platform(),tmp,'self')['collision']['top_floor'],1.0)
+
+    @unittest.skipUnless(PILLOW,'The stall example reads a PNG sheet (Pillow).')
+    def test_info_textures(self):
+        from assetkit import info as I
+        stall = ROOT/'examples/assets/stall.asset.json'
+        r = json.loads(stall.read_text())
+        mesh,_,report = compile_recipe(r,stall.parent)
+        t = I.info(r,stall.parent)['textures']
+        self.assertEqual(t['tiles'],report['textures']['tiles'])
+        self.assertEqual(t['stored'],report['textures']['vram_bytes'])
+        self.assertEqual(len(t['textures']),len(mesh.textures['textures']))
+        self.assertEqual(t['windows']['used'],report['textures']['windows'])
+        shared = [im for im in t['images'] if len(im['materials']) > 1]
+        self.assertTrue(shared)                              # the sheet's cells share one image
+
+    def test_cli(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp,'test.asset.json')
+            path.write_text(json.dumps(self.platform()))
+            run = lambda *a: subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),*a],capture_output=True,text=True)
+            result = run('info',str(path),'--json','--at','1,2,3','--yaw','90')
+            self.assertEqual(result.returncode,0,result.stdout)
+            self.assertEqual(json.loads(result.stdout)['placed']['at'],[1,2,3])
+            result = run('floors',str(path),'--step','0.5')
+            self.assertEqual(result.returncode,0,result.stdout)
+            self.assertIn('heights',result.stdout)
+            result = run('floors',str(path),'--at','1,2')
+            self.assertEqual(result.returncode,1)
+            self.assertTrue(result.stdout.startswith('error at /arguments/at'),result.stdout)
+
+
 if __name__ == '__main__':
     unittest.main()

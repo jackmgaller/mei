@@ -373,6 +373,17 @@ class Texture:
         return out
 
 
+def image_files(recipe):
+    """The files a recipe's textures read, relative to its folder: images, sheets and the
+    sheets' NAME.sheet.json."""
+    names = [m['texture']['image'] for m in recipe.get('materials',{}).values() if 'image' in m.get('texture',{})]
+    for sheet in recipe.get('sheets',{}).values():
+        names.append(sheet['image'])
+        if 'grid' not in sheet:
+            names.append(str(Path(sheet['image']).with_suffix('.sheet.json')))
+    return sorted(set(names))
+
+
 def describe(tex):
     """A texture's source in a few words, for messages: pattern 'brick', image art/x.png, ..."""
     src = tex.source

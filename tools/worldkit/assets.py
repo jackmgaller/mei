@@ -69,6 +69,26 @@ def relative(path, base):
     except ValueError: return str(path)
 
 
+def asset_directories(world, base, assets_dir=None):
+    """The world's asset directories in search order: `assets` (or assets_dir), then each entry
+    of `asset_dirs`, resolved against base; an entry ending in /* stands for every immediate
+    subfolder of its folder, in name order (a level can list assets/* once instead of a folder
+    per asset). A directory named twice is searched once, where it first appears."""
+    main = Path(assets_dir).resolve() if assets_dir else (Path(base)/world['assets']).resolve()
+    out = [main]
+    for k,entry in enumerate(world.get('asset_dirs',[])):
+        if entry == '*' or entry.endswith('/*'):
+            parent = (Path(base)/entry[:-1]).resolve()
+            found = sorted((p.resolve() for p in parent.iterdir() if p.is_dir() and not p.name.startswith('.')),
+                           key=lambda p: p.name) if parent.is_dir() else []
+            if not found:
+                raise WorldError(f'/asset_dirs/{k}',f'{entry!r}: {parent} has no subfolders.')
+        else:
+            found = [(Path(base)/entry).resolve()]
+        out += [d for d in found if d not in out]
+    return out
+
+
 class Library:
     """The world's assets by name, compiled on first use."""
 
@@ -83,8 +103,11 @@ class Library:
         name in two of them is an error."""
         found = [d/f'{name}.asset.json' for d in self.directories if (d/f'{name}.asset.json').is_file()]
         if len(found) > 1:
+            shown = [relative(f,self.base_path) for f in found]
             raise WorldError(path,f'Asset {name!r} is in more than one asset directory: '
-                                  +', '.join(relative(f,self.base_path) for f in found)+'.',file)
+                                  +', '.join(shown[:-1])+' and '+shown[-1]+'. An asset\'s name is unique among '
+                                  'the world\'s asset directories (assets and asset_dirs): rename one of them (its '
+                                  'file and its recipe\'s name), or leave one directory out.',file)
         return found[0] if found else self.directory/f'{name}.asset.json'
 
     @staticmethod

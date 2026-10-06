@@ -348,14 +348,20 @@ def build(recipe, directory, preview=False, compiler=None, runner=None, input_pa
 
 
 def images_of(recipe):
-    """The files a recipe's textures read, relative to its folder: images, sheets and the
-    sheets' NAME.sheet.json."""
-    names = [m['texture']['image'] for m in recipe.get('materials',{}).values() if 'image' in m.get('texture',{})]
-    for sheet in recipe.get('sheets',{}).values():
-        names.append(sheet['image'])
-        if 'grid' not in sheet:
-            names.append(str(Path(sheet['image']).with_suffix('.sheet.json')))
-    return sorted(set(names))
+    """The files a recipe's textures read, relative to its folder (assetkit.textures.image_files)."""
+    from assetkit.textures import image_files
+    return image_files(recipe)
+
+
+def numbers(text, n, what):
+    """'1,2,3' -> [1.0, 2.0, 3.0], n of them."""
+    try:
+        values = [float(v) for v in text.split(',')]
+    except ValueError:
+        values = []
+    if len(values) != n:
+        raise AssetError(f'/arguments/{what}',f'Give --{what} as {n} numbers separated by commas, not {text!r}.')
+    return values
 
 
 def slot_list(text):
@@ -442,6 +448,24 @@ def parser():
             cmd.add_argument('--depth',action='store_true',help='Judge the asset as drawn with the depth buffer (policy depth: true).')
             cmd.add_argument('--perspective',action='store_true',help='Draw it with perspective-correct texturing (policy perspective: true).')
             cmd.add_argument('--depth-views',type=int,help='With depth: the views of the sweep judged (default 16; more if needed to judge every face drawn).')
+    for name,text in (('info','Bounds (drawn and collision), triangles per level of detail and switch distances, '
+                                'texture bytes per texture, palettes and texture windows.'),
+                      ('floors','A grid of the collision\'s top floor heights, with walls and too-steep faces marked.')):
+        cmd = sub.add_parser(name,help=text)
+        cmd.add_argument('recipe',help='Recipe JSON path.')
+        cmd.add_argument('--json',action='store_true',help='The result as JSON (default: plain text).')
+        cmd.add_argument('--at',metavar='X,Y,Z',help='Place it here (world units), as a world placement does.')
+        cmd.add_argument('--yaw',type=float,default=0.0,help='Placement yaw in degrees (+Z toward +X, as mesh_at()).')
+        cmd.add_argument('--collision',default='auto',metavar='auto|self|none|PATH',
+                         help='The collision: auto (NAME_col.asset.json beside the recipe, else the recipe), self, none '
+                              '(info only) or a collision recipe path.')
+        cmd.add_argument('--floor-max',type=float,default=45.0,metavar='DEG',
+                         help='Steepest floor in degrees (default 45, the World Kit\'s; a game\'s probe may say less).')
+        if name == 'floors':
+            cmd.add_argument('--step',type=float,default=0.25,help='Grid spacing (units, default 0.25).')
+            cmd.add_argument('--area',metavar='X0,Z0,X1,Z1',help='The grid\'s extent (default: the collision\'s bounds).')
+            cmd.add_argument('--below',type=float,metavar='Y',help='The highest floor at or below this height (under a '
+                             'roof, say); the JSON\'s stacks list every floor at each point.')
     pk = sub.add_parser('pack',help='Pack several assets (or one) for a cart without a world: shared texture slots and palettes, one loader.')
     pk.add_argument('recipes',nargs='+',help='Recipe JSON paths.')
     pk.add_argument('-o','--output',required=True,help='Dedicated generated-output directory.')
@@ -493,15 +517,8 @@ def inspect_extras(recipe, mesh, report):
     report['flush_contacts'] = flush_contacts(mesh,depth)
     report['close_faces'] = close_contacts(mesh)
     if mesh.textures:
-        from assetkit.compiler import window_order
-        from assetkit.textures import describe, MAX_WINDOWS
-        packing, textures = mesh.textures['packing'], mesh.textures['textures']
-        windows = []
-        for k,key in enumerate(window_order(mesh,packing),1):
-            users = [t for t in textures.values() if t.tile.key == key]
-            windows.append({'window':k,'texture':describe(users[0]),'size':[users[0].width,users[0].height],
-                            'bits':users[0].bits,'materials':sorted(t.material for t in users)})
-        report['texture_windows'] = {'used':len(windows),'max':MAX_WINDOWS,'windows':windows}
+        from assetkit.info import texture_windows
+        report['texture_windows'] = texture_windows(mesh)
     report['warnings'] += mesh.notes or []
     below = [(part['bounds']['min'][1],part['id']) for part in report['parts'] if part['bounds']['min'][1] < 0]
     if below:
@@ -530,6 +547,20 @@ def main(argv=None):
             output({'ok':True,'recipe':str(Path(args.output).resolve()),'next':'inspect, then preview this recipe'})
         elif args.command == 'pack':
             output(pack_command(args))
+        elif args.command in ('info','floors'):
+            from assetkit import info as I
+            recipe = load(args.recipe)
+            at = numbers(args.at,3,'at') if args.at else None
+            if args.command == 'info':
+                result = I.info(recipe,folder(args.recipe),args.collision,at,args.yaw,args.floor_max)
+                text = I.info_text(result)
+            else:
+                area = numbers(args.area,4,'area') if args.area else None
+                result = I.floors(recipe,folder(args.recipe),args.step,args.collision,at,args.yaw,args.floor_max,area,
+                                  args.below)
+                text = I.floors_text(result)
+            if args.json: output(result)
+            else: print(text)
         elif args.command == 'export':
             output(gltf.command(args,load,folder))
         elif args.command == 'import-obj':
@@ -586,6 +617,10 @@ def main(argv=None):
         # the errors first, so that the reason leads a long failure report
         path = getattr(error,'path','/input')
         node = node_of(recipe,path)
+        args_given = sys.argv[1:] if argv is None else list(argv)
+        if args_given and args_given[0] in ('info','floors') and '--json' not in args_given:
+            print(f'error at {path}' + (f' ({node})' if node else '') + f': {error}')
+            return 1
         output({'ok':False,'errors':[{'path':path,**({'node':node} if node else {}),'message':str(error)}],
                 **{k:v for k,v in getattr(error,'report',{}).items() if k not in ('ok','errors')}})
         return 1

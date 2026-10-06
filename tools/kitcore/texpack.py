@@ -89,6 +89,12 @@ class Tile:
         """The bytes of VRAM the tile occupies (its gutter included, not the grid's rounding)."""
         return self.row_bytes()*self.alloc_height
 
+    def allocated_bytes(self):
+        """The bytes of VRAM the tile takes on the packer's 8-texel grid (as a region's texture
+        budget counts them)."""
+        cw, ch = self.cells()
+        return cw*ch*CELL*CELL*self.bits//8
+
     def row_bytes(self):
         """Bytes per row of one frame in the tile's own layout (a frame file; 4-bit rows even)."""
         return -(-self.alloc_width // 2) if self.bits == 4 else self.alloc_width

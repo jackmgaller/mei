@@ -1146,7 +1146,7 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | Property | Meaning |
 |---|---|
 | `game`, `assets`, `cell_dir` | Paths relative to the world file: the game schema, the Asset Kit recipes (`NAME.asset.json`), the cell files |
-| `asset_dirs` | More directories of Asset Kit recipes, searched with `assets` (a level whose grey boxes and real assets live in folders of their own); a name found in two of them is an error |
+| `asset_dirs` | More directories of Asset Kit recipes, searched with `assets` (a level whose grey boxes and real assets live in folders of their own), at most 256; an entry ending in `/*` is every immediate subfolder of its folder, in name order (`"assets/*"` once for a folder per asset; a glob with no subfolders is an error), and a directory named twice is searched once. A name found in two of them is an error that names both files |
 | `grid.cell_size` | 16, 32, 64 or 128 units: the pack's `cell_shift`. Cell (*i*, *j*) (`at`) covers *x* in [*i S*, (*i*+1) *S*) and *z* likewise |
 | `overhang` | How far a placement may reach past its cell (default 8, at most half a cell) |
 | `collision.pad` | How far walls are copied past a cell's edge: at least, and by default, the probe radius |
@@ -1754,6 +1754,9 @@ contract](#build-outputs-and-the-runtime-contract)).
 | `build FILE -o DIR [--locked] [--preview] [--world-checker full\|skip\|N]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam |
 | `preview FILE -o DIR [--cell ID] [--locked] [--world-checker full\|skip\|N]` | `build`, plus native renders of a cell per region and palette variant (`--cell` picks the cell) |
 | `floor FILE X Z [X Z ...]` | The highest floor under each point, from the world's collision as the kit builds it: `{"at", "y", "from"}`, `from` being `terrain`, `sweep` or a placement's ID (`y` null: none). For setting placements and entities on the ground |
+| `check FILE [--cells I,J[;I,J...]] [--camera SPEC]... [--cameras FILE] [--max-views 200] [-o DIR]` | The World Checker on a few cells and cameras, in seconds ([Quick tools](#quick-tools)) |
+| `floors FILE --area X0,Z0,X1,Z1 [--step 1] [--layers A,B] [--below Y]` | The pack's floor heights over an area as `wp_floor()` finds them, what each belongs to, holes and cracks ([Quick tools](#quick-tools)) |
+| `textures FILE [--region R] [--cells ...] [--add REGION:ASSET,...]` | Texture VRAM per region, by asset and by image, against the region's budget ([Quick tools](#quick-tools)) |
 
 `--world-checker` is for quick builds, such as the World Kit's own tests: `full` (the default)
 runs the World Checker with the world's settings; `skip` does not run it, and `report.json`
@@ -1770,6 +1773,77 @@ PACK -o DIR` ([WORLDCHECKER.md](WORLDCHECKER.md)). *Proposals, not built:* `veri
 FILE --cell ID -o RECIPE` (an Asset Kit recipe of boxes from the cell's placement bounds, for an
 agent to edit; the Asset Kit then builds it like any other, so the World Kit still models
 nothing).
+
+### Quick tools
+
+Built (2026-10-05). Three read-only commands for placing things in a world, each in seconds
+once the world has been compiled (`tools/worldkit/quick.py`). They print plain text; `--json`
+gives the result as JSON (and errors as the other commands give them; plain `error at PATH:
+message` without it). Exit 1 when the result fails (a check that fails, a region over its
+budget).
+
+**The compiled world is cached.** Each needs the world compiled (pack, placements, texture
+sets), which takes about 30 s for the shrine town (30 cells, 7 MB). The tools keep it in
+`BUILD_DIR/kit-cache/quick/` (`--build-dir DIR`, else `$B`, else `build/`; `--cache DIR`,
+`--no-cache`, `--refresh`) with a manifest of everything the compile read: the world file, the
+cell files and the cell folder's listing, the game schema, the ID lock file, every asset recipe
+used and the images and sheets its textures read, each asset directory's listing (and a `/*`
+entry's subfolders), the terrain's heights files and images, and the hash of the kit's code
+(`worldkit/cache.py`'s `code_hash`). While all of it is unchanged the next run loads the
+compiled world in about 0.6 s; after any change it compiles again and keeps the new one. Nothing
+a build writes is touched: the ID lock file is never written.
+
+**`check FILE --cells ... --camera ...`** runs the World Checker (`verify()` with a `focus`,
+[WORLDCHECKER.md](WORLDCHECKER.md#the-quick-check)) with the world's own settings: mode,
+thresholds, runtime (depth, perspective) and the game's probe. For the cells (`I,J` as a cell's
+`at`, or a cell ID; separated by `;` or the option repeated) it runs the static collision
+checks for what lies in them (cracks and mismatched floor edges, entities in solid, the cells'
+budgets) and the views sampled from them (at most `--max-views`, default 200; the full check
+samples 600 over the whole world); each camera (`--camera NAME=EX,EY,EZ:TX,TY,TZ` or
+`NAME=EX,EY,EZ@YAW,PITCH`, or a `--cameras` file, as the Asset Kit's
+[camera views](ASSETKIT.md#camera-views-at-world-scale) take them) is a vantage point, once per
+layer set. Every view lists its heaviest placements, named. The text lists the cells' budgets,
+the cameras and the worst sampled views (`--rows`), each with triangles, draw CPU and GPU cycles
+and stand-ins, against the limits:
+
+```
+$ python3 tools/mei_world.py check carts/garden/shrinetown/shrinetown.world.json --camera v5_spawn=160,1.6,26@0,0 --build-dir build-mine
+shrinetown: World Checker on 1 camera (report mode; compiled world cached, 0.6 s; check 3.5 s)
+Views: 5 (5 from 1 camera x 5 layer sets); limits 4,000 triangles, 600,000 draw CPU, 1,600,000 GPU cycles
+  view                           tris  draw CPU       GPU stand-ins  heaviest placements (faces, level)
+  v5_spawn                        995   341,884   329,076        10  station_concourse 579 L0, station_platform 410 L0, arcade_roof 130 L1
+                               eye [160.0, 1.6, 26.0] yaw 0.0 pitch 0.0
+  ...
+ok: 0 hard failures, 0 over thresholds
+```
+
+On the shrine town (Apple-silicon Mac): one or two cells about 10 s, a camera 2.5–5 s, plus
+0.4–0.6 s to load the cached world (22–30 s to compile it after a change); the full build
+with the World Checker takes about 160 s (the checker 113 s of it, its static checks 87). A
+cell's collision findings are the full check's in that cell (`tests/test_worldkit.py` compares
+them).
+
+**`floors FILE --area X0,Z0,X1,Z1 [--step 1]`** reads the built pack's collision with the
+reader's own floor query (`verify_static.reader_floor()`, bit for bit `wp_floor()`): at each
+grid point the highest floor (or the highest at or below `--below Y`, as a body there finds it),
+with the layers on at the start (`--layers A,B` for others, `""` for none). It prints the
+heights, north up, then a letter per point for what the floor belongs to (a placement, by cell
+and ID with its asset, or `terrain`, `sweep`, `scatter`), with a legend; `!` marks a hole (no
+floor where the four neighbours have floors within the probe's step) and the World Checker's
+crack findings in the area are listed. A placement's collision copied into a neighbouring cell
+keeps its own cell's tag; the name is taken from the nearest placement with that tag. Unlike
+`floor`, which tests the kit's collision before packing in floating point, a point exactly on a
+face's edge is decided as the console decides it.
+
+**`textures FILE`** gives each region's texture VRAM as the kit packs it: every distinct tile
+once, on the 8-texel grid, against `textures.budget` (the numbers of `report.json`'s
+`regions.R.textures`), then per asset its bytes, its own (tiles no other asset of the region
+uses) and shared ones and whom it shares with, per image or sheet the bytes and the assets that
+read it, and the tiles assets share. `--region R` shows one; `--cells` the assets drawn in those
+cells, with their bytes and the bytes no other asset of the region uses; `--add
+REGION:ASSET[,ASSET...]` counts assets as if placed there (names in the world's asset
+directories, or recipe paths), to check a budget before placing. The shrine town's
+`tools/textures.py` adds its zones and allowances on top.
 
 ### Using the tool
 

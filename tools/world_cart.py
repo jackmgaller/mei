@@ -85,8 +85,11 @@ def depfile(recipe, out):
     deps += [cs.file for cs in source.cells if cs.file]
     if 'cell_dir' in source.world:
         deps.append(source.base/source.world['cell_dir'])
-    for d in [source.world['assets']]+source.world.get('asset_dirs', []):
-        assets = (source.base/d).resolve()
+    from worldkit.assets import asset_directories
+    for d in source.world.get('asset_dirs', []):
+        if d == '*' or d.endswith('/*'):
+            deps.append((source.base/d[:-1]).resolve())     # an added subfolder counts too
+    for assets in asset_directories(source.world, source.base):
         deps.append(assets)
         if assets.is_dir():
             deps += sorted(p for p in assets.iterdir() if p.is_file() and p.name.endswith('.asset.json'))
