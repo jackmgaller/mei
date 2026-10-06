@@ -1,0 +1,26 @@
+// The test room with fog per palette variant (tests/test_worldkit.py adds it to a copy of the
+// recipe): world_test_room_fog() sets the GPU's fog registers for each variant (a proposal,
+// docs/DECISIONS.md).
+
+cart "World Kit Fog"
+import "test_room.akr"
+
+fn out(label: *u8, a: u32, b: u32) {
+    print(label)
+    print_char(' ')
+    print_uint(a)
+    print_char(' ')
+    print_uint(b)
+    println("")
+}
+
+fn init() {
+    assert(world_test_room_load())
+    world_test_room_fog(WORLD_TEST_ROOM_REGION_LAB, WORLD_TEST_ROOM_LAB_VARIANT_DAY)
+    out("day", GPU_FOG, GPU_FOG_RANGE)
+    world_test_room_fog(WORLD_TEST_ROOM_REGION_LAB, WORLD_TEST_ROOM_LAB_VARIANT_NIGHT)
+    out("night", GPU_FOG, GPU_FOG_RANGE)
+}
+
+fn update() {}
+fn draw() {}

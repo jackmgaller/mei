@@ -38,6 +38,8 @@ void gpu_reset(Mei *m) {
     m->gpu_ctrl = 0;
     m->gpu_status = 0;
     m->gpu_depth = 0;
+    m->gpu_fog = 0;
+    m->gpu_fog_range = 0;
     memset(m->zbuf, 0, sizeof m->zbuf);
 }
 
@@ -81,6 +83,7 @@ typedef struct {
     int32_t x, y;
     int32_t a[5];      /* r, g, b, u, v (each 0-255) */
     int64_t rw;        /* packets with depth: the vertex reciprocal 2^40 / w, 512 to 2^28 */
+    int32_t f;         /* packets with depth while GPU_FOG is on: the fog factor, 0-256 */
 } Vtx;
 
 typedef struct {
@@ -102,6 +105,8 @@ typedef struct {
     uint32_t zoff;     /* the decal offset: first colour word bits 27-31, in key steps */
     uint16_t *zbuf;
     int persp;         /* a textured packet with depth: perspective-correct u, v */
+    int fog;           /* a packet with depth while GPU_FOG is on (a proposal, DECISIONS.md) */
+    int32_t fogc[3];   /* the colour fogged pixels blend toward: GPU_FOG's, or black (additive modes) */
 } Raster;
 
 static int64_t floor_div(int64_t n, int64_t d) {
@@ -135,15 +140,16 @@ typedef struct { int32_t q, qs; int64_t r, rs; } Dda;
 #define FORCE_INLINE inline
 #endif
 
-enum { F_GOURAUD = 1, F_TEXTURED = 2, F_SEMI = 4, F_DITHER = 8, F_WINDOW = 16, F_ZTEST = 32, F_PERSP = 64 };
+enum { F_GOURAUD = 1, F_TEXTURED = 2, F_SEMI = 4, F_DITHER = 8, F_WINDOW = 16, F_ZTEST = 32, F_PERSP = 64, F_FOG = 128 };
 
 static FORCE_INLINE int clamp255(int v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
 static FORCE_INLINE int clamp31(int v) { return v < 0 ? 0 : v > 31 ? 31 : v; }
 
-/* The pixel pipeline for one pixel: texel + tint, dither, blend, write. Returns 0 when the
- * texel is index 0 (nothing written), 1 when the pixel was written. */
+/* The pixel pipeline for one pixel: texel + tint, fog, dither, blend, write. Returns 0 when the
+ * texel is index 0 (nothing written), 1 when the pixel was written. fz is the pixel's fog factor
+ * (0-256), used with F_FOG only. */
 static FORCE_INLINE int shade(const Raster *R, uint8_t *row, int x, const int8_t *dm,
-                               int r, int g, int b, uint32_t u, uint32_t v, const int F) {
+                               int r, int g, int b, uint32_t u, uint32_t v, int fz, const int F) {
     if (F & F_TEXTURED) {
         const uint8_t *tex = R->tex;
         uint32_t idx;
@@ -159,6 +165,11 @@ static FORCE_INLINE int shade(const Raster *R, uint8_t *row, int x, const int8_t
         if (r > 255) r = 255;
         if (g > 255) g = 255;
         if (b > 255) b = 255;
+    }
+    if (F & F_FOG) {   /* toward the fog colour by fz / 256, rounded down (>> of a negative floors) */
+        r += (R->fogc[0] - r) * fz >> 8;
+        g += (R->fogc[1] - g) * fz >> 8;
+        b += (R->fogc[2] - b) * fz >> 8;
     }
     if (F & F_DITHER) {
         int o = dm[x & 3];
@@ -205,7 +216,7 @@ static FORCE_INLINE void span_fixed(const Raster *R, uint8_t *row, int y, int x0
             u = (uint32_t)((uint64_t)au >> sh); v = (uint32_t)((uint64_t)av >> sh);
             au += su; av += sv;
         }
-        shade(&L, row, x, dm, r, g, b, u, v, F);
+        shade(&L, row, x, dm, r, g, b, u, v, 0, F);
     }
 }
 
@@ -235,7 +246,7 @@ static void span_exact(const Raster *R, uint8_t *row, int y, int x0, int x1, con
         int r = (F & F_GOURAUD) ? d[0].q : R->flat[0];
         int g = (F & F_GOURAUD) ? d[1].q : R->flat[1];
         int b = (F & F_GOURAUD) ? d[2].q : R->flat[2];
-        shade(R, row, x, dm, r, g, b, (uint32_t)d[3].q, (uint32_t)d[4].q, F);
+        shade(R, row, x, dm, r, g, b, (uint32_t)d[3].q, (uint32_t)d[4].q, 0, F);
         for (int k = 0; k < 5; k++) {
             d[k].q += d[k].qs;
             d[k].r += d[k].rs;
@@ -279,13 +290,15 @@ typedef struct {
     int64_t area;
     int64_t za, zb, zc, zqs, zrs;   /* the inverse-depth plane, and its DDA step along x */
     int64_t pa[3], pb[3], pc[3];    /* the perspective planes U, V, Q */
+    int64_t fa, fb, fc, fqs, frs;   /* the fog factor's plane, and its DDA step along x */
     uint32_t fails, divs;           /* out: pixels that failed the depth test, divides made */
     int persp;                      /* out: drawn perspective-correct (the q_i were not all equal) */
 } TriExt;
 
-/* A span with the depth test (F_ZTEST), perspective (F_PERSP) or both. Colours, and u, v when not
- * perspective, come from the fixed-point accumulators (acc != NULL) or the exact DDAs, as in
- * span_fixed and span_exact; the two give identical values. */
+/* A span with the depth test (F_ZTEST), perspective (F_PERSP), fog (F_FOG) or any of them.
+ * Colours, and u, v when not perspective, come from the fixed-point accumulators (acc != NULL) or
+ * the exact DDAs, as in span_fixed and span_exact; the two give identical values. The fog factor
+ * is stepped with an exact quotient/remainder DDA, like the inverse depth. */
 static FORCE_INLINE void span_ext(const Raster *R, uint8_t *row, int y, int x0, int x1,
                                   const int64_t *acc, const int64_t *step, int sh, const Dda *d0,
                                   TriExt *X, const int F) {
@@ -312,6 +325,12 @@ static FORCE_INLINE void span_ext(const Raster *R, uint8_t *row, int y, int x0, 
     int64_t su = 0, sv = 0, dsu = 0, dsv = 0, nu = 0, nv = 0;
     int64_t U0 = 0, V0 = 0, Q0 = 0;
     int seg_end = x0;   /* the next divide point; the first is x0 itself */
+    int64_t fq = 0, fr = 0;
+    if (F & F_FOG) {
+        int64_t n = X->fa * x0 + X->fb * y + X->fc;
+        fq = floor_div(n, area);
+        fr = n - fq * area;
+    }
     if (F & F_PERSP) {
         U0 = X->pa[0] * x0 + X->pb[0] * y + X->pc[0];
         V0 = X->pa[1] * x0 + X->pb[1] * y + X->pc[1];
@@ -347,7 +366,7 @@ static FORCE_INLINE void span_ext(const Raster *R, uint8_t *row, int y, int x0, 
             uint32_t key = zkey(zq) + L.zoff;
             if (key > 0xFFFF) key = 0xFFFF;
             if (key >= zrow[x]) {   /* early depth: a failing pixel goes no further */
-                if (shade(&L, row, x, dm, r, g, b, u, v, F & 31) && L.zwrite) zrow[x] = (uint16_t)key;
+                if (shade(&L, row, x, dm, r, g, b, u, v, (int)fq, F & (31 | F_FOG)) && L.zwrite) zrow[x] = (uint16_t)key;
             } else {
                 fails++;
             }
@@ -355,7 +374,12 @@ static FORCE_INLINE void span_ext(const Raster *R, uint8_t *row, int y, int x0, 
             zr += X->zrs;
             if (zr >= area) { zr -= area; zq++; }
         } else {
-            shade(&L, row, x, dm, r, g, b, u, v, F & 31);
+            shade(&L, row, x, dm, r, g, b, u, v, (int)fq, F & (31 | F_FOG));
+        }
+        if (F & F_FOG) {
+            fq += X->fqs;
+            fr += X->frs;
+            if (fr >= area) { fr -= area; fq++; }
         }
         if (fast) {
             if (F & F_GOURAUD) { a[0] += st[0]; a[1] += st[1]; a[2] += st[2]; }
@@ -387,8 +411,17 @@ typedef void (*SpanExtFn)(const Raster *, uint8_t *, int, int, int, const int64_
     X(50) X(51) X(54) X(55) X(58) X(59) X(62) X(63) X(66) X(67) X(70) X(71) X(74) X(75) X(78) X(79) \
     X(82) X(83) X(86) X(87) X(90) X(91) X(94) X(95) X(98) X(99) X(102) X(103) X(106) X(107) X(110) \
     X(111) X(114) X(115) X(118) X(119) X(122) X(123) X(126) X(127)
+/* and every flag set with F_FOG (a proposal, DECISIONS.md) */
+#define SPAN_FOG_LIST(X) \
+    X(128) X(129) X(130) X(131) X(132) X(133) X(134) X(135) X(136) X(137) X(138) X(139) X(140) X(141) \
+    X(142) X(143) X(146) X(147) X(150) X(151) X(154) X(155) X(158) X(159) X(160) X(161) X(162) X(163) \
+    X(164) X(165) X(166) X(167) X(168) X(169) X(170) X(171) X(172) X(173) X(174) X(175) X(178) X(179) \
+    X(182) X(183) X(186) X(187) X(190) X(191) X(194) X(195) X(198) X(199) X(202) X(203) X(206) X(207) \
+    X(210) X(211) X(214) X(215) X(218) X(219) X(222) X(223) X(226) X(227) X(230) X(231) X(234) X(235) \
+    X(238) X(239) X(242) X(243) X(246) X(247) X(250) X(251) X(254) X(255)
 SPAN_EXT_LIST(SPAN_EXT_DEF)
-static const SpanExtFn span_ext_fns[128] = { SPAN_EXT_LIST(SPAN_EXT_ENTRY) };
+SPAN_FOG_LIST(SPAN_EXT_DEF)
+static const SpanExtFn span_ext_fns[256] = { SPAN_EXT_LIST(SPAN_EXT_ENTRY) SPAN_FOG_LIST(SPAN_EXT_ENTRY) };
 
 /* Returns the number of pixels written (for the frame statistics). */
 static uint32_t draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vtx *v2, TriExt *X) {
@@ -441,6 +474,14 @@ static uint32_t draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vt
     int flags = (R->gouraud ? F_GOURAUD : 0) | (R->textured ? F_TEXTURED : 0) |
                 (R->semi ? F_SEMI : 0) | (R->dither ? F_DITHER : 0) | (R->window ? F_WINDOW : 0);
     if (R->ztest) flags |= F_ZTEST;
+    /* fog: a triangle whose three factors are 0 draws exactly as without it */
+    if (R->fog && (V[0]->f | V[1]->f | V[2]->f)) {
+        flags |= F_FOG;
+        X->fa = X->fb = X->fc = 0;
+        for (int i = 0; i < 3; i++) { X->fa += V[i]->f * A[i]; X->fb += V[i]->f * B[i]; X->fc += V[i]->f * C[i]; }
+        X->fqs = floor_div(X->fa, area);
+        X->frs = X->fa - X->fqs * area;
+    }
     if (R->persp) {
         /* q_i: the reciprocals shifted right together until the largest fits 16 bits. Three
          * equal ones make U / Q the affine value, so the triangle is drawn as a plain one. */
@@ -492,7 +533,7 @@ static uint32_t draw_tri(const Raster *R, const Vtx *v0, const Vtx *v1, const Vt
     }
 
     SpanFn fn = span_fns[flags & 31];
-    SpanExtFn efn = span_ext_fns[flags];   /* NULL unless F_ZTEST or F_PERSP */
+    SpanExtFn efn = span_ext_fns[flags];   /* NULL unless F_ZTEST, F_PERSP or F_FOG */
     if (flags & F_ZTEST) {
         X->za = X->zb = X->zc = 0;
         for (int i = 0; i < 3; i++) { X->za += V[i]->rw * A[i]; X->zb += V[i]->rw * B[i]; X->zc += V[i]->rw * C[i]; }
@@ -567,6 +608,8 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
 
     Vtx vx[4];
     uint32_t col0 = w[0], tex0 = 0;
+    int fog = depth && (m->gpu_fog >> 24 & 1);
+    int32_t fog_near = (int32_t)(m->gpu_fog_range & 0xFFFF), fog_scale = (int32_t)(m->gpu_fog_range >> 16);
     int p = 0;
     for (int i = 0; i < nv; i++) {
         uint32_t col = (gouraud || i == 0) ? w[p++] : col0;
@@ -584,6 +627,13 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
         if (depth) {   /* the reciprocal of the view depth w (16.16): 2^40 / w, at most 2^28; w <= 0 is nearest */
             int32_t wv = (int32_t)w[nw0 + i];
             vx[i].rw = wv >= (1 << 12) ? ((int64_t)1 << 40) / wv : ((int64_t)1 << 28);
+        }
+        vx[i].f = 0;
+        if (fog) {   /* the fog factor: the depth in 1/16 units (16 bits), less near, times the scale */
+            int32_t wv = (int32_t)w[nw0 + i];
+            int32_t d = wv <= 0 ? 0 : (wv >> 12 > 0xFFFF ? 0xFFFF : wv >> 12);
+            int32_t f = d <= fog_near ? 0 : (int32_t)(((uint32_t)(d - fog_near) * (uint32_t)fog_scale) >> 12);
+            vx[i].f = f > 256 ? 256 : f;
         }
     }
 
@@ -625,6 +675,13 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
     R.zoff = depth ? col0 >> 27 : 0;
     R.zbuf = m->zbuf;
     R.persp = depth && textured;
+    R.fog = fog;
+    /* an additive or subtractive pixel fades toward black (its contribution fades out); an
+     * opaque or averaged one toward the fog colour */
+    int fog_black = semi && R.mode != 0;
+    R.fogc[0] = fog_black ? 0 : (int32_t)(m->gpu_fog & 0xFF);
+    R.fogc[1] = fog_black ? 0 : (int32_t)(m->gpu_fog >> 8 & 0xFF);
+    R.fogc[2] = fog_black ? 0 : (int32_t)(m->gpu_fog >> 16 & 0xFF);
     int recip = R.ztest || R.persp;   /* the triangle needs its vertex reciprocals */
 
     for (int t = 0; t < (quad ? 2 : 1); t++) {
@@ -644,6 +701,11 @@ static int draw_poly(Mei *m, uint32_t addr, uint32_t type) {
         if (recip) {
             m->gstat.tris_recip++;
             m->gpu_cycles += GPU_CYCLES_RECIP + (uint64_t)X.divs * GPU_CYCLES_DIVIDE;
+        }
+        if (fog) {   /* fogged pixels cost what they would without fog: the blend is in the pipeline */
+            m->gstat.tris_fog++;
+            m->gstat.px_fog += n;
+            m->gpu_cycles += GPU_CYCLES_FOG;
         }
         if (R.ztest) { m->gstat.px_ztest += n; m->gstat.px_zfail += X.fails; }
         if (X.persp) { m->gstat.px_persp += n; m->gstat.persp_divs += X.divs; }

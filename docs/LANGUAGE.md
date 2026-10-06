@@ -1179,6 +1179,7 @@ yaw 0; positive yaw turns right (toward +X), positive pitch looks up (the camera
 | `mesh_at(m: *Mesh, pos: vec3, yaw)` | draw a mesh placed at `pos`, turned by `yaw` |
 | `mesh_xf(m: *Mesh, model: mat4)` | draw a mesh with a model matrix |
 | `fog(colour, near, far)`, `fog_off()` | blend vertex colours toward `colour` between view depths `near` and `far` |
+| `gpu_fog(colour, near, far)`, `gpu_fog_off()` | the GPU ([DECISIONS.md](DECISIONS.md#fog-toward-a-colour)) fogs every packet with depth (`depth.akr`'s modes) per pixel toward `colour`, textured faces included; no CPU cost |
 | `depth_bias(buckets)` | shift the ordering-table bucket of following `mesh*()` polygons (negative: drawn later, in front); reset each frame |
 | `depth_key(w, squash)`, `depth_key_off()` | sort the faces of following `mesh*()` calls around view depth `w`: their own order kept, `squash` times closer to `w` (a sort key per mesh; see below); reset each frame |
 | `depth_bucket_of(w) -> s32` | the ordering-table bucket of view depth `w` (for `FACE_KEYED` faces) |
