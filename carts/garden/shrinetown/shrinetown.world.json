@@ -1183,12 +1183,12 @@
     ],
     [
      250.0,
-     8.0,
+     10.5,
      106.8
     ],
     [
      280.0,
-     8.0,
+     10.5,
      106.8
     ]
    ],
@@ -1258,12 +1258,12 @@
     ],
     [
      250.0,
-     8.0,
+     10.5,
      105.2
     ],
     [
      280.0,
-     8.0,
+     10.5,
      105.2
     ]
    ],
@@ -1294,7 +1294,7 @@
     [
      111.95,
      8.0,
-     104.0
+     106.0
     ]
    ],
    "raised": true,
@@ -1324,7 +1324,7 @@
     [
      113.55,
      8.0,
-     104.0
+     106.0
     ]
    ],
    "raised": true,
@@ -1354,7 +1354,7 @@
     [
      136.95,
      8.0,
-     104.0
+     106.0
     ]
    ],
    "raised": true,
@@ -1384,7 +1384,7 @@
     [
      138.55,
      8.0,
-     104.0
+     106.0
     ]
    ],
    "raised": true,
@@ -1414,7 +1414,7 @@
     [
      206.2,
      8.0,
-     104.0
+     106.0
     ]
    ],
    "raised": true,
@@ -1444,7 +1444,7 @@
     [
      207.8,
      8.0,
-     104.0
+     106.0
     ]
    ],
    "raised": true,
@@ -2595,7 +2595,7 @@
       -0.3
      ]
     ],
-    "material": "planks"
+    "material": "canal_planks"
    }
   },
   "core_zigzag": {
@@ -4847,6 +4847,17 @@
      "scale": [
       3.0,
       6.4
+     ],
+     "span": 23
+    }
+   },
+   "canal_planks": {
+    "color": "#8a6446",
+    "texture": {
+     "image": "../shrine/assets/art/forest_planks.png",
+     "scale": [
+      2.0,
+      2.0
      ],
      "span": 23
     }
@@ -8293,19 +8304,19 @@
    },
    "ramen_shop": {
     "distances": [
-     16,
+     12,
      45
     ]
    },
    "recordshop": {
     "distances": [
-     20,
+     12,
      50
     ]
    },
    "tobacco_shop": {
     "distances": [
-     20,
+     12,
      50
     ]
    },
@@ -8316,8 +8327,8 @@
    },
    "arcade_gate": {
     "distances": [
-     30,
-     70
+     22,
+     60
     ]
    },
    "town_street_lamp": {
@@ -8327,13 +8338,13 @@
     "cull": 70
    },
    "gachapon": {
-    "cull": 40
+    "cull": 26
    },
    "jizo": {
-    "cull": 40
+    "cull": 26
    },
    "town_kanban_set": {
-    "cull": 45
+    "cull": 32
    },
    "town_road_signs": {
     "cull": 60
@@ -8354,6 +8365,9 @@
     "cull": 50
    },
    "crane_game": {
+    "distances": [
+     12
+    ],
     "cull": 45
    },
    "town_crates_bins": {
@@ -8362,45 +8376,60 @@
    "town_utility_pole_transformer": {
     "cull": 56
    },
+   "town_utility_pole_tall": {
+    "cull": 56
+   },
    "dagashi_shop": {
     "distances": [
      20,
      45
     ]
    },
-   "town_shop_2f_a": {
-    "distances": [
-     20,
-     40
-    ]
-   },
    "town_shop_2f_a_noawning": {
     "distances": [
-     20,
+     12,
      40
     ]
    },
    "town_shop_2f_b": {
     "distances": [
-     20,
+     12,
      40
     ]
    },
    "town_shop_2f_c_left_noawning": {
     "distances": [
-     20,
+     12,
      40
     ]
    },
-   "town_shop_2f_c_noawning": {
+   "town_shop_2f_c_store_noawning": {
     "distances": [
-     20,
+     12,
+     40
+    ]
+   },
+   "town_shop_2f_a_camera": {
+    "distances": [
+     12,
      40
     ]
    },
    "town_shop_3f": {
     "distances": [
-     20,
+     12,
+     40
+    ]
+   },
+   "town_shop_3f_kimono": {
+    "distances": [
+     12,
+     40
+    ]
+   },
+   "town_shop_3f_books": {
+    "distances": [
+     12,
      40
     ]
    },

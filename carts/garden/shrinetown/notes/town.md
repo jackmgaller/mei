@@ -117,7 +117,11 @@ What this says against the spec's estimates:
    footbridge west past the sento.
 3. **The fire tower's kick pair:** "the house 3 m east" does not exist (the yard's nearest house
    is 9 m away). Added a storehouse (kura) at x 108–111, z 70–78, 8.0 m: 3 m east of the tower.
-   From its roof two good kicks (6.8) and a grab reach the tower's top (7.2 up).
+   From its roof two good kicks (6.8) and a grab reach the tower's top (7.2 up). **Not so, as
+   built** (alpha review r08 #5): the real kura (x 106.3-109.3, walls to 7.6, roof 8.0) gives the
+   pair four kicks from the ground (to about 9.8), and from its roof one kick off the tower reaches
+   13.0 moving away from it, back onto the kura. The tower's lookout and roof are reached by its
+   ladder (a front pole: let go at the top and push north, a ledge hang on the eave).
 4. **The sento chimney** moves from (23.5, 68.5) to (30.5, 67.5), on the sento's east wall,
    over the boiler room (x 32–36, z 63–72, roof 5.0) its ladder (pole, 13.2) starts from. Red
    coin 7 moves with it. G3 from there: 71 m, arrives 3.8 over the park (0.6).
@@ -187,7 +191,7 @@ All from `notes/town_checks.json` (margins in metres):
 - Vending machine 1.9 → konbini 5.6 (double jump and grab, 5.15): +1.45. Platform 9.0 →
   canopy 12.8: +1.35. Deck → parapet 1.2: +1.0. Danchi roof → tank 2.0: +0.2.
 - Ground → sento boiler room 5.0 (double jump and grab): +0.15, the tightest; boiler → sento
-  roof 8.0: +0.4. Storehouse 8.0 → fire tower 15.2 by two good kicks and a grab: +1.35.
+  roof 8.0: +0.4. (Storehouse 8.0 → fire tower 15.2 by kicks: no, as built; the ladder.)
 - Alley roofs: neighbours 2.5 m apart at most, rising 2 m at most (6, 6.5, 7, 8): a running
   jump. Alley column x 126 → west shops: 4.5 m flat or up 3.5 (double jump). Shop rows: 1 m
   gaps. Arcade eave 0.5 m over the 6.5 m roofs.

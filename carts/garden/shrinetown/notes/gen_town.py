@@ -446,7 +446,8 @@ ALLEY_HOUSES = k
 block('fire_tower', 99, 71, 105, 77, 0, 15.2, C['fire'], '#6a2418', 'hero', 600, 'fire_tower')
 entity('pole_fire_tower', 'pole', 102, 0, 70.55, {'height': 15.2})
 # The spec's kick pair ("the house 3 m east") needs a wall 3 m from the tower; the nearest house
-# is 9 m away. A storehouse (kura) in the yard, 8.0 m, 3 m east of the tower: kicks off both.
+# is 9 m away. A storehouse (kura) in the yard, 8.0 m, 3 m east of the tower: kicks off both, four
+# from the ground to about 9.8 (the real kura); the tower's top is the ladder's (notes/town.md).
 block('fire_kura', 108, 70, 111, 78, 0, 8.0, '#ece4d2', C['alley_r'], 'alley', label='kura')
 block('dagashi', 126, 44, 131, 49, 0, 4.4, C['dagashi'], '#6a4a30', 'hero', 400, 'dagashi')
 # camera zones: the alleys are narrower than the camera's distance (6.5 m)
@@ -813,7 +814,6 @@ checks['steps'] = {
     'deck 9.0 -> parapet 10.2 (jump)': round(JUMP['jump'] - 1.2, 2),
     'ground -> sento boiler 5.0 (double + grab)': round(JUMP['double_grab'] - 5.0, 2),
     'boiler 5.0 -> sento roof 8.0 (double)': round(JUMP['double'] - 3.0, 2),
-    'kura 8.0 -> fire tower 15.2: two good kicks 6.8 + grab 1.75': round(6.8 + 1.75 - 7.2, 2),
     'danchi roof 18.8 -> tank 20.8 (jump)': round(JUMP['jump'] - 2.0, 2),
     'arcade eave over shop roof 6.5 -> 7.0 (jump)': round(JUMP['jump'] - 0.5, 2),
 }

@@ -26,6 +26,7 @@ import "attach_cases.akr"
 import "shrine_cases.akr"     // the shrine world's, 300-399
 import "shrinetown_cases.akr" // the shrine town's, 400-449
 import "goals_cases.akr"      // the goals' (in the shrine town), 450-479
+import "town_route_cases.akr" // the shrine town's street, east and canal routes, 480-499
 
 var pad_v: u32                 // the pad and stick for the next frame
 var stick_v: vec2
@@ -171,7 +172,7 @@ fn test_init() {
         30 => { name = "camera sweep at the spawn: frame timing"; place_at_spawn(); cam_reset() }
         28 => { name = "crouch and crawl"; place(lane, EAST) }
         else => {
-            if !camera_case_init() && !attach_case_init() && !shrine_case_init() && !town_case_init() && !goals_case_init() { name = "picture" }
+            if !camera_case_init() && !attach_case_init() && !shrine_case_init() && !town_case_init() && !goals_case_init() && !route_case_init() { name = "picture" }
         }
     }
 }
@@ -218,6 +219,7 @@ fn scenario(f: s32) {
             shrine_case(f)
             town_case(f)
             goals_case(f)
+            route_case(f)
         }
     }
 }

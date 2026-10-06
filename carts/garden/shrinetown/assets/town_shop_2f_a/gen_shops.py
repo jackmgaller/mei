@@ -457,7 +457,51 @@ def sign_texels(cell, colours):
     return {'texels': rows, 'colors': colours, 'projection': 'fit'}
 
 
+def mask_grid(img, colours):
+    """A mask drawn outside the sheet (a variant's own lettering) as a texel grid, as sign_texels."""
+    keys = {MASK[:3]: '0', FG[:3]: '1', RIM[:3]: '2'}
+    rows = [''.join(keys[img.getpixel((x, y))[:3]] for x in range(img.width)) for y in range(img.height)]
+    return {'texels': rows, 'colors': colours, 'projection': 'fit'}
+
+
+def mask(w, h):
+    """A blank mask (board black) and its drawing context; not a cell of the sheet."""
+    img = Image.new('RGBA', (w, h), MASK)
+    d = ImageDraw.Draw(img)
+    d.fontmode = '1'
+    return img, d
+
+
+# The street's second shops of a family (alpha review r15 #1: 12 shops, 7 names): the same
+# buildings with their own names and colours, the lettering drawn here as masks.
+def camera_masks():
+    """Takagi, cameras and photo printing, in shop A's building."""
+    sign, d = mask(128, 16)
+    rect(d, 0, 0, 127, 15, outline=RIM)
+    text(d, (20, 8), 'カメラ', 9, FG, GOTHIC_M)
+    text(d, (42, 8), '写真', 10, FG, GOTHIC_M)
+    rect(d, 55, 3, 55, 12, fill=RIM)
+    for i, ch in enumerate('たかぎ'):
+        text(d, (74 + i * 16, 8), ch, 13, FG)
+    tate, d = mask(16, 40)
+    rect(d, 0, 0, 15, 39, outline=RIM)
+    vtext(d, 8, 9, 'DPE', 8, 11, FG, GOTHIC_M)
+    return sign, tate
+
+
+def store_masks():
+    """Maruya, a general store (rice, salt, tobacco), in the corner shop's building."""
+    sign, d = mask(128, 16)
+    rect(d, 0, 0, 127, 15, outline=RIM)
+    d.ellipse([4, 1, 17, 14], fill=RIM)
+    text(d, (11, 8), '丸', 11, FG)
+    for i, ch in enumerate('まるや商店'):
+        text(d, (36 + i * 17, 8), ch, 13, FG)
+    return sign
+
+
 def cell_tex(name, **kw):
+
     t = {'sheet': 'shopfront', 'cell': name, 'projection': 'fit'}
     t.update(kw)
     return t
@@ -477,6 +521,19 @@ def bands(m, face, x0, x1, fixed, ys, mats):
             m.quad((x0, y1, fixed), (x1, y1, fixed), (x1, y0, fixed), (x0, y0, fixed), (0, 0, -1), mat)
         else:
             m.quad((fixed, y1, x0), (fixed, y1, x1), (fixed, y0, x1), (fixed, y0, x0), (1, 0, 0), mat)
+
+
+def recess_col(m, x0, x1, oy, zr, top):
+    """Collision for a front at -D whose ground-floor opening (x0..x1, up to oy) is recessed to the
+    glass at zr, as drawn: the front with the opening cut out, the opening's soffit and sides, the
+    glass. A flat front at -D stood 0.4-0.6 m in front of the glass, an invisible wall (alpha
+    review r12 #8)."""
+    m.face([(-W, top, -D), (W, top, -D), (W, 0, -D), (x1, 0, -D), (x1, oy, -D), (x0, oy, -D), (x0, 0, -D),
+            (-W, 0, -D)], (0, 0, -1), 'solid')
+    m.quad((x0, oy, -D), (x1, oy, -D), (x1, oy, zr), (x0, oy, zr), (0, -1, 0), 'solid')
+    m.quad((x0, 0, -D), (x0, oy, -D), (x0, oy, zr), (x0, 0, zr), (1, 0, 0), 'solid')
+    m.quad((x1, 0, -D), (x1, oy, -D), (x1, oy, zr), (x1, 0, zr), (-1, 0, 0), 'solid')
+    m.quad((x0, oy, zr), (x1, oy, zr), (x1, 0, zr), (x0, 0, zr), (0, 0, -1), 'solid')
 
 
 # --------------------------------------------------------------------------------------------
@@ -585,8 +642,9 @@ def strip_top(id, x0, x1, z0, z1, y, pieces, along, mat='solid'):
 # a recessed glass front, a red awning, a navy kanban, a vertical sign and a clock on a bracket.
 # --------------------------------------------------------------------------------------------
 
-def shop_a(has_awning=True):
-    name = 'town_shop_2f_a' + ('' if has_awning else '_noawning')
+def shop_a(has_awning=True, camera=False):
+    """camera: Takagi's (town_shop_2f_a_camera), the same building in yellow and red."""
+    name = 'town_shop_2f_a' + ('_camera' if camera else '') + ('' if has_awning else '_noawning')
     E, RU, T = 5.2, 6.32, 0.18          # wall top at the eaves, underside at the ridge, slab
     k = (RU - E) / D                    # the roof's slope (about 9 degrees)
     OZ, OX = 7.5, 4.75                  # roof overhangs
@@ -625,6 +683,13 @@ def shop_a(has_awning=True):
         'antenna': {'color': '#7a7e84', 'double_sided': True, 'texture': cell_tex('antenna')},
     }
     mats.update(back_materials())
+    if camera:
+        sm, tm = camera_masks()
+        sign, tate, awn = ['#e8b830', '#c4302b', '#2c2a28'], ['#c4302b', '#f4f0e0', '#f4f0e0'], ['#2e5a8a', '#ece4d2']
+        mats['kanban']['color'], mats['tate']['color'] = sign[0], tate[0]
+        mats['kanban']['texture'], mats['tate']['texture'] = mask_grid(sm, sign), mask_grid(tm, tate)
+        mats['awning']['color'] = awn[0]
+        mats['awning']['texture'] = dict(mats['awning']['texture'], colors=awn)
 
     def shell(level):
         m = Mesh('shell')
@@ -730,7 +795,7 @@ def shop_a(has_awning=True):
         roofc.face([(s * OX, tc(-OZ), -OZ), (s * OX, tc(0), 0), (s * OX, tc(OZ), OZ),
                     (s * OX, yu(OZ), OZ), (s * OX, RU, 0), (s * OX, yu(-OZ), -OZ)], (s, 0, 0), 'solid')
     body = Mesh('body')
-    body.quad((-W, E, -D), (W, E, -D), (W, 0, -D), (-W, 0, -D), (0, 0, -1), 'solid')
+    recess_col(body, -3.9, 3.9, 2.5, -6.4, E)
     body.quad((-W, E, D), (W, E, D), (W, 0, D), (-W, 0, D), (0, 0, 1), 'solid')
     for s in (-1, 1):
         body.face([(s * W, 0, -D), (s * W, E, -D), (s * W, RU, 0), (s * W, E, D), (s * W, 0, D)], (s, 0, 0), 'solid')
@@ -945,8 +1010,9 @@ def mirror_x(nodes):
     return out
 
 
-def shop_c(has_awning=True, left=False):
-    name = 'town_shop_2f_c' + ('_left' if left else '') + ('' if has_awning else '_noawning')
+def shop_c(has_awning=True, left=False, store=False):
+    """store: Maruya's (town_shop_2f_c_store), the corner building as a general store in green."""
+    name = 'town_shop_2f_c' + ('_store' if store else '') + ('_left' if left else '') + ('' if has_awning else '_noawning')
     flip = mirror_x if left else (lambda nodes: nodes)
     E = 5.22                             # wall top = the roof's soffit
     OX, OZ = 4.9, 7.4                    # eaves
@@ -997,6 +1063,11 @@ def shop_c(has_awning=True, left=False):
         'antenna': {'color': '#7a7e84', 'double_sided': True, 'texture': cell_tex('antenna')},
     }
     mats.update(back_materials())
+    if store:
+        sign = ['#2e5a2e', '#f4f0e0', '#d8b048']
+        grid = mask_grid(store_masks(), sign)
+        for k in ('kanban', 'kanban_side'):
+            mats[k]['color'], mats[k]['texture'] = sign[0], grid
     FX0, FX1 = -3.7, 3.9                 # front opening (x)
     SZ0, SZ1 = -6.4, 1.4                 # side opening (z)
     R = 0.4                              # recess depth
@@ -1149,10 +1220,17 @@ def shop_c(has_awning=True, left=False):
     # Collision: the walls, the hip roof as a slab (its fascias are the lips), the awning round
     # the corner, the kanban ledge in pieces, the vending machines and the crates (steps up).
     body = Mesh('body')
-    body.quad((-W, E, -D), (W, E, -D), (W, 0, -D), (-W, 0, -D), (0, 0, -1), 'solid')
+    recess_col(body, FX0, FX1, 2.5, -D + R, E)
     body.quad((-W, E, D), (W, E, D), (W, 0, D), (-W, 0, D), (0, 0, 1), 'solid')
-    for s in (-1, 1):
-        body.quad((s * W, 0, -D), (s * W, E, -D), (s * W, E, D), (s * W, 0, D), (s, 0, 0), 'solid')
+    body.quad((-W, 0, -D), (-W, E, -D), (-W, E, D), (-W, 0, D), (-1, 0, 0), 'solid')
+    # the side's shopfront, recessed as drawn
+    xr = W - R
+    body.face([(W, E, -D), (W, E, D), (W, 0, D), (W, 0, SZ1), (W, 2.5, SZ1), (W, 2.5, SZ0), (W, 0, SZ0),
+               (W, 0, -D)], (1, 0, 0), 'solid')
+    body.quad((W, 2.5, SZ0), (W, 2.5, SZ1), (xr, 2.5, SZ1), (xr, 2.5, SZ0), (0, -1, 0), 'solid')
+    body.quad((W, 0, SZ0), (W, 2.5, SZ0), (xr, 2.5, SZ0), (xr, 0, SZ0), (0, 0, 1), 'solid')
+    body.quad((W, 0, SZ1), (W, 2.5, SZ1), (xr, 2.5, SZ1), (xr, 0, SZ1), (0, 0, -1), 'solid')
+    body.quad((xr, 2.5, SZ0), (xr, 2.5, SZ1), (xr, 0, SZ1), (xr, 0, SZ0), (1, 0, 0), 'solid')
     roofc = Mesh('roof')
     e = [(-OX, ET, -OZ), (OX, ET, -OZ), (OX, ET, OZ), (-OX, ET, OZ)]
     b = [(x, ET - 0.2, z) for x, _, z in e]
@@ -1213,4 +1291,6 @@ if __name__ == '__main__':
     shop_c(has_awning=False)
     shop_c(left=True)
     shop_c(has_awning=False, left=True)
+    shop_a(camera=True)
+    shop_c(has_awning=False, store=True)
     pack_sheet()

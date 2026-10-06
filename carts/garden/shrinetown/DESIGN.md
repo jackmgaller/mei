@@ -1517,3 +1517,54 @@ The fix round after the 20-reviewer alpha review (`ALPHA_REVIEW.md`), by workstr
 | Edge neighbours | Level 1 (from 60 m) keeps the façade as a 16 × 16 far tile (each 4 × 4 block of the 64 × 64 tile in its commonest colour) and the stair house: 8 → 18 triangles. At night their lit panes glow, near and far (`texels` in the town's night variant) | `assets/edge_neighbour/make_edge_neighbour.py`, `make_world.py` `NEIGHBOUR_NIGHT` |
 | Courtyard stand-ins | Caps: c2_2 220 and c3_2 270, so that the side and corridor halls are in them (at 140 the halls were left out and popped in under the pagoda); c1_2 140. The World Checker's `standin_triangles` threshold follows (270) | `make_world.py` `COURTYARD` |
 | Coarse ground | Measured, not changed: the field's coarse level stays at 22 units and 2.5. At 40 and 1.5 the draw CPU rose by a median 13,000 cycles a view, and the views over 600,000 in a sweep along the line (x 72–312, z 112–152, 16 yaws, 2 pitches, 2 heights) went from 21 to 84 of 6,144; at 30 and 1.5, a median 3,500 and 41. At 1.2 and 1.0 the kit leaves a hole in level 0's floor under the giant cedar at (102, 252). A textured coarse level would cost no triangles | `make_world.py` `GROUND_LOD` |
+
+The fix round after the 20-reviewer alpha review of 70178b4 (reviewer numbers in brackets: r08 is
+reviewer 08's report). One subsection a workstream.
+
+#### Street, east and canal (branch `alpha-fix-town`)
+
+Scenarios 480-487 (`../tests/town_route_cases.akr`) prove each fix.
+
+| What | Was | Now | Scenario |
+|---|---|---|---|
+| Ladder E (shortcut E) | pole 7.6 m: its top held the feet 1.2 m under the escape's lowest landing, so it led nowhere up (B7; r08 #2, r09 #1) | pole 9.0 m (`LADDER_E_H`): at its top the feet are at 7.8; let go and push south and the body is on the landing (7.6); then the five flights and a jump over the parapet onto the roof (15.2) | 480 |
+| Fire tower's ladder | a pole the body went round, into the tower's eave and roof (r08 #4) | a front pole climbed from the south (yaw 180); let go at the top and push north: a ledge hang on the eave, the roof at 14.66 | 481 |
+| Kura → fire tower kicks | 12.6 and `notes/town.md` said two kicks from the kura's roof reach the tower's top | not so as built: the pair gives four kicks from the ground (to about 9.8), and from the kura's roof one kick off the tower goes back onto the kura (r08 #5). The docs are corrected (`notes/town.md`); the tower's top is its ladder's. A kura tall enough for the route (about 13 m) would not read as a storehouse | — |
+| Arcade's north gate | collision on its pillars only: a walk north off the arcade roof fell through the board and crest to the road (r08 #7) | `arcade_gate_posts_col` keeps the board's top 0.3 m (6.51-6.81) and the crest (6.75-8.15) too, all above G8's body (top about 5.9) | 482, 417 |
+| Back awnings (w2b, w4b, e3b) | the inner half lay under the shops' eaves: a bounce struck the eave at 4.0 (r08 #8) | `town_awning_bounce_back_col`: the inner 0.85 m is a steep face (a wall) up to the shop's wall, which moves a body out onto the outer part; dropped on the middle and steering at the roof, each bounces to 7.07 onto its roof | 483 |
+| Red coin 7, G3's take-off | the sento chimney's ladder ended at the chimney's top (18.2), the feet 1.2 m under it and out of a ledge's reach; the top was reached only by going round the pole (r05 #2) | the pole runs to 19.4 (the iron ladder's stiles drawn 1.2 m over the cap): from the boiler room's roof, up, let go and push north, on the top at 18.2 with the coin taken; G3 starts there | 484, 412 |
+| Road wires at the overpass | 8.0, through the deck's handrails 1 m over the deck (r16 #1, r08 #3) | the poles at x 250 and 280 are `town_utility_pole_tall` (11.5 m, wires at 10.5): the span is 3.5 m over the deck; a hop from the deck catches nothing | 485 |
+| Lane and konbini wires | ended on poles at z 104, 2 m short of the road's line (r08 #11) | their last poles stand on the road's line (z 106), between the road's two wires | 487 |
+| Road works' barriers | the shrine's `street_barrier_col`, a 3 m wall over a 1.26 m barrier (r09 #6) | `road_works_barrier_col`, the drawn box | 486 |
+| Machiya fronts | the body stopped 0.5 m into the inuyarai at the front's foot (r12 #7) | the inuyarai are in `town_machiya_a/_b_col` | 486 |
+| Shop fronts | a flat collision front 0.4-0.6 m in front of the recessed glass (r12 #8) | the recess is in the collision (`gen_shops.py` `recess_col`): shops A, C (front and side) and the 3F; the record shop's (0.35 m, with its bin and gachapon in front) is left | 486 |
+| School's bars | no collision (r12 #9) | two thin walls, their tops floors | 486 |
+| Shop signs | 12 shops, 7 names: Ryokkoen four times, Hikari-do and Maruju twice (r15 #1) | each family's second shop is another trade in the same building, its lettering drawn as masks: the east corner Maruya's general store (`town_shop_2f_c_store_noawning`), e3 Takagi's cameras (`town_shop_2f_a_camera`), w5 Kikuya's kimono and e2 Bun'eido's books (`town_shop_3f_kimono`, `_books`, without the tea shop's rooftop sign and side advert; their glass fronts in `town_shop_3f/art/more.png`). Eleven names | — |
+| North verge | the zelkovas at y 0 on a bank 1-1.6 m high, the road lamps on the tactile strip's slope (r15 #3) | the trees on the ground (`ground()`, the heightfield's 2 m grid); the lamps at z 115.8, on the flat sidewalk | — |
+| The building's north end and roof | a blank end wall and a bare roof (r15 #4) | `street_building_dressing`: windows west of the fire escape, a painted advert (丸栄ビル, tenants wanted) high on the end wall, three condensers on a stand and an aerial on the roof, clear of G1's line (x 193) | — |
+| The alleys | unlit at night, little dressing (r15 #5) | eleven `town_wall_lamp`s (an emissive bulb under a shade, 2.4 m up on side walls), and four potted plants, two bicycles and two air conditioners more | — |
+| The school's tree | two flat-coloured spheres on the way to the fire stair (r16 #4) | the shrine's `tree_maple_small` at (278.5, 63.5), off the paved strip; the schoolhouse's own tree and leaf disc are gone | — |
+| The canal's plank bridge | flat colour (r16 #5) | its own material `canal_planks`, the walkway's plank texture | — |
+| The culvert's deck | a flat dark grey-box slab, the road's rows and kerbs stopping at it (r16 #6) | `culvert_deck`: the road's rows in their textures, the kerbs across it, a 0.6 m parapet over each mouth; 0.15 m thick, so the culvert keeps 1.85 m under it | — |
+
+**Draw CPU in the shotengai** (r01 #3: looking north from (160, 1.5, 64), 668,111). Levels sooner
+(`place/street.py` `LOD`): every shop's level 1 from 12 m (the two- and three-storey shops' and
+the record and tobacco shops' were 20, the ramen shop's 16), the crane game's from 12, the arcade gates' from 22
+(was 30), the kanban sets culled at 32 (45), gachapon and jizo at 26 (40); the utility poles have
+a level 1 from 30 m (a square shaft and the crossarm, 14 triangles) and are culled at 56 with the
+wires' sweeps (`gen_town_utility_pole_transformer.py`); the bicycle in the street's middle moved
+to the east service lane. `mei_world.py check --cameras` at r01's cameras, every layer set, before
+→ after: (160, 1.5, 64) north 668,111 → 571,215; (160, 1.5, 66) north 631,849 → 554,300; the
+arcade roof (160, 10, 66) north 659,182 → 520,441; (160, 1.5, 94) south 600,942 → 566,328;
+(168, 1.5, 88) south-west 614,505 → 581,649; (168, 7.8, 88) south-west 626,763 → 582,713. A sweep
+of the shotengai (x 152-168 every 4 m, z 44-104 every 6 m, eye height, 8 yaws, every layer set:
+4,040 views) has none over 600,000; its peak is 566,179, at (160, 1.5, 92) looking south.
+
+Textures (`tools/textures.py`): the street zone 168,448 of its 196,608 bytes, the east 34,272 of
+49,152 (the maple and the culvert's deck), the shrine region's terrain 112,224 of 155,648 (the
+planks).
+
+**Left for others** (their workstreams' files): the landing after a wall slide skips `land()`, so a
+slide down a shop's front onto a street awning does not bounce (r08 #8: the cart); the danchi's
+balconies above the first are a dead end, the body's head in the slab above (r08 #9: the station's
+`make_danchi.py`); the alleys' rail cameras (r19 #3: the cart).

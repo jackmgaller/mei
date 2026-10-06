@@ -339,6 +339,11 @@ def collision(v, g):
                                       'solid', ['solid', 'solid'], open_edges=(0,))]),
              mesh_node('roof', [prism(roof, 'x', x0 - 0.3, x1 + 0.3, 'solid', ['solid', 'solid'])]),
              mesh_node('hisashi', [prism(g['hisashi_col'], 'x', x0 - 0.15, x1 + 0.15, 'solid', ['solid', 'solid'])])]
+    # the inuyarai at the front's foot, as drawn: walking up to the front, the body stops at their
+    # foot, not 0.5 m into them (alpha review r12 #7)
+    prof = [(ZF + 0.05, 0.0), (ZF + 0.05, 0.85), (ZF - 0.18, 0.72), (ZF - 0.42, 0.38), (ZF - 0.5, 0.0)]
+    for k, (a, b) in enumerate(v['inuyarai']):
+        nodes.append(mesh_node(f'inuyarai_{k}', [prism(prof, 'x', a, b, 'solid', ['solid', 'solid'], open_edges=(4,))]))
     if v['garden']:
         a, b, t, h = x1, 5.0, 0.25, v['wall_h'] + 0.1
         u = [(a, ZF), (b, ZF), (b, ZB), (a, ZB), (a, ZB - t), (b - t, ZB - t), (b - t, ZF + t), (a, ZF + t)]

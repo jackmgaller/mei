@@ -27,6 +27,7 @@ done
 . "$HERE/shrine_cases.sh"
 . "$HERE/shrinetown_cases.sh"
 . "$HERE/goals_cases.sh"
+. "$HERE/town_route_cases.sh"
 run 30 510
 grep -h '^NOTE' "$O"/s*.log
 echo "all $n movement garden scenarios passed"

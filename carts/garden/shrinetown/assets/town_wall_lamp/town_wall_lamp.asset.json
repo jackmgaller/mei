@@ -1,0 +1,145 @@
+{
+ "format": "mei-asset",
+ "version": 1,
+ "name": "town_wall_lamp",
+ "budget": {
+  "triangles": 40
+ },
+ "materials": {
+  "steel": {
+   "color": "#4e5258",
+   "palette": true
+  },
+  "shade": {
+   "color": "#2e5b47",
+   "palette": true
+  },
+  "glow": {
+   "color": "#fff1c4",
+   "class": "emissive",
+   "tag": "light"
+  }
+ },
+ "lighting": {
+  "mode": "vertical",
+  "ambient": 0.5
+ },
+ "verification": {
+  "required": true,
+  "depth": true,
+  "perspective": true
+ },
+ "nodes": [
+  {
+   "id": "plate",
+   "op": "box",
+   "size": [
+    0.12,
+    0.2,
+    0.04
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     0.0,
+     2.4,
+     -0.02
+    ]
+   },
+   "open": [
+    "back"
+   ]
+  },
+  {
+   "id": "arm",
+   "op": "box",
+   "size": [
+    0.04,
+    0.04,
+    0.36
+   ],
+   "material": "steel",
+   "transform": {
+    "translate": [
+     0.0,
+     2.46,
+     -0.2
+    ]
+   },
+   "open": [
+    "back",
+    "front"
+   ]
+  },
+  {
+   "id": "shade",
+   "op": "box",
+   "size": [
+    0.3,
+    0.1,
+    0.3
+   ],
+   "material": "shade",
+   "transform": {
+    "translate": [
+     0.0,
+     2.44,
+     -0.46
+    ]
+   },
+   "faces": {
+    "bottom": "glow"
+   }
+  },
+  {
+   "id": "bulb",
+   "op": "box",
+   "size": [
+    0.1,
+    0.1,
+    0.1
+   ],
+   "material": "glow",
+   "transform": {
+    "translate": [
+     0.0,
+     2.34,
+     -0.46
+    ]
+   },
+   "open": [
+    "top"
+   ]
+  }
+ ],
+ "lod": {
+  "levels": [
+   {
+    "distance": 20,
+    "nodes": [
+     {
+      "id": "shade",
+      "op": "box",
+      "size": [
+       0.3,
+       0.12,
+       0.3
+      ],
+      "material": "shade",
+      "transform": {
+       "translate": [
+        0.0,
+        2.42,
+        -0.46
+       ]
+      },
+      "faces": {
+       "bottom": "glow"
+      }
+     }
+    ]
+   }
+  ],
+  "cull": 45
+ }
+}

@@ -41,9 +41,14 @@ def lw(at, yaw, p):
 # back roofs are low enough to land on (5.0-6.5: the record shop's back room, 7.3, is not).
 # The arcade gates stand on the plot lines at z 54 and 94, where no shop's awning reaches (at z 60
 # and 96, the plan's places, the gates' posts went through the shops' awnings).
-WEST = ['town_shop_2f_c_left_noawning', 'town_shop_3f', 'tobacco_shop', 'recordshop', 'ramen_shop', 'town_shop_3f']
-EAST = ['town_shop_2f_c_noawning', 'town_shop_2f_a_noawning', 'town_shop_3f', 'town_shop_2f_a', 'town_shop_2f_b',
-        'town_shop_3f']
+# Each family's second shop on the street is another trade in the same building (alpha review r15
+# #1: twelve shops, seven names): the east corner is Maruya's general store, not a second Maruju;
+# e3 Takagi's cameras, not a second Hikari-do; w5 and e2 the kimono shop and the bookshop, not two
+# more Ryokkoens (and without the tea shop's rooftop sign).
+WEST = ['town_shop_2f_c_left_noawning', 'town_shop_3f', 'tobacco_shop', 'recordshop', 'ramen_shop',
+        'town_shop_3f_kimono']
+EAST = ['town_shop_2f_c_store_noawning', 'town_shop_2f_a_noawning', 'town_shop_3f_books', 'town_shop_2f_a_camera',
+        'town_shop_2f_b', 'town_shop_3f']
 STREET_AWNING = {('w', 0): -0.1, ('e', 0): 0.1, ('e', 1): 0.0}       # x on the shop's front (gen_shops.py)
 BACK_AWNING = [('w', 2), ('e', 3), ('w', 4)]
 ARCADE_ROOFS = [(160.0, 69.0), (160.0, 85.0)]                       # z 61-93
@@ -58,11 +63,18 @@ TOWER = (102.0, 0.0, 74.0)
 # m between the eaves). The tower stays at (102, 74): glide G4 (scenario 413) starts from its top.
 TOWER_YARD = {(90, 66)}
 KURA = (107.8, 0.0, 74.0)                                           # x 106.3-109.3: the kick wall 2.85 m east
+# Wall lamps (town_wall_lamp, 2.4 m up): on the side walls of houses along the five north-south
+# lanes (yaw 270: out toward +x; 90: toward -x) and the south walls along the east-west ones (yaw
+# 0: toward -z), none in the fire tower's yard.
+ALLEY_LAMPS = [(87.5, 58.75, 270), (90.0, 80.75, 90), (99.5, 47.5, 270), (111.5, 58.75, 270),
+               (123.5, 80.75, 270), (75.5, 91.75, 270), (111.5, 91.75, 270), (82.0, 55.0, 0), (130.0, 66.0, 0),
+               (118.0, 77.0, 0), (94.0, 88.0, 0)]
 
 # ------------------------------------------------------------------ the building and shortcut E
 BUILDING = (193.0, 0.0, 73.0)
 ESCAPE = (196.5, 0.0, 103.0)
 LADDER_E_POLE = (198.5, 0.0, 103.95)
+LADDER_E_H = 9.0
 
 # ------------------------------------------------------------------ poles and wires
 # town_utility_pole_transformer carries two wires at 8.0, 0.8 m either side of the pole (its
@@ -71,9 +83,15 @@ LADDER_E_POLE = (198.5, 0.0, 103.95)
 WIRE_Y = 8.0
 ROAD_POLES = [10, 40, 70, 100, 130, 152.5, 167.5, 190, 220, 250, 280]
 ROAD_Z = 106.0
-LANE_W = [(112.75, 44.0), (112.75, 104.0)]
-LANE_E = [(137.75, 44.0), (137.75, 104.0)]
-KONBINI = [(210.0, 33.0), (207.0, 104.0)]            # the first pole is the station zone's (yaw 0)
+# The poles either side of the overpass (x 260.5-263.5, deck 7.0, handrails 8.12) are the tall pole
+# (place/east.py places them), its wires at 10.5: the span between them passes over the deck.
+TALL_POLES = {250: 2.5, 280: 2.5}
+# The lane and konbini wires end on a pole on the road's line (z 106), between the road's two
+# wires, so that a rider reaches the road's wires (at z 104 they ended 2 m short: alpha review r08
+# #11). The lane poles stand clear of the road's poles (x 100, 130) and of the coin laundry.
+LANE_W = [(112.75, 44.0), (112.75, ROAD_Z)]
+LANE_E = [(137.75, 44.0), (137.75, ROAD_Z)]
+KONBINI = [(210.0, 33.0), (207.0, ROAD_Z)]           # the first pole is the station zone's (yaw 0)
 WIRE_SWEEP = {'profile': [[0.0, -0.03], [0.0, 0.03]], 'material': 'wire', 'double_sided': True, 'collision': False}
 
 COIN_LIFT = 0.7
@@ -115,7 +133,9 @@ def town(g):
             if (side, i) in STREET_AWNING:
                 put(f'awning_{side}{i}', 'town_awning_bounce', lw(at, yaw, (STREET_AWNING[(side, i)], 0, -7.75)), yaw)
             if (side, i) in BACK_AWNING:
-                put(f'awning_{side}{i}b', 'town_awning_bounce', lw(at, yaw, (0.0, 0, 7.75)), yaw + 180)
+                # under the shop's eave: the inner 0.85 m moves a body out (town_awning_bounce_back_col)
+                put(f'awning_{side}{i}b', 'town_awning_bounce', lw(at, yaw, (0.0, 0, 7.75)), yaw + 180,
+                    col='town_awning_bounce_back_col')
     for k, (x, z) in enumerate(ARCADE_ROOFS):
         put(f'arcade_roof_{k}', 'arcade_roof_16', (x, 0.0, z))
     for k, (x, z, yaw) in enumerate(ARCADE_GATES):
@@ -149,7 +169,10 @@ def town(g):
     # and the kura 2.85 m east of the tower's kick face (FOLLOWUPS: the kick pair as built)
     put('fire_tower', 'fire_tower', TOWER)
     put('fire_kura', 'town_kura', KURA)
-    _move_entity(cells, 'pole_fire_tower', (102.0, 0.0, 72.08))
+    # the tower's ladder is a front pole climbed from the south (the alley): gone round, the body
+    # went into the tower's eave and roof (alpha review r08 #4)
+    _move_entity(cells, 'pole_fire_tower', (102.0, 0.0, 72.08), {'front': True})
+    _entity(cells, 'pole_fire_tower')['yaw'] = 180
     # the dagashi shop on its corner, its front to the plaza side's walk; gachapon and a jizo
     put('dagashi', 'dagashi_shop', (128.5, 0.0, 46.5))
     put('gacha_0', 'gachapon', (126.6, 0.0, 43.55))
@@ -162,10 +185,15 @@ def town(g):
     # its ladder folded up (layer ladder_e_up) by default, down (ladder_e) once kicked; the
     # ladder's pole only when down
     put('building', 'street_building', BUILDING, 90)
+    # its north end's windows and advert, its roof's condensers and aerial (the shrine's building
+    # has a blank end and a bare roof: alpha review r15 #4)
+    put('building_dressing', 'street_building_dressing', (BUILDING[0], 0.0, 102.0))
     put('fire_escape', 'town_fire_escape', ESCAPE, 180)
     put('fire_escape_up', 'town_fire_escape_up', ESCAPE, 180, col='none', layer='ladder_e_up')
     put('fire_escape_down', 'town_fire_escape_down', ESCAPE, 180, col='none', layer='ladder_e')
-    _move_entity(cells, 'pole_ladder_e', LADDER_E_POLE, {'height': 7.6})      # front: climbed from the north
+    # front: climbed from the north. LADDER_E_H: its top holds the feet over the lowest landing, so
+    # letting go and pushing south steps onto it (at 7.6 the feet stopped 1.2 m under it: B7)
+    _move_entity(cells, 'pole_ladder_e', LADDER_E_POLE, {'height': LADDER_E_H})
     _entity(cells, 'pole_ladder_e')['yaw'] = 0
     g['part']['layers'].pop('ladder_e', None)
     g['part']['layers'].update({'ladder_e_up': {'group': 'shortcut_e', 'on': True}, 'ladder_e': {'group': 'shortcut_e'}})
@@ -175,12 +203,15 @@ def town(g):
         pid = f'pole_road{int(x)}'
         if in_zone(x, ROAD_Z):
             put(pid, 'town_utility_pole_transformer', (float(x), 0.0, ROAD_Z), 90)
-        _move_entity(cells, pid, (float(x), 0.0, ROAD_Z))
+        _move_entity(cells, pid, (float(x), 0.0, ROAD_Z),
+                     {'height': 9.0 + TALL_POLES[x]} if x in TALL_POLES else None)
     for k, (x, z) in enumerate(LANE_W):
         put(f'pole_lane_w{k}', 'town_utility_pole_transformer', (x, 0.0, z))
     for k, (x, z) in enumerate(LANE_E):
         put(f'pole_lane_e{k}', 'town_utility_pole_transformer', (x, 0.0, z))
     put('pole_konbini1', 'town_utility_pole_transformer', (KONBINI[1][0], 0.0, KONBINI[1][1]))
+    for pid, (x, z) in (('pole_lane_w1', LANE_W[1]), ('pole_lane_e1', LANE_E[1]), ('pole_konbini1', KONBINI[1])):
+        _move_entity(cells, pid, (x, 0.0, z))
     g['materials']['wire'] = {'color': '#26262a'}
     for old in ('wire_road', 'wire_lane_w', 'wire_lane_e', 'wire_konbini'):
         paths.pop(old, None)
@@ -188,7 +219,8 @@ def town(g):
 
     def wires(name, poles, yaw):
         for tag, dx in (('a', -0.8), ('b', 0.8)):
-            path(f'{name}_{tag}', [lw((px, 0.0, pz), yaw, (dx, WIRE_Y, 0.0)) for px, pz in poles], sweep=WIRE_SWEEP)
+            pts = [lw((px, 0.0, pz), yaw, (dx, WIRE_Y + TALL_POLES.get(px, 0.0), 0.0)) for px, pz in poles]
+            path(f'{name}_{tag}', pts, sweep=WIRE_SWEEP)
     wires('wire_road', [(x, ROAD_Z) for x in ROAD_POLES], 90)      # a: z 106.8 (north), b: z 105.2
     wires('wire_lane_w', LANE_W, 0)                                 # a: x 111.95, b: x 113.55
     wires('wire_lane_e', LANE_E, 0)                                 # a: x 136.95, b: x 138.55
@@ -210,10 +242,12 @@ def town(g):
     # ---- the front road (its west part): street trees on the north verge where the grey box's
     # cedars stood (zelkovas, the town's street tree, as the east zone's); the shrine's slim lamps
     # on the north side, arms over the road; signs and mirrors at the alley mouths
+    # (on the ground: the verge rises from 0 at z 116 to 1-1.6 m; at y 0 they were sunk into it, and
+    # the lamps stood on the tactile strip's slope: alpha review r15 #3)
     for k, (x, z) in enumerate([(66, 125), (74, 121), (84, 124), (92, 121)]):
-        put(f'zelkova_road{k}', 'tree_zelkova', (float(x), 0.0, float(z)), 53 * k)
+        put(f'zelkova_road{k}', 'tree_zelkova', (float(x), ground(g['L'], x, z), float(z)), 53 * k)
     for k, x in enumerate((85.0, 115.0, 140.0, 182.0, 204.0)):
-        put(f'lamp_road{k}', 'street_lamp', (x, 0.0, 117.2), 90)
+        put(f'lamp_road{k}', 'street_lamp', (x, 0.0, 115.8), 90)
     # the delivery van, parked in the south lane between the poles at x 70 and 100 (left out while
     # the town's shared set had no room for its 14 KB; back with 2 MB of VRAM, TEXTURES.md)
     put('van_road', 'delivery_van', (85.0, 0.0, 108.6), 90)
@@ -227,7 +261,9 @@ def town(g):
     put('crane_sando', 'crane_game', (154.75, 0.0, 87.0), 270)
     put('kanban_e3', 'town_kanban_set', (165.6, 0.0, 78.0), 90, col='none')
     put('kanban_e4', 'town_kanban_set', (165.6, 0.0, 88.0), 90, col='none')
-    for k, (x, z, yaw) in enumerate([(127.0, 100.6, 0), (131.9, 44.9, 0), (165.4, 74.2, 0), (118.6, 94.6, 90)]):
+    # (the third out of the shotengai, into the east service lane: 101 faces at 12 m in the street's
+    # view north, alpha review r01 #3)
+    for k, (x, z, yaw) in enumerate([(127.0, 100.6, 0), (131.9, 44.9, 0), (182.6, 68.5, 0), (118.6, 94.6, 90)]):
         put(f'bike_{k}', 'mamachari', (x, 0.0, z), yaw, col='none')
     for k, (x, z, yaw) in enumerate([(139.7, 47.5, 90), (139.7, 98.0, 90), (180.3, 59.0, 270), (180.3, 90.0, 270)]):
         put(f'crates_{k}', 'town_crates_bins', (x, 0.0, z), yaw, col='none')
@@ -240,9 +276,28 @@ def town(g):
     put('kei_yard_a', 'kei_truck', (70.75, 0.0, 59.25), 90)
     put('recycling_yard_b', 'recycling_station', (82.75, 0.0, 84.9))
     put('bench_tower_yard', 'town_bench', (106.0, 0.0, 84.6))
+    # the alleys at night (alpha review r15 #5): a lamp on a house's side wall at each lane, and a
+    # little more of what people keep out there
+    for k, (x, z, yaw) in enumerate(ALLEY_LAMPS):
+        put(f'alley_lamp_{k}', 'town_wall_lamp', (x, 0.0, z), yaw, col='none')
+    for k, (x, z, yaw) in enumerate([(77.4, 64.6, 0), (101.4, 52.9, 0), (113.3, 86.2, 90), (89.4, 75.4, 180)]):
+        put(f'plants_lane_{k}', 'town_potted_plants', (x, 0.0, z), yaw, col='none')
+    for k, (x, z, yaw) in enumerate([(124.6, 60.0, 5), (100.6, 91.5, 175)]):
+        put(f'bike_lane_{k}', 'mamachari', (x, 0.0, z), yaw, col='none')
+    for k, (x, z, yaw) in enumerate([(78.2, 92.0, 90), (114.2, 70.0, 90)]):
+        put(f'aircon_lane_{k}', 'town_aircon_pipes', (x, 0.0, z), yaw, col='none')
 
     # ---- coins on floors: onto the real roofs (the grey box's were 0.7 over its boxes)
     _reseat_coins(cells, placed)
+
+
+def ground(L, x, z, sp=2.0):
+    """The ground's height at (x, z) as the world's heightfield has it: layout's heights on its 2 m
+    grid, between the samples bilinear (make_world.py, shrinetown.heights.txt)."""
+    i, j = math.floor(x / sp), math.floor(z / sp)
+    u, v = x / sp - i, z / sp - j
+    h = [[L.height((i + a) * sp, (j + b) * sp) for a in (0, 1)] for b in (0, 1)]
+    return round((h[0][0] * (1 - u) + h[0][1] * u) * (1 - v) + (h[1][0] * (1 - u) + h[1][1] * u) * v, 3)
 
 
 def _move_entity(cells, eid, pos, params=None):
@@ -333,26 +388,30 @@ def _reseat_coins(cells, placed):
 # shops to spec 8.2's 20 m (the ramen shop is 483 triangles at level 0, its own L1 is from 24 m),
 # the building from 30 m (its 446-triangle level 0 was drawn to 60 m in V1), the arcade gates
 # from 30 m. Measured with tools/views.py (V1, the platform): DESIGN.md 12.6.
-LOD = {'ramen_shop': {'distances': [16, 45]}, 'recordshop': {'distances': [20, 50]},
-       'tobacco_shop': {'distances': [20, 50]}, 'street_building': {'distances': [30]},
-       'arcade_gate': {'distances': [30, 70]},
+#
+# The alpha round (r01 #3: the shotengai looking north was 668k draw CPU): the shops' level 1 from
+# 12 m, the crane game's from 12, the arcade gates' from 22, the kanban sets culled at 32, the
+# utility poles' level 1 from 30 (their recipe) and their cull at 56 with the wires' sweeps;
+# gachapon and jizo, which have no levels, culled at 26.
+LOD = {'ramen_shop': {'distances': [12, 45]}, 'recordshop': {'distances': [12, 50]},
+       'tobacco_shop': {'distances': [12, 50]}, 'street_building': {'distances': [30]},
+       'arcade_gate': {'distances': [22, 60]},
        # the street's small props culled at 40-70 m (spec 8.2: 40), not the 90-120 m of their
        # recipes, or never: from the platform the shotengai's lamps and the alleys' props were drawn
-       'town_street_lamp': {'cull': 60}, 'street_lamp': {'cull': 70}, 'gachapon': {'cull': 40},
-       'jizo': {'cull': 40}, 'town_kanban_set': {'cull': 45}, 'town_road_signs': {'cull': 60},
+       'town_street_lamp': {'cull': 60}, 'street_lamp': {'cull': 70}, 'gachapon': {'cull': 26},
+       'jizo': {'cull': 26}, 'town_kanban_set': {'cull': 32}, 'town_road_signs': {'cull': 60},
        'firepost': {'cull': 50}, 'traffic_mirror': {'cull': 50}, 'kei_truck': {'cull': 60}, 'delivery_van': {'cull': 60},
-       'recycling_station': {'cull': 50}, 'crane_game': {'cull': 45},
+       'recycling_station': {'cull': 50}, 'crane_game': {'distances': [12], 'cull': 45},
        'town_crates_bins': {'cull': 40},
        # the poles with their wires (the sweeps are culled at 56): from over the station the
        # front road's poles were drawn at 100-110 m
-       'town_utility_pole_transformer': {'cull': 56},
+       'town_utility_pole_transformer': {'cull': 56}, 'town_utility_pole_tall': {'cull': 56},
        # (the join) the dagashi shop and the shops' level 2 sooner: from the station's stair and
        # canopy the shotengai's mouth is 45-60 m off
        'dagashi_shop': {'distances': [20, 45]},
-       **{n: {'distances': [20, 40]} for n in (
-           'town_shop_2f_a', 'town_shop_2f_a_noawning', 'town_shop_2f_b',
-           'town_shop_2f_c_left_noawning', 'town_shop_2f_c_noawning',
-           'town_shop_3f')}}
+       **{n: {'distances': [12, 40]} for n in (
+           'town_shop_2f_a_noawning', 'town_shop_2f_b', 'town_shop_2f_c_left_noawning', 'town_shop_2f_c_store_noawning',
+           'town_shop_2f_a_camera', 'town_shop_3f', 'town_shop_3f_kimono', 'town_shop_3f_books')}}
 
 
 def world(g):

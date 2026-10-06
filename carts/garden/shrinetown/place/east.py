@@ -10,11 +10,15 @@ grey box is in DESIGN.md, section 12.6, "East".
 """
 import math
 
-# The grey boxes this zone replaces (placement ids in the town's cells). The culvert's road slab
-# (`culvert_deck`), the east hoarding and the neighbours' backs have no real asset: they stay.
+# The grey boxes this zone replaces (placement ids in the town's cells). The east hoarding and the
+# neighbours' backs are the frame's (place/art.py).
 GREY = {'school', 'school_stair', 'gym', 'tyre_steps', 'tyre_steps_2', 'climbing_frame', 'overpass',
+        'culvert_deck',
         'pole_road220', 'pole_road250', 'pole_road280',
         'maple_0', 'maple_1', 'zelkova_0', 'zelkova_1', 'zelkova_2', 'zelkova_3', 'zelkova_4'}
+
+
+TALL_POLES = (250, 280)                   # the poles either side of the overpass (place/street.py)
 
 
 def local_to_world(at, yaw, p):
@@ -83,9 +87,16 @@ def town(g):
 
     # ---- the front road's east part: the utility poles, on the street zone's road line (z 106,
     # yaw 90: the crossarm across the road). The wires (place/street.py, `wire_road_a`/`_b`, at 8.0,
-    # z 105.2 and 106.8) run on them from x 10 to 280.
+    # z 105.2 and 106.8) run on them from x 10 to 280. The two either side of the overpass (x 250
+    # and 280) are the tall pole (wires at 10.5), so the span between them passes 3.5 m over the
+    # deck (7.0) and 2.4 m over its handrails: at 8.0 it ran through them (alpha review r16 #1).
     for x in (220, 250, 280):
-        put(f'pole_road{x}', 'town_utility_pole_transformer', (float(x), 0.0, 106.0), 90)
+        name = 'town_utility_pole_tall' if x in TALL_POLES else 'town_utility_pole_transformer'
+        put(f'pole_road{x}', name, (float(x), 0.0, 106.0), 90)
+
+    # ---- the culvert's slab in the road (the grey box's flat slab): the road's rows, kerbs and a
+    # parapet over each mouth (assets/culvert_deck)
+    put('culvert_deck', 'culvert_deck', (236.0, 0.0, 111.0))
 
     # ---- street trees. The grey box's maples on the road's north verge become zelkovas (one leaf
     # sheet for the zone's trees). The zelkova row south of the road beside the underpass (spec
@@ -103,6 +114,10 @@ def town(g):
     put('hydrant_road', 'firepost', (232.0, 0.0, 102.6), 180)
     for k, x in enumerate((256.0, 262.0)):
         put(f'bench_ground{k}', 'town_bench', (x, 0.0, 53.5))
+    # the schoolyard's tree (the schoolhouse's own was two flat spheres, alpha review r16 #4): the
+    # shrine's small maple, in autumn as the town is, west of the paved way to the fire stair
+    # (x 281-287) and clear of the bars (z 59) and the flagpole (279, 69)
+    put('maple_school', 'tree_maple_small', (278.5, 0.0, 63.5), 40)
 
     # ---- terrain. The pool's carve is the asset's tank opening, x 216-238, z 26-36, to -1.3 (the
     # liner's floor is at -1.2, 0.1 inside the cut: no z-fight), water at -0.3 (0.9 m deep).
