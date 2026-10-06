@@ -67,6 +67,7 @@ DEFAULTS = {
         'cell_triangles': 1600,
         'cell_placements': 100,
         'standin_triangles': 32,
+        'occlusion_leaks': 0,           # rays from an occlusion zone that reach what it hides (pack 1.5)
     },
     'sampling': {
         'floor_spacing': 16.0,          # grid over each cell's walkable floors (units)
@@ -86,7 +87,8 @@ DEFAULTS = {
     'vantage_points': [],               # {"position": [x, y, z], "yaw": deg, "pitch": deg, "yaws": n, "name": s}
     'runtime': {'far_ring': 3, 'clip_near': 0.1, 'near_far': None, 'draw_entities': True, 'ground_first': True,
                 'entity_drawing': 'object', 'object_bias': 1.5, 'object_squash': 2, 'lod': True, 'lod_fine': True,
-                'depth': False, 'perspective': False},     # render_depth(), render_perspective()
+                'depth': False, 'perspective': False,      # render_depth(), render_perspective()
+                'occlusion': True},                        # wp_occlusion: the pack's occlusion zones (1.5)
     'ordering': {'enabled': True, 'edge_margin': 1.0, 'depth_epsilon': 0.001, 'witnesses': 8,
                  'depth_views': 60},        # depth mode: views given the pixel comparison (None: all)
     'collision': {'crack_samples_per_unit': 4.0, 'solid_ray_length': 32.0, 'findings': 50,
@@ -94,6 +96,7 @@ DEFAULTS = {
                   # bodies dropped onto steep ground (verify_static.drop_check); None: no drops
                   'drop': {'spacing': 1.0, 'start': 1.0, 'speed': 0.375, 'ticks': 240, 'min_normal_y': 0.2,
                            'merge': 4.0}},
+    'occlusion': {'enabled': True, 'rays_per_target': 48, 'findings': 20},   # pack 1.5's zones
     'images': 6,
 }
 
@@ -149,6 +152,8 @@ def shown_settings(cfg):
         out['collision']['crack_baseline'] = len(cfg['collision']['crack_baseline'])
     if not (cfg['runtime']['depth'] or cfg['runtime']['perspective']):
         del out['runtime']['depth'], out['runtime']['perspective']
+    if cfg['runtime']['occlusion'] is True:
+        del out['runtime']['occlusion']
     if not cfg['runtime']['depth']:
         del out['ordering']['depth_views']
     return out
@@ -551,6 +556,8 @@ def _view_row(ctx, g, v, rec, rec2, out_dir, sample=None):
                     'placements_drawn': out['drawn'], 'ground_drawn': out['ground'],
                     'standins_drawn': out['standins'], 'entities_drawn': out['entities'],
                     'coarse_drawn': out['coarse'], 'lod_culled': out['lod_culled']}
+    if pack.minor >= 5:
+        row['stats'].update(occluded=out['occluded'], standins_occluded=out['standins_occluded'], zone=out['zone'])
     if rt['depth'] or rt['perspective']:
         row['stats']['depth'] = {k: st[k] for k in RD.DEPTH_STATS}
     if rt['depth']:
@@ -567,8 +574,10 @@ def _view_row(ctx, g, v, rec, rec2, out_dir, sample=None):
         # in depth mode wp_draw() draws the stand-ins over the near pass's clip range too
         near_planes = {'near': rt['clip_near'], 'ground': rt['clip_near'],
                        'far': rt['clip_near'] if rt['depth'] else S / 2}
-        if sel is None:
-            sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt, v.get('region'))
+        if sel is None or pack.minor >= 5:
+            # the reference: what is in sight, occlusion zones or not (a zone that hides something
+            # in sight shows as pixels drawn wrongly)
+            sel = RD.select(pack, by_cell, v['eye'], out2['vp'], set(v['layers']), rt, v.get('region'), occlusion=False)
         faces = RD.view_faces(pack, meshes, sel, out2['vp'], out2['origin'], first, near_planes,
                               ctx['texels'], v.get('region'))
         cmp = RD.compare_view(faces, pic, order_cfg)
@@ -785,6 +794,9 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None, focu
         report['timing'] = {'total_seconds': time.perf_counter() - t_start}
         return report
     S = 1 << pack.cell_shift
+    if pack.minor < 5:                  # no occlusion zones: the report is the one made before them
+        report['settings'].pop('occlusion', None)
+        report['settings']['thresholds'].pop('occlusion_leaks', None)
     rt = dict(cfg['runtime'])
     if any(r.textures for r in pack.regions):
         rt['textured'] = True       # each view enters its camera cell's region (verify_render.py)
@@ -876,6 +888,15 @@ def verify(pack_bytes, settings=None, names=None, out_dir=None, tools=None, focu
     static['cells'] = cells
     static['regions'] = regions
     static['warnings'] = ref_warn
+    if pack.minor >= 5 and cfg['occlusion']['enabled']:
+        from . import verify_occlusion as OC
+        t1 = time.perf_counter()
+        occ = OC.check(pack, cfg['occlusion'], only, names)
+        timing['occlusion_seconds'] = time.perf_counter() - t1
+        static['occlusion'] = occ
+        if th['occlusion_leaks'] is not None and occ['leaks'] > th['occlusion_leaks']:
+            report['threshold_failures'].append({'check': 'occlusion', 'code': 'occlusion_leak', 'value': occ['leaks'],
+                                                 'limit': th['occlusion_leaks'], 'witness': occ['findings'][:1]})
     report['static'] = static
     for f in cracks:
         report['hard_failures'].append({'check': 'collision', **f})

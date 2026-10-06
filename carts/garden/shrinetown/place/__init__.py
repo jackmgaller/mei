@@ -14,7 +14,9 @@ terrain operations, asset directories). A missing module or function is skipped.
 import importlib
 import importlib.util
 
-ZONES = ('station', 'street', 'east', 'canal', 'shrine', 'art')     # art: not a zone, the textures over them (place/art.py)
+ZONES = ('station', 'street', 'east', 'canal', 'shrine', 'art', 'occluders')
+# art: not a zone, the textures over them (place/art.py); occluders: the world's occlusion zones
+# over all of them (place/occluders.py, DESIGN.md 12.9)
 
 
 def apply(stage, ns):

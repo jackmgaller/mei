@@ -1415,3 +1415,52 @@ zones), and case 414's start on the temple's ridge (waits for the shrine's climb
   copied on the first crossing only (61,824 bytes, about 58,000 cycles a crossing); the camera
   error names the bad camera name. The fire stair's opaque slab is not a kit fault: it is
   `street_building`'s level 1, a solid box, drawn from 30 m in the town.
+
+#### Workstream 7: occluders
+
+**What was built.** Hand-placed occluders in the World Kit (WORLDKIT.md, "Occlusion"): a recipe
+declares occluder boxes or quads and camera zones; the kit works out, per zone, the placements of
+the near cells and the stand-ins of the far ring that one occluder hides from every point of the
+zone; the pack stores those sets (WORLDPACK.md 1.5, "Occlusion zones"); the reader finds the
+eye's zone once a frame and skips what it hides; the World Checker draws with the zones, judges
+its pictures against what is in sight without them, and casts rays from every zone to what it
+hides (the occlusion check). The scheme is a potentially visible set per zone rather than a
+screen-space test per frame because the test would cost about 66,000 cycles a frame with 20
+occluders and 130 placements in view; the set costs about 40 cycles a zone looked at and 11 a
+placement looked at in a cell the zone has a mask for. Worlds without `occlusion` build the same
+packs as before.
+
+**Applied to shrine town** in `place/occluders.py`: the viaduct deck's slab round the platform
+stair's opening, the station's facade above the door and the concourse's end walls; zones under
+the two tapers and in the plaza west of the station's door, at camera heights. They hide the two
+train cars (256 faces each at level 0) from under the tapers and the west car from the plaza; the
+leak check casts 3,600 rays and finds no leak.
+
+**What it saves: almost nothing.** Measured with the World Checker at 70178b4's world against the
+same world with the zones (the level-of-detail changes of the other workstreams not included):
+
+| Cameras | Draw CPU before → after |
+|---|---|
+| r01's 20 worst cameras (`worst_cams.json`) | +15 to +47 each: no camera is in a zone |
+| r02's 9 worst cameras (the viaduct deck 711,057 among them) | +16 or +17 each |
+| 60 of r01's sweep views at camera heights under 6 m and over 450,000 | 30,625,567 → 30,618,586 in all; 5 views in a zone: −6,266, −5,385, +1,051, +1,051, +967 |
+
+Why, from what was tried (the notes in `place/occluders.py`):
+
+- Most of the cost r01 found "behind walls" is placements that are partly in sight: the
+  concourse (484 faces) is the wall; the platform (366) and the train cars are 20-48 m long and
+  show over or through the facade's door and windows. A placement is skipped only when all of it
+  is hidden, and the kit joins no shadows, so these need occluders larger than any solid piece
+  of the station (or the station split into pieces: the level-of-detail workstream's fix).
+- A box in each of the town's 67 buildings and a zone every 8 m over the town hid 3,284
+  placements over 640 zones, but almost none of them in view from where they are hidden: the
+  views look along the streets, and what stands behind a row is beside the view. Net +500
+  cycles a view (the zones' tests).
+- The viaduct's parapet over the cemetery is 1.2 m over the deck; the cemetery is hidden by the
+  deck and the parapet together, never by either alone. The follow camera (about 13 m there,
+  r02's case 447) sees the cemetery over the parapet anyway.
+- The woods decks look over cut-out tree cards (holes), which cannot occlude.
+
+So the draw CPU overruns are for the levels of detail (r01 findings 1-3, r02 finding 1), not
+for occluders. The feature stays for worlds with closed rooms and corridors (interiors, the
+ticket hall from inside), where a zone hides a whole room's contents.

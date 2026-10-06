@@ -988,6 +988,64 @@ the set was loaded once. Its palettes: 12 in the set, copied twice into each
 region that draws them (as drawn near, and hazed). The full check's peaks did not move with the
 first version of the set (15 tiles in slot 0: GPU 908,916 to 909,169 cycles).
 
+### Occlusion
+
+Mei has no occlusion culling: whatever is in the view volume is transformed and sorted, and in a
+town most of it stands behind walls. A recipe may declare **occluders** and **camera zones**, and
+the kit works out, for each zone, the placements and stand-ins that no point of the zone can see
+past one of its occluders: a potentially visible set per zone, which the pack stores
+([WORLDPACK.md](WORLDPACK.md#occlusion-zones), 1.5) and the reader skips while the eye is in the
+zone (`tools/worldkit/occlusion.py`).
+
+```json
+"occlusion": {
+  "occluders": {
+    "hall_wall": {"box": [[136.1, 0.05, 14.71], [155.9, 4.55, 14.95]]},
+    "kura":      {"box": [[90.3, 0.2, 70.3], [96.7, 4.6, 73.7]], "yaw": 30},
+    "awning":    {"quad": [[0, 3, 0], [4, 3, 0], [4, 3, 2], [0, 3, 2]], "layer": "festival"}
+  },
+  "zones": {
+    "ticket_hall": {"box": [[150.5, 0.3, 5], [169.5, 3.2, 11]], "occluders": ["hall_wall"]},
+    "fair":        {"box": [[0, 0, 0], [8, 5, 8]], "layer": "festival"}
+  }
+}
+```
+
+- An **occluder** is a box (`[[x0, y0, z0], [x1, y1, z1]]` in world coordinates, optionally
+  turned by `yaw` degrees about its centre) or a flat convex quad (four corners in order). It
+  stands for solid geometry: a box inside a building's walls, a floor slab, a quad on a wall. The
+  kit uses only its shape; that what is drawn there truly hides what lies behind it, from every
+  point of the zones that use it, is the author's claim, which the World Checker tests
+  ([WORLDCHECKER.md](WORLDCHECKER.md#occlusion)). A `layer` occluder exists only while its layer
+  is on, so only zones of that layer use it.
+- A **zone** is an axis-aligned box the eye (the game's camera, not the player) can be in. The
+  reader uses the first zone, in recipe order, whose box holds the eye and whose `layer` (if any)
+  is on. `occluders` lists the occluders it uses; by default every occluder without a layer and
+  those of its own layer. A zone is cut at cell seams: each piece is stored in its cell and its
+  set is worked out from that piece alone.
+- **What is hidden.** A placement is hidden from a zone when every corner of its box (the box,
+  in its asset's frame, of the vertices of every level it can draw, turned by its yaw, grown by
+  0.01) lies in one occluder's shadow from every corner of the zone (shrunk by 0.01). A shadow from
+  a point is the occluder's silhouette cone beyond its faces that look at the point, a convex
+  set, so a box inside it holds the mesh; and a point hidden from two eyes is hidden from every
+  eye between them, so the zone's corners stand for all of it. Stand-ins of the cells within 3
+  are hidden the same way. Shadows of two occluders are not joined (no occluder fusion), so one
+  occluder must hide a placement whole: long placements (a 20-unit train car, a 48-unit
+  concourse) are hidden only by occluders larger than their shadows need.
+- **Warnings:** `zone_hides_nothing` (the zone is left out of the pack), `zone_meets_occluder` (a
+  zone piece overlaps an occluder's box or a corner lies on its plane; the occluder is not used
+  there). `report.json`'s `occlusion` lists each zone's cells, the placements, faces and
+  stand-ins it hides, and `hidden_by`, how many each occluder hides first.
+- **A world without `occlusion`** builds the same pack as before (1.3 or 1.4).
+
+At run time a zone costs the reader a box test per zone looked at in the eye's cell (about 40
+cycles) and a bit test per placement looked at in a near cell the zone has a mask for (about 11),
+WORLDPACK.md, "Costs": a zone pays only where what it hides is often in view. The shrine town's
+measurements (`carts/garden/shrinetown/DESIGN.md`, 12.9) are the cautionary example: in
+streets, what stands behind a row of buildings is mostly beside the view, and 640 zones over the
+town cost more than they saved. Why a set per zone rather than a screen-space test per frame is
+in WORLDPACK.md, "Occlusion zones".
+
 ## Game data and stable IDs
 
 **Decided.** Goals, collectibles, switches, triggers and missions are entries with a type, a
@@ -2277,7 +2335,7 @@ storage per placement or entity; WORLDPACK.md, "The console reader"). *Recommend
 units until stage 2 measures. Alternatives considered: a quadtree or irregular cells for
 districts of very different density, and a precomputed potentially-visible set per cell, which
 the kit could produce offline from the same renders it verifies with; in a dense city, buildings
-hide most cells.
+hide most cells. (Built since, per hand-placed zone rather than per cell: [Occlusion](#occlusion).)
 
 ### 3. The runtime
 

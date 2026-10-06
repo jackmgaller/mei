@@ -78,6 +78,7 @@ are WORLDKIT.md's placeholders.
 | `thresholds.draw_cpu_cycles` | 600,000 | 60% of the CPU's: `wp_draw()` plus entity meshes |
 | `thresholds.view_triangles` | 4,000 | triangles submitted per view (WORLDKIT.md, "A frame budget") |
 | `thresholds.cell_triangles`, `cell_placements`, `standin_triangles` | 1,600, 100, 32 | every layer on |
+| `thresholds.occlusion_leaks` | 0 | rays from an occlusion zone that reach what it hides ([Occlusion](#occlusion)) |
 | `sampling.floor_spacing` | 16 | grid spacing over each cell's floors (`null`: none) |
 | `sampling.yaws`, `yaw_offset_degrees` | 8, 22.5 | directions per position (4 before 2026-10-06, which missed the heavy views between them) |
 | `sampling.eye_pitches_degrees` | [0] | |
@@ -92,6 +93,7 @@ are WORLDKIT.md's placeholders.
 | `runtime` | far ring 3, near 0.1, near far 1.5 cells, entities drawn, ground first, entity drawing `object`, object bias 1.5, object squash 2, levels of detail on, worst case | what the game sets on the reader (`near_far`: `null` takes the pack's own, else 1.5 cells; `lod`: `wp_lod`; `lod_fine`: `wp_lod_fine`, the finest level the hysteresis band allows; `ground_first`: `wp_ground_first`; `entity_drawing`: `object`, through `wp_draw_entities()`, or `mesh_at`, each live entity's mesh by its own depth; `object_bias`, `object_squash`: `wp_object_bias`, `wp_object_squash`; `depth`, `perspective`: false, the game calls `render_depth(true)`, `render_perspective(true)`, [Depth mode](#depth-mode)) |
 | `ordering` | on; edge margin 1 px; depth epsilon 0.001 | see [Ordering](#ordering-check-3); in depth mode also the depth key's tolerance |
 | `ordering.depth_views` | 60 | depth mode only: views given the pixel comparison ([The ordering sample](#the-ordering-sample)); `null`: every view. Listed in the report only in depth mode |
+| `occlusion` | on; 48 rays a target; 20 findings | the occlusion check of a pack 1.5 ([Occlusion](#occlusion)); `rays_per_target`: sample points of each hidden thing; listed only for a pack with zones |
 | `collision` | 4 samples a unit, rays of 32 units, 50 findings | `crack_baseline`: the entries of the world's crack baseline, which the World Kit build passes from `NAME.cracks.json` ([Crack baseline](#crack-baseline)); null, none |
 | `collision.drop` | spacing 1, start 1, speed 0.375, ticks 240, min normal y 0.2, merge 4 | the drop check ([Drops](#drops)); `null`: none |
 | `images` | 6 | diagnostic pictures of the worst views |
@@ -292,6 +294,32 @@ instance of its own in the identity pack (each placement gets its own copy of it
 so the ordering check judges the levels actually drawn. `tests/test_worldverify.py` checks a
 plaza whose buildings have two coarser levels and a cull distance: no coverage errors, coarse
 levels drawn in most views. `runtime.lod: false` checks the world at full detail.
+
+### Occlusion
+
+A pack 1.5's occlusion zones ([WORLDPACK.md](WORLDPACK.md#occlusion-zones)) are drawn as the
+reader draws them: `wp_occlusion` is on in the verification cart unless `runtime.occlusion` is
+false, so every view's budgets count the culls the cart makes, and each view's stats list the
+placements and stand-ins it skipped (`occluded`, `standins_occluded`) and the eye's zone (`zone`,
+its number in the eye's cell, or −1). The reference the pictures are judged by ignores the zones
+(`select(occlusion=False)`): it draws what is in sight, so a zone that hides something a sampled
+view sees shows there as pixels drawn wrongly or not at all.
+
+Sampled views see a zone from a few points; the **occlusion check** (a static check,
+`tools/worldkit/verify_occlusion.py`) tests every zone from 15 points of its box: its corners a
+hair inside, its centre and its faces' centres. From each it casts a ray to sample points of each
+hidden thing (the vertices of each of its levels and its faces' centres, up to
+`occlusion.rays_per_target`, evenly spread) and asks whether the ray first crosses a face that is
+drawn from there and hides what is behind: a face of a placement of the zone's near cells that
+the zone does not hide, present with the zone's layer on and the other layers off, facing the eye
+or double-sided, not semi-transparent, and untextured, a swatch, or textured without a texel 0 in
+its tile. Each placement is taken at the finest and at the coarsest level its hysteresis band
+allows from that point, and the ray must be stopped in both. A ray that is not stopped is a
+**leak** (`static.occlusion.findings`: the zone's cell and number, the eye, the point, the hidden
+placement or stand-in); leaks over `thresholds.occlusion_leaks` are a threshold failure
+(`occlusion_leak`). The check is sampled: a gap narrower than the spacing of the sample points can
+still show. It does not use the occluders the recipe declared (the pack does not hold them): it
+judges the culls themselves.
 
 ## Ordering (check 3)
 

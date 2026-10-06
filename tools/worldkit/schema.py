@@ -350,6 +350,22 @@ WORLD = dict(obj({
                                'description':'The haze colour per palette variant name, instead of the backdrop\'s sky.'}},
                     ['end','amount']),
                 description='Aerial perspective: levels of detail after level 0 and stand-ins are baked fading toward the horizon\'s colour by distance (WORLDKIT.md, "Haze").'),
+    'occlusion':dict(obj({
+        'occluders':{'type':'object','propertyNames':NAME,'maxProperties':1024,
+                     'additionalProperties':obj({
+                         'box':dict(array(VEC,2,2),description='[[x0, y0, z0], [x1, y1, z1]], world coordinates: a box inside solid geometry (walls, a floor slab, a roof) that is drawn, opaque, from every zone that uses it.'),
+                         'yaw':dict(YAW,description='The box turned about its centre\'s vertical. Default 0.'),
+                         'quad':dict(array(VEC,4,4),description='Four corners in order of a flat convex quad: a wall or roof seen from one side or both.'),
+                         'layer':dict(NAME,description='The occluder exists only while this layer is on: only zones of that layer may use it.')}),
+                     'description':'Solid boxes and quads; each hides what lies wholly in its shadow from the whole of a zone (WORLDKIT.md, "Occlusion").'},
+        'zones':{'type':'object','propertyNames':NAME,'maxProperties':1024,
+                 'additionalProperties':obj({
+                     'box':dict(array(VEC,2,2),description='[[x0, y0, z0], [x1, y1, z1]], world coordinates: where the eye (the camera) may be. The reader uses the first zone, in this order, whose box holds the eye.'),
+                     'occluders':dict(array(NAME,1,1024),description='The occluders it uses. Default: every occluder without a layer, and those of its own layer.'),
+                     'layer':dict(NAME,description='The zone is used only while this layer is on.')},
+                     ['box']),
+                 'description':'Camera zones, in order: from inside one, the reader skips the placements and stand-ins its occluders hide from all of it.'}}),
+                     description='Hand-placed occluders and the camera zones they hide things from, a potentially visible set per zone (WORLDKIT.md, "Occlusion"; WORLDPACK.md 1.5).'),
     'scatter':{'type':'object','propertyNames':NAME,'additionalProperties':SCATTER,'maxProperties':256,
                'description':'Seeded props over an area, set on the ground, cut per cell and merged per chunk (WORLDKIT.md, "Scatter").'},
     'terrain':dict(TERRAIN,description='Ground heightfields and their materials (WORLDKIT.md, "Terrain"); profiles swept along paths are in paths.'),
