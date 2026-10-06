@@ -214,8 +214,9 @@ def town(g):
         put(f'zelkova_road{k}', 'tree_zelkova', (float(x), 0.0, float(z)), 53 * k)
     for k, x in enumerate((85.0, 115.0, 140.0, 182.0, 204.0)):
         put(f'lamp_road{k}', 'street_lamp', (x, 0.0, 117.2), 90)
-    # (the delivery van, 14 KB of the region's shared set for one prop, is left out: its mirrored
-    # side would read backwards, and the shared set has no room for it whole; TEXTURES.md)
+    # the delivery van, parked in the south lane between the poles at x 70 and 100 (left out while
+    # the town's shared set had no room for its 14 KB; back with 2 MB of VRAM, TEXTURES.md)
+    put('van_road', 'delivery_van', (85.0, 0.0, 108.6), 90)
     put('signs_alley', 'town_road_signs', (100.75, 0.0, 102.9), 180, col='none')
     put('mirror_alley_0', 'traffic_mirror', (124.8, 0.0, 103.3), 180)
     put('mirror_alley_1', 'traffic_mirror', (88.8, 0.0, 103.3), 180)
@@ -339,7 +340,7 @@ LOD = {'ramen_shop': {'distances': [16, 45]}, 'recordshop': {'distances': [20, 5
        # recipes, or never: from the platform the shotengai's lamps and the alleys' props were drawn
        'town_street_lamp': {'cull': 60}, 'street_lamp': {'cull': 70}, 'gachapon': {'cull': 40},
        'jizo': {'cull': 40}, 'town_kanban_set': {'cull': 45}, 'town_road_signs': {'cull': 60},
-       'firepost': {'cull': 50}, 'traffic_mirror': {'cull': 50}, 'kei_truck': {'cull': 60},
+       'firepost': {'cull': 50}, 'traffic_mirror': {'cull': 50}, 'kei_truck': {'cull': 60}, 'delivery_van': {'cull': 60},
        'recycling_station': {'cull': 50}, 'crane_game': {'cull': 45},
        'town_crates_bins': {'cull': 40},
        # the poles with their wires (the sweeps are culled at 56): from over the station the

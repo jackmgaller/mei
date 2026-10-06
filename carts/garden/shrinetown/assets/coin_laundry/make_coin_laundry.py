@@ -17,9 +17,9 @@ front (110 triangles) is left to the town's `mamachari` placements, and the asht
 plastic chairs went for triangles.
 
 Textures: art/coin_laundry_sheet.png is the lab's sheet (drawn by
-examples/assets/lab/coin_laundry/art/draw_sheet.py), copied by this script with its glass front
-and its sign stored at half width (the faces stretch them back; the town's texture budget,
-TEXTURES.md; needs Pillow); the back door and window come from the shop family's shared
+examples/assets/lab/coin_laundry/art/draw_sheet.py), copied by this script (needs Pillow; the
+glass front and the sign were stored at half width for 1 MB of VRAM, and are whole again with
+2 MB: HALVED); the back door and window come from the shop family's shared
 ../town_shop_2f_a/art/shopfront.png."""
 import json
 from pathlib import Path
@@ -28,7 +28,7 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 LAB_ART = HERE.parents[4] / 'examples' / 'assets' / 'lab' / 'coin_laundry' / 'art'
-HALVED = ('glass', 'sign')
+HALVED = ()          # the glass front and the sign were halved for 1 MB of VRAM; full width since 2 MB
 
 
 def copy_sheet():

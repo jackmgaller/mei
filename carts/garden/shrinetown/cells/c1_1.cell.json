@@ -234,6 +234,17 @@
    "collision": "street_lamp_col"
   },
   {
+   "id": "van_road",
+   "asset": "delivery_van",
+   "position": [
+    85.0,
+    0.0,
+    108.6
+   ],
+   "yaw": 90,
+   "collision": "delivery_van_col"
+  },
+  {
    "id": "signs_alley",
    "asset": "town_road_signs",
    "position": [

@@ -38,14 +38,18 @@ from worldkit.assets import asset_directories                 # noqa: E402
 from worldkit.textures import allocated                       # noqa: E402
 
 KB = 1024
-# The plan (TEXTURES.md): each region's budget (make_world.py's TEXTURE_BUDGETS) split into the
-# terrain's textures, the shared set and each zone's own tiles.
+# The plan (TEXTURES.md, "The budgets"): each region's budget (make_world.py's TEXTURE_BUDGETS)
+# split into the terrain's textures (with the water and the edges), the shared set, each zone's own
+# tiles and a reserve no part may use: 64 KB for the far views' common stand-in set (tree
+# silhouette cards for the far levels and the stand-ins; slot 0 in every region), counted when it
+# lands. Since VRAM grew to 2 MB (2026-10-05).
 ALLOWANCE = {
-    'town': {'budget': 380 * KB, 'terrain': 40 * KB, 'shared': 48 * KB,
-             'station': 96 * KB, 'street': 143 * KB, 'east': 26 * KB, 'canal': 26 * KB, 'shrine': 1 * KB},
-    'shrine': {'budget': 300 * KB, 'terrain': 120 * KB, 'shared': 48 * KB,
-               'shrine': 88 * KB, 'canal': 36 * KB, 'station': 8 * KB, 'street': 0, 'east': 0},
+    'town': {'budget': 668 * KB, 'terrain': 96 * KB, 'shared': 96 * KB, 'station': 128 * KB,
+             'street': 192 * KB, 'east': 48 * KB, 'canal': 40 * KB, 'shrine': 4 * KB, 'reserve': 64 * KB},
+    'shrine': {'budget': 460 * KB, 'terrain': 152 * KB, 'shared': 64 * KB, 'shrine': 120 * KB,
+               'canal': 48 * KB, 'station': 12 * KB, 'street': 0, 'east': 0, 'reserve': 64 * KB},
 }
+assert all(sum(v for k, v in a.items() if k != 'budget') == a['budget'] for a in ALLOWANCE.values())
 # Props any zone of the region may place: their tiles are the region's shared set's.
 SHARED = {
     'town': ['town_street_lamp', 'street_lamp', 'vending_machine', 'postbox', 'town_road_signs', 'delivery_van',
@@ -178,7 +182,8 @@ def main():
         flag = total > allow['budget']
         over |= flag
         print(f'{region}: {total:,} of {allow["budget"]:,} bytes{" OVER" if flag else ""} '
-              f'({len(every)} tiles; slots 13-0 hold {14 * 32 * KB:,})')
+              f'({len(every)} tiles; entering the region: about {round(total * 0.94 + 33000, -3):,.0f} cycles, TEXTURES.md)')
+        rows.append(('reserve', 0, allow['reserve']))
         for name, used, cap in rows:
             flag = used > cap
             over |= flag
