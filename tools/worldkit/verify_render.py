@@ -42,14 +42,14 @@ import time
 
 from kitcore import depth as DEPTH
 from meshlib import face_slot, SLOT_HI, PAL_HI
-from .pack import ONE, mesh_info, lod_level, lod_d2
+from .pack import ONE, mesh_info, lod_level, lod_d2, zone_at, zone_hides_standin
 from .verify_shared import numpy, id_colour, diagnostic_png
 
 W, H = 320, 240
 MAX_ID = 32767
 FACE_GOURAUD, FACE_TEXTURED, FACE_QUAD, FACE_SEMI, FACE_DOUBLE, FACE_KEYED = 1, 2, 4, 8, 16, 32
 VIEW_SIZE = 64          # bytes of a VView record in the cart
-OUT_SIZE = 136          # bytes of the cart's VOut block
+OUT_SIZE = 148          # bytes of the cart's VOut block
 STATS_WORDS = 24
 DEPTH_STATS = ('px_ztest', 'px_zfail', 'zclears', 'tris_recip', 'px_persp', 'persp_divs')
 STATS_NAMES = ('tris', 'tris_empty', 'tris_dropped', 'px0', 'px1', 'px2', 'px3', 'px4', 'px5', 'px6',
@@ -365,6 +365,9 @@ struct VOut {{
     ground: s32         // ground placements drawn
     coarse: s32         // placements drawn at a level of detail other than 0
     lod_culled: s32     // placements in view not drawn: past their LOD cull distance
+    occluded: s32       // placements skipped: hidden from the eye's occlusion zone (pack 1.5)
+    standins_occluded: s32
+    zone: s32           // the zone's number in the eye's cell, or -1
     origin: vec4
     vp: mat4
 }}
@@ -425,6 +428,7 @@ fn draw() {{
     wp_object_squash = {object_squash}
     wp_lod = {lod}
     wp_lod_fine = {lod_fine}
+    wp_occlusion = {occlusion}
     let nl = wp_layer_count()
     for l in 0..nl {{ wp_layer_set(l, false) }}
     for l in 0..nl {{
@@ -453,6 +457,9 @@ fn draw() {{
     vout.ground = wp_stats.ground
     vout.coarse = wp_stats.coarse
     vout.lod_culled = wp_stats.lod_culled
+    vout.occluded = wp_stats.occluded
+    vout.standins_occluded = wp_stats.standins_occluded
+    vout.zone = wp_stats.zone
     let o = wp_view_origin()
     vout.origin = vec4(o.x, o.y, o.z, 0.0)
     vout.vp = __vp
@@ -548,7 +555,8 @@ def _cart_source(runtime, rows, walk):
                        object_bias=fixed_literal(runtime['object_bias']),
                        object_squash=int(runtime['object_squash']),
                        lod='true' if runtime['lod'] else 'false',
-                       lod_fine='true' if runtime['lod_fine'] else 'false', **walk)
+                       lod_fine='true' if runtime['lod_fine'] else 'false',
+                       occlusion='false' if runtime.get('occlusion') is False else 'true', **walk)
 
 
 def _compile_and_run(pack_bytes, id_bytes, records, source, frames, tools, work):
@@ -590,13 +598,14 @@ def _records(cap, expected):
     for _ in range(count):
         stats = dict(zip(STATS_NAMES, struct.unpack_from(f'<{STATS_WORDS}I', cap, at)))
         at += 4 * STATS_WORDS
-        o = struct.unpack_from('<14i', cap, at)
-        origin = struct.unpack_from('<4i', cap, at + 56)
-        vp = struct.unpack_from('<16i', cap, at + 72)
+        o = struct.unpack_from('<17i', cap, at)
+        origin = struct.unpack_from('<4i', cap, at + 68)
+        vp = struct.unpack_from('<16i', cap, at + 84)
         at += OUT_SIZE
         out = dict(request=o[0] & 0xFFFFFFFF, view=o[1], draw_cycles=o[2], entity_cycles=o[3],
                    arena_bytes=o[4], arena_left=o[5], near_cells=o[6], placements=o[7], drawn=o[8],
                    standins=o[9], entities=o[10], ground=o[11], coarse=o[12], lod_culled=o[13],
+                   occluded=o[14], standins_occluded=o[15], zone=o[16],
                    origin=[c / ONE for c in origin[:3]],
                    vp=np.array(vp, dtype=float).reshape(4, 4) / ONE)
         pic = None
@@ -675,13 +684,19 @@ def cell_mask(pack, cell, layers_on):
     return sum(1 << k for k, lid in enumerate(cell.layers) if lid in layers_on)
 
 
-def select(pack, by_cell, eye, vp, layers_on, runtime, region=None):
+def select(pack, by_cell, eye, vp, layers_on, runtime, region=None, occlusion=True):
     """What wp_draw() (and the cart's entity loop) draws from eye: a list of (instance, pass,
     certain), certain False where a culling sphere is too close to a plane to say. The pass is
-    'far', 'ground' (a ground placement, when the runtime draws ground first) or 'near'."""
+    'far', 'ground' (a ground placement, when the runtime draws ground first) or 'near'.
+    occlusion False: what it would draw without the eye's occlusion zone (pack 1.5), the
+    reference the pictures are judged by, so that a zone that hides what is in sight is found."""
     S = 1 << pack.cell_shift
     half = S / 2
     ci, cj = math.floor(eye[0]) >> pack.cell_shift, math.floor(eye[2]) >> pack.cell_shift
+    zone = None
+    if occlusion and runtime.get('occlusion') is not False:
+        found = zone_at(pack, [round(c * ONE) for c in eye], layers_on)
+        zone = found[1] if found else None
     out = []
     ring = int(runtime['far_ring'])
     if ring >= 2:
@@ -690,6 +705,8 @@ def select(pack, by_cell, eye, vp, layers_on, runtime, region=None):
         for dj in range(-ring, ring + 1):
             for di in range(-ring, ring + 1):
                 if max(abs(di), abs(dj)) < 2:
+                    continue
+                if zone and zone_hides_standin(zone, di, dj):
                     continue
                 for inst in by_cell.get((ci + di, cj + dj), ()):
                     if inst.key[0] != 'standin':
@@ -714,6 +731,8 @@ def select(pack, by_cell, eye, vp, layers_on, runtime, region=None):
                 # wp_region_loaded: a near cell of another region draws its stand-in, near
                 for inst in by_cell.get((ci + di, cj + dj), ()):
                     if inst.key[0] == 'standin':
+                        if zone and zone_hides_standin(zone, di, dj):
+                            continue
                         s = inst.sphere
                         v = _sphere(planes, (s[0] / ONE + di * S, s[1] / ONE, s[2] / ONE + dj * S), s[3] / ONE)
                         if v is not False:
@@ -726,6 +745,7 @@ def select(pack, by_cell, eye, vp, layers_on, runtime, region=None):
                         if v is not False:
                             out.append((inst, 'near', v is True))
                 continue
+            hid = zone['hidden'].get((ci + di, cj + dj), ()) if zone else ()
             cv = True
             if c.placements:
                 b = c.bounds
@@ -743,6 +763,8 @@ def select(pack, by_cell, eye, vp, layers_on, runtime, region=None):
                         if v is not False:
                             out.append((inst, 'near', v is True))
                 elif kind == 'placement' and cv is not False:
+                    if inst.key[3] in hid:
+                        continue
                     s = inst.sphere
                     if inst.lod is not None:
                         level = 0

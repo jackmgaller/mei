@@ -311,6 +311,7 @@ fn wp_draw(eye: vec3, yaw: fixed, pitch: fixed) {
     __wp_eye_y = eye.y
     __wp_eye = vec4(local.x, local.y, local.z, 0.0)
     wp_stats = WpStats {}
+    __wp_zone_find(wp_cell(ci, cj))
     let size = __wp_half * 2
     let r = wp_far_ring
     var far = wp_near_far

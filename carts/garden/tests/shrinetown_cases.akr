@@ -88,6 +88,7 @@ fn town_case_init() -> bool {
         444 => { name = "shrine town view V5: the spawn, looking north" }
         445 => { name = "shrine town view V6: the cemetery's top, looking west" }
         446 => { name = "shrine town view: turning once round on the pagoda's top" }
+        480 => { name = "shrine town occluders: under the west taper the deck hides the trains" }
         else => { return false }
     }
     cam.lock = false
@@ -118,7 +119,26 @@ fn town_case(f: s32) {
         444 => sh_view(f, vec3(160.0, 0.0, 28.5), NORTH, 0.0, 4.0, false)
         445 => sh_view(f, vec3(290.0, 0.0, 244.0), WEST, -0.2, 4.0, false)
         446 => sh_view(f, vec3(178.0, 0.0, 262.0), 3.1416, -0.3, 4.0, true)
+        480 => tw_occluded(f)
         else => {}
+    }
+}
+
+// The player under the viaduct's west taper, the camera behind it looking east along the deck
+// (place/occluders.py): the camera is in the zone `under_taper_w`, whose set holds both train cars
+// on the deck above; the reader skips them (wp_stats.occluded) and no frame is late.
+var tw_zone: s32
+var tw_occl: s32
+fn tw_occluded(f: s32) {
+    sh_view(f, vec3(126.0, 0.0, 8.0), EAST, 0.0, 3.0, false)
+    if f == 0 { place(vec3(126.0, sh_floor(126.0, 8.0, 5.0), 8.0), EAST) }      // on the ground, not the deck
+    if f >= 30 {
+        tw_zone = max(tw_zone, wp_stats.zone + 1)
+        tw_occl = max(tw_occl, wp_stats.occluded)
+    }
+    if f == 89 {
+        expect(tw_zone > 0, "the camera is in an occlusion zone", fixed(tw_zone - 1))
+        expect(tw_occl >= 2, "the zone skips the two train cars", fixed(tw_occl))
     }
 }
 

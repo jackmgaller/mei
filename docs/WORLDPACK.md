@@ -1,6 +1,6 @@
 # The world pack format
 
-**Version 1.4.** A world pack (`*.world.bin`) is the contract between the World Kit
+**Version 1.5.** A world pack (`*.world.bin`) is the contract between the World Kit
 ([WORLDKIT.md](WORLDKIT.md)), which writes packs, and the reader a cart runs, which reads them in
 place from ROM. This document is normative: a second encoder or reader can be written from it
 alone. The reference implementations are `tools/worldkit/pack.py` (encoder, decoder and an exact
@@ -22,6 +22,7 @@ What each part's status is:
 | Regions: palette variants, texture set | specified | yes | palettes loaded and blended; textures loaded at once (`wp_region_enter()`, or a texture at a time) |
 | Region extensions (1.4): palette runs, animated textures, the backdrop's sky | specified | yes | yes: every run loaded and blended, frames copied when they change, the sky and silhouette drawn by the plane chip (`wpbackdrop.akr`) |
 | Regions: backdrop copies | specified | yes | yes: copied on entering the region |
+| Occlusion zones (1.5) | specified | yes, with the zone oracle | yes: the eye's zone found per frame, what it hides skipped |
 | Regions: audio bank | specified | yes | **specified, reader not yet implemented** |
 | Mesh pool | the native mesh format | yes | drawn by `mesh()`'s face loops |
 
@@ -39,17 +40,18 @@ What each part's status is:
 10. [Placements](#placements)
 11. [Levels of detail](#levels-of-detail)
 12. [Ground](#ground)
-13. [Objects](#objects)
-14. [Entities](#entities)
-15. [Collision blocks](#collision-blocks)
-16. [Paths](#paths)
-17. [Meshes and strings](#meshes-and-strings)
-18. [What a reader does](#what-a-reader-does)
-19. [Validation](#validation)
-20. [Precision](#precision)
-21. [Costs](#costs)
-22. [The console reader](#the-console-reader-stdlibworldpackakr)
-23. [Extensions not made](#extensions-not-made)
+13. [Occlusion zones](#occlusion-zones)
+14. [Objects](#objects)
+15. [Entities](#entities)
+16. [Collision blocks](#collision-blocks)
+17. [Paths](#paths)
+18. [Meshes and strings](#meshes-and-strings)
+19. [What a reader does](#what-a-reader-does)
+20. [Validation](#validation)
+21. [Precision](#precision)
+22. [Costs](#costs)
+23. [The console reader](#the-console-reader-stdlibworldpackakr)
+24. [Extensions not made](#extensions-not-made)
 
 ## Conventions
 
@@ -84,13 +86,13 @@ What each part's status is:
 
 ## Versions
 
-The header holds a major and a minor version; this document is 1.4.
+The header holds a major and a minor version; this document is 1.5.
 
 - A reader refuses a pack whose **major** version it does not know.
 - A reader accepts a pack with the same major and a **higher minor** version and reads it as the
   minor version it knows. A minor version may only add: data reached through fields that are
   reserved (zero) in earlier minors, header bytes past those the earlier minors define (the
-  header says its own size: 1.2 defines 72, 1.3 80, 1.4 84), and flag bits. It never changes the size or meaning of an existing field or
+  header says its own size: 1.2 defines 72, 1.3 80, 1.4 and 1.5 84), and flag bits. It never changes the size or meaning of an existing field or
   record.
 - Header **flags** bits 0–3 mark features a reader may ignore; bits 4–7 mark features a reader
   must understand, so a reader refuses a pack with a bit 4–7 set that it does not know. Version
@@ -138,6 +140,15 @@ backdrop); every other world's pack is the 1.3 pack, byte for byte, as before 1.
 world whose textures are all 4-bit and still, without a backdrop, stays 1.3: its texture set
 and variants are 1.0 fields.
 
+**1.5** adds [occlusion zones](#occlusion-zones): a cell's last two reserved words become
+`zone_count` and `zone_off`, which point at the cell's zones, each a box the eye may be in and
+the placements and stand-ins hidden from all of it. The header is the 1.4 header (84 bytes;
+`region_ext_off` is 0 in a pack without region extensions). A 1.4 reader reads a 1.5 pack as
+before and draws what the zones hide too: the right picture, at the old cost. A reader reads the
+two cell words only in a pack whose minor version is at least 5. The reference encoder writes 1.5
+only for a world that has a zone; every other world's pack is the 1.3 or 1.4 pack, byte for byte,
+as before 1.5 existed.
+
 ## Limits
 
 | What | Limit | Why |
@@ -158,6 +169,7 @@ and variants are 1.0 fields.
 | Paths | `u32` count; 2–4,096 stored points each; a path at most 16,384 units long; points within ±32,767 units | Keeps the nearest-point query's products inside `fixed` ([Paths](#paths)) |
 | Levels of detail | 1–8 levels after level 0 in a set (the cull mark included); switch distances plus the band at most 1,400 units | (distance / 8)² stays inside `fixed` |
 | `near_far` | 0 (the default, 1.5 cells) or more than 0 up to 2,048 units | |
+| Occlusion zones (1.5) | `u32` per cell; a zone's box within its cell's square in *x* and *z*; it hides placements of the 3 × 3 near cells and stand-ins of the 7 × 7 cells around its own | One mask word per 32 placements; 49 stand-in bits |
 
 ## Layout
 
@@ -173,6 +185,7 @@ cells          96 bytes each, pointing at their placements, entities and collisi
   LOD table    placement_count x u32, when a placement has levels of detail; LOD sets, pooled
   entities     64 bytes each
   collision    a 48-byte block header, floor, wall and ceiling records, buckets, a u16 list
+zones          (1.5) per cell with zones: 80 bytes each; placement masks, pooled
 entity dir     entity_count x u32: the offset of entity number n's record
 mesh dir       mesh_count x u32: the offset of each mesh in the pool
 mesh pool      native meshes, each stored once
@@ -192,11 +205,11 @@ records, and a reader treats it like any other world.
 |---|---|---|---|
 | 0 | `[4]u8` | `magic` | `"MEIW"` (the `u32` 0x5749454D) |
 | 4 | `u16` | `major` | 1 |
-| 6 | `u16` | `minor` | 4 (3 for a pack that needs no region extension) |
+| 6 | `u16` | `minor` | 5 for a pack with occlusion zones; else 4 for one with a region extension; else 3 |
 | 8 | `u32` | `size` | the pack's length in bytes, a multiple of 4 |
 | 12 | `u8` | `cell_shift` | 4–7 |
 | 13 | `u8` | `flags` | see [Versions](#versions); bit 0 (1.1): some cell has a ground placement |
-| 14 | `u16` | `header_size` | 64 in 1.0 and 1.1, 72 in 1.2, 80 in 1.3, 84 in 1.4; at least 64, at least 72 when `minor` ≥ 2, 80 when ≥ 3, 84 when ≥ 4 |
+| 14 | `u16` | `header_size` | 64 in 1.0 and 1.1, 72 in 1.2, 80 in 1.3, 84 in 1.4 and 1.5; at least 64, at least 72 when `minor` ≥ 2, 80 when ≥ 3, 84 when ≥ 4 |
 | 16 | `s16` | `i0` | grid column of the index's first entry |
 | 18 | `s16` | `j0` | grid row of the index's first entry |
 | 20 | `u16` | `w` | index width (columns) |
@@ -216,7 +229,7 @@ records, and a reader treats it like any other world.
 | 68 | `u32` | `path_off` | (1.2) the path table, 0 when there are no paths |
 | 72 | `fixed` | `near_far` | (1.3) the near pass's far depth the world asks for, or 0 for the reader's default (1.5 cells) |
 | 76 | `u32` | `lod_slots` | (1.3) placements in cells that have a LOD table: the size of the level memory a reader may keep |
-| 80 | `u32` | `region_ext_off` | (1.4) `region_count` region extension records, or 0 |
+| 80 | `u32` | `region_ext_off` | (1.4) `region_count` region extension records, or 0 (always 0 in a 1.5 pack without them) |
 
 ## Index
 
@@ -363,7 +376,8 @@ never shows twice. [WORLDKIT.md](WORLDKIT.md#backdrops) explains the choice.
 | 76 | `u32` | `ground_count` | (1.1) its first `ground_count` placements are ground, the rest are not |
 | 80 | `u32` | `lod_off` | (1.3) its LOD table: `placement_count` `u32` LOD set offsets, 0 for a placement without levels; or 0 |
 | 84 | `u32` | `lod_first` | (1.3) the level-memory slot of its placement 0: placement *k*'s is `lod_first` + *k* (< `lod_slots`) |
-| 88 | `[2]u32` | reserved | |
+| 88 | `u32` | `zone_count` | (1.5) its occlusion zones: the eye's zones while the eye is in this cell |
+| 92 | `u32` | `zone_off` | (1.5) `zone_count` zone records, or 0 |
 
 ## Placements
 
@@ -516,6 +530,63 @@ Stand-ins are never ground: a stand-in is a whole cell, drawn in the far pass (o
 whose region is not loaded, in the near pass), so there is nothing to flag. A merged scatter mesh
 is ground when the props merged into it are (the World Kit merges ground and the rest apart).
 Terrain, when it is built ([WORLDKIT.md](WORLDKIT.md), "Terrain"), is ground by default.
+
+## Occlusion zones
+
+(1.5) Mei has no occlusion culling of its own: whatever lies in the view volume is transformed
+and sorted, and in a town most of it is behind walls. A world may therefore say, per **zone** (a
+box the eye can be in), which placements of the near cells and which stand-ins of the far ring
+cannot be seen from anywhere in it, and the reader skips them while the eye is there: a
+potentially visible set, worked out offline by the World Kit from occluders the author places
+([WORLDKIT.md](WORLDKIT.md#occlusion)), checked by the World Checker
+([WORLDCHECKER.md](WORLDCHECKER.md#occlusion)). The format holds only the answer, not the
+occluders.
+
+**Zone** (80 bytes), in the eye's cell's table (`zone_off`, `zone_count`):
+
+| Offset | Type | Field | |
+|---|---|---|---|
+| 0 | row | `lo` | (*x*, *y*, *z*, 0), cell-local: the box's low corner |
+| 16 | row | `hi` | (*x*, *y*, *z*, 0): its high corner; `lo` < `hi` in each lane, and *x* and *z* within the cell's square (−*S*/2 .. *S*/2) |
+| 32 | `u8` | `layer` | a layer id: the zone counts only while that layer is on; 0xFF: always |
+| 33 | `u8` | `flags` | reserved |
+| 34 | `u16` | reserved | |
+| 36 | `[2]u32` | `far` | stand-ins hidden: bit (*dj* + 3) × 7 + (*di* + 3) for the cell (*i* + *di*, *j* + *dj*), \|*di*\|, \|*dj*\| ≤ 3; bits 49–63 are 0 |
+| 44 | `[9]u32` | `near` | per near cell, entry (*dj* + 1) × 3 + (*di* + 1): the offset of a mask of ⌈`placement_count` / 32⌉ `u32`, bit *k* (of word *k* / 32) set for each of that cell's placements it hides; or 0 |
+
+A bit may be set only for a placement or stand-in that exists; bits past a cell's placements are
+0. The reference encoder stores each distinct mask once.
+
+**What a reader does.** At the start of `wp_draw()`, the **eye's zone** is the first zone in the
+eye's cell's table whose box holds the eye in that cell's local coordinates (`lo` ≤ eye < `hi`,
+lane by lane: the same frame the reader already works in) and whose layer is on; or none. With a
+zone, the reader skips every placement whose bit is set in the near cell's mask, in the ground
+pass and in the near pass, before its layer and sphere tests, and every stand-in whose bit is set
+in `far`, in the far pass or drawn for a near cell of another region. Nothing else changes: the
+same placements are drawn as without zones, less those, at the same levels of detail.
+`pack.zone_at()` is the rule; `zone_hides_standin()` reads `far`.
+
+**What a zone may hide.** A placement may be set in a zone's mask only if no point of any of its
+levels can be seen from any point of the zone, whatever else is drawn, and likewise a stand-in.
+The format does not check this (a reader cannot); the World Kit works it out conservatively, and
+the World Checker tests it by casting rays. A zone is a claim about the eye, not the player: the
+game's camera, wherever it trails, is what has to be inside.
+
+**Why a set per zone, not a test per frame.** The cheapest per-frame alternative of the era is a
+screen-space test: project each occluder's box to a rectangle with its far depth, and each
+placement's sphere to a rectangle with its near depth, and skip the placement when its rectangle
+lies inside an occluder's and behind it. That costs a projection per occluder (8 corners, about
+26 cycles each, about 300 cycles with the min and max) and a projected sphere and a comparison
+per placement and occluder in view (about 60 + 20 cycles), every frame: with 20 occluders in
+view and 130 placements, about 6,000 + 130 × (60 + 20 × 20) ≈ 66,000 cycles, more than a tenth
+of the 600,000 budget before anything is saved. A sphere also stands for its placement badly: a
+20 m train car's sphere reaches the ground under the viaduct it stands on. The zone set moves all
+of this offline, where it can use each placement's box and every point of the zone. At run time
+it is a box test per zone looked at (about 40 cycles; zones are looked at in the eye's cell only,
+and the first that holds the eye is used) and a bit test per placement looked at (about 10
+cycles, only in a near cell for which the zone has a mask); a hidden placement costs about 10
+cycles instead of the 60 of its sphere test and the 500 and more of drawing it. See
+[Costs](#costs).
 
 ## Objects
 
@@ -921,7 +992,8 @@ objects join the near pass after it ([Objects](#objects)). With a depth buffer n
 and there is no ground pass ([Objects](#objects), "In depth mode").
 
 Each present placement in view is drawn at the level of detail its distance chooses
-([Levels of detail](#levels-of-detail)), or not at all past its cull mark.
+([Levels of detail](#levels-of-detail)), or not at all past its cull mark. In a 1.5 pack, what the
+eye's occlusion zone hides is skipped first ([Occlusion zones](#occlusion-zones)).
 
 **Paths.** A reader answers the two queries above ([Paths](#paths)) on a path it holds by
 number or by name.
@@ -977,6 +1049,10 @@ slots within `lod_slots`;
 region extensions (1.4): the header's size, every run's colours and variant lists, every
 animation's fields and that its rows lie in the texture area, the sky's stops, increasing
 elevations, colour lists and flags;
+occlusion zones (1.5): each cell's zone table in the pack, its count and offset agreeing, each box
+not empty and within its cell's square, reserved fields 0, layer ids, stand-in bits only for cells
+that exist within 3, masks only for near cells that exist and have placements, in the pack, and
+with no bit past the cell's placements;
 every mesh's header, vertex and face extents; every collision block's grid, buckets and list
 entries; and that entity numbers, back-references and the directory agree. Any failure raises
 `PackError`; random corruption never makes it fail any other way (tested).
@@ -988,7 +1064,9 @@ outside their cell, placements that overhang by more than `overhang`, more than 
 unknown or duplicate layers, too many triangles in a bucket; paths with fewer than 2 points (3 when
 closed), a segment of no length, more than 4,096 stored points, longer than 16,384 units, or a
 name used twice; LOD sets with no levels or more than 8, a cull mark that is not last, switch
-distances closer than twice the band or past 1,400 units; a `near_far` of 0 or past 2,048.
+distances closer than twice the band or past 1,400 units; a `near_far` of 0 or past 2,048; an
+occlusion zone whose box is empty or reaches past its cell, names an unknown layer, or hides a
+stand-in more than 3 cells away or a placement of a cell that is not a near cell.
 
 ## Precision
 
@@ -1067,6 +1145,9 @@ Drawing, cycles:
 | `wp_draw_object()` with the bounds known, against `mesh_at()` (the example coin: 22 vertices, 40 triangles) | 5,052 against 4,801 drawn; 235 culled (`mesh_at()` out of view: 2,603) |
 | `wp_mesh_bounds()` | about 17 a vertex and 260 more (the coin: 710) |
 | `wp_draw_entities()`, per entity with a mesh (the cell walk, layer test, bounds and `wp_draw_object()`) | the coin: 6,201 drawn, 1,384 culled |
+| (1.5) occlusion: a view from a zone behind a wall (`OcclusionTests.test_costs`: 11 of 22 placements and 2 stand-ins hidden, 10 of them in view) | 27,802 against 43,108 with `wp_occlusion` false |
+| (1.5) a zone whose hidden placements are all out of view (22 placements bit-tested) | 248 more (38,330 against 38,082): about 11 a placement looked at |
+| (1.5) the eye in no zone (one zone looked at), against the same world without zones | 43 more (38,020 against 37,977) |
 
 The table predates the loops for meshes with nothing to clip and the cache of entity bounds
 (2026-10). With them, `tests/test_worldpack.py`'s cost cart (100 small boxes as placements; run
@@ -1102,9 +1183,10 @@ radius (2), and `WP_MAX_LOD` = 2,048 bytes of level memory, one per placement sl
 | `wp_mesh_bounds(m) -> vec2` | a mesh's radius around its origin and its lowest vertex's height (a scan) |
 | `wp_view_origin()` | where this frame is drawn around: draw the game's own meshes at `pos − wp_view_origin()` |
 | `wp_clip_near`, `wp_near_far`, `wp_far_ring`, `wp_region_loaded`, `wp_ground_first` | settings (0.1, the pack's `near_far` or 1.5 cells, 3, −1 = any, true; false draws ground in the near pass, as 1.0 did) |
+| `wp_occlusion` | (1.5) occlusion zones on (true; false draws what they hide too, as 1.4 did) |
 | `wp_lod`, `wp_lod_fine`, `wp_lod_reset()` | levels of detail (1.3): on (true; false draws every placement's level 0, as 1.2 did); the finest level the band allows, without memory (false; the World Checker's worst case); forget the levels drawn (after the camera jumps) |
 | `wp_object_bias`, `wp_object_squash` | `wp_draw_object()`'s settings: units nearer from above (1.5); squash of the object's own depths (2; 1: no key, the bias alone) |
-| `wp_stats` | near cells, placements looked at and drawn, stand-ins drawn, ground placements drawn, placements drawn at a coarser level (`coarse`) and culled by their LOD set (`lod_culled`), last `wp_draw` |
+| `wp_stats` | near cells, placements looked at and drawn, stand-ins drawn, ground placements drawn, placements drawn at a coarser level (`coarse`) and culled by their LOD set (`lod_culled`), placements and stand-ins skipped by the eye's occlusion zone (`occluded`, `standins_occluded`) and the zone's number in its cell (`zone`, −1 for none), last `wp_draw` |
 | `wp_floor(p, above)`, `wp_ceiling(p, below)`, `wp_push(p, radius)`, `wp_ray(a, b)` | collision in the world; answers in `wp_hit` |
 | `wp_floor_across(p, above, below, span)` | `wp_floor()` bridging cracks narrower than `span`: where it finds no floor at or above `p.y - below`, the higher of two floors in that window on either side of `p`, at most `span` apart along x, z or a diagonal ([WORLDKIT.md](WORLDKIT.md#cracks)) |
 | `wp_coll_floor`, `wp_coll_ceiling`, `wp_coll_push`, `wp_coll_ray` | the same against one block, in its frame (an entity's: `wp_entity_coll(e)`) |
@@ -1145,8 +1227,8 @@ version (a reserved field or a flag) unless noted.
   heights rather than triangles. Triangles were fast enough.
 - **Collision layers that are not draw layers**, and per-triangle flags (one-sided walls, forced
   kinds). The surface byte and the tag can carry game meaning meanwhile.
-- **A potentially-visible set per cell** (WORLDKIT.md, question 2): a reserved cell field could
-  point at it.
+- **Occluder fusion.** A zone hides what one occluder hides alone (WORLDKIT.md, "Occlusion"); the
+  sets are the format's, so a kit that joins shadows needs no new version.
 - **Non-uniform cells** (quadtrees, irregular districts): out of scope; the grid is uniform.
 - **Ordered ground** (several ground passes, lowest first, so a raised floor could be ground over
   a lower one) and ground per face rather than per placement. Neither would stop ground from

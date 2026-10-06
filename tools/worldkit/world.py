@@ -1072,6 +1072,10 @@ def compile_world(source, lock=None, assets_dir=None):
                     near_far=w.get('runtime', {}).get('near_far'),
                     overhang=overhang, floor_max_degrees=probe['floor_max_degrees'],
                     ceiling_max_degrees=probe.get('ceiling_max_degrees', DEFAULT_CEILING_DEGREES), paths=paths)
+    occlusion_report = None
+    if w.get('occlusion'):
+        from . import occlusion
+        occlusion_report = occlusion.compute(w['occlusion'], world, size, layer_names, warnings)
 
     # ---- entity numbers, saved bits, parameter records
     numbers = P.entity_numbers(world)
@@ -1125,6 +1129,8 @@ def compile_world(source, lock=None, assets_dir=None):
         if r in backdrops:
             entry['backdrop'] = backdrops[r].report()
     report['lod'] = {n: s for n, s in lod_report.items()}
+    if occlusion_report is not None:
+        report['occlusion'] = occlusion_report
     if auto_standins:
         report['standins'] = {'distance': auto_standins['distance'], 'cells': auto_report}
         if common:
