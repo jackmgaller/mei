@@ -122,6 +122,9 @@ typedef struct {
     uint32_t tris_recip;    /* triangles charged the reciprocal setup (tested, or textured with depth) */
     uint32_t px_persp;      /* pixels of triangles drawn perspective-correct (included in px[]) */
     uint32_t persp_divs;    /* perspective divides */
+    /* fog toward a colour (a proposal, docs/DECISIONS.md) */
+    uint32_t tris_fog;      /* triangles charged the fog setup (packets with depth while GPU_FOG is on) */
+    uint32_t px_fog;        /* pixels of those triangles (included in px[]) */
 } MeiGpuStats;
 const MeiGpuStats *mei_gpu_stats(const Mei *m);
 

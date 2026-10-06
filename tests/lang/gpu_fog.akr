@@ -1,0 +1,65 @@
+// gpu_fog() (a proposal: docs/DECISIONS.md, "Proposal: fog toward a colour"): the registers it
+// writes, and mesh() in depth mode fogging toward white from 0 to 20 units. A black quad at 10
+// units is halfway (factor 127: 126 >> 3 = 15), one at 40 is the fog colour, and a black quad
+// drawn without depth (render_depth off) is not fogged.
+// frames: 3
+// expect: ok
+// pixel: 160 120 3DEF
+// pixel: 230 120 7FFF
+// pixel: 20 200 0000
+// pixel: 300 20 7C00
+
+import "depth.akr"
+
+struct Quad { hdr: Mesh, v: [4]vec4, f: [1]Face }
+var a: Quad          // black, at 10
+var b: Quad          // black, at 40
+var c: Quad          // black, near the bottom-left corner, drawn without depth
+
+fn quad(m: *Quad, x0: fixed, y0: fixed, x1: fixed, y1: fixed, z: fixed) {
+    m.hdr.nverts = 4
+    m.hdr.nfaces = 1
+    m.hdr.verts = 16
+    m.hdr.faces = 16 + 64
+    m.v[0] = vec4(x0, y0, z, 1.0)
+    m.v[1] = vec4(x1, y0, z, 1.0)
+    m.v[2] = vec4(x0, y1, z, 1.0)
+    m.v[3] = vec4(x1, y1, z, 1.0)
+    m.f[0].flags = FACE_QUAD as u8
+    m.f[0].col[0] = 0
+    m.f[0].idx[0] = 0
+    m.f[0].idx[1] = 1
+    m.f[0].idx[2] = 2
+    m.f[0].idx[3] = 3
+}
+
+fn init() {
+    dither(false)
+    quad(&a, -2.0, -1.0, 2.0, 1.0, 10.0)
+    quad(&b, 10.0, -1.0, 18.0, 1.0, 40.0)
+    quad(&c, -9.0, -5.0, -6.0, -3.0, 10.0)
+    camera(vec3(0.0, 0.0, 0.0), 0.0)
+    gpu_fog(rgb(255, 255, 255), 0.0, 20.0)
+    assert_eq(GPU_FOG, 0x1FFFFFF)
+    assert_eq(GPU_FOG_RANGE, 3276 << 16)
+    gpu_fog(rgb(200, 210, 220), 40.0, 240.0)
+    assert_eq(GPU_FOG, 0x1DCD2C8)
+    assert_eq(GPU_FOG_RANGE, (327 << 16) | 640)
+    gpu_fog(rgb(1, 2, 3), 5.0, 5.0)                 // far - near below 1 unit: the largest scale
+    assert_eq(GPU_FOG_RANGE, (0xFFFF << 16) | 80)
+    gpu_fog_off()
+    assert_eq(GPU_FOG, 0)
+    gpu_fog(rgb(255, 255, 255), 0.0, 20.0)
+    println("ok")
+}
+
+fn update() {}
+
+fn draw() {
+    cls(rgb(0, 0, 255))
+    render_depth(true)
+    mesh(&a.hdr)
+    mesh(&b.hdr)
+    render_depth(false)
+    mesh(&c.hdr)
+}

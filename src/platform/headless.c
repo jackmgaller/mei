@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
         if (!gs) { perror(gstats_path); return 1; }
         fprintf(gs, "tick,cpu_cycles,tris,tris_empty,tris_dropped,clears,lists,"
                     "px_flat,px_gouraud,px_tex,px_tex_gouraud,px_semi_flat,px_semi_gouraud,px_semi_tex,px_semi_tex_gouraud,"
-                    "gpu_cycles,ticks,gpu_lag,px_ztest,px_zfail,zclears,tris_recip,px_persp,persp_divs\n");
+                    "gpu_cycles,ticks,gpu_lag,px_ztest,px_zfail,zclears,tris_recip,px_persp,persp_divs,tris_fog,px_fog\n");
     }
     MeiPadInput in = {pad1, 0, 0};
     long presented = 0;
@@ -208,7 +208,8 @@ int main(int argc, char **argv) {
             fprintf(gs, "%ld,%u,%u,%u,%u,%u,%u", i, g->cpu_cycles, g->tris, g->tris_empty, g->tris_dropped, g->clears, g->lists);
             for (int k = 0; k < 8; k++) fprintf(gs, ",%u", g->px[k]);
             fprintf(gs, ",%u,%u,%u", g->gpu_cycles, g->ticks, g->gpu_lag);
-            fprintf(gs, ",%u,%u,%u,%u,%u,%u\n", g->px_ztest, g->px_zfail, g->zclears, g->tris_recip, g->px_persp, g->persp_divs);
+            fprintf(gs, ",%u,%u,%u,%u,%u,%u", g->px_ztest, g->px_zfail, g->zclears, g->tris_recip, g->px_persp, g->persp_divs);
+            fprintf(gs, ",%u,%u\n", g->tris_fog, g->px_fog);
         }
         if (wf) {
             const int16_t *s;
