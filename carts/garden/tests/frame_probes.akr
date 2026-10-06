@@ -50,8 +50,8 @@ const FRAME_PROBES: [528]FrameProbe = [
     FrameProbe { at: vec3(122.75, 10.22, 1.75), yaw: -2.1815, mode: 0, edge: 0 },   // S 120.25 walk
     FrameProbe { at: vec3(122.75, 10.22, 1.75), yaw: -2.1815, mode: 1, edge: 0 },   // S 120.25 flip
     FrameProbe { at: vec3(78.00, 20.82, 26.00), yaw: 2.1225, mode: 2, edge: 0 },   // S 120.25 glide
-    FrameProbe { at: vec3(140.25, 12.66, 2.75), yaw: -2.0344, mode: 0, edge: 0 },   // S 135.75 walk
-    FrameProbe { at: vec3(140.25, 12.66, 2.75), yaw: -2.0344, mode: 1, edge: 0 },   // S 135.75 flip
+    FrameProbe { at: vec3(127.75, 10.22, 1.25), yaw: 2.7611, mode: 0, edge: 0 },   // S 135.75 walk
+    FrameProbe { at: vec3(127.75, 10.22, 1.25), yaw: 2.7611, mode: 1, edge: 0 },   // S 135.75 flip
     FrameProbe { at: vec3(143.25, 13.73, 5.25), yaw: -2.1815, mode: 2, edge: 0 },   // S 135.75 glide
     FrameProbe { at: vec3(143.25, 13.73, 5.25), yaw: -2.4905, mode: 0, edge: 0 },   // S 143.25 walk
     FrameProbe { at: vec3(143.25, 13.73, 5.25), yaw: -2.4905, mode: 1, edge: 0 },   // S 143.25 flip
@@ -71,8 +71,8 @@ const FRAME_PROBES: [528]FrameProbe = [
     FrameProbe { at: vec3(172.25, 13.73, 5.25), yaw: 2.4905, mode: 0, edge: 0 },   // S 176.25 walk
     FrameProbe { at: vec3(172.25, 13.73, 5.25), yaw: 2.4905, mode: 1, edge: 0 },   // S 176.25 flip
     FrameProbe { at: vec3(176.25, 13.73, 5.25), yaw: 3.1416, mode: 2, edge: 0 },   // S 176.25 glide
-    FrameProbe { at: vec3(178.75, 12.66, 2.75), yaw: 2.0344, mode: 0, edge: 0 },   // S 184.25 walk
-    FrameProbe { at: vec3(178.75, 12.66, 2.75), yaw: 2.0344, mode: 1, edge: 0 },   // S 184.25 flip
+    FrameProbe { at: vec3(190.25, 10.22, 1.25), yaw: -1.7943, mode: 0, edge: 0 },   // S 184.25 walk
+    FrameProbe { at: vec3(190.25, 10.22, 1.25), yaw: -1.7943, mode: 1, edge: 0 },   // S 184.25 flip
     FrameProbe { at: vec3(176.75, 13.73, 5.25), yaw: 2.1815, mode: 2, edge: 0 },   // S 184.25 glide
     FrameProbe { at: vec3(190.25, 10.22, 1.25), yaw: 2.1294, mode: 0, edge: 0 },   // S 192.25 walk
     FrameProbe { at: vec3(190.25, 10.22, 1.25), yaw: 2.1294, mode: 1, edge: 0 },   // S 192.25 flip
@@ -140,8 +140,8 @@ const FRAME_PROBES: [528]FrameProbe = [
     FrameProbe { at: vec3(34.75, 14.81, 379.25), yaw: 0.8584, mode: 0, edge: 1 },   // N 47.75 walk
     FrameProbe { at: vec3(34.75, 14.81, 379.25), yaw: 0.8584, mode: 1, edge: 1 },   // N 47.75 flip
     FrameProbe { at: vec3(68.25, 62.18, 379.25), yaw: -1.3431, mode: 2, edge: 1 },   // N 47.75 glide
-    FrameProbe { at: vec3(46.75, 1.02, 373.75), yaw: 0.1453, mode: 0, edge: 1 },   // N 48.75 walk
-    FrameProbe { at: vec3(46.75, 1.02, 373.75), yaw: 0.1453, mode: 1, edge: 1 },   // N 48.75 flip
+    FrameProbe { at: vec3(55.75, 3.98, 373.75), yaw: -0.1453, mode: 0, edge: 1 },   // N 48.75 walk
+    FrameProbe { at: vec3(55.75, 3.98, 373.75), yaw: -0.1453, mode: 1, edge: 1 },   // N 48.75 flip
     FrameProbe { at: vec3(68.25, 62.18, 379.25), yaw: -1.3319, mode: 2, edge: 1 },   // N 48.75 glide
     FrameProbe { at: vec3(69.25, 62.19, 379.25), yaw: -0.8584, mode: 0, edge: 1 },   // N 63.75 walk
     FrameProbe { at: vec3(69.25, 62.19, 379.25), yaw: -0.8584, mode: 1, edge: 1 },   // N 63.75 flip
@@ -170,20 +170,20 @@ const FRAME_PROBES: [528]FrameProbe = [
     FrameProbe { at: vec3(133.25, 62.76, 379.25), yaw: -0.8584, mode: 0, edge: 1 },   // N 127.75 walk
     FrameProbe { at: vec3(133.25, 62.76, 379.25), yaw: -0.8584, mode: 1, edge: 1 },   // N 127.75 flip
     FrameProbe { at: vec3(146.00, 68.52, 356.00), yaw: -0.5776, mode: 2, edge: 1 },   // N 127.75 glide
-    FrameProbe { at: vec3(135.25, 63.02, 379.25), yaw: -0.8584, mode: 0, edge: 1 },   // N 128.75 walk
-    FrameProbe { at: vec3(135.25, 63.02, 379.25), yaw: -0.8584, mode: 1, edge: 1 },   // N 128.75 flip
+    FrameProbe { at: vec3(137.25, 63.02, 379.25), yaw: -0.8584, mode: 0, edge: 1 },   // N 128.75 walk
+    FrameProbe { at: vec3(137.25, 63.02, 379.25), yaw: -0.8584, mode: 1, edge: 1 },   // N 128.75 flip
     FrameProbe { at: vec3(146.00, 68.52, 356.00), yaw: -0.5522, mode: 2, edge: 1 },   // N 128.75 glide
-    FrameProbe { at: vec3(135.25, 63.02, 379.25), yaw: 0.2075, mode: 0, edge: 1 },   // N 143.75 walk
-    FrameProbe { at: vec3(135.25, 63.02, 379.25), yaw: 0.2075, mode: 1, edge: 1 },   // N 143.75 flip
+    FrameProbe { at: vec3(137.25, 63.02, 379.25), yaw: -0.2075, mode: 0, edge: 1 },   // N 143.75 walk
+    FrameProbe { at: vec3(137.25, 63.02, 379.25), yaw: -0.2075, mode: 1, edge: 1 },   // N 143.75 flip
     FrameProbe { at: vec3(146.00, 68.52, 356.00), yaw: -0.0802, mode: 2, edge: 1 },   // N 143.75 glide
-    FrameProbe { at: vec3(144.25, 60.44, 377.75), yaw: 0.0000, mode: 0, edge: 1 },   // N 145.75 walk
-    FrameProbe { at: vec3(144.25, 60.44, 377.75), yaw: 0.0000, mode: 1, edge: 1 },   // N 145.75 flip
+    FrameProbe { at: vec3(142.75, 62.42, 379.25), yaw: 0.3059, mode: 0, edge: 1 },   // N 145.75 walk
+    FrameProbe { at: vec3(142.75, 62.42, 379.25), yaw: 0.3059, mode: 1, edge: 1 },   // N 145.75 flip
     FrameProbe { at: vec3(146.00, 68.52, 356.00), yaw: -0.0089, mode: 2, edge: 1 },   // N 145.75 glide
-    FrameProbe { at: vec3(159.25, 61.12, 379.25), yaw: -0.8584, mode: 0, edge: 1 },   // N 159.75 walk
-    FrameProbe { at: vec3(159.25, 61.12, 379.25), yaw: -0.8584, mode: 1, edge: 1 },   // N 159.75 flip
+    FrameProbe { at: vec3(146.75, 62.37, 379.25), yaw: 0.8584, mode: 0, edge: 1 },   // N 159.75 walk
+    FrameProbe { at: vec3(146.75, 62.37, 379.25), yaw: 0.8584, mode: 1, edge: 1 },   // N 159.75 flip
     FrameProbe { at: vec3(160.00, 68.52, 356.00), yaw: -0.0089, mode: 2, edge: 1 },   // N 159.75 glide
-    FrameProbe { at: vec3(159.25, 61.12, 379.25), yaw: 0.2075, mode: 0, edge: 1 },   // N 160.25 walk
-    FrameProbe { at: vec3(159.25, 61.12, 379.25), yaw: 0.2075, mode: 1, edge: 1 },   // N 160.25 flip
+    FrameProbe { at: vec3(154.75, 61.76, 379.25), yaw: 0.8584, mode: 0, edge: 1 },   // N 160.25 walk
+    FrameProbe { at: vec3(154.75, 61.76, 379.25), yaw: 0.8584, mode: 1, edge: 1 },   // N 160.25 flip
     FrameProbe { at: vec3(160.00, 68.52, 356.00), yaw: 0.0089, mode: 2, edge: 1 },   // N 160.25 glide
     FrameProbe { at: vec3(162.75, 60.81, 379.25), yaw: 0.8584, mode: 0, edge: 1 },   // N 168.25 walk
     FrameProbe { at: vec3(162.75, 60.81, 379.25), yaw: 0.8584, mode: 1, edge: 1 },   // N 168.25 flip
@@ -512,8 +512,8 @@ const FRAME_PROBES: [528]FrameProbe = [
     FrameProbe { at: vec3(317.25, 51.56, 341.25), yaw: 2.6779, mode: 0, edge: 3 },   // E 335.75 walk
     FrameProbe { at: vec3(317.25, 51.56, 341.25), yaw: 2.6779, mode: 1, edge: 3 },   // E 335.75 flip
     FrameProbe { at: vec3(317.25, 61.60, 356.25), yaw: 3.0082, mode: 2, edge: 3 },   // E 335.75 glide
-    FrameProbe { at: vec3(312.75, 54.00, 347.25), yaw: 2.0206, mode: 0, edge: 3 },   // E 336.75 walk
-    FrameProbe { at: vec3(312.75, 54.00, 347.25), yaw: 2.0206, mode: 1, edge: 3 },   // E 336.75 flip
+    FrameProbe { at: vec3(316.25, 55.66, 349.25), yaw: 2.5432, mode: 0, edge: 3 },   // E 336.75 walk
+    FrameProbe { at: vec3(316.25, 55.66, 349.25), yaw: 2.5432, mode: 1, edge: 3 },   // E 336.75 flip
     FrameProbe { at: vec3(317.25, 61.60, 356.25), yaw: 3.0015, mode: 2, edge: 3 },   // E 336.75 glide
     FrameProbe { at: vec3(317.25, 61.72, 357.25), yaw: 2.6779, mode: 0, edge: 3 },   // E 351.75 walk
     FrameProbe { at: vec3(317.25, 61.72, 357.25), yaw: 2.6779, mode: 1, edge: 3 },   // E 351.75 flip
