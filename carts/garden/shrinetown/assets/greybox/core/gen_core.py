@@ -464,12 +464,18 @@ ys = [max(max(ground(x + ox, z + oz) for ox in (-0.8, 0, 0.8) for oz in (-0.8, 0
 for _ in range(2):                                    # smooth, never below the ground's clearance
     ys = [ys[0]] + [max(ys[i], (ys[i - 1] + 2 * ys[i] + ys[i + 1]) / 4) for i in range(1, len(ys) - 1)] + [ys[-1]]
 # no leg steeper than 22 degrees: each point raised to within 0.4 m a metre of its neighbours, both ways
-# (the explorer bot: 32 degrees down onto the corner at (222, 174), a walk up it slid back: alpha fix)
-for order in (range(1, len(ys)), range(len(ys) - 2, -1, -1)):
-    for i in order:
-        j = i - 1 if order.step == 1 else i + 1
-        d = math.hypot(zpts[i][0] - zpts[j][0], zpts[i][1] - zpts[j][1])
-        ys[i] = max(ys[i], ys[j] - 0.4 * d)
+# (the explorer bot: 32 degrees down onto the corner at (222, 174), a walk up it slid back: alpha fix);
+# and each corner level with the points either side of it, so the mitre there meets level planks
+# (sloping, they met it in a 34-degree crease on the corner's inside)
+corners = [i for i, p in enumerate(zpts) if tuple(p) in {tuple(map(float, c)) for c in ZZ[1:-1]}]
+for _ in range(2):
+    for i in corners:
+        ys[i - 1] = ys[i] = ys[i + 1] = max(ys[i - 1], ys[i], ys[i + 1])
+    for order in (range(1, len(ys)), range(len(ys) - 2, -1, -1)):
+        for i in order:
+            j = i - 1 if order.step == 1 else i + 1
+            d = math.hypot(zpts[i][0] - zpts[j][0], zpts[i][1] - zpts[j][1])
+            ys[i] = max(ys[i], ys[j] - 0.4 * d)
 bridge('core_zigzag', [(x, y, z) for (x, z), y in zip(zpts, ys)],
        profile=[[-0.9, -0.3], [-0.9, 0], [0.9, 0], [0.9, -0.3], [-0.9, -0.3]])
 

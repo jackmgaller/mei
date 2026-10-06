@@ -198,7 +198,7 @@ fn shz_setup() {
             // from the ledge round to the ladder's north side (under the deck), up it, a pole jump north
             // over the railing onto the deck
             shz_start(154.0, 336.0, 50.0, NORTH)
-            shz_a(152.4, 43.5, 337.5, SHZ_K_WALK, 0.5); shz_a(152.4, 43.5, 340.0, SHZ_K_WALK, 0.5); shz_a(154.0, 43.5, 340.1, SHZ_K_WALK, 0.4)
+            shz_a(152.4, 43.5, 337.5, SHZ_K_WALK, 0.5); shz_a(152.4, 43.5, 340.0, SHZ_K_WALK, 0.5); shz_a(154.0, 43.5, 340.1, SHZ_K_WALK, 0.4); shz_a(154.0, 43.5, 339.6, SHZ_K_WALK, 0.25)
             shz_a(154.0, 43.5, 338.85, SHZ_K_POLE, 0.8)
             shz_a(154.0, 59.5, 343.5, SHZ_K_WALK, 1.2)
         }
