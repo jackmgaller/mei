@@ -39,4 +39,4 @@ run 444 95
 run 445 95
 run 446 515
 # occlusion zones (DESIGN.md 12.9, workstream 7)
-run 480 95
+run 470 95
