@@ -451,6 +451,69 @@ class DifferentialTests(unittest.TestCase):
                 if VERBOSE:
                     print(f'\n  heightfield shift {shift}: worst height error {worst:.6f}')
 
+    def test_floor_across_cracks_matches_the_checker(self):
+        """wp_floor_across() and the World Checker's reader_floor_across() give the same answer,
+        bit for bit, near gaps of many widths and angles between slabs 2 units up over a ground
+        at 0 (outside the window), some across a cell seam and some with the far slab higher;
+        and a gap is bridged as WORLDKIT.md says: narrower than (span - 1/8) cos 22.5 at every
+        point, never wider than the span."""
+        try:
+            from worldkit import verify_static as ST
+        except ImportError as error:
+            self.skipTest(f'the World Checker does not load: {error}')
+        rng = random.Random(5)
+        tris, gaps = [], []
+        tag = 10
+        S = 64
+        tris += [Tri((0, 0, 0), (2 * S, 0, 0), (0, 0, S), tag=1), Tri((2 * S, 0, 0), (2 * S, 0, S), (0, 0, S), tag=1)]
+        k = 0
+        for width in (0.016, 0.05, 0.1, 0.2, 0.25, 0.28, 0.33, 0.4, 0.45, 0.6):
+            for deg in (0, 22.5, 30, 45, 60, 90):
+                for rise in (0.0, 0.25, 0.5):
+                    # 20 columns of 9; the eleventh (x = 64) on the seam
+                    cx, cz = 4 + 6 * (k // 9), 4 + 6.5 * (k % 9)
+                    k += 1
+                    a = math.radians(deg)
+                    ux, uz, vx, vz = math.cos(a), math.sin(a), -math.sin(a), math.cos(a)
+
+                    def at(s, t, y):
+                        return (cx + ux * s + vx * t, y, cz + uz * s + vz * t)
+                    for (s0, s1), y in (((-1.5, -width / 2), 2.0), ((width / 2, 1.5), 2.0 + rise)):
+                        q = [at(s0, -1.5, y), at(s1, -1.5, y), at(s1, 1.5, y), at(s0, 1.5, y)]
+                        tris += [Tri(q[0], q[1], q[2], tag=tag), Tri(q[0], q[2], q[3], tag=tag)]
+                        tag += 1
+                    gaps.append((cx, cz, ux, uz, width, rise))
+        w = World(cells=[Cell(0, 0, collision=[t for t in tris]), Cell(1, 0, collision=[])])
+        pack = decode(encode(w))
+        recs, pts = [], []
+        for cx, cz, ux, uz, width, rise in gaps:
+            for _ in range(12):
+                s = rng.uniform(-0.6, 0.6) * max(width, 0.3)
+                t = rng.uniform(-1.2, 1.2)
+                y = 2.0 + rng.choice([0.0, 0.1, -0.1, rise])
+                span = rng.choice([0.4375, 0.4375, 0.25, 0.125])
+                p = F.raw((cx + ux * s - uz * t, y, cz + uz * s + ux * t))
+                q = (fx(0.32), fx(0.32), fx(span))
+                recs.append(F.query(F.OP_ACROSS, p, q))
+                pts.append((p, q, s, width, rise, span))
+        got = self.run_queries(w, recs, frames=600)
+        bridged = 0
+        for (p, q, s, width, rise, span), g in zip(pts, got):
+            want = ST.reader_floor_across(pack, p[0], p[1], p[2], set(), q[0], q[1], ST.across_steps(span))
+            lo = p[1] - q[1]
+            self.assertEqual(g[0] == 1, want is not None, (p, width, span))
+            if want is not None:
+                self.assertEqual((g[1], g[3]), (want[0], want[1]), (p, width, span))
+            inside = abs(s) < width / 2 - 1e-3
+            on_slab = want is not None and want[0] >= lo and want[1] != 1
+            if inside and on_slab:
+                bridged += 1
+                self.assertLessEqual(width, span + 1e-9, 'a gap wider than the span is never bridged')
+            elif inside and rise <= 0.32 - 0.1 and abs(p[1] / ONE - 2.0) <= 0.1 + 1e-6 and \
+                    width < (span - 0.125) * math.cos(math.radians(22.5)) - 1e-3:
+                self.fail(f'a gap of {width} is not bridged with span {span} at {[c / ONE for c in p]}')
+        self.assertGreater(bridged, 100)
+
     def test_moving_object_in_its_own_frame(self):
         w, etris = F.random_world(21, 6)
         oracle = Oracle.from_tris(etris)
@@ -916,9 +979,13 @@ class CostTests(unittest.TestCase):
             got.setdefault(f[0], []).append([int(x) for x in f[1:]])
         if VERBOSE:
             print('\n  ' + '\n  '.join(lines))
-        per = {k: got[k][0][0] for k in ('cell', 'floor', 'ceiling', 'push', 'ray4', 'ray15')}
+        per = {k: got[k][0][0] for k in ('cell', 'floor', 'across', 'across_air', 'ceiling', 'push', 'ray4', 'ray15')}
         # Tsumiki's floor query among 41 solids took about 2,000 cycles (docs/WORLDKIT.md)
         self.assertLess(per['floor'], 1000)
+        # wp_floor_across(): wp_floor() and little more on whole ground; at most 25 queries when
+        # there is nothing in the window (in the air), 6 steps out along each of 4 directions
+        self.assertLess(per['across'], per['floor'] + 100)
+        self.assertLess(per['across_air'], 25 * per['floor'] + 1000)
         self.assertLess(per['ceiling'], 1000)
         self.assertLess(per['push'], 1000)
         self.assertLess(per['ray4'], 5000)

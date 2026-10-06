@@ -995,10 +995,12 @@ the type numbers, an Akari `struct` per type with parameters and an `enum` per e
 `GAME.game.akr`, which every world of the game imports. `saved` asks the kit for a persistent bit
 per entity of that type. `probe` describes the player's body: the kit classifies collision by
 `floor_max_degrees` (and `ceiling_max_degrees`, default 45) and copies walls `radius` past cell
-edges; the World Checker samples cameras with its `radius`, `height` and `step`. `GAME.game.akr`
-exports it as `GAME_PROBE_RADIUS` and `_FLOOR_MAX_DEGREES`, `_HEIGHT` and `_STEP` when the
-schema gives them, and `_CEILING_MAX_DEGREES` (always: the angle the kit used), so a cart moves
-the same body the level was checked for. It is geometry, not movement rules.
+edges; the World Checker samples cameras with its `radius`, `height` and `step`, and does not
+report a crack that the game's floor query bridges with its `bridge` ([Cracks](#cracks)).
+`GAME.game.akr` exports it as `GAME_PROBE_RADIUS` and `_FLOOR_MAX_DEGREES`, `_HEIGHT`, `_STEP`
+and `_BRIDGE` when the schema gives them, and `_CEILING_MAX_DEGREES` (always: the angle the kit
+used), so a cart moves the same body the level was checked for. It is geometry, not movement
+rules.
 Everything else (what `night` means, whether a coin respawns) is the game's. Entity IDs are
 world-wide, so a `ref` and a saved bit can name any entity.
 
@@ -1028,8 +1030,8 @@ vec3 defaults are `[x, y, z]`; `true` and `false` are bool defaults; names, enum
 names are bare and follow the kit's name rule, `^[a-z][a-z0-9_]{0,47}$`. There are no reserved
 words, so an enum value may be `u8` (`kind: u8 | s16`, where the `|` makes it an enum) and a field
 may be called `world`. `game` comes first; `probe`, `worlds` and types follow in any order. The
-probe requires `radius` and `floor_max_degrees`; `height`, `step` and `ceiling_max_degrees` are
-optional. `convert` writes the canonical style shown above (probe values and field types aligned,
+probe requires `radius` and `floor_max_degrees`; `height`, `step`, `ceiling_max_degrees` and
+`bridge` are optional. `convert` writes the canonical style shown above (probe values and field types aligned,
 a blank line between statements); it drops `"saved": false`, empty `params` and `"required":
 false`, which mean the same as leaving them out.
 
@@ -1654,6 +1656,47 @@ sets how far walls are copied past a cell's edge (the pack's `pad`). Moving obje
 are entities with a collision asset in their own frame; the game moves them and the runtime tests
 queries in that frame.
 
+### Cracks
+
+**Decided (2026-10-05): the floor query bridges small cracks, and the World Checker agrees.** A
+crack is a small horizontal gap between walkable floors: where two assets' collision meshes meet,
+inside an asset's own collision, at a bridge's or platform's joints. A point query falls through
+one, or snags in it. The shrine town had about 50 findings of 0.016 to 0.25 units, so the
+checker's report drowned the real problems in them. A game whose probe gives `bridge` (units;
+the movement garden's is 0.4375) stands its body with `wp_floor_across(p, above, below, bridge)`
+(`stdlib/worldpack.akr`) instead of `wp_floor(p, above)` (the garden's `col_stand()` asks it
+only where its own query, movers included, finds nothing within reach):
+
+- Where `wp_floor()` finds a floor at or above `p.y - below`, that is the answer, unchanged. On
+  whole floors the two queries are the same, bit for bit.
+- Otherwise it steps out from `p` along x, z and the two diagonals, 1/16 unit a step (181/4096 in
+  x and z on the diagonals, exact in fixed point), to the nearest floor within `p.y - below ..
+  p.y + above` on each side. A direction with one on both sides, `a + b` steps apart with `a + b`
+  at most `bridge × 16`, bridges the gap: the higher of the two floors is the answer. With none,
+  `wp_floor()`'s answer stands.
+
+So a gap is bridged when it is narrower than `bridge - 1/8` across its line, and narrower than
+0.92 (`bridge - 1/8`) at any angle (the nearest direction is at most 22.5° off): 0.31 and 0.29
+units for 0.4375. A gap wider than `bridge` is never bridged, at any point, nor is an edge with no
+floor beyond it (a ledge), nor a gap whose far side is out of the window (a step down into a
+trench is a fall). What it does give is a fillet in a floor's concave corners: a point in the
+corner of a hole's outline, less than `bridge` from both edges along a diagonal, is held (a
+triangle about 0.3 units on a side in a right-angled corner). The real gaps the shrine town means
+to be fallen through are 0.5 units and wider.
+
+The cost, measured by `tests/worldpack/bench.akr` (cycles; `wp_floor` 448 there): 512 where
+`wp_floor()` finds a floor in the window, and 11,478 where it does not and nothing is bridged
+(every step of every direction: 6 out along each of the 4, plus the first query), which is the
+body in the air over far ground, once a tick, about 1.1 % of a frame.
+
+The World Checker's crack check uses the same rule, through `verify_static.reader_floor_across()`
+(bit for bit `wp_floor_across()`, which `tests/test_worldpack.py` compares on 2,160 points near
+gaps of 0.016 to 0.6 units at six angles, across a cell seam): a gap whose every point the game's
+query bridges, for a body at the edge's height with the probe's step above and below, is not a
+crack, and a mismatched edge whose sliver is bridged is not reported. What remains is listed by
+`mei_world.py cracks` and kept in the world's crack baseline ([WORLDCHECKER.md](WORLDCHECKER.md#crack-baseline)).
+A game without `bridge` (or with 0) is checked as before.
+
 ## Build outputs and the runtime contract
 
 For a world named `city` of a game named `game`, `build` produces:
@@ -1765,12 +1808,13 @@ contract](#build-outputs-and-the-runtime-contract)).
 | `init DIR [--example room\|city\|terrain] [--force]` | Copies an example world (world file, cells, game schema, asset recipes) into a new directory |
 | `validate FILE` | Every static check: schemas, references, game data, IDs, palettes, that every asset compiles and that the pack can hold the world; the ID changes a build would make |
 | `inspect FILE [--cell ID]` | The same, with the full report: per cell and per region costs, palettes and variants, entity numbers, asset hashes, warnings |
-| `build FILE -o DIR [--locked] [--preview] [--world-checker full\|skip\|N]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam |
+| `build FILE -o DIR [--locked] [--preview] [--world-checker full\|skip\|N] [--crack-baseline FILE\|none]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam (with `NAME.cracks.json` beside the recipe as its crack baseline, when there is one) |
 | `preview FILE -o DIR [--cell ID] [--locked] [--world-checker full\|skip\|N]` | `build`, plus native renders of a cell per region and palette variant (`--cell` picks the cell) |
 | `floor FILE X Z [X Z ...]` | The highest floor under each point, from the world's collision as the kit builds it: `{"at", "y", "from"}`, `from` being `terrain`, `sweep` or a placement's ID (`y` null: none). For setting placements and entities on the ground |
 | `check FILE [--cells I,J[;I,J...]] [--camera SPEC]... [--cameras FILE] [--max-views 200] [-o DIR]` | The World Checker on a few cells and cameras, in seconds ([Quick tools](#quick-tools)) |
 | `floors FILE --area X0,Z0,X1,Z1 [--step 1] [--layers A,B] [--below Y]` | The pack's floor heights over an area as `wp_floor()` finds them, what each belongs to, holes and cracks ([Quick tools](#quick-tools)) |
 | `textures FILE [--region R] [--cells ...] [--add REGION:ASSET,...]` | Texture VRAM per region, by asset and by image, against the region's budget ([Quick tools](#quick-tools)) |
+| `cracks FILE [--routes FILE] [--near 3] [--baseline [FILE]] [--write-baseline]` | Every collision crack the game's floor query does not bridge, on routes first, the widest first; compared with or written to the crack baseline ([Quick tools](#quick-tools)) |
 
 `--world-checker` is for quick builds, such as the World Kit's own tests: `full` (the default)
 runs the World Checker with the world's settings; `skip` does not run it, and `report.json`
@@ -1790,8 +1834,9 @@ nothing).
 
 ### Quick tools
 
-Built (2026-10-05). Three read-only commands for placing things in a world, each in seconds
-once the world has been compiled (`tools/worldkit/quick.py`). They print plain text; `--json`
+Built (2026-10-05). Four read-only commands for placing things in a world, each in seconds
+once the world has been compiled (`tools/worldkit/quick.py`; `cracks` takes minutes on a large
+world, and with `--write-baseline` writes the crack baseline). They print plain text; `--json`
 gives the result as JSON (and errors as the other commands give them; plain `error at PATH:
 message` without it). Exit 1 when the result fails (a check that fails, a region over its
 budget).
@@ -1848,6 +1893,23 @@ crack findings in the area are listed. A placement's collision copied into a nei
 keeps its own cell's tag; the name is taken from the nearest placement with that tag. Unlike
 `floor`, which tests the kit's collision before packing in floating point, a point exactly on a
 face's edge is decided as the console decides it.
+
+**`cracks FILE`** runs the World Checker's crack and mismatched-edge checks over the whole world
+(every layer off and each alone, as the full check does), with the game's floor query's bridging
+([Cracks](#cracks)), and lists every finding that remains, not only the full check's first 50:
+those within `--near` units (default 3) of a `--routes` polyline first, then the widest first,
+each with both floors named. `--baseline` compares with the crack baseline (exit 1 when one is
+new) and `--write-baseline` writes it ([WORLDCHECKER.md](WORLDCHECKER.md#crack-baseline)). On the
+shrine town (about 3 minutes, a minute of it compiling the world when it is not cached; the
+routes from `layout.py`'s `R_*` lines):
+
+```
+$ python3 tools/mei_world.py cracks carts/garden/shrinetown/shrinetown.world.json --build-dir build-mine --routes routes.json
+shrinetown: 3 cracks and mismatched floor edges the floor query does not bridge (probe radius 0.3, step 0.32, bridge 0.4375: 7 steps of 1/16), 2 on a route
+crack         0.188 at (220.094, 2.267, 155.938) cell [3, 2]: sweep | terrain on BRIDGE (0.11)
+crack         0.125 at (171.884, 52.7147, 343.962) cell [2, 5]: terrain | terrain on R_ROPEBRIDGE (2.96)
+crack         0.250 at (320.125, 10.2, 156.467) cell [4, 2]: viaduct_27 | terrain
+```
 
 **`textures FILE`** gives each region's texture VRAM as the kit packs it: every distinct tile
 once, on the 8-texel grid, against `textures.budget` (the numbers of `report.json`'s

@@ -4,8 +4,8 @@
 // rate. All numbers are in tuning.akr.
 //
 // The body is the game schema's probe: an upright cylinder of BODY_RADIUS from the feet
-// (pl.pos) up BODY_HEIGHT. Collision goes through stdlib/worldpack.akr (col_floor, col_push,
-// col_ceiling below), and through attach.akr for things that move.
+// (pl.pos) up BODY_HEIGHT. Collision goes through stdlib/worldpack.akr (col_floor, col_stand,
+// col_push, col_ceiling below), and through attach.akr for things that move.
 //
 // Velocity is in metres a tick. On foot and in the air the player moves along its facing
 // (pl.yaw) at pl.fwd, as in Mario 64; slides keep a free horizontal velocity (pl.vel).
@@ -133,12 +133,32 @@ fn player_respawn() { player_place(pl.spawn, pl.spawn_yaw) }
 fn col_floor(p: vec3, above: fixed) -> bool {
     var found = false
     if wp_floor(p, above) {
-        col_y = wp_hit.y
-        col_n = wp_hit_normal()
-        col_surf = surface_map[wp_hit.surface & 7] as s32
+        col_hit()
         found = true
     }
     return attach_floor(p, above, found)
+}
+
+fn col_hit() {
+    col_y = wp_hit.y
+    col_n = wp_hit_normal()
+    col_surf = surface_map[wp_hit.surface & 7] as s32
+}
+
+// The floor the body stands on or lands on: col_floor(), bridging cracks in the world's
+// collision. Where col_floor() finds a floor (the world's or a mover's) at or above p.y - below,
+// that is the answer, as before; the callers' below is at least their own reach down, so a floor
+// they would have taken is taken as before. Only where there is none does it ask
+// wp_floor_across() for floors on both sides of a gap narrower than the probe's bridge, at most
+// below under p (docs/WORLDKIT.md, "Cracks"): a fall that was a crack becomes a step across it.
+fn col_stand(p: vec3, above: fixed, below: fixed) -> bool {
+    let found = col_floor(p, above)
+    if found && col_y >= p.y - below { return true }
+    if wp_floor_across(p, above, below, BODY_BRIDGE) && wp_hit.y >= p.y - below {
+        col_hit()
+        return true
+    }
+    return found
 }
 
 fn col_ceiling(p: vec3, below: fixed) -> bool {
@@ -199,7 +219,7 @@ fn move_h(dx: fixed, dz: fixed) {
 fn ground_move() -> bool {
     move_h(pl.vel.x, pl.vel.z)
     let snap = 0.06 + (abs(pl.vel.x) + abs(pl.vel.z)) * 1.2
-    if col_floor(pl.pos, BODY_STEP) && col_y >= pl.pos.y - snap {
+    if col_stand(pl.pos, BODY_STEP, max(snap, BODY_STEP)) && col_y >= pl.pos.y - snap {
         pl.pos.y = col_y
         take_floor()
         return true
@@ -234,7 +254,8 @@ fn air_move(gmul: fixed) -> bool {
     // The feet come down on a floor they reached: one they fell to, or one that rose past
     // them (a slope climbing faster than a low dive or rollout). Looked for from the higher
     // of the two heights plus a step, since a slope ahead is above where the feet were.
-    if col_floor(vec3(pl.pos.x, max(old_y, pl.pos.y), pl.pos.z), BODY_STEP) && col_y >= pl.pos.y {
+    let top = max(old_y, pl.pos.y)
+    if col_stand(vec3(pl.pos.x, top, pl.pos.z), BODY_STEP, max(top - pl.pos.y, BODY_STEP)) && col_y >= pl.pos.y {
         pl.pos.y = col_y
         take_floor()
         return true

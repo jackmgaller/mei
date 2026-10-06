@@ -29,6 +29,14 @@ fn init() {
     c0 = cycle_count()
     for k in 0..n { if wp_floor(vec3(PTS[k].x, PTS[k].y, PTS[k].z), 0.5) { hits += 1 } }
     report("floor", cycle_count() - c0 - base, n)
+    // wp_floor_across(): where wp_floor() finds a floor in the window (on whole ground), and
+    // 10 units up, where it does not and nothing is bridged (every step of every direction)
+    c0 = cycle_count()
+    for k in 0..n { if wp_floor_across(vec3(PTS[k].x, PTS[k].y, PTS[k].z), 0.5, 30.0, 0.4375) { hits += 1 } }
+    report("across", cycle_count() - c0 - base, n)
+    c0 = cycle_count()
+    for k in 0..n { if wp_floor_across(vec3(PTS[k].x, PTS[k].y + 10.0, PTS[k].z), 0.32, 0.32, 0.4375) { hits += 1 } }
+    report("across_air", cycle_count() - c0 - base, n)
     c0 = cycle_count()
     for k in 0..n { if wp_ceiling(vec3(PTS[k].x, PTS[k].y, PTS[k].z), 0.5) { hits += 1 } }
     report("ceiling", cycle_count() - c0 - base, n)

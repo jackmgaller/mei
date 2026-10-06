@@ -78,6 +78,7 @@ const WORLD_SURFACES: [8]u8 = [0, 1, 2, 0, 0, 0, 0, 0]
 const BODY_RADIUS: fixed = GARDEN_PROBE_RADIUS
 const BODY_HEIGHT: fixed = GARDEN_PROBE_HEIGHT
 const BODY_STEP: fixed = GARDEN_PROBE_STEP
+const BODY_BRIDGE: fixed = GARDEN_PROBE_BRIDGE      // cracks the floor query steps across
 const COIN_TYPE = GARDEN_TYPE_COIN
 const RED_COIN_TYPE = GARDEN_TYPE_RED_COIN
 const DOOR_TYPE = GARDEN_TYPE_DOOR

@@ -252,6 +252,7 @@ def world_key(context, verify_module):
     return key_of({'version':VERSION,'code':code_hash(verify_module.__file__),
                    'pack':file_hash(context['pack']),
                    'settings':{k:context.get(k) for k in ('world','mode','thresholds','probe','checker','runtime')},
+                   **({'crack_baseline':context['crack_baseline']} if context.get('crack_baseline') is not None else {}),
                    'natives':{k:file_hash(v) if v else None for k,v in natives.items()},
                    'stdlib':tree_hash(std),**runtime_versions()})
 
