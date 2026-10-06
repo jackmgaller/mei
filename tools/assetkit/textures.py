@@ -772,6 +772,8 @@ def finish(mesh, textures, recipe, layout):
                 raise AssetError(f'/materials/{face.material}/texture', f'Part {face.part!r}: a {tex.projection} texture is drawn once, so its '
                                  'coordinates stay inside it; remove offset (or hand UVs outside 0-1), or use a repeating projection.')
         face.texcoords = tuple(coords)
+    for name, tex in textures.items():
+        used.setdefault(name, tex)       # drawn only by coarser levels (compiler.level_materials)
     windowed = [t for t in used.values() if t.repeat]
     keys = []
     for t in windowed:

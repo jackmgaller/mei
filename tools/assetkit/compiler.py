@@ -153,8 +153,12 @@ def compile_recipe(recipe, base=None, budgets='error'):
     # Textures: texel coordinates from each primitive's own coordinates, then faces of repeating
     # textures cut to fit the GPU's 8-bit coordinates (assetkit/textures.py).
     textures, split_faces = {}, 0
-    if any('texture' in materials[f.material] for f in mesh.faces):
-        textures = TEX.load(recipe,materials,base,{f.material for f in mesh.faces})
+    used = {f.material for f in mesh.faces}
+    # textures only coarser levels draw (a far card, an impostor's facade) are the asset's too:
+    # level 0 loads and places them, and every level shares that placement
+    used |= {m for m in level_materials(recipe) if m in materials and 'texture' in materials[m]}
+    if any('texture' in materials[m] for m in used):
+        textures = TEX.load(recipe,materials,base,used)
         TEX.project(mesh,textures)
         split_faces = TEX.split(mesh,textures)
     # Export precisely the geometry we audit, including fixed-point quantization.
@@ -240,6 +244,28 @@ def decal_report(mesh, decals):
 
 
 DEFAULT_BAND = 1.0
+
+
+def level_materials(recipe):
+    """The materials the nodes of a recipe's lod levels name (material, face_materials), for
+    level 0 to load their textures; empty without lod."""
+    out = set()
+
+    def walk(v):
+        if isinstance(v, dict):
+            if isinstance(v.get('material'), str):
+                out.add(v['material'])
+            for m in v.get('face_materials') or ():
+                if isinstance(m, str):
+                    out.add(m)
+            for x in v.values():
+                walk(x)
+        elif isinstance(v, list):
+            for x in v:
+                walk(x)
+    for level in recipe.get('lod', {}).get('levels', []):
+        walk(level.get('nodes', []))
+    return out
 
 
 def level_recipe(recipe, k):

@@ -210,6 +210,22 @@
         "cell": "office",
         "projection": "fit"
       }
+    },
+    "impostor_front": {
+      "color": "#8f8877",
+      "texture": {
+        "image": "art/station_concourse_front.png",
+        "projection": "fit"
+      },
+      "double_sided": true
+    },
+    "impostor_side": {
+      "color": "#85837a",
+      "texture": {
+        "image": "art/station_concourse_side.png",
+        "projection": "fit"
+      },
+      "double_sided": true
     }
   },
   "lighting": {
@@ -1056,42 +1072,19 @@
         "distance": 70,
         "nodes": [
           {
-            "id": "hall",
-            "op": "box",
-            "size": [48.0, 8.6, 13.5],
-            "material": "stone",
-            "transform": {
-              "translate": [0.0, 4.3, -0.25]
-            },
-            "open": ["top", "bottom", "front"],
-            "faces": {
-              "back": "interior"
-            }
-          },
-          {
-            "id": "stairs",
-            "op": "group",
-            "children": [
-              {
-                "id": "stair",
-                "op": "extrude",
-                "material": "stone",
-                "depth": 3.26,
-                "points": [[7.6, 10.1], [26.6, 1.1], [26.6, 0], [7.6, 0]],
-                "faces": {
-                  "side": "roof"
-                },
-                "transform": {
-                  "rotate": [0, 90, 0],
-                  "translate": [10.0, 0, 0]
-                }
-              }
+            "id": "impostor",
+            "op": "mesh",
+            "vertices": [
+              [-24.0, 12.025, -26.6], [24.0, 12.025, -26.6], [24.0, 0.0, -26.6], [-24.0, 0.0, -26.6],
+              [-24.0, 12.025, 6.5], [24.0, 12.025, 6.5], [24.0, 0.0, 6.5], [-24.0, 0.0, 6.5],
+              [-24.0, 12.025, -26.6], [-24.0, 12.025, 6.5], [-24.0, 0.0, 6.5], [-24.0, 0.0, -26.6],
+              [24.0, 12.025, -26.6], [24.0, 12.025, 6.5], [24.0, 0.0, 6.5], [24.0, 0.0, -26.6]
             ],
-            "modifiers": [
-              {
-                "op": "mirror",
-                "axis": "x"
-              }
+            "faces": [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]],
+            "face_materials": ["impostor_front", "impostor_front", "impostor_side", "impostor_side"],
+            "uvs": [
+              [0, 0], [1, 0], [1, 1], [0, 1], [0, 0], [1, 0], [1, 1], [0, 1], [0, 0], [1, 0], [1, 1],
+              [0, 1], [0, 0], [1, 0], [1, 1], [0, 1]
             ]
           }
         ]

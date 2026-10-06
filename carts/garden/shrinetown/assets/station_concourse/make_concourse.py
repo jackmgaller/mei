@@ -670,5 +670,10 @@ def write(name, data):
 
 
 if __name__ == "__main__":
-    write("station_concourse.asset.json", recipe())
+    # level 2 (from 70 m) is an impostor: cut-out pictures of level 0 on a box round it
+    # (tools/assetkit/impostor.py: art/station_concourse_front.png and _side.png; Pillow, NumPy)
+    import sys
+    sys.path.insert(0, os.path.join(HERE, "..", "..", "..", "..", "..", "tools"))
+    from assetkit.impostor import with_impostor
+    write("station_concourse.asset.json", with_impostor(recipe(), HERE, "station_concourse", ppu=3.0))
     write("station_concourse_col.asset.json", collision())

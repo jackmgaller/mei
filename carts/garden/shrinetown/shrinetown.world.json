@@ -8240,7 +8240,7 @@
    "arch_temple": {
     "distances": [
      40,
-     130
+     110
     ]
    },
    "arch_side_hall": {
@@ -8256,13 +8256,13 @@
    "arch_gate": {
     "distances": [
      30,
-     110
+     100
     ]
    },
    "arch_pagoda": {
     "distances": [
      40,
-     130
+     110
     ]
    },
    "arch_torii_great": {
@@ -8374,7 +8374,7 @@
    }
   },
   "textures": {
-   "slots": "0"
+   "slots": "31,30"
   }
  },
  "haze": {

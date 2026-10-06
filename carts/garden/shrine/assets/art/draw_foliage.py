@@ -192,8 +192,9 @@ def cedar_tuft(seed=3):
 
 # ---------------------------------------------------------------- far cards (whole trees)
 
-def maple_far(seed=4):
-    """A whole maple: a broad dome over a short trunk forking into limbs. 96 x 96."""
+def maple_far(seed=4, left=8, right=88, top=10, bottom=62):
+    """A whole maple: a broad dome over a short trunk forking into limbs. 96 x 96. The dome spans
+    left-right, from `top` at its crown to `bottom` (the variants: another dome over the same trunk)."""
     rng = random.Random(seed)
     k = 1.5
     w, h = 96, 96
@@ -205,10 +206,11 @@ def maple_far(seed=4):
         d.line([(x0, y0), (x1, y1)], fill=trunk, width=3)
     mask = Image.new('L', (w, h), 0)
     md = ImageDraw.Draw(mask)
+    mid, half = (left + right) / 2, (right - left) / 2
     for _ in range(60):
-        x = rng.uniform(8, 88)
-        top = 10 + ((x - 48) / 40) ** 2 * 24
-        y = rng.uniform(top + 4, 62)
+        x = rng.uniform(left, right)
+        crown = top + ((x - mid) / half) ** 2 * 24
+        y = rng.uniform(crown + 4, bottom)
         s = rng.uniform(7, 12)
         md.ellipse([x - s, y - s * 0.8, x + s, y + s * 0.8], fill=255)
     m = MAPLE
@@ -223,8 +225,9 @@ def maple_far(seed=4):
     return img
 
 
-def ginkgo_far(seed=5):
-    """A whole ginkgo: a tall irregular oval of gold, a grey trunk. 48 x 96."""
+def ginkgo_far(seed=5, width=21, top=7):
+    """A whole ginkgo: a tall irregular oval of gold, a grey trunk. 48 x 96. `width`: the oval's
+    half width at its widest; `top`: its crown (the variants)."""
     rng = random.Random(seed)
     k = 1.5
     w, h = 48, 96
@@ -236,8 +239,8 @@ def ginkgo_far(seed=5):
     mask = Image.new('L', (w, h), 0)
     md = ImageDraw.Draw(mask)
     for _ in range(46):
-        y = rng.uniform(7, 75)
-        half = 21 * math.sin(math.pi * min(1, max(0, (y - 3) / 78))) ** 0.8
+        y = rng.uniform(top, 75)
+        half = width * math.sin(math.pi * min(1, max(0, (y - top + 4) / (85 - top)))) ** 0.8
         x = 24 + rng.uniform(-half, half) * 0.8
         s = rng.uniform(5, 8.5)
         md.ellipse([x - s, y - s, x + s, y + s], fill=255)
@@ -253,8 +256,10 @@ def ginkgo_far(seed=5):
     return img
 
 
-def cedar_far(seed=6):
-    """A sugi spire: straight, narrow, tiers of drooping clumps, a sharp top; trunk below. 32 x 128."""
+def cedar_far(seed=6, base=66, spread=9.5):
+    """A sugi spire: straight, narrow, tiers of drooping clumps, a sharp top; trunk below. 32 x 128.
+    `base`: the lowest tier (texels / k from the top); `spread`: the tiers' half width at the base
+    (the variants: a slimmer and a fuller spire)."""
     rng = random.Random(seed)
     k = 4 / 3
     w, h = 32, 128
@@ -263,14 +268,14 @@ def cedar_far(seed=6):
     d = ImageDraw.Draw(img)
     d.polygon([(cx - 2, 127), (cx + 2, 127), (cx + 0.5, 26), (cx - 0.5, 26)], fill=rgb(BARK['cedar']))
     c = CEDAR
-    y = 66 * k
+    y = base * k
     tiers = []
     while y > 6 * k:
         tiers.append(y)
         y -= rng.uniform(4.5, 6.5) * k
     for y in tiers:
         frac = (y - 2 * k) / (64 * k)
-        half = (1.5 + 9.5 * frac ** 0.9) * k
+        half = min(15.5, (1.5 + spread * frac ** 0.9) * k)
         for side in (-1, 1):
             x1 = cx + side * half * rng.uniform(0.8, 1.05)
             d.polygon([(cx, y - 5 * k), (x1, y + k), (x1 - side * 2 * k, y + 2.5 * k), (cx, y + k)], fill=rgb(c['deep']))
@@ -512,6 +517,13 @@ CELLS = [
     ('ginkgo_far', ginkgo_far), ('bamboo', bamboo), ('susuki', susuki), ('cedar_far', cedar_far),
     ('cedar_bark', lambda: cedar_bark(16, 64, 14)), ('cedar_bark_tile', lambda: cedar_bark(32, 64, 15)),
     ('shrub', shrub), ('moss', moss), ('rope', rope), ('shide', shide),
+    # the far cards' variants (the trees' two crossed cards carry two of them, so a wood seen from
+    # far off is not one tree repeated): a lopsided smaller maple, a slimmer taller ginkgo, a
+    # slimmer and a fuller cedar
+    ('maple_far_b', lambda: maple_far(31, left=18, right=90, top=16, bottom=66)),
+    ('ginkgo_far_b', lambda: ginkgo_far(32, width=17, top=3)),
+    ('cedar_far_b', lambda: cedar_far(33, base=70, spread=8.0)),
+    ('cedar_far_c', lambda: cedar_far(34, base=60, spread=10.5)),
 ]
 
 

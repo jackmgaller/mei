@@ -107,9 +107,10 @@ cell_caps = {f'c{i}_{j}': {'triangles': 140 if f'c{i}_{j}' in LANDMARKS else 60}
              for i in range(5) for j in range(2, 6)}
 cell_caps['c3_2'] = {'triangles': 110}
 STANDINS = {'distance': 128, 'sweeps': True, 'triangles': 90, 'ground': 32, 'cells': cell_caps,
-            # the trees' far cards stay cut-out cards in the stand-ins: their textures in slot 0, held
-            # by both regions' sets (WORLDKIT.md, "Stand-ins made by the kit")
-            'textures': {'slots': '0'}}
+            # the trees' far cards and the landmarks' impostors stay cut out in the stand-ins: their
+            # textures in slots 31 and 30 (64 KB, the top of VRAM's second megabyte), held by both
+            # regions' sets (WORLDKIT.md, "Stand-ins made by the kit")
+            'textures': {'slots': '31,30'}}
 # ---- haze (WORLDKIT.md, "Haze"): far levels and stand-ins fade toward the sky at the horizon
 HAZE = {'start': 20, 'end': 280, 'amount': 0.55, 'standins': 0.38}
 
