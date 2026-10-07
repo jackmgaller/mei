@@ -1871,3 +1871,84 @@ sacred cedar, the last train. A card is known by where its star stands (`CARD_AT
 | 617-619 | pictures (the banner by night, the shadow by day and by night) |
 
 Screenshots: `carts/garden/shrinetown/screenshots/shadow_names/`.
+#### Updrafts (branch `feat-updrafts`)
+
+Rising air that lifts the glider: the sento's steam, the courtyard's leaf fire and the falls'
+mist. Only a glide rises; a jump or a fall goes through.
+
+**The entity** (`updraft` in `../world/garden.game.mochi`; `../updraft.akr`): a box (`width` by
+`depth`, centred on the placement moved by half of `lean`, from `base` to 2 m over `cap`, both
+metres over the placement), a `lift` (m/s), a `look` (`steam`, `mist`, `smoke`), `puffs` and
+`lean`. In the box `st_glide()` (`../player.akr`) eases the glide's speed to 3.5 m/s (`UD_SPEED`:
+the glider's 2 r/s turn then circles in about 3.5 m) and its climb to `(cap - feet) x 2 /s`
+(`UD_HOLD`), at most `lift` and at least the glide's own sink, with the glide's own easing
+(`T.GlideEase`): a glide held in a column climbs, slows near the cap and holds there (0.15-0.18 m
+over it at most in the cases). The cart holds 16 updrafts a world.
+
+**The look:** the plume is drawn from the placement (the source) to 3 m over the cap, leaning
+`lean` at the cap: `puffs` flat diamonds facing the camera, half over what is behind them
+(`BLEND_HALF`), growing as they rise and thinning away over the last quarter, on a golden-angle
+spiral that turns slowly; every third wisp of the fire is an orange spark, added. One `mesh()` a
+plume, one quad a wisp (at most 24); drawn within 120 m (either axis), half the wisps beyond 50 m,
+none when the plume is behind the camera. The courtyard's fire is `game_takibi` (`game.py`: a heap
+of leaves in a ring of four stones, 72 triangles), the updraft entity's own asset.
+
+| Updraft | Source | Box: x, z; from | Cap | Lift | Caught from |
+|---|---|---|---|---|---|
+| `ud_sento` | the chimney's top (30.5, 18.2, 67.5) | 26.5-40.5, 59.5-71.5; 6.0 | 24.0 | 6 m/s | the danchi's roof (red coin 4), the alley roofs over the canal, the sento's and the boiler room's roofs |
+| `ud_court` | the leaf fire (150, 0.65, 146), west of the sando | 142-158, 136.5-152.5; 9.3 | 21.0 | 6 m/s | a glide from the stage that clears the gate (G8's chain) |
+| `ud_falls` | the pool (214, 11.2, 320) | 208-220, 313-327; 12.7 | 30.0 | 5 m/s | the pool's west terrace (16) and east shelf (20) |
+
+Each base is over a running triple jump (5.61 m) from what stands under it: the lane by the sento
+(5.6), the courtyard's stone lanterns (2.5) and the shed at its west side (3.3: 8.9). A column is
+caught by a glide, from a roof near it or from far. The courtyard's fire stands west of the sando
+so that G8's own line (east of the torii: x 170 at z 146) does not pass through it; with it east of
+the sando the explorer's G8 window fell from 19 of 21 take-offs to 0.
+
+**Routes:**
+
+- **Red coin 7 by the steam** (640): from the danchi's roof (red coin 4, 18.8) a double jump's glide
+  comes into the steam at about 13 and rises to 24 over the chimney; let go over it and the body
+  drops onto the top (18.2) through the coin. The explorer bot's cheapest way to the coin is now a
+  glide from the alley roofs east of the canal (6.6) into the steam: 13.8 s from the spawn (by the
+  ladder, 20.8 s). The ladder is still a way up. G3 starts inside the steam: its take-off window
+  in the explorer grows from 8 of 21 to 14 of 21; scenario 412 lands in the park as before.
+- **G8's chain** (642-645): a glide from anywhere on the stage's deck (its east end, middle and west
+  end, and G8's pad) steered at the smoke (a 16 m square, not the pad's window) clears the gate
+  (17.8; about 2.5 m) and comes in at about 15; held there it rises to 21, then glides over the
+  great torii (its top beam 13.3, 2.6 m clear, 6 m west of star 2's place) and the front road onto
+  the arcade's roof (8.1, at z 86). A take-off from the slope east of the stage (59.4) meets the
+  gate's roof. G8 itself (417, 730-733) and the race (452, 454) are unchanged.
+- **The falls' mist** (641): from the pool's terrace up to 30, under the kick chimney's rest ledge
+  (31), then west over the terrace to the basin (13).
+
+**What they do not open** (the explorer bot with updrafts modelled, and the cases):
+
+- star 1 is taken only from the finial pole (the bot: `pole`, `pole_drop`, `pole_jump`, as
+  before); 646 puts the body gliding at each cap and steers it at the star: the nearest, from the
+  falls' mist, comes down on the pagoda's terrace 3.9 m from it;
+- star 4's chamber: the same ways in as before, none by an updraft;
+- the shortcuts: A-E as before (no route nearer the line between a shortcut's ends);
+- no escape; no new fall through the world (the falls' mist's glides end in the cluster at the
+  falls' east face, (222, 328), which the bot reported before, unconfirmed).
+
+Open, for the owner: a glide from the mist's cap can reach the kick chimney's south mouth at about
+25-27 (its rest ledge is 31): the chimney's lower kicks can be skipped from the pool.
+
+| Case | What it proves |
+|---|---|
+| 640 | From the danchi's roof into the sento's steam, held at its cap (24), let go over the chimney: red coin 7 taken, the feet on its top |
+| 641 | The falls' mist from the pool's terrace up to its cap (30), then west to the basin |
+| 642-645 | G8's chain from the deck's east end, middle and west end and G8's pad: into the courtyard's smoke, held at 21, over the torii onto the arcade's roof |
+| 646 | From each updraft's cap a glide steered at star 1 does not take it |
+| 647 | A jump through the mist (A let go at the apex) gains nothing from it; a triple jump's glide from the courtyard under the smoke stays under its base |
+| 648 | The plumes drawn from three views (`SHOT=1 SEQ=119` for the pictures); `updraft_draw()` under 40,000 cycles |
+
+**Costs:** `updraft_draw()`, the wisps' vertices and one `mesh()` a plume, measured in 648 with
+`cycle_count()`: 15,000 cycles from the courtyard's sando (24 wisps), 19,000 from the canal's east
+lane at the sento (20 wisps, the courtyard's beyond 50 m not drawn), 12,000 from the falls' terrace
+(20 wisps): 3 % of the 600,000 draw-CPU budget at most; GPU: 20-24 semi-transparent quads of a few
+hundred pixels each. The leaf fire's 72 triangles are in the World Checker's views (the courtyard
+from the torii: 506,000 draw CPU, 1,955 triangles, under budget). The physics: one box test an
+updraft a glide tick. The world's check after the change: 0 hard failures, peaks unchanged (2,781
+triangles, 705,219 draw CPU, 905,293 GPU).

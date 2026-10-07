@@ -155,6 +155,24 @@
     15.0,
     334.6
    ]
+  },
+  {
+   "id": "ud_falls",
+   "type": "updraft",
+   "position": [
+    214.0,
+    11.2,
+    320.0
+   ],
+   "params": {
+    "width": 12.0,
+    "depth": 14.0,
+    "base": 1.5,
+    "cap": 18.8,
+    "lift": 5.0,
+    "look": "mist",
+    "puffs": 20
+   }
   }
  ]
 }

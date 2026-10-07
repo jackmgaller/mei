@@ -1,6 +1,6 @@
 """The robot's numbers, read from the cart: the tuning table's defaults (carts/garden/tuning.akr),
-the controller's own constants (player.akr, attach.akr) and the game schema's probe (the body's
-radius, height, step and crack bridge). Nothing here is a guess: a number the cart does not have
+the controller's own constants (player.akr, attach.akr, updraft.akr), the game schema's probe (the body's
+radius, height, step and crack bridge) and its updraft type's defaults. Nothing here is a guess: a number the cart does not have
 fails loudly.
 
 Values are kept in the cart's units (m, m/s, m/s2, ticks); `per_tick` gives the per-tick forms
@@ -73,6 +73,28 @@ def read_probe(path):
     return out
 
 
+def read_type_defaults(path, name):
+    """{field: default} of a type's fields that have one in the game schema (Mochi): numbers,
+    enum words and vectors ([x, y, z])."""
+    text = _strip_comments(Path(path).read_text())
+    m = re.search(rf'type\s+{name}\s*\{{(.*?)\}}', text, re.S)
+    if not m:
+        raise TuningError(f'{path}: no type {name}')
+    out = {}
+    for line in m.group(1).splitlines():
+        f = re.match(r'\s*(\w+)\s*:[^=]*=\s*(.+?)\s*$', line)
+        if not f:
+            continue
+        k, v = f.groups()
+        if v.startswith('['):
+            out[k] = [float(c) for c in v.strip('[]').split(',')]
+        elif re.fullmatch(r'-?[0-9.]+', v):
+            out[k] = float(v)
+        else:
+            out[k] = v
+    return out
+
+
 @dataclass
 class Tuning:
     t: dict                     # T name -> default (cart units)
@@ -81,6 +103,8 @@ class Tuning:
     push_h: list                # the heights above the feet at which walls push
     probe: dict                 # the game schema's probe
     surfaces: list              # the pack's surface bytes to the controller's (ground.akr's WORLD_SURFACES)
+    updraft: dict = field(default_factory=dict)         # updraft.akr's constants
+    updraft_defaults: dict = field(default_factory=dict)  # the schema's updraft field defaults
     sources: list = field(default_factory=list)
 
     # ---- per tick, as player.akr's mps(), mps2(), rps()
@@ -147,10 +171,13 @@ def load(cart=CART, game_schema=None):
     pc = read_consts(player, ['LEDGE_HANG', 'LEDGE_GRAB_TICKS', 'DIVE_MIN', 'SKID_ANGLE',
                               'WADE_NO_JUMP'])
     ac = read_consts(attach, ['POLE_HOLD', 'HANG_BELOW', 'HANG_FALL_MAX', 'HANG_CLEAR'])
+    updraft = cart / 'updraft.akr'
+    uc = read_consts(updraft, ['UD_SPEED', 'UD_HOLD', 'UD_TOP'])
     ground = cart / 'ground' / 'ground.akr'
     m = re.search(r'const\s+WORLD_SURFACES\s*:[^=]*=\s*\[([^\]]*)\]', _strip_comments(ground.read_text()))
     if not m:
         raise TuningError(f'{ground}: no const WORLD_SURFACES')
     surfaces = [int(v) for v in m.group(1).split(',')]
     return Tuning(t=t, player=pc, attach=ac, push_h=read_push_heights(player), probe=read_probe(schema),
-                  surfaces=surfaces, sources=[str(p.relative_to(ROOT)) for p in (tune, player, attach, schema, ground)])
+                  surfaces=surfaces, updraft=uc, updraft_defaults=read_type_defaults(schema, 'updraft'),
+                  sources=[str(p.relative_to(ROOT)) for p in (tune, player, attach, updraft, schema, ground)])

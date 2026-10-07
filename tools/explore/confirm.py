@@ -33,6 +33,7 @@ SCENARIO = 990
 
 MODE_POLE_JUMP, MODE_POLE_DROP = 20, 21
 MODE_DROP = 40
+MODE_UPDRAFT = 26           # out of an updraft: gliding from the column's middle at its cap
 RAIL_MODES = {'hang_jump': 22, 'hang_drop': 23, 'grind_jump': 24, 'grind_off_end': 25}
 WORLD_CONST = {'garden': 'GARDEN_WORLD_GARDEN', 'shrine': 'GARDEN_WORLD_SHRINE', 'shrinetown': 'GARDEN_WORLD_SHRINETOWN'}
 
@@ -286,6 +287,15 @@ fn ex_takeoff(q: ExProbe) {
     if m == 9 { enter(St.CrouchSlide); pl.fwd = mps(T.RunSpeed) }
     if m == 10 { enter(St.Crouch); pl.fwd = 0.0 }
     if m == 11 { enter(St.Skid); pl.fwd = mps(T.SkidSpeed) }
+    if m == 26 {                               // out of an updraft: gliding at its cap
+        pl.pos = q.p
+        pl.vel = vec3(0.0, 0.0, 0.0)
+        pl.yaw = q.head
+        pl.fwd = UD_SPEED / 60
+        pl.glide_armed = true
+        pl.glided = true
+        enter(St.Glide)
+    }
     if m == 40 {                               // a drop: from the point, falling
         pl.pos = q.p
         pl.vel = vec3(0.0, 0.0, 0.0)
@@ -404,7 +414,7 @@ fn ex_case(f: s32) {
     let steer = cc_stick(q.head, 1.0)
     if g == 1 {
         ex_takeoff(q)
-        if m != 1 && m != 21 && m != 40 && m < 22 { pad_v = A }
+        if (m != 1 && m != 21 && m != 40 && m < 22) || m == 26 { pad_v = A }
         if m == 21 { pad_v = R }
         if m != 10 && m != 40 { stick_v = steer }
         ex_lasta = pad_v == A
@@ -443,7 +453,7 @@ fn ex_case(f: s32) {
     stick_v = st
     // the buttons
     var a = false
-    let glide = m == 7 || m == 8
+    let glide = m == 7 || m == 8 || m == 26
     if pl.st == St.Glide { ex_glide_t += 1 }
     if air || pl.st == St.WallSlide {
         a = ex_lasta
@@ -607,6 +617,8 @@ def probe_for_flight(fid, takeoff, extra=None):
                  mode=MODE_POLE_JUMP if name == 'pole_jump' else MODE_POLE_DROP)
     elif name in RAIL_MODES:
         q.update(p=tuple(takeoff['from']), yaw=head, head=head, mode=RAIL_MODES[name])
+    elif name == 'updraft_glide':
+        q.update(p=tuple(takeoff['from']), yaw=head, head=head, mode=MODE_UPDRAFT)
     else:
         return None
     q['kick'] = int(takeoff.get('kicks', 0))

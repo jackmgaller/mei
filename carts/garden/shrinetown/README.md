@@ -86,6 +86,7 @@ seamless edge to downtown (DESIGN.md 7.1), road works until downtown exists.
 | 460–464 | Shortcuts A–E: a jump opens nothing; B (A, B, E) or a ground pound (C, D) opens it, saved; still open when the world is opened again |
 | 465, 466 | The progress on a memory card: written (shortcut E, star 4), then read at start-up |
 | 467 | Ladders A and E: not grabbed while up; held on the front, not gone round |
+| 640–648 | The updrafts (DESIGN.md 12.10, `updraft_cases.akr`): red coin 7 by the sento's steam from the danchi, the falls' mist, G8's chain through the courtyard's smoke from four take-offs, star 1 from no cap, no lift without the glider, the plumes' cost |
 | 580 | The frame: the 29 ways out the alpha review found (cemetery terraces, under and on the viaduct's end, its parapet rails, the west hoarding, the canal's spring, the path-out torii, the brewery's roof), each closed (`frame_cases.akr`) |
 | 581–584 | The frame, south, north, west and east: every 8 m of edge a walk, a backflip and a glide (`frame_probes.akr`, from `tools/frame.py --probes`); no probe leaves the level |
 

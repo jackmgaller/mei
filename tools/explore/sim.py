@@ -13,7 +13,11 @@ rails, from the plain air states only). Differences from the controller, all on 
   room to stand;
 - a wall slide (a wall upright enough, met fast enough) is recorded as a kick chance (the later
   pass takes it) and the body then drops down the wall;
-- the crack bridge (wp_floor_across) is not used: the grid's columns are 0.25 m apart.
+- the crack bridge (wp_floor_across) is not used: the grid's columns are 0.25 m apart;
+- updrafts (updraft.akr) as st_glide() has them: a glide whose feet are in an updraft's box eases
+  to the column's speed and climb instead of the glide's. A flight flies straight, so it rises only
+  while it crosses the box; each first entry into an updraft is recorded as a ride (the reach map
+  takes it as the body circling up to the cap there, and glides out of the column from the cap).
 
 Outcomes: LAND (a floor), LEDGE (a ledge grab, then the climb onto it), POLE, RAIL (a grind), HANG,
 OUT (left the level's frame), FELL (fell below every floor: through the world), TIMEOUT.
@@ -106,13 +110,14 @@ class Result:
     kicks: dict = field(default_factory=dict)       # arrays: i, tick, x, y, z, yaw_in, speed, nx, nz
     releases: dict = field(default_factory=dict)    # arrays: i, tick, x, y, z, yaw, fwd, vy
     pickups: dict = field(default_factory=dict)     # arrays: i, entity, tick, state
+    rides: dict = field(default_factory=dict)       # arrays: i, updraft, tick, y (a glide's first entry into each)
     trace: list = None                              # per take-off: [(x, y, z, state)] when asked
 
 
 class Flyer:
     """The world's grids for flying: the model, the poles, the rails and the pickups."""
 
-    def __init__(self, model, tuning, poles=(), rails=(), pickups=()):
+    def __init__(self, model, tuning, poles=(), rails=(), pickups=(), updrafts=()):
         self.m = model
         self.tn = tuning
         tn = tuning
@@ -185,6 +190,14 @@ class Flyer:
                 if len(free):
                     self.pick_map[c, free[0]] = k
         self.pick_xyz = np.array([[p['x'], p['y'], p['z']] for p in self.pickups]).reshape(-1, 3)
+        # updrafts: boxes (lo, hi), the cap (world y) and the lift (per tick)
+        self.updrafts = list(updrafts)
+        self.ud_lo = np.array([u['lo'] for u in self.updrafts], float).reshape(-1, 3)
+        self.ud_hi = np.array([u['hi'] for u in self.updrafts], float).reshape(-1, 3)
+        self.ud_cap = np.array([u['cap'] for u in self.updrafts], float)
+        self.ud_lift = np.array([u['lift'] for u in self.updrafts], float) / 60.0
+        self.UDS = tn.updraft.get('UD_SPEED', 0.0) / 60.0
+        self.UDH = tn.updraft.get('UD_HOLD', 0.0)
 
     # ---- column helpers
 
@@ -233,6 +246,15 @@ class Flyer:
             cells.update(self._square(x, z, r))
         return cells
 
+    def updraft_at(self, x, y, z):
+        """The updraft whose box holds each point's feet (the first, as updraft_at() takes it), or -1."""
+        k = np.full(len(x), -1, np.int64)
+        for u in range(len(self.updrafts)):
+            lo, hi = self.ud_lo[u], self.ud_hi[u]
+            inn = (k < 0) & (x >= lo[0]) & (x <= hi[0]) & (z >= lo[2]) & (z <= hi[2]) & (y >= lo[1]) & (y <= hi[1])
+            k[inn] = u
+        return k
+
     # ---- flying
 
     def fly(self, b, trace=False, record_events=True, release_every=30):
@@ -267,6 +289,8 @@ class Flyer:
         kicks = {k: [] for k in ('i', 'tick', 'x', 'y', 'z', 'yaw_in', 'speed', 'nx', 'nz')}
         rel = {k: [] for k in ('i', 'tick', 'gtime', 'x', 'y', 'z', 'yaw', 'fwd', 'vy')}
         picks = {k: [] for k in ('i', 'entity', 'tick', 'state')}
+        rides = {k: [] for k in ('i', 'updraft', 'tick', 'y')}
+        ridden = np.zeros(n, np.int64)      # a bit per updraft entered
         traces = [[] for _ in range(n)] if trace else None
         x0, z0, x1, z1 = m.frame
         act = np.arange(n)
@@ -303,8 +327,24 @@ class Flyer:
                 vy[i] = np.maximum(vy[i] - self.G, -self.FALL)
             if gl.any():
                 i = a[gl]
-                fwd[i] += (self.GS - fwd[i]) * self.GE
-                vy[i] += (-self.SINK - vy[i]) * self.GE
+                gs = np.full(len(i), self.GS)
+                vt = np.full(len(i), -self.SINK)
+                if self.updrafts:
+                    uk = self.updraft_at(x[i], y[i], z[i])
+                    inn = np.nonzero(uk >= 0)[0]
+                    if len(inn):
+                        ui, uu = i[inn], uk[inn]
+                        gs[inn] = self.UDS
+                        vt[inn] = np.clip((self.ud_cap[uu] - y[ui]) * self.UDH / 60.0, -self.SINK, self.ud_lift[uu])
+                        bit = np.left_shift(np.int64(1), uu)
+                        new = (ridden[ui] & bit) == 0
+                        if new.any():
+                            ridden[ui[new]] |= bit[new]
+                            for k, v in (('i', ui[new]), ('updraft', uu[new]), ('tick', np.full(int(new.sum()), tick)),
+                                         ('y', y[ui[new]].copy())):
+                                rides[k].append(v)
+                fwd[i] += (gs - fwd[i]) * self.GE
+                vy[i] += (vt - vy[i]) * self.GE
                 gtime[i] += 1
                 if record_events:
                     r = i[gtime[i] % release_every == 0]
@@ -581,4 +621,5 @@ class Flyer:
                       kicks=cat(kicks, {'i': np.int64, 'tick': np.int64}),
                       releases=cat(rel, {'i': np.int64, 'tick': np.int64, 'gtime': np.int64}),
                       pickups=cat(picks, {'i': np.int64, 'entity': np.int64, 'tick': np.int64, 'state': np.int8}),
+                      rides=cat(rides, {'i': np.int64, 'updraft': np.int64, 'tick': np.int64}),
                       trace=traces)

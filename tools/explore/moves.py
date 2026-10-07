@@ -68,6 +68,8 @@ SLIDE = 'slide'
 POLE = 'pole'
 GRIND = 'grind'
 HANG = 'hang'
+UPDRAFT = 'updraft'             # a glide into an updraft's box, circled up to its cap
+UPDRAFT_GLIDE = 'updraft_glide'  # out of an updraft at its cap, gliding
 
 
 def launch_state(move, tn):

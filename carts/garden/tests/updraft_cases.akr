@@ -1,0 +1,381 @@
+// The shrine town's updrafts (640-659; carts/garden/updraft.akr, DESIGN.md 12.10 "Updrafts"),
+// sourced by check.sh through updraft_cases.sh. Each ride is flown with real inputs: a run-up, a
+// jump, the chained jump held (the glider), steered at the column, held in it until the glide has
+// held its cap for a second, then steered at a target, and let go of where the case says.
+//
+// ud_ride(f) flies udr: from `from` (x, z; the floor found from 90 m), a run of `run` metres at the
+// column, the double jump's glide, in; it checks that the glide rises to the cap and holds there,
+// then glides at `to` and checks where it comes down (`to.y`: the lowest the feet may be; `tol`:
+// how near, metres). With `drop` over 0 it lets go of the glide that far (horizontally) from `to`.
+
+struct UdRide {
+    from: vec3
+    col: vec3          // the updraft's placement (its source), to find it
+    run: fixed
+    to: vec3
+    tol: fixed
+    drop: fixed
+    third: bool        // a triple jump's glide (else the double jump's)
+    head: fixed        // the run-up's and the jumps' heading (yaw); 9: at the column
+}
+
+var udr: UdRide
+var ud_k: s32 = -1          // the updraft ridden
+var ud_ph: s32
+var ud_top: fixed           // the highest the feet were while gliding in the column
+var ud_hold: s32            // ticks the feet have held within 0.25 m of the cap
+var ud_t: s32               // the frame the glide reached its cap
+var ud_red: s32 = -1        // red coin 7 (the chimney's), an entity number
+var ud_i: s32               // 646: which updraft is being tried
+var ud_cost: s32            // 648: the worst cost seen
+var ud_jn: s32              // jumps made
+
+// The sources (game.py's UPDRAFTS).
+const UD_SENTO: vec3 = vec3(30.5, 18.2, 67.5)
+const UD_COURT: vec3 = vec3(150.0, 0.65, 146.0)
+const UD_FALLS: vec3 = vec3(214.0, 11.2, 320.0)
+const UD_STAR1: vec3 = vec3(178.0, 51.5, 262.0)
+const UD_PAD: vec3 = vec3(174.0, 0.0, 356.0)            // G8's pad (shrinezone_cases.akr's SHZ_G8)
+
+fn ud_case_init() -> bool {
+    match SCENARIO {
+        640 => { name = "updrafts: from the danchi's roof into the sento's steam, up to its cap, let go onto the chimney: red coin 7" }
+        641 => { name = "updrafts: the falls' mist, from the pool's terrace up to its cap, then across to the basin" }
+        642 => { name = "updrafts: G8's chain, from the stage's deck (its east end) into the courtyard's smoke, over the torii" }
+        643 => { name = "updrafts: G8's chain, from the stage's deck (its middle)" }
+        644 => { name = "updrafts: G8's chain, from G8's pad" }
+        645 => { name = "updrafts: G8's chain, from the stage's deck (its west end)" }
+        646 => { name = "updrafts: from each updraft's cap, a glide steered at star 1 does not take it" }
+        647 => { name = "updrafts: a jump and a fall through a column do not rise; a triple jump from under one does not reach it" }
+        648 => { name = "updrafts: their plumes drawn, the cost from the courtyard, the sento's lane and the falls' terrace" }
+        else => { return false }
+    }
+    cam.lock = false
+    ud_k = -1
+    ud_ph = 0
+    ud_top = -100.0
+    ud_hold = 0
+    ud_t = -1
+    ud_i = 0
+    ud_cost = 0
+    ud_jn = 0
+    return true
+}
+
+fn ud_case(f: s32) {
+    match SCENARIO {
+        640 => ud_sento(f)
+        641 => ud_falls(f)
+        642, 643, 644, 645 => ud_g8(f)
+        646 => ud_star1(f)
+        647 => ud_through(f)
+        648 => ud_draw_cost(f)
+        else => {}
+    }
+}
+
+// The updraft placed at p, or -1.
+fn ud_find(p: vec3) -> s32 {
+    for k in 0..ud_n {
+        if abs(uds[k].src.x - p.x) < 0.5 && abs(uds[k].src.z - p.z) < 0.5 { return k }
+    }
+    return -1
+}
+
+fn ud_mid(k: s32) -> vec3 { return (uds[k].lo + uds[k].hi) * 0.5 }
+
+// ---- a ride: up the column, then out of it at `to`
+
+fn ud_ride(f: s32) {
+    if f == 0 {
+        ud_k = ud_find(udr.col)
+        expect(ud_k >= 0, "the updraft is in the world", fixed(ud_n))
+        let y = sh_floor(udr.from.x, udr.from.z, 90.0)
+        let p = vec3(udr.from.x, y, udr.from.z)
+        let m = ud_mid(ud_k)
+        if udr.head < 8.0 { place(p, udr.head) } else { place(p, atan2(m.x - p.x, m.z - p.z)) }
+        pl.spawn = vec3(p.x, -1000.0, p.z)          // no respawn on a long way down
+        sh_start = p
+        note("take-off floor, y", y)
+        return
+    }
+    let u = &uds[ud_k]
+    let m = ud_mid(ud_k)
+    let air = is_air(pl.st) || pl.st == St.Glide
+    let at_col = cc_stick(atan2(m.x - pl.pos.x, m.z - pl.pos.z), 1.0)
+    var go = at_col
+    if udr.head < 8.0 { go = cc_stick(udr.head, 1.0) }
+    if ud_ph == 0 {                                 // the run-up
+        if udr.run > 0.0 { stick_v = go }
+        if tw_hdist(pl.pos, sh_start) >= udr.run && f > 2 { pad_v = A; ud_ph = 1 }
+        return
+    }
+    if udr.run > 0.0 { stick_v = go }
+    if ud_ph == 1 {                                 // the first jump (and the double), held to its apex
+        pad_v = A
+        if air && pl.vel.y <= 0.0 && f > 3 { pad_v = 0; ud_ph = 2 }
+        return
+    }
+    if ud_ph == 2 {                                 // down: the chained jump at once
+        if pl.st == St.Ground {
+            pad_v = A
+            ud_jn += 1
+            ud_ph = 3
+            if udr.third && ud_jn == 1 { ud_ph = 1 }   // the double, held to its apex, then the third
+        }
+        if f > 600 { expect(false, "came down from the first jump", pl.pos.y) }
+        return
+    }
+    if ud_ph == 3 {                                 // the glide, steered at the column until it holds the cap
+        pad_v = A
+        stick_v = at_col
+        if pl.st == St.Glide && ud_in == ud_k {
+            ud_top = max(ud_top, pl.pos.y)
+            if abs(pl.pos.y - u.cap) < 0.25 { ud_hold += 1 } else { ud_hold = 0 }
+            if ud_t < 0 && pl.pos.y > u.cap - 0.25 { ud_t = f }
+        }
+        if ud_hold >= 60 {
+            note("rose to y", ud_top)
+            note("cap", u.cap)
+            expect(ud_top >= u.cap - 0.25 && ud_top <= u.cap + 0.6, "the glide rose to the cap and no higher, y", ud_top)
+            expect(pl.st == St.Glide, "still gliding at the cap", fixed(pl.st as s32))
+            ud_ph = 4
+        }
+        if !air { expect(false, "came down before the cap", pl.pos.y) }
+        if f > 3000 { expect(false, "held the cap within 50 s", pl.pos.y) }
+        return
+    }
+    if ud_ph == 4 {                                 // out of the column at the target
+        pad_v = A
+        stick_v = cc_stick(sh_heading(udr.to), 1.0)
+        if udr.drop > 0.0 && tw_hdist(pl.pos, udr.to) <= udr.drop { pad_v = 0; ud_ph = 5 }
+        if !air && pl.st != St.WallSlide && pl.st != St.LedgeHang && pl.st != St.LedgeClimb { ud_land() }
+        if f > 4500 { expect(false, "came down within 75 s", pl.pos.y) }
+        return
+    }
+    if ud_ph == 5 {                                 // let go: falling, the stick back until the body stops over the target
+        stick_v = STILL
+        if pl.fwd > 0.005 { stick_v = cc_stick(pl.yaw + PI, 1.0) }
+        if !air && pl.st != St.WallSlide && pl.st != St.LedgeHang && pl.st != St.LedgeClimb { ud_land() }
+        if f > 4500 { expect(false, "came down within 75 s", pl.pos.y) }
+        return
+    }
+}
+
+fn ud_land() {
+    ud_ph = 6
+    note("came down at x", pl.pos.x)
+    note("came down at z", pl.pos.z)
+    note("came down at y", pl.pos.y)
+    expect(tw_hdist(pl.pos, udr.to) <= udr.tol, "came down near the target, off by", tw_hdist(pl.pos, udr.to))
+    expect(pl.pos.y >= udr.to.y, "high enough, y", pl.pos.y)
+}
+
+// ---- 640: the sento's steam from the danchi's roof (red coin 4's), red coin 7 on the chimney's top
+
+fn ud_sento(f: s32) {
+    if f == 0 {
+        udr = UdRide { from: vec3(85.0, 0.0, 22.5), col: UD_SENTO, run: 2.0, to: vec3(30.5, 18.0, 67.5), tol: 0.9, drop: 0.5, third: false, head: WEST }
+        for n in 0..wp_pack.entity_count as s32 {
+            let e = wp_entity(n)
+            let d = wp_entity_pos(e) - vec3(30.5, 18.9, 67.5)
+            if e.type_id as s32 == RED_COIN_TYPE && abs(d.x) < 0.5 && abs(d.y) < 0.5 && abs(d.z) < 0.5 { ud_red = n }
+        }
+        expect(ud_red >= 0, "red coin 7 on the chimney's top", 18.9)
+    }
+    if ud_ph >= 3 && ud_ph < 5 && coin_taken(ud_red) { expect(false, "red coin 7 taken before letting go, y", pl.pos.y) }
+    ud_ride(f)
+    if ud_ph == 6 {
+        expect(coin_taken(ud_red), "red coin 7 taken", fixed(red_coins))
+        expect(pl.pos.y >= 18.1, "on the chimney's top, y", pl.pos.y)
+        done()
+        ud_ph = 7
+    }
+}
+
+// ---- 641: the falls' mist from the pool's west terrace (16), then west across to the basin
+
+fn ud_falls(f: s32) {
+    if f == 0 {
+        udr = UdRide { from: vec3(201.0, 0.0, 316.0), col: UD_FALLS, run: 3.0, to: vec3(170.0, 10.0, 305.0), tol: 25.0, drop: 0.0, third: false, head: 9.0 }
+    }
+    ud_ride(f)
+    if ud_ph == 6 { done(); ud_ph = 7 }
+}
+
+// ---- 642-645: G8's chain: the stage into the courtyard's smoke, held at its cap, then over the
+// great torii (east of star 2's place on its beam) and the front road onto the arcade
+
+fn ud_g8(f: s32) {
+    if f == 0 {
+        var p = vec3(168.0, 0.0, 343.0)
+        if SCENARIO == 643 { p = vec3(162.0, 0.0, 343.0) }
+        if SCENARIO == 644 { p = UD_PAD }
+        if SCENARIO == 645 { p = vec3(144.0, 0.0, 343.0) }
+        udr = UdRide { from: p, col: UD_COURT, run: 0.0, to: vec3(160.5, -0.1, 85.0), tol: 30.0, drop: 0.0, third: false, head: 9.0 }
+        tw_star = tw_star_near(vec3(160.0, 14.7, 124.0))
+    }
+    ud_ride(f)
+    if ud_ph == 6 {
+        expect(pl.pos.z < 118.0 && pl.pos.z > 40.0, "south of the torii, on the front road or the arcade, z", pl.pos.z)
+        expect(pl.pos.x > 150.0 && pl.pos.x < 176.0, "between the shotengai's sides, x", pl.pos.x)
+        done()
+        ud_ph = 7
+    }
+}
+
+// ---- 646: star 1 (51.5 over the pagoda) is not reached from any updraft's cap: the body put gliding
+// at each cap in turn, steered at the star until it comes down
+
+fn ud_star1(f: s32) {
+    if f == 0 {
+        tw_star = tw_star_near(UD_STAR1)
+        expect(tw_star >= 0, "star 1 at its place", UD_STAR1.y)
+        ud_i = -1
+        ud_ph = 1
+    }
+    if star_taken(tw_star) { expect(false, "star 1 taken from an updraft, y", pl.pos.y) }
+    if ud_ph == 1 {                                 // the next updraft: gliding at its cap, its middle
+        ud_i += 1
+        if ud_i >= ud_n {
+            expect(ud_n == 3, "the shrine town's three updrafts tried", fixed(ud_n))
+            done()
+            ud_ph = 9
+            return
+        }
+        let u = &uds[ud_i]
+        let m = ud_mid(ud_i)
+        place(vec3(m.x, u.cap, m.z), atan2(UD_STAR1.x - m.x, UD_STAR1.z - m.z))
+        pl.spawn = vec3(m.x, -1000.0, m.z)
+        pl.pos = vec3(m.x, u.cap, m.z)
+        pl.fwd = UD_SPEED / 60
+        pl.glided = true
+        pl.glide_armed = true
+        enter(St.Glide)
+        ud_top = pl.pos.y
+        ud_t = f
+        ud_ph = 2
+        pad_v = A
+        return
+    }
+    if ud_ph == 2 {
+        pad_v = A
+        stick_v = cc_stick(sh_heading(UD_STAR1), 1.0)
+        let air = is_air(pl.st) || pl.st == St.Glide
+        if f > ud_t + 2 && !air && pl.st != St.LedgeHang && pl.st != St.LedgeClimb && pl.st != St.WallSlide {
+            note("from updraft", fixed(ud_i))
+            note("came down at y", pl.pos.y)
+            note("its distance from the star, m", tw_hdist(pl.pos, UD_STAR1))
+            expect(!star_taken(tw_star), "star 1 not taken", pl.pos.y)
+            ud_ph = 1
+        }
+        if f > ud_t + 2400 { expect(false, "came down within 40 s", pl.pos.y) }
+    }
+}
+
+// ---- 647: only a glide rises. In the falls' column: a double jump held through its apex with the
+// glider refused (A let go at the apex) falls; then the courtyard: a running triple jump's glide
+// from the floor under its smoke stays under the base and does not rise.
+
+fn ud_through(f: s32) {
+    let kf = ud_find(UD_FALLS)
+    let kc = ud_find(UD_COURT)
+    if f == 0 {
+        let y = sh_floor(201.0, 316.0, 30.0)
+        place(vec3(201.0, y, 316.0), EAST)
+        pl.fwd = mps(T.RunSpeed)
+        ud_ph = 0
+        return
+    }
+    let air = is_air(pl.st) || pl.st == St.Glide
+    if ud_ph == 0 {                                 // a running jump into the mist, then the chained jump, let go at the apex
+        stick_v = FWD
+        if f == 2 { pad_v = A }
+        if f > 2 && f < 20 { pad_v = A }
+        if f >= 20 && pl.st == St.Ground { pad_v = A; ud_ph = 1; mark() }
+        return
+    }
+    if ud_ph == 1 {
+        stick_v = FWD
+        if pl.vel.y > 0.0 { pad_v = A }             // held while rising, let go at the apex: no glider
+        if pl.st == St.Glide { expect(false, "no glider without A held", pl.pos.y) }
+        // in the column, not gliding: gravity as anywhere (the vertical speed never grows)
+        if updraft_at(pl.pos) == kf && (is_air(pl.st) && pl.st != St.Glide) {
+            if ud_hold > 0 && pl.vel.y > v0 + 0.0001 { expect(false, "lifted without the glider, vy", pl.vel.y * 60) }
+            ud_hold += 1
+        }
+        v0 = pl.vel.y
+        if !air && f > 30 {
+            note("ticks in the column, not gliding", fixed(ud_hold))
+            expect(ud_hold >= 10, "the jump went through the mist's box", fixed(ud_hold))
+            ud_ph = 2
+        }
+        return
+    }
+    if ud_ph == 2 {                                 // the courtyard: run, triple jump under the smoke, held
+        let y = sh_floor(166.0, 146.0, 30.0)
+        place(vec3(166.0, y, 146.0), WEST)
+        pl.fwd = mps(T.RunSpeed)
+        ud_ph = 3
+        ud_t = f
+        ud_top = y
+        mark()
+        return
+    }
+    let g = f - ud_t
+    stick_v = FWD
+    if ud_ph == 3 {                                 // jump, then double, then third, held
+        if g == 1 { pad_v = A }
+        if g > 1 && pl.vel.y > 0.0 { pad_v = A }
+        if g > 2 && pl.st == St.Ground && pl.land_t == 0 { pad_v = A }
+        if pl.st == St.ThirdJump { ud_ph = 4 }
+        if g > 300 { expect(false, "the triple jump", fixed(pl.st as s32)) }
+        return
+    }
+    if ud_ph == 4 {
+        pad_v = A
+        if pl.st == St.Glide { ud_top = max(ud_top, pl.pos.y) }
+        if pl.st == St.Glide && ud_in == kc { expect(false, "the courtyard's smoke caught from its floor, y", pl.pos.y) }
+        if !air && g > 20 {
+            note("the triple jump's glide, highest y", ud_top)
+            expect(was(St.Glide), "glided", fixed(seen_at(St.Glide)))
+            expect(ud_top < uds[kc].lo.y, "under the smoke's base, y", ud_top)
+            done()
+            ud_ph = 9
+        }
+    }
+}
+
+// ---- 648: the plumes' cost, drawn (SHOT 1 SEQ 120 for the pictures), the camera tilted up: from the
+// courtyard's sando at its smoke, from the canal's east lane at the sento's steam, from the falls'
+// west terrace at the mist. updraft_draw()'s cycles (the wisps' vertices and the mesh() call)
+
+const UD_VIEWS: [3]vec3 = [vec3(160.0, 0.0, 120.0), vec3(57.0, 0.0, 48.0), vec3(194.0, 0.0, 308.0)]
+const UD_LOOK: [3]vec3 = [vec3(150.0, 0.0, 146.0), vec3(34.0, 0.0, 64.0), vec3(214.0, 0.0, 320.0)]
+
+fn ud_draw_cost(f: s32) {
+    let k = f / 120
+    if k >= 3 {
+        if ud_ph == 9 { return }
+        note("the worst updraft_draw(), cycles (thousands)", fixed(ud_cost / 1000))
+        expect(ud_cost < 40000, "the plumes cost under 40,000 cycles a frame (thousands)", fixed(ud_cost / 1000))
+        done()
+        ud_ph = 9
+        return
+    }
+    let g = f % 120
+    if g == 0 {
+        let p = UD_VIEWS[k]
+        let y = sh_floor(p.x, p.z, 40.0)
+        tv[T.CamPitch] = 0.2
+        place(vec3(p.x, y, p.z), atan2(UD_LOOK[k].x - p.x, UD_LOOK[k].z - p.z))
+        cam_reset()
+    }
+    if g > 30 { ud_cost = max(ud_cost, ud_cycles) }
+    if g == 119 {
+        expect(ud_wisps > 0, "wisps drawn", fixed(ud_wisps))
+        note("view", fixed(k))
+        note("wisps", fixed(ud_wisps))
+        note("updraft_draw() cycles (thousands)", fixed(ud_cycles / 1000))
+    }
+}

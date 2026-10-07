@@ -51,6 +51,7 @@ the surface map (`ground/ground.akr`) and the body (the game schema's probe: rad
 | `glide_release` | letting go of a glide (every half second of it) |
 | `pole_jump`, `pole_drop` | off a pole (12.6 up, 6 out, away from it), or letting go |
 | `grind_off_end`, `grind_jump`, `hang_jump`, `hang_drop` | off a rail: at its end, a jump (12.6), a hang jump (9) or a drop |
+| `updraft`, `updraft_glide` | a glide into an updraft's box, taken as circling up to its cap; a glide out of the column from its middle at the cap |
 
 `sim.py` flies them: one tick is one of `player_tick()`'s, in its order (the glider at the
 apex, air control, gravity or the glider's easing, the horizontal move against walls, the vertical
@@ -58,7 +59,10 @@ move, the head at ceilings, the feet onto floors), then `attach.akr`'s grabs fro
 states (a pole within 0.65 m of its axis, a rail under the feet or at the hands) with the rail
 entity's rules: a `hang` rail is never ground and is not caught falling faster than 3 m/s, a rail
 with a `catch` is caught only within that of its first point, and a hang only where the hanging
-feet are no more than 0.1 m under the floor under the rail (`hang_clear()`). Into a wall it
+feet are no more than 0.1 m under the floor under the rail (`hang_clear()`). A glide whose
+feet are in an updraft's box (`updraft.akr`) eases to the column's speed and climb instead of the
+glide's, as `st_glide()` does; a flight flies straight, so it rises only while it crosses the box,
+and each first entry into an updraft is recorded as a ride. Into a wall it
 does what `air_wall()` does: a ledge in reach (a gentle floor 0.8 to 1.75 m above the feet just
 beyond, with room to stand) is grabbed unless the jump is still rising past it; a wall upright
 enough met fast enough is a wall slide, which the next pass kicks off. A body pushed out of a wall
@@ -68,7 +72,8 @@ is not pushed under a floor of the ground more than a step over its feet.
 (on the floor under it, or across a crack as the controller's crack bridge does, or a few
 centimetres off a seam: a take-off on the lattice can be exactly on one),
 puts the controller in the state the move starts from (the run speed, the chain window after a
-landing, a crouch, a crouch slide, a skid, a pole held), presses the move's buttons, and makes the
+landing, a crouch, a crouch slide, a skid, a pole held, gliding at an updraft's cap), presses the
+move's buttons, and makes the
 later presses the flight made (A at a wall slide, letting go of the glide after the same number of
 ticks, B at the apex).
 
@@ -81,7 +86,8 @@ solved for y at each of the three push heights), as sorted arrays that one numpy
 bulk.
 
 - **Nodes:** every floor entry (2.77 million in the shrine town), a node a metre up each pole and a
-  node a metre along each rail (grinding either way, and hanging; a `hang` rail only hanging).
+  node a metre along each rail (grinding either way, and hanging; a `hang` rail only hanging)
+  and a node per updraft (its cap).
   Grinding goes uphill only where the stick's push beats gravity (GrindAccel over Gravity: a grind
   up a steeper rail slows and slides back), and a hang moves along only where it hangs clear.
 - **Walking:** to the next column's floor within a step, where no wall pushes at the feet's height
@@ -95,6 +101,11 @@ bulk.
   red coin from every floor high enough to glide to it. Then the later passes: wall kicks off the
   wall slides met (two deep), letting go of each glide, jumps and drops off every pole level and
   rail sample, grinds to a rail's end.
+- **Updrafts:** every glide that comes into an updraft's box reaches its node (a player circles up
+  in the column; the cost adds the climb to the cap at the column's lift), and from each updraft's
+  node glides go out of the column's middle at the cap toward 16 headings and at each star and red
+  coin within reach. A route leg into an updraft is confirmed headless when the glide enters the
+  box; a leg out of one starts gliding at the cap (the probe's mode 26).
 - **Costs** are seconds (run time, flight time, a little setup per move), so the cheapest route from
   the spawn is a plausible one, printed move by move in the report.
 
