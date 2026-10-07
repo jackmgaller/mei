@@ -426,6 +426,8 @@ def node_positions(e):
             (x, y, z), _ = e.rail_point(k, s)
             pos[base + i] = pos[base + n + i] = (x, y, z)
             pos[base + 2 * n + i] = (x, y - 1.75, z)
+    for k, u in enumerate(e.updrafts):
+        pos[e.ud_node0 + k] = (u['x'], u['cap'], u['z'])
     _POS[key] = pos
     return pos
 

@@ -594,9 +594,17 @@ fn st_glide(ip: *Pin) {
         let tr = rps(T.GlideTurn) * ip.mag
         pl.yaw = wrap_angle(pl.yaw + clamp(wrap_angle(yaw_of(ip.dir) - pl.yaw), -tr, tr))
     }
+    // In an updraft (updraft.akr) the glide eases to the column's speed and climb instead.
     let e = rps(T.GlideEase)
-    pl.fwd += (mps(T.GlideSpeed) - pl.fwd) * e
-    pl.vel.y += (-mps(T.GlideSink) - pl.vel.y) * e
+    var speed = mps(T.GlideSpeed)
+    var vy = -mps(T.GlideSink)
+    ud_in = updraft_at(pl.pos)
+    if ud_in >= 0 {
+        speed = UD_SPEED / 60
+        vy = updraft_vy(ud_in, pl.pos.y)
+    }
+    pl.fwd += (speed - pl.fwd) * e
+    pl.vel.y += (vy - pl.vel.y) * e
     set_hvel()
     if air_move(0.0) {
         land()

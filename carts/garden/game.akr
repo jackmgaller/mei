@@ -10,6 +10,7 @@ import "tuning.akr"
 import "player.akr"
 import "camera.akr"
 import "attach.akr"
+import "updraft.akr"
 import "goals.akr"
 import "body.akr"
 import "hud.akr"
@@ -44,6 +45,7 @@ fn init() {
     body_init()
     place_at_spawn()
     attach_init()
+    updraft_init()
     goals_init()
     cam_reset()
     cam_intro()
@@ -175,6 +177,7 @@ fn world_switch(k: s32) {
     coins = 0
     red_coins = 0
     attach_init()
+    updraft_init()
     place_at_spawn()
     goals_init()
     cam_reset()
@@ -236,6 +239,7 @@ fn draw() {
     wp_draw(cam.eye, cam.yaw, cam.pitch)
     draw_entities()
     attach_draw()
+    updraft_draw()
     goals_draw()
     body_shown = cam.reach >= CAM_BODY_HIDE             // the eye in the robot's head: not drawn
     if body_shown { body_draw() }

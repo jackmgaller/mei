@@ -108,3 +108,21 @@ saved type trigger {
   off:   name = none
   hide:  bool = false
 }
+
+// Rising air (a chimney's steam, a waterfall's mist, a fire's smoke): a glide inside the box is
+// lifted at up to `lift` m/s until its feet are `cap` metres over the placement, where it holds,
+// slowed so that it can circle (updraft.akr). The box is `width` (x) by `depth` (z), centred on
+// the placement moved by half of `lean`, from `base` metres over the placement to 2 m over the
+// cap. Only a glide rises: a jump or a fall goes through. The placement is the source the plume
+// is drawn from (a chimney's top, a pool, a fire): `puffs` wisps in the `look`'s colours, rising
+// to 3 m over the cap and leaning `lean` (x, z metres at the cap) with the wind.
+type updraft {
+  width: fixed
+  depth: fixed
+  base:  fixed = 0
+  cap:   fixed
+  lift:  fixed = 6
+  look:  steam | mist | smoke = steam
+  puffs: s16 = 12
+  lean:  vec3 = [0, 0, 0]
+}

@@ -29,6 +29,7 @@ import "goals_cases.akr"      // the goals' (in the shrine town), 450-479
 import "town_route_cases.akr" // the shrine town's street, east and canal routes, 480-499
 import "frame_cases.akr"      // the shrine town's frame, 580-584
 import "shrinezone_cases.akr" // the shrine zone's routes, 700-789 (the shrine town) and 790-799 (the shrine)
+import "updraft_cases.akr"    // the shrine town's updrafts, 640-659
 
 var pad_v: u32                 // the pad and stick for the next frame
 var stick_v: vec2
@@ -68,6 +69,7 @@ fn start_world() -> s32 {
     if SCENARIO == 433 { return GARDEN_WORLD_SHRINE }
     if (SCENARIO >= 400 && SCENARIO < 500) || (SCENARIO >= 580 && SCENARIO < 590) { return GARDEN_WORLD_SHRINETOWN }
     if SCENARIO >= 700 && SCENARIO < 790 { return GARDEN_WORLD_SHRINETOWN }
+    if SCENARIO >= 640 && SCENARIO < 660 { return GARDEN_WORLD_SHRINETOWN }
     if SCENARIO >= 790 && SCENARIO < 800 { return GARDEN_WORLD_SHRINE }
     return GARDEN_WORLD_GARDEN
 }
@@ -176,7 +178,7 @@ fn test_init() {
         30 => { name = "camera sweep at the spawn: frame timing"; place_at_spawn(); cam_reset() }
         28 => { name = "crouch and crawl"; place(lane, EAST) }
         else => {
-            if !camera_case_init() && !attach_case_init() && !shrine_case_init() && !town_case_init() && !goals_case_init() && !route_case_init() && !frame_case_init() && !shz_case_init() { name = "picture" }
+            if !camera_case_init() && !attach_case_init() && !shrine_case_init() && !town_case_init() && !goals_case_init() && !route_case_init() && !frame_case_init() && !shz_case_init() && !ud_case_init() { name = "picture" }
         }
     }
 }
@@ -227,6 +229,7 @@ fn scenario(f: s32) {
             route_case(f)
             frame_case(f)
             shz_case(f)
+            ud_case(f)
         }
     }
 }

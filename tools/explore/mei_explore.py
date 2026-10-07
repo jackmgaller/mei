@@ -145,7 +145,14 @@ def leg_items(e, owner, node, pred=None, limit=40):
             prev['then'] = d['chain']
             prev.setdefault('_edges', [prev['_edge']]).append(leg['_edge'])
             continue
-        q = C.probe_for_flight(leg['id'], d, {'box': to, 'half': (1.5, 1.0, 1.5)})
+        box, half = to, (1.5, 1.0, 1.5)
+        ku = e.updraft_of(v)
+        if ku >= 0:
+            # into an updraft: the leg is shown when the glide comes into the column's box
+            u = e.updrafts[ku]
+            box = tuple((a + b) / 2 for a, b in zip(u['lo'], u['hi']))
+            half = tuple((b - a) / 2 for a, b in zip(u['lo'], u['hi']))
+        q = C.probe_for_flight(leg['id'], d, {'box': box, 'half': half})
         out.append(('leg', leg, q))
     return out
 

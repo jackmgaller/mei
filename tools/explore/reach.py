@@ -9,7 +9,10 @@ each rail (one per direction for a grind, one for a hang). Edges:
 - flights (sim.py): each move of moves.py from every floor at a boundary (a wall, a drop, a rise
   ahead within half a metre), toward it, on a half-metre lattice: landings, ledge grabs, poles
   and rails caught, and the later passes from those: wall kicks off the walls met, letting go of
-  a glide, jumps and drops off poles, grinds to a rail's end, jumps and drops off rails and hangs.
+  a glide, jumps and drops off poles, grinds to a rail's end, jumps and drops off rails and hangs;
+- updrafts: a node per updraft, its cap. Every glide that comes into an updraft's box reaches it
+  (the player circles up in the column; the cost is the climb at the column's lift), and from it
+  glides go out of the column at the cap toward 16 headings and at each star and red coin.
 
 The costs are seconds (run time, flight time and a little for the setup of each move), so the
 cheapest route from the spawn is a plausible one, and a route can be printed move by move.
@@ -60,7 +63,8 @@ class Flights:
 
 
 MOVE_NAMES = [m.name for m in M.MOVES] + [M.KICK, M.RELEASE, M.POLE_JUMP, M.POLE_DROP, M.GRIND_END, M.GRIND_JUMP,
-                                           M.HANG_JUMP, M.HANG_DROP, M.POLE, M.GRIND, M.HANG]
+                                           M.HANG_JUMP, M.HANG_DROP, M.POLE, M.GRIND, M.HANG, M.UPDRAFT,
+                                           M.UPDRAFT_GLIDE]
 MOVE_ID = {n: k for k, n in enumerate(MOVE_NAMES)}
 
 _FLYER = None
@@ -120,7 +124,7 @@ def unshuffle(r, perm):
         out = np.empty_like(v)
         out[perm] = v
         setattr(r, f, out)
-    for name in ('kicks', 'releases', 'pickups'):
+    for name in ('kicks', 'releases', 'pickups', 'rides'):
         d = getattr(r, name)
         if 'i' in d and len(d['i']):
             d['i'] = perm[d['i']]
@@ -134,7 +138,7 @@ def merge_results(res, sizes):
               'out_x', 'out_z', 'out_y', 'glided'):
         cat[f] = np.concatenate([getattr(r, f) for r in res])
     ev = {}
-    for name in ('kicks', 'releases', 'pickups'):
+    for name in ('kicks', 'releases', 'pickups', 'rides'):
         d = {}
         for r, o in zip(res, off):
             for k, v in getattr(r, name).items():
@@ -184,7 +188,21 @@ class Explorer:
             if e.type in ('coin', 'red_coin', 'star'):
                 self.pickups.append({'id': e.id, 'n': e.n, 'type': e.type, 'x': e.pos[0], 'y': e.pos[1], 'z': e.pos[2],
                                      'params': e.params, 'layer': e.layer})
-        self.flyer = S.Flyer(self.m, tn, self.poles, self.rails, self.pickups)
+        self.updrafts = []
+        dflt = tn.updraft_defaults
+        top = tn.updraft.get('UD_TOP', 2.0)
+        for e in self.live:
+            if e.type == 'updraft':
+                p = {**dflt, **e.params}
+                lean = p.get('lean') or [0.0, 0.0, 0.0]
+                sx, sy, sz = e.pos
+                cx, cz = sx + float(lean[0]) / 2, sz + float(lean[2]) / 2
+                w, d = float(p['width']) / 2, float(p['depth']) / 2
+                cap = sy + float(p['cap'])
+                self.updrafts.append({'id': e.id, 'n': e.n, 'src': (sx, sy, sz), 'x': cx, 'z': cz, 'cap': cap,
+                                      'lo': (cx - w, sy + float(p.get('base', 0.0)), cz - d),
+                                      'hi': (cx + w, cap + top, cz + d), 'lift': float(p.get('lift', 6.0))})
+        self.flyer = S.Flyer(self.m, tn, self.poles, self.rails, self.pickups, self.updrafts)
         spawn = [e for e in self.ents if e.type == 'spawn']
         self.spawn = spawn[0].pos if spawn else None
 
@@ -350,6 +368,8 @@ class Explorer:
             # grind +, grind -, hang
             self.rail_nodes.append((nid, ss, total))
             nid += 3 * len(ss)
+        self.ud_node0 = nid            # a node per updraft: circling at its cap
+        nid += len(self.updrafts)
         self.n_nodes = nid
 
     def pole_node(self, k, yv):
@@ -388,7 +408,16 @@ class Explorer:
                 (x, y, z), _ = self.rail_point(k, ss[i])
                 what = ('grind' if kind < 2 else 'hang') + f' {self.rails[k]["id"]}'
                 return x, y - (1.75 if kind == 2 else 0), z, what
+        k = nid - self.ud_node0
+        if 0 <= k < len(self.updrafts):
+            u = self.updrafts[k]
+            return u['x'], u['cap'], u['z'], f'updraft {u["id"]}'
         return None
+
+    def updraft_of(self, nid):
+        """The updraft index of a node, or -1."""
+        k = int(nid) - self.ud_node0
+        return k if 0 <= k < len(self.updrafts) else -1
 
     # ---- results to edges
 
@@ -534,6 +563,48 @@ class Explorer:
                   np.array(e_mid, np.int16))
         return (b, src, mid), static
 
+    def updraft_launches(self):
+        """Glides out of each updraft at its cap, from the column's middle: toward 16 headings, and
+        straight at each star and red coin within a glide's reach."""
+        tn = self.tn
+        rows = []           # (node, x, y, z, yaw)
+        ratio = tn.t['GlideSpeed'] / tn.t['GlideSink']
+        for k, u in enumerate(self.updrafts):
+            nid = self.ud_node0 + k
+            yaws = list(M.headings(16))
+            for p in self.pickups:
+                if p['type'] not in ('star', 'red_coin'):
+                    continue
+                d = math.hypot(p['x'] - u['x'], p['z'] - u['z'])
+                if d > 1.0 and u['cap'] + 2.0 - p['y'] > 0 and d <= (u['cap'] + 2.0 - p['y']) * ratio + 10.0:
+                    yaws.append(math.atan2(p['x'] - u['x'], p['z'] - u['z']))
+            for yw in yaws:
+                rows.append((nid, u['x'], u['cap'], u['z'], yw))
+        if not rows:
+            return S.empty_batch(), np.zeros(0, np.int64), np.zeros(0, np.int16)
+        a = np.array(rows, dtype=float)
+        n = len(a)
+        b = S.Batch(a[:, 1], a[:, 2], a[:, 3], a[:, 4], np.zeros(n), np.full(n, self.flyer.UDS), np.ones(n),
+                    np.full(n, tn.mps('AirMax')), np.ones(n), np.full(n, M.ST_DOUBLE, np.int8), np.zeros(n, bool),
+                    np.zeros(n, bool), state=np.full(n, M.GLIDE, np.int8), max_ticks=self.opts.max_ticks)
+        return b, a[:, 0].astype(np.int64), np.full(n, MOVE_ID[M.UPDRAFT_GLIDE], np.int16)
+
+    def ride_edges(self, k):
+        """(src, dst, cost, move, rows) for the glides of flight set k that came into an updraft:
+        to its node, the cost the flight's time to the entry and the climb to the cap."""
+        r = self.flights.result[k]
+        rd = r.rides
+        if len(rd.get('i', [])) == 0:
+            z = np.zeros(0, np.int64)
+            return z, z, np.zeros(0, np.float32), np.zeros(0, np.int16), z
+        i = rd['i']
+        u = rd['updraft']
+        cap = np.array([self.updrafts[j]['cap'] for j in u])
+        lift = np.array([self.updrafts[j]['lift'] for j in u])
+        cost = self.flights.t0[k][i] + rd['tick'] / 60.0 + np.maximum(cap - rd['y'], 0.0) / np.maximum(lift, 0.1)
+        return (self.flights.src[k][i], self.ud_node0 + u, cost.astype(np.float32),
+                np.full(len(i), MOVE_ID[M.UPDRAFT], np.int16), i)
+
     # ---- everything
 
     def run(self):
@@ -547,6 +618,8 @@ class Explorer:
         self._fly('take-offs', b, src, mid, None)
         (ab, asrc, amid), self.static_edges = self.attachment_launches()
         self._fly('poles and rails', ab, asrc, amid, None)
+        ub, usrc, umid = self.updraft_launches()
+        self._fly('out of the updrafts', ub, usrc, umid, None)
         self.first_sets = len(self.flights.result)
         # wall kicks, chained, and the glides' let-go points
         sets = list(range(len(self.flights.result)))
@@ -613,6 +686,13 @@ class Explorer:
         frows.append(np.full(len(ss), -1, np.int64))
         for k, (r, s, mid) in enumerate(zip(self.flights.result, self.flights.src, self.flights.move)):
             es, ed, ec, em, rows = self.edges_from(r, s, mid, self.flights.t0[k])
+            srcs.append(es)
+            dsts.append(ed)
+            costs.append(ec)
+            mids.append(em)
+            fsets.append(np.full(len(es), k, np.int32))
+            frows.append(rows)
+            es, ed, ec, em, rows = self.ride_edges(k)
             srcs.append(es)
             dsts.append(ed)
             costs.append(ec)

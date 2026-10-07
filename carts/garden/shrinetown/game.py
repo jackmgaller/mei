@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """The shrine town's game entities (DESIGN.md, section 5 and 4.5): the five stars, the triggers
-(the bell, the omamori and the platform of the last train, the shortcuts A-E) and the last train.
+(the bell, the omamori and the platform of the last train, the shortcuts A-E), the last train and
+the updrafts (12.10).
 
-    python3 carts/garden/shrinetown/game.py      # writes assets/game/: the omamori
+    python3 carts/garden/shrinetown/game.py      # writes assets/game/: the omamori, the leaf fire
 
 The region generators put these entities into their cells: each calls `cell_entities(rows)` and
 appends what it returns (notes/gen_town.py for rows 0-1, assets/greybox/core/gen_core.py for 2-3,
@@ -117,6 +118,41 @@ ENTITIES = [
      'params': {'size': [3.0, 3.0, 2.4], 'how': 'press', 'flag': 'shortcut_e', 'on': 'ladder_e'}},
 ]
 
+# ---- the updrafts (DESIGN.md 12.10, "Updrafts"; carts/garden/updraft.akr): rising air a glide rides
+# up to its cap. Each is placed at its source (the plume is drawn from there); `base` and `cap` are
+# metres over it. A box's base sits over what a jump from the ground under it reaches (a running
+# triple jump: 5.61 m): a column is caught by a glide, from a roof near it or from far.
+SENTO_TOP = (30.5, 18.2, 67.5)      # the sento's chimney top (place/canal.py: SENTO, the chimney at local (8.8, 4.25))
+UPDRAFTS = [
+    # the sento's steam: the chimney's, blown east-south-east over the lane (toward the danchi). Its
+    # box, x 26.5-40.5, z 59.5-71.5, from 6.0: over a running triple jump from the lane (5.6), under
+    # a double jump's glide from the sento's roofs (3.7-7.7) and the boiler room's (5.0), and a
+    # glide from the danchi's roof (18.8; red coin 4) comes into it at about 13. The glide holds at
+    # 24, 5.1 m over red coin 7 (18.9, on the chimney's top 18.2): let go over the chimney and the
+    # body drops onto it through the coin.
+    {'id': 'ud_sento', 'type': 'updraft', 'position': list(SENTO_TOP),
+     'params': {'width': 14.0, 'depth': 12.0, 'base': round(6.0 - SENTO_TOP[1], 2), 'cap': round(24.0 - SENTO_TOP[1], 2),
+                'lift': 6.0, 'look': 'steam', 'puffs': 20, 'lean': [6.0, 0.0, -4.0]}},
+    # the courtyard's leaf fire (takibi), west of the sando between the torii and the gate: G8's
+    # chain. West, so that G8's own line (east of the torii, x 170 at z 146) does not pass through
+    # it. Its box, x 142-158, z 136.5-152.5, from 9.3: over a triple jump from what stands in it
+    # (the stone lanterns, 2.5; the shed at x 142, 3.3: 8.9). A glide from the stage that clears the
+    # gate (17.8) comes into it at about 15; it holds at 21, and from there glides over the great
+    # torii (its top beam 13.3; 2.6 m clear, 6 m west of star 2's place) and the front road onto
+    # the arcade's roof.
+    {'id': 'ud_court', 'type': 'updraft', 'position': [150.0, 0.65, 146.0], 'asset': 'game_takibi',
+     'params': {'width': 16.0, 'depth': 16.0, 'base': 8.65, 'cap': 20.35, 'lift': 6.0, 'look': 'smoke',
+                'puffs': 24, 'lean': [0.0, 0.0, -3.0]}},
+    # the falls' mist, over the pool at the foot of the falls (its bed 11.2): the gentle one. Its box,
+    # x 208-220, z 313-327, from 12.7; caught from the pool's west terrace (16) or the east shelf (20)
+    # with a double jump's glide. It holds at 30, under the kick chimney's rest ledge (31); from there
+    # a glide crosses west over the terrace.
+    {'id': 'ud_falls', 'type': 'updraft', 'position': [214.0, 11.2, 320.0],
+     'params': {'width': 12.0, 'depth': 14.0, 'base': 1.5, 'cap': 18.8, 'lift': 5.0, 'look': 'mist',
+                'puffs': 20}},
+]
+ENTITIES += UPDRAFTS
+
 
 def cell_entities(rows):
     """The entities whose cell is in `rows` (z // 64): {cell id: [entity, ...]}, copies."""
@@ -153,6 +189,16 @@ def recipe(name, boxes, colours, budget):
             'budget': {'triangles': budget}, 'nodes': nodes}
 
 
+def takibi():
+    """A leaf fire (ud_court's source): a low heap of fallen leaves, gold and rust, in a ring of
+    four stones, about 1.6 m across."""
+    b = [(-0.7, 0.0, -0.7, 0.7, 0.25, 0.7, 'rust'),
+         (-0.45, 0.2, -0.5, 0.5, 0.5, 0.45, 'gold', 'ember'),
+         (-0.95, 0.0, -0.2, -0.75, 0.22, 0.2, 'stone'), (0.75, 0.0, -0.2, 0.95, 0.22, 0.2, 'stone'),
+         (-0.2, 0.0, -0.95, 0.2, 0.22, -0.75, 'stone'), (-0.2, 0.0, 0.75, 0.2, 0.22, 0.95, 'stone')]
+    return recipe('game_takibi', b, {'rust': '#8a4a22', 'gold': '#c89a2e', 'ember': '#e0602a', 'stone': '#7c7a74'}, 72)
+
+
 def omamori():
     """A red brocade pouch (0.36 x 0.5 x 0.12) with its gold cord, at chest height over its spot."""
     b = [(-0.18, 0.9, -0.06, 0.18, 1.4, 0.06, 'red'),
@@ -163,8 +209,8 @@ def omamori():
 if __name__ == '__main__':
     OUT.mkdir(parents=True, exist_ok=True)
     for p in OUT.glob('game_*.asset.json'): p.unlink()
-    for r in (omamori(),):
+    for r in (omamori(), takibi()):
         (OUT / f'{r["name"]}.asset.json').write_text(json.dumps(r, separators=(',', ':')) + '\n')
-    print(f'{OUT.relative_to(HERE)}: game_omamori; {len(ENTITIES)} entities '
+    print(f'{OUT.relative_to(HERE)}: game_omamori, game_takibi; {len(ENTITIES)} entities '
           f'(TIMER {TIMER} ticks, the train in at {(TRAIN_DELAY) / 60:g} s, at the platform at '
           f'{(TRAIN_DELAY + TRAIN_LEG) / 60:g} s, out at {TIMER / 60:g} s)')

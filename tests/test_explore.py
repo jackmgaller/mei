@@ -36,6 +36,15 @@ class TuningTest(unittest.TestCase):
         self.assertEqual(tn.push_h, [0.36, 0.9, 1.4])
         self.assertEqual(tn.surfaces[:3], [0, 1, 2])
 
+    def test_updraft_numbers(self):
+        tn = TN.load()
+        text = (ROOT / 'carts/garden/updraft.akr').read_text()
+        self.assertIn('const UD_SPEED: fixed = %s' % _fmt(tn.updraft['UD_SPEED']), text)
+        self.assertEqual(tn.updraft_defaults['base'], 0.0)
+        self.assertEqual(tn.updraft_defaults['lean'], [0.0, 0.0, 0.0])
+        q = C.probe_for_flight('u', {'move': 'updraft_glide', 'from': [1.0, 20.0, 3.0], 'heading_deg': 90.0})
+        self.assertEqual(q.mode, C.MODE_UPDRAFT)
+
     def test_reaches(self):
         tn = TN.load()
         s = tn.summary()
@@ -126,6 +135,50 @@ class FlightTest(unittest.TestCase):
         r = self.fly(M.BY_NAME['walk_off'], 9.9, 30.0, math.pi / 2)
         self.assertEqual(r.outcome[0], S.FELL)
         self.assertTrue(10.0 <= r.hole_x[0] <= 14.2)
+
+    def test_updraft_lifts_a_glide_to_its_cap(self):
+        """A glide east at 6 m through an updraft (x 8..38, from 2 m up, its cap 12): the flight
+        is player.akr's st_glide() tick for tick (updraft.akr's targets in the box, the glide's
+        outside), it rises to the cap and no higher, and its entry is recorded as a ride; a fall
+        through the same box (no glide) does not rise."""
+        import numpy as np
+        from explore import sim as S
+        tn = self.tn
+        ud = {'lo': (8.0, 2.0, 25.0), 'hi': (38.0, 12.0 + tn.updraft['UD_TOP'], 35.0), 'cap': 12.0, 'lift': 6.0}
+        fl = S.Flyer(self.m, tn, updrafts=[ud])
+        gs, sink, ease = tn.mps('GlideSpeed'), tn.mps('GlideSink'), tn.rps('GlideEase')
+        b = S.Batch(np.array([2.0]), np.array([6.0]), np.array([30.0]), np.array([math.pi / 2]), np.zeros(1),
+                    np.array([gs]), np.ones(1), np.array([tn.mps('AirMax')]), np.ones(1),
+                    np.array([M.ST_DOUBLE], np.int8), np.zeros(1, bool), np.zeros(1, bool),
+                    state=np.array([M.GLIDE], np.int8), max_ticks=1200)
+        r = fl.fly(b)
+        # the controller's arithmetic (st_glide, air_move(0.0)), from the same start
+        x, y, vy, fwd, top, entry, t = 2.0, 6.0, 0.0, gs, 6.0, None, 0
+        while x <= 40.0 and t < 1200:
+            t += 1
+            inside = 8.0 <= x <= 38.0 and 2.0 <= y <= ud['hi'][1]
+            if inside and entry is None:
+                entry = t
+            speed = tn.updraft['UD_SPEED'] / 60 if inside else gs
+            target = min(max((12.0 - y) * tn.updraft['UD_HOLD'] / 60, -sink), 6.0 / 60) if inside else -sink
+            fwd += (speed - fwd) * ease
+            vy += (target - vy) * ease
+            x += fwd
+            y += vy
+            top = max(top, y)
+        self.assertEqual(r.outcome[0], S.OUT)
+        self.assertAlmostEqual(float(r.max_y[0]), top, places=6)
+        self.assertTrue(12.0 - 0.1 <= top <= 12.0 + 0.6, top)
+        self.assertEqual(list(r.rides['updraft']), [0])
+        self.assertEqual(int(r.rides['tick'][0]), entry)
+        # falling through it: gravity as anywhere
+        b = S.Batch(np.array([20.0]), np.array([10.0]), np.array([30.0]), np.array([0.0]), np.zeros(1), np.zeros(1),
+                    np.ones(1), np.array([tn.mps('AirMax')]), np.zeros(1), np.array([M.ST_FALL], np.int8),
+                    np.zeros(1, bool), np.zeros(1, bool), max_ticks=600)
+        r = fl.fly(b)
+        self.assertEqual(r.outcome[0], S.LAND)
+        self.assertAlmostEqual(float(r.max_y[0]), 10.0, places=6)
+        self.assertEqual(len(r.rides['i']), 0)
 
 
 def fake_world(tn):
