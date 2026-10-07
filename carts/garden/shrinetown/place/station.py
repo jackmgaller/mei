@@ -347,6 +347,10 @@ def town(ns):
     # the last train's path along track 2 (place/race_train.py; game.py's RACE_PATH)
     from place.race_train import NAME, PATH
     paths[NAME] = {'points': PATH, 'raised': True}
+    # the arrival train's two paths along track 1 (place/race_train.py; game.py's arrival_mover)
+    from place.race_train import ARRIVE_PATHS
+    for name, pts in ARRIVE_PATHS.items():
+        paths[name] = {'points': pts, 'raised': True}
 
     # -- the front road through the underpass: asphalt along its skew (25 degrees north of east)
     ux, uz = next((x, z) for a, x, z, _ in PIECES if a == 'viaduct_underpass')

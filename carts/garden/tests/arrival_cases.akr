@@ -1,0 +1,226 @@
+// Arriving by train (numbered 620-639; arrival.akr, shrinetown/DESIGN.md 12.10): in the shrine
+// town, the arrival started as the cart's first opening of the world starts it (arrival_begin(),
+// since the tests run with arr_auto off), then: the train comes in and stops, the robot steps
+// off onto the platform facing north and plays within 3.5 s, and the train leaves and is
+// parked; A and B skip it without a jump or a dive; Y does nothing while it runs, and a respawn
+// after it goes to the plaza's spawn without playing it again; the first opening through the
+// shrine's road works arrives by train, a second does not. 625 and 626 are the arrival drawn
+// for pictures, by day and by night (SHOT=1 SEQ=...), with the same checks as 620.
+
+const AT_PLAY_MAX = 210                 // ticks from the start to playing: 3.5 s
+const AT_STOP_X: fixed = 161.7          // the train's middle at the platform (place/race_train.py ARRIVE_STOP)
+const AT_TRACK1_Z: fixed = 3.9
+const AT_DOOR_X: fixed = 158.0          // the door it steps off from
+const AT_FLOOR: fixed = 10.0            // the platform's floor
+const AT_PLAZA: vec3 = vec3(160.0, 0.0, 26.0)   // the world's spawn
+
+var at_phase: s32
+var at_t: s32                           // a frame the case waits from
+var at_door0: vec3                      // the player where the arrival put it
+var at_cpu_in: s32                      // the most CPU and GPU cycles a frame while it comes in ...
+var at_gpu_in: s32
+var at_cpu_out: s32                     // ... and while it leaves
+var at_gpu_out: s32
+var at_late: s32                        // late ticks during the arrival (after the load's)
+var at_late0: s32 = -1
+var at_eye_in: s32                      // frames with the eye inside the train while it is out
+var at_hidden: s32                      // frames the body was drawn while the train came in
+
+fn at_case_init() -> bool {
+    match SCENARIO {
+        620 => { name = "arrival: the train comes in, the robot steps off facing north, plays in 3.5 s; the train leaves" }
+        621 => { name = "arrival: A skips it, without a jump" }
+        622 => { name = "arrival: B skips it, without a dive" }
+        623 => { name = "arrival: Y does nothing while it runs; a respawn after it goes to the plaza, not the train" }
+        624 => { name = "arrival: the first opening through the shrine's road works arrives by train, the second does not" }
+        625 => { name = "arrival: pictures by day" }
+        626 => { name = "arrival: pictures by night" }
+        else => { return false }
+    }
+    cam.lock = false
+    at_phase = 0
+    at_t = -1
+    if SCENARIO == 626 { tv[T.Night] = 1.0 }
+    if SCENARIO == 624 {
+        arr_auto = true                     // as the cart runs: the shrine town not opened yet
+        return true
+    }
+    arrival_begin()
+    at_door0 = pl.pos
+    return true
+}
+
+fn at_case(f: s32) {
+    match SCENARIO {
+        620, 625, 626 => at_arrive(f)
+        621, 622 => at_skip(f)
+        623 => at_respawn(f)
+        624 => at_doors(f)
+        else => {}
+    }
+}
+
+// The train's mover.
+fn at_train() -> *Mover {
+    let m = arrival_train()
+    assert(m != null)
+    return m
+}
+
+// Inside the train's box (its cars, rail level to the roof's top)?
+fn at_in_train(p: vec3) -> bool {
+    let m = at_train()
+    let d = p - m.pos
+    return abs(d.x) < ARR_BOX.x && abs(d.z) < ARR_BOX.z && d.y > 0.0 && d.y < ARR_BOX.y
+}
+
+// The frame's costs and what the camera and body do, each frame while the train is out.
+fn at_watch() {
+    if frame_n < 5 { return }               // the world's load
+    if at_late0 < 0 { at_late0 = timing.late }
+    if arr_state == ARR_COMING {
+        at_cpu_in = max(at_cpu_in, timing.cpu)
+        at_gpu_in = max(at_gpu_in, timing.gpu)
+        if body_shown { at_hidden += 1 }
+    } else if arr_state == ARR_LEAVING {
+        at_cpu_out = max(at_cpu_out, timing.cpu)
+        at_gpu_out = max(at_gpu_out, timing.gpu)
+    }
+    if arr_state != ARR_OFF && arr_state != ARR_DONE { at_late = timing.late - at_late0 }
+    if mover_live(at_train()) && arr_state != ARR_COMING && at_in_train(cam.eye) { at_eye_in += 1 }
+}
+
+// The player on the platform at the door's mark, facing north, the camera looking up the axis.
+fn at_check_playing(what: *u8) {
+    expect(arr_state == ARR_LEAVING && !arrival_busy(), what, fixed(arr_state))
+    expect(pl.st == St.Ground && near(pl.pos.y, AT_FLOOR, 0.05), "standing on the platform's floor, y", pl.pos.y)
+    expect(pl.pos.z > 5.5 && pl.pos.z < 10.5 && near(pl.pos.x, AT_DOOR_X, 0.1), "on the island platform at the door, z", pl.pos.z)
+    expect(abs(wrap_angle(pl.yaw)) < 0.02, "facing north, yaw", pl.yaw)
+    expect(abs(wrap_angle(cam.yaw)) < 0.1, "the camera looks north, yaw", cam.yaw)
+    expect(cam.intro > 0, "the opening's level look up the axis, ticks left", fixed(cam.intro))
+    let m = at_train()
+    expect(mover_live(m) && near(m.pos.x, AT_STOP_X, 0.01) && near(m.pos.z, AT_TRACK1_Z, 0.01), "the train stands at the platform on track 1, x", m.pos.x)
+}
+
+fn at_arrive(f: s32) {
+    at_watch()
+    let m = at_train()
+    if f < 150 { stick_v = FWD }            // ignored until the player plays
+    if f == 1 {
+        expect(arr_state == ARR_COMING && mover_live(m), "the train is out, coming in", fixed(arr_state))
+        expect(m.pos.x < AT_STOP_X - 20.0, "west of the platform, x", m.pos.x)
+        expect(world_variant == ticks(T.Night), "the palette variant (0 day, 1 night)", fixed(world_variant))
+    }
+    if f == ARR_IN + 2 {
+        expect(near(m.pos.x, AT_STOP_X, 0.01) && near(m.pos.z, AT_TRACK1_Z, 0.01) && m.vel.x == 0.0, "stopped at the platform, x", m.pos.x)
+        expect(tw_hdist(pl.pos, at_door0) < 0.01, "the stick moved nothing while it came in, m", tw_hdist(pl.pos, at_door0))
+        expect(at_hidden == 0, "the body was not drawn while it came in", fixed(at_hidden))
+    }
+    if at_phase == 0 && arr_play_t >= 0 {
+        at_phase = 1
+        at_t = f
+        expect(f <= AT_PLAY_MAX, "playing after ticks (210: 3.5 s)", fixed(f))
+        at_check_playing("playing")
+        expect(pl.pos.z > at_door0.z + 0.5, "stepped off the door, m", pl.pos.z - at_door0.z)
+        note("CPU kcycles a frame at most while it came in", fixed(at_cpu_in / 1000))
+        note("GPU kcycles a frame at most while it came in", fixed(at_gpu_in / 1000))
+    }
+    if at_phase == 1 {
+        if f < at_t + 20 { stick_v = FWD }
+        if f == at_t + 20 {
+            expect(pl.pos.z > at_door0.z + 1.5, "the stick runs the player, z", pl.pos.z)
+            at_phase = 2
+        }
+    }
+    if at_phase == 2 && arr_state == ARR_DONE {
+        at_phase = 3
+        at_t = f
+        expect(!flag_on("arrival"), "the flag is cleared at the path's end", 0.0)
+        note("ticks from playing to the train parked", fixed(sim_t - arr_play_t))
+        note("CPU kcycles a frame at most while it left", fixed(at_cpu_out / 1000))
+        note("GPU kcycles a frame at most while it left", fixed(at_gpu_out / 1000))
+        note("late ticks during the arrival", fixed(at_late))
+    }
+    if at_phase == 3 && f == at_t + 2 {
+        expect(!mover_live(m), "the train is parked", m.pos.x)
+        expect(at_eye_in == 0, "frames with the eye inside the train", fixed(at_eye_in))
+        expect(body_shown && cam.reach > 4.0, "the camera out at its distance, m", cam.reach)
+        done()
+    }
+}
+
+fn at_skip(f: s32) {
+    at_watch()
+    if f == 20 {
+        expect(arr_state == ARR_COMING, "coming in", fixed(arr_state))
+        if SCENARIO == 621 { pad_v = A } else { pad_v = B }
+    }
+    if f == 21 {
+        expect(arr_skipped, "skipped", fixed(arr_state))
+        at_check_playing("playing at once")
+        expect(near(pl.pos.z, at_door0.z + ARR_STEP_LEN, 0.05), "a step north of the door, z", pl.pos.z)
+        x0 = pl.pos.y
+    }
+    if f > 21 && f < 60 {
+        if is_air(pl.st) || pl.st == St.Dive || pl.st == St.BellySlide { expect(false, "no jump or dive from the press", pl.pos.y) }
+    }
+    if f == 60 {
+        expect(pl.st == St.Ground && near(pl.pos.y, x0, 0.01), "still standing, y", pl.pos.y)
+        expect(at_train().pos.x > AT_STOP_X, "the train leaving, x", at_train().pos.x)
+        done()
+    }
+}
+
+fn at_respawn(f: s32) {
+    at_watch()
+    if f == 10 { pad_v = Y }
+    if f == 12 {
+        expect(arr_state == ARR_COMING && tw_hdist(pl.pos, at_door0) < 0.01, "Y while it comes in: nothing", fixed(arr_state))
+    }
+    if f == 40 { pad_v = A }
+    if f == 100 { pad_v = Y }
+    if f == 101 {
+        expect(tw_hdist(pl.pos, AT_PLAZA) < 0.01 && near(pl.pos.y, 0.0, 0.2), "back at the plaza's spawn, m", tw_hdist(pl.pos, AT_PLAZA))
+        expect(arr_state == ARR_LEAVING && !arrival_busy(), "the arrival not played again", fixed(arr_state))
+    }
+    if f > 101 && f < 160 {
+        stick_v = FWD
+        if arrival_busy() { expect(false, "not played again", fixed(arr_state)) }
+    }
+    if f == 160 {
+        expect(pl.pos.z > AT_PLAZA.z + 3.0, "the player plays, z", pl.pos.z)
+        player_respawn()                    // as a fall 40 m under the spawn does
+        expect(tw_hdist(pl.pos, AT_PLAZA) < 0.01 && !arrival_busy(), "a fall's respawn: the plaza, not the train", fixed(arr_state))
+        done()
+    }
+}
+
+// From the shrine through the road works into the shrine town (case 433's door): the first time
+// by train; skipped; back to the shrine and in again: the plaza.
+fn at_doors(f: s32) {
+    if f == 0 {
+        expect(world_k == GARDEN_WORLD_SHRINE && !arr_seen, "in the shrine, the shrine town not opened yet", fixed(world_k))
+        place(vec3(10.0, sh_floor(10.0, 14.0, 30.0), 14.0), WEST)
+    }
+    if at_phase == 0 {
+        if world_k == GARDEN_WORLD_SHRINE { stick_v = FWD }
+        if world_k == GARDEN_WORLD_SHRINETOWN {
+            expect(arr_state == ARR_COMING && arr_seen, "the first opening: by train", fixed(arr_state))
+            expect(near(pl.pos.x, AT_DOOR_X, 0.1) && near(pl.pos.y, AT_FLOOR, 0.05), "at the train's door, x", pl.pos.x)
+            at_phase = 1
+            at_t = f
+        }
+        if f == 80 { expect(false, "through the road works", fixed(world_k)) }
+    }
+    if at_phase == 1 && f == at_t + 10 { pad_v = A }
+    if at_phase == 1 && f == at_t + 12 {
+        at_check_playing("skipped: playing")
+        world_switch(GARDEN_WORLD_SHRINE)
+        expect(arr_state == ARR_OFF, "the shrine: no arrival", fixed(arr_state))
+        world_switch(GARDEN_WORLD_SHRINETOWN)
+        expect(arr_state == ARR_OFF && !mover_live(at_train()), "the second opening: no train", fixed(arr_state))
+        expect(tw_hdist(pl.pos, AT_PLAZA) < 0.01 && abs(wrap_angle(pl.yaw)) < 0.02, "at the plaza's spawn facing north, m", tw_hdist(pl.pos, AT_PLAZA))
+        expect(cam.intro > 0, "with the opening's look up the axis, ticks", fixed(cam.intro))
+        done()
+    }
+}

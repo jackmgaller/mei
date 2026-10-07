@@ -1,4 +1,4 @@
-"""The last train (★5) on track 2: its path and its asset.
+"""The last train (★5) on track 2, and the arrival train on track 1: their paths and their asset.
 
 Not a placement zone (place/__init__.py's ZONES does not list it): place/station.py adds the path
 to the world (rows 0-1, notes/gen_town.py), and game.py's mover follows it (RACE_PATH) drawn as
@@ -40,3 +40,38 @@ def path_points(x0=START, x1=STOP):
 
 
 PATH = path_points()
+
+
+# ---- the arrival train (DESIGN.md 12.10, "Arrive by train"; carts/garden/arrival.akr): the same
+# two cars on track 1, which is free (the parked train there is gone). Track 1 mirrors track 2
+# about the line (z 8): z 6 on the standard spans, 3.9 at the station, through the west taper's
+# S (x 120-136) and the east taper's (x 184-200, back out to 6). The set's middle comes in from
+# x 134 and stops at x 161.7, so that car_w's east door (the set's x - 3.7, make_train.py's
+# DOORS) is at x 158: the platform's one clear way north from track 1's edge (between the column
+# at x 155 and the stairwell's low wall at 160.65; the east name board at 166.25-168.75, the soba
+# stand and the benches stand on the platform's middle line), past the stair's head. It leaves
+# east from there to x 262, its front at the last standard span's end (x 280, where the line
+# curves north), and is hidden there. Both paths are added to the world by place/station.py.
+ARRIVE_IN, ARRIVE_OUT = 'arrive_track1_in', 'arrive_track1_out'
+ARRIVE_FROM, ARRIVE_STOP, ARRIVE_TO = 134.0, 161.7, 262.0
+EAST_TAPER = (184.0, 200.0)
+
+
+def track1_z(x):
+    """Track 1's z at x: the line's z less track 2's offset, either taper."""
+    if x <= STOP:
+        return round(2 * LINE_Z - track2_z(x), 3)
+    t = min(max((EAST_TAPER[1] - x) / (EAST_TAPER[1] - EAST_TAPER[0]), 0.0), 1.0)
+    s = t * t * (3.0 - 2.0 * t)
+    return round(LINE_Z - TRACK_STD - (TRACK_WIDE - TRACK_STD) * s, 3)
+
+
+def track1_points(x0, x1):
+    """[x, y, z] from x0 to x1 along track 1: the ends, and every STEP m on either taper."""
+    tapers = [a + STEP * k for a, b in (TAPER, EAST_TAPER) for k in range(int((b - a) / STEP) + 1)]
+    xs = sorted({round(x, 3) for x in [x0, x1] + tapers if x0 <= x <= x1})
+    return [[x, DECK, track1_z(x)] for x in xs]
+
+
+ARRIVE_PATHS = {ARRIVE_IN: track1_points(ARRIVE_FROM, ARRIVE_STOP),
+                ARRIVE_OUT: track1_points(ARRIVE_STOP, ARRIVE_TO)}

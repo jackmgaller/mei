@@ -1705,3 +1705,85 @@ climb the merge added one stand-in (the look's stand-in caps): 2,052 → 2,214 t
 Not done here: the race train (the cart); a rail camera zone per torii tunnel switchback; the kick
 cedars drawn at their trunks' size. (The level-1 roofs are the look's; the fall-through spots the
 kit's `slide_floor_degrees`, above.)
+
+## 12.10 Features
+
+### Arrive by train (branch `feat-arrive-train`)
+
+The first time the shrine town opens in a session, the player arrives on the two-car train on
+track 1 and steps off onto the island platform, 9 m up, facing north up the level's axis: the
+shotengai, the great torii, the precinct, the mountain. The train leaves east behind them, as the
+last train (★5) leaves at the end of the race.
+
+![Coming in](screenshots/arrival_in.png) ![Stepped off](screenshots/arrival_off.png)
+![Coming in at night](screenshots/arrival_in_night.png) ![Stepped off at night](screenshots/arrival_off_night.png)
+
+| Tick | What happens |
+|---|---|
+| 0–150 | The train comes in from x 134 and brakes evenly (from 19.2 m/s) to a stop with its middle at x 161.7. The camera stands at the platform's east end by track 1's edge, looking west at it; the robot is hidden and the stick does nothing |
+| 150–180 | Stopped: the doors open |
+| 180–210 | The robot steps off car_w's east door (x 158) north onto the platform, the stick held at 0.4 for it; the follow camera is behind it, with the opening's level look north (camera.akr's `cam_intro()`, 150 ticks) |
+| 210 (3.5 s) | The player plays. The train waits 20 ticks, then leaves east at 1.6 m/s² and is parked at x 262 (its front at the curve) 694 ticks (11.6 s) after the player plays |
+
+- **Skip:** A or B, while the train comes in or the robot steps off, puts the player at once one
+  step north of the door, playing; the press neither jumps nor dives. The train then leaves as
+  above. A small "A skip" label is shown at the top right until the player plays.
+- **Y** does nothing until the player plays (it would put the player on the plaza while the
+  arrival still holds the input).
+- **The door:** x 158 is the platform's one clear way north from track 1's edge. The platform's
+  middle line has the soba stand (x 148–152), the west benches (153.5), the columns (145, 155,
+  165.5, 175), the stairwell (160.65–165.45) and the east name board (166.25–168.75). From 158 the
+  way is straight past the stairwell's head, which is the first walk down to the plaza (case
+  401's stair, the way the race ends).
+- **The camera** keeps the eye out of the train while it is out: the ray from the head to the eye
+  stops 0.3 m short of the train's box, as camera.akr stops it short of a wall, and camera.akr
+  eases it back out (4 m/s) once the train has gone by. So the first view is over the robot's
+  shoulder, close, until the train's west end has passed (about 4.6 s after the player plays);
+  case 620 counts 0 frames with the eye inside the train.
+- **Spawn, respawn and doors:** the spawn entity stays in the station plaza (160, 26). It is the
+  respawn (Y, or a fall 40 m under it): never the train. Later openings in the session (the
+  shrine's road works, the only door into the shrine town; the garden has none to it) start at the
+  plaza with the opening camera, as before. Arriving every time was rejected: ★5's retries and the
+  walks between the three worlds would pay 3.5 s each time for a view already seen. Coming
+  through the road works on foot and arriving by train is a level start, not a continuous walk;
+  making the road works lead in at the town's own road works (1.6, 111) instead of the plaza is a
+  question for the owner (a door would need a destination).
+- **What it is in the world:** the mover `train_arrival` (`game.py`'s `arrival_mover()`): the
+  race train's asset and collision (`train_emu_pair`, `train_emu_pair_col`), parked until the
+  flag `arrival` is set, a loop of one tick so that it parks the tick the flag is cleared. The
+  paths `arrive_track1_in` (x 134–161.7) and `arrive_track1_out` (161.7–262) are track 1, the
+  mirror of track 2 about the line through both tapers (`place/race_train.py`, added to the world
+  by `place/station.py`). `carts/garden/arrival.akr` sets the flag, moves the mover itself each
+  tick (position and velocity, so a body on its roof rides it out east) and clears the flag at
+  the end. Standing at the platform the train is a wall; its roof can be jumped onto and ridden.
+- **game.akr's hooks:** `arrival_open()` when a world opens, `arrival_tick()` after
+  `attach_tick()`, `arrival_cam()` after `cam_place()`, `arrival_draw()` with the HUD, and
+  `arrival_busy()` and `arrival_hides_body()` for Y and the body. ground.akr is unchanged: the
+  arrival finds its mover by its flag, so it names no world. The tests run with `arr_auto` off,
+  so every other scenario (400 and 452–457 among them) starts as before.
+
+**Cost.** The train is the race train's 160 triangles. The World Checker, which draws the parked
+mover at its placement (x 134), measures it at up to 31,245 draw CPU cycles, 54,710 GPU cycles and
+67 triangles a view; its 34 more views over a threshold (129 → 163) are that, though the game does
+not draw a parked mover. In the game (case 620's frame counters, the world's load excluded): while
+it comes in, at most 614,000 CPU cycles a frame (724,000 at night) and 506,000 (546,000) GPU;
+while it leaves, 839,000 and 656,000, at the follow camera on the platform. No late ticks. The
+World Checker at the arrival's cameras, without the train: coming in (176, 12, 6.6) 528,723 draw
+CPU and 511,623 GPU; over the shoulder (158, 11.6, 5.6) 611,669 and 517,062; the follow camera on
+the platform looking north (158, 13.2, 1) 688,789 and 652,022 (one of the platform's views over
+600,000 since workstream 4); the plaza spawn 438,459 and 414,785.
+
+**Cases** (`carts/garden/tests/arrival_cases.akr`, run by `arrival_cases.sh`):
+
+| Case | What it proves |
+|---|---|
+| 620 | The train comes in west of the platform and stops at x 161.7 on track 1; the stick moves nothing and the body is not drawn meanwhile; the player plays at tick 209 (3.5 s) on the platform's floor (10.0) at the door, facing north, the camera north with the opening's look; the stick runs it; the train leaves and is parked 694 ticks later; no frame has the eye inside the train; the camera is back out at 6.5 m |
+| 621, 622 | A (621) or B (622) at tick 20: playing the next tick, one step north of the door, facing north; no jump or dive for 40 ticks; the train leaving |
+| 623 | Y while it comes in: nothing; after a skip, Y goes to the plaza's spawn and does not play it again; a fall's respawn (`player_respawn()`) the same |
+| 624 | From the shrine through the road works (case 433's door): the first opening arrives by train; skipped; the shrine and the shrine town opened again: the plaza's spawn facing north with the opening's look, no train |
+| 625, 626 | 620's run by day and by night (626 is in `check.sh`): the pictures above (`SHOT=1 SEQ=30`, frames 30 and 240) |
+
+Cases 400 (the spawn) and 452–457 (★5) are unchanged and pass: the tests do not arrive by train.
+`harness.akr` now runs `shz_case()` only for scenarios 700–799: its `else` ran a route, and
+printed a DONE line, for every other scenario number, so check.sh's "did it finish" test could
+not fail for any scenario.

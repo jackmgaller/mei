@@ -1,0 +1,272 @@
+// Arriving by train (shrinetown/DESIGN.md 12.10, "Arrive by train"): the first time the shrine
+// town opens in a session (power-on), the player comes in on the two-car train pulling into
+// track 1 of the island platform, 9 m up on the viaduct, steps off onto the boarding mark facing
+// north up the level's axis (the shotengai, the great torii, the precinct, the mountain), and the
+// train leaves east behind them: the bookend of star 5, which ends with the last train leaving.
+//
+// The train is the world's mover `train_arrival` (shrinetown/game.py), started by the flag
+// `arrival`; this file moves it itself, along the world paths arrive_track1_in (in from the west,
+// braking to a stop with its middle at x 161.7) and arrive_track1_out (out east, accelerating, to
+// x 262, where it is parked). How it runs, in ticks:
+//
+//   0 ... ARR_IN          the train comes in (from 19.2 m/s, braking evenly); the camera stands
+//                         at the platform's east end looking west along track 1; the body is
+//                         hidden (on the train) and does not move
+//   ... + ARR_DOORS       stopped, the doors open
+//   ... + ARR_STEP        the robot steps off the door (car_w's east one, x 158) north onto the
+//                         platform; the follow camera behind it, looking level up the axis
+//                         (camera.akr's opening, cam_intro())
+//   then                  the player plays (3.5 s from the start); the train waits ARR_WAIT,
+//                         then leaves east at ARR_ACCEL and is parked at the path's end
+//
+// A or B skips to the player on the platform at the step's end (the press does not jump). Y does
+// nothing until the player plays. While the train is out, the camera's eye stays out of it (the
+// eye is pulled in to the train's side, as camera.akr pulls it in to a wall), so the first view is
+// over the robot's shoulder until the train has gone, then eases out to the usual distance.
+//
+// The spawn stays the world's (the station plaza): a respawn (Y, or a fall) goes there, never
+// back onto the train, and so does every later opening of the shrine town in the session (the
+// doors from the shrine and the garden). The tests run with arr_auto off (their scenarios place
+// the player themselves); the arrival's own scenarios (620-639) start it with arrival_begin().
+//
+// game.akr calls arrival_open() when a world opens, arrival_tick() each tick after attach_tick(),
+// arrival_cam() each frame after cam_place(), and asks arrival_busy() and arrival_hides_body().
+
+const ARR_IN = 150                    // ticks the train takes to come in and stop
+const ARR_DOORS = 30                  // ticks stopped before the robot steps off
+const ARR_STEP = 30                   // ticks of the step off (the stick held north)
+const ARR_WAIT = 20                   // ticks stopped after the player plays, then it leaves
+const ARR_ACCEL: fixed = 1.6          // its acceleration leaving, m/s2 (11.4 s to the path's end)
+const ARR_WALK: fixed = 0.4           // the step's stick (under half: a walk, not ending the opening)
+const ARR_STEP_LEN: fixed = 1.0       // where a skip puts the player: this far north of the door
+const ARR_DOOR: vec3 = vec3(-3.7, 1.0, 1.95)   // the door's sill from the train's middle: car_w's east door, its north side, the floor
+const ARR_EYE: vec3 = vec3(176.0, 12.0, 6.6)   // the camera while it comes in: on the platform's east end, by track 1's edge
+const ARR_LOOK: vec3 = vec3(140.0, 10.9, 5.0)  // looking west along track 1
+const ARR_BOX: vec3 = vec3(19.75, 4.0, 1.45)   // the two cars' half length, roof (over the rails), half width
+const ARR_CAM_GAP: fixed = 0.3        // the eye stays this far out of the train
+
+const ARR_OFF = 0
+const ARR_COMING = 1                  // coming in, stopped, doors opening: the camera's own
+const ARR_STEPPING = 2                // the robot stepping off
+const ARR_LEAVING = 3                 // the player plays; the train waits, then leaves
+const ARR_DONE = 4
+
+var arr_auto: bool = TEST == 0        // the first opening of the shrine town arrives by train
+var arr_seen: bool                    // the arrival ran this session
+var arr_state: s32
+var arr_t: s32                        // ticks in the state
+var arr_m: s32 = -1                   // the arrival train's mover, or -1
+var arr_in: *WpPath
+var arr_out: *WpPath
+var arr_prev: vec3                    // the train's position last tick
+var arr_skipped: bool                 // the last arrival was skipped (the tests)
+var arr_play_t: s32 = -1              // the tick (sim_t) the player could play, or -1
+var arr_door: vec3                    // the door's sill, where the robot steps off from
+
+fn arrival_busy() -> bool { return arr_state == ARR_COMING || arr_state == ARR_STEPPING }
+fn arrival_hides_body() -> bool { return arr_state == ARR_COMING }
+fn arrival_train() -> *Mover {
+    if arr_m < 0 { return null }
+    return &movers[arr_m]
+}
+
+// The arrival train's mover in the world open now (its start flag is "arrival"), or -1.
+fn arrival_find() -> s32 {
+    for k in 0..mover_n {
+        let m = &movers[k]
+        if m.start != null && streq(m.start, "arrival") { return k }
+    }
+    return -1
+}
+
+// A world opened (after its spawn, goals and camera): the shrine town's first opening arrives.
+fn arrival_open() {
+    arr_state = ARR_OFF
+    arr_m = arrival_find()
+    if arr_m < 0 || arr_seen || !arr_auto { return }
+    arrival_begin()
+}
+
+// Starts the arrival in the shrine town (the world must be open): the train at its first point,
+// the player at the door, hidden.
+fn arrival_begin() {
+    arr_m = arrival_find()
+    if arr_m < 0 { return }
+    arr_in = wp_path_find("arrive_track1_in")
+    arr_out = wp_path_find("arrive_track1_out")
+    assert(arr_in != null && arr_out != null)
+    arr_seen = true
+    arr_skipped = false
+    arr_play_t = -1
+    flag_set("arrival")
+    arr_prev = wp_path_at(arr_in, 0.0)
+    arr_door = wp_path_at(arr_in, wp_path_length(arr_in)) + ARR_DOOR
+    arrival_place(arr_door)
+    cam.intro = 0
+    arr_state = ARR_COMING
+    arr_t = 0
+}
+
+// The player at p facing north; the respawn stays the world's spawn.
+fn arrival_place(p: vec3) {
+    let sp = pl.spawn
+    let sy = pl.spawn_yaw
+    player_place(p, 0.0)
+    pl.spawn = sp
+    pl.spawn_yaw = sy
+}
+
+// The player plays: the follow camera behind it, the opening's level look up the axis.
+fn arrival_play() {
+    arr_state = ARR_LEAVING
+    arr_t = 0
+    arr_play_t = sim_t
+}
+
+fn arrival_skip() {
+    arr_skipped = true
+    arrival_place(arr_door + vec3(0.0, 0.0, ARR_STEP_LEN))
+    cam_reset()
+    cam_intro()
+    arrival_play()
+}
+
+// Each tick, after attach_tick(): the input while the player does not play, the train.
+fn arrival_tick() {
+    if arr_state == ARR_OFF || arr_state == ARR_DONE { return }
+    arr_t += 1
+    if arrival_busy() && (pin.ap || pin.bp) {
+        arrival_skip()
+        pin.ap = false                           // the press skips, it does not jump or dive
+        pin.bp = false
+    }
+    if arr_state == ARR_COMING {
+        pin.mag = 0.0
+        pin.dir = vec3(0.0, 0.0, 0.0)
+        if arr_t >= ARR_IN + ARR_DOORS {
+            arr_state = ARR_STEPPING
+            arr_t = 0
+            cam_reset()
+            cam_intro()
+        }
+    } else if arr_state == ARR_STEPPING {
+        pin.mag = ARR_WALK
+        pin.dir = vec3(0.0, 0.0, 1.0)
+        if arr_t >= ARR_STEP {
+            pin.mag = 0.0
+            pin.dir = vec3(0.0, 0.0, 0.0)
+            arrival_play()
+        }
+    }
+    if arrival_busy() {
+        pin.a = false
+        pin.ap = false
+        pin.bp = false
+        pin.r = false
+        pin.rp = false
+    }
+    arrival_move()
+}
+
+// The train where the clock puts it, its velocity for a rider; parked at the end.
+fn arrival_move() {
+    let m = arrival_train()
+    if m == null { return }
+    var p = wp_path_at(arr_in, wp_path_length(arr_in))
+    if arr_state == ARR_COMING && arr_t < ARR_IN {
+        let w = 1.0 - fixed(arr_t) / ARR_IN
+        p = wp_path_at(arr_in, wp_path_length(arr_in) * (1.0 - w * w))     // braking evenly
+    } else if arr_state == ARR_LEAVING && arr_t > ARR_WAIT {
+        let s = fixed(arr_t - ARR_WAIT) / 60
+        let d = ARR_ACCEL * s * s / 2
+        if d >= wp_path_length(arr_out) {
+            flag_clear("arrival")                     // parked next tick (attach.akr: a loop of one tick)
+            arr_state = ARR_DONE
+            m.vel = vec3(0.0, 0.0, 0.0)
+            return
+        }
+        p = wp_path_at(arr_out, d)
+    }
+    m.pos = p
+    m.vel = p - arr_prev
+    arr_prev = p
+    let r = m.reach + 3.0
+    if abs(pl.pos.x - p.x) < r && abs(pl.pos.z - p.z) < r { any_near = true }
+}
+
+// Each frame, after cam_place(): the camera's own view while the train comes in; after that, the
+// eye kept out of the train while it is out.
+fn arrival_cam() {
+    if arr_state == ARR_COMING {
+        let v = ARR_LOOK - ARR_EYE
+        cam.eye = ARR_EYE
+        cam.target = ARR_LOOK
+        cam.yaw = yaw_of(v)
+        cam.pitch = atan2(v.y, length(vec3(v.x, 0.0, v.z)))
+        cam.reach = 1000.0
+        return
+    }
+    let m = arrival_train()
+    if m == null || !mover_live(m) { return }
+    let head = cam_head()
+    let d = cam.eye - head
+    let len = length(d)
+    if len < 0.01 { return }
+    let t = arr_box_hit(m.pos, head, d)
+    if t < 0.0 { return }
+    let reach = max(t * len - ARR_CAM_GAP, CAM_MIN)
+    if reach >= cam.reach { return }
+    cam.reach = reach                          // camera.akr eases it back out from here
+    cam.eye = head + d * (reach / len)
+}
+
+// Where along the segment from a to a + d (0..1) it enters the train's box (centred on the
+// train's middle at rail level, widened by ARR_CAM_GAP), or -1: not, or from inside.
+fn arr_box_hit(at: vec3, a: vec3, d: vec3) -> fixed {
+    let g = ARR_CAM_GAP
+    let lo = vec3(at.x - ARR_BOX.x - g, at.y - g, at.z - ARR_BOX.z - g)
+    let hi = vec3(at.x + ARR_BOX.x + g, at.y + ARR_BOX.y + g, at.z + ARR_BOX.z + g)
+    var t0: fixed = 0.0
+    var t1: fixed = 1.0
+    for k in 0..3 {
+        var o = a.x
+        var v = d.x
+        var l = lo.x
+        var h = hi.x
+        if k == 1 {
+            o = a.y
+            v = d.y
+            l = lo.y
+            h = hi.y
+        } else if k == 2 {
+            o = a.z
+            v = d.z
+            l = lo.z
+            h = hi.z
+        }
+        if abs(v) < 0.001 {
+            if o < l || o > h { return -1.0 }
+        } else {
+            var u0 = (l - o) / v
+            var u1 = (h - o) / v
+            if u0 > u1 {
+                let s = u0
+                u0 = u1
+                u1 = s
+            }
+            t0 = max(t0, u0)
+            t1 = min(t1, u1)
+            if t0 > t1 { return -1.0 }
+        }
+    }
+    if t0 <= 0.0 { return -1.0 }               // the head in the box: leave it to the walls
+    return t0
+}
+
+// Over the HUD while the player does not play: how to skip.
+fn arrival_draw() {
+    if !arrival_busy() { return }
+    rect_blend(250, 12, 62, 12, rgb(24, 32, 40), BLEND_HALF)
+    text(256, 14, "A", hot())
+    text(272, 14, "skip", dim())
+}

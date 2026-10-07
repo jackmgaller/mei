@@ -22,6 +22,7 @@ Flags (names the triggers set and the stars and the train wait for):
 | race5 | the omamori (touch), for TIMER ticks | no | the train starts; the omamori is hidden |
 | race5_won | the platform (touch, while race5 is set): ends race5 | no | star 5 appears |
 | shortcut_a ... _e | the shortcuts (press or pound) | yes | their layers |
+| arrival | the cart (arrival.akr), while the arrival train runs | no | the arrival train is out |
 """
 import json
 import sys
@@ -59,6 +60,21 @@ def train_mover():
             'collision': RACE_TRAIN_COL, 'params': params}
 
 
+from place.race_train import ARRIVE_IN, ARRIVE_PATHS
+
+
+def arrival_mover():
+    """The arrival train (DESIGN.md 12.10, "Arrive by train"): the same two cars on track 1,
+    parked until the cart sets the flag `arrival` (carts/garden/arrival.akr), the first time the
+    shrine town opens in a session. arrival.akr moves it itself, along ARRIVE_IN (in from x 134,
+    stopped with its middle at 161.7) and ARRIVE_OUT (out east to 262), and clears the flag at the
+    end; a one-tick loop parks it the tick the flag is cleared. Its collision is the race train's:
+    standing at the platform it is a wall, and its roof can be ridden out east."""
+    params = {'path': ARRIVE_IN, 'period': 1, 'mode': 'loop', 'start': 'arrival'}
+    return {'id': 'train_arrival', 'type': 'mover', 'position': list(ARRIVE_PATHS[ARRIVE_IN][0]),
+            'asset': RACE_TRAIN, 'collision': RACE_TRAIN_COL, 'params': params}
+
+
 ENTITIES = [
     # ---- the five stars (they were coins in the grey box: the IDs, and so the saved bits, stay)
     # ★1 0.5 m over the pagoda's finial (178, 262): taken from the finial pole's top (scenario 422)
@@ -93,6 +109,8 @@ ENTITIES = [
     # of the viaduct, stopped with its middle at the platform's (x 160), and back out west, on
     # track 2 (z 10 on the standard spans, the taper's S to 12.1 at the station)
     train_mover(),
+    # the arrival train on track 1 (arrival_mover())
+    arrival_mover(),
 
     # ---- the shortcuts (DESIGN.md 4.5): each opens once and stays open (saved)
     # A: the rope ladder, kicked down from the ledge (44) at the lip over it (the face at z 318)
