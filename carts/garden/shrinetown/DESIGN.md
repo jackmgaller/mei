@@ -1705,3 +1705,64 @@ climb the merge added one stand-in (the look's stand-in caps): 2,052 → 2,214 t
 Not done here: the race train (the cart); a rail camera zone per torii tunnel switchback; the kick
 cedars drawn at their trunks' size. (The level-1 roofs are the look's; the fall-through spots the
 kit's `slide_floor_degrees`, above.)
+
+### 12.10 Features (2026-10-06)
+
+#### Blob shadow and card names (`feat-shadow-names`, cases 600-619)
+
+**The shadow** (`carts/garden/shadow.akr`, drawn by `game.akr`'s `draw()` after the body). One
+disc under the robot, in the plane of the floor under the feet: `col_floor()` from 0.5 m over the
+feet, the controller's own query, so a deck, a roof or the train's roof under the robot gets it
+as the ground does (its answer in `col_y`, `col_n`, `col_surf` is put back). The disc is 17
+vertices and 16 faces (centre, an inner ring at 0.6 of the radius, the rim; Gouraud so the edge is
+soft), semi-transparent and subtractive (`BLEND_SUB`: it takes a colour off what is under it),
+2 cm over the floor along its normal, with the depth test on and a depth offset of 6 key steps
+(RENDERING.md, "The decal offset"): the floor does not fight it, a wall in front of it hides it,
+it writes no depth. Radius 0.78 m on the floor, shrinking to a half and fading (strength
+(1 - h/9)^2) with the height h of the feet; gone at 9 m; no floor under the feet, no shadow.
+It takes (110, 114, 100) off by day and (68, 70, 64) by night (palette variant 1), so the paving
+stays itself and a night floor is not blacked. It is drawn only while the body is (not with the
+eye in the robot's head). `shadow_on` switches it off (the tests).
+
+Cost, measured by case 603 (the plaza, the shadow switched on and off every frame): about
+6,100 CPU cycles a frame (the floor query, 17 projected vertices, 16 faces) and about 2,500 GPU
+cycles at that range (the disc is a few hundred pixels; it grows with the pixels it covers when
+the camera is close and low). That is 0.9 % of the World Checker's worst CPU view (705,219
+cycles) and 0.3 % of its worst GPU view (905,293); the checker does not draw the robot, so its
+numbers do not include the shadow.
+
+**Card names** (`carts/garden/cardnames.akr`). The five scenarios by name, from this document's
+section 5: the pagoda finial, eight red coins over the shotengai, the stage bell, inside the
+sacred cedar, the last train. A card is known by where its star stands (`CARD_AT`, from
+`game.py`), so the entity order does not matter. Only the shrine town has named cards.
+
+- *The banner:* two lines, the word "scenario" (or "moon card taken") over the name, in a dark
+  double-blended panel (a quarter of the light under it is left, so white and gold read over
+  pale paving and nothing is lost at night), centred at y 62-88: under the clock (y 38-50) and
+  the "a moon card!" note (y 52). It shows for 210 ticks when a scenario starts (the first red
+  coin: ★2; the omamori: ★5, `trig_fire()` of a trigger with a timer) and when a card is taken
+  (`goals_collect()`), and not while the menu is open. The other scenarios start by walking
+  into them (★1, ★4) or by the bell's rope (★3, whose card is the next thing you see) and show
+  only when the card is taken.
+- *The page:* START opens the tuning menu as before; **SELECT with the menu open** turns it to
+  a page of the five cards, taken (`[x]`, gold) or not (`[ ]`), each with its name and a line
+  of hint, and a count; SELECT again turns back. The page does not change a tuning number.
+  The menu says "select: cards" at its foot. (With the menu closed SELECT still cycles the
+  readout.) The hints: "Up the north court's pagoda." / "Eight red coins. The torii waits." /
+  "Ring the bell on the high stage." / "There is a way into the cedar." / "Omamori on the stage.
+  Run south."
+
+| Case | What it checks |
+|---|---|
+| 600 | the shadow on the ground: drawn, at the floor, its CPU cycles |
+| 601 | on the stage's deck (60 m up) it lies on the deck, not the ground below |
+| 602 | 1 m and 5 m up it is there; 14 m up it is gone |
+| 603 | its cost to the CPU and GPU, drawn and not |
+| 604 | by night it takes less off than by day, and is drawn |
+| 605 | over the train (a mover) it lies on the train's roof |
+| 610 | the banner when card 3 is taken: shown, named, gone after 210 ticks |
+| 611 | the banner at the first red coin and at the omamori; clear of the clock; names and hints fit the screen |
+| 612 | the pause page: SELECT turns to the cards, none tuned, taken ones shown |
+| 617-619 | pictures (the banner by night, the shadow by day and by night) |
+
+Screenshots: `carts/garden/shrinetown/screenshots/shadow_names/`.

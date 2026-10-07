@@ -109,7 +109,7 @@ fn shz_case(f: s32) {
         727 => shz_gate_n(f)
         722 => shz_g6_star(f)
         730, 731, 732, 733 => shz_g8(f)
-        else => shz_route(f)
+        else => { if SCENARIO >= 700 { shz_route(f) } }       // 600-699 are the features' (sn_cases.akr, ...)
     }
 }
 
