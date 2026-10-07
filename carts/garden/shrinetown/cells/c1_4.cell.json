@@ -33,11 +33,11 @@
    "id": "sh_fox_shrine",
    "asset": "forest_fox_shrine",
    "position": [
-    84.0,
-    307.0
+    85.5,
+    300.5
    ],
    "collision": "forest_fox_shrine_col",
-   "yaw": -24.775
+   "yaw": -34.695
   },
   {
    "id": "sh_fox_statue_0",

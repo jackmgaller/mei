@@ -85,8 +85,14 @@ def shots(out, names, frames, cycle, shotdir='shots'):
         eye, yaw, pitch = VIEWS[name]['eye'], VIEWS[name]['yaw'], VIEWS[name]['pitch']
         region = VIEWS[name]['region']
         for v, vname in ((0, 'day'), (1, 'night')):
-            reg = 'TOWN' if region == 0 else 'SHRINE'
-            cyc_enter = (f'    water_cycle_enter(WORLD_SHRINETOWN_{reg}_COLOUR, WORLD_SHRINETOWN_{reg}_COLOURS)' if cycle else '')
+            # the garden's way (ground.akr, world_water_find()): each region's palettes found once
+            # in its day colours, then the region entered
+            cyc_find = ('''    for k in 0..min(wp_region_count(), WATER_MAX_REGIONS) {
+        let r = wp_region(k)
+        water_cycle_find(k, (__wp_base + r.palette_off + 4 * (r.variant_count as u32)) as *u16,
+                         r.first_colour as s32, r.colour_count as s32)
+    }''' if cycle else '')
+            cyc_enter = (f'    water_cycle_enter({region})' if cycle else '')
             cyc_sync = '    water_cycle_sync()' if cycle else ''
             src = f'''cart "Water and skyline shot"
 import "depth.akr"
@@ -97,6 +103,7 @@ fn init() {{
     render_depth(true)
     render_perspective(true)
     assert(world_shrinetown_load())
+{cyc_find}
     wp_region_enter({region}, 0)
 {cyc_enter}
     if {v} != 0 {{ wp_region_enter({region}, {v}) }}

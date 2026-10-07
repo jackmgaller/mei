@@ -318,8 +318,10 @@ block('cem_gate_beam', 282.0, 129.5, 290.0, 130.5, 4.2, 4.8, 'stone_dark')
 # ---- viaduct: the span (306, 134) -> (320, 146) and its pier; the span to its south is the town's.
 # The deck and the parapets are the town's sweeps along the whole line (paths viaduct_deck,
 # parapet_s, parapet_n_e), so this span is the girders under the deck, as the town's spans.
-# The line stops at x 315.5 (the town's VIADUCT_END: its parapets stay over the level), where a
-# wall 5.5 m tall closes the deck's end (spec 7.3: the line's end; a double jump and grab is 5.15).
+# The grey box's line stopped at x 315.5 with a 5.5 m wall across the deck's end. The level has
+# neither: place/station.py takes these three out, the line ends after the underpass at z 126.56 and
+# `viaduct_end_wall` closes it, sized by the frame's rule (6.6 m over a floor: a backflip and a
+# ledge grab; DESIGN.md 12.9, "The level's frame").
 (ax, az), (bx, bz) = (306, 134), (315.5, 134 + 12 * 9.5 / 14)
 length = math.hypot(bx - ax, bz - az)
 vb = [(-4.0, 6.925, 0, 0.8, 1.05, length - 0.4, 'conc', True), (4.0, 6.925, 0, 0.8, 1.05, length - 0.4, 'conc', True)]
@@ -490,7 +492,10 @@ paths['core_trail_woods'] = {'points': [[97, 119], [100.4, 128.5], [101, 146], [
 paths['core_canal_lane'] = {'points': [[55, 119], [56, 128.5], [56, 158], [56.5, 162], [56, 200], [56, 255.5], [56, 276], [55.5, 290]],
                             'drape': DRAPE,
                             'sweep': dict(TRAIL, materials=['earth', 'lane', 'earth'])}
-paths['core_park_path'] = {'points': [[38, 160], [30, 176], [22, 200], [24, 250], [23.6, 255.5]], 'drape': DRAPE,
+# (it ran x 22-24 through the sake brewery's pad, x 5-25 at z 210.5-225.5, into the brewery's wall:
+# the explorer bot; round its east side now, 2.5 m clear of the pad, DESIGN.md 12.10)
+paths['core_park_path'] = {'points': [[38, 160], [30, 176], [26, 198], [29.5, 208], [29.5, 228], [24, 250], [23.6, 255.5]],
+                           'drape': DRAPE,
                            'sweep': dict(TRAIL, materials=['earth', 'lane', 'earth'])}
 # the stream (draped downhill into the pond), from where it enters the core rows
 paths['core_stream'] = {'points': [[238.6, 255.5], [244, 232], [240, 198], [237, 186], [236.5, 179]],
@@ -527,7 +532,10 @@ cliff_set(TERR, 2.0, 5.0, 'canal_stone')
 cliff_set(TEMPLE, 3.6, 8.6, 'canal_stone')
 for t in range(9):
     cliff_set((CEM[0], CEM[1] + 12 * t, CEM[2], CEM[3]), 1.8, 1.8 * (t + 1), 'canal_stone')
-ops.append({'op': 'bed', 'path': 'core_north_stair', 'width': 8.0, 'depth': 0.6, 'falloff': 2})
+# (10 m, not 8: the ground's 2 m samples across the diagonal line left the bank beside the treads'
+# edge 0.2-0.6 m over them, a gentle face and so no wall; a body stepping off the edge went into
+# the bank and fell through the world (the explorer bot, DESIGN.md 12.10))
+ops.append({'op': 'bed', 'path': 'core_north_stair', 'width': 10.0, 'depth': 0.6, 'falloff': 2})
 for rect, m in (((110, 128, 210, 166), 'gravel'), (TERR, 'ashlar'), (TEMPLE, 'podium'), ((0, 128, 44, 206), 'grass'),
                 (CEM, 'cemetery'), ((0, 206, 44, 256), 'bamboo_floor')):
     ops.append({'op': 'paint', 'area': {'rect': list(rect)}, 'material': m})

@@ -24,6 +24,7 @@ import math
 import numpy as np
 
 from .moves import AIR, GLIDE, DIVE, ST_DOUBLE, ST_THIRD
+from .world import KEY
 
 LAND, LEDGE, POLE, RAIL, HANG, OUT, FELL, TIMEOUT = range(1, 9)
 OUTCOME_NAMES = {0: 'flying', LAND: 'land', LEDGE: 'ledge', POLE: 'pole', RAIL: 'grind', HANG: 'hang', OUT: 'out',
@@ -161,6 +162,14 @@ class Flyer:
         self.seg_rail = np.array([s[0] for s in segs], np.int64)
         self.seg_s0 = np.array([s[3] for s in segs])
         self.seg_len = np.array([s[4] for s in segs])
+        # attach.akr's rail rules: a hang-only rail is never ground and is not caught falling
+        # faster than HANG_FALL_MAX; a rail with a catch is caught only within it of its first
+        # point; a hang only where the hanging feet are clear of the floor under the rail
+        self.seg_hang = np.array([bool(self.rails[s[0]].get('hang', False)) for s in segs], bool)
+        self.seg_catch = np.array([float(self.rails[s[0]].get('catch', 0.0) or 0.0) for s in segs])
+        self.HANG_BELOW = tn.attach['HANG_BELOW']
+        self.HANG_FALL = tn.attach['HANG_FALL_MAX']
+        self.HANG_CLEAR = tn.attach['HANG_CLEAR']
         self.rail_map = np.full((model.nx * model.nz, 2), -1, np.int32)
         for i, (k, a, b, s0, ln) in enumerate(segs):
             for c in self._corridor(a, b, self.RREACH + 0.2):
@@ -178,6 +187,22 @@ class Flyer:
         self.pick_xyz = np.array([[p['x'], p['y'], p['z']] for p in self.pickups]).reshape(-1, 3)
 
     # ---- column helpers
+
+    def buried(self, col, y):
+        """True where feet at y over col would be inside the ground or a solid: a floor more than a
+        step over them with no ceiling between (the underside a deck or a roof has)."""
+        m = self.m
+        F, C = m.floors, m.ceilings
+        col = np.asarray(col, np.int64)
+        q = col * KEY + (np.asarray(y) + self.STEP)
+        i = np.searchsorted(F.key, q, side='right')
+        j = np.minimum(i, max(len(F) - 1, 0))
+        above = (len(F) > 0) & (i < len(F)) & (F.col[j] == col) & (col >= 0)
+        if not above.any():
+            return above
+        ce = m.ceiling_above(col, np.asarray(y, np.float64))
+        cy = C.y[np.maximum(ce, 0)] if len(C) else np.zeros(len(col))
+        return above & ((ce < 0) | (cy > F.y[j]))
 
     def _square(self, x, z, h):
         m = self.m
@@ -394,6 +419,13 @@ class Flyer:
                         pz = z[a[jj]] + hzv[left] * dist
                         c3 = m.col_of(px, pz)
                         ok3 = m.wall_at(c3, ny_[jj]) < 0
+                        # and not into the ground: a push of up to 0.6 m up a bank put the feet
+                        # under a floor more than a step above them, where no later tick finds
+                        # it, and a glide flew on under the hill (the explorer's false falls
+                        # through the world from glides over the precinct and the mountain).
+                        # Inside: the lowest floor over the feet (more than a step up) has no
+                        # ceiling under it (terrain, a closed solid's top) above the feet.
+                        ok3 &= ~self.buried(c3, ny_[jj])
                         if ok3.any():
                             kk = jj[ok3]
                             x[a[kk]], z[a[kk]] = px[ok3], pz[ok3]
@@ -492,8 +524,15 @@ class Flyer:
                     hdx, hdz = x[ai] - N[:, 0], z[ai] - N[:, 2]
                     near = inbox & (hdx * hdx + hdz * hdz <= self.RREACH ** 2) & (self.seg_rail[si] != skip_rail[ai])
                     upv = N[:, 1] - y[ai]
-                    grind = near & (vy[ai] <= 0) & (upv >= -0.05) & (upv <= -vy[ai] + 0.05)
+                    hr = self.seg_hang[si]
+                    grind = near & ~hr & (vy[ai] <= 0) & (upv >= -0.05) & (upv <= -vy[ai] + 0.05)
                     hang = near & ~grind & (upv >= 1.2) & (upv <= 1.9)
+                    hang &= ~(hr & (vy[ai] < -self.HANG_FALL))
+                    sc = self.seg_catch[si]
+                    hang &= ~((sc > 0) & (self.seg_s0[si] + t * self.seg_len[si] > sc))
+                    if hang.any():
+                        hc = m.floor_below(m.col_of(N[:, 0], N[:, 2]), N[:, 1] - 0.3)
+                        hang &= (hc < 0) | (fy[np.maximum(hc, 0)] <= N[:, 1] - self.HANG_BELOW + self.HANG_CLEAR)
                     for mask, code in ((grind, RAIL), (hang, HANG)):
                         if not mask.any():
                             continue
@@ -508,7 +547,7 @@ class Flyer:
                                           0.0)
                         if code == HANG:
                             ev[gi] = sign
-                        ex[gi], ey[gi], ez[gi] = N[mask, 0], N[mask, 1] - (0 if code == RAIL else 1.75), N[mask, 2]
+                        ex[gi], ey[gi], ez[gi] = N[mask, 0], N[mask, 1] - (0 if code == RAIL else self.HANG_BELOW), N[mask, 2]
                         etick[gi] = tick
                         done_mask[ci[mask]] = True
             # out of the frame, or below everything

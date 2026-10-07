@@ -512,7 +512,11 @@ def ridge_and_basin(Z):
 
 # ---------------------------------------------------------------------------- 3.11 the fox grove and tunnel
 def fox_grove(Z):
-    fx, fz = 84.0, 307.0
+    # (on the grove's floor at 15, its north-west corner: at (84, 307), on the grove's bank, the kit
+    # set it on the low side, its plinth (13.05) 1-2 m under the bank behind it; a body on the plinth
+    # walked into the hill and fell through the world: the explorer bot, DESIGN.md 12.10)
+    fx, fz = 85.5, 300.5
+    Z.ops().append({'op': 'set', 'area': {'circle': [fx, fz, 3.4]}, 'height': L.FOX[3], 'falloff': 2})   # its plinth's footing
     Z.place('fox_shrine', 'forest_fox_shrine', (fx, fz), 'forest_fox_shrine_col',
             bearing(L.FOX[0] - fx, L.FOX[1] - fz) + 180)
     for k, (sx, sz) in enumerate(((91.2, 298.6), (96.8, 298.6))):

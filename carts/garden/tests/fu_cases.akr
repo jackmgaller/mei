@@ -1,0 +1,397 @@
+// The follow-ups after shrine town's alpha fix round (DESIGN.md 12.10, "Alpha follow-ups"),
+// scenarios 680-699 in the shrine town: each proves one fix with real inputs. check.sh runs the
+// ones fu_cases.sh lists. Helpers are prefixed fu_. The routes (683-686) are walked by the shrine
+// zone's route driver (shrinezone_cases.akr's shz_route(), which the harness calls for every
+// scenario): fu_case() lays their points at frame 0.
+
+var fu_k: s32
+var fu_ph: s32
+var fu_t: s32
+var fu_y: fixed
+var fu_n: s32
+var fu_low: fixed            // the deepest the feet went under the floor over them
+
+fn fu_case_init() -> bool {
+    match SCENARIO {
+        680 => { name = "follow-ups: the temple's back strip is not stood on, and nothing from the podium clears the north wall" }
+        681 => { name = "follow-ups: a grind up a steep rail slows, stops and slides back down" }
+        682 => { name = "follow-ups: no hang from a rail whose hang would hold the feet in the floor" }
+        683 => { name = "follow-ups: coin_alley3 on the kura's ridge, by the kick pair between the fire tower and the kura" }
+        684 => { name = "follow-ups: the canal's west trail walked round the sake brewery" }
+        685 => { name = "follow-ups: the stairs from the basin up to the ridge's crest and onto it, walking" }
+        686 => { name = "follow-ups: the fox shrine on the grove's floor: round it on foot, never under the ground" }
+        687 => { name = "follow-ups: dropped down the falls' east face, the body comes down on a floor" }
+        688 => { name = "follow-ups: walking off the north stair's west edge, never into the bank beside it" }
+        else => { return false }
+    }
+    cam.lock = false
+    fu_k = 0
+    fu_ph = 0
+    fu_t = 0
+    fu_n = 0
+    fu_low = 0.0
+    // the route driver runs for every scenario: on for the routes only
+    shz_p_n = 0
+    shz_p_i = 0
+    shz_p_sub = 0
+    shz_p_t = 0
+    shz_p_slow = 0
+    shz_p_hold = 0
+    shz_p_hops = 0
+    shz_p_strict = true
+    shz_p_noslide = false
+    shz_p_trace = 0
+    shz_p_done = SCENARIO < 683 || SCENARIO > 686
+    return true
+}
+
+fn fu_case(f: s32) {
+    match SCENARIO {
+        680 => fu_back_strip(f)
+        681 => fu_grind_back(f)
+        682 => fu_hangs(f)
+        683, 684, 685, 686 => { fu_route(f); fu_route_watch(f) }
+        687 => fu_falls_face(f)
+        688 => fu_stair_edge(f)
+        else => {}
+    }
+}
+
+// ---- 688: the north stair's west edge. The bank beside the treads stood 0.2-0.6 m over them (the
+// ground's 2 m samples across the stair's diagonal line, outside its 8 m bed): a gentle face, so
+// no wall, and a body stepping off the edge went into the bank and fell through the world (the
+// explorer bot: a glide off the temple's ridge let go over the stair, then the stick held). From
+// the treads' west edge every metre up the stair, walking off it north-north-west and west-north-
+// west: never under the ground, never below the terrace.
+
+fn fu_stair_edge(f: s32) {
+    if fu_ph == 9 { return }
+    if fu_k == 0 { fu_glide_off_ridge(f); return }
+    if fu_ph == 0 {
+        if fu_k >= 25 {
+            expect(fu_low < 0.3, "never under the ground, deepest m", fu_low)
+            done()
+            fu_ph = 9
+            return
+        }
+        let z = 242.0 + fixed((fu_k - 1) / 2)
+        let x = 162.0 + 12.0 * (z - 237.9) / 18.6 - 3.9
+        fu_y = -0.31
+        if fu_k % 2 == 0 { fu_y = -1.05 }
+        place(vec3(x, sh_floor(x, z, 20.0), z), fu_y)
+        pl.fwd = 14.0 / 60                         // as fast as a glide's landing carried the body
+        set_hvel()
+        fu_t = f
+        fu_ph = 1
+        return
+    }
+    stick_v = cc_stick(fu_y, 1.0)
+    let _ = fu_under(2.0)
+    expect(pl.pos.y > 4.0, "above the terrace, y", pl.pos.y)
+    if f - fu_t > 50 {
+        fu_k += 1
+        fu_ph = 0
+    }
+}
+
+// The explorer bot's flight (its fall-1 on this branch, seed 1, try 0): from the temple's ridge (162.03,
+// 223.06) at the run speed, a chained double jump north held through its apex into the glider, let
+// go after 60 ticks of gliding, the stick on along the facing; 5 s watched.
+fn fu_glide_off_ridge(f: s32) {
+    if fu_ph == 0 {                      // standing a frame, A released
+        place(vec3(162.0305, sh_floor(162.0305, 223.06, 28.03), 223.06), 0.0577)
+        pl.spawn = vec3(162.03, -1000.0, 223.06)
+        fu_ph = 2
+        return
+    }
+    if fu_ph == 2 {                      // the take-off state, and A
+        place(vec3(162.0305, sh_floor(162.0305, 223.06, 28.03), 223.06), 0.0577)
+        pl.fwd = mps(T.RunSpeed)
+        pl.chain_from = St.Jump
+        pl.land_t = 0
+        fu_t = f
+        fu_n = 0
+        fu_ph = 1
+        pad_v = A
+        stick_v = cc_stick(0.0577, 1.0)
+        return
+    }
+    let t = f - fu_t
+    if pl.st == St.Glide { fu_n += 1 }
+    if fu_n < 60 { pad_v = A; stick_v = cc_stick(0.0577, 1.0) } else { stick_v = cc_stick(pl.yaw, 1.0) }
+    let _ = fu_under(2.0)
+    expect(pl.pos.y > 4.0, "the glide's let-go: above the terrace, y", pl.pos.y)
+    if t > 300 {
+        note("the glide's let-go ended at z", pl.pos.z)
+        fu_k += 1
+        fu_ph = 0
+    }
+}
+
+// How far the feet are under the highest floor over them within `over` (0: on or above it); the
+// deepest kept in fu_low.
+fn fu_under(over: fixed) -> fixed {
+    if !wp_floor(vec3(pl.pos.x, pl.pos.y + over, pl.pos.z), 0.0) { return 0.0 }
+    let d = max(wp_hit.y - pl.pos.y, 0.0)
+    fu_low = max(fu_low, d)
+    return d
+}
+
+// ---- 680: shortcut B's bypass. The podium's back strip (8.6, z 230.25-233.75 behind the temple)
+// is a 49-degree slope now (assets/arch_temple, back_strip): a body dropped onto it anywhere along
+// it slides off onto the terrace behind the temple (5.0), never standing on the podium there. Then
+// from the podium's nearest standing spots to the wall (the side strips' back ends, x 136.5 and
+// 183.5 at z 229.9), the explorer bot's flight (a hop and a dive north) and a running jump and dive
+// north come down south of the north wall (z 237.4), on the terrace or the podium.
+
+const FU_STRIP_Z: fixed = 233.0         // beyond the back pent roof's eave (232.75), over the slope's 9.5
+const FU_SIDES: [2]fixed = [136.5, 183.5]
+
+fn fu_back_strip(f: s32) {
+    if fu_ph == 9 { return }
+    if fu_ph == 0 {
+        if fu_k > 12 { fu_ph = 2; fu_k = 0; return }
+        let x = 136.0 + fixed(fu_k) * 4.0
+        place_air(vec3(x, 10.5, FU_STRIP_Z), NORTH)
+        fu_t = f
+        fu_ph = 1
+        return
+    }
+    if fu_ph == 1 {
+        let t = f - fu_t
+        if pl.st == St.Ground && pl.pos.y > 8.0 && pl.pos.z > 230.3 {
+            expect(false, "stood on the podium's back strip, x", pl.pos.x)
+        }
+        if t > 90 {
+            expect(pl.st == St.Ground && pl.pos.y < 6.0 && pl.pos.z > 233.5, "slid off onto the terrace, y", pl.pos.y)
+            fu_k += 1
+            fu_ph = 0
+        }
+        return
+    }
+    // jumps from the side strips' back ends: k % 4 < 2 north (into the slope's end), else 45
+    // degrees out past it; k even a hop and a dive at the apex, odd a running jump and a dive
+    if fu_ph == 2 {
+        if fu_k >= 8 {
+            expect(true, "nothing cleared the north wall, tries", fixed(fu_k))
+            done()
+            fu_ph = 9
+            return
+        }
+        let x = FU_SIDES[(fu_k / 2) % 2]
+        fu_y = NORTH
+        if fu_k >= 4 { if x > 160.0 { fu_y = 0.7854 } else { fu_y = -0.7854 } }
+        place(vec3(x, sh_floor(x, 229.9, 12.0), 229.9), fu_y)
+        expect(pl.pos.y > 8.5, "on the podium's side strip, y", pl.pos.y)
+        if fu_k % 2 == 1 { pl.fwd = mps(T.RunSpeed) }
+        fu_t = f
+        fu_ph = 3
+        fu_n = 0
+        return
+    }
+    let t = f - fu_t
+    stick_v = cc_stick(fu_y, 1.0)
+    if t >= 1 && t < 4 { pad_v = A }
+    if is_air(pl.st) && pl.vel.y <= 0.0 && fu_n == 0 { pad_v |= B; fu_n = 1 }
+    if pl.pos.z > 238.0 && pl.st == St.Ground { expect(false, "came down north of the wall, z", pl.pos.z) }
+    if t > 150 {
+        note("came down at x", pl.pos.x)
+        note("came down at z", pl.pos.z)
+        fu_k += 1
+        fu_ph = 2
+    }
+}
+
+// ---- 681: a grind up a steep rail. The overpass's west handrail climbs 6.9 m in 14.2 m (26
+// degrees) from its foot (246.3, 1.27, 96.05). Put on it at 2 m along it grinding up, the stick
+// neutral, then again with the stick held up it: each time the grind slows, stops short of the
+// deck's level part (8.12, from x 260.5) and slides back down, off its foot onto the ground,
+// within 3 s. (It went on up at the grind's minimum speed on any slope.)
+
+fn fu_grind_back(f: s32) {
+    if fu_ph == 9 { return }
+    let k = rail_named("overpass_rail_w")
+    if fu_ph == 0 {
+        expect(k >= 0, "the overpass's handrail is a rail", fixed(k))
+        if fu_k >= 2 {
+            done()
+            fu_ph = 9
+            return
+        }
+        let p = wp_path_at(rails[k], 2.0)
+        place(vec3(p.x, p.y, p.z), EAST)
+        pl.vel = vec3(0.0, 0.0, 0.0)
+        pl.fwd = mps(T.GrindMin)
+        pl.yaw = EAST
+        set_hvel()
+        grab_rail(k, St.Rail)
+        expect(pl.st == St.Rail && rail_v > 0.0, "grinding up it at, m/s", rail_v * 60)
+        fu_t = f
+        fu_y = pl.pos.y
+        fu_n = 0
+        fu_ph = 1
+        return
+    }
+    let t = f - fu_t
+    if fu_k == 1 { stick_v = cc_stick(EAST, 1.0) }
+    fu_y = max(fu_y, pl.pos.y)
+    if pl.st == St.Rail && rail_v < 0.0 && fu_n == 0 { fu_n = 1; note("turned back at y", pl.pos.y) }
+    expect(pl.pos.x < 260.5 || pl.st != St.Rail, "short of the deck's level part, x", pl.pos.x)
+    if pl.st == St.Ground && t > 10 {
+        expect(fu_n == 1, "slid back down the rail first", fixed(fu_n))
+        expect(pl.pos.x < 248.0, "off its foot, x", pl.pos.x)
+        note("highest y", fu_y)
+        note("down after, s", fixed(t) / 60)
+        fu_k += 1
+        fu_ph = 0
+        return
+    }
+    if t > 180 { expect(false, "off the rail within 3 s, state", fixed(pl.st as s32)) }
+}
+
+// ---- 682: hangs held clear of the floor. The overpass's handrails and the arched bridge's
+// kasagi come down to less than the hang's 1.75 m over the ground at their ends: a hang there held
+// the feet in the floor, and letting go fell through the world (the explorer bot's hang drops at
+// (246.3, 96.05), (277.7, 123.05), (53, 159.2) and (43, 159.2); its route to the second: a glide
+// down onto the handrail where it is 1.7 m over the ground). At each end of the four rails: falling
+// slowly with the hands at the rail where it is 1.6 m over the floor, then the stick toward the
+// rail's end for a second, then letting go (R): the feet are never more than 0.15 m in the floor,
+// nor the body under the world.
+
+const FU_RAILS: [4]*u8 = ["overpass_rail_w", "overpass_rail_e", "canal_arch_rail_0", "canal_arch_rail_1"]
+
+fn fu_hangs(f: s32) {
+    if fu_ph == 9 { return }
+    if fu_ph == 0 {
+        if fu_k >= 8 {
+            expect(fu_low < 0.15, "never under the floor, deepest m", fu_low)
+            done()
+            fu_ph = 9
+            return
+        }
+        let k = rail_named(FU_RAILS[fu_k / 2])
+        expect(k >= 0, "a rail", fixed(fu_k / 2))
+        let n = wp_path_length(rails[k])
+        // in from the end until the rail is 1.6 m over the floor
+        var s = 0.0
+        var p = wp_path_at(rails[k], 0.0)
+        for i in 0..60 {
+            s = fixed(i) * 0.1
+            if fu_k % 2 == 1 { s = n - s }
+            p = wp_path_at(rails[k], s)
+            if p.y - sh_floor(p.x, p.z, p.y - 0.3) >= 1.6 { break }
+        }
+        let d = wp_near.dir
+        // the stick toward the end: back along the path from the start end, on along it at the far end
+        if fu_k % 2 == 1 { fu_y = yaw_of(d) } else { fu_y = yaw_of(-d) }
+        place_air(vec3(p.x, p.y - 1.6, p.z), NORTH)
+        pl.vel = vec3(0.0, -0.01, 0.0)
+        fu_n = 0
+        fu_t = f
+        fu_ph = 1
+        return
+    }
+    let t = f - fu_t
+    if pl.st == St.Hang && fu_n == 0 { fu_n = 1; note("hanging, feet at y", pl.pos.y) }
+    if t < 60 { stick_v = cc_stick(fu_y, 1.0) }
+    if t >= 60 && t < 64 { pad_v = R }               // let go of anything held
+    let d = fu_under(1.0)               // (not the handrail itself, over the hands)
+    if pl.st == St.Hang {
+        expect(d < 0.15, "a hang held clear of the floor, feet under it by", d)
+    }
+    expect(pl.pos.y > -3.0, "not under the world, y", pl.pos.y)
+    if t > 150 {
+        note("ended at y", pl.pos.y)
+        fu_k += 1
+        fu_ph = 0
+    }
+}
+
+// ---- 683-686: routes
+
+fn fu_route(f: s32) {
+    if f != 0 { return }
+    match SCENARIO {
+        683 => {
+            // the kick pair from the alley: from between the fire tower and the kura, kicks off the
+            // kura's west wall and the tower's east face up onto the kura's ridge (notes/town.md)
+            shz_start(104.4, 74.0, 2.0, EAST)
+            shz_a(107.8, 7.4, 74.0, SHZ_K_KICKS, 1.0)
+            shz_a(107.8, 7.8, 74.0, SHZ_K_WALK, 0.5)                    // up its roof to the ridge
+            fu_k = tw_coin_near(vec3(107.8, 8.7, 74.0))
+            expect(fu_k >= 0, "coin_alley3 over the kura's ridge, y", 8.7)
+        }
+        684 => {
+            // trail_canal_west's own points (draped every 4 m) from the park (z 176) to the bamboo
+            // (z 250), each within 0.8 m: it ran into the brewery's wall at z 218.7
+            shz_p_noslide = true
+            let pth = wp_path_find("trail_canal_west")
+            expect(pth != null, "trail_canal_west is a path", 0.0)
+            shz_start(30.0, 176.0, 4.0, NORTH)
+            for k in 0..wp_path_points(pth) {
+                let q = wp_path_point(pth, k)
+                if q.z > 177.0 && q.z < 250.5 { shz_w(q.x, q.y - 0.4, q.z) }
+            }
+        }
+        685 => {
+            // up from the basin to the landing at its head, onto the crest south of it, and back
+            // onto the landing
+            shz_p_noslide = true
+            shz_start(148.1, 285.0, 16.0, 3.1416)
+            shz_l(148.0, 0.0, 283.0); shz_l(147.5, 0.0, 263.6); shz_w(147.5, 21.8, 263.6); shz_l(147.0, 21.5, 262.6)
+            shz_l(147.5, 21.8, 263.8)
+        }
+        686 => {
+            // from the grove's middle round the shrine's grove sides (its back is the grove's bank),
+            // into its walls on the way, then onto its plinth's front
+            shz_p_strict = false
+            shz_start(90.0, 294.0, 20.0, 5.5)
+            shz_l(85.5, 14.5, 296.4); shz_w(82.6, 14.5, 297.4); shz_w(85.5, 14.5, 296.4); shz_l(89.6, 14.5, 300.0)
+            shz_l(88.6, 14.5, 303.2); shz_w(89.6, 14.5, 300.0); shz_w(87.4, 14.5, 298.2)
+            shz_a(86.6, 15.0, 299.0, SHZ_K_WALK, 0.6)
+        }
+        else => {}
+    }
+}
+
+fn fu_route_watch(f: s32) {
+    if SCENARIO < 683 || SCENARIO > 686 { return }
+    let d = fu_under(2.0)
+    if d > 0.3 { expect(false, "never under the floor, m", d) }
+    if SCENARIO == 683 && shz_p_done && fu_ph == 0 {
+        expect(coin_taken(wp_entity(fu_k).number as s32), "coin_alley3 taken on the kura", pl.pos.y)
+        fu_ph = 9
+    }
+}
+
+// ---- 687: the falls' east face over the pool (x 222-228, z 323-331) is steeper than a floor
+// (76-80 degrees). Dropped down it from 42 m, over its top, the body comes down on a floor
+// (the pool's, the cave's roof, the shelf) within 4 s, never under the ground.
+
+fn fu_falls_face(f: s32) {
+    if fu_ph == 9 { return }
+    if fu_ph == 0 {
+        if fu_k >= 12 {
+            expect(fu_low < 0.3, "never under the floor, deepest m", fu_low)
+            done()
+            fu_ph = 9
+            return
+        }
+        let x = 223.0 + fixed(fu_k % 4) * 1.5
+        let z = 324.0 + fixed(fu_k / 4) * 3.0
+        place_air(vec3(x, 42.0, z), NORTH)
+        pl.spawn = vec3(x, -60.0, z)
+        fu_t = f
+        fu_ph = 1
+        return
+    }
+    let t = f - fu_t
+    let _ = fu_under(2.0)
+    expect(pl.pos.y > 5.0, "above the ground, y", pl.pos.y)
+    if t > 30 && pl.st == St.Ground {
+        fu_k += 1
+        fu_ph = 0
+        return
+    }
+    if t > 240 { expect(false, "came down on a floor within 4 s, y", pl.pos.y) }
+}

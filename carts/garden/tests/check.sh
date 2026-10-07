@@ -31,6 +31,7 @@ done
 . "$HERE/frame_cases.sh"
 . "$HERE/shrinezone_cases.sh"
 . "$HERE/sp_cases.sh"
+. "$HERE/fu_cases.sh"
 run 30 510
 grep -h '^NOTE' "$O"/s*.log
 echo "all $n movement garden scenarios passed"

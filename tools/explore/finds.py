@@ -617,7 +617,10 @@ def stop_reason(e, a, b, ya=None):
     for u in np.linspace(0.1, 1.0, 10):
         p = [a[i] + (b[i] - a[i]) * u for i in range(3)]
         c = int(m.col_of(p[0], p[2]))
-        w = int(m.wall_at(np.array([c]), np.array([ya]))[0])
+        # the walls at the feet's height there: up a step, its top (as the walk graph tests it)
+        fs = int(m.floor_below(np.array([c]), np.array([ya + e.tn.step]))[0])
+        yw = max(ya, float(F.y[fs])) if fs >= 0 else ya
+        w = int(m.wall_at(np.array([c]), np.array([yw]))[0])
         if w >= 0:
             tag = int(m.walls.extra['tag'][w])
             cell = (int(p[0] // e.m.cell_size), int(p[2] // e.m.cell_size))
@@ -729,6 +732,15 @@ def drop_points(e, spacing=1.0, near=4.0, limit=3000):
     xs = m.ox + ii * g
     zs = m.oz + jj * g
     ys = round_top[jj, ii] + 3.0
+    # never from inside the column's own faces: 3 m over the floors round a cliff can be inside
+    # the hill (the falls' east face at (225, 327) is a wall from 19.2 to 23.3 over the feet; a drop
+    # from 18.6 started in it and went down through the world). From over the highest wall then.
+    W = m.walls
+    wtop = np.full(m.nx * m.nz, -1e9)
+    if len(W):
+        np.maximum.at(wtop, W.col, W.extra['hi'])
+    wt = wtop.reshape(m.nz, m.nx)[jj, ii]
+    ys = np.where(wt + 0.5 > ys, wt + 0.5, ys)
     ok = ys > -1e8
     return [(float(x), float(y), float(z)) for x, y, z in zip(xs[ok], ys[ok], zs[ok])], spacing
 
