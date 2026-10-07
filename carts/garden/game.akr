@@ -12,6 +12,8 @@ import "camera.akr"
 import "attach.akr"
 import "goals.akr"
 import "body.akr"
+import "shadow.akr"
+import "cardnames.akr"
 import "hud.akr"
 import "sound_hooks.akr"       // the sound and music (audio/WIRING.md)
 
@@ -243,7 +245,10 @@ fn draw() {
     attach_draw()
     goals_draw()
     body_shown = cam.reach >= CAM_BODY_HIDE             // the eye in the robot's head: not drawn
-    if body_shown { body_draw() }
+    if body_shown {
+        body_draw()
+        shadow_draw()
+    }
     goals_hud()
     hud_draw()
 }

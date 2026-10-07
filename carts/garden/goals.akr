@@ -182,6 +182,7 @@ fn goals_init() {
     chal_flag = null
     chal_left = 0
     chal_end = 0
+    card_banner_clear()
     for n in 0..wp_pack.entity_count as s32 {
         let e = wp_entity(n)
         let ty = e.type_id as s32
@@ -252,6 +253,7 @@ fn trig_fire(e: *WpEntity, p: *GardenTrigger) {
     }
     flag_set(nm)
     if p.timer > 0 {
+        card_banner_start(4)                // the last train
         chal_flag = nm
         chal_left = p.timer as s32
         chal_end = 0
@@ -335,6 +337,7 @@ fn star_taken(n: s32) -> bool { return prog_has(wp_entity(n)) }
 
 // The world's red coins all taken: the "red_coins" flag (star 2).
 fn red_coins_check() {
+    if red_coins == 1 { card_banner_start(1) }      // the first red coin starts the scenario
     if red_total > 0 && red_coins >= red_total { flag_set("red_coins") }
 }
 
@@ -347,6 +350,7 @@ fn goals_collect() {
         if abs(d.x) < 0.8 && abs(d.y) < 1.2 && abs(d.z) < 0.8 {
             prog_put(e)
             count_stars()
+            card_banner_taken(e)
             note_star_at = sim_t
         }
     }

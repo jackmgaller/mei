@@ -9,6 +9,7 @@
 var menu_open: bool
 var menu_sel: s32
 var menu_top: s32
+var menu_page: s32             // 0 the tuning, 1 the moon cards (SELECT turns the page)
 var menu_rep: KeyRepeat
 var readout: s32 = 2           // 0 timing and state, 1 state, 2 nothing
 
@@ -61,8 +62,10 @@ fn timing_frame() {
 fn menu_update(now: u32, prev: u32) {
     let pressed = now & ~prev
     if pressed & START != 0 { menu_open = !menu_open }
-    if pressed & SELECT != 0 { readout = (readout + 1) % 3 }
-    if !menu_open { return }
+    if pressed & SELECT != 0 {
+        if menu_open { menu_page = 1 - menu_page } else { readout = (readout + 1) % 3 }
+    }
+    if !menu_open || menu_page == 1 { return }
     let act = key_repeat(&menu_rep, now & (UP | DOWN | LEFT | RIGHT))
     let n = len(T) as s32
     if act & UP != 0 { menu_sel = (menu_sel + n - 1) % n }
@@ -131,7 +134,11 @@ fn budget_bar(x: s32, y: s32, w: s32, used: s32, budget: s32) {
 fn hud_draw() {
     if readout == 0 { draw_timing() }
     if readout <= 1 { draw_state() }
-    if menu_open { draw_menu() }
+    if menu_open {
+        if menu_page == 1 { cards_page_draw() } else { draw_menu() }
+    } else {
+        card_banner_draw()
+    }
 }
 
 fn draw_timing() {
@@ -208,6 +215,7 @@ fn draw_menu() {
     x = text_fixed(x + 56, y, glide_ratio(), ink())
     text(x, y, ":1", dim())
     let y2 = y + 10
+    text(x0 + 200, y2, "select: cards", dim())
     text(x0, y2, "long jump", dim())
     x = text_fixed(x0 + 80, y2, reach_of(tv[T.LongVy], min(tv[T.RunSpeed] * tv[T.LongMul], tv[T.LongMax])), ink())
     text(x, y2, "m", dim())

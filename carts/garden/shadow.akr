@@ -1,0 +1,132 @@
+// The robot's blob shadow: one soft dark disc on the floor under the feet.
+//
+// shadow_draw() (game.akr, after the body is drawn) asks the floor query the controller uses
+// (col_floor(): the world's floors, then the movers', so a deck, a roof or a platform under the
+// robot gets it as the ground does) for the highest floor at or below the feet. The disc lies in
+// that floor's plane (its normal, so it follows a slope), 2 cm above it, and is drawn with the
+// depth test on and a depth offset of 6 key steps (RENDERING.md, "The decal offset"): a wall in
+// front of it hides it, the floor under it does not fight it, and it never writes depth. It is
+// semi-transparent and subtractive (BLEND_SUB): it takes a colour off what is under it, so it
+// is a shade of the paving's own colour by day and, with less taken off, by night.
+//
+// With the height h of the feet over that floor it fades and shrinks: full strength and radius
+// SHADOW_R on the floor, nothing at SHADOW_FADE metres (a jump's apex is about 2 m, a glide
+// from a roof a good deal more), the radius down to a half by then. No floor under the feet
+// (a fall past the world's edge): no shadow.
+//
+// 17 vertices and 16 faces a frame: a centre, an inner ring at 0.6 of the radius and the rim,
+// Gouraud from the full colour to none, so the edge is soft. Cost: DESIGN.md 12.10.
+
+const SHADOW_R: fixed = 0.78        // metres, on the floor
+const SHADOW_FADE: fixed = 9.0      // metres of height at which it is gone
+const SHADOW_LIFT: fixed = 0.02     // metres over the floor along its normal
+const SHADOW_OFFSET = 6             // depth offset, key steps
+const SHADOW_SEG = 8
+
+// the rim's eight directions (cos, sin), turned 0.39 rad so no vertex lies on a floor's grid line
+const SHADOW_DIR: [8]vec2 = [vec2(0.9249, 0.3802), vec2(0.3852, 0.9228), vec2(-0.3802, 0.9249), vec2(-0.9228, 0.3852), vec2(-0.9249, -0.3802), vec2(-0.3852, -0.9228), vec2(0.3802, -0.9249), vec2(0.9228, -0.3852)]
+
+private struct ShadowMesh { hdr: Mesh, v: [17]vec4, f: [16]Face }
+private var sh: ShadowMesh
+private var sh_nv: s32
+private var sh_nf: s32
+
+var shadow_on: bool = true
+var shadow_h: fixed = -1.0          // the height of the feet over the floor under them, or -1: none (the tests)
+var shadow_cycles: s32              // what the last shadow_draw() cost the CPU (the tests)
+var shadow_drawn: bool              // the last shadow_draw() drew a disc (the tests)
+var shadow_floor_y: fixed           // the floor it lay on (the tests)
+
+private fn sh_vert(p: vec3) -> s32 {
+    let i = sh_nv
+    sh.v[i] = vec4(p, 1.0)
+    sh_nv = i + 1
+    return i
+}
+
+private fn sh_face(quad: bool, a: s32, b: s32, c: s32, d: s32, ca: u32, cb: u32, cc: u32, cd: u32) {
+    let f = &sh.f[sh_nf]
+    var fl = FACE_SEMI | FACE_GOURAUD | FACE_DOUBLE
+    if quad { fl = fl | FACE_QUAD }
+    f.flags = fl as u8
+    f.blend = BLEND_SUB as u8
+    f.idx[0] = a as u16
+    f.idx[1] = b as u16
+    f.idx[2] = c as u16
+    f.idx[3] = d as u16
+    f.col[0] = ca
+    f.col[1] = cb
+    f.col[2] = cc
+    f.col[3] = cd
+    sh_nf += 1
+}
+
+// The colour taken off at full strength: a little warm, so paving and grass stay themselves;
+// less at night, where the floor is dark already.
+fn shadow_colour(a: fixed) -> u32 {
+    var c = rgb(110, 114, 100)
+    if world_variant != 0 { c = rgb(68, 70, 64) }
+    return clerp(0, c, a)
+}
+
+fn shadow_draw() {
+    shadow_drawn = false
+    shadow_h = -1.0
+    if !shadow_on { return }
+    let c0 = cycle_count()
+    // the floor query leaves its answer in col_y, col_n and col_surf: kept for whoever reads them
+    let y0 = col_y
+    let n0 = col_n
+    let s0 = col_surf
+    let found = col_floor(pl.pos + vec3(0.0, 0.5, 0.0), 0.0)
+    let fy = col_y
+    var n = col_n
+    col_y = y0
+    col_n = n0
+    col_surf = s0
+    if !found { return }
+    let h = max(pl.pos.y - fy, 0.0)
+    if h >= SHADOW_FADE { return }
+    shadow_h = h
+    shadow_floor_y = fy
+    let u = h / SHADOW_FADE
+    let a = (1.0 - u) * (1.0 - u)               // strength: quick at first, then gone slowly
+    let r = SHADOW_R * (1.0 - 0.5 * u)
+    // the disc's plane: n, and two axes across it
+    var t1 = vec3(1.0, 0.0, 0.0)
+    var t2 = vec3(0.0, 0.0, -1.0)
+    if n.y < 0.2 { n = vec3(0.0, 1.0, 0.0) }
+    if n.y < 0.999 {                            // a slope: the axes across it
+        t1 = vec3(n.y, -n.x, 0.0)
+        t1 = t1 / length(t1)
+        t2 = vec3(n.y * t1.z - n.z * t1.y, n.z * t1.x - n.x * t1.z, n.x * t1.y - n.y * t1.x)
+    }
+    let mid = vec3(pl.pos.x, fy, pl.pos.z) - wp_view_origin() + n * SHADOW_LIFT
+    let col = shadow_colour(a)
+    let c1 = clerp(0, col, 0.75)
+    sh_nv = 0
+    sh_nf = 0
+    let ctr = sh_vert(mid)
+    for k in 0..SHADOW_SEG {
+        let d = t1 * SHADOW_DIR[k].x + t2 * SHADOW_DIR[k].y
+        sh_vert(mid + d * (r * 0.6))
+        sh_vert(mid + d * r)
+    }
+    for k in 0..SHADOW_SEG {
+        let i = ctr + 1 + 2 * k
+        var j = i + 2
+        if k == SHADOW_SEG - 1 { j = ctr + 1 }
+        sh_face(false, ctr, i, j, j, col, c1, c1, c1)
+        sh_face(true, i, j, i + 1, j + 1, c1, c1, 0, 0)
+    }
+    sh.hdr.nverts = sh_nv as u16
+    sh.hdr.nfaces = sh_nf as u16
+    sh.hdr.verts = 16
+    sh.hdr.faces = (16 + 16 * 17) as u32
+    sh.hdr.windows = 0
+    depth_offset(SHADOW_OFFSET)
+    mesh(&sh.hdr)
+    depth_offset(0)
+    shadow_drawn = true
+    shadow_cycles = cycle_count() - c0
+}

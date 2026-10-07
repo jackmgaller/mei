@@ -1,0 +1,137 @@
+// The shrine town's five cards by name (carts/garden/shrinetown/DESIGN.md, section 5): a banner
+// when a scenario starts or a card is taken, and the page of the pause menu that lists them.
+//
+// The cards are the world's five star entities (goals.akr). A card is known by where its star
+// stands (CARD_AT, the x and z of the `star_*` entities in shrinetown/game.py), not by its place
+// in the world's entity list. Only the shrine town has named cards: elsewhere the banner never
+// shows and the page says so.
+//
+// - card_banner_start(k): card k's scenario began (goals.akr: the first red coin, the omamori).
+// - card_banner_taken(e): the star entity e was taken (goals_collect()).
+// - card_banner_clear(): a world opened (goals_init()).
+// - card_banner_draw(): hud_draw(): the banner, for CARD_BANNER_TICKS, at the top under the
+//   clock (which is at y 38-50) and the "a moon card!" note (y 52): a dark strip behind the
+//   text so it reads over light paving and at night.
+// - cards_page_draw(): hud.akr's menu when SELECT has turned to the cards.
+
+const CARD_COUNT = 5
+const CARD_BANNER_TICKS = 210
+const CARD_BANNER_Y = 66
+
+const CARD_NAMES: [5]*u8 = [
+    "The pagoda finial",
+    "Eight red coins over the shotengai",
+    "The stage bell",
+    "Inside the sacred cedar",
+    "The last train",
+]
+
+// One line each, in the level's voice: a direction, no more.
+const CARD_HINTS: [5]*u8 = [
+    "Up the north court's pagoda.",
+    "Eight red coins. The torii waits.",
+    "Ring the bell on the high stage.",
+    "There is a way into the cedar.",
+    "Omamori on the stage. Run south.",
+]
+
+// Where each card's star is: x and z (game.py).
+const CARD_AT: [5]vec2 = [
+    vec2(178.0, 262.0),
+    vec2(160.0, 124.0),
+    vec2(154.0, 344.75),
+    vec2(154.0, 296.0),
+    vec2(160.0, 7.0),
+]
+
+var banner_card: s32 = -1
+var banner_taken: bool
+var banner_at: s32 = -100000
+
+fn card_of_pos(p: vec3) -> s32 {
+    for k in 0..CARD_COUNT {
+        if abs(p.x - CARD_AT[k].x) < 1.5 && abs(p.z - CARD_AT[k].y) < 1.5 { return k }
+    }
+    return -1
+}
+
+fn cards_here() -> bool { return world_k == GARDEN_WORLD_SHRINETOWN }
+
+// Whether card k is taken (its star is in the saved progress).
+fn card_taken(k: s32) -> bool {
+    for s in 0..star_n {
+        if card_of_pos(wp_entity_pos(stars[s])) == k { return prog_has(stars[s]) }
+    }
+    return false
+}
+
+fn card_banner_clear() { banner_card = -1 }
+
+fn card_banner_start(k: s32) {
+    if !cards_here() || k < 0 || k >= CARD_COUNT { return }
+    banner_card = k
+    banner_taken = false
+    banner_at = sim_t
+}
+
+fn card_banner_taken(e: *WpEntity) {
+    if !cards_here() { return }
+    let k = card_of_pos(wp_entity_pos(e))
+    if k < 0 { return }
+    banner_card = k
+    banner_taken = true
+    banner_at = sim_t
+}
+
+fn card_banner_shown() -> bool { return banner_card >= 0 && sim_t - banner_at < CARD_BANNER_TICKS }
+
+fn card_len(s: *u8) -> s32 {
+    var n = 0
+    while s[n] != 0 { n += 1 }
+    return n
+}
+
+// A dark panel two layers deep (a quarter of the light under it is left): white and gold read
+// over pale paving, and at night nothing is lost.
+fn card_panel(x: s32, y: s32, w: s32, h: s32) {
+    rect_blend(x, y, w, h, rgb(6, 10, 18), BLEND_HALF)
+    rect_blend(x, y, w, h, rgb(6, 10, 18), BLEND_HALF)
+}
+
+fn card_banner_draw() {
+    if !card_banner_shown() { return }
+    let name = CARD_NAMES[banner_card]
+    var head = "scenario"
+    if banner_taken { head = "moon card taken" }
+    let w = max(card_len(name), card_len(head)) * 8 + 20
+    let x = (320 - w) / 2
+    card_panel(x, CARD_BANNER_Y - 4, w, 26)
+    text((320 - card_len(head) * 8) / 2, CARD_BANNER_Y, head, dim())
+    text((320 - card_len(name) * 8) / 2, CARD_BANNER_Y + 10, name, hot())
+}
+
+// The pause menu's page of cards: all five, taken or not, each with its hint.
+fn cards_page_draw() {
+    card_panel(4, 36, 312, 186)
+    text(12, 41, "moon cards", hot())
+    text(120, 41, "select: tuning", dim())
+    if !cards_here() {
+        text(12, 62, "none in this world", dim())
+        return
+    }
+    var taken = 0
+    for k in 0..CARD_COUNT {
+        if card_taken(k) { taken += 1 }
+    }
+    text_int(260, 41, taken, hot())
+    text(268, 41, "/ 5", dim())
+    for k in 0..CARD_COUNT {
+        let y = 58 + k * 31
+        let got = card_taken(k)
+        var c = ink()
+        if got { c = hot() }
+        if got { text(12, y, "[x]", c) } else { text(12, y, "[ ]", dim()) }
+        text(40, y, CARD_NAMES[k], c)
+        text(40, y + 10, CARD_HINTS[k], dim())
+    }
+}
