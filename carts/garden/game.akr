@@ -13,6 +13,7 @@ import "attach.akr"
 import "goals.akr"
 import "body.akr"
 import "hud.akr"
+import "sound_hooks.akr"       // the sound and music (audio/WIRING.md)
 
 const MAX_CATCH_UP = 4         // ticks run at most in one update()
 
@@ -46,6 +47,7 @@ fn init() {
     attach_init()
     goals_init()
     cam_reset()
+    sound_init()
     cam_intro()
     timing_start()
     last_frame = FRAME
@@ -97,6 +99,7 @@ fn update() {
         if held(RIGHT) { look.x = 1.0 }
     }
     if pressed(Y) && !menu_open { player_respawn() }       // a challenge running is lost (goals_respawn())
+    if pressed(Y) && !menu_open { ga_play(GA_S_WINDUP) }   // the key wound (sound_hooks.akr)
     if ticks(T.Night) != world_variant { world_set_variant(ticks(T.Night)) }
     read_input(s)
     let n = clamp((FRAME - last_frame) as s32, 1, MAX_CATCH_UP)
@@ -106,6 +109,7 @@ fn update() {
         goals_pre(&pin)
         player_tick(&pin)
         goals_tick()
+        sound_tick()
         cam_tick(look.x, k == 0 && pressed(L))
         pin.ap = false
         pin.bp = false
@@ -118,6 +122,7 @@ fn update() {
     use_doors()
     follow_region()
     cam_place()
+    sound_frame()
     test_hook(frame_n)
     timing_frame()
     frame_n += 1

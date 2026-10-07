@@ -1,5 +1,33 @@
 # Shrine town: the far plain, authored and not yet applied
 
+## Status (2026-10-06, branch `feat-sound-plain`): checked after the look fix, not applied
+
+Checked against the merged world (509ba61: one backdrop with 40 rows under the horizon, day fog
+`#d6dede` 20–240, night fog `#181842` 16–220, the regions' new texture slots) on `build-sp`:
+
+- **No clash.** The town region's palettes are 0–199 (3,200 colours; the backdrop's silhouette
+  palette is in that range), the shrine region's are in bank 1, the star 254, the fonts 255, so
+  232–247 are free. The silhouette is 718 tiles (23,552 bytes) in page 12 with its map at
+  `MAP_BG1`: page 13 and `MAP_BG2` are free. The backdrop uses line channel 0 only; nothing in the
+  cart uses 3 or 7, or `LT_FREE`.
+- **It no longer adds enough.** With the fog whole at 240 m the plain is behind fog almost
+  everywhere it shows. `preview_plain.py` at `plain_cap` 0.85, before and after
+  (`preview/look_fix/`, `costs.txt`): pixels changed by the plain, day / night: pagoda south
+  2.3 % / 2.0 %, pagoda west 0 / 0, stage south 4.8 / 4.2, stage south-east 5.4 / 4.3, crown deck
+  south and east 0 / 0, building roof west and south 0 / 0, the front road 0 / 0. Over 12 levels
+  of difference, by night: 0.1 % at most. From the crown deck and the roof the edge
+  neighbours, the far ring and the backdrop's rows already fill everything under the horizon.
+- **Retuning `plain_cap` does not save it.** At 0.6 and 0.4 (`*_cap040.png`) the fields and
+  the river show from the stage and the pagoda, but sharper than the fogged ground in front of
+  them: the far plain reads nearer than the near ground. 0.85 is the lowest cap where the plain
+  meets the far ring at the same fog, and there it is barely there.
+- **Cost unchanged:** 17,900–20,200 cycles a frame from the high views (96 at street level),
+  61,700 when the world opens.
+
+So it is not applied: the cart has no `plain_*` calls, and the folder stays as the source if a
+farther fog ever comes back (then rerun `preview_plain.py` and apply `cart.patch` by hand: its
+context in `ground/ground.akr` has changed, the four lines go where step 1 below says).
+
 From the high points (the pagoda, the stage, the walkway crown, the building roof) the world past
 the level's drawn edge was the backdrop's flat colour under the horizon: cream by day, purple at
 night, up to the skyline, with a hard line where the far ring's ground stops at 192–256 m

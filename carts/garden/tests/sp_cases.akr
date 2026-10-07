@@ -1,0 +1,297 @@
+// The sound's scenarios (660-679, in the shrine town): sound_hooks.akr and
+// audio/sound.akr wired into the cart (audio/WIRING.md), and the painted plain
+// (shrinetown/art/plain/APPLY.md). check.sh runs the ones sp_cases.sh lists. A sound "plays" when
+// one of the sound channels (12-15) holds it and is playing (sp_playing()).
+//
+//   660  the spawn: the town's mix and bed, the plaza's zone, the sound's CPU a frame
+//   661  the zones at the places the other scenarios use (the cave, the falls, the arcade, ...)
+//   662  a coin, then the key wound on Y
+//   663  the last train lost, heard from the platform: the omamori, the clock, the chime as it
+//        stops, the train's emitter, the departure melody, "time is up"
+//   664  the bell's rope: the bell, and star 3 coming down
+//   665  the busiest places: the platform with the race train and the shotengai's arcade,
+//        jumping about; every goal sound gets a channel, and the CPU stays in its budget
+//   666  a door: the door's sound, the garden's zone
+
+var sp_max: s32                  // the sound's most cycles in a frame
+var sp_sum: s32
+var sp_frames: s32
+var sp_got: s32                  // goal sounds that got a channel ...
+var sp_asked: s32                // ... of those asked for
+var sp_busy: s32                 // the most channels playing at once
+var sp_used: u32                 // every channel that has played (bits)
+var sp_flags: s32                // what has been heard (bits)
+var sp_t: s32
+
+fn sp_case_init() -> bool {
+    match SCENARIO {
+        660 => { name = "sound: at the spawn, the town's music and bed, the plaza's zone, the CPU" }
+        661 => { name = "sound: the zones at the level's places" }
+        662 => { name = "sound: a coin, and the key wound on Y" }
+        663 => { name = "sound: the last train lost, heard from the platform" }
+        664 => { name = "sound: the bell's rope rings the bell and star 3 comes down" }
+        665 => { name = "sound: the busiest places (the race train at the platform, the arcade): channels and CPU" }
+        666 => { name = "sound: a door to the garden: its sound, the garden's zone" }
+        else => { return false }
+    }
+    sp_max = 0
+    sp_sum = 0
+    sp_frames = 0
+    sp_got = 0
+    sp_asked = 0
+    sp_busy = 0
+    sp_used = 0
+    sp_flags = 0
+    return true
+}
+
+fn sp_case(f: s32) {
+    if SCENARIO < 660 || SCENARIO > 679 { return }
+    if f > 1 {                                    // the frame before's cost (sound_frame() set it)
+        sp_max = max(sp_max, snd_cycles)
+        sp_sum += snd_cycles
+        sp_frames += 1
+        sp_busy = max(sp_busy, sp_channels())
+        sp_used |= AUDIO_ACTIVE
+    }
+    match SCENARIO {
+        660 => sp_spawn(f)
+        661 => sp_zones(f)
+        662 => sp_coin(f)
+        663 => sp_race(f)
+        664 => sp_bell(f)
+        665 => sp_busy_places(f)
+        666 => sp_door(f)
+        else => {}
+    }
+}
+
+// ---- helpers
+
+// Whether sound id is on one of the sound channels, playing.
+fn sp_playing(id: s32) -> bool {
+    let a = AUDIO_ACTIVE
+    for c in GA_CH_SFX..16 {
+        if ga_sfx.id[c] == id && a & ((1 as u32) << (c as u32)) != 0 { return true }
+    }
+    return false
+}
+
+fn sp_channels() -> s32 {
+    let a = AUDIO_ACTIVE
+    var n = 0
+    for c in 0..16 {
+        if a & ((1 as u32) << (c as u32)) != 0 { n += 1 }
+    }
+    return n
+}
+
+fn sp_zone_is(p: vec3, nm: *u8) {
+    let z = ga_zone_at(p)
+    print("NOTE zone at ")
+    print_fixed(p.x)
+    print_char(' ')
+    print_fixed(p.y)
+    print_char(' ')
+    print_fixed(p.z)
+    print(": ")
+    println(GA_ZONE_NAMES[z])
+    expect(streq(GA_ZONE_NAMES[z], nm), nm, fixed(z))
+}
+
+fn sp_cpu_report(budget: s32) {
+    note("sound CPU a frame, average", fixed(sp_sum / max(sp_frames, 1)))
+    note("sound channels playing at once, most", fixed(sp_busy))
+    expect(sp_max < budget, "sound CPU a frame, most", fixed(sp_max))
+}
+
+// A goal sound asked for now (the voice allocator's answer), counted.
+fn sp_goal(id: s32) {
+    sp_asked += 1
+    if ga_sound(id, 120, 0, 1.0, GA_PRI_GOAL) >= 0 { sp_got += 1 }
+}
+
+// ---- 660: the spawn
+
+fn sp_spawn(f: s32) {
+    if f == 0 {
+        place_at_spawn()
+        cam_reset()
+        cam.lock = false
+    }
+    if f >= 400 && f < 700 { stick_v = cc_stick(fixed(f) / 50, 1.0) }       // round the plaza
+    if f >= 400 && f < 700 && f % 60 == 0 { pad_v = A }
+    if f == 300 {
+        expect(ga_world_k == GARDEN_WORLD_SHRINETOWN, "the shrine town's sound", fixed(ga_world_k))
+        expect(streq(ga_zone_name(), "station plaza"), "the zone at the spawn is the station plaza", fixed(ga_zone))
+        expect(AUDIO_ACTIVE & 0x7F != 0, "the music plays (channels 0-6)", fixed((AUDIO_ACTIVE & 0x7F) as s32))
+        expect(AUDIO_ACTIVE & 0x180 != 0, "the town's bed plays (channels 7, 8)", fixed(((AUDIO_ACTIVE >> 7) & 3) as s32))
+    }
+    if f > 400 && f < 700 && sp_playing(GA_S_JUMP) { sp_flags |= 1 }
+    if f > 400 && f < 700 && (sp_playing(GA_S_STEP_STONE) || sp_playing(GA_S_LAND)) { sp_flags |= 2 }
+    if f == 720 {
+        expect(sp_flags & 1 != 0, "the jumps heard", 0.0)
+        expect(sp_flags & 2 != 0, "footsteps on stone heard", 0.0)
+        sp_cpu_report(25000)
+        done()
+    }
+}
+
+// ---- 661: the zones
+
+fn sp_zones(f: s32) {
+    if f != 2 { return }
+    sp_zone_is(vec3(214.0, 13.9, 333.0), "cave behind the falls")
+    sp_zone_is(vec3(214.0, 11.0, 324.0), "falls and gorge")
+    sp_zone_is(vec3(160.0, 0.2, 78.0), "shotengai arcade")
+    sp_zone_is(vec3(160.0, 0.0, 50.0), "shotengai")
+    sp_zone_is(vec3(160.0, 10.05, 8.0), "platform and viaduct")
+    sp_zone_is(vec3(158.6, 0.0, 5.0), "station concourse")
+    sp_zone_is(vec3(154.0, 60.0, 345.0), "the stage")
+    sp_zone_is(vec3(122.0, 30.0, 330.0), "torii tunnel")
+    sp_zone_is(vec3(160.0, 0.0, 140.0), "outer courtyard")
+    sp_zone_is(vec3(160.0, 8.0, 200.0), "inner precinct")
+    sp_zone_is(vec3(236.0, -1.0, 110.0), "culvert")
+    sp_zone_is(vec3(30.0, 0.0, 250.0), "bamboo and the brewery")
+    sp_zone_is(vec3(100.0, 0.0, 60.0), "back alleys")
+    sp_zone_is(vec3(100.0, 9.0, 60.0), "town roofs")
+    done()
+}
+
+// ---- 662: a coin, Y
+
+fn sp_coin(f: s32) {
+    if f == 0 {
+        // the coin nearest the spawn, the body put just under it
+        place_at_spawn()
+        var best = -1
+        var bd: fixed = 1000.0
+        for n in 0..wp_pack.entity_count as s32 {
+            let e = wp_entity(n)
+            if e.type_id as s32 != COIN_TYPE { continue }
+            let d = tw_hdist(wp_entity_pos(e), pl.pos)
+            if d < bd { bd = d; best = n }
+        }
+        expect(best >= 0, "a coin in the town", bd)
+        let p = wp_entity_pos(wp_entity(best))
+        place(vec3(p.x, p.y - BODY_HEIGHT / 2, p.z - 3.0), NORTH)
+        t0 = coins
+    }
+    if f > 0 && f < 60 { stick_v = FWD }
+    if coins > t0 && sp_t == 0 {
+        sp_t = f
+        expect(sp_playing(GA_S_COIN), "the coin's sound", fixed(coins))
+    }
+    if f == 100 {
+        expect(sp_t > 0, "the coin taken", fixed(coins))
+        pad_v = Y
+    }
+    if f == 102 {
+        expect(sp_playing(GA_S_WINDUP), "Y: the key wound", 0.0)
+        done()
+    }
+}
+
+// ---- 663: the last train, lost, from the platform
+
+fn sp_race(f: s32) {
+    if f == 0 {
+        gc_place(160.0, 7.0, 12.0, NORTH)                 // on the island platform
+        pl.spawn = pl.pos
+        cam.lock = false
+    }
+    if f == 10 {
+        let e = gc_trig("race5")
+        trig_fire(e, gc_trig_params(e))
+        expect(chal_flag != null && sp_playing(GA_S_SHORTCUT), "the omamori: the clock starts, its sound", fixed(chal_left))
+        sp_t = gc_trig_params(e).timer as s32
+    }
+    if f < 12 { return }
+    let m = gc_train()
+    if sp_playing(GA_S_CLOCK_TICK) { sp_flags |= 1 }
+    if sp_playing(GA_S_STATION_CHIME) && m.mt >= SND_TRAIN_AT && m.mt < SND_TRAIN_AT + 10 { sp_flags |= 2 }
+    if ga_emitter_on(GA_EM_TRAIN) && mover_live(m) { sp_flags |= 4 }
+    if sp_playing(GA_S_DEPARTURE) && m.mt >= SND_TRAIN_DEPART && m.mt < SND_TRAIN_DEPART + 10 { sp_flags |= 8 }
+    if sp_playing(GA_S_LOST) && chal_end == 2 { sp_flags |= 16 }
+    if f == 10 + sp_t + 60 {
+        expect(sp_flags & 1 != 0, "the clock ticks", 0.0)
+        expect(sp_flags & 4 != 0, "the train's emitter heard", 0.0)
+        expect(sp_flags & 2 != 0, "the chime as the train stops at the platform", 0.0)
+        expect(sp_flags & 8 != 0, "the departure melody before it leaves", 0.0)
+        expect(sp_flags & 16 != 0, "time is up", fixed(chal_end))
+        sp_cpu_report(25000)
+        done()
+    }
+}
+
+// ---- 664: the bell
+
+fn sp_bell(f: s32) {
+    if f == 0 {
+        gc_place(154.0, 345.0, 61.0, NORTH)
+    }
+    if f == 10 {
+        let e = gc_trig("bell")
+        trig_fire(e, gc_trig_params(e))
+        expect(sp_playing(GA_S_BELL), "the bell rings", 0.0)
+    }
+    if f > 10 && sp_playing(GA_S_STAR_APPEAR) { sp_flags |= 1 }
+    if f == 90 {
+        expect(sp_flags & 1 != 0, "a star comes down, heard", 0.0)
+        done()
+    }
+}
+
+// ---- 665: the busiest places
+
+fn sp_busy_places(f: s32) {
+    if f == 0 {
+        gc_place(160.0, 7.0, 12.0, NORTH)
+        pl.spawn = pl.pos
+        cam.lock = false
+        let e = gc_trig("race5")
+        trig_fire(e, gc_trig_params(e))
+    }
+    // back and forth between two points: footsteps, jumps, landings, a dive and belly slide (the
+    // robot's loop), the clock, and every half second a goal sound
+    var a = vec3(150.0, 0.0, 8.0)
+    var b = vec3(170.0, 0.0, 8.0)
+    if f >= 2600 {
+        a = vec3(160.0, 0.0, 70.0)
+        b = vec3(160.0, 0.0, 88.0)
+    }
+    var to = a
+    if sp_t & 1 == 1 { to = b }
+    if tw_hdist(pl.pos, to) < 2.0 { sp_t += 1 }
+    if f > 0 { stick_v = cc_stick(sh_heading(to), 1.0) }
+    if f % 25 == 0 { pad_v = A }
+    if f % 90 == 50 { pad_v = B }
+    if f % 30 == 15 { sp_goal(GA_S_COIN) }
+    if f == 2600 {
+        // the train has stood at the platform since its clock's 2,400: now the arcade
+        expect(mover_live(gc_train()), "the train at the platform", gc_train().pos.x)
+        gc_place(160.0, 78.0, 1.0, NORTH)
+        pl.spawn = pl.pos
+    }
+    if f == 3200 {
+        expect(streq(ga_zone_name(), "shotengai arcade"), "in the arcade", fixed(ga_zone))
+        expect(ga_emitter_on(GA_EM_SHOP_MUSIC), "the shops' loudspeakers", 0.0)
+        note("goal sounds asked for", fixed(sp_asked))
+        expect(sp_got == sp_asked, "every goal sound got a channel", fixed(sp_got))
+        expect(sp_used == 0xFFFF, "all 16 channels used", 16.0)
+        sp_cpu_report(25000)
+        done()
+    }
+}
+
+// ---- 666: a door
+
+fn sp_door(f: s32) {
+    if f == 0 { place_at_spawn() }
+    if f == 60 { world_switch(GARDEN_WORLD_GARDEN) }
+    if f == 62 {
+        expect(sp_playing(GA_S_DOOR), "the door's sound", 0.0)
+        expect(ga_world_k == GARDEN_WORLD_GARDEN && streq(ga_zone_name(), "the garden"), "the garden's zone", fixed(ga_world_k))
+        done()
+    }
+}

@@ -606,6 +606,9 @@ private fn em_frame() {
     for n in 0..8 { em_moved[n] = false }        // a moving emitter is placed again each frame
 }
 
+// Whether emitter n of the world (GA_EM_*) holds one of the two emitter channels now (a readout).
+fn ga_emitter_on(n: s32) -> bool { return em_at[0] == n || em_at[1] == n }
+
 private fn em_stop() {
     for c in 0..GA_EM_CH {
         if em_at[c] >= 0 { stop(GA_CH_EM + c) }

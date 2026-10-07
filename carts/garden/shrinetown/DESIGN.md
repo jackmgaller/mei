@@ -1705,3 +1705,49 @@ climb the merge added one stand-in (the look's stand-in caps): 2,052 → 2,214 t
 Not done here: the race train (the cart); a rail camera zone per torii tunnel switchback; the kick
 cedars drawn at their trunks' size. (The level-1 roofs are the look's; the fall-through spots the
 kit's `slide_floor_degrees`, above.)
+
+### 12.10 Features
+
+#### Sound and music; the painted plain (branch `feat-sound-plain`)
+
+**Sound and music, wired in.** The sound made on `garden-audio` (`../audio/`, "Momiji" and the
+places, the robot and the goals: `../audio/WIRING.md`) now plays in the cart.
+`../sound_hooks.akr` is the cart's side; `game.akr` calls `sound_init()` once, `sound_tick()`
+each tick after `goals_tick()`, `sound_frame()` after `cam_place()`, and plays the key wound
+beside the Y respawn; `goals.akr`'s `trig_fire()` calls `sound_trig()` (the bell, a shortcut,
+the omamori). Coins, a star taken, a challenge won or lost and the doors are read from the
+cart's state each frame. The last train's chime and departure melody follow the train's own
+clock (12.9's timeline: at the platform from 40 s, out at 85 s), so they sound after a win too.
+Footsteps take the zone's material (water when wading): no surface bytes were added.
+
+| Cost | |
+|---|---|
+| CPU | 10,200-10,600 cycles a frame on average, 15,600 at most (scenarios 660, 663, 665: the plaza, the platform with the train standing, the shotengai's arcade with its loudspeakers) |
+| ROM | +1,331,336 bytes (the garden cart 20,710,439 → 22,041,775) |
+| RAM | about 1.3 KB of globals |
+| Channels | all 16 and the reverb (0-6 music, 7-8 beds, 9-10 emitters, 11 the robot's loop, 12-15 sounds); at most 15 at once in 665 |
+| GPU, draw CPU | none |
+
+In 665 (the busiest places, a goal sound asked for every half second besides the game's own)
+all 107 goal sounds got a channel. In-game recordings of the spawn, ★5 won (452), the falls'
+pool and the cave (715, 716), the last train lost from the platform (663) and 665 have no
+clicks; a few samples clip (4 in 452, 0.8 s after the win, with the win's sound, star 5 coming
+down and the train standing beside the player; 7 in 663; 73 in 665, which asks for far more than
+play does).
+
+**The painted plain: not applied.** `art/plain/` (from `shrinetown-plain`) is merged and
+checked against the look fix: none of its resources clash (plane page 13, `MAP_BG2`,
+`LT_FREE`, line channels 3 and 7, palettes 232-247 are all free), but with the fog whole at 240 m
+it changes at most 5 % of the pixels from the stage and the pagoda by day, and nothing from the
+crown deck or the roof, for 18,000-20,000 CPU cycles a frame. A lower `plain_cap` shows the
+fields, sharper than the fogged ground in front of them. `art/plain/APPLY.md` has the
+measurements and the sheets (`art/plain/preview/look_fix/`).
+
+Scenarios 660-666 (`../tests/sp_cases.akr`).
+
+Proposed for README.md's Surfaces table (the owner's to change), so footsteps can follow the
+floor rather than the zone: 4 `wood` (decks, bridges, the stage, the walkway, verandas), 5
+`gravel` (the courtyard, the precinct, paths), 6 `earth` (the woods' floor, trails), 7 `tile`
+(the kawara roofs), 8 `metal` (the fire tower, ladders, the overpass, the station canopy). The
+controller would read them as 0; `surface_map` would need 16 entries for byte 8, and the sound
+the byte before the map.
