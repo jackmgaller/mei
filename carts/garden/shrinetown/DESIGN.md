@@ -1750,7 +1750,11 @@ has a case, 680-688 (`../tests/fu_cases.akr` and `.sh`, `make test-carts`).
 0 of the first 20 confirmed; every collectible reached; shortcuts A-E the long way; of 39 paths only
 `core_north_stair` stops (at the shut north gate, as meant, and at the pagoda's wall at its top).
 Star 4's chamber: a third jump's glide from the ridge west of the cedar (122, 22.6, 274) into the
-knot hole, a route the cart repeats; not looked into here (the shrine's).
+knot hole, a route the cart repeats; not looked into here (the shrine's). Shortcut B's route, "the
+long way" by the bot's 12 m rule, still crosses the north wall: a long jump from the terrace onto
+the east wall's flat top (7.6, x 210) near its north end, then a jump and a dive over the north
+wall's east run to (200.8, 5, 240.3). The east and west runs' tops are not copings (12.9
+gave the north run one); for the owner: their last modules before the north corners as copings too.
 
 **Two stale notes:** `art/preview_scratch.py --cycle` finds each region's water palettes and
 enters the region as the garden does (`water_cycle_find()`, then `water_cycle_enter(k)`), and
