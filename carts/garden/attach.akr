@@ -47,6 +47,7 @@ const MAX_RAILS = 128
 const POLE_HOLD: fixed = 0.5        // from the pole's axis to the body's: its radius and a pole's
 const HANG_BELOW: fixed = 1.75      // hanging: the feet this far below the rail (hands overhead)
 const HANG_FALL_MAX: fixed = 0.05   // a hang-only rail is not caught falling faster (metres a tick: 3 m/s)
+const HANG_CLEAR: fixed = 0.1       // a hang is held only where the hanging feet are no more than this under a floor
 const LIFT_MAX: fixed = 0.8         // a mover's top this far into the body lifts the player
 const SQUEEZE_MAX: fixed = 12.0     // how far to look for room beside a mover pressing down
 
@@ -535,12 +536,21 @@ fn rail_touch() -> bool {
         }
         if rail_hang[k] && pl.vel.y < -HANG_FALL_MAX { continue }      // dropping past a hang-only rail
         if rail_catch[k] > 0.0 && wp_near.s > rail_catch[k] { continue }
-        if up >= 1.2 && up <= 1.9 {
+        if up >= 1.2 && up <= 1.9 && hang_clear(n) {
             grab_rail(k, St.Hang)
             return true
         }
     }
     return false
+}
+
+// True when a body hanging from the rail at p hangs clear of the floors under it: a rail less than
+// HANG_BELOW over a floor (a stair's handrail, a bridge's kasagi) would hold the feet in the floor,
+// and a drop from there fell through the world (the explorer bot's hang drops at the overpass and
+// the canal's arched bridge). Not a grab there, and a hang is not moved along to there.
+fn hang_clear(p: vec3) -> bool {
+    if !wp_floor(p - vec3(0.0, 0.3, 0.0), 0.0) { return true }
+    return wp_hit.y <= p.y - HANG_BELOW + HANG_CLEAR
 }
 
 // Onto rail k (wp_near holds the point touched).
@@ -677,7 +687,17 @@ fn st_rail(ip: *Pin) {
     rail_v += dot(ip.dir, d) * ip.mag * mps2(T.GrindAccel)
     let lo = mps(T.GrindMin)
     let hi = mps(T.GrindMax)
-    if rail_v >= 0.0 { rail_v = clamp(rail_v, lo, hi) } else { rail_v = clamp(rail_v, -hi, -lo) }
+    if rail_v * d.y > 0.0 {
+        // Uphill: gravity slows it, under the grind's minimum too, and once through zero it slides
+        // back down (it went on up any slope at the minimum, never stopping: case 706's string).
+        rail_v = clamp(rail_v, -hi, hi)
+    } else if rail_v == 0.0 && d.y != 0.0 {
+        if d.y > 0.0 { rail_v = -lo } else { rail_v = lo }    // stopped on a slope: back down it
+    } else if rail_v >= 0.0 {
+        rail_v = clamp(rail_v, lo, hi)
+    } else {
+        rail_v = clamp(rail_v, -hi, -lo)
+    }
     rail_s += rail_v
     if pth.flags & WP_PATH_CLOSED == 0 && (rail_s < 0.0 || rail_s > wp_path_length(pth)) {
         // Off the end: on in the air at the same speed.
@@ -703,8 +723,10 @@ fn st_hang(ip: *Pin) {
     }
     let _ = wp_path_at(pth, rail_s)
     rail_v = dot(ip.dir, wp_near.dir) * ip.mag * mps(T.HangSpeed)
+    let s0 = rail_s
     rail_s += rail_v
     if pth.flags & WP_PATH_CLOSED == 0 { rail_s = clamp(rail_s, 0.0, wp_path_length(pth)) }
+    if !hang_clear(wp_path_at(pth, rail_s)) { rail_s = s0 }       // not along into a floor
     rail_hold()
 }
 

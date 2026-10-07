@@ -55,12 +55,18 @@ the surface map (`ground/ground.akr`) and the body (the game schema's probe: rad
 `sim.py` flies them: one tick is one of `player_tick()`'s, in its order (the glider at the
 apex, air control, gravity or the glider's easing, the horizontal move against walls, the vertical
 move, the head at ceilings, the feet onto floors), then `attach.akr`'s grabs from the plain air
-states (a pole within 0.65 m of its axis, a rail under the feet or at the hands). Into a wall it
+states (a pole within 0.65 m of its axis, a rail under the feet or at the hands) with the rail
+entity's rules: a `hang` rail is never ground and is not caught falling faster than 3 m/s, a rail
+with a `catch` is caught only within that of its first point, and a hang only where the hanging
+feet are no more than 0.1 m under the floor under the rail (`hang_clear()`). Into a wall it
 does what `air_wall()` does: a ledge in reach (a gentle floor 0.8 to 1.75 m above the feet just
 beyond, with room to stand) is grabbed unless the jump is still rising past it; a wall upright
-enough met fast enough is a wall slide, which the next pass kicks off.
+enough met fast enough is a wall slide, which the next pass kicks off. A body pushed out of a wall
+is not pushed under a floor of the ground more than a step over its feet.
 
-`confirm.py` drives the real controller with the same moves: it stands the body at the take-off,
+`confirm.py` drives the real controller with the same moves: it stands the body at the take-off
+(on the floor under it, or across a crack as the controller's crack bridge does, or a few
+centimetres off a seam: a take-off on the lattice can be exactly on one),
 puts the controller in the state the move starts from (the run speed, the chain window after a
 landing, a crouch, a crouch slide, a skid, a pole held), presses the move's buttons, and makes the
 later presses the flight made (A at a wall slide, letting go of the glide after the same number of
@@ -75,10 +81,15 @@ solved for y at each of the three push heights), as sorted arrays that one numpy
 bulk.
 
 - **Nodes:** every floor entry (2.77 million in the shrine town), a node a metre up each pole and a
-  node a metre along each rail (grinding either way, and hanging).
-- **Walking:** to the next column's floor within a step, where no wall pushes; never uphill off a
-  floor steeper than the slide angle (30 degrees); a drop off an edge lands on the next column's
-  highest floor below.
+  node a metre along each rail (grinding either way, and hanging; a `hang` rail only hanging).
+  Grinding goes uphill only where the stick's push beats gravity (GrindAccel over Gravity: a grind
+  up a steeper rail slows and slides back), and a hang moves along only where it hangs clear.
+- **Walking:** to the next column's floor within a step, where no wall pushes at the feet's height
+  there (up a step, the step's top: the push of the riser beyond only slows the controller, so
+  stairs with treads shallower than the body's radius are walked); never uphill off a floor
+  steeper than the slide angle (30 degrees); a drop off an edge lands on the next column's highest
+  floor below. A floor with the ground over it inside the body's height (a placement's top under
+  the hill) is not stood on, walked to or landed on: the controller steps up onto the ground.
 - **Flights:** every move from each floor at a boundary (a wall, a drop or a rise within half a
   metre), toward it, on a lattice (1 m; `--deep` half a metre), plus glides aimed at each star and
   red coin from every floor high enough to glide to it. Then the later passes: wall kicks off the
@@ -93,7 +104,7 @@ bulk.
 |---|---|
 | Escapes | flights from a reachable floor that cross the frame (the cells' rectangle), clustered by where they leave |
 | Falls through the world | flights over a column with no floor under the feet that fall below every floor |
-| The drop check | floorless columns (faces steeper than a floor) within 4 m of a reachable floor: the real controller dropped over each, every 1.5 m (`--deep` 1 m), from 3 m over the floors round it; the drops that fall below every floor, clustered |
+| The drop check | floorless columns (faces steeper than a floor) within 4 m of a reachable floor: the real controller dropped over each, every 1.5 m (`--deep` 1 m), from 3 m over the floors round it, or from over the column's own faces where they stand higher; the drops that fall below every floor, clustered |
 | Sealed places | edges into a region of the world's notes (cylinders or a box) by moves other than its intended ways in; then, with the intended ways taken out of the graph, a route in that the real cart repeats; and each rail that runs into it, dropped onto a metre apart (does the grind carry the body in?) |
 | Collectibles | for every coin, red coin and star: taken walking, on a pole, grinding, hanging, or by which flight (in the air, gliding or diving); those nobody reaches |
 | Cards taken gliding | a star whose box a glide passes through, flown headless from up to five take-offs |
@@ -186,7 +197,9 @@ denser drops, six tries) is the overnight mode: several times longer.
 
 `tests/test_explore.py`: the numbers are the cart's; flights over a hand-made column world match
 the controller's per-tick arithmetic (a running jump's ticks and distance, a ledge grab, a
-backflip grab a hop cannot make, leaving the frame, falling through a hole); the harness hooks fit;
+backflip grab a hop cannot make, leaving the frame, falling through a hole, the rail rules: a hang
+held clear of the floor, a `hang` rail not ground nor caught falling fast, a `catch`; a body pushed
+out of a wall not into the ground under a cliff); the harness hooks fit;
 the reach map on the garden world reaches every coin; one probe flown headless; a written case run
 in the real cart passes where the robot stays in the level and fails where it leaves.
 

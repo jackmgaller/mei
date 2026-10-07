@@ -188,6 +188,17 @@ fn ex_case_init() -> bool {
 
 fn ex_floor(x: fixed, z: fixed, from: fixed) -> fixed {
     if wp_floor(vec3(x, from, z), 0.0) { return wp_hit.y }
+    // a take-off on the lattice can be exactly on a crack (a terrain vertex at even metres): the
+    // controller's crack bridge (col_stand) stands there, so the probe does too (it was put at
+    // -1000 and reported falling through the world)
+    if wp_floor_across(vec3(x, from, z), 0.0, 3.0, BODY_BRIDGE) { return wp_hit.y }
+    // or on a seam's crack wider than the bridge: a few centimetres off it
+    for k in 0..4 {
+        let d = 0.05 * fixed(1 - 2 * (k & 1))
+        var q = vec3(x + d, from, z)
+        if k >= 2 { q = vec3(x, from, z + d) }
+        if wp_floor(q, 0.0) { return wp_hit.y }
+    }
     return -1000.0
 }
 

@@ -545,10 +545,16 @@ NOTES.append(('crossing', 'trail_west_north (R_WEST)', (91.15, gnd(91.15, 256), 
 # The basin's ways in: from the ridge (north slope), from the fox grove (west), to the falls pool (east).
 # The ridge's north slope to the basin is 38 degrees in places (slid down, not climbed): stone
 # steps instead of a trail, on their own bed.
-PATHS['stairs_ridge_basin'] = {'points': [[150.0, 21.3, 265.0], [148.0, 13.1, 283.0]],
+# (Its head a landing at the crest's height (22.0, z 263-264.4), on the crest's flat west of x 149:
+# from (150, 21.3, 265) the head lay 0.6-0.9 m under the crest, in its own bed, below a 40-degree
+# bank: walked down, not up. The explorer bot, DESIGN.md 12.10.)
+PATHS['stairs_ridge_basin'] = {'points': [[147.5, 22.0, 263.0], [147.5, 22.0, 264.4], [148.0, 13.1, 283.0]],
                                'sweep': {'profile': [[-2.2, -1.0], [-1.4, 0], [1.4, 0], [2.2, -1.0]],
                                          'materials': ['earth', 'steps', 'earth'], 'caps': True, 'stairs': {'rise': 0.3}}}
 op(op='bed', path='stairs_ridge_basin', width=3.6, depth=0.6, falloff=2)
+# the ground under the landing just under it: the bed's 2 m samples left a 33-degree dip in front
+# of the head, slid on (scenario 685)
+op(op='set', area={'rect': [145.5, 262.5, 149.5, 265.0]}, height=21.9)
 trail('trail_fox_basin', [(98.0, 294.0), (118.0, 298.0), (138.0, 297.0)])
 trail('trail_basin_falls', [(169.0, 299.0), (184.0, 300.0), (198.0, 302.0), (208.0, 305.0), (211.0, 312.0)])
 # Steps from the pool's rim up to the west terrace (16) and from the pool to the cave (14); each

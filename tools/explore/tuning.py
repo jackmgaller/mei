@@ -146,7 +146,7 @@ def load(cart=CART, game_schema=None):
     t = read_tune_table(tune)
     pc = read_consts(player, ['LEDGE_HANG', 'LEDGE_GRAB_TICKS', 'DIVE_MIN', 'SKID_ANGLE',
                               'WADE_NO_JUMP'])
-    ac = read_consts(attach, ['POLE_HOLD', 'HANG_BELOW'])
+    ac = read_consts(attach, ['POLE_HOLD', 'HANG_BELOW', 'HANG_FALL_MAX', 'HANG_CLEAR'])
     ground = cart / 'ground' / 'ground.akr'
     m = re.search(r'const\s+WORLD_SURFACES\s*:[^=]*=\s*\[([^\]]*)\]', _strip_comments(ground.read_text()))
     if not m:

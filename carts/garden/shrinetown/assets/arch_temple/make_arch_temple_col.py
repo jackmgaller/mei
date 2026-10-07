@@ -21,6 +21,14 @@ grab reaches 5.15 m):
 From the top roof (28 degrees) a jump up its upper slope (32 degrees) reaches the ridge (22.54),
 whose walk is widened from 1.1 to 2.5 m (a block 1 cm under its top): G5 takes off along it.
 The front veranda under the pent roof is closed off by the first block (nothing stood there).
+
+The podium's back strip (behind the hall, z 8.5 to 12: 8.6 in the town, 3.3 m south of the north
+wall's 8.95 coping) is a slope, `back_strip`: from the hall's back wall just under the back pent
+roof (7.6) down to the podium's back edge (3.6), 49 degrees, a wall to the body, across the
+podium's whole width. From the strip a wall kick and a long jump, or a hop and a dive, cleared
+the north wall: shortcut B's bypass (the explorer bot; DESIGN.md 12.10). Nothing stands on it
+now; a body landing there slides off onto the terrace behind the temple. Not an invisible wall:
+the slope lies on the podium's back, under the pent roof's eave.
 """
 import json
 from pathlib import Path
@@ -41,6 +49,23 @@ BLOCKS = [
 ]
 
 
+# The back strip's slope (the hall's frame): from (z 8.5, y 7.6) at the hall's back wall to the
+# podium's back edge (z 12, y 3.6), x -26 to 26; its ends close the wedge, and its front faces
+# south over the side strips beyond the hall's back wall (x +-18.5), not inside the hall.
+BACK = (-26.0, 26.0, 8.5, 12.0, 3.6, 7.6)
+HALL_X = 18.5
+
+
+def back_strip():
+    x0, x1, z0, z1, y0, y1 = BACK
+    h = HALL_X
+    v = [[x0, y1, z0], [x1, y1, z0], [x1, y0, z1], [x0, y0, z1], [x0, y0, z0], [x1, y0, z0],
+         [-h, y1, z0], [-h, y0, z0], [h, y1, z0], [h, y0, z0]]
+    # the slope (facing up and back), the two ends, the front's two outer parts
+    faces = [[0, 3, 2, 1], [0, 4, 3], [1, 2, 5], [0, 6, 7, 4], [8, 1, 5, 9]]
+    return {'id': 'back_strip', 'op': 'mesh', 'vertices': v, 'faces': faces, 'face_materials': ['solid'] * len(faces)}
+
+
 def box(nid, x0, x1, y0, y1, z0, z1):
     return {'id': nid, 'op': 'box', 'size': [round(x1 - x0, 3), round(y1 - y0, 3), round(z1 - z0, 3)],
             'material': 'solid', 'transform': {'translate': [round((x0 + x1) / 2, 3), round((y0 + y1) / 2, 3),
@@ -50,7 +75,7 @@ def box(nid, x0, x1, y0, y1, z0, z1):
 def main():
     shrine = json.loads(SHRINE.read_text())
     r = dict(shrine, name='arch_temple_town_col')
-    r['nodes'] = shrine['nodes'] + [box(*b) for b in BLOCKS]
+    r['nodes'] = shrine['nodes'] + [box(*b) for b in BLOCKS] + [back_strip()]
     (HERE / 'arch_temple_town_col.asset.json').write_text(json.dumps(r, indent=1) + '\n')
     print('wrote arch_temple_town_col')
 

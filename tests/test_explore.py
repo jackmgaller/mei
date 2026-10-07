@@ -127,6 +127,83 @@ class FlightTest(unittest.TestCase):
         self.assertEqual(r.outcome[0], S.FELL)
         self.assertTrue(10.0 <= r.hole_x[0] <= 14.2)
 
+    def fly_rail(self, rail, move, x, z, y=0.0, vy=None):
+        """A move under or over one rail along z at x 30 (attach.akr's rail rules)."""
+        import numpy as np
+        from explore import sim as S
+        v, fwd, ctrl, cap, gl = M.launch_state(move, self.tn)
+        b = S.Batch(np.array([x]), np.array([y]), np.array([z]), np.array([0.0]), np.array([v if vy is None else vy]),
+                    np.array([fwd]), np.array([ctrl]), np.array([cap]), np.array([0.0]), np.array([move.st], np.int8),
+                    np.array([False]), np.array([False]), max_ticks=300)
+        return S.Flyer(self.m, self.tn, rails=[dict(rail, id='r', n=0, closed=False)]).fly(b)
+
+    def test_rail_hang_rules(self):
+        from explore import sim as S
+        hop = M.BY_NAME['hop']
+        rail = {'points': [(30.0, 3.2, 10.0), (30.0, 3.2, 30.0)]}
+        self.assertEqual(self.fly_rail(rail, hop, 30.0, 20.0).outcome[0], S.HANG)
+        # a rail 1.5 m over the floor (a stair's handrail) would hold the feet in the floor: no hang
+        # (the hop comes down on it and grinds)
+        low = {'points': [(30.0, 1.5, 10.0), (30.0, 1.5, 30.0)]}
+        self.assertEqual(self.fly_rail(low, hop, 30.0, 20.0).outcome[0], S.RAIL)
+        # a hang-only rail is not ground, nor caught falling fast; a plain one is ground
+        drop = M.BY_NAME['walk_off']
+        self.assertEqual(self.fly_rail(rail, drop, 30.0, 20.0, y=4.5, vy=0.0).outcome[0], S.RAIL)
+        self.assertEqual(self.fly_rail(dict(rail, hang=True), drop, 30.0, 20.0, y=4.5, vy=0.0).outcome[0], S.LAND)
+        # a catch: within its first 3 m only
+        caught = dict(rail, hang=True, catch=3.0)
+        self.assertEqual(self.fly_rail(caught, hop, 30.0, 11.0).outcome[0], S.HANG)
+        self.assertEqual(self.fly_rail(caught, hop, 30.0, 20.0).outcome[0], S.LAND)
+
+    def test_pushed_out_of_a_wall_not_into_the_ground(self):
+        """A body pushed out of a wall is not put under a floor more than a step over its feet: a
+        column that keeps a thin wall's back face pushed a glide 0.6 m up into a bank, and it
+        flew on under the hill (the explorer's false falls through the world in the shrine town)."""
+        import numpy as np
+        from explore import sim as S
+        tn = self.tn
+        m = cliff_world(tn)
+        # falling past the cliff's face in a column of its wall: pushed out along the normal the
+        # column keeps (+x) the body went 0.25 m into the cliff, a metre under its top, and fell on
+        # under it through the world; now it comes down the face to the foot
+        b = S.Batch(np.array([19.75]), np.array([3.0]), np.array([20.0]), np.array([0.0]), np.array([0.0]),
+                    np.array([0.0]), np.ones(1), np.array([tn.mps('AirMax')]), np.zeros(1), np.array([M.ST_FALL], np.int8),
+                    np.array([False]), np.array([False]), max_ticks=600)
+        r = S.Flyer(m, tn).fly(b)
+        self.assertEqual(r.outcome[0], S.LAND)
+        self.assertAlmostEqual(float(r.y[0]), 0.0)
+
+
+def cliff_world(tn):
+    """Floors at 0 west of x 20 and at 4 east of it (x 0..40, z 0..40); the 4 m cliff's wall
+    columns keep the normal of its back face (+x), as a thin wall's column may."""
+    import numpy as np
+    from explore import world as W
+    m = object.__new__(W.WorldModel)
+    m.tuning = tn
+    m.grid = 0.25
+    m.frame = (0.0, 0.0, 40.0, 40.0)
+    m.ox = m.oz = -2.0
+    m.nx = m.nz = int(44 / 0.25) + 1
+    xs = m.ox + np.arange(m.nx) * m.grid
+    zs = m.oz + np.arange(m.nz) * m.grid
+    X, Z = np.meshgrid(xs, zs)
+    col = np.arange(m.nx * m.nz).reshape(m.nz, m.nx)
+    inside = (X >= 0) & (X <= 40) & (Z >= 0) & (Z <= 40)
+    y = np.where(X >= 20, 4.0, 0.0)
+    c = col[inside]
+    n = len(c)
+    m.floors = W._sorted(c, y[inside], ny=np.ones(n), surf=np.zeros(n, np.int32), tag=np.zeros(n, np.int32))
+    m.ceilings = W._sorted([], [], ny=[], surf=[], tag=[])
+    wc = col[inside & (X > 20 - tn.radius) & (X < 20)]
+    lo = 0.0 - max(tn.push_h)
+    hi = 4.0 - min(tn.push_h)
+    k = len(wc)
+    m.walls = W.Sorted(wc * W.KEY + lo, wc.astype(np.int64), np.full(k, lo),
+                       {'hi': np.full(k, hi), 'hx': np.full(k, 1.0), 'hz': np.zeros(k), 'ny': np.zeros(k),
+                        'tag': np.zeros(k, np.int32)})
+    return m
+
 
 def fake_world(tn):
     import numpy as np

@@ -24,7 +24,7 @@ import numpy as np
 
 from . import moves as M
 from . import sim as S
-from .world import WorldModel, entities, path_points, load_world
+from .world import KEY, WorldModel, entities, path_points, load_world
 
 DIRS8 = [(1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1)]
 SETUP = {'walk_off': 0.0, 'hop': 0.1, 'jump': 0.4, 'double': 1.0, 'double_stand': 0.8, 'third': 1.6,
@@ -178,7 +178,11 @@ class Explorer:
                 got = path_points(self.world, e.params.get('path'))
                 if got:
                     pts, closed = got
-                    self.rails.append({'id': e.id, 'n': e.n, 'path': e.params.get('path'), 'points': pts, 'closed': closed})
+                    # a hang-only rail (never ground, not caught falling fast) and where it can be
+                    # caught (within `catch` of its first point; 0: anywhere): attach.akr's rules
+                    self.rails.append({'id': e.id, 'n': e.n, 'path': e.params.get('path'), 'points': pts, 'closed': closed,
+                                       'hang': bool(e.params.get('hang', False)),
+                                       'catch': float(e.params.get('catch', 0.0) or 0.0)})
         self.pickups = []
         for e in self.ents:
             if e.type in ('coin', 'red_coin', 'star'):
@@ -202,6 +206,21 @@ class Explorer:
         self.steep = (ny < tn.slide_ny) | (surf == 2)
         self.bounce = surf == 1
         self.free = m.wall_at(col, y) < 0
+        # a floor with another floor over it inside the body's height and no ceiling between (a
+        # placement's top under the terrain: the falls cliff's 48.3 under the hill at z 345) is
+        # not stood on: the controller steps up onto the higher one. The walk graph walked under
+        # the hill there and the confirmer, put on the buried floor, fell through the world.
+        # (the ground over it only: a platform under a roof's open-bottom collision is stood on)
+        from worldkit.terrain import TAG_FIELD
+        j = np.searchsorted(F.key, col * KEY + y + tn.step, side='right')
+        jj = np.minimum(j, n - 1)
+        over = (j < n) & (F.col[jj] == col) & (F.y[jj] < y + tn.height) & (F.extra['tag'][jj] == TAG_FIELD)
+        if over.any():
+            ce = m.ceiling_above(col, y)
+            cy = m.ceilings.y[np.maximum(ce, 0)] if len(m.ceilings) else np.zeros(n)
+            over &= (ce < 0) | (cy > F.y[jj])
+        self.buried = over
+        self.free &= ~over
         step = tn.step
         down = 0.33
         src, dst, cost = [], [], []
@@ -213,12 +232,17 @@ class Explorer:
             c2 = np.where(okx, col + dz * m.nx + dx, -1)
             tgt = m.floor_below(c2, y + step)
             ty = np.where(tgt >= 0, F.y[np.maximum(tgt, 0)], -1e9)
-            moveok = self.free & (m.wall_at(c2, y) < 0) & (tgt >= 0)
+            # the walls in the next column at the feet's height there: up a step, the height of the
+            # step's top (the controller steps up in the tick it moves, and the push of the riser
+            # beyond, within the radius at the old height, only slows it: stairs whose treads are
+            # shallower than the radius are walked, scenario 715)
+            up = (tgt >= 0) & (ty > y)
+            moveok = self.free & (m.wall_at(c2, np.where(up, ty, y)) < 0) & (tgt >= 0)
             walk = moveok & (ty >= y - down) & ~(self.steep & (ty > y - 0.005))
-            drop = moveok & (ty < y - down)
+            drop = moveok & (ty < y - down) & (m.wall_at(c2, y) < 0)
             # a drop lands on the highest floor below in the next column: keep it if the body is
             # free there
-            sel = walk | (drop & (m.wall_at(c2, ty) < 0))
+            sel = (walk | (drop & (m.wall_at(c2, ty) < 0))) & ~self.buried[np.maximum(tgt, 0)]
             s = np.nonzero(sel)[0]
             src.append(s.astype(np.int32))
             dst.append(tgt[s].astype(np.int32))
@@ -248,7 +272,7 @@ class Explorer:
             c2 = np.where(ok, col[c] + (dz * m.nx + dx) * o.probe, -1)
             tgt = m.floor_below(c2, y[c] + tn.step)
             ty = np.where(tgt >= 0, F.y[np.maximum(tgt, 0)], -1e9)
-            walk = (tgt >= 0) & (ty >= y[c] - 0.33) & (m.wall_at(c2, y[c]) < 0)
+            walk = (tgt >= 0) & (ty >= y[c] - 0.33) & (m.wall_at(c2, np.maximum(ty, y[c])) < 0)
             # also a rise within reach that walking cannot take
             hi = m.floor_below(c2, y[c] + 8.0)
             rise = (hi >= 0) & (F.y[np.maximum(hi, 0)] > y[c] + tn.step)
@@ -350,7 +374,16 @@ class Explorer:
             # grind +, grind -, hang
             self.rail_nodes.append((nid, ss, total))
             nid += 3 * len(ss)
+            # where a body hangs clear of the floors under the rail (attach.akr's hang_clear())
+            r['clear'] = np.array([self.hang_clear(*self.rail_point(k, s)[0]) for s in ss], bool)
         self.n_nodes = nid
+
+    def hang_clear(self, x, y, z):
+        """attach.akr's hang_clear(): the hanging feet no more than HANG_CLEAR under the floor under
+        the rail point (x, y, z)."""
+        m, a = self.m, self.tn.attach
+        f = int(m.floor_below(np.array([m.col_of(x, z)]), np.array([y - 0.3]))[0])
+        return f < 0 or float(m.floors.y[f]) <= y - a['HANG_BELOW'] + a['HANG_CLEAR']
 
     def pole_node(self, k, yv):
         base, lv = self.pole_nodes[k]
@@ -398,6 +431,7 @@ class Explorer:
         dst = np.full(len(o), -1, np.int64)
         land = (o == S.LAND) | (o == S.LEDGE)
         dst[land] = res.floor[land]
+        dst[land & self.buried[np.maximum(dst, 0)]] = -1     # not onto a floor buried under another
         for i in np.nonzero(o == S.POLE)[0]:
             dst[i] = self.pole_node(int(res.floor[i]), res.y[i])
         for i in np.nonzero((o == S.RAIL) | (o == S.HANG))[0]:
@@ -489,20 +523,33 @@ class Explorer:
                                  k, -1, MOVE_ID[M.POLE_JUMP]))
                     rows.append((base + li, px, yv, pz, ang, 0.0, 0.0, 0.0, M.ST_FALL, k, -1, MOVE_ID[M.POLE_DROP]))
         gmin, gmax = tn.mps('GrindMin'), tn.mps('GrindMax')
+        climb_max = tn.t['GrindAccel'] / tn.t['Gravity']      # the steepest rise a grind keeps going up
         hang_v = tn.t['HangSpeed']
         for k, r in enumerate(self.rails):
             base, ss, total = self.rail_nodes[k]
             n = len(ss)
+            clear = r['clear']
             for i in range(n - 1):
                 ds = ss[i + 1] - ss[i]
-                e_src += [base + i, base + n + i + 1, base + 2 * n + i, base + 2 * n + i + 1]
-                e_dst += [base + i + 1, base + n + i, base + 2 * n + i + 1, base + 2 * n + i]
-                e_cost += [ds / (gmin * 60), ds / (gmin * 60), ds / hang_v, ds / hang_v]
-                e_mid += [MOVE_ID[M.GRIND]] * 2 + [MOVE_ID[M.HANG]] * 2
+                if not r['hang']:              # a hang-only rail is never ground
+                    # uphill only where the stick's push beats gravity (attach.akr: an uphill grind
+                    # slows under the minimum and slides back)
+                    rise = (self.rail_point(k, ss[i + 1])[0][1] - self.rail_point(k, ss[i])[0][1]) / max(ds, 1e-6)
+                    for a_, b_, up_ in ((base + i, base + i + 1, rise), (base + n + i + 1, base + n + i, -rise)):
+                        if up_ <= climb_max:
+                            e_src.append(a_)
+                            e_dst.append(b_)
+                            e_cost.append(ds / (gmin * 60))
+                            e_mid.append(MOVE_ID[M.GRIND])
+                if clear[i] and clear[i + 1]:  # a hang moves along only where it hangs clear
+                    e_src += [base + 2 * n + i, base + 2 * n + i + 1]
+                    e_dst += [base + 2 * n + i + 1, base + 2 * n + i]
+                    e_cost += [ds / hang_v, ds / hang_v]
+                    e_mid += [MOVE_ID[M.HANG]] * 2
             for i, s in enumerate(ss):
                 (x, y, z), d = self.rail_point(k, s)
                 yaw = math.atan2(d[0], d[2])
-                for sign, kind in ((1, 0), (-1, 1)):
+                for sign, kind in (() if r['hang'] else ((1, 0), (-1, 1))):
                     yw = yaw if sign > 0 else yaw + math.pi
                     for v in (gmin, gmax):
                         rows.append((base + kind * n + i, x, y, z, yw, tn.mps('GrindJumpVy'), v, 1.0, M.ST_JUMP, -1, k,
@@ -513,7 +560,9 @@ class Explorer:
                             for st in (1.0, 0.0):
                                 rows.append((base + kind * n + i, x, y, z, yw, 0.0, v, st, M.ST_FALL, -1, k,
                                              MOVE_ID[M.GRIND_END]))
-                # off a hang: drop, or a hang jump toward four sides
+                # off a hang: drop, or a hang jump toward four sides (where a hang is held)
+                if not clear[i]:
+                    continue
                 hy = y - tn.attach['HANG_BELOW']
                 rows.append((base + 2 * n + i, x, hy, z, yaw, 0.0, 0.0, 0.0, M.ST_FALL, -1, k, MOVE_ID[M.HANG_DROP]))
                 for a in (0, math.pi / 2, math.pi, -math.pi / 2):

@@ -1705,3 +1705,62 @@ climb the merge added one stand-in (the look's stand-in caps): 2,052 → 2,214 t
 Not done here: the race train (the cart); a rail camera zone per torii tunnel switchback; the kick
 cedars drawn at their trunks' size. (The level-1 roofs are the look's; the fall-through spots the
 kit's `slide_floor_degrees`, above.)
+
+### 12.10 Features
+
+#### Alpha follow-ups (branch `alpha-followups`)
+
+What the alpha fix round left (the leads' handoffs and the explorer bot's run at 509ba61). Each fix
+has a case, 680-688 (`../tests/fu_cases.akr` and `.sh`, `make test-carts`).
+
+| What | Change | Case |
+|---|---|---|
+| Shortcut B's bypass: from the temple's back podium (8.6, 3.3 m south of the north wall's 8.95 coping) a hop and a dive, or a wall kick and a long jump, cleared the wall | The podium's back strip is a slope, `back_strip` in `arch_temple_town_col` (`assets/arch_temple/make_arch_temple_col.py`): from the hall's back wall just under the back pent roof (12.6) down to the podium's back edge (8.6), 49 degrees, across the podium's whole width (x 134-186, z 230.25-233.75). A wall to the body: nothing stands on it, and a body landing there slides off onto the terrace (5.0). Its ends face south over the side strips; jumps from the side strips' back ends, north and 45 degrees out, come down south of the wall | 680 |
+| A grind up a steep rail never slowed: on any slope it went on up at the grind's minimum speed (6 m/s) | Uphill, gravity slows a grind under the minimum too, and through zero it slides back down at the minimum (`attach.akr`, `st_rail()`); a grind stopped on a slope goes back down it. The overpass's handrail (26 degrees): put on it 2 m along it grinding up at the minimum, it turns back 0.4 m higher and is off its foot in 1.0 s (the stick held up it: 0.7 m and 1.3 s). A rail gentler than GrindAccel over Gravity (9.6 degrees) is still climbed with the stick | 681 |
+| Hangs held the feet in the floor: the overpass's handrails and the arched bridge's kasagi come down to less than the hang's 1.75 m over the ground; a hang at their ends (the bot: a glide down onto the handrail) and a drop from it fell through the world | A hang only where the hanging feet are no more than 0.1 m under the floor under the rail (`attach.akr`, `hang_clear()`: no grab there, and a hang is not moved along into there). The bot's hang drops at (246.3, 96.05), (277.7, 123.05), (53, 159.2) and (43, 159.2) | 682 |
+| `coin_alley3` at (107, 0.7, 74) was inside the kura (the grey box's alley house, on the ground once the yard went to the tower) | On the kura's ridge, (107.8, 8.7, 74) (`place/street.py`), the kick pair's landing: kicks between the kura and the fire tower from the alley take it in 1.5 s | 683 |
+| `trail_canal_west` ran through the sake brewery's pad into its wall at z 218.7 | `core_park_path` (`gen_core.py`) round its east side: (26, 198), (29.5, 208), (29.5, 228), (24, 250), 2.5 m clear of the pad | 684 |
+| `stairs_ridge_basin`'s head lay 0.6-0.9 m under the ridge's crest in its own bed, under a 40-degree bank: walked down, not up (the bot: "unknown" at its start) | Its head a landing at the crest's height (22.0, x 147.5, z 263-264.4, on the crest's flat west of x 149), the ground under it set to 21.9: the bed's 2 m samples left a 33-degree dip in front of it (`make_mountain.py`) | 685 |
+| The fox shrine's plinth (13.05) lay 1-2 m under the grove's bank: the kit set it on the low side of its slope at (84, 307). A body on it walked into the hill and fell through the world (the bot's confirmed glide let-goes from (84, 13.05, 305)) | On the grove's floor at (85.5, 300.5), its plinth at 15.45, the ground under it set to 15.0 (`place/shrine.py`) | 686 |
+| The bot's drop through at (225, 327) started inside the falls' east face (a wall from 19.2 to 23.3 over the feet there: 3 m over the floors round it is inside the hill) | The bot's fault (below). The face itself holds: dropped down it from 42 m every 1.5 m, a body comes down on a floor | 687 |
+| The north stair's west edge: the ground's 2 m samples across its diagonal line left the bank beside the treads 0.2-0.6 m over them, outside its 8 m bed; a gentle face, so no wall. A body stepping off the edge fast went into the bank and fell through the world (the bot: a glide off the temple's ridge let go over the stair) | The stair's bed 10 m wide (`gen_core.py`): the bank beside the treads is under them | 688 |
+
+**The explorer bot** (`tools/explore/`; tests in `tests/test_explore.py`):
+
+- Rails: the rail entity's `hang` (never ground, not caught falling faster than 3 m/s) and `catch`
+  (caught only within it of the first point), and `hang_clear()`, in the flights and in the rail
+  nodes (no grind nodes on a hang rail; a hang moves along only where it hangs clear). Shortcut D
+  is no longer reported bypassed: the kick up the trunk does not catch the rope's far end. Uphill
+  grinds only where the stick beats gravity.
+- Walking up stairs: the wall test at the step's top, not the feet's old height (the riser beyond,
+  within the body's radius when the treads are shallower than it, only slows the controller):
+  `steps_pool_shelf`, `steps_pool_cave` and `steps_cave_terrace` walk end to end.
+- A floor with the ground over it inside the body's height (the falls cliff's top, 48.3, under the
+  hill at z 345) is not walked to, stood on or landed on: the controller steps up onto the ground.
+  The walk graph went under the hill there, and the confirmer, put on the buried floor, fell.
+- A body pushed out of a wall is not pushed under the ground: the false glide let-goes through the
+  world over the precinct and the mountain (a column keeping a thin face's back normal pushed a
+  glide 0.6 m up into the bank, and it flew on under the hill).
+- The drop check starts over a column's own faces where they stand higher than 3 m over the floors
+  round it.
+- The confirmer stands a take-off on a crack (a terrain vertex at even metres) as the controller's
+  crack bridge does, or a few centimetres off a seam (it was put at -1000 and reported falling).
+
+**The bot on this branch:** 0 escapes; 0 of 226 drops through; flights through the world 20 spots,
+0 of the first 20 confirmed; every collectible reached; shortcuts A-E the long way; of 39 paths only
+`core_north_stair` stops (at the shut north gate, as meant, and at the pagoda's wall at its top).
+Star 4's chamber: a third jump's glide from the ridge west of the cedar (122, 22.6, 274) into the
+knot hole, a route the cart repeats; not looked into here (the shrine's).
+
+**Two stale notes:** `art/preview_scratch.py --cycle` finds each region's water palettes and
+enters the region as the garden does (`water_cycle_find()`, then `water_cycle_enter(k)`), and
+`gen_core.py`'s viaduct note no longer gives the old 5.15 m reach.
+
+**Costs.** No textures. The World Checker, full (855 views): peaks 2,785 triangles, 704,850 draw
+CPU, 907,048 GPU cycles (509ba61: 2,781, 705,219, 905,293), 129 over thresholds as before; the
+pack 12,445,372 → 12,441,124 bytes. At cameras on the changes (`mei_world.py check --cameras`,
+draw CPU / GPU, 509ba61 → now): the ridge stair's head looking north 332,479 / 469,109 → 341,304
+/ 491,689 (its landing: the stair's sweep 176 → 192 faces); the fox grove looking at the shrine
+320,830 / 480,924 → 321,286 / 494,803; the grove from the bank 599,532 → 576,618; the park path at
+the brewery 444,657 → 430,669 and from the bamboo 426,802 → 402,055; the temple's back, the north
+stair's west edge and the kura's ridge within 3,300 of before.

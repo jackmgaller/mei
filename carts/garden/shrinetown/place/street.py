@@ -288,6 +288,10 @@ def town(g):
         put(f'aircon_lane_{k}', 'town_aircon_pipes', (x, 0.0, z), yaw, col='none')
 
     # ---- coins on floors: onto the real roofs (the grey box's were 0.7 over its boxes)
+    # coin_alley3 was over the grey box's alley house at (107, 74), on the ground once the yard was
+    # left to the tower, and so inside the kura (the explorer bot: not reachable): on the kura's
+    # ridge (8.0), the tower's kicks' landing
+    _move_entity(cells, 'coin_alley3', (KURA[0], 8.0, KURA[2]))
     _reseat_coins(cells, placed)
 
 
