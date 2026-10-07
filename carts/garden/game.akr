@@ -17,6 +17,7 @@ import "shadow.akr"
 import "cardnames.akr"
 import "hud.akr"
 import "sound_hooks.akr"       // the sound and music (audio/WIRING.md)
+import "arrival.akr"
 
 const MAX_CATCH_UP = 4         // ticks run at most in one update()
 
@@ -53,6 +54,7 @@ fn init() {
     cam_reset()
     sound_init()
     cam_intro()
+    arrival_open()
     timing_start()
     last_frame = FRAME
     test_init()
@@ -102,14 +104,15 @@ fn update() {
         if held(LEFT) { look.x = -1.0 }
         if held(RIGHT) { look.x = 1.0 }
     }
-    if pressed(Y) && !menu_open { player_respawn() }       // a challenge running is lost (goals_respawn())
-    if pressed(Y) && !menu_open { ga_play(GA_S_WINDUP) }   // the key wound (sound_hooks.akr)
+    if pressed(Y) && !menu_open && !arrival_busy() { player_respawn() }       // a challenge running is lost (goals_respawn())
+    if pressed(Y) && !menu_open && !arrival_busy() { ga_play(GA_S_WINDUP) }   // the key wound (sound_hooks.akr)
     if ticks(T.Night) != world_variant { world_set_variant(ticks(T.Night)) }
     read_input(s)
     let n = clamp((FRAME - last_frame) as s32, 1, MAX_CATCH_UP)
     last_frame = FRAME
     for k in 0..n {
         attach_tick()
+        arrival_tick()                  // the arrival train, and the input while arriving
         goals_pre(&pin)
         player_tick(&pin)
         goals_tick()
@@ -126,6 +129,7 @@ fn update() {
     use_doors()
     follow_region()
     cam_place()
+    arrival_cam()
     sound_frame()
     test_hook(frame_n)
     timing_frame()
@@ -189,6 +193,7 @@ fn world_switch(k: s32) {
     goals_init()
     cam_reset()
     cam_intro()
+    arrival_open()
     door_wait = true
 }
 
@@ -248,11 +253,12 @@ fn draw() {
     attach_draw()
     updraft_draw()
     goals_draw()
-    body_shown = cam.reach >= CAM_BODY_HIDE             // the eye in the robot's head: not drawn
+    body_shown = cam.reach >= CAM_BODY_HIDE && !arrival_hides_body()   // the eye in the robot's head, or on the train: not drawn
     if body_shown {
         body_draw()
         shadow_draw()
     }
     goals_hud()
+    arrival_draw()
     hud_draw()
 }

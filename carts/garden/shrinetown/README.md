@@ -26,7 +26,9 @@ ladders A and E held on their front. The entities are in `game.py`; how the cart
 
 **Getting in.** Walk into the road works at the west end of the shrine's road (the shrine is
 the garden's second world: the torii at the foot of the garden's shrine hill): the road goes on
-into the shrine town, to the spawn in the station plaza. The shrine town's konbini door leads to
+into the shrine town. The first time in a session the player arrives there by train, stepping
+off onto the island platform facing north (A or B skips it; DESIGN.md 12.10); later, and after a
+respawn, at the spawn in the station plaza. The shrine town's konbini door leads to
 the garden; its road works at the front road's west end lead back to the shrine. A picture
 without playing (the world is built with the garden cart):
 
@@ -87,6 +89,7 @@ seamless edge to downtown (DESIGN.md 7.1), road works until downtown exists.
 | 465, 466 | The progress on a memory card: written (shortcut E, star 4), then read at start-up |
 | 467 | Ladders A and E: not grabbed while up; held on the front, not gone round |
 | 640–648 | The updrafts (DESIGN.md 12.10, `updraft_cases.akr`): red coin 7 by the sento's steam from the danchi, the falls' mist, G8's chain through the courtyard's smoke from four take-offs, star 1 from no cap, no lift without the glider, the plumes' cost |
+| 620–626 | Arriving by train (`arrival_cases.akr`): playing on the platform facing north at 3.5 s; A or B skips; Y and respawns go to the plaza, never the train; only the first opening of a session; by day and by night |
 | 580 | The frame: the 29 ways out the alpha review found (cemetery terraces, under and on the viaduct's end, its parapet rails, the west hoarding, the canal's spring, the path-out torii, the brewery's roof), each closed (`frame_cases.akr`) |
 | 581–584 | The frame, south, north, west and east: every 8 m of edge a walk, a backflip and a glide (`frame_probes.akr`, from `tools/frame.py --probes`); no probe leaves the level |
 

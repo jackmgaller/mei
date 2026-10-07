@@ -33,6 +33,7 @@ import "shrinezone_cases.akr" // the shrine zone's routes, 700-789 (the shrine t
 import "sp_cases.akr"         // the sound and the far plain, 660-679 (the shrine town)
 import "fu_cases.akr"         // the alpha follow-ups, 680-699 (the shrine town)
 import "updraft_cases.akr"    // the shrine town's updrafts, 640-659
+import "arrival_cases.akr"    // arriving by train (in the shrine town), 620-639
 
 var pad_v: u32                 // the pad and stick for the next frame
 var stick_v: vec2
@@ -74,6 +75,8 @@ fn start_world() -> s32 {
     if SCENARIO >= 700 && SCENARIO < 790 { return GARDEN_WORLD_SHRINETOWN }
     if SCENARIO >= 680 && SCENARIO < 700 { return GARDEN_WORLD_SHRINETOWN }
     if SCENARIO >= 640 && SCENARIO < 660 { return GARDEN_WORLD_SHRINETOWN }
+    if SCENARIO == 624 { return GARDEN_WORLD_SHRINE }
+    if SCENARIO >= 620 && SCENARIO < 640 { return GARDEN_WORLD_SHRINETOWN }
     if SCENARIO >= 790 && SCENARIO < 800 { return GARDEN_WORLD_SHRINE }
     if SCENARIO >= 660 && SCENARIO < 680 { return GARDEN_WORLD_SHRINETOWN }
     return GARDEN_WORLD_GARDEN
@@ -183,7 +186,7 @@ fn test_init() {
         30 => { name = "camera sweep at the spawn: frame timing"; place_at_spawn(); cam_reset() }
         28 => { name = "crouch and crawl"; place(lane, EAST) }
         else => {
-            if !camera_case_init() && !attach_case_init() && !shrine_case_init() && !town_case_init() && !goals_case_init() && !route_case_init() && !frame_case_init() && !shz_case_init() && !sp_case_init() && !fu_case_init() && !sn_case_init() && !ud_case_init() { name = "picture" }
+            if !camera_case_init() && !attach_case_init() && !shrine_case_init() && !town_case_init() && !goals_case_init() && !route_case_init() && !frame_case_init() && !shz_case_init() && !sp_case_init() && !fu_case_init() && !sn_case_init() && !ud_case_init() && !at_case_init() { name = "picture" }
         }
     }
 }
@@ -233,11 +236,12 @@ fn scenario(f: s32) {
             goals_case(f)
             route_case(f)
             frame_case(f)
-            shz_case(f)
+            if SCENARIO >= 700 && SCENARIO < 800 { shz_case(f) }     // its else runs a route (and prints DONE) for any number
             sp_case(f)
             fu_case(f)
             sn_case(f)
             ud_case(f)
+            at_case(f)
         }
     }
 }

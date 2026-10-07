@@ -603,6 +603,23 @@
    }
   },
   {
+   "id": "train_arrival",
+   "type": "mover",
+   "position": [
+    134.0,
+    9.0,
+    3.99
+   ],
+   "asset": "train_emu_pair",
+   "collision": "train_emu_pair_col",
+   "params": {
+    "path": "arrive_track1_in",
+    "period": 1,
+    "mode": "loop",
+    "start": "arrival"
+   }
+  },
+  {
    "id": "coin_stair0_0",
    "type": "coin",
    "position": [
