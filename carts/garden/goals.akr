@@ -258,6 +258,7 @@ fn trig_fire(e: *WpEntity, p: *GardenTrigger) {
     }
     trig_layers(p)
     if p.keep { prog_put(e) }
+    sound_trig(e, p)                // the bell, a shortcut (sound_hooks.akr)
 }
 
 // Before the player's tick: B in a press trigger presses it (and is no dive).

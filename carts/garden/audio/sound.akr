@@ -1,0 +1,741 @@
+// The movement garden's sound: the music, the places, the robot and the goals (WIRING.md says
+// where the cart calls each function). Everything plays from ROM; this file's state is the RAM.
+//
+// Channels:
+//   0-6    the music ("Momiji", music_data.akr): a sequencer after carts/weather/music.akr, five
+//          tracks (koto, flute, sho, bass, drums) whose gains the zone's mix sets; dry
+//   7, 8   the zone's bed (a looped ambience), crossfading when the bed changes
+//   9, 10  the two loudest emitters (positional loops: falls, stream, watermill, shop music,
+//          the train)
+//   11     the robot's loop (glide, rail grind, wall slide)
+//   12-15  sounds (voice.akr): the robot, the goals, timers at a place, life
+//
+// The zone (sound_data.akr, the first box holding the feet) chooses the bed, the music's mix,
+// the reverb preset and its wet level, the footstep material and the life heard now and then.
+// The global reverb takes the robot, the goals, the emitters and the timers, not the music or
+// the beds; a change of preset fades the wet level out and back in, because changing it clears
+// the reverb's memory.
+//
+// Nothing here reads RAND: it keeps its own random numbers, so sound never changes a test.
+
+import "sound_data.akr"
+import "music_data.akr"
+
+const GA_MU_NV = 7
+const GA_CH_BED = 7              // and 8
+const GA_CH_EM = 9               // and 10
+const GA_EM_CH = 2
+const GA_CH_LOOP = 11
+const GA_CH_SFX = 12             // 12-15
+
+// priorities for voice.akr
+const GA_PRI_LIFE = 0
+const GA_PRI_STEP = 1
+const GA_PRI_PLACE = 2
+const GA_PRI_ROBOT = 3
+const GA_PRI_GOAL = 6
+
+// the red coins' notes: D E G A B D E G
+const GA_RED_PITCH: [8]fixed = [1.0, 1.12246, 1.33484, 1.49831, 1.68179, 2.0, 2.24492, 2.66968]
+
+var ga_sfx: Voices
+var ga_world_k: s32 = -1
+var ga_zone: s32 = -1            // the zone the feet are in (an index into GA_ZONES), for readouts
+var ga_music_vol = 220           // 0-256: the music's master volume
+var ga_sfx_vol = 256             // 0-256: everything else
+
+private var seed: u32 = 0x6A09E667
+private var t_world: s32         // frames since the world opened
+
+// listener
+private var ear_x: s32           // m x 16
+private var ear_y: s32
+private var ear_z: s32
+private var ear_rx: fixed        // the listener's right, on the ground
+private var ear_rz: fixed
+
+// ================================================================== small helpers
+
+private fn rand(n: s32) -> s32 {
+    seed = seed * 1664525 + 1013904223
+    if n <= 0 { return 0 }
+    return ((seed >> 8) % (n as u32)) as s32
+}
+
+private fn m16(v: fixed) -> s32 { return bits(v) >> 12 }
+
+private fn snd_data(id: s32) -> *u8 { return GA_BANK + GA_SND[id * 6] }
+private fn snd_pitch(id: s32) -> fixed { return from_bits(GA_SND[id * 6 + 3]) }
+
+private fn snd_flags(id: s32, looping: bool) -> u32 {
+    var f = SND_ADPCM
+    if GA_SND[id * 6 + 5] != 0 { f = f | SND_REVERB }
+    if looping { f = f | SND_LOOP }
+    return f as u32
+}
+
+private fn approach(v: s32, target: s32, up: s32, down: s32) -> s32 {
+    if v < target { return min(target, v + up) }
+    if v > target { return max(target, v - down) }
+    return v
+}
+
+// Left and right volumes (0-255) for volume v (0-255) and pan p (-256 left .. 256 right).
+private fn side_l(v: s32, p: s32) -> s32 { return clamp(v * min(256, 256 - p) >> 8, 0, 255) }
+private fn side_r(v: s32, p: s32) -> s32 { return clamp(v * min(256, 256 + p) >> 8, 0, 255) }
+
+// ================================================================== position
+
+private var hit_pan: s32         // set by heard(): the pan of the last position asked about
+
+// How loud (0-256) a source at the nearest point of segment a-b (m x 16) is, full within
+// r_full m and silent beyond r_zero m; sets hit_pan.
+private fn heard(ax: s32, ay: s32, az: s32, bx: s32, by: s32, bz: s32, r_full: s32, r_zero: s32) -> s32 {
+    var cx = ax
+    var cy = ay
+    var cz = az
+    let dx = bx - ax
+    let dy = by - ay
+    let dz = bz - az
+    let den = dx * dx + dy * dy + dz * dz
+    if den > 256 {
+        let num = (ear_x - ax) * dx + (ear_y - ay) * dy + (ear_z - az) * dz
+        let t = clamp(num / (den >> 8), 0, 256)
+        cx = ax + (dx * t >> 8)
+        cy = ay + (dy * t >> 8)
+        cz = az + (dz * t >> 8)
+    }
+    let ex = clamp(cx - ear_x, -12000, 12000)
+    let ey = clamp(cy - ear_y, -12000, 12000)
+    let ez = clamp(cz - ear_z, -12000, 12000)
+    let e2 = ex * ex + ey * ey + ez * ez
+    let d16 = bits(sqrt(from_bits(e2))) >> 8          // metres x 16
+    hit_pan = 0
+    if d16 > 24 {
+        let fx = fixed(ex) / 16
+        let fz = fixed(ez) / 16
+        let side = (fx * ear_rx + fz * ear_rz) / (fixed(d16) / 16)
+        hit_pan = clamp(bits(side) >> 8, -200, 200)
+    }
+    let rf = r_full * 16
+    let rz = r_zero * 16
+    if d16 <= rf { return 256 }
+    if d16 >= rz { return 0 }
+    let u = (rz - d16) * 256 / (rz - rf)               // 0..256, then squared: a softer edge
+    return u * u >> 8
+}
+
+// ================================================================== sounds (channels 12-15)
+
+// Plays sound id once at volume vol (0-255), pan p, pitch (x its own), priority pri.
+fn ga_sound(id: s32, vol: s32, p: s32, pitch: fixed, pri: s32) -> s32 {
+    if id < 0 || id >= GA_SOUNDS { return -1 }
+    let v = vol * ga_sfx_vol >> 8
+    if v <= 0 { return -1 }
+    return voice_play(&ga_sfx, id, pri, 2, snd_data(id), GA_SND[id * 6 + 1] as u32, snd_pitch(id) * pitch,
+                      side_l(v, p), side_r(v, p), snd_flags(id, false))
+}
+
+// Sound id at its own volume, in the middle.
+fn ga_play(id: s32) {
+    var pri = GA_PRI_ROBOT
+    if id >= GA_S_COIN && id <= GA_S_DOOR { pri = GA_PRI_GOAL }
+    ga_sound(id, GA_SND[id * 6 + 4], 0, 1.0, pri)
+}
+
+// Sound id from a place: full within r_full m, silent beyond r_zero m.
+fn ga_play_at(id: s32, pos: vec3, r_full: s32, r_zero: s32) {
+    let x = m16(pos.x)
+    let y = m16(pos.y)
+    let z = m16(pos.z)
+    let g = heard(x, y, z, x, y, z, r_full, r_zero)
+    if g > 0 { ga_sound(id, GA_SND[id * 6 + 4] * g >> 8, hit_pan, 1.0, GA_PRI_GOAL) }
+}
+
+// ================================================================== the robot
+
+private var stride: fixed        // metres walked since the last step
+private var loop_id: s32 = -1
+private var clock_last: s32 = -1
+
+// The footstep material: the floor's surface byte when it names one (3 water, the shrine
+// town's; and WIRING.md's proposal: 4 wood, 5 gravel, 6 earth, 7 tile, 8 metal), water when
+// wading, else the zone's.
+fn ga_material(surface: s32, wading: bool) -> s32 {
+    if wading { return GA_MAT_WATER }
+    match surface {
+        3 => return GA_MAT_WATER
+        4 => return GA_MAT_WOOD
+        5 => return GA_MAT_GRAVEL
+        6 => return GA_MAT_EARTH
+        7 => return GA_MAT_TILE
+        8 => return GA_MAT_METAL
+        else => {}
+    }
+    if ga_zone >= 0 { return GA_ZONES[ga_zone * 13 + 11] }
+    return GA_MAT_STONE
+}
+
+// One footstep on material mat (GA_MAT_*), louder with speed (m/tick).
+fn ga_step(mat: s32, speed: fixed) {
+    let id = GA_STEP[clamp(mat, 0, 6)]
+    let v = GA_SND[id * 6 + 4] * clamp(150 + bits(speed * 600.0) >> 16, 150, 256) >> 8
+    let pitch = 1.0 + fixed(rand(13) - 6) / 100
+    ga_sound(id, v, rand(41) - 20, pitch, GA_PRI_STEP)
+}
+
+// Every tick: footsteps from the distance run on the ground. speed in metres a tick.
+fn ga_walk(speed: fixed, on_ground: bool, surface: s32, wading: bool) {
+    if !on_ground || speed < 0.01 {
+        stride = 0.45
+        return
+    }
+    stride += speed
+    let mps = speed * 60.0
+    let len = 0.55 + mps * 0.07
+    if stride >= len {
+        stride -= len
+        ga_step(ga_material(surface, wading), speed)
+    }
+}
+
+// The robot's jumps: 0 jump, 1 double jump, 2 the third jump, a side flip or a backflip (the
+// wind-up spin), 3 a long jump.
+fn ga_jump(kind: s32) {
+    match kind {
+        1 => ga_sound(GA_S_JUMP, GA_SND[GA_S_JUMP * 6 + 4], 0, 1.18, GA_PRI_ROBOT)
+        2 => ga_sound(GA_S_JUMP_SPIN, GA_SND[GA_S_JUMP_SPIN * 6 + 4], 0, 1.0, GA_PRI_ROBOT)
+        3 => ga_sound(GA_S_JUMP, GA_SND[GA_S_JUMP * 6 + 4], 0, 0.84, GA_PRI_ROBOT)
+        else => ga_sound(GA_S_JUMP, GA_SND[GA_S_JUMP * 6 + 4], 0, 1.0, GA_PRI_ROBOT)
+    }
+}
+
+// Landing: a footstep's material under the clunk; hard (a ground pound) is the big one.
+fn ga_land(hard: bool, mat: s32) {
+    if hard {
+        ga_play(GA_S_LAND_HARD)
+    } else {
+        ga_play(GA_S_LAND)
+    }
+    ga_step(mat, 0.1)
+    stride = 0.0
+}
+
+// The robot's loop on channel 11: GA_S_GLIDE, GA_S_RAIL_GRIND, GA_S_WALL_SLIDE (-1: none),
+// at volume vol (0-255) and pitch (x its own). Call it every tick while it should sound.
+fn ga_loop(id: s32, vol: s32, pitch: fixed) {
+    if id < 0 {
+        if loop_id >= 0 { stop(GA_CH_LOOP) }
+        loop_id = -1
+        return
+    }
+    let v = vol * ga_sfx_vol >> 8
+    if id != loop_id || !sound_playing(GA_CH_LOOP) {
+        play_sample(GA_CH_LOOP, snd_data(id), GA_SND[id * 6 + 1] as u32, GA_SND[id * 6 + 2] as u32,
+                    snd_pitch(id) * pitch, v, v, snd_flags(id, true))
+        loop_id = id
+    } else {
+        sound_vol(GA_CH_LOOP, v, v)
+        sound_pitch(GA_CH_LOOP, snd_pitch(id) * pitch)
+    }
+}
+
+// ================================================================== goals
+
+// The n-th red coin taken (1-8): a koto note a step up the scale each time.
+fn ga_red_coin(n: s32) {
+    ga_sound(GA_S_RED_COIN, GA_SND[GA_S_RED_COIN * 6 + 4], 0, GA_RED_PITCH[clamp(n - 1, 0, 7)], GA_PRI_GOAL)
+}
+
+private var duck_t: s32          // frames the music stays ducked
+
+// A star taken: the fanfare, the music ducked under it.
+fn ga_star_get() {
+    ga_play(GA_S_STAR_GET)
+    duck_t = 230
+}
+
+// A star coming down at pos: heard from far.
+fn ga_star_appear(pos: vec3) { ga_play_at(GA_S_STAR_APPEAR, pos, 30, 260) }
+
+// The stage's temple bell at pos: heard in the whole level, through the zone's reverb.
+fn ga_bell(pos: vec3) {
+    let x = m16(pos.x)
+    let y = m16(pos.y)
+    let z = m16(pos.z)
+    let g = max(heard(x, y, z, x, y, z, 40, 700), 90)
+    ga_sound(GA_S_BELL, GA_SND[GA_S_BELL * 6 + 4] * g >> 8, hit_pan, 1.0, GA_PRI_GOAL + 1)
+    duck_t = max(duck_t, 200)
+}
+
+// A challenge's clock, every tick it runs: a tick each second, each half second in the last ten.
+fn ga_clock(ticks_left: s32) {
+    if ticks_left <= 0 {
+        clock_last = -1
+        return
+    }
+    var every = 60
+    if ticks_left <= 600 { every = 30 }
+    if ticks_left % every == 0 && ticks_left != clock_last {
+        clock_last = ticks_left
+        var pitch: fixed = 1.0
+        if (ticks_left / every) % 2 == 1 { pitch = 0.84 }
+        ga_sound(GA_S_CLOCK_TICK, GA_SND[GA_S_CLOCK_TICK * 6 + 4], 0, pitch, GA_PRI_GOAL)
+    }
+}
+
+// ================================================================== the music (channels 0-6)
+
+const GA_MU_FULL = 32767
+const GA_MU_TWO_PI = 411775
+const GA_MU_KILL = 2
+const GA_MU_PITCH: [3]fixed = [1.0, 2.0, 4.0]
+
+private var mu_on: bool
+private var mu_gain: s32         // 0-256, with the master volume and the duck
+private var mu_tgain: [5]s32     // each track's gain now (x 256), toward the mix's
+private var v_on: [7]bool
+private var v_inst: [7]s32
+private var v_track: [7]s32
+private var v_lvl: [7]s32
+private var v_state: [7]s32      // 1 attack, 2 sustain or decay, 3 release
+private var v_age: [7]s32
+private var v_hold: [7]s32
+private var v_rel: [7]s32
+private var v_vol: [7]s32
+private var v_pan: [7]s32
+private var v_ph: [7]s32
+private var v_out: [7]s32
+private var t_slot: [5]s32
+private var t_last: [5]s32
+private var t_sec: [5]s32
+private var t_pos: [5]s32        // ticks x 256 into the section
+private var t_ev: [5]s32
+private var t_end: [5]s32
+
+private fn mu_begin(k: s32) {
+    let slot = (GA_MU_TRACK[k * 2] + t_slot[k]) * 2
+    let n = GA_MU_SLOT[slot + 1]
+    var v = 0
+    if n > 1 && t_last[k] >= 0 {
+        v = rand(n - 1)
+        if v >= t_last[k] { v += 1 }
+    }
+    t_last[k] = v
+    let sec = (GA_MU_SLOT[slot] + v) * 3
+    t_sec[k] = sec
+    t_ev[k] = GA_MU_SEC[sec]
+    t_end[k] = GA_MU_SEC[sec] + GA_MU_SEC[sec + 1]
+}
+
+private fn mu_note(k: s32, packed: s32, dur: s32) {
+    let inst = (packed & 15) * 12
+    let nt = (packed >> 4) & 127
+    let lo = GA_MU_INST[inst + 9]
+    if nt < lo || nt > GA_MU_INST[inst + 10] { return }
+    let map = GA_MU_NMAP[GA_MU_INST[inst + 8] + nt - lo]
+    if map < 0 { return }
+    if mu_tgain[k] == 0 { return }               // a layer turned off plays nothing
+    let smp = (map & 0xFFFF) * 4
+    let shift = map >> 16
+    let mode = GA_MU_INST[inst]
+    var v = -1
+    var quiet = 1 << 30
+    for i in 0..GA_MU_NV {
+        if !v_on[i] {
+            v = i
+            break
+        }
+        var q = v_out[i]
+        if GA_MU_INST[v_inst[i]] == 2 && v_state[i] != 3 { q += 1024 }
+        if q < quiet {
+            quiet = q
+            v = i
+        }
+    }
+    var flags = SND_ADPCM
+    if mode != 3 { flags = flags | SND_LOOP }
+    play_sample(v, GA_MU_BANK + GA_MU_SAMP[smp], GA_MU_SAMP[smp + 1] as u32, GA_MU_SAMP[smp + 2] as u32,
+                GA_MU_PITCH[shift], 0, 0, flags as u32)
+    v_on[v] = true
+    v_inst[v] = inst
+    v_track[v] = k
+    v_age[v] = 0
+    v_hold[v] = GA_MU_SAMP[smp + 3] >> shift
+    v_vol[v] = ((packed >> 11) & 127) * GA_MU_INST[inst + 4] >> 7
+    v_pan[v] = ((packed >> 18) & 127) * 2 + 1
+    v_ph[v] = rand(GA_MU_TWO_PI)
+    v_out[v] = 0
+    if mode == 2 {
+        v_lvl[v] = 0
+        v_state[v] = 1
+    } else {
+        v_lvl[v] = GA_MU_FULL
+        v_state[v] = 2
+    }
+    if dur > 0 { v_rel[v] = dur * 256 / GA_MU_TEMPO } else { v_rel[v] = -1 }
+}
+
+private fn mu_track(k: s32) {
+    t_pos[k] += GA_MU_TEMPO
+    while true {
+        let now = t_pos[k] >> 8
+        var e = t_ev[k]
+        while e < t_end[k] && GA_MU_EV[e * 2] & 0xFFFF <= now {
+            mu_note(k, GA_MU_EV[e * 2 + 1], GA_MU_EV[e * 2] >> 16)
+            e += 1
+        }
+        t_ev[k] = e
+        let length = GA_MU_SEC[t_sec[k] + 2]
+        if now < length { return }
+        t_pos[k] -= length << 8
+        t_slot[k] = (t_slot[k] + 1) % GA_MU_TRACK[k * 2 + 1]
+        if t_slot[k] == 0 { t_last[k] = -1 }
+        mu_begin(k)
+    }
+}
+
+private fn mu_voice(i: s32) {
+    let inst = v_inst[i]
+    let mode = GA_MU_INST[inst]
+    let age = v_age[i] + 1
+    v_age[i] = age
+    var l = v_lvl[i]
+    var st = v_state[i]
+    if v_rel[i] >= 0 && age >= v_rel[i] { st = 3 }
+    if st == 1 {
+        l += GA_MU_INST[inst + 1]
+        if l >= GA_MU_FULL {
+            l = GA_MU_FULL
+            st = 2
+        }
+    } else if st == 2 {
+        if mode == 1 && age > v_hold[i] {
+            l = l * GA_MU_INST[inst + 2] >> 16
+            if l < GA_MU_FULL / 24 { l = 0 }
+        }
+    } else {
+        l = l * GA_MU_INST[inst + 3] >> 16
+        if l < GA_MU_FULL / 16 { l = 0 }
+    }
+    v_lvl[i] = l
+    v_state[i] = st
+    var v = v_vol[i] * l >> 15
+    let depth = GA_MU_INST[inst + 6]
+    if depth > 0 {
+        let ph = (v_ph[i] + GA_MU_INST[inst + 7]) % GA_MU_TWO_PI
+        v_ph[i] = ph
+        let s = bits(sin(from_bits(ph))) >> 8
+        v = v * (256 - (depth * (256 - s) >> 9)) >> 8
+    }
+    if v < GA_MU_KILL && st != 1 {
+        v_on[i] = false
+        stop(i)
+        return
+    }
+    v_out[i] = v
+    v = v * mu_gain >> 8
+    v = v * mu_tgain[v_track[i]] >> 8
+    let pan = v_pan[i]
+    let left = clamp(v * min(256, (256 - pan) * 2) >> 8, 0, 255)
+    let right = clamp(v * min(256, pan * 2) >> 8, 0, 255)
+    sound_vol(i, left, right)
+}
+
+private fn mu_frame(mix: s32) {
+    if !mu_on { return }
+    var target = ga_music_vol
+    if duck_t > 0 {
+        duck_t -= 1
+        target = target * 70 >> 8
+    }
+    mu_gain = approach(mu_gain, target, 2, 6)
+    for k in 0..GA_MU_TRACKS {
+        var want = 0
+        if mix >= 0 { want = GA_MIXES[mix * 5 + k] }
+        mu_tgain[k] = approach(mu_tgain[k], want, 2, 2)
+    }
+    for k in 0..GA_MU_TRACKS { mu_track(k) }
+    let active = sound_active()
+    for i in 0..GA_MU_NV {
+        if v_on[i] {
+            if (active >> i as u32) & 1 == 0 { v_on[i] = false } else { mu_voice(i) }
+        }
+    }
+}
+
+// ================================================================== beds (channels 7-8)
+
+private var bed_snd: [2]s32
+private var bed_lvl: [2]s32
+private var bed_tgt: [2]s32
+private var bed_front: s32
+
+private fn bed_want(id: s32, vol: s32) {
+    let f = bed_front
+    let b = 1 - f
+    if id == bed_snd[f] && id >= 0 {
+        bed_tgt[f] = vol
+        return
+    }
+    if id >= 0 && id == bed_snd[b] && sound_playing(GA_CH_BED + b) {
+        bed_tgt[b] = vol
+        bed_tgt[f] = 0
+        bed_front = b
+        return
+    }
+    bed_tgt[f] = 0
+    if id < 0 { return }
+    play_sample(GA_CH_BED + b, snd_data(id), GA_SND[id * 6 + 1] as u32, GA_SND[id * 6 + 2] as u32,
+                snd_pitch(id), 0, 0, snd_flags(id, true))
+    bed_snd[b] = id
+    bed_lvl[b] = 0
+    bed_tgt[b] = vol
+    bed_front = b
+}
+
+private fn bed_frame() {
+    for c in 0..2 {
+        let id = bed_snd[c]
+        if id < 0 { continue }
+        bed_lvl[c] = approach(bed_lvl[c], bed_tgt[c], 3, 3)
+        if bed_lvl[c] == 0 && bed_tgt[c] == 0 {
+            stop(GA_CH_BED + c)
+            bed_snd[c] = -1
+            continue
+        }
+        let v = (GA_SND[id * 6 + 4] * bed_lvl[c] >> 8) * ga_sfx_vol >> 8
+        sound_vol(GA_CH_BED + c, v, v)
+    }
+}
+
+// ================================================================== reverb
+
+private var rv_preset: s32
+private var rv_want: s32
+private var rv_wet: s32
+private var rv_target: s32
+
+private fn rv_frame() {
+    if rv_want != rv_preset {
+        rv_wet = max(0, rv_wet - 10)
+        if rv_wet == 0 {
+            rv_preset = rv_want
+            reverb(rv_preset, 0, 0)
+        }
+    } else {
+        rv_wet = approach(rv_wet, rv_target, 4, 6)
+    }
+    let w = rv_wet * ga_sfx_vol >> 8
+    REVERB_VOL = (w as u32) | ((w as u32) << 8)
+}
+
+// ================================================================== emitters (channels 9-10)
+
+private var em_at: [2]s32        // the emitter on each channel (-1: none)
+private var em_lvl: [2]s32
+private var em_moved: [8]bool    // a moving emitter's place, set by ga_emitter_move()
+private var em_x: [8]s32
+private var em_y: [8]s32
+private var em_z: [8]s32
+private var em_g: [8]s32
+private var em_p: [8]s32
+
+// Places moving emitter n of the world (GA_EM_TRAIN) this frame; on false it is silent.
+fn ga_emitter_move(n: s32, pos: vec3, on: bool) {
+    if n < 0 || n >= 8 { return }
+    em_moved[n] = on
+    em_x[n] = m16(pos.x)
+    em_y[n] = m16(pos.y)
+    em_z[n] = m16(pos.z)
+}
+
+private fn em_frame() {
+    let first = GA_WORLD_EMITTERS[ga_world_k * 2]
+    let count = min(GA_WORLD_EMITTERS[ga_world_k * 2 + 1], 8)
+    var best0 = -1
+    var best1 = -1
+    for n in 0..count {
+        let e = (first + n) * 11
+        var g = 0
+        if GA_EMITTERS[e + 10] != 0 {
+            if em_moved[n] {
+                g = heard(em_x[n], em_y[n], em_z[n], em_x[n], em_y[n], em_z[n], GA_EMITTERS[e + 7], GA_EMITTERS[e + 8])
+            }
+        } else {
+            g = heard(GA_EMITTERS[e + 1], GA_EMITTERS[e + 2], GA_EMITTERS[e + 3], GA_EMITTERS[e + 4],
+                      GA_EMITTERS[e + 5], GA_EMITTERS[e + 6], GA_EMITTERS[e + 7], GA_EMITTERS[e + 8])
+        }
+        em_g[n] = g * GA_EMITTERS[e + 9] >> 8
+        em_p[n] = hit_pan
+        if em_g[n] <= 0 { continue }
+        if best0 < 0 || em_g[n] > em_g[best0] {
+            best1 = best0
+            best0 = n
+        } else if best1 < 0 || em_g[n] > em_g[best1] {
+            best1 = n
+        }
+    }
+    // keep a chosen emitter on its channel; give the others a free one
+    for c in 0..GA_EM_CH {
+        let n = em_at[c]
+        if n >= 0 && n != best0 && n != best1 {
+            stop(GA_CH_EM + c)
+            em_at[c] = -1
+        }
+    }
+    for pick in 0..2 {
+        var n = best0
+        if pick == 1 { n = best1 }
+        if n < 0 || em_at[0] == n || em_at[1] == n { continue }
+        var c = 0
+        if em_at[0] >= 0 { c = 1 }
+        let id = GA_EMITTERS[(first + n) * 11]
+        play_sample(GA_CH_EM + c, snd_data(id), GA_SND[id * 6 + 1] as u32, GA_SND[id * 6 + 2] as u32,
+                    snd_pitch(id), 0, 0, snd_flags(id, true))
+        em_at[c] = n
+        em_lvl[c] = 0
+    }
+    for c in 0..GA_EM_CH {
+        let n = em_at[c]
+        if n < 0 { continue }
+        em_lvl[c] = approach(em_lvl[c], em_g[n], 8, 8)
+        let v = em_lvl[c] * ga_sfx_vol >> 8
+        sound_vol(GA_CH_EM + c, side_l(v, em_p[n]), side_r(v, em_p[n]))
+    }
+    for n in 0..8 { em_moved[n] = false }        // a moving emitter is placed again each frame
+}
+
+// Whether emitter n of the world (GA_EM_*) holds one of the two emitter channels now (a readout).
+fn ga_emitter_on(n: s32) -> bool { return em_at[0] == n || em_at[1] == n }
+
+private fn em_stop() {
+    for c in 0..GA_EM_CH {
+        if em_at[c] >= 0 { stop(GA_CH_EM + c) }
+        em_at[c] = -1
+    }
+    for n in 0..8 { em_moved[n] = false }
+}
+
+// ================================================================== timers and life
+
+private var tm_next: [8]s32
+private var life_wait: [8]s32
+
+private fn tm_frame() {
+    let first = GA_WORLD_TIMERS[ga_world_k * 2]
+    let count = min(GA_WORLD_TIMERS[ga_world_k * 2 + 1], 8)
+    for n in 0..count {
+        if t_world < tm_next[n] { continue }
+        let e = (first + n) * 10
+        tm_next[n] = t_world + GA_TIMERS[e + 7] + rand(GA_TIMERS[e + 8] + 1)
+        let g = heard(GA_TIMERS[e + 1], GA_TIMERS[e + 2], GA_TIMERS[e + 3], GA_TIMERS[e + 1], GA_TIMERS[e + 2],
+                      GA_TIMERS[e + 3], GA_TIMERS[e + 4], GA_TIMERS[e + 5])
+        let id = GA_TIMERS[e]
+        if g > 0 { ga_sound(id, GA_TIMERS[e + 6] * g >> 8, hit_pan, 1.0, GA_PRI_PLACE) }
+    }
+}
+
+private fn life_frame(mask: s32) {
+    for k in 0..GA_LIVES {
+        if life_wait[k] > 0 {
+            life_wait[k] -= 1
+            continue
+        }
+        if (mask >> k as u32) & 1 == 0 { continue }
+        let gap = GA_LIFE[k * 4 + 1]
+        if rand(gap) != 0 { continue }
+        life_wait[k] = gap / 3
+        let id = GA_LIFE[k * 4]
+        let spread = GA_LIFE[k * 4 + 3]
+        let pitch = 1.0 + fixed(rand(2 * spread + 1) - spread) / 100
+        let v = GA_LIFE[k * 4 + 2] * (110 + rand(146)) >> 8
+        ga_sound(id, v, rand(361) - 180, pitch, GA_PRI_LIFE)
+    }
+}
+
+// ================================================================== control
+
+// Once at start-up: takes channels 0-15 and the reverb.
+fn ga_init() {
+    voices_init(&ga_sfx, GA_CH_SFX, 15, 4)
+    reverb(REVERB_OFF, 0, 0)
+    reverb_decay(0)
+    rv_preset = 0
+    rv_want = 0
+    for c in 0..2 {
+        bed_snd[c] = -1
+        em_at[c] = -1
+    }
+    for k in 0..GA_MU_TRACKS {
+        t_slot[k] = 0
+        t_last[k] = -1
+        t_pos[k] = 0
+        mu_begin(k)
+    }
+    mu_on = true
+    mu_gain = 0
+}
+
+// A world opened (0 garden, 1 shrine, 2 shrine town: garden.game.mochi's order). Its zones,
+// emitters and timers start; the beds and the music carry on and follow the new zone.
+fn ga_world(k: s32) {
+    ga_world_k = clamp(k, 0, 2)
+    ga_zone = -1
+    t_world = 0
+    em_stop()
+    ga_loop(-1, 0, 1.0)
+    let first = GA_WORLD_TIMERS[ga_world_k * 2]
+    let count = min(GA_WORLD_TIMERS[ga_world_k * 2 + 1], 8)
+    for n in 0..count { tm_next[n] = GA_TIMERS[(first + n) * 10 + 9] }
+    for k2 in 0..8 { life_wait[k2] = 300 }
+}
+
+// The zone holding a point (an index into GA_ZONES), the first that does.
+fn ga_zone_at(p: vec3) -> s32 {
+    let first = GA_WORLD_ZONES[ga_world_k * 2]
+    let count = GA_WORLD_ZONES[ga_world_k * 2 + 1]
+    let x = bits(p.x) >> 16
+    let z = bits(p.z) >> 16
+    let y = m16(p.y)
+    for n in 0..count {
+        let e = (first + n) * 13
+        if x >= GA_ZONES[e] && x < GA_ZONES[e + 2] && z >= GA_ZONES[e + 1] && z < GA_ZONES[e + 3] &&
+           y >= GA_ZONES[e + 4] && y < GA_ZONES[e + 5] {
+            return first + n
+        }
+    }
+    return first + count - 1
+}
+
+// Every frame (once per update): the ear is the camera's eye and its yaw, the feet the
+// player's (they choose the zone).
+fn ga_frame(ear: vec3, yaw: fixed, feet: vec3) {
+    if ga_world_k < 0 { ga_world(0) }
+    t_world += 1
+    ear_x = m16(ear.x)
+    ear_y = m16(ear.y)
+    ear_z = m16(ear.z)
+    ear_rx = cos(yaw)
+    ear_rz = -sin(yaw)
+    let z = ga_zone_at(feet)
+    if z != ga_zone {
+        ga_zone = z
+        let e = z * 13
+        bed_want(GA_ZONES[e + 6], GA_ZONES[e + 7])
+        rv_want = GA_ZONES[e + 9]
+        rv_target = GA_ZONES[e + 10]
+    }
+    mu_frame(GA_ZONES[ga_zone * 13 + 8])
+    bed_frame()
+    rv_frame()
+    em_frame()
+    tm_frame()
+    life_frame(GA_ZONES[ga_zone * 13 + 12])
+}
+
+// The zone's name, for a readout.
+fn ga_zone_name() -> *u8 {
+    if ga_zone < 0 { return "" }
+    return GA_ZONE_NAMES[ga_zone]
+}
