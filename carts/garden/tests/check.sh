@@ -35,6 +35,7 @@ done
 . "$HERE/sn_cases.sh"
 . "$HERE/updraft_cases.sh"
 . "$HERE/arrival_cases.sh"
+. "$HERE/sf_cases.sh"
 run 30 510
 grep -h '^NOTE' "$O"/s*.log
 echo "all $n movement garden scenarios passed"
