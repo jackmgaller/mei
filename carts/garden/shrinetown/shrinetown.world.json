@@ -21,7 +21,12 @@
    "tags": {
     "bounce": 1,
     "slide": 2,
-    "water": 3
+    "water": 3,
+    "wood": 4,
+    "gravel": 5,
+    "earth": 6,
+    "tile": 7,
+    "metal": 8
    }
   }
  },
@@ -4996,7 +5001,8 @@
       2.0
      ],
      "span": 23
-    }
+    },
+    "tag": "earth"
    },
    "pooldeck": {
     "color": "#b7b2a7",
@@ -5018,7 +5024,8 @@
       2.4
      ],
      "span": 87
-    }
+    },
+    "tag": "earth"
    },
    "floor": {
     "color": "#594325",
@@ -5029,7 +5036,8 @@
       2.4
      ],
      "span": 87
-    }
+    },
+    "tag": "earth"
    },
    "gravel": {
     "color": "#d4cbb9",
@@ -5040,7 +5048,8 @@
       2.4
      ],
      "span": 87
-    }
+    },
+    "tag": "gravel"
    },
    "bank": {
     "color": "#807b70",
@@ -5073,7 +5082,8 @@
       2.4
      ],
      "span": 87
-    }
+    },
+    "tag": "earth"
    },
    "water": {
     "color": "#3f7393",
@@ -5100,7 +5110,8 @@
       2.4
      ],
      "span": 87
-    }
+    },
+    "tag": "gravel"
    },
    "podium": {
     "color": "#848072",
@@ -5122,7 +5133,8 @@
       2.4
      ],
      "span": 87
-    }
+    },
+    "tag": "gravel"
    },
    "bamboo_floor": {
     "color": "#897a4a",
@@ -5133,7 +5145,8 @@
       2.4
      ],
      "span": 87
-    }
+    },
+    "tag": "earth"
    },
    "lane": {
     "color": "#906f4c",
@@ -5144,7 +5157,8 @@
       2.4
      ],
      "span": 87
-    }
+    },
+    "tag": "earth"
    },
    "canal_stone": {
     "color": "#807b70",
@@ -5166,7 +5180,8 @@
       2.4
      ],
      "span": 87
-    }
+    },
+    "tag": "earth"
    },
    "steps": {
     "color": "#908b7f",
@@ -5180,7 +5195,8 @@
     }
    },
    "planks": {
-    "color": "#8a6446"
+    "color": "#8a6446",
+    "tag": "wood"
    },
    "rope": {
     "color": "#e8e0c8"
@@ -5194,7 +5210,8 @@
       2.4
      ],
      "span": 87
-    }
+    },
+    "tag": "earth"
    },
    "moss": {
     "color": "#56732d",
@@ -5205,7 +5222,8 @@
       2.4
      ],
      "span": 87
-    }
+    },
+    "tag": "earth"
    },
    "fox_earth": {
     "color": "#65452f",
@@ -5216,7 +5234,8 @@
       2.4
      ],
      "span": 87
-    }
+    },
+    "tag": "earth"
    },
    "rock": {
     "color": "#686157",
@@ -5261,7 +5280,8 @@
       2.0
      ],
      "span": 23
-    }
+    },
+    "tag": "wood"
    },
    "asphalt_line_x": {
     "color": "#53535a",
@@ -5341,7 +5361,8 @@
       2.0
      ],
      "span": 23
-    }
+    },
+    "tag": "earth"
    },
    "ground_line_x": {
     "color": "#c6a173",
@@ -5353,7 +5374,8 @@
      ],
      "span": 23,
      "rotate": 90
-    }
+    },
+    "tag": "earth"
    },
    "sando_stone": {
     "color": "#aba294",
@@ -5386,7 +5408,8 @@
       2.4
      ],
      "span": 23
-    }
+    },
+    "tag": "gravel"
    },
    "stream_water": {
     "color": "#3f7393",
@@ -5415,19 +5438,23 @@
     "tag": "water"
    },
    "grass_far": {
-    "color": "#688436"
+    "color": "#688436",
+    "tag": "earth"
    },
    "floor_far": {
-    "color": "#594325"
+    "color": "#594325",
+    "tag": "earth"
    },
    "gravel_far": {
-    "color": "#d4cbb9"
+    "color": "#d4cbb9",
+    "tag": "gravel"
    },
    "rock_far": {
     "color": "#686157"
    },
    "path_far": {
-    "color": "#906f4c"
+    "color": "#906f4c",
+    "tag": "earth"
    },
    "steps_far": {
     "color": "#908b7f"
