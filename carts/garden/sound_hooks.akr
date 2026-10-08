@@ -15,9 +15,10 @@
 // chal_end_at, world_k) rather than called where they happen, so the cart's code stays as it
 // is. Nothing here reads RAND or changes the game's state: sound never changes a scenario.
 //
-// Footsteps: pl.floor_surf is after ground.akr's surface map (0, 1, 2), so the material is the
-// zone's (gen_sounds.py ZONES_TOWN), or water when wading. WIRING.md's proposed surface bytes
-// (4 wood .. 8 metal) would need the raw byte and README.md's Surfaces table: not done.
+// Footsteps: the material is the floor's raw surface byte (pl.floor_byte; README.md, "Surfaces")
+// when it names one (3 water, 4 wood, 5 gravel, 6 earth, 7 tile, 8 metal), water when wading,
+// else the zone's (gen_sounds.py ZONES_TOWN). pl.floor_surf, through ground.akr's surface map,
+// is what the controller reads, and sees all of 4-8 as plain ground.
 import "audio/sound.akr"
 
 var snd_prev: St
@@ -71,7 +72,7 @@ fn sound_tick() {
     let prev = snd_prev
     snd_prev = s
     let wading = pl_wade > 0.05
-    let mat = ga_material(pl.floor_surf, wading)
+    let mat = ga_material(pl.floor_byte, wading)
     if s != prev {
         if s == St.Jump || s == St.Rollout { ga_jump(0) }
         else if s == St.DoubleJump { ga_jump(1) }
@@ -115,7 +116,7 @@ fn sound_tick() {
     else if s == St.BellySlide || s == St.Slide || s == St.CrouchSlide { ga_loop(GA_S_WALL_SLIDE, 80, 0.75) }
     else { ga_loop(-1, 0, 1.0) }
     // footsteps
-    ga_walk(hspeed(), s == St.Ground, pl.floor_surf, wading)
+    ga_walk(hspeed(), s == St.Ground, pl.floor_byte, wading)
     // the challenge's clock, and its end this tick (trig_fire() wins it, goals_tick() or a
     // respawn loses it)
     ga_clock(chal_left)

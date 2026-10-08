@@ -77,6 +77,19 @@ Collision triangles carry a surface byte from their material's `tag`
 | 0 | (default) | Normal ground or wall; every wall can be kicked off |
 | 1 | `bounce` | Landing launches the player (awning, park trampoline) |
 | 2 | `slide` | Cannot be stood on; the player slides down (playground slide) |
+| 3 | `water` | Plain ground; footsteps on water (the worlds' water tags it; wading sounds as water too) |
+| 4 | `wood` | Plain ground; footsteps on wood (decks, walkways, bridges) |
+| 5 | `gravel` | Plain ground; footsteps on gravel |
+| 6 | `earth` | Plain ground; footsteps on earth (soil, moss, paths, grass) |
+| 7 | `tile` | Plain ground; footsteps on roof tiles |
+| 8 | `metal` | Plain ground; footsteps on metal (the fire tower, the overpass, fire escapes) |
+
+The controller reads a byte through `surface_map` (16 entries, from `WORLD_SURFACES` in
+`ground/ground.akr`): 1 and 2 are themselves, every other byte is 0, normal ground, so bytes 3-8
+change no movement. `col_surf` and `pl.floor_surf` hold the mapped byte; `col_byte` and
+`pl.floor_byte` the raw one (its low 4 bits), which `sound_hooks.akr` gives the footsteps
+(`ga_material()` in `audio/sound.akr`). A floor with no footstep byte sounds as its zone's
+material. Which materials and assets carry 4-8 is in `shrinetown/DESIGN.md` 12.10.
 
 New bytes are added here first.
 

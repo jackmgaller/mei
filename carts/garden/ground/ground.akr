@@ -99,8 +99,10 @@ fn world_spawn_yaw(e: *WpEntity) -> fixed {
 }
 
 // The surface bytes as the controller reads them (carts/garden/README.md, "Surfaces"): both
-// worlds give bounce 1 and slide 2 (the shrine's water, 3, has no collision).
-const WORLD_SURFACES: [8]u8 = [0, 1, 2, 0, 0, 0, 0, 0]
+// worlds give bounce 1 and slide 2 (the shrine's water, 3, has no collision). The footsteps'
+// bytes, 4 wood to 8 metal, are plain ground to the controller: sound_hooks.akr reads them raw
+// (pl.floor_byte).
+const WORLD_SURFACES: [16]u8 = [0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 // The probe the kit classified collision for (the game schema's): the player's body.
 const BODY_RADIUS: fixed = GARDEN_PROBE_RADIUS
