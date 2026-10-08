@@ -763,7 +763,10 @@ def arcade_roof():
     cols = [slab_box(f'column_{i}', sx * GX - 0.125, sx * GX + 0.125, 0, ar_under(sx * GX) + 0.01,
                      sz * CZ - 0.125, sz * CZ + 0.125, open=('bottom', 'top'))
             for i, (sx, sz) in enumerate(((-1, -1), (-1, 1), (1, -1), (1, 1)))]
-    write(os.path.join(folder, 'arcade_roof_16_col.asset.json'), col_recipe('arcade_roof_16_col', [c.node()] + cols))
+    # tag 'metal': the footsteps' surface byte 8 (carts/garden/README.md, "Surfaces")
+    write(os.path.join(folder, 'arcade_roof_16_col.asset.json'),
+          col_recipe('arcade_roof_16_col', [c.node()] + cols,
+                     {'solid': {'color': '#ffffff', 'palette': True, 'tag': 'metal'}}))
 
 
 # ============================================================================================

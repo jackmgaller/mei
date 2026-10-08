@@ -383,8 +383,18 @@ C = [cuboid("body", -W - 0.05, W + 0.05, 0, EAVE_TOP, -D - 0.05, D + 0.05),
      frustum("chimney", (0.65, 0.65, 0, CH[0], CH[1]), (0.36, 0.36, CH_TOP - 0.3, CH[0], CH[1])),
      cuboid("chimney_cap", CH[0] - 0.41, CH[0] + 0.41, CH_TOP - 0.4, CH_TOP, CH[1] - 0.41, CH[1] + 0.41)]
 shift(C, *SHIFT)
+# The footsteps' surface bytes (carts/garden/README.md, "Surfaces"): the roofs and the door hood
+# tag "tile" (7), the barrels, the bench, the crates and the vat "wood" (4); the walls, the step
+# and the chimney untagged.
+for n in C:
+    if n["id"] in ("roof", "ridge", "hood"):
+        n["material"] = "tile"
+    elif n["id"].startswith("taru") or n["id"] in ("bench", "crates", "vat"):
+        n["material"] = "wood"
 col = {"format": "mei-asset", "version": 1, "name": "sakagura_col",
-       "materials": {"solid": {"color": "#ffffff", "palette": True}},
+       "materials": {"solid": {"color": "#ffffff", "palette": True},
+                     "tile": {"color": "#ffffff", "palette": True, "tag": "tile"},
+                     "wood": {"color": "#ffffff", "palette": True, "tag": "wood"}},
        "lighting": {"mode": "vertical", "ambient": 0.5},
        "verification": {"required": True, "depth": True, "perspective": True},
        "nodes": C}

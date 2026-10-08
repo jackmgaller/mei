@@ -463,15 +463,18 @@ def collision():
         box("bench_e", 11.6, 13.4, FLOOR, FLOOR + 0.48, -0.76, -0.34),
         box("board_w", -17.75, -15.25, FLOOR + 1.0, FLOOR + 1.95, -0.1, 0.1),
         box("board_e", 6.25, 8.75, FLOOR + 1.0, FLOOR + 1.95, -0.1, 0.1),
-        {"id": "roof", "op": "extrude", "material": "solid", "depth": 34.0,
+        {"id": "roof", "op": "extrude", "material": "canopy", "depth": 34.0,
          "points": [[-ROOF_HALF, ROOF_EDGE - 0.08], [0, ROOF_LOW - 0.08], [ROOF_HALF, ROOF_EDGE - 0.08],
                     [ROOF_HALF, ROOF_EDGE + ROOF_T], [0, ROOF_LOW + ROOF_T], [-ROOF_HALF, ROOF_EDGE + ROOF_T]],
          "transform": {"rotate": [0, 90, 0]}},
     ]
     for i, x in enumerate(FRAMES):
         nodes.append(box(f"column{i}", x - 0.15, x + 0.15, FLOOR, ROOF_LOW - 0.05, -0.15, 0.15, ("bottom", "top")))
+    # the canopy is tag "metal": the footsteps' surface byte 8 (carts/garden/README.md, "Surfaces"); the platform's
+    # concrete is untagged (the zone's stone)
     return {"format": "mei-asset", "version": 1, "name": "station_platform_col",
-            "materials": {"solid": {"color": "#ffffff", "palette": True}},
+            "materials": {"solid": {"color": "#ffffff", "palette": True},
+                          "canopy": {"color": "#ffffff", "palette": True, "tag": "metal"}},
             "lighting": {"mode": "vertical", "ambient": 0.5},
             "verification": {"required": True, "depth": True, "perspective": True},
             "nodes": nodes}
