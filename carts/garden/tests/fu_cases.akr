@@ -50,7 +50,7 @@ fn fu_case(f: s32) {
         680 => fu_back_strip(f)
         681 => fu_grind_back(f)
         682 => fu_hangs(f)
-        683, 684, 685, 686 => { fu_route(f); fu_route_watch(f) }
+        683, 684, 685, 686 => { shz_route(f); fu_route(f); fu_route_watch(f) }   // shz_route walks the points (shz_case runs only for 700-799)
         687 => fu_falls_face(f)
         688 => fu_stair_edge(f)
         else => {}
