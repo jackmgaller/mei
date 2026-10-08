@@ -15,7 +15,12 @@
    "tags": {
     "bounce": 1,
     "slide": 2,
-    "water": 3
+    "water": 3,
+    "wood": 4,
+    "gravel": 5,
+    "earth": 6,
+    "tile": 7,
+    "metal": 8
    }
   }
  },
@@ -1847,7 +1852,8 @@
       2.4
      ],
      "span": 223
-    }
+    },
+    "tag": "earth"
    },
    "moss": {
     "color": "#5f7a34",
@@ -1858,7 +1864,8 @@
       2.4
      ],
      "span": 128
-    }
+    },
+    "tag": "earth"
    },
    "earth": {
     "color": "#6a4a30",
@@ -1869,7 +1876,8 @@
       2.4
      ],
      "span": 223
-    }
+    },
+    "tag": "earth"
    },
    "litter": {
     "color": "#8a5a30",
@@ -1880,7 +1888,8 @@
       2.4
      ],
      "span": 223
-    }
+    },
+    "tag": "earth"
    },
    "rock": {
     "color": "#6a665e",
@@ -1912,7 +1921,8 @@
       2.4
      ],
      "span": 223
-    }
+    },
+    "tag": "gravel"
    },
    "paving": {
     "color": "#b4ae9e",
@@ -1958,7 +1968,8 @@
       2.4,
       2.4
      ]
-    }
+    },
+    "tag": "earth"
    },
    "pond_bed": {
     "color": "#4e4632",
@@ -1972,7 +1983,8 @@
     }
    },
    "planks": {
-    "color": "#8a6446"
+    "color": "#8a6446",
+    "tag": "wood"
    },
    "rope": {
     "color": "#c8b88a"
@@ -2013,7 +2025,8 @@
       4.8
      ],
      "span": 223
-    }
+    },
+    "tag": "earth"
    }
   },
   "fields": {
