@@ -240,9 +240,10 @@ if __name__ == '__main__':
         'materials': MATERIALS, 'lighting': LIGHT, 'verification': POLICY,
         'lod': {'levels': [{'distance': 30, 'nodes': level1()}, {'distance': 60, 'nodes': level2()}]},
         'nodes': level0()})
+    # tag 'wood': the footsteps' surface byte 4 (carts/garden/README.md, "Surfaces")
     write(os.path.join(HERE, NAME + '_col.asset.json'), {
         'format': 'mei-asset', 'version': 1, 'name': NAME + '_col',
-        'materials': {'solid': {'color': '#ffffff', 'palette': True}},
+        'materials': {'solid': {'color': '#ffffff', 'palette': True, 'tag': 'wood'}},
         'lighting': LIGHT, 'verification': POLICY, 'nodes': collision()})
     with open(os.path.join(HERE, NAME + '.cameras.json'), 'w') as f:
         f.write('[\n' + ',\n'.join('  ' + json.dumps(c) for c in CAMERAS) + '\n]\n')

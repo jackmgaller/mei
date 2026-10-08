@@ -13,7 +13,8 @@
  },
  "materials": {
   "solid": {
-   "color": "#c8c4b8"
+   "color": "#c8c4b8",
+   "tag": "metal"
   }
  },
  "nodes": [
