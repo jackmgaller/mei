@@ -216,8 +216,8 @@ engine's zone lookup (`ga_zone_at`) is the only place that reads them.
 | 4 | `wood` | wood | planks: the walkways, the rope bridges, the stage, the canal's arched bridge |
 | 5 | `gravel` | gravel | the courtyards, the cemetery, the terrace, the park's sand |
 | 6 | `earth` | earth and leaves | the woods' floor, trails, lanes, grass, clay |
-| 7 | `tile` | roof tile | the machiya, alley houses and kura, the temple's roofs |
-| 8 | `metal` | metal | the fire tower, the overpass, the fire escape |
+| 7 | `tile` | roof tile | the machiya, alley houses, kura and sakagura, the temple's roofs |
+| 8 | `metal` | metal | the fire tower, the overpass, the fire escape, the station's canopy, the arcade's roof |
 
 The bytes are in README.md's "Surfaces" table; which materials and assets carry them is in
 `../shrinetown/DESIGN.md` 12.10 ("Footstep surfaces"). They behave as 0 for the controller (it
