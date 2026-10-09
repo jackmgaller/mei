@@ -467,8 +467,10 @@ def recipe(name, budget, materials, nodes, levels):
 
 
 def col_recipe(name, nodes, budget=120):
+    # tag 'tile': the footsteps' surface byte 7 (carts/garden/README.md, "Surfaces"): what
+    # stands on a house is its roofs
     return {'format': 'mei-asset', 'version': 1, 'name': name, 'budget': {'triangles': budget},
-            'materials': {'solid': {'color': '#ffffff', 'palette': True}},
+            'materials': {'solid': {'color': '#ffffff', 'palette': True, 'tag': 'tile'}},
             'lighting': LIGHT, 'verification': VERIFY, 'nodes': nodes}
 
 

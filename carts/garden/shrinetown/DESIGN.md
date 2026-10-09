@@ -1718,7 +1718,8 @@ beside the Y respawn; `goals.akr`'s `trig_fire()` calls `sound_trig()` (the bell
 the omamori). Coins, a star taken, a challenge won or lost and the doors are read from the
 cart's state each frame. The last train's chime and departure melody follow the train's own
 clock (12.9's timeline: at the platform from 40 s, out at 85 s), so they sound after a win too.
-Footsteps take the zone's material (water when wading): no surface bytes were added.
+Footsteps take the zone's material (water when wading): no surface bytes were added (since
+added: "Footstep surfaces" below).
 
 | Cost | |
 |---|---|
@@ -1750,7 +1751,7 @@ floor rather than the zone: 4 `wood` (decks, bridges, the stage, the walkway, ve
 `gravel` (the courtyard, the precinct, paths), 6 `earth` (the woods' floor, trails), 7 `tile`
 (the kawara roofs), 8 `metal` (the fire tower, ladders, the overpass, the station canopy). The
 controller would read them as 0; `surface_map` would need 16 entries for byte 8, and the sound
-the byte before the map.
+the byte before the map. The owner approved them; "Footstep surfaces" below has what was done.
 #### Alpha follow-ups (branch `alpha-followups`)
 
 What the alpha fix round left (the leads' handoffs and the explorer bot's run at 509ba61). Each fix
@@ -2033,3 +2034,80 @@ Cases 400 (the spawn) and 452–457 (★5) are unchanged and pass: the tests do 
 `harness.akr` now runs `shz_case()` only for scenarios 700–799: its `else` ran a route, and
 printed a DONE line, for every other scenario number, so check.sh's "did it finish" test could
 not fail for any scenario.
+
+### Footstep surfaces (branch `feat-surfaces`, cases 560-578)
+
+The owner approved five surface bytes (`../README.md`, "Surfaces"): 4 `wood`, 5 `gravel`, 6
+`earth`, 7 `tile`, 8 `metal`. A footstep, and a landing's, now takes the floor's material when
+its byte names one, else the zone's as before (water when wading).
+
+**The cart.** `surface_map` has 16 entries (`ground.akr`'s `WORLD_SURFACES`: 1 and 2 themselves,
+the rest 0), so the controller reads 3-8 as plain ground and moves as before. The floor queries
+keep the raw byte too, `col_byte = wp_hit.surface & 15` beside `col_surf` (`player.akr`'s
+`col_hit()`, `attach.akr` for the movers; `shadow.akr` saves and restores it with the other
+`col_*`), and `take_floor()` copies it to `pl.floor_byte`. `sound_hooks.akr` gives
+`pl.floor_byte` to `ga_material()` and `ga_walk()`, which already mapped 3-8 to materials.
+
+**What is tagged.**
+
+| Byte | Shrine town | Shrine |
+|---|---|---|
+| 4 wood | ground materials `planks`, `canal_planks` (the sweeps take their material's tag: the walkways, the rope bridges, `bridge_falls_stage`); `canal_arched_bridge_col`; the sakagura's barrels, bench, crates and vat | `planks`; `forest_stage_hall_col`, `forest_platform_col` (the shrine town places the stage too) |
+| 5 gravel | `gravel`, `gravel_far`, `ashlar`, `cemetery`, `park_sand` | `gravel` |
+| 6 earth | `floor`, `floor_far`, `earth`, `fox_earth`, `litter`, `moss`, `path`, `path_far`, `lane`, `bamboo_floor`, `grass`, `grass_far`, `clay`, `ground_line`, `ground_line_x` | `floor`, `moss`, `earth`, `litter`, `path`, `earth_wide` |
+| 7 tile | `town_machiya_a`/`b_col`, `town_alley_house_a`/`b`/`c_col`, `town_kura_col`; the temple's roofs (`arch_temple_town_col`); the sakagura's roofs and door hood (`sakagura_col`) | |
+| 8 metal | `fire_tower_col`, `overpass_col`, `town_fire_escape_col`; the station's canopy (`station_platform_col`), the arcade's roof (`arcade_roof_16_col`) | |
+
+The ground's tags are set in `make_world.py` after the zones are applied; the shrine's in its
+recipes (`shrine.world.json`, the two collision assets). Each collision recipe's tag is in its
+generator, rerun. In `make_arch_temple_col.py` the faces wholly above 7.5 m and the eave blocks
+standing there (the main and top eaves, the ridge walk) are material `roof`, tagged tile; the
+podium (3.6), the hall's floor (4.2), the walls and the pent eave's block (3.5-8.0) stay `solid`,
+untagged; the geometry is otherwise identical (the recipe compared with `roof` read as `solid`).
+The shrine town's pipeline (README.md, "How it is made") reran: only `shrinetown.world.json`
+changed, by the tags. Untagged and sounding as their zone: the paving, the streets, the
+sidewalks, the steps, stone, rock, `bed`, the platform's concrete, the sakagura's walls and
+chimney, and every other building.
+
+**Costs.** The packs are the same size (the byte was in each triangle's info word already): the
+shrine town 12,447,040 bytes, the shrine 7,423,964, the garden 629,668 (not rebuilt). The World
+Checker's reports are unchanged (the shrine town: 855 views, 0 hard failures, peaks 2,785
+triangles, CPU 714,668, GPU 907,058). CPU: one AND and one store more a floor query, and
+`ga_material()` reading the raw byte, 26 cycles a call (568), once a tick and at each footstep.
+RAM: 8 bytes more of `surface_map`, 8 of `col_byte` and `pl.floor_byte`, 8 of the readouts
+`ga_step_mat` and `ga_steps`.
+
+**Cases** (`../tests/sf_cases.akr`, run by `sf_cases.sh`). Each spot stands the body on the floor,
+checks the raw byte (`pl.floor_byte`, `col_byte`) and the controller's 0 (`pl.floor_surf`,
+`col_surf`), jumps in place and checks the landing's footstep material (`ga_step_mat`); the
+zone's material is noted, and differs at most of them.
+
+| Case | Spot | Byte | Zone's material |
+|---|---|---|---|
+| 560 | the stage's deck over the falls, (154, 60, 344.15) | 4 wood | wood |
+| 561 | the temple courtyard, (140, 0.6, 150) | 5 gravel | gravel |
+| 562 | `trail_shoulder`, (288, 16.6, 256) | 6 earth | stone |
+| 563 | the temple's ridge walk, (160, 27.5, 221.75) | 7 tile | gravel |
+| 564 | the fire tower's platform, (102, 15.2, 74) | 8 metal | tile |
+| 565 | the canal's arched bridge, (48, 1.85, 160) | 4 wood | gravel |
+| 566 | the station plaza's paving, (160, 0, 40): untagged | 0 | stone (the footstep's) |
+| 567 | the courtyard walked north 5 m: 6 footsteps, all gravel | 5 | |
+| 568 | `surface_map`: 1, 2 and fourteen 0s; `ga_material()`'s cost | | |
+| 569 | the station's canopy, (150, 13.5, 8) | 8 metal | stone |
+| 570 | the arcade's roof, (157, 7.9, 72) | 8 metal | tile |
+| 571 | the sakagura's roof, (15, 8.7, 218) | 7 tile | earth |
+| 575 | the garden: the bounce surface 1 and 1, the slide 2 and 2, the lane 0 and 0 (raw, mapped) | | |
+| 576 | the shrine's summit stage, (72, 56, 262.6) | 4 wood | gravel |
+| 577 | the shrine's courtyard, (120, 5, 100) | 5 gravel | gravel |
+| 578 | the shrine's forest path, (20, 3.9, 120) | 6 earth | gravel |
+
+`make test` and `make test-carts` pass (235 movement garden scenarios). The sound's CPU in 660,
+663 and 665 is as before: 10,204-10,553 cycles a frame on average. The explorer bot (which now
+reads the byte's low 4 bits, as the cart does) on this branch: 0 escapes; 0 of 226 drops through;
+flights through the world 21 spots, 0 of the first 21 confirmed; every collectible reached;
+shortcuts A-E the long way.
+
+Open, for the owner: whether grass and clay (the park, the schoolyard) should sound as earth, as
+now; whether the cemetery and the `ashlar` terrace should sound as gravel, as now. The station's
+canopy, the arcade's roof and the sakagura were cheap and are tagged (569-571); the owner may
+prefer them untagged.

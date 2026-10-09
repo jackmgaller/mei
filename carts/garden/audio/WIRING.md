@@ -30,10 +30,10 @@ so a respawn's loss sounds too); a door (`world_k` changed: the door's sound, th
 - **Hang rails.** Grabbing one is the pole's grab; moving along it, a softer, lower ratchet every
   0.7 m.
 - **The water palettes (B5)** and the 24 camera zones need nothing from the sound.
-- **Footsteps** are the zone's material (or water when wading): `pl.floor_surf` is after
-  `ground.akr`'s surface map, which gives 0 for every byte but 1 and 2. The proposal for
-  README.md's Surfaces table is under "Footsteps" below; to use it, the sound needs the raw
-  byte as well as the controller's.
+- **Footsteps** follow the floor: `pl.floor_byte`, the raw surface byte (README.md,
+  "Surfaces": 4 wood to 8 metal), names the material where the world tags one; elsewhere the
+  zone's material, or water when wading. `pl.floor_surf`, after `ground.akr`'s surface map, is
+  the controller's and stays 0 for every byte but 1 and 2.
 - `ga_emitter_on(n)` is new in `sound.akr`, a readout for the tests.
 
 Scenarios 660-666 (`tests/sp_cases.akr`) check it: the spawn's mix, bed and zone; the zones at
@@ -181,7 +181,7 @@ the feet's.
 | Ledge grab, climb | `LedgeHang`, `LedgeClimb` | `GA_S_LEDGE_GRAB`, `GA_S_LEDGE_CLIMB` |
 | Dive, skid, bonk | `Dive`, `Skid`, `pl.bonked` | `GA_S_DIVE`, `GA_S_SKID`, `GA_S_BONK` |
 | Into water from the air | `pl_wade` rising while airborne | `GA_S_SPLASH` |
-| Footsteps | every tick in `Ground` | `ga_walk(hspeed(), on ground, pl.floor_surf, wading)` |
+| Footsteps | every tick in `Ground` | `ga_walk(hspeed(), on ground, pl.floor_byte, wading)` |
 | Back to the start (Y) | `update()` | `GA_S_WINDUP` |
 | Coin, red coin, the last red coin | `collect_coins()` | `GA_S_COIN`, `ga_red_coin(n)`, `GA_S_RED_ALL` |
 | A star comes down | `star_drop()` from −1 to above 0 | `ga_star_appear(pos)` |
@@ -211,20 +211,22 @@ engine's zone lookup (`ga_zone_at`) is the only place that reads them.
 
 | Byte | Tag | Material | State |
 |---|---|---|---|
-| 0, 1, 2 | default, `bounce`, `slide` | the zone's | as now |
-| 3 | `water` | water | already the shrine town's (`shrinetown.world.json`) |
-| 4 | `wood` | wood | proposed: decks, bridges, the stage, the walkway, verandas |
-| 5 | `gravel` | gravel | proposed: the courtyard, the precinct, paths |
-| 6 | `earth` | earth and leaves | proposed: the woods' floor, trails |
-| 7 | `tile` | roof tile | proposed: the kawara roofs |
-| 8 | `metal` | metal | proposed: the fire tower, ladders, the overpass, the station canopy |
+| 0, 1, 2 | default, `bounce`, `slide` | the zone's | |
+| 3 | `water` | water | the worlds' water |
+| 4 | `wood` | wood | planks: the walkways, the rope bridges, the stage, the canal's arched bridge |
+| 5 | `gravel` | gravel | the courtyards, the cemetery, the terrace, the park's sand |
+| 6 | `earth` | earth and leaves | the woods' floor, trails, lanes, grass, clay |
+| 7 | `tile` | roof tile | the machiya, alley houses, kura and sakagura, the temple's roofs |
+| 8 | `metal` | metal | the fire tower, the overpass, the fire escape, the station's canopy, the arcade's roof |
 
-Bytes 4–8 are a proposal for README.md's "Surfaces" table (new bytes go there first, through
-the main session). They behave as 0 for the controller (it only tests 1 and 2), but
-`surface_map` has 8 entries, so byte 8 needs it to have 16. Until the world tags its
-materials, the zone's material stands in: gravel in the courtyard and the precinct, earth in the
-woods, wood on the walkway and the stage, tile on the town's roofs, water in the culvert and
-whenever the robot wades.
+The bytes are in README.md's "Surfaces" table; which materials and assets carry them is in
+`../shrinetown/DESIGN.md` 12.10 ("Footstep surfaces"). They behave as 0 for the controller (it
+only tests 1 and 2): `surface_map` has 16 entries, all 0 but 1 and 2, and the sound reads the
+byte before the map (`pl.floor_byte`). Where the floor has no footstep byte, the zone's material
+stands in: tile on the town's roofs still comes from the "town roofs" zone for the roofs no
+recipe tags, water in the culvert and whenever the robot wades. `ga_step_mat` and `ga_steps`
+(the last footstep's material, the footsteps taken) are readouts for the tests (scenarios
+560-579, `../tests/sf_cases.akr`).
 
 ## What it costs
 

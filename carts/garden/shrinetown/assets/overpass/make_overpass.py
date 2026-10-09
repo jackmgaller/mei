@@ -384,7 +384,8 @@ def collision():
         "format": "mei-asset", "version": 1, "name": "overpass_col",
         "lighting": {"mode": "vertical", "ambient": 0.5},
         "verification": {"required": True, "depth": True, "perspective": True},
-        "materials": {"solid": {"color": "#c8c4b8"}},
+        # tag "metal": the footsteps' surface byte 8 (carts/garden/README.md, "Surfaces")
+        "materials": {"solid": {"color": "#c8c4b8", "tag": "metal"}},
         "nodes": n,
     }
 

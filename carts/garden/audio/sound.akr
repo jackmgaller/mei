@@ -157,10 +157,12 @@ fn ga_play_at(id: s32, pos: vec3, r_full: s32, r_zero: s32) {
 private var stride: fixed        // metres walked since the last step
 private var loop_id: s32 = -1
 private var clock_last: s32 = -1
+var ga_step_mat: s32 = -1        // the last footstep's material (GA_MAT_*), and the footsteps
+var ga_steps: s32                // taken: readouts for the tests
 
-// The footstep material: the floor's surface byte when it names one (3 water, the shrine
-// town's; and WIRING.md's proposal: 4 wood, 5 gravel, 6 earth, 7 tile, 8 metal), water when
-// wading, else the zone's.
+// The footstep material: the floor's raw surface byte when it names one (carts/garden/README.md,
+// "Surfaces": 3 water, 4 wood, 5 gravel, 6 earth, 7 tile, 8 metal), water when wading, else the
+// zone's.
 fn ga_material(surface: s32, wading: bool) -> s32 {
     if wading { return GA_MAT_WATER }
     match surface {
@@ -178,6 +180,8 @@ fn ga_material(surface: s32, wading: bool) -> s32 {
 
 // One footstep on material mat (GA_MAT_*), louder with speed (m/tick).
 fn ga_step(mat: s32, speed: fixed) {
+    ga_step_mat = mat
+    ga_steps += 1
     let id = GA_STEP[clamp(mat, 0, 6)]
     let v = GA_SND[id * 6 + 4] * clamp(150 + bits(speed * 600.0) >> 16, 150, 256) >> 8
     let pitch = 1.0 + fixed(rand(13) - 6) / 100

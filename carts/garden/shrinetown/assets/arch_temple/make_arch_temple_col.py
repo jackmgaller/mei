@@ -29,6 +29,10 @@ podium's whole width. From the strip a wall kick and a long jump, or a hop and a
 the north wall: shortcut B's bypass (the explorer bot; DESIGN.md 12.10). Nothing stands on it
 now; a body landing there slides off onto the terrace behind the temple. Not an invisible wall:
 the slope lies on the podium's back, under the pent roof's eave.
+
+The roofs (every face wholly above ROOF_FROM, and the blocks standing there) are material `roof`,
+tag `tile`: the footsteps' surface byte 7 (carts/garden/README.md, "Surfaces"). The podium (3.6),
+the hall's floor (4.2) and the walls below the pent roof's eave stay `solid`, untagged.
 """
 import json
 from pathlib import Path
@@ -55,6 +59,10 @@ BLOCKS = [
 BACK = (-26.0, 26.0, 8.5, 12.0, 3.6, 7.6)
 HALL_X = 18.5
 
+# The roofs: the pent roof's eave is the lowest, at 8.0; under it the hall's floor is at 4.2.
+ROOF_FROM = 7.5
+ROOF = {'color': '#ffffff', 'palette': True, 'tag': 'tile'}
+
 
 def back_strip():
     x0, x1, z0, z1, y0, y1 = BACK
@@ -68,14 +76,23 @@ def back_strip():
 
 def box(nid, x0, x1, y0, y1, z0, z1):
     return {'id': nid, 'op': 'box', 'size': [round(x1 - x0, 3), round(y1 - y0, 3), round(z1 - z0, 3)],
-            'material': 'solid', 'transform': {'translate': [round((x0 + x1) / 2, 3), round((y0 + y1) / 2, 3),
-                                                            round((z0 + z1) / 2, 3)]}, 'open': ['bottom']}
+            'material': 'roof' if y0 >= ROOF_FROM else 'solid',
+            'transform': {'translate': [round((x0 + x1) / 2, 3), round((y0 + y1) / 2, 3),
+                                        round((z0 + z1) / 2, 3)]}, 'open': ['bottom']}
+
+
+def roofs(node):
+    """The node with its faces wholly above ROOF_FROM made `roof`."""
+    v = node['vertices']
+    fm = ['roof' if min(v[i][1] for i in f) >= ROOF_FROM else m
+          for f, m in zip(node['faces'], node['face_materials'])]
+    return dict(node, face_materials=fm)
 
 
 def main():
     shrine = json.loads(SHRINE.read_text())
-    r = dict(shrine, name='arch_temple_town_col')
-    r['nodes'] = shrine['nodes'] + [box(*b) for b in BLOCKS] + [back_strip()]
+    r = dict(shrine, name='arch_temple_town_col', materials=dict(shrine['materials'], roof=ROOF))
+    r['nodes'] = [roofs(n) for n in shrine['nodes']] + [box(*b) for b in BLOCKS] + [back_strip()]
     (HERE / 'arch_temple_town_col.asset.json').write_text(json.dumps(r, indent=1) + '\n')
     print('wrote arch_temple_town_col')
 

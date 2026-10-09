@@ -249,6 +249,23 @@ world = {
 # the placement zones (place/ZONE.py): asset directories, layers, paths for the real assets
 from place import apply as apply_zones
 apply_zones('world', globals())
+
+# ---- the footsteps' surface bytes (carts/garden/README.md, "Surfaces"): 4-8 name a footstep's
+# material; the controller reads them as plain ground. The ground's materials by what they are
+# underfoot (the sweeps take their material's tag: the walkways, the rope bridges and the stage
+# over the falls are planks); the collision recipes of the real assets carry their own (DESIGN.md
+# 12.10). What is untagged sounds as its zone's material.
+world['collision'] = json.loads(json.dumps(world['collision']))
+world['collision']['surfaces']['tags'].update(wood=4, gravel=5, earth=6, tile=7, metal=8)
+FOOTSTEPS = {'wood': ['planks', 'canal_planks'],
+             'gravel': ['gravel', 'gravel_far', 'ashlar', 'cemetery', 'park_sand'],
+             'earth': ['floor', 'floor_far', 'earth', 'fox_earth', 'litter', 'moss', 'path', 'path_far', 'lane',
+                       'bamboo_floor', 'grass', 'grass_far', 'clay', 'ground_line', 'ground_line_x']}
+for _tag, _names in FOOTSTEPS.items():
+    for _n in _names:
+        assert 'tag' not in materials[_n], _n
+        materials[_n] = dict(materials[_n], tag=_tag)
+assert world['terrain']['materials'] is materials
 # the grey boxes the world stage swapped out (the shrine zone's, place/shrine.py): their recipes go
 _used = json.dumps(world) + ''.join(f.read_text() for f in sorted((ST / 'cells').glob('*.cell.json')))
 for _d, _pre in (('town', 'gbt_'), ('core', 'gbc_'), ('mountain', 'gbm_')):

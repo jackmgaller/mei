@@ -5,7 +5,7 @@
 // - attach_tick(): once a tick, before player_tick(): move the movers.
 // - attach_carry(): at the start of player_tick(): carry a player standing on a mover.
 // - attach_floor/ceiling/push: after the world's answer, let the movers' blocks answer too
-//   (their surface byte through surface_map; set col_y, col_n, col_surf for a floor, call
+//   (their surface byte through surface_map; set col_y, col_n, col_surf, col_byte for a floor, call
 //   note_wall() for a wall that pushed).
 // - attach_air_grab(ip): in the air, after moving: grab a pole or a rail (enter St.Pole,
 //   St.Rail or St.Hang) and return true.
@@ -313,7 +313,8 @@ fn attach_floor(p: vec3, above: fixed, found: bool) -> bool {
             if !f || y > col_y {
                 col_y = y
                 col_n = to_world(m, wp_hit_normal())
-                col_surf = surface_map[wp_hit.surface & 7] as s32
+                col_byte = wp_hit.surface & 15
+                col_surf = surface_map[col_byte] as s32
                 f = true
             }
         }

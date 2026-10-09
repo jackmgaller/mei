@@ -136,8 +136,10 @@ def collision():
     w['face_materials'] = ['solid'] * len(w['faces'])
     rf = roof()
     rf['face_materials'] = ['solid'] * len(rf['faces'])
+    # tag 'tile': the footsteps' surface byte 7 (carts/garden/README.md, "Surfaces"): what
+    # stands on the kura is its roof
     return {'format': 'mei-asset', 'version': 1, 'name': 'town_kura_col',
-            'materials': {'solid': {'color': '#ffffff', 'palette': True}},
+            'materials': {'solid': {'color': '#ffffff', 'palette': True, 'tag': 'tile'}},
             'lighting': LIGHT, 'verification': POLICY, 'nodes': [w, rf]}
 
 

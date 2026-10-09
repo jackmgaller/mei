@@ -344,9 +344,10 @@ def main():
     write('town_fire_escape', recipe('town_fire_escape', body(), level1(None)))
     write('town_fire_escape_up', ladder_recipe('town_fire_escape_up', ladder_up()))
     write('town_fire_escape_down', ladder_recipe('town_fire_escape_down', ladder_down()))
+    # tag 'metal': the footsteps' surface byte 8 (carts/garden/README.md, "Surfaces")
     write('town_fire_escape_col', {
         'format': 'mei-asset', 'version': 1, 'name': 'town_fire_escape_col',
-        'materials': {'solid': {'color': '#ffffff', 'palette': True}},
+        'materials': {'solid': {'color': '#ffffff', 'palette': True, 'tag': 'metal'}},
         'lighting': LIGHT, 'verification': POLICY, 'nodes': collision(),
     })
 

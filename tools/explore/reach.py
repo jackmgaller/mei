@@ -220,7 +220,7 @@ class Explorer:
         self.n_floor = n
         col, y = F.col, F.y
         ny = F.extra['ny']
-        surf = np.asarray(self.surface_map, np.int8)[F.extra['surf'] & 7]
+        surf = np.asarray(self.surface_map, np.int8)[F.extra['surf'] & 15]
         self.steep = (ny < tn.slide_ny) | (surf == 2)
         self.bounce = surf == 1
         self.free = m.wall_at(col, y) < 0

@@ -377,8 +377,10 @@ def make(v):
         'nodes': level0(v, g),
     }
     write(os.path.join(folder, v['name'] + '.asset.json'), recipe)
+    # tag 'tile': the footsteps' surface byte 7 (carts/garden/README.md, "Surfaces"): what stands
+    # on the house is its roofs
     col = {'format': 'mei-asset', 'version': 1, 'name': v['name'] + '_col',
-           'materials': {'solid': {'color': '#ffffff', 'palette': True}},
+           'materials': {'solid': {'color': '#ffffff', 'palette': True, 'tag': 'tile'}},
            'lighting': LIGHT, 'verification': POLICY, 'nodes': collision(v, g)}
     write(os.path.join(folder, v['name'] + '_col.asset.json'), col)
 

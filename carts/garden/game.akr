@@ -45,7 +45,7 @@ fn init() {
     world_k = start_world()
     assert(world_load())
     tune_defaults()
-    for k in 0..8 { surface_map[k] = WORLD_SURFACES[k] }
+    for k in 0..16 { surface_map[k] = WORLD_SURFACES[k] }
     body_init()
     place_at_spawn()
     attach_init()

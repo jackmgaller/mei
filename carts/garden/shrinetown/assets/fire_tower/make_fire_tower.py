@@ -481,8 +481,9 @@ C = [
                         [SHED[1] + 0.15, SHED[4] + 0.5, (SHED[2] + SHED[3]) / 2]],
           [[0, 1, 2, 3], [0, 1, 5, 4], [3, 2, 5, 4], [0, 4, 3], [1, 5, 2]]),
 ]
+# tag "metal": the footsteps' surface byte 8 (carts/garden/README.md, "Surfaces")
 col = {"format": "mei-asset", "version": 1, "name": "fire_tower_col",
-       "materials": {"solid": {"color": "#ffffff", "palette": True}},
+       "materials": {"solid": {"color": "#ffffff", "palette": True, "tag": "metal"}},
        "lighting": {"mode": "vertical", "ambient": 0.5},
        "verification": {"required": True, "depth": True, "perspective": True},
        "nodes": C}

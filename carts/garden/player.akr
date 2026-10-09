@@ -57,7 +57,8 @@ struct Player {
     chain_from: St     // the jump last landed from (Jump, DoubleJump: the next can chain)
     land_t: s32        // ticks since landing
     floor_n: vec3      // the floor under the feet: its normal and surface byte
-    floor_surf: s32
+    floor_surf: s32    // through surface_map: what the controller does on it (SURF_*)
+    floor_byte: s32    // the raw byte (README.md, "Surfaces"): the footsteps' material
     wall_hit: bool     // a wall pushed the body this tick
     wall_n: vec3       // its horizontal normal, and its normal's y
     wall_ny: fixed
@@ -82,12 +83,13 @@ struct Player {
 
 var pl: Player
 var pin: Pin
-var surface_map: [8]u8
+var surface_map: [16]u8
 
-// What the last col_* query found.
+// What the last col_* query found: col_surf through surface_map, col_byte the raw surface byte.
 var col_y: fixed
 var col_n: vec3
 var col_surf: s32
+var col_byte: s32
 
 fn fwd_dir(yaw: fixed) -> vec3 { return vec3(sin(yaw), 0.0, cos(yaw)) }
 fn yaw_of(v: vec3) -> fixed { return atan2(v.x, v.z) }
@@ -146,7 +148,8 @@ fn col_floor(p: vec3, above: fixed) -> bool {
 fn col_hit() {
     col_y = wp_hit.y
     col_n = wp_hit_normal()
-    col_surf = surface_map[wp_hit.surface & 7] as s32
+    col_byte = wp_hit.surface & 15
+    col_surf = surface_map[col_byte] as s32
 }
 
 // The floor the body stands on or lands on: col_floor(), bridging cracks in the world's
@@ -193,6 +196,7 @@ fn col_push(p: vec3, r: fixed) -> vec3 {
 fn take_floor() {
     pl.floor_n = col_n
     pl.floor_surf = col_surf
+    pl.floor_byte = col_byte
 }
 
 // The heights above the feet at which walls push the body: just over a step, the middle, the

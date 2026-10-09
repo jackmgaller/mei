@@ -6,6 +6,16 @@
   "solid": {
    "color": "#ffffff",
    "palette": true
+  },
+  "tile": {
+   "color": "#ffffff",
+   "palette": true,
+   "tag": "tile"
+  },
+  "wood": {
+   "color": "#ffffff",
+   "palette": true,
+   "tag": "wood"
   }
  },
  "lighting": {
@@ -212,7 +222,7 @@
      2
     ]
    ],
-   "material": "solid"
+   "material": "tile"
   },
   {
    "id": "ridge",
@@ -297,7 +307,7 @@
      3
     ]
    ],
-   "material": "solid"
+   "material": "tile"
   },
   {
    "id": "hood",
@@ -382,7 +392,7 @@
      3
     ]
    ],
-   "material": "solid"
+   "material": "tile"
   },
   {
    "id": "step",
@@ -552,7 +562,7 @@
      3
     ]
    ],
-   "material": "solid"
+   "material": "wood"
   },
   {
    "id": "taru_mid",
@@ -637,7 +647,7 @@
      3
     ]
    ],
-   "material": "solid"
+   "material": "wood"
   },
   {
    "id": "taru_top",
@@ -722,7 +732,7 @@
      3
     ]
    ],
-   "material": "solid"
+   "material": "wood"
   },
   {
    "id": "bench",
@@ -807,7 +817,7 @@
      3
     ]
    ],
-   "material": "solid"
+   "material": "wood"
   },
   {
    "id": "crates",
@@ -892,7 +902,7 @@
      3
     ]
    ],
-   "material": "solid"
+   "material": "wood"
   },
   {
    "id": "vat",
@@ -977,7 +987,7 @@
      3
     ]
    ],
-   "material": "solid"
+   "material": "wood"
   },
   {
    "id": "chimney",

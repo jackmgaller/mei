@@ -6,6 +6,11 @@
   "solid": {
    "color": "#ffffff",
    "palette": true
+  },
+  "canopy": {
+   "color": "#ffffff",
+   "palette": true,
+   "tag": "metal"
   }
  },
  "lighting": {
@@ -368,7 +373,7 @@
   {
    "id": "roof",
    "op": "extrude",
-   "material": "solid",
+   "material": "canopy",
    "depth": 34.0,
    "points": [
     [
