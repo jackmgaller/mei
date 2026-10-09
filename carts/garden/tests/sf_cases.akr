@@ -20,6 +20,9 @@ fn sf_case_init() -> bool {
         566 => { name = "surfaces: the station plaza's paving is untagged: the zone's stone" }
         567 => { name = "surfaces: walking the courtyard, every footstep is gravel" }
         568 => { name = "surfaces: the controller's map is unchanged, and the lookup's cost" }
+        569 => { name = "surfaces: the station's canopy is metal" }
+        570 => { name = "surfaces: the shotengai arcade's roof is metal" }
+        571 => { name = "surfaces: the sakagura's roof is tile" }
         575 => { name = "surfaces: the garden's bounce and slide bytes reach the controller as before" }
         576 => { name = "surfaces: the shrine's summit stage is wood" }
         577 => { name = "surfaces: the shrine courtyard's gravel" }
@@ -44,6 +47,9 @@ fn sf_case(f: s32) {
         566 => sf_spot(f, 160.0, 40.0, 20.0, 0, GA_MAT_STONE)
         567 => sf_walk(f)
         568 => sf_map(f)
+        569 => sf_spot(f, 150.0, 8.0, 16.0, 8, GA_MAT_METAL)
+        570 => sf_spot(f, 157.0, 72.0, 15.0, 8, GA_MAT_METAL)
+        571 => sf_spot(f, 15.0, 218.0, 30.0, 7, GA_MAT_TILE)
         575 => sf_garden(f)
         576 => sf_spot(f, 72.0, 262.6, 90.0, 4, GA_MAT_WOOD)
         577 => sf_spot(f, 120.0, 100.0, 40.0, 5, GA_MAT_GRAVEL)
