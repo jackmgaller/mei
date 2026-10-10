@@ -102,8 +102,12 @@ details; `carts/worldview/` is the example.
   from PNG images and sheets (`examples/assets/stall`, the shrine world's assets, so `make`;
   recipes without images need it not).
   **SciPy** too for `gen_boot_duet` and `gen_soundlab_assets`.
-- Several generators draw with macOS system fonts (Avenir Next, Hiragino, Georgia, Optima and
-  others). Their outputs are committed, so building and running Mei needs none of this.
+- The generators draw text with the OFL fonts in `tools/fonts/` (Figtree, Sofia Sans Condensed,
+  Belleza, Gelasio, Noto Sans JP, Noto Serif JP, Zen Maru Gothic, M PLUS Rounded 1c), which
+  `tools/fonts/make_fonts.py` makes from Google Fonts' repository; that script needs
+  **fontTools** and network access. Scripts whose output is not shipped still draw with macOS
+  system fonts: the garden's `layout.py` sketches, `carts/weather/tests/contact.py` and the lab
+  scripts in `examples/assets/` (docs/LICENSING.md, section 3).
 
 ## Rules
 
@@ -179,6 +183,7 @@ Run each as `python3 tools/NAME.py`; they find the repository from their own pat
 | `gen_weather_assets.py` | `carts/weather/art/` and `carts/weather/art.akr` |
 | `gen_weather_audio.py` | `carts/weather/audio/` and `carts/weather/mu_data.akr` |
 | `gen_weather_tape.py` | `carts/weather/demo_tape.bin`, Mei Weather's sample broadcast |
+| `fonts/make_fonts.py` | `tools/fonts/`: the generators' fonts as static weights cut to Latin, kana and the kanji in its `KANJI` list, and their licences (`OFL-*.txt`) |
 | `meinet/make_fixture.sh` | `tests/lang/data/broadcast.bin`, the canned broadcast the language tests replay (`meinet.py --fixture`) |
 
 Helpers the generators import, which write nothing themselves: `boot_audio.py`, `mei_adpcm.py`,

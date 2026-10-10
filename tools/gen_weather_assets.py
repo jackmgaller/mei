@@ -33,9 +33,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CART = os.path.join(ROOT, 'carts', 'weather')
 ART = os.path.join(CART, 'art')
 
-AVENIR = '/System/Library/Fonts/Avenir Next.ttc'
-AVENIR_COND = '/System/Library/Fonts/Avenir Next Condensed.ttc'
-# Avenir Next faces in the collection: 0 Bold, 2 Demi Bold, 7 Medium, 5 Italic ... (looked up by name below)
+FONTS = os.path.join(ROOT, 'tools', 'fonts')     # OFL fonts, see tools/fonts/make_fonts.py
+SANS = os.path.join(FONTS, 'Figtree-SemiBold.ttf')
+SANS_LOGO = os.path.join(FONTS, 'Figtree-BlackItalic.ttf')
+SANS_COND = os.path.join(FONTS, 'SofiaSansCondensed-SemiBold.ttf')
 
 SS = 4          # supersampling for drawn art
 
@@ -44,30 +45,17 @@ def rgb15(r, g, b):
     return (int(r) >> 3) | ((int(g) >> 3) << 5) | ((int(b) >> 3) << 10)
 
 
-def face_index(path, want):
-    """The index of the face called `want` (e.g. 'Demi Bold') in a font collection."""
-    for i in range(32):
-        try:
-            f = ImageFont.truetype(path, 12, index=i)
-        except OSError:
-            break
-        if f.getname()[1] == want:
-            return i
-    raise SystemExit('no face %r in %s' % (want, path))
-
-
 # ============================================================================ fonts
 
-def degree_glyph(path, size, index):
-    g, _, _ = meifont.ttf_glyphs(path, size, index=index, first=0xB0, count=1)
+def degree_glyph(path, size):
+    g, _, _ = meifont.ttf_glyphs(path, size, first=0xB0, count=1)
     return g[0]
 
 
-def ttf_font(path, face, size, keep=None, track=0, mono_digits=False):
-    idx = face_index(path, face)
-    glyphs, h, line = meifont.ttf_glyphs(path, size, index=idx, first=32, count=95,
+def ttf_font(path, size, keep=None, track=0, mono_digits=False):
+    glyphs, h, line = meifont.ttf_glyphs(path, size, first=32, count=95,
                                          track=track, mono_digits=mono_digits)
-    deg_img, deg_adv = degree_glyph(path, size, idx)
+    deg_img, deg_adv = degree_glyph(path, size)
     glyphs[ord('`') - 32] = (deg_img, deg_adv + track)
     if keep is not None:
         glyphs = [(img, adv) if chr(32 + i) in keep else (None, adv) for i, (img, adv) in enumerate(glyphs)]
@@ -404,10 +392,9 @@ def glyph_sun_horizon(up):
 
 
 def logo():
-    """'Mei Weather' wordmark: Avenir Next Heavy Italic over a glossy sun, 'Mei' in sunshine gold
+    """'Mei Weather' wordmark: Figtree Black Italic over a glossy sun, 'Mei' in sunshine gold
     and 'Weather' in white."""
-    idx = face_index(AVENIR, 'Heavy Italic')
-    f = ImageFont.truetype(AVENIR, 19 * SS, index=idx)
+    f = ImageFont.truetype(SANS_LOGO, 19 * SS)
     x0 = 22 * SS
     gap = 2 * SS
     w_mei = int(f.getlength('Mei'))
@@ -601,9 +588,8 @@ def main():
 
     # ---- slot 2: big fonts
     a2 = Atlas(2)
-    cond = AVENIR_COND
-    huge = ttf_font(cond, 'Demi Bold', 60, keep='-0123456789:`', mono_digits=True)
-    big = ttf_font(cond, 'Demi Bold', 30, keep='-0123456789:`/APMapm ', mono_digits=True)
+    huge = ttf_font(SANS_COND, 60, keep='-0123456789:`', mono_digits=True)
+    big = ttf_font(SANS_COND, 30, keep='-0123456789:`/APMapm ', mono_digits=True)
     p_huge = pals.add15(font_colours())
     place_font(a2, *huge, p_huge, font_colours(), 'f_huge', akr)
     p_big = pals.add15(font_colours())
@@ -611,8 +597,8 @@ def main():
 
     # ---- slot 3: text fonts and interface glyphs
     a3 = Atlas(3)
-    med = ttf_font(AVENIR, 'Demi Bold', 15)
-    small = ttf_font(AVENIR, 'Demi Bold', 11)
+    med = ttf_font(SANS, 15)
+    small = ttf_font(SANS, 11)
     tiny = pixel_small_font()
     p_med = pals.add15(font_colours())
     place_font(a3, *med, p_med, font_colours(), 'f_med', akr)

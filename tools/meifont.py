@@ -35,8 +35,8 @@ Fonts:
 Examples:
   python3 tools/meifont.py --pixel small --slot 15 --palette 255 --row 48 --ink 1 \\
       --akr __FONT_SMALL -o stdlib/font_small.akr
-  python3 tools/meifont.py --ttf Georgia.ttf --size 15 --shadow --slot 3 --palette 40 \\
-      -o carts/game/title.fnt --png /tmp/title.png
+  python3 tools/meifont.py --ttf tools/fonts/Gelasio-BoldItalic.ttf --size 15 --shadow --slot 3 \\
+      --palette 40 -o carts/game/title.fnt --png /tmp/title.png
 
 As a module: pixel_glyphs(), ttf_glyphs(), build_font() and Font.blob() / Font.akr().
 """

@@ -4,9 +4,9 @@ embed ECLIPSE_PAL: u16 = "pal.bin"
 embed ECLIPSE_SND: s8 = "snd.bin"
 embed ECLIPSE_VOLS: u8 = "vol.bin"
 
-const ECLIPSE_GLYPH_SPLIT = 41
-const ECLIPSE_WM_U0: [3]s32 = [24, 64, 92]
-const ECLIPSE_WM_U1: [3]s32 = [54, 82, 103]
+const ECLIPSE_GLYPH_SPLIT = 42
+const ECLIPSE_WM_U0: [3]s32 = [24, 63, 93]
+const ECLIPSE_WM_U1: [3]s32 = [53, 83, 104]
 
 // sun: an icosphere, unit radius (16.16), faces counter-clockwise from outside
 const ECLIPSE_SUN_NV = 42

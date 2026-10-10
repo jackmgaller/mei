@@ -1,13 +1,13 @@
 """Draws street_sheet.png and street_sheet.sheet.json beside this file: the street family's
 textures (konbini, vending machine, the mid-rise, utility pole, road-works barrier). Authored
 pixel art, drawn texel by texel; run once and commit the outputs
-(python3 carts/garden/shrine/assets/art/draw_street_sheet.py). Needs Pillow and macOS's Hiragino
-Sans for the road-works sign."""
+(python3 carts/garden/shrine/assets/art/draw_street_sheet.py). Needs Pillow; the road-works sign
+is drawn in Noto Sans JP from tools/fonts/."""
 import json, os
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-JP_FONT = '/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc'
+JP_FONT = os.path.join(HERE, '..', '..', '..', '..', '..', 'tools', 'fonts', 'NotoSansJP-Bold.ttf')
 
 W, H = 128, 176
 sheet = Image.new('RGBA', (W, H), (0, 0, 0, 0))

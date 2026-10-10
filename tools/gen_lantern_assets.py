@@ -1843,9 +1843,10 @@ UI_GREY = stat_pal([(v, v, v) for v in np.linspace(17, 255, 15)])
 # a panel corner texture is not needed: panels are flat semi-transparent quads
 
 # ----------------------------------------------------------------------------- fonts & logo (slot 2)
-FONT_SMALL = '/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf'
-FONT_BIG = '/System/Library/Fonts/Supplemental/Georgia Bold Italic.ttf'
-HIRA_ROUND = '/System/Library/Fonts/ヒラギノ丸ゴ ProN W4.ttc'
+FONTS = os.path.join(ROOT, 'tools', 'fonts')     # OFL fonts, see tools/fonts/make_fonts.py
+FONT_SMALL = os.path.join(FONTS, 'MPLUSRounded1c-Bold.ttf')
+FONT_BIG = os.path.join(FONTS, 'Gelasio-BoldItalic.ttf')
+JP_ROUND = os.path.join(FONTS, 'ZenMaruGothic-Medium.ttf')
 SHADOW = (16, 14, 36)
 FONT_PAL = stat_pal([SHADOW] + [tuple(int(SHADOW[k] + (255 - SHADOW[k]) * (i / 13.0) ** 0.85) for k in range(3))
                                 for i in range(14)])
@@ -1870,11 +1871,15 @@ class Shelf:
         return u, v
 
 
-def render_font(shelf, path, size, track=0, firm=True):
+def render_font(shelf, path, size, track=0, firm=True, cell=None):
+    """cell = (baseline row, height) keeps a given glyph cell instead of the font's own."""
     font = ImageFont.truetype(path, size)
     big = ImageFont.truetype(path, size * 4)
     asc, desc = font.getmetrics()
     H = asc + desc + 2
+    dy = 0
+    if cell:
+        dy, H = cell[0] - asc, cell[1]
     metrics = []
     for code in range(32, 127):
         ch = chr(code)
@@ -1883,7 +1888,9 @@ def render_font(shelf, path, size, track=0, firm=True):
         S = 4
         img = Image.new('L', (cw * S, H * S), 0)
         d = ImageDraw.Draw(img)
-        d.text((1 * S, 0), ch, font=big, fill=255)
+        d.text((1 * S, dy * S), ch, font=big, fill=255)
+        bb = big.getbbox(ch)
+        assert bb[1] + dy * S >= 0 and bb[3] + dy * S <= H * S, 'glyph %r leaves its cell' % ch
         a = np.asarray(img.resize((cw, H), Image.BOX), np.float32) / 255.0
         if firm:
             a = np.clip((a - 0.1) / 0.75, 0, 1)
@@ -1905,9 +1912,11 @@ def render_font(shelf, path, size, track=0, firm=True):
 
 
 shelf = Shelf(A2, 0, 0, 255, 183)
-FS_METRICS, FS_H = render_font(shelf, FONT_SMALL, 10, track=0)
+# the cells (baseline, height) of the fonts the cart's layout was made with (Arial Rounded Bold
+# 10 and Georgia Bold Italic 15), so its line spacing and text positions stay as they were
+FS_METRICS, FS_H = render_font(shelf, FONT_SMALL, 10, track=0, cell=(10, 15))
 shelf.x = 0; shelf.y += shelf.rowh + 2; shelf.rowh = 0
-FB_METRICS, FB_H = render_font(shelf, FONT_BIG, 15, track=0)
+FB_METRICS, FB_H = render_font(shelf, FONT_BIG, 15, track=0, cell=(14, 20))
 print('fonts: small h=%d big h=%d, atlas used to row %d' % (FS_H, FB_H, shelf.y + shelf.rowh))
 
 # logo: "Lantern Lake" + a little Japanese subtitle, 4-bit, up to 256 x 72 at (0, 180)
@@ -1942,11 +1951,12 @@ col = outc * o + grad * m * 1.0
 col = np.where(m > 0.5, grad, np.where(o > 0.5, outc, col))
 alpha = np.maximum(o, m)
 # subtitle
-jf = ImageFont.truetype(HIRA_ROUND, 13 * S)
+jf = ImageFont.truetype(JP_ROUND, 14 * S)
 sub_ = 'ランタン湖  ·  a lakeside fishing tale'
 jm = Image.new('L', lim.size, 0)
 jb = jf.getbbox(sub_)
-ImageDraw.Draw(jm).text(((LW * S - (jb[2] - jb[0])) // 2 - jb[0], 52 * S), sub_, font=jf, fill=255)
+# centred, the ink's top at row 52
+ImageDraw.Draw(jm).text(((LW * S - (jb[2] - jb[0])) // 2 - jb[0], 52 * S - jb[1]), sub_, font=jf, fill=255)
 jo = jm.filter(ImageFilter.MaxFilter(int(1.2 * S) * 2 + 1))
 jmn = np.asarray(jm, np.float32)[..., None] / 255
 jon = np.asarray(jo, np.float32)[..., None] / 255

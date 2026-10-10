@@ -51,7 +51,7 @@ struct Spr { slot: u8, pal: u8, u: u8, v: u8, w: u8, h: u8 }
 const G_DROP: Spr = Spr { slot: 3, pal: 22, u: 0, v: 127, w: 7, h: 10 }
 const G_RISE: Spr = Spr { slot: 3, pal: 23, u: 8, v: 127, w: 22, h: 20 }
 const G_SET: Spr = Spr { slot: 3, pal: 24, u: 31, v: 127, w: 22, h: 20 }
-const LOGO: Spr = Spr { slot: 3, pal: 25, u: 54, v: 127, w: 148, h: 26 }
+const LOGO: Spr = Spr { slot: 3, pal: 25, u: 54, v: 127, w: 139, h: 26 }
 const IL_RAYS: Spr = Spr { slot: 4, pal: 26, u: 0, v: 0, w: 66, h: 66 }
 const IL_DISC: Spr = Spr { slot: 4, pal: 27, u: 67, v: 0, w: 42, h: 42 }
 const IL_MOON: Spr = Spr { slot: 4, pal: 28, u: 110, v: 0, w: 42, h: 42 }
@@ -97,7 +97,7 @@ const SMALL_NIGHT_V = 159
 const SMALL_ICON_PAL = 44
 const SMALL_ICON_W = 20
 const SMALL_ICON_H = 16
-const TEX2_ROWS = 153
+const TEX2_ROWS = 143
 const TEX3_ROWS = 153
 const TEX4_ROWS = 175
 const PAL_FIRST = 17

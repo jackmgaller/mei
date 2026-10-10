@@ -26,6 +26,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'system', 'boot', 'eclipse')
+FONTS = os.path.join(ROOT, 'tools', 'fonts')     # OFL fonts, see tools/fonts/make_fonts.py
 SR = 22050
 HALF = SR // 2
 FRAME = SR / 60.0            # 367.5 samples per frame
@@ -93,7 +94,7 @@ def build_textures():
     ss = 4
     img = Image.new('L', (G * ss, G * ss), 0)
     d = ImageDraw.Draw(img)
-    F = ImageFont.truetype('/System/Library/Fonts/ヒラギノ明朝 ProN.ttc', 84 * ss, index=0)
+    F = ImageFont.truetype(os.path.join(FONTS, 'NotoSerifJP-Regular.ttf'), 84 * ss)
     bb = d.textbbox((0, 0), '明', font=F)
     x = (G * ss - (bb[2] - bb[0])) / 2 - bb[0]
     y = (G * ss - (bb[3] - bb[1])) / 2 - bb[1]
@@ -163,8 +164,8 @@ def build_textures():
         + 0.9 * np.exp(-(ddx / 0.045) ** 2) * np.clip(1 - abs(ddy), 0, 1) ** 2
     put(quant(np.clip(sp, 0, 1)), 128, 96)
 
-    # --- wordmark "MEI", 128x30 at (0,96), Optima, widely spaced
-    wm, spans = render_text('MEI', ('/System/Library/Fonts/Optima.ttc', 0), 30, (128, 30), spacing=13, stroke=0.25)
+    # --- wordmark "MEI", 128x30 at (0,96), Belleza, widely spaced
+    wm, spans = render_text('MEI', (os.path.join(FONTS, 'Belleza-Regular.ttf'), 0), 30, (128, 30), spacing=13, stroke=0.25)
     put(quant(wm ** 0.85), 0, 96)
     info['WM_SPANS'] = [(int(np.floor(a)) - 1, int(np.ceil(b)) + 1) for a, b in spans]
 
@@ -642,7 +643,7 @@ class Pieces:
                 pos += (bounds[fr + 1] - bounds[fr]) * step
         return L, R
 
-    def mls(self, prefix):
+    def akr(self, prefix):
         P = prefix.upper()
         n = len(self.events)
         def arr(name, vals):

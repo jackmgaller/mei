@@ -28,7 +28,7 @@ const SH_NCHARS = 100
 const SH_FONT_BIG = 0
 const SH_FONT_MED = 1
 const SH_FONT_SMALL = 2
-const SH_FONT_H: [3]s32 = [33, 20, 16]
+const SH_FONT_H: [3]s32 = [30, 19, 15]
 const SH_FONT_SLOT: [3]u32 = [13, 12, 12]
 // extra glyphs
 const SH_CH_DOT = "\x7f"

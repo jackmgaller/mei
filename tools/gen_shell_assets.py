@@ -9,8 +9,8 @@
   snd_*.raw      UI sounds, signed 8-bit PCM at 22,050 Hz (the music: gen_shell_music.py)
   assets.akr     embed declarations and atlas constants used by the shell
 
-Only the texture rows actually used are written. Fonts come from macOS (Avenir Next,
-Hiragino); the generated files are checked in, so other systems don't need them.
+Only the texture rows actually used are written. Fonts come from tools/fonts/ (Figtree,
+Noto Sans JP).
 `--preview DIR` also writes enlarged pictures of the three atlases to DIR."""
 import os, struct, sys
 import numpy as np
@@ -20,8 +20,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'system', 'shell')
 SR = 22050
 
-AVENIR = '/System/Library/Fonts/Avenir Next.ttc'
-HIRAGINO = '/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc'
+FONTS = os.path.join(ROOT, 'tools', 'fonts')         # OFL fonts, see tools/fonts/make_fonts.py
+SANS_SEMIBOLD = os.path.join(FONTS, 'Figtree-SemiBold.ttf')
+SANS_MEDIUM = os.path.join(FONTS, 'Figtree-Medium.ttf')
+SANS_BOLD = os.path.join(FONTS, 'Figtree-Bold.ttf')
+JP_GOTHIC = os.path.join(FONTS, 'NotoSansJP-Bold.ttf')
 
 PAL_BASE = 192          # the shell owns 4-bit palettes 192-254
 ICON_V = 144            # slot 14 rows from here on are for memory-card save icons
@@ -254,10 +257,13 @@ def moon_img(size):
 
 def mei_glyph(size):
     """明 with 日 (sun) warm and 月 (moon) cool, with a soft shadow."""
-    font = ImageFont.truetype(HIRAGINO, size * 4, index=0)
+    font = ImageFont.truetype(JP_GOTHIC, size * 4)
     W, H = int(size * 1.15), int(size * 1.15)
+    ink = Image.new('L', (W * 8, H * 8), 0)
+    ImageDraw.Draw(ink).text((W * 2, H * 2), '明', font=font, fill=255)
+    ink = ink.crop(ink.getbbox())
     img = Image.new('L', (W * 4, H * 4), 0)
-    ImageDraw.Draw(img).text((size * 0.06 * 4, -size * 0.02 * 4), '明', font=font, fill=255)
+    img.paste(ink, (round(size * 0.13 * 4), round(size * 0.06 * 4)))    # the ink's top left corner
     a = np.asarray(img.resize((W, H), Image.BOX), np.float32) / 255.0
     cols = np.where(a.max(axis=0) > 0.1)[0]
     # split between 日 and 月 at the emptiest column in the middle third
@@ -359,7 +365,7 @@ def icon(name, size=18):
 
 
 def button_glyph(label, fill, w=13, h=13):
-    font = ImageFont.truetype(AVENIR, 9 * 8, index=0)
+    font = ImageFont.truetype(SANS_BOLD, 9 * 8)
     def f(d, S, img):
         if w == h:
             d.ellipse([0, 0, w * S - 1, h * S - 1], fill=fill + (255,))
@@ -389,11 +395,11 @@ def disc(size, ring=False):
 
 def build_textures():
     font_atlas = Atlas('font')
-    med, med_h = render_font(font_atlas, AVENIR, 2, 15)
+    med, med_h = render_font(font_atlas, SANS_SEMIBOLD, 0, 15)
     font_atlas.newline()
-    small, small_h = render_font(font_atlas, AVENIR, 5, 12)
+    small, small_h = render_font(font_atlas, SANS_MEDIUM, 0, 12)
     big_atlas = Atlas('big')
-    big, big_h = render_font(big_atlas, AVENIR, 2, 26, track=0)
+    big, big_h = render_font(big_atlas, SANS_SEMIBOLD, 0, 26, track=0)
 
     art = Atlas('art')
     add_art(art, 'mei', mei_glyph(52))

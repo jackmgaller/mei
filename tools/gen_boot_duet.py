@@ -43,7 +43,7 @@ def write(name, data):
 def c15(r, g, b):
     return (min(255, r) >> 3) | ((min(255, g) >> 3) << 5) | ((min(255, b) >> 3) << 10)
 
-FONT = '/System/Library/Fonts/'
+FONTS = os.path.join(ROOT, 'tools', 'fonts')     # OFL fonts, see tools/fonts/make_fonts.py
 SS = 4
 BG = np.array([250, 250, 248], float)
 SUN = np.array([255, 138, 28], float)
@@ -141,7 +141,8 @@ def make_atlas():
     put(176, 0, *star(16, np.array([255, 214, 120.0])))
     # 明 split into 日 and 月 by connected strokes (月's left leg reaches under 日)
     from scipy import ndimage
-    a, bb = text_img('明', (FONT + 'Hiragino Sans GB.ttc', 2), 66, (96, 96), None)
+    # 64 px: Noto Sans JP's 明 at 64 is as big as Hiragino Sans GB's was at 66, 日 and 月 24 apart
+    a, bb = text_img('明', (os.path.join(FONTS, 'NotoSansJP-Bold.ttf'), 0), 64, (96, 96), None)
     y0, y1, x0, x1 = bb
     lab, nlab = ndimage.label(a > 0.35)
     mid = (x0 + x1) / 2
@@ -168,7 +169,7 @@ def make_atlas():
     boxes = []
     u = 128
     for ch, w in (('M', 40), ('E', 32), ('I', 16)):
-        a, bb = text_img(ch, (FONT + 'Supplemental/Arial Rounded Bold.ttf', 0), 34, (w, 40), None)
+        a, bb = text_img(ch, (os.path.join(FONTS, 'MPLUSRounded1c-Bold.ttf'), 0), 34, (w, 40), None)
         # all three are capitals of one font, so centring each box keeps a common baseline
         g = glyph_box(a, bb, (w, 40))
         put(u, 48, np.ones((40, w, 3)) * INK, g)
