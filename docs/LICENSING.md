@@ -2,16 +2,21 @@
 
 What has to be replaced, removed or decided before Mei (the repository, the app or any cart) is
 released publicly. Taken on 2026-10-10 from the working tree, untracked files included, and the
-git history. Of what is listed, only the system fonts in shipped art (section 3) are fixed.
+git history. Of what is listed, the licences (section 1) are chosen and the system fonts in
+shipped art (section 3) are fixed.
 
-## 1. No licence
+## 1. Licences (decided 2026-10-10)
 
-- There is no `LICENSE` file. `tools/vscode-akari/package.json` says `UNLICENSED`.
-- The standard library (`stdlib/`) is compiled into every cart, so its licence decides what
-  people may do with the games they make. It needs a permissive licence (MIT, zlib) or an
-  explicit exception covering compiled carts, whatever licence the emulator and tools get.
-- The VS Code extension's npm dependencies (`tools/vscode-akari/package-lock.json`) are MIT,
-  BSD, Apache-2.0 and Artistic-2.0, and their packaged builds would need those notices.
+- Code, the standard library, the system ROM, the tools and the docs: MIT ([LICENSE](../LICENSE)).
+  Carts compiled with `meic` may be distributed without the notice
+  ([LICENSE-ASSETS.md](../LICENSE-ASSETS.md) has the exception).
+- The carts' art and audio, the movement garden's worlds and `examples/`: CC BY 4.0
+  ([LICENSE-ASSETS.md](../LICENSE-ASSETS.md)). A flagship game sold on its own may keep its
+  assets under a different licence; that is not decided.
+- The fonts in `tools/fonts/`: OFL 1.1, each with its licence file.
+- Still open: `tools/vscode-akari/package.json` says `UNLICENSED`, and the extension's npm
+  dependencies (MIT, BSD, Apache-2.0, Artistic-2.0) need their notices in a packaged build.
+- The copyright line says `jackmgaller`; a legal name may be wanted there before release.
 
 ## 2. Eyewitness (`carts/eyewitness/`, untracked)
 

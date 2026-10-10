@@ -46,3 +46,10 @@ repository, and the [names](docs/OVERVIEW.md#names) of the project's parts.
 - [ROADMAP.md](docs/ROADMAP.md): what is planned, undecided and decided against
 - [PLATFORMER.md](docs/PLATFORMER.md): the design of the first open-world game
 - [AGENTS.md](AGENTS.md): working in this repository, for people and AI agents
+- [LICENSING.md](docs/LICENSING.md): what still has to be cleared before a public release
+
+## Licence
+
+The code is MIT ([LICENSE](LICENSE)); the carts' art and audio and the examples are CC BY 4.0;
+the fonts in `tools/fonts/` are OFL. [LICENSE-ASSETS.md](LICENSE-ASSETS.md) says which folders
+are which, and that carts you compile are yours.
