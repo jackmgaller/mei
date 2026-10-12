@@ -29,6 +29,9 @@ What becomes what:
 - every material is KHR_materials_unlit (the lighting is in the vertex colours); double-sided
   faces give doubleSided materials; emissive materials also carry emissiveFactor and
   emissiveTexture, for viewers that do not implement the unlit extension.
+- blend: a `half` material is alphaMode BLEND with alpha 0.5 (half the scene behind, half the
+  face); `add`, `sub` and `quarter` have no glTF equivalent and are exported opaque. Every
+  blended material names its mode in extras.mei.blend.
 
 Not carried: animated textures beyond frame 0 (reported in `dropped`), levels of detail beyond
 level 0, palette changes made at run time, Mei's affine (non-perspective) texturing and colour
@@ -305,6 +308,13 @@ def export(mesh, materials, recipe, name):
             extras['palette_colour'] = palette_backed[material]['colour']
         if double:
             entry['doubleSided'] = True
+        if 'blend' in mat:
+            # half is glTF's alpha blending at alpha 0.5; the other modes have no glTF equivalent
+            extras['blend'] = mat['blend']
+            if mat['blend'] == 'half':
+                entry['alphaMode'] = 'BLEND'
+                entry.pop('alphaCutoff', None)
+                entry['pbrMetallicRoughness']['baseColorFactor'] = [1, 1, 1, 0.5]
         entry['extras'] = {'mei': extras}
         doc['materials'].append(entry)
         big = len(verts) > 65535
@@ -318,6 +328,9 @@ def export(mesh, materials, recipe, name):
         notes.append('Animated textures: frame 0 only.')
     if mesh.levels:
         notes.append(f'Level of detail 0 only ({len(mesh.levels)} coarser levels not exported).')
+    other = sorted({materials[m]['blend'] for m, _, _ in order if materials[m].get('blend', 'half') != 'half'})
+    if other:
+        notes.append(f'Blend {", ".join(other)}: exported opaque (glTF has no such blending); extras.mei.blend names it.')
     doc['asset']['extras'] = {'mei': {'name': name, 'notes': notes}}
     document, blob = out.finish()
     document['buffers'] = [{'byteLength': len(blob)}]

@@ -331,6 +331,10 @@ def lod_summary(recipe, mesh, base):
 
 DEFAULT_LAYOUT = {'slot':14,'row':0,'first':0}
 
+# A material's blend, in the order of the GPU's blend modes 0-3 (docs/RENDERING.md; BLEND_HALF,
+# BLEND_ADD, BLEND_SUB, BLEND_QUARTER in stdlib/draw.akr): the face's blend byte.
+BLEND_MODES = ('half','add','sub','quarter')
+
 
 FONT_PALETTE = 255      # 4-bit palette 255 (colours 4080-4095) holds the fonts' colours
 
@@ -398,11 +402,31 @@ def face_runs(mesh, keep):
     return runs
 
 
+def material_faces(mesh, materials):
+    """{'materials', 'tags'} of the material manifest (and of each asset in a pack's manifest):
+    per material the mesh uses, its colour, class, palette colour (in mesh.palette's placement),
+    tag, blend mode (blended materials only), triangles and faces; per tag its faces. Faces are
+    half-open [start, end) runs of the exported faces."""
+    palette = mesh.palette
+    used = sorted({f.material for f in mesh.faces})
+    out = {'materials':{}}
+    for key in used:
+        mat = materials[key]
+        entry = palette['by_material'].get(key) if palette else None
+        out['materials'][key] = {'color':mat['color'].lower(),'class':mat.get('class','surface'),
+                                 'palette_colour':entry['colour'] if entry else None,'tag':mat.get('tag'),
+                                 'triangles':sum(f.material == key for f in mesh.faces),
+                                 'faces':face_runs(mesh,lambda f: f.material == key),
+                                 **({'blend':mat['blend']} if 'blend' in mat else {})}
+    tags = sorted({materials[key]['tag'] for key in used if 'tag' in materials[key]})
+    out['tags'] = {tag:face_runs(mesh,lambda f: materials[f.material].get('tag') == tag) for tag in tags}
+    return out
+
+
 def material_manifest(mesh, materials, recipe):
     """The consumer's view of materials: palette entries and their defaults, classes, tags
     and the faces each covers. Written for every build."""
     name, palette = recipe['name'], mesh.palette
-    used = sorted({f.material for f in mesh.faces})
     result = {'format':'mei-asset-materials','version':1,'name':name}
     if palette:
         layout = palette['layout']
@@ -416,16 +440,7 @@ def material_manifest(mesh, materials, recipe):
             colours = [e['colour'] for e in palette['entries'] if e['class'] == kind]
             if colours:
                 result['classes'][kind] = {'first_colour':colours[0],'colours':colours[-1]-colours[0]+1,'entries':colours}
-    result['materials'] = {}
-    for key in used:
-        mat = materials[key]
-        entry = palette['by_material'].get(key) if palette else None
-        result['materials'][key] = {'color':mat['color'].lower(),'class':mat.get('class','surface'),
-                                    'palette_colour':entry['colour'] if entry else None,'tag':mat.get('tag'),
-                                    'triangles':sum(f.material == key for f in mesh.faces),
-                                    'faces':face_runs(mesh,lambda f: f.material == key)}
-    tags = sorted({materials[key]['tag'] for key in used if 'tag' in materials[key]})
-    result['tags'] = {tag:face_runs(mesh,lambda f: materials[f.material].get('tag') == tag) for tag in tags}
+    result.update(material_faces(mesh,materials))
     if mesh.textures:
         _,_,_,section = texture_outputs(name,mesh)
         packing = mesh.textures['packing']
@@ -582,6 +597,10 @@ def report(mesh, recipe, budget, materials=None):
     if tagged:
         result['tags'] = dict(sorted(Counter(materials[f.material]['tag'] for f in mesh.faces
                                              if 'tag' in materials[f.material]).items()))
+    if materials is not None and any('blend' in materials[f.material] for f in mesh.faces):
+        # semi-transparent triangles by blend mode
+        result['blend'] = dict(sorted(Counter(materials[f.material]['blend'] for f in mesh.faces
+                                              if 'blend' in materials[f.material]).items()))
     if mesh.textures:
         packing = mesh.textures['packing']
         result['textures'] = {'textured_triangles':sum(f.material in mesh.textures['textures'] for f in mesh.faces),
@@ -635,6 +654,9 @@ def native_bytes(mesh, materials, lighting, packing=None):
             colors.append(rgb(*(max(0,min(255,round(c*shade))) for c in color)))
         # Mei's front faces have cross . outward < 0. Color order follows indices.
         flags = 16 if mat.get('double_sided',False) else 0
+        # A blended material's faces are semi-transparent (flag bit 3), the blend byte its mode.
+        blend = BLEND_MODES.index(mat['blend']) if 'blend' in mat else 0
+        if 'blend' in mat: flags |= meshlib.SEMI
         if tex:
             place = packing.placements[tex.tile.key]
             if place.window:
@@ -644,13 +666,13 @@ def native_bytes(mesh, materials, lighting, packing=None):
                 window = 0
                 uvs = [(u+place.x,v+place.y) for u,v in face.texcoords]
             result.tri(list(reversed(face.indices)),list(reversed(colors)),list(reversed(uvs)),flags,
-                       slot=place.slot,four_bit=place.bits == 4,palette=place.palette,window=window)
+                       slot=place.slot,four_bit=place.bits == 4,palette=place.palette,window=window,blend=blend)
         elif entry:
             uv = (entry['index'],palette['layout']['row'])
             result.tri(list(reversed(face.indices)),list(reversed(colors)),[uv]*3,flags,
-                       slot=palette['layout']['slot'],four_bit=True,palette=entry['palette'])
+                       slot=palette['layout']['slot'],four_bit=True,palette=entry['palette'],blend=blend)
         else:
-            result.tri(list(reversed(face.indices)),list(reversed(colors)),flags=flags)
+            result.tri(list(reversed(face.indices)),list(reversed(colors)),flags=flags,blend=blend)
     return result.pack()
 
 

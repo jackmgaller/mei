@@ -7,8 +7,8 @@ the snow under its middle; it hovers, the hull's belly 0.28 m up. Parts:
 
   hull      pearl-white deck, cyan shoulders, a chrome side band, graphite belly; the Synergen
             wordmark lit on the tail panel (emissive: unshaded)
-  canopy    a closed bubble over the cockpit, material `glass` (tag glass): the pack makes these
-            faces semi-transparent (BLEND_HALF), so the pilot shows through
+  canopy    a closed bubble over the cockpit, material `glass` (tag glass), semi-transparent
+            (`blend: "half"`, BLEND_HALF), so the pilot shows through
   pilot     helmet with a tangerine mirror visor, suit, arms
   pods      two chrome hover pods on swept struts, cyan thruster glows at the back (emissive)
   spoiler   a rear wing on two struts
@@ -232,7 +232,7 @@ def recipe():
             'graphite': {'color': GRAPHITE},
             'visor': {'color': TANGERINE},
             'lip': {'color': SILVER},
-            'glass': {'color': '#38b8e8', 'smooth': True, 'tag': 'glass'},
+            'glass': {'color': '#38b8e8', 'smooth': True, 'tag': 'glass', 'blend': 'half'},
             'thrust': {'color': '#40f0ff', 'class': 'emissive', 'tag': 'thrust'},
             'chrome': {'color': '#b8d8f0', 'class': 'emissive', 'tag': 'chrome',
                        'texture': {'image': 'art/chrome.png', 'projection': 'planar'}},

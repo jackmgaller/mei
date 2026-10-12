@@ -3147,5 +3147,164 @@ class SummaryTests(unittest.TestCase):
             self.assertTrue(all(c > 200 for c in bottom),'snow under the eye')
 
 
+# ---------------------------------------------------------------------------------------------
+# Semi-transparent materials (docs/ASSETKIT.md, "Semi-transparent materials")
+
+def glass_box(blend='half', **glass):
+    """A red core inside a glass shell: the core is seen only through the glass."""
+    return recipe() | {'name':'glassbox',
+                       'materials':{'red':{'color':'#d02020'},'glass':{'color':'#3060f0','blend':blend,**glass}},
+                       'nodes':[{'id':'core','op':'box','size':[.6,.6,.6],'material':'red'},
+                                {'id':'shell','op':'box','size':[1,1,1],'material':'glass'}]}
+
+
+class BlendTests(unittest.TestCase):
+    DEPTH = {'depth':True,'perspective':True}
+
+    def test_each_blend_mode_sets_the_semi_transparent_flag_and_blend_byte(self):
+        modes = ('half','add','sub','quarter')      # the GPU's blend modes 0-3 (RENDERING.md)
+        r = recipe() | {'materials':{**{m:{'color':'#408060','blend':m} for m in modes},
+                                     'solid':{'color':'#806040'},
+                                     # palette-backed (emissive) and textured faces blend too
+                                     'lamp':{'color':'#ffd040','class':'emissive','blend':'add'},
+                                     'tiles':{'color':'#a0a0a0','blend':'half',
+                                              'texture':{'pattern':'checker','colors':['#ffffff','#202020'],'size':8}}},
+                        'nodes':[{'id':k,'op':'box','size':[1,1,1],'material':k,'transform':{'translate':[2*i,0,0]}}
+                                 for i,k in enumerate((*modes,'solid','lamp','tiles'))]}
+        mesh,materials,report = compile_recipe(r)
+        faces = faces_of(native_bytes(mesh,materials,{}))
+        for face,(flags,blend,*_) in zip(mesh.faces,faces):
+            mode = materials[face.material].get('blend')
+            self.assertEqual(bool(flags&8),mode is not None,face.material)
+            self.assertEqual(blend,modes.index(mode) if mode else 0,face.material)
+        self.assertTrue(all(flags&2 for (flags,*_),f in zip(faces,mesh.faces) if f.material in ('lamp','tiles')))
+        self.assertEqual(report['blend'],{'add':24,'half':24,'quarter':12,'sub':12})
+        self.assertNotIn('blend',compile_recipe(recipe())[2])
+        with self.assertRaisesRegex(AssetError,'half') as caught:
+            compile_recipe(recipe() | {'materials':{'glass':{'color':'#ffffff','blend':'multiply'}}})
+        self.assertEqual(caught.exception.path,'/materials/glass/blend')
+
+    def test_manifest_and_pack_list_each_materials_faces_and_blend(self):
+        from assetkit.packer import pack
+        r = glass_box()
+        r['materials']['glass']['tag'] = 'window'
+        mesh,materials,_ = compile_recipe(r)
+        manifest = material_manifest(mesh,materials,r)
+        self.assertEqual(manifest['materials']['glass']['blend'],'half')
+        self.assertNotIn('blend',manifest['materials']['red'])
+        self.assertEqual(manifest['materials']['red']['faces'],[[0,12]])
+        self.assertEqual(manifest['materials']['glass']['faces'],[[12,24]])
+        self.assertEqual(manifest['tags'],{'window':[[12,24]]})
+        files,packed = pack([(r,None),(recipe(),None)],'street',[14])
+        entry = packed['assets'][0]
+        self.assertEqual(entry['materials'],manifest['materials'])
+        self.assertEqual(entry['tags'],manifest['tags'])
+        self.assertEqual(json.loads(files['street.pack.json'])['assets'][1]['materials']['default']['faces'],[[0,12]])
+        faces = faces_of(files['glassbox.bin'])
+        for start,end in entry['materials']['glass']['faces']:
+            self.assertTrue(all(f[0]&8 and f[1] == 0 for f in faces[start:end]))
+        self.assertFalse(any(f[0]&8 for f in faces[:12]))
+
+    def test_exchange_formats_carry_half_as_alpha(self):
+        from assetkit.gltf import export
+        for blend,mode in (('half','BLEND'),('add',None)):
+            mesh,materials,_ = compile_recipe(glass_box(blend))
+            document,_,_ = export(mesh,materials,glass_box(blend),'glassbox')
+            glass = next(m for m in document['materials'] if m['name'] == 'glass')
+            self.assertEqual(glass.get('alphaMode'),mode)
+            self.assertEqual(glass['extras']['mei']['blend'],blend)
+        with tempfile.TemporaryDirectory() as tmp:
+            build(glass_box(),tmp,False,COMPILER,RUNNER)
+            self.assertIn('newmtl glass\nKd 0.188235 0.376471 0.941176\nd 0.5\n',(Path(tmp)/'glassbox.mtl').read_text())
+
+    @unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
+    def test_the_checker_sees_through_blended_faces(self):
+        from assetkit import visibility
+        report = visibility.verify(glass_box(),self.DEPTH,compiler=COMPILER,probe=PROBE)
+        self.assertTrue(report['ok'],report['failures'])
+        # the core, inside the glass, is judged through it; the glass shows where it is nearest
+        self.assertEqual(report['observed_faces'],24)
+        self.assertGreater(report['totals']['tested_pixels'],20000)
+        self.assertGreater(report['totals']['blend']['tested_pixels'],50000)
+        self.assertEqual(report['blend']['faces'],12)
+        self.assertEqual(report['blend']['observed_faces'],12)
+        # the ID buffer's mesh keeps the glass semi-transparent, adding nothing
+        mesh,materials,_ = compile_recipe(glass_box())
+        ids = faces_of(visibility.identity_mesh(native_bytes(mesh,materials,{}),solid=True))
+        self.assertTrue(all(f[0]&8 and f[1] == 1 and f[8:12] == (0,0,0,0) for f in ids[12:]))
+        self.assertFalse(any(f[0]&8 for f in ids[:12]))
+
+    @unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
+    def test_planted_blend_faults_are_caught(self):
+        from assetkit import visibility
+        identity = visibility.identity_mesh
+        offset = struct.unpack_from('<I',native_bytes(*compile_recipe(glass_box())[:2],{}),8)[0]
+        def planted(tamper_ids=None, tamper_layer=None):
+            def tampered(*a, **k):
+                data = bytearray(identity(*a,**k))
+                tamper = tamper_layer if k.get('layer') is not None else tamper_ids
+                if tamper: tamper(data)
+                return bytes(data)
+            visibility.identity_mesh = tampered
+            try:
+                return visibility.verify(glass_box(),self.DEPTH,compiler=COMPILER,probe=PROBE)
+            finally:
+                visibility.identity_mesh = identity
+        def opaque_glass(data):
+            # the console draws the glass opaque: it hides the core
+            for i in range(12,24): data[offset+36*i] &= ~8
+        report = planted(tamper_ids=opaque_glass)
+        self.assertFalse(report['ok'])
+        self.assertGreater(report['totals']['coverage_errors']+report['totals']['wrong_pixels'],1000)
+        def missing(data):
+            # the console never draws one glass face (its corners collapsed)
+            a = offset+36*12
+            struct.pack_into('<3H',data,a+4,*([struct.unpack_from('<H',data,a+4)[0]]*3))
+        report = planted(tamper_layer=missing)
+        self.assertFalse(report['ok'])
+        self.assertGreater(report['totals']['blend']['wrong_pixels'],100)
+        self.assertEqual(report['totals']['wrong_pixels'],0)
+        self.assertTrue(any('semi-transparent' in line for line in report['failures']))
+        issue = next(v['blend']['issues'][0] for v in report['views'] if v['blend']['issues'])
+        self.assertEqual(issue['expected_faces'][0]['material'],'glass')
+        # without the depth buffer the ordering table draws the core's small faces over the
+        # big glass faces in front of them in some views: found in the blended layer
+        plain = visibility.verify(glass_box(),compiler=COMPILER,probe=PROBE)
+        self.assertFalse(plain['ok'])
+        self.assertEqual(plain['totals']['wrong_pixels'],0)
+        self.assertGreater(plain['totals']['blend']['wrong_pixels'],0)
+
+    @unittest.skipUnless(NUMPY and COMPILER.exists() and PROBE.exists(),'Needs NumPy, meic and mei-asset-probe.')
+    def test_a_blended_cutout_is_judged_per_texel(self):
+        from assetkit import visibility
+        fence = TextureCheckerTests().fence()
+        fence['materials']['fence']['blend'] = 'half'
+        report = visibility.verify(fence,compiler=COMPILER,probe=PROBE)
+        self.assertTrue(report['ok'],report['failures'])
+        self.assertGreater(report['totals']['blend']['tested_pixels'],1000)
+        real = visibility.texel_coverage
+        try:
+            visibility.texel_coverage = lambda np,v,uv,w,xx,yy,inside,area,texture: inside
+            solid = visibility.verify(fence,compiler=COMPILER,probe=PROBE)
+        finally:
+            visibility.texel_coverage = real
+        self.assertGreater(solid['totals']['blend']['wrong_pixels'],1000)
+
+    @unittest.skipUnless(COMPILER.exists() and RUNNER.exists(),'Needs meic and mei-headless.')
+    def test_preview_draws_blended_faces_blended(self):
+        centre = {}
+        for blend in ('half',None):
+            r = glass_box()
+            if not blend: del r['materials']['glass']['blend']
+            with tempfile.TemporaryDirectory() as tmp:
+                build(r,tmp,True,COMPILER,RUNNER,drawn=self.DEPTH)
+                raw = (Path(tmp)/'view_front.ppm').read_bytes().split(b'\n',3)[3]
+                at = (120*320+160)*3
+                centre[blend] = tuple(raw[at:at+3])
+        # through half-blended glass the red core shows: redder and less blue than the opaque glass
+        self.assertGreater(centre['half'][0],centre[None][0]+40)
+        self.assertLess(centre['half'][2],centre[None][2]-40)
+
+
 if __name__ == '__main__':
     unittest.main()

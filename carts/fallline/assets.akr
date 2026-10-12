@@ -40,8 +40,8 @@ fn fl_pack_load() {
     load_palette(80, &FL_PACK_PALETTE[80], 16)
 }
 
-// Semi-transparent faces (BLEND_HALF), half-open ranges of each mesh's faces:
-//   ASSET_SLED: 138-188 (its glass)
+// Semi-transparent faces, half-open ranges of each mesh's faces (material, blend mode):
+//   ASSET_SLED: 138-188 (glass, half)
 
 fn assets_load() {
     fl_pack_load()

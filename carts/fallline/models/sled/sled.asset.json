@@ -36,7 +36,8 @@
   "glass": {
    "color": "#38b8e8",
    "smooth": true,
-   "tag": "glass"
+   "tag": "glass",
+   "blend": "half"
   },
   "thrust": {
    "color": "#40f0ff",

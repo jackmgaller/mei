@@ -101,7 +101,62 @@
           ]
         }
       ],
-      "windows": []
+      "windows": [],
+      "materials": {
+        "back": {
+          "color": "#17121a",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              14,
+              28
+            ]
+          ]
+        },
+        "bead": {
+          "color": "#ffd34e",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 128,
+          "faces": [
+            [
+              60,
+              188
+            ]
+          ]
+        },
+        "edge": {
+          "color": "#e8b83a",
+          "class": "surface",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 32,
+          "faces": [
+            [
+              28,
+              60
+            ]
+          ]
+        },
+        "face": {
+          "color": "#d8282c",
+          "class": "emissive",
+          "palette_colour": null,
+          "tag": null,
+          "triangles": 14,
+          "faces": [
+            [
+              0,
+              14
+            ]
+          ]
+        }
+      },
+      "tags": {}
     }
   ],
   "textures": {

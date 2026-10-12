@@ -9,6 +9,10 @@ With the policy's `depth` (the asset is drawn with the depth buffer, docs/RENDER
 draws as such a game does and depth order is a regression check of the depth test: faces count
 as a tie unless their depths differ by more than the depth key's precision (kitcore/depth.py),
 surface intersections and ordering cycles are not failures, coplanar overlaps still are.
+
+Semi-transparent faces (materials with `blend`) hide nothing: in the ID buffer they are drawn
+semi-transparent adding nothing, and its reference leaves them out; a second buffer, the blended
+layer, judges where they show (compare_blend(); docs/ASSETKIT.md, "Semi-transparent faces").
 """
 from collections import Counter, defaultdict
 import hashlib
@@ -70,7 +74,7 @@ def worst_issue(views):
             if drawn!=expected else f", most within {drawn} (faces {a['face']}/{b['face']} at {position(a,b)})")
 
 
-def identity_mesh(binary, cutouts=(), solid=False):
+def identity_mesh(binary, cutouts=(), solid=False, layer=None):
     """Keep geometry, flags, and ordering unchanged; replace color with RGB555 ID.
 
     A palette swatch face (4-bit, the same nonzero texel index at every corner) covers
@@ -82,27 +86,37 @@ def identity_mesh(binary, cutouts=(), solid=False):
     cutouts: faces whose texture has holes (texel 0). They stay textured, through palette 0,
     whose colour 1 the verification cart makes white over a mask of the textures (every texel
     that is not 0 becomes 1), and their tint carries the ID: a white texel tinted t shows
-    255 t >> 7 per channel, so t = ceil(1024 k / 255) shows 5-bit value k."""
+    255 t >> 7 per channel, so t = ceil(1024 k / 255) shows 5-bit value k.
+
+    Semi-transparent faces (blended materials) stay semi-transparent, in blend mode 1 (add), so
+    that they test depth and write none, as on the console. Without layer they add colour 0,
+    untextured: they change no pixel and hide nothing. layer ({face: ID} of the semi-transparent
+    faces) makes the blended layer's mesh instead: every opaque face draws colour 0 (still
+    writing depth; a cutout face through its mask), and each semi-transparent face adds its ID
+    from layer (a cutout face through its mask), so a pixel holds the sum, per 5-bit channel
+    and saturating at 31, of the IDs of the semi-transparent faces drawn over it."""
     data=bytearray(binary)
     _,count,_,offset,_=struct.unpack_from('<HHIII',data)
     for i in range(count):
         at=offset+i*36
         flags=data[at]
-        n=i+1
+        semi=flags&8
+        n=(layer.get(i,0) if semi else 0) if layer is not None else 0 if semi else i+1
         color=((n&31)<<3)|(((n>>5)&31)<<11)|(((n>>10)&31)<<19)
-        if flags&2 and i in cutouts:
-            if flags&~(19|SLOT_HI|PAL_HI): raise AssetError('/verification','Only opaque triangle meshes are supported.')
+        if semi: data[at+1]=1                     # blend mode 1: the pixel plus the face
+        if flags&2 and i in cutouts and not (semi and layer is None):
+            if flags&~(27|SLOT_HI|PAL_HI): raise AssetError('/verification','Only triangle meshes are supported.')
             data[at],data[at+3]=flags&~PAL_HI,0      # palette 0 of bank 0, the slot kept
             color=sum(-(-1024*((n>>(5*c))&31)//255)<<(8*c) for c in range(3))
             struct.pack_into('<4I',data,at+12,*([color]*4))
             continue
         if flags&2:
             uv=struct.unpack_from('<3H',data,at+28)
-            if not solid and (not data[at+2]&16 or len(set(uv))!=1 or not 0<(uv[0]&255)<16):
+            if not solid and not semi and (not data[at+2]&16 or len(set(uv))!=1 or not 0<(uv[0]&255)<16):
                 raise AssetError('/verification','Textured faces are supported only as palette swatch faces.')
             flags&=~(2|SLOT_HI|PAL_HI);data[at]=flags;data[at+2]=data[at+3]=0
             struct.pack_into('<4H',data,at+28,0,0,0,0)
-        if flags&~17: raise AssetError('/verification','Only opaque, untextured triangle meshes are supported.')
+        if flags&~25: raise AssetError('/verification','Only untextured triangle meshes are supported.')
         struct.pack_into('<4I',data,offset+i*36+12,*([color]*4))
     return bytes(data)
 
@@ -320,6 +334,78 @@ def compare(mesh, surfaces, actual, graph=True, margin=0.0, key=0.0):
             'issues':issues,'ordering_graph':graph_info},expected,actual,bad|coverage_bad
 
 
+BLEND_REPAIR=('The semi-transparent faces drawn here are not those nearer than every opaque face. Without the depth '
+              'buffer the ordering table sorts faces by average depth: split the long faces named, or keep blended '
+              'faces clear of opaque ones. With the depth buffer this is a fault of the console, not of the asset.')
+
+
+def compare_blend(mesh, opaque, blended, actual, layer, margin=0.0, key=0.0):
+    """The blended layer's verdict for one view. opaque, blended: raster_surfaces() of the opaque
+    and of the semi-transparent faces; actual: the console's blended layer (identity_mesh() with
+    layer): black but for the sum of the IDs of the semi-transparent faces drawn at each pixel.
+
+    A semi-transparent face is expected at a pixel it covers when it is nearer than every opaque
+    face there (the depth test passes it; the ordering table draws it after them), and the
+    expected pixel is the sum of those faces' IDs, per channel, saturating at 31. The order of
+    semi-transparent faces among themselves does not change the sum, and is not judged. A pixel
+    is decided when each semi-transparent face covering it is nearer, by more than the depth tie
+    (key as in compare()), than every opaque face that covers the pixel or comes within margin of
+    it, or farther by more than the tie than the nearest opaque face, and with a margin lies at
+    least that far inside its outline; a pixel no semi-transparent face covers is decided (it must
+    stay black). A wrong pixel is a decided one whose drawn sum differs from the expected."""
+    np=numpy()
+    n=320*240
+    nearest=np.full(n,np.inf)
+    for s in opaque:np.minimum.at(nearest,s['pixels'],s['depth'])
+    rival=nearest.copy()
+    if margin>0:
+        for s in opaque:np.minimum.at(rival,s['ring'],s['ring_depth'])
+    total=np.zeros((3,n),dtype=np.int64)
+    covered=np.zeros(n,dtype=bool);undecided=np.zeros(n,dtype=bool)
+    shown=set();fronts={}
+    for s in blended:
+        pixels,z=s['pixels'],s['depth']
+        front=z<nearest[pixels]
+        tie=z*key+DEPTH_EPSILON
+        decided=(rival[pixels]>z+tie)|(z>nearest[pixels]*(1+key)+DEPTH_EPSILON)
+        if margin>0:decided&=s['inside']>=margin
+        covered[pixels]=True
+        undecided[pixels[~decided]]=True
+        k=layer[s['face']]
+        for c in range(3):total[c,pixels[front]]+=(k>>(5*c))&31
+        if front.any():shown.add(s['face'])
+        fronts[s['face']]=front
+    total=np.minimum(total,31)
+    expected=total[0]|total[1]<<5|total[2]<<10
+    drawn=actual.reshape(-1).astype(np.int64)
+    wrong=drawn!=expected
+    bad=wrong&~undecided
+    issues=[]
+    if bad.any():
+        at=np.flatnonzero(bad)
+        seen={int(p):([],[]) for p in at}
+        for s in blended:
+            hit=np.isin(s['pixels'],at)
+            for p,f in zip(s['pixels'][hit].tolist(),fronts[s['face']][hit].tolist()):
+                seen[p][0 if f else 1].append(s['face'])
+        groups=defaultdict(list)
+        for p,(shows,hidden) in seen.items():groups[tuple(shows),tuple(hidden)].append(p)
+        for (shows,hidden),pixels in sorted(groups.items(),key=lambda kv:(-len(kv[1]),kv[0]))[:32]:
+            p=pixels[0]
+            issues.append({'code':'blend_wrong','expected_faces':[face_ref(mesh,i) for i in shows],
+                           'hidden_faces':[face_ref(mesh,i) for i in hidden],'pixels':len(pixels),
+                           'sample_pixel':[p%320,p//320],'drawn':int(drawn[p]),'expected':int(expected[p]),
+                           'repair':BLEND_REPAIR})
+    return {'tested_pixels':int((covered&~undecided).sum()),'undecided_pixels':int((covered&undecided).sum()),
+            'undecided_wrong_pixels':int((wrong&undecided).sum()),'wrong_pixels':int(bad.sum()),
+            'visible_faces':sorted(shown),'issues':issues},expected,drawn,bad
+
+
+BLEND_SCOPE=('Semi-transparent faces (blended materials) are drawn semi-transparent and hide nothing: the ID buffer and '
+             'its reference judge the opaque faces as if they were absent. A second buffer, the blended layer, judges '
+             'where they show: at each pixel the sum of the IDs of those nearer than every opaque face, per 5-bit '
+             'channel saturating at 31. Their order among themselves, their colours and the blending are not judged; '
+             'IDs that add up to another sum, or saturate, can hide a fault there.')
 DEPTH_SCOPE=('Opaque static mesh drawn with the depth buffer; fitted cameras of the sweep chosen to show every face it '
              'sees (depth_views); native projected vertices and '
              'exact integer coverage; independent reciprocal-depth selection. Depth ties within two steps of the depth '
@@ -404,17 +490,15 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
     # coverage the reference takes from the real texels.
     cutouts,textured,cart=cutout_setup(np,mesh,original)
     binary=identity_mesh(original,cutouts,solid=True)
+    # Semi-transparent faces (blended materials) hide nothing: they add nothing to the ID buffer
+    # and are left out of its reference; a second buffer, the blended layer, checks where they show.
+    blended=[i for i,f in enumerate(mesh.faces) if 'blend' in materials[f.material]]
+    layer={f:k+1 for k,f in enumerate(blended)}
     root=Path(directory).resolve() if directory else None
     if root:root.mkdir(parents=True,exist_ok=True)
     views=[];visible=set();images=[]
     with tempfile.TemporaryDirectory(prefix='mei-verify-') as tmp:
         work=Path(tmp);name=recipe['name']
-        (work/(name+'.bin')).write_bytes(binary)
-        akr=f'embed ASSET_{name.upper()}: Mesh = "{name}.bin"\n'
-        if cart:
-            for filename,data in cart[0].items():(work/filename).write_bytes(data)
-            akr+='\n'.join(cart[1]).replace('asset_NAME_load',f'asset_{name}_load')+'\n'
-        (work/(name+'.akr')).write_text(akr)
         world=policy.get('scale','fit')=='world'
         sweep=cameras(policy)
         # One cart draws every view: the probe writes the view's index into asset_view, and the
@@ -430,31 +514,54 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
                     'ASSET_VIEWS[k + 2]), ASSET_VIEWS[k + 3], ASSET_VIEWS[k + 4])\n',code)
         code=code.replace('\nfn draw() {',f'\nconst ASSET_VIEWS: [{len(table)}]fixed = [{", ".join(table)}]\n'
                           'var asset_view: s32\n\nfn draw() {')
-        (work/'check.akr').write_text(code+'\n')
-        run([compiler,work/'check.akr','-o',work/'check.mei','--sym',work/'check.sym'])
-        symbols={line.split()[1]:int(line.split()[0],16) for line in (work/'check.sym').read_text().splitlines() if len(line.split())==2}
-        if 'G___sv' not in symbols or 'G_asset_view' not in symbols:
-            raise AssetError('/verification/native','Compiler did not emit the __sv and asset_view diagnostic symbols.')
-        run([probe,work/'check.mei',work/'capture.bin',symbols['G___sv'],len(mesh.vertices),symbols['G_asset_view'],len(sweep)])
-        captures=(work/'capture.bin').read_bytes()
         size=16+16*len(mesh.vertices)+320*240*2
-        if len(captures)!=size*len(sweep):raise AssetError('/verification/native','Invalid native probe capture.')
-        drawn=[]
-        for k in range(len(sweep)):
-            capture=captures[k*size:(k+1)*size]
-            if capture[:4]!=b'MAV1' or struct.unpack_from('<I',capture,4)[0]!=len(mesh.vertices):
-                raise AssetError('/verification/native','Invalid native probe capture.')
-            actual=np.frombuffer(capture,dtype='<u2',count=320*240,offset=16+16*len(mesh.vertices))
+
+        def draw(folder, mesh_bytes):
+            """The check cart drawing mesh_bytes, compiled in folder and run for every camera:
+            each view's capture's pixels."""
+            folder.mkdir(exist_ok=True)
+            (folder/(name+'.bin')).write_bytes(mesh_bytes)
+            akr=f'embed ASSET_{name.upper()}: Mesh = "{name}.bin"\n'
+            if cart:
+                for filename,data in cart[0].items():(folder/filename).write_bytes(data)
+                akr+='\n'.join(cart[1]).replace('asset_NAME_load',f'asset_{name}_load')+'\n'
+            (folder/(name+'.akr')).write_text(akr)
+            (folder/'check.akr').write_text(code+'\n')
+            run([compiler,folder/'check.akr','-o',folder/'check.mei','--sym',folder/'check.sym'])
+            symbols={line.split()[1]:int(line.split()[0],16) for line in (folder/'check.sym').read_text().splitlines() if len(line.split())==2}
+            if 'G___sv' not in symbols or 'G_asset_view' not in symbols:
+                raise AssetError('/verification/native','Compiler did not emit the __sv and asset_view diagnostic symbols.')
+            run([probe,folder/'check.mei',folder/'capture.bin',symbols['G___sv'],len(mesh.vertices),symbols['G_asset_view'],len(sweep)])
+            data=(folder/'capture.bin').read_bytes()
+            if len(data)!=size*len(sweep):raise AssetError('/verification/native','Invalid native probe capture.')
+            pixels=[]
+            for k in range(len(sweep)):
+                capture=data[k*size:(k+1)*size]
+                if capture[:4]!=b'MAV1' or struct.unpack_from('<I',capture,4)[0]!=len(mesh.vertices):
+                    raise AssetError('/verification/native','Invalid native probe capture.')
+                pixels.append(np.frombuffer(capture,dtype='<u2',count=320*240,offset=16+16*len(mesh.vertices)))
+            return data,pixels
+
+        captures,drawn=draw(work,binary)
+        for actual in drawn:
             if int(actual.max())>len(mesh.faces):raise AssetError('/verification/native','Probe returned an invalid triangle ID.')
-            drawn.append(actual)
+        # the blended layer: black, but for the sum of the IDs of the semi-transparent faces shown
+        layers=draw(work/'blend',identity_mesh(original,cutouts,solid=True,layer=layer))[1] if blended else None
         selection=None
         if depth and policy['depth_views']<len(sweep):
             # every camera of the sweep is drawn (cheap); the reference judges those that show every face
             counts=np.stack([np.bincount(a,minlength=len(mesh.faces)+1)[1:] for a in drawn])
+            # a semi-transparent face's pixels: where the blended layer holds its ID alone (a pixel
+            # where several add up is attributed to no face, or to the wrong one: enough to choose by)
+            ids=np.array([0]+[f+1 for f in blended],dtype=np.int64)
+            alone=[ids[np.where(a<=len(blended),a,0)] for a in layers] if blended else []
+            for k,a in enumerate(alone):counts[k]+=np.bincount(a,minlength=len(mesh.faces)+1)[1:]
             texels=None
             if cutouts:
                 svs=[np.frombuffer(captures,dtype='<i4',count=len(mesh.vertices)*4,offset=k*size+16).reshape(-1,4) for k in range(len(sweep))]
                 texels=cutout_texels(np,mesh,svs,drawn,textured)
+                if alone:
+                    texels=[np.union1d(t,b) for t,b in zip(texels,cutout_texels(np,mesh,svs,alone,textured))]
             selection=select_views(np,counts,mesh,materials,base['bounds'],sweep,policy['depth_views'],cutouts,world,texels)
             chosen=selection.pop('views')
         else:
@@ -466,7 +573,8 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
             sv=np.frombuffer(capture,dtype='<i4',count=len(mesh.vertices)*4,offset=16).reshape(-1,4)
             actual=drawn[k]
             surfaces=raster_surfaces(mesh,sv,materials,policy['edge_margin'],textured)
-            row,expected,actual_ids,bad=compare(mesh,surfaces,actual,graph=not depth,margin=policy['edge_margin'],
+            opaque=[s for s in surfaces if s['face'] not in layer]
+            row,expected,actual_ids,bad=compare(mesh,opaque,actual,graph=not depth,margin=policy['edge_margin'],
                                                 key=DEPTH.KEY_TOLERANCE if depth else 0.0)
             visible.update(row.pop('visible_faces'))
             row.update(index=len(views),camera=camera)
@@ -476,6 +584,15 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
                 filename=f'visibility_{len(views):04}.png'
                 (root/filename).write_bytes(diagnostic_png(expected,actual_ids,bad))
                 row['image']=filename;images.append(filename)
+            if blended:
+                row['blend'],expected,actual_ids,bad=compare_blend(mesh,opaque,[s for s in surfaces if s['face'] in layer],
+                                                                    layers[k],layer,policy['edge_margin'],
+                                                                    DEPTH.KEY_TOLERANCE if depth else 0.0)
+                visible.update(row['blend'].pop('visible_faces'))
+                if root and row['blend']['wrong_pixels'] and len(images)<12:
+                    filename=f'visibility_{len(views):04}_blend.png'
+                    (root/filename).write_bytes(diagnostic_png(expected-1,actual_ids-1,bad))
+                    row['blend']['image']=filename;images.append(filename)
             views.append(row)
     totals={key:sum(v[key] for v in views) for key in ('tested_pixels','undecided_pixels','undecided_wrong_pixels','wrong_pixels','coverage_errors','depth_ties')}
     cycles=sum(bool(v['ordering_graph']['cycle']) for v in views)
@@ -486,7 +603,12 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
     # coverage is judged at every covered pixel: an asset all of whose pixels lie within the edge
     # margin (a thin pole) passes on coverage alone, and its tested_pixels say so
     covered=totals['tested_pixels']+totals['undecided_pixels']
-    ok=geometry_ok and covered>0 and not totals['wrong_pixels'] and not totals['coverage_errors'] and not cycles
+    if blended:
+        totals['blend']={key:sum(v['blend'][key] for v in views)
+                         for key in ('tested_pixels','undecided_pixels','undecided_wrong_pixels','wrong_pixels')}
+        covered+=totals['blend']['tested_pixels']+totals['blend']['undecided_pixels']
+    blend_wrong=totals['blend']['wrong_pixels'] if blended else 0
+    ok=geometry_ok and covered>0 and not totals['wrong_pixels'] and not totals['coverage_errors'] and not cycles and not blend_wrong
     failures=['geometry: '+line for line in geometry['summary']]
     if not covered:failures.append('views: no covered pixels in any view (the asset is not drawn)')
     if totals['wrong_pixels']:
@@ -500,6 +622,9 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
         parts=list(dict.fromkeys(f['part'] for f in cycle))
         failures.append(f"views: ordering cycles in {cycles} views, the first through {', '.join(parts)} "
                         f"at {position(*cycle)} (see views[].ordering_graph)")
+    if blend_wrong:
+        failures.append(f"views: {blend_wrong} wrong pixels of semi-transparent faces in "
+                        f"{sum(1 for v in views if v['blend']['wrong_pixels'])} views (see views[].blend.issues)")
     allowed=[f"{row['code']}: {row['count']} {'within '+row['parts'][0] if row['parts'][0]==row['parts'][1] else 'between '+' and '.join(row['parts'])}"
              for row in geometry['allowed']]
     if len(allowed)>ALLOWED_LINES:
@@ -515,6 +640,8 @@ def verify(recipe, profile=None, directory=None, compiler=None, probe=None, fold
             'depth_epsilon':DEPTH_EPSILON,'geometry':geometry,'totals':{**totals,'views':len(views),'cyclic_views':cycles},
             'faces':len(mesh.faces),'observed_faces':len(visible),'unobserved_faces':len(mesh.faces)-len(visible),
             'views':views,'images':images,
+            **({'blend':{'faces':len(blended),'modes':dict(sorted(Counter(materials[mesh.faces[i].material]['blend'] for i in blended).items())),
+                         'observed_faces':len(visible&set(blended)),'scope':BLEND_SCOPE}} if blended else {}),
             **({'depth_mode':{'depth':depth,'perspective':perspective,'key_steps':DEPTH.KEY_STEPS,
                               'key_tolerance':DEPTH.KEY_TOLERANCE,
                               'not_failures':['surface_intersection','t_junction','ordering cycles'],

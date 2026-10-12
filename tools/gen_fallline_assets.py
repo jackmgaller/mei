@@ -9,11 +9,9 @@ Writes, in carts/fallline/:
   assets.akr    the pack's embeds (every ASSET_*), the semi-transparent face ranges, and one
                 loader, assets_load()
 
-Faces whose material is tagged `glass` (the sled's canopy) are made semi-transparent in the
-packed mesh (flag bit 3, blend mode 0, BLEND_HALF: half the scene behind, half the face): the
-Asset Kit makes opaque faces only, and its Asset Checker judges them opaque, which with the depth
-buffer is exact for everything but the glass itself (semi-transparent faces test depth and write
-none, drawn after the opaque ones).
+Semi-transparent faces (the sled's canopy, whose material has `blend: "half"`) come out of the
+Asset Kit so (docs/ASSETKIT.md, "Semi-transparent materials"); their ranges are read from the
+pack's manifest, each asset's materials and their faces.
 
 Recipes are whatever exists; one the kit rejects (a recipe still being written) is left out with
 a warning and the rest packed. Prints the triangles of each recipe against the README's limits,
@@ -43,10 +41,6 @@ PALETTE8 = 14               # 8-bit palettes from 14 down (4-bit 224-239), if an
 PLANE_PREFIX = 'plane_'     # art/plane_* belong to the slope engine
 
 LIMITS = {'sled': 500, 'gate': 200, 'finish': 500, 'pine': 100, 'pylon': 60, 'marker': 40}
-SEMI_TAG = 'glass'
-BLEND_HALF = 0
-
-sys.path.insert(0, str(ROOT/'tools'))
 
 
 def recipes():
@@ -82,26 +76,10 @@ def run_pack(found, work, skipped):
     return None
 
 
-def semi_faces(path):
-    """Half-open runs of the recipe's exported faces whose material is tagged glass."""
-    from assetkit.compiler import compile_recipe, face_runs
-    recipe = json.loads(path.read_text())
-    mesh, materials, _ = compile_recipe(recipe, path.parent)
-    runs = face_runs(mesh, lambda f: materials[f.material].get('tag') == SEMI_TAG)
-    return recipe['name'], runs, len(mesh.faces)
-
-
-def make_semi(data, runs, faces):
-    """The native mesh with the faces in `runs` semi-transparent (BLEND_HALF)."""
-    data = bytearray(data)
-    _, count, _, foff = struct.unpack_from('<HHII', data, 0)
-    if count != faces:
-        sys.exit(f'packed mesh has {count} faces, the recipe {faces}: cannot mark its glass')
-    for a, b in runs:
-        for i in range(a, b):
-            data[foff+36*i] |= 8
-            data[foff+36*i+1] = BLEND_HALF
-    return bytes(data)
+def semi_faces(asset):
+    """[(material, blend mode, half-open runs of its faces)] of a pack manifest's asset's
+    semi-transparent materials."""
+    return [(name, m['blend'], m['faces']) for name, m in sorted(asset.get('materials', {}).items()) if 'blend' in m]
 
 
 def owned_art():
@@ -199,14 +177,7 @@ def main():
     work = Path(tempfile.mkdtemp(prefix='fallline-pack-'))
     try:
         manifest = run_pack(found, work, skipped) if found else None
-        semi = {}
-        if manifest:
-            for _, path in found:
-                name, runs, faces = semi_faces(path)
-                if runs:
-                    mesh = work/f'{name}.bin'
-                    mesh.write_bytes(make_semi(mesh.read_bytes(), runs, faces))
-                    semi[name] = runs
+        semi = {a['name']: semi_faces(a) for a in manifest['assets'] if semi_faces(a)} if manifest else {}
 
         lines = [HEADER,
                  '// The pack of every recipe under models/*/ (mei_assets.py pack: texture slots 0-9,',
@@ -216,9 +187,11 @@ def main():
             for line in (work/f'{PACK_NAME}.akr').read_text().splitlines():
                 lines.append(re.sub(r'^(embed [^=]*= ")([^"]+)"', r'\1art/\2"', line))
             if semi:
-                lines += ['', '// Semi-transparent faces (BLEND_HALF), half-open ranges of each mesh\'s faces:']
-                for name, runs in semi.items():
-                    lines.append(f'//   ASSET_{name.upper()}: '+', '.join(f'{a}-{b}' for a, b in runs)+' (its glass)')
+                lines += ['', '// Semi-transparent faces, half-open ranges of each mesh\'s faces (material, blend mode):']
+                for name, materials in semi.items():
+                    for material, blend, runs in materials:
+                        lines.append(f'//   ASSET_{name.upper()}: '+', '.join(f'{a}-{b}' for a, b in runs)
+                                     + f' ({material}, {blend})')
         else:
             lines.append('// No recipes yet.')
         lines += ['', 'fn assets_load() {']
@@ -243,7 +216,7 @@ def main():
                 total += a['triangles']
                 print(f'{flag}{a["name"]:12} {a["triangles"]:5}  ({limit if limit else "-"}), '
                       f'{a["vertices"]} vertices, {ntex} textures'
-                      + (f', semi-transparent faces {sum(b-a for a, b in semi[a["name"]])}'
+                      + (f', semi-transparent faces {sum(e-s for _, _, runs in semi[a["name"]] for s, e in runs)}'
                          if a['name'] in semi else ''))
             print(f'       {"total":12} {total:5}')
             tex = manifest.get('textures') or {}

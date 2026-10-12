@@ -55,7 +55,8 @@ def artifacts(recipe, mesh, materials, report, drawn=None, look=None):
         name+'.asset.json':(json.dumps(recipe,indent=2,allow_nan=False)+'\n').encode(),
         name+'.model.json':(json.dumps(editor_project(mesh,materials,name,recipe.get('lighting',{})),indent=2)+'\n').encode(),
         name+'.obj':('mtllib '+name+'.mtl\n'+obj_text(mesh,materials)).encode(),
-        name+'.mtl':''.join('newmtl '+key+'\nKd '+' '.join(f'{int(mat["color"][i:i+2],16)/255:.6f}' for i in (1,3,5))+'\n\n' for key,mat in sorted(materials.items())).encode(),
+        name+'.mtl':''.join('newmtl '+key+'\nKd '+' '.join(f'{int(mat["color"][i:i+2],16)/255:.6f}' for i in (1,3,5))+'\n'
+                            +('d 0.5\n' if mat.get('blend') == 'half' else '')+'\n' for key,mat in sorted(materials.items())).encode(),
         'preview.akr':source(name,report['bounds'],load=bool(mesh.palette or mesh.textures),
                              depth=depth,perspective=perspective,look=look).encode(),
         'report.json':(json.dumps(report,indent=2)+'\n').encode(),
