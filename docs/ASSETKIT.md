@@ -162,6 +162,13 @@ Conventions, each checked on native renders (`tests/test_assetkit.py`, `Conventi
 | `pack FILE... -o DIR [--name NAME] [--slots 14-0] [--palette 0] [--palette8 14]` | Several assets (or one) for a cart without a world: shared texture slots and palettes, one loader ([Placement](#placement-build-and-pack)) |
 | `export FILE -o DIR [--format glb\|gltf]` | One glTF 2.0 file for ordinary 3D viewers, drawn as Mei draws it ([export](#viewing-an-asset-elsewhere-export)) |
 
+Every command takes `--json`, as every World Kit command does
+([WORLDKIT.md](WORLDKIT.md#command-line)). `preview` and `verify` print a summary and `info` and
+`floors` plain text unless given it; the others print JSON either way. A failure is printed the
+way the command prints its result: `error at PATH: message` in plain text, else the JSON error
+object. The commands that run native tools (`build`, `preview`, `verify`) take `--build-dir DIR`
+([Native tools](#native-tools)).
+
 ### Output: the summary and the full report
 
 `preview` and `verify` print a summary of one screen, in plain text: the verdict, each failure,
@@ -347,6 +354,10 @@ Each is taken from the first of:
 3. its environment variable, `MEIC`, `RUN` or `PROBE` (as the test suites read them);
 4. the environment variable `B`, a build directory relative to the repository (as make's `B`);
 5. `build/`.
+
+The World Kit and the Animation Kit take their tools by the same rule (one function,
+`tools/kitcore/native.py`'s `tool_paths()`; its `build_dir()` is steps 2, 4 and 5 alone, the
+directory the World Kit's quick tools keep their cache in).
 
 A command checks the tools it needs before it starts (`verify`: compiler and probe; `preview`:
 compiler and runner, and the probe when the recipe requires the check or `--verify` is given). A

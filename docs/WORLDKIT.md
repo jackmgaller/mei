@@ -2021,9 +2021,9 @@ A world names the views it knows to be heavy in `verification.vantage_points`: c
 checker always runs, on top of its sample, each `{"name", "position": [x, y, z], "yaw", "pitch",
 "yaws"}` (degrees; `yaws`: that many directions evenly round from `yaw`). The build passes them
 to the checker ([WORLDCHECKER.md](WORLDCHECKER.md#vantage-points)); the quick check
-(`mei_world.py check`) runs only its own `--camera`s. Every `build` runs it through `run_gate()` ([Build
-outputs](#build-outputs-and-the-runtime-contract)); `tools/worldkit/verify.py` runs it on any
-pack.
+(`mei_world.py check`) runs only its own `--camera`s, and `check --full` both. Every `build` runs
+it through `run_gate()` ([Build outputs](#build-outputs-and-the-runtime-contract));
+`mei_world.py check PACK.world.bin` and `tools/worldkit/verify.py` run it on any pack.
 
 Before the World Checker runs, `validate` and `build` check the recipe itself: every referenced
 asset builds and passes its own verification policy; references resolve (assets, regions,
@@ -2041,10 +2041,22 @@ texture set, which waits for region texture sets.
 Parallel to `mei_assets.py`: JSON on stdout for successes and failures (an error has `path`,
 `message` and, as in [Recipe format](#recipe-format), `file`, `line` and `column` where they
 apply), exit 0 or 1, `-` for
-stdin (relative paths then resolve from the current directory), `--compiler`, `--runner` and
-`--probe` to use other builds, `--assets DIR` to use another asset directory, and for `build` and
-`preview`, `--cache DIR` to keep and reuse the checkers' results ([Build outputs and the runtime
-contract](#build-outputs-and-the-runtime-contract)).
+stdin (relative paths then resolve from the current directory), `--assets DIR` to use another
+asset directory, and for `build` and `preview`, `--cache DIR` to keep and reuse the checkers'
+results ([Build outputs and the runtime contract](#build-outputs-and-the-runtime-contract)).
+The quick tools (`check`, `floors`, `textures`, `cracks`) print plain text, and their failures
+`error at PATH: message`; every command takes `--json`, which gives the full result (and errors)
+as JSON, and changes nothing on the commands that print JSON already.
+
+**Native tools.** `build`, `preview` and `check` run Mei's compiler and probes; `build` and
+`preview` take `meic`, `mei-headless` and `mei-asset-probe` (the World Checker's
+`mei-scene-probe` from beside `meic`), `check` takes `meic` and `mei-scene-probe`. Each is chosen
+as the Asset Kit chooses them ([ASSETKIT.md](ASSETKIT.md#native-tools)): its own option
+(`--compiler`, `--runner`, `--probe`; `check`'s `--scene-probe`, which also answers to its older
+name `--probe`), else `--build-dir DIR` (the directory `make B=DIR` builds into), else its
+environment variable (`MEIC`, `RUN`, `PROBE`, `SCENE_PROBE`), else `$B`, else `build/`. The quick
+tools keep the compiled world in `BUILD_DIR/kit-cache/quick/`, `BUILD_DIR` being `--build-dir`,
+else `$B`, else `build/`.
 
 | Command | Result |
 |---|---|
@@ -2053,11 +2065,14 @@ contract](#build-outputs-and-the-runtime-contract)).
 | `init DIR [--example room\|city\|terrain] [--force]` | Copies an example world (world file, cells, game schema, asset recipes) into a new directory |
 | `validate FILE` | Every static check: schemas, references, game data, IDs, palettes, that every asset compiles and that the pack can hold the world; the ID changes a build would make |
 | `inspect FILE [--cell ID]` | The same, with the full report: per cell and per region costs, palettes and variants, entity numbers, asset hashes, warnings |
-| `build FILE -o DIR [--locked] [--preview] [--world-checker full\|skip\|N] [--crack-baseline FILE\|none]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam (with `NAME.cracks.json` beside the recipe as its crack baseline, when there is one) |
-| `preview FILE -o DIR [--cell ID] [--locked] [--world-checker full\|skip\|N]` | `build`, plus native renders of a cell per region and palette variant (`--cell` picks the cell) |
-| `floor FILE X Z [X Z ...]` | The highest floor under each point, from the world's collision as the kit builds it: `{"at", "y", "from"}`, `from` being `terrain`, `sweep` or a placement's ID (`y` null: none). For setting placements and entities on the ground |
+| `build FILE -o DIR [--locked] [--preview] [--world-checker full\|skip\|N] [--crack-baseline FILE\|none] [--build-dir DIR]` | The outputs above; runs each asset's required Asset Checker policy, then the World Checker seam (with `NAME.cracks.json` beside the recipe as its crack baseline, when there is one) |
+| `preview FILE -o DIR [--cell ID] [--locked] [--world-checker full\|skip\|N] [--build-dir DIR]` | `build`, plus native renders of a cell per region and palette variant (`--cell` picks the cell) |
 | `check FILE [--cells I,J[;I,J...]] [--camera SPEC]... [--cameras FILE] [--max-views 200] [-o DIR]` | The World Checker on a few cells and cameras, in seconds ([Quick tools](#quick-tools)) |
+| `check FILE --full [--crack-baseline FILE\|none] [-o DIR]` | The World Checker on the whole world as `build` runs it, without building ([Quick tools](#quick-tools)) |
+| `check PACK.world.bin [--cells I,J] [--camera SPEC]... [--settings FILE] [--names FILE] [--strict] [-o DIR]` | The World Checker on a built pack, as `tools/worldkit/verify.py PACK` runs it ([Quick tools](#quick-tools)) |
 | `floors FILE --area X0,Z0,X1,Z1 [--step 1] [--layers A,B] [--below Y]` | The pack's floor heights over an area as `wp_floor()` finds them, what each belongs to, holes and cracks ([Quick tools](#quick-tools)) |
+| `floors FILE --at X,Z[;X,Z...]... [--layers A,B] [--below Y] [--kit]` | The pack's floor under each point and what it belongs to; with `--kit`, the kit's collision before packing ([Quick tools](#quick-tools)) |
+| `floor FILE X Z [X Z ...]` | Deprecated: `floors FILE --at X,Z --kit --json`, which prints the same JSON. Still works, with a note on stderr |
 | `textures FILE [--region R] [--cells ...] [--add REGION:ASSET,...]` | Texture VRAM per region, by asset and by image, against the region's budget ([Quick tools](#quick-tools)) |
 | `cracks FILE [--routes FILE] [--near 3] [--baseline [FILE]] [--write-baseline]` | Every collision crack the game's floor query does not bridge, on routes first, the widest first; compared with or written to the crack baseline ([Quick tools](#quick-tools)) |
 
@@ -2070,21 +2085,35 @@ says so (`"verification": {"ran": false, "ok": null, "skipped": true, "reason": 
 `/verification/mode`. make's world rule ([Using a world in a cart](#using-a-world-in-a-cart))
 always runs the full check.
 
-The World Checker also runs on its own on any built pack: `python3 tools/worldkit/verify.py
-PACK -o DIR` ([WORLDCHECKER.md](WORLDCHECKER.md)). *Proposals, not built:* `verify FILE [-o DIR]
-[--cell ID] [--layers A,B]` (the World Checker on a recipe, diagnostic only), and `standin-draft
-FILE --cell ID -o RECIPE` (an Asset Kit recipe of boxes from the cell's placement bounds, for an
-agent to edit; the Asset Kit then builds it like any other, so the World Kit still models
-nothing).
+The World Checker runs in three places, all under the one name `check` on the command line:
+inside `build` (the gate), on a recipe without building (`check FILE` on cells and cameras, or
+`--full` on the whole world, diagnostic only: nothing is written but with `-o`), and on any built
+pack (`check PACK.world.bin`; `python3 tools/worldkit/verify.py PACK -o DIR`, which takes the same
+`--settings`, `--names` and `--strict`, still works, [WORLDCHECKER.md](WORLDCHECKER.md)). The
+`verify FILE` command proposed here before is `check FILE --full`. *Proposal, not built:*
+`standin-draft FILE --cell ID -o RECIPE` (an Asset Kit recipe of boxes from the cell's placement
+bounds, for an agent to edit; the Asset Kit then builds it like any other, so the World Kit still
+models nothing).
+
+**Output defaults that stay for now.** `build`, `preview`, `validate`, `inspect`, `init`,
+`convert` and `schema` print JSON by default, and scripts read it: make's world rule
+(`tools/world_cart.py build` parses `build`'s JSON), the shrine town's preview scripts
+(`carts/garden/shrinetown/art/preview_scratch.py`, `art/ground/preview_ground.py`) and the World
+Kit and Mochi suites. Giving `build` and `preview` a one-screen summary by default, as the Asset
+Kit's `preview` has, would need those callers to pass `--json` first (which they can do now);
+the default would then change in a later commit. The same holds for the Asset Kit's `build`,
+whose JSON the Asset Kit suite reads, and `pack`, whose JSON `gen_fallline_assets.py` and
+`gen_mechexpo_assets.py` read.
 
 ### Quick tools
 
 Built (2026-10-05). Four read-only commands for placing things in a world, each in seconds
 once the world has been compiled (`tools/worldkit/quick.py`; `cracks` takes minutes on a large
-world, and with `--write-baseline` writes the crack baseline). They print plain text; `--json`
-gives the result as JSON (and errors as the other commands give them; plain `error at PATH:
-message` without it). Exit 1 when the result fails (a check that fails, a region over its
-budget).
+world, `check --full` minutes too, and `cracks --write-baseline` writes the crack baseline).
+They print plain text; `--json` gives the result as JSON (and errors as the other commands give
+them; plain `error at PATH: message` without it). Exit 1 when the result fails (a check that
+fails, a region over its budget). The native tools and the build directory are chosen as in
+[Command line](#command-line).
 
 **The compiled world is cached.** Each needs the world compiled (pack, placements, texture
 sets), which takes about 30 s for the shrine town (30 cells, 7 MB). The tools keep it in
@@ -2127,6 +2156,19 @@ with the World Checker takes about 160 s (the checker 113 s of it, its static ch
 cell's collision findings are the full check's in that cell (`tests/test_worldkit.py` compares
 them).
 
+**`check FILE --full`** runs the whole World Checker on the compiled (cached) world with the
+settings `build` gives it: mode, thresholds, runtime, the game's probe, the recipe's
+`verification.vantage_points` (and any `--camera`), the world's sampling (`--max-views N` as
+`build --world-checker N`) and the crack baseline (`NAME.cracks.json` beside the recipe, or
+`--crack-baseline FILE|none`). On `examples/worlds/test_room` its views and verdict are those of
+the `verification/world-check.json` a build writes; it writes nothing but with `-o DIR`. The text
+lists only the cells over a limit.
+
+**`check PACK.world.bin`** (a path ending in `.bin`) runs the World Checker on a built pack, as
+`tools/worldkit/verify.py PACK` does: the checker's default settings, or `--settings FILE`,
+`--names FILE` and `--strict` as that script takes them. Without `--cells` (`I,J` only: a pack
+has no cell IDs) or cameras it checks the whole pack.
+
 **`floors FILE --area X0,Z0,X1,Z1 [--step 1]`** reads the built pack's collision with the
 reader's own floor query (`verify_static.reader_floor()`, bit for bit `wp_floor()`): at each
 grid point the highest floor (or the highest at or below `--below Y`, as a body there finds it),
@@ -2136,8 +2178,24 @@ and ID with its asset, or `terrain`, `sweep`, `scatter`), with a legend; `!` mar
 floor where the four neighbours have floors within the probe's step) and the World Checker's
 crack findings in the area are listed. A placement's collision copied into a neighbouring cell
 keeps its own cell's tag; the name is taken from the nearest placement with that tag. Unlike
-`floor`, which tests the kit's collision before packing in floating point, a point exactly on a
-face's edge is decided as the console decides it.
+`--kit` (below), which tests the kit's collision before packing in floating point, a point
+exactly on a face's edge is decided as the console decides it.
+
+**`floors FILE --at X,Z[;X,Z...]`** (repeatable) gives the same floor query at single points:
+for each, `{"at", "y", "from"}` as JSON, `from` being a placement's ID (with its `cell` and
+`asset`), `terrain`, `sweep` or `scatter`, and `surface`; `y` and `from` are null where there is
+no floor. `--layers` and `--below` apply as for `--area`. With `--kit` the points are tested
+against the world's collision as the kit builds it, before packing, in floating point, with
+every layer: `{"ok": true, "floors": [{"at", "y", "from"}]}`, exactly what the old `floor FILE X
+Z ...` printed. It compiles the world each time (no cache). `floor` still works and prints that
+JSON, with a note on stderr that it is deprecated; it will be removed once nothing calls it.
+
+```
+$ python3 tools/mei_world.py floors examples/worlds/test_room/test_room.world.json --at "20,30;33,33" --build-dir build-mine
+test_room: the pack's floors at 2 points (layers on: gate_closed; compiled world cached, 0.75 s)
+              (20, 30)  y 0          floor (cell room, room_floor)
+              (33, 33)  y 0          floor (cell room, room_floor)
+```
 
 **`cracks FILE`** runs the World Checker's crack and mismatched-edge checks over the whole world
 (every layer off and each alone, as the full check does), with the game's floor query's bridging

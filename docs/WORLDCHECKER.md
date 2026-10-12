@@ -16,6 +16,11 @@ python3 tools/worldkit/verify.py city.world.bin -o build/city-check            #
 python3 tools/worldkit/verify.py city.world.bin -o build/city-check --strict   # enforce thresholds
 ```
 
+`python3 tools/mei_world.py check city.world.bin --json` runs the same check with the same
+options (`-o`, `--settings`, `--names`, `--strict`), its tools chosen as the kits choose them
+(`--build-dir DIR`, `MEIC`, `SCENE_PROBE`, `$B`); without `--json` it prints a summary
+([WORLDKIT.md](WORLDKIT.md#quick-tools)).
+
 The command prints the report as JSON and exits 1 when the check fails. With `-o` it also writes
 `world-check.json` and diagnostic pictures of the worst views. From Python:
 
