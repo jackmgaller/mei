@@ -1280,7 +1280,7 @@ and one of its cells, `cells/downtown_b.cell.json`:
 | `standins` | Stand-ins made by the kit from each cell's own contents, for every cell that names none: `distance`, `sweeps`, a cap on `triangles`, a `ground` grid, and per-cell `cells` overrides ([Stand-ins made by the kit](#stand-ins-made-by-the-kit)) |
 | `meshes.quads` | Pack pairs of triangles as quads: the same pictures, fewer faces ([Quads](#quads)) |
 | `runtime.near_far` | The near pass's far depth the pack asks the reader for (units; default 1.5 cells). `wp_open()` sets `wp_near_far` to it and the World Checker measures with it |
-| `runtime.depth`, `runtime.perspective` | The game draws the world with the depth buffer, and with perspective-correct texturing (`render_depth(true)`, `render_perspective(true)`; default false). Not stored in the pack: the checkers judge the world and its assets so ([Depth mode](#depth-mode)) |
+| `runtime.depth`, `runtime.perspective` | The game draws the world with the depth buffer, and with perspective-correct texturing (`render_depth(true)`, `render_perspective(true)`; default: a settings file's, [Settings file](#settings-file), else false). Not stored in the pack: the checkers judge the world and its assets so ([Depth mode](#depth-mode)) |
 | `verification` | The World Checker's per-world settings: `mode` (`report`, the default, or `enforce`) and `thresholds` |
 | `terrain` | Terrain materials, their `lighting`, and ground heightfields (`fields`): [Terrain](#terrain). Sweeps are in `paths` |
 | `scatter` | Seeded props over areas, set on the ground and merged per chunk: [Scatter](#scatter) |
@@ -1829,7 +1829,10 @@ recipe:
 ```
 
 and calls `render_depth(true)` and `render_perspective(true)` itself (the recipe does not turn
-them on: it is not stored in the pack, and the game decides how it draws). The build then:
+them on: it is not stored in the pack, and the game decides how it draws). A settings file above
+the recipe can say the same for every world and asset of a cart ([Settings file](#settings-file));
+the recipe's `runtime` is then optional, and where both give a key they must agree. The build
+then:
 
 - runs every required Asset Checker policy with `depth` and `perspective` as the world's, unless
   the asset's recipe sets them itself ([ASSETKIT.md](ASSETKIT.md#depth-mode)); `report.json`'s
@@ -1847,6 +1850,30 @@ still drawn by the ordering table, back to front, and collision, budgets and cov
 checked as before. The movement garden built this way comes back from the World Checker with no
 wrong-order pixel in 600 views, against 45,108 in 239 views without
 ([WORLDCHECKER.md](WORLDCHECKER.md#depth-mode)).
+
+### Settings file
+
+The Asset Kit's settings file, `mei-kit.json` ([ASSETKIT.md](ASSETKIT.md#settings-file-mei-kitjson)),
+is read for worlds too: from the world recipe's folder upward to the repository's root, each
+setting from the nearest file that gives it (none for a recipe read from stdin). What a world
+takes from it:
+
+| Setting | For the world |
+|---|---|
+| `runtime.depth`, `runtime.perspective` | The world's `runtime.depth` and `runtime.perspective` where the recipe does not give them. Where both give one and they differ, every command that reads the recipe (`validate` on) fails with an error at `/runtime/KEY` naming the file: the recipe and the settings file would describe two different games, and the checkers would judge one of them. Leave the key out of one, or make them agree |
+| `build_dir` | The quick tools' build directory (native tools and cache) after `--build-dir`; `build`'s and `preview`'s `--compiler`, `--runner` and `--probe` default to `BUILD_DIR/meic`, `BUILD_DIR/mei-headless` and `BUILD_DIR/mei-asset-probe` with it, else `build/` (they do not read `$B` or `MEIC`, as before) |
+| `verification` | Read from the files above each **asset's** folder, not the world's: the default policy of the asset recipes below it, as in the Asset Kit (the recipe's own policy over it, key by key). A recipe without a policy under such a file is then checked by `build`, and the world's runtime fills `depth` and `perspective` where neither sets them |
+| `preview` | Not used |
+
+A settings file above an asset folder whose `runtime` differs from the world's (as the world has
+it, from its recipe or its own settings file) is a warning, `settings_runtime`, naming the file:
+the world's assets are checked with the world's runtime. So the precedence for the world's
+runtime is: the recipe, then the settings file (they must agree where both speak), then false.
+
+`build` and `preview` report `settings` in their result: the files read (`files`) and where the
+runtime came from, `{"depth": {"value": true, "from": "recipe"}, ...}` (`from` a file, `recipe` or
+`default`). `inspect` and `report.json` have it only when a settings file applied, so a world
+built without one writes the files it wrote before.
 
 ## Collision
 
@@ -2088,11 +2115,13 @@ budget).
 
 **The compiled world is cached.** Each needs the world compiled (pack, placements, texture
 sets), which takes about 30 s for the shrine town (30 cells, 7 MB). The tools keep it in
-`BUILD_DIR/kit-cache/quick/` (`--build-dir DIR`, else `$B`, else `build/`; `--cache DIR`,
-`--no-cache`, `--refresh`) with a manifest of everything the compile read: the world file, the
-cell files and the cell folder's listing, the game schema, the ID lock file, every asset recipe
-used and the images and sheets its textures read, each asset directory's listing (and a `/*`
-entry's subfolders), the terrain's heights files and images, and the hash of the kit's code
+`BUILD_DIR/kit-cache/quick/` (`--build-dir DIR`, else the settings file's `build_dir`, else
+`$B`, else `build/`; `--cache DIR`, `--no-cache`, `--refresh`) with a manifest of everything the
+compile read: the world file, the cell files and the cell folder's listing, the game schema, the
+ID lock file, every asset recipe used and the images and sheets its textures read, each asset
+directory's listing (and a `/*` entry's subfolders), the terrain's heights files and images, every
+`mei-kit.json` that could apply to the world or its assets (present or not, so one appearing is a
+change), and the hash of the kit's code
 (`worldkit/cache.py`'s `code_hash`). While all of it is unchanged the next run loads the
 compiled world in about 0.6 s; after any change it compiles again and keeps the new one. Nothing
 a build writes is touched: the ID lock file is never written.
@@ -2201,7 +2230,9 @@ a terraced hill, a pond, swept paths and stairs, in depth mode; [Terrain](#the-e
 overhang, a pond, streams and a waterfall, draped trails, scatter, things set on the ground, in
 depth mode; [Terrain](#the-example-forest-mountain)).
 `make test-world` (also part of `make test`) runs `tests/test_worldkit.py`, which builds them and
-runs them on the console, and `tests/test_mochi.py`.
+runs them on the console, and `tests/test_mochi.py`. Its `SettingsFileTests` cover the settings
+file: the runtime from it, a contradicting one refused, an asset folder's default policy and the
+`settings_runtime` warning, the quick tools' cache noticing a new file, and the build directory.
 
 ## Using a world in a cart
 
