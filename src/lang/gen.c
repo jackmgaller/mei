@@ -1209,6 +1209,48 @@ static Opnd gen_cmp_value(Expr *e, int hint) {
     return d;
 }
 
+/* meic --trap-fmul: before a * b, branches to the check's stub when the product does not fit
+   32 bits. b may be an immediate (then loaded into a scratch register; b stays an immediate).
+   The scratch registers are one temporary and ra, saved at entry once the function is not a
+   leaf: a, b and two temporaries could need more registers than an expression has free. */
+static void mul_check(int fx, int mixed, Opnd *a, Opnd b) {
+    if (!fx && !mixed) return;
+    if (b.k == O_IMM && b.v == 0) return;
+    int ra = R(a);
+    int rb = b.k == O_IMM ? 15 : R(&b);
+    int t1 = tnew(0);
+    int r1 = g_t[t1].reg, r2 = 15;
+    g_leaf = 0;
+    if (b.k == O_IMM) {
+        if (fits_s18(b.v)) Ik("addi %s, r0, %d", RN[rb], b.v);
+        else Ik("li %s, %d", RN[rb], b.v);
+    }
+    if (fx) {
+        /* fixed * fixed: h = (a >> 8) * (b >> 8) >> 16 is within 257 of the product's bits
+           32-63, so |h| > 2^15 + 257 means the 16.16 product overflowed (a narrow band of
+           overflows just above the limit goes unreported, but nothing valid is) */
+        Ik("sari %s, %s, 8", RN[r1], RN[ra]);
+        Ik("sari %s, %s, 8", RN[r2], RN[rb]);
+        Ik("fmul %s, %s, %s", RN[r1], RN[r1], RN[r2]);
+        Ik("addi %s, %s, %d", RN[r1], RN[r1], 32768 + 258);
+        Ik("addi %s, r0, %d", RN[r2], 2 * (32768 + 258));
+        Ik("bgeu %s, %s, .L%d", RN[r1], RN[r2], check_stub(g_div_chk, -1, 0));
+    } else {
+        /* fixed * integer is a plain 32-bit mul: it overflowed when dividing the product by
+           the integer does not give the other factor back. An integer of 0 is replaced by 1
+           (sltu, xori, or), whose product cannot overflow. (-32768.0 * -1 goes unreported.) */
+        if (b.k != O_IMM) {
+            Ik("sltu %s, r0, %s", RN[r2], RN[rb]);
+            Ik("xori %s, %s, 1", RN[r2], RN[r2]);
+            Ik("or %s, %s, %s", RN[r2], RN[r2], RN[rb]);
+        }
+        Ik("mul %s, %s, %s", RN[r1], RN[ra], RN[r2]);
+        Ik("div %s, %s, %s", RN[r1], RN[r1], RN[r2]);
+        Ik("bne %s, %s, .L%d", RN[r1], RN[ra], check_stub(g_div_chk, -1, 0));
+    }
+    tfree(t1);
+}
+
 /* Scalar arithmetic on evaluated operands. ty: operation type; mixed: fixed*int form. */
 static Opnd arith(OpKind op, Type *ty, int mixed, Opnd a, Opnd b, int hint) {
     int fx = ty->k == TY_FIXED && !mixed;
@@ -1218,6 +1260,7 @@ static Opnd arith(OpKind op, Type *ty, int mixed, Opnd a, Opnd b, int hint) {
     if (a.k == O_IMM && b.k != O_IMM && (op == B_ADD || op == B_MUL || op == B_AND || op == B_OR || op == B_XOR)) {
         Opnd t = a; a = b; b = t;
     }
+    if (g_div_chk && op == B_MUL) mul_check(fx, mixed, &a, b);
     if (b.k == O_IMM) {
         int32_t v = b.v;
         const char *iop = NULL;
@@ -1317,20 +1360,6 @@ static Opnd arith(OpKind op, Type *ty, int mixed, Opnd a, Opnd b, int hint) {
     }
     int ra = R(&a), rb = R(&b);
     if (g_div_chk && (op == B_DIV || op == B_MOD)) Ik("beq %s, r0, .L%d", RN[rb], check_stub(g_div_chk, -1, 0));
-    if (g_div_chk && op == B_MUL && fx) {
-        /* meic --trap-fmul: h = (a >> 8) * (b >> 8) >> 16 is within 257 of the product's bits
-           32-63, so |h| > 2^15 + 257 means the 16.16 product overflowed (a narrow band of
-           overflows just above the limit goes unreported, but nothing valid is) */
-        int t1 = tnew(0), t2 = tnew(0);
-        int r1 = g_t[t1].reg, r2 = g_t[t2].reg;
-        Ik("sari %s, %s, 8", RN[r1], RN[ra]);
-        Ik("sari %s, %s, 8", RN[r2], RN[rb]);
-        Ik("fmul %s, %s, %s", RN[r1], RN[r1], RN[r2]);
-        Ik("addi %s, %s, %d", RN[r1], RN[r1], 32768 + 258);
-        Ik("addi %s, r0, %d", RN[r2], 2 * (32768 + 258));
-        Ik("bgeu %s, %s, .L%d", RN[r1], RN[r2], check_stub(g_div_chk, -1, 0));
-        tfree(t1); tfree(t2);
-    }
     ofree(a); ofree(b);
     Opnd d = dest(0, hint, &r);
     I("%s %s, %s, %s", ins, RN[r], RN[ra], RN[rb]);
@@ -3358,9 +3387,21 @@ static void gen_func(Func *f, Buf *out) {
     }
     buf_printf(out, "%s:\n", f->label);
     if (frame) buf_printf(out, "    addi sp, sp, %d\n", -frame);
+    /* meic -g with tasks: the global holding the running task and the offset of Task.stack */
+    Sym *task_cur = frame && stack_stub ? sym_lookup_layer("__task_cur", 0) : NULL;
+    int task_stack = -1, stack_task_label = 0, stack_ok_label = 0;
+    if (task_cur && task_cur->k == SY_GLOBAL && task_cur->reachable && task_cur->ty->k == TY_PTR) {
+        Type *tt = task_cur->ty->elem;
+        for (int i = 0; tt && i < tt->nfields; i++)
+            if (!strcmp(tt->fields[i].name, "stack")) task_stack = tt->fields[i].offset;
+    }
     if (frame && stack_stub) {
         /* meic -g: the stack must stay above the globals (r5 is free at entry) */
-        buf_printf(out, "    li r5, 0x%06X\n    bltu sp, r5, .L%d\n", g_P->ram_end, stack_stub);
+        if (task_stack >= 0) {
+            stack_task_label = new_label();
+            stack_ok_label = new_label();
+            buf_printf(out, "    li r5, 0x%06X\n    bltu sp, r5, .L%d\n.L%d:\n", g_P->ram_end, stack_task_label, stack_ok_label);
+        } else buf_printf(out, "    li r5, 0x%06X\n    bltu sp, r5, .L%d\n", g_P->ram_end, stack_stub);
     }
     if (nonleaf) buf_printf(out, "    sw ra, [sp+%d]\n", frame - 4);
     for (int i = 0; i < ns; i++) buf_printf(out, "    sw %s, [sp+%d]\n", RN[saved_regs[i]], save_base + 4 * i);
@@ -3383,6 +3424,13 @@ static void gen_func(Func *f, Buf *out) {
     for (int i = 0; i < g_nstubs; i++) {
         CheckStub *k = &g_stubs[i];
         if (k->label == stack_stub && !frame) continue;
+        if (k->label == stack_stub && task_stack >= 0) {
+            /* sp is below the globals: fine on a task's stack (stdlib/task.akr: a global array)
+               while it stays above the task's guard word */
+            buf_printf(out, ".L%d:\n    la r5, %s\n    lw r5, [r5+0]\n    beq r5, r0, .L%d\n"
+                            "    lw r5, [r5+%d]\n    addi r5, r5, 4\n    bgeu sp, r5, .L%d\n",
+                       stack_task_label, task_cur->label, k->label, task_stack, stack_ok_label);
+        }
         buf_printf(out, ".L%d:\n", k->label);
         if (k->idx_reg >= 0) {
             int scratch = k->idx_reg == 1 ? 4 : 1;

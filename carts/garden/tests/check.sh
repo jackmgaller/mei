@@ -8,7 +8,7 @@ O="$HERE/out/check"
 mkdir -p "$O"
 n=0
 run() {       # scenario frames (SC_CARD: a memory card file for slot 1)
-    "$HERE/run.sh" "$1" "$2" "$O/s$1" ${SC_CARD:+--card1 "$SC_CARD"} > "$O/s$1.log" 2>&1 || { echo "FAILED scenario $1"; grep -E '^(FAIL|assertion)' "$O/s$1.log"; tail -3 "$O/s$1.log"; exit 1; }
+    "$HERE/run.sh" "$1" "$2" "$O/s$1" ${SC_CARD:+--card1 "$SC_CARD"} > "$O/s$1.log" 2>&1 || { echo "FAILED scenario $1"; grep -E '^(FAIL|assertion|check failed|fault in)' "$O/s$1.log"; tail -3 "$O/s$1.log"; exit 1; }
     grep -q "^DONE $1:" "$O/s$1.log" || { echo "FAILED scenario $1: it did not finish"; tail -5 "$O/s$1.log"; exit 1; }
     grep "^DONE" "$O/s$1.log"
     n=$((n + 1))

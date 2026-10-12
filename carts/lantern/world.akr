@@ -1193,8 +1193,10 @@ fn project(p: vec3) -> bool {
     if v.w < 0.12 { return false }
     let iw = 1.0 / v.w
     proj_iw = iw
-    proj_x = 160 + ((v.x * iw) * 160) as s32
-    proj_y = 120 - ((v.y * iw) * 120) as s32
+    // clamped well off-screen first: near the camera x / w can pass 204, and times 160 that
+    // would pass 32767 and wrap to the other side of the screen
+    proj_x = 160 + (clamp(v.x * iw, -200.0, 200.0) * 160) as s32
+    proj_y = 120 - (clamp(v.y * iw, -200.0, 200.0) * 120) as s32
     return true
 }
 

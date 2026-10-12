@@ -1156,6 +1156,10 @@ static Expr *check_binary(Ctx *c, Expr *e) {
         e->ty = ty_fixed;
         e->conv_from = ty_s32;   /* marks the mixed form */
         if ((c->P->debug & 2) && op == B_DIV && !e->b->isconst) e->chk = check_msg(c, e->loc, "__check_fail", "division by zero");
+        /* an integer factor of -1, 0 or 1 cannot make the product overflow */
+        if ((c->P->debug & 4) && op == B_MUL && !(e->a->isconst && e->b->isconst) &&
+            !(e->b->isconst && e->b->cval >= -1 && e->b->cval <= 1))
+            e->chk = check_msg(c, e->loc, "__check_fail", "fixed-point multiply overflow (fixed * integer)");
         return e;
     }
 
@@ -1582,6 +1586,9 @@ static Expr *check_call(Ctx *c, Expr *e) {
         case BI_BITS:
             if (!is_fixedish(a[0]->ty)) error_at(e->loc, "bits() needs a fixed value");
             if (a[0]->ty->k != TY_FIXED16) a[0] = coerce(c, a[0], ty_fixed, "argument");
+            /* bits(a * b) asks for the product's 32-bit pattern, wrap included (sin() and
+               cos() turn an angle into table steps this way): --trap-fmul leaves it alone */
+            if (a[0]->k == E_BINARY && a[0]->op == B_MUL) a[0]->chk = NULL;
             e->ty = ty_s32;
             if (a[0]->isconst) { e->isconst = 1; e->cval = a[0]->ty->k == TY_FIXED16 ? a[0]->cval >> 4 : a[0]->cval; }
             return e;

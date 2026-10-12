@@ -1,0 +1,14 @@
+// meic --trap-fmul: x *= n with a fixed x and an integer n is checked like x * n.
+// flags: --trap-fmul
+// exit: 2
+fn grow(a: fixed, n: s32) -> fixed {
+    var x = a
+    x *= n
+    return x
+}
+
+fn init() {
+    print_fixed(grow(100.0, 300)); println("")       // expect: 30000.0
+    print_fixed(grow(100.0, 400)); println("")
+}
+// expect: check failed: debug_fmul_compound.akr:6: fixed-point multiply overflow (fixed * integer)

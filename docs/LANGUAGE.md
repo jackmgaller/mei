@@ -490,6 +490,10 @@ constant powers of two compile to shifts.
 down, quotients toward zero; division by zero gives 0). A `fixed` may be multiplied by an
 integer (`f * 3`, `3 * f`) or divided by one (`f / n`) directly; this is an integer `mul`/`div`
 and costs less than `fmul`/`fdiv`. `%` and the bitwise operators are not defined for `fixed`.
+A `fixed` holds −32768 to 32767.99998, and `+ - *` (and a `/` whose quotient is too large)
+wrap silently past that range: `-1000.0 * 63.0` gives 2536.0 and `300.0 * 200` gives −5536.0. Keep intermediates small
+(divide before multiplying, or work in `s32`); `meic --trap-fmul` reports the products that
+overflow ([Debug builds](#debug-builds)), and cart scenarios are built with it.
 
 **bool.** `&&` and `||` short-circuit; `!` negates. Conditions must be `bool`: write
 `if n != 0`, not `if n`.
@@ -939,9 +943,9 @@ check failed: game.akr:7: stack overflow entering walk() (too deep a recursion, 
 
 | Option | Checks |
 |---|---|
-| `-g` | every slice index and range, and array (and `mat4` row) indexes that are not constants: `(unsigned) index < length`, so negative indexes fail too; the stack at every function entry that has a frame: `sp` must stay above the globals |
+| `-g` | every slice index and range, and array (and `mat4` row) indexes that are not constants: `(unsigned) index < length`, so negative indexes fail too; the stack at every function entry that has a frame: `sp` must stay above the globals, or inside a [task](#tasks-taskakr), above its stack's guard word |
 | `--trap-div` | `-g`, plus integer and fixed-point division (and `%`) by zero, which otherwise gives 0 |
-| `--trap-fmul` | `-g`, plus fixed-point `*` whose product does not fit `fixed` (best effort: an overflow within about 1 % of the limit can go unreported, but no valid product is reported) |
+| `--trap-fmul` | `-g`, plus fixed-point `*` whose product does not fit `fixed`: `fixed * fixed` (best effort: an overflow within about 1 % of the limit can go unreported, but no valid product is reported), including products by a power-of-two constant that compile to shifts, and `fixed * integer` (exact, except −32768.0 × −1); `*=` likewise. Not checked: `+`, `-`, `/`, vector scaling, and a product passed straight to `bits()` (`bits(a * k)` asks for the 32-bit pattern, wrap included, as `sin()` does) |
 
 An index check costs 3 cycles (a constant length into a register and a `bgeu`); it is left out
 where the index is provably in range: a `for` loop variable whose constant bounds fit the
