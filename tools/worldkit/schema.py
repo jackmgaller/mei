@@ -49,7 +49,7 @@ PLACEMENT = obj({
     'yaw':YAW,
     'layer':dict(NAME,description='A layer of the world: drawn (and collided with) only while it is on.'),
     'collision':{'type':'string','pattern':r'^[a-z][a-z0-9_]{0,47}$',
-                 'description':'"self" (the asset\'s own mesh), "none", or a companion collision asset recipe.'},
+                 'description':'"self" (the asset\'s own mesh), "asset" (the collision its recipe declares), "none", or a companion collision asset recipe.'},
     'merge':dict(BOOL,description='Merge this static prop with the cell\'s other merged props into one mesh per layer (trades ROM for the ~500-cycle cost per drawn placement). Default false.'),
     'ground':dict(BOOL,description='Ground: drawn before everything else near the camera, so nothing standing on it is drawn behind it. Only for surfaces nothing can be seen through or behind: open floors with nothing below them (WORLDKIT-REFERENCE.md, "Ground"). Default false.'),
 }, ['id','asset','position','collision'])
@@ -63,7 +63,7 @@ ENTITY = obj({
     'yaw':YAW,
     'layer':NAME,
     'asset':dict(ASSET,description='A mesh the game may draw for it.'),
-    'collision':dict(ASSET,description='A collision asset in the entity\'s own frame (a moving object).'),
+    'collision':dict(ASSET,description='A collision asset in the entity\'s own frame (a moving object), or "asset": the collision its asset\'s recipe declares.'),
     'params':{'type':'object','propertyNames':NAME,'additionalProperties':{},'maxProperties':64,
               'description':'Checked against the game schema\'s parameters for the type.'},
     'was':dict(NAME,description='The ID this entity had before a rename: it keeps that ID\'s saved bit.'),
@@ -161,7 +161,7 @@ DRAPE = obj({
 SCATTER_ASSET = obj({
     'asset':ASSET,
     'weight':dict(number(0.001,1000),description='How often it is chosen against the others. Default 1.'),
-    'collision':{'type':'string','pattern':r'^[a-z][a-z0-9_]{0,47}$','description':'"self", "none" (default) or a companion collision asset.'},
+    'collision':{'type':'string','pattern':r'^[a-z][a-z0-9_]{0,47}$','description':'"self", "asset" (the collision its recipe declares), "none" (default) or a companion collision asset.'},
     'lift':dict(NUM,description='Added to its height on the ground. Default the scatter\'s lift.'),
 }, ['asset'])
 SCATTER = obj({

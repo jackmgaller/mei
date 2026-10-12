@@ -2032,6 +2032,63 @@ checker_tools = unittest.skipUnless(COMPILER.exists() and SCENE_PROBE.exists() a
                                     'the World Checker needs NumPy, meic and mei-scene-probe')
 
 
+class DeclaredCollisionTests(unittest.TestCase):
+    """collision "asset": the collision an asset's recipe declares (ASSETKIT-REFERENCE.md, "Declared
+    collision"), the same in the pack as the equivalent companion recipe's."""
+
+    def test_the_same_pack_as_the_companion(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            before = ex.compile().pack
+            companion = ex.read('assets/canopy_col.asset.json')
+            # the companion's slab as the canopy's own collision, in the canopy's material of
+            # the same tag (roof)
+            ex.edit(lambda a: a.update(collision={'nodes': [dict(n, material='cloth') for n in companion['nodes']]}),
+                    'assets/canopy.asset.json')
+            ex.edit(lambda w: w['cells'][0]['placements'][4].update(collision='asset'))
+            (ex.dir/'assets'/'canopy_col.asset.json').unlink()
+            compiled = ex.compile()
+            self.assertEqual(compiled.pack, before)
+            self.assertNotIn('canopy_col', compiled.report['assets'])
+            self.assertIn('collision', compiled.report['assets']['canopy']['used_as'])
+            ex.edit(lambda w: w['cells'][0]['placements'][4].update(collision='self'))
+            self.assertNotEqual(ex.compile().pack, before)
+
+    def test_a_level_as_an_entitys_collision(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            ex.edit(lambda w: w['cells'][0]['entities'][0].update(collision='coin'))
+            before = ex.compile().pack
+            ex.edit(lambda a: a.update(collision={'lod': 0}), 'assets/coin.asset.json')
+            ex.edit(lambda w: w['cells'][0]['entities'][0].update(collision='asset'))
+            self.assertEqual(ex.compile().pack, before)
+
+    def test_errors_at_the_placement(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ex = Example(tmp)
+            ex.edit(lambda w: w['cells'][0]['placements'][1].update(collision='asset'))
+            with self.assertRaises(WorldError) as caught:
+                ex.compile()
+            self.assertEqual(caught.exception.path, '/cells/0/placements/1/collision')
+            self.assertIn("Asset 'ramp' declares no collision", str(caught.exception))
+            ex.edit(lambda w: w['cells'][0]['placements'][1].update(collision='self'))
+            ex.edit(lambda w: w['cells'][0]['entities'][1].update(collision='asset'))
+            with self.assertRaises(WorldError) as caught:
+                ex.compile()
+            self.assertEqual(caught.exception.path, '/cells/0/entities/1/collision')
+            # an entity's asset that declares none
+            ex.edit(lambda w: w['cells'][0]['entities'][1].pop('collision'))
+            ex.edit(lambda w: w['cells'][0]['entities'][0].update(collision='asset'))
+            with self.assertRaises(WorldError) as caught:
+                ex.compile()
+            self.assertIn("Asset 'coin' declares no collision", str(caught.exception))
+            # "asset" is not an asset name
+            ex.edit(lambda w: w['cells'][0]['entities'][0].update(collision='coin'))
+            ex.edit(lambda w: w['cells'][0]['placements'][1].update(asset='asset'))
+            with self.assertRaisesRegex(WorldError, "'asset' is not an asset name here"):
+                ex.compile()
+
+
 class AssetDirTests(unittest.TestCase):
     """asset_dirs: up to 256 entries, DIR/* for every subfolder, clashes naming both files."""
 

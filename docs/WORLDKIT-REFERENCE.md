@@ -78,10 +78,14 @@ A **placement** is an `id` (unique in its cell; reports and the pack's 16-bit ta
 `asset`, a `position` (world coordinates, in the cell; `[x, z]` or `drop` sets it on the ground,
 [On the ground](#on-the-ground)), `yaw` (degrees, as `mesh_at()`), an
 optional `layer`, `merge` and `ground` (below) and a required `collision`: `"self"` (the asset's
-own mesh), `"none"`, or a companion collision asset recipe placed the same way. Requiring it
-makes an agent decide for every asset. An **entity** is an `id` (world-wide), a game `type`, a
+own mesh), `"asset"` (the collision the asset's recipe declares,
+[ASSETKIT-REFERENCE.md](ASSETKIT-REFERENCE.md#declared-collision)), `"none"`, or a companion
+collision asset recipe placed the same way. Requiring it makes an agent decide for every asset;
+`"asset"` on an asset whose recipe declares no collision is an error at the placement's
+`collision`. An **entity** is an `id` (world-wide), a game `type`, a
 `position`, optional `yaw`, `layer`, `asset` (a mesh the game may draw), `collision` (an asset
-in the entity's own frame, for moving objects), `params` and `was`. A cell's `standin` is an
+in the entity's own frame, for moving objects, or `"asset"`: its `asset`'s declared collision),
+`params` and `was`. A cell's `standin` is an
 ordinary asset modelled in cell-local coordinates around the cell's centre. Placing an asset
 whose lighting is directional at a yaw other than 0 is a warning
 ([Day and night](#day-and-night)).
@@ -930,7 +934,7 @@ props everywhere, and each prop's ID (`NAME_I_J`) lasts while its square keeps i
 
 | Property | Meaning |
 |---|---|
-| `assets` | 1–32 of `{"asset", "weight" (default 1), "collision" ("self", "none" (default) or a collision asset), "lift"}` |
+| `assets` | 1–32 of `{"asset", "weight" (default 1), "collision" ("self", "asset", "none" (default) or a collision asset), "lift"}` |
 | `area`, `exclude` | An area as the operations' (`rect`, `circle`, `polygon`, `path` with `width`); up to 256 exclusions |
 | `spacing`, `fill`, `jitter`, `seed` | About how far apart; the fraction kept (default 1); how far from the square's centre (default 0.8); the pattern (default 0) |
 | `clearance`, `max_slope`, `on` | Kept off sweeps by this much (default 1); not on ground steeper than this (degrees, default 35); `terrain` (default), `sweeps` or `both` |
@@ -1508,8 +1512,13 @@ rejected: [WORLDKIT-DESIGN.md](WORLDKIT-DESIGN.md#day-and-night).
 
 **Collision is authored separately, as simpler geometry than what is drawn** (why:
 [WORLDKIT-DESIGN.md](WORLDKIT-DESIGN.md#collision)). Each placed asset names a companion
-collision asset (an ordinary Asset Kit recipe, such as `shop_row_col`), or says `"self"` to use
-its own mesh (simple props), or has none. It is stored as triangles with plane equations,
+collision asset (an ordinary Asset Kit recipe, such as `shop_row_col`), or says `"asset"` to use
+the collision its own recipe declares (a `collision` section: nodes of its own or one of its
+levels of detail, [ASSETKIT-REFERENCE.md](ASSETKIT-REFERENCE.md#declared-collision)), or
+`"self"` to use its own mesh (simple props), or has none. A declared collision builds the same
+triangles, and the same pack, as the companion recipe that holds its nodes with the asset's
+materials; it is not listed among the report's `assets`, and the asset's `used_as` gains
+`collision`. It is stored as triangles with plane equations,
 floor/wall/ceiling classes and a per-cell lookup grid precomputed by the kit
 ([WORLDPACK.md](WORLDPACK.md), "Collision blocks"); a floor query costs about 450 cycles. Terrain
 collision comes from the terrain itself ([Terrain](#terrain)).

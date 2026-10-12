@@ -42,6 +42,7 @@ class Mesh:
     palette: dict = None   # set on the final mesh only: the palette entry assignment, if any
     levels: list = None    # set on the final mesh of a recipe with lod: [(mesh, report)] of levels 1..
     textures: dict = None  # set on the final mesh of a textured recipe (assetkit/textures.py)
+    collision: tuple = None  # set on the final mesh of a recipe with a collision section: (mesh, report)
     notes: list = None     # set on the final mesh: inspect's notes on modifiers (mirror copies over the original)
 
     def append(self, other):

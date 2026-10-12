@@ -225,7 +225,59 @@ def compile_recipe(recipe, base=None, budgets='error'):
         for k,(_,rep) in enumerate(mesh.levels,1):
             result['warnings'] += [{**w,'level':k,'message':f'Level {k}: '+w['message']}
                                    for w in rep['warnings'] if w['code'] == 'over_budget']
+    if 'collision' in recipe:
+        mesh.collision = compile_collision(recipe,mesh,result,base,budgets)
+        result['collision'] = collision_summary(recipe,*mesh.collision)
+        if 'nodes' in recipe['collision']:
+            result['warnings'] += [{**w,'collision':True,'message':'Collision: '+w['message']}
+                                   for w in mesh.collision[1]['warnings'] if w['code'] == 'over_budget']
     return mesh, materials, result
+
+
+def collision_recipe(recipe):
+    """The recipe an asset's declared collision compiles as, which is also the companion
+    collision recipe equivalent to it: the recipe without lod, collision and verification, its
+    nodes the collision's own (collision.nodes) or those of the level collision.lod names
+    (0: the recipe's own). Everything else (materials and their tags, prototypes, sheets,
+    lighting, palette layout, budget) is the recipe's. None without a collision section."""
+    spec = recipe.get('collision')
+    if spec is None:
+        return None
+    out = {key:value for key,value in recipe.items() if key not in ('lod','collision','verification')}
+    if 'nodes' in spec:
+        out['nodes'] = spec['nodes']
+    elif spec.get('lod'):
+        out['nodes'] = recipe['lod']['levels'][spec['lod']-1]['nodes']
+    return out
+
+
+def compile_collision(recipe, mesh, result, base=None, budgets='error'):
+    """The declared collision of a compiled recipe: (mesh, report). collision.lod reuses that
+    level's mesh (0: the recipe's own); collision.nodes compiles collision_recipe()."""
+    spec = recipe['collision']
+    if ('nodes' in spec) == ('lod' in spec):
+        raise AssetError('/collision','Give the collision nodes of its own or a level of detail (lod), one of the two.')
+    if 'lod' in spec:
+        k, n = spec['lod'], len(mesh.levels or [])
+        if k > n:
+            raise AssetError('/collision/lod',f'No level {k}: '+(f'the recipe\'s levels are 0-{n}.' if 'lod' in recipe else
+                                                               'the recipe has no lod, only level 0 (its own nodes).'))
+        return (mesh,result) if k == 0 else mesh.levels[k-1]
+    try:
+        return compile_recipe(collision_recipe(recipe),base,budgets)[0::2]
+    except AssetError as error:
+        path = '/collision'+error.path if error.path.startswith('/nodes') else error.path
+        raise AssetError(path,f'Collision: {error}') from error
+
+
+def collision_summary(recipe, mesh, rep):
+    """The report's collision: where it comes from, its size, bounds and surface tags."""
+    spec = recipe['collision']
+    out = {'source':'nodes'} if 'nodes' in spec else {'source':'lod','level':spec['lod']}
+    out.update(triangles=rep['triangles'],vertices=rep['vertices'],bounds=rep['bounds'])
+    if 'tags' in rep:
+        out['tags'] = rep['tags']
+    return out
 
 
 def decal_report(mesh, decals):
@@ -271,8 +323,8 @@ def level_materials(recipe):
 def level_recipe(recipe, k):
     """The recipe of level k of an asset with lod: level 0 is the recipe's own nodes; level k
     takes lod.levels[k - 1]'s nodes, with everything else (materials, prototypes, lighting,
-    palette layout, budget, verification) the recipe's own."""
-    out = {key:value for key,value in recipe.items() if key != 'lod'}
+    palette layout, budget, verification) the recipe's own, and no collision section."""
+    out = {key:value for key,value in recipe.items() if key not in ('lod','collision')}
     if k: out['nodes'] = recipe['lod']['levels'][k-1]['nodes']
     return out
 

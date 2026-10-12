@@ -2951,6 +2951,111 @@ class InfoFloorsTests(unittest.TestCase):
             self.assertTrue(result.stdout.startswith('error at /arguments/at'),result.stdout)
 
 
+class DeclaredCollisionTests(unittest.TestCase):
+    """A recipe's own collision section (docs/ASSETKIT-REFERENCE.md, "Declared collision")."""
+
+    def slab(self, collision, **extra):
+        # a slab 4 x 1 x 2 on y = 0, its collision a thin deck at 3 (or a level of detail)
+        return recipe({'id':'slab','op':'box','size':[4,1,2],'material':'stone','transform':{'translate':[0,0.5,0]}},
+                      materials={'stone':{'color':'#808080','tag':'stone'},'wood':{'color':'#a07040','tag':'wood'}},
+                      prototypes={'deck':{'op':'box','size':[4,0.2,2]}},
+                      collision=collision, **extra)
+
+    DECK = {'nodes':[{'id':'deck','op':'instance','ref':'deck','material':'wood','transform':{'translate':[0,2.9,0]}}]}
+
+    def test_nodes_share_prototypes_and_materials_and_are_never_drawn(self):
+        from assetkit.compiler import collision_recipe
+        r = self.slab(self.DECK)
+        mesh,materials,report = compile_recipe(r)
+        self.assertEqual(report['triangles'],12)
+        self.assertEqual({materials[f.material]['tag'] for f in mesh.faces},{'stone'})
+        cmesh,crep = mesh.collision
+        self.assertEqual(report['collision'],{'source':'nodes','triangles':12,'vertices':8,'bounds':crep['bounds'],
+                                              'tags':{'wood':12}})
+        self.assertAlmostEqual(crep['bounds']['max'][1],3.0)
+        # the collision is what its equivalent companion recipe builds
+        companion = collision_recipe(r)
+        self.assertEqual(set(companion),{'format','version','name','materials','prototypes','nodes'})
+        cm,cmat,_ = compile_recipe(companion)
+        self.assertEqual(native_bytes(cmesh,materials,{}),native_bytes(cm,cmat,{}))
+        # ... and a recipe without one is as before
+        self.assertIsNone(collision_recipe(recipe()))
+        self.assertIsNone(compile_recipe(recipe())[0].collision)
+        self.assertNotIn('collision',compile_recipe(recipe())[2])
+
+    def test_a_level_of_detail_as_the_collision(self):
+        lod = {'levels':[{'distance':20,'nodes':[{'id':'slab','op':'box','size':[4,1,2],'material':'stone',
+                                                   'transform':{'translate':[0,0.5,0]}}]},
+                         {'distance':40,'nodes':[{'id':'deck','op':'instance','ref':'deck','material':'stone'}]}]}
+        mesh,_,report = compile_recipe(self.slab({'lod':2},lod=lod))
+        self.assertIs(mesh.collision[0],mesh.levels[1][0])
+        self.assertEqual(report['collision']['source'],'lod')
+        self.assertEqual(report['collision']['level'],2)
+        mesh,_,report = compile_recipe(self.slab({'lod':0}))
+        self.assertIs(mesh.collision[0],mesh)
+        self.assertEqual(report['collision']['triangles'],report['triangles'])
+
+    def test_errors_carry_paths(self):
+        cases = [({},'/collision'),
+                 ({**self.DECK,'lod':0},'/collision'),
+                 ({'lod':1},'/collision/lod'),
+                 ({'lod':8},'/collision/lod'),
+                 ({'nodes':[{'op':'box','size':[1,1,1],'material':'nope'}]},'/collision/nodes/0/material'),
+                 ({'nodes':[{'op':'instance','ref':'nope'}]},'/collision/nodes/0/ref'),
+                 ({'nodes':[{'op':'box','size':[1,1,1]}],'tag':'x'},'/collision/tag')]
+        for spec,path in cases:
+            with self.subTest(spec=spec), self.assertRaises(AssetError) as caught:
+                compile_recipe(self.slab(spec))
+            self.assertEqual(caught.exception.path,path,str(caught.exception))
+        with self.assertRaises(AssetError) as caught:
+            compile_recipe(self.slab({'nodes':[{'op':'sphere','radius':1,'rings':16,'segments':32}]},
+                                     budget={'triangles':100}))
+        self.assertEqual(caught.exception.path,'/budget/triangles')
+        self.assertIn('Collision',str(caught.exception))
+        # inspect reports a collision over the budget as a warning
+        _,_,report = compile_recipe(self.slab({'nodes':[{'op':'sphere','radius':1,'rings':16,'segments':32}]},
+                                              budget={'triangles':100}),None,'warn')
+        self.assertTrue(any(w['code'] == 'over_budget' and w.get('collision') for w in report['warnings']))
+
+    def test_info_and_floors_use_it(self):
+        from assetkit import info as I
+        r = self.slab(self.DECK)
+        c = I.info(r)['collision']
+        self.assertEqual(c['source'],"the recipe's collision (its own nodes)")
+        self.assertEqual((c['top_floor'],c['triangles']),(3.0,12))
+        self.assertEqual(I.info(r,None,'asset')['collision']['top_floor'],3.0)
+        self.assertEqual(I.info(r,None,'self')['collision']['top_floor'],1.0)
+        self.assertEqual(I.floors(r,None,1.0)['floor_heights'],[3.0])
+        self.assertEqual(I.floors(r,None,1.0,'self')['floor_heights'],[1.0])
+        with tempfile.TemporaryDirectory() as tmp:
+            # the declared collision comes before a companion beside the recipe
+            col = recipe({'id':'deck','op':'box','size':[4,0.2,2],'transform':{'translate':[0,4.9,0]}})
+            col['name'] = 'test_col'
+            Path(tmp,'test_col.asset.json').write_text(json.dumps(col))
+            self.assertEqual(I.info(r,tmp)['collision']['top_floor'],3.0)
+            plain = recipe({'id':'slab','op':'box','size':[4,1,2],'transform':{'translate':[0,0.5,0]}})
+            self.assertEqual(I.info(plain,tmp)['collision']['top_floor'],5.0)
+        with self.assertRaises(AssetError) as caught:
+            I.info(plain,None,'asset')
+        self.assertEqual(caught.exception.path,'/arguments/collision')
+        self.assertIn('declares no collision',str(caught.exception))
+
+    def test_cli(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp,'test.asset.json')
+            path.write_text(json.dumps(self.slab(self.DECK)))
+            run = lambda *a: subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),*a],capture_output=True,text=True)
+            result = run('info',str(path))
+            self.assertEqual(result.returncode,0,result.stdout)
+            self.assertIn("collision: the recipe's collision (its own nodes): 12 triangles",result.stdout)
+            result = run('inspect',str(path))
+            self.assertEqual(result.returncode,0,result.stdout)
+            self.assertEqual(json.loads(result.stdout)['collision']['tags'],{'wood':12})
+        from assetkit.summary import counts_line
+        self.assertIn(', collision 12 triangles (its own nodes)',counts_line(compile_recipe(self.slab(self.DECK))[2]))
+        self.assertNotIn('collision',counts_line(compile_recipe(recipe())[2]))
+
+
 class LookTests(unittest.TestCase):
     """preview's look: --background, --ground and asset-preview.json (docs/ASSETKIT-REFERENCE.md, "The look")."""
     def test_looks_parse_and_without_one_the_carts_are_as_before(self):

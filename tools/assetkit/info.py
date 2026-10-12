@@ -9,8 +9,10 @@ written).
                                 faces too steep to stand on marked
 
 Both take an optional placement (`at`, a position, and `yaw` in degrees, as a world places it:
-mesh_at()'s turn, +Z toward +X), and the collision recipe: 'auto' (NAME_col.asset.json beside
-the recipe if there is one, else the recipe itself), 'self', or a recipe path.
+mesh_at()'s turn, +Z toward +X), and the collision: 'auto' (the recipe's declared collision, its
+collision section, if it has one; else NAME_col.asset.json beside the recipe if there is one;
+else the recipe itself), 'asset' (the declared collision; an error without one), 'self', 'none'
+(info only) or a recipe path.
 """
 import math
 from pathlib import Path
@@ -21,6 +23,7 @@ from .compiler import compile_recipe, window_order
 from .geometry import AssetError, cross, sub, dot
 from .textures import describe, MAX_WINDOWS
 
+DECLARED = 'declared'       # collision_source()'s recipe for the recipe's own collision section
 FLOOR_DEGREES = 45.0         # the World Kit's default floor_max_degrees (a game's probe may set less)
 CEILING_DEGREES = 45.0
 
@@ -36,10 +39,23 @@ def texture_windows(mesh):
     return {'used': len(windows), 'max': MAX_WINDOWS, 'windows': windows}
 
 
+def declared(recipe):
+    """How a recipe's declared collision is described: 'the recipe's collision (...)'."""
+    spec = recipe['collision']
+    return 'the recipe\'s collision (' + ('its own nodes)' if 'nodes' in spec else f'level {spec["lod"]})')
+
+
 def collision_source(recipe, folder, collision='auto'):
-    """(name, recipe, folder, how) of the collision to use, or None for 'none'."""
+    """(name, recipe, folder, how) of the collision to use, or None for 'none'. The recipe is
+    DECLARED for the recipe's own collision section: the caller takes the compiled recipe's
+    mesh.collision."""
     if collision == 'none':
         return None
+    if collision == 'asset' or (collision == 'auto' and 'collision' in recipe):
+        if 'collision' not in recipe:
+            raise AssetError('/arguments/collision', f'{recipe["name"]!r} declares no collision: add a collision section '
+                                                     '(nodes or lod), or give auto, self, none or a recipe path.')
+        return recipe['name'], DECLARED, folder, declared(recipe)
     if collision in ('auto', 'self'):
         beside = Path(folder or '.')/f'{recipe["name"]}_col.asset.json'
         if collision == 'auto' and beside.is_file():
@@ -110,7 +126,8 @@ def info(recipe, folder=None, collision='auto', at=None, yaw=0.0, floor_degrees=
         out['collision'] = {'source': 'none'}
     else:
         name, crecipe, cfolder, how = src
-        cmesh = mesh if crecipe is recipe else compile_recipe(crecipe, cfolder, 'warn')[0]
+        cmesh = (mesh.collision[0] if crecipe is DECLARED else mesh if crecipe is recipe else
+                 compile_recipe(crecipe, cfolder, 'warn')[0])
         tris = triangles(cmesh, at, yaw)
         k = kinds(tris, floor_degrees)
         out['collision'] = {'source': how, 'name': name, 'triangles': len(tris),
@@ -228,7 +245,8 @@ def floors(recipe, folder=None, step=0.25, collision='auto', at=None, yaw=0.0, f
     if src is None:
         raise AssetError('/arguments/collision', 'Collision none has no floors.')
     name, crecipe, cfolder, how = src
-    mesh = compile_recipe(crecipe, cfolder, 'warn')[0]
+    mesh = (compile_recipe(recipe, folder, 'warn')[0].collision[0] if crecipe is DECLARED else
+            compile_recipe(crecipe, cfolder, 'warn')[0])
     if step <= 0:
         raise AssetError('/arguments/step', 'The step is more than 0.')
     tris = triangles(mesh, at, yaw)
