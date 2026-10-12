@@ -251,7 +251,6 @@ fn fr8_sub() {
 
 fn frame_case(f: s32) {
     if SCENARIO < 580 || SCENARIO > 584 { return }
-    door_wait = true
     last_frame = FRAME                       // the frame runs one tick, whatever the time
     if fr8_k < 0 {
         fr8_k = 0

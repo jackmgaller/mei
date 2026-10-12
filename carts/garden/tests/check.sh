@@ -24,7 +24,6 @@ for s in 36 37 38; do
 done
 . "$HERE/camera_cases.sh"
 . "$HERE/attach_cases.sh"
-. "$HERE/shrine_cases.sh"
 . "$HERE/shrinetown_cases.sh"
 . "$HERE/goals_cases.sh"
 . "$HERE/town_route_cases.sh"

@@ -3,8 +3,7 @@
 // since the tests run with arr_auto off), then: the train comes in and stops, the robot steps
 // off onto the platform facing north and plays within 3.5 s, and the train leaves and is
 // parked; A and B skip it without a jump or a dive; Y does nothing while it runs, and a respawn
-// after it goes to the plaza's spawn without playing it again; the first opening through the
-// shrine's road works arrives by train, a second does not. 625 and 626 are the arrival drawn
+// after it goes to the plaza's spawn without playing it again. 625 and 626 are the arrival drawn
 // for pictures, by day and by night (SHOT=1 SEQ=...), with the same checks as 620.
 
 const AT_PLAY_MAX = 210                 // ticks from the start to playing: 3.5 s
@@ -32,7 +31,6 @@ fn at_case_init() -> bool {
         621 => { name = "arrival: A skips it, without a jump" }
         622 => { name = "arrival: B skips it, without a dive" }
         623 => { name = "arrival: Y does nothing while it runs; a respawn after it goes to the plaza, not the train" }
-        624 => { name = "arrival: the first opening through the shrine's road works arrives by train, the second does not" }
         625 => { name = "arrival: pictures by day" }
         626 => { name = "arrival: pictures by night" }
         else => { return false }
@@ -41,10 +39,6 @@ fn at_case_init() -> bool {
     at_phase = 0
     at_t = -1
     if SCENARIO == 626 { tv[T.Night] = 1.0 }
-    if SCENARIO == 624 {
-        arr_auto = true                     // as the cart runs: the shrine town not opened yet
-        return true
-    }
     arrival_begin()
     at_door0 = pl.pos
     return true
@@ -55,7 +49,6 @@ fn at_case(f: s32) {
         620, 625, 626 => at_arrive(f)
         621, 622 => at_skip(f)
         623 => at_respawn(f)
-        624 => at_doors(f)
         else => {}
     }
 }
@@ -191,36 +184,6 @@ fn at_respawn(f: s32) {
         expect(pl.pos.z > AT_PLAZA.z + 3.0, "the player plays, z", pl.pos.z)
         player_respawn()                    // as a fall 40 m under the spawn does
         expect(tw_hdist(pl.pos, AT_PLAZA) < 0.01 && !arrival_busy(), "a fall's respawn: the plaza, not the train", fixed(arr_state))
-        done()
-    }
-}
-
-// From the shrine through the road works into the shrine town (case 433's door): the first time
-// by train; skipped; back to the shrine and in again: the plaza.
-fn at_doors(f: s32) {
-    if f == 0 {
-        expect(world_k == GARDEN_WORLD_SHRINE && !arr_seen, "in the shrine, the shrine town not opened yet", fixed(world_k))
-        place(vec3(10.0, sh_floor(10.0, 14.0, 30.0), 14.0), WEST)
-    }
-    if at_phase == 0 {
-        if world_k == GARDEN_WORLD_SHRINE { stick_v = FWD }
-        if world_k == GARDEN_WORLD_SHRINETOWN {
-            expect(arr_state == ARR_COMING && arr_seen, "the first opening: by train", fixed(arr_state))
-            expect(near(pl.pos.x, AT_DOOR_X, 0.1) && near(pl.pos.y, AT_FLOOR, 0.05), "at the train's door, x", pl.pos.x)
-            at_phase = 1
-            at_t = f
-        }
-        if f == 80 { expect(false, "through the road works", fixed(world_k)) }
-    }
-    if at_phase == 1 && f == at_t + 10 { pad_v = A }
-    if at_phase == 1 && f == at_t + 12 {
-        at_check_playing("skipped: playing")
-        world_switch(GARDEN_WORLD_SHRINE)
-        expect(arr_state == ARR_OFF, "the shrine: no arrival", fixed(arr_state))
-        world_switch(GARDEN_WORLD_SHRINETOWN)
-        expect(arr_state == ARR_OFF && !mover_live(at_train()), "the second opening: no train", fixed(arr_state))
-        expect(tw_hdist(pl.pos, AT_PLAZA) < 0.01 && abs(wrap_angle(pl.yaw)) < 0.02, "at the plaza's spawn facing north, m", tw_hdist(pl.pos, AT_PLAZA))
-        expect(cam.intro > 0, "with the opening's look up the axis, ticks", fixed(cam.intro))
         done()
     }
 }

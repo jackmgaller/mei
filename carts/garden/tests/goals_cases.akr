@@ -122,11 +122,16 @@ fn gc_place(x: fixed, z: fixed, from: fixed, yaw: fixed) {
     place(vec3(x, sh_floor(x, z, from), z), yaw)
 }
 
-// Opens the garden, then the shrine town again (a reload of the world).
+// Opens the shrine town again (a reload of the world): the flags set before are gone, and only
+// the kept triggers' flags (those in the saved progress) are set again.
 fn gc_reload() {
-    world_switch(GARDEN_WORLD_GARDEN)
-    expect(world_k == GARDEN_WORLD_GARDEN && flag_n == 0, "in the garden, no flags", fixed(flag_n))
-    world_switch(GARDEN_WORLD_SHRINETOWN)
+    world_reopen()
+    var kept = 0
+    for k in 0..trig_n {
+        let p = wp_entity_params(trigs[k]) as *GardenTrigger
+        if p.keep && prog_has(trigs[k]) { kept += 1 }
+    }
+    expect(world_k == GARDEN_WORLD_SHRINETOWN && flag_n == kept, "opened again: only the kept flags set", fixed(flag_n))
 }
 
 // A star taken: walk at it until it is (t0: the frame the walk started).

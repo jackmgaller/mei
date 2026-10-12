@@ -1,7 +1,6 @@
-// The shrine zone's route scenarios (700-789 in the shrine town, 790-799 in the shrine), from the
-// alpha fix round (DESIGN.md 12.9, "The shrine zone"): each walks, climbs or jumps a route a
-// reviewer found broken, with real inputs and no teleport past its start, so it stays fixed.
-// check.sh runs the ones shrinezone_cases.sh lists.
+// The shrine zone's route scenarios (700-789), from the alpha fix round (DESIGN.md 12.9, "The
+// shrine zone"): each walks, climbs or jumps a route a reviewer found broken, with real inputs and
+// no teleport past its start, so it stays fixed. check.sh runs the ones shrinezone_cases.sh lists.
 //
 // A route is a list of points, each with a kind: walk to it (strict: a walk that stalls fails,
 // unless the route allows hops), climb a pole and jump or drop off it toward the next point, a
@@ -75,7 +74,6 @@ fn shz_case_init() -> bool {
         731 => { name = "shrine zone: G8 from its pad, 1 m east" }
         732 => { name = "shrine zone: G8 from its pad, 1 m north" }
         733 => { name = "shrine zone: G8 from its pad, 1 m south" }
-        790 => { name = "shrine: on each walkway deck, running at the trunk from eight sides keeps the body on the deck" }
         else => { return false }
     }
     cam.lock = false
@@ -98,7 +96,6 @@ fn shz_case_init() -> bool {
 fn shz_case(f: s32) {
     match SCENARIO {
         701 => shz_trunks(f, &SHZ_DECKS_TOWN[0], len(SHZ_DECKS_TOWN) as s32)
-        790 => shz_trunks(f, &SHZ_DECKS_SHRINE[0], len(SHZ_DECKS_SHRINE) as s32)
         706 => shz_string_down(f)
         707 => shz_string_up(f)
         708 => shz_north_wall(f)
@@ -109,7 +106,7 @@ fn shz_case(f: s32) {
         727 => shz_gate_n(f)
         722 => shz_g6_star(f)
         730, 731, 732, 733 => shz_g8(f)
-        else => { if SCENARIO >= 700 && SCENARIO < 800 { shz_route(f) } }   // not the other files' scenarios
+        else => { if SCENARIO >= 700 && SCENARIO < 790 { shz_route(f) } }   // not the other files' scenarios
     }
 }
 
@@ -387,7 +384,7 @@ fn shz_next(f: s32) {
     shz_p_top = pl.pos.y
 }
 
-// ---- 701, 790: the walkway decks and their trunks (B2): from 2.7 m out, run at the trunk's
+// ---- 701: the walkway decks and their trunks (B2): from 2.7 m out, run at the trunk's
 // centre from eight sides for 1.5 s, at each deck; the body must stay on the deck.
 fn shz_trunks(f: s32, decks: *vec3, n: s32) {
     if tw_phase == 9 { return }
@@ -713,9 +710,6 @@ fn shz_g8(f: s32) {
 const SHZ_DECKS_TOWN: [9]vec3 = [vec3(94.0, 9.0, 152.0), vec3(82.0, 12.0, 180.0), vec3(80.0, 15.0, 208.0),
                                 vec3(88.0, 18.0, 234.0), vec3(102.0, 21.0, 252.0), vec3(114.0, 22.0, 264.0),
                                 vec3(130.0, 24.0, 282.0), vec3(70.0, 28.0, 220.0), vec3(70.0, 15.0, 220.0)]
-// The shrine's walkway (carts/garden/shrine): the same platforms on the same cedars.
-const SHZ_DECKS_SHRINE: [5]vec3 = [vec3(16.0, 14.0, 146.0), vec3(14.0, 17.0, 168.0), vec3(24.0, 20.0, 188.0),
-                                  vec3(38.0, 23.0, 198.0), vec3(54.0, 26.0, 206.0)]
 
 // Deck to deck, gap to gap (place/shrine.py turns each deck so its railing gaps face its bridges),
 // round each trunk, from deck 1 to the rope deck.

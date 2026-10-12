@@ -31,4 +31,3 @@ run 728 1200
 for s in 730 731 732 733; do
     run $s 3200
 done
-run 790 3000

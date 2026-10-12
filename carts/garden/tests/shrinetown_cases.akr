@@ -1,13 +1,186 @@
-// The shrine town's scenarios (numbered 400-499), run by harness.akr in the shrine town's grey box
-// (start_world()); check.sh runs the ones shrinetown_cases.sh lists. They prove the level's
-// moves reach with the controller's default tuning: the spawn's first seconds, each glide of
-// spec 4.4 (G1-G9), the kick pair and the kick chimney, the pagoda's tiers and its finial, the
-// rope to the sacred cedar's knot hole, the coins, the doors, and the worst views of spec 8.3.
-// Coordinates are the level's (carts/garden/shrinetown/layout.py and DESIGN.md), metres.
+// The shrine town's scenarios (numbered 400-499), run by harness.akr; check.sh runs the ones
+// shrinetown_cases.sh lists. They prove the level's moves reach with the controller's default
+// tuning: the spawn's first seconds, each glide of spec 4.4 (G1-G9), the kick pair and the kick
+// chimney, the pagoda's tiers and its finial, the rope to the sacred cedar's knot hole, the coins,
+// and the worst views of spec 8.3. Coordinates are the level's (carts/garden/shrinetown/layout.py
+// and DESIGN.md), metres.
 //
 // The glides start on the roof at a run-up from its edge, jump, double jump and hold the button
 // through the apex (the glider), then steer at the target; a glide passes when the player lands
 // within `tol` of it, no lower than its `min_y`. They also note where the glide came down.
+
+// ---- the route and view helpers the other scenario files use too (sh_*)
+//
+// The route scenarios walk the level as a list of legs: each leg puts the player on the floor at
+// its start, facing its end, and steers there with the stick through the camera (cc_stick); a
+// jump leg presses A once the player has run `at` metres (twice for a double jump), and passes
+// when the player stands again within `tol` of the end, no lower than `min_y`. A leg is a check;
+// a scenario passes when all of its legs do.
+
+struct Leg {
+    from: vec3         // x, z of the start (y: 0 = on the floor there; else the height to start at)
+    to: vec3           // x, z of the end, and y: the lowest the feet may land (0 = no check)
+    kind: s32          // LEG_WALK, LEG_JUMP, LEG_DOUBLE, LEG_LONG
+    at: fixed          // jumps: metres run before A
+    tol: fixed         // how near the end to count as there
+}
+
+const LEG_WALK = 0
+const LEG_JUMP = 1
+const LEG_DOUBLE = 2
+const LEG_LONG = 3
+const ROUTE_TRACE = 0         // debugging: notes the position every 10 ticks of this leg (0: none)
+
+var sh_leg: s32
+var sh_t: s32              // ticks into the leg
+var sh_start: vec3
+var sh_air: bool
+var sh_presses: s32
+var sh_hold: bool
+var sh_prev_walk: bool     // the leg before was a walk
+
+// The coins in the pack's order (430).
+var sh_n: s32 = -1
+var sh_gold: s32
+var sh_red: s32
+
+fn sh_next_coin(from: s32) -> s32 {
+    for n in from..wp_pack.entity_count as s32 {
+        let ty = wp_entity(n).type_id as s32
+        if ty == COIN_TYPE || ty == RED_COIN_TYPE { return n }
+    }
+    return -1
+}
+
+// The views the level is judged from (440-446, 470): the player stands at a spot, the camera
+// behind it on a fixed yaw (or turning once round in 8 s); notes the frame's peak CPU and GPU
+// cycles and triangles, and checks no frame is late. They are for screenshots (SHOT=1, SEQ) as
+// much as for the numbers.
+fn sh_view(f: s32, at: vec3, yaw: fixed, pitch: fixed, dist: fixed, turn: bool) {
+    if f == 0 {
+        readout = 2                     // no readout over the picture
+        tv[T.CamPitch] = pitch          // the view's own pitch, a little further back
+        tv[T.CamDist] = dist
+        place(vec3(at.x, sh_floor(at.x, at.z, 90.0), at.z), yaw)
+        x0 = 0.0
+        y0 = 0.0
+        v0 = 0.0
+    }
+    if turn { cam.yaw = wrap_angle(yaw + fixed(f) * TAU / 480) } else { cam.yaw = yaw }
+    // measured from frame 30: the first frames load the cells round the place the view was jumped
+    // to (in the shrine town once about 1.1 million cycles), which walking never does at once
+    if f == 30 { t0 = timing.late }
+    if f >= 30 {
+        x0 = max(x0, fixed(timing.cpu / 100) / 10)
+        y0 = max(y0, fixed(timing.gpu / 100) / 10)
+        v0 = max(v0, fixed(timing.tris))
+    }
+    var end = 90
+    if turn { end = 510 }
+    if f == end {
+        note("cpu peak, thousand cycles", x0)
+        note("gpu peak, thousand cycles", y0)
+        note("triangles, most", v0)
+        expect(timing.late == t0, "no late frames", fixed(timing.late - t0))
+        done()
+    }
+}
+
+// The floor under (x, z), from high up.
+fn sh_floor(x: fixed, z: fixed, from: fixed) -> fixed {
+    if wp_floor(vec3(x, from, z), 0.0) { return wp_hit.y }
+    return -100.0
+}
+
+fn sh_heading(to: vec3) -> fixed { return atan2(to.x - pl.pos.x, to.z - pl.pos.z) }
+
+// Runs the legs one after another; each must reach its end in 15 seconds.
+fn sh_route(f: s32, legs: *Leg, n: s32) {
+    if sh_leg < 0 || sh_leg >= n {
+        if sh_leg < 0 { sh_leg = 0; sh_begin(legs[0]) }
+        else { done(); return }
+    }
+    let lg = legs[sh_leg]
+    sh_t += 1
+    if ROUTE_TRACE != 0 && sh_leg == ROUTE_TRACE && sh_t % 10 == 1 { note("trace, tick", fixed(sh_t)) }
+    let to = vec3(lg.to.x, pl.pos.y, lg.to.z)
+    let d = length(vec3(to.x - pl.pos.x, 0.0, to.z - pl.pos.z))
+    let ran = length(vec3(pl.pos.x - sh_start.x, 0.0, pl.pos.z - sh_start.z))
+    if is_air(pl.st) || pl.st == St.Glide { sh_air = true }
+    if !sh_air {
+        if d > 0.3 { stick_v = cc_stick(sh_heading(to), 1.0) }
+    } else {
+        // in the air: steer by where the body would come down about 0.4 s from now
+        let ahead = pl.pos + vec3(pl.vel.x, 0.0, pl.vel.z) * 24
+        let err = vec3(to.x - ahead.x, 0.0, to.z - ahead.z)
+        let m = min(length(err), 1.0)
+        if m > 0.1 { stick_v = cc_stick(atan2(err.x, err.z), m) }
+    }
+    if lg.kind != LEG_WALK && sh_presses == 0 && ran >= lg.at { pad_v = A; sh_presses = 1; sh_hold = true }
+    else if sh_hold && (!sh_air || pl.vel.y > 0.0) { pad_v = A }       // held: the full jump
+    else if sh_hold { sh_hold = false }                                   // released at the apex
+    else if lg.kind == LEG_DOUBLE && sh_presses == 1 && sh_air { pad_v = A; sh_presses = 2; sh_hold = true }
+    var arrived = false
+    if lg.kind == LEG_WALK { arrived = d < lg.tol && pl.st == St.Ground }
+    else { arrived = sh_air && pl.st == St.Ground && sh_t > 4 }
+    if arrived {
+        if lg.kind != LEG_WALK {
+            expect(d < lg.tol, "landed at the end, off by", d)
+        } else {
+            expect(true, "reached the end of a walk, ticks", fixed(sh_t))
+        }
+        if lg.to.y != 0.0 { expect(pl.pos.y >= lg.to.y, "high enough, y", pl.pos.y) }
+        sh_prev_walk = lg.kind == LEG_WALK
+        sh_leg += 1
+        if sh_leg < n { sh_begin(legs[sh_leg]) }
+        return
+    }
+    if sh_t > 900 {
+        note("stuck: wall hit", fixed(pl.wall_hit as s32))
+        note("wall normal x", pl.wall_n.x)
+        note("wall normal z", pl.wall_n.z)
+        note("wall normal y", pl.wall_ny)
+        note("floor normal y", pl.floor_n.y)
+        note("speed", speed_ms())
+        note("state", fixed(pl.st as s32))
+        report("FAIL ", "leg not finished, leg", fixed(sh_leg))
+        assert(false)
+    }
+}
+
+fn sh_begin(lg: Leg) {
+    // A leg that starts where the last one ended goes on from there, as a player would.
+    let dir = normalize(vec3(lg.to.x - lg.from.x, 0.0, lg.to.z - lg.from.z))
+    let turn = dot(dir, fwd_dir(pl.yaw))
+    if sh_leg > 0 && lg.kind == LEG_WALK && sh_prev_walk && turn > 0.7 && pl.st == St.Ground && length(vec3(pl.pos.x - lg.from.x, 0.0, pl.pos.z - lg.from.z)) < 1.6 {
+        sh_start = pl.pos
+        sh_t = 0
+        sh_air = false
+        sh_presses = 0
+        sh_hold = false
+        return
+    }
+    var y = lg.from.y
+    var p = vec3(lg.from.x, 0.0, lg.from.z)
+    if y == 0.0 {
+        // on the floor there; a start exactly on the seam between two floors (a bridge's end
+        // at a deck's edge) is moved 0.3 m along the leg
+        y = sh_floor(p.x, p.z, 90.0)
+        if y < -50.0 {
+            p = p + normalize(vec3(lg.to.x - p.x, 0.0, lg.to.z - p.z)) * 0.3
+            y = sh_floor(p.x, p.z, 90.0)
+        }
+    }
+    place(vec3(p.x, y, p.z), atan2(lg.to.x - lg.from.x, lg.to.z - lg.from.z))
+    cam.lock = false
+    sh_start = pl.pos
+    sh_t = 0
+    sh_air = false
+    sh_presses = 0
+    sh_hold = false
+}
+
+// ---- the shrine town's scenarios
 
 struct Glide {
     from: vec3         // x, z of the take-off run's start (y: 0 = on the floor there)
@@ -92,9 +265,6 @@ fn town_case_init() -> bool {
         423 => { name = "shrine town: the rope to the knot hole and down into the sacred cedar" }
         424 => { name = "shrine town: rope ladder A, the shelf (24) to the ledge (44)" }
         430 => { name = "shrine town: every coin is on a floor or a rail and can be taken" }
-        431 => { name = "shrine town: the konbini's door leads to the garden" }
-        432 => { name = "shrine town: the road works at the front road's west end lead to the shrine" }
-        433 => { name = "shrine town: the shrine's road works lead to the shrine town" }
         434 => { name = "shrine town: the signal gantries' ladders are front poles: held on their front, not from the parapet" }
         435 => { name = "shrine town: red coin 8 over the north parapet: not taken walking the deck, taken grinding the rail" }
         436 => { name = "shrine town: red coin 5 on the konbini's roof sign, jumped up to from the roof" }
@@ -151,9 +321,6 @@ fn town_case(f: s32) {
         423 => tw_rope(f)
         424 => tw_ladder(f)
         430 => tw_coins(f)
-        431 => tw_door(f, vec3(187.5, 0.0, 36.0), 3.1416, GARDEN_WORLD_SHRINETOWN, GARDEN_WORLD_GARDEN)
-        432 => tw_door(f, vec3(6.0, 0.0, 111.0), WEST, GARDEN_WORLD_SHRINETOWN, GARDEN_WORLD_SHRINE)
-        433 => tw_door(f, vec3(10.0, 0.0, 14.0), WEST, GARDEN_WORLD_SHRINE, GARDEN_WORLD_SHRINETOWN)
         434 => tw_gantries(f)
         435 => tw_coin_parapet(f)
         436 => tw_coin_sign(f)
@@ -187,7 +354,7 @@ fn tw_occluded(f: s32) {
     }
 }
 
-// sh_route (shrine_cases.akr), finishing once.
+// sh_route, finishing once.
 fn tw_route(f: s32, legs: *Leg, n: s32) {
     if tw_phase != 0 { return }
     sh_route(f, legs, n)
@@ -573,20 +740,6 @@ fn tw_coins(f: s32) {
     }
 }
 
-// A door: start in world `w0`, walk into the door from `at` facing `yaw`: world `w1` opens.
-fn tw_door(f: s32, at: vec3, yaw: fixed, w0: s32, w1: s32) {
-    if f == 0 {
-        expect(world_k == w0, "starts in its world", fixed(world_k))
-        place(vec3(at.x, sh_floor(at.x, at.z, 30.0), at.z), yaw)
-    }
-    if f < 60 && world_k == w0 { stick_v = FWD }
-    if f == 80 {
-        expect(world_k == w1, "the door opened the other world", fixed(world_k))
-        expect(wp_cell_at(pl.pos) != null, "standing in it", pl.pos.y)
-        done()
-    }
-}
-
 // ---- 434: the signal gantries' ladders (place/station.py: poles in front of the north column's
 // ladder, on the column's -X side in the gantry's frame) are front poles. Dropped onto the parapet
 // rail beside gantry 0 the body does not take the pole 0.575 m off it; jumped at from the deck in
@@ -928,7 +1081,7 @@ fn tw_opening(f: s32) {
     }
     if f == CAM_INTRO + 10 {
         expect(cam.intro == 0 && cam.pitch < -0.1, "then the normal pitch", cam.pitch)
-        world_switch(GARDEN_WORLD_SHRINETOWN)
+        world_reopen()
         expect(cam.intro > 0, "the world opened again: the opening again", fixed(cam.intro))
         done()
         tw_phase = 9

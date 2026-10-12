@@ -1,8 +1,8 @@
 // The footsteps' surfaces (README.md, "Surfaces": 4 wood, 5 gravel, 6 earth, 7 tile, 8 metal;
-// shrinetown/DESIGN.md 12.10), scenarios 560-579: 560-574 in the shrine town, 575 in the garden,
-// 576-579 in the shrine. Each spot: the body stands there, the floor's raw byte is the tag's
-// (pl.floor_byte, col_byte) while the controller's byte stays 0 (pl.floor_surf, col_surf), and a
-// jump in place lands with a footstep of the tag's material (ga_step_mat), whatever the zone's.
+// shrinetown/DESIGN.md 12.10), scenarios 560-579. Each spot: the body stands there, the floor's
+// raw byte is the tag's (pl.floor_byte, col_byte) while the controller's byte stays 0
+// (pl.floor_surf, col_surf), and a jump in place lands with a footstep of the tag's material
+// (ga_step_mat), whatever the zone's. 575: the bounce and slide bytes still reach the controller.
 // check.sh runs the ones sf_cases.sh lists. Helpers are prefixed sf_.
 
 var sf_steps: s32
@@ -23,10 +23,7 @@ fn sf_case_init() -> bool {
         569 => { name = "surfaces: the station's canopy is metal" }
         570 => { name = "surfaces: the shotengai arcade's roof is metal" }
         571 => { name = "surfaces: the sakagura's roof is tile" }
-        575 => { name = "surfaces: the garden's bounce and slide bytes reach the controller as before" }
-        576 => { name = "surfaces: the shrine's summit stage is wood" }
-        577 => { name = "surfaces: the shrine courtyard's gravel" }
-        578 => { name = "surfaces: the shrine's forest path is earth" }
+        575 => { name = "surfaces: the bounce and slide bytes (awning e0, the park's slide) reach the controller as before" }
         else => { return false }
     }
     cam.lock = false
@@ -50,10 +47,7 @@ fn sf_case(f: s32) {
         569 => sf_spot(f, 150.0, 8.0, 16.0, 8, GA_MAT_METAL)
         570 => sf_spot(f, 157.0, 72.0, 15.0, 8, GA_MAT_METAL)
         571 => sf_spot(f, 15.0, 218.0, 30.0, 7, GA_MAT_TILE)
-        575 => sf_garden(f)
-        576 => sf_spot(f, 72.0, 262.6, 90.0, 4, GA_MAT_WOOD)
-        577 => sf_spot(f, 120.0, 100.0, 40.0, 5, GA_MAT_GRAVEL)
-        578 => sf_spot(f, 20.0, 120.0, 40.0, 6, GA_MAT_EARTH)
+        575 => sf_bytes(f)
         else => {}
     }
 }
@@ -125,13 +119,14 @@ fn sf_map(f: s32) {
     }
 }
 
-// The garden's bounce surface (scenario 24's) and slide surface (23's): raw and mapped alike.
-fn sf_garden(f: s32) {
-    if f == 0 { place(vec3(31.0, 0.0, LANE_Z), EAST) }
+// The bounce surface (awning e0, scenario 24's) and the slide surface (the park's slide, 23's):
+// raw and mapped alike; the front road's lane is normal ground.
+fn sf_bytes(f: s32) {
+    if f == 0 { place(LANE_START, EAST) }
     if f == 10 {
-        expect(sf_query(38.0, 12.0, 10.0) && col_byte == 1 && col_surf == SURF_BOUNCE, "the bounce surface: 1 and 1", fixed(col_byte))
-        expect(sf_query(51.0, 25.0, 5.5) && col_byte == 2 && col_surf == SURF_SLIDE, "the slide surface: 2 and 2", fixed(col_byte))
-        expect(sf_query(31.0, LANE_Z, 1.0) && col_byte == 0 && col_surf == SURF_NORMAL, "the lane: 0 and 0", fixed(col_byte))
+        expect(sf_query(BOUNCE_AT.x, BOUNCE_AT.z, 4.0) && col_byte == 1 && col_surf == SURF_BOUNCE, "the bounce surface: 1 and 1", fixed(col_byte))
+        expect(sf_query(SLIDE_AT.x, SLIDE_AT.z, 3.5) && col_byte == 2 && col_surf == SURF_SLIDE, "the slide surface: 2 and 2", fixed(col_byte))
+        expect(sf_query(LANE_START.x, LANE_Z, 1.0) && col_byte == 0 && col_surf == SURF_NORMAL, "the lane: 0 and 0", fixed(col_byte))
         done()
     }
 }

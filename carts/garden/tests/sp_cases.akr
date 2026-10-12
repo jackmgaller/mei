@@ -11,7 +11,6 @@
 //   664  the bell's rope: the bell, and star 3 coming down
 //   665  the busiest places: the platform with the race train and the shotengai's arcade,
 //        jumping about; every goal sound gets a channel, and the CPU stays in its budget
-//   666  a door: the door's sound, the garden's zone
 
 var sp_max: s32                  // the sound's most cycles in a frame
 var sp_sum: s32
@@ -31,7 +30,6 @@ fn sp_case_init() -> bool {
         663 => { name = "sound: the last train lost, heard from the platform" }
         664 => { name = "sound: the bell's rope rings the bell and star 3 comes down" }
         665 => { name = "sound: the busiest places (the race train at the platform, the arcade): channels and CPU" }
-        666 => { name = "sound: a door to the garden: its sound, the garden's zone" }
         else => { return false }
     }
     sp_max = 0
@@ -61,7 +59,6 @@ fn sp_case(f: s32) {
         663 => sp_race(f)
         664 => sp_bell(f)
         665 => sp_busy_places(f)
-        666 => sp_door(f)
         else => {}
     }
 }
@@ -280,18 +277,6 @@ fn sp_busy_places(f: s32) {
         expect(sp_got == sp_asked, "every goal sound got a channel", fixed(sp_got))
         expect(sp_used == 0xFFFF, "all 16 channels used", 16.0)
         sp_cpu_report(25000)
-        done()
-    }
-}
-
-// ---- 666: a door
-
-fn sp_door(f: s32) {
-    if f == 0 { place_at_spawn() }
-    if f == 60 { world_switch(GARDEN_WORLD_GARDEN) }
-    if f == 62 {
-        expect(sp_playing(GA_S_DOOR), "the door's sound", 0.0)
-        expect(ga_world_k == GARDEN_WORLD_GARDEN && streq(ga_zone_name(), "the garden"), "the garden's zone", fixed(ga_world_k))
         done()
     }
 }

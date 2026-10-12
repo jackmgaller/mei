@@ -67,6 +67,7 @@ seamless edge to downtown (DESIGN.md 7.1), road works until downtown exists.
 
 | Scenario | What it proves |
 |---|---|
+| 1–38, 100–108, 200–211, 575 | The controller's moves, the camera's and the attachments' (`harness.akr`, `camera_cases.akr`, `attach_cases.akr`), moved from the city block on 2026-10-11 to spots here: the front road's lane (z 111), the fire-escape building's east face for kicks, the record shop's roofs for a ledge, the overpass ramp and the temple's steps for slopes, the park's slide, awning e0, the kick chimney, the school's flagpole, the race train's roof |
 | 400 | The spawn faces north; running north reaches the front road in 10 s (z 115.8) and the great torii at 10.9 s |
 | 401 | From the spawn through the ticket gates and up the station's inside stair onto the island platform (10.0) |
 | 410–418 | Each glide G1–G9: jump, chained jump held through its apex, glide, land at its target (G5 on roof 1 at 21.3; G6 on roof 3; G7 on the cemetery's top terrace at x 263; G8 in the arcade at z 80) |
@@ -86,7 +87,7 @@ seamless edge to downtown (DESIGN.md 7.1), road works until downtown exists.
 | 465, 466 | The progress on a memory card: written (shortcut E, star 4), then read at start-up |
 | 467 | Ladders A and E: not grabbed while up; held on the front, not gone round |
 | 640–648 | The updrafts (DESIGN.md 12.10, `updraft_cases.akr`): red coin 7 by the sento's steam from the danchi, the falls' mist, G8's chain through the courtyard's smoke from four take-offs, star 1 from no cap, no lift without the glider, the plumes' cost |
-| 620–626 | Arriving by train (`arrival_cases.akr`): playing on the platform facing north at 3.5 s; A or B skips; Y and respawns go to the plaza, never the train; only the first opening of a session; by day and by night |
+| 620–626 | Arriving by train (`arrival_cases.akr`): playing on the platform facing north at 3.5 s; A or B skips; Y and respawns go to the plaza, never the train; by day and by night |
 | 580 | The frame: the 29 ways out the alpha review found (cemetery terraces, under and on the viaduct's end, its parapet rails, the west hoarding, the canal's spring, the path-out torii, the brewery's roof), each closed (`frame_cases.akr`) |
 | 581–584 | The frame, south, north, west and east: every 8 m of edge a walk, a backflip and a glide (`frame_probes.akr`, from `tools/frame.py --probes`); no probe leaves the level |
 

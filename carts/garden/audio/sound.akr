@@ -692,10 +692,10 @@ fn ga_init() {
     mu_gain = 0
 }
 
-// A world opened (0 garden, 1 shrine, 2 shrine town: garden.game.mochi's order). Its zones,
-// emitters and timers start; the beds and the music carry on and follow the new zone.
+// A world opened (0: the shrine town, garden.game.mochi's only world). Its zones, emitters and
+// timers start; the beds and the music carry on and follow the new zone.
 fn ga_world(k: s32) {
-    ga_world_k = clamp(k, 0, 2)
+    ga_world_k = clamp(k, 0, len(GA_WORLD_ZONES) / 2 - 1)
     ga_zone = -1
     t_world = 0
     em_stop()
