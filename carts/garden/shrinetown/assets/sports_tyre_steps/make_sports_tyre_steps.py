@@ -18,15 +18,16 @@ to centre along the row. Nothing else is a route.
 Textures: texel grids in the recipe (no images). Run with the standard library:
 python3 carts/garden/shrinetown/assets/sports_tyre_steps/make_sports_tyre_steps.py
 """
-import json
 import math
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-NAME = 'sports_tyre_steps'
+sys.path.insert(0, str(HERE.parents[4] / 'tools'))
+from assetkit import author as A  # noqa: E402
+from assetkit.author import wind  # noqa: E402
 
-POLICY = {'required': True, 'depth': True, 'perspective': True}
-LIGHT = {'mode': 'vertical', 'ambient': 0.5}
+NAME = 'sports_tyre_steps'
 
 # ---- the tyres: circumradius of the octagon, tread width, paint ------------------------------
 # Half buried: the octagon's centre at the ground. The top is R cos 22.5.
@@ -50,26 +51,6 @@ PAINT = {  # base, worn (darker), as the town's playground paint
 }
 RUBBER = '#2c2a28'
 TEX_W, TEX_H = 32, 16
-
-
-def r(v):
-    return [r(x) for x in v] if isinstance(v, (list, tuple)) else round(v, 4)
-
-
-def newell(pts):
-    n = [0.0, 0.0, 0.0]
-    for i, a in enumerate(pts):
-        b = pts[(i + 1) % len(pts)]
-        n[0] += (a[1] - b[1]) * (a[2] + b[2])
-        n[1] += (a[2] - b[2]) * (a[0] + b[0])
-        n[2] += (a[0] - b[0]) * (a[1] + b[1])
-    return n
-
-
-def wind(verts, face, out):
-    """The face's corners in the order whose normal points along `out`."""
-    n = newell([verts[i] for i in face])
-    return list(face) if sum(n[k] * out[k] for k in range(3)) >= 0 else list(reversed(face))
 
 
 def outline(R):
@@ -163,8 +144,7 @@ def tyre_mesh(i, R, w, paint, x0):
         my = (h[k][1] + h[k + 1][1]) / 2
         faces.append(wind(verts, [HF + k, HF + k + 1, HB + k + 1, HB + k], [-mx, -my, 0]))
         mats.append('rubber')
-    return {'id': 'tyre_%d' % (i + 1), 'op': 'mesh', 'vertices': r(verts), 'faces': faces,
-            'face_materials': mats}
+    return A.mesh('tyre_%d' % (i + 1), verts, faces, face_materials=mats)
 
 
 def tyre_l1(i, R, w, paint, x0):
@@ -188,8 +168,7 @@ def tyre_l1(i, R, w, paint, x0):
         my = (o[k][1] + o[k + 1][1]) / 2
         faces.append(wind(verts, [base + k, base + k + 1, base + 4 + k + 1, base + 4 + k], [mx, my, 0]))
         mats.append('paint_' + paint)
-    return {'id': 'tyre_%d' % (i + 1), 'op': 'mesh', 'vertices': r(verts), 'faces': faces,
-            'face_materials': mats}
+    return A.mesh('tyre_%d' % (i + 1), verts, faces, face_materials=mats)
 
 
 def layout():
@@ -215,14 +194,8 @@ def main():
 
     nodes = [tyre_mesh(k, R, w, p, xs[k]) for k, (R, w, p) in enumerate(TYRES)]
     l1 = [tyre_l1(k, R, w, p, xs[k]) for k, (R, w, p) in enumerate(TYRES)]
-    recipe = {
-        'format': 'mei-asset', 'version': 1, 'name': NAME,
-        'budget': {'triangles': 120},
-        'materials': materials, 'lighting': LIGHT, 'verification': POLICY,
-        'nodes': nodes,
-        'lod': {'levels': [{'distance': 20, 'nodes': l1}], 'cull': 60},
-    }
-    (HERE / (NAME + '.asset.json')).write_text(json.dumps(recipe, indent=1) + '\n')
+    A.write(HERE / (NAME + '.asset.json'),
+            A.recipe(NAME, materials, nodes, budget=120, lod=A.lod([(20, l1)], cull=60)))
 
     # collision: a step per tyre, the box's top at the tread's top
     col = []
@@ -230,12 +203,8 @@ def main():
         top = R * math.sin(math.radians(67.5))
         sx = max(0.4, 2 * R * math.cos(math.radians(67.5)))
         sz = max(0.3, w)
-        col.append({'id': 'step_%d' % (k + 1), 'op': 'box', 'size': r([sx, top, sz]), 'material': 'solid',
-                    'open': ['bottom'], 'transform': {'translate': r([xs[k], top / 2, 0])}})
-    colr = {'format': 'mei-asset', 'version': 1, 'name': NAME + '_col',
-            'materials': {'solid': {'color': '#ffffff', 'palette': True}},
-            'lighting': LIGHT, 'verification': POLICY, 'nodes': col}
-    (HERE / (NAME + '_col.asset.json')).write_text(json.dumps(colr, indent=1) + '\n')
+        col.append(A.box('step_%d' % (k + 1), [sx, top, sz], [xs[k], top / 2, 0], open=['bottom']))
+    A.write(HERE / (NAME + '_col.asset.json'), A.collision(NAME + '_col', col))
     for k, (R, w, p) in enumerate(TYRES):
         print('tyre %d: x %.3f, top %.3f, R %.2f, tread %.2f, %s' % (
             k + 1, xs[k], R * math.sin(math.radians(67.5)), R, w, p))
