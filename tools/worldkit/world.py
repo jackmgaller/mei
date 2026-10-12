@@ -349,7 +349,8 @@ def compile_world(source, lock=None, assets_dir=None):
             if coll == 'none':
                 tris = []
             else:
-                casset = asset if coll == 'self' else library.get(coll, pp + '/collision', cs.file, 'collision')
+                casset = (asset if coll == 'self' else library.collision(asset, pp + '/collision', cs.file)
+                          if coll == 'asset' else library.get(coll, pp + '/collision', cs.file, 'collision'))
                 tris = collision_triangles(casset, surface_of)
             for a, b, cc, surface in tris:
                 corners = [tuple(x + o for x, o in zip(turn(v, yaw), pos)) for v in (a, b, cc)]
@@ -361,7 +362,8 @@ def compile_world(source, lock=None, assets_dir=None):
             rt.add_asset(asset)
             if it.layer: use_layer(it.layer, it.path)
             if it.collision != 'none':
-                casset = asset if it.collision == 'self' else library.get(it.collision, it.path + '/collision', None, 'collision')
+                casset = (asset if it.collision == 'self' else library.collision(asset, it.path + '/collision')
+                          if it.collision == 'asset' else library.get(it.collision, it.path + '/collision', None, 'collision'))
                 for a, b, cc, surface in collision_triangles(casset, surface_of):
                     corners = [tuple(x + o for x, o in zip(turn(v, it.yaw), it.position)) for v in (a, b, cc)]
                     plan['collision'].append(P.Tri(*corners, surface=surface, layer=it.layer, tag=TAG_SCATTER))
@@ -395,7 +397,13 @@ def compile_world(source, lock=None, assets_dir=None):
                 rt.add_asset(asset)
             ecoll = []
             if 'collision' in e:
-                casset = library.get(e['collision'], ep + '/collision', cs.file, 'collision')
+                if e['collision'] != 'asset':
+                    casset = library.get(e['collision'], ep + '/collision', cs.file, 'collision')
+                elif asset is None:
+                    raise err(ep + '/collision', 'Collision "asset" is the declared collision of the entity\'s asset, '
+                              'and the entity has none. Give it an asset, or name a collision asset recipe.', cs)
+                else:
+                    casset = library.collision(asset, ep + '/collision', cs.file)
                 ecoll = [P.Tri(a, b, cc, surface=s, tag=k) for a, b, cc, s in collision_triangles(casset, surface_of)]
             plan['entities'].append({'k': k, 'spec': e, 'asset': asset, 'collision': ecoll, 'values': values, 'pos': epos})
         if len(plan['layers']) > P.MAX_CELL_LAYERS:

@@ -10,7 +10,7 @@ import hashlib
 import os
 from pathlib import Path
 
-from assetkit.compiler import compile_recipe, native_bytes, material_manifest
+from assetkit.compiler import compile_recipe, collision_recipe, native_bytes, material_manifest
 from assetkit.geometry import AssetError
 from kitcore import jsonio
 from .pack import mesh_triangles
@@ -32,6 +32,7 @@ class Asset:
     levels: list = field(default_factory=list)   # native meshes of levels of detail 1.. (recipe lod)
     mesh: object = None                  # textured assets: the compiled mesh, placed per region
     materials: dict = None
+    declared: object = None              # its declared collision (recipe collision) as an Asset, once used
 
     @property
     def textured(self): return self.mesh is not None
@@ -118,8 +119,30 @@ class Library:
                  and k not in asset.recipe['verification']}
         return {**asset.recipe,'verification':{**asset.recipe['verification'],**extra}} if extra else asset.recipe
 
+    def collision(self, asset, path, file=None):
+        """The asset's declared collision (its recipe's collision section) as an Asset of its
+        own, for collision_triangles(): the recipe compiled as assetkit's collision_recipe(),
+        so it is the same as an equivalent companion collision recipe's. An error at `path`
+        when the recipe declares none."""
+        if 'collision' not in asset.recipe:
+            raise WorldError(path,f'Asset {asset.name!r} declares no collision. Give its recipe a collision section '
+                                  '(ASSETKIT.md, "Declared collision"), or use "self", "none" or a companion '
+                                  'collision recipe.',file)
+        if asset.declared is None:
+            recipe = collision_recipe(asset.recipe)
+            try:
+                mesh,materials,report = compile_recipe(recipe,Path(asset.file).parent)
+            except (AssetError,OSError,ValueError,RecursionError) as error:
+                where = getattr(error,'path','/input')
+                where = '/collision'+where if where.startswith('/nodes') else where
+                raise WorldError(path,f'The collision of asset {asset.name!r} does not build: {where}: {error}',file) from error
+            asset.declared = Asset(asset.name,asset.file,recipe,native_bytes(mesh,materials,recipe.get('lighting',{})),
+                                   {},report,[materials[f.material].get('tag') for f in mesh.faces],asset.shown)
+        asset.uses.append('collision')
+        return asset.declared
+
     def get(self, name, path, file=None, use='placement'):
-        if name in ('self','none'):
+        if name in ('self','none','asset'):
             raise WorldError(path,f'{name!r} is not an asset name here.',file)
         if name not in self.assets:
             source = self.source_of(name,path,file)
