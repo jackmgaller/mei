@@ -262,6 +262,257 @@ the mech vanishes and reappears 12 m ahead mid-slash (startup 3 after the flash,
 1 to the first active frame. 320 damage, knockdown, chip 80; −24 on block. Available any time the meter is at
 zero or above: the borrowing super.
 
+## Tank (Heartland Atomic Company, nuclear)
+
+The grappler. Heartland Atomic are the atomic era's veterans, keeping old reactors running with
+salvage and patches; Tank is their base mech, available from the start. Short (10.2 m) and wide
+(9.5 m across the fists), on two tread units instead of legs, with forearms bigger than the
+Hero's thighs. It has the slowest walk and the worst jump of the roster, and makes up for them
+with **super armour** on its three big attacks, a **command grab** that beats block and cannot
+be broken, the longest grab range, and a **nuclear meter** that fills from the damage it takes,
+in plain view of both players. Up close it beats the Double-blade Hero's rushdown (armour eats
+the pokes; a mech that blocks gets clinched); at range it struggles against the Hero's wave and
+Tip Thrust, and has to walk in through them. Its stance is hunched forward over the treads, head
+up, both clamp fists low and out in front like a wrestler about to tie up.
+
+"Tank" is the code identifier (`Mech.Tank`, `models/tank/`, `anims/tank/`). Its product name is
+open (see the open questions at the end).
+
+### Movement
+
+| | Tank |
+|---|---|
+| Health | 1,100 |
+| Walk forward | 0.055 m a frame (3.3 m/s) |
+| Walk back | 0.045 m a frame (2.7 m/s) |
+| Walk cycle | 32 frames, a loop with **no `step` marks**: the treads glide, nothing plants |
+| Jump | 6 frames' crouch, then 34 in the air, 4.5 m high at the top (`jump` is 40 frames) |
+| Diagonal jump | 0.13 m a frame across (4.4 m) |
+| Landing | 7 frames (10 after an air attack) |
+| Push box | 2.4 m either side of the root, 10 m tall (6.5 crouching) |
+| Hurt box (standing) | the body 2.4 m either side, 10.2 m tall; the treads 2.7 m either side, 2.2 m tall |
+
+**The glide.** Tank does not step: its walks slide the root at a constant speed while the
+drive sprockets (`foot_r`, `foot_l`) turn, about 4° a frame forward in `walk_f` (the track's
+speed over the sprocket's 0.78 m radius) and 3.3° a frame backward in `walk_b`. The body sways
+very little, a slow 2° roll of the torso over the cycle and the fists bobbing a little out of
+phase, so the motion reads as an engine idling under load rather than a gait. The treads stay
+flat on the floor in every ground move. The fight plays no step sound for Tank; a tread rumble
+is on the sound list for the next audio round.
+
+**The jump** is a heave: a 6-frame squat (the torso pitches forward 15°, the arms swing back),
+a launch with both arms thrown up, the treads hanging level in the air, and a hard landing that
+pitches the torso forward and rocks the treads nose-down 8°.
+
+### Attacks (A)
+
+| Move | Startup | Active | Recovery | Total | Damage | Hitstun / blockstun | On block / hit | Hit box |
+|---|---|---|---|---|---|---|---|---|
+| `atk_n` Rivet Jab | 8 | 3 | 14 | 25 | 80 | 18 / 13 | −4 / +1 | x 1.8–6.4, y 5–8.5 |
+| `atk_f` Piston Haymaker | 16 | 4 | 22 | 42 | 140 | 26 / 18 | −8 / +0 | x 2.0–7.6, y 5–9 |
+| `atk_d` Track Hook | 11 | 4 | 24 | 39 | 90, knockdown | — / 16 | −12 / KD | x 1.8–6.8, y 0–2 |
+| `atk_air` Body Drop | 7 | to landing | landing 10 | 28 | 110 | 20 / 15 | by height | x −1.5–4.0, y −2.5–2.5 (from the root, in the air) |
+
+- **Rivet Jab** (`atk_n`): the chain's start, a frame slower than the Hero's Guard Cut and
+  shorter. The leading (right) fist snaps straight out at chest height from the guard and back;
+  the shoulder drives it, the torso turns 10° into it. Cancel window frames 9–17 (the first
+  active frame to six after the last). The arm is hurtable out to 4 m from the first active
+  frame until 10 frames after the last.
+- **Piston Haymaker** (`atk_f`): **super armour on frames 4–20** (from the wind-up to the last
+  active frame). Anticipation: frames 1–12, the right arm cocks back past the hip, the torso
+  turns 35° away and leans back, the left fist comes up to cover the face; the treads glide
+  Tank 1.6 m forward over frames 5–14 (root motion, 0.16 m a frame), the sprockets spinning
+  hard. Frames 13–16, the swing: the torso unwinds and the right fist travels in a wide hook to
+  full extension at frame 17 (contact pose: arm straight, fist at 7 m, chest-high, the torso
+  turned 30° into it, the left arm pulled back for balance). Recovery 22 frames: the arm swings
+  through past the centre line and is hauled back to the guard, the torso settling over the
+  treads. The heavy footsie tool: it walks through a poke (the armour) and lands. −8 on block,
+  so a blocked one is punished by a neutral attack. Cancel window frames 17–26. Arm hurtable
+  to 5 m.
+- **Track Hook** (`atk_d`): from a crouch (the torso pitched 30° forward over the treads), a low
+  hook of the right fist along the floor in front of the treads, knuckles dragging. Knocks
+  down. Slow and very punishable when blocked or missed, like the Low Sweeps.
+- **Body Drop** (`atk_air`): in the air, Tank pulls both fists in against the chest, tucks the
+  head and drops its whole weight, the hull leading; the box sits under and in front of it and
+  stays out until landing. Once per jump. Tank's jump is short and slow, so this is a
+  read, not a habit: a Rising Arc or a Smokestack Uppercut takes it.
+
+### Specials (B)
+
+| Move | Startup | Active | Recovery | Total | Damage | Chip | Hitstun / blockstun | On block / hit |
+|---|---|---|---|---|---|---|---|---|
+| `sp_n` Reactor Vent | 12 | 5 | 26 | 43 | 100, knockdown | 20 | — / 16 | −15 / KD |
+| `sp_f` Atomic Clinch (command grab) | 13 | 6 | 30 (whiff) | 49 + 56 slam | 180, knockdown | — | unblockable | — |
+| `sp_u` Smokestack Uppercut | 9 | 6 | 28 | 43 | 120, knockdown | 24 | — / 14 | −20 / KD |
+| `sp_d` Bulldozer | 12 | 16 | 20 | 48 | 90, knockdown | 18 | — / 14 | −22 (first frame) / KD |
+
+- **Reactor Vent** (`sp_n`): **super armour on frames 1–17** (all its startup and the first
+  active frame). Tank plants, both fists slam down to the floor either side of the treads
+  (frames 1–11, the torso hunching 25° forward, the reactor's window flaring), and the reactor
+  vents: a burst of superheated steam from the gaps all round the hull and the vessel on frames
+  13–17. The hit box covers both sides (x −4.0–5.8, y 0–9.5), so it also catches a mech that
+  crossed over. Recovery: the fists come up off the floor, steam trailing (frames 18–43).
+  The answer to the Double-blade Hero's pressure: its Twin Cut or Cross Lunge lands on the
+  armour and the vent knocks it down; a Void Step behind gets hit by the back half. A mech that
+  waits it out punishes the 26-frame recovery.
+- **Atomic Clinch** (`sp_f`, the command grab): Tank throws both arms wide (frames 1–4) and
+  glides forward 4.5 m on the treads over frames 4–15 (root motion 0.375 m a frame, sprockets
+  spinning flat out), the arms closing on frames 14–19: the catch box x 0.5–4.2, y 1–10 on
+  frames 14–19. It catches what Y's grab catches (a mech standing, walking, crouching or
+  blocking, not in block- or hitstun) **and a mech in an armour frame**; it misses a mech in the
+  air, knocked down, getting up, invulnerable or in the startup of its own attack (strikes beat
+  grabs). How it differs from Y's grab: it reaches about 8.7 m from where it starts against
+  Y's 4 m, it is slower (13 frames to Y's 5, so it can be seen and jumped), it **cannot be
+  broken**, and it does 180 to the throw's 150. A miss is a 30-frame stagger (frames 20–49:
+  the arms close on nothing, Tank lurches forward over the treads and hauls itself upright),
+  punishable by anything.
+  On a catch the animation jumps to its **slam section** (frames 50–105, 56 frames, marked
+  `riposte` on its first frame, as the Parry's riposte is): Tank hauls the other mech up by the
+  shoulders, swings it overhead (frames 50–64, the other's root lifted to 6.5 m above Tank's
+  head, Tank's fists at the other's shoulders), holds it there a moment while the reactor
+  flares (65–74), then slams it down in front (75–84) and lets go: `release` on frame 84, the
+  damage and the slam's hitstop (12). It ends with Tank straightening up (85–105). The other
+  plays `thrown_slam` (below) and lands knocked down, about 3.6 m in front.
+- **Smokestack Uppercut** (`sp_u`, the anti-air): **super armour on frames 1–15** (startup and
+  active). Tank stays planted (no root motion: it is too heavy to leave the floor) and drives
+  the right fist up from the hip to straight overhead, the torso stretching up 15° back, the
+  exhaust stacks belching (the box follows the fist, x 0.5–5.0, y 5–14). Where the Hero's Rising
+  Arc beats a jump-in with invulnerability, this beats it with armour: the falling attack lands
+  on the armour, then the uppercut hits. A jump without an attack, or one that lands late,
+  beats it on recovery (−20 on block, 28 frames of the fist coming down).
+- **Bulldozer** (`sp_d`): Tank drops its shoulder and charges low along the floor on the
+  treads, 8 m over frames 10–27 (root motion 0.444 m a frame), the hull and both forearms
+  forward in a ram (box x 0.5–4.0, y 0–5, active frames 13–28). Startup is the wind-up: the
+  torso pitches forward 35°, the fists come together in front of the hull, the sprockets spin
+  up (frames 1–9). **No armour**: it is Tank's only way to cover ground fast, and it is very
+  punishable on block (−22 at the first frame, less if only its last frames touch) and goes
+  under nothing: a wave or a Tip Thrust stops it. Recovery 20: Tank skids, the treads rocking
+  nose-down 10°, and straightens.
+
+### Grab and throw (Y): Scrap Heave
+
+`grab`: startup 5, active 2 (the catch box x 1.0–4.0, y 2–10: Tank's arms are long), 7 frames;
+a miss plays `grab_whiff` (22 frames). Breakable as every Y grab (Y within 10 frames). On a
+catch: `throw` (44 frames) on Tank and `thrown` (44, the Hero's throw's victim move) on the
+other: Tank clamps both fists on the other's shoulders (frames 1–10, the break window), lifts
+it to 4 m (11–24, the other's root rising 0.3 m a frame), heaves it back over its right
+shoulder and then hurls it forward with both arms on frame 30 (`release`): 150 damage,
+knockdown, the other flying about 10 m. The fight places the other at Tank's fists (3.8 m in
+front while held), so `thrown` from the Hero's throw reads right; the Hero lifts higher, Tank
+holds lower and closer.
+
+### Super (A + B): Chain Reaction
+
+A command-grab super. The flash (frames 1–40: the world freezes, Tank alone moves: it plants,
+both arms spread wide, the reactor's window and the vent slot glare white-green and the stacks
+belch). Then the treads glide 6 m forward in 8 frames (41–48, 0.75 m a frame) and the arms
+close: the catch box x 0.5–4.5, y 0–11, on frames 47–54. Invulnerable from frame 1 to 46. It
+catches everything the Atomic Clinch does and also **a mech in hitstun or blockstun** on the
+ground, so it ends a chain (A, forward A, super) and punishes a blocked string; it misses a mech
+in the air or knocked down. A miss: 40 frames of recovery (55–94), the arms crashing together
+on nothing and Tank skidding to a stop. On a catch the animation jumps to its slam section
+(frames 95–150, 56 frames, `riposte` on 95, the same timing as the Clinch's so the victim's
+`thrown_slam` serves both): lift overhead, the reactor going critical (the hold at 110–119 is
+where the flare peaks), the slam on frame 129 (`release`): 360 damage (scaled in a chain like
+any hit), knockdown, the super's hitstop (20). Unblockable; no chip, since it is a grab. Grabs
+are not parried, so neither is this.
+
+### Super armour (`MARK_ARMOUR`)
+
+- **What it absorbs.** A strike (a normal, a special, an air attack) or a wave that touches
+  Tank on a frame marked `armour` lands, but does not interrupt: Tank takes the hit's damage,
+  in full (an absorbed hit is not part of a combo, so it is not scaled), the nuclear meter
+  fills from it, and both mechs freeze for the hit's hitstop (8, 11 or 14 frames) while Tank
+  flashes. There is no hitstun, no knockback and no knockdown; Tank's move carries on from the
+  same frame.
+- **How many.** Every hit while the marks last. The attacker's hit is spent (that hit box does
+  not hit again) and it does **not** count as contact for the attacker's chain, so a chain
+  cannot follow it: in practice one strike, or a strike and a wave.
+- **The attacker.** Gets the meter of a blocked hit (kinetic +5 %), not of a landed one.
+- **What breaks it.** Grabs: Y grabs and command grabs catch a mech on an armour frame even
+  though it is in the middle of a move (a mech's own attack's startup otherwise beats a grab).
+  Supers: a super's hit is never absorbed and lands as usual. A hit that takes Tank's health to
+  zero knocks it out as usual. Armour never applies in the air (no air move has it).
+- **The Parry** still parries an armoured attack (the armour is Tank's defence, not its
+  attack's).
+- The fight reports an absorbed hit as the event `Armour` (side: the attacker, at the contact,
+  the hit's power), for a clank and a spark instead of the hit's.
+
+### The nuclear meter
+
+Fills by **taking damage**: 5 meter for every 2 points of damage Tank takes, so a bar takes
+480 damage (about 44 % of its health, about four clean hits or a combo and a throw). Everything
+that costs health counts: hits, chip, absorbed hits, throws. Nothing else fills it: not
+landing hits, not blocking (a blocked normal does no damage), not time. It **carries over
+between rounds**, so a lost round leaves Tank with a bar or most of one for the next: the
+comeback the pitch asks for. The super costs the whole bar.
+
+**Shown to both players.** The HUD's gauge on Tank's side is the reactor: a green fill that
+heats toward white as it climbs, with a slow pulse from half a bar and hazard hatching across it
+once full, and "SUPER" beside it like the others'. On the mech itself the reactor's window and
+the chest vent glow brighter with the meter (drawn by `tank_fx.akr`), so the opponent sees the
+threat on the fighter, not only in the corner of the screen. `MeterFull` is the usual event.
+
+### `thrown_slam`: the Atomic Clinch's and Chain Reaction's victim (every mech)
+
+A new victim move, added to the end of `Mv` (so the numbering of the rest stays), animated for
+**every** mech (the Hero, the Double-blade Hero and Tank itself, for the mirror match): 56
+frames. The fight places the root (Tank's fists are at the victim's shoulders throughout):
+
+| Frames | The victim |
+|---|---|
+| 1–14 | hauled up by the shoulders: the root rises from the floor to 6.5 m above Tank's fists' height, moving from 3.0 m in front of Tank to 0.8 m in front (over its head); the victim's legs dangle and kick, its arms flail at Tank's wrists |
+| 15–24 | held overhead, horizontal, face up (its body pitched back 90°), struggling |
+| 25–34 | slammed down in front: the root comes down to the floor 3.6 m in front of Tank, the body rotating back to land flat on its back on frame 34 (the slam, `release` on Tank's side) |
+| 35–56 | flat on its back, a bounce on 36–40, then still: the fight takes it into `knockdown` from here |
+
+### Reactions and the rest
+
+As the list below, with Tank's lengths: `idle` 60 (the engine idling: a slow rise and fall of
+the shoulders, the reactor's window breathing), `walk_f` and `walk_b` 32 (the glide), `crouch`
+8 (the torso pitches 30° forward and the fists drop to the floor: the treads cannot crouch),
+`jump` 40, `land` 10, `block` 4 (both forearms crossed in front of the head and chest, the
+cooling packs outward: Tank blocks with its arms), `hit_high` and `hit_low` 20, `hit_air` 30,
+`knockdown` 32 (it topples backwards off its treads onto its back, the treads in the air),
+`getup` 24 (it rocks forward and drops back onto the treads with a thud), `ko` 90 (the reactor
+gutters, it topples back and the glow goes out), `win` 120 (both fists raised, the stacks
+belching, then a thumbs-up), `intro` 90 (it rolls out of the booth's spot lights into the
+stance), `grab_whiff` 22, `grab_break` 20, `thrown` 44 and `thrown_vault` 40 (Tank as the
+victim: dead weight, the treads hanging), `thrown_slam` 56.
+
+### For the animator (Tank's rig)
+
+- **The parts are the shared skeleton with Tank's meanings** (`models/tank/tank.rig.json`; each
+  part's `role` and `range` are written there): `pelvis` the lower hull and hip axle; `torso`
+  the chest, the reactor vessel and the stacks; `head` the cab head; `pauldron_*` the shoulder
+  domes (follow the upper arm part way: about 0.35 of its x and 0.5 of its z, as the Hero's);
+  `upper_arm_*`, `forearm_*`, `hand_*` the arms and clamp fists; `thigh_*` the suspension
+  struts; `shin_*` the tread units (the joint is the suspension pivot at the top); `foot_*` the
+  drive sprockets at the back of the treads. `weapon_r` and `weapon_l` are empty mounts at the
+  middle of each fist: where a held mech's shoulders go.
+- **No knees.** The treads stay flat on the floor in every ground move: don't drop the pelvis
+  (the guard pose's `drop` is 0) and keep `shin` pitches within ±14° (a rock fore and aft, the
+  nose lifting on a lunge, dipping on a stop). Weight and anticipation go into the torso
+  (pitch −40° to +25°, turn ±60°) and the arms.
+- **Spin the sprockets** (`foot_*` about X) for every glide: about 4° a frame in `walk_f`,
+  −3.3° in `walk_b`, 30° a frame in the Atomic Clinch and the Bulldozer, 55° in Chain
+  Reaction's dash. Keys every 8 frames or so keep the spin readable (a key per 90° at most).
+- **The fists are big**: about 1.4 m across. The guard holds them at chest height out to about
+  5.4 m; keep the active frames' fists inside the hit boxes above, and the pull-back clear of
+  the pauldrons (a forearm folded past 120° meets the upper arm's ram).
+- **Armour frames** read in the pose: plant, brace, the shoulders squared, the torso low. The
+  fight flashes Tank when a hit is absorbed; the animation needn't flinch.
+- **Marks:** `cancel` on `atk_n` (9–17) and `atk_f` (17–26); `armour` on `atk_f` (4–20), `sp_n`
+  (1–17), `sp_u` (1–15); `riposte` on the first frame of the slam sections (`sp_f` 50, `super`
+  95); `release` on the slams (`sp_f` 84, `super` 129) and on `throw` 30; `invuln` on `super`
+  1–46; `flash` on `super` 1–40. No `step` marks anywhere (frame numbers here count from 1, as
+  the tables do; the animation files count from 0).
+- **The throws place the victim**: Tank's fists should meet the victim where the fight puts its
+  root (the tables above); the victim moves (`thrown`, `thrown_vault`, `thrown_slam`) follow
+  the thrower's hands.
+- Tank is 10.2 m tall and 9.5 m wide in its guard; the depth buffer sorts the two mechs, but a
+  grab's arms should pass in front of the other mech's chest (−z) rather than through it.
+
 ## Reactions and the rest of the list
 
 | Move | Length | Notes |
@@ -302,3 +553,10 @@ Void Step's gone frames, 7–18).
 
 - The Double-blade Hero's second Twin Cut: one animation played twice, or an `atk_n` variant?
   (The animator's call.)
+- Tank's product name. "Tank" stays the code identifier; proposed: **HA-57 "Homestead"**
+  (Heartland's farm-and-family feel; the serial plate already reads HA-57), or "Big Iron", or
+  "Ironside". The menus show TANK until it is decided.
+- Tank's armour absorbs every hit while its marks last (a chain cannot follow an absorbed hit,
+  so in practice one). If that proves too strong, cap it at one hit a move.
+- The nuclear meter's rate (a bar per 480 damage taken) and whether it carries between rounds
+  (it does) want human play.
