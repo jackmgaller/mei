@@ -90,6 +90,11 @@ With a private build directory (`make B=build-mine`), give it once: `--build-dir
 `export B=build-mine` (or `MEIC`, `RUN` and `PROBE`, as the test suites read them) and every
 command finds its tools there ([Native tools](ASSETKIT-REFERENCE.md#native-tools)).
 
+A recipe with more than a few dozen parts, or one with levels of detail and a collision recipe
+made from the same measurements, is easier to write as a Python script that writes the JSON:
+`tools/assetkit/author.py` has the builders such scripts share ([Writing recipes from
+Python](ASSETKIT-REFERENCE.md#writing-recipes-from-python)).
+
 For an agent building a game:
 
 1. Establish the intended size in world units, facing direction, silhouette and triangle budget.
@@ -227,8 +232,9 @@ make test-assets                                                  # the suite, v
 python3 -m unittest discover -s tests -p test_assetkit.py -v      # the same, without make
 ```
 
-`make test` runs it too. Pure Python tests run anywhere; native render tests are skipped when the
-binaries are absent, and the Asset Checker's tests when NumPy is. What the suite covers is listed
+`make test` runs it too, and `tests/test_author.py`, the authoring module's tests. Pure
+Python tests run anywhere; native render tests are skipped when the binaries are absent, and the
+Asset Checker's tests when NumPy is. What the suite covers is listed
 in [the reference](ASSETKIT-REFERENCE.md#tests).
 
 ## Where to look next

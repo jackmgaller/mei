@@ -35,9 +35,9 @@ tests/run_lang_tests.sh planes    # only the language tests whose name contains 
 ```
 
 `make test` runs the suites in this order: the C unit tests, `tests/run_lang_tests.sh`, the
-MeiNet gateway's tests, then `test_assetkit.py`, `test_worldpack.py`, `test_worldkit.py`,
-`test_mochi.py`, `test_worldverify.py`, `test_worldcache.py`, `test_workboard.py` and
-`test_animkit.py`, and last
+MeiNet gateway's tests, then `test_assetkit.py`, `test_author.py`, `test_worldpack.py`,
+`test_worldkit.py`, `test_mochi.py`, `test_worldverify.py`, `test_worldcache.py`, `test_workboard.py`
+and `test_animkit.py`, and last
 `tools/check_generated.sh` (what `make check-generated` runs: the generators that need only the standard library, and
 `gen_adpcm_vectors.py` when NumPy is there, into a temporary directory, compared with the
 committed files). `make test-carts` runs `carts/weather/tests/check.sh`,
@@ -266,6 +266,10 @@ garden's two audio generators share `carts/garden/audio/garden_dsp.py`, and Mech
 
 Helpers the generators import, which write nothing themselves: `boot_audio.py`, `mei_adpcm.py`,
 `mei_icon.py` (memory card icons), `meshlib.py` (the native mesh format) and `weather_geo.py`.
+A generator of asset recipes can import `tools/assetkit/author.py`, the Asset Kit's authoring
+module, instead of defining its own `box`, `recipe` and `write`: builders for nodes, levels of
+detail and collision recipes, and `write()` with one key order and floats rounded to 4 places
+([ASSETKIT.md](docs/ASSETKIT.md#writing-recipes-from-python)).
 The kits' outputs (`mei_assets.py build`, `mei_world.py build`) are not in this table: they go
 wherever `-o` says (make's world rule: `build/worlds/`), and only the examples' recipes and the
 worlds' ID lock files are committed. The Animation Kit's `mei_anim.py export` writes

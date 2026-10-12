@@ -13,10 +13,13 @@ tactile strips, the sidewalks, the asphalt with its centre line; the kerbs (0.15
 at z 108 and 114 as the road's do; a low concrete parapet (0.6) stands on each of its two edges
 over the culvert's mouths, so the slab reads as a structure and the sidewalk's edge is closed.
 """
-import json
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parents[4] / 'tools'))
+from assetkit import author as A  # noqa: E402
+
 G = '../../art/ground/'
 HX, HZ, T = 2.0, 7.0, 0.15            # half width (x), half length (z), thickness
 PAR_H, PAR_T = 0.6, 0.2               # the parapets
@@ -43,19 +46,10 @@ MATS = {
 }
 
 
-def r(v):
-    return round(v, 4)
-
-
-class Mesh:
-    def __init__(self, nid):
-        self.nid, self.v, self.f, self.m = nid, [], [], []
-
+class Mesh(A.Mesh):
     def quad(self, pts, mat):
         """pts counter-clockwise seen from outside."""
-        self.f.append(list(range(len(self.v), len(self.v) + 4)))
-        self.v += [[r(c) for c in p] for p in pts]
-        self.m.append(mat)
+        self.face(mat, pts)
 
     def box(self, x0, x1, y0, y1, z0, z1, mat, top=None, skip=()):
         """A box's faces, out-facing, without its bottom; `skip` names faces left out."""
@@ -69,9 +63,6 @@ class Mesh:
         for k, pts in faces.items():
             if k not in skip:
                 self.quad(pts, top if (k == 'top' and top) else mat)
-
-    def node(self):
-        return {'id': self.nid, 'op': 'mesh', 'vertices': self.v, 'faces': self.f, 'face_materials': self.m}
 
 
 def deck(detail):
@@ -111,20 +102,11 @@ def collision():
     return [m.node(), p.node()]
 
 
-LIGHT = {'mode': 'vertical', 'ambient': 0.5}
-POLICY = {'required': True, 'depth': True, 'perspective': True}
-
-
 def main():
-    recipe = {'format': 'mei-asset', 'version': 1, 'name': 'culvert_deck', 'budget': {'triangles': 80},
-              'materials': MATS, 'lighting': LIGHT, 'verification': POLICY,
-              'nodes': [deck(True), parapets(0), kerbs()],
-              'lod': {'levels': [{'distance': 30, 'nodes': [deck(False), parapets(1)]}], 'cull': 120}}
-    (HERE / 'culvert_deck.asset.json').write_text(json.dumps(recipe, indent=1) + '\n')
-    col = {'format': 'mei-asset', 'version': 1, 'name': 'culvert_deck_col',
-           'materials': {'solid': {'color': '#ffffff', 'palette': True}}, 'lighting': LIGHT,
-           'verification': POLICY, 'nodes': collision()}
-    (HERE / 'culvert_deck_col.asset.json').write_text(json.dumps(col, indent=1) + '\n')
+    A.write(HERE / 'culvert_deck.asset.json',
+            A.recipe('culvert_deck', MATS, [deck(True), parapets(0), kerbs()], budget=80,
+                     lod=A.lod([(30, [deck(False), parapets(1)])], cull=120)))
+    A.write(HERE / 'culvert_deck_col.asset.json', A.collision('culvert_deck_col', collision()))
     print('wrote culvert_deck, culvert_deck_col')
 
 
