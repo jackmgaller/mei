@@ -12,7 +12,7 @@ FORMAT = 'mei-anim'
 EASES = ('linear', 'ease', 'in', 'out', 'hold')
 KINDS = {'hit': 0, 'hurt': 1, 'push': 2}
 MARKS = {'cancel': 1, 'invuln': 2, 'armour': 4, 'flash': 8, 'step': 16, 'release': 32, 'riposte': 64, 'parry': 128,
-         'nopush': 256, 'hide': 512}
+         'nopush': 256, 'hide': 512, 'charge': 1024}
 TOP = {'format', 'version', 'name', 'rig', 'base', 'length', 'loop', 'air', 'phases', 'boxes', 'keys', 'marks',
        'motion', 'plant', 'allow', 'design', 'note'}
 KEY = {'at', 'from', 'ease', 'pose', 'offset', 'reach', 'boxes', 'note', 'remove'}

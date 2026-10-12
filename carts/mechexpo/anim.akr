@@ -47,6 +47,7 @@ const MARK_RIPOSTE: u32 = 64   // the first frame of the Parry's riposte section
 const MARK_PARRY: u32 = 128    // the Parry's stance frames
 const MARK_NOPUSH: u32 = 256   // no push box and no hurt: passes through (the Void Step)
 const MARK_HIDE: u32 = 512     // not drawn this frame (anim_draw draws nothing): the Void Step's gone frames
+const MARK_CHARGE: u32 = 1024  // the frame a held button holds (Beam's Volt Orb charges here while B is held)
 
 const ANIM_MAX_BOXES = 16
 

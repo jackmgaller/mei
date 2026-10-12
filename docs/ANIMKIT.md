@@ -197,6 +197,7 @@ The fight moves the root; the animation's poses are relative to it.
 | `parry` | 128 `MARK_PARRY` | the Parry's stance |
 | `nopush` | 256 `MARK_NOPUSH` | no push box and no hurt (`verify` then needs neither) |
 | `hide` | 512 `MARK_HIDE` | `anim_draw()` draws nothing (the Void Step's gone frames) |
+| `charge` | 1024 `MARK_CHARGE` | the move holds this frame while its button is held (Beam's Volt Orb, `sp_n`) |
 
 ### A move made from another (`base`)
 
