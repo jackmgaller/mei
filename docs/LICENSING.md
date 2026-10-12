@@ -59,26 +59,16 @@ development scripts below.
 
 **Examples:**
 
-- `examples/assets/console_lab/`: 21 of the 22 looks (all but `06_sunset_skeleton`) draw their
-  text with Hiragino (Kaku Gothic
-  W3–W8, Maru Gothic, Mincho, Sans GB), Avenir Next, Futura, DIN Alternate and Condensed, or
-  Arial Rounded. These are design studies and could simply stay out of a public release.
-- `examples/assets/lab/`, scripts that use system fonts: `sento_front`, `ramen_shop`,
-  `rural_station`, `overpass`, `pachinko_parlour` (STHeiti), `fire_engine`,
-  `recycling_station`, `vending_machine`, `schoolhouse`, `ticket_gates`, `city_bus`, `ferry`,
-  `coin_laundry`, `crane_game`, `newsstand`, `koban`.
+- `examples/assets/lab/`, scripts that use system fonts: `ramen_shop`, `overpass`,
+  `pachinko_parlour` (STHeiti), `schoolhouse`, `coin_laundry`, `newsstand`, `koban`.
 - `examples/assets/lab/`, texture sheets with **no committed script** (the drawing scripts were
   not kept), several with Japanese or Latin text in an unknown font (for example
-  `fire_tower/art/hinoyojin.png`, `arcade_cabinet/art/cabinet_sheet.png`): `arcade_cabinet`,
-  `arcade_gate`, `bell_pavilion`, `crossing_signal`, `dagashi_shop`, `danchi`, `fire_tower`,
-  `firepost`, `gachapon`, `garbage_truck`, `kei_truck`, `locomotive`, `mamachari`,
-  `postbox`, `recordshop`, `sakagura`, `scooter`, `station_platform`, `street_lamp`,
-  `streetcar`, `takoyaki_stall`, `tobacco_shop`, `traffic_mirror`, `uminoie`, `vegstand`,
-  `watermill`, `yatai`. These have to be redrawn by a committed script.
+  `fire_tower/art/hinoyojin.png`): `dagashi_shop`, `danchi`, `fire_tower`, `kei_truck`,
+  `recordshop`, `tobacco_shop`. These have to be redrawn by a committed script.
 
 Development-only (draw sketches and contact sheets, not shipped): `carts/garden/electric/layout.py`,
-`carts/weather/tests/contact.py`, `examples/assets/console_lab/make_lineup.py`. They use Avenir
-Next or Futura; they need a fallback font, not a replacement.
+`carts/weather/tests/contact.py`. They use Avenir Next; they need a fallback font, not a
+replacement.
 
 ## 4. MeiNet's weather source
 
