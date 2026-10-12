@@ -202,6 +202,11 @@ Each is taken from the first of:
 5. the environment variable `B`, a build directory relative to the repository (as make's `B`);
 6. `build/`.
 
+The World Kit and the Animation Kit take their tools by the same rule (one function,
+`tools/kitcore/native.py`'s `tool_paths()`; its `build_dir()` is steps 2, 3, 5 and 6 alone, the
+directory the World Kit's quick tools keep their cache in). The Animation Kit has no recipe, so
+no settings file.
+
 A command checks the tools it needs before it starts (`verify`: compiler and probe; `preview`:
 compiler and runner, and the probe when the recipe requires the check or `--verify` is given). A
 missing tool is an error at `/arguments/tools` naming the file, the directory it looked in, which

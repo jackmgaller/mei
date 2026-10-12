@@ -82,7 +82,7 @@ def op(**o): OPS.append(o); return o
 
 def gnd(x, z):
     """The ground after this region's set/carve/fill operations (not the beds of paths): what
-    the generator stands boxes on. The kit's own floor is the truth (mei_world.py floor)."""
+    the generator stands boxes on. The kit's own floor is the truth (mei_world.py floors --at X,Z)."""
     h = base_height(x, z)
     for o in OPS:
         if o['op'] not in ('set', 'carve', 'fill'): continue

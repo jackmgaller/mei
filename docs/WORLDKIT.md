@@ -167,11 +167,11 @@ python3 tools/mei_world.py preview /tmp/room/test_room.world.json -o build-mine/
 Parallel to `mei_assets.py`: JSON on stdout for successes and failures (an error has `path`,
 `message` and, as in [Recipe format](WORLDKIT-REFERENCE.md#recipe-format), `file`, `line` and
 `column` where they apply), exit 0 or 1, `-` for stdin (relative paths then resolve from the
-current directory), `--compiler`, `--runner` and `--probe` to use other builds, `--assets DIR` to
-use another asset directory, and for `build` and `preview`, `--cache DIR` to keep and reuse the
+current directory), `--build-dir DIR` (or `--compiler`, `--runner` and `--probe`) to use other
+builds, `--assets DIR` to use another asset directory, and for `build` and `preview`, `--cache DIR` to keep and reuse the
 checkers' results ([Build outputs and the runtime
 contract](WORLDKIT-REFERENCE.md#build-outputs-and-the-runtime-contract)). The quick tools
-(`check`, `floors`, `textures`, `cracks`) print plain text, or JSON with `--json`.
+(`check`, `floors`, `textures`, `cracks`) print plain text; every command takes `--json`.
 
 | Command | Result |
 |---|---|
@@ -180,11 +180,14 @@ contract](WORLDKIT-REFERENCE.md#build-outputs-and-the-runtime-contract)). The qu
 | `init DIR [--example room\|city\|terrain] [--force]` | Copies an example world (world file, cells, game schema, asset recipes) into a new directory |
 | `validate FILE` | Every static check: schemas, references, game data, IDs, palettes, that every asset compiles and that the pack can hold the world; the ID changes a build would make |
 | `inspect FILE [--cell ID]` | The same, with the full report: per cell and per region costs, palettes and variants, entity numbers, asset hashes, warnings |
-| `build FILE -o DIR [--locked] [--preview] [--world-checker full\|skip\|N] [--crack-baseline FILE\|none]` | The outputs ([Build outputs](WORLDKIT-REFERENCE.md#build-outputs-and-the-runtime-contract)); runs each asset's required Asset Checker policy, then the World Checker seam (with `NAME.cracks.json` beside the recipe as its crack baseline, when there is one) |
-| `preview FILE -o DIR [--cell ID] [--locked] [--world-checker full\|skip\|N]` | `build`, plus native renders of a cell per region and palette variant (`--cell` picks the cell) |
-| `floor FILE X Z [X Z ...]` | The highest floor under each point, from the world's collision as the kit builds it: `{"at", "y", "from"}`, `from` being `terrain`, `sweep` or a placement's ID (`y` null: none). For setting placements and entities on the ground |
+| `build FILE -o DIR [--locked] [--preview] [--world-checker full\|skip\|N] [--crack-baseline FILE\|none] [--build-dir DIR]` | The outputs ([Build outputs](WORLDKIT-REFERENCE.md#build-outputs-and-the-runtime-contract)); runs each asset's required Asset Checker policy, then the World Checker seam (with `NAME.cracks.json` beside the recipe as its crack baseline, when there is one) |
+| `preview FILE -o DIR [--cell ID] [--locked] [--world-checker full\|skip\|N] [--build-dir DIR]` | `build`, plus native renders of a cell per region and palette variant (`--cell` picks the cell) |
 | `check FILE [--cells I,J[;I,J...]] [--camera SPEC]... [--cameras FILE] [--max-views 200] [-o DIR]` | The World Checker on a few cells and cameras, in seconds ([Quick tools](WORLDKIT-REFERENCE.md#quick-tools)) |
+| `check FILE --full [--crack-baseline FILE\|none] [-o DIR]` | The World Checker on the whole world as `build` runs it, without building ([Quick tools](WORLDKIT-REFERENCE.md#quick-tools)) |
+| `check PACK.world.bin [--cells I,J] [--camera SPEC]... [--settings FILE] [--names FILE] [--strict] [-o DIR]` | The World Checker on a built pack, as `tools/worldkit/verify.py PACK` runs it ([Quick tools](WORLDKIT-REFERENCE.md#quick-tools)) |
 | `floors FILE --area X0,Z0,X1,Z1 [--step 1] [--layers A,B] [--below Y]` | The pack's floor heights over an area as `wp_floor()` finds them, what each belongs to, holes and cracks ([Quick tools](WORLDKIT-REFERENCE.md#quick-tools)) |
+| `floors FILE --at X,Z[;X,Z...]... [--layers A,B] [--below Y] [--kit]` | The pack's floor under each point and what it belongs to; with `--kit`, the kit's collision before packing ([Quick tools](WORLDKIT-REFERENCE.md#quick-tools)) |
+| `floor FILE X Z [X Z ...]` | Deprecated: `floors FILE --at X,Z --kit --json`, which prints the same JSON. Still works, with a note on stderr |
 | `textures FILE [--region R] [--cells ...] [--add REGION:ASSET,...]` | Texture VRAM per region, by asset and by image, against the region's budget ([Quick tools](WORLDKIT-REFERENCE.md#quick-tools)) |
 | `cracks FILE [--routes FILE] [--near 3] [--baseline [FILE]] [--write-baseline]` | Every collision crack the game's floor query does not bridge, on routes first, the widest first; compared with or written to the crack baseline ([Quick tools](WORLDKIT-REFERENCE.md#quick-tools)) |
 

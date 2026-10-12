@@ -110,12 +110,16 @@ details; `carts/worldview/` is the example.
 python3 tools/mei_assets.py info RECIPE [--at X,Y,Z --yaw DEG]     # bounds, LOD, texture bytes
 python3 tools/mei_assets.py floors RECIPE [--step 0.25]             # collision floor heights
 python3 tools/mei_world.py check WORLD --cells I,J --camera NAME=EX,EY,EZ@YAW,PITCH --build-dir build-mine
+python3 tools/mei_world.py check WORLD --full --build-dir build-mine     # the whole World Checker, no build
 python3 tools/mei_world.py floors WORLD --area X0,Z0,X1,Z1 --build-dir build-mine
+python3 tools/mei_world.py floors WORLD --at X,Z[;X,Z...] --build-dir build-mine   # single points
 python3 tools/mei_world.py textures WORLD [--cells I,J] --build-dir build-mine
 ```
 
 The world commands keep the compiled world in `BUILD_DIR/kit-cache/quick/` and reuse it while
-nothing it read has changed ([WORLDKIT-REFERENCE.md](docs/WORLDKIT-REFERENCE.md#quick-tools)).
+nothing it read has changed ([WORLDKIT-REFERENCE.md](docs/WORLDKIT-REFERENCE.md#quick-tools)). Every command of
+both kits takes `--json`, and every one that runs native tools takes `--build-dir` (else the
+settings file's `build_dir`, `$B`, `build/`); `mei_world.py floor` is deprecated (`floors --at X,Z --kit`).
 
 ## Dependencies
 

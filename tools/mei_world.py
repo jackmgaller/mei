@@ -3,16 +3,16 @@
 
 Run `python3 tools/mei_world.py schema` for the complete recipe contract (the game schema's
 Mochi form is described under $defs/game x-mochi), or read docs/WORLDKIT.md (the guide) and
-docs/WORLDKIT-REFERENCE.md. All command results and errors are JSON on stdout; exit 0 or 1. The quick tools (check, floors, textures, cracks) print
-plain text, or JSON with --json.
+docs/WORLDKIT-REFERENCE.md. Command results and errors are JSON on stdout, exit 0 or 1, except
+that the quick tools (check, floors, textures, cracks) print plain text; --json, which every
+command takes, prints the full result as JSON.
 """
-import os
 from pathlib import Path
 import shutil
 import sys
 
-from kitcore import jsonio, settings as kitsettings
-from kitcore.cli import parser_class
+from kitcore import jsonio, native, settings as kitsettings
+from kitcore.cli import parser_class, add_json, wants_text
 from assetkit.geometry import AssetError
 from worldkit.schema import WorldError, published
 from worldkit.build import build, compile_source
@@ -97,36 +97,69 @@ def floors(recipe, points, assets=None):
 
 
 def build_dir(args):
-    """The build directory the quick tools take their native tools and cache from: --build-dir,
-    else the settings file's build_dir, else $B (relative to the repository), else build/
-    (kitcore.settings.build_dir)."""
-    return kitsettings.build_dir(getattr(args,'build_dir',None),recipe_settings(args.recipe),root=ROOT)[0]
+    """The build directory the quick tools take their native tools and cache from
+    (kitcore.native.build_dir(): --build-dir, else the settings file's build_dir, else $B,
+    else build/)."""
+    return native.build_dir(getattr(args,'build_dir',None),None,recipe_settings(args.recipe))[0]
 
 
 def recipe_settings(path):
     return kitsettings.find(path,ROOT,WorldError)
 
 
-TOOLS = (('compiler','MEIC','meic'),('runner','RUN','mei-headless'),('probe','PROBE','mei-asset-probe'))
+def tools_for(args, keys, required=()):
+    """The native tools a command runs (kitcore.native.tool_paths(): its own option, --build-dir,
+    the settings file's build_dir, MEIC, RUN, PROBE or SCENE_PROBE, $B, build/), as {key: Path}.
+    required: those that must exist, else an error at /arguments/tools naming them."""
+    found = native.tool_paths(keys,{k:getattr(args,k,None) for k in keys},getattr(args,'build_dir',None),
+                              None,recipe_settings(args.recipe))
+    native.require_tools(found,required,WorldError)
+    return {k:path for k,(path,_) in found.items()}
 
 
 def build_tools(args):
-    """build's and preview's native tools, each from its option (--compiler, --runner, --probe),
-    else --build-dir if the command has it, else the settings file's build_dir, else build/
-    (the environment's MEIC, RUN, PROBE and B are not read here: make's world rule passes the
-    tools)."""
-    settings = recipe_settings(args.recipe)
-    out = {}
-    for key,_,executable in TOOLS:
-        out[key] = kitsettings.tool_path(executable,getattr(args,key),f'--{key}',None,getattr(args,'build_dir',None),
-                                         settings,{},ROOT)[0]
-    return out
+    """build's and preview's native tools (tools_for())."""
+    return tools_for(args,['compiler','runner','probe'])
 
 
 def quick_world(args):
     from worldkit.quick import load_world
     cache = None if args.no_cache else (args.cache or build_dir(args)/'kit-cache')
     return load_world(args.recipe,args.assets,cache,args.refresh)
+
+
+def is_pack(path):
+    """check takes a built pack (NAME.world.bin) as well as a recipe."""
+    return str(path).endswith('.bin')
+
+
+def check_pack(args, tools):
+    """check PACK: the World Checker on a built pack, as tools/worldkit/verify.py PACK runs it
+    (its settings from --settings, else the checker's defaults), narrowed to --cells (I,J) and
+    with the cameras as vantage points when given."""
+    from worldkit import quick as Q, verify as V
+    cells = []
+    for spec in args.cells:
+        for part in spec.replace(' ','').split(';'):
+            if not part: continue
+            try: i,j = (int(n) for n in part.split(','))
+            except ValueError:
+                raise WorldError('/arguments/cells',f'{part!r} is not I,J: a built pack names its cells by "at" only.') from None
+            if (i,j) not in cells: cells.append((i,j))
+    cameras = Q.parse_cameras(args.camera,args.cameras)
+    settings = jsonio.load(str(args.settings),WorldError,'/settings') if args.settings else {}
+    if args.strict: settings['mode'] = 'strict'
+    given = list(settings.get('vantage_points',[]))
+    if cameras: settings['vantage_points'] = given+Q.vantage_points(cameras)
+    if args.max_views is not None: settings['sampling'] = {**settings.get('sampling',{}),'max_views':args.max_views}
+    names = jsonio.load(str(args.names),WorldError,'/names') if args.names else None
+    full = args.full or not (cells or cameras)
+    report = V.verify(Path(args.recipe).read_bytes(),settings,names,args.output,tools,
+                      focus=None if full else {'cells':cells})
+    labels = [vp.get('name') or f'vantage_{k}' for k,vp in enumerate(given)]+[c['name'] for c in cameras]
+    for row in report.get('views',[]):
+        if 'vantage' in row and row['vantage'] < len(labels): row['name'] = labels[row['vantage']]
+    return report,Q.check_text(report,None,[] if full else cells,cameras,args.rows,full,Path(args.recipe).name)
 
 
 def numbers(text, n, what):
@@ -139,25 +172,54 @@ def numbers(text, n, what):
     return values
 
 
+def points_of(spec):
+    """--at X,Z[;X,Z...]: the points' coordinates, flat (x, z, x, z, ...)."""
+    return [v for part in spec.replace(' ','').split(';') if part for v in numbers(part,2,'at')]
+
+
+def kit_floors_text(result):
+    """floors --at --kit's plain text (floor's result: {'floors': [{'at', 'y', 'from'}]})."""
+    out = [f'the kit\'s collision before packing, every layer: {len(result["floors"])} point'
+           + ('s' if len(result['floors']) != 1 else '')]
+    for f in result['floors']:
+        where = f'({f["at"][0]:g}, {f["at"][1]:g})'
+        out.append(f'  {where:>20}  ' + ('no floor' if f['y'] is None else f'y {f["y"]:<10g} {f["from"]}'))
+    return '\n'.join(out)
+
+
 def quick(args):
     """check, floors, textures and cracks: (result, its plain text)."""
     from worldkit import quick as Q
+    if args.command == 'check' and is_pack(args.recipe):
+        t = tools_for(args,['compiler','scene_probe'],['compiler','scene_probe'])
+        return check_pack(args,{'compiler':t['compiler'],'probe':t['scene_probe']})
+    if args.command == 'floors' and (args.area is None) == (not args.at):
+        raise WorldError('/arguments','Give --area X0,Z0,X1,Z1 (a grid) or --at X,Z (points), not both.')
+    if args.command == 'floors' and args.kit:
+        if args.area is not None or args.below is not None or args.layers is not None:
+            raise WorldError('/arguments','--kit takes --at only: the kit\'s collision before packing, every layer.')
+        if not args.at:
+            raise WorldError('/arguments','--kit needs --at X,Z: the points to look under.')
+        result = floors(args.recipe,[v for spec in args.at for v in points_of(spec)],args.assets)
+        return result,kit_floors_text(result)
     world = quick_world(args)
     if args.command == 'check':
         cells = Q.parse_cells(args.cells,world)
         cameras = Q.parse_cameras(args.camera,args.cameras)
-        if not cells and not cameras:
-            raise WorldError('/arguments','Give --cells, --camera or --cameras: what to check.')
-        b = build_dir(args)
-        tools = {'compiler':(args.compiler or b/'meic').resolve(),
-                 'probe':(args.probe or b/'mei-scene-probe').resolve()}
-        for key,path in tools.items():
-            if not path.is_file():
-                raise WorldError('/arguments/tools',f'Missing {path} (the {key}): make B={os.path.relpath(path.parent,ROOT)} '
-                                 f'{os.path.relpath(path,ROOT)}, or pass --build-dir.')
-        report = Q.check(world,cells,cameras,tools,args.max_views,args.output)
+        if not cells and not cameras and not args.full:
+            raise WorldError('/arguments','Give --cells, --camera or --cameras (what to check), or --full for the '
+                             'whole world.')
+        t = tools_for(args,['compiler','scene_probe'],['compiler','scene_probe'])
+        tools = {'compiler':t['compiler'],'probe':t['scene_probe']}
+        baseline = None
+        if args.full:
+            from worldkit.build import load_crack_baseline
+            from worldkit.world import load
+            _,baseline = load_crack_baseline(load(args.recipe),args.crack_baseline)
+        max_views = args.max_views if args.max_views is not None or args.full else 200
+        report = Q.check(world,cells,cameras,tools,max_views,args.output,args.full,baseline)
         report['compiled'] = world.how()
-        return report,Q.check_text(report,world,cells,cameras,args.rows)
+        return report,Q.check_text(report,world,cells,cameras,args.rows,args.full)
     if args.command == 'cracks':
         from worldkit.build import cracks_path, load_crack_baseline
         from worldkit.world import load
@@ -176,8 +238,12 @@ def quick(args):
         if args.write_baseline: text += f'\nwrote {path}'
         return result,text
     if args.command == 'floors':
-        result = Q.floors(world,numbers(args.area,4,'area'),args.step,
-                          [l for l in args.layers.split(',') if l] if args.layers is not None else None,args.below)
+        layers = [l for l in args.layers.split(',') if l] if args.layers is not None else None
+        if args.at:
+            points = [v for spec in args.at for v in points_of(spec)]
+            result = Q.floors_at(world,[(points[k],points[k+1]) for k in range(0,len(points),2)],layers,args.below)
+            return result,Q.floors_at_text(result)
+        result = Q.floors(world,numbers(args.area,4,'area'),args.step,layers,args.below)
         return result,Q.floors_text(result)
     cells = Q.parse_cells(args.cells,world)
     add, library = {}, None
@@ -208,6 +274,14 @@ def quick(args):
 
 ArgumentParser = parser_class(WorldError)
 
+# the commands that print plain text unless given --json
+TEXT_COMMANDS = {name:'plain text' for name in ('check','floors','textures','cracks')}
+
+
+def build_dir_option(cmd, what, variables):
+    cmd.add_argument('--build-dir',type=Path,help=f'The build directory (make B=DIR) to take {what} from. Default: '
+                     f'the settings file\'s build_dir, else {variables}$B, else build/.')
+
 
 def parser():
     p = ArgumentParser(description=__doc__)
@@ -222,7 +296,8 @@ def parser():
     i.add_argument('output')
     i.add_argument('--example',choices=sorted(EXAMPLE_WORLDS),default='room')
     i.add_argument('--force',action='store_true')
-    f = sub.add_parser('floor',help='The highest floor under points (X Z pairs): terrain, a sweep or a placement\'s collision.')
+    f = sub.add_parser('floor',help='Deprecated: floors FILE --at X,Z --kit. The highest floor under points (X Z pairs) '
+                       'in the kit\'s collision: terrain, a sweep or a placement\'s.')
     f.add_argument('recipe',help='World recipe path.')
     f.add_argument('points',nargs='+',help='X Z X Z ...: world coordinates seen from above.')
     f.add_argument('--assets',type=Path,help='Use this asset directory instead of the recipe\'s.')
@@ -235,11 +310,11 @@ def parser():
     q['cracks'] = sub.add_parser('cracks',help='Every collision crack the game\'s floor query does not bridge, on routes '
                                  'first, the widest first; compared with or written to the crack baseline.')
     for name,cmd in q.items():
-        cmd.add_argument('recipe',help='World recipe path.')
+        cmd.add_argument('recipe',help='World recipe path' + (', or a built pack (NAME.world.bin).' if name == 'check' else '.'))
         cmd.add_argument('--assets',type=Path,help='Use this asset directory instead of the recipe\'s.')
         cmd.add_argument('--json',action='store_true',help='The result as JSON (default: plain text).')
-        cmd.add_argument('--build-dir',type=Path,help='The build directory (make B=DIR): native tools and the cache '
-                         '(DIR/kit-cache). Default: $B, else build/.')
+        build_dir_option(cmd,'the cache (DIR/kit-cache)' + (', meic and mei-scene-probe' if name == 'check' else ''),
+                         '$MEIC and $SCENE_PROBE for each tool, else ' if name == 'check' else '')
         cmd.add_argument('--cache',type=Path,help='Keep the compiled world here (default BUILD_DIR/kit-cache).')
         cmd.add_argument('--no-cache',action='store_true',help='Compile the world now and keep nothing.')
         cmd.add_argument('--refresh',action='store_true',help='Compile the world again even if nothing changed.')
@@ -252,14 +327,28 @@ def parser():
                         'looks along +Z, positive toward +X; positive pitch looks up). Repeatable.')
     c.add_argument('--cameras',action='append',type=Path,metavar='FILE',
                    help='A JSON list of cameras: {"name", "eye", "target"} or {"name", "eye", "yaw", "pitch"}.')
-    c.add_argument('--max-views',type=int,default=200,help='At most this many sampled views (default 200; the '
-                   'cameras always run).')
+    c.add_argument('--full',action='store_true',help='The whole world, as build runs the World Checker (its sampling, '
+                   'vantage points and crack baseline), without building: minutes on a large world.')
+    c.add_argument('--crack-baseline',metavar='FILE|none',help='With --full: the crack baseline (default NAME.cracks.json '
+                   'beside the recipe, when there is one).')
+    c.add_argument('--max-views',type=int,help='At most this many sampled views (default 200; with --full or a pack, the '
+                   'world\'s own sampling; the cameras always run).')
     c.add_argument('--rows',type=int,default=12,help='Sampled views listed, the worst first (default 12).')
     c.add_argument('-o','--output',type=Path,help='Also write world-check.json and pictures of the worst views here.')
-    c.add_argument('--compiler',type=Path,help='meic to use (default BUILD_DIR/meic).')
-    c.add_argument('--probe',type=Path,help='mei-scene-probe to use (default BUILD_DIR/mei-scene-probe).')
+    c.add_argument('--compiler',type=Path,help='meic to use (overrides --build-dir).')
+    c.add_argument('--scene-probe','--probe',dest='scene_probe',type=Path,
+                   help='mei-scene-probe to use (overrides --build-dir).')
+    c.add_argument('--settings',type=Path,metavar='FILE',help='A built pack only: the World Checker\'s settings, JSON '
+                   '(default: the checker\'s defaults), as tools/worldkit/verify.py --settings.')
+    c.add_argument('--names',type=Path,metavar='FILE',help='A built pack only: a JSON file naming placements by tag and '
+                   'entities by number.')
+    c.add_argument('--strict',action='store_true',help='A built pack only: fail on thresholds as well.')
     f = q['floors']
-    f.add_argument('--area',required=True,metavar='X0,Z0,X1,Z1',help='World coordinates seen from above.')
+    f.add_argument('--area',metavar='X0,Z0,X1,Z1',help='A grid over this area: world coordinates seen from above.')
+    f.add_argument('--at',action='append',default=[],metavar='X,Z[;X,Z...]',
+                   help='Points instead of a grid: the floor under each, and what it belongs to. Repeatable.')
+    f.add_argument('--kit',action='store_true',help='With --at: the kit\'s collision before packing, tested in floating '
+                   'point with every layer (what floor gave), instead of the pack as wp_floor() finds it.')
     f.add_argument('--step',type=float,default=1.0,help='Grid spacing (units, default 1).')
     f.add_argument('--layers',metavar='A,B',help='Layers on (default: those on at the start; "" for none).')
     f.add_argument('--below',type=float,metavar='Y',help='The highest floor at or below this height (default: from '
@@ -296,19 +385,22 @@ def parser():
             cmd.add_argument('--world-checker',default='full',metavar='full|skip|N',
                              help='How the World Checker runs: full (the default), skip, or at most N sampled views. '
                                   'Recorded in report.json; refused for a world in enforce mode.')
-            cmd.add_argument('--compiler',type=Path,help='meic to use (default: BUILD_DIR/meic, BUILD_DIR being the '
-                             'settings file\'s build_dir, else build/).')
-            cmd.add_argument('--runner',type=Path,help='mei-headless to use (default BUILD_DIR/mei-headless).')
-            cmd.add_argument('--probe',type=Path,help='mei-asset-probe to use (default BUILD_DIR/mei-asset-probe).')
+            build_dir_option(cmd,'meic, mei-headless and mei-asset-probe (mei-scene-probe, for the World '
+                                 'Checker, is taken from beside meic)','$MEIC, $RUN and $PROBE for each tool, else ')
+            cmd.add_argument('--compiler',type=Path,help='meic to use (overrides --build-dir).')
+            cmd.add_argument('--runner',type=Path,help='mei-headless to use (overrides --build-dir).')
+            cmd.add_argument('--probe',type=Path,help='mei-asset-probe to use (overrides --build-dir).')
             cmd.add_argument('--cache',type=Path,help='Keep the Asset and World Checkers\' results in this directory '
                                                       'and reuse them while their inputs are unchanged.')
             cmd.add_argument('--crack-baseline',metavar='FILE|none',
                              help='The crack baseline the World Checker compares with: its cracks are listed as known, '
                                   'not failures (default NAME.cracks.json beside the recipe, when there is one).')
+    add_json(sub,TEXT_COMMANDS)
     return p
 
 
 def main(argv=None):
+    args = None
     try:
         args = parser().parse_args(argv)
         if args.command == 'schema':
@@ -318,16 +410,18 @@ def main(argv=None):
         elif args.command == 'init':
             jsonio.output(init(args.output,args.example,args.force))
         elif args.command == 'floor':
+            print('mei_world.py floor is deprecated: use floors FILE --at X,Z --kit --json (the same result), or '
+                  'floors FILE --at X,Z for the pack as wp_floor() finds it.',file=sys.stderr)
             jsonio.output(floors(args.recipe,args.points,args.assets))
-        elif args.command in ('check','floors','textures','cracks'):
+        elif args.command in TEXT_COMMANDS:
             result,text = quick(args)
             if args.json: jsonio.output(result)
             else: print(text)
             return 0 if result['ok'] else 1
         elif args.command in ('build','preview'):
-            tools = build_tools(args)
-            jsonio.output(build(args.recipe,args.output,tools['compiler'],tools['runner'],
-                                tools['probe'],args.locked,args.assets,
+            tools = tools_for(args,['compiler','runner','probe'])
+            jsonio.output(build(args.recipe,args.output,tools['compiler'],tools['runner'],tools['probe'],
+                                args.locked,args.assets,
                                 args.command == 'preview' or args.preview,getattr(args,'cell',None),
                                 args.world_checker,args.cache,args.crack_baseline))
         else:
@@ -341,22 +435,17 @@ def main(argv=None):
                 if source.settings.files: report = dict(report,settings=source.settings_report())
             jsonio.output(report)
         return 0
-    except (WorldError,AssetError,OSError,ValueError,RecursionError) as error:
+    except (WorldError,AssetError,OSError,ValueError,RuntimeError) as error:
+        # RuntimeError: RecursionError, and the World Checker's RenderError when a native tool fails
         failure = {'path':getattr(error,'path','/input'),'message':str(error)}
         for key in ('file','line','column'):
             if getattr(error,key,None): failure[key] = getattr(error,key)
-        if argv_wants_text(argv):
+        if wants_text(argv,args,TEXT_COMMANDS):
             print(f'error at {failure["path"]}' + (f' in {failure["file"]}' if 'file' in failure else '')
                   + f': {failure["message"]}')
         else:
             jsonio.output({**getattr(error,'report',{}),'ok':False,'errors':[failure]})
         return 1
-
-
-def argv_wants_text(argv):
-    """Whether a failed command was a quick tool asked for plain text."""
-    args = sys.argv[1:] if argv is None else list(argv)
-    return bool(args) and args[0] in ('check','floors','textures') and '--json' not in args
 
 
 if __name__ == '__main__':

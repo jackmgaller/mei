@@ -155,17 +155,3 @@ def build_dir(given=None, settings=None, environ=None, root=ROOT):
                 f'build_dir {settings.get("build_dir")} in {settings.where("build_dir")}')
     if environ.get('B'): return (Path(root)/environ['B']).resolve(),f'B={environ["B"]}'
     return (Path(root)/'build').resolve(),'the default, build/'
-
-
-def tool_path(executable, given=None, option=None, variable=None, build_dir_given=None, settings=None, environ=None,
-              root=ROOT):
-    """(path, how it was chosen) of a native tool: its own option (given), else --build-dir, else
-    the settings file's build_dir, else its environment variable (MEIC, RUN, PROBE), else $B, else
-    build/."""
-    import os
-    environ = os.environ if environ is None else environ
-    if given is not None: return Path(given).resolve(),f'{option} {given}'
-    if build_dir_given is None and not (settings is not None and settings.get('build_dir') is not None):
-        if variable and environ.get(variable): return Path(environ[variable]).resolve(),f'{variable}={environ[variable]}'
-    directory,how = build_dir(build_dir_given,settings,environ,root)
-    return directory/executable,how

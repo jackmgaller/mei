@@ -12,7 +12,6 @@ commands.
 verify and preview print a summary (--json: the full report); export prints its report.
 """
 import json
-import os
 from pathlib import Path
 import sys
 
@@ -26,22 +25,12 @@ CART = ROOT/'carts'/'mechexpo'
 
 
 def tool_paths(args):
-    """meic and mei-headless: --compiler/--runner, else --build-dir, else $MEIC/$RUN, else $B, else build/."""
-    out = {}
-    for key, variable, executable in (('compiler', 'MEIC', 'meic'), ('runner', 'RUN', 'mei-headless')):
-        given = getattr(args, key, None)
-        if given:
-            out[key] = Path(given)
-        elif getattr(args, 'build_dir', None):
-            out[key] = Path(args.build_dir)/executable
-        elif os.environ.get(variable):
-            out[key] = Path(os.environ[variable])
-        elif os.environ.get('B'):
-            out[key] = ROOT/os.environ['B']/executable
-        else:
-            out[key] = ROOT/'build'/executable
-        out[key] = out[key].resolve()
-    return out
+    """meic and mei-headless: --compiler/--runner, else --build-dir, else $MEIC/$RUN, else $B, else
+    build/ (kitcore.native.tool_paths())."""
+    from kitcore.native import tool_paths as paths
+    keys = ('compiler', 'runner')
+    found = paths(keys, {k: getattr(args, k, None) or None for k in keys}, getattr(args, 'build_dir', None) or None)
+    return {k: path for k, (path, _) in found.items()}
 
 
 def parser():

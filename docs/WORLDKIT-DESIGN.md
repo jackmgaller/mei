@@ -461,12 +461,11 @@ averaged the same way).
 
 ### Two more commands
 
-*Proposals*, not built ([the command line as built](WORLDKIT-REFERENCE.md#command-line)):
-`verify FILE [-o DIR] [--cell ID] [--layers A,B]` (the World Checker on a recipe, diagnostic only;
-today it runs on a built pack, `python3 tools/worldkit/verify.py PACK -o DIR`), and `standin-draft
-FILE --cell ID -o RECIPE` (an Asset Kit recipe of boxes from the cell's placement bounds, for an
-agent to edit; the Asset Kit then builds it like any other, so the World Kit still models
-nothing).
+`verify FILE [-o DIR] [--cell ID] [--layers A,B]` (the World Checker on a recipe, diagnostic only)
+is built as `check FILE --full` ([the command line as built](WORLDKIT-REFERENCE.md#command-line)).
+*Proposal*, not built: `standin-draft FILE --cell ID -o RECIPE` (an Asset Kit recipe of boxes from
+the cell's placement bounds, for an agent to edit; the Asset Kit then builds it like any other, so
+the World Kit still models nothing).
 
 ### One loader for several worlds
 

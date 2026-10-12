@@ -3,18 +3,18 @@
 
 Run `python3 tools/mei_assets.py schema` for the complete recipe contract, or read
 docs/ASSETKIT.md (the guide) and docs/ASSETKIT-REFERENCE.md. Command results and errors are JSON
-on stdout, except that preview and verify print a one-screen summary (--json: the full report)
-and info and floors plain text.
+on stdout, except that preview and verify print a one-screen summary and info and floors plain
+text; --json, which every command takes, prints the full result as JSON.
 """
 import json
-import os
 from pathlib import Path
 import re
 import shutil
 import sys
 
 from kitcore import jsonio, output as staged, settings as kitsettings
-from kitcore.cli import parser_class
+from kitcore import native
+from kitcore.cli import parser_class, add_json, wants_text
 from assetkit.compiler import (AssetError, compile_recipe, native_bytes,
                                editor_project, obj_text, import_obj, import_source,
                                material_manifest, palette_bytes, texture_outputs, SWATCH)
@@ -93,21 +93,13 @@ class VerificationFailure(AssetError):
         self.report=report
 
 
-TOOLS = (('compiler','MEIC','meic'),('runner','RUN','mei-headless'),('probe','PROBE','mei-asset-probe'))
-
-
 def tool_paths(args, environ=None, settings=None):
-    """{tool: (path, where it came from)} for the native tools a command takes, each from the
-    first of: its own option (--compiler, --runner, --probe), --build-dir DIR, the settings
-    file's build_dir, its environment variable (MEIC, RUN, PROBE, as the test suites read them),
-    $B (make's build directory, relative to the repository), build/ (kitcore.settings.tool_path)."""
-    environ = os.environ if environ is None else environ
-    out = {}
-    for key,variable,executable in TOOLS:
-        if not hasattr(args,key): continue
-        out[key] = kitsettings.tool_path(executable,getattr(args,key),f'--{key}',variable,getattr(args,'build_dir',None),
-                                         settings,environ,ROOT)
-    return out
+    """{tool: (path, where it came from)} for the native tools a command takes (those it has
+    options for), as kitcore.native.tool_paths() chooses them: its own option (--compiler,
+    --runner, --probe), --build-dir DIR, the settings file's build_dir, MEIC, RUN or PROBE, $B,
+    build/."""
+    keys = [k for k in ('compiler','runner','probe') if hasattr(args,k)]
+    return native.tool_paths(keys,{k:getattr(args,k) for k in keys},getattr(args,'build_dir',None),environ,settings)
 
 
 def recipe_settings(path):
@@ -161,20 +153,8 @@ def settings_report(settings, drawn=None, effective=None, sources=None, tools=No
 
 
 def require_tools(tools, keys):
-    """An error naming each missing tool, the directory looked in, how it was chosen, the make
-    command that builds it and how to point the kit elsewhere."""
-    missing = [(key,*tools[key]) for key in dict.fromkeys(keys) if not tools[key][0].is_file()]
-    if not missing: return
-    lines = []
-    for key,path,how in missing:
-        directory = path.parent
-        try: shown = directory.relative_to(ROOT)
-        except ValueError: shown = directory
-        lines.append(f'Missing {path.name} in {directory} (the {key}, from {how}): build it with '
-                     f'make B={shown} {shown}/{path.name}')
-    raise AssetError('/arguments/tools','. '.join(lines)+'. To use another build directory, pass --build-dir DIR '
-                     '(the directory make B=DIR builds into) or set B=DIR, or MEIC, RUN and PROBE for single tools, '
-                     'or --compiler, --runner and --probe.')
+    """An error at /arguments/tools naming each missing tool (kitcore.native.require_tools())."""
+    native.require_tools(tools,keys,AssetError)
 
 
 SINK = 0.02          # how far flush_contacts suggests sinking a part into its neighbour (units)
@@ -558,7 +538,13 @@ def parser():
     imp.add_argument('-o','--output',required=True)
     imp.add_argument('--name',default='imported')
     imp.add_argument('--force',action='store_true')
+    add_json(sub,TEXT_COMMANDS)
     return p
+
+
+# the commands that print plain text unless given --json
+TEXT_COMMANDS = {'preview':'a one-screen summary','verify':'a one-screen summary','info':'plain text',
+                 'floors':'plain text'}
 
 
 def look_for(args, settings=None):
@@ -750,8 +736,7 @@ def main(argv=None):
         # the errors first, so that the reason leads a long failure report
         path = getattr(error,'path','/input')
         node = node_of(recipe,path)
-        args_given = sys.argv[1:] if argv is None else list(argv)
-        if (args_given and args_given[0] in ('info','floors') and '--json' not in args_given) or text_output(args):
+        if wants_text(argv,args,TEXT_COMMANDS):
             if isinstance(error,VerificationFailure) and text_output(args):
                 print(summary.failure_text(error.report,error))
             else:

@@ -1,5 +1,6 @@
-"""The quick tools over a world recipe (docs/WORLDKIT-REFERENCE.md, "Quick tools"): `mei_world.py check`
-(the World Checker on a few cells or cameras), `floors` (the pack's floor heights over an area),
+"""The quick tools over a world recipe (docs/WORLDKIT-REFERENCE.md, "Quick tools"): `mei_world.py
+check` (the World Checker on a few cells or cameras, or with --full on the whole world), `floors`
+(the pack's floor heights over an area or at points),
 `textures` (texture VRAM by region, asset and image) and `cracks` (every crack the game's floor
 query does not bridge, against the crack baseline). They only read: nothing a build writes
 changes, and only `cracks --write-baseline` writes (NAME.cracks.json).
@@ -304,27 +305,42 @@ def parse_cameras(texts, files):
     return cams
 
 
-def check(world, cells=(), cameras=(), tools=None, max_views=200, out_dir=None):
+def vantage_points(cameras):
+    """--camera and --cameras as the World Checker's vantage points."""
+    return [{'position': c['eye'], 'yaw': math.degrees(c['yaw']), 'pitch': math.degrees(c['pitch'])} for c in cameras]
+
+
+def check(world, cells=(), cameras=(), tools=None, max_views=200, out_dir=None, full=False, crack_baseline=None):
     """The World Checker on the cells' sampled views and static collision and on the cameras,
     with the world's own settings and thresholds (worldkit.verify.check_world's), at most
-    max_views sampled views. Returns its report, with each view's heaviest placements named."""
+    max_views sampled views. Returns its report, with each view's heaviest placements named.
+    full: the whole world as a build checks it (cells are ignored): the recipe's vantage points
+    as well as the cameras, the crack baseline's entries (crack_baseline), and the world's own
+    sampling unless max_views is given."""
     from . import verify as V
     s = world.meta['settings']
     mode = s['verification'].get('mode', 'report')
+    points = vantage_points(cameras)
+    if full:
+        points = [dict(vp) for vp in s['verification'].get('vantage_points', [])] + points
     settings = {'mode': 'strict' if mode == 'enforce' else mode,
                 'thresholds': dict(s['verification'].get('thresholds', {})),
-                'sampling': {'max_views': max_views},
-                'vantage_points': [{'position': c['eye'], 'yaw': math.degrees(c['yaw']),
-                                    'pitch': math.degrees(c['pitch'])} for c in cameras]}
+                'vantage_points': points}
+    if max_views is not None:
+        settings['sampling'] = {'max_views': max_views}
     if s['runtime']:
         settings['runtime'] = dict(s['runtime'])
     probe = {k: v for k, v in s['probe'].items() if k in V.DEFAULTS['probe']}
     if probe:
         settings['probe'] = {**V.DEFAULTS['probe'], **probe}
-    report = V.verify(world.pack, settings, None, out_dir, tools or {}, focus={'cells': list(cells)})
+    if full and crack_baseline is not None:
+        settings['collision'] = {'crack_baseline': list(crack_baseline)}
+    report = V.verify(world.pack, settings, None, out_dir, tools or {}, focus=None if full else {'cells': list(cells)})
+    names = [vp.get('name') or f'vantage_{k}' for k, vp in enumerate(points[:len(points) - len(cameras)])]
+    names += [c['name'] for c in cameras]
     for row in report.get('views', []):
         if 'vantage' in row:
-            row['name'] = cameras[row['vantage']]['name']
+            row['name'] = names[row['vantage']]
         for h in row.get('heaviest', []):
             h.update({k: v for k, v in tag_name(world, h['cell'], h['tag']).items() if k in ('id', 'asset')})
     for f in (report.get('hard_failures', []) + report.get('threshold_failures', [])
@@ -340,17 +356,20 @@ def _n(v):
     return f'{v:,}' if isinstance(v, int) else str(v)
 
 
-def check_text(report, world, cells, cameras, rows=12):
-    """check's plain-text form."""
+def check_text(report, world, cells, cameras, rows=12, full=False, name=None):
+    """check's plain-text form. world is None for a built pack (check PACK), named `name`; full:
+    the whole world was checked (check --full, or a pack without --cells or cameras)."""
     th = report['settings']['thresholds']
-    out = [f'{world.meta["name"]}: World Checker on '
-           + ', '.join(([f'{len(cells)} cell' + ('s' if len(cells) != 1 else '') + ' ('
-                         + ' '.join(world.cell(c)['id'] for c in cells) + ')'] if cells else [])
-                       + ([f'{len(cameras)} camera' + ('s' if len(cameras) != 1 else '')] if cameras else []))
-           + f' ({report["mode"]} mode; compiled world {world.how()["compiled"]}, {world.seconds:.1f} s; '
-             f'check {report["timing"]["total_seconds"]:.1f} s)']
+    cell_id = (lambda ij: world.cell(ij)['id']) if world else (lambda ij: f'[{ij[0]}, {ij[1]}]')
+    what = ([f'the whole world'] if full else []) + (
+        [f'{len(cells)} cell' + ('s' if len(cells) != 1 else '') + ' (' + ' '.join(cell_id(c) for c in cells) + ')']
+        if cells and not full else []) + (
+        [f'{len(cameras)} camera' + ('s' if len(cameras) != 1 else '')] if cameras else [])
+    how = (f'compiled world {world.how()["compiled"]}, {world.seconds:.1f} s; ' if world else 'built pack; ')
+    out = [f'{world.meta["name"] if world else name}: World Checker on ' + ', '.join(what)
+           + f' ({report["mode"]} mode; {how}check {report["timing"]["total_seconds"]:.1f} s)']
     st = report.get('static', {})
-    if cells:
+    if cells or full:
         coll = st.get('collision', {})
         out.append(f'Static: {len(coll.get("findings", []))} collision findings, '
                    f'{len(coll.get("entities_in_solid", []))} entities in solid')
@@ -358,23 +377,27 @@ def check_text(report, world, cells, cameras, rows=12):
             out.append(f'  {f["code"]} at {f["at"]}: {f.get("floor", f["floor_tag"])} | {f.get("beyond", f["beyond_tag"])}'
                        + (f' gap {f["gap"]}' if 'gap' in f else '') + (' (on a seam)' if f.get('on_seam') else ''))
         for c in st.get('cells', []):
-            cid = world.cell(c['cell'])['id']
+            cid = cell_id(c['cell'])
             over = [k for k, lim in (('triangles', th['cell_triangles']), ('placements', th['cell_placements']),
                                      ('standin_triangles', th['standin_triangles']))
                     if c[k] is not None and lim is not None and c[k] > lim]
-            out.append(f'  cell {cid} {c["cell"]}: {_n(c["triangles"])} triangles (limit {_n(th["cell_triangles"])}), '
+            if full and not over:
+                continue                    # the whole world: only the cells over a limit
+            out.append(f'  cell {cid + " " if world else ""}{c["cell"]}: {_n(c["triangles"])} triangles (limit {_n(th["cell_triangles"])}), '
                        f'{c["placements"]} placements ({th["cell_placements"]}), stand-in '
                        f'{_n(c["standin_triangles"])} ({th["standin_triangles"]})' + (' OVER: ' + ', '.join(over) if over else ''))
     views = report.get('views', [])
     smp = report.get('sampling', {})
     named = [r for r in views if 'name' in r]
     parts = []
-    if cells:
-        parts.append(f'{len(views) - len(named)} sampled in the cells, of {smp.get("sampled_views", 0) - len(named)} '
-                     'before thinning')
-    if cameras:
-        parts.append(f'{len(named)} from {len(cameras)} camera' + ('s' if len(cameras) != 1 else '')
-                     + (f' x {len(smp.get("layer_sets", []))} layer sets' if len(named) > len(cameras) else ''))
+    if cells or full:
+        parts.append(f'{len(views) - len(named)} sampled{"" if full else " in the cells"}, of '
+                     f'{smp.get("sampled_views", 0) - len(named)} before thinning')
+    points = len({r['name'] for r in named})
+    if points:
+        kind = 'camera' if points == len(cameras) else 'vantage point'
+        parts.append(f'{len(named)} from {points} {kind}' + ('s' if points != 1 else '')
+                     + (f' x {len(smp.get("layer_sets", []))} layer sets' if len(named) > points else ''))
     out.append(f'Views: {len(views)} ({"; ".join(parts)}); limits {_n(th["view_triangles"])} triangles, '
                f'{_n(th["draw_cpu_cycles"])} draw CPU, {_n(th["gpu_cycles"])} GPU cycles')
     sampled = sorted((r for r in views if 'name' not in r),
@@ -430,6 +453,56 @@ def check_text(report, world, cells, cameras, rows=12):
 # ---- floors
 
 
+def layers_on(world, layers=None):
+    """(every layer's name, the set of layer numbers on): `layers` by name, or those on at the
+    start."""
+    names = [n for n, _ in world.meta['layers']]
+    if layers is None:
+        return names, frozenset(k for k, (_, start) in enumerate(world.meta['layers']) if start)
+    unknown = [l for l in layers if l not in names]
+    if unknown:
+        raise WorldError('/arguments/layers', f'No layer {unknown[0]!r}. Layers: {", ".join(names) or "none"}.')
+    return names, frozenset(names.index(l) for l in layers)
+
+
+def floors_at(world, points, layers=None, below=None):
+    """The pack's floor under each point (x, z), as the reader's wp_floor() finds it from far
+    above (or from `below`), and what it belongs to: [{'at', 'y', 'from'}] as the kit's
+    floor query (mei_world.floors()) gives them, 'from' a placement's ID (with its 'cell' and
+    'asset'), terrain, sweep or scatter; y and from None where there is no floor."""
+    from . import verify_static as ST
+    pack = world.decoded
+    names, on = layers_on(world, layers)
+    top = (1 << 40) if below is None else round(below * ONE)
+    out = []
+    for x, z in points:
+        rx, rz = round(x * ONE), round(z * ONE)
+        got = ST.reader_floor(pack, rx, top, rz, on)
+        if got is None:
+            out.append({'at': [x, z], 'y': None, 'from': None})
+            continue
+        n = tag_name(world, pack.cell_of(rx, rz)[0], got[1], (x, z))
+        out.append({'at': [x, z], 'y': round(got[0] / ONE, 4), 'from': n['id'],
+                    **{k: n[k] for k in ('cell', 'asset') if k in n}, 'surface': got[2]})
+    return {'ok': True, 'world': world.meta['name'], 'layers': sorted(names[k] for k in on), 'below': below,
+            'floors': out, 'compiled': world.how()}
+
+
+def floors_at_text(r):
+    how = r['compiled']
+    out = [f'{r["world"]}: the pack\'s floors at {len(r["floors"])} point' + ('s' if len(r['floors']) != 1 else '')
+           + (f', at or below y {r["below"]:g}' if r['below'] is not None else '')
+           + f' (layers on: {", ".join(r["layers"]) or "none"}; compiled world {how["compiled"]}, {how["seconds"]} s)']
+    for f in r['floors']:
+        where = f'({f["at"][0]:g}, {f["at"][1]:g})'
+        if f['y'] is None:
+            out.append(f'  {where:>20}  no floor')
+        else:
+            what = f['from'] + (f' (cell {f["cell"]}, {f["asset"]})' if 'cell' in f else '')
+            out.append(f'  {where:>20}  y {f["y"]:<10g} {what}')
+    return '\n'.join(out)
+
+
 def floors(world, area, step=1.0, layers=None, below=None):
     """The pack's floor under each point of a grid over area (x0, z0, x1, z1), as the reader's
     wp_floor() finds it from far above (or from `below`: the highest floor at or below that
@@ -447,14 +520,7 @@ def floors(world, area, step=1.0, layers=None, below=None):
     nx, nz = int(math.floor((x1 - x0) / step + 1e-9)) + 1, int(math.floor((z1 - z0) / step + 1e-9)) + 1
     if nx * nz > 250000:
         raise WorldError('/arguments/step', f'{nx} x {nz} points is too many: a larger step, or a smaller area.')
-    names = [n for n, _ in world.meta['layers']]
-    if layers is None:
-        on = frozenset(k for k, (_, start) in enumerate(world.meta['layers']) if start)
-    else:
-        unknown = [l for l in layers if l not in names]
-        if unknown:
-            raise WorldError('/arguments/layers', f'No layer {unknown[0]!r}. Layers: {", ".join(names) or "none"}.')
-        on = frozenset(names.index(l) for l in layers)
+    names, on = layers_on(world, layers)
     xs = [round(x0 + k * step, 6) for k in range(nx)]
     zs = [round(z0 + k * step, 6) for k in range(nz)]
     top = (1 << 40) if below is None else round(below * ONE)

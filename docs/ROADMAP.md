@@ -43,7 +43,7 @@ All PS1-authentic unless noted.
   `tools/cart_scenario.sh`), which check with `assert` in the scenario cart; scenario files that
   state their expected output in `// expect:` lines are still to do.
 - **The kits' next pieces**, planned in their documents: terrain, region textures, audio banks
-  and backdrops, `verify` and `standin-draft` in the World Kit
+  and backdrops, `standin-draft` in the World Kit
   ([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#command-line)); packing the Asset Kit's textures per region in the
   World Kit, and the runtime helper that copies animated texture frames
   ([ASSETKIT-REFERENCE.md](ASSETKIT-REFERENCE.md#textures)).

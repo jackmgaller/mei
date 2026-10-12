@@ -185,6 +185,13 @@ Conventions, each checked on native renders (`tests/test_assetkit.py`, `Conventi
 | `pack FILE... -o DIR [--name NAME] [--slots 14-0] [--palette 0] [--palette8 14]` | Several assets (or one) for a cart without a world: shared texture slots and palettes, one loader ([Placement](ASSETKIT-REFERENCE.md#placement-build-and-pack)) |
 | `export FILE -o DIR [--format glb\|gltf]` | One glTF 2.0 file for ordinary 3D viewers, drawn as Mei draws it ([export](ASSETKIT-REFERENCE.md#viewing-an-asset-elsewhere-export)) |
 
+Every command takes `--json`, as every World Kit command does
+([WORLDKIT-REFERENCE.md](WORLDKIT-REFERENCE.md#command-line)). `preview` and `verify` print a
+summary and `info` and `floors` plain text unless given it; the others print JSON either way. A
+failure is printed the way the command prints its result: `error at PATH: message` in plain
+text, else the JSON error object. The commands that run native tools (`build`, `preview`,
+`verify`) take `--build-dir DIR` ([Native tools](ASSETKIT-REFERENCE.md#native-tools)).
+
 ## Recipe contract
 
 ```json
