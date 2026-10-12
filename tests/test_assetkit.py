@@ -1907,6 +1907,37 @@ class CameraParsingTests(unittest.TestCase):
         self.assertIn('--build-dir DIR',message)
         self.assertIn('MEIC',message)
 
+    def test_every_command_takes_json_and_the_native_ones_build_dir(self):
+        """The command-line convention both kits share: --json on every command; --build-dir on
+        every command that runs native tools."""
+        import mei_assets, mei_world
+        for kit,native in ((mei_assets,('build','preview','verify')),
+                           (mei_world,('build','preview','check'))):
+            sub = next(a for a in kit.parser()._actions if hasattr(a,'choices') and isinstance(a.choices,dict))
+            for name,cmd in sub.choices.items():
+                with self.subTest(kit=kit.__name__,command=name):
+                    self.assertIn('--json',cmd._option_string_actions)
+                    if name in native: self.assertIn('--build-dir',cmd._option_string_actions)
+        r = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'validate','-','--json'],input=json.dumps(recipe()),
+                           capture_output=True,text=True)
+        self.assertEqual((r.returncode,json.loads(r.stdout)['ok']),(0,True))
+        r = subprocess.run([sys.executable,str(ROOT/'tools/mei_assets.py'),'info','missing.asset.json'],
+                           capture_output=True,text=True)
+        self.assertEqual((r.returncode,r.stdout.startswith('error at /input')),(1,True),r.stdout)
+
+    def test_one_build_directory_rule_for_every_kit(self):
+        """kitcore.native.build_dir(): --build-dir, else $B (relative to the repository), else build/;
+        the tools: their own option, --build-dir, their variable, then the build directory."""
+        from kitcore import native
+        self.assertEqual(native.build_dir(None,{})[0],ROOT/'build')
+        self.assertEqual(native.build_dir(None,{'B':'build-x'})[0],ROOT/'build-x')
+        self.assertEqual(native.build_dir(Path('/tmp/b'),{'B':'build-x'})[0],Path('/tmp/b').resolve())
+        paths = native.tool_paths(['compiler','scene_probe'],{},None,{'B':'build-x','SCENE_PROBE':'/tmp/s/probe'})
+        self.assertEqual(paths['compiler'][0],ROOT/'build-x/meic')
+        self.assertEqual(paths['scene_probe'],(Path('/tmp/s/probe').resolve(),'SCENE_PROBE=/tmp/s/probe'))
+        paths = native.tool_paths(['scene_probe'],{'scene_probe':Path('/tmp/p')},Path('/tmp/b'),{})
+        self.assertEqual(paths['scene_probe'][0],Path('/tmp/p').resolve())
+
     def test_missing_tools_are_named_with_their_directory_on_the_command_line(self):
         with tempfile.TemporaryDirectory() as tmp:
             env = {k:v for k,v in os.environ.items() if k not in ('MEIC','RUN','PROBE','B')}

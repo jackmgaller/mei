@@ -2202,6 +2202,66 @@ class QuickToolTests(unittest.TestCase):
         self.assertTrue(r.stdout.startswith('error at /arguments/area'), r.stdout)
         code, out = cli('check', ex.world, '--cache', self.cache, '--json')
         self.assertEqual((code, out['errors'][0]['path']), (1, '/arguments'))
+        r = subprocess.run([*CLI, 'cracks', str(ex.world), '--cache', str(self.cache), '--routes', 'missing.json'],
+                           capture_output=True, text=True)
+        self.assertTrue(r.stdout.startswith('error at '), r.stdout)        # cracks fails in plain text too
+
+    def test_floors_at_points_and_the_old_floor(self):
+        from worldkit.quick import load_world, floors, floors_at
+        ex = Example(self.tmp.name)
+        world = load_world(str(ex.world), None, self.cache)
+        grid = floors(world, (20.5, 20.5, 43.5, 43.5), 1.0)
+        points = [(x, z) for z in grid['z'] for x in grid['x']]
+        at = floors_at(world, points)['floors']
+        self.assertEqual([f['y'] for f in at], [h for row in grid['heights'] for h in row])
+        named = {(f['cell'] + '/' + f['from']) if 'cell' in f else f['from'] for f in at if f['from']}
+        self.assertEqual(named, {g['what'] for g in grid['sources']})
+        # floors --at X,Z --kit is the old floor's result; floor still answers, deprecated
+        code, kit = cli('floors', ex.world, '--at', '20,30;33,33', '--at', '47,40', '--kit', '--json')
+        r = subprocess.run([*CLI, 'floor', str(ex.world), '20', '30', '33', '33', '47', '40'], capture_output=True, text=True)
+        self.assertEqual((code, r.returncode), (0, 0))
+        self.assertEqual(json.loads(r.stdout), kit)
+        self.assertEqual(kit, mei_world.floors(str(ex.world), ['20', '30', '33', '33', '47', '40']))
+        self.assertIn('deprecated', r.stderr)
+        code, pack = cli('floors', ex.world, '--at', '20,30', '--cache', self.cache, '--json')
+        self.assertEqual((code, pack['floors'][0]['at'], pack['floors'][0]['from']), (0, [20.0, 30.0], 'floor'))
+        r = subprocess.run([*CLI, 'floors', str(ex.world), '--cache', str(self.cache), '--at', '20,30'],
+                           capture_output=True, text=True)
+        self.assertIn('the pack\'s floors at 1 point', r.stdout)
+        for args in ((), ('--at', '1,2', '--area', '0,0,4,4'), ('--area', '0,0,4,4', '--kit'), ('--at', '1,2,3')):
+            with self.subTest(args=args):
+                code, out = cli('floors', ex.world, '--cache', self.cache, '--json', *args)
+                self.assertEqual(code, 1)
+                self.assertTrue(out['errors'][0]['path'].startswith('/arguments'), out)
+
+    def test_every_command_takes_json(self):
+        code, out = cli('validate', EXAMPLES/'test_room'/'test_room.world.json', '--json')
+        self.assertEqual((code, out['ok']), (0, True))
+        code, out = cli('schema', '--json')
+        self.assertEqual(code, 0)
+        self.assertIn('$defs', out)
+
+    @checker_tools
+    def test_check_the_whole_world_and_a_built_pack(self):
+        ex = Example(self.tmp.name)
+        tools = ['--compiler', COMPILER, '--scene-probe', SCENE_PROBE]
+        code, full = cli('check', ex.world, '--cache', self.cache, '--full', '--max-views', 6, '--json', *tools)
+        self.assertEqual((code, full['ok']), (0, True))
+        self.assertNotIn('focus', full)                       # the whole world, as build checks it
+        self.assertLessEqual(len([v for v in full['views'] if 'vantage' not in v]), 6)
+        pack = Path(self.tmp.name)/'room.world.bin'
+        pack.write_bytes(ex.compile().pack)
+        code, out = cli('check', pack, '--max-views', 6, '--json', *tools)
+        self.assertEqual((code, out['ok']), (0, True))
+        self.assertEqual(len(out['views']), len(full['views']))
+        code, out = cli('check', pack, '--cells', '0,0', '--camera', 'a=32,2,20@0,0', '--max-views', 4, '--json', *tools)
+        self.assertEqual(out['focus']['cells'], [[0, 0]])
+        self.assertTrue(any(v.get('name') == 'a' for v in out['views']))
+        r = subprocess.run([*CLI, 'check', str(pack), '--max-views', '4', *map(str, tools)], capture_output=True, text=True)
+        self.assertTrue(r.stdout.startswith('room.world.bin: World Checker on the whole world'), r.stdout)
+        code, out = cli('check', pack, '--build-dir', Path(self.tmp.name)/'nothing', '--json')
+        self.assertEqual((code, out['errors'][0]['path']), (1, '/arguments/tools'))
+        self.assertIn('mei-scene-probe', out['errors'][0]['message'])
 
 
 class OcclusionTests(unittest.TestCase):

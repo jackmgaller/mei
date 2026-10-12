@@ -1,6 +1,7 @@
 """Running Mei's real compiler and headless runner, and the images they produce: PPM in, PNG
 and contact sheets out. No image library is needed."""
 import csv
+import os
 from pathlib import Path
 import re
 import struct
@@ -10,6 +11,70 @@ import zlib
 from .errors import KitError
 
 WIDTH, HEIGHT = 320, 240
+ROOT = Path(__file__).resolve().parents[2]
+
+# The native tools the kits run: {key: (environment variable, file in a build directory)}. The
+# key is the command-line option's name (--compiler, --runner, --probe); the variables are the
+# ones the test suites read.
+TOOLS = {'compiler': ('MEIC', 'meic'), 'runner': ('RUN', 'mei-headless'),
+         'probe': ('PROBE', 'mei-asset-probe'), 'scene_probe': ('SCENE_PROBE', 'mei-scene-probe')}
+
+
+def build_dir(given=None, environ=None):
+    """The build directory (the one make B=DIR builds into) and how it was chosen, (Path, how):
+    --build-dir DIR (given), else $B (relative to the repository, as make's B), else build/.
+    Every kit command that runs native tools or keeps a cache in the build directory takes the
+    directory from here."""
+    environ = os.environ if environ is None else environ
+    if given is not None:
+        return Path(given).resolve(), f'--build-dir {given}'
+    if environ.get('B'):
+        return (ROOT/environ['B']).resolve(), f'B={environ["B"]}'
+    return ROOT/'build', 'the default, build/'
+
+
+def tool_paths(keys, options=None, given_dir=None, environ=None):
+    """{key: (path, how it was chosen)} for the native tools named by keys (of TOOLS), each from
+    the first of: its own option (options[key]: --compiler, --runner, --probe), --build-dir DIR
+    (given_dir), its environment variable (MEIC, RUN, PROBE, SCENE_PROBE), then build_dir():
+    $B, build/."""
+    environ = os.environ if environ is None else environ
+    options = options or {}
+    out = {}
+    for key in keys:
+        variable, executable = TOOLS[key]
+        given = options.get(key)
+        if given is not None:
+            path, how = Path(given), f'--{key.replace("_", "-")} {given}'
+        elif given_dir is not None:
+            path, how = Path(given_dir)/executable, f'--build-dir {given_dir}'
+        elif environ.get(variable):
+            path, how = Path(environ[variable]), f'{variable}={environ[variable]}'
+        else:
+            directory, how = build_dir(None, environ)
+            path = directory/executable
+        out[key] = (path.resolve(), how)
+    return out
+
+
+def require_tools(tools, keys, error=KitError):
+    """An error naming each missing tool (of tool_paths()), the directory looked in, how it was
+    chosen, the make command that builds it and how to point the kit elsewhere."""
+    missing = [(key, *tools[key]) for key in dict.fromkeys(keys) if not tools[key][0].is_file()]
+    if not missing:
+        return
+    lines = []
+    for key, path, how in missing:
+        directory = path.parent
+        try:
+            shown = directory.relative_to(ROOT)
+        except ValueError:
+            shown = directory
+        lines.append(f'Missing {path.name} in {directory} (the {key.replace("_", " ")}, from {how}): build it with '
+                     f'make B={shown} {shown}/{path.name}')
+    raise error('/arguments/tools', '. '.join(lines) + '. To use another build directory, pass --build-dir DIR '
+                '(the directory make B=DIR builds into) or set B=DIR, or MEIC, RUN, PROBE and SCENE_PROBE for single '
+                'tools, or the tool\'s own option (--compiler, --runner, --probe).')
 
 
 def require(path, executables, hint='Run make to build Mei, or pass --compiler/--runner.', error=KitError):
